@@ -1,0 +1,1334 @@
+{
+  "etiquette": "r1",
+  "nonce": "r1-olykjm",
+  "n_demande": 3,
+  "emulationDeFocusActivee": false,
+  "phases": [
+    {
+      "nom": "0-avant-toute-copie",
+      "t": "2026-08-21T06:10:18.528Z",
+      "fenetres": [
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-1",
+          "pid": 22992,
+          "messages": [],
+          "focus": false,
+          "actif": false,
+          "dejaActif": false,
+          "visible": false,
+          "ecritures": [],
+          "statut": "Réseau insuffisant pour le jeu nerveux — 780×492, 0.2 Mb/s",
+          "statut_cache": "false",
+          "texte_fenetre": "fenetre pid=22992 longueur=13 texte=[BBB-r1-olykjm]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-2",
+          "pid": 10000,
+          "messages": [],
+          "focus": false,
+          "actif": false,
+          "dejaActif": false,
+          "visible": false,
+          "ecritures": [],
+          "statut": "Réseau insuffisant pour le jeu nerveux — 780×492, 0.3 Mb/s",
+          "statut_cache": "false",
+          "texte_fenetre": "fenetre pid=10000 longueur=13 texte=[CCC-r1-olykjm]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-3",
+          "pid": 24344,
+          "messages": [],
+          "focus": true,
+          "actif": false,
+          "dejaActif": false,
+          "visible": true,
+          "ecritures": [],
+          "statut": "780×492, 1.8 Mb/s",
+          "statut_cache": "false",
+          "texte_fenetre": "fenetre pid=24344 longueur=13 texte=[AAA-r1-olykjm]"
+        }
+      ],
+      "vm_clipboard": "clipboard longueur=15 debut=[quatre-2-6olhan]"
+    },
+    {
+      "nom": "1-apres-copie-dans-la-vm",
+      "t": "2026-08-21T06:10:31.036Z",
+      "fenetres": [
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-1",
+          "pid": 22992,
+          "messages": [
+            {
+              "t": 1787292620052,
+              "octets": 12,
+              "nul": false,
+              "debut": "un-r1-olykjm"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": false,
+          "visible": false,
+          "ecritures": [],
+          "statut": "Réseau insuffisant pour le jeu nerveux — 390×246, 0.2 Mb/s",
+          "statut_cache": "false",
+          "texte_fenetre": "fenetre pid=22992 longueur=13 texte=[BBB-r1-olykjm]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-2",
+          "pid": 10000,
+          "messages": [
+            {
+              "t": 1787292620053,
+              "octets": 12,
+              "nul": false,
+              "debut": "un-r1-olykjm"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": false,
+          "visible": false,
+          "ecritures": [],
+          "statut": "Image réduite par le réseau — 390×246, 0.3 Mb/s",
+          "statut_cache": "false",
+          "texte_fenetre": "fenetre pid=10000 longueur=13 texte=[CCC-r1-olykjm]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-3",
+          "pid": 24344,
+          "messages": [
+            {
+              "t": 1787292620057,
+              "octets": 12,
+              "nul": false,
+              "debut": "un-r1-olykjm"
+            }
+          ],
+          "focus": true,
+          "actif": false,
+          "dejaActif": false,
+          "visible": true,
+          "ecritures": [
+            {
+              "t": 1787292620057,
+              "debut": "un-r1-olykjm"
+            }
+          ],
+          "statut": "780×492, 11.5 Mb/s",
+          "statut_cache": "true",
+          "texte_fenetre": "fenetre pid=24344 longueur=13 texte=[AAA-r1-olykjm]"
+        }
+      ],
+      "vm_clipboard": "clipboard longueur=12 debut=[un-r1-olykjm]"
+    },
+    {
+      "nom": "2-apres-les-collages-attribues",
+      "t": "2026-08-21T06:12:00.860Z",
+      "fenetres": [
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-1",
+          "pid": 22992,
+          "messages": [
+            {
+              "t": 1787292620052,
+              "octets": 12,
+              "nul": false,
+              "debut": "un-r1-olykjm"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": true,
+          "visible": false,
+          "ecritures": [
+            {
+              "t": 1787292636906,
+              "debut": "un-r1-olykjm"
+            }
+          ],
+          "statut": "Réseau insuffisant pour le jeu nerveux — 390×246, 0.1 Mb/s",
+          "statut_cache": "false",
+          "texte_fenetre": "fenetre pid=22992 longueur=29 texte=[deux-A-r1-olykjmBBB-r1-olykjm]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-2",
+          "pid": 10000,
+          "messages": [
+            {
+              "t": 1787292620053,
+              "octets": 12,
+              "nul": false,
+              "debut": "un-r1-olykjm"
+            }
+          ],
+          "focus": true,
+          "actif": false,
+          "dejaActif": true,
+          "visible": true,
+          "ecritures": [
+            {
+              "t": 1787292678326,
+              "debut": "un-r1-olykjm"
+            }
+          ],
+          "statut": "780×492, 7.7 Mb/s",
+          "statut_cache": "true",
+          "texte_fenetre": "fenetre pid=10000 longueur=29 texte=[deux-B-r1-olykjmCCC-r1-olykjm]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-3",
+          "pid": 24344,
+          "messages": [
+            {
+              "t": 1787292620057,
+              "octets": 12,
+              "nul": false,
+              "debut": "un-r1-olykjm"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": false,
+          "visible": false,
+          "ecritures": [
+            {
+              "t": 1787292620057,
+              "debut": "un-r1-olykjm"
+            },
+            {
+              "t": 1787292632439,
+              "debut": "un-r1-olykjm"
+            }
+          ],
+          "statut": "780×492, 3.8 Mb/s",
+          "statut_cache": "true",
+          "texte_fenetre": "fenetre pid=24344 longueur=13 texte=[AAA-r1-olykjm]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-6",
+          "pid": null,
+          "messages": [
+            {
+              "t": 1787292634756,
+              "octets": 12,
+              "nul": false,
+              "debut": "un-r1-olykjm"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": false,
+          "visible": false,
+          "ecritures": [
+            {
+              "t": 1787292634756,
+              "debut": "un-r1-olykjm"
+            }
+          ],
+          "statut": "Réseau insuffisant pour le jeu nerveux — 390×246, 0.2 Mb/s",
+          "statut_cache": "false",
+          "texte_fenetre": null
+        }
+      ],
+      "vm_clipboard": "clipboard longueur=16 debut=[deux-B-r1-olykjm]"
+    },
+    {
+      "nom": "3-avant-simultane",
+      "t": "2026-08-21T06:12:04.901Z",
+      "fenetres": [
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-1",
+          "pid": 22992,
+          "messages": [
+            {
+              "t": 1787292620052,
+              "octets": 12,
+              "nul": false,
+              "debut": "un-r1-olykjm"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": true,
+          "visible": false,
+          "ecritures": [
+            {
+              "t": 1787292636906,
+              "debut": "un-r1-olykjm"
+            }
+          ],
+          "statut": "Réseau insuffisant pour le jeu nerveux — 390×246, 0.1 Mb/s",
+          "statut_cache": "false",
+          "texte_fenetre": "fenetre pid=22992 longueur=29 texte=[deux-A-r1-olykjmBBB-r1-olykjm]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-2",
+          "pid": 10000,
+          "messages": [
+            {
+              "t": 1787292620053,
+              "octets": 12,
+              "nul": false,
+              "debut": "un-r1-olykjm"
+            }
+          ],
+          "focus": true,
+          "actif": false,
+          "dejaActif": true,
+          "visible": true,
+          "ecritures": [
+            {
+              "t": 1787292678326,
+              "debut": "un-r1-olykjm"
+            }
+          ],
+          "statut": "780×492, 7.7 Mb/s",
+          "statut_cache": "true",
+          "texte_fenetre": "fenetre pid=10000 longueur=29 texte=[deux-B-r1-olykjmCCC-r1-olykjm]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-3",
+          "pid": 24344,
+          "messages": [
+            {
+              "t": 1787292620057,
+              "octets": 12,
+              "nul": false,
+              "debut": "un-r1-olykjm"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": false,
+          "visible": false,
+          "ecritures": [
+            {
+              "t": 1787292620057,
+              "debut": "un-r1-olykjm"
+            },
+            {
+              "t": 1787292632439,
+              "debut": "un-r1-olykjm"
+            }
+          ],
+          "statut": "780×492, 3.8 Mb/s",
+          "statut_cache": "true",
+          "texte_fenetre": "fenetre pid=24344 longueur=13 texte=[AAA-r1-olykjm]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-6",
+          "pid": null,
+          "messages": [
+            {
+              "t": 1787292634756,
+              "octets": 12,
+              "nul": false,
+              "debut": "un-r1-olykjm"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": false,
+          "visible": false,
+          "ecritures": [
+            {
+              "t": 1787292634756,
+              "debut": "un-r1-olykjm"
+            }
+          ],
+          "statut": "Image réduite par le réseau — 390×246, 0.3 Mb/s",
+          "statut_cache": "false",
+          "texte_fenetre": null
+        }
+      ],
+      "vm_clipboard": "clipboard longueur=16 debut=[deux-B-r1-olykjm]"
+    },
+    {
+      "nom": "3-apres-simultane",
+      "t": "2026-08-21T06:12:21.086Z",
+      "fenetres": [
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-1",
+          "pid": 22992,
+          "messages": [
+            {
+              "t": 1787292620052,
+              "octets": 12,
+              "nul": false,
+              "debut": "un-r1-olykjm"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": true,
+          "visible": false,
+          "ecritures": [
+            {
+              "t": 1787292636906,
+              "debut": "un-r1-olykjm"
+            },
+            {
+              "t": 1787292727038,
+              "debut": "un-r1-olykjm"
+            }
+          ],
+          "statut": "Réseau insuffisant pour le jeu nerveux — 390×246, 0.2 Mb/s",
+          "statut_cache": "false",
+          "texte_fenetre": "fenetre pid=22992 longueur=47 texte=[deux-A-r1-olykjmtrois-T1-r1-olykjmBBB-r1-olykjm]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-2",
+          "pid": 10000,
+          "messages": [
+            {
+              "t": 1787292620053,
+              "octets": 12,
+              "nul": false,
+              "debut": "un-r1-olykjm"
+            }
+          ],
+          "focus": true,
+          "actif": false,
+          "dejaActif": true,
+          "visible": true,
+          "ecritures": [
+            {
+              "t": 1787292678326,
+              "debut": "un-r1-olykjm"
+            },
+            {
+              "t": 1787292728999,
+              "debut": "un-r1-olykjm"
+            }
+          ],
+          "statut": "780×492, 7.7 Mb/s",
+          "statut_cache": "true",
+          "texte_fenetre": "fenetre pid=10000 longueur=47 texte=[deux-B-r1-olykjmtrois-T2-r1-olykjmCCC-r1-olykjm]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-3",
+          "pid": 24344,
+          "messages": [
+            {
+              "t": 1787292620057,
+              "octets": 12,
+              "nul": false,
+              "debut": "un-r1-olykjm"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": false,
+          "visible": false,
+          "ecritures": [
+            {
+              "t": 1787292620057,
+              "debut": "un-r1-olykjm"
+            },
+            {
+              "t": 1787292632439,
+              "debut": "un-r1-olykjm"
+            }
+          ],
+          "statut": "780×492, 3.8 Mb/s",
+          "statut_cache": "true",
+          "texte_fenetre": "fenetre pid=24344 longueur=13 texte=[AAA-r1-olykjm]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-6",
+          "pid": null,
+          "messages": [
+            {
+              "t": 1787292634756,
+              "octets": 12,
+              "nul": false,
+              "debut": "un-r1-olykjm"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": false,
+          "visible": false,
+          "ecritures": [
+            {
+              "t": 1787292634756,
+              "debut": "un-r1-olykjm"
+            }
+          ],
+          "statut": "Réseau insuffisant pour le jeu nerveux — 390×246, 0.2 Mb/s",
+          "statut_cache": "false",
+          "texte_fenetre": null
+        }
+      ],
+      "vm_clipboard": "clipboard longueur=18 debut=[trois-T2-r1-olykjm]"
+    },
+    {
+      "nom": "4-copie-pendant-que-B-est-sans-focus",
+      "t": "2026-08-21T06:13:03.626Z",
+      "fenetres": [
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-1",
+          "pid": 22992,
+          "messages": [
+            {
+              "t": 1787292620052,
+              "octets": 12,
+              "nul": false,
+              "debut": "un-r1-olykjm"
+            },
+            {
+              "t": 1787292773354,
+              "octets": 16,
+              "nul": false,
+              "debut": "quatre-r1-olykjm"
+            }
+          ],
+          "focus": true,
+          "actif": false,
+          "dejaActif": true,
+          "visible": true,
+          "ecritures": [
+            {
+              "t": 1787292636906,
+              "debut": "un-r1-olykjm"
+            },
+            {
+              "t": 1787292727038,
+              "debut": "un-r1-olykjm"
+            },
+            {
+              "t": 1787292772015,
+              "debut": "un-r1-olykjm"
+            },
+            {
+              "t": 1787292773316,
+              "debut": "un-r1-olykjm"
+            },
+            {
+              "t": 1787292773354,
+              "debut": "quatre-r1-olykjm"
+            }
+          ],
+          "statut": "Image réduite par le réseau — 390×246, 7.7 Mb/s",
+          "statut_cache": "false",
+          "texte_fenetre": "fenetre pid=22992 longueur=47 texte=[deux-A-r1-olykjmtrois-T1-r1-olykjmBBB-r1-olykjm]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-2",
+          "pid": 10000,
+          "messages": [
+            {
+              "t": 1787292620053,
+              "octets": 12,
+              "nul": false,
+              "debut": "un-r1-olykjm"
+            },
+            {
+              "t": 1787292773353,
+              "octets": 16,
+              "nul": false,
+              "debut": "quatre-r1-olykjm"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": true,
+          "visible": false,
+          "ecritures": [
+            {
+              "t": 1787292678326,
+              "debut": "un-r1-olykjm"
+            },
+            {
+              "t": 1787292728999,
+              "debut": "un-r1-olykjm"
+            }
+          ],
+          "statut": "Réseau insuffisant pour le jeu nerveux — 390×246, 0.2 Mb/s",
+          "statut_cache": "false",
+          "texte_fenetre": "fenetre pid=10000 longueur=47 texte=[deux-B-r1-olykjmtrois-T2-r1-olykjmCCC-r1-olykjm]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-3",
+          "pid": 24344,
+          "messages": [
+            {
+              "t": 1787292620057,
+              "octets": 12,
+              "nul": false,
+              "debut": "un-r1-olykjm"
+            },
+            {
+              "t": 1787292773351,
+              "octets": 16,
+              "nul": false,
+              "debut": "quatre-r1-olykjm"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": false,
+          "visible": false,
+          "ecritures": [
+            {
+              "t": 1787292620057,
+              "debut": "un-r1-olykjm"
+            },
+            {
+              "t": 1787292632439,
+              "debut": "un-r1-olykjm"
+            }
+          ],
+          "statut": "780×492, 3.8 Mb/s",
+          "statut_cache": "true",
+          "texte_fenetre": "fenetre pid=24344 longueur=13 texte=[AAA-r1-olykjm]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-6",
+          "pid": null,
+          "messages": [
+            {
+              "t": 1787292634756,
+              "octets": 12,
+              "nul": false,
+              "debut": "un-r1-olykjm"
+            },
+            {
+              "t": 1787292773340,
+              "octets": 16,
+              "nul": false,
+              "debut": "quatre-r1-olykjm"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": false,
+          "visible": false,
+          "ecritures": [
+            {
+              "t": 1787292634756,
+              "debut": "un-r1-olykjm"
+            }
+          ],
+          "statut": "Réseau insuffisant pour le jeu nerveux — 390×246, 0.2 Mb/s",
+          "statut_cache": "false",
+          "texte_fenetre": null
+        }
+      ],
+      "vm_clipboard": "clipboard longueur=16 debut=[quatre-r1-olykjm]"
+    },
+    {
+      "nom": "4-apres-reprise-du-focus-par-B",
+      "t": "2026-08-21T06:13:09.918Z",
+      "fenetres": [
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-1",
+          "pid": 22992,
+          "messages": [
+            {
+              "t": 1787292620052,
+              "octets": 12,
+              "nul": false,
+              "debut": "un-r1-olykjm"
+            },
+            {
+              "t": 1787292773354,
+              "octets": 16,
+              "nul": false,
+              "debut": "quatre-r1-olykjm"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": true,
+          "visible": false,
+          "ecritures": [
+            {
+              "t": 1787292636906,
+              "debut": "un-r1-olykjm"
+            },
+            {
+              "t": 1787292727038,
+              "debut": "un-r1-olykjm"
+            },
+            {
+              "t": 1787292772015,
+              "debut": "un-r1-olykjm"
+            },
+            {
+              "t": 1787292773316,
+              "debut": "un-r1-olykjm"
+            },
+            {
+              "t": 1787292773354,
+              "debut": "quatre-r1-olykjm"
+            }
+          ],
+          "statut": "image figée : fenêtre masquée",
+          "statut_cache": "false",
+          "texte_fenetre": "fenetre pid=22992 longueur=47 texte=[deux-A-r1-olykjmtrois-T1-r1-olykjmBBB-r1-olykjm]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-2",
+          "pid": 10000,
+          "messages": [
+            {
+              "t": 1787292620053,
+              "octets": 12,
+              "nul": false,
+              "debut": "un-r1-olykjm"
+            },
+            {
+              "t": 1787292773353,
+              "octets": 16,
+              "nul": false,
+              "debut": "quatre-r1-olykjm"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": true,
+          "visible": false,
+          "ecritures": [
+            {
+              "t": 1787292678326,
+              "debut": "un-r1-olykjm"
+            },
+            {
+              "t": 1787292728999,
+              "debut": "un-r1-olykjm"
+            }
+          ],
+          "statut": "Réseau insuffisant pour le jeu nerveux — 390×246, 0.3 Mb/s",
+          "statut_cache": "false",
+          "texte_fenetre": "fenetre pid=10000 longueur=47 texte=[deux-B-r1-olykjmtrois-T2-r1-olykjmCCC-r1-olykjm]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-3",
+          "pid": 24344,
+          "messages": [
+            {
+              "t": 1787292620057,
+              "octets": 12,
+              "nul": false,
+              "debut": "un-r1-olykjm"
+            },
+            {
+              "t": 1787292773351,
+              "octets": 16,
+              "nul": false,
+              "debut": "quatre-r1-olykjm"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": false,
+          "visible": false,
+          "ecritures": [
+            {
+              "t": 1787292620057,
+              "debut": "un-r1-olykjm"
+            },
+            {
+              "t": 1787292632439,
+              "debut": "un-r1-olykjm"
+            }
+          ],
+          "statut": "780×492, 3.8 Mb/s",
+          "statut_cache": "true",
+          "texte_fenetre": "fenetre pid=24344 longueur=13 texte=[AAA-r1-olykjm]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-6",
+          "pid": null,
+          "messages": [
+            {
+              "t": 1787292634756,
+              "octets": 12,
+              "nul": false,
+              "debut": "un-r1-olykjm"
+            },
+            {
+              "t": 1787292773340,
+              "octets": 16,
+              "nul": false,
+              "debut": "quatre-r1-olykjm"
+            }
+          ],
+          "focus": true,
+          "actif": false,
+          "dejaActif": false,
+          "visible": true,
+          "ecritures": [
+            {
+              "t": 1787292634756,
+              "debut": "un-r1-olykjm"
+            },
+            {
+              "t": 1787292784468,
+              "debut": "quatre-r1-olykjm"
+            }
+          ],
+          "statut": "Image réduite par le réseau — 390×246, 6.3 Mb/s",
+          "statut_cache": "false",
+          "texte_fenetre": null
+        }
+      ],
+      "vm_clipboard": "clipboard longueur=16 debut=[quatre-r1-olykjm]"
+    }
+  ],
+  "criteres": {
+    "un": {
+      "texte": "un-r1-olykjm",
+      "recu_par": [
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-1",
+          "recu": true
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-2",
+          "recu": true
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-3",
+          "recu": true
+        }
+      ]
+    },
+    "un_bis": {
+      "methode": "ouverture d'un Bloc-notes supplémentaire",
+      "cible_amorcee": true,
+      "sessions_neuves": [
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-6",
+          "pid": 19044
+        }
+      ],
+      "connues_avant": [
+        "F4z7KQooOQfJqh47PM0ETA:w-3",
+        "F4z7KQooOQfJqh47PM0ETA:w-1",
+        "F4z7KQooOQfJqh47PM0ETA:w-2"
+      ],
+      "session": "F4z7KQooOQfJqh47PM0ETA:w-6",
+      "messages": [
+        {
+          "t": 1787292634756,
+          "octets": 12,
+          "nul": false,
+          "debut": "un-r1-olykjm"
+        }
+      ],
+      "ecritures": [
+        {
+          "t": 1787292634756,
+          "debut": "un-r1-olykjm"
+        }
+      ],
+      "recu": true,
+      "emissions_agent": [
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-6",
+          "octets": 12
+        }
+      ]
+    },
+    "deux": [
+      {
+        "session": "F4z7KQooOQfJqh47PM0ETA:w-1",
+        "pid": 22992,
+        "texte": "deux-A-r1-olykjm",
+        "vm_clipboard": "clipboard longueur=16 debut=[deux-A-r1-olykjm]",
+        "fenetre_cible": "fenetre pid=22992 longueur=29 texte=[deux-A-r1-olykjmBBB-r1-olykjm]",
+        "fenetres_toutes": [
+          {
+            "session": "F4z7KQooOQfJqh47PM0ETA:w-3",
+            "pid": 24344,
+            "texte": null
+          },
+          {
+            "session": "F4z7KQooOQfJqh47PM0ETA:w-1",
+            "pid": 22992,
+            "texte": null
+          },
+          {
+            "session": "F4z7KQooOQfJqh47PM0ETA:w-2",
+            "pid": 10000,
+            "texte": "fenetre pid=10000 longueur=13 texte=[CCC-r1-olykjm]"
+          }
+        ]
+      },
+      {
+        "session": "F4z7KQooOQfJqh47PM0ETA:w-2",
+        "pid": 10000,
+        "texte": "deux-B-r1-olykjm",
+        "vm_clipboard": "clipboard longueur=16 debut=[deux-B-r1-olykjm]",
+        "fenetre_cible": "fenetre pid=10000 longueur=29 texte=[deux-B-r1-olykjmCCC-r1-olykjm]",
+        "fenetres_toutes": [
+          {
+            "session": "F4z7KQooOQfJqh47PM0ETA:w-3",
+            "pid": 24344,
+            "texte": null
+          },
+          {
+            "session": "F4z7KQooOQfJqh47PM0ETA:w-1",
+            "pid": 22992,
+            "texte": null
+          },
+          {
+            "session": "F4z7KQooOQfJqh47PM0ETA:w-2",
+            "pid": 10000,
+            "texte": "fenetre pid=10000 longueur=29 texte=[deux-B-r1-olykjmCCC-r1-olykjm]"
+          }
+        ]
+      }
+    ],
+    "trois": {
+      "t1": "trois-T1-r1-olykjm",
+      "t2": "trois-T2-r1-olykjm",
+      "messages_avant": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "messages_apres": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "vm_clipboard": "clipboard longueur=18 debut=[trois-T2-r1-olykjm]",
+      "fenetres": [
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-3",
+          "pid": 24344,
+          "texte": null
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-1",
+          "pid": 22992,
+          "texte": null
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-2",
+          "pid": 10000,
+          "texte": "fenetre pid=10000 longueur=47 texte=[deux-B-r1-olykjmtrois-T2-r1-olykjmCCC-r1-olykjm]"
+        }
+      ],
+      "echecs": {
+        "collage_non_ecrit": 0,
+        "sans_reponse_du_fil": 0,
+        "fil_sans_reponse": 0,
+        "collage_refuse": 0
+      },
+      "motifs_discriminants": {
+        "collage_non_ecrit": true,
+        "sans_reponse_du_fil": true,
+        "fil_sans_reponse": true,
+        "collage_refuse": true
+      },
+      "annonces_dans_le_journal": 1
+    },
+    "quatre": {
+      "texte": "quatre-r1-olykjm",
+      "sansFocus": "F4z7KQooOQfJqh47PM0ETA:w-6",
+      "avecFocus": "F4z7KQooOQfJqh47PM0ETA:w-1",
+      "a_recu_le_message_sans_focus": true,
+      "focus_de_B_avant": false,
+      "focus_de_B_apres": true,
+      "a_ecrit_sans_focus": false,
+      "a_ecrit_apres_reprise": true,
+      "verdict": "TENU — sans focus elle n'écrit pas, et elle écrit à la reprise",
+      "avant": [
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-1",
+          "pid": 22992,
+          "messages": [
+            {
+              "t": 1787292620052,
+              "octets": 12,
+              "nul": false,
+              "debut": "un-r1-olykjm"
+            },
+            {
+              "t": 1787292773354,
+              "octets": 16,
+              "nul": false,
+              "debut": "quatre-r1-olykjm"
+            }
+          ],
+          "focus": true,
+          "actif": false,
+          "dejaActif": true,
+          "visible": true,
+          "ecritures": [
+            {
+              "t": 1787292636906,
+              "debut": "un-r1-olykjm"
+            },
+            {
+              "t": 1787292727038,
+              "debut": "un-r1-olykjm"
+            },
+            {
+              "t": 1787292772015,
+              "debut": "un-r1-olykjm"
+            },
+            {
+              "t": 1787292773316,
+              "debut": "un-r1-olykjm"
+            },
+            {
+              "t": 1787292773354,
+              "debut": "quatre-r1-olykjm"
+            }
+          ],
+          "statut": "Image réduite par le réseau — 390×246, 7.7 Mb/s",
+          "statut_cache": "false",
+          "texte_fenetre": "fenetre pid=22992 longueur=47 texte=[deux-A-r1-olykjmtrois-T1-r1-olykjmBBB-r1-olykjm]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-2",
+          "pid": 10000,
+          "messages": [
+            {
+              "t": 1787292620053,
+              "octets": 12,
+              "nul": false,
+              "debut": "un-r1-olykjm"
+            },
+            {
+              "t": 1787292773353,
+              "octets": 16,
+              "nul": false,
+              "debut": "quatre-r1-olykjm"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": true,
+          "visible": false,
+          "ecritures": [
+            {
+              "t": 1787292678326,
+              "debut": "un-r1-olykjm"
+            },
+            {
+              "t": 1787292728999,
+              "debut": "un-r1-olykjm"
+            }
+          ],
+          "statut": "Réseau insuffisant pour le jeu nerveux — 390×246, 0.2 Mb/s",
+          "statut_cache": "false",
+          "texte_fenetre": "fenetre pid=10000 longueur=47 texte=[deux-B-r1-olykjmtrois-T2-r1-olykjmCCC-r1-olykjm]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-3",
+          "pid": 24344,
+          "messages": [
+            {
+              "t": 1787292620057,
+              "octets": 12,
+              "nul": false,
+              "debut": "un-r1-olykjm"
+            },
+            {
+              "t": 1787292773351,
+              "octets": 16,
+              "nul": false,
+              "debut": "quatre-r1-olykjm"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": false,
+          "visible": false,
+          "ecritures": [
+            {
+              "t": 1787292620057,
+              "debut": "un-r1-olykjm"
+            },
+            {
+              "t": 1787292632439,
+              "debut": "un-r1-olykjm"
+            }
+          ],
+          "statut": "780×492, 3.8 Mb/s",
+          "statut_cache": "true",
+          "texte_fenetre": "fenetre pid=24344 longueur=13 texte=[AAA-r1-olykjm]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-6",
+          "pid": null,
+          "messages": [
+            {
+              "t": 1787292634756,
+              "octets": 12,
+              "nul": false,
+              "debut": "un-r1-olykjm"
+            },
+            {
+              "t": 1787292773340,
+              "octets": 16,
+              "nul": false,
+              "debut": "quatre-r1-olykjm"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": false,
+          "visible": false,
+          "ecritures": [
+            {
+              "t": 1787292634756,
+              "debut": "un-r1-olykjm"
+            }
+          ],
+          "statut": "Réseau insuffisant pour le jeu nerveux — 390×246, 0.2 Mb/s",
+          "statut_cache": "false",
+          "texte_fenetre": null
+        }
+      ],
+      "apres": [
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-1",
+          "pid": 22992,
+          "messages": [
+            {
+              "t": 1787292620052,
+              "octets": 12,
+              "nul": false,
+              "debut": "un-r1-olykjm"
+            },
+            {
+              "t": 1787292773354,
+              "octets": 16,
+              "nul": false,
+              "debut": "quatre-r1-olykjm"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": true,
+          "visible": false,
+          "ecritures": [
+            {
+              "t": 1787292636906,
+              "debut": "un-r1-olykjm"
+            },
+            {
+              "t": 1787292727038,
+              "debut": "un-r1-olykjm"
+            },
+            {
+              "t": 1787292772015,
+              "debut": "un-r1-olykjm"
+            },
+            {
+              "t": 1787292773316,
+              "debut": "un-r1-olykjm"
+            },
+            {
+              "t": 1787292773354,
+              "debut": "quatre-r1-olykjm"
+            }
+          ],
+          "statut": "image figée : fenêtre masquée",
+          "statut_cache": "false",
+          "texte_fenetre": "fenetre pid=22992 longueur=47 texte=[deux-A-r1-olykjmtrois-T1-r1-olykjmBBB-r1-olykjm]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-2",
+          "pid": 10000,
+          "messages": [
+            {
+              "t": 1787292620053,
+              "octets": 12,
+              "nul": false,
+              "debut": "un-r1-olykjm"
+            },
+            {
+              "t": 1787292773353,
+              "octets": 16,
+              "nul": false,
+              "debut": "quatre-r1-olykjm"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": true,
+          "visible": false,
+          "ecritures": [
+            {
+              "t": 1787292678326,
+              "debut": "un-r1-olykjm"
+            },
+            {
+              "t": 1787292728999,
+              "debut": "un-r1-olykjm"
+            }
+          ],
+          "statut": "Réseau insuffisant pour le jeu nerveux — 390×246, 0.3 Mb/s",
+          "statut_cache": "false",
+          "texte_fenetre": "fenetre pid=10000 longueur=47 texte=[deux-B-r1-olykjmtrois-T2-r1-olykjmCCC-r1-olykjm]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-3",
+          "pid": 24344,
+          "messages": [
+            {
+              "t": 1787292620057,
+              "octets": 12,
+              "nul": false,
+              "debut": "un-r1-olykjm"
+            },
+            {
+              "t": 1787292773351,
+              "octets": 16,
+              "nul": false,
+              "debut": "quatre-r1-olykjm"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": false,
+          "visible": false,
+          "ecritures": [
+            {
+              "t": 1787292620057,
+              "debut": "un-r1-olykjm"
+            },
+            {
+              "t": 1787292632439,
+              "debut": "un-r1-olykjm"
+            }
+          ],
+          "statut": "780×492, 3.8 Mb/s",
+          "statut_cache": "true",
+          "texte_fenetre": "fenetre pid=24344 longueur=13 texte=[AAA-r1-olykjm]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-6",
+          "pid": null,
+          "messages": [
+            {
+              "t": 1787292634756,
+              "octets": 12,
+              "nul": false,
+              "debut": "un-r1-olykjm"
+            },
+            {
+              "t": 1787292773340,
+              "octets": 16,
+              "nul": false,
+              "debut": "quatre-r1-olykjm"
+            }
+          ],
+          "focus": true,
+          "actif": false,
+          "dejaActif": false,
+          "visible": true,
+          "ecritures": [
+            {
+              "t": 1787292634756,
+              "debut": "un-r1-olykjm"
+            },
+            {
+              "t": 1787292784468,
+              "debut": "quatre-r1-olykjm"
+            }
+          ],
+          "statut": "Image réduite par le réseau — 390×246, 6.3 Mb/s",
+          "statut_cache": "false",
+          "texte_fenetre": null
+        }
+      ]
+    }
+  },
+  "prep": "notepad=0",
+  "notepads_ouverts": 3,
+  "lecteur_pret": true,
+  "inventaire_avant": "inventaire pid=22992 hwnd=17891670 mainwindow=17891670 classe=Notepad titre=[Sans titre - Bloc-notes] ; pid=10000 hwnd=19398858 mainwindow=19398858 classe=Notepad titre=[Sans titre - Bloc-notes] ; pid=24344 hwnd=15204550 mainwindow=15204550 classe=Notepad titre=[Sans titre - Bloc-notes]",
+  "shell_attachee": true,
+  "sessions_diffusant": [
+    "F4z7KQooOQfJqh47PM0ETA:w-1",
+    "F4z7KQooOQfJqh47PM0ETA:w-2",
+    "F4z7KQooOQfJqh47PM0ETA:w-3"
+  ],
+  "attributions": [
+    {
+      "session": "F4z7KQooOQfJqh47PM0ETA:w-3",
+      "pid": 24344
+    },
+    {
+      "session": "F4z7KQooOQfJqh47PM0ETA:w-1",
+      "pid": 22992
+    },
+    {
+      "session": "F4z7KQooOQfJqh47PM0ETA:w-2",
+      "pid": 10000
+    }
+  ],
+  "attribution_utilisable": true,
+  "semis": [
+    "semer pid=24344 : ecrit longueur=13",
+    "semer pid=22992 : ecrit longueur=13",
+    "semer pid=10000 : ecrit longueur=13"
+  ],
+  "temoin_focus": [
+    {
+      "amenee": "F4z7KQooOQfJqh47PM0ETA:w-1",
+      "vus": [
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-1",
+          "focus": true
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-2",
+          "focus": false
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-3",
+          "focus": false
+        }
+      ]
+    },
+    {
+      "amenee": "F4z7KQooOQfJqh47PM0ETA:w-2",
+      "vus": [
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-1",
+          "focus": false
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-2",
+          "focus": true
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-3",
+          "focus": false
+        }
+      ]
+    },
+    {
+      "amenee": "F4z7KQooOQfJqh47PM0ETA:w-3",
+      "vus": [
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-1",
+          "focus": false
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-2",
+          "focus": false
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-3",
+          "focus": true
+        }
+      ]
+    }
+  ],
+  "focus_discriminant": true,
+  "lecteur_journal": "﻿2026-08-21T06:09:52.5222228Z lecteur pret\r\n2026-08-21T06:09:58.5067412Z ordre 1 mode=inventaire a1=\r\n2026-08-21T06:09:58.5535684Z fait 1 : inventaire pid=22992 hwnd=17891670 mainwindow=17891670 classe=Notepad titre=[Sans titre - Bloc-notes] ; pid=10000 hwnd=19398858 mainwindow=19398858 classe=Notepad titre=[Sans titre - Bloc-notes] ; pid=24344 hwnd=15204550 mainwindow=15204550 classe=Notepad titre=[Sans titre - Bloc-notes]\r\n2026-08-21T06:10:09.3165313Z ordre 2 mode=semer a1=24344\r\n2026-08-21T06:10:09.3461132Z fait 2 : semer pid=24344 : ecrit longueur=13\r\n2026-08-21T06:10:10.1048067Z ordre 3 mode=semer a1=22992\r\n2026-08-21T06:10:10.1088068Z fait 3 : semer pid=22992 : ecrit longueur=13\r\n2026-08-21T06:10:10.8680831Z ordre 4 mode=semer a1=10000\r\n2026-08-21T06:10:10.8710940Z fait 4 : semer pid=10000 : ecrit longueur=13\r\n2026-08-21T06:10:16.1391865Z ordre 5 mode=fenetre a1=22992\r\n2026-08-21T06:10:16.1511866Z fait 5 : fenetre pid=22992 longueur=13 texte=[BBB-r1-olykjm]\r\n2026-08-21T06:10:16.9084485Z ordre 6 mode=fenetre a1=10000\r\n2026-08-21T06:10:16.9114511Z fait 6 : fenetre pid=10000 longueur=13 texte=[CCC-r1-olykjm]\r\n2026-08-21T06:10:17.9206821Z ordre 7 mode=fenetre a1=24344\r\n2026-08-21T06:10:17.9226854Z fait 7 : fenetre pid=24344 longueur=13 texte=[AAA-r1-olykjm]\r\n2026-08-21T06:10:18.6772932Z ordre 8 mode=clipboard a1=\r\n2026-08-21T06:10:18.6853045Z fait 8 : clipboard longueur=15 debut=[quatre-2-6olhan]\r\n2026-08-21T06:10:27.9634775Z ordre 9 mode=fenetre a1=22992\r\n2026-08-21T06:10:27.9664644Z fait 9 : fenetre pid=22992 longueur=13 texte=[BBB-r1-olykjm]\r\n2026-08-21T06:10:28.7239841Z ordre 10 mode=fenetre a1=10000\r\n2026-08-21T06:10:28.7269749Z fait 10 : fenetre pid=10000 longueur=13 texte=[CCC-r1-olykjm]\r\n2026-08-21T06:10:30.2358944Z ordre 11 mode=fenetre a1=24344\r\n2026-08-21T06:10:30.2388850Z fait 11 : fenetre pid=24344 longueur=13 texte=[AAA-r1-olykjm]\r\n2026-08-21T06:10:31.2457433Z ordre 12 mode=clipboard a1=\r\n2026-08-21T06:10:31.2457433Z fait 12 : clipboard longueur=12 debut=[un-r1-olykjm]\r\n2026-08-21T06:10:44.5336368Z ordre 13 mode=clipboard a1=\r\n2026-08-21T06:10:44.5346251Z fait 13 : clipboard longueur=16 debut=[deux-A-r1-olykjm]\r\n2026-08-21T06:10:45.5406404Z ordre 14 mode=fenetre a1=22992\r\n2026-08-21T06:10:45.5436589Z fait 14 : fenetre pid=22992 longueur=29 texte=[deux-A-r1-olykjmBBB-r1-olykjm]\r\n2026-08-21T06:10:47.0606474Z ordre 17 mode=fenetre a1=10000\r\n2026-08-21T06:10:47.0636358Z fait 17 : fenetre pid=10000 longueur=13 texte=[CCC-r1-olykjm]\r\n2026-08-21T06:11:26.1588786Z ordre 18 mode=clipboard a1=\r\n2026-08-21T06:11:26.1598840Z fait 18 : clipboard longueur=16 debut=[deux-B-r1-olykjm]\r\n2026-08-21T06:11:26.9168937Z ordre 19 mode=fenetre a1=10000\r\n2026-08-21T06:11:26.9198983Z fait 19 : fenetre pid=10000 longueur=29 texte=[deux-B-r1-olykjmCCC-r1-olykjm]\r\n2026-08-21T06:11:28.4298986Z ordre 22 mode=fenetre a1=10000\r\n2026-08-21T06:11:28.4328973Z fait 22 : fenetre pid=10000 longueur=29 texte=[deux-B-r1-olykjmCCC-r1-olykjm]\r\n2026-08-21T06:11:58.5106084Z ordre 23 mode=fenetre a1=22992\r\n2026-08-21T06:11:58.5136097Z fait 23 : fenetre pid=22992 longueur=29 texte=[deux-A-r1-olykjmBBB-r1-olykjm]\r\n2026-08-21T06:11:59.2705975Z ordre 24 mode=fenetre a1=10000\r\n2026-08-21T06:11:59.2736101Z fait 24 : fenetre pid=10000 longueur=29 texte=[deux-B-r1-olykjmCCC-r1-olykjm]\r\n2026-08-21T06:12:00.2814902Z ordre 25 mode=fenetre a1=24344\r\n2026-08-21T06:12:00.2844907Z fait 25 : fenetre pid=24344 longueur=13 texte=[AAA-r1-olykjm]\r\n2026-08-21T06:12:01.0394796Z ordre 26 mode=clipboard a1=\r\n2026-08-21T06:12:01.0394796Z fait 26 : clipboard longueur=16 debut=[deux-B-r1-olykjm]\r\n2026-08-21T06:12:01.7990272Z ordre 27 mode=fenetre a1=22992\r\n2026-08-21T06:12:01.8017277Z fait 27 : fenetre pid=22992 longueur=29 texte=[deux-A-r1-olykjmBBB-r1-olykjm]\r\n2026-08-21T06:12:03.3140552Z ordre 28 mode=fenetre a1=10000\r\n2026-08-21T06:12:03.3168715Z fait 28 : fenetre pid=10000 longueur=29 texte=[deux-B-r1-olykjmCCC-r1-olykjm]\r\n2026-08-21T06:12:04.3278290Z ordre 29 mode=fenetre a1=24344\r\n2026-08-21T06:12:04.3298289Z fait 29 : fenetre pid=24344 longueur=13 texte=[AAA-r1-olykjm]\r\n2026-08-21T06:12:05.0838180Z ordre 30 mode=clipboard a1=\r\n2026-08-21T06:12:05.0848189Z fait 30 : clipboard longueur=16 debut=[deux-B-r1-olykjm]\r\n2026-08-21T06:12:18.8618453Z ordre 31 mode=fenetre a1=22992\r\n2026-08-21T06:12:18.8648445Z fait 31 : fenetre pid=22992 longueur=47 texte=[deux-A-r1-olykjmtrois-T1-r1-olykjmBBB-r1-olykjm]\r\n2026-08-21T06:12:19.6208477Z ordre 32 mode=fenetre a1=10000\r\n2026-08-21T06:12:19.6238399Z fait 32 : fenetre pid=10000 longueur=47 texte=[deux-B-r1-olykjmtrois-T2-r1-olykjmCCC-r1-olykjm]\r\n2026-08-21T06:12:20.3818483Z ordre 33 mode=fenetre a1=24344\r\n2026-08-21T06:12:20.3848394Z fait 33 : fenetre pid=24344 longueur=13 texte=[AAA-r1-olykjm]\r\n2026-08-21T06:12:21.1388333Z ordre 34 mode=clipboard a1=\r\n2026-08-21T06:12:21.1388333Z fait 34 : clipboard longueur=18 debut=[trois-T2-r1-olykjm]\r\n2026-08-21T06:12:22.1488414Z ordre 37 mode=fenetre a1=10000\r\n2026-08-21T06:12:22.1518527Z fait 37 : fenetre pid=10000 longueur=47 texte=[deux-B-r1-olykjmtrois-T2-r1-olykjmCCC-r1-olykjm]\r\n2026-08-21T06:13:01.2410077Z ordre 38 mode=fenetre a1=22992\r\n2026-08-21T06:13:01.2440091Z fait 38 : fenetre pid=22992 longueur=47 texte=[deux-A-r1-olykjmtrois-T1-r1-olykjmBBB-r1-olykjm]\r\n2026-08-21T06:13:02.0022414Z ordre 39 mode=fenetre a1=10000\r\n2026-08-21T06:13:02.0042413Z fait 39 : fenetre pid=10000 longueur=47 texte=[deux-B-r1-olykjmtrois-T2-r1-olykjmCCC-r1-olykjm]\r\n2026-08-21T06:13:03.0159647Z ordre 40 mode=fenetre a1=24344\r\n2026-08-21T06:13:03.0189682Z fait 40 : fenetre pid=24344 longueur=13 texte=[AAA-r1-olykjm]\r\n2026-08-21T06:13:03.7729685Z ordre 41 mode=clipboard a1=\r\n2026-08-21T06:13:03.7729685Z fait 41 : clipboard longueur=16 debut=[quatre-r1-olykjm]\r\n2026-08-21T06:13:07.5391657Z ordre 42 mode=fenetre a1=22992\r\n2026-08-21T06:13:07.5411822Z fait 42 : fenetre pid=22992 longueur=47 texte=[deux-A-r1-olykjmtrois-T1-r1-olykjmBBB-r1-olykjm]\r\n2026-08-21T06:13:08.2991813Z ordre 43 mode=fenetre a1=10000\r\n2026-08-21T06:13:08.3021791Z fait 43 : fenetre pid=10000 longueur=47 texte=[deux-B-r1-olykjmtrois-T2-r1-olykjmCCC-r1-olykjm]\r\n2026-08-21T06:13:09.3111802Z ordre 44 mode=fenetre a1=24344\r\n2026-08-21T06:13:09.3141811Z fait 44 : fenetre pid=24344 longueur=13 texte=[AAA-r1-olykjm]\r\n2026-08-21T06:13:10.0681680Z ordre 45 mode=clipboard a1=\r\n2026-08-21T06:13:10.0691754Z fait 45 : clipboard longueur=16 debut=[quatre-r1-olykjm]\r\n"
+}

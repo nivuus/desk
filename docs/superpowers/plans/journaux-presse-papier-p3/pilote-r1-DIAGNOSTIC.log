@@ -1,0 +1,89 @@
+2026-08-21T06:09:32.595Z préparation VM
+2026-08-21T06:09:36.021Z prep : notepad=0
+2026-08-21T06:09:36.021Z purge du vivier de sorties virtuelles (lancement SÉPARÉ)
+2026-08-21T06:09:41.414Z ouverture de 3 Bloc-notes
+2026-08-21T06:09:46.706Z   Bloc-notes ouverts (essai 1) : 3
+2026-08-21T06:09:58.270Z lecteur prêt : true
+2026-08-21T06:09:59.094Z   lecture 1 (inventaire) : inventaire pid=22992 hwnd=17891670 mainwindow=17891670 classe=Notepad titre=[Sans titre - Bloc-notes] ; pid=10000 hwnd=19398858 mainwindow=19398858 classe=Notep
+2026-08-21T06:09:59.835Z + page attachée B463EA86 chrome://newtab/
+2026-08-21T06:09:59.852Z + page attachée 7B878B5F http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA
+2026-08-21T06:10:02.787Z page-shell attachée : true
+2026-08-21T06:10:02.788Z lancement du superviseur
+2026-08-21T06:10:03.180Z run-agent.sh : Opration russie : tentative d'excution de la tche planifie "guacamole-agent".agent lancé en session interactive ; journal : /media/vm/dev/agent.log
+2026-08-21T06:10:06.468Z + page attachée 19703A9F 
+2026-08-21T06:10:06.508Z + page attachée 380E25BB 
+2026-08-21T06:10:06.546Z + page attachée 2CE3B575 
+2026-08-21T06:10:07.201Z pages d'application : F4z7KQooOQfJqh47PM0ETA:w-1 F4z7KQooOQfJqh47PM0ETA:w-2 F4z7KQooOQfJqh47PM0ETA:w-3
+2026-08-21T06:10:09.230Z attributions session ↔ pid : [{"session":"F4z7KQooOQfJqh47PM0ETA:w-3","pid":24344},{"session":"F4z7KQooOQfJqh47PM0ETA:w-1","pid":22992},{"session":"F4z7KQooOQfJqh47PM0ETA:w-2","pid":10000}]
+2026-08-21T06:10:10.037Z   lecture 2 (semer|24344|AAA-r1-olykjm) : semer pid=24344 : ecrit longueur=13
+2026-08-21T06:10:10.845Z   lecture 3 (semer|22992|BBB-r1-olykjm) : semer pid=22992 : ecrit longueur=13
+2026-08-21T06:10:11.661Z   lecture 4 (semer|10000|CCC-r1-olykjm) : semer pid=10000 : ecrit longueur=13
+2026-08-21T06:10:11.758Z + page attachée 88064E8D http://127.0.0.1:5173/
+2026-08-21T06:10:14.844Z témoin focus : bringToFront(F4z7KQooOQfJqh47PM0ETA:w-1) → F4z7KQooOQfJqh47PM0ETA:w-1:true F4z7KQooOQfJqh47PM0ETA:w-2:false F4z7KQooOQfJqh47PM0ETA:w-3:false
+2026-08-21T06:10:15.469Z témoin focus : bringToFront(F4z7KQooOQfJqh47PM0ETA:w-2) → F4z7KQooOQfJqh47PM0ETA:w-1:false F4z7KQooOQfJqh47PM0ETA:w-2:true F4z7KQooOQfJqh47PM0ETA:w-3:false
+2026-08-21T06:10:16.088Z témoin focus : bringToFront(F4z7KQooOQfJqh47PM0ETA:w-3) → F4z7KQooOQfJqh47PM0ETA:w-1:false F4z7KQooOQfJqh47PM0ETA:w-2:false F4z7KQooOQfJqh47PM0ETA:w-3:true
+2026-08-21T06:10:16.088Z ④ mesurable (le focus discrimine) : true
+2026-08-21T06:10:16.908Z   lecture 5 (fenetre|22992) : fenetre pid=22992 longueur=13 texte=[BBB-r1-olykjm]
+2026-08-21T06:10:17.720Z   lecture 6 (fenetre|10000) : fenetre pid=10000 longueur=13 texte=[CCC-r1-olykjm]
+2026-08-21T06:10:18.528Z   lecture 7 (fenetre|24344) : fenetre pid=24344 longueur=13 texte=[AAA-r1-olykjm]
+2026-08-21T06:10:19.335Z   lecture 8 (clipboard) : clipboard longueur=15 debut=[quatre-2-6olhan]
+2026-08-21T06:10:19.336Z [0-avant-toute-copie] focus=false,false,true messages=0,0,0
+2026-08-21T06:10:19.336Z ① copie dans la VM : un-r1-olykjm
+2026-08-21T06:10:19.917Z + page attachée 31C3FAED 
+2026-08-21T06:10:28.590Z   lecture 9 (fenetre|22992) : fenetre pid=22992 longueur=13 texte=[BBB-r1-olykjm]
+2026-08-21T06:10:30.212Z   lecture 10 (fenetre|10000) : fenetre pid=10000 longueur=13 texte=[CCC-r1-olykjm]
+2026-08-21T06:10:31.036Z   lecture 11 (fenetre|24344) : fenetre pid=24344 longueur=13 texte=[AAA-r1-olykjm]
+2026-08-21T06:10:31.852Z   lecture 12 (clipboard) : clipboard longueur=12 debut=[un-r1-olykjm]
+2026-08-21T06:10:31.853Z [1-apres-copie-dans-la-vm] focus=false,false,true messages=1,1,1
+2026-08-21T06:10:31.853Z ① bis : une fenêtre de plus, attachée APRÈS la copie
+2026-08-21T06:10:32.422Z + page attachée 93432E20 
+2026-08-21T06:10:32.503Z + page attachée 3C3307AA 
+2026-08-21T06:10:32.532Z + cible TARDIVE amorcée 1727D5E2 http://127.0.0.1:5173/?session=F4z7KQooOQfJqh47PM0ETA%3Aw-6&signaling=ws%3A%2F%2F192.168.3.1%3A8080
+2026-08-21T06:10:32.546Z + page attachée 1727D5E2 http://127.0.0.1:5173/?session=F4z7KQooOQfJqh47PM0ETA%3Aw-6&signaling=ws%3A%2F%2F192.168.3.1%3A8080
+2026-08-21T06:10:35.570Z ① bis — la fenêtre tardive a reçu le contenu courant : true
+2026-08-21T06:10:35.571Z ② collage depuis F4z7KQooOQfJqh47PM0ETA:w-1 : deux-A-r1-olykjm
+2026-08-21T06:10:45.335Z   lecture 13 (clipboard) : clipboard longueur=16 debut=[deux-A-r1-olykjm]
+2026-08-21T06:10:46.945Z   lecture 14 (fenetre|22992) : fenetre pid=22992 longueur=29 texte=[deux-A-r1-olykjmBBB-r1-olykjm]
+2026-08-21T06:10:47.774Z   lecture 17 (fenetre|10000) : fenetre pid=10000 longueur=13 texte=[CCC-r1-olykjm]
+2026-08-21T06:11:17.002Z   !! lecture 15 (fenetre|24344) : aucun compte rendu du lecteur
+2026-08-21T06:11:17.002Z   !! lecture 16 (fenetre|22992) : aucun compte rendu du lecteur
+2026-08-21T06:11:17.002Z ② collage depuis F4z7KQooOQfJqh47PM0ETA:w-2 : deux-B-r1-olykjm
+2026-08-21T06:11:26.750Z   lecture 18 (clipboard) : clipboard longueur=16 debut=[deux-B-r1-olykjm]
+2026-08-21T06:11:28.362Z   lecture 19 (fenetre|10000) : fenetre pid=10000 longueur=29 texte=[deux-B-r1-olykjmCCC-r1-olykjm]
+2026-08-21T06:11:29.186Z   lecture 22 (fenetre|10000) : fenetre pid=10000 longueur=29 texte=[deux-B-r1-olykjmCCC-r1-olykjm]
+2026-08-21T06:11:58.425Z   !! lecture 20 (fenetre|24344) : aucun compte rendu du lecteur
+2026-08-21T06:11:58.425Z   !! lecture 21 (fenetre|22992) : aucun compte rendu du lecteur
+2026-08-21T06:11:59.236Z   lecture 23 (fenetre|22992) : fenetre pid=22992 longueur=29 texte=[deux-A-r1-olykjmBBB-r1-olykjm]
+2026-08-21T06:12:00.049Z   lecture 24 (fenetre|10000) : fenetre pid=10000 longueur=29 texte=[deux-B-r1-olykjmCCC-r1-olykjm]
+2026-08-21T06:12:00.858Z   lecture 25 (fenetre|24344) : fenetre pid=24344 longueur=13 texte=[AAA-r1-olykjm]
+2026-08-21T06:12:01.667Z   lecture 26 (clipboard) : clipboard longueur=16 debut=[deux-B-r1-olykjm]
+2026-08-21T06:12:01.667Z [2-apres-les-collages-attribues] focus=false,true,false,false messages=1,1,1,1
+2026-08-21T06:12:01.667Z ③ deux collages à moins de 250 ms
+2026-08-21T06:12:03.280Z   lecture 27 (fenetre|22992) : fenetre pid=22992 longueur=29 texte=[deux-A-r1-olykjmBBB-r1-olykjm]
+2026-08-21T06:12:04.090Z   lecture 28 (fenetre|10000) : fenetre pid=10000 longueur=29 texte=[deux-B-r1-olykjmCCC-r1-olykjm]
+2026-08-21T06:12:04.899Z   lecture 29 (fenetre|24344) : fenetre pid=24344 longueur=13 texte=[AAA-r1-olykjm]
+2026-08-21T06:12:05.708Z   lecture 30 (clipboard) : clipboard longueur=16 debut=[deux-B-r1-olykjm]
+2026-08-21T06:12:05.708Z [3-avant-simultane] focus=false,true,false,false messages=1,1,1,1
+2026-08-21T06:12:19.441Z   lecture 31 (fenetre|22992) : fenetre pid=22992 longueur=47 texte=[deux-A-r1-olykjmtrois-T1-r1-olykjmBBB-r1-olykjm]
+2026-08-21T06:12:20.259Z   lecture 32 (fenetre|10000) : fenetre pid=10000 longueur=47 texte=[deux-B-r1-olykjmtrois-T2-r1-olykjmCCC-r1-olykjm]
+2026-08-21T06:12:21.076Z   lecture 33 (fenetre|24344) : fenetre pid=24344 longueur=13 texte=[AAA-r1-olykjm]
+2026-08-21T06:12:21.894Z   lecture 34 (clipboard) : clipboard longueur=18 debut=[trois-T2-r1-olykjm]
+2026-08-21T06:12:21.894Z [3-apres-simultane] focus=false,true,false,false messages=1,1,1,1
+2026-08-21T06:12:22.717Z   lecture 37 (fenetre|10000) : fenetre pid=10000 longueur=47 texte=[deux-B-r1-olykjmtrois-T2-r1-olykjmCCC-r1-olykjm]
+2026-08-21T06:12:51.956Z   !! lecture 35 (fenetre|24344) : aucun compte rendu du lecteur
+2026-08-21T06:12:51.956Z   !! lecture 36 (fenetre|22992) : aucun compte rendu du lecteur
+2026-08-21T06:12:53.299Z + page attachée 6B1BC18B 
+2026-08-21T06:13:01.983Z   lecture 38 (fenetre|22992) : fenetre pid=22992 longueur=47 texte=[deux-A-r1-olykjmtrois-T1-r1-olykjmBBB-r1-olykjm]
+2026-08-21T06:13:02.804Z   lecture 39 (fenetre|10000) : fenetre pid=10000 longueur=47 texte=[deux-B-r1-olykjmtrois-T2-r1-olykjmCCC-r1-olykjm]
+2026-08-21T06:13:03.622Z   lecture 40 (fenetre|24344) : fenetre pid=24344 longueur=13 texte=[AAA-r1-olykjm]
+2026-08-21T06:13:04.442Z   lecture 41 (clipboard) : clipboard longueur=16 debut=[quatre-r1-olykjm]
+2026-08-21T06:13:04.443Z [4-copie-pendant-que-B-est-sans-focus] focus=true,false,false,false messages=2,2,2,2
+2026-08-21T06:13:08.285Z   lecture 42 (fenetre|22992) : fenetre pid=22992 longueur=47 texte=[deux-A-r1-olykjmtrois-T1-r1-olykjmBBB-r1-olykjm]
+2026-08-21T06:13:09.096Z   lecture 43 (fenetre|10000) : fenetre pid=10000 longueur=47 texte=[deux-B-r1-olykjmtrois-T2-r1-olykjmCCC-r1-olykjm]
+2026-08-21T06:13:09.915Z   lecture 44 (fenetre|24344) : fenetre pid=24344 longueur=13 texte=[AAA-r1-olykjm]
+2026-08-21T06:13:10.734Z   lecture 45 (clipboard) : clipboard longueur=16 debut=[quatre-r1-olykjm]
+2026-08-21T06:13:10.734Z [4-apres-reprise-du-focus-par-B] focus=false,false,false,true messages=2,2,2,2
+2026-08-21T06:13:10.734Z ④ verdict : TENU — sans focus elle n'écrit pas, et elle écrit à la reprise
+2026-08-21T06:13:10.757Z relevé écrit dans pp3-r1.json
+2026-08-21T06:13:15.423Z journal copié : agent-r1.log (+ -plat)
+2026-08-21T06:13:15.456Z virsh domstate : en cours d’exécution

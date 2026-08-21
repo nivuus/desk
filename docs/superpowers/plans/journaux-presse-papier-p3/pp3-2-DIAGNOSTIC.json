@@ -1,0 +1,1281 @@
+{
+  "etiquette": "2",
+  "nonce": "2-6olhan",
+  "n_demande": 3,
+  "emulationDeFocusActivee": false,
+  "phases": [
+    {
+      "nom": "0-avant-toute-copie",
+      "t": "2026-08-21T06:04:47.570Z",
+      "fenetres": [
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-1",
+          "pid": 22408,
+          "messages": [],
+          "focus": false,
+          "actif": false,
+          "dejaActif": false,
+          "visible": false,
+          "ecritures": [],
+          "statut": "780×492, 2.6 Mb/s",
+          "statut_cache": "true",
+          "texte_fenetre": "fenetre pid=22408 longueur=12 texte=[BBB-2-6olhan]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-2",
+          "pid": 21808,
+          "messages": [],
+          "focus": false,
+          "actif": false,
+          "dejaActif": false,
+          "visible": false,
+          "ecritures": [],
+          "statut": "780×492, 5.1 Mb/s",
+          "statut_cache": "true",
+          "texte_fenetre": "fenetre pid=21808 longueur=12 texte=[CCC-2-6olhan]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-3",
+          "pid": 16468,
+          "messages": [],
+          "focus": true,
+          "actif": false,
+          "dejaActif": false,
+          "visible": true,
+          "ecritures": [],
+          "statut": "Réseau insuffisant pour le jeu nerveux — 390×246, 0.0 Mb/s",
+          "statut_cache": "false",
+          "texte_fenetre": "fenetre pid=16468 longueur=12 texte=[AAA-2-6olhan]"
+        }
+      ],
+      "vm_clipboard": "clipboard longueur=15 debut=[quatre-1-d664xe]"
+    },
+    {
+      "nom": "1-apres-copie-dans-la-vm",
+      "t": "2026-08-21T06:05:00.143Z",
+      "fenetres": [
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-1",
+          "pid": 22408,
+          "messages": [
+            {
+              "t": 1787292289165,
+              "octets": 11,
+              "nul": false,
+              "debut": "un-2-6olhan"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": false,
+          "visible": false,
+          "ecritures": [],
+          "statut": "Réseau insuffisant pour le jeu nerveux — 390×246, 0.3 Mb/s",
+          "statut_cache": "false",
+          "texte_fenetre": "fenetre pid=22408 longueur=12 texte=[BBB-2-6olhan]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-2",
+          "pid": 21808,
+          "messages": [
+            {
+              "t": 1787292289171,
+              "octets": 11,
+              "nul": false,
+              "debut": "un-2-6olhan"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": false,
+          "visible": false,
+          "ecritures": [],
+          "statut": "Image réduite par le réseau — 390×246, 0.3 Mb/s",
+          "statut_cache": "false",
+          "texte_fenetre": "fenetre pid=21808 longueur=12 texte=[CCC-2-6olhan]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-3",
+          "pid": 16468,
+          "messages": [
+            {
+              "t": 1787292289165,
+              "octets": 11,
+              "nul": false,
+              "debut": "un-2-6olhan"
+            }
+          ],
+          "focus": true,
+          "actif": false,
+          "dejaActif": false,
+          "visible": true,
+          "ecritures": [
+            {
+              "t": 1787292289166,
+              "debut": "un-2-6olhan"
+            }
+          ],
+          "statut": "Image réduite par le réseau — 390×246, 11.5 Mb/s",
+          "statut_cache": "false",
+          "texte_fenetre": "fenetre pid=16468 longueur=12 texte=[AAA-2-6olhan]"
+        }
+      ],
+      "vm_clipboard": "clipboard longueur=11 debut=[un-2-6olhan]"
+    },
+    {
+      "nom": "2-apres-les-collages-attribues",
+      "t": "2026-08-21T06:06:27.886Z",
+      "fenetres": [
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-1",
+          "pid": 22408,
+          "messages": [
+            {
+              "t": 1787292289165,
+              "octets": 11,
+              "nul": false,
+              "debut": "un-2-6olhan"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": true,
+          "visible": false,
+          "ecritures": [
+            {
+              "t": 1787292303847,
+              "debut": "un-2-6olhan"
+            }
+          ],
+          "statut": "Image réduite par le réseau — 390×246, 0.6 Mb/s",
+          "statut_cache": "false",
+          "texte_fenetre": "fenetre pid=22408 longueur=27 texte=[deux-A-2-6olhanBBB-2-6olhan]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-2",
+          "pid": 21808,
+          "messages": [
+            {
+              "t": 1787292289171,
+              "octets": 11,
+              "nul": false,
+              "debut": "un-2-6olhan"
+            }
+          ],
+          "focus": true,
+          "actif": false,
+          "dejaActif": true,
+          "visible": true,
+          "ecritures": [
+            {
+              "t": 1787292345311,
+              "debut": "un-2-6olhan"
+            }
+          ],
+          "statut": "780×492, 7.7 Mb/s",
+          "statut_cache": "true",
+          "texte_fenetre": "fenetre pid=21808 longueur=27 texte=[deux-B-2-6olhanCCC-2-6olhan]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-3",
+          "pid": 16468,
+          "messages": [
+            {
+              "t": 1787292289165,
+              "octets": 11,
+              "nul": false,
+              "debut": "un-2-6olhan"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": false,
+          "visible": false,
+          "ecritures": [
+            {
+              "t": 1787292289166,
+              "debut": "un-2-6olhan"
+            },
+            {
+              "t": 1787292301613,
+              "debut": "un-2-6olhan"
+            }
+          ],
+          "statut": "780×492, 3.8 Mb/s",
+          "statut_cache": "true",
+          "texte_fenetre": "fenetre pid=16468 longueur=12 texte=[AAA-2-6olhan]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-6",
+          "pid": null,
+          "messages": [
+            {
+              "t": 1787292303914,
+              "octets": 11,
+              "nul": false,
+              "debut": "un-2-6olhan"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": false,
+          "visible": false,
+          "ecritures": [],
+          "statut": "cliquez pour activer le son",
+          "statut_cache": "false",
+          "texte_fenetre": null
+        }
+      ],
+      "vm_clipboard": "clipboard longueur=15 debut=[deux-B-2-6olhan]"
+    },
+    {
+      "nom": "3-avant-simultane",
+      "t": "2026-08-21T06:06:31.935Z",
+      "fenetres": [
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-1",
+          "pid": 22408,
+          "messages": [
+            {
+              "t": 1787292289165,
+              "octets": 11,
+              "nul": false,
+              "debut": "un-2-6olhan"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": true,
+          "visible": false,
+          "ecritures": [
+            {
+              "t": 1787292303847,
+              "debut": "un-2-6olhan"
+            }
+          ],
+          "statut": "Image réduite par le réseau — 390×246, 0.6 Mb/s",
+          "statut_cache": "false",
+          "texte_fenetre": "fenetre pid=22408 longueur=27 texte=[deux-A-2-6olhanBBB-2-6olhan]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-2",
+          "pid": 21808,
+          "messages": [
+            {
+              "t": 1787292289171,
+              "octets": 11,
+              "nul": false,
+              "debut": "un-2-6olhan"
+            }
+          ],
+          "focus": true,
+          "actif": false,
+          "dejaActif": true,
+          "visible": true,
+          "ecritures": [
+            {
+              "t": 1787292345311,
+              "debut": "un-2-6olhan"
+            }
+          ],
+          "statut": "780×492, 7.7 Mb/s",
+          "statut_cache": "true",
+          "texte_fenetre": "fenetre pid=21808 longueur=27 texte=[deux-B-2-6olhanCCC-2-6olhan]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-3",
+          "pid": 16468,
+          "messages": [
+            {
+              "t": 1787292289165,
+              "octets": 11,
+              "nul": false,
+              "debut": "un-2-6olhan"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": false,
+          "visible": false,
+          "ecritures": [
+            {
+              "t": 1787292289166,
+              "debut": "un-2-6olhan"
+            },
+            {
+              "t": 1787292301613,
+              "debut": "un-2-6olhan"
+            }
+          ],
+          "statut": "780×492, 3.8 Mb/s",
+          "statut_cache": "true",
+          "texte_fenetre": "fenetre pid=16468 longueur=12 texte=[AAA-2-6olhan]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-6",
+          "pid": null,
+          "messages": [
+            {
+              "t": 1787292303914,
+              "octets": 11,
+              "nul": false,
+              "debut": "un-2-6olhan"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": false,
+          "visible": false,
+          "ecritures": [],
+          "statut": "cliquez pour activer le son",
+          "statut_cache": "false",
+          "texte_fenetre": null
+        }
+      ],
+      "vm_clipboard": "clipboard longueur=15 debut=[deux-B-2-6olhan]"
+    },
+    {
+      "nom": "3-apres-simultane",
+      "t": "2026-08-21T06:06:48.116Z",
+      "fenetres": [
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-1",
+          "pid": 22408,
+          "messages": [
+            {
+              "t": 1787292289165,
+              "octets": 11,
+              "nul": false,
+              "debut": "un-2-6olhan"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": true,
+          "visible": false,
+          "ecritures": [
+            {
+              "t": 1787292303847,
+              "debut": "un-2-6olhan"
+            },
+            {
+              "t": 1787292394096,
+              "debut": "un-2-6olhan"
+            }
+          ],
+          "statut": "Image réduite par le réseau — 390×246, 0.3 Mb/s",
+          "statut_cache": "false",
+          "texte_fenetre": "fenetre pid=22408 longueur=44 texte=[deux-A-2-6olhantrois-T1-2-6olhanBBB-2-6olhan]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-2",
+          "pid": 21808,
+          "messages": [
+            {
+              "t": 1787292289171,
+              "octets": 11,
+              "nul": false,
+              "debut": "un-2-6olhan"
+            }
+          ],
+          "focus": true,
+          "actif": false,
+          "dejaActif": true,
+          "visible": true,
+          "ecritures": [
+            {
+              "t": 1787292345311,
+              "debut": "un-2-6olhan"
+            },
+            {
+              "t": 1787292396069,
+              "debut": "un-2-6olhan"
+            }
+          ],
+          "statut": "780×492, 7.7 Mb/s",
+          "statut_cache": "true",
+          "texte_fenetre": "fenetre pid=21808 longueur=44 texte=[deux-B-2-6olhantrois-T2-2-6olhanCCC-2-6olhan]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-3",
+          "pid": 16468,
+          "messages": [
+            {
+              "t": 1787292289165,
+              "octets": 11,
+              "nul": false,
+              "debut": "un-2-6olhan"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": false,
+          "visible": false,
+          "ecritures": [
+            {
+              "t": 1787292289166,
+              "debut": "un-2-6olhan"
+            },
+            {
+              "t": 1787292301613,
+              "debut": "un-2-6olhan"
+            }
+          ],
+          "statut": "780×492, 3.8 Mb/s",
+          "statut_cache": "true",
+          "texte_fenetre": "fenetre pid=16468 longueur=12 texte=[AAA-2-6olhan]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-6",
+          "pid": null,
+          "messages": [
+            {
+              "t": 1787292303914,
+              "octets": 11,
+              "nul": false,
+              "debut": "un-2-6olhan"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": false,
+          "visible": false,
+          "ecritures": [],
+          "statut": "cliquez pour activer le son",
+          "statut_cache": "false",
+          "texte_fenetre": null
+        }
+      ],
+      "vm_clipboard": "clipboard longueur=17 debut=[trois-T2-2-6olhan]"
+    },
+    {
+      "nom": "4-copie-pendant-que-B-est-sans-focus",
+      "t": "2026-08-21T06:07:30.579Z",
+      "fenetres": [
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-1",
+          "pid": 22408,
+          "messages": [
+            {
+              "t": 1787292289165,
+              "octets": 11,
+              "nul": false,
+              "debut": "un-2-6olhan"
+            },
+            {
+              "t": 1787292440400,
+              "octets": 15,
+              "nul": false,
+              "debut": "quatre-2-6olhan"
+            }
+          ],
+          "focus": true,
+          "actif": false,
+          "dejaActif": true,
+          "visible": true,
+          "ecritures": [
+            {
+              "t": 1787292303847,
+              "debut": "un-2-6olhan"
+            },
+            {
+              "t": 1787292394096,
+              "debut": "un-2-6olhan"
+            },
+            {
+              "t": 1787292439054,
+              "debut": "un-2-6olhan"
+            },
+            {
+              "t": 1787292440225,
+              "debut": "un-2-6olhan"
+            },
+            {
+              "t": 1787292440400,
+              "debut": "quatre-2-6olhan"
+            }
+          ],
+          "statut": "Image réduite par le réseau — 390×246, 7.7 Mb/s",
+          "statut_cache": "false",
+          "texte_fenetre": "fenetre pid=22408 longueur=44 texte=[deux-A-2-6olhantrois-T1-2-6olhanBBB-2-6olhan]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-2",
+          "pid": 21808,
+          "messages": [
+            {
+              "t": 1787292289171,
+              "octets": 11,
+              "nul": false,
+              "debut": "un-2-6olhan"
+            },
+            {
+              "t": 1787292440411,
+              "octets": 15,
+              "nul": false,
+              "debut": "quatre-2-6olhan"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": true,
+          "visible": false,
+          "ecritures": [
+            {
+              "t": 1787292345311,
+              "debut": "un-2-6olhan"
+            },
+            {
+              "t": 1787292396069,
+              "debut": "un-2-6olhan"
+            }
+          ],
+          "statut": "Réseau insuffisant pour le jeu nerveux — 390×246, 0.2 Mb/s",
+          "statut_cache": "false",
+          "texte_fenetre": "fenetre pid=21808 longueur=44 texte=[deux-B-2-6olhantrois-T2-2-6olhanCCC-2-6olhan]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-3",
+          "pid": 16468,
+          "messages": [
+            {
+              "t": 1787292289165,
+              "octets": 11,
+              "nul": false,
+              "debut": "un-2-6olhan"
+            },
+            {
+              "t": 1787292440403,
+              "octets": 15,
+              "nul": false,
+              "debut": "quatre-2-6olhan"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": false,
+          "visible": false,
+          "ecritures": [
+            {
+              "t": 1787292289166,
+              "debut": "un-2-6olhan"
+            },
+            {
+              "t": 1787292301613,
+              "debut": "un-2-6olhan"
+            }
+          ],
+          "statut": "780×492, 3.8 Mb/s",
+          "statut_cache": "true",
+          "texte_fenetre": "fenetre pid=16468 longueur=12 texte=[AAA-2-6olhan]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-6",
+          "pid": null,
+          "messages": [
+            {
+              "t": 1787292303914,
+              "octets": 11,
+              "nul": false,
+              "debut": "un-2-6olhan"
+            },
+            {
+              "t": 1787292440408,
+              "octets": 15,
+              "nul": false,
+              "debut": "quatre-2-6olhan"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": false,
+          "visible": false,
+          "ecritures": [],
+          "statut": "cliquez pour activer le son",
+          "statut_cache": "false",
+          "texte_fenetre": null
+        }
+      ],
+      "vm_clipboard": "clipboard longueur=15 debut=[quatre-2-6olhan]"
+    },
+    {
+      "nom": "4-apres-reprise-du-focus-par-B",
+      "t": "2026-08-21T06:07:36.867Z",
+      "fenetres": [
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-1",
+          "pid": 22408,
+          "messages": [
+            {
+              "t": 1787292289165,
+              "octets": 11,
+              "nul": false,
+              "debut": "un-2-6olhan"
+            },
+            {
+              "t": 1787292440400,
+              "octets": 15,
+              "nul": false,
+              "debut": "quatre-2-6olhan"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": true,
+          "visible": false,
+          "ecritures": [
+            {
+              "t": 1787292303847,
+              "debut": "un-2-6olhan"
+            },
+            {
+              "t": 1787292394096,
+              "debut": "un-2-6olhan"
+            },
+            {
+              "t": 1787292439054,
+              "debut": "un-2-6olhan"
+            },
+            {
+              "t": 1787292440225,
+              "debut": "un-2-6olhan"
+            },
+            {
+              "t": 1787292440400,
+              "debut": "quatre-2-6olhan"
+            }
+          ],
+          "statut": "image figée : fenêtre masquée",
+          "statut_cache": "false",
+          "texte_fenetre": "fenetre pid=22408 longueur=44 texte=[deux-A-2-6olhantrois-T1-2-6olhanBBB-2-6olhan]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-2",
+          "pid": 21808,
+          "messages": [
+            {
+              "t": 1787292289171,
+              "octets": 11,
+              "nul": false,
+              "debut": "un-2-6olhan"
+            },
+            {
+              "t": 1787292440411,
+              "octets": 15,
+              "nul": false,
+              "debut": "quatre-2-6olhan"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": true,
+          "visible": false,
+          "ecritures": [
+            {
+              "t": 1787292345311,
+              "debut": "un-2-6olhan"
+            },
+            {
+              "t": 1787292396069,
+              "debut": "un-2-6olhan"
+            }
+          ],
+          "statut": "Réseau insuffisant pour le jeu nerveux — 390×246, 0.3 Mb/s",
+          "statut_cache": "false",
+          "texte_fenetre": "fenetre pid=21808 longueur=44 texte=[deux-B-2-6olhantrois-T2-2-6olhanCCC-2-6olhan]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-3",
+          "pid": 16468,
+          "messages": [
+            {
+              "t": 1787292289165,
+              "octets": 11,
+              "nul": false,
+              "debut": "un-2-6olhan"
+            },
+            {
+              "t": 1787292440403,
+              "octets": 15,
+              "nul": false,
+              "debut": "quatre-2-6olhan"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": false,
+          "visible": false,
+          "ecritures": [
+            {
+              "t": 1787292289166,
+              "debut": "un-2-6olhan"
+            },
+            {
+              "t": 1787292301613,
+              "debut": "un-2-6olhan"
+            }
+          ],
+          "statut": "780×492, 3.3 Mb/s",
+          "statut_cache": "true",
+          "texte_fenetre": "fenetre pid=16468 longueur=12 texte=[AAA-2-6olhan]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-6",
+          "pid": null,
+          "messages": [
+            {
+              "t": 1787292303914,
+              "octets": 11,
+              "nul": false,
+              "debut": "un-2-6olhan"
+            },
+            {
+              "t": 1787292440408,
+              "octets": 15,
+              "nul": false,
+              "debut": "quatre-2-6olhan"
+            }
+          ],
+          "focus": true,
+          "actif": false,
+          "dejaActif": false,
+          "visible": true,
+          "ecritures": [
+            {
+              "t": 1787292451404,
+              "debut": "quatre-2-6olhan"
+            }
+          ],
+          "statut": "780×492, 4.2 Mb/s",
+          "statut_cache": "true",
+          "texte_fenetre": null
+        }
+      ],
+      "vm_clipboard": "clipboard longueur=15 debut=[quatre-2-6olhan]"
+    }
+  ],
+  "criteres": {
+    "un": {
+      "texte": "un-2-6olhan",
+      "recu_par": [
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-1",
+          "recu": true
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-2",
+          "recu": true
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-3",
+          "recu": true
+        }
+      ]
+    },
+    "un_bis": {
+      "methode": "ouverture d'un Bloc-notes supplémentaire",
+      "sessions_neuves": [
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-6",
+          "pid": 22324
+        }
+      ],
+      "connues_avant": [
+        "F4z7KQooOQfJqh47PM0ETA:w-3",
+        "F4z7KQooOQfJqh47PM0ETA:w-1",
+        "F4z7KQooOQfJqh47PM0ETA:w-2"
+      ],
+      "session": "F4z7KQooOQfJqh47PM0ETA:w-6",
+      "messages": [],
+      "recu": false
+    },
+    "deux": [
+      {
+        "session": "F4z7KQooOQfJqh47PM0ETA:w-1",
+        "pid": 22408,
+        "texte": "deux-A-2-6olhan",
+        "vm_clipboard": "clipboard longueur=15 debut=[deux-A-2-6olhan]",
+        "fenetre_cible": "fenetre pid=22408 longueur=27 texte=[deux-A-2-6olhanBBB-2-6olhan]",
+        "fenetres_toutes": [
+          {
+            "session": "F4z7KQooOQfJqh47PM0ETA:w-3",
+            "pid": 16468,
+            "texte": null
+          },
+          {
+            "session": "F4z7KQooOQfJqh47PM0ETA:w-1",
+            "pid": 22408,
+            "texte": null
+          },
+          {
+            "session": "F4z7KQooOQfJqh47PM0ETA:w-2",
+            "pid": 21808,
+            "texte": "fenetre pid=21808 longueur=12 texte=[CCC-2-6olhan]"
+          }
+        ]
+      },
+      {
+        "session": "F4z7KQooOQfJqh47PM0ETA:w-2",
+        "pid": 21808,
+        "texte": "deux-B-2-6olhan",
+        "vm_clipboard": "clipboard longueur=15 debut=[deux-B-2-6olhan]",
+        "fenetre_cible": "fenetre pid=21808 longueur=27 texte=[deux-B-2-6olhanCCC-2-6olhan]",
+        "fenetres_toutes": [
+          {
+            "session": "F4z7KQooOQfJqh47PM0ETA:w-3",
+            "pid": 16468,
+            "texte": null
+          },
+          {
+            "session": "F4z7KQooOQfJqh47PM0ETA:w-1",
+            "pid": 22408,
+            "texte": null
+          },
+          {
+            "session": "F4z7KQooOQfJqh47PM0ETA:w-2",
+            "pid": 21808,
+            "texte": "fenetre pid=21808 longueur=27 texte=[deux-B-2-6olhanCCC-2-6olhan]"
+          }
+        ]
+      }
+    ],
+    "trois": {
+      "t1": "trois-T1-2-6olhan",
+      "t2": "trois-T2-2-6olhan",
+      "messages_avant": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "messages_apres": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "vm_clipboard": "clipboard longueur=17 debut=[trois-T2-2-6olhan]",
+      "fenetres": [
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-3",
+          "pid": 16468,
+          "texte": null
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-1",
+          "pid": 22408,
+          "texte": null
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-2",
+          "pid": 21808,
+          "texte": "fenetre pid=21808 longueur=44 texte=[deux-B-2-6olhantrois-T2-2-6olhanCCC-2-6olhan]"
+        }
+      ],
+      "echecs": {
+        "collage_non_ecrit": 0,
+        "sans_reponse_du_fil": 0,
+        "fil_sans_reponse": 0,
+        "collage_refuse": 0
+      },
+      "motifs_discriminants": {
+        "collage_non_ecrit": true,
+        "sans_reponse_du_fil": true,
+        "fil_sans_reponse": true,
+        "collage_refuse": true
+      },
+      "annonces_dans_le_journal": 1
+    },
+    "quatre": {
+      "texte": "quatre-2-6olhan",
+      "sansFocus": "F4z7KQooOQfJqh47PM0ETA:w-6",
+      "avecFocus": "F4z7KQooOQfJqh47PM0ETA:w-1",
+      "a_recu_le_message_sans_focus": true,
+      "focus_de_B_avant": false,
+      "focus_de_B_apres": true,
+      "a_ecrit_sans_focus": false,
+      "a_ecrit_apres_reprise": true,
+      "verdict": "TENU — sans focus elle n'écrit pas, et elle écrit à la reprise",
+      "avant": [
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-1",
+          "pid": 22408,
+          "messages": [
+            {
+              "t": 1787292289165,
+              "octets": 11,
+              "nul": false,
+              "debut": "un-2-6olhan"
+            },
+            {
+              "t": 1787292440400,
+              "octets": 15,
+              "nul": false,
+              "debut": "quatre-2-6olhan"
+            }
+          ],
+          "focus": true,
+          "actif": false,
+          "dejaActif": true,
+          "visible": true,
+          "ecritures": [
+            {
+              "t": 1787292303847,
+              "debut": "un-2-6olhan"
+            },
+            {
+              "t": 1787292394096,
+              "debut": "un-2-6olhan"
+            },
+            {
+              "t": 1787292439054,
+              "debut": "un-2-6olhan"
+            },
+            {
+              "t": 1787292440225,
+              "debut": "un-2-6olhan"
+            },
+            {
+              "t": 1787292440400,
+              "debut": "quatre-2-6olhan"
+            }
+          ],
+          "statut": "Image réduite par le réseau — 390×246, 7.7 Mb/s",
+          "statut_cache": "false",
+          "texte_fenetre": "fenetre pid=22408 longueur=44 texte=[deux-A-2-6olhantrois-T1-2-6olhanBBB-2-6olhan]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-2",
+          "pid": 21808,
+          "messages": [
+            {
+              "t": 1787292289171,
+              "octets": 11,
+              "nul": false,
+              "debut": "un-2-6olhan"
+            },
+            {
+              "t": 1787292440411,
+              "octets": 15,
+              "nul": false,
+              "debut": "quatre-2-6olhan"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": true,
+          "visible": false,
+          "ecritures": [
+            {
+              "t": 1787292345311,
+              "debut": "un-2-6olhan"
+            },
+            {
+              "t": 1787292396069,
+              "debut": "un-2-6olhan"
+            }
+          ],
+          "statut": "Réseau insuffisant pour le jeu nerveux — 390×246, 0.2 Mb/s",
+          "statut_cache": "false",
+          "texte_fenetre": "fenetre pid=21808 longueur=44 texte=[deux-B-2-6olhantrois-T2-2-6olhanCCC-2-6olhan]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-3",
+          "pid": 16468,
+          "messages": [
+            {
+              "t": 1787292289165,
+              "octets": 11,
+              "nul": false,
+              "debut": "un-2-6olhan"
+            },
+            {
+              "t": 1787292440403,
+              "octets": 15,
+              "nul": false,
+              "debut": "quatre-2-6olhan"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": false,
+          "visible": false,
+          "ecritures": [
+            {
+              "t": 1787292289166,
+              "debut": "un-2-6olhan"
+            },
+            {
+              "t": 1787292301613,
+              "debut": "un-2-6olhan"
+            }
+          ],
+          "statut": "780×492, 3.8 Mb/s",
+          "statut_cache": "true",
+          "texte_fenetre": "fenetre pid=16468 longueur=12 texte=[AAA-2-6olhan]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-6",
+          "pid": null,
+          "messages": [
+            {
+              "t": 1787292303914,
+              "octets": 11,
+              "nul": false,
+              "debut": "un-2-6olhan"
+            },
+            {
+              "t": 1787292440408,
+              "octets": 15,
+              "nul": false,
+              "debut": "quatre-2-6olhan"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": false,
+          "visible": false,
+          "ecritures": [],
+          "statut": "cliquez pour activer le son",
+          "statut_cache": "false",
+          "texte_fenetre": null
+        }
+      ],
+      "apres": [
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-1",
+          "pid": 22408,
+          "messages": [
+            {
+              "t": 1787292289165,
+              "octets": 11,
+              "nul": false,
+              "debut": "un-2-6olhan"
+            },
+            {
+              "t": 1787292440400,
+              "octets": 15,
+              "nul": false,
+              "debut": "quatre-2-6olhan"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": true,
+          "visible": false,
+          "ecritures": [
+            {
+              "t": 1787292303847,
+              "debut": "un-2-6olhan"
+            },
+            {
+              "t": 1787292394096,
+              "debut": "un-2-6olhan"
+            },
+            {
+              "t": 1787292439054,
+              "debut": "un-2-6olhan"
+            },
+            {
+              "t": 1787292440225,
+              "debut": "un-2-6olhan"
+            },
+            {
+              "t": 1787292440400,
+              "debut": "quatre-2-6olhan"
+            }
+          ],
+          "statut": "image figée : fenêtre masquée",
+          "statut_cache": "false",
+          "texte_fenetre": "fenetre pid=22408 longueur=44 texte=[deux-A-2-6olhantrois-T1-2-6olhanBBB-2-6olhan]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-2",
+          "pid": 21808,
+          "messages": [
+            {
+              "t": 1787292289171,
+              "octets": 11,
+              "nul": false,
+              "debut": "un-2-6olhan"
+            },
+            {
+              "t": 1787292440411,
+              "octets": 15,
+              "nul": false,
+              "debut": "quatre-2-6olhan"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": true,
+          "visible": false,
+          "ecritures": [
+            {
+              "t": 1787292345311,
+              "debut": "un-2-6olhan"
+            },
+            {
+              "t": 1787292396069,
+              "debut": "un-2-6olhan"
+            }
+          ],
+          "statut": "Réseau insuffisant pour le jeu nerveux — 390×246, 0.3 Mb/s",
+          "statut_cache": "false",
+          "texte_fenetre": "fenetre pid=21808 longueur=44 texte=[deux-B-2-6olhantrois-T2-2-6olhanCCC-2-6olhan]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-3",
+          "pid": 16468,
+          "messages": [
+            {
+              "t": 1787292289165,
+              "octets": 11,
+              "nul": false,
+              "debut": "un-2-6olhan"
+            },
+            {
+              "t": 1787292440403,
+              "octets": 15,
+              "nul": false,
+              "debut": "quatre-2-6olhan"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": false,
+          "visible": false,
+          "ecritures": [
+            {
+              "t": 1787292289166,
+              "debut": "un-2-6olhan"
+            },
+            {
+              "t": 1787292301613,
+              "debut": "un-2-6olhan"
+            }
+          ],
+          "statut": "780×492, 3.3 Mb/s",
+          "statut_cache": "true",
+          "texte_fenetre": "fenetre pid=16468 longueur=12 texte=[AAA-2-6olhan]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-6",
+          "pid": null,
+          "messages": [
+            {
+              "t": 1787292303914,
+              "octets": 11,
+              "nul": false,
+              "debut": "un-2-6olhan"
+            },
+            {
+              "t": 1787292440408,
+              "octets": 15,
+              "nul": false,
+              "debut": "quatre-2-6olhan"
+            }
+          ],
+          "focus": true,
+          "actif": false,
+          "dejaActif": false,
+          "visible": true,
+          "ecritures": [
+            {
+              "t": 1787292451404,
+              "debut": "quatre-2-6olhan"
+            }
+          ],
+          "statut": "780×492, 4.2 Mb/s",
+          "statut_cache": "true",
+          "texte_fenetre": null
+        }
+      ]
+    }
+  },
+  "prep": "notepad=0",
+  "notepads_ouverts": 3,
+  "lecteur_pret": true,
+  "inventaire_avant": "inventaire pid=22408 hwnd=13107460 mainwindow=13107460 classe=Notepad titre=[Sans titre - Bloc-notes] ; pid=21808 hwnd=17826134 mainwindow=17826134 classe=Notepad titre=[Sans titre - Bloc-notes] ; pid=16468 hwnd=14222234 mainwindow=14222234 classe=Notepad titre=[Sans titre - Bloc-notes]",
+  "shell_attachee": true,
+  "sessions_diffusant": [
+    "F4z7KQooOQfJqh47PM0ETA:w-1",
+    "F4z7KQooOQfJqh47PM0ETA:w-2",
+    "F4z7KQooOQfJqh47PM0ETA:w-3"
+  ],
+  "attributions": [
+    {
+      "session": "F4z7KQooOQfJqh47PM0ETA:w-3",
+      "pid": 16468
+    },
+    {
+      "session": "F4z7KQooOQfJqh47PM0ETA:w-1",
+      "pid": 22408
+    },
+    {
+      "session": "F4z7KQooOQfJqh47PM0ETA:w-2",
+      "pid": 21808
+    }
+  ],
+  "attribution_utilisable": true,
+  "semis": [
+    "semer pid=16468 : ecrit longueur=12",
+    "semer pid=22408 : ecrit longueur=12",
+    "semer pid=21808 : ecrit longueur=12"
+  ],
+  "temoin_focus": [
+    {
+      "amenee": "F4z7KQooOQfJqh47PM0ETA:w-1",
+      "vus": [
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-1",
+          "focus": true
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-2",
+          "focus": false
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-3",
+          "focus": false
+        }
+      ]
+    },
+    {
+      "amenee": "F4z7KQooOQfJqh47PM0ETA:w-2",
+      "vus": [
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-1",
+          "focus": false
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-2",
+          "focus": true
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-3",
+          "focus": false
+        }
+      ]
+    },
+    {
+      "amenee": "F4z7KQooOQfJqh47PM0ETA:w-3",
+      "vus": [
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-1",
+          "focus": false
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-2",
+          "focus": false
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-3",
+          "focus": true
+        }
+      ]
+    }
+  ],
+  "focus_discriminant": true,
+  "lecteur_journal": "﻿2026-08-21T06:04:21.5882623Z lecteur pret\r\n2026-08-21T06:04:27.5570774Z ordre 1 mode=inventaire a1=\r\n2026-08-21T06:04:27.6039401Z fait 1 : inventaire pid=22408 hwnd=13107460 mainwindow=13107460 classe=Notepad titre=[Sans titre - Bloc-notes] ; pid=21808 hwnd=17826134 mainwindow=17826134 classe=Notepad titre=[Sans titre - Bloc-notes] ; pid=16468 hwnd=14222234 mainwindow=14222234 classe=Notepad titre=[Sans titre - Bloc-notes]\r\n2026-08-21T06:04:38.3595600Z ordre 2 mode=semer a1=16468\r\n2026-08-21T06:04:38.4125596Z fait 2 : semer pid=16468 : ecrit longueur=12\r\n2026-08-21T06:04:39.1721710Z ordre 3 mode=semer a1=22408\r\n2026-08-21T06:04:39.1761710Z fait 3 : semer pid=22408 : ecrit longueur=12\r\n2026-08-21T06:04:39.9351117Z ordre 4 mode=semer a1=21808\r\n2026-08-21T06:04:39.9381138Z fait 4 : semer pid=21808 : ecrit longueur=12\r\n2026-08-21T06:04:45.2054009Z ordre 5 mode=fenetre a1=22408\r\n2026-08-21T06:04:45.2184015Z fait 5 : fenetre pid=22408 longueur=12 texte=[BBB-2-6olhan]\r\n2026-08-21T06:04:45.9777518Z ordre 6 mode=fenetre a1=21808\r\n2026-08-21T06:04:45.9797623Z fait 6 : fenetre pid=21808 longueur=12 texte=[CCC-2-6olhan]\r\n2026-08-21T06:04:46.9995415Z ordre 7 mode=fenetre a1=16468\r\n2026-08-21T06:04:47.0025399Z fait 7 : fenetre pid=16468 longueur=12 texte=[AAA-2-6olhan]\r\n2026-08-21T06:04:47.7575796Z ordre 8 mode=clipboard a1=\r\n2026-08-21T06:04:47.7645680Z fait 8 : clipboard longueur=15 debut=[quatre-1-d664xe]\r\n2026-08-21T06:04:57.0453055Z ordre 9 mode=fenetre a1=22408\r\n2026-08-21T06:04:57.0495397Z fait 9 : fenetre pid=22408 longueur=12 texte=[BBB-2-6olhan]\r\n2026-08-21T06:04:57.8090410Z ordre 10 mode=fenetre a1=21808\r\n2026-08-21T06:04:57.8110400Z fait 10 : fenetre pid=21808 longueur=12 texte=[CCC-2-6olhan]\r\n2026-08-21T06:04:59.5729475Z ordre 11 mode=fenetre a1=16468\r\n2026-08-21T06:04:59.5749467Z fait 11 : fenetre pid=16468 longueur=12 texte=[AAA-2-6olhan]\r\n2026-08-21T06:05:00.3345071Z ordre 12 mode=clipboard a1=\r\n2026-08-21T06:05:00.3354945Z fait 12 : clipboard longueur=11 debut=[un-2-6olhan]\r\n2026-08-21T06:05:11.6465158Z ordre 13 mode=clipboard a1=\r\n2026-08-21T06:05:11.6474991Z fait 13 : clipboard longueur=15 debut=[deux-A-2-6olhan]\r\n2026-08-21T06:05:12.4044666Z ordre 14 mode=fenetre a1=22408\r\n2026-08-21T06:05:12.4074677Z fait 14 : fenetre pid=22408 longueur=27 texte=[deux-A-2-6olhanBBB-2-6olhan]\r\n2026-08-21T06:05:13.9154888Z ordre 17 mode=fenetre a1=21808\r\n2026-08-21T06:05:13.9245107Z fait 17 : fenetre pid=21808 longueur=12 texte=[CCC-2-6olhan]\r\n2026-08-21T06:05:53.0144930Z ordre 18 mode=clipboard a1=\r\n2026-08-21T06:05:53.0154932Z fait 18 : clipboard longueur=15 debut=[deux-B-2-6olhan]\r\n2026-08-21T06:05:53.7729140Z ordre 19 mode=fenetre a1=21808\r\n2026-08-21T06:05:53.7759164Z fait 19 : fenetre pid=21808 longueur=27 texte=[deux-B-2-6olhanCCC-2-6olhan]\r\n2026-08-21T06:05:55.5340358Z ordre 22 mode=fenetre a1=21808\r\n2026-08-21T06:05:55.5370396Z fait 22 : fenetre pid=21808 longueur=27 texte=[deux-B-2-6olhanCCC-2-6olhan]\r\n2026-08-21T06:06:25.6071604Z ordre 23 mode=fenetre a1=22408\r\n2026-08-21T06:06:25.6101590Z fait 23 : fenetre pid=22408 longueur=27 texte=[deux-A-2-6olhanBBB-2-6olhan]\r\n2026-08-21T06:06:26.3688115Z ordre 24 mode=fenetre a1=21808\r\n2026-08-21T06:06:26.3718112Z fait 24 : fenetre pid=21808 longueur=27 texte=[deux-B-2-6olhanCCC-2-6olhan]\r\n2026-08-21T06:06:27.1305179Z ordre 25 mode=fenetre a1=16468\r\n2026-08-21T06:06:27.1335175Z fait 25 : fenetre pid=16468 longueur=12 texte=[AAA-2-6olhan]\r\n2026-08-21T06:06:27.8919135Z ordre 26 mode=clipboard a1=\r\n2026-08-21T06:06:27.8929089Z fait 26 : clipboard longueur=15 debut=[deux-B-2-6olhan]\r\n2026-08-21T06:06:28.9022840Z ordre 27 mode=fenetre a1=22408\r\n2026-08-21T06:06:28.9042887Z fait 27 : fenetre pid=22408 longueur=27 texte=[deux-A-2-6olhanBBB-2-6olhan]\r\n2026-08-21T06:06:30.4148255Z ordre 28 mode=fenetre a1=21808\r\n2026-08-21T06:06:30.4168394Z fait 28 : fenetre pid=21808 longueur=27 texte=[deux-B-2-6olhanCCC-2-6olhan]\r\n2026-08-21T06:06:31.1758818Z ordre 29 mode=fenetre a1=16468\r\n2026-08-21T06:06:31.1788712Z fait 29 : fenetre pid=16468 longueur=12 texte=[AAA-2-6olhan]\r\n2026-08-21T06:06:31.9365044Z ordre 30 mode=clipboard a1=\r\n2026-08-21T06:06:31.9375057Z fait 30 : clipboard longueur=15 debut=[deux-B-2-6olhan]\r\n2026-08-21T06:06:45.7230502Z ordre 31 mode=fenetre a1=22408\r\n2026-08-21T06:06:45.7260479Z fait 31 : fenetre pid=22408 longueur=44 texte=[deux-A-2-6olhantrois-T1-2-6olhanBBB-2-6olhan]\r\n2026-08-21T06:06:46.7355712Z ordre 32 mode=fenetre a1=21808\r\n2026-08-21T06:06:46.7385759Z fait 32 : fenetre pid=21808 longueur=44 texte=[deux-B-2-6olhantrois-T2-2-6olhanCCC-2-6olhan]\r\n2026-08-21T06:06:47.4955937Z ordre 33 mode=fenetre a1=16468\r\n2026-08-21T06:06:47.4985949Z fait 33 : fenetre pid=16468 longueur=12 texte=[AAA-2-6olhan]\r\n2026-08-21T06:06:48.2556161Z ordre 34 mode=clipboard a1=\r\n2026-08-21T06:06:48.2566177Z fait 34 : clipboard longueur=17 debut=[trois-T2-2-6olhan]\r\n2026-08-21T06:06:49.0141375Z ordre 37 mode=fenetre a1=21808\r\n2026-08-21T06:06:49.0161382Z fait 37 : fenetre pid=21808 longueur=44 texte=[deux-B-2-6olhantrois-T2-2-6olhanCCC-2-6olhan]\r\n2026-08-21T06:07:28.3544353Z ordre 38 mode=fenetre a1=22408\r\n2026-08-21T06:07:28.3574350Z fait 38 : fenetre pid=22408 longueur=44 texte=[deux-A-2-6olhantrois-T1-2-6olhanBBB-2-6olhan]\r\n2026-08-21T06:07:29.1154507Z ordre 39 mode=fenetre a1=21808\r\n2026-08-21T06:07:29.1184500Z fait 39 : fenetre pid=21808 longueur=44 texte=[deux-B-2-6olhantrois-T2-2-6olhanCCC-2-6olhan]\r\n2026-08-21T06:07:29.8768758Z ordre 40 mode=fenetre a1=16468\r\n2026-08-21T06:07:29.8798726Z fait 40 : fenetre pid=16468 longueur=12 texte=[AAA-2-6olhan]\r\n2026-08-21T06:07:30.6385997Z ordre 41 mode=clipboard a1=\r\n2026-08-21T06:07:30.6395882Z fait 41 : clipboard longueur=15 debut=[quatre-2-6olhan]\r\n2026-08-21T06:07:34.6545922Z ordre 42 mode=fenetre a1=22408\r\n2026-08-21T06:07:34.6575888Z fait 42 : fenetre pid=22408 longueur=44 texte=[deux-A-2-6olhantrois-T1-2-6olhanBBB-2-6olhan]\r\n2026-08-21T06:07:35.4170360Z ordre 43 mode=fenetre a1=21808\r\n2026-08-21T06:07:35.4200386Z fait 43 : fenetre pid=21808 longueur=44 texte=[deux-B-2-6olhantrois-T2-2-6olhanCCC-2-6olhan]\r\n2026-08-21T06:07:36.1783073Z ordre 44 mode=fenetre a1=16468\r\n2026-08-21T06:07:36.1813080Z fait 44 : fenetre pid=16468 longueur=12 texte=[AAA-2-6olhan]\r\n2026-08-21T06:07:36.9396673Z ordre 45 mode=clipboard a1=\r\n2026-08-21T06:07:36.9406608Z fait 45 : clipboard longueur=15 debut=[quatre-2-6olhan]\r\n"
+}

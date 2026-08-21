@@ -1,0 +1,98 @@
+FAMILLES DE LECTURE DES JOURNAUX — SOUS-BLOC P3 (presse-papier)
+
+Relevé PAR LA COMMANDE, après la dernière écriture. Rien n'y est déduit.
+
+Les motifs de recherche sont écrits par un heredoc entre quotes : `echo` en zsh
+interprète \x1b et \r, et S3 a produit un fichier qui se décrivait EN SE
+POLLUANT LUI-MÊME — classé « with escape sequences » par file(1).
+
+Les trois commandes jouées :
+    file *
+    grep -lP '\x1b\['  *          (séquences ANSI)
+    grep -lU $'\r'     *          (retours chariot)
+    tr -dc '\000' < f | wc -c     (octets NUL, fichier par fichier)
+
+--- file ---
+  agent-1-DISQUALIFIEE.log:          Unicode text, UTF-8 text, with very long lines (445), with CRLF line terminators, with escape sequences
+  agent-1-DISQUALIFIEE-plat.log:     Unicode text, UTF-8 text, with CRLF line terminators
+  agent-2-DIAGNOSTIC.log:            Unicode text, UTF-8 text, with very long lines (445), with CRLF line terminators, with escape sequences
+  agent-2-DIAGNOSTIC-plat.log:       Unicode text, UTF-8 text, with CRLF line terminators
+  agent-e1.log:                      Unicode text, UTF-8 text, with very long lines (445), with CRLF line terminators, with escape sequences
+  agent-e1-plat.log:                 Unicode text, UTF-8 text, with CRLF line terminators
+  agent-e2.log:                      Unicode text, UTF-8 text, with very long lines (445), with CRLF line terminators, with escape sequences
+  agent-e2-plat.log:                 Unicode text, UTF-8 text, with CRLF line terminators
+  agent-r1-DIAGNOSTIC.log:           Unicode text, UTF-8 text, with very long lines (445), with CRLF line terminators, with escape sequences
+  agent-r1-DIAGNOSTIC-plat.log:      Unicode text, UTF-8 text, with CRLF line terminators
+  familles-de-lecture.txt:           Unicode text, UTF-8 text
+  instrument:                        directory
+  p3-focus-1.json:                   JSON text data
+  p3-focus-1.log:                    Unicode text, UTF-8 text, with very long lines (747)
+  p3-focus-2.json:                   JSON text data
+  p3-focus-2.log:                    Unicode text, UTF-8 text, with very long lines (747)
+  p3-writetext-1.json:               JSON text data
+  p3-writetext-1.log:                Unicode text, UTF-8 text, with very long lines (906)
+  p3-writetext-2.json:               JSON text data
+  p3-writetext-2.log:                Unicode text, UTF-8 text, with very long lines (906)
+  pilote-1-DISQUALIFIEE.log:         data
+  pilote-2-DIAGNOSTIC.log:           data
+  pilote-e1.log:                     data
+  pilote-e2.log:                     data
+  pilote-r1-DIAGNOSTIC.log:          data
+  pp3-1-DISQUALIFIEE.json:           JSON text data
+  pp3-2-DIAGNOSTIC.json:             JSON text data
+  pp3-e1.json:                       JSON text data
+  pp3-e2.json:                       JSON text data
+  pp3-r1-DIAGNOSTIC.json:            JSON text data
+  rouges-t5.log:                     Unicode text, UTF-8 text
+  rouges-t6.log:                     Unicode text, UTF-8 text
+  rouges-t7.log:                     Unicode text, UTF-8 text
+  rouge-t5-d-p3-6-arbre-intact.log:  Unicode text, UTF-8 text
+  instrument/lecteur-pp-n.ps1:       Unicode text, UTF-8 text
+  instrument/pilote-pp-p3.mjs:       Node.js script executable, Unicode text, UTF-8 text
+  instrument/rouge.sh:               Bourne-Again shell script, Unicode text, UTF-8 text executable
+  instrument/sonde-p3-focus.mjs:     Node.js script executable, Unicode text, UTF-8 text
+  instrument/sonde-p3-writetext.mjs: Node.js script executable, Unicode text, UTF-8 text
+
+--- sequences ANSI ---
+  agent-e1.log
+  agent-1-DISQUALIFIEE.log
+  agent-2-DIAGNOSTIC.log
+  agent-e2.log
+  agent-r1-DIAGNOSTIC.log
+  => CINQ fichiers. Ce sont les journaux d'agent BRUTS, tous. Chacun a son
+     jumeau `-plat`, verse a cote, et AUCUN `-plat` n'en porte.
+
+--- retours chariot ---
+  agent-e1-plat.log
+  agent-1-DISQUALIFIEE.log
+  agent-1-DISQUALIFIEE-plat.log
+  agent-2-DIAGNOSTIC.log
+  agent-2-DIAGNOSTIC-plat.log
+  agent-e1.log
+  agent-e2.log
+  agent-e2-plat.log
+  agent-r1-DIAGNOSTIC.log
+  agent-r1-DIAGNOSTIC-plat.log
+  => DIX fichiers : les cinq bruts ET leurs cinq jumeaux `-plat`. Ils viennent
+     tous de la VM. Les CRLF ne genent AUCUN grep ; seules les sequences ANSI
+     le font.
+
+--- octets NUL ---
+  (rien ci-dessus = aucun)
+
+--------------------------------------------------------------------------
+CE QU'IL FAUT FAIRE, EN DEUX LIGNES
+--------------------------------------------------------------------------
+
+  les cinq `agent-*.log` BRUTS  ->  sed 's/\x1b\[[0-9;]*m//g'
+                                    (ou lire le `-plat` jumeau, verse pour chacun)
+  tout le reste                 ->  RIEN, ils se grepent a plat
+
+⚠️ AUCUN OCTET NUL, dans aucun fichier — mesure, pas suppose. Ce n'est PAS la
+regle : les journaux de pilote de P1 en portaient 33 a 36, et `grep` sans `-a`
+y rendait une sortie VIDE, pas un zero. Ici `grep -a` n'est pas necessaire ; il
+ne nuit pas.
+
+🔴 ET METTRE A PLAT AVANT TOUT `grep` SUR UN CHAMP : `tracing` separe le nom du
+champ de sa valeur par des sequences ANSI, donc `grep 'pid='` ne matche JAMAIS
+sur un journal brut. C'est le piege de la recette d'entree de D8.

@@ -130,7 +130,27 @@ const vmIt = (nom, ps) => {
 // d'autre. Reprise verbatim de P2, à ceci près qu'elle nomme `__pp3`.
 const AMORCE = `(() => {
   if (window.__pp3) return;
-  window.__pp3 = { messages: [], erreurs: [] };
+  window.__pp3 = { messages: [], erreurs: [], ecritures: [] };
+  // 🔴 L'OBSERVATION DE ④ : les APPELS a writeText, par page, releves en
+  // ENVELOPPANT l'API — jamais en lisant le presse-papier local, qui est
+  // PARTAGE entre les pages d'un meme navigateur et ne dirait donc pas
+  // LAQUELLE a ecrit.
+  //
+  // ⚠️ Le plan met en garde contre « compter les appels a writeText » : cette
+  // garde vise le comptage des messages de l'AGENT, que le dedoublonnage du
+  // client masquerait. Ici on veut precisement observer la DECISION DU CLIENT,
+  // et c'est le seul observable qui la porte.
+  try {
+    const c = navigator.clipboard;
+    if (c && c.writeText) {
+      const w = c.writeText.bind(c);
+      c.writeText = function (t) {
+        try { window.__pp3.ecritures.push({ t: Date.now(), debut: String(t).slice(0, 60) }); }
+        catch (e) { window.__pp3.erreurs.push(String(e).slice(0, 120)); }
+        return w(t);
+      };
+    } else { window.__pp3.erreurs.push('navigator.clipboard.writeText absent'); }
+  } catch (e) { window.__pp3.erreurs.push('hameconnage writeText : ' + String(e).slice(0, 120)); }
   // L'ECOUTEUR EST POSE EN ENVELOPPANT createDataChannel, AVANT que le
   // produit n'attache le sien : c'est ce qui le rend INDEPENDANT de lui.
   try {
@@ -180,6 +200,7 @@ const AMORCE = `(() => {
 // est transitoire, et le relever à part mesurerait un autre instant.
 const EXPR_ETAT = `(() => ({
   pp: window.__pp3 || null,
+  ecritures: window.__pp3 ? window.__pp3.ecritures : null,
   focus: document.hasFocus(),
   actif: navigator.userActivation ? navigator.userActivation.isActive : null,
   dejaActif: navigator.userActivation ? navigator.userActivation.hasBeenActive : null,
@@ -249,6 +270,24 @@ async function obtenirPaire(id) {
     return corps;
 }
 
+/// Lit le texte de CHAQUE fenêtre attribuée, **SÉQUENTIELLEMENT**.
+///
+/// 🔴 **JAMAIS EN PARALLÈLE, ET C'EST MESURÉ.** Le protocole du lecteur tient
+/// dans UN SEUL couple de fichiers (`pp3-ordre.txt` / `pp3-fait.txt`) : deux
+/// `lire()` concurrents s'écrasent l'ordre l'un de l'autre, et les perdants
+/// EXPIRENT. La première rédaction lisait les trois fenêtres d'un coup : deux
+/// sur trois rendaient `null`, ce qui se lit EXACTEMENT comme « le Bloc-notes
+/// est introuvable », c'est-à-dire comme un défaut du produit. Le pré-semage,
+/// lui, réussissait sur les trois (`ecrit longueur=13` × 3) — c'est ce qui a
+/// permis de trancher.
+async function lireLesFenetres(attributions) {
+    const sortie = [];
+    for (const a of attributions) {
+        sortie.push({ session: a.session, pid: a.pid, texte: await lire(`fenetre|${a.pid}`) });
+    }
+    return sortie;
+}
+
 /// Les couples (session, pid) que le CAPTEUR a inscrits, lus dans le journal
 /// mis À PLAT.
 ///
@@ -259,17 +298,21 @@ function attributions() {
     let brut;
     try { brut = readFileSync('/media/vm/dev/agent.log', 'utf8'); } catch { return []; }
     const plat = brut.replace(/\x1b\[[0-9;]*m/g, '');
-    // ⚠️ LIGNE PAR LIGNE, ET NON PAR UNE EXPRESSION QUI SUPPOSE L'ORDRE DES
-    // CHAMPS. `tracing` place le message et les champs selon son format, et une
-    // expression qui exigerait `session=` AVANT `pid=` rendrait ZÉRO sur un
-    // journal parfaitement bon — un zéro qui se lirait comme « aucune fenêtre
-    // attachée », c'est-à-dire comme une panne du produit.
+    // 🔴 L'ANCRE EST `session=… pid=…` ADJACENTS, ET C'EST MESURÉ, PAS
+    // PRUDENTIEL. La première rédaction cherchait `/session=(\S+)/` sur la
+    // ligne, et attrapait le SPAN `tracing` qui la précède —
+    // `fenetre{session=F4z…:w-3}:` — d'où des noms de session portant « }: »
+    // en trop, et une attribution INUTILISABLE. C'est EXACTEMENT le piège que
+    // D8 a payé sur `resoudreIdentite` : `\S+` avale l'accolade et les
+    // deux-points, la valeur est fausse mais TRUTHY, et rien ne le dit.
+    //
+    // Le span ne porte JAMAIS de `pid` : exiger les deux champs adjacents
+    // l'exclut par construction, sans avoir à connaître le format de `tracing`.
     const vues = new Map();
     for (const l of plat.split('\n')) {
         if (!/fen\S*tre attach\S*e au capteur/.test(l)) continue;
-        const s = /session=(\S+)/.exec(l);
-        const p = /pid=(\d+)/.exec(l);
-        if (s && p) vues.set(s[1], Number(p[1]));
+        const m = /session=(\S+)\s+pid=(\d+)/.exec(l);
+        if (m) vues.set(m[1], Number(m[2]));
     }
     return [...vues.entries()].map(([session, pid]) => ({ session, pid }));
 }
@@ -443,7 +486,17 @@ try {
     if (appsParSession.size < 2) throw new Error(`seulement ${appsParSession.size} page(s) d'application : ①②③ non mesurables`);
 
     // 🔴 L'ATTRIBUTION, sans laquelle ② et ③ ne sont PAS JUGEABLES (RP3-3).
-    releve.attributions = attributions();
+    //
+    // ⚠️ L'ATTENTE PORTE SUR LE FAIT, ET ELLE EST OBLIGATOIRE : `agent.log` est
+    // lu à travers un montage CIFS, et la première exécution l'a trouvé VIDE de
+    // ces lignes cinq secondes après qu'elles y aient été écrites — l'attribution
+    // rendait `[]`, et ② comme ③ cessaient d'être jugeables sans que rien ne le
+    // dise. On relit jusqu'à en trouver autant que de sessions, borné.
+    for (let i = 0; i < 40; i += 1) {
+        releve.attributions = attributions();
+        if (releve.attributions.length >= appsParSession.size) break;
+        await dodo(1000);
+    }
     log('attributions session ↔ pid :', JSON.stringify(releve.attributions));
     const pidsDistincts = new Set(releve.attributions.map((a) => a.pid));
     releve.attribution_utilisable = releve.attributions.length >= 2
@@ -531,6 +584,7 @@ try {
                 actif: etat?.actif ?? null,
                 dejaActif: etat?.dejaActif ?? null,
                 visible: etat?.visible ?? null,
+                ecritures: etat?.ecritures ?? null,
                 statut: etat?.statut_texte ?? null,
                 statut_cache: etat?.statut_cache ?? null,
                 texte_fenetre: pid === null ? null : await lire(`fenetre|${pid}`),
@@ -585,13 +639,67 @@ try {
     // plus, on ferme une fenêtre et on la rouvre — et on l'ÉCRIT.
     log('① bis : une fenêtre de plus, attachée APRÈS la copie');
     releve.criteres.un_bis = { methode: 'ouverture d\'un Bloc-notes supplémentaire' };
-    vmIt('pp3-notepad-tardif', 'Start-Process notepad; Start-Sleep -Seconds 4');
-    await dodo(15000);
-    const tardives = attributions().filter((a) => !releve.attributions.some((b) => b.session === a.session));
+    const connues = new Set(releve.attributions.map((a) => a.session));
+    const ciblesConnues = new Set([...pages.keys()]);
+
+    // 🔴 L'AMORCE DOIT ÊTRE POSÉE AVANT QUE LA SESSION NE S'ÉTABLISSE, ET LA
+    // PREMIÈRE RÉDACTION NE LE FAISAIT PAS. Elle enveloppe
+    // `RTCPeerConnection.prototype.createDataChannel` : si la page a DÉJÀ créé
+    // son canal de contrôle, l'enveloppe le manque, et l'observateur reste
+    // vide — ce qui se lit EXACTEMENT comme « la fenêtre n'a rien reçu »,
+    // c'est-à-dire comme un défaut du produit.
+    //
+    // ⚠️ MESURÉ, PAS SUPPOSÉ : à l'exécution 2, `① bis` a rendu `false` alors
+    // que l'agent avait bel et bien émis — sa trace
+    // `etat courant du presse-papier emis a l'inscription` porte la session
+    // tardive, une fois, avec ses onze octets. C'est l'instrument qui était en
+    // retard, pas le produit.
+    //
+    // Le remède : guetter `Target.getTargets` DÈS le lancement du Bloc-notes,
+    // et attacher l'instant où la cible paraît — la cible existe dès le
+    // `window.open` de la page-shell, la SESSION met des secondes de plus
+    // (signaling, SDP, ICE).
+    const guetter = async (ms) => {
+        const fin = Date.now() + ms;
+        while (Date.now() < fin) {
+            const inv = await cdp.send('Target.getTargets', {}).catch(() => ({ targetInfos: [] }));
+            for (const t of inv.targetInfos ?? []) {
+                if (t.type !== 'page' || ciblesConnues.has(t.targetId)) continue;
+                if (!/\?session=/.test(t.url ?? '')) continue;
+                ciblesConnues.add(t.targetId);
+                const at = await cdp.send('Target.attachToTarget', { targetId: t.targetId, flatten: true }).catch(() => null);
+                if (!at) continue;
+                pages.set(t.targetId, { sid: at.sessionId, url: t.url });
+                await cdp.send('Runtime.enable', {}, at.sessionId).catch(() => { });
+                await cdp.send('Runtime.evaluate', { expression: SEMENCE + AMORCE_FINALE }, at.sessionId).catch(() => { });
+                log('+ cible TARDIVE amorcée', at.sessionId.slice(0, 8), t.url);
+                return { sid: at.sessionId, url: t.url };
+            }
+            await dodo(120);
+        }
+        return null;
+    };
+    vmIt('pp3-notepad-tardif', 'Start-Process notepad');
+    const cibleTardive = await guetter(90000);
+    releve.criteres.un_bis.cible_amorcee = cibleTardive !== null;
+    // ⚠️ ATTENTE SUR LE FAIT, jamais sur une durée : le journal CIFS est en
+    // retard, et la première exécution a calculé les sessions neuves contre une
+    // liste `attributions` restée VIDE — toutes les sessions ont donc paru
+    // neuves, y compris les trois qui ne l'étaient pas.
+    let tardives = [];
+    for (let i = 0; i < 60; i += 1) {
+        await dodo(1000);
+        tardives = attributions().filter((a) => !connues.has(a.session));
+        if (tardives.length > 0) break;
+    }
     releve.criteres.un_bis.sessions_neuves = tardives;
+    releve.criteres.un_bis.connues_avant = [...connues];
+    // ⚠️ L'ATTENTE PORTE SUR LE FAIT — le message reçu —, jamais sur une durée :
+    // la cible est amorcée, mais la session met encore des secondes à
+    // s'établir, et un relevé pris trop tôt rendrait `false` sur un produit
+    // correct.
     for (let i = 0; i < 60 && tardives.length > 0; i += 1) {
         const inv = await cdp.send('Target.getTargets', {}).catch(() => ({ targetInfos: [] }));
-        let trouvee = false;
         for (const t of inv.targetInfos ?? []) {
             const m = /[?&]session=([^&]+)/.exec(t.url ?? '');
             if (!m) continue;
@@ -610,14 +718,23 @@ try {
             if (e && e.pp) {
                 releve.criteres.un_bis.session = session;
                 releve.criteres.un_bis.messages = e.pp.messages;
+                releve.criteres.un_bis.ecritures = e.ecritures;
                 releve.criteres.un_bis.recu = (e.pp.messages ?? []).some((x) => (x.debut ?? '').includes(texte1));
                 appsParSession.set(session, { sid, url: t.url });
-                trouvee = true;
             }
         }
-        if (trouvee) break;
+        if (releve.criteres.un_bis.recu) break;
         await dodo(1000);
     }
+    // 🔵 LA SECONDE ARME, INDÉPENDANTE DU NAVIGATEUR : la trace de l'agent.
+    // Elle dit si la moitié AGENT a émis, et elle permet de départager un
+    // défaut du PRODUIT d'un retard de l'INSTRUMENT — c'est ce qui a tranché
+    // à l'exécution 2, où l'agent avait émis et le client n'avait rien vu.
+    try {
+        const plat = readFileSync('/media/vm/dev/agent.log', 'utf8').replace(/\x1b\[[0-9;]*m/g, '');
+        const em = [...plat.matchAll(/etat courant du presse-papier emis a l'inscription session=(\S+) octets=(\d+)/g)];
+        releve.criteres.un_bis.emissions_agent = em.map((m) => ({ session: m[1], octets: Number(m[2]) }));
+    } catch { releve.criteres.un_bis.emissions_agent = null; }
     log('① bis — la fenêtre tardive a reçu le contenu courant :', releve.criteres.un_bis.recu);
 
     // ── CRITÈRE ② — un collage depuis B met le texte de B dans la VM ───────
@@ -635,9 +752,7 @@ try {
             session, pid, texte,
             vm_clipboard: await lire('clipboard'),
             fenetre_cible: pid === null ? null : await lire(`fenetre|${pid}`),
-            fenetres_toutes: await Promise.all(releve.attributions.map(async (a) => ({
-                session: a.session, pid: a.pid, texte: await lire(`fenetre|${a.pid}`),
-            }))),
+            fenetres_toutes: await lireLesFenetres(releve.attributions),
         });
     }
     await phase('2-apres-les-collages-attribues');
@@ -664,17 +779,58 @@ try {
         const apres = await phase('3-apres-simultane');
         releve.criteres.trois.messages_apres = apres.fenetres.map((f) => f.messages?.length ?? 0);
         releve.criteres.trois.vm_clipboard = apres.vm_clipboard;
-        releve.criteres.trois.fenetres = await Promise.all(releve.attributions.map(async (a) => ({
-            session: a.session, pid: a.pid, texte: await lire(`fenetre|${a.pid}`),
-        })));
-        // (a) les deux commandes ont-elles reçu leur réponse ? Le zéro se
-        //     qualifie : un zéro sur des collages ESPACÉS ne dirait rien, et
-        //     c'est pourquoi il est relevé ICI, sur des collages serrés.
+        releve.criteres.trois.fenetres = await lireLesFenetres(releve.attributions);
+        // (a) les deux commandes ont-elles reçu leur réponse ?
+        //
+        // 🔴 LES MOTIFS ONT ÉTÉ VÉRIFIÉS CONTRE LE CODE, ET LES PREMIERS
+        // ÉTAIENT FAUX. Le plan prescrivait `aucune réponse du capteur` et
+        // `commande expirée` : la première N'EXISTE NULLE PART dans le dépôt,
+        // et la seconde n'existe que dans `agent/src/pont/` — LE PONT
+        // FICHIERS, pas le presse-papier. Leur zéro était VACUEUX : il serait
+        // resté zéro alors même que la borne de 12 s aurait mordu. C'est la
+        // règle 10 du §2.2 du plan, payée sur le plan lui-même.
+        //
+        // Les motifs qui EXISTENT, relevés par `grep` dans `agent/src/` :
+        //   - côté ENFANT, et c'est le décisif — toute commande qui échoue,
+        //     borne comprise, passe par là :
+        //         `collage NON écrit : la touche V est perdue, pas reportée`
+        //     (`transport/collage.rs`) ;
+        //   - côté CAPTEUR, la borne `DELAI_REPONSE_FENETRE` (12 s,
+        //     `capteur/serveur.rs`) :
+        //         `aucune réponse du fil de fenêtre en …`
+        //         `le fil de fenêtre n'a pas répondu …`
+        //
+        // ⚠️ ET LE ZÉRO SE QUALIFIE : un CONTRE-CONTRÔLE vérifie que chaque
+        // motif matche sur une ligne fabriquée. Un motif qui ne matcherait
+        // rien rendrait zéro pour une raison étrangère au produit.
         try {
             const plat = readFileSync('/media/vm/dev/agent.log', 'utf8').replace(/\x1b\[[0-9;]*m/g, '');
-            releve.criteres.trois.sans_reponse =
-                (plat.match(/aucune r\S*ponse du capteur|commande expir\S*e/g) ?? []).length;
-        } catch { releve.criteres.trois.sans_reponse = null; }
+            const motifs = {
+                collage_non_ecrit: /collage NON \S*crit/g,
+                sans_reponse_du_fil: /aucune r\S*ponse du fil de fen\S*tre/g,
+                fil_sans_reponse: /le fil de fen\S*tre n'a pas r\S*pondu/g,
+                collage_refuse: /collage refus\S*/g,
+            };
+            const temoin = {
+                collage_non_ecrit: "collage NON écrit : la touche V est perdue, pas reportée",
+                sans_reponse_du_fil: "aucune réponse du fil de fenêtre en 12s",
+                fil_sans_reponse: "le fil de fenêtre n'a pas répondu, canal clos",
+                collage_refuse: "collage refusé : au-dessus de la borne",
+            };
+            releve.criteres.trois.echecs = {};
+            releve.criteres.trois.motifs_discriminants = {};
+            for (const [nom, re] of Object.entries(motifs)) {
+                releve.criteres.trois.echecs[nom] = (plat.match(re) ?? []).length;
+                // Le contre-contrôle : le motif matche-t-il sa propre ligne ?
+                releve.criteres.trois.motifs_discriminants[nom] =
+                    new RegExp(re.source).test(temoin[nom]);
+            }
+            // Le témoin POSITIF : la trace que le produit émet à chaque annonce.
+            // Sans lui, un zéro d'échecs serait aussi ce que rendrait un journal
+            // vide ou mal lu.
+            releve.criteres.trois.annonces_dans_le_journal =
+                (plat.match(/presse-papier de la VM/g) ?? []).length;
+        } catch (e) { releve.criteres.trois.echecs = { erreur: String(e).slice(0, 120) }; }
     }
 
     // ── CRITÈRE ④ — une fenêtre sans focus n'écrit pas localement ──────────
@@ -706,7 +862,38 @@ try {
         await cdp.send('Page.bringToFront', {}, appsParSession.get(sansFocus).sid).catch(() => { });
         await dodo(3000);
         const p4b = await phase('4-apres-reprise-du-focus-par-B');
-        releve.criteres.quatre = { verdict: 'MESURÉ', texte: texte4, avant: p4a.fenetres, apres: p4b.fenetres };
+
+        // 🔴 LE VERDICT SE CALCULE SUR LES ÉCRITURES OBSERVÉES, pas sur les
+        // phases brutes. Deux propriétés, séparées :
+        //   (a) la fenêtre SANS focus a bien REÇU le message — sans quoi on
+        //       mesurerait une fenêtre qu'on n'a simplement pas servie ;
+        //   (b) elle ne l'a PAS écrit sans focus, et l'a écrit APRÈS.
+        const av = p4a.fenetres.find((f) => f.session === sansFocus);
+        const ap = p4b.fenetres.find((f) => f.session === sansFocus);
+        const porte = (f) => (f?.ecritures ?? []).some((e) => (e.debut ?? '').includes(texte4));
+        const recu = (f) => (f?.messages ?? []).some((m) => (m.debut ?? '').includes(texte4));
+        const a_recu = recu(av);
+        const ecrit_avant = porte(av);
+        const ecrit_apres = porte(ap);
+        releve.criteres.quatre = {
+            texte: texte4, sansFocus, avecFocus,
+            a_recu_le_message_sans_focus: a_recu,
+            focus_de_B_avant: av?.focus ?? null,
+            focus_de_B_apres: ap?.focus ?? null,
+            a_ecrit_sans_focus: ecrit_avant,
+            a_ecrit_apres_reprise: ecrit_apres,
+            verdict: !a_recu
+                ? 'NON JUGEABLE — la fenêtre sans focus n\'a pas reçu le message : on mesurerait une fenêtre non servie'
+                : (av?.focus !== false
+                    ? 'NON JUGEABLE — la fenêtre censée être sans focus en avait'
+                    : (!ecrit_avant && ecrit_apres
+                        ? 'TENU — sans focus elle n\'écrit pas, et elle écrit à la reprise'
+                        : (ecrit_avant
+                            ? 'NON TENU — elle a écrit SANS focus'
+                            : 'NON TENU — elle n\'a pas écrit même après la reprise du focus'))),
+            avant: p4a.fenetres, apres: p4b.fenetres,
+        };
+        log('④ verdict :', releve.criteres.quatre.verdict);
     }
 } catch (e) {
     releve.erreur = String(e).slice(0, 500);

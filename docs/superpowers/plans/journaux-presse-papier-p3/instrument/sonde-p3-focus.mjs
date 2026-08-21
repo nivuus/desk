@@ -83,8 +83,7 @@ const triplet = async (s) => JSON.parse(await cdp.eval(s.sessionId,
 // ⚠️ Ce que cela change pour la recette : le produit ouvre ses fenêtres par
 // `window.open`. Si c'est l'arme `window.open` qui échoue, ④ reste non
 // mesurable EN CONDITIONS DE PRODUIT, quelle que soit la réponse de l'autre.
-async function campagne(arme, ouvrirLesTrois) {
-    const prefixe = arme === 'window.open' ? 'w' : 't';
+async function campagne(arme, ouvrirLesTrois, prefixe) {
     const filles = await ouvrirLesTrois(prefixe);
     dire(`[${arme}] cibles trouvees : ${filles.length} / ${N} — ${filles.map((t) => t.url).join(' ')}`);
     if (filles.length !== N) {
@@ -139,19 +138,47 @@ async function inventorier(prefixe) {
         .sort((a, b) => a.url.localeCompare(b.url));
 }
 
-// ARME 1 — `window.open` depuis une page mère : LE GESTE DU PRODUIT.
-const campagneOuvre = await campagne('window.open', async (prefixe) => {
+/// Ouvre N filles depuis une page mère. `traits` est la CHAÎNE DE
+/// CARACTÉRISTIQUES passée en TROISIÈME argument de `window.open`, ou `null`
+/// pour n'en passer AUCUN.
+///
+/// 🔴 **CE TROISIÈME ARGUMENT EST TOUT LE SUJET, ET LA PREMIÈRE RÉDACTION DE
+/// CETTE SONDE L'A PASSÉ ALORS QUE LE PRODUIT NE LE PASSE PAS.** Elle appelait
+/// `window.open(url, nom, 'width=800,height=600')` ; `client/src/shell-page.ts`
+/// appelle `window.open(url, nom)` — **DEUX arguments**. Avec une chaîne de
+/// caractéristiques, Chrome ouvre une **POPUP** ; sans, un **ONGLET**. Et c'est
+/// exactement ce qui décide : les popups rapportent toutes le focus, les
+/// onglets le discriminent.
+///
+/// ⚠️ **Le verdict « ④ NON MESURABLE en conditions de produit » que cette sonde
+/// a d'abord rendu était donc FAUX, et c'est LA RECETTE SUR LA VM qui l'a
+/// réfuté** : le focus y discrimine parfaitement, aux deux exécutions. Une
+/// sonde qui croit reproduire le geste du produit doit le RELIRE, pas s'en
+/// souvenir.
+const ouvrirDepuisLaMere = (traits) => async (prefixe) => {
     const { targetId } = await cdp.send('Target.createTarget', { url: `http://127.0.0.1:${PORT_HTTP}/` });
     const { sessionId: sMere } = await cdp.send('Target.attachToTarget', { targetId, flatten: true });
     await cdp.send('Runtime.enable', {}, sMere);
     await dodo(600);
     for (let i = 0; i < N; i += 1) {
-        await cdp.eval(sMere, `window.open('/${prefixe}${i}', '${prefixe}${i}', 'width=800,height=600') ? 'ouverte' : 'refusee'`);
+        const args = traits === null
+            ? `'/${prefixe}${i}', '${prefixe}${i}'`
+            : `'/${prefixe}${i}', '${prefixe}${i}', ${JSON.stringify(traits)}`;
+        await cdp.eval(sMere, `window.open(${args}) ? 'ouverte' : 'refusee'`);
         await dodo(400);
     }
     await dodo(600);
     return inventorier(prefixe);
-});
+};
+
+// ARME 1 — `window.open(url, nom)` : **LE GESTE EXACT DU PRODUIT**, relu dans
+// `client/src/shell-page.ts:117` plutôt que remémoré.
+const campagneOuvre = await campagne('window.open(url, nom) — LE PRODUIT', ouvrirDepuisLaMere(null), 'w');
+
+// ARME 1 bis — le MÊME appel, plus une chaîne de caractéristiques. C'est ce que
+// la première rédaction prenait pour le geste du produit, et c'est ce qui fait
+// la différence entre un ONGLET et une POPUP.
+const campagnePopup = await campagne("window.open(url, nom, 'width=…') — une POPUP", ouvrirDepuisLaMere('width=800,height=600'), 'p');
 
 // ARME 2 — `Target.createTarget` : le geste de l'INSTRUMENT, jamais celui du
 // produit. Il n'est là que pour dire si l'échec éventuel de l'arme 1 tient au
@@ -163,7 +190,7 @@ const campagneCible = await campagne('Target.createTarget', async (prefixe) => {
     }
     await dodo(600);
     return inventorier(prefixe);
-});
+}, 't');
 
 const filles = { length: campagneOuvre.n_trouve };
 const basculements = campagneOuvre.basculements;
@@ -172,16 +199,19 @@ const basculements = campagneOuvre.basculements;
 // c'est celle-là que la recette rencontrera. L'autre arme ne sert qu'à
 // ATTRIBUER : elle dit si l'échec tient au `--headless` ou au mode d'ouverture.
 const verdict = campagneOuvre.issue;
-const attribution = campagneOuvre.issue === campagneCible.issue
-    ? 'LES DEUX ARMES S\'ACCORDENT — la cause n\'est pas le mode d\'ouverture.'
-    : 'LES DEUX ARMES DIVERGENT — window.open : « ' + campagneOuvre.issue
-      + ' » ; Target.createTarget : « ' + campagneCible.issue + ' ». '
-      + '🔴 LA CAUSE EST DONC LE MODE D\'OUVERTURE, PAS LE --headless. '
-      + 'Et le produit ouvre ses fenetres par window.open (client/src/shell-page.ts) : '
-      + 'le verdict qui commande la recette est celui de la premiere arme.';
+const attribution = 'TROIS ARMES, ET C\'EST LE TROISIEME ARGUMENT DE window.open QUI DECIDE : '
+    + 'window.open(url, nom) — LE GESTE DU PRODUIT — « ' + campagneOuvre.issue + ' » ; '
+    + "window.open(url, nom, 'width=...') — une POPUP — « " + campagnePopup.issue + ' » ; '
+    + 'Target.createTarget — « ' + campagneCible.issue + ' ». '
+    + (campagneOuvre.issue === campagnePopup.issue
+        ? "La chaine de caracteristiques ne change RIEN : la cause est ailleurs."
+        : "🔴 LA CHAINE DE CARACTERISTIQUES CHANGE TOUT — avec elle Chrome ouvre une POPUP, "
+          + "sans elle un ONGLET. La premiere redaction de cette sonde la passait alors que "
+          + "client/src/shell-page.ts ne la passe PAS, et elle a donc rendu un verdict FAUX "
+          + "sur le produit. C'est la RECETTE SUR LA VM qui l'a refute.");
 
 dire('');
-dire('=== VERDICT S1 (arme du PRODUIT : window.open) ===');
+dire('=== VERDICT S1 (arme du PRODUIT : window.open(url, nom), DEUX arguments) ===');
 dire(verdict);
 dire('attribution : ' + attribution);
 if (verdict.startsWith('NON MESURABLE')) {
@@ -200,6 +230,7 @@ writeFileSync(SORTIE, JSON.stringify({
     n_trouve: filles.length,
     emulationDeFocusActivee: false,
     armeDuProduit: campagneOuvre,
+    armePopup: campagnePopup,
     armeDeControle: campagneCible,
     basculements,
     verdict,
