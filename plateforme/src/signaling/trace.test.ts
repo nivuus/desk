@@ -39,6 +39,7 @@ const CONFIG: Config = {
     // et il signifie « ne croire l'adresse annoncée par personne ».
     proxyDeConfiance: new Set(),
     repertoireIcones: join(mkdtempSync(join(tmpdir(), 'g2-icones-')), 'icones'),
+    repertoireTeleversements: join(mkdtempSync(join(tmpdir(), 'g3-tranches-')), 'televersements'),
 };
 
 let base: Pilote | undefined;

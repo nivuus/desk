@@ -31,9 +31,9 @@ import type { Magasin } from '../apps/icones';
 import { empreinteValide } from '../apps/icones';
 import { lireParId } from '../depot/application';
 import { lireParId as lireVm } from '../depot/vm';
-import { verifierJeton } from '../identite/jeton';
 import { entetesCors } from './cors';
 import { ENTETES_SECURITE } from './entetes';
+import { lirePorteurAgent } from './porteur-agent';
 import { lirePorteur } from './porteur';
 
 export interface DependancesIcone {
@@ -164,28 +164,27 @@ async function depot(
     // SYMÉTRIQUE de celui de `porteur.ts` : `403` et non `401`, parce que le
     // jeton est VALIDE — il n'est simplement pas celui d'un agent. Un `401`
     // inviterait à se reconnecter pour rien.
-    const brut = req.headers.authorization;
-    if (Array.isArray(brut) || brut === undefined || brut === '') {
-        repondre(rep, 401, { refus: 'jeton-absent' }, cors);
-        return true;
-    }
-    const morceaux = brut.split(' ');
-    if (morceaux.length !== 2 || morceaux[0] !== 'Bearer' || morceaux[1] === '') {
-        repondre(rep, 401, { refus: 'jeton-invalide' }, cors);
-        return true;
-    }
-    const verdict = verifierJeton(morceaux[1], deps.secretJeton, deps.maintenant());
-    if (!verdict.ok) {
-        repondre(
-            rep,
-            401,
-            { refus: verdict.motif === 'expire' ? 'jeton-expire' : 'jeton-invalide' },
-            cors,
-        );
-        return true;
-    }
-    if (verdict.type !== 'agent') {
-        repondre(rep, 403, { refus: 'jeton-utilisateur' }, cors);
+    //
+    // 🔴 CETTE LECTURE VIVAIT ICI EN LIGNE, RECOPIÉE DE `porteur.ts`, ET ELLE
+    // EST PASSÉE DANS `porteur-agent.ts` (G3). La raison n'est pas
+    // l'esthétique : `GET /televersement/:id/contenu` a besoin de la MÊME
+    // lecture, et deux copies d'une garde de sécurité divergent en silence —
+    // celle qu'on corrige et celle qu'on oublie. Le module rend en outre le
+    // PRÉFIXE DE SESSION, dont cette route-ci n'a pas l'emploi et que l'autre
+    // résoudra en VM par `depot/agent.ts::lireParPrefixe`.
+    //
+    // ⚠️ LES QUATRE MOTIFS ET LEURS CODES SONT INCHANGÉS, à la lettre :
+    // `jeton-absent` 401, `jeton-invalide` 401, `jeton-expire` 401,
+    // `jeton-utilisateur` 403, et dans cet ordre. La SEULE différence de
+    // comportement est un en-tête `Authorization` RÉPÉTÉ, que la copie rangeait
+    // avec `jeton-absent` et que le module refuse en `jeton-invalide` — une
+    // requête ambiguë n'est pas une requête vide. **Elle est INATTEIGNABLE
+    // depuis une vraie requête HTTP, et c'est MESURÉ** : sur Node v24.9.0, deux
+    // en-têtes `Authorization` rendent `typeof req.headers.authorization ===
+    // 'string'`, le parseur gardant le premier et jetant le second.
+    const porteur = lirePorteurAgent(req.headers, deps.secretJeton, deps.maintenant());
+    if (!porteur.ok) {
+        repondre(rep, porteur.code, { refus: porteur.motif }, cors);
         return true;
     }
 

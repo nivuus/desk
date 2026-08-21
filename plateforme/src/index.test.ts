@@ -57,6 +57,7 @@ describe('démarrage du service', () => {
             // defaut et signifie « ne croire l'adresse annoncee par personne ».
             proxyDeConfiance: new Set(),
             repertoireIcones: join(mkdtempSync(join(tmpdir(), 'g2-icones-')), 'icones'),
+            repertoireTeleversements: join(mkdtempSync(join(tmpdir(), 'g3-tranches-')), 'televersements'),
         };
         // Deux assertions DISTINCTES, et la seconde est le point de ce test.
         await expect(demarrer(config)).rejects.toThrow(/base/i);
@@ -91,6 +92,7 @@ describe('démarrage du service', () => {
             // `lireConfig` et l'état d'un déploiement sans proxy inverse.
             proxyDeConfiance: new Set(),
             repertoireIcones: join(mkdtempSync(join(tmpdir(), 'g2-icones-')), 'icones'),
+            repertoireTeleversements: join(mkdtempSync(join(tmpdir(), 'g3-tranches-')), 'televersements'),
         });
         expect(service.port).toBeGreaterThan(0);
         await expect(connecterA(service.port)).resolves.toBeUndefined();

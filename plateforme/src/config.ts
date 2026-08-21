@@ -79,6 +79,23 @@ export interface Config {
     /// Une rupture bruyante ne serait pas proportionnée — mais un silence non
     /// plus, d'où la ligne de journal à l'ouverture du magasin.
     repertoireIcones: string;
+    /// PLATEFORME_TELEVERSEMENTS — FACULTATIVE, défaut `donnees/televersements`.
+    /// La racine du magasin des TRANCHES : `<racine>/<id>/<n>`, un fichier par
+    /// tranche, et jamais de fichier assemblé (sous-bloc G3).
+    ///
+    /// ⚠️ **MÊME ASYMÉTRIE ASSUMÉE AVEC `PLATEFORME_HOTE` QUE `repertoireIcones`
+    /// CI-DESSUS, ET IL FAUT LA DIRE PLUTÔT QUE DE L'HÉRITER.** Là, un mauvais
+    /// défaut EXPOSERAIT le service ; ici il coûte un RETÉLÉVERSEMENT — borné,
+    /// et visible de l'utilisateur qui le refait. Une rupture bruyante ne
+    /// serait pas proportionnée.
+    ///
+    /// ⚠️ **MAIS LA CONSÉQUENCE EST PLUS LOURDE QUE POUR LES ICÔNES, ET CE
+    /// N'EST PAS LE MÊME MOT.** Le magasin d'icônes se reconstruit TOUT SEUL —
+    /// la plateforme redemande à l'agent ce que son disque n'a pas. Un
+    /// téléversement perdu, lui, ne se reconstruit pas : il faut qu'un humain
+    /// redépose son fichier. Le silence est donc encore moins acceptable
+    /// ici — d'où la ligne de journal à l'ouverture du magasin.
+    repertoireTeleversements: string;
 }
 
 const BASES = ['sqlite', 'postgres'] as const;
@@ -118,6 +135,15 @@ export function lireConfig(env: Record<string, string | undefined>): Config {
     const brutIcones = env.PLATEFORME_ICONES;
     const repertoireIcones =
         brutIcones === undefined || brutIcones === '' ? 'donnees/icones' : brutIcones;
+
+    // Même garde de la chaîne VIDE, et pour la même raison qu'au-dessus : un
+    // `PLATEFORME_TELEVERSEMENTS=` vide ferait de la racine des tranches le
+    // répertoire COURANT du service, où elles se mêleraient à ses sources.
+    const brutTeleversements = env.PLATEFORME_TELEVERSEMENTS;
+    const repertoireTeleversements =
+        brutTeleversements === undefined || brutTeleversements === ''
+            ? 'donnees/televersements'
+            : brutTeleversements;
 
     // 🔴 AUCUN DÉFAUT, et surtout pas un défaut ALÉATOIRE. Un secret tiré au
     // démarrage passerait tous les tests de forme, puis invaliderait à chaque
@@ -208,5 +234,6 @@ export function lireConfig(env: Record<string, string | undefined>): Config {
         origineClient,
         proxyDeConfiance,
         repertoireIcones,
+        repertoireTeleversements,
     };
 }

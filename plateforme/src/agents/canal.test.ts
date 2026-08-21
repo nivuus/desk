@@ -270,6 +270,7 @@ describe('le canal, CÂBLÉ dans le service entier', () => {
             // defaut et signifie « ne croire l'adresse annoncee par personne ».
             proxyDeConfiance: new Set(),
             repertoireIcones: join(mkdtempSync(join(tmpdir(), 'g2-icones-')), 'icones'),
+            repertoireTeleversements: join(mkdtempSync(join(tmpdir(), 'g3-tranches-')), 'televersements'),
         };
         base = await baseNeuve('canal-service');
         await enrolerUneVm(base, 'v-1');

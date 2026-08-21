@@ -39,6 +39,11 @@ describe('lireConfig', () => {
             // borné et automatique, là où une mauvaise adresse d'écoute
             // exposerait le service.
             repertoireIcones: 'donnees/icones',
+            // Absente, donc le défaut — même asymétrie assumée, et une
+            // conséquence PLUS lourde : un magasin d'icônes perdu se
+            // reconstruit tout seul, un téléversement perdu exige qu'un humain
+            // redépose. Voir `config.ts`.
+            repertoireTeleversements: 'donnees/televersements',
         });
     });
 
