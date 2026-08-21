@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
     lancerApplication,
+    listerVms,
     lireIcone,
     listerApplications,
     type ApplicationListee,
@@ -159,5 +160,45 @@ describe('contrôle de forme', () => {
         // la compilation. Le même geste que `televersement.test.ts`.
         const _: Fetch = globalThis.fetch as unknown as Fetch;
         expect(typeof _).toBe('function');
+    });
+});
+
+describe('listerVms', () => {
+    it('appelle GET /vm avec le porteur et rend la liste', async () => {
+        const { fetch, appels } = faux({
+            'https://x/vm': {
+                json: async () => ({
+                    vms: [{ id: 'vm-1', nom: 'poste', etat: 'prete', prefixe: 'AAA', sessions_ouvertes: 0 }],
+                }),
+            },
+        });
+        const issue = await listerVms({ base: 'https://x', jeton: 'J', fetch });
+        expect(issue.etat).toBe('ok');
+        if (issue.etat !== 'ok') return;
+        expect(issue.valeur).toEqual([{ id: 'vm-1', nom: 'poste', etat: 'prete', prefixe: 'AAA' }]);
+        expect(appels[0].init?.headers).toEqual({ authorization: 'Bearer J' });
+    });
+
+    it('rend une liste VIDE plutôt qu\'un refus quand aucune VM n\'est attribuée', async () => {
+        // ⚠️ AUCUNE VM N'EST UN ÉTAT NORMAL, pas une panne : `routes-vm.ts` rend
+        //    200 avec un tableau vide. Le confondre avec un refus ferait dire au
+        //    hub qu'il est cassé là où il n'a rien à montrer.
+        const { fetch } = faux({ 'https://x/vm': { json: async () => ({ vms: [] }) } });
+        const issue = await listerVms({ base: 'https://x', jeton: 'J', fetch });
+        expect(issue).toEqual({ etat: 'ok', valeur: [] });
+    });
+
+    it('rend le motif du service sur un refus', async () => {
+        const { fetch } = faux({
+            'https://x/vm': { ok: false, status: 401, json: async () => ({ refus: 'jeton-expire' }) },
+        });
+        const issue = await listerVms({ base: 'https://x', jeton: 'J', fetch });
+        expect(issue).toEqual({ etat: 'refus', refus: { source: 'service', statut: 401, motif: 'jeton-expire' } });
+    });
+
+    it('refuse un corps 200 sans tableau `vms`', async () => {
+        const { fetch } = faux({ 'https://x/vm': { json: async () => ({}) } });
+        const issue = await listerVms({ base: 'https://x', jeton: 'J', fetch });
+        expect(issue.etat).toBe('refus');
     });
 });

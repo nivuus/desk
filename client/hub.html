@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="fr">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Applications</title>
+        <!-- L'ORDRE PORTE LA CASCADE : socle (tokens + base), primitives, puis
+             la feuille de cette surface. Trois `<link>` et aucun `@import` :
+             c'est ce qui laisse Vite PARTAGER `primitives.css` avec les trois
+             autres surfaces au lieu de le ré-inliner dans chacune. -->
+        <link rel="stylesheet" href="/src/design/socle.css" />
+        <link rel="stylesheet" href="/src/design/primitives.css" />
+        <link rel="stylesheet" href="/src/hub/hub.css" />
+        <!-- ⚠️ AUCUN `<link rel="manifest">` ICI, ET C'EST LE FOND DE G5.
+             Le manifeste du HUB est engendré AU BUILD depuis `tokens.ts` et
+             posé par le greffon `guac-manifeste-hub` de `vite.config.ts` : une
+             couleur écrite en dur dans un `.webmanifest` échapperait à §7.2,
+             dont le périmètre est `client/src/**` en `.css`/`.ts` plus les
+             entrées Vite, et le dépôt aurait DEUX sources de vérité pour une
+             couleur (décision D4 du plan).
+             Le manifeste PAR APPLICATION, lui, ne peut pas être servi du tout :
+             un `<link rel="manifest">` est allé chercher par le navigateur SANS
+             en-tête `Authorization`, et ⑤ ne pose AUCUN cookie. `page.ts` le
+             construit donc en mémoire et le publie en `blob:` quand `?app=` est
+             présent — voie V1, REÇUE par la porte P0. -->
+    </head>
+    <body>
+        <main class="hub">
+            <header class="hub__entete">
+                <h1 class="hub__titre">Applications</h1>
+                <p id="themes" class="hub__actions" role="group" aria-label="Thème"></p>
+            </header>
+
+            <!-- LA ZONE DE DÉPÔT. Le chemin NOMINAL, et il doit fonctionner
+                 SEUL : c'est l'amendement du 28/07/2026, que le critère ② de
+                 G5 existe pour garder. Le bouton est là parce qu'un dépôt
+                 n'est pas accessible au clavier. -->
+            <section
+                id="depot"
+                class="hub__depot"
+                aria-labelledby="depot-titre"
+                aria-describedby="depot-aide"
+            >
+                <h2 id="depot-titre" class="hub__depot-titre">Installer un logiciel</h2>
+                <p id="depot-aide" class="hub__depot-aide">
+                    Déposez ici un fichier .msi, .exe ou .bat — ou choisissez-le.
+                </p>
+                <p>
+                    <button id="choisir" type="button" class="bouton bouton--secondaire">
+                        Choisir un fichier…
+                    </button>
+                </p>
+            </section>
+
+            <div id="message" class="message hub__message" role="status"></div>
+
+            <ul id="applications" class="hub__grille"></ul>
+        </main>
+        <script type="module" src="/src/hub/page.ts"></script>
+    </body>
+</html>

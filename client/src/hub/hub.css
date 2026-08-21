@@ -1,0 +1,177 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   LA FEUILLE DU HUB, ET DE LUI SEUL — sous-bloc G5.
+
+   Quatre surfaces, quatre feuilles, une convention héritée de S3 : `style.css`
+   pour la fenêtre de session, `shell.css` pour le bureau, `connexion.css` pour
+   la connexion, celle-ci pour le hub. Aucune ne connaît les trois autres, et
+   AUCUN SÉLECTEUR D'ÉLÉMENT NU n'y apparaît — c'est ce qui garantit qu'elle ne
+   peut RIEN changer aux autres surfaces.
+
+   🔴 ELLE SE LIE DEPUIS `hub.html`, ELLE NE S'IMPORTE JAMAIS — l'arrangement B
+   mesuré par S1 : un `@import` ré-inline, un `<link>` laisse Vite partager.
+
+   🔴 ET ELLE VIT SOUS `client/src/`, JAMAIS EN `<style>` EN LIGNE. Ce n'est pas
+   un rangement : un `<style>` en ligne ÉCHAPPERAIT à DEUX contrôles de ⑥ —
+   §7.7 ne pèse que les feuilles émises sous `client/dist/assets`, et §7.10 ne
+   balaie que les feuilles de `client/src` hors `design`. La mettre ici, c'est
+   se soumettre à deux contrôles de plus, délibérément (décision D5 du plan).
+
+   ⚠️ AUCUN CHEMIN À GLOB N'EST ÉCRIT DANS CE COMMENTAIRE, ET C'EST APPRIS PAR
+   L'ÉCHEC : un `**` suivi d'un `/*` referme un commentaire CSS, et le build
+   échoue sur « Unknown word » à une ligne qui n'a rien à voir. C'est le piège
+   que S1 a payé dans `vite.config.ts` — où `src/**` suivi de `/*.ts` fermait
+   un commentaire JS —, rejoué ici dans une autre syntaxe.
+
+   ── CE QUE ⑥ HABILLE, ET CE QU'IL N'HABILLE PAS ──────────────────────────
+   ⚠️ LA SPEC DE ④ ET CELLE DE ⑥ SE RENVOIENT LA BALLE, et G5 le constate
+   plutôt qu'il ne le tait : ④ §10 dit « ④ livre un hub FONCTIONNEL ; ⑥
+   l'habille », et ⑥ EST CLOS — son legs n°2 dit « le hub n'existe pas ; son
+   contenu dépend de ④ ». Cette feuille emploie donc le socle et les
+   primitives, et **n'invente AUCUNE direction visuelle**. AUCUN JUGEMENT
+   VISUEL N'A ÉTÉ PORTÉ : personne n'a jamais ouvert une page de ⑥ dans un
+   navigateur, de S1 à S4, et G5 ne le fait pas davantage.
+
+   ── AUCUNE LONGUEUR HORS TOKEN ───────────────────────────────────────────
+   Toute valeur dimensionnée passe par un cran (§7.10). L'icône fait `--e-8`
+   (64 px) : c'est un cran d'ESPACEMENT employé comme mesure, ce que la spec
+   §4.4 n'interdit pas — les échelles couvrent l'espacement et la typographie,
+   et une icône carrée est une mesure d'espacement au même titre qu'une
+   gouttière. ⚠️ Inventer `--icone-hub` était l'autre voie, et elle est
+   REFUSÉE : `tokens.css` est à 300 lignes pour une porte de 300, et y ajouter
+   un token exigerait sa scission — que le plan de G5 tranche NON, sur mesure
+   (décision D3, neuf lecteurs énumérés).
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.hub {
+    box-sizing: border-box;
+    inline-size: 100%;
+    max-inline-size: var(--contenant-page);
+    margin-inline: auto;
+    padding: var(--e-5);
+}
+
+.hub__entete {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--e-4);
+    align-items: baseline;
+    justify-content: space-between;
+    margin-block-end: var(--e-5);
+}
+
+.hub__titre {
+    margin-block: 0;
+    color: var(--texte-fort);
+    /* `--t-2xl` : le titre du HUB (spec §4.4 de ⑥). ⚠️ `--t-3xl` est celui de
+       l'ÉCRAN DE CONNEXION — les deux crans ont été INTERVERTIS une fois par
+       une liste d'attente, et c'est la spec qui l'a emporté. */
+    font-size: var(--t-2xl);
+    line-height: var(--lh-serre);
+}
+
+.hub__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--e-2);
+}
+
+/* ── LA ZONE DE DÉPÔT ────────────────────────────────────────────────────
+   Le chemin NOMINAL du téléversement d'un installeur, et il doit fonctionner
+   SEUL — c'est l'amendement du 28/07/2026, et le critère ② de G5 existe pour
+   le garder : « tenter l'enregistrement, avec repli silencieux sur le
+   glisser-déposer », et AUCUNE fonctionnalité ne doit dépendre de
+   `file_handlers`. */
+.hub__depot {
+    display: grid;
+    place-items: center;
+    gap: var(--e-3);
+    padding: var(--e-6);
+    border: var(--trait-focus) dashed var(--bord-fort);
+    border-radius: var(--r-3);
+    color: var(--texte-faible);
+    text-align: center;
+    /* Le survol change la bordure et le fond : la transition rend le passage
+       lisible plutôt que brutal. `--duree-1`, jamais une durée littérale. */
+    transition: border-color var(--duree-1), background-color var(--duree-1);
+}
+
+/* ⚠️ POSÉE PAR `classList.toggle`, DONC INVISIBLE À §7.9 — le contrôle le dit
+   lui-même : « une classe calculée à l'exécution est invisible ». Elle est
+   écrite en LITTÉRAL dans `page.ts`, ce qui est la convention qui rend ce
+   contrôle utile, et un test d'hôte tient le prédicat qui la pose. */
+.hub__depot--survol {
+    border-color: var(--accent);
+    background-color: var(--fond-2);
+    color: var(--texte-fort);
+}
+
+.hub__depot-titre {
+    margin-block: 0;
+    color: var(--texte-fort);
+    font-size: var(--t-l);
+}
+
+.hub__depot-aide {
+    margin-block: 0;
+    font-size: var(--t-s);
+    line-height: var(--lh-normal);
+}
+
+/* ── LA GRILLE DES APPLICATIONS ──────────────────────────────────────────── */
+
+.hub__grille {
+    display: grid;
+    gap: var(--e-4);
+    grid-template-columns: repeat(auto-fill, minmax(var(--contenant-colonne), 1fr));
+    margin-block-start: var(--e-5);
+    padding: 0;
+    list-style: none;
+}
+
+.hub__entree {
+    display: flex;
+    gap: var(--e-4);
+    align-items: center;
+}
+
+.hub__icone {
+    flex: none;
+    inline-size: var(--e-8);
+    block-size: var(--e-8);
+    border-radius: var(--r-2);
+    /* `contain` ne rogne jamais : une icône dont la source n'est pas carrée
+       reste entière, là où `cover` en couperait un bord. */
+    object-fit: contain;
+}
+
+/* La place que garde une entrée SANS icône. Sans elle, les noms d'une même
+   rangée ne s'alignent plus dès qu'une application n'a pas d'image. */
+.hub__icone--absente {
+    background-color: var(--fond-2);
+}
+
+.hub__corps {
+    display: grid;
+    gap: var(--e-2);
+    /* Sans quoi un nom très long pousse la carte au-delà de sa colonne. */
+    min-inline-size: 0;
+}
+
+.hub__nom {
+    margin-block: 0;
+    overflow-wrap: anywhere;
+    color: var(--texte-fort);
+    font-size: var(--t-l);
+    line-height: var(--lh-serre);
+}
+
+.hub__boutons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--e-2);
+}
+
+.hub__message {
+    margin-block-start: var(--e-4);
+    line-height: var(--lh-normal);
+}
