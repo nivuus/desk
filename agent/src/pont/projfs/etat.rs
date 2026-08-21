@@ -170,6 +170,19 @@ pub struct Etat {
     /// ⚠️ **PUR, et sans verrou** : il est incrémenté depuis les fils de rappel
     /// que le SYSTÈME possède, où la discipline de fil interdit d'attendre.
     pub compteurs: crate::pont::compteurs::Compteurs,
+    /// **F4** — l'histogramme des traversées pont → navigateur → pont.
+    ///
+    /// 🔴 **IL EST ALIMENTÉ TOUJOURS, et `PONT_MESURE` n'arme que
+    /// l'ÉMISSION.** Un mécanisme qui n'est armé que pendant sa propre mesure
+    /// est un mécanisme que le produit n'exerce jamais, donc qu'on ne verra
+    /// jamais rouge. Collecter toujours coûte trois opérations atomiques sur un
+    /// chemin qui fait déjà un `HashMap::remove` sous un `Mutex`, et fait que
+    /// F5 et ses successeurs exercent l'histogramme sans le savoir.
+    ///
+    /// ⚠️ **Ici et non dans un statique**, comme [`Etat::compteurs`] et pour la
+    /// même raison : il doit mourir avec la racine, sans quoi un pont relancé
+    /// ferait lire le recensement de l'exécution précédente.
+    pub latences: crate::pont::latence::Histogramme,
     /// Ce que CE processus a hydraté depuis son démarrage — voir
     /// [`PERIODE_HYDRATATION`] et [`Etat::tracer_hydratation`].
     pub octets_hydrates: AtomicU64,
@@ -236,7 +249,11 @@ impl Etat {
             // Le transport est parti : retirer ce qu'on vient d'inscrire,
             // sinon la commande attendrait son budget entier pour rien.
             if let Ok(mut table) = self.table.lock() {
-                table.resoudre(correlation);
+                // ⚠️ **Aucune observation de latence ici** : le transport est parti
+                // AVANT que la requête ne parte. Il n'y a pas eu de traversée, et
+                // en compter une de durée nulle tirerait la moyenne vers le bas
+                // à chaque canal rompu.
+                table.resoudre(correlation, std::time::Instant::now());
             }
             if let Ok(mut attente) = self.en_attente.lock() {
                 attente.remove(&correlation);

@@ -237,8 +237,30 @@ impl Table {
 
     /// Rend la commande d'une corrélation, ou `None` si elle a été annulée,
     /// expirée, ou n'a jamais existé — la réponse tardive est alors **jetée**.
-    pub fn resoudre(&mut self, correlation: u32) -> Option<(Option<i32>, Attendue)> {
-        self.en_vol.remove(&correlation).map(|e| (e.command_id, e.quoi))
+    ///
+    /// **Le troisième terme est l'ÂGE de la commande** : le temps écoulé entre
+    /// son inscription et cet instant, c'est-à-dire **la traversée
+    /// pont → navigateur → pont**. C'est ce que [`crate::pont::latence`]
+    /// observe, et c'est tout ce que le pont sait mesurer — ni l'entrée dans le
+    /// rappel, ni le balayage, ni `PrjCompleteCommand` n'y sont.
+    ///
+    /// ⚠️ **`maintenant` est un PARAMÈTRE**, comme partout dans ce module : le
+    /// temps n'y est jamais lu, ce qui rend l'âge testable sans dormir. C'est
+    /// la même discipline que [`Table::plus_ancienne`] et que
+    /// [`Table::expirees`].
+    ///
+    /// ⚠️ **Une commande EXPIRÉE ne passe pas par ici** : `expirees` la retire
+    /// elle-même. L'âge rendu est donc celui d'une traversée qui a **abouti**,
+    /// et jamais celui d'un échec — les deux se lisent sur deux lignes de
+    /// recensement distinctes, jamais l'une pour l'autre.
+    pub fn resoudre(
+        &mut self,
+        correlation: u32,
+        maintenant: Instant,
+    ) -> Option<(Option<i32>, Attendue, Duration)> {
+        self.en_vol
+            .remove(&correlation)
+            .map(|e| (e.command_id, e.quoi, maintenant.saturating_duration_since(e.inscrite_a)))
     }
 
     /// Annule la commande ProjFS `command_id`, et rend **TOUTES** ses

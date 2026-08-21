@@ -19,7 +19,7 @@ fn une_reponse_arrivee_apres_annulation_est_jetee() {
 
     assert_eq!(t.annuler(42), vec![c]);
     assert_eq!(t.en_vol(), 0, "l'annulation doit retirer l'entrée");
-    assert_eq!(t.resoudre(c), None, "la réponse tardive doit être JETÉE");
+    assert_eq!(t.resoudre(c, Instant::now()), None, "la réponse tardive doit être JETÉE");
 }
 
 #[test]
@@ -46,7 +46,7 @@ fn une_reponse_arrivee_apres_expiration_est_jetee() {
     let mut t = Table::nouvelle();
     let c = t.inscrire(9, attributs("a.txt"), debut + DELAI_ATTRIBUTS);
     t.expirees(debut + DELAI_ATTRIBUTS);
-    assert_eq!(t.resoudre(c), None);
+    assert_eq!(t.resoudre(c, Instant::now()), None);
 }
 
 #[test]
@@ -58,7 +58,7 @@ fn les_correlations_sont_monotones_et_ne_se_reutilisent_pas() {
     assert_ne!(a, b);
     // Et une corrélation résolue n'est PAS recyclée : une réponse dupliquée du
     // navigateur serait sinon appliquée à la commande suivante.
-    t.resoudre(a);
+    t.resoudre(a, Instant::now());
     let c = t.inscrire(3, attributs("c"), e);
     assert_ne!(c, a);
     assert_ne!(c, b);
@@ -81,13 +81,13 @@ fn vider_rend_tout_et_laisse_la_table_vide() {
     assert_eq!(t.en_vol(), 0);
     assert!(t.vider().is_empty());
     // …et plus aucune réponse n'est appliquée après.
-    assert_eq!(t.resoudre(c1), None);
+    assert_eq!(t.resoudre(c1, Instant::now()), None);
 }
 
 #[test]
 fn une_correlation_inconnue_rend_none_sans_paniquer() {
     let mut t = Table::nouvelle();
-    assert_eq!(t.resoudre(12_345), None);
+    assert_eq!(t.resoudre(12_345, Instant::now()), None);
     assert!(t.annuler(999).is_empty());
     assert!(t.expirees(maintenant()).is_empty());
 }
@@ -117,10 +117,10 @@ fn deux_enumerations_du_meme_chemin_coexistent() {
     assert_ne!(c1, c2);
     assert_eq!(t.en_vol(), 2, "les deux sessions doivent COEXISTER");
     // …et chacune se résout sur SA session, pas sur celle de l'autre.
-    let (id1, quoi1) = t.resoudre(c1).expect("la première session existe");
+    let (id1, quoi1, _) = t.resoudre(c1, Instant::now()).expect("la première session existe");
     assert_eq!(id1, Some(100));
     assert_eq!(quoi1, Attendue::Lister { chemin: "dossier".into(), enumeration: g1 });
-    let (id2, quoi2) = t.resoudre(c2).expect("la seconde session existe");
+    let (id2, quoi2, _) = t.resoudre(c2, Instant::now()).expect("la seconde session existe");
     assert_eq!(id2, Some(200));
     assert_eq!(quoi2, Attendue::Lister { chemin: "dossier".into(), enumeration: g2 });
 }
@@ -159,7 +159,7 @@ fn un_debordement_du_compteur_de_correlation_ne_reutilise_pas_une_correlation_en
     );
     assert_eq!(t.en_vol(), 3);
     // La commande d'origine répond toujours pour ELLE.
-    assert_eq!(t.resoudre(zero).map(|(id, _)| id), Some(Some(10)));
+    assert_eq!(t.resoudre(zero, Instant::now()).map(|(id, _, _)| id), Some(Some(10)));
 }
 
 /// 🔴 **UNE ÉCRITURE ET UNE LECTURE NE PARTAGENT JAMAIS UNE CORRÉLATION.**
@@ -194,9 +194,31 @@ fn une_inscription_sans_commande_n_a_pas_de_command_id() {
     let e = maintenant() + DELAI_ECRIRE;
     let mut t = Table::nouvelle();
     let c = t.inscrire_sans_commande(Attendue::Creer { chemin: "neuf.txt".into() }, e);
-    let (commande, quoi) = t.resoudre(c).expect("inscrite à l'instant");
+    let (commande, quoi, _) = t.resoudre(c, Instant::now()).expect("inscrite à l'instant");
     assert_eq!(commande, None, "une écriture ne complète AUCUN rappel ProjFS");
     assert_eq!(quoi, Attendue::Creer { chemin: "neuf.txt".into() });
+}
+
+/// 🔴 **L'ÂGE RENDU PAR `resoudre` EST UNE VRAIE SOUSTRACTION, PAS UN ZÉRO.**
+///
+/// C'est la seule chose que le pont sache mesurer d'une traversée (F4, §0.5),
+/// et un `Duration::ZERO` constant rendrait tout l'histogramme de
+/// `pont::latence` muet **sans qu'aucune ligne de recensement ne manque** :
+/// `n:` monterait, `moy_us:` resterait à 0. Le temps étant un paramètre, le
+/// test l'éprouve **sans dormir**.
+#[test]
+fn resoudre_rend_l_age_de_la_commande_et_non_zero() {
+    let depart = maintenant();
+    let mut t = Table::nouvelle();
+    let c = t.inscrire(7, Attendue::Attributs { chemin: "a.txt".into() }, depart + DELAI_ATTRIBUTS);
+
+    // `inscrire` lit `Instant::now()` pour l'inscription ; on mesure donc un
+    // âge PLANCHER en prenant un « maintenant » décalé de 250 ms.
+    let (_, _, age) = t
+        .resoudre(c, Instant::now() + Duration::from_millis(250))
+        .expect("inscrite à l'instant");
+    assert!(age >= Duration::from_millis(250), "âge rendu : {age:?}");
+    assert!(age < Duration::from_millis(2_000), "l'âge n'est pas le budget : {age:?}");
 }
 
 /// 🔴 **`vider` REND LES ÉCRITURES AVEC UN `command_id` ABSENT.**
@@ -248,7 +270,7 @@ fn annuler_ne_vise_jamais_une_ecriture() {
         t.inscrire_sans_commande(Attendue::Ecrire { chemin: "a".into(), dernier: true }, e);
     assert!(t.annuler(0).is_empty(), "aucune commande ProjFS 0 n'existe");
     assert_eq!(t.en_vol(), 1, "l'écriture est toujours là");
-    assert!(t.resoudre(ecriture).is_some());
+    assert!(t.resoudre(ecriture, Instant::now()).is_some());
 }
 
 /// 🔴 **LE RELEVÉ QUI REND LE LEGS N°4 DE F1 DIAGNOSTICABLE.**
@@ -340,5 +362,5 @@ fn annuler_retire_les_N_correlations_d_une_lecture_a_fenetre() {
     let annulees = t.annuler(7);
     assert_eq!(annulees, vec![a, b, c], "les TROIS, dans un ordre déterministe");
     assert_eq!(t.en_vol(), 1, "seule la commande 8 survit");
-    assert!(t.resoudre(autre).is_some());
+    assert!(t.resoudre(autre, Instant::now()).is_some());
 }

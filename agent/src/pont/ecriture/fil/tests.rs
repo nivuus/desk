@@ -392,7 +392,8 @@ fn les_ecritures_prennent_leurs_correlations_dans_la_table_partagee() {
         "l'écriture doit être INSCRITE dans la table du pont"
     );
     let (_, c, _, _) = *bac.trames().last().expect("morceau");
-    let (commande, _) = bac.table.lock().expect("verrou").resoudre(c).expect("inscrite");
+    let (commande, _, _) =
+        bac.table.lock().expect("verrou").resoudre(c, Instant::now()).expect("inscrite");
     assert_eq!(commande, None, "une écriture ne complète AUCUN rappel ProjFS");
 }
 
