@@ -1196,7 +1196,17 @@ pas celle qu'on retire.
 ```bash
 docker run --rm -v "$PWD/deploiement/nginx.conf:/etc/nginx/nginx.conf:ro" nginx:alpine nginx -t
 ```
-Expected: `syntax is ok` / `test is successful`.
+
+🔴 **CETTE COMMANDE, TELLE QUELLE, ÉCHOUE — ET LA PREMIÈRE RÉDACTION DE CE PLAN
+NE LE DISAIT PAS** (mesuré le 21 août 2026) : `cannot load certificate
+.../fullchain.pem`. `deploiement/tls/` est **gitignoré**, donc absent de tout
+checkout neuf, et `nginx -t` charge réellement les certificats.
+
+Monter des certificats **auto-signés jetables** dans le même conteneur jetable
+lève l'obstacle. ⚠️ Les générer hors de l'arbre versionné, et vérifier par
+`git status --porcelain` qu'ils n'y ont rien laissé.
+
+Expected, une fois les certificats fournis : `syntax is ok` / `test is successful`.
 
 ⚠️ **`nginx -t` ne prouve pas le démarrage**, et ce fichier le dit. Le contrôle
 qui vaut est le § 8 de la recette (tâche 8).
