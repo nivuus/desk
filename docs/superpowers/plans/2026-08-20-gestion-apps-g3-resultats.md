@@ -215,11 +215,134 @@ sont **déterministes** : une exécution y établit un fait, pas une fréquence.
 | `cargo test -p proto` | **99** | **106** |
 | `cd proto && npm test` | **179** (6 fichiers) | **279** (9) |
 | `cd client && npx vitest run` | **378** (36) | **400** (37) |
-| `plateforme`, **les deux moteurs** | **474** (51) | *voir le relevé de clôture* |
+| `plateforme`, **les deux moteurs** | **474** (51) | **564** (58) |
 
 ⚠️ **Ces comptes sont attribuables à leur commit et à lui seul** : quatre
 chantiers ont écrit dans cet arbre pendant le sous-bloc, et deux comptes ont
 déjà bougé sous nous.
+
+---
+
+## §5bis — Les sept routes, et les deux lignes qui les font vivre
+
+`POST /televersement` · `PUT /televersement/:id/tranche/:n` ·
+`GET /televersement/:id` · `POST /televersement/:id/sceller` ·
+`POST /installation` · `GET /installation/:id` ·
+`GET /televersement/:id/contenu` (**l'agent, et lui seul**).
+
+🔴 **LE CHAÎNAGE EST LA MOITIÉ DU TRAVAIL.** Sans ses **deux lignes** dans
+`serveur.ts::servirTout`, les sept routes tombent dans le 404 générique — la
+panne la plus discrète qui soit, puisque le service répond, écoute, et sert
+correctement les six autres routeurs. **Deux rouges le prouvent, et elles
+discriminent** : retirer UNE ligne fait tomber **son** test et lui seul,
+`1 failed | 10 passed` dans les deux sens, restauration vérifiée identique.
+
+`entetes-routeurs.test.ts` gagne donc **un `it()` par routeur**, comme son
+en-tête l'exige nommément. Les nôtres sont le **septième** et le **huitième** ;
+ce fichier n'existe que parce que G1 avait ajouté le cinquième « sans que
+personne ne s'en aperçoive côté P5 », et G2 le sixième.
+
+### Une collision de clé, attrapée par `tsc` **et par chance**
+
+Les deux routeurs avaient nommé leur dépendance `magasin` — nom **déjà pris**
+dans `serveur.ts` par le magasin d'**icônes** de G2. `tsc` l'a vue parce que les
+deux types diffèrent. ⚠️ **Le jour où deux magasins auront la même forme, le
+service servirait des icônes à la place des tranches sans qu'aucun contrôle ne
+bronche.** Renommée `tranches`, aux deux bouts.
+
+### 🔴 Le `PUT` que le navigateur exige et qu'aucun test serveur ne voit
+
+`Access-Control-Allow-Methods` annonçait `GET, POST, OPTIONS`.
+`PUT /televersement/:id/tranche/:n` est la **première route `PUT` de tout le
+service**, et son appelant **est le navigateur**. Portant `Authorization`, elle
+est non simple : le navigateur envoie une préalable portant
+`Access-Control-Request-Method: PUT` et **abandonne sans jamais envoyer la vraie
+requête**. Sans effet en origine unique (profil `deploiement`) ; **mordant en
+développement**, où `vite` sert sur 5173 et le service sur 8080 — donc **là où on
+le met au point, et nulle part ailleurs**.
+
+⚠️ **TROISIÈME FOIS QUE CETTE CLASSE MORD, ET P4 L'AVAIT NOMMÉE EN LA DÉCLARANT
+SANS GARDE AUTOMATIQUE.** Elle a mordu deux fois chez P4 (`Authorization` non
+permis, préalable non traitée) et une troisième ici, **sur la méthode**. Aucun
+`fetch` de Node n'applique la politique d'origine : **aucun test de bout en bout
+ne peut rendre ce défaut rouge**, pas même un qui enverrait un vrai `PUT`,
+puisqu'il aboutirait. Le seul garde est une assertion sur la **valeur**. Rouge
+vue : `2 failed | 6 passed`.
+
+### 🔴 Une fuite de disque, mesurée puis supprimée à sa source
+
+`magasin-tranches.ts` affirmait que « **le fichier partiel est supprimé, quelle
+que soit la cause** ». C'était faux, et c'est ce qui faisait tomber un test **par
+intermittence sous la charge de la suite complète, jamais isolé**.
+
+**Course** : `createWriteStream(chemin)` ouvre le fichier de façon
+**asynchrone** ; sur un dépassement notre générateur lève **avant** que
+l'`open(2)` n'aboutisse, le `rmSync` du `catch` courait donc sur un fichier
+inexistant — `{ force: true }` avalant le `ENOENT` **en silence** — et
+l'ouverture le créait juste après.
+
+✅ **Le remède n'est pas un réessai mais la suppression de la course** : le
+descripteur est ouvert par `openSync` **avant** le `pipeline`, si bien que
+l'inode existe déjà quand le `catch` supprime. Un réessai temporisé aurait
+réduit la fenêtre sans la fermer.
+
+| Sonde directe sur `ecrire`, hors HTTP | Répertoires non vides |
+| --- | --- |
+| première mesure (agent qui a trouvé le défaut) | **42 / 400** |
+| seconde mesure, autre charge | **100 / 400** |
+| **après le correctif** | **0 / 400** |
+
+⚠️ **AUCUN TAUX N'EST REVENDIQUÉ** : les deux premiers chiffres diffèrent d'un
+facteur deux et demi selon la charge, ce qui est le propre d'une course. Ce qui
+est établi est **l'existence du défaut puis sa disparition**, jamais une
+fréquence. ⚠️ **Ce n'était PAS un trou de protocole** — `lister` ignore les noms
+non numériques, donc aucune fausse tranche n'a jamais été comptée. C'était une
+**fuite de disque**, sur un service qui accepte 4 Gio.
+
+### Quatre extractions, aucune compression
+
+Le plafond de 500 a été **franchi** (`routes-televersement.test.ts`, **514**) et
+**frôlé** (sa production, **497**, marge 3) — **relevé par la commande, et le
+plan ne budgétait ces extractions nulle part**.
+
+| Fichier | Après | |
+| --- | --- | --- |
+| `televersement-regles.ts` | **66** | règles pures ; production 497 → **443** |
+| `routes-televersement-tranches.test.ts` | **109** | la famille « déposer », **verbatim** |
+| `routes-televersement-harnais.ts` | **117** | fixtures — **pas** un `.test.ts`, sinon l'importer rejouerait ses `it()` |
+| `routes-televersement.test.ts` | **362** | (**514** avant) |
+
+**20 tests avant, 20 après**, aucune réfutation raccourcie.
+
+---
+
+## §5ter — 🔴 La dette `proto/` : le brief la disait close, la mesure dit l'inverse
+
+Le brief annonçait « la dette proto **déjà extraite par G2** → constate ».
+**Mesuré au parent du premier commit de G3** (`70eb794~1`), plutôt que pris :
+
+| Fichier | Avant G3 | Aujourd'hui |
+| --- | --- | --- |
+| `proto/src/plateforme/tests.rs` | **561** | **340** |
+| `proto/ts/plateforme.test.ts` | **512** | **462** |
+
+Ce sont **exactement** les deux nombres que la table de dette de `CLAUDE.md`
+porte, inscrits par le sous-bloc P1 du presse-papier. **G2 n'y avait pas
+touché** : c'est G3 qui les purge, par ses propres extractions. Le sous-bloc ne
+*constate* donc pas une dette close — **il la solde**, et la table de dette
+revient à ses **deux** lignes gelées.
+
+---
+
+### La divergence `403` / `404` : G1 est désormais seul
+
+⚠️ **Relevé, non tranché — la décision appartient au propriétaire du dépôt.**
+G3 n'émet que des refus **indistinguables** (`vm-inconnue`,
+`televersement-inconnu`, `installation-inconnue`), et l'autorisation passe
+**avant** le `409 non-scelle`, sans quoi le refus d'état deviendrait l'oracle
+que le refus d'accès ferme. `grep` sur `vm-etrangere` : **deux occurrences, dans
+un seul fichier — celui de G1**. La divergence que P4 a signalée oppose donc
+maintenant **G1 seul à P4, G2 et G3**.
 
 ---
 
