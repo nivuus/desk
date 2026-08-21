@@ -69,6 +69,15 @@ pub(super) fn distribuer(garde: &mut MutexGuard<'static, Etat>, annonce: Annonce
     // faisait valoir le double à tous les compteurs de recette.
     tracing::info!(octets, refus = texte.is_none(), "presse-papier de la VM");
 
+    // La mémoire de l'état courant, pour les fenêtres qui s'attacheront
+    // ENSUITE (D-P3-2, moitié agent). Posée à CHAQUE annonce, refus compris —
+    // voir le champ `Etat::dernier_presse_papier`, qui porte la raison et dit
+    // pourquoi la symétrie avec `dernieres_parts` est trompeuse.
+    garde.dernier_presse_papier = Some(match &texte {
+        Some(t) => Annonce::Texte(t.clone()),
+        None => Annonce::Refus { octets },
+    });
+
     let sessions: Vec<String> = garde.canaux.keys().cloned().collect();
     let mut rompus = Vec::new();
     for session in sessions {
@@ -145,6 +154,48 @@ pub(super) fn armer_les_gardes(sondeur: &mut Sondeur) {
     let notre = etat().notre_ecriture.take();
     if let Some((seq, texte)) = notre {
         sondeur.apres_notre_ecriture(seq, &texte);
+    }
+}
+
+/// Émet l'état courant du presse-papier **sur le SEUL canal de la session qui
+/// vient de s'inscrire**.
+///
+/// 🔴 **C'est la moitié AGENT du legs n°3 de P1**, et elle ne suffit PAS à
+/// elle seule : `client/src/main.ts` mémorise le dernier `clipboard` reçu
+/// avant l'attache, parce que ce message-ci tombe précisément dans l'intervalle
+/// où `pressePapier` n'est pas encore assigné. **Livrer une moitié sans
+/// l'autre ferait PARAÎTRE le défaut corrigé alors qu'il resterait
+/// intermittent — et c'est pire qu'un défaut connu.**
+///
+/// ⚠️ **JAMAIS UN FAN-OUT.** `distribuer` pousse à toutes les fenêtres ; celle-ci
+/// n'écrit que sur le canal neuf. Rejouer le contenu à toutes les fenêtres à
+/// chaque attache serait un aller-retour par attache, et le garde n°3 côté
+/// page n'y pourrait rien : il ne ferme que le renvoi vers l'agent.
+///
+/// ⚠️ **Un canal rompu n'est PAS traité ici**, à la différence de `distribuer`.
+/// Il ne peut pas l'être : ce canal vient d'être inséré dans la même fonction,
+/// son receveur est encore sur la pile de `inscrire`, et un `send` ne peut
+/// échouer que si le receveur a été lâché — ce qui n'a pas encore pu arriver.
+/// Appeler `oublier` ici retirerait une session qui vient de naître.
+pub(super) fn emettre_l_etat_courant(garde: &mut MutexGuard<'static, Etat>, session: &str) {
+    let Some(annonce) = garde.dernier_presse_papier.clone() else {
+        return;
+    };
+    let (texte, octets) = match annonce {
+        Annonce::Texte(texte) => {
+            let octets = texte.len() as u32;
+            (Some(texte), octets)
+        }
+        Annonce::Refus { octets } => (None, octets),
+    };
+    // ⚠️ **JAMAIS LE TEXTE AU JOURNAL** (D-P1-7) : le contenu du presse-papier
+    // est une ressource privée, et un journal versé dans git est public au
+    // dépôt. On ne journalise que sa TAILLE, et le fait qu'il s'agisse d'un
+    // refus — exactement comme `distribuer`.
+    tracing::info!(%session, octets, refus = texte.is_none(),
+        "etat courant du presse-papier emis a l'inscription");
+    if let Some(canal) = garde.canaux.get(session) {
+        let _ = canal.send(Message::PressePapier { texte, octets });
     }
 }
 

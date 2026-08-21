@@ -1,0 +1,141 @@
+# Rejouees APRES l'extraction des tests vers sommeil/presse_papier/tests.rs :
+# le releve doit decrire l'arbre LIVRE, pas un etat intermediaire.
+
+=== ROUGE « E — l'emission a l'inscription n'existe pas (le legs n°3, arbre d'avant) » ===
+date : 2026-08-21T07:21:53+02:00   commit : 867e84a
+fichier mute : agent/src/capteur/sommeil/registre.rs
+
+1. sha256 AVANT : 10f029dfbdb282193ded398cec6f4b4fff431a3933fe4e3006cffc0e254c1ee0   (copie nommee prise : /tmp/user/0/tmp.0L2PLG4NhI)
+2. mutation :
+3. lignes changees PAR LA MUTATION (contre la copie nommee) : 1
+   (pour memoire, git diff --numstat contre HEAD : 23 0 agent/src/capteur/sommeil/registre.rs)
+   diff de la mutation :
+     -    presse_papier::emettre_l_etat_courant(&mut garde, session);
+4. controle : cargo test -p agent une_session_qui_s_inscrit_apres_une_copie
+     ---- capteur::sommeil::presse_papier::tests::une_session_qui_s_inscrit_apres_une_copie_recoit_le_contenu_courant stdout ----
+     thread 'capteur::sommeil::presse_papier::tests::une_session_qui_s_inscrit_apres_une_copie_recoit_le_contenu_courant' (317869) panicked at agent/src/capteur/sommeil/presse_papier/tests.rs:328:5:
+     assertion `left == right` failed: une fenêtre attachée après la copie doit recevoir le contenu courant
+       left: None
+      right: Some((Some("deja-copie"), 10))
+     test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 915 filtered out; finished in 0.00s
+5. restauration DEPUIS LA COPIE NOMMEE (jamais git checkout --)
+6. sha256 APRES : 10f029dfbdb282193ded398cec6f4b4fff431a3933fe4e3006cffc0e254c1ee0
+   ✅ IDENTIQUE
+7. git status --porcelain :  M agent/src/capteur/sommeil/registre.rs
+   (un « M » ici ne dit PAS que la mutation a survecu : il dit que le
+    fichier porte le correctif NON COMMITE que la rouge eprouve. Ce qui
+    etablit la restauration est la ligne 6, et elle seule.)
+
+=== ROUGE « F — l'emission fait un FAN-OUT au lieu du seul canal neuf » ===
+date : 2026-08-21T07:22:03+02:00   commit : 867e84a
+fichier mute : agent/src/capteur/sommeil/presse_papier.rs
+
+1. sha256 AVANT : db9df83d96a5fbe556b27db44c7b233a758c973650e97551055a84fa3950a88c   (copie nommee prise : /tmp/user/0/tmp.MYuFkfGQc9)
+2. mutation :
+3. lignes changees PAR LA MUTATION (contre la copie nommee) : 4
+   (pour memoire, git diff --numstat contre HEAD : 51 0 agent/src/capteur/sommeil/presse_papier.rs)
+   diff de la mutation :
+     -    if let Some(canal) = garde.canaux.get(session) {
+     -        let _ = canal.send(Message::PressePapier { texte, octets });
+     +    for canal in garde.canaux.values() {
+     +        let _ = canal.send(Message::PressePapier { texte: texte.clone(), octets });
+4. controle : cargo test -p agent l_emission_a_l_inscription_ne_part_que
+     ---- capteur::sommeil::presse_papier::tests::l_emission_a_l_inscription_ne_part_que_sur_le_canal_neuf stdout ----
+     thread 'capteur::sommeil::presse_papier::tests::l_emission_a_l_inscription_ne_part_que_sur_le_canal_neuf' (318972) panicked at agent/src/capteur/sommeil/presse_papier/tests.rs:360:5:
+     assertion `left == right` failed: la voisine NE DOIT RIEN recevoir de plus : ce serait un aller-retour par attache
+       left: Some((Some("copie"), 5))
+      right: None
+     test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 915 filtered out; finished in 0.00s
+5. restauration DEPUIS LA COPIE NOMMEE (jamais git checkout --)
+6. sha256 APRES : db9df83d96a5fbe556b27db44c7b233a758c973650e97551055a84fa3950a88c
+   ✅ IDENTIQUE
+7. git status --porcelain :  M agent/src/capteur/sommeil/presse_papier.rs
+   (un « M » ici ne dit PAS que la mutation a survecu : il dit que le
+    fichier porte le correctif NON COMMITE que la rouge eprouve. Ce qui
+    etablit la restauration est la ligne 6, et elle seule.)
+
+=== ROUGE « G — on ne memorise que les Annonce::Texte, jamais les refus » ===
+date : 2026-08-21T07:22:15+02:00   commit : 867e84a
+fichier mute : agent/src/capteur/sommeil/presse_papier.rs
+
+1. sha256 AVANT : db9df83d96a5fbe556b27db44c7b233a758c973650e97551055a84fa3950a88c   (copie nommee prise : /tmp/user/0/tmp.Nmrs9a5SX1)
+2. mutation :
+3. lignes changees PAR LA MUTATION (contre la copie nommee) : 7
+   (pour memoire, git diff --numstat contre HEAD : 50 0 agent/src/capteur/sommeil/presse_papier.rs)
+   diff de la mutation :
+     -    garde.dernier_presse_papier = Some(match &texte {
+     -        Some(t) => Annonce::Texte(t.clone()),
+     -        None => Annonce::Refus { octets },
+     -    });
+     +    if let Some(t) = &texte {
+     +        garde.dernier_presse_papier = Some(Annonce::Texte(t.clone()));
+     +    }
+4. controle : cargo test -p agent une_session_qui_s_inscrit_apres_un_refus
+     ---- capteur::sommeil::presse_papier::tests::une_session_qui_s_inscrit_apres_un_refus_recoit_le_refus stdout ----
+     thread 'capteur::sommeil::presse_papier::tests::une_session_qui_s_inscrit_apres_un_refus_recoit_le_refus' (319946) panicked at agent/src/capteur/sommeil/presse_papier/tests.rs:383:5:
+     assertion `left == right` failed: le refus doit être rejoué à l'attache, avec sa taille
+       left: None
+      right: Some((None, 123456))
+     test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 915 filtered out; finished in 0.00s
+5. restauration DEPUIS LA COPIE NOMMEE (jamais git checkout --)
+6. sha256 APRES : db9df83d96a5fbe556b27db44c7b233a758c973650e97551055a84fa3950a88c
+   ✅ IDENTIQUE
+7. git status --porcelain :  M agent/src/capteur/sommeil/presse_papier.rs
+   (un « M » ici ne dit PAS que la mutation a survecu : il dit que le
+    fichier porte le correctif NON COMMITE que la rouge eprouve. Ce qui
+    etablit la restauration est la ligne 6, et elle seule.)
+
+=== ROUGE « H — on emet un message VIDE quand la memoire est None » ===
+date : 2026-08-21T07:22:26+02:00   commit : 867e84a
+fichier mute : agent/src/capteur/sommeil/presse_papier.rs
+
+1. sha256 AVANT : db9df83d96a5fbe556b27db44c7b233a758c973650e97551055a84fa3950a88c   (copie nommee prise : /tmp/user/0/tmp.ssSPbX7shj)
+2. mutation :
+3. lignes changees PAR LA MUTATION (contre la copie nommee) : 5
+   (pour memoire, git diff --numstat contre HEAD : 50 0 agent/src/capteur/sommeil/presse_papier.rs)
+   diff de la mutation :
+     -    let Some(annonce) = garde.dernier_presse_papier.clone() else {
+     -        return;
+     -    };
+     +    let annonce = garde.dernier_presse_papier.clone()
+     +        .unwrap_or(Annonce::Texte(String::new()));
+4. controle : cargo test -p agent une_session_qui_s_inscrit_avant_toute_copie
+     ---- capteur::sommeil::presse_papier::tests::une_session_qui_s_inscrit_avant_toute_copie_ne_recoit_rien stdout ----
+     thread 'capteur::sommeil::presse_papier::tests::une_session_qui_s_inscrit_avant_toute_copie_ne_recoit_rien' (321470) panicked at agent/src/capteur/sommeil/presse_papier/tests.rs:404:5:
+     assertion `left == right` failed
+       left: Some((Some(""), 0))
+      right: None
+     test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 915 filtered out; finished in 0.00s
+5. restauration DEPUIS LA COPIE NOMMEE (jamais git checkout --)
+6. sha256 APRES : db9df83d96a5fbe556b27db44c7b233a758c973650e97551055a84fa3950a88c
+   ✅ IDENTIQUE
+7. git status --porcelain :  M agent/src/capteur/sommeil/presse_papier.rs
+   (un « M » ici ne dit PAS que la mutation a survecu : il dit que le
+    fichier porte le correctif NON COMMITE que la rouge eprouve. Ce qui
+    etablit la restauration est la ligne 6, et elle seule.)
+
+=== ROUGE « I — on PURGE la memoire a la re-inscription, par symetrie avec dernieres_parts (D-P3-3) » ===
+date : 2026-08-21T07:22:37+02:00   commit : 867e84a
+fichier mute : agent/src/capteur/sommeil/registre.rs
+
+1. sha256 AVANT : 10f029dfbdb282193ded398cec6f4b4fff431a3933fe4e3006cffc0e254c1ee0   (copie nommee prise : /tmp/user/0/tmp.vJn17t0VPl)
+2. mutation :
+3. lignes changees PAR LA MUTATION (contre la copie nommee) : 1
+   (pour memoire, git diff --numstat contre HEAD : 25 0 agent/src/capteur/sommeil/registre.rs)
+   diff de la mutation :
+     +        garde.dernier_presse_papier = None;
+4. controle : cargo test -p agent un_rattachement_recoit_lui_aussi
+     ---- capteur::sommeil::presse_papier::tests::un_rattachement_recoit_lui_aussi_le_contenu_courant stdout ----
+     thread 'capteur::sommeil::presse_papier::tests::un_rattachement_recoit_lui_aussi_le_contenu_courant' (323114) panicked at agent/src/capteur/sommeil/presse_papier/tests.rs:428:5:
+     assertion `left == right` failed: un rattachement doit recevoir le contenu courant : rien n'est purgé
+       left: None
+      right: Some((Some("avant-rupture"), 13))
+     test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 915 filtered out; finished in 0.00s
+5. restauration DEPUIS LA COPIE NOMMEE (jamais git checkout --)
+6. sha256 APRES : 10f029dfbdb282193ded398cec6f4b4fff431a3933fe4e3006cffc0e254c1ee0
+   ✅ IDENTIQUE
+7. git status --porcelain :  M agent/src/capteur/sommeil/registre.rs
+   (un « M » ici ne dit PAS que la mutation a survecu : il dit que le
+    fichier porte le correctif NON COMMITE que la rouge eprouve. Ce qui
+    etablit la restauration est la ligne 6, et elle seule.)
+

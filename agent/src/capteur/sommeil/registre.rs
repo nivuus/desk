@@ -62,6 +62,28 @@ pub(super) struct Etat {
     /// **Ici et pas dans `capteur::audio`** : ce module a l'horloge, l'autre
     /// est pur et le reste.
     pub(super) inaptes: HashMap<String, Instant>,
+    /// La DERNIÈRE annonce de presse-papier distribuée, quelle qu'elle soit.
+    ///
+    /// 🔴 **C'est la moitié AGENT du legs n°3 de P1** — « une fenêtre attachée
+    /// après une copie ne reçoit jamais ce contenu ». Sans cette mémoire, une
+    /// fenêtre qui s'attache attend la copie SUIVANTE, et le `Sondeur` le dit
+    /// de lui-même : son premier tour prend l'état courant pour référence et
+    /// n'annonce rien.
+    ///
+    /// ⚠️ **Elle mémorise AUSSI les `Annonce::Refus`, et il le faut** : une
+    /// fenêtre qui s'attache après un refus doit voir le bandeau, sans quoi
+    /// elle attendrait un contenu qui n'arrivera jamais.
+    ///
+    /// 🔴 **AUCUNE PURGE À LA RÉ-INSCRIPTION, et la symétrie avec
+    /// `dernieres_parts` / `derniers_audio` est TROMPEUSE** (D-P3-3). Ces
+    /// deux-là se purgent parce que `distribuer_les_parts` et
+    /// `distribuer_l_audio` FILTRENT sur eux : sans purge, une part identique
+    /// à celle envoyée sur l'ANCIEN canal serait jugée déjà livrée sur le
+    /// canal NEUF, qui ne l'a jamais reçue. L'émission du presse-papier à
+    /// l'inscription, elle, est INCONDITIONNELLE : il n'y a rien à filtrer,
+    /// donc rien à purger — et purger ici retirerait la mémoire au moment
+    /// précis où l'on veut s'en servir, le remède ne remédiant alors à rien.
+    pub(super) dernier_presse_papier: Option<crate::presse_papier::Annonce>,
     /// Le couple (numéro de séquence, texte) de NOTRE PROPRE écriture du
     /// presse-papier, en attente d'être consommé par le tour de roue pour
     /// armer les gardes n°1 et n°2 de D5 (sous-bloc P2).
@@ -155,6 +177,7 @@ pub(super) fn etat() -> MutexGuard<'static, Etat> {
             horloge: 0,
             derniers_audio: HashMap::new(),
             inaptes: HashMap::new(),
+            dernier_presse_papier: None,
             notre_ecriture: None,
             rearmements: HashMap::new(),
             generations: HashMap::new(),
@@ -410,6 +433,7 @@ pub fn inscrire(session: &str, pid: u32) -> (Receiver<Message>, u64) {
     distribuer(&mut garde, ordres);
     parts::distribuer_les_parts(&mut garde);
     porteurs::distribuer_l_audio(&mut garde);
+    presse_papier::emettre_l_etat_courant(&mut garde, session);
     (receveur, generation)
 }
 
