@@ -31,7 +31,7 @@ const microElement = document.querySelector<HTMLButtonElement>('#micro')!;
 const statut = creerStatut(statusElement, creerEcranTerminalAuDOM());
 
 // La session et le signaling sont paramétrables par l'URL pour faciliter les
-// essais : ?session=demo&signaling=ws://192.168.3.2:8080
+// essais : ?session=demo&signaling=ws://192.168.3.2:8080/signal
 //
 // 🔴 SANS PARAMÈTRE, L'ADRESSE SUIT LE PROTOCOLE DE LA PAGE — `wss:` si la page
 // est en `https:`, `ws:` sinon —, ET SON PORT. Le littéral d'avant,

@@ -19,6 +19,9 @@ use super::protocole::{DepuisLaShell, VersLaShell};
 /// Ouvre la connexion, se déclare comme `agent` sur la session donnée, et rend
 /// de quoi envoyer et recevoir.
 ///
+/// `url` est déjà l'URL du RELAIS (`crate::signaling::url_du_relais`) : c'est
+/// `superviseur.rs` qui la dérive avant d'appeler cette fonction, jamais elle.
+///
 /// `jeton` porte le jeton d'agent délivré par le canal `/agent`
 /// (`crate::plateforme`). **`None` fait refuser la poignée de main par la
 /// plateforme depuis le sous-bloc P3** : la garde n'accepte plus un

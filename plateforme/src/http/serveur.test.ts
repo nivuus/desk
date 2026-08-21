@@ -130,10 +130,15 @@ describe('demarrerServeur', () => {
         // comparaison à une liste noire (`if (chemin === '/inconnu')`), ce qui
         // rendrait le service ouvert à TOUT chemin. Le test l. 79 existe déjà
         // et doit rester vert ; celui-ci ajoute la borne d'à côté — un chemin
-        // qui COMMENCE par `/agent` sans l'être n'est pas `/agent`.
+        // qui COMMENCE par `/agent` sans l'être n'est pas `/agent`, et un
+        // chemin qui COMMENCE par `/signal` sans l'être n'est pas `/signal`
+        // (revue de la tâche 5, constat I2 : la comparaison EXACTE de
+        // `/signal` n'était gardée par AUCUN test — une mutation en
+        // `startsWith` passait les 16 tests du fichier).
         service = await servir('http-inconnu-encore');
         await expect(tenter(`ws://127.0.0.1:${service.port}/inconnu`)).resolves.toBe('ferme');
         await expect(tenter(`ws://127.0.0.1:${service.port}/agentaire`)).resolves.toBe('ferme');
+        await expect(tenter(`ws://127.0.0.1:${service.port}/signalement`)).resolves.toBe('ferme');
     });
 
     it('sert le relais de signaling sur /signal, poignée de main comprise', async () => {
