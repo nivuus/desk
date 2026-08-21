@@ -1,0 +1,29 @@
+TÂCHE 2 — `PONT_MUTATION` dans `scripts/run-agent.sh`, tâche DÉDIÉE
+Relevé par la commande le 21 août 2026.
+
+Le piège : D1 (`SUPERVISEUR`), D2 (`MULTIFENETRE_REPRISE`), D7 (`AUDIO`). En
+D7, l'implémenteur ET le relecteur avaient vérifié la propriété « en traçant le
+code » ; le tracé était juste, et la valeur ne pouvait simplement pas atteindre
+le processus.
+
+⚠️ **CE QUI SUIT N'EST PAS LE CONTRÔLE QUI VAUT.** Le contrôle qui vaut est la
+TRACE côté VM (tâches 15 et 17). Celui-ci établit seulement que la ligne
+s'interpole comme ses voisines, sans la VM — c'est-à-dire moins que le plan
+n'exige, et c'est dit.
+
+Méthode : le heredoc `cat > /media/vm/dev/run-agent.ps1 <<PS1 … PS1` est
+extrait tel quel du script par `awk` et évalué hors de la VM, sa redirection
+retirée. Aucune ligne du heredoc n'est modifiée.
+
+$ bash heredoc.sh | grep -c 'PONT_MUTATION'        # variable ABSENTE
+0
+$ PONT_MUTATION=0 bash heredoc.sh | grep -n 'PONT'
+10:$env:PONT_MUTATION = '0'
+
+Les deux moitiés comptent : absente, la ligne ne paraît pas (sans quoi le
+PowerShell généré poserait une chaîne vide, que `!= Ok("0")` lirait comme
+« armé » — ce qui est le bon défaut, mais pour la mauvaise raison) ; présente,
+elle porte la valeur.
+
+Ligne ajoutée : `scripts/run-agent.sh:35`, immédiatement sous `PONT_ECRITURE`,
+de la forme exacte de ses seize voisines. Le fichier passe de 159 à 160 lignes.
