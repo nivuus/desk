@@ -1,23 +1,94 @@
-FAMILLES DE LECTURE DES JOURNAUX DE G4 — relevees PAR LA COMMANDE le 21 aout 2026
+FAMILLES DE LECTURE DES JOURNAUX DE G4 -- REMESUREES PAR LA COMMANDE APRES LA RECETTE
 
-  for f in *; do file -b "$f"; done
-  grep -lP '\x1b\[' *                       -> AUCUN fichier
-  for f in *; do tr -dc '\000' < "$f" | wc -c; done   -> 0 partout
-  grep -lU $'\r' *                          -> AUCUN fichier
+Commandes employees (heredoc CITE : une premiere redaction les a passees a
+`echo` entre guillemets DOUBLES, et le shell a interprete les echappements --
+le fichier s'est alors POLLUE LUI-MEME d'un octet NUL, et se classait "data".
+C'est le piege que le sous-bloc S3 a documente, repaye ici) :
 
-UNE SEULE FAMILLE. Tous les fichiers sont en UTF-8 (ou ASCII), SANS sequence
-ANSI, SANS octet NUL, SANS retour chariot. ILS SE grep-ENT A PLAT : ni `sed`,
-ni `grep -a`, ni `iconv`.
+    file -b <fichier>
+    grep -lP  ESC-crochet  <fichiers>          (sequences ANSI)
+    tr -dc  NUL  < <fichier> | wc -c           (octets NUL)
+    grep -lU  CR  <fichiers>                   (retours chariot)
 
-⚠️ CE N'EST PAS UN MERITE, ET LA RAISON EST STRUCTURELLE : ce sont des sorties
-`cargo` et `git` sur l'HOTE. Les trois familles de D6, les quatre de D8 et les
-trois de D9 viennent toutes d'un chemin qui passe par la VM Windows, dont
-`run-agent.sh` et `build-agent.sh` ne posent pas `[Console]::OutputEncoding`.
-Le defaut a deux reglages reste ENTIER ; il n'est simplement pas rencontre ici.
+date du relevé : 2026-08-21T09:30:03+00:00
 
-🔴 ET CETTE PROPRIETE NE SURVIVRA PROBABLEMENT PAS A LA RECETTE : les journaux
-d'agent de la VM portent les sequences ANSI de `tracing`, et ceux de pilote
-portent des octets NUL. Le tableau devra etre REMESURE apres la recette, pas
-recopie — et un fichier ne peut pas contenir sa propre taille finale, ni sa
-propre famille : la ligne ci-dessus decrit les QUATRE journaux presents au
-moment ou elle est ecrite, plus le temoin `verify-all-cloture-hote.log`.
+--- SEQUENCES ANSI (a passer au sed avant tout grep) :
+  (aucun au-dessus = aucun fichier concerne)
+
+--- OCTETS NUL (grep -a OBLIGATOIRE : sans lui grep rend une sortie VIDE, pas un zero) :
+  (aucun au-dessus = aucun fichier concerne)
+
+--- RETOURS CHARIOT (inoffensifs pour grep ; ils viennent de la VM) :
+  agent-c2bis-1-plat.log
+  agent-c5-1-plat.log
+  c1-rouge-1.log
+  c1-rouge-2.log
+  c1-vert-1.log
+  c1-vert-2.log
+  c24-vert-1.log
+  c24-vert-2.log
+  c2bis-injection-1.log
+  c3a-rouge-1.log
+  c3a-rouge-2.log
+  c3a-vert-1.log
+  c3a-vert-2.log
+  c3b-rouge-1.log
+  c3b-rouge-2.log
+  c3b-vert-1.log
+  c3b-vert-2.log
+  c4-rouge-1.log
+  c4-rouge-2.log
+  c5-perte-1.log
+  c6-repos-1-plat.log
+  c6-repos-2-plat.log
+  derniers-g4-c1.log
+  derniers-g4-m.log
+  derniers-g4-p.log
+  derniers-g4-s1.log
+  s1-n1000.log
+  s1-n20000.log
+  s1-n5000.log
+  s1-n60000.log
+  s1-v1-instrument-defectueux.log
+  s1-v2-N-non-transmis.log
+
+--- ENCODAGES :
+  agent-c2bis-1-plat.log                   Unicode text, UTF-8 text, with CRLF line terminators
+  agent-c5-1-plat.log                      Unicode text, UTF-8 text, with CRLF line terminators
+  c1-rouge-1.log                           ASCII text, with CRLF line terminators
+  c1-rouge-2.log                           ASCII text, with CRLF line terminators
+  c1-vert-1.log                            ASCII text, with CRLF line terminators
+  c1-vert-2.log                            ASCII text, with CRLF line terminators
+  c24-vert-1.log                           ASCII text, with CRLF line terminators
+  c24-vert-2.log                           ASCII text, with CRLF line terminators
+  c2bis-injection-1.log                    ASCII text, with CRLF line terminators
+  c3a-rouge-1.log                          ASCII text, with CRLF line terminators
+  c3a-rouge-2.log                          ASCII text, with CRLF line terminators
+  c3a-vert-1.log                           ASCII text, with CRLF line terminators
+  c3a-vert-2.log                           ASCII text, with CRLF line terminators
+  c3b-rouge-1.log                          ASCII text, with CRLF line terminators
+  c3b-rouge-2.log                          Unicode text, UTF-8 text, with CRLF line terminators
+  c3b-vert-1.log                           ASCII text, with CRLF line terminators
+  c3b-vert-2.log                           Unicode text, UTF-8 text, with CRLF line terminators
+  c4-rouge-1.log                           ASCII text, with CRLF line terminators
+  c4-rouge-2.log                           ASCII text, with CRLF line terminators
+  c5-perte-1.log                           ASCII text, with CRLF line terminators
+  c6-repos-1-plat.log                      Unicode text, UTF-8 text, with CRLF line terminators
+  c6-repos-2-plat.log                      Unicode text, UTF-8 text, with CRLF line terminators
+  derniers-g4-c1.log                       ASCII text, with CRLF line terminators
+  derniers-g4-m.log                        ASCII text, with CRLF line terminators
+  derniers-g4-p.log                        ASCII text, with CRLF line terminators
+  derniers-g4-s1.log                       ASCII text, with CRLF line terminators
+  familles-de-lecture.txt                  Unicode text, UTF-8 text
+  instrument                               directory
+  rouge-1-mode-convention.log              Unicode text, UTF-8 text
+  rouges-2-rebond-et-faute.log             Unicode text, UTF-8 text
+  rouges-3-partage.log                     Unicode text, UTF-8 text
+  s1-n1000.log                             ASCII text, with CRLF line terminators
+  s1-n20000.log                            ASCII text, with CRLF line terminators
+  s1-n5000.log                             ASCII text, with CRLF line terminators
+  s1-n60000.log                            ASCII text, with CRLF line terminators
+  s1-v1-instrument-defectueux.log          ASCII text, with CRLF line terminators
+  s1-v2-N-non-transmis.log                 ASCII text, with CRLF line terminators
+  t4-extraction-verbatim.log               Unicode text, UTF-8 text
+  verify-all-cloture-hote.log              Unicode text, UTF-8 text

@@ -23,6 +23,7 @@ cp "$PS1_LOCAL" "/media/vm/dev/$BASE"
 # jamais par une variable -- piege paye trois executions durant, ou N valait
 # 1000 alors qu'on demandait 5000 puis 20000.
 [ -n "${G4_RAFALE_N:-}" ] && printf '%s' "$G4_RAFALE_N" > /media/vm/dev/g4-rafale-n.txt
+[ -n "${G4_PARAMS:-}" ] && printf '%s\n' "$G4_PARAMS" | tr ' ' '\n' > /media/vm/dev/g4-p.txt
 rm -f "/media/vm/dev/$JOURNAL" 2>/dev/null || true
 
 node "$ROOT/scripts/winrm.js" \

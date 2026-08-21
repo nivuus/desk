@@ -1,0 +1,89 @@
+2026-08-21T09:22:58.895308Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-21T09:22:58.965271Z  INFO agent::plateforme::session: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8099/agent" prefixe=4ypa-h7T_3rqfV_4EfFYOA expire_a=1787304778918
+2026-08-21T09:22:58.965433Z  INFO agent::apps: mode de surveillance retenu mode=Armee
+2026-08-21T09:22:58.966863Z  INFO agent::superviseur::signalisation: déclaration du superviseur émise sur la session de contrôle (acceptation encore inconnue) session="4ypa-h7T_3rqfV_4EfFYOA:bureau"
+2026-08-21T09:22:58.967701Z  INFO agent::apps::surveillance::fil: racine surveillée racine=C:\ProgramData\Microsoft\Windows\Start Menu
+2026-08-21T09:22:58.967752Z  INFO agent::apps::surveillance::fil: racine surveillée racine=C:\Users\Administrateur\AppData\Roaming\Microsoft\Windows\Start Menu
+2026-08-21T09:22:58.967787Z  INFO agent::apps::surveillance::fil: racine surveillée racine=C:\Users\Administrateur\Desktop
+2026-08-21T09:22:58.967827Z  INFO agent::apps::surveillance::fil: racine surveillée racine=C:\Users\Public\Desktop
+2026-08-21T09:22:58.967834Z  INFO agent::apps::surveillance::fil: surveillance des raccourcis armée racines=4
+2026-08-21T09:22:58.969540Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-21T09:22:58.969576Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-21T09:22:58.969589Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant purge" nombre=1 attachees=1
+2026-08-21T09:22:58.969594Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant purge" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-21T09:22:59.085328Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\Users\Administrateur\Desktop\Gestionnaire de périphériques.lnk motif="extension" extension=msc
+2026-08-21T09:22:59.101828Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\Users\Administrateur\Desktop\Paramètres Windows.lnk motif="cible-vide"
+2026-08-21T09:22:59.101853Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\Users\Administrateur\Desktop\Services.lnk motif="extension" extension=msc
+2026-08-21T09:22:59.271066Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\Users\Administrateur\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\System Tools\computer.lnk motif="cible-vide"
+2026-08-21T09:22:59.271086Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\Users\Administrateur\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\System Tools\Control Panel.lnk motif="cible-vide"
+2026-08-21T09:22:59.271090Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\Users\Administrateur\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\System Tools\File Explorer.lnk motif="cible-vide"
+2026-08-21T09:22:59.271092Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\Users\Administrateur\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\System Tools\Run.lnk motif="cible-vide"
+2026-08-21T09:22:59.307836Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\Users\Administrateur\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Python 3.13\IDLE (Python 3.13 64-bit).lnk motif="cible-absente"
+2026-08-21T09:22:59.307867Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\Users\Administrateur\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Python 3.13\Python 3.13 (64-bit).lnk motif="cible-absente"
+2026-08-21T09:22:59.307871Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\Users\Administrateur\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Python 3.13\Python 3.13 Manuals (64-bit).lnk motif="extension" extension=html
+2026-08-21T09:22:59.307880Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\Users\Administrateur\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Python 3.13\Python 3.13 Module Docs (64-bit).lnk motif="cible-absente"
+2026-08-21T09:22:59.575523Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Windows Kits\Windows Software Development Kit\Documentation for Desktop Apps.lnk motif="extension" extension=url
+2026-08-21T09:22:59.575552Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Windows Kits\Windows Software Development Kit\Documentation for UWP Apps.lnk motif="extension" extension=url
+2026-08-21T09:22:59.575555Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Windows Kits\Windows Software Development Kit\Sample Desktop Apps.lnk motif="extension" extension=url
+2026-08-21T09:22:59.575558Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Windows Kits\Windows Software Development Kit\Sample UWP Apps.lnk motif="extension" extension=url
+2026-08-21T09:22:59.575561Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Windows Kits\Windows Software Development Kit\Tools for Desktop Apps.lnk motif="extension" extension=url
+2026-08-21T09:22:59.575563Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Windows Kits\Windows Software Development Kit\Tools for UWP Apps.lnk motif="extension" extension=url
+2026-08-21T09:22:59.694187Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\smartmontools Daily Builds.lnk motif="cible-vide"
+2026-08-21T09:22:59.694209Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\smartmontools Home Page.lnk motif="cible-vide"
+2026-08-21T09:22:59.867353Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\Documentation\ChangeLog.lnk motif="extension" extension=txt
+2026-08-21T09:22:59.867376Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\Documentation\COPYING.lnk motif="extension" extension=txt
+2026-08-21T09:22:59.885989Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\Documentation\NEWS.lnk motif="extension" extension=txt
+2026-08-21T09:22:59.886013Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\Documentation\smartctl manual page (html).lnk motif="extension" extension=html
+2026-08-21T09:22:59.886016Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\Documentation\smartctl manual page (pdf).lnk motif="extension" extension=pdf
+2026-08-21T09:22:59.886019Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\Documentation\smartd manual page (html).lnk motif="extension" extension=html
+2026-08-21T09:22:59.886021Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\Documentation\smartd manual page (pdf).lnk motif="extension" extension=pdf
+2026-08-21T09:22:59.886024Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\Documentation\smartd.conf manual page (html).lnk motif="extension" extension=html
+2026-08-21T09:22:59.886026Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\Documentation\smartd.conf manual page (pdf).lnk motif="extension" extension=pdf
+2026-08-21T09:22:59.903344Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Revo Uninstaller\Revo Uninstaller Help.lnk motif="extension" extension=pdf
+2026-08-21T09:22:59.903414Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\RetroArch\RetroArch Website.lnk motif="extension" extension=url
+2026-08-21T09:22:59.933673Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\NVIDIA Corporation\NVIDIA Tools Extension (64 bit)\Browse NVIDIA Tools Extension.lnk motif="extension" extension=
+2026-08-21T09:22:59.943715Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\NVIDIA Corporation\Nsight Visual Studio Edition 2025.1\Nsight Redistributable.lnk motif="extension" extension=msi
+2026-08-21T09:22:59.997480Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\NVIDIA Corporation\CUDA Toolkit\v11.2\Visual Profiler.lnk motif="extension" extension=bat
+2026-08-21T09:22:59.997503Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\NVIDIA Corporation\CUDA Samples\v11.2\Browse CUDA Samples.lnk motif="extension" extension=2
+2026-08-21T09:23:00.007077Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Microsoft Xbox 360 Accessories\Aide de Microsoft Xbox 360 Accessories.lnk motif="extension" extension=chm
+2026-08-21T09:23:00.126333Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\CMake\CMake Documentation.lnk motif="extension" extension=html
+2026-08-21T09:23:00.133533Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Blue Ripple Sound\Rapture3D - Help.lnk motif="extension" extension=chm
+2026-08-21T09:23:00.177179Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Component Services.lnk motif="extension" extension=msc
+2026-08-21T09:23:00.177205Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Computer Management.lnk motif="extension" extension=msc
+2026-08-21T09:23:00.197124Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Event Viewer.lnk motif="extension" extension=msc
+2026-08-21T09:23:00.247194Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Network Policy Server.lnk motif="extension" extension=msc
+2026-08-21T09:23:00.267996Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Performance Monitor.lnk motif="extension" extension=msc
+2026-08-21T09:23:00.303510Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Security Configuration Management.lnk motif="extension" extension=msc
+2026-08-21T09:23:00.303607Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\services.lnk motif="extension" extension=msc
+2026-08-21T09:23:00.331034Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Task Scheduler.lnk motif="extension" extension=msc
+2026-08-21T09:23:00.331065Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Windows Defender Firewall with Advanced Security.lnk motif="extension" extension=msc
+2026-08-21T09:23:00.331069Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Windows Server Backup.lnk motif="extension" extension=msc
+2026-08-21T09:23:00.331072Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Remote Desktop Services\RD Gateway Manager.lnk motif="extension" extension=msc
+2026-08-21T09:23:00.340317Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Remote Desktop Services\Remote Desktop Licensing Diagnosis.lnk motif="extension" extension=msc
+2026-08-21T09:23:00.481650Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Accessories\System Tools\Windows Server Backup.lnk motif="extension" extension=msc
+2026-08-21T09:23:00.499540Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\7-Zip\7-Zip Help.lnk motif="extension" extension=chm
+2026-08-21T09:23:00.499671Z  INFO agent::apps::boucle::memoire: catalogue reconcilie total=220 retenus=169 cles=156 icones=156 icones_echouees=0 icones_distinctes=98 apparues=156 modifiees=0 disparues=0 duree_ms=1532 declencheur="demarrage" notifications=0 debordements=0
+2026-08-21T09:23:01.971816Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-21T09:23:01.971850Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-21T09:23:01.971858Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="après purge" nombre=1 attachees=1
+2026-08-21T09:23:01.971868Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après purge" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-21T09:23:01.971881Z  INFO agent::moniteurs_virtuels::purge: purge terminée retirees=0 avant=1 apres=1
+2026-08-21T09:23:01.976231Z  INFO agent::superviseur::lanceur: capteur lancé pid=24528
+2026-08-21T09:23:01.977942Z  INFO agent::superviseur::lanceur::pont: pont fichiers lancé pid=2752 session="4ypa-h7T_3rqfV_4EfFYOA:fichiers"
+2026-08-21T09:23:01.977962Z  WARN agent::superviseur::boucle::surveillance_pont: pont fichiers lancé ou relancé (tentatives suivantes silencieuses tant que le cycle se répète) pid_neuf=2752
+2026-08-21T09:23:01.984014Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-21T09:23:01.984150Z  INFO agent::capteur: capteur démarré tube="\\\\.\\pipe\\agent-capteur"
+2026-08-21T09:23:01.985173Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-21T09:23:01.985200Z  INFO agent: identité héritée du superviseur (AGENT_JETON) : ce processus n'ouvre aucun canal /agent, un seul socket par VM
+2026-08-21T09:23:01.985231Z  WARN agent::apps: decouverte d'applications inactive : ce processus n'a pas de canal /agent (identité héritée du superviseur, ou AGENT_VM/AGENT_SECRET absents)
+2026-08-21T09:23:01.986147Z  INFO agent::pont::transport: socket UDP du pont fichiers addr=192.168.3.2:51935
+2026-08-21T09:23:02.019443Z  INFO agent::signaling: déclaration de l'agent émise au signaling (acceptation encore inconnue) session="4ypa-h7T_3rqfV_4EfFYOA:fichiers"
+2026-08-21T09:23:02.480276Z  INFO agent::superviseur::boucle::surveillance_pont: pont fichiers de nouveau stable pid=2752
+2026-08-21T09:23:02.542874Z  WARN agent::apps::surveillance::faute: faute de surveillance ARMEE (APPS_FAUTE) : banc, jamais une configuration livrée famille=Perte fautes_a_injecter=1
+2026-08-21T09:23:02.542895Z  WARN agent::apps::surveillance::fil: racine de surveillance PERDUE : réouverture programmée (la réconciliation périodique reste la source de vérité) racine=C:\Users\Administrateur\Desktop erreur=faute injectée (APPS_FAUTE=perte)
+2026-08-21T09:23:03.542659Z  WARN agent::apps::surveillance::fil: racine de surveillance RÉTABLIE racine=C:\Users\Administrateur\Desktop
+2026-08-21T09:23:28.983225Z  INFO agent::apps::boucle: identité changée : le prochain catalogue sera COMPLET (rafraîchissement de jeton OU réenrôlement — cette boucle ne les distingue pas)
+2026-08-21T09:23:30.577100Z  INFO agent::apps::boucle::memoire: catalogue reconcilie total=221 retenus=170 cles=157 icones=1 icones_echouees=0 icones_distinctes=98 apparues=1 modifiees=0 disparues=0 duree_ms=76 declencheur="periode" notifications=0 debordements=0
+2026-08-21T09:23:59.066292Z  INFO agent::apps::boucle: identité changée : le prochain catalogue sera COMPLET (rafraîchissement de jeton OU réenrôlement — cette boucle ne les distingue pas)
+2026-08-21T09:24:00.644349Z  INFO agent::apps::boucle::memoire: catalogue reconcilie total=221 retenus=170 cles=157 icones=0 icones_echouees=0 icones_distinctes=98 apparues=0 modifiees=0 disparues=0 duree_ms=64 declencheur="periode" notifications=0 debordements=0
+2026-08-21T09:24:03.464466Z  INFO agent::apps::boucle::memoire: catalogue reconcilie total=220 retenus=169 cles=156 icones=0 icones_echouees=0 icones_distinctes=98 apparues=0 modifiees=0 disparues=1 duree_ms=63 declencheur="notification" notifications=1 debordements=0

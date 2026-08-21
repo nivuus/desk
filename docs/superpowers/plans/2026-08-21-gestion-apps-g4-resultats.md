@@ -1,15 +1,10 @@
-# Sous-bloc G4 — résultats : la moitié HÔTE, et la recette qui N'A PAS EU LIEU
+# Sous-bloc G4 — résultats : la surveillance, et le critère que sa propre spec ne pouvait pas rendre rouge
 
-> 🔴 **CE DOCUMENT EST INCOMPLET, ET IL LE DIT EN TÊTE PLUTÔT QU'EN NOTE.**
-> Le produit est livré, compilé et éprouvé sur l'hôte. **Aucun des quatre
-> critères de la spécification n'a été mesuré**, la porte S1 n'a pas été jouée,
-> et **la VM Windows n'a pas été touchée du tout** : elle est prise par le
-> sous-bloc **F4** du pont fichiers, qui est un chantier de mesure. La conduite
-> est celle que le plan prescrit — *« la VM est un PRÉALABLE EXTERNE, pas une
-> dépendance de tâche : les familles 0 à 3 se jouent sans elle, et G4 s'arrête
-> proprement à la fin de la tâche 10 »*.
->
-> **Ce qui manque est ÉNUMÉRÉ au §7.** Rien n'y est présenté comme mesuré.
+> ✅ **LA RECETTE A EU LIEU.** L'en-tête de la première rédaction de ce document
+> disait *« la recette qui N'A PAS EU LIEU »* — la VM était prise par le
+> sous-bloc F4. Elle a été rendue, et **les quatre critères sont mesurés**,
+> plus deux relevés hors critères. Le §7 énumère toujours ce qui n'est pas
+> établi, et il a **rétréci sans disparaître**.
 
 Plan : `2026-08-21-gestion-apps-g4.md` (`d25176d`).
 Conception : `../specs/2026-08-19-gestion-apps-design.md`, §G4.
@@ -17,23 +12,27 @@ Journaux : `journaux-gestion-apps-g4/`.
 
 ---
 
-## 1. Familles de lecture des journaux — **UNE seule**, relevée par la commande
+## 1. Familles de lecture des journaux — **DEUX**, remesurées APRÈS la recette
 
 | Famille | État relevé | Ce qu'il faut faire |
 | --- | --- | --- |
-| **tous** les fichiers | UTF-8 ou ASCII, **aucune séquence ANSI**, **aucun octet NUL**, **aucun `\r`** | **rien** — ils se `grep`ent à plat |
+| tous les journaux de recette (`c1-*`, `c24-*`, `c3a-*`, `c3b-*`, `c2bis-*`, `c5-*`, `c6-*`, `agent-*-plat`) | UTF-8, **CRLF**, **aucune séquence ANSI**, **aucun octet NUL** | **rien** — les CR ne gênent aucun `grep` |
+| les journaux d'hôte (`s1-*`, `verify-all-*`, `rouge*`, `t4-*`) | UTF-8/ASCII, LF | **rien** |
 
-Relevé par `file -b`, `grep -lP '\x1b\['`, un balayage `tr -dc '\000'` et
-`grep -lU $'\r'` : voir `journaux-gestion-apps-g4/familles-de-lecture.txt`.
+Relevé par `file -b`, `grep -lP`, un balayage `tr -dc '\000'` et `grep -lU $'\r'` :
+voir `journaux-gestion-apps-g4/familles-de-lecture.txt`.
 
-⚠️ **Ce n'est pas un mérite, et la raison est structurelle** : ce sont des
-sorties `cargo` et `git` sur l'**hôte**. Le défaut à deux réglages de
-`run-agent.sh` / `build-agent.sh` reste **entier** ; il n'est pas rencontré ici.
-🔴 **Et cette propriété ne survivra probablement pas à la recette** — les
-journaux d'agent portent les séquences ANSI de `tracing`, ceux de pilote des
-octets NUL. **Le tableau se remesure après la recette, il ne se recopie pas.**
+🔵 **AUCUN journal ne porte de séquence ANSI, et ce n'est pas de la chance** :
+les journaux de sonde sont écrits par un `StreamWriter` UTF-8 côté VM, et les
+copies d'`agent.log` sont **mises à plat au `sed` avant d'être versées**. Les
+CRLF viennent de la VM et sont inoffensifs.
 
----
+⚠️ **`familles-de-lecture.txt` S'EST POLLUÉ LUI-MÊME à sa première rédaction** :
+ses commandes de contrôle passées à `echo` entre guillemets **doubles** ont vu
+leurs échappements interprétés, et le fichier a reçu un **vrai octet NUL** — il
+se classait alors « data », c'est-à-dire exactement ce qu'il servait à
+détecter. C'est le piège du sous-bloc S3, repayé. Réécrit par heredoc **cité**,
+et le contrôle rend désormais **0**.
 
 ## 2. Ce que G4 livre
 
@@ -262,46 +261,264 @@ changent vit dans du `#[cfg(windows)]`, hors de portée de tout test d'hôte.
 
 ---
 
-## 7. 🔴 CE QUE G4 N'ÉTABLIT PAS — la liste est la partie qui compte
+## 6bis. 🔴 LA PORTE S1 — la rafale NE FAIT PAS DÉBORDER
 
-- 🔴 **AUCUN DES QUATRE CRITÈRES N'EST MESURÉ.** ①, ②, ③ et ④ n'ont **aucune
-  exécution**. Aucun taux, aucune latence, aucun compte de réconciliations.
-- 🔴 **LA PORTE S1 N'A PAS ÉTÉ JOUÉE** : on ignore si une rafale peut faire
-  déborder un tampon de 64 Kio sur cette machine, et donc **si le critère ② est
-  seulement mesurable**.
-- 🔴 **LE PRODUIT N'A JAMAIS TOURNÉ.** Pas un octet de `agent/src/apps/surveillance/`
-  ne s'est exécuté : `racine.rs` et `fil.rs` sont `#[cfg(windows)]`, et
-  `cargo check --target x86_64-pc-windows-gnu` couvre **types, emprunts,
-  visibilités et durées de vie** — **pas l'édition de liens, pas le
-  comportement**.
-- 🔴 **LE CORRECTIF E5 N'A POUR PREUVE QU'UN ARGUMENT DE FLOT DE CONTRÔLE**, et
-  aucune tâche prévue ne l'exerce : la recette de G4 ne lance aucune
-  installation.
-- 🔴 **`APPS_SURVEILLANCE` ET `APPS_FAUTE` N'ONT JAMAIS ATTEINT UN PROCESSUS.**
-  Les deux lignes de `run-agent.sh` sont écrites ; **le contrôle qui vaut est
-  différé** — relever `$env:APPS_SURVEILLANCE` dans le `run-agent.ps1` **généré**
-  puis `mode de surveillance retenu` au journal.
-- **Le critère ③ est prévu NON DISCRIMINANT par son montage de spécification**
-  (E4), et le montage qui peut être rouge — `APPS_FAUTE=muette` — **établirait
-  que le remède fonctionne, jamais qu'une cause existe**.
-- **`Veille::arreter` n'a AUCUN APPELANT DE PRODUCTION** : le mécanisme est
-  vivant (`fil::boucler` relit `arretee()` à chaque tour), son **déclencheur**
-  manque, et il manque parce que **l'agent n'a aucun chemin d'extinction
-  propre** — ce que `CLAUDE.md` écrit depuis D1.
-- **Une racine ABSENTE au démarrage n'est jamais surveillée** : pas de handle,
-  donc pas d'erreur, donc pas de réouverture. **Latence, jamais perte.**
-- **Aucune constante calibrée** : `TAMPON_NOTIFICATIONS`, `DELAI_ANTI_REBOND`,
-  `DELAI_ANTI_REBOND_MAX` (**dérivée**, ce qui n'est pas calibrée),
-  `PAS_ATTENTE_MS`, `PERIODE_RECONCILIATION` que G4 **ne change pas**.
-- **Rien du comportement sous une racine bruyante** : le témoin de repos
-  (relevé ⑥) n'a pas été joué. Si une racine l'est, la surveillance multiplie le
-  travail par `PERIODE_RECONCILIATION / DELAI_ANTI_REBOND_MAX` = **7,5**, et
-  **ce serait un RÉSULTAT**, pas un incident.
-- **Le coût de l'envoi complet périodique sur le fil n'est mesuré par rien.**
-- **La revue transverse n'est faite qu'à MOITIÉ** : sa moitié hôte est jouée ;
-  ce que la recette rendra faux reste à relire.
+**Sept exécutions** : 1 du premier instrument, 3 du deuxième, 3 du troisième.
+
+| N | fichiers/s | créés | manquants | erreurs | débordements |
+| --- | --- | --- | --- | --- | --- |
+| 1 000 | 3 378 | 1 001 | −1 | 0 | **0** |
+| 5 000 | 3 209 | 5 001 | −1 | 0 | **0** |
+| 20 000 | 2 944 | 20 001 | −1 | 0 | **0** |
+| 60 000 | 2 850 | 60 001 | −1 | 0 | **0** |
+
+*(le +1 est la création du répertoire ; « manquants = −1 » dit donc que le
+guetteur n'a RIEN perdu — un compte tronqué ressemble exactement à un
+débordement, et les distinguer était l'objet du champ.)*
+
+🔴 **POURQUOI, ET C'EST ARITHMÉTIQUE** : un débordement exige plus de ~1 260
+événements **entre deux réarmements**. À 2 850 fichiers/s ils arrivent toutes
+les ~350 µs, et le lecteur réarme bien plus vite. **Le plafond mesuré est celui
+du SYSTÈME DE FICHIERS** (2 850 à 3 378/s, quasi constant de 1 000 à 60 000),
+**pas celui du tampon.** La machine ne PEUT PAS produire le régime.
+
+**Corpus 220 avant et après, aux sept exécutions.** L'instrument ne détruit pas
+ce qu'il mesure : des `.tmp` que `lecture::lnk_sous` ignore **par
+construction**, dans un sous-répertoire NEUF du menu Démarrer.
+
+🔴 **DEUX INSTRUMENTS FAUX AVANT LE BON, LES DEUX JOURNAUX VERSÉS :**
+
+1. `s1-v1-instrument-defectueux.log` — le compteur était un
+   `Register-ObjectEvent -Action`. Sur 1 000 fichiers posés à 3 289/s il n'a
+   rendu que **DIX** événements, à **3,6 par seconde** : **il mesurait la
+   cadence de la pompe d'événements de PowerShell, pas le tampon.** Un « ne
+   déborde pas » lu là n'aurait rien voulu dire. Le compteur vit désormais dans
+   une classe **C#** abonnée directement au watcher.
+2. `s1-v2-N-non-transmis.log` — 🔴 **`G4_RAFALE_N` n'atteignait jamais le
+   processus.** Une tâche planifiée démarre dans un environnement NEUF, et
+   `schtasks /run` ne transporte rien. **Trois exécutions demandées à 1 000,
+   5 000 et 20 000 ont TOUTES tourné à 1 000**, et seul l'en-tête du journal l'a
+   dit. **C'est le piège de `run-agent.sh`, payé cinq fois par ce dépôt, rejoué
+   par mon propre instrument.** N passe désormais par un fichier.
 
 ---
+
+## 6ter. LA RECETTE — les quatre critères, **deux exécutions chacun**
+
+**Vingt exécutions de sonde, onze lancements d'agent.** Aucun taux n'est
+revendiqué : deux exécutions établissent la reproductibilité, pas une fréquence.
+
+🔵 **LE CONTRÔLE QUI VAUT A ÉTÉ JOUÉ À CHAQUE LANCEMENT** : `APPS_SURVEILLANCE`
+et `APPS_FAUTE` ont été relevées **dans le `C:\dev\run-agent.ps1` GÉNÉRÉ**, pas
+dans le tracé du code — le piège de D1, D2 et D7. Et la trace
+`mode de surveillance retenu mode=…` a confirmé la valeur **arrivée**.
+⚠️ **Ce qui discrimine reste le COMPTE**, jamais la trace : au bras `=0`,
+**aucune** ligne `racine surveillée` n'apparaît — le fil n'a pas démarré.
+
+🔵 **ET LE BINAIRE EST IDENTIFIÉ PAR UNE CHAÎNE, JAMAIS PAR SA TAILLE.**
+`strings agent.exe` rend **1** pour `mode de surveillance retenu`, `notifications
+perdues` et `APPS_SURVEILLANCE`, et **0** pour un témoin négatif — le contrôle
+peut donc échouer. *Le contrôle par la taille est mort : F4 a mesuré que son vert
+restauré pesait exactement autant que son rouge.*
+
+### ① Un raccourci créé apparaît en moins de 5 s — **TENU**
+
+| Bras | exéc. 1 | exéc. 2 | déclencheur | notifications |
+| --- | --- | --- | --- | --- |
+| **VERT** (variable absente) | **960 ms** | **999 ms** | `notification` | 2, 5 |
+| **ROUGE** (`APPS_SURVEILLANCE=0`) | **29 997 ms** | **29 966 ms** | `periode` | **0** |
+
+**31× plus rapide, et le rouge dépasse les cinq secondes d'un facteur six.**
+
+🔵 **LA MESURE CORROBORE LA DÉRIVATION DE D6, ET CE N'ÉTAIT PAS CHERCHÉ** :
+`750 ms` (anti-rebond) `+ ≤200 ms` (granularité du sondage) `+ ~70 ms`
+(réconciliation) = **960 à 1 020 ms**. Les deux mesures tombent dedans.
+
+⚠️ **Le rouge n'est rouge que parce que le témoin est créé JUSTE APRÈS une ligne
+`catalogue reconcilie`** : un raccourci créé une seconde avant une
+réconciliation périodique serait passé. Le protocole attend cette
+synchronisation, et le journal l'écrit (`attente_synchro_ms`).
+
+⚠️ **La ROUGE que la spécification nomme — « le binaire de G1 » — N'A PAS ÉTÉ
+JOUÉE, et ne pouvait pas l'être** : `PLATEFORME_VERSION` vaut 4, un agent v1/v2
+boucle sans terme sans pouvoir lire le refus. `APPS_SURVEILLANCE=0` est
+**meilleure** : même binaire, même corpus, même machine, une seule variable.
+
+### ② Un débordement est détecté et journalisé — 🔴 **NON MESURABLE**
+
+**Rafale de 20 000 fichiers rejouée sur le produit, deux exécutions** :
+
+| | exéc. 1 | exéc. 2 |
+| --- | --- | --- |
+| notifications reçues | **96 742** | **96 328** |
+| `debordements` | **0** | **0** |
+| lignes `notifications perdues` | **0** | **0** |
+
+🔴 **LE VERDICT EST ÉCRIT TEL QUEL, ET IL ÉTAIT PRÉVU** : S1 l'annonçait, et le
+produit le confirme sur **~96 000 notifications réelles**. **Le tampon n'a PAS
+été rétréci pour faire passer le critère** — ce serait régler le produit sur son
+test, et `TAMPON_NOTIFICATIONS` porte cette interdiction dans son commentaire.
+
+### ②bis L'injection — **le chemin de code EST exercé** (1 exécution)
+
+`APPS_FAUTE=debordement:3` : la ligne `notifications perdues` sort **exactement
+trois fois** (`debordements=1`, `2`, `3` — budget **global au processus**,
+épuisé une seule fois), et la ligne `catalogue reconcilie` porte
+`debordements=3`.
+
+🔵 **ET ELLE ÉTABLIT LA PROPRIÉTÉ QUI FERME LE CHEMIN DE PERTE** : le
+débordement porte `declencheur="notification"` et `notifications=2 debordements=2`
+— **les deux compteurs montent ensemble**, donc un débordement DÉCLENCHE la
+réconciliation qui répare. C'est exactement ce que `signaler_debordement`
+promet.
+
+🔴 **CE QUE L'INJECTION N'ÉTABLIT PAS, ET C'EST ÉCRIT MOT POUR MOT** : elle
+établit que le **REMÈDE** fonctionne, **jamais qu'une CAUSE existe**. Rien ici ne
+dit qu'un débordement réel se produira jamais sur cette machine — et S1 comme la
+rafale disent le contraire.
+
+### ③ Un débordement ne perd aucune application — **TENU**, et **le montage de la spec est NON DISCRIMINANT**
+
+**Montage A, celui de la spécification** (rafale + témoin pendant, ≥ 2 périodes) :
+
+| Bras | exéc. 1 | exéc. 2 |
+| --- | --- | --- |
+| VERT (variable absente) | `cles=157` | `cles=157` |
+| **ROUGE (`APPS_SURVEILLANCE=seule`)** | **`cles=157`** | **`cles=157`** |
+
+🔴 **LA ROUGE EST VERTE, ET C'ÉTAIT ÉCRIT AVANT DE LA JOUER** (divergence E4).
+Mon raisonnement tenait en trois faits : une réconciliation relit le disque
+**entier** quel que soit son déclencheur ; un débordement est **lui-même** une
+complétion, donc un déclencheur ; et le premier tour est `complet` par
+construction. **La mesure le confirme** : en mode `seule`, le témoin apparaît par
+`declencheur="notification"`.
+
+**Ce qui achète l'absence de perte n'est donc pas la réconciliation périodique :
+c'est le fait que toute réconciliation relise tout.**
+
+**Montage B — `APPS_FAUTE=muette`, le seul qui PEUT être rouge** :
+
+| Bras | réconciliations pendant 90 s | `cles` finales | déclencheur |
+| --- | --- | --- | --- |
+| VERT (période armée + `muette:1000`) | **3** | **157** | `periode` |
+| **ROUGE (`seule` + `muette:1000`)** | **0** | **156** | `demarrage` |
+
+**Deux exécutions par bras. `notifications=0` des deux côtés** — les complétions
+sont bien **avalées**, donc l'injection fait ce qu'elle annonce. Et au ROUGE
+**l'application n'apparaît JAMAIS**, quatre-vingt-dix secondes durant.
+
+🔵 **C'EST LA MESURE QUI JUSTIFIE D1**, et elle n'existait pas avant ce
+sous-bloc : la réconciliation périodique achète **une surveillance qui cesse de
+délivrer SANS ERREUR**, et rien d'autre.
+
+### ④ L'anti-rebond réduit le nombre de réconciliations — **TENU**
+
+Même binaire, même corpus, même machine, même rafale (20 000 fichiers ≈ 6,2 s),
+fenêtre **bornée par deux horodatages écrits** :
+
+| Bras | exéc. 1 | exéc. 2 |
+| --- | --- | --- |
+| **VERT** (variable absente) | **4** | **4** |
+| **ROUGE** (`APPS_SURVEILLANCE=sans-rebond`) | **60** | **58** |
+
+**15× moins.** ⚠️ **Et ce ROUGE ne mesure PAS « anti-rebond contre RIEN »** : le
+sondage a une granularité de 200 ms, qui est déjà un anti-rebond faible. Il
+mesure **« anti-rebond contre 200 ms »**, et c'était écrit d'avance.
+
+### ⑤ Le rétablissement d'une surveillance perdue — **TENU** (1 exécution, hors critères)
+
+`APPS_FAUTE=perte:1` : **une** ligne `racine de surveillance PERDUE`, **une**
+ligne `RÉTABLIE` — des **transitions**, jamais une par tentative — et une
+notification postérieure déclenche encore (`declencheur="notification"`).
+
+🔵 **ET LA CHRONOLOGIE EST LE RELEVÉ LE PLUS FORT DE TOUTE LA RECETTE, PAR
+ACCIDENT DE MINUTAGE :**
+
+```
+09:23:02.5367927Z  témoin créé
+09:23:02.542895Z   racine de surveillance PERDUE   (6 ms plus tard : la faute
+                                                    injectée a consommé la
+                                                    complétion DU TÉMOIN)
+09:23:03.542659Z   racine de surveillance RÉTABLIE (1 s, repli exponentiel)
+puis               cles=157  declencheur="periode"
+```
+
+**Une notification a été réellement perdue, et l'application est apparue quand
+même — par la réconciliation périodique.** C'est la garantie de D1 observée sur
+le chemin réel, dans un montage qui ne la cherchait pas.
+
+### ⑥ Le témoin de repos — **TENU**, et il POUVAIT échouer (2 exécutions)
+
+Agent armé, disque au repos, **240 s** au total :
+
+| | exéc. 1 (120 s) | exéc. 2 (240 s cumulées) |
+| --- | --- | --- |
+| réconciliations | 1 `demarrage` + **4** `periode` | 1 + **8** `periode` |
+| **notifications** | **0** | **0** |
+| débordements | 0 | 0 |
+
+🔵 **UNE PAR PÉRIODE, EXACTEMENT, ET ZÉRO NOTIFICATION.** Les quatre racines de
+cette VM **ne sont pas bruyantes au repos** : la multiplication du travail par
+`PERIODE_RECONCILIATION / DELAI_ANTI_REBOND_MAX` = **7,5** que D3 redoutait **ne
+se produit pas**. ⚠️ **Le contrôle pouvait échouer** — une seule écriture de fond
+aurait fait bouger `notifications`.
+
+⚠️ **Cela mesure le repos de CETTE VM, pas celui d'un poste de travail utilisé.**
+
+### Contrôle de sortie
+
+**Corpus des quatre racines : 220 avant, 220 après**, à **chacune** des vingt
+exécutions de sonde. `G4 Temoin.lnk`, `…\Programs\g4-rafale\` et
+`C:\dev\g4-preparation\` retirés ; tâche planifiée `g4-sonde` supprimée.
+**La VM a survécu** (même domaine, sans interruption) et `/dev/null` est resté un
+`character special file`.
+
+**Ce que G4 LAISSE sur la VM, et pourquoi** : les cinq `.ps1` de sonde et leurs
+journaux dans `C:\dev\` — ils rendent la recette **rejouable sans rien
+remonter**, comme les deux témoins de G2 sur le Bureau. Ils ne sont pas des
+`.lnk` et **le catalogue ne peut pas les voir**.
+
+---
+
+## 7. 🔴 CE QUE G4 N'ÉTABLIT PAS — la liste a rétréci, elle n'a pas disparu
+
+- 🔴 **AUCUN TAUX, NULLE PART.** Deux exécutions par bras au mieux ; **une** pour
+  ②bis et ⑤ ; **sept** pour S1, dont **quatre** seulement dimensionnantes.
+- 🔴 **QU'UN DÉBORDEMENT RÉEL SE PRODUISE JAMAIS SUR CETTE MACHINE.** S1 (7
+  exécutions, jusqu'à 60 000 fichiers) et la rafale sur le produit (2 exécutions,
+  ~96 000 notifications) rendent **zéro**. **Tout ce qui est mesuré du chemin de
+  débordement l'est SOUS INJECTION**, et l'injection établit que le remède
+  fonctionne, jamais qu'une cause existe.
+- 🔴 **QUE LE CRITÈRE ③ SOIT DISCRIMINANT PAR LE MONTAGE DE SA SPÉCIFICATION.**
+  Il ne l'est pas — mesuré, 2 exécutions par bras. Le montage B l'est, mais il
+  **fabrique** la panne au lieu de l'observer.
+- 🔴 **LE CORRECTIF E5 N'A TOUJOURS POUR PREUVE QU'UN ARGUMENT DE FLOT DE
+  CONTRÔLE.** La recette ne lance **aucune installation** : le chemin
+  `reconcilier` / `reconciliee` n'a pas été exercé une seule fois. **Légué, et
+  déclaré manquant** — c'est la situation exacte que le défaut F1 de D7 a payée.
+- 🔴 **AUCUNE CAUSE NATURELLE DE PERTE DE HANDLE N'A ÉTÉ OBSERVÉE**, ni ici ni
+  ailleurs dans ce dépôt. ⑤ est entièrement sous injection.
+- **`Veille::arreter` n'a toujours AUCUN APPELANT DE PRODUCTION** : le fil de
+  surveillance n'a **jamais été arrêté proprement** de toute la recette — chaque
+  bras se termine par un `Stop-Process -Force`. L'agent n'a aucun chemin
+  d'extinction propre, ce que `CLAUDE.md` écrit depuis D1.
+- **Une racine ABSENTE au démarrage n'est jamais surveillée** : le cas n'a pas
+  été construit. **Latence, jamais perte.**
+- **Aucune constante calibrée** : `TAMPON_NOTIFICATIONS`, `DELAI_ANTI_REBOND`,
+  `DELAI_ANTI_REBOND_MAX` (**dérivée** — la mesure de ① la corrobore, elle ne la
+  calibre pas), `PAS_ATTENTE_MS`, `PERIODE_RECONCILIATION` que G4 ne change pas.
+  **Aucun jugement d'usage n'a été porté** sur le délai que l'utilisateur
+  ressent.
+- **Le témoin de repos mesure CETTE VM**, pas un poste de travail utilisé.
+- **Le coût de l'envoi complet périodique sur le fil n'est mesuré par rien** —
+  et la recette l'a vu partir toutes les trente secondes, sans le peser.
+- **Rien de la latence de bout en bout** : G4 mesure jusqu'à une **ligne de
+  journal**, jamais jusqu'à une page. Aucun sous-bloc du chantier D ni de ④ ne
+  l'a jamais mesurée.
+- **Un seul corpus (220 raccourcis, 156 clés), une seule VM, une seule
+  application témoin.** Rien de la charge, rien de plusieurs VMs.
+- **Aucun navigateur, aucune page de hub** : les quatre critères se jugent dans
+  le journal de l'agent, comme D11 le prescrit.
 
 ## 8. Divergences relevées par l'exécution, en plus des neuf du plan
 
@@ -333,25 +550,33 @@ changent vit dans du `#[cfg(windows)]`, hors de portée de tout test d'hôte.
 
 ## 9. Ce qui reste à faire, et à qui
 
-**À G4 lui-même, quand la VM se libère** : la porte S1 (tâche 1), la recette
-(tâches 11 et 12), la seconde moitié de la revue transverse, la section de
-`CLAUDE.md` avec ses **deux** variables neuves, et le relevé de tailles
-**relancé après la dernière édition**.
+**G4 est complet** : produit, porte, recette, revue transverse, index.
 
 **À G5** (qui n'a pas de plan) : le manifeste PWA par application, les
-`file_handlers`, les types installeur du hub. **G4 ne l'approche pas.**
+`file_handlers` alimentés par les vraies associations, les types installeur du
+hub. **G4 ne l'approche pas.**
 
-**Legs de G4, indépendants de sa recette :**
+**Legs de G4 :**
 
-1. ⛔ **Le correctif E5 n'a pour preuve qu'un argument de flot de contrôle.**
-2. ⛔ **Le coût de l'envoi complet périodique sur le fil n'est mesuré par rien.**
-3. ⛔ **`Veille::arreter` attend un chemin d'extinction propre** qui n'existe
+1. 🔴 **Le correctif E5 n'a pour preuve qu'un argument de flot de contrôle**, et
+   la recette n'a lancé aucune installation. **Le fermer demande une recette qui
+   installe réellement pendant qu'une réconciliation périodique court** —
+   c'est-à-dire une recette de G3 rejouée sous G4.
+2. 🔴 **Aucune cause naturelle de débordement ni de perte de handle n'est
+   connue.** Tout le chemin est éprouvé **sous injection**. S1 établit même que
+   cette machine **ne peut pas** produire le régime : 2 850 fichiers/s contre
+   les ~1 260 événements par microseconde qu'il faudrait.
+3. ⛔ **Le coût de l'envoi complet périodique sur le fil n'est mesuré par rien.**
+   Le seul chiffre disponible est celui de G1 — 56 145 octets pour 154
+   applications, **sans** `icone` ni `source_max`. Celui d'aujourd'hui porte 156
+   applications **avec** les deux.
+4. ⛔ **`Veille::arreter` attend un chemin d'extinction propre** qui n'existe
    nulle part dans l'agent depuis D1.
-4. ⛔ **Une racine absente au démarrage n'est jamais surveillée.**
-5. ⛔ **Quatre avertissements `clippy` hors famille `dead_code`**, préexistants
-   et non corrigés — la formule « tous `dead_code` » n'est plus vraie du dépôt.
-6. ⛔ **`plateforme/src/http/routes-installation.ts` est à 500, MARGE NULLE** —
-   legs de G3, relevé au passage, **hors périmètre de G4**.
-7. ⛔ **La divergence `403 vm-etrangere` / `404 vm-inconnue`** reste **signalée
-   et non tranchée** : c'est une décision de sécurité, et elle appartient au
-   propriétaire du dépôt. **G4 ne la rencontre pas.**
+5. ⛔ **Une racine absente au démarrage n'est jamais surveillée.**
+6. ⛔ **Quatre avertissements `clippy` hors famille `dead_code`**, préexistants,
+   non corrigés — la formule « tous `dead_code` » n'est plus vraie du dépôt.
+7. ⛔ **`plateforme/src/http/routes-installation.ts` est à 500, MARGE NULLE** —
+   legs de G3, hors périmètre de G4.
+8. ⛔ **La divergence `403 vm-etrangere` / `404 vm-inconnue`** reste **signalée
+   et non tranchée** : décision de sécurité, elle appartient au propriétaire du
+   dépôt. **G4 ne la rencontre pas.**

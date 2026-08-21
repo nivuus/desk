@@ -1,0 +1,14 @@
+=== G4 CRITERE 3 MONTAGE B (muette) -- observation=90s
+date    : 2026-08-21T11:16:04.5640263+02:00
+mode    : 2026-08-21T09:14:28.790721Z  INFO agent::apps: mode de surveillance retenu mode=Armee
+mode    : 2026-08-21T09:14:32.255939Z  WARN agent::apps::surveillance::faute: faute de surveillance ARMEE (APPS_FAUTE) : banc, jamais une configuration livrée famille=Muette fautes_a_injecter=1000
+reconciliations_avant : 4
+cles_avant : 157
+temoin_cree : 2026-08-21T09:16:04.6109127Z
+reconciliations_apres : 7  (soit 3 pendant l'observation)
+DERNIERE_LIGNE : 2026-08-21T09:17:30.721620Z  INFO agent::apps::boucle::memoire: catalogue reconcilie total=221 retenus=170 cles=157 icones=0 icones_echouees=0 icones_distinctes=98 apparues=0 modifiees=0 disparues=0 duree_ms=64 declencheur="periode" notifications=0 debordements=0
+CLES_FINALES : 157
+DECLENCHEUR : periode
+NOTIFICATIONS : 0
+LIGNES_A_157 : 6
+=== FIN

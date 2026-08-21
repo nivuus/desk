@@ -1,0 +1,20 @@
+=== G4 CRITERE 1
+date_debut : 2026-08-21T10:58:42.7552607+02:00
+session    : 1
+mode_lignes : 1
+mode       : 2026-08-21T08:57:36.959348Z  INFO agent::apps: mode de surveillance retenu mode=Desarmee
+reconciliations_avant : 3
+derniere_avant : 2026-08-21T08:58:38.636909Z  INFO agent::apps::boucle::memoire: catalogue reconcilie total=221 retenus=170 cles=157 icones=1 icones_echouees=0 icones_distinctes=98 apparues=1 modifiees=0 disparues=0 duree_ms=72 declencheur="periode" notifications=0 debordements=0
+attente_synchro_ms : 23600
+t0_creation : 2026-08-21T10:59:08.8102778+02:00
+lnk         : C:\Users\Administrateur\Desktop\G4 Temoin.lnk
+ligne_trouvee : 2026-08-21T08:59:38.776518Z  INFO agent::apps::boucle::memoire: catalogue reconcilie total=221 retenus=170 cles=157 icones=1 icones_echouees=0 icones_distinctes=98 apparues=1 modifiees=0 disparues=0 duree_ms=72 declencheur="periode" notifications=0 debordements=0
+t1_ligne    : 2026-08-21T08:59:38.7765180
+DELAI_MS    : 29966
+delai_sondage_ms : 30063
+DECLENCHEUR : periode
+notifications : 0
+debordements  : 0
+cles          : 157
+corpus_apres : 220  (220 exige)
+=== FIN

@@ -1,0 +1,13 @@
+=== G4 CRITERE 3 MONTAGE B (muette) -- observation=90s
+date    : 2026-08-21T11:14:32.2043065+02:00
+mode    : 2026-08-21T09:14:28.790721Z  INFO agent::apps: mode de surveillance retenu mode=Armee
+reconciliations_avant : 1
+cles_avant : 156
+temoin_cree : 2026-08-21T09:14:32.2537956Z
+reconciliations_apres : 4  (soit 3 pendant l'observation)
+DERNIERE_LIGNE : 2026-08-21T09:16:00.524421Z  INFO agent::apps::boucle::memoire: catalogue reconcilie total=221 retenus=170 cles=157 icones=0 icones_echouees=0 icones_distinctes=98 apparues=0 modifiees=0 disparues=0 duree_ms=65 declencheur="periode" notifications=0 debordements=0
+CLES_FINALES : 157
+DECLENCHEUR : periode
+NOTIFICATIONS : 0
+LIGNES_A_157 : 3
+=== FIN
