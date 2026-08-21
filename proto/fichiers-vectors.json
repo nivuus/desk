@@ -156,13 +156,36 @@
         { "chemin": "note.txt", "octets": 12 },
         { "chemin": "dossier/gros.bin", "octets": 12582912 }
       ],
-      "json": "{\"dues\":[{\"chemin\":\"note.txt\",\"octets\":12},{\"chemin\":\"dossier/gros.bin\",\"octets\":12582912}]}"
+      "retenues": true,
+      "json": "{\"dues\":[{\"chemin\":\"note.txt\",\"octets\":12},{\"chemin\":\"dossier/gros.bin\",\"octets\":12582912}],\"retenues\":true}"
     },
     {
       "name": "dues_vides",
       "forme": "dues",
       "dues": [],
-      "json": "{\"dues\":[]}"
+      "retenues": false,
+      "json": "{\"dues\":[],\"retenues\":false}"
+    },
+    {
+      "name": "bonjour",
+      "forme": "bonjour",
+      "racine": "Documents",
+      "forcer": false,
+      "json": "{\"racine\":\"Documents\",\"forcer\":false}"
+    },
+    {
+      "name": "bonjour_force",
+      "forme": "bonjour",
+      "racine": "Documents",
+      "forcer": true,
+      "json": "{\"racine\":\"Documents\",\"forcer\":true}"
+    },
+    {
+      "name": "bonjour_racine_accentuee",
+      "forme": "bonjour",
+      "racine": "Étude finale",
+      "forcer": false,
+      "json": "{\"racine\":\"Étude finale\",\"forcer\":false}"
     },
     {
       "name": "echec_a_un_mot",

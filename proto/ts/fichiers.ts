@@ -41,6 +41,18 @@ export const TYPE_SUPPRIMER = 8; // F3 — en-tête `Supprimer`, charge vide
 // `capteur/pont_media.rs`.
 export const TYPE_DUES = 6; // F2 — en-tête `Dues`, charge vide
 
+// Annonces NAVIGATEUR → PONT — elles n'attendent RIEN.
+//
+// 🔴 QUATRIÈME FAMILLE, et c'est la première qui REMONTE. Sa corrélation est
+// IGNORÉE, et c'est ce qui la rend dangereuse : le pont décode toute trame
+// entrante puis cherche sa corrélation dans sa table ; une corrélation inconnue
+// est JETÉE dans un `tracing::debug!`, invisible sous `RUST_LOG=info`. Une
+// annonce remontante qui traverserait ce chemin NE FERAIT RIEN, ET RIEN NE LE
+// DIRAIT. F5 les aiguille AVANT toute résolution de corrélation, et c'est la
+// seule raison pour laquelle elles marchent. LA LISTE EST CLOSE.
+export const TYPE_BONJOUR = 68; // F5 — en-tête `Bonjour`, charge vide
+export const TYPE_RAFRAICHIR = 69; // F5 — en-tête VIDE `{}`, charge vide
+
 // Réponses navigateur → pont.
 export const TYPE_ENTREES = 64;
 export const TYPE_META = 65;
@@ -63,6 +75,8 @@ export type TypeMessage =
     | typeof TYPE_RENOMMER
     | typeof TYPE_SUPPRIMER
     | typeof TYPE_DUES
+    | typeof TYPE_BONJOUR
+    | typeof TYPE_RAFRAICHIR
     | typeof TYPE_ENTREES
     | typeof TYPE_META
     | typeof TYPE_DONNEES
@@ -91,6 +105,8 @@ const TYPES_CONNUS: Readonly<Record<TypeMessage, true>> = {
     [TYPE_RENOMMER]: true,
     [TYPE_SUPPRIMER]: true,
     [TYPE_DUES]: true,
+    [TYPE_BONJOUR]: true,
+    [TYPE_RAFRAICHIR]: true,
     [TYPE_ENTREES]: true,
     [TYPE_META]: true,
     [TYPE_DONNEES]: true,

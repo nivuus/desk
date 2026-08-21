@@ -5,6 +5,7 @@ import {
     encodeChemin,
     encodeCreer,
     encodeDonnees,
+    encodeBonjour,
     encodeDues,
     encodeEchec,
     encodeEcrire,
@@ -16,6 +17,7 @@ import {
     parseChemin,
     parseCreer,
     parseDonnees,
+    parseBonjour,
     parseDues,
     parseEchec,
     parseEcrire,
@@ -49,6 +51,9 @@ interface CasVecteur {
     premier?: boolean;
     dernier?: boolean;
     dues?: Due[];
+    retenues?: boolean;
+    racine?: string;
+    forcer?: boolean;
     de?: string;
     vers?: string;
 }
@@ -77,7 +82,9 @@ function encoder(c: CasVecteur): string {
         case 'supprimer':
             return encodeSupprimer(c.chemin!, c.repertoire!);
         case 'dues':
-            return encodeDues(c.dues!);
+            return encodeDues(c.dues!, c.retenues!);
+        case 'bonjour':
+            return encodeBonjour(c.racine!, c.forcer!);
         case 'echec':
             return encodeEchec(c.code as CodeEchec);
         default:
@@ -109,6 +116,8 @@ function analyser(c: CasVecteur): unknown {
             return parseSupprimer(brut);
         case 'dues':
             return parseDues(brut);
+        case 'bonjour':
+            return parseBonjour(brut);
         case 'echec':
             return parseEchec(brut);
         default:
@@ -210,6 +219,12 @@ describe('les en-têtes incomplets sont rejetés', () => {
 
     it('refuse une due incomplète', () => {
         expect(() => parseDues({ dues: [{ chemin: 'a' }] })).toThrow(/octets/);
+        // 🔴 **F5 — l'ABSENCE de défaut, épinglée.** Un `Dues` sans `retenues`
+        // complété en silence vaudrait « le pont pousse », c'est-à-dire
+        // l'inverse de ce que `Bonjour` existe pour empêcher.
+        expect(() => parseDues({ dues: [] })).toThrow(/retenues/);
+        expect(() => parseBonjour({ racine: 'Documents' })).toThrow(/forcer/);
+        expect(() => parseBonjour({ forcer: false })).toThrow(/racine/);
     });
 
     it('refuse une entrée de répertoire incomplète', () => {

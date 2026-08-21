@@ -134,6 +134,14 @@ pub(super) struct Fil {
     pub(super) mutations: FileMutations,
     /// La corrélation de la mutation en vol, s'il y en a une.
     pub(super) mutation_en_vol: Option<u32>,
+    /// **F5** — le fil a des écritures dues et **refuse de les pousser**.
+    ///
+    /// 🔴 **CE DRAPEAU NE VIDE RIEN, ET C'EST TOUT SON INTÉRÊT.** Retenir n'est
+    /// ni pousser ni jeter : pousser écrirait les fichiers d'une session dans
+    /// le dossier d'une autre (spec §6.4 cas 2), jeter perdrait la donnée. **On
+    /// ne fait ni l'un ni l'autre : on NOMME**, en portant l'état jusqu'au
+    /// navigateur par le champ `retenues` de l'annonce `Dues`.
+    pub(super) retenues: bool,
 }
 
 impl Fil {
@@ -159,6 +167,7 @@ impl Fil {
             en_cours: None,
             mutations: FileMutations::nouvelle(),
             mutation_en_vol: None,
+            retenues: false,
         };
         fil.reprendre();
         fil
@@ -394,7 +403,7 @@ impl Fil {
             .iter()
             .map(|(chemin, octets)| entetes::Due { chemin: chemin.clone(), octets: *octets })
             .collect();
-        let entete = serde_json::to_string(&entetes::Dues { dues })
+        let entete = serde_json::to_string(&entetes::Dues { dues, retenues: self.retenues })
             .expect("un en-tete Dues se serialise toujours");
         self.emettre(proto::fichiers::TYPE_DUES, CORRELATION_ANNONCE, &entete, &[]);
     }
