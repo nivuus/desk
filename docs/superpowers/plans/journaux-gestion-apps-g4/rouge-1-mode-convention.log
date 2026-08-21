@@ -1,0 +1,30 @@
+=== ROUGE 1 — la convention : une PRESENCE n'est pas un desarmement
+--- date : 2026-08-21T06:53:26+00:00   HEAD : d25176d
+--- sha256 AVANT : a87be8ab52889fac286a00131d34dd020d218526c9f1f22fbbfb9aef2cdf030f  agent/src/apps/surveillance/mode.rs
+--- ligne mutee (par NUMERO, jamais par sous-chaine nue) : 60
+--- diff (une sortie VIDE serait un ECHEC de la rouge) :
+60c60
+<         if crate::apps::desarme(valeur) {
+---
+>         if valeur.is_some() {
+--- le controle :
+test apps::surveillance::mode::tests::chaque_predicat_ne_coupe_que_ce_qui_le_concerne ... ok
+test apps::surveillance::mode::tests::une_presence_n_est_pas_un_desarmement ... FAILED
+test apps::surveillance::mode::tests::une_valeur_inconnue_retient_le_comportement_livre_et_se_nomme ... FAILED
+test apps::surveillance::mode::tests::les_quatre_etats_sont_des_egalites_exactes ... FAILED
+thread 'apps::surveillance::mode::tests::une_presence_n_est_pas_un_desarmement' (815763) panicked at agent/src/apps/surveillance/mode.rs:113:9:
+assertion `left == right` failed
+  left: Desarmee
+ right: SansRebond
+thread 'apps::surveillance::mode::tests::une_valeur_inconnue_retient_le_comportement_livre_et_se_nomme' (815764) panicked at agent/src/apps/surveillance/mode.rs:125:13:
+assertion `left == right` failed: "seul" doit retenir le mode livré
+  left: Desarmee
+ right: Armee
+thread 'apps::surveillance::mode::tests::les_quatre_etats_sont_des_egalites_exactes' (815762) panicked at agent/src/apps/surveillance/mode.rs:102:9:
+assertion `left == right` failed
+  left: (Desarmee, None)
+ right: (SansRebond, None)
+test result: FAILED. 1 passed; 3 failed; 0 ignored; 0 measured; 924 filtered out; finished in 0.00s
+--- restauration DEPUIS LA COPIE (jamais git checkout --) :
+--- sha256 APRES : a87be8ab52889fac286a00131d34dd020d218526c9f1f22fbbfb9aef2cdf030f  agent/src/apps/surveillance/mode.rs
+--- git status --porcelain agent/src/apps/surveillance/mode.rs : [?? agent/src/apps/surveillance/mode.rs]
