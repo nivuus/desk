@@ -34,6 +34,14 @@ pub mod repli;
 #[path = "plateforme/tests.rs"]
 mod tests;
 
+// 🔴 UN SECOND FICHIER DE TESTS, NÉ D'UN FRANCHISSEMENT DE **UNE** LIGNE (501).
+// Compresser pour un dépassement de un serait exactement le geste que le
+// sous-bloc D9 a payé : `sommeil.rs` ramené à 499 par compression, puis extrait
+// sur exigence de revue. Un franchissement d'une ligne est un franchissement.
+#[cfg(test)]
+#[path = "plateforme/tests_installation.rs"]
+mod tests_installation;
+
 use std::time::Duration;
 
 use proto::plateforme::VersLaPlateforme;

@@ -155,6 +155,10 @@ pub use apps::{Application, IssueLancement, SourceMax};
 mod installation;
 pub use installation::{Issue, Phase};
 
+/// Les constructeurs des deux enums, extraits pour que ce fichier ne dépasse
+/// pas 500 lignes. Voir l'en-tête du module — c'est son SECOND franchissement.
+mod constructeurs;
+
 /// Message de l'agent vers la plateforme.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "kebab-case", deny_unknown_fields)]
@@ -252,74 +256,6 @@ pub enum VersLaPlateforme {
     },
 }
 
-impl VersLaPlateforme {
-    pub fn enroler(vm: impl Into<String>, secret: impl Into<String>) -> Self {
-        Self::Enroler {
-            version: PLATEFORME_VERSION,
-            vm: vm.into(),
-            secret: secret.into(),
-        }
-    }
-
-    pub fn battement() -> Self {
-        Self::Battement {
-            version: PLATEFORME_VERSION,
-        }
-    }
-
-    pub fn catalogue(complet: bool, applications: Vec<Application>, disparues: Vec<String>) -> Self {
-        Self::Catalogue {
-            version: PLATEFORME_VERSION,
-            complet,
-            applications,
-            disparues,
-        }
-    }
-
-    pub fn lancee(demande: impl Into<String>, issue: IssueLancement) -> Self {
-        Self::Lancee {
-            version: PLATEFORME_VERSION,
-            demande: demande.into(),
-            issue,
-        }
-    }
-
-    pub fn progression(
-        installation: impl Into<String>,
-        phase: Phase,
-        octets_faits: u64,
-        octets_total: u64,
-        ecoule_ms: u64,
-    ) -> Self {
-        Self::Progression {
-            version: PLATEFORME_VERSION,
-            installation: installation.into(),
-            phase,
-            octets_faits,
-            octets_total,
-            ecoule_ms,
-        }
-    }
-
-    pub fn termine(
-        installation: impl Into<String>,
-        issue: Issue,
-        motif: Option<String>,
-        code_sortie: Option<i32>,
-        journal: impl Into<String>,
-        journal_tronque: bool,
-    ) -> Self {
-        Self::Termine {
-            version: PLATEFORME_VERSION,
-            installation: installation.into(),
-            issue,
-            motif,
-            code_sortie,
-            journal: journal.into(),
-            journal_tronque,
-        }
-    }
-}
 
 /// Message de la plateforme vers l'agent.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -437,71 +373,6 @@ pub enum DepuisLaPlateforme {
     },
 }
 
-impl DepuisLaPlateforme {
-    pub fn enrole(prefixe: impl Into<String>, jeton: impl Into<String>, expire_a: i64) -> Self {
-        Self::Enrole {
-            version: PLATEFORME_VERSION,
-            prefixe: prefixe.into(),
-            jeton: jeton.into(),
-            expire_a,
-        }
-    }
-
-    pub fn battement_recu(jeton: impl Into<String>, expire_a: i64) -> Self {
-        Self::BattementRecu {
-            version: PLATEFORME_VERSION,
-            jeton: jeton.into(),
-            expire_a,
-        }
-    }
-
-    /// ⚠️ PREND LA VARIANTE TYPÉE, ET NON UN MOT : c'est ce qui garantit que la
-    /// plateforme ne peut pas mettre sur le fil un motif que sa propre table
-    /// ne connaît pas. La tolérance de la clause 2 est une tolérance de
-    /// LECTURE ; en écriture, rien n'est libre.
-    pub fn refus(motif: MotifCanal) -> Self {
-        Self::Refus {
-            version: PLATEFORME_VERSION,
-            motif: motif.mot().to_string(),
-        }
-    }
-
-    pub fn lancer(demande: impl Into<String>, cle: impl Into<String>) -> Self {
-        Self::Lancer {
-            version: PLATEFORME_VERSION,
-            demande: demande.into(),
-            cle: cle.into(),
-        }
-    }
-
-    /// ⚠️ L'APPELANT DOIT VÉRIFIER QUE `empreintes` N'EST PAS VIDE avant
-    /// d'émettre : ce constructeur ne le fait pas pour lui, parce qu'il ne
-    /// saurait pas quoi rendre à la place. La règle vit du côté qui décide —
-    /// `plateforme/src/agents/canal.ts`.
-    pub fn icones_manquantes(empreintes: Vec<String>) -> Self {
-        Self::IconesManquantes {
-            version: PLATEFORME_VERSION,
-            empreintes,
-        }
-    }
-
-    pub fn installer(
-        installation: impl Into<String>,
-        url: impl Into<String>,
-        nom: impl Into<String>,
-        taille: u64,
-        sha256: impl Into<String>,
-    ) -> Self {
-        Self::Installer {
-            version: PLATEFORME_VERSION,
-            installation: installation.into(),
-            url: url.into(),
-            nom: nom.into(),
-            taille,
-            sha256: sha256.into(),
-        }
-    }
-}
 
 #[cfg(test)]
 #[path = "plateforme/tests.rs"]
@@ -526,3 +397,11 @@ mod tests_apps;
 #[cfg(test)]
 #[path = "plateforme/tests_installation.rs"]
 mod tests_installation;
+
+// 🔴 UN QUATRIÈME FICHIER DE TESTS, NÉ D'UN SECOND FRANCHISSEMENT. `tests.rs`
+// est repassé au-dessus de 500 sous les additions de G3, et les deux tests que
+// `plateforme-vectors.json` PILOTE en sont sortis — c'est la frontière de la
+// source de vérité, pas un découpage de commodité.
+#[cfg(test)]
+#[path = "plateforme/tests_vecteurs.rs"]
+mod tests_vecteurs;
