@@ -1,0 +1,47 @@
+relevé par file/grep le 21 août 2026, APRÈS la dernière écriture :
+
+-- fichiers portant des séquences ANSI --
+agent-desarme-1.log
+agent-desarme-2.log
+agent-arme-2.log
+agent-arme-1.log
+
+-- fichiers portant des CRLF --
+agent-arme-2-plat.log
+agent-desarme-2.log
+agent-desarme-1-plat.log
+agent-arme-1-plat.log
+agent-desarme-1.log
+agent-arme-2.log
+agent-desarme-2-plat.log
+agent-arme-1.log
+
+-- fichiers portant des octets NUL --
+
+-- file(1) --
+agent-arme-1.log:                         Unicode text, UTF-8 text, with very long lines (443), with CRLF line terminators, with escape sequences
+agent-arme-1-plat.log:                    Unicode text, UTF-8 text, with CRLF line terminators
+agent-arme-2.log:                         Unicode text, UTF-8 text, with very long lines (443), with CRLF line terminators, with escape sequences
+agent-arme-2-plat.log:                    Unicode text, UTF-8 text, with CRLF line terminators
+agent-desarme-1.log:                      Unicode text, UTF-8 text, with very long lines (443), with CRLF line terminators, with escape sequences
+agent-desarme-1-plat.log:                 Unicode text, UTF-8 text, with CRLF line terminators
+agent-desarme-2.log:                      Unicode text, UTF-8 text, with very long lines (443), with CRLF line terminators, with escape sequences
+agent-desarme-2-plat.log:                 Unicode text, UTF-8 text, with CRLF line terminators
+familles-de-lecture.txt:                  Unicode text, UTF-8 text
+instrument:                               directory
+p2-annexe-writetext-1.json:               JSON text data
+p2-annexe-writetext-1.log:                Unicode text, UTF-8 text
+p2-annexe-writetext-2.json:               JSON text data
+p2-annexe-writetext-2.log:                Unicode text, UTF-8 text
+p2-paste-video-1.json:                    JSON text data
+p2-paste-video-1.log:                     Unicode text, UTF-8 text, with very long lines (415)
+p2-paste-video-2.json:                    JSON text data
+p2-paste-video-2.log:                     Unicode text, UTF-8 text, with very long lines (415)
+pp2-arme-1.json:                          JSON text data
+pp2-arme-2.json:                          JSON text data
+pp2-desarme-1.json:                       JSON text data
+pp2-desarme-2.json:                       JSON text data
+instrument/lecteur-pp.ps1:                Unicode text, UTF-8 text
+instrument/pilote-pp-p2.mjs:              Node.js script executable, Unicode text, UTF-8 text
+instrument/sonde-p2-annexe-writetext.mjs: Node.js script executable, Unicode text, UTF-8 text
+instrument/sonde-p2-paste-video.mjs:      Node.js script executable, Unicode text, UTF-8 text
