@@ -42,12 +42,19 @@ export interface Sujet {
     id: string;
     nom: string;
     /// Les octets du PNG de l'icône, ou `undefined` s'il n'y en a pas.
+    ///
+    /// 🔴 SA TAILLE EST LUE DANS SES OCTETS, JAMAIS DÉCLARÉE PAR L'APPELANT.
+    /// Un premier jet prenait un `coteIcone` optionnel qui valait 256 par
+    /// défaut — la seule taille que le magasin connaisse
+    /// (`agent/src/apps/icone/extraction.rs:45`, `const COTE: i32 = 256;`).
+    /// **La recette a montré que c'était FAUX** : l'application témoin, dont
+    /// l'icône fait 128, publiait un manifeste annonçant `256x256`. Chromium
+    /// l'a attrapé — il DÉCODE l'image, et rend `no-acceptable-icon` — mais
+    /// **un manifeste qui ment sur ce qu'il porte est un défaut même quand le
+    /// navigateur le rattrape** : sur une icône de 200 px annoncée 256, il
+    /// aurait accepté, et le système aurait mis à l'échelle une image qu'il
+    /// croyait plus grande.
     icone?: Uint8Array;
-    /// Le côté de l'icône, en pixels. Le magasin n'en connaît qu'un — 256
-    /// (`agent/src/apps/icone/extraction.rs:45`, `const COTE: i32 = 256;`) —
-    /// et il est passé plutôt que supposé, pour que la ROUGE du critère ① soit
-    /// jouable en posant une icône témoin de 128.
-    coteIcone?: number;
     /// La couleur d'accent, en `#rrggbb`.
     ///
     /// ⚠️ ELLE N'ARRIVE JAMAIS À CE JOUR, et c'est DÉCLARÉ : la couleur
@@ -104,6 +111,35 @@ export function versDataUrl(octets: Uint8Array): string {
     return `data:image/png;base64,${btoa(binaire)}`;
 }
 
+/// Le côté d'un PNG, lu dans son en-tête IHDR — ou `undefined` si ces octets
+/// n'en sont pas un.
+///
+/// La structure est fixe et le restera : signature de 8 octets, puis la
+/// longueur (4) et le type (4) du premier morceau, qui DOIT être `IHDR`, puis
+/// la largeur (4) et la hauteur (4), en gros-boutiste.
+///
+/// ⚠️ IL REND LA LARGEUR, et le manifeste s'en sert pour les DEUX dimensions :
+/// une icône non carrée y serait mal décrite. Le magasin n'en produit que des
+/// carrées, et c'est une propriété de l'AGENT, pas de ce module — d'où le
+/// contrôle explicite plutôt qu'une hypothèse tacite.
+export function cotePng(octets: Uint8Array): number | undefined {
+    const SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+    if (octets.length < 24) return undefined;
+    for (let i = 0; i < SIGNATURE.length; i += 1) {
+        if (octets[i] !== SIGNATURE[i]) return undefined;
+    }
+    // 'I','H','D','R' aux octets 12 à 15.
+    if (octets[12] !== 0x49 || octets[13] !== 0x48 || octets[14] !== 0x44 || octets[15] !== 0x52) {
+        return undefined;
+    }
+    const entier = (d: number): number =>
+        octets[d] * 0x1000000 + octets[d + 1] * 0x10000 + octets[d + 2] * 0x100 + octets[d + 3];
+    const largeur = entier(16);
+    const hauteur = entier(20);
+    if (largeur <= 0 || largeur !== hauteur) return undefined;
+    return largeur;
+}
+
 /// Bâtit le manifeste d'une application.
 ///
 /// `origine` est `location.origin` — SANS barre oblique finale. `fond` est la
@@ -143,8 +179,11 @@ export function batirManifeste(sujet: Sujet, origine: string, fond: string): Man
         icons: [],
     };
     if (sujet.accent !== undefined) manifeste.theme_color = sujet.accent;
-    if (sujet.icone !== undefined && sujet.icone.length > 0) {
-        const cote = sujet.coteIcone ?? 256;
+    // 🔴 UNE ICÔNE DONT ON NE SAIT PAS LIRE LA TAILLE N'EST PAS DÉCLARÉE.
+    //    Poser `256x256` par défaut serait affirmer ce qu'on ne sait pas, et
+    //    c'est exactement le défaut que la recette a trouvé.
+    const cote = sujet.icone === undefined ? undefined : cotePng(sujet.icone);
+    if (sujet.icone !== undefined && cote !== undefined) {
         manifeste.icons.push({
             src: versDataUrl(sujet.icone),
             sizes: `${cote}x${cote}`,
