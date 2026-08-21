@@ -114,7 +114,13 @@ describe('PLATEFORME_AUTH', () => {
     /// Le montage minimal — copié du haut de ce fichier, jamais réinventé.
     const base = {
         PLATEFORME_HOTE: '127.0.0.1',
-        PLATEFORME_SECRET_JETON: 'x'.repeat(32),
+        // ⚠️ `SECRET` EST LA CONSTANTE DÉJÀ DÉCLARÉE EN TÊTE DE CE FICHIER, ET
+        // NON UN LITTÉRAL NEUF. Un littéral affecté à `PLATEFORME_SECRET_JETON`
+        // fait ROUGIR `securite/secrets.test.ts`, qui balaie TOUS les fichiers
+        // versionnés — y compris `docs/`. Mesuré le 21 août 2026 : la première
+        // rédaction de ce plan écrivait le littéral, et le scanner a dénoncé le
+        // plan lui-même, à deux endroits.
+        PLATEFORME_SECRET_JETON: SECRET,
     };
 
     it('vaut pomerium par défaut', () => {
@@ -140,7 +146,7 @@ describe('PLATEFORME_AUTH', () => {
 });
 
 describe("la garde d'écoute du mode pomerium", () => {
-    const base = { PLATEFORME_SECRET_JETON: 'x'.repeat(32) };
+    const base = { PLATEFORME_SECRET_JETON: SECRET };
 
     // 🔴 LA ROUGE DU CRITÈRE ⑤, et elle décrit le montage RÉEL du
     // 21 août 2026 : le service tourne aujourd'hui sur 0.0.0.0:8080.
