@@ -316,23 +316,36 @@ plan ne budgétait ces extractions nulle part**.
 
 ---
 
-## §5ter — 🔴 La dette `proto/` : le brief la disait close, la mesure dit l'inverse
+## §5ter — ❌ La dette `proto/` : je l'ai attribuée à G3, et c'était FAUX
 
-Le brief annonçait « la dette proto **déjà extraite par G2** → constate ».
-**Mesuré au parent du premier commit de G3** (`70eb794~1`), plutôt que pris :
+Le brief annonçait « la dette proto **déjà extraite par G2** → constate ». Une
+première rédaction de ce document l'a **contredit**, sur une mesure prise au
+parent de mon premier commit (`70eb794~1`), où les deux fichiers valaient bien
+**561** et **512** — les nombres exacts de la table de dette de `CLAUDE.md`.
 
-| Fichier | Avant G3 | Aujourd'hui |
-| --- | --- | --- |
-| `proto/src/plateforme/tests.rs` | **561** | **340** |
-| `proto/ts/plateforme.test.ts` | **512** | **462** |
+🔴 **La mesure était juste ; l'ATTRIBUTION ne l'était pas.** G2 tournait dans le
+même arbre, et sa résorption a atterri **APRÈS** mon premier commit —
+`git merge-base --is-ancestor` le tranche en une ligne. La chaîne réelle :
 
-Ce sont **exactement** les deux nombres que la table de dette de `CLAUDE.md`
-porte, inscrits par le sous-bloc P1 du presse-papier. **G2 n'y avait pas
-touché** : c'est G3 qui les purge, par ses propres extractions. Le sous-bloc ne
-*constate* donc pas une dette close — **il la solde**, et la table de dette
-revient à ses **deux** lignes gelées.
+| Commit | `proto/src/plateforme/tests.rs` |
+| --- | --- |
+| parent de mon premier commit G3 | **561** |
+| `727e6e5 apps(g2) : les deux dettes de proto sont résorbées, avant toute addition` | **445** |
+| aujourd'hui, après les extractions de G3 | **340** |
+
+**C'est donc G2 qui purge la dette**, exactement comme le brief le disait, et
+G3 qui la réduit ensuite. Le brief avait raison.
+
+⚠️ **CE QU'IL FAUT EN RETENIR, ET QUI N'ÉTAIT ÉCRIT NULLE PART** : mesurer *au
+parent de son propre premier commit* n'attribue rien quand un chantier voisin
+partage l'arbre — cela mesure seulement ce que l'on a trouvé en arrivant. Ce
+dépôt savait déjà qu'« un compte n'est attribuable qu'assorti de son heure » ;
+il manquait le corollaire : **une DIFFÉRENCE entre deux commits n'est
+attribuable qu'après avoir vérifié qui d'autre a écrit entre les deux.** Le
+geste qui tranche est `git log -- <fichier>`, pas une soustraction.
 
 ---
+
 
 ### La divergence `403` / `404` : G1 est désormais seul
 

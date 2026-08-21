@@ -2929,6 +2929,7 @@ l'**enfant** ; et `main.rs:268` rend la main à `capteur::executer` avant que `d
 | `PRESSE_PAPIER=0` | **Sous-projet ① Divers — presse-papier, sous-bloc P1** (20 août 2026) — **variable de PRODUIT**, pas de banc. Désarme le mécanisme ENTIER : `Sondeur::tour` teste le garde **AVANT toute lecture**, donc `PRESSE_PAPIER=0` empêche jusqu'à la lecture du compteur de séquence, pas seulement l'envoi. ⚠️ **`=0` DÉSACTIVE ; une simple PRÉSENCE n'active pas** — convention d'`AUDIO`, `PLEIN_ECRAN`, `SUPERVISEUR`, `CAPTEUR` et `PART_SONDAGE`, et pour la même raison : tester `is_ok()` armerait le mécanisme en écrivant `PRESSE_PAPIER=0` pour le couper. Lue dans le **capteur** (le propriétaire, D1), par `OnceLock`. Transmise par `scripts/run-agent.sh:37`. Trace, **émise seulement si désarmé** : `presse-papier DESARME (PRESSE_PAPIER=0) : le contenu copie dans la VM n'est plus pousse au navigateur` (`warn!`). 🔴 **LE CONTRÔLE QUI VAUT EST LE ZÉRO DE MESSAGES, PAS LA TRACE** : la trace prouve que la variable a atteint le processus, elle ne prouve pas que le mécanisme est coupé — et un zéro seul serait rendu par un produit entièrement en panne. C'est le bras SANS la variable, avec ses 4 messages, qui rend le zéro discriminant (2 exécutions par bras, recette P1) |
 | `PRESSE_PAPIER_GARDE=0` | **Sous-projet ① Divers — presse-papier, sous-bloc P2** (21 août 2026) — **variable de BANC, jamais une configuration livrée**, même statut que `PART_SONDAGE`. Neutralise `Sondeur::apres_notre_ecriture` **EN ENTIER**. ⚠️ **`=0` DÉSARME ; une simple présence n'arme pas** — convention de `PRESSE_PAPIER` deux lignes plus haut, et **inverse de `PRESSE_PAPIER_SONDE`** juste en dessous : les trois sont écrites côte à côte pour qu'on ne les confonde pas. Lue par `OnceLock` dans le **propriétaire** (le capteur), via `crate::presse_papier::gardes_armes`. Transmise par `scripts/run-agent.sh`. Trace, **émise seulement si désarmé** : `garde anti-echo du presse-papier DESARME (PRESSE_PAPIER_GARDE=0) : bras de banc, jamais une configuration livree` (`warn!`). 🔴 **ELLE DÉSARME LES DEUX GARDES DE D5, PAS LE SEUL N°1, ET C'EST LE POINT.** La spec prescrivait de désarmer le n°1 et d'attendre un compte « qui croît sans borne » ; **il reste à UN**, et la spec avait prévu ce cas. Sans armement du n°2, le `Sondeur` relit notre texte, l'annonce **une** fois, puis pose lui-même `dernier_emis` et `reference` — au tour suivant `observer` sort dès sa première ligne. Et **rien ne relance** : le client n'émet vers l'agent que sur un `paste`, donc sur un GESTE HUMAIN. Désarmer le seul n°1 rendrait donc **zéro message aussi**, et la rouge du critère ④ serait vacueuse une seconde fois. 🔵 **Conséquence de conception, qui contredit une phrase de D5** : dans l'architecture livrée, **aucune oscillation auto-entretenue n'est possible** — ce que les gardes suppriment est **un aller-retour PAR COLLAGE**, pas une divergence. 🔵 **MESURÉE des deux côtés (recette P2, 2 exécutions par bras)** : bras armé **0, 0, 0, 0** messages sur 4 collages ; bras désarmé **1, 2, 3, 4**, chacun portant exactement le texte qu'on venait de coller. ⚠️ **La trace ne prouve que l'arrivée de la variable au processus** (elle vaut 1 dans les deux journaux désarmés et 0 dans les deux armés) ; c'est le compte de messages qui prouve l'effet |
 | `PRESSE_PAPIER_SONDE=<secondes>` | **Sous-projet ① Divers — presse-papier, sous-bloc P1, sonde P0** — **variable de BANC, jamais une configuration livrée**. ⚠️ **Convention INVERSE de la ligne ci-dessus, et les deux sont écrites côte à côte pour qu'on ne les confonde pas : ABSENTE = DÉSARMÉE**, présente = armée (la valeur est une durée, pas un interrupteur). Mesure les cinq questions de la porte éliminatoire sur `GetClipboardSequenceNumber` (`agent/src/diagnostics/presse_papier.rs`). Transmise par `scripts/run-agent.sh:89`. ⚠️ **Elle ÉCRIT le presse-papier de la VM** en phases C et D, et le détruit donc ; le produit, lui, ne l'écrit jamais en P1. 🔴 **Ne jamais la poser en même temps que `SUPERVISEUR`** : `main()` appelle `diagnostics::aiguiller()` en `main.rs:172`, AVANT la branche `CAPTEUR` (`:180`) et avant `PONT` (`:279`) — **quel que soit le mode demandé**, un agent qui la porte exécute la sonde et s'arrête. ⚠️ **La menace que la divergence E10 du plan lui prêtait est FAUSSE** : elle annonçait un capteur exécutant la sonde pendant qu'un superviseur vivant le relance en boucle, ce qui supposerait que l'enfant porte la variable et pas son père — or `Command` hérite de l'environnement, donc le père se serait arrêté le premier. La consigne ne change pas, sa raison si |
+| `INSTALLATION_FAUTE=empreinte` | **Sous-projet ④ Gestion d'apps, sous-bloc G3** — **variable de BANC, jamais une configuration livrée**. L'agent altère **un octet** de l'installeur téléchargé, ce qui fait échouer la vérification d'empreinte **côté agent** — le TROISIÈME des trois étages, les deux autres étant le dépôt d'une tranche et le scellement côté plateforme. ⚠️ **Convention `absente = DÉSARMÉE`**, celle d'`AUDIO_FAUTE_LECTURE` et d'`AUDIO_FAUTE_RECONSTRUCTION` — **jamais** celle de `PLEIN_ECRAN`, où `=0` désarme. Lue dans l'**enfant** qui installe. Trace, **émise seulement si armée** : `faute d'installation ARMEE (INSTALLATION_FAUTE=…) : banc, jamais une configuration livrée` (`warn!`). Transmise par `scripts/run-agent.sh`, **par une tâche DÉDIÉE qui ne fait que cette ligne** — le piège payé en D1 (`SUPERVISEUR`), D2 (`MULTIFENETRE_REPRISE`) et D7 (`AUDIO`). Détail et mesures : section « Sous-bloc G3 » en pied de fichier |
 | `PONT_ECRITURE=0` | **Sous-projet ③ Pont fichiers, sous-bloc F2** (21 août 2026) — **variable de BANC, jamais une configuration livrée**. Désarme la **POUSSÉE** d'écriture : le pont continue de détecter, de journaliser et de compter les écritures dues, **et n'en pousse aucune**. ⚠️ **`=0` DÉSARME ; une simple PRÉSENCE n'active pas** — convention d'`AUDIO`, `PLEIN_ECRAN`, `SUPERVISEUR`, `CAPTEUR`, `PART_SONDAGE`, `PRESSE_PAPIER`, `APPS` et `PONT`. 🔴 **Le PLAN de F2 se contredisait en une phrase à son sujet** : il écrivait « `=0` désarme » ET prescrivait `matches!(…, Ok(v) if v != "0")`, **qui rend `false` en l'ABSENCE de la variable** — pris à la lettre, il aurait livré un pont **MUET PAR DÉFAUT**, sans un `ERROR`. Lue dans le **pont** (`agent/src/pont.rs`). Transmise par `scripts/run-agent.sh`, **par une tâche dédiée**. Trace, **émise seulement si désarmé** : `poussee d'ecriture DESARMEE (PONT_ECRITURE=0) : bras de banc, jamais une configuration livree` (`warn!`). 🔴 **LE CONTRÔLE QUI VAUT EST LE ZÉRO DE POUSSÉES, PAS LA TRACE** : un zéro seul serait rendu par un produit entièrement en panne, et c'est le bras SANS la variable, avec ses six acquittements, qui le rend discriminant |
 | `MICRO=0` | **Chantier E, bloc E2** — **variable de PRODUIT**. Désarme le microphone **entier** : aucun puits n'est posé, `micro_disponible()` reste faux, `ready` porte `mic: false`, et le bouton du navigateur ne paraît pas. ⚠️ **`=0` DÉSARME ; une simple présence n'arme pas** — convention d'`AUDIO`, `PLEIN_ECRAN`, `SUPERVISEUR`, `CAPTEUR`, `PRESSE_PAPIER` et `PART_SONDAGE`, et pour la même raison : tester `is_ok()` allumerait le micro chez qui écrit `MICRO=0` pour le couper. Un test garde le prédicat (`demarrage/micro.rs::arme_micro`). Trace, **émise au branchement** donc avant toute session : `micro DESARME (MICRO=0)`. **Mesurée** (recette E2) : bouton caché sur une session `ice=connected`, **0** ligne `windows_micro`, juge à `AMPLITUDE=0,000000` |
 | `MICRO_PERIPHERIQUE=<nom ou identifiant>` | **Chantier E, bloc E2** — **variable de PRODUIT**. Désigne le point de terminaison de **rendu** sur lequel le micro écrit. Convention **VALUÉE**, celle d'`AUDIO_PERIPHERIQUE` et de `MULTIFENETRE_SORTIE`. 🔴 **DEUX DIFFÉRENCES DÉLIBÉRÉES AVEC `AUDIO_PERIPHERIQUE`** : ① **absente, elle ne vaut PAS le défaut de Windows mais la désignation INTÉGRÉE `"VB-Audio"`** — retomber sur `GetDefaultAudioEndpoint` ferait sortir la voix de l'utilisateur **par les haut-parleurs de la VM** sur une machine où le défaut est la carte son ; ② **il n'y a AUCUN repli** — `Choix::Introuvable` et `Choix::Ambigu` valent **échec**, pas de fil de rendu, `mic: false`, un `warn!` avec l'inventaire. A-bis se replie parce que « du son, peut-être le mauvais » vaut mieux que rien ; ici l'arbitrage s'**inverse** : « la voix de l'utilisateur, peut-être dans le mauvais tuyau » n'est pas un moindre mal, c'est une **fuite**. Règle de sélection : `wasapi_peripherique::choisir`. Trace : `cable de rendu retenu pour l'ecriture du micro … integree=true … critere="nom partiel"` — **comparer la valeur RETENUE, jamais la seule présence de la ligne** |
@@ -14024,6 +14025,242 @@ silencieux (`Err`, jamais `Ok(())`).
 9. ⚠️ **Une sortie virtuelle orpheline (`\\.\DISPLAY5`) préexistait à cette
    recette** et a été purgée par le superviseur à son démarrage. Nommé pour que
    nul ne l'impute à P2.
+
+---
+
+## 📦 Sous-projet ④ Gestion d'apps — sous-bloc G3 : le téléversement, l'exécution, et son issue (21 août 2026)
+
+Résultats complets :
+`docs/superpowers/plans/2026-08-20-gestion-apps-g3-resultats.md`.
+Plan : `docs/superpowers/plans/2026-08-20-gestion-apps-g3.md`.
+Journaux : `docs/superpowers/plans/journaux-gestion-apps-g3/` — **DEUX familles
+de lecture** :
+
+| Famille | État | Ce qu'il faut faire |
+| --- | --- | --- |
+| tous les `.log` de sonde et de rouge, les `.ps1` versés, `recette-agent-plat.log` | UTF-8, ANSI retirées | rien |
+| `recette-agent.log` (brut) | **séquences ANSI de `tracing` PRÉSENTES** | `sed 's/\x1b\[[0-9;]*m//g'`, ou lire le `-plat` jumeau |
+
+### ⚪ LA PORTE : `NON MESURABLE`, définitif — et la question ne se pose pas sur cette VM
+
+**C'est le verdict, et il n'est ni favorable ni défavorable.** La configuration
+a été relevée AVANT toute conclusion, comme le plan l'exige : `EnableLUA=1`,
+`ConsentPromptBehaviorAdmin=5`, **`PromptOnSecureDesktop=1`**,
+`ConsentPromptBehaviorUser=3`, `FilterAdministratorToken` **ABSENT**. La session
+interactive est le **compte Administrateur INTÉGRÉ**, intégrité **S-1-16-12288
+(élevée)**, `deja eleve = True`.
+
+**Observation (b) — la chose a-t-elle eu lieu : NON.**
+`Start-Process -Verb RunAs` est **accepté** et le processus démarre, mais
+**`consent.exe` n'apparaît jamais — 0 échantillon sur 12, à 1 Hz, aux DEUX
+exécutions**. C'est la disqualification que le plan nomme (« processus déjà
+élevé »), et deux disqualifications pour la même cause valent, selon lui, un
+**NON MESURABLE définitif** pour ce sous-bloc.
+
+⚠️ **UN TROISIÈME CAS QUE LE PLAN N'ÉNUMÉRAIT PAS.** Sa table ne prévoyait de
+verdict jaune que pour `PromptOnSecureDesktop=0`. Ici il vaut **1** — la
+configuration risquée — et le risque ne se matérialise pourtant pas, **par le
+jeton du compte**. Les deux moitiés de la phrase : sur cette VM, un installeur
+qui exige une élévation **s'exécute sans aucune boîte de dialogue** ; ce n'est
+pas le produit qui le rend vrai, **c'est la configuration**.
+
+⚠️ **LA RÉPARATION EST NOMMÉE ET NON FAITE.** `FilterAdministratorToken=1`
+mettrait ce compte en mode d'approbation et rendrait la mesure possible. Le plan
+réserve ce genre de changement au **propriétaire du dépôt** — il le dit de
+`PromptOnSecureDesktop` —, et c'est une **décision de sécurité**.
+
+**Observation (e), éprouvée au passage** : les deux binaires
+`requireAdministrator` de System32 (`wusa.exe`,
+`SystemPropertiesAdvanced.exe`) **démarrent** par `CreateProcess`. **Aucun
+740.** D15 n'est pas réfuté : il est **inexerçable ici**, l'appelant étant déjà
+élevé — `Motif::ElevationRequise` est du code que cette configuration ne peut
+pas atteindre. **Observation (d)** (`OpenInputDesktop`) : **non mesurable**,
+même cause — elle exige que `consent.exe` vive. *On n'invente pas un second
+indice pour sauver un verdict.*
+
+### 🔴 Le fait n°1 : une sonde a réfuté une lecture inscrite dans le code, et le garde était faux
+
+Le plan pronostiquait « si le superviseur n'est dans aucun job, le vert de ⑦ est
+vrai par construction ». **Mesuré : les TROIS processus de l'agent sont DANS UN
+JOB.** Ce n'est pas `lanceur.rs` qui les y met — sa lecture était juste, il
+n'assigne que ses enfants — **c'est le PLANIFICATEUR DE TÂCHES**, par lequel
+`run-agent.sh` lance l'agent.
+
+| Question | Mesuré, une exécution |
+| --- | --- |
+| superviseur, capteur, pont dans un job | **oui, les trois** |
+| un enfant en hérite | **oui** |
+| `CREATE_BREAKAWAY_FROM_JOB` | 🔴 **REFUSÉ — `ERROR_ACCESS_DENIED` (5)** |
+| le lanceur est réellement mort | **oui**, ligne de contrôle **absente** |
+| l'enfant direct survit | ✅ **oui** |
+
+✅ **Le job NE TUE PAS À LA FERMETURE, et c'est ce qui sauve le critère ⑦ :
+il est TENU, pour une raison qu'aucune lecture n'avait trouvée.**
+
+🔴 **CONSÉQUENCE : LE GARDE DE `execution.rs` AURAIT REFUSÉ TOUTE
+INSTALLATION.** Il testait `dans_un_job()`, sur la prémisse — écrite dans ce
+fichier — que « n'importe quel job suffit à faire mourir l'installeur ». Dans le
+mode de lancement **normal** du produit, il aurait refusé chaque installation,
+pour un danger qui ne se matérialise pas. **Un refus qu'on ne peut jamais lever
+n'est pas une protection : c'est une panne.** Le garde interroge désormais
+`job_tue_a_la_fermeture()` (`QueryInformationJobObject` +
+`JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`), la propriété exacte que la spec D8 nomme.
+Relevé en production : **`dans_un_job=true job_tue_a_la_fermeture=false`**.
+
+**Le plan qualifiait sa M5 de « LECTURE, PAS MESURE ». La sonde existait pour la
+convertir ; elle l'a convertie, et contre elle.**
+
+### 🔴 Le fait n°2 : deux défauts que SEULE la recette pouvait trouver
+
+**① L'ordre n'était jamais livré à une VM déjà connectée.** `POST /installation`
+créait la ligne `en_attente` et ne poussait **rien** ;
+`reemettreLesInstallations` n'est appelée **qu'à l'enrôlement**, et un agent
+déjà connecté ne se réenrôle jamais. **Le cas nominal — le seul que le 503
+laisse passer — n'était livré qu'au prochain redémarrage de l'agent.** Mesuré :
+201 rendu, état figé sur `en_attente`, **aucune ligne** d'installation au
+journal de l'agent. *Rien, nulle part, ne contredisait le 201.*
+
+> ⚠️ **UN CHAMP MORT COÛTAIT UNE DUPLICATION, pas une ligne.**
+> `DependancesReemission` exigeait un `socket: WebSocket` **que son corps ne
+> lisait pas** : tant qu'il était là, seul un porteur de socket pouvait appeler
+> la fonction, et la route HTTP devait reconstruire le message `Installer`.
+> `RegistreAgents::pousser` est né du même mouvement — ce registre est le seul à
+> connaître les sockets, donc le seul à pouvoir dire « joignable à cet instant ».
+
+**② L'URL de l'installeur arrivait en `ws://` et était refusée.** Elle est
+**dérivée, pas configurée** : la plateforme envoie le chemin relatif, l'agent le
+résout contre l'adresse de son **propre canal** — un `ws://`. Le client HTTP
+n'acceptait que `http://`.
+
+> 🔴 **ET UN TEST ÉPINGLAIT LE DÉFAUT** : `telechargement/tests.rs` assérait
+> `Err(Refus::Url(_))` sur `ws://h/x`, écrit depuis **la même lecture fausse que
+> le code qu'il gardait**. *Un test vert n'est une garde que si ce qu'il fixe est
+> vrai.* Le fichier portait par ailleurs **le fait sans le remède** : la doc de
+> `Refus::Url` dit mot pour mot que « le canal `/agent` ne parle que `ws://` ».
+> Aucun test d'hôte ne pouvait le voir — tous bâtissent leurs URL en `http://`
+> contre un `TcpListener` local. Le remède réemploie le précédent de **G2**
+> (`apps/icone/televersement.rs`), qui accepte déjà les deux schémas.
+
+### ✅ Ce que la chaîne rend, mesuré — DEUX exécutions
+
+```
+POST /televersement → PUT tranche 0 → POST sceller → POST /installation
+→ l'agent télécharge, vérifie, exécute
+→ etat=terminee  phase=reconciliation  code_sortie=0  issue=SANS-EFFET
+```
+
+🔵 **C'est la promesse centrale du sous-bloc, et elle est tenue.**
+`code_sortie: 0` dirait naïvement « réussi ». La réconciliation avec le
+catalogue trouve `apparues=0`, et le verdict est **`sans-effet`** : **le produit
+rapporte ce qui s'est passé, jamais ce qu'un code de retour prétend.**
+L'installeur était `hostname.exe` — il s'exécute, sort en 0, n'installe rien.
+
+**Rouge jouée** : sceller avec une empreinte fausse rend `{"refus":"empreinte"}`.
+
+### La variable neuve
+
+| Variable | Effet |
+| --- | --- |
+| `INSTALLATION_FAUTE=empreinte` | **variable de BANC, jamais une configuration livrée**. L'agent altère **un octet** de l'installeur téléchargé, ce qui fait échouer la vérification d'empreinte **côté agent** — le troisième des trois étages. ⚠️ **Convention `absente = désarmée`**, celle d'`AUDIO_FAUTE_LECTURE` et d'`AUDIO_FAUTE_RECONSTRUCTION`, **jamais** celle de `PLEIN_ECRAN`. Trace, **émise seulement si armée** : `faute d'installation ARMEE (INSTALLATION_FAUTE=…) : banc, jamais une configuration livrée` (`warn!`). Transmise par `scripts/run-agent.sh`, **par une tâche dédiée qui ne fait que cela** — le piège payé en D1, D2 et D7 |
+
+### Ce que G3 n'établit PAS
+
+- **Aucun taux, nulle part.** Deux exécutions par point au mieux.
+- ⚪ **La porte est NON MESURABLE**, et sa réparation est une décision de
+  sécurité qui n'appartient pas au chantier.
+- 🔴 **`Motif::ElevationRequise` n'a jamais couru** — inexerçable sur cette VM.
+- 🔴 **Le chemin `CREATE_BREAKAWAY_FROM_JOB` n'a aucun remède** : le job du
+  planificateur le refuse. Si un jour un job **tue à la fermeture**, l'agent
+  refusera l'installation et **rien ne pourra la débloquer** sans changer le
+  mode de lancement (service Windows, ou tâche sans job).
+- **Aucun installeur réel n'a été exercé** : `hostname.exe` s'exécute et
+  n'installe rien. Ni `.msi`, ni installeur par utilisateur, ni redémarrage.
+- **Aucune tranche multiple** : 36 864 octets pour une taille de tranche de
+  8 Mio, donc **un seul rang**. Ni reprise, ni tranche incohérente, ni gros
+  fichier — le cas que le sous-bloc existe pour porter.
+- **Aucun navigateur réel** : le client est `curl`. `client/src/hub/` n'a jamais
+  tourné dans une page.
+- **Le profil `deploiement` n'a pas été lancé** : les routes nginx de G3 sont
+  écrites et **non exercées**.
+- **Aucune constante calibrée** — `EXPIRATION_EXECUTION`, `JOURNAL_MAX_OCTETS`,
+  la taille de tranche, `EXPIRATION_INSTALLEUR_MS`. Elles rejoignent `BPP_MIN`
+  et les autres.
+- ⚠️ **`a_purger` et `EXPIRATION_INSTALLEUR_MS` n'ont AUCUN APPELANT** : la
+  règle de balayage d'âge est écrite et branchée nulle part. C'est le patron de
+  `borner_a_la_taille_max`, qui a vécu un sous-bloc entier sans appelant.
+
+### Pièges neufs — à connaître avant de toucher à ce terrain
+
+- 🔴 **UN `.ps1` ÉCRIT EN UTF-8 SANS BOM ET CONTENANT UN SEUL CARACTÈRE NON
+  ASCII NE S'ANALYSE PAS**, et l'erreur **désigne une autre ligne que la vraie
+  cause**. PowerShell lit un `.ps1` sans BOM dans la page de code ANSI : un tiret
+  cadratin devient `?"`, ferme une chaîne, et l'analyseur se plaint d'accolades
+  manquantes trente lignes plus loin. **Contrôle en une ligne** :
+  `LC_ALL=C grep -c '[^ -~]' fichier.ps1` doit rendre **0**.
+- 🔴 **UN RELEVÉ WinRM EST CELUI DE LA SESSION 0, JAMAIS DE LA SESSION
+  INTERACTIVE.** `whoami`, l'identité et le niveau d'intégrité y diffèrent de
+  ceux où l'agent tourne. Les valeurs de **registre** (HKLM) sont machine et
+  s'y lisent sans risque ; **tout le reste passe par une tâche planifiée `/it`**.
+  C'est le legs n°7 du chantier E, rencontré ici sur l'identité plutôt que sur
+  l'audio.
+- 🔴 **UNE DIFFÉRENCE ENTRE DEUX COMMITS N'EST PAS UNE ATTRIBUTION.** Mesurer au
+  parent de son propre premier commit ne dit que **ce qu'on a trouvé en
+  arrivant** : un chantier voisin peut avoir écrit entre les deux. J'ai attribué
+  à G3 la purge de la dette `proto/` — **c'était G2**, et
+  `git merge-base --is-ancestor` le tranche en une ligne. *Ce dépôt savait qu'un
+  compte n'est attribuable qu'assorti de son heure ; il manquait le corollaire.*
+- ⚠️ **`pkill -f <motif>` depuis un shell dont la ligne de commande contient le
+  motif tue le shell** (exit 144). Écrit dans ce fichier depuis D2, **payé une
+  fois de plus ici**, et il a coûté une exécution. **Tuer par PID relevé.**
+- ⚠️ **Un P/Invoke `CreateProcessW` écrit à la main en PowerShell rend
+  `GetLastError=123`** sur une `STARTUPINFO` mal alignée — un échec qui ressemble
+  à un refus du système. `Process.Start` avec `UseShellExecute=false` appelle le
+  même `CreateProcess` et **expose `NativeErrorCode`** sans aucun P/Invoke.
+- ⚠️ **`AGENT_VM` attend l'IDENTIFIANT, pas le nom** (piège de G1, rencontré à
+  nouveau), et `npm run admin:agent` exige `--adresse`, qui n'a **aucun défaut**.
+- ⚠️ **Ne jamais redémarrer la plateforme d'un voisin** : cela invalide ses
+  jetons. Précédent de P3 — **lancer une seconde instance sur un autre port**.
+
+### Le relevé de tailles, PAR LA COMMANDE, APRÈS la dernière édition
+
+**Le tableau de dette a toujours DEUX lignes**, inchangées : `agent/src/encode.rs`
+**1536**, `agent/src/windows_source.rs` **630**. ✅ **Les deux entrées `proto/`
+qu'y avait inscrites le presse-papier P1 sont SORTIES** — mais **c'est G2 qui
+les a résorbées** (`727e6e5`, 561 → 445), pas G3, qui les a seulement réduites
+ensuite (**340** et **462** aujourd'hui). *Une première rédaction du document de
+résultats attribuait cette purge à G3 : voir le piège d'attribution ci-dessus.*
+
+🔴 **MARGE NULLE, ET ELLE EST DE G3 : `plateforme/src/http/routes-installation.ts`
+est à 500 lignes EXACTEMENT.** C'est la poussée de l'ordre qui l'y a porté.
+**Toute addition future à ce fichier appelle une EXTRACTION, jamais une
+compression** — le fichier rejoint `agent/src/encode/arret.rs` dans le seul état
+que ce dépôt tolère à 500. **Son point de chute est nommé** : la reconnaissance
+de chemin et la table des méthodes, comme `televersement-regles.ts` l'a fait
+pour le routeur jumeau dans ce même sous-bloc.
+
+⚠️ **`agent/src/pont/ecriture/fil.rs` est à 612 lignes, ET CE N'EST PAS DE G3** :
+c'est du travail **non commité** du chantier **F3** (pont fichiers), présent dans
+l'arbre au moment du relevé. Nommé pour que nul ne l'impute à ④, et **laissé à
+son propriétaire**.
+
+### Ce que G3 lègue
+
+1. ⚪ **La porte reste à jouer sur une machine où l'élévation demande vraiment
+   quelque chose.** La réparation est nommée (`FilterAdministratorToken=1`) et
+   appartient au propriétaire du dépôt.
+2. 🔴 **Le balayage d'âge des installeurs n'a aucun appelant** (`a_purger`,
+   `EXPIRATION_INSTALLEUR_MS`) : le disque de la VM ne se vide jamais.
+3. ⛔ **Aucune tranche multiple, aucune reprise, aucun gros fichier** — la
+   recette n'a exercé qu'un seul rang de 36 Kio.
+4. ⛔ **`client/src/hub/` n'a jamais tourné dans un navigateur.**
+5. ⛔ **Les routes nginx de G3 sont écrites et non exercées.**
+6. ⛔ **G4 et G5 n'ont pas de plan** : la surveillance de catalogue (`G4`, que
+   `installation/partage.rs` nomme déjà — `ReadDirectoryChangesW`) et le
+   manifeste PWA (`G5`, dont la recette doit reprendre le **WCO** que S4 a livré
+   sans aucun critère, et la divergence `403`/`404` de G1).
+7. ⚠️ **La divergence `403 vm-etrangere` / `404 vm-inconnue`** : `vm-etrangere`
+   ne survit plus que dans **un seul fichier, celui de G1**, contre P4, G2 et
+   G3. **Relevée, non tranchée** — décision de sécurité du propriétaire.
 
 ---
 
