@@ -1,0 +1,96 @@
+# F5 — tâche 1 : contrôle d'entrée. AUCUN code.
+# 21 août 2026. HEAD = 1b120f2. Shell : `unset -f chpwd` posé avant chaque relevé.
+
+## A. L'état du monde
+
+git rev-parse --short HEAD      -> 1b120f2
+stat -c '%F' /dev/null          -> character special file        ✅ (défaut d'hôte absent)
+virsh list --all                -> Windows | fermé               🔴 LA VM EST ÉTEINTE
+
+git status --porcelain agent/ proto/  -> 🔴 **NON VIDE**, 17 fichiers modifiés + 2 non suivis.
+  Ils sont TOUS du sous-bloc G5 (gestion d'apps) : agent/src/apps/*, agent/src/plateforme/tests*,
+  proto/src/plateforme*, proto/ts/plateforme*, plus agent/src/apps/associations{.rs,/} NON SUIVIS.
+  Hors périmètre F5 (agent/src/pont/, proto/src/fichiers*, client/src/fichiers/, client/src/shell*).
+  ⚠️ CONSÉQUENCE DIRECTE : aucun build VM n'est possible. `sync-agent.sh` ne synchronise que ce que
+  git suit ; `agent/src/apps/associations/` non suivi ferait échouer la compilation SUR LA VM.
+  C'est EXACTEMENT le §1.2 n°3 du plan, et c'est le second constat qui interdit la VM.
+
+git status --porcelain client/ plateforme/ -> client/src/hub/* et plateforme/* modifiés (G5 aussi).
+
+## B. Les références, MESURÉES, jamais recopiées
+
+| Commande                                    | Plan §1.1 | MESURÉ 21/08 | Écart |
+| cargo test -p agent                         | 979       | **983**      | +4    |
+| cargo test -p proto                         | 109       | **109**      | =     |
+| cd client && npx vitest run                 | 521       | **531** / 45 | +10   |
+| cd client && npx vitest run --dir ../proto  | 298       | **298** / 9  | =     |
+| cargo check --target x86_64-pc-windows-gnu  | 34 avert. | **24 avert.**| -10   |
+| env -u TURN_URL -u TURN_SECRET verify-all.sh| non lancé | **exit 0, 10/10** | — |
+
+ATTRIBUTION DES ÉCARTS, par la commande et non par conjecture : les +4 (agent) et +10 (client)
+sont portés par l'arbre de travail SALE de G5 (agent/src/apps/reconciliation/tests.rs modifié,
+client/src/hub/*.test.ts modifiés). AUCUN fichier de mon périmètre n'est modifié.
+Le -10 sur `cargo check` n'est PAS expliqué : G5 a pu retirer du code mort en donnant des
+appelants à agent/src/apps/. **Relevé, non attribué.**
+
+NATURE des 24 avertissements, vérifiée et non supposée : les 23 lignes `warning:` + 1 ligne de
+résumé sont TOUTES de la famille `dead_code` (`is never used` / `is never read`). Aucune autre
+famille. ⚠️ `grep -c '^warning:'` rend 24 quand cargo en annonce 24 : ici la ligne de résumé EST
+comptée par le grep (`warning: agent (bin "agent") generated 24 warnings`), d'où 23 diagnostics
+réels. **Le nombre qui fait foi est celui que cargo annonce.**
+
+## C. 🔴 verify-all.sh a ÉCHOUÉ AU PREMIER LANCEMENT, ET LE SECOND PASSE
+
+Premier lancement  : « ══ 1 étape(s) sur 10 en ÉCHEC ══  - client : npm run design:verifier »
+Contrôle immédiat  : `cd client && npm run design:verifier` seul -> EXIT 0, « 7/7 contrôle(s) vert(s) »
+Second lancement   : `env -u TURN_URL -u TURN_SECRET ./scripts/verify-all.sh` -> EXIT 0,
+                     « Les 10 étapes sont passées. »
+
+C'est le piège du §1.2 n°3, rencontré à la PREMIÈRE commande du sous-bloc : *une compilation (ici
+une vérification) qui échoue dans un arbre partagé se REMESURE avant d'être attribuée à
+quiconque.* Elle n'a été attribuée à personne. G5 éditait `client/src/hub/` au même instant, et
+`design:verifier` bâtit le client avant de le juger — mais **je ne l'affirme pas** : je relève que
+l'échec ne se reproduit pas et que le contrôle isolé est vert.
+
+## D. LES TROIS FAITS DU §0, VÉRIFIÉS DANS LE CODE — les trois tiennent
+
+(1) UN `Rafraichir` SERAIT JETÉ EN SILENCE.
+    agent/src/pont/transport.rs:48-55 — `enum DuNavigateur` a TROIS variantes :
+      Reponse { correlation: u32, trame: Vec<u8> } | CanalOuvert | CanalFerme
+    `Reponse` est bien **la seule qui porte des octets**.  ✅
+    agent/src/pont/service.rs:209 — `tracing::debug!(correlation, "réponse tardive ou inconnue : jetée");`  ✅
+    -> une trame sans corrélation en table tombe dans un `debug!`, invisible sous RUST_LOG=info.
+
+(2) LA REPRISE EST AU DÉMARRAGE DU FIL, PAS À L'OUVERTURE DU CANAL.
+    agent/src/pont/ecriture/fil.rs:193 — `fil.reprendre();` (dans `Fil::demarrer`)  ✅
+    agent/src/pont/ecriture/fil.rs:106-113 — `enum Ordre` porte Survenu / Fait / Echec,
+    et **RIEN qui corresponde à CanalOuvert**.  ✅
+
+(3) DEUX ENTRÉES ProjFS CHARGÉES ET SANS APPELANT DE PRODUCTION.
+    `grep -rn 'vider_cache_negatif\|supprimer_fichier' agent/src/ | grep -v /tests` rend
+    UNIQUEMENT des déclarations : resolution.rs:70,72,130,132 (le compteur de résolution) et
+    chargement.rs:246,255,325,327 (le chargement et le champ). **Aucun site d'appel.**  ✅
+
+Les trois §0 tiennent : le plan n'est périmé sur aucun d'eux.
+
+## E. Le balayage des tailles (> 460), PAR LA COMMANDE
+
+Tableau de dette : DEUX lignes, et deux seulement au-dessus de 500 —
+  agent/src/encode.rs 1536 ; agent/src/windows_source.rs 630.   ✅ CLAUDE.md est JUSTE.
+  (`plateforme/src/http/routes-installation.ts` et `agent/src/encode/arret.rs` sont à 500 EXACTEMENT,
+   donc AU plafond et non au-dessus. Ni l'un ni l'autre n'est à F5.)
+
+Les deux portes du plan, CONFIRMÉES à la ligne près :
+  client/src/fichiers/protocole.test.ts   484  (marge 16)  -> porte B
+  agent/src/pont/ecriture/fil.rs          472  (marge 28)  -> porte A
+Et le fichier que F5 ne touche pas, à surveiller :
+  agent/src/pont/transport/tests.rs       474  (marge 26)
+
+## F. VERDICT DE LA TÂCHE 1
+
+Le plan est EXÉCUTABLE sur sa moitié HÔTE. Sa moitié VM est BLOQUÉE par DEUX faits
+indépendants, et il suffit d'un seul :
+  1. la VM est ÉTEINTE ;
+  2. G5 tient l'arbre avec des fichiers NON SUIVIS dans agent/, ce qui ferait échouer
+     tout `build-agent.sh` — et la rsynchronisation écraserait le binaire que G5 mesure.
+Aucun agent n'a été tué, aucune VM n'a été démarrée, aucun binaire n'a été bâti.
