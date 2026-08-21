@@ -49,6 +49,27 @@
  * token**, et §7.6 le dira par sa PREMIÈRE inclusion (« aucun `var(--…)` non
  * déclaré »). **La déclaration part avec son appelant, et les deux
  * appartiennent à G5**, qui posera le manifeste PWA.
+ *
+ * ❌ DEUX CLAUSES DE CE PARAGRAPHE ONT ÉTÉ REPRISES PAR G5 (21 août 2026), ET
+ * LA PREMIÈRE EST MESURÉE FAUSSE.
+ *
+ *   ① « **un repli OU déclarer le token** » laisse croire que le repli suffit.
+ *      **IL NE SUFFIT PAS** : `tokensReferences` emploie
+ *      `/var\(\s*(--[\w-]+)/g`, donc `var(--accent-fenetre, var(--accent))`
+ *      capture QUAND MÊME `--accent-fenetre`, et §7.6 rougit —
+ *      « NON DÉCLARÉ --accent-fenetre employé par … ». **Joué**, sur le vrai
+ *      contrôle, journal versé (rouge n°8 de G5). Seule la SECONDE moitié de
+ *      l'alternative tient : il faut **déclarer**.
+ *
+ *   ② « G5, qui posera le manifeste PWA » : **il l'a posé**, et il n'a pour
+ *      autant **rien peint** — `--accent-fenetre` reste sans déclaration et
+ *      sans appelant. Quatre raisons, toutes mesurées (décision D3 de son
+ *      plan) : le `theme_color` d'un manifeste est **statique et par
+ *      APPLICATION** quand ce token-ci est **par FENÊTRE** ; le garde WCO de
+ *      S4 interdit **toute** `@media (display-mode: window-controls-overlay)` ;
+ *      `tokens.css` est à **300 lignes pour une porte de 300**, et ses
+ *      lecteurs sont **NEUF** et non sept ; et §7.4 exigerait une contrepartie
+ *      claire ou une huitième entrée hors thème. **Le legs reste OUVERT.**
  */
 
 import { conformer } from './accent';

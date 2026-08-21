@@ -734,6 +734,24 @@ mesurée** — §9.
 >   un repli non nul descend le bandeau maintenant. **Il prouve l'inertie,
 >   jamais le comportement.** Destinataire nommé du legs : la **recette de ④
 >   G5**, celle qui pose le manifeste.
+>
+> ✅ **CE LEGS A ÉTÉ REPRIS LE 21 AOÛT 2026 PAR SON DESTINATAIRE NOMMÉ, ET SON
+> VERDICT EST `NON MESURABLE PAR CE MONTAGE`.** G5 pose bien le manifeste — le
+> hub (`dist/hub.webmanifest`) et chaque application (en `blob:`) déclarent
+> `display_override: ["window-controls-overlay"]`, et **Chromium le RETIENT** :
+> son manifeste analysé porte `displayOverrides:
+> ["kWindowControlsOverlay","kStandalone"]`, mesuré deux fois.
+>
+> ❌ **« Il n'existe aucun manifeste dans ce dépôt » n'est donc plus vrai** — et
+> **la conclusion de ce paragraphe tient quand même, pour une AUTRE raison que
+> celle écrite** : le WCO n'existe que dans une fenêtre de PWA **installée**, et
+> un Chromium sans interface n'en installe aucune.
+> `matchMedia('(display-mode: window-controls-overlay)').matches` vaut **false**
+> aux deux exécutions. **La prémisse a vieilli, la conclusion non**, et un
+> critère qui prétendrait l'exercer serait toujours vacueux par construction.
+>
+> **Le legs reste donc ENTIER**, transmis avec sa raison plutôt qu'éteint : G5
+> apporte la DÉCLARATION, et il ne prétend pas à plus.
 
 ---
 

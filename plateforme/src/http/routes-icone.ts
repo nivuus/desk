@@ -24,6 +24,31 @@
 // les icônes tout seul, sans en-tête — NE POURRA PAS pointer cette route en
 // l'état**. G2 ne le tranche pas : le trancher demanderait de décider si une
 // icône peut être servie sans jeton, ce qui est une décision de sécurité.
+//
+// ✅ LE SOUS-BLOC G5 A TRANCHÉ LA QUESTION SANS PRENDRE LA DÉCISION, ET C'EST
+// LE POINT (21 août 2026). Il a d'abord MESURÉ que l'obstacle est **plus large
+// encore** que ce que ce paragraphe dit : un `<link rel="manifest">` est lui
+// aussi allé chercher **sans en-tête**, et ⑤ ne pose **aucun cookie** — son
+// porteur vit dans `localStorage`, qui ne voyage sur aucune requête que le
+// navigateur émet de lui-même. **Le manifeste, et pas seulement ses icônes,
+// était donc hors d'atteinte.**
+//
+// La voie retenue ne touche NI cette route NI aucune autre : la page, elle,
+// est authentifiée. Elle lit le catalogue et les icônes par `fetch` porteur,
+// encode l'image en `data:`, publie le manifeste en `blob:`, et pose
+// `<link rel="manifest" href="blob:…">`. **Mesuré, deux exécutions par
+// sonde** : Chromium charge, analyse et juge ce manifeste **installable**
+// (`getInstallabilityErrors` vide, `beforeinstallprompt` déclenché), et le
+// témoin servi par HTTP ordinaire rend **exactement le même relevé**.
+//
+// 🔴 AUCUN CONTRÔLE DE PORTEUR NE SAUTE, ET LA DÉCISION DE SÉCURITÉ RESTE
+// ENTIÈRE ET NON PRISE : ouvrir cette route — ou signer une URL expirante —
+// reste possible, reste au propriétaire du dépôt, et **n'est plus
+// nécessaire**. Ce que G5 ajoute pour éclairer ce choix s'il se posait un
+// jour : ce qu'une route ouverte exposerait à un porteur d'UUID est **le `nom`
+// et le PNG, et rien d'autre** — `cible`, `arguments` et `repertoire` ne
+// traversent jamais (`routes-applications.ts`), et l'`id` est un UUID engendré
+// par la plateforme.
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Pilote } from '../base/pilote';

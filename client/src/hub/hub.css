@@ -29,7 +29,12 @@
    contenu dépend de ④ ». Cette feuille emploie donc le socle et les
    primitives, et **n'invente AUCUNE direction visuelle**. AUCUN JUGEMENT
    VISUEL N'A ÉTÉ PORTÉ : personne n'a jamais ouvert une page de ⑥ dans un
-   navigateur, de S1 à S4, et G5 ne le fait pas davantage.
+   navigateur, de S1 à S4.
+   ⚠️ ET IL FAUT ÊTRE PRÉCIS SUR CE QUE G5 CHANGE, SANS QUOI CETTE PHRASE
+   DEVIENT FAUSSE À LA LETTRE : sa recette OUVRE bien `hub.html` dans un
+   Chromium sans interface, plusieurs fois. Ce qu'elle n'a pas fait, et que
+   personne n'a fait, c'est le REGARDER — aucun œil humain n'a vu cette page.
+   Une mesure n'est pas un jugement, et G5 n'en porte aucun. »
 
    ── AUCUNE LONGUEUR HORS TOKEN ───────────────────────────────────────────
    Toute valeur dimensionnée passe par un cran (§7.10). L'icône fait `--e-8`

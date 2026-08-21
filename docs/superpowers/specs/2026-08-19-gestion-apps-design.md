@@ -878,6 +878,24 @@ surveillance perdue.
 
 ### G5 — La PWA par application, et les types installeur du hub
 
+> ✅ **FAIT LE 21 AOÛT 2026.** Résultats :
+> `docs/superpowers/plans/2026-08-21-gestion-apps-g5-resultats.md`.
+> **Les trois critères sont TENUS**, et la clause « Livre » l'est en entier —
+> `theme_color` et les `file_handlers` par application compris, mesurés sur le
+> catalogue réel de la VM (149 accents sur 156, 221 associations).
+>
+> ⚠️ **DEUX ÉNONCÉS DE CE §G5 ONT ÉTÉ CORRIGÉS PAR LA MESURE, et ils sont
+> annotés à leur place ci-dessous** : le seuil d'icône de la ROUGE de ① (192 →
+> **144**), et le juge du critère ① (`errors` → `getInstallabilityErrors`).
+>
+> 🔴 **CE QUE LE §G5 NE DISAIT PAS, ET QUI A FAILLI TOUT BLOQUER** : un
+> `<link rel="manifest">` est allé chercher par le navigateur **sans en-tête
+> `Authorization`**, et ⑤ ne pose **aucun cookie**. Servir ce manifeste aurait
+> exigé d'ouvrir une route authentifiée — une **décision de sécurité** que G2
+> laisse au propriétaire du dépôt. **Elle n'a pas été prise** : la page
+> authentifiée construit son manifeste elle-même et le publie en `blob:`, ce
+> qui ne change aucune route. Porte P0, six sondes, deux exécutions chacune.
+
 **Livre** : le manifeste dynamique par application (icône 256, couleur
 d'accent) ; les `file_handlers` alimentés par les **vraies** associations lues
 par l'agent, sur le modèle de `src/asset.js:82-98` ; et l'ajout des types
@@ -890,13 +908,28 @@ installeur au manifeste du **hub**, conformément à l'amendement du 28/07/2026.
 
 | # | Critère | Comment il est jugé | Ce qui le rend ROUGE |
 | --- | --- | --- | --- |
-| ① | Une application découverte est **installable** en PWA | son manifeste valide, son icône 256 servie, le navigateur propose l'installation | retirer l'icône du manifeste, ou la servir en dessous de 192 px : le navigateur refuse l'installation. **À exercer** — un manifeste que personne n'a jamais vu refusé n'est pas éprouvé |
+| ① | Une application découverte est **installable** en PWA | son manifeste valide, son icône 256 servie, le navigateur propose l'installation | retirer l'icône du manifeste, ou la servir en dessous de 192 px : le navigateur refuse l'installation. **À exercer** — un manifeste que personne n'a jamais vu refusé n'est pas éprouvé. ⚠️ **LE SEUIL EST 144, ET CHROMIUM LE NOMME** (`minimum-icon-size-in-pixels: 144`, mesuré 2 fois) : 192 reste sous le seuil, donc la ROUGE vaut — mais **qui poserait 160 en se croyant dessous obtiendrait un VERT**. ⚠️ **Et le juge n'est PAS `getAppManifest().errors`**, qui reste VIDE sur une icône trop petite : une taille refusée n'est pas une erreur d'ANALYSE. C'est `Page.getInstallabilityErrors`. **La ROUGE a été jouée par une DONNÉE — une application témoin à icône 128 dans la base — et non par une mutation de code** |
 | ② | Le glisser-déposer d'un installeur **fonctionne sans aucun file handler** | tester dans un navigateur où l'enregistrement a échoué ou n'existe pas | 🔴 **c'est le critère qui garde l'amendement** : si le dépôt de fichier ne marche que par le file handler, la décision est violée |
 | ③ | Le **test empirique** de l'amendement est joué et son résultat écrit | Chromium accepte-t-il d'enregistrer un handler pour `.msi` / `.exe` ? | **le résultat n'a pas à être positif** ; ne pas jouer le test, ou n'en écrire que la moitié, est l'échec |
 
 ⚠️ **ChromeOS est le meilleur candidat de ③ selon l'amendement, et il n'est pas
 disponible ici.** Si le test ne se joue que sous Chromium desktop, **la portée
 du relevé le dit**, et la question ChromeOS reste ouverte.
+
+> ✅ **③ EST JOUÉ, ET IL TRANCHE — mais sur UN des QUATRE obstacles seulement.**
+> Chromium **analyse** bel et bien `file_handlers` : une `action` posée hors
+> `scope` lui fait rendre, verbatim, « property 'action' ignored, should be
+> within scope of the manifest. » puis « FileHandler ignored. Property 'action'
+> is invalid. » — donc l'`errors` **vide** du bras vert est une **acceptation**,
+> et non une indifférence. ⚠️ **Sans cette sonde, on ne pouvait pas le savoir** :
+> le manifeste analysé que rend le CDP n'expose **aucun** `fileHandlers`, et un
+> `errors` vide se lisait aussi bien comme « accepté » que comme « ignoré ».
+>
+> 🔴 **CE QUI RESTE NON ÉPROUVÉ, ET C'EST LA MOITIÉ DU PROBLÈME** : le hash
+> `UserChoice` de Windows, l'absence d'association `.exe` sur Linux/macOS, et
+> ChromeOS. **Trois obstacles sur quatre.** ⚠️ **Et le hub n'est pas
+> installable** — son manifeste n'a aucune icône —, donc ses `file_handlers` ne
+> peuvent de toute façon **jamais** être honorés par un système.
 
 ---
 
