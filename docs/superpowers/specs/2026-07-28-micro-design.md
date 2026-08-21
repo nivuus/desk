@@ -85,6 +85,42 @@ remplacement ultérieur par un pilote open-source signé ne toucherait qu'à
 | Annulation d'écho | Celle du navigateur (`echoCancellation`) | Le son de la VM est joué par l'onglet lui-même, donc connu de l'AEC de Chrome. En écrire une côté agent serait refaire ce qui existe |
 | Rééchantillonnage | **Refusé** ; un format ≠ 48 kHz est rejeté avec un message nommant la fréquence | Même règle que A §5. Écrire un rééchantillonneur pour un cas dont on ignore s'il se produit serait spéculatif |
 
+> ✅ **MESURÉ LE 21 AOÛT 2026 (bloc E3, sonde S1), et la justification de cette
+> ligne est FAUSSE — mais sa DÉCISION tient, et pour une raison qu'elle
+> n'avait pas.**
+>
+> « Le son de la VM est joué par l'onglet lui-même, donc **connu de l'AEC de
+> Chrome** » suppose que le périmètre de l'AEC est **l'ONGLET**. **Ce n'est ni
+> l'onglet ni le périphérique : c'est L'INSTANCE DE NAVIGATEUR**, et c'est
+> mesuré sur un banc de salle émulée, 2 exécutions par bras :
+>
+> | Montage | Profondeur d'annulation du son de l'AUTRE fenêtre |
+> | --- | --- |
+> | **même** instance de Chrome | **+81,9 et +89,1 dB** — l'AEC l'annule |
+> | **deux** instances de Chrome | **−13,6 et −13,2 dB** — elle ne l'annule pas, et l'`autoGainControl` l'AMPLIFIE |
+>
+> **Témoin positif, joué avant toute conclusion** : l'AEC retire **65 à 81 dB**
+> de la propre restitution de la fenêtre qui capte — elle agit, l'issue « le
+> banc ne mesure rien » est écartée par mesure.
+>
+> 🔵 **CONSÉQUENCE POUR LE PRODUIT, ET ELLE EST FAVORABLE** : la page-shell
+> ouvre ses N fenêtres par `window.open`, **dans SA propre instance**. Le
+> montage du produit est donc celui de la première ligne, et **le défaut que la
+> Décision 7 du plan de E1 redoutait n'existe pas entre deux fenêtres du
+> produit.** *(Cette Décision 7 disait « l'AEC n'annule que ce que son propre
+> onglet restitue » — elle est fausse DES DEUX CÔTÉS : l'AEC couvre plus que
+> l'onglet, et moins que le périphérique.)*
+>
+> 🔴 **CE QUI RESTE, ET QUI EST MESURÉ** : le son d'une **autre application** —
+> un lecteur, une autre visioconférence, un autre navigateur — n'est **pas**
+> annulé. C'est un défaut réel ; simplement pas celui qu'on avait nommé.
+>
+> 🔴 **ET LE BANC EST UNILATÉRAL : il ne LÈVE rien.** Une salle émulée n'est pas
+> une pièce — pas de réponse de salle, pas de retard de propagation, **pas de
+> distorsion non linéaire de haut-parleur**, et c'est précisément la
+> non-linéarité qui met une annulation d'écho en défaut. **Le protocole humain
+> reste dû**, quel que soit ce verdict.
+
 ## 5. Pourquoi `replaceTrack`, et pas une renégociation
 
 Le signaling ne sait pas renégocier. `connectSession` fait un aller-retour
@@ -376,6 +412,15 @@ Le chantier ouvre par ses sondes. Rien n'est construit avant.
 | 2 | VB-Cable s'installe-t-il en silencieux ? Quel format expose-t-il ? Apparaît-il bien comme microphone pour les applications ? | Installation sur la VM, `Get-PnpDevice`, puis enregistreur vocal |
 | 3 | Peut-on faire de CABLE Output le périphérique d'entrée **par défaut** ? | Aucune API publique. Réglage dans l'image de base, ou `IPolicyConfig` (non documentée). Sans cela, chaque application doit être réglée à la main — dégradation d'usage, pas panne |
 | 4 | L'annulation d'écho de Chrome couvre-t-elle le son de la VM revenant par les haut-parleurs ? | À l'oreille, en appel réel. Le son étant joué par l'onglet lui-même, elle devrait le couvrir — à confirmer, pas à supposer. En multi-fenêtres (chantier D), le son pourrait être joué par une **autre** fenêtre que celle qui capte : à réexaminer à ce moment-là |
+
+> ✅ **RÉEXAMINÉE, ET MESURÉE, le 21 août 2026 (bloc E3, sonde S1)** — voir
+> l'encadré du §4. La crainte « le son pourrait être joué par une AUTRE fenêtre
+> que celle qui capte » est **fondée sur le principe et sans objet dans le
+> produit** : les N fenêtres vivent dans la MÊME instance de navigateur, et
+> l'AEC de Chrome y couvre toute l'instance (+81,9 et +89,1 dB, 2 exécutions).
+> ⚠️ **Ce que la sonde n'a PAS fait, et que cette ligne demandait : « à
+> l'oreille, en appel réel ».** Personne n'a écouté. **Le banc réduit le
+> soupçon ; il ne le lève pas.**
 
 La sonde 1 passe en premier et ne demande pas la VM : c'est le seul risque
 capable de remettre en cause l'architecture. Les sondes 2 à 4 exigent la VM

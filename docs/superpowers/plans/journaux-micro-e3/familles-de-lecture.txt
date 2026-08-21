@@ -1,7 +1,7 @@
 Note de lecture des journaux du bloc E3 — RELEVÉE PAR LA COMMANDE le 21 août
-2026, APRÈS la recette VM, sur les 65 fichiers de ce répertoire.
+2026, APRÈS la recette VM **et la campagne du banc S1**, sur les 84 fichiers de ce répertoire.
 
-    fichiers                        : 65
+    fichiers                        : 84
     portant des séquences ANSI      :  6   (les journaux d'agent BRUTS)
     portant des CRLF                : 24   (ils viennent de la VM ; sans effet)
     portant un octet NUL            :  0
@@ -12,7 +12,7 @@ DEUX FAMILLES DE LECTURE :
 | Famille | Compte | Ce qu'il faut faire |
 | --- | --- | --- |
 | les `agent-*.log` BRUTS | 6 | `sed 's/\x1b\[[0-9;]*m//g'` — ou lire le jumeau `-plat`, versé pour CHACUN des six |
-| tout le reste (`*-plat.log`, `pilote-*.{json,log}`, `juge-*.log`, `r[0-5]*.log`, `instrument/`) | 59 | rien : ils se `grep`ent à plat |
+| tout le reste (`*-plat.log`, `pilote-*.{json,log}`, `juge-*.log`, `banc-*.{json,log}`, `r[0-5]*.log`, `instrument/`) | 78 | rien : ils se `grep`ent à plat |
 
 ✅ **AUCUN octet NUL nulle part** : contrairement à D10 et au presse-papier P1,
 `grep -a` n'est nécessaire sur aucun fichier d'ici. ⚠️ *L'employer quand même ne
@@ -32,7 +32,15 @@ aucun `grep`.
     d'instrument que seule l'exécution pouvait trouver. Les effacer laisserait
     croire que le montage a marché du premier coup.
 
-⛔ **CE QUE CE RÉPERTOIRE NE CONTIENT PAS, et c'est déclaré** : rien de la sonde
-S1 (la salle émulée, l'AEC de Chrome). Elle exige de toucher le graphe audio
-PipeWire de l'utilisateur de la machine hôte, et **ce consentement n'a pas été
-donné**. Aucune configuration audio de l'hôte n'a été modifiée.
+✅ **ET IL CONTIENT DÉSORMAIS LA CAMPAGNE DU BANC S1** — `banc-*.{json,log}`,
+sept exécutions dont trois d'essai versées avec leur diagnostic —, que ce
+paragraphe déclarait absente faute de consentement. **Il a été accordé.**
+
+⚠️ **Les WAV enregistrés dans la salle NE SONT PAS VERSÉS** (215 Mo pour la
+campagne) : ce qui compte d'eux est le verdict du juge `dominante.mjs`, qui est
+dans chaque journal avec sa **résolution** — et le générateur des WAV d'entrée
+est déterministe, ses empreintes étant versées par E2.
+
+⛔ **CE QUE CE RÉPERTOIRE NE CONTIENT TOUJOURS PAS** : rien d'une oreille
+humaine. Le protocole du §« Le protocole humain » du plan reste **entièrement
+dû**, et le banc numérique ne peut pas le remplacer.

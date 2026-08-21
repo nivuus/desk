@@ -12148,13 +12148,14 @@ Spécification : `docs/superpowers/specs/2026-07-28-micro-design.md` — ⚠️ 
 le 28 juillet 2026, AVANT les chantiers A, B, C et D.** Le plan de E1 porte un
 tableau de vieillissement, celui de E3 un second, borné à ce dont il dépend.
 **Ne recopier aucune affirmation de cette spec sans passer par l'un des deux.**
-Journaux : `docs/superpowers/plans/journaux-micro-e3/` — **65 fichiers**,
-**DEUX familles de lecture**, relevées par la commande APRÈS la recette :
+Journaux : `docs/superpowers/plans/journaux-micro-e3/` — **84 fichiers**,
+**DEUX familles de lecture**, relevées par la commande APRÈS la recette VM
+**et** la campagne du banc :
 
 | Famille | Compte | Ce qu'il faut faire |
 | --- | --- | --- |
 | les `agent-*.log` **bruts** | **6** | **séquences ANSI de `tracing` PRÉSENTES** : `sed 's/\x1b\[[0-9;]*m//g'` — ou lire le jumeau `-plat`, versé pour **chacun des six** |
-| tout le reste (`*-plat.log`, `pilote-*.{json,log}`, `juge-*.log`, `r[0-5]*.log`, `instrument/`) | **59** | rien : ils se `grep`ent à plat |
+| tout le reste (`*-plat.log`, `pilote-*.{json,log}`, `juge-*.log`, `banc-*.{json,log}`, `r[0-5]*.log`, `instrument/`) | **78** | rien : ils se `grep`ent à plat |
 
 ✅ **AUCUN octet NUL nulle part** (balayage `tr -dc '\000'` sur les 65), **aucun
 fichier non décodable en UTF-8**. ⚠️ **24 fichiers portent des CRLF** — ils
@@ -12180,32 +12181,76 @@ atteignait le processus (§ ci-dessous).
 | ① | le refus d'exclusivité est **DIT au client** | ✅ **LIVRÉ ET MESURÉ**, 2 exécutions |
 | ② | l'exclusivité **à DEUX ENFANTS** est exercée | ✅ **LIVRÉ ET MESURÉ**, 2 exécutions |
 | ③ | l'occupation du tampon devient **observable** | ✅ **LIVRÉ ET MESURÉ**, 2 exécutions |
-| ④ | **l'écho en multi-fenêtres** | ⛔ **NON APPROCHÉ** |
+| ④ | **l'écho en multi-fenêtres** | ✅ **MESURÉ**, 2 exécutions par bras |
 
-⛔ **LE LIVRABLE ④ EXIGEAIT UN CONSENTEMENT QUI N'A PAS ÉTÉ DONNÉ.** La
-Décision 5 du plan impose de créer un nœud PipeWire dans le graphe audio de
-l'utilisateur de la machine hôte — une « salle émulée » — pour que deux pages
-Chrome se restituent et se captent l'une l'autre. **Il a été demandé et n'a pas
-été accordé : aucune configuration audio de l'hôte n'a été modifiée**, ni
-`pw-loopback`, ni nœud, ni périphérique virtuel.
+🔴 **LA DÉCISION 7 DE E1 EST RÉFUTÉE, ET LA LIGNE DE PARTAGE N'EST PAS
+L'ONGLET.** « L'AEC de Chrome n'annule que ce que SON PROPRE ONGLET restitue »
+était écrit en trois puces de raisonnement, **sans une seule pièce**, et E2 l'a
+reconduite telle quelle. C'était la prémisse de tout le bloc. **Elle est fausse
+DES DEUX CÔTÉS** : l'AEC couvre **plus** que l'onglet et **moins** que le
+périphérique — son périmètre est **l'INSTANCE DE NAVIGATEUR**.
 
-🔴 **CONSÉQUENCE EXACTE : la Décision 7 de E1 — « l'AEC de Chrome n'annule que
-ce que son propre onglet restitue » — reste ce qu'elle a TOUJOURS été, un
-raisonnement écrit sans une seule pièce.** Ni confirmée, ni réfutée. ⚠️ **Et la
-spec §4 n'a PAS été annotée, délibérément** : l'annoter affirmerait une
-connaissance que E3 n'a pas.
+| Montage | Profondeur d'annulation du son de l'**autre** fenêtre | Issue | Exéc. |
+| --- | --- | --- | --- |
+| **même** instance de Chrome | **+81,9** et **+89,1 dB** | **B** | 2 |
+| **deux** instances de Chrome | **−13,6** et **−13,2 dB** | **A** | 2 |
 
-⚠️ **Le protocole humain de l'écho reste dû dans TOUS les cas** (Décision 3 du
-plan, asymétrique : le banc de salle émulée peut **confirmer** le défaut, jamais
-le **lever**). Son texte intégral vit dans le plan.
-⛔ **Le choix entre les trois voies de correction — A rassembler la restitution
-(ce qui DÉFAIT D7), B une annulation côté agent (que la spec §14 exclut
-nommément), C le casque dit à l'utilisateur — appartient au propriétaire du
-dépôt**, et ne se prend pas avant que le défaut soit mesuré.
+⚠️ **Le nombre négatif n'est pas une annulation manquée : c'est une
+AMPLIFICATION** — l'`autoGainControl` monte le gain, et la dominante captée AVEC
+l'AEC devient **662,1 Hz à −29,1 dB**, le son de l'autre instance **dominant**
+ce que la fenêtre envoie.
 
-⚠️ **La sonde S1 est fragile même AVEC le consentement** : `Xvfb` est absent
-depuis D8, et **si Chrome sans interface ne rend aucun son dans un nœud
-PipeWire, elle tombe SANS REPLI.**
+🔵 **CONSÉQUENCE PRODUIT, ET ELLE EST FAVORABLE** : la page-shell ouvre ses N
+fenêtres par `window.open`, **dans SA propre instance**. **Le défaut que E1
+redoutait n'existe pas entre deux fenêtres du produit.**
+
+🔴 **CE QUI RESTE, ET QUI EST MESURÉ** : le son d'une **autre application** — un
+lecteur, une autre visioconférence, un autre navigateur — **n'est pas annulé**.
+Défaut réel, simplement **pas celui qu'on avait nommé**, et **rien ne le dit à
+l'utilisateur**.
+
+🔴 **ET LE BANC NE LÈVE RIEN (Décision 3, écrite deux fois dans le plan).** Une
+salle émulée n'est pas une pièce : ni réponse de salle, ni retard de
+propagation, **ni distorsion non linéaire de haut-parleur** — et c'est
+précisément la non-linéarité qui met une AEC en défaut. **Issue A ⇒ le défaut
+est établi ; issue B ⇒ RIEN n'est levé.** ⚠️ **Le protocole humain reste dû**,
+et il est aussi le seul qui puisse fermer « une application Windows entend » à
+l'oreille (spec §13) et « un correspondant en appel réel ne perçoit pas d'écho »
+(§11.2).
+
+⛔ **Le choix entre les trois voies appartient toujours au propriétaire du
+dépôt — mais la mesure en a changé les termes.** La **voie A** (rassembler la
+restitution, ce qui **défait D7**) **n'a plus rien à corriger entre fenêtres du
+produit** ; la **voie B** (une AEC côté agent, que la spec §14 exclut nommément)
+reste coûteuse ; **la voie C — le casque, DIT AU BON MOMENT — est la seule dont
+le défaut mesuré ait encore besoin**, et la seule livrable par le mécanisme que
+E3 a déjà construit (`MicState` porterait un second cas). **Non prescrite** : un
+avis qui s'affiche à tort est pire qu'un avis absent.
+
+**Trois témoins, et il en fallait trois** : le **témoin POSITIF** joué *avant
+toute conclusion* (l'AEC retire **65 à 81 dB** de la propre restitution de la
+fenêtre qui capte — l'issue « le banc ne mesure rien » est **écartée par
+mesure**) ; le **témoin de PRÉSENCE** (`aec:false` relève 660 Hz à **−42,7 dB** —
+B arrive bien dans la salle) ; et le **témoin NÉGATIF**, le bras « avec casque »
+(B cesse de rendre, 660 Hz **chute de 120,1 dB**). Le juge lui-même a ses deux
+témoins : **440,0 Hz** sur un ton connu, **−1000 dB** sur le silence.
+
+🔴 **LE BANC EST DIFFÉRENTIEL, ET IL A FALLU UNE MESURE POUR LE COMPRENDRE.** Sa
+première rédaction jugeait le résidu **contre le plancher** et concluait « l'AEC
+ne fait rien » **sur une AEC qui retirait 65 dB** : la salle est du silence
+**numérique**, son plancher est à **−151 dB**, et une annulation parfaitement
+efficace y laisse un résidu **55 dB au-dessus**. ⚠️ **La même leçon deux fois** —
+le bras casque portait le même seuil et rendait « B toujours présente » alors
+qu'elle avait chuté de 114 dB. ***Ce qui juge est la CHUTE, jamais la hauteur.***
+
+**Le graphe audio de l'hôte est rendu intact.** Relevé AVANT, **refait ce jour
+et non recopié du plan** : **un** seul `Audio/Sink` (`auto_null`), **aucun**
+`Audio/Source`, aucun flux. ⚠️ **Le risque n°1 de la Décision 5 s'est produit** —
+wireplumber **élit la salle comme défaut tout seul** —, il est bénin ici et **se
+défait tout seul à la mort du processus** ; les défauts sont malgré tout
+restaurés **à leur valeur RELEVÉE** dans un `trap`. Relevé APRÈS la campagne :
+`auto_null` seul, **zéro `pw-loopback` survivant**, et `diff` par **ensemble de
+noms** rendant **AUCUN ÉCART** aux sept exécutions.
 
 ### ① Le refus d'exclusivité est DIT au client — 2 exécutions
 
@@ -12431,7 +12476,13 @@ elle-même.*
 ### Ce que E3 n'établit PAS
 
 - **Aucun taux, nulle part.** Deux exécutions par critère au mieux.
-- ⛔ **RIEN DE L'ÉCHO**, et la Décision 7 de E1 reste **non mesurée**.
+- 🔴 **L'ÉCHO EST MESURÉ SUR UN BANC NUMÉRIQUE, ET CE BANC NE LÈVE RIEN** — ni
+  réponse de salle, ni retard de propagation, ni distorsion non linéaire.
+- 🔴 **Le banc mesure CHROME 151, pas LE PRODUIT** : que le produit n'en souffre
+  pas SUIT du fait que ses N fenêtres vivent dans une seule instance, **mais
+  cela reste une inférence** — aucune session réelle ne l'a montré.
+- ⛔ **Le son d'une AUTRE application n'est pas annulé**, mesuré, et **rien ne le
+  dit à l'utilisateur**.
 - 🔴 **Personne n'a écouté** : la spec §13 reste atteinte par un **juge
   logiciel** seulement.
 - 🔴 **La latence de bout en bout**, jamais mesurée depuis D1.
@@ -12453,9 +12504,14 @@ elle-même.*
 (`MICRO_FAUTE_ECRITURE`). **Legs de E1 réglé** : n°7 (le périphérique par défaut
 de la session interactive).
 
-1. ⛔ **L'ÉCHO EN MULTI-FENÊTRES, ENTIER** — le consentement sur le graphe audio
-   de l'hôte n'a pas été donné, et la sonde est fragile même avec lui.
-2. ⛔ **Le protocole humain de l'écho**, dû quel que soit le verdict de S1.
+1. ✅ **L'ÉCHO ENTRE DEUX FENÊTRES DU PRODUIT : MESURÉ, et le défaut n'existe
+   pas.** ⛔ **Ce qui reste dû est un défaut VOISIN et RÉEL, que personne n'avait
+   nommé** : le son d'une **autre application** n'est pas annulé (**−13 dB**,
+   c'est-à-dire amplifié), et **rien ne le dit à l'utilisateur** — c'est
+   exactement ce que la **voie C** livrerait par le mécanisme que E3 a construit.
+2. ⛔ **Le protocole humain de l'écho**, dû **quel que soit** le verdict de S1 —
+   et seul capable de fermer aussi la spec §13 (« à l'oreille ») et §11.2
+   (« un correspondant en appel réel »).
 3. ⛔ **Le choix entre les voies A, B et C**, posé au propriétaire du dépôt.
 4. ⛔ **La latence de bout en bout** ; **l'écoute à l'oreille** (spec §13) et
    **l'appel réel sans écho** (§11.2).
