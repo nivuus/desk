@@ -316,6 +316,45 @@ texte seul est donc une décision de produit, pas une limite d'API.**
   donc **supposée, pas mesurée**. Elle est traitée comme réelle par la
   conception (§4.2, règle du dépôt différé) parce que s'en protéger est gratuit
   et que s'en passer serait un pari.
+
+  > ⚠️ **MESURÉE PAR LE SOUS-BLOC P3 (21 août 2026), sonde S2, DEUX exécutions
+  > aux relevés identiques — et le verdict est plus fin que « vrai » ou
+  > « faux ».** Pièces : `journaux-presse-papier-p3/p3-writetext-{1,2}.json`.
+  >
+  > | cellule | état relevé | `writeText` |
+  > | --- | --- | --- |
+  > | focus ✔, activation ✘ | `{hasFocus:true, isActive:false}` | `NotAllowedError: … Write permission denied.` |
+  > | focus ✔, activation ✔ | `{hasFocus:true, isActive:true}` | **OK** |
+  > | focus ✘, activation ✘ | `{hasFocus:false, isActive:false}` | `NotAllowedError: … Document is not focused.` |
+  > | focus ✘, activation ✔ | — | 🔴 **INATTEIGNABLE** |
+  >
+  > 🔴 **LA CELLULE QUI TRANCHE EST INATTEIGNABLE À CE MONTAGE** : le geste de
+  > confiance REND le focus à la fenêtre qui le reçoit, et `Page.bringToFront`
+  > ne le lui reprend plus (deux moyens essayés, attente sur le FAIT — vingt
+  > relectures de `hasFocus` — et jamais sur une durée). **Le §3.3 reste donc
+  > SUPPOSÉ au sens strict**, et le dire est un verdict recevable ; en fabriquer
+  > un autre ne le serait pas (RP3-5).
+  >
+  > ✅ **MAIS IL EST CORROBORÉ PAR UNE PIÈCE, et c'est mieux qu'un « non
+  > tranché »** : les deux refus portent le **MÊME NOM** et des **MESSAGES
+  > DIFFÉRENTS**. Un chemin de refus **propre au focus** existe donc, et il se
+  > nomme lui-même. Ce qui reste non mesuré est s'il survit à une activation.
+  >
+  > 🔴 **POURQUOI UN 2×2 ET PAS UNE SIMPLE OBSERVATION.** P2 avait DÉJÀ mesuré
+  > un `NotAllowedError` sur `writeText`, et ce n'était PAS le focus : son
+  > annexe versée relève `hasFocus: true` DES DEUX CÔTÉS, et ce qu'elle mesurait
+  > était l'ACTIVATION. **Les deux mécanismes lèvent la même exception**, et une
+  > sonde qui n'aurait observé que « pas de focus ⟹ THROW » aurait attribué au
+  > focus ce qui pouvait être l'activation — dans les deux sens possibles.
+  >
+  > ⚠️ **UNE PREMIÈRE RÉDACTION DE CETTE SONDE A RENDU LE VERDICT INVERSE — « le
+  > §3.3 est RÉFUTÉ » — ET SON PROPRE RELEVÉ LE RÉFUTAIT** : elle jouait le
+  > geste EN DERNIER, obtenait `{hasFocus:true, isActive:true}`, c'est-à-dire la
+  > cellule précédente sous une autre étiquette. C'est l'erreur d'attribution
+  > que la sonde existait pour empêcher, commise par la sonde. Deux remèdes :
+  > l'ordre geste → retrait du focus → écriture, et le verdict calculé sur
+  > l'ÉTAT OBSERVÉ, une cellule dont l'état ne correspond pas à son étiquette
+  > étant requalifiée INATTEIGNABLE.
 - ✅ **CETTE LIGNE EST PÉRIMÉE : `paste` sur un `<video>` focalisé A ÉTÉ
   MESURÉ, le 20 août 2026, et le verdict est FAVORABLE aux DEUX exécutions**
   (`docs/superpowers/plans/journaux-presse-papier-p2/p2-paste-video-{1,2}.json`).
@@ -424,7 +463,9 @@ façon de deviner laquelle. Élire une porteuse rendrait le collage local **muet
 dans toutes les autres**, sans rien pour le dire.
 
 Le capteur pousse donc l'état à **toutes** les fenêtres. Puis, côté client, une
-règle simple ferme le problème du focus document (§3.3, contrainte supposée) :
+règle simple ferme le problème du focus document (§3.3, contrainte supposée —
+✅ **mesurée et CORROBORÉE par le sous-bloc P3, sans être établie** : voir
+l'encadré du §3.3) :
 
 > **La page mémorise toujours le dernier contenu reçu ; elle ne l'écrit dans le
 > presse-papier local que si elle a le focus. Sinon elle l'écrit à la prochaine
@@ -863,12 +904,58 @@ la boucle possible, et qu'un sous-bloc ne livre pas un défaut qu'il crée.
 **Livre** : la règle « toutes reçoivent, seule la focalisée écrit localement, les
 autres écrivent à la reprise du focus » (D3), et sa mesure.
 
+> ❌ **« LIVRE LA RÈGLE D3 » EST FAUX, ET LE PLAN DE P3 L'A RELEVÉ AVANT
+> D'ÉCRIRE UNE LIGNE (E1, 21 août 2026).** Elle était DÉJÀ livrée : le fan-out
+> par P1 (`agent/src/capteur/sommeil/presse_papier.rs::distribuer` itère sur
+> TOUTES les clés de `canaux`, sans aucun filtre, avec son test) et le dépôt
+> différé par P1 aussi (`client/src/presse-papier.ts`,
+> `presse-papier-dom.ts`, quatre tests d'hôte).
+>
+> **Ce que P3 livre est la MESURE, plus DEUX TROUS que cette spec ne nomme
+> pas** : les deux moitiés du legs n°3 de P1 (l'agent n'émettait pas l'état
+> courant à l'inscription, ET `client/src/main.ts` perdait en silence un
+> message arrivé avant l'attache), et l'attribution session ↔ fenêtre Windows,
+> qui n'était observable NULLE PART — aucune trace du dépôt n'associait une
+> `session` au `hwnd` ni au PID de l'APPLICATION Windows. Sans elle, ② et ③ ne
+> sont pas ATTRIBUABLES, et un relevé non attribuable n'est pas un verdict.
+>
+> ⚠️ **Ce document est un relevé DATÉ : il est annoté, jamais réécrit.**
+
 | # | Critère | Ce qui le rend ROUGE |
 | --- | --- | --- |
-| ① | À **trois** fenêtres, une copie dans la VM parvient aux **trois** | rouge = compter les `AgentControl::Clipboard` par session : il en faut trois, pas un. Une élection de porteuse le ferait tomber à un |
+| ① | À **trois** fenêtres, une copie dans la VM parvient aux **trois** | ❌ **CETTE ROUGE DÉSIGNE UN MÉCANISME QUI N'EXISTE PAS** (E2 du plan de P3) : il n'y a **aucune élection de porteuse** dans le presse-papier — c'est le mécanisme de l'AUDIO (`capteur/sommeil/porteurs.rs`), et `presse_papier::distribuer` n'en a jamais eu. La rouge n'est pas jouable telle qu'écrite. **REMPLACÉE** : muter `distribuer` pour n'envoyer qu'à la **PREMIÈRE clé**, le compte tombant de 3 à **1**. ⚠️ Une mutation qui n'enverrait à PERSONNE serait MOINS BONNE : elle rendrait **0**, et zéro est aussi ce que rend un mécanisme entièrement mort — **1 ne peut venir que d'une distribution qui fonctionne et qu'on a restreinte** |
 | ② | Un collage depuis la fenêtre **B** met le texte de B dans la VM, pas celui de A | rouge = deux textes distincts dans deux fenêtres |
 | ③ | Deux collages **quasi simultanés** ne produisent ni interblocage ni contenu mêlé ; **le dernier gagne** | rouge = un contenu **mixte**, ou une commande sans réponse dans les 12 s de la borne du canal |
-| ④ | Une fenêtre **sans focus** n'écrit pas le presse-papier local, et l'écrit **à la reprise du focus** | 🔴 **le rouge de ce critère est aussi la MESURE de la contrainte supposée du §3.3** : si `writeText` réussit depuis une fenêtre non focalisée, la règle du dépôt différé est du coût pour rien — **et il faut l'écrire, pas la garder** |
+| ④ | Une fenêtre **sans focus** n'écrit pas le presse-papier local, et l'écrit **à la reprise du focus** | 🔴 **NON MESURABLE en conditions de produit, et c'est MESURÉ** — voir l'encadré ci-dessous |
+
+> 🔴 **④ N'EST PAS MESURABLE EN CONDITIONS DE PRODUIT, ET LA SONDE S1 DE P3 LE
+> DIT — DEUX EXÉCUTIONS, RELEVÉS IDENTIQUES** (`p3-focus-{1,2}.json`). Trois
+> fenêtres ouvertes par `window.open` — **le geste du produit**,
+> `client/src/shell-page.ts` — rapportent TOUTES `document.hasFocus() === true`,
+> aux trois basculements. RP3-2 est réalisé, et le témoin a échoué sur sa
+> deuxième issue, écrite d'avance.
+>
+> ⚠️ **MAIS LA CAUSE N'EST PAS LE `--headless`, et une première rédaction de la
+> sonde l'aurait attribué à lui.** Une SECONDE ARME, dans la même exécution et
+> avec le même code de mesure, ouvre par `Target.createTarget` : `bringToFront`
+> y retire parfaitement le focus. **L'attribution est au MODE D'OUVERTURE**, et
+> le verdict qui commande la recette est celui de l'arme du produit. Xvfb et
+> xdotool sont relevés ABSENTS de l'hôte ce jour-là (consentement donné en D8,
+> jamais suivi d'effet), et les mesures qui en sortiraient **ne se compareraient
+> à aucune campagne antérieure**.
+>
+> 🔵 **ET « DU COÛT POUR RIEN » SUPPOSE UNE FENÊTRE — c'est E4 du plan de P3, et
+> c'est sa contribution de conception.** À N, le test de focus fait autre chose
+> que se protéger d'un refus : il **ÉLIT l'unique écrivain local**. Sans lui, N
+> appels concurrents à `writeText` partiraient pour une seule copie, le dernier
+> gagnant arbitrairement — **régime que rien ne mesure**. La règle RESTE donc,
+> quel que soit le verdict du §3.3, et son retrait serait une **décision du
+> propriétaire du dépôt**, jamais une conséquence mécanique d'une sonde.
+>
+> ⚠️ **Corollaire du relevé de S1, et il n'est pas confortable** : si toutes les
+> fenêtres du produit rapportent le focus, alors **toutes écrivent**, et la
+> recette rencontrera ce régime PAR ACCIDENT. Le pilote de P3 le relève
+> explicitement (`n_ecrivains_concurrents`) plutôt que de le taire.
 
 ⚠️ **Trois fenêtres, pas huit.** Le blocage par pollution du registre a plafonné
 D9 à trois fenêtres, et D10 l'a levé sur mesure. **Ce chantier ne re-mesure pas

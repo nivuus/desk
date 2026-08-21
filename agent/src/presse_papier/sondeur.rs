@@ -33,9 +33,18 @@ pub struct Sondeur {
     ///
     /// `None` au premier tour : l'état lu alors fait **référence** et n'est
     /// **pas annoncé** — c'est le patron de `SuiviBordure`
-    /// (`capteur/plein_ecran.rs`). Une fenêtre qui s'attache ne reçoit donc
-    /// pas le contenu déjà présent ; elle reçoit la première copie **qui
-    /// suit**.
+    /// (`capteur/plein_ecran.rs`).
+    ///
+    /// ❌ **CETTE DOC AJOUTAIT « une fenêtre qui s'attache ne reçoit donc pas
+    /// le contenu déjà présent ; elle reçoit la première copie QUI SUIT », ET
+    /// LE SOUS-BLOC P3 L'A RÉFUTÉE.** C'était le legs n°3 de P1, et il est
+    /// fermé : le registre mémorise la dernière annonce
+    /// (`capteur/sommeil/registre.rs::Etat::dernier_presse_papier`) et
+    /// l'émet à l'inscription sur le seul canal neuf.
+    ///
+    /// ⚠️ **Ce qui reste VRAI est la propriété de CE champ**, et elle est
+    /// inchangée : le `Sondeur` n'annonce toujours rien à son premier tour.
+    /// Ce qui a changé est ailleurs — c'est le REGISTRE qui rejoue, pas lui.
     reference: Option<u32>,
     /// Le dernier contenu réellement annoncé — le **garde n°2 de D5**.
     dernier_emis: Option<String>,
@@ -137,6 +146,15 @@ impl Sondeur {
     /// pas — le compteur aura encore bougé, et la copie tierce sera annoncée.
     /// **C'est le comportement voulu** : le garde reste exact au sens de D5, et
     /// un test le vérifie.
+    ///
+    /// ❌ **CETTE RÉSERVE ÉTAIT INCOMPLÈTE, ET LE SOUS-BLOC P3 L'A MESURÉ.**
+    /// Elle ne traite que la copie **TIERCE**, qu'elle déclare voulue. Le cas
+    /// de **NOTRE PROPRE SECONDE ÉCRITURE** — une deuxième fenêtre qui colle
+    /// après cet armement et avant le tour — n'était déclaré NULLE PART, et il
+    /// franchit les DEUX gardes : le n°1 parce que le compteur a rebougé, le
+    /// n°2 parce que le texte mémorisé est celui du collage PRÉCÉDENT. Un test
+    /// l'a vu ROUGE sur l'arbre intact, sans aucune mutation. Le remède est
+    /// `ecarter_notre_ecriture`, plus bas dans ce même fichier.
     pub fn apres_notre_ecriture(&mut self, seq: u32, texte: &str) {
         self.armer(gardes_armes(), seq, texte);
     }

@@ -111,6 +111,38 @@ export class PressePapierLocal {
     /// Sans focus on ne rend rien : `navigator.clipboard.writeText` échoue
     /// sur un document qui n'a pas le focus, et l'échec coûterait un compteur
     /// pour rien. Le texte reste en attente et sortira au retour du focus.
+    ///
+    /// ⚠️ **CETTE PHRASE AFFIRMAIT COMME UN FAIT CE QUE LA SPEC DÉCLARE
+    /// SUPPOSÉ DEPUIS LE 28 JUILLET 2026** (§3.3). Le sous-bloc P3 l'a
+    /// mesurée, et le verdict est plus fin que « vrai » ou « faux » :
+    ///
+    /// - la cellule qui TRANCHE — pas de focus, MAIS sous activation
+    ///   utilisateur — est **INATTEIGNABLE** à ce montage : le geste de
+    ///   confiance REND le focus à la fenêtre qui le reçoit, et
+    ///   `Page.bringToFront` ne le lui reprend plus. Le §3.3 reste donc
+    ///   **supposé au sens strict** ;
+    /// - **mais il est CORROBORÉ par une pièce** : sans focus et sans geste,
+    ///   `writeText` refuse en NOMMANT le focus —
+    ///   `NotAllowedError: … Document is not focused.` — là où le refus
+    ///   d'activation dit `… Write permission denied.` Les deux portent le
+    ///   MÊME NOM et des MESSAGES DIFFÉRENTS : **un chemin de refus propre au
+    ///   focus existe, et il se nomme lui-même**. Ce qui reste non mesuré est
+    ///   s'il survit à une activation.
+    ///
+    /// 🔵 **ET À N FENÊTRES, CE TEST FAIT AUTRE CHOSE QUE SE PROTÉGER D'UN
+    /// REFUS — il ÉLIT l'unique écrivain local.** Le capteur pousse le contenu
+    /// à TOUTES les fenêtres (D3), chacune a son propre `PressePapierLocal`,
+    /// et si toutes écrivaient, N appels concurrents à `writeText` partiraient
+    /// pour une seule copie, le dernier gagnant arbitrairement. Cette
+    /// justification-là vaut **indépendamment** du §3.3, et c'est pourquoi la
+    /// règle reste même si le §3.3 devait être réfuté un jour. Le retrait de
+    /// la règle serait alors une **décision du propriétaire du dépôt**, avec
+    /// son coût nommé — un régime que rien ne mesure —, jamais une conséquence
+    /// mécanique d'un verdict de sonde.
+    ///
+    /// ⚠️ **Sondes versées** : `journaux-presse-papier-p3/p3-writetext-{1,2}.json`
+    /// (le 2×2) et `p3-focus-{1,2}.json` (la mesurabilité du focus à N
+    /// fenêtres), deux exécutions chacune, relevés identiques.
     aEcrire(focalise: boolean): string | undefined {
         if (!focalise) return undefined;
         if (this.enAttente === undefined) return undefined;

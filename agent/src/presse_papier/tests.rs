@@ -165,9 +165,15 @@ fn un_refus_repete_a_l_identique_n_est_annonce_qu_une_fois() {
     assert_eq!(sondeur.observer(3, || Some(gros)), None);
 }
 
-/// L'état lu au PREMIER tour fait référence, et n'est pas annoncé : une
-/// fenêtre qui s'attache ne reçoit pas le contenu déjà présent, elle
-/// reçoit la première copie QUI SUIT (D-P1-4, patron de `SuiviBordure`).
+/// L'état lu au PREMIER tour fait référence, et n'est pas annoncé (D-P1-4,
+/// patron de `SuiviBordure`).
+///
+/// ❌ **CE COMMENTAIRE AJOUTAIT « une fenêtre qui s'attache ne reçoit pas le
+/// contenu déjà présent, elle reçoit la première copie QUI SUIT », ET LE
+/// SOUS-BLOC P3 L'A RÉFUTÉ** — c'était le legs n°3 de P1, désormais fermé par
+/// `Etat::dernier_presse_papier` et son émission à l'inscription. La propriété
+/// que CE test éprouve, elle, est intacte : le `Sondeur` n'annonce rien à son
+/// premier tour.
 ///
 /// ROUGE si le premier tour annonce — ce qui ferait recevoir à chaque
 /// attache un contenu que l'utilisateur n'a pas copié pour elle.
