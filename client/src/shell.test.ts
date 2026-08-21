@@ -24,6 +24,7 @@ function bureauDeTest() {
      * mesure entière a tourné sur un pont NON monté.
      */
     const compteurs: Array<{ dues: number; vues: number; texte: string; ton: Ton }> = [];
+    const retenues: boolean[] = [];
     const bureau = creerBureau({
         ouvrirFenetre: (session) => {
             const f = { closed: false, close: () => { f.closed = true; } };
@@ -36,12 +37,66 @@ function bureauDeTest() {
             etatsFichiers.push(texte);
             etats.push({ texte, ton });
         },
+        afficherRetenues: (r: boolean) => {
+            retenues.push(r);
+        },
         afficherEcrituresDues: (dues, vues, texte, ton) => {
             compteurs.push({ dues, vues, texte, ton });
         },
     });
-    return { bureau, ouvertes, envoyes, etatsFichiers, bandeaux, etats, compteurs };
+    return { bureau, ouvertes, envoyes, etatsFichiers, bandeaux, etats, compteurs, retenues };
 }
+
+describe('F5 — les écritures RETENUES', () => {
+    /**
+     * 🔴 **`retenues` REMONTE, ET IL EST FILTRÉ PAR « il y a des dues ».**
+     *
+     * Retenir sans aucune due n'a pas de sens : le bouton proposerait de
+     * reprendre ce qu'il n'y a pas à reprendre. Le pont ne l'émet pas ainsi,
+     * mais s'en remettre à lui ferait dépendre l'interface d'une propriété
+     * qu'aucun type ne garantit.
+     */
+    it('retenues avec des dues est annoncé', () => {
+        const { bureau, retenues } = bureauDeTest();
+        bureau.ecrituresDues([{ chemin: 'a.txt', octets: 1 }], true);
+        expect(retenues.at(-1)).toBe(true);
+    });
+
+    it('🔴 retenues SANS aucune due n’est PAS annoncé', () => {
+        const { bureau, retenues } = bureauDeTest();
+        bureau.ecrituresDues([], true);
+        expect(retenues.at(-1)).toBe(false);
+    });
+
+    it('des dues NON retenues ne l’annoncent pas', () => {
+        const { bureau, retenues } = bureauDeTest();
+        bureau.ecrituresDues([{ chemin: 'a.txt', octets: 1 }], false);
+        expect(retenues.at(-1)).toBe(false);
+    });
+
+    /**
+     * 🔴 **RETENIR EST UNE ALERTE, JAMAIS UN `neutre`.** Rien ne repartira sans
+     * un geste de l'utilisateur, et un ton neutre laisserait croire que le pont
+     * travaille encore.
+     */
+    it('🔴 une reprise retenue porte le ton « alerte »', () => {
+        const { bureau, compteurs } = bureauDeTest();
+        bureau.ecrituresDues([{ chemin: 'a.txt', octets: 1 }], true);
+        expect(compteurs.at(-1)?.ton).toBe('alerte');
+    });
+
+    /**
+     * L'état est celui du PONT, pas de l'interface : il tombe quand le pont
+     * cesse de retenir, et pas avant.
+     */
+    it('l’état retombe quand le pont cesse de retenir', () => {
+        const { bureau, retenues } = bureauDeTest();
+        bureau.ecrituresDues([{ chemin: 'a.txt', octets: 1 }], true);
+        expect(retenues.at(-1)).toBe(true);
+        bureau.ecrituresDues([{ chemin: 'a.txt', octets: 1 }], false);
+        expect(retenues.at(-1)).toBe(false);
+    });
+});
 
 describe('page-shell', () => {
     it('ouvre une fenêtre navigateur quand le superviseur annonce une fenêtre', () => {
@@ -102,6 +157,7 @@ describe('page-shell', () => {
             afficher: affiche,
             afficherEtatFichiers: () => {},
             afficherEcrituresDues: () => {},
+            afficherRetenues: () => {},
         });
         bureau.refus('F9', 'plus aucune sortie virtuelle disponible');
         // Le motif du refus est REPRIS TEL QUEL, et le ton l'accompagne : le
@@ -124,6 +180,7 @@ describe('page-shell', () => {
             afficher: affiche,
             afficherEtatFichiers: () => {},
             afficherEcrituresDues: () => {},
+            afficherRetenues: () => {},
         });
         bureau.fenetreOuverte('w-1', 'Bloc-notes');
         expect(affiche).toHaveBeenCalledWith(expect.stringContaining('pop-up'), 'danger');
@@ -193,6 +250,7 @@ describe('page-shell — le TON du bandeau', () => {
             afficher: (message, ton) => { bandeaux.push({ message, ton }); },
             afficherEtatFichiers: () => {},
             afficherEcrituresDues: () => {},
+            afficherRetenues: () => {},
         });
         sansPopup.fenetreOuverte('w-1', 'Bloc-notes');
         expect(bandeaux).toHaveLength(1);
@@ -236,8 +294,8 @@ describe('le compteur d’écritures dues', () => {
         // rien n'a encore eu lieu. *Un verdict négatif exige que la chose
         // mesurée soit ABSENTE, pas seulement nulle.*
         const { bureau, compteurs } = bureauDeTest();
-        bureau.ecrituresDues([{ chemin: 'a.txt', octets: 3 }]);
-        bureau.ecrituresDues([]);
+        bureau.ecrituresDues([{ chemin: 'a.txt', octets: 3 }], false);
+        bureau.ecrituresDues([], false);
         expect(compteurs.map((c) => [c.dues, c.vues])).toEqual([
             [1, 1],
             [0, 1],
@@ -248,11 +306,14 @@ describe('le compteur d’écritures dues', () => {
         // Le pont envoie l'ÉTAT complet de son journal à chaque changement :
         // cumuler ferait qu'un chemin acquitté resterait affiché POUR TOUJOURS.
         const { bureau, compteurs } = bureauDeTest();
-        bureau.ecrituresDues([
-            { chemin: 'a.txt', octets: 1 },
-            { chemin: 'b.txt', octets: 2 },
-        ]);
-        bureau.ecrituresDues([{ chemin: 'b.txt', octets: 2 }]);
+        bureau.ecrituresDues(
+            [
+                { chemin: 'a.txt', octets: 1 },
+                { chemin: 'b.txt', octets: 2 },
+            ],
+            false,
+        );
+        bureau.ecrituresDues([{ chemin: 'b.txt', octets: 2 }], false);
         expect(compteurs.at(-1)?.dues).toBe(1);
         expect(compteurs.at(-1)?.texte).toContain('b.txt');
         expect(compteurs.at(-1)?.texte).not.toContain('a.txt');
@@ -262,7 +323,7 @@ describe('le compteur d’écritures dues', () => {
         // ⛔ Le message personnalisé de `beforeunload` est IGNORÉ par tous les
         // navigateurs modernes. Les nommer DANS LA PAGE est ce qui reste.
         const { bureau, compteurs } = bureauDeTest();
-        bureau.ecrituresDues([{ chemin: 'dossier/rapport final.docx', octets: 12 }]);
+        bureau.ecrituresDues([{ chemin: 'dossier/rapport final.docx', octets: 12 }], false);
         expect(compteurs.at(-1)?.texte).toContain('dossier/rapport final.docx');
     });
 
@@ -270,7 +331,7 @@ describe('le compteur d’écritures dues', () => {
         // « Une écriture a échoué » ne dit pas à l'utilisateur quel document
         // rouvrir, ni s'il doit libérer de la place ou rendre une permission.
         const { bureau, compteurs } = bureauDeTest();
-        bureau.ecrituresDues([{ chemin: 'note.txt', octets: 3 }]);
+        bureau.ecrituresDues([{ chemin: 'note.txt', octets: 3 }], false);
         bureau.ecritureEchouee('note.txt', 'disque-plein');
         expect(compteurs.at(-1)?.texte).toContain('note.txt');
         expect(compteurs.at(-1)?.texte).toContain('disque-plein');
@@ -283,17 +344,17 @@ describe('le compteur d’écritures dues', () => {
         // comme l'état courant. Et un ton coloré sans texte serait une alarme
         // sans énoncé — les deux propriétés sont éprouvées SÉPARÉMENT.
         const { bureau, compteurs } = bureauDeTest();
-        bureau.ecrituresDues([{ chemin: 'a.txt', octets: 1 }]);
-        bureau.ecrituresDues([]);
+        bureau.ecrituresDues([{ chemin: 'a.txt', octets: 1 }], false);
+        bureau.ecrituresDues([], false);
         expect(compteurs.at(-1)?.texte).toBe('');
         expect(compteurs.at(-1)?.ton).toBe('neutre');
     });
 
     it('une écriture qui finit par arriver efface son échec', () => {
         const { bureau, compteurs } = bureauDeTest();
-        bureau.ecrituresDues([{ chemin: 'a.txt', octets: 1 }]);
+        bureau.ecrituresDues([{ chemin: 'a.txt', octets: 1 }], false);
         bureau.ecritureEchouee('a.txt', 'interne');
-        bureau.ecrituresDues([]);
+        bureau.ecrituresDues([], false);
         expect(compteurs.at(-1)?.ton).toBe('neutre');
         expect(compteurs.at(-1)?.texte).toBe('');
     });
@@ -304,9 +365,9 @@ describe('le compteur d’écritures dues', () => {
         // compte.
         const { bureau } = bureauDeTest();
         expect(bureau.doitPrevenir()).toBe(false);
-        bureau.ecrituresDues([{ chemin: 'a.txt', octets: 1 }]);
+        bureau.ecrituresDues([{ chemin: 'a.txt', octets: 1 }], false);
         expect(bureau.doitPrevenir()).toBe(true);
-        bureau.ecrituresDues([]);
+        bureau.ecrituresDues([], false);
         expect(bureau.doitPrevenir()).toBe(false);
     });
 });
@@ -346,9 +407,9 @@ describe('les mutations en échec (F3)', () => {
         // et l'utilisateur ne saurait jamais qu'un fichier n'a pas été renommé
         // sur son poste.
         const v = vues();
-        v.bureau.ecrituresDues([{ chemin: 'x.txt', octets: 1 }]);
+        v.bureau.ecrituresDues([{ chemin: 'x.txt', octets: 1 }], false);
         v.bureau.mutationEchouee('a → b', 'introuvable');
-        v.bureau.ecrituresDues([]);
+        v.bureau.ecrituresDues([], false);
         expect(v.dernieresDues()?.texte).toContain('a → b');
         expect(v.dernieresDues()?.ton).toBe('danger');
     });

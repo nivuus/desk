@@ -51,6 +51,16 @@ export interface OptionsBureau {
     /// nulle* — la sonde P0 du presse-papier a rendu un faux verdict
     /// éliminatoire pour avoir lu trois zéros sur une VM saine.
     afficherEcrituresDues(dues: number, vues: number, texte: string, ton: Ton): void;
+    /**
+     * **F5** — le pont RETIENT ses écritures dues : le répertoire annoncé n'est
+     * pas celui qui a été enregistré (spec §6.4 cas 2).
+     *
+     * 🔴 **Le bouton « Reprendre l'enregistrement » n'apparaît QUE si c'est
+     * vrai**, et disparaît sinon. *Un bouton toujours présent qui ne fait rien
+     * la plupart du temps est un piège à clic* : l'utilisateur qui l'a vu inerte
+     * dix fois ne le verra plus le jour où il compte.
+     */
+    afficherRetenues(retenues: boolean): void;
 }
 
 export interface Bureau {
@@ -69,7 +79,7 @@ export interface Bureau {
     /// même geste de l'utilisateur.
     lecteurEchoue(motif: string): void;
     /// Le pont annonce ce qui n'est PAS encore arrivé sur le poste local.
-    ecrituresDues(dues: EcritureDue[]): void;
+    ecrituresDues(dues: EcritureDue[], retenues: boolean): void;
     /// Une écriture a échoué. Elle reste due, et elle est NOMMÉE.
     ecritureEchouee(chemin: string, motif: string): void;
     /// **F3** — une MUTATION a échoué : renommage ou suppression.
@@ -122,6 +132,13 @@ export function creerBureau(options: OptionsBureau): Bureau {
      * l'utilisateur, qui est le seul remède.
      */
     let mutations: string[] = [];
+    /**
+     * **F5** — le pont retient ses dues faute de reconnaître le répertoire.
+     *
+     * ⚠️ **C'est un état du PONT, pas de l'interface** : il n'est pas remis à
+     * zéro par un geste local, mais par la prochaine annonce.
+     */
+    let retenu = false;
 
     function redessinerLesDues(): void {
         const texte = [phraseDesDues(dues, echecs), phraseDesMutations(mutations)]
@@ -140,7 +157,11 @@ export function creerBureau(options: OptionsBureau): Bureau {
                 : dues.length > 0
                   ? 'alerte'
                   : 'neutre';
-        options.afficherEcrituresDues(dues.length, vues, texte, ton);
+        // ⚠️ **RETENIR EST UNE ALERTE, jamais un `neutre`** : rien ne repartira
+        // sans un geste, et un ton neutre laisserait croire que le pont
+        // travaille encore.
+        const tonFinal: Ton = retenu ? 'alerte' : ton;
+        options.afficherEcrituresDues(dues.length, vues, texte, tonFinal);
     }
 
     function ouvrir(session: string, titre: string): void {
@@ -226,7 +247,7 @@ export function creerBureau(options: OptionsBureau): Bureau {
             options.afficherEtatFichiers('', 'neutre');
         },
 
-        ecrituresDues(neuves) {
+        ecrituresDues(neuves, retenues) {
             // ⚠️ **L'ANNONCE ÉCRASE, elle ne s'ajoute pas.** Le pont envoie
             // l'ÉTAT complet de son journal à chaque changement : cumuler ferait
             // qu'un chemin acquitté resterait affiché pour toujours.
@@ -237,6 +258,12 @@ export function creerBureau(options: OptionsBureau): Bureau {
             for (const chemin of [...echecs.keys()]) {
                 if (!neuves.some((d) => d.chemin === chemin)) echecs.delete(chemin);
             }
+            // ⚠️ **RETENUES SANS AUCUNE DUE N'A PAS DE SENS**, et l'afficher
+            // proposerait de reprendre ce qu'il n'y a pas à reprendre. Le pont
+            // ne l'émet pas, mais s'en remettre à lui ferait dépendre l'interface
+            // d'une propriété qu'aucun type ne garantit.
+            retenu = retenues && neuves.length > 0;
+            options.afficherRetenues(retenu);
             redessinerLesDues();
         },
 

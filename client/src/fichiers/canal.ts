@@ -31,6 +31,8 @@ import type { Racine } from './adaptateur';
 import type { RacineInscriptible } from './ecriture';
 import { contrePression } from './flux';
 import type { RacineMutable } from './mutation';
+import { TYPE_ECHEC, decoder, encoderTexte } from '../../../proto/ts/fichiers';
+import { encodeEchec } from '../../../proto/ts/fichiers-entetes';
 
 /**
  * Nom réservé de la session de signaling du pont fichiers.
@@ -121,6 +123,51 @@ export async function connecterCanalFichiers(options: OptionsCanal): Promise<Can
             console.warn('trame fichiers non binaire, ignorée');
             return;
         }
+        // ════════════════════════════════════════════════════════════════
+        // 🔴 **F5 (D10) — LA CORRÉLATION SE CAPTURE ICI, AVANT TOUT `await`.**
+        //
+        // C'est la trame ENTRANTE qui la porte, et le `catch` doit la connaître
+        // même si l'attente de contre-pression a duré. La lire après serait la
+        // lire d'un objet qu'on n'a plus.
+        //
+        // ⚠️ **Un décodage qui échoue rend `undefined`, pas zéro** : zéro est
+        // une corrélation licite, et répondre sur elle dirigerait un échec vers
+        // une commande étrangère.
+        // ════════════════════════════════════════════════════════════════
+        let correlation: number | undefined;
+        try {
+            correlation = decoder(donnees).correlation;
+        } catch {
+            correlation = undefined;
+        }
+        /**
+         * 🔴 **VINGT SECONDES DE GEL DEVIENNENT UNE ERREUR IMMÉDIATE.**
+         *
+         * F4 a mesuré le mur : au-delà de ~3 150 entrées, le `send()` d'une
+         * réponse de listage est refusé par SCTP, ce `catch` journalisait dans
+         * la console **et ne renvoyait RIEN** — l'application restait figée
+         * `DELAI_LISTER` (20 s), puis recevait une erreur opaque.
+         *
+         * ⚠️ **CE QUE CELA NE FAIT PAS : LE MUR NE BOUGE PAS.** Un listage de
+         * plus de ~3 150 entrées **échoue toujours** ; il échoue seulement
+         * **vite et en le disant**. Le découpage d'une énumération en plusieurs
+         * trames reste un incrément de `FICHIERS_VERSION`, et il sort du
+         * sous-projet ③ **sans destinataire**.
+         */
+        const denoncer = (raison: string, e: unknown) => {
+            console.warn(`trame fichiers non delivree (${raison})`, e);
+            if (correlation === undefined) return;
+            try {
+                if (canal.readyState === 'open') {
+                    canal.send(encoderTexte(TYPE_ECHEC, correlation, encodeEchec('interne')));
+                }
+            } catch (echec: unknown) {
+                // Le canal est parti pendant qu'on dénonçait. Il n'y a plus
+                // personne à qui le dire, et le pont l'apprendra par la
+                // fermeture — jamais par un silence de vingt secondes.
+                console.warn('denonciation impossible : canal ferme', echec);
+            }
+        };
         void options
             .traiter(donnees)
             .then(async (reponse) => {
@@ -129,13 +176,23 @@ export async function connecterCanalFichiers(options: OptionsCanal): Promise<Can
                 // RE-CONTRÔLE L'ÉTAT.** L'attente peut durer, et le canal peut
                 // s'être fermé pendant : `send` sur un canal fermé LÈVE.
                 await frein.avantEnvoi();
-                if (canal.readyState === 'open') canal.send(reponse);
+                if (canal.readyState !== 'open') {
+                    denoncer('canal ferme pendant l attente', undefined);
+                    return;
+                }
+                try {
+                    canal.send(reponse);
+                } catch (e: unknown) {
+                    // C'est ICI que le mur de F4 se manifeste : SCTP refuse une
+                    // trame trop grosse, et `send` LÈVE.
+                    denoncer('send refuse', e);
+                }
             })
             .catch((e: unknown) => {
                 // `traiter` répond lui-même aux échecs qu'il sait nommer ; s'il
                 // lève, c'est que le protocole lui-même a cassé. On le dit, et
                 // on ne tue pas le canal pour autant.
-                console.warn('trame fichiers non traitée', e);
+                denoncer('traitement leve', e);
             });
     });
 
