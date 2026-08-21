@@ -1,0 +1,80 @@
+=== ROUGES DE LA TACHE 5 — partage.rs
+--- date : 2026-08-21T07:05:29+00:00   HEAD : 29194cb
+
+==================================================================
+=== ROUGE 8 — le compteur SE CONSOMME a la lecture (un booleen echange, en somme)
+--- sha256 AVANT : 63aaa6f2babef6508024bd32a944e2027f10a1815a8fb44d8babfe6b91e74d9f
+--- ligne mutee (par NUMERO) : 45
+--- diff (une sortie VIDE serait un ECHEC de la rouge) :
+45c45
+<         self.notifications.load(Ordering::Relaxed)
+---
+>         self.notifications.swap(0, Ordering::Relaxed)
+--- le controle :
+test apps::surveillance::partage::tests::les_notifications_sont_monotones_et_la_lecture_ne_consomme_rien ... FAILED
+thread 'apps::surveillance::partage::tests::les_notifications_sont_monotones_et_la_lecture_ne_consomme_rien' (879503) panicked at agent/src/apps/surveillance/partage.rs:109:9:
+assertion `left == right` failed: lire ne doit RIEN consommer
+  left: 0
+ right: 2
+--- restauration DEPUIS LA COPIE ; sha256 APRES : 63aaa6f2babef6508024bd32a944e2027f10a1815a8fb44d8babfe6b91e74d9f
+
+==================================================================
+=== ROUGE 9 — garde-fou, ne doit pas matcher
+--- sha256 AVANT : 63aaa6f2babef6508024bd32a944e2027f10a1815a8fb44d8babfe6b91e74d9f
+--- ligne mutee (par NUMERO) : 55
+--- diff (une sortie VIDE serait un ECHEC de la rouge) :
+55c55
+<         self.notifications.fetch_add(1, Ordering::Relaxed);
+---
+> XXX
+--- le controle :
+--- restauration DEPUIS LA COPIE ; sha256 APRES : 63aaa6f2babef6508024bd32a944e2027f10a1815a8fb44d8babfe6b91e74d9f
+
+==================================================================
+=== ROUGE 10 — un debordement ne compte PLUS comme un evenement : le chemin de PERTE, ouvert
+--- sha256 AVANT : 63aaa6f2babef6508024bd32a944e2027f10a1815a8fb44d8babfe6b91e74d9f
+--- ligne mutee (par NUMERO) : 72
+--- diff (une sortie VIDE serait un ECHEC de la rouge) :
+72c72
+<         self.debordements.fetch_add(1, Ordering::Relaxed);
+---
+>         self.debordements.fetch_add(1, Ordering::Relaxed); return;
+--- le controle :
+test apps::surveillance::partage::tests::un_debordement_monte_les_deux_compteurs ... FAILED
+thread 'apps::surveillance::partage::tests::un_debordement_monte_les_deux_compteurs' (880518) panicked at agent/src/apps/surveillance/partage.rs:122:9:
+assertion `left == right` failed: un débordement DOIT aussi déclencher : c'est ce qui ferme le chemin de perte
+  left: 0
+ right: 1
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 943 filtered out; finished in 0.00s
+--- restauration DEPUIS LA COPIE ; sha256 APRES : 63aaa6f2babef6508024bd32a944e2027f10a1815a8fb44d8babfe6b91e74d9f
+
+==================================================================
+=== ROUGE 11 — l arret ne se propage plus aux clones
+--- sha256 AVANT : 63aaa6f2babef6508024bd32a944e2027f10a1815a8fb44d8babfe6b91e74d9f
+--- ligne mutee (par NUMERO) : 78
+--- diff (une sortie VIDE serait un ECHEC de la rouge) :
+78c78
+<         self.arret.store(true, Ordering::Relaxed);
+---
+>         let _ = &self.arret;
+--- le controle :
+test apps::surveillance::partage::tests::l_arret_se_voit_de_tous_les_clones ... FAILED
+thread 'apps::surveillance::partage::tests::l_arret_se_voit_de_tous_les_clones' (881161) panicked at agent/src/apps/surveillance/partage.rs:138:9:
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 943 filtered out; finished in 0.00s
+--- restauration DEPUIS LA COPIE ; sha256 APRES : 63aaa6f2babef6508024bd32a944e2027f10a1815a8fb44d8babfe6b91e74d9f
+
+--- git status --porcelain : [?? agent/src/apps/surveillance/partage.rs]
+
+==================================================================
+=== NOTE HONNETE SUR LA « ROUGE 9 » CI-DESSUS — CE N'EST PAS UNE ROUGE.
+=== C'est un garde-fou de MON harnais, laisse dans la boucle par erreur : il
+=== devait NE PAS trouver son ancre, et il l'a trouvee (ligne 55), remplacee
+=== par 'XXX', puis restauree. Son filtre de test 'x' ne selectionne aucun
+=== test, d'ou la sortie vide sous « le controle ».
+=== ELLE NE MESURE RIEN, et son numero est conserve tel quel plutot que
+=== renumerote : nettoyer une piece apres coup est ce que ce depot refuse, et
+=== une renumerotation tardive est exactement le geste par lequel une
+=== reference survit a ce qu'elle designe.
+=== Les rouges REELLES de cette tache sont les 8, 10 et 11 — trois pour les
+=== trois proprietes de partage.rs. Le sha256 apres restauration est identique
+=== a chacune des quatre iterations, y compris celle-ci.

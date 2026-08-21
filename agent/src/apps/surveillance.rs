@@ -27,5 +27,7 @@
 pub mod faute;
 /// Les quatre états d'`APPS_SURVEILLANCE`. **PUR.**
 pub mod mode;
+/// Les deux compteurs monotones et le drapeau d'arrêt. **SANS `cfg`.**
+pub mod partage;
 /// L'anti-rebond, horloge en paramètre. **PUR.**
 pub mod rebond;
