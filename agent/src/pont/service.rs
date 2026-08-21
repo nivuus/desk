@@ -131,6 +131,45 @@ pub fn tourner(etat: Arc<Etat>, entrant: Receiver<DuNavigateur>) {
 /// mitigation muette n'en est pas une — c'est la raison écrite pour les deux
 /// traces de `encode/arret.rs`, appliquée ici.
 fn recenser(etat: &Etat) {
+    // ── LE RELEVÉ DE LA TABLE — l'instrument du legs n°4 de F1 ────────────
+    //
+    // 🔴 **C'est ce qui départage les quatre hypothèses**, et aucune n'était
+    // départageable jusqu'ici. F1 a mesuré des lectures qui CALENT sans jamais
+    // expirer — `commande expirée` reste à 0 pendant 540 s — et déclare qu'on
+    // ne sait pas OÙ le blocage se produit. Voir `pont::table::plus_ancienne`,
+    // qui porte le tableau de lecture.
+    //
+    // ⚠️ **Une ligne toutes les 10 s, jamais une par rappel.** Le chantier TURN
+    // a payé 18 619 lignes en quelques secondes pour une trace par paquet,
+    // écrites sur un partage CIFS depuis la boucle : la mesure détruisait ce
+    // qu'elle mesurait.
+    let maintenant = Instant::now();
+    let (en_vol, sans_commande, plus_ancienne_ms) = match etat.table.lock() {
+        Ok(table) => (
+            table.en_vol(),
+            table.sans_commande(),
+            table.plus_ancienne(maintenant).map(|d| d.as_millis()).unwrap_or(0),
+        ),
+        // ⚠️ **Un verrou empoisonné est DIT, pas tu.** Rendre des zéros ferait
+        // lire « rien en vol » là où la table est inaccessible — c'est-à-dire
+        // la PREMIÈRE ligne du tableau de lecture, qui accuserait le rappel.
+        Err(_) => {
+            tracing::warn!("recensement impossible : le verrou de la table est empoisonne");
+            return;
+        }
+    };
+    let sessions = etat.sessions.lock().map(|s| s.len()).unwrap_or(0);
+    tracing::info!(
+        "pont en vol={} sans_commande={} plus_ancienne_ms={} sessions={} octets_hydrates={} \
+         entrees_hydratees={}",
+        en_vol,
+        sans_commande,
+        plus_ancienne_ms,
+        sessions,
+        etat.octets_hydrates.load(Ordering::Relaxed),
+        etat.entrees_hydratees.load(Ordering::Relaxed),
+    );
+
     let manquants: Vec<&str> = etat
         .compteurs
         .manquants()
