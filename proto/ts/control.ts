@@ -168,10 +168,34 @@ export interface AccentAgentMessage {
     couleur: string;
 }
 
+/// Le micro de CETTE fenêtre est-il entendu par la VM ? (bloc E3)
+///
+/// **Émis SUR TRANSITION, jamais à chaque dépôt** — le micro dépose une trame
+/// toutes les 20 ms, et le canal de contrôle est le canal *fiable, ordonné,
+/// faible débit*.
+///
+/// 🔴 **Ce message existe parce que `ReadyMessage.mic` ne peut PAS l'exprimer**
+/// : `mic` est décidé à l'établissement, alors que l'exclusivité du câble de la
+/// VM s'acquiert au premier paquet montant. Sans cette variante, à deux
+/// fenêtres **le bouton de la perdante s'allume et rien ne sort** — mesuré par
+/// le bloc E2, confirmé par lecture du code en E3.
+///
+/// ⚠️ **`granted: true` NE VEUT PAS DIRE « le micro est ouvert »** — c'est
+/// `mic` et l'état du bouton qui le disent. Il veut dire « ce que ce micro
+/// capte atteint la VM ». Confondre les deux ferait éteindre le bouton d'une
+/// fenêtre dont le navigateur émet réellement, ce que la spec §9 « Vie
+/// privée » interdit : l'indicateur de Chrome, lui, reste allumé.
+export interface MicStateMessage {
+    v: number;
+    type: 'mic-state';
+    granted: boolean;
+}
+
 export type AgentControl =
     | ReadyMessage | SessionEndMessage
     | PointerMessage | RumbleMessage | CapabilitiesMessage | LinkMessage
-    | AsleepMessage | FullscreenMessage | ClipboardAgentMessage | AccentAgentMessage;
+    | AsleepMessage | FullscreenMessage | ClipboardAgentMessage | AccentAgentMessage
+    | MicStateMessage;
 
 /// 🔴 Écrit comme un enregistrement EXHAUSTIF typé par l'union, jamais comme
 /// un littéral : ajouter une variante à `AgentControl` sans ajouter sa clé
@@ -195,6 +219,7 @@ const TOUS_AGENT: Record<AgentControl['type'], true> = {
     fullscreen: true,
     clipboard: true,
     accent: true,
+    'mic-state': true,
 };
 
 /// Exporté pour que la dérivation ait un témoin d'EXÉCUTION, et pas seulement

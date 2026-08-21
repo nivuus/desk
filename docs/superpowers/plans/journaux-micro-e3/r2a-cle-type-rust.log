@@ -1,0 +1,15 @@
+=== ROUGE r2a ===
+fichier      : proto/src/control.rs
+copie nommée : /tmp/rouge-r2a-JN4oVV
+sha256 avant : 09976164605c5fdc7b8a039df2d35e536004d092dd5319f848629569f5198021
+lignes changées par la mutation : 1
+--- vérification : cargo test -p proto 2>&1 | grep -E 'test result|^failures:|^    [a-z_:]+$' | head -20
+failures:
+failures:
+    control::tests::l_etat_du_micro_se_serialise_en_kebab_case_avec_sa_version
+    control::tests::un_etat_de_micro_a_la_mauvaise_version_est_rejete
+test result: FAILED. 112 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+--- code de sortie de la vérification : 101
+VERDICT : ROUGE (code 101)
+sha256 après restauration : 09976164605c5fdc7b8a039df2d35e536004d092dd5319f848629569f5198021
+restauration : IDENTIQUE

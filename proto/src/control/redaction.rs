@@ -120,6 +120,13 @@ impl std::fmt::Debug for AgentControl {
                 .debug_struct("Link").field("v", version).field("bitrate", bitrate)
                 .field("width", width).field("height", height).field("quality", quality)
                 .field("adaptation", adaptation).finish(),
+            // Bloc E3. Ce `match` a fait son travail une seconde fois : il a
+            // FORCÉ la décision, comme son en-tête le promet. Elle est de
+            // montrer `granted`, et la raison est qu'un booléen n'a rien à
+            // divulguer — ni identité de fenêtre, ni titre, ni PID. C'est
+            // aussi le seul champ que porte la variante.
+            AgentControl::MicState { version, granted } => f
+                .debug_struct("MicState").field("v", version).field("granted", granted).finish(),
         }
     }
 }

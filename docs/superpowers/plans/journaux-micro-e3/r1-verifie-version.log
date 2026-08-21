@@ -1,0 +1,13 @@
+=== ROUGE r1 ===
+fichier      : proto/src/control.rs
+copie nommée : /tmp/rouge-r1-sfIk4F
+sha256 avant : 09976164605c5fdc7b8a039df2d35e536004d092dd5319f848629569f5198021
+lignes changées par la mutation : 2
+--- vérification : cargo test -p proto 2>&1 | grep -E 'test result|^failures:|^    [a-z_]+$' | head -20
+failures:
+failures:
+test result: FAILED. 113 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+--- code de sortie de la vérification : 101
+VERDICT : ROUGE (code 101)
+sha256 après restauration : 09976164605c5fdc7b8a039df2d35e536004d092dd5319f848629569f5198021
+restauration : IDENTIQUE

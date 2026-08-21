@@ -26,6 +26,15 @@ verif="${4:?commande de vérification}"
 racine="$(cd "$(dirname "$0")/../../../../.." && pwd)"
 cd "$racine" || exit 2
 
+# 🔴 Le chemin est rendu ABSOLU, et la vérification tourne dans un SOUS-SHELL.
+# Défaut trouvé PAR L'EXÉCUTION, à la rouge R2b : sa commande de vérification
+# commençait par `cd client`, le `cd` a survécu à la commande, et la
+# restauration par chemin relatif a échoué — « Aucun fichier ou dossier de ce
+# nom ». La copie nommée était intacte et le fichier a été restauré à la main,
+# empreinte vérifiée ; le harnais, lui, avait un mode de panne qui laissait
+# une mutation dans l'arbre en annonçant un verdict.
+fichier="$(readlink -f "$fichier")"
+
 copie="$(mktemp "/tmp/rouge-${etiquette}-XXXXXX")"
 cp "$fichier" "$copie"
 avant="$(sha256sum < "$copie" | cut -d' ' -f1)"
@@ -60,7 +69,7 @@ fi
 
 echo "--- vérification : ${verif}"
 set +e
-eval "$verif" 2>&1
+( eval "$verif" ) 2>&1
 code=$?
 set -e
 echo "--- code de sortie de la vérification : ${code}"

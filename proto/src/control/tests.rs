@@ -353,3 +353,67 @@ fn le_debug_manuel_conserve_les_champs_des_autres_variantes() {
     let c = format!("{:?}", AgentControl::capabilities(true, false));
     assert!(c.contains("gamepad: true") && c.contains("clipboard: false"), "{c}");
 }
+
+// ── Bloc E3 : la variante `MicState` ────────────────────────────────────────
+//
+// ⚠️ **Divergence V1, relevée le 21 août 2026 et LÉGUÉE, pas fermée :** il
+// n'existe AUCUN fichier de vecteurs partagé pour `AgentControl`. Les trois
+// `*-vectors.json` du dépôt servent `input`, `plateforme` et `fichiers`,
+// jamais `control`. Les tests ci-dessous épinglent la forme de fil **côté
+// Rust** ; `proto/ts/control.test.ts` épingle **la sienne**. Les deux
+// s'accordent parce que deux mains ont écrit la même chaîne, et **rien ne le
+// vérifie** : un renommage de clé appliqué d'un seul côté resterait vert des
+// deux côtés. La lacune est PRÉEXISTANTE et GÉNÉRALE à `AgentControl` — E3
+// est le premier à la nommer, il ne la crée pas.
+
+#[test]
+fn l_etat_du_micro_se_serialise_en_kebab_case_avec_sa_version() {
+    let json = serde_json::to_string(&AgentControl::mic_state(false)).unwrap();
+    // Le nom en DEUX mots est ce qui rend `rename_all` observable : sur un enum
+    // dont toutes les variantes tiennent en un mot, la mutation
+    // `kebab-case` → `snake_case` est invisible (mesuré par le sous-bloc G1).
+    assert!(json.contains(r#""type":"mic-state""#), "{json}");
+    assert!(json.contains(r#""granted":false"#), "{json}");
+    assert!(json.contains(r#""v":3"#), "{json}");
+}
+
+#[test]
+fn l_etat_du_micro_fait_l_aller_retour_dans_les_deux_sens() {
+    for accorde in [true, false] {
+        let origine = AgentControl::mic_state(accorde);
+        let json = serde_json::to_string(&origine).unwrap();
+        let relu: AgentControl = serde_json::from_str(&json).unwrap();
+        assert_eq!(relu, origine, "aller-retour de granted={accorde}");
+    }
+}
+
+#[test]
+fn un_etat_de_micro_a_la_mauvaise_version_est_rejete() {
+    // C'est le test que la rouge R1 doit faire tomber, ET LUI SEUL : retirer
+    // `deserialize_with` de la seule variante `MicState` établit que la
+    // vérification est branchée variante par variante, et non une fois pour
+    // toutes (patron mesuré en P3 : 1 échec sur 18).
+    let erreur = serde_json::from_str::<AgentControl>(r#"{"type":"mic-state","v":2,"granted":true}"#)
+        .expect_err("une version 2 doit être rejetée");
+    assert!(
+        erreur.to_string().contains("version de contrôle non supportée"),
+        "obtenu : {erreur}"
+    );
+}
+
+#[test]
+fn un_etat_de_micro_sans_version_est_rejete() {
+    assert!(
+        serde_json::from_str::<AgentControl>(r#"{"type":"mic-state","granted":true}"#).is_err(),
+        "un message sans `v` doit être rejeté, jamais complété en silence"
+    );
+}
+
+#[test]
+fn l_etat_du_micro_ne_divulgue_rien_au_journal() {
+    // La règle de `control/redaction.rs`, appliquée au TYPE et non au site :
+    // P2 a trouvé le presse-papier en clair dans `agent.log` sur une trace
+    // antérieure et inoffensive, rendue dangereuse par une variante neuve.
+    let rendu = format!("{:?}", AgentControl::mic_state(true));
+    assert_eq!(rendu, "MicState { v: 3, granted: true }", "obtenu : {rendu}");
+}
