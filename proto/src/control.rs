@@ -297,6 +297,42 @@ pub enum AgentControl {
         text: Option<String>,
         bytes: u32,
     },
+    /// La couleur d'accent de la fenêtre Windows — la teinte dominante de son
+    /// icône (sous-bloc A1). Émise **au changement seulement**, et **sa
+    /// PREMIÈRE lecture comprise** : sans elle, `--accent-fenetre` ne serait
+    /// jamais posé de la session.
+    ///
+    /// `couleur` est **`#rrggbb`, six chiffres hexadécimaux minuscules, et rien
+    /// d'autre**. ⚠️ **Le format est une contrainte du DESIGN SYSTEM, pas du
+    /// protocole**, et l'écrire ici évite qu'un successeur le croie arbitraire
+    /// et l'élargisse : `client/src/design/contraste.ts::luminanceRelative`
+    /// n'accepte que `#rgb`, `#rgba`, `#rrggbb` et `#rrggbbaa`, et **LÈVE** sur
+    /// tout le reste. Le client se défend (`client/src/accent.ts` contrôle la
+    /// forme AVANT d'appeler `rapportDeContraste`, et **sans `try/catch`**),
+    /// mais l'agent n'a aucune raison de lui envoyer une forme qu'il jettera.
+    ///
+    /// ⚠️ **Ce message ne porte NI le `hwnd`, NI le PID, NI le titre de la
+    /// fenêtre**, et la seconde raison est une leçon payée : la session est
+    /// déjà identifiée par le canal sur lequel il arrive, et **P2 a trouvé le
+    /// presse-papier EN CLAIR dans `agent.log`** sur un site de journalisation
+    /// antérieur, inoffensif tant qu'aucune variante ne portait de contenu
+    /// privé. Le remède s'applique **AU TYPE, pas au site** : un titre de
+    /// fenêtre ou un chemin d'exécutable ici rejouerait ce défaut à
+    /// l'identique. `transport/controle.rs` ne journalise qu'un NOM DE TYPE.
+    ///
+    /// 🔴 **`CONTROL_VERSION` NE MONTE PAS**, et c'est le raisonnement écrit de
+    /// D7 que `mic` et `Capabilities` appliquent déjà : une variante NEUVE
+    /// d'`AgentControl` n'est pas une rupture. Le client dispatche par `type`,
+    /// et un client ancien tombe dans son `else` final et ignore le message.
+    ///
+    /// ⚠️ **`Capabilities` ne gagne PAS de champ non plus** : l'accent n'est
+    /// pas une capacité que le client doive annoncer ni découvrir — il le
+    /// reçoit, ou il ne le reçoit pas.
+    Accent {
+        #[serde(rename = "v", deserialize_with = "verifie_version")]
+        version: u8,
+        couleur: String,
+    },
     /// État du lien réseau, émis à chaque changement de décision
     /// d'adaptation — donc rarement, pas à chaque seconde.
     Link {
@@ -371,6 +407,11 @@ impl AgentControl {
     /// chose, jamais compter les lignes qui l'en séparent.
     pub fn clipboard(text: Option<String>, bytes: u32) -> AgentControl {
         AgentControl::Clipboard { version: CONTROL_VERSION, text, bytes }
+    }
+
+    /// ⚠️ **Ne monte PAS `CONTROL_VERSION`** — voir la doc de la variante.
+    pub fn accent(couleur: impl Into<String>) -> AgentControl {
+        AgentControl::Accent { version: CONTROL_VERSION, couleur: couleur.into() }
     }
 
     pub fn rumble(left: u8, right: u8) -> Self {

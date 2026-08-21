@@ -148,10 +148,30 @@ export interface ClipboardAgentMessage {
     bytes: number;
 }
 
+/// La couleur d'accent de la fenêtre Windows — la teinte dominante de son
+/// icône (sous-bloc A1). Émise **au changement seulement**, et **sa PREMIÈRE
+/// lecture comprise** : sans elle, `--accent-fenetre` ne serait jamais posé de
+/// la session.
+///
+/// ⚠️ **`couleur` est `#rrggbb`, minuscule, et le client NE FAIT PAS
+/// CONFIANCE** : `client/src/accent.ts::conformer` contrôle la forme **avant**
+/// d'appeler `rapportDeContraste`, qui **LÈVE** sur tout ce qui n'est pas
+/// `#rgb`, `#rgba`, `#rrggbb` ou `#rrggbbaa`. Une exception dans un
+/// gestionnaire de message de canal de données tue une session sans rien dire.
+///
+/// ⚠️ **Aucun `hwnd`, aucun PID, aucun titre de fenêtre** — voir la doc de la
+/// variante Rust jumelle : c'est la leçon de la fuite de presse-papier de P2,
+/// et elle s'applique **au TYPE, pas au site de journalisation**.
+export interface AccentAgentMessage {
+    v: number;
+    type: 'accent';
+    couleur: string;
+}
+
 export type AgentControl =
     | ReadyMessage | SessionEndMessage
     | PointerMessage | RumbleMessage | CapabilitiesMessage | LinkMessage
-    | AsleepMessage | FullscreenMessage | ClipboardAgentMessage;
+    | AsleepMessage | FullscreenMessage | ClipboardAgentMessage | AccentAgentMessage;
 
 /// 🔴 Écrit comme un enregistrement EXHAUSTIF typé par l'union, jamais comme
 /// un littéral : ajouter une variante à `AgentControl` sans ajouter sa clé
@@ -174,6 +194,7 @@ const TOUS_AGENT: Record<AgentControl['type'], true> = {
     asleep: true,
     fullscreen: true,
     clipboard: true,
+    accent: true,
 };
 
 /// Exporté pour que la dérivation ait un témoin d'EXÉCUTION, et pas seulement

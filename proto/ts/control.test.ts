@@ -158,17 +158,44 @@ describe('protocole de contrôle', () => {
         expect(() => parseAgentControl(raw)).toThrow(/version de contrôle non supportée/);
     });
 
-    // 🔴 Le témoin d'EXÉCUTION de la dérivation de `TYPES_AGENT`. Les neuf
+    // 🔴 Le témoin d'EXÉCUTION de la dérivation de `TYPES_AGENT`. Les DIX
     // valeurs sont écrites À LA MAIN ici, précisément pour que le test soit
     // indépendant de la table qu'il juge : une clé de trop dans `TOUS_AGENT`
     // le fait tomber, et une clé manquante fait d'abord tomber `tsc`.
+    //
+    // ⚠️ **Neuf jusqu'au sous-bloc A1, DIX depuis** — et le garde `tsc` a été
+    // VU échouer avant que la clé ne soit posée :
+    //   « Property 'accent' is missing in type { ready: true; … } but required
+    //     in type Record<… | "accent", true> »
+    // C'est le seul garde de compilation côté TypeScript, et RA1-4 exigeait
+    // qu'il soit vu, pas supposé.
     it('TYPES_AGENT contient exactement les type de l’union', () => {
         expect(TYPES_AGENT.slice().sort()).toEqual(
             [
                 'ready', 'session-end', 'pointer', 'rumble', 'capabilities',
-                'link', 'asleep', 'fullscreen', 'clipboard',
+                'link', 'asleep', 'fullscreen', 'clipboard', 'accent',
             ].sort(),
         );
+    });
+
+    // Sous-bloc A1 : la variante d'accent traverse `parseAgentControl`.
+    // ROUGE si l'interface, l'union ou `TOUS_AGENT` manquaient — les trois
+    // sont éprouvés d'un coup ici, à l'EXÉCUTION.
+    it('analyse un accent', () => {
+        const raw = JSON.stringify({ v: CONTROL_VERSION, type: 'accent', couleur: '#7aa2f7' });
+        expect(parseAgentControl(raw)).toEqual({
+            v: CONTROL_VERSION,
+            type: 'accent',
+            couleur: '#7aa2f7',
+        });
+    });
+
+    // 🔴 La vérification de `v` précède celle du type, comme pour le
+    // presse-papier : sans elle, un agent d'une version future ferait poser
+    // n'importe quoi sur `--accent-fenetre`.
+    it('rejette un accent en version 2', () => {
+        const raw = JSON.stringify({ v: 2, type: 'accent', couleur: '#7aa2f7' });
+        expect(() => parseAgentControl(raw)).toThrow(/version de contrôle non supportée/);
     });
 });
 
