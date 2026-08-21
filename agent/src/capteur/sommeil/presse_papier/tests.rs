@@ -294,3 +294,146 @@ fn la_seconde_prise_laisse_passer_une_copie_de_la_vm() {
         annonce
     );
 }
+
+// ── L'ÉTAT COURANT À L'INSCRIPTION — moitié AGENT du legs n°3 de P1 ──────
+//
+// 🔴 **CES TESTS ONT ÉTÉ ÉCRITS DANS `sommeil/tests.rs` PUIS DÉPLACÉS ICI,
+// PARCE QU'ILS L'ONT FAIT FRANCHIR LE PLAFOND** — 417 → 562 lignes, pour une
+// porte de 500. E13 du plan l'avait annoncé (« si l'addition le porte au-delà
+// de 480, extraire AVANT d'écrire, jamais comprimer ») et la mesure n'a pas
+// été prise d'avance. **L'extraction est jouée, jamais une compression** :
+// c'est la règle du dépôt, que D9 a payée deux fois pour l'avoir oubliée.
+//
+// ⚠️ **Et ce n'est pas seulement un déménagement de commodité.** E13 range les
+// tests de `registre.rs` dans `sommeil/tests.rs`, faute de module de tests chez
+// lui ; mais ce que ces tests exercent est `emettre_l_etat_courant`, qui vit
+// dans le PARENT de ce fichier-ci. Ils sont donc auprès de la fonction qu'ils
+// éprouvent, et le helper `dernier_presse_papier` qui vit déjà ici leur sert
+// tel quel — le jumeau écrit dans `sommeil/tests.rs` faisait double emploi et
+// n'a pas suivi.
+
+/// 🔴 ROUGE SUR L'ARBRE INTACT avant le remède : c'est le legs n°3 de P1 —
+/// « une fenêtre attachée après une copie ne reçoit jamais ce contenu ».
+#[test]
+fn une_session_qui_s_inscrit_apres_une_copie_recoit_le_contenu_courant() {
+    let _verrou = verrouiller_pour_le_test();
+    etat().dernier_presse_papier = None;
+    let (canal_present, generation_present) = inscrire("t11-present", 7300);
+    super::distribuer(&mut etat(), crate::presse_papier::Annonce::Texte("deja-copie".into()));
+    let _ = dernier_presse_papier(&canal_present);
+
+    // La fenêtre s'attache APRÈS la copie.
+    let (canal_tardif, generation_tardif) = inscrire("t11-tardif", 7301);
+
+    assert_eq!(
+        dernier_presse_papier(&canal_tardif),
+        Some((Some("deja-copie".to_string()), 10)),
+        "une fenêtre attachée après la copie doit recevoir le contenu courant"
+    );
+
+    etat().dernier_presse_papier = None;
+    retirer("t11-present", generation_present);
+    retirer("t11-tardif", generation_tardif);
+    drop(canal_present);
+    drop(canal_tardif);
+}
+
+/// ROUGE = appeler `distribuer` au lieu d'envoyer sur le seul canal neuf : les
+/// voisines recevraient aussi, et le contenu serait rejoué à TOUTES les
+/// fenêtres à chaque attache.
+#[test]
+fn l_emission_a_l_inscription_ne_part_que_sur_le_canal_neuf() {
+    let _verrou = verrouiller_pour_le_test();
+    etat().dernier_presse_papier = None;
+    let (canal_present, generation_present) = inscrire("t12-present", 7310);
+    super::distribuer(&mut etat(), crate::presse_papier::Annonce::Texte("copie".into()));
+    // On vide ce que la voisine a légitimement reçu de `distribuer`.
+    let _ = dernier_presse_papier(&canal_present);
+
+    let (canal_neuf, generation_neuf) = inscrire("t12-neuf", 7311);
+
+    assert_eq!(
+        dernier_presse_papier(&canal_neuf),
+        Some((Some("copie".to_string()), 5)),
+        "le canal neuf reçoit"
+    );
+    assert_eq!(
+        dernier_presse_papier(&canal_present),
+        None,
+        "la voisine NE DOIT RIEN recevoir de plus : ce serait un aller-retour par attache"
+    );
+
+    etat().dernier_presse_papier = None;
+    retirer("t12-present", generation_present);
+    retirer("t12-neuf", generation_neuf);
+    drop(canal_present);
+    drop(canal_neuf);
+}
+
+/// ROUGE = ne mémoriser que `Annonce::Texte` : la fenêtre attendrait alors un
+/// contenu qui n'arrivera jamais, sans le bandeau qui lui dit pourquoi.
+#[test]
+fn une_session_qui_s_inscrit_apres_un_refus_recoit_le_refus() {
+    let _verrou = verrouiller_pour_le_test();
+    etat().dernier_presse_papier = None;
+    super::distribuer(&mut etat(), crate::presse_papier::Annonce::Refus { octets: 123_456 });
+
+    let (canal, generation) = inscrire("t13-refus", 7320);
+
+    assert_eq!(
+        dernier_presse_papier(&canal),
+        Some((None, 123_456)),
+        "le refus doit être rejoué à l'attache, avec sa taille"
+    );
+
+    etat().dernier_presse_papier = None;
+    retirer("t13-refus", generation);
+    drop(canal);
+}
+
+/// ROUGE = émettre un `Message::PressePapier` vide quand la mémoire est
+/// `None` : le client écrirait alors une chaîne vide dans son presse-papier
+/// local à chaque attache.
+#[test]
+fn une_session_qui_s_inscrit_avant_toute_copie_ne_recoit_rien() {
+    let _verrou = verrouiller_pour_le_test();
+    etat().dernier_presse_papier = None;
+
+    let (canal, generation) = inscrire("t14-vierge", 7330);
+
+    assert_eq!(dernier_presse_papier(&canal), None);
+
+    retirer("t14-vierge", generation);
+    drop(canal);
+}
+
+/// 🔴 AUCUNE PURGE À LA RÉ-INSCRIPTION (D-P3-3) — et la symétrie avec
+/// `dernieres_parts` / `derniers_audio`, que `inscrire` purge quelques lignes
+/// plus haut, est TROMPEUSE.
+///
+/// ROUGE = copier cette purge par symétrie de forme : la mémoire serait
+/// retirée au moment précis où l'on veut s'en servir, et le rattachement — le
+/// cas où le rejeu est le PLUS utile — ne rejouerait rien.
+#[test]
+fn un_rattachement_recoit_lui_aussi_le_contenu_courant() {
+    let _verrou = verrouiller_pour_le_test();
+    etat().dernier_presse_papier = None;
+    let (premier_canal, premiere_generation) = inscrire("t15-rattache", 7340);
+    super::distribuer(&mut etat(), crate::presse_papier::Annonce::Texte("avant-rupture".into()));
+    let _ = dernier_presse_papier(&premier_canal);
+
+    // Le rattachement, sous le MÊME nom.
+    let (second_canal, seconde_generation) = inscrire("t15-rattache", 7340);
+
+    assert_eq!(
+        dernier_presse_papier(&second_canal),
+        Some((Some("avant-rupture".to_string()), 13)),
+        "un rattachement doit recevoir le contenu courant : rien n'est purgé"
+    );
+
+    etat().dernier_presse_papier = None;
+    retirer("t15-rattache", seconde_generation);
+    let _ = premiere_generation;
+    drop(premier_canal);
+    drop(second_canal);
+}
