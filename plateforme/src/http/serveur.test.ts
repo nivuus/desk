@@ -57,9 +57,9 @@ afterEach(async () => {
 /// `demarrerServeur`). Ces trois tests-ci ne mesurent pas la trace — c'est
 /// `signaling/trace.test.ts` qui la mesure —, ils ont seulement besoin d'une
 /// base vivante pour démarrer.
-async function servir(nom: string): Promise<ServicePlateforme> {
+async function servir(nom: string, config: Config = CONFIG): Promise<ServicePlateforme> {
     base = await baseNeuve(nom);
-    return demarrerServeur(CONFIG, base);
+    return demarrerServeur(config, base);
 }
 
 /// Ouvre un socket et rend son issue : `ouvert` s'il a atteint `open`, sinon
@@ -174,12 +174,18 @@ describe('le chaînage des quatre routeurs', () => {
         // 🔴 La rouge : retirer un maillon de la chaîne. Sa route rend alors
         // 404 — et c'est la panne la plus discrète possible, puisque le service
         // répond, écoute, et sert les deux autres.
-        service = await servir('http-chaine');
+        // ⚠️ `auth: 'motdepasse'` LOCAL (tâche 3) : ce test éprouve que
+        // `/auth/connexion` est bien CHAÎNÉ dans `demarrerServeur` — une
+        // propriété de P2/P4, distincte du mode d'authentification. En mode
+        // `pomerium` (le défaut de `CONFIG`), cette route N'EXISTE PLUS DU
+        // TOUT (voir `routes-auth.ts`), et l'assertion `400` ci-dessous
+        // deviendrait `404` pour une raison hors du champ de ce test.
+        service = await servir('http-chaine', { ...CONFIG, auth: 'motdepasse' });
         const url = `http://127.0.0.1:${service.port}`;
 
-        // `/auth/connexion` répond TOUJOURS : P2 n'est pas cassé par P4. Sans
-        // corps il rend 400 `{refus:'forme'}`, ce qui prouve qu'il a été SERVI
-        // — un 404 dirait qu'il ne l'a pas été.
+        // `/auth/connexion` répond TOUJOURS EN MODE MOTDEPASSE : P2 n'est pas
+        // cassé par P4. Sans corps il rend 400 `{refus:'forme'}`, ce qui
+        // prouve qu'il a été SERVI — un 404 dirait qu'il ne l'a pas été.
         const auth = await fetch(`${url}/auth/connexion`, {
             method: 'POST',
             headers: { 'content-type': 'application/json' },

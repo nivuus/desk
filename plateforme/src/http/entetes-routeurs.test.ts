@@ -42,13 +42,20 @@ const CONFIG: Config = {
     proxyDeConfiance: new Set(),
     repertoireIcones: join(mkdtempSync(join(tmpdir(), 'g2-icones-')), 'icones'),
     repertoireTeleversements: join(mkdtempSync(join(tmpdir(), 'g3-tranches-')), 'televersements'),
-    // ⚠️ CE FICHIER PORTE UN TEST DE ROUTE DE MOT DE PASSE (« (6) » plus bas,
-    // `/auth/connexion`) DANS LE MÊME `CONFIG` PARTAGÉ que les sept autres.
-    // Laissé à `pomerium` ICI, à dessein : la tâche 1 ne câble `auth` dans
-    // AUCUN routeur, donc rien ne dépend encore de cette valeur. La tâche 3,
-    // qui gate les routes de mot de passe sur le mode, devra trancher si ce
-    // test (6) a besoin de son propre `CONFIG` à `motdepasse` plutôt que de
-    // partager celui-ci.
+    // 🔴 TÂCHE 3 : `servirAuth` se RETIRE désormais en mode `pomerium` — voir
+    // son garde. TROIS cas de ce fichier traversent `/auth/connexion`
+    // ((1) GET→405, (6) POST→200, (8) OPTIONS→204) et exigent donc
+    // `auth: 'motdepasse'`, sinon ils rencontreraient le 404 générique au lieu
+    // de la réponse de `routes-auth`. Les CINQ AUTRES ne touchent aucun
+    // chemin `/auth/*` et sont indifférents à cette valeur — AUCUN ne teste
+    // `/auth/moi` (`grep -n 'auth/moi' entetes-routeurs.test.ts` ne rend
+    // rien). **Décision, tranchée cas par cas et non en bloc** : le `CONFIG`
+    // PARTAGÉ reste à `pomerium` (le défaut du produit, `config.ts`), et LES
+    // TROIS SEULS cas qui en ont besoin reçoivent `{ ...CONFIG, auth:
+    // 'motdepasse' }` localement — jamais l'inverse, qui aurait changé le
+    // mode des cinq autres pour une raison qui ne les concerne pas, y compris
+    // pour un futur test de `/auth/moi` qui rejoindrait ce fichier sans le
+    // relire.
     auth: 'pomerium',
 };
 
@@ -62,10 +69,10 @@ afterEach(async () => {
     base = undefined;
 });
 
-async function servir(nom: string): Promise<string> {
+async function servir(nom: string, config: Config = CONFIG): Promise<string> {
     base = await baseNeuve(nom);
     await creerUtilisateur(base, 'ada@exemple.test', await hacher(MOT_DE_PASSE), MS);
-    service = await demarrerServeur(CONFIG, base);
+    service = await demarrerServeur(config, base);
     return `http://127.0.0.1:${service.port}`;
 }
 
@@ -78,7 +85,10 @@ function porteLesEntetes(r: Response, quoi: string): void {
 
 describe('les en-têtes de sécurité, un routeur à la fois', () => {
     it('(1) `routes-auth` les pose — y compris sur une réponse d’ERREUR', async () => {
-        const url = await servir('entetes-auth');
+        // ⚠️ `auth: 'motdepasse'` LOCAL : sans lui, `servirAuth` se RETIRE
+        // (tâche 3) et cette requête rencontrerait le 404 générique, jamais
+        // le 405 de `routes-auth`.
+        const url = await servir('entetes-auth', { ...CONFIG, auth: 'motdepasse' });
         // ⚠️ SUR UNE ERREUR, et c'est délibéré : une réponse d'erreur porte
         // souvent PLUS d'information qu'une réponse normale, et c'est celle
         // qu'un correctif hâtif oublierait.
@@ -127,7 +137,9 @@ describe('les en-têtes de sécurité, un routeur à la fois', () => {
         // retiendrait. Un test générique qui n'éprouverait que les réponses
         // d'erreur passerait à côté de celle-ci, qui est la seule qui compte
         // vraiment.
-        const url = await servir('entetes-jetons');
+        // ⚠️ `auth: 'motdepasse'` LOCAL — voir le cas (1) : sans lui, cette
+        // route n'existe pas et la requête rendrait 404, pas 200.
+        const url = await servir('entetes-jetons', { ...CONFIG, auth: 'motdepasse' });
         const r = await fetch(`${url}/auth/connexion`, {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
@@ -192,7 +204,11 @@ describe('les en-têtes de sécurité, un routeur à la fois', () => {
     });
 
     it('(8) la réponse préalable OPTIONS les porte aussi', async () => {
-        const url = await servir('entetes-options');
+        // ⚠️ `auth: 'motdepasse'` LOCAL — voir le cas (1) : en mode `pomerium`,
+        // `servirAuth` se retire AVANT même sa branche OPTIONS (le garde
+        // précède tout le reste de la fonction), et ce OPTIONS rencontrerait
+        // le 404 générique au lieu du 204 préalable.
+        const url = await servir('entetes-options', { ...CONFIG, auth: 'motdepasse' });
         const r = await fetch(`${url}/auth/connexion`, { method: 'OPTIONS' });
         expect(r.status).toBe(204);
         porteLesEntetes(r, '204 préalable');
