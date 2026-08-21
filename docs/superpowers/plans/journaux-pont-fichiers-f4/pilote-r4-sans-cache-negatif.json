@@ -1,0 +1,127 @@
+{
+ "prefixe": "F4z7KQooOQfJqh47PM0ETA",
+ "journal": [
+  "[2026-08-21T07:35:55.372Z] jeton de recette obtenu",
+  "[2026-08-21T07:35:55.758Z] chrome : Chrome/151.0.7922.169",
+  "[2026-08-21T07:35:56.032Z] navigation : http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA",
+  "[2026-08-21T07:36:00.081Z] OPFS peuple : 5 entrees",
+  "[2026-08-21T07:36:00.081Z] la page-shell est connectee : lancement de l agent",
+  "[2026-08-21T07:36:00.489Z] agent lance : Op\u0002ration r\u0002ussie : tentative d'ex\u0002cution de la t\u0003che planifi\u0002e \"guacamole-agent\".agent lancé en session interactive ; journal : /media/vm/dev/agent.log",
+  "[2026-08-21T07:36:00.493Z] etat avant le clic : {\"href\":\"http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA\",\"jeton\":true,\"bouton\":true}",
+  "[2026-08-21T07:36:00.493Z] clic sur #choisir-dossier",
+  "[2026-08-21T07:36:03.533Z] #etat-fichiers : \"Lecteur « Mes Fichiers » monté sur « Mes documents ».\"",
+  "[2026-08-21T07:36:11.725Z] gabarit listage:100 : {\"spec\":\"listage:100\",\"ms_peuplement\":191,\"demande\":100,\"presentes\":100,\"chemin\":\"listage/100\",\"entrees\":100}",
+  "[2026-08-21T07:36:11.725Z] mesure VM (ASYNCHRONE) : explorer:100,explorer:100,listage:100",
+  "[2026-08-21T07:38:29.319Z] mesure VM : 3 gestes en 138 s",
+  "[2026-08-21T07:38:29.325Z] fenetres d application : 0 — flux : []"
+ ],
+ "erreurs": [],
+ "gabarits": [
+  {
+   "spec": "listage:100",
+   "ms_peuplement": 191,
+   "demande": 100,
+   "presentes": 100,
+   "chemin": "listage/100",
+   "entrees": 100
+  }
+ ],
+ "mesures": [],
+ "chrome": "Chrome/151.0.7922.169",
+ "console_page": [
+  {
+   "t": "2026-08-21T07:35:56.277Z",
+   "niveau": "debug",
+   "texte": "[vite] connecting..."
+  },
+  {
+   "t": "2026-08-21T07:35:56.298Z",
+   "niveau": "debug",
+   "texte": "[vite] connected."
+  },
+  {
+   "t": "2026-08-21T07:36:02.654Z",
+   "niveau": "info",
+   "texte": "offre du pont envoyée, attente de l’agent…"
+  },
+  {
+   "t": "2026-08-21T07:36:02.660Z",
+   "niveau": "info",
+   "texte": "pont fichiers : réponse reçue"
+  },
+  {
+   "t": "2026-08-21T07:36:02.661Z",
+   "niveau": "info",
+   "texte": "pont fichiers : connecting"
+  },
+  {
+   "t": "2026-08-21T07:36:02.906Z",
+   "niveau": "info",
+   "texte": "pont fichiers : connected"
+  },
+  {
+   "t": "2026-08-21T07:36:03.091Z",
+   "niveau": "info",
+   "texte": "canal fichiers ouvert"
+  }
+ ],
+ "opfs_entrees": 5,
+ "etat_avant_clic": "{\"href\":\"http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA\",\"jeton\":true,\"bouton\":true}",
+ "etat_fichiers": "Lecteur « Mes Fichiers » monté sur « Mes documents ».",
+ "bien_monte": true,
+ "mesure_vm_brut": "﻿{\"racine\":\"C:\\\\Users\\\\Administrateur\\\\Mes Fichiers\",\"plan\":\"explorer:100,explorer:100,listage:100\",\"repos_s\":25,\"fini\":true,\"releves\":[{\"geste\":\"explorer:100\",\"verbe\":\"explorer\",\"arg\":\"100\",\"debut_iso\":\"2026-08-21T07:36:13.034124Z\",\"ms\":30060.295100000003,\"note\":\"duree IMPOSEE (30 s de maintien), ce n est PAS une latence\",\"ok\":true,\"fin_iso\":\"2026-08-21T07:36:43.105103Z\"},{\"geste\":\"explorer:100\",\"verbe\":\"explorer\",\"arg\":\"100\",\"debut_iso\":\"2026-08-21T07:37:08.164453Z\",\"ms\":30011.1081,\"note\":\"duree IMPOSEE (30 s de maintien), ce n est PAS une latence\",\"ok\":true,\"fin_iso\":\"2026-08-21T07:37:38.175727Z\"},{\"geste\":\"listage:100\",\"verbe\":\"listage\",\"arg\":\"100\",\"debut_iso\":\"2026-08-21T07:38:03.190779Z\",\"ms\":565.85660000000007,\"entrees\":100,\"demande\":100,\"complet\":true,\"ok\":true,\"fin_iso\":\"2026-08-21T07:38:03.769357Z\"}]}\r\n",
+ "mesure_vm": {
+  "racine": "C:\\Users\\Administrateur\\Mes Fichiers",
+  "plan": "explorer:100,explorer:100,listage:100",
+  "repos_s": 25,
+  "fini": true,
+  "releves": [
+   {
+    "geste": "explorer:100",
+    "verbe": "explorer",
+    "arg": "100",
+    "debut_iso": "2026-08-21T07:36:13.034124Z",
+    "ms": 30060.295100000003,
+    "note": "duree IMPOSEE (30 s de maintien), ce n est PAS une latence",
+    "ok": true,
+    "fin_iso": "2026-08-21T07:36:43.105103Z"
+   },
+   {
+    "geste": "explorer:100",
+    "verbe": "explorer",
+    "arg": "100",
+    "debut_iso": "2026-08-21T07:37:08.164453Z",
+    "ms": 30011.1081,
+    "note": "duree IMPOSEE (30 s de maintien), ce n est PAS une latence",
+    "ok": true,
+    "fin_iso": "2026-08-21T07:37:38.175727Z"
+   },
+   {
+    "geste": "listage:100",
+    "verbe": "listage",
+    "arg": "100",
+    "debut_iso": "2026-08-21T07:38:03.190779Z",
+    "ms": 565.8566000000001,
+    "entrees": 100,
+    "demande": 100,
+    "complet": true,
+    "ok": true,
+    "fin_iso": "2026-08-21T07:38:03.769357Z"
+   }
+  ]
+ },
+ "agent_log_octets": 42225,
+ "fenetres_application": 0,
+ "flux": [],
+ "etat_injection": {
+  "notes": [
+   {
+    "t": 1787297771703,
+    "m": "gabarit listage/100 : 100 entrees"
+   }
+  ],
+  "erreurs": [],
+  "move": "function"
+ },
+ "ok": true
+}

@@ -6,6 +6,10 @@
 # Variables lues : GABARITS, PLAN_VM, REPOS_MESURE, NEUTRALISER_MOVE,
 #                  MONTAGE (m1|m2), NIVEAU_LOG, PONT_MESURE.
 #
+# ⚠️ `PONT_MESURE` VIDE OU ABSENTE N'EST PAS EXPORTEE — la forme `${VAR:+...}`
+# n'ecrit rien —, et c'est ce qui rend le bras SANS la variable jouable. Un
+# defaut a `1` rendrait la rouge R3 impossible.
+#
 # 🔴 DEUX EXECUTIONS NE SE CHEVAUCHENT JAMAIS. F1 en a perdu une : deux se sont
 # recouvertes de 2 min 23 s, la seconde a tue l'agent de la premiere EN PLEINE
 # MESURE, et LE JOURNAL VERSE SOUS LE NOM DE LA PREMIERE ETAIT CELUI DE LA
@@ -30,8 +34,31 @@ source /tmp/f2/env.sh   # le montage de F2, REEMPLOYE : meme VM, meme compte, me
 # inconnue, PEUT SE REPRODUIRE.
 [ "$(stat -c '%F' /dev/null)" = 'character special file' ] || { echo 'ARRET : /dev/null n est pas un noeud de caracteres'; exit 3; }
 
+# 🔴 LA VM S'ETEINT TOUTE SEULE, ET LE DECLENCHEUR EST IDENTIFIE — CE N'EST
+# PAS CELUI QUE CE DEPOT SUSPECTE DEPUIS D1.
+#
+# `/var/log/libvirt/qemu/Windows.log` porte `terminating on signal 15 from pid
+# <N>`, et ce PID est `/usr/sbin/libvirtd --timeout 120` : le demon s'arrete sur
+# inactivite et EMPORTE LE DOMAINE. Quatre extinctions relevees le 21 aout 2026,
+# a 04:31:47, 05:11:59, 06:52:12 et 07:32:12 — soit ~40 min d'intervalle sur les
+# deux dernieres, dont DEUX pendant cette campagne.
+#
+# ⚠️ CE N'EST PAS LE MECANISME DE D1. Celui-la etait une HIBERNATION initiee
+# DANS l'invite (Kernel-Power 187/42, `shutdown.exe`), QEMU se terminant ~5 s
+# APRES. Ici c'est l'HOTE qui tue, et l'invite ne decide rien. Les confondre
+# ferait chercher la cause du mauvais cote.
+#
+# Parade : relancer, et attendre le partage PAR UN ACCES REEL — `/media/vm` est
+# un montage CIFS dont l'entree persiste dans la table meme VM eteinte.
 echo "=== [$ETIQUETTE] VM et agents survivants AVANT ==="
+if ! virsh list --all 2>/dev/null | sed -n '3p' | grep -q "exécution"; then
+    echo "VM eteinte : relance"
+    virsh start Windows 2>&1 | tail -1
+    for i in $(seq 1 60); do timeout 3 bash -c 'echo > /dev/tcp/192.168.3.2/5985' 2>/dev/null && break; sleep 5; done
+    for i in $(seq 1 60); do ls /media/vm/dev >/dev/null 2>&1 && break; sleep 5; done
+fi
 virsh list --all 2>&1 | sed -n '3p'
+ls /media/vm/dev >/dev/null 2>&1 || { echo 'ARRET : /media/vm/dev inaccessible'; exit 4; }
 node "$RACINE/scripts/winrm.js" 'Get-Process agent -ErrorAction SilentlyContinue | Stop-Process -Force; Start-Sleep 2; (Get-Process agent -ErrorAction SilentlyContinue | Measure-Object).Count' 2>&1 | tail -2
 
 echo "=== [$ETIQUETTE] purge de la racine du pont et de son etat ==="
@@ -59,7 +86,7 @@ else
 fi
 echo "=== [$ETIQUETTE] montage $MONTAGE : $MODE ==="
 
-APRES_CONNEXION="cd $RACINE && set -a && source .env && set +a && export AGENT_VM=$AGENT_VM AGENT_SECRET=$AGENT_SECRET $MODE SIGNALING_URL=ws://192.168.3.1:8080 RUST_LOG=${NIVEAU_LOG:-info} PONT_MESURE=${PONT_MESURE:-1} && scripts/run-agent.sh" \
+APRES_CONNEXION="cd $RACINE && set -a && source .env && set +a && export AGENT_VM=$AGENT_VM AGENT_SECRET=$AGENT_SECRET $MODE SIGNALING_URL=ws://192.168.3.1:8080 RUST_LOG=${NIVEAU_LOG:-info} ${PONT_MESURE:+PONT_MESURE=$PONT_MESURE} && scripts/run-agent.sh" \
 UDD="/tmp/f4/udd-$ETIQUETTE" PORT_CDP="${PORT_CDP:-9460}" \
 TRACE="$J/mesure-$ETIQUETTE-trace.txt" \
     node "$I/pilote-f4.mjs" "/tmp/f4/pilote-$ETIQUETTE.json" \

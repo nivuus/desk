@@ -1,0 +1,288 @@
+{
+ "prefixe": "F4z7KQooOQfJqh47PM0ETA",
+ "journal": [
+  "[2026-08-21T07:24:08.032Z] jeton de recette obtenu",
+  "[2026-08-21T07:24:08.581Z] chrome : Chrome/151.0.7922.169",
+  "[2026-08-21T07:24:08.697Z] navigation : http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA",
+  "[2026-08-21T07:24:12.727Z] OPFS peuple : 5 entrees",
+  "[2026-08-21T07:24:12.728Z] la page-shell est connectee : lancement de l agent",
+  "[2026-08-21T07:24:13.128Z] agent lance : Op\u0002ration r\u0002ussie : tentative d'ex\u0002cution de la t\u0003che planifi\u0002e \"guacamole-agent\".agent lancé en session interactive ; journal : /media/vm/dev/agent.log",
+  "[2026-08-21T07:24:13.130Z] etat avant le clic : {\"href\":\"http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA\",\"jeton\":true,\"bouton\":true}",
+  "[2026-08-21T07:24:13.130Z] clic sur #choisir-dossier",
+  "[2026-08-21T07:24:16.148Z] #etat-fichiers : \"Lecteur « Mes Fichiers » monté sur « Mes documents ».\"",
+  "[2026-08-21T07:24:24.178Z] gabarit listage:10 : {\"spec\":\"listage:10\",\"ms_peuplement\":28,\"demande\":10,\"presentes\":10,\"chemin\":\"listage/10\",\"entrees\":10}",
+  "[2026-08-21T07:24:24.318Z] gabarit listage:100 : {\"spec\":\"listage:100\",\"ms_peuplement\":139,\"demande\":100,\"presentes\":100,\"chemin\":\"listage/100\",\"entrees\":100}",
+  "[2026-08-21T07:24:25.865Z] gabarit listage:1000 : {\"spec\":\"listage:1000\",\"ms_peuplement\":1547,\"demande\":1000,\"presentes\":1000,\"chemin\":\"listage/1000\",\"entrees\":1000}",
+  "[2026-08-21T07:24:32.835Z] gabarit listage:3150 : {\"spec\":\"listage:3150\",\"ms_peuplement\":6970,\"demande\":3150,\"presentes\":3150,\"chemin\":\"listage/3150\",\"entrees\":3150}",
+  "[2026-08-21T07:24:37.852Z] gabarit listage:3200 : {\"spec\":\"listage:3200\",\"ms_peuplement\":5017,\"demande\":3200,\"presentes\":3200,\"chemin\":\"listage/3200\",\"entrees\":3200}",
+  "[2026-08-21T07:24:37.853Z] mesure VM (ASYNCHRONE) : item:listage\\10\\entree-00003-f.txt,item:listage\\10\\entree-00003-f.txt,listage:10,attributs:10,listage:100,attributs:100,listage:1000,attributs:1000,listage:3150,listage:3200,explorer:100,explorer:100",
+  "[2026-08-21T07:31:34.759Z] mesure VM : 12 gestes en 417 s",
+  "[2026-08-21T07:31:34.764Z] fenetres d application : 0 — flux : []"
+ ],
+ "erreurs": [],
+ "gabarits": [
+  {
+   "spec": "listage:10",
+   "ms_peuplement": 28,
+   "demande": 10,
+   "presentes": 10,
+   "chemin": "listage/10",
+   "entrees": 10
+  },
+  {
+   "spec": "listage:100",
+   "ms_peuplement": 139,
+   "demande": 100,
+   "presentes": 100,
+   "chemin": "listage/100",
+   "entrees": 100
+  },
+  {
+   "spec": "listage:1000",
+   "ms_peuplement": 1547,
+   "demande": 1000,
+   "presentes": 1000,
+   "chemin": "listage/1000",
+   "entrees": 1000
+  },
+  {
+   "spec": "listage:3150",
+   "ms_peuplement": 6970,
+   "demande": 3150,
+   "presentes": 3150,
+   "chemin": "listage/3150",
+   "entrees": 3150
+  },
+  {
+   "spec": "listage:3200",
+   "ms_peuplement": 5017,
+   "demande": 3200,
+   "presentes": 3200,
+   "chemin": "listage/3200",
+   "entrees": 3200
+  }
+ ],
+ "mesures": [],
+ "chrome": "Chrome/151.0.7922.169",
+ "console_page": [
+  {
+   "t": "2026-08-21T07:24:08.825Z",
+   "niveau": "debug",
+   "texte": "[vite] connecting..."
+  },
+  {
+   "t": "2026-08-21T07:24:08.858Z",
+   "niveau": "debug",
+   "texte": "[vite] connected."
+  },
+  {
+   "t": "2026-08-21T07:24:15.295Z",
+   "niveau": "info",
+   "texte": "offre du pont envoyée, attente de l’agent…"
+  },
+  {
+   "t": "2026-08-21T07:24:15.308Z",
+   "niveau": "info",
+   "texte": "pont fichiers : réponse reçue"
+  },
+  {
+   "t": "2026-08-21T07:24:15.309Z",
+   "niveau": "info",
+   "texte": "pont fichiers : connecting"
+  },
+  {
+   "t": "2026-08-21T07:24:15.570Z",
+   "niveau": "info",
+   "texte": "pont fichiers : connected"
+  },
+  {
+   "t": "2026-08-21T07:24:15.758Z",
+   "niveau": "info",
+   "texte": "canal fichiers ouvert"
+  },
+  {
+   "t": "2026-08-21T07:29:00.883Z",
+   "niveau": "warning",
+   "texte": "trame fichiers non traitée {message:Failed to execute 'send' on 'RTCDataChannel': Trying to send message larger than max-message-size,stack:TypeError: Trying to send message larger than max-…:5173/src/fichiers/canal.ts?t=1787285290914:42:46}"
+  }
+ ],
+ "opfs_entrees": 5,
+ "etat_avant_clic": "{\"href\":\"http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA\",\"jeton\":true,\"bouton\":true}",
+ "etat_fichiers": "Lecteur « Mes Fichiers » monté sur « Mes documents ».",
+ "bien_monte": true,
+ "mesure_vm_brut": "﻿{\"racine\":\"C:\\\\Users\\\\Administrateur\\\\Mes Fichiers\",\"plan\":\"item:listage\\\\10\\\\entree-00003-f.txt,item:listage\\\\10\\\\entree-00003-f.txt,listage:10,attributs:10,listage:100,attributs:100,listage:1000,attributs:1000,listage:3150,listage:3200,explorer:100,explorer:100\",\"repos_s\":25,\"fini\":true,\"releves\":[{\"geste\":\"item:listage\\\\10\\\\entree-00003-f.txt\",\"verbe\":\"item\",\"arg\":\"listage\\\\10\\\\entree-00003-f.txt\",\"debut_iso\":\"2026-08-21T07:24:39.113761Z\",\"ms\":88.4957,\"taille\":0,\"ok\":true,\"fin_iso\":\"2026-08-21T07:24:39.207611Z\"},{\"geste\":\"item:listage\\\\10\\\\entree-00003-f.txt\",\"verbe\":\"item\",\"arg\":\"listage\\\\10\\\\entree-00003-f.txt\",\"debut_iso\":\"2026-08-21T07:25:04.235892Z\",\"ms\":0.3598,\"taille\":0,\"ok\":true,\"fin_iso\":\"2026-08-21T07:25:04.235892Z\"},{\"geste\":\"listage:10\",\"verbe\":\"listage\",\"arg\":\"10\",\"debut_iso\":\"2026-08-21T07:25:29.249144Z\",\"ms\":95.1269,\"entrees\":10,\"demande\":10,\"complet\":true,\"ok\":true,\"fin_iso\":\"2026-08-21T07:25:29.348040Z\"},{\"geste\":\"attributs:10\",\"verbe\":\"attributs\",\"arg\":\"10\",\"debut_iso\":\"2026-08-21T07:25:54.357150Z\",\"ms\":65.360700000000008,\"ms_attributs_seuls\":1.4004,\"entrees\":10,\"demande\":10,\"ok\":true,\"fin_iso\":\"2026-08-21T07:25:54.419991Z\"},{\"geste\":\"listage:100\",\"verbe\":\"listage\",\"arg\":\"100\",\"debut_iso\":\"2026-08-21T07:26:19.432406Z\",\"ms\":659.5947,\"entrees\":100,\"demande\":100,\"complet\":true,\"ok\":true,\"fin_iso\":\"2026-08-21T07:26:20.089540Z\"},{\"geste\":\"attributs:100\",\"verbe\":\"attributs\",\"arg\":\"100\",\"debut_iso\":\"2026-08-21T07:26:45.092949Z\",\"ms\":707.70620000000008,\"ms_attributs_seuls\":0.133,\"entrees\":100,\"demande\":100,\"ok\":true,\"fin_iso\":\"2026-08-21T07:26:45.797471Z\"},{\"geste\":\"listage:1000\",\"verbe\":\"listage\",\"arg\":\"1000\",\"debut_iso\":\"2026-08-21T07:27:10.798805Z\",\"ms\":5961.2043,\"entrees\":1000,\"demande\":1000,\"complet\":true,\"ok\":true,\"fin_iso\":\"2026-08-21T07:27:16.747314Z\"},{\"geste\":\"attributs:1000\",\"verbe\":\"attributs\",\"arg\":\"1000\",\"debut_iso\":\"2026-08-21T07:27:41.747708Z\",\"ms\":5522.0522,\"ms_attributs_seuls\":0.12300000000000001,\"entrees\":1000,\"demande\":1000,\"ok\":true,\"fin_iso\":\"2026-08-21T07:27:47.257787Z\"},{\"geste\":\"listage:3150\",\"verbe\":\"listage\",\"arg\":\"3150\",\"debut_iso\":\"2026-08-21T07:28:12.270011Z\",\"ms\":22013.0906,\"entrees\":3150,\"demande\":3150,\"complet\":true,\"ok\":true,\"fin_iso\":\"2026-08-21T07:28:34.277251Z\"},{\"geste\":\"listage:3200\",\"verbe\":\"listage\",\"arg\":\"3200\",\"debut_iso\":\"2026-08-21T07:28:59.279383Z\",\"ms\":20086.3367,\"ok\":false,\"erreur\":\"Une erreur interne s’est produite.\\r\\n\",\"erreur_type\":\"System.IO.IOException\",\"hresult\":-2147023537,\"fin_iso\":\"2026-08-21T07:29:19.362789Z\"},{\"geste\":\"explorer:100\",\"verbe\":\"explorer\",\"arg\":\"100\",\"debut_iso\":\"2026-08-21T07:29:44.362865Z\",\"ms\":30028.432200000003,\"note\":\"duree IMPOSEE (30 s de maintien), ce n est PAS une latence\",\"ok\":true,\"fin_iso\":\"2026-08-21T07:30:14.391582Z\"},{\"geste\":\"explorer:100\",\"verbe\":\"explorer\",\"arg\":\"100\",\"debut_iso\":\"2026-08-21T07:30:39.406472Z\",\"ms\":30010.078100000002,\"note\":\"duree IMPOSEE (30 s de maintien), ce n est PAS une latence\",\"ok\":true,\"fin_iso\":\"2026-08-21T07:31:09.416821Z\"}]}\r\n",
+ "mesure_vm": {
+  "racine": "C:\\Users\\Administrateur\\Mes Fichiers",
+  "plan": "item:listage\\10\\entree-00003-f.txt,item:listage\\10\\entree-00003-f.txt,listage:10,attributs:10,listage:100,attributs:100,listage:1000,attributs:1000,listage:3150,listage:3200,explorer:100,explorer:100",
+  "repos_s": 25,
+  "fini": true,
+  "releves": [
+   {
+    "geste": "item:listage\\10\\entree-00003-f.txt",
+    "verbe": "item",
+    "arg": "listage\\10\\entree-00003-f.txt",
+    "debut_iso": "2026-08-21T07:24:39.113761Z",
+    "ms": 88.4957,
+    "taille": 0,
+    "ok": true,
+    "fin_iso": "2026-08-21T07:24:39.207611Z"
+   },
+   {
+    "geste": "item:listage\\10\\entree-00003-f.txt",
+    "verbe": "item",
+    "arg": "listage\\10\\entree-00003-f.txt",
+    "debut_iso": "2026-08-21T07:25:04.235892Z",
+    "ms": 0.3598,
+    "taille": 0,
+    "ok": true,
+    "fin_iso": "2026-08-21T07:25:04.235892Z"
+   },
+   {
+    "geste": "listage:10",
+    "verbe": "listage",
+    "arg": "10",
+    "debut_iso": "2026-08-21T07:25:29.249144Z",
+    "ms": 95.1269,
+    "entrees": 10,
+    "demande": 10,
+    "complet": true,
+    "ok": true,
+    "fin_iso": "2026-08-21T07:25:29.348040Z"
+   },
+   {
+    "geste": "attributs:10",
+    "verbe": "attributs",
+    "arg": "10",
+    "debut_iso": "2026-08-21T07:25:54.357150Z",
+    "ms": 65.36070000000001,
+    "ms_attributs_seuls": 1.4004,
+    "entrees": 10,
+    "demande": 10,
+    "ok": true,
+    "fin_iso": "2026-08-21T07:25:54.419991Z"
+   },
+   {
+    "geste": "listage:100",
+    "verbe": "listage",
+    "arg": "100",
+    "debut_iso": "2026-08-21T07:26:19.432406Z",
+    "ms": 659.5947,
+    "entrees": 100,
+    "demande": 100,
+    "complet": true,
+    "ok": true,
+    "fin_iso": "2026-08-21T07:26:20.089540Z"
+   },
+   {
+    "geste": "attributs:100",
+    "verbe": "attributs",
+    "arg": "100",
+    "debut_iso": "2026-08-21T07:26:45.092949Z",
+    "ms": 707.7062000000001,
+    "ms_attributs_seuls": 0.133,
+    "entrees": 100,
+    "demande": 100,
+    "ok": true,
+    "fin_iso": "2026-08-21T07:26:45.797471Z"
+   },
+   {
+    "geste": "listage:1000",
+    "verbe": "listage",
+    "arg": "1000",
+    "debut_iso": "2026-08-21T07:27:10.798805Z",
+    "ms": 5961.2043,
+    "entrees": 1000,
+    "demande": 1000,
+    "complet": true,
+    "ok": true,
+    "fin_iso": "2026-08-21T07:27:16.747314Z"
+   },
+   {
+    "geste": "attributs:1000",
+    "verbe": "attributs",
+    "arg": "1000",
+    "debut_iso": "2026-08-21T07:27:41.747708Z",
+    "ms": 5522.0522,
+    "ms_attributs_seuls": 0.12300000000000001,
+    "entrees": 1000,
+    "demande": 1000,
+    "ok": true,
+    "fin_iso": "2026-08-21T07:27:47.257787Z"
+   },
+   {
+    "geste": "listage:3150",
+    "verbe": "listage",
+    "arg": "3150",
+    "debut_iso": "2026-08-21T07:28:12.270011Z",
+    "ms": 22013.0906,
+    "entrees": 3150,
+    "demande": 3150,
+    "complet": true,
+    "ok": true,
+    "fin_iso": "2026-08-21T07:28:34.277251Z"
+   },
+   {
+    "geste": "listage:3200",
+    "verbe": "listage",
+    "arg": "3200",
+    "debut_iso": "2026-08-21T07:28:59.279383Z",
+    "ms": 20086.3367,
+    "ok": false,
+    "erreur": "Une erreur interne s’est produite.\r\n",
+    "erreur_type": "System.IO.IOException",
+    "hresult": -2147023537,
+    "fin_iso": "2026-08-21T07:29:19.362789Z"
+   },
+   {
+    "geste": "explorer:100",
+    "verbe": "explorer",
+    "arg": "100",
+    "debut_iso": "2026-08-21T07:29:44.362865Z",
+    "ms": 30028.432200000003,
+    "note": "duree IMPOSEE (30 s de maintien), ce n est PAS une latence",
+    "ok": true,
+    "fin_iso": "2026-08-21T07:30:14.391582Z"
+   },
+   {
+    "geste": "explorer:100",
+    "verbe": "explorer",
+    "arg": "100",
+    "debut_iso": "2026-08-21T07:30:39.406472Z",
+    "ms": 30010.078100000002,
+    "note": "duree IMPOSEE (30 s de maintien), ce n est PAS une latence",
+    "ok": true,
+    "fin_iso": "2026-08-21T07:31:09.416821Z"
+   }
+  ]
+ },
+ "agent_log_octets": 86764,
+ "fenetres_application": 0,
+ "flux": [],
+ "etat_injection": {
+  "notes": [
+   {
+    "t": 1787297064169,
+    "m": "gabarit listage/10 : 10 entrees"
+   },
+   {
+    "t": 1787297064304,
+    "m": "gabarit listage/100 : 100 entrees"
+   },
+   {
+    "t": 1787297065794,
+    "m": "gabarit listage/1000 : 1000 entrees"
+   },
+   {
+    "t": 1787297072700,
+    "m": "gabarit listage/3150 : 3150 entrees"
+   },
+   {
+    "t": 1787297077711,
+    "m": "gabarit listage/3200 : 3200 entrees"
+   }
+  ],
+  "erreurs": [],
+  "move": "function"
+ },
+ "ok": true
+}

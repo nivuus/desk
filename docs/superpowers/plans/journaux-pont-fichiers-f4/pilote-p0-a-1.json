@@ -1,0 +1,193 @@
+{
+ "prefixe": "F4z7KQooOQfJqh47PM0ETA",
+ "journal": [
+  "[2026-08-21T07:00:40.433Z] jeton de recette obtenu",
+  "[2026-08-21T07:00:40.738Z] chrome : Chrome/151.0.7922.169",
+  "[2026-08-21T07:00:40.897Z] navigation : http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA",
+  "[2026-08-21T07:00:44.942Z] OPFS peuple : 5 entrees",
+  "[2026-08-21T07:00:44.942Z] la page-shell est connectee : lancement de l agent",
+  "[2026-08-21T07:00:45.497Z] agent lance : Op\u0002ration r\u0002ussie : tentative d'ex\u0002cution de la t\u0003che planifi\u0002e \"guacamole-agent\".agent lancé en session interactive ; journal : /media/vm/dev/agent.log",
+  "[2026-08-21T07:00:45.500Z] etat avant le clic : {\"href\":\"http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA\",\"jeton\":true,\"bouton\":true}",
+  "[2026-08-21T07:00:45.500Z] clic sur #choisir-dossier",
+  "[2026-08-21T07:00:48.542Z] #etat-fichiers : \"Lecteur « Mes Fichiers » monté sur « Mes documents ».\"",
+  "[2026-08-21T07:00:56.584Z] gabarit listage:10 : {\"spec\":\"listage:10\",\"ms_peuplement\":38,\"demande\":10,\"presentes\":10,\"chemin\":\"listage/10\",\"entrees\":10}",
+  "[2026-08-21T07:00:56.753Z] gabarit listage:100 : {\"spec\":\"listage:100\",\"ms_peuplement\":169,\"demande\":100,\"presentes\":100,\"chemin\":\"listage/100\",\"entrees\":100}",
+  "[2026-08-21T07:00:58.118Z] gabarit listage:1000 : {\"spec\":\"listage:1000\",\"ms_peuplement\":1364,\"demande\":1000,\"presentes\":1000,\"chemin\":\"listage/1000\",\"entrees\":1000}",
+  "[2026-08-21T07:00:58.118Z] mesure VM (ASYNCHRONE) : listage:10,attributs:10,listage:100,attributs:100,listage:1000,attributs:1000",
+  "[2026-08-21T07:03:44.044Z] mesure VM : 6 gestes en 166 s",
+  "[2026-08-21T07:03:44.051Z] fenetres d application : 0 — flux : []"
+ ],
+ "erreurs": [],
+ "gabarits": [
+  {
+   "spec": "listage:10",
+   "ms_peuplement": 38,
+   "demande": 10,
+   "presentes": 10,
+   "chemin": "listage/10",
+   "entrees": 10
+  },
+  {
+   "spec": "listage:100",
+   "ms_peuplement": 169,
+   "demande": 100,
+   "presentes": 100,
+   "chemin": "listage/100",
+   "entrees": 100
+  },
+  {
+   "spec": "listage:1000",
+   "ms_peuplement": 1364,
+   "demande": 1000,
+   "presentes": 1000,
+   "chemin": "listage/1000",
+   "entrees": 1000
+  }
+ ],
+ "mesures": [],
+ "chrome": "Chrome/151.0.7922.169",
+ "console_page": [
+  {
+   "t": "2026-08-21T07:00:41.071Z",
+   "niveau": "debug",
+   "texte": "[vite] connecting..."
+  },
+  {
+   "t": "2026-08-21T07:00:41.096Z",
+   "niveau": "debug",
+   "texte": "[vite] connected."
+  },
+  {
+   "t": "2026-08-21T07:00:47.671Z",
+   "niveau": "info",
+   "texte": "offre du pont envoyée, attente de l’agent…"
+  },
+  {
+   "t": "2026-08-21T07:00:47.677Z",
+   "niveau": "info",
+   "texte": "pont fichiers : réponse reçue"
+  },
+  {
+   "t": "2026-08-21T07:00:47.678Z",
+   "niveau": "info",
+   "texte": "pont fichiers : connecting"
+  },
+  {
+   "t": "2026-08-21T07:00:47.934Z",
+   "niveau": "info",
+   "texte": "pont fichiers : connected"
+  },
+  {
+   "t": "2026-08-21T07:00:48.105Z",
+   "niveau": "info",
+   "texte": "canal fichiers ouvert"
+  }
+ ],
+ "opfs_entrees": 5,
+ "etat_avant_clic": "{\"href\":\"http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA\",\"jeton\":true,\"bouton\":true}",
+ "etat_fichiers": "Lecteur « Mes Fichiers » monté sur « Mes documents ».",
+ "bien_monte": true,
+ "mesure_vm_brut": "﻿{\"racine\":\"C:\\\\Users\\\\Administrateur\\\\Mes Fichiers\",\"plan\":\"listage:10,attributs:10,listage:100,attributs:100,listage:1000,attributs:1000\",\"repos_s\":25,\"fini\":true,\"releves\":[{\"geste\":\"listage:10\",\"verbe\":\"listage\",\"arg\":\"10\",\"debut_iso\":\"2026-08-21T07:00:59.399523Z\",\"ms\":126.1243,\"entrees\":10,\"demande\":10,\"complet\":true,\"ok\":true,\"fin_iso\":\"2026-08-21T07:00:59.540649Z\"},{\"geste\":\"attributs:10\",\"verbe\":\"attributs\",\"arg\":\"10\",\"debut_iso\":\"2026-08-21T07:01:24.556909Z\",\"ms\":65.4982,\"ms_attributs_seuls\":1.7968000000000002,\"entrees\":10,\"demande\":10,\"ok\":true,\"fin_iso\":\"2026-08-21T07:01:24.619568Z\"},{\"geste\":\"listage:100\",\"verbe\":\"listage\",\"arg\":\"100\",\"debut_iso\":\"2026-08-21T07:01:49.635237Z\",\"ms\":628.6335,\"entrees\":100,\"demande\":100,\"complet\":true,\"ok\":true,\"fin_iso\":\"2026-08-21T07:01:50.261303Z\"},{\"geste\":\"attributs:100\",\"verbe\":\"attributs\",\"arg\":\"100\",\"debut_iso\":\"2026-08-21T07:02:15.276055Z\",\"ms\":660.0576,\"ms_attributs_seuls\":0.0795,\"entrees\":100,\"demande\":100,\"ok\":true,\"fin_iso\":\"2026-08-21T07:02:15.933521Z\"},{\"geste\":\"listage:1000\",\"verbe\":\"listage\",\"arg\":\"1000\",\"debut_iso\":\"2026-08-21T07:02:40.947840Z\",\"ms\":6196.2698,\"entrees\":1000,\"demande\":1000,\"complet\":true,\"ok\":true,\"fin_iso\":\"2026-08-21T07:02:47.139282Z\"},{\"geste\":\"attributs:1000\",\"verbe\":\"attributs\",\"arg\":\"1000\",\"debut_iso\":\"2026-08-21T07:03:12.150722Z\",\"ms\":5843.6961,\"ms_attributs_seuls\":0.12100000000000001,\"entrees\":1000,\"demande\":1000,\"ok\":true,\"fin_iso\":\"2026-08-21T07:03:17.988877Z\"}]}\r\n",
+ "mesure_vm": {
+  "racine": "C:\\Users\\Administrateur\\Mes Fichiers",
+  "plan": "listage:10,attributs:10,listage:100,attributs:100,listage:1000,attributs:1000",
+  "repos_s": 25,
+  "fini": true,
+  "releves": [
+   {
+    "geste": "listage:10",
+    "verbe": "listage",
+    "arg": "10",
+    "debut_iso": "2026-08-21T07:00:59.399523Z",
+    "ms": 126.1243,
+    "entrees": 10,
+    "demande": 10,
+    "complet": true,
+    "ok": true,
+    "fin_iso": "2026-08-21T07:00:59.540649Z"
+   },
+   {
+    "geste": "attributs:10",
+    "verbe": "attributs",
+    "arg": "10",
+    "debut_iso": "2026-08-21T07:01:24.556909Z",
+    "ms": 65.4982,
+    "ms_attributs_seuls": 1.7968000000000002,
+    "entrees": 10,
+    "demande": 10,
+    "ok": true,
+    "fin_iso": "2026-08-21T07:01:24.619568Z"
+   },
+   {
+    "geste": "listage:100",
+    "verbe": "listage",
+    "arg": "100",
+    "debut_iso": "2026-08-21T07:01:49.635237Z",
+    "ms": 628.6335,
+    "entrees": 100,
+    "demande": 100,
+    "complet": true,
+    "ok": true,
+    "fin_iso": "2026-08-21T07:01:50.261303Z"
+   },
+   {
+    "geste": "attributs:100",
+    "verbe": "attributs",
+    "arg": "100",
+    "debut_iso": "2026-08-21T07:02:15.276055Z",
+    "ms": 660.0576,
+    "ms_attributs_seuls": 0.0795,
+    "entrees": 100,
+    "demande": 100,
+    "ok": true,
+    "fin_iso": "2026-08-21T07:02:15.933521Z"
+   },
+   {
+    "geste": "listage:1000",
+    "verbe": "listage",
+    "arg": "1000",
+    "debut_iso": "2026-08-21T07:02:40.947840Z",
+    "ms": 6196.2698,
+    "entrees": 1000,
+    "demande": 1000,
+    "complet": true,
+    "ok": true,
+    "fin_iso": "2026-08-21T07:02:47.139282Z"
+   },
+   {
+    "geste": "attributs:1000",
+    "verbe": "attributs",
+    "arg": "1000",
+    "debut_iso": "2026-08-21T07:03:12.150722Z",
+    "ms": 5843.6961,
+    "ms_attributs_seuls": 0.12100000000000001,
+    "entrees": 1000,
+    "demande": 1000,
+    "ok": true,
+    "fin_iso": "2026-08-21T07:03:17.988877Z"
+   }
+  ]
+ },
+ "agent_log_octets": 44422,
+ "fenetres_application": 0,
+ "flux": [],
+ "etat_injection": {
+  "notes": [
+   {
+    "t": 1787295656572,
+    "m": "gabarit listage/10 : 10 entrees"
+   },
+   {
+    "t": 1787295656730,
+    "m": "gabarit listage/100 : 100 entrees"
+   },
+   {
+    "t": 1787295658035,
+    "m": "gabarit listage/1000 : 1000 entrees"
+   }
+  ],
+  "erreurs": [],
+  "move": "function"
+ },
+ "ok": true
+}

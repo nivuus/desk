@@ -62,14 +62,15 @@ node "$RACINE/scripts/winrm.js" \
 # de `table.rs` —, et c'est precisement ce que F4 mesure. L'attente ici est donc
 # BORNEE cote hote, et un releve PARTIEL est rendu EN LE DISANT : « un releve
 # partiel annonce vaut mieux qu'un releve vide ».
+# 🔴 LE FAIT ATTENDU EST LE MARQUEUR `"fini":true`, ET NON LE COMPTE DE GESTES.
+# `Enregistrer` ecrit AVANT le repos : attendre le compte rendait la main des la
+# fin du dernier geste, l'hote tuait Chrome, et LE CANAL DU PONT TOMBAIT AVANT
+# LES DEUX RECENSEMENTS DU REPOS — c'est-a-dire avant la mesure elle-meme.
 ATTENDUS=$(echo "$PLAN" | tr ',' '\n' | grep -c .)
-BUDGET=$(( ATTENDUS * (REPOS + 70) / 2 ))
+BUDGET=$(( ATTENDUS * (REPOS + 120) / 2 ))
 COMPLET=non
 for i in $(seq 1 "$BUDGET"); do
-    if [ -s "$LOCAL" ]; then
-        VUS=$(grep -ao '"geste"' "$LOCAL" | wc -l)
-        if [ "$VUS" -ge "$ATTENDUS" ]; then COMPLET=oui; break; fi
-    fi
+    if [ -s "$LOCAL" ] && grep -qa '"fini":true' "$LOCAL"; then COMPLET=oui; break; fi
     sleep 2
 done
 cp /media/vm/dev/mesure-f4.trace.txt "${TRACE:-/dev/null}" 2>/dev/null || true

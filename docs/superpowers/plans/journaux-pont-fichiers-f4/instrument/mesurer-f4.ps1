@@ -23,9 +23,9 @@ $horoUtc = { (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ss.ffffffZ'
 # « Un instrument qui n'ecrit qu'a la fin fait dependre toute la mesure du
 # geste le plus fragile » — F3 a perdu deux criteres deja mesures ainsi.
 function Enregistrer {
-    param($releve)
-    [void]$releves.Add($releve)
-    $doc = [ordered]@{ racine = $racine; plan = $plan; repos_s = $repos; releves = $releves }
+    param($releve, [bool]$fini = $false)
+    if ($null -ne $releve) { [void]$releves.Add($releve) }
+    $doc = [ordered]@{ racine = $racine; plan = $plan; repos_s = $repos; fini = $fini; releves = $releves }
     Set-Content -Path $sortie -Value ($doc | ConvertTo-Json -Depth 8 -Compress) -Encoding UTF8
 }
 
@@ -129,6 +129,23 @@ foreach ($geste in ($plan -split ',')) {
                 $r.note = 'duree IMPOSEE (30 s de maintien), ce n est PAS une latence'
                 $r.ok = $true
             }
+            # ── OUVRIR UNE VRAIE FENETRE D'APPLICATION ───────────────────
+            # 🔴 SANS ELLE, « M2 » N'EST PAS M2. Un superviseur sur une VM sans
+            # aucune fenetre eligible ne lance AUCUN enfant, donc n'ouvre AUCUNE
+            # PeerConnection video, donc n'exerce AUCUNE contention : le delta
+            # M2 − M1 serait alors nul PAR CONSTRUCTION, et se lirait comme
+            # « le pont ne concurrence pas la video » (R5) alors qu'on n'aurait
+            # rien mesure. Mesure a l'appui : une premiere tentative de M2 a
+            # rendu `enfant lance` = 0.
+            'application' {
+                Start-Process $arg
+                Start-Sleep -Seconds 20
+                $sw.Stop()
+                $r.ms = $sw.Elapsed.TotalMilliseconds
+                $r.note = 'duree IMPOSEE (20 s), ce n est PAS une latence'
+                $r.fenetres = @(Get-Process -Name ([System.IO.Path]::GetFileNameWithoutExtension($arg)) -ErrorAction SilentlyContinue).Count
+                $r.ok = $true
+            }
             'sommeil' { Start-Sleep -Seconds ([int]$arg); $sw.Stop(); $r.ms = $sw.Elapsed.TotalMilliseconds; $r.ok = $true }
             default { $sw.Stop(); $r.ok = $false; $r.erreur = "verbe inconnu : $verbe" }
         }
@@ -150,3 +167,17 @@ foreach ($geste in ($plan -split ',')) {
     # `fin_iso` est pose AVANT lui, et c'est ce qui permet a l'analyse de
     # borner le differentiel du recensement sur `[fin_iso, fin_iso + repos]`.
 }
+
+# 🔴 LE MARQUEUR DE FIN EST POSE APRES LE DERNIER REPOS, ET C'EST UN DEFAUT
+# D'INSTRUMENT PAYE A LA PREMIERE EXECUTION.
+#
+# L'hote attendait que le releve porte AUTANT de gestes que le plan en demande.
+# Or `Enregistrer` ecrit AVANT le repos : la condition etait donc satisfaite
+# des la fin du dernier geste, l'hote reprenait la main, TUAIT CHROME, et le
+# canal du pont tombait AVANT que les deux recensements du repos ne soient
+# emis. **Le differentiel de latence aurait ete lu sur une seule ligne, ou sur
+# aucune** — c'est-a-dire la mesure que ce sous-bloc existe pour prendre.
+#
+# ⚠️ Le symptome n'avait rien d'une panne : la mesure rendait « 1 gestes en 5 s »
+# et un code de sortie zero.
+Enregistrer $null $true

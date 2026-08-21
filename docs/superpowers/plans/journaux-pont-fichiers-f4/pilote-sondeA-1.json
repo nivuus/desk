@@ -1,0 +1,126 @@
+{
+ "prefixe": "F4z7KQooOQfJqh47PM0ETA",
+ "journal": [
+  "[2026-08-21T07:54:00.909Z] jeton de recette obtenu",
+  "[2026-08-21T07:54:01.275Z] chrome : Chrome/151.0.7922.169",
+  "[2026-08-21T07:54:01.536Z] navigation : http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA",
+  "[2026-08-21T07:54:05.654Z] OPFS peuple : 5 entrees",
+  "[2026-08-21T07:54:05.654Z] la page-shell est connectee : lancement de l agent",
+  "[2026-08-21T07:54:06.054Z] agent lance : Op\u0002ration r\u0002ussie : tentative d'ex\u0002cution de la t\u0003che planifi\u0002e \"guacamole-agent\".agent lancé en session interactive ; journal : /media/vm/dev/agent.log",
+  "[2026-08-21T07:54:06.058Z] etat avant le clic : {\"href\":\"http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA\",\"jeton\":true,\"bouton\":true}",
+  "[2026-08-21T07:54:06.058Z] clic sur #choisir-dossier",
+  "[2026-08-21T07:54:09.076Z] #etat-fichiers : \"Lecteur « Mes Fichiers » monté sur « Mes documents ».\"",
+  "[2026-08-21T07:54:17.115Z] gabarit f:lecture:64k.bin:65536 : {\"spec\":\"f:lecture:64k.bin:65536\",\"ms_peuplement\":39,\"chemin\":\"lecture/64k.bin\",\"taille\":65536}",
+  "[2026-08-21T07:54:17.115Z] mesure VM (ASYNCHRONE) : lecture:lecture\\64k.bin,lecture:lecture\\64k.bin,lecture:lecture\\64k.bin",
+  "[2026-08-21T07:55:36.494Z] mesure VM : 3 gestes en 79 s",
+  "[2026-08-21T07:55:36.506Z] fenetres d application : 0 — flux : []"
+ ],
+ "erreurs": [],
+ "gabarits": [
+  {
+   "spec": "f:lecture:64k.bin:65536",
+   "ms_peuplement": 39,
+   "chemin": "lecture/64k.bin",
+   "taille": 65536
+  }
+ ],
+ "mesures": [],
+ "chrome": "Chrome/151.0.7922.169",
+ "console_page": [
+  {
+   "t": "2026-08-21T07:54:01.988Z",
+   "niveau": "debug",
+   "texte": "[vite] connecting..."
+  },
+  {
+   "t": "2026-08-21T07:54:02.037Z",
+   "niveau": "debug",
+   "texte": "[vite] connected."
+  },
+  {
+   "t": "2026-08-21T07:54:08.202Z",
+   "niveau": "info",
+   "texte": "offre du pont envoyée, attente de l’agent…"
+  },
+  {
+   "t": "2026-08-21T07:54:08.207Z",
+   "niveau": "info",
+   "texte": "pont fichiers : réponse reçue"
+  },
+  {
+   "t": "2026-08-21T07:54:08.208Z",
+   "niveau": "info",
+   "texte": "pont fichiers : connecting"
+  },
+  {
+   "t": "2026-08-21T07:54:08.466Z",
+   "niveau": "info",
+   "texte": "pont fichiers : connected"
+  },
+  {
+   "t": "2026-08-21T07:54:08.656Z",
+   "niveau": "info",
+   "texte": "canal fichiers ouvert"
+  }
+ ],
+ "opfs_entrees": 5,
+ "etat_avant_clic": "{\"href\":\"http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA\",\"jeton\":true,\"bouton\":true}",
+ "etat_fichiers": "Lecteur « Mes Fichiers » monté sur « Mes documents ».",
+ "bien_monte": true,
+ "mesure_vm_brut": "﻿{\"racine\":\"C:\\\\Users\\\\Administrateur\\\\Mes Fichiers\",\"plan\":\"lecture:lecture\\\\64k.bin,lecture:lecture\\\\64k.bin,lecture:lecture\\\\64k.bin\",\"repos_s\":25,\"fini\":true,\"releves\":[{\"geste\":\"lecture:lecture\\\\64k.bin\",\"verbe\":\"lecture\",\"arg\":\"lecture\\\\64k.bin\",\"debut_iso\":\"2026-08-21T07:54:18.379672Z\",\"ms\":2143.1158,\"octets\":65536,\"debit_kio_s\":29.9,\"ok\":true,\"fin_iso\":\"2026-08-21T07:54:20.540071Z\"},{\"geste\":\"lecture:lecture\\\\64k.bin\",\"verbe\":\"lecture\",\"arg\":\"lecture\\\\64k.bin\",\"debut_iso\":\"2026-08-21T07:54:45.569069Z\",\"ms\":0.55090000000000006,\"octets\":65536,\"debit_kio_s\":116173.5,\"ok\":true,\"fin_iso\":\"2026-08-21T07:54:45.569069Z\"},{\"geste\":\"lecture:lecture\\\\64k.bin\",\"verbe\":\"lecture\",\"arg\":\"lecture\\\\64k.bin\",\"debut_iso\":\"2026-08-21T07:55:10.569748Z\",\"ms\":0.5591,\"octets\":65536,\"debit_kio_s\":114469.7,\"ok\":true,\"fin_iso\":\"2026-08-21T07:55:10.569748Z\"}]}\r\n",
+ "mesure_vm": {
+  "racine": "C:\\Users\\Administrateur\\Mes Fichiers",
+  "plan": "lecture:lecture\\64k.bin,lecture:lecture\\64k.bin,lecture:lecture\\64k.bin",
+  "repos_s": 25,
+  "fini": true,
+  "releves": [
+   {
+    "geste": "lecture:lecture\\64k.bin",
+    "verbe": "lecture",
+    "arg": "lecture\\64k.bin",
+    "debut_iso": "2026-08-21T07:54:18.379672Z",
+    "ms": 2143.1158,
+    "octets": 65536,
+    "debit_kio_s": 29.9,
+    "ok": true,
+    "fin_iso": "2026-08-21T07:54:20.540071Z"
+   },
+   {
+    "geste": "lecture:lecture\\64k.bin",
+    "verbe": "lecture",
+    "arg": "lecture\\64k.bin",
+    "debut_iso": "2026-08-21T07:54:45.569069Z",
+    "ms": 0.5509000000000001,
+    "octets": 65536,
+    "debit_kio_s": 116173.5,
+    "ok": true,
+    "fin_iso": "2026-08-21T07:54:45.569069Z"
+   },
+   {
+    "geste": "lecture:lecture\\64k.bin",
+    "verbe": "lecture",
+    "arg": "lecture\\64k.bin",
+    "debut_iso": "2026-08-21T07:55:10.569748Z",
+    "ms": 0.5591,
+    "octets": 65536,
+    "debit_kio_s": 114469.7,
+    "ok": true,
+    "fin_iso": "2026-08-21T07:55:10.569748Z"
+   }
+  ]
+ },
+ "agent_log_octets": 32262,
+ "fenetres_application": 0,
+ "flux": [],
+ "etat_injection": {
+  "notes": [
+   {
+    "t": 1787298857111,
+    "m": "gabarit lecture/64k.bin : 65536 octets"
+   }
+  ],
+  "erreurs": [],
+  "move": "function"
+ },
+ "ok": true
+}

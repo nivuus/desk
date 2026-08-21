@@ -1,0 +1,17 @@
+[2026-08-21T07:49:44.232Z] jeton de recette obtenu
+[2026-08-21T07:49:44.575Z] chrome : Chrome/151.0.7922.169
+[2026-08-21T07:49:44.842Z] navigation : http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA
+[2026-08-21T07:49:48.897Z] OPFS peuple : 5 entrees
+[2026-08-21T07:49:48.898Z] la page-shell est connectee : lancement de l agent
+[2026-08-21T07:49:49.429Z] agent lance : Opration russie : tentative d'excution de la tche planifie "guacamole-agent".agent lancé en session interactive ; journal : /media/vm/dev/agent.log
+[2026-08-21T07:49:49.432Z] etat avant le clic : {"href":"http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA","jeton":true,"bouton":true}
+[2026-08-21T07:49:49.432Z] clic sur #choisir-dossier
+[2026-08-21T07:49:52.471Z] #etat-fichiers : "Lecteur « Mes Fichiers » monté sur « Mes documents »."
+[2026-08-21T07:50:00.484Z] gabarit f:lecture:4k.bin:4096 : {"spec":"f:lecture:4k.bin:4096","ms_peuplement":10,"chemin":"lecture/4k.bin","taille":4096}
+[2026-08-21T07:50:00.492Z] gabarit f:lecture:64k.bin:65536 : {"spec":"f:lecture:64k.bin:65536","ms_peuplement":8,"chemin":"lecture/64k.bin","taille":65536}
+[2026-08-21T07:50:00.500Z] gabarit f:lecture:128k.bin:131072 : {"spec":"f:lecture:128k.bin:131072","ms_peuplement":8,"chemin":"lecture/128k.bin","taille":131072}
+[2026-08-21T07:50:00.507Z] gabarit f:lecture:256k.bin:262144 : {"spec":"f:lecture:256k.bin:262144","ms_peuplement":7,"chemin":"lecture/256k.bin","taille":262144}
+[2026-08-21T07:50:00.507Z] mesure VM (ASYNCHRONE) : lecture:lecture\4k.bin,lecture:lecture\64k.bin,lecture:lecture\128k.bin,lecture:lecture\256k.bin
+[2026-08-21T07:52:00.048Z] mesure VM : 4 gestes en 120 s
+[2026-08-21T07:52:00.060Z] fenetres d application : 0 — flux : []
+[2026-08-21T07:52:00.066Z] resultat ecrit : /tmp/f4/pilote-diag-morceaux-1.json

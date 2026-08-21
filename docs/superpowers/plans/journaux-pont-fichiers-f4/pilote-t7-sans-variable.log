@@ -1,0 +1,13 @@
+[2026-08-21T06:58:56.645Z] jeton de recette obtenu
+[2026-08-21T06:58:57.067Z] chrome : Chrome/151.0.7922.169
+[2026-08-21T06:58:57.291Z] navigation : http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA
+[2026-08-21T06:59:01.348Z] OPFS peuple : 5 entrees
+[2026-08-21T06:59:01.348Z] la page-shell est connectee : lancement de l agent
+[2026-08-21T06:59:01.778Z] agent lance : Opration russie : tentative d'excution de la tche planifie "guacamole-agent".agent lancé en session interactive ; journal : /media/vm/dev/agent.log
+[2026-08-21T06:59:01.780Z] etat avant le clic : {"href":"http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA","jeton":true,"bouton":true}
+[2026-08-21T06:59:01.780Z] clic sur #choisir-dossier
+[2026-08-21T06:59:04.797Z] #etat-fichiers : "Lecteur « Mes Fichiers » monté sur « Mes documents »."
+[2026-08-21T06:59:12.799Z] mesure VM (ASYNCHRONE) : sommeil:20
+[2026-08-21T07:00:03.992Z] mesure VM : 1 gestes en 51 s
+[2026-08-21T07:00:04.004Z] fenetres d application : 0 — flux : []
+[2026-08-21T07:00:04.009Z] resultat ecrit : /tmp/f4/pilote-t7-sans-variable.json
