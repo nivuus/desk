@@ -1,0 +1,12 @@
+[2026-08-21T14:06:25.910Z] jeton de recette obtenu
+[2026-08-21T14:06:26.467Z] chrome : Chrome/151.0.7922.169
+[2026-08-21T14:06:26.673Z] navigation : http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA
+[2026-08-21T14:06:30.740Z] etat de la shell : {"href":"http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA","jeton":true}
+[2026-08-21T14:06:30.740Z] la page-shell est connectee : lancement de l agent
+[2026-08-21T14:06:31.139Z] agent lance : Opration russie : tentative d'excution de la tche planifie "guacamole-agent".agent lancé en session interactive ; journal : /media/vm/dev/agent.log
+[2026-08-21T14:06:35.172Z] 2 fenetre(s) d application apres 4 s
+[2026-08-21T14:06:35.172Z] fenetres : F4z7KQooOQfJqh47PM0ETA:w-2 , F4z7KQooOQfJqh47PM0ETA:w-1
+[2026-08-21T14:06:39.177Z]   [0-repos] F4z7KQooOQfJqh47PM0ETA:w-2 etat=null cache=true mic-state=0 titre="Microphone"
+[2026-08-21T14:06:39.177Z]   [0-repos] F4z7KQooOQfJqh47PM0ETA:w-1 etat=null cache=true mic-state=0 titre="Microphone"
+[2026-08-21T14:06:39.179Z] ERREUR : Error: le bouton micro de F4z7KQooOQfJqh47PM0ETA:w-2 est absent ou cache
+[2026-08-21T14:06:39.179Z] sortie : /tmp/e3/pilote-essai-1.json

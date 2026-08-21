@@ -1,0 +1,17 @@
+[2026-08-21T14:11:32.763Z] jeton de recette obtenu
+[2026-08-21T14:11:33.135Z] chrome : Chrome/151.0.7922.169
+[2026-08-21T14:11:33.398Z] navigation : http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA
+[2026-08-21T14:11:37.485Z] etat de la shell : {"href":"http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA","jeton":true}
+[2026-08-21T14:11:37.485Z] la page-shell est connectee : lancement de l agent
+[2026-08-21T14:11:37.980Z] agent lance : Opration russie : tentative d'excution de la tche planifie "guacamole-agent".agent lancé en session interactive ; journal : /media/vm/dev/agent.log
+[2026-08-21T14:11:42.017Z] 2 fenetre(s) d application apres 4 s
+[2026-08-21T14:11:42.021Z] fenetres : F4z7KQooOQfJqh47PM0ETA:w-2 , F4z7KQooOQfJqh47PM0ETA:w-1
+[2026-08-21T14:11:42.038Z]   [attente 0s] [{"href":"http://127.0.0.1:5173/?session=F4z7KQooOQfJqh47PM0ETA%3Aw-2","statut":"Connexion…","video":true,"cache":true,"canaux":0,"injecte":true},{"href":"http://127.0.0.1:5173/?session=F4z7KQooOQfJqh47PM0ETA%3Aw-1","statut":"Connexion…","video":true,"cache":true,"canaux":0,"injecte":true}]
+[2026-08-21T14:11:57.140Z]   [attente 15s] [{"href":"http://127.0.0.1:5173/?session=F4z7KQooOQfJqh47PM0ETA%3Aw-2","statut":"Connexion…","video":true,"cache":true,"canaux":0,"injecte":true},{"href":"http://127.0.0.1:5173/?session=F4z7KQooOQfJqh47PM0ETA%3Aw-1","statut":"Connexion…","video":true,"cache":true,"canaux":0,"injecte":true}]
+[2026-08-21T14:12:12.238Z]   [attente 30s] [{"href":"http://127.0.0.1:5173/?session=F4z7KQooOQfJqh47PM0ETA%3Aw-2","statut":"Connexion…","video":true,"cache":true,"canaux":0,"injecte":true},{"href":"http://127.0.0.1:5173/?session=F4z7KQooOQfJqh47PM0ETA%3Aw-1","statut":"Connexion…","video":true,"cache":true,"canaux":0,"injecte":true}]
+[2026-08-21T14:12:27.317Z]   [attente 45s] [{"href":"http://127.0.0.1:5173/?session=F4z7KQooOQfJqh47PM0ETA%3Aw-2","statut":"Connexion…","video":true,"cache":true,"canaux":0,"injecte":true},{"href":"http://127.0.0.1:5173/?session=F4z7KQooOQfJqh47PM0ETA%3Aw-1","statut":"Connexion…","video":true,"cache":true,"canaux":0,"injecte":true}]
+[2026-08-21T14:12:42.411Z]   [attente 60s] [{"href":"http://127.0.0.1:5173/?session=F4z7KQooOQfJqh47PM0ETA%3Aw-2","statut":"Connexion…","video":true,"cache":true,"canaux":0,"injecte":true},{"href":"http://127.0.0.1:5173/?session=F4z7KQooOQfJqh47PM0ETA%3Aw-1","statut":"Connexion…","video":true,"cache":true,"canaux":0,"injecte":true}]
+[2026-08-21T14:12:57.492Z]   [attente 75s] [{"href":"http://127.0.0.1:5173/?session=F4z7KQooOQfJqh47PM0ETA%3Aw-2","statut":"Connexion…","video":true,"cache":true,"canaux":0,"injecte":true},{"href":"http://127.0.0.1:5173/?session=F4z7KQooOQfJqh47PM0ETA%3Aw-1","statut":"Connexion…","video":true,"cache":true,"canaux":0,"injecte":true}]
+[2026-08-21T14:13:11.579Z]   [attente 89s] [{"href":"http://127.0.0.1:5173/?session=F4z7KQooOQfJqh47PM0ETA%3Aw-2","statut":"Connexion…","video":true,"cache":true,"canaux":0,"injecte":true},{"href":"http://127.0.0.1:5173/?session=F4z7KQooOQfJqh47PM0ETA%3Aw-1","statut":"Connexion…","video":true,"cache":true,"canaux":0,"injecte":true}]
+[2026-08-21T14:13:12.579Z] ERREUR : Error: 0/2 bouton(s) micro visible(s) : ready.mic est faux, ou la session n a pas abouti
+[2026-08-21T14:13:12.581Z] sortie : /tmp/e3/pilote-essai-3.json

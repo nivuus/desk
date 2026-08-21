@@ -1,0 +1,11 @@
+[2026-08-21T14:08:26.932Z] jeton de recette obtenu
+[2026-08-21T14:08:27.355Z] chrome : Chrome/151.0.7922.169
+[2026-08-21T14:08:27.691Z] navigation : http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA
+[2026-08-21T14:08:31.797Z] etat de la shell : {"href":"http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA","jeton":true}
+[2026-08-21T14:08:31.798Z] la page-shell est connectee : lancement de l agent
+[2026-08-21T14:08:32.254Z] agent lance : Opration russie : tentative d'excution de la tche planifie "guacamole-agent".agent lancé en session interactive ; journal : /media/vm/dev/agent.log
+[2026-08-21T14:08:36.285Z] 2 fenetre(s) d application apres 4 s
+[2026-08-21T14:08:36.286Z] fenetres : F4z7KQooOQfJqh47PM0ETA:w-2 , F4z7KQooOQfJqh47PM0ETA:w-1
+[2026-08-21T14:10:05.816Z] boutons micro toujours caches : [{"fenetre":"F4z7KQooOQfJqh47PM0ETA:w-2","etat":null,"cache":true,"canaux":0},{"fenetre":"F4z7KQooOQfJqh47PM0ETA:w-1","etat":null,"cache":true,"canaux":0}]
+[2026-08-21T14:10:06.817Z] ERREUR : Error: 0/2 bouton(s) micro visible(s) : ready.mic est faux, ou la session n a pas abouti
+[2026-08-21T14:10:06.817Z] sortie : /tmp/e3/pilote-essai-2.json

@@ -16,7 +16,14 @@
 # Usage : controle-trace-cable.sh <agent.log>
 
 set -uo pipefail
-journal="${1:?journal d'agent}"
+# ❌ Cette ligne portait `${1:?journal d'agent}` — l'apostrophe y OUVRE une
+# quote, car bash ANALYSE le mot d'une expansion `${par:?mot}` même entre
+# guillemets doubles : le script ne se PARSAIT PAS (« EOF prématurée lors de la
+# recherche du ' correspondant », ligne 37, c'est-à-dire trente lignes plus
+# bas). 🔵 **Il avait été versé « PRÊT, pas VERT » — et il ne l'était même
+# pas.** C'est la doctrine du dépôt prise à la lettre : un contrôle de recette
+# doit être EXÉCUTÉ avant d'être prescrit, et celui-ci ne l'avait pas été.
+journal="${1:?chemin du journal d agent attendu}"
 
 # 🔴 `grep -a` OBLIGATOIRE : un journal à queue d'octets NUL est classé
 # « binaire », et `grep` rend alors une SORTIE VIDE — pas un zéro, et les deux

@@ -1,0 +1,253 @@
+{
+  "prefixe": "F4z7KQooOQfJqh47PM0ETA",
+  "wav": "/tmp/e3/ton-440.wav",
+  "journal": [
+    "[2026-08-21T14:20:40.396Z] jeton de recette obtenu",
+    "[2026-08-21T14:20:40.988Z] chrome : Chrome/151.0.7922.169",
+    "[2026-08-21T14:20:41.134Z] navigation : http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA",
+    "[2026-08-21T14:20:45.168Z] etat de la shell : {\"href\":\"http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA\",\"jeton\":true}",
+    "[2026-08-21T14:20:45.168Z] la page-shell est connectee : lancement de l agent",
+    "[2026-08-21T14:20:45.736Z] agent lance : Op\u0002ration r\u0002ussie : tentative d'ex\u0002cution de la t\u0003che planifi\u0002e \"guacamole-agent\".agent lancé en session interactive ; journal : /media/vm/dev/agent.log",
+    "[2026-08-21T14:20:49.764Z] 2 fenetre(s) d application apres 4 s",
+    "[2026-08-21T14:20:49.765Z] fenetres : F4z7KQooOQfJqh47PM0ETA:w-2 , F4z7KQooOQfJqh47PM0ETA:w-1",
+    "[2026-08-21T14:20:49.773Z]   [attente 0s] [{\"href\":\"http://127.0.0.1:5173/?session=F4z7KQooOQfJqh47PM0ETA%3Aw-2&signaling=ws%3A%2F%2F192.168.3.1%3A8080\",\"statut\":\"Connexion…\",\"video\":true,\"cache\":true,\"canaux\":2,\"injecte\":true},{\"href\":\"http://127.0.0.1:5173/?session=F4z7KQooOQfJqh47PM0ETA%3Aw-1&signaling=ws%3A%2F%2F192.168.3.1%3A8080\",\"statut\":\"Connexion…\",\"video\":true,\"cache\":true,\"canaux\":2,\"injecte\":true}]",
+    "[2026-08-21T14:20:54.802Z] les 2 boutons micro sont visibles apres 5 s",
+    "[2026-08-21T14:20:56.820Z]   [0-repos] F4z7KQooOQfJqh47PM0ETA:w-2 etat=ferme cache=false mic-state=0 titre=\"Microphone — cliquez pour parler\"",
+    "[2026-08-21T14:20:56.820Z]   [0-repos] F4z7KQooOQfJqh47PM0ETA:w-1 etat=ferme cache=false mic-state=0 titre=\"Microphone — cliquez pour parler\"",
+    "[2026-08-21T14:20:56.841Z] clic micro sur F4z7KQooOQfJqh47PM0ETA:w-2 a 2026-08-21T14:20:56.826Z",
+    "[2026-08-21T14:21:04.848Z] juge « A-une-seule » : 10 s sur CABLE Output",
+    "[2026-08-21T14:21:16.179Z]   [A-une-seule] F4z7KQooOQfJqh47PM0ETA:w-2 etat=actif cache=false mic-state=1 titre=\"Microphone actif — cliquez pour couper\"",
+    "[2026-08-21T14:21:16.180Z]   [A-une-seule] F4z7KQooOQfJqh47PM0ETA:w-1 etat=ferme cache=false mic-state=0 titre=\"Microphone — cliquez pour parler\"",
+    "[2026-08-21T14:21:16.193Z] clic micro sur F4z7KQooOQfJqh47PM0ETA:w-1 a 2026-08-21T14:21:16.184Z",
+    "[2026-08-21T14:21:24.199Z] juge « B-les-deux » : 10 s sur CABLE Output",
+    "[2026-08-21T14:21:35.241Z]   [B-les-deux] F4z7KQooOQfJqh47PM0ETA:w-2 etat=actif cache=false mic-state=1 titre=\"Microphone actif — cliquez pour couper\"",
+    "[2026-08-21T14:21:35.241Z]   [B-les-deux] F4z7KQooOQfJqh47PM0ETA:w-1 etat=actif cache=false mic-state=1 titre=\"Microphone actif — mais une autre fenêtre tient le micro de la VM : celle-ci n’y\"",
+    "[2026-08-21T14:21:35.260Z] gagnante = <non trouvée> ; pids = {\"F4z7KQooOQfJqh47PM0ETA:w-2\":\"1496\",\"F4z7KQooOQfJqh47PM0ETA:w-1\":\"3180\"}",
+    "[2026-08-21T14:21:35.260Z] phase C NON JOUÉE : aucun PID d enfant apparié à la session gagnante",
+    "[2026-08-21T14:21:55.282Z] juge « C-reprise » : 10 s sur CABLE Output",
+    "[2026-08-21T14:22:06.257Z]   [C-reprise] F4z7KQooOQfJqh47PM0ETA:w-2 etat=actif cache=false mic-state=1 titre=\"Microphone actif — cliquez pour couper\"",
+    "[2026-08-21T14:22:06.257Z]   [C-reprise] F4z7KQooOQfJqh47PM0ETA:w-1 etat=actif cache=false mic-state=1 titre=\"Microphone actif — mais une autre fenêtre tient le micro de la VM : celle-ci n’y\"",
+    "[2026-08-21T14:22:06.257Z] mesure terminee"
+  ],
+  "phases": [
+    {
+      "phase": "0-repos",
+      "t": "2026-08-21T14:20:56.820Z",
+      "etats": [
+        {
+          "fenetre": "F4z7KQooOQfJqh47PM0ETA:w-2",
+          "etat": "ferme",
+          "cache": false,
+          "titre": "Microphone — cliquez pour parler",
+          "statut": "cliquez pour activer le son",
+          "statutCache": "false",
+          "micState": [],
+          "canaux": 2
+        },
+        {
+          "fenetre": "F4z7KQooOQfJqh47PM0ETA:w-1",
+          "etat": "ferme",
+          "cache": false,
+          "titre": "Microphone — cliquez pour parler",
+          "statut": "prêt — 780×492",
+          "statutCache": "true",
+          "micState": [],
+          "canaux": 2
+        }
+      ],
+      "juge": null
+    },
+    {
+      "phase": "A-une-seule",
+      "t": "2026-08-21T14:21:16.179Z",
+      "etats": [
+        {
+          "fenetre": "F4z7KQooOQfJqh47PM0ETA:w-2",
+          "etat": "actif",
+          "cache": false,
+          "titre": "Microphone actif — cliquez pour couper",
+          "statut": "cliquez pour activer le son",
+          "statutCache": "true",
+          "micState": [
+            {
+              "t": 1787322056909,
+              "brut": "{\"type\":\"mic-state\",\"v\":3,\"granted\":true}"
+            }
+          ],
+          "canaux": 2
+        },
+        {
+          "fenetre": "F4z7KQooOQfJqh47PM0ETA:w-1",
+          "etat": "ferme",
+          "cache": false,
+          "titre": "Microphone — cliquez pour parler",
+          "statut": "cliquez pour activer le son",
+          "statutCache": "false",
+          "micState": [],
+          "canaux": 2
+        }
+      ],
+      "juge": "JUGE micro-ecoute-e2 : prefixe='CABLE Output' secondes=10 debut=2026-08-21T16:21:05.5504113+02:00\r\n  capture[0] = CABLE Output (VB-Audio Virtual Cable)  ||  {0.0.1.00000000}.{5fae72b2-f885-4038-9827-0d91f862a7d5}\r\nCIBLE = CABLE Output (VB-Audio Virtual Cable)  ||  {0.0.1.00000000}.{5fae72b2-f885-4038-9827-0d91f862a7d5}\r\nFORMAT tag=EXTENSIBLE HZ=44100 canaux=2 bits=32 sous-format=00000003-0000-0010-8000-00aa00389b71\r\nPAQUETS=999 TRAMES=440559 TRAMES_SILENCE=0\r\nCRETE=0.054497\r\nFREQUENCE=440.0 AMPLITUDE=0.053827 (balayage 80..4000 Hz sur 32768 echantillons a 44100 Hz)\r\nFIN 2026-08-21T16:21:16.1427623+02:00\r"
+    },
+    {
+      "phase": "B-les-deux",
+      "t": "2026-08-21T14:21:35.240Z",
+      "etats": [
+        {
+          "fenetre": "F4z7KQooOQfJqh47PM0ETA:w-2",
+          "etat": "actif",
+          "cache": false,
+          "titre": "Microphone actif — cliquez pour couper",
+          "statut": "cliquez pour activer le son",
+          "statutCache": "true",
+          "micState": [
+            {
+              "t": 1787322056909,
+              "brut": "{\"type\":\"mic-state\",\"v\":3,\"granted\":true}"
+            }
+          ],
+          "canaux": 2
+        },
+        {
+          "fenetre": "F4z7KQooOQfJqh47PM0ETA:w-1",
+          "etat": "actif",
+          "cache": false,
+          "titre": "Microphone actif — mais une autre fenêtre tient le micro de la VM : celle-ci n’y est pas entendue",
+          "statut": "Votre micro est ouvert, mais une autre fenêtre tient le micro de la VM — fermez-la, ou coupez son micro, pour être entendu depuis celle-ci.",
+          "statutCache": "false",
+          "micState": [
+            {
+              "t": 1787322076268,
+              "brut": "{\"type\":\"mic-state\",\"v\":3,\"granted\":false}"
+            }
+          ],
+          "canaux": 2
+        }
+      ],
+      "juge": "JUGE micro-ecoute-e2 : prefixe='CABLE Output' secondes=10 debut=2026-08-21T16:21:24.7990557+02:00\r\n  capture[0] = CABLE Output (VB-Audio Virtual Cable)  ||  {0.0.1.00000000}.{5fae72b2-f885-4038-9827-0d91f862a7d5}\r\nCIBLE = CABLE Output (VB-Audio Virtual Cable)  ||  {0.0.1.00000000}.{5fae72b2-f885-4038-9827-0d91f862a7d5}\r\nFORMAT tag=EXTENSIBLE HZ=44100 canaux=2 bits=32 sous-format=00000003-0000-0010-8000-00aa00389b71\r\nPAQUETS=1000 TRAMES=441000 TRAMES_SILENCE=0\r\nCRETE=0.058212\r\nFREQUENCE=440.0 AMPLITUDE=0.056232 (balayage 80..4000 Hz sur 32768 echantillons a 44100 Hz)\r\nFIN 2026-08-21T16:21:35.1851690+02:00\r"
+    },
+    {
+      "phase": "C-reprise",
+      "t": "2026-08-21T14:22:06.257Z",
+      "etats": [
+        {
+          "fenetre": "F4z7KQooOQfJqh47PM0ETA:w-2",
+          "etat": "actif",
+          "cache": false,
+          "titre": "Microphone actif — cliquez pour couper",
+          "statut": "cliquez pour activer le son",
+          "statutCache": "true",
+          "micState": [
+            {
+              "t": 1787322056909,
+              "brut": "{\"type\":\"mic-state\",\"v\":3,\"granted\":true}"
+            }
+          ],
+          "canaux": 2
+        },
+        {
+          "fenetre": "F4z7KQooOQfJqh47PM0ETA:w-1",
+          "etat": "actif",
+          "cache": false,
+          "titre": "Microphone actif — mais une autre fenêtre tient le micro de la VM : celle-ci n’y est pas entendue",
+          "statut": "Votre micro est ouvert, mais une autre fenêtre tient le micro de la VM — fermez-la, ou coupez son micro, pour être entendu depuis celle-ci.",
+          "statutCache": "false",
+          "micState": [
+            {
+              "t": 1787322076268,
+              "brut": "{\"type\":\"mic-state\",\"v\":3,\"granted\":false}"
+            }
+          ],
+          "canaux": 2
+        }
+      ],
+      "juge": "JUGE micro-ecoute-e2 : prefixe='CABLE Output' secondes=10 debut=2026-08-21T16:21:55.8461675+02:00\r\n  capture[0] = CABLE Output (VB-Audio Virtual Cable)  ||  {0.0.1.00000000}.{5fae72b2-f885-4038-9827-0d91f862a7d5}\r\nCIBLE = CABLE Output (VB-Audio Virtual Cable)  ||  {0.0.1.00000000}.{5fae72b2-f885-4038-9827-0d91f862a7d5}\r\nFORMAT tag=EXTENSIBLE HZ=44100 canaux=2 bits=32 sous-format=00000003-0000-0010-8000-00aa00389b71\r\nPAQUETS=999 TRAMES=440559 TRAMES_SILENCE=0\r\nCRETE=0.058056\r\nFREQUENCE=440.0 AMPLITUDE=0.037266 (balayage 80..4000 Hz sur 32768 echantillons a 44100 Hz)\r\nFIN 2026-08-21T16:22:06.2268368+02:00\r"
+    }
+  ],
+  "erreurs": [],
+  "chrome": "Chrome/151.0.7922.169",
+  "console_pages": [
+    {
+      "t": 1787322041335,
+      "sid": "5837A84709E27EFD0705F52CDA7D3B71",
+      "niveau": "debug",
+      "texte": "[vite] connecting..."
+    },
+    {
+      "t": 1787322041358,
+      "sid": "5837A84709E27EFD0705F52CDA7D3B71",
+      "niveau": "debug",
+      "texte": "[vite] connected."
+    },
+    {
+      "t": 1787322049098,
+      "sid": "0AA853D7C126CAE3A039ADDC3851F82E",
+      "niveau": "debug",
+      "texte": "[vite] connecting..."
+    },
+    {
+      "t": 1787322049116,
+      "sid": "0AA853D7C126CAE3A039ADDC3851F82E",
+      "niveau": "debug",
+      "texte": "[vite] connected."
+    },
+    {
+      "t": 1787322049161,
+      "sid": "72FB1BEE503274F90AE28F2050F352F0",
+      "niveau": "debug",
+      "texte": "[vite] connecting..."
+    },
+    {
+      "t": 1787322049171,
+      "sid": "72FB1BEE503274F90AE28F2050F352F0",
+      "niveau": "debug",
+      "texte": "[vite] connected."
+    },
+    {
+      "t": 1787322052440,
+      "sid": "72FB1BEE503274F90AE28F2050F352F0",
+      "niveau": "debug",
+      "texte": "[instrumentation resize] declenchement ResizeObserver Object"
+    },
+    {
+      "t": 1787322052644,
+      "sid": "72FB1BEE503274F90AE28F2050F352F0",
+      "niveau": "debug",
+      "texte": "[instrumentation resize] emission Object"
+    }
+  ],
+  "etat_shell": "{\"href\":\"http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA\",\"jeton\":true}",
+  "fenetres_ouvertes": 2,
+  "fenetres": [
+    "F4z7KQooOQfJqh47PM0ETA:w-2",
+    "F4z7KQooOQfJqh47PM0ETA:w-1"
+  ],
+  "diagnostic_bouton": [
+    {
+      "href": "http://127.0.0.1:5173/?session=F4z7KQooOQfJqh47PM0ETA%3Aw-2&signaling=ws%3A%2F%2F192.168.3.1%3A8080",
+      "statut": "Connexion…",
+      "video": true,
+      "cache": true,
+      "canaux": 2,
+      "injecte": true
+    },
+    {
+      "href": "http://127.0.0.1:5173/?session=F4z7KQooOQfJqh47PM0ETA%3Aw-1&signaling=ws%3A%2F%2F192.168.3.1%3A8080",
+      "statut": "Connexion…",
+      "video": true,
+      "cache": true,
+      "canaux": 2,
+      "injecte": true
+    }
+  ],
+  "boutons_visibles": 2,
+  "t_avant_tout_clic": 1787322056804,
+  "t_clic_A": 1787322056826,
+  "t_clic_B": 1787322076184,
+  "session_gagnante": null,
+  "pids_enfants": {
+    "F4z7KQooOQfJqh47PM0ETA:w-2": "1496",
+    "F4z7KQooOQfJqh47PM0ETA:w-1": "3180"
+  },
+  "reprise_non_jouee": "aucun PID apparié à la session gagnante"
+}

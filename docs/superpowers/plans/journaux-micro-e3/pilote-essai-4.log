@@ -1,0 +1,9 @@
+[2026-08-21T14:17:24.322Z] jeton de recette obtenu
+[2026-08-21T14:17:24.845Z] chrome : Chrome/151.0.7922.169
+[2026-08-21T14:17:24.895Z] navigation : http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA
+[2026-08-21T14:17:28.910Z] etat de la shell : {"href":"http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA","jeton":true}
+[2026-08-21T14:17:28.910Z] la page-shell est connectee : lancement de l agent
+scripts/run-agent.sh: ligne 25: /media/vm/dev/run-agent.ps1: L'hôte cible est arrêté ou en panne
+[2026-08-21T14:17:39.194Z] ERREUR : Error: Command failed: bash -c cd /home/mallanic/Projects/Guacamole && set -a && source .env && set +a && export AGENT_VM=c7446189-8a5b-469d-a5b8-14a49967a965 AGENT_SECRET=***RETIRE-DE-L-HISTORIQUE*** SUPERVISEUR=1 SIGNALING_URL=ws://192.168.3.1:8080 RUST_LOG=info && scripts/run-agent.sh
+scripts/run-agent.sh: ligne 25: /media/vm/dev/run-agent.ps1: L'hôte cible est arrêté ou en panne
+[2026-08-21T14:17:39.195Z] sortie : /tmp/e3/pilote-essai-4.json
