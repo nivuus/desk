@@ -632,3 +632,14 @@ que pour redresser une affirmation fausse — et **légué** plutôt que dissimu
     dissimulation ne se distingue que par le nom de son fichier.
 14. ⛔ **Le périphérique par défaut de la session INTERACTIVE n'a jamais été
     relevé** — tous les relevés WinRM sont ceux de la session 0.
+    > ✅ **MESURÉ EN SESSION 1 LE 21 AOÛT 2026 (bloc E3, tâche 11), et la
+    > concordance TIENT.** Sonde par tâche planifiée `/it`, dont la ligne
+    > `SESSION=1` **prouve** la session au lieu de la supposer :
+    > `CAPTURE_Default` et `CAPTURE_Communications` rendent le MÊME identifiant,
+    > `{0.0.1.00000000}.{5fae72b2-…}`, qui est celui de **CABLE Output (VB-Audio
+    > Virtual Cable)**. ⚠️ WinRT n'expose que **DEUX** rôles (`Default` couvre
+    > `eConsole` et `eMultimedia`) là où l'API COM en distingue trois : ce relevé
+    > ne les sépare pas, et le dire vaut mieux que d'en annoncer trois.
+    > ⚠️ **La voie COM a échoué** — le transtypage d'un `__ComObject` vers une
+    > interface `ComImport` rend `$null` EN SILENCE sous ce PowerShell —, et la
+    > sonde est versée avec son échec.

@@ -462,15 +462,29 @@ tous `dead_code`**, **706 tests d'hôte**, conformes aux références d'entrée.
    entreraient sinon dans une file bornée à 32. Le bouton reste `'actif'`,
    seuls le libellé et le bandeau changent : éteindre un bouton dont le
    navigateur émet réellement est le mensonge visuel que la spec §9 écarte.
-   ⚠️ **FERMÉ SUR PIÈCES, PAS EXERCÉ SUR LA VM** : cinq tests d'hôte et trois
-   rouges (R3, R4, R5) l'établissent ; **aucune session réelle ne l'a montré**,
-   la VM étant tenue par un chantier concurrent pendant tout E3.
+   ✅ **ET EXERCÉ SUR LA VM**, la VM ayant été rendue par le chantier
+   concurrent : deux exécutions, deux enfants, un témoin de fil posé sur
+   `RTCDataChannel` et indépendant de notre code client. **TROIS messages par
+   exécution pour ~4 500 dépôts** — le garde de transition tient —, chacun
+   arrivant **51 à 88 ms APRÈS** son clic et **jamais avant**, et le libellé
+   de la perdante lu à l'écran. *(Cette annotation disait « PAS EXERCÉ SUR LA
+   VM » ; elle était juste à sa date, et l'a cessé le jour même.)*
 3. ⛔ **L'exclusivité à DEUX ENFANTS n'est pas exercée** (§5) — il y faut le mode
    superviseur.
 
-   ⛔ **TOUJOURS PAS EXERCÉE après E3, et pour une raison EXTERNE au produit** :
-   la VM Windows était tenue par le chantier « pont fichiers F5 » pendant tout
-   le bloc. ⚠️ **Une des trois raisons que ce document donnait est en revanche
+   ✅ **EXERCÉE PAR E3, et le montage qui compte a été joué** (2 exécutions) :
+   deux enfants, PID distincts, `micro : une autre fenetre tient deja le cable`
+   **exactement UNE fois et sur la PERDANTE seule**, la gagnante n'en ayant
+   aucune ; le juge sur CABLE Output à **440,0 Hz** aux trois phases ; et
+   `micro : cable acquis apres un refus` à la reprise. E2 n'avait exercé que le
+   chemin de CODE, contre un processus tiers tenant le même mutex.
+   ⚠️ **REPLI DE LA DÉCISION 9 EMPLOYÉ ET DÉCLARÉ** : une SEULE tonalité —
+   `--use-file-for-fake-audio-capture` est un drapeau de PROCESSUS et la
+   page-shell ouvre ses fenêtres dans SON instance. **Le juge établit donc que
+   QUELQU'UN est entendu, jamais LEQUEL** ; le discriminant repose sur les deux
+   autres pièces de la Décision 9.
+   *(Cette annotation disait « TOUJOURS PAS EXERCÉE après E3 » ; elle était
+   juste à sa date, et l'a cessé le jour même — la VM a été rendue.)* ⚠️ **Une des trois raisons que ce document donnait est en revanche
    PÉRIMÉE** : « le registre reste pollué » (§5) ne borne plus rien depuis D10,
    qui fait tolérer au superviseur une sortie née trop grande — 3 → 10 fenêtres,
    32 → 0 erreur, sur un registre laissé sale. Les deux autres tiennent.
@@ -498,10 +512,28 @@ tous `dead_code`**, **706 tests d'hôte**, conformes aux références d'entrée.
    🔴 **La PREMIÈRE moitié tient ENTIÈREMENT** : la latence de bout en bout
    n'est mesurée par **rien** dans ce dépôt depuis D1, et **le troisième critère
    de la spec §13 reste NON JUGÉ**. E3 en rend la seconde composante observable,
-   il ne la juge pas — et **le contrôle qui la lirait n'a pas été joué**, faute
-   de VM.
+   il ne la juge pas. ✅ **Le contrôle qui la lit A ÉTÉ JOUÉ** (2 exécutions) :
+   **166 lignes de trace, 166 portant `occupation_ms=`, 166 portant
+   `famines=`**, et les VALEURS ont un sens — micro éteint `famines=102
+   occupation_ms=0`, micro allumé `deposees=51 famines=0 occupation_ms=40`
+   (exécution 1) et `20` (exécution 2). Les famines tombent à zéro exactement
+   quand le micro alimente, et l'occupation diffère d'une exécution à l'autre :
+   c'est une mesure, pas une constante.
 8. ⛔ **Deux replis livrés et jamais courus** : `Local\` et `Reveil::Echeance`.
-9. ⛔ **`MICRO_FAUTE_ECRITURE` n'a jamais été armée.**
+9. ✅ **`MICRO_FAUTE_ECRITURE` A ÉTÉ ARMÉE PAR E3 — pour la première fois, et
+   elle mord** (1 exécution) : le `run-agent.ps1` **généré** porte
+   `$env:MICRO_FAUTE_ECRITURE = '3'`, **deux** lignes `ARMEE` (une par enfant :
+   le budget est global au PROCESSUS), **deux** `micro : ecriture sur le cable
+   echouee, fil de rendu arrete`, **zéro** ligne `micro ecrit sur le cable`, et
+   le juge sur CABLE Output à **0,000000**.
+   🔵 **Cette exécution est le TÉMOIN NÉGATIF de toute la campagne E3** : le
+   même juge, sur le même point de terminaison, rend 440,0 Hz aux deux
+   exécutions nominales. Sans elle, « le juge entend 440 Hz » ne serait pas
+   discriminant d'un juge qui entendrait 440 Hz quoi qu'il arrive.
+   🔴 **Et elle a RÉFUTÉ une affirmation de E3 lui-même** : `granted: true` ne
+   dit pas « ce micro atteint la VM » — le fil de rendu était mort et la fenêtre
+   l'a reçu quand même. C'est un verdict d'EXCLUSIVITÉ, jamais un accusé de
+   réception.
 10. ⛔ **La décroissance de 17,6 % de l'amplitude** sur sept minutes, non
     expliquée ; `autoGainControl` suspect non éprouvé.
 11. ⛔ **Aucune constante calibrée**, aucun jugement d'écoute.

@@ -1,24 +1,38 @@
 Note de lecture des journaux du bloc E3 — RELEVÉE PAR LA COMMANDE le 21 août
-2026, sur les seize fichiers de ce répertoire.
+2026, APRÈS la recette VM, sur les 65 fichiers de ce répertoire.
 
-    grep -acP '\x1b\['   →  0  sur les seize   (aucune séquence ANSI)
-    grep -acU $'\r'      →  0  sur les seize   (aucun CRLF)
-    tr -dc '\000' | wc -c→  0  sur les seize   (aucun octet NUL)
-    file --mime-encoding →  utf-8 ou us-ascii  (aucun « binary »)
+    fichiers                        : 65
+    portant des séquences ANSI      :  6   (les journaux d'agent BRUTS)
+    portant des CRLF                : 24   (ils viennent de la VM ; sans effet)
+    portant un octet NUL            :  0
+    non décodables en UTF-8         :  0
 
-UNE SEULE FAMILLE DE LECTURE : ils se `grep`ent À PLAT, sans `sed`, sans
-`grep -a`, sans `iconv`.
+DEUX FAMILLES DE LECTURE :
 
-⚠️ CE N'EST PAS UN MÉRITE, C'EST UNE CONSÉQUENCE DU PÉRIMÈTRE. Les trois
-familles de D6, les quatre de D8, les trois de D9 et les deux de E1/E2 viennent
-toutes d'un chemin qui passe par la VM Windows, dont `run-agent.sh` et
-`build-agent.sh` ne posent pas `[Console]::OutputEncoding` — le « défaut à deux
-réglages », TOUJOURS NON CORRIGÉ. Tout ce que E3 a joué a tourné sur l'hôte.
+| Famille | Compte | Ce qu'il faut faire |
+| --- | --- | --- |
+| les `agent-*.log` BRUTS | 6 | `sed 's/\x1b\[[0-9;]*m//g'` — ou lire le jumeau `-plat`, versé pour CHACUN des six |
+| tout le reste (`*-plat.log`, `pilote-*.{json,log}`, `juge-*.log`, `r[0-5]*.log`, `instrument/`) | 59 | rien : ils se `grep`ent à plat |
 
-🔴 ET C'EST AUSSI CE QUI MANQUE À CE RÉPERTOIRE : il ne contient AUCUN journal
-d'agent. Les seize fichiers sont sept journaux de ROUGE, le harnais, ses six
-scripts de mutation, le contrôle de recette de la trace du câble — versé PRÊT,
-jamais joué — et cette note. Les recettes ①, ②, ③ du plan (familles ③) exigent
-la VM, tenue par le chantier « pont fichiers F5 » pendant tout le bloc ; la
-sonde S1 (famille ①) exige un consentement sur le graphe audio de l'hôte qui
-n'a pas été donné. **Les deux absences sont déclarées, pas comblées.**
+✅ **AUCUN octet NUL nulle part** : contrairement à D10 et au presse-papier P1,
+`grep -a` n'est nécessaire sur aucun fichier d'ici. ⚠️ *L'employer quand même ne
+coûte rien, et une sortie VIDE n'est pas un zéro — c'est le piège qu'il évite.*
+
+⚠️ **Les 24 CRLF viennent de la VM** (journaux d'agent bruts, leurs jumeaux
+`-plat`, et le journal de la sonde de périphérique par défaut). Ils ne gênent
+aucun `grep`.
+
+🔵 **CE RÉPERTOIRE PORTE DEUX SORTES DE PIÈCES, ET LES DEUX COMPTENT** :
+
+  - les SEPT journaux de ROUGE (`r0-harnais.log` à `r5-*.log`) et le harnais,
+    joués sur l'HÔTE, sans VM ;
+  - la RECETTE sur la VM : deux exécutions retenues (`1`, `2`), une d'injection
+    de faute (`faute`), et **CINQ exécutions d'essai versées AVEC LEUR
+    DIAGNOSTIC** (`essai-1` à `essai-5`) — ce sont les pièces des quatre défauts
+    d'instrument que seule l'exécution pouvait trouver. Les effacer laisserait
+    croire que le montage a marché du premier coup.
+
+⛔ **CE QUE CE RÉPERTOIRE NE CONTIENT PAS, et c'est déclaré** : rien de la sonde
+S1 (la salle émulée, l'AEC de Chrome). Elle exige de toucher le graphe audio
+PipeWire de l'utilisateur de la machine hôte, et **ce consentement n'a pas été
+donné**. Aucune configuration audio de l'hôte n'a été modifiée.
