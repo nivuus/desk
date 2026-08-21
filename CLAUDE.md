@@ -15923,6 +15923,231 @@ constaté sur un `unused_variables`.
 
 ---
 
+## 📲 Sous-projet ④ Gestion d'apps — sous-bloc G5 : la PWA par application (21 août 2026)
+
+Résultats : `docs/superpowers/plans/2026-08-21-gestion-apps-g5-resultats.md`.
+Plan : `docs/superpowers/plans/2026-08-21-gestion-apps-g5.md`.
+Journaux : `docs/superpowers/plans/journaux-gestion-apps-g5/` — **UNE SEULE
+FAMILLE DE LECTURE**, et c'est **mesuré** : aucun fichier ne porte de séquence
+ANSI, de `\r` ni d'octet NUL. Ils se `grep`ent à plat, **sans `sed`, sans
+`grep -a`**. La raison est structurelle : ce sont des sorties `npm`/`node`/`bash`
+sur l'**hôte**, jamais du PowerShell distant.
+
+### 🔴 Le fait n°1 : un `<link rel="manifest">` NE PORTE PAS D'`Authorization`
+
+G2 avait nommé l'obstacle sur les icônes (`routes-icone.ts:20-26`) et laissé la
+décision au propriétaire du dépôt. **G5 a mesuré qu'il est D'UN CRAN PLUS
+HAUT** : le **manifeste lui-même** est allé chercher par le navigateur **sans
+en-tête**, et ⑤ ne pose **aucun cookie** — son porteur vit dans `localStorage`,
+qui ne voyage sur aucune requête que le navigateur émet de lui-même.
+
+**La voie retenue ne touche AUCUNE route** : la page, elle, est authentifiée.
+Elle lit catalogue et icônes par `fetch` porteur, encode l'image en `data:`,
+publie le manifeste en `blob:`. **Mesuré, 2 exécutions par sonde** : Chromium le
+charge, l'analyse et le juge **installable**, et **le témoin servi par HTTP
+ordinaire rend EXACTEMENT le même relevé** — ce qui diffère entre `blob:` et
+HTTP est **rien**.
+
+> 🔵 **AUCUNE DÉCISION DE SÉCURITÉ N'A ÉTÉ PRISE, ET ELLE RESTE ENTIÈRE.**
+> Ouvrir la route d'icône, ou signer une URL expirante, reste possible et reste
+> au propriétaire du dépôt. Ce que G5 ajoute pour l'éclairer : une route ouverte
+> exposerait **le `nom` et le PNG, et rien d'autre** — `cible`, `arguments` et
+> `repertoire` ne traversent jamais, et l'`id` est un UUID engendré par la
+> plateforme.
+
+### 🔴 Le fait n°2 : `getAppManifest().errors` N'EST PAS UN VERDICT D'INSTALLABILITÉ
+
+**Le plan jugeait le critère ① dessus. Pris à la lettre, il rendait ① NON
+MESURABLE.** Une icône trop petite laisse cette liste **VIDE** — ce n'est pas
+une erreur d'**analyse**. Le verdict est **`Page.getInstallabilityErrors`**.
+
+⚠️ **Les DEUX listes sont nécessaires**, et une sonde l'établit : sur un
+manifeste à URL relatives, `errors` porte bien deux entrées. **Confondre l'une
+pour l'autre rend un critère non mesurable EN LE FAISANT PARAÎTRE VERT.**
+
+### ⚠️ Trois faits de navigateur, mesurés, que rien n'annonçait
+
+| Fait | Mesure |
+| --- | --- |
+| **Sous un manifeste `blob:`, les URL doivent être ABSOLUES** | un `start_url: '/x.html'` — la forme de tout manifeste servi par HTTP — est REFUSÉ : « property 'start_url' ignored, URL is invalid. » **C'est la différence entre installable et refusé**, pas un détail d'écriture. Rejouable : sonde `f` de `instrument/porte-p0.mjs` |
+| **Le seuil d'icône est 144**, et Chromium le NOMME | la conception de ④ écrit « en dessous de **192** ». Sans conséquence sur la ROUGE (témoin à 128, sous les deux seuils) — **mais qui poserait 160 en se croyant dessous obtiendrait un VERT** |
+| **`beforeinstallprompt` SE DÉCLENCHE en `--headless=new`** | contre le pronostic du plan, et **seulement quand l'application est installable** : présent aux dix exécutions vertes, absent aux quatre rouges. **Second discriminant, indépendant du premier** |
+
+🔵 **ET AUCUN SERVICE WORKER N'EST EXIGÉ** : `getRegistrations().length` vaut
+**0** et l'application est installable. Le service worker reste **hors périmètre
+par décision**, jamais par improvisation — destinataire nommé : le chantier de
+retrait du legacy, verrou **C5**.
+
+### Les trois critères, et le legs de S4
+
+**Deux exécutions chacun, relevés identiques. AUCUN TAUX.**
+
+| # | Critère | Verdict |
+| --- | --- | --- |
+| ① | une application découverte est **installable** | **TENU** — `installabilityErrors: []` |
+| ② | le glisser-déposer marche **sans aucun file handler** | **TENU** — l'amendement est gardé |
+| ③ | le test empirique est **joué et son résultat écrit** | **TENU**, et il **tranche** |
+| — | le WCO de S4 | ⚠️ **NON MESURABLE PAR CE MONTAGE** |
+
+**① — trois issues distinctes, sur des DONNÉES et non des mutations** :
+`Bloc-notes` (PNG 256) **installable** ; `Temoin-128` (PNG 128) et `Sans-icone`
+**refusées**. 🔴 **La ROUGE de ① est une DONNÉE — une application témoin dans la
+base —, ce qui est plus fort qu'une mutation** : elle traverse **tout le chemin
+de production**.
+
+**② — deux rouges, dont une d'ATTEIGNABILITÉ.** `launchQueue` retiré
+(`if (false)`) : le dépôt **aboutit**. L'écouteur `drop` vidé : le bandeau **ne
+bouge plus**. 🔴 **Sans la seconde, un dépôt qui ne fonctionnerait PAS DU TOUT
+passerait la première exactement comme un dépôt indépendant.** ⚠️ Et
+`launchQueue` **EXISTE** en headless (mesuré) : la rouge retire du code **vivant**.
+
+**③ — la sonde qui tranche.** Le manifeste parsé que rend le CDP n'expose
+**aucun** `fileHandlers`, et un `errors` vide ne départageait pas « accepté » de
+« ignoré ». Une `action` posée **hors scope** fait rendre à Chromium
+« property 'action' ignored, should be within scope of the manifest. » :
+**Chromium ANALYSE donc bel et bien `file_handlers`**, et l'`errors` vide du
+bras vert est une **acceptation**. 🔴 **Trois des quatre obstacles de
+l'amendement restent NON ÉPROUVÉS** : le hash `UserChoice` de Windows,
+Linux/macOS, ChromeOS.
+
+### 🔴 Le défaut que la recette a trouvé : le manifeste MENTAIT sur son icône
+
+`batirManifeste` prenait un `coteIcone` **optionnel** valant **256** par défaut ;
+`page.ts` ne le passait pas. Le témoin à icône 128 publiait donc `256x256`.
+**Chromium l'a attrapé** — il décode l'image — **mais un manifeste qui ment sur
+ce qu'il porte est un défaut même rattrapé** : à 200 px annoncés 256, il aurait
+**accepté**. ⚠️ **Aucun test d'hôte ne pouvait le voir : le défaut était dans
+l'APPELANT, qui omettait un paramètre OPTIONNEL.** Le remède **retire** le
+paramètre — la taille est **lue dans les octets** (`cotePng`, l'IHDR, pur).
+
+### 🔴 Le hub n'est PAS installable, et ses `file_handlers` sont donc inertes
+
+`installabilityErrors` du hub : `manifest-missing-suitable-icon`. **Son manifeste
+n'a aucune icône**, et `file_handlers` n'a d'effet que pour une PWA **installée**.
+⚠️ **G5 n'en fabrique pas pour autant** : ⑥ est clos, sa spec dit « ④ livre un hub
+**fonctionnel** ; ⑥ l'habille », et poser un aplat ferait **paraître** ③ meilleur
+sans rien mesurer de plus. **Legs nommé.** 🔵 Les manifestes **par application**,
+eux, ont leur icône et **sont installables**.
+
+### La tranche F — jouée, et sa porte a changé d'avis en une heure
+
+⚠️ **À l'heure prescrite (avant la tâche 17), la porte était FERMÉE** : G4 non
+clos, A1 non clos, VM prise → **RETIRÉE**, écrit et versé. Une heure plus tard :
+G4 clos, A1 clos et ayant rendu la VM, `proto/` propre → **JOUÉE**.
+
+> 🔵 **UNE PORTE QUI LIT L'ÉTAT DES VOISINS N'A DE VERDICT QU'ASSORTI DE SON
+> HEURE.** Le premier relevé était juste, sa conclusion aussi, et les deux ont
+> cessé de l'être **sans qu'aucune ligne du plan ne bouge**.
+
+**`PLATEFORME_VERSION` passe de 4 à 5** — `Application` gagne `accent` et
+`associations`, **EN UN SEUL COMMIT** avec tous ses consommateurs (D16 : la
+structure porte `deny_unknown_fields`, donc **aucun des deux ordres possibles ne
+compilerait**). Cela ferme les divergences **E1** (la couleur d'accent
+n'existait **nulle part** dans ④) et **E2** (l'agent ne lisait **aucune**
+association — le verbe « alimentés » de la spec supposait un tuyau inexistant).
+
+🔵 **MESURÉ SUR LA VM, sur le catalogue RÉEL** (220 raccourcis / 156 clés) :
+**149 accents sur 156**, **87 valeurs distinctes**, **221 associations** sur 21
+applications, et un manifeste par application `installabilityErrors: []` portant
+`theme_color: #30a7fe` et 42 extensions.
+
+> 🔵 **DEUX CORROBORATIONS QUE PERSONNE N'A CONÇUES.**
+> ① Les accents sont **reconnaissables** : Photoshop rend un bleu, Illustrator
+> un orange, Creative Cloud un rouge, et **aucune de ces valeurs n'a été choisie
+> par nous**. ⚠️ **C'est une corroboration, jamais une preuve** — elle ne vaut
+> que parce que ces icônes sont fortement colorées, et le sens des canaux est
+> tenu par le test d'hôte de `bgra_en_rgba`.
+> ② **7 applications ont une icône SANS avoir d'accent** : la clause 5 de
+> `dominante` (trop pâle, trop sombre, trop transparent) est **atteignable sur
+> des données réelles** — ce qui la distingue d'un ornement.
+
+✅ **Un legs du sous-projet ① fermé en passant** : la conversion **BGRA → RGBA**
+vivait derrière un `#[cfg(windows)]` **sans aucun test** (legs RA1-6). G5 en
+avait besoin une seconde fois ; **en écrire une copie aurait doublé une règle
+que personne ne vérifiait**. Elle est descendue dans `accent.rs`, **pure et
+testée**, et le site d'origine l'appelle.
+
+### ⚠️ Deux rouges ÉTRANGERS relevés à la clôture, et NON touchés
+
+| Chantier | Test | Nature |
+| --- | --- | --- |
+| **G4** | `apps::surveillance::faute::une_famille_ne_consomme_pas_le_budget_d_une_autre` | **INTERMITTENT — 1 échec sur 12 en parallèle, 0 sur 12 en `--test-threads=1`.** État **global au processus** partagé par des tests que rien ne sérialise. 🔴 **La CONCEPTION est bonne** — c'est la leçon de D10 sur `AUDIO_FAUTE_LECTURE` ; ce sont ses **TESTS** qui se marchent dessus |
+| **F5** | `client/src/fichiers/protocole.annonces.test.ts` | **DÉTERMINISTE, 3/3.** Fichier de F5 (`018fb70`), qui a du travail **non commité** dans `agent/src/pont/`, et le titre porte le marqueur 🔴 de la discipline rouge-d'abord : **c'est SA rouge en cours** |
+
+**G5 n'y touche pas** : corriger la rouge d'un chantier actif la lui volerait, et
+le test de G4 appartient à un sous-bloc clos.
+
+### Pièges neufs — à connaître avant de toucher à ce terrain
+
+- 🔴 **`Page.getAppManifest().errors` N'EST PAS UN VERDICT D'INSTALLABILITÉ**
+  (voir le fait n°2). Et **il rend un objet MÊME quand la page n'a pas de
+  manifeste** : `errors` vaut `[]`, `data` est nul, **et c'est l'`url` VIDE qui
+  le dit**.
+- 🔴 **UN `**` SUIVI D'UN `/*` FERME UN COMMENTAIRE CSS**, et le build échoue sur
+  « Unknown word » **à une ligne sans rapport**. Le piège que S1 a payé dans
+  `vite.config.ts`, rejoué dans une autre syntaxe. **Ne jamais écrire de glob
+  dans un commentaire.**
+- 🔴 **UN IMPORT SANS SON EXTENSION `.ts` DANS `client/vite.config.ts` LAISSE LE
+  BUILD VERT ET CASSE DEUX CONTRÔLES DE ⑥.** `tokens-orphelins.mjs` et
+  `classes-employees.mjs` **importent ce fichier** pour en dériver leur
+  périmètre, et **Node** exige l'extension là où Vite s'en passe. Symptôme :
+  `ERR_MODULE_NOT_FOUND` sur §7.6 et §7.9, build parfaitement vert.
+- 🔴 **§7.2 BALAIE LES `.ts` AUTANT QUE LES `.css`.** Il a attrapé **cinq**
+  couleurs littérales de G5, en deux fois. **Le remède est de retirer la
+  couleur, jamais d'élargir l'exclusion** — ce serait satisfaire un contrôle en
+  le vidant. ⚠️ **Et ce remède a un COÛT ailleurs** : lire la valeur sur
+  `tokens.css` fait passer ses lecteurs de **neuf à ONZE**, donc alourdit la
+  scission que D3 refuse.
+- ⚠️ **`Uint8Array` N'EST PAS UN `BlobPart`** (`Uint8Array<ArrayBufferLike>`,
+  possiblement `SharedArrayBuffer`). Trouvé par `npm run typecheck`, **jamais
+  par Vitest**, qui transpile sans vérifier les types.
+- ⚠️ **UNE PAGE SERVIE SUR UN AUTRE PORT QUE LA PLATEFORME EXIGE
+  `?plateforme=`** : `adressePlateforme` retombe sur l'origine de la **page** —
+  le cas **nominal** derrière le proxy de P5. Symptôme : un hub qui ne peuple
+  jamais, sans erreur de page ni ligne de console.
+- 🔴 **`PLATEFORME_ORIGINE_CLIENT` DOIT ÊTRE VÉRIFIÉE SUR LE PROCESSUS QUI
+  ÉCOUTE.** Un `kill %1` a visé un job du shell au lieu du PID, et l'ancienne
+  instance a survécu : le préflight rendait `204` **sans un seul en-tête
+  `Access-Control-Allow-Origin`**, et le navigateur refusait en silence.
+  `tr '\0' '\n' < /proc/<pid>/environ` — la méthode du chantier TURN.
+- ⚠️ **UNE MUTATION DU CLIENT EXIGE UN REBUILD AVANT LA RECETTE**, sans quoi elle
+  sert le build d'**avant** et se croit verte en mesurant le produit intact.
+- 🔴 **VÉRIFIER UN BINAIRE PAR UNE CHAÎNE EXIGE TROIS RELEVÉS, PAS UN** : la
+  chaîne neuve, un **témoin négatif**, et une chaîne **préexistante**. Sans la
+  troisième, un `0` d'absence et un `0` de mauvais chemin se lisent **pareil** —
+  ce que A1 a payé quelques heures plus tôt.
+
+### Ce que G5 lègue
+
+1. 🔴 **Le hub n'est pas installable, faute d'icône** — ses `file_handlers` ne
+   peuvent **jamais** être honorés par un système.
+2. 🔴 **Le WCO n'a jamais été rendu.** Le legs de S4 est **transmis avec sa
+   raison**, pas éteint : G5 apporte la **déclaration**, que Chromium retient
+   (`displayOverrides: ["kWindowControlsOverlay","kStandalone"]`), et rien de plus.
+3. 🔴 **Une URL `blob:` morte** : le manifeste n'existe que dans l'onglet qui l'a
+   construit. Ce que fait Chromium quand une PWA installée le re-cherche **n'est
+   mesuré par rien**.
+4. ⛔ **Trois des quatre obstacles de l'amendement du 28/07/2026** restent non
+   éprouvés.
+5. ⛔ **`--accent-fenetre` reste sans déclaration et sans appelant**, et **la
+   scission de `client/src/design/tokens.css`** — 300/300, **ONZE** lecteurs et
+   non sept — reste due au premier chantier qui devra déclarer un token. La note
+   vit dans `journaux-gestion-apps-g5/20-scission-tokens.md`, avec la variante
+   moins coûteuse (**extraire la DOCTRINE, pas les déclarations**).
+6. ⛔ **Le service worker** — verrou **C5** du retrait du legacy. **P0-d a établi
+   qu'il n'est PAS une dépendance de l'installabilité.**
+7. ⛔ **`hub.html` n'est pas dans `SURFACES_PRODUIT` de §7.9 ② A** — la seule
+   liste **en dur** du socle de ⑥, que ④ n'a pas juridiction pour modifier.
+8. ⛔ **Le lancement depuis une PWA (`?app=` dans `shell-page.ts`) est LIVRÉ et
+   exercé par AUCUN critère.**
+9. ⛔ **La carte extension → MIME n'est pas calibrée** : sur le corpus réel, la
+   plupart des extensions tombent sur `application/octet-stream`.
+10. 🔴 **AUCUN JUGEMENT VISUEL n'a été porté, sur aucune page.** Une recette a
+    ouvert `hub.html` dans un Chromium sans interface ; **personne ne l'a
+    regardée**. Les **vingt-cinq** jugements humains de ⑥ restent entiers, et G5
+    en ajoute **cinq**.
+
+
 ## 🚀 Commandes de Développement Essentielles
 
 ### Build & Run

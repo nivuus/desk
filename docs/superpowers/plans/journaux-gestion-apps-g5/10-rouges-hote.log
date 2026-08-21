@@ -1,0 +1,292 @@
+### ROUGE 0 — mutation NULLE, le harnais DOIT refuser
+════════════════════════════════════════════════════════════════
+ROUGE 0 (mutation nulle)
+  fichier : client/src/hub/manifeste.ts
+  ancre   : export function cotePng
+  vers    : export function cotePng
+  sha256 avant : b5e4763849d64272c1d15f2c8fd5840e27c0fe317fb30687eb206c8a26098d35
+  occurrences de l'ancre : 1
+  lignes de diff contre la copie : 0
+  ⛔ REFUSEE : DIFF VIDE — la mutation n'a rien mute, ce n'est pas une rouge
+code=4
+
+### ROUGE 5 — l'`id` du manifeste devient une constante
+════════════════════════════════════════════════════════════════
+ROUGE 5 (id constant)
+  fichier : client/src/hub/manifeste.ts
+  ancre   :         id: `${base}/shell.html?app=${app}`,
+  vers    :         id: `${base}/shell.html`,
+  sha256 avant : b5e4763849d64272c1d15f2c8fd5840e27c0fe317fb30687eb206c8a26098d35
+  occurrences de l'ancre : 1
+  lignes de diff contre la copie : 4
+  ── sortie du controle ──
+
+ RUN  v2.1.9 /home/mallanic/Projects/Guacamole/client
+
+ × src/hub/manifeste.test.ts > batirManifeste > rend des URL ABSOLUES — la contrainte que la porte P0 a mesurée
+   → expected 'https://exemple.test/shell.html' to be 'https://exemple.test/shell.html?app=u…' // Object.is equality
+ ✓ src/hub/manifeste.test.ts > batirManifeste > tolère une origine à barre oblique finale sans doubler la barre
+ × src/hub/manifeste.test.ts > batirManifeste > échappe l'identifiant dans start_url et id
+   → expected 'https://x/shell.html' to be 'https://x/shell.html?app=a%2Fb%3Fc' // Object.is equality
+ × src/hub/manifeste.test.ts > batirManifeste > donne à DEUX applications des `id` DISTINCTS sous un `scope` PARTAGÉ
+   → expected 'https://x/shell.html' not to be 'https://x/shell.html' // Object.is equality
+ ✓ src/hub/manifeste.test.ts > batirManifeste > pose display_override avec le Window Controls Overlay en tête
+ ✓ src/hub/manifeste.test.ts > batirManifeste > OMET theme_color quand aucun accent n'est connu, plutôt que d'en inventer un
+ ✓ src/hub/manifeste.test.ts > batirManifeste > pose theme_color quand un accent est donné
+ ✓ src/hub/manifeste.test.ts > batirManifeste > n'a AUCUNE icône quand aucune n'est fournie
+ ✓ src/hub/manifeste.test.ts > batirManifeste > porte l'icône en data: et déclare le côté LU DANS SES OCTETS
+ ✓ src/hub/manifeste.test.ts > batirManifeste > déclare 128x128 sur un PNG de 128 — ce que la ROUGE du critère ① exige
+ ✓ src/hub/manifeste.test.ts > batirManifeste > ignore une icône VIDE plutôt que de déclarer une entrée sans image
+ ✓ src/hub/manifeste.test.ts > batirManifeste > N'AFFIRME RIEN sur des octets qui ne sont pas un PNG : aucune icône déclarée
+ ✓ src/hub/manifeste.test.ts > versDataUrl > encode en base64 sans dépendance
+ ✓ src/hub/manifeste.test.ts > versDataUrl > encode un tampon plus long que le paquet sans déborder la pile
+ ✓ src/hub/manifeste.test.ts > la couleur de fond > est un PARAMÈTRE, et le manifeste rend EXACTEMENT ce qu'on lui donne
+ ✓ src/hub/manifeste.test.ts > la couleur de fond > ne confond pas le fond et l'accent
+ ✓ src/hub/manifeste.test.ts > cotePng > lit le côté dans l'IHDR
+ ✓ src/hub/manifeste.test.ts > cotePng > rend undefined sur une signature qui n'est pas celle d'un PNG
+ ✓ src/hub/manifeste.test.ts > cotePng > rend undefined quand le premier morceau n'est pas IHDR
+ ✓ src/hub/manifeste.test.ts > cotePng > rend undefined sur un tampon trop court pour porter un en-tête
+ ✓ src/hub/manifeste.test.ts > cotePng > rend undefined sur une image NON CARRÉE plutôt que d'en décrire une fausse
+ ✓ src/hub/manifeste.test.ts > cotePng > lit une taille sur QUATRE octets, pas seulement sur le dernier
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/hub/manifeste.test.ts > batirManifeste > rend des URL ABSOLUES — la contrainte que la porte P0 a mesurée
+AssertionError: expected 'https://exemple.test/shell.html' to be 'https://exemple.test/shell.html?app=u…' // Object.is equality
+
+Expected: "https://exemple.test/shell.html?app=u-1"
+Received: "https://exemple.test/shell.html"
+
+ ❯ src/hub/manifeste.test.ts:49:22
+     47|         expect(m.start_url).toBe('https://exemple.test/shell.html?app=…
+     48|         expect(m.scope).toBe('https://exemple.test/');
+     49|         expect(m.id).toBe('https://exemple.test/shell.html?app=u-1');
+       |                      ^
+     50|         for (const url of [m.start_url, m.scope, m.id]) {
+     51|             expect(url.startsWith('https://')).toBe(true);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  src/hub/manifeste.test.ts > batirManifeste > échappe l'identifiant dans start_url et id
+AssertionError: expected 'https://x/shell.html' to be 'https://x/shell.html?app=a%2Fb%3Fc' // Object.is equality
+
+Expected: "https://x/shell.html?app=a%2Fb%3Fc"
+Received: "https://x/shell.html"
+
+ ❯ src/hub/manifeste.test.ts:64:22
+     62|         const m = batirManifeste({ id: 'a/b?c', nom: 'X' }, 'https://x…
+     63|         expect(m.start_url).toBe('https://x/shell.html?app=a%2Fb%3Fc');
+     64|         expect(m.id).toBe('https://x/shell.html?app=a%2Fb%3Fc');
+       |                      ^
+     65|     });
+     66| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  src/hub/manifeste.test.ts > batirManifeste > donne à DEUX applications des `id` DISTINCTS sous un `scope` PARTAGÉ
+AssertionError: expected 'https://x/shell.html' not to be 'https://x/shell.html' // Object.is equality
+ ❯ src/hub/manifeste.test.ts:70:26
+     68|         const a = batirManifeste({ id: 'u-1', nom: 'A' }, 'https://x',…
+     69|         const b = batirManifeste({ id: 'u-2', nom: 'B' }, 'https://x',…
+     70|         expect(a.id).not.toBe(b.id);
+       |                          ^
+     71|         expect(a.scope).toBe(b.scope);
+     72|     });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 19 passed (22)
+   Start at  12:39:39
+   Duration  856ms (transform 132ms, setup 0ms, collect 143ms, tests 37ms, environment 0ms, prepare 122ms)
+
+  ── code de sortie du controle : 1 ──
+  sha256 apres : b5e4763849d64272c1d15f2c8fd5840e27c0fe317fb30687eb206c8a26098d35
+  ✅ restauration verifiee par l'empreinte
+VERDICT ROUGE 5 (id constant) : controle sorti en 1
+code=0
+
+### ROUGE 8 — `var(--accent-fenetre)` dans hub.css : §7.6 DOIT rougir
+### C'est la MESURE QUI FONDE LA DECISION D3, jouee UNE fois puis restauree.
+════════════════════════════════════════════════════════════════
+ROUGE 8 (--accent-fenetre)
+  fichier : client/src/hub/hub.css
+  ancre   :     border-color: var(--accent);
+  vers    :     border-color: var(--accent-fenetre, var(--accent));
+  sha256 avant : f33490a5a47598740dd0fec016a673c085789d1814390996e0b36b3912afcd18
+  occurrences de l'ancre : 1
+  lignes de diff contre la copie : 4
+  ── sortie du controle ──
+source        : client/src/design/tokens.css — 52 token(s) déclaré(s)
+périmètre     : 17 fichier(s) — 53 token(s) employé(s)
+  balayés : client/src/connexion.css, client/src/design/base.css, client/src/design/primitives/bouton.css, client/src/design/primitives/champ.css, client/src/design/primitives/message.css, client/src/design/primitives/surface.css, client/src/design/primitives.css, client/src/design/socle.css, client/src/hub/hub.css, client/src/session/boutons-de-coin.css, client/src/session/etat-terminal.css, client/src/shell.css, client/src/style.css, client/index.html, client/shell.html, client/connexion.html, client/hub.html
+  exclu : client/design.html — la galerie rend tous les tokens par construction ; l’inclure rendrait l’inclusion « déclaré ⊆ employé » vraie pour toujours
+  exclu : client/primitives.html — une page de démonstration emploie des tokens par construction, dans sa propre mise en page ; l’inclure ferait sortir de la liste d’attente des tokens que le PRODUIT n’appelle pas
+
+inclusion ① — tout var(--…) est déclaré : 1 écart(s)
+  NON DÉCLARÉ  --accent-fenetre  employé par client/src/hub/hub.css
+inclusion ② — tout token déclaré a un appelant : 0 orphelin(s), dont 0 en attente déclarée
+
+inclusion ③ — aucune entrée ne nomme un sous-bloc clos (S1, S2, S3, S4) : 0 écart(s)
+
+total : 1 écart(s)
+  ── code de sortie du controle : 1 ──
+  sha256 apres : f33490a5a47598740dd0fec016a673c085789d1814390996e0b36b3912afcd18
+  ✅ restauration verifiee par l'empreinte
+VERDICT ROUGE 8 (--accent-fenetre) : controle sorti en 1
+code=0
+
+### ROUGE 7 — une `@media (display-mode: window-controls-overlay)` dans hub.css
+### Elle eprouve que G5 N'A PAS LE DROIT de peindre par @media (decision D3).
+════════════════════════════════════════════════════════════════
+ROUGE 7 (@media WCO)
+  fichier : client/src/hub/hub.css
+  ancre   : .hub__message {
+  vers    : @media (display-mode: window-controls-overlay) { .hub { padding-block-start: var(--e-8); } }
+.hub__message {
+  sha256 avant : f33490a5a47598740dd0fec016a673c085789d1814390996e0b36b3912afcd18
+  occurrences de l'ancre : 1
+  lignes de diff contre la copie : 2
+  ── sortie du controle ──
+
+ RUN  v2.1.9 /home/mallanic/Projects/Guacamole/client
+
+stdout | src/style.test.ts
+garde WCO  feuilles de client/src/ : 14
+           env(titlebar-area-*) lus : 2
+           client/src/session/etat-terminal.css  env(titlebar-area-height, 0px)
+           client/src/style.css  env(titlebar-area-height, 0px)
+
+ ✓ src/style.test.ts > le Window Controls Overlay — la règle est livrée, et elle est INERTE > ③ atteignabilité : il existe au moins un env(titlebar-area-) à lire
+ ✓ src/style.test.ts > le Window Controls Overlay — la règle est livrée, et elle est INERTE > ① tout env(titlebar-area-*) porte le repli 0px
+ × src/style.test.ts > le Window Controls Overlay — la règle est livrée, et elle est INERTE > ② aucune requête @media conditionnelle au WCO
+   → une @media (display-mode: window-controls-overlay) peut changer la mise en page sans qu’aucune commande ne le dise: expected [ Array(1) ] to deeply equal []
+ ✓ src/style.test.ts > style.css — les gardes de la fenêtre de session > ② atteignabilité : la feuille déclare des règles
+ ✓ src/style.test.ts > style.css — les gardes de la fenêtre de session > ① le bouton plein écran actif est HORS du flux d’événements
+ ✓ src/style.test.ts > style.css — les gardes de la fenêtre de session > ③ l’écran terminal reste MASQUÉ tant qu’il porte `hidden`
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/style.test.ts > le Window Controls Overlay — la règle est livrée, et elle est INERTE > ② aucune requête @media conditionnelle au WCO
+AssertionError: une @media (display-mode: window-controls-overlay) peut changer la mise en page sans qu’aucune commande ne le dise: expected [ Array(1) ] to deeply equal []
+
+- Expected
++ Received
+
+- Array []
++ Array [
++   "client/src/hub/hub.css  @media (display-mode: window-controls-overlay)",
++ ]
+
+ ❯ src/style.test.ts:158:11
+    156|             requetesWco.map((r) => `${r.fichier}  ${r.prelude}`),
+    157|             'une @media (display-mode: window-controls-overlay) peut c…
+    158|         ).toEqual([]);
+       |           ^
+    159|     });
+    160| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 5 passed (6)
+   Start at  12:40:07
+   Duration  1.03s (transform 259ms, setup 0ms, collect 320ms, tests 27ms, environment 0ms, prepare 218ms)
+
+  ── code de sortie du controle : 1 ──
+  sha256 apres : f33490a5a47598740dd0fec016a673c085789d1814390996e0b36b3912afcd18
+  ✅ restauration verifiee par l'empreinte
+VERDICT ROUGE 7 (@media WCO) : controle sorti en 1
+code=0
+
+### ROUGE 6 — un repli NON NUL sur env(titlebar-area-height) dans style.css
+### Sa consequence est REELLE AUJOURD'HUI : le bandeau descend de 8 px sur TOUTES les sessions.
+════════════════════════════════════════════════════════════════
+ROUGE 6 (repli non nul)
+  fichier : client/src/style.css
+  ancre   :     inset-block-start: calc(env(titlebar-area-height, 0px) + var(--e-3));
+  vers    :     inset-block-start: calc(env(titlebar-area-height, 8px) + var(--e-3));
+  sha256 avant : 152b2e7ac045769bd803f4e6ad695baa250378e7d0fb931f4278fec11ae8d096
+  occurrences de l'ancre : 1
+  lignes de diff contre la copie : 4
+  ── sortie du controle ──
+
+ RUN  v2.1.9 /home/mallanic/Projects/Guacamole/client
+
+stdout | src/style.test.ts
+garde WCO  feuilles de client/src/ : 14
+           env(titlebar-area-*) lus : 2
+           client/src/session/etat-terminal.css  env(titlebar-area-height, 0px)
+           client/src/style.css  env(titlebar-area-height, 8px)
+
+stdout | src/design/longueurs.test.ts
+§7.10  feuilles de surface : 6
+       déclarations lues : 190, dont 103 par un token
+       client/src/style.css  inset-block-start: calc(env(titlebar-area-height, 8px) + var(--e-3))  → « 8px »
+       hors token : 1 occurrence(s), 1 valeur(s) distincte(s) — 8px
+
+ ✓ src/design/longueurs.test.ts > §7.10 — aucune longueur hors token dans une feuille de surface > atteignabilité : des feuilles sont lues, et des longueurs y passent par un token
+ × src/design/longueurs.test.ts > §7.10 — aucune longueur hors token dans une feuille de surface > toute longueur passe par un token, hors les trois exceptions nommées
+   → longueurs hors token : 1 occurrence(s) pour 1 valeur(s) distincte(s): expected [ Array(1) ] to deeply equal []
+ ✓ src/style.test.ts > le Window Controls Overlay — la règle est livrée, et elle est INERTE > ③ atteignabilité : il existe au moins un env(titlebar-area-) à lire
+ × src/style.test.ts > le Window Controls Overlay — la règle est livrée, et elle est INERTE > ① tout env(titlebar-area-*) porte le repli 0px
+   → un env(titlebar-area-*) sans le repli « , 0px » change la mise en page AUJOURD’HUI: expected [ Array(1) ] to deeply equal []
+ ✓ src/style.test.ts > le Window Controls Overlay — la règle est livrée, et elle est INERTE > ② aucune requête @media conditionnelle au WCO
+ ✓ src/style.test.ts > style.css — les gardes de la fenêtre de session > ② atteignabilité : la feuille déclare des règles
+ ✓ src/style.test.ts > style.css — les gardes de la fenêtre de session > ① le bouton plein écran actif est HORS du flux d’événements
+ ✓ src/style.test.ts > style.css — les gardes de la fenêtre de session > ③ l’écran terminal reste MASQUÉ tant qu’il porte `hidden`
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/style.test.ts > le Window Controls Overlay — la règle est livrée, et elle est INERTE > ① tout env(titlebar-area-*) porte le repli 0px
+AssertionError: un env(titlebar-area-*) sans le repli « , 0px » change la mise en page AUJOURD’HUI: expected [ Array(1) ] to deeply equal []
+
+- Expected
++ Received
+
+- Array []
++ Array [
++   "client/src/style.css  env(titlebar-area-height, 8px)",
++ ]
+
+ ❯ src/style.test.ts:150:11
+    148|             envs.filter((e) => e.repli !== ', 0px').map((e) => `${e.fi…
+    149|             'un env(titlebar-area-*) sans le repli « , 0px » change la…
+    150|         ).toEqual([]);
+       |           ^
+    151|     });
+    152| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/design/longueurs.test.ts > §7.10 — aucune longueur hors token dans une feuille de surface > toute longueur passe par un token, hors les trois exceptions nommées
+AssertionError: longueurs hors token : 1 occurrence(s) pour 1 valeur(s) distincte(s): expected [ Array(1) ] to deeply equal []
+
+- Expected
++ Received
+
+- Array []
++ Array [
++   "client/src/style.css  inset-block-start: calc(env(titlebar-area-height, 8px) + var(--e-3))  → « 8px »",
++ ]
+
+ ❯ src/design/longueurs.test.ts:199:11
+    197|             occurrences.map((o) => `${o.fichier}  ${o.propriete}: ${o.…
+    198|             `longueurs hors token : ${occurrences.length} occurrence(s…
+    199|         ).toEqual([]);
+       |           ^
+    200|     });
+    201| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+ Test Files  2 failed (2)
+      Tests  2 failed | 6 passed (8)
+   Start at  12:40:28
+   Duration  1.06s (transform 366ms, setup 0ms, collect 545ms, tests 73ms, environment 1ms, prepare 371ms)
+
+  ── code de sortie du controle : 1 ──
+  sha256 apres : 152b2e7ac045769bd803f4e6ad695baa250378e7d0fb931f4278fec11ae8d096
+  ✅ restauration verifiee par l'empreinte
+VERDICT ROUGE 6 (repli non nul) : controle sorti en 1
+code=0

@@ -1,0 +1,51 @@
+applications au hub : 156
+bouton Installer : clic
+manifeste blob:      : true
+errors               : []
+installabilityErrors : []
+theme_color          : #30a7fe
+icons                : ["256x256"]
+file_handlers        : [
+ {
+  "action": "http://127.0.0.1:8900/hub.html?app=2d530005-ec57-43cc-8a33-d542fad282b6",
+  "accept": {
+   "application/octet-stream": [
+    ".3fr",
+    ".cr2",
+    ".crw",
+    ".dcr",
+    ".dng",
+    ".erf",
+    ".exr",
+    ".fff",
+    ".fl3",
+    ".hdr",
+    ".iiq",
+    ".jps",
+    ".mef",
+    ".mfw",
+    ".mnu",
+    ".mos",
+    ".mrw",
+    ".mtl",
+    ".nef",
+    ".nrw",
+    ".orf",
+    ".p3l",
+    ".p3m",
+    ".p3r",
+    ".pbm",
+    ".pcd",
+    ".pcx",
+    ".pdd",
+    ".pdp",
+    ".pef",
+    ".psb",
+    ".psdt",
+    ".pxr",
+    ".raf",
+    ".rwl",
+    ".sct",
+    ".shh",
+    ".srf",
+    

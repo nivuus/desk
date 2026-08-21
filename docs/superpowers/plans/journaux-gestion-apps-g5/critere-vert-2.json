@@ -1,0 +1,221 @@
+{
+  "horodatage": "2026-08-21T10:43:16.908Z",
+  "urlClient": "http://127.0.0.1:8500",
+  "urlPlateforme": "http://127.0.0.1:8300",
+  "pageHub": "http://127.0.0.1:8500/hub.html?plateforme=http%3A%2F%2F127.0.0.1%3A8300",
+  "jetonObtenu": true,
+  "navigateur": "Chrome/151.0.7922.169",
+  "applications": "[\"Bloc-notes\",\"Calculatrice\",\"Sans-icone\",\"Temoin-128\"]",
+  "message": "4 application(s) sur g5.",
+  "iconesChargees": 3,
+  "launchQueuePresent": true,
+  "installabilite": [
+    {
+      "application": "Bloc-notes",
+      "pose": "clic",
+      "url": "blob:http://127.0.0.1:8500/0dd16a52-27c6-4f94-abc4-2d0bb00f3025",
+      "estBlob": true,
+      "errors": [],
+      "installabilityErrors": [],
+      "displayOverride": null,
+      "manifestBrut": {
+        "name": "Bloc-notes",
+        "short_name": "Bloc-notes",
+        "id": "http://127.0.0.1:8500/shell.html?app=83270b8d-0cff-4cd0-b1b2-34fba72ebca8",
+        "start_url": "http://127.0.0.1:8500/shell.html?app=83270b8d-0cff-4cd0-b1b2-34fba72ebca8",
+        "scope": "http://127.0.0.1:8500/",
+        "display": "standalone",
+        "display_override": [
+          "window-controls-overlay",
+          "standalone"
+        ],
+        "background_color": "#ffffff",
+        "icons": [
+          {
+            "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQAAAAEACAYAAABccqhmAAADH0lEQVR4nO3UIQEAIBDAwM9NHEoiIQZiJ85PbdY+F2ia3wHAPwYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQYAYQ9hVi4PxWe+wAAAAABJRU5ErkJggg==",
+            "sizes": "256x256",
+            "type": "image/png",
+            "purpose": "any"
+          }
+        ]
+      }
+    },
+    {
+      "application": "Temoin-128",
+      "pose": "clic",
+      "url": "blob:http://127.0.0.1:8500/948ea67d-372b-4d6f-8d8b-657e2843fe40",
+      "estBlob": true,
+      "errors": [],
+      "installabilityErrors": [
+        {
+          "errorId": "manifest-missing-suitable-icon",
+          "errorArguments": [
+            {
+              "name": "minimum-icon-size-in-pixels",
+              "value": "144"
+            }
+          ]
+        },
+        {
+          "errorId": "no-acceptable-icon",
+          "errorArguments": [
+            {
+              "name": "minimum-icon-size-in-pixels",
+              "value": "144"
+            }
+          ]
+        }
+      ],
+      "displayOverride": null,
+      "manifestBrut": {
+        "name": "Temoin-128",
+        "short_name": "Temoin-128",
+        "id": "http://127.0.0.1:8500/shell.html?app=c4d3c5d6-55d3-426b-9808-38d6e8beef82",
+        "start_url": "http://127.0.0.1:8500/shell.html?app=c4d3c5d6-55d3-426b-9808-38d6e8beef82",
+        "scope": "http://127.0.0.1:8500/",
+        "display": "standalone",
+        "display_override": [
+          "window-controls-overlay",
+          "standalone"
+        ],
+        "background_color": "#ffffff",
+        "icons": [
+          {
+            "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAABL0lEQVR4nO3SIQEAIBDAwE9NDOoiIQZiJ85PbM7al675HYABMAAGwAAYAANgAAyAATAABsAAGAADYAAMgAEwAAbAABgAA2AADIABMAAGwAAYAANgAAyAATAABsAAGAADYAAMgAEwAAaIM0CcAeIMEGeAOAPEGSDOAHEGiDNAnAHiDBBngDgDxBkgzgBxBogzQJwB4gwQZ4A4A8QZIM4AcQaIM0CcAeIMEGeAOAPEGSDOAHEGiDNAnAHiDBBngDgDxBkgzgBxBogzQJwB4gwQZ4A4A8QZIM4AcQaIM0CcAeIMEGeAOAPEGSDOAHEGiDNAnAHiDBBngDgDxBkgzgBxBogzQJwB4gwQZ4A4A8QZIM4AcQaIM0CcAeIMEGeAOAPEGSDOAHEGiDNAnAHiDBD3AN5uiyOxhfSjAAAAAElFTkSuQmCC",
+            "sizes": "128x128",
+            "type": "image/png",
+            "purpose": "any"
+          }
+        ]
+      }
+    },
+    {
+      "application": "Sans-icone",
+      "pose": "clic",
+      "url": "blob:http://127.0.0.1:8500/b0222aa2-c008-4c8f-ba9e-289b90ba3bd2",
+      "estBlob": true,
+      "errors": [],
+      "installabilityErrors": [
+        {
+          "errorId": "manifest-missing-suitable-icon",
+          "errorArguments": [
+            {
+              "name": "minimum-icon-size-in-pixels",
+              "value": "144"
+            }
+          ]
+        },
+        {
+          "errorId": "no-acceptable-icon",
+          "errorArguments": [
+            {
+              "name": "minimum-icon-size-in-pixels",
+              "value": "144"
+            }
+          ]
+        }
+      ],
+      "displayOverride": null,
+      "manifestBrut": {
+        "name": "Sans-icone",
+        "short_name": "Sans-icone",
+        "id": "http://127.0.0.1:8500/shell.html?app=e45f9797-9f6a-47a1-aee6-e39c191b9759",
+        "start_url": "http://127.0.0.1:8500/shell.html?app=e45f9797-9f6a-47a1-aee6-e39c191b9759",
+        "scope": "http://127.0.0.1:8500/",
+        "display": "standalone",
+        "display_override": [
+          "window-controls-overlay",
+          "standalone"
+        ],
+        "background_color": "#ffffff",
+        "icons": []
+      }
+    }
+  ],
+  "wco": {
+    "declareParLeHub": [
+      "window-controls-overlay",
+      "standalone"
+    ],
+    "declareParApplication": null,
+    "titlebarAreaHeight": "env() supporte",
+    "fenetreEnBarreSuperposee": false
+  },
+  "manifesteHub": {
+    "url": "http://127.0.0.1:8500/hub.webmanifest",
+    "errors": [],
+    "data": {
+      "name": "Applications",
+      "short_name": "Applications",
+      "id": "/hub.html",
+      "start_url": "/hub.html",
+      "scope": "/",
+      "display": "standalone",
+      "display_override": [
+        "window-controls-overlay",
+        "standalone"
+      ],
+      "background_color": "#0b0d10",
+      "theme_color": "#7aa2f7",
+      "file_handlers": [
+        {
+          "action": "/hub.html",
+          "accept": {
+            "application/x-msi": [
+              ".msi"
+            ],
+            "application/vnd.microsoft.portable-executable": [
+              ".exe"
+            ],
+            "application/x-bat": [
+              ".bat"
+            ]
+          }
+        }
+      ]
+    },
+    "fileHandlers": null,
+    "manifestComplet": {
+      "backgroundColor": "rgba(11,13,16,1)",
+      "display": "kStandalone",
+      "displayOverrides": [
+        "kWindowControlsOverlay",
+        "kStandalone"
+      ],
+      "id": "http://127.0.0.1:8500/hub.html",
+      "name": "Applications",
+      "orientation": "DEFAULT",
+      "preferRelatedApplications": false,
+      "scope": "http://127.0.0.1:8500/",
+      "startUrl": "http://127.0.0.1:8500/hub.html",
+      "themeColor": "rgba(122,162,247,1)"
+    },
+    "installabilityErrors": [
+      {
+        "errorId": "manifest-missing-suitable-icon",
+        "errorArguments": [
+          {
+            "name": "minimum-icon-size-in-pixels",
+            "value": "144"
+          }
+        ]
+      },
+      {
+        "errorId": "no-acceptable-icon",
+        "errorArguments": [
+          {
+            "name": "minimum-icon-size-in-pixels",
+            "value": "144"
+          }
+        ]
+      }
+    ]
+  },
+  "depot": {
+    "avant": "4 application(s) sur g5.",
+    "apres": "temoin-g5.msi a été téléversé et scellé (1 tranche(s) déposée(s)).",
+    "classeDuBandeau": "message message--succes hub__message"
+  },
+  "console": [],
+  "erreursPage": []
+}

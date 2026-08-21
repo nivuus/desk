@@ -1,0 +1,26 @@
+### SONDE — CHROMIUM ANALYSE-T-IL VRAIMENT `file_handlers` ?
+### Le releve vert rend `fileHandlers: null` dans le manifeste PARSE. Deux
+### lectures s'opposent : ou Chromium les REJETTE, ou le CDP ne les SERIALISE
+### pas. On tranche en posant une `action` HORS SCOPE : si Chromium analyse
+### file_handlers, il DOIT s'en plaindre ; s'il l'ignore, rien ne bougera.
+════════════════════════════════════════════════════════════════
+ROUGE sonde (action hors scope)
+  fichier : client/vite.config.ts
+  ancre   :             action: '/hub.html',
+  vers    :             action: 'https://hors-scope.test/x',
+  sha256 avant : bc87404f587902e3fecd93b7386203acb0f59a4a42afd1171c9c970c44b55ba3
+  occurrences de l'ancre : 1
+  lignes de diff contre la copie : 4
+  ── sortie du controle ──
+launchQueuePresent : True
+depot avant : '4 application(s) sur g5.'
+depot apres : 'temoin-g5.msi a été téléversé et scellé (1 tranche(s) déposée(s)).'
+manifeste hub url : http://127.0.0.1:8500/hub.webmanifest
+  Bloc-notes     url=blob:http://127.0.0.1:85 install=[]
+  Temoin-128     url=blob:http://127.0.0.1:85 install=['manifest-missing-suitable-icon', 'no-acceptable-icon']
+  Sans-icone     url=blob:http://127.0.0.1:85 install=['manifest-missing-suitable-icon', 'no-acceptable-icon']
+  ── code de sortie du controle : 0 ──
+  sha256 apres : bc87404f587902e3fecd93b7386203acb0f59a4a42afd1171c9c970c44b55ba3
+  ✅ restauration verifiee par l'empreinte
+VERDICT ROUGE sonde (action hors scope) : controle sorti en 0
+code=0

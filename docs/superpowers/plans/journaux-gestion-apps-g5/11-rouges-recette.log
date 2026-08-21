@@ -1,0 +1,74 @@
+### ROUGE 3bis — ATTEIGNABILITE : on retire l'ecouteur `drop`.
+### Sans elle, la ROUGE 3 ne prouverait rien : un depot qui ne fonctionne
+### PAS DU TOUT passerait la ROUGE 3 exactement comme un depot independant.
+════════════════════════════════════════════════════════════════
+ROUGE 3bis (ecouteur drop retire)
+  fichier : client/src/hub/page.ts
+  ancre   :     const fichier = e.dataTransfer?.files?.[0];
+    if (fichier !== undefined) void traiterUnFichier(fichier);
+  vers    :     // ROUGE 3bis : l'ecouteur ne fait plus rien.
+  sha256 avant : bc7d49449341f288a070179c1cf7d130c03aeb67469adf1eb31e63fd0f36d58e
+  occurrences de l'ancre : 1
+  lignes de diff contre la copie : 5
+  ── sortie du controle ──
+launchQueuePresent : True
+depot avant : '4 application(s) sur g5.'
+depot apres : '4 application(s) sur g5.'
+manifeste hub url : http://127.0.0.1:8500/hub.webmanifest
+  Bloc-notes     url=blob:http://127.0.0.1:85 install=[]
+  Temoin-128     url=blob:http://127.0.0.1:85 install=['manifest-missing-suitable-icon', 'no-acceptable-icon']
+  Sans-icone     url=blob:http://127.0.0.1:85 install=['manifest-missing-suitable-icon', 'no-acceptable-icon']
+  ── code de sortie du controle : 0 ──
+  sha256 apres : bc7d49449341f288a070179c1cf7d130c03aeb67469adf1eb31e63fd0f36d58e
+  ✅ restauration verifiee par l'empreinte
+VERDICT ROUGE 3bis (ecouteur drop retire) : controle sorti en 0
+code=0
+
+### ROUGE 3 — LE CRITERE ② : on retire ENTIEREMENT le chemin `launchQueue`.
+### Le glisser-deposer DOIT rester VERT. S'il tombe aussi, l'amendement
+### du 28/07/2026 est VIOLE — et c'est un RESULTAT, pas un echec de rouge.
+════════════════════════════════════════════════════════════════
+ROUGE 3 (launchQueue retire)
+  fichier : client/src/hub/page.ts
+  ancre   : if ('launchQueue' in window) {
+  vers    : if (false) {
+  sha256 avant : bc7d49449341f288a070179c1cf7d130c03aeb67469adf1eb31e63fd0f36d58e
+  occurrences de l'ancre : 1
+  lignes de diff contre la copie : 4
+  ── sortie du controle ──
+launchQueuePresent : True
+depot avant : '4 application(s) sur g5.'
+depot apres : 'temoin-g5.msi a été téléversé et scellé (1 tranche(s) déposée(s)).'
+manifeste hub url : http://127.0.0.1:8500/hub.webmanifest
+  Bloc-notes     url=blob:http://127.0.0.1:85 install=[]
+  Temoin-128     url=blob:http://127.0.0.1:85 install=['manifest-missing-suitable-icon', 'no-acceptable-icon']
+  Sans-icone     url=blob:http://127.0.0.1:85 install=['manifest-missing-suitable-icon', 'no-acceptable-icon']
+  ── code de sortie du controle : 0 ──
+  sha256 apres : bc7d49449341f288a070179c1cf7d130c03aeb67469adf1eb31e63fd0f36d58e
+  ✅ restauration verifiee par l'empreinte
+VERDICT ROUGE 3 (launchQueue retire) : controle sorti en 0
+code=0
+
+### ROUGE 4 — le <link rel=manifest> du hub n'est plus injecte.
+### Le manifeste du hub, et ses file_handlers, DOIVENT disparaitre.
+════════════════════════════════════════════════════════════════
+ROUGE 4 (link manifest retire)
+  fichier : client/vite.config.ts
+  ancre   :             if (!ctx.path.endsWith('/hub.html')) return [];
+  vers    :             if (true) return [];
+  sha256 avant : bc87404f587902e3fecd93b7386203acb0f59a4a42afd1171c9c970c44b55ba3
+  occurrences de l'ancre : 1
+  lignes de diff contre la copie : 4
+  ── sortie du controle ──
+launchQueuePresent : True
+depot avant : '4 application(s) sur g5.'
+depot apres : 'temoin-g5.msi a été téléversé et scellé (1 tranche(s) déposée(s)).'
+manifeste hub url : 
+  Bloc-notes     url=blob:http://127.0.0.1:85 install=[]
+  Temoin-128     url=blob:http://127.0.0.1:85 install=['manifest-missing-suitable-icon', 'no-acceptable-icon']
+  Sans-icone     url=blob:http://127.0.0.1:85 install=['manifest-missing-suitable-icon', 'no-acceptable-icon']
+  ── code de sortie du controle : 0 ──
+  sha256 apres : bc87404f587902e3fecd93b7386203acb0f59a4a42afd1171c9c970c44b55ba3
+  ✅ restauration verifiee par l'empreinte
+VERDICT ROUGE 4 (link manifest retire) : controle sorti en 0
+code=0

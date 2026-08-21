@@ -245,3 +245,30 @@ CONFIRMATIONS DU PLAN, remesurées :
   entrées Vite : CINQ                                     ✓
   scripts/verify-all.sh : DIX appels `etape`              ✓ (« Les 10 étapes »)
   /dev/null : character special file                      ✓
+
+=== ❌ CORRECTION DE CE JOURNAL, PAR SON PROPRE AUTEUR (21 aout 2026, cloture) ===
+
+LA SYNTHESE CI-DESSUS AFFIRME : « CLAUDE.md en publie QUATRE [lignes de dette] :
+il y ajoute proto/src/plateforme/tests.rs 561 et proto/ts/plateforme.test.ts 512.
+[...] le tableau de dette de CLAUDE.md est faux de deux lignes. »
+
+C'EST FAUX, ET IL FAUT DIRE COMMENT. Le tableau de CLAUDE.md porte DEUX lignes,
+et il est JUSTE :
+  | `agent/src/encode.rs`          | 1536 |
+  | `agent/src/windows_source.rs`  | 630  |
+suivi de : « ✅ LES DEUX LIGNES DE `proto/` SONT SORTIES DE CETTE TABLE
+(21 aout 2026, sous-bloc G2, taches 1 et 2). »
+
+CE QUI S'EST PASSE : j'ai compare ma mesure a la version de CLAUDE.md que je
+portais en memoire, et non a CELLE DU DISQUE. G2 avait deja fait la correction,
+le matin meme. **J'ai donc mesure juste, et compare a un souvenir.**
+
+🔴 ET J'AI FAILLI M'ATTRIBUER LA CORRECTION D'UN VOISIN — le troisieme chantier
+a le faire, d'apres le coordinateur. La regle qui vaut : RELIRE `CLAUDE.md` SUR
+LE DISQUE, JUSTE AVANT D'Y ECRIRE, et ne jamais opposer une mesure fraiche a une
+lecture ancienne. Un compte n'est attribuable qu'assorti de son heure ; une
+CORRECTION ne l'est qu'assortie de son auteur.
+
+⚠️ Le reste de la synthese est INCHANGE : les nombres que j'ai mesures — 340 et
+462 pour les deux fichiers de `proto/` — sont exacts. C'est l'ECART avec
+CLAUDE.md qui n'existait pas.
