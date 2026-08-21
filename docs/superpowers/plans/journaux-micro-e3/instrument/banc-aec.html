@@ -1,0 +1,103 @@
+<!doctype html><meta charset="utf-8"><title>banc AEC E3</title>
+<body><h1>banc AEC E3</h1><pre id="etat">prêt</pre>
+<script>
+// La page du banc S1. Elle fait DEUX choses, et pas une de plus : RESTITUER un
+// ton dans la salle, et CAPTER la salle avec l'annulation d'écho de Chrome.
+//
+// ⚠️ `getUserMedia` n'existe QUE sur une origine sûre : cette page est servie
+// sur `http://127.0.0.1:<port>`, jamais sur une adresse d'interface.
+const etat = document.getElementById('etat');
+const dire = (m) => { etat.textContent += '\n' + m; window.__banc.journal.push(String(m)); };
+window.__banc = { journal: [], erreurs: [] };
+
+let ctxOut = null, osc = null, ctxIn = null, analyseur = null, flux = null;
+
+// ── RESTITUER ───────────────────────────────────────────────────────────────
+window.__jouer = async (hz) => {
+    ctxOut = new AudioContext();
+    await ctxOut.resume();                       // ⚠️ suspendu, il rend du silence
+    osc = ctxOut.createOscillator();
+    const g = ctxOut.createGain();
+    g.gain.value = 0.35;
+    osc.frequency.value = hz;
+    osc.connect(g).connect(ctxOut.destination);
+    osc.start();
+    dire(`joue ${hz} Hz, ctxOut=${ctxOut.state} taux=${ctxOut.sampleRate}`);
+    return JSON.stringify({ etat: ctxOut.state, taux: ctxOut.sampleRate });
+};
+
+// ── ÉNUMÉRER ────────────────────────────────────────────────────────────────
+window.__peripheriques = async () => {
+    // ⚠️ Les libellés sont vides tant qu'aucune permission n'a été accordée ;
+    // le banc appelle donc `getUserMedia` AVANT d'énumérer quand il veut lire
+    // des libellés. Ici on rend les deux, et le pilote décidera.
+    const l = await navigator.mediaDevices.enumerateDevices();
+    return JSON.stringify(l.map((d) => ({ kind: d.kind, label: d.label, id: d.deviceId.slice(0, 12) })));
+};
+
+// ── CAPTER, avec l'annulation d'écho de Chrome ──────────────────────────────
+window.__capter = async (aec) => {
+    // 🔴 RE-CAPTURABLE, et c'est ce qui rend le banc DIFFÉRENTIEL. Le niveau
+    // d'un ton résiduel ne se juge pas contre un plancher — la salle est du
+    // silence NUMÉRIQUE, son plancher est à −151 dB, et une annulation
+    // parfaitement efficace y laisse encore un résidu à +55 dB de ce
+    // plancher. **Ce qui se juge, c'est l'ÉCART entre `aec:false` et
+    // `aec:true` sur le MÊME son.** MESURÉ : la première rédaction de ce banc
+    // comparait au plancher et concluait « l'AEC ne fait rien » sur une AEC
+    // qui retirait 60 dB.
+    try { flux && flux.getTracks().forEach((t) => t.stop()); } catch (e) { /* rien */ }
+    try { ctxIn && await ctxIn.close(); } catch (e) { /* rien */ }
+    ctxIn = null; analyseur = null; flux = null;
+    // Les trois contraintes EXACTES de `client/src/micro.ts`, sauf `aec` que le
+    // banc pilote : c'est la variable de la mesure.
+    flux = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: aec, noiseSuppression: true, autoGainControl: true },
+    });
+    ctxIn = new AudioContext();
+    await ctxIn.resume();
+    const src = ctxIn.createMediaStreamSource(flux);
+    analyseur = ctxIn.createAnalyser();
+    analyseur.fftSize = 8192;
+    analyseur.smoothingTimeConstant = 0;
+    src.connect(analyseur);
+    const p = flux.getAudioTracks()[0];
+    dire(`capte aec=${aec} piste=${p && p.readyState} taux=${ctxIn.sampleRate}`);
+    return JSON.stringify({ aec, piste: p && p.readyState, taux: ctxIn.sampleRate,
+        contraintes: p && p.getSettings ? p.getSettings() : null });
+};
+
+// ── LIRE LE SPECTRE ─────────────────────────────────────────────────────────
+// 🔴 On rend le NIVEAU AUX FRÉQUENCES DEMANDÉES **et** la dominante, avec la
+// résolution. Une crête seule ne dirait rien : ce banc compare un son à
+// lui-même retardé, et la crête d'un écho ressemble à la crête d'un ton.
+window.__spectre = (cibles) => {
+    if (!analyseur) return JSON.stringify({ erreur: 'aucun analyseur' });
+    const n = analyseur.frequencyBinCount;
+    const d = new Float32Array(n);
+    analyseur.getFloatFrequencyData(d);
+    const pas = ctxIn.sampleRate / analyseur.fftSize;
+    let iMax = 0;
+    for (let i = 1; i < n; i += 1) if (d[i] > d[iMax]) iMax = i;
+    // Plancher : la MÉDIANE, insensible à quelques bacs qui dépassent.
+    const tri = Array.from(d).filter(Number.isFinite).sort((a, b) => a - b);
+    const plancher = tri.length ? tri[Math.floor(tri.length / 2)] : -1000;
+    const aux = {};
+    for (const f of cibles) {
+        const i = Math.round(f / pas);
+        aux[f] = (i >= 0 && i < n && Number.isFinite(d[i])) ? Number(d[i].toFixed(1)) : -1000;
+    }
+    return JSON.stringify({
+        resolution_hz: Number(pas.toFixed(2)),
+        dominante_hz: Number((iMax * pas).toFixed(1)),
+        dominante_db: Number(d[iMax].toFixed(1)),
+        plancher_db: Number(plancher.toFixed(1)),
+        aux,
+    });
+};
+
+window.__arreter = () => {
+    try { osc && osc.stop(); } catch (e) { /* déjà arrêté */ }
+    try { flux && flux.getTracks().forEach((t) => t.stop()); } catch (e) { /* idem */ }
+    return 'arrete';
+};
+</script></body>

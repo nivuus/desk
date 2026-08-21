@@ -1,0 +1,91 @@
+{
+  "mode": "s1ter",
+  "affichage": "<sans interface>",
+  "journal": [
+    "[2026-08-21T15:21:52.510Z] page servie sur http://127.0.0.1:5391",
+    "[2026-08-21T15:21:52.799Z] chrome : Chrome/151.0.7922.169 (sans interface)",
+    "[2026-08-21T15:21:54.336Z] fenêtre A ouverte",
+    "[2026-08-21T15:21:54.448Z] périphériques : [{\"kind\":\"audioinput\",\"label\":\"Par défaut\",\"id\":\"default\"},{\"kind\":\"audioinput\",\"label\":\"Salle E3 (microphone)\",\"id\":\"b449ac3af0f8\"},{\"kind\":\"audiooutput\",\"label\":\"Par défaut\",\"id\":\"default\"},{\"kind\":\"audiooutput\",\"label\":\"Salle E3 (haut-parleur)\",\"id\":\"d524ee88f085\"}]",
+    "[2026-08-21T15:21:54.460Z] A joue : {\"etat\":\"running\",\"taux\":48000}",
+    "[2026-08-21T15:22:02.963Z] juge de rendu : {\"fichier\":\"/tmp/e3/salle-s1ter-rendu.wav\",\"taux\":48000,\"canaux\":1,\"echantillons\":191488,\"duree_s\":3.989,\"resolution_hz\":0.251,\"dominante_hz\":440,\"amplitude\":0.174999,\"crete\":0.350006,\"db\":-15.1}",
+    "[2026-08-21T15:22:07.013Z] A capte SANS aec  : {\"resolution_hz\":5.86,\"dominante_hz\":439.5,\"dominante_db\":-42.1,\"plancher_db\":-178.6,\"aux\":{\"440\":-42.1,\"660\":-158.6}}",
+    "[2026-08-21T15:22:11.095Z] A capte AVEC aec  : {\"resolution_hz\":5.86,\"dominante_hz\":539.1,\"dominante_db\":-113,\"plancher_db\":-151.8,\"aux\":{\"440\":-123.3,\"660\":-120.8}}",
+    "[2026-08-21T15:22:11.096Z] TÉMOIN POSITIF — l'AEC retire 81.2 dB de la PROPRE restitution de A (-42.1 → -123.3 dB)",
+    "[2026-08-21T15:22:11.640Z] chrome n°2 : Chrome/151.0.7922.169",
+    "[2026-08-21T15:22:13.211Z] B (instance 2) joue : {\"etat\":\"running\",\"taux\":48000}",
+    "[2026-08-21T15:22:22.542Z] juge de la salle, deux instances : {\"fichier\":\"/tmp/e3/salle-s1ter-deux-instances.wav\",\"taux\":48000,\"canaux\":1,\"echantillons\":189184,\"duree_s\":3.941,\"resolution_hz\":0.254,\"dominante_hz\":440,\"amplitude\":0.174583,\"crete\":0.699554,\"db\":-15.2}",
+    "[2026-08-21T15:22:26.577Z] A, SANS aec, B en instance 2 : {\"resolution_hz\":5.86,\"dominante_hz\":439.5,\"dominante_db\":-42.1,\"plancher_db\":-171.8,\"aux\":{\"440\":-42.1,\"660\":-42.7}}",
+    "[2026-08-21T15:22:30.687Z] A, AVEC aec, B en instance 2 : {\"resolution_hz\":5.86,\"dominante_hz\":662.1,\"dominante_db\":-29.5,\"plancher_db\":-125.1,\"aux\":{\"440\":-98.3,\"660\":-29.5}}",
+    "[2026-08-21T15:22:30.687Z] ISSUE A (DEUX INSTANCES) — A=56.2 dB, B=-13.2 dB",
+    "[2026-08-21T15:22:30.687Z] mesure terminée"
+  ],
+  "etapes": [
+    {
+      "step": 2,
+      "voit_la_salle": true
+    },
+    {
+      "step": 3,
+      "juge": {
+        "fichier": "/tmp/e3/salle-s1ter-rendu.wav",
+        "taux": 48000,
+        "canaux": 1,
+        "echantillons": 191488,
+        "duree_s": 3.989,
+        "resolution_hz": 0.251,
+        "dominante_hz": 440,
+        "amplitude": 0.174999,
+        "crete": 0.350006,
+        "db": -15.1
+      },
+      "attendu_hz": 440
+    },
+    {
+      "step": 4,
+      "sans_aec": "{\"resolution_hz\":5.86,\"dominante_hz\":439.5,\"dominante_db\":-42.1,\"plancher_db\":-178.6,\"aux\":{\"440\":-42.1,\"660\":-158.6}}",
+      "avec_aec": "{\"resolution_hz\":5.86,\"dominante_hz\":539.1,\"dominante_db\":-113,\"plancher_db\":-151.8,\"aux\":{\"440\":-123.3,\"660\":-120.8}}",
+      "profondeur_db": 81.2
+    },
+    {
+      "step": "B-instance-2",
+      "juge": {
+        "fichier": "/tmp/e3/salle-s1ter-deux-instances.wav",
+        "taux": 48000,
+        "canaux": 1,
+        "echantillons": 189184,
+        "duree_s": 3.941,
+        "resolution_hz": 0.254,
+        "dominante_hz": 440,
+        "amplitude": 0.174583,
+        "crete": 0.699554,
+        "db": -15.2
+      }
+    }
+  ],
+  "erreurs": [],
+  "chrome": "Chrome/151.0.7922.169",
+  "peripheriques": "[{\"kind\":\"audioinput\",\"label\":\"Par défaut\",\"id\":\"default\"},{\"kind\":\"audioinput\",\"label\":\"Salle E3 (microphone)\",\"id\":\"b449ac3af0f8\"},{\"kind\":\"audiooutput\",\"label\":\"Par défaut\",\"id\":\"default\"},{\"kind\":\"audiooutput\",\"label\":\"Salle E3 (haut-parleur)\",\"id\":\"d524ee88f085\"}]",
+  "rend_dans_la_salle": true,
+  "capture_A": {
+    "sans_aec": "{\"aec\":false,\"piste\":\"live\",\"taux\":48000,\"contraintes\":{\"autoGainControl\":true,\"channelCount\":1,\"deviceId\":\"default\",\"echoCancellation\":false,\"groupId\":\"d25b37c33c9dbc6071c343c243c515fb87b6f019783ae71363c880ab1e245ca0\",\"latency\":0.01,\"noiseSuppression\":true,\"sampleRate\":48000,\"sampleSize\":16,\"voiceIsolation\":false}}",
+    "avec_aec": "{\"aec\":true,\"piste\":\"live\",\"taux\":48000,\"contraintes\":{\"autoGainControl\":true,\"channelCount\":1,\"deviceId\":\"default\",\"echoCancellation\":true,\"groupId\":\"d25b37c33c9dbc6071c343c243c515fb87b6f019783ae71363c880ab1e245ca0\",\"latency\":0.01,\"noiseSuppression\":true,\"sampleRate\":48000,\"sampleSize\":16,\"voiceIsolation\":false}}"
+  },
+  "profondeur_aec_db": 81.2,
+  "aec_annule_sa_propre_restitution": true,
+  "reference_sans_aec": {
+    "resolution_hz": 5.86,
+    "dominante_hz": 439.5,
+    "dominante_db": -42.1,
+    "plancher_db": -178.6,
+    "aux": {
+      "440": -42.1,
+      "660": -158.6
+    }
+  },
+  "profondeurs_deux_instances": {
+    "440": 56.2,
+    "660": -13.2
+  },
+  "b_presente_sans_aec": true,
+  "issue": "A"
+}

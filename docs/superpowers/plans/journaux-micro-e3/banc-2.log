@@ -1,0 +1,19 @@
+[2026-08-21T15:19:48.035Z] page servie sur http://127.0.0.1:5391
+[2026-08-21T15:19:48.447Z] chrome : Chrome/151.0.7922.169 (sans interface)
+[2026-08-21T15:19:49.993Z] fenêtre A ouverte
+[2026-08-21T15:19:50.112Z] périphériques : [{"kind":"audioinput","label":"Par défaut","id":"default"},{"kind":"audioinput","label":"Salle E3 (microphone)","id":"c701ed2a7936"},{"kind":"audiooutput","label":"Par défaut","id":"default"},{"kind":"audiooutput","label":"Salle E3 (haut-parleur)","id":"94d15d6fabb1"}]
+[2026-08-21T15:19:50.123Z] A joue : {"etat":"running","taux":48000}
+[2026-08-21T15:19:58.680Z] juge de rendu : {"fichier":"/tmp/e3/salle-s1bis-rendu.wav","taux":48000,"canaux":1,"echantillons":189440,"duree_s":3.947,"resolution_hz":0.253,"dominante_hz":440,"amplitude":0.174999,"crete":0.350006,"db":-15.1}
+[2026-08-21T15:20:02.775Z] A capte SANS aec  : {"resolution_hz":5.86,"dominante_hz":439.5,"dominante_db":-42.1,"plancher_db":-180.5,"aux":{"440":-42.1,"660":-158.1}}
+[2026-08-21T15:20:06.861Z] A capte AVEC aec  : {"resolution_hz":5.86,"dominante_hz":58.6,"dominante_db":-114.1,"plancher_db":-151.7,"aux":{"440":-123.4,"660":-124.4}}
+[2026-08-21T15:20:06.862Z] TÉMOIN POSITIF — l'AEC retire 81.3 dB de la PROPRE restitution de A (-42.1 → -123.4 dB)
+[2026-08-21T15:20:08.390Z] fenêtre B ouverte
+[2026-08-21T15:20:08.402Z] B joue : {"etat":"running","taux":48000}
+[2026-08-21T15:20:18.257Z] juge de la salle, deux tons : {"fichier":"/tmp/e3/salle-s1bis-deux-tons.wav","taux":48000,"canaux":1,"echantillons":189696,"duree_s":3.952,"resolution_hz":0.253,"dominante_hz":440,"amplitude":0.160217,"crete":0.699493,"db":-15.9}
+[2026-08-21T15:20:26.332Z] A, deux tons, SANS aec : {"resolution_hz":5.86,"dominante_hz":439.5,"dominante_db":-42.1,"plancher_db":-171.9,"aux":{"440":-42.1,"660":-42.7}}
+[2026-08-21T15:20:30.420Z] A, deux tons, AVEC aec : {"resolution_hz":5.86,"dominante_hz":64.5,"dominante_db":-117.9,"plancher_db":-151.5,"aux":{"440":-129.4,"660":-131.8}}
+[2026-08-21T15:20:30.421Z] ISSUE B — profondeur d'annulation : A(sa propre voix)=87.3 dB, B(l'autre fenêtre)=89.1 dB
+[2026-08-21T15:20:36.493Z] BRAS CASQUE (B ne rend plus, SANS aec) : {"resolution_hz":5.86,"dominante_hz":439.5,"dominante_db":-34.9,"plancher_db":-171.9,"aux":{"440":-34.9,"660":-162.8}}
+[2026-08-21T15:20:36.493Z] BRAS CASQUE — 660 Hz chute de 120.1 dB quand B cesse de rendre (-42.7 → -162.8 dB)
+[2026-08-21T15:20:36.493Z] mesure terminée
+[2026-08-21T15:20:36.495Z] sortie : /tmp/e3/banc-2.json
