@@ -1099,6 +1099,53 @@ Les quatre fichiers que la suite de tests couvrait ont été résorbés le
 > Il reste très en dessous du plafond — la sortie de dette qu'annonce cette
 > ligne n'est pas réfutée —, mais **le nombre qui la dit n'est plus le bon**.
 
+> ✅ **Relance du 21 août 2026, clôture du sous-bloc F5 (pont fichiers) — DERNIER
+> sous-bloc de ③ —, PAR LA COMMANDE, APRÈS la dernière édition de la ronde**,
+> revue transverse comprise. **Le tableau de dette a DEUX lignes, et les deux
+> sont INCHANGÉES** : `agent/src/encode.rs` **1536**,
+> `agent/src/windows_source.rs` **630**. F5 n'a touché ni l'un ni l'autre.
+> **Aucun autre fichier de code source ne dépasse 500 lignes.**
+>
+> ✅ **F5 A JOUÉ SES DEUX EXTRACTIONS PRÉALABLES, ET UNE TROISIÈME QU'AUCUN PLAN
+> NE PRESCRIVAIT** — toutes **AVANT** l'addition, aucune compression :
+> `agent/src/pont/ecriture/fil/contrat.rs` (**88**) sort `enum Ordre` et
+> `struct Config` **verbatim**, `fil.rs` **472 → 442** ;
+> `client/src/fichiers/protocole.annonces.test.ts` (**112**) sort la famille des
+> annonces, le parent **484 → 448**, **compte de tests inchangé** ; et
+> `agent/src/pont/service/annonces.rs` (**104**) sort la quatrième famille,
+> `service.rs` **463 → 380**. **Cette dernière a été jouée parce que la revue
+> transverse AJOUTE du commentaire** — S3 y a mis 48 lignes, et S2 a vu une
+> marge tomber de 30 à 17 par ce seul geste.
+>
+> ⚠️ **`agent/src/pont/ecriture/fil.rs` vaut 465 après avoir valu 442 à
+> l'extraction de `contrat.rs`, DANS CE MÊME SOUS-BLOC.** *La marge regagnée par
+> une extraction se reperd si on la traite comme acquise* — ce dépôt le paie
+> ici pour la sixième fois, et cette fois **dans la branche qui l'écrit**.
+>
+> ⚠️ **UNE EXTRACTION LAISSE SES IMPORTS DERRIÈRE ELLE, ET ILS SONT D'UNE AUTRE
+> FAMILLE QUE `dead_code`** : quatre `unused_imports` côté Rust
+> (`cargo check --target x86_64-pc-windows-gnu` passé de 24 à **28**), et un
+> `TS6133` côté TypeScript qui est un **ÉCHEC de `tsc --noEmit`**, pas un
+> avertissement. **Les deux ont été attrapés en lisant la NATURE et non le
+> nombre.** Après correction : **24**, tous `dead_code`.
+>
+> ⚠️ **Marges étroites relevées ce jour, par la commande** :
+> `agent/src/encode/arret.rs` **500** (0), `plateforme/src/http/routes-installation.ts`
+> **500** (0, du voisin ④), `client/verify-webrtc.mjs` **494** (6),
+> `agent/src/capture.rs` **492** (8), `agent/src/transport.rs` **488** (12),
+> `agent/src/superviseur/lanceur.rs` **488** (12),
+> `client/src/main.ts` **486** (14),
+> `agent/src/pont/transport/tests.rs` **474** (26) — ⛔ **délibérément NON
+> TOUCHÉ par F5**, dont la décision D2 place l'aiguillage dans `service.rs`
+> précisément pour ne pas ouvrir une porte à 26 lignes —, et
+> `agent/src/pont/ecriture/fil/tests.rs` **472** (28), qui est le seul fichier
+> de F5 dans la bande de vigilance.
+>
+> ⚠️ **`proto/src/control.rs` vaut 475 et `agent/src/windows_micro.rs` 471** :
+> tous deux du **chantier E3 (microphone)**, qui commitait dans le même arbre
+> pendant cette clôture. **Relevés, attribués, non corrigés** — ils ne sont pas
+> à moi.
+
 **Vérifier l'état** :
 
 ```bash
@@ -2978,6 +3025,7 @@ l'**enfant** ; et `main.rs:268` rend la main à `capteur::executer` avant que `d
 | `APPS_FAUTE=<debordement\|muette\|perte>:<n>` | **Sous-bloc G4** — **variable de BANC, jamais une configuration livrée**. `debordement:<n>` : les *n* prochaines complétions sont traitées comme des **débordements** — comptées, journalisées **et déclenchantes**. 🔵 `muette:<n>` : elles sont **AVALÉES** — ni comptées, ni journalisées, ni déclenchantes. **C'EST LE SEUL MONTAGE QUI RENDE LE CRITÈRE ③ DISCRIMINANT**, parce que dans cette conception un débordement est *lui-même* une complétion, donc un déclencheur, et se répare tout seul : la seule panne que la réconciliation périodique achète réellement est **une surveillance qui cesse de délivrer SANS ERREUR**. `perte:<n>` : erreur fatale de handle, pour observer le rétablissement. ⚠️ **Convention `absente = DÉSARMÉE`**, celle d'`AUDIO_FAUTE_LECTURE`, d'`AUDIO_FAUTE_RECONSTRUCTION` et d'`INSTALLATION_FAUTE` — **jamais** celle de `PLEIN_ECRAN`, et les deux lignes sont écrites côte à côte ici pour qu'on ne les confonde pas. ⚠️ **`debordement:0` vaut l'absence** : un budget nul est une injection qui ne tirera jamais, et la déclarer « ARMÉE » ferait lire un armement à qui n'en a aucun. 🔴 **BUDGET GLOBAL AU PROCESSUS** (`OnceLock` + `AtomicU8`/`AtomicU32`, `fetch_update`), jamais par fil : la surveillance **se rouvre** après une perte, et un budget relu à la réouverture se réarmerait — c'est la panne de mesure que D10 a payée sur `AUDIO_FAUTE_LECTURE`, où le chiffre-juge était structurellement incapable de quitter zéro. Trace, **seulement si armée** : `faute de surveillance ARMEE (APPS_FAUTE) : banc, jamais une configuration livrée`. 🔴 **CE QU'ELLE ÉTABLIT ET CE QU'ELLE N'ÉTABLIT PAS** : que le **REMÈDE** fonctionne, **jamais qu'une CAUSE existe** — et sur cette VM, aucune cause naturelle de débordement n'existe (voir G4). Transmise par `scripts/run-agent.sh`, **par une tâche DÉDIÉE** |
 | `PONT_ECRITURE=0` | **Sous-projet ③ Pont fichiers, sous-bloc F2** (21 août 2026) — **variable de BANC, jamais une configuration livrée**. Désarme la **POUSSÉE** d'écriture : le pont continue de détecter, de journaliser et de compter les écritures dues, **et n'en pousse aucune**. ⚠️ **`=0` DÉSARME ; une simple PRÉSENCE n'active pas** — convention d'`AUDIO`, `PLEIN_ECRAN`, `SUPERVISEUR`, `CAPTEUR`, `PART_SONDAGE`, `PRESSE_PAPIER`, `APPS` et `PONT`. 🔴 **Le PLAN de F2 se contredisait en une phrase à son sujet** : il écrivait « `=0` désarme » ET prescrivait `matches!(…, Ok(v) if v != "0")`, **qui rend `false` en l'ABSENCE de la variable** — pris à la lettre, il aurait livré un pont **MUET PAR DÉFAUT**, sans un `ERROR`. Lue dans le **pont** (`agent/src/pont.rs`). Transmise par `scripts/run-agent.sh`, **par une tâche dédiée**. Trace, **émise seulement si désarmé** : `poussee d'ecriture DESARMEE (PONT_ECRITURE=0) : bras de banc, jamais une configuration livree` (`warn!`). 🔴 **LE CONTRÔLE QUI VAUT EST LE ZÉRO DE POUSSÉES, PAS LA TRACE** : un zéro seul serait rendu par un produit entièrement en panne, et c'est le bras SANS la variable, avec ses six acquittements, qui le rend discriminant |
 | `PONT_MUTATION=0` | **Sous-projet ③ Pont fichiers, sous-bloc F3** (21 août 2026) — **variable de PRODUIT**, à la différence de `PONT_ECRITURE` juste au-dessus. Désarme le renommage ET la suppression : `notifications::decider` les refuse **au PRE_**, donc **rien n'est poussé** au poste local et le geste ÉCHOUE côté VM. ⚠️ **`=0` DÉSARME ; une simple PRÉSENCE n'active pas** — convention d'`AUDIO`, `PLEIN_ECRAN`, `SUPERVISEUR`, `CAPTEUR`, `PART_SONDAGE`, `PRESSE_PAPIER`, `APPS`, `PONT` et `PONT_ECRITURE`. Lue dans le **pont** (`agent/src/pont.rs`), par `OnceLock`. Transmise par `scripts/run-agent.sh`, **par une tâche dédiée qui ne fait que cela**. Trace, **émise seulement si désarmé** : `mutations DESARMEES (PONT_MUTATION=0) : renommage et suppression refuses au PRE_, rien n'est pousse` (`warn!`). 🔴 **LE CONTRÔLE QUI VAUT EST QUE LA SOURCE RESTE PRÉSENTE, PAS LA TRACE** : la rouge relève `protege-en-ecriture=9`, les trois gestes en ÉCHEC, la source **PRÉSENTE** et la cible **ABSENTE** — mécanisme présent, résultat absent. ⚠️ **NE PAS EMPLOYER `PONT_ECRITURE=0` À SA PLACE** : ce drapeau pose `inscriptible=false`, ce qui fait refuser `PRE_RENAME`/`PRE_DELETE` **pour une autre raison**, et une rouge de F3 y a été DISQUALIFIÉE |
+| `PONT_CACHE=0` | **Sous-projet ③ Pont fichiers, sous-bloc F5** (21 août 2026) — **variable de BANC, jamais une configuration livrée**. Désarme le **cache d'énumération** (`agent/src/pont/cache.rs`, `TTL_ENUMERATION = 30 s`) : chaque listage repaie son aller-retour, c'est-à-dire **exactement le produit d'avant F5**. ⚠️ **`=0` DÉSARME ; une simple PRÉSENCE n'active pas** — convention d'`AUDIO`, `PLEIN_ECRAN`, `SUPERVISEUR`, `CAPTEUR`, `PART_SONDAGE`, `PRESSE_PAPIER`, `APPS`, `PONT`, `PONT_ECRITURE` et `PONT_MUTATION`. Lue dans le **pont** (`agent/src/pont.rs`), par `OnceLock`. Transmise par `scripts/run-agent.sh`, **par une tâche dédiée**. Trace, **émise seulement si désarmé** : `cache d'enumeration DESARME (PONT_CACHE=0) : bras de banc, jamais une configuration livree` (`warn!`). 🔴 **C'EST LE BRAS ROUGE DU CRITÈRE ① SUR LE PRODUIT LUI-MÊME** — désarmé, un fichier ajouté côté poste local apparaît **sans** `Rafraichir` (2 exécutions), là où le bras armé ne le montre qu'après (3 exécutions) : un rouge du MÉCANISME, présent et sans effet, jamais vacueux. 🔵 **Il sert aussi d'A/B d'ATTRIBUTION** : c'est lui qui a établi que la disparition d'un répertoire frère après un renommage est **préexistante** et que le cache ne fait que la **prolonger** |
 | `MICRO=0` | **Chantier E, bloc E2** — **variable de PRODUIT**. Désarme le microphone **entier** : aucun puits n'est posé, `micro_disponible()` reste faux, `ready` porte `mic: false`, et le bouton du navigateur ne paraît pas. ⚠️ **`=0` DÉSARME ; une simple présence n'arme pas** — convention d'`AUDIO`, `PLEIN_ECRAN`, `SUPERVISEUR`, `CAPTEUR`, `PRESSE_PAPIER` et `PART_SONDAGE`, et pour la même raison : tester `is_ok()` allumerait le micro chez qui écrit `MICRO=0` pour le couper. Un test garde le prédicat (`demarrage/micro.rs::arme_micro`). Trace, **émise au branchement** donc avant toute session : `micro DESARME (MICRO=0)`. **Mesurée** (recette E2) : bouton caché sur une session `ice=connected`, **0** ligne `windows_micro`, juge à `AMPLITUDE=0,000000` |
 | `MICRO_PERIPHERIQUE=<nom ou identifiant>` | **Chantier E, bloc E2** — **variable de PRODUIT**. Désigne le point de terminaison de **rendu** sur lequel le micro écrit. Convention **VALUÉE**, celle d'`AUDIO_PERIPHERIQUE` et de `MULTIFENETRE_SORTIE`. 🔴 **DEUX DIFFÉRENCES DÉLIBÉRÉES AVEC `AUDIO_PERIPHERIQUE`** : ① **absente, elle ne vaut PAS le défaut de Windows mais la désignation INTÉGRÉE `"VB-Audio"`** — retomber sur `GetDefaultAudioEndpoint` ferait sortir la voix de l'utilisateur **par les haut-parleurs de la VM** sur une machine où le défaut est la carte son ; ② **il n'y a AUCUN repli** — `Choix::Introuvable` et `Choix::Ambigu` valent **échec**, pas de fil de rendu, `mic: false`, un `warn!` avec l'inventaire. A-bis se replie parce que « du son, peut-être le mauvais » vaut mieux que rien ; ici l'arbitrage s'**inverse** : « la voix de l'utilisateur, peut-être dans le mauvais tuyau » n'est pas un moindre mal, c'est une **fuite**. Règle de sélection : `wasapi_peripherique::choisir`. Trace : `cable de rendu retenu pour l'ecriture du micro … integree=true … critere="nom partiel"` — **comparer la valeur RETENUE, jamais la seule présence de la ligne** |
 | `MICRO_FAUTE_ECRITURE=<n>` | **Chantier E, bloc E2** — **variable de BANC, jamais une configuration livrée**. Fait échouer les *n* prochaines **écritures** WASAPI sur le câble. ⚠️ **ABSENTE = DÉSARMÉE**, et **budget GLOBAL AU PROCESSUS** (`OnceLock`) — c'est la leçon que D10 a payée sur `AUDIO_FAUTE_LECTURE` : un budget relu par fil se réarme à chaque reconstruction, et le chiffre-juge qu'il sert devient **structurellement incapable de quitter zéro**. Transmise par `scripts/run-agent.sh`. 🔴 **JAMAIS ARMÉE À CE JOUR** : le chemin d'échec d'écriture WASAPI **n'a jamais couru** (recette E2, legs n°9) |
@@ -13338,6 +13386,286 @@ exploitation**), et le coût du repli de renommage (**mesuré, nul**).
    éditeur réel, la fenêtre de trente secondes de F2, `showDirectoryPicker()`.
 9. ⛔ **Un autre chantier** — le réexamen du sélecteur de fichiers.
 10. ⛔ **La calibration**, et **le jugement d'usage, qui reste à porter.**
+
+---
+
+## 🗄️ Sous-projet ③ Pont fichiers — sous-bloc F5 : la vie longue, et la CLÔTURE de ③ (21 août 2026)
+
+Résultats complets :
+`docs/superpowers/plans/2026-08-21-pont-fichiers-f5-resultats.md`.
+Plan : `docs/superpowers/plans/2026-08-21-pont-fichiers-f5.md`.
+Conception : `docs/superpowers/specs/2026-08-19-pont-fichiers-design.md`, §F5 —
+**ANNOTÉE par F5 sur sa clause ROUGE, jamais réécrite**.
+Journaux : `docs/superpowers/plans/journaux-pont-fichiers-f5/`, avec
+`familles-de-lecture.txt` **relevé par la commande** : **17** fichiers portent
+des séquences ANSI (les `agent-*.log` bruts), et **chacun a son jumeau
+`-plat.log` versé**. Tout le reste — `*.json`, `*.log` de pilote, `*.txt` — se
+`grep`e à plat.
+
+**C'EST LE DERNIER SOUS-BLOC DU SOUS-PROJET ③.** Il n'y a pas de F6 : la liste
+du § « Ce que ③ laisse ouvert » est **complète**, et rien n'y a de destinataire.
+
+### ① 🔴 LE VERDICT QUI PÉRIME F4 EST LE VERT, ET LA SPEC LE DISAIT À L'ENVERS
+
+La spec écrivait qu'un **rouge** de F5 signifierait « que la mesure de F4 portait
+sur autre chose que ce que le produit livre ». **La prémisse est juste, la
+conclusion est fausse, et c'est F4 qui la réfute** : son annotation D2 dit qu'il
+mesure « **le chaud que le produit A** », donc **une borne HAUTE** d'un produit
+**sans** cache. Un rouge le confirmerait.
+
+**Le verdict est VERT**, donc F5 a remesuré la latence de listage aux rangs de F4,
+**cache armé** — **2 exécutions** :
+
+| Rang | Froid (aller-retour) | **Chaud (cache)** |
+| --- | --- | --- |
+| 10 | 94 / 63 ms | **0 / 0 ms** |
+| 100 | 283 / 338 ms | **0 / 9 ms** |
+| **1 000** | 3 110 / 2 799 ms | **31 / 32 ms** |
+
+⚠️ **Les FROIDS ne se comparent PAS aux ~6 s de F4** : F5 liste un
+sous-répertoire de fichiers vides, F4 listait sa racine. **Seul le rapport
+froid/chaud INTRA-série est de F5.**
+
+⚠️ **LE MUR DE ~3 150 ENTRÉES NE BOUGE PAS.** Il tient à la taille d'**un**
+message, pas à la répétition : un cache ne le déplace pas. F5 le rend seulement
+**immédiat au lieu de gelé** — le `send()` refusé par SCTP renvoie désormais un
+`Echec` au lieu de laisser l'application geler `DELAI_LISTER` (20 s).
+⛔ **Cette rouge-là n'a PAS été jouée** : elle exige un répertoire de plus de
+3 200 entrées.
+
+### ② Les quatre critères, avec leur nombre d'exécutions
+
+**Aucun taux n'est revendiqué nulle part.**
+
+| # | Critère | Verdict | Exéc. |
+| --- | --- | --- | --- |
+| ① | un fichier ajouté sur le poste local apparaît **après** `Rafraichir` et pas avant | **TENU** | **3** vertes + **2** rouges |
+| ② | le journal survit à un **redémarrage complet** et se vide à la reconnexion | **TENU** | **1** |
+| ③ | le retour sur un répertoire **différent** RETIENT, et le **DIT** | **TENU** | **2** |
+| ④ | un `Rafraichir` ne casse rien de F2 ni de F3 | **TENU**, et il a **trouvé un défaut** | **2** + **1** sans cache |
+
+**① en détail** : vert 5 / 5 / 6 entrées, l'ajout **ABSENT** avant et **PRÉSENT**
+après ; rouge (`PONT_CACHE=0`) 5 / **6** / 6 — il apparaît **sans**
+`Rafraichir`. **Le rouge est celui du MÉCANISME** : présent et sans effet, jamais
+vacueux. La trace de désarmement sort aux deux rouges et est **absente** au vert.
+⚠️ **La règle d'admission D4 est respectée** : écart (1)→(3) de 5,8 à 5,9 s, sous
+`TTL_ENUMERATION`. Et **le listage de l'étape (3) a RÉUSSI** en portant les
+entrées d'amorçage — sans quoi « le fichier n'est pas là » serait aussi ce que
+rend un listage en échec.
+
+**② en détail** : journal **178 octets, sha256 `55199198…` IDENTIQUE** avant et
+après ; `racine.nom` et `instance.guid` survivent aussi. À la reconnexion :
+`memorise="Mes documents" decision="pousser" dues=1`, puis `ecriture acquittee`,
+journal net à zéro. 🔴 **Le redémarrage est VOULU et non SUBI, et c'est
+VÉRIFIÉ** : `LastBootUpTime` 12:36:51 UTC suit le `Restart-Computer` de 12:36:33,
+et le compteur libvirt `terminating on signal` reste à 167. *F2 n'avait traversé
+qu'une **hibernation**, qui restaure la mémoire.*
+
+**③ en détail** : `memorise="Mes documents"` / `racine="Autre dossier"` →
+`decision="retenir" dues=1`, `RIEN n'est poussé, RIEN n'est jeté`,
+`retenues="true"`, bouton « Reprendre l'enregistrement » **visible**, due
+**conservée**.
+
+### ③ 🔴 LE DÉFAUT QUE LA RECETTE A TROUVÉ, ET SON ATTRIBUTION PAR A/B
+
+Après un **renommage dans la VM**, le répertoire frère `sous-dossier`
+**disparaît du listage** alors qu'il **existe toujours dans OPFS**.
+
+| | après renommage | après suppression |
+| --- | --- | --- |
+| cache **armé** | `sous-dossier` **disparaît** | **il ne revient pas** (5 entrées) |
+| `PONT_CACHE=0` | `sous-dossier` **disparaît aussi** | **il revient** (6 entrées) |
+
+⇒ **LE DÉFAUT EST PRÉEXISTANT — il n'est pas de F5 — ET LE CACHE LE PROLONGE**,
+d'un listage à au plus `TTL_ENUMERATION`. C'est littéralement *« un cache rend un
+mode d'échec plus discret »*, l'argument que D10 employait pour le mur de
+listage.
+
+⚠️ **LA CLAUSE DE NON-LIVRABILITÉ NE SE DÉCLENCHE PAS.** Elle visait un critère ④
+tombant **sans cause identifiée** ; il ne tombe pas — ses quatre assertions sont
+vraies — et la cause est identifiée **et mesurée**.
+
+### ④ Les trois portes
+
+**P3 — le filtre NOUS RAPPELLE, et notre invalidation est ce qui re-demande.**
+Journal : `notification ProjFS code=4 chemin=ne-vient-pas-du-navigateur.txt`, et
+**le relistage qui suit coûte 49 ms** — un aller-retour, pas les 7-8 ms d'un
+succès de cache. ⚠️ **Cela ne sépare PAS** « le filtre fusionne aussi de
+lui-même » : notre invalidation le précède.
+
+**P1 — deux candidates retenues, une réserve chacune.** `GetDiskFreeSpaceEx` :
+814,7 Go libres / 1 184,9 Go utilisés — ⚠️ **confondeur NON LEVABLE**, tout le
+reste de la VM y compte. La somme des longueurs des fichiers hydratés :
+**300 081 octets en 28 ms, SANS aucune traversée** du pont. ⚠️ C'est une taille
+**logique**, pas une occupation.
+
+**P2 — la racine SURVIT ; son MARQUAGE n'est pas décidable par cet instrument.**
+`PrjStartVirtualizing` réussit, `PrjFlt` est chargé (altitude 189800).
+
+> 🔴 **ET LA RAISON EST UNE AFFIRMATION FAUSSE DANS LE PRODUIT, que F5 a
+> mesurée.** `agent/src/pont/projfs/racine.rs` écrivait : « ce qui est connu,
+> c'est que re-marquer **échoue** ». **C'est faux** : l'exécution `p2-dues` a
+> tourné **sans purge et sans redémarrage** sur une racine déjà marquée dont
+> l'empreinte existait, et `PrjMarkDirectoryAsPlaceholder` a **RÉUSSI**.
+>
+> Deux conséquences : **la branche de tolérance n'a JAMAIS couru**, et la trace
+> disait « marquée pour la **PREMIÈRE** fois » dans les **trois** cas — donc
+> elle ne pouvait pas répondre à la question que P2 lui posait. Elle rapporte
+> désormais `empreinte_preexistante`. ⚠️ **Le comportement n'est pas changé** :
+> le rendre fatal sur trois exécutions d'**une** machine serait l'inverse de ce
+> que ce paragraphe reproche.
+
+### ⑤ 🔴 UN DÉFAUT QUE SEUL LE CHEMIN RÉEL POUVAIT MONTRER
+
+`Bonjour` partait **AVANT** que le canal ne soit ouvert.
+`connecterCanalFichiers` rend dès la réponse SDP ; le canal de données s'ouvre
+**après**. Mesuré, dans cet ordre : « réponse reçue » → **`canal fichiers ferme :
+annonce non envoyee`** → « connecting » → « connected » → « canal fichiers
+ouvert ». **Le `Bonjour` partait dans le vide, donc AUCUNE écriture due n'aurait
+jamais été poussée** — un silence, c'est-à-dire pire que les trente secondes de
+F2 que F5 existe pour supprimer.
+
+🔵 **C'est mon propre `console.warn` qui l'a dénoncé.** Un envoi qui aurait
+échoué en silence aurait laissé la recette **verte** sur ses critères de cache et
+**muette** sur celui-ci. *Aucun test d'hôte ne pouvait le voir : le défaut est
+dans l'ORDONNANCEMENT d'un canal WebRTC réel.*
+
+### ⑥ La variable neuve, et la quatrième famille du protocole
+
+| Variable | Effet |
+| --- | --- |
+| `PONT_CACHE=0` | **Désarme le cache d'énumération.** ⚠️ **`=0` DÉSARME ; une simple PRÉSENCE n'active pas** — convention de `PONT_ECRITURE`, `PONT_MUTATION`, `SUPERVISEUR`, `CAPTEUR`, `AUDIO`, `PLEIN_ECRAN`, `PART_SONDAGE`, `PRESSE_PAPIER`, `APPS`. 🔴 **VARIABLE DE BANC** : c'est le bras rouge du critère ① **sur le produit lui-même**. Lue dans `agent/src/pont.rs` par `OnceLock`. Transmise par `scripts/run-agent.sh` (**tâche dédiée**). Trace, seulement si désarmé : `cache d'enumeration DESARME (PONT_CACHE=0) : bras de banc, jamais une configuration livree` |
+
+**`proto/src/fichiers.rs` ouvre une QUATRIÈME famille : les annonces
+NAVIGATEUR → PONT**, `TYPE_BONJOUR = 68` et `TYPE_RAFRAICHIR = 69`. **La liste
+est CLOSE.** `FICHIERS_VERSION` **reste à 1** : la rupture est additive et les
+deux bouts sont livrés ensemble.
+
+🔴 **Un `Rafraichir` reçu AVANT F5 aurait été JETÉ EN SILENCE**, dans le
+`tracing::debug!` « réponse tardive ou inconnue » de `service.rs` — invisible
+sous `RUST_LOG=info`. **Le bouton n'aurait rien fait, et rien ne l'aurait dit.**
+C'est le bras fourre-tout que ce dépôt a payé **cinq fois** sur `pont_media.rs`
+et une sixième sur `signalisation.rs` ; **F5 est la première fois qu'il est fermé
+d'AVANCE** — l'aiguillage précède `table.resoudre`.
+
+**Trois divergences tranchées CONTRE le plan**, chacune avec sa raison dans le
+code : `Dues.retenues` est **REQUIS** et non `#[serde(default)]` (*un défaut à
+`false` vaudrait « le pont pousse », c'est-à-dire le sens dangereux*) ;
+`Rafraichir` n'a **aucune structure** d'en-tête (précédent de `TYPE_FAIT`) ; et
+**la rouge de la tâche 8 ne pouvait pas rougir des deux côtés** — TypeScript ne
+lit pas le Rust, et F1 avait posé qu'**un seul côté suffit**. La matrice complète
+(a/b/c) est jouée : seul un renommage **DANS LE VECTEUR** casse les deux.
+
+🔵 **`PrjClearNegativePathCache` gagne son PREMIER APPELANT DE PRODUCTION**, et
+son `totalentrynumber` est **tracé** : `cache_negatif_purge=1`, **3 exécutions**.
+**Le cache négatif de ProjFS devient observable pour la première fois** — F4
+n'avait pu en mesurer qu'un différentiel **nul**. **R7 se referme d'UNE entrée sur
+cinq** — pas « R7 est fermé ».
+
+### ⑦ 🔴 Trois défauts d'ENVIRONNEMENT ont coûté six exécutions
+
+**Aucun n'est du produit, et les trois se lisaient comme s'ils l'étaient.**
+
+1. 🔴 **`/tmp` est un tmpfs de 10 Go, et le harnais de recette y laisse ~100 Mo
+   par exécution** (un profil Chrome). À 100 %, **OPFS refuse d'écrire**, et tout
+   ressemble à une panne produit : `removeEntry … modifications are not allowed`,
+   `[object Object]` comme message de montage, `fetch failed`. **Quatre
+   exécutions perdues avant de penser à mesurer `df`.** *Purger `/tmp/*/udd-*`
+   entre les campagnes* — F2 et F3 en laissaient 1,2 Go à eux deux.
+2. 🔴 **L'hôte a tué la VM DEUX fois en pleine campagne** — `terminating on
+   signal 15`, compteur **167 → 168 → 169** : c'est `libvirtd --timeout 120`.
+   **C'est exactement la distinction que P2 exigeait**, et elle a servi deux fois.
+3. ⚠️ **Un `pkill -f` depuis un shell dont la ligne de commande porte le motif a
+   tué mon propre shell** (exit 144) — piège déjà écrit dans ce fichier.
+
+⚠️ **Et une misattribution évitée de justesse** : j'ai conclu « la plateforme est
+DOWN » d'un `fetch failed`, et elle répondait **200**. *Remesurer avant
+d'attribuer*, appliqué à temps — le PID du port était le même qu'avant.
+
+⚠️ **Deux collisions de version en une journée** : la plateforme tournait depuis
+8 h et parlait `PLATEFORME_VERSION = 4` quand l'agent rebâti parle la **5**
+(`version_emise=5 version_recue=4`). C'est la collision que **P4** a documentée,
+et le refus est cette fois **LISIBLE et NOMMÉ** — G1 avait relevé qu'il ne
+pouvait pas l'être.
+
+### ⑧ Ce que F5 n'établit PAS
+
+- **Aucun taux, nulle part.**
+- ⛔ **Aucun jugement d'usage** : personne n'a dit si 31 ms ou 3 s est acceptable.
+- ⛔ **`TTL_ENUMERATION` (30 s) n'est pas calibrée.** ⚠️ Et **`DELAI_BONJOUR`
+  N'EXISTE PAS** : le cas « aucun `Bonjour` n'arrive » est **silencieux**, sans
+  minuteur ni trace. *Déclaré, pas dissimulé.*
+- 🔴 **Le MODÈLE DE PERMISSION n'est éprouvé par rien** : `showDirectoryPicker`,
+  `queryPermission`, `requestPermission` ne sont appelés nulle part dans ce
+  dépôt. **F5 mesure que la règle du NOM fonctionne ; il ne mesure pas qu'elle
+  suffise** — deux répertoires homonymes sur deux disques la mettraient en
+  défaut, et rien ne le dirait.
+- ⛔ **`MORCEAUX_EN_VOL` (D11) n'a PAS été éprouvé** : la règle d'admission était
+  écrite, la mesure n'a pas été jouée. **Le legs n°3 de F4 ressort tel quel.**
+- ⛔ **Le débit du canal reste à ~33 Kio/s** (legs n°1 de F4, non pris).
+- ⛔ **Aucune politique d'éviction** ; **quatre des cinq entrées ProjFS sans
+  jumeau `PRJ_*_CB`** le restent.
+- ⛔ **Rien d'un client réel** : un seul Chrome, sans interface, sur l'hôte qui
+  porte la VM.
+
+### ⑨ Pièges neufs — à connaître avant de toucher à ce terrain
+
+- 🔴 **`Set-Content -Encoding utf8` de Windows PowerShell 5.1 écrit un BOM, et
+  `JSON.parse` le REFUSE.** Le symptôme est un relevé dont **TOUS** les champs
+  valent `undefined` — **indiscernable d'une mesure qui n'aurait rien trouvé**,
+  alors que le JSON est parfait. Retirer `^﻿` avant de parser.
+- 🔴 **Un tmpfs plein transforme toute recette navigateur en panne produit
+  apparente** (voir ⑦). **Mesurer `df /tmp` fait partie du contrôle d'entrée.**
+- 🔴 **Un pathspec de RÉPERTOIRE ne prend pas le module HOMONYME** :
+  `git commit -- agent/src/pont` laisse `agent/src/pont.rs` derrière, et **le
+  commit ne compile pas**. Vérifié et non supposé (`E0432`, `E0061`). *Le
+  `git show --name-only` qui suit chaque commit avait la réponse sous les yeux :
+  j'ai lu la liste sans y chercher une ABSENCE.*
+- ⚠️ **Une extraction laisse ses imports derrière elle**, et ils sont d'une
+  famille **autre** que `dead_code` — quatre `unused_imports` en Rust, un
+  `TS6133` **fatal** en TypeScript. *Lire la NATURE des avertissements, jamais
+  le nombre.*
+- 🔴 **`cd client && npx vitest run` ne couvre PAS `proto/ts/`, et l'inverse est
+  vrai aussi** : après la tâche 8 j'ai lancé `--dir ../proto` **et pas** la suite
+  client, et un test est resté rouge dans le témoin des voisins. **DEUX
+  commandes, jamais une.**
+- ⚠️ **Une porte qui lit l'état des voisins n'a de verdict qu'assorti de son
+  heure** : j'ai écrit dans le code « P3 n'a pas été jouée, la VM est éteinte »,
+  et la VM a été rendue **une heure plus tard**. Ma propre revue transverse a dû
+  corriger ma propre phrase.
+
+### ⑩ 🔴 CE QUE LE SOUS-PROJET ③ LAISSE OUVERT — LA LISTE EST COMPLÈTE
+
+**F5 est le dernier sous-bloc. Il n'y a pas de F6, et RIEN de ce qui suit n'a de
+destinataire.**
+
+1. 🔴 **Le canal du pont plafonne à ~33 Kio/s** ; la parade est un changement de
+   conception de la boucle de `pont::transport` (F4 n°1).
+2. 🔴 **Aucun listage de plus de ~3 150 entrées n'aboutit.** F5 en fait une
+   erreur immédiate au lieu d'un gel de 20 s — **il ne le déplace pas**, et
+   **cette rouge-là n'a pas été jouée**.
+3. 🔴 **L'idiome « fichier temporaire + renommage » sur un éditeur réel** (F3
+   n°3) — *le seul chemin par lequel une sauvegarde peut se perdre en silence*,
+   et **la lacune la plus lourde que ③ laisse**.
+4. 🔴 **Un renommage dans la VM fait DISPARAÎTRE un répertoire frère du
+   listage.** Préexistant, mesuré par A/B, **prolongé par le cache** jusqu'au TTL.
+5. 🔴 **`showDirectoryPicker()`, le modèle de permission, le mode `readwrite`** —
+   exigent `Xvfb` + `xdotool`, consentement donné **en D8**, jamais suivi d'effet.
+6. ⛔ **Aucune politique d'éviction**, et le disque de la VM grossit : **F5 le
+   mesure et le fait croître.** `PrjDeleteFile` reste sans appelant.
+7. ⛔ **Quatre des cinq entrées ProjFS sans jumeau `PRJ_*_CB`** (R7).
+8. ⛔ **Le mécanisme des DEUX `Lister` par `Get-ChildItem`** (F4 n°4) : le cache
+   en absorbe un, **il ne dit pas pourquoi il y en a deux**.
+9. ⛔ **`MORCEAUX_EN_VOL` non éprouvé** (F4 n°3), sa règle d'admission écrite.
+10. ⛔ **Le condensat SHA-256 de bout en bout** (F1 n°6) ; **les lectures qui
+    calent sans expirer** (F1 n°4) ; **le coût de la canonicalisation de casse**
+    (F4 n°6) ; **la cause du delta M2 − M1 inverse** (F4 n°5).
+11. ⛔ **La branche de tolérance de `racine.rs` n'a jamais couru**, et le
+    **marquage** d'une racine à travers un redémarrage n'est **pas décidé**.
+12. ⛔ **`DELAI_BONJOUR` n'existe pas** : « aucun `Bonjour` n'arrive » est
+    silencieux.
+13. ⛔ **La calibration et le jugement d'usage** — la lacune que ce dépôt traîne
+    depuis `BPP_MIN`, et **personne ne la lèvera dans ③**.
 
 ---
 
