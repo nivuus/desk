@@ -221,6 +221,34 @@ services:
       PLATEFORME_HOTE: plateforme
       PLATEFORME_PORT: "8080"
       PLATEFORME_BASE: postgres
+      # 🔴 `motdepasse`, ET NON LE DÉFAUT — SANS CETTE LIGNE, CE PROFIL EST UN
+      # CONTOURNEMENT COMPLET DE L'AUTHENTIFICATION. Le défaut de
+      # `PLATEFORME_AUTH` est `pomerium` (`plateforme/src/config.ts`), qui
+      # ouvre `GET /auth/moi` : cette route échange l'en-tête
+      # `X-Pomerium-Claim-Email` contre un jeton interne SANS vérifier aucune
+      # signature (arbitrage ② de la spec), parce qu'elle tient pour acquis
+      # qu'un Pomerium se tient devant elle et l'a posé lui-même. **Le proxy de
+      # CE profil est nginx, pas Pomerium.** Sous le défaut, un
+      # `curl -k https://<hôte>/auth/moi -H 'X-Pomerium-Claim-Email: n-importe@qui'`
+      # rendrait donc un jeton valide et CRÉERAIT le compte — et,
+      # symétriquement, `POST /auth/connexion` rendrait 404, de sorte que plus
+      # personne ne pourrait se connecter normalement. Les deux à la fois.
+      #
+      # 🔴 CETTE LIGNE ET LE `proxy_set_header X-Pomerium-Claim-Email "";` DE
+      # `deploiement/nginx.conf` VONT ENSEMBLE, ET S'INVERSENT ENSEMBLE.
+      # ⚠️ IL EST FAUX DE CROIRE QUE LA DIRECTIVE NGINX « RESTERAIT JUSTE » LE
+      # JOUR OÙ CE PROFIL PASSERAIT DERRIÈRE POMERIUM : `proxy_set_header … "";`
+      # efface l'en-tête ENTRANT, donc effacerait aussi celui que Pomerium
+      # poserait. Ce jour-là il faut faire les DEUX gestes — RETIRER la
+      # directive nginx **et** passer cette variable à `pomerium`. N'en
+      # appliquer qu'une moitié donne, dans un sens, une identité que
+      # `/auth/moi` ne voit jamais, et dans l'autre, la porte ouverte
+      # ci-dessus.
+      #
+      # ⚠️ CONSÉQUENCE, ET C'EST LA BONNE : l'étape 5 de `deploiement/README.md`
+      # (`npm run admin:utilisateur`) reste JUSTE pour ce profil — c'est bien
+      # par un mot de passe qu'on y ouvre un compte.
+      PLATEFORME_AUTH: motdepasse
     # 🔴 LE RESTE VIENT D'UN FICHIER NON VERSIONNÉ, et chacune de ses entrées a
     # sa raison — voir `deploiement/plateforme.env.exemple`, qui les porte :
     #
