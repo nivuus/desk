@@ -1,0 +1,112 @@
+TÂCHE 18 — LE BALAYAGE DES TAILLES ET LA REVUE TRANSVERSE.
+Relevé par la commande le 21 août 2026.
+
+════════════════════════════════════════════════════════════════════════════
+🔴 UN PLAFOND FRANCHI **ET COMMITÉ**, NOMMÉ PAR UN CHANTIER VOISIN
+════════════════════════════════════════════════════════════════════════════
+`agent/src/pont/ecriture/fil.rs` valait **622** lignes pour une porte à 500.
+**Le §2.2 du plan de F3 ne mentionne même pas ce fichier** : il ne budgétait de
+marge que pour les vingt et un qu'il nommait.
+
+Attribution, PAR LA COMMANDE (`git show <commit>:<chemin> | wc -l`), et non
+déduite d'un écart :
+
+  d9f47e2  pont(f2) — les octets remontent                    494
+  b7b17e2  pont(f2) — EXTRAIRE le disque du fil d'écriture    438
+  4687bf2  pont(f3) — le masque à neuf bits (tâches 6+12)     478   (+40)
+  9578542  pont(f3) — les mutations poussées (tâche 13)      **612**  (+134)
+  arbre de travail, après la revue transverse                  622   (+10)
+
+🔴 **LE PLAFOND A DONC ÉTÉ FRANCHI PAR LA TÂCHE 13, ET LE COMMIT EST PARTI
+AVEC.** C'est PIRE qu'un franchissement en cours de travail, que ce dépôt a
+connu plusieurs fois — et c'est **le relevé d'un chantier VOISIN** qui l'a nommé
+en premier, la quatrième fois de suite dans ce dépôt (G2 trois fois, P2 trois
+fois, G3 une).
+
+⚠️ **LA LEÇON N'EST PAS « EXTRAIRE », QUI ÉTAIT SU.** F2 avait lui-même extrait
+`fil/disque.rs` de ce fichier pour tenir la porte, et son en-tête le dit. C'est
+que **le balayage des tailles doit se faire PAR LA COMMANDE, sur TOUT l'arbre,
+avant CHAQUE commit** — et non seulement là où le plan budgète une marge.
+
+DEUX EXTRACTIONS, JAMAIS UNE COMPRESSION :
+  `fil/mutations.rs` (**158**) — le renommage et la suppression ;
+  puis `fil.rs` valait encore **505**, soit CINQ de trop ;
+  `fil/reprise.rs` (**62**) — la reprise au démarrage.
+  `fil.rs` → **466**, marge 34.
+
+⚠️ **La seconde extraction est le geste que ce dépôt exige et que D9 a payé
+deux fois pour ne pas l'avoir fait** : à cinq lignes du plafond, resserrer un
+commentaire aurait suffi, et c'est nommément interdit.
+
+════════════════════════════════════════════════════════════════════════════
+🔵 UNE EXTRACTION JOUÉE **AVANT** LE FRANCHISSEMENT
+════════════════════════════════════════════════════════════════════════════
+`client/src/fichiers/mutation.ts` était à **497**, marge **3**. Extraction de
+`client/src/fichiers/copie.ts` (**151**) : la copie d'arbre et son retrait.
+`mutation.ts` → **379**, marge 121.
+
+C'est le geste que D9 a inventé (`capteur/serveur/instances.rs`) et que D10 a
+joué trois fois : **extraire avant d'ajouter**, plutôt qu'après avoir franchi.
+
+⚠️ **MARGE ÉTROITE NEUVE, DÉCLARÉE** : `client/src/fichiers/protocole.test.ts`
+est à **484**, marge **16** — 346 à la fin de F2, porté là par F3 (les tests des
+deux verbes). Le point de chute est nommé : scinder par famille de verbe, les
+requêtes de lecture d'un côté, celles d'écriture et de mutation de l'autre.
+
+════════════════════════════════════════════════════════════════════════════
+LE TABLEAU DE DETTE : DEUX LIGNES, INCHANGÉES
+════════════════════════════════════════════════════════════════════════════
+`agent/src/encode.rs` **1536**, `agent/src/windows_source.rs` **630** — F3 n'a
+touché ni l'un ni l'autre. **Aucun autre fichier de code source ne dépasse 500.**
+
+⚠️ **Deux entrées que le presse-papier P1 avait inscrites au tableau de dette de
+`CLAUDE.md` n'y sont plus** : `proto/src/plateforme/tests.rs` vaut **340**
+(publié 561) et `proto/ts/plateforme.test.ts` **462** (publié 512). **Ce n'est
+PAS F3 qui les a fait maigrir** — `git log --oneline -- proto/src/plateforme/`
+donne G1 et G3. Relevé, attribué, et porté à `CLAUDE.md`.
+
+⚠️ **`plateforme/src/http/routes-installation.ts` est à 500 EXACTEMENT, marge
+0.** Fichier de G3, jamais touché par F3. Relevé parce que le balayage l'attrape
+et qu'aucun tableau ne le signalait.
+
+════════════════════════════════════════════════════════════════════════════
+LA REVUE TRANSVERSE — QUATRE AFFIRMATIONS RENDUES FAUSSES PAR CETTE BRANCHE
+════════════════════════════════════════════════════════════════════════════
+Cibles nommées d'avance par le plan, et leur sort :
+
+| Cible du plan | Sort |
+| --- | --- |
+| les TROIS commentaires annonçant la fenêtre de lecture (`service.rs`, `rappels.rs`, `etat.rs`) | **CORRIGÉS** dans le commit de la tâche 13 |
+| `client/src/fichiers/adaptateur.ts` — « LA CASSE N'EST TRAITÉE NULLE PART » | **CORRIGÉ** dans le commit des tâches 9-11-14 |
+| `agent/src/pont/notifications.rs` — le masque « des cinq notifications de F1 » | **CORRIGÉ** dans le commit des tâches 6+12, nom du test compris |
+| `client/src/fichiers/canal.ts` — la description du canal sans seuil de tampon | **CORRIGÉ** dans le commit des tâches 9-11-14 |
+| `agent/src/pont/chemins.rs` — le legs de casse, côté Rust | **CORRIGÉ ICI** |
+| `agent/src/pont/erreurs.rs` — « (F3) » sur `RepertoireNonVide` | **CORRIGÉ ICI** |
+
+Et DEUX que le plan ne nommait pas :
+
+| Trouvé | Sort |
+| --- | --- |
+| `agent/src/pont/ecriture/fil.rs` — « un morceau en vol à la fois — le contrôle de flux par `bufferedAmount` / `SEUIL_TAMPON` est un livrable de F3 » | **CORRIGÉ, ET LA CORRECTION N'EST PAS CELLE QU'ON CROIRAIT.** F3 est arrivé et **ne change RIEN ici** : sa fenêtre est celle de la LECTURE. En écriture c'est le PONT qui émet, et demander plusieurs morceaux d'avance n'aurait aucun sens. La phrase promettait un remède qui ne s'applique pas à ce sens-là |
+| `agent/src/pont/ecriture/fil/tests.rs` — la même, côté test | **CORRIGÉ** |
+
+⚠️ **La correction de `fil.rs` est la plus instructive des six** : la phrase
+n'était pas *devenue* fausse — elle **l'a toujours été**, en promettant à
+l'écriture un mécanisme conçu pour la lecture. F3 aurait pu la « corriger » en
+écrivant « ✅ livré », ce qui aurait propagé l'erreur au lieu de la lever.
+
+════════════════════════════════════════════════════════════════════════════
+LES COMPTES, ANNONCÉS AVANT D'ÊTRE MESURÉS
+════════════════════════════════════════════════════════════════════════════
+                              entrée F3     sortie F3
+cargo test -p agent              861          **904**   (+43)
+cargo test -p proto              106          **109**   (+3)
+client && npx vitest run         400          **462**   (+62)
+… --dir ../proto                 279          **296**   (+17)
+cargo check --target …-gnu    24 avert.    **24 avert.**, tous dead_code
+npx tsc --noEmit (client, proto)   0            **0**
+
+⚠️ **AUCUN de ces comptes n'est attribuable à F3 SEUL.** L'arbre a été partagé
+avec le presse-papier P2 et la gestion d'apps G3 pendant tout le sous-bloc, et
+les deux ont commité. Les valeurs d'entrée sont celles du relevé de la tâche 1
+(21 août 2026, HEAD = `1d8bef8`) ; les écarts portent le travail de tous.

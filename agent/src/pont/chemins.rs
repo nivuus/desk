@@ -14,11 +14,27 @@
 //! l'est **pas** : `getFileHandle("Rapport.txt")` échoue là où NTFS aurait
 //! ouvert `rapport.txt`. Ce module **conserve la casse** telle que ProjFS l'a
 //! livrée — la replier serait pire, puisque la FSA ne retrouverait plus rien
-//! du tout — et le défaut est **documenté, pas masqué**. Le remède (une table de
-//! correspondance alimentée par l'énumération, qui seule connaît la casse
-//! réelle du disque) appartient à F3 ou plus tard, et il est inscrit comme
-//! legs. *Le déclarer résolu sans l'avoir mesuré serait exactement le geste que
-//! ce dépôt reproche à ses constantes non calibrées.*
+//! du tout — et le défaut est **documenté, pas masqué**.
+//!
+//! ✅ **LE REMÈDE EST ARRIVÉ EN F3, ET CE N'EST PAS UNE TABLE DE
+//! CORRESPONDANCE.** *(Ces lignes annonçaient « une table de correspondance
+//! alimentée par l'énumération, qui seule connaît la casse réelle du disque »,
+//! et la donnaient comme appartenant « à F3 ou plus tard ».)* F3 livre
+//! `client/src/fichiers/noms.ts`, qui **énumère le parent à CHAQUE
+//! résolution, SANS AUCUN CACHE** — un cache que rien n'invalide est le défaut
+//! de l'ancien pont (`src/file.js`, cache SANS TTL), et le seul moyen de le
+//! vider, `Rafraichir`, est un livrable de **F5**.
+//!
+//! ⚠️ **CE MODULE-CI N'A PAS CHANGÉ POUR AUTANT, et c'est délibéré** : il
+//! conserve toujours la casse telle que ProjFS l'a livrée. C'est le NAVIGATEUR
+//! qui replie, parce que **lui seul voit le poste local**. Ce que F3 ajoute
+//! ici est [`avec_dernier_composant`], qui fait redescendre le nom canonique
+//! jusqu'à `PrjWritePlaceholderInfo`.
+//!
+//! ⚠️ **ET LA MOITIÉ VM DU DÉFAUT N'EST PAS RÉPARABLE**, ni ici ni ailleurs :
+//! quand NTFS résout la casse sur un fichier DÉJÀ hydraté, nous ne sommes pas
+//! consultés. *Le déclarer résolu sans l'avoir mesuré serait exactement le
+//! geste que ce dépôt reproche à ses constantes non calibrées.*
 //!
 //! ❌ **CE MODULE ANNONÇAIT « obtiendra donc `Introuvable` », ET LA RECETTE DE
 //! F1 L'A RÉFUTÉ : le défaut réel est PIRE, parce qu'il est SILENCIEUX.**

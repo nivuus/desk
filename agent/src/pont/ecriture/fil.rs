@@ -32,15 +32,27 @@
 //!    brutal perd ;
 //! 3. `TYPE_DUES` est annoncé ;
 //! 4. le fichier local est lu et découpé ;
-//! 5. **un morceau en vol à la fois** — le contrôle de flux par
-//!    `bufferedAmount` / `SEUIL_TAMPON` est un livrable de **F3**, et
-//!    l'implémenter à moitié ici serait pire que de ne pas l'implémenter ;
+//! 5. **un morceau en vol à la fois** — *(ces lignes ajoutaient « le contrôle
+//!    de flux par `bufferedAmount` / `SEUIL_TAMPON` est un livrable de F3, et
+//!    l'implémenter à moitié ici serait pire ». **F3 est arrivé, et il ne
+//!    change RIEN ici.**)*
+//!
+//!    ⚠️ **La fenêtre de F3 est celle de la LECTURE, pas de l'écriture, et la
+//!    distinction n'est pas un détail** : en lecture, c'est le NAVIGATEUR qui
+//!    émet les gros messages, et la fenêtre du pont sert à ne pas le laisser
+//!    inactif entre deux morceaux. En écriture, c'est le PONT qui les émet —
+//!    demander plusieurs morceaux d'avance n'aurait aucun sens, et en pousser
+//!    plusieurs inonderait la file SCTP, ce que F1 a déjà décidé d'éviter. La
+//!    contre-pression `bufferedAmount`, elle, vit côté navigateur
+//!    (`client/src/fichiers/flux.ts`) et ne couvre donc pas ce sens-ci ;
 //! 6. sur le `Fait` du **dernier** morceau : `journal.retirer`, **puis**
 //!    `TYPE_DUES` réannoncé ;
 //! 7. sur un `Echec` ou une expiration : **l'entrée RESTE au journal**, un
 //!    `warn!` nomme le chemin et le code.
 
 mod disque;
+mod mutations;
+mod reprise;
 
 use std::collections::VecDeque;
 use std::path::PathBuf;
@@ -51,7 +63,7 @@ use std::time::Instant;
 use super::{Evenement, File};
 use crate::pont::decoupe::{decouper, Morceau};
 use crate::pont::journal::Journal;
-use crate::pont::mutation::{ordonnancer, FileMutations, Mutation, Ordonnancement};
+use crate::pont::mutation::FileMutations;
 use crate::pont::table::{Attendue, Table, DELAI_ECRIRE};
 use crate::pont::transport::VersNavigateur;
 use proto::fichiers::{entetes, CodeEchec};
@@ -132,20 +144,20 @@ struct EnCours {
     debut: Instant,
 }
 
-struct Fil {
-    config: Config,
-    journal: Journal,
-    file: File,
-    en_cours: Option<EnCours>,
+pub(super) struct Fil {
+    pub(super) config: Config,
+    pub(super) journal: Journal,
+    pub(super) file: File,
+    pub(super) en_cours: Option<EnCours>,
     /// Les mutations en vol et en attente (F3).
     ///
     /// ⚠️ **DISTINCTE de la file d'écriture, et le rester est le point.** Une
     /// mutation ne porte aucun octet, ne s'inscrit pas au journal des dues, et
     /// **ne se coalesce pas** : `a`→`b` puis `b`→`c` sont deux gestes dont
     /// l'ordre est le sens.
-    mutations: FileMutations,
+    pub(super) mutations: FileMutations,
     /// La corrélation de la mutation en vol, s'il y en a une.
-    mutation_en_vol: Option<u32>,
+    pub(super) mutation_en_vol: Option<u32>,
 }
 
 impl Fil {
@@ -174,46 +186,6 @@ impl Fil {
         };
         fil.reprendre();
         fil
-    }
-
-    /// Au démarrage : annoncer les dues **avant** toute poussée, puis les
-    /// repousser **dans l'ordre d'inscription**.
-    fn reprendre(&mut self) {
-        if self.journal.est_vide() {
-            return;
-        }
-        tracing::warn!(
-            dues = self.journal.compte(),
-            "des ecritures etaient dues au demarrage du pont : elles sont repoussees"
-        );
-        self.annoncer_les_dues();
-        let a_reprendre: Vec<String> =
-            self.journal.dues().iter().map(|(c, _)| c.clone()).collect();
-        for chemin in a_reprendre {
-            let local = disque::local(&self.config.racine, &chemin);
-            let evenement = match std::fs::metadata(&local) {
-                Ok(m) if m.is_dir() => Evenement::Cree { chemin, repertoire: true },
-                Ok(_) => Evenement::Modifie { chemin },
-                Err(erreur) => {
-                    // 🔴 **La racine a été recréée, et le fichier est parti avec
-                    // elle** (spec §6.4 cas 3). Boucler sur le réessai ferait
-                    // repousser indéfiniment un fichier qui n'existe plus ; le
-                    // retirer EN LE NOMMANT est tout ce qui reste — *savoir ce
-                    // qu'on a perdu n'est pas l'avoir*.
-                    tracing::warn!(
-                        chemin, %erreur,
-                        "ecriture due abandonnee : le fichier local n'existe plus"
-                    );
-                    let ligne = self.journal.retirer(&chemin);
-                    self.ecrire_journal(&ligne);
-                    continue;
-                }
-            };
-            if let Some(a_pousser) = self.file.signaler(evenement) {
-                self.commencer(a_pousser);
-            }
-        }
-        self.annoncer_les_dues();
     }
 
     fn traiter(&mut self, ordre: Ordre) {
@@ -262,125 +234,7 @@ impl Fil {
         }
     }
 
-    /// Ce qu'on fait d'un renommage ou d'une suppression.
-    ///
-    /// ⚠️ **Elle ne passe NI par le journal des écritures dues, NI par la file
-    /// de contenu** : elle ne porte aucun octet, et l'inscrire ferait monter le
-    /// compteur de la page-shell pour un geste qui n'a rien à transférer.
-    fn mutation(&mut self, evenement: Evenement) {
-        let quoi = match evenement {
-            Evenement::Renomme { de, vers, repertoire } => {
-                Mutation::Renommer { de, vers, repertoire }
-            }
-            Evenement::Supprime { chemin, repertoire } => {
-                Mutation::Supprimer { chemin, repertoire }
-            }
-            // Le bras appelant garantit `est_mutation()` ; ce cas est
-            // inatteignable, et le DIRE vaut mieux que de le supposer.
-            autre => {
-                tracing::warn!(?autre, "evenement non-mutation route vers le fil de mutation");
-                return;
-            }
-        };
-        if let Some(a_pousser) = self.mutations.signaler(quoi) {
-            self.commencer_mutation(a_pousser);
-        }
-    }
-
-    /// 🔴 **L'ENTRELACEMENT AVEC LES ÉCRITURES DUES — la règle du §0.3, celle
-    /// dont l'oubli produit une PERTE DE DONNÉES.**
-    ///
-    /// L'idiome d'enregistrement de la spec §3.5 — écrire un temporaire,
-    /// renommer, supprimer l'ancien — envoie ses trois gestes EN RAFALE, alors
-    /// que F2 pousse les écritures **après coup**. La décision vit dans
-    /// `pont::mutation`, qui est PUR et testé sur l'hôte ; ce corps ne fait
-    /// qu'obéir.
-    fn commencer_mutation(&mut self, quoi: Mutation) {
-        if !self.config.armee {
-            // Le bras DÉSARMÉ de `PONT_ECRITURE` : on journalise, on ne pousse
-            // jamais. Rien n'est dû au journal pour une mutation, donc rien ne
-            // reste — c'est dit plutôt que supposé.
-            tracing::warn!(?quoi, "mutation NON poussee : PONT_ECRITURE=0");
-            if let Some(suivante) = self.mutations.terminee() {
-                self.commencer_mutation(suivante);
-            }
-            return;
-        }
-        match ordonnancer(&self.file.chemins_dus(), &quoi) {
-            Ordonnancement::Pousser => {}
-            Ordonnancement::AttendreEcrituresDues { chemins } => {
-                // 🔴 **LA MUTATION N'EST PAS POUSSÉE, et elle repasse DEVANT**
-                // celles qui l'ont suivie : l'ordre des gestes de
-                // l'utilisateur est le sens même.
-                tracing::warn!(
-                    ?quoi, ?chemins,
-                    "renommage suspendu : ecriture due sur la source. La mutation repartira                      quand les octets seront pousses"
-                );
-                self.mutations.differer();
-                return;
-            }
-            Ordonnancement::AbandonnerEcrituresDues { chemins } => {
-                // 🔴 **POUSSER RECRÉERAIT CE QUE L'UTILISATEUR EFFACE.**
-                for chemin in &chemins {
-                    tracing::warn!(
-                        chemin,
-                        "ecriture due abandonnee : le chemin a ete supprime"
-                    );
-                    self.file.oublier(chemin);
-                    let ligne = self.journal.retirer(chemin);
-                    self.ecrire_journal(&ligne);
-                }
-                self.annoncer_les_dues();
-            }
-        }
-        let (type_message, entete, chemin, renommage) = match &quoi {
-            Mutation::Renommer { de, vers, repertoire } => (
-                proto::fichiers::TYPE_RENOMMER,
-                serde_json::to_string(&entetes::Renommer {
-                    de: de.clone(),
-                    vers: vers.clone(),
-                    repertoire: *repertoire,
-                })
-                .expect("un en-tete Renommer se serialise toujours"),
-                de.clone(),
-                true,
-            ),
-            Mutation::Supprimer { chemin, repertoire } => (
-                proto::fichiers::TYPE_SUPPRIMER,
-                serde_json::to_string(&entetes::Supprimer {
-                    chemin: chemin.clone(),
-                    repertoire: *repertoire,
-                })
-                .expect("un en-tete Supprimer se serialise toujours"),
-                chemin.clone(),
-                false,
-            ),
-        };
-        let correlation = self.inscrire_mutation(Attendue::Muter { chemin, renommage });
-        self.mutation_en_vol = Some(correlation);
-        self.emettre(type_message, correlation, &entete, &[]);
-        tracing::debug!(?quoi, correlation, "mutation poussee");
-    }
-
-    /// La mutation en vol est finie. `acquittee` ne décide de rien au journal —
-    /// **une mutation n'y est jamais inscrite** — mais la trace en dépend.
-    fn terminer_mutation(&mut self, acquittee: bool) {
-        self.mutation_en_vol = None;
-        if let Some(suivante) = self.mutations.terminee() {
-            self.commencer_mutation(suivante);
-        }
-        let _ = acquittee;
-    }
-
-    fn inscrire_mutation(&self, quoi: Attendue) -> u32 {
-        let echeance = Instant::now() + crate::pont::table::DELAI_MUTATION;
-        match self.config.table.lock() {
-            Ok(mut table) => table.inscrire_sans_commande(quoi, echeance),
-            Err(empoisonne) => empoisonne.into_inner().inscrire_sans_commande(quoi, echeance),
-        }
-    }
-
-    fn commencer(&mut self, evenement: Evenement) {
+    pub(super) fn commencer(&mut self, evenement: Evenement) {
         let chemin = evenement.chemin().to_string();
         if !self.config.armee {
             // Le bras DÉSARMÉ : on journalise et on annonce, on ne pousse
@@ -557,7 +411,7 @@ impl Fil {
         }
     }
 
-    fn annoncer_les_dues(&self) {
+    pub(super) fn annoncer_les_dues(&self) {
         let dues: Vec<entetes::Due> = self
             .journal
             .dues()
@@ -569,7 +423,7 @@ impl Fil {
         self.emettre(proto::fichiers::TYPE_DUES, CORRELATION_ANNONCE, &entete, &[]);
     }
 
-    fn emettre(&self, type_message: u8, correlation: u32, entete: &str, charge: &[u8]) {
+    pub(super) fn emettre(&self, type_message: u8, correlation: u32, entete: &str, charge: &[u8]) {
         let trame = proto::fichiers::encoder(type_message, correlation, entete, charge);
         if self
             .config
@@ -595,7 +449,7 @@ impl Fil {
     /// pousser perdrait la donnée tout autant, et **sans même la nommer**. Le
     /// `warn!` est tout ce qu'on peut faire — et il dit exactement ce qui est
     /// perdu : la capacité de REPRENDRE cette entrée après un arrêt brutal.
-    fn ecrire_journal(&mut self, ligne: &str) {
+    pub(super) fn ecrire_journal(&mut self, ligne: &str) {
         if let Err(erreur) = disque::ajouter(&self.config.chemin_journal, ligne) {
             tracing::warn!(
                 %erreur, chemin = %self.config.chemin_journal.display(),

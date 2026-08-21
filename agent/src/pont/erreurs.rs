@@ -85,7 +85,22 @@ pub enum Erreur {
     DisquePlein,
     /// L'opération n'a pas d'équivalent dans la File System Access API.
     NonSupporte,
-    /// Suppression d'un répertoire non vide (F3).
+    /// Suppression d'un répertoire non vide.
+    ///
+    /// ✅ **CONSTRUITE DEPUIS F3** *(cette ligne disait « (F3) »)* :
+    /// `service::cause_de` la produit sur un `CodeEchec::RepertoireNonVide`.
+    ///
+    /// 🔵 **ET SON `HRESULT` ATTEINT BIEN QUELQU'UN, à la différence de
+    /// [`Erreur::DisquePlein`] et de [`Erreur::DejaPresent`].** Elle naît d'une
+    /// suppression, dont le `PRE_DELETE` est **SYNCHRONE** : l'Explorateur y
+    /// attend. C'est aussi la seule cause **DIAGNOSTIQUE** de la table — la
+    /// recevoir signifie que le poste local porte des entrées que la VM ne
+    /// connaît pas, c'est-à-dire que **le miroir a dérivé**.
+    ///
+    /// ⚠️ **Elle n'existe QUE parce que F3 supprime SANS `recursive`.** Avec
+    /// `recursive: true`, le sous-arbre du poste local disparaîtrait en
+    /// silence, et ce code ne serait jamais produit — un code jamais produit
+    /// est exactement ce que le critère (4) existe pour interdire.
     RepertoireNonVide,
     /// Création d'une entrée qui existe déjà.
     ///
