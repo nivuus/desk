@@ -180,7 +180,7 @@ est parfaitement « ok ». Ce qui le juge est de lire la configuration
 
 ```bash
 docker run --rm -v "$PWD/deploiement/nginx.conf:/etc/nginx/nginx.conf:ro" \
-  -v "$HOME/.guacamole-tls-jetable:/etc/nginx/tls:ro" nginx:alpine nginx -T \
+  -v "$PWD/deploiement/tls:/etc/nginx/tls:ro" nginx:alpine nginx -T \
   | grep -c '^\s*proxy_set_header X-Pomerium-Claim-Email ""'
 ```
 
@@ -263,7 +263,8 @@ authentifie donc **par mot de passe**, et c'est bien par la création d'un compt
 qu'on y ouvre l'accès. 🔴 **Sous le DÉFAUT (`pomerium`), cette étape n'aurait
 plus de sens** — `POST /auth/connexion` rendrait `404`, les comptes se
 créeraient tout seuls au premier passage de `GET /auth/moi`, et le mot de passe
-posé ici ne servirait à rien. Voir l'invariant ⑤ ci-dessous.
+posé ici ne servirait à rien. Voir l'invariant ⑤ **plus haut** (il ouvre ce
+fichier ; ce n'est pas une note de bas de page).
 
 ```bash
 cd plateforme
