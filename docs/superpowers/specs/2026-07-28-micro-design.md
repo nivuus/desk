@@ -246,6 +246,23 @@ Avec la connexion unique d'aujourd'hui, la garde tient en un drapeau atomique.
 Elle est écrite maintenant parce qu'elle rend le comportement à deux fenêtres
 **choisi** plutôt qu'accidentel le jour où le chantier D arrivera.
 
+> ⚠️ **ANNOTÉ le 21 août 2026 (bloc E3). Ce paragraphe est un relevé de
+> conception du 28 juillet 2026, AVANT les chantiers A, B, C et D : il n'est
+> pas réécrit, et deux de ses trois clauses ont vieilli.**
+>
+> - ❌ **« la garde tient en un drapeau atomique » est FAUX depuis D1** : N
+>   fenêtres sont N **processus**, et un drapeau atomique ne garde rien entre
+>   eux. Livré par le bloc E2 comme un **mutex nommé Windows**, espace
+>   `Global\`, mesuré 5/5.
+> - ⚠️ **« refusée » comme état DÉFINITIF est faux depuis la Décision 2 du bloc
+>   E2** : la tentative d'acquisition y est devenue **non collante**, refaite à
+>   chaque dépôt, de sorte qu'un câble libéré est repris. **« journalisée une
+>   fois » survit sans changement.**
+> - ✅ **La dernière phrase a tenu son pari** : le chantier D est arrivé, le
+>   comportement à deux fenêtres était bien *choisi*. Et le bloc E3 lui ajoute
+>   ce que cette page ne prévoyait pas — **le refus est désormais DIT AU
+>   CLIENT**, par `AgentControl::MicState`, voir l'annotation du §10 ci-dessous.
+
 La libération est déclenchée par la **fermeture de la connexion propriétaire**
 (`Event::Closed`, ou la disparition ICE déjà traitée par `transport.rs`), et non
 par l'extinction du bouton : un utilisateur qui coupe puis rallume son micro doit
@@ -264,6 +281,22 @@ Le micro est la seule fonction du produit qui capte l'utilisateur chez lui.
 
 Le bouton reflète trois états : fermé, actif, refusé par le navigateur.
 
+> ⚠️ **ANNOTÉ le 21 août 2026 (bloc E3). Il en reflète QUATRE**, et le
+> quatrième vient du tableau du §10 de cette page même, qui distingue
+> « permission refusée par l'utilisateur » d'« aucun périphérique d'entrée » :
+> `'ferme' | 'actif' | 'refuse' | 'indisponible'` (`client/src/micro.ts`).
+>
+> 🔴 **Et le bloc E3 n'en a PAS ajouté un cinquième, délibérément.** Le refus
+> d'exclusivité du câble de la VM (§9) est annoncé par un message
+> `mic-state`, et il **se superpose** à l'état `'actif'` au lieu de le
+> remplacer : la piste EST ouverte, le navigateur ÉMET, et l'indicateur de
+> capture de Chrome est allumé — éteindre le bouton serait le mensonge visuel
+> que le §9 « Vie privée » de cette page qualifie d'inacceptable. Ce qui change
+> est un **libellé** et un **bandeau**. Ranger ce refus dans `'refuse'`
+> confondrait par ailleurs deux causes qui appellent deux gestes opposés :
+> l'une se répare dans les réglages du navigateur, l'autre en fermant l'autre
+> fenêtre.
+
 ## 10. Erreurs et dégradation
 
 Principe repris de A : **le micro ne tue jamais une session qui fonctionne.**
@@ -277,7 +310,7 @@ Principe repris de A : **le micro ne tue jamais une session qui fonctionne.**
 | Piste montante non négociée | Aucun paquet attendu, avertissement unique (calqué sur `warn_negotiation_once`) |
 | Tampon en famine | Silence ou PLC, compteur agrégé journalisé |
 | Tampon saturé | Trame la plus ancienne jetée, compteur |
-| Second flux montant | Refusé, avertissement unique |
+| Second flux montant | Refusé, avertissement unique — ⚠️ **et DIT AU CLIENT depuis le bloc E3** (`mic-state`), ce que cette page ne prévoyait pas |
 | Échec d'écriture WASAPI | Journalisé ; le fil tente une réinitialisation ; la session continue |
 
 `ReadyMessage` gagne `mic: boolean` plutôt qu'un nouveau type de message : la

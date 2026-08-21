@@ -156,10 +156,11 @@ pub struct Session {
     audio_mid: Option<Mid>,
     /// `mid` de la piste du MICRO (chantier E), renseigné à la négociation.
     mic_mid: Option<Mid>,
-    // Les quatre champs du MICRO (chantier E). Leur raisonnement vit en
-    // entier dans `transport/piste_micro.rs`, auprès du code qui les emploie —
-    // c'est un PLACEMENT de la documentation neuve, pas une compression : ce
-    // fichier est à trois lignes de son plafond.
+    // Les CINQ champs du MICRO (chantier E). Leur raisonnement vit en entier
+    // dans `transport/piste_micro.rs`, auprès du code qui les emploie — et
+    // c'est là qu'est aussi la réfutation des deux comptes que ce commentaire
+    // portait jusqu'au bloc E3 (« les QUATRE champs », « à trois lignes de son
+    // plafond »), par le même PLACEMENT et non par une compression.
     /// Puits du flux montant, absent tant qu'aucun n'a été installé.
     puits_micro: Option<Box<dyn crate::micro::PuitsMicro + Send>>,
     /// Négociation ou horloge inattendue : signalées une seule fois.
