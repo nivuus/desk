@@ -55,16 +55,14 @@ mod mutations;
 mod reprise;
 
 use std::collections::VecDeque;
-use std::path::PathBuf;
-use std::sync::mpsc::{Receiver, Sender};
-use std::sync::{Arc, Mutex};
+use std::sync::mpsc::Receiver;
 use std::time::Instant;
 
 use super::{Evenement, File};
 use crate::pont::decoupe::{decouper, Morceau};
 use crate::pont::journal::Journal;
 use crate::pont::mutation::FileMutations;
-use crate::pont::table::{Attendue, Table, DELAI_ECRIRE};
+use crate::pont::table::{Attendue, DELAI_ECRIRE};
 use crate::pont::transport::VersNavigateur;
 use proto::fichiers::{entetes, CodeEchec};
 
@@ -74,7 +72,7 @@ use proto::fichiers::{entetes, CodeEchec};
 /// navigateur ne s'en sert pas. Elle n'est là que pour le journal du transport,
 /// qui trace `correlation` sur chaque émission.
 ///
-/// ⚠️ **Elle n'est PAS réservée dans [`Table`]** : la lui faire enjamber
+/// ⚠️ **Elle n'est PAS réservée dans [`crate::pont::table::Table`]** : la lui faire enjamber
 /// coûterait un cas particulier dans la distribution des corrélations pour un
 /// gain de lisibilité de journal. Une collision exigerait 2^32 inscriptions
 /// dans une même exécution du pont.
@@ -94,37 +92,9 @@ const CORRELATION_ANNONCE: u32 = u32::MAX;
 /// ⚠️ **NON CALIBRÉE.**
 pub const TAILLE_ECRITURE_SIGNALEE: u64 = 64 * 1024 * 1024;
 
-/// Ce que le fil d'écriture reçoit.
-///
-/// ⚠️ **UN SEUL CANAL, et c'est une divergence déclarée avec le plan de F2**,
-/// dont la signature prend **deux** `Receiver` (les événements, les faits).
-/// Deux récepteurs sur un fil bloquant imposeraient un sondage alterné, donc
-/// une latence bornée par un délai arbitraire de plus — et un test qui dépend
-/// d'un `sleep`. Un canal unique rend la boucle déterministe, donc testable
-/// sans dormir : la propriété que `pont::table` s'est donnée pour l'expiration.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Ordre {
-    /// Une notification ProjFS a désigné un chemin.
-    Survenu(Evenement),
-    /// Le navigateur a acquitté un morceau.
-    Fait { correlation: u32 },
-    /// Le navigateur a refusé, ou la commande a expiré.
-    Echec { correlation: u32, code: CodeEchec },
-}
+mod contrat;
 
-/// Ce dont le fil a besoin pour tourner.
-pub struct Config {
-    /// La racine de virtualisation, où vivent les fichiers hydratés.
-    pub racine: PathBuf,
-    /// Le journal de reprise, **hors de la racine**.
-    pub chemin_journal: PathBuf,
-    /// **La MÊME table que les lectures** : deux sources de corrélations sur un
-    /// canal unique se collisionneraient en silence.
-    pub table: Arc<Mutex<Table>>,
-    pub vers_navigateur: Sender<VersNavigateur>,
-    /// `PONT_ECRITURE` : `false` = le bras désarmé de l'A/B.
-    pub armee: bool,
-}
+pub use contrat::{Config, Ordre};
 
 /// La boucle du fil. Rend quand le canal des ordres se ferme.
 pub fn tourner(config: Config, ordres: Receiver<Ordre>) {
