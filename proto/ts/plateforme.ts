@@ -43,18 +43,17 @@ import type {
     ProgressionMessage,
     TermineMessage,
 } from './plateforme-installation';
-import {
-    estCompte,
-    estEntierSigne,
-    estIssueInstallation,
-    estPhase,
-    presentEtNulOu,
-} from './plateforme-installation';
 export type { Phase, Issue, InstallerMessage, ProgressionMessage, TermineMessage } from './plateforme-installation';
 export { estPhase, estIssueInstallation } from './plateforme-installation';
 export { encodeProgression, encodeTermine, encodeInstaller } from './plateforme-installation';
 import { lireProgression, lireTermine } from './plateforme-installation';
-import type { Phase, Issue } from './plateforme-installation';
+
+// ⚠️ CES CINQ GARDES ÉTAIENT IMPORTÉES ICI, ET NE LE SONT PLUS : elles sont
+// parties avec les deux lectures, dans `plateforme-installation.ts`. L'import
+// orphelin qui restait n'était vu par AUCUN typecheck de `proto/` — c'est celui
+// de `client/`, dont le `tsconfig` est plus strict, qui l'a rendu (`TS6192`).
+// **Deux paquets typechèquent le même fichier avec deux sévérités**, et seul le
+// plus sévère dit la vérité.
 
 
 export interface EnrolerMessage { v: number; type: 'enroler'; vm: string; secret: string }
