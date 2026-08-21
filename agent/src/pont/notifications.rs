@@ -74,6 +74,14 @@ pub const HARDLINK_CREATED: i32 = 256; // mod.rs:342
 pub const NEW_FILE_CREATED: i32 = 4; // mod.rs:349
 pub const FILE_OVERWRITTEN: i32 = 8; // mod.rs:339
 pub const FILE_HANDLE_CLOSED_FILE_MODIFIED: i32 = 1024; // mod.rs:336
+// ── LES DEUX DE F3 ────────────────────────────────────────────────────────
+// ⚠️ **La VALEUR fait foi, jamais le numéro de ligne.** `windows` et
+// `windows-sys` exposent DEUX modules `Win32/Storage/ProjectedFileSystem` aux
+// symboles identiques et aux lignes différentes ; l'auteur du plan de F2 a
+// déclaré fausses trois citations exactes pour l'avoir oublié. Le crate qui
+// fait foi est celui qu'`agent/Cargo.toml` déclare — `windows` (0.62.2).
+pub const FILE_RENAMED: i32 = 128; // mod.rs:341
+pub const FILE_HANDLE_CLOSED_FILE_DELETED: i32 = 2048; // mod.rs:335
 
 // Ce que le MASQUE demande — `PRJ_NOTIFY_TYPES`, `u32`.
 pub const NOTIFY_FILE_PRE_CONVERT_TO_FULL: u32 = 4096; // mod.rs:385
@@ -83,15 +91,33 @@ pub const NOTIFY_PRE_SET_HARDLINK: u32 = 64; // mod.rs:392
 pub const NOTIFY_NEW_FILE_CREATED: u32 = 4; // mod.rs:388
 pub const NOTIFY_FILE_OVERWRITTEN: u32 = 8; // mod.rs:384
 pub const NOTIFY_FILE_HANDLE_CLOSED_FILE_MODIFIED: u32 = 1024; // mod.rs:381
+pub const NOTIFY_FILE_RENAMED: u32 = 128; // mod.rs:386
+pub const NOTIFY_FILE_HANDLE_CLOSED_FILE_DELETED: u32 = 2048; // mod.rs:380
 
-/// Le masque que la racine demande — **SEPT bits**, contre cinq en F1.
+/// Le masque que la racine demande — **NEUF bits** : cinq en F1, sept après F2,
+/// neuf depuis F3.
 ///
-/// - **Les quatre `PRE_` sont REFUSABLES**, et une seule d'entre elles décide
-///   réellement d'une écriture : `PRE_CONVERT_TO_FULL`. Les trois autres sont
-///   refusées inconditionnellement (renommage et suppression : **F3** ; liens
-///   durs : hors périmètre, aucun équivalent dans la File System Access API).
-/// - **Les trois POST ne se refusent pas** : elles disent qu'il y a des octets
-///   à pousser, et c'est tout ce qu'on peut en tirer.
+/// - **Les quatre `PRE_` sont REFUSABLES**, et **TROIS** d'entre elles décident
+///   réellement de quelque chose depuis F3 : `PRE_CONVERT_TO_FULL` (l'écriture),
+///   `PRE_RENAME` et `PRE_DELETE`. *(Ces lignes disaient « une seule », et
+///   « les trois autres sont refusées inconditionnellement — renommage et
+///   suppression : F3 ». F3 est arrivé.)* La quatrième, `PRE_SET_HARDLINK`,
+///   reste refusée sans condition : les liens durs n'ont **aucun** équivalent
+///   dans la File System Access API.
+/// - **Les cinq POST ne se refusent pas** : elles disent ce qui a DÉJÀ eu lieu
+///   sur la VM, et c'est tout ce qu'on peut en tirer.
+///
+/// 🔵 **CE QUE LES `PRE_` ACHÈTENT À F3, ET QUE F2 N'AVAIT PAS.** F2 déclare
+/// que le chemin d'écriture n'a **aucune** contre-pression : il n'apprend une
+/// écriture qu'à la fermeture du handle, par une POST, quand l'application a
+/// déjà cru enregistrer. `PRE_RENAME` et `PRE_DELETE` sont, elles, des **PRE** :
+/// F3 peut refuser un renommage ou une suppression **avant** qu'ils n'aient
+/// lieu, et l'application le voit.
+///
+/// ⚠️ **Mais le refus ne peut porter que sur un ÉTAT, jamais sur une ISSUE.**
+/// Les `PRE_` sont **synchrones** et ne consultent jamais le navigateur (spec
+/// §4.3). On ne sait donc pas si le poste local acceptera ; on sait seulement
+/// si notre côté est en mesure de pousser.
 ///
 /// ⚠️ **`FILE_HANDLE_CLOSED_NO_MODIFICATION` (512, `mod.rs:382`) n'est
 /// DÉLIBÉRÉMENT PAS DEMANDÉE.** Elle arriverait à **chaque fermeture de handle
@@ -113,7 +139,9 @@ pub const MASQUE: u32 = NOTIFY_FILE_PRE_CONVERT_TO_FULL
     | NOTIFY_PRE_SET_HARDLINK
     | NOTIFY_NEW_FILE_CREATED
     | NOTIFY_FILE_OVERWRITTEN
-    | NOTIFY_FILE_HANDLE_CLOSED_FILE_MODIFIED;
+    | NOTIFY_FILE_HANDLE_CLOSED_FILE_MODIFIED
+    | NOTIFY_FILE_RENAMED
+    | NOTIFY_FILE_HANDLE_CLOSED_FILE_DELETED;
 
 /// Ce qu'une poussée transporte.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -124,6 +152,22 @@ pub enum Poussee {
     /// contenu** ; un fichier, lui, sera suivi d'une poussée de contenu à la
     /// fermeture de son handle.
     Creation,
+    /// **F3** — l'entrée a été renommée. `de` est `FilePathName`, `vers` est
+    /// `destinationFileName` : deux paramètres DIRECTS du rappel, jamais des
+    /// membres de l'union `PRJ_NOTIFICATION_PARAMETERS`, que ce pont ne
+    /// déréférence toujours pas.
+    ///
+    /// 🔴 **S'y tromper de sens DÉTRUIT**, et c'est le risque le plus grave de
+    /// F3. Le pont refuse donc de pousser un renommage dont la destination est
+    /// vide ou égale à la source, avec un `warn!` qui nomme les deux champs
+    /// bruts — parade qui ne dépend d'aucune mesure.
+    Renommage,
+    /// **F3** — l'entrée a été supprimée.
+    ///
+    /// ⚠️ Le nom de la notification est `FILE_HANDLE_CLOSED_FILE_DELETED` : la
+    /// suppression n'est acquise qu'à la fermeture du **dernier** handle, ce
+    /// qui est la sémantique de Windows et non une subtilité de ProjFS.
+    Suppression,
 }
 
 /// L'état dont la décision dépend.
@@ -139,6 +183,42 @@ pub struct Etat {
     /// Le canal du pont est-il ouvert ? Refuser ici est le seul instant où
     /// l'application peut encore l'apprendre.
     pub canal_ouvert: bool,
+    /// **F3** — les mutations sont-elles armées ? `PONT_MUTATION=0` les désarme.
+    ///
+    /// 🔴 **VARIABLE DE BANC, jamais une configuration livrée.** Elle existe
+    /// pour rendre ROUGE les critères ① et ② de la recette : désarmée, le
+    /// `PRE_` refuse, l'application voit `ERROR_WRITE_PROTECT`, et **le poste
+    /// local est inchangé**. C'est un rouge du MÉCANISME — le refus est
+    /// journalisé et le compteur `protege-en-ecriture` monte —, jamais un rouge
+    /// vacueux.
+    ///
+    /// ⚠️ **Elle ne touche PAS l'écriture** : `PONT_ECRITURE` a la sienne. Deux
+    /// mécanismes distincts, deux interrupteurs distincts — les confondre
+    /// ferait qu'une recette du renommage couperait aussi l'idiome
+    /// temp+rename qu'elle veut exercer.
+    pub mutations_armees: bool,
+}
+
+/// Ce que l'on sait de la DESTINATION d'une notification.
+///
+/// ⚠️ **Un `enum` et non un `bool`, parce qu'une suppression n'a pas de
+/// destination du tout.** Passer `false` y suggérerait « la destination est
+/// dans la racine », qui ne veut rien dire, et un test qui l'écrirait
+/// n'éprouverait rien.
+///
+/// ⚠️ **`chemins::normaliser` décide, jamais [`decider`].** La spec §4.3 dit
+/// « accepte, sauf si la cible sort de la racine », et `pont::chemins` est déjà
+/// le module qui refuse les `..`, les `:` et les noms réservés. Le dupliquer
+/// ici en ferait deux vérités.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Cible {
+    /// La notification ne porte aucune destination — tous les codes sauf
+    /// `PRE_RENAME`.
+    SansObjet,
+    /// La destination est recevable : dans la racine, et normalisée.
+    DansLaRacine,
+    /// La destination sort de la racine, ou `chemins::normaliser` l'a refusée.
+    HorsRacine,
 }
 
 /// Ce que le rappel de notification doit faire.
@@ -180,7 +260,7 @@ pub enum Reponse {
 /// est un entier, pas une énumération Rust —, d'où le garde de test
 /// `chaque_bit_du_masque_a_une_decision_nommee`, qui balaie les 32 bits et
 /// vérifie qu'aucun bit DEMANDÉ ne retombe dans le bras fourre-tout.
-pub fn decider(code: i32, etat: Etat) -> Reponse {
+pub fn decider(code: i32, etat: Etat, cible: Cible) -> Reponse {
     match code {
         // 🔵 **L'UNIQUE PORTE DE REFUS D'UNE ÉCRITURE.** Au-delà, plus rien ne
         // peut être dit à l'application : elle refermera son handle en croyant
@@ -194,13 +274,36 @@ pub fn decider(code: i32, etat: Etat) -> Reponse {
         PRE_CONVERT_TO_FULL if !etat.inscriptible => Reponse::Refuser(Erreur::ProtegeEnEcriture),
         PRE_CONVERT_TO_FULL if !etat.canal_ouvert => Reponse::Refuser(Erreur::CanalFerme),
         PRE_CONVERT_TO_FULL => Reponse::Autoriser,
-        // 🔴 **REFUSÉS INCONDITIONNELLEMENT, ET C'EST DÉLIBÉRÉ.** `Renommer` et
-        // `Supprimer` sont des livrables de **F3** : les accepter sans pouvoir
-        // les pousser laisserait le poste local sur l'ancien contenu, sans que
-        // rien ne le dise. **Une application qui emploie l'idiome
-        // écrire-temporaire / renommer / supprimer échoue donc bruyamment ici**
-        // — ce qui est le seul comportement honnête tant que F3 n'est pas là.
-        PRE_RENAME | PRE_DELETE => Reponse::Refuser(Erreur::ProtegeEnEcriture),
+        // ❌ **CES DEUX-LÀ N'ÉTAIENT PAS REFUSÉS PARCE QU'ILS DEVAIENT L'ÊTRE,
+        // MAIS PARCE QUE F3 N'EXISTAIT PAS ENCORE.** *(Ce bras disait :
+        // « REFUSÉS INCONDITIONNELLEMENT, ET C'EST DÉLIBÉRÉ. `Renommer` et
+        // `Supprimer` sont des livrables de F3 : les accepter sans pouvoir les
+        // pousser laisserait le poste local sur l'ancien contenu. » La raison
+        // était juste, et elle a cessé de l'être : F3 sait les pousser.)*
+        //
+        // 🔴 **QUATRE ÉTATS REFUSENT, ET AUCUNE ISSUE NE LE FAIT.** Un `PRE_`
+        // est synchrone : on ne peut pas demander au navigateur ce qu'il
+        // pense de l'opération, seulement constater que notre côté n'est pas en
+        // mesure de la pousser.
+        //
+        // ⚠️ **L'ORDRE EST CELUI DE `PRE_CONVERT_TO_FULL`, par symétrie.** Il
+        // ne départage que le cas d'un renommage hors racine sur une racine
+        // déjà en lecture seule, qui n'arrive pas — mais le laisser au hasard
+        // ferait diverger les deux portes de refus du module.
+        PRE_RENAME | PRE_DELETE if !etat.mutations_armees => {
+            Reponse::Refuser(Erreur::ProtegeEnEcriture)
+        }
+        PRE_RENAME | PRE_DELETE if !etat.inscriptible => {
+            Reponse::Refuser(Erreur::ProtegeEnEcriture)
+        }
+        PRE_RENAME | PRE_DELETE if !etat.canal_ouvert => Reponse::Refuser(Erreur::CanalFerme),
+        // ⚠️ **`NonSupporte` ET NON `ProtegeEnEcriture`** : sortir de la racine
+        // n'est pas un refus de droit, c'est une opération que l'autre bout ne
+        // sait pas faire — il n'a aucune poignée hors du répertoire que
+        // l'utilisateur a choisi. Les faire partager un code violerait le §5.1
+        // de la spec, et ferait chercher une permission là où il n'y en a pas.
+        PRE_RENAME if cible == Cible::HorsRacine => Reponse::Refuser(Erreur::NonSupporte),
+        PRE_RENAME | PRE_DELETE => Reponse::Autoriser,
         // Les liens durs n'ont aucun équivalent dans la File System Access
         // API : ce n'est pas un refus de lecture seule, c'est une opération qui
         // n'existe pas de l'autre côté (spec §3.5.2). La distinction est
@@ -219,6 +322,17 @@ pub fn decider(code: i32, etat: Etat) -> Reponse {
         FILE_OVERWRITTEN | FILE_HANDLE_CLOSED_FILE_MODIFIED => {
             Reponse::Pousser(Poussee::Contenu)
         }
+        // ── LES DEUX POST DE F3 ───────────────────────────────────────────
+        // ⚠️ **Elles ne se refusent PAS**, comme toutes les POST : le geste a
+        // déjà eu lieu dans la VM. Ce qui les a autorisées est le `PRE_`
+        // correspondant, quelques microsecondes plus tôt.
+        //
+        // 🔴 **ET L'ÉTAT NE LES CHANGE PAS NON PLUS.** Une poussée part même
+        // canal fermé : le fil qui la sert la journalisera et la retiendra.
+        // Les subordonner à l'état ferait perdre en silence exactement ce que
+        // le refus au `PRE_` avait laissé passer.
+        FILE_RENAMED => Reponse::Pousser(Poussee::Renommage),
+        FILE_HANDLE_CLOSED_FILE_DELETED => Reponse::Pousser(Poussee::Suppression),
         _ => Reponse::AccepterSansAttendre,
     }
 }

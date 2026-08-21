@@ -123,6 +123,13 @@ pub struct Etat {
     /// [`super`] interdit — et la lecture traverserait la racine, donc nos
     /// propres rappels.
     pub vers_ecriture: Sender<crate::pont::ecriture::fil::Ordre>,
+    /// **F3** — les mutations sont-elles armées ? `PONT_MUTATION=0` les désarme.
+    ///
+    /// 🔴 **VARIABLE DE BANC, jamais une configuration livrée.** Posée une fois
+    /// au démarrage, comme `inscriptible`, et pour la même raison : la changer
+    /// en cours de route ferait qu'un `PRE_` autoriserait ce qu'une POST ne
+    /// pousserait plus.
+    pub mutations_armees: bool,
     /// La racine accepte-t-elle l'écriture ? Posé une fois au démarrage.
     ///
     /// ⚠️ **`false` REND EXACTEMENT LE COMPORTEMENT DE F1** : `PRE_CONVERT_TO_FULL`
@@ -231,6 +238,7 @@ impl Etat {
         crate::pont::notifications::Etat {
             inscriptible: self.inscriptible,
             canal_ouvert: self.canal_ouvert.load(Ordering::Relaxed),
+            mutations_armees: self.mutations_armees,
         }
     }
 

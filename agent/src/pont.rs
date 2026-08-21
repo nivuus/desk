@@ -132,11 +132,34 @@ pub async fn executer(config: crate::Config) -> anyhow::Result<()> {
     // qui est la convention réellement décrite.
     let ecriture_armee = std::env::var("PONT_ECRITURE").as_deref() != Ok("0");
 
+    // ⚠️ **`PONT_MUTATION=0` DÉSARME, et une simple PRÉSENCE n'active pas** —
+    // la convention de `SUPERVISEUR`, `CAPTEUR`, `PONT`, `PONT_ECRITURE`,
+    // `AUDIO`, `PLEIN_ECRAN`, `PRESSE_PAPIER` et `APPS`.
+    //
+    // 🔴 **VARIABLE DE BANC, jamais une configuration livrée.** Elle existe
+    // pour rendre ROUGE les critères ① et ② de la recette de F3 : désarmée, le
+    // `PRE_RENAME` et le `PRE_DELETE` refusent, l'application voit
+    // `ERROR_WRITE_PROTECT`, et **le poste local est inchangé**. C'est un rouge
+    // du MÉCANISME — le refus est journalisé et le compteur
+    // `protege-en-ecriture` monte —, jamais un rouge vacueux.
+    //
+    // ⚠️ **DISTINCTE de `PONT_ECRITURE`, et le rester** : les confondre ferait
+    // qu'une recette du renommage couperait aussi l'écriture, donc l'idiome
+    // temp+rename qu'elle veut précisément exercer.
+    let mutations_armees = std::env::var("PONT_MUTATION").as_deref() != Ok("0");
+    if !mutations_armees {
+        tracing::warn!(
+            "mutations DESARMEES (PONT_MUTATION=0) : renommage et suppression refuses \
+             au PRE_, rien n'est pousse"
+        );
+    }
+
     let virtualisation = projfs::Virtualisation::demarrer(
         projfs,
         vers_navigateur.clone(),
         vers_ecriture,
         ecriture_armee,
+        mutations_armees,
     )?;
     let etat = virtualisation.etat();
     tracing::info!(racine = %virtualisation.racine().display(), "racine du pont fichiers montée");

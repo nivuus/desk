@@ -163,6 +163,7 @@ impl Virtualisation {
         sortant: std::sync::mpsc::Sender<VersNavigateur>,
         vers_ecriture: std::sync::mpsc::Sender<crate::pont::ecriture::fil::Ordre>,
         inscriptible: bool,
+        mutations_armees: bool,
     ) -> Result<Self> {
         let racine = racine::racine()?;
         let etat = Arc::new(Etat {
@@ -174,6 +175,7 @@ impl Virtualisation {
             sortant,
             vers_ecriture,
             inscriptible,
+            mutations_armees,
             // ⚠️ **`false` AU DÉPART, et ce n'est pas une précaution de style** :
             // ProjFS peut appeler un rappel PENDANT `PrjStartVirtualizing`,
             // c'est-à-dire bien avant que le navigateur n'ait ouvert son canal.

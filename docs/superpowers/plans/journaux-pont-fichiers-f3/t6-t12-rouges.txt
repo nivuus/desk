@@ -1,0 +1,209 @@
+TÂCHES 6 ET 12 — LE MASQUE À NEUF BITS, LA DÉCISION PAR ÉTAT, ET LE RAPPEL.
+Relevé par la commande le 21 août 2026.
+
+════════════════════════════════════════════════════════════════════════════
+① POURQUOI LES TÂCHES 6 ET 12 SONT DANS LE MÊME COMMIT
+════════════════════════════════════════════════════════════════════════════
+Le plan les sépare (6 pure, 12 gatée `#[cfg(windows)]`). Les tenir séparées
+aurait produit un commit intermédiaire où `PRE_RENAME` est AUTORISÉ et où le
+rappel passe `Cible::SansObjet` faute de lire la destination : un renommage
+vers une cible hors racine y serait accepté. **Un intermédiaire faux vaut moins
+qu'une frontière de tâche respectée**, et le dire est moins cher que de le
+laisser découvrir.
+
+════════════════════════════════════════════════════════════════════════════
+② 🔴 UN CHEMIN DESTRUCTEUR TROUVÉ EN CÂBLANT, ET REFERMÉ DANS LE MÊME COMMIT
+════════════════════════════════════════════════════════════════════════════
+`Evenement` gagne `Renomme` et `Supprime`. `ecriture::fil::commencer` n'a
+**aucun** `match` exhaustif sur `Evenement` : il teste `est_repertoire()`, puis
+`matches!(…, Cree { .. })`, puis **tombe sur le chemin de CONTENU**.
+
+Ce qu'une mutation y serait devenue, tracé pas à pas :
+  `disque::taille_de(racine, chemin)` → **0** (la source n'existe plus : elle
+      a été renommée, ou effacée) ;
+  `decouper(0, 0, …)` → **zéro morceau** ;
+  le cas particulier du fichier vide → **un morceau de longueur 0, `premier` et
+      `dernier`** ;
+  côté navigateur, `createWritable()` **sans `keepExistingData`** puis
+      `close()` → **LE FICHIER LOCAL EST TRONQUÉ À ZÉRO**, ou **RECRÉÉ VIDE**
+      si l'utilisateur venait de l'effacer.
+
+⚠️ **C'est le bras catch-all silencieux que ce dépôt a payé CINQ fois sur
+`capteur/pont_media.rs`** (D5 `Sommeil`, D6 `Part`, D7 `Audio`, D8
+`PleinEcran`, presse-papier P1) — **sous une forme pire** : là-bas le message
+était perdu ; ici il aurait été appliqué au mauvais verbe.
+
+Remède, dans CE commit : un bras `Ordre::Survenu(e) if e.est_mutation()` qui
+route vers `Fil::mutation`. Une mutation ne passe donc **ni par le journal des
+écritures dues, ni par la file de contenu** — elle ne porte aucun octet, et
+l'inscrire ferait monter le compteur de la page-shell pour un geste qui n'a
+rien à transférer.
+
+⚠️ **`Fil::mutation` journalise et ne pousse RIEN, et c'est déclaré dans son
+corps.** La poussée exige d'abord l'ordonnancement de `pont::mutation` (règle
+§0.3) : pousser un renommage avant d'avoir vidé les octets dus sur la source
+perdrait l'enregistrement. Ce qu'il fait déjà, et qui n'est pas rien : il
+EXISTE, donc le chemin destructeur est fermé.
+
+════════════════════════════════════════════════════════════════════════════
+③ DIVERGENCES AVEC LE PLAN, DÉCLARÉES
+════════════════════════════════════════════════════════════════════════════
+1. Le plan écrit « `MASQUE` passe de cinq à sept bits » et nomme le test
+   `le_masque_demande_exactement_les_sept_notifications_de_f3`. **F2 l'avait
+   déjà porté à sept** : F3 le porte à **NEUF**. Le plan datait d'avant la
+   fusion de F2.
+2. Le plan pose une structure `EtatPont { canal_ouvert, mutations_armees,
+   lecture_seule }`. **Une structure `Etat { inscriptible, canal_ouvert }`
+   existe déjà** et est câblée de bout en bout : F3 lui ajoute
+   `mutations_armees` plutôt que d'en créer une seconde. Deux structures d'état
+   côte à côte seraient deux vérités que rien ne confronte.
+3. Le plan passe `sort_de_la_racine: bool`. F3 passe **`Cible`**, un `enum` à
+   trois états, parce qu'une SUPPRESSION n'a pas de destination du tout :
+   passer `false` y suggérerait « la destination est dans la racine », qui ne
+   veut rien dire, et un test qui l'écrirait n'éprouverait rien.
+
+════════════════════════════════════════════════════════════════════════════
+④ LES ROUGES
+════════════════════════════════════════════════════════════════════════════
+=== ROUGE 6a-masque-sans-file-renamed ===
+fichier      : agent/src/pont/notifications.rs
+sha256 avant : bd2872a25fde6149c63b35e972ee79e18d9932b85b4fb80862ccf6e59ffa8497
+diff contre la copie : 1 ligne(s) — 0 SERAIT UN ÉCHEC DE LA ROUGE
+143d142
+<     | NOTIFY_FILE_RENAMED
+--- contrôle ---
+test pont::notifications::tests::chaque_bit_du_masque_a_une_decision_nommee ... ok
+test pont::notifications::tests::le_masque_demande_exactement_les_neuf_notifications_de_f3 ... FAILED
+test pont::notifications::tests::une_notification_hors_masque_est_acceptee_sans_attendre ... ok
+---- pont::notifications::tests::le_masque_demande_exactement_les_neuf_notifications_de_f3 stdout ----
+thread 'pont::notifications::tests::le_masque_demande_exactement_les_neuf_notifications_de_f3' (3906974) panicked at agent/src/pont/notifications/tests.rs:273:5:
+assertion `left == right` failed: masque 0x1C7C
+  left: 8
+ right: 9
+    pont::notifications::tests::le_masque_demande_exactement_les_neuf_notifications_de_f3
+test result: FAILED. 16 passed; 1 failed; 0 ignored; 0 measured; 858 filtered out; finished in 0.00s
+--- restauration DEPUIS LA COPIE NOMMÉE (jamais `git checkout --`) ---
+sha256 identique ✅
+état git inchangé ✅ [ M agent/src/pont/notifications.rs]
+
+=== ROUGE 6b-pre-rename-toujours-autorise ===
+fichier      : agent/src/pont/notifications.rs
+sha256 avant : bd2872a25fde6149c63b35e972ee79e18d9932b85b4fb80862ccf6e59ffa8497
+diff contre la copie : 3 ligne(s) — 0 SERAIT UN ÉCHEC DE LA ROUGE
+293,295d292
+<         PRE_RENAME | PRE_DELETE if !etat.mutations_armees => {
+<             Reponse::Refuser(Erreur::ProtegeEnEcriture)
+<         }
+--- contrôle ---
+thread 'pont::notifications::tests::une_mutation_est_refusee_sur_chacun_des_quatre_etats_qui_l_empechent' (3907503) panicked at agent/src/pont/notifications/tests.rs:75:9:
+assertion `left == right` failed: PONT_MUTATION=0, code 32
+  left: Autoriser
+ right: Refuser(ProtegeEnEcriture)
+test result: FAILED. 16 passed; 1 failed; 0 ignored; 0 measured; 858 filtered out; finished in 0.00s
+--- restauration DEPUIS LA COPIE NOMMÉE (jamais `git checkout --`) ---
+sha256 identique ✅
+état git inchangé ✅ [ M agent/src/pont/notifications.rs]
+
+=== ROUGE 6c-hors-racine-en-protege-en-ecriture ===
+fichier      : agent/src/pont/notifications.rs
+sha256 avant : bd2872a25fde6149c63b35e972ee79e18d9932b85b4fb80862ccf6e59ffa8497
+diff contre la copie : 2 ligne(s) — 0 SERAIT UN ÉCHEC DE LA ROUGE
+305c305
+<         PRE_RENAME if cible == Cible::HorsRacine => Reponse::Refuser(Erreur::NonSupporte),
+---
+>         PRE_RENAME if cible == Cible::HorsRacine => Reponse::Refuser(Erreur::ProtegeEnEcriture),
+--- contrôle ---
+thread 'pont::notifications::tests::un_renommage_hors_racine_est_NonSupporte_et_pas_ProtegeEnEcriture' (3908008) panicked at agent/src/pont/notifications/tests.rs:113:5:
+assertion `left == right` failed
+  left: Refuser(ProtegeEnEcriture)
+ right: Refuser(NonSupporte)
+thread 'pont::notifications::tests::une_mutation_est_refusee_sur_chacun_des_quatre_etats_qui_l_empechent' (3908013) panicked at agent/src/pont/notifications/tests.rs:97:5:
+assertion `left == right` failed: une cible hors racine n'est pas un refus de DROIT
+  left: Refuser(ProtegeEnEcriture)
+ right: Refuser(NonSupporte)
+test result: FAILED. 15 passed; 2 failed; 0 ignored; 0 measured; 858 filtered out; finished in 0.00s
+--- restauration DEPUIS LA COPIE NOMMÉE (jamais `git checkout --`) ---
+sha256 identique ✅
+état git inchangé ✅ [ M agent/src/pont/notifications.rs]
+
+=== ROUGE 6d-file-renamed-en-fourre-tout ===
+fichier      : agent/src/pont/notifications.rs
+sha256 avant : bd2872a25fde6149c63b35e972ee79e18d9932b85b4fb80862ccf6e59ffa8497
+diff contre la copie : 1 ligne(s) — 0 SERAIT UN ÉCHEC DE LA ROUGE
+334d333
+<         FILE_RENAMED => Reponse::Pousser(Poussee::Renommage),
+--- contrôle ---
+thread 'pont::notifications::tests::chaque_bit_du_masque_a_une_decision_nommee' (3908484) panicked at agent/src/pont/notifications/tests.rs:244:13:
+assertion `left != right` failed: le bit 0x80 est DEMANDÉ par le masque et retombe dans le bras fourre-tout dans l'état Etat { inscriptible: true, canal_ouvert: true, mutations_armees: true } / cible SansObjet : il serait accepté en silence
+  left: AccepterSansAttendre
+ right: AccepterSansAttendre
+thread 'pont::notifications::tests::les_deux_post_de_f3_declenchent_chacune_sa_poussee' (3908489) panicked at agent/src/pont/notifications/tests.rs:135:5:
+assertion `left == right` failed
+  left: AccepterSansAttendre
+ right: Pousser(Renommage)
+thread 'pont::notifications::tests::une_post_de_f3_part_quel_que_soit_l_etat' (3908499) panicked at agent/src/pont/notifications/tests.rs:160:13:
+test result: FAILED. 14 passed; 3 failed; 0 ignored; 0 measured; 858 filtered out; finished in 0.00s
+--- restauration DEPUIS LA COPIE NOMMÉE (jamais `git checkout --`) ---
+sha256 identique ✅
+état git inchangé ✅ [ M agent/src/pont/notifications.rs]
+
+🔵 LE ROUGE DU SEUL GARDE D'ABI DU DÉPÔT — il doit être VU une fois.
+   F1 a mesuré que TROIS mutations d'ABI sur trois SURVIVENT aux tests
+   d'hôte (journaux-pont-fichiers/f1-tache12-mutations.txt) : seule la
+   compilation croisée en juge.
+=== ROUGE 12-abi-isdirectory-en-i32 ===
+fichier      : agent/src/pont/projfs/rappels/notification.rs
+sha256 avant : fbc8b650ba08e103f7ca1b3d315811c079860200fee26be74d0ad31d29ec4a50
+diff contre la copie : 2 ligne(s) — 0 SERAIT UN ÉCHEC DE LA ROUGE
+82c82
+<     est_repertoire: bool,
+---
+>     est_repertoire: i32,
+--- contrôle ---
+error[E0308]: mismatched types
+41 | const _: PRJ_NOTIFICATION_CB = Some(notification);
+   |                                ---- ^^^^^^^^^^^^ expected fn pointer, found fn item
+   = note: expected fn pointer `unsafe extern "system" fn(_, bool, PRJ_NOTIFICATION, PCWSTR, _) -> HRESULT`
+                 found fn item `unsafe extern "system" fn(_, i32, PRJ_NOTIFICATION, PCWSTR, _) -> HRESULT {notification}`
+41 | const _: PRJ_NOTIFICATION_CB = Some(notification);
+error[E0308]: mismatched types
+    |                                                               ^^^^^^^^^^^^^^ expected `bool`, found `i32`
+error[E0308]: mismatched types
+    |                                                                            ^^^^^^^^^^^^^^ expected `bool`, found `i32`
+error[E0308]: mismatched types
+    |                                                                   ^^^^^^^^^^^^^^ expected `bool`, found `i32`
+--- restauration DEPUIS LA COPIE NOMMÉE (jamais `git checkout --`) ---
+sha256 identique ✅
+état git inchangé ✅ [ M agent/src/pont/projfs/rappels/notification.rs]
+
+════════════════════════════════════════════════════════════════════════════
+⑤ LECTURE DES CINQ ROUGES
+════════════════════════════════════════════════════════════════════════════
+6a masque sans `NOTIFY_FILE_RENAMED` : le test le NOMME. Sans lui, la
+   notification N'ARRIVERAIT JAMAIS et **rien ne le dirait** — le `PRE_RENAME`
+   autoriserait, l'application verrait son renommage réussir, et le poste local
+   garderait l'ancien nom pour toujours.
+6b `PONT_MUTATION=0` sans effet : `left: Autoriser / right:
+   Refuser(ProtegeEnEcriture)`. C'est la rouge du critère ① de la recette.
+6c cible hors racine en `ProtegeEnEcriture` : DEUX tests tombent, et l'un
+   NOMME la raison (« une cible hors racine n'est pas un refus de DROIT »).
+   Deux causes partageraient `ERROR_WRITE_PROTECT`, ce que §5.1 interdit.
+6d `FILE_RENAMED` laissé au fourre-tout : TROIS tests tombent, dont le garde
+   d'exhaustivité qui nomme le bit — « le bit 0x80 est DEMANDÉ par le masque et
+   retombe dans le bras fourre-tout ». C'est la panne muette sur un produit qui
+   a l'air de marcher.
+12 ABI : `isdirectory: bool` → `i32`. Le `const _: PRJ_NOTIFICATION_CB` refuse
+   de compiler, et le message montre les DEUX signatures.
+   🔵 **C'est le SEUL garde d'ABI du dépôt**, et F1 a mesuré que trois
+   mutations d'ABI sur trois SURVIVENT aux tests d'hôte : seule la compilation
+   croisée en juge. Le voir une fois était donc une exigence du plan.
+
+Les cinq restaurations vérifiées par sha256 ET par l'état git.
+
+════════════════════════════════════════════════════════════════════════════
+⑥ COMPTES
+════════════════════════════════════════════════════════════════════════════
+`cargo test -p agent` : 870 → **875** (+5 tests de notifications, annoncés
+   avant d'être mesurés — deux remplacent un test que F3 SUPPRIME, dont la
+   raison est écrite à sa place dans le fichier de tests).
+`cargo check --target x86_64-pc-windows-gnu` : sortie 0, **22** avertissements.

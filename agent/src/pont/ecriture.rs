@@ -49,18 +49,51 @@ pub enum Evenement {
     Modifie { chemin: String },
     /// Une entrée vient d'apparaître dans la racine.
     Cree { chemin: String, repertoire: bool },
+    /// **F3** — une entrée a été renommée dans la VM.
+    ///
+    /// 🔴 **`de` EST LA SOURCE, `vers` LA DESTINATION**, et s'y tromper
+    /// détruit. Le rappel refuse de construire cette variante si `vers` est
+    /// vide ou égal à `de`.
+    Renomme { de: String, vers: String, repertoire: bool },
+    /// **F3** — une entrée a été supprimée dans la VM.
+    Supprime { chemin: String, repertoire: bool },
 }
 
 impl Evenement {
+    /// Le chemin que cet événement CONCERNE.
+    ///
+    /// ⚠️ **Pour un renommage, c'est la SOURCE**, et c'est ce qui fait tenir la
+    /// coalescence de [`File`] : deux gestes sur le même fichier — l'écrire
+    /// puis le renommer — se sérialisent sous le même chemin, ce qui est
+    /// exactement ce que la règle §0.3 du plan de F3 exige.
     pub fn chemin(&self) -> &str {
         match self {
-            Evenement::Modifie { chemin } | Evenement::Cree { chemin, .. } => chemin,
+            Evenement::Modifie { chemin }
+            | Evenement::Cree { chemin, .. }
+            | Evenement::Supprime { chemin, .. } => chemin,
+            Evenement::Renomme { de, .. } => de,
         }
     }
 
     /// Un répertoire n'a **aucun octet** à lire.
+    ///
+    /// ⚠️ **Un renommage et une suppression n'en ont pas non plus**, quelle que
+    /// soit leur nature : ce ne sont pas des poussées de CONTENU. Ce prédicat
+    /// ne sert qu'à la fusion de [`fusionner`], où seule la création de
+    /// répertoire a une conséquence — et l'élargir aux mutations ferait qu'un
+    /// renommage suivi d'une écriture ne pousserait jamais les octets.
     pub fn est_repertoire(&self) -> bool {
         matches!(self, Evenement::Cree { repertoire: true, .. })
+    }
+
+    /// Cet événement est-il une **mutation** — un renommage ou une suppression ?
+    ///
+    /// 🔴 **Une mutation ne se COALESCE PAS avec une écriture** : renommer puis
+    /// écrire, ou écrire puis supprimer, sont deux gestes dont l'ordre est le
+    /// sens même. C'est [`crate::pont::mutation`] qui les ordonnance, et ce
+    /// prédicat est ce qui permet de les distinguer sans lire la variante.
+    pub fn est_mutation(&self) -> bool {
+        matches!(self, Evenement::Renomme { .. } | Evenement::Supprime { .. })
     }
 }
 
