@@ -1,0 +1,1334 @@
+{
+  "etiquette": "e2",
+  "nonce": "e2-2wmkgt",
+  "n_demande": 3,
+  "emulationDeFocusActivee": false,
+  "phases": [
+    {
+      "nom": "0-avant-toute-copie",
+      "t": "2026-08-21T06:19:09.304Z",
+      "fenetres": [
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-1",
+          "pid": 23192,
+          "messages": [],
+          "focus": false,
+          "actif": false,
+          "dejaActif": false,
+          "visible": false,
+          "ecritures": [],
+          "statut": "780×492, 0.3 Mb/s",
+          "statut_cache": "true",
+          "texte_fenetre": "fenetre pid=23192 longueur=13 texte=[BBB-e2-2wmkgt]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-2",
+          "pid": 23096,
+          "messages": [],
+          "focus": false,
+          "actif": false,
+          "dejaActif": false,
+          "visible": false,
+          "ecritures": [],
+          "statut": "780×492, 1.6 Mb/s",
+          "statut_cache": "true",
+          "texte_fenetre": "fenetre pid=23096 longueur=13 texte=[CCC-e2-2wmkgt]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-3",
+          "pid": 22692,
+          "messages": [],
+          "focus": true,
+          "actif": false,
+          "dejaActif": false,
+          "visible": true,
+          "ecritures": [],
+          "statut": "780×492, 2.9 Mb/s",
+          "statut_cache": "false",
+          "texte_fenetre": "fenetre pid=22692 longueur=13 texte=[AAA-e2-2wmkgt]"
+        }
+      ],
+      "vm_clipboard": "clipboard longueur=16 debut=[quatre-e1-fm43wp]"
+    },
+    {
+      "nom": "1-apres-copie-dans-la-vm",
+      "t": "2026-08-21T06:19:21.856Z",
+      "fenetres": [
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-1",
+          "pid": 23192,
+          "messages": [
+            {
+              "t": 1787293150802,
+              "octets": 12,
+              "nul": false,
+              "debut": "un-e2-2wmkgt"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": false,
+          "visible": false,
+          "ecritures": [],
+          "statut": "Réseau insuffisant pour le jeu nerveux — 390×246, 0.3 Mb/s",
+          "statut_cache": "false",
+          "texte_fenetre": "fenetre pid=23192 longueur=13 texte=[BBB-e2-2wmkgt]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-2",
+          "pid": 23096,
+          "messages": [
+            {
+              "t": 1787293150793,
+              "octets": 12,
+              "nul": false,
+              "debut": "un-e2-2wmkgt"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": false,
+          "visible": false,
+          "ecritures": [],
+          "statut": "Réseau insuffisant pour le jeu nerveux — 390×246, 0.2 Mb/s",
+          "statut_cache": "false",
+          "texte_fenetre": "fenetre pid=23096 longueur=13 texte=[CCC-e2-2wmkgt]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-3",
+          "pid": 22692,
+          "messages": [
+            {
+              "t": 1787293150801,
+              "octets": 12,
+              "nul": false,
+              "debut": "un-e2-2wmkgt"
+            }
+          ],
+          "focus": true,
+          "actif": false,
+          "dejaActif": false,
+          "visible": true,
+          "ecritures": [
+            {
+              "t": 1787293150802,
+              "debut": "un-e2-2wmkgt"
+            }
+          ],
+          "statut": "780×492, 11.5 Mb/s",
+          "statut_cache": "true",
+          "texte_fenetre": "fenetre pid=22692 longueur=13 texte=[AAA-e2-2wmkgt]"
+        }
+      ],
+      "vm_clipboard": "clipboard longueur=12 debut=[un-e2-2wmkgt]"
+    },
+    {
+      "nom": "2-apres-les-collages-attribues",
+      "t": "2026-08-21T06:19:58.409Z",
+      "fenetres": [
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-1",
+          "pid": 23192,
+          "messages": [
+            {
+              "t": 1787293150802,
+              "octets": 12,
+              "nul": false,
+              "debut": "un-e2-2wmkgt"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": true,
+          "visible": false,
+          "ecritures": [
+            {
+              "t": 1787293167996,
+              "debut": "un-e2-2wmkgt"
+            }
+          ],
+          "statut": "Réseau insuffisant pour le jeu nerveux — 390×246, 0.1 Mb/s",
+          "statut_cache": "false",
+          "texte_fenetre": "fenetre pid=23192 longueur=29 texte=[deux-A-e2-2wmkgtBBB-e2-2wmkgt]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-2",
+          "pid": 23096,
+          "messages": [
+            {
+              "t": 1787293150793,
+              "octets": 12,
+              "nul": false,
+              "debut": "un-e2-2wmkgt"
+            }
+          ],
+          "focus": true,
+          "actif": false,
+          "dejaActif": true,
+          "visible": true,
+          "ecritures": [
+            {
+              "t": 1787293182644,
+              "debut": "un-e2-2wmkgt"
+            }
+          ],
+          "statut": "Image réduite par le réseau — 390×246, 7.7 Mb/s",
+          "statut_cache": "false",
+          "texte_fenetre": "fenetre pid=23096 longueur=29 texte=[deux-B-e2-2wmkgtCCC-e2-2wmkgt]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-3",
+          "pid": 22692,
+          "messages": [
+            {
+              "t": 1787293150801,
+              "octets": 12,
+              "nul": false,
+              "debut": "un-e2-2wmkgt"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": false,
+          "visible": false,
+          "ecritures": [
+            {
+              "t": 1787293150802,
+              "debut": "un-e2-2wmkgt"
+            },
+            {
+              "t": 1787293163322,
+              "debut": "un-e2-2wmkgt"
+            }
+          ],
+          "statut": "780×492, 3.8 Mb/s",
+          "statut_cache": "true",
+          "texte_fenetre": "fenetre pid=22692 longueur=13 texte=[AAA-e2-2wmkgt]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-6",
+          "pid": null,
+          "messages": [
+            {
+              "t": 1787293165852,
+              "octets": 12,
+              "nul": false,
+              "debut": "un-e2-2wmkgt"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": false,
+          "visible": false,
+          "ecritures": [
+            {
+              "t": 1787293165852,
+              "debut": "un-e2-2wmkgt"
+            }
+          ],
+          "statut": "Image réduite par le réseau — 390×246, 0.3 Mb/s",
+          "statut_cache": "false",
+          "texte_fenetre": null
+        }
+      ],
+      "vm_clipboard": "clipboard longueur=16 debut=[deux-B-e2-2wmkgt]"
+    },
+    {
+      "nom": "3-avant-simultane",
+      "t": "2026-08-21T06:20:02.493Z",
+      "fenetres": [
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-1",
+          "pid": 23192,
+          "messages": [
+            {
+              "t": 1787293150802,
+              "octets": 12,
+              "nul": false,
+              "debut": "un-e2-2wmkgt"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": true,
+          "visible": false,
+          "ecritures": [
+            {
+              "t": 1787293167996,
+              "debut": "un-e2-2wmkgt"
+            }
+          ],
+          "statut": "Réseau insuffisant pour le jeu nerveux — 390×246, 0.1 Mb/s",
+          "statut_cache": "false",
+          "texte_fenetre": "fenetre pid=23192 longueur=29 texte=[deux-A-e2-2wmkgtBBB-e2-2wmkgt]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-2",
+          "pid": 23096,
+          "messages": [
+            {
+              "t": 1787293150793,
+              "octets": 12,
+              "nul": false,
+              "debut": "un-e2-2wmkgt"
+            }
+          ],
+          "focus": true,
+          "actif": false,
+          "dejaActif": true,
+          "visible": true,
+          "ecritures": [
+            {
+              "t": 1787293182644,
+              "debut": "un-e2-2wmkgt"
+            }
+          ],
+          "statut": "Image réduite par le réseau — 390×246, 7.7 Mb/s",
+          "statut_cache": "false",
+          "texte_fenetre": "fenetre pid=23096 longueur=29 texte=[deux-B-e2-2wmkgtCCC-e2-2wmkgt]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-3",
+          "pid": 22692,
+          "messages": [
+            {
+              "t": 1787293150801,
+              "octets": 12,
+              "nul": false,
+              "debut": "un-e2-2wmkgt"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": false,
+          "visible": false,
+          "ecritures": [
+            {
+              "t": 1787293150802,
+              "debut": "un-e2-2wmkgt"
+            },
+            {
+              "t": 1787293163322,
+              "debut": "un-e2-2wmkgt"
+            }
+          ],
+          "statut": "780×492, 3.8 Mb/s",
+          "statut_cache": "true",
+          "texte_fenetre": "fenetre pid=22692 longueur=13 texte=[AAA-e2-2wmkgt]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-6",
+          "pid": null,
+          "messages": [
+            {
+              "t": 1787293165852,
+              "octets": 12,
+              "nul": false,
+              "debut": "un-e2-2wmkgt"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": false,
+          "visible": false,
+          "ecritures": [
+            {
+              "t": 1787293165852,
+              "debut": "un-e2-2wmkgt"
+            }
+          ],
+          "statut": "Image réduite par le réseau — 390×246, 0.3 Mb/s",
+          "statut_cache": "false",
+          "texte_fenetre": null
+        }
+      ],
+      "vm_clipboard": "clipboard longueur=16 debut=[deux-B-e2-2wmkgt]"
+    },
+    {
+      "nom": "3-apres-simultane",
+      "t": "2026-08-21T06:20:18.706Z",
+      "fenetres": [
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-1",
+          "pid": 23192,
+          "messages": [
+            {
+              "t": 1787293150802,
+              "octets": 12,
+              "nul": false,
+              "debut": "un-e2-2wmkgt"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": true,
+          "visible": false,
+          "ecritures": [
+            {
+              "t": 1787293167996,
+              "debut": "un-e2-2wmkgt"
+            },
+            {
+              "t": 1787293204654,
+              "debut": "un-e2-2wmkgt"
+            }
+          ],
+          "statut": "Image réduite par le réseau — 390×246, 0.3 Mb/s",
+          "statut_cache": "false",
+          "texte_fenetre": "fenetre pid=23192 longueur=47 texte=[deux-A-e2-2wmkgttrois-T1-e2-2wmkgtBBB-e2-2wmkgt]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-2",
+          "pid": 23096,
+          "messages": [
+            {
+              "t": 1787293150793,
+              "octets": 12,
+              "nul": false,
+              "debut": "un-e2-2wmkgt"
+            }
+          ],
+          "focus": true,
+          "actif": false,
+          "dejaActif": true,
+          "visible": true,
+          "ecritures": [
+            {
+              "t": 1787293182644,
+              "debut": "un-e2-2wmkgt"
+            },
+            {
+              "t": 1787293206626,
+              "debut": "un-e2-2wmkgt"
+            }
+          ],
+          "statut": "780×492, 7.7 Mb/s",
+          "statut_cache": "true",
+          "texte_fenetre": "fenetre pid=23096 longueur=47 texte=[deux-B-e2-2wmkgttrois-T2-e2-2wmkgtCCC-e2-2wmkgt]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-3",
+          "pid": 22692,
+          "messages": [
+            {
+              "t": 1787293150801,
+              "octets": 12,
+              "nul": false,
+              "debut": "un-e2-2wmkgt"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": false,
+          "visible": false,
+          "ecritures": [
+            {
+              "t": 1787293150802,
+              "debut": "un-e2-2wmkgt"
+            },
+            {
+              "t": 1787293163322,
+              "debut": "un-e2-2wmkgt"
+            }
+          ],
+          "statut": "780×492, 3.8 Mb/s",
+          "statut_cache": "true",
+          "texte_fenetre": "fenetre pid=22692 longueur=13 texte=[AAA-e2-2wmkgt]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-6",
+          "pid": null,
+          "messages": [
+            {
+              "t": 1787293165852,
+              "octets": 12,
+              "nul": false,
+              "debut": "un-e2-2wmkgt"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": false,
+          "visible": false,
+          "ecritures": [
+            {
+              "t": 1787293165852,
+              "debut": "un-e2-2wmkgt"
+            }
+          ],
+          "statut": "Réseau insuffisant pour le jeu nerveux — 390×246, 0.2 Mb/s",
+          "statut_cache": "false",
+          "texte_fenetre": null
+        }
+      ],
+      "vm_clipboard": "clipboard longueur=18 debut=[trois-T2-e2-2wmkgt]"
+    },
+    {
+      "nom": "4-copie-pendant-que-B-est-sans-focus",
+      "t": "2026-08-21T06:20:35.117Z",
+      "fenetres": [
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-1",
+          "pid": 23192,
+          "messages": [
+            {
+              "t": 1787293150802,
+              "octets": 12,
+              "nul": false,
+              "debut": "un-e2-2wmkgt"
+            },
+            {
+              "t": 1787293225008,
+              "octets": 16,
+              "nul": false,
+              "debut": "quatre-e2-2wmkgt"
+            }
+          ],
+          "focus": true,
+          "actif": false,
+          "dejaActif": true,
+          "visible": true,
+          "ecritures": [
+            {
+              "t": 1787293167996,
+              "debut": "un-e2-2wmkgt"
+            },
+            {
+              "t": 1787293204654,
+              "debut": "un-e2-2wmkgt"
+            },
+            {
+              "t": 1787293223595,
+              "debut": "un-e2-2wmkgt"
+            },
+            {
+              "t": 1787293224840,
+              "debut": "un-e2-2wmkgt"
+            },
+            {
+              "t": 1787293225008,
+              "debut": "quatre-e2-2wmkgt"
+            }
+          ],
+          "statut": "Image réduite par le réseau — 390×246, 7.7 Mb/s",
+          "statut_cache": "false",
+          "texte_fenetre": "fenetre pid=23192 longueur=47 texte=[deux-A-e2-2wmkgttrois-T1-e2-2wmkgtBBB-e2-2wmkgt]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-2",
+          "pid": 23096,
+          "messages": [
+            {
+              "t": 1787293150793,
+              "octets": 12,
+              "nul": false,
+              "debut": "un-e2-2wmkgt"
+            },
+            {
+              "t": 1787293225012,
+              "octets": 16,
+              "nul": false,
+              "debut": "quatre-e2-2wmkgt"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": true,
+          "visible": false,
+          "ecritures": [
+            {
+              "t": 1787293182644,
+              "debut": "un-e2-2wmkgt"
+            },
+            {
+              "t": 1787293206626,
+              "debut": "un-e2-2wmkgt"
+            }
+          ],
+          "statut": "Réseau insuffisant pour le jeu nerveux — 390×246, 0.3 Mb/s",
+          "statut_cache": "false",
+          "texte_fenetre": "fenetre pid=23096 longueur=47 texte=[deux-B-e2-2wmkgttrois-T2-e2-2wmkgtCCC-e2-2wmkgt]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-3",
+          "pid": 22692,
+          "messages": [
+            {
+              "t": 1787293150801,
+              "octets": 12,
+              "nul": false,
+              "debut": "un-e2-2wmkgt"
+            },
+            {
+              "t": 1787293225012,
+              "octets": 16,
+              "nul": false,
+              "debut": "quatre-e2-2wmkgt"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": false,
+          "visible": false,
+          "ecritures": [
+            {
+              "t": 1787293150802,
+              "debut": "un-e2-2wmkgt"
+            },
+            {
+              "t": 1787293163322,
+              "debut": "un-e2-2wmkgt"
+            }
+          ],
+          "statut": "780×492, 3.8 Mb/s",
+          "statut_cache": "true",
+          "texte_fenetre": "fenetre pid=22692 longueur=13 texte=[AAA-e2-2wmkgt]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-6",
+          "pid": null,
+          "messages": [
+            {
+              "t": 1787293165852,
+              "octets": 12,
+              "nul": false,
+              "debut": "un-e2-2wmkgt"
+            },
+            {
+              "t": 1787293225016,
+              "octets": 16,
+              "nul": false,
+              "debut": "quatre-e2-2wmkgt"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": false,
+          "visible": false,
+          "ecritures": [
+            {
+              "t": 1787293165852,
+              "debut": "un-e2-2wmkgt"
+            }
+          ],
+          "statut": "Réseau insuffisant pour le jeu nerveux — 390×246, 0.2 Mb/s",
+          "statut_cache": "false",
+          "texte_fenetre": null
+        }
+      ],
+      "vm_clipboard": "clipboard longueur=16 debut=[quatre-e2-2wmkgt]"
+    },
+    {
+      "nom": "4-apres-reprise-du-focus-par-B",
+      "t": "2026-08-21T06:20:41.373Z",
+      "fenetres": [
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-1",
+          "pid": 23192,
+          "messages": [
+            {
+              "t": 1787293150802,
+              "octets": 12,
+              "nul": false,
+              "debut": "un-e2-2wmkgt"
+            },
+            {
+              "t": 1787293225008,
+              "octets": 16,
+              "nul": false,
+              "debut": "quatre-e2-2wmkgt"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": true,
+          "visible": false,
+          "ecritures": [
+            {
+              "t": 1787293167996,
+              "debut": "un-e2-2wmkgt"
+            },
+            {
+              "t": 1787293204654,
+              "debut": "un-e2-2wmkgt"
+            },
+            {
+              "t": 1787293223595,
+              "debut": "un-e2-2wmkgt"
+            },
+            {
+              "t": 1787293224840,
+              "debut": "un-e2-2wmkgt"
+            },
+            {
+              "t": 1787293225008,
+              "debut": "quatre-e2-2wmkgt"
+            }
+          ],
+          "statut": "image figée : fenêtre masquée",
+          "statut_cache": "false",
+          "texte_fenetre": "fenetre pid=23192 longueur=47 texte=[deux-A-e2-2wmkgttrois-T1-e2-2wmkgtBBB-e2-2wmkgt]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-2",
+          "pid": 23096,
+          "messages": [
+            {
+              "t": 1787293150793,
+              "octets": 12,
+              "nul": false,
+              "debut": "un-e2-2wmkgt"
+            },
+            {
+              "t": 1787293225012,
+              "octets": 16,
+              "nul": false,
+              "debut": "quatre-e2-2wmkgt"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": true,
+          "visible": false,
+          "ecritures": [
+            {
+              "t": 1787293182644,
+              "debut": "un-e2-2wmkgt"
+            },
+            {
+              "t": 1787293206626,
+              "debut": "un-e2-2wmkgt"
+            }
+          ],
+          "statut": "Réseau insuffisant pour le jeu nerveux — 390×246, 0.2 Mb/s",
+          "statut_cache": "false",
+          "texte_fenetre": "fenetre pid=23096 longueur=47 texte=[deux-B-e2-2wmkgttrois-T2-e2-2wmkgtCCC-e2-2wmkgt]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-3",
+          "pid": 22692,
+          "messages": [
+            {
+              "t": 1787293150801,
+              "octets": 12,
+              "nul": false,
+              "debut": "un-e2-2wmkgt"
+            },
+            {
+              "t": 1787293225012,
+              "octets": 16,
+              "nul": false,
+              "debut": "quatre-e2-2wmkgt"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": false,
+          "visible": false,
+          "ecritures": [
+            {
+              "t": 1787293150802,
+              "debut": "un-e2-2wmkgt"
+            },
+            {
+              "t": 1787293163322,
+              "debut": "un-e2-2wmkgt"
+            }
+          ],
+          "statut": "780×492, 3.8 Mb/s",
+          "statut_cache": "true",
+          "texte_fenetre": "fenetre pid=22692 longueur=13 texte=[AAA-e2-2wmkgt]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-6",
+          "pid": null,
+          "messages": [
+            {
+              "t": 1787293165852,
+              "octets": 12,
+              "nul": false,
+              "debut": "un-e2-2wmkgt"
+            },
+            {
+              "t": 1787293225016,
+              "octets": 16,
+              "nul": false,
+              "debut": "quatre-e2-2wmkgt"
+            }
+          ],
+          "focus": true,
+          "actif": false,
+          "dejaActif": false,
+          "visible": true,
+          "ecritures": [
+            {
+              "t": 1787293165852,
+              "debut": "un-e2-2wmkgt"
+            },
+            {
+              "t": 1787293235942,
+              "debut": "quatre-e2-2wmkgt"
+            }
+          ],
+          "statut": "Image réduite par le réseau — 390×246, 5.3 Mb/s",
+          "statut_cache": "false",
+          "texte_fenetre": null
+        }
+      ],
+      "vm_clipboard": "clipboard longueur=16 debut=[quatre-e2-2wmkgt]"
+    }
+  ],
+  "criteres": {
+    "un": {
+      "texte": "un-e2-2wmkgt",
+      "recu_par": [
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-1",
+          "recu": true
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-2",
+          "recu": true
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-3",
+          "recu": true
+        }
+      ]
+    },
+    "un_bis": {
+      "methode": "ouverture d'un Bloc-notes supplémentaire",
+      "cible_amorcee": true,
+      "sessions_neuves": [
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-6",
+          "pid": 24016
+        }
+      ],
+      "connues_avant": [
+        "F4z7KQooOQfJqh47PM0ETA:w-3",
+        "F4z7KQooOQfJqh47PM0ETA:w-1",
+        "F4z7KQooOQfJqh47PM0ETA:w-2"
+      ],
+      "session": "F4z7KQooOQfJqh47PM0ETA:w-6",
+      "messages": [
+        {
+          "t": 1787293165852,
+          "octets": 12,
+          "nul": false,
+          "debut": "un-e2-2wmkgt"
+        }
+      ],
+      "ecritures": [
+        {
+          "t": 1787293165852,
+          "debut": "un-e2-2wmkgt"
+        }
+      ],
+      "recu": true,
+      "emissions_agent": [
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-6",
+          "octets": 12
+        }
+      ]
+    },
+    "deux": [
+      {
+        "session": "F4z7KQooOQfJqh47PM0ETA:w-1",
+        "pid": 23192,
+        "texte": "deux-A-e2-2wmkgt",
+        "vm_clipboard": "clipboard longueur=16 debut=[deux-A-e2-2wmkgt]",
+        "fenetre_cible": "fenetre pid=23192 longueur=29 texte=[deux-A-e2-2wmkgtBBB-e2-2wmkgt]",
+        "fenetres_toutes": [
+          {
+            "session": "F4z7KQooOQfJqh47PM0ETA:w-3",
+            "pid": 22692,
+            "texte": "fenetre pid=22692 longueur=13 texte=[AAA-e2-2wmkgt]"
+          },
+          {
+            "session": "F4z7KQooOQfJqh47PM0ETA:w-1",
+            "pid": 23192,
+            "texte": "fenetre pid=23192 longueur=29 texte=[deux-A-e2-2wmkgtBBB-e2-2wmkgt]"
+          },
+          {
+            "session": "F4z7KQooOQfJqh47PM0ETA:w-2",
+            "pid": 23096,
+            "texte": "fenetre pid=23096 longueur=13 texte=[CCC-e2-2wmkgt]"
+          }
+        ]
+      },
+      {
+        "session": "F4z7KQooOQfJqh47PM0ETA:w-2",
+        "pid": 23096,
+        "texte": "deux-B-e2-2wmkgt",
+        "vm_clipboard": "clipboard longueur=16 debut=[deux-B-e2-2wmkgt]",
+        "fenetre_cible": "fenetre pid=23096 longueur=29 texte=[deux-B-e2-2wmkgtCCC-e2-2wmkgt]",
+        "fenetres_toutes": [
+          {
+            "session": "F4z7KQooOQfJqh47PM0ETA:w-3",
+            "pid": 22692,
+            "texte": "fenetre pid=22692 longueur=13 texte=[AAA-e2-2wmkgt]"
+          },
+          {
+            "session": "F4z7KQooOQfJqh47PM0ETA:w-1",
+            "pid": 23192,
+            "texte": "fenetre pid=23192 longueur=29 texte=[deux-A-e2-2wmkgtBBB-e2-2wmkgt]"
+          },
+          {
+            "session": "F4z7KQooOQfJqh47PM0ETA:w-2",
+            "pid": 23096,
+            "texte": "fenetre pid=23096 longueur=29 texte=[deux-B-e2-2wmkgtCCC-e2-2wmkgt]"
+          }
+        ]
+      }
+    ],
+    "trois": {
+      "t1": "trois-T1-e2-2wmkgt",
+      "t2": "trois-T2-e2-2wmkgt",
+      "messages_avant": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "messages_apres": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "vm_clipboard": "clipboard longueur=18 debut=[trois-T2-e2-2wmkgt]",
+      "fenetres": [
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-3",
+          "pid": 22692,
+          "texte": "fenetre pid=22692 longueur=13 texte=[AAA-e2-2wmkgt]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-1",
+          "pid": 23192,
+          "texte": "fenetre pid=23192 longueur=47 texte=[deux-A-e2-2wmkgttrois-T1-e2-2wmkgtBBB-e2-2wmkgt]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-2",
+          "pid": 23096,
+          "texte": "fenetre pid=23096 longueur=47 texte=[deux-B-e2-2wmkgttrois-T2-e2-2wmkgtCCC-e2-2wmkgt]"
+        }
+      ],
+      "echecs": {
+        "collage_non_ecrit": 0,
+        "sans_reponse_du_fil": 0,
+        "fil_sans_reponse": 0,
+        "collage_refuse": 0
+      },
+      "motifs_discriminants": {
+        "collage_non_ecrit": true,
+        "sans_reponse_du_fil": true,
+        "fil_sans_reponse": true,
+        "collage_refuse": true
+      },
+      "annonces_dans_le_journal": 1
+    },
+    "quatre": {
+      "texte": "quatre-e2-2wmkgt",
+      "sansFocus": "F4z7KQooOQfJqh47PM0ETA:w-6",
+      "avecFocus": "F4z7KQooOQfJqh47PM0ETA:w-1",
+      "a_recu_le_message_sans_focus": true,
+      "focus_de_B_avant": false,
+      "focus_de_B_apres": true,
+      "a_ecrit_sans_focus": false,
+      "a_ecrit_apres_reprise": true,
+      "verdict": "TENU — sans focus elle n'écrit pas, et elle écrit à la reprise",
+      "avant": [
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-1",
+          "pid": 23192,
+          "messages": [
+            {
+              "t": 1787293150802,
+              "octets": 12,
+              "nul": false,
+              "debut": "un-e2-2wmkgt"
+            },
+            {
+              "t": 1787293225008,
+              "octets": 16,
+              "nul": false,
+              "debut": "quatre-e2-2wmkgt"
+            }
+          ],
+          "focus": true,
+          "actif": false,
+          "dejaActif": true,
+          "visible": true,
+          "ecritures": [
+            {
+              "t": 1787293167996,
+              "debut": "un-e2-2wmkgt"
+            },
+            {
+              "t": 1787293204654,
+              "debut": "un-e2-2wmkgt"
+            },
+            {
+              "t": 1787293223595,
+              "debut": "un-e2-2wmkgt"
+            },
+            {
+              "t": 1787293224840,
+              "debut": "un-e2-2wmkgt"
+            },
+            {
+              "t": 1787293225008,
+              "debut": "quatre-e2-2wmkgt"
+            }
+          ],
+          "statut": "Image réduite par le réseau — 390×246, 7.7 Mb/s",
+          "statut_cache": "false",
+          "texte_fenetre": "fenetre pid=23192 longueur=47 texte=[deux-A-e2-2wmkgttrois-T1-e2-2wmkgtBBB-e2-2wmkgt]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-2",
+          "pid": 23096,
+          "messages": [
+            {
+              "t": 1787293150793,
+              "octets": 12,
+              "nul": false,
+              "debut": "un-e2-2wmkgt"
+            },
+            {
+              "t": 1787293225012,
+              "octets": 16,
+              "nul": false,
+              "debut": "quatre-e2-2wmkgt"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": true,
+          "visible": false,
+          "ecritures": [
+            {
+              "t": 1787293182644,
+              "debut": "un-e2-2wmkgt"
+            },
+            {
+              "t": 1787293206626,
+              "debut": "un-e2-2wmkgt"
+            }
+          ],
+          "statut": "Réseau insuffisant pour le jeu nerveux — 390×246, 0.3 Mb/s",
+          "statut_cache": "false",
+          "texte_fenetre": "fenetre pid=23096 longueur=47 texte=[deux-B-e2-2wmkgttrois-T2-e2-2wmkgtCCC-e2-2wmkgt]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-3",
+          "pid": 22692,
+          "messages": [
+            {
+              "t": 1787293150801,
+              "octets": 12,
+              "nul": false,
+              "debut": "un-e2-2wmkgt"
+            },
+            {
+              "t": 1787293225012,
+              "octets": 16,
+              "nul": false,
+              "debut": "quatre-e2-2wmkgt"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": false,
+          "visible": false,
+          "ecritures": [
+            {
+              "t": 1787293150802,
+              "debut": "un-e2-2wmkgt"
+            },
+            {
+              "t": 1787293163322,
+              "debut": "un-e2-2wmkgt"
+            }
+          ],
+          "statut": "780×492, 3.8 Mb/s",
+          "statut_cache": "true",
+          "texte_fenetre": "fenetre pid=22692 longueur=13 texte=[AAA-e2-2wmkgt]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-6",
+          "pid": null,
+          "messages": [
+            {
+              "t": 1787293165852,
+              "octets": 12,
+              "nul": false,
+              "debut": "un-e2-2wmkgt"
+            },
+            {
+              "t": 1787293225016,
+              "octets": 16,
+              "nul": false,
+              "debut": "quatre-e2-2wmkgt"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": false,
+          "visible": false,
+          "ecritures": [
+            {
+              "t": 1787293165852,
+              "debut": "un-e2-2wmkgt"
+            }
+          ],
+          "statut": "Réseau insuffisant pour le jeu nerveux — 390×246, 0.2 Mb/s",
+          "statut_cache": "false",
+          "texte_fenetre": null
+        }
+      ],
+      "apres": [
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-1",
+          "pid": 23192,
+          "messages": [
+            {
+              "t": 1787293150802,
+              "octets": 12,
+              "nul": false,
+              "debut": "un-e2-2wmkgt"
+            },
+            {
+              "t": 1787293225008,
+              "octets": 16,
+              "nul": false,
+              "debut": "quatre-e2-2wmkgt"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": true,
+          "visible": false,
+          "ecritures": [
+            {
+              "t": 1787293167996,
+              "debut": "un-e2-2wmkgt"
+            },
+            {
+              "t": 1787293204654,
+              "debut": "un-e2-2wmkgt"
+            },
+            {
+              "t": 1787293223595,
+              "debut": "un-e2-2wmkgt"
+            },
+            {
+              "t": 1787293224840,
+              "debut": "un-e2-2wmkgt"
+            },
+            {
+              "t": 1787293225008,
+              "debut": "quatre-e2-2wmkgt"
+            }
+          ],
+          "statut": "image figée : fenêtre masquée",
+          "statut_cache": "false",
+          "texte_fenetre": "fenetre pid=23192 longueur=47 texte=[deux-A-e2-2wmkgttrois-T1-e2-2wmkgtBBB-e2-2wmkgt]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-2",
+          "pid": 23096,
+          "messages": [
+            {
+              "t": 1787293150793,
+              "octets": 12,
+              "nul": false,
+              "debut": "un-e2-2wmkgt"
+            },
+            {
+              "t": 1787293225012,
+              "octets": 16,
+              "nul": false,
+              "debut": "quatre-e2-2wmkgt"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": true,
+          "visible": false,
+          "ecritures": [
+            {
+              "t": 1787293182644,
+              "debut": "un-e2-2wmkgt"
+            },
+            {
+              "t": 1787293206626,
+              "debut": "un-e2-2wmkgt"
+            }
+          ],
+          "statut": "Réseau insuffisant pour le jeu nerveux — 390×246, 0.2 Mb/s",
+          "statut_cache": "false",
+          "texte_fenetre": "fenetre pid=23096 longueur=47 texte=[deux-B-e2-2wmkgttrois-T2-e2-2wmkgtCCC-e2-2wmkgt]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-3",
+          "pid": 22692,
+          "messages": [
+            {
+              "t": 1787293150801,
+              "octets": 12,
+              "nul": false,
+              "debut": "un-e2-2wmkgt"
+            },
+            {
+              "t": 1787293225012,
+              "octets": 16,
+              "nul": false,
+              "debut": "quatre-e2-2wmkgt"
+            }
+          ],
+          "focus": false,
+          "actif": false,
+          "dejaActif": false,
+          "visible": false,
+          "ecritures": [
+            {
+              "t": 1787293150802,
+              "debut": "un-e2-2wmkgt"
+            },
+            {
+              "t": 1787293163322,
+              "debut": "un-e2-2wmkgt"
+            }
+          ],
+          "statut": "780×492, 3.8 Mb/s",
+          "statut_cache": "true",
+          "texte_fenetre": "fenetre pid=22692 longueur=13 texte=[AAA-e2-2wmkgt]"
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-6",
+          "pid": null,
+          "messages": [
+            {
+              "t": 1787293165852,
+              "octets": 12,
+              "nul": false,
+              "debut": "un-e2-2wmkgt"
+            },
+            {
+              "t": 1787293225016,
+              "octets": 16,
+              "nul": false,
+              "debut": "quatre-e2-2wmkgt"
+            }
+          ],
+          "focus": true,
+          "actif": false,
+          "dejaActif": false,
+          "visible": true,
+          "ecritures": [
+            {
+              "t": 1787293165852,
+              "debut": "un-e2-2wmkgt"
+            },
+            {
+              "t": 1787293235942,
+              "debut": "quatre-e2-2wmkgt"
+            }
+          ],
+          "statut": "Image réduite par le réseau — 390×246, 5.3 Mb/s",
+          "statut_cache": "false",
+          "texte_fenetre": null
+        }
+      ]
+    }
+  },
+  "prep": "notepad=0",
+  "notepads_ouverts": 3,
+  "lecteur_pret": true,
+  "inventaire_avant": "inventaire pid=23192 hwnd=12190350 mainwindow=12190350 classe=Notepad titre=[Sans titre - Bloc-notes] ; pid=23096 hwnd=18022742 mainwindow=18022742 classe=Notepad titre=[Sans titre - Bloc-notes] ; pid=22692 hwnd=8520350 mainwindow=8520350 classe=Notepad titre=[Sans titre - Bloc-notes]",
+  "shell_attachee": true,
+  "sessions_diffusant": [
+    "F4z7KQooOQfJqh47PM0ETA:w-1",
+    "F4z7KQooOQfJqh47PM0ETA:w-2",
+    "F4z7KQooOQfJqh47PM0ETA:w-3"
+  ],
+  "attributions": [
+    {
+      "session": "F4z7KQooOQfJqh47PM0ETA:w-3",
+      "pid": 22692
+    },
+    {
+      "session": "F4z7KQooOQfJqh47PM0ETA:w-1",
+      "pid": 23192
+    },
+    {
+      "session": "F4z7KQooOQfJqh47PM0ETA:w-2",
+      "pid": 23096
+    }
+  ],
+  "attribution_utilisable": true,
+  "semis": [
+    "semer pid=22692 : ecrit longueur=13",
+    "semer pid=23192 : ecrit longueur=13",
+    "semer pid=23096 : ecrit longueur=13"
+  ],
+  "temoin_focus": [
+    {
+      "amenee": "F4z7KQooOQfJqh47PM0ETA:w-1",
+      "vus": [
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-1",
+          "focus": true
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-2",
+          "focus": false
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-3",
+          "focus": false
+        }
+      ]
+    },
+    {
+      "amenee": "F4z7KQooOQfJqh47PM0ETA:w-2",
+      "vus": [
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-1",
+          "focus": false
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-2",
+          "focus": true
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-3",
+          "focus": false
+        }
+      ]
+    },
+    {
+      "amenee": "F4z7KQooOQfJqh47PM0ETA:w-3",
+      "vus": [
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-1",
+          "focus": false
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-2",
+          "focus": false
+        },
+        {
+          "session": "F4z7KQooOQfJqh47PM0ETA:w-3",
+          "focus": true
+        }
+      ]
+    }
+  ],
+  "focus_discriminant": true,
+  "lecteur_journal": "﻿2026-08-21T06:18:43.4007358Z lecteur pret\r\n2026-08-21T06:18:49.3539010Z ordre 1 mode=inventaire a1=\r\n2026-08-21T06:18:49.4007655Z fait 1 : inventaire pid=23192 hwnd=12190350 mainwindow=12190350 classe=Notepad titre=[Sans titre - Bloc-notes] ; pid=23096 hwnd=18022742 mainwindow=18022742 classe=Notepad titre=[Sans titre - Bloc-notes] ; pid=22692 hwnd=8520350 mainwindow=8520350 classe=Notepad titre=[Sans titre - Bloc-notes]\r\n2026-08-21T06:19:00.1272906Z ordre 2 mode=semer a1=22692\r\n2026-08-21T06:19:00.1580071Z fait 2 : semer pid=22692 : ecrit longueur=13\r\n2026-08-21T06:19:00.9175437Z ordre 3 mode=semer a1=23192\r\n2026-08-21T06:19:00.9215424Z fait 3 : semer pid=23192 : ecrit longueur=13\r\n2026-08-21T06:19:01.6818331Z ordre 4 mode=semer a1=23096\r\n2026-08-21T06:19:01.6859765Z fait 4 : semer pid=23096 : ecrit longueur=13\r\n2026-08-21T06:19:06.9537473Z ordre 5 mode=fenetre a1=23192\r\n2026-08-21T06:19:06.9647484Z fait 5 : fenetre pid=23192 longueur=13 texte=[BBB-e2-2wmkgt]\r\n2026-08-21T06:19:07.7217500Z ordre 6 mode=fenetre a1=23096\r\n2026-08-21T06:19:07.7237481Z fait 6 : fenetre pid=23096 longueur=13 texte=[CCC-e2-2wmkgt]\r\n2026-08-21T06:19:08.7308493Z ordre 7 mode=fenetre a1=22692\r\n2026-08-21T06:19:08.7328469Z fait 7 : fenetre pid=22692 longueur=13 texte=[AAA-e2-2wmkgt]\r\n2026-08-21T06:19:09.4870628Z ordre 8 mode=clipboard a1=\r\n2026-08-21T06:19:09.4930640Z fait 8 : clipboard longueur=16 debut=[quatre-e1-fm43wp]\r\n2026-08-21T06:19:18.7680130Z ordre 9 mode=fenetre a1=23192\r\n2026-08-21T06:19:18.7710132Z fait 9 : fenetre pid=23192 longueur=13 texte=[BBB-e2-2wmkgt]\r\n2026-08-21T06:19:19.5308236Z ordre 10 mode=fenetre a1=23096\r\n2026-08-21T06:19:19.5328368Z fait 10 : fenetre pid=23096 longueur=13 texte=[CCC-e2-2wmkgt]\r\n2026-08-21T06:19:21.2890437Z ordre 11 mode=fenetre a1=22692\r\n2026-08-21T06:19:21.2920297Z fait 11 : fenetre pid=22692 longueur=13 texte=[AAA-e2-2wmkgt]\r\n2026-08-21T06:19:22.0459474Z ordre 12 mode=clipboard a1=\r\n2026-08-21T06:19:22.0469330Z fait 12 : clipboard longueur=12 debut=[un-e2-2wmkgt]\r\n2026-08-21T06:19:35.8299315Z ordre 13 mode=clipboard a1=\r\n2026-08-21T06:19:35.8309341Z fait 13 : clipboard longueur=16 debut=[deux-A-e2-2wmkgt]\r\n2026-08-21T06:19:36.5889330Z ordre 14 mode=fenetre a1=23192\r\n2026-08-21T06:19:36.5919322Z fait 14 : fenetre pid=23192 longueur=29 texte=[deux-A-e2-2wmkgtBBB-e2-2wmkgt]\r\n2026-08-21T06:19:38.1089950Z ordre 15 mode=fenetre a1=22692\r\n2026-08-21T06:19:38.1109940Z fait 15 : fenetre pid=22692 longueur=13 texte=[AAA-e2-2wmkgt]\r\n2026-08-21T06:19:39.1216383Z ordre 16 mode=fenetre a1=23192\r\n2026-08-21T06:19:39.1246373Z fait 16 : fenetre pid=23192 longueur=29 texte=[deux-A-e2-2wmkgtBBB-e2-2wmkgt]\r\n2026-08-21T06:19:40.6349934Z ordre 17 mode=fenetre a1=23096\r\n2026-08-21T06:19:40.6379944Z fait 17 : fenetre pid=23096 longueur=13 texte=[CCC-e2-2wmkgt]\r\n2026-08-21T06:19:50.4073785Z ordre 18 mode=clipboard a1=\r\n2026-08-21T06:19:50.4073785Z fait 18 : clipboard longueur=16 debut=[deux-B-e2-2wmkgt]\r\n2026-08-21T06:19:51.1640705Z ordre 19 mode=fenetre a1=23096\r\n2026-08-21T06:19:51.1670686Z fait 19 : fenetre pid=23096 longueur=29 texte=[deux-B-e2-2wmkgtCCC-e2-2wmkgt]\r\n2026-08-21T06:19:52.9267894Z ordre 20 mode=fenetre a1=22692\r\n2026-08-21T06:19:52.9307907Z fait 20 : fenetre pid=22692 longueur=13 texte=[AAA-e2-2wmkgt]\r\n2026-08-21T06:19:53.6892205Z ordre 21 mode=fenetre a1=23192\r\n2026-08-21T06:19:53.6919346Z fait 21 : fenetre pid=23192 longueur=29 texte=[deux-A-e2-2wmkgtBBB-e2-2wmkgt]\r\n2026-08-21T06:19:55.2030195Z ordre 22 mode=fenetre a1=23096\r\n2026-08-21T06:19:55.2050180Z fait 22 : fenetre pid=23096 longueur=29 texte=[deux-B-e2-2wmkgtCCC-e2-2wmkgt]\r\n2026-08-21T06:19:55.9651472Z ordre 23 mode=fenetre a1=23192\r\n2026-08-21T06:19:55.9681447Z fait 23 : fenetre pid=23192 longueur=29 texte=[deux-A-e2-2wmkgtBBB-e2-2wmkgt]\r\n2026-08-21T06:19:56.9770867Z ordre 24 mode=fenetre a1=23096\r\n2026-08-21T06:19:56.9800861Z fait 24 : fenetre pid=23096 longueur=29 texte=[deux-B-e2-2wmkgtCCC-e2-2wmkgt]\r\n2026-08-21T06:19:57.7402014Z ordre 25 mode=fenetre a1=22692\r\n2026-08-21T06:19:57.7432005Z fait 25 : fenetre pid=22692 longueur=13 texte=[AAA-e2-2wmkgt]\r\n2026-08-21T06:19:58.4980929Z ordre 26 mode=clipboard a1=\r\n2026-08-21T06:19:58.4980929Z fait 26 : clipboard longueur=16 debut=[deux-B-e2-2wmkgt]\r\n2026-08-21T06:19:59.2579372Z ordre 27 mode=fenetre a1=23192\r\n2026-08-21T06:19:59.2609370Z fait 27 : fenetre pid=23192 longueur=29 texte=[deux-A-e2-2wmkgtBBB-e2-2wmkgt]\r\n2026-08-21T06:20:01.0239722Z ordre 28 mode=fenetre a1=23096\r\n2026-08-21T06:20:01.0259904Z fait 28 : fenetre pid=23096 longueur=29 texte=[deux-B-e2-2wmkgtCCC-e2-2wmkgt]\r\n2026-08-21T06:20:01.7860045Z ordre 29 mode=fenetre a1=22692\r\n2026-08-21T06:20:01.7890005Z fait 29 : fenetre pid=22692 longueur=13 texte=[AAA-e2-2wmkgt]\r\n2026-08-21T06:20:02.5446170Z ordre 30 mode=clipboard a1=\r\n2026-08-21T06:20:02.5456030Z fait 30 : clipboard longueur=16 debut=[deux-B-e2-2wmkgt]\r\n2026-08-21T06:20:16.3347540Z ordre 31 mode=fenetre a1=23192\r\n2026-08-21T06:20:16.3377534Z fait 31 : fenetre pid=23192 longueur=47 texte=[deux-A-e2-2wmkgttrois-T1-e2-2wmkgtBBB-e2-2wmkgt]\r\n2026-08-21T06:20:17.0963364Z ordre 32 mode=fenetre a1=23096\r\n2026-08-21T06:20:17.0983433Z fait 32 : fenetre pid=23096 longueur=47 texte=[deux-B-e2-2wmkgttrois-T2-e2-2wmkgtCCC-e2-2wmkgt]\r\n2026-08-21T06:20:18.1071331Z ordre 33 mode=fenetre a1=22692\r\n2026-08-21T06:20:18.1101331Z fait 33 : fenetre pid=22692 longueur=13 texte=[AAA-e2-2wmkgt]\r\n2026-08-21T06:20:18.8649610Z ordre 34 mode=clipboard a1=\r\n2026-08-21T06:20:18.8649610Z fait 34 : clipboard longueur=18 debut=[trois-T2-e2-2wmkgt]\r\n2026-08-21T06:20:19.6234583Z ordre 35 mode=fenetre a1=22692\r\n2026-08-21T06:20:19.6264660Z fait 35 : fenetre pid=22692 longueur=13 texte=[AAA-e2-2wmkgt]\r\n2026-08-21T06:20:21.1373106Z ordre 36 mode=fenetre a1=23192\r\n2026-08-21T06:20:21.1393129Z fait 36 : fenetre pid=23192 longueur=47 texte=[deux-A-e2-2wmkgttrois-T1-e2-2wmkgtBBB-e2-2wmkgt]\r\n2026-08-21T06:20:22.9017577Z ordre 37 mode=fenetre a1=23096\r\n2026-08-21T06:20:22.9037637Z fait 37 : fenetre pid=23096 longueur=47 texte=[deux-B-e2-2wmkgttrois-T2-e2-2wmkgtCCC-e2-2wmkgt]\r\n2026-08-21T06:20:32.9260839Z ordre 38 mode=fenetre a1=23192\r\n2026-08-21T06:20:32.9290827Z fait 38 : fenetre pid=23192 longueur=47 texte=[deux-A-e2-2wmkgttrois-T1-e2-2wmkgtBBB-e2-2wmkgt]\r\n2026-08-21T06:20:33.6879697Z ordre 39 mode=fenetre a1=23096\r\n2026-08-21T06:20:33.6905993Z fait 39 : fenetre pid=23096 longueur=47 texte=[deux-B-e2-2wmkgttrois-T2-e2-2wmkgtCCC-e2-2wmkgt]\r\n2026-08-21T06:20:34.4496046Z ordre 40 mode=fenetre a1=22692\r\n2026-08-21T06:20:34.4526170Z fait 40 : fenetre pid=22692 longueur=13 texte=[AAA-e2-2wmkgt]\r\n2026-08-21T06:20:35.2070777Z ordre 41 mode=clipboard a1=\r\n2026-08-21T06:20:35.2080661Z fait 41 : clipboard longueur=16 debut=[quatre-e2-2wmkgt]\r\n2026-08-21T06:20:38.9738461Z ordre 42 mode=fenetre a1=23192\r\n2026-08-21T06:20:38.9778350Z fait 42 : fenetre pid=23192 longueur=47 texte=[deux-A-e2-2wmkgttrois-T1-e2-2wmkgtBBB-e2-2wmkgt]\r\n2026-08-21T06:20:39.9855912Z ordre 43 mode=fenetre a1=23096\r\n2026-08-21T06:20:39.9886012Z fait 43 : fenetre pid=23096 longueur=47 texte=[deux-B-e2-2wmkgttrois-T2-e2-2wmkgtCCC-e2-2wmkgt]\r\n2026-08-21T06:20:40.7455932Z ordre 44 mode=fenetre a1=22692\r\n2026-08-21T06:20:40.7486018Z fait 44 : fenetre pid=22692 longueur=13 texte=[AAA-e2-2wmkgt]\r\n2026-08-21T06:20:41.5033893Z ordre 45 mode=clipboard a1=\r\n2026-08-21T06:20:41.5043773Z fait 45 : clipboard longueur=16 debut=[quatre-e2-2wmkgt]\r\n"
+}

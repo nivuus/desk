@@ -1,18 +1,19 @@
 navigateur Chrome/151.0.7922.169
-[window.open] cibles trouvees : 3 / 3 — http://127.0.0.1:45893/w0 http://127.0.0.1:45893/w1 http://127.0.0.1:45893/w2
-[window.open] bringToFront(http://127.0.0.1:45893/w0) → http://127.0.0.1:45893/w0:FOCUS http://127.0.0.1:45893/w1:FOCUS http://127.0.0.1:45893/w2:FOCUS
-[window.open] bringToFront(http://127.0.0.1:45893/w1) → http://127.0.0.1:45893/w0:FOCUS http://127.0.0.1:45893/w1:FOCUS http://127.0.0.1:45893/w2:FOCUS
-[window.open] bringToFront(http://127.0.0.1:45893/w2) → http://127.0.0.1:45893/w0:FOCUS http://127.0.0.1:45893/w1:FOCUS http://127.0.0.1:45893/w2:FOCUS
+[window.open(url, nom) — LE PRODUIT] cibles trouvees : 3 / 3 — http://127.0.0.1:45893/w0 http://127.0.0.1:45893/w1 http://127.0.0.1:45893/w2
+[window.open(url, nom) — LE PRODUIT] bringToFront(http://127.0.0.1:45893/w0) → http://127.0.0.1:45893/w0:FOCUS http://127.0.0.1:45893/w1:— http://127.0.0.1:45893/w2:—
+[window.open(url, nom) — LE PRODUIT] bringToFront(http://127.0.0.1:45893/w1) → http://127.0.0.1:45893/w0:— http://127.0.0.1:45893/w1:FOCUS http://127.0.0.1:45893/w2:—
+[window.open(url, nom) — LE PRODUIT] bringToFront(http://127.0.0.1:45893/w2) → http://127.0.0.1:45893/w0:— http://127.0.0.1:45893/w1:— http://127.0.0.1:45893/w2:FOCUS
+[window.open(url, nom, 'width=…') — une POPUP] cibles trouvees : 3 / 3 — http://127.0.0.1:45893/p0 http://127.0.0.1:45893/p1 http://127.0.0.1:45893/p2
+[window.open(url, nom, 'width=…') — une POPUP] bringToFront(http://127.0.0.1:45893/p0) → http://127.0.0.1:45893/p0:FOCUS http://127.0.0.1:45893/p1:FOCUS http://127.0.0.1:45893/p2:FOCUS
+[window.open(url, nom, 'width=…') — une POPUP] bringToFront(http://127.0.0.1:45893/p1) → http://127.0.0.1:45893/p0:FOCUS http://127.0.0.1:45893/p1:FOCUS http://127.0.0.1:45893/p2:FOCUS
+[window.open(url, nom, 'width=…') — une POPUP] bringToFront(http://127.0.0.1:45893/p2) → http://127.0.0.1:45893/p0:FOCUS http://127.0.0.1:45893/p1:FOCUS http://127.0.0.1:45893/p2:FOCUS
 [Target.createTarget] cibles trouvees : 3 / 3 — http://127.0.0.1:45893/t0 http://127.0.0.1:45893/t1 http://127.0.0.1:45893/t2
 [Target.createTarget] bringToFront(http://127.0.0.1:45893/t0) → http://127.0.0.1:45893/t0:FOCUS http://127.0.0.1:45893/t1:— http://127.0.0.1:45893/t2:—
 [Target.createTarget] bringToFront(http://127.0.0.1:45893/t1) → http://127.0.0.1:45893/t0:— http://127.0.0.1:45893/t1:FOCUS http://127.0.0.1:45893/t2:—
 [Target.createTarget] bringToFront(http://127.0.0.1:45893/t2) → http://127.0.0.1:45893/t0:— http://127.0.0.1:45893/t1:— http://127.0.0.1:45893/t2:FOCUS
 
-=== VERDICT S1 (arme du PRODUIT : window.open) ===
-NON MESURABLE — true PARTOUT
-attribution : LES DEUX ARMES DIVERGENT — window.open : « NON MESURABLE — true PARTOUT » ; Target.createTarget : « MESURABLE — exactement un true a chaque basculement, et c'est bien la fenetre amenee au premier plan ». 🔴 LA CAUSE EST DONC LE MODE D'OUVERTURE, PAS LE --headless. Et le produit ouvre ses fenetres par window.open (client/src/shell-page.ts) : le verdict qui commande la recette est celui de la premiere arme.
-⟹ ④ NE PEUT PAS ETRE MESURE en conditions de produit. Xvfb + xdotool est la seule voie nommee
-   (consentement donne en D8, jamais suivi d'effet ; releve ce jour : Xvfb et xdotool ABSENTS de l'hote),
-   et les mesures qui en sortiraient ne se compareraient a AUCUNE campagne anterieure.
+=== VERDICT S1 (arme du PRODUIT : window.open(url, nom), DEUX arguments) ===
+MESURABLE — exactement un true a chaque basculement, et c'est bien la fenetre amenee au premier plan
+attribution : TROIS ARMES, ET C'EST LE TROISIEME ARGUMENT DE window.open QUI DECIDE : window.open(url, nom) — LE GESTE DU PRODUIT — « MESURABLE — exactement un true a chaque basculement, et c'est bien la fenetre amenee au premier plan » ; window.open(url, nom, 'width=...') — une POPUP — « NON MESURABLE — true PARTOUT » ; Target.createTarget — « MESURABLE — exactement un true a chaque basculement, et c'est bien la fenetre amenee au premier plan ». 🔴 LA CHAINE DE CARACTERISTIQUES CHANGE TOUT — avec elle Chrome ouvre une POPUP, sans elle un ONGLET. La premiere redaction de cette sonde la passait alors que client/src/shell-page.ts ne la passe PAS, et elle a donc rendu un verdict FAUX sur le produit. C'est la RECETTE SUR LA VM qui l'a refute.
 emulation de focus : JAMAIS activee (Emulation.setFocusEmulationEnabled n'est appelee nulle part dans ce fichier)
 releve ecrit : p3-focus-1.json

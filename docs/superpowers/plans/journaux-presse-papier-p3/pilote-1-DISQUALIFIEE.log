@@ -1,0 +1,52 @@
+2026-08-21T05:56:35.295Z préparation VM
+2026-08-21T05:56:38.693Z prep : notepad=0
+2026-08-21T05:56:38.693Z purge du vivier de sorties virtuelles (lancement SÉPARÉ)
+2026-08-21T05:56:44.213Z ouverture de 3 Bloc-notes
+2026-08-21T05:56:49.560Z   Bloc-notes ouverts (essai 1) : 3
+2026-08-21T05:57:01.115Z lecteur prêt : true
+2026-08-21T05:57:01.934Z   lecture 1 (inventaire) : inventaire pid=22252 hwnd=32703190 mainwindow=32703190 classe=Notepad titre=[Sans titre - Bloc-notes] ; pid=21760 hwnd=16122222 mainwindow=16122222 classe=Notep
+2026-08-21T05:57:02.540Z + page attachée 8ECCF644 http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA
+2026-08-21T05:57:02.554Z + page attachée 3C2DA545 chrome://newtab/
+2026-08-21T05:57:05.475Z page-shell attachée : true
+2026-08-21T05:57:05.475Z lancement du superviseur
+2026-08-21T05:57:05.934Z run-agent.sh : Opration russie : tentative d'excution de la tche planifie "guacamole-agent".agent lancé en session interactive ; journal : /media/vm/dev/agent.log
+2026-08-21T05:57:09.273Z + page attachée 713DFF9C 
+2026-08-21T05:57:09.309Z + page attachée 43FA6C4C 
+2026-08-21T05:57:09.347Z + page attachée BC58467B 
+2026-08-21T05:57:09.956Z pages d'application : F4z7KQooOQfJqh47PM0ETA:w-1 F4z7KQooOQfJqh47PM0ETA:w-2 F4z7KQooOQfJqh47PM0ETA:w-3
+2026-08-21T05:57:09.965Z attributions session ↔ pid : []
+2026-08-21T05:57:09.965Z !! ATTRIBUTION INUTILISABLE : ② et ③ ne seront pas des verdicts
+2026-08-21T05:57:10.151Z + page attachée E1D27F46 http://127.0.0.1:5173/
+2026-08-21T05:57:13.153Z témoin focus : bringToFront(F4z7KQooOQfJqh47PM0ETA:w-1) → F4z7KQooOQfJqh47PM0ETA:w-1:true F4z7KQooOQfJqh47PM0ETA:w-2:false F4z7KQooOQfJqh47PM0ETA:w-3:false
+2026-08-21T05:57:13.782Z témoin focus : bringToFront(F4z7KQooOQfJqh47PM0ETA:w-2) → F4z7KQooOQfJqh47PM0ETA:w-1:false F4z7KQooOQfJqh47PM0ETA:w-2:true F4z7KQooOQfJqh47PM0ETA:w-3:false
+2026-08-21T05:57:14.408Z témoin focus : bringToFront(F4z7KQooOQfJqh47PM0ETA:w-3) → F4z7KQooOQfJqh47PM0ETA:w-1:false F4z7KQooOQfJqh47PM0ETA:w-2:false F4z7KQooOQfJqh47PM0ETA:w-3:true
+2026-08-21T05:57:14.408Z ④ mesurable (le focus discrimine) : true
+2026-08-21T05:57:15.219Z   lecture 2 (clipboard) : clipboard longueur=22 debut=[delta-desarme-2-49u1hj]
+2026-08-21T05:57:15.219Z [0-avant-toute-copie] focus=false,false,true messages=0,0,0
+2026-08-21T05:57:15.220Z ① copie dans la VM : un-1-d664xe
+2026-08-21T05:57:15.781Z + page attachée 900B81E0 
+2026-08-21T05:57:24.511Z   lecture 3 (clipboard) : clipboard longueur=11 debut=[un-1-d664xe]
+2026-08-21T05:57:24.511Z [1-apres-copie-dans-la-vm] focus=false,false,true messages=1,1,1
+2026-08-21T05:57:24.512Z ① bis : une fenêtre de plus, attachée APRÈS la copie
+2026-08-21T05:57:25.136Z + page attachée 4EA501CA 
+2026-08-21T05:57:25.254Z + page attachée 0AEE5929 
+2026-08-21T05:58:40.200Z ① bis — la fenêtre tardive a reçu le contenu courant : undefined
+2026-08-21T05:58:40.201Z ② collage depuis F4z7KQooOQfJqh47PM0ETA:w-1 : deux-A-1-d664xe
+2026-08-21T05:58:50.013Z   lecture 4 (clipboard) : clipboard longueur=15 debut=[deux-A-1-d664xe]
+2026-08-21T05:58:50.013Z ② collage depuis F4z7KQooOQfJqh47PM0ETA:w-2 : deux-B-1-d664xe
+2026-08-21T05:58:59.776Z   lecture 5 (clipboard) : clipboard longueur=15 debut=[deux-B-1-d664xe]
+2026-08-21T05:59:00.601Z   lecture 6 (clipboard) : clipboard longueur=15 debut=[deux-B-1-d664xe]
+2026-08-21T05:59:00.601Z [2-apres-les-collages-attribues] focus=false,true,false messages=1,1,1
+2026-08-21T05:59:00.601Z ③ deux collages à moins de 250 ms
+2026-08-21T05:59:01.412Z   lecture 7 (clipboard) : clipboard longueur=15 debut=[deux-B-1-d664xe]
+2026-08-21T05:59:01.412Z [3-avant-simultane] focus=false,true,false messages=1,1,1
+2026-08-21T05:59:15.153Z   lecture 8 (clipboard) : clipboard longueur=17 debut=[trois-T2-1-d664xe]
+2026-08-21T05:59:15.153Z [3-apres-simultane] focus=false,true,false messages=1,1,1
+2026-08-21T05:59:16.337Z + page attachée 8119C4BF 
+2026-08-21T05:59:25.052Z   lecture 9 (clipboard) : clipboard longueur=15 debut=[quatre-1-d664xe]
+2026-08-21T05:59:25.052Z [4-copie-pendant-que-B-est-sans-focus] focus=true,false,false messages=2,2,2
+2026-08-21T05:59:28.897Z   lecture 10 (clipboard) : clipboard longueur=15 debut=[quatre-1-d664xe]
+2026-08-21T05:59:28.897Z [4-apres-reprise-du-focus-par-B] focus=false,false,true messages=2,2,2
+2026-08-21T05:59:28.924Z relevé écrit dans pp3-1.json
+2026-08-21T05:59:33.599Z journal copié : agent-1.log (+ -plat)
+2026-08-21T05:59:33.673Z virsh domstate : en cours d’exécution
