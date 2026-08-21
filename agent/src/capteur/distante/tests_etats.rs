@@ -253,3 +253,42 @@ fn deux_presse_papiers_arrives_avant_lecture_s_ecrasent_et_le_refus_passe() {
         "seule la dernière annonce survit, refus compris"
     );
 }
+
+/// Sous-bloc A1, même régime que `presse_papier_a_annoncer` juste au-dessus :
+/// l'annonce est un ÉTAT COURANT, et elle se CONSOMME.
+///
+/// 🔴 **CE TEST EXISTE PARCE QU'UNE ROUGE EST RESTÉE VERTE.** La rouge T2 de la
+/// tâche 9 mutait `SourceDistante::accent_a_annoncer` en `.clone()` au lieu de
+/// `.take()` et attendait que
+/// `l_accent_annonce_est_consomme_et_ne_repart_pas_au_tour_suivant` tombe : il
+/// est resté VERT, parce que ce test-là emploie une source FACTICE
+/// (`SourceAvecAccent`) dont la consommation lui est propre. Il éprouve le
+/// CÂBLAGE de la branche a1nonies, jamais `SourceDistante`.
+///
+/// **La consommation du VRAI `SourceDistante` n'était donc couverte par
+/// RIEN**, et c'est ce trou-ci que ce test ferme. La règle du dépôt est qu'une
+/// rouge restée verte se DIAGNOSTIQUE, elle ne se classe pas.
+#[test]
+fn un_accent_pousse_est_annonce_une_seule_fois() {
+    let (mut source, tx, _recus) = source_avec(4);
+    tx.send(Recu::Accent { couleur: "#7aa2f7".into() }).expect("dépôt");
+    assert_eq!(source.next_frame(), None);
+    assert_eq!(source.accent_a_annoncer(), Some("#7aa2f7".to_string()));
+    assert_eq!(source.accent_a_annoncer(), None, "une annonce ne se répète pas");
+}
+
+/// Deux accents arrivés entre deux lectures s'écrasent : l'accent EST un état,
+/// pas un historique, et le navigateur n'aurait rien à faire d'une teinte que
+/// l'icône a déjà remplacée. Même régime que `plein_ecran` et `presse_papier`.
+#[test]
+fn deux_accents_arrives_avant_lecture_s_ecrasent() {
+    let (mut source, tx, _recus) = source_avec(4);
+    tx.send(Recu::Accent { couleur: "#7aa2f7".into() }).expect("dépôt");
+    tx.send(Recu::Accent { couleur: "#fa8c16".into() }).expect("dépôt");
+    assert_eq!(source.next_frame(), None);
+    assert_eq!(
+        source.accent_a_annoncer(),
+        Some("#fa8c16".to_string()),
+        "seule la dernière annonce survit"
+    );
+}

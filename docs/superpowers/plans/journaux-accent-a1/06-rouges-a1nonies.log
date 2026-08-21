@@ -1,0 +1,345 @@
+=== A1 — LES ROUGES DE LA BRANCHE a1nonies (tache 9) ===
+Date : 21 aout 2026. Le maillon 6 du §6.1 du plan est declare
+« NON garde par le compilateur — un if let oublie compile ».
+Ces deux rouges sont ce qui ferme ce trou.
+
+⚠️ PIEGE RENCONTRE A LA PREMIERE PASSE : des BACKTICKS dans un echo de
+   journal font EXECUTER une commande par le shell. La premiere redaction
+   ecrivait « un `if let` oublie compile » et zsh a rendu
+   « parse error near let », TUANT le script au milieu. Piege documente
+   par S4 ; l'arbre a ete verifie intact apres (956 passed).
+
+### ROUGE 0 — ne mute rien. Le harnais DOIT la REFUSER.
+───────────────────────────────────────────────────────────────
+ROUGE « t0-ne-mute-rien »  sur  agent/src/transport/tick.rs
+1. copie nommée : /tmp/a1-rouge-t0-ne-mute-rien.orig   sha256(avant) = e4747a863b630727f41a5f6c9850ebf978115963c104f0af853d34652e81a34a
+2. mutation appliquée
+3. 🔴 DIFF VIDE — LE HARNAIS REFUSE CETTE ROUGE : elle ne mute RIEN.
+   (restauré ; rouge NON COMPTÉE)
+REFUSÉE
+
+### ROUGE T1 — retirer TOUTE la branche a1nonies (attendu : les DEUX tests)
+───────────────────────────────────────────────────────────────
+ROUGE « t1-sans-branche »  sur  agent/src/transport/tick.rs
+1. copie nommée : /tmp/a1-rouge-t1-sans-branche.orig   sha256(avant) = e4747a863b630727f41a5f6c9850ebf978115963c104f0af853d34652e81a34a
+2. mutation appliquée
+3. diff NON VIDE (4 ligne(s)) ✅
+4. contrôle : cargo test -p agent --manifest-path agent/Cargo.toml accent
+17 | fn la_fenetre_ne_demande_jamais_plus_de_MORCEAUX_EN_VOL() {
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: convert the identifier to snake case: `la_fenetre_ne_demande_jamais_plus_de_morceaux_en_vol`
+
+warning: function `une_ecriture_due_sur_un_AUTRE_chemin_ne_retarde_rien` should have a snake case name
+  --> agent/src/pont/mutation/tests.rs:64:4
+   |
+64 | fn une_ecriture_due_sur_un_AUTRE_chemin_ne_retarde_rien() {
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: convert the identifier to snake case: `une_ecriture_due_sur_un_autre_chemin_ne_retarde_rien`
+
+warning: function `une_ecriture_due_sur_un_ENFANT_du_repertoire_renomme_retarde` should have a snake case name
+  --> agent/src/pont/mutation/tests.rs:79:4
+   |
+79 | fn une_ecriture_due_sur_un_ENFANT_du_repertoire_renomme_retarde() {
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: convert the identifier to snake case: `une_ecriture_due_sur_un_enfant_du_repertoire_renomme_retarde`
+
+warning: function `un_renommage_hors_racine_est_NonSupporte_et_pas_ProtegeEnEcriture` should have a snake case name
+   --> agent/src/pont/notifications/tests.rs:111:4
+    |
+111 | fn un_renommage_hors_racine_est_NonSupporte_et_pas_ProtegeEnEcriture() {
+    |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: convert the identifier to snake case: `un_renommage_hors_racine_est_non_supporte_et_pas_protege_en_ecriture`
+
+warning: function `annuler_retire_les_N_correlations_d_une_lecture_a_fenetre` should have a snake case name
+   --> agent/src/pont/table/tests.rs:352:4
+    |
+352 | fn annuler_retire_les_N_correlations_d_une_lecture_a_fenetre() {
+    |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: convert the identifier to snake case: `annuler_retire_les_n_correlations_d_une_lecture_a_fenetre`
+
+warning: function `un_format_entier_32_bits_est_refuse_par_la_SEULE_garde_du_flottant` should have a snake case name
+   --> agent/src/wasapi/format.rs:158:8
+    |
+158 |     fn un_format_entier_32_bits_est_refuse_par_la_SEULE_garde_du_flottant() {
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: convert the identifier to snake case: `un_format_entier_32_bits_est_refuse_par_la_seule_garde_du_flottant`
+
+warning: function `une_trame_dont_UN_SEUL_canal_parle_n_est_pas_du_silence` should have a snake case name
+   --> agent/src/wasapi/format.rs:210:8
+    |
+210 |     fn une_trame_dont_UN_SEUL_canal_parle_n_est_pas_du_silence() {
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: convert the identifier to snake case: `une_trame_dont_un_seul_canal_parle_n_est_pas_du_silence`
+
+warning: `agent` (bin "agent" test) generated 46 warnings (run `cargo fix --bin "agent" -p agent --tests` to apply 4 suggestions)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.26s
+     Running unittests src/main.rs (target/debug/deps/agent-f71a44343b450757)
+
+running 12 tests
+test accent::tests::en_hexa_rend_six_chiffres_minuscules ... ok
+test accent::tests::un_contour_noir_majoritaire_ne_gagne_pas ... ok
+test accent::tests::les_pixels_transparents_ne_comptent_pas ... ok
+test accent::tests::la_moyenne_du_seau_n_est_pas_le_centre_du_seau ... ok
+test accent::tests::un_suivi_neuf_annonce_sa_premiere_lecture ... ok
+test accent::tests::un_suivi_n_annonce_pas_deux_fois_la_meme_couleur ... ok
+test accent::tests::une_icone_a_dominante_bleue_rend_du_bleu ... ok
+test accent::tests::une_geometrie_incoherente_rend_None ... ok
+test accent::tests::une_icone_entierement_grise_rend_None ... ok
+test capteur::pont_media::tests::lire_le_media_survit_a_un_accent_et_le_transmet ... ok
+test transport::tick::tests::reste::l_accent_annonce_est_consomme_et_ne_repart_pas_au_tour_suivant ... FAILED
+test transport::tick::tests::reste::un_accent_de_la_source_est_traduit_en_message_accent ... FAILED
+
+failures:
+
+---- transport::tick::tests::reste::l_accent_annonce_est_consomme_et_ne_repart_pas_au_tour_suivant stdout ----
+
+thread 'transport::tick::tests::reste::l_accent_annonce_est_consomme_et_ne_repart_pas_au_tour_suivant' (1413360) panicked at agent/src/transport/tick/tests/reste.rs:421:5:
+assertion `left == right` failed: le premier tour doit mettre EXACTEMENT une annonce en file
+  left: 0
+ right: 1
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- transport::tick::tests::reste::un_accent_de_la_source_est_traduit_en_message_accent stdout ----
+
+thread 'transport::tick::tests::reste::un_accent_de_la_source_est_traduit_en_message_accent' (1413361) panicked at agent/src/transport/tick/tests/reste.rs:390:5:
+le message Accent attendu n'est pas en file : []
+
+
+failures:
+    transport::tick::tests::reste::l_accent_annonce_est_consomme_et_ne_repart_pas_au_tour_suivant
+    transport::tick::tests::reste::un_accent_de_la_source_est_traduit_en_message_accent
+
+test result: FAILED. 10 passed; 2 failed; 0 ignored; 0 measured; 944 filtered out; finished in 0.14s
+
+error: test failed, to rerun pass `-p agent --bin agent`
+   (code de sortie du contrôle : 101)
+5. restauré DEPUIS LA COPIE
+6. sha256(après) = e4747a863b630727f41a5f6c9850ebf978115963c104f0af853d34652e81a34a
+   ✅ ÉGAL
+7. git status --porcelain : 🔴 «  M agent/src/transport/tick.rs » — le fichier est MODIFIÉ par rapport à HEAD
+
+### ROUGE T2 — LIRE sans CONSOMMER : une annonce PAR TOUR
+    attendu ROUGE : l_accent_annonce_est_consomme_..., et lui SEUL
+───────────────────────────────────────────────────────────────
+ROUGE « t2-sans-consommer »  sur  agent/src/capteur/distante/video_source.rs
+1. copie nommée : /tmp/a1-rouge-t2-sans-consommer.orig   sha256(avant) = 311ce9f360d1bcf856df0e0748cd0f0946cfa5cb23e89f5671748bf7fff1849e
+2. mutation appliquée
+3. diff NON VIDE (2 ligne(s)) ✅
+4. contrôle : cargo test -p agent --manifest-path agent/Cargo.toml accent
+warning: function `une_application_absente_d_aujourdhui_disparait_PAR_SA_CLE` should have a snake case name
+  --> agent/src/apps/reconciliation/tests.rs:63:4
+   |
+63 | fn une_application_absente_d_aujourdhui_disparait_PAR_SA_CLE() {
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: convert the identifier to snake case: `une_application_absente_d_aujourdhui_disparait_par_sa_cle`
+
+warning: function `le_puits_de_mesure_PREND_LE_PAS_sur_le_cable` should have a snake case name
+   --> agent/src/demarrage/micro.rs:204:8
+    |
+204 |     fn le_puits_de_mesure_PREND_LE_PAS_sur_le_cable() {
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: convert the identifier to snake case: `le_puits_de_mesure_prend_le_pas_sur_le_cable`
+
+warning: function `un_ordre_d_installation_arrive_dans_SA_file_et_ne_ferme_pas_la_session` should have a snake case name
+  --> agent/src/plateforme/tests_installation.rs:23:10
+   |
+23 | async fn un_ordre_d_installation_arrive_dans_SA_file_et_ne_ferme_pas_la_session() {
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: convert the identifier to snake case: `un_ordre_d_installation_arrive_dans_sa_file_et_ne_ferme_pas_la_session`
+
+warning: function `la_fenetre_ne_demande_jamais_plus_de_MORCEAUX_EN_VOL` should have a snake case name
+  --> agent/src/pont/lecture/tests.rs:17:4
+   |
+17 | fn la_fenetre_ne_demande_jamais_plus_de_MORCEAUX_EN_VOL() {
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: convert the identifier to snake case: `la_fenetre_ne_demande_jamais_plus_de_morceaux_en_vol`
+
+warning: function `une_ecriture_due_sur_un_AUTRE_chemin_ne_retarde_rien` should have a snake case name
+  --> agent/src/pont/mutation/tests.rs:64:4
+   |
+64 | fn une_ecriture_due_sur_un_AUTRE_chemin_ne_retarde_rien() {
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: convert the identifier to snake case: `une_ecriture_due_sur_un_autre_chemin_ne_retarde_rien`
+
+warning: function `une_ecriture_due_sur_un_ENFANT_du_repertoire_renomme_retarde` should have a snake case name
+  --> agent/src/pont/mutation/tests.rs:79:4
+   |
+79 | fn une_ecriture_due_sur_un_ENFANT_du_repertoire_renomme_retarde() {
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: convert the identifier to snake case: `une_ecriture_due_sur_un_enfant_du_repertoire_renomme_retarde`
+
+warning: function `un_renommage_hors_racine_est_NonSupporte_et_pas_ProtegeEnEcriture` should have a snake case name
+   --> agent/src/pont/notifications/tests.rs:111:4
+    |
+111 | fn un_renommage_hors_racine_est_NonSupporte_et_pas_ProtegeEnEcriture() {
+    |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: convert the identifier to snake case: `un_renommage_hors_racine_est_non_supporte_et_pas_protege_en_ecriture`
+
+warning: function `annuler_retire_les_N_correlations_d_une_lecture_a_fenetre` should have a snake case name
+   --> agent/src/pont/table/tests.rs:352:4
+    |
+352 | fn annuler_retire_les_N_correlations_d_une_lecture_a_fenetre() {
+    |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: convert the identifier to snake case: `annuler_retire_les_n_correlations_d_une_lecture_a_fenetre`
+
+warning: function `un_format_entier_32_bits_est_refuse_par_la_SEULE_garde_du_flottant` should have a snake case name
+   --> agent/src/wasapi/format.rs:158:8
+    |
+158 |     fn un_format_entier_32_bits_est_refuse_par_la_SEULE_garde_du_flottant() {
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: convert the identifier to snake case: `un_format_entier_32_bits_est_refuse_par_la_seule_garde_du_flottant`
+
+warning: function `une_trame_dont_UN_SEUL_canal_parle_n_est_pas_du_silence` should have a snake case name
+   --> agent/src/wasapi/format.rs:210:8
+    |
+210 |     fn une_trame_dont_UN_SEUL_canal_parle_n_est_pas_du_silence() {
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: convert the identifier to snake case: `une_trame_dont_un_seul_canal_parle_n_est_pas_du_silence`
+
+warning: `agent` (bin "agent" test) generated 44 warnings (run `cargo fix --bin "agent" -p agent --tests` to apply 4 suggestions)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.97s
+     Running unittests src/main.rs (target/debug/deps/agent-f71a44343b450757)
+
+running 12 tests
+test accent::tests::en_hexa_rend_six_chiffres_minuscules ... ok
+test accent::tests::la_moyenne_du_seau_n_est_pas_le_centre_du_seau ... ok
+test accent::tests::un_contour_noir_majoritaire_ne_gagne_pas ... ok
+test accent::tests::les_pixels_transparents_ne_comptent_pas ... ok
+test accent::tests::un_suivi_n_annonce_pas_deux_fois_la_meme_couleur ... ok
+test accent::tests::une_geometrie_incoherente_rend_None ... ok
+test accent::tests::un_suivi_neuf_annonce_sa_premiere_lecture ... ok
+test accent::tests::une_icone_a_dominante_bleue_rend_du_bleu ... ok
+test accent::tests::une_icone_entierement_grise_rend_None ... ok
+test capteur::pont_media::tests::lire_le_media_survit_a_un_accent_et_le_transmet ... ok
+test transport::tick::tests::reste::un_accent_de_la_source_est_traduit_en_message_accent ... ok
+test transport::tick::tests::reste::l_accent_annonce_est_consomme_et_ne_repart_pas_au_tour_suivant ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 944 filtered out; finished in 0.11s
+
+   (code de sortie du contrôle : 0)
+5. restauré DEPUIS LA COPIE
+6. sha256(après) = 311ce9f360d1bcf856df0e0748cd0f0946cfa5cb23e89f5671748bf7fff1849e
+   ✅ ÉGAL
+7. git status --porcelain : VIDE ✅
+
+### ROUGE T2 — REJOUEE apres diagnostic, sur un test qui exerce le VRAI SourceDistante
+───────────────────────────────────────────────────────────────
+ROUGE « t2bis-sans-consommer »  sur  agent/src/capteur/distante/video_source.rs
+1. copie nommée : /tmp/a1-rouge-t2bis-sans-consommer.orig   sha256(avant) = 311ce9f360d1bcf856df0e0748cd0f0946cfa5cb23e89f5671748bf7fff1849e
+2. mutation appliquée
+3. diff NON VIDE (2 ligne(s)) ✅
+4. contrôle : cargo test -p agent --manifest-path agent/Cargo.toml accent
+
+warning: function `la_fenetre_ne_demande_jamais_plus_de_MORCEAUX_EN_VOL` should have a snake case name
+  --> agent/src/pont/lecture/tests.rs:17:4
+   |
+17 | fn la_fenetre_ne_demande_jamais_plus_de_MORCEAUX_EN_VOL() {
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: convert the identifier to snake case: `la_fenetre_ne_demande_jamais_plus_de_morceaux_en_vol`
+
+warning: function `une_ecriture_due_sur_un_AUTRE_chemin_ne_retarde_rien` should have a snake case name
+  --> agent/src/pont/mutation/tests.rs:64:4
+   |
+64 | fn une_ecriture_due_sur_un_AUTRE_chemin_ne_retarde_rien() {
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: convert the identifier to snake case: `une_ecriture_due_sur_un_autre_chemin_ne_retarde_rien`
+
+warning: function `une_ecriture_due_sur_un_ENFANT_du_repertoire_renomme_retarde` should have a snake case name
+  --> agent/src/pont/mutation/tests.rs:79:4
+   |
+79 | fn une_ecriture_due_sur_un_ENFANT_du_repertoire_renomme_retarde() {
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: convert the identifier to snake case: `une_ecriture_due_sur_un_enfant_du_repertoire_renomme_retarde`
+
+warning: function `un_renommage_hors_racine_est_NonSupporte_et_pas_ProtegeEnEcriture` should have a snake case name
+   --> agent/src/pont/notifications/tests.rs:111:4
+    |
+111 | fn un_renommage_hors_racine_est_NonSupporte_et_pas_ProtegeEnEcriture() {
+    |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: convert the identifier to snake case: `un_renommage_hors_racine_est_non_supporte_et_pas_protege_en_ecriture`
+
+warning: function `annuler_retire_les_N_correlations_d_une_lecture_a_fenetre` should have a snake case name
+   --> agent/src/pont/table/tests.rs:352:4
+    |
+352 | fn annuler_retire_les_N_correlations_d_une_lecture_a_fenetre() {
+    |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: convert the identifier to snake case: `annuler_retire_les_n_correlations_d_une_lecture_a_fenetre`
+
+warning: function `un_format_entier_32_bits_est_refuse_par_la_SEULE_garde_du_flottant` should have a snake case name
+   --> agent/src/wasapi/format.rs:158:8
+    |
+158 |     fn un_format_entier_32_bits_est_refuse_par_la_SEULE_garde_du_flottant() {
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: convert the identifier to snake case: `un_format_entier_32_bits_est_refuse_par_la_seule_garde_du_flottant`
+
+warning: function `une_trame_dont_UN_SEUL_canal_parle_n_est_pas_du_silence` should have a snake case name
+   --> agent/src/wasapi/format.rs:210:8
+    |
+210 |     fn une_trame_dont_UN_SEUL_canal_parle_n_est_pas_du_silence() {
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: convert the identifier to snake case: `une_trame_dont_un_seul_canal_parle_n_est_pas_du_silence`
+
+warning: `agent` (bin "agent" test) generated 44 warnings (run `cargo fix --bin "agent" -p agent --tests` to apply 4 suggestions)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.28s
+     Running unittests src/main.rs (target/debug/deps/agent-f71a44343b450757)
+
+running 14 tests
+test accent::tests::en_hexa_rend_six_chiffres_minuscules ... ok
+test accent::tests::un_suivi_n_annonce_pas_deux_fois_la_meme_couleur ... ok
+test accent::tests::la_moyenne_du_seau_n_est_pas_le_centre_du_seau ... ok
+test accent::tests::un_contour_noir_majoritaire_ne_gagne_pas ... ok
+test accent::tests::les_pixels_transparents_ne_comptent_pas ... ok
+test accent::tests::une_geometrie_incoherente_rend_None ... ok
+test accent::tests::une_icone_a_dominante_bleue_rend_du_bleu ... ok
+test accent::tests::une_icone_entierement_grise_rend_None ... ok
+test accent::tests::un_suivi_neuf_annonce_sa_premiere_lecture ... ok
+test capteur::distante::tests_etats::deux_accents_arrives_avant_lecture_s_ecrasent ... ok
+test capteur::distante::tests_etats::un_accent_pousse_est_annonce_une_seule_fois ... FAILED
+test capteur::pont_media::tests::lire_le_media_survit_a_un_accent_et_le_transmet ... ok
+test transport::tick::tests::reste::l_accent_annonce_est_consomme_et_ne_repart_pas_au_tour_suivant ... ok
+test transport::tick::tests::reste::un_accent_de_la_source_est_traduit_en_message_accent ... ok
+
+failures:
+
+---- capteur::distante::tests_etats::un_accent_pousse_est_annonce_une_seule_fois stdout ----
+
+thread 'capteur::distante::tests_etats::un_accent_pousse_est_annonce_une_seule_fois' (1423880) panicked at agent/src/capteur/distante/tests_etats.rs:277:5:
+assertion `left == right` failed: une annonce ne se répète pas
+  left: Some("#7aa2f7")
+ right: None
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    capteur::distante::tests_etats::un_accent_pousse_est_annonce_une_seule_fois
+
+test result: FAILED. 13 passed; 1 failed; 0 ignored; 0 measured; 944 filtered out; finished in 0.14s
+
+error: test failed, to rerun pass `-p agent --bin agent`
+   (code de sortie du contrôle : 101)
+5. restauré DEPUIS LA COPIE
+6. sha256(après) = 311ce9f360d1bcf856df0e0748cd0f0946cfa5cb23e89f5671748bf7fff1849e
+   ✅ ÉGAL
+7. git status --porcelain : VIDE ✅
+
+=== BILAN, ET LE DIAGNOSTIC D'UNE ROUGE RESTEE VERTE ===
+ROUGE 0   ne mute rien ............................ REFUSEE par le harnais ✅
+ROUGE T1  la branche a1nonies RETIREE
+          -> un_accent_de_la_source_est_traduit_en_message_accent      FAILED
+          -> l_accent_annonce_est_consomme_et_ne_repart_pas_au_tour... FAILED
+          10 passed / 2 failed. Le maillon 6, declare NON GARDE par le
+          compilateur, est desormais garde par ces deux tests.
+
+🔴 ROUGE T2 EST RESTEE VERTE, ET ELLE A ETE DIAGNOSTIQUEE, PAS CLASSEE.
+   (§2.2 regle 4 : « la classer 'le test ne peut pas echouer' serait publier
+   l'inverse de la verite ».)
+
+   Mutation : SourceDistante::accent_a_annoncer, `.take()` -> `.clone()`,
+   dans agent/src/capteur/distante/video_source.rs.
+   Attendu : l_accent_annonce_est_consomme_... tombe.
+   Obtenu  : test result: ok. 12 passed; 0 failed.
+
+   CAUSE, TROUVEE EN RELISANT LE TEST ET NON EN SUPPOSANT : ce test emploie une
+   source FACTICE, `SourceAvecAccent`, dont l'implementation de
+   `accent_a_annoncer` est LA SIENNE (`self.accent_prepare.take()`). Il eprouve
+   le CABLAGE de la branche a1nonies — ce que sa propre doc annonce, et ce que
+   son voisin presse-papier annonce aussi — et il ne touche JAMAIS
+   `SourceDistante`. La mutation visait un chemin que le test n'emprunte pas.
+
+   CE QUE CELA A REVELE : la consommation du VRAI `SourceDistante` n'etait
+   couverte par RIEN. C'est un trou de couverture, pas un defaut de la rouge.
+
+   REMEDE : deux tests neufs dans capteur/distante/tests_etats.rs, sur le
+   patron exact de leurs voisins `plein_ecran` et `presse_papier` —
+   `un_accent_pousse_est_annonce_une_seule_fois` et
+   `deux_accents_arrives_avant_lecture_s_ecrasent`.
+
+ROUGE T2 REJOUEE, sur la meme mutation :
+          -> un_accent_pousse_est_annonce_une_seule_fois               FAILED
+             assertion `left == right` failed: une annonce ne se repete pas
+          13 passed / 1 failed — ET UN SEUL : la rouge est PRECISE.
+
+⚠️ PIEGE D'INSTRUMENT RENCONTRE : des BACKTICKS dans un `echo` de journal font
+   EXECUTER une commande par zsh. La premiere passe a rendu « parse error near
+   let » et le script est MORT AU MILIEU. Piege documente par S4. L'arbre a ete
+   verifie intact apres (956 passed), et les journaux reecrits en quotes
+   simples.
+
+⚠️ Ce que ces rouges N'ETABLISSENT PAS : rien du client (maillon 10, une chaine
+de `else if` SANS aucune exhaustivite), rien de la VM. UNE execution par rouge.

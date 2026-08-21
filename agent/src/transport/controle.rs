@@ -105,6 +105,7 @@ impl Session {
             AgentControl::Link { .. } => "link",
             AgentControl::Fullscreen { .. } => "fullscreen",
             AgentControl::Clipboard { .. } => "clipboard",
+            AgentControl::Accent { .. } => "accent",
         };
         let json = serde_json::to_string(&message)?;
         if let Some(mut channel) = self.rtc.channel(id) {

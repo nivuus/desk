@@ -368,3 +368,69 @@ fn un_refus_de_taille_est_traduit_en_message_clipboard_sans_texte() {
         session.pending_control
     );
 }
+
+/// Branche a1nonies (sous-bloc A1) : une couleur d'accent rendue par la source
+/// doit être traduite en `AgentControl::Accent` mis en file pour le navigateur.
+///
+/// 🔴 **ROUGE sur l'arbre d'avant la branche** : le maillon 6 du plan est
+/// « NON gardé par le compilateur — un `if let` oublié compile ». Sans ces deux
+/// tests, retirer tout le bloc a1nonies laisserait `cargo test` VERT.
+#[test]
+fn un_accent_de_la_source_est_traduit_en_message_accent() {
+    let inner = fixtures::video_test_source();
+    let source =
+        Box::new(SourceAvecAccent { inner, accent_prepare: Some("#7aa2f7".to_string()) });
+    let mut session = Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000)
+        .expect("session");
+
+    session
+        .act_on_timeout(Instant::now())
+        .expect("annoncer un accent ne doit jamais faire échouer la session");
+
+    assert!(
+        session.pending_control.iter().any(|message| matches!(
+            message,
+            proto::control::AgentControl::Accent { couleur, .. } if couleur == "#7aa2f7"
+        )),
+        "le message Accent attendu n'est pas en file : {:?}",
+        session.pending_control
+    );
+}
+
+/// L'annonce est CONSOMMÉE : un second tour ne la remet pas en file.
+///
+/// 🔴 **ROUGE si `accent_a_annoncer` LISAIT sans consommer** : la branche
+/// émettrait alors un message PAR TOUR, soit ~100 Hz sur le canal de contrôle,
+/// et le critère ④ de la recette — « exactement une ligne par session sur un
+/// palier de 60 s » — deviendrait indémontrable. C'est le régime que ce fichier
+/// documente déjà pour a1ter-bis et a1septies.
+#[test]
+fn l_accent_annonce_est_consomme_et_ne_repart_pas_au_tour_suivant() {
+    let inner = fixtures::video_test_source();
+    let source =
+        Box::new(SourceAvecAccent { inner, accent_prepare: Some("#fa8c16".to_string()) });
+    let mut session = Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000)
+        .expect("session");
+
+    session.act_on_timeout(Instant::now()).expect("premier tour");
+    let apres_le_premier = session
+        .pending_control
+        .iter()
+        .filter(|message| matches!(message, proto::control::AgentControl::Accent { .. }))
+        .count();
+    assert_eq!(apres_le_premier, 1, "le premier tour doit mettre EXACTEMENT une annonce en file");
+
+    // Dix tours de plus : la source n'a plus rien à annoncer.
+    for _ in 0..10 {
+        session.act_on_timeout(Instant::now()).expect("tour suivant");
+    }
+    let total = session
+        .pending_control
+        .iter()
+        .filter(|message| matches!(message, proto::control::AgentControl::Accent { .. }))
+        .count();
+    assert_eq!(
+        total, 1,
+        "onze tours n'ont produit qu'UNE annonce : l'accent est consommé, jamais relu"
+    );
+}

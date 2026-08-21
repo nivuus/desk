@@ -175,3 +175,30 @@ impl VideoSource for SourceAvecPressePapier {
         self.presse_papier_prepare.take()
     }
 }
+
+/// Source factice qui rend une couleur d'accent préparée une seule fois — comme
+/// le fait réellement `SourceDistante` (`Option` consommé par `take()`), sans
+/// dépendre du capteur : ces tests vérifient le CÂBLAGE de la branche a1nonies
+/// d'`act_on_timeout`, pas la logique de `SourceDistante`.
+///
+/// **Elle existe pour la raison que le voisin ci-dessus documente** : la revue
+/// de la tâche 8 du sous-bloc D6 a relevé que supprimer tout le bloc a1quater
+/// laissait les tests verts. Le maillon 6 du plan de A1 est explicitement
+/// « NON gardé — un `if let` oublié compile », et c'est ce trou-là que ces
+/// deux tests ferment.
+struct SourceAvecAccent {
+    inner: crate::source::FileSource,
+    accent_prepare: Option<String>,
+}
+
+impl VideoSource for SourceAvecAccent {
+    fn next_frame(&mut self) -> Option<AccessUnit> {
+        self.inner.next_frame()
+    }
+    fn dimensions(&self) -> (u32, u32) {
+        self.inner.dimensions()
+    }
+    fn accent_a_annoncer(&mut self) -> Option<String> {
+        self.accent_prepare.take()
+    }
+}
