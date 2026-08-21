@@ -1,0 +1,47 @@
+{
+  "mode": "s1",
+  "affichage": "<sans interface>",
+  "journal": [
+    "[2026-08-21T15:16:11.712Z] page servie sur http://127.0.0.1:5391",
+    "[2026-08-21T15:16:11.991Z] chrome : Chrome/151.0.7922.169 (sans interface)",
+    "[2026-08-21T15:16:13.526Z] fenêtre A ouverte",
+    "[2026-08-21T15:16:13.651Z] périphériques : [{\"kind\":\"audioinput\",\"label\":\"Par défaut\",\"id\":\"default\"},{\"kind\":\"audioinput\",\"label\":\"Salle E3 (microphone)\",\"id\":\"ae5b067d1013\"},{\"kind\":\"audiooutput\",\"label\":\"Par défaut\",\"id\":\"default\"},{\"kind\":\"audiooutput\",\"label\":\"Salle E3 (haut-parleur)\",\"id\":\"f43a0a9314b7\"}]",
+    "[2026-08-21T15:16:13.666Z] A joue : {\"etat\":\"running\",\"taux\":48000}",
+    "[2026-08-21T15:16:22.465Z] juge de rendu : {\"fichier\":\"/tmp/e3/salle-s1-rendu.wav\",\"taux\":48000,\"canaux\":1,\"echantillons\":189952,\"duree_s\":3.957,\"resolution_hz\":0.253,\"dominante_hz\":440,\"amplitude\":0.174999,\"crete\":0.350006,\"db\":-15.1}",
+    "[2026-08-21T15:16:22.646Z] A capte : {\"aec\":true,\"piste\":\"live\",\"taux\":48000,\"contraintes\":{\"autoGainControl\":true,\"channelCount\":1,\"deviceId\":\"default\",\"echoCancellation\":true,\"groupId\":\"e76dc664a63af6cef7d5e36576ceaf71c4438ede244f11625b730708360b0cdc\",\"latency\":0.01,\"noiseSuppression\":true,\"sampleRate\":48000,\"sampleSize\":16,\"voiceIsolation\":false}}",
+    "[2026-08-21T15:16:26.668Z] TÉMOIN POSITIF (A s'entend-elle ?) : {\"resolution_hz\":5.86,\"dominante_hz\":427.7,\"dominante_db\":-96.1,\"plancher_db\":-151.5,\"aux\":{\"440\":-96.4,\"660\":-106.7}}",
+    "[2026-08-21T15:16:26.669Z] mesure terminée"
+  ],
+  "etapes": [
+    {
+      "step": 2,
+      "voit_la_salle": true
+    },
+    {
+      "step": 3,
+      "juge": {
+        "fichier": "/tmp/e3/salle-s1-rendu.wav",
+        "taux": 48000,
+        "canaux": 1,
+        "echantillons": 189952,
+        "duree_s": 3.957,
+        "resolution_hz": 0.253,
+        "dominante_hz": 440,
+        "amplitude": 0.174999,
+        "crete": 0.350006,
+        "db": -15.1
+      },
+      "attendu_hz": 440
+    },
+    {
+      "step": 4,
+      "temoin_positif": "{\"resolution_hz\":5.86,\"dominante_hz\":427.7,\"dominante_db\":-96.1,\"plancher_db\":-151.5,\"aux\":{\"440\":-96.4,\"660\":-106.7}}"
+    }
+  ],
+  "erreurs": [],
+  "chrome": "Chrome/151.0.7922.169",
+  "peripheriques": "[{\"kind\":\"audioinput\",\"label\":\"Par défaut\",\"id\":\"default\"},{\"kind\":\"audioinput\",\"label\":\"Salle E3 (microphone)\",\"id\":\"ae5b067d1013\"},{\"kind\":\"audiooutput\",\"label\":\"Par défaut\",\"id\":\"default\"},{\"kind\":\"audiooutput\",\"label\":\"Salle E3 (haut-parleur)\",\"id\":\"f43a0a9314b7\"}]",
+  "rend_dans_la_salle": true,
+  "capture_A": "{\"aec\":true,\"piste\":\"live\",\"taux\":48000,\"contraintes\":{\"autoGainControl\":true,\"channelCount\":1,\"deviceId\":\"default\",\"echoCancellation\":true,\"groupId\":\"e76dc664a63af6cef7d5e36576ceaf71c4438ede244f11625b730708360b0cdc\",\"latency\":0.01,\"noiseSuppression\":true,\"sampleRate\":48000,\"sampleSize\":16,\"voiceIsolation\":false}}",
+  "aec_annule_sa_propre_restitution": false
+}

@@ -1,0 +1,17 @@
+[2026-08-21T15:21:52.510Z] page servie sur http://127.0.0.1:5391
+[2026-08-21T15:21:52.799Z] chrome : Chrome/151.0.7922.169 (sans interface)
+[2026-08-21T15:21:54.336Z] fenêtre A ouverte
+[2026-08-21T15:21:54.448Z] périphériques : [{"kind":"audioinput","label":"Par défaut","id":"default"},{"kind":"audioinput","label":"Salle E3 (microphone)","id":"b449ac3af0f8"},{"kind":"audiooutput","label":"Par défaut","id":"default"},{"kind":"audiooutput","label":"Salle E3 (haut-parleur)","id":"d524ee88f085"}]
+[2026-08-21T15:21:54.460Z] A joue : {"etat":"running","taux":48000}
+[2026-08-21T15:22:02.963Z] juge de rendu : {"fichier":"/tmp/e3/salle-s1ter-rendu.wav","taux":48000,"canaux":1,"echantillons":191488,"duree_s":3.989,"resolution_hz":0.251,"dominante_hz":440,"amplitude":0.174999,"crete":0.350006,"db":-15.1}
+[2026-08-21T15:22:07.013Z] A capte SANS aec  : {"resolution_hz":5.86,"dominante_hz":439.5,"dominante_db":-42.1,"plancher_db":-178.6,"aux":{"440":-42.1,"660":-158.6}}
+[2026-08-21T15:22:11.095Z] A capte AVEC aec  : {"resolution_hz":5.86,"dominante_hz":539.1,"dominante_db":-113,"plancher_db":-151.8,"aux":{"440":-123.3,"660":-120.8}}
+[2026-08-21T15:22:11.096Z] TÉMOIN POSITIF — l'AEC retire 81.2 dB de la PROPRE restitution de A (-42.1 → -123.3 dB)
+[2026-08-21T15:22:11.640Z] chrome n°2 : Chrome/151.0.7922.169
+[2026-08-21T15:22:13.211Z] B (instance 2) joue : {"etat":"running","taux":48000}
+[2026-08-21T15:22:22.542Z] juge de la salle, deux instances : {"fichier":"/tmp/e3/salle-s1ter-deux-instances.wav","taux":48000,"canaux":1,"echantillons":189184,"duree_s":3.941,"resolution_hz":0.254,"dominante_hz":440,"amplitude":0.174583,"crete":0.699554,"db":-15.2}
+[2026-08-21T15:22:26.577Z] A, SANS aec, B en instance 2 : {"resolution_hz":5.86,"dominante_hz":439.5,"dominante_db":-42.1,"plancher_db":-171.8,"aux":{"440":-42.1,"660":-42.7}}
+[2026-08-21T15:22:30.687Z] A, AVEC aec, B en instance 2 : {"resolution_hz":5.86,"dominante_hz":662.1,"dominante_db":-29.5,"plancher_db":-125.1,"aux":{"440":-98.3,"660":-29.5}}
+[2026-08-21T15:22:30.687Z] ISSUE A (DEUX INSTANCES) — A=56.2 dB, B=-13.2 dB
+[2026-08-21T15:22:30.687Z] mesure terminée
+[2026-08-21T15:22:30.689Z] sortie : /tmp/e3/banc-ter-2.json

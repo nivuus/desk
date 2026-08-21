@@ -1,0 +1,10 @@
+[2026-08-21T15:14:21.335Z] page servie sur http://127.0.0.1:5391
+[2026-08-21T15:14:21.722Z] chrome : Chrome/151.0.7922.169 (sans interface)
+[2026-08-21T15:14:23.278Z] fenêtre A ouverte
+[2026-08-21T15:14:23.436Z] périphériques : [{"kind":"audiooutput","label":"Par défaut","id":"default"},{"kind":"audiooutput","label":"HDA NVidia, HDMI 0-Hardware device with all software conversions","id":"fca0ab973d80"},{"kind":"audiooutput","label":"HDA NVidia, HDMI 1-Hardware device with all software conversions","id":"f2b9c798f724"},{"kind":"audiooutput","label":"HDA NVidia, HDMI 2-Hardware device with all software conversions","id":"b
+[2026-08-21T15:14:23.448Z] A joue : {"etat":"running","taux":48000}
+[2026-08-21T15:14:31.862Z] juge de rendu : {"fichier":"/tmp/e3/salle-s1-rendu.wav","taux":48000,"canaux":1,"echantillons":190464,"duree_s":3.968,"resolution_hz":0.252,"dominante_hz":440,"amplitude":0.174986,"crete":0.349976,"db":-15.1}
+[2026-08-21T15:14:31.880Z] A capte : [object Object]
+[2026-08-21T15:14:35.885Z] TÉMOIN POSITIF (A s'entend-elle ?) : {"erreur":"aucun analyseur"}
+[2026-08-21T15:14:35.887Z] ERREUR : TypeError: Cannot read properties of undefined (reading '440')
+[2026-08-21T15:14:35.888Z] sortie : /tmp/e3/banc-essai-sans-interface.json
