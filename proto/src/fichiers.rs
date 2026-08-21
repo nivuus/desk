@@ -41,8 +41,19 @@ pub const FICHIERS_VERSION: u8 = 1;
 
 /// Taille maximale de la **charge** d'une trame, en octets.
 ///
-/// ⚠️ **NON CALIBRÉE.** Posée, pas mesurée — c'est le sous-bloc F4 (le banc de
-/// latence) qui donnera de quoi la juger. Elle rejoint `BPP_MIN`,
+/// ⚠️ **NON CALIBRÉE.** Posée, pas mesurée.
+///
+/// ✅ **F4 A DONNÉ DE QUOI LA JUGER, ET IL AJOUTE UN FAIT QUE CE COMMENTAIRE NE
+/// DISAIT PAS : CE N'EST PAS ELLE QUI BORNE UN LISTAGE.** Une énumération part
+/// dans l'EN-TÊTE d'un seul message, que **rien ne borne** — ni ici (le contrôle
+/// porte sur `charge.len()`), ni côté navigateur. C'est le
+/// `max-message-size = 256 Kio` de SCTP qui l'arrête, à **~3 150 entrées**
+/// mesurées pour ~3 159 calculées, et le refus du `send()` n'engendre AUCUNE
+/// réponse : la commande meurt à `DELAI_LISTER`.
+///
+/// 🔴 **Ce qu'elle borne, en revanche, mord** : à ~33 Kio/s mesurés sur le canal
+/// du pont, un morceau de 64 Kio met ~2 s, et quatre morceaux concurrents
+/// dépassent `DELAI_LIRE`. Elle rejoint `BPP_MIN`,
 /// `FACTEUR_FOCUS`, `PART_DORMANTE_BPS`, `HYSTERESIS`, `REPIT_APRES_ECHEC`,
 /// `TAILLE_MAX_SORTIE`, `REPIT_REARMEMENT_AUDIO` et `REARMEMENTS_MAX` dans la
 /// liste des constantes de ce dépôt qu'aucune mesure n'a jugées.

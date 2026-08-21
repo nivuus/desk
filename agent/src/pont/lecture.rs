@@ -38,8 +38,26 @@
 //!
 //! ⚠️ **F3 NE REVENDIQUE AUCUN GAIN DE DÉBIT.** La seule mesure de débit du
 //! dépôt est incohérente d'un facteur ~120 (6,5 Mio/s contre 52–55 Kio/s, F1
-//! §11), sans explication. C'est F4 qui jugera ; F3 livre le mécanisme et le
-//! rend observable par `en_vol_max`.
+//! §11), sans explication.
+//!
+//! ✅ **F4 A JUGÉ, ET IL A FAIT PLUS QUE JUGER : IL EXPLIQUE.** Le canal du pont
+//! soutient **~30 à 33 Kio/s**, et c'est LINÉAIRE — 4 Kio en 190 ms, 64 Kio en
+//! 2 012 ms, 128 Kio en 4 044 ms, deux exécutions chacun. Le facteur ~120 se
+//! dissout en deux faits mesurés : **une RELECTURE ne traverse pas le pont**
+//! (0,6 ms, zéro traversée — l'hydratation ProjFS *est* le cache de données),
+//! et le plafond vient de la boucle de `pont::transport`, qui lit **un
+//! datagramme par tour** en bloquant jusqu'à `ATTENTE_MAX` avant chaque
+//! lecture. Mutée à 1 ms, elle DOUBLE le débit. La borne haute de F1
+//! (6,5 Mio/s) est donc **inatteignable à travers le pont** sur ce montage.
+//!
+//! 🔴 **ET `MORCEAUX_EN_VOL = 4` N'EST JAMAIS ATTEINT SUR LE BINAIRE LIVRÉ.**
+//! `en_vol_max` monte bien à 2 sur une lecture de deux morceaux — la fenêtre
+//! s'ouvre —, mais la seule lecture qui en aurait quatre (256 Kio) **ÉCHOUE** :
+//! quatre morceaux concurrents se partagent 33 Kio/s, chacun dépasse alors
+//! `DELAI_LIRE`, et ils expirent. **Le contrôle de flux que F3 livre n'a donc
+//! jamais eu l'occasion de servir en exploitation** ; il sert sur le binaire de
+//! diagnostic, à `ATTENTE_MAX = 1 ms`, où le rang 256 Kio aboutit avec
+//! `lire=n:4`. Voir `docs/…/2026-08-21-pont-fichiers-f4-resultats.md`.
 
 use std::collections::VecDeque;
 

@@ -35,6 +35,9 @@
 // composant résolu, en plus du `getFile()` par entrée que le listage paie déjà.
 // **F3 échange de la latence contre une correction**, et c'est F4 qui dira ce
 // que l'échange coûte.
+//
+// ⛔ **F4 NE L'A PAS DIT** (21 août 2026) : aucun geste de sa campagne n'exerce
+// la canonicalisation de casse. **Le coût reste DÛ.**
 
 import type { CodeEchec } from '../../../proto/ts/fichiers';
 import { TAILLE_TRAME_MAX } from '../../../proto/ts/fichiers';
@@ -241,7 +244,12 @@ export function creerAdaptateur(racine: Racine, fautesArmees = false): Adaptateu
                         // n'offre aucun moyen d'obtenir taille et date sans
                         // ouvrir le fichier, et ProjFS exige les deux dans son
                         // énumération. Un répertoire à mille entrées coûte
-                        // mille ouvertures — mesurable en F4, pas ici.
+                        // mille ouvertures. ✅ **MESURÉ PAR F4** : un listage
+                        // de 1 000 entrées coûte **~6,0 s** de bout en bout
+                        // (deux exécutions), dont ~3,0 s par traversée et
+                        // DEUX traversées par `Get-ChildItem`. Ces mille
+                        // `getFile()` sont DEDANS et ne sont pas isolés :
+                        // F4 mesure la traversée, jamais ce qui la compose.
                         // Narrowing explicite : `kind` vaut `'file'`, donc la
                         // poignée EST une `PoigneeFichier`. Voir la note de
                         // `PoigneeBase` — c'est la bibliothèque DOM qui

@@ -21,8 +21,18 @@
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
-/// ⚠️ **NON CALIBRÉES.** Posées, pas mesurées — c'est F4 qui donnera de quoi
-/// les juger. Elles rejoignent `BPP_MIN`, `FACTEUR_FOCUS`,
+/// ⚠️ **NON CALIBRÉES.** Posées, pas mesurées.
+///
+/// ✅ **F4 A DONNÉ DES DISTRIBUTIONS, ET DEUX DES CINQ BUDGETS MORDENT
+/// RÉELLEMENT.** `DELAI_LISTER` (20 s) solde tout listage au-delà de ~3 150
+/// entrées, et `DELAI_LIRE` (5 s) solde toute lecture de quatre morceaux ou
+/// plus, `MORCEAUX_EN_VOL = 4` faisant que ces quatre morceaux se partagent
+/// ~33 Kio/s. `DELAI_ATTRIBUTS` (2 s) a une marge de deux ordres de grandeur
+/// (traversées de 13 à 31 ms), et `DELAI_MUTATION` (15 s) aussi (125 à 193 ms).
+/// ⚠️ **DONNER DE QUOI CALIBRER N'EST PAS CALIBRER** : F4 publie des
+/// distributions, jamais des valeurs proposées — choisir un nombre demande un
+/// jugement d'usage qu'aucun chantier de ce dépôt n'a jamais porté. Elles
+/// rejoignent `BPP_MIN`, `FACTEUR_FOCUS`,
 /// `PART_DORMANTE_BPS`, `HYSTERESIS`, `REPIT_APRES_ECHEC`, `TAILLE_MAX_SORTIE`,
 /// `REPIT_REARMEMENT_AUDIO` et `REARMEMENTS_MAX` dans la liste des constantes
 /// de ce dépôt qu'aucune mesure n'a jugées.
