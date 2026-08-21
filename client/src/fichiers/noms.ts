@@ -69,7 +69,12 @@
 // seul moyen de le vider — `Rafraichir` — est un livrable de **F5**.
 //
 // **F3 échange donc de la latence contre une correction, et c'est F4 qui dira
-// ce que l'échange coûte.** L'optimisation évidente — court-circuiter
+// ce que l'échange coûte.**
+//
+// ⛔ **F4 NE L'A PAS DIT, ET IL FAUT L'ÉCRIRE PLUTÔT QUE DE LAISSER CROIRE LE
+// CONTRAIRE** (21 août 2026). Aucun geste de sa campagne n'exerce la
+// canonicalisation de casse : ses gabarits n'ont ni homonyme de casse ni chemin
+// à corriger. **Le coût de cet échange reste DÛ.** L'optimisation évidente — court-circuiter
 // l'énumération quand `poignee.name` rend déjà le nom stocké — N'EST PAS
 // ÉCRITE : elle repose sur un fait que ce montage ne peut pas établir (il
 // faudrait un vrai `showDirectoryPicker()`, que F1 a mesuré inatteignable sur

@@ -2969,6 +2969,7 @@ l'**enfant** ; et `main.rs:268` rend la main à `capteur::executer` avant que `d
 | `AUDIO_FAUTE_LECTURE_MS=<ms>` | **Sous-bloc D11, tâche 5** — **variable de BANC**. Borne **dans le temps** l'armement de `AUDIO_FAUTE_LECTURE` (prédicat pur `crate::audio::injection_encore_armee`, testé sur l'hôte ; lue dans `windows_audio/fil.rs`). **ABSENTE = ILLIMITÉ**, donc le comportement de D10 est strictement préservé et ses recettes restent reproductibles. Sans elle, la voisine qu'on veut voir promue meurt **à l'instant même de sa promotion** et le critère reste non démontrable. Transmise par `scripts/run-agent.sh:43`. La trace est celle de `AUDIO_FAUTE_LECTURE`, **enrichie du champ `fenetre_ms`** — un seul `warn!`, à dessein : deux traces au même instant se compteraient comme deux événements (piège maison de D6). ⚠️ **L'ORIGINE DU BUDGET EST LE DÉMARRAGE DU FIL, PAS L'ÉLECTION** : `3000` rend le critère **inatteignable** (le premier arbitrage du capteur arrive ~2,7 s après le démarrage du fil, et la fenêtre se referme 6 ms avant l'élection de la porteuse), **`5000` est la valeur dérivée de la mesure**. ⚠️ **Non calibrée** : c'est une valeur de banc, pas une constante de produit |
 | `AUDIO_PERIPHERIQUE=<nom ou identifiant>` | **Correction « A-bis », 19 août 2026** — **variable de PRODUIT**, pas de banc. Désigne le point de terminaison de **rendu** que le loopback de session doit capter, au lieu de subir le rendu **par défaut** de Windows. ⚠️ **Convention VALUÉE** — celle de `MULTIFENETRE_SORTIE` et `BUDGET_BPS`, **pas** celle de `PLEIN_ECRAN` : **absente ou vide, le comportement est EXACTEMENT celui d'avant** (le défaut de Windows). Trois critères, dans cet ordre : **identifiant d'endpoint** exact (`IMMDevice::GetId`, forme `{0.0.0.00000000}.{guid}` — stable, opaque), **nom convivial** exact (`PKEY_Device_FriendlyName`), puis **sous-chaîne insensible à la casse**. 🔵 **Une sous-chaîne AMBIGUË refuse de trancher** (`Choix::Ambigu`) au lieu de prendre le premier : prendre le premier serait retomber sur un **rang d'énumération** par la porte de derrière — la leçon des index DXGI de D1, payée une fois, appliquée ici d'avance. Règle **PURE** dans `agent/src/wasapi/peripherique.rs` (aucun `cfg`, éprouvée sur l'hôte), moitié COM dans `agent/src/wasapi/rendu.rs`. Lue par `LoopbackCapture::open`, donc **le mode MONO-FENÊTRE et la sonde `AUDIO_PROBE` seulement** — `pour_processus` (multi-fenêtres, D7+) **ne résout aucun endpoint** et n'est pas concerné. Transmise par `scripts/run-agent.sh`. **Le périphérique réellement retenu est JOURNALISÉ à chaque ouverture**, et tout repli l'est aussi : jamais silencieux |
 | `MICRO_MESURE=1` | **Chantier E, bloc E1** — **variable de BANC, jamais une configuration livrée**. Arme le **puits de mesure du micro** (`agent/src/demarrage/micro.rs`) : un consommateur qui joue le rôle du futur fil WASAPI d'E2, retire du tampon à la cadence réelle et journalise ce qu'il obtient. ⚠️ **Convention `=1` qui ARME** — et non `=0` qui désarmerait : le puits n'est **pas** livré, donc c'est sa présence qu'il faut déclarer, pas son absence. Trace de contrôle, dont **l'absence prouve que la variable n'a pas atteint le processus** : `micro de mesure ARME (MICRO_MESURE=1) : instrument de banc, jamais une configuration livree`. Trace périodique : `micro mesuré`, portant `crete` et `frequence_hz` **côte à côte** (une crête sans fréquence est du bruit), `plc` et `plc_plafonnees` **côte à côte** (le second est **disjoint** du premier — c'est ce qui rend le plafond de dissimulation observable), plus `deposees`, `famines`, `occupation_ms` et `occupation_max_ms`. Transmise par `scripts/run-agent.sh` |
+| `PONT_MESURE=1` | **Sous-projet ③ Pont fichiers, sous-bloc F4** (21 août 2026) — **variable de BANC, jamais une configuration livrée**. Arme l'**ÉMISSION** de la ligne de recensement des traversées du pont (`agent/src/pont/latence.rs`). 🔴 **CONVENTION INVERSE DES TROIS AUTRES `PONT_*`, ET C'EST DÉLIBÉRÉ : `=1` ARME, l'ABSENCE désarme** — c'est celle de `MICRO_MESURE`, parce que la règle du dépôt est *on désarme sur `=0` ce qui est LIVRÉ, on arme sur `=1` ce qui ne l'est pas*. Le pont, l'écriture et les mutations sont livrés ; la ligne de latence est un instrument. 🔴 **CE QU'ELLE ARME EST L'ÉMISSION, PAS LA COLLECTE** : l'histogramme est alimenté TOUJOURS, parce qu'*un mécanisme qui n'est armé que pendant sa propre mesure est un mécanisme que le produit n'exerce jamais, donc qu'on ne verra jamais rouge*. Lue dans `agent/src/pont/service/recensement.rs`, par `OnceLock`, **forcée au démarrage du fil et non au premier recensement** — sinon la trace ne sortirait qu'après `PERIODE_RECENSEMENT` (10 s), donc APRÈS les premiers gestes d'une recette courte. Transmise par `scripts/run-agent.sh`, **par une tâche dédiée**. Trace, **émise seulement si armée** : `banc de latence du pont ARME (PONT_MESURE=1) : instrument de banc, jamais une configuration livree` (`warn!`). ⚠️ **Les compteurs sont CUMULATIFS** : une mesure se lit par DIFFÉRENCE entre deux recensements, jamais sur une ligne isolée. 🔴 **LE CONTRÔLE QUI VAUT N'EST PAS QUE LA LIGNE SORTE, c'est qu'elle COMPTE ce qu'elle dit** — et le bras « armé, aucun geste », qui rend `n:0` partout, est ce qui rend le bras « armé, un geste » discriminant |
 | `PRESSE_PAPIER=0` | **Sous-projet ① Divers — presse-papier, sous-bloc P1** (20 août 2026) — **variable de PRODUIT**, pas de banc. Désarme le mécanisme ENTIER : `Sondeur::tour` teste le garde **AVANT toute lecture**, donc `PRESSE_PAPIER=0` empêche jusqu'à la lecture du compteur de séquence, pas seulement l'envoi. ⚠️ **`=0` DÉSACTIVE ; une simple PRÉSENCE n'active pas** — convention d'`AUDIO`, `PLEIN_ECRAN`, `SUPERVISEUR`, `CAPTEUR` et `PART_SONDAGE`, et pour la même raison : tester `is_ok()` armerait le mécanisme en écrivant `PRESSE_PAPIER=0` pour le couper. Lue dans le **capteur** (le propriétaire, D1), par `OnceLock`. Transmise par `scripts/run-agent.sh:37`. Trace, **émise seulement si désarmé** : `presse-papier DESARME (PRESSE_PAPIER=0) : le contenu copie dans la VM n'est plus pousse au navigateur` (`warn!`). 🔴 **LE CONTRÔLE QUI VAUT EST LE ZÉRO DE MESSAGES, PAS LA TRACE** : la trace prouve que la variable a atteint le processus, elle ne prouve pas que le mécanisme est coupé — et un zéro seul serait rendu par un produit entièrement en panne. C'est le bras SANS la variable, avec ses 4 messages, qui rend le zéro discriminant (2 exécutions par bras, recette P1) |
 | `PRESSE_PAPIER_GARDE=0` | **Sous-projet ① Divers — presse-papier, sous-bloc P2** (21 août 2026) — **variable de BANC, jamais une configuration livrée**, même statut que `PART_SONDAGE`. Neutralise `Sondeur::apres_notre_ecriture` **EN ENTIER**. ⚠️ **`=0` DÉSARME ; une simple présence n'arme pas** — convention de `PRESSE_PAPIER` deux lignes plus haut, et **inverse de `PRESSE_PAPIER_SONDE`** juste en dessous : les trois sont écrites côte à côte pour qu'on ne les confonde pas. Lue par `OnceLock` dans le **propriétaire** (le capteur), via `crate::presse_papier::gardes_armes`. Transmise par `scripts/run-agent.sh`. Trace, **émise seulement si désarmé** : `garde anti-echo du presse-papier DESARME (PRESSE_PAPIER_GARDE=0) : bras de banc, jamais une configuration livree` (`warn!`). 🔴 **ELLE DÉSARME LES DEUX GARDES DE D5, PAS LE SEUL N°1, ET C'EST LE POINT.** La spec prescrivait de désarmer le n°1 et d'attendre un compte « qui croît sans borne » ; **il reste à UN**, et la spec avait prévu ce cas. Sans armement du n°2, le `Sondeur` relit notre texte, l'annonce **une** fois, puis pose lui-même `dernier_emis` et `reference` — au tour suivant `observer` sort dès sa première ligne. Et **rien ne relance** : le client n'émet vers l'agent que sur un `paste`, donc sur un GESTE HUMAIN. Désarmer le seul n°1 rendrait donc **zéro message aussi**, et la rouge du critère ④ serait vacueuse une seconde fois. 🔵 **Conséquence de conception, qui contredit une phrase de D5** : dans l'architecture livrée, **aucune oscillation auto-entretenue n'est possible** — ce que les gardes suppriment est **un aller-retour PAR COLLAGE**, pas une divergence. 🔵 **MESURÉE des deux côtés (recette P2, 2 exécutions par bras)** : bras armé **0, 0, 0, 0** messages sur 4 collages ; bras désarmé **1, 2, 3, 4**, chacun portant exactement le texte qu'on venait de coller. ⚠️ **La trace ne prouve que l'arrivée de la variable au processus** (elle vaut 1 dans les deux journaux désarmés et 0 dans les deux armés) ; c'est le compte de messages qui prouve l'effet. ⚠️ **DEPUIS LE SOUS-BLOC P3 (21 août 2026), ELLE DÉSARME AUSSI UNE TROISIÈME PRISE** : `Sondeur::ecarter_notre_ecriture`, la seconde prise de D-P3-6, qui écarte l'annonce que NOTRE PROPRE seconde écriture vient de produire. Il le faut : une prise qui mordrait quand même viderait ce bras de banc de son sens, la rouge du critère ④ comptant des messages revenant vers la fenêtre après un collage. Un test d'hôte le tient |
 | `PRESSE_PAPIER_SONDE=<secondes>` | **Sous-projet ① Divers — presse-papier, sous-bloc P1, sonde P0** — **variable de BANC, jamais une configuration livrée**. ⚠️ **Convention INVERSE de la ligne ci-dessus, et les deux sont écrites côte à côte pour qu'on ne les confonde pas : ABSENTE = DÉSARMÉE**, présente = armée (la valeur est une durée, pas un interrupteur). Mesure les cinq questions de la porte éliminatoire sur `GetClipboardSequenceNumber` (`agent/src/diagnostics/presse_papier.rs`). Transmise par `scripts/run-agent.sh:89`. ⚠️ **Elle ÉCRIT le presse-papier de la VM** en phases C et D, et le détruit donc ; le produit, lui, ne l'écrit jamais en P1. 🔴 **Ne jamais la poser en même temps que `SUPERVISEUR`** : `main()` appelle `diagnostics::aiguiller()` en `main.rs:172`, AVANT la branche `CAPTEUR` (`:180`) et avant `PONT` (`:279`) — **quel que soit le mode demandé**, un agent qui la porte exécute la sonde et s'arrête. ⚠️ **La menace que la divergence E10 du plan lui prêtait est FAUSSE** : elle annonçait un capteur exécutant la sonde pendant qu'un superviseur vivant le relance en boucle, ce qui supposerait que l'enfant porte la variable et pas son père — or `Command` hérite de l'environnement, donc le père se serait arrêté le premier. La consigne ne change pas, sa raison si |
@@ -13052,6 +13053,279 @@ répondu à ses trois questions).
    remède est un recensement **à l'arrêt du processus**, pas seulement à la
    fermeture du canal.
 8. ⛔ **`TAILLE_MAX_FICHIER` reste non implémentée** (⑬).
+
+---
+
+## ⏱️ Sous-projet ③ Pont fichiers — sous-bloc F4 : la mesure que le cadrage réclamait, et deux murs (21 août 2026)
+
+Résultats complets :
+`docs/superpowers/plans/2026-08-21-pont-fichiers-f4-resultats.md`.
+Plan : `docs/superpowers/plans/2026-08-21-pont-fichiers-f4.md` (`6608005`).
+Conception : `docs/superpowers/specs/2026-08-19-pont-fichiers-design.md`, §8 « F4 »
+— **annotée par F4, jamais réécrite** : quatre lignes de sa table sont
+remplacées ou restreintes sur mesure.
+Journaux et instrument : `docs/superpowers/plans/journaux-pont-fichiers-f4/` —
+**TROIS familles de lecture, MESURÉES** (balayage Python, ⚠️ **jamais
+`grep -qa $'\000'`, qui cherche la chaîne vide et matche tout**) :
+
+| Famille | Fichiers | Ce qu'il faut faire |
+| --- | --- | --- |
+| les `*.json`, `*-analyse.log`, `*-trace.txt`, `*.txt` | **70** | rien — se `grep`ent à plat |
+| les `agent-*-plat.log` | **24** | rien (CRLF, sans conséquence) |
+| les `agent-*.log` **BRUTS** | **22** | ⚠️ `sed 's/\x1b\[[0-9;]*m//g'` — ou lire le jumeau `-plat`, versé pour **chacun** |
+
+✅ **AUCUN octet NUL dans aucun fichier** : `grep -a` n'est requis nulle part,
+contrairement à F1 et D10 — les journaux de pilote sont des sorties `node` sur
+l'**HÔTE**, jamais du PowerShell distant.
+
+**Treize exécutions d'agent**, toutes en montage M1 sauf trois.
+**Aucun taux n'est revendiqué nulle part.**
+
+### ① 🔵 M1 est viable : le pont tourne SEUL, et c'est ce qui rend tout le reste propre
+
+Un agent lancé avec `PONT=1` et `SESSION_ID=<préfixe>:fichiers`, **sans
+`SUPERVISEUR`**, monte sa racine et sert le navigateur **sans qu'aucune ligne de
+client ne change** — `pont.rs` fait son propre signaling. Toutes les mesures
+sont donc prises **sans capteur, sans encodeur, sans PeerConnection vidéo**, les
+confondeurs que F1, F2 et F3 portaient.
+
+### ② 🔴 LE MUR DU LISTAGE : ~3 150 entrées, et l'échec est MUET pendant vingt secondes
+
+| Rang | Mur-à-mur | Entrées | Issue |
+| --- | --- | --- | --- |
+| 10 / 100 / 1 000 | 80–126 ms / 629–699 ms / **5 961–6 196 ms** | exact | aboutit |
+| 2 000 / 3 000 | 13,0 s / **18,65 s** (2 exéc.) | exact | aboutit |
+| **3 150** | 18,2 / 22,0 / 23,8 s | 3 150 | **`N_max`** |
+| **3 200** et au-delà | **20,1 s** | — | **`N_mur` — ÉCHOUE** |
+
+🔵 **Le mur mesuré ENCADRE le mur CALCULÉ.** Le calcul relancé contre
+l'encodeur réel (`encodeEntrees`, noms de 18 caractères) : **83,0 o par
+entrée**, et le premier `N` dont l'en-tête dépasse **262 144** octets est
+**3 159**.
+
+🔴 **LA CAUSE EST ÉTABLIE PAR PIÈCE, PAS PAR INFÉRENCE.** Une énumération part
+dans l'**EN-TÊTE d'un seul message**, que **rien ne borne d'aucun côté** — ni
+`proto/src/fichiers.rs:236` (qui contrôle `charge.len()`, pas l'en-tête), ni
+`proto/ts/fichiers.ts`. SCTP impose `max-message-size = 256 Kio`
+(`str0m-0.21.0/src/sctp/mod.rs:33`). La console de la page-shell, **capturée
+précisément pour cela**, porte à chaque échec :
+
+```
+trame fichiers non traitée {message:Failed to execute 'send' on 'RTCDataChannel':
+Trying to send message larger than max-message-size}
+```
+
+Le `.catch()` de `client/src/fichiers/canal.ts:134` **ne répond RIEN** : la
+commande reste en vol jusqu'à `DELAI_LISTER` (**20 132 / 20 116 / 20 133 ms
+mesurés**), puis est soldée en `delai-depasse`. **Les comptes concordent** :
+2 échecs → 2 avertissements → `delai-depasse=2`. L'application ne voit que
+« **Une erreur interne s'est produite.** ».
+
+✅ **CE N'EST PAS UNE TRONCATURE SILENCIEUSE** — la pire des trois issues. Le
+compte d'entrées est relevé à **chaque** rang, et tout rang qui aboutit rend son
+compte **exact**.
+
+### ③ 🔴 LE MUR DE LECTURE : ~33 Kio/s, et rien au-delà de 128 Kio
+
+| Fichier | Morceaux | Exéc. 1 | Exéc. 2 |
+| --- | --- | --- | --- |
+| 4 Kio | 1 | 189,9 ms | 233,8 ms |
+| 64 Kio | 1 | **2 012 ms** | **2 076 ms** |
+| 128 Kio | 2 | 4 044 ms | 3 927 ms |
+| **256 Kio** | **4** | **ÉCHOUE** | **ÉCHOUE** |
+| **1 Mio** | **16** | **ÉCHOUE**, `delai-depasse=16` | **ÉCHOUE** |
+
+🔴 **La concurrence n'est PAS en cause** : **un seul** morceau de 64 Kio prend
+déjà **1,97 s**. C'est la **taille du morceau**, et le débit est **linéaire à
+30–33 Kio/s**.
+
+🔵 **L'ATTRIBUTION EST ÉTABLIE PAR MUTATION.** La boucle de
+`agent/src/pont/transport.rs` lit **un datagramme par tour** et **bloque jusqu'à
+`ATTENTE_MAX = 20 ms`** avant chaque lecture. Mutée à **1 ms** (binaire qui
+**s'identifie lui-même** dans son journal) : 4 Kio 190 → 101, 64 Kio 2 012 →
+1 025, 128 Kio 4 044 → 1 967, et **256 Kio, qui ÉCHOUAIT, ABOUTIT en 4 010 ms**.
+⚠️ **Mais le facteur est 2, PAS 20** : à 1 ms le plafond est ~64 Kio/s.
+`ATTENTE_MAX` est **le terme dominant, pas le seul** ; le plafond vient de la
+**structure « un datagramme par tour »**. **F4 mesure ; il ne corrige pas.**
+
+🔴 **ET `MORCEAUX_EN_VOL = 4` N'EST JAMAIS ATTEINT SUR LE BINAIRE LIVRÉ.**
+`en_vol_max` monte bien à **2** sur une lecture de deux morceaux — la fenêtre de
+F3 s'ouvre —, mais la seule lecture qui en aurait quatre (256 Kio) **échoue** :
+quatre morceaux concurrents se partagent 33 Kio/s, chacun dépasse alors
+`DELAI_LIRE = 5 s`, et ils expirent. **Le contrôle de flux que F3 livre n'a
+jamais eu l'occasion de servir en exploitation** — son legs n°2 est fermé par la
+mesure, et la réponse est que le mécanisme marche mais que le produit ne
+l'atteint pas.
+
+### ④ 🔵 CE QUI NE DÉGRADE RIEN, contrairement à ce que le cadrage attendait
+
+- **Le motif de l'Explorateur ne coûte PAS N interrogations** : sur 1 000
+  entrées, `| ForEach { $_.Attributes }` coûte **0,12 ms** de plus que le
+  listage nu — l'énumération **porte déjà** les attributs.
+- **Le cache négatif n'a rien à absorber** : `introuvable` et
+  `chemin-introuvable` valent **ZÉRO** aux deux ouvertures de l'Explorateur
+  **et au témoin R4** où le drapeau est retiré. 🔵 **Le témoin ÉCARTE une des
+  deux lectures du zéro** que le plan prévoyait — le drapeau était bien appliqué
+  au vert, le binaire témoin le DIT lui-même —, et il reste : *sur ce montage,
+  l'Explorateur ne fait parvenir aucun sondage de chemin absent au fournisseur*.
+  🔵 **Et le zéro est LISIBLE parce qu'un `Get-Item` sur un chemin ABSENT, lui,
+  rend `introuvable=1`** : le compteur sait compter.
+- **Le résidu ProjFS** (rappel, table, balayage, `PrjCompleteCommand`) vaut
+  **0,3 % à 0,8 %** du mur-à-mur dès le rang 100. ⚠️ **NOMMÉ, pas MESURÉ** —
+  c'est une soustraction entre deux horloges sur deux machines.
+- **Le repli de renommage par copie a COURU pour la première fois** (F3 l'avait
+  livré sans qu'aucune de ses lignes ne coure) et **ne coûte rien** : 125 à
+  193 ms, et le témoin R5 sans neutralisation rend **les mêmes durées**. La
+  copie est **entièrement locale au navigateur** — « zéro octet sur le canal ».
+
+### ⑤ 🔵 SONDE A : l'hydratation ProjFS *EST* le cache de données
+
+Première mesure de l'affirmation de la spec §6.4, **deux exécutions** : 1ʳᵉ
+lecture de 64 Kio **2 143 / 2 076 ms** avec `lire=n:1` ; **2ᵉ et 3ᵉ : 0,5 /
+0,6 ms, AUCUNE traversée**. **Le pont n'est PAS sur le chemin d'une relecture.**
+
+✅ **Le facteur ~120 de F1 est EXPLIQUÉ, et pas seulement rendu caduc** comme le
+plan le prévoyait : sa borne basse (52–55 Kio/s) est du même ordre que les
+30–33 Kio/s mesurés, sa borne haute (6,5 Mio/s) est **inatteignable à travers le
+pont**, et une relecture rend **116 Mio/s**. ⚠️ **L'hypothèse « la lecture de F1
+n'a pas traversé le pont » devient cohérente avec deux mesures ; elle n'est pas
+ÉTABLIE** — les journaux d'archives de F1 ne permettent pas de l'attribuer.
+
+### ⑥ 🔴 Le delta M2 − M1 va dans le sens INVERSE de R5
+
+⚠️ **Une première tentative de M2 était DÉGÉNÉRÉE** : `enfant lancé` = **0**,
+aucune fenêtre éligible sur la VM, donc aucune session vidéo et **aucune
+contention** — le delta aurait été nul **par construction** et se serait lu
+comme « le pont ne concurrence pas la vidéo ». Un verbe `application:` ouvre
+désormais un Bloc-notes.
+
+| Point | M1 | M2 (avec fenêtre) | Verdict |
+| --- | --- | --- | --- |
+| lecture 64 Kio | 2 012 / 2 076 ms | **1 244 / 1 263 ms** | **delta NET, M2 ~1,6× PLUS RAPIDE** |
+| listage 1 000 | 6 065 / 5 961 ms | 4 539 / 5 805 ms | **étendues qui SE RECOUVRENT — NON établi** |
+
+⚠️ Le delta **ne départage toujours ni le réseau ni le CPU**, et **la cause du
+sens inverse n'est pas établie** (hypothèse plausible et **non éprouvée** : un
+processus multimédia élève la résolution du timer système). ⚠️ **Le témoin
+vidéo est NON MESURABLE** — `window.__pc` absent de la page d'application,
+identique au critère ⑥ de F2. **Dit, jamais remplacé par un raisonnement.**
+
+### ⑦ La conclusion sur la question du cadrage
+
+**« Le listage d'un dossier volumineux dégrade-t-il réellement l'expérience ? »**
+— **c'est la TROISIÈME issue du plan, la plus lourde : au-delà de `N_mur`, le
+listage NE FONCTIONNE PAS.** Ce n'est plus une question de confort, et le
+rapport le porte comme un **défaut de produit**.
+
+⚠️ **Deux réserves qui bordent cette conclusion** : F4 mesure un produit **sans
+cache d'énumération** (`TTL_ENUMERATION` n'existe pas ; `Rafraichir` est un
+livrable de **F5**), donc une **borne HAUTE du coût** — la conclusion est
+**CONDITIONNELLE**, ⚠️ **mais un cache ne déplacerait PAS le mur**, qui tient à
+la taille d'un message unique. Et **le sélecteur de fichiers Windows n'est ni
+ouvert ni mesuré** : `Get-ChildItem` + `GetAttributes` + `explorer.exe` en sont
+des approximations, qui omettent icônes et vignettes.
+
+⛔ **Le réexamen de « aucune interception du sélecteur en v1 » n'appartient pas
+à F4** (spec §8 F4, §11), et la voie par hook d'API reste **écartée
+définitivement** par l'amendement du 28/07/2026.
+
+### ⑧ Ce que F4 n'établit PAS
+
+- **Aucun taux.** **Aucun jugement d'usage** : personne n'a dit si 6 s pour
+  mille entrées est acceptable.
+- ⛔ **Aucune constante calibrée.** F4 donne des distributions pour **CINQ**
+  budgets (et non trois : `DELAI_ECRIRE` et `DELAI_MUTATION` s'y sont ajoutés) ;
+  `TAILLE_TRAME_MAX`, `SEUIL_TAMPON`, `MORCEAUX_EN_VOL`, `ATTENTE_MAX`, les
+  quatre périodes **et les treize seaux de `pont::latence` que F4 introduit
+  lui-même** restent non jugés.
+- ⛔ **Le mécanisme des DEUX `Lister` par `Get-ChildItem`** — le coût est
+  **doublé**, et personne ne sait pourquoi.
+- ⛔ **Le coût de la canonicalisation de casse de F3 n'est PAS mesuré** : aucun
+  geste de la campagne ne l'exerce, et les commentaires de `noms.ts` et
+  `adaptateur.ts` qui l'annonçaient portent désormais ce constat.
+- ⛔ **Le condensat SHA-256 de bout en bout** (legs n°6 de F1) n'est toujours pas
+  établi ; **le legs n°1 de F2** (la fenêtre de 30 s) n'est ni corrigé ni
+  mesuré ; **le legs n°4 de F1** (« des lectures calent sans jamais expirer »)
+  n'est pas refermé — F4 a l'instrument, **il n'a pas rencontré le symptôme**, et
+  *l'absence d'un symptôme sur douze exécutions n'est pas sa disparition* ;
+  **le legs n°3 de F3** (aucun éditeur réel) reste **entier**.
+- ⛔ **`showDirectoryPicker()` n'est toujours jamais appelé**, ni le modèle de
+  permission, ni `readwrite`. **R7 reste ouvert.** **L'occupation disque n'est
+  pas mesurée**, et F4 la fait croître.
+
+### ⑨ Pièges neufs — à connaître avant de toucher à ce terrain
+
+- 🔴 **LE CONTRÔLE PAR LA TAILLE DU BINAIRE FAILLIT DANS LES DEUX SENS.** Le
+  vert restauré pèse **exactement** autant que le rouge (10 708 480 o) **sans
+  être le même binaire**, et deux compilations de la **même source** rendent
+  10 647 552 puis 10 708 480. **La taille n'est ni nécessaire ni suffisante** ;
+  ce qui tranche est **une chaîne que l'on a soi-même posée**, avec son témoin
+  négatif.
+- 🔴 **UNE CHAÎNE COURTE NE PROUVE RIEN DE SON ABSENCE SUR UN BINAIRE RELEASE** :
+  `traversees` et `seaux_ms` rendent **zéro** alors qu'ils y sont — le
+  compilateur **inline les littéraux courts** en constantes immédiates coupées
+  aux frontières de mot machine (`traverse` + `es`, vérifié par `dd`).
+- 🔴 **UNE CONSTANTE MORTE N'IDENTIFIE RIEN** : un marqueur
+  `const _MARQUE: &str = "…"` sans appelant est **éliminé par le compilateur** et
+  absent du binaire. Il faut une **référence vivante** (un `tracing::warn!`).
+- 🔴 **UN RÉSIDU CALCULÉ CONTRE UNE DURÉE IMPOSÉE OU SUR DES TRAVERSÉES
+  CONCURRENTES NE VEUT RIEN DIRE** — et il **SE LIT** comme du temps perdu dans
+  ProjFS : 98 % pour un `Start-Sleep` de 30 s, **−141 %** quand
+  `MORCEAUX_EN_VOL = 4` met quatre lectures en vol. L'analyseur les refuse
+  nommément.
+- 🔴 **UNE ATTENTE QUI PORTE SUR LE COMPTE DE GESTES REND LA MAIN AVANT LE
+  REPOS.** L'hôte tuait Chrome, et le canal du pont tombait **avant les deux
+  recensements qui bornent la mesure**. ⚠️ **Le symptôme n'avait rien d'une
+  panne** : « 1 gestes en 5 s » et un code de sortie zéro. Attendre un marqueur
+  de fin posé **après** le dernier repos.
+- 🔴 **LA VM S'ÉTEINT TOUTE SEULE, ET LE DÉCLENCHEUR EST IDENTIFIÉ — CE N'EST PAS
+  CELUI QUE CE DÉPÔT SUSPECTE DEPUIS D1.** `/var/log/libvirt/qemu/Windows.log`
+  porte `terminating on signal 15 from pid <N>`, et ce PID est
+  **`/usr/sbin/libvirtd --timeout 120`** : le démon s'arrête sur inactivité et
+  **emporte le domaine**. Quatre extinctions relevées le 21 août 2026, dont
+  **deux pendant cette campagne**, à ~40 min d'intervalle. ⚠️ **Le mécanisme de
+  D1 était l'inverse** — une hibernation initiée DANS l'invité (Kernel-Power
+  187/42), QEMU se terminant ~5 s **après**. **Les confondre ferait chercher la
+  cause du mauvais côté.**
+- 🔴 **VÉRIFIER `git status --porcelain proto/ agent/` AVANT *CHAQUE* BUILD, PAS
+  SEULEMENT AVANT LE PREMIER.** Un chantier voisin a commencé à écrire dans
+  `agent/` **en cours de campagne** : il a déclaré un module dont le fichier
+  était **non suivi par git**, `sync-agent.sh` ne synchronise que le suivi, et
+  **le build sur la VM a échoué**. 🔵 **Ce qui a limité les dégâts est le
+  contrôle d'auto-identification du binaire, qui a rendu 0** — sans lui, une
+  mesure aurait été publiée sur le binaire précédent. Le diagnostic concerné a
+  été **abandonné** plutôt que joué sur un binaire faux.
+- ⚠️ **`Get-ChildItem | ForEach-Object` émet dans le PIPELINE** (piège de F1) :
+  collecter dans un tableau **explicite**.
+
+### ⑩ Ce que F4 lègue
+
+**Legs fermés** : le n°5 de F1 (le facteur ~120 — **expliqué**), le n°2 de F3
+(`en_vol_max` — **mesuré, et il révèle que la fenêtre n'est jamais atteinte en
+exploitation**), et le coût du repli de renommage (**mesuré, nul**).
+
+1. 🔴 **LE CANAL DU PONT PLAFONNE À ~33 Kio/s, ET AUCUN FICHIER DE PLUS DE
+   128 Kio NE PEUT ÊTRE LU.** La parade est un **changement de conception de la
+   boucle** (lire le socket en rafale jusqu'à `WouldBlock` avant de rendre la
+   main), pas un réglage. **Sans destinataire.**
+2. 🔴 **AUCUN LISTAGE DE PLUS DE ~3 150 ENTRÉES N'ABOUTIT.** La parade —
+   découper une énumération en plusieurs trames — est un changement de **FORME**
+   du protocole, donc un incrément de `FICHIERS_VERSION`. ⚠️ **Un correctif de
+   moindre coût est nommé sans être livré** : rien ne borne l'en-tête d'aucun
+   côté, et le `.catch()` de `canal.ts:134` **ne répond rien** — un `Echec`
+   renvoyé remplacerait vingt secondes de gel par une erreur immédiate.
+3. 🔴 **`MORCEAUX_EN_VOL = 4` REND LE PRODUIT PIRE À CE DÉBIT**, et c'est
+   arithmétique. ⚠️ **NON ÉPROUVÉ PAR MUTATION** : le diagnostic a été abandonné
+   quand le voisin a cassé le build. **La mutation est écrite et prête.**
+4. ⛔ **Le mécanisme des deux `Lister` par `Get-ChildItem`.**
+5. ⛔ **La cause du delta M2 − M1 inverse.**
+6. ⛔ **Le coût de la canonicalisation de casse de F3.**
+7. ⛔ **F5** — `Rafraichir` et le cache d'énumération (⚠️ **qui ne déplacerait
+   PAS le mur**), l'occupation disque et la politique d'éviction.
+8. ⛔ **Sans destinataire** — l'idiome fichier temporaire + renommage sur un
+   éditeur réel, la fenêtre de trente secondes de F2, `showDirectoryPicker()`.
+9. ⛔ **Un autre chantier** — le réexamen du sélecteur de fichiers.
+10. ⛔ **La calibration**, et **le jugement d'usage, qui reste à porter.**
 
 ---
 

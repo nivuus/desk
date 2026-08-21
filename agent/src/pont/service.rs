@@ -44,9 +44,18 @@ use recensement::{mesure_armee, recenser, tout_completer};
 
 /// Période du balayage des expirations.
 ///
-/// ⚠️ **NON CALIBRÉE.** Posée, pas mesurée — c'est F4 qui donnera de quoi la
-/// juger. Elle borne le retard avec lequel une commande échue est complétée :
-/// une application attend donc au pire son budget plus cette période.
+/// ⚠️ **NON CALIBRÉE.** Posée, pas mesurée. Elle borne le retard avec lequel
+/// une commande échue est complétée : une application attend donc au pire son
+/// budget plus cette période.
+///
+/// ✅ **F4 A DONNÉ DE QUOI LA JUGER, et ce qu'il donne est qu'elle NE MORD
+/// PAS.** Le résidu `mur-à-mur − Σ(traversées)` — qui contient cette période,
+/// l'entrée dans le rappel, l'inscription en table et `PrjCompleteCommand` —
+/// vaut **0,3 % à 0,8 %** du mur-à-mur dès le rang 100 entrées, et 4 à 31 ms en
+/// absolu. ⚠️ **Ce résidu est NOMMÉ, pas MESURÉ** : c'est une soustraction entre
+/// deux horloges sur deux machines. Il ne calibre donc pas la constante ; il
+/// établit qu'elle n'est pas le terme dominant. **Le jugement d'usage reste à
+/// porter.**
 pub const PERIODE_BALAYAGE: Duration = Duration::from_millis(250);
 
 /// Période du **recensement** : une ligne `info!` qui nomme les douze causes et

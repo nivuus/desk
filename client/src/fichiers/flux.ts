@@ -23,7 +23,14 @@
 // envoyait sans rien regarder, alors que la spec §3.4 l'exige (« posé »).
 //
 // ⚠️ **F3 NE REVENDIQUE AUCUN GAIN DE DÉBIT.** La seule mesure de débit du
-// dépôt varie d'un facteur ~120 sans explication (F1 §11). C'est F4 qui jugera.
+// dépôt variait d'un facteur ~120 sans explication (F1 §11).
+//
+// ✅ **F4 A JUGÉ.** Le canal soutient ~30 à 33 Kio/s, linéairement, et une
+// RELECTURE ne traverse pas le pont du tout (l'hydratation ProjFS sert seule).
+// 🔴 **Et la contre-pression posée ici n'a jamais servi en exploitation** : la
+// seule lecture qui atteindrait `MORCEAUX_EN_VOL = 4` (256 Kio) échoue au
+// budget `DELAI_LIRE`, ses quatre morceaux se partageant ces 33 Kio/s. Voir
+// `docs/…/2026-08-21-pont-fichiers-f4-resultats.md`.
 
 /**
  * Le sous-ensemble d'un `RTCDataChannel` dont la contre-pression se sert.

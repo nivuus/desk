@@ -776,6 +776,14 @@ d'avoir eu le temps d'aboutir, et des `getattr` qui figeaient l'Explorateur dix
 secondes pour un chemin inexistant. **C'est F4 qui donnera de quoi les
 calibrer**, et jusque-là leur documentation dira qu'ils ne le sont pas.
 
+> ✅ **F4 A DONNÉ (21 août 2026), et il a mesuré LESQUELS mordent.**
+> `DELAI_LISTER` (20 s) solde tout listage au-delà de ~3 150 entrées ;
+> `DELAI_LIRE` (5 s) solde toute lecture de quatre morceaux ou plus.
+> `DELAI_ATTRIBUTS` (2 s) et `DELAI_MUTATION` (15 s) ont deux ordres de
+> grandeur de marge. ⚠️ **Donner de quoi calibrer N'EST PAS calibrer** : F4
+> publie des distributions, jamais des valeurs proposées, et **le jugement
+> d'usage reste à porter**.
+
 ⚠️ **Un délai n'est pas une politique de reprise.** Une commande expirée n'est
 **jamais** rejouée automatiquement : l'application a déjà reçu son erreur, et
 rejouer produirait une seconde écriture sans lecteur. La reprise, quand elle
@@ -1132,6 +1140,48 @@ transmise explicitement par `scripts/run-agent.sh`), qui relève :
 | Coût du repli de renommage par copie (§3.5.1) | 1 Mio, 100 Mio |
 | Taux d'occupation du cache négatif | ouverture d'un dossier dans l'Explorateur |
 
+> ⚠️ **QUATRE LIGNES DE CETTE TABLE ONT ÉTÉ REMPLACÉES OU RESTREINTES PAR F4,
+> SUR MESURE (21 août 2026). La table N'EST PAS RÉÉCRITE — c'est un relevé daté
+> du 19 août 2026, et le barrer le rendrait faux comme histoire.** Détail et
+> pièces : `docs/superpowers/plans/2026-08-21-pont-fichiers-f4-resultats.md`.
+>
+> - 🔴 **« 10 000 entrées » N'EST PAS ATTEIGNABLE**, et le mur tombe bien en
+>   dessous. Une énumération part dans l'EN-TÊTE d'un seul message, que rien ne
+>   borne d'aucun côté, et SCTP impose `max-message-size = 256 Kio`. Mesuré :
+>   **3 150 entrées aboutissent, 3 200 échouent** ; calculé sur l'encodeur réel :
+>   **3 159**. Le symptôme n'est PAS une lenteur — c'est un `send()` refusé par
+>   le navigateur, dont le `.catch()` ne répond RIEN, donc un gel jusqu'à
+>   `DELAI_LISTER` (20 s) puis une erreur d'E/S rendue à l'application. **Rangs
+>   retenus par F4 : 10, 100, 1 000, 3 150, 3 200 — DÉRIVÉS d'une porte
+>   éliminatoire, jamais supposés.**
+> - ⛔ **« cache d'énumération chaud » N'EST PAS MESURABLE TEL QUEL** :
+>   `TTL_ENUMERATION` **n'existe nulle part** (une occurrence dans tout le dépôt,
+>   et c'est le commentaire qui dit qu'il n'est pas livré), et `Rafraichir`, sans
+>   lequel aucun cache d'énumération n'est possible, est un livrable de **F5**.
+>   F4 mesure **le chaud que le produit A** — les substituts déjà posés :
+>   `Get-Item` à froid = 75 à 89 ms avec trois traversées, **le même à chaud =
+>   0,4 ms avec AUCUNE traversée**. ⚠️ **Conséquence à ne pas perdre : F4 mesure
+>   un produit SANS cache d'énumération, donc une borne HAUTE du coût.**
+> - ⛔ **« Taux d'occupation du cache négatif » N'A PAS DE DÉNOMINATEUR
+>   OBSERVABLE** : un *succès* du cache est par définition une requête qui
+>   n'atteint jamais le fournisseur. F4 mesure le **différentiel** 1ʳᵉ/2ᵉ
+>   ouverture, **avec un témoin qui retire le drapeau**. Résultat :
+>   `introuvable` et `chemin-introuvable` valent **ZÉRO** aux deux ouvertures ET
+>   au témoin — sur ce montage, l'Explorateur ne fait parvenir **aucun** sondage
+>   de chemin absent au fournisseur. *(Le zéro est lisible parce qu'un `Get-Item`
+>   sur un chemin absent, lui, rend bien `introuvable=1`.)*
+> - ⚠️ **« 100 Mio » EST ABANDONNÉ PAR LA RÈGLE D'ADMISSION, et l'extrapolation
+>   est publiée avec sa base** : à **30–33 Kio/s** mesurés, 100 Mio prendraient
+>   **~52 minutes**. Bien avant cela, **1 Mio ÉCHOUE** — et même 256 Kio. Le rang
+>   maximal réellement lisible sur le binaire livré est **128 Kio**.
+> - ⚠️ **« Coût du repli de renommage par copie »** : la moitié FICHIER est
+>   mesurée sur le chemin réel mais **FORCÉE** (l'injection retire `move`, sans
+>   quoi le repli n'est jamais pris) ; la moitié RÉPERTOIRE est **hors du
+>   produit**, ProjFS refusant le renommage d'un répertoire avant de consulter le
+>   fournisseur (F3). **Coût mesuré : NUL à ces rangs** — 125 à 193 ms, et le
+>   témoin sans neutralisation rend les mêmes durées, la copie étant entièrement
+>   locale au navigateur.
+
 **Reçu si** : le document de résultats porte, pour chaque point, **le nombre
 d'exécutions**, et conclut sur la question du cadrage — « le listage d'un
 dossier volumineux dégrade-t-il réellement l'expérience ? ».
@@ -1229,7 +1279,7 @@ Seul `pont/projfs.rs` est gaté, et il n'a rien à hisser.
 | # | Risque | Ce qu'on en sait, et la parade |
 | --- | --- | --- |
 | **R1** | 🔴 **ProjFS ne s'active pas sur cette VM, ou exige un redémarrage impossible à obtenir** | **Éliminatoire, et il est TRAITÉ EN PREMIER** : c'est F0, et son état rouge est l'état constaté d'aujourd'hui (§2). Aucun autre travail n'a de sens avant. Repli s'il échoue : **aucun** — ProjFS est le seul mécanisme de première partie qui projette un système de fichiers en espace utilisateur sous Windows. Le repli serait un pilote de mini-filtre, hors de portée, ou un retour à SMB/WebDAV, que le cadrage a écarté |
-| **R2** | 🔴 **La latence d'un aller-retour navigateur rend le lecteur inutilisable en pratique** — l'Explorateur, les dialogues `IFileOpenDialog` et les applications sondent des dizaines de chemins par ouverture de dossier | **C'est le risque n°1 après R1, et c'est celui que l'amendement du 28/07/2026 anticipait.** Parades posées dès F1 : cache négatif (§7.4), cache d'énumération, rappels asynchrones (§4.3) qui ne bloquent jamais. **Non mesuré** : c'est l'objet de F4. Si F4 conclut à l'inutilisabilité, le sous-projet reste livré (le lecteur fonctionne) mais le réexamen du sélecteur devient dû |
+| **R2** | 🔴 **La latence d'un aller-retour navigateur rend le lecteur inutilisable en pratique** — l'Explorateur, les dialogues `IFileOpenDialog` et les applications sondent des dizaines de chemins par ouverture de dossier | **C'est le risque n°1 après R1, et c'est celui que l'amendement du 28/07/2026 anticipait.** Parades posées dès F1 : cache négatif (§7.4), cache d'énumération, rappels asynchrones (§4.3) qui ne bloquent jamais. **Non mesuré** : c'est l'objet de F4. Si F4 conclut à l'inutilisabilité, le sous-projet reste livré (le lecteur fonctionne) mais le réexamen du sélecteur devient dû. ✅ **F4 A MESURÉ (21 août 2026), et le risque se réalise AILLEURS QUE LÀ OÙ IL ÉTAIT ATTENDU.** Ce n'est PAS « des dizaines de chemins sondés par ouverture de dossier » : l'Explorateur n'en sonde AUCUN qui atteigne le fournisseur, et le motif « lister puis interroger chaque entrée » ne coûte pas N interrogations (l'énumération porte déjà les attributs — 0,12 ms pour 1 000 entrées). C'est **le DÉBIT** qui le réalise : ~30-33 Kio/s, un listage de 1 000 entrées en ~6 s, un listage de plus de ~3 150 entrées qui ÉCHOUE, et une lecture de plus de 128 Kio qui ÉCHOUE |
 | **R3** | **`FileSystemHandle.move()` disparaît, ou n'a jamais existé sur le navigateur cible** | Le repli copie + `removeEntry` (§3.5.1) est **standard** et est implémenté dès F3, pas gardé en réserve. Coût connu et instrumenté |
 | **R4** | **Le disque de la VM se remplit d'hydratations** (§6.4) | Mesuré et journalisé dès F5 ; **aucune politique d'éviction en v1**, et c'est déclaré. `PrjDeleteFile` est chargé (§4.3) pour que la politique, quand elle viendra, n'ait pas à rouvrir la couche |
 | **R5** | **Le pont concurrence la vidéo pour le lien réseau** — le budget `BUDGET_BPS` de D6 est réparti entre les fenêtres et **ne connaît pas ce trafic-ci** | **Non traité en v1, et nommé.** Une lecture soutenue de gros fichiers prend de la bande passante que le contrôleur de congestion vidéo interprétera comme une dégradation du lien, donc fera descendre la résolution. Le contrôle de flux du §7.3 borne la file SCTP, **pas le débit**. Une part de budget pour le pont est un sujet à part entière, et il appartient à un successeur |
@@ -1258,6 +1308,14 @@ la première chose à jouer.
   `REPIT_APRES_ECHEC`, `TAILLE_MAX_SORTIE`, `REPIT_REARMEMENT_AUDIO` et
   `REARMEMENTS_MAX`. **F4 donnera de quoi en calibrer trois** (les délais) ;
   les autres resteront non jugées.
+  > ✅ **F4 A DONNÉ, ET SUR CINQ ET NON TROIS** (21 août 2026) : le code porte
+  > `DELAI_ECRIRE` (F2) et `DELAI_MUTATION` (F3) en plus des trois du §5.3.
+  > ⚠️ **Et deux corrections à cette phrase** : `TTL_ENUMERATION` n'est pas
+  > « posé, pas mesuré » — **il N'EXISTE PAS** (une occurrence dans tout le
+  > dépôt, et c'est le commentaire qui dit qu'il n'est pas livré) ; et
+  > `SEUIL_TAMPON` **n'a jamais servi** en exploitation, la seule lecture qui
+  > atteindrait `MORCEAUX_EN_VOL = 4` échouant au budget. **F4 y ajoute enfin
+  > sa propre non-calibrée : les TREIZE seaux de `pont::latence`.**
 - **Aucun jugement d'usage** : personne n'aura dit si le lecteur est
   *agréable*. F4 mesure des latences, pas une expérience — même lacune que
   `BPP_MIN` traîne depuis le chantier C volet 1.

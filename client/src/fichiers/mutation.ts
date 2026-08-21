@@ -26,8 +26,16 @@
 //   - il est en **O(taille)** en temps et, pour un répertoire, en **O(nombre
 //     d'entrées)** appels FSA — sur un répertoire profond, cela peut être long,
 //     et **RIEN ICI NE LE BORNE** ;
-//   - **la mesure de F4 reste due et reste pertinente.** Elle mesurera un temps
-//     LOCAL, pas un débit de canal.
+//   - ✅ **F4 L'A MESURÉE (21 août 2026), ET LE COÛT EST NUL À CES RANGS.**
+//     Le repli a couru pour la PREMIÈRE fois — F3 l'avait livré sans qu'aucune
+//     de ses lignes ne coure —, forcé par une injection qui retire `move`.
+//     64 Kio : 173 / 193 ms ; 1 Mio : 125 / 126 ms, deux exécutions. Le bras
+//     TÉMOIN, sans neutraliser `move`, rend 159 / 162 et 126 / 126 ms :
+//     **indistinguable**. C'est bien un temps LOCAL — la trace du produit le
+//     dit, « zéro octet sur le canal » — et la marge à `DELAI_MUTATION` (15 s)
+//     est de deux ordres de grandeur.
+//     ⚠️ **La moitié RÉPERTOIRE reste hors de portée du produit** : ProjFS
+//     refuse le renommage d'un répertoire avant de consulter le fournisseur.
 //
 // ════════════════════════════════════════════════════════════════════════════
 // 🔴 `move()` ÉCRASE, ET C'EST POURQUOI LA VÉRIFICATION PRÉCÈDE
