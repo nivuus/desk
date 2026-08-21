@@ -1255,10 +1255,12 @@ whiteliste déjà `manifest.json`, `.ico`, `.png`), change sa cible pour
 Sans elle, la page rend `identite-absente` et rien ne fonctionne — c'est la
 rouge du critère ① de la spec, et elle se joue en la retirant.
 
-⚠️ **L'ORDRE DES ROUTES COMPTE** : Pomerium apparie par spécificité, mais les
-deux routes préfixées doivent être écrites **après** celle qui n'a pas de
-`prefix`, comme le fait déjà le couple `grocy.allanic.me` de ce même fichier.
-**Suivre le précédent du fichier**, pas une croyance sur l'algorithme.
+🔴 **LES DEUX ROUTES PRÉFIXÉES S'ÉCRIVENT AVANT LA ROUTE NUE, et cette ligne
+disait L'INVERSE jusqu'au 21 août 2026.** Pomerium évalue dans l'ordre du
+fichier, premier appariement gagnant : une route nue en tête avalerait `/signal`
+et `/agent`, qui partiraient vers la redirection Google — que l'agent Windows ne
+peut jamais satisfaire. Le précédent invoqué (`grocy.allanic.me`) dit lui aussi
+**préfixe d'abord** : il avait été mal lu. Détail et mesure au § 7.2 de la spec.
 
 - [ ] **Step 3: Recharger, puis contrôler les SEPT autres routes**
 
