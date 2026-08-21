@@ -11,6 +11,7 @@ import { texteLien } from './lien';
 import { viewportPair } from './viewport';
 import { attachVisibilite } from './visibilite';
 import { attacherBoutonMicro } from './micro';
+import { attacherAccentAuDOM } from './accent-dom';
 import { attacherPressePapierAuDOM } from './presse-papier-dom';
 import type { Recu } from './presse-papier';
 import { attacherResizeAuDOM } from './resize-dom';
@@ -124,6 +125,19 @@ let micro: ReturnType<typeof attacherBoutonMicro> | undefined;
 // `connectSession` ne résolve. Ce qu'un message arrivé avant l'attache
 // devient est écrit sur `PressePapierAttache.recevoir`.
 let pressePapier: ReturnType<typeof attacherPressePapierAuDOM> | undefined;
+// La couleur d'accent de la fenêtre (sous-bloc A1). ⚠️ **Un `const`, là où ses
+// voisins sont des `let | undefined`**, et la raison est qu'il ne dépend de RIEN
+// : ni de la session, ni du `.then()`, ni d'un message antérieur — seulement du
+// document, qui existe déjà. Il n'y a donc aucune fenêtre pendant laquelle un
+// message pourrait arriver sans destinataire, et pas de `?.` à écrire.
+const accent = attacherAccentAuDOM({
+    lireToken: (nom) =>
+        getComputedStyle(document.documentElement).getPropertyValue(nom).trim(),
+    // 🔴 `documentElement`, JAMAIS `document.body` : un token posé sur `body`
+    // est invisible à `getComputedStyle(document.documentElement)`, et c'est
+    // la rouge du critère ② de la recette.
+    poserToken: (nom, valeur) => document.documentElement.style.setProperty(nom, valeur),
+});
 /// L'agent a-t-il annoncé `Capabilities.clipboard` ?
 ///
 /// **Un `let` relu par une fermeture, jamais une valeur passée à l'attache** :
@@ -283,6 +297,10 @@ connectSession({
             // le jour où l'un changerait.
             dernierPressePapier = { texte: message.text, octets: message.bytes };
             pressePapier?.recevoir(dernierPressePapier);
+        } else if (message.type === 'accent') {
+            // Aucune logique ici : conformer, refuser, poser — tout vit dans
+            // `accent-dom.ts`, adossé à `accent.ts`, pur et testé.
+            accent.recevoir(message.couleur);
         }
     },
 })
@@ -359,8 +377,7 @@ connectSession({
         // Le presse-papier de la VM. `writeText` SEULE — jamais `readText` :
         // voir l'en-tête de `presse-papier-dom`. `window` porte le `focus`
         // que `document` ne porte pas, comme pour `armerLeSon` en dessous.
-        pressePapier = attacherPressePapierAuDOM({
-            ecrire: (texte) => navigator.clipboard.writeText(texte),
+        pressePapier = attacherPressePapierAuDOM({            ecrire: (texte) => navigator.clipboard.writeText(texte),
             focalise: () => document.hasFocus(),
             cible: window,
             // Le canal de CONTRÔLE, jamais celui des entrées : un collage
