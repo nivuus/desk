@@ -107,7 +107,7 @@ use serde::{Deserialize, Serialize};
 /// bump depuis cette correction — donc le premier à pouvoir le PROUVER.
 /// L'obligation de déployer les deux bouts au même commit est, elle,
 /// strictement inchangée.
-pub const PLATEFORME_VERSION: u8 = 3;
+pub const PLATEFORME_VERSION: u8 = 4;
 
 /// Les trois lecteurs de champ appelés par `deserialize_with`, extraits pour
 /// que ce fichier ne franchisse pas 500 lignes en accueillant le sous-bloc G3.
@@ -117,7 +117,7 @@ pub const PLATEFORME_VERSION: u8 = 3;
 /// l'attribut**. C'est lui qui permet à l'extraction de ne toucher AUCUN des
 /// attributs des structures ci-dessous, donc d'être une transposition pure.
 mod champs;
-use champs::{icone_obligatoire, verifie_version, version_toleree};
+use champs::{icone_obligatoire, option_obligatoire, verifie_version, version_toleree};
 
 /// La table des motifs de refus, extraite pour la même raison.
 mod motifs;
@@ -137,6 +137,11 @@ pub use motifs::MotifCanal;
 /// employé pour l'autre raison — la règle des 500 lignes.
 mod apps;
 pub use apps::{Application, IssueLancement, SourceMax};
+
+/// Les types de charge utile de l'INSTALLATION, dans un module frère de `apps`,
+/// pour la même raison et par le même mécanisme.
+mod installation;
+pub use installation::{Issue, Phase};
 
 /// Message de l'agent vers la plateforme.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -182,6 +187,57 @@ pub enum VersLaPlateforme {
         demande: String,
         issue: IssueLancement,
     },
+    /// Où en est une installation en cours.
+    ///
+    /// 🔴 **ÉCHANTILLONNÉE, ET C'EST UNE CONTRAINTE DE SÛRETÉ, PAS DE
+    /// CONFORT.** La file montante de l'agent est bornée à `FILE_EMISSION`
+    /// (32) et **abandonne ce qui déborde**. Une progression émise par tranche
+    /// de 64 Kio la saturerait et noierait le journal partagé — c'est la
+    /// doctrine que ce dépôt a payée au chantier TURN : *compter ou
+    /// échantillonner, jamais tracer par paquet*. La règle vit dans
+    /// `agent/src/apps/installation/cadence.rs`, horloge en paramètre.
+    ///
+    /// ⚠️ `octets_total` VAUT ZÉRO EN PHASE `Execution`, où il n'y a rien à
+    /// totaliser : c'est `ecoule_ms` qui porte l'information, et l'interface
+    /// affiche un état indéterminé.
+    Progression {
+        #[serde(rename = "v", deserialize_with = "verifie_version")]
+        version: u8,
+        installation: String,
+        phase: Phase,
+        octets_faits: u64,
+        octets_total: u64,
+        ecoule_ms: u64,
+    },
+    /// L'installation est finie, et voici ce qui s'est réellement passé.
+    ///
+    /// 🔴 **`code_sortie` EST UNE `Option`, JAMAIS UN `i32` AVEC UN `-1`
+    /// SENTINELLE** : « pas de code » et « code −1 » sont deux faits
+    /// différents, et une sentinelle les confondrait exactement comme un
+    /// `source_max_px` à `0` confondrait « inconnu » et « nul ». Il est
+    /// RAPPORTÉ, jamais interprété — voir [`Issue`].
+    ///
+    /// ⚠️ **UN `journal` VIDE EST LE CAS NORMAL**, pas un échec : la plupart
+    /// des installeurs Windows sont graphiques et n'écrivent rien sur les flux
+    /// standard. L'interface ne doit pas le présenter comme une panne.
+    ///
+    /// ⚠️ `journal_tronque` DIT QUE LA QUEUE A ÉTÉ COUPÉE, et il est distinct
+    /// d'un journal vide : sans lui, un utilisateur lirait les derniers
+    /// 64 Kio en croyant lire tout.
+    Termine {
+        #[serde(rename = "v", deserialize_with = "verifie_version")]
+        version: u8,
+        installation: String,
+        issue: Issue,
+        /// Obligatoire sur le fil — voir `champs::option_obligatoire`.
+        #[serde(deserialize_with = "option_obligatoire")]
+        motif: Option<String>,
+        /// Idem. `None` = « le code n'a pas pu être recueilli ».
+        #[serde(deserialize_with = "option_obligatoire")]
+        code_sortie: Option<i32>,
+        journal: String,
+        journal_tronque: bool,
+    },
 }
 
 impl VersLaPlateforme {
@@ -213,6 +269,42 @@ impl VersLaPlateforme {
             version: PLATEFORME_VERSION,
             demande: demande.into(),
             issue,
+        }
+    }
+
+    pub fn progression(
+        installation: impl Into<String>,
+        phase: Phase,
+        octets_faits: u64,
+        octets_total: u64,
+        ecoule_ms: u64,
+    ) -> Self {
+        Self::Progression {
+            version: PLATEFORME_VERSION,
+            installation: installation.into(),
+            phase,
+            octets_faits,
+            octets_total,
+            ecoule_ms,
+        }
+    }
+
+    pub fn termine(
+        installation: impl Into<String>,
+        issue: Issue,
+        motif: Option<String>,
+        code_sortie: Option<i32>,
+        journal: impl Into<String>,
+        journal_tronque: bool,
+    ) -> Self {
+        Self::Termine {
+            version: PLATEFORME_VERSION,
+            installation: installation.into(),
+            issue,
+            motif,
+            code_sortie,
+            journal: journal.into(),
+            journal_tronque,
         }
     }
 }
@@ -296,6 +388,41 @@ pub enum DepuisLaPlateforme {
         version: u8,
         empreintes: Vec<String>,
     },
+    /// Installer un logiciel que l'utilisateur a téléversé.
+    ///
+    /// 🔴 **LES OCTETS N'EMPRUNTENT JAMAIS CE MESSAGE**, et c'est la même
+    /// règle que pour [`Self::IconesManquantes`] : ce canal est en JSON, il
+    /// porte le battement de cœur, et une tranche de 8 Mio y coûterait +33 %
+    /// en base64 tout en bloquant ce battement. L'ordre porte une **URL**, et
+    /// l'agent va tirer les octets en HTTP, avec son jeton d'agent.
+    ///
+    /// ⚠️ `sha256` EST L'EMPREINTE DU FICHIER ENTIER, la même valeur que le
+    /// navigateur a annoncée et que la plateforme a recalculée au scellement.
+    /// **Une seule valeur, comparable partout** — y compris par un humain avec
+    /// un `sha256sum`. C'est pourquoi ce n'est PAS une empreinte d'arbre sur
+    /// les tranches, qui aurait été native et gratuite côté navigateur mais
+    /// incomparable partout ailleurs.
+    ///
+    /// 🔴 **L'AGENT RECALCULE CETTE EMPREINTE APRÈS ÉCRITURE**, et c'est la
+    /// TROISIÈME des trois vérifications : le navigateur peut mentir, le
+    /// disque de la plateforme peut se corrompre, le transfert peut tronquer.
+    /// **Aucun saut ne fait confiance au précédent.**
+    ///
+    /// ⚠️ **CE MESSAGE EST RÉÉMIS À CHAQUE ENRÔLEMENT** tant que l'installation
+    /// est en attente : un `push` WebSocket n'a aucune garantie de livraison,
+    /// et sans cette réémission un ordre émis pendant une coupure serait perdu
+    /// SANS TERME. C'est le même filet que `complet = true` du catalogue.
+    /// **L'agent déduplique donc par `installation`, et sa mémoire est SUR LE
+    /// DISQUE** — voir `agent/src/apps/installation/depot.rs`.
+    Installer {
+        #[serde(rename = "v", deserialize_with = "verifie_version")]
+        version: u8,
+        installation: String,
+        url: String,
+        nom: String,
+        taille: u64,
+        sha256: String,
+    },
 }
 
 impl DepuisLaPlateforme {
@@ -345,6 +472,23 @@ impl DepuisLaPlateforme {
             empreintes,
         }
     }
+
+    pub fn installer(
+        installation: impl Into<String>,
+        url: impl Into<String>,
+        nom: impl Into<String>,
+        taille: u64,
+        sha256: impl Into<String>,
+    ) -> Self {
+        Self::Installer {
+            version: PLATEFORME_VERSION,
+            installation: installation.into(),
+            url: url.into(),
+            nom: nom.into(),
+            taille,
+            sha256: sha256.into(),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -362,3 +506,11 @@ mod tests;
 #[cfg(test)]
 #[path = "plateforme/tests_apps.rs"]
 mod tests_apps;
+
+// 🔴 UN TROISIÈME FICHIER DE TESTS, ET IL A SA RAISON PROPRE : les vecteurs
+// partagés sont un jeu de ROUND-TRIPS, qui ne dit rien de ce qui doit être
+// REFUSÉ. La garde la plus fragile de v4 — un `termine` dont une clé
+// facultative MANQUE — n'y est donc pas éprouvable, et elle vit ici.
+#[cfg(test)]
+#[path = "plateforme/tests_installation.rs"]
+mod tests_installation;

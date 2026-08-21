@@ -2,6 +2,11 @@ import { describe, expect, it } from 'vitest';
 import vecteurs from '../plateforme-vectors.json';
 import {
     PLATEFORME_VERSION,
+    encodeInstaller,
+    encodeProgression,
+    encodeTermine,
+    type Issue,
+    type Phase,
     encodeEnroler,
     encodeBattement,
     encodeEnrole,
@@ -30,6 +35,18 @@ interface CasVecteur {
     name: string;
     sens: string;
     kind: string;
+    installation?: string;
+    url?: string;
+    nom?: string;
+    taille?: number;
+    sha256?: string;
+    phase?: string;
+    octets_faits?: number;
+    octets_total?: number;
+    ecoule_ms?: number;
+    code_sortie?: number | null;
+    journal?: string;
+    journal_tronque?: boolean;
     json: string;
     vm?: string;
     secret?: string;
@@ -61,6 +78,22 @@ function encodeVers(c: CasVecteur): string {
         case 'battement': return encodeBattement();
         case 'catalogue': return encodeCatalogue(c.complet!, c.applications!, c.disparues!);
         case 'lancee': return encodeLancee(c.demande!, c.issue as IssueLancement);
+        case 'progression':
+            return encodeProgression(
+                c.installation!, c.phase as Phase,
+                c.octets_faits!, c.octets_total!, c.ecoule_ms!,
+            );
+        case 'termine':
+            return encodeTermine(
+                c.installation!, c.issue as Issue,
+                // ⚠️ `?? null` SERAIT UNE FAUTE ICI : il confondrait « la clé
+                // manque du vecteur » avec « la clé porte null », et un vecteur
+                // amputé encoderait quand même. Le JSON les distingue, et
+                // `c.motif` vaut littéralement `null` dans les cas qui le
+                // portent — c'est ce que la lecture non typée rend.
+                c.motif as string | null, c.code_sortie as number | null,
+                c.journal!, c.journal_tronque!,
+            );
         default: throw new Error(`kind inconnu dans le sens vers : ${c.kind}`);
     }
 }
@@ -72,6 +105,8 @@ function encodeDepuis(c: CasVecteur): string {
         case 'refus': return encodeRefus(c.motif as MotifCanal);
         case 'lancer': return encodeLancer(c.demande!, c.cle!);
         case 'icones-manquantes': return encodeIconesManquantes(c.empreintes!);
+        case 'installer':
+            return encodeInstaller(c.installation!, c.url!, c.nom!, c.taille!, c.sha256!);
         default: throw new Error(`kind inconnu dans le sens depuis : ${c.kind}`);
     }
 }
@@ -147,19 +182,19 @@ describe('miroir TypeScript du canal plateforme', () => {
         // son côté. Une divergence d'un caractère et les deux bouts ne se
         // parlent plus.
         expect(encodeEnroler('w1', 'chut'))
-            .toBe('{"type":"enroler","v":3,"vm":"w1","secret":"chut"}');
+            .toBe('{"type":"enroler","v":4,"vm":"w1","secret":"chut"}');
     });
 
     it('encode `battement`', () => {
-        expect(encodeBattement()).toBe('{"type":"battement","v":3}');
+        expect(encodeBattement()).toBe('{"type":"battement","v":4}');
     });
 
     it('lit un `enrole` bien formé', () => {
         const m = parseDepuisLaPlateforme(
-            '{"type":"enrole","v":3,"prefixe":"PPP","jeton":"jjj","expire_a":1787136773742}',
+            '{"type":"enrole","v":4,"prefixe":"PPP","jeton":"jjj","expire_a":1787136773742}',
         );
         expect(m).toEqual({
-            type: 'enrole', v: 3, prefixe: 'PPP', jeton: 'jjj', expire_a: 1787136773742,
+            type: 'enrole', v: PLATEFORME_VERSION, prefixe: 'PPP', jeton: 'jjj', expire_a: 1787136773742,
         });
     });
 
@@ -203,7 +238,7 @@ describe('miroir TypeScript du canal plateforme', () => {
     });
 
     it('REJETTE un `type` inconnu', () => {
-        expect(() => parseDepuisLaPlateforme('{"type":"vol","v":3}'))
+        expect(() => parseDepuisLaPlateforme('{"type":"vol","v":4}'))
             .toThrow(/type de message de plateforme inconnu/);
     });
 
@@ -211,7 +246,7 @@ describe('miroir TypeScript du canal plateforme', () => {
         // 🔴 Le parseur ne lit QUE le sens plateforme -> agent. Accepter
         // `enroler` ici ferait qu'un agent traiterait son propre message comme
         // une réponse — une confusion de sens qu'aucun autre test ne verrait.
-        expect(() => parseDepuisLaPlateforme('{"type":"enroler","v":3,"vm":"w","secret":"s"}'))
+        expect(() => parseDepuisLaPlateforme('{"type":"enroler","v":4,"vm":"w","secret":"s"}'))
             .toThrow(/type de message de plateforme inconnu/);
     });
 });
@@ -227,16 +262,16 @@ describe('le parseur du sens AGENT -> PLATEFORME', () => {
     // seulement échouer.
 
     it('lit un `enroler` bien formé', () => {
-        expect(parseVersLaPlateforme('{"type":"enroler","v":3,"vm":"w1","secret":"chut"}')).toEqual({
+        expect(parseVersLaPlateforme('{"type":"enroler","v":4,"vm":"w1","secret":"chut"}')).toEqual({
             ok: true,
-            message: { type: 'enroler', v: 3, vm: 'w1', secret: 'chut' },
+            message: { type: 'enroler', v: PLATEFORME_VERSION, vm: 'w1', secret: 'chut' },
         });
     });
 
     it('lit un `battement`', () => {
-        expect(parseVersLaPlateforme('{"type":"battement","v":3}')).toEqual({
+        expect(parseVersLaPlateforme('{"type":"battement","v":4}')).toEqual({
             ok: true,
-            message: { type: 'battement', v: 3 },
+            message: { type: 'battement', v: PLATEFORME_VERSION },
         });
     });
 
@@ -279,9 +314,9 @@ describe('le parseur du sens AGENT -> PLATEFORME', () => {
         // `enrole` ici ferait que la plateforme traiterait sa propre réponse
         // comme une demande.
         for (const brut of [
-            '{"type":"enrole","v":3,"prefixe":"P","jeton":"j","expire_a":1}',
-            '{"type":"battement-recu","v":3,"jeton":"j","expire_a":1}',
-            '{"type":"refus","v":3,"motif":"forme"}',
+            '{"type":"enrole","v":4,"prefixe":"P","jeton":"j","expire_a":1}',
+            '{"type":"battement-recu","v":4,"jeton":"j","expire_a":1}',
+            '{"type":"refus","v":4,"motif":"forme"}',
         ]) {
             expect(parseVersLaPlateforme(brut)).toEqual({ ok: false, motif: 'forme' });
         }
@@ -304,10 +339,10 @@ describe('le parseur du sens AGENT -> PLATEFORME', () => {
         // sortirait dirait `enrolement` — donc « secret faux » — pour un
         // message qui n'a jamais porté de VM.
         for (const brut of [
-            '{"type":"enroler","v":3,"secret":"chut"}',
-            '{"type":"enroler","v":3,"vm":"w1"}',
-            '{"type":"enroler","v":3,"vm":"","secret":"chut"}',
-            '{"type":"enroler","v":3,"vm":42,"secret":"chut"}',
+            '{"type":"enroler","v":4,"secret":"chut"}',
+            '{"type":"enroler","v":4,"vm":"w1"}',
+            '{"type":"enroler","v":4,"vm":"","secret":"chut"}',
+            '{"type":"enroler","v":4,"vm":42,"secret":"chut"}',
         ]) {
             expect(parseVersLaPlateforme(brut)).toEqual({ ok: false, motif: 'forme' });
         }
@@ -315,12 +350,20 @@ describe('le parseur du sens AGENT -> PLATEFORME', () => {
 });
 
 
-describe('la version 3, et les listes blanches DÉRIVÉES de l’union', () => {
-    it('🔴 annonce la version 3, et REFUSE un message v1', () => {
+describe('la version du protocole, et les listes blanches DÉRIVÉES de l’union', () => {
+    // ⚠️ LE NUMÉRO N'EST ÉCRIT QU'UNE FOIS, dans l'assertion ci-dessous. Il
+    // vivait aussi dans le titre du `describe` et dans celui de l'`it`, qui
+    // annonçaient « la version 3 » : trois places pour un seul fait, dont deux
+    // qu'aucun test ne pouvait faire rougir. Le bump de G3 les a trouvées
+    // périmées — elles disaient « 3 » sur un protocole en 4.
+    it('🔴 annonce sa version, et REFUSE un message v1', () => {
         // 🔴 Oublier le bump côté TypeScript ferait diverger les deux bouts EN
         // SILENCE : le Rust émettrait `v:3`, ce parseur attendrait `v:2`, et
         // seuls les vecteurs partagés le diraient.
-        expect(PLATEFORME_VERSION).toBe(3);
+        // 🔴 LITTÉRAL DÉLIBÉRÉ, ET C'EST UN TRÉBUCHET : `toBe(PLATEFORME_VERSION)`
+        // serait une tautologie. Ce nombre existe pour qu'un bump OBLIGE une
+        // main humaine à passer ici, et le commentaire du dessus dit pourquoi.
+        expect(PLATEFORME_VERSION).toBe(4);
         // ⚠️ CE CAS PORTAIT UN `refus` JUSQU'AU 20 AOÛT 2026, et il épinglait
         // le défaut au lieu de le garder : le refus est désormais la SEULE
         // variante hors versionnement, précisément pour qu'un agent v1 puisse
@@ -344,9 +387,11 @@ describe('la version 3, et les listes blanches DÉRIVÉES de l’union', () => {
         // la main, que rien ne confronte à son union — et dont l'oubli ne
         // casse « ni compilation ni test ». Ici l'oubli casse le typecheck.
         expect([...typesDepuis()].sort()).toEqual(
-            ['battement-recu', 'enrole', 'icones-manquantes', 'lancer', 'refus'],
+            ['battement-recu', 'enrole', 'icones-manquantes', 'installer', 'lancer', 'refus'],
         );
-        expect([...typesVers()].sort()).toEqual(['battement', 'catalogue', 'enroler', 'lancee']);
+        expect([...typesVers()].sort()).toEqual([
+            'battement', 'catalogue', 'enroler', 'lancee', 'progression', 'termine',
+        ]);
     });
 });
 

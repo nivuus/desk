@@ -13,7 +13,11 @@
  * parce que l'émetteur est le service lui-même, jamais un tiers.
  */
 
-export const PLATEFORME_VERSION = 3;
+// La constante vit dans un module à part, pour rompre le cycle de VALEURS que
+// l'extraction de `plateforme-installation.ts` aurait créé. Elle est
+// réexportée : aucun consommateur n'a bougé.
+import { PLATEFORME_VERSION } from './plateforme-version';
+export { PLATEFORME_VERSION } from './plateforme-version';
 
 /** Pourquoi la plateforme refuse. `enrolement` est INDISTINCT par
  * construction : distinguer « VM inconnue » de « secret faux » serait un
@@ -31,6 +35,26 @@ export type MotifCanal = 'version' | 'forme' | 'enrolement' | 'sequence';
 // que dans un paquet consommateur.
 import type { Application, IssueLancement } from './plateforme-apps';
 export type { Application, SourceMax, IssueLancement } from './plateforme-apps';
+
+// Les types de l'INSTALLATION vivent dans un module frère, extrait pour la même
+// raison. Import ET réexport, pour la même raison qu'au-dessus.
+import type {
+    InstallerMessage,
+    ProgressionMessage,
+    TermineMessage,
+} from './plateforme-installation';
+import {
+    estCompte,
+    estEntierSigne,
+    estIssueInstallation,
+    estPhase,
+    presentEtNulOu,
+} from './plateforme-installation';
+export type { Phase, Issue, InstallerMessage, ProgressionMessage, TermineMessage } from './plateforme-installation';
+export { estPhase, estIssueInstallation } from './plateforme-installation';
+export { encodeProgression, encodeTermine, encodeInstaller } from './plateforme-installation';
+import { lireProgression, lireTermine } from './plateforme-installation';
+import type { Phase, Issue } from './plateforme-installation';
 
 
 export interface EnrolerMessage { v: number; type: 'enroler'; vm: string; secret: string }
@@ -64,7 +88,9 @@ export type VersLaPlateforme =
     | EnrolerMessage
     | BattementMessage
     | CatalogueMessage
-    | LanceeMessage;
+    | LanceeMessage
+    | ProgressionMessage
+    | TermineMessage;
 
 export interface EnroleMessage {
     v: number;
@@ -132,7 +158,8 @@ export type DepuisLaPlateforme =
     | BattementRecuMessage
     | RefusMessage
     | LancerMessage
-    | IconesManquantesMessage;
+    | IconesManquantesMessage
+    | InstallerMessage;
 
 /**
  * Les seuls `type` que ce parseur accepte — le sens PLATEFORME -> AGENT.
@@ -158,6 +185,7 @@ const TOUS_DEPUIS: Record<DepuisLaPlateforme['type'], true> = {
     refus: true,
     lancer: true,
     'icones-manquantes': true,
+    installer: true,
 };
 const TYPES_DEPUIS = Object.keys(TOUS_DEPUIS) as DepuisLaPlateforme['type'][];
 
@@ -219,6 +247,8 @@ const TOUS_VERS: Record<VersLaPlateforme['type'], true> = {
     battement: true,
     catalogue: true,
     lancee: true,
+    progression: true,
+    termine: true,
 };
 const TYPES_VERS = Object.keys(TOUS_VERS) as VersLaPlateforme['type'][];
 
@@ -330,6 +360,19 @@ export function parseVersLaPlateforme(raw: string): LectureVersLaPlateforme {
                 issue: parsed.issue,
             },
         };
+    }
+
+    // Les deux lectures de ④-installation vivent dans le module frère, avec les
+    // types et les gardes qu'elles emploient : ce fichier serait sinon au-dessus
+    // de 500 lignes. Elles rendent `null` pour « forme », jamais une exception.
+    if (parsed.type === 'progression') {
+        const message = lireProgression(parsed);
+        return message ? { ok: true, message } : { ok: false, motif: 'forme' };
+    }
+
+    if (parsed.type === 'termine') {
+        const message = lireTermine(parsed);
+        return message ? { ok: true, message } : { ok: false, motif: 'forme' };
     }
 
     return { ok: true, message: { type: 'battement', v: PLATEFORME_VERSION } };

@@ -1,0 +1,84 @@
+=== TÂCHE 5 — les rouges du protocole, jouées puis restaurées ===
+Discipline : sauvegarde par copie NOMMÉE, jamais 'git checkout' (qui
+effacerait un fichier non suivi) ; preuve que le diff est NON VIDE avant
+de lancer, sans quoi une mutation qui ne mute rien se lit comme une rouge.
+
+sha256 AVANT installation.rs : 0a6bd9fc2942166d297bbaab030b6a42
+sha256 AVANT plateforme.rs   : 9bf966e1bacea4b187424834cf4e9cbd
+
+================ ROUGE 1 ================
+MUTATION : sur Issue SEUL, rename_all kebab-case -> snake_case.
+⚠️ Le plan prescrivait cette rouge sur Phase, en citant 'sans-effet' :
+   contradiction de son propre texte — 'sans-effet' est une variante
+   d'Issue, et Phase n'a AUCUNE variante de deux mots, donc son
+   rename_all est INOBSERVABLE (leg n°9 de G1, mesuré).
+--- lignes de diff : 2
+test control::tests::le_plein_ecran_se_serialise_en_kebab_case_avec_sa_version ... ok
+test control::tests::serialise_le_message_de_pointeur_en_kebab_case ... ok
+test plateforme::tests::serialise_le_battement_recu_en_kebab_case ... ok
+test plateforme::tests::serialise_l_enrolement_en_kebab_case ... ok
+test plateforme::tests_installation::les_deux_variantes_de_deux_mots_d_issue_voyagent_en_kebab_case ... FAILED
+thread 'plateforme::tests::conformite_aux_vecteurs_partages' (2732242) panicked at proto/src/plateforme/tests.rs:286:71:
+---- plateforme::tests_installation::les_deux_variantes_de_deux_mots_d_issue_voyagent_en_kebab_case stdout ----
+thread 'plateforme::tests_installation::les_deux_variantes_de_deux_mots_d_issue_voyagent_en_kebab_case' (2732286) panicked at proto/src/plateforme/tests_installation.rs:106:9:
+assertion `left == right` failed: la variante SansEffet doit voyager en kebab-case
+  left: "\"sans_effet\""
+ right: "\"sans-effet\""
+    plateforme::tests_installation::les_deux_variantes_de_deux_mots_d_issue_voyagent_en_kebab_case
+
+================ ROUGE 2 ================
+MUTATION : code_sortie devient un i32 nu — la sentinelle -1 remplacerait
+l'absence de code. « pas de code » et « code -1 » deviennent le MÊME fait.
+--- lignes de diff : 155
+error[E0308]: mismatched types
+   --> proto/src/plateforme/tests_installation.rs:22:64
+    |         -------------------------                              ^^^^^^^ expected `i32`, found `Option<{integer}>`
+    = note: expected type `i32`
+   --> proto/src/plateforme.rs:291:12
+error[E0277]: can't compare `i32` with `std::option::Option<_>`
+   --> proto/src/plateforme/tests_installation.rs:67:5
+   --> /rustc/8bab26f4f68e0e26f0bb7960be334d5b520ea452/library/core/src/cmp.rs:1876:12
+
+================ ROUGE 3 ================
+MUTATION : le bump oublié côté Rust — PLATEFORME_VERSION revient à 3.
+--- lignes de diff : 154
+thread 'plateforme::tests::conformite_aux_refus_lisibles_partages' (2736301) panicked at proto/src/plateforme/tests.rs:516:13:
+  left: 4
+ right: 3
+thread 'plateforme::tests::conformite_aux_vecteurs_partages' (2736302) panicked at proto/src/plateforme/tests.rs:236:5:
+assertion `left == right` failed: la version des vecteurs a dérivé de PLATEFORME_VERSION
+  left: 4
+ right: 3
+thread 'plateforme::tests::serialise_l_enrole_et_le_refus' (2736319) panicked at proto/src/plateforme/tests.rs:76:5:
+
+================ ROUGE 4 ================
+MUTATION :  retiré du champ . serde_derive lui
+rend alors son #[serde(default)] IMPLICITE, et un  d'une version
+antérieure — sans motif — serait accepté avec un motif silencieusement
+absent. deny_unknown_fields n'y peut rien : il regarde les champs EN TROP.
+--- lignes de diff : 154
+thread 'plateforme::tests_installation::refuse_un_termine_dont_une_cle_facultative_manque' (2737049) panicked at proto/src/plateforme/tests_installation.rs:49:9:
+un `termine` sans « motif » doit être refusé, il ne doit pas être complété
+test result: FAILED. 105 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+================ DEUX CORRECTIONS DE CE JOURNAL, PLUTÔT QU'UN NETTOYAGE ================
+
+1. L'EN-TÊTE DE LA ROUGE 4 EST MUTILÉ, et c'est un piège documenté de ce dépôt
+   rencontré tel quel : des accents graves dans un `echo` de shell sont
+   interprétés comme des substitutions de commande. On lit ci-dessus
+   « (eval):42: command not found: option_obligatoire ». La mutation, elle,
+   a bien eu lieu et a bien fait rougir le test qu'elle visait — c'est la PROSE
+   du journal qui a été mangée, pas la mesure. Ce qu'elle disait :
+   `option_obligatoire` retiré du champ `motif` ; `serde_derive` lui rend alors
+   son `#[serde(default)]` IMPLICITE ; un `termine` d'une version antérieure,
+   sans `motif`, serait accepté avec un motif silencieusement absent ; et
+   `deny_unknown_fields` n'y peut rien, lui qui regarde les champs EN TROP.
+
+2. « LIGNES DE DIFF : 154 / 155 » NE MESURE PAS LA MUTATION. Ce compte est un
+   `git diff` contre `HEAD`, et `proto/src/plateforme.rs` porte déjà toutes les
+   additions non commitées de G3 : les 154 lignes sont donc l'apport du
+   sous-bloc, pas la mutation. Le garde reste NON VIDE dans les deux cas, donc
+   il n'a rien laissé passer — mais **il ne discrimine pas ce qu'il prétend
+   discriminer sur un fichier déjà modifié**, et le dire vaut mieux que de le
+   laisser croire. Le compte JUSTE est celui de la ROUGE 1 (2 lignes), mesuré
+   par `diff` contre la copie de sauvegarde. C'est la forme à reprendre.
