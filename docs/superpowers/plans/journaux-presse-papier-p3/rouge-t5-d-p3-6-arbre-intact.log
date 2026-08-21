@@ -1,0 +1,30 @@
+=== ROUGE DE D-P3-6, SUR L'ARBRE INTACT, SANS AUCUNE MUTATION ===
+date : 2026-08-21T07:08:58+02:00   commit : b878d88
+
+C'est la forme la plus forte de rouge de ce depot : elle ne mute rien, donc
+elle ne peut ni rougir pour la mauvaise raison, ni etre satisfaite par un
+commentaire du fichier qu'elle analyse. Le harnais du §6.3 (sha256 / diff
+non vide / restauration) n'a pas lieu d'etre : il n'y a RIEN a restaurer.
+
+Le test joue, ajoute en queue de agent/src/presse_papier/tests.rs :
+
+    fn rouge_provisoire_d_p3_6() {
+        let mut s = Sondeur::nouveau();
+        s.armer(true, 10, "textA");
+        assert_eq!(s.observer(11, || Some(String::from("textB"))), None);
+    }
+
+--- cargo test -p agent rouge_provisoire_d_p3_6   (lignes retenues) ---
+---- presse_papier::tests::rouge_provisoire_d_p3_6 stdout ----
+thread 'presse_papier::tests::rouge_provisoire_d_p3_6' (232315) panicked at agent/src/presse_papier/tests.rs:384:5:
+assertion `left == right` failed
+  left: Some(Texte("textB"))
+ right: None
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 904 filtered out; finished in 0.00s
+
+L'ASSERTION QUI ROUGIT est nommee : assert_eq!(observer(...), None), et le
+relevé dit ce qu'elle a rendu — Some(Texte("textB")) — pas seulement le
+code de sortie.
+
+=> D-P3-6 est CONFIRME PAR LA MESURE. RP3-9 n'est PAS realise : la lecture
+   du plan etait juste, et le correctif s'ecrit.

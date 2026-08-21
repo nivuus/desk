@@ -158,6 +158,84 @@ impl Sondeur {
         self.dernier_emis = Some(normaliser(texte));
     }
 
+    /// Écarte l'annonce que NOTRE PROPRE écriture vient de produire, et arme
+    /// les gardes sur elle. **La SECONDE PRISE de D-P3-6.**
+    ///
+    /// 🔴 **LA COURSE QUE CETTE MÉTHODE FERME, ET ELLE A ÉTÉ MESURÉE AVANT
+    /// D'ÊTRE FERMÉE** (sous-bloc P3, rouge sur l'arbre intact, sans aucune
+    /// mutation — `journaux-presse-papier-p3/rouge-t5-d-p3-6-arbre-intact.log`).
+    /// L'entrelacement, à deux fenêtres :
+    ///
+    /// 1. la fenêtre A colle → l'écriture pose `notre_ecriture = (seqA, textA)` ;
+    /// 2. le tour de roue appelle `armer_les_gardes` : il PREND ce couple et
+    ///    arme `reference = seqA`, `dernier_emis = textA` ;
+    /// 3. la fenêtre B colle → `notre_ecriture = (seqB, textB)`, et le
+    ///    presse-papier Windows porte désormais `textB` ;
+    /// 4. `tour()` lit `seqB ≠ seqA` — le garde n°1 ne mord pas — puis lit
+    ///    `textB ≠ textA` — le garde n°2 ne mord pas non plus — et
+    ///    **`Annonce::Texte(textB)` part vers les N fenêtres** ;
+    /// 5. au tour suivant, `armer_les_gardes` prend `(seqB, textB)` : trop tard.
+    ///
+    /// C'est exactement l'aller-retour par collage que les gardes de D5
+    /// existent pour supprimer, et `apres_notre_ecriture` ne le couvre pas :
+    /// sa réserve écrite traite le cas d'une copie **TIERCE** intercalée,
+    /// qu'elle déclare voulu. Le cas ci-dessus est **notre propre seconde
+    /// écriture**, et il n'était déclaré nulle part.
+    ///
+    /// ⚠️ **CE REMÈDE RÉTRÉCIT LA FENÊTRE, IL NE LA FERME PAS.**
+    /// `capteur/sommeil/presse_papier::ecrire_avec` écrit le presse-papier
+    /// **PUIS** pose `notre_ecriture` — le verrou y est délibérément pris
+    /// APRÈS l'E/S Win32, parce que le tenir autour d'`OpenClipboard`
+    /// bloquerait l'attache et le retrait de TOUTES les fenêtres. Si `tour()`
+    /// lit le texte dans ce court intervalle, la seconde prise ne trouvera
+    /// rien. Le résidu est de l'ordre d'une acquisition de mutex, et il est du
+    /// **même genre** que celui qu'`apres_notre_ecriture` déclare déjà accepté.
+    ///
+    /// ⚠️ **Le filtre porte sur le TEXTE, jamais sur le seul `seq`**, et c'est
+    /// un garde-fou, pas un détail : une copie TIERCE survenue après notre
+    /// écriture porte elle aussi un `seq` postérieur, et filtrer sur le numéro
+    /// ferait taire une vraie copie. Un test le tient.
+    ///
+    /// ⚠️ **Un `Annonce::Refus` n'est jamais écarté** : il ne porte pas de
+    /// texte à comparer, et le refuser reviendrait à priver l'utilisateur du
+    /// bandeau qui lui dit pourquoi rien n'est arrivé.
+    pub fn ecarter_notre_ecriture(
+        &mut self,
+        notre: Option<(u32, String)>,
+        annonce: Option<Annonce>,
+    ) -> Option<Annonce> {
+        self.ecarter(gardes_armes(), notre, annonce)
+    }
+
+    /// Le cœur d'`ecarter_notre_ecriture`, avec l'état du garde **injecté** —
+    /// même patron, et pour la même raison, qu'`armer` face à
+    /// `apres_notre_ecriture` : `gardes_armes()` est un `OnceLock` qu'un test
+    /// ne peut ni piloter ni réinitialiser, et un contrôle écrit contre lui ne
+    /// pourrait donc pas rendre l'autre valeur, c'est-à-dire pas échouer.
+    ///
+    /// 🔵 **`PRESSE_PAPIER_GARDE=0` désarme AUSSI cette prise**, et il le faut :
+    /// cette variable de banc existe pour rendre atteignable la rouge du
+    /// critère ④ de P2, qui compte les messages revenant vers la fenêtre après
+    /// un collage. Une seconde prise qui écarterait quand même viderait ce
+    /// bras de son sens.
+    pub fn ecarter(
+        &mut self,
+        armes: bool,
+        notre: Option<(u32, String)>,
+        annonce: Option<Annonce>,
+    ) -> Option<Annonce> {
+        let Some((seq, texte)) = notre else { return annonce };
+        if !armes {
+            return annonce;
+        }
+        let notre_texte = normaliser(&texte);
+        self.armer(armes, seq, &texte);
+        match annonce {
+            Some(Annonce::Texte(t)) if t == notre_texte => None,
+            autre => autre,
+        }
+    }
+
     /// Un tour de sondage complet, **hors de tout verrou**.
     ///
     /// Rend `None` sans rien lire tant que `PERIODE_PRESSE_PAPIER` n'est pas
