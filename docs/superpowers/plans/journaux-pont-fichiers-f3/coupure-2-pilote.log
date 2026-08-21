@@ -1,0 +1,19 @@
+[2026-08-21T05:34:24.730Z] jeton de recette obtenu
+[2026-08-21T05:34:25.067Z] chrome : Chrome/151.0.7922.169
+[2026-08-21T05:34:25.242Z] navigation : http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA&faute-fichiers=1
+[2026-08-21T05:34:29.312Z] OPFS peuple : 5 entrees
+[2026-08-21T05:34:29.312Z] la page-shell est connectee : lancement de l agent
+[2026-08-21T05:34:29.694Z] agent lance : Opration russie : tentative d'excution de la tche planifie "guacamole-agent".agent lancé en session interactive ; journal : /media/vm/dev/agent.log
+[2026-08-21T05:34:33.721Z] 2 fenetre(s) d application apres 4 s
+[2026-08-21T05:34:33.725Z] etat avant le clic : {"href":"http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA&faute-fichiers=1","jeton":true,"bouton":true}
+[2026-08-21T05:34:33.725Z] clic sur #choisir-dossier
+[2026-08-21T05:34:36.759Z] #etat-fichiers : "Lecteur « Mes Fichiers » monté sur « Mes documents »."
+[2026-08-21T05:34:36.759Z] repos de 8000 ms avant la mesure
+[2026-08-21T05:34:44.775Z] divergence posee cote local : ["vide-cote-vm","sous-dossier","projete.txt","occupe-cote-local.txt","gros-lecture.bin","ambigu.txt","Casse.txt","AMBIGU.TXT"]
+[2026-08-21T05:34:44.778Z] compteur AVANT : {"dues":0,"vues":0,"texte":""}
+[2026-08-21T05:34:44.780Z] coupure du canal ARMEE sur la marque de commande en vol
+[2026-08-21T05:34:44.781Z] mesure cote VM (ecriture dans la racine) — ASYNCHRONE, voir l en-tete
+[2026-08-21T05:34:56.337Z] COUPURE sur la marque, apres 10000 ms d attente
+[2026-08-21T05:34:57.729Z] mesure VM : JSON lu
+[2026-08-21T05:34:57.729Z] coupure posee : la suite du protocole est SANS OBJET, et le releve le dit
+[2026-08-21T05:34:57.730Z] resultat ecrit : /tmp/f3/coupure-2.json

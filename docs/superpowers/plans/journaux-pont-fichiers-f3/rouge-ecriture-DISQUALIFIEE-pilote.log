@@ -1,0 +1,31 @@
+[2026-08-21T05:36:43.538Z] jeton de recette obtenu
+[2026-08-21T05:36:43.884Z] chrome : Chrome/151.0.7922.169
+[2026-08-21T05:36:44.081Z] navigation : http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA&faute-fichiers=1
+[2026-08-21T05:36:48.144Z] OPFS peuple : 5 entrees
+[2026-08-21T05:36:48.144Z] la page-shell est connectee : lancement de l agent
+[2026-08-21T05:36:48.618Z] agent lance : Opration russie : tentative d'excution de la tche planifie "guacamole-agent".agent lancé en session interactive ; journal : /media/vm/dev/agent.log
+[2026-08-21T05:36:52.647Z] 2 fenetre(s) d application apres 4 s
+[2026-08-21T05:36:52.649Z] etat avant le clic : {"href":"http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA&faute-fichiers=1","jeton":true,"bouton":true}
+[2026-08-21T05:36:52.649Z] clic sur #choisir-dossier
+[2026-08-21T05:36:55.675Z] #etat-fichiers : "Lecteur « Mes Fichiers » monté sur « Mes documents »."
+[2026-08-21T05:36:55.676Z] repos de 8000 ms avant la mesure
+[2026-08-21T05:37:03.692Z] divergence posee cote local : ["vide-cote-vm","sous-dossier","projete.txt","occupe-cote-local.txt","gros-lecture.bin","ambigu.txt","Casse.txt","AMBIGU.TXT"]
+[2026-08-21T05:37:03.695Z] compteur AVANT : {"dues":0,"vues":0,"texte":""}
+[2026-08-21T05:37:03.695Z] mesure cote VM (ecriture dans la racine) — ASYNCHRONE, voir l en-tete
+[2026-08-21T05:37:12.796Z] mesure VM : JSON lu
+[2026-08-21T05:38:43.067Z] compteur FINAL : {"t":89,"dues":0,"vues":0,"texte":""}
+[2026-08-21T05:38:43.077Z] relecture projete.txt : {"present":true,"taille":52,"sha256":"8c9605738f6e92bf92f59d84196dc4bcb9cbd136181a471a5f3b4ad86f2fb0f3"}
+[2026-08-21T05:38:43.083Z] relecture renomme.txt : {"present":false,"erreur":"NotFoundError: A requested file or directory could not be found at the time an operation was processed."}
+[2026-08-21T05:38:43.091Z] relecture sous-dossier/autre.txt : {"present":true,"taille":35,"sha256":"6e020231e3750a878b46e40163065b5c865c847d21ecf6da88f0dea828989aa5"}
+[2026-08-21T05:38:43.095Z] relecture dossier-renomme/autre.txt : {"present":false,"erreur":"NotFoundError: A requested file or directory could not be found at the time an operation was processed."}
+[2026-08-21T05:38:43.102Z] relecture dossier-renomme/profond/feuille.txt : {"present":false,"erreur":"NotFoundError: A requested file or directory could not be found at the time an operation was processed."}
+[2026-08-21T05:38:43.111Z] relecture Casse.txt : {"present":true,"taille":15,"sha256":"2c7f4c21a3c14c7c42ced552981f8f1cbe36c5775d7a0a773f739f10fa5ee870"}
+[2026-08-21T05:38:43.116Z] relecture a-effacer/un.txt : {"present":false,"erreur":"NotFoundError: A requested file or directory could not be found at the time an operation was processed."}
+[2026-08-21T05:38:43.121Z] relecture a-effacer/dedans/deux.txt : {"present":false,"erreur":"NotFoundError: A requested file or directory could not be found at the time an operation was processed."}
+[2026-08-21T05:38:43.132Z] relecture gros-lecture.bin : {"present":true,"taille":300000,"sha256":"daf57cac3916f62a78a7e3cf274eca10d3c8588b574a3815cf4f5695356e647a"}
+[2026-08-21T05:38:43.137Z] relecture vide-cote-vm/inconnu-de-la-vm.txt : {"present":false,"erreur":"NotFoundError: A requested file or directory could not be found at the time an operation was processed."}
+[2026-08-21T05:38:43.142Z] relecture occupe-cote-local.txt : {"present":false,"erreur":"NotFoundError: A requested file or directory could not be found at the time an operation was processed."}
+[2026-08-21T05:38:43.154Z] arbre OPFS : [{"chemin":"sous-dossier","type":"d"},{"chemin":"sous-dossier/autre.txt","type":"f","taille":35},{"chemin":"projete.txt","type":"f","taille":52},{"chemin":"gros-lecture.bin","type":"f","taille":300000},{"chemin":"Casse.txt","type":"f","taille":15}]
+[2026-08-21T05:38:53.167Z] echantillon : {"t":10,"fenetres":2,"flux":[{"url":"n=F4z7KQooOQfJqh47PM0ETA%3Aw-2","v":"{\"sansPc\":true}"},{"url":"n=F4z7KQooOQfJqh47PM0ETA%3Aw-1","v":"{\"sansPc\":true}"}]}
+[2026-08-21T05:39:03.177Z] echantillon : {"t":20,"fenetres":2,"flux":[{"url":"n=F4z7KQooOQfJqh47PM0ETA%3Aw-2","v":"{\"sansPc\":true}"},{"url":"n=F4z7KQooOQfJqh47PM0ETA%3Aw-1","v":"{\"sansPc\":true}"}]}
+[2026-08-21T05:39:03.177Z] resultat ecrit : /tmp/f3/rouge-ecriture.json

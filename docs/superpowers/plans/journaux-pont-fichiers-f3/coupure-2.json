@@ -1,0 +1,273 @@
+{
+ "maintien_s": 20,
+ "prefixe": "F4z7KQooOQfJqh47PM0ETA",
+ "journal": [
+  "[2026-08-21T05:34:24.730Z] jeton de recette obtenu",
+  "[2026-08-21T05:34:25.067Z] chrome : Chrome/151.0.7922.169",
+  "[2026-08-21T05:34:25.242Z] navigation : http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA&faute-fichiers=1",
+  "[2026-08-21T05:34:29.312Z] OPFS peuple : 5 entrees",
+  "[2026-08-21T05:34:29.312Z] la page-shell est connectee : lancement de l agent",
+  "[2026-08-21T05:34:29.694Z] agent lance : Op\u0002ration r\u0002ussie : tentative d'ex\u0002cution de la t\u0003che planifi\u0002e \"guacamole-agent\".agent lancé en session interactive ; journal : /media/vm/dev/agent.log",
+  "[2026-08-21T05:34:33.721Z] 2 fenetre(s) d application apres 4 s",
+  "[2026-08-21T05:34:33.725Z] etat avant le clic : {\"href\":\"http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA&faute-fichiers=1\",\"jeton\":true,\"bouton\":true}",
+  "[2026-08-21T05:34:33.725Z] clic sur #choisir-dossier",
+  "[2026-08-21T05:34:36.759Z] #etat-fichiers : \"Lecteur « Mes Fichiers » monté sur « Mes documents ».\"",
+  "[2026-08-21T05:34:36.759Z] repos de 8000 ms avant la mesure",
+  "[2026-08-21T05:34:44.775Z] divergence posee cote local : [\"vide-cote-vm\",\"sous-dossier\",\"projete.txt\",\"occupe-cote-local.txt\",\"gros-lecture.bin\",\"ambigu.txt\",\"Casse.txt\",\"AMBIGU.TXT\"]",
+  "[2026-08-21T05:34:44.778Z] compteur AVANT : {\"dues\":0,\"vues\":0,\"texte\":\"\"}",
+  "[2026-08-21T05:34:44.780Z] coupure du canal ARMEE sur la marque de commande en vol",
+  "[2026-08-21T05:34:44.781Z] mesure cote VM (ecriture dans la racine) — ASYNCHRONE, voir l en-tete",
+  "[2026-08-21T05:34:56.337Z] COUPURE sur la marque, apres 10000 ms d attente",
+  "[2026-08-21T05:34:57.729Z] mesure VM : JSON lu",
+  "[2026-08-21T05:34:57.729Z] coupure posee : la suite du protocole est SANS OBJET, et le releve le dit"
+ ],
+ "erreurs": [],
+ "chrome": "Chrome/151.0.7922.169",
+ "console_page": [
+  {
+   "t": 1787290465511,
+   "niveau": "debug",
+   "texte": "[vite] connecting..."
+  },
+  {
+   "t": 1787290465567,
+   "niveau": "debug",
+   "texte": "[vite] connected."
+  },
+  {
+   "t": 1787290465639,
+   "niveau": "warning",
+   "texte": "injection de fautes du pont fichiers ARMEE (?faute-fichiers=1) : banc, jamais une configuration livree"
+  },
+  {
+   "t": 1787290475936,
+   "niveau": "info",
+   "texte": "offre du pont envoyée, attente de l’agent…"
+  },
+  {
+   "t": 1787290475938,
+   "niveau": "info",
+   "texte": "pont fichiers : réponse reçue"
+  },
+  {
+   "t": 1787290475939,
+   "niveau": "info",
+   "texte": "pont fichiers : connecting"
+  },
+  {
+   "t": 1787290476108,
+   "niveau": "info",
+   "texte": "pont fichiers : connected"
+  },
+  {
+   "t": 1787290476190,
+   "niveau": "info",
+   "texte": "canal fichiers ouvert"
+  },
+  {
+   "t": 1787290486147,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 12 : « renomme.txt » n’existe pas"
+  },
+  {
+   "t": 1787290486193,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 15 : « profond » n’existe pas"
+  },
+  {
+   "t": 1787290486257,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 16 : « profond » n’existe pas"
+  },
+  {
+   "t": 1787290487120,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 19 : « dossier-renomme » n’existe pas"
+  },
+  {
+   "t": 1787290487147,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 20 : « dossier-renomme » n’existe pas"
+  },
+  {
+   "t": 1787290487190,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 23 : « a-effacer » n’existe pas"
+  },
+  {
+   "t": 1787290487231,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 24 : « a-effacer » n’existe pas"
+  },
+  {
+   "t": 1787290488234,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 36 : « jamais-existe.txt » n’existe pas"
+  },
+  {
+   "t": 1787290488280,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 38 : « pas-la » n’existe pas"
+  },
+  {
+   "t": 1787290488322,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 39 : « deja-a.txt » n’existe pas"
+  },
+  {
+   "t": 1787290488343,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 40 : « deja-a.txt » n’existe pas"
+  },
+  {
+   "t": 1787290488364,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 41 : « deja-b.txt » n’existe pas"
+  },
+  {
+   "t": 1787290488395,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 43 : « deja-b.txt » n’existe pas"
+  },
+  {
+   "t": 1787290489411,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 51 : « lien-dur.txt » n’existe pas"
+  },
+  {
+   "t": 1787290489454,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 52 : « lien-dur.txt » n’existe pas"
+  },
+  {
+   "t": 1787290489476,
+   "niveau": "warning",
+   "texte": "échec acces-refuse sur la corrélation 53 : faute injectée par « .faute-acces-refuse » : banc, jamais une configuration livrée"
+  },
+  {
+   "t": 1787290489497,
+   "niveau": "warning",
+   "texte": "échec disque-plein sur la corrélation 54 : faute injectée par « .faute-disque-plein » : banc, jamais une configuration livrée"
+  },
+  {
+   "t": 1787290489519,
+   "niveau": "warning",
+   "texte": "échec non-supporte sur la corrélation 55 : faute injectée par « .faute-non-supporte » : banc, jamais une configuration livrée"
+  },
+  {
+   "t": 1787290493248,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 65 : « a-deplacer.txt » n’existe pas"
+  },
+  {
+   "t": 1787290493272,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 66 : « a-deplacer.txt » n’existe pas"
+  },
+  {
+   "t": 1787290493840,
+   "niveau": "warning",
+   "texte": "échec casse-ambigue sur la corrélation 71 : « Ambigu.txt » ne se distingue pas de « ambigu.txt », « AMBIGU.TXT » : rendre l’un d’eux choisirait le mauvais fichier, rien n’a été fait"
+  }
+ ],
+ "fautes_armees": true,
+ "opfs_entrees": 5,
+ "fenetres_ouvertes": 2,
+ "etat_avant_clic": "{\"href\":\"http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA&faute-fichiers=1\",\"jeton\":true,\"bouton\":true}",
+ "etat_fichiers": "Lecteur « Mes Fichiers » monté sur « Mes documents ».",
+ "bien_monte": true,
+ "divergence_posee": [
+  "vide-cote-vm",
+  "sous-dossier",
+  "projete.txt",
+  "occupe-cote-local.txt",
+  "gros-lecture.bin",
+  "ambigu.txt",
+  "Casse.txt",
+  "AMBIGU.TXT"
+ ],
+ "compteur_avant": {
+  "dues": 0,
+  "vues": 0,
+  "texte": ""
+ },
+ "coupure_posee_sur_marque_a_ms": 11500,
+ "mesure_vm_brut": "﻿{\"racine\":\"C:\\\\Users\\\\Administrateur\\\\Mes Fichiers\",\"horodatage\":\"2026-08-21T07:34:45.8186311+02:00\",\"avant\":[\"sous-dossier\",\"vide-cote-vm\",\"ambigu.txt\",\"AMBIGU.TXT\",\"Casse.txt\",\"gros-lecture.bin\",\"occupe-cote-local.txt\",\"projete.txt\",\"sous-dossier\\\\autre.txt\",\"vide-cote-vm\\\\inconnu-de-la-vm.txt\"],\"avant_compte\":10,\"c1a_avant\":\"PRESENT\",\"c1a_issue\":\"ok\",\"c1a_source_apres\":\"ABSENT\",\"c1a_cible_apres\":\"PRESENT\",\"c1b_avant\":\"PRESENT\",\"c1b_issue\":\"ECHEC:Cette demande n’est pas prise en charge.\\r\\n\",\"c1b_source_apres\":\"PRESENT\",\"c1b_cible_apres\":\"ABSENT\",\"c2a_avant\":\"PRESENT\",\"c2a_issue\":\"ok\",\"c2a_apres\":\"ABSENT\",\"c2b_issue\":\"ok\",\"c2b_apres\":\"ABSENT\",\"critere4\":{\"introuvable\":\"refus:ItemNotFoundException\",\"chemin_introuvable\":\"refus:ItemNotFoundException\",\"deja_present\":\"ok (Windows a ecrase AVANT nous)\",\"lien_dur\":\"sortie=1\",\".faute-acces-refuse\":\"refus:UnauthorizedAccessException\",\".faute-disque-plein\":\"refus:ItemNotFoundException\",\".faute-non-supporte\":\"refus:ItemNotFoundException\"},\"apres\":[\"sous-dossier\",\"vide-cote-vm\",\"ambigu.txt\",\"AMBIGU.TXT\",\"deja-b.txt\",\"gros-lecture.bin\",\"occupe-cote-local.txt\",\"renomme.txt\",\"sous-dossier\\\\profond\",\"sous-dossier\\\\autre.txt\",\"sous-dossier\\\\profond\\\\feuille.txt\",\"vide-cote-vm\\\\inconnu-de-la-vm.txt\"],\"apres_compte\":12,\"critere5\":{\"repertoire_non_vide\":\"HORS ATTEINTE : le geste fige la mesure (voir le commentaire)\",\"deja_present\":\"refus:Impossible de créer un fichier déjà existant.\\r\\n\",\"casse_ambigue\":\"refus:ItemNotFoundException\",\"silence\":\"refus:ItemNotFoundException\"},\"apres2\":[\"sous-dossier\",\"vide-cote-vm\",\"a-deplacer.txt\",\"ambigu.txt\",\"AMBIGU.TXT\",\"deja-b.txt\",\"gros-lecture.bin\",\"occupe-cote-local.txt\",\"renomme.txt\",\"sous-dossier\\\\profond\",\"sous-dossier\\\\autre.txt\",\"sous-dossier\\\\profond\\\\feuille.txt\",\"vide-cote-vm\\\\inconnu-de-la-vm.txt\"]}\r\n",
+ "mesure_vm": {
+  "racine": "C:\\Users\\Administrateur\\Mes Fichiers",
+  "horodatage": "2026-08-21T07:34:45.8186311+02:00",
+  "avant": [
+   "sous-dossier",
+   "vide-cote-vm",
+   "ambigu.txt",
+   "AMBIGU.TXT",
+   "Casse.txt",
+   "gros-lecture.bin",
+   "occupe-cote-local.txt",
+   "projete.txt",
+   "sous-dossier\\autre.txt",
+   "vide-cote-vm\\inconnu-de-la-vm.txt"
+  ],
+  "avant_compte": 10,
+  "c1a_avant": "PRESENT",
+  "c1a_issue": "ok",
+  "c1a_source_apres": "ABSENT",
+  "c1a_cible_apres": "PRESENT",
+  "c1b_avant": "PRESENT",
+  "c1b_issue": "ECHEC:Cette demande n’est pas prise en charge.\r\n",
+  "c1b_source_apres": "PRESENT",
+  "c1b_cible_apres": "ABSENT",
+  "c2a_avant": "PRESENT",
+  "c2a_issue": "ok",
+  "c2a_apres": "ABSENT",
+  "c2b_issue": "ok",
+  "c2b_apres": "ABSENT",
+  "critere4": {
+   "introuvable": "refus:ItemNotFoundException",
+   "chemin_introuvable": "refus:ItemNotFoundException",
+   "deja_present": "ok (Windows a ecrase AVANT nous)",
+   "lien_dur": "sortie=1",
+   ".faute-acces-refuse": "refus:UnauthorizedAccessException",
+   ".faute-disque-plein": "refus:ItemNotFoundException",
+   ".faute-non-supporte": "refus:ItemNotFoundException"
+  },
+  "apres": [
+   "sous-dossier",
+   "vide-cote-vm",
+   "ambigu.txt",
+   "AMBIGU.TXT",
+   "deja-b.txt",
+   "gros-lecture.bin",
+   "occupe-cote-local.txt",
+   "renomme.txt",
+   "sous-dossier\\profond",
+   "sous-dossier\\autre.txt",
+   "sous-dossier\\profond\\feuille.txt",
+   "vide-cote-vm\\inconnu-de-la-vm.txt"
+  ],
+  "apres_compte": 12,
+  "critere5": {
+   "repertoire_non_vide": "HORS ATTEINTE : le geste fige la mesure (voir le commentaire)",
+   "deja_present": "refus:Impossible de créer un fichier déjà existant.\r\n",
+   "casse_ambigue": "refus:ItemNotFoundException",
+   "silence": "refus:ItemNotFoundException"
+  },
+  "apres2": [
+   "sous-dossier",
+   "vide-cote-vm",
+   "a-deplacer.txt",
+   "ambigu.txt",
+   "AMBIGU.TXT",
+   "deja-b.txt",
+   "gros-lecture.bin",
+   "occupe-cote-local.txt",
+   "renomme.txt",
+   "sous-dossier\\profond",
+   "sous-dossier\\autre.txt",
+   "sous-dossier\\profond\\feuille.txt",
+   "vide-cote-vm\\inconnu-de-la-vm.txt"
+  ]
+ },
+ "suite_sans_objet": "canal coupe : compteur, relectures et arbre OPFS non relevables",
+ "ok": true
+}

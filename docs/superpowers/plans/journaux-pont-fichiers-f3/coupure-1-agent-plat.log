@@ -1,0 +1,346 @@
+2026-08-21T05:33:15.566347Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-21T05:33:15.670841Z  INFO agent::plateforme::session: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8080/agent" prefixe=F4z7KQooOQfJqh47PM0ETA expire_a=1787290995697
+2026-08-21T05:33:15.681209Z  INFO agent::superviseur::signalisation: déclaration du superviseur émise sur la session de contrôle (acceptation encore inconnue) session="F4z7KQooOQfJqh47PM0ETA:bureau"
+2026-08-21T05:33:15.683254Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-21T05:33:15.683291Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-21T05:33:15.683310Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant purge" nombre=3 attachees=3
+2026-08-21T05:33:15.683315Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant purge" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-21T05:33:15.683319Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant purge" nom=\\.\DISPLAY5 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 attachee=true x=2400 y=0 largeur=1280 hauteur=720
+2026-08-21T05:33:15.683324Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant purge" nom=\\.\DISPLAY6 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 attachee=true x=3680 y=0 largeur=1280 hauteur=720
+2026-08-21T05:33:15.691704Z  INFO agent::moniteurs_virtuels::purge: sortie virtuelle retirée par la purge numero=1 guid=9C4A1F6E-2B73-4D51-9E08-677541430001
+2026-08-21T05:33:15.701962Z  INFO agent::moniteurs_virtuels::purge: sortie virtuelle retirée par la purge numero=2 guid=9C4A1F6E-2B73-4D51-9E08-677541430002
+2026-08-21T05:33:15.851153Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\Users\Administrateur\Desktop\Gestionnaire de périphériques.lnk motif="extension" extension=msc
+2026-08-21T05:33:15.867325Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\Users\Administrateur\Desktop\Paramètres Windows.lnk motif="cible-vide"
+2026-08-21T05:33:15.867352Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\Users\Administrateur\Desktop\Services.lnk motif="extension" extension=msc
+2026-08-21T05:33:16.083119Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\Users\Administrateur\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\System Tools\computer.lnk motif="cible-vide"
+2026-08-21T05:33:16.083145Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\Users\Administrateur\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\System Tools\Control Panel.lnk motif="cible-vide"
+2026-08-21T05:33:16.083149Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\Users\Administrateur\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\System Tools\File Explorer.lnk motif="cible-vide"
+2026-08-21T05:33:16.083151Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\Users\Administrateur\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\System Tools\Run.lnk motif="cible-vide"
+2026-08-21T05:33:16.130332Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\Users\Administrateur\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Python 3.13\IDLE (Python 3.13 64-bit).lnk motif="cible-absente"
+2026-08-21T05:33:16.130369Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\Users\Administrateur\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Python 3.13\Python 3.13 (64-bit).lnk motif="cible-absente"
+2026-08-21T05:33:16.130373Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\Users\Administrateur\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Python 3.13\Python 3.13 Manuals (64-bit).lnk motif="extension" extension=html
+2026-08-21T05:33:16.130383Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\Users\Administrateur\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Python 3.13\Python 3.13 Module Docs (64-bit).lnk motif="cible-absente"
+2026-08-21T05:33:16.477912Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Windows Kits\Windows Software Development Kit\Documentation for Desktop Apps.lnk motif="extension" extension=url
+2026-08-21T05:33:16.477934Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Windows Kits\Windows Software Development Kit\Documentation for UWP Apps.lnk motif="extension" extension=url
+2026-08-21T05:33:16.477938Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Windows Kits\Windows Software Development Kit\Sample Desktop Apps.lnk motif="extension" extension=url
+2026-08-21T05:33:16.477942Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Windows Kits\Windows Software Development Kit\Sample UWP Apps.lnk motif="extension" extension=url
+2026-08-21T05:33:16.477944Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Windows Kits\Windows Software Development Kit\Tools for Desktop Apps.lnk motif="extension" extension=url
+2026-08-21T05:33:16.477946Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Windows Kits\Windows Software Development Kit\Tools for UWP Apps.lnk motif="extension" extension=url
+2026-08-21T05:33:16.618560Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\smartmontools Daily Builds.lnk motif="cible-vide"
+2026-08-21T05:33:16.618582Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\smartmontools Home Page.lnk motif="cible-vide"
+2026-08-21T05:33:16.803545Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\Documentation\ChangeLog.lnk motif="extension" extension=txt
+2026-08-21T05:33:16.803577Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\Documentation\COPYING.lnk motif="extension" extension=txt
+2026-08-21T05:33:16.823054Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\Documentation\NEWS.lnk motif="extension" extension=txt
+2026-08-21T05:33:16.823075Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\Documentation\smartctl manual page (html).lnk motif="extension" extension=html
+2026-08-21T05:33:16.823079Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\Documentation\smartctl manual page (pdf).lnk motif="extension" extension=pdf
+2026-08-21T05:33:16.823082Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\Documentation\smartd manual page (html).lnk motif="extension" extension=html
+2026-08-21T05:33:16.823085Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\Documentation\smartd manual page (pdf).lnk motif="extension" extension=pdf
+2026-08-21T05:33:16.823087Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\Documentation\smartd.conf manual page (html).lnk motif="extension" extension=html
+2026-08-21T05:33:16.823090Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\Documentation\smartd.conf manual page (pdf).lnk motif="extension" extension=pdf
+2026-08-21T05:33:16.840142Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Revo Uninstaller\Revo Uninstaller Help.lnk motif="extension" extension=pdf
+2026-08-21T05:33:16.840192Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\RetroArch\RetroArch Website.lnk motif="extension" extension=url
+2026-08-21T05:33:16.871317Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\NVIDIA Corporation\NVIDIA Tools Extension (64 bit)\Browse NVIDIA Tools Extension.lnk motif="extension" extension=
+2026-08-21T05:33:16.881770Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\NVIDIA Corporation\Nsight Visual Studio Edition 2025.1\Nsight Redistributable.lnk motif="extension" extension=msi
+2026-08-21T05:33:16.938364Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\NVIDIA Corporation\CUDA Toolkit\v11.2\Visual Profiler.lnk motif="extension" extension=bat
+2026-08-21T05:33:16.938387Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\NVIDIA Corporation\CUDA Samples\v11.2\Browse CUDA Samples.lnk motif="extension" extension=2
+2026-08-21T05:33:16.947548Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Microsoft Xbox 360 Accessories\Aide de Microsoft Xbox 360 Accessories.lnk motif="extension" extension=chm
+2026-08-21T05:33:17.061496Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\CMake\CMake Documentation.lnk motif="extension" extension=html
+2026-08-21T05:33:17.068458Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Blue Ripple Sound\Rapture3D - Help.lnk motif="extension" extension=chm
+2026-08-21T05:33:17.113463Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Component Services.lnk motif="extension" extension=msc
+2026-08-21T05:33:17.113502Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Computer Management.lnk motif="extension" extension=msc
+2026-08-21T05:33:17.133433Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Event Viewer.lnk motif="extension" extension=msc
+2026-08-21T05:33:17.182862Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Network Policy Server.lnk motif="extension" extension=msc
+2026-08-21T05:33:17.203189Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Performance Monitor.lnk motif="extension" extension=msc
+2026-08-21T05:33:17.236952Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Security Configuration Management.lnk motif="extension" extension=msc
+2026-08-21T05:33:17.237036Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\services.lnk motif="extension" extension=msc
+2026-08-21T05:33:17.263479Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Task Scheduler.lnk motif="extension" extension=msc
+2026-08-21T05:33:17.263515Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Windows Defender Firewall with Advanced Security.lnk motif="extension" extension=msc
+2026-08-21T05:33:17.263520Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Windows Server Backup.lnk motif="extension" extension=msc
+2026-08-21T05:33:17.263523Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Remote Desktop Services\RD Gateway Manager.lnk motif="extension" extension=msc
+2026-08-21T05:33:17.272380Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Remote Desktop Services\Remote Desktop Licensing Diagnosis.lnk motif="extension" extension=msc
+2026-08-21T05:33:17.411084Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Accessories\System Tools\Windows Server Backup.lnk motif="extension" extension=msc
+2026-08-21T05:33:17.429731Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\7-Zip\7-Zip Help.lnk motif="extension" extension=chm
+2026-08-21T05:33:17.429869Z  INFO agent::apps::boucle: catalogue reconcilie total=220 retenus=169 cles=156 icones=156 icones_echouees=0 icones_distinctes=98 apparues=156 modifiees=0 disparues=0 duree_ms=1758
+2026-08-21T05:33:18.703728Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-21T05:33:18.703765Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-21T05:33:18.703775Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="après purge" nombre=1 attachees=1
+2026-08-21T05:33:18.703786Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après purge" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-21T05:33:18.703791Z  INFO agent::moniteurs_virtuels::purge: purge terminée retirees=2 avant=3 apres=1
+2026-08-21T05:33:18.708205Z  INFO agent::superviseur::lanceur: capteur lancé pid=17188
+2026-08-21T05:33:18.710288Z  INFO agent::superviseur::lanceur::pont: pont fichiers lancé pid=18672 session="F4z7KQooOQfJqh47PM0ETA:fichiers"
+2026-08-21T05:33:18.710307Z  WARN agent::superviseur::boucle::surveillance_pont: pont fichiers lancé ou relancé (tentatives suivantes silencieuses tant que le cycle se répète) pid_neuf=18672
+2026-08-21T05:33:18.716618Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-21T05:33:18.716694Z  INFO agent::capteur: capteur démarré tube="\\\\.\\pipe\\agent-capteur"
+2026-08-21T05:33:18.718491Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-21T05:33:18.718524Z  INFO agent: identité héritée du superviseur (AGENT_JETON) : ce processus n'ouvre aucun canal /agent, un seul socket par VM
+2026-08-21T05:33:18.718554Z  WARN agent::apps: decouverte d'applications inactive : ce processus n'a pas de canal /agent (identité héritée du superviseur, ou AGENT_VM/AGENT_SECRET absents)
+2026-08-21T05:33:18.719444Z  INFO agent::pont::transport: socket UDP du pont fichiers addr=192.168.3.2:53454
+2026-08-21T05:33:18.748043Z  INFO agent::signaling: déclaration de l'agent émise au signaling (acceptation encore inconnue) session="F4z7KQooOQfJqh47PM0ETA:fichiers"
+2026-08-21T05:33:19.113708Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-21T05:33:19.113746Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-21T05:33:19.113755Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant création de sortie" nombre=1 attachees=1
+2026-08-21T05:33:19.113758Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-21T05:33:19.114094Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle créée id=257 adaptateur_bas=62078 adaptateur_haut=0 guid=9C4A1F6E-2B73-4D51-9E08-677541430001 largeur=780 hauteur=492 hertz=60
+2026-08-21T05:33:19.333582Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-21T05:33:19.333614Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-21T05:33:19.333621Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant création de sortie" nombre=2 attachees=2
+2026-08-21T05:33:19.333625Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-21T05:33:19.333630Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY5 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 attachee=true x=2400 y=0 largeur=1280 hauteur=720
+2026-08-21T05:33:19.333747Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle créée id=256 adaptateur_bas=62078 adaptateur_haut=0 guid=9C4A1F6E-2B73-4D51-9E08-677541430002 largeur=780 hauteur=492 hertz=60
+2026-08-21T05:33:19.463954Z  INFO agent::superviseur::boucle::surveillance_pont: pont fichiers de nouveau stable pid=18672
+2026-08-21T05:33:19.466451Z  INFO agent::superviseur::enfants: enfant lancé session=F4z7KQooOQfJqh47PM0ETA:w-2 pid=23404 sortie=\\.\DISPLAY5
+2026-08-21T05:33:19.469376Z  INFO agent::superviseur::enfants: enfant lancé session=F4z7KQooOQfJqh47PM0ETA:w-1 pid=9520 sortie=\\.\DISPLAY6
+2026-08-21T05:33:19.476223Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-21T05:33:19.476261Z  INFO agent: identité héritée du superviseur (AGENT_JETON) : ce processus n'ouvre aucun canal /agent, un seul socket par VM
+2026-08-21T05:33:19.476301Z  WARN agent::apps: decouverte d'applications inactive : ce processus n'a pas de canal /agent (identité héritée du superviseur, ou AGENT_VM/AGENT_SECRET absents)
+2026-08-21T05:33:19.476314Z  INFO agent::demarrage::source: source distante servie par le capteur (mode multi-fenêtres) nom_sortie=\\.\DISPLAY5 bitrate=12000000 fps=90
+2026-08-21T05:33:19.478348Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-21T05:33:19.478382Z  INFO agent: identité héritée du superviseur (AGENT_JETON) : ce processus n'ouvre aucun canal /agent, un seul socket par VM
+2026-08-21T05:33:19.478414Z  WARN agent::apps: decouverte d'applications inactive : ce processus n'a pas de canal /agent (identité héritée du superviseur, ou AGENT_VM/AGENT_SECRET absents)
+2026-08-21T05:33:19.478428Z  INFO agent::demarrage::source: source distante servie par le capteur (mode multi-fenêtres) nom_sortie=\\.\DISPLAY6 bitrate=12000000 fps=90
+2026-08-21T05:33:19.481137Z  INFO agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-21T05:33:19.481281Z  INFO agent::capteur::tube: attaché au capteur session=F4z7KQooOQfJqh47PM0ETA:w-2 sortie=\\.\DISPLAY5 largeur=780 hauteur=492
+2026-08-21T05:33:19.481423Z  INFO fenetre{session=F4z7KQooOQfJqh47PM0ETA:w-2}: agent::capteur::fenetre: fenêtre attachée au capteur session=F4z7KQooOQfJqh47PM0ETA:w-2 pid=10640 sortie=\\.\DISPLAY5 largeur=780 hauteur=492
+2026-08-21T05:33:19.481529Z  INFO fenetre{session=F4z7KQooOQfJqh47PM0ETA:w-2}: agent::capteur::sommeil::parts: budget de debit de la session budget_bps=12000000
+2026-08-21T05:33:19.481624Z  INFO agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 nom_sortie=\\.\DISPLAY6 attachee=true
+2026-08-21T05:33:19.481692Z  INFO agent::capteur::tube: attaché au capteur session=F4z7KQooOQfJqh47PM0ETA:w-1 sortie=\\.\DISPLAY6 largeur=780 hauteur=492
+2026-08-21T05:33:19.481777Z  INFO fenetre{session=F4z7KQooOQfJqh47PM0ETA:w-1}: agent::capteur::fenetre: fenêtre attachée au capteur session=F4z7KQooOQfJqh47PM0ETA:w-1 pid=12008 sortie=\\.\DISPLAY6 largeur=780 hauteur=492
+2026-08-21T05:33:19.483946Z  INFO agent::signaling: déclaration de l'agent émise au signaling (acceptation encore inconnue) session="F4z7KQooOQfJqh47PM0ETA:w-1"
+2026-08-21T05:33:19.484013Z  INFO agent::transport::initialisation: socket UDP de l'agent addr=192.168.3.2:53458
+2026-08-21T05:33:19.484797Z  INFO agent::signaling: déclaration de l'agent émise au signaling (acceptation encore inconnue) session="F4z7KQooOQfJqh47PM0ETA:w-2"
+2026-08-21T05:33:19.484869Z  INFO agent::transport::initialisation: socket UDP de l'agent addr=192.168.3.2:53459
+2026-08-21T05:33:19.517601Z  INFO agent::windows_audio: source audio démarrée format=process loopback pid=12008 — 48000 Hz, 2 canaux, 16 bits entiers
+2026-08-21T05:33:19.517619Z  INFO agent::demarrage::audio: audio activé format="process loopback pid=12008 — 48000 Hz, 2 canaux, 16 bits entiers" pid=12008
+2026-08-21T05:33:19.518418Z  INFO agent::windows_audio: source audio démarrée format=process loopback pid=10640 — 48000 Hz, 2 canaux, 16 bits entiers
+2026-08-21T05:33:19.518432Z  INFO agent::demarrage::audio: audio activé format="process loopback pid=10640 — 48000 Hz, 2 canaux, 16 bits entiers" pid=10640
+2026-08-21T05:33:19.519160Z  INFO agent::wasapi::rendu: cable de rendu retenu pour l'ecriture du micro variable="MICRO_PERIPHERIQUE" demande=VB-Audio integree=true retenu=Haut-parleurs (VB-Audio Virtual Cable) identifiant={0.0.0.00000000}.{deec1914-6490-47ee-9475-091b9a2ea537} critere="nom partiel"
+2026-08-21T05:33:19.520018Z  INFO agent::wasapi::rendu: cable de rendu retenu pour l'ecriture du micro variable="MICRO_PERIPHERIQUE" demande=VB-Audio integree=true retenu=Haut-parleurs (VB-Audio Virtual Cable) identifiant={0.0.0.00000000}.{deec1914-6490-47ee-9475-091b9a2ea537} critere="nom partiel"
+2026-08-21T05:33:19.529270Z  INFO agent::windows_micro: micro : ecriture sur le cable ARMEE session=F4z7KQooOQfJqh47PM0ETA:w-2 cable={0.0.0.00000000}.{deec1914-6490-47ee-9475-091b9a2ea537} format=48000 Hz, 2 canaux, 32 bits, flottant reveil="evenement" espace_mutex="Global"
+2026-08-21T05:33:19.529586Z  INFO agent::windows_micro: micro : ecriture sur le cable ARMEE session=F4z7KQooOQfJqh47PM0ETA:w-1 cable={0.0.0.00000000}.{deec1914-6490-47ee-9475-091b9a2ea537} format=48000 Hz, 2 canaux, 32 bits, flottant reveil="evenement" espace_mutex="Global"
+2026-08-21T05:33:20.538337Z  INFO agent::windows_micro: micro ecrit sur le cable session=F4z7KQooOQfJqh47PM0ETA:w-2 ecrites=50400 silence=50400 retards=0 reveil="evenement" deposees=0 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+2026-08-21T05:33:20.538337Z  INFO agent::windows_micro: micro ecrit sur le cable session=F4z7KQooOQfJqh47PM0ETA:w-1 ecrites=50400 silence=50400 retards=0 reveil="evenement" deposees=0 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+2026-08-21T05:33:21.538888Z  INFO agent::windows_micro: micro ecrit sur le cable session=F4z7KQooOQfJqh47PM0ETA:w-2 ecrites=48000 silence=48000 retards=0 reveil="evenement" deposees=0 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+2026-08-21T05:33:21.538888Z  INFO agent::windows_micro: micro ecrit sur le cable session=F4z7KQooOQfJqh47PM0ETA:w-1 ecrites=48000 silence=48000 retards=0 reveil="evenement" deposees=0 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+2026-08-21T05:33:21.705477Z  INFO agent::pont: réponse SDP du pont envoyée
+2026-08-21T05:33:21.706175Z  INFO agent::pont::projfs::racine: racine marquée pour la première fois racine=C:\Users\Administrateur\Mes Fichiers
+2026-08-21T05:33:21.708258Z  INFO agent::pont::projfs: racine de virtualisation ProjFS démarrée racine=C:\Users\Administrateur\Mes Fichiers
+2026-08-21T05:33:21.708289Z  INFO agent::pont: racine du pont fichiers montée racine=C:\Users\Administrateur\Mes Fichiers
+2026-08-21T05:33:21.875309Z  INFO agent::pont::transport: pont fichiers connecté au navigateur
+2026-08-21T05:33:22.002223Z  INFO agent::pont::transport: canal du pont fichiers ouvert label=fichiers
+2026-08-21T05:33:22.002267Z  INFO agent::pont::service: canal du pont ouvert : le navigateur peut servir les requêtes
+2026-08-21T05:33:22.548858Z  INFO agent::windows_micro: micro ecrit sur le cable session=F4z7KQooOQfJqh47PM0ETA:w-1 ecrites=48480 silence=48480 retards=0 reveil="evenement" deposees=0 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+2026-08-21T05:33:22.548858Z  INFO agent::windows_micro: micro ecrit sur le cable session=F4z7KQooOQfJqh47PM0ETA:w-2 ecrites=48480 silence=48480 retards=0 reveil="evenement" deposees=0 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+2026-08-21T05:33:23.549243Z  INFO agent::windows_micro: micro ecrit sur le cable session=F4z7KQooOQfJqh47PM0ETA:w-2 ecrites=48000 silence=48000 retards=0 reveil="evenement" deposees=0 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+2026-08-21T05:33:23.549243Z  INFO agent::windows_micro: micro ecrit sur le cable session=F4z7KQooOQfJqh47PM0ETA:w-1 ecrites=48000 silence=48000 retards=0 reveil="evenement" deposees=0 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+2026-08-21T05:33:24.559253Z  INFO agent::windows_micro: micro ecrit sur le cable session=F4z7KQooOQfJqh47PM0ETA:w-2 ecrites=48480 silence=48480 retards=0 reveil="evenement" deposees=0 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+2026-08-21T05:33:24.559253Z  INFO agent::windows_micro: micro ecrit sur le cable session=F4z7KQooOQfJqh47PM0ETA:w-1 ecrites=48480 silence=48480 retards=0 reveil="evenement" deposees=0 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+2026-08-21T05:33:25.568907Z  INFO agent::windows_micro: micro ecrit sur le cable session=F4z7KQooOQfJqh47PM0ETA:w-2 ecrites=48480 silence=48480 retards=0 reveil="evenement" deposees=0 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+2026-08-21T05:33:25.568907Z  INFO agent::windows_micro: micro ecrit sur le cable session=F4z7KQooOQfJqh47PM0ETA:w-1 ecrites=48480 silence=48480 retards=0 reveil="evenement" deposees=0 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+2026-08-21T05:33:26.578744Z  INFO agent::windows_micro: micro ecrit sur le cable session=F4z7KQooOQfJqh47PM0ETA:w-2 ecrites=48480 silence=48480 retards=0 reveil="evenement" deposees=0 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+2026-08-21T05:33:26.578744Z  INFO agent::windows_micro: micro ecrit sur le cable session=F4z7KQooOQfJqh47PM0ETA:w-1 ecrites=48480 silence=48480 retards=0 reveil="evenement" deposees=0 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+2026-08-21T05:33:27.579171Z  INFO agent::windows_micro: micro ecrit sur le cable session=F4z7KQooOQfJqh47PM0ETA:w-2 ecrites=48000 silence=48000 retards=0 reveil="evenement" deposees=0 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+2026-08-21T05:33:27.579171Z  INFO agent::windows_micro: micro ecrit sur le cable session=F4z7KQooOQfJqh47PM0ETA:w-1 ecrites=48000 silence=48000 retards=0 reveil="evenement" deposees=0 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+2026-08-21T05:33:28.588920Z  INFO agent::windows_micro: micro ecrit sur le cable session=F4z7KQooOQfJqh47PM0ETA:w-2 ecrites=48480 silence=48480 retards=0 reveil="evenement" deposees=0 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+2026-08-21T05:33:28.588920Z  INFO agent::windows_micro: micro ecrit sur le cable session=F4z7KQooOQfJqh47PM0ETA:w-1 ecrites=48480 silence=48480 retards=0 reveil="evenement" deposees=0 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+2026-08-21T05:33:29.482474Z  INFO fenetre{session=F4z7KQooOQfJqh47PM0ETA:w-2}: agent::capteur::fenetre: cadence du capteur session=F4z7KQooOQfJqh47PM0ETA:w-2 images=0 endormie=true cadence="0.0"
+2026-08-21T05:33:29.482473Z  INFO fenetre{session=F4z7KQooOQfJqh47PM0ETA:w-1}: agent::capteur::fenetre: cadence du capteur session=F4z7KQooOQfJqh47PM0ETA:w-1 images=0 endormie=true cadence="0.0"
+2026-08-21T05:33:29.599127Z  INFO agent::windows_micro: micro ecrit sur le cable session=F4z7KQooOQfJqh47PM0ETA:w-2 ecrites=48480 silence=48480 retards=0 reveil="evenement" deposees=0 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+2026-08-21T05:33:29.599127Z  INFO agent::windows_micro: micro ecrit sur le cable session=F4z7KQooOQfJqh47PM0ETA:w-1 ecrites=48480 silence=48480 retards=0 reveil="evenement" deposees=0 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+2026-08-21T05:33:30.608870Z  INFO agent::windows_micro: micro ecrit sur le cable session=F4z7KQooOQfJqh47PM0ETA:w-2 ecrites=48480 silence=48480 retards=0 reveil="evenement" deposees=0 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+2026-08-21T05:33:30.608870Z  INFO agent::windows_micro: micro ecrit sur le cable session=F4z7KQooOQfJqh47PM0ETA:w-1 ecrites=48480 silence=48480 retards=0 reveil="evenement" deposees=0 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+2026-08-21T05:33:31.618921Z  INFO agent::windows_micro: micro ecrit sur le cable session=F4z7KQooOQfJqh47PM0ETA:w-2 ecrites=48480 silence=48480 retards=0 reveil="evenement" deposees=0 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+2026-08-21T05:33:31.618921Z  INFO agent::windows_micro: micro ecrit sur le cable session=F4z7KQooOQfJqh47PM0ETA:w-1 ecrites=48480 silence=48480 retards=0 reveil="evenement" deposees=0 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+2026-08-21T05:33:31.715060Z  INFO agent::pont::service: pont en vol=0 sans_commande=0 plus_ancienne_ms=0 sessions=2 octets_hydrates=0 entrees_hydratees=0
+2026-08-21T05:33:31.715094Z  INFO agent::pont::service: codes rendus total=0 introuvable=0 chemin-introuvable=0 acces-refuse=0 canal-ferme=0 delai-depasse=0 abandonnee=0 disque-plein=0 non-supporte=0 repertoire-non-vide=0 deja-present=0 protege-en-ecriture=0 inattendue=0 | jamais rendus : introuvable,chemin-introuvable,acces-refuse,canal-ferme,delai-depasse,abandonnee,disque-plein,non-supporte,repertoire-non-vide,deja-present,protege-en-ecriture,inattendue
+2026-08-21T05:33:31.967228Z  WARN agent::pont::service: le navigateur refuse commande=Some(43) correlation=12 code=Some(Introuvable) cause=Introuvable
+2026-08-21T05:33:31.987870Z DEBUG agent::pont::projfs::rappels::notification: notification ProjFS code=32 est_repertoire=false chemin=projete.txt destination=Some(Ok("renomme.txt")) cible=DansLaRacine
+2026-08-21T05:33:31.988134Z DEBUG agent::pont::projfs::rappels::notification: notification ProjFS code=128 est_repertoire=false chemin=projete.txt destination=Some(Ok("renomme.txt")) cible=DansLaRacine
+2026-08-21T05:33:31.988181Z DEBUG agent::pont::ecriture::fil::mutations: mutation poussee quoi=Renommer { de: "projete.txt", vers: "renomme.txt", repertoire: false } correlation=14
+2026-08-21T05:33:32.055077Z  WARN agent::pont::service: le navigateur refuse commande=Some(47) correlation=15 code=Some(Introuvable) cause=Introuvable
+2026-08-21T05:33:32.076520Z DEBUG agent::pont::service::reponses: mutation acquittee chemin="projete.txt" correlation=14 renommage=true
+2026-08-21T05:33:32.076545Z DEBUG agent::pont::service::verbes: aucune commande ProjFS a completer : c'est une ecriture resultat=0x00000000
+2026-08-21T05:33:32.076552Z  INFO agent::pont::ecriture::fil: mutation acquittee : le poste local a suivi correlation=14
+2026-08-21T05:33:32.097522Z  WARN agent::pont::service: le navigateur refuse commande=Some(48) correlation=16 code=Some(Introuvable) cause=Introuvable
+2026-08-21T05:33:32.097734Z DEBUG agent::pont::projfs::rappels::notification: notification ProjFS code=4 est_repertoire=true chemin=sous-dossier\profond destination=None cible=SansObjet
+2026-08-21T05:33:32.101826Z DEBUG agent::pont::projfs::rappels::notification: notification ProjFS code=4 est_repertoire=false chemin=sous-dossier\profond\feuille.txt destination=None cible=SansObjet
+2026-08-21T05:33:32.102098Z DEBUG agent::pont::projfs::rappels::notification: notification ProjFS code=1024 est_repertoire=false chemin=sous-dossier\profond\feuille.txt destination=None cible=SansObjet
+2026-08-21T05:33:32.102394Z DEBUG agent::pont::ecriture::fil: creation poussee chemin="sous-dossier/profond" repertoire=true correlation=17
+2026-08-21T05:33:32.151742Z DEBUG agent::pont::service::reponses: création acquittée chemin="sous-dossier/profond" correlation=17
+2026-08-21T05:33:32.151774Z DEBUG agent::pont::service::verbes: aucune commande ProjFS a completer : c'est une ecriture resultat=0x00000000
+2026-08-21T05:33:32.151784Z  INFO agent::pont::ecriture::fil: ecriture acquittee : les octets sont sur le poste local chemin="sous-dossier/profond" octets=0 duree_ms=49
+2026-08-21T05:33:32.155994Z DEBUG agent::pont::ecriture::fil: ecriture poussee chemin="sous-dossier/profond/feuille.txt" correlation=18 position=0 longueur=10 premier=true dernier=true
+2026-08-21T05:33:32.217226Z DEBUG agent::pont::service::reponses: morceau d'écriture acquitté chemin="sous-dossier/profond/feuille.txt" correlation=18 dernier=true
+2026-08-21T05:33:32.217258Z DEBUG agent::pont::service::verbes: aucune commande ProjFS a completer : c'est une ecriture resultat=0x00000000
+2026-08-21T05:33:32.217268Z  INFO agent::pont::ecriture::fil: ecriture acquittee : les octets sont sur le poste local chemin="sous-dossier/profond/feuille.txt" octets=10 duree_ms=61
+2026-08-21T05:33:32.628557Z  INFO agent::windows_micro: micro ecrit sur le cable session=F4z7KQooOQfJqh47PM0ETA:w-2 ecrites=48480 silence=48480 retards=0 reveil="evenement" deposees=0 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+2026-08-21T05:33:32.628557Z  INFO agent::windows_micro: micro ecrit sur le cable session=F4z7KQooOQfJqh47PM0ETA:w-1 ecrites=48480 silence=48480 retards=0 reveil="evenement" deposees=0 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+2026-08-21T05:33:32.931623Z  WARN agent::pont::service: le navigateur refuse commande=Some(52) correlation=19 code=Some(Introuvable) cause=Introuvable
+2026-08-21T05:33:32.958049Z  WARN agent::pont::service: le navigateur refuse commande=Some(53) correlation=20 code=Some(Introuvable) cause=Introuvable
+2026-08-21T05:33:32.982652Z DEBUG agent::pont::projfs::rappels::notification: notification ProjFS code=16 est_repertoire=false chemin=Casse.txt destination=None cible=SansObjet
+2026-08-21T05:33:32.982880Z DEBUG agent::pont::projfs::rappels::notification: notification ProjFS code=2048 est_repertoire=false chemin=Casse.txt destination=None cible=SansObjet
+2026-08-21T05:33:32.982912Z DEBUG agent::pont::ecriture::fil::mutations: mutation poussee quoi=Supprimer { chemin: "Casse.txt", repertoire: false } correlation=22
+2026-08-21T05:33:33.025237Z DEBUG agent::pont::service::reponses: mutation acquittee chemin="Casse.txt" correlation=22 renommage=false
+2026-08-21T05:33:33.025270Z DEBUG agent::pont::service::verbes: aucune commande ProjFS a completer : c'est une ecriture resultat=0x00000000
+2026-08-21T05:33:33.025277Z  INFO agent::pont::ecriture::fil: mutation acquittee : le poste local a suivi correlation=22
+2026-08-21T05:33:33.047253Z  WARN agent::pont::service: le navigateur refuse commande=Some(57) correlation=23 code=Some(Introuvable) cause=Introuvable
+2026-08-21T05:33:33.069451Z  WARN agent::pont::service: le navigateur refuse commande=Some(58) correlation=24 code=Some(Introuvable) cause=Introuvable
+2026-08-21T05:33:33.069639Z DEBUG agent::pont::projfs::rappels::notification: notification ProjFS code=4 est_repertoire=true chemin=a-effacer destination=None cible=SansObjet
+2026-08-21T05:33:33.069928Z DEBUG agent::pont::projfs::rappels::notification: notification ProjFS code=4 est_repertoire=true chemin=a-effacer\dedans destination=None cible=SansObjet
+2026-08-21T05:33:33.070855Z DEBUG agent::pont::projfs::rappels::notification: notification ProjFS code=4 est_repertoire=false chemin=a-effacer\un.txt destination=None cible=SansObjet
+2026-08-21T05:33:33.071023Z DEBUG agent::pont::projfs::rappels::notification: notification ProjFS code=1024 est_repertoire=false chemin=a-effacer\un.txt destination=None cible=SansObjet
+2026-08-21T05:33:33.071680Z DEBUG agent::pont::projfs::rappels::notification: notification ProjFS code=4 est_repertoire=false chemin=a-effacer\dedans\deux.txt destination=None cible=SansObjet
+2026-08-21T05:33:33.071822Z DEBUG agent::pont::projfs::rappels::notification: notification ProjFS code=1024 est_repertoire=false chemin=a-effacer\dedans\deux.txt destination=None cible=SansObjet
+2026-08-21T05:33:33.074241Z DEBUG agent::pont::ecriture::fil: creation poussee chemin="a-effacer" repertoire=true correlation=25
+2026-08-21T05:33:33.135970Z DEBUG agent::pont::service::reponses: création acquittée chemin="a-effacer" correlation=25
+2026-08-21T05:33:33.135998Z DEBUG agent::pont::service::verbes: aucune commande ProjFS a completer : c'est une ecriture resultat=0x00000000
+2026-08-21T05:33:33.136007Z  INFO agent::pont::ecriture::fil: ecriture acquittee : les octets sont sur le poste local chemin="a-effacer" octets=0 duree_ms=61
+2026-08-21T05:33:33.140333Z DEBUG agent::pont::ecriture::fil: creation poussee chemin="a-effacer/dedans" repertoire=true correlation=26
+2026-08-21T05:33:33.224325Z DEBUG agent::pont::service::reponses: création acquittée chemin="a-effacer/dedans" correlation=26
+2026-08-21T05:33:33.224350Z DEBUG agent::pont::service::verbes: aucune commande ProjFS a completer : c'est une ecriture resultat=0x00000000
+2026-08-21T05:33:33.224359Z  INFO agent::pont::ecriture::fil: ecriture acquittee : les octets sont sur le poste local chemin="a-effacer/dedans" octets=0 duree_ms=84
+2026-08-21T05:33:33.228424Z DEBUG agent::pont::ecriture::fil: ecriture poussee chemin="a-effacer/un.txt" correlation=27 position=0 longueur=2 premier=true dernier=true
+2026-08-21T05:33:33.270920Z DEBUG agent::pont::service::reponses: morceau d'écriture acquitté chemin="a-effacer/un.txt" correlation=27 dernier=true
+2026-08-21T05:33:33.270943Z DEBUG agent::pont::service::verbes: aucune commande ProjFS a completer : c'est une ecriture resultat=0x00000000
+2026-08-21T05:33:33.270952Z  INFO agent::pont::ecriture::fil: ecriture acquittee : les octets sont sur le poste local chemin="a-effacer/un.txt" octets=2 duree_ms=42
+2026-08-21T05:33:33.274976Z DEBUG agent::pont::ecriture::fil: ecriture poussee chemin="a-effacer/dedans/deux.txt" correlation=28 position=0 longueur=4 premier=true dernier=true
+2026-08-21T05:33:33.317468Z DEBUG agent::pont::service::reponses: morceau d'écriture acquitté chemin="a-effacer/dedans/deux.txt" correlation=28 dernier=true
+2026-08-21T05:33:33.317492Z DEBUG agent::pont::service::verbes: aucune commande ProjFS a completer : c'est une ecriture resultat=0x00000000
+2026-08-21T05:33:33.317501Z  INFO agent::pont::ecriture::fil: ecriture acquittee : les octets sont sur le poste local chemin="a-effacer/dedans/deux.txt" octets=4 duree_ms=42
+2026-08-21T05:33:33.628949Z  INFO agent::windows_micro: micro ecrit sur le cable session=F4z7KQooOQfJqh47PM0ETA:w-2 ecrites=48000 silence=48000 retards=0 reveil="evenement" deposees=0 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+2026-08-21T05:33:33.628949Z  INFO agent::windows_micro: micro ecrit sur le cable session=F4z7KQooOQfJqh47PM0ETA:w-1 ecrites=48000 silence=48000 retards=0 reveil="evenement" deposees=0 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+2026-08-21T05:33:33.902964Z DEBUG agent::pont::projfs::rappels::notification: notification ProjFS code=16 est_repertoire=false chemin=a-effacer\dedans\deux.txt destination=None cible=SansObjet
+2026-08-21T05:33:33.903176Z DEBUG agent::pont::projfs::rappels::notification: notification ProjFS code=2048 est_repertoire=false chemin=a-effacer\dedans\deux.txt destination=None cible=SansObjet
+2026-08-21T05:33:33.903210Z DEBUG agent::pont::ecriture::fil::mutations: mutation poussee quoi=Supprimer { chemin: "a-effacer/dedans/deux.txt", repertoire: false } correlation=30
+2026-08-21T05:33:33.944749Z DEBUG agent::pont::projfs::rappels::notification: notification ProjFS code=16 est_repertoire=true chemin=a-effacer\dedans destination=None cible=SansObjet
+2026-08-21T05:33:33.944947Z DEBUG agent::pont::projfs::rappels::notification: notification ProjFS code=2048 est_repertoire=true chemin=a-effacer\dedans destination=None cible=SansObjet
+2026-08-21T05:33:33.965699Z DEBUG agent::pont::service::reponses: mutation acquittee chemin="a-effacer/dedans/deux.txt" correlation=30 renommage=false
+2026-08-21T05:33:33.965722Z DEBUG agent::pont::service::verbes: aucune commande ProjFS a completer : c'est une ecriture resultat=0x00000000
+2026-08-21T05:33:33.965728Z  INFO agent::pont::ecriture::fil: mutation acquittee : le poste local a suivi correlation=30
+2026-08-21T05:33:33.965743Z DEBUG agent::pont::ecriture::fil::mutations: mutation poussee quoi=Supprimer { chemin: "a-effacer/dedans", repertoire: true } correlation=33
+2026-08-21T05:33:33.986318Z DEBUG agent::pont::projfs::rappels::notification: notification ProjFS code=16 est_repertoire=false chemin=a-effacer\un.txt destination=None cible=SansObjet
+2026-08-21T05:33:33.986499Z DEBUG agent::pont::projfs::rappels::notification: notification ProjFS code=2048 est_repertoire=false chemin=a-effacer\un.txt destination=None cible=SansObjet
+2026-08-21T05:33:34.007262Z DEBUG agent::pont::service::reponses: mutation acquittee chemin="a-effacer/dedans" correlation=33 renommage=false
+2026-08-21T05:33:34.007287Z DEBUG agent::pont::service::verbes: aucune commande ProjFS a completer : c'est une ecriture resultat=0x00000000
+2026-08-21T05:33:34.007293Z  INFO agent::pont::ecriture::fil: mutation acquittee : le poste local a suivi correlation=33
+2026-08-21T05:33:34.007305Z DEBUG agent::pont::ecriture::fil::mutations: mutation poussee quoi=Supprimer { chemin: "a-effacer/un.txt", repertoire: false } correlation=35
+2026-08-21T05:33:34.029297Z DEBUG agent::pont::projfs::rappels::notification: notification ProjFS code=16 est_repertoire=true chemin=a-effacer destination=None cible=SansObjet
+2026-08-21T05:33:34.029548Z DEBUG agent::pont::projfs::rappels::notification: notification ProjFS code=2048 est_repertoire=true chemin=a-effacer destination=None cible=SansObjet
+2026-08-21T05:33:34.052171Z DEBUG agent::pont::service::reponses: mutation acquittee chemin="a-effacer/un.txt" correlation=35 renommage=false
+2026-08-21T05:33:34.052197Z DEBUG agent::pont::service::verbes: aucune commande ProjFS a completer : c'est une ecriture resultat=0x00000000
+2026-08-21T05:33:34.052203Z  INFO agent::pont::ecriture::fil: mutation acquittee : le poste local a suivi correlation=35
+2026-08-21T05:33:34.052215Z DEBUG agent::pont::ecriture::fil::mutations: mutation poussee quoi=Supprimer { chemin: "a-effacer", repertoire: true } correlation=37
+2026-08-21T05:33:34.072588Z  WARN agent::pont::service: le navigateur refuse commande=Some(77) correlation=36 code=Some(Introuvable) cause=Introuvable
+2026-08-21T05:33:34.098709Z DEBUG agent::pont::service::reponses: mutation acquittee chemin="a-effacer" correlation=37 renommage=false
+2026-08-21T05:33:34.098730Z DEBUG agent::pont::service::verbes: aucune commande ProjFS a completer : c'est une ecriture resultat=0x00000000
+2026-08-21T05:33:34.098735Z  INFO agent::pont::ecriture::fil: mutation acquittee : le poste local a suivi correlation=37
+2026-08-21T05:33:34.119165Z  WARN agent::pont::service: le navigateur refuse commande=Some(78) correlation=38 code=Some(Introuvable) cause=Introuvable
+2026-08-21T05:33:34.140709Z  WARN agent::pont::service: le navigateur refuse commande=Some(79) correlation=39 code=Some(Introuvable) cause=Introuvable
+2026-08-21T05:33:34.162672Z  WARN agent::pont::service: le navigateur refuse commande=Some(80) correlation=40 code=Some(Introuvable) cause=Introuvable
+2026-08-21T05:33:34.162865Z DEBUG agent::pont::projfs::rappels::notification: notification ProjFS code=4 est_repertoire=false chemin=deja-a.txt destination=None cible=SansObjet
+2026-08-21T05:33:34.163080Z DEBUG agent::pont::projfs::rappels::notification: notification ProjFS code=1024 est_repertoire=false chemin=deja-a.txt destination=None cible=SansObjet
+2026-08-21T05:33:34.167591Z DEBUG agent::pont::ecriture::fil: creation poussee chemin="deja-a.txt" repertoire=false correlation=42
+2026-08-21T05:33:34.193886Z  WARN agent::pont::service: le navigateur refuse commande=Some(83) correlation=41 code=Some(Introuvable) cause=Introuvable
+2026-08-21T05:33:34.237514Z DEBUG agent::pont::service::reponses: création acquittée chemin="deja-a.txt" correlation=42
+2026-08-21T05:33:34.237541Z DEBUG agent::pont::service::verbes: aucune commande ProjFS a completer : c'est une ecriture resultat=0x00000000
+2026-08-21T05:33:34.237550Z  INFO agent::pont::ecriture::fil: ecriture acquittee : les octets sont sur le poste local chemin="deja-a.txt" octets=0 duree_ms=69
+2026-08-21T05:33:34.246496Z DEBUG agent::pont::ecriture::fil: ecriture poussee chemin="deja-a.txt" correlation=44 position=0 longueur=1 premier=true dernier=true
+2026-08-21T05:33:34.288227Z  WARN agent::pont::service: le navigateur refuse commande=Some(84) correlation=43 code=Some(Introuvable) cause=Introuvable
+2026-08-21T05:33:34.288450Z DEBUG agent::pont::projfs::rappels::notification: notification ProjFS code=4 est_repertoire=false chemin=deja-b.txt destination=None cible=SansObjet
+2026-08-21T05:33:34.288661Z DEBUG agent::pont::projfs::rappels::notification: notification ProjFS code=1024 est_repertoire=false chemin=deja-b.txt destination=None cible=SansObjet
+2026-08-21T05:33:34.338980Z DEBUG agent::pont::service::reponses: morceau d'écriture acquitté chemin="deja-a.txt" correlation=44 dernier=true
+2026-08-21T05:33:34.339009Z DEBUG agent::pont::service::verbes: aucune commande ProjFS a completer : c'est une ecriture resultat=0x00000000
+2026-08-21T05:33:34.339018Z  INFO agent::pont::ecriture::fil: ecriture acquittee : les octets sont sur le poste local chemin="deja-a.txt" octets=1 duree_ms=92
+2026-08-21T05:33:34.343204Z DEBUG agent::pont::ecriture::fil: ecriture poussee chemin="deja-b.txt" correlation=45 position=0 longueur=1 premier=true dernier=true
+2026-08-21T05:33:34.403850Z DEBUG agent::pont::service::reponses: morceau d'écriture acquitté chemin="deja-b.txt" correlation=45 dernier=true
+2026-08-21T05:33:34.403881Z DEBUG agent::pont::service::verbes: aucune commande ProjFS a completer : c'est une ecriture resultat=0x00000000
+2026-08-21T05:33:34.403889Z  INFO agent::pont::ecriture::fil: ecriture acquittee : les octets sont sur le poste local chemin="deja-b.txt" octets=1 duree_ms=60
+2026-08-21T05:33:34.639308Z  INFO agent::windows_micro: micro ecrit sur le cable session=F4z7KQooOQfJqh47PM0ETA:w-2 ecrites=48480 silence=48480 retards=0 reveil="evenement" deposees=0 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+2026-08-21T05:33:34.639308Z  INFO agent::windows_micro: micro ecrit sur le cable session=F4z7KQooOQfJqh47PM0ETA:w-1 ecrites=48480 silence=48480 retards=0 reveil="evenement" deposees=0 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+2026-08-21T05:33:35.122212Z DEBUG agent::pont::projfs::rappels::notification: notification ProjFS code=32 est_repertoire=false chemin=deja-a.txt destination=Some(Ok("deja-b.txt")) cible=DansLaRacine
+2026-08-21T05:33:35.143200Z DEBUG agent::pont::projfs::rappels::notification: notification ProjFS code=16 est_repertoire=false chemin=deja-b.txt destination=None cible=SansObjet
+2026-08-21T05:33:35.143440Z DEBUG agent::pont::projfs::rappels::notification: notification ProjFS code=2048 est_repertoire=false chemin=deja-b.txt destination=None cible=SansObjet
+2026-08-21T05:33:35.143469Z DEBUG agent::pont::ecriture::fil::mutations: mutation poussee quoi=Supprimer { chemin: "deja-b.txt", repertoire: false } correlation=48
+2026-08-21T05:33:35.185523Z DEBUG agent::pont::service::reponses: mutation acquittee chemin="deja-b.txt" correlation=48 renommage=false
+2026-08-21T05:33:35.185552Z DEBUG agent::pont::service::verbes: aucune commande ProjFS a completer : c'est une ecriture resultat=0x00000000
+2026-08-21T05:33:35.185559Z  INFO agent::pont::ecriture::fil: mutation acquittee : le poste local a suivi correlation=48
+2026-08-21T05:33:35.206644Z DEBUG agent::pont::projfs::rappels::notification: notification ProjFS code=32 est_repertoire=false chemin=deja-a.txt destination=Some(Ok("deja-b.txt")) cible=DansLaRacine
+2026-08-21T05:33:35.206830Z DEBUG agent::pont::projfs::rappels::notification: notification ProjFS code=128 est_repertoire=false chemin=deja-a.txt destination=Some(Ok("deja-b.txt")) cible=DansLaRacine
+2026-08-21T05:33:35.206896Z DEBUG agent::pont::ecriture::fil::mutations: mutation poussee quoi=Renommer { de: "deja-a.txt", vers: "deja-b.txt", repertoire: false } correlation=50
+2026-08-21T05:33:35.240522Z DEBUG agent::pont::service::reponses: mutation acquittee chemin="deja-a.txt" correlation=50 renommage=true
+2026-08-21T05:33:35.240551Z DEBUG agent::pont::service::verbes: aucune commande ProjFS a completer : c'est une ecriture resultat=0x00000000
+2026-08-21T05:33:35.240557Z  INFO agent::pont::ecriture::fil: mutation acquittee : le poste local a suivi correlation=50
+2026-08-21T05:33:35.261521Z  WARN agent::pont::service: le navigateur refuse commande=Some(95) correlation=51 code=Some(Introuvable) cause=Introuvable
+2026-08-21T05:33:35.282627Z  WARN agent::pont::service: le navigateur refuse commande=Some(96) correlation=52 code=Some(Introuvable) cause=Introuvable
+2026-08-21T05:33:35.282725Z DEBUG agent::pont::projfs::rappels::notification: notification ProjFS code=64 est_repertoire=false chemin=renomme.txt destination=Some(Ok("lien-dur.txt")) cible=DansLaRacine
+2026-08-21T05:33:35.305488Z  WARN agent::pont::service: le navigateur refuse commande=Some(98) correlation=53 code=Some(AccesRefuse) cause=AccesRefuse
+2026-08-21T05:33:35.329498Z  WARN agent::pont::service: le navigateur refuse commande=Some(99) correlation=54 code=Some(DisquePlein) cause=DisquePlein
+2026-08-21T05:33:35.351488Z  WARN agent::pont::service: le navigateur refuse commande=Some(100) correlation=55 code=Some(NonSupporte) cause=NonSupporte
+2026-08-21T05:33:35.649011Z  INFO agent::windows_micro: micro ecrit sur le cable session=F4z7KQooOQfJqh47PM0ETA:w-2 ecrites=48480 silence=48480 retards=0 reveil="evenement" deposees=0 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+2026-08-21T05:33:35.649011Z  INFO agent::windows_micro: micro ecrit sur le cable session=F4z7KQooOQfJqh47PM0ETA:w-1 ecrites=48480 silence=48480 retards=0 reveil="evenement" deposees=0 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+2026-08-21T05:33:36.659049Z  INFO agent::windows_micro: micro ecrit sur le cable session=F4z7KQooOQfJqh47PM0ETA:w-2 ecrites=48480 silence=48480 retards=0 reveil="evenement" deposees=0 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+2026-08-21T05:33:36.659049Z  INFO agent::windows_micro: micro ecrit sur le cable session=F4z7KQooOQfJqh47PM0ETA:w-1 ecrites=48480 silence=48480 retards=0 reveil="evenement" deposees=0 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+2026-08-21T05:33:37.668555Z  INFO agent::windows_micro: micro ecrit sur le cable session=F4z7KQooOQfJqh47PM0ETA:w-2 ecrites=48480 silence=48480 retards=0 reveil="evenement" deposees=0 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+2026-08-21T05:33:37.668555Z  INFO agent::windows_micro: micro ecrit sur le cable session=F4z7KQooOQfJqh47PM0ETA:w-1 ecrites=48480 silence=48480 retards=0 reveil="evenement" deposees=0 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+2026-08-21T05:33:38.669155Z  INFO agent::windows_micro: micro ecrit sur le cable session=F4z7KQooOQfJqh47PM0ETA:w-2 ecrites=48000 silence=48000 retards=0 reveil="evenement" deposees=0 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+2026-08-21T05:33:38.669155Z  INFO agent::windows_micro: micro ecrit sur le cable session=F4z7KQooOQfJqh47PM0ETA:w-1 ecrites=48000 silence=48000 retards=0 reveil="evenement" deposees=0 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+2026-08-21T05:33:39.078296Z  WARN agent::pont::service: le navigateur refuse commande=Some(140) correlation=65 code=Some(Introuvable) cause=Introuvable
+2026-08-21T05:33:39.101091Z  WARN agent::pont::service: le navigateur refuse commande=Some(141) correlation=66 code=Some(Introuvable) cause=Introuvable
+2026-08-21T05:33:39.101307Z DEBUG agent::pont::projfs::rappels::notification: notification ProjFS code=4 est_repertoire=false chemin=a-deplacer.txt destination=None cible=SansObjet
+2026-08-21T05:33:39.101521Z DEBUG agent::pont::projfs::rappels::notification: notification ProjFS code=1024 est_repertoire=false chemin=a-deplacer.txt destination=None cible=SansObjet
+2026-08-21T05:33:39.110193Z DEBUG agent::pont::ecriture::fil: creation poussee chemin="a-deplacer.txt" repertoire=false correlation=67
+2026-08-21T05:33:39.154891Z DEBUG agent::pont::service::reponses: création acquittée chemin="a-deplacer.txt" correlation=67
+2026-08-21T05:33:39.154924Z DEBUG agent::pont::service::verbes: aucune commande ProjFS a completer : c'est une ecriture resultat=0x00000000
+2026-08-21T05:33:39.154934Z  INFO agent::pont::ecriture::fil: ecriture acquittee : les octets sont sur le poste local chemin="a-deplacer.txt" octets=0 duree_ms=44
+2026-08-21T05:33:39.159363Z DEBUG agent::pont::ecriture::fil: ecriture poussee chemin="a-deplacer.txt" correlation=68 position=0 longueur=1 premier=true dernier=true
+2026-08-21T05:33:39.201691Z DEBUG agent::pont::service::reponses: morceau d'écriture acquitté chemin="a-deplacer.txt" correlation=68 dernier=true
+2026-08-21T05:33:39.201716Z DEBUG agent::pont::service::verbes: aucune commande ProjFS a completer : c'est une ecriture resultat=0x00000000
+2026-08-21T05:33:39.201724Z  INFO agent::pont::ecriture::fil: ecriture acquittee : les octets sont sur le poste local chemin="a-deplacer.txt" octets=1 duree_ms=42
+2026-08-21T05:33:39.492280Z  INFO fenetre{session=F4z7KQooOQfJqh47PM0ETA:w-2}: agent::capteur::fenetre: cadence du capteur session=F4z7KQooOQfJqh47PM0ETA:w-2 images=0 endormie=true cadence="0.0"
+2026-08-21T05:33:39.492280Z  INFO fenetre{session=F4z7KQooOQfJqh47PM0ETA:w-1}: agent::capteur::fenetre: cadence du capteur session=F4z7KQooOQfJqh47PM0ETA:w-1 images=0 endormie=true cadence="0.0"
+2026-08-21T05:33:39.643929Z DEBUG agent::pont::projfs::rappels::notification: notification ProjFS code=32 est_repertoire=false chemin=a-deplacer.txt destination=Some(Ok("occupe-cote-local.txt")) cible=DansLaRacine
+2026-08-21T05:33:39.671795Z  WARN agent::pont::service: le navigateur refuse commande=Some(147) correlation=71 code=Some(CasseAmbigue) cause=Inattendue
+2026-08-21T05:33:39.678714Z  INFO agent::windows_micro: micro ecrit sur le cable session=F4z7KQooOQfJqh47PM0ETA:w-1 ecrites=48480 silence=48480 retards=0 reveil="evenement" deposees=0 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+2026-08-21T05:33:39.678717Z  INFO agent::windows_micro: micro ecrit sur le cable session=F4z7KQooOQfJqh47PM0ETA:w-2 ecrites=48480 silence=48480 retards=0 reveil="evenement" deposees=0 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+2026-08-21T05:33:40.650406Z  INFO agent::signaling: le client s'est déconnecté
+2026-08-21T05:33:40.663152Z  INFO agent::pont::transport: connexion du pont fermée par le pair (close_notify DTLS)
+2026-08-21T05:33:40.663183Z  WARN agent::pont::service: canal du pont fermé : les commandes en vol sont abandonnées
+2026-08-21T05:33:40.663214Z  INFO agent::pont::service: pont en vol=0 sans_commande=0 plus_ancienne_ms=0 sessions=0 octets_hydrates=0 entrees_hydratees=0
+2026-08-21T05:33:40.663231Z  INFO agent::pont::service: codes rendus total=23 introuvable=17 chemin-introuvable=0 acces-refuse=1 canal-ferme=0 delai-depasse=0 abandonnee=1 disque-plein=1 non-supporte=2 repertoire-non-vide=0 deja-present=0 protege-en-ecriture=0 inattendue=1 | jamais rendus : chemin-introuvable,canal-ferme,delai-depasse,repertoire-non-vide,deja-present,protege-en-ecriture
+2026-08-21T05:33:40.663906Z  INFO agent::pont::projfs: virtualisation ProjFS arrêtée racine=C:\Users\Administrateur\Mes Fichiers
+2026-08-21T05:33:40.663929Z  INFO agent::pont::ecriture::fil: fil d'ecriture du pont arrete
+2026-08-21T05:33:40.663978Z  INFO agent::pont: pont fichiers arrêté
+2026-08-21T05:33:40.688871Z  INFO agent::windows_micro: micro ecrit sur le cable session=F4z7KQooOQfJqh47PM0ETA:w-2 ecrites=48480 silence=48480 retards=0 reveil="evenement" deposees=0 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+2026-08-21T05:33:40.688871Z  INFO agent::windows_micro: micro ecrit sur le cable session=F4z7KQooOQfJqh47PM0ETA:w-1 ecrites=48480 silence=48480 retards=0 reveil="evenement" deposees=0 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+2026-08-21T05:33:40.696819Z  INFO agent::superviseur::lanceur::pont: pont fichiers terminé pid=18672 code=ExitStatus(ExitStatus(0))
+2026-08-21T05:33:40.699029Z  INFO agent::superviseur::lanceur::pont: pont fichiers lancé pid=5208 session="F4z7KQooOQfJqh47PM0ETA:fichiers"
+2026-08-21T05:33:40.699047Z  WARN agent::superviseur::boucle::surveillance_pont: pont fichiers lancé ou relancé (tentatives suivantes silencieuses tant que le cycle se répète) pid_mort=18672 pid_neuf=5208
+2026-08-21T05:33:40.706351Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-21T05:33:40.706390Z  INFO agent: identité héritée du superviseur (AGENT_JETON) : ce processus n'ouvre aucun canal /agent, un seul socket par VM
+2026-08-21T05:33:40.706418Z  WARN agent::apps: decouverte d'applications inactive : ce processus n'a pas de canal /agent (identité héritée du superviseur, ou AGENT_VM/AGENT_SECRET absents)
+2026-08-21T05:33:40.707370Z  INFO agent::pont::transport: socket UDP du pont fichiers addr=192.168.3.2:53460
+2026-08-21T05:33:40.735591Z  INFO agent::signaling: déclaration de l'agent émise au signaling (acceptation encore inconnue) session="F4z7KQooOQfJqh47PM0ETA:fichiers"
+2026-08-21T05:33:41.202899Z  INFO agent::superviseur::boucle::surveillance_pont: pont fichiers de nouveau stable pid=5208
+2026-08-21T05:33:41.698732Z  INFO agent::windows_micro: micro ecrit sur le cable session=F4z7KQooOQfJqh47PM0ETA:w-2 ecrites=48480 silence=48480 retards=0 reveil="evenement" deposees=0 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+2026-08-21T05:33:41.698732Z  INFO agent::windows_micro: micro ecrit sur le cable session=F4z7KQooOQfJqh47PM0ETA:w-1 ecrites=48480 silence=48480 retards=0 reveil="evenement" deposees=0 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+2026-08-21T05:33:42.699194Z  INFO agent::windows_micro: micro ecrit sur le cable session=F4z7KQooOQfJqh47PM0ETA:w-2 ecrites=48000 silence=48000 retards=0 reveil="evenement" deposees=0 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+2026-08-21T05:33:42.699194Z  INFO agent::windows_micro: micro ecrit sur le cable session=F4z7KQooOQfJqh47PM0ETA:w-1 ecrites=48000 silence=48000 retards=0 reveil="evenement" deposees=0 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+2026-08-21T05:33:43.709032Z  INFO agent::windows_micro: micro ecrit sur le cable session=F4z7KQooOQfJqh47PM0ETA:w-2 ecrites=48480 silence=48480 retards=0 reveil="evenement" deposees=0 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+2026-08-21T05:33:43.709032Z  INFO agent::windows_micro: micro ecrit sur le cable session=F4z7KQooOQfJqh47PM0ETA:w-1 ecrites=48480 silence=48480 retards=0 reveil="evenement" deposees=0 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+2026-08-21T05:33:44.718534Z  INFO agent::windows_micro: micro ecrit sur le cable session=F4z7KQooOQfJqh47PM0ETA:w-1 ecrites=48480 silence=48480 retards=0 reveil="evenement" deposees=0 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+2026-08-21T05:33:44.718534Z  INFO agent::windows_micro: micro ecrit sur le cable session=F4z7KQooOQfJqh47PM0ETA:w-2 ecrites=48480 silence=48480 retards=0 reveil="evenement" deposees=0 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+2026-08-21T05:33:45.699673Z  INFO agent::apps::boucle: reenrolement observe : le prochain catalogue sera COMPLET
+2026-08-21T05:33:45.718671Z  INFO agent::windows_micro: micro ecrit sur le cable session=F4z7KQooOQfJqh47PM0ETA:w-2 ecrites=48000 silence=48000 retards=0 reveil="evenement" deposees=0 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+2026-08-21T05:33:45.718672Z  INFO agent::windows_micro: micro ecrit sur le cable session=F4z7KQooOQfJqh47PM0ETA:w-1 ecrites=48000 silence=48000 retards=0 reveil="evenement" deposees=0 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+2026-08-21T05:33:46.719193Z  INFO agent::windows_micro: micro ecrit sur le cable session=F4z7KQooOQfJqh47PM0ETA:w-1 ecrites=48000 silence=48000 retards=0 reveil="evenement" deposees=0 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+2026-08-21T05:33:46.719193Z  INFO agent::windows_micro: micro ecrit sur le cable session=F4z7KQooOQfJqh47PM0ETA:w-2 ecrites=48000 silence=48000 retards=0 reveil="evenement" deposees=0 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+2026-08-21T05:33:47.505946Z  INFO agent::apps::boucle: catalogue reconcilie total=220 retenus=169 cles=156 icones=0 icones_echouees=0 icones_distinctes=98 apparues=0 modifiees=0 disparues=0 duree_ms=74
+2026-08-21T05:33:47.728795Z  INFO agent::windows_micro: micro ecrit sur le cable session=F4z7KQooOQfJqh47PM0ETA:w-2 ecrites=48480 silence=48480 retards=0 reveil="evenement" deposees=0 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+2026-08-21T05:33:47.728793Z  INFO agent::windows_micro: micro ecrit sur le cable session=F4z7KQooOQfJqh47PM0ETA:w-1 ecrites=48480 silence=48480 retards=0 reveil="evenement" deposees=0 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+2026-08-21T05:33:48.729382Z  INFO agent::windows_micro: micro ecrit sur le cable session=F4z7KQooOQfJqh47PM0ETA:w-2 ecrites=48000 silence=48000 retards=0 reveil="evenement" deposees=0 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+2026-08-21T05:33:48.729382Z  INFO agent::windows_micro: micro ecrit sur le cable session=F4z7KQooOQfJqh47PM0ETA:w-1 ecrites=48000 silence=48000 retards=0 reveil="evenement" deposees=0 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+2026-08-21T05:33:49.498229Z  INFO fenetre{session=F4z7KQooOQfJqh47PM0ETA:w-1}: agent::capteur::fenetre: cadence du capteur session=F4z7KQooOQfJqh47PM0ETA:w-1 images=0 endormie=true cadence="0.0"
+2026-08-21T05:33:49.498260Z  INFO fenetre{session=F4z7KQooOQfJqh47PM0ETA:w-2}: agent::capteur::fenetre: cadence du capteur session=F4z7KQooOQfJqh47PM0ETA:w-2 images=0 endormie=true cadence="0.0"
+2026-08-21T05:33:49.521400Z  INFO agent::windows_audio::fil: compteurs audio pid=10640 actif=false rejetes=0 complements=0 echantillons_jetes=0
+2026-08-21T05:33:49.521433Z  INFO agent::windows_audio::fil: compteurs audio pid=12008 actif=false rejetes=0 complements=0 echantillons_jetes=0
+2026-08-21T05:33:49.738982Z  INFO agent::windows_micro: micro ecrit sur le cable session=F4z7KQooOQfJqh47PM0ETA:w-2 ecrites=48480 silence=48480 retards=0 reveil="evenement" deposees=0 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+2026-08-21T05:33:49.738982Z  INFO agent::windows_micro: micro ecrit sur le cable session=F4z7KQooOQfJqh47PM0ETA:w-1 ecrites=48480 silence=48480 retards=0 reveil="evenement" deposees=0 sauts=0 insertions=0 plc=0 plc_plafonnees=0

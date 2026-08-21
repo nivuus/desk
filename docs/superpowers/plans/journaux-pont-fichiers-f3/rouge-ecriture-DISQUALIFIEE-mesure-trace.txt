@@ -1,0 +1,54 @@
+﻿Set-Content : Le fournisseur prenant en charge la virtualisation du système de fichiers est temporairement 
+indisponible.
+
+Au caractère C:\dev\mesurer-f3.ps1:55 : 1
++ Set-Content -Path (Join-Path $racine 'sous-dossier\profond\feuille.tx ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : WriteError: (C:\Users\Admini...ond\feuille.txt:String) [Set-Content], IOException
+    + FullyQualifiedErrorId : GetContentWriterIOError,Microsoft.PowerShell.Commands.SetContentCommand
+ 
+Set-Content : Le fournisseur prenant en charge la virtualisation du système de fichiers est temporairement 
+indisponible.
+
+Au caractère C:\dev\mesurer-f3.ps1:79 : 1
++ Set-Content -Path (Join-Path $racine 'a-effacer\un.txt') -Value 'UN'  ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : WriteError: (C:\Users\Admini...-effacer\un.txt:String) [Set-Content], IOException
+    + FullyQualifiedErrorId : GetContentWriterIOError,Microsoft.PowerShell.Commands.SetContentCommand
+ 
+Set-Content : Le fournisseur prenant en charge la virtualisation du système de fichiers est temporairement 
+indisponible.
+
+Au caractère C:\dev\mesurer-f3.ps1:80 : 1
++ Set-Content -Path (Join-Path $racine 'a-effacer\dedans\deux.txt') -Va ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : WriteError: (C:\Users\Admini...dedans\deux.txt:String) [Set-Content], IOException
+    + FullyQualifiedErrorId : GetContentWriterIOError,Microsoft.PowerShell.Commands.SetContentCommand
+ 
+Set-Content : Le fournisseur prenant en charge la virtualisation du système de fichiers est temporairement 
+indisponible.
+
+Au caractère C:\dev\mesurer-f3.ps1:100 : 1
++ Set-Content -Path (Join-Path $racine 'deja-a.txt') -Value 'A' -NoNewl ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : WriteError: (C:\Users\Admini...iers\deja-a.txt:String) [Set-Content], IOException
+    + FullyQualifiedErrorId : GetContentWriterIOError,Microsoft.PowerShell.Commands.SetContentCommand
+ 
+Set-Content : Le fournisseur prenant en charge la virtualisation du système de fichiers est temporairement 
+indisponible.
+
+Au caractère C:\dev\mesurer-f3.ps1:101 : 1
++ Set-Content -Path (Join-Path $racine 'deja-b.txt') -Value 'B' -NoNewl ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : WriteError: (C:\Users\Admini...iers\deja-b.txt:String) [Set-Content], IOException
+    + FullyQualifiedErrorId : GetContentWriterIOError,Microsoft.PowerShell.Commands.SetContentCommand
+ 
+Set-Content : Le fournisseur prenant en charge la virtualisation du système de fichiers est temporairement 
+indisponible.
+
+Au caractère C:\dev\mesurer-f3.ps1:159 : 1
++ Set-Content -Path (Join-Path $racine 'a-deplacer.txt') -Value 'X' -No ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : WriteError: (C:\Users\Admini...\a-deplacer.txt:String) [Set-Content], IOException
+    + FullyQualifiedErrorId : GetContentWriterIOError,Microsoft.PowerShell.Commands.SetContentCommand
+ 
