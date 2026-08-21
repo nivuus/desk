@@ -39,8 +39,52 @@ const WAV = process.env.WAV ?? '/tmp/e3/ton-440.wav';
 const RACINE = '/home/mallanic/Projects/Guacamole';
 
 const execFileAsync = promisify(execFile);
+
+// ── 🔴 LE CAVIARDAGE, ET LA FUITE QU'IL FERME ───────────────────────────────
+//
+// **Un `AGENT_SECRET` RÉEL a été commité en clair par ce pilote**, dans
+// `pilote-essai-4.{json,log}`, trois places. La cause n'était PAS un défaut du
+// produit : `execFileSync('bash', ['-c', <commande>])` met la commande dans
+// l'`argv` de l'enfant, et le message d'erreur de Node la RECOPIE EN ENTIER
+// (« Command failed: bash -c cd … && export <la variable de secret, suivie de
+// sa VALEUR> … »). Le pilote capturait ce message dans son journal et son JSON.
+//
+// 🔵 **ET CETTE PHRASE A DÛ ÊTRE RÉÉCRITE POUR NE PAS DÉCLENCHER LE GARDE
+// ELLE-MÊME.** Sa première rédaction citait le nom de la variable suivi d'un
+// `=`, et `plateforme/src/securite/secrets.test.ts` l'a dénoncée comme une
+// affectation en clair — **dans le commentaire qui EXPLIQUE la fuite, et non
+// dans du code**. C'est le piège que P4 a payé sur une MUTATION (« une
+// substitution par sous-chaîne frappe le commentaire avant le code »), sous sa
+// forme de DÉTECTION. ⚠️ *Le garde a raison de ne pas savoir lire un
+// commentaire : un détecteur qui exempterait les commentaires laisserait passer
+// un secret rangé dans l'un d'eux.*
+//
+// 🔴 **LE REMÈDE EST À LA SOURCE QUI COMPOSE LE MESSAGE, jamais seulement là
+// où on trouve la fuite** — c'est la doctrine que le sous-bloc P2 a établie sur
+// le presse-papier, et la retirer d'un fichier versé sans corriger l'instrument
+// l'aurait fait revenir à l'exécution suivante. **Deux gestes, et il faut les
+// deux** :
+//
+//   1. la commande passe par un FICHIER, jamais par `argv` — le message
+//      d'erreur ne peut alors nommer que le chemin de ce fichier ;
+//   2. **une ceinture** : tout ce qui entre au journal ou au JSON traverse
+//      `caviarder`, qui remplace les valeurs de secret connues de
+//      l'environnement. Le point 1 seul fermerait CETTE fuite ; le point 2
+//      ferme celles qu'on n'a pas prévues.
+//
+// ⚠️ **Les secrets sont pris DANS L'ENVIRONNEMENT, jamais écrits ici** : les
+// nommer en clair dans l'instrument rejouerait exactement le défaut.
+const SECRETS = ['AGENT_SECRET', 'RECETTE_MOTDEPASSE', 'PLATEFORME_SECRET_JETON',
+    'WINDOWS_ADMIN_PASSWORD', 'WINDOWS_PASSWORD', 'TURN_SECRET']
+    .map((n) => process.env[n]).filter((v) => typeof v === 'string' && v.length >= 8);
+const caviarder = (t) => {
+    let s = String(t);
+    for (const v of SECRETS) s = s.split(v).join('<caviardé>');
+    return s;
+};
+
 const journal = [];
-const dire = (m) => { const l = `[${new Date().toISOString()}] ${m}`; journal.push(l); console.log(l); };
+const dire = (m) => { const l = `[${new Date().toISOString()}] ${caviarder(m)}`; journal.push(l); console.log(l); };
 
 // 🔴 LE JUGE EST ASYNCHRONE. `execFileSync` bloquerait la boucle d'événements
 // de Node, donc la lecture de la WebSocket CDP, donc le rendu des pages — un
@@ -156,7 +200,18 @@ try {
 
     // 🔴 LA SHELL D'ABORD, L'AGENT ENSUITE (D1/D3).
     dire('la page-shell est connectee : lancement de l agent');
-    const sortie = execFileSync('bash', ['-c', process.env.APRES_CONNEXION], { encoding: 'utf8', timeout: 240000 });
+    // 🔴 PAR UN FICHIER, JAMAIS PAR `argv` — voir le § du caviardage ci-dessus.
+    const script = path.join(path.dirname(SORTIE), `apres-connexion-${process.pid}.sh`);
+    fs.mkdirSync(path.dirname(script), { recursive: true });
+    fs.writeFileSync(script, `#!/usr/bin/env bash\nset -uo pipefail\n${process.env.APRES_CONNEXION}\n`, { mode: 0o700 });
+    let sortie;
+    try {
+        sortie = execFileSync('bash', [script], { encoding: 'utf8', timeout: 240000 });
+    } finally {
+        // ⚠️ Le script PORTE le secret : il ne survit pas à son exécution, même
+        // si celle-ci échoue. Un `finally`, jamais la ligne suivante.
+        fs.rmSync(script, { force: true });
+    }
     dire(`agent lance : ${sortie.trim().split('\n').pop()}`);
 
     // Attente du FAIT — deux fenêtres d'application —, jamais d'une durée.
@@ -335,12 +390,14 @@ try {
 
     dire('mesure terminee');
 } catch (e) {
-    resultat.erreurs.push(String(e?.stack ?? e).slice(0, 2000));
-    dire(`ERREUR : ${String(e).slice(0, 400)}`);
+    resultat.erreurs.push(caviarder(e?.stack ?? e).slice(0, 2000));
+    dire(`ERREUR : ${caviarder(e).slice(0, 400)}`);
 } finally {
     try { chrome?.kill(); } catch (e) { /* deja mort */ }
     fs.mkdirSync(path.dirname(SORTIE), { recursive: true });
-    fs.writeFileSync(SORTIE, JSON.stringify(resultat, null, 2));
+    // 🔴 LA CEINTURE PORTE SUR LE JSON ENTIER, pas champ par champ : c'est la
+    // seule forme qui couvre un champ qu'une évolution future ajouterait.
+    fs.writeFileSync(SORTIE, caviarder(JSON.stringify(resultat, null, 2)));
     dire(`sortie : ${SORTIE}`);
     // 🔴 SORTIE EXPLICITE : la WebSocket CDP tient la boucle d'événements après
     // la mort de Chrome, et sans cela le harnais bascule en arrière-plan alors
