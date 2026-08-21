@@ -35,6 +35,7 @@ pub mod entetes;
 pub mod enumeration;
 pub mod erreurs;
 pub mod journal;
+pub mod mutation;
 pub mod notifications;
 #[cfg(windows)]
 pub mod projfs;
