@@ -96,9 +96,29 @@ export interface Config {
     /// redépose son fichier. Le silence est donc encore moins acceptable
     /// ici — d'où la ligne de journal à l'ouverture du magasin.
     repertoireTeleversements: string;
+    /// PLATEFORME_AUTH, défaut 'pomerium'. Une valeur inconnue LÈVE.
+    ///
+    /// ⚠️ CE N'EST PAS UN ARMEMENT, C'EST UN CHOIX DE MODE — la convention
+    /// `=0 désarme` de `agent/` ne s'applique pas ici. Le précédent est
+    /// `PLATEFORME_BASE` quinze lignes plus haut, et pour la même raison : un
+    /// repli silencieux ferait tourner un mode sous le nom de l'autre, et
+    /// l'un des deux sens est une OUVERTURE.
+    auth: 'pomerium' | 'motdepasse';
 }
 
 const BASES = ['sqlite', 'postgres'] as const;
+const AUTHS = ['pomerium', 'motdepasse'] as const;
+
+/// Les adresses qui font écouter le service sur TOUTES les interfaces.
+///
+/// 🔴 CE N'EST PAS « L'ÉCOUTE EST BORNÉE », ET LA DIFFÉRENCE EST ÉCRITE PLUTÔT
+/// QUE MAQUILLÉE. Le contrôle qu'on aimerait — « ce doit être une adresse de
+/// bouclage » — casserait le déploiement livré, qui pose `PLATEFORME_HOTE:
+/// plateforme`, un nom de service Docker sans port publié, et qui est le
+/// montage le plus sûr des trois. Ce qui est décidable est le refus de
+/// l'écoute UNIVERSELLE ; que seul Pomerium atteigne le port reste à la charge
+/// de l'exploitant, et c'est dit au § 9 de la spec.
+const ECOUTES_UNIVERSELLES = new Set(['0.0.0.0', '::', '[::]', '*']);
 
 export function lireConfig(env: Record<string, string | undefined>): Config {
     const hote = env.PLATEFORME_HOTE;
@@ -106,6 +126,27 @@ export function lireConfig(env: Record<string, string | undefined>): Config {
         throw new Error(
             "PLATEFORME_HOTE est obligatoire et n'a aucun défaut : nommer l'adresse " +
                 "d'écoute, sans quoi le service écouterait sur toutes les interfaces.",
+        );
+    }
+
+    const brutAuth = env.PLATEFORME_AUTH;
+    const auth = (brutAuth === undefined || brutAuth === '' ? 'pomerium' : brutAuth) as Config['auth'];
+    if (!(AUTHS as readonly string[]).includes(auth)) {
+        throw new Error(
+            `PLATEFORME_AUTH doit valoir ${AUTHS.join(' ou ')}, reçu : ${brutAuth}`,
+        );
+    }
+
+    // 🔴 LIÉE AU MODE, ET NON UNIVERSELLE. En mode `motdepasse`, le service
+    // s'authentifie lui-même et une écoute large ne le rend pas anonyme ; en
+    // mode `pomerium`, l'identité arrive dans un en-tête EN CLAIR, et une
+    // écoute universelle l'offre à quiconque atteint la machine.
+    if (auth === 'pomerium' && ECOUTES_UNIVERSELLES.has(hote.trim())) {
+        throw new Error(
+            `PLATEFORME_HOTE=${hote} est une écoute universelle, refusée en mode ` +
+                "pomerium : l'identité arrive dans un en-tête en clair, que seul le " +
+                'proxy doit pouvoir poser. Nommer une adresse précise ' +
+                '(192.168.3.1, 127.0.0.1) ou un nom de service de réseau interne.',
         );
     }
 
@@ -235,5 +276,6 @@ export function lireConfig(env: Record<string, string | undefined>): Config {
         proxyDeConfiance,
         repertoireIcones,
         repertoireTeleversements,
+        auth,
     };
 }
