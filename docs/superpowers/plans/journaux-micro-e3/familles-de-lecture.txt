@@ -1,0 +1,24 @@
+Note de lecture des journaux du bloc E3 — RELEVÉE PAR LA COMMANDE le 21 août
+2026, sur les seize fichiers de ce répertoire.
+
+    grep -acP '\x1b\['   →  0  sur les seize   (aucune séquence ANSI)
+    grep -acU $'\r'      →  0  sur les seize   (aucun CRLF)
+    tr -dc '\000' | wc -c→  0  sur les seize   (aucun octet NUL)
+    file --mime-encoding →  utf-8 ou us-ascii  (aucun « binary »)
+
+UNE SEULE FAMILLE DE LECTURE : ils se `grep`ent À PLAT, sans `sed`, sans
+`grep -a`, sans `iconv`.
+
+⚠️ CE N'EST PAS UN MÉRITE, C'EST UNE CONSÉQUENCE DU PÉRIMÈTRE. Les trois
+familles de D6, les quatre de D8, les trois de D9 et les deux de E1/E2 viennent
+toutes d'un chemin qui passe par la VM Windows, dont `run-agent.sh` et
+`build-agent.sh` ne posent pas `[Console]::OutputEncoding` — le « défaut à deux
+réglages », TOUJOURS NON CORRIGÉ. Tout ce que E3 a joué a tourné sur l'hôte.
+
+🔴 ET C'EST AUSSI CE QUI MANQUE À CE RÉPERTOIRE : il ne contient AUCUN journal
+d'agent. Les seize fichiers sont sept journaux de ROUGE, le harnais, ses six
+scripts de mutation, le contrôle de recette de la trace du câble — versé PRÊT,
+jamais joué — et cette note. Les recettes ①, ②, ③ du plan (familles ③) exigent
+la VM, tenue par le chantier « pont fichiers F5 » pendant tout le bloc ; la
+sonde S1 (famille ①) exige un consentement sur le graphe audio de l'hôte qui
+n'a pas été donné. **Les deux absences sont déclarées, pas comblées.**
