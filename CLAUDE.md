@@ -13078,8 +13078,17 @@ Journaux et instrument : `docs/superpowers/plans/journaux-pont-fichiers-f4/` —
 contrairement à F1 et D10 — les journaux de pilote sont des sorties `node` sur
 l'**HÔTE**, jamais du PowerShell distant.
 
-**Treize exécutions d'agent**, toutes en montage M1 sauf trois.
-**Aucun taux n'est revendiqué nulle part.**
+**VINGT-DEUX exécutions d'agent**, comptées par `ls pilote-*.json | wc -l` —
+dix-neuf en montage M1, trois en M2. **Aucun taux n'est revendiqué nulle part.**
+
+> 🔴 **J'AI PUBLIÉ « TREIZE » DANS UN MESSAGE DE COMMIT (`d380bdd`), ET C'ÉTAIT
+> FAUX : IL Y EN A VINGT-DEUX.** Je l'avais écrit **de mémoire** au lieu de le
+> compter. C'est littéralement le piège que D11 a inscrit dans ce fichier — *« un
+> message de commit est une pièce du dépôt, et personne ne le relit »* — commis
+> par la ronde qui le cite. **Le commit n'est pas amendé** (l'arbre est partagé
+> et un voisin committe), et la correction vit ici et au document de résultats,
+> **avec la commande qui l'établit**. *Un compte se compte ; il ne se rappelle
+> pas.*
 
 ### ① 🔵 M1 est viable : le pont tourne SEUL, et c'est ce qui rend tout le reste propre
 

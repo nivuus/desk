@@ -56,6 +56,24 @@ ni celui de F4** ; corrigé à la tâche 16, sans se l'attribuer.
 
 ---
 
+## 2bis. 🔴 Le nombre d'exécutions — et un compte que J'AI PUBLIÉ FAUX
+
+**VINGT-DEUX exécutions d'agent**, comptées par `ls pilote-*.json | wc -l` :
+dix-neuf en M1, trois en M2. Chacune a son `pilote-<étiquette>.json`, son
+`agent-<étiquette>.log` brut, son jumeau `-plat`, son `pilote-<étiquette>.log`
+et sa trace de mesure.
+
+> 🔴 **Le message du commit `d380bdd` annonce « TREIZE exécutions ». C'est
+> FAUX.** Je l'avais écrit **de mémoire** au lieu de le compter — exactement le
+> patron que D11 a inscrit dans `CLAUDE.md` (*« un message de commit est une
+> pièce du dépôt, et personne ne le relit »*), commis par la ronde qui le cite,
+> et sur le chiffre même que la discipline d'énoncé d'un chantier de mesure
+> exige de porter dans chaque phrase. **Le commit n'est pas amendé** — l'arbre
+> est partagé et un voisin committe —, et la correction vit ici, avec la
+> commande qui l'établit. *Un compte se compte ; il ne se rappelle pas.*
+
+---
+
 ## 3. 🔵 M1 est viable — le pont tourne SEUL
 
 **C'est la première chose que ce sous-bloc établit, et elle conditionne tout le
