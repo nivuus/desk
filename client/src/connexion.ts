@@ -51,7 +51,7 @@
 // d'énumération de comptes). Enrichir le texte ici défairait cette propriété
 // depuis le seul endroit où personne ne penserait à la chercher.
 
-import { poser } from './jeton';
+import { poser, poserAcces } from './jeton';
 import type { Ton } from './shell';
 import { installerSelecteurDeThemeAuDOM } from './design/selecteur-theme';
 import { effacerPrefixe, poserPrefixe } from './prefixe';
@@ -112,6 +112,107 @@ function afficher(texte: string, ton: Ton): void {
     if (classe !== '') message.classList.add(classe);
 }
 
+/// Ce qui suit l'obtention d'un jeton, quel que soit le chemin qui l'a obtenu.
+///
+/// ⚠️ CE N'EST PAS UNE RÈGLE, C'EST DU CÂBLAGE — au sens du critère posé en
+/// tête de ce fichier : ces branches ne font que router une décision prise par
+/// `routes-session.ts` et couverte par SES tests. La clause reste donc
+/// resserrée, pas assouplie.
+///
+/// ⚠️ CORPS DÉPLACÉ VERBATIM. Trois substitutions, et TROIS SEULEMENT :
+///   ① `corps.acces` devient le paramètre `acces` ;
+///   ② les `return` de sortie anticipée restent des `return` — la fonction
+///      rend `void`, donc leur sens ne change pas ;
+///   ③ le `catch` et le `finally` du `submit` RESTENT chez l'appelant : les
+///      déplacer ici ferait réactiver `bouton.disabled = false` sur le chemin
+///      Pomerium, où aucun bouton n'a jamais été désactivé.
+async function chercherLaSession(acces: string): Promise<void> {
+    afficher('recherche de votre machine…', 'neutre');
+    const session = await fetch(`${plateformeUrl}/session`, {
+        method: 'POST',
+        // 🔴 L'EN-TÊTE `Authorization` REND LA REQUÊTE NON SIMPLE, donc
+        // soumise à une requête préalable `OPTIONS`. C'est le défaut que la
+        // recette de la tâche 8 a trouvé et fermé côté service ; il est
+        // rappelé ici parce qu'aucun test de ce répertoire ne peut le voir.
+        headers: { authorization: `Bearer ${acces}` },
+    });
+    const sien = await session.json().catch(() => undefined);
+
+    // ① Un préfixe est un préfixe, qu'il vienne d'un 200 ou d'un 503.
+    if (typeof sien?.prefixe === 'string') {
+        // ⚠️ CE `poserPrefixe` PEUT LEVER, et c'est voulu : il ne le fait que
+        // sur une chaîne vide, c'est-à-dire sur un service qui aurait
+        // délivré un préfixe qui n'en est pas un. L'exception traverse alors
+        // vers l'appelant (`submit`), dont le `catch` réseau attrape le
+        // message qui CITE la cause en entier — le mot « injoignable » est
+        // alors imprécis, la phrase qu'il encadre ne l'est pas. Déclaré
+        // plutôt que découvert.
+        poserPrefixe(window.localStorage, sien.prefixe);
+    } else if (sien?.motif === 'aucune-vm') {
+        // ② Aucune VM : le coffre est nettoyé, sans quoi le préfixe d'hier
+        // survivrait à l'attribution qu'on vient de perdre.
+        //
+        // 🔴 CE LITTÉRAL EST UNE COPIE, ET RIEN NE LA CONFRONTE À SA
+        // SOURCE (relevé à la revue transverse de P4, non corrigé). Sa
+        // source canonique est `MOTIFS` dans
+        // `plateforme/src/orchestration/refus.ts`, un tableau `as const`
+        // dont le type DÉRIVE, précisément pour qu'ajouter un motif sans
+        // lui donner son code HTTP soit une erreur de compilation. Cette
+        // propriété s'arrête à la frontière du paquet : `client/` ne peut
+        // pas importer de `plateforme/`, et le seul paquet partagé est
+        // `proto/`, que P4 s'interdit de toucher (sa version appartient au
+        // sous-bloc G1). CONSÉQUENCE À CONNAÎTRE : renommer `aucune-vm`
+        // côté service laisserait ce test toujours faux, donc le préfixe
+        // périmé au coffre — une panne MUETTE, que ni `npm run typecheck`
+        // ni aucun test de ce dépôt ne verrait. Le remède est de faire
+        // descendre `MOTIFS` dans `proto/ts` ; il est LÉGUÉ, pas fait.
+        effacerPrefixe(window.localStorage);
+    }
+
+    if (!session.ok) {
+        // Le motif du service, tel quel — et pour `agent-injoignable`, ce
+        // que le service AVOUE ne pas savoir faire. Le cadrage promet « VM
+        // injoignable -> le hub l'indique, propose redémarrage » ; avec le
+        // backend statique le hub indique, et dit qu'il ne sait pas
+        // redémarrer. Taire cet aveu ferait attendre un bouton qui n'existe
+        // pas.
+        const etat = sien?.etat ? ` (état : ${sien.etat})` : '';
+        const aveu =
+            sien?.redemarrage?.possible === false
+                ? ` — la plateforme ne sait pas la redémarrer (${sien.redemarrage.motif}, backend ${sien.redemarrage.backend})`
+                : '';
+        afficher(`${sien?.motif ?? sien?.refus ?? session.status}${etat}${aveu}`, 'danger');
+        return;
+    }
+
+    window.location.href = suite;
+}
+
+/// Demande l'identité au service AVANT de montrer le formulaire.
+///
+/// 🔴 C'EST LE 404 QUI PORTE LE MODE JUSQU'ICI, et c'est pourquoi cette page
+/// n'a aucune variable de mode à connaître. Elle est bâtie statiquement par
+/// Vite et ne peut lire aucune configuration du serveur : elle DEMANDE. Un
+/// 404 signifie « ce montage authentifie par mot de passe » ; un 200, « le
+/// proxy m'a déjà identifié ».
+///
+/// ⚠️ TOUT ÉCHEC RETOMBE SUR LE FORMULAIRE, y compris un échec réseau. C'est
+/// le repli le moins surprenant : l'utilisateur voit un écran sur lequel il
+/// peut agir, plutôt qu'une page vide dont rien ne dit ce qu'elle attend.
+async function tenterPomerium(): Promise<boolean> {
+    try {
+        const reponse = await fetch(`${plateformeUrl}/auth/moi`);
+        if (!reponse.ok) return false;
+        const corps = await reponse.json().catch(() => undefined);
+        if (typeof corps?.acces !== 'string' || corps.acces === '') return false;
+        poserAcces(window.localStorage, corps.acces);
+        await chercherLaSession(corps.acces);
+        return true;
+    } catch {
+        return false;
+    }
+}
+
 formulaire.addEventListener('submit', async (evenement) => {
     evenement.preventDefault();
     bouton.disabled = true;
@@ -143,64 +244,7 @@ formulaire.addEventListener('submit', async (evenement) => {
         // le retrouve pas rempli.
         champMotDePasse.value = '';
 
-        afficher('recherche de votre machine…', 'neutre');
-        const session = await fetch(`${plateformeUrl}/session`, {
-            method: 'POST',
-            // 🔴 L'EN-TÊTE `Authorization` REND LA REQUÊTE NON SIMPLE, donc
-            // soumise à une requête préalable `OPTIONS`. C'est le défaut que la
-            // recette de la tâche 8 a trouvé et fermé côté service ; il est
-            // rappelé ici parce qu'aucun test de ce répertoire ne peut le voir.
-            headers: { authorization: `Bearer ${corps.acces}` },
-        });
-        const sien = await session.json().catch(() => undefined);
-
-        // ① Un préfixe est un préfixe, qu'il vienne d'un 200 ou d'un 503.
-        if (typeof sien?.prefixe === 'string') {
-            // ⚠️ CE `poserPrefixe` PEUT LEVER, et c'est voulu : il ne le fait que
-            // sur une chaîne vide, c'est-à-dire sur un service qui aurait
-            // délivré un préfixe qui n'en est pas un. L'exception traverse alors
-            // le `catch` réseau ci-dessous, dont le message CITE la cause en
-            // entier — le mot « injoignable » est alors imprécis, la phrase
-            // qu'il encadre ne l'est pas. Déclaré plutôt que découvert.
-            poserPrefixe(window.localStorage, sien.prefixe);
-        } else if (sien?.motif === 'aucune-vm') {
-            // ② Aucune VM : le coffre est nettoyé, sans quoi le préfixe d'hier
-            // survivrait à l'attribution qu'on vient de perdre.
-            //
-            // 🔴 CE LITTÉRAL EST UNE COPIE, ET RIEN NE LA CONFRONTE À SA
-            // SOURCE (relevé à la revue transverse de P4, non corrigé). Sa
-            // source canonique est `MOTIFS` dans
-            // `plateforme/src/orchestration/refus.ts`, un tableau `as const`
-            // dont le type DÉRIVE, précisément pour qu'ajouter un motif sans
-            // lui donner son code HTTP soit une erreur de compilation. Cette
-            // propriété s'arrête à la frontière du paquet : `client/` ne peut
-            // pas importer de `plateforme/`, et le seul paquet partagé est
-            // `proto/`, que P4 s'interdit de toucher (sa version appartient au
-            // sous-bloc G1). CONSÉQUENCE À CONNAÎTRE : renommer `aucune-vm`
-            // côté service laisserait ce test toujours faux, donc le préfixe
-            // périmé au coffre — une panne MUETTE, que ni `npm run typecheck`
-            // ni aucun test de ce dépôt ne verrait. Le remède est de faire
-            // descendre `MOTIFS` dans `proto/ts` ; il est LÉGUÉ, pas fait.
-            effacerPrefixe(window.localStorage);
-        }
-
-        if (!session.ok) {
-            // Le motif du service, tel quel — et pour `agent-injoignable`, ce
-            // que le service AVOUE ne pas savoir faire. Le cadrage promet « VM
-            // injoignable -> le hub l'indique, propose redémarrage » ; avec le
-            // backend statique le hub indique, et dit qu'il ne sait pas
-            // redémarrer. Taire cet aveu ferait attendre un bouton qui n'existe
-            // pas.
-            const etat = sien?.etat ? ` (état : ${sien.etat})` : '';
-            const aveu =
-                sien?.redemarrage?.possible === false
-                    ? ` — la plateforme ne sait pas la redémarrer (${sien.redemarrage.motif}, backend ${sien.redemarrage.backend})`
-                    : '';
-            afficher(`${sien?.motif ?? sien?.refus ?? session.status}${etat}${aveu}`, 'danger');
-            return;
-        }
-
-        window.location.href = suite;
+        await chercherLaSession(corps.acces);
     } catch (cause) {
         // Un échec RÉSEAU se dit comme tel : sur une autre origine, c'est le
         // symptôme d'une `PLATEFORME_ORIGINE_CLIENT` absente côté service
@@ -210,4 +254,15 @@ formulaire.addEventListener('submit', async (evenement) => {
     } finally {
         bouton.disabled = false;
     }
+});
+
+// ⚠️ Le formulaire est CACHÉ le temps de la tentative, puis remontré si elle
+// échoue : l'afficher d'abord ferait clignoter un écran de connexion sur un
+// montage qui n'en demande aucun.
+formulaire.hidden = true;
+afficher('identification…', 'neutre');
+void tenterPomerium().then((abouti) => {
+    if (abouti) return;
+    formulaire.hidden = false;
+    afficher('', 'neutre');
 });

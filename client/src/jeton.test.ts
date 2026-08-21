@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { CLE_ACCES, CLE_RAFRAICHISSEMENT, expireAvant, jetonAcces, poser, rafraichirSiNecessaire, vider } from './jeton';
+import { CLE_ACCES, CLE_RAFRAICHISSEMENT, expireAvant, jetonAcces, poser, poserAcces, rafraichirSiNecessaire, vider } from './jeton';
 import type { Coffre } from './jeton';
 
 /// Un coffre factice, en mémoire. Il n'y a AUCUN `localStorage` dans
@@ -54,6 +54,26 @@ describe('le coffre à jetons du navigateur', () => {
         vider(coffre);
         expect(coffre.contenu.has(CLE_ACCES)).toBe(false);
         expect(coffre.contenu.has(CLE_RAFRAICHISSEMENT)).toBe(false);
+    });
+});
+
+describe('poserAcces', () => {
+    it("pose l'accès", () => {
+        const c = coffreFactice();
+        poserAcces(c, 'J');
+        expect(c.getItem(CLE_ACCES)).toBe('J');
+    });
+
+    // 🔴 CE TEST EST LA RAISON D'ÊTRE DE LA FONCTION. Un jeton de
+    // rafraîchissement laissé par un montage `motdepasse` antérieur survivrait
+    // au changement de mode et serait présenté à une route qui rend désormais
+    // 404 — une panne dont le symptôme serait une déconnexion inexpliquée dix
+    // minutes après chaque ouverture de page.
+    it('EFFACE le jeton de rafraîchissement laissé par un montage antérieur', () => {
+        const c = coffreFactice();
+        c.setItem(CLE_RAFRAICHISSEMENT, 'vieux');
+        poserAcces(c, 'J');
+        expect(c.getItem(CLE_RAFRAICHISSEMENT)).toBeNull();
     });
 });
 
