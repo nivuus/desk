@@ -103,6 +103,13 @@ function monter() {
     return { compteurs, adaptateur: creerAdaptateur(repertoire('', arbre, compteurs)) };
 }
 
+/** Le même arbre, avec l'injection de fautes ARMÉE. */
+function monterArme() {
+    const compteurs: Compteurs = { arrayBufferEntier: 0, slice: 0 };
+    const arbre: Arbre = { 'note.txt': { octets: new Uint8Array([1]), modifie: 0 } };
+    return creerAdaptateur(repertoire('', arbre, compteurs), true);
+}
+
 describe('adaptateur de la File System Access API', () => {
     it('lister rend les entrées avec leur nature', async () => {
         const { adaptateur } = monter();
@@ -122,19 +129,23 @@ describe('adaptateur de la File System Access API', () => {
         expect((await adaptateur.lister('dossier')).map((e) => e.nom)).toEqual(['dedans.txt']);
     });
 
-    it('attributs rend la taille et l’horodatage', async () => {
+    it('attributs rend la taille, l’horodatage et le NOM CANONIQUE', async () => {
         const { adaptateur } = monter();
         expect(await adaptateur.attributs('note.txt')).toEqual({
+            nom: 'note.txt',
             repertoire: false,
             taille: 3,
             modifie: 1_690_000_000_000,
         });
         expect(await adaptateur.attributs('dossier')).toEqual({
+            nom: 'dossier',
             repertoire: true,
             taille: 0,
             modifie: 0,
         });
+        // ⚠️ La RACINE n'a pas de nom.
         expect(await adaptateur.attributs('')).toEqual({
+            nom: '',
             repertoire: true,
             taille: 0,
             modifie: 0,
@@ -234,6 +245,67 @@ describe('adaptateur de la File System Access API', () => {
         };
         await expect(creerAdaptateur(cassee).lister('')).rejects.toMatchObject({
             code: 'interne',
+        });
+    });
+});
+
+describe('la casse en LECTURE, corrigée par F3', () => {
+    // 🔴 CE FAUX EST SENSIBLE À LA CASSE — comme OPFS, donc comme l'INSTRUMENT
+    // de recette. C'est précisément là que F1 a mesuré son incohérence :
+    // `casse.txt` passait (résolu par NTFS sans nous) et `GROS.BIN` échouait
+    // (il atteignait le pont et butait sur OPFS), DANS LA MÊME EXÉCUTION.
+
+    it('🔴 `GROS.BIN` rend `gros.bin`, et l’incohérence de F1 DISPARAÎT', async () => {
+        // Rouge : garder la résolution directe (`getFileHandle(dernier)`).
+        // `GROS.BIN` rendrait `introuvable`, ce qui est exactement l'état que
+        // F1 relève.
+        const { adaptateur } = monter();
+        const meta = await adaptateur.attributs('GROS.BIN');
+        expect(meta.repertoire).toBe(false);
+        // 🔴 ET LE NOM RENDU EST LE NOM STOCKÉ, jamais celui qu'on a demandé.
+        expect(meta.nom).toBe('gros.bin');
+    });
+
+    it('lit le contenu par une casse différente', async () => {
+        const { adaptateur } = monter();
+        const octets = await adaptateur.lire('NOTE.TXT', 0, 3);
+        expect([...octets]).toEqual([65, 66, 67]);
+    });
+
+    it('résout un composant INTERMÉDIAIRE par la casse, et le distingue', async () => {
+        const { adaptateur } = monter();
+        expect(await adaptateur.lister('DOSSIER')).toHaveLength(1);
+        // Un composant intermédiaire absent rend `chemin-introuvable`, jamais
+        // `introuvable` : ProjFS distingue les deux, et l'Explorateur n'en dit
+        // pas la même chose.
+        await expect(adaptateur.lire('ABSENT/x.txt', 0, 1)).rejects.toMatchObject({
+            code: 'chemin-introuvable',
+        });
+    });
+});
+
+describe('l’injection de fautes, DÉSARMÉE par défaut', () => {
+    it('🔴 est INERTE quand elle n’est pas armée', async () => {
+        // Rouge : la lire depuis le module au lieu de la recevoir en argument.
+        // Un utilisateur qui créerait un dossier `.faute-disque-plein`
+        // casserait son propre pont.
+        const { adaptateur } = monter();
+        await expect(adaptateur.lister('.faute-disque-plein')).rejects.toMatchObject({
+            // Pas de faute : c'est un chemin ordinaire, donc absent.
+            code: 'introuvable',
+        });
+    });
+
+    it('lève le code demandé quand elle est armée', async () => {
+        const a = monterArme();
+        await expect(a.lister('.faute-disque-plein')).rejects.toMatchObject({
+            code: 'disque-plein',
+        });
+        await expect(a.attributs('.faute-acces-refuse/x')).rejects.toMatchObject({
+            code: 'acces-refuse',
+        });
+        await expect(a.lire('.faute-non-supporte', 0, 1)).rejects.toMatchObject({
+            code: 'non-supporte',
         });
     });
 });

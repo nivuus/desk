@@ -82,6 +82,26 @@ pub struct Entrees {
 /// L'en-tête de `TYPE_META`. Charge binaire **vide**.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Meta {
+    /// 🔴 **LE NOM CANONIQUE — CELUI QUI EST STOCKÉ SUR LE POSTE LOCAL, jamais
+    /// celui que l'application a tapé** (F3).
+    ///
+    /// C'est la conséquence ① du canonicaliseur de casse : sans lui, un
+    /// `GROS.BIN` demandé sur un `gros.bin` local ferait créer un substitut
+    /// nommé `GROS.BIN` dans la racine de virtualisation. La racine étant NTFS,
+    /// donc insensible à la casse, l'ouverture réussirait — mais **une
+    /// énumération du parent rendrait `gros.bin` et le substitut porterait
+    /// `GROS.BIN`** : deux noms pour un fichier, dont un qui n'existe nulle
+    /// part.
+    ///
+    /// ⚠️ **VIDE pour la RACINE elle-même**, qui n'a pas de nom.
+    ///
+    /// ⚠️ **CHAMP REQUIS, sans `#[serde(default)]`** — la doctrine de ce module
+    /// n'en porte aucun. Un pair antérieur à F3 ne sait donc pas le produire :
+    /// c'est une rupture, et `FICHIERS_VERSION` **reste 1** parce que les deux
+    /// bouts de ce pont sont toujours déployés ensemble (un seul `agent.exe`,
+    /// une seule page-shell). *Le dire plutôt que de laisser croire à une
+    /// addition compatible.*
+    pub nom: String,
     pub repertoire: bool,
     pub taille: u64,
     pub modifie: i64,

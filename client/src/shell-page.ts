@@ -7,6 +7,8 @@ import { jetonAcces } from './jeton';
 import { composer, lirePrefixe } from './prefixe';
 import { creerAdaptateur } from './fichiers/adaptateur';
 import { creerEcrivain, type RacineInscriptible } from './fichiers/ecriture';
+import { creerMutateur } from './fichiers/mutation-service';
+import type { RacineMutable } from './fichiers/mutation';
 import { creerServeur } from './fichiers/protocole';
 import { choisirDossier, connecterCanalFichiers, sessionDuPont, type CanalFichiers } from './fichiers/canal';
 import { adresseSignaling } from './adresse-plateforme';
@@ -17,6 +19,34 @@ const params = new URLSearchParams(window.location.search);
 // TLS, donc refusé par le navigateur sans qu'aucun test Node ne le voie.
 // `?signaling=` reste prioritaire, pour les essais locaux.
 const signalingUrl = adresseSignaling(window.location, params.get('signaling'));
+
+/**
+ * L'injection de fautes du pont fichiers est-elle ARMÉE ?
+ *
+ * 🔴 **LUE UNE FOIS, ICI, ET PASSÉE EN ARGUMENT.** La lire depuis
+ * `fichiers/noms.ts` le rendrait intestable — et surtout : un utilisateur qui
+ * créerait un dossier nommé `.faute-disque-plein` casserait son propre pont.
+ * C'est la convention de `PLEIN_ECRAN` et de `PART_SONDAGE` côté agent : le
+ * mécanisme lit un drapeau qu'on lui donne, jamais l'environnement.
+ *
+ * 🔴 **VARIABLE DE BANC, jamais une configuration livrée.** Elle rend
+ * atteignables les quatre causes du §5 qu'AUCUN geste réel ne peut produire sur
+ * ce montage : `acces-refuse` (OPFS n'a aucun modèle de permission),
+ * `disque-plein` (`QuotaExceededError` n'y est pas provocable) et
+ * `delai-depasse` (il faudrait un navigateur qui ne réponde jamais).
+ *
+ * ⚠️ **UNE INJECTION PROUVE QUE LA TABLE N'EST PAS DÉCORATIVE ; ELLE NE PROUVE
+ * PAS QUE LA CAUSE EST ATTEIGNABLE EN EXPLOITATION.** Les deux colonnes sont
+ * distinguées au §0.5 du plan de F3, et le document de résultats les garde
+ * distinctes.
+ */
+const fautesFichiersArmees = params.get('faute-fichiers') === '1';
+if (fautesFichiersArmees) {
+    console.warn(
+        'injection de fautes du pont fichiers ARMEE (?faute-fichiers=1) : ' +
+            'banc, jamais une configuration livree',
+    );
+}
 // Nom réservé de la session de contrôle : le superviseur s'y déclare en
 // `agent`, cette page en `client`.
 //
@@ -163,18 +193,48 @@ async function monterLeLecteur(): Promise<void> {
     // `null` = annulation délibérée, `undefined` = échec déjà signalé.
     if (choix === null || choix === undefined) return;
 
-    // 🔴 LA MÊME POIGNÉE SERT À LIRE ET À ÉCRIRE, et le transtypage est le
-    // CONTRÔLE DE COMPATIBILITÉ STRUCTURELLE de F2 : `RacineInscriptible`
-    // décrit un sous-ensemble de `FileSystemDirectoryHandle`, et si la vraie
-    // poignée cessait de le satisfaire, `tsc --noEmit` le dirait ICI plutôt
-    // qu'en session réelle.
+    // 🔴 LA MÊME POIGNÉE SERT À LIRE, À ÉCRIRE ET À MUTER.
+    //
+    // ❌ **CE TRANSTYPAGE N'EST PAS UN CONTRÔLE, ET F2 LE DÉCLARAIT COMME TEL.**
+    // Ces lignes disaient : « le transtypage est le CONTRÔLE DE COMPATIBILITÉ
+    // STRUCTURELLE de F2 : si la vraie poignée cessait de le satisfaire,
+    // `tsc --noEmit` le dirait ICI ». **C'est faux, et c'est mesuré** :
+    // `choix.racine` est typée `Racine`, et `RacineInscriptible` en est un
+    // SOUS-type — un `as` vers un sous-type ASSERTE, il ne vérifie pas.
+    // Ajouter à `RacineInscriptible` une méthode que
+    // `FileSystemDirectoryHandle` n'a pas ne faisait rougir QUE le faux de
+    // test.
+    //
+    // ✅ **LE CONTRÔLE RÉEL VIT DÉSORMAIS DANS `fichiers/canal.ts`**, sur la
+    // VRAIE poignée, avant tout élargissement — et il a trouvé une
+    // incompatibilité de F2 dès qu'il a été posé (voir
+    // `journaux-pont-fichiers-f3/t9-controle-structurel-de-f2-vacueux.txt`).
+    // Ces deux lignes-ci ne sont plus que du câblage.
     const racineInscriptible: RacineInscriptible = choix.racine as RacineInscriptible;
+    const racineMutable: RacineMutable = choix.racine as RacineMutable;
     const ecrivain = creerEcrivain(racineInscriptible);
-    const serveur = creerServeur(creerAdaptateur(choix.racine), (m) => console.warn(m), {
-        ecrivain,
-        onDues: (dues) => bureau.ecrituresDues(dues),
-        onEchecEcriture: (chemin, code) => bureau.ecritureEchouee(chemin, code),
-    });
+    const mutateur = creerMutateur(racineMutable);
+    const serveur = creerServeur(
+        creerAdaptateur(choix.racine, fautesFichiersArmees),
+        (m) => console.warn(m),
+        {
+            ecrivain,
+            mutateur,
+            onDues: (dues) => bureau.ecrituresDues(dues),
+            onEchecEcriture: (chemin, code) => bureau.ecritureEchouee(chemin, code),
+            onEchecMutation: (quoi, code) => bureau.mutationEchouee(quoi, code),
+            // 🔵 **L'INSTRUMENTATION QUE LA SPEC §3.5.1 EXIGE**, et elle part
+            // par le journal parce que le navigateur est le seul à SAVOIR ce
+            // qu'il a fait. Le pont, lui, journalise ce que LUI sait — voir la
+            // divergence déclarée dans `protocole.ts`.
+            onRenommagePorCopie: (de, vers, octets, entrees) => {
+                console.warn(
+                    `renommage par copie « ${de} » → « ${vers} » : ${octets} octets, ` +
+                        `${entrees} entree(s) — move() absente, repli LOCAL (zero octet sur le canal)`,
+                );
+            },
+        },
+    );
     try {
         pont = await connecterCanalFichiers({
             signalingUrl,

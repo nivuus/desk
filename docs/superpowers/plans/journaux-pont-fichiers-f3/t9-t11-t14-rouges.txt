@@ -1,0 +1,272 @@
+TÂCHES 9, 10, 11 ET 14 — LES ROUGES CÔTÉ NAVIGATEUR, 21 août 2026.
+
+=== ROUGE 9a-resolution-directe ===
+fichier      : client/src/fichiers/adaptateur.ts
+sha256 avant : c70248d8d798c670127ab00856f96de4f7c39fcfd19768967651232cceca3372
+diff contre la copie : 2 ligne(s) — 0 SERAIT UN ÉCHEC DE LA ROUGE
+278c278
+<             const dernier = await canoniserOuLever(parent, parts[parts.length - 1], 'introuvable');
+---
+>             const dernier = parts[parts.length - 1];
+--- contrôle ---
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  1 failed | 14 passed (15)
+--- restauration DEPUIS LA COPIE NOMMÉE (jamais `git checkout --`) ---
+sha256 identique ✅
+état git inchangé ✅ [ M client/src/fichiers/adaptateur.ts]
+
+=== ROUGE 9b-nom-demande-au-lieu-du-stocke ===
+fichier      : client/src/fichiers/noms.ts
+sha256 avant : 690d1800e6cd30068de762970e35d49efb9454ebd41dd588951965cc62bfe96a
+diff contre la copie : 0 ligne(s) — 0 SERAIT UN ÉCHEC DE LA ROUGE
+🔴 LA MUTATION N'A RIEN MUTÉ : cette rouge NE PROUVE RIEN.
+
+=== ROUGE 9c-premier-homonyme-au-lieu-d-ambigu ===
+fichier      : client/src/fichiers/noms.ts
+sha256 avant : 690d1800e6cd30068de762970e35d49efb9454ebd41dd588951965cc62bfe96a
+diff contre la copie : 0 ligne(s) — 0 SERAIT UN ÉCHEC DE LA ROUGE
+🔴 LA MUTATION N'A RIEN MUTÉ : cette rouge NE PROUVE RIEN.
+
+=== ROUGE 9d-exact-ne-prime-pas ===
+fichier      : client/src/fichiers/noms.ts
+sha256 avant : 690d1800e6cd30068de762970e35d49efb9454ebd41dd588951965cc62bfe96a
+diff contre la copie : 1 ligne(s) — 0 SERAIT UN ÉCHEC DE LA ROUGE
+123d122
+<             if (enfant.name === demande) return { sorte: 'trouve', nom: demande };
+--- contrôle ---
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  2 failed | 18 passed (20)
+--- restauration DEPUIS LA COPIE NOMMÉE (jamais `git checkout --`) ---
+sha256 identique ✅
+état git inchangé ✅ [?? client/src/fichiers/noms.ts]
+
+=== ROUGE 9e-injection-sans-nfc ===
+fichier      : client/src/fichiers/noms.ts
+sha256 avant : 690d1800e6cd30068de762970e35d49efb9454ebd41dd588951965cc62bfe96a
+diff contre la copie : 2 ligne(s) — 0 SERAIT UN ÉCHEC DE LA ROUGE
+95c95
+<     return nom.normalize('NFC').toLowerCase();
+---
+>     return nom.toLowerCase();
+--- contrôle ---
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  2 failed | 18 passed (20)
+--- restauration DEPUIS LA COPIE NOMMÉE (jamais `git checkout --`) ---
+sha256 identique ✅
+état git inchangé ✅ [?? client/src/fichiers/noms.ts]
+
+⚠️ **LE HARNAIS A REFUSÉ DEUX ROUGES, ET C'EST SON OFFICE.** Les mutations
+9b et 9c étaient écrites en `sed` avec des accolades et des crochets que
+le shell mangeait : elles ne mutaient RIEN, et leur `exit=1` de contrôle
+aurait été lu comme une rouge réussie. Le garde « diff contre la copie = 0 »
+les a arrêtées (code 9). **Rejouées en Python, avec une assertion de
+compte sur le motif.**
+
+=== ROUGE 9b-nom-demande-au-lieu-du-stocke ===
+fichier      : client/src/fichiers/noms.ts
+sha256 avant : 690d1800e6cd30068de762970e35d49efb9454ebd41dd588951965cc62bfe96a
+diff contre la copie : 2 ligne(s) — 0 SERAIT UN ÉCHEC DE LA ROUGE
+129c129
+<     if (homonymes.length === 1) return { sorte: 'trouve', nom: homonymes[0] };
+---
+>     if (homonymes.length === 1) return { sorte: 'trouve', nom: demande };
+--- contrôle ---
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 8 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  8 failed | 27 passed (35)
+--- restauration DEPUIS LA COPIE NOMMÉE (jamais `git checkout --`) ---
+sha256 identique ✅
+état git inchangé ✅ [?? client/src/fichiers/noms.ts]
+
+=== ROUGE 9c-premier-homonyme-au-lieu-d-ambigu ===
+fichier      : client/src/fichiers/noms.ts
+sha256 avant : 690d1800e6cd30068de762970e35d49efb9454ebd41dd588951965cc62bfe96a
+diff contre la copie : 2 ligne(s) — 0 SERAIT UN ÉCHEC DE LA ROUGE
+130c130
+<     if (homonymes.length > 1) return { sorte: 'ambigu', noms: homonymes };
+---
+>     if (homonymes.length > 1) return { sorte: 'trouve', nom: homonymes[0] };
+--- contrôle ---
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  1 failed | 19 passed (20)
+--- restauration DEPUIS LA COPIE NOMMÉE (jamais `git checkout --`) ---
+sha256 identique ✅
+état git inchangé ✅ [?? client/src/fichiers/noms.ts]
+
+=== ROUGE 10a-repli-appele-malgre-move ===
+fichier      : client/src/fichiers/mutation.ts
+sha256 avant : 69ede4122fd9fc084d364d4c774d450bf28db4ac998debe6962646417d60cafc
+diff contre la copie : 2 ligne(s) — 0 SERAIT UN ÉCHEC DE LA ROUGE
+268c268
+<     if (typeof poignee.move === 'function') {
+---
+>     if (false as boolean) {
+--- contrôle ---
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  1 failed | 124 passed (125)
+--- restauration DEPUIS LA COPIE NOMMÉE (jamais `git checkout --`) ---
+sha256 identique ✅
+état git inchangé ✅ [?? client/src/fichiers/mutation.ts]
+
+=== ROUGE 10c-invalidmodification-non-classee ===
+fichier      : client/src/fichiers/mutation.ts
+sha256 avant : 69ede4122fd9fc084d364d4c774d450bf28db4ac998debe6962646417d60cafc
+diff contre la copie : 2 ligne(s) — 0 SERAIT UN ÉCHEC DE LA ROUGE
+461c461
+<         if (e instanceof DOMException && e.name === 'InvalidModificationError') {
+---
+>         if (false) {
+--- contrôle ---
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  2 failed | 123 passed (125)
+--- restauration DEPUIS LA COPIE NOMMÉE (jamais `git checkout --`) ---
+sha256 identique ✅
+état git inchangé ✅ [?? client/src/fichiers/mutation.ts]
+
+=== ROUGE 10d-source-retiree-avant-la-copie ===
+fichier      : client/src/fichiers/mutation.ts
+sha256 avant : 69ede4122fd9fc084d364d4c774d450bf28db4ac998debe6962646417d60cafc
+diff contre la copie : 2 ligne(s) — 0 SERAIT UN ÉCHEC DE LA ROUGE
+280a281,282
+>     // MUTATION : la source est retirée AVANT la copie.
+>     if (!repertoire) await parentSource.removeEntry(nomSource);
+--- contrôle ---
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 6 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  6 failed | 119 passed (125)
+--- restauration DEPUIS LA COPIE NOMMÉE (jamais `git checkout --`) ---
+sha256 identique ✅
+état git inchangé ✅ [?? client/src/fichiers/mutation.ts]
+
+=== ROUGE 11a-pas-d-abonnement-a-bufferedamountlow ===
+fichier      : client/src/fichiers/flux.ts
+sha256 avant : 131261c65bafef96093fc7c554fe497d375025a5b92e98def1167b0675d6c289
+diff contre la copie : 1 ligne(s) — 0 SERAIT UN ÉCHEC DE LA ROUGE
+93d92
+<                 canal.addEventListener('bufferedamountlow', finir);
+--- contrôle ---
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  4 failed | 121 passed (125)
+--- restauration DEPUIS LA COPIE NOMMÉE (jamais `git checkout --`) ---
+sha256 identique ✅
+état git inchangé ✅ [?? client/src/fichiers/flux.ts]
+
+=== ROUGE 11b-renommer-ne-repond-pas ===
+fichier      : client/src/fichiers/protocole.ts
+sha256 avant : 6ab5d878e6112611866bda53fbea3f43a40f480e72d53caa994c8155e924dbe0
+diff contre la copie : 2 ligne(s) — 0 SERAIT UN ÉCHEC DE LA ROUGE
+175c175
+<                     break;
+---
+>                     return null;
+--- contrôle ---
+⎯⎯⎯⎯⎯⎯ Failed Tests 12 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  12 failed | 113 passed (125)
+--- restauration DEPUIS LA COPIE NOMMÉE (jamais `git checkout --`) ---
+sha256 identique ✅
+état git inchangé ✅ [ M client/src/fichiers/protocole.ts]
+
+=== ROUGE 14a-mutations-effacees-avec-les-dues ===
+fichier      : client/src/shell.ts
+sha256 avant : e31610f01073cecc23b9c457d1a743a298466372840d958bbf39d0bf24e618b2
+diff contre la copie : 1 ligne(s) — 0 SERAIT UN ÉCHEC DE LA ROUGE
+239a240
+>             if (neuves.length === 0) mutations = [];
+--- contrôle ---
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  1 failed | 124 passed (125)
+--- restauration DEPUIS LA COPIE NOMMÉE (jamais `git checkout --`) ---
+sha256 identique ✅
+état git inchangé ✅ [ M client/src/shell.ts]
+
+🔴 **LA ROUGE 11b A DÛ ÊTRE REFAITE : ELLE ROUGISSAIT POUR LA MAUVAISE
+RAISON.** Sa première rédaction remplaçait le `break` COMMUN aux quatre
+(eval):27: command not found: ECRIRE
+(eval):27: command not found: CREER
+(eval):27: command not found: RENOMMER
+(eval):27: command not found: SUPPRIMER
+verbes — , , ,  chutent tous dessus —
+et faisait donc tomber **12** tests, dont ceux de F2. Un `exit=1` obtenu
+en cassant quatre verbes ne prouve rien de deux. **Refaite en scindant la
+chute de `case`.**
+⚠️ Et elle a révélé une lacune réelle : il n'existait AUCUN test de
+protocole pour les deux verbes de F3. Ils sont écrits, et la rouge porte
+désormais sur eux.
+
+=== ROUGE 11b-renommer-ne-repond-pas-BIS ===
+fichier      : client/src/fichiers/protocole.ts
+sha256 avant : 6ab5d878e6112611866bda53fbea3f43a40f480e72d53caa994c8155e924dbe0
+diff contre la copie : 3 ligne(s) — 0 SERAIT UN ÉCHEC DE LA ROUGE
+172a173
+>                     break;
+175c176
+<                     break;
+---
+>                     return null;
+--- contrôle ---
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 6 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  6 failed | 96 passed (102)
+--- restauration DEPUIS LA COPIE NOMMÉE (jamais `git checkout --`) ---
+sha256 identique ✅
+état git inchangé ✅ [ M client/src/fichiers/protocole.ts]
+
+════════════════════════════════════════════════════════════════════════════
+LECTURE DES ROUGES CÔTÉ NAVIGATEUR
+════════════════════════════════════════════════════════════════════════════
+9a résolution directe (le canonicaliseur retiré d'`attributs`) : `GROS.BIN`
+   rend `introuvable`. **C'EST L'ÉTAT QUE F1 RELÈVE**, reproduit sur l'hôte.
+9b rendre le nom DEMANDÉ au lieu du STOCKÉ : **8** tests. Le substitut serait
+   créé sous un nom qui n'existe pas côté poste local.
+9c choisir le premier homonyme au lieu de `ambigu` : **1** test. On écraserait
+   l'un des deux, et le choix dépendrait de l'ordre d'énumération.
+9d l'exact ne prime plus : **2** tests. `note.txt` deviendrait ambigu sur un
+   poste qui porte AUSSI `Note.txt`, alors qu'il est parfaitement désigné — on
+   refuserait une lecture légitime.
+9e le pliage sans `normalize('NFC')` : **2** tests. C'est exactement le legs que
+   `ecriture.ts` déclare : « la garde créerait alors un DOUBLON au lieu
+   d'écraser — moins grave que la perte, mais faux. NON TRAITÉ, déclaré ; c'est
+   le canonicaliseur de F3. »
+10a le repli appelé malgré `move()` : **1** test. Le faux compte ses lectures et
+   ses écritures, et le coût de la spec §3.5.1 redeviendrait vrai.
+10c `InvalidModificationError` non classée par le verbe : **2** tests. Une
+   suppression de répertoire non vide rendrait `deja-present` — la MÊME
+   `DOMException` veut dire deux choses selon le verbe, et `classer` ne peut pas
+   les départager.
+10d la source retirée AVANT la copie : **6** tests. Une coupure perdrait le
+   fichier.
+11a pas d'abonnement à `bufferedamountlow` : **4** tests. **L'ATTENTE NE SE
+   TERMINE JAMAIS**, et le pont expire — un blocage PIRE que celui qu'on
+   répare.
+11b `RENOMMER` qui ne répond pas : **6** tests. La commande resterait en vol
+   côté pont jusqu'à son expiration, et l'Explorateur se figerait sur une panne
+   pourtant immédiate.
+14a les mutations effacées avec les écritures dues : **1** test. Une divergence
+   DÉFINITIVE s'effacerait toute seule, et l'utilisateur ne saurait jamais qu'un
+   fichier n'a pas été renommé sur son poste.
+
+════════════════════════════════════════════════════════════════════════════
+🔴 TROIS ROUGES ONT ÉTÉ REFUSÉES OU REFAITES, ET C'EST LE HARNAIS QUI L'A DIT
+════════════════════════════════════════════════════════════════════════════
+9b et 9c, premières rédactions : mutations écrites en `sed` avec accolades et
+crochets que le shell mangeait. **Elles ne mutaient RIEN**, et leur `exit=1`
+aurait été lu comme une rouge réussie. Le garde « diff contre la copie = 0 »
+les a arrêtées (code 9). Rejouées en Python, avec une assertion de compte sur
+le motif.
+
+11b, première rédaction : elle remplaçait le `break` COMMUN aux quatre verbes —
+`ECRIRE`, `CREER`, `RENOMMER` et `SUPPRIMER` chutent tous dessus — et faisait
+donc tomber **12** tests, dont ceux de F2. **Un `exit=1` obtenu en cassant
+quatre verbes ne prouve rien de deux.** Refaite en scindant la chute de `case` :
+**6** tests, tous les six ceux de F3.
+
+⚠️ **Et elle a révélé une lacune réelle** : il n'existait AUCUN test de
+protocole pour les deux verbes de F3. Ils sont écrits, et la rouge porte
+désormais sur eux.
+
+════════════════════════════════════════════════════════════════════════════
+COMPTES
+════════════════════════════════════════════════════════════════════════════
+`cd client && npx vitest run`            : 451 → **462**
+`… --dir ../proto`                       : 293 → **296**
+`cargo test -p agent`                    : **900**, inchangé
+`cargo test -p proto`                    : 107 → **109**
+`npx tsc --noEmit` (client et proto)     : sortie 0
+`cargo check --target x86_64-pc-windows-gnu` : sortie 0

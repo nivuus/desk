@@ -1,0 +1,470 @@
+// LE RENOMMAGE ET LA SUPPRESSION, côté poste local. **PUR** : ni DOM, ni
+// WebRTC, ni trame binaire ; la racine lui est INJECTÉE, comme à
+// `adaptateur.ts` et à `ecriture.ts`.
+//
+// ════════════════════════════════════════════════════════════════════════════
+// 🔵 LE CHIFFRE DE COÛT DE LA SPEC §3.5.1 EST FAUX POUR CE MONTAGE
+// ════════════════════════════════════════════════════════════════════════════
+//
+// La spec écrit : « le repli […] fait transiter TOUT LE CONTENU DU FICHIER DEUX
+// FOIS sur le canal. Renommer un fichier de 1 Gio sur le chemin de repli coûte
+// donc 2 Gio de canal ».
+//
+// **Cela n'est vrai que si le PONT orchestre la copie**, par une suite de
+// `Lire` et d'`Ecrire`. F3 ne l'orchestre pas : le renommage est **UN SEUL
+// MESSAGE** (`Renommer { de, vers }`), et la copie de repli se fait entre deux
+// poignées qui vivent toutes deux dans le navigateur, sur le disque du poste
+// local. **Coût du repli sur le canal : ZÉRO octet, dans les deux branches.**
+//
+// CE QUE LE REPLI COÛTE QUAND MÊME, et qu'il ne faut pas effacer avec le
+// chiffre ci-dessus :
+//
+//   - **il n'est pas atomique** — une coupure au milieu laisse deux copies,
+//     dont l'une porte le nom cible et est partielle. La spec le dit ; c'est
+//     toujours vrai, et **ce n'est pas réparable ici** ;
+//   - il **double transitoirement l'occupation disque** du poste local ;
+//   - il est en **O(taille)** en temps et, pour un répertoire, en **O(nombre
+//     d'entrées)** appels FSA — sur un répertoire profond, cela peut être long,
+//     et **RIEN ICI NE LE BORNE** ;
+//   - **la mesure de F4 reste due et reste pertinente.** Elle mesurera un temps
+//     LOCAL, pas un débit de canal.
+//
+// ════════════════════════════════════════════════════════════════════════════
+// 🔴 `move()` ÉCRASE, ET C'EST POURQUOI LA VÉRIFICATION PRÉCÈDE
+// ════════════════════════════════════════════════════════════════════════════
+//
+// `FileSystemHandle.move()` **n'appartient pas à la norme** du File System
+// Access API : c'est une extension Chromium. La spec §3.5.1 le dit, et l'ancien
+// pont s'en sert (`web/index.js:628`, `:644`).
+//
+// **Elle ÉCRASE silencieusement une destination existante.** La résolution de
+// la destination vient donc AVANT, dans les deux branches — sans quoi renommer
+// `brouillon.txt` en `note.txt` détruirait `note.txt` sans un mot.
+//
+// ⚠️ **`move()` EST DÉTECTÉE À L'APPEL, jamais capturée au chargement du
+// module.** Une détection faite une fois pour toutes serait fausse le jour où
+// l'on injecterait un autre système de fichiers — et c'est exactement ce que
+// font les tests de ce module, qui emploient DEUX faux : l'un qui l'expose,
+// l'autre non.
+//
+// ════════════════════════════════════════════════════════════════════════════
+// 🔴 LE CAS PARTICULIER QUI DÉTRUIT : `a.txt` → `A.txt`
+// ════════════════════════════════════════════════════════════════════════════
+//
+// Ni la spec ni l'ancien pont ne le traitent. Sur un poste local INSENSIBLE à
+// la casse, la destination « existe déjà » — **et c'est la source elle-même**.
+// Une implémentation naïve refuse (`deja-present`) ou, pire, écrase.
+//
+// **Règle de F3** : si l'unique homonyme de la destination EST la source, c'est
+// un **renommage de casse pure**, il est licite, et le repli passe par un **nom
+// intermédiaire** — deux mouvements, jamais un écrasement.
+//
+// ════════════════════════════════════════════════════════════════════════════
+// ⚠️ LA SUPPRESSION N'EST PAS RÉCURSIVE — DIVERGENCE AVEC LA SPEC §3.5
+// ════════════════════════════════════════════════════════════════════════════
+//
+// Elle écrit `dir.removeEntry(nom, { recursive })`. **F3 appelle
+// `removeEntry(nom)` SANS `recursive`.**
+//
+// Raison : `recursive: true` transforme UN geste dans la VM en **destruction
+// récursive** sur le disque du poste local, sur la foi d'un miroir qu'aucune
+// preuve ne dit à jour. Windows, lui, ne supprime jamais un répertoire non vide
+// en un geste : l'Explorateur et `rd /s` effacent les enfants un à un, et
+// **chaque enfant produit sa propre notification**. Le miroir non récursif suit
+// donc Windows pas à pas.
+//
+// 🔵 **Bénéfice second, et il n'est pas décoratif** : si le navigateur répond
+// que le répertoire n'est pas vide, cela veut dire que **le miroir a dérivé** —
+// et `repertoire-non-vide` devient une cause RÉELLE et DIAGNOSTIQUE au lieu
+// d'un code jamais produit.
+//
+// ⚠️ **Ce que cela suppose, et qui N'EST PAS MESURÉ** : que ProjFS émette bien
+// une notification de suppression PAR ENFANT, y compris pour des enfants jamais
+// énumérés ni hydratés. C'est la question ③ de la sonde S1. Si la réponse est
+// non, la suppression d'un répertoire non vide laissera les enfants sur le
+// poste local — **dégrade, ne bloque pas**.
+
+import { EchecFichiers, classer, type PoigneeBase, type PoigneeFichier } from './adaptateur';
+import type { FluxInscriptible, RacineInscriptible } from './ecriture';
+import { canoniser, canoniserOuLever } from './noms';
+
+/** Ce qu'on sait faire d'une poignée de fichier qu'on veut déplacer. */
+export interface PoigneeFichierMutable extends PoigneeFichier {
+    createWritable(options?: { keepExistingData?: boolean }): Promise<FluxInscriptible>;
+    /** **NON STANDARD** — extension Chromium. Absente ⇒ le repli local. */
+    move?(parent: RacineMutable, nom: string): Promise<void>;
+}
+
+/**
+ * Une racine sur laquelle on peut muter.
+ *
+ * 🔵 **`move?` EST OPTIONNELLE DANS LE TYPE, et c'est ce qui permet d'écrire
+ * DEUX faux — l'un qui l'expose, l'autre non — et de voir les deux branches
+ * vertes sur l'hôte.** Un type qui l'imposerait rendrait le repli
+ * **inatteignable par un test**.
+ */
+export interface RacineMutable extends RacineInscriptible {
+    getDirectoryHandle(nom: string, options?: { create?: boolean }): Promise<RacineMutable>;
+    getFileHandle(nom: string, options?: { create?: boolean }): Promise<PoigneeFichierMutable>;
+    /** ⚠️ **SANS `recursive`** — voir l'en-tête. */
+    removeEntry(nom: string): Promise<void>;
+    /** **NON STANDARD**. */
+    move?(parent: RacineMutable, nom: string): Promise<void>;
+}
+
+/** Ce qu'un renommage a coûté LOCALEMENT — l'instrumentation que la spec exige. */
+export interface TraceRenommage {
+    /** `true` si `move()` a servi, `false` si le repli a copié. */
+    parMove: boolean;
+    /** Octets recopiés. **Zéro sur la branche `move`.** */
+    octets: number;
+    /** Entrées recréées. **Zéro sur la branche `move`**, 1 pour un fichier. */
+    entrees: number;
+}
+
+/** `"a/b/c"` → `["a","b","c"]`, `""` → `[]`. */
+function composants(chemin: string): string[] {
+    return chemin.split('/').filter((c) => c.length > 0);
+}
+
+/**
+ * Descend les `jusqua` premiers composants **en les canonicalisant**, sans en
+ * créer aucun.
+ */
+async function descendre(
+    racine: RacineMutable,
+    parts: string[],
+    jusqua: number,
+): Promise<RacineMutable> {
+    let ici = racine;
+    for (let i = 0; i < jusqua; i += 1) {
+        const nom = await canoniserOuLever(ici, parts[i], 'chemin-introuvable');
+        try {
+            ici = await ici.getDirectoryHandle(nom);
+        } catch (e) {
+            throw classer(e, 'chemin-introuvable');
+        }
+    }
+    return ici;
+}
+
+/** Descend en CRÉANT les répertoires manquants — pour la destination. */
+async function descendreEnCreant(
+    racine: RacineMutable,
+    parts: string[],
+    jusqua: number,
+): Promise<RacineMutable> {
+    let ici = racine;
+    for (let i = 0; i < jusqua; i += 1) {
+        // ⚠️ On canonicalise D'ABORD : sans cela, `archives/` et `Archives/`
+        // deviendraient deux répertoires sur un poste SENSIBLE à la casse, et
+        // le même sur un poste insensible — deux comportements pour un chemin.
+        const r = await canoniser(ici, parts[i]);
+        const nom = r.sorte === 'trouve' ? r.nom : parts[i];
+        if (r.sorte === 'ambigu') {
+            throw new EchecFichiers(
+                'casse-ambigue',
+                `« ${parts[i]} » ne se distingue pas de « ${r.noms.join(' », « ')} »`,
+            );
+        }
+        try {
+            ici = await ici.getDirectoryHandle(nom, { create: true });
+        } catch (e) {
+            throw classer(e, 'chemin-introuvable');
+        }
+    }
+    return ici;
+}
+
+/**
+ * Renomme `de` en `vers`, tous deux relatifs à la racine.
+ *
+ * ⚠️ **`repertoire` est TRANSPORTÉ depuis le rappel ProjFS**, jamais
+ * redécouvert : le navigateur le redemanderait au prix d'un aller-retour, et se
+ * tromperait sur une entrée que le renommage vient de faire disparaître.
+ */
+export async function renommer(
+    racine: RacineMutable,
+    de: string,
+    vers: string,
+    repertoire: boolean,
+): Promise<TraceRenommage> {
+    const partsDe = composants(de);
+    const partsVers = composants(vers);
+    if (partsDe.length === 0 || partsVers.length === 0) {
+        throw new EchecFichiers('non-supporte', 'la racine ne se renomme pas');
+    }
+    const parentSource = await descendre(racine, partsDe, partsDe.length - 1);
+    const nomSource = await canoniserOuLever(
+        parentSource,
+        partsDe[partsDe.length - 1],
+        'introuvable',
+    );
+    const parentDest = await descendreEnCreant(racine, partsVers, partsVers.length - 1);
+    const nomDemande = partsVers[partsVers.length - 1];
+
+    // ── LA RÉSOLUTION DE LA DESTINATION, ET ELLE PRÉCÈDE TOUT ────────────────
+    // 🔴 `move()` ÉCRASE : sans ce bloc, renommer `brouillon.txt` en `note.txt`
+    // détruirait `note.txt` sans un mot.
+    const dest = await canoniser(parentDest, nomDemande);
+    const memeParent = parentSource === parentDest;
+    let cassePure = false;
+    if (dest.sorte === 'ambigu') {
+        throw new EchecFichiers(
+            'casse-ambigue',
+            `« ${nomDemande} » ne se distingue pas de « ${dest.noms.join(' », « ')} »`,
+        );
+    }
+    if (dest.sorte === 'trouve') {
+        // 🔴 **LE RENOMMAGE DE CASSE PURE.** Si l'unique homonyme de la
+        // destination EST la source, ce n'est pas une collision : c'est
+        // `a.txt` → `A.txt`, et il est licite.
+        if (memeParent && dest.nom === nomSource) {
+            cassePure = true;
+        } else {
+            throw new EchecFichiers(
+                'deja-present',
+                `« ${vers} » existe déjà sous le nom « ${dest.nom} »`,
+            );
+        }
+    }
+
+    if (cassePure) {
+        // Deux mouvements, JAMAIS un écrasement : sur un poste insensible à la
+        // casse, se déplacer sur soi-même est ou bien refusé, ou bien — pire —
+        // une troncature.
+        const intermediaire = nomIntermediaire(nomSource);
+        await deplacer(parentSource, nomSource, parentSource, intermediaire, repertoire);
+        await deplacer(parentSource, intermediaire, parentDest, nomDemande, repertoire);
+        return { parMove: true, octets: 0, entrees: 0 };
+    }
+    return deplacer(parentSource, nomSource, parentDest, nomDemande, repertoire);
+}
+
+/**
+ * Un nom intermédiaire qui ne peut collisionner avec rien.
+ *
+ * ⚠️ **Il porte un composant aléatoire**, et non un suffixe fixe : deux
+ * renommages de casse pure concurrents dans le même répertoire se
+ * marcheraient dessus, et le second détruirait le fichier du premier.
+ */
+function nomIntermediaire(source: string): string {
+    const jeton = Math.random().toString(36).slice(2, 10);
+    return `${source}.pont-${jeton}.tmp`;
+}
+
+/** `move()` si elle existe, la copie locale sinon. */
+async function deplacer(
+    parentSource: RacineMutable,
+    nomSource: string,
+    parentDest: RacineMutable,
+    nomDest: string,
+    repertoire: boolean,
+): Promise<TraceRenommage> {
+    // ⚠️ **DÉTECTÉE À L'APPEL**, sur la poignée réellement obtenue.
+    const poignee: PoigneeBase & { move?: unknown } = repertoire
+        ? await ouvrirRepertoire(parentSource, nomSource)
+        : await ouvrirFichier(parentSource, nomSource);
+    if (typeof poignee.move === 'function') {
+        try {
+            await (poignee as { move(p: RacineMutable, n: string): Promise<void> }).move(
+                parentDest,
+                nomDest,
+            );
+            return { parMove: true, octets: 0, entrees: 0 };
+        } catch (e) {
+            throw classer(e, 'introuvable');
+        }
+    }
+    // ── LE REPLI, ENTIÈREMENT DANS LE NAVIGATEUR ─────────────────────────────
+    const trace = { parMove: false, octets: 0, entrees: 0 };
+    if (repertoire) {
+        await copierRepertoire(parentSource, nomSource, parentDest, nomDest, trace);
+    } else {
+        await copierFichier(parentSource, nomSource, parentDest, nomDest, trace);
+    }
+    // 🔴 **LA SOURCE N'EST RETIRÉE QU'APRÈS**, et une copie interrompue la
+    // laisse donc INTACTE. L'inverse perdrait le fichier sur une coupure.
+    try {
+        if (repertoire) {
+            await retirerArbre(parentSource, nomSource);
+        } else {
+            await parentSource.removeEntry(nomSource);
+        }
+    } catch (e) {
+        throw classer(e, 'introuvable');
+    }
+    return trace;
+}
+
+async function ouvrirRepertoire(
+    parent: RacineMutable,
+    nom: string,
+): Promise<RacineMutable> {
+    try {
+        return await parent.getDirectoryHandle(nom);
+    } catch (e) {
+        throw classer(e, 'introuvable');
+    }
+}
+
+async function ouvrirFichier(
+    parent: RacineMutable,
+    nom: string,
+): Promise<PoigneeFichierMutable> {
+    try {
+        return await parent.getFileHandle(nom);
+    } catch (e) {
+        throw classer(e, 'introuvable');
+    }
+}
+
+async function copierFichier(
+    parentSource: RacineMutable,
+    nomSource: string,
+    parentDest: RacineMutable,
+    nomDest: string,
+    trace: TraceRenommage,
+): Promise<void> {
+    try {
+        const fichier = await (await parentSource.getFileHandle(nomSource)).getFile();
+        const cible = await parentDest.getFileHandle(nomDest, { create: true });
+        // ⚠️ **SANS `keepExistingData`** — la destination est neuve ou vide de
+        // droit, et le défaut de l'ancien pont était précisément de garder la
+        // queue d'octets d'un fichier réécrit plus court (spec §12).
+        const flux = await cible.createWritable();
+        const octets = new Uint8Array(await fichier.slice(0, fichier.size).arrayBuffer());
+        await flux.write({ type: 'write', position: 0, data: octets });
+        // 🔵 LA COMMITTAISON EST ICI, ET NULLE PART AILLEURS.
+        await flux.close();
+        trace.octets += octets.length;
+        trace.entrees += 1;
+    } catch (e) {
+        throw classer(e, 'introuvable');
+    }
+}
+
+/**
+ * Recrée l'arbre, feuille à feuille.
+ *
+ * 🔴 **LE DÉFAUT DE L'ANCIEN PONT QU'ON REFUSE DE REJOUER** :
+ * `web/index.js:631` écrit `const newDir = await newDir.getDirectoryHandle(...)`
+ * **à l'intérieur du bloc où `newDir` est le paramètre** — une zone morte
+ * temporelle, donc un `ReferenceError`. **Le renommage d'un répertoire
+ * contenant un sous-répertoire y échoue donc TOUJOURS.** C'est le critère (1)
+ * de F3, écrit pour exercer exactement ce cas.
+ */
+async function copierRepertoire(
+    parentSource: RacineMutable,
+    nomSource: string,
+    parentDest: RacineMutable,
+    nomDest: string,
+    trace: TraceRenommage,
+): Promise<void> {
+    const source = await ouvrirRepertoire(parentSource, nomSource);
+    let cible: RacineMutable;
+    try {
+        cible = await parentDest.getDirectoryHandle(nomDest, { create: true });
+    } catch (e) {
+        throw classer(e, 'introuvable');
+    }
+    trace.entrees += 1;
+    // ⚠️ L'énumération est MATÉRIALISÉE avant de muter : itérer un répertoire
+    // qu'on modifie pendant l'itération n'a pas de sémantique définie.
+    const enfants: PoigneeBase[] = [];
+    try {
+        for await (const enfant of source.values()) enfants.push(enfant);
+    } catch (e) {
+        throw classer(e, 'introuvable');
+    }
+    for (const enfant of enfants) {
+        if (enfant.kind === 'directory') {
+            await copierRepertoire(source, enfant.name, cible, enfant.name, trace);
+        } else {
+            await copierFichier(source, enfant.name, cible, enfant.name, trace);
+        }
+    }
+}
+
+/**
+ * Retire un répertoire et tout ce qu'il porte, **feuille à feuille**.
+ *
+ * 🔴 **CE N'EST PAS `recursive: true`, ET LA DIFFÉRENCE EST TOUT LE POINT.**
+ * `removeEntry(nom)` sans `recursive` refuse un répertoire non vide (le faux de
+ * test le refuse comme le navigateur réel), et le repli de renommage doit
+ * pourtant retirer l'arbre source qu'il vient de recopier. Deux voies :
+ *
+ *   - `recursive: true` — **REFUSÉE** : elle détruirait sur la foi d'un miroir
+ *     qu'aucune preuve ne dit à jour, et c'est l'argument entier de l'en-tête ;
+ *   - descendre nous-mêmes et retirer **ce qu'on vient de copier**, entrée par
+ *     entrée, du bas vers le haut. **C'est ce qui est fait.**
+ *
+ * 🔵 **La seconde est PLUS SÛRE que la première, pas seulement plus verbeuse** :
+ * on ne retire QUE ce que [`copierRepertoire`] a énuméré et recopié quelques
+ * lignes plus tôt. Une entrée apparue entre-temps sur le poste local **fait
+ * échouer le retrait** au lieu d'être emportée en silence — et `deplacer`
+ * remonte alors l'échec, source intacte.
+ *
+ * ⚠️ **[`supprimer`], elle, N'APPELLE JAMAIS CETTE FONCTION.** Une suppression
+ * demandée par la VM ne retire qu'UNE entrée : Windows envoie une notification
+ * PAR ENFANT, et le miroir le suit pas à pas. Les deux chemins sont voisins et
+ * ne doivent pas être unifiés.
+ */
+async function retirerArbre(parent: RacineMutable, nom: string): Promise<void> {
+    const dossier = await parent.getDirectoryHandle(nom);
+    const enfants: PoigneeBase[] = [];
+    for await (const enfant of dossier.values()) enfants.push(enfant);
+    for (const enfant of enfants) {
+        if (enfant.kind === 'directory') {
+            await retirerArbre(dossier, enfant.name);
+        } else {
+            await dossier.removeEntry(enfant.name);
+        }
+    }
+    // Le répertoire est vide MAINTENANT : `removeEntry` sans `recursive`
+    // l'accepte. S'il ne l'est pas, c'est qu'une entrée est apparue entre
+    // l'énumération et ici — et le refus est le bon comportement.
+    await parent.removeEntry(nom);
+}
+
+/**
+ * Supprime `chemin`, relatif à la racine.
+ *
+ * ⚠️ **`removeEntry(nom)` SANS `recursive`** — voir l'en-tête.
+ */
+export async function supprimer(
+    racine: RacineMutable,
+    chemin: string,
+    _repertoire: boolean,
+): Promise<void> {
+    const parts = composants(chemin);
+    if (parts.length === 0) {
+        throw new EchecFichiers('non-supporte', 'la racine ne se supprime pas');
+    }
+    const parent = await descendre(racine, parts, parts.length - 1);
+    const nom = await canoniserOuLever(parent, parts[parts.length - 1], 'introuvable');
+    try {
+        await parent.removeEntry(nom);
+    } catch (e) {
+        // 🔴 **`InvalidModificationError` VEUT DIRE DEUX CHOSES SELON LE VERBE,
+        // ET `adaptateur.classer` NE PEUT PAS LES DÉPARTAGER.**
+        //
+        // Sur une CRÉATION, elle veut dire « une entrée du même nom existe » —
+        // et `classer` la traduit en `deja-present`, ce que F2 a écrit. Sur un
+        // `removeEntry` SANS `recursive`, elle veut dire **« le répertoire
+        // n'est pas vide »**, ce qui est un diagnostic tout différent : le
+        // miroir a dérivé.
+        //
+        // La classification est donc faite ICI, où le verbe est connu.
+        // L'élargir dans `classer` ferait qu'une création rendrait
+        // `repertoire-non-vide`, ou l'inverse.
+        if (e instanceof DOMException && e.name === 'InvalidModificationError') {
+            throw new EchecFichiers(
+                'repertoire-non-vide',
+                `« ${chemin} » n’est pas vide sur le poste local : le miroir a dérivé, ` +
+                    `rien n’a été supprimé`,
+            );
+        }
+        throw classer(e, 'introuvable');
+    }
+}

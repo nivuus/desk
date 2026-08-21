@@ -28,6 +28,9 @@ import {
 import { jetonAcces } from '../jeton';
 import { composer, lirePrefixe } from '../prefixe';
 import type { Racine } from './adaptateur';
+import type { RacineInscriptible } from './ecriture';
+import { contrePression } from './flux';
+import type { RacineMutable } from './mutation';
 
 /**
  * Nom réservé de la session de signaling du pont fichiers.
@@ -93,6 +96,15 @@ export async function connecterCanalFichiers(options: OptionsCanal): Promise<Can
     // raison est inverse : une position de souris périmée n'a aucune valeur,
     // une plage d'octets perdue est un fichier corrompu.
     const canal = pc.createDataChannel('fichiers', { ordered: true });
+    // ⚠️ **LA CONTRE-PRESSION EST POSÉE ICI, ET SA LOGIQUE VIT AILLEURS.**
+    // `flux.ts` est PUR et injecté ; ce fichier n'a AUCUN test (son en-tête le
+    // déclare), et y loger une attente asynchrone la rendrait inéprouvable.
+    // C'est le même partage que `protocole.ts` / `adaptateur.ts` depuis F1.
+    //
+    // 🔵 **`bufferedAmountLowThreshold` EST POSÉ PAR `contrePression`**, pas
+    // ici : le poser deux fois ferait deux vérités, et la spec §3.4 l'exige
+    // (« posé ») sans dire par qui. Avant F3 il ne l'était **nulle part**.
+    const frein = contrePression(canal as unknown as import('./flux').CanalSortant);
     // ⚠️ SANS CECI, `event.data` PEUT ÊTRE UN `Blob`. Le défaut par défaut de
     // `RTCDataChannel.binaryType` est `'blob'` dans la spécification ; les
     // navigateurs qui ne gèrent que `'arraybuffer'` s'en tirent, les autres
@@ -111,11 +123,13 @@ export async function connecterCanalFichiers(options: OptionsCanal): Promise<Can
         }
         void options
             .traiter(donnees)
-            .then((reponse) => {
-                // ⚠️ ON NE REPOND QUE SI LE CANAL EST ENCORE OUVERT. `traiter`
-                // est asynchrone — une lecture de fichier peut survivre à la
-                // fermeture —, et `send` sur un canal fermé LÈVE.
-                if (reponse !== null && canal.readyState === 'open') canal.send(reponse);
+            .then(async (reponse) => {
+                if (reponse === null) return;
+                // 🔴 **LA CONTRE-PRESSION VIENT AVANT L'ENVOI, ET APRÈS ELLE ON
+                // RE-CONTRÔLE L'ÉTAT.** L'attente peut durer, et le canal peut
+                // s'être fermé pendant : `send` sur un canal fermé LÈVE.
+                await frein.avantEnvoi();
+                if (canal.readyState === 'open') canal.send(reponse);
             })
             .catch((e: unknown) => {
                 // `traiter` répond lui-même aux échecs qu'il sait nommer ; s'il
@@ -217,5 +231,32 @@ export async function choisirDossier(): Promise<{ racine: Racine; nom: string } 
     // sans cette bibliothèque, `FileSystemDirectoryHandle` n'a pas de `values()`
     // du tout et l'affectation échoue. Elle y a été ajoutée par ce sous-bloc.
     const racine: Racine = poignee;
+    // ── 🔴 LE CONTRÔLE DE COMPATIBILITÉ STRUCTURELLE, EN ENTIER ─────────────
+    //
+    // ⚠️ **CELUI DE F2 ÉTAIT VACUEUX, ET C'EST MESURÉ.**
+    // `shell-page.ts` portait `choix.racine as RacineInscriptible` en le
+    // déclarant « le CONTRÔLE DE COMPATIBILITÉ STRUCTURELLE de F2 : si la vraie
+    // poignée cessait de le satisfaire, `tsc --noEmit` le dirait ICI ».
+    // **`choix.racine` y est typée `Racine`, et `RacineInscriptible` en est un
+    // SOUS-type** : un `as` vers un sous-type est une assertion, jamais une
+    // vérification. Ajouter à `RacineInscriptible` une méthode que
+    // `FileSystemDirectoryHandle` n'a pas ne faisait rougir QUE le faux de
+    // test — jamais cette ligne-là.
+    // Journal :
+    // `docs/superpowers/plans/journaux-pont-fichiers-f3/t9-controle-structurel-de-f2-vacueux.txt`
+    //
+    // **Les trois AFFECTATIONS ci-dessous, elles, vérifient** : elles portent
+    // sur la VRAIE `FileSystemDirectoryHandle`, avant tout élargissement. Si
+    // elle cessait de satisfaire l'une des trois interfaces, `tsc --noEmit` le
+    // dirait ici, à la compilation, et non en session réelle.
+    //
+    // ⚠️ **Elles dépendent de `"DOM.AsyncIterable"` dans `client/tsconfig.json`**
+    // (sans quoi `values()` n'existe pas) et, pour `RacineMutable`, de
+    // `removeEntry`, que la bibliothèque DOM déclare avec un `options` que nous
+    // n'employons pas — voir `mutation.ts`.
+    const _inscriptible: RacineInscriptible = poignee;
+    const _mutable: RacineMutable = poignee;
+    void _inscriptible;
+    void _mutable;
     return { racine, nom: poignee.name };
 }
