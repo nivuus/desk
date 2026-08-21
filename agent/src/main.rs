@@ -1,3 +1,4 @@
+mod accent;
 mod apps;
 mod audio;
 // Pas de `#[cfg(windows)]` ici : le protocole du canal média et la

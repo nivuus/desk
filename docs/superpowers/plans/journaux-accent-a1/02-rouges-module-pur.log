@@ -1,0 +1,398 @@
+=== A1 — LES ROUGES DU MODULE PUR agent/src/accent.rs (tache 4) ===
+Date : 21 aout 2026. Harnais : instrument/harnais-rouge.sh, HUIT etapes (§6.4).
+⚠️ agent/src/accent.rs est NEUF et non encore commite quand ces rouges sont
+   jouees : l'etape 7 rend donc « ?? », et la preuve de restauration qui
+   vaut est le sha256 de l'etape 6. C'est dit plutot que maquille.
+
+### ROUGE 0 — une mutation qui ne mute RIEN. Le harnais DOIT la REFUSER.
+───────────────────────────────────────────────────────────────
+ROUGE « 0-ne-mute-rien »  sur  agent/src/accent.rs
+1. copie nommée : /tmp/a1-rouge-0-ne-mute-rien.orig   sha256(avant) = a466b5c6e2760f1807eeeb522fe9cd854bff568fd4d62837edfa5ce13b192bc5
+2. mutation appliquée
+3. 🔴 DIFF VIDE — LE HARNAIS REFUSE CETTE ROUGE : elle ne mute RIEN.
+   (restauré ; rouge NON COMPTÉE)
+REFUSÉE
+
+### ROUGE 1 — retirer le filtre ALPHA_MIN
+    attendu ROUGE : les_pixels_transparents_ne_comptent_pas
+───────────────────────────────────────────────────────────────
+ROUGE « 1-alpha »  sur  agent/src/accent.rs
+1. copie nommée : /tmp/a1-rouge-1-alpha.orig   sha256(avant) = a466b5c6e2760f1807eeeb522fe9cd854bff568fd4d62837edfa5ce13b192bc5
+2. mutation appliquée
+3. diff NON VIDE (3 ligne(s)) ✅
+4. contrôle : cargo test -p agent --manifest-path agent/Cargo.toml accent::
+     Running unittests src/main.rs (target/debug/deps/agent-f71a44343b450757)
+
+running 9 tests
+test accent::tests::en_hexa_rend_six_chiffres_minuscules ... ok
+test accent::tests::la_moyenne_du_seau_n_est_pas_le_centre_du_seau ... ok
+test accent::tests::un_contour_noir_majoritaire_ne_gagne_pas ... ok
+test accent::tests::les_pixels_transparents_ne_comptent_pas ... FAILED
+test accent::tests::un_suivi_n_annonce_pas_deux_fois_la_meme_couleur ... ok
+test accent::tests::un_suivi_neuf_annonce_sa_premiere_lecture ... ok
+test accent::tests::une_geometrie_incoherente_rend_None ... ok
+test accent::tests::une_icone_a_dominante_bleue_rend_du_bleu ... ok
+test accent::tests::une_icone_entierement_grise_rend_None ... ok
+
+failures:
+
+---- accent::tests::les_pixels_transparents_ne_comptent_pas stdout ----
+
+thread 'accent::tests::les_pixels_transparents_ne_comptent_pas' (1224728) panicked at agent/src/accent/tests.rs:53:5:
+assertion `left == right` failed: seuls les pixels opaques comptent
+  left: [240, 40, 40]
+ right: [60, 110, 240]
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    accent::tests::les_pixels_transparents_ne_comptent_pas
+
+test result: FAILED. 8 passed; 1 failed; 0 ignored; 0 measured; 944 filtered out; finished in 0.01s
+
+error: test failed, to rerun pass `-p agent --bin agent`
+   (code de sortie du contrôle : 101)
+5. restauré DEPUIS LA COPIE
+6. sha256(après) = a466b5c6e2760f1807eeeb522fe9cd854bff568fd4d62837edfa5ce13b192bc5
+   ✅ ÉGAL
+7. git status --porcelain : « ?? agent/src/accent.rs » — le fichier est NEUF et pas encore commité ; la seule\n     preuve de restauration qui vaille ici est le sha256 de l'étape 6 ✅
+
+### ROUGE 2 — retirer le filtre de LUMINANCE
+    attendu ROUGE : un_contour_noir_majoritaire_ne_gagne_pas
+───────────────────────────────────────────────────────────────
+ROUGE « 2-luma »  sur  agent/src/accent.rs
+1. copie nommée : /tmp/a1-rouge-2-luma.orig   sha256(avant) = a466b5c6e2760f1807eeeb522fe9cd854bff568fd4d62837edfa5ce13b192bc5
+2. mutation appliquée
+3. diff NON VIDE (4 ligne(s)) ✅
+4. contrôle : cargo test -p agent --manifest-path agent/Cargo.toml accent::
+     Running unittests src/main.rs (target/debug/deps/agent-f71a44343b450757)
+
+running 9 tests
+test accent::tests::en_hexa_rend_six_chiffres_minuscules ... ok
+test accent::tests::les_pixels_transparents_ne_comptent_pas ... ok
+test accent::tests::la_moyenne_du_seau_n_est_pas_le_centre_du_seau ... ok
+test accent::tests::un_suivi_neuf_annonce_sa_premiere_lecture ... ok
+test accent::tests::un_suivi_n_annonce_pas_deux_fois_la_meme_couleur ... ok
+test accent::tests::un_contour_noir_majoritaire_ne_gagne_pas ... FAILED
+test accent::tests::une_geometrie_incoherente_rend_None ... ok
+test accent::tests::une_icone_a_dominante_bleue_rend_du_bleu ... ok
+test accent::tests::une_icone_entierement_grise_rend_None ... ok
+
+failures:
+
+---- accent::tests::un_contour_noir_majoritaire_ne_gagne_pas stdout ----
+
+thread 'accent::tests::un_contour_noir_majoritaire_ne_gagne_pas' (1226606) panicked at agent/src/accent/tests.rs:74:5:
+assertion `left == right` failed: le contour sombre ne décide pas de la teinte
+  left: [5, 5, 60]
+ right: [250, 160, 40]
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    accent::tests::un_contour_noir_majoritaire_ne_gagne_pas
+
+test result: FAILED. 8 passed; 1 failed; 0 ignored; 0 measured; 944 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `-p agent --bin agent`
+   (code de sortie du contrôle : 101)
+5. restauré DEPUIS LA COPIE
+6. sha256(après) = a466b5c6e2760f1807eeeb522fe9cd854bff568fd4d62837edfa5ce13b192bc5
+   ✅ ÉGAL
+7. git status --porcelain : « ?? agent/src/accent.rs » — le fichier est NEUF, pas encore commité : la preuve de restauration est le sha256 de l ETAPE 6 ✅
+
+### ROUGE 3 — retirer le filtre de SATURATION
+    attendu ROUGE : une_icone_entierement_grise_rend_None (None n'est plus atteignable)
+───────────────────────────────────────────────────────────────
+ROUGE « 3-saturation »  sur  agent/src/accent.rs
+1. copie nommée : /tmp/a1-rouge-3-saturation.orig   sha256(avant) = a466b5c6e2760f1807eeeb522fe9cd854bff568fd4d62837edfa5ce13b192bc5
+2. mutation appliquée
+3. diff NON VIDE (3 ligne(s)) ✅
+4. contrôle : cargo test -p agent --manifest-path agent/Cargo.toml accent::
+     Running unittests src/main.rs (target/debug/deps/agent-f71a44343b450757)
+
+running 9 tests
+test accent::tests::les_pixels_transparents_ne_comptent_pas ... ok
+test accent::tests::un_contour_noir_majoritaire_ne_gagne_pas ... ok
+test accent::tests::en_hexa_rend_six_chiffres_minuscules ... ok
+test accent::tests::la_moyenne_du_seau_n_est_pas_le_centre_du_seau ... ok
+test accent::tests::un_suivi_n_annonce_pas_deux_fois_la_meme_couleur ... ok
+test accent::tests::une_geometrie_incoherente_rend_None ... ok
+test accent::tests::une_icone_a_dominante_bleue_rend_du_bleu ... ok
+test accent::tests::un_suivi_neuf_annonce_sa_premiere_lecture ... ok
+test accent::tests::une_icone_entierement_grise_rend_None ... FAILED
+
+failures:
+
+---- accent::tests::une_icone_entierement_grise_rend_None stdout ----
+
+thread 'accent::tests::une_icone_entierement_grise_rend_None' (1227385) panicked at agent/src/accent/tests.rs:83:5:
+assertion `left == right` failed: aucun pixel chromatique ne survit
+  left: Some([128, 128, 128])
+ right: None
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    accent::tests::une_icone_entierement_grise_rend_None
+
+test result: FAILED. 8 passed; 1 failed; 0 ignored; 0 measured; 944 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `-p agent --bin agent`
+   (code de sortie du contrôle : 101)
+5. restauré DEPUIS LA COPIE
+6. sha256(après) = a466b5c6e2760f1807eeeb522fe9cd854bff568fd4d62837edfa5ce13b192bc5
+   ✅ ÉGAL
+7. git status --porcelain : « ?? agent/src/accent.rs » — le fichier est NEUF, pas encore commité : la preuve de restauration est le sha256 de l ETAPE 6 ✅
+
+### ROUGE 4 — rendre le CENTRE du seau au lieu de la MOYENNE
+    attendu ROUGE : la_moyenne_du_seau_n_est_pas_le_centre_du_seau
+───────────────────────────────────────────────────────────────
+ROUGE « 4-centre »  sur  agent/src/accent.rs
+1. copie nommée : /tmp/a1-rouge-4-centre.orig   sha256(avant) = a466b5c6e2760f1807eeeb522fe9cd854bff568fd4d62837edfa5ce13b192bc5
+2. mutation appliquée
+3. diff NON VIDE (5 ligne(s)) ✅
+4. contrôle : cargo test -p agent --manifest-path agent/Cargo.toml accent::
+
+thread 'accent::tests::les_pixels_transparents_ne_comptent_pas' (1227933) panicked at agent/src/accent/tests.rs:53:5:
+assertion `left == right` failed: seuls les pixels opaques comptent
+  left: [48, 112, 240]
+ right: [60, 110, 240]
+
+---- accent::tests::la_moyenne_du_seau_n_est_pas_le_centre_du_seau stdout ----
+
+thread 'accent::tests::la_moyenne_du_seau_n_est_pas_le_centre_du_seau' (1227932) panicked at agent/src/accent/tests.rs:91:5:
+assertion `left == right` failed: la moyenne rend une teinte RÉELLE de l'image
+  left: [208, 48, 48]
+ right: [200, 40, 40]
+
+---- accent::tests::une_icone_a_dominante_bleue_rend_du_bleu stdout ----
+
+thread 'accent::tests::une_icone_a_dominante_bleue_rend_du_bleu' (1227938) panicked at agent/src/accent/tests.rs:41:5:
+assertion `left == right` failed: le seau le plus peuplé est le bleu
+  left: [48, 112, 240]
+ right: [60, 110, 240]
+
+
+failures:
+    accent::tests::la_moyenne_du_seau_n_est_pas_le_centre_du_seau
+    accent::tests::les_pixels_transparents_ne_comptent_pas
+    accent::tests::un_contour_noir_majoritaire_ne_gagne_pas
+    accent::tests::une_icone_a_dominante_bleue_rend_du_bleu
+
+test result: FAILED. 5 passed; 4 failed; 0 ignored; 0 measured; 944 filtered out; finished in 0.01s
+
+error: test failed, to rerun pass `-p agent --bin agent`
+   (code de sortie du contrôle : 101)
+5. restauré DEPUIS LA COPIE
+6. sha256(après) = a466b5c6e2760f1807eeeb522fe9cd854bff568fd4d62837edfa5ce13b192bc5
+   ✅ ÉGAL
+7. git status --porcelain : « ?? agent/src/accent.rs » — le fichier est NEUF, pas encore commité : la preuve de restauration est le sha256 de l ETAPE 6 ✅
+
+### ROUGE 5 — retirer le GARDE DE LONGUEUR de dominante
+    attendu ROUGE : une_geometrie_incoherente_rend_None
+───────────────────────────────────────────────────────────────
+ROUGE « 5-longueur »  sur  agent/src/accent.rs
+1. copie nommée : /tmp/a1-rouge-5-longueur.orig   sha256(avant) = a466b5c6e2760f1807eeeb522fe9cd854bff568fd4d62837edfa5ce13b192bc5
+2. mutation appliquée
+3. diff NON VIDE (3 ligne(s)) ✅
+4. contrôle : cargo test -p agent --manifest-path agent/Cargo.toml accent::
+     Running unittests src/main.rs (target/debug/deps/agent-f71a44343b450757)
+
+running 9 tests
+test accent::tests::en_hexa_rend_six_chiffres_minuscules ... ok
+test accent::tests::la_moyenne_du_seau_n_est_pas_le_centre_du_seau ... ok
+test accent::tests::un_suivi_neuf_annonce_sa_premiere_lecture ... ok
+test accent::tests::un_suivi_n_annonce_pas_deux_fois_la_meme_couleur ... ok
+test accent::tests::un_contour_noir_majoritaire_ne_gagne_pas ... ok
+test accent::tests::une_geometrie_incoherente_rend_None ... FAILED
+test accent::tests::les_pixels_transparents_ne_comptent_pas ... ok
+test accent::tests::une_icone_entierement_grise_rend_None ... ok
+test accent::tests::une_icone_a_dominante_bleue_rend_du_bleu ... ok
+
+failures:
+
+---- accent::tests::une_geometrie_incoherente_rend_None stdout ----
+
+thread 'accent::tests::une_geometrie_incoherente_rend_None' (1232447) panicked at agent/src/accent/tests.rs:101:5:
+assertion `left == right` failed: 1 pixel pour 4×4 annoncés
+  left: Some([60, 110, 240])
+ right: None
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    accent::tests::une_geometrie_incoherente_rend_None
+
+test result: FAILED. 8 passed; 1 failed; 0 ignored; 0 measured; 944 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `-p agent --bin agent`
+   (code de sortie du contrôle : 101)
+5. restauré DEPUIS LA COPIE
+6. sha256(après) = a466b5c6e2760f1807eeeb522fe9cd854bff568fd4d62837edfa5ce13b192bc5
+   ✅ ÉGAL
+7. git status --porcelain : « ?? agent/src/accent.rs » — le fichier est NEUF, pas encore commité : la preuve de restauration est le sha256 de l ETAPE 6 ✅
+
+### ROUGE 6 — {:02X} au lieu de {:02x} dans en_hexa
+    attendu ROUGE : en_hexa_rend_six_chiffres_minuscules
+───────────────────────────────────────────────────────────────
+ROUGE « 6-majuscule »  sur  agent/src/accent.rs
+1. copie nommée : /tmp/a1-rouge-6-majuscule.orig   sha256(avant) = a466b5c6e2760f1807eeeb522fe9cd854bff568fd4d62837edfa5ce13b192bc5
+2. mutation appliquée
+3. diff NON VIDE (2 ligne(s)) ✅
+4. contrôle : cargo test -p agent --manifest-path agent/Cargo.toml accent::
+     Running unittests src/main.rs (target/debug/deps/agent-f71a44343b450757)
+
+running 9 tests
+test accent::tests::la_moyenne_du_seau_n_est_pas_le_centre_du_seau ... ok
+test accent::tests::en_hexa_rend_six_chiffres_minuscules ... FAILED
+test accent::tests::les_pixels_transparents_ne_comptent_pas ... ok
+test accent::tests::un_suivi_neuf_annonce_sa_premiere_lecture ... ok
+test accent::tests::un_suivi_n_annonce_pas_deux_fois_la_meme_couleur ... ok
+test accent::tests::un_contour_noir_majoritaire_ne_gagne_pas ... ok
+test accent::tests::une_geometrie_incoherente_rend_None ... ok
+test accent::tests::une_icone_a_dominante_bleue_rend_du_bleu ... ok
+test accent::tests::une_icone_entierement_grise_rend_None ... ok
+
+failures:
+
+---- accent::tests::en_hexa_rend_six_chiffres_minuscules stdout ----
+
+thread 'accent::tests::en_hexa_rend_six_chiffres_minuscules' (1233466) panicked at agent/src/accent/tests.rs:108:5:
+assertion `left == right` failed: zéro de tête conservé
+  left: "#0ABCDE"
+ right: "#0abcde"
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    accent::tests::en_hexa_rend_six_chiffres_minuscules
+
+test result: FAILED. 8 passed; 1 failed; 0 ignored; 0 measured; 944 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `-p agent --bin agent`
+   (code de sortie du contrôle : 101)
+5. restauré DEPUIS LA COPIE
+6. sha256(après) = a466b5c6e2760f1807eeeb522fe9cd854bff568fd4d62837edfa5ce13b192bc5
+   ✅ ÉGAL
+7. git status --porcelain : « ?? agent/src/accent.rs » — le fichier est NEUF, pas encore commité : la preuve de restauration est le sha256 de l ETAPE 6 ✅
+
+### ROUGE 7 — SuiviAccent construit depuis la premiere lecture, a la SuiviBordure
+    attendu ROUGE : un_suivi_neuf_annonce_sa_premiere_lecture
+───────────────────────────────────────────────────────────────
+ROUGE « 7-premiere-lecture »  sur  agent/src/accent.rs
+1. copie nommée : /tmp/a1-rouge-7-premiere-lecture.orig   sha256(avant) = a466b5c6e2760f1807eeeb522fe9cd854bff568fd4d62837edfa5ce13b192bc5
+2. mutation appliquée
+3. diff NON VIDE (4 ligne(s)) ✅
+4. contrôle : cargo test -p agent --manifest-path agent/Cargo.toml accent::
+test accent::tests::une_icone_a_dominante_bleue_rend_du_bleu ... ok
+test accent::tests::une_icone_entierement_grise_rend_None ... ok
+test accent::tests::un_suivi_neuf_annonce_sa_premiere_lecture ... FAILED
+test accent::tests::en_hexa_rend_six_chiffres_minuscules ... ok
+
+failures:
+
+---- accent::tests::un_suivi_n_annonce_pas_deux_fois_la_meme_couleur stdout ----
+
+thread 'accent::tests::un_suivi_n_annonce_pas_deux_fois_la_meme_couleur' (1234607) panicked at agent/src/accent/tests.rs:128:5:
+assertion `left == right` failed: la première
+  left: None
+ right: Some("#7aa2f7")
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- accent::tests::un_suivi_neuf_annonce_sa_premiere_lecture stdout ----
+
+thread 'accent::tests::un_suivi_neuf_annonce_sa_premiere_lecture' (1234608) panicked at agent/src/accent/tests.rs:119:5:
+assertion `left == right` failed
+  left: None
+ right: Some("#7aa2f7")
+
+
+failures:
+    accent::tests::un_suivi_n_annonce_pas_deux_fois_la_meme_couleur
+    accent::tests::un_suivi_neuf_annonce_sa_premiere_lecture
+
+test result: FAILED. 7 passed; 2 failed; 0 ignored; 0 measured; 944 filtered out; finished in 0.01s
+
+error: test failed, to rerun pass `-p agent --bin agent`
+   (code de sortie du contrôle : 101)
+5. restauré DEPUIS LA COPIE
+6. sha256(après) = a466b5c6e2760f1807eeeb522fe9cd854bff568fd4d62837edfa5ce13b192bc5
+   ✅ ÉGAL
+7. git status --porcelain : « ?? agent/src/accent.rs » — le fichier est NEUF, pas encore commité : la preuve de restauration est le sha256 de l ETAPE 6 ✅
+
+### ROUGE 8 — retirer la comparaison de SuiviAccent (une annonce PAR TOUR)
+    attendu ROUGE : un_suivi_n_annonce_pas_deux_fois_la_meme_couleur — LE TEST D'HOTE DU CRITERE ④
+───────────────────────────────────────────────────────────────
+ROUGE « 8-sans-comparaison »  sur  agent/src/accent.rs
+1. copie nommée : /tmp/a1-rouge-8-sans-comparaison.orig   sha256(avant) = a466b5c6e2760f1807eeeb522fe9cd854bff568fd4d62837edfa5ce13b192bc5
+2. mutation appliquée
+3. diff NON VIDE (3 ligne(s)) ✅
+4. contrôle : cargo test -p agent --manifest-path agent/Cargo.toml accent::
+     Running unittests src/main.rs (target/debug/deps/agent-f71a44343b450757)
+
+running 9 tests
+test accent::tests::les_pixels_transparents_ne_comptent_pas ... ok
+test accent::tests::un_contour_noir_majoritaire_ne_gagne_pas ... ok
+test accent::tests::la_moyenne_du_seau_n_est_pas_le_centre_du_seau ... ok
+test accent::tests::en_hexa_rend_six_chiffres_minuscules ... ok
+test accent::tests::un_suivi_neuf_annonce_sa_premiere_lecture ... ok
+test accent::tests::un_suivi_n_annonce_pas_deux_fois_la_meme_couleur ... FAILED
+test accent::tests::une_geometrie_incoherente_rend_None ... ok
+test accent::tests::une_icone_a_dominante_bleue_rend_du_bleu ... ok
+test accent::tests::une_icone_entierement_grise_rend_None ... ok
+
+failures:
+
+---- accent::tests::un_suivi_n_annonce_pas_deux_fois_la_meme_couleur stdout ----
+
+thread 'accent::tests::un_suivi_n_annonce_pas_deux_fois_la_meme_couleur' (1235274) panicked at agent/src/accent/tests.rs:129:5:
+assertion `left == right` failed: la même : rien
+  left: Some("#7aa2f7")
+ right: None
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    accent::tests::un_suivi_n_annonce_pas_deux_fois_la_meme_couleur
+
+test result: FAILED. 8 passed; 1 failed; 0 ignored; 0 measured; 944 filtered out; finished in 0.01s
+
+error: test failed, to rerun pass `-p agent --bin agent`
+   (code de sortie du contrôle : 101)
+5. restauré DEPUIS LA COPIE
+6. sha256(après) = a466b5c6e2760f1807eeeb522fe9cd854bff568fd4d62837edfa5ce13b192bc5
+   ✅ ÉGAL
+7. git status --porcelain : « ?? agent/src/accent.rs » — le fichier est NEUF, pas encore commité : la preuve de restauration est le sha256 de l ETAPE 6 ✅
+
+=== BILAN DES ROUGES DU MODULE PUR ===
+ROUGE 0  ne mute rien ................................. REFUSÉE par le harnais ✅
+ROUGE 1  filtre ALPHA_MIN retiré ...... les_pixels_transparents_ne_comptent_pas
+                                        « seuls les pixels opaques comptent »   8 passed / 1 failed
+ROUGE 2  filtre de LUMINANCE retiré ... un_contour_noir_majoritaire_ne_gagne_pas
+                                        « le contour sombre ne décide pas de la teinte »  8/1
+ROUGE 3  filtre de SATURATION retiré .. une_icone_entierement_grise_rend_None
+                                        « aucun pixel chromatique ne survit »   8/1
+         🔴 C'EST LA PREUVE QUE `None` EST ATTEIGNABLE.
+ROUGE 4  centre du seau au lieu de la moyenne .. la_moyenne_du_seau_n_est_pas_le_centre_du_seau
+                                        « la moyenne rend une teinte RÉELLE de l'image »  5/4
+         ⚠️ QUATRE tests tombent, et c'est attendu : rendre le centre du seau
+            change TOUTE dominante. L'assertion VISÉE a bien rougi, et elle est
+            nommée — la classer sur le seul code de sortie aurait été plus faible.
+ROUGE 5  garde de longueur retiré ..... une_geometrie_incoherente_rend_None      8/1
+ROUGE 6  {:02X} au lieu de {:02x} ..... en_hexa_rend_six_chiffres_minuscules
+                                        « zéro de tête conservé »               8/1
+ROUGE 7  SuiviAccent depuis la 1re lecture, à la SuiviBordure
+                                        un_suivi_neuf_annonce_sa_premiere_lecture  7/2
+ROUGE 8  comparaison retirée .......... un_suivi_n_annonce_pas_deux_fois_la_meme_couleur
+                                        « la même : rien »                      8/1
+         🔴 C'EST LE TEST D'HÔTE DU CRITÈRE ④.
+
+HUIT rouges jouées, TOUTES rougissent SUR L'ASSERTION QU'ELLES VISENT.
+Aucune n'est restée verte, donc aucune n'a eu à être diagnostiquée (§2.2 règle 4).
+Arbre restauré après chacune (sha256 égal), et 9 tests verts à la fin.
+
+⚠️ Ce que ces rouges N'ÉTABLISSENT PAS : rien de la lecture d'une icône RÉELLE
+(c'est `accent/win32.rs`, `#[cfg(windows)]`, qu'aucun test d'hôte ne couvre),
+rien du sens BGRA→RGBA, et rien d'un jugement visuel sur la teinte calculée.
+UNE exécution par rouge : aucun taux.
