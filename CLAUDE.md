@@ -19,8 +19,8 @@
 | --- | --- |
 | Une règle, une commande, une variable, un piège | **ici** |
 | Le récit d'un sous-bloc, ses mesures, ses réfutations | [`docs/JOURNAL.md`](docs/JOURNAL.md) |
-| Le détail d'un chantier : plan, conception, recette, journaux bruts | `docs/superpowers/{plans,specs}/` — **90 documents, tous suivis par git** |
-| Le produit legacy retiré du service | `docs/legacy/`, et la Partie II du journal |
+| Le détail d'un chantier : plan, conception, recette, journaux bruts | `docs/superpowers/{plans,specs}/` — **129 documents au premier niveau** (100 plans, 29 specs), **149 avec les journaux bruts** des sous-répertoires `journaux-*`, **tous suivis par git** — relevé par `find docs/superpowers -name '*.md' | wc -l`, jamais recopié |
+| Le produit legacy, **retiré de l'arbre** le 21 août 2026 | `docs/legacy/`, et la Partie II du journal |
 
 ## Le produit
 
@@ -49,17 +49,33 @@ N pistes dans une session.** Chaque fenêtre est un processus avec sa propre
 `PeerConnection`, donc son propre estimateur de bande passante. Toute lecture
 qui suppose une session unique est fausse depuis le sous-bloc D1.
 
-### Le legacy
+### Le legacy — ~~arrêté, son retrait engagé~~ **RETIRÉ**
 
-🔴 **ARRÊTÉ, et son retrait est engagé** (relevé du 21 août 2026,
-`docs/superpowers/plans/2026-08-21-retrait-legacy-etat-des-verrous.md`) : le
-conteneur `guacamole-web-1` est `Exited (137)`, et `curl …:3445/apps` rend
-`curl: (7)`. Ses fichiers (`index.js`, `src/`, `web/`, `Dockerfile`,
-`docker-compose.yml`) sont **toujours dans l'arbre** ; 890 de ses lignes sont
-déjà archivées hors de git dans `docs/legacy/`.
+✅ **RETIRÉ LE 21 AOÛT 2026, sur décision du propriétaire du dépôt.** Il ne
+reste **aucun fichier** de l'ancien produit dans l'arbre : `index.js`, `src/`,
+`web/`, `assets/`, `dist/`, `Dockerfile`, `docker-compose.yml` et
+`test_winrm_*.js` sont supprimés, le conteneur `guacamole-web-1` et l'image
+`guacamole-web` n'existent plus.
 
-⚠️ **Le retrait est une DÉCISION DU PROPRIÉTAIRE DU DÉPÔT**, pas un geste de
-chantier : `docs/superpowers/specs/2026-08-20-retrait-legacy-design.md`.
+🔴 **CE QUI RESTE RÉCUPÉRABLE, ET PAR QUEL CHEMIN — la distinction est vitale,
+parce que « l'historique git reste » était FAUX pour 890 de ces lignes :**
+
+| Ce qui a disparu | Où le retrouver |
+| --- | --- |
+| Les fichiers **suivis par git** (2 280 lignes) | l'historique, jusqu'au commit de retrait |
+| `web/index.js` (804 l.) et `index.js` (61 l.) — **jamais commités** | `docs/legacy/web-index.js` et `docs/legacy/racine-index.js`, **versionnés** |
+| `docker-compose.yml` (25 l.) — **jamais commité, et porteur de mots de passe en clair** | sa **structure sans une valeur** dans `docs/legacy/README.md` §3 ; le fichier lui-même **hors du dépôt**, en `~/.guacamole-legacy/docker-compose.yml.legacy` (mode 600) |
+
+⚠️ **`docs/legacy/` ne doit JAMAIS recevoir le fichier réel** : `docs/` est
+versionné, et l'y déposer committerait les identifiants Windows.
+
+⚠️ **Ce que le retrait n'a pas attendu** : sur les dix verrous de
+`docs/superpowers/specs/2026-08-20-retrait-legacy-design.md`, **deux seulement
+étaient satisfaits** (relevé du 21 août 2026,
+`docs/superpowers/plans/2026-08-21-retrait-legacy-etat-des-verrous.md`). Les
+fonctions que personne ne reprend sont nommées au §4.1 de la spec et au § « Ce
+que le retrait emporte » du journal — **ce sont des régressions assumées, pas
+des oublis**.
 
 ## 📏 Conventions de code
 
@@ -70,7 +86,9 @@ fichier porte plus d'une responsabilité : il faut le découper avant d'y ajoute
 quoi que ce soit.
 
 **Portée** — la règle s'applique au code source écrit à la main :
-`agent/src/`, `client/src/`, `plateforme/`, `proto/`, `src/`, `web/`, `scripts/`.
+`agent/src/`, `client/src/`, `plateforme/`, `proto/`, `scripts/`.
+*(`src/` et `web/` en sont retirés le 21 août 2026 : ces répertoires étaient
+ceux du legacy, et ils n'existent plus.)*
 
 **Exemptions explicites** :
 
@@ -809,6 +827,11 @@ Ils sont **datés**, et plusieurs se réfutent les uns les autres à dessein.
 - **Sous-projet ① Divers — presse-papier, sous-bloc P3 : les N fenêtres (21 août 2026)** — [résultats](docs/superpowers/plans/2026-08-21-presse-papier-p3-resultats.md)
 - **Sous-projet ① Divers — la couleur d'accent, sous-bloc A1 (21 août 2026)** — [résultats](docs/superpowers/plans/2026-08-21-accent-a1-resultats.md)
 
+### Le retrait du legacy (CLOS)
+
+- **Retrait du legacy — état des verrous : DEUX satisfaits sur dix (21 août 2026)** — [relevé](docs/superpowers/plans/2026-08-21-retrait-legacy-etat-des-verrous.md)
+- **Retrait du legacy — EXÉCUTÉ, sur décision du propriétaire (21 août 2026)** — [résultats](docs/superpowers/plans/2026-08-21-retrait-legacy-resultats.md)
+
 
 ---
 
@@ -829,7 +852,10 @@ Aucune n'est une correction, et aucun chantier ne doit les prendre en douce.
   D7**) ; ② une AEC côté agent (**que la spec exclut nommément**) ; ③ le casque,
   **dit au bon moment** — la seule dont le défaut mesuré ait encore besoin, et
   la seule livrable par un mécanisme déjà construit.
-- ⚠️ **Le retrait du legacy** — arrêté, à moitié archivé, jamais retiré.
+- ✅ ~~**Le retrait du legacy** — arrêté, à moitié archivé, jamais retiré.~~
+  **TRANCHÉ ET EXÉCUTÉ le 21 août 2026** : voir « Le legacy » plus haut. Ce
+  qu'il emporte — les fonctions que personne ne reprend — n'est PAS un legs
+  ouvert mais une **régression assumée**, et elle est nommée là-bas.
 - ⚠️ **La portée de la règle des 500 lignes** : le § « Portée » ne liste que
   `client/src/`, la commande attrape `client/verify-webrtc.mjs`. **Signalé
   depuis D10, jamais tranché.**

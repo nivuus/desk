@@ -1,6 +1,5 @@
 node_modules/
 dist/
-src/dist/
 core.*
 .env
 *.log
@@ -11,16 +10,8 @@ plateforme/dist/
 *.264
 !agent/testdata/testsrc.264
 
-# index.js et docker-compose.yml (legacy Guacamole Node.js) contiennent des
-# mots de passe Windows en clair (WINDOWS_PASSWORD, WINDOWS_ADMIN_PASSWORD).
-# Ce ne sont pas des fichiers de build encombrants : ce sont des secrets.
-# Ils ne doivent jamais atterrir dans l'historique git via un `git add -A`.
-index.js
-docker-compose.yml
-
 # local Claude Code cache
 .claude/
-core.*
 
 # Traces de l'outillage Playwright MCP (captures de page, journaux de
 # console). Ce sont des sorties d'outil, jamais des preuves : celles-ci sont
