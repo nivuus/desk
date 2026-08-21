@@ -230,9 +230,14 @@ pub trait VideoSource {
     /// (`\r\n`) : cette méthode ne décide rien de son contenu.
     ///
     /// 🔴 **DÉFAUT `Err`, ET C'EST UNE RUPTURE DE PATRON DANS CE FICHIER** —
-    /// `est_endormie`, `signaler_audio_mort`, `signaler_audio_vivant` et
-    /// `presse_papier_a_annoncer` ont tous un défaut INERTE. **Ne pas
-    /// l'aligner sur ses voisines.**
+    /// `est_endormie`, `signaler_audio_mort`, `signaler_audio_vivant`,
+    /// `presse_papier_a_annoncer` et `accent_a_annoncer` ont tous un défaut
+    /// INERTE. **Ne pas l'aligner sur ses voisines.**
+    ///
+    /// ⚠️ *`accent_a_annoncer` a été ajouté à cette liste par la revue
+    /// transverse du sous-bloc A1 : l'inventaire était devenu INCOMPLET, ce qui
+    /// est la forme la plus discrète du défaut que cette revue traque — la
+    /// phrase reste vraie de ce qu'elle nomme, et fausse de ce qu'elle omet.*
     ///
     /// La raison est que l'appelant n'utilise pas ce retour pour décider s'il
     /// *journalise*, mais s'il **INJECTE `Ctrl+V`**. Un `Ok(())` inerte ferait

@@ -7,7 +7,9 @@
  * `presse-papier.ts`.
  *
  * **Écrit AVANT de toucher `main.ts`**, et pour la raison que
- * `presse-papier-dom.ts` documente : `main.ts` est à 466 lignes pour un plafond
+ * `presse-papier-dom.ts` documente : `main.ts` était à **466 lignes au moment
+ * d'écrire ce module** — il en fait 483 depuis que les trois lignes de câblage
+ * y sont — pour un plafond
  * de projet à 500, il **n'a AUCUN test**, et `client/` n'a **ni jsdom ni
  * happy-dom**. Ce module-ci en a une, parce qu'il ne touche ni `document` ni
  * `window` directement mais reçoit `lireToken` et `poserToken` par injection —
