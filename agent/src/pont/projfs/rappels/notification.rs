@@ -200,12 +200,25 @@ pub(super) unsafe extern "system" fn notification(
                 // ⚠️ **CE QUE JE NE SAIS PAS, ET QUE JE NE PRÉTENDS PAS
                 // SAVOIR** : le filtre ProjFS fusionne-t-il lui-même les
                 // entrées locales avec ce que le fournisseur énumère, ou nous
-                // rappelle-t-il ? La question est OUVERTE ; la porte P3 du plan
-                // de F5 existe pour la trancher, **et elle n'a pas été jouée**
-                // (la VM était éteinte et tenue par un chantier voisin). Les
-                // deux moitiés sont posées quand même, parce que l'une est
-                // **indispensable** si le filtre nous rappelle et **inoffensive**
-                // s'il fusionne : le coût de se tromper n'est pas symétrique.
+                // rappelle-t-il ?
+                //
+                // ✅ **LA PORTE P3 A ÉTÉ JOUÉE (2 exécutions), ET CE BRAS-CI
+                // EST ATTEINT.** *Ces lignes disaient « elle n'a pas été jouée,
+                // la VM était éteinte » : c'était vrai à l'heure où je les ai
+                // écrites, et la VM a été rendue une heure plus tard.* Le
+                // journal porte `notification ProjFS code=4
+                // chemin=ne-vient-pas-du-navigateur.txt`, et **le relistage qui
+                // suit coûte 49 ms — un aller-retour, pas les 7-8 ms d'un
+                // succès de cache**. La mémoire du répertoire avait donc bien
+                // été oubliée ICI.
+                //
+                // ⚠️ **CE QUE CELA NE SÉPARE PAS** : que le filtre fusionne
+                // *aussi* de lui-même. Notre invalidation le précède, et rien
+                // dans ce montage ne dit ce qui se serait passé sans elle. Les
+                // deux moitiés restent posées, parce que l'une est
+                // **indispensable** si le filtre nous rappelle — ce qu'il fait —
+                // et **inoffensive** s'il fusionne : le coût de se tromper
+                // n'est pas symétrique.
                 // ────────────────────────────────────────────────────────
                 if etat.cache_arme {
                     if let Ok(mut cache) = etat.cache.lock() {

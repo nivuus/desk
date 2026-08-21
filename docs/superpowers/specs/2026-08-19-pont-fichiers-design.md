@@ -1216,6 +1216,42 @@ qu'aucun cache d'énumération ne fonctionne, donc que chaque listage paie un
 aller-retour, donc que la mesure de F4 portait sur autre chose que ce que le
 produit livre.
 
+> ❌ **LA PRÉMISSE DE CETTE CLAUSE EST JUSTE, SA CONCLUSION EST FAUSSE, ET C'EST
+> F4 LUI-MÊME QUI LA RÉFUTE.** *(Annotation de F5, 21 août 2026. Ce paragraphe
+> est un relevé daté du 19 août : il est ANNOTÉ, jamais réécrit.)*
+>
+> L'annotation D2 de F4, dans la table du §8 de cette même spec, écrit :
+> « `TTL_ENUMERATION` **n'existe nulle part** […] **F4 mesure le chaud que le
+> produit A**, donc **une borne HAUTE du coût** ». Autrement dit F4 a mesuré, en
+> le sachant et en le disant, un produit **sans** cache d'énumération. Un rouge
+> de F5 ne le prendrait donc pas en défaut — il confirmerait ce qu'il déclare.
+>
+> **Le verdict qui périme F4 est le VERT** :
+>
+> | Verdict de F5 | Ce qu'il dit de F4 |
+> | --- | --- |
+> | **ROUGE** — le fichier apparaît sans `Rafraichir` | **F4 reste EXACT et courant.** Ce n'est pas F4 qui a mesuré autre chose : c'est **F5 qui n'a pas livré le cache** |
+> | **VERT** — il n'apparaît qu'après `Rafraichir` | **C'est ICI que la mesure de F4 cesse de décrire le produit**, pour la part qu'un cache sert |
+>
+> ✅ **LE VERDICT EST VERT** (3 exécutions armées, 2 désarmées), **et F5 a donc
+> remesuré la latence de listage aux rangs de F4, cache armé** (2 exécutions) :
+>
+> | Rang | Froid (aller-retour) | Chaud (cache) |
+> | --- | --- | --- |
+> | 10 | 94 / 63 ms | **0 / 0 ms** |
+> | 100 | 283 / 338 ms | **0 / 9 ms** |
+> | **1 000** | 3 110 / 2 799 ms | **31 / 32 ms** |
+>
+> ⚠️ **Les FROIDS ne se comparent PAS aux ~6 s de F4** : F5 liste un
+> sous-répertoire de fichiers vides, F4 listait sa racine. **Seul le rapport
+> froid/chaud INTRA-série est de F5.**
+>
+> ⚠️ **ET LE MUR DE ~3 150 ENTRÉES NE BOUGE PAS.** Il tient à la taille d'**un**
+> message, pas à la répétition : un cache ne le déplace pas. F5 le rend
+> seulement **immédiat au lieu de gelé** (son D10). *Un lecteur qui prendrait le
+> vert ci-dessus pour un déplacement du mur chercherait celui-ci du mauvais
+> côté.*
+
 ---
 
 ## 9. Le plafond de 500 lignes, budgété d'avance

@@ -19,8 +19,11 @@
 // l'énumération, reste F3 ». **F3 est arrivé, et le remède n'est PAS une table
 // de correspondance** : c'est `fichiers/noms.ts`, qui énumère le parent à
 // CHAQUE résolution, **sans aucun cache**. Un cache que rien n'invalide est le
-// défaut de l'ancien pont (`src/file.js`, cache SANS TTL), et le seul moyen de
-// le vider — `Rafraichir` — est un livrable de F5.
+// défaut de l'ancien pont (`src/file.js`, cache SANS TTL). ✅ `Rafraichir` EST
+// LIVRÉ DEPUIS F5. ⚠️ Mais il vide le cache d'ÉNUMÉRATION du pont et le cache
+// NÉGATIF de ProjFS — `noms.ts`, lui, n'a toujours aucun cache, donc rien à
+// vider : les deux objets sont distincts, et les confondre ferait croire que
+// la casse est devenue moins chère.
 //
 // Chaque composant de chemin passe donc par `canoniser`, et ce module rend le
 // nom **STOCKÉ**, jamais le nom demandé.
