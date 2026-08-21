@@ -1,6 +1,24 @@
 import { describe, expect, it } from 'vitest';
 import tokensCss from '../design/tokens.css?raw';
-import { batirManifeste, versDataUrl, type Sujet } from './manifeste';
+import { batirManifeste, cotePng, versDataUrl, type Sujet } from './manifeste';
+
+/// Un vrai PNG d'un côté donné — signature, IHDR, et rien d'autre. Il suffit à
+/// `cotePng`, qui ne lit que l'en-tête, et il est CONSTRUIT plutôt que collé en
+/// base64 : un littéral opaque ne dirait pas ce qu'il porte.
+function pngDe(cote: number): Uint8Array {
+    const o = new Uint8Array(24);
+    o.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a], 0);
+    o.set([0x49, 0x48, 0x44, 0x52], 12);
+    const ecrire = (d: number, v: number) => {
+        o[d] = (v >>> 24) & 0xff;
+        o[d + 1] = (v >>> 16) & 0xff;
+        o[d + 2] = (v >>> 8) & 0xff;
+        o[d + 3] = v & 0xff;
+    };
+    ecrire(16, cote);
+    ecrire(20, cote);
+    return o;
+}
 
 const APP: Sujet = { id: 'u-1', nom: 'Bloc-notes' };
 
@@ -73,8 +91,8 @@ describe('batirManifeste', () => {
         expect(batirManifeste(APP, 'https://x', FOND).icons).toEqual([]);
     });
 
-    it("porte l'icône en data: et déclare le côté qu'on lui donne", () => {
-        const m = batirManifeste({ ...APP, icone: new Uint8Array([1, 2, 3]), coteIcone: 256 }, 'https://x', FOND);
+    it("porte l'icône en data: et déclare le côté LU DANS SES OCTETS", () => {
+        const m = batirManifeste({ ...APP, icone: pngDe(256) }, 'https://x', FOND);
         expect(m.icons).toHaveLength(1);
         expect(m.icons[0].sizes).toBe('256x256');
         expect(m.icons[0].type).toBe('image/png');
@@ -82,16 +100,22 @@ describe('batirManifeste', () => {
         expect(m.icons[0].src.startsWith('data:image/png;base64,')).toBe(true);
     });
 
-    it('déclare 128x128 quand on lui passe 128 — ce que la ROUGE du critère ① exige', () => {
-        // 🔴 SANS CE MEMBRE, LA ROUGE DE ① SERAIT INJOUABLE : le magasin ne
-        //    connaît qu'une taille (256), et redimensionner côté plateforme est
-        //    refusé par `0005-icones.sql:43-47`.
-        const m = batirManifeste({ ...APP, icone: new Uint8Array([1]), coteIcone: 128 }, 'https://x', FOND);
-        expect(m.icons[0].sizes).toBe('128x128');
+    it('déclare 128x128 sur un PNG de 128 — ce que la ROUGE du critère ① exige', () => {
+        // 🔴 LE DÉFAUT QUE LA RECETTE A TROUVÉ : un premier jet prenait la
+        //    taille de l'APPELANT, qui la laissait à 256 par défaut, et le
+        //    manifeste du témoin annonçait donc `256x256` en portant un PNG de
+        //    128. Chromium l'a attrapé (`no-acceptable-icon`) — mais un
+        //    manifeste qui ment sur ce qu'il porte est un défaut même rattrapé.
+        expect(batirManifeste({ ...APP, icone: pngDe(128) }, 'https://x', FOND).icons[0].sizes).toBe('128x128');
     });
 
-    it('ignore une icône VIDE plutôt que de déclarer une entrée sans image', () => {
+    it("ignore une icône VIDE plutôt que de déclarer une entrée sans image", () => {
         expect(batirManifeste({ ...APP, icone: new Uint8Array([]) }, 'https://x', FOND).icons).toEqual([]);
+    });
+
+    it("N'AFFIRME RIEN sur des octets qui ne sont pas un PNG : aucune icône déclarée", () => {
+        // Poser `256x256` par défaut serait affirmer ce qu'on ne sait pas.
+        expect(batirManifeste({ ...APP, icone: new Uint8Array([1, 2, 3]) }, 'https://x', FOND).icons).toEqual([]);
     });
 });
 
@@ -133,5 +157,42 @@ describe('la couleur de fond', () => {
         expect(m.background_color).toBe(FOND);
         expect(m.theme_color).toBe(ACCENT);
         expect(FOND).not.toBe(ACCENT);
+    });
+});
+
+describe('cotePng', () => {
+    it("lit le côté dans l'IHDR", () => {
+        expect(cotePng(pngDe(256))).toBe(256);
+        expect(cotePng(pngDe(128))).toBe(128);
+    });
+
+    it("rend undefined sur une signature qui n'est pas celle d'un PNG", () => {
+        const faux = pngDe(256);
+        faux[1] = 0x00;
+        expect(cotePng(faux)).toBeUndefined();
+    });
+
+    it("rend undefined quand le premier morceau n'est pas IHDR", () => {
+        const faux = pngDe(256);
+        faux[12] = 0x58;
+        expect(cotePng(faux)).toBeUndefined();
+    });
+
+    it('rend undefined sur un tampon trop court pour porter un en-tête', () => {
+        expect(cotePng(new Uint8Array([0x89, 0x50, 0x4e, 0x47]))).toBeUndefined();
+    });
+
+    it("rend undefined sur une image NON CARRÉE plutôt que d'en décrire une fausse", () => {
+        // ⚠️ Le manifeste emploie la largeur pour les DEUX dimensions : une
+        //    image non carrée y serait mal décrite. Que le magasin n'en produise
+        //    que des carrées est une propriété de l'AGENT, pas de ce module.
+        const rect = pngDe(256);
+        rect[23] = 0x80; // hauteur 128, largeur 256
+        expect(cotePng(rect)).toBeUndefined();
+    });
+
+    it('lit une taille sur QUATRE octets, pas seulement sur le dernier', () => {
+        // 4096 = 0x1000 : le troisième octet porte l'information.
+        expect(cotePng(pngDe(4096))).toBe(4096);
     });
 });
