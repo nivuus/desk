@@ -45,7 +45,10 @@ use windows::core::PWSTR;
 use windows::Win32::Foundation::{
     CloseHandle, ERROR_ELEVATION_REQUIRED, HANDLE, WAIT_OBJECT_0, WAIT_TIMEOUT,
 };
-use windows::Win32::System::JobObjects::IsProcessInJob;
+use windows::Win32::System::JobObjects::{
+    IsProcessInJob, JobObjectExtendedLimitInformation, QueryInformationJobObject,
+    JOBOBJECT_EXTENDED_LIMIT_INFORMATION, JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE,
+};
 use windows::Win32::System::Threading::{
     CreateProcessW, GetCurrentProcess, GetExitCodeProcess, WaitForSingleObject,
     CREATE_NO_WINDOW, PROCESS_INFORMATION, STARTUPINFOW,
@@ -87,12 +90,27 @@ pub struct Sortie {
 /// du superviseur : un redémarrage d'agent le tuerait au milieu d'une écriture
 /// de registre et laisserait la machine à moitié installée.
 ///
-/// ⚠️ **LE SUPERVISEUR NE S'ASSIGNE PAS LUI-MÊME** — relevé dans
-/// `superviseur/lanceur.rs`, qui n'appelle `AssignProcessToJobObject` que sur
-/// ses ENFANTS. Un processus qu'il crée n'hérite donc d'aucun job, et il n'y a
-/// rien à faire : pas de `CREATE_BREAKAWAY_FROM_JOB`, aucun drapeau ajouté.
-/// **Mais cela rend le critère ⑦ VACUEUX** : « tuer l'agent ne tue pas
-/// l'installeur » serait vrai par construction, et un vert ne prouverait rien.
+/// ❌ **CE QUI SUIT ÉTAIT UNE LECTURE, ET LA MESURE L'A RÉFUTÉE.** Le plan la
+/// donnait pour telle — son M5 s'intitule « LECTURE, PAS MESURE » —, et la
+/// sonde de la tâche 2 existait pour la convertir. Elle l'a convertie, et
+/// contre elle.
+///
+/// La lecture disait : « **le superviseur ne s'assigne pas lui-même** — relevé
+/// dans `superviseur/lanceur.rs`, qui n'appelle `AssignProcessToJobObject` que
+/// sur ses ENFANTS. Un processus qu'il crée n'hérite donc d'aucun job. » La
+/// PRÉMISSE est exacte — `lanceur.rs` fait bien cela. **La CONCLUSION est
+/// fausse**, parce qu'elle ignorait le mode de lancement : `run-agent.sh` passe
+/// par le **planificateur de tâches**, qui place sa tâche dans un job. Mesuré
+/// sur la VM : superviseur, capteur et pont sont **tous les trois** dans un
+/// job, ainsi que le PowerShell de la sonde et l'enfant qu'il crée.
+///
+/// ⚠️ **On ne peut pas en sortir** : `CREATE_BREAKAWAY_FROM_JOB` est refusé
+/// (`ERROR_ACCESS_DENIED`, 5) — le job ne porte pas `JOB_OBJECT_LIMIT_BREAKAWAY_OK`.
+///
+/// ✅ **Mais le job NE TUE PAS À LA FERMETURE**, et c'est ce qui sauve le
+/// critère ⑦ : la tâche terminée et son lanceur mort, l'enfant direct survit.
+/// **⑦ n'est donc ni vacueux ni perdu — il est TENU, pour une raison qu'aucune
+/// lecture n'avait trouvée.**
 ///
 /// 🔴 ET LE PONT, LUI, **EST** DANS LE JOB. `apps::brancher` est appelée avant
 /// l'aiguillage `PONT` dans `main.rs` ; sous le leg n°1 de G1 — le pont
@@ -108,6 +126,49 @@ pub struct Sortie {
 /// ⚠️ **C'EST UN GARDE, PAS LE REMÈDE.** Le remède est le leg n°1 de G1, qui
 /// n'appartient pas à G3 : trois décisions y sont possibles et aucune n'est
 /// tranchée. G3 le nomme, s'en protège, et ne le referme pas.
+/// Le job de ce processus **tue-t-il ses membres à sa fermeture** ?
+///
+/// 🔴 **C'EST LA QUESTION QUI DÉCIDE, et elle a remplacé « suis-je dans un
+/// job ? » sur la foi d'une MESURE** — voir l'en-tête du module. Le danger que
+/// la spec D8 nomme n'est pas l'appartenance à un job : c'est
+/// `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`, qui fait mourir l'installeur avec
+/// l'agent, au milieu d'une écriture de registre.
+///
+/// ⚠️ **`None` POUR LA POIGNÉE INTERROGE LE JOB DU PROCESSUS COURANT** — c'est
+/// la sémantique de `QueryInformationJobObject`, et c'est la seule dont nous
+/// disposions : nous n'avons pas la poignée du job que le planificateur de
+/// tâches a créé, et nous n'avons aucun moyen de l'obtenir.
+///
+/// ⚠️ **HORS DE TOUT JOB, L'APPEL ÉCHOUE**, et c'est le cas nominal d'un agent
+/// lancé à la main. On répond alors `false` : pas de job, pas de job qui tue.
+pub fn job_tue_a_la_fermeture() -> bool {
+    let mut infos = JOBOBJECT_EXTENDED_LIMIT_INFORMATION::default();
+    let taille = std::mem::size_of::<JOBOBJECT_EXTENDED_LIMIT_INFORMATION>() as u32;
+    let ok = unsafe {
+        QueryInformationJobObject(
+            None,
+            JobObjectExtendedLimitInformation,
+            (&mut infos as *mut JOBOBJECT_EXTENDED_LIMIT_INFORMATION).cast(),
+            taille,
+            None,
+        )
+    };
+    match ok {
+        Ok(()) => infos
+            .BasicLimitInformation
+            .LimitFlags
+            .contains(JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE),
+        Err(erreur) => {
+            // ⚠️ UN ÉCHEC N'EST PAS UN OUI. Hors de tout job, l'appel échoue, et
+            // c'est exactement l'état où il n'y a rien à craindre. Refuser
+            // l'installation parce qu'on n'a pas su poser la question serait la
+            // panne que ce garde vient précisément de cesser d'être.
+            tracing::debug!(%erreur, "QueryInformationJobObject a échoué : aucun job, ou job non interrogeable");
+            false
+        }
+    }
+}
+
 pub fn dans_un_job() -> bool {
     // ⚠️ `BOOL` VIT DANS `windows::core`, PAS DANS `Win32::Foundation` — écart
     // d'API de windows-rs 0.62, que `agent/src/window.rs` documente déjà. Le
@@ -116,7 +177,13 @@ pub fn dans_un_job() -> bool {
     let mut dedans = windows::core::BOOL(0);
     // ⚠️ `None` POUR LE JOB : la question est « dans UN job », pas « dans CE
     // job ». Nous n'avons pas la poignée du job du superviseur, et nous n'en
-    // avons pas besoin — n'importe quel job suffit à faire mourir l'installeur.
+    // avons pas besoin.
+    //
+    // ❌ **CETTE FONCTION NE DÉCIDE PLUS DE RIEN, et la phrase qui la
+    // justifiait — « n'importe quel job suffit à faire mourir l'installeur » —
+    // EST RÉFUTÉE PAR LA MESURE** (voir l'en-tête du module). Elle reste parce
+    // qu'elle est journalisée à chaque installation : savoir qu'on est dans un
+    // job, sans en mourir, est précisément le fait que personne n'attendait.
     let ok = unsafe { IsProcessInJob(GetCurrentProcess(), None, &mut dedans) };
     match ok {
         Ok(()) => dedans.as_bool(),
@@ -140,18 +207,40 @@ pub fn executer(
     repertoire: &Path,
     maintenant_ms: impl Fn() -> u64,
 ) -> Result<Sortie, Motif> {
-    // 🔴 LE GARDE PASSE AVANT TOUT, ET LE BOOLÉEN EST JOURNALISÉ À CHAQUE
-    // INSTALLATION — que le refus ait lieu ou non. C'est cette ligne, et elle
-    // seule, qui rend le critère ⑦ de la recette décidable : sans elle, le vert
-    // est vrai par construction et ne prouve rien.
+    // 🔴 LE GARDE PASSE AVANT TOUT, ET LES DEUX BOOLÉENS SONT JOURNALISÉS À
+    // CHAQUE INSTALLATION — que le refus ait lieu ou non. Ce sont ces lignes,
+    // et elles seules, qui rendent le critère ⑦ décidable.
+    //
+    // 🔴 LE GARDE PORTE SUR `job_tue_a_la_fermeture`, PAS SUR L'APPARTENANCE, ET
+    // C'EST UNE MESURE QUI L'A CORRIGÉ. Il testait d'abord `dans_un_job()`, sur
+    // la prémisse — écrite dans ce fichier — que « n'importe quel job suffit à
+    // faire mourir l'installeur ». **La sonde de la tâche 2 l'a réfutée**, sur
+    // la VM, une exécution :
+    //
+    //   - les TROIS processus de l'agent (superviseur, capteur, pont) sont
+    //     dans un job — ce n'est pas `lanceur.rs` qui les y met, c'est le
+    //     PLANIFICATEUR DE TÂCHES, par lequel `run-agent.sh` les lance ;
+    //   - `CREATE_BREAKAWAY_FROM_JOB` y est REFUSÉ (`ERROR_ACCESS_DENIED`, 5) :
+    //     on ne peut pas en sortir ;
+    //   - et pourtant, la tâche une fois terminée — lanceur RÉELLEMENT mort,
+    //     vérifié par l'absence de sa ligne de contrôle —, **l'enfant direct
+    //     SURVIT**. Le job ne tue pas à la fermeture.
+    //
+    // Le garde d'appartenance aurait donc refusé **toute** installation dans le
+    // mode de lancement normal du produit, pour un danger qui ne se matérialise
+    // pas. Un refus qui ne peut jamais être levé n'est pas une protection :
+    // c'est une panne. Le garde interroge désormais la propriété qui TUE, qui
+    // est exactement celle que la spec D8 nomme.
     let dedans = dans_un_job();
+    let tue = job_tue_a_la_fermeture();
     tracing::info!(
         dans_un_job = dedans,
-        "installation : le processus qui lance est-il assigné à un job object ?"
+        job_tue_a_la_fermeture = tue,
+        "installation : le processus qui lance est-il dans un job, et ce job tue-t-il ?"
     );
-    if dedans {
+    if tue {
         tracing::error!(
-            "installation refusée : ce processus est assigné à un job object, \
+            "installation refusée : ce processus est dans un job qui TUE À LA FERMETURE, \
              l'installeur y mourrait avec lui"
         );
         return Err(Motif::JobObject);
@@ -186,9 +275,16 @@ pub fn executer(
     };
     let mut infos = PROCESS_INFORMATION::default();
 
-    // 🔴 AUCUN DRAPEAU DE JOB : ni `CREATE_BREAKAWAY_FROM_JOB`, ni quoi que ce
-    // soit qui touche `lanceur.rs`. Le garde ci-dessus a déjà établi que ce
-    // processus n'est dans aucun job, donc l'enfant n'en hérite d'aucun.
+    // 🔴 AUCUN DRAPEAU DE JOB, ET CE N'EST PLUS FAUTE D'EN AVOIR BESOIN : c'est
+    // parce qu'il n'en existe pas d'utilisable. `CREATE_BREAKAWAY_FROM_JOB` a
+    // été MESURÉ refusé sur ce chemin (`ERROR_ACCESS_DENIED`, 5) — le job du
+    // planificateur de tâches ne porte pas `JOB_OBJECT_LIMIT_BREAKAWAY_OK`.
+    // L'enfant hérite donc du job, et c'est sans conséquence : ce job ne tue
+    // pas à la fermeture, mesuré lui aussi.
+    //
+    // ⚠️ Une rédaction antérieure disait ici que « le garde ci-dessus a déjà
+    // établi que ce processus n'est dans aucun job ». C'était faux des deux
+    // côtés : il est dans un job, et le garde ne teste plus cela.
     let resultat = unsafe {
         CreateProcessW(
             None,

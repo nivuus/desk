@@ -1,0 +1,6 @@
+﻿=== (e) CreateProcess (via .NET, UseShellExecute=false) ===
+appelant deja eleve : True
+integrite du jeton  : Étiquette obligatoire\Niveau obligatoire élevé Nom S-1-16-12288 
+
+  wusa.exe (requireAdministrator) : REUSSI, pid=3700  -> AUCUN 740
+  SystemPropertiesAdvanced.exe (requireAdministrator) : REUSSI, pid=10744  -> AUCUN 740

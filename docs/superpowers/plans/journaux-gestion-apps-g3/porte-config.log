@@ -1,0 +1,23 @@
+=== CONFIGURATION UAC ===
+EnableLUA = 1
+ConsentPromptBehaviorAdmin = 5
+PromptOnSecureDesktop = 1
+ConsentPromptBehaviorUser = 3
+FilterAdministratorToken = <ABSENT>
+
+=== SESSION INTERACTIVE ===
+whoami            : win-a54i2ahjf0c\administrateur
+session id        : 0
+deja eleve        : True
+
+=== GROUPES (administrateurs ?) ===
+
+AUTORITE NT\Compte local et membre du groupe Administrateurs Groupe bien connu S-1-5-114    Groupe obligatoire, Activ 
+par dfaut, Groupe activ                        
+BUILTIN\Administrateurs                                      Alias             S-1-5-32-544 Groupe obligatoire, Activ 
+par dfaut, Groupe activ, Propritaire du groupe
+tiquette obligatoire\Niveau obligatoire lev               Nom               S-1-16-12288                            
+                                                 
+
+=== VERSION ===
+Microsoft Windows Server 2022 Standard build 20348

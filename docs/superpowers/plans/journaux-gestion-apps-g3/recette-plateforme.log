@@ -1,0 +1,15 @@
+magasin d icones : donnees/icones
+magasin de tranches : /tmp/g3-recette/tranches
+(node:4081124) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+plateforme à l'écoute sur 192.168.3.1, le port 8090
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+poignée de main refusée : jeton refusé (signature) sur la session y4FQP1ev5fYOd_Pzr9XWUw:w-3
+poignée de main refusée : jeton refusé (signature) sur la session y4FQP1ev5fYOd_Pzr9XWUw:bureau
+poignée de main refusée : jeton refusé (signature) sur la session y4FQP1ev5fYOd_Pzr9XWUw:w-3
+poignée de main refusée : jeton refusé (signature) sur la session y4FQP1ev5fYOd_Pzr9XWUw:bureau
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+scellement refusé pour le téléversement 1a148857-8f64-42ef-b170-57b9aefee7eb : empreinte annoncée 0000000000000000000000000000000000000000000000000000000000000001, empreinte relue ad65bb9066f65dd694085161e40b4212955c364a689613df19438fff41cbed51 — les octets stockés ne sont pas ceux que le déposant a annoncés.

@@ -1,0 +1,5 @@
+﻿=== CRITERE 7 : UN ENFANT SURVIT-IL A LA MORT DE SON LANCEUR ? ===
+voie 1  enfant DIRECT             : pid=12008
+voie 2  par le PLANIFICATEUR      : pid=10640
+pids notes : direct=12008 planificateur=10640
+depart de l'attente : 05:59:38

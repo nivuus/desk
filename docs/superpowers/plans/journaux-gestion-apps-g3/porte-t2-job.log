@@ -1,0 +1,14 @@
+﻿=== TACHE 2 : SONDE DU JOB OBJECT ===
+releve : 05:57:26
+processus agent vivants : 3
+
+PID      PARENT   DANS UN JOB ?
+12836    19328    True
+19024    19328    True
+19328    15836    True
+
+-- temoin : le PowerShell de cette sonde lui-meme --
+  pid 9196 (powershell, tache planifiee) dans un job : True
+
+-- temoin : un processus enfant CREE PAR cette sonde --
+  pid 20300 (notepad, enfant) dans un job : True

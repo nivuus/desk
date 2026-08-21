@@ -1,0 +1,19 @@
+﻿=== (b) UNE ELEVATION A-T-ELLE EU LIEU ? ===
+depart : 05:51:42.244
+consent.exe AVANT : 0
+Start-Process -Verb RunAs : ACCEPTE, pid=3320
+t+ 0s  consent=0  notepad=1
+t+ 1s  consent=0  notepad=1
+t+ 2s  consent=0  notepad=1
+t+ 3s  consent=0  notepad=1
+t+ 4s  consent=0  notepad=1
+t+ 5s  consent=0  notepad=1
+t+ 6s  consent=0  notepad=1
+t+ 7s  consent=0  notepad=1
+t+ 8s  consent=0  notepad=1
+t+ 9s  consent=0  notepad=1
+t+10s  consent=0  notepad=1
+t+11s  consent=0  notepad=1
+consent.exe VU pendant la fenetre : 0 echantillons sur 12
+pid 3320 vivant, nom=notepad
+fin : 05:51:54.359
