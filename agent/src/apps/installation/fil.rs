@@ -24,7 +24,7 @@ use tokio::sync::{mpsc, watch};
 
 use crate::plateforme::{Identite, Installation};
 
-use super::cadence::{doit_emettre, PERIODE_PROGRESSION};
+use super::cadence::doit_emettre;
 use super::depot::{self, Etat};
 use super::execution;
 use super::journal::queue;
@@ -172,7 +172,6 @@ async fn honorer(
         )
         .await
     };
-    let _ = PERIODE_PROGRESSION;
     if let Err(refus) = telecharge {
         tracing::error!(?refus, url, "téléchargement de l'installeur refusé");
         fermer(partage, &ordre.id);
@@ -193,7 +192,11 @@ async fn honorer(
             tracing::warn!(%erreur, "faute d'empreinte non injectée");
         } else if !verifier(Path::new(&chemin), &ordre.sha256) {
             tracing::error!("faute injectée : l'empreinte relue DIFFÈRE, installation refusée");
-            let _ = std::fs::remove_file(&chemin);
+            if let Err(erreur) = std::fs::remove_file(&chemin) {
+                // ⚠️ LE GARDER SERAIT PIRE QUE DE NE PAS L'AVOIR : un chemin
+                // ultérieur pourrait le prendre pour un installeur valide.
+                tracing::warn!(%erreur, chemin, "fichier corrompu NON supprimé");
+            }
             fermer(partage, &ordre.id);
             return terminer(
                 emettre, ordre, Issue::Refusee, Some(Motif::Empreinte), None, "", false,
@@ -202,7 +205,27 @@ async fn honorer(
     }
 
     // --- exécution ---
-    let _ = std::fs::write(repertoire.join(depot::MARQUEUR_COMMENCE), b"");
+    // 🔴 L'ÉCHEC DE CE MARQUEUR EST UN REFUS, PAS UN AVERTISSEMENT, et c'était
+    // un `let _ =` jusqu'à la relecture de fin de branche. Il est **la seule
+    // mémoire qui survive à un redémarrage de l'agent** : la plateforme réémet
+    // à chaque enrôlement, et une déduplication en mémoire ne tient que dans UN
+    // processus. Sans lui, un agent redémarré pendant l'exécution **relancerait
+    // l'installeur sur une machine à l'état inconnu** — la seule chose dont ce
+    // sous-bloc ne sache pas sortir.
+    //
+    // ⚠️ ET IL S'ÉCRIT AVANT `CreateProcessW`, JAMAIS APRÈS : entre les deux,
+    // il y a exactement la fenêtre qu'il existe pour couvrir.
+    if let Err(erreur) = std::fs::write(repertoire.join(depot::MARQUEUR_COMMENCE), b"") {
+        tracing::error!(
+            %erreur,
+            installation = %ordre.id,
+            "marqueur .commence non écrit : on REFUSE d'exécuter. Sans lui, un \
+             redémarrage de l'agent relancerait l'installeur sur une machine à \
+             l'état inconnu"
+        );
+        fermer(partage, &ordre.id);
+        return terminer(emettre, ordre, Issue::Refusee, Some(Motif::Disque), None, "", false);
+    }
     peripherique_audio::tracer(&ordre.id, Moment::Avant);
     emettre(VersLaPlateforme::progression(
         ordre.id.clone(),
@@ -221,7 +244,19 @@ async fn honorer(
     })
     .await;
     peripherique_audio::tracer(&ordre.id, Moment::Apres);
-    let _ = std::fs::write(repertoire.join(depot::MARQUEUR_TERMINE), b"");
+    // ⚠️ CELUI-CI, EN REVANCHE, N'EST QU'UN AVERTISSEMENT, et l'asymétrie est
+    // délibérée : son absence fait lire `Commence` à une installation FINIE,
+    // donc rapporter `issue_inconnue` sur un réenrôlement. C'est **prudent dans
+    // le bon sens** — on ne rejoue pas —, mais c'est faux, et il faut pouvoir
+    // le voir au journal plutôt que de le déduire d'une issue surprenante.
+    if let Err(erreur) = std::fs::write(repertoire.join(depot::MARQUEUR_TERMINE), b"") {
+        tracing::warn!(
+            %erreur,
+            installation = %ordre.id,
+            "marqueur .termine non écrit : une réémission rapporterait \
+             issue_inconnue sur une installation pourtant finie"
+        );
+    }
 
     let sortie = match sortie {
         Ok(Ok(s)) => s,

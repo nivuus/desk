@@ -136,3 +136,33 @@ plateforme/src/base/migrations/0003-agents.sql:48:-- `application` est creee par
      plus sévère dit la vérité.** C'est aussi la raison pour laquelle
      `verify-all.sh` lance TROIS `typecheck` et non un. Corrigé, et la leçon est
      écrite dans le fichier pour qu'une extraction suivante la connaisse.
+
+--- TROISIÈME PASSE : LA RELECTURE DU CODE LE MOINS TESTÉ ---
+
+Ces trois-là ne viennent d'aucune tâche du plan et d'aucun candidat qu'il
+nomme : ils viennent de la relecture de `apps/installation/fil.rs`, qui n'a sur
+l'hôte AUCUNE épreuve possible. C'est précisément pourquoi il fallait le relire.
+
+[15] 🔴 UNE PANIQUE — voir `t35-rouge-panique-journal.log`, avec sa rouge jouée.
+
+[16] 🔴 `let _ = std::fs::write(MARQUEUR_COMMENCE)` — L'ERREUR ÉTAIT JETÉE, et
+     ce marqueur est **la seule mémoire qui survive à un redémarrage de
+     l'agent**. La plateforme réémet à chaque enrôlement, et une déduplication
+     en mémoire ne tient que dans UN processus. Sans lui, un agent redémarré
+     pendant l'exécution **relancerait l'installeur sur une machine à l'état
+     inconnu** — la seule chose dont ce sous-bloc ne sache pas sortir.
+     Son échec est désormais un REFUS, pas un avertissement.
+
+[17] `let _ = std::fs::write(MARQUEUR_TERMINE)` — même geste, mais ici un
+     avertissement SUFFIT, et l'asymétrie est délibérée : son absence fait
+     rapporter `issue_inconnue` sur une installation pourtant finie. C'est
+     prudent DANS LE BON SENS — on ne rejoue pas —, mais c'est faux, et il faut
+     pouvoir le voir au journal plutôt que de le déduire d'une issue
+     surprenante.
+
+⚠️ CE QUE CES TROIS AJOUTENT À LA DOCTRINE : la revue transverse de ce dépôt est
+écrite pour chasser des AFFIRMATIONS devenues fausses. Trois des dix-sept
+trouvailles de ce sous-bloc ne sont pas des affirmations — ce sont des
+COMPORTEMENTS, et ils vivent tous les trois dans le seul fichier qu'aucun test
+d'hôte ne peut atteindre. **Une revue qui ne relirait que des commentaires
+serait passée à côté des trois.**
