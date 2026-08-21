@@ -215,3 +215,148 @@ fn un_paquet_opus_montant_atteint_le_puits_de_la_session() {
         "la durée n'a pas été LUE du paquet"
     );
 }
+
+// ── Bloc E3 : le refus d'exclusivité est DIT au navigateur ──────────────────
+//
+// 🔴 Tous ces tests passent par `deposer_trame_micro_de_test`, qui **DÉLÈGUE**
+// au chemin de production. L'en-tête de `piste_micro.rs` documente pourquoi :
+// un point d'entrée `#[cfg(test)]` qui RECOPIERAIT la logique ferait passer au
+// vert des mutations qui doivent rougir — c'est arrivé en E1, tâche 8.
+
+/// Les verdicts d'exclusivité réellement mis en file, dans l'ordre.
+fn verdicts_annonces(s: &Session) -> Vec<bool> {
+    s.pending_control
+        .iter()
+        .filter_map(|m| match m {
+            proto::control::AgentControl::MicState { granted, .. } => Some(*granted),
+            _ => None,
+        })
+        .collect()
+}
+
+fn trame_muette() -> TrameMicro {
+    TrameMicro { opus: vec![0xF8, 0x00], rtp_48k: 0, echantillons: 960 }
+}
+
+/// Puits dont la réponse se pilote de l'extérieur, pour jouer une REPRISE.
+struct PuitsPilotable {
+    accepte: Arc<Mutex<bool>>,
+}
+
+impl PuitsMicro for PuitsPilotable {
+    fn deposer(&mut self, _trame: TrameMicro) -> bool {
+        *self.accepte.lock().unwrap()
+    }
+}
+
+/// Le premier dépôt annonce son verdict — `None` compte comme une transition.
+///
+/// Sans cela, une fenêtre qui perd le câble dès son premier paquet
+/// n'apprendrait JAMAIS rien : `Ready.mic` a déjà été émis, et il dit `true`.
+#[test]
+fn le_tout_premier_depot_annonce_son_verdict_au_navigateur() {
+    for accepte in [true, false] {
+        let mut s = session_nue();
+        s.set_puits_micro(Box::new(PuitsEspion {
+            recues: Arc::new(Mutex::new(Vec::new())),
+            accepte,
+        }));
+        assert!(verdicts_annonces(&s).is_empty(), "rien avant le premier dépôt");
+        s.deposer_trame_micro_de_test(trame_muette());
+        assert_eq!(verdicts_annonces(&s), vec![accepte]);
+    }
+}
+
+/// 🔴 SUR TRANSITION, jamais à chaque dépôt. C'est la rouge R3.
+///
+/// Le micro dépose une trame toutes les 20 ms. Annoncer à chaque dépôt
+/// mettrait cinquante messages par seconde dans une file bornée à 32
+/// (`PLAFOND_CONTROLE_EN_FILE`), qui déborderait en moins d'une seconde et
+/// noierait le curseur, la vibration et le presse-papier.
+///
+/// **Cinquante dépôts, UN message** — et le compte est sur les messages
+/// RÉELLEMENT en file, pas sur un compteur d'appels : c'est ce qui le rend
+/// capable de tomber.
+#[test]
+fn cinquante_depots_de_meme_verdict_ne_font_qu_une_annonce() {
+    for accepte in [true, false] {
+        let mut s = session_nue();
+        s.set_puits_micro(Box::new(PuitsEspion {
+            recues: Arc::new(Mutex::new(Vec::new())),
+            accepte,
+        }));
+        for _ in 0..50 {
+            s.deposer_trame_micro_de_test(trame_muette());
+        }
+        assert_eq!(
+            verdicts_annonces(&s),
+            vec![accepte],
+            "cinquante dépôts de verdict {accepte} ont produit {} annonces",
+            verdicts_annonces(&s).len()
+        );
+    }
+}
+
+/// 🔴 Après un refus LEVÉ, le client est RÉINFORMÉ. C'est la rouge R4.
+///
+/// ❌ Ce test n'existerait pas si le commentaire d'origine de ce module avait
+/// dit vrai : il affirmait que le refus est « une condition PERMANENTE — une
+/// autre fenêtre tient le câble pour la vie de son processus ». **La Décision 2
+/// du bloc E2 l'a réfuté** en rendant la tentative d'acquisition NON COLLANTE :
+/// un câble libéré est repris au dépôt suivant. Une annonce qui ne suivrait que
+/// la première transition laisserait alors le bandeau d'exclusivité affiché à
+/// jamais sur une fenêtre qui a repris le micro.
+#[test]
+fn un_refus_leve_est_reannonce_au_navigateur() {
+    let accepte = Arc::new(Mutex::new(false));
+    let mut s = session_nue();
+    s.set_puits_micro(Box::new(PuitsPilotable { accepte: accepte.clone() }));
+
+    for _ in 0..5 {
+        s.deposer_trame_micro_de_test(trame_muette());
+    }
+    assert_eq!(verdicts_annonces(&s), vec![false], "le refus initial, une fois");
+
+    // L'autre fenêtre meurt, le câble est rendu.
+    *accepte.lock().unwrap() = true;
+    for _ in 0..5 {
+        s.deposer_trame_micro_de_test(trame_muette());
+    }
+    assert_eq!(
+        verdicts_annonces(&s),
+        vec![false, true],
+        "la reprise doit être annoncée, et une seule fois"
+    );
+
+    // Et le sens inverse aussi : le verdict suit les transitions dans les DEUX
+    // sens, ce qu'un drapeau « déjà annoncé » ne ferait pas.
+    *accepte.lock().unwrap() = false;
+    s.deposer_trame_micro_de_test(trame_muette());
+    assert_eq!(verdicts_annonces(&s), vec![false, true, false]);
+}
+
+/// Le JOURNAL reste unique, lui, et c'est une propriété distincte.
+///
+/// Deux drapeaux, deux rôles : `refus_micro_signale` borne le journal à une
+/// ligne pour toute la session ; `exclusivite_annoncee` suit les transitions.
+/// Les confondre ferait ou bien cinquante lignes de journal par seconde, ou
+/// bien un bandeau client qui ne se lève jamais.
+#[test]
+fn la_reprise_ne_produit_pas_une_seconde_ligne_de_journal() {
+    let accepte = Arc::new(Mutex::new(false));
+    let mut s = session_nue();
+    s.set_puits_micro(Box::new(PuitsPilotable { accepte: accepte.clone() }));
+
+    s.deposer_trame_micro_de_test(trame_muette());
+    let apres_refus = s.journaux_micro;
+    *accepte.lock().unwrap() = true;
+    s.deposer_trame_micro_de_test(trame_muette());
+    *accepte.lock().unwrap() = false;
+    s.deposer_trame_micro_de_test(trame_muette());
+
+    assert_eq!(apres_refus, 1, "le refus se journalise une fois");
+    assert_eq!(
+        s.journaux_micro, 1,
+        "deux transitions de plus n'ajoutent aucune ligne de journal"
+    );
+}

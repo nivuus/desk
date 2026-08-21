@@ -121,8 +121,8 @@ impl PuitsMicro for PuitsCable {
                 tracing::warn!(
                     session = %self.session,
                     "micro : une autre fenetre tient deja le cable, cette session restera muette \
-                     tant qu'elle le tiendra. Le navigateur ne l'apprend pas (Decision 9 du plan \
-                     E2, leguee a E3) : le bouton s'allume et rien ne sort"
+                     tant qu'elle le tiendra. Le navigateur L'APPREND (bloc E3) : ce refus \
+                     remonte en un message de controle mic-state a granted=false"
                 );
                 return false;
             }
