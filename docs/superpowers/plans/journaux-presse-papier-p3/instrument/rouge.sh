@@ -69,10 +69,21 @@ fi
 echo "   diff de la mutation :"
 printf '%s\n' "$MUTE" | grep -E '^[-+][^-+]' | sed 's/^/     /'
 
-echo "4. controle : cargo test -p agent $FILTRE"
-( cd agent && cargo test -p agent "$FILTRE" 2>&1 ) \
-    | grep -E "^---- .* stdout|panicked at|assertion|^ *left:|^ *right:|^test result" \
-    | sed 's/^/     /'
+# Le controle est `cargo test -p agent <filtre>` par defaut ; ROUGE_CMD le
+# remplace pour les rouges du CLIENT, qui se jouent sous vitest. Le releve doit
+# dire QUELLE ASSERTION a rougi dans les deux cas — c'est la regle 4 du §6.3, et
+# elle ne depend pas du lanceur.
+if [ -n "${ROUGE_CMD:-}" ]; then
+    echo "4. controle : $ROUGE_CMD"
+    eval "$ROUGE_CMD" 2>&1 \
+        | grep -E "FAIL|AssertionError|→ |Expected|Received|Number of calls|Tests +[0-9]" \
+        | head -25 | sed 's/^/     /'
+else
+    echo "4. controle : cargo test -p agent $FILTRE"
+    ( cd agent && cargo test -p agent "$FILTRE" 2>&1 ) \
+        | grep -E "^---- .* stdout|panicked at|assertion|^ *left:|^ *right:|^test result" \
+        | sed 's/^/     /'
+fi
 
 cp -- "$COPIE" "$FICHIER"; rm -f -- "$COPIE"
 echo "5. restauration DEPUIS LA COPIE NOMMEE (jamais git checkout --)"

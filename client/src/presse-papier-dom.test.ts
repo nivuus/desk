@@ -287,4 +287,89 @@ describe("l'écouteur de collage", () => {
         expect(cible.compte('paste')).toBe(0);
         expect(cible.compte('focus')).toBe(0);
     });
+
+});
+
+describe("l'état reçu AVANT l'attache", () => {
+    // ── L'ÉTAT REÇU AVANT L'ATTACHE (moitié CLIENT du legs n°3 de P1) ────
+    //
+    // 🔴 `client/src/main.ts` N'A AUCUN TEST et ne peut pas en avoir : module
+    // d'entrée, effets de bord au premier niveau, non importable. La RÈGLE vit
+    // donc ici, et ces quatre tests SONT sa seule couverture ; les deux lignes
+    // de câblage de `main.ts`, elles, n'en ont aucune, et leur seul contrôle de
+    // bout en bout est le critère ① de la recette.
+
+    it('un `initial` fourni est écrit au montage si la fenêtre a le focus', async () => {
+        const ecrire = vi.fn().mockResolvedValue(undefined);
+        // ROUGE avant le paramètre `initial` : rien n'est écrit au montage.
+        attacherPressePapierAuDOM({
+            ecrire,
+            focalise: () => true,
+            cible: cibleFactice(),
+            surMessage: vi.fn(),
+            emettre: vi.fn(),
+            initial: { texte: 'copie-avant-attache', octets: 19 },
+        });
+        await Promise.resolve();
+        expect(ecrire).toHaveBeenCalledWith('copie-avant-attache');
+    });
+
+    it("un `initial` fourni SANS focus n'est pas écrit au montage, et l'est au retour du focus", async () => {
+        const ecrire = vi.fn().mockResolvedValue(undefined);
+        const cible = cibleFactice();
+        let focalise = false;
+        // ROUGE = appeler `ecrire` directement au montage au lieu de passer par
+        // `ecrireSiPossible` : le DÉPÔT DIFFÉRÉ de D3 doit rester le seul
+        // chemin d'écriture, y compris ici.
+        attacherPressePapierAuDOM({
+            ecrire,
+            focalise: () => focalise,
+            cible,
+            surMessage: vi.fn(),
+            emettre: vi.fn(),
+            initial: { texte: 'differe', octets: 7 },
+        });
+        await Promise.resolve();
+        expect(ecrire).not.toHaveBeenCalled();
+
+        focalise = true;
+        cible.declencher('focus');
+        await Promise.resolve();
+        expect(ecrire).toHaveBeenCalledWith('differe');
+    });
+
+    it('un `initial` portant un REFUS dit le bandeau au montage', async () => {
+        const surMessage = vi.fn();
+        // ROUGE = ne rejouer que les textes : la fenêtre attendrait un contenu
+        // qui n'arrivera jamais, sans rien pour lui dire pourquoi.
+        attacherPressePapierAuDOM({
+            ecrire: vi.fn().mockResolvedValue(undefined),
+            focalise: () => true,
+            cible: cibleFactice(),
+            surMessage,
+            emettre: vi.fn(),
+            initial: { texte: null, octets: 123456 },
+        });
+        await Promise.resolve();
+        expect(surMessage).toHaveBeenCalledWith(messageDeRefus(123456));
+    });
+
+    it("sans `initial`, le montage n'écrit rien et ne dit rien", async () => {
+        const ecrire = vi.fn().mockResolvedValue(undefined);
+        const surMessage = vi.fn();
+        // ROUGE = rejouer un `Recu` vide quand le paramètre est absent : le
+        // client écrirait une chaîne vide dans son presse-papier local à chaque
+        // attache. C'est le paramètre FACULTATIF qui garantit que le
+        // comportement d'avant P3 est préservé mot pour mot.
+        attacherPressePapierAuDOM({
+            ecrire,
+            focalise: () => true,
+            cible: cibleFactice(),
+            surMessage,
+            emettre: vi.fn(),
+        });
+        await Promise.resolve();
+        expect(ecrire).not.toHaveBeenCalled();
+        expect(surMessage).not.toHaveBeenCalled();
+    });
 });

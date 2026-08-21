@@ -12,6 +12,7 @@ import { viewportPair } from './viewport';
 import { attachVisibilite } from './visibilite';
 import { attacherBoutonMicro } from './micro';
 import { attacherPressePapierAuDOM } from './presse-papier-dom';
+import type { Recu } from './presse-papier';
 import { attacherResizeAuDOM } from './resize-dom';
 import { adresseSignaling } from './adresse-plateforme';
 
@@ -139,6 +140,19 @@ let collageArme = false;
 // SANS RIEN pour le dire — le mode de défaillance silencieux que ce dépôt
 // a payé sur l'annonce de visibilité (voir plus bas).
 let micAnnonce: boolean | undefined;
+// Le dernier `clipboard` reçu, mémorisé pour la même raison exactement que
+// `micAnnonce` juste au-dessus : `onControl` est câblé AVANT que la promesse de
+// `connectSession` ne résolve, donc un message arrivé dans cet intervalle
+// serait perdu SANS RIEN pour le dire. Et depuis P3 l'agent émet l'état courant
+// à l'INSCRIPTION de la fenêtre, ce qui tombe précisément dans cet intervalle.
+//
+// ⚠️ Ces deux lignes sont du CÂBLAGE, et elles ne sont couvertes par AUCUN
+// TEST — `main.ts` n'en a aucun et ne peut pas en avoir. La RÈGLE qu'elles
+// routent — « rejouer le mémorisé au montage » — vit dans
+// `presse-papier-dom.ts`, où quatre tests la tiennent. Leur seul contrôle de
+// bout en bout est le critère ① de la recette : une fenêtre attachée APRÈS la
+// copie.
+let dernierPressePapier: Recu | undefined;
 let manetteAnnoncee = false;
 let bandeauManette: number | undefined;
 
@@ -264,7 +278,11 @@ connectSession({
             // Aucune logique ici : toute la décision — écrire ou différer,
             // dire un refus, crier au deuxième échec — vit dans le module
             // attaché, lui-même adossé à `presse-papier.ts`, pur et testé.
-            pressePapier?.recevoir({ texte: message.text, octets: message.bytes });
+            // La mémoire est posée AVANT le `?.`, jamais dans une branche
+            // `else` : la poser dans le `else` ferait diverger les deux chemins
+            // le jour où l'un changerait.
+            dernierPressePapier = { texte: message.text, octets: message.bytes };
+            pressePapier?.recevoir(dernierPressePapier);
         }
     },
 })
@@ -357,6 +375,9 @@ connectSession({
             // `persistant`, sur le patron EXACT du micro : refus de taille et
             // échec répété demandent tous deux un geste de l'utilisateur.
             surMessage: (texte) => statut.afficher(texte, { persistant: true }),
+            // Ce qui est arrivé AVANT ce point, s'il y a lieu. `undefined`
+            // laisse le comportement d'avant P3 mot pour mot.
+            initial: dernierPressePapier,
         });
 
         // Le son démarre coupé et s'active au premier geste. Un bandeau ne
