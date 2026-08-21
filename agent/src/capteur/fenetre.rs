@@ -187,8 +187,27 @@ impl Fenetre {
         // s'émet en dessous, y compris aux `warn!` des modules appelés.
         let _span = tracing::info_span!("fenetre", session = %session).entered();
 
+        // 🔴 **`pid` EST LA SEULE ATTRIBUTION session ↔ fenêtre WINDOWS DU
+        // DÉPÔT, ET IL FAUT LE DIRE POUR QU'UN SUCCESSEUR NE LE RETIRE PAS
+        // COMME DU BRUIT** (D-P3-7, sous-bloc P3). `enfant lancé`
+        // (`superviseur/enfants.rs`) porte bien un `pid`, mais c'est celui du
+        // processus ENFANT AGENT ; aucune autre trace n'associe une `session`
+        // au `hwnd` ni au PID de l'APPLICATION Windows qu'elle diffuse.
+        //
+        // Sans lui, une recette qui écrit « le texte de B est arrivé dans LA
+        // fenêtre de B » n'est pas ATTRIBUABLE — et un relevé non attribuable
+        // n'est pas un verdict. La voie « coller un nonce et regarder quel
+        // Bloc-notes a grandi » est CIRCULAIRE : elle établirait l'attribution
+        // par le mécanisme même que la recette mesure, défaut que D8 a payé sur
+        // `resoudreIdentite` et que son propre rapport qualifie de
+        // « partiellement circulaire ».
+        //
+        // Le champ vit DÉJÀ sur `Fenetre` et est DÉJÀ passé à `inscrire` : rien
+        // n'a eu à remonter. Le pilote le résout ensuite en
+        // `MainWindowHandle` par `Get-Process -Id`, puis lit par `WM_GETTEXT`.
         tracing::info!(
             %session,
+            pid = self.pid,
             sortie = %self.parametres.sortie,
             largeur = self.largeur,
             hauteur = self.hauteur,
