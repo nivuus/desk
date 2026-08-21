@@ -1,0 +1,247 @@
+=== controle d'entree G5 — 2026-08-21T11:36:17+02:00 ===
+--- HEAD ---
+06eafc1 plan(g5) : la PWA par application — et l'obstacle est UN CRAN PLUS HAUT que l'icone
+81ba6c6 recette(g4) : les QUATRE criteres mesures — et la rouge que sa propre spec ne pouvait pas rendre rouge
+afd8196 index(a1) : la section A1, la spec annotee, et les DEUX taches VM NON FAITES
+--- git status --porcelain ---
+ M agent/src/apps/surveillance.rs
+ M agent/src/apps/surveillance/fil.rs
+ M agent/src/apps/surveillance/mode.rs
+ M agent/src/apps/surveillance/racine.rs
+ M agent/src/apps/surveillance/rebond.rs
+ M docs/superpowers/specs/2026-08-19-gestion-apps-design.md
+?? docs/superpowers/plans/journaux-gestion-apps-g5/
+--- stat /dev/null ---
+character special file
+--- virsh list --all ---
+ ID   Nom       État
+--------------------------------------
+ 7    Windows   en cours d’exécution
+
+--- (1) dette de taille > 450 ---
+ 133040 total
+   1536 agent/src/encode.rs
+    630 agent/src/windows_source.rs
+    500 plateforme/src/http/routes-installation.ts
+    500 agent/src/encode/arret.rs
+    494 client/verify-webrtc.mjs
+    492 agent/src/capture.rs
+    488 agent/src/superviseur/lanceur.rs
+    485 plateforme/src/http/routes-installation.test.ts
+    484 client/src/fichiers/protocole.test.ts
+    484 agent/src/capteur/fenetre.rs
+    483 client/src/main.ts
+    483 agent/src/micro.rs
+    482 agent/src/transport.rs
+    481 agent/src/transport/socket.rs
+    477 agent/src/transport/piste_video.rs
+    477 agent/src/presse_papier/tests.rs
+    474 agent/src/pont/transport/tests.rs
+    473 agent/src/apps/installation/telechargement/tests.rs
+    472 agent/src/pont/ecriture/fil.rs
+    472 agent/src/congestion/controleur.rs
+    471 agent/src/transport/tick/tests/audio.rs
+    471 agent/src/transport/piste_audio.rs
+    468 proto/ts/plateforme.ts
+    468 agent/src/transport/adaptation.rs
+    467 agent/src/transport/tick.rs
+    465 agent/src/diagnostics/multifenetre/reprise/passes.rs
+    463 plateforme/src/agents/canal.ts
+    463 agent/src/moniteurs_virtuels/pilote.rs
+    462 proto/ts/plateforme.test.ts
+    461 agent/src/wasapi/peripherique.rs
+    460 agent/src/source.rs
+    459 agent/src/geometry.rs
+    459 agent/src/diagnostics/multifenetre/montee.rs
+    457 agent/src/wasapi/ecriture.rs
+    457 agent/src/diagnostics/capture.rs
+    456 agent/src/turn/allocation.rs
+    456 agent/src/capteur/sommeil/registre.rs
+--- (2) fichiers que G5 touchera ---
+   112 client/vite.config.ts
+   300 client/src/design/tokens.css
+   194 client/src/style.css
+   219 client/src/style.test.ts
+   300 client/src/hub/televersement.ts
+   221 client/outils/tokens-orphelins/attente.mjs
+   334 plateforme/src/http/routes-applications.ts
+   312 plateforme/src/http/routes-icone.ts
+   432 plateforme/src/http/serveur.ts
+   233 plateforme/src/depot/application.ts
+   407 proto/src/plateforme.rs
+   468 proto/ts/plateforme.ts
+   233 agent/src/apps/icone/extraction.rs
+   214 agent/src/accent.rs
+   330 client/src/shell-page.ts
+  4309 total
+--- (5) liste d attente §7.6 et sous-blocs clos ---
+ * retirer » faute d'avoir le droit de changer l'apparence de la fenêtre de
+ * session ; S4 l'a, et il l'a CÂBLÉ sur `#stats` (`client/src/style.css`), que
+ * la spec §4.3 désignait comme son unique appelant prévu depuis S1.
+ */
+const EN_ATTENTE_D_APPELANT = new Map([]);
+
+export { EN_ATTENTE_D_APPELANT };
+58:const SOUS_BLOCS_CLOS = new Set(['S1', 'S2', 'S3', 'S4']);
+--- PLATEFORME_VERSION ---
+6://! avec un `v` différent de [`PLATEFORME_VERSION`], est rejeté.
+122:pub const PLATEFORME_VERSION: u8 = 4;
+292:        /// [`PLATEFORME_VERSION`] : c'est même le seul cas pour lequel cette
+--- entrees Vite ---
+};
+
+export default defineConfig({
+    plugins: [greffonAmorce],
+    server: {
+        host: '0.0.0.0',
+        port: 5173,
+    },
+    build: {
+        // ⚠️ UNE PAGE ABSENTE DE CETTE LISTE NE SORT PAS DU BUILD, ET RIEN NE
+        // LE DIT : `npm run build` rend 0 et la page manque simplement de
+        // `dist/`. Relevé le 19 août 2026 en jouant le cas — `connexion.html`
+        // existait déjà à la racine, le build a réussi, et `dist/` ne portait
+        // que `index.html` et `shell.html`. Toute page neuve s'ajoute ici.
+        rollupOptions: {
+            input: {
+                main: 'index.html',
+                shell: 'shell.html',
+                connexion: 'connexion.html',
+                // La galerie de tokens : une surface bâtie comme les autres,
+                // donc soumise aux contrôles §7.2 et §7.3 — mais EXCLUE de la
+                // moitié « employé » du §7.6, qu'elle rendrait incapable
+                // d'échouer. Voir `client/outils/tokens-orphelins.mjs`.
+                design: 'design.html',
+                // La galerie des PRIMITIVES (S2). Elle naît à part plutôt que
+                // dans `design.html`, qui était à 231 lignes pour une porte de
+                // 300 : la scission est décidée AVANT l'addition, jamais après.
+                // Elle aussi est EXCLUE de la moitié « employé » du §7.6, et
+                // pour la même raison — voir `client/outils/tokens-orphelins.mjs`.
+                primitives: 'primitives.html',
+            },
+--- client/public ? ---
+ls: impossible d'accéder à 'client/public': Aucun fichier ou dossier de ce nom
+--- hub existant ? ---
+total 48
+drwxr-x--- 2 root root  4096 21 août  03:42 .
+drwxr-x--- 6 root root  4096 21 août  10:43 ..
+-rw-r----- 1 root root 18462 21 août  04:04 televersement.test.ts
+-rw-r----- 1 root root 16955 21 août  04:29 televersement.ts
+client/connexion.html
+client/design.html
+client/index.html
+client/primitives.html
+client/probe-coalesced.html
+client/shell.html
+--- (3) comptes de tests : client ---
+
+ Test Files  42 passed (42)
+      Tests  479 passed (479)
+   Start at  11:36:44
+   Duration  4.58s (transform 3.17s, setup 0ms, collect 6.02s, tests 1.16s, environment 17ms, prepare 7.80s)
+
+--- proto ---
+
+ Test Files  9 passed (9)
+      Tests  298 passed (298)
+   Start at  11:36:50
+   Duration  1.33s (transform 797ms, setup 0ms, collect 1.59s, tests 532ms, environment 4ms, prepare 1.62s)
+
+--- (4) socle de 6 : design:verifier ---
+
+③ B — chaque famille est rendue par client/primitives.html :
+  bouton : 4 classe(s) employée(s) sur 4 déclarée(s)
+  champ : 6 classe(s) employée(s) sur 6 déclarée(s)
+  message : 5 classe(s) employée(s) sur 5 déclarée(s)
+  surface : 4 classe(s) employée(s) sur 4 déclarée(s)
+
+total : 0 écart(s)
+
+==> §7.3  toute surface bâtie porte les tokens
+pages bâties : 5 (connexion.html, design.html, index.html, primitives.html, shell.html)
+
+assertion A — un <link rel="stylesheet"> par page : 0 échec(s)
+assertion B — une feuille liée déclarant --fond-0 : 0 échec(s) (évaluée sur 5 page(s))
+
+les DEUX assertions sont vertes
+
+==> §7.7  le poids CSS ne dérive pas
+    563  connexion-CyWgt4IO.css
+   1849  main-DOC38JmJ.css
+   2830  primitives-Cdify15A.css
+   1098  shell-DOxLHPYF.css
+   2276  socle-DxxXR2Fj.css
+feuilles émises : 5
+somme : 8616 octets
+plafond : 12288 octets (arbitraire, voir l'en-tête)
+marge : 3672 octets
+
+═══ 7/7 contrôle(s) vert(s) ═══
+  §7.5 (la bascule de thème) est un test unitaire : il tourne dans `npm test`.
+=== exit=0 ===
+
+=== SYNTHESE DU CONTROLE D'ENTREE (tache 1) ===
+HEAD au relevé : 2c71c90 (G4 a commité sa revue PENDANT ce contrôle ;
+  le relevé de dette ci-dessus a été pris à 06eafc1, les fichiers de
+  agent/src/apps/surveillance/ y étant encore non commités).
+git status à la fin : ` M CLAUDE.md` (travail NON COMMITÉ de G4, sa section
+  d'index) + le répertoire de journaux de G5.
+
+VERDICT DES VOISINS
+  G4 : NON CLOS — sa section CLAUDE.md est en cours d'écriture, non commitée.
+       Il tient la VM (`virsh list --all` : Windows en cours d'exécution).
+  A1 : NON CLOS — tâches 13 et 14 (instrument, recette) non faites.
+  => PORTE DE LA TRANCHE F (plan §6.7) : à RÉÉVALUER au moment de la tâche 17,
+     pas maintenant. En l'état actuel elle est FERMÉE.
+
+verify-all.sh, shell propre (env -u TURN_URL -u TURN_SECRET) : EXIT=0
+  « Les 10 étapes sont passées. »
+  cargo test --workspace : agent 958 passed / 0 failed ; proto 109 / 0
+  cargo clippy --workspace : 489 warnings (agent bin) — compte écrit par cargo
+  client : npm test        : 479 tests, 42 fichiers
+  proto  : npm test        : 298 tests, 9 fichiers
+  plateforme sqlite        : 564 tests, 58 fichiers
+  plateforme postgres      : 564 tests, 58 fichiers
+  trois typecheck          : exit 0
+
+SOCLE DE 6 (design:verifier) : 7/7 vert, exit 0
+  §7.1 : 53 paires vérifiées, 0 échec
+  §7.2 : 0 couleur littérale
+  §7.4 : 0 écart
+  §7.6 : 52 déclarés / 52 employés / 0 orphelin ; liste d'attente VIDE ;
+         périmètre 15 fichiers ; design.html exclu
+  §7.9 : 58 déclarées / 56 employées / 0 écart ; 4 familles rendues
+  §7.3 : 5 pages bâties, les DEUX assertions vertes
+  §7.7 : 8616 octets / plafond 12288 — marge 3672
+
+DETTE DE TAILLE : DEUX lignes > 500 — agent/src/encode.rs 1536,
+  agent/src/windows_source.rs 630.
+  ❌ CLAUDE.md en publie QUATRE : il y ajoute proto/src/plateforme/tests.rs 561
+     et proto/ts/plateforme.test.ts 512. MESURÉ CE JOUR : 340 et 462.
+     LES DEUX SONT RÉSORBÉS ; le tableau de dette de CLAUDE.md est faux de
+     deux lignes. (À corriger à la tâche 22.)
+
+MARGES SERRÉES relevées ce jour :
+  plateforme/src/http/routes-installation.ts  500 (marge 0)
+  agent/src/encode/arret.rs                   500 (marge 0)
+  client/verify-webrtc.mjs                    494 (marge 6)
+  client/src/design/tokens.css                300 pour une porte de 300 (marge 0)
+  client/src/hub/televersement.ts             300
+  client/outils/tokens-orphelins/attente.mjs  221 (seuil conditionnel 240)
+  client/vite.config.ts                       112
+  client/src/shell-page.ts                    330
+  proto/src/plateforme.rs                     407
+  proto/ts/plateforme.ts                      468
+
+CONFIRMATIONS DU PLAN, remesurées :
+  PLATEFORME_VERSION = 4                                  ✓
+  SOUS_BLOCS_CLOS = {S1,S2,S3,S4} — ni A1 ni G5           ✓
+  EN_ATTENTE_D_APPELANT = new Map([]) — VIDE              ✓
+  COULEURS_HORS_THEME : SEPT tokens                       ✓ (CLAUDE.md en dit six)
+  lecteurs de tokens.css par son chemin : NEUF fichiers   ✓ (CLAUDE.md en dit sept)
+  client/public/ n'existe pas                             ✓
+  aucun manifeste, aucun service worker, aucune page hub  ✓
+  client/src/hub/ ne porte que televersement.{ts,test.ts} ✓
+  entrées Vite : CINQ                                     ✓
+  scripts/verify-all.sh : DIX appels `etape`              ✓ (« Les 10 étapes »)
+  /dev/null : character special file                      ✓
