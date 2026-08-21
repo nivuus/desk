@@ -82,7 +82,20 @@ pub fn tourner(etat: Arc<Etat>, entrant: Receiver<DuNavigateur>) {
             Ok(DuNavigateur::CanalFerme) => {
                 etat.canal_ouvert.store(false, Ordering::Relaxed);
                 tracing::warn!("canal du pont fermé : les commandes en vol sont abandonnées");
-                tout_completer(&etat, Erreur::CanalFerme);
+                // 🔴 UNE COMMANDE **EN VOL** EST ABANDONNÉE ; UNE COMMANDE QUI
+                // ARRIVE APRÈS EST REFUSÉE. Ce sont deux instants distincts, et
+                // ils portent deux codes distincts — `ERROR_OPERATION_ABORTED`
+                // contre `ERROR_IO_DEVICE`.
+                //
+                // ⚠️ **Ce site rendait `CanalFerme` pour les deux**, et la ligne
+                // de journal juste au-dessus disait pourtant « abandonnées » :
+                // le code et sa propre trace se contredisaient. Conséquence
+                // mesurée : `Erreur::Abandonnee` était **définie, comptée,
+                // traduite — et rendue par AUCUN site de production**. La
+                // recette du critère ④ l'a trouvée en coupant le canal sur une
+                // commande réellement en vol : elle relevait `canal-ferme=1` là
+                // où le tableau promettait `abandonnee`.
+                tout_completer(&etat, Erreur::Abandonnee);
                 // ⚠️ **UNE DERNIÈRE LIGNE À L'ARRÊT, sur les DEUX sorties.**
                 // Sans elle, une session plus courte que `PERIODE_RECENSEMENT`
                 // ne rendrait AUCUN recensement — et un critère (4) lu sur un
