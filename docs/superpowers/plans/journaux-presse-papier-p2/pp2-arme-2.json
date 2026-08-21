@@ -1,0 +1,128 @@
+{
+  "etiquette": "arme-2",
+  "desarme": false,
+  "nonce": "arme-2-mivdec",
+  "phases": [
+    {
+      "nom": "0-avant-tout-collage",
+      "t": "2026-08-21T03:29:55.339Z",
+      "etat": {
+        "pp": {
+          "messages": [],
+          "erreurs": []
+        },
+        "focus": false,
+        "actif": "BODY",
+        "statut_texte": "Connexion…"
+      },
+      "vm_clipboard": "clipboard longueur=19 debut=[delta-arme-1-nz1w56]",
+      "vm_notepad": "notepad longueur=0 texte=[]"
+    },
+    {
+      "nom": "1-apres-collage",
+      "t": "2026-08-21T03:30:05.253Z",
+      "etat": {
+        "pp": {
+          "messages": [],
+          "erreurs": []
+        },
+        "focus": true,
+        "actif": "remote",
+        "statut_texte": "780×492, 12.0 Mb/s",
+        "statut_cache": "false"
+      },
+      "vm_clipboard": "clipboard longueur=19 debut=[alpha-arme-2-mivdec]",
+      "vm_notepad": "notepad longueur=19 texte=[alpha-arme-2-mivdec]"
+    },
+    {
+      "nom": "2-apres-collage",
+      "t": "2026-08-21T03:30:15.162Z",
+      "etat": {
+        "pp": {
+          "messages": [],
+          "erreurs": []
+        },
+        "focus": true,
+        "actif": "remote",
+        "statut_texte": "780×492, 12.0 Mb/s",
+        "statut_cache": "true"
+      },
+      "vm_clipboard": "clipboard longueur=18 debut=[beta-arme-2-mivdec]",
+      "vm_notepad": "notepad longueur=37 texte=[alpha-arme-2-mivdecbeta-arme-2-mivdec]"
+    },
+    {
+      "nom": "3-apres-collage",
+      "t": "2026-08-21T03:30:25.871Z",
+      "etat": {
+        "pp": {
+          "messages": [],
+          "erreurs": []
+        },
+        "focus": true,
+        "actif": "remote",
+        "statut_texte": "780×492, 12.0 Mb/s",
+        "statut_cache": "true"
+      },
+      "vm_clipboard": "clipboard longueur=19 debut=[gamma-arme-2-mivdec]",
+      "vm_notepad": "notepad longueur=56 texte=[alpha-arme-2-mivdecbeta-arme-2-mivdecgamma-arme-2-mivdec]"
+    },
+    {
+      "nom": "4-apres-collage-avec-permission",
+      "t": "2026-08-21T03:30:36.592Z",
+      "etat": {
+        "pp": {
+          "messages": [],
+          "erreurs": []
+        },
+        "focus": true,
+        "actif": "remote",
+        "statut_texte": "780×492, 11.4 Mb/s",
+        "statut_cache": "true"
+      },
+      "vm_clipboard": "clipboard longueur=19 debut=[delta-arme-2-mivdec]",
+      "vm_notepad": "notepad longueur=75 texte=[alpha-arme-2-mivdecbeta-arme-2-mivdecgamma-arme-2-mivdecdelta-arme-2-mivdec]"
+    }
+  ],
+  "collages": [
+    {
+      "rang": 1,
+      "texte": "alpha-arme-2-mivdec",
+      "notepad": "notepad longueur=19 texte=[alpha-arme-2-mivdec]",
+      "clipboard": "clipboard longueur=19 debut=[alpha-arme-2-mivdec]"
+    },
+    {
+      "rang": 2,
+      "texte": "beta-arme-2-mivdec",
+      "notepad": "notepad longueur=37 texte=[alpha-arme-2-mivdecbeta-arme-2-mivdec]",
+      "clipboard": "clipboard longueur=18 debut=[beta-arme-2-mivdec]"
+    },
+    {
+      "rang": 3,
+      "texte": "gamma-arme-2-mivdec",
+      "notepad": "notepad longueur=56 texte=[alpha-arme-2-mivdecbeta-arme-2-mivdecgamma-arme-2-mivdec]",
+      "clipboard": "clipboard longueur=19 debut=[gamma-arme-2-mivdec]"
+    }
+  ],
+  "prep": "notepad=0",
+  "notepad_ouvert": true,
+  "lecteur_pret": true,
+  "temoin_vider": "vider : vide",
+  "temoin_notepad_vide": "notepad longueur=0 texte=[]",
+  "temoin_mesurable": true,
+  "shell_attachee": true,
+  "url_app": "http://127.0.0.1:5174/?session=_qEHCmTmqBqY_WrorSCB2A%3Aw-1&signaling=ws%3A%2F%2F192.168.3.1%3A8090",
+  "permissions_avant": {
+    "perm": "prompt",
+    "lecture": "THROW:NotAllowedError"
+  },
+  "permissions_apres_grant": {
+    "perm": "granted",
+    "lecture": "OK:gamma-arme-2-mivdec"
+  },
+  "collage_avec_permission": {
+    "texte": "delta-arme-2-mivdec",
+    "notepad": "notepad longueur=75 texte=[alpha-arme-2-mivdecbeta-arme-2-mivdecgamma-arme-2-mivdecdelta-arme-2-mivdec]",
+    "clipboard": "clipboard longueur=19 debut=[delta-arme-2-mivdec]"
+  },
+  "lecteur_journal": "﻿2026-08-21T03:29:36.3596575Z lecteur pret\r\n2026-08-21T03:29:42.3284556Z ordre 1 mode=vider-notepad\r\n2026-08-21T03:29:42.3440380Z fait 1 : vider : vide\r\n2026-08-21T03:29:43.0941307Z ordre 2 mode=notepad\r\n2026-08-21T03:29:43.0941307Z fait 2 : notepad longueur=0 texte=[]\r\n2026-08-21T03:29:55.4178195Z ordre 3 mode=clipboard\r\n2026-08-21T03:29:55.4243729Z fait 3 : clipboard longueur=19 debut=[delta-arme-1-nz1w56]\r\n2026-08-21T03:29:56.1800267Z ordre 4 mode=notepad\r\n2026-08-21T03:29:56.1810095Z fait 4 : notepad longueur=0 texte=[]\r\n2026-08-21T03:30:05.4586640Z ordre 5 mode=clipboard\r\n2026-08-21T03:30:05.4596672Z fait 5 : clipboard longueur=19 debut=[alpha-arme-2-mivdec]\r\n2026-08-21T03:30:06.2138572Z ordre 6 mode=notepad\r\n2026-08-21T03:30:06.2144706Z fait 6 : notepad longueur=19 texte=[alpha-arme-2-mivdec]\r\n2026-08-21T03:30:15.2412823Z ordre 7 mode=clipboard\r\n2026-08-21T03:30:15.2422682Z fait 7 : clipboard longueur=18 debut=[beta-arme-2-mivdec]\r\n2026-08-21T03:30:15.9975115Z ordre 8 mode=notepad\r\n2026-08-21T03:30:15.9985131Z fait 8 : notepad longueur=37 texte=[alpha-arme-2-mivdecbeta-arme-2-mivdec]\r\n2026-08-21T03:30:26.0297229Z ordre 9 mode=clipboard\r\n2026-08-21T03:30:26.0307238Z fait 9 : clipboard longueur=19 debut=[gamma-arme-2-mivdec]\r\n2026-08-21T03:30:26.7848512Z ordre 10 mode=notepad\r\n2026-08-21T03:30:26.7858536Z fait 10 : notepad longueur=56 texte=[alpha-arme-2-mivdecbeta-arme-2-mivdecgamma-arme-2-mivdec]\r\n2026-08-21T03:30:36.8323552Z ordre 11 mode=clipboard\r\n2026-08-21T03:30:36.8333563Z fait 11 : clipboard longueur=19 debut=[delta-arme-2-mivdec]\r\n2026-08-21T03:30:37.5915802Z ordre 12 mode=notepad\r\n2026-08-21T03:30:37.5925784Z fait 12 : notepad longueur=75 texte=[alpha-arme-2-mivdecbeta-arme-2-mivdecgamma-arme-2-mivdecdelta-arme-2-mivdec]\r\n"
+}
