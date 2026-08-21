@@ -16,6 +16,11 @@
 
 use super::tests::{source_avec, source_rattachable};
 use super::*;
+// `VideoSource` est importé ICI depuis que l'implémentation du trait a été
+// extraite vers `distante/video_source.rs` (sous-bloc A1) : le parent ne s'en
+// sert plus, et un trait doit être en portée pour que ses méthodes soient
+// appelables.
+use crate::source::VideoSource;
 
 /// `set_awake` relaie la visibilité telle quelle au capteur : c'est lui qui
 /// arbitre globalement (tâche 7). `source_avec` sert ici de canal espion, par
