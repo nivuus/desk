@@ -1,0 +1,895 @@
+{
+ "maintien_s": 15,
+ "prefixe": "F4z7KQooOQfJqh47PM0ETA",
+ "journal": [
+  "[2026-08-21T04:38:26.347Z] jeton de recette obtenu",
+  "[2026-08-21T04:38:26.727Z] chrome : Chrome/151.0.7922.169",
+  "[2026-08-21T04:38:26.937Z] navigation : http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA",
+  "[2026-08-21T04:38:31.028Z] OPFS peuple : 5 entrees",
+  "[2026-08-21T04:38:31.029Z] la page-shell est connectee : lancement de l agent",
+  "[2026-08-21T04:38:31.511Z] agent lance : Op\u0002ration r\u0002ussie : tentative d'ex\u0002cution de la t\u0003che planifi\u0002e \"guacamole-agent\".agent lancé en session interactive ; journal : /media/vm/dev/agent.log",
+  "[2026-08-21T04:38:36.551Z] 2 fenetre(s) d application apres 5 s",
+  "[2026-08-21T04:38:36.553Z] etat avant le clic : {\"href\":\"http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA\",\"jeton\":true,\"bouton\":true}",
+  "[2026-08-21T04:38:36.553Z] clic sur #choisir-dossier",
+  "[2026-08-21T04:38:39.572Z] #etat-fichiers : \"Lecteur « Mes Fichiers » monté sur « Mes documents ».\"",
+  "[2026-08-21T04:38:39.572Z] repos de 8000 ms avant la mesure",
+  "[2026-08-21T04:38:47.577Z] compteur AVANT : {\"dues\":0,\"vues\":0,\"texte\":\"\"}",
+  "[2026-08-21T04:38:47.578Z] mesure cote VM (ecriture dans la racine) — ASYNCHRONE, voir l en-tete",
+  "[2026-08-21T04:38:56.094Z] mesure VM : JSON lu",
+  "[2026-08-21T04:40:26.381Z] compteur FINAL : {\"t\":89,\"dues\":8,\"vues\":64,\"texte\":\"8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet.\"}",
+  "[2026-08-21T04:40:26.395Z] relecture projete.txt : {\"present\":true,\"taille\":52,\"sha256\":\"8c9605738f6e92bf92f59d84196dc4bcb9cbd136181a471a5f3b4ad86f2fb0f3\"}",
+  "[2026-08-21T04:40:26.406Z] relecture renomme.txt : {\"present\":false,\"erreur\":\"NotFoundError: A requested file or directory could not be found at the time an operation was processed.\"}",
+  "[2026-08-21T04:40:26.426Z] relecture sous-dossier/autre.txt : {\"present\":true,\"taille\":35,\"sha256\":\"6e020231e3750a878b46e40163065b5c865c847d21ecf6da88f0dea828989aa5\"}",
+  "[2026-08-21T04:40:26.433Z] relecture dossier-renomme/autre.txt : {\"present\":false,\"erreur\":\"NotFoundError: A requested file or directory could not be found at the time an operation was processed.\"}",
+  "[2026-08-21T04:40:26.439Z] relecture dossier-renomme/profond/feuille.txt : {\"present\":false,\"erreur\":\"NotFoundError: A requested file or directory could not be found at the time an operation was processed.\"}",
+  "[2026-08-21T04:40:26.447Z] relecture Casse.txt : {\"present\":true,\"taille\":15,\"sha256\":\"2c7f4c21a3c14c7c42ced552981f8f1cbe36c5775d7a0a773f739f10fa5ee870\"}",
+  "[2026-08-21T04:40:26.451Z] relecture a-effacer/un.txt : {\"present\":false,\"erreur\":\"NotFoundError: A requested file or directory could not be found at the time an operation was processed.\"}",
+  "[2026-08-21T04:40:26.455Z] relecture a-effacer/dedans/deux.txt : {\"present\":false,\"erreur\":\"NotFoundError: A requested file or directory could not be found at the time an operation was processed.\"}",
+  "[2026-08-21T04:40:26.465Z] relecture gros-lecture.bin : {\"present\":true,\"taille\":300000,\"sha256\":\"daf57cac3916f62a78a7e3cf274eca10d3c8588b574a3815cf4f5695356e647a\"}",
+  "[2026-08-21T04:40:26.475Z] arbre OPFS : [{\"chemin\":\"sous-dossier\",\"type\":\"d\"},{\"chemin\":\"sous-dossier/autre.txt\",\"type\":\"f\",\"taille\":35},{\"chemin\":\"projete.txt\",\"type\":\"f\",\"taille\":52},{\"chemin\":\"gros-lecture.bin\",\"type\":\"f\",\"taille\":300000},{\"chemin\":\"Casse.txt\",\"type\":\"f\",\"taille\":15}]",
+  "[2026-08-21T04:40:36.490Z] echantillon : {\"t\":10,\"fenetres\":2,\"flux\":[{\"url\":\"n=F4z7KQooOQfJqh47PM0ETA%3Aw-2\",\"v\":\"{\\\"sansPc\\\":true}\"},{\"url\":\"n=F4z7KQooOQfJqh47PM0ETA%3Aw-1\",\"v\":\"{\\\"sansPc\\\":true}\"}]}",
+  "[2026-08-21T04:40:46.500Z] echantillon : {\"t\":20,\"fenetres\":2,\"flux\":[{\"url\":\"n=F4z7KQooOQfJqh47PM0ETA%3Aw-2\",\"v\":\"{\\\"sansPc\\\":true}\"},{\"url\":\"n=F4z7KQooOQfJqh47PM0ETA%3Aw-1\",\"v\":\"{\\\"sansPc\\\":true}\"}]}"
+ ],
+ "erreurs": [],
+ "chrome": "Chrome/151.0.7922.169",
+ "console_page": [
+  {
+   "t": 1787287107148,
+   "niveau": "debug",
+   "texte": "[vite] connecting..."
+  },
+  {
+   "t": 1787287107203,
+   "niveau": "debug",
+   "texte": "[vite] connected."
+  },
+  {
+   "t": 1787287118766,
+   "niveau": "info",
+   "texte": "offre du pont envoyée, attente de l’agent…"
+  },
+  {
+   "t": 1787287118768,
+   "niveau": "info",
+   "texte": "pont fichiers : réponse reçue"
+  },
+  {
+   "t": 1787287118769,
+   "niveau": "info",
+   "texte": "pont fichiers : connecting"
+  },
+  {
+   "t": 1787287118941,
+   "niveau": "info",
+   "texte": "pont fichiers : connected"
+  },
+  {
+   "t": 1787287119027,
+   "niveau": "info",
+   "texte": "canal fichiers ouvert"
+  },
+  {
+   "t": 1787287128508,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 8 : « renomme.txt » n’existe pas"
+  },
+  {
+   "t": 1787287128568,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 10 : « renomme.txt » n’existe pas"
+  },
+  {
+   "t": 1787287128591,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 11 : « profond » n’existe pas"
+  },
+  {
+   "t": 1787287128644,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 12 : « profond » n’existe pas"
+  },
+  {
+   "t": 1787287129498,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 13 : « dossier-renomme » n’existe pas"
+  },
+  {
+   "t": 1787287129524,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 14 : « dossier-renomme » n’existe pas"
+  },
+  {
+   "t": 1787287129570,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 16 : « a-effacer » n’existe pas"
+  },
+  {
+   "t": 1787287129590,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 17 : « a-effacer » n’existe pas"
+  },
+  {
+   "t": 1787287130428,
+   "niveau": "warning",
+   "texte": "échec chemin-introuvable sur la corrélation 18 : « a-effacer » n’existe pas"
+  },
+  {
+   "t": 1787287130442,
+   "niveau": "warning",
+   "texte": "échec chemin-introuvable sur la corrélation 19 : « a-effacer » n’existe pas"
+  },
+  {
+   "t": 1787287130471,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 20 : « jamais-existe.txt » n’existe pas"
+  },
+  {
+   "t": 1787287130497,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 21 : « pas-la » n’existe pas"
+  },
+  {
+   "t": 1787287130521,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 22 : « deja-a.txt » n’existe pas"
+  },
+  {
+   "t": 1787287130541,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 23 : « deja-a.txt » n’existe pas"
+  },
+  {
+   "t": 1787287130559,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 24 : « deja-b.txt » n’existe pas"
+  },
+  {
+   "t": 1787287130589,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 25 : « deja-b.txt » n’existe pas"
+  },
+  {
+   "t": 1787287131438,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 26 : « deja-a.txt » n’existe pas"
+  },
+  {
+   "t": 1787287131459,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 27 : « deja-b.txt » n’existe pas"
+  },
+  {
+   "t": 1787287131479,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 28 : « deja-b.txt » n’existe pas"
+  },
+  {
+   "t": 1787287131520,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 29 : « lien-dur.txt » n’existe pas"
+  },
+  {
+   "t": 1787287131544,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 30 : « .faute-acces-refuse » n’existe pas"
+  },
+  {
+   "t": 1787287131567,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 31 : « .faute-disque-plein » n’existe pas"
+  },
+  {
+   "t": 1787287131590,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 32 : « .faute-non-supporte » n’existe pas"
+  }
+ ],
+ "opfs_entrees": 5,
+ "fenetres_ouvertes": 2,
+ "etat_avant_clic": "{\"href\":\"http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA\",\"jeton\":true,\"bouton\":true}",
+ "etat_fichiers": "Lecteur « Mes Fichiers » monté sur « Mes documents ».",
+ "bien_monte": true,
+ "compteur_avant": {
+  "dues": 0,
+  "vues": 0,
+  "texte": ""
+ },
+ "mesure_vm_brut": "﻿{\"racine\":\"C:\\\\Users\\\\Administrateur\\\\Mes Fichiers\",\"horodatage\":\"2026-08-21T06:38:48.2545029+02:00\",\"avant\":[\"sous-dossier\",\"Casse.txt\",\"gros-lecture.bin\",\"projete.txt\",\"sous-dossier\\\\autre.txt\"],\"avant_compte\":5,\"c1a_avant\":\"PRESENT\",\"c1a_issue\":\"ECHEC:Une erreur interne s’est produite.\\r\\n\",\"c1a_source_apres\":\"PRESENT\",\"c1a_cible_apres\":\"ABSENT\",\"c1b_avant\":\"PRESENT\",\"c1b_issue\":\"ECHEC:Cette demande n’est pas prise en charge.\\r\\n\",\"c1b_source_apres\":\"PRESENT\",\"c1b_cible_apres\":\"ABSENT\",\"c2a_avant\":\"PRESENT\",\"c2a_issue\":\"ECHEC:Une erreur interne s’est produite.\\r\\n\",\"c2a_apres\":\"PRESENT\",\"c2b_issue\":\"ECHEC:Impossible de trouver une partie du chemin d\\u0027accès \\u0027deux.txt\\u0027.\",\"c2b_apres\":\"PRESENT\",\"critere4\":{\"introuvable\":\"refus:ItemNotFoundException\",\"chemin_introuvable\":\"refus:ItemNotFoundException\",\"deja_present\":\"refus:Une erreur interne s’est produite.\\r\\n\",\"lien_dur\":\"sortie=1\",\".faute-acces-refuse\":\"refus:ItemNotFoundException\",\".faute-disque-plein\":\"refus:ItemNotFoundException\",\".faute-non-supporte\":\"refus:ItemNotFoundException\"},\"apres\":[\"a-effacer\",\"sous-dossier\",\"Casse.txt\",\"deja-a.txt\",\"deja-b.txt\",\"gros-lecture.bin\",\"projete.txt\",\"a-effacer\\\\dedans\",\"a-effacer\\\\un.txt\",\"a-effacer\\\\dedans\\\\deux.txt\",\"sous-dossier\\\\profond\",\"sous-dossier\\\\autre.txt\",\"sous-dossier\\\\profond\\\\feuille.txt\"],\"apres_compte\":13}\r\n",
+ "mesure_vm": {
+  "racine": "C:\\Users\\Administrateur\\Mes Fichiers",
+  "horodatage": "2026-08-21T06:38:48.2545029+02:00",
+  "avant": [
+   "sous-dossier",
+   "Casse.txt",
+   "gros-lecture.bin",
+   "projete.txt",
+   "sous-dossier\\autre.txt"
+  ],
+  "avant_compte": 5,
+  "c1a_avant": "PRESENT",
+  "c1a_issue": "ECHEC:Une erreur interne s’est produite.\r\n",
+  "c1a_source_apres": "PRESENT",
+  "c1a_cible_apres": "ABSENT",
+  "c1b_avant": "PRESENT",
+  "c1b_issue": "ECHEC:Cette demande n’est pas prise en charge.\r\n",
+  "c1b_source_apres": "PRESENT",
+  "c1b_cible_apres": "ABSENT",
+  "c2a_avant": "PRESENT",
+  "c2a_issue": "ECHEC:Une erreur interne s’est produite.\r\n",
+  "c2a_apres": "PRESENT",
+  "c2b_issue": "ECHEC:Impossible de trouver une partie du chemin d'accès 'deux.txt'.",
+  "c2b_apres": "PRESENT",
+  "critere4": {
+   "introuvable": "refus:ItemNotFoundException",
+   "chemin_introuvable": "refus:ItemNotFoundException",
+   "deja_present": "refus:Une erreur interne s’est produite.\r\n",
+   "lien_dur": "sortie=1",
+   ".faute-acces-refuse": "refus:ItemNotFoundException",
+   ".faute-disque-plein": "refus:ItemNotFoundException",
+   ".faute-non-supporte": "refus:ItemNotFoundException"
+  },
+  "apres": [
+   "a-effacer",
+   "sous-dossier",
+   "Casse.txt",
+   "deja-a.txt",
+   "deja-b.txt",
+   "gros-lecture.bin",
+   "projete.txt",
+   "a-effacer\\dedans",
+   "a-effacer\\un.txt",
+   "a-effacer\\dedans\\deux.txt",
+   "sous-dossier\\profond",
+   "sous-dossier\\autre.txt",
+   "sous-dossier\\profond\\feuille.txt"
+  ],
+  "apres_compte": 13
+ },
+ "suivi_compteur": [
+  {
+   "t": 0,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 1,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 2,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 3,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 4,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 5,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 6,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 7,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 8,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 9,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 10,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 11,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 12,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 13,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 14,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 15,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 16,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 17,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 18,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 19,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 20,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 21,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 22,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 23,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 24,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 25,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 26,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 27,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 28,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 29,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 30,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 31,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 32,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 33,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 34,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 35,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 36,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 37,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 38,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 39,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 40,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 41,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 42,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 43,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 44,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 45,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 46,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 47,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 48,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 49,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 50,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 51,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 52,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 53,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 54,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 55,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 56,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 57,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 58,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 59,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 60,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 61,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 62,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 63,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 64,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 65,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 66,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 67,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 68,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 69,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 70,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 71,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 72,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 73,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 74,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 75,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 76,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 77,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 78,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 79,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 80,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 81,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 82,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 83,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 84,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 85,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 86,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 87,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 88,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 89,
+   "dues": 8,
+   "vues": 64,
+   "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+  }
+ ],
+ "compteur_final": {
+  "t": 89,
+  "dues": 8,
+  "vues": 64,
+  "texte": "8 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « sous-dossier/profond », « sous-dossier/profond/feuille.txt », « a-effacer », « a-effacer/dedans », « a-effacer/un.txt », « a-effacer/dedans/deux.txt », « deja-a.txt », « deja-b.txt ». Ne fermez pas cet onglet."
+ },
+ "relectures": {
+  "projete.txt": {
+   "present": true,
+   "taille": 52,
+   "sha256": "8c9605738f6e92bf92f59d84196dc4bcb9cbd136181a471a5f3b4ad86f2fb0f3"
+  },
+  "renomme.txt": {
+   "present": false,
+   "erreur": "NotFoundError: A requested file or directory could not be found at the time an operation was processed."
+  },
+  "sous-dossier/autre.txt": {
+   "present": true,
+   "taille": 35,
+   "sha256": "6e020231e3750a878b46e40163065b5c865c847d21ecf6da88f0dea828989aa5"
+  },
+  "dossier-renomme/autre.txt": {
+   "present": false,
+   "erreur": "NotFoundError: A requested file or directory could not be found at the time an operation was processed."
+  },
+  "dossier-renomme/profond/feuille.txt": {
+   "present": false,
+   "erreur": "NotFoundError: A requested file or directory could not be found at the time an operation was processed."
+  },
+  "Casse.txt": {
+   "present": true,
+   "taille": 15,
+   "sha256": "2c7f4c21a3c14c7c42ced552981f8f1cbe36c5775d7a0a773f739f10fa5ee870"
+  },
+  "a-effacer/un.txt": {
+   "present": false,
+   "erreur": "NotFoundError: A requested file or directory could not be found at the time an operation was processed."
+  },
+  "a-effacer/dedans/deux.txt": {
+   "present": false,
+   "erreur": "NotFoundError: A requested file or directory could not be found at the time an operation was processed."
+  },
+  "gros-lecture.bin": {
+   "present": true,
+   "taille": 300000,
+   "sha256": "daf57cac3916f62a78a7e3cf274eca10d3c8588b574a3815cf4f5695356e647a"
+  }
+ },
+ "arbre_opfs": [
+  {
+   "chemin": "sous-dossier",
+   "type": "d"
+  },
+  {
+   "chemin": "sous-dossier/autre.txt",
+   "type": "f",
+   "taille": 35
+  },
+  {
+   "chemin": "projete.txt",
+   "type": "f",
+   "taille": 52
+  },
+  {
+   "chemin": "gros-lecture.bin",
+   "type": "f",
+   "taille": 300000
+  },
+  {
+   "chemin": "Casse.txt",
+   "type": "f",
+   "taille": 15
+  }
+ ],
+ "echantillons": [
+  {
+   "t": 10,
+   "fenetres": 2,
+   "flux": [
+    {
+     "url": "n=F4z7KQooOQfJqh47PM0ETA%3Aw-2",
+     "v": "{\"sansPc\":true}"
+    },
+    {
+     "url": "n=F4z7KQooOQfJqh47PM0ETA%3Aw-1",
+     "v": "{\"sansPc\":true}"
+    }
+   ]
+  },
+  {
+   "t": 20,
+   "fenetres": 2,
+   "flux": [
+    {
+     "url": "n=F4z7KQooOQfJqh47PM0ETA%3Aw-2",
+     "v": "{\"sansPc\":true}"
+    },
+    {
+     "url": "n=F4z7KQooOQfJqh47PM0ETA%3Aw-1",
+     "v": "{\"sansPc\":true}"
+    }
+   ]
+  }
+ ],
+ "ok": true
+}

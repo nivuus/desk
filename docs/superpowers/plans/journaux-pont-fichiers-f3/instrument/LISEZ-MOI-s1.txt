@@ -1,0 +1,28 @@
+🔴 LE MONTAGE QUE LE PLAN PRESCRIT POUR S1 EST AUTO-DESTRUCTEUR, ET C'EST
+CORRIGÉ ICI.
+
+Le §, tâche 15, écrit : « binaire de la tâche 13, lancé avec **`PONT_MUTATION=0`**,
+modifié pour cette seule sonde afin de journaliser intégralement chaque
+notification sans rien pousser. »
+
+**`PONT_MUTATION=0` refuse au `PRE_RENAME`.** Windows abandonne alors le
+renommage : `FILE_RENAMED` **n'est JAMAIS émise**, et l'observation (b) que le
+plan exige lui-même — « le renommage a bien été exécuté par Windows :
+`Test-Path` de l'ancien nom rend `False` » — **ne peut pas être verte**. La
+sonde mesurerait l'absence d'un GESTE là où elle veut mesurer l'absence d'une
+NOTIFICATION, ce que son propre §(b) déclare disqualifiant.
+
+MONTAGE RETENU, et il donne exactement ce que le plan voulait :
+  - `PONT_MUTATION` **ARMÉE** → le `PRE_` accepte, **Windows exécute le geste** ;
+  - `PONT_ECRITURE=0`        → `Fil::commencer_mutation` journalise et
+                               **ne pousse RIEN** (`if !self.config.armee`).
+
+**Aucun octet ne part vers le poste local, et la notification arrive quand
+même.** C'est le mécanisme de produit qui sert de désarmement, pas un
+bricolage — exactement ce que le plan demandait, par l'autre variable.
+
+⚠️ **Le binaire n'est PAS modifié pour la sonde**, contrairement à ce que le
+plan prévoit : la trace des quatre champs bruts est un `debug!` **permanent** de
+`projfs/rappels/notification.rs`, lu par un filtre CIBLÉ
+`RUST_LOG=info,agent::pont=debug`. Un binaire modifié pour une seule mesure est
+un binaire qu'on ne peut pas comparer aux autres.

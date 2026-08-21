@@ -1,0 +1,31 @@
+[2026-08-21T05:27:35.435Z] jeton de recette obtenu
+[2026-08-21T05:27:36.051Z] chrome : Chrome/151.0.7922.169
+[2026-08-21T05:27:36.382Z] navigation : http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA&faute-fichiers=1
+[2026-08-21T05:27:40.431Z] OPFS peuple : 5 entrees
+[2026-08-21T05:27:40.431Z] la page-shell est connectee : lancement de l agent
+[2026-08-21T05:27:40.844Z] agent lance : Opration russie : tentative d'excution de la tche planifie "guacamole-agent".agent lancé en session interactive ; journal : /media/vm/dev/agent.log
+[2026-08-21T05:27:44.883Z] 2 fenetre(s) d application apres 4 s
+[2026-08-21T05:27:44.889Z] etat avant le clic : {"href":"http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA&faute-fichiers=1","jeton":true,"bouton":true}
+[2026-08-21T05:27:44.889Z] clic sur #choisir-dossier
+[2026-08-21T05:27:47.939Z] #etat-fichiers : "Lecteur « Mes Fichiers » monté sur « Mes documents »."
+[2026-08-21T05:27:47.940Z] repos de 8000 ms avant la mesure
+[2026-08-21T05:27:55.953Z] divergence posee cote local : ["vide-cote-vm","sous-dossier","projete.txt","occupe-cote-local.txt","gros-lecture.bin","ambigu.txt","Casse.txt","AMBIGU.TXT"]
+[2026-08-21T05:27:55.955Z] compteur AVANT : {"dues":0,"vues":0,"texte":""}
+[2026-08-21T05:27:55.955Z] mesure cote VM (ecriture dans la racine) — ASYNCHRONE, voir l en-tete
+[2026-08-21T05:28:08.971Z] mesure VM : JSON lu
+[2026-08-21T05:28:12.985Z] compteur FINAL : {"t":4,"dues":0,"vues":36,"texte":""}
+[2026-08-21T05:28:12.989Z] relecture projete.txt : {"present":false,"erreur":"NotFoundError: A requested file or directory could not be found at the time an operation was processed."}
+[2026-08-21T05:28:12.994Z] relecture renomme.txt : {"present":true,"taille":52,"sha256":"8c9605738f6e92bf92f59d84196dc4bcb9cbd136181a471a5f3b4ad86f2fb0f3"}
+[2026-08-21T05:28:13.000Z] relecture sous-dossier/autre.txt : {"present":true,"taille":35,"sha256":"6e020231e3750a878b46e40163065b5c865c847d21ecf6da88f0dea828989aa5"}
+[2026-08-21T05:28:13.003Z] relecture dossier-renomme/autre.txt : {"present":false,"erreur":"NotFoundError: A requested file or directory could not be found at the time an operation was processed."}
+[2026-08-21T05:28:13.006Z] relecture dossier-renomme/profond/feuille.txt : {"present":false,"erreur":"NotFoundError: A requested file or directory could not be found at the time an operation was processed."}
+[2026-08-21T05:28:13.009Z] relecture Casse.txt : {"present":false,"erreur":"NotFoundError: A requested file or directory could not be found at the time an operation was processed."}
+[2026-08-21T05:28:13.012Z] relecture a-effacer/un.txt : {"present":false,"erreur":"NotFoundError: A requested file or directory could not be found at the time an operation was processed."}
+[2026-08-21T05:28:13.017Z] relecture a-effacer/dedans/deux.txt : {"present":false,"erreur":"NotFoundError: A requested file or directory could not be found at the time an operation was processed."}
+[2026-08-21T05:28:13.027Z] relecture gros-lecture.bin : {"present":true,"taille":300000,"sha256":"daf57cac3916f62a78a7e3cf274eca10d3c8588b574a3815cf4f5695356e647a"}
+[2026-08-21T05:28:13.033Z] relecture vide-cote-vm/inconnu-de-la-vm.txt : {"present":true,"taille":0,"sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"}
+[2026-08-21T05:28:13.043Z] relecture occupe-cote-local.txt : {"present":true,"taille":0,"sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"}
+[2026-08-21T05:28:13.060Z] arbre OPFS : [{"chemin":"vide-cote-vm","type":"d"},{"chemin":"vide-cote-vm/inconnu-de-la-vm.txt","type":"f","taille":0},{"chemin":"sous-dossier","type":"d"},{"chemin":"sous-dossier/profond","type":"d"},{"chemin":"sous-dossier/profond/feuille.txt","type":"f","taille":10},{"chemin":"sous-dossier/autre.txt","type":"f","taille":35},{"chemin":"renomme.txt","type":"f","taille":52},{"chemin":"occupe-cote-local.txt","type":"f","taille":0},{"chemin":"gros-lecture.bin","type":"f","taille":300000},{"chemin":"deja-b.txt","type":"f","taille":1},{"chemin":"ambigu.txt","type":"f","taille":0},{"chemin":"a-deplacer.txt","type":"f","taille":1},{"chemin":"AMBIGU.TXT","type":"f","taille":0}]
+[2026-08-21T05:28:23.075Z] echantillon : {"t":10,"fenetres":2,"flux":[{"url":"n=F4z7KQooOQfJqh47PM0ETA%3Aw-2","v":"{\"sansPc\":true}"},{"url":"n=F4z7KQooOQfJqh47PM0ETA%3Aw-1","v":"{\"sansPc\":true}"}]}
+[2026-08-21T05:28:33.084Z] echantillon : {"t":20,"fenetres":2,"flux":[{"url":"n=F4z7KQooOQfJqh47PM0ETA%3Aw-2","v":"{\"sansPc\":true}"},{"url":"n=F4z7KQooOQfJqh47PM0ETA%3Aw-1","v":"{\"sansPc\":true}"}]}
+[2026-08-21T05:28:33.085Z] resultat ecrit : /tmp/f3/exec2.json

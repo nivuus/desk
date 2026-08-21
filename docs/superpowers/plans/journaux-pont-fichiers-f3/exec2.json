@@ -1,0 +1,466 @@
+{
+ "maintien_s": 20,
+ "prefixe": "F4z7KQooOQfJqh47PM0ETA",
+ "journal": [
+  "[2026-08-21T05:27:35.435Z] jeton de recette obtenu",
+  "[2026-08-21T05:27:36.051Z] chrome : Chrome/151.0.7922.169",
+  "[2026-08-21T05:27:36.382Z] navigation : http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA&faute-fichiers=1",
+  "[2026-08-21T05:27:40.431Z] OPFS peuple : 5 entrees",
+  "[2026-08-21T05:27:40.431Z] la page-shell est connectee : lancement de l agent",
+  "[2026-08-21T05:27:40.844Z] agent lance : Op\u0002ration r\u0002ussie : tentative d'ex\u0002cution de la t\u0003che planifi\u0002e \"guacamole-agent\".agent lancé en session interactive ; journal : /media/vm/dev/agent.log",
+  "[2026-08-21T05:27:44.883Z] 2 fenetre(s) d application apres 4 s",
+  "[2026-08-21T05:27:44.889Z] etat avant le clic : {\"href\":\"http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA&faute-fichiers=1\",\"jeton\":true,\"bouton\":true}",
+  "[2026-08-21T05:27:44.889Z] clic sur #choisir-dossier",
+  "[2026-08-21T05:27:47.939Z] #etat-fichiers : \"Lecteur « Mes Fichiers » monté sur « Mes documents ».\"",
+  "[2026-08-21T05:27:47.940Z] repos de 8000 ms avant la mesure",
+  "[2026-08-21T05:27:55.953Z] divergence posee cote local : [\"vide-cote-vm\",\"sous-dossier\",\"projete.txt\",\"occupe-cote-local.txt\",\"gros-lecture.bin\",\"ambigu.txt\",\"Casse.txt\",\"AMBIGU.TXT\"]",
+  "[2026-08-21T05:27:55.955Z] compteur AVANT : {\"dues\":0,\"vues\":0,\"texte\":\"\"}",
+  "[2026-08-21T05:27:55.955Z] mesure cote VM (ecriture dans la racine) — ASYNCHRONE, voir l en-tete",
+  "[2026-08-21T05:28:08.971Z] mesure VM : JSON lu",
+  "[2026-08-21T05:28:12.985Z] compteur FINAL : {\"t\":4,\"dues\":0,\"vues\":36,\"texte\":\"\"}",
+  "[2026-08-21T05:28:12.989Z] relecture projete.txt : {\"present\":false,\"erreur\":\"NotFoundError: A requested file or directory could not be found at the time an operation was processed.\"}",
+  "[2026-08-21T05:28:12.994Z] relecture renomme.txt : {\"present\":true,\"taille\":52,\"sha256\":\"8c9605738f6e92bf92f59d84196dc4bcb9cbd136181a471a5f3b4ad86f2fb0f3\"}",
+  "[2026-08-21T05:28:13.000Z] relecture sous-dossier/autre.txt : {\"present\":true,\"taille\":35,\"sha256\":\"6e020231e3750a878b46e40163065b5c865c847d21ecf6da88f0dea828989aa5\"}",
+  "[2026-08-21T05:28:13.003Z] relecture dossier-renomme/autre.txt : {\"present\":false,\"erreur\":\"NotFoundError: A requested file or directory could not be found at the time an operation was processed.\"}",
+  "[2026-08-21T05:28:13.006Z] relecture dossier-renomme/profond/feuille.txt : {\"present\":false,\"erreur\":\"NotFoundError: A requested file or directory could not be found at the time an operation was processed.\"}",
+  "[2026-08-21T05:28:13.009Z] relecture Casse.txt : {\"present\":false,\"erreur\":\"NotFoundError: A requested file or directory could not be found at the time an operation was processed.\"}",
+  "[2026-08-21T05:28:13.012Z] relecture a-effacer/un.txt : {\"present\":false,\"erreur\":\"NotFoundError: A requested file or directory could not be found at the time an operation was processed.\"}",
+  "[2026-08-21T05:28:13.017Z] relecture a-effacer/dedans/deux.txt : {\"present\":false,\"erreur\":\"NotFoundError: A requested file or directory could not be found at the time an operation was processed.\"}",
+  "[2026-08-21T05:28:13.027Z] relecture gros-lecture.bin : {\"present\":true,\"taille\":300000,\"sha256\":\"daf57cac3916f62a78a7e3cf274eca10d3c8588b574a3815cf4f5695356e647a\"}",
+  "[2026-08-21T05:28:13.033Z] relecture vide-cote-vm/inconnu-de-la-vm.txt : {\"present\":true,\"taille\":0,\"sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"}",
+  "[2026-08-21T05:28:13.043Z] relecture occupe-cote-local.txt : {\"present\":true,\"taille\":0,\"sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"}",
+  "[2026-08-21T05:28:13.060Z] arbre OPFS : [{\"chemin\":\"vide-cote-vm\",\"type\":\"d\"},{\"chemin\":\"vide-cote-vm/inconnu-de-la-vm.txt\",\"type\":\"f\",\"taille\":0},{\"chemin\":\"sous-dossier\",\"type\":\"d\"},{\"chemin\":\"sous-dossier/profond\",\"type\":\"d\"},{\"chemin\":\"sous-dossier/profond/feuille.txt\",\"type\":\"f\",\"taille\":10},{\"chemin\":\"sous-dossier/autre.txt\",\"type\":\"f\",\"taille\":35},{\"chemin\":\"renomme.txt\",\"type\":\"f\",\"taille\":52},{\"chemin\":\"occupe-cote-local.txt\",\"type\":\"f\",\"taille\":0},{\"chemin\":\"gros-lecture.bin\",\"type\":\"f\",\"taille\":300000},{\"chemin\":\"deja-b.txt\",\"type\":\"f\",\"taille\":1},{\"chemin\":\"ambigu.txt\",\"type\":\"f\",\"taille\":0},{\"chemin\":\"a-deplacer.txt\",\"type\":\"f\",\"taille\":1},{\"chemin\":\"AMBIGU.TXT\",\"type\":\"f\",\"taille\":0}]",
+  "[2026-08-21T05:28:23.075Z] echantillon : {\"t\":10,\"fenetres\":2,\"flux\":[{\"url\":\"n=F4z7KQooOQfJqh47PM0ETA%3Aw-2\",\"v\":\"{\\\"sansPc\\\":true}\"},{\"url\":\"n=F4z7KQooOQfJqh47PM0ETA%3Aw-1\",\"v\":\"{\\\"sansPc\\\":true}\"}]}",
+  "[2026-08-21T05:28:33.084Z] echantillon : {\"t\":20,\"fenetres\":2,\"flux\":[{\"url\":\"n=F4z7KQooOQfJqh47PM0ETA%3Aw-2\",\"v\":\"{\\\"sansPc\\\":true}\"},{\"url\":\"n=F4z7KQooOQfJqh47PM0ETA%3Aw-1\",\"v\":\"{\\\"sansPc\\\":true}\"}]}"
+ ],
+ "erreurs": [],
+ "chrome": "Chrome/151.0.7922.169",
+ "console_page": [
+  {
+   "t": 1787290056630,
+   "niveau": "debug",
+   "texte": "[vite] connecting..."
+  },
+  {
+   "t": 1787290056665,
+   "niveau": "debug",
+   "texte": "[vite] connected."
+  },
+  {
+   "t": 1787290056693,
+   "niveau": "warning",
+   "texte": "injection de fautes du pont fichiers ARMEE (?faute-fichiers=1) : banc, jamais une configuration livree"
+  },
+  {
+   "t": 1787290067112,
+   "niveau": "info",
+   "texte": "offre du pont envoyée, attente de l’agent…"
+  },
+  {
+   "t": 1787290067115,
+   "niveau": "info",
+   "texte": "pont fichiers : réponse reçue"
+  },
+  {
+   "t": 1787290067117,
+   "niveau": "info",
+   "texte": "pont fichiers : connecting"
+  },
+  {
+   "t": 1787290067291,
+   "niveau": "info",
+   "texte": "pont fichiers : connected"
+  },
+  {
+   "t": 1787290067376,
+   "niveau": "info",
+   "texte": "canal fichiers ouvert"
+  },
+  {
+   "t": 1787290077376,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 12 : « renomme.txt » n’existe pas"
+  },
+  {
+   "t": 1787290077441,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 15 : « profond » n’existe pas"
+  },
+  {
+   "t": 1787290077502,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 16 : « profond » n’existe pas"
+  },
+  {
+   "t": 1787290078337,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 19 : « dossier-renomme » n’existe pas"
+  },
+  {
+   "t": 1787290078360,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 20 : « dossier-renomme » n’existe pas"
+  },
+  {
+   "t": 1787290078411,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 23 : « a-effacer » n’existe pas"
+  },
+  {
+   "t": 1787290078454,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 24 : « a-effacer » n’existe pas"
+  },
+  {
+   "t": 1787290079457,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 36 : « jamais-existe.txt » n’existe pas"
+  },
+  {
+   "t": 1787290079502,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 38 : « pas-la » n’existe pas"
+  },
+  {
+   "t": 1787290079546,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 39 : « deja-a.txt » n’existe pas"
+  },
+  {
+   "t": 1787290079570,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 40 : « deja-a.txt » n’existe pas"
+  },
+  {
+   "t": 1787290079589,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 41 : « deja-b.txt » n’existe pas"
+  },
+  {
+   "t": 1787290079619,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 43 : « deja-b.txt » n’existe pas"
+  },
+  {
+   "t": 1787290080610,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 51 : « lien-dur.txt » n’existe pas"
+  },
+  {
+   "t": 1787290080653,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 52 : « lien-dur.txt » n’existe pas"
+  },
+  {
+   "t": 1787290080677,
+   "niveau": "warning",
+   "texte": "échec acces-refuse sur la corrélation 53 : faute injectée par « .faute-acces-refuse » : banc, jamais une configuration livrée"
+  },
+  {
+   "t": 1787290080700,
+   "niveau": "warning",
+   "texte": "échec disque-plein sur la corrélation 54 : faute injectée par « .faute-disque-plein » : banc, jamais une configuration livrée"
+  },
+  {
+   "t": 1787290080722,
+   "niveau": "warning",
+   "texte": "échec non-supporte sur la corrélation 55 : faute injectée par « .faute-non-supporte » : banc, jamais une configuration livrée"
+  },
+  {
+   "t": 1787290084452,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 65 : « a-deplacer.txt » n’existe pas"
+  },
+  {
+   "t": 1787290084473,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 66 : « a-deplacer.txt » n’existe pas"
+  },
+  {
+   "t": 1787290085046,
+   "niveau": "warning",
+   "texte": "échec casse-ambigue sur la corrélation 71 : « Ambigu.txt » ne se distingue pas de « ambigu.txt », « AMBIGU.TXT » : rendre l’un d’eux choisirait le mauvais fichier, rien n’a été fait"
+  }
+ ],
+ "fautes_armees": true,
+ "opfs_entrees": 5,
+ "fenetres_ouvertes": 2,
+ "etat_avant_clic": "{\"href\":\"http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA&faute-fichiers=1\",\"jeton\":true,\"bouton\":true}",
+ "etat_fichiers": "Lecteur « Mes Fichiers » monté sur « Mes documents ».",
+ "bien_monte": true,
+ "divergence_posee": [
+  "vide-cote-vm",
+  "sous-dossier",
+  "projete.txt",
+  "occupe-cote-local.txt",
+  "gros-lecture.bin",
+  "ambigu.txt",
+  "Casse.txt",
+  "AMBIGU.TXT"
+ ],
+ "compteur_avant": {
+  "dues": 0,
+  "vues": 0,
+  "texte": ""
+ },
+ "mesure_vm_brut": "﻿{\"racine\":\"C:\\\\Users\\\\Administrateur\\\\Mes Fichiers\",\"horodatage\":\"2026-08-21T07:27:57.0541194+02:00\",\"avant\":[\"sous-dossier\",\"vide-cote-vm\",\"ambigu.txt\",\"AMBIGU.TXT\",\"Casse.txt\",\"gros-lecture.bin\",\"occupe-cote-local.txt\",\"projete.txt\",\"sous-dossier\\\\autre.txt\",\"vide-cote-vm\\\\inconnu-de-la-vm.txt\"],\"avant_compte\":10,\"c1a_avant\":\"PRESENT\",\"c1a_issue\":\"ok\",\"c1a_source_apres\":\"ABSENT\",\"c1a_cible_apres\":\"PRESENT\",\"c1b_avant\":\"PRESENT\",\"c1b_issue\":\"ECHEC:Cette demande n’est pas prise en charge.\\r\\n\",\"c1b_source_apres\":\"PRESENT\",\"c1b_cible_apres\":\"ABSENT\",\"c2a_avant\":\"PRESENT\",\"c2a_issue\":\"ok\",\"c2a_apres\":\"ABSENT\",\"c2b_issue\":\"ok\",\"c2b_apres\":\"ABSENT\",\"critere4\":{\"introuvable\":\"refus:ItemNotFoundException\",\"chemin_introuvable\":\"refus:ItemNotFoundException\",\"deja_present\":\"ok (Windows a ecrase AVANT nous)\",\"lien_dur\":\"sortie=1\",\".faute-acces-refuse\":\"refus:UnauthorizedAccessException\",\".faute-disque-plein\":\"refus:ItemNotFoundException\",\".faute-non-supporte\":\"refus:ItemNotFoundException\"},\"apres\":[\"sous-dossier\",\"vide-cote-vm\",\"ambigu.txt\",\"AMBIGU.TXT\",\"deja-b.txt\",\"gros-lecture.bin\",\"occupe-cote-local.txt\",\"renomme.txt\",\"sous-dossier\\\\profond\",\"sous-dossier\\\\autre.txt\",\"sous-dossier\\\\profond\\\\feuille.txt\",\"vide-cote-vm\\\\inconnu-de-la-vm.txt\"],\"apres_compte\":12,\"critere5\":{\"repertoire_non_vide\":\"HORS ATTEINTE : le geste fige la mesure (voir le commentaire)\",\"deja_present\":\"refus:Impossible de créer un fichier déjà existant.\\r\\n\",\"casse_ambigue\":\"refus:ItemNotFoundException\",\"silence\":\"refus:ItemNotFoundException\"},\"apres2\":[\"sous-dossier\",\"vide-cote-vm\",\"a-deplacer.txt\",\"ambigu.txt\",\"AMBIGU.TXT\",\"deja-b.txt\",\"gros-lecture.bin\",\"occupe-cote-local.txt\",\"renomme.txt\",\"sous-dossier\\\\profond\",\"sous-dossier\\\\autre.txt\",\"sous-dossier\\\\profond\\\\feuille.txt\",\"vide-cote-vm\\\\inconnu-de-la-vm.txt\"]}\r\n",
+ "mesure_vm": {
+  "racine": "C:\\Users\\Administrateur\\Mes Fichiers",
+  "horodatage": "2026-08-21T07:27:57.0541194+02:00",
+  "avant": [
+   "sous-dossier",
+   "vide-cote-vm",
+   "ambigu.txt",
+   "AMBIGU.TXT",
+   "Casse.txt",
+   "gros-lecture.bin",
+   "occupe-cote-local.txt",
+   "projete.txt",
+   "sous-dossier\\autre.txt",
+   "vide-cote-vm\\inconnu-de-la-vm.txt"
+  ],
+  "avant_compte": 10,
+  "c1a_avant": "PRESENT",
+  "c1a_issue": "ok",
+  "c1a_source_apres": "ABSENT",
+  "c1a_cible_apres": "PRESENT",
+  "c1b_avant": "PRESENT",
+  "c1b_issue": "ECHEC:Cette demande n’est pas prise en charge.\r\n",
+  "c1b_source_apres": "PRESENT",
+  "c1b_cible_apres": "ABSENT",
+  "c2a_avant": "PRESENT",
+  "c2a_issue": "ok",
+  "c2a_apres": "ABSENT",
+  "c2b_issue": "ok",
+  "c2b_apres": "ABSENT",
+  "critere4": {
+   "introuvable": "refus:ItemNotFoundException",
+   "chemin_introuvable": "refus:ItemNotFoundException",
+   "deja_present": "ok (Windows a ecrase AVANT nous)",
+   "lien_dur": "sortie=1",
+   ".faute-acces-refuse": "refus:UnauthorizedAccessException",
+   ".faute-disque-plein": "refus:ItemNotFoundException",
+   ".faute-non-supporte": "refus:ItemNotFoundException"
+  },
+  "apres": [
+   "sous-dossier",
+   "vide-cote-vm",
+   "ambigu.txt",
+   "AMBIGU.TXT",
+   "deja-b.txt",
+   "gros-lecture.bin",
+   "occupe-cote-local.txt",
+   "renomme.txt",
+   "sous-dossier\\profond",
+   "sous-dossier\\autre.txt",
+   "sous-dossier\\profond\\feuille.txt",
+   "vide-cote-vm\\inconnu-de-la-vm.txt"
+  ],
+  "apres_compte": 12,
+  "critere5": {
+   "repertoire_non_vide": "HORS ATTEINTE : le geste fige la mesure (voir le commentaire)",
+   "deja_present": "refus:Impossible de créer un fichier déjà existant.\r\n",
+   "casse_ambigue": "refus:ItemNotFoundException",
+   "silence": "refus:ItemNotFoundException"
+  },
+  "apres2": [
+   "sous-dossier",
+   "vide-cote-vm",
+   "a-deplacer.txt",
+   "ambigu.txt",
+   "AMBIGU.TXT",
+   "deja-b.txt",
+   "gros-lecture.bin",
+   "occupe-cote-local.txt",
+   "renomme.txt",
+   "sous-dossier\\profond",
+   "sous-dossier\\autre.txt",
+   "sous-dossier\\profond\\feuille.txt",
+   "vide-cote-vm\\inconnu-de-la-vm.txt"
+  ]
+ },
+ "suivi_compteur": [
+  {
+   "t": 0,
+   "dues": 0,
+   "vues": 36,
+   "texte": ""
+  },
+  {
+   "t": 1,
+   "dues": 0,
+   "vues": 36,
+   "texte": ""
+  },
+  {
+   "t": 2,
+   "dues": 0,
+   "vues": 36,
+   "texte": ""
+  },
+  {
+   "t": 3,
+   "dues": 0,
+   "vues": 36,
+   "texte": ""
+  },
+  {
+   "t": 4,
+   "dues": 0,
+   "vues": 36,
+   "texte": ""
+  }
+ ],
+ "compteur_final": {
+  "t": 4,
+  "dues": 0,
+  "vues": 36,
+  "texte": ""
+ },
+ "relectures": {
+  "projete.txt": {
+   "present": false,
+   "erreur": "NotFoundError: A requested file or directory could not be found at the time an operation was processed."
+  },
+  "renomme.txt": {
+   "present": true,
+   "taille": 52,
+   "sha256": "8c9605738f6e92bf92f59d84196dc4bcb9cbd136181a471a5f3b4ad86f2fb0f3"
+  },
+  "sous-dossier/autre.txt": {
+   "present": true,
+   "taille": 35,
+   "sha256": "6e020231e3750a878b46e40163065b5c865c847d21ecf6da88f0dea828989aa5"
+  },
+  "dossier-renomme/autre.txt": {
+   "present": false,
+   "erreur": "NotFoundError: A requested file or directory could not be found at the time an operation was processed."
+  },
+  "dossier-renomme/profond/feuille.txt": {
+   "present": false,
+   "erreur": "NotFoundError: A requested file or directory could not be found at the time an operation was processed."
+  },
+  "Casse.txt": {
+   "present": false,
+   "erreur": "NotFoundError: A requested file or directory could not be found at the time an operation was processed."
+  },
+  "a-effacer/un.txt": {
+   "present": false,
+   "erreur": "NotFoundError: A requested file or directory could not be found at the time an operation was processed."
+  },
+  "a-effacer/dedans/deux.txt": {
+   "present": false,
+   "erreur": "NotFoundError: A requested file or directory could not be found at the time an operation was processed."
+  },
+  "gros-lecture.bin": {
+   "present": true,
+   "taille": 300000,
+   "sha256": "daf57cac3916f62a78a7e3cf274eca10d3c8588b574a3815cf4f5695356e647a"
+  },
+  "vide-cote-vm/inconnu-de-la-vm.txt": {
+   "present": true,
+   "taille": 0,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "occupe-cote-local.txt": {
+   "present": true,
+   "taille": 0,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+ },
+ "arbre_opfs": [
+  {
+   "chemin": "vide-cote-vm",
+   "type": "d"
+  },
+  {
+   "chemin": "vide-cote-vm/inconnu-de-la-vm.txt",
+   "type": "f",
+   "taille": 0
+  },
+  {
+   "chemin": "sous-dossier",
+   "type": "d"
+  },
+  {
+   "chemin": "sous-dossier/profond",
+   "type": "d"
+  },
+  {
+   "chemin": "sous-dossier/profond/feuille.txt",
+   "type": "f",
+   "taille": 10
+  },
+  {
+   "chemin": "sous-dossier/autre.txt",
+   "type": "f",
+   "taille": 35
+  },
+  {
+   "chemin": "renomme.txt",
+   "type": "f",
+   "taille": 52
+  },
+  {
+   "chemin": "occupe-cote-local.txt",
+   "type": "f",
+   "taille": 0
+  },
+  {
+   "chemin": "gros-lecture.bin",
+   "type": "f",
+   "taille": 300000
+  },
+  {
+   "chemin": "deja-b.txt",
+   "type": "f",
+   "taille": 1
+  },
+  {
+   "chemin": "ambigu.txt",
+   "type": "f",
+   "taille": 0
+  },
+  {
+   "chemin": "a-deplacer.txt",
+   "type": "f",
+   "taille": 1
+  },
+  {
+   "chemin": "AMBIGU.TXT",
+   "type": "f",
+   "taille": 0
+  }
+ ],
+ "echantillons": [
+  {
+   "t": 10,
+   "fenetres": 2,
+   "flux": [
+    {
+     "url": "n=F4z7KQooOQfJqh47PM0ETA%3Aw-2",
+     "v": "{\"sansPc\":true}"
+    },
+    {
+     "url": "n=F4z7KQooOQfJqh47PM0ETA%3Aw-1",
+     "v": "{\"sansPc\":true}"
+    }
+   ]
+  },
+  {
+   "t": 20,
+   "fenetres": 2,
+   "flux": [
+    {
+     "url": "n=F4z7KQooOQfJqh47PM0ETA%3Aw-2",
+     "v": "{\"sansPc\":true}"
+    },
+    {
+     "url": "n=F4z7KQooOQfJqh47PM0ETA%3Aw-1",
+     "v": "{\"sansPc\":true}"
+    }
+   ]
+  }
+ ],
+ "ok": true
+}

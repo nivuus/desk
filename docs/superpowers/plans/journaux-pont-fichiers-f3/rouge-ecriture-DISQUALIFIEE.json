@@ -1,0 +1,809 @@
+{
+ "maintien_s": 20,
+ "prefixe": "F4z7KQooOQfJqh47PM0ETA",
+ "journal": [
+  "[2026-08-21T05:36:43.538Z] jeton de recette obtenu",
+  "[2026-08-21T05:36:43.884Z] chrome : Chrome/151.0.7922.169",
+  "[2026-08-21T05:36:44.081Z] navigation : http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA&faute-fichiers=1",
+  "[2026-08-21T05:36:48.144Z] OPFS peuple : 5 entrees",
+  "[2026-08-21T05:36:48.144Z] la page-shell est connectee : lancement de l agent",
+  "[2026-08-21T05:36:48.618Z] agent lance : Op\u0002ration r\u0002ussie : tentative d'ex\u0002cution de la t\u0003che planifi\u0002e \"guacamole-agent\".agent lancé en session interactive ; journal : /media/vm/dev/agent.log",
+  "[2026-08-21T05:36:52.647Z] 2 fenetre(s) d application apres 4 s",
+  "[2026-08-21T05:36:52.649Z] etat avant le clic : {\"href\":\"http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA&faute-fichiers=1\",\"jeton\":true,\"bouton\":true}",
+  "[2026-08-21T05:36:52.649Z] clic sur #choisir-dossier",
+  "[2026-08-21T05:36:55.675Z] #etat-fichiers : \"Lecteur « Mes Fichiers » monté sur « Mes documents ».\"",
+  "[2026-08-21T05:36:55.676Z] repos de 8000 ms avant la mesure",
+  "[2026-08-21T05:37:03.692Z] divergence posee cote local : [\"vide-cote-vm\",\"sous-dossier\",\"projete.txt\",\"occupe-cote-local.txt\",\"gros-lecture.bin\",\"ambigu.txt\",\"Casse.txt\",\"AMBIGU.TXT\"]",
+  "[2026-08-21T05:37:03.695Z] compteur AVANT : {\"dues\":0,\"vues\":0,\"texte\":\"\"}",
+  "[2026-08-21T05:37:03.695Z] mesure cote VM (ecriture dans la racine) — ASYNCHRONE, voir l en-tete",
+  "[2026-08-21T05:37:12.796Z] mesure VM : JSON lu",
+  "[2026-08-21T05:38:43.067Z] compteur FINAL : {\"t\":89,\"dues\":0,\"vues\":0,\"texte\":\"\"}",
+  "[2026-08-21T05:38:43.077Z] relecture projete.txt : {\"present\":true,\"taille\":52,\"sha256\":\"8c9605738f6e92bf92f59d84196dc4bcb9cbd136181a471a5f3b4ad86f2fb0f3\"}",
+  "[2026-08-21T05:38:43.083Z] relecture renomme.txt : {\"present\":false,\"erreur\":\"NotFoundError: A requested file or directory could not be found at the time an operation was processed.\"}",
+  "[2026-08-21T05:38:43.091Z] relecture sous-dossier/autre.txt : {\"present\":true,\"taille\":35,\"sha256\":\"6e020231e3750a878b46e40163065b5c865c847d21ecf6da88f0dea828989aa5\"}",
+  "[2026-08-21T05:38:43.095Z] relecture dossier-renomme/autre.txt : {\"present\":false,\"erreur\":\"NotFoundError: A requested file or directory could not be found at the time an operation was processed.\"}",
+  "[2026-08-21T05:38:43.102Z] relecture dossier-renomme/profond/feuille.txt : {\"present\":false,\"erreur\":\"NotFoundError: A requested file or directory could not be found at the time an operation was processed.\"}",
+  "[2026-08-21T05:38:43.111Z] relecture Casse.txt : {\"present\":true,\"taille\":15,\"sha256\":\"2c7f4c21a3c14c7c42ced552981f8f1cbe36c5775d7a0a773f739f10fa5ee870\"}",
+  "[2026-08-21T05:38:43.116Z] relecture a-effacer/un.txt : {\"present\":false,\"erreur\":\"NotFoundError: A requested file or directory could not be found at the time an operation was processed.\"}",
+  "[2026-08-21T05:38:43.121Z] relecture a-effacer/dedans/deux.txt : {\"present\":false,\"erreur\":\"NotFoundError: A requested file or directory could not be found at the time an operation was processed.\"}",
+  "[2026-08-21T05:38:43.132Z] relecture gros-lecture.bin : {\"present\":true,\"taille\":300000,\"sha256\":\"daf57cac3916f62a78a7e3cf274eca10d3c8588b574a3815cf4f5695356e647a\"}",
+  "[2026-08-21T05:38:43.137Z] relecture vide-cote-vm/inconnu-de-la-vm.txt : {\"present\":false,\"erreur\":\"NotFoundError: A requested file or directory could not be found at the time an operation was processed.\"}",
+  "[2026-08-21T05:38:43.142Z] relecture occupe-cote-local.txt : {\"present\":false,\"erreur\":\"NotFoundError: A requested file or directory could not be found at the time an operation was processed.\"}",
+  "[2026-08-21T05:38:43.154Z] arbre OPFS : [{\"chemin\":\"sous-dossier\",\"type\":\"d\"},{\"chemin\":\"sous-dossier/autre.txt\",\"type\":\"f\",\"taille\":35},{\"chemin\":\"projete.txt\",\"type\":\"f\",\"taille\":52},{\"chemin\":\"gros-lecture.bin\",\"type\":\"f\",\"taille\":300000},{\"chemin\":\"Casse.txt\",\"type\":\"f\",\"taille\":15}]",
+  "[2026-08-21T05:38:53.167Z] echantillon : {\"t\":10,\"fenetres\":2,\"flux\":[{\"url\":\"n=F4z7KQooOQfJqh47PM0ETA%3Aw-2\",\"v\":\"{\\\"sansPc\\\":true}\"},{\"url\":\"n=F4z7KQooOQfJqh47PM0ETA%3Aw-1\",\"v\":\"{\\\"sansPc\\\":true}\"}]}",
+  "[2026-08-21T05:39:03.177Z] echantillon : {\"t\":20,\"fenetres\":2,\"flux\":[{\"url\":\"n=F4z7KQooOQfJqh47PM0ETA%3Aw-2\",\"v\":\"{\\\"sansPc\\\":true}\"},{\"url\":\"n=F4z7KQooOQfJqh47PM0ETA%3Aw-1\",\"v\":\"{\\\"sansPc\\\":true}\"}]}"
+ ],
+ "erreurs": [],
+ "chrome": "Chrome/151.0.7922.169",
+ "console_page": [
+  {
+   "t": 1787290604331,
+   "niveau": "debug",
+   "texte": "[vite] connecting..."
+  },
+  {
+   "t": 1787290604362,
+   "niveau": "debug",
+   "texte": "[vite] connected."
+  },
+  {
+   "t": 1787290604395,
+   "niveau": "warning",
+   "texte": "injection de fautes du pont fichiers ARMEE (?faute-fichiers=1) : banc, jamais une configuration livree"
+  },
+  {
+   "t": 1787290614859,
+   "niveau": "info",
+   "texte": "offre du pont envoyée, attente de l’agent…"
+  },
+  {
+   "t": 1787290614866,
+   "niveau": "info",
+   "texte": "pont fichiers : réponse reçue"
+  },
+  {
+   "t": 1787290614866,
+   "niveau": "info",
+   "texte": "pont fichiers : connecting"
+  },
+  {
+   "t": 1787290615010,
+   "niveau": "info",
+   "texte": "pont fichiers : connected"
+  },
+  {
+   "t": 1787290615075,
+   "niveau": "info",
+   "texte": "canal fichiers ouvert"
+  },
+  {
+   "t": 1787290624454,
+   "niveau": "debug",
+   "texte": "[vite] connecting..."
+  },
+  {
+   "t": 1787290624479,
+   "niveau": "debug",
+   "texte": "[vite] connected."
+  },
+  {
+   "t": 1787290624624,
+   "niveau": "warning",
+   "texte": "injection de fautes du pont fichiers ARMEE (?faute-fichiers=1) : banc, jamais une configuration livree"
+  }
+ ],
+ "fautes_armees": true,
+ "opfs_entrees": 5,
+ "fenetres_ouvertes": 2,
+ "etat_avant_clic": "{\"href\":\"http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA&faute-fichiers=1\",\"jeton\":true,\"bouton\":true}",
+ "etat_fichiers": "Lecteur « Mes Fichiers » monté sur « Mes documents ».",
+ "bien_monte": true,
+ "divergence_posee": [
+  "vide-cote-vm",
+  "sous-dossier",
+  "projete.txt",
+  "occupe-cote-local.txt",
+  "gros-lecture.bin",
+  "ambigu.txt",
+  "Casse.txt",
+  "AMBIGU.TXT"
+ ],
+ "compteur_avant": {
+  "dues": 0,
+  "vues": 0,
+  "texte": ""
+ },
+ "mesure_vm_brut": "﻿{\"racine\":\"C:\\\\Users\\\\Administrateur\\\\Mes Fichiers\",\"horodatage\":\"2026-08-21T07:37:04.8709118+02:00\",\"avant\":[],\"avant_compte\":0,\"c1a_avant\":\"ABSENT\",\"c1a_issue\":\"ECHEC:Impossible de renommer l\\u0027élément situé à l\\u0027emplacement « C:\\\\Users\\\\Administrateur\\\\Mes Fichiers\\\\projete.txt », car il n\\u0027existe pas.\",\"c1a_source_apres\":\"ABSENT\",\"c1a_cible_apres\":\"ABSENT\",\"c1b_avant\":\"ABSENT\",\"c1b_issue\":\"ECHEC:Impossible de renommer l\\u0027élément situé à l\\u0027emplacement « C:\\\\Users\\\\Administrateur\\\\Mes Fichiers\\\\sous-dossier », car il n\\u0027existe pas.\",\"c1b_source_apres\":\"ABSENT\",\"c1b_cible_apres\":\"ABSENT\",\"c2a_avant\":\"ABSENT\",\"c2a_issue\":\"ECHEC:Impossible de trouver le chemin d\\u0027accès « C:\\\\Users\\\\Administrateur\\\\Mes Fichiers\\\\Casse.txt », car il n\\u0027existe pas.\",\"c2a_apres\":\"ABSENT\",\"c2b_issue\":\"ECHEC:Impossible de trouver le chemin d\\u0027accès « C:\\\\Users\\\\Administrateur\\\\Mes Fichiers\\\\a-effacer », car il n\\u0027existe pas.\",\"c2b_apres\":\"ABSENT\",\"critere4\":{\"introuvable\":\"refus:ItemNotFoundException\",\"chemin_introuvable\":\"refus:ItemNotFoundException\",\"deja_present\":\"refus:Impossible de trouver le chemin d\\u0027accès « C:\\\\Users\\\\Administrateur\\\\Mes Fichiers\\\\deja-a.txt », car il n\\u0027existe pas.\",\"lien_dur\":\"sortie=1\",\".faute-acces-refuse\":\"refus:ItemNotFoundException\",\".faute-disque-plein\":\"refus:ItemNotFoundException\",\".faute-non-supporte\":\"refus:ItemNotFoundException\"},\"apres\":[],\"apres_compte\":0,\"critere5\":{\"repertoire_non_vide\":\"HORS ATTEINTE : le geste fige la mesure (voir le commentaire)\",\"deja_present\":\"refus:Impossible de renommer l\\u0027élément situé à l\\u0027emplacement « C:\\\\Users\\\\Administrateur\\\\Mes Fichiers\\\\a-deplacer.txt »\",\"casse_ambigue\":\"refus:ItemNotFoundException\",\"silence\":\"refus:ItemNotFoundException\"},\"apres2\":[]}\r\n",
+ "mesure_vm": {
+  "racine": "C:\\Users\\Administrateur\\Mes Fichiers",
+  "horodatage": "2026-08-21T07:37:04.8709118+02:00",
+  "avant": [],
+  "avant_compte": 0,
+  "c1a_avant": "ABSENT",
+  "c1a_issue": "ECHEC:Impossible de renommer l'élément situé à l'emplacement « C:\\Users\\Administrateur\\Mes Fichiers\\projete.txt », car il n'existe pas.",
+  "c1a_source_apres": "ABSENT",
+  "c1a_cible_apres": "ABSENT",
+  "c1b_avant": "ABSENT",
+  "c1b_issue": "ECHEC:Impossible de renommer l'élément situé à l'emplacement « C:\\Users\\Administrateur\\Mes Fichiers\\sous-dossier », car il n'existe pas.",
+  "c1b_source_apres": "ABSENT",
+  "c1b_cible_apres": "ABSENT",
+  "c2a_avant": "ABSENT",
+  "c2a_issue": "ECHEC:Impossible de trouver le chemin d'accès « C:\\Users\\Administrateur\\Mes Fichiers\\Casse.txt », car il n'existe pas.",
+  "c2a_apres": "ABSENT",
+  "c2b_issue": "ECHEC:Impossible de trouver le chemin d'accès « C:\\Users\\Administrateur\\Mes Fichiers\\a-effacer », car il n'existe pas.",
+  "c2b_apres": "ABSENT",
+  "critere4": {
+   "introuvable": "refus:ItemNotFoundException",
+   "chemin_introuvable": "refus:ItemNotFoundException",
+   "deja_present": "refus:Impossible de trouver le chemin d'accès « C:\\Users\\Administrateur\\Mes Fichiers\\deja-a.txt », car il n'existe pas.",
+   "lien_dur": "sortie=1",
+   ".faute-acces-refuse": "refus:ItemNotFoundException",
+   ".faute-disque-plein": "refus:ItemNotFoundException",
+   ".faute-non-supporte": "refus:ItemNotFoundException"
+  },
+  "apres": [],
+  "apres_compte": 0,
+  "critere5": {
+   "repertoire_non_vide": "HORS ATTEINTE : le geste fige la mesure (voir le commentaire)",
+   "deja_present": "refus:Impossible de renommer l'élément situé à l'emplacement « C:\\Users\\Administrateur\\Mes Fichiers\\a-deplacer.txt »",
+   "casse_ambigue": "refus:ItemNotFoundException",
+   "silence": "refus:ItemNotFoundException"
+  },
+  "apres2": []
+ },
+ "suivi_compteur": [
+  {
+   "t": 0,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 1,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 2,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 3,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 4,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 5,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 6,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 7,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 8,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 9,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 10,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 11,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 12,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 13,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 14,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 15,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 16,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 17,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 18,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 19,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 20,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 21,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 22,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 23,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 24,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 25,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 26,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 27,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 28,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 29,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 30,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 31,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 32,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 33,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 34,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 35,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 36,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 37,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 38,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 39,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 40,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 41,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 42,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 43,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 44,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 45,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 46,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 47,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 48,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 49,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 50,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 51,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 52,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 53,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 54,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 55,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 56,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 57,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 58,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 59,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 60,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 61,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 62,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 63,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 64,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 65,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 66,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 67,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 68,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 69,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 70,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 71,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 72,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 73,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 74,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 75,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 76,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 77,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 78,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 79,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 80,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 81,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 82,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 83,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 84,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 85,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 86,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 87,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 88,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 89,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  }
+ ],
+ "compteur_final": {
+  "t": 89,
+  "dues": 0,
+  "vues": 0,
+  "texte": ""
+ },
+ "relectures": {
+  "projete.txt": {
+   "present": true,
+   "taille": 52,
+   "sha256": "8c9605738f6e92bf92f59d84196dc4bcb9cbd136181a471a5f3b4ad86f2fb0f3"
+  },
+  "renomme.txt": {
+   "present": false,
+   "erreur": "NotFoundError: A requested file or directory could not be found at the time an operation was processed."
+  },
+  "sous-dossier/autre.txt": {
+   "present": true,
+   "taille": 35,
+   "sha256": "6e020231e3750a878b46e40163065b5c865c847d21ecf6da88f0dea828989aa5"
+  },
+  "dossier-renomme/autre.txt": {
+   "present": false,
+   "erreur": "NotFoundError: A requested file or directory could not be found at the time an operation was processed."
+  },
+  "dossier-renomme/profond/feuille.txt": {
+   "present": false,
+   "erreur": "NotFoundError: A requested file or directory could not be found at the time an operation was processed."
+  },
+  "Casse.txt": {
+   "present": true,
+   "taille": 15,
+   "sha256": "2c7f4c21a3c14c7c42ced552981f8f1cbe36c5775d7a0a773f739f10fa5ee870"
+  },
+  "a-effacer/un.txt": {
+   "present": false,
+   "erreur": "NotFoundError: A requested file or directory could not be found at the time an operation was processed."
+  },
+  "a-effacer/dedans/deux.txt": {
+   "present": false,
+   "erreur": "NotFoundError: A requested file or directory could not be found at the time an operation was processed."
+  },
+  "gros-lecture.bin": {
+   "present": true,
+   "taille": 300000,
+   "sha256": "daf57cac3916f62a78a7e3cf274eca10d3c8588b574a3815cf4f5695356e647a"
+  },
+  "vide-cote-vm/inconnu-de-la-vm.txt": {
+   "present": false,
+   "erreur": "NotFoundError: A requested file or directory could not be found at the time an operation was processed."
+  },
+  "occupe-cote-local.txt": {
+   "present": false,
+   "erreur": "NotFoundError: A requested file or directory could not be found at the time an operation was processed."
+  }
+ },
+ "arbre_opfs": [
+  {
+   "chemin": "sous-dossier",
+   "type": "d"
+  },
+  {
+   "chemin": "sous-dossier/autre.txt",
+   "type": "f",
+   "taille": 35
+  },
+  {
+   "chemin": "projete.txt",
+   "type": "f",
+   "taille": 52
+  },
+  {
+   "chemin": "gros-lecture.bin",
+   "type": "f",
+   "taille": 300000
+  },
+  {
+   "chemin": "Casse.txt",
+   "type": "f",
+   "taille": 15
+  }
+ ],
+ "echantillons": [
+  {
+   "t": 10,
+   "fenetres": 2,
+   "flux": [
+    {
+     "url": "n=F4z7KQooOQfJqh47PM0ETA%3Aw-2",
+     "v": "{\"sansPc\":true}"
+    },
+    {
+     "url": "n=F4z7KQooOQfJqh47PM0ETA%3Aw-1",
+     "v": "{\"sansPc\":true}"
+    }
+   ]
+  },
+  {
+   "t": 20,
+   "fenetres": 2,
+   "flux": [
+    {
+     "url": "n=F4z7KQooOQfJqh47PM0ETA%3Aw-2",
+     "v": "{\"sansPc\":true}"
+    },
+    {
+     "url": "n=F4z7KQooOQfJqh47PM0ETA%3Aw-1",
+     "v": "{\"sansPc\":true}"
+    }
+   ]
+  }
+ ],
+ "ok": true
+}
