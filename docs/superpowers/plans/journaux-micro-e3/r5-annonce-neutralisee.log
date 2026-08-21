@@ -1,0 +1,16 @@
+=== ROUGE r5 ===
+fichier      : /home/mallanic/Projects/Guacamole/client/src/micro.ts
+copie nommée : /tmp/rouge-r5-fZ0xlC
+sha256 avant : dfb5081a2d1be228a667b92906236f8baf646ffa8cb00452041ed58fd1d8794f
+lignes changées par la mutation : 1
+--- vérification : cd client && npx vitest run src/micro.test.ts src/micro-exclusivite.test.ts 2>&1 | grep -E 'Tests |× |✓ src' | head -14
+   × attacherBoutonMicro — l'exclusivité du câble (bloc E3) > un refus d'exclusivité change le LIBELLÉ et le bandeau, jamais l'état 32ms
+   × attacherBoutonMicro — l'exclusivité du câble (bloc E3) > la reprise repose le libellé nominal et le DIT 7ms
+   × attacherBoutonMicro — l'exclusivité du câble (bloc E3) > un refus qui dure remonte après une extinction et un rallumage 1ms
+ ✓ src/micro.test.ts (17 tests) 62ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  3 failed | 19 passed (22)
+--- code de sortie de la vérification : 1
+VERDICT : ROUGE (code 1)
+sha256 après restauration : dfb5081a2d1be228a667b92906236f8baf646ffa8cb00452041ed58fd1d8794f
+restauration : IDENTIQUE
