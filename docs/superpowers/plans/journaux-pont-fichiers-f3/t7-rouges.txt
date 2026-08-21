@@ -1,0 +1,186 @@
+(eval):4: aucun fichier ou dossier de ce nom: pont/mutation.rs
+TÂCHE 7 — , l'entrelacement avec les écritures dues.
+Rouges jouées le 21 août 2026. La règle du §0.3 est celle dont l'oubli
+produit une PERTE DE DONNÉES, et elle n'est écrite dans aucun document du
+dépôt avant ce module.
+
+=== ROUGE 7a-renommage-pousse-sans-attendre ===
+fichier      : agent/src/pont/mutation.rs
+sha256 avant : a28d49e3ba9ee581e36e9d27057825e33f13601af3c579e4c04f0e5766371b56
+diff contre la copie : 2 ligne(s) — 0 SERAIT UN ÉCHEC DE LA ROUGE
+121c121
+<         Mutation::Renommer { .. } => Ordonnancement::AttendreEcrituresDues { chemins: concernes },
+---
+>         Mutation::Renommer { .. } => Ordonnancement::Pousser,
+--- contrôle ---
+thread 'pont::mutation::tests::un_renommage_attend_la_ou_une_suppression_abandonne' (3928408) panicked at agent/src/pont/mutation/tests.rs:57:5:
+assertion failed: matches!(r, Ordonnancement::AttendreEcrituresDues { .. })
+thread 'pont::mutation::tests::un_prefixe_qui_n_est_pas_un_composant_ne_retarde_rien' (3928407) panicked at agent/src/pont/mutation/tests.rs:103:5:
+assertion `left == right` failed
+  left: Pousser
+ right: AttendreEcrituresDues { chemins: ["a/x.txt"] }
+thread 'pont::mutation::tests::un_renommage_attend_les_ecritures_dues_sur_la_source' (3928409) panicked at agent/src/pont/mutation/tests.rs:29:5:
+assertion `left == right` failed
+  left: Pousser
+ right: AttendreEcrituresDues { chemins: ["doc.tmp"] }
+thread 'pont::mutation::tests::une_ecriture_due_sur_un_ENFANT_du_repertoire_renomme_retarde' (3928412) panicked at agent/src/pont/mutation/tests.rs:80:5:
+assertion `left == right` failed
+  left: Pousser
+ right: AttendreEcrituresDues { chemins: ["projet/note.txt"] }
+test result: FAILED. 9 passed; 4 failed; 0 ignored; 0 measured; 875 filtered out; finished in 0.02s
+--- restauration DEPUIS LA COPIE NOMMÉE (jamais `git checkout --`) ---
+sha256 identique ✅
+état git inchangé ✅ [?? agent/src/pont/mutation.rs]
+
+=== ROUGE 7b-suppression-pousse-sans-abandonner ===
+fichier      : agent/src/pont/mutation.rs
+sha256 avant : a28d49e3ba9ee581e36e9d27057825e33f13601af3c579e4c04f0e5766371b56
+diff contre la copie : 4 ligne(s) — 0 SERAIT UN ÉCHEC DE LA ROUGE
+122,124c122
+<         Mutation::Supprimer { .. } => {
+<             Ordonnancement::AbandonnerEcrituresDues { chemins: concernes }
+<         }
+---
+>         Mutation::Supprimer { .. } => Ordonnancement::Pousser,
+--- contrôle ---
+thread 'pont::mutation::tests::un_renommage_attend_la_ou_une_suppression_abandonne' (3928917) panicked at agent/src/pont/mutation/tests.rs:58:5:
+assertion failed: matches!(s, Ordonnancement::AbandonnerEcrituresDues { .. })
+thread 'pont::mutation::tests::une_suppression_abandonne_les_ecritures_dues_sur_le_chemin' (3928924) panicked at agent/src/pont/mutation/tests.rs:41:5:
+assertion `left == right` failed
+  left: Pousser
+ right: AbandonnerEcrituresDues { chemins: ["vieux.odt"] }
+thread 'pont::mutation::tests::une_suppression_de_repertoire_abandonne_les_ecritures_de_ses_enfants' (3928925) panicked at agent/src/pont/mutation/tests.rs:112:5:
+assertion `left == right` failed
+  left: Pousser
+ right: AbandonnerEcrituresDues { chemins: ["d/a.txt", "d/sous/b.txt"] }
+test result: FAILED. 10 passed; 3 failed; 0 ignored; 0 measured; 875 filtered out; finished in 0.00s
+--- restauration DEPUIS LA COPIE NOMMÉE (jamais `git checkout --`) ---
+sha256 identique ✅
+état git inchangé ✅ [?? agent/src/pont/mutation.rs]
+
+=== ROUGE 7c-compare-par-prefixe-seul ===
+fichier      : agent/src/pont/mutation.rs
+sha256 avant : a28d49e3ba9ee581e36e9d27057825e33f13601af3c579e4c04f0e5766371b56
+diff contre la copie : 5 ligne(s) — 0 SERAIT UN ÉCHEC DE LA ROUGE
+145,147d144
+<     if !repertoire {
+<         return false;
+<     }
+154c151
+<     due.starts_with(&format!("{cible}/"))
+---
+>     due.starts_with(cible)
+--- contrôle ---
+thread 'pont::mutation::tests::un_prefixe_qui_n_est_pas_un_composant_ne_retarde_rien' (3930837) panicked at agent/src/pont/mutation/tests.rs:99:5:
+assertion `left == right` failed
+  left: AttendreEcrituresDues { chemins: ["ab/x.txt", "a2.txt"] }
+ right: Pousser
+thread 'pont::mutation::tests::une_ecriture_due_sur_un_ENFANT_du_repertoire_renomme_retarde' (3930843) panicked at agent/src/pont/mutation/tests.rs:85:5:
+assertion `left == right` failed
+  left: AttendreEcrituresDues { chemins: ["projet/note.txt"] }
+ right: Pousser
+test result: FAILED. 11 passed; 2 failed; 0 ignored; 0 measured; 875 filtered out; finished in 0.00s
+--- restauration DEPUIS LA COPIE NOMMÉE (jamais `git checkout --`) ---
+sha256 identique ✅
+état git inchangé ✅ [?? agent/src/pont/mutation.rs]
+
+=== ROUGE 7d-compare-par-egalite-seule ===
+fichier      : agent/src/pont/mutation.rs
+sha256 avant : a28d49e3ba9ee581e36e9d27057825e33f13601af3c579e4c04f0e5766371b56
+diff contre la copie : 2 ligne(s) — 0 SERAIT UN ÉCHEC DE LA ROUGE
+144a145,146
+>     return false;
+>     #[allow(unreachable_code)]
+--- contrôle ---
+thread 'pont::mutation::tests::un_prefixe_qui_n_est_pas_un_composant_ne_retarde_rien' (3931671) panicked at agent/src/pont/mutation/tests.rs:103:5:
+assertion `left == right` failed
+  left: Pousser
+ right: AttendreEcrituresDues { chemins: ["a/x.txt"] }
+thread 'pont::mutation::tests::une_ecriture_due_sur_un_ENFANT_du_repertoire_renomme_retarde' (3931676) panicked at agent/src/pont/mutation/tests.rs:80:5:
+assertion `left == right` failed
+  left: Pousser
+ right: AttendreEcrituresDues { chemins: ["projet/note.txt"] }
+thread 'pont::mutation::tests::une_suppression_de_repertoire_abandonne_les_ecritures_de_ses_enfants' (3931680) panicked at agent/src/pont/mutation/tests.rs:112:5:
+assertion `left == right` failed
+  left: Pousser
+ right: AbandonnerEcrituresDues { chemins: ["d/a.txt", "d/sous/b.txt"] }
+test result: FAILED. 10 passed; 3 failed; 0 ignored; 0 measured; 875 filtered out; finished in 0.00s
+--- restauration DEPUIS LA COPIE NOMMÉE (jamais `git checkout --`) ---
+sha256 identique ✅
+état git inchangé ✅ [?? agent/src/pont/mutation.rs]
+
+=== ROUGE 7e-deux-mutations-en-vol ===
+fichier      : agent/src/pont/mutation.rs
+sha256 avant : a28d49e3ba9ee581e36e9d27057825e33f13601af3c579e4c04f0e5766371b56
+diff contre la copie : 2 ligne(s) — 0 SERAIT UN ÉCHEC DE LA ROUGE
+221c221
+<         if self.en_vol.is_some() || self.attente.is_empty() {
+---
+>         if self.attente.is_empty() {
+--- contrôle ---
+thread 'pont::mutation::tests::deux_mutations_du_meme_chemin_sont_toutes_deux_jouees_dans_l_ordre' (3932267) panicked at agent/src/pont/mutation/tests.rs:162:5:
+assertion `left == right` failed
+  left: 0
+ right: 2
+thread 'pont::mutation::tests::une_seule_mutation_en_vol_a_la_fois' (3932277) panicked at agent/src/pont/mutation/tests.rs:145:5:
+assertion `left == right` failed: la seconde attend
+  left: Some(Renommer { de: "b", vers: "c", repertoire: false })
+ right: None
+thread 'pont::mutation::tests::une_mutation_differee_repasse_devant' (3932276) panicked at agent/src/pont/mutation/tests.rs:179:5:
+assertion `left == right` failed: la différée repasse la PREMIÈRE
+  left: Some(Renommer { de: "x", vers: "y", repertoire: false })
+ right: Some(Renommer { de: "a", vers: "b", repertoire: false })
+test result: FAILED. 10 passed; 3 failed; 0 ignored; 0 measured; 875 filtered out; finished in 0.01s
+--- restauration DEPUIS LA COPIE NOMMÉE (jamais `git checkout --`) ---
+sha256 identique ✅
+état git inchangé ✅ [?? agent/src/pont/mutation.rs]
+
+=== ROUGE 7f-differee-remise-en-queue ===
+fichier      : agent/src/pont/mutation.rs
+sha256 avant : a28d49e3ba9ee581e36e9d27057825e33f13601af3c579e4c04f0e5766371b56
+diff contre la copie : 2 ligne(s) — 0 SERAIT UN ÉCHEC DE LA ROUGE
+208c208
+<             self.attente.insert(0, quoi);
+---
+>             self.attente.push(quoi);
+--- contrôle ---
+thread 'pont::mutation::tests::une_mutation_differee_repasse_devant' (3933411) panicked at agent/src/pont/mutation/tests.rs:179:5:
+assertion `left == right` failed: la différée repasse la PREMIÈRE
+  left: Some(Renommer { de: "x", vers: "y", repertoire: false })
+ right: Some(Renommer { de: "a", vers: "b", repertoire: false })
+test result: FAILED. 12 passed; 1 failed; 0 ignored; 0 measured; 875 filtered out; finished in 0.01s
+--- restauration DEPUIS LA COPIE NOMMÉE (jamais `git checkout --`) ---
+sha256 identique ✅
+état git inchangé ✅ [?? agent/src/pont/mutation.rs]
+
+════════════════════════════════════════════════════════════════════════════
+LECTURE DES SIX ROUGES
+════════════════════════════════════════════════════════════════════════════
+7a un renommage qui pousse sans attendre : **4** tests tombent. C'est la perte
+   de l'enregistrement de LibreOffice — l'écriture due partirait APRÈS le
+   renommage, sur un chemin qui n'existe plus, et le navigateur recréerait le
+   fichier temporaire.
+7b une suppression qui pousse sans abandonner : **3** tests. Le fichier que
+   l'utilisateur vient d'effacer réapparaîtrait sur son poste.
+7c comparer par PRÉFIXE seul : **2** tests. Toute écriture bloquerait tout
+   renommage, et le pont se figerait sur le premier gros fichier.
+7d comparer par ÉGALITÉ seule : **3** tests. Le cas du répertoire passerait à
+   travers, et l'enfant serait recréé sous l'ANCIEN chemin.
+   ⚠️ **7c et 7d se contredisent**, et c'est le point : les deux règles ne
+   tiennent ensemble que parce que `repertoire` tranche — d'où le fait qu'il
+   soit TRANSPORTÉ depuis le rappel plutôt que redécouvert.
+7e deux mutations en vol : **3** tests. Deux renommages du même chemin se
+   croiseraient, et l'ordre de leurs `Fait` déciderait du nom final — le hasard
+   du réseau.
+7f une différée remise en QUEUE : **1** test. L'ordre des gestes de
+   l'utilisateur serait inversé.
+
+Les six restaurations vérifiées par sha256 ET par l'état git.
+
+════════════════════════════════════════════════════════════════════════════
+DIVERGENCE DÉCLARÉE : `decider_prealable` N'EST PAS ÉCRITE
+════════════════════════════════════════════════════════════════════════════
+Le §3.2 du plan la prescrit. `pont::notifications::decider` EST cette fonction :
+pure, balayée sur les 32 bits du masque et sur quatre états, et enrichie par la
+tâche 6 des quatre refus du renommage et de la suppression. En écrire une
+seconde ferait deux vérités que rien ne confronte — le défaut de `TYPES_AGENT`.
