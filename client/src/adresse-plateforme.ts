@@ -67,8 +67,35 @@ export function adresseSignaling(
     // son autorité. Y ajouter `/signal` ferait `/signal/signal` chez qui l'a
     // déjà écrit, et personne ne saurait lequel des deux comportements est le
     // bon. CONSÉQUENCE À CONNAÎTRE : une recette qui pose `?signaling=` doit
-    // désormais écrire le chemin. Relevé le 21 août 2026 — aucune n'en pose
-    // (`grep -rn 'signaling=' client/*.mjs client/recette/*.mjs scripts/*.sh`).
+    // désormais écrire le chemin.
+    //
+    // 🔴 CE COMMENTAIRE A AFFIRMÉ « AUCUNE N'EN POSE », ET C'ÉTAIT FAUX — la
+    // PORTÉE de son `grep` ne couvrait pas ce que la phrase prétendait couvrir.
+    // Il cherchait dans `client/*.mjs client/recette/*.mjs scripts/*.sh`, où il
+    // n'y a effectivement rien ; **mais TOUS les pilotes de recette de ce dépôt
+    // vivent dans `docs/superpowers/plans/journaux-*/`**, que la commande
+    // n'atteignait pas. C'est le patron du « naufrage du 487 » de `CLAUDE.md` :
+    // une affirmation de complétude dont la commande n'a pas balayé son propre
+    // périmètre.
+    //
+    // 🔴 LE RELEVÉ JUSTE, 21 août 2026, sur les fichiers SUIVIS PAR GIT :
+    //
+    //     git grep -n 'signaling=' -- 'docs/superpowers/plans/journaux-*'
+    //
+    // **ONZE fichiers sous `journaux-*/instrument/` posent `?signaling=`** —
+    // les pilotes de `accent-a1`, `micro-e3` (le pilote et son
+    // `injection-e3.js`), `pont-fichiers` f1 à f5, et `presse-papier` p1 à p3 —,
+    // **plus un DOUZIÈME hors de ce répertoire**,
+    // `journaux-micro-e2/pilote-recette-e2.mjs`. Les douze passent une URL
+    // **sans chemin** (`ws://192.168.3.1:8080`, `ws://<hôte>:8090`, ou l'URL de
+    // la plateforme avec `http` -> `ws`), donc visent la racine `/` — **que ce
+    // chantier vient de fermer**.
+    //
+    // ⚠️ ILS SONT DONC TOUS À RÉPARER, ET AUCUN NE L'A ÉTÉ ICI : c'est un
+    // chantier à part, inscrit aux « Legs ouverts » de `CLAUDE.md`. ⚠️ Le
+    // `grep` ci-dessus attrape aussi les `.log` et `.json` de sortie, qui sont
+    // des RELEVÉS et non des pilotes : la règle de sélection est « les sources
+    // de pilote », pas « toute occurrence ».
     if (explicite) return explicite;
     const schema = emplacement.protocol === 'https:' ? 'wss' : 'ws';
     return `${schema}://${emplacement.host}${CHEMIN_SIGNAL}`;

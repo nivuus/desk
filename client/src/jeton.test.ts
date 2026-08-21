@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { CLE_ACCES, CLE_RAFRAICHISSEMENT, expireAvant, jetonAcces, poser, poserAcces, rafraichirSiNecessaire, vider } from './jeton';
+import { accesDeReponse, CLE_ACCES, CLE_RAFRAICHISSEMENT, expireAvant, jetonAcces, poser, poserAcces, rafraichirSiNecessaire, vider } from './jeton';
 import type { Coffre } from './jeton';
 
 /// Un coffre factice, en mémoire. Il n'y a AUCUN `localStorage` dans
@@ -74,6 +74,80 @@ describe('poserAcces', () => {
         c.setItem(CLE_RAFRAICHISSEMENT, 'vieux');
         poserAcces(c, 'J');
         expect(c.getItem(CLE_RAFRAICHISSEMENT)).toBeNull();
+    });
+});
+
+/* ── LA VALIDATION DU CORPS DE `GET /auth/moi` ─────────────────────────────
+   🔴 CES TESTS EXISTENT PARCE QUE LA RÈGLE VIVAIT DANS `connexion.ts`, QUI
+   N'EST PAS TESTÉ. L'en-tête de ce fichier-là pose le critère qui départage
+   une règle d'un câblage — « une condition est une règle si la changer change
+   ce que le PRODUIT décide » —, et la garde sur `corps.acces` le franchit :
+   sans elle, le produit écrit la chaîne `"undefined"` au coffre, envoie
+   `Bearer undefined`, montre une erreur de session au lieu du formulaire, et
+   **laisse le coffre empoisonné**. Elle a donc été FAITE DESCENDRE ici, où
+   les tests la tiennent.
+
+   🔴 LA ROUGE, JOUÉE — TROIS MUTATIONS, ET ELLES NE ROUGISSENT PAS PAREIL.
+   Le premier jet de ce commentaire annonçait « les QUATRE `it()` de refus
+   tombent » pour une seule mutation : **c'était faux, et la mesure l'a dit**.
+   Relevé le 21 août 2026, `cd client && npx vitest run src/jeton.test.ts`,
+   en remplaçant le corps d'`accesDeReponse` par :
+
+     A. `return (corps as {acces?: string} | undefined | null)?.acces;`
+        -> **2 échecs** (chaîne vide, non-chaîne). Les cas `{}`, `undefined`,
+           `null` et `'J'` restent VERTS : le chaînage optionnel rend déjà
+           `undefined` pour eux, donc ces tests-là ne discriminent pas CETTE
+           mutation.
+     B. `return (corps as {acces?: string}).acces;` — le retrait littéral, tel
+        que `connexion.ts` portait la garde
+        -> **3 échecs**, le troisième par `TypeError: Cannot read properties
+           of undefined`.
+     C. `return String((corps as {acces?: string} | undefined | null)?.acces);`
+        — **la reproduction du défaut RÉEL du produit**, celui qui écrit la
+        chaîne `"undefined"` au coffre
+        -> **4 échecs**, les quatre `it()` de refus.
+
+   🔴 CE QUE CETTE DISPERSION ENSEIGNE, ET POURQUOI ELLE EST ÉCRITE ICI PLUTÔT
+   QUE LISSÉE : le test du corps `{}` **ne peut pas** rougir sur un simple
+   retrait de garde — un accès à une clé absente rend `undefined` de toute
+   façon. Il ne gagne sa valeur que contre la mutation C, c'est-à-dire contre
+   le défaut qu'on cherche réellement à empêcher. Annoncer « les quatre
+   tombent » sans dire SOUS QUELLE mutation aurait été exactement le patron
+   que `CLAUDE.md` appelle « un contrôle qu'on n'a jamais vu rouge ».
+
+   ⚠️ DANS LES TROIS CAS, LE PREMIER `it()` — celui qui éprouve l'ACCEPTATION
+   — reste VERT. C'est ce qui rend chaque rouge discriminante : elle ne dénonce
+   pas un module débranché. */
+describe('le corps de `GET /auth/moi`', () => {
+    it("rend le jeton quand le corps en porte un", () => {
+        expect(accesDeReponse({ acces: 'J' })).toBe('J');
+    });
+
+    // Le cas EXACT que le mode `motdepasse` produirait si le 404 ne portait
+    // pas le mode : un corps sans `acces`.
+    it("rend `undefined` sur un corps SANS `acces` — sinon le coffre reçoit la chaîne « undefined »", () => {
+        expect(accesDeReponse({})).toBeUndefined();
+    });
+
+    // ⚠️ DISTINCT DU CAS CI-DESSUS, ET NON REDONDANT : `typeof '' === 'string'`.
+    // Un `''` posé au coffre serait un jeton qu'aucun `Authorization` ne peut
+    // porter, et `jetonAcces` le rendrait comme s'il valait quelque chose.
+    it('rend `undefined` sur une chaîne VIDE', () => {
+        expect(accesDeReponse({ acces: '' })).toBeUndefined();
+    });
+
+    it("rend `undefined` quand `acces` n'est pas une chaîne", () => {
+        expect(accesDeReponse({ acces: 42 })).toBeUndefined();
+        expect(accesDeReponse({ acces: null })).toBeUndefined();
+    });
+
+    // `reponse.json().catch(() => undefined)` rend `undefined` sur un corps
+    // illisible, et `null` est un JSON parfaitement valable : les deux
+    // atteignent cette fonction, et ni l'un ni l'autre ne doit la faire lever.
+    it('rend `undefined` sur `undefined`, `null` et un corps qui n’est pas un objet', () => {
+        expect(accesDeReponse(undefined)).toBeUndefined();
+        expect(accesDeReponse(null)).toBeUndefined();
+        expect(accesDeReponse('J')).toBeUndefined();
     });
 });
 

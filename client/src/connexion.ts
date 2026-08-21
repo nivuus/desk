@@ -51,7 +51,7 @@
 // d'énumération de comptes). Enrichir le texte ici défairait cette propriété
 // depuis le seul endroit où personne ne penserait à la chercher.
 
-import { poser, poserAcces } from './jeton';
+import { accesDeReponse, poser, poserAcces } from './jeton';
 import type { Ton } from './shell';
 import { installerSelecteurDeThemeAuDOM } from './design/selecteur-theme';
 import { effacerPrefixe, poserPrefixe } from './prefixe';
@@ -116,8 +116,20 @@ function afficher(texte: string, ton: Ton): void {
 ///
 /// ⚠️ CE N'EST PAS UNE RÈGLE, C'EST DU CÂBLAGE — au sens du critère posé en
 /// tête de ce fichier : ces branches ne font que router une décision prise par
-/// `routes-session.ts` et couverte par SES tests. La clause reste donc
-/// resserrée, pas assouplie.
+/// `routes-session.ts` et couverte par SES tests.
+///
+/// 🔴 CE COMMENTAIRE A ÉCRIT « LA CLAUSE RESTE DONC RESSERRÉE, PAS
+/// ASSOUPLIE », ET C'ÉTAIT UNE AFFIRMATION DE COMPLÉTUDE FAUSSE — corrigée
+/// plutôt qu'effacée (revue transverse, 21 août 2026). La phrase était vraie
+/// des branches DÉPLACÉES dans cette fonction-ci, et fausse de la fonction
+/// NEUVE écrite juste en dessous : `tenterPomerium` y avait ajouté, dans le
+/// même commit, une garde sur `corps.acces` qui, elle, était une RÈGLE au sens
+/// du critère. La branche assouplissait donc la clause dans le geste même où
+/// elle affirmait la resserrer. **La règle est depuis descendue dans
+/// `jeton.ts` (`accesDeReponse`), où des tests la tiennent** ; ce qui reste
+/// ici, et là-dessous, est du câblage. Ce paragraphe ne dit plus rien de ce
+/// que ce fichier contiendra demain : le critère, lui, reste la seule chose à
+/// appliquer au prochain `if` qui y apparaîtra.
 ///
 /// ⚠️ CORPS DÉPLACÉ VERBATIM. Trois substitutions, et TROIS SEULEMENT :
 ///   ① `corps.acces` devient le paramètre `acces` ;
@@ -203,10 +215,17 @@ async function tenterPomerium(): Promise<boolean> {
     try {
         const reponse = await fetch(`${plateformeUrl}/auth/moi`);
         if (!reponse.ok) return false;
-        const corps = await reponse.json().catch(() => undefined);
-        if (typeof corps?.acces !== 'string' || corps.acces === '') return false;
-        poserAcces(window.localStorage, corps.acces);
-        await chercherLaSession(corps.acces);
+        // 🔴 LA VALIDATION DU CORPS VIT DANS `jeton.ts`, ET NON ICI. Elle y a
+        // été FAITE DESCENDRE par la revue transverse du chantier
+        // `auth-pomerium` (21 août 2026) : c'est une RÈGLE au sens du critère
+        // de l'en-tête de ce fichier — la retirer fait écrire la chaîne
+        // `"undefined"` au coffre, envoyer `Bearer undefined`, et laisser le
+        // coffre EMPOISONNÉ —, et une règle ne vit pas dans un fichier non
+        // testé. `accesDeReponse` et ses cinq tests la tiennent désormais.
+        const acces = accesDeReponse(await reponse.json().catch(() => undefined));
+        if (acces === undefined) return false;
+        poserAcces(window.localStorage, acces);
+        await chercherLaSession(acces);
         return true;
     } catch {
         return false;
