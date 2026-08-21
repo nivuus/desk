@@ -333,17 +333,46 @@ Pomerium** : la page ne montre jamais le formulaire, et le bureau s'affiche.
 **Deux blocages, mesurés, l'empêchent — et aucun des deux n'a été contourné,
 simulé, ni remplacé par un succédané présenté comme le critère :**
 
-1. **La plateforme ne sert AUCUN fichier statique.** Mesuré au § 4 ci-dessus,
+🔴 **LES DEUX BLOCAGES NE SONT PAS DE MÊME NATURE, ET LES RANGER ENSEMBLE ÉTAIT
+LE DÉFAUT DE CADRAGE DE CE §.** Le second (§ ci-dessous, la session Google) est
+bien une limite de recette : le mécanisme est sain, seul l'instrument manque.
+**Le premier est un défaut de CONCEPTION du déploiement, déjà appliqué au
+`config.yaml` réel** — et il ne se solde pas par une mesure de plus.
+
+1. 🔴 **CE BLOCAGE N'EST PAS UN EMPÊCHEMENT DE RECETTE : C'EST UN DÉFAUT DE
+   CONCEPTION, ET LE CADRAGE DE CE PARAGRAPHE A ÉTÉ CORRIGÉ LE 21 AOÛT 2026
+   (revue transverse).** La rédaction d'origine le rangeait parmi « ce que
+   cette recette n'établit pas », d'où un successeur conclurait « il reste à
+   MESURER ». **Ce qu'il faut comprendre est « il reste à CONCEVOIR ».**
+
+   **La plateforme ne sert AUCUN fichier statique.** Mesuré au § 4 ci-dessus,
    sur le processus neuf : `GET /` rend `404 introuvable`. C'est **nginx**
-   qui sert la page (`root /usr/share/nginx/html`), et la spec §7 fait
-   pointer Pomerium **directement** vers la plateforme, en sautant nginx. Le
-   `listen 80` de nginx est un `return 301` vers HTTPS — le viser depuis
-   Pomerium, qui a déjà terminé TLS, ferait une boucle de redirection ; son
-   `listen 443` exige `deploiement/tls/`, **gitignoré et absent** de cette
-   machine. **Remède** : soit Pomerium route vers nginx (`listen 80`, en lui
-   apprenant à ne PAS rediriger les requêtes qui viennent déjà de Pomerium),
-   soit la plateforme se voit doter d'un servant de fichiers statiques —
-   aucune des deux n'est du ressort de cette tâche de recette.
+   qui sert la page (`root /usr/share/nginx/html`).
+
+   🔴 **OR LA SPEC §7.2 FAIT POINTER LA ROUTE NUE DE POMERIUM — celle que son
+   propre commentaire nomme « La page et l'API » — VERS CE BACKEND-LÀ**, en
+   sautant nginx. **Et ce bloc a été APPLIQUÉ au `config.yaml` réel.** La
+   conséquence n'est pas qu'un critère n'a pas été joué : c'est que, tel qu'il
+   est déployé aujourd'hui, **le chemin de la page ne peut servir aucune page**
+   — `https://app.allanic.me/` traverse Pomerium et rencontre un `404` du
+   backend. Le §5 le montre d'ailleurs sans le nommer : ce qui répond derrière
+   l'authentification est l'API, jamais un document.
+
+   ⚠️ **AUCUN DES DEUX CHEMINS DE REMÈDE N'EST TRIVIAL, ET C'EST POURQUOI
+   C'EST UNE CONCEPTION ET NON UNE CORRECTION** :
+   - **router Pomerium vers nginx** — son `listen 80` est un `return 301` vers
+     HTTPS, et le viser depuis un Pomerium qui a déjà terminé TLS ferait une
+     boucle de redirection ; il faudrait lui apprendre à ne pas rediriger ce
+     qui vient de Pomerium. Son `listen 443` exige `deploiement/tls/`,
+     **gitignoré et absent** de cette machine ;
+   - **doter la plateforme d'un servant de fichiers statiques** — du code
+     neuf, avec son périmètre, ses en-têtes et sa CSP, qu'aucune tâche de ce
+     chantier n'a cadré.
+
+   ⚠️ **Aucune de ces deux voies n'était du ressort de la tâche de recette**,
+   et ce document ne les a pas départagées ; ce qu'il change ici est le
+   CADRAGE, pas le constat. Le legs est inscrit à `CLAUDE.md`, § « Legs
+   ouverts », et le §7 de la spec porte l'annotation correspondante.
 2. **Le critère ⑦ exige une session Google réelle.** Pomerium authentifie
    contre Google (vu au § 5 : `authenticate.allanic.me`, `.pomerium/sign_in`).
    Aucun Chrome sans interface ne franchit ce flux OAuth complet (mot de
@@ -356,6 +385,13 @@ place — la chaîne d'identité complète, testée à la fois du côté service
 injection directe de l'en-tête) et du côté proxy (§ 5, tentative de forge) —
 est la part **mesurable** du même mécanisme, et elle est verte des deux
 côtés.
+
+🔴 **ET IL NE FAUT PAS EN CONCLURE « IL RESTE À MESURER ».** Le blocage n°1
+ci-dessus n'attend aucun instrument : il attend une **décision de conception**
+— router Pomerium vers nginx, ou doter la plateforme d'un servant statique.
+Tant qu'elle n'est pas prise, jouer le critère ⑦ est impossible **et le chemin
+de la page reste servi par un backend qui rend `404`**. C'est inscrit au § « Legs
+ouverts » de `CLAUDE.md`, et annoté au §7 de la spec.
 
 ### 7.2 — Ce qui n'a pas changé
 
