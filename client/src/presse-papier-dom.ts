@@ -73,18 +73,50 @@ export interface OptionsPressePapier {
     emettre: (message: string) => void;
     /// Le bandeau. Appelé pour un refus de taille, et pour un échec répété.
     surMessage: (texte: string) => void;
+    /// Le dernier contenu reçu AVANT l'attache, à rejouer au montage.
+    ///
+    /// 🔴 **C'est la moitié CLIENT du legs n°3 de P1, et elle vit ICI parce que
+    /// c'est ici qu'elle est TESTABLE.** `client/src/main.ts` fait
+    /// `pressePapier?.recevoir(...)` alors que `pressePapier` n'est assigné que
+    /// dans le `.then()` de `connectSession`, câblé APRÈS `onControl` — un
+    /// message arrivé dans cet intervalle était PERDU EN SILENCE. Et depuis le
+    /// sous-bloc P3, l'agent émet l'état courant À L'INSCRIPTION, c'est-à-dire
+    /// très avant que le navigateur ne se connecte : le message attend dans
+    /// `pending_control` et part dès l'ouverture du canal de contrôle,
+    /// **c'est-à-dire possiblement AVANT que `main.ts` n'ait assigné
+    /// `pressePapier`**. L'émission de l'agent tombe donc précisément dans
+    /// l'intervalle du défaut.
+    ///
+    /// ⚠️ **`main.ts` N'A AUCUN TEST**, et il ne peut pas en avoir : module
+    /// d'entrée, effets de bord au premier niveau, non importable — relevé par
+    /// la commande, `ls client/src/*.test.ts` ne rend aucun `main.test.ts`, et
+    /// aucun autre ne le couvre. Il ne garde donc que DEUX LIGNES DE CÂBLAGE,
+    /// sur le patron exact de `micAnnonce` ; la RÈGLE — « rejouer le mémorisé
+    /// au montage » — est ici, et elle y est éprouvée.
+    ///
+    /// ⚠️ **Le rejeu passe par le CHEMIN QUI EXISTE DÉJÀ** (`etat.recevoir`
+    /// puis `ecrireSiPossible`), jamais par un second : le dépôt différé de D3
+    /// doit rester le seul chemin d'écriture, y compris au montage. Une fenêtre
+    /// qui n'a pas le focus mémorise et écrira à son retour.
+    initial?: Recu;
 }
 
 export interface PressePapierAttache {
     /// Un `AgentControl::Clipboard` vient d'arriver.
     ///
-    /// ⚠️ **Un message arrivé avant l'attache est PERDU, et c'est déclaré.** Le
-    /// dépôt différé vit dans `PressePapierLocal`, donc dans l'attache
-    /// elle-même : il n'y a rien dans `main.ts` pour le mémoriser,
-    /// contrairement à `micAnnonce`. Sans conséquence en pratique — l'agent ne
+    /// ❌ **CETTE DOC DISAIT « un message arrivé avant l'attache est PERDU, et
+    /// c'est déclaré », ET LE SOUS-BLOC P3 L'A RÉFUTÉE — sur ses DEUX
+    /// clauses.** Elle ajoutait « sans conséquence en pratique : l'agent ne
     /// pousse qu'au CHANGEMENT, et son premier sondage prend l'état courant
     /// pour référence sans rien annoncer (D-P1-4), donc la première copie
-    /// annoncée suit forcément l'établissement de la session.
+    /// annoncée suit forcément l'établissement de la session ».
+    ///
+    /// - **le message n'est plus perdu** : `main.ts` mémorise le dernier
+    ///   `clipboard` reçu et le passe en `initial`, qui est rejoué au montage ;
+    /// - **et « sans conséquence en pratique » est devenu FAUX** : P3 fait
+    ///   émettre à l'agent l'état courant À L'INSCRIPTION de la fenêtre, très
+    ///   avant que le navigateur ne se connecte. Ce message-là ne suit pas
+    ///   l'établissement de la session, il le précède.
     recevoir(recu: Recu): void;
     /// Retire l'écouteur de focus. **Indispensable** : sans lui il survivrait
     /// à la fin de session et écrirait le presse-papier local pour une session
@@ -100,7 +132,7 @@ export interface PressePapierAttache {
 }
 
 export function attacherPressePapierAuDOM(options: OptionsPressePapier): PressePapierAttache {
-    const { ecrire, focalise, cible, surMessage, emettre } = options;
+    const { ecrire, focalise, cible, surMessage, emettre, initial } = options;
     const etat = new PressePapierLocal();
 
     const ecrireSiPossible = (): void => {
@@ -120,6 +152,15 @@ export function attacherPressePapierAuDOM(options: OptionsPressePapier): PresseP
             },
         );
     };
+
+    // Le rejeu de ce qui est arrivé AVANT l'attache (moitié client du legs n°3
+    // de P1). Posé APRÈS `ecrireSiPossible`, dont il se sert, et AVANT les deux
+    // écouteurs : rien n'en dépend, mais l'ordre de lecture suit celui du
+    // raisonnement.
+    if (initial !== undefined) {
+        etat.recevoir(initial);
+        ecrireSiPossible();
+    }
 
     const surFocus = (): void => ecrireSiPossible();
     cible.addEventListener('focus', surFocus);
