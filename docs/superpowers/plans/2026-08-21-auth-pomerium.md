@@ -550,7 +550,7 @@ afterEach(async () => {
 /// Compte les comptes. C'est LE COMPTE qui dit si l'upsert a créé une fois ou
 /// deux — jamais la seule absence d'erreur.
 async function combienDeComptes(p: Pilote): Promise<number> {
-    return (await p.interroger<{ id: string }>('SELECT id FROM utilisateur')).length;
+    return (await p.interroger<{ id: string }>('SELECT id FROM utilisateur', [])).length;
 }
 
 describe('GET /auth/moi', () => {
