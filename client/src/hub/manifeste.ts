@@ -57,9 +57,20 @@ export interface Sujet {
     icone?: Uint8Array;
     /// La couleur d'accent, en `#rrggbb`.
     ///
-    /// ⚠️ ELLE N'ARRIVE JAMAIS À CE JOUR, et c'est DÉCLARÉ : la couleur
-    /// d'accent par application n'existe nulle part dans ④ — aucune colonne,
-    /// aucun champ de protocole, aucun calcul (divergence E1 du plan de G5).
+    /// ❌ « ELLE N'ARRIVE JAMAIS À CE JOUR » — ÉCRIT ICI PAR LA TRANCHE D DE
+    /// CE SOUS-BLOC, ET RENDU FAUX PAR SA PROPRE TRANCHE F, quelques commits
+    /// plus tard. **Elle arrive** : `Application` porte `accent` depuis
+    /// `PLATEFORME_VERSION = 5`, la colonne existe (migration `0007`), et la
+    /// route la sert. Mesuré sur la VM : **149 accents sur 156 applications,
+    /// 87 valeurs distinctes**, Photoshop rendant son bleu et Illustrator son
+    /// orange. La divergence E1 du plan est donc **fermée**, et non plus
+    /// seulement déclarée.
+    ///
+    /// ⚠️ CE QUI RESTE VRAI : elle est **par APPLICATION**, à ne pas confondre
+    /// avec celle du sous-projet ①, qui est **par FENÊTRE**. Et elle reste
+    /// OPTIONNELLE ici — **7 applications de la VM ont une icône SANS avoir
+    /// d'accent**, parce que la clause 5 de `dominante` (trop pâle, trop
+    /// sombre, trop transparent) est atteignable sur des données réelles.
     /// Celle du sous-projet ① est **par FENÊTRE**, arrive en cours de session
     /// sur le canal WebRTC, et ne décrit pas la même chose. Le membre est
     /// OPTIONNEL, et son absence fait OMETTRE `theme_color` — jamais poser une

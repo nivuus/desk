@@ -59,11 +59,25 @@ function declarationsDuBloc(css: string, selecteur: string): string[] {
  * ═══════════════════════════════════════════════════════════════════════════
  * LE GARDE DU WINDOW CONTROLS OVERLAY — sous-bloc S4, tâche 10.
  *
- * 🔴 IL PROUVE QUE LA RÈGLE WCO EST INERTE AUJOURD'HUI, ET RIEN D'AUTRE. Il
- * n'existe AUCUN manifeste dans ce dépôt — donc `display_override:
- * ["window-controls-overlay"]` n'est déclaré nulle part, les variables
- * `titlebar-area-*` ne sont jamais définies, et AUCUN ÉTAT ATTEIGNABLE ne fait
- * agir la règle. Un critère de recette qui prétendrait l'exercer serait vacueux
+ * ❌ « IL N'EXISTE AUCUN MANIFESTE DANS CE DÉPÔT » N'EST PLUS VRAI DEPUIS LE
+ * SOUS-BLOC G5 (21 août 2026), qui pose `client/dist/hub.webmanifest` et
+ * publie un manifeste `blob:` par application. **Les deux déclarent
+ * `display_override: ["window-controls-overlay"]`, et Chromium le RETIENT** —
+ * son manifeste analysé porte `displayOverrides:
+ * ["kWindowControlsOverlay","kStandalone"]`, mesuré deux fois.
+ *
+ * 🔴 ET POURTANT LA CONCLUSION DE CE GARDE TIENT, POUR UNE AUTRE RAISON QUE
+ * CELLE ÉCRITE : le WCO n'existe que dans une fenêtre de PWA **installée**, et
+ * un Chromium sans interface n'en installe aucune —
+ * `matchMedia('(display-mode: window-controls-overlay)').matches` vaut **false**
+ * aux deux exécutions. **AUCUN ÉTAT ATTEIGNABLE NE FAIT AGIR LA RÈGLE**, donc
+ * un critère qui prétendrait l'exercer serait toujours vacueux PAR
+ * CONSTRUCTION. La prémisse a vieilli, la conclusion non.
+ *
+ * 🔴 LE LEGS NOMMÉ CI-DESSOUS A DONC ÉTÉ REPRIS, ET SON VERDICT EST
+ * `NON MESURABLE PAR CE MONTAGE` : G5 apporte la DÉCLARATION, et il ne prétend
+ * pas à plus. **Le legs reste ENTIER**, transmis avec sa raison plutôt
+ * qu'éteint. Un critère de recette qui prétendrait l'exercer serait vacueux
  * PAR CONSTRUCTION, et pas faute d'effort : c'est pourquoi S4 n'en prescrit
  * aucun. Ce que ce garde tient est une propriété de FORME dont la rouge, elle,
  * a une conséquence RÉELLE — écrire `env(titlebar-area-height, 8px)` descend le

@@ -138,10 +138,16 @@ body {
    nul descend le bandeau maintenant, sur toutes les sessions.
 
    ⚠️ CE GARDE PROUVE L'INERTIE, JAMAIS LE COMPORTEMENT. La règle n'a JAMAIS
-   été rendue dans une fenêtre à barre de titre superposée, et elle ne le sera
-   pas avant que le sous-bloc G5 de la gestion d'apps ne pose le manifeste —
-   c'est à SA recette de regarder la fenêtre de session sous une barre
-   superposée. Aucun critère de recette de S4 ne la couvre, délibérément : un
+   été rendue dans une fenêtre à barre de titre superposée.
+   ❌ « ELLE NE LE SERA PAS AVANT QUE G5 NE POSE LE MANIFESTE » LAISSAIT CROIRE
+   QUE LE MANIFESTE SUFFIRAIT : G5 l'a posé le 21 août 2026 — le hub ET chaque
+   application déclarent `display_override: ["window-controls-overlay"]`, et
+   Chromium le RETIENT —, ET LA RÈGLE N'A TOUJOURS PAS ÉTÉ RENDUE. Le WCO
+   n'existe que dans une fenêtre de PWA **installée**, et un Chromium sans
+   interface n'en installe aucune : `matchMedia('(display-mode:
+   window-controls-overlay)').matches` vaut **false**. **Le manifeste était
+   nécessaire, pas suffisant**, et la recette de G5 rend
+   `NON MESURABLE PAR CE MONTAGE`. Aucun critère de recette de S4 ne la couvre, délibérément : un
    critère qu'aucun état ne peut rendre rouge se lit comme une preuve.
 
    ⚠️ CE QUE S4 NE LIVRE PAS DU WCO : aucune zone de glissement
