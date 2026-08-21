@@ -13,26 +13,13 @@ use serde::{Deserialize, Serialize};
 /// v3 (chantier C) : ajout de `Link`.
 pub const CONTROL_VERSION: u8 = 3;
 
-/// Forme du curseur, exprimée directement dans le vocabulaire de la
-/// propriété CSS `cursor` : le client la pose telle quelle, sans table de
-/// correspondance à maintenir de son côté.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum CursorShape {
-    Default,
-    Text,
-    Wait,
-    Progress,
-    Crosshair,
-    Pointer,
-    Move,
-    NotAllowed,
-    Help,
-    NsResize,
-    EwResize,
-    NwseResize,
-    NeswResize,
-}
+/// Forme du curseur — **extraite** vers `control/curseur.rs` par le sous-bloc
+/// E3, pour que la variante `MicState` tienne sous la porte des 500 lignes
+/// sans compression. Le type reste `pub` et ré-exporté ici : aucun site
+/// d'appel de `proto::control::CursorShape` n'a bougé.
+#[path = "control/curseur.rs"]
+mod curseur;
+pub use curseur::CursorShape;
 
 // Note : pas de `default` sur le champ `v` — un message sans champ `v` doit être
 // rejeté (champ obligatoire), pas silencieusement complété avec la version
