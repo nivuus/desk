@@ -1,0 +1,13 @@
+=== DIAGNOSTIC : MORCEAUX_EN_VOL = 4 fait-il ECHOUER ce qui aboutirait a 1 ? ===
+Arithmetique : le canal soutient ~33 Kio/s, donc UN morceau de 64 Kio met
+~2,0 s. QUATRE morceaux CONCURRENTS se partagent la meme bande passante :
+chacun met ~8 s, soit PLUS que DELAI_LIRE = 5 s — et ils EXPIRENT.
+Mesure a l'appui : 128 Kio (2 morceaux) ABOUTIT, 256 Kio (4) ECHOUE.
+⚠️ Arithmetique + correlation. La mutation ci-dessous en fait une mesure.
+sha256 source AVANT : 796cac015c32c0727c3b3d9e601b8feeb12a9dafb8ebdaac80ab4dd10413803b  agent/src/pont/lecture.rs
+[diff]
+58c58
+< pub const MORCEAUX_EN_VOL: usize = 4;
+---
+> pub const MORCEAUX_EN_VOL: usize = 1;  // 🔴 DIAG F4, jamais fusionne
+binaire DIAG : 10708480 o, s'identifie -> 0

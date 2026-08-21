@@ -1,0 +1,153 @@
+{
+ "prefixe": "F4z7KQooOQfJqh47PM0ETA",
+ "journal": [
+  "[2026-08-21T08:18:34.975Z] jeton de recette obtenu",
+  "[2026-08-21T08:18:35.409Z] chrome : Chrome/151.0.7922.169",
+  "[2026-08-21T08:18:35.823Z] navigation : http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA",
+  "[2026-08-21T08:18:39.892Z] OPFS peuple : 5 entrees",
+  "[2026-08-21T08:18:39.892Z] la page-shell est connectee : lancement de l agent",
+  "[2026-08-21T08:18:40.354Z] agent lance : Op\u0002ration r\u0002ussie : tentative d'ex\u0002cution de la t\u0003che planifi\u0002e \"guacamole-agent\".agent lancé en session interactive ; journal : /media/vm/dev/agent.log",
+  "[2026-08-21T08:18:40.359Z] etat avant le clic : {\"href\":\"http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA\",\"jeton\":true,\"bouton\":true}",
+  "[2026-08-21T08:18:40.359Z] clic sur #choisir-dossier",
+  "[2026-08-21T08:18:44.410Z] #etat-fichiers : \"Lecteur « Mes Fichiers » monté sur « Mes documents ».\"",
+  "[2026-08-21T08:18:53.735Z] gabarit listage:1000 : {\"spec\":\"listage:1000\",\"ms_peuplement\":1322,\"demande\":1000,\"presentes\":1000,\"chemin\":\"listage/1000\",\"entrees\":1000}",
+  "[2026-08-21T08:18:53.754Z] gabarit f:lecture:64k.bin:65536 : {\"spec\":\"f:lecture:64k.bin:65536\",\"ms_peuplement\":19,\"chemin\":\"lecture/64k.bin\",\"taille\":65536}",
+  "[2026-08-21T08:18:53.754Z] mesure VM (ASYNCHRONE) : application:notepad.exe,listage:1000,lecture:lecture\\64k.bin",
+  "[2026-08-21T08:20:37.198Z] mesure VM : 3 gestes en 103 s",
+  "[2026-08-21T08:20:37.229Z] fenetres d application : 2 — flux : [{\"url\":\"n=F4z7KQooOQfJqh47PM0ETA%3Aw-3\",\"v\":{\"sansPc\":true}},{\"url\":\"n=F4z7KQooOQfJqh47PM0ETA%3Aw-1\",\"v\":{\"sansPc\":true}}]"
+ ],
+ "erreurs": [],
+ "gabarits": [
+  {
+   "spec": "listage:1000",
+   "ms_peuplement": 1322,
+   "demande": 1000,
+   "presentes": 1000,
+   "chemin": "listage/1000",
+   "entrees": 1000
+  },
+  {
+   "spec": "f:lecture:64k.bin:65536",
+   "ms_peuplement": 19,
+   "chemin": "lecture/64k.bin",
+   "taille": 65536
+  }
+ ],
+ "mesures": [],
+ "chrome": "Chrome/151.0.7922.169",
+ "console_page": [
+  {
+   "t": "2026-08-21T08:18:36.127Z",
+   "niveau": "debug",
+   "texte": "[vite] connecting..."
+  },
+  {
+   "t": "2026-08-21T08:18:36.170Z",
+   "niveau": "debug",
+   "texte": "[vite] connected."
+  },
+  {
+   "t": "2026-08-21T08:18:42.518Z",
+   "niveau": "info",
+   "texte": "offre du pont envoyée, attente de l’agent…"
+  },
+  {
+   "t": "2026-08-21T08:18:43.720Z",
+   "niveau": "info",
+   "texte": "pont fichiers : réponse reçue"
+  },
+  {
+   "t": "2026-08-21T08:18:43.720Z",
+   "niveau": "info",
+   "texte": "pont fichiers : connecting"
+  },
+  {
+   "t": "2026-08-21T08:18:44.012Z",
+   "niveau": "info",
+   "texte": "pont fichiers : connected"
+  },
+  {
+   "t": "2026-08-21T08:18:44.163Z",
+   "niveau": "info",
+   "texte": "canal fichiers ouvert"
+  }
+ ],
+ "opfs_entrees": 5,
+ "etat_avant_clic": "{\"href\":\"http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA\",\"jeton\":true,\"bouton\":true}",
+ "etat_fichiers": "Lecteur « Mes Fichiers » monté sur « Mes documents ».",
+ "bien_monte": true,
+ "mesure_vm_brut": "﻿{\"racine\":\"C:\\\\Users\\\\Administrateur\\\\Mes Fichiers\",\"plan\":\"application:notepad.exe,listage:1000,lecture:lecture\\\\64k.bin\",\"repos_s\":25,\"fini\":true,\"releves\":[{\"geste\":\"application:notepad.exe\",\"verbe\":\"application\",\"arg\":\"notepad.exe\",\"debut_iso\":\"2026-08-21T08:18:54.957489Z\",\"ms\":20026.5317,\"note\":\"duree IMPOSEE (20 s), ce n est PAS une latence\",\"fenetres\":2,\"ok\":true,\"fin_iso\":\"2026-08-21T08:19:14.996822Z\"},{\"geste\":\"listage:1000\",\"verbe\":\"listage\",\"arg\":\"1000\",\"debut_iso\":\"2026-08-21T08:19:40.011074Z\",\"ms\":5805.4057,\"entrees\":1000,\"demande\":1000,\"complet\":true,\"ok\":true,\"fin_iso\":\"2026-08-21T08:19:45.821121Z\"},{\"geste\":\"lecture:lecture\\\\64k.bin\",\"verbe\":\"lecture\",\"arg\":\"lecture\\\\64k.bin\",\"debut_iso\":\"2026-08-21T08:20:10.823941Z\",\"ms\":1262.5648,\"octets\":65536,\"debit_kio_s\":50.7,\"ok\":true,\"fin_iso\":\"2026-08-21T08:20:12.091953Z\"}]}\r\n",
+ "mesure_vm": {
+  "racine": "C:\\Users\\Administrateur\\Mes Fichiers",
+  "plan": "application:notepad.exe,listage:1000,lecture:lecture\\64k.bin",
+  "repos_s": 25,
+  "fini": true,
+  "releves": [
+   {
+    "geste": "application:notepad.exe",
+    "verbe": "application",
+    "arg": "notepad.exe",
+    "debut_iso": "2026-08-21T08:18:54.957489Z",
+    "ms": 20026.5317,
+    "note": "duree IMPOSEE (20 s), ce n est PAS une latence",
+    "fenetres": 2,
+    "ok": true,
+    "fin_iso": "2026-08-21T08:19:14.996822Z"
+   },
+   {
+    "geste": "listage:1000",
+    "verbe": "listage",
+    "arg": "1000",
+    "debut_iso": "2026-08-21T08:19:40.011074Z",
+    "ms": 5805.4057,
+    "entrees": 1000,
+    "demande": 1000,
+    "complet": true,
+    "ok": true,
+    "fin_iso": "2026-08-21T08:19:45.821121Z"
+   },
+   {
+    "geste": "lecture:lecture\\64k.bin",
+    "verbe": "lecture",
+    "arg": "lecture\\64k.bin",
+    "debut_iso": "2026-08-21T08:20:10.823941Z",
+    "ms": 1262.5648,
+    "octets": 65536,
+    "debit_kio_s": 50.7,
+    "ok": true,
+    "fin_iso": "2026-08-21T08:20:12.091953Z"
+   }
+  ]
+ },
+ "agent_log_octets": 151520,
+ "fenetres_application": 2,
+ "flux": [
+  {
+   "url": "n=F4z7KQooOQfJqh47PM0ETA%3Aw-3",
+   "v": {
+    "sansPc": true
+   }
+  },
+  {
+   "url": "n=F4z7KQooOQfJqh47PM0ETA%3Aw-1",
+   "v": {
+    "sansPc": true
+   }
+  }
+ ],
+ "etat_injection": {
+  "notes": [
+   {
+    "t": 1787300333688,
+    "m": "gabarit listage/1000 : 1000 entrees"
+   },
+   {
+    "t": 1787300333753,
+    "m": "gabarit lecture/64k.bin : 65536 octets"
+   }
+  ],
+  "erreurs": [],
+  "move": "function"
+ },
+ "ok": true
+}

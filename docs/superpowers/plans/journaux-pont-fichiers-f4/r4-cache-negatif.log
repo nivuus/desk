@@ -1,0 +1,62 @@
+=== R4 — le temoin du cache negatif : PRJ_FLAG_USE_NEGATIVE_PATH_CACHE RETIRE ===
+Harnais §1.4 : copie NOMMEE (jamais HEAD), mutation PAR NUMERO DE LIGNE,
+diff de mutation verifie NON VIDE, restauration par cp SANS -p, sha256.
+
+sha256 source AVANT : 80ac3d46932753c3dbb3eb685aa3b07ddcd84efba2611ce96e61e5bce30f810e  agent/src/pont/projfs.rs
+sha256 binaire VERT : 1f1cc7b82fb868014af0ddbd800beb89fb52f0be7c73ac26c751b6a9a522827c  /media/vm/dev/target/release/agent.exe
+taille binaire VERT : 10647552
+[diff de la mutation, doit etre NON VIDE]
+213a214
+>         tracing::warn!("BINAIRE TEMOIN R4 (F4) : PRJ_FLAG_USE_NEGATIVE_PATH_CACHE RETIRE, jamais fusionne");
+215c216,217
+<             Flags: PRJ_FLAG_USE_NEGATIVE_PATH_CACHE,
+---
+>             // 🔴 R4 — BINAIRE TEMOIN DE F4, JAMAIS FUSIONNE.
+>             Flags: windows::Win32::Storage::ProjectedFileSystem::PRJ_STARTVIRTUALIZING_FLAGS(0),
+(rc=1 — 1 attendu)
+sha256 binaire ROUGE : 8881cb571cadbe5bc564ac1c289da7be647f2e0368aac16406b5f35c34470100  /media/vm/dev/target/release/agent.exe
+taille binaire ROUGE : 10708480
+le binaire S'IDENTIFIE-T-IL ? grep 'BINAIRE TEMOIN R4' -> 1
+
+--- LE BINAIRE QUI A TOURNE S'EST-IL IDENTIFIE ? ---
+grep 'BINAIRE TEMOIN R4' dans le journal : 1
+2026-08-21T07:36:02.706330Z  WARN agent::pont::projfs: BINAIRE TEMOIN R4 (F4) : PRJ_FLAG_USE_NEGATIVE_PATH_CACHE RETIRE, jamais fusionne
+
+--- codes rendus, DERNIER recensement du bras ROUGE ---
+total=0 introuvable=0 chemin-introuvable=0 acces-refuse=0 canal-ferme=0 delai-depasse=0 abandonnee=0 disque-plein=0 non-supporte=0 repertoire-non-vide=0 deja-present=0 protege-en-ecriture=0 inattendue=0
+
+--- les memes, aux DEUX bras VERTS (m1-enum-1 et m1-enum-2) ---
+m1-enum-1    total=1 introuvable=0 chemin-introuvable=0 acces-refuse=0 canal-ferme=0 delai-depasse=1 abandonnee=0 disque-plein=0 non-supporte=0 repertoire-non-vide=0 deja-present=0 protege-en-ecriture=0 inattendue=0
+m1-enum-2    total=1 introuvable=0 chemin-introuvable=0 acces-refuse=0 canal-ferme=0 delai-depasse=1 abandonnee=0 disque-plein=0 non-supporte=0 repertoire-non-vide=0 deja-present=0 protege-en-ecriture=0 inattendue=0
+
+--- RESTAURATION ---
+[diff, doit etre VIDE]
+VIDE
+sha256 source APRES : 80ac3d46932753c3dbb3eb685aa3b07ddcd84efba2611ce96e61e5bce30f810e  agent/src/pont/projfs.rs
+(attendu identique a AVANT : 80ac3d46932753c3dbb3eb685aa3b07ddcd84efba2611ce96e61e5bce30f810e)
+git status --porcelain agent/src/pont/projfs.rs : []
+SECOND REBATISSAGE (le vert restaure) :
+  sha256 : c45ea54eca6cfbeec13d18d73e5d6c1f0ed2a11bf629939b096033b8e73fbad7  /media/vm/dev/target/release/agent.exe
+  taille : 10708480
+  'BINAIRE TEMOIN R4' dans le binaire -> 0  (0 attendu)
+  'banc de latence du pont ARME'      -> 1  (1 attendu)
+
+🔴 ET LE CONTROLE PAR LA TAILLE DU BINAIRE AURAIT RENDU UN FAUX NEGATIF, DANS
+LES DEUX SENS :
+  vert d'origine  10 647 552  sha256 1f1cc7b8...
+  ROUGE (R4)      10 708 480  sha256 8881cb57...
+  vert RESTAURE   10 708 480  sha256 c45ea54e...   <- MEME TAILLE QUE LE ROUGE
+Le vert restaure pese EXACTEMENT autant que le rouge, et ce n'est pas le meme
+binaire (sha256 distincts, et `BINAIRE TEMOIN R4` -> 0 contre 1). Deux
+compilations de LA MEME SOURCE ne rendent pas non plus la meme taille
+(10 647 552 puis 10 708 480). **La taille n'est ni necessaire ni suffisante** ;
+ce qui tranche est une chaine que l'on a soi-meme posee.
+
+VERDICT R4 : le retrait de PRJ_FLAG_USE_NEGATIVE_PATH_CACHE ne change AUCUN
+compte. `introuvable=0` et `chemin-introuvable=0` au bras rouge comme aux deux
+bras verts, apres DEUX ouvertures de l'Explorateur sur le meme dossier.
+⚠️ Le plan (§0.3) prevoyait deux lectures de ce zero, et le temoin en ECARTE
+une : le drapeau ETAIT bien applique au vert et ne l'est plus au rouge — le
+binaire temoin le DIT lui-meme dans le journal —, et le resultat est identique.
+Reste donc : **sur ce montage, l'Explorateur ne fait parvenir AUCUN sondage de
+chemin absent au fournisseur.**

@@ -1,0 +1,16 @@
+[2026-08-21T07:00:40.433Z] jeton de recette obtenu
+[2026-08-21T07:00:40.738Z] chrome : Chrome/151.0.7922.169
+[2026-08-21T07:00:40.897Z] navigation : http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA
+[2026-08-21T07:00:44.942Z] OPFS peuple : 5 entrees
+[2026-08-21T07:00:44.942Z] la page-shell est connectee : lancement de l agent
+[2026-08-21T07:00:45.497Z] agent lance : Opration russie : tentative d'excution de la tche planifie "guacamole-agent".agent lancé en session interactive ; journal : /media/vm/dev/agent.log
+[2026-08-21T07:00:45.500Z] etat avant le clic : {"href":"http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA","jeton":true,"bouton":true}
+[2026-08-21T07:00:45.500Z] clic sur #choisir-dossier
+[2026-08-21T07:00:48.542Z] #etat-fichiers : "Lecteur « Mes Fichiers » monté sur « Mes documents »."
+[2026-08-21T07:00:56.584Z] gabarit listage:10 : {"spec":"listage:10","ms_peuplement":38,"demande":10,"presentes":10,"chemin":"listage/10","entrees":10}
+[2026-08-21T07:00:56.753Z] gabarit listage:100 : {"spec":"listage:100","ms_peuplement":169,"demande":100,"presentes":100,"chemin":"listage/100","entrees":100}
+[2026-08-21T07:00:58.118Z] gabarit listage:1000 : {"spec":"listage:1000","ms_peuplement":1364,"demande":1000,"presentes":1000,"chemin":"listage/1000","entrees":1000}
+[2026-08-21T07:00:58.118Z] mesure VM (ASYNCHRONE) : listage:10,attributs:10,listage:100,attributs:100,listage:1000,attributs:1000
+[2026-08-21T07:03:44.044Z] mesure VM : 6 gestes en 166 s
+[2026-08-21T07:03:44.051Z] fenetres d application : 0 — flux : []
+[2026-08-21T07:03:44.054Z] resultat ecrit : /tmp/f4/pilote-p0-a-1.json

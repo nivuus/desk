@@ -1,0 +1,18 @@
+[2026-08-21T07:15:37.554Z] jeton de recette obtenu
+[2026-08-21T07:15:38.120Z] chrome : Chrome/151.0.7922.169
+[2026-08-21T07:15:38.224Z] navigation : http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA
+[2026-08-21T07:15:42.274Z] OPFS peuple : 5 entrees
+[2026-08-21T07:15:42.274Z] la page-shell est connectee : lancement de l agent
+[2026-08-21T07:15:42.708Z] agent lance : Opration russie : tentative d'excution de la tche planifie "guacamole-agent".agent lancé en session interactive ; journal : /media/vm/dev/agent.log
+[2026-08-21T07:15:42.711Z] etat avant le clic : {"href":"http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA","jeton":true,"bouton":true}
+[2026-08-21T07:15:42.712Z] clic sur #choisir-dossier
+[2026-08-21T07:15:45.746Z] #etat-fichiers : "Lecteur « Mes Fichiers » monté sur « Mes documents »."
+[2026-08-21T07:15:53.786Z] gabarit listage:10 : {"spec":"listage:10","ms_peuplement":37,"demande":10,"presentes":10,"chemin":"listage/10","entrees":10}
+[2026-08-21T07:15:53.886Z] gabarit listage:100 : {"spec":"listage:100","ms_peuplement":100,"demande":100,"presentes":100,"chemin":"listage/100","entrees":100}
+[2026-08-21T07:15:54.687Z] gabarit listage:1000 : {"spec":"listage:1000","ms_peuplement":801,"demande":1000,"presentes":1000,"chemin":"listage/1000","entrees":1000}
+[2026-08-21T07:15:57.426Z] gabarit listage:3150 : {"spec":"listage:3150","ms_peuplement":2739,"demande":3150,"presentes":3150,"chemin":"listage/3150","entrees":3150}
+[2026-08-21T07:16:01.315Z] gabarit listage:3200 : {"spec":"listage:3200","ms_peuplement":3889,"demande":3200,"presentes":3200,"chemin":"listage/3200","entrees":3200}
+[2026-08-21T07:16:01.315Z] mesure VM (ASYNCHRONE) : item:listage\10\entree-00003-f.txt,item:listage\10\entree-00003-f.txt,listage:10,attributs:10,listage:100,attributs:100,listage:1000,attributs:1000,listage:3150,listage:3200,explorer:100,explorer:100
+[2026-08-21T07:23:00.302Z] mesure VM : 12 gestes en 419 s
+[2026-08-21T07:23:00.309Z] fenetres d application : 0 — flux : []
+[2026-08-21T07:23:00.312Z] resultat ecrit : /tmp/f4/pilote-m1-enum-1.json

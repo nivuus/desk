@@ -1,0 +1,171 @@
+{
+ "prefixe": "F4z7KQooOQfJqh47PM0ETA",
+ "journal": [
+  "[2026-08-21T07:49:44.232Z] jeton de recette obtenu",
+  "[2026-08-21T07:49:44.575Z] chrome : Chrome/151.0.7922.169",
+  "[2026-08-21T07:49:44.842Z] navigation : http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA",
+  "[2026-08-21T07:49:48.897Z] OPFS peuple : 5 entrees",
+  "[2026-08-21T07:49:48.898Z] la page-shell est connectee : lancement de l agent",
+  "[2026-08-21T07:49:49.429Z] agent lance : Op\u0002ration r\u0002ussie : tentative d'ex\u0002cution de la t\u0003che planifi\u0002e \"guacamole-agent\".agent lancé en session interactive ; journal : /media/vm/dev/agent.log",
+  "[2026-08-21T07:49:49.432Z] etat avant le clic : {\"href\":\"http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA\",\"jeton\":true,\"bouton\":true}",
+  "[2026-08-21T07:49:49.432Z] clic sur #choisir-dossier",
+  "[2026-08-21T07:49:52.471Z] #etat-fichiers : \"Lecteur « Mes Fichiers » monté sur « Mes documents ».\"",
+  "[2026-08-21T07:50:00.484Z] gabarit f:lecture:4k.bin:4096 : {\"spec\":\"f:lecture:4k.bin:4096\",\"ms_peuplement\":10,\"chemin\":\"lecture/4k.bin\",\"taille\":4096}",
+  "[2026-08-21T07:50:00.492Z] gabarit f:lecture:64k.bin:65536 : {\"spec\":\"f:lecture:64k.bin:65536\",\"ms_peuplement\":8,\"chemin\":\"lecture/64k.bin\",\"taille\":65536}",
+  "[2026-08-21T07:50:00.500Z] gabarit f:lecture:128k.bin:131072 : {\"spec\":\"f:lecture:128k.bin:131072\",\"ms_peuplement\":8,\"chemin\":\"lecture/128k.bin\",\"taille\":131072}",
+  "[2026-08-21T07:50:00.507Z] gabarit f:lecture:256k.bin:262144 : {\"spec\":\"f:lecture:256k.bin:262144\",\"ms_peuplement\":7,\"chemin\":\"lecture/256k.bin\",\"taille\":262144}",
+  "[2026-08-21T07:50:00.507Z] mesure VM (ASYNCHRONE) : lecture:lecture\\4k.bin,lecture:lecture\\64k.bin,lecture:lecture\\128k.bin,lecture:lecture\\256k.bin",
+  "[2026-08-21T07:52:00.048Z] mesure VM : 4 gestes en 120 s",
+  "[2026-08-21T07:52:00.060Z] fenetres d application : 0 — flux : []"
+ ],
+ "erreurs": [],
+ "gabarits": [
+  {
+   "spec": "f:lecture:4k.bin:4096",
+   "ms_peuplement": 10,
+   "chemin": "lecture/4k.bin",
+   "taille": 4096
+  },
+  {
+   "spec": "f:lecture:64k.bin:65536",
+   "ms_peuplement": 8,
+   "chemin": "lecture/64k.bin",
+   "taille": 65536
+  },
+  {
+   "spec": "f:lecture:128k.bin:131072",
+   "ms_peuplement": 8,
+   "chemin": "lecture/128k.bin",
+   "taille": 131072
+  },
+  {
+   "spec": "f:lecture:256k.bin:262144",
+   "ms_peuplement": 7,
+   "chemin": "lecture/256k.bin",
+   "taille": 262144
+  }
+ ],
+ "mesures": [],
+ "chrome": "Chrome/151.0.7922.169",
+ "console_page": [
+  {
+   "t": "2026-08-21T07:49:45.072Z",
+   "niveau": "debug",
+   "texte": "[vite] connecting..."
+  },
+  {
+   "t": "2026-08-21T07:49:45.191Z",
+   "niveau": "debug",
+   "texte": "[vite] connected."
+  },
+  {
+   "t": "2026-08-21T07:49:51.593Z",
+   "niveau": "info",
+   "texte": "offre du pont envoyée, attente de l’agent…"
+  },
+  {
+   "t": "2026-08-21T07:49:51.599Z",
+   "niveau": "info",
+   "texte": "pont fichiers : réponse reçue"
+  },
+  {
+   "t": "2026-08-21T07:49:51.600Z",
+   "niveau": "info",
+   "texte": "pont fichiers : connecting"
+  },
+  {
+   "t": "2026-08-21T07:49:51.843Z",
+   "niveau": "info",
+   "texte": "pont fichiers : connected"
+  },
+  {
+   "t": "2026-08-21T07:49:52.018Z",
+   "niveau": "info",
+   "texte": "canal fichiers ouvert"
+  }
+ ],
+ "opfs_entrees": 5,
+ "etat_avant_clic": "{\"href\":\"http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA\",\"jeton\":true,\"bouton\":true}",
+ "etat_fichiers": "Lecteur « Mes Fichiers » monté sur « Mes documents ».",
+ "bien_monte": true,
+ "mesure_vm_brut": "﻿{\"racine\":\"C:\\\\Users\\\\Administrateur\\\\Mes Fichiers\",\"plan\":\"lecture:lecture\\\\4k.bin,lecture:lecture\\\\64k.bin,lecture:lecture\\\\128k.bin,lecture:lecture\\\\256k.bin\",\"repos_s\":25,\"fini\":true,\"releves\":[{\"geste\":\"lecture:lecture\\\\4k.bin\",\"verbe\":\"lecture\",\"arg\":\"lecture\\\\4k.bin\",\"debut_iso\":\"2026-08-21T07:50:01.728145Z\",\"ms\":189.90730000000002,\"octets\":4096,\"debit_kio_s\":21.1,\"ok\":true,\"fin_iso\":\"2026-08-21T07:50:01.931760Z\"},{\"geste\":\"lecture:lecture\\\\64k.bin\",\"verbe\":\"lecture\",\"arg\":\"lecture\\\\64k.bin\",\"debut_iso\":\"2026-08-21T07:50:26.961607Z\",\"ms\":2012.2669,\"octets\":65536,\"debit_kio_s\":31.8,\"ok\":true,\"fin_iso\":\"2026-08-21T07:50:28.965707Z\"},{\"geste\":\"lecture:lecture\\\\128k.bin\",\"verbe\":\"lecture\",\"arg\":\"lecture\\\\128k.bin\",\"debut_iso\":\"2026-08-21T07:50:53.965913Z\",\"ms\":4044.2945,\"octets\":131072,\"debit_kio_s\":31.6,\"ok\":true,\"fin_iso\":\"2026-08-21T07:50:58.005052Z\"},{\"geste\":\"lecture:lecture\\\\256k.bin\",\"verbe\":\"lecture\",\"arg\":\"lecture\\\\256k.bin\",\"debut_iso\":\"2026-08-21T07:51:23.005098Z\",\"ms\":10270.9941,\"ok\":false,\"erreur\":\"Exception lors de l\\u0027appel de « Read » avec « 3 » argument(s) : « Une erreur interne s’est produite.\\r\\n »\",\"erreur_type\":\"System.Management.Automation.MethodInvocationException\",\"hresult\":-2146233087,\"fin_iso\":\"2026-08-21T07:51:33.273627Z\"}]}\r\n",
+ "mesure_vm": {
+  "racine": "C:\\Users\\Administrateur\\Mes Fichiers",
+  "plan": "lecture:lecture\\4k.bin,lecture:lecture\\64k.bin,lecture:lecture\\128k.bin,lecture:lecture\\256k.bin",
+  "repos_s": 25,
+  "fini": true,
+  "releves": [
+   {
+    "geste": "lecture:lecture\\4k.bin",
+    "verbe": "lecture",
+    "arg": "lecture\\4k.bin",
+    "debut_iso": "2026-08-21T07:50:01.728145Z",
+    "ms": 189.90730000000002,
+    "octets": 4096,
+    "debit_kio_s": 21.1,
+    "ok": true,
+    "fin_iso": "2026-08-21T07:50:01.931760Z"
+   },
+   {
+    "geste": "lecture:lecture\\64k.bin",
+    "verbe": "lecture",
+    "arg": "lecture\\64k.bin",
+    "debut_iso": "2026-08-21T07:50:26.961607Z",
+    "ms": 2012.2669,
+    "octets": 65536,
+    "debit_kio_s": 31.8,
+    "ok": true,
+    "fin_iso": "2026-08-21T07:50:28.965707Z"
+   },
+   {
+    "geste": "lecture:lecture\\128k.bin",
+    "verbe": "lecture",
+    "arg": "lecture\\128k.bin",
+    "debut_iso": "2026-08-21T07:50:53.965913Z",
+    "ms": 4044.2945,
+    "octets": 131072,
+    "debit_kio_s": 31.6,
+    "ok": true,
+    "fin_iso": "2026-08-21T07:50:58.005052Z"
+   },
+   {
+    "geste": "lecture:lecture\\256k.bin",
+    "verbe": "lecture",
+    "arg": "lecture\\256k.bin",
+    "debut_iso": "2026-08-21T07:51:23.005098Z",
+    "ms": 10270.9941,
+    "ok": false,
+    "erreur": "Exception lors de l'appel de « Read » avec « 3 » argument(s) : « Une erreur interne s’est produite.\r\n »",
+    "erreur_type": "System.Management.Automation.MethodInvocationException",
+    "hresult": -2146233087,
+    "fin_iso": "2026-08-21T07:51:33.273627Z"
+   }
+  ]
+ },
+ "agent_log_octets": 40539,
+ "fenetres_application": 0,
+ "flux": [],
+ "etat_injection": {
+  "notes": [
+   {
+    "t": 1787298600483,
+    "m": "gabarit lecture/4k.bin : 4096 octets"
+   },
+   {
+    "t": 1787298600491,
+    "m": "gabarit lecture/64k.bin : 65536 octets"
+   },
+   {
+    "t": 1787298600499,
+    "m": "gabarit lecture/128k.bin : 131072 octets"
+   },
+   {
+    "t": 1787298600506,
+    "m": "gabarit lecture/256k.bin : 262144 octets"
+   }
+  ],
+  "erreurs": [],
+  "move": "function"
+ },
+ "ok": true
+}

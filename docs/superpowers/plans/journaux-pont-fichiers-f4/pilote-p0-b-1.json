@@ -1,0 +1,222 @@
+{
+ "prefixe": "F4z7KQooOQfJqh47PM0ETA",
+ "journal": [
+  "[2026-08-21T07:04:43.896Z] jeton de recette obtenu",
+  "[2026-08-21T07:04:44.303Z] chrome : Chrome/151.0.7922.169",
+  "[2026-08-21T07:04:44.504Z] navigation : http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA",
+  "[2026-08-21T07:04:48.607Z] OPFS peuple : 5 entrees",
+  "[2026-08-21T07:04:48.607Z] la page-shell est connectee : lancement de l agent",
+  "[2026-08-21T07:04:49.035Z] agent lance : Op\u0002ration r\u0002ussie : tentative d'ex\u0002cution de la t\u0003che planifi\u0002e \"guacamole-agent\".agent lancé en session interactive ; journal : /media/vm/dev/agent.log",
+  "[2026-08-21T07:04:49.037Z] etat avant le clic : {\"href\":\"http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA\",\"jeton\":true,\"bouton\":true}",
+  "[2026-08-21T07:04:49.037Z] clic sur #choisir-dossier",
+  "[2026-08-21T07:04:52.065Z] #etat-fichiers : \"Lecteur « Mes Fichiers » monté sur « Mes documents ».\"",
+  "[2026-08-21T07:05:02.806Z] gabarit listage:2000 : {\"spec\":\"listage:2000\",\"ms_peuplement\":2740,\"demande\":2000,\"presentes\":2000,\"chemin\":\"listage/2000\",\"entrees\":2000}",
+  "[2026-08-21T07:05:06.793Z] gabarit listage:3000 : {\"spec\":\"listage:3000\",\"ms_peuplement\":3987,\"demande\":3000,\"presentes\":3000,\"chemin\":\"listage/3000\",\"entrees\":3000}",
+  "[2026-08-21T07:05:11.468Z] gabarit listage:4000 : {\"spec\":\"listage:4000\",\"ms_peuplement\":4674,\"demande\":4000,\"presentes\":4000,\"chemin\":\"listage/4000\",\"entrees\":4000}",
+  "[2026-08-21T07:05:16.711Z] gabarit listage:6000 : {\"spec\":\"listage:6000\",\"ms_peuplement\":5242,\"demande\":6000,\"presentes\":6000,\"chemin\":\"listage/6000\",\"entrees\":6000}",
+  "[2026-08-21T07:05:25.145Z] gabarit listage:10000 : {\"spec\":\"listage:10000\",\"ms_peuplement\":8434,\"demande\":10000,\"presentes\":10000,\"chemin\":\"listage/10000\",\"entrees\":10000}",
+  "[2026-08-21T07:05:25.146Z] mesure VM (ASYNCHRONE) : listage:2000,listage:3000,listage:4000,listage:6000,listage:10000",
+  "[2026-08-21T07:09:05.210Z] mesure VM : 5 gestes en 220 s",
+  "[2026-08-21T07:09:05.216Z] fenetres d application : 0 — flux : []"
+ ],
+ "erreurs": [],
+ "gabarits": [
+  {
+   "spec": "listage:2000",
+   "ms_peuplement": 2740,
+   "demande": 2000,
+   "presentes": 2000,
+   "chemin": "listage/2000",
+   "entrees": 2000
+  },
+  {
+   "spec": "listage:3000",
+   "ms_peuplement": 3987,
+   "demande": 3000,
+   "presentes": 3000,
+   "chemin": "listage/3000",
+   "entrees": 3000
+  },
+  {
+   "spec": "listage:4000",
+   "ms_peuplement": 4674,
+   "demande": 4000,
+   "presentes": 4000,
+   "chemin": "listage/4000",
+   "entrees": 4000
+  },
+  {
+   "spec": "listage:6000",
+   "ms_peuplement": 5242,
+   "demande": 6000,
+   "presentes": 6000,
+   "chemin": "listage/6000",
+   "entrees": 6000
+  },
+  {
+   "spec": "listage:10000",
+   "ms_peuplement": 8434,
+   "demande": 10000,
+   "presentes": 10000,
+   "chemin": "listage/10000",
+   "entrees": 10000
+  }
+ ],
+ "mesures": [],
+ "chrome": "Chrome/151.0.7922.169",
+ "console_page": [
+  {
+   "t": "2026-08-21T07:04:44.884Z",
+   "niveau": "debug",
+   "texte": "[vite] connecting..."
+  },
+  {
+   "t": "2026-08-21T07:04:44.951Z",
+   "niveau": "debug",
+   "texte": "[vite] connected."
+  },
+  {
+   "t": "2026-08-21T07:04:51.187Z",
+   "niveau": "info",
+   "texte": "offre du pont envoyée, attente de l’agent…"
+  },
+  {
+   "t": "2026-08-21T07:04:51.195Z",
+   "niveau": "info",
+   "texte": "pont fichiers : réponse reçue"
+  },
+  {
+   "t": "2026-08-21T07:04:51.195Z",
+   "niveau": "info",
+   "texte": "pont fichiers : connecting"
+  },
+  {
+   "t": "2026-08-21T07:04:51.452Z",
+   "niveau": "info",
+   "texte": "pont fichiers : connected"
+  },
+  {
+   "t": "2026-08-21T07:04:51.637Z",
+   "niveau": "info",
+   "texte": "canal fichiers ouvert"
+  },
+  {
+   "t": "2026-08-21T07:06:51.673Z",
+   "niveau": "warning",
+   "texte": "trame fichiers non traitée {message:Failed to execute 'send' on 'RTCDataChannel': Trying to send message larger than max-message-size,stack:TypeError: Trying to send message larger than max-…:5173/src/fichiers/canal.ts?t=1787285290914:42:46}"
+  },
+  {
+   "t": "2026-08-21T07:07:38.053Z",
+   "niveau": "warning",
+   "texte": "trame fichiers non traitée {message:Failed to execute 'send' on 'RTCDataChannel': Trying to send message larger than max-message-size,stack:TypeError: Trying to send message larger than max-…:5173/src/fichiers/canal.ts?t=1787285290914:42:46}"
+  },
+  {
+   "t": "2026-08-21T07:08:25.656Z",
+   "niveau": "warning",
+   "texte": "trame fichiers non traitée {message:Failed to execute 'send' on 'RTCDataChannel': Trying to send message larger than max-message-size,stack:TypeError: Trying to send message larger than max-…:5173/src/fichiers/canal.ts?t=1787285290914:42:46}"
+  }
+ ],
+ "opfs_entrees": 5,
+ "etat_avant_clic": "{\"href\":\"http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA\",\"jeton\":true,\"bouton\":true}",
+ "etat_fichiers": "Lecteur « Mes Fichiers » monté sur « Mes documents ».",
+ "bien_monte": true,
+ "mesure_vm_brut": "﻿{\"racine\":\"C:\\\\Users\\\\Administrateur\\\\Mes Fichiers\",\"plan\":\"listage:2000,listage:3000,listage:4000,listage:6000,listage:10000\",\"repos_s\":25,\"fini\":true,\"releves\":[{\"geste\":\"listage:2000\",\"verbe\":\"listage\",\"arg\":\"2000\",\"debut_iso\":\"2026-08-21T07:05:26.341898Z\",\"ms\":13034.570300000001,\"entrees\":2000,\"demande\":2000,\"complet\":true,\"ok\":true,\"fin_iso\":\"2026-08-21T07:05:39.390647Z\"},{\"geste\":\"listage:3000\",\"verbe\":\"listage\",\"arg\":\"3000\",\"debut_iso\":\"2026-08-21T07:06:04.417748Z\",\"ms\":18652.1116,\"entrees\":3000,\"demande\":3000,\"complet\":true,\"ok\":true,\"fin_iso\":\"2026-08-21T07:06:23.061048Z\"},{\"geste\":\"listage:4000\",\"verbe\":\"listage\",\"arg\":\"4000\",\"debut_iso\":\"2026-08-21T07:06:48.066991Z\",\"ms\":20158.559800000003,\"ok\":false,\"erreur\":\"Une erreur interne s’est produite.\\r\\n\",\"erreur_type\":\"System.IO.IOException\",\"hresult\":-2147023537,\"fin_iso\":\"2026-08-21T07:07:08.228220Z\"},{\"geste\":\"listage:6000\",\"verbe\":\"listage\",\"arg\":\"6000\",\"debut_iso\":\"2026-08-21T07:07:33.231458Z\",\"ms\":20116.443600000002,\"ok\":false,\"erreur\":\"Une erreur interne s’est produite.\\r\\n\",\"erreur_type\":\"System.IO.IOException\",\"hresult\":-2147023537,\"fin_iso\":\"2026-08-21T07:07:53.347500Z\"},{\"geste\":\"listage:10000\",\"verbe\":\"listage\",\"arg\":\"10000\",\"debut_iso\":\"2026-08-21T07:08:18.362580Z\",\"ms\":20132.726000000002,\"ok\":false,\"erreur\":\"Une erreur interne s’est produite.\\r\\n\",\"erreur_type\":\"System.IO.IOException\",\"hresult\":-2147023537,\"fin_iso\":\"2026-08-21T07:08:38.494849Z\"}]}\r\n",
+ "mesure_vm": {
+  "racine": "C:\\Users\\Administrateur\\Mes Fichiers",
+  "plan": "listage:2000,listage:3000,listage:4000,listage:6000,listage:10000",
+  "repos_s": 25,
+  "fini": true,
+  "releves": [
+   {
+    "geste": "listage:2000",
+    "verbe": "listage",
+    "arg": "2000",
+    "debut_iso": "2026-08-21T07:05:26.341898Z",
+    "ms": 13034.570300000001,
+    "entrees": 2000,
+    "demande": 2000,
+    "complet": true,
+    "ok": true,
+    "fin_iso": "2026-08-21T07:05:39.390647Z"
+   },
+   {
+    "geste": "listage:3000",
+    "verbe": "listage",
+    "arg": "3000",
+    "debut_iso": "2026-08-21T07:06:04.417748Z",
+    "ms": 18652.1116,
+    "entrees": 3000,
+    "demande": 3000,
+    "complet": true,
+    "ok": true,
+    "fin_iso": "2026-08-21T07:06:23.061048Z"
+   },
+   {
+    "geste": "listage:4000",
+    "verbe": "listage",
+    "arg": "4000",
+    "debut_iso": "2026-08-21T07:06:48.066991Z",
+    "ms": 20158.559800000003,
+    "ok": false,
+    "erreur": "Une erreur interne s’est produite.\r\n",
+    "erreur_type": "System.IO.IOException",
+    "hresult": -2147023537,
+    "fin_iso": "2026-08-21T07:07:08.228220Z"
+   },
+   {
+    "geste": "listage:6000",
+    "verbe": "listage",
+    "arg": "6000",
+    "debut_iso": "2026-08-21T07:07:33.231458Z",
+    "ms": 20116.443600000002,
+    "ok": false,
+    "erreur": "Une erreur interne s’est produite.\r\n",
+    "erreur_type": "System.IO.IOException",
+    "hresult": -2147023537,
+    "fin_iso": "2026-08-21T07:07:53.347500Z"
+   },
+   {
+    "geste": "listage:10000",
+    "verbe": "listage",
+    "arg": "10000",
+    "debut_iso": "2026-08-21T07:08:18.362580Z",
+    "ms": 20132.726000000002,
+    "ok": false,
+    "erreur": "Une erreur interne s’est produite.\r\n",
+    "erreur_type": "System.IO.IOException",
+    "hresult": -2147023537,
+    "fin_iso": "2026-08-21T07:08:38.494849Z"
+   }
+  ]
+ },
+ "agent_log_octets": 58130,
+ "fenetres_application": 0,
+ "flux": [],
+ "etat_injection": {
+  "notes": [
+   {
+    "t": 1787295902671,
+    "m": "gabarit listage/2000 : 2000 entrees"
+   },
+   {
+    "t": 1787295906626,
+    "m": "gabarit listage/3000 : 3000 entrees"
+   },
+   {
+    "t": 1787295911333,
+    "m": "gabarit listage/4000 : 4000 entrees"
+   },
+   {
+    "t": 1787295916510,
+    "m": "gabarit listage/6000 : 6000 entrees"
+   },
+   {
+    "t": 1787295924423,
+    "m": "gabarit listage/10000 : 10000 entrees"
+   }
+  ],
+  "erreurs": [],
+  "move": "function"
+ },
+ "ok": true
+}

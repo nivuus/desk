@@ -1,0 +1,51 @@
+=== DIAGNOSTIC : d'ou vient le plafond de ~33 Kio/s du canal du pont ? ===
+Lecture du code : la boucle de `pont::transport` lit UN SEUL datagramme
+par tour (socket.recv_from, non bloquant) et, avant chaque lecture, BLOQUE
+jusqu'a ATTENTE_MAX = 20 ms dans sortant.recv_timeout.
+Arithmetique : 1200 o par tour / 35 ms ~ 33 Kio/s. C'est ce qui est mesure.
+⚠️ CECI EST UNE LECTURE DU CODE CORROBOREE PAR L'ARITHMETIQUE, PAS UNE MESURE.
+La mutation ci-dessous la transforme en mesure : ATTENTE_MAX 20 ms -> 1 ms.
+
+sha256 source AVANT : 3f64553910f56627100f655d086dbfe9e21ce20c7d0acf7ccd6bc2f3af2f6042  agent/src/pont/transport.rs
+38:const ATTENTE_MAX: Duration = Duration::from_millis(20);
+[diff, NON VIDE]
+38c38,39
+< const ATTENTE_MAX: Duration = Duration::from_millis(20);
+---
+> const ATTENTE_MAX: Duration = Duration::from_millis(1);
+> const _MARQUE_DIAG_F4: &str = "BINAIRE DIAG F4 : ATTENTE_MAX RAMENEE A 1 ms, jamais fusionne";
+binaire DIAG : 10708480 o, s'identifie -> 0
+⚠️ PREMIER JET : le marqueur etait un `const _MARQUE: &str` — ELIMINE PAR LE
+   COMPILATEUR faute d'appelant, donc absent du binaire (grep -> 0). Une
+   constante morte n'identifie rien : il faut une reference VIVANTE.
+binaire DIAG : 10711040 o, s'identifie -> 1
+
+--- le binaire qui a tourne s'identifie ? ---
+2026-08-21T07:57:25.571271Z  WARN agent::pont::transport: BINAIRE DIAG F4 : ATTENTE_MAX RAMENEE A 1 ms, jamais fusionne
+
+--- ATTENTE_MAX = 1 ms ---
+          lecture\4k.bin      101.1 ms  4096 o  39.5 Kio/s  ok=True
+         lecture\64k.bin     1024.7 ms  65536 o  62.5 Kio/s  ok=True
+        lecture\128k.bin     1966.6 ms  131072 o  65.1 Kio/s  ok=True
+        lecture\256k.bin     4009.9 ms  262144 o  63.8 Kio/s  ok=True
+--- ATTENTE_MAX = 20 ms (le VERT, diag-morceaux-1) ---
+          lecture\4k.bin      189.9 ms  4096 o  21.1 Kio/s  ok=True
+         lecture\64k.bin     2012.3 ms  65536 o  31.8 Kio/s  ok=True
+        lecture\128k.bin     4044.3 ms  131072 o  31.6 Kio/s  ok=True
+        lecture\256k.bin    10271.0 ms  None o  None Kio/s  ok=False
+
+--- RESTAURATION ---
+[diff, VIDE attendu]
+VIDE
+sha256 source APRES : 3f64553910f56627100f655d086dbfe9e21ce20c7d0acf7ccd6bc2f3af2f6042  agent/src/pont/transport.rs
+git status --porcelain agent/ : []
+SECOND REBATISSAGE : 10708480 o
+  'BINAIRE DIAG F4' -> 0  (0 attendu)
+  'BINAIRE TEMOIN R4' -> 0  (0 attendu)
+  'banc de latence du pont ARME' -> 1  (1 attendu)
+
+VERDICT : ATTENTE_MAX est UNE cause, et une cause MAJEURE — le debit DOUBLE
+et le rang 256 Kio, qui echouait au budget DELAI_LIRE, PASSE. Mais le
+facteur est 2, PAS 20 : a 1 ms le plafond est ~64 Kio/s. Le plafond vient
+donc de la structure « UN datagramme par tour de boucle », dont ATTENTE_MAX
+est le terme dominant SANS EN ETRE LE SEUL. F4 mesure ; il ne corrige pas.

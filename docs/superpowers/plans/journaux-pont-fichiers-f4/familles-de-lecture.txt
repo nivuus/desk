@@ -1,0 +1,31 @@
+=== F4 — familles de lecture des journaux, RELEVEES PAR LA COMMANDE ===
+(python, jamais `grep -qa $'\000'` : ce motif cherche la CHAINE VIDE et
+ matche TOUT — piege releve par F2.)
+
+--- UTF-8, ANSI=non, CR=non, octets NUL=non — 70 fichier(s)
+    rien a faire : se grep a plat
+      diag-morceaux-en-vol.log  (ansi=0, cr=0, nul=0)
+      familles-de-lecture.txt  (ansi=0, cr=0, nul=0)
+      mesure-diag-attente1ms-trace.txt  (ansi=0, cr=0, nul=0)
+      mesure-diag-envol1-trace.txt  (ansi=0, cr=0, nul=0)
+      mesure-diag-morceaux-1-trace.txt  (ansi=0, cr=0, nul=0)
+      mesure-diag-morceaux-2-trace.txt  (ansi=0, cr=0, nul=0)
+      … et 64 autre(s)
+--- UTF-8, ANSI=non, CR=OUI, octets NUL=non — 24 fichier(s)
+    rien a faire : se grep a plat
+      agent-diag-attente1ms-plat.log  (ansi=0, cr=123, nul=0)
+      agent-diag-envol1-plat.log  (ansi=0, cr=122, nul=0)
+      agent-diag-morceaux-1-plat.log  (ansi=0, cr=131, nul=0)
+      agent-diag-morceaux-2-plat.log  (ansi=0, cr=151, nul=0)
+      agent-m1-enum-1-plat.log  (ansi=0, cr=238, nul=0)
+      agent-m1-enum-2-plat.log  (ansi=0, cr=238, nul=0)
+      … et 18 autre(s)
+--- UTF-8, ANSI=OUI, CR=OUI, octets NUL=non — 22 fichier(s)
+    ⚠️ `sed 's/\x1b\[[0-9;]*m//g'` avant tout grep — ou lire le jumeau `-plat`
+      agent-diag-attente1ms.log  (ansi=1904, cr=123, nul=0)
+      agent-diag-envol1.log  (ansi=1896, cr=122, nul=0)
+      agent-diag-morceaux-1.log  (ansi=2016, cr=131, nul=0)
+      agent-diag-morceaux-2.log  (ansi=2288, cr=151, nul=0)
+      agent-m1-enum-1.log  (ansi=3188, cr=238, nul=0)
+      agent-m1-enum-2.log  (ansi=3188, cr=238, nul=0)
+      … et 16 autre(s)

@@ -1,0 +1,15 @@
+[2026-08-21T08:13:50.330Z] jeton de recette obtenu
+[2026-08-21T08:13:50.695Z] chrome : Chrome/151.0.7922.169
+[2026-08-21T08:13:50.929Z] navigation : http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA
+[2026-08-21T08:13:55.020Z] OPFS peuple : 5 entrees
+[2026-08-21T08:13:55.021Z] la page-shell est connectee : lancement de l agent
+[2026-08-21T08:13:55.555Z] agent lance : Opration russie : tentative d'excution de la tche planifie "guacamole-agent".agent lancé en session interactive ; journal : /media/vm/dev/agent.log
+[2026-08-21T08:13:55.558Z] etat avant le clic : {"href":"http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA","jeton":true,"bouton":true}
+[2026-08-21T08:13:55.558Z] clic sur #choisir-dossier
+[2026-08-21T08:13:58.585Z] #etat-fichiers : "Lecteur « Mes Fichiers » monté sur « Mes documents »."
+[2026-08-21T08:14:06.610Z] gabarit f:mutation:1m.bin:1048576 : {"spec":"f:mutation:1m.bin:1048576","ms_peuplement":24,"chemin":"mutation/1m.bin","taille":1048576}
+[2026-08-21T08:14:06.632Z] gabarit f:mutation:64k.bin:65536 : {"spec":"f:mutation:64k.bin:65536","ms_peuplement":22,"chemin":"mutation/64k.bin","taille":65536}
+[2026-08-21T08:14:06.632Z] mesure VM (ASYNCHRONE) : renommer:mutation\64k.bin>64k-renomme.bin,renommer:mutation\1m.bin>1m-renomme.bin
+[2026-08-21T08:14:59.879Z] mesure VM : 2 gestes en 53 s
+[2026-08-21T08:14:59.888Z] fenetres d application : 0 — flux : []
+[2026-08-21T08:14:59.891Z] resultat ecrit : /tmp/f4/pilote-t12-temoin-2.json

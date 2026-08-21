@@ -1,0 +1,140 @@
+{
+ "prefixe": "F4z7KQooOQfJqh47PM0ETA",
+ "journal": [
+  "[2026-08-21T08:07:21.411Z] jeton de recette obtenu",
+  "[2026-08-21T08:07:21.976Z] chrome : Chrome/151.0.7922.169",
+  "[2026-08-21T08:07:22.164Z] navigation : http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA",
+  "[2026-08-21T08:07:26.187Z] OPFS peuple : 5 entrees",
+  "[2026-08-21T08:07:26.187Z] la page-shell est connectee : lancement de l agent",
+  "[2026-08-21T08:07:26.656Z] agent lance : Op\u0002ration r\u0002ussie : tentative d'ex\u0002cution de la t\u0003che planifi\u0002e \"guacamole-agent\".agent lancé en session interactive ; journal : /media/vm/dev/agent.log",
+  "[2026-08-21T08:07:26.659Z] etat avant le clic : {\"href\":\"http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA\",\"jeton\":true,\"bouton\":true}",
+  "[2026-08-21T08:07:26.660Z] clic sur #choisir-dossier",
+  "[2026-08-21T08:07:29.700Z] #etat-fichiers : \"Lecteur « Mes Fichiers » monté sur « Mes documents ».\"",
+  "[2026-08-21T08:07:37.759Z] gabarit f:mutation:1m.bin:1048576 : {\"spec\":\"f:mutation:1m.bin:1048576\",\"ms_peuplement\":57,\"chemin\":\"mutation/1m.bin\",\"taille\":1048576}",
+  "[2026-08-21T08:07:37.765Z] gabarit f:mutation:64k.bin:65536 : {\"spec\":\"f:mutation:64k.bin:65536\",\"ms_peuplement\":6,\"chemin\":\"mutation/64k.bin\",\"taille\":65536}",
+  "[2026-08-21T08:07:37.765Z] mesure VM (ASYNCHRONE) : renommer:mutation\\64k.bin>64k-renomme.bin,renommer:mutation\\1m.bin>1m-renomme.bin",
+  "[2026-08-21T08:08:31.058Z] mesure VM : 2 gestes en 53 s",
+  "[2026-08-21T08:08:31.062Z] fenetres d application : 0 — flux : []"
+ ],
+ "erreurs": [],
+ "gabarits": [
+  {
+   "spec": "f:mutation:1m.bin:1048576",
+   "ms_peuplement": 57,
+   "chemin": "mutation/1m.bin",
+   "taille": 1048576
+  },
+  {
+   "spec": "f:mutation:64k.bin:65536",
+   "ms_peuplement": 6,
+   "chemin": "mutation/64k.bin",
+   "taille": 65536
+  }
+ ],
+ "mesures": [],
+ "chrome": "Chrome/151.0.7922.169",
+ "console_page": [
+  {
+   "t": "2026-08-21T08:07:22.336Z",
+   "niveau": "debug",
+   "texte": "[vite] connecting..."
+  },
+  {
+   "t": "2026-08-21T08:07:22.380Z",
+   "niveau": "debug",
+   "texte": "[vite] connected."
+  },
+  {
+   "t": "2026-08-21T08:07:28.817Z",
+   "niveau": "info",
+   "texte": "offre du pont envoyée, attente de l’agent…"
+  },
+  {
+   "t": "2026-08-21T08:07:28.823Z",
+   "niveau": "info",
+   "texte": "pont fichiers : réponse reçue"
+  },
+  {
+   "t": "2026-08-21T08:07:28.824Z",
+   "niveau": "info",
+   "texte": "pont fichiers : connecting"
+  },
+  {
+   "t": "2026-08-21T08:07:29.084Z",
+   "niveau": "info",
+   "texte": "pont fichiers : connected"
+  },
+  {
+   "t": "2026-08-21T08:07:29.271Z",
+   "niveau": "info",
+   "texte": "canal fichiers ouvert"
+  },
+  {
+   "t": "2026-08-21T08:07:39.047Z",
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 3 : « 64k-renomme.bin » n’existe pas"
+  },
+  {
+   "t": "2026-08-21T08:08:04.190Z",
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 8 : « 1m-renomme.bin » n’existe pas"
+  }
+ ],
+ "opfs_entrees": 5,
+ "etat_avant_clic": "{\"href\":\"http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA\",\"jeton\":true,\"bouton\":true}",
+ "etat_fichiers": "Lecteur « Mes Fichiers » monté sur « Mes documents ».",
+ "bien_monte": true,
+ "mesure_vm_brut": "﻿{\"racine\":\"C:\\\\Users\\\\Administrateur\\\\Mes Fichiers\",\"plan\":\"renommer:mutation\\\\64k.bin\\u003e64k-renomme.bin,renommer:mutation\\\\1m.bin\\u003e1m-renomme.bin\",\"repos_s\":25,\"fini\":true,\"releves\":[{\"geste\":\"renommer:mutation\\\\64k.bin\\u003e64k-renomme.bin\",\"verbe\":\"renommer\",\"arg\":\"mutation\\\\64k.bin\\u003e64k-renomme.bin\",\"debut_iso\":\"2026-08-21T08:07:38.981919Z\",\"ms\":159.192,\"source\":\"mutation\\\\64k.bin\",\"cible\":\"64k-renomme.bin\",\"cible_presente\":true,\"source_presente\":false,\"ok\":true,\"fin_iso\":\"2026-08-21T08:07:39.154161Z\"},{\"geste\":\"renommer:mutation\\\\1m.bin\\u003e1m-renomme.bin\",\"verbe\":\"renommer\",\"arg\":\"mutation\\\\1m.bin\\u003e1m-renomme.bin\",\"debut_iso\":\"2026-08-21T08:08:04.175690Z\",\"ms\":125.59830000000001,\"source\":\"mutation\\\\1m.bin\",\"cible\":\"1m-renomme.bin\",\"cible_presente\":true,\"source_presente\":false,\"ok\":true,\"fin_iso\":\"2026-08-21T08:08:04.300745Z\"}]}\r\n",
+ "mesure_vm": {
+  "racine": "C:\\Users\\Administrateur\\Mes Fichiers",
+  "plan": "renommer:mutation\\64k.bin>64k-renomme.bin,renommer:mutation\\1m.bin>1m-renomme.bin",
+  "repos_s": 25,
+  "fini": true,
+  "releves": [
+   {
+    "geste": "renommer:mutation\\64k.bin>64k-renomme.bin",
+    "verbe": "renommer",
+    "arg": "mutation\\64k.bin>64k-renomme.bin",
+    "debut_iso": "2026-08-21T08:07:38.981919Z",
+    "ms": 159.192,
+    "source": "mutation\\64k.bin",
+    "cible": "64k-renomme.bin",
+    "cible_presente": true,
+    "source_presente": false,
+    "ok": true,
+    "fin_iso": "2026-08-21T08:07:39.154161Z"
+   },
+   {
+    "geste": "renommer:mutation\\1m.bin>1m-renomme.bin",
+    "verbe": "renommer",
+    "arg": "mutation\\1m.bin>1m-renomme.bin",
+    "debut_iso": "2026-08-21T08:08:04.175690Z",
+    "ms": 125.59830000000001,
+    "source": "mutation\\1m.bin",
+    "cible": "1m-renomme.bin",
+    "cible_presente": true,
+    "source_presente": false,
+    "ok": true,
+    "fin_iso": "2026-08-21T08:08:04.300745Z"
+   }
+  ]
+ },
+ "agent_log_octets": 29956,
+ "fenetres_application": 0,
+ "flux": [],
+ "etat_injection": {
+  "notes": [
+   {
+    "t": 1787299657758,
+    "m": "gabarit mutation/1m.bin : 1048576 octets"
+   },
+   {
+    "t": 1787299657764,
+    "m": "gabarit mutation/64k.bin : 65536 octets"
+   }
+  ],
+  "erreurs": [],
+  "move": "function"
+ },
+ "ok": true
+}
