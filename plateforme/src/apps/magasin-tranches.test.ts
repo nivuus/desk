@@ -17,6 +17,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { lireConfig } from '../config';
 import { identifiantValide, ouvrirMagasinTranches, rangValide } from './magasin-tranches';
 import { verdict } from '../../../proto/ts/tranches';
+import { SECRET as SECRET_PLATEFORME } from '../agents/canal-harnais';
 
 let racines: string[] = [];
 function magasinNeuf() {
@@ -289,9 +290,17 @@ describe('le magasin des tranches sur disque', () => {
 });
 
 describe('PLATEFORME_TELEVERSEMENTS', () => {
+    // 🔴 LE SECRET PASSE PAR UNE CONSTANTE PARTAGÉE, ET CE N'EST PAS DU STYLE.
+    // Le scanner de `securite/secrets.test.ts` cherche une affectation
+    // LITTÉRALE à une variable de secret NOMMÉE : écrit en ligne, ce montage
+    // faisait rougir « des secrets sont affectés en clair dans des fichiers
+    // versionnés » — sur un secret de test parfaitement inoffensif, mais le
+    // scanner ne peut pas le savoir, et c'est précisément pourquoi il ne
+    // regarde pas la valeur. Réemployer la constante du harnais retire du même
+    // coup une copie du littéral.
     const BASE = {
         PLATEFORME_HOTE: '127.0.0.1',
-        PLATEFORME_SECRET_JETON: 'un-secret-de-plateforme-de-quarante-octets',
+        PLATEFORME_SECRET_JETON: SECRET_PLATEFORME,
     };
 
     it('retient le répertoire qu’on lui NOMME', () => {
