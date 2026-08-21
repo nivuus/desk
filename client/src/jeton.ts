@@ -66,6 +66,19 @@ export function vider(coffre: Coffre): void {
     coffre.removeItem(CLE_RAFRAICHISSEMENT);
 }
 
+/// Pose le seul jeton d'accès, et EFFACE celui de rafraîchissement.
+///
+/// 🔴 L'EFFACEMENT EST LE POINT, PAS UN NETTOYAGE DE CONFORT. Le mode
+/// `pomerium` ne délivre aucun jeton de rafraîchissement — à l'expiration, le
+/// client rappelle `GET /auth/moi`, et le cookie du proxy vit 8640 h. Un jeton
+/// laissé par un montage `motdepasse` antérieur serait présenté à une route
+/// qui rend désormais 404, et le symptôme serait une déconnexion inexpliquée
+/// dix minutes après chaque ouverture de page.
+export function poserAcces(coffre: Coffre, acces: string): void {
+    coffre.setItem(CLE_ACCES, acces);
+    coffre.removeItem(CLE_RAFRAICHISSEMENT);
+}
+
 export function jetonAcces(coffre: Coffre | undefined = coffreParDefaut()): string | undefined {
     return coffre?.getItem(CLE_ACCES) ?? undefined;
 }
