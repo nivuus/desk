@@ -14100,6 +14100,26 @@ comme un préalable EXTERNE et non comme une dépendance de tâche.**
 **Ce qui est donc établi est du code, des tests d'hôte, des rouges jouées et
 DEUX SONDES MESURÉES HORS VM. Rien du produit en marche à N fenêtres.**
 
+> 🔵 **LE BLOCAGE A ÉTÉ LEVÉ À LA TOUTE FIN DE LA RONDE, ET IL FAUT LE DIRE POUR
+> QUE CE DOCUMENT NE MENTE PAS PAR VIEILLISSEMENT.** F3 a clos son sous-bloc
+> (commits `30bc42e` puis `6f0aaa5`), `git status --porcelain` est redevenu
+> **vide**, et `Get-Process agent` sur la VM rend **0** — la VM est libre.
+> **Cela s'est produit APRÈS que tout le travail hôte de P3 était fait et
+> commité**, et la recette n'a donc pas été jouée pour autant.
+>
+> **Ce qu'il reste à faire est donc entièrement débloqué**, et son montage est
+> nommé : un service de plateforme au bon numéro de version, un compte
+> (`npm run admin:utilisateur`), un agent enrôlé (`npm run admin:agent`), une VM
+> attribuée (`npm run admin:attribuer`), un serveur `vite` pour le client, un
+> fichier d'identité **hors dépôt** portant `AGENT_VM`, `AGENT_SECRET`,
+> `PREFIXE_VM`, `RECETTE_EMAIL` et `RECETTE_MOTDEPASSE`, puis
+> `cargo clean --release -p proto -p agent` et `scripts/build-agent.sh` —
+> **jamais** avant d'avoir sourcé `.env`, faute de quoi il s'arrête EN SILENCE
+> après « sources synchronisées ».
+>
+> ⚠️ **Et le pilote n'a jamais tourné** : sa première exécution sera aussi son
+> premier débogage.
+
 ### 🔴 ② LE FAIT QUI GOUVERNE : ④ N'EST PAS MESURABLE, ET LA CAUSE N'EST PAS LE `--headless`
 
 Sonde **S1**, hors VM, hors agent, **deux exécutions aux relevés identiques**
