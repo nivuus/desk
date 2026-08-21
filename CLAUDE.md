@@ -2927,6 +2927,7 @@ l'**enfant** ; et `main.rs:268` rend la main à `capteur::executer` avant que `d
 | `AUDIO_PERIPHERIQUE=<nom ou identifiant>` | **Correction « A-bis », 19 août 2026** — **variable de PRODUIT**, pas de banc. Désigne le point de terminaison de **rendu** que le loopback de session doit capter, au lieu de subir le rendu **par défaut** de Windows. ⚠️ **Convention VALUÉE** — celle de `MULTIFENETRE_SORTIE` et `BUDGET_BPS`, **pas** celle de `PLEIN_ECRAN` : **absente ou vide, le comportement est EXACTEMENT celui d'avant** (le défaut de Windows). Trois critères, dans cet ordre : **identifiant d'endpoint** exact (`IMMDevice::GetId`, forme `{0.0.0.00000000}.{guid}` — stable, opaque), **nom convivial** exact (`PKEY_Device_FriendlyName`), puis **sous-chaîne insensible à la casse**. 🔵 **Une sous-chaîne AMBIGUË refuse de trancher** (`Choix::Ambigu`) au lieu de prendre le premier : prendre le premier serait retomber sur un **rang d'énumération** par la porte de derrière — la leçon des index DXGI de D1, payée une fois, appliquée ici d'avance. Règle **PURE** dans `agent/src/wasapi/peripherique.rs` (aucun `cfg`, éprouvée sur l'hôte), moitié COM dans `agent/src/wasapi/rendu.rs`. Lue par `LoopbackCapture::open`, donc **le mode MONO-FENÊTRE et la sonde `AUDIO_PROBE` seulement** — `pour_processus` (multi-fenêtres, D7+) **ne résout aucun endpoint** et n'est pas concerné. Transmise par `scripts/run-agent.sh`. **Le périphérique réellement retenu est JOURNALISÉ à chaque ouverture**, et tout repli l'est aussi : jamais silencieux |
 | `MICRO_MESURE=1` | **Chantier E, bloc E1** — **variable de BANC, jamais une configuration livrée**. Arme le **puits de mesure du micro** (`agent/src/demarrage/micro.rs`) : un consommateur qui joue le rôle du futur fil WASAPI d'E2, retire du tampon à la cadence réelle et journalise ce qu'il obtient. ⚠️ **Convention `=1` qui ARME** — et non `=0` qui désarmerait : le puits n'est **pas** livré, donc c'est sa présence qu'il faut déclarer, pas son absence. Trace de contrôle, dont **l'absence prouve que la variable n'a pas atteint le processus** : `micro de mesure ARME (MICRO_MESURE=1) : instrument de banc, jamais une configuration livree`. Trace périodique : `micro mesuré`, portant `crete` et `frequence_hz` **côte à côte** (une crête sans fréquence est du bruit), `plc` et `plc_plafonnees` **côte à côte** (le second est **disjoint** du premier — c'est ce qui rend le plafond de dissimulation observable), plus `deposees`, `famines`, `occupation_ms` et `occupation_max_ms`. Transmise par `scripts/run-agent.sh` |
 | `PRESSE_PAPIER=0` | **Sous-projet ① Divers — presse-papier, sous-bloc P1** (20 août 2026) — **variable de PRODUIT**, pas de banc. Désarme le mécanisme ENTIER : `Sondeur::tour` teste le garde **AVANT toute lecture**, donc `PRESSE_PAPIER=0` empêche jusqu'à la lecture du compteur de séquence, pas seulement l'envoi. ⚠️ **`=0` DÉSACTIVE ; une simple PRÉSENCE n'active pas** — convention d'`AUDIO`, `PLEIN_ECRAN`, `SUPERVISEUR`, `CAPTEUR` et `PART_SONDAGE`, et pour la même raison : tester `is_ok()` armerait le mécanisme en écrivant `PRESSE_PAPIER=0` pour le couper. Lue dans le **capteur** (le propriétaire, D1), par `OnceLock`. Transmise par `scripts/run-agent.sh:37`. Trace, **émise seulement si désarmé** : `presse-papier DESARME (PRESSE_PAPIER=0) : le contenu copie dans la VM n'est plus pousse au navigateur` (`warn!`). 🔴 **LE CONTRÔLE QUI VAUT EST LE ZÉRO DE MESSAGES, PAS LA TRACE** : la trace prouve que la variable a atteint le processus, elle ne prouve pas que le mécanisme est coupé — et un zéro seul serait rendu par un produit entièrement en panne. C'est le bras SANS la variable, avec ses 4 messages, qui rend le zéro discriminant (2 exécutions par bras, recette P1) |
+| `PRESSE_PAPIER_GARDE=0` | **Sous-projet ① Divers — presse-papier, sous-bloc P2** (21 août 2026) — **variable de BANC, jamais une configuration livrée**, même statut que `PART_SONDAGE`. Neutralise `Sondeur::apres_notre_ecriture` **EN ENTIER**. ⚠️ **`=0` DÉSARME ; une simple présence n'arme pas** — convention de `PRESSE_PAPIER` deux lignes plus haut, et **inverse de `PRESSE_PAPIER_SONDE`** juste en dessous : les trois sont écrites côte à côte pour qu'on ne les confonde pas. Lue par `OnceLock` dans le **propriétaire** (le capteur), via `crate::presse_papier::gardes_armes`. Transmise par `scripts/run-agent.sh`. Trace, **émise seulement si désarmé** : `garde anti-echo du presse-papier DESARME (PRESSE_PAPIER_GARDE=0) : bras de banc, jamais une configuration livree` (`warn!`). 🔴 **ELLE DÉSARME LES DEUX GARDES DE D5, PAS LE SEUL N°1, ET C'EST LE POINT.** La spec prescrivait de désarmer le n°1 et d'attendre un compte « qui croît sans borne » ; **il reste à UN**, et la spec avait prévu ce cas. Sans armement du n°2, le `Sondeur` relit notre texte, l'annonce **une** fois, puis pose lui-même `dernier_emis` et `reference` — au tour suivant `observer` sort dès sa première ligne. Et **rien ne relance** : le client n'émet vers l'agent que sur un `paste`, donc sur un GESTE HUMAIN. Désarmer le seul n°1 rendrait donc **zéro message aussi**, et la rouge du critère ④ serait vacueuse une seconde fois. 🔵 **Conséquence de conception, qui contredit une phrase de D5** : dans l'architecture livrée, **aucune oscillation auto-entretenue n'est possible** — ce que les gardes suppriment est **un aller-retour PAR COLLAGE**, pas une divergence. 🔵 **MESURÉE des deux côtés (recette P2, 2 exécutions par bras)** : bras armé **0, 0, 0, 0** messages sur 4 collages ; bras désarmé **1, 2, 3, 4**, chacun portant exactement le texte qu'on venait de coller. ⚠️ **La trace ne prouve que l'arrivée de la variable au processus** (elle vaut 1 dans les deux journaux désarmés et 0 dans les deux armés) ; c'est le compte de messages qui prouve l'effet |
 | `PRESSE_PAPIER_SONDE=<secondes>` | **Sous-projet ① Divers — presse-papier, sous-bloc P1, sonde P0** — **variable de BANC, jamais une configuration livrée**. ⚠️ **Convention INVERSE de la ligne ci-dessus, et les deux sont écrites côte à côte pour qu'on ne les confonde pas : ABSENTE = DÉSARMÉE**, présente = armée (la valeur est une durée, pas un interrupteur). Mesure les cinq questions de la porte éliminatoire sur `GetClipboardSequenceNumber` (`agent/src/diagnostics/presse_papier.rs`). Transmise par `scripts/run-agent.sh:89`. ⚠️ **Elle ÉCRIT le presse-papier de la VM** en phases C et D, et le détruit donc ; le produit, lui, ne l'écrit jamais en P1. 🔴 **Ne jamais la poser en même temps que `SUPERVISEUR`** : `main()` appelle `diagnostics::aiguiller()` en `main.rs:172`, AVANT la branche `CAPTEUR` (`:180`) et avant `PONT` (`:279`) — **quel que soit le mode demandé**, un agent qui la porte exécute la sonde et s'arrête. ⚠️ **La menace que la divergence E10 du plan lui prêtait est FAUSSE** : elle annonçait un capteur exécutant la sonde pendant qu'un superviseur vivant le relance en boucle, ce qui supposerait que l'enfant porte la variable et pas son père — or `Command` hérite de l'environnement, donc le père se serait arrêté le premier. La consigne ne change pas, sa raison si |
 | `PONT_ECRITURE=0` | **Sous-projet ③ Pont fichiers, sous-bloc F2** (21 août 2026) — **variable de BANC, jamais une configuration livrée**. Désarme la **POUSSÉE** d'écriture : le pont continue de détecter, de journaliser et de compter les écritures dues, **et n'en pousse aucune**. ⚠️ **`=0` DÉSARME ; une simple PRÉSENCE n'active pas** — convention d'`AUDIO`, `PLEIN_ECRAN`, `SUPERVISEUR`, `CAPTEUR`, `PART_SONDAGE`, `PRESSE_PAPIER`, `APPS` et `PONT`. 🔴 **Le PLAN de F2 se contredisait en une phrase à son sujet** : il écrivait « `=0` désarme » ET prescrivait `matches!(…, Ok(v) if v != "0")`, **qui rend `false` en l'ABSENCE de la variable** — pris à la lettre, il aurait livré un pont **MUET PAR DÉFAUT**, sans un `ERROR`. Lue dans le **pont** (`agent/src/pont.rs`). Transmise par `scripts/run-agent.sh`, **par une tâche dédiée**. Trace, **émise seulement si désarmé** : `poussee d'ecriture DESARMEE (PONT_ECRITURE=0) : bras de banc, jamais une configuration livree` (`warn!`). 🔴 **LE CONTRÔLE QUI VAUT EST LE ZÉRO DE POUSSÉES, PAS LA TRACE** : un zéro seul serait rendu par un produit entièrement en panne, et c'est le bras SANS la variable, avec ses six acquittements, qui le rend discriminant |
 | `MICRO=0` | **Chantier E, bloc E2** — **variable de PRODUIT**. Désarme le microphone **entier** : aucun puits n'est posé, `micro_disponible()` reste faux, `ready` porte `mic: false`, et le bouton du navigateur ne paraît pas. ⚠️ **`=0` DÉSARME ; une simple présence n'arme pas** — convention d'`AUDIO`, `PLEIN_ECRAN`, `SUPERVISEUR`, `CAPTEUR`, `PRESSE_PAPIER` et `PART_SONDAGE`, et pour la même raison : tester `is_ok()` allumerait le micro chez qui écrit `MICRO=0` pour le couper. Un test garde le prédicat (`demarrage/micro.rs::arme_micro`). Trace, **émise au branchement** donc avant toute session : `micro DESARME (MICRO=0)`. **Mesurée** (recette E2) : bouton caché sur une session `ice=connected`, **0** ligne `windows_micro`, juge à `AMPLITUDE=0,000000` |
@@ -13739,6 +13740,290 @@ qu'assorti de son arbre** — leçon de D11, repayée ici.
 10. ⛔ **La lacune de nommage d'`IssueLancement` reste OUVERTE.** G2 ajoute un
     second témoin (`SourceMax::NonMesuree`, deux mots) sans refermer celle-là.
 
+
+---
+
+## 📋 Sous-projet ① Divers — presse-papier, sous-bloc **P2** : le navigateur colle dans la VM (21 août 2026)
+
+> ⚠️ **CE P2 N'EST PAS CELUI DE LA PLATEFORME.** Le sous-projet ⑤ a aussi un
+> sous-bloc « P2 » (§ « Sous-projet ⑤ Plateforme — sous-bloc P2 », plus haut),
+> clos et sans rapport. Celui-ci est le **second sous-bloc du chantier
+> presse-papier**, et il suit le P1 du même chantier.
+
+Résultats complets :
+`docs/superpowers/plans/2026-08-20-presse-papier-p2-resultats.md`.
+Plan : `docs/superpowers/plans/2026-08-20-presse-papier-p2.md`.
+Conception : `docs/superpowers/specs/2026-08-19-presse-papier-design.md`.
+Journaux : `docs/superpowers/plans/journaux-presse-papier-p2/` — **TROIS
+familles de lecture**, relevées par `file` et `grep` **après la dernière
+écriture** (`familles-de-lecture.txt`, versé) :
+
+| Famille | État | Ce qu'il faut faire |
+| --- | --- | --- |
+| les quatre `agent-*.log` **bruts** | UTF-8, **CRLF**, **séquences ANSI PRÉSENTES** | `sed 's/\x1b\[[0-9;]*m//g'` — ou lire le `-plat` jumeau, **versé pour chacun** |
+| les quatre `agent-*-plat.log` | UTF-8, CRLF, ANSI retirées | rien |
+| les JSON (§0 et recette), `familles-de-lecture.txt`, l'instrument | UTF-8, LF | rien |
+
+✅ **AUCUN octet NUL dans aucun fichier**, vérifié par balayage — contrairement
+à D10 (558) et à P1 (33 à 36 dans ses journaux de pilote), où `grep` sans `-a`
+rendait une sortie **vide** indiscernable d'un zéro.
+
+P2 livre le sens **navigateur → VM** : l'utilisateur copie sur sa machine,
+colle par `Ctrl+V` dans la fenêtre de session, et le texte arrive dans
+l'application Windows.
+
+### ① Le préalable éliminatoire est MESURÉ, et il est FAVORABLE
+
+La spec rangeait en tête de P2 un contrôle qu'elle déclarait capable de bloquer
+le sous-bloc entier : *l'événement `paste` de confiance parvient-il quand le
+focus est sur le `<video>` ?* **Mesuré le 20 août 2026, verdict FAVORABLE, deux
+exécutions** — focus sur `<video id="remote" tabindex="0">`, régime « exception
+étroite », `Ctrl+V` de confiance ⟹ **1 `paste`, `isTrusted: true`,
+`types: ["text/plain"]`, `e.target` = `VIDEO#remote`**, avec `clipboard-read` à
+`denied`/`prompt` et `readText()` levant `NotAllowedError` aux deux.
+
+🔴 **CE QUI REND CE VERDICT FONDÉ EST SA FORME, PAS SON RÉSULTAT.** La sonde
+P0 de P1 avait rendu un **faux verdict éliminatoire** — trois zéros sur une
+machine saine. Celle de P2 mesure une **matrice de 24 cellules dans une seule
+session** et porte les deux témoins qui manquaient : une **ROUGE D'INSTRUMENT**
+(le régime « produit », qui recopie le `preventDefault()` inconditionnel
+d'alors, rend **zéro `paste` sur ses huit cellules**) et un **témoin de
+mesurabilité** (`body` rend un `paste` dans la même session). Et si **aucune**
+cellule n'avait rendu de `paste`, elle aurait conclu `NON MESURABLE` plutôt que
+`DEFAVORABLE` — la distinction est écrite dans son code, pas décidée après coup.
+
+**Trois faits neufs qu'aucun document ne portait, et que P2 consomme** :
+l'exception peut être **vraiment étroite** (le `keydown` de `ControlLeft` garde
+son `preventDefault` et **seul `KeyV` passe**, le `paste` arrivant quand même) ;
+**`Shift+Insert` produit le même `paste` de confiance** (D6 le nommait sans
+l'avoir mesuré) ; et **le chemin ne dépend d'aucune permission**.
+
+### ② Les cinq critères, avec leur nombre d'exécutions
+
+**QUATRE exécutions exploitées** : deux du bras armé, deux du bras désarmé.
+**AUCUN TAUX n'est revendiqué nulle part.**
+
+| # | Critère | Verdict | Exéc. |
+| --- | --- | --- | --- |
+| ① | Le `paste` parvient sur le `<video>` focalisé | **TENU** (hors VM), rejoué **implicitement** ici | **2** + 4 |
+| ② | Coller fonctionne, `clipboard-read` REFUSÉE | **TENU**, rouge **discriminante** | **4** |
+| ③ | Le contenu collé est le **DERNIER** copié | **TENU** | **4** |
+| ④ | Après **k** collages, **aucun** message ne revient | **TENU**, rouge à **exactement k** | **2** + **2** |
+| ⑤ | Un raccourci qui n'est pas un collage garde son `preventDefault` | 🔴 **NON MESURÉ** | **0** |
+
+**④ — le fait central, et il est double** :
+
+```
+bras ARMÉ      messages « clipboard » en retour :  0, 0, 0, 0
+bras DÉSARMÉ   messages « clipboard » en retour :  1, 2, 3, 4
+```
+
+et **chacun des quatre messages du bras désarmé porte exactement le texte qu'on
+venait de coller**. La rouge n'est donc pas vacueuse : le compteur **peut**
+quitter zéro, et le zéro du bras armé dit quelque chose.
+
+> 🔵 **ET CETTE MESURE COUVRE CE QU'AUCUN TEST NE POUVAIT COUVRIR.** Le code de
+> P2 déclare lui-même que l'ordre dans la boucle du tour de roue n'est gardé par
+> aucun test : intervertir `armer_les_gardes` et `sondeur.tour()` dans
+> `capteur/sommeil/registre.rs` laisse **les sept tests du module verts**
+> (mesuré, pas conjecturé). Or si l'ordre était inversé, le bras **armé** verrait
+> le `Sondeur` relire notre propre écriture et l'annoncer. **Le zéro du bras armé
+> EST l'épreuve de cet ordre.** Un fait de lecture est devenu un fait mesuré.
+
+**② — la rouge pouvait changer quelque chose, et elle n'a rien changé.** Avant
+tout collage : `clipboard-read` = `prompt`, `readText()` = `THROW:NotAllowedError`.
+Puis on **accorde** `clipboardReadWrite` : la permission passe à `granted` et
+`readText()` rend `OK` — **l'observable a bien changé, le grant a pris** — et le
+collage se comporte **à l'identique**. **Le produit ne demande aucune permission
+de presse-papier**, et c'est le meilleur résultat de ce chantier.
+
+**③** : le Bloc-notes est vidé avant la mesure, puis croît de **19, 18, 19, 19**
+octets — jamais deux fois le même texte, jamais le précédent.
+
+### ③ 🔴 Le défaut que la recette a trouvé : le presse-papier fuyait EN CLAIR
+
+**C'est le résultat le plus important de ce sous-bloc, et aucun test ne pouvait
+le donner.** La première exécution armée a relevé dans `agent.log` :
+
+```
+INFO agent::demarrage: contrôle reçu session=… Clipboard { version: 3, text: "alpha-arme-1-crwor9" }
+```
+
+— **le contenu du presse-papier de l'utilisateur, en clair, dans un journal que
+ce dépôt VERSE DANS GIT.** D-P1-7 l'interdit nommément (« UNE SEULE TRACE, ET
+JAMAIS LE TEXTE »), et P1 l'avait tenue **dans le sens descendant**.
+
+⚠️ **Ce n'est PAS un défaut du site de journalisation, et le distinguer change
+le remède.** La trace fautive (`demarrage.rs`, `on_control`) est **antérieure**
+au chantier : elle imprime le message par `?message`, ce qui était inoffensif
+tant qu'aucune variante ne portait de contenu privé. **C'est P2 qui a rendu
+cette trace dangereuse**, et un remède posé sur le **site** aurait laissé le
+**prochain** site fuir.
+
+**Le remède est au TYPE** : `Debug` est implémenté **à la main** sur
+`ClientControl` **et** sur `AgentControl`, `#[derive(Debug)]` retiré des deux,
+le texte remplacé par sa **taille**. **Exhaustif par construction** — ajouter
+une variante oblige désormais à décider ce qu'elle montre. **Les deux sens sont
+rédigés**, pas seulement celui qui fuyait.
+
+Après remède, sur les quatre journaux versés : `grep` des nonces → **0 ligne**,
+et le journal montre `Clipboard { v: 3, octets: 22 }`.
+
+⚠️ **Le journal qui portait la fuite a été ÉCRASÉ par la ré-exécution sous le
+même nom** — le piège que P1 avait nommé, payé une fois de plus. Les lignes
+fautives sont **citées verbatim** dans `proto/src/control.rs`, et le défaut
+reste **re-prouvable par la rouge du test**.
+
+### ④ Ce que le code livre
+
+| Étage | Fichier | Nature |
+| --- | --- | --- |
+| la règle | `agent/src/presse_papier.rs` (**441**) | **PUR** — `apres_notre_ecriture` (gardes n°1 **et** n°2), `denormaliser`, `borner_entrant`, `gardes_armes` |
+| l'écriture Win32 | `agent/src/presse_papier/win32.rs` (**161**) | `#[cfg(windows)]`, **aucune décision**. 🔴 Le numéro de séquence est relu **APRÈS `CloseClipboard`** : le relire avant rendrait le garde n°1 faux d'un cran, donc **silencieusement inopérant** |
+| le propriétaire | `agent/src/capteur/sommeil/presse_papier.rs` (**379**) | `ecrire_avec`, écrivain **INJECTÉ** — c'est ce qui rend éprouvable sur l'hôte qu'une écriture échouée n'arme **aucun** garde |
+| l'ordre de D6 | `agent/src/transport/collage.rs` (**104**) | **les DEUX moitiés au même endroit** : `traiter_le_collage` écrit et arme, `injecter_le_collage` consomme et frappe |
+| les touches | `agent/src/input.rs` (**287**) | `TOUCHES_COLLAGE`, **auto-suffisante en modificateurs** — le canal d'entrées est `ordered: false` |
+| le prédicat | `client/src/raccourcis.ts` (**62**) | **PUR, sans DOM** — la SEULE défense contre R5, **quinze cas dont treize refus** |
+| l'exception | `client/src/input.ts` (**188**) | la seule modification de ce fichier par tout le chantier ① |
+| le garde n°3 | `client/src/presse-papier.ts` (**158**) | `aEmettre`, **consommable** : un utilisateur qui colle deux fois le même texte le veut deux fois |
+
+**Trois extractions PRÉALABLES** (`presse_papier.rs` 428 → 253,
+`capteur/protocole.rs` 464 → 309, `demarrage.rs` **491 → 426**, marge 9 → 74),
+**et TROIS portes vues au relevé et rattrapées avant tout commit** :
+
+| Fichier | Monté à | Extraction | Retombé à |
+| --- | --- | --- | --- |
+| `agent/src/transport/tick.rs` | **493** (marge 7) | `transport/collage.rs` (**104**) | **441** |
+| `agent/src/transport/evenements/tests.rs` | **493** (marge 7) | `tests/memorisation.rs` (**80**) | **445** |
+| `proto/src/control.rs` | **494** (marge 6) | `control/redaction.rs` (**110**) | **403** |
+
+🔴 **Le plafond n'a été franchi dans AUCUN commit, et aucune compression n'a
+été employée.** La troisième porte a été vue **au relevé de clôture**, pas
+avant : c'est le correctif de confidentialité qui l'a produite, et c'est la
+commande qui l'a nommée — la mesure vaut mieux que le souvenir.
+
+⚠️ **AUCUN de ces trois fichiers ne figurait à la table de budget du plan.**
+`transport.rs` non plus, qui passe de 448 à **482, marge 18** : +34 dont
+**quatre lignes de code** (deux champs, deux initialisations), le reste étant du
+commentaire. ⚠️ **Ce fichier a franchi 501 DEUX fois** (D10, puis F2 qui l'a
+ramené à 448 par extraction) : P2 en reprend 34 des 52 regagnés — littéralement
+le patron que ce fichier nomme cinq fois. **Toute addition future y appelle une
+extraction** ; le point de chute existe, `transport/initialisation.rs`.
+
+✅ **Relevé PAR LA COMMANDE le 21 août 2026, APRÈS la dernière édition de la
+ronde, au commit de clôture de P2.** **Le tableau de dette a toujours DEUX
+lignes, et les deux sont INCHANGÉES** : `agent/src/encode.rs` **1536**,
+`agent/src/windows_source.rs` **630**. P2 n'a touché ni l'un ni l'autre.
+**Aucun autre fichier de code source ne dépasse 500 lignes.**
+
+⚠️ **MARGES LES PLUS SERRÉES DU PÉRIMÈTRE DE P2** : `agent/src/transport.rs`
+**482** (marge 18), `agent/src/capteur/distante.rs` **472** (28),
+`client/src/main.ts` **445** (55), `agent/src/transport/evenements/tests.rs`
+**445** (55), `agent/src/transport/tick.rs` **441** (59),
+`agent/src/presse_papier.rs` **441** (59). Fichiers neufs :
+`transport/collage.rs` **104**, `transport/collage/tests.rs` **207**,
+`proto/src/control/redaction.rs` **110**, `client/src/raccourcis.ts` **62**,
+`client/src/raccourcis.test.ts` **87**, `client/src/input.test.ts` **148**,
+`agent/src/demarrage/trace.rs` **116**, `agent/src/presse_papier/tests.rs`
+**377**, `agent/src/capteur/protocole/tests.rs` **164**,
+`agent/src/transport/evenements/tests/memorisation.rs` **80**.
+
+⚠️ **Marges étroites du DÉPÔT relevées ce jour-là, qui ne sont PAS de P2** :
+`agent/src/encode/arret.rs` **500** (marge 0), `client/verify-webrtc.mjs`
+**494** (6), `agent/src/capture.rs` **492** (8),
+`agent/src/superviseur/lanceur.rs` **488** (12), `agent/src/micro.rs` **483**
+(17). Nommées pour qu'un successeur les connaisse, non pour les imputer à ce
+sous-bloc.
+
+### ⑤ Ce que P2 n'établit PAS
+
+- **Aucun taux, nulle part.** Deux exécutions par bras.
+- 🔴 **La justification de D6 n'est PAS éprouvée** : la rouge du critère ③ — le
+  chemin naïf, `V` sur le canal d'entrées — **n'a pas été jouée**, faute d'un
+  second binaire. Ce qui est établi est que **l'ordre fonctionne**, pas que son
+  absence échouerait, et le plan écrit lui-même que le chemin naïf « marche, la
+  plupart du temps ».
+- 🔴 **Le critère ⑤ n'est pas mesuré** : l'hôte n'a **aucun serveur X**, donc
+  aucun Chrome **avec interface**. Couverture de repli nommée — les 15 cas de
+  `raccourcis.test.ts` et les 10 d'`input.test.ts` — qui prouvent le **prédicat**
+  et sa **liaison**, **jamais** le comportement du navigateur.
+- **Aucun humain n'a collé quoi que ce soit** ; rien de Firefox ni de Safari.
+- **Rien au-delà d'UNE fenêtre** — P3 est le sous-bloc des N.
+- **Rien de deux collages concurrents** : `SendInput` reste **global à la
+  session Windows**, et la seule portée mesurée du dépôt est séquentielle.
+- **Le chemin d'échec de `commander` (borne 12 s) n'a jamais couru**, et P2
+  l'emprunte désormais **depuis la boucle de transport**.
+- **Le refus de taille entrant n'a pas été exercé sur la VM** : les deux bornes,
+  celle du client et celle de l'agent, ne sont éprouvées que par des tests
+  d'hôte.
+- **L'écrasement du dernier collage (D-P2-3) n'a pas été exercé.**
+- **Le mode MONO-FENÊTRE n'a pas été exercé** : il n'a pas de collage, il le
+  **DIT** (`Err`), et rien ne l'a vérifié sur la VM.
+- **`PRESSE_PAPIER_MAX` et `PERIODE_PRESSE_PAPIER` ne sont pas calibrées**, et
+  **aucun jugement d'usage n'a été porté sur la latence d'un collage**.
+
+### ⑥ Pièges neufs — à connaître avant de toucher à ce terrain
+
+- 🔴 **`FindWindowW('Notepad', $null)` REND ZÉRO SUR UNE FENÊTRE PRÉSENTE.**
+  PowerShell marshale `$null` en **chaîne vide** pour un paramètre `string` : on
+  cherche alors un Bloc-notes au **titre** vide, et `FindWindowW($null, <titre>)`
+  une **classe** vide (`ERROR_INVALID_NAME`, 123). **`[NullString]::Value` est
+  obligatoire.** Ce qui a tranché est qu'`EnumWindows`, lui, trouvait la fenêtre.
+- 🔴 **UNE LECTURE PRISE PENDANT UNE ÉCRITURE SUR CIFS REND UNE LIGNE
+  TRONQUÉE**, qui commence par le bon numéro d'ordre et passe donc le test de
+  correspondance (`notepad longue` pour `notepad longueur=…`). `Set-Content`
+  n'est pas atomique. **Exiger DEUX relevés identiques** à 300 ms d'écart.
+- ⚠️ **`schtasks /run` peut ne RIEN ouvrir**, sans erreur : aucune ligne
+  « fenêtre » au journal, `enfant lancé` = 0, et le pilote rend « aucune page
+  d'application attachée » — **un défaut d'instrument qui se lit exactement
+  comme une panne du produit**. Vérifier l'ouverture par `Get-Process`.
+- 🔴 **`build-agent.sh` RSYNCHRONISE L'ARBRE ENTIER**, travail non commité des
+  voisins compris : il a échoué sur un `mod installation` dont le fichier
+  n'était pas encore là. **Remède employé, et c'est la bonne forme : un
+  `git worktree` isolé**, d'où l'agent, la plateforme **et** le client tournent
+  tous trois au même commit.
+- 🔴 **`version_emise=3 version_recue=4`** : la plateforme tournait depuis
+  l'arbre principal, où un chantier voisin avait monté `PLATEFORME_VERSION`.
+  **Le refus est bruyant et le produit a eu raison** — c'est la collision que la
+  décision D6 du plan de P4 avait nommée d'avance.
+- ⚠️ **UN `pkill -f <motif>` DEPUIS UN SHELL DONT LA LIGNE DE COMMANDE CONTIENT
+  LE MOTIF TUE LE SHELL** (exit 144). Piège déjà écrit par ce fichier, payé une
+  fois de plus. **Tuer par PID relevé.**
+- ⚠️ **`link.exe` échoue en 1104 quand un agent tient encore le binaire** :
+  `Get-Process agent` avant toute reconstruction, pas seulement avant la mesure.
+- ⚠️ **UNE INSERTION « AVANT X » DOIT ANCRER SUR LA DOC DE X, JAMAIS SUR SA
+  SIGNATURE** : une fonction insérée sur l'ancre `pub fn audio_mort(` s'est
+  glissée **à l'intérieur** du bloc `///` de sa voisine, lui volant toute sa
+  documentation. **Deux blocs `///` consécutifs fusionnent en silence** — ni
+  test ni compilateur ne le voient.
+
+### ⑦ Ce que P2 lègue
+
+**Legs de P1 réglés** : n°2 (`Capabilities.clipboard`, aux **trois** appels) et
+n°5 (le préalable éliminatoire, **mesuré et favorable**). **Le n°1 — le
+propriétaire mono-fenêtre — reste ouvert**, et P2 le rend **bruyant** au lieu de
+silencieux (`Err`, jamais `Ok(())`).
+
+1. 🔴 **La rouge du critère ③ n'est pas jouée** : sans elle, **D6 est du coût
+   dont rien n'établit la nécessité**. Elle exige un binaire distinct.
+2. 🔴 **Le critère ⑤ reste NON MESURÉ** — il faut `Xvfb`, dont le consentement
+   d'installation a été donné en D8 et jamais suivi d'effet. ⚠️ **Les mesures
+   qui en sortiraient ne se compareraient à aucune campagne antérieure.**
+3. ⛔ **Le propriétaire MONO-FENÊTRE n'existe toujours pas.** Point de chute :
+   `agent/src/demarrage.rs`, **dont la tâche 3 a rendu la marge**.
+4. ⛔ **Le collage écrase le précédent** (D-P2-3), **sans trace**. Remède
+   nommé : une file bornée dans `evenements.rs`. Non exercé.
+5. ⛔ **Le chemin d'échec de `commander` (borne 12 s) n'a jamais couru**, et P2
+   l'emprunte depuis la boucle de transport.
+6. ⛔ **Deux collages concurrents depuis deux fenêtres sont hors de ce qui est
+   établi.** **P3 les rencontrera.**
+7. ⛔ **Le legs n°4 de P1 s'aggrave** : le canal `Message` du registre reste non
+   borné, et le presse-papier circule maintenant dans les **deux** sens à 64 KiB
+   par geste.
+8. ⛔ **Le refus de taille entrant n'est éprouvé que par des tests d'hôte.**
+9. ⚠️ **Une sortie virtuelle orpheline (`\\.\DISPLAY5`) préexistait à cette
+   recette** et a été purgée par le superviseur à son démarrage. Nommé pour que
+   nul ne l'impute à P2.
 
 ---
 
