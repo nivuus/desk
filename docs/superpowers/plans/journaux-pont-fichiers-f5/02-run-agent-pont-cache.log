@@ -1,0 +1,35 @@
+# F5 — tâche 2 : `scripts/run-agent.sh` transmet PONT_CACHE. TÂCHE DÉDIÉE.
+# 21 août 2026. Une ligne, insérée après PONT_MESURE. 164 -> 165 lignes.
+
+## Le piège que cette tâche existe pour éviter
+Payé SEPT fois par ce dépôt : SUPERVISEUR (D1), MULTIFENETRE_REPRISE (D2), AUDIO (D7),
+BUDGET_BPS (D6, évité par une tâche dédiée), PONT_MESURE (F4), APPS (G1), et une septième
+par l'instrument d'un chantier qui le connaissait. Le contrôle qui compte est le
+`run-agent.ps1` GÉNÉRÉ, jamais le tracé du code.
+
+## 🔴 LE CONTRÔLE VM N'EST PAS JOUABLE, ET IL RESTE DÛ
+`run-agent.sh` écrit dans `/media/vm/dev/run-agent.ps1` — un montage CIFS de la VM, qui est
+ÉTEINTE (tâche 1). Le contrôle prescrit
+  `node scripts/winrm.js 'Get-Content C:\dev\run-agent.ps1 | Select-String PONT_CACHE'`
+**n'a pas été joué**, et il reste dû à la première tâche VM. Je ne le remplace pas par une
+lecture du code.
+
+## CE QUI A ÉTÉ JOUÉ À LA PLACE, et qui est PLUS FORT qu'une lecture du code
+Le heredoc EXACT (lignes 25 à 148 de `run-agent.sh`) a été extrait tel quel et rejoué
+localement, sa seule destination détournée vers /tmp. Il exerce donc la substitution réelle,
+y compris le piège du `\$` que l'en-tête du script documente à ses lignes 15-21.
+
+  BRAS POSITIF   PONT_CACHE=0  -> ligne 12 du .ps1 généré : `$env:PONT_CACHE = '0'`      ✅
+  BRAS VALEUR    PONT_CACHE=1  ->                            `$env:PONT_CACHE = '1'`      ✅
+                 (c'est la VALEUR qui passe, pas seulement le NOM)
+  TÉMOIN NÉGATIF sans variable -> occurrences de PONT_CACHE : **0**                       ✅
+  TÉMOIN DU TÉMOIN (RUST_LOG, chaîne dont je SAIS qu'elle est présente) : **1** aux DEUX bras
+
+## 🔵 LE TÉMOIN DU TÉMOIN A SERVI, ET DÈS LE PREMIER JET
+Première tentative : `PONT_CACHE` rendait **0** au bras positif. J'allais avoir un zéro à
+expliquer — mais **RUST_LOG rendait 0 lui aussi**. Le fichier n'existait pas : mon harnais
+portait `set -u`, le heredoc lit une cinquantaine de variables non définies, et le `2>/dev/null`
+de ma commande mangeait la cause. C'est LITTÉRALEMENT le §1.5 n°2 du plan (« un chantier vient
+d'interroger un binaire au mauvais chemin : ses trois chaînes discriminantes rendaient 0, ET SON
+TÉMOIN NÉGATIF AUSSI »), rencontré à la deuxième tâche du sous-bloc. Sans ce témoin, j'aurais
+rapporté « la ligne n'est pas générée » sur un script parfaitement correct.
