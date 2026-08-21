@@ -13,6 +13,7 @@ pub mod installation;
 pub mod raccourci;
 pub mod reconciliation;
 pub mod sha256;
+pub mod surveillance;
 
 #[cfg(windows)]
 pub mod boucle;
