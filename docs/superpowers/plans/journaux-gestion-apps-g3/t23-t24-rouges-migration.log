@@ -1,0 +1,78 @@
+=== TÂCHES 23 et 24 — les rouges de la migration 0006 ===
+Discipline : copie de sauvegarde NOMMÉE, jamais 'git checkout' ; diff
+mesuré contre la copie, pas contre HEAD (leçon du journal t5).
+
+sha256 AVANT : 868f44adf865c0a59ece13d0094f0330
+
+================ ROUGE A — BIGINT -> INTEGER ================
+MUTATION : la colonne 'taille' passe de BIGINT à INTEGER.
+INTEGER vaut 8 octets sur SQLite et EXACTEMENT 4 sur Postgres : un
+installeur de 3 Go y déborde. C'est le défaut que P1 a trouvé EN RECETTE
+sur ses PROPRES migrations, et que ni le lint lexical ni la double passe
+ne pouvaient voir — INTEGER est un type licite, et la suite n'écrivait
+que des petites valeurs.
+--- lignes de diff contre la copie : 2
+--- sqlite :
+      Tests  11 passed (11)
+--- postgres :
+     → value "3221225472" is out of range for type integer
+     → value "3221225472" is out of range for type integer
+     → value "3221225472" is out of range for type integer
+     → value "3221225472" is out of range for type integer
+
+🔴 CE QUE CETTE ROUGE ÉTABLIT, ET QUI EST PLUS FORT QUE SON EXIT CODE :
+sqlite reste VERT sur les onze cas avec la colonne mutée. La double passe
+n'est donc pas une redondance — c'est le SEUL garde qui voie ce défaut.
+
+================ ROUGE B — la clé étrangère de installation.vm_id ================
+MUTATION : 'REFERENCES vm(id)' retiré. L'insertion d'une installation
+pour une VM inexistante PASSE alors au lieu d'échouer, et une ligne
+orpheline échappe à toute vérification de propriétaire.
+⚠️ Les clés étrangères sont APPLIQUÉES DES DEUX CÔTÉS : pilote-sqlite.ts
+pose PRAGMA foreign_keys = ON. Cette rouge rougit donc sur les deux.
+--- lignes de diff contre la copie : 2
+--- sqlite :
+   × dépôt installation, moteur=sqlite > 🔴 REFUSE une installation pour une VM inexistante 30ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/depot/installation.test.ts > dépôt installation, moteur=sqlite > 🔴 REFUSE une installation pour une VM inexistante
+--- postgres :
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  1 failed | 10 passed (11)
+
+================ ROUGE C — NON APPLICABLE, ET C'EST DÉCLARÉ ================
+Le plan (tâche 23) prescrit une troisième mutation : `ADD COLUMN ... UNIQUE`,
+« refusé par SQLite, accepté par Postgres — exactement ce que la double passe
+existe pour attraper ».
+
+**Elle ne s'applique pas à cette migration, et la jouer serait une mise en
+scène.** `0006-televersement.sql` ne contient AUCUN `ALTER TABLE` : il CRÉE
+deux tables neuves, et un `UNIQUE` en ligne dans un `CREATE TABLE` est accepté
+par les deux moteurs. La contrainte que le plan vise est celle d'une migration
+qui ALTÈRE une table existante — le cas de `0004-applications.sql`, qui ajoute
+des colonnes à la table `application` née vide en `0003`.
+
+Ce qui la remplace, et qui est du même genre, c'est ce que ce fichier tient
+déjà : les DEUX clés étrangères naissent AVEC leurs tables. C'est la même
+contrainte SQLite sous son autre face — on ne peut pas ajouter une contrainte
+par `ALTER TABLE`, donc une clé étrangère naît avec sa table ou n'existe
+jamais. La ROUGE B ci-dessus l'éprouve.
+
+================ RESTAURATION ================
+sha256 APRÈS : 868f44adf865c0a59ece13d0094f0330
+(identique au sha256 AVANT en tête de ce journal)
+
+================ UN DÉFAUT DE MON PROPRE TEST, TROUVÉ PAR LA PASSE POSTGRES ================
+`installation.test.ts` appelait `baseNeuve()` SANS ARGUMENT. Sous SQLite le
+harnais ouvre `:memory:` et n'a que faire du nom ; sous Postgres il en dérive un
+NOM DE SCHÉMA, et `nom.replace` lève sur `undefined`. Les ONZE cas passaient
+sous `test:sqlite` et les ONZE échouaient sous `test:postgres`.
+
+⚠️ Ce n'est PAS une divergence de dialecte SQL — c'est le HARNAIS qui diffère —,
+mais la leçon est la même et elle vaut d'être écrite : **une suite qui ne
+tournerait que sur un moteur aurait déclaré vert un fichier de test qui ne
+pouvait pas tourner sur l'autre.** C'est la seconde fois dans ce seul sous-bloc
+que la double passe attrape quelque chose que le lint ne voit pas.
+
+⚠️ Et `npm run typecheck` l'aurait attrapé aussi — `baseNeuve(nom: string)`
+n'est pas optionnel. Il n'avait pas été relancé entre l'écriture du fichier et
+son premier `vitest`.
