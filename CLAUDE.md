@@ -1145,6 +1145,88 @@ Les quatre fichiers que la suite de tests couvrait ont été résorbés le
 > tous deux du **chantier E3 (microphone)**, qui commitait dans le même arbre
 > pendant cette clôture. **Relevés, attribués, non corrigés** — ils ne sont pas
 > à moi.
+>
+> ⚠️ **Le premier a bougé le jour même : `proto/src/control.rs` vaut 487** à la
+> clôture d'E3 (voir le relevé ci-dessous). *Un compte n'est attribuable
+> qu'assorti de son heure quand deux chantiers partagent l'arbre — et il
+> vieillit même quand l'un des deux a fini.*
+
+> ✅ **Relance du 21 août 2026, clôture du CHANTIER E, bloc E3 (microphone en
+> multi-fenêtres), PAR LA COMMANDE, APRÈS la dernière édition de la ronde** —
+> revue transverse et section de ce fichier comprises. **Le tableau de dette a
+> toujours DEUX lignes, et les DEUX sont INCHANGÉES** : `agent/src/encode.rs`
+> **1536**, `agent/src/windows_source.rs` **630**. E3 n'a touché ni l'un ni
+> l'autre. **Aucun autre fichier de code source ne dépasse 500 lignes.**
+>
+> ⚠️ **DEUX fichiers sont à 500 EXACTEMENT, marge NULLE**, et **un seul est
+> connu de ce fichier** : `agent/src/encode/arret.rs` (500, dette historique,
+> déjà nommée) et 🔴 **`plateforme/src/http/routes-installation.ts` (500)**, né
+> du sous-bloc **G5**, **qu'aucun tableau de ce fichier ne signalait**. Relevé,
+> **attribué à son chantier, non corrigé** — il n'est pas à moi. **Toute
+> addition future à l'un ou l'autre appelle une EXTRACTION**, jamais une
+> compression.
+>
+> ⚠️ **TROIS portes ont été franchies pendant cette branche, et les TROIS ont
+> été rattrapées SANS COMPRESSION** — deux par une extraction, une par un
+> placement :
+>
+> | Fichier | Franchi à | Remède | Après |
+> | --- | --- | --- | --- |
+> | `client/src/micro.test.ts` | **515** | **EXTRACTION** → `client/src/micro.fixtures.ts` (**84**, verbatim, seule la visibilité change) et `client/src/micro-exclusivite.test.ts` (**117**) | **345** |
+> | `proto/src/control.rs` | **496** (marge 4), par la REVUE TRANSVERSE elle-même | **EXTRACTION** → `proto/src/control/lien.rs` (**47**, verbatim) | **475**, puis **487** après la recette |
+> | `agent/src/transport.rs` | **495** (marge 5), par la revue transverse | **PLACEMENT** — la réfutation complète part dans `transport/piste_micro.rs`, « auprès du code qui l'emploie », ce que le commentaire d'origine revendiquait déjà pour lui-même | **488** |
+>
+> 🔴 **C'EST LE PIÈGE QUE CE DÉPÔT PAIE DEPUIS S2 : *documenter une extraction
+> reprend une part de la marge qu'elle rend*, et LA RONDE QUI DÉNONCE LA DÉRIVE
+> LA PRODUIT.** Deux des trois franchissements sont le fait de la revue
+> transverse. ⚠️ *Déplacer un texte vers le module qui possède le raisonnement
+> n'est pas le raccourcir ; raccourcir une réfutation pour atteindre un compte
+> de lignes est ce que ce fichier interdit nommément.*
+>
+> ⚠️ **`proto/src/control.rs` a par ailleurs été EXTRAIT AVANT L'ADDITION** —
+> `CursorShape` vers `proto/src/control/curseur.rs` (**38**), en tâche dédiée,
+> parce que 444 + le budget de la variante dépassait 490. **Sans elle, le
+> fichier serait à 497.**
+>
+> **Fichiers que E3 a fait bouger, tous mesurés par la commande :**
+>
+> | Fichier | Lignes | Remarque |
+> | --- | --- | --- |
+> | `proto/src/control.rs` | ~~444~~ **487** (marge **13**) | la variante `MicState`, sa doc, son constructeur, et la réfutation de `granted` que la recette a imposée. **Point de chute suivant NOMMÉ** : la variante `Link` vers `control/lien.rs` |
+> | `agent/src/transport.rs` | ~~482~~ **488** (marge 12) | le champ `exclusivite_annoncee` |
+> | `client/src/main.ts` | ~~483~~ **486** (marge 14) | **UNE ligne de dispatch qui délègue**. ⚠️ La chaîne de dispatch n'est PAS extractible verbatim — elle capture une quinzaine de `let` de module |
+> | `agent/src/windows_micro.rs` | ~~430~~ **471** | `occupation_ms` et `famines` sur la trace du câble, et l'énoncé faux corrigé |
+> | `proto/src/control/tests.rs` | ~~355~~ **419** | 5 tests neufs |
+> | `agent/src/transport/piste_micro/tests.rs` | ~~217~~ **362** | 4 tests neufs |
+> | `client/src/micro.ts` | ~~288~~ **356** | `annoncerExclusivite`, et ses trois gardes |
+> | `client/src/micro.test.ts` | ~~411~~ **345** | ALLÉGÉ par l'extraction ci-dessus |
+> | `proto/ts/control.ts` | ~~262~~ **301** | `MicStateMessage`, l'union, `TOUS_AGENT` |
+> | `proto/ts/control.test.ts` | ~~245~~ **282** | 4 tests neufs |
+> | `agent/src/transport/piste_micro.rs` | ~~162~~ **231** | l'émission SUR TRANSITION, et les deux moitiés de l'énoncé faux |
+> | `agent/src/transport/controle.rs` | ~~225~~ **228** | le bras exhaustif, **dans le MÊME commit que la variante** |
+> | `proto/src/control/redaction.rs` | ~~124~~ **132** | idem — le `match` a FORCÉ la décision de ce que la variante montre au journal |
+> | `client/src/micro-exclusivite.test.ts` | **117** | neuf — l'extraction |
+> | `client/src/micro.fixtures.ts` | **84** | neuf — l'extraction, verbatim |
+> | `proto/src/control/lien.rs` | **47** | neuf — l'extraction de la revue transverse |
+> | `proto/src/control/curseur.rs` | **38** | neuf — l'extraction PRÉALABLE |
+>
+> ✅ **Chiffres voisins RELEVÉS ce jour-là** — ⚠️ et « relevé » ne veut pas dire
+> « dispensé de mesure » : `encode/arret.rs` **500** (marge 0),
+> `plateforme/src/http/routes-installation.ts` **500** (0),
+> `client/verify-webrtc.mjs` **494** (6), `capture.rs` **492** (8),
+> `superviseur/lanceur.rs` **488** (12),
+> `plateforme/src/http/routes-installation.test.ts` **485** (15),
+> `capteur/fenetre.rs` **484** (16), `agent/src/micro.rs` **483** (17),
+> `transport/socket.rs` **481** (19).
+>
+> **Vérifications de fin de branche, relevées après la dernière édition :**
+> `cargo test --workspace` → **1007** (agent) + **114** (proto), `0 failed` ;
+> `cargo check --target x86_64-pc-windows-gnu` → **exit 0, 24 avertissements,
+> TOUS `dead_code`** — vérifié par un `grep -v` qui rend **0**, ⚠️ **jamais par
+> `grep -c '^warning'`, qui compterait la ligne de résumé** ; `cd client &&
+> npx vitest run` → **543** / 47 fichiers ; `cd client && npx vitest run --dir
+> ../proto` → **308** / 9 fichiers (⚠️ **`npx vitest run` seul NE COUVRE PAS
+> `proto/ts/`** : deux commandes, pas une) ; les trois `tsc --noEmit` à **0**.
 
 **Vérifier l'état** :
 
@@ -11505,6 +11587,18 @@ Output est DÉJÀ le microphone par défaut** aux **trois** rôles (`eConsole`,
 ⚠️ **Relevé en session 0 (WinRM), pas dans la session interactive** où tourneront
 les applications : concordance **plausible, non mesurée**.
 
+> ✅ **MESURÉ EN SESSION 1 LE 21 AOÛT 2026 (bloc E3, tâche 11), et la
+> concordance TIENT.** Sonde par tâche planifiée `/it`, dont la ligne
+> `SESSION=1` **prouve** la session au lieu de la supposer :
+> `CAPTURE_Default` et `CAPTURE_Communications` rendent le MÊME identifiant,
+> `{0.0.1.00000000}.{5fae72b2-…}`, qui est celui de **CABLE Output (VB-Audio
+> Virtual Cable)**. ⚠️ WinRT n'expose que **DEUX** rôles (`Default` couvre
+> `eConsole` et `eMultimedia`) là où l'API COM en distingue trois : ce relevé
+> ne les sépare pas, et le dire vaut mieux que d'en annoncer trois.
+> ⚠️ **La voie COM a échoué** — le transtypage d'un `__ComObject` vers une
+> interface `ComImport` rend `$null` EN SILENCE sous ce PowerShell —, et la
+> sonde est versée avec son échec.
+
 ### ⑥ Trois décisions qu'un successeur ne devinera pas
 
 **`set_reordering_size_audio(2)`** (`agent/src/transport/initialisation.rs`).
@@ -11731,8 +11825,13 @@ dont l'exercice est un critère de E2 — **avec deux fenêtres qui jouent du so
    la propriété « tous `dead_code` ».
 5. ⛔ **La trace `micro mesuré` ne rend pas sa résolution en fréquence.**
 6. ⛔ **Un binaire témoin doit s'identifier lui-même.**
-7. ⛔ **Le périphérique par défaut de la session INTERACTIVE n'a jamais été
-   relevé** — tous les relevés WinRM sont ceux de la session 0.
+7. ✅ **FERMÉ PAR LE BLOC E3 (21 août 2026)** : sonde par tâche planifiée
+   `/it`, ligne `SESSION=1` à l'appui, `CAPTURE_Default` et
+   `CAPTURE_Communications` rendant l'identifiant de **CABLE Output**. La
+   concordance que E1 déclarait « plausible, non mesurée » tient. ⚠️ WinRT
+   n'expose que DEUX rôles, pas trois. *(L'énoncé d'origine : « Le périphérique
+   par défaut de la session INTERACTIVE n'a jamais été relevé — tous les relevés
+   WinRM sont ceux de la session 0. »)*
 
 ---
 
@@ -12037,6 +12136,344 @@ n'est PAS de ce chantier** : `proto/` porte la **v3** du sous-bloc G2 et
 9. ⛔ **`MICRO_FAUTE_ECRITURE` n'a jamais été armée.**
 10. ⛔ **La décroissance de 17,6 % de l'amplitude**, non expliquée.
 11. ⛔ **Aucune constante calibrée, aucun jugement d'écoute.**
+
+---
+
+## 🎤🪟 Chantier E — Microphone, bloc E3 : le micro en MULTI-FENÊTRES (21 août 2026)
+
+Résultats complets :
+`docs/superpowers/plans/2026-08-21-micro-e3-resultats.md`.
+Plan : `docs/superpowers/plans/2026-08-21-micro-e3.md`.
+Spécification : `docs/superpowers/specs/2026-07-28-micro-design.md` — ⚠️ **écrite
+le 28 juillet 2026, AVANT les chantiers A, B, C et D.** Le plan de E1 porte un
+tableau de vieillissement, celui de E3 un second, borné à ce dont il dépend.
+**Ne recopier aucune affirmation de cette spec sans passer par l'un des deux.**
+Journaux : `docs/superpowers/plans/journaux-micro-e3/` — **65 fichiers**,
+**DEUX familles de lecture**, relevées par la commande APRÈS la recette :
+
+| Famille | Compte | Ce qu'il faut faire |
+| --- | --- | --- |
+| les `agent-*.log` **bruts** | **6** | **séquences ANSI de `tracing` PRÉSENTES** : `sed 's/\x1b\[[0-9;]*m//g'` — ou lire le jumeau `-plat`, versé pour **chacun des six** |
+| tout le reste (`*-plat.log`, `pilote-*.{json,log}`, `juge-*.log`, `r[0-5]*.log`, `instrument/`) | **59** | rien : ils se `grep`ent à plat |
+
+✅ **AUCUN octet NUL nulle part** (balayage `tr -dc '\000'` sur les 65), **aucun
+fichier non décodable en UTF-8**. ⚠️ **24 fichiers portent des CRLF** — ils
+viennent de la VM, et cela ne gêne aucun `grep`.
+
+🔴 **E3 EST RE-CADRÉ, ET PAS SOUS LE NOM QU'IL PORTE.** E2 le léguait comme
+« l'écho en multi-fenêtres » et déclarait ce critère **non mesurable par ce
+montage**. Le plan a établi que **trois de ses quatre livrables n'ont aucune
+inconnue** — et ce sont les trois qui ont été livrés.
+
+**Variables d'environnement introduites : AUCUNE**, et c'est **vérifié** : les
+quatre variables du micro sont toutes déjà transmises par `scripts/run-agent.sh`,
+et les livrables de E3 sont du protocole, du client et de la trace. *Une absence
+se déclare.* Le piège maison « toute variable neuve va dans `run-agent.sh` par
+une tâche DÉDIÉE » ne s'applique donc pas — **mais il a servi quand même** :
+c'est le `run-agent.ps1` **GÉNÉRÉ** qui a prouvé que `MICRO_FAUTE_ECRITURE`
+atteignait le processus (§ ci-dessous).
+
+### ⛔ Ce qui n'a PAS été fait, et pourquoi — à lire en premier
+
+| | Livrable | Sort |
+| --- | --- | --- |
+| ① | le refus d'exclusivité est **DIT au client** | ✅ **LIVRÉ ET MESURÉ**, 2 exécutions |
+| ② | l'exclusivité **à DEUX ENFANTS** est exercée | ✅ **LIVRÉ ET MESURÉ**, 2 exécutions |
+| ③ | l'occupation du tampon devient **observable** | ✅ **LIVRÉ ET MESURÉ**, 2 exécutions |
+| ④ | **l'écho en multi-fenêtres** | ⛔ **NON APPROCHÉ** |
+
+⛔ **LE LIVRABLE ④ EXIGEAIT UN CONSENTEMENT QUI N'A PAS ÉTÉ DONNÉ.** La
+Décision 5 du plan impose de créer un nœud PipeWire dans le graphe audio de
+l'utilisateur de la machine hôte — une « salle émulée » — pour que deux pages
+Chrome se restituent et se captent l'une l'autre. **Il a été demandé et n'a pas
+été accordé : aucune configuration audio de l'hôte n'a été modifiée**, ni
+`pw-loopback`, ni nœud, ni périphérique virtuel.
+
+🔴 **CONSÉQUENCE EXACTE : la Décision 7 de E1 — « l'AEC de Chrome n'annule que
+ce que son propre onglet restitue » — reste ce qu'elle a TOUJOURS été, un
+raisonnement écrit sans une seule pièce.** Ni confirmée, ni réfutée. ⚠️ **Et la
+spec §4 n'a PAS été annotée, délibérément** : l'annoter affirmerait une
+connaissance que E3 n'a pas.
+
+⚠️ **Le protocole humain de l'écho reste dû dans TOUS les cas** (Décision 3 du
+plan, asymétrique : le banc de salle émulée peut **confirmer** le défaut, jamais
+le **lever**). Son texte intégral vit dans le plan.
+⛔ **Le choix entre les trois voies de correction — A rassembler la restitution
+(ce qui DÉFAIT D7), B une annulation côté agent (que la spec §14 exclut
+nommément), C le casque dit à l'utilisateur — appartient au propriétaire du
+dépôt**, et ne se prend pas avant que le défaut soit mesuré.
+
+⚠️ **La sonde S1 est fragile même AVEC le consentement** : `Xvfb` est absent
+depuis D8, et **si Chrome sans interface ne rend aucun son dans un nœud
+PipeWire, elle tombe SANS REPLI.**
+
+### ① Le refus d'exclusivité est DIT au client — 2 exécutions
+
+E2 léguait : *« à deux fenêtres, le bouton micro de la perdante s'allume et
+**rien ne sort** »*. Confirmé **par lecture du code** avant d'écrire une ligne —
+`micro_disponible()` vaut `mic_mid.is_some() && puits_micro.is_some()` et **ne
+consulte jamais le mutex** —, puis fermé par le remède que E2 avait nommé :
+**`AgentControl::MicState { granted }`**, `type: "mic-state"`, donc `proto/`
+**et** `client/`.
+
+🔵 **LE TÉMOIN DE FIL EST INDÉPENDANT DE NOTRE CODE CLIENT**, et c'est ce qui
+fait sa valeur : un `addEventListener` **passif** sur `RTCDataChannel`, qui
+enregistre les messages tels qu'ils **arrivent**. Sans lui, « le bandeau
+s'affiche » et « le message est arrivé » se liraient pareil.
+
+| | exéc. 1 | exéc. 2 |
+| --- | --- | --- |
+| `w-2` (gagnante) `granted:true` | **+51 ms** après son clic | **+84 ms** |
+| `w-1` (perdante) `granted:false` | **+83 ms** | **+88 ms** |
+| `w-1` `granted:true` (la reprise) | **+19 443 ms** | **+19 244 ms** |
+| messages en tout | **3** | **3** |
+| **avant le premier clic** | **0** | **0** |
+
+🔵 **IL CRIE AUSSI QUAND LE MESSAGE PART TROP TÔT, ET IL NE CRIE PAS.** C'est le
+mode de panne qu'un chantier voisin venait de payer — un message émis avant
+l'ouverture du canal, donc un **silence** —, et c'est son propre `console.warn`
+qui l'avait dénoncé.
+
+🔴 **SUR TRANSITION, ET C'EST MESURÉ : TROIS messages pour ~4 500 dépôts.** Le
+micro dépose toutes les 20 ms ; sans le garde, la file de contrôle — bornée à 32
+par `PLAFOND_CONTROLE_EN_FILE` — aurait débordé en moins d'une seconde et
+**noyé le curseur, la vibration et le presse-papier**.
+
+**L'état reste `'actif'` dans les DEUX fenêtres**, seul le **libellé** change :
+`"Microphone actif — mais une autre fenêtre tient le micro de la VM : celle-ci
+n'y est pas entendue"`. 🔴 Éteindre le bouton d'une fenêtre qui capte réellement
+serait le **mensonge visuel** que la spec §9 « Vie privée » qualifie
+d'inacceptable « sur cette fonction précisément » ; et le ranger dans `'refuse'`
+confondrait deux causes qui appellent **deux gestes opposés**.
+⚠️ **La formulation est un JUGEMENT HUMAIN — le DOUZIÈME de la liste que ce
+dépôt tient depuis `BPP_MIN` —, et personne ne l'a lue à l'écran.**
+
+### ② L'exclusivité à DEUX ENFANTS — 2 exécutions, et le bon montage cette fois
+
+E2 ne l'avait exercée que contre un **processus tiers** tenant le même mutex
+nommé : le **chemin de code**, jamais le **montage**. ⚠️ **Une des trois raisons
+qu'il en donnait est PÉRIMÉE** — « le registre reste pollué » ne borne plus rien
+depuis D10 (3 → 10 fenêtres, 32 → 0 erreur, sur un registre laissé sale) ; les
+deux autres tenaient, et **le blocage était le périmètre, pas l'impossibilité**.
+
+| Relevé | exéc. 1 | exéc. 2 |
+| --- | --- | --- |
+| `enfant lancé` | **3** (les deux du montage + la relance de la phase C) | **3** |
+| `micro : une autre fenetre tient deja le cable` | **1**, sur `w-1` **SEULE** | **1**, idem |
+| la gagnante en porte | **0** | **0** |
+| `micro : cable acquis apres un refus` | présent | présent |
+| juge sur CABLE Output, 3 phases | **440,0 Hz** | **440,0 Hz** |
+| `ERROR` | **0** | **0** |
+
+⚠️ **`AUDIO_PERIPHERIQUE` N'EST PAS POSÉE, et c'est la Décision 8** : en
+multi-fenêtres `loopback_de_session` vaut `config.audio && fenetre_hwnd.is_none()`
+et `fenetre_hwnd` est `Some` dans un enfant — **la garde de boucle locale est
+INERTE PAR CONSTRUCTION**. Toute la recette de E2 la posait ; c'est un artefact
+du mono-fenêtre, et la poser ici aurait fait mesurer autre chose que le produit.
+
+⚠️ **REPLI DE LA DÉCISION 9 EMPLOYÉ ET DÉCLARÉ : UNE SEULE TONALITÉ.**
+`--use-file-for-fake-audio-capture` est un drapeau de **processus**, et la
+page-shell ouvre ses N fenêtres dans **son** instance. **Le juge établit donc
+que QUELQU'UN est entendu, jamais LEQUEL** ; le discriminant repose sur les deux
+autres pièces de la Décision 9.
+
+**La reprise (R4 sur le chemin réel)** : l'enfant gagnant est tué **par son PID
+relevé dans le journal** — jamais par `pkill -f` (qui tue son propre shell), et
+jamais par une heuristique de rang (« le plus jeune des `agent` » est **faux** :
+superviseur, capteur, pont, puis les enfants).
+
+### ③ L'occupation du tampon devient observable — 2 exécutions
+
+**Les deux grandeurs EXISTAIENT DÉJÀ et n'étaient lues par PERSONNE sur le
+chemin de production** : elles ne vivaient que dans la trace du **puits de
+mesure** (`MICRO_MESURE=1`), qui **ne peut pas coexister avec le câble**.
+
+`instrument/controle-trace-cable.sh` : **166 lignes, 166 portant
+`occupation_ms=`, 166 portant `famines=`**, aux deux exécutions. **Et les VALEURS
+ont un sens** : micro éteint `deposees=0 famines=102 occupation_ms=0` ; micro
+allumé `deposees=51 famines=0 occupation_ms=40` (exéc. 1) et `20` (exéc. 2). Les
+famines tombent à zéro **exactement** quand le micro alimente, et l'occupation
+**diffère d'une exécution à l'autre** : c'est une mesure, pas une constante.
+
+⚠️ **Les deux lectures se font sous le MÊME verrou** : `occupation` est un
+**instantané**, et le lire à un second verrouillage le daterait d'un autre moment
+que les compteurs, sur un tampon que le fil de dépôt fait bouger toutes les 20 ms.
+
+🔴 **CE QUE CELA NE DONNE PAS : la latence de bout en bout, que RIEN ne mesure
+dans ce dépôt depuis D1. LE TROISIÈME CRITÈRE DE LA SPEC §13 RESTE NON JUGÉ.**
+
+### Les résidus de E2 — et le témoin négatif qui vaut pour toute la campagne
+
+🔵 **`MICRO_FAUTE_ECRITURE` a été ARMÉE POUR LA PREMIÈRE FOIS, et elle mord**
+(1 exécution) : le `run-agent.ps1` **GÉNÉRÉ** porte `$env:MICRO_FAUTE_ECRITURE =
+'3'` — **c'est le contrôle qui compte, jamais le tracé du code** —, **2** lignes
+`ARMEE` (une par enfant : le budget est **global au PROCESSUS**), **2**
+`micro : ecriture sur le cable echouee, fil de rendu arrete`, **0** ligne
+`micro ecrit sur le cable`, et le juge à **AMPLITUDE = 0,000000**.
+
+🔵 **ET CETTE EXÉCUTION EST LE TÉMOIN NÉGATIF DE TOUTE LA CAMPAGNE.** Le même
+juge, sur le même point de terminaison, rend 440,0 Hz aux deux exécutions
+nominales et 0,000000 ici. **Sans elle, « le juge entend 440 Hz » ne serait pas
+discriminant d'un juge qui entendrait 440 Hz quoi qu'il arrive.** *Un zéro se
+qualifie avant de se rapporter, et seul un témoin négatif le fait.*
+
+🔴 **ET ELLE A RÉFUTÉ UNE AFFIRMATION DE E3 LUI-MÊME, ÉCRITE TROIS COMMITS PLUS
+TÔT.** `MicStateMessage` documentait : « `granted: true` […] veut dire : ce que
+ce micro capte **atteint la VM** ». **Faux, et mesuré** : le fil de rendu était
+mort, le juge relevait 0,000000, et la fenêtre a reçu `granted: true` quand même
+— le mutex vit dans `PuitsCable::deposer`, le fil de rendu est ailleurs, et
+**rien ne les relie**. Corrigé des **deux** côtés : **ce champ est un verdict
+d'EXCLUSIVITÉ, jamais un accusé de réception.** Un `false` est concluant ; un
+`true` ne l'est pas.
+
+✅ **Le résidu de la sonde 3 de la spec §12 est FERMÉ** (1 exécution) : E1 ne
+l'avait relevé qu'en **session 0 (WinRM)** et déclarait la concordance
+« plausible, non mesurée ». Sonde par tâche planifiée `/it`, ligne `SESSION=1`
+**à l'appui** : `CAPTURE_Default` et `CAPTURE_Communications` rendent
+l'identifiant de **CABLE Output**. ⚠️ **WinRT n'expose que DEUX rôles**
+(`Default` couvre `eConsole` et `eMultimedia`) là où l'API COM en distingue
+trois : ce relevé ne les sépare pas. ⚠️ **La voie COM a échoué** — le
+transtypage d'un `__ComObject` vers une interface `ComImport` rend `$null` **en
+silence** sous ce PowerShell —, et la sonde est versée **avec son échec**.
+
+⛔ **Les deux replis `Local\` et `Reveil::Echeance` restent du code jamais
+couru** : décision du plan, **tenue** — ne pas écrire un levier pour l'occasion,
+le legs étant plus honnête que l'artefact.
+
+### Les rouges — sept, dont la ROUGE 0 que le harnais REFUSE
+
+**Copie NOMMÉE et jamais `HEAD`** (un contrôle fondé sur `git diff` contre `HEAD`
+ne distingue pas « la mutation n'a rien changé » de « le fichier était déjà
+modifié »), **restauration depuis la copie** (`git checkout --` restaure `HEAD`,
+pas l'état d'avant), empreinte vérifiée après, occurrences comptées avant toute
+substitution.
+
+| # | Ce qu'elle mute | Ce qui tombe |
+| --- | --- | --- |
+| **R0** | **rien** | **le HARNAIS**, qui REFUSE de jouer (exit 3) |
+| R1 | `verifie_version` retiré de la seule variante `MicState` | **1 sur 114** — branchée variante par variante |
+| R2a / R2b | la clé `type` → `micstate`, Rust puis TypeScript | 2 sur 114 / 4 sur 308 |
+| R3 | l'émission déplacée vers **chaque dépôt** | 2 sur 1007 |
+| R4 | l'annonce ne suit que la **première** transition | **1 sur 1007** |
+| R5 | `annoncerExclusivite` rendue inerte | **3**, toutes dans la famille exclusivité |
+| R6 | `occupation_ms` retiré de la trace | ⛔ **NON JOUÉE, et déclarée** |
+
+⚠️ **R2a mute par `#[serde(rename)]` et NON par un renommage de l'identifiant
+Rust** : le renommer casserait `redaction.rs` et `controle.rs`, et la rouge
+rougirait sur une **erreur de compilation** — pour la mauvaise raison.
+
+🔴 **R2a ET R2b ÉTABLISSENT QUE CHAQUE CÔTÉ ÉPINGLE *SA* FORME, JAMAIS QUE LES
+DEUX S'ACCORDENT.** C'est la divergence **V1**, relevée par E3 et **léguée** :
+**il n'existe AUCUN fichier de vecteurs partagé pour `AgentControl`** — les trois
+`*-vectors.json` du dépôt servent `input`, `plateforme` et `fichiers`. **Un
+renommage de clé appliqué d'un seul côté resterait VERT DES DEUX CÔTÉS.** Lacune
+**préexistante et générale** ; E3 est le premier à la nommer.
+
+### Pièges neufs — à connaître avant de toucher à ce terrain
+
+- 🔵 **UN CONTRÔLE VERSÉ « PRÊT, PAS VERT » PEUT NE MÊME PAS SE PARSER.**
+  `controle-trace-cable.sh` portait `${1:?journal d'agent}` : bash **analyse**
+  le mot d'une expansion `${par:?mot}` **même entre guillemets doubles**, et
+  l'apostrophe y ouvrait une quote — « EOF prématurée », signalée **trente lignes
+  plus bas**. *Un contrôle de recette s'exécute avant d'être prescrit.*
+- 🔴 **`shell-page.ts` OUVRE `/?session=<id>` SANS `signaling`**, et
+  `adresseSignaling` retombe sur `ws://${location.host}` — en recette, le serveur
+  `vite` (5173) et non la plateforme (8080). Les pages restent à « Connexion… »
+  **indéfiniment, sans une ligne de console**. ⚠️ **CE N'EST PAS UN DÉFAUT DU
+  PRODUIT** : depuis P5, page et API sont sur la **même origine** derrière nginx,
+  et le repli est alors exactement juste. **Une recette à deux ports doit poser
+  le paramètre elle-même** — compensation de montage, jamais un correctif.
+- ⚠️ **`dataset.etat` à `null` PROUVE que `attacherBoutonMicro` n'a pas couru**,
+  donc que la session n'est pas établie — à ne pas confondre avec
+  `ready.mic: false`, qui se lit **pareil** sur un bouton caché.
+- 🔴 **`micro : cable acquis` N'EXISTE PAS pour le PREMIER acquéreur** :
+  `Issue::Accepte` ne journalise rien, seul `AccepteApresRefus` a sa trace. **La
+  gagnante se déduit de la PERDANTE.** *Un motif de recette se vérifie contre le
+  CODE, et sur le VERT.*
+- ⚠️ **`evalBorne` rend un OBJET quand elle échoue**, jamais une chaîne : un
+  `JSON.parse` posé dessus reçoit « [object Object] ». La page d'un enfant tué
+  n'existe plus — ce qui est pourtant **l'observation attendue** à cet instant.
+- ⚠️ **PowerShell veut `+` pour un type imbriqué** (`E3Def+IMMDeviceEnumerator`),
+  et un `>` dans le `/tr` d'une tâche planifiée **n'est pas interprété** (il
+  faudrait `cmd /c`) — l'absence de journal se lit alors comme une sonde qui n'a
+  pas tourné.
+- 🔴 **UN MESSAGE DE COMMIT LONG PASSE PAR UN FICHIER** : `git commit -m` fait
+  interpréter les accents graves par le shell, et un nom de script a disparu
+  d'une phrase, remplacé par « command not found ». Piège documenté depuis D11 ;
+  **payé une fois de plus, et attrapé en relisant le message COMMITÉ** plutôt que
+  celui qu'on croyait avoir écrit.
+
+### 🔴 La VM meurt toute seule, et son compteur le dit
+
+**Compteur libvirt 352 → 354** à la fin d'un essai :
+`qemu-system-x86_64: terminating on signal 15 from pid …`, puis
+`shutting down, reason=shutdown`. C'est **`libvirtd --timeout 120`** qui emporte
+le domaine. ⚠️ **CE N'EST PAS le mécanisme d'hibernation de D1**, qui voyait un
+`shutdown.exe` **invité** (Kernel-Power 187/42) : ici c'est **l'hôte** qui tue
+QEMU, et les confondre ferait chercher du mauvais côté. **Une exécution a été
+perdue ainsi**, et son journal est versé. Le lanceur porte désormais le compteur
+**avant et après**, et redémarre la VM en attendant **l'accès RÉEL** à
+`/media/vm` — jamais le seul port 5985 ni la seule présence du montage CIFS.
+
+### 🔴 La taille du binaire ne prouve rien, dans les DEUX sens
+
+Rebâti après **`cargo clean --release -p proto -p agent`** — E3 modifie `proto`.
+**Le binaire d'E3 est PLUS PETIT que celui qu'il remplace** — **10 772 992**
+contre **10 790 400** octets — alors qu'il ajoute du code. Le contrôle qui vaut
+est une **chaîne posée soi-même**, cherchée **sur le chemin que `run-agent.sh`
+lance** : témoin **positif** `micro ecrit sur le cable` = 1, témoin **négatif**
+(chaîne impossible) = 0, discriminant `mic-state` **0 → 3**.
+⚠️ **`occupation_ms` a été ÉCARTÉ comme discriminant : il rend déjà 1 sur le
+binaire d'AVANT** — c'est un champ de la trace du puits de mesure de E1.
+*« Vérifie le chemin sur lequel tu la cherches » vaut aussi pour la chaîne
+elle-même.*
+
+### Ce que E3 n'établit PAS
+
+- **Aucun taux, nulle part.** Deux exécutions par critère au mieux.
+- ⛔ **RIEN DE L'ÉCHO**, et la Décision 7 de E1 reste **non mesurée**.
+- 🔴 **Personne n'a écouté** : la spec §13 reste atteinte par un **juge
+  logiciel** seulement.
+- 🔴 **La latence de bout en bout**, jamais mesurée depuis D1.
+- **Une seule tonalité** : le juge dit que quelqu'un est entendu, jamais lequel.
+- **Rien au-delà de DEUX fenêtres**, aucun microphone réel, aucune durée longue
+  (session la plus longue de l'ordre de deux minutes ; E2 avait ses dix), rien
+  d'un autre navigateur ni d'un autre serveur audio.
+- **`granted: true` n'est PAS un accusé de réception**, et c'est mesuré.
+- **Aucune constante calibrée**, et aucun jugement d'écoute n'a jamais été porté
+  sur aucune constante de ce dépôt.
+- **Le rééchantillonnage 48 000 → 44 100 du câble** et **la décroissance de
+  17,6 %** de E2 restent inexpliqués. **Les trois couches inconnues du chantier D
+  le restent.**
+
+### Ce que E3 lègue
+
+**Legs de E2 réglés** : n°2 (le refus dit au client — **fermé ET exercé**), n°3
+(l'exclusivité à deux enfants — **exercée**), n°7 **à moitié**, n°9
+(`MICRO_FAUTE_ECRITURE`). **Legs de E1 réglé** : n°7 (le périphérique par défaut
+de la session interactive).
+
+1. ⛔ **L'ÉCHO EN MULTI-FENÊTRES, ENTIER** — le consentement sur le graphe audio
+   de l'hôte n'a pas été donné, et la sonde est fragile même avec lui.
+2. ⛔ **Le protocole humain de l'écho**, dû quel que soit le verdict de S1.
+3. ⛔ **Le choix entre les voies A, B et C**, posé au propriétaire du dépôt.
+4. ⛔ **La latence de bout en bout** ; **l'écoute à l'oreille** (spec §13) et
+   **l'appel réel sans écho** (§11.2).
+5. ⛔ **La divergence V1** : ouvrir un fichier de vecteurs partagé pour
+   `AgentControl`. Précédent : `proto/plateforme-vectors.json`, créé par P3 pour
+   cette raison exacte. **Général à `AgentControl`, pas propre au micro.**
+6. ⛔ **R6**, la seule rouge non jouée.
+7. ⛔ **Les deux replis jamais courus**, **`Local\` en particulier** : sa
+   garantie rétrécit à une session Windows, et personne n'a vu ce qu'elle vaut.
+8. ⛔ **La licence VB-Audio**, personnelle seulement — **juridique**.
+9. ⚠️ **`proto/src/control.rs` est à 487, marge 13.** Toute addition future y
+   appelle une **EXTRACTION**, jamais une compression, et son point de chute est
+   nommé : la variante `Link` elle-même vers `control/lien.rs`, où vivent déjà
+   ses deux enums. ⚠️ **`agent/src/transport.rs` 488 (marge 12)** et
+   **`client/src/main.ts` 486 (marge 14)** — pour ce dernier, le point de chute
+   est `client/src/bandeaux.ts`, et **jamais la chaîne de dispatch**, qui capture
+   une quinzaine de `let` de module : une extraction verbatim **ne compilerait
+   pas**.
 
 ---
 
