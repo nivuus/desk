@@ -76,8 +76,13 @@ const FILE_EMISSION: usize = 32;
 /// de cœur — et, depuis G1, la DÉCOUVERTE D'APPLICATIONS avec lui** : la
 /// boucle d'`apps` sort sur `TryRecvError::Disconnected` et journalise « canal
 /// /agent fermé : découverte d'applications arrêtée ». `main` le garde vivant
-/// pour toute la durée du processus, et c'est désormais vrai pour deux
-/// mécanismes au lieu d'un.
+/// pour toute la durée du processus.
+///
+/// ❌ **« DEUX MÉCANISMES AU LIEU D'UN » EST DEVENU FAUX AU SOUS-BLOC G3 : IL Y
+/// EN A TROIS.** Le fil d'INSTALLATION s'arrête lui aussi — il draine
+/// `installations()`, dont l'émetteur meurt avec le canal, et il journalise
+/// « canal /agent fermé : fil d'installation arrêté ». Le compte est corrigé
+/// plutôt que retiré : c'est lui qui dit ce qu'on perd en lâchant ce champ.
 /// Le vocabulaire des ordres descendants vit dans un module enfant — voir son
 /// en-tête pour la déclaration du franchissement de plafond qui l'a produit.
 mod ordre;

@@ -26,7 +26,8 @@ use crate::plateforme::{Identite, Installation};
 
 use super::cadence::{doit_emettre, PERIODE_PROGRESSION};
 use super::depot::{self, Etat};
-use super::execution::{self, JOURNAL_MAX_OCTETS};
+use super::execution;
+use super::journal::queue;
 use super::partage::Partage;
 use super::peripherique_audio::{self, Moment};
 use super::telechargement::{self, Demande};
@@ -301,11 +302,13 @@ fn terminer(
     journal: &str,
     tronque: bool,
 ) {
-    let queue = if journal.len() > JOURNAL_MAX_OCTETS {
-        &journal[journal.len() - JOURNAL_MAX_OCTETS..]
-    } else {
-        journal
-    };
+    // 🔴 CETTE BORNE PANIQUAIT. Elle faisait `&journal[journal.len() - N..]` sur
+    // un `&str` sans vérifier la frontière de caractère — et le chemin était
+    // ATTEIGNABLE, `from_utf8_lossy` agrandissant. Un installeur écrivant du
+    // Latin-1 sur sa sortie standard aurait tué ce fil, qui serait mort SANS
+    // RAPPORTER D'ISSUE : le hub aurait affiché « en cours » pour l'éternité.
+    let (queue, deja_tronque) = queue(journal);
+    let tronque = tronque || deja_tronque;
     emettre(VersLaPlateforme::termine(
         ordre.id.clone(),
         issue.vers_protocole(),

@@ -1,0 +1,138 @@
+=== TÂCHE 35 — LA REVUE TRANSVERSE DE FIN DE BRANCHE ===
+
+Barème, pour dire ce qu'on cherche : douze défauts en D10, treize en S3,
+vingt-sept en S4, huit en G1, dix-sept dans le presse-papier P1, neuf en
+P5, onze en F1, sept en G2. UNE REVUE QUI N'EN TROUVE AUCUN N'A PAS CHERCHÉ.
+
+Sa cible propre : LES AFFIRMATIONS DE CODE DEVENUES FAUSSES DANS LEUR
+PROPRE BRANCHE. Aucune revue par tâche ne peut les voir — la tâche qui
+écrit la phrase et celle qui la réfute ne se relisent jamais.
+
+--- LES PLACES, ÉNUMÉRÉES PAR grep AVANT TOUTE ÉDITION ---
+
+[1] ordre.rs : « les deux messages descendants »
+19:/// 🔴 UN ENUM PLUTÔT QU'UNE SECONDE FILE, ET C'EST UNE DÉCISION. Les deux
+
+[2] plateforme.rs : « deux mécanismes au lieu d'un »
+
+[3] apps.rs : « Branche la découverte »
+51:/// Branche la découverte, ou rend `None` en DISANT laquelle des trois raisons.
+
+[4] canal.ts : l'inventaire des variantes de ④
+2:// depuis le sous-bloc G1, le CATALOGUE qui monte et les ORDRES DE LANCEMENT
+
+[5] proto/plateforme.rs : la liste des versions s'arrête à v3
+83:/// v1 (sous-bloc P3) : enrôlement, battement de cœur, jeton d'agent.
+84:/// v2 (sous-bloc G1) : catalogue d'applications, ordre de lancement.
+85:/// v3 (sous-bloc G2) : icônes 256, leur provenance, et l'inventaire des
+
+[6] CLAUDE.md : la citation fraicheur.ts:37 (divergence E6 du plan)
+docs/superpowers/specs/2026-08-19-gestion-apps-design.md:256:  `plateforme/src/agents/fraicheur.ts:37`.
+docs/superpowers/specs/2026-08-19-gestion-apps-design.md:916:| Installeur qui désinstalle l'agent | l'agent meurt ; la plateforme le voit par `vu_a` (`SEUIL_INJOIGNABLE_MS = 90_000`, `plateforme/src/agents/fraicheur.ts:37`) et annonce la VM `injoignable`. **Rien ne le répare automatiquement** ; le cadrage §7 prévoit que le hub le dise |
+   valeur réelle :
+47:export const SEUIL_INJOIGNABLE_MS = 90_000;
+63:/// exactement `SEUIL_INJOIGNABLE_MS` est encore toléré, un silence d'une
+85:    return maintenant - vuA > SEUIL_INJOIGNABLE_MS ? 'injoignable' : 'prete';
+
+--- CORRECTIONS DE L'ÉNUMÉRATION ELLE-MÊME, avant d'éditer ---
+[2] le motif exact était coupé par un retour à la ligne :
+79:/// pour toute la durée du processus, et c'est désormais vrai pour deux
+257:    /// 🔴 MÊME PROPRIÉTÉ QU'[`Self::ordres`], ET POUR LA MÊME RAISON : deux
+80:/// mécanismes au lieu d'un.
+
+[6] ⚠️ LA DIVERGENCE E6 DU PLAN EST ELLE-MÊME INEXACTE. Elle écrit que
+    « la spec de ④ ET CLAUDE.md » citent `fraicheur.ts:37`. Mesuré :
+    CLAUDE.md n'en porte AUCUNE occurrence ; la spec en porte DEUX.
+0
+    CLAUDE.md : 0 occurrence
+2
+
+--- SECONDE PASSE : les candidats que le plan nomme, un par un ---
+
+[7] lancement.rs (E8) : « ShellExecuteEx crée son processus hors de tout job »
+34:/// crée son processus hors de tout job, et c'est ce qu'on veut.
+
+[8] les encadrés des migrations 0003 et 0004
+plateforme/src/base/migrations/0003-agents.sql:2:-- table `application` qui nait avec ses contraintes et reste vide.
+plateforme/src/base/migrations/0003-agents.sql:48:-- `application` est creee par P3 et RESTE VIDE : son chemin d'ecriture est le
+
+[9] la spec de ④ : les divergences E2, E3, E4, E5, E12 à ANNOTER
+515:| 3 | navigateur → plateforme | `POST /televersement/:id/sceller` — 🔴 **la plateforme recalcule le SHA-256 du fichier réassemblé** et refuse s'il diffère |
+842:  src/depot/televersement.ts     NEUF (G3)
+844:  src/http/routes-televersement.ts NEUF (G3)
+851:  src/hub/tranches.ts            NEUF — PUR, sans DOM : découpage, reprise, empreinte
+
+--- CE QUI A ÉTÉ CORRIGÉ, PLACE PAR PLACE, ET RELU APRÈS ---
+
+[1] agent/src/plateforme/ordre.rs — « Les DEUX messages descendants vont au MÊME
+    consommateur ». Il y en a TROIS depuis G3, et le troisième va AILLEURS.
+    ⚠️ L'argument n'est PAS réfuté et il est conservé : le risque qu'il nomme —
+    « un ajout futur en oublie une » — vaut d'un consommateur UNIQUE, et il n'y
+    en a plus un. ANNOTÉ À SA PLACE, pas seulement chez son voisin.
+
+[2] agent/src/plateforme.rs — « c'est désormais vrai pour DEUX mécanismes au
+    lieu d'un ». Il y en a TROIS : le fil d'installation s'arrête lui aussi.
+    Le compte est CORRIGÉ plutôt que retiré — c'est lui qui dit ce qu'on perd
+    en lâchant ce champ.
+
+[3] agent/src/apps.rs — « Branche LA DÉCOUVERTE ». Elle branche l'installation
+    aussi, et rend deux poignées.
+
+[4] plateforme/src/agents/canal.ts — l'inventaire des variantes de ④.
+    🔴 IL A ÉTÉ ÉCRIT TROIS FOIS ET A VIEILLI DEUX FOIS : G1 y a mis trois
+    variantes, G2 en a ajouté une SANS reprendre la ligne, G3 en ajoute trois.
+    Le remède n'est pas de le corriger une quatrième fois : l'énumération est
+    RETIRÉE et renvoyée au protocole, qui fait autorité. Une liste recopiée là
+    serait fausse au sous-bloc suivant, comme aux deux précédents.
+    ⚠️ Le paragraphe « PLATEFORME_VERSION est passée à 2 pour cela » est un
+    relevé DATÉ et reste VRAI comme histoire : il est annoté, pas barré.
+
+[5] proto/src/plateforme.rs — la liste des versions s'arrêtait à v3. **Sans sa
+    ligne, la constante MENT** : un lecteur repartirait avec l'avant-dernière.
+    Et « LE PASSAGE À 2 » est généralisé une fois pour toutes, plutôt que
+    renuméroté à chaque bump.
+
+[6] la spec de ④ — `fraicheur.ts:37` → **47**, aux DEUX places.
+    ⚠️ LA DIVERGENCE E6 DU PLAN EST ELLE-MÊME INEXACTE : elle nomme « la spec de
+    ④ ET CLAUDE.md ». Mesuré ci-dessus — CLAUDE.md n'en porte AUCUNE, la spec
+    en porte DEUX. C'est le naufrage du « 487 » commis dans la ligne qui le
+    dénonce, et il est corrigé plutôt que recopié.
+
+[7] agent/src/apps/lancement.rs (E8) — « `ShellExecuteEx` crée son processus
+    hors de tout job, et c'est ce qu'on veut ». JAMAIS MESURÉE, et vraie pour
+    une raison que la phrase ne donne pas : en général un processus créé par un
+    processus assigné à un job EST assigné au même job. Elle n'est vraie que
+    parce que le superviseur ne s'assigne pas lui-même — et cesserait de l'être
+    si le lancement venait d'un enfant. G3 ne s'appuie pas dessus : il MESURE
+    (`IsProcessInJob`) et il REFUSE.
+
+[8] plateforme/src/base/migrations/0003-agents.sql — « `application` RESTE
+    VIDE ». Faux depuis G1, qui lui a donné son chemin d'écriture. Le relevé de
+    P3 reste exact À SA DATE, et c'est pourquoi il n'est pas effacé.
+
+[9] la spec §4 (E5) — « le SHA-256 du fichier RÉASSEMBLÉ ». G3 ne réassemble
+    jamais : le scellement est une passe de FLUX. **Contredit PAR UNE
+    ÉQUIVALENCE**, pas par un abandon — même valeur, même refus, et 1,6 Go de
+    disque économisés pour un installeur de 800 Mo.
+
+[10] la spec §6 (E2) — `src/installation.rs NEUF — #[cfg(windows)]`. Le
+     téléchargement est PORTABLE, et c'est une amélioration de couverture.
+
+[11] la spec §6 (E3) — `src/hub/tranches.ts`. Les deux modules purs vivent dans
+     `proto/ts/`, parce qu'ils sont un CONTRAT partagé.
+
+[12] la spec §5 (E7) — le critère ⑦ est VACUEUX tant qu'on n'a pas relevé le
+     job, et l'encadré le dit désormais à l'endroit où on le lira.
+
+[13] la spec §5 (E4) — trois issues annoncées, quatre livrées.
+
+🔴 [14] UN DÉFAUT DE G3 LUI-MÊME, ET SEUL LE TYPECHECK DE `client/` LE VOYAIT.
+     L'extraction de `plateforme-installation.ts` a laissé DEUX imports
+     ORPHELINS dans `proto/ts/plateforme.ts` : leurs cinq gardes étaient parties
+     avec les deux lectures.
+         cd proto  && npm run typecheck  ->  0 erreur
+         cd client && npm run typecheck  ->  TS6192, DEUX fois, sur CE fichier
+     **Deux paquets typechèquent le même fichier avec deux sévérités, et seul le
+     plus sévère dit la vérité.** C'est aussi la raison pour laquelle
+     `verify-all.sh` lance TROIS `typecheck` et non un. Corrigé, et la leçon est
+     écrite dans le fichier pour qu'une extraction suivante la connaisse.

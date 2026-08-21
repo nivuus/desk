@@ -84,6 +84,18 @@ use serde::{Deserialize, Serialize};
 /// v2 (sous-bloc G1) : catalogue d'applications, ordre de lancement.
 /// v3 (sous-bloc G2) : icônes 256, leur provenance, et l'inventaire des
 ///                     manquantes.
+/// v4 (sous-bloc G3) : l'installation — `installer` descendante, `progression`
+///                     et `termine` montantes, et les deux énumérations
+///                     [`Phase`] et [`Issue`] qu'elles portent.
+///
+/// 🔴 CETTE LISTE N'EST PAS DÉCORATIVE : SANS SA LIGNE, LA CONSTANTE MENT. Un
+/// lecteur qui vient y chercher ce que porte la version courante repartirait
+/// avec l'avant-dernière, et croirait le protocole plus petit qu'il n'est.
+///
+/// 🔴 **TOUT** PASSAGE REND PÉRIMÉ TOUT AGENT DÉJÀ DÉPLOYÉ — le raisonnement
+/// ci-dessous est écrit pour le passage à 2, il vaut mot pour mot pour ceux à
+/// 3 et à 4, et il n'est PAS réécrit à chaque bump : le relire au présent est
+/// ce qu'on veut, le renuméroter à chaque fois ne dirait rien de plus.
 ///
 /// 🔴 LE PASSAGE À 2 REND PÉRIMÉ TOUT AGENT DÉJÀ DÉPLOYÉ, et c'est une
 /// décision, pas un effet de bord. Un agent v1 reçoit `refus{motif:version}`

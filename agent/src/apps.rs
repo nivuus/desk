@@ -48,7 +48,13 @@ pub fn desarme(valeur: Option<&str>) -> bool {
     valeur == Some("0")
 }
 
-/// Branche la découverte, ou rend `None` en DISANT laquelle des trois raisons.
+/// Branche la découverte **ET L'INSTALLATION**, ou rend `None` en DISANT
+/// laquelle des trois raisons.
+///
+/// ❌ **CETTE LIGNE NE DISAIT QUE « LA DÉCOUVERTE » JUSQU'AU SOUS-BLOC G3**, et
+/// c'était vrai jusqu'à lui. Elle rend désormais DEUX poignées : le fil COM de
+/// découverte, et la tâche `tokio` d'installation. Les deux se désarment
+/// ensemble par `APPS=0` — déclaré, pas découvert.
 ///
 /// ⚠️ « PAS DE CANAL » N'EST PAS « `APPS=0` », ET UN SILENCE LES CONFONDRAIT.
 /// Sans canal il n'y a nulle part où envoyer un catalogue ; c'est un état
