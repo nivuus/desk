@@ -20,6 +20,10 @@
 use std::sync::OnceLock;
 use std::time::Duration;
 
+/// La lecture Win32 de l'icône — **aucune décision n'y vit**.
+#[cfg(windows)]
+pub mod win32;
+
 #[cfg(test)]
 mod tests;
 
