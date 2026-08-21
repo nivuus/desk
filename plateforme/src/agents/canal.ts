@@ -69,34 +69,10 @@ import {
     type Budget,
     type Frein,
 } from '../securite/frein';
+import { estMontantDeQuatre, reemettreLesInstallations, traiter } from './canal-apps';
 import { verifierEnrolement } from './enrolement';
 import type { RegistreAgents } from './registre';
 
-/// Demande à l'agent les icônes que le magasin n'a PAS.
-///
-/// 🔴 ELLE N'ÉMET RIEN QUAND L'ENSEMBLE EST VIDE. Une liste vide coûterait un
-/// message par réconciliation sur un disque au repos — c'est-à-dire toutes les
-/// trente secondes, pour toujours —, et c'est très exactement ce que le diff
-/// du sous-bloc G1 existe pour éviter. Le critère ⑤ de recette se juge là.
-///
-/// 🔴 L'INVENTAIRE INTERROGE LE DISQUE, PAS UNE TABLE. Une table de
-/// comptabilité divergerait du magasin le jour où un fichier serait perdu — et
-/// c'est PRÉCISÉMENT le jour où l'on a besoin de le savoir. C'est ce qui rend
-/// le magasin AUTO-RECONSTRUCTIBLE, et donc le disque acceptable.
-function reclamerLesIcones(
-    socket: WebSocket,
-    magasin: Magasin | undefined,
-    message: CatalogueMessage,
-): void {
-    if (magasin === undefined) return;
-    const annoncees = message.applications
-        .map((a) => a.icone)
-        .filter((e): e is string => e !== null);
-    if (annoncees.length === 0) return;
-    const manque = magasin.manquantes(annoncees);
-    if (manque.length === 0) return;
-    envoyer(socket, encodeIconesManquantes(manque));
-}
 
 export interface OptionsCanal {
     base: Pilote;
@@ -249,48 +225,33 @@ export function servirLeCanalAgent(wss: WebSocketServer, options: OptionsCanal):
                 return;
             }
 
-            if (lecture.message.type === 'catalogue' || lecture.message.type === 'lancee') {
+            // 🔴 UNE GARDE DE TYPE, PLUS UNE CHUTE. `enroler` était le RESTE
+            // d'un `if/else`, et l'élargissement de l'union par le sous-bloc G3
+            // a fait de `progression` et `termine` deux membres de ce reste —
+            // donc deux messages que la destructuration ci-dessous aurait lus
+            // comme un enrôlement. `tsc` l'a dit, et il a eu de la chance : la
+            // même fragilité sur une valeur plutôt qu'un type serait passée en
+            // silence. Le prédicat NOMME les quatre types de ④.
+            if (estMontantDeQuatre(lecture.message)) {
                 if (vmId === undefined) {
-                    // 🔴 NI CATALOGUE NI ISSUE SANS ENRÔLEMENT. Accepter un
-                    // catalogue ici laisserait un pair anonyme ÉCRIRE DANS LA
-                    // TABLE `application` d'une VM qu'il n'a pas authentifiée ;
-                    // accepter une issue lui laisserait résoudre la demande
-                    // d'un autre, et faire croire à un lancement qui n'a pas eu
-                    // lieu. C'est le trou que le refus `sequence` du battement
-                    // ferme déjà, par deux autres portes.
+                    // 🔴 NI CATALOGUE, NI ISSUE, NI PROGRESSION SANS
+                    // ENRÔLEMENT. Accepter un catalogue ici laisserait un pair
+                    // anonyme ÉCRIRE DANS LA TABLE `application` d'une VM qu'il
+                    // n'a pas authentifiée ; accepter une issue lui laisserait
+                    // résoudre la demande d'un autre, et faire croire à un
+                    // lancement qui n'a pas eu lieu ; accepter une progression
+                    // ou un `termine` lui laisserait écrire dans la table
+                    // `installation` d'une VM qui n'est pas la sienne — et donc
+                    // déclarer réussie, ou refusée, l'installation d'autrui.
+                    // C'est le trou que le refus `sequence` du battement ferme
+                    // déjà, par quatre autres portes.
                     refuser('sequence');
                     return;
                 }
-
-                if (lecture.message.type === 'lancee') {
-                    // ⚠️ SYNCHRONE, et rien à écrire : `resoudre` ne touche
-                    // qu'une `Map` en mémoire, et IGNORE une demande inconnue
-                    // plutôt que de lever (`agents/registre.ts`).
-                    registre.resoudre(lecture.message.demande, lecture.message.issue);
-                    return;
-                }
-
-                const message = lecture.message;
-                const identifiant = vmId;
-                const instant = maintenant();
-                // ⚠️ LANCÉE SANS ÊTRE ATTENDUE, avec son `catch`, exactement
-                // comme `marquerVu` ci-dessus et pour la même raison : un
-                // `await` ici ferait qu'une base momentanément indisponible
-                // ABATTRAIT LA CONNEXION d'un agent qui va très bien, et une
-                // promesse rejetée sans `catch` abattrait tout le process.
-                //
-                // Le coût est nommé : un catalogue perdu ne se voit qu'au
-                // journal. Il se rattrape tout seul — l'agent renvoie un état
-                // COMPLET à chaque (ré)enrôlement, ce qui donne un terme à la
-                // divergence sans que personne n'ait à réessayer.
-                void lireConnues(base, identifiant)
-                    .then((connues) => appliquer(base, identifiant, fusionner(connues, message), instant))
-                    .then(() => reclamerLesIcones(socket, magasin, message))
-                    .catch((cause) => {
-                        console.error(
-                            `catalogue non écrit pour la VM ${identifiant} : ${String(cause)}`,
-                        );
-                    });
+                traiter(
+                    { base, registre, magasin, socket, vmId, maintenant, envoyer: (brut) => envoyer(socket, brut) },
+                    lecture.message,
+                );
                 return;
             }
 
@@ -373,6 +334,34 @@ export function servirLeCanalAgent(wss: WebSocketServer, options: OptionsCanal):
 
                     const { jeton, expireA } = jetonNeuf(verdict.prefixe);
                     envoyer(socket, encodeEnrole(verdict.prefixe, jeton, expireA));
+
+                    // 🔴 LA RÉÉMISSION DES INSTALLATIONS EN ATTENTE. Un `push`
+                    // WebSocket n'a AUCUNE garantie de livraison : sans elle,
+                    // un ordre émis pendant une coupure serait perdu SANS
+                    // TERME, et l'utilisateur attendrait une installation que
+                    // personne ne relancerait jamais. C'est le même filet que
+                    // le `complet = true` du catalogue, et la recette de G1 a
+                    // vu ce filet-là fonctionner sur le chemin réel.
+                    //
+                    // ⚠️ ELLE NE VISE QUE LES `en_attente`, ET C'EST LA
+                    // PREMIÈRE DES DEUX CEINTURES CONTRE UNE DOUBLE
+                    // EXÉCUTION : dès qu'un agent a rapporté une progression,
+                    // la ligne passe `en_cours` et cesse d'être réémise. La
+                    // seconde ceinture est le marqueur sur le disque de la VM,
+                    // et elle protège du cas où la première a perdu sa base.
+                    //
+                    // ⚠️ `void … .catch(…)`, JAMAIS `await` : un enrôlement
+                    // parfaitement valide ne doit pas échouer parce que la
+                    // base est momentanément indisponible, et une promesse
+                    // rejetée sans `catch` abattrait tout le process Node.
+                    void reemettreLesInstallations(
+                        { base, socket, vmId: verdict.vmId, envoyer: (brut) => envoyer(socket, brut) },
+                    ).catch((cause) => {
+                        console.error(
+                            `réémission des installations impossible pour la VM `
+                                + `${verdict.vmId} : ${String(cause)}`,
+                        );
+                    });
                 })
                 .catch((cause) => {
                     // Le nom de VM est journalisé, le secret jamais : il vient

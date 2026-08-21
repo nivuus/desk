@@ -1,0 +1,47 @@
+=== TÂCHES 30 et 31 — les rouges du canal de la plateforme ===
+sha256 AVANT canal.ts      : 9cf285ec980b8c49fb81df92ee2aa379
+sha256 AVANT canal-apps.ts : 6529b07c8c2033196af794f9f8e19e8a
+
+================ ROUGE 1 — la réémission retirée ================
+MUTATION : l'appel à reemettreLesInstallations disparaît de l'enrôlement.
+Un push WebSocket n'a AUCUNE garantie de livraison : sans elle, un ordre
+émis pendant une coupure serait perdu SANS TERME.
+--- lignes de diff contre la copie : 8
+     → aucun message poussé par le canal en 2000 ms
+     → aucun message poussé par le canal en 2000 ms
+     → aucun message poussé par le canal en 2000 ms
+     → aucun message poussé par le canal en 2000 ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+================ ROUGE 2 — `progression` et `termine` hors du prédicat ================
+MUTATION : les deux types neufs sortent de TYPES_DE_QUATRE. Ils tombent
+alors dans le RESTE de l aiguillage, c est-a-dire dans la branche
+d enrolement, ou la destructuration const { vm, secret } les lit.
+C est exactement la fragilite que le predicat referme.
+--- lignes de diff contre la copie : 2
+--- typecheck :
+--- tests :
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  5 failed | 1 passed (6)
+
+🔴 CE QUE LA ROUGE 2 ÉTABLIT, ET QUI EST PLUS UTILE QUE SON EXIT CODE : le
+typecheck ne rend AUCUNE erreur. `TYPES_DE_QUATRE` est déclarée
+`readonly MontantDeQuatre['type'][]`, et un tableau plus court reste assignable :
+retirer un type de la liste est INVISIBLE à `tsc`. Ce sont les tests, et eux
+seuls, qui l'attrapent — cinq sur six.
+
+Le commentaire de `canal-apps.ts` le dit déjà, et cette rouge le VÉRIFIE au lieu
+de l'affirmer. La moitié que `tsc` tient, elle, est l'autre sens : une variante
+ajoutée à l'union `VersLaPlateforme` sans être routée tombe dans la branche
+d'enrôlement, où la destructuration `const { vm, secret }` ne compile pas — et
+c'est exactement ce qui est arrivé au sous-bloc G3 quand il a élargi l'union.
+
+⚠️ ET L'EN-TÊTE DE LA ROUGE 2 A ÉTÉ MUTILÉ PAR ZSH, pour la seconde fois dans ce
+sous-bloc : des accents graves dans un `echo` sont interprétés comme des
+substitutions de commande (« command not found: progression »). Corrigé dans ce
+fichier plutôt que nettoyé en silence. La parade est le heredoc entre quotes,
+que ce journal emploie pour tout le reste.
+
+================ RESTAURATION ================
+sha256 APRÈS canal.ts      : 9cf285ec980b8c49fb81df92ee2aa379
+sha256 APRÈS canal-apps.ts : 6529b07c8c2033196af794f9f8e19e8a
