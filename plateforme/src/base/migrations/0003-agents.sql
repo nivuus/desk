@@ -45,6 +45,11 @@ CREATE TABLE agent_enrole (
     vu_a             BIGINT NULL
 );
 
+-- ❌ « RESTE VIDE » EST FAUX DEPUIS LE SOUS-BLOC G1, qui lui a donne son
+-- chemin d ecriture (`agents/canal.ts`, par `apps/catalogue.ts::fusionner`), et
+-- G2 lui a ajoute ses colonnes d icone. La phrase ci-dessous reste le releve
+-- EXACT de P3 a sa date, et c est pour cela qu elle n est pas effacee.
+-- ⚠️ Releve par le sous-bloc G3, qui creait ses propres tables a cote.
 -- `application` est creee par P3 et RESTE VIDE : son chemin d'ecriture est le
 -- sous-projet ④, qui empruntera le canal /agent pour la remplir.
 --

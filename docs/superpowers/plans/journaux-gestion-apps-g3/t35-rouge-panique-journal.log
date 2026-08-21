@@ -1,0 +1,27 @@
+=== LA ROUGE DU DÉFAUT QUE LA RELECTURE A TROUVÉ ===
+
+Il ne vient d'aucune tâche du plan : il vient de la relecture du code le
+MOINS testé du sous-bloc, celui qui n'a sur l'hôte aucune épreuve possible.
+La borne du journal était écrite DEUX FOIS, et la seconde PANIQUAIT.
+
+sha256 AVANT : c0fec231628da8326a46fc80d98d9359
+
+--- MUTATION : la version d'ORIGINE, sans la frontière de caractère ---
+--- lignes de diff contre la copie : 6
+thread 'apps::installation::journal::tests::from_utf8_lossy_AGRANDIT_donc_on_reborne_apres_la_conversion' (3344355) panicked at agent/src/apps/installation/journal.rs:45:12:
+start byte index 131072 is not a char boundary; it is inside '�' (bytes 131070..131073 of string)
+test result: FAILED. 3 passed; 1 failed; 0 ignored; 0 measured; 857 filtered out; finished in 0.01s
+
+sha256 APRÈS : c0fec231628da8326a46fc80d98d9359
+
+🔴 CE N'EST PAS UN ÉCHEC D'ASSERTION, C'EST UNE PANIQUE — et c'est ce qui
+distingue ce défaut des autres : il ne rendait pas une mauvaise valeur, il
+TUAIT LE FIL D'INSTALLATION. Le fil serait mort SANS RAPPORTER D'ISSUE, et
+le hub aurait affiché « en cours » pour l'éternité — la ligne serait restée
+`en_cours` en base, donc même la réémission ne l'aurait pas reprise.
+
+⚠️ ET LE CHEMIN ÉTAIT ATTEIGNABLE, ce qui est le point : `from_utf8_lossy`
+AGRANDIT (un octet invalide devient un U+FFFD de trois octets), si bien que
+la première borne — sur des octets — pouvait rendre une chaîne PLUS LONGUE
+que la borne, et la seconde coupait alors au milieu d'un caractère. Un
+installeur qui écrit du Latin-1 sur sa sortie standard aurait suffi.

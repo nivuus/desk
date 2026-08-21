@@ -33,6 +33,22 @@ use windows::Win32::UI::Shell::{
 /// tuerait avec l'agent, c'est-à-dire au premier redéploiement. `ShellExecuteEx`
 /// crée son processus hors de tout job, et c'est ce qu'on veut.
 ///
+/// ⚠️ **CETTE DERNIÈRE PHRASE N'A JAMAIS ÉTÉ MESURÉE, ET ELLE EST VRAIE POUR
+/// UNE RAISON QU'ELLE NE DONNE PAS** (relevé par le sous-bloc G3, sa
+/// divergence E8). En général, un processus créé par un processus assigné à un
+/// job **est assigné au MÊME job** : ce n'est donc pas une propriété de
+/// `ShellExecuteEx`, c'est une conséquence du fait que
+/// `superviseur/lanceur.rs` **n'assigne que ses ENFANTS et jamais lui-même**.
+/// La phrase cesserait d'être vraie le jour où ce lancement viendrait d'un
+/// enfant — et le PONT, lui, EST dans le job.
+///
+/// 🔴 **G3 NE S'APPUIE PAS DESSUS : il MESURE et il REFUSE.**
+/// `apps::installation::execution::dans_un_job` appelle `IsProcessInJob` avant
+/// tout lancement d'installeur, journalise le booléen à chaque fois, et refuse
+/// si la réponse est oui. **Rien de tel n'est fait ici**, et c'est assumé : un
+/// installeur tué au milieu laisse une machine à moitié installée, une
+/// application tuée ne laisse rien.
+///
 /// ⚠️ LES DEUX TENTATIVES SONT JOURNALISÉES, y compris celle qui réussit :
 /// sans la trace du repli, `Cible` serait indiscernable de `Raccourci` dans un
 /// journal, et c'est précisément la distinction que l'issue existe pour

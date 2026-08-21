@@ -1,11 +1,23 @@
-// La boucle du canal `/agent` : enrôlement, battement, jeton frais — et,
-// depuis le sous-bloc G1, le CATALOGUE qui monte et les ORDRES DE LANCEMENT
-// qui descendent.
+// La boucle du canal `/agent` : enrôlement, battement, jeton frais — et, depuis
+// le sous-bloc G1, tout ce que le sous-projet ④ y fait passer.
+//
+// ⚠️ CET INVENTAIRE A ÉTÉ ÉCRIT TROIS FOIS ET A VIEILLI DEUX FOIS, et c'est
+// pourquoi il ne s'écrit plus ici : G1 y a mis `catalogue`, `lancee` et
+// `lancer` ; G2 y a ajouté `icones-manquantes` sans reprendre cette ligne ; G3
+// y ajoute `installer`, `progression` et `termine`. **La liste qui fait
+// autorité est celle du protocole** (`proto/ts/plateforme.ts`), et les branches
+// de ④ vivent dans `canal-apps.ts`. Une énumération recopiée ici serait fausse
+// au sous-bloc suivant, comme elle l'a été aux deux précédents.
 //
 // ⚠️ LE CANAL N'EST DONC PLUS SEULEMENT UN CANAL D'IDENTITÉ, et cette
 // première ligne disait le contraire jusqu'au 20 août 2026. Trois variantes
 // s'y sont ajoutées (`catalogue` et `lancee` montantes, `lancer` descendante),
 // et `PLATEFORME_VERSION` est passée à 2 pour cela.
+//
+// ⚠️ **CE PARAGRAPHE EST UN RELEVÉ DATÉ, ET IL RESTE VRAI COMME HISTOIRE** :
+// c'est bien à 2 que la version est passée POUR CELA. Elle vaut 4 aujourd'hui
+// — 3 pour les icônes de G2, 4 pour l'installation de G3 —, et le barrer
+// rendrait faux ce qui ne l'est pas.
 //
 // C'est l'UNIQUE consommateur du protocole `plateforme`
 // (`proto/ts/plateforme.ts`), et il ne recopie aucune forme de message : il

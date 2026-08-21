@@ -253,7 +253,7 @@ Livré par le sous-bloc P3, lu le 19 août 2026 :
 - côté agent, `agent/src/plateforme.rs` (**277** l., relu au commit `a74c2c8`) porte le
   client **avec sa reprise à repli exponentiel** et un battement de
   `PERIODE_BATTEMENT = 30 s`, à opposer au `SEUIL_INJOIGNABLE_MS = 90_000` de
-  `plateforme/src/agents/fraicheur.ts:37`.
+  `plateforme/src/agents/fraicheur.ts:47` ⚠️ *(le numéro a dérivé — il était 37 ; la VALEUR, elle, est inchangée. Relevé par le sous-bloc G3, le 21 août 2026.)*.
 
 La table cible existe déjà, vide et assumée telle :
 `plateforme/src/base/migrations/0003-agents.sql:52-58` —
@@ -512,7 +512,7 @@ propre** plafond, et ne relève surtout pas celui-là.
 | --- | --- | --- |
 | 1 | navigateur → plateforme | `POST /televersement` avec `{nom, taille, sha256}` — le navigateur a calculé l'empreinte par `SubtleCrypto`. Rend `{id, taille_tranche}` |
 | 2 | navigateur → plateforme | `PUT /televersement/:id/tranche/:n`, `application/octet-stream`. **Idempotent** : redéposer `n` l'écrase |
-| 3 | navigateur → plateforme | `POST /televersement/:id/sceller` — 🔴 **la plateforme recalcule le SHA-256 du fichier réassemblé** et refuse s'il diffère |
+| 3 | navigateur → plateforme | `POST /televersement/:id/sceller` — 🔴 **la plateforme recalcule le SHA-256** et refuse s'il diffère. ⚠️ *« du fichier **réassemblé** » est le SEUL mot de cette spec que le sous-bloc G3 contredit, et il le contredit PAR UNE ÉQUIVALENCE : il ne réassemble jamais (sa décision D7), le scellement étant une passe de FLUX sur les tranches dans l'ordre. Même valeur, même refus, et le doublement du disque en moins — 1,6 Go économisés pour un installeur de 800 Mo.* |
 | 4 | plateforme → agent, sur `/agent` | `Installer { installation, url, sha256, nom }` |
 | 5 | agent → plateforme, en HTTP | `GET <url>`, jeton d'agent en en-tête. 🔴 **L'agent recalcule l'empreinte** après écriture |
 | 6 | agent → plateforme, sur `/agent` | `Progression`, puis `Termine` |
@@ -762,6 +762,29 @@ verdict par réconciliation (D9).
 | ⑤ | Une réémission n'installe **pas deux fois** | même `installation.id` réémis ; un seul processus lancé | retirer la déduplication : deux processus. **À exercer** |
 | ⑥ | Un code de sortie **0 sans effet** est rapporté `sans_effet`, jamais `reussie` | un `.exe` témoin qui rend 0 et n'installe rien | interpréter le code de sortie : il rend `reussie`. **La ROUGE est le témoin lui-même** |
 | ⑦ | Tuer l'agent pendant l'installation **ne tue pas l'installeur** | le processus survit ; l'issue est `issue_inconnue` | assigner l'installeur au job object : il meurt avec l'agent. **À exercer, et c'est la ROUGE du choix D8** |
+
+> 🔴 **LE CRITÈRE ⑦ EST VACUEUX TANT QU'ON N'A PAS RELEVÉ LE JOB, et c'est le
+> sous-bloc G3 qui l'a établi** (sa divergence E7). `superviseur/lanceur.rs`
+> n'appelle `AssignProcessToJobObject` que sur ses ENFANTS : **le superviseur ne
+> s'assigne pas lui-même**, donc un processus qu'il crée n'hérite d'aucun job,
+> et « tuer l'agent ne tue pas l'installeur » est **vrai par construction**. Un
+> vert ne prouverait rien.
+>
+> Ce qui le rend décidable : `apps::installation::execution::dans_un_job`
+> journalise `IsProcessInJob` **à chaque installation**, que le refus ait lieu
+> ou non, et c'est cette ligne que la recette lit. La seule ROUGE disponible
+> reste la **mutation** que ce tableau nomme.
+>
+> ⚠️ **ET LE PONT, LUI, EST DANS LE JOB** : sous le leg n°1 de G1, l'ordre
+> pouvait lui échoir. G3 s'en protège par un refus typé — un GARDE, pas le
+> remède.
+
+> ⚠️ **G3 A QUATRE ISSUES, PAS TROIS** (sa divergence E4). `reussie` /
+> `sans_effet` / `issue_inconnue` ne couvrent pas les cas où l'installation
+> **n'a jamais démarré** — empreinte fausse, élévation requise, extension
+> refusée, job object, disque plein. Les y ranger ferait dire « on ne sait
+> pas » **là où l'on sait très bien** : `refusee` est ajoutée, avec un `motif`
+> typé.
 | ⑧ | Le périphérique de rendu par défaut est tracé **avant et après** | deux lignes par installation, avec le nom de l'endpoint | ne tracer qu'après : un changement n'est plus attribuable |
 
 ⚠️ **Sonde préalable à G3, et elle est ÉLIMINATOIRE pour la moitié
@@ -832,7 +855,18 @@ agent/
   src/apps/icone.rs              NEUF — #[cfg(windows)] : IShellItemImageFactory
   src/apps/icone/ressource.rs    NEUF — PUR : lecture d'un GRPICONDIR / ICONDIR depuis un &[u8]
   src/apps/lancement.rs          NEUF — #[cfg(windows)] : ShellExecuteExW
-  src/installation.rs            NEUF — #[cfg(windows)] : téléchargement, exécution hors job (G3)
+  src/apps/installation.rs       NEUF — SANS cfg ; SEUL `execution` porte le sien (G3)
+  ⚠️ Cette ligne portait « src/installation.rs NEUF — #[cfg(windows)] :
+     téléchargement, exécution hors job ». **Le téléchargement n'a AUCUNE raison
+     d'être Windows** : `tokio::net::TcpStream`, un analyseur d'en-têtes et une
+     écriture de fichier compilent et tournent sur l'hôte. G3 l'a donc rendu
+     PORTABLE, et ce n'est pas un détail de rangement — c'est une amélioration
+     de COUVERTURE : la troisième vérification d'empreinte, la reprise par
+     `Range`, le refus du `chunked` et celui de `https` sont éprouvés sur
+     l'hôte, CONTRE UN VRAI `TcpListener`, au lieu de dépendre d'une recette VM.
+     Le chemin a changé aussi (`apps/installation`, déclaré depuis `apps.rs`) :
+     `main.rs` ne bouge pas, ce qui tient l'engagement de périmètre pris envers
+     quatre chantiers concurrents.
   src/installation/verdict.rs    NEUF — PUR : l'issue depuis (code de sortie, diff) — D9
   src/plateforme.rs              MODIFIÉ — les nouvelles variantes du canal
 
@@ -848,7 +882,12 @@ plateforme/
 
 client/
   src/hub/…                      NEUF — catalogue, dépôt d'installeur, progression (G1, G3)
-  src/hub/tranches.ts            NEUF — PUR, sans DOM : découpage, reprise, empreinte
+  ⚠️ `src/hub/tranches.ts` — **G3 l'a mis dans `proto/ts/`, avec `sha256.ts`.**
+     Ce sont des règles PARTAGÉES navigateur ↔ plateforme, et les y mettre est
+     ce qui empêche deux arithmétiques de tranches de diverger — le symptôme
+     serait un scellement qui refuse sans qu'on sache lequel des deux bouts a
+     tort. C'est aussi ce qui rend la recette exécutable SANS navigateur.
+     `client/src/hub/` ne garde que l'orchestration.
 ```
 
 🔴 **`agent/src/apps/icone/ressource.rs` est PUR, et c'est le point le plus
@@ -913,7 +952,7 @@ mobilisée. Elle est nommée pour dire qu'elle a été considérée.
 | Canal `/agent` coupé pendant un téléversement | l'agent poursuit le `GET` HTTP, qui n'en dépend pas ; les `Progression` sont perdus et **la barre gèle** — l'interface le dit (« progression indisponible »), jamais un pourcentage figé passé pour vrai |
 | Agent tué pendant l'exécution | l'installeur survit (D8) ; l'issue est `issue_inconnue` ; la réconciliation suivante dit ce qui a réellement été installé |
 | Installeur qui ne rend jamais la main | `EXPIRATION_EXECUTION` (proposé 2 h, **NON CALIBRÉE**) ; l'agent **ne le tue pas** — tuer un installeur au milieu est pire — il rapporte `issue_inconnue` et cesse d'attendre |
-| Installeur qui désinstalle l'agent | l'agent meurt ; la plateforme le voit par `vu_a` (`SEUIL_INJOIGNABLE_MS = 90_000`, `plateforme/src/agents/fraicheur.ts:37`) et annonce la VM `injoignable`. **Rien ne le répare automatiquement** ; le cadrage §7 prévoit que le hub le dise |
+| Installeur qui désinstalle l'agent | l'agent meurt ; la plateforme le voit par `vu_a` (`SEUIL_INJOIGNABLE_MS = 90_000`, `plateforme/src/agents/fraicheur.ts:47` ⚠️ *(le numéro a dérivé — il était 37 ; la VALEUR, elle, est inchangée. Relevé par le sous-bloc G3, le 21 août 2026.)*) et annonce la VM `injoignable`. **Rien ne le répare automatiquement** ; le cadrage §7 prévoit que le hub le dise |
 | Disque plein dans la VM | le `GET` échoue à l'écriture, refus typé avec la cause, fichiers partiels supprimés |
 | Notifications perdues | latence, jamais perte : la réconciliation périodique rattrape (D1) |
 | Version de protocole divergente | refus `version`, socket fermé, **aucun réessai** — comportement de P3, inchangé |

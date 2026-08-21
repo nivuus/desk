@@ -52,6 +52,7 @@ use windows::Win32::System::Threading::{
 };
 
 use super::depot::Extension;
+use super::journal::queue_octets;
 use super::verdict::Motif;
 
 /// Au-delà, l'agent CESSE D'ATTENDRE — **il ne tue pas**.
@@ -64,13 +65,6 @@ use super::verdict::Motif;
 /// ⚠️ **NON CALIBRÉE**, elle rejoint la liste que ce dépôt tient depuis
 /// `BPP_MIN`.
 pub const EXPIRATION_EXECUTION_MS: u64 = 2 * 60 * 60 * 1000;
-
-/// La queue du journal de l'installeur qu'on remonte.
-///
-/// ⚠️ **NON CALIBRÉE**. ⚠️ **UN JOURNAL VIDE EST LE CAS NORMAL** : la plupart
-/// des installeurs Windows sont graphiques et n'écrivent rien sur les flux
-/// standard. L'interface ne doit pas le présenter comme un échec.
-pub const JOURNAL_MAX_OCTETS: usize = 64 * 1024;
 
 /// Entre deux scrutations de la sortie du processus.
 const PAS_DE_SCRUTATION_MS: u64 = 500;
@@ -274,7 +268,12 @@ pub fn executer(
     let _ = unsafe { CloseHandle(infos.hProcess) };
     drop(fichier);
 
-    let (journal, journal_tronque) = queue_du_journal(&journal_chemin);
+    // ⚠️ LA BORNE VIT DANS UN MODULE PUR, ÉCRITE UNE SEULE FOIS. Elle l'était
+    // deux fois, et la seconde PANIQUAIT sur une frontière de caractère UTF-8.
+    let (journal, journal_tronque) = match std::fs::read(&journal_chemin) {
+        Ok(octets) => queue_octets(&octets),
+        Err(_) => (String::new(), false),
+    };
     Ok(Sortie {
         code,
         journal,
@@ -298,21 +297,4 @@ fn ligne_de_commande(chemin: &Path, extension: Extension) -> String {
 fn handle_de(fichier: &std::fs::File) -> HANDLE {
     use std::os::windows::io::AsRawHandle;
     HANDLE(fichier.as_raw_handle() as _)
-}
-
-/// La QUEUE du journal, bornée — pas sa tête.
-///
-/// 🔴 LA FIN, ET NON LE DÉBUT : c'est là que vit le message d'erreur d'un
-/// installeur qui a échoué. Un `journal_tronque` distingue « coupé » de
-/// « vide », sans quoi un utilisateur lirait les derniers 64 Kio en croyant
-/// lire tout.
-fn queue_du_journal(chemin: &Path) -> (String, bool) {
-    let Ok(octets) = std::fs::read(chemin) else {
-        return (String::new(), false);
-    };
-    if octets.len() <= JOURNAL_MAX_OCTETS {
-        return (String::from_utf8_lossy(&octets).into_owned(), false);
-    }
-    let queue = &octets[octets.len() - JOURNAL_MAX_OCTETS..];
-    (String::from_utf8_lossy(queue).into_owned(), true)
 }

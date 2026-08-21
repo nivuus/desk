@@ -17,6 +17,7 @@
 pub mod cadence;
 pub mod depot;
 pub mod fenetre;
+pub mod journal;
 pub mod partage;
 pub mod reponse;
 pub mod telechargement;
