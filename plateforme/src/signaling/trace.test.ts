@@ -3,8 +3,9 @@
 //
 // Deux étages sont éprouvés ici, et il faut les deux :
 //   - l'observateur SEUL, avec une horloge injectée, sur des VALEURS EXACTES ;
-//   - le service ENTIER, deux pairs sur le chemin racine, où la seule preuve
-//     possible est une attente BORNÉE.
+//   - le service ENTIER, deux pairs sur `/signal` (le relais, déplacé de la
+//     racine le 21 août 2026 — voir l'en-tête de `http/serveur.ts`), où la
+//     seule preuve possible est une attente BORNÉE.
 //
 // ⚠️ L'attente est bornée et échoue sur expiration, jamais une boucle infinie :
 // l'écriture est délibérément lancée sans être attendue (voir `trace.ts`), donc
@@ -249,7 +250,7 @@ describe('le service entier', () => {
     it('écrit une ligne à l’appariement, et la clôt à la déconnexion des deux pairs', async () => {
         base = await baseNeuve('trace-service');
         service = await demarrerServeur(CONFIG, base);
-        const url = `ws://127.0.0.1:${service.port}/`;
+        const url = `ws://127.0.0.1:${service.port}/signal`;
 
         const agent = await connecter(url, 'agent', `${P}:trace-1`);
         const client = await connecter(url, 'client', `${P}:trace-1`);
@@ -273,7 +274,7 @@ describe('le service entier', () => {
         // sur `bureau` des heures durant au démarrage de la VM.
         base = await baseNeuve('trace-solitaire');
         service = await demarrerServeur(CONFIG, base);
-        const url = `ws://127.0.0.1:${service.port}/`;
+        const url = `ws://127.0.0.1:${service.port}/signal`;
 
         const agent = await connecter(url, 'agent', `${P}:trace-2`);
         await new Promise((r) => setTimeout(r, 300));
@@ -293,7 +294,7 @@ describe('le service entier', () => {
         // arrive seul et sans identité, et où le CLIENT, lui, est authentifié.
         base = await baseNeuve('trace-appartenance');
         service = await demarrerServeur(CONFIG, base);
-        const url = `ws://127.0.0.1:${service.port}/`;
+        const url = `ws://127.0.0.1:${service.port}/signal`;
 
         const agent = await connecter(url, 'agent', `${P}:bureau`);
         const client = await connecter(url, 'client', `${P}:bureau`, 'u-proprietaire');

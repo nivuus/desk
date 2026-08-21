@@ -87,7 +87,7 @@ describe('demarrerServeur', () => {
     it("n'écoute QUE sur l'adresse nommée", async () => {
         service = await servir('http-adresse');
         expect(service.port).toBeGreaterThan(0);
-        await expect(tenter(`ws://127.0.0.1:${service.port}/`)).resolves.toBe('ouvert');
+        await expect(tenter(`ws://127.0.0.1:${service.port}/signal`)).resolves.toBe('ouvert');
     });
 
     it('refuse la montée WebSocket sur un chemin inconnu', async () => {
@@ -97,39 +97,55 @@ describe('demarrerServeur', () => {
 
     it('🔴 accepte la montée WebSocket sur /agent — la seconde branche', async () => {
         // 🔴 La rouge : ne pas ajouter la branche. Le `404` écrit à la main
-        // pour tout chemin autre que `/` la ferme, et c'est exactement ce que
-        // le test « refuse la montée sur un chemin inconnu » éprouve.
+        // pour tout chemin autre que `/signal` la ferme, et c'est exactement
+        // ce que le test « refuse la montée sur un chemin inconnu » éprouve.
         service = await servir('http-agent');
         await expect(tenter(`ws://127.0.0.1:${service.port}/agent`)).resolves.toBe('ouvert');
     });
 
-    it('🔴 sert TOUJOURS le chemin racine — la branche est ÉTENDUE, pas remplacée', async () => {
-        // 🔴 La rouge : remplacer la comparaison au lieu de l'étendre. Le
-        // relais entier deviendrait injoignable, et le service serait vivant
-        // sans servir personne — panne muette de la classe que ce dépôt
-        // combat. Le premier test du fichier le voit aussi ; celui-ci le dit.
-        service = await servir('http-racine-toujours');
-        await expect(tenter(`ws://127.0.0.1:${service.port}/`)).resolves.toBe('ouvert');
+    // 🔴 LE RELAIS A DÉMÉNAGÉ DE LA RACINE VERS `/signal` LE 21 AOÛT 2026 —
+    // POUR LE PROXY POMERIUM, PAS LE GOÛT. Voir l'en-tête de `serveur.ts`.
+    // Les trois tests qui suivent SONT le déplacement : sans le premier, la
+    // racine pourrait rester ouverte (Pomerium croirait garder le relais, et
+    // le relais répondrait à côté de sa garde) ; le second est le témoin qui
+    // rend le premier interprétable ; le troisième est le témoin que /agent
+    // n'a pas bougé.
+    it('🔴 accepte la montée WebSocket sur /signal — le relais a déménagé', async () => {
+        service = await servir('http-signal');
+        await expect(tenter(`ws://127.0.0.1:${service.port}/signal`)).resolves.toBe('ouvert');
+    });
+
+    it('🔴 REFUSE désormais la montée sur la RACINE', async () => {
+        service = await servir('http-racine-fermee');
+        await expect(tenter(`ws://127.0.0.1:${service.port}/`)).resolves.toBe('ferme');
+    });
+
+    it('/agent est INCHANGÉ', async () => {
+        service = await servir('http-agent-inchange');
+        await expect(tenter(`ws://127.0.0.1:${service.port}/agent`)).resolves.toBe('ouvert');
     });
 
     it('🔴 refuse TOUJOURS un chemin inconnu — /agent n’ouvre pas le service', async () => {
-        // 🔴 La rouge : remplacer `if (chemin !== '/')` par une comparaison à
-        // une liste noire (`if (chemin === '/inconnu')`), ce qui rendrait le
-        // service ouvert à TOUT chemin. Le test l. 79 existe déjà et doit
-        // rester vert ; celui-ci ajoute la borne d'à côté — un chemin qui
-        // COMMENCE par `/agent` sans l'être n'est pas `/agent`.
+        // 🔴 La rouge : remplacer `if (chemin !== CHEMIN_SIGNAL)` par une
+        // comparaison à une liste noire (`if (chemin === '/inconnu')`), ce qui
+        // rendrait le service ouvert à TOUT chemin. Le test l. 79 existe déjà
+        // et doit rester vert ; celui-ci ajoute la borne d'à côté — un chemin
+        // qui COMMENCE par `/agent` sans l'être n'est pas `/agent`.
         service = await servir('http-inconnu-encore');
         await expect(tenter(`ws://127.0.0.1:${service.port}/inconnu`)).resolves.toBe('ferme');
         await expect(tenter(`ws://127.0.0.1:${service.port}/agentaire`)).resolves.toBe('ferme');
     });
 
-    it('sert le relais de signaling sur le chemin racine, poignée de main comprise', async () => {
-        // Un pair 'agent' et un pair 'client' sur '/' : l'offre du client
-        // parvient à l'agent — exactement ce que `server.test.ts` éprouve déjà,
-        // rejoué ici à travers le serveur HTTP pour prouver que le passage par
-        // l'upgrade ne change rien.
-        service = await servir('http-racine');
-        const url = `ws://127.0.0.1:${service.port}/`;
+    it('sert le relais de signaling sur /signal, poignée de main comprise', async () => {
+        // Un pair 'agent' et un pair 'client' sur '/signal' : l'offre du
+        // client parvient à l'agent — exactement ce que `server.test.ts`
+        // éprouve déjà, rejoué ici à travers le serveur HTTP pour prouver que
+        // le passage par l'upgrade ne change rien. ⚠️ CE TEST OUVRAIT DEUX
+        // SOCKETS SUR '/' AVANT LE 21 AOÛT 2026 : corrigé avec le déplacement
+        // du relais, sans quoi il aurait rougi sans qu'aucune assertion ne le
+        // dise.
+        service = await servir('http-signal-poignee');
+        const url = `ws://127.0.0.1:${service.port}/signal`;
 
         const agent = new WebSocket(url);
         await new Promise((r) => agent.once('open', r));
@@ -259,14 +275,22 @@ describe('le chaînage des quatre routeurs', () => {
         expect(apres.status).toBe(404);
     });
 
-    it('🔴 les DEUX montées WebSocket sont INCHANGÉES', async () => {
-        // 🔴 La rouge : toucher au routage de l'`upgrade`. C'est hors sujet de
-        // cette tâche, et ce test le fige — le chaînage HTTP et le routage
-        // WebSocket vivent dans la même fonction, donc à portée de main.
+    it('🔴 les DEUX montées WebSocket sont INCHANGÉES PAR LE CHAÎNAGE HTTP', async () => {
+        // 🔴 La rouge : toucher au routage de l'`upgrade` DEPUIS CE CHAÎNAGE.
+        // C'est hors sujet de cette tâche, et ce test le fige — le chaînage
+        // HTTP et le routage WebSocket vivent dans la même fonction, donc à
+        // portée de main. ⚠️ Ce test vérifiait `/` avant le 21 août 2026 : le
+        // relais a déménagé vers `/signal` DANS CE MÊME COMMIT (voir l'en-tête
+        // de `serveur.ts`), pour une raison hors du champ de CE test — la
+        // preuve du déplacement lui-même vit dans les trois tests dédiés plus
+        // haut. Ce qui reste à sa charge est ajouté : que la racine reste
+        // FERMÉE, comme `/signal` et `/agent` restent ce qu'ils sont, même
+        // après le chaînage des quatre routeurs HTTP.
         service = await servir('http-chaine-ws');
-        await expect(tenter(`ws://127.0.0.1:${service.port}/`)).resolves.toBe('ouvert');
+        await expect(tenter(`ws://127.0.0.1:${service.port}/signal`)).resolves.toBe('ouvert');
         await expect(tenter(`ws://127.0.0.1:${service.port}/agent`)).resolves.toBe('ouvert');
         await expect(tenter(`ws://127.0.0.1:${service.port}/vm`)).resolves.toBe('ferme');
+        await expect(tenter(`ws://127.0.0.1:${service.port}/`)).resolves.toBe('ferme');
     });
 });
 
@@ -304,21 +328,25 @@ describe('la trame maximale acceptée avant toute authentification', () => {
         });
     }
 
-    it('(a) 🔴 une trame TROP GRANDE ferme le socket en 1009, sur `/`', async () => {
+    it('(a) 🔴 une trame TROP GRANDE ferme le socket en 1009, sur `/signal`', async () => {
         // Le pair est ANONYME : `signaling/relais.ts:84-86` dit lui-même que
         // le contrôle de FORME court une trentaine de lignes AVANT
         // `garde.verifier`. Sans borne, `JSON.parse` sur la trame est une
         // allocation puis un pic CPU, par socket et par trame, offerts à
-        // quiconque atteint le port.
-        service = await servir('trame-racine');
+        // quiconque atteint le port. ⚠️ CE TEST FRAPPAIT `/` AVANT LE 21 AOÛT
+        // 2026 : le relais a déménagé vers `/signal` dans ce même commit (voir
+        // l'en-tête de `serveur.ts`) — sans cette correction, la trame ne
+        // ferait plus MÊME que monter, et le test rougirait pour une raison
+        // qui n'a rien à voir avec `TRAME_MAX_OCTETS`.
+        service = await servir('trame-signal');
         // 1009 = « message trop grand » (RFC 6455).
-        await expect(pousser(`ws://127.0.0.1:${service.port}/`, TRAME_MAX_OCTETS + 1))
+        await expect(pousser(`ws://127.0.0.1:${service.port}/signal`, TRAME_MAX_OCTETS + 1))
             .resolves.toBe(1009);
     });
 
     it('(a bis) 🔴 et sur `/agent` AUSSI, qui est l’autre porte anonyme', async () => {
         // Le canal d'enrôlement est ouvert avant toute identité : le borner
-        // seulement sur `/` laisserait la moitié du problème entière.
+        // seulement sur `/signal` laisserait la moitié du problème entière.
         service = await servir('trame-agent');
         await expect(pousser(`ws://127.0.0.1:${service.port}/agent`, TRAME_MAX_OCTETS + 1))
             .resolves.toBe(1009);
@@ -331,7 +359,7 @@ describe('la trame maximale acceptée avant toute authentification', () => {
         service = await servir('trame-sous-borne');
         // Le socket reste ouvert : le message est mal formé, et le relais
         // laisse retenter un message malformé plutôt que de fermer.
-        await expect(pousser(`ws://127.0.0.1:${service.port}/`, TRAME_MAX_OCTETS - 1))
+        await expect(pousser(`ws://127.0.0.1:${service.port}/signal`, TRAME_MAX_OCTETS - 1))
             .resolves.toBe('servi');
     });
 
@@ -352,7 +380,9 @@ describe('la trame maximale acceptée avant toute authentification', () => {
         // (« Vitest caught 2 unhandled errors »), et ce test le fige.
         service = await servir('trame-survie');
         const url = `http://127.0.0.1:${service.port}`;
-        await expect(pousser(`ws://127.0.0.1:${service.port}/`, TRAME_MAX_OCTETS + 1))
+        // ⚠️ Frappait `/` avant le déplacement du relais vers `/signal` — voir
+        // le test (a) plus haut.
+        await expect(pousser(`ws://127.0.0.1:${service.port}/signal`, TRAME_MAX_OCTETS + 1))
             .resolves.toBe(1009);
         await expect(pousser(`ws://127.0.0.1:${service.port}/agent`, TRAME_MAX_OCTETS + 1))
             .resolves.toBe(1009);

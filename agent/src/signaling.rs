@@ -49,7 +49,25 @@ pub struct SignalingHandle {
     pub sender_task: JoinHandle<()>,
 }
 
+/// Compose l'URL du relais à partir de celle du service.
+///
+/// 🔴 `SIGNALING_URL` EST LA BASE DU SERVICE, JAMAIS L'URL DU RELAIS, ET C'EST
+/// CE QUI REND `scripts/run-agent.sh` INCHANGÉ. La même variable sert à
+/// dériver le canal d'enrôlement (`plateforme::url_du_canal`, qui ajoute
+/// `/agent`) et l'adresse HTTP du téléversement d'icônes
+/// (`apps::icone::televersement::base_http`, qui retire tout chemin). Y écrire
+/// `/signal` casserait le premier : `ws://h:8080/signal/agent` n'est pas
+/// `/agent`, et la plateforme compare le chemin EXACTEMENT.
+///
+/// Le `trim_end_matches` a la même raison que chez son jumeau : `ws://h:8080/`
+/// suivi de `/signal` donnerait `//signal`, refusé de la même façon.
+pub fn url_du_relais(signaling_url: &str) -> String {
+    format!("{}/signal", signaling_url.trim_end_matches('/'))
+}
+
 /// Se connecte au signaling et démarre la boucle d'échange en tâche de fond.
+/// `url` est déjà l'URL du RELAIS (`url_du_relais`), jamais celle du service :
+/// `demarrage.rs` et `pont.rs` la dérivent avant d'appeler cette fonction.
 /// `jeton` porte le jeton d'agent délivré par le canal `/agent`
 /// (`crate::plateforme`). **`None` fait refuser la poignée de main par la
 /// plateforme depuis le sous-bloc P3** : la garde n'accepte plus un
@@ -271,5 +289,26 @@ mod tests {
     async fn sans_jeton_la_poignee_de_main_le_dit_au_lieu_de_l_inventer() {
         let poignee = premiere_poignee_de_main(None).await;
         assert_eq!(poignee, r#"{"jeton":null,"role":"agent","session":"P:w-1"}"#);
+    }
+
+    #[test]
+    fn le_relais_derive_du_signaling() {
+        assert_eq!(url_du_relais("ws://h:8080"), "ws://h:8080/signal");
+    }
+
+    /// ⚠️ MÊME RAISON QUE `url_du_canal` : `ws://h:8080/` suivi de `/signal`
+    /// donnerait `//signal`, et la plateforme compare le chemin EXACTEMENT.
+    #[test]
+    fn la_barre_finale_ne_double_pas() {
+        assert_eq!(url_du_relais("ws://h:8080/"), "ws://h:8080/signal");
+    }
+
+    /// 🔴 LE TEST QUI FIGE L'ÉCART ① DU PLAN : `SIGNALING_URL` reste la BASE,
+    /// donc le canal `/agent` continue de se dériver juste. Sans lui,
+    /// quelqu'un pourrait un jour mettre `/signal` dans la variable et casser
+    /// l'enrôlement sans qu'aucun test ne bronche.
+    #[test]
+    fn le_canal_agent_n_est_pas_affecte() {
+        assert_eq!(crate::plateforme::url_du_canal("ws://h:8080"), "ws://h:8080/agent");
     }
 }

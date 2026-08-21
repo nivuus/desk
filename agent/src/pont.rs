@@ -83,7 +83,7 @@ pub async fn executer(config: crate::Config) -> anyhow::Result<()> {
 
     let crate::signaling::SignalingHandle { mut offers, answers, closed, .. } =
         crate::signaling::run_signaling(
-            &config.signaling_url,
+            &crate::signaling::url_du_relais(&config.signaling_url),
             &config.session_id,
             config.jeton.as_deref(),
         )

@@ -17,14 +17,14 @@ const CLAIR: Emplacement = { protocol: 'http:', host: 'plateforme.exemple.fr' };
 const ESSAI: Emplacement = { protocol: 'http:', host: 'localhost:5173' };
 
 describe('adressePlateforme et adresseSignaling', () => {
-    it("(a) une page en https: donne https: et wss:", () => {
+    it("(a) une page en https: donne https: et wss:/signal", () => {
         expect(adressePlateforme(TLS)).toBe('https://plateforme.exemple.fr');
-        expect(adresseSignaling(TLS)).toBe('wss://plateforme.exemple.fr');
+        expect(adresseSignaling(TLS)).toBe('wss://plateforme.exemple.fr/signal');
     });
 
-    it("(b) une page en http: donne http: et ws:", () => {
+    it("(b) une page en http: donne http: et ws:/signal", () => {
         expect(adressePlateforme(CLAIR)).toBe('http://plateforme.exemple.fr');
-        expect(adresseSignaling(CLAIR)).toBe('ws://plateforme.exemple.fr');
+        expect(adresseSignaling(CLAIR)).toBe('ws://plateforme.exemple.fr/signal');
     });
 
     it("🔴 (c) le paramètre EXPLICITE l'emporte, sur les deux", () => {
@@ -58,21 +58,21 @@ describe('adressePlateforme et adresseSignaling', () => {
         // Le serveur de développement de vite sert sur 5173 : l'adresse rendue
         // est celle de la page, port compris.
         expect(adressePlateforme(ESSAI)).toBe('http://localhost:5173');
-        expect(adresseSignaling(ESSAI)).toBe('ws://localhost:5173');
+        expect(adresseSignaling(ESSAI)).toBe('ws://localhost:5173/signal');
     });
 
     it("(f) un port NON standard sous TLS est conservé lui aussi", () => {
         const p: Emplacement = { protocol: 'https:', host: 'exemple.fr:8443' };
         expect(adressePlateforme(p)).toBe('https://exemple.fr:8443');
-        expect(adresseSignaling(p)).toBe('wss://exemple.fr:8443');
+        expect(adresseSignaling(p)).toBe('wss://exemple.fr:8443/signal');
     });
 
     it("(g) un paramètre VIDE ou absent ne l'emporte pas", () => {
         // Une chaîne vide est ce que rend `URLSearchParams.get` sur `?x=` : la
         // traiter comme explicite produirait une adresse vide, donc une panne
         // sans message. `null` est ce qu'il rend sur un paramètre absent.
-        expect(adresseSignaling(TLS, '')).toBe('wss://plateforme.exemple.fr');
-        expect(adresseSignaling(TLS, null)).toBe('wss://plateforme.exemple.fr');
+        expect(adresseSignaling(TLS, '')).toBe('wss://plateforme.exemple.fr/signal');
+        expect(adresseSignaling(TLS, null)).toBe('wss://plateforme.exemple.fr/signal');
         expect(adressePlateforme(TLS, '')).toBe('https://plateforme.exemple.fr');
         expect(adressePlateforme(TLS, null)).toBe('https://plateforme.exemple.fr');
     });
@@ -83,7 +83,7 @@ describe('adressePlateforme et adresseSignaling', () => {
         // `filews://`, qu'aucun navigateur ne comprendrait et dont le message
         // d'erreur ne désignerait pas la cause.
         const f: Emplacement = { protocol: 'file:', host: '' };
-        expect(adresseSignaling(f)).toBe('ws://');
+        expect(adresseSignaling(f)).toBe('ws:///signal');
         expect(adressePlateforme(f)).toBe('http://');
     });
 });
