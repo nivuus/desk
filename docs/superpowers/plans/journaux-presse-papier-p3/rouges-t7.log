@@ -1,0 +1,112 @@
+=== ROUGE « J — le parametre initial n'existe pas (l'arbre d'avant P3) » ===
+date : 2026-08-21T07:27:06+02:00   commit : 3f82152
+fichier mute : client/src/presse-papier-dom.ts
+
+1. sha256 AVANT : 3b2fbab28941536805ed53efd57e9f2290975efc6024bf40817bccf753f38a9f   (copie nommee prise : /tmp/user/0/tmp.XAA17Mlm8K)
+2. mutation :
+3. lignes changees PAR LA MUTATION (contre la copie nommee) : 4
+   (pour memoire, git diff --numstat contre HEAD : 44 6 client/src/presse-papier-dom.ts)
+   diff de la mutation :
+     -    if (initial !== undefined) {
+     -        etat.recevoir(initial);
+     -        ecrireSiPossible();
+     -    }
+4. controle : cd client && npx vitest run presse-papier-dom -t 'initial'
+          → expected "spy" to be called with arguments: [ 'copie-avant-attache' ]
+     Received: 
+     Number of calls: 0
+          → expected "spy" to be called with arguments: [ 'differe' ]
+     Received: 
+     Number of calls: 0
+          → expected "spy" to be called with arguments: [ Array(1) ]
+     Received: 
+     Number of calls: 0
+     ⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+      FAIL  src/presse-papier-dom.test.ts > l'écouteur de collage > un `initial` fourni est écrit au montage si la fenêtre a le focus
+     AssertionError: expected "spy" to be called with arguments: [ 'copie-avant-attache' ]
+     Received: 
+     Number of calls: 0
+      FAIL  src/presse-papier-dom.test.ts > l'écouteur de collage > un `initial` fourni SANS focus n'est pas écrit au montage, et l'est au retour du focus
+     AssertionError: expected "spy" to be called with arguments: [ 'differe' ]
+     Received: 
+     Number of calls: 0
+      FAIL  src/presse-papier-dom.test.ts > l'écouteur de collage > un `initial` portant un REFUS dit le bandeau au montage
+     AssertionError: expected "spy" to be called with arguments: [ Array(1) ]
+     Received: 
+     Number of calls: 0
+           Tests  3 failed | 1 passed | 15 skipped (19)
+5. restauration DEPUIS LA COPIE NOMMEE (jamais git checkout --)
+6. sha256 APRES : 3b2fbab28941536805ed53efd57e9f2290975efc6024bf40817bccf753f38a9f
+   ✅ IDENTIQUE
+7. git status --porcelain :  M client/src/presse-papier-dom.ts
+   (un « M » ici ne dit PAS que la mutation a survecu : il dit que le
+    fichier porte le correctif NON COMMITE que la rouge eprouve. Ce qui
+    etablit la restauration est la ligne 6, et elle seule.)
+
+=== ROUGE « K — le montage ecrit DIRECTEMENT, hors du depot differe » ===
+date : 2026-08-21T07:27:08+02:00   commit : 3f82152
+fichier mute : client/src/presse-papier-dom.ts
+
+1. sha256 AVANT : 3b2fbab28941536805ed53efd57e9f2290975efc6024bf40817bccf753f38a9f   (copie nommee prise : /tmp/user/0/tmp.8YPoAyphzR)
+2. mutation :
+3. lignes changees PAR LA MUTATION (contre la copie nommee) : 2
+   (pour memoire, git diff --numstat contre HEAD : 47 6 client/src/presse-papier-dom.ts)
+   diff de la mutation :
+     -        ecrireSiPossible();
+     +        if (initial.texte !== null) void ecrire(initial.texte);
+4. controle : cd client && npx vitest run presse-papier-dom -t 'initial'
+          → expected "spy" to not be called at all, but actually been called 1 times
+     Received: 
+     Number of calls: 1
+          → expected "spy" to be called with arguments: [ Array(1) ]
+     Received: 
+     Number of calls: 0
+     ⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+      FAIL  src/presse-papier-dom.test.ts > l'écouteur de collage > un `initial` fourni SANS focus n'est pas écrit au montage, et l'est au retour du focus
+     AssertionError: expected "spy" to not be called at all, but actually been called 1 times
+     Received: 
+     Number of calls: 1
+      FAIL  src/presse-papier-dom.test.ts > l'écouteur de collage > un `initial` portant un REFUS dit le bandeau au montage
+     AssertionError: expected "spy" to be called with arguments: [ Array(1) ]
+     Received: 
+     Number of calls: 0
+           Tests  2 failed | 2 passed | 15 skipped (19)
+5. restauration DEPUIS LA COPIE NOMMEE (jamais git checkout --)
+6. sha256 APRES : 3b2fbab28941536805ed53efd57e9f2290975efc6024bf40817bccf753f38a9f
+   ✅ IDENTIQUE
+7. git status --porcelain :  M client/src/presse-papier-dom.ts
+   (un « M » ici ne dit PAS que la mutation a survecu : il dit que le
+    fichier porte le correctif NON COMMITE que la rouge eprouve. Ce qui
+    etablit la restauration est la ligne 6, et elle seule.)
+
+=== ROUGE « L — un Recu VIDE est rejoue quand initial est absent » ===
+date : 2026-08-21T07:27:11+02:00   commit : 3f82152
+fichier mute : client/src/presse-papier-dom.ts
+
+1. sha256 AVANT : 3b2fbab28941536805ed53efd57e9f2290975efc6024bf40817bccf753f38a9f   (copie nommee prise : /tmp/user/0/tmp.zpdTxdSKSA)
+2. mutation :
+3. lignes changees PAR LA MUTATION (contre la copie nommee) : 4
+   (pour memoire, git diff --numstat contre HEAD : 47 6 client/src/presse-papier-dom.ts)
+   diff de la mutation :
+     -    if (initial !== undefined) {
+     -        etat.recevoir(initial);
+     +    {
+     +        etat.recevoir(initial ?? { texte: '', octets: 0 });
+4. controle : cd client && npx vitest run presse-papier-dom -t 'initial'
+          → expected "spy" to not be called at all, but actually been called 1 times
+     Received: 
+     Number of calls: 1
+     ⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+      FAIL  src/presse-papier-dom.test.ts > l'écouteur de collage > sans `initial`, le montage n'écrit rien et ne dit rien
+     AssertionError: expected "spy" to not be called at all, but actually been called 1 times
+     Received: 
+     Number of calls: 1
+           Tests  1 failed | 3 passed | 15 skipped (19)
+5. restauration DEPUIS LA COPIE NOMMEE (jamais git checkout --)
+6. sha256 APRES : 3b2fbab28941536805ed53efd57e9f2290975efc6024bf40817bccf753f38a9f
+   ✅ IDENTIQUE
+7. git status --porcelain :  M client/src/presse-papier-dom.ts
+   (un « M » ici ne dit PAS que la mutation a survecu : il dit que le
+    fichier porte le correctif NON COMMITE que la rouge eprouve. Ce qui
+    etablit la restauration est la ligne 6, et elle seule.)
+
