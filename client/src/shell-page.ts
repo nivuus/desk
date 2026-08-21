@@ -11,7 +11,7 @@ import { creerMutateur } from './fichiers/mutation-service';
 import type { RacineMutable } from './fichiers/mutation';
 import { creerServeur } from './fichiers/protocole';
 import { choisirDossier, connecterCanalFichiers, sessionDuPont, type CanalFichiers } from './fichiers/canal';
-import { adresseSignaling } from './adresse-plateforme';
+import { adressePlateforme, adresseSignaling } from './adresse-plateforme';
 
 const params = new URLSearchParams(window.location.search);
 // 🔴 L'ADRESSE SUIT LE PROTOCOLE ET LE PORT DE LA PAGE, elle n'est plus le
@@ -303,7 +303,52 @@ socket.addEventListener('open', () => {
     socket.send(JSON.stringify({ role: 'client', session: SESSION_DE_CONTROLE, jeton }));
     statut.textContent = 'bureau connecté';
     poserTon(statut, 'neutre');
+    void lancerLApplicationDemandee();
 });
+
+/// `?app=<uuid>` — le point d'entrée d'une PWA par application (sous-bloc G5).
+///
+/// 🔴 C'EST LE `start_url` DES MANIFESTES QUE LE HUB PUBLIE, et le choix de
+/// cette page-ci plutôt que du hub est raisonné : c'est le SEUL des trois
+/// candidats où **la fenêtre de session** tourne dans une fenêtre de PWA, donc
+/// le seul où le legs de S4 — « c'est à SA recette de regarder LA FENÊTRE DE
+/// SESSION sous une barre superposée » — puisse être exercé (décision D9).
+///
+/// ⚠️ LE COÛT EST DÉCLARÉ, PAS MAQUILLÉ : la session s'ouvre par
+/// `window.open`, donc dans une SECONDE fenêtre de la PWA. L'alternative —
+/// héberger la session DANS cette page — est une refonte du client, hors
+/// périmètre, et elle est nommée en legs.
+///
+/// ⚠️ CE CHEMIN N'EST EXERCÉ DE BOUT EN BOUT PAR AUCUN CRITÈRE DE G5, et le
+/// dire vaut mieux que de le laisser croire : les trois critères portent sur
+/// l'installabilité, le glisser-déposer et le test empirique de l'amendement.
+/// Ce lancement est livré, jamais mesuré.
+async function lancerLApplicationDemandee(): Promise<void> {
+    const application = params.get('app');
+    if (application === null) return;
+    if (jeton === undefined) {
+        statut.textContent = "aucun jeton : l'application demandée n'a pas été lancée";
+        poserTon(statut, 'danger');
+        return;
+    }
+    const url = `${adressePlateforme(window.location, params.get('plateforme'))}/application/${encodeURIComponent(application)}/lancer`;
+    // ⚠️ AUCUN `catch` MUET : une panne de réseau doit se voir. Le bandeau est
+    // le seul endroit où l'utilisateur d'une PWA verra que rien ne s'est
+    // passé — il n'a ni console ouverte, ni barre d'adresse.
+    try {
+        const reponse = await fetch(url, {
+            method: 'POST',
+            headers: { authorization: `Bearer ${jeton}` },
+        });
+        if (!reponse.ok) {
+            statut.textContent = `l'application n'a pas pu être lancée (${String(reponse.status)})`;
+            poserTon(statut, 'danger');
+        }
+    } catch (erreur) {
+        statut.textContent = `l'application n'a pas pu être lancée : ${(erreur as Error).message}`;
+        poserTon(statut, 'danger');
+    }
+}
 
 socket.addEventListener('message', (evenement) => {
     const message = JSON.parse(evenement.data);
