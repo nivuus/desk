@@ -37,9 +37,24 @@
 // Access API : c'est une extension Chromium. La spec §3.5.1 le dit, et l'ancien
 // pont s'en sert (`web/index.js:628`, `:644`).
 //
-// **Elle ÉCRASE silencieusement une destination existante.** La résolution de
-// la destination vient donc AVANT, dans les deux branches — sans quoi renommer
-// `brouillon.txt` en `note.txt` détruirait `note.txt` sans un mot.
+// 🔴 **ELLE ÉCRASE SILENCIEUSEMENT UNE DESTINATION EXISTANTE, ET C'EST MESURÉ**
+// — la sonde S2, deux exécutions identiques sur Chrome 151 :
+// un fichier contenant `AVANT` est écrasé par
+// `agresseur.move(racine, 'S2-Victime.txt')`, `{ issue: "ok", contenu: "APRES" }`,
+// **sans erreur**. *Aucun document du dépôt ne le disait avant celui-ci.*
+// La résolution de la destination vient donc AVANT, dans les deux branches —
+// sans quoi renommer `brouillon.txt` en `note.txt` détruirait `note.txt` sans un
+// mot. Journal : `journaux-pont-fichiers-f3/s2-move-casse.txt`.
+//
+// 🔴 **ET ELLE N'EXISTE PAS SUR UN RÉPERTOIRE** — même sonde,
+// `move_repertoire: { present: false }`. Le plan de F3 tenait le fait que
+// l'ancien pont ne l'appelait que sur des fichiers (`web/index.js:628`) pour un
+// « **indice, pas preuve** » ; **la mesure tranche**.
+//
+// ⚠️ **CONSÉQUENCE, ET ELLE RENVERSE LE VOCABULAIRE DU PLAN** : pour un
+// RÉPERTOIRE, la copie n'est pas un « repli » — **c'est LE chemin, le seul.**
+// Le renommage d'un répertoire contenant un sous-répertoire, que le défaut de
+// `web/index.js:631` rendait TOUJOURS impossible, ne marche que par là.
 //
 // ⚠️ **`move()` EST DÉTECTÉE À L'APPEL, jamais capturée au chargement du
 // module.** Une détection faite une fois pour toutes serait fausse le jour où
@@ -58,6 +73,13 @@
 // **Règle de F3** : si l'unique homonyme de la destination EST la source, c'est
 // un **renommage de casse pure**, il est licite, et le repli passe par un **nom
 // intermédiaire** — deux mouvements, jamais un écrasement.
+//
+// ⚠️ **CE CHEMIN N'EST PAS EXERÇABLE PAR L'INSTRUMENT DE RECETTE, et la sonde
+// S2 le mesure** : OPFS est **SENSIBLE à la casse**
+// (`opfs_sensible_a_la_casse: true`), donc `S2-Pure.txt` → `S2-PURE.TXT` y
+// réussit DIRECTEMENT, sans aucune collision à résoudre. Le nom intermédiaire
+// n'est éprouvé que sur l'hôte, par le faux INSENSIBLE de `mutation.test.ts`.
+// **Ne pas lire un « ok » de la sonde comme une validation de ce chemin.**
 //
 // ════════════════════════════════════════════════════════════════════════════
 // ⚠️ LA SUPPRESSION N'EST PAS RÉCURSIVE — DIVERGENCE AVEC LA SPEC §3.5
@@ -458,6 +480,11 @@ export async function supprimer(
         // La classification est donc faite ICI, où le verbe est connu.
         // L'élargir dans `classer` ferait qu'une création rendrait
         // `repertoire-non-vide`, ou l'inverse.
+        // ✅ **CE NOM D'EXCEPTION EST MESURÉ, pas supposé** : la sonde S2 rend
+        // `remove_non_vide: "REFUSE:InvalidModificationError"` sur un
+        // `removeEntry` SANS `recursive` d'un répertoire non vide, deux
+        // exécutions identiques. `repertoire-non-vide` est donc bien
+        // atteignable — ce n'est pas un code écrit pour la table.
         if (e instanceof DOMException && e.name === 'InvalidModificationError') {
             throw new EchecFichiers(
                 'repertoire-non-vide',

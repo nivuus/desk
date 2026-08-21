@@ -1,0 +1,130 @@
+SONDE S2 — `move()` ET LA SENSIBILITÉ À LA CASSE DE L'INSTRUMENT.
+Jouée le 21 août 2026, DEUX exécutions, sur l'hôte. **Aucun taux revendiqué.**
+
+⛔ **N'EMPLOIE NI LA VM, NI LE PRODUIT.** OPFS, Chrome sans interface
+(HeadlessChrome/151.0.0.0), un serveur statique sur la boucle locale.
+
+⚠️ **CE N'EST PAS UNE PORTE ÉLIMINATOIRE, et le plan l'écrit lui-même** : les
+deux branches du renommage sont livrées et testées sur l'hôte, avec DEUX faux —
+l'un qui expose `move()`, l'autre non. Quelle que soit la réponse, F3
+fonctionne. S2 dit ce que la RECETTE démontre, pas ce que le produit sait faire.
+
+════════════════════════════════════════════════════════════════════════════
+LES QUATRE FAITS, DONT DEUX QU'AUCUN DOCUMENT DU DÉPÔT NE PORTAIT
+════════════════════════════════════════════════════════════════════════════
+
+① `move()` EXISTE sur un FICHIER, et accepte un parent différent.
+   `{ present: true, meme_parent: "ok", autre_parent: "ok" }`
+
+② 🔴 **`move()` N'EXISTE PAS SUR UN RÉPERTOIRE.** `{ present: false }`
+   Le plan écrivait, du fait que l'ancien pont n'appelait `move()` que sur des
+   fichiers (`web/index.js:628`) : « **Indice, pas preuve** : rien n'établit que
+   `move()` existe sur un répertoire. »
+   **La mesure tranche : elle n'existe pas.**
+   ⚠️ **CONSÉQUENCE, ET ELLE RENVERSE LE VOCABULAIRE DU PLAN** : pour un
+   RÉPERTOIRE, la copie n'est pas un « repli » — **c'est LE chemin, le seul.**
+   Le renommage d'un répertoire contenant un sous-répertoire, que le défaut de
+   `web/index.js:631` rendait TOUJOURS impossible, ne marche que par là.
+
+③ 🔴 **`move()` ÉCRASE SILENCIEUSEMENT.** `{ issue: "ok", contenu: "APRES" }`
+   Un fichier « S2-Victime.txt » contenant `AVANT` est écrasé par un
+   `agresseur.move(racine, 'S2-Victime.txt')`, sans erreur.
+   **Aucun document du dépôt ne le disait**, et c'est ce qui rend la résolution
+   préalable de la destination OBLIGATOIRE dans LES DEUX branches. Sans elle,
+   renommer `brouillon.txt` en `note.txt` détruirait `note.txt` sans un mot.
+
+④ 🔴 **OPFS EST SENSIBLE À LA CASSE.**
+   `{ cree: "S2-Casse.txt", demande_en_minuscules: "ABSENT:NotFoundError",
+      opfs_sensible_a_la_casse: true }`
+   ⚠️ **L'INSTRUMENT NE PEUT DONC PAS REPRODUIRE LA MOITIÉ NAVIGATEUR DU DÉFAUT
+   DE CASSE**, celle qui rend le mauvais fichier. Le plan l'annonçait au
+   conditionnel (§7) ; c'est mesuré.
+   **Ce qui est démontré à la place**, et qui n'est pas rien : le comportement
+   sur l'hôte, avec DEUX faux — l'un sensible, l'autre INSENSIBLE — et la
+   disparition de l'incohérence `GROS.BIN` sur l'instrument.
+
+════════════════════════════════════════════════════════════════════════════
+DEUX FAITS ANNEXES, MESURÉS AU PASSAGE
+════════════════════════════════════════════════════════════════════════════
+
+⑤ Le renommage de CASSE PURE réussit DIRECTEMENT sur OPFS
+   (`S2-Pure.txt` → `S2-PURE.TXT`, `"ok"`).
+   ⚠️ **CELA NE VALIDE PAS LE CHEMIN DU NOM INTERMÉDIAIRE**, et il ne faut pas
+   le lire ainsi : OPFS étant sensible à la casse (④), il n'y a **aucune
+   collision** à résoudre. Sur le poste local RÉEL — Windows, macOS par défaut,
+   insensibles — la destination « existerait déjà », et c'est précisément le cas
+   que le nom intermédiaire traite. **Non mesurable ici**, éprouvé sur l'hôte
+   par le faux INSENSIBLE de `mutation.test.ts`.
+
+⑥ `removeEntry(nom)` SANS `recursive` sur un répertoire NON VIDE :
+   `"REFUSE:InvalidModificationError"`.
+   ✅ **Confirme la classification de `mutation.ts::supprimer`** : la MÊME
+   `DOMException` veut dire « une entrée du même nom existe » sur une création
+   (ce que F2 a écrit dans `classer`) et « le répertoire n'est pas vide » sur un
+   `removeEntry`. La classer là où le VERBE est connu était donc juste, et
+   `repertoire-non-vide` est bien atteignable.
+
+════════════════════════════════════════════════════════════════════════════
+LA QUESTION QUI NE PEUT PAS ÊTRE POSÉE À CET INSTRUMENT
+════════════════════════════════════════════════════════════════════════════
+`handle.name` reflète-t-il le nom STOCKÉ après une résolution insensible à la
+casse ? Elle exige un système de fichiers insensible, donc un vrai
+`showDirectoryPicker()`, que F1 a mesuré INATTEIGNABLE sur cet hôte (aucune
+commande CDP pour accepter un sélecteur, ni `DISPLAY`, ni `Xvfb`, ni `xdotool`).
+**C'est pour cela que le canonicaliseur n'exploite pas `handle.name`** : la
+seule optimisation évidente repose sur un fait que ce montage ne peut pas
+établir. **Léguée, pas implémentée à moitié.**
+
+════════════════════════════════════════════════════════════════════════════
+RELEVÉ BRUT — EXÉCUTION 1
+════════════════════════════════════════════════════════════════════════════
+{
+  "casse": {
+    "cree": "S2-Casse.txt",
+    "demande_en_minuscules": "ABSENT:NotFoundError",
+    "opfs_sensible_a_la_casse": true
+  },
+  "move_fichier": {
+    "present": true,
+    "meme_parent": "ok",
+    "nom_apres": "S2-Deplace.txt",
+    "autre_parent": "ok"
+  },
+  "move_ecrase": {
+    "issue": "ok",
+    "contenu": "APRES"
+  },
+  "move_repertoire": {
+    "present": false
+  },
+  "casse_pure_directe": "ok",
+  "remove_non_vide": "REFUSE:InvalidModificationError",
+  "chrome": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36"
+}
+
+════════════════════════════════════════════════════════════════════════════
+RELEVÉ BRUT — EXÉCUTION 2
+════════════════════════════════════════════════════════════════════════════
+{
+  "casse": {
+    "cree": "S2-Casse.txt",
+    "demande_en_minuscules": "ABSENT:NotFoundError",
+    "opfs_sensible_a_la_casse": true
+  },
+  "move_fichier": {
+    "present": true,
+    "meme_parent": "ok",
+    "nom_apres": "S2-Deplace.txt",
+    "autre_parent": "ok"
+  },
+  "move_ecrase": {
+    "issue": "ok",
+    "contenu": "APRES"
+  },
+  "move_repertoire": {
+    "present": false
+  },
+  "casse_pure_directe": "ok",
+  "remove_non_vide": "REFUSE:InvalidModificationError",
+  "chrome": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36"
+}
