@@ -47,13 +47,49 @@ describe('l’ANNONCE des écritures dues', () => {
         // `capteur/pont_media.rs`.
         const vues: unknown[] = [];
         const serveur = creerServeur(fauxAdaptateur(), () => {}, {
-            onDues: (dues) => vues.push(dues),
+            onDues: (dues, retenues) => vues.push({ dues, retenues }),
         });
         const reponse = await serveur.traiter(
-            encoder(TYPE_DUES, 0, { dues: [{ chemin: 'note.txt', octets: 12 }] }),
+            encoder(TYPE_DUES, 0, { dues: [{ chemin: 'note.txt', octets: 12 }], retenues: false }),
         );
         expect(reponse).toBeNull();
-        expect(vues).toEqual([[{ chemin: 'note.txt', octets: 12 }]]);
+        expect(vues).toEqual([{ dues: [{ chemin: 'note.txt', octets: 12 }], retenues: false }]);
+    });
+
+    /**
+     * 🔴 **F5 — `retenues` REMONTE JUSQU'AU RAPPEL, et c'est ce qui permet à la
+     * page-shell de dire POURQUOI le compteur ne descend pas.**
+     *
+     * Sans ce champ, une reprise retenue serait indiscernable d'un pont en
+     * panne : un compteur de dues figé, et rien qui l'explique.
+     */
+    it('🔴 une annonce RETENUE le dit au rappel', async () => {
+        const vues: boolean[] = [];
+        const serveur = creerServeur(fauxAdaptateur(), () => {}, {
+            onDues: (_dues, retenues) => vues.push(retenues),
+        });
+        await serveur.traiter(
+            encoder(TYPE_DUES, 0, { dues: [{ chemin: 'note.txt', octets: 12 }], retenues: true }),
+        );
+        expect(vues).toEqual([true]);
+    });
+
+    /**
+     * ⚠️ **Une annonce SANS `retenues` est REFUSÉE, jamais complétée par
+     * défaut.** Un défaut à `false` vaudrait « le pont pousse », c'est-à-dire
+     * l'inverse de ce que `Bonjour` existe pour empêcher.
+     */
+    it('🔴 une annonce SANS `retenues` est refusée, pas complétée', async () => {
+        const messages: string[] = [];
+        const vues: unknown[] = [];
+        const serveur = creerServeur(fauxAdaptateur(), (m) => messages.push(m), {
+            onDues: (dues) => vues.push(dues),
+        });
+        expect(
+            await serveur.traiter(encoder(TYPE_DUES, 0, { dues: [] })),
+        ).toBeNull();
+        expect(vues).toEqual([]);
+        expect(messages.join(' ')).toMatch(/retenues/);
     });
 
     it('une annonce illisible est journalisée, jamais fatale', async () => {

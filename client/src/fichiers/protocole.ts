@@ -54,6 +54,7 @@ import {
     TYPE_RENOMMER,
     TYPE_SUPPRIMER,
     TYPE_DONNEES,
+    TYPE_BONJOUR,
     TYPE_DUES,
     TYPE_ECHEC,
     TYPE_ECRIRE,
@@ -62,6 +63,7 @@ import {
     TYPE_LIRE,
     TYPE_LISTER,
     TYPE_META,
+    TYPE_RAFRAICHIR,
     decoder,
     encoderTexte,
 } from '../../../proto/ts/fichiers';
@@ -69,6 +71,7 @@ import {
     encodeDonnees,
     encodeEchec,
     encodeEntrees,
+    encodeBonjour,
     encodeMeta,
     parseChemin,
     parseCreer,
@@ -102,7 +105,7 @@ export interface OptionsServeur {
      * Le rappel de l'annonce `TYPE_DUES`. **INJECTÉ**, donc observable : c'est
      * la page-shell qui décide ce qu'elle en fait, et ce module reste PUR.
      */
-    onDues?: (dues: Due[]) => void;
+    onDues?: (dues: Due[], retenues: boolean) => void;
     /**
      * Le mutateur — renommage et suppression. **Absent = lecture seule.**
      *
@@ -176,7 +179,8 @@ export function creerServeur(
                 // ── ANNONCE : elle ne reçoit RIEN, et la famille est NOMMÉE.
                 case TYPE_DUES: {
                     try {
-                        options.onDues?.(parseDues(trame.entete).dues);
+                        const annonce = parseDues(trame.entete);
+                        options.onDues?.(annonce.dues, annonce.retenues);
                     } catch (e) {
                         journal(`annonce de dues illisible : ${(e as Error).message}`);
                     }
@@ -351,4 +355,31 @@ async function servir(
     // — c'est le seul contrôle qui empêche d'écrire dans le tampon de ProjFS
     // une quantité que l'émetteur ne croyait pas envoyer.
     return encoderTexte(TYPE_DONNEES, correlation, encodeDonnees(position, octets.length), octets);
+}
+
+/**
+ * La trame de l'annonce `Bonjour` — **navigateur → pont**.
+ *
+ * 🔴 **Elle n'attend AUCUNE réponse, et sa corrélation est IGNORÉE** : le pont
+ * l'aiguille **avant** de chercher une corrélation en table, précisément parce
+ * qu'elle n'en a pas. La valeur `0` est donc un remplissage, pas un identifiant.
+ *
+ * ⚠️ **`racine` est le `name` de la poignée de répertoire, et c'est un INDICE,
+ * pas une preuve** : `isSameEntry()` compare deux poignées vivantes, jamais une
+ * poignée à un souvenir. Deux répertoires homonymes sur deux disques différents
+ * passeraient pour un seul, et rien ici ne le dirait.
+ */
+export function trameBonjour(racine: string, forcer: boolean): ArrayBuffer {
+    return encoderTexte(TYPE_BONJOUR, 0, encodeBonjour(racine, forcer));
+}
+
+/**
+ * La trame de l'annonce `Rafraichir` — **navigateur → pont**.
+ *
+ * Son en-tête est `{}` : ce qui l'identifie est son TYPE. Lui donner une forme
+ * ferait une structure à épingler qui n'épingle rien — le précédent de
+ * `TYPE_FAIT`, écrit dans `proto/src/fichiers/entetes.rs`.
+ */
+export function trameRafraichir(): ArrayBuffer {
+    return encoderTexte(TYPE_RAFRAICHIR, 0, '{}');
 }

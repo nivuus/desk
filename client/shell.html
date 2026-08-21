@@ -58,6 +58,32 @@
           data-dues="0"
           data-vues="0"
         ></div>
+        <!--
+          F5 — LES DEUX BOUTONS DE LA VIE LONGUE.
+
+          `#rafraichir` vide le cache d'énumération du pont ET le cache négatif
+          de ProjFS : c'est le SEUL moyen de faire apparaître un fichier ajouté
+          sur le poste local, et c'est pourquoi il est toujours là.
+
+          `#reprendre-enregistrement` est CACHÉ par défaut et n'apparaît QUE si
+          le pont annonce `retenues` — un bouton toujours présent qui ne fait
+          rien la plupart du temps est un piège à clic. Son `data-retenues` est
+          ce que le pilote de recette lit, JAMAIS le texte : piège de F1, payé
+          neuf minutes sur deux messages qui partageaient une sous-chaîne.
+        -->
+        <p class="bureau__actions" data-retenues="false" id="actions-fichiers">
+          <button id="rafraichir" type="button" class="bouton bouton--discret">
+            Rafraîchir
+          </button>
+          <button
+            id="reprendre-enregistrement"
+            type="button"
+            class="bouton bouton--secondaire"
+            hidden
+          >
+            Reprendre l’enregistrement
+          </button>
+        </p>
       </section>
 
       <section class="bureau__section">

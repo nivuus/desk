@@ -9,7 +9,7 @@ import { creerAdaptateur } from './fichiers/adaptateur';
 import { creerEcrivain, type RacineInscriptible } from './fichiers/ecriture';
 import { creerMutateur } from './fichiers/mutation-service';
 import type { RacineMutable } from './fichiers/mutation';
-import { creerServeur } from './fichiers/protocole';
+import { creerServeur, trameBonjour, trameRafraichir } from './fichiers/protocole';
 import { choisirDossier, connecterCanalFichiers, sessionDuPont, type CanalFichiers } from './fichiers/canal';
 import { adressePlateforme, adresseSignaling } from './adresse-plateforme';
 
@@ -64,6 +64,9 @@ const boutonDossier = document.querySelector<HTMLButtonElement>('#choisir-dossie
 const etatFichiers = document.querySelector<HTMLDivElement>('#etat-fichiers')!;
 const ecrituresDues = document.querySelector<HTMLDivElement>('#ecritures-dues')!;
 const modeleFenetre = document.querySelector<HTMLTemplateElement>('#modele-fenetre')!;
+const actionsFichiers = document.querySelector<HTMLParagraphElement>('#actions-fichiers')!;
+const boutonRafraichir = document.querySelector<HTMLButtonElement>('#rafraichir')!;
+const boutonReprendre = document.querySelector<HTMLButtonElement>('#reprendre-enregistrement')!;
 
 // Le sélecteur de thème du produit (spec §5.2, famille 3). Il n'y a AUCUNE
 // règle ici non plus : le module pose ses trois boutons et gère le multi-
@@ -136,6 +139,13 @@ const bureau = creerBureau({
         ecrituresDues.dataset.vues = String(vues);
         ecrituresDues.textContent = texte;
         poserTon(ecrituresDues, ton);
+    },
+    afficherRetenues(retenues) {
+        // 🔴 **`hidden` ET `data-retenues` : l'un pour l'œil, l'autre pour
+        // l'instrument.** Le pilote de recette lit l'attribut, jamais le texte
+        // ni la visibilité — piège de F1.
+        boutonReprendre.hidden = !retenues;
+        actionsFichiers.dataset.retenues = String(retenues);
     },
 });
 
@@ -220,7 +230,7 @@ async function monterLeLecteur(): Promise<void> {
         {
             ecrivain,
             mutateur,
-            onDues: (dues) => bureau.ecrituresDues(dues),
+            onDues: (dues, retenues) => bureau.ecrituresDues(dues, retenues),
             onEchecEcriture: (chemin, code) => bureau.ecritureEchouee(chemin, code),
             onEchecMutation: (quoi, code) => bureau.mutationEchouee(quoi, code),
             // 🔵 **L'INSTRUMENTATION QUE LA SPEC §3.5.1 EXIGE**, et elle part
@@ -247,6 +257,41 @@ async function monterLeLecteur(): Promise<void> {
         return;
     }
     bureau.lecteurMonte(choix.nom);
+
+    // ════════════════════════════════════════════════════════════════════
+    // 🔴 **F5 — `Bonjour` PART ICI, ET L'ORDRE N'EST PAS INDIFFÉRENT.**
+    //
+    // Il est envoyé **APRÈS** que l'écrivain, le mutateur et l'adaptateur sont
+    // posés et que le canal est ouvert — jamais avant. C'est lui, et lui seul,
+    // qui déclenche la reprise des écritures dues côté pont : avant F5, celle-ci
+    // courait au démarrage du FIL, c'est-à-dire *sans savoir si un navigateur
+    // est là, ni lequel, ni sur quel répertoire*. F2 a mesuré, deux fois sur
+    // deux, la poussée du rejeu **0,8 s AVANT** cette annonce de montage, puis
+    // une expiration **+30,2 s** plus tard.
+    //
+    // ⚠️ **`choix.nom` est le `name` de la poignée de répertoire**, et c'est la
+    // MÊME valeur qu'un répertoire choisi par `showDirectoryPicker()` ou par
+    // OPFS rendrait : c'est ce qui permet à la recette d'éprouver la règle sans
+    // le sélecteur. **Elle n'éprouve pas pour autant le modèle de permission**,
+    // qui n'est appelé nulle part dans ce dépôt.
+    //
+    // ⚠️ **`forcer: false` au montage, TOUJOURS.** Forcer est un geste de
+    // l'utilisateur, jamais un défaut : un `true` ici rendrait le bouton
+    // « Reprendre » inatteignable et réintroduirait le danger du §6.4 cas 2.
+    // ════════════════════════════════════════════════════════════════════
+    const envoyerAuPont = (trame: ArrayBuffer): void => {
+        if (pont && pont.canal.readyState === 'open') pont.canal.send(trame);
+        else console.warn('canal fichiers ferme : annonce non envoyee');
+    };
+    envoyerAuPont(trameBonjour(choix.nom, false));
+    boutonRafraichir.onclick = () => envoyerAuPont(trameRafraichir());
+    boutonReprendre.onclick = () => {
+        // **Reprendre est un `Bonjour` FORCÉ**, et non un verbe de plus : c'est
+        // exactement « je confirme que ce répertoire est le bon ». Le pont
+        // mémorise alors le nom annoncé, et le bouton disparaît à l'annonce
+        // suivante — sans qu'aucun état local n'ait à être remis à zéro ici.
+        envoyerAuPont(trameBonjour(choix.nom, true));
+    };
 
     // ⚠️ LE DÉMONTAGE SUIT LA CONNEXION, PAS LE CANAL SEUL : un canal fermé sur
     // une connexion qui se rétablit serait rouvert par l'agent, alors qu'une
