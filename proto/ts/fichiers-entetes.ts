@@ -89,6 +89,36 @@ export interface EnteteCreer {
     repertoire: boolean;
 }
 
+/**
+ * L'en-tête de `TYPE_RENOMMER`. Charge binaire **vide**.
+ *
+ * 🔴 L'ORDRE DES DEUX CHAMPS EST LE SENS DE L'OPÉRATION, ET S'Y TROMPER
+ * DÉTRUIT. `de` est la source, `vers` la destination. Inverser les deux ne
+ * produirait aucune erreur : le renommage aurait lieu, à l'envers.
+ *
+ * ⚠️ `repertoire` est TRANSPORTÉ, jamais redécouvert : c'est l'`isdirectory`
+ * que le rappel ProjFS reçoit du système. Le navigateur le redemanderait au
+ * prix d'un aller-retour, et se tromperait sur une entrée disparue entre-temps.
+ */
+export interface EnteteRenommer {
+    de: string;
+    vers: string;
+    repertoire: boolean;
+}
+
+/**
+ * L'en-tête de `TYPE_SUPPRIMER`. Charge binaire **vide**.
+ *
+ * ⚠️ La suppression n'est PAS récursive côté navigateur, contre la lettre de la
+ * spec §3.5. Un geste dans la VM ne doit pas déclencher une destruction
+ * récursive du disque du poste local, sur la foi d'un miroir qu'aucune preuve
+ * ne dit à jour.
+ */
+export interface EnteteSupprimer {
+    chemin: string;
+    repertoire: boolean;
+}
+
 /** Une écriture DUE : des octets qui vivent sur la VM et pas encore ici. */
 export interface Due {
     chemin: string;
@@ -166,6 +196,14 @@ export function encodeEcrire(
 
 export function encodeCreer(chemin: string, repertoire: boolean): string {
     return JSON.stringify({ chemin, repertoire } satisfies EnteteCreer);
+}
+
+export function encodeRenommer(de: string, vers: string, repertoire: boolean): string {
+    return JSON.stringify({ de, vers, repertoire } satisfies EnteteRenommer);
+}
+
+export function encodeSupprimer(chemin: string, repertoire: boolean): string {
+    return JSON.stringify({ chemin, repertoire } satisfies EnteteSupprimer);
 }
 
 export function encodeDues(dues: Due[]): string {
@@ -286,6 +324,23 @@ export function parseCreer(brut: unknown): EnteteCreer {
     return {
         chemin: chaine(o, 'chemin', 'Creer'),
         repertoire: booleen(o, 'repertoire', 'Creer'),
+    };
+}
+
+export function parseRenommer(brut: unknown): EnteteRenommer {
+    const o = objet(brut, 'Renommer');
+    return {
+        de: chaine(o, 'de', 'Renommer'),
+        vers: chaine(o, 'vers', 'Renommer'),
+        repertoire: booleen(o, 'repertoire', 'Renommer'),
+    };
+}
+
+export function parseSupprimer(brut: unknown): EnteteSupprimer {
+    const o = objet(brut, 'Supprimer');
+    return {
+        chemin: chaine(o, 'chemin', 'Supprimer'),
+        repertoire: booleen(o, 'repertoire', 'Supprimer'),
     };
 }
 

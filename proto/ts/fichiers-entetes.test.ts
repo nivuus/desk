@@ -11,6 +11,8 @@ import {
     encodeEntrees,
     encodeLire,
     encodeMeta,
+    encodeRenommer,
+    encodeSupprimer,
     parseChemin,
     parseCreer,
     parseDonnees,
@@ -20,6 +22,8 @@ import {
     parseEntrees,
     parseLire,
     parseMeta,
+    parseRenommer,
+    parseSupprimer,
     type Due,
     type EntreeJson,
 } from './fichiers-entetes';
@@ -44,6 +48,8 @@ interface CasVecteur {
     premier?: boolean;
     dernier?: boolean;
     dues?: Due[];
+    de?: string;
+    vers?: string;
 }
 
 const cas: CasVecteur[] = vecteurs.cases as CasVecteur[];
@@ -65,6 +71,10 @@ function encoder(c: CasVecteur): string {
             return encodeEcrire(c.chemin!, c.position!, c.longueur!, c.premier!, c.dernier!);
         case 'creer':
             return encodeCreer(c.chemin!, c.repertoire!);
+        case 'renommer':
+            return encodeRenommer(c.de!, c.vers!, c.repertoire!);
+        case 'supprimer':
+            return encodeSupprimer(c.chemin!, c.repertoire!);
         case 'dues':
             return encodeDues(c.dues!);
         case 'echec':
@@ -92,6 +102,10 @@ function analyser(c: CasVecteur): unknown {
             return parseEcrire(brut);
         case 'creer':
             return parseCreer(brut);
+        case 'renommer':
+            return parseRenommer(brut);
+        case 'supprimer':
+            return parseSupprimer(brut);
         case 'dues':
             return parseDues(brut);
         case 'echec':
@@ -146,6 +160,18 @@ describe('les en-têtes incomplets sont rejetés', () => {
         // Un `taille` en chaîne passerait un contrôle de présence et
         // produirait une taille de fichier absurde côté ProjFS.
         expect(() => parseMeta({ repertoire: false, taille: '1', modifie: 0 })).toThrow(/taille/);
+    });
+
+    it('🔴 refuse un Renommer sans `vers` — le seul champ dont l’absence DÉTRUIT', () => {
+        // Complété en silence par une chaîne vide, il ferait renommer vers la
+        // racine — ou, si l'appelant sautait sa garde, écraserait la source par
+        // elle-même. C'est le seul en-tête de ce protocole dont un champ
+        // manquant a une conséquence destructrice.
+        expect(() => parseRenommer({ de: 'a', repertoire: false })).toThrow(/vers/);
+    });
+
+    it('refuse un Supprimer sans `repertoire`', () => {
+        expect(() => parseSupprimer({ chemin: 'a' })).toThrow(/repertoire/);
     });
 
     it('refuse un code d’échec inconnu', () => {

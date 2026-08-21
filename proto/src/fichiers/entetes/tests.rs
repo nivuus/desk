@@ -104,6 +104,21 @@ fn conformite_aux_vecteurs_partages() {
                 };
                 verifier(nom, attendu, &v);
             }
+            "renommer" => {
+                let v = Renommer {
+                    de: c["de"].as_str().unwrap().to_string(),
+                    vers: c["vers"].as_str().unwrap().to_string(),
+                    repertoire: c["repertoire"].as_bool().unwrap(),
+                };
+                verifier(nom, attendu, &v);
+            }
+            "supprimer" => {
+                let v = Supprimer {
+                    chemin: c["chemin"].as_str().unwrap().to_string(),
+                    repertoire: c["repertoire"].as_bool().unwrap(),
+                };
+                verifier(nom, attendu, &v);
+            }
             "dues" => {
                 let v = Dues {
                     dues: c["dues"]
@@ -171,20 +186,33 @@ fn un_entete_incomplet_est_rejete_plutot_que_complete() {
     .is_err());
     assert!(serde_json::from_str::<Creer>(r#"{"chemin":"a"}"#).is_err());
     assert!(serde_json::from_str::<Due>(r#"{"chemin":"a"}"#).is_err());
+    // 🔴 **Un `Renommer` sans `vers` est le cas qui DÉTRUIT** : complété en
+    // silence par une chaîne vide, il ferait renommer vers la racine — ou, si
+    // l'appelant sautait sa garde, écraserait la source par elle-même. C'est le
+    // seul en-tête de ce protocole dont un champ manquant a une conséquence
+    // destructrice, et c'est pourquoi il est nommé ici plutôt que compté.
+    assert!(serde_json::from_str::<Renommer>(r#"{"de":"a","repertoire":false}"#).is_err());
+    assert!(serde_json::from_str::<Renommer>(r#"{"de":"a","vers":"b"}"#).is_err());
+    assert!(serde_json::from_str::<Supprimer>(r#"{"chemin":"a"}"#).is_err());
 }
 
-/// 🔴 **LES NEUF FORMES ONT LEUR VECTEUR** — et c'est ce qui empêche qu'une
+/// 🔴 **LES ONZE FORMES ONT LEUR VECTEUR** — et c'est ce qui empêche qu'une
 /// forme neuve soit ajoutée sans être épinglée.
 ///
 /// La boucle de [`conformite_aux_vecteurs_partages`] n'éprouve que les formes
-/// PRÉSENTES dans le fichier : ajouter `Ecrire` au code sans lui donner de
+/// PRÉSENTES dans le fichier : ajouter `Renommer` au code sans lui donner de
 /// vecteur y passerait inaperçu. Ce test compte les formes distinctes du
-/// fichier et exige qu'elles soient les neuf que le protocole porte.
+/// fichier et exige qu'elles soient les onze que le protocole porte.
 ///
 /// ⚠️ **`TYPE_FAIT` n'a pas de forme** : son en-tête est `{}`. Le compter
 /// ferait attendre un vecteur pour une structure qui n'existe pas.
+///
+/// *(Ce test s'appelait `les_neuf_formes_ont_leur_vecteur` jusqu'à F3, qui en
+/// ajoute deux. **Le renommer plutôt que rallonger sa liste en silence** est ce
+/// que `pont::notifications` a fait de son propre garde de masque, pour la même
+/// raison : un nom qui ment sur son compte est un nom qu'on cesse de lire.)*
 #[test]
-fn les_neuf_formes_ont_leur_vecteur() {
+fn les_onze_formes_ont_leur_vecteur() {
     let brut = include_str!("../../../fichiers-vectors.json");
     let doc: serde_json::Value = serde_json::from_str(brut).expect("vecteurs valides");
     let mut formes: Vec<&str> = doc["cases"]
@@ -197,7 +225,19 @@ fn les_neuf_formes_ont_leur_vecteur() {
     formes.dedup();
     assert_eq!(
         formes,
-        ["chemin", "creer", "donnees", "dues", "echec", "ecrire", "entrees", "lire", "meta"],
+        [
+            "chemin",
+            "creer",
+            "donnees",
+            "dues",
+            "echec",
+            "ecrire",
+            "entrees",
+            "lire",
+            "meta",
+            "renommer",
+            "supprimer",
+        ],
         "une forme du protocole n'a pas de vecteur, ou un vecteur n'a pas de forme"
     );
 }

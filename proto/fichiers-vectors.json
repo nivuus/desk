@@ -101,6 +101,44 @@
       "json": "{\"chemin\":\"nouveau dossier\",\"repertoire\":true}"
     },
     {
+      "name": "renommer",
+      "forme": "renommer",
+      "de": "dossier/brouillon.txt",
+      "vers": "dossier/note finale.txt",
+      "repertoire": false,
+      "json": "{\"de\":\"dossier/brouillon.txt\",\"vers\":\"dossier/note finale.txt\",\"repertoire\":false}"
+    },
+    {
+      "name": "renommer_repertoire",
+      "forme": "renommer",
+      "de": "été",
+      "vers": "archives/été 2026",
+      "repertoire": true,
+      "json": "{\"de\":\"été\",\"vers\":\"archives/été 2026\",\"repertoire\":true}"
+    },
+    {
+      "name": "renommer_casse_pure",
+      "forme": "renommer",
+      "de": "a.txt",
+      "vers": "A.txt",
+      "repertoire": false,
+      "json": "{\"de\":\"a.txt\",\"vers\":\"A.txt\",\"repertoire\":false}"
+    },
+    {
+      "name": "supprimer",
+      "forme": "supprimer",
+      "chemin": "dossier/note.txt",
+      "repertoire": false,
+      "json": "{\"chemin\":\"dossier/note.txt\",\"repertoire\":false}"
+    },
+    {
+      "name": "supprimer_repertoire",
+      "forme": "supprimer",
+      "chemin": "nouveau dossier",
+      "repertoire": true,
+      "json": "{\"chemin\":\"nouveau dossier\",\"repertoire\":true}"
+    },
+    {
       "name": "dues_deux_entrees",
       "forme": "dues",
       "dues": [
@@ -150,6 +188,12 @@
       "forme": "echec",
       "code": "casse-ambigue",
       "json": "{\"code\":\"casse-ambigue\"}"
+    },
+    {
+      "name": "echec_repertoire_non_vide",
+      "forme": "echec",
+      "code": "repertoire-non-vide",
+      "json": "{\"code\":\"repertoire-non-vide\"}"
     }
   ]
 }
