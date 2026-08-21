@@ -1,0 +1,26 @@
+[2026-08-21T12:30:17.971Z] jeton de recette obtenu
+[2026-08-21T12:30:18.351Z] chrome : Chrome/151.0.7922.169
+[2026-08-21T12:30:18.630Z] navigation : http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA
+[2026-08-21T12:30:22.737Z] OPFS peuple : 5 entrees
+[2026-08-21T12:30:22.737Z] la page-shell est connectee : lancement de l agent
+[2026-08-21T12:30:23.143Z] agent lance : Opration russie : tentative d'excution de la tche planifie "guacamole-agent".agent lancé en session interactive ; journal : /media/vm/dev/agent.log
+[2026-08-21T12:30:27.200Z] 2 fenetre(s) d application apres 4 s
+[2026-08-21T12:30:27.210Z] etat avant le clic : {"href":"http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA","jeton":true,"bouton":true}
+[2026-08-21T12:30:27.210Z] clic sur #choisir-dossier
+[2026-08-21T12:30:31.265Z] #etat-fichiers : "Lecteur « Mes Fichiers » monté sur « Mes documents »."
+[2026-08-21T12:30:31.265Z] repos de 8000 ms avant la mesure
+[2026-08-21T12:30:39.267Z] PORTE P3 : creation DANS la VM, puis relistage immediat
+[2026-08-21T12:30:42.186Z] P3 : present_apres=true
+[2026-08-21T12:30:42.187Z] PORTE P1 : les candidates d occupation disque
+[2026-08-21T12:30:45.120Z] (1) amorcage du cache
+[2026-08-21T12:30:48.117Z] (1) 5 entrees en 89 ms
+[2026-08-21T12:30:48.117Z] (2) ajout d un fichier COTE NAVIGATEUR, hors du pont
+[2026-08-21T12:30:48.127Z] (2) {"ok":true,"entrees":6}
+[2026-08-21T12:30:48.127Z] (3) relistage : le fichier doit etre ABSENT
+[2026-08-21T12:30:51.041Z] (3) ecart (1)->(3) = 5921 ms — admissible : true
+[2026-08-21T12:30:51.042Z] (4) clic sur #rafraichir
+[2026-08-21T12:30:51.044Z] (4) clique
+[2026-08-21T12:30:53.046Z] (5) relistage : le fichier doit etre PRESENT
+[2026-08-21T12:30:55.990Z] boutons : {"rafraichir":true,"reprendre_present":true,"reprendre_cache":true,"retenues":"false","dues":"0","vues":"2"}
+[2026-08-21T12:30:56.000Z] maintien de 10 s
+[2026-08-21T12:31:06.002Z] releve ecrit : /tmp/f5/pilote-rouge-1.json
