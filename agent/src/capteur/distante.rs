@@ -61,6 +61,10 @@ pub enum Recu {
     /// `SourceDistante::presse_papier` jusqu'à ce que
     /// `presse_papier_a_annoncer` le consomme.
     PressePapier { texte: Option<String>, octets: u32 },
+    /// La couleur d'accent de la fenêtre Windows, poussée par le capteur au
+    /// changement — **première lecture comprise**. Retenue dans
+    /// `SourceDistante::accent` jusqu'à ce que `accent_a_annoncer` la consomme.
+    Accent { couleur: String },
 }
 
 pub struct SourceDistante {
@@ -111,6 +115,14 @@ pub struct SourceDistante {
     /// — le presse-papier EST un état, pas un historique, et le navigateur
     /// n'aurait rien à faire d'une copie que l'utilisateur a déjà remplacée.
     presse_papier: Option<(Option<String>, u32)>,
+    /// Dernière couleur d'accent reçue du capteur, en attente d'être annoncée
+    /// au navigateur. Consommée par `accent_a_annoncer`.
+    ///
+    /// **Même régime d'écrasement que `presse_papier`** : deux changements
+    /// arrivés entre deux lectures s'écrasent, seul le dernier survit. C'est
+    /// correct — l'accent EST un état, pas un historique, et le navigateur
+    /// n'aurait rien à faire d'une teinte que l'icône a déjà remplacée.
+    accent: Option<String>,
     /// État de sommeil COURANT, tel que le capteur le décrit.
     ///
     /// **Distinct de `sommeil` juste au-dessus, et non redondant avec lui** :
@@ -158,6 +170,7 @@ impl SourceDistante {
             audio: None,
             plein_ecran: None,
             presse_papier: None,
+            accent: None,
             endormie: true,
             rattache: false,
         }

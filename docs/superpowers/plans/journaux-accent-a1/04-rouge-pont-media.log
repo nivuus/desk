@@ -1,0 +1,53 @@
+=== A1 — LA ROUGE DE pont_media.rs (tache 8), LE TROU PAYE CINQ FOIS ===
+Date : 21 aout 2026.
+
+Le catch-all Ok(autre) de capteur/pont_media.rs TUE le fil lire_le_media EN
+SILENCE : il journalise un warn! et . Aucune erreur de compilation ne
+signale un bras manquant. Le depot a paye ce defaut CINQ fois — Sommeil (D5),
+Part (D6), Audio (D7), PleinEcran (D8), PressePapier (P1). Accent est la
+SIXIEME.
+
+--- ETAT : la variante DepuisCapteur::Accent EXISTE, le bras N'EXISTE PAS ---
+test capteur::pont_media::tests::lire_le_media_survit_a_une_part_et_la_transmet ... ok
+test capteur::pont_media::tests::lire_le_media_survit_a_un_audio_et_le_transmet ... ok
+test capteur::pont_media::tests::lire_le_media_relaie_etat_image_et_sommeil_dans_l_ordre ... ok
+test capteur::pont_media::tests::lire_le_media_survit_a_un_plein_ecran_et_le_transmet ... ok
+test capteur::pont_media::tests::lire_le_media_survit_a_un_presse_papier_et_le_transmet ... ok
+test capteur::pont_media::tests::lire_le_media_survit_a_un_accent_et_le_transmet ... FAILED
+test capteur::pont_media::tests::une_trame_de_commande_egaree_sur_le_media_abandonne_le_fil ... ok
+thread 'capteur::pont_media::tests::lire_le_media_survit_a_un_accent_et_le_transmet' (1319277) panicked at agent/src/capteur/pont_media.rs:354:30:
+called `Result::unwrap()` on an `Err` value: RecvError
+test result: FAILED. 6 passed; 1 failed; 0 ignored; 0 measured; 947 filtered out; finished in 0.00s
+
+--- APRES LE BRAS ---
+test result: ok. 7 passed; 0 failed  (les sept tests de pont_media)
+cargo test -p agent : 954 passed, 0 failed — attendu 953 + 1, ANNONCE D'AVANCE.
+
+--- LE CONTROLE PRESCRIT, RELEVE PAR LA COMMANDE ---
+grep -cn 'DepuisCapteur::Accent' agent/src/capteur/pont_media.rs  ->  4
+  100:                Ok(DepuisCapteur::Accent { couleur }) => {      <- le bras
+  336:    /// `DepuisCapteur::Accent` (tache 8, sous-bloc A1) ...      <- le test
+  347:        ecrire_json(... "#7aa2f7" ...)
+  350:        ecrire_json(... "#fa8c16" ...)
+QUATRE lignes, exactement ce que le plan predisait. Ce qui compte est que ce
+compte ne soit pas ZERO.
+
+--- PIEGE RENCONTRE, ET IL EST DANS LA DOCTRINE DU DEPOT ---
+🔴 LA PREMIERE TENTATIVE D'INSERTION DU TEST A ECHOUE PARCE QUE L'ANCRE CHOISIE
+   EXISTAIT CINQ FOIS DANS LE FICHIER (l'assertion « aucune trame de plus apres
+   la fin du tampon » est partagee par cinq tests). Un `replace(..., 1)` aurait
+   frappe le PREMIER, donc un autre test. C'est LITTERALEMENT le piege que la
+   regle 3 du §2.2 du plan nomme, et que P3 a paye : « une rouge peut rester
+   verte parce que la ligne a muter existait DEUX FOIS dans le fichier ».
+   L'assertion `t.count(ancre)==1` du script de mutation l'a attrape AVANT
+   l'ecriture — c'est elle le garde, pas la relecture.
+   Remede employe : ancrer sur la FIN DU MODULE de tests, verifiee ligne par
+   ligne, et non sur une sous-chaine.
+
+⚠️ UNE EXECUTION DE `cargo test -p agent` A RENDU 939 passed / 15 failed AU
+   MILIEU DE CETTE TACHE, puis 954 / 0 a la relance SANS AUCUNE MODIFICATION
+   DE NOTRE PART. `git status --porcelain agent/` ne montrait plus, a la
+   seconde, que nos propres fichiers : le chantier F4 mutait son arbre pendant
+   la premiere. C'est la TROISIEME fois de la journee que ce sous-bloc rencontre
+   « un compte de tests n'est attribuable qu'assorti de son heure quand deux
+   chantiers partagent l'arbre ».

@@ -90,6 +90,16 @@ pub(crate) fn lire_le_media<R: Read>(mut lecteur: R, images: SyncSender<Recu>) {
                 Ok(DepuisCapteur::PressePapier { texte, octets }) => {
                     images.send(Recu::PressePapier { texte, octets }).is_ok()
                 }
+                // Sous-bloc A1 : **la SIXIÈME fois** que ce point de passage
+                // doit être relié, après `Sommeil` (D5), `Part` (D6), `Audio`
+                // (D7), `PleinEcran` (D8) et `PressePapier` (P1). La ROUGE a
+                // été jouée AVANT ce bras :
+                // `lire_le_media_survit_a_un_accent_et_le_transmet` rendait
+                // `RecvError` sur la toute première annonce — relevé verbatim
+                // dans `journaux-accent-a1/04-rouge-pont-media.log`.
+                Ok(DepuisCapteur::Accent { couleur }) => {
+                    images.send(Recu::Accent { couleur }).is_ok()
+                }
                 Ok(autre) => {
                     tracing::warn!(?autre, "trame inattendue sur la connexion média, abandonnée");
                     return;
@@ -321,6 +331,45 @@ mod tests {
         assert!(
             rx.try_recv().is_err(),
             "le fil doit abandonner à la première trame inattendue, sans lire la suite"
+        );
+    }
+    /// `DepuisCapteur::Accent` (tâche 8, sous-bloc A1) : **la SIXIÈME fois** que
+    /// ce point de passage doit être relié, après `Sommeil` (D5), `Part` (D6),
+    /// `Audio` (D7), `PleinEcran` (D8) et `PressePapier` (P1).
+    ///
+    /// 🔴 **CE TEST A ÉTÉ ÉCRIT ET VU ROUGE AVANT QUE LE BRAS N'EXISTE.** Sans
+    /// lui, l'annonce tombe dans le catch-all `Ok(autre)`, le fil `return`, et
+    /// le premier `rx.recv()` rend `RecvError` — aucune erreur de compilation,
+    /// aucune panne apparente, et la session tombe dans sa fenêtre de reprise.
+    #[test]
+    fn lire_le_media_survit_a_un_accent_et_le_transmet() {
+        let mut tampon = Vec::new();
+        ecrire_json(&mut tampon, &DepuisCapteur::Accent { couleur: "#7aa2f7".into() }).unwrap();
+        // Un SECOND accent : le capteur n'annonce qu'au changement, mais rien
+        // dans ce fil ne le sait — il doit relayer les deux.
+        ecrire_json(&mut tampon, &DepuisCapteur::Accent { couleur: "#fa8c16".into() }).unwrap();
+        // Une image APRÈS les deux annonces : si le fil s'était abandonné
+        // dessus, cette image ne serait jamais relayée non plus. C'est cette
+        // troisième assertion qui distingue « le bras manque » de « le message
+        // n'a pas été écrit ».
+        ecrire_image(
+            &mut tampon,
+            &AccessUnit { data: vec![9, 9, 9], is_keyframe: true, pts_90k: 42 },
+        )
+        .unwrap();
+
+        let (tx, rx) = sync_channel(8);
+        lire_le_media(std::io::Cursor::new(tampon), tx);
+
+        assert_eq!(rx.recv().unwrap(), Recu::Accent { couleur: "#7aa2f7".into() });
+        assert_eq!(rx.recv().unwrap(), Recu::Accent { couleur: "#fa8c16".into() });
+        match rx.recv().unwrap() {
+            Recu::Image(unite) => assert_eq!(unite.pts_90k, 42),
+            autre => panic!("attendu une image après l'accent, reçu {autre:?}"),
+        }
+        assert!(
+            rx.try_recv().is_err(),
+            "aucune trame de plus après la fin du tampon : le fil n'a rien perdu ni rien inventé"
         );
     }
 }
