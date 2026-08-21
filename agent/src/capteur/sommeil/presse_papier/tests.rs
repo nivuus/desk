@@ -245,3 +245,52 @@ fn une_ecriture_reussie_pose_le_numero_rendu_par_l_ecrivain() {
     );
     etat().notre_ecriture = None;
 }
+
+/// La SECONDE PRISE de D-P3-6, sur SA BRANCHE : elle doit CONSOMMER
+/// `etat().notre_ecriture` et écarter l'annonce qui porte notre propre texte.
+///
+/// ⚠️ **Ce test couvre la lecture d'`etat()`, que la règle pure de
+/// `Sondeur::ecarter` ne peut pas couvrir** — c'est le seul endroit où la
+/// branche est éprouvable. Le SITE D'APPEL, lui (`registre.rs`, entre `tour()`
+/// et `distribuer`), n'est couvert par aucun test d'hôte : il vit dans le fil
+/// du tour de roue. Dit plutôt que tu.
+///
+/// ROUGE si `filtrer_nos_ecritures_tardives` ne prend pas le couple, ou s'il
+/// le lit sans le consommer — la deuxième assertion tomberait.
+#[test]
+fn la_seconde_prise_consomme_notre_ecriture_et_ecarte_notre_texte() {
+    let _verrou = verrouiller_pour_le_test();
+    etat().notre_ecriture = Some((11, String::from("colle-par-B")));
+
+    let mut sondeur = Sondeur::nouveau();
+    let annonce = Some(Annonce::Texte(String::from("colle-par-B")));
+
+    assert_eq!(
+        super::filtrer_nos_ecritures_tardives(&mut sondeur, annonce),
+        None,
+        "notre propre texte ne doit pas repartir vers les N fenêtres"
+    );
+    assert_eq!(
+        etat().notre_ecriture.clone(),
+        None,
+        "le couple doit être CONSOMMÉ : le laisser le ferait rejouer au tour suivant"
+    );
+}
+
+/// Sans écriture de notre part, la seconde prise est transparente.
+///
+/// ROUGE si elle écartait tout : une copie faite dans la VM n'arriverait
+/// jamais nulle part, et le sens descendant serait mort.
+#[test]
+fn la_seconde_prise_laisse_passer_une_copie_de_la_vm() {
+    let _verrou = verrouiller_pour_le_test();
+    etat().notre_ecriture = None;
+
+    let mut sondeur = Sondeur::nouveau();
+    let annonce = Some(Annonce::Texte(String::from("copie-dans-la-vm")));
+
+    assert_eq!(
+        super::filtrer_nos_ecritures_tardives(&mut sondeur, annonce.clone()),
+        annonce
+    );
+}

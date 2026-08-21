@@ -220,6 +220,21 @@ fn demarrer_le_tour_de_roue() {
 
             let annonce = sondeur.tour();
 
+            // 🔴 **LA SECONDE PRISE (D-P3-6), APRÈS `tour()` ET AVANT
+            // `distribuer`.** `armer_les_gardes` ci-dessus a consommé
+            // l'écriture qui EXISTAIT avant le tour ; celle-ci consomme celle
+            // qui est ARRIVÉE PENDANT. Sans elle, un second collage survenu
+            // entre l'armement et la lecture passe les DEUX gardes de D5 — le
+            // n°1 parce que le compteur a rebougé, le n°2 parce que le texte
+            // mémorisé est celui du collage PRÉCÉDENT — et son propre texte
+            // repart vers les N fenêtres.
+            //
+            // La course a été MESURÉE avant d'être fermée, par un test rouge
+            // sur l'arbre intact et sans aucune mutation ; sa démonstration et
+            // le résidu qui subsiste vivent auprès de
+            // `Sondeur::ecarter_notre_ecriture`.
+            let annonce = presse_papier::filtrer_nos_ecritures_tardives(&mut sondeur, annonce);
+
             let mut garde = etat();
             let maintenant = Instant::now();
             let ordres = garde.vivier.rearbitrer(maintenant);

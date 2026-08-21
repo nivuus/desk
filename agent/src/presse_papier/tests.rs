@@ -375,3 +375,97 @@ fn armer_a_vrai_est_le_meme_chemin_qu_apres_notre_ecriture() {
         explicite.observer(8, || Some(String::from("colle")))
     );
 }
+
+// ── LA SECONDE PRISE DE D-P3-6 (sous-bloc P3, tâche 5) ───────────────────
+//
+// 🔴 **UN DÉFAUT DU PLAN, SIGNALÉ ET CORRIGÉ ICI PLUTÔT QUE RECOPIÉ.** Son
+// Step 1 prescrit un test de DEUX lignes — `armer(true, seqA, textA)` puis
+// `observer(seqB, || Some(textB))` — « vu ROUGE sur l'arbre intact ». Il l'a
+// été, et la pièce est versée
+// (`journaux-presse-papier-p3/rouge-t5-d-p3-6-arbre-intact.log`) : la course
+// est CONFIRMÉE, RP3-9 n'est pas réalisé.
+//
+// ⚠️ **Mais ces deux lignes seules ne peuvent JAMAIS devenir vertes**, et le
+// plan ne l'avait pas vu : le remède qu'il tranche lui-même est un
+// POST-FILTRE — `filtrer_nos_ecritures_tardives` court APRÈS `tour()`, sur son
+// résultat. `observer` ne peut pas connaître une écriture qui n'est arrivée
+// qu'après lui ; exiger qu'il rende `None` serait exiger qu'il devine.
+//
+// **La lettre du test est donc conservée, et une ligne lui est ajoutée** : la
+// seconde prise, appliquée au résultat. Les deux premières lignes sont
+// celles-là mêmes qui ont rougi.
+
+/// ROUGE sur l'arbre intact : les deux premières lignes rendaient
+/// `Some(Texte("textB"))` là où la troisième doit rendre `None`.
+#[test]
+fn une_ecriture_notre_survenue_apres_l_armement_n_est_pas_annoncee() {
+    let mut s = Sondeur::nouveau();
+    // Le tour de roue a armé sur la première écriture (fenêtre A).
+    s.armer(true, 10, "textA");
+    // La fenêtre B colle : le presse-papier porte `textB`, le compteur a
+    // rebougé, et `tour()` produit donc une annonce que les deux gardes de D5
+    // laissent passer.
+    let annonce = s.observer(11, || Some(String::from("textB")));
+    assert_eq!(annonce, Some(Annonce::Texte(String::from("textB"))));
+    // La seconde prise consomme le couple de B et écarte SON PROPRE texte.
+    assert_eq!(s.ecarter(true, Some((11, String::from("textB"))), annonce), None);
+}
+
+/// 🔴 LE GARDE-FOU DU CORRECTIF : filtrer trop large ferait taire une VRAIE
+/// copie. ROUGE si le filtre porte sur le seul `seq` au lieu du texte — une
+/// copie tierce survenue après notre écriture porte elle aussi un `seq`
+/// postérieur, et le numéro seul ne les distingue pas.
+#[test]
+fn une_copie_tierce_survenue_apres_l_armement_est_toujours_annoncee() {
+    let mut s = Sondeur::nouveau();
+    s.armer(true, 10, "textA");
+    // Nous avons écrit `textB` (seq 11), PUIS une application tierce a copié
+    // `textC` : c'est `textC` que le presse-papier porte, et il doit partir.
+    let annonce = s.observer(12, || Some(String::from("textC")));
+    assert_eq!(
+        s.ecarter(true, Some((11, String::from("textB"))), annonce),
+        Some(Annonce::Texte(String::from("textC")))
+    );
+}
+
+/// ROUGE si le filtre s'applique à `Annonce::Refus`, qui n'a pas de texte à
+/// comparer : l'utilisateur perdrait le bandeau qui lui dit pourquoi rien
+/// n'est arrivé.
+#[test]
+fn le_filtre_ne_touche_pas_un_refus_de_taille() {
+    let mut s = Sondeur::nouveau();
+    let refus = Some(Annonce::Refus { octets: 99_999 });
+    assert_eq!(
+        s.ecarter(true, Some((11, String::from("textB"))), refus.clone()),
+        refus
+    );
+}
+
+/// ROUGE si la seconde prise écarte quand même sous `PRESSE_PAPIER_GARDE=0` :
+/// ce bras de banc existe pour rendre atteignable la rouge du critère ④ de P2,
+/// qui compte les messages revenant vers la fenêtre après un collage, et une
+/// prise qui mordrait quand même le viderait de son sens.
+#[test]
+fn la_seconde_prise_est_desarmee_par_le_bras_de_banc() {
+    let mut s = Sondeur::nouveau();
+    s.armer(true, 10, "textA");
+    let annonce = s.observer(11, || Some(String::from("textB")));
+    assert_eq!(
+        s.ecarter(false, Some((11, String::from("textB"))), annonce.clone()),
+        annonce
+    );
+}
+
+/// Sans écriture de notre part, la seconde prise est transparente — et elle
+/// n'arme rien : ROUGE si elle posait `reference` sur un `seq` inventé.
+#[test]
+fn sans_notre_ecriture_la_seconde_prise_ne_touche_a_rien() {
+    let mut s = Sondeur::nouveau();
+    amorce(&mut s);
+    let annonce = s.observer(2, || Some(String::from("copie-tierce")));
+    assert_eq!(
+        s.ecarter(true, None, annonce.clone()),
+        Some(Annonce::Texte(String::from("copie-tierce")))
+    );
+    assert_eq!(annonce, Some(Annonce::Texte(String::from("copie-tierce"))));
+}

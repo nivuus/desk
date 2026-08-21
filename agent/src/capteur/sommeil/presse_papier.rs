@@ -148,6 +148,29 @@ pub(super) fn armer_les_gardes(sondeur: &mut Sondeur) {
     }
 }
 
+/// La SECONDE PRISE de D-P3-6 : consomme l'écriture arrivée APRÈS
+/// `armer_les_gardes`, arme les gardes sur elle, et écarte l'annonce si c'est
+/// la nôtre.
+///
+/// 🔴 **À appeler ENTRE `sondeur.tour()` et `presse_papier::distribuer`, et
+/// l'ordre EST le mécanisme** — exactement comme `armer_les_gardes` doit
+/// précéder `tour()`. La démonstration de la course, sa portée exacte et le
+/// résidu qui subsiste vivent auprès de `Sondeur::ecarter_notre_ecriture`, qui
+/// porte la règle ; ce qui est ici est sa BRANCHE sur ce registre, et rien
+/// d'autre — même distinction que `distribuer` face au `Sondeur`, et que
+/// `parts` face à `repartiteur`.
+///
+/// ⚠️ **Le verrou est pris et rendu ici, et il ne couvre aucune E/S** : même
+/// discipline qu'`armer_les_gardes` juste au-dessus. Il ne couvre que la
+/// lecture d'un champ.
+pub(super) fn filtrer_nos_ecritures_tardives(
+    sondeur: &mut Sondeur,
+    annonce: Option<Annonce>,
+) -> Option<Annonce> {
+    let notre = etat().notre_ecriture.take();
+    sondeur.ecarter_notre_ecriture(notre, annonce)
+}
+
 // Les tests de ce module vivent à part depuis le sous-bloc P3 du chantier
 // presse-papier : le fichier était à 379 lignes pour un plafond de 500, et P3 y
 // ajoute la mémoire `dernier_presse_papier` (D-P3-2), la seconde prise

@@ -1,0 +1,145 @@
+=== ROUGE « 0 — CONTROLE DU HARNAIS : une mutation qui ne mute RIEN doit etre REFUSEE » ===
+date : 2026-08-21T07:14:20+02:00   commit : b878d88
+fichier mute : agent/src/presse_papier/sondeur.rs
+
+1. sha256 AVANT : 3b15a399b0689597b04b2312a72f69a309e4ebda08e61956000233cf5af6869d   (copie nommee prise : /tmp/user/0/tmp.CjfTB7uThE)
+2. mutation :
+3. lignes changees PAR LA MUTATION (contre la copie nommee) : 0
+   (pour memoire, git diff --numstat contre HEAD : 78 0 agent/src/presse_papier/sondeur.rs)
+🔴 SORTIE VIDE — ECHEC DE LA ROUGE, jamais un succes du produit.
+=== ROUGE « A — filtrer sur le seul seq au lieu du texte » ===
+date : 2026-08-21T07:14:20+02:00   commit : b878d88
+fichier mute : agent/src/presse_papier/sondeur.rs
+
+1. sha256 AVANT : 3b15a399b0689597b04b2312a72f69a309e4ebda08e61956000233cf5af6869d   (copie nommee prise : /tmp/user/0/tmp.N87kj0D7e6)
+2. mutation :
+3. lignes changees PAR LA MUTATION (contre la copie nommee) : 3
+   (pour memoire, git diff --numstat contre HEAD : 79 0 agent/src/presse_papier/sondeur.rs)
+   diff de la mutation :
+     +        let _ = notre_texte;
+     -            Some(Annonce::Texte(t)) if t == notre_texte => None,
+     +            Some(Annonce::Texte(_)) => None,
+4. controle : cargo test -p agent une_copie_tierce
+     ---- presse_papier::tests::une_copie_tierce_survenue_apres_l_armement_est_toujours_annoncee stdout ----
+     thread 'presse_papier::tests::une_copie_tierce_survenue_apres_l_armement_est_toujours_annoncee' (266965) panicked at agent/src/presse_papier/tests.rs:425:5:
+     assertion `left == right` failed
+       left: None
+      right: Some(Texte("textC"))
+     test result: FAILED. 2 passed; 1 failed; 0 ignored; 0 measured; 906 filtered out; finished in 0.00s
+5. restauration DEPUIS LA COPIE NOMMEE (jamais git checkout --)
+6. sha256 APRES : 3b15a399b0689597b04b2312a72f69a309e4ebda08e61956000233cf5af6869d
+   ✅ IDENTIQUE
+7. git status --porcelain :  M agent/src/presse_papier/sondeur.rs
+   (un « M » ici ne dit PAS que la mutation a survecu : il dit que le
+    fichier porte le correctif NON COMMITE que la rouge eprouve. Ce qui
+    etablit la restauration est la ligne 6, et elle seule.)
+
+=== ROUGE « B — le filtre s'applique aussi a Annonce::Refus » ===
+date : 2026-08-21T07:14:27+02:00   commit : b878d88
+fichier mute : agent/src/presse_papier/sondeur.rs
+
+1. sha256 AVANT : 3b15a399b0689597b04b2312a72f69a309e4ebda08e61956000233cf5af6869d   (copie nommee prise : /tmp/user/0/tmp.CLnhbI0GiC)
+2. mutation :
+3. lignes changees PAR LA MUTATION (contre la copie nommee) : 1
+   (pour memoire, git diff --numstat contre HEAD : 79 0 agent/src/presse_papier/sondeur.rs)
+   diff de la mutation :
+     +            Some(Annonce::Refus { .. }) => None,
+4. controle : cargo test -p agent le_filtre_ne_touche_pas
+     ---- presse_papier::tests::le_filtre_ne_touche_pas_un_refus_de_taille stdout ----
+     thread 'presse_papier::tests::le_filtre_ne_touche_pas_un_refus_de_taille' (268672) panicked at agent/src/presse_papier/tests.rs:438:5:
+     assertion `left == right` failed
+       left: None
+      right: Some(Refus { octets: 99999 })
+     test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 908 filtered out; finished in 0.00s
+5. restauration DEPUIS LA COPIE NOMMEE (jamais git checkout --)
+6. sha256 APRES : 3b15a399b0689597b04b2312a72f69a309e4ebda08e61956000233cf5af6869d
+   ✅ IDENTIQUE
+7. git status --porcelain :  M agent/src/presse_papier/sondeur.rs
+   (un « M » ici ne dit PAS que la mutation a survecu : il dit que le
+    fichier porte le correctif NON COMMITE que la rouge eprouve. Ce qui
+    etablit la restauration est la ligne 6, et elle seule.)
+
+=== ROUGE « C — la seconde prise mord meme sous PRESSE_PAPIER_GARDE=0 » ===
+date : 2026-08-21T07:14:34+02:00   commit : b878d88
+fichier mute : agent/src/presse_papier/sondeur.rs
+
+1. sha256 AVANT : 3b15a399b0689597b04b2312a72f69a309e4ebda08e61956000233cf5af6869d   (copie nommee prise : /tmp/user/0/tmp.esxQZbS0qc)
+2. mutation :
+3. lignes changees PAR LA MUTATION (contre la copie nommee) : 3
+   (pour memoire, git diff --numstat contre HEAD : 75 0 agent/src/presse_papier/sondeur.rs)
+   diff de la mutation :
+     -        if !armes {
+     -            return annonce;
+     -        }
+4. controle : cargo test -p agent la_seconde_prise_est_desarmee
+     ---- presse_papier::tests::la_seconde_prise_est_desarmee_par_le_bras_de_banc stdout ----
+     thread 'presse_papier::tests::la_seconde_prise_est_desarmee_par_le_bras_de_banc' (269896) panicked at agent/src/presse_papier/tests.rs:453:5:
+     assertion `left == right` failed
+       left: None
+      right: Some(Texte("textB"))
+     test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 908 filtered out; finished in 0.01s
+5. restauration DEPUIS LA COPIE NOMMEE (jamais git checkout --)
+6. sha256 APRES : 3b15a399b0689597b04b2312a72f69a309e4ebda08e61956000233cf5af6869d
+   ✅ IDENTIQUE
+7. git status --porcelain :  M agent/src/presse_papier/sondeur.rs
+   (un « M » ici ne dit PAS que la mutation a survecu : il dit que le
+    fichier porte le correctif NON COMMITE que la rouge eprouve. Ce qui
+    etablit la restauration est la ligne 6, et elle seule.)
+
+=== 🔴 UNE ROUGE QUI EST RESTEE VERTE, ET SON DIAGNOSTIC ===
+
+La rouge D visait `filtrer_nos_ecritures_tardives` et devait faire tomber
+`la_seconde_prise_consomme_notre_ecriture_et_ecarte_notre_texte` en remplacant
+`take()` par `clone()`. Son premier jet a rendu :
+
+    3. lignes changees PAR LA MUTATION (contre la copie nommee) : 2
+       -    let notre = etat().notre_ecriture.take();
+       +    let notre = etat().notre_ecriture.clone();
+    4. test result: ok. 1 passed; 0 failed
+
+La mutation a bien change quelque chose — et le test est reste VERT.
+
+CAUSE, trouvee en rejouant la mutation A LA MAIN avec `sed` (qui, lui, remplace
+TOUTES les occurrences) : le test tombe alors. La ligne
+`let notre = etat().notre_ecriture.take();` existe DEUX FOIS dans le fichier —
+dans `armer_les_gardes` ET dans `filtrer_nos_ecritures_tardives` — et le
+`.replace(a, n, 1)` du harnais a frappe la PREMIERE, c'est-a-dire
+`armer_les_gardes`, que ce test n'exerce pas.
+
+C'est litteralement le piege du §2.2 regle 3 du plan : « muter par NUMERO DE
+LIGNE, ou par un motif ancre sur la SYNTAXE — jamais par la seule
+sous-chaine ». Il a ete paye ici, sur une ligne qui n'avait rien d'un
+commentaire : la duplication suffit.
+
+⚠️ LECON, ET ELLE EST NEUVE : une rouge qui reste VERTE se DIAGNOSTIQUE, elle
+ne se classe pas. Sans le rejeu manuel, ce releve se serait lu comme « le test
+ne peut pas echouer », c'est-a-dire l'inverse exact de la verite.
+
+La rouge est REJOUEE ci-dessous, ancree sur la SIGNATURE de la fonction visee.
+
+=== ROUGE « D — la branche LIT le couple sans le CONSOMMER (ancree sur la SIGNATURE) » ===
+date : 2026-08-21T07:16:43+02:00   commit : b878d88
+fichier mute : agent/src/capteur/sommeil/presse_papier.rs
+
+1. sha256 AVANT : f292bf0cf85e15597a4f57cf5ec7d8cb85fba8b14ada92c949ae89ba29dfe528   (copie nommee prise : /tmp/user/0/tmp.WK31HxG0Px)
+2. mutation :
+3. lignes changees PAR LA MUTATION (contre la copie nommee) : 2
+   (pour memoire, git diff --numstat contre HEAD : 23 0 agent/src/capteur/sommeil/presse_papier.rs)
+   diff de la mutation :
+     -    let notre = etat().notre_ecriture.take();
+     +    let notre = etat().notre_ecriture.clone();
+4. controle : cargo test -p agent la_seconde_prise_consomme
+     ---- capteur::sommeil::presse_papier::tests::la_seconde_prise_consomme_notre_ecriture_et_ecarte_notre_texte stdout ----
+     thread 'capteur::sommeil::presse_papier::tests::la_seconde_prise_consomme_notre_ecriture_et_ecarte_notre_texte' (282765) panicked at agent/src/capteur/sommeil/presse_papier/tests.rs:273:5:
+     assertion `left == right` failed: le couple doit être CONSOMMÉ : le laisser le ferait rejouer au tour suivant
+       left: Some((11, "colle-par-B"))
+      right: None
+     test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 910 filtered out; finished in 0.00s
+5. restauration DEPUIS LA COPIE NOMMEE (jamais git checkout --)
+6. sha256 APRES : f292bf0cf85e15597a4f57cf5ec7d8cb85fba8b14ada92c949ae89ba29dfe528
+   ✅ IDENTIQUE
+7. git status --porcelain :  M agent/src/capteur/sommeil/presse_papier.rs
+   (un « M » ici ne dit PAS que la mutation a survecu : il dit que le
+    fichier porte le correctif NON COMMITE que la rouge eprouve. Ce qui
+    etablit la restauration est la ligne 6, et elle seule.)
+
