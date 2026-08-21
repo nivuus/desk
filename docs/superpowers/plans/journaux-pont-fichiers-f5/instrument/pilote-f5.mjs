@@ -339,6 +339,113 @@ try {
     })`, 8000, false);
     dire(`boutons : ${resultat.etat_boutons}`);
 
+    // ════════════════════════════════════════════════════════════════════
+    // CRITÈRE ③ — LE RETOUR AVEC UN RÉPERTOIRE DIFFÉRENT RETIENT, ET LE DIT.
+    //
+    // 🔴 **CE QUE CE MONTAGE ÉPROUVE, ET CE QU'IL N'ÉPROUVE PAS.** Il crée un
+    // SECOND répertoire OPFS, de nom différent, et remonte le lecteur dessus.
+    // Le `name` d'une poignée OPFS est **la même valeur, lue au même endroit**,
+    // que celui d'un répertoire choisi par `showDirectoryPicker()` : la RÈGLE
+    // du nom est donc pleinement exercée.
+    // ⛔ **LE MODÈLE DE PERMISSION NE L'EST PAS** — `showDirectoryPicker`,
+    // `queryPermission`, `requestPermission` et l'activation utilisateur
+    // transitoire ne sont appelés nulle part dans ce dépôt. **F5 mesure que la
+    // règle du nom fonctionne ; il ne mesure pas qu'elle suffise.**
+    if (process.env.CRITERE_3 === '1') {
+        dire('CRITERE ③ : remontage sur un AUTRE repertoire');
+        resultat.c3_second = await cdp.evalBorne(sessionShell, `(async () => {
+            const r = await navigator.storage.getDirectory();
+            const d = await r.getDirectoryHandle('Autre dossier', { create: true });
+            await d.getFileHandle('temoin.txt', { create: true });
+            return JSON.stringify({ nom: d.name });
+        })()`, 30000, true);
+        dire(`② second repertoire : ${resultat.c3_second}`);
+        // ⚠️ **LE SÉLECTEUR FACTICE EST SURCHARGÉ ICI, ET PAS DANS
+        // `injection-f2.js`.** Celui-ci est l'instrument de F2, que F3 et F4
+        // réemploient : y ajouter un crochet pour F5 ferait qu'une recette
+        // close dépendrait d'une édition faite pour une autre. La surcharge est
+        // lue **à l'appel**, donc elle prend effet au clic suivant.
+        await cdp.evalBorne(sessionShell, `(() => {
+            window.showDirectoryPicker = async () => {
+                const r = await navigator.storage.getDirectory();
+                return r.getDirectoryHandle('Autre dossier', { create: true });
+            };
+            return 'surcharge posee';
+        })()`, 8000, false);
+        const b2 = await cdp.evalBorne(sessionShell, `(() => { const b = document.querySelector('#choisir-dossier'); const r = b.getBoundingClientRect(); return JSON.stringify({ x: Math.round(r.x + r.width/2), y: Math.round(r.y + r.height/2) }); })()`, 5000, false);
+        const p2 = JSON.parse(b2);
+        await cdp.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: p2.x, y: p2.y, button: 'left', clickCount: 1 }, sessionShell);
+        await cdp.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: p2.x, y: p2.y, button: 'left', clickCount: 1 }, sessionShell);
+        await dodo(8000);
+        resultat.c3_etat = await cdp.evalBorne(sessionShell, `JSON.stringify({
+            etat: document.querySelector('#etat-fichiers')?.textContent,
+            dues: document.querySelector('#ecritures-dues')?.dataset.dues,
+            texte: document.querySelector('#ecritures-dues')?.textContent,
+            retenues: document.querySelector('#actions-fichiers')?.dataset.retenues,
+            reprendre_cache: document.querySelector('#reprendre-enregistrement')?.hidden,
+        })`, 8000, false);
+        dire(`③ ${resultat.c3_etat}`);
+    }
+
+    // ════════════════════════════════════════════════════════════════════
+    // CRITÈRE ④ — UN CACHE ARMÉ NE DOIT RIEN CASSER DE F2 NI DE F3.
+    //
+    // 🔴 **C'EST LE RISQUE N°1 DE F5, et sa rouge est le retrait de
+    // l'invalidation.** Les trois cas sont joués APRÈS un `Rafraichir`, donc
+    // sur un cache qui vient d'être repeuplé : créer, renommer, supprimer dans
+    // la VM, et relister à chaque fois.
+    if (process.env.CRITERE_4 === '1') {
+        dire('CRITERE ④ : creer / renommer / supprimer dans la VM, cache arme');
+        resultat.c4 = await mesurer('muter');
+        const c4 = resultat.c4;
+        if (c4 && c4.avant) {
+            dire(`④ avant=${c4.avant.compte} creation=${c4.apres_creation.compte} ` +
+                 `renommage=${c4.renommage}/${c4.apres_renommage.compte} ` +
+                 `suppression=${c4.suppression}/${c4.apres_suppression.compte}`);
+            resultat.c4_verdict = {
+                creation_vue: c4.apres_creation.noms.includes('a-renommer.txt'),
+                ancien_nom_disparu: !c4.apres_renommage.noms.includes('a-renommer.txt'),
+                nouveau_nom_vu: c4.apres_renommage.noms.includes('RENOMME.txt'),
+                supprime_disparu: !c4.apres_suppression.noms.includes('RENOMME.txt'),
+            };
+            dire(`④ verdict : ${JSON.stringify(resultat.c4_verdict)}`);
+        }
+    }
+
+    // ════════════════════════════════════════════════════════════════════
+    // TÂCHE 17 — LA LATENCE DE LISTAGE AUX RANGS DE F4, CACHE ARMÉ.
+    // Imposée par le §0.1 au verdict VERT du critère ①.
+    // ⚠️ **La PRÉDICTION du §0.2 est écrite AVANT la mesure** : si le cache est
+    // consulté au bon endroit, un SECOND `Get-ChildItem` dans la fenêtre du TTL
+    // doit coûter `lister=n:0`, et la latence doit approximativement se diviser
+    // par deux. **Ce qui la falsifie** : un chaud aussi cher que le froid.
+    // ⚠️ **Ce que cela NE ferme PAS** : le mécanisme des DEUX `Lister` par
+    // geste (legs n°4 de F4) reste inexpliqué même si le cache en absorbe un.
+    if (process.env.RANGS === '1') {
+        resultat.rangs = {};
+        for (const n of [10, 100, 1000]) {
+            dire(`rang ${n} : peuplement OPFS`);
+            const sous = `rang-${n}`;
+            await cdp.evalBorne(sessionShell, `(async () => {
+                const r = await navigator.storage.getDirectory();
+                const d = await r.getDirectoryHandle('Mes documents');
+                const s = await d.getDirectoryHandle(${JSON.stringify(sous)}, { create: true });
+                for (let i = 0; i < ${n}; i += 1) {
+                    await s.getFileHandle('f' + String(i).padStart(5, '0') + '.txt', { create: true });
+                }
+                return 'peuple';
+            })()`, 180000, true);
+            // Le répertoire est neuf côté navigateur : le pont ne peut pas le
+            // connaître, et un `Rafraichir` garantit qu'aucune mémoire du parent
+            // ne le cache.
+            await cdp.evalBorne(sessionShell, `(document.querySelector('#rafraichir').click(), 'ok')`, 8000, false);
+            await dodo(1500);
+            resultat.rangs[n] = await mesurer(`rang-${sous}`);
+            const m = resultat.rangs[n];
+            dire(`rang ${n} : ${m.entrees} entrees | froid ${m.froid_ms} ms | chaud ${m.chaud_ms} ms | chaud2 ${m.chaud2_ms} ms | coherent ${m.coherent}`);
+        }
+    }
+
     resultat.arbre_opfs = await cdp.evalBorne(sessionShell, `window.__arbre()`, 30000, true);
     dire(`maintien de ${MAINTIEN_S} s`);
     await dodo(MAINTIEN_S * 1000);

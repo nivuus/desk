@@ -1,0 +1,159 @@
+2026-08-21T12:48:45.332378Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-21T12:48:45.412031Z  INFO agent::plateforme::session: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8080/agent" prefixe=F4z7KQooOQfJqh47PM0ETA expire_a=1787317125386
+2026-08-21T12:48:45.412198Z  INFO agent::apps: mode de surveillance retenu mode=Armee
+2026-08-21T12:48:45.413799Z  INFO agent::superviseur::signalisation: déclaration du superviseur émise sur la session de contrôle (acceptation encore inconnue) session="F4z7KQooOQfJqh47PM0ETA:bureau"
+2026-08-21T12:48:45.414399Z  INFO agent::apps::surveillance::fil: racine surveillée racine=C:\ProgramData\Microsoft\Windows\Start Menu
+2026-08-21T12:48:45.414444Z  INFO agent::apps::surveillance::fil: racine surveillée racine=C:\Users\Administrateur\AppData\Roaming\Microsoft\Windows\Start Menu
+2026-08-21T12:48:45.414477Z  INFO agent::apps::surveillance::fil: racine surveillée racine=C:\Users\Administrateur\Desktop
+2026-08-21T12:48:45.414521Z  INFO agent::apps::surveillance::fil: racine surveillée racine=C:\Users\Public\Desktop
+2026-08-21T12:48:45.414530Z  INFO agent::apps::surveillance::fil: surveillance des raccourcis armée racines=4
+2026-08-21T12:48:45.416060Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-21T12:48:45.416088Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-21T12:48:45.416099Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant purge" nombre=1 attachees=1
+2026-08-21T12:48:45.416107Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant purge" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-21T12:48:45.544108Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\Users\Administrateur\Desktop\Gestionnaire de périphériques.lnk motif="extension" extension=msc
+2026-08-21T12:48:45.560725Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\Users\Administrateur\Desktop\Paramètres Windows.lnk motif="cible-vide"
+2026-08-21T12:48:45.560752Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\Users\Administrateur\Desktop\Services.lnk motif="extension" extension=msc
+2026-08-21T12:48:45.740109Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\Users\Administrateur\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\System Tools\computer.lnk motif="cible-vide"
+2026-08-21T12:48:45.740132Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\Users\Administrateur\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\System Tools\Control Panel.lnk motif="cible-vide"
+2026-08-21T12:48:45.740136Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\Users\Administrateur\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\System Tools\File Explorer.lnk motif="cible-vide"
+2026-08-21T12:48:45.740138Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\Users\Administrateur\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\System Tools\Run.lnk motif="cible-vide"
+2026-08-21T12:48:45.779382Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\Users\Administrateur\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Python 3.13\IDLE (Python 3.13 64-bit).lnk motif="cible-absente"
+2026-08-21T12:48:45.779419Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\Users\Administrateur\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Python 3.13\Python 3.13 (64-bit).lnk motif="cible-absente"
+2026-08-21T12:48:45.779424Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\Users\Administrateur\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Python 3.13\Python 3.13 Manuals (64-bit).lnk motif="extension" extension=html
+2026-08-21T12:48:45.779434Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\Users\Administrateur\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Python 3.13\Python 3.13 Module Docs (64-bit).lnk motif="cible-absente"
+2026-08-21T12:48:46.070589Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Windows Kits\Windows Software Development Kit\Documentation for Desktop Apps.lnk motif="extension" extension=url
+2026-08-21T12:48:46.070625Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Windows Kits\Windows Software Development Kit\Documentation for UWP Apps.lnk motif="extension" extension=url
+2026-08-21T12:48:46.070629Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Windows Kits\Windows Software Development Kit\Sample Desktop Apps.lnk motif="extension" extension=url
+2026-08-21T12:48:46.070632Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Windows Kits\Windows Software Development Kit\Sample UWP Apps.lnk motif="extension" extension=url
+2026-08-21T12:48:46.070634Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Windows Kits\Windows Software Development Kit\Tools for Desktop Apps.lnk motif="extension" extension=url
+2026-08-21T12:48:46.070637Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Windows Kits\Windows Software Development Kit\Tools for UWP Apps.lnk motif="extension" extension=url
+2026-08-21T12:48:46.202933Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\smartmontools Daily Builds.lnk motif="cible-vide"
+2026-08-21T12:48:46.202965Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\smartmontools Home Page.lnk motif="cible-vide"
+2026-08-21T12:48:46.391285Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\Documentation\ChangeLog.lnk motif="extension" extension=txt
+2026-08-21T12:48:46.391310Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\Documentation\COPYING.lnk motif="extension" extension=txt
+2026-08-21T12:48:46.411655Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\Documentation\NEWS.lnk motif="extension" extension=txt
+2026-08-21T12:48:46.411679Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\Documentation\smartctl manual page (html).lnk motif="extension" extension=html
+2026-08-21T12:48:46.411683Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\Documentation\smartctl manual page (pdf).lnk motif="extension" extension=pdf
+2026-08-21T12:48:46.411686Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\Documentation\smartd manual page (html).lnk motif="extension" extension=html
+2026-08-21T12:48:46.411689Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\Documentation\smartd manual page (pdf).lnk motif="extension" extension=pdf
+2026-08-21T12:48:46.411692Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\Documentation\smartd.conf manual page (html).lnk motif="extension" extension=html
+2026-08-21T12:48:46.411694Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\Documentation\smartd.conf manual page (pdf).lnk motif="extension" extension=pdf
+2026-08-21T12:48:46.430062Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Revo Uninstaller\Revo Uninstaller Help.lnk motif="extension" extension=pdf
+2026-08-21T12:48:46.430131Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\RetroArch\RetroArch Website.lnk motif="extension" extension=url
+2026-08-21T12:48:46.462321Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\NVIDIA Corporation\NVIDIA Tools Extension (64 bit)\Browse NVIDIA Tools Extension.lnk motif="extension" extension=
+2026-08-21T12:48:46.473002Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\NVIDIA Corporation\Nsight Visual Studio Edition 2025.1\Nsight Redistributable.lnk motif="extension" extension=msi
+2026-08-21T12:48:46.531841Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\NVIDIA Corporation\CUDA Toolkit\v11.2\Visual Profiler.lnk motif="extension" extension=bat
+2026-08-21T12:48:46.531870Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\NVIDIA Corporation\CUDA Samples\v11.2\Browse CUDA Samples.lnk motif="extension" extension=2
+2026-08-21T12:48:46.542516Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Microsoft Xbox 360 Accessories\Aide de Microsoft Xbox 360 Accessories.lnk motif="extension" extension=chm
+2026-08-21T12:48:46.662834Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\CMake\CMake Documentation.lnk motif="extension" extension=html
+2026-08-21T12:48:46.670364Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Blue Ripple Sound\Rapture3D - Help.lnk motif="extension" extension=chm
+2026-08-21T12:48:46.716225Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Component Services.lnk motif="extension" extension=msc
+2026-08-21T12:48:46.716257Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Computer Management.lnk motif="extension" extension=msc
+2026-08-21T12:48:46.738600Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Event Viewer.lnk motif="extension" extension=msc
+2026-08-21T12:48:46.790176Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Network Policy Server.lnk motif="extension" extension=msc
+2026-08-21T12:48:46.811894Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Performance Monitor.lnk motif="extension" extension=msc
+2026-08-21T12:48:46.848448Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Security Configuration Management.lnk motif="extension" extension=msc
+2026-08-21T12:48:46.848544Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\services.lnk motif="extension" extension=msc
+2026-08-21T12:48:46.877721Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Task Scheduler.lnk motif="extension" extension=msc
+2026-08-21T12:48:46.877758Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Windows Defender Firewall with Advanced Security.lnk motif="extension" extension=msc
+2026-08-21T12:48:46.877763Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Windows Server Backup.lnk motif="extension" extension=msc
+2026-08-21T12:48:46.877766Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Remote Desktop Services\RD Gateway Manager.lnk motif="extension" extension=msc
+2026-08-21T12:48:46.887582Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Remote Desktop Services\Remote Desktop Licensing Diagnosis.lnk motif="extension" extension=msc
+2026-08-21T12:48:47.034555Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Accessories\System Tools\Windows Server Backup.lnk motif="extension" extension=msc
+2026-08-21T12:48:47.053084Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\7-Zip\7-Zip Help.lnk motif="extension" extension=chm
+2026-08-21T12:48:47.053262Z  INFO agent::apps::boucle::memoire: catalogue reconcilie total=220 retenus=169 cles=156 icones=156 icones_echouees=0 icones_distinctes=98 apparues=156 modifiees=0 disparues=0 duree_ms=1640 declencheur="demarrage" notifications=0 debordements=0
+2026-08-21T12:48:48.418396Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-21T12:48:48.418435Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-21T12:48:48.418443Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="après purge" nombre=1 attachees=1
+2026-08-21T12:48:48.418454Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après purge" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-21T12:48:48.418459Z  INFO agent::moniteurs_virtuels::purge: purge terminée retirees=0 avant=1 apres=1
+2026-08-21T12:48:48.422850Z  INFO agent::superviseur::lanceur: capteur lancé pid=2344
+2026-08-21T12:48:48.424697Z  INFO agent::superviseur::lanceur::pont: pont fichiers lancé pid=3012 session="F4z7KQooOQfJqh47PM0ETA:fichiers"
+2026-08-21T12:48:48.424717Z  WARN agent::superviseur::boucle::surveillance_pont: pont fichiers lancé ou relancé (tentatives suivantes silencieuses tant que le cycle se répète) pid_neuf=3012
+2026-08-21T12:48:48.431301Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-21T12:48:48.431336Z  INFO agent::capteur: capteur démarré tube="\\\\.\\pipe\\agent-capteur"
+2026-08-21T12:48:48.431787Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-21T12:48:48.431813Z  INFO agent: identité héritée du superviseur (AGENT_JETON) : ce processus n'ouvre aucun canal /agent, un seul socket par VM
+2026-08-21T12:48:48.431842Z  WARN agent::apps: decouverte d'applications inactive : ce processus n'a pas de canal /agent (identité héritée du superviseur, ou AGENT_VM/AGENT_SECRET absents)
+2026-08-21T12:48:48.432881Z  INFO agent::pont::transport: socket UDP du pont fichiers addr=192.168.3.2:56685
+2026-08-21T12:48:48.479178Z  INFO agent::signaling: déclaration de l'agent émise au signaling (acceptation encore inconnue) session="F4z7KQooOQfJqh47PM0ETA:fichiers"
+2026-08-21T12:48:48.479818Z  INFO agent::signaling: configuration TURN reçue serveur=192.168.3.1:3478
+2026-08-21T12:48:48.926532Z  INFO agent::superviseur::boucle::surveillance_pont: pont fichiers de nouveau stable pid=3012
+2026-08-21T12:49:15.358270Z  INFO agent::apps::boucle: identité changée : le prochain catalogue sera COMPLET (rafraîchissement de jeton OU réenrôlement — cette boucle ne les distingue pas)
+2026-08-21T12:49:17.127444Z  INFO agent::apps::boucle::memoire: catalogue reconcilie total=220 retenus=169 cles=156 icones=0 icones_echouees=0 icones_distinctes=98 apparues=0 modifiees=0 disparues=0 duree_ms=73 declencheur="periode" notifications=0 debordements=0
+2026-08-21T12:49:45.404797Z  INFO agent::apps::boucle: identité changée : le prochain catalogue sera COMPLET (rafraîchissement de jeton OU réenrôlement — cette boucle ne les distingue pas)
+2026-08-21T12:49:47.198829Z  INFO agent::apps::boucle::memoire: catalogue reconcilie total=220 retenus=169 cles=156 icones=0 icones_echouees=0 icones_distinctes=98 apparues=0 modifiees=0 disparues=0 duree_ms=70 declencheur="periode" notifications=0 debordements=0
+2026-08-21T12:50:15.476203Z  INFO agent::apps::boucle: identité changée : le prochain catalogue sera COMPLET (rafraîchissement de jeton OU réenrôlement — cette boucle ne les distingue pas)
+2026-08-21T12:50:17.269864Z  INFO agent::apps::boucle::memoire: catalogue reconcilie total=220 retenus=169 cles=156 icones=0 icones_echouees=0 icones_distinctes=98 apparues=0 modifiees=0 disparues=0 duree_ms=71 declencheur="periode" notifications=0 debordements=0
+2026-08-21T12:50:18.507454Z  INFO agent::pont: réponse SDP du pont envoyée
+2026-08-21T12:50:18.508178Z  INFO agent::pont::projfs::racine: racine marquée pour la première fois racine=C:\Users\Administrateur\Mes Fichiers
+2026-08-21T12:50:18.518284Z  INFO agent::pont::projfs: racine de virtualisation ProjFS démarrée racine=C:\Users\Administrateur\Mes Fichiers
+2026-08-21T12:50:18.518304Z  INFO agent::pont: racine du pont fichiers montée racine=C:\Users\Administrateur\Mes Fichiers
+2026-08-21T12:50:18.520957Z  WARN agent::pont::ecriture::fil: poussee d'ecriture DESARMEE (PONT_ECRITURE=0) : bras de banc, jamais une configuration livree
+2026-08-21T12:50:18.533295Z  INFO agent::pont::transport: pont fichiers connecté au navigateur
+2026-08-21T12:50:18.649125Z  INFO agent::pont::transport: canal du pont fichiers ouvert label=fichiers
+2026-08-21T12:50:18.649182Z  INFO agent::pont::service: canal du pont ouvert : le navigateur peut servir les requêtes
+2026-08-21T12:50:18.673278Z  INFO agent::pont::service::annonces: bonjour du navigateur racine=Mes documents forcer=false
+2026-08-21T12:50:18.673389Z  INFO agent::pont::ecriture::fil::reprise: bonjour du navigateur : decision de reprise racine="Mes documents" forcer=false memorise="<aucun>" decision="pousser" dues=0
+2026-08-21T12:50:28.699679Z  INFO agent::pont::service::recensement: pont en vol=0 sans_commande=0 plus_ancienne_ms=0 sessions=1 octets_hydrates=0 entrees_hydratees=0
+2026-08-21T12:50:28.699708Z  INFO agent::pont::service::recensement: codes rendus total=0 introuvable=0 chemin-introuvable=0 acces-refuse=0 canal-ferme=0 delai-depasse=0 abandonnee=0 disque-plein=0 non-supporte=0 repertoire-non-vide=0 deja-present=0 protege-en-ecriture=0 inattendue=0 | jamais rendus : introuvable,chemin-introuvable,acces-refuse,canal-ferme,delai-depasse,abandonnee,disque-plein,non-supporte,repertoire-non-vide,deja-present,protege-en-ecriture,inattendue
+2026-08-21T12:50:28.732145Z  WARN agent::pont::service: le navigateur refuse commande=Some(9) correlation=1 code=Some(Introuvable) cause=Introuvable
+2026-08-21T12:50:28.763355Z  WARN agent::pont::service: le navigateur refuse commande=Some(10) correlation=2 code=Some(Introuvable) cause=Introuvable
+2026-08-21T12:50:28.772176Z DEBUG agent::pont::projfs::rappels::notification: notification ProjFS code=4 est_repertoire=false chemin=ne-vient-pas-du-navigateur.txt destination=None cible=SansObjet
+2026-08-21T12:50:28.772689Z DEBUG agent::pont::projfs::rappels::notification: notification ProjFS code=1024 est_repertoire=false chemin=ne-vient-pas-du-navigateur.txt destination=None cible=SansObjet
+2026-08-21T12:50:38.910549Z  INFO agent::pont::service::recensement: pont en vol=0 sans_commande=0 plus_ancienne_ms=0 sessions=0 octets_hydrates=0 entrees_hydratees=0
+2026-08-21T12:50:38.910587Z  INFO agent::pont::service::recensement: codes rendus total=2 introuvable=2 chemin-introuvable=0 acces-refuse=0 canal-ferme=0 delai-depasse=0 abandonnee=0 disque-plein=0 non-supporte=0 repertoire-non-vide=0 deja-present=0 protege-en-ecriture=0 inattendue=0 | jamais rendus : chemin-introuvable,acces-refuse,canal-ferme,delai-depasse,abandonnee,disque-plein,non-supporte,repertoire-non-vide,deja-present,protege-en-ecriture,inattendue
+2026-08-21T12:50:39.398950Z  INFO agent::pont::service::annonces: rafraichissement demande par le navigateur repertoires_oublies=1 cache_negatif_purge=1 cache_arme=true
+2026-08-21T12:50:44.353588Z  INFO agent::pont::transport: canal du pont fichiers fermé id=ChannelId(0)
+2026-08-21T12:50:44.353688Z  WARN agent::pont::service: canal du pont fermé : les commandes en vol sont abandonnées
+2026-08-21T12:50:44.353711Z  INFO agent::pont::service::recensement: pont en vol=0 sans_commande=0 plus_ancienne_ms=0 sessions=0 octets_hydrates=0 entrees_hydratees=0
+2026-08-21T12:50:44.353723Z  INFO agent::pont::service::recensement: codes rendus total=2 introuvable=2 chemin-introuvable=0 acces-refuse=0 canal-ferme=0 delai-depasse=0 abandonnee=0 disque-plein=0 non-supporte=0 repertoire-non-vide=0 deja-present=0 protege-en-ecriture=0 inattendue=0 | jamais rendus : chemin-introuvable,acces-refuse,canal-ferme,delai-depasse,abandonnee,disque-plein,non-supporte,repertoire-non-vide,deja-present,protege-en-ecriture,inattendue
+2026-08-21T12:50:44.354177Z  INFO agent::signaling: le client s'est déconnecté
+2026-08-21T12:50:44.354515Z  INFO agent::pont::projfs: virtualisation ProjFS arrêtée racine=C:\Users\Administrateur\Mes Fichiers
+2026-08-21T12:50:44.354548Z  INFO agent::pont::ecriture::fil: fil d'ecriture du pont arrete
+2026-08-21T12:50:44.354567Z  INFO agent::pont::transport: plus personne n'émet de requête : arrêt du transport du pont
+2026-08-21T12:50:44.354673Z  INFO agent::pont: pont fichiers arrêté
+2026-08-21T12:50:44.372395Z  INFO agent::superviseur::lanceur::pont: pont fichiers terminé pid=3012 code=ExitStatus(ExitStatus(0))
+2026-08-21T12:50:44.375032Z  INFO agent::superviseur::lanceur::pont: pont fichiers lancé pid=7700 session="F4z7KQooOQfJqh47PM0ETA:fichiers"
+2026-08-21T12:50:44.375053Z  WARN agent::superviseur::boucle::surveillance_pont: pont fichiers lancé ou relancé (tentatives suivantes silencieuses tant que le cycle se répète) pid_mort=3012 pid_neuf=7700
+2026-08-21T12:50:44.383303Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-21T12:50:44.383335Z  INFO agent: identité héritée du superviseur (AGENT_JETON) : ce processus n'ouvre aucun canal /agent, un seul socket par VM
+2026-08-21T12:50:44.383363Z  WARN agent::apps: decouverte d'applications inactive : ce processus n'a pas de canal /agent (identité héritée du superviseur, ou AGENT_VM/AGENT_SECRET absents)
+2026-08-21T12:50:44.384295Z  INFO agent::pont::transport: socket UDP du pont fichiers addr=192.168.3.2:56687
+2026-08-21T12:50:44.411882Z  INFO agent::signaling: déclaration de l'agent émise au signaling (acceptation encore inconnue) session="F4z7KQooOQfJqh47PM0ETA:fichiers"
+2026-08-21T12:50:44.412882Z  INFO agent::signaling: configuration TURN reçue serveur=192.168.3.1:3478
+2026-08-21T12:50:44.877243Z  INFO agent::superviseur::boucle::surveillance_pont: pont fichiers de nouveau stable pid=7700
+2026-08-21T12:50:45.544534Z  INFO agent::apps::boucle: identité changée : le prochain catalogue sera COMPLET (rafraîchissement de jeton OU réenrôlement — cette boucle ne les distingue pas)
+2026-08-21T12:50:47.341274Z  INFO agent::apps::boucle::memoire: catalogue reconcilie total=220 retenus=169 cles=156 icones=0 icones_echouees=0 icones_distinctes=98 apparues=0 modifiees=0 disparues=0 duree_ms=70 declencheur="periode" notifications=0 debordements=0
+2026-08-21T12:50:47.394861Z  INFO agent::pont: réponse SDP du pont envoyée
+2026-08-21T12:50:47.395435Z  INFO agent::pont::projfs::racine: racine marquée pour la première fois racine=C:\Users\Administrateur\Mes Fichiers
+2026-08-21T12:50:47.405502Z  INFO agent::pont::projfs: racine de virtualisation ProjFS démarrée racine=C:\Users\Administrateur\Mes Fichiers
+2026-08-21T12:50:47.405734Z  INFO agent::pont: racine du pont fichiers montée racine=C:\Users\Administrateur\Mes Fichiers
+2026-08-21T12:50:47.405941Z  WARN agent::pont::ecriture::fil: poussee d'ecriture DESARMEE (PONT_ECRITURE=0) : bras de banc, jamais une configuration livree
+2026-08-21T12:50:47.625942Z  INFO agent::pont::transport: pont fichiers connecté au navigateur
+2026-08-21T12:50:47.814693Z  INFO agent::pont::transport: canal du pont fichiers ouvert label=fichiers
+2026-08-21T12:50:47.814772Z  INFO agent::pont::service: canal du pont ouvert : le navigateur peut servir les requêtes
+2026-08-21T12:50:47.846142Z  INFO agent::pont::service::annonces: bonjour du navigateur racine=Autre dossier forcer=false
+2026-08-21T12:50:47.846312Z  INFO agent::pont::ecriture::fil::reprise: bonjour du navigateur : decision de reprise racine="Autre dossier" forcer=false memorise="Mes documents" decision="retenir" dues=1
+2026-08-21T12:50:47.846324Z  WARN agent::pont::ecriture::fil::reprise: ecritures dues RETENUES : le repertoire annonce n'est pas celui qui a ete enregistre. Rien n'est pousse, rien n'est jete. racine="Autre dossier" memorise="Mes documents" dues=1
+2026-08-21T12:50:57.415486Z  INFO agent::pont::service::recensement: pont en vol=0 sans_commande=0 plus_ancienne_ms=0 sessions=0 octets_hydrates=0 entrees_hydratees=0
+2026-08-21T12:50:57.415533Z  INFO agent::pont::service::recensement: codes rendus total=0 introuvable=0 chemin-introuvable=0 acces-refuse=0 canal-ferme=0 delai-depasse=0 abandonnee=0 disque-plein=0 non-supporte=0 repertoire-non-vide=0 deja-present=0 protege-en-ecriture=0 inattendue=0 | jamais rendus : introuvable,chemin-introuvable,acces-refuse,canal-ferme,delai-depasse,abandonnee,disque-plein,non-supporte,repertoire-non-vide,deja-present,protege-en-ecriture,inattendue
+2026-08-21T12:51:00.586383Z  INFO agent::signaling: le client s'est déconnecté
+2026-08-21T12:51:03.317903Z  INFO agent::pont::service: transport du pont arrêté : le fil du pont s'arrête
+2026-08-21T12:51:03.317919Z ERROR agent::pont: transport du pont arrêté sur erreur erreur=lecture du socket UDP du pont
+2026-08-21T12:51:03.317935Z  INFO agent::pont::service::recensement: pont en vol=0 sans_commande=0 plus_ancienne_ms=0 sessions=0 octets_hydrates=0 entrees_hydratees=0
+2026-08-21T12:51:03.317955Z  INFO agent::pont::service::recensement: codes rendus total=0 introuvable=0 chemin-introuvable=0 acces-refuse=0 canal-ferme=0 delai-depasse=0 abandonnee=0 disque-plein=0 non-supporte=0 repertoire-non-vide=0 deja-present=0 protege-en-ecriture=0 inattendue=0 | jamais rendus : introuvable,chemin-introuvable,acces-refuse,canal-ferme,delai-depasse,abandonnee,disque-plein,non-supporte,repertoire-non-vide,deja-present,protege-en-ecriture,inattendue
+2026-08-21T12:51:03.318675Z  INFO agent::pont::projfs: virtualisation ProjFS arrêtée racine=C:\Users\Administrateur\Mes Fichiers
+2026-08-21T12:51:03.318701Z  INFO agent::pont::ecriture::fil: fil d'ecriture du pont arrete
+2026-08-21T12:51:03.318742Z  INFO agent::pont: pont fichiers arrêté
+2026-08-21T12:51:03.368597Z  INFO agent::superviseur::lanceur::pont: pont fichiers terminé pid=7700 code=ExitStatus(ExitStatus(0))
+2026-08-21T12:51:03.370922Z  INFO agent::superviseur::lanceur::pont: pont fichiers lancé pid=1932 session="F4z7KQooOQfJqh47PM0ETA:fichiers"
+2026-08-21T12:51:03.370946Z  WARN agent::superviseur::boucle::surveillance_pont: pont fichiers lancé ou relancé (tentatives suivantes silencieuses tant que le cycle se répète) pid_mort=7700 pid_neuf=1932
+2026-08-21T12:51:03.379791Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-21T12:51:03.379829Z  INFO agent: identité héritée du superviseur (AGENT_JETON) : ce processus n'ouvre aucun canal /agent, un seul socket par VM
+2026-08-21T12:51:03.379857Z  WARN agent::apps: decouverte d'applications inactive : ce processus n'a pas de canal /agent (identité héritée du superviseur, ou AGENT_VM/AGENT_SECRET absents)
+2026-08-21T12:51:03.380889Z  INFO agent::pont::transport: socket UDP du pont fichiers addr=192.168.3.2:56689
+2026-08-21T12:51:03.409836Z  INFO agent::signaling: déclaration de l'agent émise au signaling (acceptation encore inconnue) session="F4z7KQooOQfJqh47PM0ETA:fichiers"
+2026-08-21T12:51:03.413570Z  INFO agent::signaling: configuration TURN reçue serveur=192.168.3.1:3478
+2026-08-21T12:51:03.873067Z  INFO agent::superviseur::boucle::surveillance_pont: pont fichiers de nouveau stable pid=1932

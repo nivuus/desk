@@ -1,0 +1,31 @@
+[2026-08-21T13:38:12.742Z] jeton de recette obtenu
+[2026-08-21T13:38:13.182Z] chrome : Chrome/151.0.7922.169
+[2026-08-21T13:38:13.501Z] navigation : http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA
+[2026-08-21T13:38:17.703Z] OPFS peuple : 5 entrees
+[2026-08-21T13:38:17.703Z] la page-shell est connectee : lancement de l agent
+[2026-08-21T13:38:18.183Z] agent lance : Opration russie : tentative d'excution de la tche planifie "guacamole-agent".agent lancé en session interactive ; journal : /media/vm/dev/agent.log
+[2026-08-21T13:39:48.522Z] etat avant le clic : {"href":"http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA","jeton":true,"bouton":true}
+[2026-08-21T13:39:48.523Z] clic sur #choisir-dossier
+[2026-08-21T13:39:52.567Z] #etat-fichiers : "Lecteur « Mes Fichiers » monté sur « Mes documents »."
+[2026-08-21T13:39:52.567Z] repos de 8000 ms avant la mesure
+[2026-08-21T13:40:00.571Z] PORTE P3 : creation DANS la VM, puis relistage immediat
+[2026-08-21T13:40:03.724Z] P3 : present_apres=true
+[2026-08-21T13:40:03.725Z] PORTE P1 : les candidates d occupation disque
+[2026-08-21T13:40:06.660Z] (1) amorcage du cache
+[2026-08-21T13:40:09.674Z] (1) 5 entrees en 0 ms
+[2026-08-21T13:40:09.674Z] (2) ajout d un fichier COTE NAVIGATEUR, hors du pont
+[2026-08-21T13:40:09.689Z] (2) {"ok":true,"entrees":6}
+[2026-08-21T13:40:09.689Z] (3) relistage : le fichier doit etre ABSENT
+[2026-08-21T13:40:12.633Z] (3) ecart (1)->(3) = 5973 ms — admissible : true
+[2026-08-21T13:40:12.633Z] (4) clic sur #rafraichir
+[2026-08-21T13:40:12.637Z] (4) clique
+[2026-08-21T13:40:14.638Z] (5) relistage : le fichier doit etre PRESENT
+[2026-08-21T13:40:17.805Z] boutons : {"rafraichir":true,"reprendre_present":true,"reprendre_cache":true,"retenues":"false","dues":"0","vues":"2"}
+[2026-08-21T13:40:17.806Z] rang 10 : peuplement OPFS
+[2026-08-21T13:40:22.447Z] rang 10 : 10 entrees | froid 63 ms | chaud 0 ms | chaud2 0 ms | coherent true
+[2026-08-21T13:40:22.448Z] rang 100 : peuplement OPFS
+[2026-08-21T13:40:26.978Z] rang 100 : 100 entrees | froid 338 ms | chaud 9 ms | chaud2 0 ms | coherent true
+[2026-08-21T13:40:26.978Z] rang 1000 : peuplement OPFS
+[2026-08-21T13:40:34.176Z] rang 1000 : 1000 entrees | froid 2799 ms | chaud 32 ms | chaud2 16 ms | coherent true
+[2026-08-21T13:40:34.735Z] maintien de 5 s
+[2026-08-21T13:40:39.737Z] releve ecrit : /tmp/f5/pilote-rangs-2.json

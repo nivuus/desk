@@ -1,0 +1,28 @@
+[2026-08-21T13:26:15.325Z] jeton de recette obtenu
+[2026-08-21T13:26:15.914Z] chrome : Chrome/151.0.7922.169
+[2026-08-21T13:26:16.281Z] navigation : http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA
+[2026-08-21T13:26:20.409Z] OPFS peuple : 5 entrees
+[2026-08-21T13:26:20.410Z] la page-shell est connectee : lancement de l agent
+[2026-08-21T13:26:20.840Z] agent lance : Opration russie : tentative d'excution de la tche planifie "guacamole-agent".agent lancé en session interactive ; journal : /media/vm/dev/agent.log
+[2026-08-21T13:27:51.146Z] etat avant le clic : {"href":"http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA","jeton":true,"bouton":true}
+[2026-08-21T13:27:51.146Z] clic sur #choisir-dossier
+[2026-08-21T13:27:55.184Z] #etat-fichiers : "Lecteur « Mes Fichiers » monté sur « Mes documents »."
+[2026-08-21T13:27:55.184Z] repos de 8000 ms avant la mesure
+[2026-08-21T13:28:03.186Z] PORTE P3 : creation DANS la VM, puis relistage immediat
+[2026-08-21T13:28:06.209Z] P3 : present_apres=true
+[2026-08-21T13:28:06.209Z] PORTE P1 : les candidates d occupation disque
+[2026-08-21T13:28:09.206Z] (1) amorcage du cache
+[2026-08-21T13:28:12.153Z] (1) 5 entrees en 0 ms
+[2026-08-21T13:28:12.153Z] (2) ajout d un fichier COTE NAVIGATEUR, hors du pont
+[2026-08-21T13:28:12.164Z] (2) {"ok":true,"entrees":5}
+[2026-08-21T13:28:12.165Z] (3) relistage : le fichier doit etre ABSENT
+[2026-08-21T13:28:15.166Z] (3) ecart (1)->(3) = 5959 ms — admissible : true
+[2026-08-21T13:28:15.166Z] (4) clic sur #rafraichir
+[2026-08-21T13:28:15.168Z] (4) clique
+[2026-08-21T13:28:17.170Z] (5) relistage : le fichier doit etre PRESENT
+[2026-08-21T13:28:20.152Z] boutons : {"rafraichir":true,"reprendre_present":true,"reprendre_cache":true,"retenues":"false","dues":"1","vues":"2"}
+[2026-08-21T13:28:20.153Z] CRITERE ③ : remontage sur un AUTRE repertoire
+[2026-08-21T13:28:20.158Z] ② second repertoire : {"nom":"Autre dossier"}
+[2026-08-21T13:28:28.180Z] ③ {"etat":"Lecteur « Mes Fichiers » monté sur « Autre dossier ».","dues":"1","texte":"1 fichier enregistré dans la VM n'a pas encore été recopié sur ce poste : « ne-vient-pas-du-navigateur.txt ». Ne fermez pas cet onglet.","retenues":"true","reprendre_cache":false}
+[2026-08-21T13:28:28.189Z] maintien de 8 s
+[2026-08-21T13:28:36.189Z] releve ecrit : /tmp/f5/pilote-c3-2.json

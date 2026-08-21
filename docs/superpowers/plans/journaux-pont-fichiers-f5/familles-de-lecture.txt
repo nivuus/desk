@@ -1,0 +1,67 @@
+# Familles de lecture des journaux de F5 — RELEVE PAR LA COMMANDE, 21 août 2026.
+
+## Fichiers portant des sequences ANSI (sed obligatoire)
+agent-arme-1.log
+agent-arme-2.log
+agent-arme-3.log
+agent-c3-1.log
+agent-c3-2.log
+agent-c4-1.log
+agent-c4-2.log
+agent-c4-sanscache.log
+agent-diag.log
+agent-env-test.log
+agent-p2-apres.log
+agent-p2-dues.log
+agent-p2-temoin.log
+agent-rangs-1.log
+agent-rangs-2.log
+agent-rouge-1.log
+agent-rouge-2.log
+  -> nombre : 17
+
+## Fichiers portant des  (CRLF)
+  -> nombre : 37
+
+## Fichiers portant des octets NUL (grep -a obligatoire)
+  -> nombre : 0
+
+## Encodages (file)
+      5              Unicode text, UTF-8 text, with very long lines (512), with CRLF line terminators, with escape sequences
+      5                 Unicode text, UTF-8 text, with very long lines (512), with CRLF line terminators, with escape sequences
+      5         Unicode text, UTF-8 text, with very long lines (473), with CRLF line terminators
+      5            JSON text data
+      5               JSON text data
+      5             data
+      5                data
+      4            Unicode text, UTF-8 text, with very long lines (473), with CRLF line terminators
+      3               Unicode text, UTF-8 text, with very long lines (512), with CRLF line terminators, with escape sequences
+      3          Unicode text, UTF-8 text, with very long lines (473), with CRLF line terminators
+      3             JSON text data
+      3              data
+      2             Unicode text, UTF-8 text, with very long lines (512), with CRLF line terminators, with escape sequences
+      2           JSON text data
+      2            data
+      2                   ASCII text, with CRLF line terminators
+      1         Unicode text, UTF-8 text, with very long lines (512), with CRLF line terminators, with escape sequences
+      1            Unicode text, UTF-8 text, with very long lines (512), with CRLF line terminators, with escape sequences
+      1    Unicode text, UTF-8 text, with very long lines (473), with CRLF line terminators
+      1        Unicode text, UTF-8 text, with very long lines (473), with CRLF line terminators
+      1       Unicode text, UTF-8 text, with CRLF line terminators
+      1        Unicode text, UTF-8 text, with CRLF line terminators
+      1        Unicode text, UTF-8 text, with CR, LF line terminators
+      1            Unicode text, UTF-8 text, with CRLF line terminators
+      1  Unicode text, UTF-8 text
+      1    Unicode text, UTF-8 text
+      1         Unicode text, UTF-8 text
+      1               Unicode text, UTF-8 text
+      1 Unicode text, UTF-8 text
+      1       JSON text data
+      1          JSON text data
+      1                     directory
+      1        data
+      1           data
+
+REGLE : chaque agent-*.log brut a son jumeau -plat.log, verse. Lire le -plat,
+ou passer le brut par sed 's/\[[0-9;]*m//g'. Les *.json et *.log de pilote
+se grep'ent a plat.
