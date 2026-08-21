@@ -1,0 +1,49 @@
+=== F4 tâche 4 — les deux rouges du module latence.rs, harnais §1.4 ===
+témoin : /tmp/f4-temoin/latence.rs.temoin
+sha256 avant : 462da40159e9d07a4f5e9386dff0f7e999e3e88fa7b1fd0ea2f8faa4805ca9bb  agent/src/pont/latence.rs
+
+--- R1 : Famille::Lire prend le rang de Famille::Lister (ligne 221) ---
+[diff de la mutation, doit être NON VIDE]
+221c221
+<         .position(|c| *c == f)
+---
+>         .position(|c| *c == f || (f == Famille::Lire && *c == Famille::Lister))
+(rc=1 — 1 attendu)
+test pont::latence::tests::la_famille_suit_le_budget_et_creer_est_de_la_famille_ecrire ... ok
+test pont::latence::tests::un_histogramme_neuf_rend_des_zeros ... ok
+test pont::latence::tests::les_familles_ne_se_melangent_pas ... FAILED
+test pont::latence::tests::l_ordre_du_recensement_est_epingle ... FAILED
+test pont::latence::tests::le_max_est_le_max_et_la_moyenne_est_la_moyenne ... ok
+test pont::latence::tests::une_famille_neuve_ne_peut_pas_heriter_du_nom_d_une_autre ... ok
+test pont::latence::tests::une_traversee_tombe_dans_le_seau_qui_la_contient ... ok
+test result: FAILED. 5 passed; 2 failed; 0 ignored; 0 measured; 916 filtered out; finished in 0.00s
+error: test failed, to rerun pass `-p agent --bin agent`
+[restauration] diff:
+VIDE
+sha256 après R1 : 462da40159e9d07a4f5e9386dff0f7e999e3e88fa7b1fd0ea2f8faa4805ca9bb  agent/src/pont/latence.rs
+
+--- R2 : une borne de seau <= devient < (ligne 118) ---
+[diff de la mutation, doit être NON VIDE]
+118c118
+<     SEAUX_MS.iter().position(|ms| us <= u128::from(*ms) * 1_000).unwrap_or(SEAUX_MS.len())
+---
+>     SEAUX_MS.iter().position(|ms| us < u128::from(*ms) * 1_000).unwrap_or(SEAUX_MS.len())
+(rc=1 — 1 attendu)
+test pont::latence::tests::la_famille_suit_le_budget_et_creer_est_de_la_famille_ecrire ... ok
+test pont::latence::tests::le_max_est_le_max_et_la_moyenne_est_la_moyenne ... ok
+test pont::latence::tests::les_familles_ne_se_melangent_pas ... ok
+test pont::latence::tests::un_histogramme_neuf_rend_des_zeros ... ok
+test pont::latence::tests::une_famille_neuve_ne_peut_pas_heriter_du_nom_d_une_autre ... ok
+test pont::latence::tests::l_ordre_du_recensement_est_epingle ... ok
+test pont::latence::tests::une_traversee_tombe_dans_le_seau_qui_la_contient ... FAILED
+assertion `left == right` failed: borne 1 ms
+  left: 1
+ right: 0
+test result: FAILED. 6 passed; 1 failed; 0 ignored; 0 measured; 916 filtered out; finished in 0.00s
+[restauration] diff:
+VIDE
+sha256 après R2 : 462da40159e9d07a4f5e9386dff0f7e999e3e88fa7b1fd0ea2f8faa4805ca9bb  agent/src/pont/latence.rs
+
+git status --porcelain agent/src/pont/ :
+?? agent/src/pont/latence.rs
+?? agent/src/pont/latence/

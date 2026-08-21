@@ -22,6 +22,7 @@
 //! - **Il ne rejoue jamais une commande expirée.** Une requête rejouée
 //!   produirait une seconde réponse sans destinataire (spec §5.3).
 
+mod recensement;
 mod reponses;
 mod verbes;
 
@@ -36,8 +37,10 @@ use proto::fichiers::entetes;
 use crate::pont::ecriture::fil::Ordre;
 use crate::pont::enumeration::Session;
 use crate::pont::erreurs::Erreur;
+use crate::pont::latence::Famille;
 use crate::pont::projfs::{ContexteProjFs, Etat, PERIODE_HYDRATATION};
 use crate::pont::transport::DuNavigateur;
+use recensement::{mesure_armee, recenser, tout_completer};
 
 /// Période du balayage des expirations.
 ///
@@ -67,6 +70,16 @@ pub const PERIODE_RECENSEMENT: Duration = Duration::from_secs(10);
 /// La boucle du fil du pont. Rend quand le canal se ferme ou que le transport
 /// s'arrête.
 pub fn tourner(etat: Arc<Etat>, entrant: Receiver<DuNavigateur>) {
+    // **F4** — forcer la lecture de `PONT_MESURE` ICI, et non au premier
+    // recensement.
+    //
+    // ⚠️ **Sinon la trace d'armement ne sortirait qu'après `PERIODE_RECENSEMENT`
+    // (10 s)**, c'est-à-dire APRÈS les premiers gestes d'une recette courte —
+    // et un opérateur qui ne la voit pas conclurait que la variable n'a pas
+    // atteint le processus, alors qu'elle l'a atteint et que la ligne est
+    // seulement en retard. *La trace de contrôle doit précéder ce qu'elle
+    // contrôle.*
+    mesure_armee();
     let mut dernier_releve = Instant::now();
     let mut dernier_recensement = Instant::now();
     loop {
@@ -128,110 +141,12 @@ pub fn tourner(etat: Arc<Etat>, entrant: Receiver<DuNavigateur>) {
     }
 }
 
-/// La ligne de recensement — **l'instrument du critère (4) de F3**.
-///
-/// ```text
-/// codes rendus total=17 introuvable=3 chemin-introuvable=1 acces-refuse=0 …
-/// ```
-///
-/// 🔴 **UN CODE JAMAIS PRODUIT AFFICHE `0`, ET C'EST TOUT L'INTÉRÊT.** Le
-/// critère (4) — « chacun des douze est observé au moins une fois » — devient
-/// alors un `grep` sur UNE ligne, et il **ne peut pas être satisfait par
-/// accident** : une exécution qui n'exerce rien rend douze zéros.
-///
-/// ⚠️ **CE QUE CE RECENSEMENT NE PEUT PAS DIRE, mesuré par la recette de F3** :
-/// il est émis **à la fermeture du canal**, et le fil du service RETOURNE
-/// aussitôt. Un code produit APRÈS cette fermeture — `CanalFerme` sur un geste
-/// qui arrive alors qu'il n'y a plus de navigateur — est bien **compté**, et
-/// **personne ne l'imprime**. Le compteur est juste ; la ligne qui le rend
-/// observable, elle, est déjà partie.
-///
-/// ⚠️ **`info!` et non `debug!`** : `scripts/run-agent.sh` pose `RUST_LOG=info`
-/// par défaut, et la doctrine de ce dépôt est que l'exploitation y tourne. Une
-/// mitigation muette n'en est pas une — c'est la raison écrite pour les deux
-/// traces de `encode/arret.rs`, appliquée ici.
-fn recenser(etat: &Etat) {
-    // ── LE RELEVÉ DE LA TABLE — l'instrument du legs n°4 de F1 ────────────
-    //
-    // 🔴 **C'est ce qui départage les quatre hypothèses**, et aucune n'était
-    // départageable jusqu'ici. F1 a mesuré des lectures qui CALENT sans jamais
-    // expirer — `commande expirée` reste à 0 pendant 540 s — et déclare qu'on
-    // ne sait pas OÙ le blocage se produit. Voir `pont::table::plus_ancienne`,
-    // qui porte le tableau de lecture.
-    //
-    // ⚠️ **Une ligne toutes les 10 s, jamais une par rappel.** Le chantier TURN
-    // a payé 18 619 lignes en quelques secondes pour une trace par paquet,
-    // écrites sur un partage CIFS depuis la boucle : la mesure détruisait ce
-    // qu'elle mesurait.
-    let maintenant = Instant::now();
-    let (en_vol, sans_commande, plus_ancienne_ms) = match etat.table.lock() {
-        Ok(table) => (
-            table.en_vol(),
-            table.sans_commande(),
-            table.plus_ancienne(maintenant).map(|d| d.as_millis()).unwrap_or(0),
-        ),
-        // ⚠️ **Un verrou empoisonné est DIT, pas tu.** Rendre des zéros ferait
-        // lire « rien en vol » là où la table est inaccessible — c'est-à-dire
-        // la PREMIÈRE ligne du tableau de lecture, qui accuserait le rappel.
-        Err(_) => {
-            tracing::warn!("recensement impossible : le verrou de la table est empoisonne");
-            return;
-        }
-    };
-    let sessions = etat.sessions.lock().map(|s| s.len()).unwrap_or(0);
-    tracing::info!(
-        "pont en vol={} sans_commande={} plus_ancienne_ms={} sessions={} octets_hydrates={} \
-         entrees_hydratees={}",
-        en_vol,
-        sans_commande,
-        plus_ancienne_ms,
-        sessions,
-        etat.octets_hydrates.load(Ordering::Relaxed),
-        etat.entrees_hydratees.load(Ordering::Relaxed),
-    );
-
-    let manquants: Vec<&str> = etat
-        .compteurs
-        .manquants()
-        .into_iter()
-        .map(crate::pont::compteurs::nom)
-        .collect();
-    tracing::info!(
-        // ⚠️ **Un champ `tracing` porterait des séquences ANSI entre son nom et
-        // sa valeur sur un journal BRUT** — c'est le piège que la recette
-        // d'entrée de D8 a payé, et que le `grep` de F1 a rejoué trois fois.
-        // Le recensement est donc **une chaîne unique**, `nom=valeur` séparés
-        // par des espaces, et il se lit tel quel sans `sed`.
-        "codes rendus {} | jamais rendus : {}",
-        etat.compteurs.recensement(),
-        if manquants.is_empty() { "aucun".to_string() } else { manquants.join(",") }
-    );
-}
-
-/// Complète en erreur tout ce qui reste en vol. Appelée quand plus aucune
-/// réponse ne peut arriver.
-fn tout_completer(etat: &Etat, cause: Erreur) {
-    let restantes = match etat.table.lock() {
-        Ok(mut table) => table.vider(),
-        Err(empoisonne) => empoisonne.into_inner().vider(),
-    };
-    for (commande, correlation) in restantes {
-        oublier_contexte(etat, correlation);
-        // ⚠️ **Une écriture abandonnée doit être DITE au fil d'écriture**, sans
-        // quoi sa poussée resterait « en vol » à jamais et la file n'avancerait
-        // plus. L'entrée, elle, RESTE au journal — c'est le fil qui décide, et
-        // c'est ce qui la rend récupérable.
-        prevenir_l_ecriture(etat, commande, correlation, cause);
-        verbes::completer(etat, commande, HRESULT(etat.compteurs.rendre(cause)));
-    }
-}
-
 /// Dit au fil d'écriture qu'une de ses corrélations est morte.
 ///
 /// **Rien n'est fait pour une commande ProjFS** : le fil d'écriture ne connaît
 /// que les siennes, et lui en signaler une autre lui ferait clore une poussée
 /// qui n'est pas la sienne.
-fn prevenir_l_ecriture(etat: &Etat, commande: Option<i32>, correlation: u32, cause: Erreur) {
+pub(super) fn prevenir_l_ecriture(etat: &Etat, commande: Option<i32>, correlation: u32, cause: Erreur) {
     if commande.is_some() {
         return;
     }
@@ -262,7 +177,7 @@ fn balayer(etat: &Etat) {
 }
 
 /// Retire le contexte ProjFS d'une corrélation, s'il en reste un.
-fn oublier_contexte(etat: &Etat, correlation: u32) -> Option<ContexteProjFs> {
+pub(super) fn oublier_contexte(etat: &Etat, correlation: u32) -> Option<ContexteProjFs> {
     etat.en_attente.lock().ok()?.remove(&correlation)
 }
 
@@ -279,11 +194,15 @@ fn traiter(etat: &Etat, correlation: u32, octets: &[u8]) {
     // inconnue, et la réponse est alors JETÉE.** Appliquer une réponse dont la
     // commande ProjFS a déjà été complétée écrirait dans un tampon que le
     // système a repris.
-    let Some((commande, attendue)) = etat.table.lock().ok().and_then(|mut t| t.resoudre(correlation))
+    let Some((commande, attendue, traversee)) =
+        etat.table.lock().ok().and_then(|mut t| t.resoudre(correlation, Instant::now()))
     else {
         tracing::debug!(correlation, "réponse tardive ou inconnue : jetée");
         return;
     };
+    // **F4** — la seule traversée que le pont sache mesurer, et elle n'est
+    // observée QUE si elle a abouti : une commande expirée ne passe pas par ici.
+    etat.latences.observer(Famille::de(&attendue), traversee);
     let contexte = oublier_contexte(etat, correlation);
 
     if trame.type_message == proto::fichiers::TYPE_ECHEC {

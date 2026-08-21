@@ -183,6 +183,7 @@ impl Virtualisation {
             // à qui être poussée.
             canal_ouvert: std::sync::atomic::AtomicBool::new(false),
             compteurs: crate::pont::compteurs::Compteurs::nouveaux(),
+            latences: crate::pont::latence::Histogramme::nouveau(),
             octets_hydrates: AtomicU64::new(0),
             entrees_hydratees: AtomicU64::new(0),
         });
