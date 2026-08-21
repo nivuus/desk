@@ -131,6 +131,14 @@ fn conformite_aux_vecteurs_partages() {
                             octets: d["octets"].as_u64().unwrap(),
                         })
                         .collect(),
+                    retenues: c["retenues"].as_bool().unwrap(),
+                };
+                verifier(nom, attendu, &v);
+            }
+            "bonjour" => {
+                let v = Bonjour {
+                    racine: c["racine"].as_str().unwrap().to_string(),
+                    forcer: c["forcer"].as_bool().unwrap(),
                 };
                 verifier(nom, attendu, &v);
             }
@@ -201,25 +209,38 @@ fn un_entete_incomplet_est_rejete_plutot_que_complete() {
     assert!(serde_json::from_str::<Renommer>(r#"{"de":"a","repertoire":false}"#).is_err());
     assert!(serde_json::from_str::<Renommer>(r#"{"de":"a","vers":"b"}"#).is_err());
     assert!(serde_json::from_str::<Supprimer>(r#"{"chemin":"a"}"#).is_err());
+    // 🔴 **F5 — LE SECOND CAS DONT UN CHAMP MANQUANT A UNE CONSÉQUENCE, et il
+    // va dans le sens DANGEREUX.** Un `Dues` sans `retenues` complété en
+    // silence vaudrait `false` = « le pont pousse », c'est-à-dire l'inverse de
+    // ce que `Bonjour` existe pour empêcher : écrire les fichiers d'une session
+    // dans le dossier d'une autre. **Ces deux lignes épinglent l'ABSENCE de
+    // défaut**, ce qu'aucun vecteur ne saurait faire — un vecteur épingle une
+    // forme qui passe, jamais une forme qui doit être refusée.
+    assert!(serde_json::from_str::<Dues>(r#"{"dues":[]}"#).is_err());
+    assert!(serde_json::from_str::<Bonjour>(r#"{"racine":"Documents"}"#).is_err());
+    assert!(serde_json::from_str::<Bonjour>(r#"{"forcer":false}"#).is_err());
 }
 
-/// 🔴 **LES ONZE FORMES ONT LEUR VECTEUR** — et c'est ce qui empêche qu'une
+/// 🔴 **LES DOUZE FORMES ONT LEUR VECTEUR** — et c'est ce qui empêche qu'une
 /// forme neuve soit ajoutée sans être épinglée.
 ///
 /// La boucle de [`conformite_aux_vecteurs_partages`] n'éprouve que les formes
 /// PRÉSENTES dans le fichier : ajouter `Renommer` au code sans lui donner de
 /// vecteur y passerait inaperçu. Ce test compte les formes distinctes du
-/// fichier et exige qu'elles soient les onze que le protocole porte.
+/// fichier et exige qu'elles soient les douze que le protocole porte.
 ///
 /// ⚠️ **`TYPE_FAIT` n'a pas de forme** : son en-tête est `{}`. Le compter
-/// ferait attendre un vecteur pour une structure qui n'existe pas.
+/// ferait attendre un vecteur pour une structure qui n'existe pas. **`F5`
+/// ajoute un SECOND type dans ce cas — `TYPE_RAFRAICHIR`** : douze formes pour
+/// quatorze types, et l'écart est exactement ces deux-là.
 ///
 /// *(Ce test s'appelait `les_neuf_formes_ont_leur_vecteur` jusqu'à F3, qui en
-/// ajoute deux. **Le renommer plutôt que rallonger sa liste en silence** est ce
-/// que `pont::notifications` a fait de son propre garde de masque, pour la même
-/// raison : un nom qui ment sur son compte est un nom qu'on cesse de lire.)*
+/// ajoute deux, puis `les_onze_…` jusqu'à F5, qui en ajoute une. **Le renommer
+/// plutôt que rallonger sa liste en silence** est ce que `pont::notifications`
+/// a fait de son propre garde de masque, pour la même raison : un nom qui ment
+/// sur son compte est un nom qu'on cesse de lire.)*
 #[test]
-fn les_onze_formes_ont_leur_vecteur() {
+fn les_douze_formes_ont_leur_vecteur() {
     let brut = include_str!("../../../fichiers-vectors.json");
     let doc: serde_json::Value = serde_json::from_str(brut).expect("vecteurs valides");
     let mut formes: Vec<&str> = doc["cases"]
@@ -233,6 +254,7 @@ fn les_onze_formes_ont_leur_vecteur() {
     assert_eq!(
         formes,
         [
+            "bonjour",
             "chemin",
             "creer",
             "donnees",

@@ -220,7 +220,71 @@ pub struct Due {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Dues {
     pub dues: Vec<Due>,
+    /// **F5** — vrai quand le pont a des écritures dues et qu'il **refuse de
+    /// les pousser**, le navigateur ayant annoncé une racine dont le nom
+    /// diffère de celui mémorisé (`Bonjour`, spec §6.4 cas 2).
+    ///
+    /// 🔴 **CHAMP REQUIS, sans `#[serde(default)]`, et c'est une DIVERGENCE
+    /// DÉCLARÉE avec la décision D7 du plan de F5**, qui l'annonçait additif.
+    /// Trois raisons, dans cet ordre :
+    ///
+    /// 1. **le défaut irait dans le sens dangereux.** `#[serde(default)]`
+    ///    rendrait `false` = « pousse » pour un en-tête dont le champ aurait
+    ///    été perdu — et pousser dans le mauvais dossier est précisément le
+    ///    dommage que `Bonjour` existe pour empêcher. Un défaut doit tomber du
+    ///    côté sûr ou ne pas exister ;
+    /// 2. **l'en-tête de ce module l'interdit** : « Aucun `#[serde(default)]`
+    ///    nulle part : un en-tête incomplet est rejeté, jamais silencieusement
+    ///    complété. » En poser un ici ferait le premier, et une doctrine qui
+    ///    souffre une exception n'en est plus une ;
+    /// 3. **F3 a tranché le même arbitrage dans le même sens** pour
+    ///    `Meta::nom` : rupture assumée, `FICHIERS_VERSION` **reste 1**, parce
+    ///    que les deux bouts de ce pont sont toujours déployés ensemble — un
+    ///    seul `agent.exe`, une seule page-shell.
+    ///
+    /// ⚠️ **Conséquence sur les vecteurs** : `fichiers-vectors.json` ne porte
+    /// PAS « les deux formes » que D7 prévoyait. Il porte la forme complète, et
+    /// un test **oppose** la forme incomplète au parseur pour vérifier qu'elle
+    /// est REFUSÉE — ce qui épingle l'**absence** de défaut, plus forte qu'un
+    /// défaut épinglé.
+    pub retenues: bool,
 }
+
+/// L'en-tête de `TYPE_BONJOUR`. Charge binaire **vide**.
+///
+/// ⚠️ **C'est une ANNONCE, et elle REMONTE** : du navigateur vers le pont, sans
+/// que celui-ci l'ait demandée, et **sa corrélation est ignorée**. Voir le
+/// commentaire de la quatrième famille dans [`crate::fichiers`], qui dit
+/// pourquoi elle doit être aiguillée avant toute résolution de corrélation.
+///
+/// Elle porte ce que seul le navigateur sait : **le nom de la racine que
+/// l'utilisateur a choisie**. Le pont le compare à celui qu'il a mémorisé pour
+/// décider s'il pousse ses écritures dues ou s'il les **retient**.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct Bonjour {
+    /// `FileSystemDirectoryHandle.name` de la racine montée.
+    ///
+    /// 🔴 **C'est un INDICE, jamais une preuve**, et la spec §6.4 cas 2 le dit :
+    /// `isSameEntry()` compare deux poignées **vivantes**, jamais une poignée à
+    /// un souvenir. Deux répertoires homonymes sur deux disques différents
+    /// passeraient pour un seul. **La v1 compare le nom faute de mieux**, et il
+    /// faut le lire ainsi.
+    pub racine: String,
+    /// L'utilisateur a confirmé qu'il veut pousser malgré le nom différent.
+    ///
+    /// ⚠️ **REQUIS, comme tout champ de ce module.** Un défaut à `false`
+    /// paraîtrait sûr, mais il ferait qu'un navigateur qui oublierait le champ
+    /// ne pourrait **plus jamais** reprendre son enregistrement, sans qu'aucune
+    /// trace ne le dise.
+    pub forcer: bool,
+}
+
+// ⚠️ **`TYPE_RAFRAICHIR` n'a PAS d'en-tête propre : sa trame porte `{}`**, et
+// c'est le précédent de `TYPE_FAIT`, écrit en bas de ce fichier : « lui donner
+// une structure vide ferait une forme à épingler qui n'épingle rien, et un
+// vecteur partagé qui ne peut pas casser ». **Divergence déclarée avec la
+// tâche 8 du plan de F5**, qui nommait `Rafraichir` parmi les structures à
+// écrire. Ce qui identifie un rafraîchissement est son TYPE, pas sa forme.
 
 /// L'en-tête de `TYPE_ECHEC`.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]

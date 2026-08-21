@@ -92,6 +92,30 @@ pub const TYPE_SUPPRIMER: u8 = 8; // F3 — en-tête `Supprimer`, charge vide
 // fois sur `capteur/pont_media.rs`.
 pub const TYPE_DUES: u8 = 6; // F2 — en-tête `Dues`, charge vide
 
+// Annonces NAVIGATEUR → PONT — **elles n'attendent RIEN**.
+//
+// 🔴 **QUATRIÈME FAMILLE, et c'est la première qui remonte.** Les trois autres
+// vont du pont vers le navigateur, ou répondent à une requête du pont ; ces
+// deux-là partent du navigateur **sans qu'on les lui ait demandées**, et leur
+// corrélation est **IGNORÉE**.
+//
+// ⚠️ **C'EST CE QUI LES REND DANGEREUSES, et il faut le dire ici plutôt que le
+// découvrir.** Le pont décode toute trame entrante puis cherche sa corrélation
+// dans `pont::table` ; une corrélation inconnue est **jetée** dans un
+// `tracing::debug!` (`agent/src/pont/service.rs`) — invisible sous
+// `RUST_LOG=info`, qui est le réglage de `scripts/run-agent.sh`. Une annonce
+// remontante qui traverserait ce chemin **ne ferait rien, et rien ne le
+// dirait**. C'est le bras fourre-tout que ce dépôt a payé **cinq fois** sur
+// `capteur/pont_media.rs` (D5 `Sommeil`, D6 `Part`, D7 `Audio`, D8
+// `PleinEcran`, P1 presse-papier) et une sixième sur
+// `superviseur/signalisation.rs`. **F5 les aiguille AVANT `resoudre`**, et
+// c'est la seule raison pour laquelle elles marchent.
+//
+// **La liste est CLOSE**, comme celle de la troisième famille et pour la même
+// raison.
+pub const TYPE_BONJOUR: u8 = 68; // F5 — en-tête `Bonjour`, charge vide
+pub const TYPE_RAFRAICHIR: u8 = 69; // F5 — en-tête VIDE `{}`, charge vide
+
 // Réponses navigateur → pont.
 pub const TYPE_ENTREES: u8 = 64;
 pub const TYPE_META: u8 = 65;

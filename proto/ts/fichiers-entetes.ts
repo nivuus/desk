@@ -138,7 +138,38 @@ export interface Due {
  */
 export interface EnteteDues {
     dues: Due[];
+    /**
+     * **F5** — vrai quand le pont a des écritures dues et **refuse de les
+     * pousser**, le navigateur ayant annoncé une racine dont le nom diffère de
+     * celui mémorisé (`Bonjour`, spec §6.4 cas 2).
+     *
+     * 🔴 **CHAMP REQUIS**, comme tout champ de ce module. Un défaut à `false`
+     * vaudrait « le pont pousse », c'est-à-dire l'inverse de ce que `Bonjour`
+     * existe pour empêcher. **Un défaut doit tomber du côté sûr, ou ne pas
+     * exister.**
+     */
+    retenues: boolean;
 }
+
+/**
+ * L'en-tête de `TYPE_BONJOUR`. Charge binaire **vide**.
+ *
+ * ⚠️ C'est une ANNONCE, et elle REMONTE : du navigateur vers le pont, sans que
+ * celui-ci l'ait demandée, et sa corrélation est IGNORÉE.
+ *
+ * ⚠️ `racine` est un INDICE, jamais une preuve : `isSameEntry()` compare deux
+ * poignées VIVANTES, jamais une poignée à un souvenir (spec §6.4 cas 2). Deux
+ * répertoires homonymes sur deux disques différents passeraient pour un seul.
+ * La v1 compare le nom faute de mieux.
+ */
+export interface EnteteBonjour {
+    racine: string;
+    forcer: boolean;
+}
+
+/* ⚠️ `TYPE_RAFRAICHIR` n'a PAS d'en-tête propre : sa trame porte `{}`, comme
+   `TYPE_FAIT`. Lui donner une interface vide ferait une forme à épingler qui
+   n'épingle rien, et un vecteur partagé qui ne peut pas casser. */
 
 /** L'en-tête de `TYPE_ECHEC`. */
 export interface EnteteEchec {
@@ -219,12 +250,17 @@ export function encodeSupprimer(chemin: string, repertoire: boolean): string {
     return JSON.stringify({ chemin, repertoire } satisfies EnteteSupprimer);
 }
 
-export function encodeDues(dues: Due[]): string {
+export function encodeBonjour(racine: string, forcer: boolean): string {
+    return JSON.stringify({ racine, forcer } satisfies EnteteBonjour);
+}
+
+export function encodeDues(dues: Due[], retenues: boolean): string {
     // Chaque due est reconstruite champ par champ, comme `encodeEntrees` : un
     // objet venu de l'appelant pourrait porter des clés en trop, ou dans un
     // autre ordre — et l'ordre est ce que le vecteur fige.
     return JSON.stringify({
         dues: dues.map((d) => ({ chemin: d.chemin, octets: d.octets })),
+        retenues,
     } satisfies EnteteDues);
 }
 
@@ -372,6 +408,15 @@ export function parseDues(brut: unknown): EnteteDues {
                 octets: entier(item, 'octets', 'Due'),
             };
         }),
+        retenues: booleen(o, 'retenues', 'Dues'),
+    };
+}
+
+export function parseBonjour(brut: unknown): EnteteBonjour {
+    const o = objet(brut, 'Bonjour');
+    return {
+        racine: chaine(o, 'racine', 'Bonjour'),
+        forcer: booleen(o, 'forcer', 'Bonjour'),
     };
 }
 

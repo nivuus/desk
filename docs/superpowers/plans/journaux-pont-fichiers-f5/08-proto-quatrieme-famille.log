@@ -1,0 +1,82 @@
+# F5 — tâche 8 : proto, les deux annonces, leurs en-têtes, leurs vecteurs.
+# 21 août 2026.
+
+## ROUGE 0 — le harnais doit REFUSER une mutation vide
+`cp` du témoin sur lui-même, puis `diff` : **diff VIDE -> le harnais refuse**. ✅
+Un harnais qu'on n'a jamais vu refuser ne refuse rien.
+
+## 🔴 LA ROUGE PRESCRITE PAR LE PLAN EST RESTÉE VERTE, ET SON ÉNONCÉ EST FAUX
+
+Le plan, tâche 8 : « **Rouge à jouer** : renommer un champ côté Rust seul ;
+`cargo test -p proto` **et** `npx vitest run --dir ../proto` doivent rougir **tous les deux**. »
+
+JOUÉ (ligne 250, `pub retenues: bool,` -> `pub retenue: bool,`, diff non vide vérifié) :
+  Rust : `error[E0560]: struct Dues has no field named retenues`   -> ROUGE
+  TS   : **304 passed**                                            -> **VERT**
+
+**DIAGNOSTIQUÉ, JAMAIS CLASSÉ**, et il y a DEUX défauts distincts :
+
+**① La rouge rougissait pour la MAUVAISE RAISON.** Renommer le champ casse la COMPILATION
+(le site de construction ne compile plus) **avant** que le vecteur ne puisse être comparé.
+Ce n'est pas le vecteur qui a parlé, c'est `rustc`. Rejouée par `#[serde(rename = "retenue")]`,
+qui change la CLÉ JSON sans casser le code, la rouge passe par le vecteur :
+    panicked at entetes/tests.rs:166
+      left : "…,\"retenue\":true}"
+      right: "…,\"retenues\":true}"
+  C'est CETTE forme-là qui éprouve le vecteur.
+
+**② « les deux doivent rougir » est FACTUELLEMENT FAUX, et la propriété que le plan cite dit
+l'inverse.** F1 a posé : *« un renommage n'a qu'un SEUL côté à casser pour être vu rouge »*.
+Un côté SUFFIT — TypeScript ne lit pas le Rust, et rien ne pourrait le faire rougir d'un
+renommage Rust. Attendre les deux ferait conclure à un défaut du vecteur là où il fonctionne.
+
+## LA MATRICE COMPLÈTE, jouée pour épingler la propriété plutôt que la supposer
+
+| Mutation                              | Rust           | TypeScript      |
+| (a) `serde(rename)` Rust seul         | **ROUGE** 1/109| vert 304        |
+| (b) clé renommée dans `encodeDues` TS | vert 109       | **ROUGE** 2 tests |
+| (c) clé renommée DANS LE VECTEUR      | **ROUGE** 1/109| **ROUGE** 4 tests |
+
+Chaque mutation jouée SEULE, diff non vide vérifié avant, `cp` sans `-p` après, `diff` vide
+et `sha256sum` relevés à la restauration :
+  164f2426…  proto/src/fichiers/entetes.rs
+  abee6f31…  proto/ts/fichiers-entetes.ts
+  5440f03a…  proto/fichiers-vectors.json
+Après restauration : Rust **109 passed**, TS **304 passed**.
+
+## 🔴 DEUX DIVERGENCES DE CONCEPTION AVEC LE PLAN, tranchées CONTRE lui
+
+**D7 voulait `Dues.retenues` avec `#[serde(default)]` et « les DEUX formes » au vecteur.**
+Livré : **CHAMP REQUIS, aucun `serde(default)`**, et le vecteur ne porte que la forme complète.
+Trois raisons, dans cet ordre :
+  1. **le défaut irait dans le sens DANGEREUX** — `false` = « le pont pousse », c'est-à-dire
+     l'inverse de ce que `Bonjour` existe pour empêcher. Un défaut doit tomber du côté sûr
+     ou ne pas exister ;
+  2. **l'en-tête du module l'interdit** (`entetes.rs:36`) : « Aucun `#[serde(default)]` nulle
+     part : un en-tête incomplet est rejeté, jamais silencieusement complété. » En poser un
+     ici ferait le premier ;
+  3. **F3 a tranché le même arbitrage dans le même sens** pour `Meta::nom` : rupture assumée,
+     `FICHIERS_VERSION` reste 1, les deux bouts étant toujours déployés ensemble.
+À la place des « deux formes », un test **oppose** la forme incomplète au parseur et vérifie
+qu'elle est REFUSÉE, des deux côtés — ce qui épingle l'**ABSENCE** de défaut. *Un vecteur
+épingle une forme qui passe ; il ne sait pas épingler une forme qui doit être refusée.*
+
+**La tâche 8 nommait `Rafraichir` parmi les structures à écrire.** Livré : **AUCUNE structure**,
+et c'est le précédent de `TYPE_FAIT` écrit dans ce même fichier — « lui donner une structure
+vide ferait une forme à épingler qui n'épingle rien, et un vecteur partagé qui ne peut pas
+casser ». Douze formes pour quatorze types, et l'écart est exactement `TYPE_FAIT` et
+`TYPE_RAFRAICHIR`.
+
+## LE GARDE QUI EMPÊCHE LA QUATRIÈME FAMILLE DE DEVENIR UN BRAS FOURRE-TOUT
+`proto/ts/fichiers.ts` porte `TYPES_CONNUS: Readonly<Record<TypeMessage, true>>`, DÉRIVÉ de
+l'union. Ajouter `TYPE_BONJOUR`/`TYPE_RAFRAICHIR` à l'union **force** le compilateur à exiger
+leur entrée : un oubli casse `tsc --noEmit`, pas seulement un test. Éprouvé de fait — le
+typecheck a été lancé et passe.
+
+## COMPTES
+  cargo test -p proto : 109 -> **109** (les cas neufs entrent dans des tests existants)
+  cargo test -p agent : 983 -> **983**
+  npx vitest --dir ../proto : 298 -> **304** (+6 = 3 cas `bonjour` × 2 boucles)
+  tsc --noEmit (proto) : exit 0
+  proto/ts/fichiers-entetes.ts : 387 -> **432**. Porte C du plan : sous le seuil de vigilance
+  de 460, **aucune extraction déclenchée** — le balayage décide, et il a décidé non.
