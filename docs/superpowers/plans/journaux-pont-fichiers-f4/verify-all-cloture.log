@@ -1,0 +1,48 @@
+=== F4 — verify-all.sh a la cloture, depuis un shell PROPRE ===
+    env -u TURN_URL -u TURN_SECRET ./scripts/verify-all.sh
+(le shell est nettoye parce que `verify-all.sh` N'EST PAS HERMETIQUE : avec
+TURN_URL/TURN_SECRET dans l'environnement — c'est-a-dire APRES le `source .env`
+que tout travail sur la VM exige — six tests de signaling echouent. Piege releve
+par G1.)
+
+VERDICT : 2 etape(s) sur 10 en ECHEC.
+  - cargo test --workspace
+  - client : npm run design:verifier
+
+🔴 LES DEUX SONT DU CHANTIER VOISIN A1, ET C'EST ETABLI PAR PIECE, PAS AFFIRME.
+
+(1) `cargo test --workspace` : TRANSITOIRE. Relance immediatement apres, code de
+    sortie REEL 0 (et non celui d'un `tail` au bout d'un tube) :
+        agent 958 passed / 0 failed ; proto 109 / 0
+    L'echec tenait a du travail NON COMMITE du voisin, en cours d'edition a
+    l'instant ou verify-all a compile. `git status --porcelain agent/` rend six
+    fichiers modifies, AUCUN a moi :
+        capteur/distante/tests_etats.rs, capteur/distante/video_source.rs,
+        transport/controle.rs, transport/tick.rs, transport/tick/tests.rs,
+        transport/tick/tests/reste.rs
+
+(2) `client : npm run design:verifier` : REPRODUCTIBLE, et il echoue sur
+    `client/src/accent.test.ts`, qui porte des couleurs litterales hors de
+    `tokens.css` (§7.2 du sous-projet ⑥). Ce fichier est du chantier A1
+    (`git log -1` -> `46e3aa8 accent(a1) : conformer, le SEUL REMPART`).
+    ⚠️ L'ATTRIBUTION NE SE FAIT PAS PAR « ce n'est pas a moi » : le controle
+    lui-meme rend ZERO occurrence dans `client/src/fichiers/`, le SEUL
+    repertoire de `client/` que F4 touche — et F4 n'y a mis que du commentaire.
+
+CE QUE F4 A RELANCE LUI-MEME, ET QUI PASSE :
+    cargo test -p agent                              954 -> 958 passed, 0 failed
+    cargo test -p proto                              109 passed, 0 failed
+    cd client && npx vitest run                      474 passed
+    cd proto  && npx vitest run                      296 passed
+    cd client && npm run typecheck                   0
+    cd proto  && npm run typecheck                   0
+    cd agent  && cargo check --target x86_64-pc-windows-gnu
+                                                     0, 40 avertissements,
+                                                     TOUS de la famille dead_code
+    plateforme (dans verify-all)                     564 passed / 58 fichiers,
+                                                     typecheck 0
+⚠️ AUCUN de ces comptes n'est attribuable a F4 : dix-sept commits de G4 et A1
+sont tombes pendant ce sous-bloc. L'attribution est faite par un WORKTREE au
+dernier commit de F4 (8057f50) : 928 tests, soit les 916 d'entree + MES HUIT
+(7 `pont::latence` + 1 `resoudre_rend_l_age`, verifies nommement) + QUATRE de G4
+intercales entre deux de mes commits.
