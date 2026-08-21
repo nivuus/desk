@@ -27,6 +27,18 @@
 // sous-arbre se confondraient à la lecture, et l'import du registre entrerait
 // en collision avec l'enfant.
 mod commandes;
+// `accent_fenetre` porte le tour d'accent de A1 — cinquième module enfant, sur
+// le même patron que les quatre autres, et sa raison d'être est écrite dans son
+// propre en-tête plutôt que recopiée ici.
+//
+// ⚠️ **Il porte un `#[path]` là où ses quatre frères n'en ont pas besoin, et pour
+// la même raison que `transitions` ne s'appelle pas `sommeil`** : un `mod accent;`
+// entrerait en collision, à la lecture comme au nommage, avec le
+// `use crate::accent;` de ce fichier. Ce `#[path]`-là est HORS de la convention
+// de `CLAUDE.md`, qui ne vise que les modules extraits d'un parent
+// `#[cfg(windows)]` pour compiler sur l'hôte.
+#[path = "fenetre/accent.rs"]
+mod accent_fenetre;
 // `ouverture` porte `Fenetre::ouvrir` — quatrième module enfant sur le même
 // patron que les trois autres, extrait en revue de la tâche 8 du sous-bloc
 // D10 : la tâche 8 et la tâche 9 avaient porté ce fichier à 505 lignes,
@@ -46,6 +58,7 @@ use std::time::{Duration, Instant};
 use anyhow::Result;
 use windows::Win32::Foundation::HWND;
 
+use crate::accent;
 use crate::capteur::plein_ecran;
 use crate::capteur::protocole::{ecrire_image, ecrire_json, DepuisCapteur, VersCapteur};
 use crate::capteur::sommeil::Message;
@@ -301,6 +314,15 @@ impl Fenetre {
             plein_ecran::lire_style(self.parametres.hwnd).unwrap_or(0),
         );
         let mut dernier_style = Instant::now();
+        // A1 : `SuiviAccent` part de `None` et ANNONCE SA PREMIÈRE LECTURE —
+        // c'est l'INVERSE de `SuiviBordure` juste au-dessus, et le pourquoi vit
+        // dans la doc d'`accent::SuiviAccent`.
+        let mut suivi_accent = accent::SuiviAccent::neuf();
+        // `Instant::now()` et non « il y a longtemps » : la première lecture
+        // attend `PERIODE_ACCENT`, ce qui laisse la session s'établir. ⚠️ Si la
+        // recette la trouve trop tardive, c'est `PERIODE_ACCENT` qu'il faut
+        // régler, pas cette ligne.
+        let mut dernier_accent = Instant::now();
 
         let motif = loop {
             // Refait à chaque tour : la taille retenue peut changer au réveil.
@@ -404,6 +426,23 @@ impl Fenetre {
                         }
                     }
                 }
+            }
+
+            // 5. A1 : la teinte dominante de l'icône de la fenêtre.
+            //    **Le corps vit dans `fenetre/accent.rs`** : l'addition aurait
+            //    porté ce fichier à 500 lignes EXACTEMENT, donc à marge nulle,
+            //    et la règle du dépôt est « extraction, jamais compression ».
+            //    Il a déjà franchi 500 deux fois (508 en D9, 505 en D10).
+            #[cfg(windows)]
+            if let Some(Fin::Terminer(motif)) = accent_fenetre::tour(
+                &mut suivi_accent,
+                &mut dernier_accent,
+                self.parametres.hwnd,
+                ecritures,
+                self.source.as_mut(),
+                &ctx,
+            ) {
+                break motif;
             }
 
             if dernier_compte.elapsed() >= PERIODE_COMPTEURS {
