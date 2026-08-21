@@ -31,3 +31,27 @@ pub mod mode;
 pub mod partage;
 /// L'anti-rebond, horloge en paramètre. **PUR.**
 pub mod rebond;
+
+// ---------------------------------------------------------------------------
+// Ce qui suit est `#[cfg(windows)]` : les handles, l'attente et les
+// complétions. Rien n'y DÉCIDE — les décisions vivent dans les quatre modules
+// ci-dessus, et c'est ce qui les rend éprouvables sur l'hôte.
+// ---------------------------------------------------------------------------
+
+/// Une racine surveillée : ouvrir, armer, compléter, rouvrir.
+#[cfg(windows)]
+mod racine;
+
+/// Le tampon que le noyau remplit, **par racine**, en octets.
+///
+/// ⚠️ **NON CALIBRÉ, ET CHOISI SUR SON MÉRITE.** 64 Kio est le plafond que la
+/// documentation impose pour un chemin réseau et celui qu'elle recommande de ne
+/// pas dépasser, le tampon étant **verrouillé en mémoire non paginée** — quatre
+/// racines font donc 256 Kio de pool.
+///
+/// 🔴 IL N'EST PAS CHOISI POUR RENDRE UN CRITÈRE MESURABLE, ET IL NE DOIT
+/// JAMAIS L'ÊTRE. Le rétrécir ferait déborder le tampon plus facilement, donc
+/// « réussir » le critère qui demande d'observer un débordement — c'est-à-dire
+/// régler le produit sur son test. Si aucune rafale ne le fait déborder, le
+/// verdict est **NON MESURABLE**, et il s'écrit tel quel.
+pub const TAMPON_NOTIFICATIONS: usize = 65_536;
