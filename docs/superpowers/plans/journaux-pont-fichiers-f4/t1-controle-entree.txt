@@ -1,0 +1,75 @@
+=== F4 — Tâche 1 : contrôle d'entrée et relevé de référence ===
+Relevé le 21 août 2026, par la commande, sur l'hôte. AUCUN fichier modifié.
+
+--- 1. L'hôte et l'arbre ---
+stat -c '%F' /dev/null        -> character special file   (conforme, §1.4)
+git rev-parse --short HEAD    -> ae74ab9
+git status --porcelain        -> VIDE (aucun fichier modifié ni non suivi)
+
+⚠️ HEAD N'EST PAS CELUI DU PLAN. Le plan (§1.1) référence 4cdab11 ; l'arbre
+porte ae74ab9, soit TROIS commits de plus :
+  6608005 plan(f4)      — le plan lui-même
+  a74e6d1 recette(p3)   — presse-papier P3
+  ae74ab9 docs(p3)      — presse-papier P3
+`git diff --name-only 4cdab11..HEAD` ne rend QUE `CLAUDE.md` et des fichiers
+sous `docs/` : AUCUN fichier de code n'a bougé. C'est ce qui explique que les
+cinq comptes ci-dessous soient IDENTIQUES à ceux du plan.
+
+--- 2. Les cinq suites, relancées (pas recopiées) ---
+| Commande                                         | Relevé F4 | Plan §1.1 | Écart |
+| cd agent && cargo test -p agent                  | 916 / 0   | 916 / 0   | 0 |
+| cd agent && cargo test -p proto                  | 109 / 0   | 109 / 0   | 0 |
+| cd client && npx vitest run                      | 466 (40 f)| 466       | 0 |
+| cd proto  && npx vitest run                      | 296 (9 f) | 296       | 0 |
+| cd agent && cargo check --target x86_64-pc-...   | 0, 22 av. | 0, 22 av. | 0 |
+
+Nature des 22 avertissements, vérifiée un à un (`cargo check | grep '^warning'`
+puis dénombrement) : TOUS de la famille dead_code — 19 `never used`,
+1 `never read`, plus la ligne de résumé et un doublon de libellé.
+AUCUN d'une autre famille.
+
+--- 3. La VM ---
+virsh list --all              -> 4  Windows  en cours d'exécution
+Get-Process agent | Measure   -> 0        🔵 LA VM EST LIBRE
+ls /media/vm/dev              -> accessible (partage monté, accès éprouvé)
+Espace libre C:               -> 758,87 Gio  (le gabarit 100 Mio y tient, R4 §7)
+
+--- 4. Les trois faits du §0, RELANCÉS ---
+(a) grep -rn 'TTL_ENUMERATION' agent/ proto/ client/src/
+    -> UNE seule occurrence : agent/src/pont/enumeration.rs:26, et c'est le
+       commentaire qui dit que la chose n'est PAS livrée.
+    ✅ La décision D2 TIENT. Le §0.2 n'a pas à être rejoué.
+
+(b) grep -rn 'PONT_MESURE' agent/ proto/ client/ scripts/
+    -> ZÉRO occurrence dans tout le dépôt.
+    ✅ La divergence E7 est CONFIRMÉE : la variable n'existe nulle part.
+
+(c) str0m-0.21.0/src/sctp/mod.rs:33
+    -> pub const LOCAL_MAX_MESSAGE_SIZE: u32 = 256 * 1024;
+       (et :355 with_max_receive_message_size)
+    ✅ Le fait 3 du §0.1 TIENT.
+
+--- 5. Le plafond, sur TOUT l'arbre, seuil 460 ---
+Fichiers de plus de 500 lignes — DEUX, et ce sont les deux entrées de la
+dette gelée :
+   1536 agent/src/encode.rs
+    630 agent/src/windows_source.rs
+⚠️ CONFIRME LE §1.1 : le tableau de dette de CLAUDE.md porte QUATRE lignes et
+l'arbre n'en a que DEUX. proto/src/plateforme/tests.rs vaut 340 (publié 561) et
+proto/ts/plateforme.test.ts vaut 462 (publié 512). Ce n'est ni le fait de F3 ni
+celui de F4 ; la tâche 16 le corrigera sans se l'attribuer.
+
+À 500 exactement (marge 0), hors périmètre F4 :
+    500 plateforme/src/http/routes-installation.ts
+    500 agent/src/encode/arret.rs
+Entre 460 et 500 — 26 fichiers. Ceux du périmètre F4 ou voisins :
+    484 client/src/fichiers/protocole.test.ts   (marge 16) — F4 n'y touche pas
+    474 agent/src/pont/transport/tests.rs       (marge 26) — F4 n'y touche pas
+    472 agent/src/pont/ecriture/fil.rs          (marge 28) — F4 n'y touche pas
+Les cinq fichiers que F4 modifie sont TOUS sous 460 (§2.3) ; le plus gros est
+agent/src/pont/service.rs à 413, marge 87, avec sa porte à 460 (§2.4).
+
+--- 6. Verdict d'entrée ---
+✅ L'arbre est propre, la VM est libre, les cinq comptes de référence sont
+reproduits à l'unité près, et les trois faits qui fondent D1, D2 et E7 sont
+relancés et confirmés. Aucune tâche n'est à rejouer avant de continuer.
