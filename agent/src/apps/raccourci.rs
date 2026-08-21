@@ -162,6 +162,16 @@ pub fn depuis_brut(brut: Brut) -> Application {
         // mesurée — est INTERDITE, et aucun chemin ne l'écrit.
         icone: None,
         source_max: SourceMax::NonMesuree,
+        // 🔴 MÊME RAISON QUE L'ICÔNE, ET MÊME ÉTAT DE DÉPART. L'accent se
+        // dérive des PIXELS de l'icône — donc pas avant qu'elle existe — et
+        // les associations se lisent dans le REGISTRE, ce qui n'est pas plus
+        // pur que d'ouvrir COM. C'est `apps::boucle` qui remplit les deux.
+        //
+        // ⚠️ `None` et la liste VIDE sont HONNÊTES : une application sans
+        // accent et sans association vaut mieux qu'une application absente,
+        // et c'est l'état de la très grande majorité d'entre elles.
+        accent: None,
+        associations: Vec::new(),
     }
 }
 

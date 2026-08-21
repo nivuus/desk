@@ -43,7 +43,7 @@ async fn un_ordre_d_installation_arrive_dans_SA_file_et_ne_ferme_pas_la_session(
 
     ordres
         .send(
-            r#"{"type":"installer","v":4,"installation":"i-1","url":"http://h:8080/t/c","nom":"setup.exe","taille":42,"sha256":"ab"}"#
+            r#"{"type":"installer","v":5,"installation":"i-1","url":"http://h:8080/t/c","nom":"setup.exe","taille":42,"sha256":"ab"}"#
                 .into(),
         )
         .expect("envoi de l'ordre");

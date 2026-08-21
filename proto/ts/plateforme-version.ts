@@ -24,5 +24,16 @@
  * v4 est celle du sous-bloc G3 : elle ajoute `installer` (descendante),
  * `progression` et `termine` (montantes), et les deux énumérations `Phase` et
  * `Issue` qu'elles portent.
+ *
+ * v5 est celle du sous-bloc G5 (tranche F) : `Application` gagne `accent` — la
+ * couleur dominante de son icône, `null` quand elle n'en a pas — et
+ * `associations`, les extensions qu'elle ouvre. Les deux servent le manifeste
+ * PWA par application : `theme_color` et `file_handlers`.
+ *
+ * ⚠️ `Application` porte `#[serde(deny_unknown_fields)]` côté Rust, et les
+ * deux champs neufs sont OBLIGATOIRES des deux côtés : **tout champ ajouté à
+ * cette structure est cassant**, et c'est délibéré — un catalogue incomplet
+ * accepté en silence est le mode de panne que ce versionnement existe pour
+ * empêcher.
  */
-export const PLATEFORME_VERSION = 4;
+export const PLATEFORME_VERSION = 5;

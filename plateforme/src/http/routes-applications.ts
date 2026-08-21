@@ -51,7 +51,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { randomUUID } from 'node:crypto';
 import type { RegistreAgents } from '../agents/registre';
 import type { Pilote } from '../base/pilote';
-import { lireParId, lireParVm, sourceMaxDepuis } from '../depot/application';
+import { associationsDe, lireParId, lireParVm, sourceMaxDepuis } from '../depot/application';
 import { lireParId as lireVm } from '../depot/vm';
 import { entetesCors } from './cors';
 import { ENTETES_SECURITE } from './entetes';
@@ -247,6 +247,13 @@ export async function servirApplications(
             return true;
         }
         const lignes = await lireParVm(deps.base, vmId);
+        // 🔴 UNE SEULE REQUÊTE POUR TOUTES LES ASSOCIATIONS. Les demander
+        //    application par application ferait 156 allers-retours par
+        //    affichage du hub, sur le corpus de la VM de développement.
+        const associations = await associationsDe(
+            deps.base,
+            lignes.map((l) => l.id),
+        );
         // ⚠️ NI `cible`, NI `arguments`, NI `repertoire`, NI `chemin` : ce sont
         // des chemins du DISQUE DE LA VM, dont le navigateur n'a aucun usage
         // et qui décrivent l'intérieur d'une machine. Le lancement se fait par
@@ -274,6 +281,18 @@ export async function servirApplications(
                     // INCONNUE qu'elle vaut quelque chose.
                     icone: l.icone,
                     source_max: sourceMaxDepuis(l.source_max_px),
+                    // ⚠️ CES DEUX-LÀ TRAVERSENT AUSSI, ET LE RAISONNEMENT
+                    // CI-DESSUS NE S'Y OPPOSE PAS : une couleur n'est le
+                    // chemin de rien, et une extension de fichier est une
+                    // convention publique — ni l'une ni l'autre ne décrit
+                    // l'intérieur d'une machine.
+                    //
+                    // 🔴 `associations` EST TOUJOURS UN TABLEAU, JAMAIS ABSENT.
+                    // Une application sans association est le cas le plus
+                    // fréquent, et le navigateur ne doit pas avoir à
+                    // distinguer « aucune » de « pas renseigné ».
+                    accent: l.accent,
+                    associations: associations.get(l.id) ?? [],
                 })),
             },
             cors,

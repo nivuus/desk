@@ -32,6 +32,13 @@ fn app_temoin() -> Application {
         repertoire: r"c:\windows\system32".into(),
         icone: Some("a1b2".repeat(16)),
         source_max: SourceMax::Pixels(256),
+        // ⚠️ LES DEUX SONT RENSEIGNÉS DANS LE TÉMOIN, ET NON LAISSÉS À LEUR
+        // VALEUR NEUTRE : un encodeur qui OMETTRAIT l'un des deux rendrait le
+        // même JSON qu'un témoin où ils vaudraient `None` et `[]`, et le test
+        // de round-trip ne pourrait pas le voir. Le cas neutre est éprouvé à
+        // part, par `app_sans_icone`.
+        accent: Some("#3f2a7a".into()),
+        associations: vec![".txt".into(), ".log".into()],
     }
 }
 
@@ -42,6 +49,9 @@ fn app_sans_icone() -> Application {
     Application {
         icone: None,
         source_max: SourceMax::NonMesuree,
+        // Sans icône, il n'y a aucune dominante à calculer : `accent` suit.
+        accent: None,
+        associations: Vec::new(),
         ..app_temoin()
     }
 }
@@ -56,14 +66,14 @@ fn serialise_le_catalogue() {
     .expect("sér.");
     assert_eq!(
         json,
-        r#"{"type":"catalogue","v":4,"complet":true,"applications":[{"cle":"a1b2","nom":"Bloc-notes","chemin":"C:\\Users\\u\\Desktop\\Bloc-notes.lnk","cible":"c:\\windows\\system32\\notepad.exe","arguments":"","repertoire":"c:\\windows\\system32","icone":"a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2","source_max":{"pixels":256}}],"disparues":["disparue-1"]}"#
+        r##"{"type":"catalogue","v":5,"complet":true,"applications":[{"cle":"a1b2","nom":"Bloc-notes","chemin":"C:\\Users\\u\\Desktop\\Bloc-notes.lnk","cible":"c:\\windows\\system32\\notepad.exe","arguments":"","repertoire":"c:\\windows\\system32","icone":"a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2","source_max":{"pixels":256},"accent":"#3f2a7a","associations":[".txt",".log"]}],"disparues":["disparue-1"]}"##
     );
 }
 
 #[test]
 fn serialise_le_lancer() {
     let json = serde_json::to_string(&DepuisLaPlateforme::lancer("d-7", "a1b2")).expect("sér.");
-    assert_eq!(json, r#"{"type":"lancer","v":4,"demande":"d-7","cle":"a1b2"}"#);
+    assert_eq!(json, r#"{"type":"lancer","v":5,"demande":"d-7","cle":"a1b2"}"#);
 }
 
 #[test]
@@ -72,7 +82,7 @@ fn serialise_la_lancee() {
         .expect("sér.");
     assert_eq!(
         json,
-        r#"{"type":"lancee","v":4,"demande":"d-7","issue":"raccourci"}"#
+        r#"{"type":"lancee","v":5,"demande":"d-7","issue":"raccourci"}"#
     );
 }
 
@@ -150,7 +160,7 @@ fn rejette_la_version_suivante_sur_lancer() {
 #[test]
 fn rejette_un_champ_inconnu_sur_lancer() {
     assert!(serde_json::from_str::<DepuisLaPlateforme>(
-        r#"{"type":"lancer","v":4,"demande":"d","cle":"c","bonus":1}"#
+        r#"{"type":"lancer","v":5,"demande":"d","cle":"c","bonus":1}"#
     )
     .is_err());
 }
@@ -242,7 +252,7 @@ fn serialise_les_icones_manquantes() {
     .expect("sér.");
     assert_eq!(
         json,
-        r#"{"type":"icones-manquantes","v":4,"empreintes":["a1b2","c3d4"]}"#
+        r#"{"type":"icones-manquantes","v":5,"empreintes":["a1b2","c3d4"]}"#
     );
     let relu: DepuisLaPlateforme = serde_json::from_str(&json).expect("désér.");
     assert_eq!(

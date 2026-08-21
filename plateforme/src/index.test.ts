@@ -108,6 +108,6 @@ describe('démarrage du service', () => {
         // cherche. Les deux se trouvent par
         // `grep -rn "schema_migration" src/ | grep -i test`.
         expect(await service.base.interroger('SELECT version FROM schema_migration', []))
-            .toHaveLength(6);
+            .toHaveLength(7);
     });
 });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import tokensCss from '../design/tokens.css?raw';
-import { batirManifeste, cotePng, versDataUrl, type Sujet } from './manifeste';
+import { accepterDepuis, batirManifeste, cotePng, mimeDe, versDataUrl, type Sujet } from './manifeste';
 
 /// Un vrai PNG d'un côté donné — signature, IHDR, et rien d'autre. Il suffit à
 /// `cotePng`, qui ne lit que l'en-tête, et il est CONSTRUIT plutôt que collé en
@@ -194,5 +194,69 @@ describe('cotePng', () => {
     it('lit une taille sur QUATRE octets, pas seulement sur le dernier', () => {
         // 4096 = 0x1000 : le troisième octet porte l'information.
         expect(cotePng(pngDe(4096))).toBe(4096);
+    });
+});
+
+describe('les file_handlers par application (tranche F)', () => {
+    it("OMET `file_handlers` quand l'application n'ouvre rien", () => {
+        // ⚠️ Le cas le plus fréquent. Déclarer un handler qui n'accepte rien
+        //    serait une entrée sans objet, et Chromium ANALYSE ce membre.
+        expect('file_handlers' in batirManifeste(APP, 'https://x', FOND)).toBe(false);
+        expect(
+            'file_handlers' in batirManifeste({ ...APP, associations: [] }, 'https://x', FOND),
+        ).toBe(false);
+    });
+
+    it("pose une `action` DANS LE SCOPE, ce que Chromium exige", () => {
+        // 🔴 MESURÉ : une `action` hors scope fait rendre à Chromium
+        //    « property 'action' ignored, should be within scope of the
+        //    manifest. » puis « FileHandler ignored. » — c'est la sonde qui a
+        //    établi que Chromium analyse bel et bien ce membre.
+        const m = batirManifeste({ ...APP, associations: ['.txt'] }, 'https://x', FOND);
+        expect(m.file_handlers).toHaveLength(1);
+        expect(m.file_handlers![0].action.startsWith(m.scope)).toBe(true);
+    });
+
+    it('REGROUPE les extensions qui partagent un MIME', () => {
+        // 🔴 `.txt` et `.log` sont tous deux `text/plain`. Une entrée par
+        //    extension écraserait la précédente, et une application qui ouvre
+        //    les deux n'en verrait qu'une.
+        // ROUGE : `accept[mime] = [extension]` sans le regroupement ⟹ ne reste
+        //    que `.log`.
+        const m = batirManifeste({ ...APP, associations: ['.txt', '.log', '.pdf'] }, 'https://x', FOND);
+        expect(m.file_handlers![0].accept).toEqual({
+            'text/plain': ['.txt', '.log'],
+            'application/pdf': ['.pdf'],
+        });
+    });
+});
+
+describe('mimeDe et accepterDepuis', () => {
+    it('rend le type connu des extensions de la table', () => {
+        expect(mimeDe('.msi')).toBe('application/x-msi');
+        expect(mimeDe('.exe')).toBe('application/vnd.microsoft.portable-executable');
+        expect(mimeDe('.bat')).toBe('application/x-bat');
+    });
+
+    it('replie la casse', () => {
+        expect(mimeDe('.TXT')).toBe('text/plain');
+    });
+
+    it("rend le type des octets INCONNUS plutot que d'omettre l'entree", () => {
+        // ⚠️ `application/octet-stream` est le type HONNÊTE pour « des octets
+        //    dont on ne sait rien ». Omettre l'entrée ferait disparaître
+        //    l'extension du manifeste sans que rien ne le dise.
+        expect(mimeDe('.qqch')).toBe('application/octet-stream');
+        expect(accepterDepuis(['.qqch', '.autre'])).toEqual({
+            'application/octet-stream': ['.qqch', '.autre'],
+        });
+    });
+
+    it('ne double pas une extension repetee', () => {
+        expect(accepterDepuis(['.txt', '.txt'])).toEqual({ 'text/plain': ['.txt'] });
+    });
+
+    it('rend une carte VIDE sur une liste vide', () => {
+        expect(accepterDepuis([])).toEqual({});
     });
 });

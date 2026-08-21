@@ -45,6 +45,8 @@ function app(nom: string, cle: string): Application {
         repertoire: `c:\\program files\\${nom}`,
         icone: null,
         source_max: 'non-mesuree',
+        accent: null,
+        associations: [],
     };
 }
 

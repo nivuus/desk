@@ -70,7 +70,11 @@ pub(super) struct Memoire {
     /// image différente — ne sera PAS revue. Le fermer demanderait un
     /// horodatage ou une empreinte de la source, donc un accès disque par
     /// application et par tour.
-    vues: BTreeMap<String, (String, Option<String>, SourceMax)>,
+    /// ⚠️ LE QUATRIÈME MEMBRE EST L'ACCENT (sous-bloc G5) : il DÉRIVE des
+    /// pixels de l'icône, donc le recalculer exigerait de ré-extraire l'image
+    /// — c'est-à-dire de défaire exactement l'économie que ce cache existe
+    /// pour faire.
+    vues: BTreeMap<String, (String, Option<String>, SourceMax, Option<String>)>,
     /// Les chemins déjà signalés écartés.
     ///
     /// 🔴 SANS CET ENSEMBLE, LES SEPT ÉCARTS DE CETTE VM FERAIENT 20 160
@@ -137,6 +141,12 @@ pub(super) fn reconcilier(
     let mut retenus = 0usize;
     let mut icones = Magasin::new();
     let mut vues = BTreeMap::new();
+    // 🔴 LE REGISTRE EST LU **UNE FOIS PAR RÉCONCILIATION**, ET NON UNE FOIS
+    // PAR APPLICATION. Le corpus de cette VM porte 156 applications : les
+    // interroger une à une relirait toutes les entrées de `FileExts` 156 fois,
+    // toutes les `PERIODE_RECONCILIATION`. Chaque application CHERCHE ensuite
+    // son chemin dans cette table.
+    let associations = crate::apps::associations::table_de_la_machine();
     let mut extraites = 0usize;
     let mut echecs_icone = 0usize;
     for r in brutes {
@@ -151,9 +161,15 @@ pub(super) fn reconcilier(
                     // 🔴 EXTRAIRE SEULEMENT SI LA CLÉ EST NEUVE OU SI LE `.lnk`
                     // A CHANGÉ DE PLACE — jamais à chaque tour.
                     match memoire.vues.get(&app.cle) {
-                        Some((ancien, empreinte, source)) if *ancien == chemin_lnk => {
+                        Some((ancien, empreinte, source, accent)) if *ancien == chemin_lnk => {
                             app.icone = empreinte.clone();
                             app.source_max = *source;
+                            // 🔴 L'ACCENT EST MÉMORISÉ AVEC L'ICÔNE, ET NON
+                            // RECALCULÉ : il dérive des PIXELS, donc le
+                            // recalculer exigerait de ré-extraire l'image —
+                            // c'est-à-dire de défaire l'économie que ce cache
+                            // existe pour faire (153 extractions COM par tour).
+                            app.accent = accent.clone();
                             // Les octets restent nécessaires : le magasin est
                             // remplacé à chaque tour, et la plateforme peut
                             // redemander une icône qu'elle a perdue.
@@ -164,7 +180,7 @@ pub(super) fn reconcilier(
                             }
                         }
                         _ => {
-                            let (e, s) = mesurer(&chemin_lnk, &icone_location, &app.cible, &mut icones);
+                            let (e, s, a) = mesurer(&chemin_lnk, &icone_location, &app.cible, &mut icones);
                             // 🔴 UN DÉSARMEMENT N'EST PAS UN ÉCHEC, et les
                             // compter ensemble ferait lire 156 pannes sur un
                             // agent parfaitement sain qu'on vient de couper
@@ -179,11 +195,21 @@ pub(super) fn reconcilier(
                             }
                             app.icone = e;
                             app.source_max = s;
+                            app.accent = a;
                         }
                     }
+                    // ⚠️ LES ASSOCIATIONS NE SONT PAS MÉMORISÉES AVEC L'ICÔNE,
+                    // et c'est délibéré : elles ne coûtent qu'une recherche
+                    // dans une table déjà en main, et elles CHANGENT sans que
+                    // le `.lnk` bouge — il suffit que l'utilisateur choisisse
+                    // une autre application par défaut. Les mettre au cache de
+                    // l'icône figerait ce choix jusqu'au prochain déplacement
+                    // du raccourci.
+                    app.associations =
+                        crate::apps::associations::pour_cible(&associations, &app.cible);
                     vues.insert(
                         app.cle.clone(),
-                        (chemin_lnk, app.icone.clone(), app.source_max),
+                        (chemin_lnk, app.icone.clone(), app.source_max, app.accent.clone()),
                     );
                     catalogue.push(app);
                 }
@@ -259,12 +285,12 @@ fn mesurer(
     icone_location: &str,
     cible: &str,
     icones: &mut Magasin,
-) -> (Option<String>, SourceMax) {
+) -> (Option<String>, SourceMax, Option<String>) {
     if !icone::armee() {
-        return (None, SourceMax::NonMesuree);
+        return (None, SourceMax::NonMesuree, None);
     }
     match icone::extraire(std::path::Path::new(lnk)) {
-        Ok(png) => {
+        Ok((png, accent)) => {
             let octets = png.len();
             let empreinte = icones.ajouter(png);
             // ⚠️ `debug!` ET NON `info!`, ET C'EST MESURÉ : cette ligne sort
@@ -283,11 +309,14 @@ fn mesurer(
             // ⚠️ LA PROVENANCE EST MESURÉE MÊME QUAND ELLE EST INCONNUE : elle
             // rend `NonMesuree` sans erreur, et ce n'est pas une panne — 37 des
             // 153 applications de cette VM sont dans ce cas.
-            (Some(empreinte), icone::provenance_de(icone_location, cible))
+            // ⚠️ L'ACCENT SUIT L'ICÔNE, ET `None` N'EST PAS UNE PANNE : une
+            // icône trop pâle, trop sombre ou trop transparente n'a AUCUNE
+            // dominante. Le manifeste OMET alors `theme_color`.
+            (Some(empreinte), icone::provenance_de(icone_location, cible), accent)
         }
         Err(erreur) => {
             tracing::warn!(lnk, %erreur, "extraction d'icone echouee : l'application reste au catalogue, sans icone");
-            (None, SourceMax::NonMesuree)
+            (None, SourceMax::NonMesuree, None)
         }
     }
 }

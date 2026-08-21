@@ -15,6 +15,12 @@ fn app(cle: &str, nom: &str, chemin: &str) -> Application {
         // qui change sans que la clé change est éprouvé à part.
         icone: None,
         source_max: proto::plateforme::SourceMax::NonMesuree,
+        // ⚠️ MÊME RAISON QUE L'ICÔNE : ni l'accent ni les associations ne
+        // participent à l'identité, qui est la CLÉ. Le cas d'une application
+        // dont l'accent change sans que la clé change relève du même
+        // raisonnement, et le diff n'a rien à en dire.
+        accent: None,
+        associations: Vec::new(),
     }
 }
 

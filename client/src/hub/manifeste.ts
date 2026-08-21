@@ -68,6 +68,12 @@ export interface Sujet {
     /// Comme `fond`, elle vient du thème vivant ou de la base — jamais d'une
     /// constante de ce fichier (voir l'encadré §7.2 ci-dessous).
     accent?: string;
+    /// Les extensions que cette application ouvre.
+    ///
+    /// ⚠️ VIDE FAIT OMETTRE `file_handlers` ENTIÈREMENT, plutôt que de déclarer
+    /// un handler qui n'accepte rien : Chromium analyse ce membre — mesuré —
+    /// et un `accept` vide serait une entrée sans objet.
+    associations?: readonly string[];
 }
 
 /// Le manifeste, dans la forme que `JSON.stringify` publiera.
@@ -82,6 +88,64 @@ export interface Manifeste {
     background_color: string;
     theme_color?: string;
     icons: { src: string; sizes: string; type: string; purpose: string }[];
+    file_handlers?: { action: string; accept: Record<string, string[]> }[];
+}
+
+/// La carte extension → type MIME. **Elle vit ICI, et une seule fois.**
+///
+/// 🔴 C'EST POURQUOI LES ASSOCIATIONS VOYAGENT EN EXTENSIONS ET NON EN MIME
+/// (décision D13 du plan de G5) : un type MIME n'est pas une propriété de la
+/// VM, c'est une convention du Web. Le faire voyager doublerait cette table —
+/// en Rust **et** en TypeScript — pour une donnée que l'agent n'a aucun moyen
+/// de connaître mieux que nous.
+///
+/// ⚠️ CES TYPES SONT UN CHOIX, PAS UN STANDARD : ni `.msi` ni `.bat` n'ont
+/// d'enregistrement IANA univoque, pas plus que la plupart des extensions
+/// bureautiques. **Aucun n'est calibré.**
+///
+/// ⚠️ UNE EXTENSION ABSENTE DE CETTE TABLE TOMBE SUR
+/// `application/octet-stream`, ce qui est **le type honnête pour « des octets
+/// dont on ne sait rien »** — jamais une omission silencieuse de l'entrée.
+const MIME_PAR_EXTENSION: Record<string, string> = {
+    '.txt': 'text/plain',
+    '.log': 'text/plain',
+    '.md': 'text/markdown',
+    '.csv': 'text/csv',
+    '.json': 'application/json',
+    '.xml': 'application/xml',
+    '.pdf': 'application/pdf',
+    '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.gif': 'image/gif',
+    '.webp': 'image/webp',
+    '.svg': 'image/svg+xml',
+    '.zip': 'application/zip',
+    '.msi': 'application/x-msi',
+    '.exe': 'application/vnd.microsoft.portable-executable',
+    '.bat': 'application/x-bat',
+};
+
+/// Le MIME d'une extension, ou le type des octets inconnus.
+export function mimeDe(extension: string): string {
+    return MIME_PAR_EXTENSION[extension.toLowerCase()] ?? 'application/octet-stream';
+}
+
+/// Regroupe des extensions en la carte `accept` d'un `file_handler`.
+///
+/// 🔴 PLUSIEURS EXTENSIONS PEUVENT PARTAGER UN MIME — `.txt` et `.log` sont
+/// tous deux `text/plain` —, et la carte du manifeste est **MIME → liste**.
+/// Écrire une entrée par extension écraserait la précédente, et une
+/// application qui ouvre les deux n'en verrait qu'une.
+export function accepterDepuis(extensions: readonly string[]): Record<string, string[]> {
+    const accept: Record<string, string[]> = {};
+    for (const extension of extensions) {
+        const mime = mimeDe(extension);
+        const deja = accept[mime];
+        if (deja === undefined) accept[mime] = [extension];
+        else if (!deja.includes(extension)) deja.push(extension);
+    }
+    return accept;
 }
 
 /// 🔴 IL N'Y A AUCUNE COULEUR ÉCRITE DANS CE FICHIER, ET CE N'EST PAS UN GOÛT :
@@ -179,6 +243,17 @@ export function batirManifeste(sujet: Sujet, origine: string, fond: string): Man
         icons: [],
     };
     if (sujet.accent !== undefined) manifeste.theme_color = sujet.accent;
+    if (sujet.associations !== undefined && sujet.associations.length > 0) {
+        // ⚠️ L'`action` EST DANS LE `scope`, ET C'EST UNE EXIGENCE MESURÉE :
+        //    une `action` hors scope fait rendre à Chromium, verbatim,
+        //    « property 'action' ignored, should be within scope of the
+        //    manifest. » puis « FileHandler ignored. Property 'action' is
+        //    invalid. » — c'est d'ailleurs cette sonde qui a établi que
+        //    Chromium ANALYSE bel et bien `file_handlers`.
+        manifeste.file_handlers = [
+            { action: `${base}/hub.html?app=${app}`, accept: accepterDepuis(sujet.associations) },
+        ];
+    }
     // 🔴 UNE ICÔNE DONT ON NE SAIT PAS LIRE LA TAILLE N'EST PAS DÉCLARÉE.
     //    Poser `256x256` par défaut serait affirmer ce qu'on ne sait pas, et
     //    c'est exactement le défaut que la recette a trouvé.

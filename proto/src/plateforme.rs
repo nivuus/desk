@@ -119,7 +119,7 @@ use serde::{Deserialize, Serialize};
 /// bump depuis cette correction — donc le premier à pouvoir le PROUVER.
 /// L'obligation de déployer les deux bouts au même commit est, elle,
 /// strictement inchangée.
-pub const PLATEFORME_VERSION: u8 = 4;
+pub const PLATEFORME_VERSION: u8 = 5;
 
 /// Les trois lecteurs de champ appelés par `deserialize_with`, extraits pour
 /// que ce fichier ne franchisse pas 500 lignes en accueillant le sous-bloc G3.

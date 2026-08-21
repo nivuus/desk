@@ -68,6 +68,13 @@ export interface LigneApplication {
     /// l'invariant à trois cas de `0005-icones.sql`, et la quatrième
     /// combinaison qui y est INTERDITE.
     source_max_px: number | null;
+    /// La couleur dominante de l'icône, en `#rrggbb`, ou `null`.
+    ///
+    /// ⚠️ `null` VEUT DIRE « PAS D'ACCENT », JAMAIS « PAS ENCORE MESURÉ » : une
+    /// icône trop pâle, trop sombre ou trop transparente n'a aucune dominante,
+    /// et la règle pure de l'agent rend `None` par construction. Le manifeste
+    /// OMET alors `theme_color` plutôt que d'en inventer un.
+    accent: string | null;
 }
 
 /// Reconstruit la `SourceMax` du fil depuis les deux colonnes.
@@ -89,7 +96,64 @@ export function pxDepuisSourceMax(source: SourceMax): number | null {
 /// jour n'apparaîtrait pas toute seule dans un type qui ne la déclare pas.
 const COLONNES =
     'id, vm_id, nom, chemin, vue_a, cle, cible, arguments, repertoire, apparue_a, disparue_a,'
-    + ' masquee_a, icone, source_max_px';
+    + ' masquee_a, icone, source_max_px, accent';
+
+/// Réécrit les associations d'une application : on efface, on repose.
+///
+/// 🔴 EFFACER PUIS REPOSER, ET NON RÉCONCILIER. Ce sont quelques extensions par
+/// application, l'agent les rend **triées et dédupliquées**, et un diff coûterait
+/// plus cher à écrire et à relire que le remplacement. Surtout : un diff qui se
+/// tromperait laisserait une association PÉRIMÉE, c'est-à-dire un `file_handler`
+/// qui ouvrirait un fichier avec la mauvaise application — un défaut visible par
+/// l'utilisateur et invisible dans les données.
+///
+/// ⚠️ LE `DELETE` PORTE SUR UNE TABLE DE LIAISON, ET NON SUR `application` —
+/// dont le fichier écrit, deux fois, qu'elle n'en connaît AUCUN. Une ligne de
+/// liaison n'a pas d'histoire à préserver : elle décrit un état courant.
+async function ecrireAssociations(
+    tx: { executer(sql: string, parametres?: unknown[]): Promise<unknown> },
+    applicationId: string,
+    extensions: readonly string[],
+): Promise<void> {
+    await tx.executer('DELETE FROM application_association WHERE application_id = ?', [
+        applicationId,
+    ]);
+    for (const extension of extensions) {
+        await tx.executer(
+            'INSERT INTO application_association(application_id, extension) VALUES(?, ?)',
+            [applicationId, extension],
+        );
+    }
+}
+
+/// Les associations de plusieurs applications, en UNE requête.
+///
+/// 🔴 UNE REQUÊTE, ET NON UNE PAR APPLICATION. Le corpus de la VM porte 156
+/// applications ; les interroger une à une ferait 156 allers-retours par
+/// affichage du hub. ⚠️ Les marqueurs sont **engendrés depuis le nombre
+/// d'identifiants**, jamais concaténés depuis leurs valeurs — `rendreMarqueurs`
+/// refuse de toute façon tout SQL portant une apostrophe, et c'est ce qui rend
+/// la règle « toute valeur passe en paramètre » mécanique plutôt que
+/// documentaire.
+export async function associationsDe(
+    p: Pilote,
+    ids: readonly string[],
+): Promise<Map<string, string[]>> {
+    const par = new Map<string, string[]>();
+    if (ids.length === 0) return par;
+    const marqueurs = ids.map(() => '?').join(', ');
+    const lignes = await p.interroger<{ application_id: string; extension: string }>(
+        `SELECT application_id, extension FROM application_association`
+            + ` WHERE application_id IN (${marqueurs}) ORDER BY application_id, extension`,
+        [...ids],
+    );
+    for (const l of lignes) {
+        const deja = par.get(l.application_id);
+        if (deja === undefined) par.set(l.application_id, [l.extension]);
+        else deja.push(l.extension);
+    }
+    return par;
+}
 
 /// Le catalogue AFFICHABLE d'une VM : ni les disparues, ni les masquées.
 ///
@@ -154,14 +218,22 @@ export async function appliquer(
 ): Promise<void> {
     await p.transaction(async (tx) => {
         for (const app of fusion.aInserer) {
+            // 🔴 L'IDENTIFIANT EST NOMMÉ AVANT L'INSERT, parce que les
+            // associations en ont besoin : `randomUUID()` écrit en ligne
+            // rendrait une valeur qu'on ne pourrait plus désigner.
+            const identifiant = randomUUID();
             await tx.executer(
                 // 🔴 QUATORZE MARQUEURS POUR QUATORZE COLONNES. Un `INSERT`
                 // mal compté LÈVE sur les DEUX moteurs — c'est le garde le
                 // moins cher du fichier, et il est gratuit.
+                // 🔴 QUINZE MARQUEURS POUR QUINZE COLONNES — quatorze jusqu'à
+                // G5, qui ajoute `accent`. Un `INSERT` mal compté LÈVE sur les
+                // DEUX moteurs : c'est le garde le moins cher du fichier, et
+                // il est gratuit.
                 `INSERT INTO application(${COLONNES})`
-                    + ' VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                    + ' VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
                 [
-                    randomUUID(),
+                    identifiant,
                     vmId,
                     app.nom,
                     app.chemin,
@@ -178,8 +250,10 @@ export async function appliquer(
                     null,
                     app.icone,
                     pxDepuisSourceMax(app.source_max),
+                    app.accent,
                 ],
             );
+            await ecrireAssociations(tx, identifiant, app.associations);
         }
 
         for (const { id, app } of fusion.aMettreAJour) {
@@ -198,8 +272,13 @@ export async function appliquer(
             // et le seul symptôme serait une image périmée que rien
             // n'expliquerait.
             await tx.executer(
+                // ⚠️ `accent` EST DANS CE `SET`, ET POUR LA MÊME RAISON QUE
+                // `icone` : il en DÉRIVE. Une icône qui change change son
+                // accent, et l'omettre laisserait une couleur périmée que rien
+                // n'expliquerait.
                 'UPDATE application SET nom = ?, chemin = ?, cible = ?, arguments = ?,'
-                    + ' repertoire = ?, vue_a = ?, icone = ?, source_max_px = ? WHERE id = ?',
+                    + ' repertoire = ?, vue_a = ?, icone = ?, source_max_px = ?, accent = ?'
+                    + ' WHERE id = ?',
                 [
                     app.nom,
                     app.chemin,
@@ -209,9 +288,11 @@ export async function appliquer(
                     maintenant,
                     app.icone,
                     pxDepuisSourceMax(app.source_max),
+                    app.accent,
                     id,
                 ],
             );
+            await ecrireAssociations(tx, id, app.associations);
         }
 
         for (const id of fusion.aMarquerDisparues) {

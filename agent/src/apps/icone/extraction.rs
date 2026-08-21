@@ -25,7 +25,10 @@ use std::sync::OnceLock;
 use anyhow::{bail, Context, Result};
 use proto::plateforme::SourceMax;
 use windows::Win32::Foundation::SIZE;
-use windows::Win32::Graphics::Gdi::DeleteObject;
+use windows::Win32::Graphics::Gdi::{
+    DeleteObject, GetDC, GetDIBits, ReleaseDC, BITMAPINFO, BITMAPINFOHEADER, BI_RGB,
+    DIB_RGB_COLORS,
+};
 use windows::Win32::Graphics::Imaging::{
     CLSID_WICImagingFactory, GUID_ContainerFormatPng, IWICImagingFactory, WICBitmapUseAlpha,
 };
@@ -81,7 +84,9 @@ pub fn armee() -> bool {
 /// est celle de la cible, et les autres portent une icône PROPRE au raccourci.
 /// Seul le Shell connaît toute cette chaîne, et c'est pourquoi on la lui
 /// demande plutôt que de la reconstruire.
-pub fn extraire(lnk: &Path) -> Result<Vec<u8>> {
+/// Rend le PNG **et** la couleur dominante de l'icône (`#rrggbb`), cette
+/// dernière pouvant être `None` — voir [`dominante_du_bitmap`].
+pub fn extraire(lnk: &Path) -> Result<(Vec<u8>, Option<String>)> {
     let large = vers_utf16(&lnk.to_string_lossy());
     // SÉCURITÉ : appel FFI. Le chemin est un tampon UTF-16 terminé par un nul
     // que nous possédons pour toute la durée de l'appel.
@@ -94,6 +99,10 @@ pub fn extraire(lnk: &Path) -> Result<Vec<u8>> {
     let hbm = unsafe { fabrique.GetImage(SIZE { cx: COTE, cy: COTE }, SIIGBF_ICONONLY) }
         .with_context(|| format!("GetImage 256 sur {}", lnk.display()))?;
 
+    // 🔴 LES PIXELS SONT LUS AVANT L'ENCODAGE, ET SUR LE MÊME HBITMAP.
+    // Recalculer l'accent à partir du PNG demanderait un décodeur ; le bitmap
+    // est déjà là, et il porte exactement ce dont `accent::dominante` a besoin.
+    let accent = dominante_du_bitmap(hbm);
     let png = encoder_png(hbm);
 
     // 🔴 `DeleteObject` SUR TOUS LES CHEMINS DE SORTIE, Y COMPRIS D'ERREUR.
@@ -103,7 +112,68 @@ pub fn extraire(lnk: &Path) -> Result<Vec<u8>> {
     // SÉCURITÉ : appel FFI. Le bitmap vient de `GetImage` et n'est relâché
     // qu'ici ; `encoder_png` n'en prend pas la propriété.
     let _ = unsafe { DeleteObject(hbm.into()) };
-    png
+    png.map(|p| (p, accent))
+}
+
+/// La couleur DOMINANTE d'un bitmap d'icône, en `#rrggbb`, ou `None`.
+///
+/// 🔴 ELLE NE DÉCIDE DE RIEN : elle lit des pixels et délègue. La conversion
+/// BGRA → RGBA et le choix de la dominante sont deux règles PURES et TESTÉES
+/// (`crate::accent`), et **elles ne sont pas recopiées ici** — le sous-projet
+/// ① portait la première derrière son propre `#[cfg(windows)]` sans aucun
+/// test (legs RA1-6), et en écrire une seconde copie aurait doublé une règle
+/// que personne ne vérifiait.
+///
+/// ⚠️ `None` N'EST PAS UNE ERREUR : une icône trop pâle, trop sombre ou trop
+/// transparente n'a pas de dominante — c'est la clause 5 de `dominante`. Le
+/// manifeste OMET alors `theme_color` plutôt que d'en inventer un.
+///
+/// ⚠️ UN ÉCHEC DE LECTURE EST TRAITÉ COMME UNE ABSENCE D'ACCENT, ET NON COMME
+/// UN ÉCHEC D'EXTRACTION : l'icône, elle, a bien été obtenue. Faire échouer
+/// l'extraction pour un accent illisible perdrait une image parfaitement
+/// bonne — « une application sans icône vaut mieux qu'une application
+/// absente », et a fortiori sans accent.
+#[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
+fn dominante_du_bitmap(hbm: windows::Win32::Graphics::Gdi::HBITMAP) -> Option<String> {
+    let largeur = COTE;
+    let hauteur = COTE;
+    let mut entete = BITMAPINFO {
+        bmiHeader: BITMAPINFOHEADER {
+            biSize: std::mem::size_of::<BITMAPINFOHEADER>() as u32,
+            biWidth: largeur,
+            // ⚠️ HAUTEUR NÉGATIVE : le bitmap est rendu de HAUT EN BAS. Le
+            // sens ne change rien à une dominante — elle est calculée sur un
+            // multiensemble de pixels —, mais le laisser positif rendrait des
+            // lignes inversées à quiconque réemploierait cette lecture.
+            biHeight: -hauteur,
+            biPlanes: 1,
+            biBitCount: 32,
+            biCompression: BI_RGB.0,
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    let mut tampon = vec![0u8; (largeur as usize) * (hauteur as usize) * 4];
+    // SÉCURITÉ : appel FFI. Le tampon est dimensionné par l'en-tête ci-dessus,
+    // et l'écran est relâché sur tous les chemins.
+    let ecran = unsafe { GetDC(None) };
+    let lignes = unsafe {
+        GetDIBits(
+            ecran,
+            hbm,
+            0,
+            hauteur as u32,
+            Some(tampon.as_mut_ptr().cast()),
+            &mut entete,
+            DIB_RGB_COLORS,
+        )
+    };
+    unsafe { ReleaseDC(None, ecran) };
+    if lignes == 0 {
+        return None;
+    }
+    crate::accent::bgra_en_rgba(&mut tampon);
+    crate::accent::dominante(&tampon, largeur as u32, hauteur as u32).map(crate::accent::en_hexa)
 }
 
 /// L'encodage lui-même. **Séparé pour que le `DeleteObject` de l'appelant

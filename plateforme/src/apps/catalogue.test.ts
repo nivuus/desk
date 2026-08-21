@@ -23,6 +23,8 @@ function app(cle: string, nom = cle): Application {
         repertoire: 'c:\\programmes',
         icone: null,
         source_max: 'non-mesuree',
+        accent: null,
+        associations: [],
     };
 }
 

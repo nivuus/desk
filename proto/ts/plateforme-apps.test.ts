@@ -43,6 +43,12 @@ const APP_TEMOIN: Application = {
     repertoire: 'c:\\windows\\system32',
     icone: 'a1b2'.repeat(16),
     source_max: { pixels: 256 },
+    // ⚠️ LES DEUX SONT RENSEIGNÉS DANS LE TÉMOIN, ET NON LAISSÉS À LEUR VALEUR
+    // NEUTRE : un encodeur qui OMETTRAIT l'un des deux rendrait le même JSON
+    // qu'un témoin où ils vaudraient `null` et `[]`, et le round-trip ne
+    // pourrait pas le voir. Le cas neutre est éprouvé à part.
+    accent: '#3f2a7a',
+    associations: ['.txt', '.log'],
 };
 
 /**
@@ -55,15 +61,19 @@ const APP_SANS_ICONE: Application = {
     ...APP_TEMOIN,
     icone: null,
     source_max: 'non-mesuree',
+    // Sans icône, il n'y a aucune dominante à calculer : `accent` suit.
+    accent: null,
+    associations: [],
 };
 
 const CATALOGUE_TEMOIN =
-    '{"type":"catalogue","v":4,"complet":true,"applications":[{"cle":"a1b2",'
+    '{"type":"catalogue","v":5,"complet":true,"applications":[{"cle":"a1b2",'
     + '"nom":"Bloc-notes","chemin":"C:\\\\Users\\\\u\\\\Desktop\\\\Bloc-notes.lnk",'
     + '"cible":"c:\\\\windows\\\\system32\\\\notepad.exe","arguments":"",'
     + '"repertoire":"c:\\\\windows\\\\system32",'
     + '"icone":"a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2",'
-    + '"source_max":{"pixels":256}}],"disparues":["disparue-1"]}';
+    + '"source_max":{"pixels":256},"accent":"#3f2a7a",'
+    + '"associations":[".txt",".log"]}],"disparues":["disparue-1"]}';
 
 describe('le catalogue et le lancement, sens AGENT -> PLATEFORME', () => {
     it('encode `catalogue` exactement comme Rust', () => {
@@ -77,7 +87,7 @@ describe('le catalogue et le lancement, sens AGENT -> PLATEFORME', () => {
 
     it('encode `lancee` exactement comme Rust', () => {
         expect(encodeLancee('d-7', 'raccourci')).toBe(
-            '{"type":"lancee","v":4,"demande":"d-7","issue":"raccourci"}',
+            '{"type":"lancee","v":5,"demande":"d-7","issue":"raccourci"}',
         );
     });
 
@@ -99,29 +109,29 @@ describe('le catalogue et le lancement, sens AGENT -> PLATEFORME', () => {
         // lire « secret faux » au pair pour un message parfaitement
         // authentifié : le motif désigne la cause, il ne la déguise pas.
         expect(
-            parseVersLaPlateforme('{"type":"catalogue","v":4,"complet":true,"applications":3,"disparues":[]}'),
+            parseVersLaPlateforme('{"type":"catalogue","v":5,"complet":true,"applications":3,"disparues":[]}'),
         ).toEqual({ ok: false, motif: 'forme' });
         expect(
-            parseVersLaPlateforme('{"type":"catalogue","v":4,"complet":true,"disparues":[]}'),
+            parseVersLaPlateforme('{"type":"catalogue","v":5,"complet":true,"disparues":[]}'),
         ).toEqual({ ok: false, motif: 'forme' });
     });
 
     it('🔴 REJETTE un `catalogue` dont une application est incomplète, motif `forme`', () => {
         expect(
             parseVersLaPlateforme(
-                '{"type":"catalogue","v":4,"complet":true,"applications":[{"cle":"a"}],"disparues":[]}',
+                '{"type":"catalogue","v":5,"complet":true,"applications":[{"cle":"a"}],"disparues":[]}',
             ),
         ).toEqual({ ok: false, motif: 'forme' });
     });
 
     it('🔴 REJETTE une `lancee` dont l’issue est inconnue, motif `forme`', () => {
         expect(
-            parseVersLaPlateforme('{"type":"lancee","v":4,"demande":"d","issue":"peut-etre"}'),
+            parseVersLaPlateforme('{"type":"lancee","v":5,"demande":"d","issue":"peut-etre"}'),
         ).toEqual({ ok: false, motif: 'forme' });
     });
 
     it('lit une `lancee` bien formée', () => {
-        const lu = parseVersLaPlateforme('{"type":"lancee","v":4,"demande":"d-7","issue":"echec"}');
+        const lu = parseVersLaPlateforme('{"type":"lancee","v":5,"demande":"d-7","issue":"echec"}');
         expect(lu).toEqual({
             ok: true,
             message: { type: 'lancee', v: PLATEFORME_VERSION, demande: 'd-7', issue: 'echec' },
@@ -132,7 +142,7 @@ describe('le catalogue et le lancement, sens AGENT -> PLATEFORME', () => {
 describe('le lancement, sens PLATEFORME -> AGENT', () => {
     it('encode `lancer` exactement comme Rust', () => {
         expect(encodeLancer('d-7', 'a1b2')).toBe(
-            '{"type":"lancer","v":4,"demande":"d-7","cle":"a1b2"}',
+            '{"type":"lancer","v":5,"demande":"d-7","cle":"a1b2"}',
         );
     });
 
@@ -140,7 +150,7 @@ describe('le lancement, sens PLATEFORME -> AGENT', () => {
         // 🔴 La rouge : l'omettre de `TYPES_DEPUIS`. Le parseur lèverait
         // « type de message de plateforme inconnu » sur un ordre valide.
         const lu = parseDepuisLaPlateforme(
-            '{"type":"lancer","v":4,"demande":"d-7","cle":"a1b2"}',
+            '{"type":"lancer","v":5,"demande":"d-7","cle":"a1b2"}',
         ) as unknown as Record<string, unknown>;
         expect(lu.type).toBe('lancer');
         expect(lu.demande).toBe('d-7');
@@ -178,7 +188,7 @@ describe('les deux champs d’icône traversent le parseur', () => {
         const sansIcone = JSON.stringify({ ...APP_TEMOIN, icone: undefined });
         const sansSource = JSON.stringify({ ...APP_TEMOIN, source_max: undefined });
         for (const app of [sansIcone, sansSource]) {
-            const brut = `{"type":"catalogue","v":4,"complet":true,"applications":[${app}],"disparues":[]}`;
+            const brut = `{"type":"catalogue","v":5,"complet":true,"applications":[${app}],"disparues":[]}`;
             expect(parseVersLaPlateforme(brut)).toEqual({ ok: false, motif: 'forme' });
         }
     });
@@ -194,7 +204,7 @@ describe('les deux champs d’icône traversent le parseur', () => {
             '"non_mesuree"',
         ]) {
             const app = JSON.stringify(APP_TEMOIN).replace('{"pixels":256}', valeur);
-            const brut = `{"type":"catalogue","v":4,"complet":true,"applications":[${app}],"disparues":[]}`;
+            const brut = `{"type":"catalogue","v":5,"complet":true,"applications":[${app}],"disparues":[]}`;
             expect(parseVersLaPlateforme(brut)).toEqual({ ok: false, motif: 'forme' });
         }
     });
@@ -205,7 +215,7 @@ describe('les deux champs d’icône traversent le parseur', () => {
                 '"a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2"',
                 valeur,
             );
-            const brut = `{"type":"catalogue","v":4,"complet":true,"applications":[${app}],"disparues":[]}`;
+            const brut = `{"type":"catalogue","v":5,"complet":true,"applications":[${app}],"disparues":[]}`;
             expect(parseVersLaPlateforme(brut)).toEqual({ ok: false, motif: 'forme' });
         }
     });
@@ -214,13 +224,13 @@ describe('les deux champs d’icône traversent le parseur', () => {
 describe('`icones-manquantes`, sens PLATEFORME -> AGENT', () => {
     it('encode exactement comme Rust', () => {
         expect(encodeIconesManquantes(['a1b2', 'c3d4'])).toBe(
-            '{"type":"icones-manquantes","v":4,"empreintes":["a1b2","c3d4"]}',
+            '{"type":"icones-manquantes","v":5,"empreintes":["a1b2","c3d4"]}',
         );
     });
 
     it('se relit, et REFUSE une version divergente', () => {
         const lu = parseDepuisLaPlateforme(
-            '{"type":"icones-manquantes","v":4,"empreintes":["a1b2"]}',
+            '{"type":"icones-manquantes","v":5,"empreintes":["a1b2"]}',
         );
         if (lu.type !== 'icones-manquantes') throw new Error('type');
         expect(lu.empreintes).toEqual(['a1b2']);
