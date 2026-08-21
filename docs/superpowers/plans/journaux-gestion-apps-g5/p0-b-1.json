@@ -1,0 +1,58 @@
+{
+  "sonde": "b",
+  "quoi": "blob: + icone 128x128 (SOUS le seuil)",
+  "cote": 128,
+  "urls": "absolues",
+  "horodatage": "2026-08-21T10:04:20.813Z",
+  "navigateur": "Chrome/151.0.7922.169",
+  "url": "http://127.0.0.1:38269/p0.html",
+  "urlManifestePosee": "blob:http://127.0.0.1:38269/40c39202-7a2f-4945-aca2-40e53211296a",
+  "manifesteUrl": "blob:http://127.0.0.1:38269/40c39202-7a2f-4945-aca2-40e53211296a",
+  "manifesteData": "{\"name\":\"Application temoin G5\",\"short_name\":\"Temoin\",\"start_url\":\"http://127.0.0.1:38269/p0.html?app=00000000-0000-4000-8000-000000000000\",\"scope\":\"http://127.0.0.1:38269/\",\"id\":\"http://127.0.0.1:38269/temoin-00000000\",\"display\":\"standalone\",\"background_color\":\"#0b0d10\",\"theme_color\":\"#7aa2f7\",\"icons\":[{\"src\":\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAABL0lEQVR4nO3SIQEAIBDAwM9NHEoiIQZiJ85PbNY+l675HYABMAAGwAAYAANgAAyAATAABsAAGAADYAAMgAEwAAbAABgAA2AADIABMAAGwAAYAANgAAyAATAABsAAGAADYAAMgAEwAAaIM0CcAeIMEGeAOAPEGSDOAHEGiDNAnAHiDBBngDgDxBkgzgBxBogzQJwB4gwQZ4A4A8QZIM4AcQaIM0CcAeIMEGeAOAPEGSDOAHEGiDNAnAHiDBBngDgDxBkgzgBxBogzQJwB4gwQZ4A4A8QZIM4AcQaIM0CcAeIMEGeAOAPEGSDOAHEGiDNAnAHiDBBngDgDxBkgzgBxBogzQJwB4gwQZ4A4A8QZIM4AcQaIM0CcAeIMEGeAOAPEGSDOAHEGiDNAnAHiDBD3AHRni33l7eHrAAAAAElFTkSuQmCC\",\"sizes\":\"128x128\",\"type\":\"image/png\",\"purpose\":\"any\"}]}",
+  "errors": [],
+  "parsed": {
+    "scope": "http://127.0.0.1:38269/"
+  },
+  "manifest": {
+    "backgroundColor": "rgba(11,13,16,1)",
+    "display": "kStandalone",
+    "icons": [
+      {
+        "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAABL0lEQVR4nO3SIQEAIBDAwM9NHEoiIQZiJ85PbNY+l675HYABMAAGwAAYAANgAAyAATAABsAAGAADYAAMgAEwAAbAABgAA2AADIABMAAGwAAYAANgAAyAATAABsAAGAADYAAMgAEwAAaIM0CcAeIMEGeAOAPEGSDOAHEGiDNAnAHiDBBngDgDxBkgzgBxBogzQJwB4gwQZ4A4A8QZIM4AcQaIM0CcAeIMEGeAOAPEGSDOAHEGiDNAnAHiDBBngDgDxBkgzgBxBogzQJwB4gwQZ4A4A8QZIM4AcQaIM0CcAeIMEGeAOAPEGSDOAHEGiDNAnAHiDBBngDgDxBkgzgBxBogzQJwB4gwQZ4A4A8QZIM4AcQaIM0CcAeIMEGeAOAPEGSDOAHEGiDNAnAHiDBD3AHRni33l7eHrAAAAAElFTkSuQmCC",
+        "sizes": "128x128",
+        "type": "image/png"
+      }
+    ],
+    "id": "http://127.0.0.1:38269/temoin-00000000",
+    "name": "Application temoin G5",
+    "orientation": "DEFAULT",
+    "preferRelatedApplications": false,
+    "scope": "http://127.0.0.1:38269/",
+    "startUrl": "http://127.0.0.1:38269/p0.html?app=00000000-0000-4000-8000-000000000000",
+    "themeColor": "rgba(122,162,247,1)"
+  },
+  "installabilityErrors": [
+    {
+      "errorId": "manifest-missing-suitable-icon",
+      "errorArguments": [
+        {
+          "name": "minimum-icon-size-in-pixels",
+          "value": "144"
+        }
+      ]
+    },
+    {
+      "errorId": "no-acceptable-icon",
+      "errorArguments": [
+        {
+          "name": "minimum-icon-size-in-pixels",
+          "value": "144"
+        }
+      ]
+    }
+  ],
+  "serviceWorkersEnregistres": 0,
+  "beforeinstallprompt": null,
+  "console": [],
+  "erreursPage": []
+}
