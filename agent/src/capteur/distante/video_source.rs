@@ -61,6 +61,9 @@ impl VideoSource for SourceDistante {
                 Ok(Recu::PressePapier { texte, octets }) => {
                     self.presse_papier = Some((texte, octets));
                 }
+                Ok(Recu::Accent { couleur }) => {
+                    self.accent = Some(couleur);
+                }
                 // Le cas COURANT et normal : rien de neuf ce tour-ci. La
                 // boucle de transport interroge à 100 Hz une source qui
                 // produit à ~90 i/s.
@@ -277,6 +280,11 @@ impl VideoSource for SourceDistante {
     /// Rend le presse-papier en attente d'annonce, et le consomme.
     fn presse_papier_a_annoncer(&mut self) -> Option<(Option<String>, u32)> {
         self.presse_papier.take()
+    }
+
+    /// Rend la couleur d'accent en attente d'annonce, et la consomme.
+    fn accent_a_annoncer(&mut self) -> Option<String> {
+        self.accent.take()
     }
 
     /// Rend l'état de sommeil courant, sans le consommer.

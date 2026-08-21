@@ -173,6 +173,20 @@ pub trait VideoSource {
         None
     }
 
+    /// Rend la couleur d'accent de la fenêtre à annoncer au navigateur, et la
+    /// CONSOMME. `#rrggbb`, minuscule (sous-bloc A1).
+    ///
+    /// Par défaut sans effet, comme `presse_papier_a_annoncer` juste au-dessus :
+    /// une source fichier n'a pas d'icône, et une `WindowsSource` tenue en
+    /// direct par son propre processus n'a pas de capteur pour la lui pousser.
+    ///
+    /// ⚠️ **La lecture de l'icône vit sur le FIL DE FENÊTRE du capteur**, jamais
+    /// sur son tour de roue : le registre n'a pas le `hwnd`, et l'accent est PAR
+    /// FENÊTRE là où le presse-papier est GLOBAL à la window station.
+    fn accent_a_annoncer(&mut self) -> Option<String> {
+        None
+    }
+
     /// Vrai tant que le capteur tient cette fenêtre pour ENDORMIE — encodeur
     /// et duplication relâchés (sous-bloc D5), aucune image produite.
     ///

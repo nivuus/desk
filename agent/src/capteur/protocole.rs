@@ -243,6 +243,50 @@ pub enum DepuisCapteur {
     /// `PleinEcran` (D8) —, et toute variante NEUVE de cette énumération
     /// poussée sur la connexion média devra refaire le même chemin.
     PressePapier { texte: Option<String>, octets: u32 },
+    /// La couleur d'accent de la fenêtre Windows — la teinte dominante de son
+    /// icône. Poussée non sollicitée, **au changement seulement**, et **sa
+    /// PREMIÈRE lecture comprise** (sous-bloc A1).
+    ///
+    /// Distincte d'`Etat` pour la même raison que `Sommeil`, `Part`, `Audio`,
+    /// `PleinEcran` et `PressePapier` : `Etat` alimente un cache lu à chaque
+    /// tour de la boucle de transport, et y mêler une annonce ponctuelle
+    /// passerait par un chemin conçu pour un état permanent.
+    ///
+    /// `couleur` est **`#rrggbb`, six chiffres hexadécimaux minuscules, et rien
+    /// d'autre**. ⚠️ **Le format est une contrainte du DESIGN SYSTEM, pas du
+    /// protocole** : `client/src/design/contraste.ts::luminanceRelative`
+    /// n'accepte que `#rgb`, `#rgba`, `#rrggbb` et `#rrggbbaa`, et **LÈVE** sur
+    /// tout le reste. Le client se défend (`client/src/accent.ts` contrôle la
+    /// forme AVANT d'appeler `rapportDeContraste`), mais l'agent n'a aucune
+    /// raison de lui envoyer une forme qu'il devra jeter.
+    ///
+    /// ⚠️ **Le champ ne porte NI le `hwnd`, NI le PID, NI le titre de la
+    /// fenêtre**, et la seconde raison est une leçon payée : la session est
+    /// déjà identifiée par le canal sur lequel le message arrive, et **P2 a
+    /// trouvé le presse-papier EN CLAIR dans `agent.log`**, sur un site de
+    /// journalisation antérieur et inoffensif tant qu'aucune variante ne
+    /// portait de contenu privé. Le remède s'applique **AU TYPE, pas au site** :
+    /// un titre de fenêtre ou un chemin d'exécutable ici rejouerait ce défaut à
+    /// l'identique.
+    ///
+    /// ⚠️ **La lecture NE VIT PAS SUR LE TOUR DE ROUE**, contrairement à ce que
+    /// la décision D9 de la spécification prescrivait : le tour de roue **n'a
+    /// pas le `hwnd`** — aucun des quinze champs d'`Etat`
+    /// (`capteur/sommeil/registre.rs`) ne le porte, et `inscrire(session, pid)`
+    /// ne le prend pas. Le presse-papier y vit parce qu'il est **global à la
+    /// window station** ; l'accent est **par fenêtre**, et il vit donc sur le
+    /// fil de fenêtre, avec le plein écran de D8 dont il reprend le patron.
+    ///
+    /// 🔴 **SIXIÈME fois que ce point de passage doit être relié dans
+    /// `capteur/pont_media.rs`**, après `Sommeil` (D5), `Part` (D6), `Audio`
+    /// (D7), `PleinEcran` (D8) et `PressePapier` (P1). Le bras manquant ne se
+    /// signale par AUCUNE erreur de compilation : il fait tomber le message
+    /// dans le catch-all `Ok(autre)`, **qui tue le fil `lire_le_media` sans
+    /// aucune panne apparente**. Le contrôle, relevé par la commande :
+    /// `grep -n 'DepuisCapteur::Accent' agent/src/capteur/pont_media.rs` doit
+    /// rendre **quatre** lignes — une pour le bras, trois pour le test qui le
+    /// garde — et **surtout pas ZÉRO**.
+    Accent { couleur: String },
 }
 
 #[derive(Debug)]
