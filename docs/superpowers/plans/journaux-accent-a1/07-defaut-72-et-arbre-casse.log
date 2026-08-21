@@ -1,0 +1,74 @@
+=== A1 — DEUX DEFAUTS QUE J'AI INTRODUITS, ETABLIS PAR PIECE ===
+Date : 21 aout 2026. Signales par un chantier voisin, VERIFIES par la commande.
+
+Le voisin rapportait « DEUX etapes sur dix en echec » et les attribuait a A1.
+LES DEUX SONT DE MOI. L'attribution par piece vaut dans les deux sens, et elle
+tombe ici entierement de mon cote.
+
+--- DEFAUT 1 : §7.2 ROUGE DEPUIS LE COMMIT 46e3aa8 ---
+Bissection par `git archive` + `couleurs-litterales.mjs --racine`, un commit a
+la fois :
+    4d950be (tache 4, agent seul) : couleurs litterales : 0    VERT
+    46e3aa8 (tache 5, accent.test.ts) : couleurs litterales : 21  🔴 ROUGE
+    077af01 (tache 6) ............... : 21                       🔴 ROUGE
+    arbre de travail (+ accent-dom.test.ts) : 40                 🔴 ROUGE
+
+CAUSE : mes deux fichiers de tests portaient des couleurs en litteral, et §7.2
+balaie les `.ts` de `client/src/`. Son exclusion est posee AU PLUS ETROIT —
+`client/src/design/*.test.ts` seulement — et mes tests ne sont pas du socle.
+MA FAUTE PROPRE : je n'ai PAS lance `design:verifier` avant de committer la
+tache 5. Le plan ne le prescrivait qu'a la recette (critere ⑤) ; c'etait
+insuffisant, et c'est un defaut du plan autant que du mien.
+
+⚠️ CE QUI N'A PAS ETE FAIT, ET POURQUOI : elargir l'exclusion (client/outils/)
+ou poser les tests sous client/src/design/ auraient tous deux viole D-A1-14 et
+seraient tombes sous le controle de perimetre du §5.3. Ranger les fixtures dans
+un `.json`, que §7.2 ne balaie pas, aurait ete SATISFAIRE UN CONTROLE EN LE
+VIDANT — ce que ce depot refuse.
+REMEDE RETENU : ZERO litteral, tout LU dans tokens.css.
+  - illisible  : `--bord`   (1,447 / 1,336 / 1,215 sur les trois fonds sombres)
+  - lisible    : `--succes` (8,867 / 8,186 / 7,446), DIFFERENT de `--accent`
+  - « deux sur trois » : le troisieme fond EST la candidate (1,000)
+  - formes non hexadecimales : DERIVEES d'un token (`.slice(0,4)`, `+ '00'`)
+  - bascule de theme : `--succes` vaut 2,194 / 2,047 / 1,889 sur les fonds
+    CLAIRS — LA MEME couleur, acceptee en sombre, refusee en clair.
+C'est STRICTEMENT PLUS FORT qu'un litteral : « un controle qui a sa propre copie
+des valeurs valide sa copie » (spec ⑥ §7.1).
+APRES : couleurs litterales : 0 — 7/7 controles verts.
+
+--- DEFAUT 2 : L'ARBRE NE COMPILAIT PAS ENTRE 9e05f1c ET 022dde2 ---
+Reconstruit par `git archive 9e05f1c agent proto Cargo.*` dans un arbre jetable :
+    error[E0004]: non-exhaustive patterns: `&AgentControl::Accent { .. }`
+      not covered --> agent/src/transport/controle.rs:98:34
+    error: could not compile `agent`
+
+CAUSE, ET C'EST UN DEFAUT DU PLAN AUTANT QUE DE SON EXECUTION : le §7 du plan
+ordonne 8 -> 9 -> 10. La tache 9 appelle `AgentControl::accent`, que la tache 10
+cree : cet ordre-la NE COMPILE PAS. J'ai donc joue 10 avant 9 — et cet ordre-la
+ne compile pas NON PLUS, parce que `transport/controle.rs` porte un `match`
+EXHAUSTIF sur `AgentControl`, dont le bras est prescrit... a la tache 9.
+🔴 AUCUN DES DEUX ORDRES N'EST SUR EN COMMITS SEPARES. Le bras de `controle.rs`
+devait partir DANS le commit de proto, ou les deux taches n'en faire qu'un.
+
+CE QUE CELA A COUTE : un voisin compilait sur la VM depuis l'arbre partage
+(`build-agent.sh` rsynchronise tout). Son controle d'auto-identification a rendu
+0, et il a ABANDONNE le diagnostic plutot que de le jouer faux — rien de faux
+n'a ete publie, mais UNE MESURE EST PERDUE, et elle l'est par ma faute.
+
+--- LA REGLE QUE J'EN TIRE, ET QUI N'ETAIT PAS DANS LE PLAN ---
+1. Un commit ne doit jamais laisser l'arbre non compilable, MEME
+   TRANSITOIREMENT, quand un voisin bat depuis le meme arbre. Un `match`
+   exhaustif dans un crate AVAL rend toute addition de variante AMONT
+   cassante : le bras part dans le meme commit que la variante, point.
+   ⚠️ Verifier `git status proto/ agent/` avant le PREMIER build ne suffit
+   pas — il faut le faire avant CHAQUE build, ET s'assurer que chacun de SES
+   PROPRES commits compile.
+2. `design:verifier` se lance a CHAQUE commit qui touche `client/src/`, pas
+   seulement a la recette. Le critere ⑤ du plan est une porte de SORTIE ; il
+   lui manquait une porte de PASSAGE.
+
+--- ETAT RELEVE APRES REMEDE, depuis un shell PROPRE ---
+$ env -u TURN_URL -u TURN_SECRET ./scripts/verify-all.sh
+  (relance apres correction — voir le journal de cloture)
+Les neuf controles : 7/7 scripts verts + §7.5 et §7.10 dans npm test.
+client : 479 passed, 42 fichiers. typecheck : sortie 0.
