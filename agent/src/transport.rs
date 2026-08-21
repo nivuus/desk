@@ -168,6 +168,10 @@ pub struct Session {
     refus_micro_signale: bool,
     /// Lignes de journal réellement ÉMISES au sujet du micro.
     journaux_micro: u64,
+    /// Dernier verdict d'exclusivité ANNONCÉ au navigateur (bloc E3).
+    /// `None` tant qu'aucun paquet montant n'a été déposé : c'est ce qui fait
+    /// que la PREMIÈRE réponse du puits est une transition, donc annoncée.
+    exclusivite_annoncee: Option<bool>,
     /// Pendant audio de `video_write_pending_drain`. Distinct de lui : sans
     /// drapeau propre, une écriture audio suivie d'une écriture vidéo au tour
     /// suivant perdrait un drainage.
@@ -413,6 +417,7 @@ impl Session {
             warned_micro_negotiation: false,
             refus_micro_signale: false,
             journaux_micro: 0,
+            exclusivite_annoncee: None,
             audio_write_pending_drain: false,
             warned_audio_negotiation: false,
             pending_resize: None,

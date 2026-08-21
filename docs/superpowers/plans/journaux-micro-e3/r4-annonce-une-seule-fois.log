@@ -1,0 +1,12 @@
+=== ROUGE r4 ===
+fichier      : /home/mallanic/Projects/Guacamole/agent/src/transport/piste_micro.rs
+copie nommée : /tmp/rouge-r4-9AIrZq
+sha256 avant : e89ea87f61d7a757813510646b171706bb74f1a7ec85fe639ba2ff0fbadcf75b
+lignes changées par la mutation : 2
+--- vérification : cargo test -p agent 2>&1 | grep -E 'test result|^    transport::piste_micro' | head -12
+    transport::piste_micro::tests::un_refus_leve_est_reannonce_au_navigateur
+test result: FAILED. 1006 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.51s
+--- code de sortie de la vérification : 101
+VERDICT : ROUGE (code 101)
+sha256 après restauration : e89ea87f61d7a757813510646b171706bb74f1a7ec85fe639ba2ff0fbadcf75b
+restauration : IDENTIQUE

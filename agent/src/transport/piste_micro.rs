@@ -13,6 +13,11 @@
 //! un drapeau atomique ne garde rien entre eux. Ce module ne connaît de cette
 //! exclusivité que sa couture : `PuitsMicro::deposer` rend `false` quand le
 //! puits refuse, on le journalise UNE fois, et on n'insiste pas.
+//!
+//! ⚠️ **« On n'insiste pas » vaut du JOURNAL, plus du navigateur.** Depuis le
+//! bloc E3, chaque CHANGEMENT du verdict du puits met en file un
+//! `AgentControl::MicState` : le journal reste unique, l'annonce au client
+//! suit les transitions. Voir `deposer_trame_micro`.
 
 use str0m::media::MediaData;
 
@@ -30,8 +35,17 @@ use super::Session;
 // - `warned_micro_negotiation` — une piste négociée sans puits, ou une horloge
 //   RTP qui n'est pas 48 kHz, sont des conditions PERMANENTES : elles se disent
 //   une fois, pas à chaque paquet. Calqué sur `warned_audio_negotiation`.
-// - `refus_micro_signale` — même raison, pour le refus d'exclusivité : une
-//   autre fenêtre tient le câble pour la vie de son processus.
+// - `refus_micro_signale` — même raison, pour le refus d'exclusivité.
+//   ❌ **Ce commentaire disait « une autre fenêtre tient le câble POUR LA VIE
+//   DE SON PROCESSUS », et c'était FAUX depuis la Décision 2 du bloc E2** :
+//   la tentative d'acquisition y est devenue NON COLLANTE, refaite à chaque
+//   dépôt, de sorte qu'un câble libéré est repris. Seul le JOURNAL est unique,
+//   et c'est tout ce que ce drapeau garde. L'énoncé faux a survécu à E2 —
+//   `git log` ne rend qu'un seul commit sur ce fichier, `784f1fc` (E1), et la
+//   revue transverse de E2 ne le liste pas. Corrigé par E3.
+// - `exclusivite_annoncee` — le dernier verdict DIT au navigateur. Distinct de
+//   `refus_micro_signale`, et il faut les deux : l'un borne le journal à une
+//   ligne, l'autre suit les transitions dans les DEUX sens.
 // - `journaux_micro` — le compte des lignes RÉELLEMENT émises, incrémenté au
 //   point d'émission et jamais à l'appel. C'est lui qui rend « l'avertissement
 //   ne sort qu'une fois » assertable, donc capable de tomber : un compteur
@@ -120,18 +134,55 @@ impl Session {
         if !accepte && !self.refus_micro_signale {
             self.refus_micro_signale = true;
             self.journaux_micro += 1;
-            // UNE fois. Le refus est une condition PERMANENTE — une autre
-            // fenêtre tient le câble pour la vie de son processus (spec §9) —
-            // et une condition permanente ne se journalise pas à chaque paquet.
+            // UNE fois — mais **pas parce que le refus serait permanent**.
             //
-            // ⚠️ **Le refus n'est PAS dit au client**, et c'est une lacune
-            // nommée : `ReadyMessage.mic` est décidé à l'établissement et ne
-            // peut pas exprimer un refus ultérieur. Elle se constate par
-            // l'absence de son, et par cette ligne.
+            // ❌ Cette phrase disait « le refus est une condition PERMANENTE,
+            // une autre fenêtre tient le câble pour la vie de son processus
+            // (spec §9) ». **Faux depuis la Décision 2 du bloc E2** : la
+            // tentative d'acquisition y est devenue NON COLLANTE, refaite à
+            // chaque dépôt, si bien qu'une fenêtre qui meurt rend le câble et
+            // que la suivante l'acquiert. Ce qui reste vrai de la spec §9 est
+            // « journalisée UNE fois » ; « refusée » comme ÉTAT DÉFINITIF, non.
+            //
+            // Ce qui justifie l'unicité est donc plus étroit, et suffit : une
+            // ligne par paquet ferait cinquante lignes par seconde, et la
+            // reprise, elle, a sa propre ligne côté puits
+            // (`micro : cable acquis apres un refus`).
             tracing::warn!(
                 "le puits micro refuse les trames (exclusivité non acquise) : \
                  une autre fenêtre porte déjà le micro"
             );
+        }
+
+        // ✅ **Le refus EST dit au client depuis le bloc E3**, et cette moitié
+        // du commentaire d'origine est devenue fausse à son tour — les deux
+        // sont corrigées, pas l'une des deux.
+        //
+        // 🔴 **SUR TRANSITION, jamais à chaque dépôt.** Le micro dépose une
+        // trame toutes les 20 ms ; annoncer à chaque dépôt mettrait cinquante
+        // messages par seconde dans une file bornée à 32
+        // (`PLAFOND_CONTROLE_EN_FILE`), qui déborderait en moins d'une seconde
+        // et **noierait le curseur, la vibration et le presse-papier**.
+        //
+        // ⚠️ **`None` compte comme une transition, et c'est voulu** : le tout
+        // premier dépôt annonce son verdict. Sans cela, une fenêtre qui perd
+        // le câble dès son premier paquet n'apprendrait jamais rien —
+        // `Ready.mic` a déjà été émis, et il dit `true`. C'est le patron
+        // d'`Accent` : « au changement seulement, et sa PREMIÈRE lecture
+        // comprise ».
+        //
+        // ⚠️ **La transition se dérive du BOOLÉEN, pas d'une `Issue` du puits.**
+        // `PuitsCable::deposer` connaît ses quatre `Issue` mais ignore le canal
+        // de contrôle ; ce module connaît le canal et ne voit qu'un booléen.
+        // Enrichir le trait `PuitsMicro` pour transporter l'`Issue` jusqu'ici
+        // aurait fait traverser la frontière à un vocabulaire dont ce module
+        // n'a aucun usage : **la transition d'un booléen EST une transition**,
+        // et les deux `Issue` de transition d'E2 (`AccepteApresRefus`,
+        // `RefusePremierement`) sont exactement les deux changements de ce
+        // booléen. Le trait ne bouge pas.
+        if self.exclusivite_annoncee != Some(accepte) {
+            self.exclusivite_annoncee = Some(accepte);
+            self.queue_control(proto::control::AgentControl::mic_state(accepte));
         }
     }
 
