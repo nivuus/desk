@@ -2,9 +2,15 @@
 # Le contrôle de recette du livrable ③ (bloc E3) : la trace du câble porte-t-elle
 # `occupation_ms` et `famines` ?
 #
-# 🔴 **CE CONTRÔLE N'A PAS ÉTÉ JOUÉ**, et son absence de journal est déclarée
-# plutôt que comblée : il exige un `agent.log` produit par la VM Windows, que le
-# chantier F5 tenait pendant tout E3. Il est versé PRÊT, pas VERT.
+# ✅ **JOUÉ, ET VERT** — 2 exécutions, `agent-1.log` et `agent-2.log` : **166
+# lignes, 166 portant `occupation_ms=`, 166 portant `famines=`**, aux deux.
+# ❌ *Cet en-tête disait « CE CONTRÔLE N'A PAS ÉTÉ JOUÉ […] versé PRÊT, pas
+# VERT », la VM étant alors tenue par un chantier concurrent. Elle a été rendue
+# le jour même.*
+#
+# 🔵 **ET IL NE SE PARSAIT MÊME PAS** quand il a été versé « prêt » : voir la
+# ligne `journal=` plus bas. Un contrôle de recette s'EXÉCUTE avant d'être
+# prescrit, et celui-ci ne l'avait pas été.
 #
 # ⚠️ **La rouge R6 du plan est signalée d'avance comme la plus faible**, et la
 # jouer sur l'hôte serait une tautologie : `windows_micro.rs` est
