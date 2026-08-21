@@ -844,10 +844,20 @@ Le détail et les pièces de chacun sont dans [`docs/JOURNAL.md`](docs/JOURNAL.m
 
 Aucune n'est une correction, et aucun chantier ne doit les prendre en douce.
 
-- 🔴 **`403 vm-etrangere` contre `404 vm-inconnue`** — le même service rend deux
-  réponses différentes pour la même situation. Le `403` (G1) est un **oracle
-  d'énumération** ; le `404` (P4, G2, G3) refuse de distinguer « inconnu » de
-  « interdit ». **Les deux ne peuvent pas avoir raison en même temps.**
+- ✅ ~~🔴 **`403 vm-etrangere` contre `404 vm-inconnue`** — le même service rend
+  deux réponses différentes pour la même situation.~~ **TRANCHÉ le 21 août 2026
+  en faveur du `404` — ET LE CODE L'APPLIQUAIT DÉJÀ : CE LEGS ÉTAIT PÉRIMÉ, PAS
+  OUVERT.** Relevé le jour de la décision : `vm-etrangere` **n'est émis nulle
+  part** (`grep -rn 'vm-etrangere' plateforme/src --include='*.ts'` ne rend que
+  des commentaires historiques), il **n'est pas un membre du type `Motif`**
+  (`plateforme/src/orchestration/refus.ts`), et `CODE_HTTP` mappe
+  `'vm-inconnue' → 404`. Les `403` qui subsistent portent sur `jeton-agent` —
+  un jeton d'agent employé sur une route d'utilisateur — ce qui est **une autre
+  question, et une réponse juste**. ⚠️ **Aucune ligne de code n'a été modifiée
+  par cette décision** : elle n'a fait que constater. 🔴 **La leçon vaut plus
+  que le legs : un § « Legs ouverts » consolidé À LA MAIN vieillit comme
+  n'importe quel relevé daté, et celui-ci affirmait une contradiction que le
+  produit avait déjà résolue.**
 - 🔴 **L'écho acoustique**, trois voies : ① rassembler la restitution (**défait
   D7**) ; ② une AEC côté agent (**que la spec exclut nommément**) ; ③ le casque,
   **dit au bon moment** — la seule dont le défaut mesuré ait encore besoin, et
