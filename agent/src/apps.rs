@@ -78,9 +78,24 @@ pub fn desarme(valeur: Option<&str>) -> bool {
 /// Elle prend l'`Option` plutôt que le canal pour que `main.rs` ne reçoive
 /// qu'un appel : c'est la règle des 500 lignes appliquée là où elle mord, le
 /// fichier étant déjà au-dessus de la porte de 450.
-pub fn brancher(
-    canal: Option<&mut crate::plateforme::Canal>,
-) -> Option<std::thread::JoinHandle<()>> {
+/// Les poignées que `brancher` rend, et que `main.rs` se contente de LIER.
+///
+/// 🔴 UNE STRUCTURE PLUTÔT QU'UN SECOND RETOUR, ET C'EST UN ENGAGEMENT DE
+/// PÉRIMÈTRE : `main.rs` écrit `let _apps = apps::brancher(…)`, et cette ligne
+/// **ne bouge pas** — quatre chantiers travaillent en concurrence dans cet
+/// arbre, et `main.rs` est le fichier qu'ils touchent tous.
+///
+/// ⚠️ LES DEUX POIGNÉES SONT CONSERVÉES SANS ÊTRE ATTENDUES : les lâcher
+/// terminerait les fils. C'est la raison pour laquelle `main.rs` lie le retour
+/// au lieu de l'ignorer, et elle vaut désormais pour deux fils au lieu d'un.
+pub struct Poignees {
+    /// Le fil COM de découverte.
+    _decouverte: Option<std::thread::JoinHandle<()>>,
+    /// La tâche tokio d'installation.
+    _installation: Option<tokio::task::JoinHandle<()>>,
+}
+
+pub fn brancher(canal: Option<&mut crate::plateforme::Canal>) -> Option<Poignees> {
     let Some(canal) = canal else {
         tracing::warn!(
             "decouverte d'applications inactive : ce processus n'a pas de canal /agent \
@@ -88,11 +103,66 @@ pub fn brancher(
         );
         return None;
     };
-    demarrer(canal)
+    // 🔴 `APPS=0` DÉSARME AUSSI L'INSTALLATION, et c'est DÉCLARÉ plutôt que
+    // découvert : `demarrer` retourne avant tout, donc aucune des deux moitiés
+    // ne se branche. Aucune variable séparée n'est ajoutée pour désarmer la
+    // seule installation, faute de besoin démontré — et une variable de plus
+    // qui ne servirait à personne est une variable qu'on oubliera de
+    // transmettre par `scripts/run-agent.sh`, piège que ce dépôt a payé cinq
+    // fois.
+    let partage = installation::partage::Partage::neuf();
+    let decouverte = demarrer(canal, partage.clone());
+    let installation = demarrer_installation(canal, partage);
+    if decouverte.is_none() && installation.is_none() {
+        return None;
+    }
+    Some(Poignees {
+        _decouverte: decouverte,
+        _installation: installation,
+    })
+}
+
+/// Le fil d'installation, sur `tokio` — jamais sur le fil COM.
+///
+/// ⚠️ IL N'EST PAS BRANCHÉ SI LA FILE A DÉJÀ ÉTÉ PRISE : `installations()` rend
+/// `None` au second appel, exactement comme `ordres()`, et pour la même
+/// raison — deux consommateurs se voleraient les ordres l'un à l'autre.
+#[cfg(windows)]
+fn demarrer_installation(
+    canal: &mut crate::plateforme::Canal,
+    partage: installation::partage::Partage,
+) -> Option<tokio::task::JoinHandle<()>> {
+    if desarme(std::env::var("APPS").ok().as_deref()) {
+        return None;
+    }
+    let installations = canal.installations()?;
+    let base = canal.url_signaling().to_string();
+    let identite = canal.veille_identite();
+    let emetteur = canal.emetteur();
+    Some(tokio::spawn(installation::fil::tourner(
+        installations,
+        move |message| emetteur.emettre(message),
+        identite,
+        base,
+        partage,
+    )))
+}
+
+/// La variante hors Windows : rien à installer, et **rien à journaliser** —
+/// même raison que `demarrer`.
+#[cfg(not(windows))]
+fn demarrer_installation(
+    _canal: &mut crate::plateforme::Canal,
+    _partage: installation::partage::Partage,
+) -> Option<tokio::task::JoinHandle<()>> {
+    None
 }
 
 #[cfg(windows)]
-fn demarrer(canal: &mut crate::plateforme::Canal) -> Option<std::thread::JoinHandle<()>> {
+fn demarrer(
+    canal: &mut crate::plateforme::Canal,
+    partage: installation::partage::Partage,
+) -> Option<std::thread::JoinHandle<()>> {
     if desarme(std::env::var("APPS").ok().as_deref()) {
         tracing::warn!("decouverte d'applications DESARMEE (APPS=0)");
         return None;
@@ -116,6 +186,7 @@ fn demarrer(canal: &mut crate::plateforme::Canal) -> Option<std::thread::JoinHan
                 identite,
                 base,
                 PERIODE_RECONCILIATION,
+                partage,
             )
         })
         .map_err(|erreur| {
@@ -131,7 +202,10 @@ fn demarrer(canal: &mut crate::plateforme::Canal) -> Option<std::thread::JoinHan
 /// pas découvrir d'applications Windows, et la confondre avec `APPS=0` — qui,
 /// lui, DIT qu'il est désarmé — brouillerait deux états distincts.
 #[cfg(not(windows))]
-fn demarrer(_canal: &mut crate::plateforme::Canal) -> Option<std::thread::JoinHandle<()>> {
+fn demarrer(
+    _canal: &mut crate::plateforme::Canal,
+    _partage: installation::partage::Partage,
+) -> Option<std::thread::JoinHandle<()>> {
     None
 }
 

@@ -51,6 +51,22 @@ pub enum Motif {
     JobObject,
     /// Il n'y a pas la place d'écrire l'installeur.
     DisquePlein,
+    /// Le disque a refusé une écriture qui n'est PAS celle de l'installeur —
+    /// le journal de l'installeur, par exemple.
+    ///
+    /// ⚠️ DISTINCT DE [`Self::DisquePlein`], et ce n'est pas une nuance de
+    /// style : un disque plein se répare en libérant de la place, un refus
+    /// d'écriture se répare en regardant des droits. Les confondre enverrait
+    /// chercher la mauvaise chose.
+    Disque,
+    /// `CreateProcessW` a échoué pour une raison AUTRE qu'une élévation
+    /// requise — exécutable corrompu, antivirus qui l'a mis en quarantaine,
+    /// image incompatible.
+    ///
+    /// ⚠️ IL NE DIT PAS LAQUELLE, et c'est honnête : l'erreur Windows exacte
+    /// est au journal, ce motif ne fait que dire « l'installeur n'a jamais
+    /// démarré ». Inventer une taxonomie ici prétendrait savoir.
+    LancementImpossible,
 }
 
 impl Motif {
@@ -60,12 +76,14 @@ impl Motif {
     /// du test de correspondance, qui compare cette liste à une table écrite à
     /// la main dont le compte est en dur — le compilateur exige la branche de
     /// [`Motif::mot`], et le test exige l'entrée.
-    pub const TOUS: [Self; 5] = [
+    pub const TOUS: [Self; 7] = [
         Self::Empreinte,
         Self::ElevationRequise,
         Self::Extension,
         Self::JobObject,
         Self::DisquePlein,
+        Self::Disque,
+        Self::LancementImpossible,
     ];
 
     /// Le mot exact qui voyage sur le fil.
@@ -84,6 +102,8 @@ impl Motif {
             Self::Extension => "extension",
             Self::JobObject => "job-object",
             Self::DisquePlein => "disque-plein",
+            Self::Disque => "disque",
+            Self::LancementImpossible => "lancement-impossible",
         }
     }
 
@@ -104,6 +124,15 @@ impl Motif {
 /// l'importe pas et l'appelant fera la conversion. Les noms sont les mêmes des
 /// deux côtés, à dessein.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+// ⚠️ `IssueInconnue` COMMENCE PAR LE NOM DE SON ENUM, ET CLIPPY LE SIGNALE.
+// C'est DÉLIBÉRÉ et cela ne se corrige pas : le sous-bloc G1 a MESURÉ qu'un
+// `rename_all` est **inobservable** sur un enum dont toutes les variantes
+// tiennent en un mot — passer `kebab-case` à `snake_case` sur `IssueLancement`
+// laisse `cargo test -p proto` entièrement vert. `SansEffet` et `IssueInconnue`
+// sont les deux variantes de deux mots qui referment cette lacune, et le test
+// `les_deux_variantes_de_deux_mots_d_issue_voyagent_en_kebab_case` en dépend.
+// La renommer rouvrirait le leg n°9 de G1 pour satisfaire un lint de style.
+#[allow(clippy::enum_variant_names)]
 pub enum Issue {
     /// La fenêtre de comptage a vu **au moins une** application apparaître.
     Reussie,
@@ -141,6 +170,28 @@ impl Issue {
     /// ⚠️ `code_sortie` n'est LU que par `is_none()`. Si un jour une branche
     /// se met à comparer sa valeur, c'est que la décision de tête de module a
     /// été perdue.
+    /// La variante du PROTOCOLE que cette issue désigne.
+    ///
+    /// 🔴 DEUX TYPES PLUTÔT QU'UN, ET C'EST DÉLIBÉRÉ. `proto::plateforme::Issue`
+    /// est une **forme de fil** : elle porte son `rename_all`, son `Serialize`
+    /// et sa compatibilité de version. Celle-ci est une **décision**, et elle
+    /// se teste sur l'hôte sans rien savoir de serde. Les fondre ferait entrer
+    /// une contrainte de sérialisation dans un module dont tout l'intérêt est
+    /// de n'en avoir aucune — et le jour où le fil changerait de mots, la
+    /// règle changerait avec lui.
+    ///
+    /// ⚠️ LE `match` EST EXHAUSTIF : une variante ajoutée d'un côté ne compile
+    /// pas tant qu'elle n'a pas son pendant. C'est la seule chose qui garde les
+    /// deux types alignés, et elle est gratuite.
+    pub fn vers_protocole(self) -> proto::plateforme::Issue {
+        match self {
+            Self::Reussie => proto::plateforme::Issue::Reussie,
+            Self::SansEffet => proto::plateforme::Issue::SansEffet,
+            Self::IssueInconnue => proto::plateforme::Issue::IssueInconnue,
+            Self::Refusee => proto::plateforme::Issue::Refusee,
+        }
+    }
+
     pub fn depuis(
         code_sortie: Option<i32>,
         apparues: usize,
@@ -223,13 +274,22 @@ mod tests {
     /// La table des motifs, parcourue dans les DEUX sens — un `rename_all`
     /// n'aurait pas permis de la faire rougir.
     #[test]
-    fn la_table_des_motifs_fait_l_aller_retour_sur_les_cinq() {
+    fn la_table_des_motifs_fait_l_aller_retour_sur_les_sept() {
+        // ⚠️ CE TEST A DÉJÀ SERVI, ET C'EST SA RAISON D'ÊTRE. L'écriture de
+        // `installation/execution.rs` a eu besoin de deux motifs que cette
+        // table n'avait pas — `disque` et `lancement-impossible` —, et le
+        // compte en dur les a exigés ICI avant de laisser le code compiler. Un
+        // `TOUS` dérivé d'un `match` exhaustif ne l'aurait pas fait : le
+        // compilateur aurait accepté la variante, et seul le mot serait resté
+        // absent de la table du fil.
         let attendus = [
             (Motif::Empreinte, "empreinte"),
             (Motif::ElevationRequise, "elevation-requise"),
             (Motif::Extension, "extension"),
             (Motif::JobObject, "job-object"),
             (Motif::DisquePlein, "disque-plein"),
+            (Motif::Disque, "disque"),
+            (Motif::LancementImpossible, "lancement-impossible"),
         ];
         // 🔴 ANTI-OUBLI : `TOUS` doit couvrir exactement l'énumération
         // ci-dessus. Une variante ajoutée sans sa ligne ici fausse ce compte.
@@ -244,5 +304,13 @@ mod tests {
         assert_eq!(Motif::depuis_mot(""), None);
         assert_eq!(Motif::depuis_mot("Empreinte"), None);
         assert_eq!(Motif::depuis_mot("elevation_requise"), None);
+        // 🔴 `disque` ET `disque-plein` PARTAGENT UN PRÉFIXE, et c'est
+        // exactement le cas où une correspondance par `starts_with` rendrait le
+        // mauvais motif. G1 a mesuré qu'un préfixe trop large laissait
+        // DIX-SEPT tests verts ; celui-ci est minuscule, et il vérifie que la
+        // correspondance est EXACTE dans les deux sens.
+        assert_eq!(Motif::depuis_mot("disque"), Some(Motif::Disque));
+        assert_eq!(Motif::depuis_mot("disque-plein"), Some(Motif::DisquePlein));
+        assert_eq!(Motif::depuis_mot("disque-pleine"), None);
     }
 }

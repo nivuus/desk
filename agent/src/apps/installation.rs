@@ -17,9 +17,14 @@
 pub mod cadence;
 pub mod depot;
 pub mod fenetre;
+pub mod partage;
 pub mod reponse;
 pub mod telechargement;
 pub mod verdict;
 
 #[cfg(windows)]
 pub mod execution;
+#[cfg(windows)]
+pub mod fil;
+#[cfg(windows)]
+pub mod peripherique_audio;
