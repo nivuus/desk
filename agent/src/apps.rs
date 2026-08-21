@@ -9,6 +9,7 @@
 use std::time::Duration;
 
 pub mod icone;
+pub mod installation;
 pub mod raccourci;
 pub mod reconciliation;
 pub mod sha256;
