@@ -702,6 +702,31 @@ chantier, et il est gratuit.
 
 ### D9 — La source est l'ICÔNE de la fenêtre, lue par `hwnd`. Pas le thème Windows, pas l'image capturée.
 
+> ⚠️ **ANNOTATION DU SOUS-BLOC A1 (21 août 2026) — UNE CLAUSE DE CETTE DÉCISION
+> EST INAPPLICABLE, ET LE RESTE TIENT.** La source retenue — l'icône, par
+> `hwnd` — n'est pas en cause : elle est livrée telle quelle. **C'est le LIEU de
+> la lecture qui ne l'est pas.** D9 prescrit plus bas « relue sur le même tour de
+> roue que le presse-papier » ; **le tour de roue n'a pas le `hwnd`**, et c'est
+> une lecture de code, pas une opinion : aucun des quinze champs d'`Etat`
+> (`agent/src/capteur/sommeil/registre.rs`) ne le porte, et
+> `inscrire(session, pid)` ne le prend pas. Le presse-papier y vit parce qu'il
+> est **global à la window station** — une ressource, un sondeur ; **l'accent
+> est PAR FENÊTRE**, ce qui est justement la propriété que D9 revendique.
+>
+> **A1 l'a donc porté sur le FIL DE FENÊTRE** (`agent/src/capteur/fenetre/accent.rs`),
+> où vit déjà le plein écran de D8, dont il reprend le patron exactement. Trois
+> maillons disparaissent (le canal `sommeil::Message`, `sommeil/presse_papier.rs`
+> et `fenetre/transitions.rs`), `registre.rs` n'est pas touché, et le rejeu à
+> l'inscription — qui a coûté deux tâches à P3 — **devient sans objet** : un
+> rattachement recrée le fil de fenêtre, donc un `SuiviAccent` neuf, donc une
+> première annonce.
+>
+> ⚠️ **Un effet de bord FAVORABLE, à ne pas perdre** : R4 (« `WM_GETICON` bloque
+> sur une application figée ») annonce « gèle le tour de roue du capteur, donc
+> TOUTES les fenêtres ». Sur le fil de fenêtre, un blocage ne gèle **que la
+> sienne**. La gravité baisse ; **elle ne disparaît pas** — ce fil est celui qui
+> produit les images de cette fenêtre, et `SMTO_ABORTIFHUNG` reste obligatoire.
+
 Trois sources existaient. Ce qu'elles disent n'est pas la même chose :
 
 | Source | Ce qu'elle rend | Pourquoi elle est retenue ou écartée |
@@ -752,6 +777,48 @@ seulement** — doctrine de `Sommeil`/`Part`/`Audio`/`PleinEcran`. Une icône ch
 rarement (l'icône de progression d'un téléchargement est le cas réel).
 
 ### D10 — La couleur reçue est VALIDÉE par le client, puis posée sur un token — jamais employée brute
+
+> 🔴 **ANNOTATION DU SOUS-BLOC A1 (21 août 2026) — LES DEUX VOIES QUE CETTE
+> DÉCISION DÉCLARE « ACCEPTABLES » SONT MESURÉES IMPRATICABLES, ET A1 EN A PRIS
+> UNE TROISIÈME QU'ELLE N'ENVISAGEAIT PAS.** Le raisonnement de D10 sur la
+> validation est repris SANS CHANGEMENT ; c'est son **point 1** — « un token
+> neuf, déclaré dans les TROIS blocs de thème » — qui ne tient pas.
+>
+> **Mesuré par la sonde H1, cinq cellules, journal versé dans
+> `journaux-accent-a1/01-sonde-h1.log`** :
+> - déclarer `--accent-fenetre: var(--accent);` à la racine rend **§7.6 ROUGE** :
+>   « NOUVEL ORPHELIN — déclaré et appelé par personne ». Son périmètre
+>   « employé » est le `.css` **seulement**, et sa détection ne reconnaît que
+>   `var(--…)` : un `setProperty` TypeScript y est invisible **deux fois** ;
+> - poser la **ligne d'attente** rend les neuf verts — **jusqu'à ce que A1 se
+>   déclare clos**, ce que la convention EXIGE. Alors §7.6 rougit :
+>   « SOUS-BLOC CLOS — nommait A1, qui est clos ». La voie n'est tenable que si
+>   le sous-bloc refuse de se clore, ce qui est pire que le mal qu'elle soigne ;
+> - et `client/src/design/tokens.css` est à **300/300, marge NULLE**, sa
+>   scission ayant été **délibérément écartée** par ⑥ (sept lecteurs le nomment
+>   par son chemin).
+>
+> **La troisième voie, retenue** : **ne pas déclarer le token du tout.** Le
+> client le pose sur `document.documentElement` à l'exécution, et **le repli est
+> LU** (`getComputedStyle` sur `--accent`) plutôt qu'écrit — une couleur en dur
+> dans un `.ts` ferait rougir §7.2, **mesuré aussi** (cellule E).
+> **Les neuf contrôles restent verts, et ce n'est pas un contournement** : §7.6 a
+> juridiction sur les tokens **déclarés dans `tokens.css`**. Le jour où G5
+> écrira `var(--accent-fenetre)` dans une feuille, la **première** inclusion de
+> §7.6 rougira et le forcera à déclarer proprement — **au moment où il aura un
+> appelant à donner. La déclaration part avec son appelant, et les deux
+> appartiennent à G5.**
+>
+> ⚠️ **Ce que cette voie coûte** : avant le premier message,
+> `var(--accent-fenetre)` est **indéfini**. Aucune feuille ne le référence
+> aujourd'hui (mesuré), donc rien n'en souffre — mais toute référence future doit
+> porter un repli ou déclarer le token.
+>
+> ⚠️ **Le point 4 de D10 porte une raison PÉRIMÉE** : il écrit que `--sur-accent`
+> « est en liste d'attente pour S2 ». **La liste est VIDE** (mesuré :
+> `tokens-orphelins.mjs` rend `0 en attente`), et `--sur-accent` a un appelant
+> depuis S2. **La conclusion tient** — A1 ne pose aucun bouton principal et
+> n'emploie pas `--sur-accent` — mais sa raison ne vaut plus.
 
 C'est la résolution de la tension avec le design system, et elle a été
 construite **contre une mesure**, pas contre une intuition.
@@ -987,6 +1054,35 @@ couleur dominante, `AgentControl::Accent`, la conformation **pure** côté clien
 | ④ | Aucun message tant que l'icône ne change pas | rouge = émettre à chaque période : 12 messages par minute et par fenêtre |
 | ⑤ | Les **sept** contrôles du design system restent verts | `npm run design:verifier` **et** `npm test`. ⚠️ Le §7.6 (orphelins) échouera si `--accent-fenetre` n'a ni appelant ni ligne d'attente : **c'est un résultat correct du contrôle**, pas un faux positif |
 
+> ⚠️ **ANNOTATIONS DU SOUS-BLOC A1 (21 août 2026) SUR CES CINQ CRITÈRES** :
+>
+> - **⑤ dit « les SEPT contrôles ». Il y en a NEUF**, et la commande n'en lance
+>   que sept : §7.5 (la bascule de thème) et §7.10 (aucune longueur hors token)
+>   sont des **tests unitaires**, et tournent dans `npx vitest run`. La spec de
+>   ⑥ le dit elle-même — « sept scripts, neuf contrôles ». **Trois commandes, pas
+>   une** : `design:verifier`, `npx vitest run` depuis `client/`, et
+>   `cd proto && npx vitest run` — cette dernière parce que **la racine Vitest
+>   est `client/` et ne couvre PAS `proto/ts/`**.
+> - **La seconde moitié de ⑤ est sans objet** sous la troisième voie de D10
+>   (voir l'annotation de D10) : `--accent-fenetre` n'a **ni déclaration ni ligne
+>   d'attente**, et §7.6 est **vert**, parce qu'il n'a juridiction que sur les
+>   tokens déclarés dans `tokens.css`.
+> - 🔴 **LA ROUGE DE ② EST VACUEUSE, ET ELLE A ÉTÉ REMPLACÉE.** « Poser le token
+>   sans le déclarer dans les trois blocs : §7.4 échoue » suppose une
+>   déclaration ; il n'y en a aucune, donc §7.4 ne verrait rien. **Rouge de
+>   remplacement, jouable et discriminante** : poser le token sur
+>   `document.body`. Alors la lecture de ② rend la **chaîne vide**, et le critère
+>   rougit **sur l'assertion qu'il énonce**. ⚠️ Une rouge qui n'enverrait aucun
+>   message serait MOINS BONNE — elle rendrait aussi la chaîne vide, et la chaîne
+>   vide est ce que rend un mécanisme entièrement mort.
+> - ✅ **③ A ÉTÉ VU ROUGE**, et sur son assertion propre :
+>   « expected '#1e2229' to be '#7aa2f7' ». ⚠️ **Le fixture n'est plus un gris
+>   littéral** mais le token `--bord` (1,447 / 1,336 / 1,215 contre les trois
+>   fonds), lu dans `tokens.css` : §7.2 balaie les `.ts`, et une couleur en
+>   littéral dans un test de `client/src/` **le fait rougir** — A1 l'a payé.
+> - **① et ④ n'ont PAS été mesurés** : ils exigent la VM, tenue par un chantier
+>   voisin pendant toute la durée de A1.
+
 ⚠️ **A1 est livré sans son emploi visible** (D10). Les critères ci-dessus portent
 sur la **valeur** et sa **garantie**, jamais sur un rendu — parce qu'aucun rendu
 n'existe avant que ② pose un manifeste. **C'est déclaré, pas dissimulé**, et
@@ -1182,6 +1278,24 @@ extractions préalables et n'en a payé aucune.
 | R8 | ⚠️ **Un accent illisible atteint `:root`** | texte invisible, et **aucun des sept contrôles ne le verrait** | D10 : validation pure, refus au lieu de correction, test vu rouge (A1-③) |
 | R9 | ⚠️ **`PRESSE_PAPIER` n'est pas transmise par `scripts/run-agent.sh`** | l'agent démarre sans elle **et ne le dit pas** | payé en D1, D2 et D7 ; à faire **dans la tâche qui introduit la variable**, jamais après |
 | R10 | ⚠️ **`proto/src/control.rs` franchit 500** | dette neuve | extraction des tests **avant** l'addition (§7.2), pas après |
+
+> ⚠️ **ANNOTATION DU SOUS-BLOC A1 (21 août 2026) — R10 EST SANS OBJET, ET LA
+> TABLE DE BUDGET DU §7.2 A VIEILLI SUR SES NEUF LIGNES.** Relevé le 21 août :
+> `proto/src/control.rs` vaut **403** et non 470 — **l'extraction a DÉJÀ eu
+> lieu**, jouée par P1 (`proto/src/control/tests.rs`) —, donc la marge est de
+> **97** et non de 30. Les huit autres lignes ont dérivé du même mouvement :
+> `client/src/main.ts` 451 → **466**, `agent/src/capteur/distante.rs` 409 →
+> **472** (c'est CETTE ligne qui a décidé de l'extraction préalable de A1),
+> `transport/tick.rs` 403 → **441**, `source.rs` 393 → **441**,
+> `capteur/protocole.rs` 419 → **330**, `capteur/pont_media.rs` 263 → **326**,
+> `proto/ts/control.ts` 139 → **241**, `capteur/sommeil/registre.rs` 346 →
+> **456** — et A1 ne touche pas ce dernier (voir l'annotation de D9).
+>
+> 🔴 **UN RISQUE QUE LA TABLE N'AVAIT PAS, ET QU'A1 A RENCONTRÉ** :
+> `agent/src/capteur/fenetre.rs` n'y figure pas, et l'addition du tour d'accent
+> l'aurait porté à **500 lignes EXACTEMENT** — marge nulle. Rattrapé par une
+> **EXTRACTION** (`capteur/fenetre/accent.rs`), jamais par une compression.
+> Le plan de A1 chiffrait cette addition à « ~18 lignes » ; **elle en pèse 55**.
 | R11 | ⚠️ **Le presse-papier fuit entre deux utilisateurs d'une même VM** | confidentialité | hors périmètre v1 (§9), **nommé et non traité** — la question appartient à ⑤ et elle est réelle |
 
 ---
