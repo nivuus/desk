@@ -5,11 +5,16 @@ service tourne ». Il est court, et il commence par ce qui casse.
 
 ---
 
-## Les quatre invariants, et pourquoi
+## Les cinq invariants, et pourquoi
 
-Chacun de ces quatre points, s'il est violé, produit une panne **muette** — le
+Chacun de ces **cinq** points, s'il est violé, produit une panne **muette** — le
 service démarre, la page se charge, et quelque chose ne marche plus sans que
 rien ne le dise. C'est pour cela qu'ils sont en tête et non en annexe.
+
+⚠️ **ILS ÉTAIENT QUATRE JUSQU'AU 21 AOÛT 2026** ; le cinquième vient du chantier
+`auth-pomerium`, et il est le seul dont la panne ne soit pas seulement muette
+mais **ouvrante** — il laisse entrer n'importe qui. ⚠️ Le ⑤ est aussi le seul
+qui se répare par **deux** gestes qu'il faut faire ensemble.
 
 ### ① Une instance de `plateforme`, et une seule
 
@@ -58,9 +63,37 @@ résolvant à l'adresse du conteneur sur le réseau interne, l'écoute y est bor
 
 ⚠️ **`PLATEFORME_HOTE` n'a aucun défaut**, et `lireConfig` **lève** s'il manque.
 C'est délibéré : une rupture bruyante vaut mieux qu'une écoute universelle
-silencieuse. Ne jamais y mettre `0.0.0.0` « pour que ça marche » — sur un hôte
-qui publierait un port, cela exposerait le service en clair, jeton compris,
-en contournant toute la terminaison TLS.
+silencieuse.
+
+🔴 **« NE JAMAIS Y METTRE `0.0.0.0` » N'EST PLUS UNE DISCIPLINE DE
+L'EXPLOITANT : C'EST UNE GARDE DURE, ET ELLE REFUSE LE DÉMARRAGE.** Depuis le
+chantier `auth-pomerium` (21 août 2026), `lireConfig` **lève** en mode
+`pomerium` sur les quatre écoutes universelles — `0.0.0.0`, `::`, `[::]` et
+`*` — au lieu de compter sur la vigilance de qui édite le fichier. Ce
+paragraphe a longtemps présenté la chose comme un conseil ; ce n'en est plus
+un.
+
+⚠️ **ET CELA MORD SUR LA VALEUR AVEC LAQUELLE LE SERVICE TOURNAIT LA VEILLE.**
+Le mode `pomerium` étant le **défaut**, un montage qui posait `0.0.0.0` — ce
+qui « marchait » hier — **ne démarre plus du tout** aujourd'hui, et le message
+nomme la variable et la raison. Ce n'est pas une régression : c'est le refus
+qui remplace l'exposition silencieuse.
+
+🔴 **POURQUOI LA GARDE EST LIÉE AU MODE, ET NON UNIVERSELLE.** En `motdepasse`,
+le service s'authentifie lui-même et une écoute large ne le rend pas anonyme.
+En `pomerium`, **l'identité arrive dans un en-tête EN CLAIR**
+(`X-Pomerium-Claim-Email`), dont aucune signature n'est vérifiée : une écoute
+universelle l'offre à quiconque atteint la machine, et c'est un compte pour
+n'importe quelle adresse de courriel.
+
+⚠️ **CE QUE LA GARDE NE PROMET PAS**, et son propre commentaire le dit
+(`plateforme/src/config.ts`) : elle refuse l'écoute **universelle**, elle ne
+garantit pas que « seul le proxy atteint le port ». Ce dernier point reste à la
+charge de l'exploitant, et le § 9 de la spec le déclare.
+
+Le reste vaut toujours : sur un hôte qui publierait un port, une écoute large
+exposerait le service en clair, jeton compris, en contournant toute la
+terminaison TLS.
 
 ### ③ `PLATEFORME_PROXY_DE_CONFIANCE` doit porter l'adresse du proxy
 
@@ -100,6 +133,60 @@ docker compose -f docker-compose.plateforme.yml --profile deploiement \
 ```
 
 ⚠️ La commande ci-dessus n'imprime que les **noms**, jamais les valeurs.
+
+### ⑤ `PLATEFORME_AUTH: motdepasse` et l'effacement nginx vont ENSEMBLE
+
+🔴 **C'EST LE PLUS DANGEREUX DES CINQ, PARCE QU'IL SE TROMPE EN GRAND ET DANS
+LES DEUX SENS À LA FOIS.** Le défaut de `PLATEFORME_AUTH` est **`pomerium`**
+(`plateforme/src/config.ts`), et le proxy de CE profil est **nginx**, pas
+Pomerium. Deux lignes, et deux seulement, referment l'écart :
+
+| Où | Quoi |
+| --- | --- |
+| `docker-compose.plateforme.yml`, service `plateforme` | `PLATEFORME_AUTH: motdepasse` |
+| `deploiement/nginx.conf`, niveau `http` | `proxy_set_header X-Pomerium-Claim-Email "";` |
+
+**Sans elles, le profil est un contournement COMPLET de l'authentification.**
+`GET /auth/moi` échange l'en-tête `X-Pomerium-Claim-Email` contre un jeton
+interne **sans vérifier aucune signature** — elle tient pour acquis qu'un
+Pomerium l'a posé. nginx ne le pose pas et ne l'efface pas par défaut : celui
+qu'un client envoie **traverse verbatim**. Depuis Internet :
+
+```bash
+curl -k https://<hôte>/auth/moi -H 'X-Pomerium-Claim-Email: nimporte@qui.tld'
+```
+
+rend **un jeton interne valide, et crée le compte**. Et symétriquement, plus
+personne ne peut se connecter normalement : le formulaire POSTe
+`/auth/connexion`, qui rend `404` en mode `pomerium`.
+
+🔴 **ELLES S'INVERSENT ENSEMBLE, ET C'EST LA PARTIE QU'ON LIT DE TRAVERS.** Il
+est **faux** de croire que la directive nginx « resterait juste » le jour où ce
+profil passerait derrière Pomerium : `proxy_set_header … "";` efface l'en-tête
+**entrant**, donc effacerait aussi celui que Pomerium poserait, et `/auth/moi`
+ne verrait plus jamais aucune identité. Ce jour-là, faire les **deux** gestes :
+**retirer** la directive nginx **et** passer la variable à `pomerium`. N'en
+appliquer qu'une moitié donne, dans un sens, un service que personne ne peut
+plus atteindre ; dans l'autre, la porte ouverte ci-dessus.
+
+⚠️ **LA DIRECTIVE VA AU NIVEAU `http`, JAMAIS DANS UN `location`** — nginx
+n'hérite pas par fusion mais par **remplacement**, et un seul `proxy_set_header`
+dans un bloc plus profond efface **tous** ceux du parent. Ce fichier l'a déjà
+payé une fois (voir son encadré, et l'invariant ③).
+
+⚠️ **`nginx -t` NE VOIT RIEN DE TOUT CECI** : la configuration sans la directive
+est parfaitement « ok ». Ce qui le juge est de lire la configuration
+**réellement chargée**, et de la comparer à un témoin sans la ligne :
+
+```bash
+docker run --rm -v "$PWD/deploiement/nginx.conf:/etc/nginx/nginx.conf:ro" \
+  -v "$HOME/.guacamole-tls-jetable:/etc/nginx/tls:ro" nginx:alpine nginx -T \
+  | grep -c '^\s*proxy_set_header X-Pomerium-Claim-Email ""'
+```
+
+doit rendre **1**. ⚠️ **Chercher le NOM de l'en-tête plutôt que la DIRECTIVE
+rend 3** — les commentaires du fichier le citent : le motif est ancré sur la
+syntaxe, à dessein.
 
 ---
 
@@ -168,6 +255,15 @@ déjà locale, docker la tire du réseau — **la bâtir avant une recette**, sa
 quoi un échec réseau se lira comme un échec du produit.
 
 ### 5. Enrôler, et attribuer
+
+✅ **`npm run admin:utilisateur` EST BIEN L'ÉTAPE JUSTE POUR CE PROFIL, ET
+C'EST À VÉRIFIER CHAQUE FOIS QUE LE MODE CHANGE.** Le fichier de composition
+pose `PLATEFORME_AUTH: motdepasse` pour le service `plateforme` : ce profil
+authentifie donc **par mot de passe**, et c'est bien par la création d'un compte
+qu'on y ouvre l'accès. 🔴 **Sous le DÉFAUT (`pomerium`), cette étape n'aurait
+plus de sens** — `POST /auth/connexion` rendrait `404`, les comptes se
+créeraient tout seuls au premier passage de `GET /auth/moi`, et le mot de passe
+posé ici ne servirait à rien. Voir l'invariant ⑤ ci-dessous.
 
 ```bash
 cd plateforme
