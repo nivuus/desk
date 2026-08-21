@@ -287,8 +287,15 @@ fn fil_de_rendu(
         }
 
         if Instant::now() >= prochaine_trace {
-            let compteurs = match lecteur.lock() {
-                Ok(l) => l.compteurs(),
+            // ⚠️ **Les deux lectures se font sous LE MÊME verrou**, et ce
+            // n'est pas une commodité : `occupation` est un INSTANTANÉ, et le
+            // lire à un second verrouillage le daterait d'un autre moment que
+            // les compteurs, sur un tampon que le fil de dépôt fait bouger
+            // toutes les 20 ms. Deux grandeurs d'une même ligne de journal
+            // doivent décrire le même instant, sans quoi la ligne invite à
+            // rapprocher ce qui ne se rapproche pas.
+            let (compteurs, occupation) = match lecteur.lock() {
+                Ok(l) => (l.compteurs(), l.occupation()),
                 Err(_) => return,
             };
             tracer(
@@ -299,6 +306,7 @@ fn fil_de_rendu(
                 rendu_wasapi.reveil(),
                 &compteurs,
                 &precedents,
+                occupation,
             );
             precedents = compteurs;
             ecrites = 0;
@@ -402,6 +410,7 @@ fn tracer(
     reveil: Reveil,
     compteurs: &CompteursMicro,
     precedents: &CompteursMicro,
+    occupation: std::time::Duration,
 ) {
     // Les compteurs sont des DELTAS de la seconde écoulée, pas des cumuls : un
     // cumul ferait traîner un unique incident pour le restant de la session.
@@ -425,6 +434,38 @@ fn tracer(
         // second on ne distingue pas « la dissimulation travaille » de « le
         // plafond a mordu et le puits se tait ». Voir `micro/dissimulation.rs`.
         plc_plafonnees = d(compteurs.plc_plafonnees, precedents.plc_plafonnees),
+        // ── Bloc E3 : le legs n°7 de E2 ────────────────────────────────────
+        //
+        // 🔴 **Ces deux grandeurs EXISTAIENT DÉJÀ et n'étaient lues par
+        // PERSONNE sur le chemin de production.** `LecteurMicro::occupation()`
+        // est publique depuis E1 et `famines` est un champ de `CompteursMicro`
+        // depuis E1 ; les deux ne vivaient que dans la trace du PUITS DE MESURE
+        // (`MICRO_MESURE=1`), qui **ne peut pas coexister avec le câble** — le
+        // puits de mesure consomme le tampon, le câble aussi. E2 l'a relevé et
+        // n'a pas pu le corriger dans son périmètre. Il n'y avait rien à
+        // calculer, seulement à tracer.
+        //
+        // 🔴 **`occupation_ms` est un INSTANTANÉ ; `famines` est un DELTA.**
+        // Tous les autres compteurs de cette trace sont des deltas *à dessein*
+        // — « un cumul ferait traîner un unique incident pour le restant de la
+        // session ». Mélanger les deux sans le dire rendrait la ligne
+        // illisible : on lirait « 120 » pour une occupation et « 3 » pour des
+        // famines en croyant les deux comparables sur la même seconde, alors
+        // que le premier décrit l'instant de la trace et le second la seconde
+        // qui la précède.
+        //
+        // ⚠️ **`famines` et `occupation_ms` CÔTE À CÔTE**, sur le patron des
+        // deux paires qui précèdent : une famine est un tampon vidé, donc une
+        // occupation qui a touché zéro. Le second seul ne dirait pas combien de
+        // fois ; le premier seul ne dirait pas de combien on est loin du bord.
+        //
+        // ⚠️ **Ce que cela NE donne PAS** : la latence de bout en bout, que
+        // RIEN ne mesure dans ce dépôt depuis D1. C'est la SECONDE des deux
+        // composantes de la latence ajoutée par l'agent, dont E2 n'avait que la
+        // première (`retards`). Le troisième critère de la spec §13 reste NON
+        // JUGÉ.
+        famines = d(compteurs.famines, precedents.famines),
+        occupation_ms = occupation.as_millis(),
         "micro ecrit sur le cable"
     );
 }
