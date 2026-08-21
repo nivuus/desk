@@ -1,0 +1,103 @@
+=== A1 — LA REVUE TRANSVERSE DE FIN DE BRANCHE (tache 15) ===
+Date : 21 aout 2026.
+Bareme : 5 en D7, 3 en D8, 6 en D9, DOUZE en D10, 7 en D11, 8 en P1, DIX en P2
+(sur VINGT-TROIS places), 5 en S1, 9 au chantier E, DOUZE en P3, DOUZE en S2,
+ONZE en F1, 8 en P4, TREIZE en S3, 8 en G1.
+A1 : DEUX corrigees, SEPT consignees. Les places ont ete ENUMEREES PAR grep -n
+AVANT toute edition, et relues APRES.
+
+--- TAILLES, AVANT ET APRES LA REVUE (elle est une source de croissance connue :
+    +54 lignes en S3, -13 de marge en S2, une extraction annulee en P2) ---
+agent/src/source.rs ......... 455 -> 460   (+5)
+client/src/accent-dom.ts ....  96 ->  98   (+2)
+Aucun autre fichier n'a bouge. COUT DE LA REVUE : +7 lignes.
+
+═══ CORRIGEES (2) ═══
+
+1. agent/src/source.rs — L'INVENTAIRE DES DEFAUTS INERTES ETAIT DEVENU
+   INCOMPLET. La doc d'`ecrire_le_presse_papier` (P2) enumere les methodes a
+   defaut INERTE pour justifier sa propre rupture de patron :
+     « est_endormie, signaler_audio_mort, signaler_audio_vivant et
+       presse_papier_a_annoncer ont tous un defaut INERTE »
+   A1 en ajoute une CINQUIEME, `accent_a_annoncer`, et l'inventaire ne la
+   nommait pas. ⚠️ C'EST LA FORME LA PLUS DISCRETE DU DEFAUT QUE CETTE REVUE
+   TRAQUE : la phrase reste VRAIE de ce qu'elle nomme, et FAUSSE de ce qu'elle
+   omet — un `grep` sur une negation ne l'aurait jamais trouvee.
+
+2. client/src/accent-dom.ts — UNE AFFIRMATION RENDUE FAUSSE PAR SON PROPRE
+   COMMIT. Son en-tete disait « `main.ts` EST a 466 lignes » au PRESENT ; les
+   trois lignes de cablage que le meme commit y pose le portent a 483. Datee.
+
+═══ CONSIGNEES, NON CORRIGEES (7) ═══
+
+3. 🔴 client/src/design/galerie.ts — « ET C'EST LE PREMIER APPELANT DE
+   getComputedStyle ». A1 en pose un SECOND, et surtout LE PREMIER DE PRODUIT :
+   galerie.ts declare lui-meme n'etre pas du produit (aucune surface ne
+   l'importe, aucun test). La phrase reste vraie au sens strict — il est bien le
+   premier — mais elle ne dit plus ce qu'un lecteur en tire.
+   ⚠️ NON CORRIGEE : client/src/design/ est hors du perimetre de A1 (D-A1-14),
+   et le controle de cloture du §5.3 le verifie. C'est la meme decision que le
+   legs n°11 de D8 : un index durable ne se commite pas avec une spec.
+
+4. proto/src/control.rs — « `pub fn ready` est TRENTE-DEUX lignes plus haut ».
+   MESURE : 36 lignes, AVANT comme APRES A1 (ready 332->368, clipboard
+   372->408 : l'ecart est de 36 des deux cotes). ⚠️ ELLE ETAIT DEJA FAUSSE, et
+   A1 ne l'a pas rendue fausse — c'est pourquoi elle est consignee et non
+   corrigee. ⚠️ Et la phrase qui la porte est justement celle qui enonce la
+   regle « nommer la chose, jamais compter les lignes qui l'en separent » : elle
+   se refute elle-meme, deux fois.
+
+5. proto/ts/control.ts:35 — « P1 avait reserve ce nom avec sa raison, DEUX
+   INTERFACES PLUS BAS ». ClipboardAgentMessage est la NEUVIEME interface plus
+   bas. Preexistant ; A1 a insere APRES elle, donc n'a pas change la distance.
+
+6. agent/src/plateforme/session.rs et agent/src/plateforme/tests_installation.rs
+   — « la CINQUIEME fois que ce depot paie la lecon du bras manquant ». A1 en
+   fait la SIXIEME sur `capteur/pont_media.rs`. ⚠️ Ces deux places comptent
+   peut-etre une autre liste (le catch-all du canal /agent) ; elles ne sont PAS
+   dans le perimetre de A1, et je ne les corrige pas sans avoir etabli ce
+   qu'elles comptent. CONSIGNE POUR LEUR PROPRIETAIRE.
+
+7. 🔴 LE PLAN DE A1, §6.1 — « DIX maillons ». IL Y EN A ONZE. Le onzieme est
+   `proto/src/control/redaction.rs`, les deux `impl Debug` ECRITES A LA MAIN
+   qui ont remplace le `#[derive(Debug)]` retire par P2 apres la fuite du
+   presse-papier. Il est GARDE PAR LE COMPILATEUR, et il a fait exactement ce
+   que son en-tete promet : forcer une decision. Le plan l'ignorait.
+
+8. 🔴 LE PLAN DE A1, §7 — L'ORDRE DECLARE N'EST COMPILABLE DANS AUCUN SENS.
+   8 -> 9 -> 10 : la tache 9 appelle `AgentControl::accent`, que 10 cree.
+   8 -> 10 -> 9 : `transport/controle.rs` porte un `match` EXHAUSTIF dont le
+   bras est prescrit a la tache 9. J'ai joue le second, et l'arbre n'a pas
+   compile entre 9e05f1c et 022dde2 — mesure, et cela a COUTE UNE MESURE A UN
+   VOISIN qui battait sur la VM depuis l'arbre partage. Voir le journal 07.
+
+9. LE PLAN DE A1, §2.1 — l'addition a `capteur/fenetre.rs` y est chiffree a
+   « ~18 lignes (patron fenetre.rs:394-407) ». ELLE EN PESE 55, et le fichier
+   serait tombe a 500 EXACTEMENT. Corrige par une EXTRACTION
+   (`fenetre/accent.rs`), jamais par une compression.
+
+10. MON PROPRE MESSAGE DE COMMIT DE LA TACHE 6 publie « agent/src/accent/
+    win32.rs, 190 lignes ». IL EN FAIT 200. Chiffre ecrit SANS ETRE MESURE, dans
+    un message de commit — c'est-a-dire dans une piece du depot que personne ne
+    relit (lecon de D11). Un message de commit ne se corrige pas ; il est
+    consigne ici.
+
+═══ CE QUE CETTE REVUE N'A PAS TROUVE, ET QU'ELLE A CHERCHE ═══
+- aucune phrase de A1 ecrite au FUTUR qu'une tache suivante ait rendue passee
+  (grep sur « naîtra », « va câbler », « à la tâche N ») : zero occurrence ;
+- `client/src/accent-dom.ts` affirme que `grep -rn 'accent-fenetre' client/src/`
+  ne rend que lui : MESURE, VRAI ;
+- `agent/src/source.rs:179` « comme presse_papier_a_annoncer JUSTE AU-DESSUS » :
+  MESURE, VRAI — `accent_a_annoncer` suit immediatement ;
+- le catalogue et l'enonce d'audit de `transport/tick.rs` : mis a jour DANS la
+  tache 9, donc rien a reprendre ici. D6 avait paye DEUX rondes pour l'avoir
+  laisse faux AUX DEUX ENDROITS DU MEME FICHIER.
+
+═══ CONTROLE DE PERIMETRE DU §5.3, ET SON ZERO QUALIFIE ═══
+$ git log --format=%H --grep='(a1)' | while read c; do
+      git show --name-only --format= "$c"; done | sort -u | wc -l
+  37        <- la commande rend bien une liste : le zero qui suit n'est pas
+               le zero d'une commande qui ne trouve rien a lire
+$ ... | grep -E '^(client/src/design/|client/outils/|agent/src/apps/|
+                   agent/src/pont/|agent/src/capteur/sommeil/|plateforme/)'
+  (VIDE)    <- aucun chemin interdit touche. D-A1-13 et D-A1-14 tiennent.
