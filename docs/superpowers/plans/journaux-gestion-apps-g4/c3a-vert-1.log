@@ -1,0 +1,23 @@
+=== G4 PRODUIT -- n=20000 temoin=1 observation=80s
+date    : 2026-08-21T11:06:29.4185806+02:00
+session : 1
+mode    : 2026-08-21T09:05:02.262916Z  INFO agent::apps: mode de surveillance retenu mode=Armee
+corpus_avant : 220
+preparation_ok : 20000 fichiers
+FENETRE_DEBUT : 2026-08-21T09:06:34.1850178Z
+rafale_ms : 6555
+temoin_cree : 2026-08-21T09:06:40.7695727Z
+FENETRE_FIN   : 2026-08-21T09:08:00.7764085Z
+RECONCILIATIONS_DANS_FENETRE : 5
+  rec: declencheur=notification cles=156 notifications=177002 debordements=0
+  rec: declencheur=notification cles=157 notifications=212867 debordements=0
+  rec: declencheur=notification cles=157 notifications=212868 debordements=0
+  rec: declencheur=periode cles=157 notifications=212868 debordements=0
+  rec: declencheur=periode cles=157 notifications=212868 debordements=0
+PERDUES_DANS_FENETRE : 0
+PERDUES_TOTAL_FICHIER : 0
+RACINE_PERDUE : 0
+RACINE_RETABLIE : 0
+DERNIERE_LIGNE : 2026-08-21T09:07:42.763610Z  INFO agent::apps::boucle::memoire: catalogue reconcilie total=221 retenus=170 cles=157 icones=0 icones_echouees=0 icones_distinctes=98 apparues=0 modifiees=0 disparues=0 duree_ms=74 declencheur="periode" notifications=212868 debordements=0
+corpus_apres : 220  (220 exige)
+=== FIN

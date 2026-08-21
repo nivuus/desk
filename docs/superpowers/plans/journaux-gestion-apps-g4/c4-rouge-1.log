@@ -1,0 +1,77 @@
+=== G4 PRODUIT -- n=20000 temoin=0 observation=40s
+date    : 2026-08-21T11:02:39.4977970+02:00
+session : 1
+mode    : 2026-08-21T09:02:36.086514Z  INFO agent::apps: mode de surveillance retenu mode=SansRebond
+corpus_avant : 220
+preparation_ok : 20000 fichiers
+FENETRE_DEBUT : 2026-08-21T09:02:44.0906324Z
+rafale_ms : 6632
+FENETRE_FIN   : 2026-08-21T09:03:30.7466177Z
+RECONCILIATIONS_DANS_FENETRE : 60
+  rec: declencheur=notification cles=156 notifications=1258 debordements=0
+  rec: declencheur=notification cles=156 notifications=2959 debordements=0
+  rec: declencheur=notification cles=156 notifications=4592 debordements=0
+  rec: declencheur=notification cles=156 notifications=6237 debordements=0
+  rec: declencheur=notification cles=156 notifications=7840 debordements=0
+  rec: declencheur=notification cles=156 notifications=9389 debordements=0
+  rec: declencheur=notification cles=156 notifications=10973 debordements=0
+  rec: declencheur=notification cles=156 notifications=12500 debordements=0
+  rec: declencheur=notification cles=156 notifications=14196 debordements=0
+  rec: declencheur=notification cles=156 notifications=15771 debordements=0
+  rec: declencheur=notification cles=156 notifications=17405 debordements=0
+  rec: declencheur=notification cles=156 notifications=18959 debordements=0
+  rec: declencheur=notification cles=156 notifications=20603 debordements=0
+  rec: declencheur=notification cles=156 notifications=22093 debordements=0
+  rec: declencheur=notification cles=156 notifications=22413 debordements=0
+  rec: declencheur=notification cles=156 notifications=23866 debordements=0
+  rec: declencheur=notification cles=156 notifications=25718 debordements=0
+  rec: declencheur=notification cles=156 notifications=27259 debordements=0
+  rec: declencheur=notification cles=156 notifications=29173 debordements=0
+  rec: declencheur=notification cles=156 notifications=30700 debordements=0
+  rec: declencheur=notification cles=156 notifications=32351 debordements=0
+  rec: declencheur=notification cles=156 notifications=34055 debordements=0
+  rec: declencheur=notification cles=156 notifications=35791 debordements=0
+  rec: declencheur=notification cles=156 notifications=37531 debordements=0
+  rec: declencheur=notification cles=156 notifications=39302 debordements=0
+  rec: declencheur=notification cles=156 notifications=41124 debordements=0
+  rec: declencheur=notification cles=156 notifications=42942 debordements=0
+  rec: declencheur=notification cles=156 notifications=44940 debordements=0
+  rec: declencheur=notification cles=156 notifications=46672 debordements=0
+  rec: declencheur=notification cles=156 notifications=48336 debordements=0
+  rec: declencheur=notification cles=156 notifications=50183 debordements=0
+  rec: declencheur=notification cles=156 notifications=51494 debordements=0
+  rec: declencheur=notification cles=156 notifications=52724 debordements=0
+  rec: declencheur=notification cles=156 notifications=54458 debordements=0
+  rec: declencheur=notification cles=156 notifications=56147 debordements=0
+  rec: declencheur=notification cles=156 notifications=57840 debordements=0
+  rec: declencheur=notification cles=156 notifications=59570 debordements=0
+  rec: declencheur=notification cles=156 notifications=61296 debordements=0
+  rec: declencheur=notification cles=156 notifications=63151 debordements=0
+  rec: declencheur=notification cles=156 notifications=65167 debordements=0
+  rec: declencheur=notification cles=156 notifications=67078 debordements=0
+  rec: declencheur=notification cles=156 notifications=68786 debordements=0
+  rec: declencheur=notification cles=156 notifications=70668 debordements=0
+  rec: declencheur=notification cles=156 notifications=72475 debordements=0
+  rec: declencheur=notification cles=156 notifications=74353 debordements=0
+  rec: declencheur=notification cles=156 notifications=76129 debordements=0
+  rec: declencheur=notification cles=156 notifications=77940 debordements=0
+  rec: declencheur=notification cles=156 notifications=79924 debordements=0
+  rec: declencheur=notification cles=156 notifications=81730 debordements=0
+  rec: declencheur=notification cles=156 notifications=83629 debordements=0
+  rec: declencheur=notification cles=156 notifications=85368 debordements=0
+  rec: declencheur=notification cles=156 notifications=87154 debordements=0
+  rec: declencheur=notification cles=156 notifications=88506 debordements=0
+  rec: declencheur=notification cles=156 notifications=89625 debordements=0
+  rec: declencheur=notification cles=156 notifications=91426 debordements=0
+  rec: declencheur=notification cles=156 notifications=93474 debordements=0
+  rec: declencheur=notification cles=156 notifications=95341 debordements=0
+  rec: declencheur=notification cles=156 notifications=96130 debordements=0
+  rec: declencheur=notification cles=156 notifications=96131 debordements=0
+  rec: declencheur=periode cles=156 notifications=96131 debordements=0
+PERDUES_DANS_FENETRE : 0
+PERDUES_TOTAL_FICHIER : 0
+RACINE_PERDUE : 0
+RACINE_RETABLIE : 0
+DERNIERE_LIGNE : 2026-08-21T09:03:21.011125Z  INFO agent::apps::boucle::memoire: catalogue reconcilie total=220 retenus=169 cles=156 icones=0 icones_echouees=0 icones_distinctes=98 apparues=0 modifiees=0 disparues=0 duree_ms=74 declencheur="periode" notifications=96131 debordements=0
+corpus_apres : 220  (220 exige)
+=== FIN
