@@ -159,14 +159,6 @@ async function empreindre(fichier: File, deps: DepsTeleversement, emettre: Emett
 
 /// Met les tranches annoncées par le service sous la forme que `verdict` attend.
 ///
-/// 🔴 DEUX FORMES SONT ACCEPTÉES, ET C'EST DÉCLARÉ PLUTÔT QUE DEVINÉ. Le plan
-/// écrit `tranches_presentes: []` (D4) et confie au listage de rendre
-/// `(n, octets)` (Task 25) : les deux lectures sont compatibles avec un tableau
-/// vide, et ce module ne peut trancher pour une route qui n'est pas encore
-/// écrite. La forme riche `{n, octets}` est la seule qui permette de DÉTECTER une
-/// tranche mal taillée ; la forme nue `n` fait CROIRE le service sur la taille —
-/// le dire, c'est nommer ce qu'on perd. Une troisième forme devient
-/// `etat-illisible`, jamais un silence.
 /// 🔴 UNE SEULE FORME EST ACCEPTÉE : `{n, octets}`, celle que la route rend.
 ///
 /// ⚠️ ELLE EN TOLÉRAIT DEUX pendant l'écriture — un rang NU était accepté, et

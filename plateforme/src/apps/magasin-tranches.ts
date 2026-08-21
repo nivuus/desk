@@ -194,10 +194,19 @@ export function ouvrirMagasinTranches(
                 // n'est jamais compté comme une tranche (voir `lister`), mais
                 // il occuperait le disque jusqu'à la purge.
                 //
-                // 🔴 ET CE `rmSync` A ÉTÉ INEFFICACE UNE FOIS SUR DIX — MESURÉ,
-                // PAS SUPPOSÉ : une sonde directe sur `ecrire`, hors HTTP, a
-                // relevé **42 répertoires non vides sur 400 dépassements**,
-                // chacun portant un `.part`. La cause était une COURSE, et non
+                // 🔴 ET CE `rmSync` A ÉTÉ INEFFICACE — MESURÉ, PAS SUPPOSÉ.
+                // Une sonde directe sur `ecrire`, hors HTTP, a relevé des
+                // répertoires non vides portant chacun un `.part` :
+                // **42 sur 400 dépassements** à une première mesure, puis
+                // **100 sur 400** à une seconde, sous une autre charge.
+                // ⚠️ AUCUN TAUX N'EST REVENDIQUÉ : les deux chiffres diffèrent
+                // d'un facteur deux et demi selon la charge de la machine, ce
+                // qui est le propre d'une course. Ce qui est établi est
+                // l'existence du défaut, jamais sa fréquence.
+                // ✅ APRÈS LE CORRECTIF, LA MÊME SONDE REND **0 SUR 400** —
+                // une exécution par bras, différentiel joué sur ce fichier
+                // seul, l'état d'avant repris du dépôt et non reconstruit.
+                // La cause était une COURSE, et non
                 // un chemin d'erreur oublié : `createWriteStream(chemin)` ouvre
                 // le fichier de façon ASYNCHRONE. Sur un dépassement, notre
                 // générateur lève AVANT que l'`open(2)` n'ait abouti ;
