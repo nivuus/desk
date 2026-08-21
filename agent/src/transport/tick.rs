@@ -50,7 +50,7 @@ impl Session {
     /// `write_frame` (une mutation) suivi directement de `handle_input`
     /// (une seconde) violerait la même règle.
     ///
-    /// Douze branches supplémentaires (a0bis : drainage d'un message de
+    /// Treize branches supplémentaires (a0bis : drainage d'un message de
     /// contrôle produit hors boucle vers `pending_control` ; a0ter :
     /// décision d'adaptation en attente ; a1 : redimensionnement en attente ;
     /// a1bis : visibilité en attente ; a1ter : annonce d'un changement de
@@ -63,10 +63,12 @@ impl Session {
     /// (sous-bloc D9, remède complet apporté par D10) ; a1septies : annonce
     /// d'un changement du presse-papier de la VM (sous-bloc P1) ; a1octies :
     /// écriture d'un collage venu du navigateur dans le presse-papier de la VM,
-    /// puis armement de l'injection de `Ctrl+V` (sous-bloc P2) ; a2 :
+    /// puis armement de l'injection de `Ctrl+V` (sous-bloc P2) ; a1nonies :
+    /// annonce d'un changement de la couleur d'accent de la fenêtre — la teinte
+    /// dominante de son icône (sous-bloc A1) ; a2 :
     /// vérification de la fenêtre) ne mettent JAMAIS en file, avant de rendre
     /// la main, une écriture qui resterait à drainer — c'est l'invariant que
-    /// cette énumération existe pour auditer. **Onze d'entre elles (toutes sauf
+    /// cette énumération existe pour auditer. **Douze d'entre elles (toutes sauf
     /// a1quater) ne touchent même pas `self.rtc`** : seulement `self.source`,
     /// `self.audio_source`, le budget de reconstruction audio (a1sexies
     /// seule) et/ou `self.pending_control`, au plus en y mettant en file un
@@ -93,7 +95,7 @@ impl Session {
     /// c…) — garde cette fonction lisible comme une seule liste de priorités
     /// plutôt que de mêler deux styles différents.
     ///
-    /// **À qui lira ceci après une dixième branche** : ce compte et cette
+    /// **À qui lira ceci après une branche de plus** : ce compte et cette
     /// énumération sont le point d'audit de l'invariant « aucune de ces
     /// branches ne met en file, avant de rendre la main, une écriture qui
     /// resterait à drainer » — **PAS** « aucune de ces branches ne mute
@@ -386,6 +388,30 @@ impl Session {
         //           est préservé.
         if let Some(texte) = self.pending_clipboard.take() {
             self.traiter_le_collage(&texte);
+            return Ok(Tick::Continue);
+        }
+
+        // a1nonies) La couleur d'accent de la fenêtre a changé (sous-bloc A1).
+        //           Même régime qu'a1ter-bis et a1septies :
+        //           `accent_a_annoncer` CONSOMME, donc aucun message n'est
+        //           jamais réémis et cette branche ne peut pas inonder le canal
+        //           de contrôle même à ~100 Hz.
+        //
+        //           ⚠️ **Le CAPTEUR annonce déjà au seul changement** — c'est
+        //           `accent::SuiviAccent`, sur le fil de fenêtre. La
+        //           consommation ici est donc une SECONDE garde, sur un autre
+        //           processus, et elle n'est pas redondante : rien dans l'enfant
+        //           ne sait ce que le capteur a déjà émis, et la fenêtre de
+        //           reprise d'une connexion média rompue peut faire arriver le
+        //           même état deux fois.
+        //
+        //           **Cette branche ne mute PAS `self.rtc`** — comme a1quater,
+        //           a1quinquies et a1octies. Elle lit `self.source` et met au
+        //           plus un message en file dans `self.pending_control`, sans
+        //           effet sur `Rtc` avant le tour suivant : l'invariant de
+        //           drainage audité en tête de fonction est préservé.
+        if let Some(couleur) = self.source.accent_a_annoncer() {
+            self.queue_control(AgentControl::accent(couleur));
             return Ok(Tick::Continue);
         }
 
