@@ -447,8 +447,26 @@ fn une_url_se_decoupe_et_le_port_par_defaut_ne_s_ecrit_pas_dans_host() {
     assert_eq!(decouper("http://h:9/").expect("url").chemin, "/");
     assert_eq!(decouper("http://h:9").expect("url").chemin, "/");
 
+    // 🔴 `ws://` EST LU COMME `http://`, ET CE TEST DISAIT L'INVERSE. Il
+    // assérait `Err(Refus::Url(_))` sur `ws://h/x` — écrit depuis la même
+    // lecture fausse que le code qu'il gardait, et **il épinglait donc le
+    // défaut au lieu de le prévenir**. La recette l'a réfuté sur la chaîne
+    // réelle : l'URL de l'installeur étant DÉRIVÉE de celle du canal, elle
+    // arrive toujours en `ws://`, et tout ordre d'installation était refusé.
+    // Un test vert n'est une garde que si ce qu'il fixe est vrai.
+    let ws = decouper("ws://h:9/x").expect("ws:// doit se lire comme http://");
+    assert_eq!(ws.hote, "h");
+    assert_eq!(ws.port, 9);
+    assert_eq!(ws.chemin, "/x");
+    // Le port par défaut d'un `ws://` est celui de `http://` — 80 —, et c'est
+    // la conséquence directe de le traiter comme tel.
+    assert_eq!(decouper("ws://h/x").expect("ws sans port").port, 80);
+
+    // ⚠️ `wss://` RESTE REFUSÉ, ET NOMMÉMENT : accepter `ws://` ne dit rien de
+    // TLS, que ce client ne parle pas plus qu'avant.
+    assert!(matches!(decouper("wss://h/x"), Err(Refus::Url(_))));
+
     // Et les formes qu'on ne sait pas lire sont refusées NOMMÉMENT.
-    assert!(matches!(decouper("ws://h/x"), Err(Refus::Url(_))));
     assert!(matches!(decouper("http:///x"), Err(Refus::Url(_))));
     assert!(matches!(decouper("http://h:70000/x"), Err(Refus::Url(_))));
     assert!(matches!(decouper("http://[::1]:80/x"), Err(Refus::Url(_))));

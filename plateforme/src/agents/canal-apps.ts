@@ -176,8 +176,19 @@ export function traiter(deps: DependancesMontantes, message: MontantDeQuatre): v
 
 export interface DependancesReemission {
     base: Pilote;
-    socket: WebSocket;
     vmId: string;
+    /// 🔴 L'ÉMISSION EST INJECTÉE, ET C'EST CE QUI DONNE DEUX APPELANTS À CETTE
+    /// FONCTION : le canal, qui écrit sur le socket qu'il vient d'enrôler, et
+    /// `POST /installation`, qui passe par le registre pour joindre un agent
+    /// DÉJÀ connecté. Sans ce second appelant, un ordre passé pendant que la VM
+    /// est en ligne n'était livré qu'au prochain enrôlement — c'est-à-dire au
+    /// prochain redémarrage de l'agent. Voir le §5quater des résultats.
+    ///
+    /// ⚠️ UN CHAMP `socket: WebSocket` FIGURAIT ICI ET N'ÉTAIT LU PAR PERSONNE.
+    /// Il n'a pas été retiré par goût : tant qu'il était là, seul un porteur de
+    /// `WebSocket` pouvait appeler cette fonction, et la route HTTP — qui n'en
+    /// a pas — devait dupliquer la construction du message. Un champ mort peut
+    /// donc coûter une duplication, pas seulement une ligne.
     envoyer: (brut: string) => void;
 }
 

@@ -88,6 +88,25 @@ export class RegistreAgents {
         }
     }
 
+    /// Pousse un message brut vers l'agent d'une VM, et dit s'il est parti.
+    ///
+    /// 🔴 CE REGISTRE EST LE SEUL À CONNAÎTRE LES SOCKETS, donc le seul à
+    /// pouvoir répondre « cette VM est-elle joignable À CET INSTANT ». Exposer
+    /// la `Map` à la place aurait laissé chaque appelant refaire le test de
+    /// `readyState`, et un seul l'aurait oublié.
+    ///
+    /// ⚠️ **`false` N'EST PAS UNE ERREUR** : il dit « aucun socket ouvert pour
+    /// cette VM », qui est l'état ordinaire d'une VM éteinte. L'appelant décide
+    /// quoi en faire — et pour l'ordre d'installation, la réponse est « rien » :
+    /// la ligne reste `en_attente` en base, et `reemettreLesInstallations` la
+    /// livrera au prochain enrôlement. C'est le filet qui existait déjà.
+    pousser(vmId: string, brut: string): boolean {
+        const socket = this.sockets.get(vmId);
+        if (socket === undefined || socket.readyState !== 1) return false;
+        socket.send(brut);
+        return true;
+    }
+
     /// Retire une VM et REJETTE ses demandes en vol.
     ///
     /// 🔴 LE REJET N'EST PAS UNE COMMODITÉ. Sans lui, la route attendrait

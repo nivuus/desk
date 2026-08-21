@@ -38,6 +38,8 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { pipeline } from 'node:stream/promises';
 import { etatDe } from '../agents/fraicheur';
 import type { MagasinTranches } from '../apps/magasin-tranches';
+import { reemettreLesInstallations } from '../agents/canal-apps';
+import type { RegistreAgents } from '../agents/registre';
 import type { Pilote } from '../base/pilote';
 import { lireParPrefixe } from '../depot/agent';
 import { creer, lireParId as lireInstallation, type LigneInstallation } from '../depot/installation';
@@ -62,6 +64,9 @@ export interface DependancesInstallation {
     /// différant, mais **le jour où deux magasins auraient la même forme, le
     /// service servirait des icônes à la place des tranches en silence.**
     tranches: MagasinTranches;
+    /// 🔴 LE REGISTRE DES AGENTS, ET SANS LUI L'ORDRE N'EST JAMAIS LIVRÉ À UNE
+    /// VM DÉJÀ EN LIGNE. Voir le commentaire de la poussée, plus bas.
+    registre: RegistreAgents;
     maintenant: () => number;
 }
 
@@ -332,6 +337,46 @@ async function ordre(
         return true;
     }
     const ligne = await creer(deps.base, { vmId, televersementId }, deps.maintenant());
+
+    // 🔴 L'ORDRE EST POUSSÉ ICI, ET CETTE POUSSÉE MANQUAIT — LA RECETTE L'A
+    // TROUVÉ, PAS LA RELECTURE. Ce fichier documentait que la ligne
+    // `en_attente` était « mise sur le canal par
+    // `canal-apps.ts::reemettreLesInstallations` », et c'est vrai : mais cette
+    // fonction n'est appelée QU'À L'ENRÔLEMENT. Un agent DÉJÀ connecté ne se
+    // réenrôle jamais, si bien qu'une installation demandée pendant que la VM
+    // est en ligne — c'est-à-dire LE CAS NOMINAL, le seul que 503 laisse
+    // passer — n'était livrée qu'au prochain redémarrage de l'agent.
+    //
+    // Mesuré sur la chaîne réelle : `POST /installation` rendait bien 201,
+    // `GET /installation/:id` restait `en_attente` avec `phase: ""` et
+    // `octets_faits: 0`, et le journal de l'agent ne portait **aucune ligne**
+    // d'installation. Rien, nulle part, ne contredisait le 201.
+    //
+    // ⚠️ ON RÉEMPLOIE `reemettreLesInstallations`, ON NE RECONSTRUIT PAS LE
+    // MESSAGE. Elle relit les `en_attente` de cette VM et les encode ; une
+    // seconde construction d'`Installer` ici aurait divergé de celle du canal
+    // le jour où l'une des deux aurait changé — et c'est la duplication que le
+    // champ mort `socket` de ses dépendances rendait jusqu'ici obligatoire.
+    //
+    // ⚠️ `void … .catch(…)`, JAMAIS `await` : la ligne EST en base, le 201 est
+    // dû, et une base momentanément lente ne doit pas le retarder. Si la
+    // poussée échoue ou n'aboutit pas, le filet d'enrôlement reste — c'est
+    // exactement ce qu'il est là pour faire.
+    void reemettreLesInstallations({
+        base: deps.base,
+        vmId,
+        envoyer: (brut) => {
+            if (!deps.registre.pousser(vmId, brut)) {
+                console.info(
+                    `installation ${ligne.id} : aucun socket ouvert pour la VM ${vmId}, `
+                    + "l'ordre attend le prochain enrôlement",
+                );
+            }
+        },
+    }).catch((cause) => {
+        console.error(`installation ${ligne.id} : poussée impossible — ${String(cause)}`);
+    });
+
     // 201 : une ressource est NÉE, et son identifiant est ce que le hub ira
     // relire par `GET /installation/:id`.
     repondre(rep, 201, { id: ligne.id }, cors);
