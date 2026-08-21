@@ -78,8 +78,16 @@ export function vider(coffre: Coffre): void {
 /// FASSE. Ce commentaire a écrit « à l'expiration, le client rappelle
 /// `GET /auth/moi` » : **aucun code ne le fait**, et la revue transverse du
 /// chantier `auth-pomerium` l'a relevé. `rafraichirSiNecessaire` (plus bas)
-/// n'a **aucun appelant de production** — `grep -rn 'rafraichirSiNecessaire'
-/// client/src` ne rend que sa définition et son test —, et `tenterPomerium`
+/// n'a **aucun appelant de production** :
+///
+///     grep -rn 'rafraichirSiNecessaire(' client/src --include='*.ts' | grep -v '///'
+///
+/// rend CINQ lignes — une définition et quatre usages de test, pas un appel.
+/// ⚠️ LE SECOND `grep` N'EST PAS DÉCORATIF : sans lui, la commande compte LES
+/// LIGNES DE CE COMMENTAIRE, et le chiffre annoncé cesse d'être celui qu'elle
+/// rend. La vague de correction du 21 août 2026 a payé ce patron QUATRE fois
+/// dans la même ronde — un `grep` cité s'ancre sur la syntaxe, jamais sur un
+/// nom que la prose environnante répète. Et `tenterPomerium`
 /// (`connexion.ts`) ne court **qu'au chargement de la page de connexion**. Ce
 /// qui se passe réellement en mode `pomerium` : le jeton expire, la poignée de
 /// main suivante est refusée, et l'utilisateur RECHARGE la page — c'est ce
