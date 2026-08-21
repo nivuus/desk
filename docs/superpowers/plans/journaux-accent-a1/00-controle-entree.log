@@ -1,0 +1,42 @@
+=== A1 — CONTRÔLE D'ENTRÉE (tâche 1) ===
+Date : 21 août 2026
+Arbre : HEAD = 375b894 (le commit du plan)
+git status --porcelain hors docs/ : VIDE
+stat -c '%F' /dev/null : character special file  (SAIN — §2.2 règle 17)
+
+--- Step 1 : les six comptes, RELANCÉS (jamais recopiés du plan) ---
+cargo test -p agent .............. 944 passed; 0 failed      (plan §0.1 : 944)  ✅
+cargo test -p proto .............. 109 passed; 0 failed      (plan §0.1 : 109)  ✅
+    (la seconde ligne « 0 passed » est le binaire de doc-tests, pas la suite)
+cd client && npx vitest run ...... 466 passed, 40 fichiers   (plan §0.1 : 466/40) ✅
+cd proto  && npx vitest run ...... 296 passed,  9 fichiers   (plan §0.1 : 296/9)  ✅
+cd client && npm run design:verifier ... 7/7 contrôle(s) vert(s)                  ✅
+grep -c '^ *etape "' scripts/verify-all.sh ... 10                                 ✅
+grep -n CONTROL_VERSION proto/src/control.rs ... :14 vaut 3                       ✅
+
+--- Step 2 : la commande de tailles du §0.2 ---
+   1536 agent/src/encode.rs
+    630 agent/src/windows_source.rs
+DEUX lignes, et deux seulement. Le tableau de dette de CLAUDE.md en publie
+QUATRE (proto/src/plateforme/tests.rs et proto/ts/plateforme.test.ts sont
+retombées sous le plafond). Correction déférée à la tâche 16 — CLAUDE.md est
+un périmètre concurrent, et un relevé pris aujourd'hui serait faux à la clôture.
+
+--- Step 3 : clippy --workspace, avertissements HORS dead_code ---
+      1 warning: manual implementation of `.is_multiple_of()`   agent/src/mire.rs
+      1 warning: redundant closure                              agent/src/transport/piste_audio.rs
+      1 warning: this `map_or` can be simplified                agent/src/capteur/vivier.rs
+      1 warning: unused imports: `inscrire` and `retirer`       agent/src/capteur/sommeil.rs
+QUATRE, exactement ceux du §0.3, TOUS PRÉEXISTANTS et tous hors du périmètre
+de A1. La NATURE est vérifiée, jamais le nombre absolu (qui dérive avec la
+fraîcheur du build — règle D3).
+
+--- Step 4 : node client/outils/tokens-orphelins.mjs (depuis la RACINE) ---
+inclusion ② : 0 orphelin(s), dont 0 en attente déclarée
+inclusion ③ : 0 écart(s)  (sous-blocs clos : S1, S2, S3, S4)
+total : 0 écart(s)
+La liste d'attente EN_ATTENTE_D_APPELANT est VIDE — confirmé, D-A1-2 point 3.
+
+--- VERDICT ---
+Ligne de base établie. Aucune suite n'est rouge, donc aucune étape n'a eu à
+être imputée à F4 ni à G4.
