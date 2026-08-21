@@ -26,7 +26,7 @@ use std::path::{Path, PathBuf};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 
-use crate::apps::sha256::Condensateur;
+use crate::apps::sha256::{hex_de, Condensateur};
 
 use super::reponse::{self, Etat};
 
@@ -206,7 +206,7 @@ where
         });
     }
 
-    let obtenue = hex(condensateur.terminer());
+    let obtenue = hex_de(condensateur.terminer());
     if obtenue != demande.sha256_attendu {
         // 🔴 LE FICHIER PARTIEL EST SUPPRIMÉ, ET LE TÉLÉVERSEMENT RESTE
         // REPRENABLE. Le garder inviterait un chemin ultérieur à le prendre
@@ -362,15 +362,6 @@ async fn ecrire(
         .map_err(|e| Refus::Disque(format!("écriture : {e}")))?;
     condensateur.absorber(bloc);
     Ok(())
-}
-
-fn hex(octets: [u8; 32]) -> String {
-    use std::fmt::Write;
-    let mut s = String::with_capacity(64);
-    for o in octets {
-        let _ = write!(s, "{o:02x}");
-    }
-    s
 }
 
 /// Le chemin d'un installeur, tel que l'appelant le compose.

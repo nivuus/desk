@@ -287,6 +287,7 @@ pub fn tourner(
     mut identite: watch::Receiver<Option<Identite>>,
     base_plateforme: String,
     periode: std::time::Duration,
+    partage: crate::apps::installation::partage::Partage,
 ) {
     if let Err(erreur) = lecture::initialiser_com() {
         tracing::error!(%erreur, "decouverte d'applications abandonnee : COM indisponible");
@@ -305,6 +306,25 @@ pub fn tourner(
 
     loop {
         let (diff, catalogue) = reconcilier(&mut memoire);
+        // 🔴 LE COMPTE VA À TOUTES LES FENÊTRES OUVERTES, ET IL SE PREND ICI —
+        // avant que `diff.apparues` ne soit consommé par la branche du delta.
+        //
+        // ⚠️ IL EST VERSÉ MÊME QUAND LE CATALOGUE PART COMPLET : `complet` ne
+        // change que ce qui est ÉMIS, jamais ce que le diff contient. La
+        // mémoire n'est pas remise à zéro à un réenrôlement, donc
+        // `diff.apparues` reste la vraie nouveauté — le compter deux fois
+        // serait le défaut, ne pas le compter en serait un autre.
+        if !diff.apparues.is_empty() {
+            if let Ok(mut f) = partage.fenetres.lock() {
+                f.ajouter(diff.apparues.len());
+            }
+        }
+        // ⚠️ LE DRAPEAU SE BAISSE APRÈS LA RÉCONCILIATION, PAS AVANT : le fil
+        // d'installation attend `reconciliee`, et le lever trop tôt lui ferait
+        // lire un compte pris avant que l'installeur n'ait fini d'écrire.
+        if partage.reconcilier.swap(false, std::sync::atomic::Ordering::SeqCst) {
+            partage.reconciliee.store(true, std::sync::atomic::Ordering::SeqCst);
+        }
         if complet {
             canal_emission(VersLaPlateforme::catalogue(true, catalogue, Vec::new()));
             complet = false;
@@ -324,6 +344,13 @@ pub fn tourner(
         loop {
             let reste = echeance.saturating_duration_since(Instant::now());
             if reste.is_zero() {
+                break;
+            }
+            // 🔴 « RÉCONCILIE MAINTENANT » COURT-CIRCUITE L'ATTENTE. Sans
+            // cela, le verdict d'une installation de dix secondes arriverait
+            // jusqu'à trente secondes plus tard, et l'utilisateur verrait une
+            // barre finie devant un état « en cours ».
+            if partage.reconcilier.load(std::sync::atomic::Ordering::SeqCst) {
                 break;
             }
             match ordres.try_recv() {

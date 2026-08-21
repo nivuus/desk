@@ -190,6 +190,23 @@ pub fn condenser(message: &[u8]) -> [u8; 32] {
     condensateur.terminer()
 }
 
+/// Les 32 octets d'un condensat, en 64 caractères hexadécimaux minuscules.
+///
+/// ⚠️ ELLE EXISTE PARCE QUE `hex` PREND UN MESSAGE, PAS UN CONDENSAT : un
+/// appelant qui a absorbé son fichier par morceaux n'a plus le message. Sans
+/// elle, `installation::telechargement` en avait sa propre copie — et deux
+/// formatages hexadécimaux divergeraient le jour où l'un des deux changerait
+/// de casse, ce qui ferait échouer une comparaison d'empreinte sans que rien
+/// ne dise pourquoi.
+pub fn hex_de(condensat: [u8; 32]) -> String {
+    let mut sortie = String::with_capacity(64);
+    for octet in condensat {
+        use std::fmt::Write;
+        let _ = write!(sortie, "{octet:02x}");
+    }
+    sortie
+}
+
 /// L'empreinte, en 64 caractères hexadécimaux minuscules.
 pub fn hex(message: &[u8]) -> String {
     hexa(condenser(message))
