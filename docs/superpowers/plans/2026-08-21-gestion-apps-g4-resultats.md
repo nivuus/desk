@@ -233,7 +233,16 @@ réfuté**.
 
 ---
 
-## 6. Les gardes vus rouges — **treize mutations, une à la fois**
+## 6. Les gardes vus rouges — **DOUZE mutations, DIX rouges réelles**, une à la fois
+
+⚠️ **CE TITRE ANNONÇAIT « TREIZE », ET JE NE LES AVAIS PAS COMPTÉES.** Le
+relevé, par `grep -ah '^=== ROUGE' journaux-gestion-apps-g4/rouge*.log` : **onze
+entrées numérotées**, dont **la 9 n'est PAS une rouge** (un garde-fou de mon
+harnais, annoté sur place) et **la 6 a été jouée DEUX fois** — soit **douze
+mutations appliquées** et **dix rouges réelles**. *C'est exactement l'erreur que
+le sous-bloc F4 venait de corriger sur lui-même, « treize exécutions » pour
+vingt-deux : un compte écrit de mémoire au lieu d'être lu dans la sortie d'une
+commande.*
 
 Harnais complet à chaque fois : copie nommée + `sha256`, mutation **par numéro
 de ligne**, **preuve que le `diff` est non vide**, lecture de **quelle assertion
