@@ -276,7 +276,13 @@ fn desarme_le_fil_journalise_mais_ne_pousse_rien() {
 /// 🔴 **UN MORCEAU EN VOL À LA FOIS.**
 ///
 /// Tout pousser d'un coup inonderait la file SCTP — ce que F1 a déjà décidé
-/// d'éviter, et le contrôle de flux par `bufferedAmount` est un livrable de F3.
+/// d'éviter.
+///
+/// ⚠️ **F3 N'A PAS CHANGÉ CELA, et sa fenêtre ne s'applique pas ici.** *(Cette
+/// phrase ajoutait « et le contrôle de flux par `bufferedAmount` est un
+/// livrable de F3 ».)* `pont::lecture::Fenetre` gouverne le sens LECTURE, où
+/// c'est le NAVIGATEUR qui émet ; en écriture, c'est le pont, et pousser
+/// plusieurs morceaux d'avance inonderait précisément ce qu'on évite.
 #[test]
 fn un_morceau_en_vol_a_la_fois() {
     let bac = Bac::neuf();
