@@ -49,6 +49,9 @@ export function adressePlateforme(
     return `${emplacement.protocol === 'https:' ? 'https' : 'http'}://${emplacement.host}`;
 }
 
+/// Le chemin du relais sur le service. Voir `plateforme/src/http/serveur.ts`.
+const CHEMIN_SIGNAL = '/signal';
+
 /// L'adresse WebSocket du signaling : `?signaling=` s'il est posé, sinon
 /// l'origine de la page, **avec le schéma qui correspond au sien**.
 ///
@@ -59,8 +62,16 @@ export function adresseSignaling(
     emplacement: Emplacement,
     explicite?: string | null,
 ): string {
+    // ⚠️ UN EXPLICITE RESTE EXPLICITE, ET NE REÇOIT PAS LE SUFFIXE. C'est le
+    // contrat de ce paramètre depuis P5 : il remplace l'adresse ENTIÈRE, pas
+    // son autorité. Y ajouter `/signal` ferait `/signal/signal` chez qui l'a
+    // déjà écrit, et personne ne saurait lequel des deux comportements est le
+    // bon. CONSÉQUENCE À CONNAÎTRE : une recette qui pose `?signaling=` doit
+    // désormais écrire le chemin. Relevé le 21 août 2026 — aucune n'en pose
+    // (`grep -rn 'signaling=' client/*.mjs client/recette/*.mjs scripts/*.sh`).
     if (explicite) return explicite;
-    return `${emplacement.protocol === 'https:' ? 'wss' : 'ws'}://${emplacement.host}`;
+    const schema = emplacement.protocol === 'https:' ? 'wss' : 'ws';
+    return `${schema}://${emplacement.host}${CHEMIN_SIGNAL}`;
 }
 
 // ⚠️ LE TEST DU SCHÉMA EST UNE ÉGALITÉ À `'https:'`, PAS UNE ABSENCE DE

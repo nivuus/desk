@@ -32,8 +32,16 @@ pub async fn executer(
     // P3 : sans lui, deux VMs ouvriraient toutes deux `bureau` et la seconde
     // serait refusée en « un agent est déjà connecté à la session ».
     let session_de_controle = protocole::session_de_controle(&config.prefixe);
+    // 🔴 CETTE SESSION VIT SUR LE MÊME RELAIS QUE `demarrage.rs` ET
+    // `pont.rs` — celui que le 21 août 2026 a déplacé de la racine vers
+    // `/signal` (voir `crate::signaling::url_du_relais`). `config.signaling_url`
+    // reste la BASE du service ; sans cette dérivation, le superviseur
+    // continuerait de frapper l'ancienne racine, désormais fermée, et la
+    // page-shell — qui, elle, a suivi le déplacement via
+    // `client/src/adresse-plateforme.ts` — ne trouverait jamais personne en
+    // face sur la session de contrôle.
     let (rx_shell, envoyer) = signalisation::connecter(
-        &config.signaling_url,
+        &crate::signaling::url_du_relais(&config.signaling_url),
         &session_de_controle,
         config.jeton.as_deref(),
     )

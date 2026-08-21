@@ -140,7 +140,11 @@ function startRealServer(): Promise<{ child: ChildProcessWithoutNullStreams; por
 
 function connectTo(targetPort: number, role: 'agent' | 'client', session: string): Promise<WebSocket> {
     return new Promise((resolve, reject) => {
-        const ws = new WebSocket(`ws://127.0.0.1:${targetPort}`);
+        // ⚠️ `/signal` DEPUIS LE 21 AOÛT 2026 : le relais a déménagé de la
+        // racine (voir l'en-tête de `http/serveur.ts`). Ce fichier lance le
+        // VRAI `index.ts`, donc la VRAIE routine d'upgrade — une régression
+        // sur ce chemin ne serait vue par AUCUN test « en mémoire ».
+        const ws = new WebSocket(`ws://127.0.0.1:${targetPort}/signal`);
         ws.on('error', reject);
         ws.on('open', () => {
             // 🔴 LES DEUX RÔLES exigent un jeton, signé avec le MÊME secret
@@ -177,7 +181,8 @@ afterAll(() => {
 
 describe('résilience du process réel (index.ts) face à un message `null`', () => {
     it('survit à un `null` en premier message : le fautif reçoit une erreur, une session tierce continue de fonctionner', async () => {
-        const faulty = new WebSocket(`ws://127.0.0.1:${port}`);
+        // ⚠️ `/signal` : voir la note de `connectTo` plus haut.
+        const faulty = new WebSocket(`ws://127.0.0.1:${port}/signal`);
         await new Promise((resolve, reject) => {
             faulty.on('open', resolve);
             faulty.on('error', reject);
@@ -262,8 +267,11 @@ describe('résilience du process réel face à une trame TROP GRANDE (P5)', () =
     /// process. Sans l'écouteur, LE CORRECTIF ANTI-DÉNI-DE-SERVICE AURAIT
     /// DONNÉ UN DÉNI DE SERVICE PIRE : une trame anonyme unique tuant le
     /// service au lieu de le ralentir.
-    it('🔴 survit à une trame au-delà de `maxPayload`, sur `/` comme sur `/agent`', async () => {
-        for (const chemin of ['/', '/agent']) {
+    it('🔴 survit à une trame au-delà de `maxPayload`, sur `/signal` comme sur `/agent`', async () => {
+        // ⚠️ `/signal`, PAS `/`, DEPUIS LE 21 AOÛT 2026 : voir la note de
+        // `connectTo` plus haut. `/` est désormais fermée, et y pousser une
+        // trame ne prouverait plus rien sur `maxPayload`.
+        for (const chemin of ['/signal', '/agent']) {
             const gros = new WebSocket(`ws://127.0.0.1:${port}${chemin}`);
             await new Promise((resolve, reject) => {
                 gros.on('open', resolve);

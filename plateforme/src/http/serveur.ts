@@ -12,15 +12,21 @@
 // ⚠️ DEUX CHEMINS, DEUX COMPARAISONS, PAS DE TABLE DE ROUTAGE. Une table pour
 // deux entrées serait de l'abstraction non payée, et elle rendrait moins
 // visible ce qui compte ici : le refus par DÉFAUT. Tout chemin qui n'est ni
-// `/` ni `/agent` reçoit un `404` et son socket se ferme — c'est une liste
-// blanche, jamais une liste noire, et c'est ce qui fait qu'un chemin ajouté un
-// jour par mégarde n'ouvre rien.
+// `/signal` ni `/agent` reçoit un `404` et son socket se ferme — c'est une
+// liste blanche, jamais une liste noire, et c'est ce qui fait qu'un chemin
+// ajouté un jour par mégarde n'ouvre rien.
 //
-// ⚠️ Router sur `/` RESTREINT ce qui était accepté hier. C'est délibéré, et le
-// tableau des émetteurs réels a été relevé avant de le décider : la page de
-// session (`client/src/main.ts`), la page-shell (`client/src/shell-page.ts`)
-// et l'agent (`agent/src/signaling.rs`) visent tous les trois le chemin
-// racine, sans aucun composant de chemin. Aucun pair connu n'en est affecté.
+// 🔴 LE RELAIS A QUITTÉ LA RACINE LE 21 AOÛT 2026, ET LA RAISON EST LE PROXY,
+// PAS LE GOÛT. Sur la racine, la page et la montée WebSocket se disputaient
+// le même chemin, départagées par le seul en-tête `Upgrade` — un critère sur
+// lequel Pomerium ne sait pas router. Le relais servant DEUX pairs de natures
+// différentes (le navigateur, que le proxy authentifie ; l'agent Windows, qui
+// n'a ni navigateur ni cookie), il fallait un chemin distinct pour que le
+// proxy puisse garder la racine sans couper l'agent. La page de session
+// (`client/src/main.ts`) et la page-shell (`client/src/shell-page.ts`) visent
+// désormais `/signal` (via `client/src/adresse-plateforme.ts`), comme l'agent
+// (`agent/src/signaling.rs`, `url_du_relais`). Aucun pair connu n'en est
+// affecté — chacun a été déplacé dans le même commit.
 
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { WebSocketServer } from 'ws';
@@ -49,6 +55,20 @@ import { Frein } from '../securite/frein';
 /// Le chemin du canal plateforme <-> agent (P3). ⚠️ Il est comparé
 /// EXACTEMENT : voir le routage plus bas.
 const CHEMIN_AGENT = '/agent';
+
+/// Le chemin du relais de signaling. ⚠️ Il est comparé EXACTEMENT.
+///
+/// 🔴 IL A QUITTÉ LA RACINE LE 21 AOÛT 2026, ET LA RAISON EST LE PROXY, PAS LE
+/// GOÛT. Sur la racine, la page et la montée WebSocket se disputaient le même
+/// chemin, départagées par le seul en-tête `Upgrade` — un critère sur lequel
+/// Pomerium ne sait pas router. Le relais servant DEUX pairs de natures
+/// différentes (le navigateur, que le proxy authentifie ; l'agent Windows, qui
+/// n'a ni navigateur ni cookie), il fallait un chemin distinct pour que le
+/// proxy puisse garder la racine sans couper l'agent.
+///
+/// ✅ CE DÉPLACEMENT SOLDE UN LEGS DÉCLARÉ de `deploiement/nginx.conf`, que le
+/// sous-bloc P5 avait écarté faute d'avoir le droit de toucher `agent/`.
+const CHEMIN_SIGNAL = '/signal';
 
 /// 🔴 LA TAILLE MAXIMALE D'UNE TRAME WEBSOCKET, SUR LES DEUX SERVEURS.
 ///
@@ -401,7 +421,8 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
         // Comparaison EXACTE, jamais un `startsWith` : `/agentaire` n'est pas
         // `/agent`, et un préfixe ouvrirait une famille entière de chemins que
         // personne n'a décidés.
-        const wss = chemin === '/' ? wssRacine : chemin === CHEMIN_AGENT ? wssAgent : undefined;
+        const wss =
+            chemin === CHEMIN_SIGNAL ? wssRacine : chemin === CHEMIN_AGENT ? wssAgent : undefined;
         if (wss === undefined) {
             // Refus explicite AVANT toute montée : le pair reçoit un 404 HTTP
             // et son socket se ferme, plutôt que de rester ouvert sur un

@@ -103,7 +103,12 @@ pub(crate) async fn executer(config: Config) -> Result<()> {
         ice_config,
         receiver_task: _,
         sender_task: _,
-    } = signaling::run_signaling(&config.signaling_url, &config.session_id, config.jeton.as_deref()).await?;
+    } = signaling::run_signaling(
+        &signaling::url_du_relais(&config.signaling_url),
+        &config.session_id,
+        config.jeton.as_deref(),
+    )
+    .await?;
     let mut session = Session::new(source, config.local_ip, clock_origin, bitrate)?;
     // Pour la ligne de cadence périodique de `piste_video` (voir sa doc) :
     // apparier ce relevé à celui du capteur dans un `agent.log` que
