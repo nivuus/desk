@@ -32,7 +32,10 @@ import { servirVm } from './routes-vm';
 import { servirSession } from './routes-session';
 import { servirApplications } from './routes-applications';
 import { servirIcone } from './routes-icone';
+import { servirTeleversement } from './routes-televersement';
+import { servirInstallation } from './routes-installation';
 import { ouvrirMagasin } from '../apps/icones';
+import { ouvrirMagasinTranches } from '../apps/magasin-tranches';
 import { CacheSante, servirSante } from './routes-sante';
 import { ENTETES_SECURITE } from './entetes';
 import { createSignalingServer } from '../signaling/relais';
@@ -191,6 +194,18 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
         console.info(`magasin d icones : ${chemin}`);
     });
 
+    // Le magasin de TRANCHES, ouvert UNE fois lui aussi, et journalisant son
+    // chemin pour exactement la même raison que celui des icônes.
+    //
+    // 🔴 IL EST LU PAR **DEUX** ROUTEURS — `servirTeleversement` y écrit les
+    // tranches, `servirInstallation` en sert la concaténation à l'agent — et
+    // c'est le MÊME, jamais deux : deux magasins ouverts sur le même répertoire
+    // seraient deux vues d'un même disque, et le second ne verrait pas
+    // nécessairement ce que le premier vient d'écrire.
+    const magasinTranches = ouvrirMagasinTranches(config.repertoireTeleversements, (chemin) => {
+        console.info(`magasin de tranches : ${chemin}`);
+    });
+
     const deps = {
         base,
         secretJeton: config.secretJeton,
@@ -209,6 +224,14 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
         // ⚠️ SEUL `servirIcone` LE LIT — même raison que `registre` et `frein`
         // ci-dessus.
         magasin,
+        // ⚠️ IL S'APPELLE `tranches` ET NON `magasin`, parce que `magasin` est
+        // DÉJÀ PRIS par celui des icônes, juste au-dessus. `tsc` a attrapé la
+        // collision — les deux routeurs de G3 l'avaient d'abord nommée
+        // `magasin` chacun de son côté — parce que les deux types diffèrent.
+        // **Le jour où deux magasins auront la même forme, le service servirait
+        // des icônes à la place des tranches sans qu'aucun contrôle ne
+        // bronche.**
+        tranches: magasinTranches,
     };
 
     /// Essaie les routeurs dans l'ordre, et rend `false` si aucun n'a servi.
@@ -235,6 +258,21 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
         if (await servirVm(requete, reponse, deps)) return true;
         if (await servirApplications(requete, reponse, deps)) return true;
         if (await servirIcone(requete, reponse, deps)) return true;
+        // 🔴 LES DEUX ROUTEURS DE G3, ET CE SONT LES SEULES LIGNES QUI LES FONT
+        // VIVRE. Sans elles, leurs sept routes tomberaient dans le 404
+        // générique : la panne la plus discrète qui soit, puisque le service
+        // répond, écoute, et sert correctement les six autres routeurs.
+        // ROUGE JOUÉE : retirer la première fait tomber le test (6ter) de
+        // `entetes-routeurs.test.ts`, et LUI SEUL — `1 failed | 10 passed`.
+        //
+        // ⚠️ Les deux se partagent le préfixe `/televersement/` : le premier
+        // sert `…/tranche/:n`, `…/sceller` et l'état, le second `…/contenu`
+        // seul. Les jeux restent DISJOINTS — chacun découpe par SEGMENTS et
+        // compare leur NOMBRE exactement, jamais par `startsWith` —, donc aucun
+        // ne peut voler le chemin de l'autre. L'ordre est une ceinture, pas la
+        // garantie.
+        if (await servirTeleversement(requete, reponse, deps)) return true;
+        if (await servirInstallation(requete, reponse, deps)) return true;
         if (await servirSession(requete, reponse, deps)) return true;
         // ⚠️ `/sante` EST CHAÎNÉE EN DERNIER, et l'ordre n'est pas indifférent
         // ici : c'est la seule route NON AUTHENTIFIÉE du service, et la placer
