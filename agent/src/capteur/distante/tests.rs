@@ -7,6 +7,11 @@
 //! `superviseur/table/tests_retention.rs`.
 
 use super::*;
+// `VideoSource` est importé ICI depuis que l'implémentation du trait a été
+// extraite vers `distante/video_source.rs` (sous-bloc A1) : le parent ne s'en
+// sert plus, et un trait doit être en portée pour que ses méthodes soient
+// appelables.
+use crate::source::VideoSource;
 use crate::capteur::reprise::{DUREE_FENETRE_CANAL, PAS_RATTACHEMENT};
 use std::sync::mpsc::sync_channel;
 
