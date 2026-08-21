@@ -38,6 +38,9 @@ pub mod rebond;
 // ci-dessus, et c'est ce qui les rend éprouvables sur l'hôte.
 // ---------------------------------------------------------------------------
 
+/// Le fil unique : l'attente, les N racines, l'arrêt.
+#[cfg(windows)]
+mod fil;
 /// Une racine surveillée : ouvrir, armer, compléter, rouvrir.
 #[cfg(windows)]
 mod racine;
@@ -55,3 +58,49 @@ mod racine;
 /// régler le produit sur son test. Si aucune rafale ne le fait déborder, le
 /// verdict est **NON MESURABLE**, et il s'écrit tel quel.
 pub const TAMPON_NOTIFICATIONS: usize = 65_536;
+
+/// Démarre le fil de surveillance, ou rend une `Veille` inerte.
+///
+/// ⚠️ LA POIGNÉE EST RENDUE POUR ÊTRE **CONSERVÉE SANS ÊTRE ATTENDUE** : la
+/// lâcher ne terminerait pas le fil — un `JoinHandle` lâché détache —, mais
+/// `apps::Poignees` la garde par symétrie avec les deux autres, et parce que
+/// c'est ce qui rendra un jour l'extinction observable. **L'arrêt propre passe
+/// par `Veille::arreter`, jamais par la poignée.**
+///
+/// ⚠️ `Mode::Desarmee` NE JOURNALISE RIEN ICI : l'`info!` du mode est émis par
+/// l'appelant, **inconditionnellement**, ce qui vaut mieux qu'une trace émise
+/// par la seule branche qui désarme.
+#[cfg(windows)]
+pub fn demarrer(mode: mode::Mode) -> (partage::Veille, Option<std::thread::JoinHandle<()>>) {
+    let veille = partage::Veille::default();
+    if !mode.surveille() {
+        return (veille, None);
+    }
+    let pour_le_fil = veille.clone();
+    let poignee = std::thread::Builder::new()
+        .name("surveillance-apps".into())
+        .spawn(move || fil::tourner(pour_le_fil))
+        .map_err(|erreur| {
+            // Le fil ne démarre pas : la découverte reste ENTIÈREMENT
+            // fonctionnelle, à sa période. C'est exactement ce que « G4
+            // n'ajoute aucune fonctionnalité » veut dire, et la trace le dit
+            // plutôt que de laisser lire une panne de découverte.
+            tracing::error!(
+                %erreur,
+                "fil de surveillance non démarré : la réconciliation périodique reste la source de vérité"
+            );
+        })
+        .ok();
+    (veille, poignee)
+}
+
+/// La variante hors Windows : une `Veille` inerte, **et rien à journaliser**.
+///
+/// Même raison qu'`apps::demarrer` : un agent Linux n'a pas à se plaindre de ne
+/// pas surveiller des raccourcis Windows, et le confondre avec un désarmement
+/// explicite — qui, lui, DIT qu'il est désarmé — brouillerait deux états
+/// distincts.
+#[cfg(not(windows))]
+pub fn demarrer(_mode: mode::Mode) -> (partage::Veille, Option<std::thread::JoinHandle<()>>) {
+    (partage::Veille::default(), None)
+}
