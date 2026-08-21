@@ -167,15 +167,24 @@ async function empreindre(fichier: File, deps: DepsTeleversement, emettre: Emett
 /// tranche mal taillée ; la forme nue `n` fait CROIRE le service sur la taille —
 /// le dire, c'est nommer ce qu'on perd. Une troisième forme devient
 /// `etat-illisible`, jamais un silence.
-function normaliserPresentes(brut: unknown, attendu: Tranche[]): Tranche[] | null {
+/// 🔴 UNE SEULE FORME EST ACCEPTÉE : `{n, octets}`, celle que la route rend.
+///
+/// ⚠️ ELLE EN TOLÉRAIT DEUX pendant l'écriture — un rang NU était accepté, et
+/// sa taille était alors **empruntée au plan local**. La route étant arrêtée
+/// (`routes-televersement.ts` rend le LISTAGE du magasin, donc des
+/// `{n, octets}`), la tolérance est retirée, et pas seulement parce qu'elle est
+/// devenue morte : **elle faisait croire le service sur une taille qu'il n'avait
+/// jamais annoncée.** Un rang présent dont la taille aurait dérivé serait passé
+/// pour conforme, et le scellement aurait refusé plus tard, ailleurs, sans que
+/// rien ne relie les deux — alors que `verdict` sait dire `incoherentes`.
+///
+/// ⚠️ TOUTE AUTRE FORME EST UN REFUS TYPÉ, JAMAIS UN SILENCE : c'est ce qui
+/// distingue « le service parle une autre version » de « il n'y a rien à
+/// reprendre », et les deux appellent des gestes opposés.
+function normaliserPresentes(brut: unknown): Tranche[] | null {
     if (!Array.isArray(brut)) return null;
     const sortie: Tranche[] = [];
     for (const entree of brut) {
-        // Hors plan, `verdict` juge le rang lui-même : la taille est sans objet.
-        if (typeof entree === 'number') {
-            sortie.push({ n: entree, octets: attendu[entree]?.octets ?? -1 });
-            continue;
-        }
         const t = entree as { n?: unknown; octets?: unknown };
         if (typeof t?.n !== 'number' || typeof t?.octets !== 'number') return null;
         sortie.push({ n: t.n, octets: t.octets });
@@ -256,7 +265,7 @@ export async function televerser(fichier: File, deps: DepsTeleversement): Promis
     }
     const pas = tailleTranche as number;
     const attendu = plan(taille, pas);
-    const presentes = normaliserPresentes(presentesBrut, attendu);
+    const presentes = normaliserPresentes(presentesBrut);
     if (presentes === null) return nonLocal('etat-illisible', 'tranches_presentes de forme inconnue');
 
     // 🔴 `incoherentes` NE SE RECOMPLÈTE PAS : les deux bouts ne s'accordent plus

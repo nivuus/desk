@@ -83,6 +83,16 @@ const OCTETS = octetsDe(16);
 const SHA = condenserHex(OCTETS);
 const fichier = (o: BlobPart = OCTETS, nom = 'setup.exe'): File => new File([o], nom);
 const creation = { status: 200, corps: { id: 't-1', taille_tranche: 4, tranches_presentes: [] } };
+/// 🔴 LA FORME QUE LA ROUTE REND, ET LA SEULE : `{n, octets}`.
+///
+/// ⚠️ CES CAS PORTAIENT DES RANGS NUS pendant que `routes-televersement.ts`
+/// s'écrivait en parallèle, et le module les tolérait. La route étant arrêtée —
+/// elle rend le LISTAGE du magasin —, la tolérance est retirée : elle faisait
+/// **croire le service sur une taille qu'il n'avait jamais annoncée**, si bien
+/// qu'un rang présent à la MAUVAISE taille serait passé pour conforme et que le
+/// scellement aurait refusé plus tard, ailleurs, sans que rien ne relie les deux.
+const presente = (n: number, octets = 4) => ({ n, octets });
+
 const etatDe = (presentes: unknown, extra: Record<string, unknown> = {}): Reponse => ({
     status: 200,
     corps: { taille: 16, sha256: SHA, taille_tranche: 4, tranches_presentes: presentes, ...extra },
@@ -146,7 +156,7 @@ describe('🔴 la reprise ne redépose QUE les tranches manquantes', () => {
         // rendrait le MÊME verdict `scelle`. Seul le COMPTE D'OCTETS le sépare
         // d'un produit correct — d'où l'assertion sur `octetsEmis`, et non sur
         // la seule issue.
-        const s = serveur({ etat: etatDe([0, 1]) });
+        const s = serveur({ etat: etatDe([presente(0), presente(1)]) });
         const issue = await televerser(fichier(), deps(s.fetch, { reprise: 't-1' }));
         // ⚠️ LE COMPTE D'OCTETS PASSE EN PREMIER, ET CE N'EST PAS COSMÉTIQUE :
         // `deposees` est un champ que le PRODUIT déclare, donc falsifiable par un
@@ -166,7 +176,7 @@ describe('🔴 la reprise ne redépose QUE les tranches manquantes', () => {
     });
 
     it("d'un dépôt COMPLET, ne redépose rien et va droit au scellement", async () => {
-        const s = serveur({ etat: etatDe([0, 1, 2, 3]) });
+        const s = serveur({ etat: etatDe([presente(0), presente(1), presente(2), presente(3)]) });
         const issue = await televerser(fichier(), deps(s.fetch, { reprise: 't-1' }));
         expect(s.puts()).toHaveLength(0);
         expect(issue).toMatchObject({ etat: 'scelle', deposees: [] });
@@ -198,7 +208,7 @@ describe("🔴 la reprise vérifie l'identité du fichier AVANT de reprendre", (
         // secondes pour 800 Mo. Une phase `empreinte` observée prouve qu'elle a
         // été payée.
         const phases: string[] = [];
-        const s = serveur({ etat: etatDe([0, 1]) });
+        const s = serveur({ etat: etatDe([presente(0), presente(1)]) });
         const issue = await televerser(
             fichier(octetsDe(12)),
             deps(s.fetch, { reprise: 't-1', progression: (p) => void phases.push(p.phase) }),
@@ -213,7 +223,7 @@ describe("🔴 la reprise vérifie l'identité du fichier AVANT de reprendre", (
     });
 
     it("refuse un CONTENU différent à taille égale, et n'émet AUCUN PUT", async () => {
-        const s = serveur({ etat: etatDe([0, 1]) });
+        const s = serveur({ etat: etatDe([presente(0), presente(1)]) });
         const issue = await televerser(fichier(octetsDe(16, 99)), deps(s.fetch, { reprise: 't-1' }));
         expect(issue).toMatchObject({ etat: 'refus', id: 't-1', refus: { motif: 'fichier-different' } });
         expect(s.puts()).toHaveLength(0);
