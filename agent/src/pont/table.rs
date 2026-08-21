@@ -57,6 +57,30 @@ pub const DELAI_LISTER: Duration = Duration::from_secs(20);
 /// l'entrée AU JOURNAL et la nomme.
 pub const DELAI_ECRIRE: Duration = Duration::from_secs(30);
 
+/// Le budget d'une MUTATION — un renommage ou une suppression.
+///
+/// ⚠️ **UN QUATRIÈME BUDGET, là où la spec §5.3 en pose trois, et c'est une
+/// divergence DÉCLARÉE.** *(Le commentaire ci-dessus disait déjà « le quatrième
+/// budget est arrivé : c'est `DELAI_ECRIRE` » — celui-ci est donc le
+/// CINQUIÈME, et le compte de la spec a vieilli de deux sous-blocs.)*
+///
+/// ⚠️ **NON CALIBRÉE**, comme les quatre autres.
+///
+/// **Pourquoi il n'est ni celui d'une lecture ni celui d'une écriture** : une
+/// mutation ne transporte **aucun octet** — c'est un seul aller-retour —, mais
+/// son repli de copie, lui, est en O(taille) ET en O(nombre d'entrées) côté
+/// navigateur, sur un répertoire qu'il faut recréer feuille à feuille. Le
+/// budget d'une lecture (5 s) tuerait le renommage d'un répertoire profond ;
+/// celui d'une écriture (30 s) figerait l'Explorateur une demi-minute sur un
+/// simple `ren` refusé.
+///
+/// 🔴 **CELUI-CI PROTÈGE QUELQU'UN, à la différence de [`DELAI_ECRIRE`].** Une
+/// mutation naît d'une notification POST — l'application a déjà rendu la
+/// main —, **mais le `PRE_` qui la précède est SYNCHRONE** : l'Explorateur y
+/// attend. Le budget borne donc bien l'attente d'une application, comme les
+/// trois de F1 et à l'inverse de celui de l'écriture.
+pub const DELAI_MUTATION: Duration = Duration::from_secs(15);
+
 /// Ce qu'une commande en vol attend, et de quoi la réponse devra être
 /// interprétée.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -84,6 +108,19 @@ pub enum Attendue {
     Creer {
         chemin: String,
     },
+    /// Une **mutation** poussée vers le navigateur (F3).
+    ///
+    /// ⚠️ **`chemin` est la SOURCE**, celle sur laquelle des écritures peuvent
+    /// être dues. La destination d'un renommage vit dans l'en-tête émis, pas
+    /// ici : la table n'a pas à la connaître pour apparier une réponse.
+    Muter {
+        chemin: String,
+        /// `true` pour un renommage, `false` pour une suppression. **Ce qui en
+        /// dépend est le JOURNAL**, jamais l'appariement — mais un journal qui
+        /// ne dirait pas lequel des deux verbes a échoué renverrait le lecteur
+        /// au code source.
+        renommage: bool,
+    },
     Lister {
         chemin: String,
         /// ⚠️ **Le GUID d'énumération du rappel, PAS le chemin** (spec §7.2).
@@ -108,6 +145,15 @@ struct EnVol {
     command_id: Option<i32>,
     quoi: Attendue,
     echeance: Instant,
+    /// L'instant d'inscription.
+    ///
+    /// 🔴 **C'est ce qui rend le legs n°4 de F1 DIAGNOSTICABLE**, et rien
+    /// d'autre ne le rendrait : F1 a mesuré des lectures qui CALENT sans jamais
+    /// expirer — `commande expirée` reste à 0 pendant 540 s — et déclare qu'on
+    /// ne sait pas OÙ le blocage se produit, « faute d'une trace à
+    /// l'inscription en table ». L'échéance seule ne suffit pas : elle dit
+    /// quand la commande mourra, jamais depuis combien de temps elle attend.
+    inscrite_a: Instant,
 }
 
 /// Les commandes en vol, indexées par corrélation.
@@ -161,7 +207,15 @@ impl Table {
         echeance: Instant,
     ) -> u32 {
         let correlation = self.corrélation_libre();
-        self.en_vol.insert(correlation, EnVol { command_id, quoi, echeance });
+        // ⚠️ **`echeance` est déjà calculée par l'appelant depuis SON horloge**,
+        // et l'instant d'inscription est pris ici : les deux viennent de la
+        // même `Instant::now()` à quelques microsecondes près, et le module
+        // reste pur — il ne lit pas l'heure pour DÉCIDER, seulement pour
+        // HORODATER ce qu'il retient. Le faire passer en paramètre ferait un
+        // troisième argument que tous les appelants poseraient à la même
+        // valeur.
+        let inscrite_a = Instant::now();
+        self.en_vol.insert(correlation, EnVol { command_id, quoi, echeance, inscrite_a });
         correlation
     }
 
@@ -231,6 +285,36 @@ impl Table {
 
     pub fn en_vol(&self) -> usize {
         self.en_vol.len()
+    }
+
+    /// Depuis combien de temps la PLUS ANCIENNE commande en vol attend.
+    ///
+    /// 🔴 **C'EST CE QUI DÉPARTAGE LES QUATRE HYPOTHÈSES DU LEGS N°4 DE F1**,
+    /// et aucune n'était départageable jusqu'ici :
+    ///
+    /// | Ce que le recensement montre | Ce que cela dit du blocage |
+    /// | --- | --- |
+    /// | `en vol=0` alors que l'application est figée | **rien n'a jamais été inscrit** : le blocage est dans le rappel, ou avant lui |
+    /// | `en vol=N` et cette durée qui croît **au-delà du budget** | la table ne balaie plus : le fil du pont est sorti de sa boucle |
+    /// | `en vol=N` et cette durée bornée par le budget | l'inscription et l'expiration marchent : le blocage est ailleurs |
+    /// | plus aucune ligne de recensement | **le fil du pont est mort**, ce que rien ne disait |
+    ///
+    /// `None` quand rien n'est en vol — et c'est la première ligne du tableau.
+    pub fn plus_ancienne(&self, maintenant: Instant) -> Option<Duration> {
+        self.en_vol
+            .values()
+            .map(|e| maintenant.saturating_duration_since(e.inscrite_a))
+            .max()
+    }
+
+    /// Combien de commandes en vol n'ont **aucun** rappel ProjFS à compléter —
+    /// c'est-à-dire les écritures et les mutations.
+    ///
+    /// ⚠️ **Le distinguer du total n'est pas une coquetterie** : une
+    /// application figée avec `en vol=3` et `sans_commande=3` n'attend RIEN du
+    /// pont — les trois sont des poussées, et son blocage est ailleurs.
+    pub fn sans_commande(&self) -> usize {
+        self.en_vol.values().filter(|e| e.command_id.is_none()).count()
     }
 }
 

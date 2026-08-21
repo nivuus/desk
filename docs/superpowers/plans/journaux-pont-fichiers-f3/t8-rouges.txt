@@ -1,0 +1,146 @@
+TÂCHE 8 — LA FENÊTRE DE LECTURE ET LE RECENSEMENT DE LA TABLE.
+Rouges jouées le 21 août 2026.
+
+=== ROUGE 8a-fenetre-sans-borne ===
+fichier      : agent/src/pont/lecture.rs
+sha256 avant : 796cac015c32c0727c3b3d9e601b8feeb12a9dafb8ebdaac80ab4dd10413803b
+diff contre la copie : 2 ligne(s) — 0 SERAIT UN ÉCHEC DE LA ROUGE
+95c95
+<         while self.en_vol.len() < MORCEAUX_EN_VOL {
+---
+>         while !self.restants.is_empty() {
+--- contrôle ---
+thread 'pont::lecture::tests::la_fenetre_atteint_reellement_MORCEAUX_EN_VOL_sur_une_lecture_longue' (3957362) panicked at agent/src/pont/lecture/tests.rs:50:5:
+assertion `left == right` failed: la fenêtre n'a jamais été pleine : le mécanisme est inerte
+  left: 50
+ right: 4
+thread 'pont::lecture::tests::la_fenetre_ne_demande_jamais_plus_de_MORCEAUX_EN_VOL' (3957363) panicked at agent/src/pont/lecture/tests.rs:20:5:
+assertion `left == right` failed
+  left: 50
+ right: 4
+thread 'pont::lecture::tests::une_reception_libere_exactement_une_place' (3957368) panicked at agent/src/pont/lecture/tests.rs:106:5:
+assertion `left == right` failed
+  left: 0
+ right: 1
+thread 'pont::lecture::tests::une_reponse_hors_ordre_est_denoncee_et_pas_appliquee' (3957369) panicked at agent/src/pont/lecture/tests.rs:69:5:
+assertion `left == right` failed
+  left: 10
+ right: 4
+test result: FAILED. 5 passed; 4 failed; 0 ignored; 0 measured; 891 filtered out; finished in 0.00s
+--- restauration DEPUIS LA COPIE NOMMÉE (jamais `git checkout --`) ---
+sha256 identique ✅
+état git inchangé ✅ [?? agent/src/pont/lecture.rs]
+
+=== ROUGE 8b-fenetre-inerte-a-un ===
+fichier      : agent/src/pont/lecture.rs
+sha256 avant : 796cac015c32c0727c3b3d9e601b8feeb12a9dafb8ebdaac80ab4dd10413803b
+diff contre la copie : 2 ligne(s) — 0 SERAIT UN ÉCHEC DE LA ROUGE
+58c58
+< pub const MORCEAUX_EN_VOL: usize = 4;
+---
+> pub const MORCEAUX_EN_VOL: usize = 1;
+--- contrôle ---
+thread 'pont::lecture::tests::la_fenetre_atteint_reellement_MORCEAUX_EN_VOL_sur_une_lecture_longue' (3958266) panicked at agent/src/pont/lecture/tests.rs:41:5:
+une fenêtre de 1 est INERTE : voir la doc du module
+thread 'pont::lecture::tests::terminee_exige_que_le_vol_soit_vide_aussi' (3958269) panicked at agent/src/pont/lecture/tests.rs:156:18:
+test result: FAILED. 7 passed; 2 failed; 0 ignored; 0 measured; 891 filtered out; finished in 0.00s
+--- restauration DEPUIS LA COPIE NOMMÉE (jamais `git checkout --`) ---
+sha256 identique ✅
+état git inchangé ✅ [?? agent/src/pont/lecture.rs]
+
+=== ROUGE 8c-hors-ordre-applique ===
+fichier      : agent/src/pont/lecture.rs
+sha256 avant : 796cac015c32c0727c3b3d9e601b8feeb12a9dafb8ebdaac80ab4dd10413803b
+diff contre la copie : 4 ligne(s) — 0 SERAIT UN ÉCHEC DE LA ROUGE
+116,119d115
+<         let attendue = self.en_vol.front().copied();
+<         if attendue != Some(position) {
+<             return Err(HorsOrdre { recue: position, attendue });
+<         }
+--- contrôle ---
+thread 'pont::lecture::tests::une_position_inconnue_est_denoncee' (3959117) panicked at agent/src/pont/lecture/tests.rs:82:25:
+thread 'pont::lecture::tests::une_reponse_sans_rien_en_vol_est_denoncee_avec_attendue_none' (3959120) panicked at agent/src/pont/lecture/tests.rs:95:26:
+thread 'pont::lecture::tests::une_reponse_hors_ordre_est_denoncee_et_pas_appliquee' (3959119) panicked at agent/src/pont/lecture/tests.rs:66:31:
+test result: FAILED. 6 passed; 3 failed; 0 ignored; 0 measured; 891 filtered out; finished in 0.00s
+--- restauration DEPUIS LA COPIE NOMMÉE (jamais `git checkout --`) ---
+sha256 identique ✅
+état git inchangé ✅ [?? agent/src/pont/lecture.rs]
+
+=== ROUGE 8d-terminee-ignore-le-vol ===
+fichier      : agent/src/pont/lecture.rs
+sha256 avant : 796cac015c32c0727c3b3d9e601b8feeb12a9dafb8ebdaac80ab4dd10413803b
+diff contre la copie : 2 ligne(s) — 0 SERAIT UN ÉCHEC DE LA ROUGE
+136c136
+<         self.restants.is_empty() && self.en_vol.is_empty()
+---
+>         self.restants.is_empty()
+--- contrôle ---
+warning: function `un_journal_long_rend_sa_FIN_et_se_declare_tronque` should have a snake case name
+84 |     fn un_journal_long_rend_sa_FIN_et_se_declare_tronque() {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: convert the identifier to snake case: `un_journal_long_rend_sa_fin_et_se_declare_tronque`
+thread 'pont::lecture::tests::terminee_exige_que_le_vol_soit_vide_aussi' (3960019) panicked at agent/src/pont/lecture/tests.rs:153:5:
+test result: FAILED. 8 passed; 1 failed; 0 ignored; 0 measured; 891 filtered out; finished in 0.00s
+--- restauration DEPUIS LA COPIE NOMMÉE (jamais `git checkout --`) ---
+sha256 identique ✅
+état git inchangé ✅ [?? agent/src/pont/lecture.rs]
+
+=== ROUGE 8e-plus-ancienne-rend-none ===
+fichier      : agent/src/pont/table.rs
+sha256 avant : 1f711e6c2369844223c48f349aff5aa9238b64551689439ddb4727717e372006
+diff contre la copie : 2 ligne(s) — 0 SERAIT UN ÉCHEC DE LA ROUGE
+307c307
+<             .max()
+---
+>             .min()
+--- contrôle ---
+thread 'pont::table::tests::plus_ancienne_rend_la_duree_de_la_plus_vieille_commande_en_vol' (3960732) panicked at agent/src/pont/table/tests.rs:276:5:
+la PLUS ANCIENNE, pas la plus jeune : 5.182µs
+test result: FAILED. 15 passed; 1 failed; 0 ignored; 0 measured; 884 filtered out; finished in 0.02s
+--- restauration DEPUIS LA COPIE NOMMÉE (jamais `git checkout --`) ---
+sha256 identique ✅
+état git inchangé ✅ [ M agent/src/pont/table.rs]
+
+════════════════════════════════════════════════════════════════════════════
+LECTURE DES CINQ ROUGES
+════════════════════════════════════════════════════════════════════════════
+8a la fenêtre sans borne : **4** tests. La file SCTP se remplirait sans terme,
+   et le canal deviendrait la source de latence de tout le reste.
+8b 🔴 **`MORCEAUX_EN_VOL = 1` — LE ROUGE DU LIVRABLE LUI-MÊME** : **2** tests,
+   dont `la_fenetre_atteint_reellement_MORCEAUX_EN_VOL_sur_une_lecture_longue`.
+   À 1, le mécanisme est **INERTE** : le pont n'est jamais en avance, et la
+   contre-pression du navigateur n'a jamais rien à retenir. F3 aurait livré un
+   contrôle de flux incapable de mordre.
+8c une réponse hors d'ordre appliquée : **3** tests. Le fichier aurait ses
+   plages dans le désordre, et **seul un condensat SHA-256 l'attraperait** —
+   celui que F1 n'a JAMAIS établi (son legs n°6).
+8d `terminee()` qui ignore le vol : **1** test. La lecture se déclarerait
+   complète alors que quatre morceaux sont encore en vol, et le fichier serait
+   tronqué de quatre trames **sans qu'aucune erreur ne soit rendue**.
+8e `plus_ancienne` qui rend le MINIMUM au lieu du maximum : **1** test. Le legs
+   n°4 de F1 resterait indiagnosticable, ce qui est exactement l'état
+   d'aujourd'hui.
+
+Les cinq restaurations vérifiées par sha256 ET par l'état git.
+
+════════════════════════════════════════════════════════════════════════════
+LA LIGNE DE RECENSEMENT DE LA TABLE
+════════════════════════════════════════════════════════════════════════════
+pont en vol=2 sans_commande=1 plus_ancienne_ms=1840 sessions=1 octets_hydrates=… entrees_hydratees=…
+
+Grille de lecture, portée dans `pont::table::plus_ancienne` :
+
+| Ce que le recensement montre | Ce que cela dit du blocage |
+| --- | --- |
+| `en vol=0` alors que l'application est figée | rien n'a jamais été inscrit : le blocage est dans le rappel, ou avant lui |
+| `en vol=N`, durée qui croît AU-DELÀ du budget | la table ne balaie plus : le fil du pont est sorti de sa boucle |
+| `en vol=N`, durée bornée par le budget | inscription et expiration marchent : le blocage est ailleurs |
+| plus aucune ligne de recensement | **le fil du pont est mort**, ce que rien ne disait |
+
+⚠️ **`sans_commande` distingue ce qui n'attend PERSONNE.** Une application
+figée avec `en vol=3` et `sans_commande=3` n'attend rien du pont : les trois
+sont des poussées. Sans cette colonne, le recensement ferait accuser le pont
+d'un blocage qui ne le concerne pas.
+
+⚠️ **Un verrou empoisonné est DIT, pas tu.** Rendre des zéros ferait lire
+« rien en vol » là où la table est inaccessible — c'est-à-dire la PREMIÈRE
+ligne du tableau, qui accuserait le rappel.

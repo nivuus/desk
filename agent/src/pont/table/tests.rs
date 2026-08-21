@@ -250,3 +250,70 @@ fn annuler_ne_vise_jamais_une_ecriture() {
     assert_eq!(t.en_vol(), 1, "l'écriture est toujours là");
     assert!(t.resoudre(ecriture).is_some());
 }
+
+/// 🔴 **LE RELEVÉ QUI REND LE LEGS N°4 DE F1 DIAGNOSTICABLE.**
+///
+/// F1 a mesuré des lectures qui CALENT sans jamais expirer — `commande expirée`
+/// reste à 0 pendant 540 s — et déclare qu'on ne sait pas OÙ le blocage se
+/// produit, « faute d'une trace à l'inscription en table ». C'est cette trace.
+///
+/// Rouge : rendre `None` inconditionnellement, ou rendre le MINIMUM au lieu du
+/// maximum. Dans les deux cas le legs reste indiagnosticable, et c'est
+/// exactement l'état d'aujourd'hui.
+#[test]
+fn plus_ancienne_rend_la_duree_de_la_plus_vieille_commande_en_vol() {
+    let mut t = Table::nouvelle();
+    let depart = Instant::now();
+    // Rien en vol : `None`, et c'est la PREMIÈRE ligne du tableau de lecture —
+    // « rien n'a jamais été inscrit, le blocage est dans le rappel ».
+    assert_eq!(t.plus_ancienne(depart), None);
+
+    t.inscrire(1, Attendue::Attributs { chemin: "a".into() }, depart + Duration::from_secs(2));
+    std::thread::sleep(Duration::from_millis(20));
+    t.inscrire(2, Attendue::Attributs { chemin: "b".into() }, depart + Duration::from_secs(2));
+
+    let vue = t.plus_ancienne(Instant::now()).expect("deux en vol");
+    assert!(vue >= Duration::from_millis(20), "la PLUS ANCIENNE, pas la plus jeune : {vue:?}");
+}
+
+/// Les commandes **sans rappel ProjFS** sont comptées à part.
+///
+/// ⚠️ Une application figée avec `en vol=3` et `sans_commande=3` n'attend RIEN
+/// du pont : les trois sont des poussées, et son blocage est ailleurs. Sans
+/// cette distinction, le recensement ferait accuser le pont d'un blocage qui
+/// ne le concerne pas.
+#[test]
+fn sans_commande_ne_compte_que_ce_qui_ne_complete_aucun_rappel() {
+    let mut t = Table::nouvelle();
+    let echeance = Instant::now() + Duration::from_secs(5);
+    t.inscrire(1, Attendue::Attributs { chemin: "a".into() }, echeance);
+    t.inscrire_sans_commande(Attendue::Ecrire { chemin: "b".into(), dernier: true }, echeance);
+    t.inscrire_sans_commande(
+        Attendue::Muter { chemin: "c".into(), renommage: true },
+        echeance,
+    );
+    assert_eq!(t.en_vol(), 3);
+    assert_eq!(t.sans_commande(), 2);
+}
+
+/// ⚠️ **Les cinq budgets sont DISTINCTS, et le rester est le point.**
+///
+/// L'ancien pont en avait **un seul**, 10 s, pour tout (`src/file.js:89`),
+/// d'où deux défauts symétriques : des lectures de gros blocs qui expiraient
+/// avant d'aboutir, et des `getattr` qui figeaient l'Explorateur dix secondes
+/// sur un chemin inexistant.
+#[test]
+fn les_cinq_budgets_sont_distincts() {
+    let tous =
+        [DELAI_ATTRIBUTS, DELAI_LIRE, DELAI_LISTER, DELAI_ECRIRE, DELAI_MUTATION];
+    for (i, a) in tous.iter().enumerate() {
+        for b in &tous[i + 1..] {
+            assert_ne!(a, b, "deux budgets partagent la valeur {a:?}");
+        }
+    }
+    // Le budget d'une mutation est entre celui d'une lecture et celui d'une
+    // écriture : un seul aller-retour, mais dont le repli de copie est en
+    // O(taille) côté navigateur.
+    assert!(DELAI_MUTATION > DELAI_LIRE);
+    assert!(DELAI_MUTATION < DELAI_ECRIRE);
+}
