@@ -31,7 +31,7 @@
 // divergeraient un jour, et le symptôme serait un scellement qui refuse sans
 // qu'on sache lequel des deux bouts a tort. Ici on écrit, on liste, on relit.
 
-import { createReadStream, createWriteStream, mkdirSync, readdirSync, rmSync, renameSync, statSync } from 'node:fs';
+import { createReadStream, createWriteStream, mkdirSync, openSync, readdirSync, rmSync, renameSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
@@ -163,6 +163,12 @@ export function ouvrirMagasinTranches(
             // Le suffixe aléatoire évite que deux dépôts concurrents du même
             // rang n'écrivent le même temporaire — même parade qu'`icones.ts`.
             const provisoire = `${cible}.${process.pid}.${Math.random().toString(36).slice(2)}.part`;
+            // ⚠️ OUVERT SYNCHRONEMENT, ET C'EST LE CORRECTIF DE LA COURSE
+            // décrite dans le `catch` ci-dessous : à partir d'ici le fichier
+            // EXISTE, donc le `rmSync` du chemin d'erreur ne peut plus le
+            // manquer. `createWriteStream` reçoit le descripteur et non le
+            // chemin ; il le fermera lui-même (`autoClose`).
+            const fd = openSync(provisoire, 'w');
             let octets = 0;
             let depasse = false;
             try {
@@ -180,13 +186,38 @@ export function ouvrirMagasinTranches(
                             yield morceau;
                         }
                     },
-                    createWriteStream(provisoire),
+                    createWriteStream('', { fd, autoClose: true }),
                 );
             } catch (erreur) {
                 // 🔴 LE FICHIER PARTIEL EST SUPPRIMÉ, quelle que soit la cause :
                 // dépassement, coupure, disque plein. Un `.part` abandonné
                 // n'est jamais compté comme une tranche (voir `lister`), mais
                 // il occuperait le disque jusqu'à la purge.
+                //
+                // 🔴 ET CE `rmSync` A ÉTÉ INEFFICACE UNE FOIS SUR DIX — MESURÉ,
+                // PAS SUPPOSÉ : une sonde directe sur `ecrire`, hors HTTP, a
+                // relevé **42 répertoires non vides sur 400 dépassements**,
+                // chacun portant un `.part`. La cause était une COURSE, et non
+                // un chemin d'erreur oublié : `createWriteStream(chemin)` ouvre
+                // le fichier de façon ASYNCHRONE. Sur un dépassement, notre
+                // générateur lève AVANT que l'`open(2)` n'ait abouti ;
+                // `rmSync` courait alors sur un fichier qui n'existait pas
+                // encore — `{ force: true }` avalant le `ENOENT` en silence —
+                // et l'ouverture le créait juste après.
+                //
+                // ✅ LE REMÈDE N'EST PAS UN RÉESSAI MAIS UNE SUPPRESSION DE LA
+                // COURSE : le descripteur est ouvert par `openSync` AVANT le
+                // `pipeline`, si bien que l'inode existe déjà quand le
+                // `pipeline` démarre. Il n'y a donc plus d'instant où le
+                // fichier soit à la fois « en cours de création » et
+                // supprimable. Un réessai temporisé aurait réduit la fenêtre
+                // sans la fermer, et aurait rendu le défaut intermittent au
+                // lieu de le supprimer.
+                //
+                // ⚠️ Ce n'était PAS un trou de protocole — `lister` ignore les
+                // noms non numériques, donc aucune fausse tranche n'a jamais
+                // été comptée et le scellement n'en voyait rien. C'était une
+                // FUITE DE DISQUE, sur un service qui accepte 4 Gio.
                 rmSync(provisoire, { force: true });
                 if (depasse) return { ok: false, motif: 'plafond-depasse', plafond: plafondOctets };
                 throw erreur;

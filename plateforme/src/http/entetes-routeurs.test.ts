@@ -148,6 +148,31 @@ describe('les en-têtes de sécurité, un routeur à la fois', () => {
         porteLesEntetes(g, '401 de /application/:id/icone');
     });
 
+    it('(6ter) `routes-televersement` les pose — LE SEPTIÈME ROUTEUR', async () => {
+        // 🔴 G3 AJOUTE LE SEPTIÈME, et l'en-tête de ce fichier nomme les deux
+        // précédents : G1 a livré le cinquième « sans que personne ne s'en
+        // aperçoive côté P5 », G2 le sixième. C'est la troisième fois, et le
+        // fichier n'existe que pour que ce soit la dernière.
+        const url = await servir('entetes-televersement');
+        // Sans jeton : une réponse d'ERREUR, celle qu'un correctif hâtif
+        // oublierait — et sur la route d'ÉTAT, qui est la seule des quatre
+        // qu'un `GET` sans corps atteigne.
+        const r = await fetch(`${url}/televersement/inexistant`);
+        expect(r.status).toBe(401);
+        porteLesEntetes(r, '401 de /televersement/:id');
+    });
+
+    it('(6quater) `routes-installation` les pose — LE HUITIÈME ROUTEUR', async () => {
+        // ⚠️ CELUI-CI NE SERT QUE L'AGENT, et son refus emprunte donc le
+        // porteur d'AGENT et non celui de l'utilisateur. Deux gardes
+        // différentes, une seule propriété transverse : c'est précisément le
+        // genre d'écart par lequel un routeur échappe à un balayage.
+        const url = await servir('entetes-installation');
+        const r = await fetch(`${url}/televersement/inexistant/contenu`);
+        expect(r.status).toBe(401);
+        porteLesEntetes(r, '401 de /televersement/:id/contenu');
+    });
+
     it('(7) le 404 générique et le 500 les portent aussi', async () => {
         // Le 404 ne vient d'aucun routeur : il est écrit dans `serveur.ts`.
         // Sans lui, un chemin inconnu serait la seule réponse du service à ne
