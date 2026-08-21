@@ -131,3 +131,85 @@ fn un_suivi_n_annonce_pas_deux_fois_la_meme_couleur() {
     assert_eq!(s.observer("#fa8c16"), Some("#fa8c16".to_string()), "un changement");
     assert_eq!(s.observer("#fa8c16"), None, "puis plus rien");
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// `bgra_en_rgba` — LA CONVERSION QUE LE SOUS-PROJET ① AVAIT LAISSÉE SANS TEST
+// (legs RA1-6), descendue ici par le sous-bloc G5 parce qu'il en avait besoin
+// une SECONDE fois. En écrire une seconde copie aurait doublé une règle que
+// personne ne vérifiait.
+// ═══════════════════════════════════════════════════════════════════════════
+
+#[test]
+fn bgra_en_rgba_echange_le_rouge_et_le_bleu() {
+    // ROUGE : `pixel.swap(0, 1)` ou `pixel.swap(1, 2)` ⟹ les canaux sont
+    // permutés autrement, et l'accent d'une icône rouge serait annoncé bleu.
+    // Un défaut PLAUSIBLE et SILENCIEUX, qui vivait derrière `#[cfg(windows)]`.
+    let mut t = [0x11, 0x22, 0x33, 0x44];
+    super::bgra_en_rgba(&mut t);
+    assert_eq!(t, [0x33, 0x22, 0x11, 0x44]);
+}
+
+#[test]
+fn bgra_en_rgba_ne_touche_jamais_l_alpha() {
+    // 🔴 C'EST LA CLAUSE QUI COMPTE : l'alpha est ce que le filtre `ALPHA_MIN`
+    // de `dominante` consomme. L'échanger avec un canal de couleur rendrait ce
+    // filtre absurde sans qu'aucun autre test ne le dise.
+    // ROUGE : `pixel.swap(0, 3)` ⟹ cette assertion tombe, la précédente aussi.
+    let mut t = [0x00, 0x00, 0xff, 0x07, 0xff, 0x00, 0x00, 0xf0];
+    super::bgra_en_rgba(&mut t);
+    assert_eq!(t[3], 0x07, "l'alpha du premier pixel");
+    assert_eq!(t[7], 0xf0, "l'alpha du second");
+}
+
+#[test]
+fn bgra_en_rgba_est_son_propre_inverse() {
+    // Une propriété, et non un exemple : appliquée deux fois, elle rend
+    // l'original. C'est ce qui interdit qu'elle fasse autre chose au passage.
+    let original: Vec<u8> = (0u8..=63).collect();
+    let mut t = original.clone();
+    super::bgra_en_rgba(&mut t);
+    assert_ne!(t, original, "une seule passe DOIT changer quelque chose");
+    super::bgra_en_rgba(&mut t);
+    assert_eq!(t, original);
+}
+
+#[test]
+fn bgra_en_rgba_laisse_un_reste_incomplet_tel_quel() {
+    // ⚠️ Ce n'est pas un silence commode : un tampon mal dimensionné est
+    // refusé plus loin par `dominante`, qui compare la longueur au produit
+    // `largeur × hauteur × 4`. On l'écrit pour que personne ne croie que ce
+    // module valide une taille.
+    let mut t = [0x11, 0x22, 0x33, 0x44, 0xaa, 0xbb];
+    super::bgra_en_rgba(&mut t);
+    assert_eq!(t, [0x33, 0x22, 0x11, 0x44, 0xaa, 0xbb]);
+}
+
+#[test]
+fn bgra_en_rgba_puis_dominante_rendent_la_couleur_REELLE_du_bgra() {
+    // 🔴 LE TEST QUI RELIE LES DEUX, et c'est celui qui aurait attrapé le
+    // défaut de sens. L'aplat vaut `40 80 D0` EN BGRA, donc une teinte chaude
+    // (0xD0, 0x80, 0x40) une fois convertie, et une teinte froide
+    // (0x40, 0x80, 0xD0) si on oublie de convertir.
+    //
+    // ⚠️ LE CHOIX DE LA COULEUR EST CONTRAINT, ET LE PREMIER JET ÉTAIT MAUVAIS :
+    // un aplat ROUGE PUR (`00 00 D0` en BGRA) faisait rendre `None` à
+    // `dominante` DANS LES DEUX SENS — sa luma vaut 23, sous `LUMA_MIN = 32`.
+    // Le test échouait sur son FIXTURE, pas sur le code. Celle-ci survit aux
+    // deux lectures : luma 144 et 117, saturation 144, toutes deux dans les
+    // bornes — donc l'écart mesuré ci-dessous est bien celui du SENS, et non
+    // celui d'un pixel rejeté d'un côté et pas de l'autre.
+    let chaud_en_bgra: Vec<u8> = std::iter::repeat([0x40, 0x80, 0xd0, 0xff])
+        .take(64)
+        .flatten()
+        .collect();
+
+    let mut sans = chaud_en_bgra.clone();
+    let lu_sans = super::dominante(&sans, 8, 8).expect("un aplat sature doit rendre une dominante");
+
+    super::bgra_en_rgba(&mut sans);
+    let lu_avec = super::dominante(&sans, 8, 8).expect("idem apres conversion");
+
+    assert_eq!(lu_avec, [0xd0, 0x80, 0x40], "converti : la teinte CHAUDE, celle de l'image");
+    assert_eq!(lu_sans, [0x40, 0x80, 0xd0], "sans conversion : la teinte FROIDE, le rouge et le bleu echanges");
+    assert_ne!(lu_sans, lu_avec, "les deux lectures DIFFERENT : le sens compte");
+}

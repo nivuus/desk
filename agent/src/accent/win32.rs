@@ -190,11 +190,12 @@ fn decoder(bitmap: HBITMAP) -> Option<(Vec<u8>, u32, u32)> {
         return None;
     }
 
-    // 🔴 BGRA -> RGBA. L'octet 3 (alpha) N'EST PAS TOUCHÉ : c'est lui que le
-    // filtre `ALPHA_MIN` du module pur consomme, et l'échanger avec un canal de
-    // couleur rendrait ce filtre absurde sans qu'aucun test ne le dise.
-    for pixel in tampon.chunks_exact_mut(4) {
-        pixel.swap(0, 2);
-    }
+    // 🔴 BGRA -> RGBA, PAR LA RÈGLE PURE ET NON PAR UNE COPIE. Cette boucle
+    // vivait ici, derrière le `#[cfg(windows)]`, et n'était couverte par rien
+    // (legs RA1-6). Le sous-bloc G5 en a eu besoin une seconde fois, pour
+    // l'icône d'une APPLICATION : elle est descendue dans `accent.rs`, où elle
+    // est testée, plutôt que d'être recopiée — deux copies d'une règle que
+    // personne ne vérifie divergeraient sans que rien ne le dise.
+    crate::accent::bgra_en_rgba(&mut tampon);
     Some((tampon, largeur, hauteur))
 }

@@ -68,6 +68,36 @@ fn luma(r: u8, g: u8, b: u8) -> u8 {
     ((r as u32 * 299 + g as u32 * 587 + b as u32 * 114) / 1000) as u8
 }
 
+/// Convertit **BGRA en RGBA sur place**, en ÉCHANGEANT les canaux rouge et
+/// bleu et en ne touchant PAS l'alpha.
+///
+/// 🔴 ELLE EXISTE POUR ÊTRE ÉPROUVÉE, ET C'EST TOUT SON OBJET. La conversion
+/// vivait à l'identique dans `accent/win32.rs`, derrière un `#[cfg(windows)]`,
+/// et **n'était couverte par rien** — c'est le legs RA1-6 du sous-projet ①.
+/// Le sous-bloc G5 en avait besoin une SECONDE fois, pour l'icône d'une
+/// application : **en écrire une seconde copie aurait doublé une règle que
+/// personne ne vérifiait**. Elle est donc extraite plutôt que recopiée, et le
+/// site d'origine l'APPELLE.
+///
+/// ⚠️ SE TROMPER DE SENS ÉCHANGERAIT LE ROUGE ET LE BLEU — un défaut
+/// **plausible et silencieux**, qui vivrait derrière le `#[cfg(windows)]` où
+/// aucun test d'hôte ne le verrait. C'est précisément pourquoi la règle
+/// descend ici.
+///
+/// ⚠️ L'ALPHA N'EST PAS TOUCHÉ : c'est lui que le filtre `ALPHA_MIN` de
+/// [`dominante`] consomme, et l'échanger avec un canal de couleur rendrait ce
+/// filtre absurde sans qu'aucun test ne le dise.
+///
+/// Une tranche dont la longueur n'est pas un multiple de 4 voit son reste
+/// **laissé tel quel** — `chunks_exact_mut` l'ignore. Ce n'est pas un silence
+/// commode : un tampon mal dimensionné est refusé plus loin par [`dominante`],
+/// qui compare la longueur au produit `largeur × hauteur × 4`.
+pub fn bgra_en_rgba(tampon: &mut [u8]) {
+    for pixel in tampon.chunks_exact_mut(4) {
+        pixel.swap(0, 2);
+    }
+}
+
 /// La couleur dominante d'une tranche **RGBA**, ou `None`.
 ///
 /// ⚠️ **RGBA, et non BGRA.** `GetDIBits` rend du **BGRA** : la conversion
