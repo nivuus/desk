@@ -187,43 +187,71 @@ unsafe extern "system" fn donnees_fichier(
             return HRESULT(etat.compteurs.rendre(Erreur::CheminIntrouvable));
         };
         // ⚠️ **Le fichier entier n'entre JAMAIS en mémoire** : la plage est
-        // découpée par `pont::decoupe`, PUR et testé, et **un seul morceau est
-        // en vol à la fois** en F1. Le contrôle de flux par `bufferedAmount`
-        // est un livrable de F3 ; l'implémenter à moitié ici serait pire.
-        let mut morceaux: std::collections::VecDeque<_> = crate::pont::decoupe::decouper(
+        // découpée par `pont::decoupe`, PUR et testé.
+        //
+        // ✅ **ET IL Y EN A DÉSORMAIS JUSQU'À `MORCEAUX_EN_VOL` EN VOL.** *(Ces
+        // lignes disaient « un seul morceau est en vol à la fois en F1. Le
+        // contrôle de flux par `bufferedAmount` est un livrable de F3 ;
+        // l'implémenter à moitié ici serait pire. » F3 l'a livré — et PAS à
+        // moitié : la fenêtre du pont ET la contre-pression du navigateur sont
+        // là toutes les deux, parce qu'avec un seul morceau en vol la règle de
+        // la spec §7.3 ne pourrait JAMAIS mordre.)*
+        let morceaux: std::collections::VecDeque<_> = crate::pont::decoupe::decouper(
             position,
             u64::from(longueur),
             proto::fichiers::TAILLE_TRAME_MAX,
         )
         .into();
-        let Some(premier) = morceaux.pop_front() else {
+        let mut fenetre = crate::pont::lecture::Fenetre::nouvelle(morceaux);
+        let lot = fenetre.a_demander();
+        if lot.is_empty() {
             // Longueur nulle : rien à écrire, et rien à demander. Compléter
             // tout de suite plutôt qu'inscrire une commande qui n'aurait
             // jamais de réponse.
             return S_OK;
-        };
+        }
         let flux = unsafe { (*donnees).DataStreamId };
-        let entete = match serde_json::to_string(&entetes::Lire {
-            chemin: chemin.clone(),
-            position: premier.position,
-            longueur: premier.longueur,
-        }) {
-            Ok(entete) => entete,
-            Err(_) => return E_UNEXPECTED,
-        };
-        let demandee = etat.demander(
-            unsafe { (*donnees).CommandId },
-            Attendue::Lire {
-                chemin,
-                position: premier.position,
-                longueur: premier.longueur,
-            },
-            std::time::Instant::now() + crate::pont::table::DELAI_LIRE,
-            ContexteProjFs::Lecture { flux: FluxDonnees(flux), restants: morceaux },
-            proto::fichiers::TYPE_LIRE,
-            &entete,
-        );
-        if demandee {
+        let commande = unsafe { (*donnees).CommandId };
+        // 🔴 **UNE SEULE FENÊTRE, PARTAGÉE PAR LES *N* CORRÉLATIONS.** La
+        // cloner ferait que chaque réponse verrait sa propre copie et
+        // redemanderait les mêmes morceaux — le fichier serait écrit *N* fois,
+        // ou tronqué selon l'ordre.
+        let fenetre = std::sync::Arc::new(std::sync::Mutex::new(fenetre));
+        // ⚠️ **Un ÉCHEC EN COURS DE LOT NE LAISSE RIEN EN VOL** : `demander`
+        // retire ce qu'il vient d'inscrire quand le transport est parti, et les
+        // corrélations déjà émises expireront sur leur budget. On s'arrête au
+        // premier refus plutôt que d'en émettre d'autres vers un canal mort.
+        let mut au_moins_une = false;
+        for morceau in lot {
+            let entete = match serde_json::to_string(&entetes::Lire {
+                chemin: chemin.clone(),
+                position: morceau.position,
+                longueur: morceau.longueur,
+            }) {
+                Ok(entete) => entete,
+                Err(_) => return E_UNEXPECTED,
+            };
+            let demandee = etat.demander(
+                commande,
+                Attendue::Lire {
+                    chemin: chemin.clone(),
+                    position: morceau.position,
+                    longueur: morceau.longueur,
+                },
+                std::time::Instant::now() + crate::pont::table::DELAI_LIRE,
+                ContexteProjFs::Lecture {
+                    flux: FluxDonnees(flux),
+                    fenetre: std::sync::Arc::clone(&fenetre),
+                },
+                proto::fichiers::TYPE_LIRE,
+                &entete,
+            );
+            if !demandee {
+                break;
+            }
+            au_moins_une = true;
+        }
+        if au_moins_une {
             HRESULT(EN_COURS)
         } else {
             HRESULT(etat.compteurs.rendre(Erreur::CanalFerme))
@@ -284,17 +312,29 @@ unsafe extern "system" fn annulation(donnees: *const PRJ_CALLBACK_DATA) {
     let issue = std::panic::catch_unwind(|| {
         let Some(etat) = (unsafe { etat(donnees) }) else { return };
         let commande = unsafe { (*donnees).CommandId };
-        let correlation = etat.table.lock().expect("verrou de la table").annuler(commande);
-        if let Some(correlation) = correlation {
+        // 🔴 **TOUTES LES CORRÉLATIONS, et c'est la fenêtre de lecture de F3
+        // qui l'exige** : une lecture peut en avoir jusqu'à
+        // `pont::lecture::MORCEAUX_EN_VOL` en vol. En laisser survivre une
+        // ferait appeler `PrjCompleteCommand` sur une commande DÉJÀ complétée,
+        // à l'expiration de son budget — un appel au système sur un
+        // identifiant qui appartient à quelqu'un d'autre.
+        let correlations = etat.table.lock().expect("verrou de la table").annuler(commande);
+        for correlation in &correlations {
             // ⚠️ **Le contexte ProjFS part AVEC l'entrée de table, sinon il
             // fuit.** `Table::annuler` ne connaît que la table — elle est PURE
             // — et le tampon d'énumération ou le flux de données d'une commande
             // annulée resterait sinon dans `en_attente` pour toute la vie du
             // pont, sans que rien ne le lise jamais.
             if let Ok(mut attente) = etat.en_attente.lock() {
-                attente.remove(&correlation);
+                attente.remove(correlation);
             }
-            tracing::debug!(commande, correlation, "commande ProjFS annulée par l'application");
+        }
+        if !correlations.is_empty() {
+            tracing::debug!(
+                commande,
+                en_vol = correlations.len(),
+                "commande ProjFS annulée par l'application"
+            );
         }
     });
     if issue.is_err() {

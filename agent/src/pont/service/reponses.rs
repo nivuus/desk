@@ -83,6 +83,58 @@ pub(super) fn appliquer(
                 tracing::warn!(chemin, "en-tête Meta illisible");
                 return Suite::Termine(HRESULT(etat.compteurs.rendre(Erreur::Inattendue)));
             };
+            // 🔴 **LE SUBSTITUT EST CRÉÉ SOUS LE NOM **STOCKÉ**, jamais sous
+            // celui que l'application a tapé** — c'est la conséquence ① du
+            // canonicaliseur de casse de F3.
+            //
+            // ⚠️ **On ne reconvertit le chemin QUE s'il y a quelque chose à
+            // changer.** F1 s'était donné la propriété de ne jamais toucher les
+            // octets que ProjFS a livrés — « un aller-retour où une casse ou un
+            // séparateur pourrait se perdre » —, et
+            // `chemins::avec_dernier_composant` rend `None` quand le nom
+            // canonique est déjà celui du chemin.
+            let projfs_texte = String::from_utf16_lossy(
+                chemin_projfs.strip_suffix(&[0u16]).unwrap_or(chemin_projfs),
+            );
+            let canonique = crate::pont::chemins::avec_dernier_composant(&projfs_texte, &meta.nom);
+            let Some(neuf) = canonique else {
+                return Suite::Termine(verbes::ecrire_marqueur(
+                    etat,
+                    chemin_projfs,
+                    meta.repertoire,
+                    meta.taille,
+                    meta.modifie,
+                ));
+            };
+            tracing::debug!(
+                demande = %projfs_texte,
+                stocke = %neuf,
+                "nom canonique : le substitut prend le nom du poste local"
+            );
+            let neuf_utf16: Vec<u16> = neuf.encode_utf16().chain(std::iter::once(0)).collect();
+            let issue = verbes::ecrire_marqueur(
+                etat,
+                &neuf_utf16,
+                meta.repertoire,
+                meta.taille,
+                meta.modifie,
+            );
+            if issue.is_ok() {
+                return Suite::Termine(issue);
+            }
+            // 🔴 **LE REPLI, ET IL EST DÉCLARÉ.** Que ProjFS accepte un
+            // substitut dont le nom diffère de celui demandé est la façon
+            // documentée de corriger une casse — **mais cela n'a jamais été
+            // MESURÉ sur cette VM**, et un refus rendrait le fichier
+            // inouvrable alors qu'il s'ouvre aujourd'hui. On retente donc sous
+            // le nom demandé plutôt que d'échouer, et **le journal dit
+            // laquelle des deux voies a servi**.
+            tracing::warn!(
+                demande = %projfs_texte,
+                stocke = %neuf,
+                %issue,
+                "PrjWritePlaceholderInfo a refuse le nom canonique : repli sur le nom demande"
+            );
             Suite::Termine(verbes::ecrire_marqueur(
                 etat,
                 chemin_projfs,
@@ -98,7 +150,7 @@ pub(super) fn appliquer(
         (Attendue::Attributs { .. }, Some(ContexteProjFs::Existence)) => Suite::Termine(S_OK),
         (
             Attendue::Lire { chemin, position, longueur },
-            Some(ContexteProjFs::Lecture { flux, restants }),
+            Some(ContexteProjFs::Lecture { flux, fenetre }),
         ) => {
             let Ok(entete) = serde_json::from_slice::<entetes::Donnees>(trame.entete) else {
                 tracing::warn!(chemin, "en-tête Donnees illisible");
@@ -121,36 +173,73 @@ pub(super) fn appliquer(
                 );
                 return Suite::Termine(HRESULT(etat.compteurs.rendre(Erreur::Inattendue)));
             }
+            // 🔴 **L'ORDRE EST VÉRIFIÉ AVANT L'ÉCRITURE, JAMAIS APRÈS.** Une
+            // réponse hors d'ordre écrite puis dénoncée aurait déjà corrompu le
+            // fichier, et **seul un condensat SHA-256 le dirait**.
+            let mut garde = match fenetre.lock() {
+                Ok(g) => g,
+                Err(empoisonne) => empoisonne.into_inner(),
+            };
+            if let Err(hors) = garde.recu(position) {
+                tracing::warn!(
+                    chemin,
+                    recue = hors.recue,
+                    attendue = hors.attendue,
+                    "reponse de lecture HORS D'ORDRE : jetee, RIEN n'est ecrit"
+                );
+                return Suite::Termine(HRESULT(etat.compteurs.rendre(Erreur::Inattendue)));
+            }
             let issue = verbes::ecrire_donnees(etat, flux.0, position, trame.charge);
             if issue.is_err() {
                 return Suite::Termine(issue);
             }
             etat.octets_hydrates.fetch_add(trame.charge.len() as u64, Ordering::Relaxed);
 
-            // ⚠️ **UN morceau en vol à la fois** : le morceau *n+1* n'est
-            // demandé qu'après réception du morceau *n*. C'est le plus simple,
-            // et c'est suffisant — le contrôle de flux par `bufferedAmount` et
-            // `SEUIL_TAMPON` est un livrable de **F3** (spec §8), pas de F1.
-            // L'implémenter à moitié ici serait pire que de ne pas
-            // l'implémenter.
-            let mut restants = restants.clone();
-            match verbes::prochain_morceau(&mut restants) {
-                Some(morceau) => {
-                    // Une lecture porte TOUJOURS une commande ProjFS : c'est un
-                    // rappel `GetFileData` qui l'a inscrite.
-                    let Some(commande) = commande else {
-                        tracing::warn!(chemin, "lecture sans commande ProjFS : impossible");
-                        return Suite::Termine(HRESULT(etat.compteurs.rendre(Erreur::Inattendue)));
-                    };
-                    etat.demander_lecture(commande, &chemin, morceau, flux.0, restants);
-                    Suite::Poursuit
-                }
-                None => {
-                    etat.entrees_hydratees.fetch_add(1, Ordering::Relaxed);
-                    tracing::debug!(chemin, correlation, "lecture complète");
-                    Suite::Termine(S_OK)
-                }
+            // ✅ **LA FENÊTRE DE F3 REMPLACE « UN MORCEAU EN VOL À LA
+            // FOIS ».** *(Ces lignes disaient : « UN morceau en vol à la fois
+            // […] le contrôle de flux par `bufferedAmount` et `SEUIL_TAMPON`
+            // est un livrable de F3, pas de F1. L'implémenter à moitié ici
+            // serait pire que de ne pas l'implémenter. » F3 est arrivé, et il
+            // n'en a PAS implémenté la moitié : la fenêtre du pont
+            // (`pont::lecture`) ET la contre-pression du navigateur
+            // (`client/src/fichiers/flux.ts`) sont livrées ensemble — avec un
+            // seul morceau en vol, la règle de la spec §7.3 ne pourrait JAMAIS
+            // mordre.)*
+            //
+            // 🔴 **L'INVARIANT D'ORDRE EST VÉRIFIÉ, JAMAIS CRU.** Le canal est
+            // `ordered` et les morceaux sont demandés en positions
+            // croissantes ; `Fenetre::recu` **dénonce** néanmoins une réponse
+            // hors d'ordre au lieu de l'appliquer. Écrire une plage au mauvais
+            // rang produirait un fichier dont **seul un condensat SHA-256**
+            // dirait qu'il est faux — celui que F1 n'a JAMAIS établi.
+            let lot = garde.a_demander();
+            let terminee = garde.terminee();
+            let en_vol_max = garde.en_vol_max();
+            drop(garde);
+            if terminee {
+                etat.entrees_hydratees.fetch_add(1, Ordering::Relaxed);
+                tracing::debug!(chemin, correlation, en_vol_max, "lecture complète");
+                return Suite::Termine(S_OK);
             }
+            // Une lecture porte TOUJOURS une commande ProjFS : c'est un rappel
+            // `GetFileData` qui l'a inscrite.
+            let Some(commande) = commande else {
+                tracing::warn!(chemin, "lecture sans commande ProjFS : impossible");
+                return Suite::Termine(HRESULT(etat.compteurs.rendre(Erreur::Inattendue)));
+            };
+            for morceau in lot {
+                etat.demander_lecture(
+                    commande,
+                    &chemin,
+                    morceau,
+                    flux.0,
+                    std::sync::Arc::clone(fenetre),
+                );
+            }
+            // ⚠️ **`Poursuit` MÊME QUAND LE LOT EST VIDE** : d'autres
+            // corrélations de la MÊME commande sont encore en vol, et
+            // compléter ici les laisserait répondre à un rappel achevé.
+            Suite::Poursuit
         }
         (
             Attendue::Lister { chemin, enumeration },
@@ -190,6 +279,26 @@ pub(super) fn appliquer(
                 return Suite::Termine(HRESULT(etat.compteurs.rendre(Erreur::Inattendue)));
             }
             tracing::debug!(chemin, correlation, dernier, "morceau d'écriture acquitté");
+            let _ = etat.vers_ecriture.send(Ordre::Fait { correlation });
+            Suite::Termine(S_OK)
+        }
+        // 🔴 **LA MUTATION (F3).** Elle ne complète AUCUN rappel — `command_id`
+        // est `None` — et ne fait que relayer l'acquittement au fil, qui décide
+        // s'il pousse la suivante.
+        //
+        // ⚠️ **Le contexte ProjFS est `None` ici, et ce n'est pas une anomalie**
+        // : une mutation n'a ni tampon d'énumération, ni flux de données. Elle
+        // naît d'une notification POST, qui a déjà rendu la main à
+        // l'application.
+        (Attendue::Muter { chemin, renommage }, None) => {
+            if trame.type_message != proto::fichiers::TYPE_FAIT {
+                tracing::warn!(
+                    chemin, correlation, renommage, type_message = trame.type_message,
+                    "reponse d'un type inattendu a une mutation : jetee"
+                );
+                return Suite::Termine(HRESULT(etat.compteurs.rendre(Erreur::Inattendue)));
+            }
+            tracing::debug!(chemin, correlation, renommage, "mutation acquittee");
             let _ = etat.vers_ecriture.send(Ordre::Fait { correlation });
             Suite::Termine(S_OK)
         }

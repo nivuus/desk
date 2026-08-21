@@ -209,6 +209,21 @@ impl File {
         self.attente.len()
     }
 
+    /// Tous les chemins que cette file retient — **EN VOL COMPRIS**.
+    ///
+    /// 🔴 **C'est ce que `pont::mutation::ordonnancer` lit**, et l'inclusion du
+    /// vol est le point : ne considérer que l'attente laisserait passer le cas
+    /// le plus courant de l'idiome temp+rename — le fichier temporaire dont la
+    /// poussée vient de commencer, et que le renommage suit de quelques
+    /// millisecondes.
+    pub fn chemins_dus(&self) -> Vec<String> {
+        self.en_vol()
+            .into_iter()
+            .map(str::to_string)
+            .chain(self.attente.iter().map(|e| e.chemin().to_string()))
+            .collect()
+    }
+
     fn demarrer(&mut self) -> Option<Evenement> {
         if self.en_vol.is_some() || self.attente.is_empty() {
             return None;

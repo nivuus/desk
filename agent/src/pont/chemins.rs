@@ -141,3 +141,44 @@ fn est_reserve(composant: &str) -> bool {
 
 #[cfg(test)]
 mod tests;
+
+/// Remplace le DERNIER composant d'un chemin ProjFS par `nom`, en gardant les
+/// séparateurs et la casse de tout ce qui précède.
+///
+/// 🔴 **C'est la conséquence ① du canonicaliseur de casse de F3**, et elle est
+/// PURE pour être éprouvée sur l'hôte : `PrjWritePlaceholderInfo` doit recevoir
+/// le nom **STOCKÉ sur le poste local**, jamais celui que l'application a tapé.
+///
+/// Sans elle, un `GROS.BIN` demandé sur un `gros.bin` local ferait créer un
+/// substitut nommé `GROS.BIN` dans la racine. La racine étant NTFS — donc
+/// insensible à la casse —, l'ouverture réussirait ; mais **une énumération du
+/// parent rendrait `gros.bin`** : deux noms pour un fichier, dont un qui
+/// n'existe nulle part.
+///
+/// ⚠️ **Le séparateur de ProjFS est `\`**, jamais `/` : ce n'est pas le chemin
+/// logique normalisé, c'est celui que le système a livré et qu'il reprendra tel
+/// quel.
+///
+/// Rend `None` quand il n'y a rien à changer — chemin vide, ou dernier
+/// composant déjà égal à `nom`. **L'appelant garde alors les octets d'origine**,
+/// ce qui préserve la propriété que F1 s'était donnée : ne pas reconvertir un
+/// chemin qu'on n'a aucune raison de toucher.
+pub fn avec_dernier_composant(chemin_projfs: &str, nom: &str) -> Option<String> {
+    if chemin_projfs.is_empty() || nom.is_empty() {
+        return None;
+    }
+    match chemin_projfs.rfind('\\') {
+        Some(i) => {
+            if &chemin_projfs[i + 1..] == nom {
+                return None;
+            }
+            Some(format!("{}{}", &chemin_projfs[..=i], nom))
+        }
+        None => {
+            if chemin_projfs == nom {
+                return None;
+            }
+            Some(nom.to_string())
+        }
+    }
+}

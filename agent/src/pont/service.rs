@@ -267,14 +267,40 @@ fn traiter(etat: &Etat, correlation: u32, octets: &[u8]) {
     let contexte = oublier_contexte(etat, correlation);
 
     if trame.type_message == proto::fichiers::TYPE_ECHEC {
-        let cause = match serde_json::from_slice::<entetes::Echec>(trame.entete) {
-            Ok(echec) => cause_de(echec.code),
+        let code = match serde_json::from_slice::<entetes::Echec>(trame.entete) {
+            Ok(echec) => Some(echec.code),
             Err(erreur) => {
                 tracing::warn!(correlation, %erreur, "échec au code illisible");
-                Erreur::Inattendue
+                None
             }
         };
-        tracing::debug!(?commande, correlation, ?cause, "le navigateur refuse");
+        let cause = code.map_or(Erreur::Inattendue, cause_de);
+        // ✅ **`warn!` ET NON `debug!`, ET LA LIGNE PORTE LE CODE DU FIL EN PLUS
+        // DE LA CAUSE.** *(Cette trace était un `debug!` ne portant que la
+        // cause.)*
+        //
+        // 🔴 **DEUX RAISONS, ET LA SECONDE EST UNE DIVERGENCE DÉCLARÉE.**
+        //
+        // 1. `scripts/run-agent.sh` pose `RUST_LOG=info` par défaut, et la
+        //    doctrine de ce dépôt est que l'exploitation y tourne : **sur une
+        //    recette ordinaire, AUCUNE cause n'était observable**. Le critère
+        //    (4) de F3 en était insatisfiable.
+        // 2. `cause_de` fait retomber **TROIS** codes du fil distincts —
+        //    `TropGrand`, `Interne` et `CasseAmbigue` — sur la MÊME cause
+        //    `Inattendue`, donc le même `HRESULT`, alors que la spec §5.1
+        //    énonce « deux causes distinctes ne partagent jamais un code ».
+        //    **F3 ne crée PAS une treizième variante** : du point de vue de
+        //    l'application, les trois sont « un défaut de notre côté », et
+        //    inventer un `HRESULT` pour distinguer nos propres bogues ferait
+        //    grossir une table que le critère (4) oblige ensuite à exercer.
+        //    **Ce que F3 corrige, c'est la perte au JOURNAL** : la distinction
+        //    survit là où elle sert — le diagnostic —, et la ligne du §5.1 est
+        //    respectée dans son intention (l'ancien pont rendait `EPERM` à neuf
+        //    sites) sans l'être dans sa lettre.
+        tracing::warn!(
+            ?commande, correlation, ?code, ?cause,
+            "le navigateur refuse"
+        );
         // Une écriture refusée : le code du protocole voyage TEL QUEL vers le
         // fil, qui le nomme au journal. Le traduire en `Erreur` d'abord
         // perdrait la distinction entre « disque plein » et « casse ambiguë »,
@@ -283,10 +309,7 @@ fn traiter(etat: &Etat, correlation: u32, octets: &[u8]) {
         if commande.is_none() {
             let _ = etat.vers_ecriture.send(Ordre::Echec {
                 correlation,
-                code: match serde_json::from_slice::<entetes::Echec>(trame.entete) {
-                    Ok(echec) => echec.code,
-                    Err(_) => proto::fichiers::CodeEchec::Interne,
-                },
+                code: code.unwrap_or(proto::fichiers::CodeEchec::Interne),
             });
         }
         return reponses::terminer(etat, commande, contexte, HRESULT(etat.compteurs.rendre(cause)));

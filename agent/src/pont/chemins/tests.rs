@@ -114,3 +114,42 @@ fn des_unites_utf16_invalides_sont_refusees_avant_toute_normalisation() {
     let simple: Vec<u16> = "dossier\\éléphant.txt".encode_utf16().collect();
     assert_eq!(normaliser_utf16(&simple).unwrap(), "dossier/éléphant.txt");
 }
+
+/// 🔴 **LE NOM CANONIQUE REMPLACE LE DERNIER COMPOSANT, ET RIEN D'AUTRE.**
+#[test]
+fn avec_dernier_composant_ne_touche_que_le_dernier() {
+    assert_eq!(
+        super::avec_dernier_composant("Dossier\\GROS.BIN", "gros.bin"),
+        Some("Dossier\\gros.bin".to_string())
+    );
+    assert_eq!(
+        super::avec_dernier_composant("A\\B\\C\\NOTE.TXT", "note.txt"),
+        Some("A\\B\\C\\note.txt".to_string())
+    );
+    assert_eq!(super::avec_dernier_composant("GROS.BIN", "gros.bin"), Some("gros.bin".to_string()));
+}
+
+/// 🔴 **RIEN À CHANGER ⇒ `None`, ET L'APPELANT GARDE LES OCTETS D'ORIGINE.**
+///
+/// F1 s'était donné la propriété de ne jamais reconvertir un chemin ProjFS —
+/// « un aller-retour où une casse ou un séparateur pourrait se perdre ». F3 ne
+/// la casse QUE lorsqu'il y a quelque chose à gagner.
+#[test]
+fn avec_dernier_composant_rend_none_quand_il_n_y_a_rien_a_changer() {
+    assert_eq!(super::avec_dernier_composant("Dossier\\note.txt", "note.txt"), None);
+    assert_eq!(super::avec_dernier_composant("note.txt", "note.txt"), None);
+    assert_eq!(super::avec_dernier_composant("", "note.txt"), None);
+    assert_eq!(super::avec_dernier_composant("note.txt", ""), None);
+}
+
+/// ⚠️ **Le séparateur de ProjFS est `\`, jamais `/`** : un `/` dans le chemin
+/// livré n'est pas un séparateur mais un caractère de nom, et le traiter comme
+/// tel tronquerait le chemin.
+#[test]
+fn avec_dernier_composant_ignore_la_barre_oblique() {
+    assert_eq!(
+        super::avec_dernier_composant("a/b", "z"),
+        Some("z".to_string()),
+        "il n'y a aucun antislash : tout le chemin est le dernier composant"
+    );
+}
