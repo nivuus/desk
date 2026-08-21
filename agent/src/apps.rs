@@ -30,10 +30,21 @@ pub mod lecture;
 /// l'utilisateur ressent entre l'installation d'une application et son
 /// apparition : il vaut jusqu'à trente secondes, et c'est le vrai arbitrage.
 ///
-/// ⚠️ LA RÉCONCILIATION PÉRIODIQUE EST LA SOURCE DE VÉRITÉ, et le restera : la
-/// notification par `ReadDirectoryChangesW` d'un sous-bloc ultérieur ne sera
-/// qu'un ACCÉLÉRATEUR. Une notification manquée ne doit jamais pouvoir figer
-/// un catalogue.
+/// ⚠️ LA RÉCONCILIATION PÉRIODIQUE EST LA SOURCE DE VÉRITÉ, et le reste : la
+/// notification par `ReadDirectoryChangesW` **N'EST** qu'un ACCÉLÉRATEUR. Une
+/// notification manquée ne doit jamais pouvoir figer un catalogue.
+///
+/// ✅ **LE FUTUR EST PASSÉ** (sous-bloc G4) : cette phrase était écrite au
+/// futur — « d'un sous-bloc ultérieur ne sera qu'un accélérateur » —, et
+/// `apps::surveillance` existe. Elle est mise au présent PLUTÔT QUE RÉÉCRITE :
+/// sa propriété portante est inchangée, et **G4 n'a rien retiré à cette
+/// constante**. La seule chose que la surveillance change est QUAND une
+/// réconciliation part, jamais ce qu'elle fait ni ce sur quoi elle fait foi.
+///
+/// ⚠️ **ET UN ÉTAT LA DÉSARME, LUI** : `APPS_SURVEILLANCE=seule`, **variable de
+/// BANC**, coupe cette période au profit des seules notifications. C'est la
+/// ROUGE du critère ③ de G4, et le seul montage qui rende observable ce que
+/// cette phrase-ci promet.
 pub const PERIODE_RECONCILIATION: Duration = Duration::from_secs(30);
 
 /// 🔴 `APPS=0` DÉSARME ; UNE SIMPLE PRÉSENCE N'ACTIVE PAS.

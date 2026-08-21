@@ -809,6 +809,44 @@ surveillance perdue.
 | ③ | Un débordement **ne perd aucune application** | après la rafale, le catalogue est complet | c'est la propriété que D1 achète. La ROUGE est un agent purement événementiel — **elle se joue en désarmant la réconciliation périodique** |
 | ④ | L'anti-rebond **réduit** le nombre de réconciliations | installer une application réelle ; compter les réconciliations | sans anti-rebond, une par notification. **À exercer** |
 
+> ⚠️ **ANNOTÉ PAR LE SOUS-BLOC G4 (21 août 2026), ET NON RÉÉCRIT : ce tableau
+> reste un relevé daté, et il est vrai comme histoire.** Quatre de ses clauses
+> ont été réfutées ou déplacées AVANT toute mesure, par lecture du code :
+>
+> - 🔴 **la ROUGE de ① — « le binaire de G1 » — N'EST PAS JOUABLE.**
+>   `PLATEFORME_VERSION` vaut **4** ; le binaire de G1 parle **1**, celui
+>   d'avant G2 parle **2**. Un agent v1 ou v2 face à la plateforme
+>   d'aujourd'hui **est refusé et boucle sans terme**, sans même pouvoir LIRE
+>   le refus — G1 l'a mesuré. **Tranché** : la ROUGE de ① est
+>   `APPS_SURVEILLANCE=0` sur le binaire de G4, qui reproduit exactement le
+>   comportement de G1 sans en reproduire le protocole. 🔵 Elle est même
+>   MEILLEURE : même binaire, même corpus, même machine, **une seule variable
+>   de différence**.
+>
+> - 🔴 **la ROUGE de ③ est très probablement NON DISCRIMINANTE, et c'est écrit
+>   AVANT de la jouer.** Trois faits, raisonnés sur le code : une
+>   réconciliation, **quel que soit son déclencheur**, relit le disque ENTIER ;
+>   un débordement est **lui-même une complétion**, donc un déclencheur ; et le
+>   tout premier tour est `complet` par construction, donc un changement
+>   survenu agent ARRÊTÉ est rattrapé au démarrage — pas par la période. **Ce
+>   qui achète l'absence de perte n'est donc pas la réconciliation
+>   périodique : c'est le fait que toute réconciliation relise tout.**
+>   Ce que la période achète RÉELLEMENT est le seul cas que D1 nomme et
+>   qu'aucun événement ne peut signaler : **une surveillance qui cesse de
+>   délivrer SANS ERREUR**. 🔵 Le montage qui, lui, PEUT être rouge est
+>   `APPS_FAUTE=muette:<n>` — une complétion avalée.
+>
+> - ⚠️ **le pas de temps de ④ n'est pas « anti-rebond contre RIEN »** : le
+>   sondage de `apps/boucle.rs` a une granularité de **200 ms**, qui est déjà
+>   un anti-rebond faible. Le ROUGE mesure « anti-rebond contre 200 ms », et
+>   **si les deux bras rendent le même compte, ④ est NON MESURABLE**.
+>
+> - ⚠️ **la borne haute de l'anti-rebond vaut 4 s et non les 5 s proposées
+>   plus bas** : elle est **DÉRIVÉE** du critère ① et de deux coûts mesurés
+>   (granularité du sondage 200 ms, coût d'une réconciliation ≈ 70 ms, 10 ms
+>   par icône neuve). À 5 s le pire cas rend **5 280 ms**, au-dessus de ce que
+>   ① exige. Voir `agent/src/apps/surveillance/rebond.rs`, qui porte le calcul.
+
 ### G5 — La PWA par application, et les types installeur du hub
 
 **Livre** : le manifeste dynamique par application (icône 256, couleur
@@ -852,6 +890,14 @@ agent/
   src/apps/reconciliation.rs     NEUF — PUR : le diff (apparues / disparues / modifiees)
   src/apps/surveillance.rs       NEUF — #[cfg(windows)] : ReadDirectoryChangesW (G4)
   src/apps/rebond.rs             NEUF — PUR : l'échéance d'anti-rebond, horloge en paramètre (G4)
+  ⚠️ CES DEUX LIGNES SONT ANNOTÉES PAR G4, PAS RÉÉCRITES. Ce qui a été livré :
+     `apps/surveillance.rs` est **SANS `cfg`** — parent de `mode.rs`,
+     `rebond.rs`, `faute.rs`, `partage.rs` (purs ou sans `cfg`) et de `fil.rs`,
+     `racine.rs` (`#[cfg(windows)]`). C'est l'idiome que ④ a DÉJÀ établi deux
+     fois, `apps/icone.rs` et `apps/installation.rs`, et dont `apps/icone.rs`
+     porte la raison en tête : « on ne peut pas déclarer un PETIT-fils depuis le
+     grand-parent sans `#[path]` ». Ranger `rebond.rs` en FRÈRE, comme cette
+     ligne le prescrit, obligerait au `#[path]` que ④ évite depuis G2.
   src/apps/icone.rs              NEUF — #[cfg(windows)] : IShellItemImageFactory
   src/apps/icone/ressource.rs    NEUF — PUR : lecture d'un GRPICONDIR / ICONDIR depuis un &[u8]
   src/apps/lancement.rs          NEUF — #[cfg(windows)] : ShellExecuteExW
