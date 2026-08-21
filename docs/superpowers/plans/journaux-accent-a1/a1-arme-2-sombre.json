@@ -1,0 +1,92 @@
+{
+  "etiquette": "2",
+  "accent_pose": "(armé, défaut)",
+  "theme_emule": "dark",
+  "palier_ms": 75000,
+  "phases": [
+    {
+      "nom": "apres-etablissement",
+      "t": "2026-08-21T10:22:10.933Z",
+      "pages": {
+        "ijnwFbeyRDc0913Hxyuo2A:w-1": {
+          "token": "#f5d472",
+          "accentDuTheme": "#7aa2f7",
+          "fond0": "#0b0d10",
+          "messages": [
+            "#f5d472"
+          ],
+          "erreurs": []
+        },
+        "ijnwFbeyRDc0913Hxyuo2A:w-2": {
+          "token": "#8ec7d4",
+          "accentDuTheme": "#7aa2f7",
+          "fond0": "#0b0d10",
+          "messages": [
+            "#8ec7d4"
+          ],
+          "erreurs": []
+        }
+      },
+      "annonces_agent": {
+        "ijnwFbeyRDc0913Hxyuo2A:w-2": [
+          "#8ec7d4"
+        ],
+        "ijnwFbeyRDc0913Hxyuo2A:w-1": [
+          "#f5d472"
+        ]
+      }
+    },
+    {
+      "nom": "apres-palier",
+      "t": "2026-08-21T10:23:26.012Z",
+      "pages": {
+        "ijnwFbeyRDc0913Hxyuo2A:w-1": {
+          "token": "#f5d472",
+          "accentDuTheme": "#7aa2f7",
+          "fond0": "#0b0d10",
+          "messages": [
+            "#f5d472"
+          ],
+          "erreurs": []
+        },
+        "ijnwFbeyRDc0913Hxyuo2A:w-2": {
+          "token": "#8ec7d4",
+          "accentDuTheme": "#7aa2f7",
+          "fond0": "#0b0d10",
+          "messages": [
+            "#8ec7d4"
+          ],
+          "erreurs": []
+        }
+      },
+      "annonces_agent": {
+        "ijnwFbeyRDc0913Hxyuo2A:w-2": [
+          "#8ec7d4"
+        ],
+        "ijnwFbeyRDc0913Hxyuo2A:w-1": [
+          "#f5d472"
+        ]
+      }
+    }
+  ],
+  "criteres": {},
+  "prep": "agent=0",
+  "notepad": 1,
+  "shell_attachee": true,
+  "ps1_accent": [],
+  "ps1_temoin_negatif": [],
+  "sessions": [
+    "ijnwFbeyRDc0913Hxyuo2A:w-1",
+    "ijnwFbeyRDc0913Hxyuo2A:w-2"
+  ],
+  "attributions": [
+    {
+      "session": "ijnwFbeyRDc0913Hxyuo2A:w-2",
+      "pid": 20396
+    },
+    {
+      "session": "ijnwFbeyRDc0913Hxyuo2A:w-1",
+      "pid": 25564
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+2026-08-21T10:34:26.574Z préparation VM
+2026-08-21T10:34:30.957Z prep : agent=0
+2026-08-21T10:34:30.957Z purge du vivier de sorties virtuelles (lancement SÉPARÉ)
+2026-08-21T10:34:36.478Z ouverture de Bloc-notes et de l’Explorateur
+2026-08-21T10:34:39.226Z Bloc-notes ouverts : 1
+2026-08-21T10:34:44.229Z + page attachée F1F78670 http://127.0.0.1:5176/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8092&prefixe=ijnwFbeyRDc0913Hxyuo2A
+2026-08-21T10:34:44.528Z + page attachée 7E39661B chrome://newtab/
+2026-08-21T10:34:48.087Z page-shell attachée : true
+2026-08-21T10:34:48.087Z lancement du superviseur (ACCENT armé)
+2026-08-21T10:34:48.472Z run-agent.sh : Opration russie : tentative d'excution de la tche planifie "guacamole-agent".agent lancé en session interactive ; journal : /media/vm/dev/agent.log
+2026-08-21T10:34:48.474Z run-agent.ps1 — lignes ACCENT : []
+2026-08-21T10:34:51.785Z + page attachée 9B6D780F 
+2026-08-21T10:34:51.830Z + page attachée F14D183D 
+2026-08-21T10:34:52.504Z pages d’application : ijnwFbeyRDc0913Hxyuo2A:w-1 ijnwFbeyRDc0913Hxyuo2A:w-2
+2026-08-21T10:34:52.516Z attributions session ↔ pid : []
+2026-08-21T10:35:12.544Z phase apres-etablissement : {"ijnwFbeyRDc0913Hxyuo2A:w-1":["#f5d472"],"ijnwFbeyRDc0913Hxyuo2A:w-2":["#8ec7d4"]}
+2026-08-21T10:35:12.544Z palier de 75000 ms — rien n'est touché
+2026-08-21T10:36:27.618Z phase apres-palier : {"ijnwFbeyRDc0913Hxyuo2A:w-1":["#f5d472"],"ijnwFbeyRDc0913Hxyuo2A:w-2":["#8ec7d4"]}
+2026-08-21T10:36:27.620Z relevé écrit : docs/superpowers/plans/journaux-accent-a1/a1-arme-2-clair.json

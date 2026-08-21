@@ -1,0 +1,83 @@
+{
+  "etiquette": "7",
+  "accent_pose": "(armé, défaut)",
+  "theme_emule": "light",
+  "palier_ms": 75000,
+  "phases": [
+    {
+      "nom": "apres-etablissement",
+      "t": "2026-08-21T10:35:12.544Z",
+      "pages": {
+        "ijnwFbeyRDc0913Hxyuo2A:w-1": {
+          "token": "#2f5fd0",
+          "accentDuTheme": "#2f5fd0",
+          "fond0": "#ffffff",
+          "messages": [
+            "#f5d472"
+          ],
+          "erreurs": []
+        },
+        "ijnwFbeyRDc0913Hxyuo2A:w-2": {
+          "token": "#2f5fd0",
+          "accentDuTheme": "#2f5fd0",
+          "fond0": "#ffffff",
+          "messages": [
+            "#8ec7d4"
+          ],
+          "erreurs": []
+        }
+      },
+      "annonces_agent": {
+        "ijnwFbeyRDc0913Hxyuo2A:w-1": [
+          "#f5d472"
+        ],
+        "ijnwFbeyRDc0913Hxyuo2A:w-2": [
+          "#8ec7d4"
+        ]
+      }
+    },
+    {
+      "nom": "apres-palier",
+      "t": "2026-08-21T10:36:27.618Z",
+      "pages": {
+        "ijnwFbeyRDc0913Hxyuo2A:w-1": {
+          "token": "#2f5fd0",
+          "accentDuTheme": "#2f5fd0",
+          "fond0": "#ffffff",
+          "messages": [
+            "#f5d472"
+          ],
+          "erreurs": []
+        },
+        "ijnwFbeyRDc0913Hxyuo2A:w-2": {
+          "token": "#2f5fd0",
+          "accentDuTheme": "#2f5fd0",
+          "fond0": "#ffffff",
+          "messages": [
+            "#8ec7d4"
+          ],
+          "erreurs": []
+        }
+      },
+      "annonces_agent": {
+        "ijnwFbeyRDc0913Hxyuo2A:w-1": [
+          "#f5d472"
+        ],
+        "ijnwFbeyRDc0913Hxyuo2A:w-2": [
+          "#8ec7d4"
+        ]
+      }
+    }
+  ],
+  "criteres": {},
+  "prep": "agent=0",
+  "notepad": 1,
+  "shell_attachee": true,
+  "ps1_accent": [],
+  "ps1_temoin_negatif": [],
+  "sessions": [
+    "ijnwFbeyRDc0913Hxyuo2A:w-1",
+    "ijnwFbeyRDc0913Hxyuo2A:w-2"
+  ],
+  "attributions": []
+}
