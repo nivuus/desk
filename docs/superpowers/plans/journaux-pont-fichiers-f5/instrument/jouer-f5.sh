@@ -41,7 +41,7 @@ rm -f /media/vm/dev/agent.log "/tmp/f5/pilote-$ETIQUETTE.json" \
       "$J/pilote-$ETIQUETTE.json" "$J/agent-$ETIQUETTE.log" "$J/agent-$ETIQUETTE-plat.log"
 
 echo "=== [$ETIQUETTE] pilote (la shell d abord, l agent ensuite) ==="
-APRES_CONNEXION="cd $RACINE && set -a && source .env && set +a && export AGENT_VM=$AGENT_VM AGENT_SECRET=$AGENT_SECRET SUPERVISEUR=1 SIGNALING_URL=ws://192.168.3.1:8080 RUST_LOG=${NIVEAU_LOG:-info,agent::pont=debug} ${PONT_CACHE:+PONT_CACHE=$PONT_CACHE} && scripts/run-agent.sh" \
+APRES_CONNEXION="cd $RACINE && set -a && source .env && set +a && export AGENT_VM=$AGENT_VM AGENT_SECRET=$AGENT_SECRET SUPERVISEUR=1 SIGNALING_URL=ws://192.168.3.1:8080 RUST_LOG=${NIVEAU_LOG:-info,agent::pont=debug} ${PONT_CACHE:+PONT_CACHE=$PONT_CACHE} ${PONT_ECRITURE:+PONT_ECRITURE=$PONT_ECRITURE} && scripts/run-agent.sh" \
 UDD="/tmp/f5/udd-$ETIQUETTE" PORT_CDP="${PORT_CDP:-9455}" \
     node "$I/pilote-f5.mjs" "$MAINTIEN" "/tmp/f5/pilote-$ETIQUETTE.json" \
     2>&1 | tee "$J/pilote-$ETIQUETTE.log"

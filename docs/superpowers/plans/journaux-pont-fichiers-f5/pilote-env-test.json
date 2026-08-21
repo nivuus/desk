@@ -1,0 +1,26 @@
+{
+  "maintien_s": 8,
+  "prefixe": "F4z7KQooOQfJqh47PM0ETA",
+  "journal": [
+    "[2026-08-21T13:12:28.256Z] jeton de recette obtenu",
+    "[2026-08-21T13:12:28.616Z] chrome : Chrome/151.0.7922.169",
+    "[2026-08-21T13:12:28.924Z] navigation : http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA",
+    "[2026-08-21T13:12:37.985Z] OPFS peuple : [object Object] entrees",
+    "[2026-08-21T13:12:37.985Z] la page-shell est connectee : lancement de l agent",
+    "[2026-08-21T13:12:38.383Z] agent lance : Op\u0002ration r\u0002ussie : tentative d'ex\u0002cution de la t\u0003che planifi\u0002e \"guacamole-agent\".agent lancé en session interactive ; journal : /media/vm/dev/agent.log",
+    "[2026-08-21T13:12:38.389Z] ERREUR : TypeError: fetch failed"
+  ],
+  "erreurs": [
+    "TypeError: fetch failed\n    at node:internal/deps/undici/undici:15845:13\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async file:///home/mallanic/Projects/Guacamole/docs/superpowers/plans/journaux-pont-fichiers-f5/instrument/pilote-f5.mjs:205:35"
+  ],
+  "chrome": "Chrome/151.0.7922.169",
+  "console_page": [
+    {
+      "t": 1787317949102,
+      "niveau": "debug",
+      "texte": "[vite] connecting..."
+    }
+  ],
+  "fautes_armees": false,
+  "opfs_entrees": null
+}

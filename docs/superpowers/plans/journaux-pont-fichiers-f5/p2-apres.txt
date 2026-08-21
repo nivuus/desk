@@ -1,0 +1,15 @@
+racine_presente=True
+attributs=Directory
+entrees=1
+  entree=ne-vient-pas-du-navigateur.txt attributs=Archive
+dossier_etat=True
+  fichier=ecritures.journal octets=178
+  sha256=55199198BD3E86F908BF08808839CF3A50F715BB3E64942D3D4CF8E4CEE10D37
+  contenu=+0 "ne-vient-pas-du-navigateur.txt"\n+14 "ne-vient-pas-du-navigateur.txt"\n-"ne-vient-pas-du-navigateur.txt"\n-"ne-vient-pas-du-navigateur.txt"\n+14 "ne-vient-pas-du-navigateur.txt"\n
+  fichier=instance.guid octets=36
+  sha256=A3904D826D9013F086035157ED85E9E05B1618461C577CB8E799AE60C706FB41
+  contenu=AD66D3EC-D47A-4C0B-AFB0-E331A78AE97E
+  fichier=racine.nom octets=13
+  sha256=39197514E13ABD5A9C44BF1C0D15CF7B415736A951C932146E1B352ABB04C646
+  contenu=Mes documents
+fltmc=PrjFlt                                  1       189800         0

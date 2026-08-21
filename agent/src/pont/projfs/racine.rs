@@ -119,9 +119,32 @@ pub(super) fn preparer(projfs: &chargement::ProjFs, racine: &Path) -> Result<()>
         // ⚠️ **On ne teste PAS un `HRESULT` particulier, et c'est délibéré** :
         // le code exact que ProjFS rend pour « déjà marquée » n'a été mesuré
         // sur AUCUNE machine de ce dépôt, et l'inventer ferait exactement ce
-        // que ce dépôt reproche à ses affirmations non relevées. Ce qui est
-        // connu, c'est que re-marquer échoue — donc l'échec est TOLÉRÉ quand
-        // l'empreinte existait déjà, et FATAL sinon.
+        // que ce dépôt reproche à ses affirmations non relevées.
+        //
+        // ❌ **« Ce qui est connu, c'est que re-marquer ÉCHOUE » ÉTAIT FAUX, ET
+        // F5 L'A MESURÉ (21 août 2026, porte P2).** Sur cette VM,
+        // `PrjMarkDirectoryAsPlaceholder` **RÉUSSIT** sur une racine déjà
+        // marquée dont l'empreinte existe : trois exécutions, dont une
+        // (`p2-dues`) sans purge et **sans redémarrage entre les deux**, toutes
+        // trois passées par la branche de succès.
+        //
+        // 🔴 **DEUX CONSÉQUENCES, et la seconde a coûté une mesure** :
+        //
+        // 1. **la branche ci-dessous n'a JAMAIS couru** — elle est tolérante et
+        //    inoffensive, mais elle n'est pas éprouvée, et il ne faut pas la
+        //    lire comme un chemin exercé ;
+        // 2. **la trace de succès disait « marquée pour la PREMIÈRE fois » même
+        //    quand la racine était déjà marquée**, puisqu'elle est le `else`
+        //    d'un appel qui réussit toujours. La porte P2 de F5 lui a demandé
+        //    si le marquage avait survécu à un redémarrage : *elle rendait la
+        //    même phrase dans les trois cas*, donc elle ne pouvait pas
+        //    répondre. Elle dit désormais ce qu'elle SAIT — si une empreinte
+        //    existait déjà — plutôt que ce qu'elle suppose.
+        //
+        // ⚠️ **Le comportement n'est PAS changé** : tolérer l'échec quand
+        // l'empreinte existe reste juste, et le rendre fatal sur la foi de
+        // trois exécutions d'UNE machine serait exactement l'inverse de ce que
+        // ce paragraphe reproche.
         if deja_marquee {
             tracing::info!(
                 %issue,
@@ -141,7 +164,15 @@ pub(super) fn preparer(projfs: &chargement::ProjFs, racine: &Path) -> Result<()>
         // l'est pas, et le démarrage suivant échouerait sans cause lisible.
         std::fs::write(&empreinte, format!("{guid:?}"))
             .with_context(|| format!("écriture de « {} »", empreinte.display()))?;
-        tracing::info!(racine = %racine.display(), "racine marquée pour la première fois");
+        // ⚠️ **`deja_marquee` EST RAPPORTÉ, et c'est ce qui rend cette trace
+        // capable de répondre à une question.** Elle affirmait « première
+        // fois » sans le savoir ; elle rend maintenant l'observation qui la
+        // fonde, et l'interprétation reste au lecteur.
+        tracing::info!(
+            racine = %racine.display(),
+            empreinte_preexistante = deja_marquee,
+            "racine marquée (le marquage RÉUSSIT même sur une racine déjà marquée : mesuré, F5 P2)"
+        );
     }
     Ok(())
 }
