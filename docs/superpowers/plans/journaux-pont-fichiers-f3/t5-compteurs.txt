@@ -1,0 +1,243 @@
+TÂCHE 5 — LE COMPTEUR DES DOUZE CAUSES. Relevé par la commande, 21 août 2026.
+
+════════════════════════════════════════════════════════════════════════════
+① LE CONTRÔLE DU PLAN, VU ROUGE AVANT QUE LA TÂCHE NE COMMENCE
+════════════════════════════════════════════════════════════════════════════
+L'invariant : `erreurs::hresult` n'a plus qu'UN appelant hors tests,
+`compteurs::rendre`.
+
+$ grep -rn --include='*.rs' 'hresult(' agent/src/pont/ \
+    | grep -v '/tests\.rs:\|/tests/\|erreurs\.rs:\|compteurs\.rs:' \
+    | grep -v ':[0-9]*: *//'
+
+AVANT : 26 lignes.
+⚠️ Le plan en annonçait 23 : F2 en a ajouté trois entre-temps (listage.rs ×2,
+   notification.rs ×1). Le nombre du plan était juste à SA date.
+
+APRÈS : 0 ligne.
+
+🔵 Le second `grep -v` n'est pas une coquetterie : sans lui la commande attrape
+   `notifications.rs`, une ligne de DOC-COMMENT (« Le rappel rend
+   `hresult(cause)` »), et le contrôle rendrait donc 1 POUR TOUJOURS — un
+   contrôle qui ne peut jamais redevenir vert. C'est le pendant exact du
+   `|| echo` de F1, qui rendait un contrôle incapable de devenir ROUGE.
+
+Les 26 sites d'AVANT, par fichier :
+  service.rs           12
+  projfs/rappels.rs     6
+  service/verbes.rs     3
+  projfs/rappels/listage.rs      2
+  projfs.rs             1
+  projfs/etat.rs        1
+  projfs/rappels/notification.rs 1
+
+════════════════════════════════════════════════════════════════════════════
+② 🔴 LE PLAFOND DE 500 A ÉTÉ FRANCHI, ET RATTRAPÉ PAR UNE EXTRACTION
+════════════════════════════════════════════════════════════════════════════
+`service.rs` valait 436 en entrant dans F3 — et NON les 325 que le §2.2 du plan
+annonçait, F2 l'ayant fait grossir. Le recensement l'a porté à **510**.
+
+⚠️ LE GESTE JUSTE AURAIT ÉTÉ D'EXTRAIRE AVANT D'AJOUTER (D9 tâche 6, puis les
+   trois de D10). Ce n'est pas ce qui s'est passé : le plan budgétait une marge
+   de 175 qui n'existait plus, et le franchissement a été constaté par `wc -l`
+   APRÈS l'addition. Déclaré plutôt que dissimulé.
+
+Extraction : `agent/src/pont/service/reponses.rs` — `Suite`, `terminer`,
+`appliquer`. La ligne de partage est une responsabilité, jamais un compte de
+lignes : `service.rs` porte LA BOUCLE, `reponses.rs` porte L'APPARIEMENT de ce
+qu'on attendait avec ce qui est arrivé.
+
+  service.rs      436 → 510 (FRANCHI) → **331**
+  reponses.rs                            **222** (neuf)
+
+**JAMAIS UNE COMPRESSION** — geste que CLAUDE.md interdit nommément, et que D9
+a payé deux fois avant de devoir extraire quand même.
+
+CONTRÔLE TEXTE À TEXTE de l'extraction (le plan l'exige) : le corps de
+`reponses.rs` comparé au même bloc de `git show HEAD:…/service.rs`. Le `diff`
+ne montre QUE :
+  - 3 changements de VISIBILITÉ (`enum Suite`, `fn terminer`, `fn appliquer`
+    deviennent `pub(super)`) ;
+  - 10 redirections `hresult(…)` → `etat.compteurs.rendre(…)`, qui sont
+    l'objet de la tâche 5 elle-même ;
+  - 5 lignes de queue qui sont le début de `cause_de`, resté chez le parent
+    (débordement de la plage `awk` du côté HEAD, pas une divergence).
+AUCUNE ligne de corps modifiée par l'extraction elle-même.
+
+════════════════════════════════════════════════════════════════════════════
+③ CE QUE `CodeEchec::RepertoireNonVide` A FAIT ÉCHOUER, ET C'EST VOULU
+════════════════════════════════════════════════════════════════════════════
+$ cargo check --target x86_64-pc-windows-gnu
+error[E0004]: non-exhaustive patterns: `CodeEchec::RepertoireNonVide` not covered
+
+Le `match` exhaustif de `service::cause_de` a REFUSÉ de compiler tant que la
+variante neuve n'avait pas de cause locale. C'est le garde structurel du
+module, vu mordre — et non pas décrit.
+
+════════════════════════════════════════════════════════════════════════════
+④ LA LIGNE DE RECENSEMENT
+════════════════════════════════════════════════════════════════════════════
+Émise par le fil du pont toutes les `PERIODE_RECENSEMENT` (10 s, NON CALIBRÉE)
+ET **une dernière fois à l'arrêt, sur les DEUX sorties de la boucle**.
+
+⚠️ Sans cette dernière ligne, une session plus courte que la période ne rendrait
+   AUCUN recensement — et un critère (4) lu sur un journal vide serait
+   indiscernable d'un critère non tenu. C'est le piège du `grep` de D8 : un
+   contrôle qui rend zéro pour deux raisons opposées.
+
+Forme, telle que `Compteurs::recensement` la produit (test d'hôte
+`l_ordre_du_recensement_est_celui_de_TOUTES`, chaîne comparée en entier) :
+
+codes rendus total=3 introuvable=2 chemin-introuvable=0 acces-refuse=0 canal-ferme=0 delai-depasse=0 abandonnee=0 disque-plein=0 non-supporte=0 repertoire-non-vide=0 deja-present=0 protege-en-ecriture=1 inattendue=0 | jamais rendus : chemin-introuvable,acces-refuse,…
+
+⚠️ **UNE CHAÎNE UNIQUE, jamais des champs `tracing`.** Un champ `tracing` porte
+   des séquences ANSI entre son nom et sa valeur sur un journal BRUT : c'est le
+   piège que la recette d'entrée de D8 a payé, et que le `grep` de F1 a rejoué
+   trois fois. Le recensement se lit tel quel, sans `sed`.
+
+⚠️ **`chemin-introuvable` CONTIENT `introuvable`.** Le test
+   `aucun_nom_n_est_prefixe_d_un_autre` interdit le PRÉFIXE, pas la
+   sous-chaîne : le séparateur qui suit un nom est toujours `=`, donc un
+   `grep ' introuvable='` — espace compris — est non ambigu. Le dire ici évite
+   qu'on le redécouvre au `grep` de la recette.
+
+════════════════════════════════════════════════════════════════════════════
+⑤ LES TESTS, ET LEUR ROUGE
+════════════════════════════════════════════════════════════════════════════
+=== ROUGE 5a-manquants-toujours-vide ===
+fichier      : agent/src/pont/compteurs.rs
+sha256 avant : 8af1a67c5aa80aad7f82270dae3a31ec6feeeda2678667ae2557c0d4603449f0
+diff contre la copie : 2 ligne(s) — 0 SERAIT UN ÉCHEC DE LA ROUGE
+115c115
+<         Erreur::TOUTES.into_iter().filter(|e| self.compte(*e) == 0).collect()
+---
+>         Vec::new()
+--- contrôle ---
+thread 'pont::compteurs::tests::manquants_rend_exactement_les_causes_a_zero' (3869281) panicked at agent/src/pont/compteurs/tests.rs:110:5:
+assertion `left == right` failed: tout manque sur un compteur neuf
+  left: 0
+ right: 12
+test result: FAILED. 8 passed; 1 failed; 0 ignored; 0 measured; 861 filtered out; finished in 0.00s
+--- restauration DEPUIS LA COPIE NOMMÉE (jamais `git checkout --`) ---
+sha256 identique ✅
+état git inchangé ✅ [?? agent/src/pont/compteurs.rs]
+
+=== ROUGE 5b-rendre-decale-d-un-rang ===
+fichier      : agent/src/pont/compteurs.rs
+sha256 avant : 8af1a67c5aa80aad7f82270dae3a31ec6feeeda2678667ae2557c0d4603449f0
+diff contre la copie : 2 ligne(s) — 0 SERAIT UN ÉCHEC DE LA ROUGE
+95c95
+<         self.cases[rang(cause)].fetch_add(1, Ordering::Relaxed);
+---
+>         self.cases[(rang(cause) + 1) % NOMBRE].fetch_add(1, Ordering::Relaxed);
+--- contrôle ---
+thread 'pont::compteurs::tests::l_ordre_du_recensement_est_celui_de_TOUTES' (3870091) panicked at agent/src/pont/compteurs/tests.rs:135:5:
+assertion `left == right` failed
+  left: "total=3 introuvable=0 chemin-introuvable=2 acces-refuse=0 canal-ferme=0 delai-depasse=0 abandonnee=0 disque-plein=0 non-supporte=0 repertoire-non-vide=0 deja-present=0 protege-en-ecriture=0 inattendue=1"
+ right: "total=3 introuvable=2 chemin-introuvable=0 acces-refuse=0 canal-ferme=0 delai-depasse=0 abandonnee=0 disque-plein=0 non-supporte=0 repertoire-non-vide=0 deja-present=0 protege-en-ecriture=1 inattendue=0"
+thread 'pont::compteurs::tests::manquants_rend_exactement_les_causes_a_zero' (3870094) panicked at agent/src/pont/compteurs/tests.rs:116:5:
+assertion failed: !manquants.contains(&Erreur::Introuvable)
+thread 'pont::compteurs::tests::rendre_cumule' (3870095) panicked at agent/src/pont/compteurs/tests.rs:95:5:
+assertion `left == right` failed
+  left: 0
+ right: 3
+thread 'pont::compteurs::tests::rendre_incremente_la_bonne_case_et_elle_seule' (3870097) panicked at agent/src/pont/compteurs/tests.rs:75:13:
+assertion `left == right` failed: après rendre(introuvable), le compteur « introuvable » vaut 0 au lieu de 1
+  left: 0
+ right: 1
+thread 'pont::compteurs::tests::le_compteur_est_juste_sous_concurrence' (3870092) panicked at agent/src/pont/compteurs/tests.rs:176:5:
+assertion `left == right` failed
+  left: 0
+ right: 2000
+test result: FAILED. 4 passed; 5 failed; 0 ignored; 0 measured; 861 filtered out; finished in 0.00s
+--- restauration DEPUIS LA COPIE NOMMÉE (jamais `git checkout --`) ---
+sha256 identique ✅
+état git inchangé ✅ [?? agent/src/pont/compteurs.rs]
+
+=== ROUGE 5c-recensement-permute ===
+fichier      : agent/src/pont/erreurs.rs
+sha256 avant : 389aaa883d006e640caef6148de8c9165bb8f7f865b44f9ef16ec878f413c9cc
+diff contre la copie : 2 ligne(s) — 0 SERAIT UN ÉCHEC DE LA ROUGE
+139d138
+<         Erreur::RepertoireNonVide,
+140a140
+>         Erreur::RepertoireNonVide,
+--- contrôle ---
+thread 'pont::compteurs::tests::l_ordre_du_recensement_est_celui_de_TOUTES' (3870648) panicked at agent/src/pont/compteurs/tests.rs:135:5:
+assertion `left == right` failed
+  left: "total=3 introuvable=2 chemin-introuvable=0 acces-refuse=0 canal-ferme=0 delai-depasse=0 abandonnee=0 disque-plein=0 non-supporte=0 deja-present=0 repertoire-non-vide=0 protege-en-ecriture=1 inattendue=0"
+ right: "total=3 introuvable=2 chemin-introuvable=0 acces-refuse=0 canal-ferme=0 delai-depasse=0 abandonnee=0 disque-plein=0 non-supporte=0 repertoire-non-vide=0 deja-present=0 protege-en-ecriture=1 inattendue=0"
+test result: FAILED. 8 passed; 1 failed; 0 ignored; 0 measured; 861 filtered out; finished in 0.00s
+--- restauration DEPUIS LA COPIE NOMMÉE (jamais `git checkout --`) ---
+sha256 identique ✅
+état git inchangé ✅ []
+
+=== ROUGE 5d-un-recensement-neuf-a-un ===
+fichier      : agent/src/pont/compteurs.rs
+sha256 avant : 8af1a67c5aa80aad7f82270dae3a31ec6feeeda2678667ae2557c0d4603449f0
+diff contre la copie : 4 ligne(s) — 0 SERAIT UN ÉCHEC DE LA ROUGE
+80c80,82
+<         Self::default()
+---
+>         let n = Self::default();
+>         n.cases[0].store(1, Ordering::Relaxed);
+>         n
+--- contrôle ---
+assertion `left == right` failed
+  left: "total=4 introuvable=3 chemin-introuvable=0 acces-refuse=0 canal-ferme=0 delai-depasse=0 abandonnee=0 disque-plein=0 non-supporte=0 repertoire-non-vide=0 deja-present=0 protege-en-ecriture=1 inattendue=0"
+ right: "total=3 introuvable=2 chemin-introuvable=0 acces-refuse=0 canal-ferme=0 delai-depasse=0 abandonnee=0 disque-plein=0 non-supporte=0 repertoire-non-vide=0 deja-present=0 protege-en-ecriture=1 inattendue=0"
+thread 'pont::compteurs::tests::manquants_rend_exactement_les_causes_a_zero' (3871285) panicked at agent/src/pont/compteurs/tests.rs:110:5:
+assertion `left == right` failed: tout manque sur un compteur neuf
+  left: 11
+ right: 12
+thread 'pont::compteurs::tests::rendre_incremente_la_bonne_case_et_elle_seule' (3871288) panicked at agent/src/pont/compteurs/tests.rs:75:13:
+assertion `left == right` failed: après rendre(introuvable), le compteur « introuvable » vaut 2 au lieu de 1
+  left: 2
+ right: 1
+thread 'pont::compteurs::tests::rendre_cumule' (3871286) panicked at agent/src/pont/compteurs/tests.rs:95:5:
+assertion `left == right` failed
+  left: 4
+ right: 3
+thread 'pont::compteurs::tests::un_recensement_neuf_est_a_zero_partout' (3871290) panicked at agent/src/pont/compteurs/tests.rs:57:5:
+assertion `left == right` failed
+  left: 1
+ right: 0
+test result: FAILED. 4 passed; 5 failed; 0 ignored; 0 measured; 861 filtered out; finished in 0.00s
+--- restauration DEPUIS LA COPIE NOMMÉE (jamais `git checkout --`) ---
+sha256 identique ✅
+état git inchangé ✅ [?? agent/src/pont/compteurs.rs]
+
+════════════════════════════════════════════════════════════════════════════
+⑥ LECTURE DES QUATRE ROUGES
+════════════════════════════════════════════════════════════════════════════
+5a `manquants()` → `Vec::new()`   : UN test tombe (8 passed | 1 failed),
+   `left: 0 / right: 12`. 🔴 **C'EST LE ROUGE LE PLUS IMPORTANT DE LA TÂCHE** :
+   un `manquants()` toujours vide ferait déclarer le critère (4) TENU sur une
+   exécution où RIEN n'a été exercé — c'est-à-dire un contrôle incapable
+   d'échouer, appliqué au critère qui existe précisément pour empêcher la table
+   du §5 d'être décorative.
+
+5b `rang(cause)` → `rang(cause) + 1` : CINQ tests tombent, et
+   `rendre_incremente_la_bonne_case_et_elle_seule` **nomme les deux compteurs
+   faux** (« le compteur « introuvable » vaut 2 au lieu de 1 »).
+
+5c permuter `RepertoireNonVide` et `DejaPresent` dans `Erreur::TOUTES` : UN
+   seul test tombe, et il compare la CHAÎNE ENTIÈRE — les deux valeurs sont
+   visiblement échangées dans la sortie. Un recensement dont l'ordre dériverait
+   ferait lire un compteur pour un autre.
+   ⚠️ **Cette rouge mute `erreurs.rs`, pas `compteurs.rs`** : c'est la preuve
+   que le rang est bien DÉRIVÉ de `TOUTES` et non recopié.
+
+5d `nouveaux()` initialise la case 0 à 1 : CINQ tests tombent, dont
+   `un_recensement_neuf_est_a_zero_partout` (`left: 1 / right: 0`).
+
+Les quatre restaurations vérifiées par sha256 ET par l'état git : identiques.
+
+════════════════════════════════════════════════════════════════════════════
+⑦ COMPTES
+════════════════════════════════════════════════════════════════════════════
+`cargo test -p agent` : 861 → **870** (+9, les neuf tests de compteurs),
+   annoncé avant d'être mesuré.
+`cargo check --target x86_64-pc-windows-gnu` : sortie 0, **21** avertissements
+   (24 avant la tâche), tous de la famille dead_code. La baisse de 3 vient de
+   `Erreur::TOUTES`, `NOMBRE` et `index` qui cessent d'être orphelins.

@@ -22,7 +22,6 @@ use windows::Win32::Storage::ProjectedFileSystem::{
 
 use super::{chemins_de, etat, garde};
 use crate::pont::ecriture::{fil::Ordre, Evenement};
-use crate::pont::erreurs::hresult;
 use crate::pont::notifications;
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -71,7 +70,7 @@ pub(super) unsafe extern "system" fn notification(
     garde("Notification", || {
         let Some(etat) = (unsafe { etat(donnees) }) else { return E_UNEXPECTED };
         match notifications::decider(notification.0, etat.etat_de_notification()) {
-            notifications::Reponse::Refuser(cause) => HRESULT(hresult(cause)),
+            notifications::Reponse::Refuser(cause) => HRESULT(etat.compteurs.rendre(cause)),
             // 🔵 L'écriture est autorisée. **Il n'y a rien de plus à faire
             // ici** : les octets ne nous concernent qu'à la fermeture du
             // handle, par une POST.

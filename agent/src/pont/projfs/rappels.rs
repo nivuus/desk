@@ -40,7 +40,7 @@ use windows::Win32::Storage::ProjectedFileSystem::{
 
 use crate::pont::chemins;
 use proto::fichiers::entetes;
-use crate::pont::erreurs::{hresult, Erreur, EN_COURS};
+use crate::pont::erreurs::{Erreur, EN_COURS};
 use crate::pont::projfs::{ContexteProjFs, Etat, FluxDonnees};
 use crate::pont::table::{Attendue, DELAI_ATTRIBUTS};
 
@@ -151,7 +151,7 @@ unsafe extern "system" fn info_marqueur(donnees: *const PRJ_CALLBACK_DATA) -> HR
     garde("GetPlaceholderInfo", || {
         let Some(etat) = (unsafe { etat(donnees) }) else { return E_UNEXPECTED };
         let Some((chemin, chemin_projfs)) = (unsafe { chemins_de(donnees) }) else {
-            return HRESULT(hresult(Erreur::CheminIntrouvable));
+            return HRESULT(etat.compteurs.rendre(Erreur::CheminIntrouvable));
         };
         let entete = match serde_json::to_string(&entetes::Chemin { chemin: chemin.clone() }) {
             Ok(entete) => entete,
@@ -168,7 +168,7 @@ unsafe extern "system" fn info_marqueur(donnees: *const PRJ_CALLBACK_DATA) -> HR
         if demandee {
             HRESULT(EN_COURS)
         } else {
-            HRESULT(hresult(Erreur::CanalFerme))
+            HRESULT(etat.compteurs.rendre(Erreur::CanalFerme))
         }
     })
 }
@@ -184,7 +184,7 @@ unsafe extern "system" fn donnees_fichier(
     garde("GetFileData", || {
         let Some(etat) = (unsafe { etat(donnees) }) else { return E_UNEXPECTED };
         let Some((chemin, _)) = (unsafe { chemins_de(donnees) }) else {
-            return HRESULT(hresult(Erreur::CheminIntrouvable));
+            return HRESULT(etat.compteurs.rendre(Erreur::CheminIntrouvable));
         };
         // ⚠️ **Le fichier entier n'entre JAMAIS en mémoire** : la plage est
         // découpée par `pont::decoupe`, PUR et testé, et **un seul morceau est
@@ -226,7 +226,7 @@ unsafe extern "system" fn donnees_fichier(
         if demandee {
             HRESULT(EN_COURS)
         } else {
-            HRESULT(hresult(Erreur::CanalFerme))
+            HRESULT(etat.compteurs.rendre(Erreur::CanalFerme))
         }
     })
 }
@@ -240,7 +240,7 @@ unsafe extern "system" fn nom_fichier(donnees: *const PRJ_CALLBACK_DATA) -> HRES
     garde("QueryFileName", || {
         let Some(etat) = (unsafe { etat(donnees) }) else { return E_UNEXPECTED };
         let Some((chemin, _)) = (unsafe { chemins_de(donnees) }) else {
-            return HRESULT(hresult(Erreur::CheminIntrouvable));
+            return HRESULT(etat.compteurs.rendre(Erreur::CheminIntrouvable));
         };
         let entete = match serde_json::to_string(&entetes::Chemin { chemin: chemin.clone() }) {
             Ok(entete) => entete,
@@ -264,7 +264,7 @@ unsafe extern "system" fn nom_fichier(donnees: *const PRJ_CALLBACK_DATA) -> HRES
         if demandee {
             HRESULT(EN_COURS)
         } else {
-            HRESULT(hresult(Erreur::CanalFerme))
+            HRESULT(etat.compteurs.rendre(Erreur::CanalFerme))
         }
     })
 }
