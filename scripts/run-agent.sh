@@ -39,6 +39,7 @@ ${PRESSE_PAPIER:+\$env:PRESSE_PAPIER = '$PRESSE_PAPIER'}
 ${PRESSE_PAPIER_GARDE:+\$env:PRESSE_PAPIER_GARDE = '$PRESSE_PAPIER_GARDE'}
 ${APPS:+\$env:APPS = '$APPS'}
 ${ICONES:+\$env:ICONES = '$ICONES'}
+${INSTALLATION_FAUTE:+\$env:INSTALLATION_FAUTE = '$INSTALLATION_FAUTE'}
 ${MICRO_MESURE:+\$env:MICRO_MESURE = '$MICRO_MESURE'}
 # Chantier E, bloc E2 — les TROIS variables du microphone, plus
 # MICRO_MESURE ci-dessus. Sans ces lignes l'agent demarre sans elles ET
