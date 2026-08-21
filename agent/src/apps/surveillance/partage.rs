@@ -74,6 +74,25 @@ impl Veille {
     }
 
     /// Demande l'arrêt du fil.
+    ///
+    /// 🔴 **CETTE MÉTHODE N'A AUCUN APPELANT DE PRODUCTION, ET C'EST DÉCLARÉ
+    /// PLUTÔT QUE DISSIMULÉ** — elle est l'unique avertissement `dead_code` que
+    /// G4 ajoute aux vingt-deux du dépôt, et le retirer par commodité
+    /// masquerait un fait au lieu de le régler.
+    ///
+    /// **Le mécanisme, lui, est VIVANT** : `fil::boucler` relit `arretee()` à
+    /// chaque tour d'attente, donc au plus une seconde après qu'elle serait
+    /// posée. Ce qui manque est son DÉCLENCHEUR, et il manque pour une raison
+    /// qui dépasse ce sous-bloc : **l'agent n'a aucun chemin d'extinction
+    /// propre** — les fils de découverte et d'installation ne sont pas arrêtés
+    /// davantage, et `CLAUDE.md` écrit depuis le sous-bloc D1 que ce chemin
+    /// « n'a toujours jamais été exercé ».
+    ///
+    /// ⚠️ La construire quand même est un choix, et l'alternative était de
+    /// laisser `fil::boucler` sans condition de sortie. Un fil qui ne PEUT pas
+    /// s'arrêter est un fil qu'on ne saura pas arrêter le jour où le chemin
+    /// existera ; celui-ci attend son appelant, et `Drop for Racine` ferme déjà
+    /// les handles quel que soit le chemin de sortie.
     pub fn arreter(&self) {
         self.arret.store(true, Ordering::Relaxed);
     }

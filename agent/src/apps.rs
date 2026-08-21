@@ -100,6 +100,12 @@ pub struct Poignees {
     _decouverte: Option<std::thread::JoinHandle<()>>,
     /// La tâche tokio d'installation.
     _installation: Option<tokio::task::JoinHandle<()>>,
+    /// Le fil de surveillance des quatre racines (sous-bloc G4).
+    ///
+    /// ⚠️ **TROISIÈME POIGNÉE, ET LA LIGNE DE `main.rs` NE BOUGE TOUJOURS PAS**
+    /// — c'est tout l'objet de la structure : `let _apps = apps::brancher(…)`
+    /// est le fichier que quatre chantiers concurrents touchent tous.
+    _surveillance: Option<std::thread::JoinHandle<()>>,
 }
 
 pub fn brancher(canal: Option<&mut crate::plateforme::Canal>) -> Option<Poignees> {
@@ -118,7 +124,47 @@ pub fn brancher(canal: Option<&mut crate::plateforme::Canal>) -> Option<Poignees
     // transmettre par `scripts/run-agent.sh`, piège que ce dépôt a payé cinq
     // fois.
     let partage = installation::partage::Partage::neuf();
-    let decouverte = demarrer(canal, partage.clone());
+    // 🔴 LE MODE EST LU ICI, ET SON `info!` EST INCONDITIONNEL. Aucune
+    // exécution ne peut alors être mal attribuée : une recette qui lit un
+    // verdict sait sous quel mode il a été rendu.
+    //
+    // ⚠️ **LA TRACE PROUVE QUE LA VARIABLE A ATTEINT LE PROCESSUS ; ELLE NE
+    // PROUVE PAS QUE LE MÉCANISME EST COUPÉ** — leçon que le sous-bloc P1 a
+    // payée sur `PRESSE_PAPIER=0`. Ce qui discrimine est le COMPTE de lignes
+    // `catalogue reconcilie`, jamais la présence de celle-ci.
+    let brut = std::env::var("APPS_SURVEILLANCE").ok();
+    let (mode, inconnue) = surveillance::mode::Mode::lire(brut.as_deref());
+    if let Some(valeur) = inconnue {
+        // 🔴 UNE VALEUR INCONNUE EST NOMMÉE, ET LE COMPORTEMENT LIVRÉ EST
+        // RETENU. Sans ce `warn!`, une coquille dans une rouge (`seul` pour
+        // `seule`) ferait tourner le comportement VERT sous le nom du ROUGE, et
+        // la recette lirait un verdict faux — « un contrôle qui ne peut pas
+        // échouer », sous une forme neuve.
+        tracing::warn!(
+            valeur,
+            "APPS_SURVEILLANCE : valeur inconnue, le comportement LIVRÉ est retenu \
+             (attendu : 0, sans-rebond, seule, ou la variable absente)"
+        );
+    }
+    tracing::info!(mode = ?mode, "mode de surveillance retenu");
+    // 🔴 `APPS=0` DÉSARME **AUSSI** LA SURVEILLANCE, ET C'EST DÉCLARÉ PLUTÔT QUE
+    // DÉCOUVERT — la formulation que G3 a employée pour l'installation. Sans
+    // cette ligne, `APPS=0` couperait la découverte et l'installation, et
+    // laisserait un fil de surveillance tourner pour alimenter des compteurs
+    // que **plus personne ne sonde** : quatre handles, 256 Kio de pool NON
+    // PAGINÉ et un fil, au service de rien.
+    //
+    // ⚠️ La lecture est faite ICI, en plus des deux `demarrer` qui la font déjà
+    // chacun pour eux-mêmes : `desarme` est pur et sa lecture ne coûte rien,
+    // là où déduire l’état d’un `Option<JoinHandle>` rendu par un autre étage
+    // coupleraient deux mécanismes par une valeur.
+    let mode = if desarme(std::env::var("APPS").ok().as_deref()) {
+        surveillance::mode::Mode::Desarmee
+    } else {
+        mode
+    };
+    let (veille, surveillance) = surveillance::demarrer(mode);
+    let decouverte = demarrer(canal, partage.clone(), veille, mode);
     let installation = demarrer_installation(canal, partage);
     if decouverte.is_none() && installation.is_none() {
         return None;
@@ -126,6 +172,7 @@ pub fn brancher(canal: Option<&mut crate::plateforme::Canal>) -> Option<Poignees
     Some(Poignees {
         _decouverte: decouverte,
         _installation: installation,
+        _surveillance: surveillance,
     })
 }
 
@@ -169,6 +216,8 @@ fn demarrer_installation(
 fn demarrer(
     canal: &mut crate::plateforme::Canal,
     partage: installation::partage::Partage,
+    veille: surveillance::partage::Veille,
+    mode: surveillance::mode::Mode,
 ) -> Option<std::thread::JoinHandle<()>> {
     if desarme(std::env::var("APPS").ok().as_deref()) {
         tracing::warn!("decouverte d'applications DESARMEE (APPS=0)");
@@ -194,6 +243,8 @@ fn demarrer(
                 base,
                 PERIODE_RECONCILIATION,
                 partage,
+                veille,
+                mode,
             )
         })
         .map_err(|erreur| {
@@ -212,6 +263,8 @@ fn demarrer(
 fn demarrer(
     _canal: &mut crate::plateforme::Canal,
     _partage: installation::partage::Partage,
+    _veille: surveillance::partage::Veille,
+    _mode: surveillance::mode::Mode,
 ) -> Option<std::thread::JoinHandle<()>> {
     None
 }
