@@ -269,6 +269,22 @@ tentatives qui les ont rencontrées ont été rejouées entièrement.
    boucle jusque-là.
 6. ⛔ **Deux collages concurrents depuis deux fenêtres sont hors de ce qui est
    établi.** **P3 les rencontrera.**
+   > ⚠️ **PARTIELLEMENT REPRIS PAR P3 (21 août 2026), et il faut dire par quoi.**
+   > P3 n'a PAS encore rencontré ces deux collages **sur la VM** — sa recette est
+   > un préalable EXTERNE, la VM étant tenue par un chantier voisin. **Mais il a
+   > trouvé PAR LECTURE, puis MESURÉ par un test rouge sur l'arbre intact, une
+   > COURSE que ce cas déclenche** : entre `armer_les_gardes` et `tour()`, une
+   > seconde écriture d'une autre fenêtre franchit les DEUX gardes de D5 et
+   > renvoie son propre texte aux N fenêtres. Elle est fermée par une seconde
+   > prise (`Sondeur::ecarter_notre_ecriture`), dont le RÉSIDU est écrit dans le
+   > code : `ecrire_avec` pose `notre_ecriture` APRÈS l'E/S Win32, et le remède
+   > rétrécit la fenêtre sans la fermer.
+   >
+   > ⚠️ **Ce legs reste donc DÛ dans sa moitié utile — la MESURE.** Et ce n'est
+   > pas un défaut créé par P3 : à une fenêtre, deux collages en moins de
+   > `PERIODE_PRESSE_PAPIER` (250 ms) le produisent aussi. P2 ne l'a pas
+   > rencontré parce que ses quatre collages étaient espacés de plusieurs
+   > secondes.
 7. ⛔ **Le legs n°4 de P1 s'aggrave** : le canal `Message` du registre reste non
    borné, et le presse-papier circule maintenant dans les **deux** sens à 64 KiB
    par geste.

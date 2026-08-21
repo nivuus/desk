@@ -139,6 +139,11 @@ et rien du sens VM → navigateur.
   focalisée écrit localement » et sa mesure à trois fenêtres. **P2 recette à UNE
   fenêtre**, comme P1. ⚠️ Le legs n°3 de P1 — « une fenêtre attachée après une
   copie ne reçoit jamais ce contenu » — **reste à P3**.
+  > ✅ **FERMÉ PAR P3 (21 août 2026), sur ses DEUX moitiés** — voir
+  > l'annotation du §8 de ce même plan. ⚠️ **La règle D3, elle, n'était PAS à
+  > livrer** : le fan-out l'était depuis P1 (`sommeil/presse_papier::distribuer`
+  > itère sur toutes les clés, avec son test) et le dépôt différé aussi. **Ce
+  > que P3 livre est la MESURE**, plus deux trous que la spec ne nommait pas.
 - **A1 — la couleur d'accent** (spec §5, §6.4) : hors périmètre entier.
 - **Images, fichiers, RTF, HTML** : hors périmètre v1 (spec §9).
 - **Le propriétaire MONO-FENÊTRE** (legs n°1 de P1) reste **hors périmètre**, et
@@ -1603,6 +1608,13 @@ disparu avec six constats, définitivement perdus.
   partagent déjà.
 - **Aucune annonce de l'état courant à l'attache** : c'est le legs n°3 de P1, et
   il appartient à P3 — sans conséquence à une fenêtre.
+  > ✅ **FAIT PAR P3 (21 août 2026).** ⚠️ **Et cette ligne n'en nommait qu'UNE
+  > MOITIÉ.** Le legs en a deux, et livrer l'une sans l'autre ferait PARAÎTRE
+  > le défaut corrigé alors qu'il resterait intermittent : la moitié agent
+  > (`Etat::dernier_presse_papier`, émis à l'inscription) **et** la moitié
+  > client — `client/src/main.ts` fait `pressePapier?.recevoir(...)` alors que
+  > `pressePapier` n'est assigné que plus bas, et l'émission de l'agent tombe
+  > PRÉCISÉMENT dans cet intervalle. Ni P1 ni P2 ne nommaient la seconde.
 - **Aucun propriétaire mono-fenêtre** (D-P2-9). P2 le rend **visible** (`Err` au
   lieu d'`Ok`), il ne le livre pas.
 - **Aucun changement de `CONTROL_VERSION`** (spec D7, et P1 l'a déjà tenu).

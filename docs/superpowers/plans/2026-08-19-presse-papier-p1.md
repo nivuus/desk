@@ -287,6 +287,23 @@ référence**. Le premier tour mémorise le numéro de séquence courant et **n'
 rien**. Une fenêtre qui s'attache ne reçoit donc pas le contenu déjà présent
 dans le presse-papier ; elle reçoit la première copie **qui suit**.
 
+> ❌ **CETTE CONSÉQUENCE EST LEVÉE PAR LE SOUS-BLOC P3 (21 août 2026), et elle
+> est ANNOTÉE plutôt que réécrite** : le relevé de P1 reste vrai comme
+> histoire, et c'est son PRONOSTIC qu'on reprend. Une fenêtre qui s'attache
+> reçoit désormais le contenu courant, par les DEUX moitiés du legs n°3 —
+> `Etat::dernier_presse_papier` côté agent, et le paramètre `initial` de
+> `attacherPressePapierAuDOM` côté client, `main.ts` mémorisant le dernier
+> `clipboard` reçu avant l'attache.
+>
+> ⚠️ **Ce qui reste VRAI est la propriété du `Sondeur` lui-même** : il
+> n'annonce toujours rien à son premier tour. Ce qui a changé est ailleurs —
+> c'est le REGISTRE qui rejoue, pas lui.
+>
+> ⚠️ **Et la « conséquence à ne pas dissimuler » ci-dessous reste ENTIÈRE** : le
+> critère ① doit toujours copier APRÈS que la session est établie. P3 y ajoute
+> seulement une SECONDE mesure — une fenêtre attachée APRÈS la copie —, qui est
+> le seul contrôle de bout en bout des deux lignes de câblage de `main.ts`.
+
 **Conséquence à ne pas dissimuler** : le critère ① de la recette doit copier
 **après** que la session est établie, sans quoi il mesurerait zéro sur un
 produit correct. Voir aussi E5, qui est le même fait vu de P3.
