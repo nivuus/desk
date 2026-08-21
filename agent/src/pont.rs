@@ -27,6 +27,7 @@
 //! fichier ni dans ses enfants purs, ne doit importer quoi que ce soit de
 //! `Win32::Storage::ProjectedFileSystem`.**
 
+pub mod cache;
 pub mod chemins;
 pub mod compteurs;
 pub mod decoupe;
