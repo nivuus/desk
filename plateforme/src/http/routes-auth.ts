@@ -52,6 +52,9 @@ export interface DependancesAuth {
     /// Les proxys dont on croit l'en-tête `X-Forwarded-For`. VIDE par défaut :
     /// on ne croit personne (`config.ts`).
     proxyDeConfiance: ReadonlySet<string>;
+    /// Le mode d'authentification (`config.ts`). En `pomerium`, ce routeur se
+    /// RETIRE : voir le garde en tête de `servirAuth`.
+    auth: 'pomerium' | 'motdepasse';
 }
 
 /// Les clés à consulter pour une requête, et celle qu'un succès efface.
@@ -131,6 +134,17 @@ export async function servirAuth(
 ): Promise<boolean> {
     const chemin = new URL(req.url ?? '/', 'http://placeholder').pathname;
     if (!CHEMINS.has(chemin)) return false;
+
+    // 🔴 EN MODE `pomerium`, CES DEUX ROUTES N'EXISTENT PAS — `false`, donc le
+    // 404 générique du serveur. Les laisser vivantes derrière le proxy serait
+    // une SECONDE porte d'authentification, avec des mots de passe que plus
+    // personne ne tourne et un frein que plus personne ne regarde.
+    //
+    // ⚠️ LE GARDE EST APRÈS LA COMPARAISON DE CHEMIN ET NON AVANT, à dessein :
+    // un routeur qui rendrait `false` pour TOUT chemin en mode pomerium serait
+    // indiscernable d'un routeur débranché, et la rouge du chaînage ne
+    // pourrait plus rien dire.
+    if (deps.auth !== 'motdepasse') return false;
 
     const cors = entetesCors(req.headers.origin, deps.origineClient);
 

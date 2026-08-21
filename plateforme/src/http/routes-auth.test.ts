@@ -37,12 +37,12 @@ function config(origineClient?: string): Config {
         proxyDeConfiance: new Set(),
         repertoireIcones: join(mkdtempSync(join(tmpdir(), 'g2-icones-')), 'icones'),
         repertoireTeleversements: join(mkdtempSync(join(tmpdir(), 'g3-tranches-')), 'televersements'),
-        // ⚠️ CE FICHIER ÉPROUVE LES DEUX ROUTES DE MOT DE PASSE ELLES-MÊMES.
-        // Laissé à `pomerium` ICI parce que la tâche 1 ne câble `auth` dans
-        // AUCUN routeur — donc cette valeur est encore sans effet. La tâche 3
-        // devra revoir ce fichier en premier : c'est probablement lui qui
-        // reçoit `auth: 'motdepasse'` une fois le gate posé.
-        auth: 'pomerium',
+        // ⚠️ CE FICHIER ÉPROUVE LES DEUX ROUTES DE MOT DE PASSE ELLES-MÊMES :
+        // `auth: 'motdepasse'`, sinon `servirAuth` rendrait `false` pour
+        // TOUTE requête (voir son garde), et tous les tests de ce fichier
+        // s'effondreraient pour la mauvaise raison — un routeur retiré, pas
+        // un routeur en défaut.
+        auth: 'motdepasse',
     };
 }
 
@@ -226,6 +226,50 @@ describe('routes d’authentification', () => {
         // Et le contrôle PEUT échouer : la capture attrape bien la console.
         console.log('témoin de capture');
         expect(capture.join('\n')).toContain('témoin de capture');
+    });
+});
+
+describe('le mode d’authentification (Config.auth)', () => {
+    // 🔴 LA ROUGE DU CRITÈRE ③, DANS LES DEUX SENS. Un seul sens laisserait
+    // l'autre route vivante dans le mauvais mode : `/auth/connexion` ouverte
+    // derrière Pomerium serait une SECONDE porte, avec un mot de passe que plus
+    // personne ne tourne.
+    //
+    // ⚠️ ADAPTÉ AU MONTAGE DE CE FICHIER (`poster`/`demarrerServeur`), pas au
+    // gabarit du brief qui appelait `servirAuth` directement : ce fichier
+    // éprouve les routes À TRAVERS le serveur HTTP réel, jamais le routeur nu
+    // (voir l'en-tête du fichier), et `false` s'y observe comme le 404
+    // générique que `serveur.ts` rend quand aucun routeur n'a servi.
+    it('rend 404 sur /auth/connexion en mode pomerium — la route N’EXISTE PLUS', async () => {
+        base = await baseNeuve('auth-mode-connexion-pomerium');
+        await creerUtilisateur(base, 'ada@exemple.test', await hacher(MOT_DE_PASSE), MS);
+        service = await demarrerServeur({ ...config(), auth: 'pomerium' }, base);
+        const url = `http://127.0.0.1:${service.port}`;
+        const r = await poster(`${url}/auth/connexion`, {
+            email: 'ada@exemple.test',
+            motdepasse: MOT_DE_PASSE,
+        });
+        expect(r.status).toBe(404);
+    });
+
+    it('rend 404 sur /auth/rafraichir en mode pomerium — la route N’EXISTE PLUS', async () => {
+        base = await baseNeuve('auth-mode-rafraichir-pomerium');
+        service = await demarrerServeur({ ...config(), auth: 'pomerium' }, base);
+        const url = `http://127.0.0.1:${service.port}`;
+        const r = await poster(`${url}/auth/rafraichir`, { rafraichissement: 'un-jeton-quelconque' });
+        expect(r.status).toBe(404);
+    });
+
+    // Le témoin qui rend les deux précédents interprétables : en mode
+    // motdepasse, la route sert TOUJOURS. Sans lui, un 404 pourrait venir d'un
+    // service entièrement débranché plutôt que du garde de mode lui-même.
+    it('sert TOUJOURS /auth/connexion en mode motdepasse (témoin)', async () => {
+        const url = await servir('auth-mode-motdepasse-temoin');
+        const r = await poster(`${url}/auth/connexion`, {
+            email: 'ada@exemple.test',
+            motdepasse: MOT_DE_PASSE,
+        });
+        expect(r.status).toBe(200);
     });
 });
 
