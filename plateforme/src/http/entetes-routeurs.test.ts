@@ -46,14 +46,45 @@ const CONFIG: Config = {
     // son garde. TROIS cas de ce fichier traversent `/auth/connexion`
     // ((1) GET→405, (6) POST→200, (8) OPTIONS→204) et exigent donc
     // `auth: 'motdepasse'`, sinon ils rencontreraient le 404 générique au lieu
-    // de la réponse de `routes-auth`. Les CINQ AUTRES ne touchent aucun
-    // chemin `/auth/*` et sont indifférents à cette valeur — AUCUN ne teste
-    // `/auth/moi` (`grep -n 'auth/moi' entetes-routeurs.test.ts` ne rend
-    // rien). **Décision, tranchée cas par cas et non en bloc** : le `CONFIG`
+    // de la réponse de `routes-auth`.
+    //
+    // ⚠️ CE COMMENTAIRE A ÉCRIT « LES CINQ AUTRES », ET LE COMPTE ÉTAIT FAUX
+    // (revue transverse, 21 août 2026) — dans un commentaire dont tout l'objet
+    // est la complétude. Ce fichier porte **ONZE** `it()`, non huit : les trois
+    // numérotés HORS SÉQUENCE — `(6bis)`, `(6ter)`, `(6quater)`, ajoutés par G2
+    // et G3 — n'avaient pas été comptés. **Trois** cas prennent `motdepasse`,
+    // donc **HUIT AUTRES** sont indifférents à cette valeur. Recompté par
+    // `grep -c '^\s*it(' <ce fichier>` -> `11`, et par
+    // `grep -c "^\s*const url = await servir(.*motdepasse" <ce fichier>` ->
+    // `3`. 🔴 **Ces
+    // deux commandes se relancent ; ce compte ne se recopie pas** — c'est le
+    // « naufrage du 487 » de `CLAUDE.md`, et la numérotation hors séquence en
+    // est ici la cause mécanique.
+    //
+    // 🔴 LA SECONDE COMMANDE EST ANCRÉE EN DÉBUT DE LIGNE SUR `const url =
+    // await servir(`, ET C'EST LA TROISIÈME RÉDACTION : LES DEUX PREMIÈRES SE
+    // SONT POLLUÉES ELLES-MÊMES, ET LA MESURE L'A DIT À CHAQUE FOIS.
+    //   ① `grep -c "motdepasse' }"` -> **5** au lieu de 3 : il comptait les
+    //      lignes de CE commentaire, qui cite le motif.
+    //   ② `grep -c "servir(.*auth: 'motdepasse'"` -> **4** au lieu de 3 : il
+    //      comptait **sa propre citation**, deux lignes plus haut.
+    // L'ancre `^\s*const` est la seule forme qui ne puisse pas se compter,
+    // une ligne de commentaire commençant toujours par `//`. Un fichier qui
+    // documente ses invariants CONTIENT les motifs qu'il décrit — piège maison
+    // de `CLAUDE.md`, payé DEUX fois de plus ici même.
+    //
+    // ⚠️ AUCUN `it()` NE VISE `/auth/moi`, et le contrôle qui l'établissait
+    // avait EXACTEMENT le même défaut : « `grep -n 'auth/moi'` ne rend rien »
+    // était vrai à l'écriture, et faux dès que la phrase le citant est entrée
+    // dans le fichier. Le contrôle qui vaut ÉCARTE les commentaires —
+    // `grep -n 'auth/moi' <ce fichier> | grep -vc '^\s*[0-9]*:\s*//'` doit
+    // rendre **0**.
+    //
+    // **Décision, tranchée cas par cas et non en bloc** : le `CONFIG`
     // PARTAGÉ reste à `pomerium` (le défaut du produit, `config.ts`), et LES
     // TROIS SEULS cas qui en ont besoin reçoivent `{ ...CONFIG, auth:
     // 'motdepasse' }` localement — jamais l'inverse, qui aurait changé le
-    // mode des cinq autres pour une raison qui ne les concerne pas, y compris
+    // mode des HUIT autres pour une raison qui ne les concerne pas, y compris
     // pour un futur test de `/auth/moi` qui rejoindrait ce fichier sans le
     // relire.
     auth: 'pomerium',

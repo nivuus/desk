@@ -232,9 +232,13 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
         secretJeton: config.secretJeton,
         origineClient: config.origineClient,
         maintenant: Date.now,
-        // ⚠️ SEUL `servirIdentite` LE LIT — c'est lui qui décide si
-        // `/auth/moi` sert (mode `pomerium`) ou rend le 404 générique (mode
-        // `motdepasse`), voir son en-tête.
+        // ⚠️ **DEUX** ROUTEURS LE LISENT — `servirIdentite` ET `servirAuth`. Ce
+        // commentaire a dit « SEUL `servirIdentite` » jusqu'au 21 août 2026 :
+        // c'est LA MÊME FAUTE que la cicatrice de `registre`, vingt lignes plus
+        // bas, refaite dans le commit suivant. Les deux gardes sont de
+        // POLARITÉS OPPOSÉES et partitionnent les modes — `/auth/moi` en
+        // `pomerium`, `/auth/connexion` et `/auth/rafraichir` en `motdepasse` ;
+        // l'invariant qui les lie est écrit aux deux endroits.
         auth: config.auth,
         // ⚠️ `servirApplications` ET `servirInstallation` LE LISENT — le
         // premier pour lancer une application, le second pour pousser un ordre
@@ -244,11 +248,18 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
         registre: registreAgents,
         // ⚠️ SEUL `servirAuth` LES LIT aujourd'hui ; les autres routeurs les
         // ignorent, comme ils ignorent `registre`.
+        //
+        // ✅ TOUT CE BLOC REVÉRIFIÉ le 21 août 2026 PAR LA COMMANDE, non par
+        // la lecture : `grep -ln 'deps\.<clé>' plateforme/src/http/routes-*.ts`
+        // (hors `*.test.ts`, qui POSENT la dépendance sans la consommer). Seuls
+        // lecteurs — `frein` et `proxyDeConfiance` : `routes-auth.ts` ; `cache` :
+        // `routes-sante.ts` ; `magasin` : `routes-icone.ts`. **`auth` était le
+        // SEUL de ce bloc devenu faux.**
         frein,
         proxyDeConfiance: config.proxyDeConfiance,
         cache: cacheSante,
         // ⚠️ SEUL `servirIcone` LE LIT — même raison que `registre` et `frein`
-        // ci-dessus.
+        // ci-dessus, et revérifié par la même commande.
         magasin,
         // ⚠️ IL S'APPELLE `tranches` ET NON `magasin`, parce que `magasin` est
         // DÉJÀ PRIS par celui des icônes, juste au-dessus. `tsc` a attrapé la

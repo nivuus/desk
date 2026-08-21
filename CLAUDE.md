@@ -401,12 +401,12 @@ démarre donc pas — et il dit pourquoi.
 
 | Variable | Effet |
 | --- | --- |
-| `PLATEFORME_HOTE` | l'adresse d'écoute. 🔴 **AUCUN DÉFAUT — le service REFUSE de démarrer sans elle.** C'est délibéré : un défaut, même `127.0.0.1`, ferait passer le critère « l'écoute est bornée » **sans rien garantir**, là où l'ancêtre écoutait sur toutes les interfaces et délivrait des identifiants TURN de 86 400 s à quiconque |
+| `PLATEFORME_HOTE` | l'adresse d'écoute. 🔴 **AUCUN DÉFAUT — le service REFUSE de démarrer sans elle.** C'est délibéré : un défaut, même `127.0.0.1`, ferait passer le critère « l'écoute est bornée » **sans rien garantir**, là où l'ancêtre écoutait sur toutes les interfaces et délivrait des identifiants TURN de 86 400 s à quiconque. 🔴 **ET DEPUIS `auth-pomerium` (21 août 2026), UNE SECONDE GARDE REFUSE LE DÉMARRAGE : en mode `pomerium` — LE DÉFAUT —, les quatre écoutes UNIVERSELLES `0.0.0.0`, `::`, `[::]` et `*` LÈVENT.** ⚠️ **Cela mord sur la valeur avec laquelle un service tournait la veille** : un montage à `0.0.0.0` ne démarre plus du tout, et le message nomme la variable et la raison. **Pourquoi liée au mode** : en `motdepasse` le service s'authentifie lui-même ; en `pomerium` l'identité arrive dans un en-tête EN CLAIR (`X-Pomerium-Claim-Email`, aucune signature vérifiée), qu'une écoute universelle offre à quiconque atteint la machine. ⚠️ **Ce que la garde NE promet PAS**, et son propre commentaire le dit : elle refuse l'écoute **universelle**, elle ne garantit pas que « seul le proxy atteint le port » — cela reste à la charge de l'exploitant |
 | `PLATEFORME_SECRET_JETON` | le secret HMAC des jetons. 🔴 **AUCUN DÉFAUT**, et **refusée si plus courte que 32 caractères** — un défaut aléatoire invaliderait toutes les sessions à chaque redémarrage, un secret court n'authentifie personne |
 | `PLATEFORME_PORT` | défaut **8080**. Un port non entier **lève**, jamais ne retombe sur le défaut |
 | `PLATEFORME_BASE` | `sqlite` (défaut) ou `postgres`. **Une valeur inconnue LÈVE**, à deux endroits |
 | `PLATEFORME_BASE_URL` | chemin SQLite (défaut `:memory:`) ou URL `pg`. ⚠️ **`pg` prend `:memory:` pour un nom d'hôte** |
-| `PLATEFORME_AUTH` | `pomerium` (défaut) ou `motdepasse`. 🔴 **UN CHOIX DE MODE, PAS UN ARMEMENT** — la convention `=0 désarme` de `agent/` ne s'applique pas ici, précédent `PLATEFORME_BASE` deux lignes plus haut, et pour la même raison : un repli silencieux ferait tourner un mode sous le nom de l'autre, et l'un des deux sens est une **ouverture**. **Une valeur inconnue LÈVE.** En mode `pomerium`, `GET /auth/moi` échange l'en-tête `X-Pomerium-Claim-Email` posé par le proxy contre le MÊME jeton interne que le mot de passe, et `POST /auth/connexion`/`/auth/rafraichir` rendent le 404 générique (route retirée). Chantier `auth-pomerium`, tâches 1 à 3 — voir l'index des chantiers |
+| `PLATEFORME_AUTH` | `pomerium` (défaut) ou `motdepasse`. 🔴 **UN CHOIX DE MODE, PAS UN ARMEMENT** — la convention `=0 désarme` de `agent/` ne s'applique pas ici, précédent `PLATEFORME_BASE` deux lignes plus haut, et pour la même raison : un repli silencieux ferait tourner un mode sous le nom de l'autre, et l'un des deux sens est une **ouverture**. **Une valeur inconnue LÈVE.** En mode `pomerium`, `GET /auth/moi` échange l'en-tête `X-Pomerium-Claim-Email` posé par le proxy contre le MÊME jeton interne que le mot de passe, et `POST /auth/connexion`/`/auth/rafraichir` rendent le 404 générique (route retirée). 🔴 **ELLE NE CHOISIT PAS QUE DES ROUTES : ELLE ARME UNE GARDE D'ÉCOUTE**, et ce tableau ne l'a pas dit pendant toute la branche. En mode `pomerium`, `PLATEFORME_HOTE` **refuse le démarrage** sur `0.0.0.0`, `::`, `[::]` et `*` (voir sa ligne, cinq plus haut) — un refus de démarrer se lit AVANT d'agir, pas après. 🔴 **ET LE PROFIL DE DÉPLOIEMENT LA POSE À `motdepasse`, AVEC UNE DIRECTIVE NGINX QUI VA AVEC** : `docker-compose.plateforme.yml` écrit `PLATEFORME_AUTH: motdepasse` et `deploiement/nginx.conf` efface l'en-tête entrant par `proxy_set_header X-Pomerium-Claim-Email "";` — **les deux ensemble, et elles s'inversent ensemble** ; n'en appliquer qu'une moitié donne soit un contournement complet de l'authentification, soit un service que personne ne peut atteindre. Invariant ⑤ de `deploiement/README.md`. Chantier `auth-pomerium`, tâches 1 à 3 — voir l'index des chantiers |
 | `PLATEFORME_ORIGINE_CLIENT` | l'origine CORS. **FACULTATIVE, et son défaut est le REFUS** : absente, aucun en-tête CORS n'est émis. **Jamais `*`, sous aucune condition.** ⚠️ Son absence est le cas **nominal** derrière le proxy, où page et API partagent l'origine |
 | `PLATEFORME_PROXY_DE_CONFIANCE` | **FACULTATIVE.** Absente, `X-Forwarded-For` **n'est pas cru du tout** — le défaut sûr. 🔴 **Mal posée, le frein par adresse dégénère en frein GLOBAL** et le premier attaquant bloque tout le monde ; le seul endroit où cela se voit est la ligne de journal du frein, qui **nomme l'adresse retenue** |
 | `PLATEFORME_ICONES` | **FACULTATIVE**, défaut `donnees/icones`. ⚠️ Une valeur **vide** retombe sur le défaut, à dessein |
@@ -831,6 +831,7 @@ Ils sont **datés**, et plusieurs se réfutent les uns les autres à dessein.
 ### Chantier auth-pomerium — l'identité vient du proxy (CLOS)
 
 - **auth-pomerium : l'identité vient du proxy, le jeton interne RESTE (21 août 2026)** — [résultats](docs/superpowers/plans/2026-08-21-auth-pomerium-resultats.md)
+  — ⚠️ **RÉSERVE : le critère ⑦ (la page, dans un navigateur, derrière Pomerium) n'a JAMAIS été joué**, et l'un de ses deux blocages n'est pas une limite de recette mais un **défaut de conception déjà appliqué** au `config.yaml` réel : la route nue de Pomerium vise un backend qui **ne sert aucun fichier statique** (`GET /` rend `404`). **Il reste à CONCEVOIR, pas à mesurer.** Voir les legs ci-dessous.
 
 ### Le retrait du legacy (CLOS)
 
@@ -877,6 +878,59 @@ Aucune n'est une correction, et aucun chantier ne doit les prendre en douce.
 - ⚠️ **`FilterAdministratorToken=1` sur la VM** — sans lui, la porte d'élévation
   de G3 reste **non mesurable**, et un installeur qui exige une élévation
   s'exécute **sans aucune boîte de dialogue**.
+
+### Ce que le chantier `auth-pomerium` laisse dû (21 août 2026)
+
+🔴 **INSCRIT ICI ET NON DANS LE SEUL DOCUMENT DE RÉSULTATS, PARCE QUE CE DÉPÔT
+VIENT DE CONSTATER QU'UN LEGS QUI NE VIT QUE DANS UN RELEVÉ DATÉ EST UN LEGS
+PERDU** — c'est la leçon du legs `403/404`, déclaré « ouvert » alors que le
+produit l'avait résolu, et de six constats de revue disparus avec un rapport
+gitignoré.
+
+- 🔴 **LE CRITÈRE ⑦ N'A JAMAIS ÉTÉ JOUÉ** — la page, dans un navigateur réel,
+  derrière Pomerium. **Ses deux blocages ne sont PAS de même nature, et les
+  confondre est l'erreur à éviter :**
+  - ① **un défaut de CONCEPTION, déjà appliqué au `config.yaml` réel** : la
+    route nue de Pomerium (spec §7.2, commentée « La page et l'API ») vise
+    `http://192.168.3.1:8080`, c'est-à-dire la plateforme — **qui ne sert
+    aucun fichier statique**, `GET /` y rendant `404 introuvable` (mesuré).
+    C'est nginx qui sert la page, et ce bloc le saute. **Il reste à CONCEVOIR,
+    pas à mesurer** : soit router Pomerium vers nginx (dont le `listen 80` est
+    un `return 301`, donc une boucle depuis un Pomerium qui a déjà terminé
+    TLS, et dont le `listen 443` exige `deploiement/tls/`, gitignoré et
+    absent), soit doter la plateforme d'un servant statique. **Aucune des deux
+    n'est tranchée.**
+  - ② une limite de recette, celle-là ordinaire : le flux OAuth Google exige
+    **un humain**, et aucun Chrome sans interface ne le franchit.
+- 🔴 **AUCUN FREIN SUR `/auth/moi`, ET C'EST DÉSORMAIS LA SEULE SURFACE
+  D'AUTHENTIFICATION** en mode `pomerium`. `securite/frein.ts` n'est consulté
+  que par `servirAuth` (`grep -ln 'deps\.frein' plateforme/src/http/routes-*.ts`
+  ne rend que `routes-auth.ts`), or ce routeur **se retire** dans ce mode. La
+  route **crée une ligne `utilisateur` par courriel distinct**, sans borne :
+  qui atteint le port `8080` — dont la VM Windows — fait grossir la table à
+  volonté, l'en-tête n'étant vérifié par aucune signature. ⚠️ **Non mesuré**,
+  et ce n'est pas une raison de l'écrire moins fort : c'est une lecture de
+  code, elle est dite comme telle.
+- 🔴 **ONZE PILOTES DE RECETTE VISENT UNE RACINE QUE CE CHANTIER A FERMÉE.** Le
+  relais a quitté `/` pour `/signal`, et `?signaling=` reste **explicite** —
+  il ne reçoit pas le suffixe. Or les pilotes de
+  `docs/superpowers/plans/journaux-*/instrument/` posent tous une URL **sans
+  chemin** : `accent-a1`, `micro-e3` (le pilote et son `injection-e3.js`),
+  `pont-fichiers` f1 à f5, `presse-papier` p1 à p3 — **plus un douzième hors de
+  ce répertoire**, `journaux-micro-e2/pilote-recette-e2.mjs`. **Aucun n'a été
+  réparé** : c'est un chantier à part. ⚠️ **Le commentaire qui affirmait
+  qu'« aucune recette n'en pose » a été corrigé** dans
+  `client/src/adresse-plateforme.ts` : son `grep` ne couvrait pas
+  `docs/superpowers/`, où vivent TOUS les pilotes — patron du « naufrage du
+  487 ».
+- 🔴 **LE CONTRAT DE `SIGNALING_URL` N'EST FIGÉ PAR AUCUN TEST.** La variable
+  est **la BASE du service**, jamais l'URL du relais : `url_du_relais` y ajoute
+  `/signal`, `url_du_canal` y ajoute `/agent`. **Y écrire `/signal` casserait
+  l'enrôlement** (`ws://h:8080/signal/agent`) **sans qu'aucun test ne
+  bronche** — le test `le_canal_agent_n_est_pas_affecte` d'`agent/src/
+  signaling.rs` passe une base PROPRE, donc n'éprouve pas ce cas, alors que son
+  commentaire prétendait le fermer. Le commentaire est corrigé ; **le test
+  manquant, lui, reste dû.**
 
 ### Ce qu'aucun chantier n'a jamais mesuré
 

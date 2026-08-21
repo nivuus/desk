@@ -14,9 +14,18 @@
 // Google. Le retirer couperait l'agent.
 //
 // ⚠️ AUCUN JETON DE RAFRAÎCHISSEMENT N'EST DÉLIVRÉ, et ce n'est pas un oubli :
-// à l'expiration, le client rappelle cette route, et le cookie Pomerium vit
-// 8640 h. Tenir une chaîne rotative anti-rejeu dont plus personne n'a besoin
-// serait du code vivant que rien n'exerce.
+// le cookie Pomerium vit 8640 h, et tenir une chaîne rotative anti-rejeu dont
+// plus personne n'a besoin serait du code vivant que rien n'exerce.
+//
+// 🔴 MAIS « À L'EXPIRATION, LE CLIENT RAPPELLE CETTE ROUTE » ÉTAIT FAUX, ET LA
+// PHRASE EST CORRIGÉE PLUTÔT QUE SUPPRIMÉE (revue transverse du chantier,
+// 21 août 2026). **Aucun code du client ne rappelle cette route à
+// l'expiration** : `client/src/jeton.ts::rafraichirSiNecessaire` n'a aucun
+// appelant de production, et `connexion.ts::tenterPomerium` ne court qu'au
+// CHARGEMENT de la page de connexion. Ce qui rappelle réellement `/auth/moi`
+// est donc un rechargement de page — un geste de l'utilisateur, que le cookie
+// de 8640 h rend silencieux pour lui, mais qui reste un geste. Le raisonnement
+// sur le rafraîchissement ne change pas ; la description du produit, si.
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Pilote } from '../base/pilote';
@@ -99,6 +108,19 @@ export async function servirIdentite(
     const chemin = new URL(req.url ?? '/', 'http://placeholder').pathname;
     // Comparaison EXACTE, jamais un `startsWith`.
     if (chemin !== CHEMIN_MOI) return false;
+    // 🔴 L'INVARIANT DES DEUX GARDES DE MODE, ÉCRIT ICI ET DANS `routes-auth.ts`
+    // PARCE QU'IL N'APPARTIENT NI À L'UN NI À L'AUTRE : **les deux gardes ont
+    // des POLARITÉS OPPOSÉES** — celui-ci se retire si le mode n'est PAS
+    // `pomerium`, celui de `routes-auth.ts` s'il n'est PAS `motdepasse` —, et
+    // c'est ce qui les fait PARTITIONNER les modes : à DEUX modes, tout mode
+    // ouvre exactement une des deux portes.
+    //
+    // 🔴 À TROIS MODES, LES DEUX SE RETIRENT ENSEMBLE et le service n'a plus
+    // AUCUNE route d'authentification, **en silence** : deux `false`, le 404
+    // générique du serveur, et rien qui le dise. **Ajouter une valeur à `AUTHS`
+    // (`config.ts`) OBLIGE à revenir ici** et à décider laquelle des deux portes
+    // le mode neuf ouvre — TypeScript ne le demandera pas, ces gardes comparant
+    // des chaînes plutôt qu'un `switch` exhaustif.
     if (deps.auth !== 'pomerium') return false;
 
     const cors = entetesCors(req.headers.origin, deps.origineClient);

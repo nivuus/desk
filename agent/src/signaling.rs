@@ -304,9 +304,20 @@ mod tests {
     }
 
     /// 🔴 LE TEST QUI FIGE L'ÉCART ① DU PLAN : `SIGNALING_URL` reste la BASE,
-    /// donc le canal `/agent` continue de se dériver juste. Sans lui,
-    /// quelqu'un pourrait un jour mettre `/signal` dans la variable et casser
-    /// l'enrôlement sans qu'aucun test ne bronche.
+    /// donc le canal `/agent` continue de se dériver juste depuis une base
+    /// propre.
+    ///
+    /// ⚠️ **CE COMMENTAIRE A PROMIS PLUS QUE CE TEST NE TIENT, et c'est
+    /// corrigé plutôt qu'effacé (revue transverse, 21 août 2026).** Il disait :
+    /// « sans lui, quelqu'un pourrait un jour mettre `/signal` dans la variable
+    /// et casser l'enrôlement sans qu'aucun test ne bronche ». **Ce test ne
+    /// ferme PAS ce cas** : il passe `"ws://h:8080"`, une base PROPRE, donc il
+    /// ne peut pas voir ce qui arriverait à `"ws://h:8080/signal"` — d'où
+    /// `url_du_canal` tirerait `ws://h:8080/signal/agent`, et l'enrôlement
+    /// tomberait. **Le contrat de `SIGNALING_URL` reste donc figé par AUCUN
+    /// test**, et c'est inscrit aux « Legs ouverts » de `CLAUDE.md`. Ce que ce
+    /// test-ci établit, et c'est déjà utile, est que l'ajout de `/signal` par
+    /// `url_du_relais` n'a pas contaminé `url_du_canal`.
     #[test]
     fn le_canal_agent_n_est_pas_affecte() {
         assert_eq!(crate::plateforme::url_du_canal("ws://h:8080"), "ws://h:8080/agent");

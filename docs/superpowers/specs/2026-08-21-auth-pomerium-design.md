@@ -63,6 +63,15 @@ Puis, identiquement dans les deux cas : `Authorization: Bearer <acces>` sur les
 routes HTTP, et le champ `jeton` du premier message de la poignée de main
 WebSocket (`client/src/webrtc.ts`).
 
+> ⚠️ **ANNOTATION DU 21 AOÛT 2026** : la phrase qui suit décrit une INTENTION,
+> pas le produit livré. **Aucun code du client ne rappelle `/auth/moi` à
+> l'expiration** — `client/src/jeton.ts::rafraichirSiNecessaire` n'a aucun
+> appelant de production, et `connexion.ts::tenterPomerium` ne court qu'au
+> CHARGEMENT de la page de connexion. Ce qui rappelle réellement la route est un
+> **rechargement de page**, que le cookie de 8640 h rend silencieux pour
+> l'utilisateur, mais qui reste un geste. L'argument sur la gratuité ne change
+> pas ; sa description du mécanisme, si.
+
 **Le rafraîchissement devient gratuit** : à l'expiration, le client rappelle
 `/auth/moi`. Le cookie Pomerium vit `8640h` (`config.yaml`), donc l'appel
 réussit sans interaction. C'est pourquoi le mode `pomerium` ne délivre **aucun**
@@ -196,6 +205,29 @@ déplacement n'apporterait rien.
 ---
 
 ## 7. Pomerium
+
+> 🔴 **ANNOTATION DU 21 AOÛT 2026 (revue transverse de fin de branche) — CE §
+> LAISSE UN DÉFAUT DE CONCEPTION OUVERT, ET IL A ÉTÉ APPLIQUÉ TEL QUEL.**
+> La route nue du § 7.2, commentée « **La page et l'API** », pointe
+> `http://192.168.3.1:8080`, c'est-à-dire la **plateforme** — qui **ne sert
+> aucun fichier statique** : `GET /` y rend `404 introuvable` (mesuré, recette
+> § 4, sur le processus neuf). C'est **nginx** qui sert la page
+> (`root /usr/share/nginx/html`), et ce bloc le saute.
+>
+> **Conséquence, à ne pas lire comme une mesure manquante :** le critère ⑦ n'est
+> pas seulement « non joué », il est **injouable en l'état** — le chemin de la
+> page traverse Pomerium et rencontre un backend qui n'a pas de page. Un
+> successeur qui lirait « le critère ⑦ n'a pas été joué » et comprendrait « il
+> reste à mesurer » se tromperait : **il reste à concevoir.**
+>
+> **Deux voies, aucune tranchée ici** : router Pomerium vers nginx (dont le
+> `listen 80` est un `return 301` vers HTTPS — boucle de redirection depuis un
+> Pomerium qui a déjà terminé TLS — et dont le `listen 443` exige
+> `deploiement/tls/`, gitignoré et absent), ou doter la plateforme d'un servant
+> de fichiers statiques. Legs inscrit à `CLAUDE.md`, § « Legs ouverts ».
+>
+> ⚠️ **Le reste de ce § tient**, et notamment l'ordre des routes, qui est juste :
+> l'annotation ne porte que sur la CIBLE de la route nue.
 
 **Le nom d'hôte est `app.allanic.me`**, dont la route existe déjà et pointe un
 backend mort (§ 1). Ce qui change : la cible, et deux routes ajoutées.

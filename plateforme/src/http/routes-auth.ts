@@ -144,6 +144,24 @@ export async function servirAuth(
     // un routeur qui rendrait `false` pour TOUT chemin en mode pomerium serait
     // indiscernable d'un routeur débranché, et la rouge du chaînage ne
     // pourrait plus rien dire.
+    // 🔴 L'INVARIANT DES DEUX GARDES DE MODE, ÉCRIT ICI ET DANS
+    // `routes-identite.ts` PARCE QU'IL N'APPARTIENT NI À L'UN NI À L'AUTRE :
+    // **les deux gardes ont des POLARITÉS OPPOSÉES, et c'est ce qui les fait
+    // PARTITIONNER les modes.** Celui-ci se retire si le mode n'est PAS
+    // `motdepasse` ; celui de `routes-identite.ts` se retire si le mode n'est
+    // PAS `pomerium`. À DEUX modes, tout mode active donc exactement une des
+    // deux portes.
+    //
+    // 🔴 CE QUE CET INVARIANT COÛTE LE JOUR OÙ UN TROISIÈME MODE APPARAÎT :
+    // **les deux gardes se retirent en même temps, et le service n'a plus
+    // AUCUNE route d'authentification — EN SILENCE.** Aucun 500, aucun `warn!` ;
+    // les deux routeurs rendent `false`, le serveur rend son 404 générique, et
+    // la page de connexion lit ce 404 comme « ce montage authentifie par mot de
+    // passe » avant de POSTer vers une route qui n'existe pas non plus.
+    // **Ajouter une valeur à `AUTHS` (`config.ts`) OBLIGE donc à revenir ici**
+    // et à décider laquelle des deux portes le nouveau mode ouvre —
+    // TypeScript ne le demandera pas, ces gardes comparant des chaînes et non
+    // un `switch` exhaustif.
     if (deps.auth !== 'motdepasse') return false;
 
     const cors = entetesCors(req.headers.origin, deps.origineClient);
