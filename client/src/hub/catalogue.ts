@@ -136,6 +136,58 @@ function illisible<T>(detail: string): Issue<T> {
     return { etat: 'refus', refus: { source: 'client', motif: 'reponse-illisible', detail } };
 }
 
+/* ── LA VM ────────────────────────────────────────────────────────────── */
+
+/// Une VM, telle que `GET /vm` la rend — et RIEN de plus.
+///
+/// ⚠️ NI `adresse`, NI `utilisateurId` : la plateforme les tait délibérément
+/// (`routes-vm.ts:177-180`) — la première est de la topologie interne, la
+/// seconde est celle du demandeur, qu'il connaît déjà.
+export interface VmListee {
+    id: string;
+    nom: string;
+    etat: string;
+    prefixe: string | null;
+}
+
+/// `GET /vm` — les VMs de l'utilisateur.
+///
+/// ⚠️ IL Y EN A AU PLUS UNE À CE JOUR, et c'est une propriété de la BASE, pas
+/// de ce module : l'index partiel `vm_un_utilisateur` de `0001-socle.sql` la
+/// garantit. `routes-vm.ts` écrit que le jour où cet invariant tomberait, son
+/// champ `sessions_ouvertes` deviendrait faux. **Ce module rend donc une
+/// LISTE**, pour n'avoir rien à défaire ce jour-là.
+export async function listerVms(deps: DepsCatalogue): Promise<Issue<VmListee[]>> {
+    const r = await deps.fetch(`${deps.base}/vm`, { method: 'GET', headers: entetes(deps) });
+    if (!r.ok) return { etat: 'refus', refus: { source: 'service', statut: r.status, motif: await motifDuService(r) } };
+    let corps: unknown;
+    try {
+        corps = await r.json();
+    } catch (e) {
+        return illisible(`corps non JSON : ${(e as Error).message}`);
+    }
+    if (typeof corps !== 'object' || corps === null || !('vms' in corps)) {
+        return illisible("le corps ne porte pas de champ 'vms'");
+    }
+    const liste = (corps as { vms: unknown }).vms;
+    if (!Array.isArray(liste)) return illisible("'vms' n'est pas un tableau");
+    const vms: VmListee[] = [];
+    for (const entree of liste) {
+        if (typeof entree !== 'object' || entree === null) return illisible("une entrée n'est pas un objet");
+        const e = entree as Record<string, unknown>;
+        if (typeof e.id !== 'string' || typeof e.nom !== 'string') {
+            return illisible("une entrée n'a ni `id` ni `nom` utilisables");
+        }
+        vms.push({
+            id: e.id,
+            nom: e.nom,
+            etat: typeof e.etat === 'string' ? e.etat : 'inconnu',
+            prefixe: typeof e.prefixe === 'string' ? e.prefixe : null,
+        });
+    }
+    return { etat: 'ok', valeur: vms };
+}
+
 /* ── LA LECTURE D'UNE ICÔNE ───────────────────────────────────────────── */
 
 /// `GET /application/:id/icone?e=<empreinte>` — les octets du PNG.

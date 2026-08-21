@@ -5,6 +5,19 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
+// 🔴 LE GREFFON DU MANIFESTE DU HUB LIT LES TOKENS PAR LEUR PARSEUR, jamais par
+// une expression régulière de son cru : un contrôle qui a sa propre copie des
+// valeurs valide sa copie (spec §7.1 de ⑥). Node v24 importe un `.ts`
+// nativement, ce que trois outils du socle exploitent déjà — et c'est pourquoi
+// tout module de `client/src/design/` importé par un outil doit rester
+// « effaçable » : ni `enum`, ni `namespace`, ni décorateur.
+// ⚠️ L'EXTENSION `.ts` EST OBLIGATOIRE ICI, ET SON ABSENCE CASSE DEUX
+// CONTRÔLES DE ⑥ — pas ce fichier. `outils/tokens-orphelins.mjs` et
+// `outils/classes-employees.mjs` importent CE fichier pour en dériver leur
+// périmètre, et ils sont chargés par NODE, dont le résolveur exige
+// l'extension là où Vite s'en passe. Écrite sans elle, la ligne laissait le
+// build VERT et faisait tomber §7.6 et §7.9 en `ERR_MODULE_NOT_FOUND`.
+import { lireBlocsDeTheme, valeurDePropriete } from './src/design/tokens.ts';
 
 /* ── L'AMORCE ANTI-FOUC, INJECTÉE DEPUIS UNE SOURCE UNIQUE ─────────────────
    Le texte de `src/design/amorce-theme.js` est lu UNE FOIS, à la construction
@@ -49,6 +62,102 @@ const AMORCE = readFileSync(
     'utf8',
 );
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   LE MANIFESTE DU HUB — engendré AU BUILD, jamais écrit en dur (sous-bloc G5).
+
+   🔴 POURQUOI IL EST ENGENDRÉ. `client/public/` n'existe pas, et un fichier
+   `.webmanifest` posé n'importe où ÉCHAPPERAIT à §7.2, dont le périmètre est
+   `client/src/**` en `.css`/`.ts` plus les entrées Vite : une couleur
+   littérale y passerait sans qu'aucun contrôle ne la voie, et le dépôt aurait
+   **deux sources de vérité pour une couleur**. Le greffon lit donc `--fond-0`
+   et `--accent` par `client/src/design/tokens.ts`, exactement comme les
+   contrôles §7.1, §7.4 et §7.6 le font — Node importe un `.ts` nativement, ce
+   que trois outils de ⑥ exploitent déjà.
+
+   🔴 CE QUE LE HUB DÉCLARE ET QUE LES MANIFESTES PAR APPLICATION NE PEUVENT
+   PAS DÉCLARER : les `file_handlers` des types installeur, conformément à
+   l'amendement du 28/07/2026 au cadrage produit. **Aucune fonctionnalité n'en
+   dépend** — c'est la clause de l'amendement, et le critère ② de G5 existe
+   pour la garder : le glisser-déposer fonctionne SEUL.
+
+   ⚠️ LES TYPES MIME SONT UN CHOIX, PAS UN STANDARD — ni `.msi` ni `.bat`
+   n'ont d'enregistrement IANA univoque. Ce qui compte pour le critère ③ n'est
+   pas leur justesse mais CE QUE CHROMIUM EN RÉPOND, et c'est ce qui est relevé.
+
+   ⚠️ CE FICHIER N'EST PAS TYPECHECKÉ (voir plus haut) : une erreur ici est un
+   ÉCHEC DE BUILD, jamais une erreur `tsc`.
+   ═══════════════════════════════════════════════════════════════════════════ */
+const TOKENS_CSS = readFileSync(
+    fileURLToPath(new URL('./src/design/tokens.css', import.meta.url)),
+    'utf8',
+);
+
+/** La valeur d'un token du bloc RACINE (thème sombre), ou une erreur de build. */
+function tokenRacine(nom: string): string {
+    const blocs = lireBlocsDeTheme(TOKENS_CSS);
+    const racine = blocs.find((b) => b.nom === 'racine');
+    if (racine === undefined) throw new Error('tokens.css ne porte plus de bloc racine');
+    const valeur = valeurDePropriete(racine, nom);
+    // 🔴 ON LÈVE PLUTÔT QUE DE REPLIER SUR UNE COULEUR PAR DÉFAUT : un repli
+    //    poserait une couleur qui n'est celle d'aucun token, c'est-à-dire la
+    //    seconde source de vérité que ce greffon existe pour éviter — et il le
+    //    ferait EN SILENCE.
+    if (valeur === null) throw new Error(`tokens.css ne déclare plus ${nom}`);
+    return valeur;
+}
+
+const MANIFESTE_HUB = {
+    name: 'Applications',
+    short_name: 'Applications',
+    id: '/hub.html',
+    start_url: '/hub.html',
+    scope: '/',
+    display: 'standalone',
+    display_override: ['window-controls-overlay', 'standalone'],
+    background_color: tokenRacine('--fond-0'),
+    theme_color: tokenRacine('--accent'),
+    file_handlers: [
+        {
+            action: '/hub.html',
+            accept: {
+                'application/x-msi': ['.msi'],
+                'application/vnd.microsoft.portable-executable': ['.exe'],
+                'application/x-bat': ['.bat'],
+            },
+        },
+    ],
+};
+
+const greffonManifesteHub = {
+    name: 'guac-manifeste-hub',
+    generateBundle(_options: unknown, _bundle: unknown) {
+        // @ts-expect-error — `this.emitFile` est l'API de Rollup, et ce
+        // fichier n'est pas typechecké : l'annotation dit l'intention.
+        this.emitFile({
+            type: 'asset',
+            fileName: 'hub.webmanifest',
+            source: JSON.stringify(MANIFESTE_HUB, null, 2),
+        });
+    },
+    transformIndexHtml: {
+        order: 'post' as const,
+        handler(_html: string, ctx: { path: string }) {
+            // 🔴 LE FILTRE EST ICI DÉLIBÉRÉ, À L'INVERSE DU GREFFON D'AMORCE :
+            //    le manifeste du hub ne concerne QUE le hub. Le poser sur les
+            //    cinq autres pages en ferait des PWA qu'on n'a pas voulues, et
+            //    §7.3 ne le dirait pas — il ne juge que les feuilles de style.
+            if (!ctx.path.endsWith('/hub.html')) return [];
+            return [
+                {
+                    tag: 'link',
+                    attrs: { rel: 'manifest', href: '/hub.webmanifest' },
+                    injectTo: 'head' as const,
+                },
+            ];
+        },
+    },
+};
+
 const greffonAmorce = {
     name: 'guac-amorce-theme',
     transformIndexHtml: {
@@ -60,7 +169,7 @@ const greffonAmorce = {
 };
 
 export default defineConfig({
-    plugins: [greffonAmorce],
+    plugins: [greffonAmorce, greffonManifesteHub],
     server: {
         host: '0.0.0.0',
         port: 5173,
@@ -87,6 +196,17 @@ export default defineConfig({
                 // Elle aussi est EXCLUE de la moitié « employé » du §7.6, et
                 // pour la même raison — voir `client/outils/tokens-orphelins.mjs`.
                 primitives: 'primitives.html',
+                // Le HUB (sous-bloc G5 de ④). Il entre AUTOMATIQUEMENT dans
+                // §7.2, §7.3, §7.6 et §7.9 ① du seul fait d'être ici — leurs
+                // périmètres sont DÉRIVÉS de cette liste, jamais recopiés.
+                // ⚠️ Il n'entre PAS dans `SURFACES_PRODUIT` de §7.9 ② A, qui
+                // est la SEULE liste en dur du socle
+                // (`client/outils/classes-employees.mjs`). L'y ajouter ne
+                // changerait aucun verdict — ② A est un PLANCHER, déjà
+                // satisfait par trois surfaces — et ferait franchir à ④ la
+                // frontière d'un outil de ⑥, qui est clos. Legs, plutôt
+                // qu'une modification cosmétique à risque (décision D6).
+                hub: 'hub.html',
             },
         },
     },
