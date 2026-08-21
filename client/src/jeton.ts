@@ -69,14 +69,59 @@ export function vider(coffre: Coffre): void {
 /// Pose le seul jeton d'accès, et EFFACE celui de rafraîchissement.
 ///
 /// 🔴 L'EFFACEMENT EST LE POINT, PAS UN NETTOYAGE DE CONFORT. Le mode
-/// `pomerium` ne délivre aucun jeton de rafraîchissement — à l'expiration, le
-/// client rappelle `GET /auth/moi`, et le cookie du proxy vit 8640 h. Un jeton
-/// laissé par un montage `motdepasse` antérieur serait présenté à une route
-/// qui rend désormais 404, et le symptôme serait une déconnexion inexpliquée
-/// dix minutes après chaque ouverture de page.
+/// `pomerium` ne délivre aucun jeton de rafraîchissement. Un jeton laissé par
+/// un montage `motdepasse` antérieur serait présenté à une route qui rend
+/// désormais 404, et le symptôme serait une déconnexion inexpliquée dix minutes
+/// après chaque ouverture de page.
+///
+/// ⚠️ CE QUE FAIT LE PRODUIT À L'EXPIRATION, ET NON CE QU'ON VOUDRAIT QU'IL
+/// FASSE. Ce commentaire a écrit « à l'expiration, le client rappelle
+/// `GET /auth/moi` » : **aucun code ne le fait**, et la revue transverse du
+/// chantier `auth-pomerium` l'a relevé. `rafraichirSiNecessaire` (plus bas)
+/// n'a **aucun appelant de production** — `grep -rn 'rafraichirSiNecessaire'
+/// client/src` ne rend que sa définition et son test —, et `tenterPomerium`
+/// (`connexion.ts`) ne court **qu'au chargement de la page de connexion**. Ce
+/// qui se passe réellement en mode `pomerium` : le jeton expire, la poignée de
+/// main suivante est refusée, et l'utilisateur RECHARGE la page — c'est ce
+/// rechargement, et lui seul, qui rappelle `/auth/moi`. Le cookie Pomerium
+/// vivant 8640 h, ce rechargement est silencieux pour lui ; il n'en reste pas
+/// moins un geste, pas un rafraîchissement automatique.
 export function poserAcces(coffre: Coffre, acces: string): void {
     coffre.setItem(CLE_ACCES, acces);
     coffre.removeItem(CLE_RAFRAICHISSEMENT);
+}
+
+/// Le jeton d'accès porté par le corps de `GET /auth/moi`, ou `undefined` si
+/// ce corps n'en porte pas d'utilisable.
+///
+/// 🔴 C'EST UNE RÈGLE, PAS DU CÂBLAGE, ET C'EST POURQUOI ELLE VIT ICI ET NON
+/// DANS `connexion.ts`. Le critère de ce dépôt est reproductible — « une
+/// condition est une règle si la CHANGER change ce que le PRODUIT décide ; elle
+/// est du câblage si elle ne fait que router une décision déjà prise ailleurs,
+/// et testée là-bas ». Celle-ci ne route RIEN : elle VALIDE une valeur que le
+/// service est contractuellement tenu de fournir, et personne d'autre ne la
+/// valide. **Ce qu'un retrait produit, mesuré plutôt que supposé** : le corps
+/// `{}` fait écrire la chaîne `"undefined"` au coffre, puis envoyer
+/// `Bearer undefined` à `POST /session`, puis afficher une erreur de session
+/// au lieu du formulaire de connexion — **et le coffre reste empoisonné** pour
+/// tous les chargements suivants. Le produit décide autre chose ; c'est donc
+/// bien une règle, et elle est tenue par les tests de ce fichier.
+///
+/// 🔴 LA CHAÎNE VIDE EST REFUSÉE SÉPARÉMENT DU NON-CHAÎNE, et le test de la
+/// chaîne vide n'est pas redondant : `typeof '' === 'string'`. C'est le même
+/// piège que `plateforme/src/config.ts` a payé — `env.X ?? 'defaut'` ne
+/// rattrape pas `''`. Un `''` posé au coffre serait un jeton qu'aucun
+/// `Authorization` ne peut porter, et `jetonAcces` le rendrait comme s'il
+/// valait quelque chose.
+///
+/// ⚠️ PURE, ET SANS COFFRE : elle ne pose rien elle-même. Poser est le geste de
+/// `poserAcces` juste au-dessus, et les garder distincts est ce qui permet à
+/// l'appelant de ne RIEN toucher quand la réponse est mauvaise.
+export function accesDeReponse(corps: unknown): string | undefined {
+    if (typeof corps !== 'object' || corps === null) return undefined;
+    const acces = (corps as { acces?: unknown }).acces;
+    if (typeof acces !== 'string' || acces === '') return undefined;
+    return acces;
 }
 
 export function jetonAcces(coffre: Coffre | undefined = coffreParDefaut()): string | undefined {
