@@ -331,6 +331,52 @@ pub enum AgentControl {
         quality: LinkQuality,
         adaptation: LinkAdaptation,
     },
+    /// Le micro de CETTE fenêtre est-il entendu par la VM ? (bloc E3)
+    ///
+    /// **Émis SUR TRANSITION, jamais à chaque dépôt.** Le micro dépose une
+    /// trame toutes les 20 ms ; émettre à chaque dépôt ferait cinquante
+    /// messages par seconde sur le canal de contrôle, qui est le canal
+    /// *fiable, ordonné, faible débit* décrit en tête de ce fichier.
+    ///
+    /// 🔴 **Ce message existe parce que `Ready.mic` ne peut PAS l'exprimer**,
+    /// et la doc de ce champ le dit déjà : il est décidé à l'ÉTABLISSEMENT,
+    /// alors que l'exclusivité du câble s'acquiert au **premier paquet
+    /// montant** (bloc E2), donc après. La conséquence mesurée par E2 et
+    /// confirmée par lecture du code en E3 : à deux fenêtres, **le bouton de
+    /// la perdante s'allume et rien ne sort** —
+    /// `transport/piste_micro.rs::micro_disponible` ne consulte jamais le
+    /// mutex. C'est le legs n°2 de E2, et c'est ce que cette variante ferme.
+    ///
+    /// ⚠️ **`granted` est un BOOLÉEN, pas un motif**, et c'est un choix : le
+    /// seul refus qui existe est l'exclusivité du câble. Un motif ouvert
+    /// inviterait à y ranger la panne WASAPI, que `Ready.mic` dit déjà, et
+    /// deux façons de dire la même panne divergent.
+    ///
+    /// ⚠️ **Le nom est en DEUX mots, et ce n'est pas décoratif** : le
+    /// sous-bloc G1 a mesuré qu'un `rename_all` est **inobservable** sur un
+    /// enum dont toutes les variantes tiennent en un seul mot — la mutation
+    /// `kebab-case` → `snake_case` y laissait la suite entièrement verte.
+    /// `AgentControl` porte déjà `SessionEnd`, donc la lacune y est close ;
+    /// `MicState` la garde close plutôt que de l'y rouvrir.
+    ///
+    /// 🔴 **`CONTROL_VERSION` NE MONTE PAS.** Les deux vérifications de `v` —
+    /// `verifie_version` ci-dessus et `parseAgentControl` côté TypeScript —
+    /// sont des **égalités strictes** : la monter ferait rejeter **tous** les
+    /// messages, `Ready` et `SessionEnd` compris, et remplacerait une
+    /// dégradation PAR MESSAGE par une incompatibilité TOTALE. Un client
+    /// ancien dispatche par `type` et tombe dans son `else` final. C'est le
+    /// raisonnement écrit de D7, que `mic`, `Capabilities`, `Accent` et
+    /// `Clipboard` appliquent tous.
+    ///
+    /// ⚠️ **Aucun contenu privé** — la règle que P2 a payée en trouvant le
+    /// presse-papier en clair dans `agent.log`. Un booléen n'a rien à
+    /// divulguer, et le remède s'applique **au TYPE, pas au site de
+    /// journalisation**.
+    MicState {
+        #[serde(rename = "v", deserialize_with = "verifie_version")]
+        version: u8,
+        granted: bool,
+    },
 }
 
 /// La RÉDACTION au journal — les deux `impl Debug` écrites à la main, et le
@@ -375,6 +421,13 @@ impl AgentControl {
 
     pub fn fullscreen(active: bool) -> AgentControl {
         AgentControl::Fullscreen { version: CONTROL_VERSION, active }
+    }
+
+    /// Le micro de cette fenêtre est-il entendu par la VM ?
+    ///
+    /// ⚠️ **Ne monte PAS `CONTROL_VERSION`** — voir la doc de la variante.
+    pub fn mic_state(granted: bool) -> AgentControl {
+        AgentControl::MicState { version: CONTROL_VERSION, granted }
     }
 
     /// Le presse-papier de la VM a changé.

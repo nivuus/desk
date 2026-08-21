@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { CapabilitiesMessage, ReadyMessage } from './control';
+import type { CapabilitiesMessage, MicStateMessage, ReadyMessage } from './control';
 import {
     CONTROL_VERSION,
     TYPES_AGENT,
@@ -174,6 +174,7 @@ describe('protocole de contrôle', () => {
             [
                 'ready', 'session-end', 'pointer', 'rumble', 'capabilities',
                 'link', 'asleep', 'fullscreen', 'clipboard', 'accent',
+                'mic-state',
             ].sort(),
         );
     });
@@ -196,6 +197,42 @@ describe('protocole de contrôle', () => {
     it('rejette un accent en version 2', () => {
         const raw = JSON.stringify({ v: 2, type: 'accent', couleur: '#7aa2f7' });
         expect(() => parseAgentControl(raw)).toThrow(/version de contrôle non supportée/);
+    });
+
+    // ── Bloc E3 : la variante `mic-state` ───────────────────────────────────
+    //
+    // ⚠️ **Divergence V1, LÉGUÉE et non fermée :** il n'existe AUCUN fichier de
+    // vecteurs partagé pour `AgentControl`. Ces assertions épinglent la forme
+    // de fil **côté TypeScript** ; `proto/src/control/tests.rs` épingle **la
+    // sienne**. Les deux s'accordent parce que deux mains ont écrit la même
+    // chaîne, et **rien ne le vérifie** : un renommage de clé appliqué d'un
+    // seul côté resterait vert des deux côtés.
+
+    it('analyse un état de micro refusé', () => {
+        const msg = parseAgentControl(
+            `{"v":${CONTROL_VERSION},"type":"mic-state","granted":false}`,
+        ) as MicStateMessage;
+        expect(msg.type).toBe('mic-state');
+        expect(msg.granted).toBe(false);
+    });
+
+    it('analyse un état de micro accordé', () => {
+        const msg = parseAgentControl(
+            `{"v":${CONTROL_VERSION},"type":"mic-state","granted":true}`,
+        ) as MicStateMessage;
+        expect(msg.granted).toBe(true);
+    });
+
+    it("mic-state figure dans TYPES_AGENT, donc dans la dérivation de l'union", () => {
+        // Le témoin d'EXÉCUTION de `TOUS_AGENT` : `tsc` garde déjà la liste,
+        // mais un test ne peut pas constater une erreur de compilation.
+        expect(TYPES_AGENT).toContain('mic-state');
+    });
+
+    it('rejette un état de micro à la mauvaise version', () => {
+        expect(() => parseAgentControl('{"v":2,"type":"mic-state","granted":true}')).toThrow(
+            /version de contrôle non supportée/,
+        );
     });
 });
 

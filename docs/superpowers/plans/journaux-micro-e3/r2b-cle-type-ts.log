@@ -1,0 +1,17 @@
+=== ROUGE r2b ===
+fichier      : /home/mallanic/Projects/Guacamole/proto/ts/control.ts
+copie nommée : /tmp/rouge-r2b-DHbBw5
+sha256 avant : 8dbb8cff7b4e85d8bdb2ac6fa4c03e85a6a6a1cdeb052fedee6068a0ef889ba3
+lignes changées par la mutation : 4
+--- vérification : cd client && npx vitest run --dir ../proto 2>&1 | grep -E 'Test Files|Tests |FAIL ' | head -20
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  ../proto/ts/control.test.ts > protocole de contrôle > TYPES_AGENT contient exactement les type de l’union
+ FAIL  ../proto/ts/control.test.ts > le collage navigateur → VM > analyse un état de micro refusé
+ FAIL  ../proto/ts/control.test.ts > le collage navigateur → VM > analyse un état de micro accordé
+ FAIL  ../proto/ts/control.test.ts > le collage navigateur → VM > mic-state figure dans TYPES_AGENT, donc dans la dérivation de l'union
+ Test Files  1 failed | 8 passed (9)
+      Tests  4 failed | 304 passed (308)
+--- code de sortie de la vérification : 1
+VERDICT : ROUGE (code 1)
+sha256 après restauration : 8dbb8cff7b4e85d8bdb2ac6fa4c03e85a6a6a1cdeb052fedee6068a0ef889ba3
+restauration : IDENTIQUE
