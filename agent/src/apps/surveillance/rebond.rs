@@ -42,7 +42,14 @@ pub const DELAI_ANTI_REBOND: Duration = Duration::from_millis(750);
 /// 4 280 ms`, et il reste **720 ms** de marge, soit **soixante-douze icônes
 /// neuves** avant que le critère ne soit menacé.
 ///
+/// ✅ **LA DÉRIVATION EST CORROBORÉE PAR LA MESURE, ET CE N'ÉTAIT PAS CHERCHÉ**
+/// (critère ① de la recette, deux exécutions) : un raccourci créé apparaît en
+/// **960 ms** puis **999 ms**, quand la somme prédit `750 + ≤200 + ~70` =
+/// **960 à 1 020 ms**. Les deux mesures tombent dans l'intervalle.
+///
 /// 🔵 **DÉRIVÉE N'EST PAS CALIBRÉE, et les deux ne sont pas la même chose.**
+/// Corroborer une somme n'est pas juger une expérience : personne n'a dit que
+/// 960 ms « se sent bien ».
 /// Personne n'a jugé que quatre secondes « se sentent bien » : elle rejoint
 /// donc la liste des non calibrées de ce dépôt — `BPP_MIN`, `FACTEUR_FOCUS`,
 /// `PART_DORMANTE_BPS`, `HYSTERESIS`, `TAILLE_MAX_SORTIE`,

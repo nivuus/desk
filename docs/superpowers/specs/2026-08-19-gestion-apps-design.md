@@ -805,7 +805,7 @@ surveillance perdue.
 | # | Critère | Comment il est jugé | Ce qui le rend ROUGE |
 | --- | --- | --- | --- |
 | ① | Un raccourci créé apparaît **en moins de 5 s** | horodatage de création contre horodatage de la ligne | la réconciliation seule met jusqu'à `PERIODE_RECONCILIATION`. **La ROUGE est le binaire de G1** |
-| ② | Un débordement de tampon est **détecté et journalisé** | provoquer une rafale (création de plusieurs milliers de fichiers) ; une ligne `notifications perdues` apparaît | 🔴 **si la rafale ne provoque aucun débordement, le critère est NON MESURABLE**, et il doit le dire. Un critère qu'on n'a pas vu se déclencher n'est pas un critère |
+| ② | Un débordement de tampon est **détecté et journalisé** | provoquer une rafale (création de plusieurs milliers de fichiers) ; une ligne `notifications perdues` apparaît | 🔴 **si la rafale ne provoque aucun débordement, le critère est NON MESURABLE**, et il doit le dire. Un critère qu'on n'a pas vu se déclencher n'est pas un critère — 🔴 **ET C'EST CE QUI EST ARRIVÉ : voir l'encadré ci-dessous** |
 | ③ | Un débordement **ne perd aucune application** | après la rafale, le catalogue est complet | c'est la propriété que D1 achète. La ROUGE est un agent purement événementiel — **elle se joue en désarmant la réconciliation périodique** |
 | ④ | L'anti-rebond **réduit** le nombre de réconciliations | installer une application réelle ; compter les réconciliations | sans anti-rebond, une par notification. **À exercer** |
 
@@ -836,16 +836,45 @@ surveillance perdue.
 >   délivrer SANS ERREUR**. 🔵 Le montage qui, lui, PEUT être rouge est
 >   `APPS_FAUTE=muette:<n>` — une complétion avalée.
 >
+>   ✅ **CE PRONOSTIC EST DEVENU UNE MESURE, ET IL ÉTAIT JUSTE** (recette G4,
+>   deux exécutions par bras) : **la ROUGE de la spécification est VERTE** —
+>   `cles=157` avec la réconciliation périodique DÉSARMÉE, le témoin apparaissant
+>   par `declencheur="notification"`. Le critère ③ est donc **TENU** *et* **NON
+>   DISCRIMINANT par ce montage**.
+>
+>   ✅ **Et le montage de remplacement est rouge, lui** : `seule` **+**
+>   `APPS_FAUTE=muette:1000` rend `cles=156` pendant quatre-vingt-dix secondes,
+>   contre `cles=157` par `declencheur="periode"` dès que la période est armée —
+>   `notifications=0` des deux côtés, donc les complétions sont bien avalées.
+>   **C'est la mesure qui justifie la décision D1 de ce document, et elle
+>   n'existait pas avant G4.**
+>
 > - ⚠️ **le pas de temps de ④ n'est pas « anti-rebond contre RIEN »** : le
 >   sondage de `apps/boucle.rs` a une granularité de **200 ms**, qui est déjà
 >   un anti-rebond faible. Le ROUGE mesure « anti-rebond contre 200 ms », et
 >   **si les deux bras rendent le même compte, ④ est NON MESURABLE**.
+>   ✅ **Ils ne le rendent pas** : **4 et 4** contre **60 et 58**, même binaire,
+>   même corpus, même rafale. ④ est **TENU**, et le facteur 15 oppose bien
+>   `750 ms/4 s` à **200 ms**, jamais à zéro.
+>
+> - 🔴 **le critère ② EST NON MESURABLE, et sa propre clause l'avait prévu.**
+>   La porte S1 monte jusqu'à **60 000 fichiers à 2 850/s** sans un seul
+>   débordement (sept exécutions), et la rafale rejouée sur le produit rend
+>   **96 742 puis 96 328 notifications réelles pour `debordements=0`**. La
+>   raison est arithmétique : un débordement exige plus de ~1 260 événements
+>   **entre deux réarmements**, et le plafond mesuré est celui du **système de
+>   fichiers**, pas celui du tampon. ⚠️ **`TAMPON_NOTIFICATIONS` n'a PAS été
+>   rétréci pour faire passer le critère**, et il ne doit pas l'être. Le chemin
+>   de code est exercé par `APPS_FAUTE=debordement`, qui établit que le
+>   **remède** fonctionne et **jamais qu'une cause existe**.
 >
 > - ⚠️ **la borne haute de l'anti-rebond vaut 4 s et non les 5 s proposées
 >   plus bas** : elle est **DÉRIVÉE** du critère ① et de deux coûts mesurés
 >   (granularité du sondage 200 ms, coût d'une réconciliation ≈ 70 ms, 10 ms
 >   par icône neuve). À 5 s le pire cas rend **5 280 ms**, au-dessus de ce que
 >   ① exige. Voir `agent/src/apps/surveillance/rebond.rs`, qui porte le calcul.
+>   ✅ **Corroborée par la mesure** : le critère ① rend **960 ms** et **999 ms**,
+>   quand la somme prédit 960 à 1 020 ms.
 
 ### G5 — La PWA par application, et les types installeur du hub
 

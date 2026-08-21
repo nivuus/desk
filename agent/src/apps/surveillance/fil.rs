@@ -158,9 +158,15 @@ fn servir(racine: &mut Racine, veille: &Veille) {
             // réarmements, c'est-à-dire dans les microsecondes qui les
             // séparent : il est RARE PAR CONSTRUCTION. Limiter son débit
             // cacherait exactement le cas pathologique qu'on voudrait voir.
-            // ⚠️ Si une recette relève un déluge, c'est un RÉSULTAT : il se
-            // consigne, et la limitation se lègue — elle ne s'ajoute pas en
-            // catastrophe.
+            // ✅ **« RARE PAR CONSTRUCTION » EST DEVENU UNE MESURE** : sur
+            // sept exécutions de la porte S1 (jusqu'à 60 000 fichiers à
+            // 2 850/s) et deux rafales sur le produit (~96 000 notifications
+            // réelles chacune), cette ligne n'est sortie **AUCUNE fois**. Le
+            // seul relevé qui la montre est sous injection
+            // (`APPS_FAUTE=debordement:3` : exactement trois lignes).
+            // ⚠️ Si une recette relève un jour un déluge, c'est un RÉSULTAT :
+            // il se consigne, et la limitation se lègue — elle ne s'ajoute pas
+            // en catastrophe.
             tracing::warn!(
                 racine = %racine.chemin().display(),
                 debordements = veille.debordements(),

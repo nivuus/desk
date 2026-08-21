@@ -23,13 +23,42 @@ pub enum Mode {
     /// armé, réconciliation périodique armée.
     Armee,
     /// `0` : surveillance désarmée — **le comportement de G1, exactement.**
-    /// C'est la ROUGE du critère ①.
+    /// C'est la ROUGE du critère ①. ✅ **JOUÉE, et elle est ROUGE** :
+    /// **29 997 ms et 29 966 ms** contre **960 ms et 999 ms** au bras livré, en
+    /// `declencheur="periode"` contre `"notification"`, deux exécutions par bras.
+    /// ⚠️ Et **aucune ligne `racine surveillée` n'apparaît** sous cet état : le
+    /// fil ne démarre pas. **C'est ce compte-là qui discrimine, jamais la trace
+    /// du mode.**
     Desarmee,
     /// `sans-rebond` : surveillance armée, **anti-rebond neutralisé**. Toute
-    /// notification rompt l'attente. C'est la ROUGE du critère ④.
+    /// notification rompt l'attente. C'est la ROUGE du critère ④. ✅ **JOUÉE, et
+    /// elle est ROUGE** : **60 et 58** réconciliations contre **4 et 4**, sur la
+    /// même rafale de 20 000 fichiers et dans une fenêtre bornée par deux
+    /// horodatages.
+    ///
+    /// ⚠️ **ELLE NE MESURE PAS « L'ANTI-REBOND CONTRE RIEN »**, et il faut le
+    /// dire à côté du chiffre : le sondage de `apps::boucle` a une granularité
+    /// de 200 ms, qui est **déjà** un anti-rebond faible. Le facteur 15 oppose
+    /// donc `750 ms/4 s` à **200 ms**, jamais à zéro.
     SansRebond,
     /// `seule` : surveillance armée, **réconciliation périodique DÉSARMÉE**.
-    /// C'est la ROUGE du critère ③.
+    /// C'était la ROUGE du critère ③ **telle que la spécification l'écrit**.
+    ///
+    /// 🔴 **JOUÉE, ET ELLE EST VERTE — deux exécutions par bras, `cles=157` des
+    /// DEUX côtés.** Ce n'est pas une surprise : c'était écrit AVANT de la jouer
+    /// (divergence E4), et pour trois raisons lisibles dans le code — une
+    /// réconciliation relit le disque **entier** quel que soit son déclencheur,
+    /// un débordement est **lui-même** une complétion donc un déclencheur, et le
+    /// premier tour est `complet` par construction. **Ce qui achète l'absence de
+    /// perte n'est donc pas la réconciliation périodique : c'est que toute
+    /// réconciliation relise tout.**
+    ///
+    /// 🔵 **CE MODE RESTE POURTANT LA MOITIÉ INDISPENSABLE DU SEUL MONTAGE QUI
+    /// SOIT DISCRIMINANT** : `seule` **plus** `APPS_FAUTE=muette`. Mesuré,
+    /// deux exécutions par bras — la période armée rattrape (`cles=157`,
+    /// `declencheur="periode"`), `seule` ne rattrape **jamais** (`cles=156`,
+    /// quatre-vingt-dix secondes durant). **C'est la mesure qui justifie la
+    /// décision D1 de la spécification, et elle n'existait pas avant G4.**
     ///
     /// ⚠️ **Variable de BANC, jamais une configuration livrée** : un agent qui
     /// ne réconcilie que sur notification perd tout ce qu'une notification

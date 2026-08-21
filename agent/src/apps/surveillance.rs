@@ -55,8 +55,20 @@ mod racine;
 /// 🔴 IL N'EST PAS CHOISI POUR RENDRE UN CRITÈRE MESURABLE, ET IL NE DOIT
 /// JAMAIS L'ÊTRE. Le rétrécir ferait déborder le tampon plus facilement, donc
 /// « réussir » le critère qui demande d'observer un débordement — c'est-à-dire
-/// régler le produit sur son test. Si aucune rafale ne le fait déborder, le
-/// verdict est **NON MESURABLE**, et il s'écrit tel quel.
+/// régler le produit sur son test.
+///
+/// 🔴 **ET LE VERDICT EST TOMBÉ : NON MESURABLE, ET IL EST ÉCRIT TEL QUEL.**
+/// La porte S1 monte jusqu'à **60 000 fichiers à 2 850/s** sans un seul
+/// débordement (sept exécutions), et la rafale rejouée sur le produit rend
+/// **96 742 puis 96 328 notifications réelles pour `debordements=0`** (deux
+/// exécutions). **Le tampon n'a PAS été rétréci**, et il ne doit pas l'être.
+///
+/// 🔵 **LA RAISON EST ARITHMÉTIQUE, ET ELLE SURVIVRA À CETTE MACHINE** : un
+/// débordement exige plus de ~1 260 événements **entre deux réarmements**,
+/// c'est-à-dire dans les microsecondes qui les séparent. À 2 850 fichiers par
+/// seconde ils arrivent toutes les ~350 µs. **Le plafond mesuré est celui du
+/// SYSTÈME DE FICHIERS, pas celui du tampon** — il est quasi constant de 1 000 à
+/// 60 000 fichiers.
 pub const TAMPON_NOTIFICATIONS: usize = 65_536;
 
 /// Démarre le fil de surveillance, ou rend une `Veille` inerte.
