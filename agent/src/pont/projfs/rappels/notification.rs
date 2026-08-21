@@ -184,6 +184,40 @@ pub(super) unsafe extern "system" fn notification(
                         Evenement::Supprime { chemin, repertoire: est_repertoire }
                     }
                 };
+                // ────────────────────────────────────────────────────────
+                // 🔴 **F5 — PREMIÈRE MOITIÉ DE L'INVALIDATION : ce que la VM a
+                // changé.** Le répertoire qui contient l'entrée mutée cesse
+                // d'être servi depuis la mémoire, sans quoi une création faite
+                // DANS la VM resterait invisible au listage suivant — le défaut
+                // exact que la spec §7.4 reproche à l'ancien pont.
+                //
+                // ⚠️ **UN RENOMMAGE INVALIDE LES DEUX PARENTS**, source et
+                // destination : `a/x` → `b/y` retire une entrée de `a` et en
+                // ajoute une à `b`. N'en invalider qu'un laisserait l'autre
+                // mentir, et le sens de l'erreur dépendrait du lequel — donc
+                // serait irrégulier, donc plus dur à voir.
+                //
+                // ⚠️ **CE QUE JE NE SAIS PAS, ET QUE JE NE PRÉTENDS PAS
+                // SAVOIR** : le filtre ProjFS fusionne-t-il lui-même les
+                // entrées locales avec ce que le fournisseur énumère, ou nous
+                // rappelle-t-il ? La question est OUVERTE ; la porte P3 du plan
+                // de F5 existe pour la trancher, **et elle n'a pas été jouée**
+                // (la VM était éteinte et tenue par un chantier voisin). Les
+                // deux moitiés sont posées quand même, parce que l'une est
+                // **indispensable** si le filtre nous rappelle et **inoffensive**
+                // s'il fusionne : le coût de se tromper n'est pas symétrique.
+                // ────────────────────────────────────────────────────────
+                if etat.cache_arme {
+                    if let Ok(mut cache) = etat.cache.lock() {
+                        match &evenement {
+                            Evenement::Renomme { de, vers, .. } => {
+                                cache.invalider(de);
+                                cache.invalider(vers);
+                            }
+                            autre => cache.invalider(autre.chemin()),
+                        }
+                    }
+                }
                 if etat.vers_ecriture.send(Ordre::Survenu(evenement)).is_err() {
                     // 🔴 **Le fil d'écriture est parti, et l'application a DÉJÀ
                     // enregistré.** Rien ne peut plus lui être dit : c'est

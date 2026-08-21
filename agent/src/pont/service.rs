@@ -22,6 +22,7 @@
 //! - **Il ne rejoue jamais une commande expirée.** Une requête rejouée
 //!   produirait une seconde réponse sans destinataire (spec §5.3).
 
+mod annonces;
 mod recensement;
 mod reponses;
 mod verbes;
@@ -199,6 +200,44 @@ fn traiter(etat: &Etat, correlation: u32, octets: &[u8]) {
             return;
         }
     };
+    // ════════════════════════════════════════════════════════════════════
+    // 🔴 **F5 — LA QUATRIÈME FAMILLE S'AIGUILLE ICI, ET C'EST LA DÉCISION QUI
+    // PORTE TOUT LE SOUS-BLOC.**
+    //
+    // Les annonces qui REMONTENT — `Bonjour`, `Rafraichir` — n'ont **aucune
+    // corrélation en table**, et leur corrélation est ignorée. Laissées passer
+    // jusqu'au `resoudre` ci-dessous, elles tomberaient dans son `debug!`
+    // « réponse tardive ou inconnue : jetée » — **invisible sous
+    // `RUST_LOG=info`**, qui est le réglage de `scripts/run-agent.sh` et la
+    // doctrine d'exploitation de ce dépôt. *Le bouton ne ferait rien, et rien
+    // ne le dirait.*
+    //
+    // C'est le patron que ce dépôt a payé **cinq fois** sur
+    // `capteur/pont_media.rs` (D5 `Sommeil`, D6 `Part`, D7 `Audio`, D8
+    // `PleinEcran`, P1 presse-papier) et une sixième sur
+    // `superviseur/signalisation.rs` (P3, le refus rangé avec `ice-config`).
+    // **Sixième et septième variantes, et la première fois qu'il est fermé
+    // d'AVANCE plutôt qu'après coup.**
+    //
+    // ⚠️ **POURQUOI ICI ET PAS DANS `transport.rs`** : le transport ne lit
+    // qu'une corrélation et n'interprète **aucun** type. Y mettre un aiguillage
+    // par type le ferait connaître le protocole, et il faudrait une variante de
+    // plus dans `DuNavigateur` — dont le `match` de `tourner` est **exhaustif**,
+    // donc un commit qui casse. **Un seul endroit, et c'est celui qui connaît
+    // déjà les types.**
+    // ════════════════════════════════════════════════════════════════════
+    match trame.type_message {
+        proto::fichiers::TYPE_RAFRAICHIR => {
+            annonces::rafraichir(etat);
+            return;
+        }
+        proto::fichiers::TYPE_BONJOUR => {
+            annonces::bonjour(etat, trame.entete);
+            return;
+        }
+        _ => {}
+    }
+
     // ⚠️ **`resoudre` rend `None` pour une corrélation annulée, expirée ou
     // inconnue, et la réponse est alors JETÉE.** Appliquer une réponse dont la
     // commande ProjFS a déjà été complétée écrirait dans un tampon que le

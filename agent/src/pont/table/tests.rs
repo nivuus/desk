@@ -311,7 +311,7 @@ fn sans_commande_ne_compte_que_ce_qui_ne_complete_aucun_rappel() {
     t.inscrire(1, Attendue::Attributs { chemin: "a".into() }, echeance);
     t.inscrire_sans_commande(Attendue::Ecrire { chemin: "b".into(), dernier: true }, echeance);
     t.inscrire_sans_commande(
-        Attendue::Muter { chemin: "c".into(), renommage: true },
+        Attendue::Muter { chemin: "c".into(), renommage: true, destination: Some("d".into()) },
         echeance,
     );
     assert_eq!(t.en_vol(), 3);

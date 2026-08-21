@@ -212,6 +212,14 @@ fn un_fichier_de_taille_nulle_produit_un_morceau_vide_et_sort_du_journal() {
 /// La racine a été recréée, et le fichier est parti avec elle (spec §6.4
 /// cas 3). Boucler sur le réessai ferait repousser indéfiniment un fichier qui
 /// n'existe plus.
+///
+/// ⚠️ **F5 A DÉPLACÉ LE MOMENT, PAS LA RÈGLE.** *Ce test appelait
+/// `Fil::demarrer` et n'attendait rien d'autre : la reprise courait au démarrage
+/// du fil.* Elle attend désormais `Ordre::Bonjour` — sans quoi le pont
+/// pousserait avant de savoir sur quel répertoire (§6.4 cas 2). **Le journal
+/// n'est donc plus touché par le seul `demarrer`, et c'est vérifié ici avant
+/// l'annonce** : sans cette moitié, le test passerait aussi sur un produit qui
+/// aurait gardé l'ancien moment.
 #[test]
 fn un_fichier_absent_au_redemarrage_sort_du_journal_en_le_nommant() {
     let bac = Bac::neuf();
@@ -223,27 +231,86 @@ fn un_fichier_absent_au_redemarrage_sort_du_journal_en_le_nommant() {
     brut.push_str(&j.inscrire("survivant.txt", 2));
     std::fs::write(&bac.journal, &brut).expect("journal de test");
 
-    let _fil = Fil::demarrer(bac.config(true));
+    let mut fil = Fil::demarrer(bac.config(true));
+    // La moitié qui rend ce test capable de voir le déplacement de F5.
+    let (avant, _) = Journal::relire(&bac.journal_brut());
+    assert_eq!(avant.compte(), 2, "demarrer ne reprend RIEN : il attend Bonjour");
+
+    fil.traiter(Ordre::Bonjour { racine: "Documents".into(), forcer: false });
     let (relu, _) = Journal::relire(&bac.journal_brut());
     let restants: Vec<&str> = relu.dues().iter().map(|(c, _)| c.as_str()).collect();
     assert_eq!(restants, ["survivant.txt"], "seul le disparu devait partir");
 }
 
-/// Au démarrage, les dues sont **annoncées avant** toute poussée.
+/// À la reprise, les dues sont **annoncées avant** toute poussée.
+///
+/// ⚠️ *Ce test s'appelait `…_au_demarrage`, et il appelait `Fil::demarrer` sans
+/// rien d'autre.* **F5 a déplacé le moment** : la reprise attend `Bonjour`.
 #[test]
-fn les_dues_sont_annoncees_avant_toute_poussee_au_demarrage() {
+fn les_dues_sont_annoncees_avant_toute_poussee_a_la_reprise() {
     let bac = Bac::neuf();
     bac.poser("repris.txt", b"abc");
     let mut j = Journal::nouveau();
     std::fs::write(&bac.journal, j.inscrire("repris.txt", 3)).expect("journal de test");
 
-    let _fil = Fil::demarrer(bac.config(true));
+    let mut fil = Fil::demarrer(bac.config(true));
+    // 🔴 **RIEN N'EST ÉMIS AVANT `Bonjour`**, et c'est la moitié qui mesure le
+    // remède : F2 a relevé la poussée du rejeu 0,8 s AVANT que le navigateur
+    // n'annonce son montage, puis une expiration 30,2 s plus tard.
+    assert!(bac.trames().is_empty(), "aucune trame avant Bonjour");
+
+    fil.traiter(Ordre::Bonjour { racine: "Documents".into(), forcer: false });
     let trames = bac.trames();
     assert_eq!(trames[0].0, proto::fichiers::TYPE_DUES, "l'annonce d'abord");
     assert!(
         trames.iter().any(|(t, ..)| *t == proto::fichiers::TYPE_ECRIRE),
         "puis la reprise"
     );
+}
+
+/// 🔴 **LE CAS POUR LEQUEL `Bonjour` EXISTE : un AUTRE répertoire RETIENT.**
+///
+/// Le journal n'est **ni vidé ni poussé**, l'annonce porte `retenues: true`, et
+/// **aucun `TYPE_ECRIRE` ne part**. Sans cela, les fichiers d'une session
+/// atterriraient dans le dossier d'une autre (spec §6.4 cas 2).
+#[test]
+fn un_repertoire_different_retient_et_le_dit() {
+    let bac = Bac::neuf();
+    bac.poser("repris.txt", b"abc");
+    let mut j = Journal::nouveau();
+    std::fs::write(&bac.journal, j.inscrire("repris.txt", 3)).expect("journal de test");
+
+    let mut fil = Fil::demarrer(bac.config(true));
+    fil.traiter(Ordre::Bonjour { racine: "Documents".into(), forcer: false });
+    assert!(
+        bac.trames().iter().any(|(t, ..)| *t == proto::fichiers::TYPE_ECRIRE),
+        "le premier montage pousse : rien ne peut y etre mal place"
+    );
+
+    // Un second pont, sur un AUTRE répertoire, avec le même dossier d'état.
+    let avant = bac.trames().len();
+    let mut fil2 = Fil::demarrer(bac.config(true));
+    fil2.traiter(Ordre::Bonjour { racine: "Telechargements".into(), forcer: false });
+
+    let neuves: Vec<_> = bac.trames().into_iter().skip(avant).collect();
+    // ① AUCUNE écriture ne part.
+    assert!(
+        !neuves.iter().any(|(t, ..)| *t == proto::fichiers::TYPE_ECRIRE),
+        "un repertoire different ne doit RIEN pousser"
+    );
+    // ② L'annonce sort, et elle porte `retenues: true` — sans quoi le
+    //    navigateur verrait un compteur fige sans savoir pourquoi.
+    let (_, _, entete, _) = neuves
+        .iter()
+        .find(|(t, ..)| *t == proto::fichiers::TYPE_DUES)
+        .expect("une annonce de dues doit sortir");
+    let dues: proto::fichiers::entetes::Dues =
+        serde_json::from_slice(entete).expect("en-tete Dues lisible");
+    assert!(dues.retenues, "l'annonce doit DIRE que les dues sont retenues");
+    assert_eq!(dues.dues.len(), 1, "et porter la due qu'elle retient");
+    // ③ Le journal survit : ni poussé, ni jeté.
+    let (relu, _) = Journal::relire(&bac.journal_brut());
+    assert_eq!(relu.compte(), 1, "le journal n'est NI vide NI pousse : il est NOMME");
 }
 
 /// 🔴 **DÉSARMÉ, LE FIL JOURNALISE ET ANNONCE, MAIS NE POUSSE RIEN.**

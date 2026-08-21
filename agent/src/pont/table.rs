@@ -121,10 +121,27 @@ pub enum Attendue {
     /// Une **mutation** poussée vers le navigateur (F3).
     ///
     /// ⚠️ **`chemin` est la SOURCE**, celle sur laquelle des écritures peuvent
-    /// être dues. La destination d'un renommage vit dans l'en-tête émis, pas
-    /// ici : la table n'a pas à la connaître pour apparier une réponse.
+    /// être dues.
+    ///
+    /// ❌ *Ces lignes disaient : « la destination d'un renommage vit dans
+    /// l'en-tête émis, pas ici : la table n'a pas à la connaître pour apparier
+    /// une réponse ». La prémisse reste vraie — l'**appariement** n'en a
+    /// toujours pas besoin —, mais la conclusion ne l'est plus : **F5 la lui
+    /// fait porter**, pour ce qui se passe APRÈS l'appariement.*
     Muter {
         chemin: String,
+        /// **F5** — la destination d'un renommage, `None` pour une suppression.
+        ///
+        /// 🔴 **Elle n'est PAS là pour apparier, mais pour INVALIDER**, et elle
+        /// ferme une fenêtre réelle. Une notification ProjFS invalide les deux
+        /// parents dès que la VM renomme ; mais **le navigateur, lui, n'a pas
+        /// encore renommé** — un listage du parent de destination pendant cet
+        /// intervalle mémoriserait, *légitimement*, un contenu qui ne porte pas
+        /// encore le nom neuf. C'est APRÈS le `Fait` que cette mémoire devient
+        /// fausse, et c'est donc au `Fait` qu'il faut l'oublier une seconde
+        /// fois. Sans ce champ, ce contenu périmé serait servi jusqu'au terme
+        /// de `TTL_ENUMERATION`.
+        destination: Option<String>,
         /// `true` pour un renommage, `false` pour une suppression. **Ce qui en
         /// dépend est le JOURNAL**, jamais l'appariement — mais un journal qui
         /// ne dirait pas lequel des deux verbes a échoué renverrait le lecteur

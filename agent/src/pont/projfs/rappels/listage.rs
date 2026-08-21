@@ -141,6 +141,50 @@ pub(super) unsafe extern "system" fn suite_enumeration(
         }
         drop(sessions);
 
+        // ────────────────────────────────────────────────────────────────────
+        // 🔴 **F5 — LE CACHE D'ÉNUMÉRATION SE CONSULTE ICI, ET NULLE PART
+        // AILLEURS.**
+        //
+        // Le point est choisi : **après** le chemin synchrone de la session
+        // chargée (qui n'a rien à demander), **avant** l'inscription d'une
+        // commande dans la table. Sur un succès, la commande n'est **jamais
+        // inscrite**, donc **jamais complétée** — et c'est ce détail qui
+        // préserve l'invariant que la spec §7.1 énonce : *« Un seul fil du pont
+        // complète les commandes, jamais un fil de rappel. »*
+        //
+        // **Remplir un tampon et rendre `S_OK` depuis ce fil-ci n'est PAS
+        // compléter une commande** : c'est ne jamais en créer une. Appeler
+        // `PrjCompleteCommand` d'ici, en revanche, casserait l'invariant — et
+        // c'est le geste qu'il ne faut pas faire.
+        //
+        // ⚠️ **Les entrées mémorisées sont BRUTES**, et `preparer` court quand
+        // même : le filtrage par `expression` et le tri dépendent de la
+        // REQUÊTE, si bien qu'un `dir *.txt` empoisonnerait le cache pour le
+        // `dir` suivant si l'on mémorisait le résultat préparé.
+        // ────────────────────────────────────────────────────────────────────
+        if etat.cache_arme {
+            let memorisees = etat
+                .cache
+                .lock()
+                .ok()
+                .and_then(|mut c| c.lire(&chemin, std::time::Instant::now()).map(<[_]>::to_vec));
+            if let Some(brutes) = memorisees {
+                let preparees = crate::pont::enumeration::preparer(
+                    brutes,
+                    motif.as_deref(),
+                    |nom, m| etat.apparier(nom, m),
+                    |a, b| etat.comparer(a, b),
+                );
+                let mut sessions = match etat.sessions.lock() {
+                    Ok(sessions) => sessions,
+                    Err(_) => return E_UNEXPECTED,
+                };
+                let session = sessions.entry(id).or_default();
+                session.poser(preparees);
+                return crate::pont::service::remplir_session(etat, session, tampon);
+            }
+        }
+
         let entete = match serde_json::to_string(&entetes::Chemin { chemin: chemin.clone() }) {
             Ok(entete) => entete,
             Err(_) => return E_UNEXPECTED,

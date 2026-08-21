@@ -110,7 +110,7 @@ impl Fil {
                 self.annoncer_les_dues();
             }
         }
-        let (type_message, entete, chemin, renommage) = match &quoi {
+        let (type_message, entete, chemin, renommage, destination) = match &quoi {
             Mutation::Renommer { de, vers, repertoire } => (
                 proto::fichiers::TYPE_RENOMMER,
                 serde_json::to_string(&entetes::Renommer {
@@ -121,6 +121,7 @@ impl Fil {
                 .expect("un en-tete Renommer se serialise toujours"),
                 de.clone(),
                 true,
+                Some(vers.clone()),
             ),
             Mutation::Supprimer { chemin, repertoire } => (
                 proto::fichiers::TYPE_SUPPRIMER,
@@ -131,9 +132,11 @@ impl Fil {
                 .expect("un en-tete Supprimer se serialise toujours"),
                 chemin.clone(),
                 false,
+                None,
             ),
         };
-        let correlation = self.inscrire_mutation(Attendue::Muter { chemin, renommage });
+        let correlation =
+            self.inscrire_mutation(Attendue::Muter { chemin, renommage, destination });
         self.mutation_en_vol = Some(correlation);
         self.emettre(type_message, correlation, &entete, &[]);
         tracing::debug!(?quoi, correlation, "mutation poussee");

@@ -171,7 +171,7 @@ fn la_famille_suit_le_budget_et_creer_est_de_la_famille_ecrire() {
         "Creer est inscrite par ecriture::fil sous DELAI_ECRIRE"
     );
     assert_eq!(
-        Famille::de(&Attendue::Muter { chemin: "f".into(), renommage: true }),
+        Famille::de(&Attendue::Muter { chemin: "f".into(), renommage: true, destination: Some("g".into()) }),
         Famille::Mutation
     );
 }

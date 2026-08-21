@@ -185,6 +185,20 @@ pub struct Etat {
     pub latences: crate::pont::latence::Histogramme,
     /// Ce que CE processus a hydraté depuis son démarrage — voir
     /// [`PERIODE_HYDRATATION`] et [`Etat::tracer_hydratation`].
+    /// **F5** — ce que chaque répertoire contenait, et depuis quand.
+    ///
+    /// 🔴 **C'est la seule addition de tout le sous-projet ③ qui puisse rendre
+    /// FAUX un comportement déjà recetté** : sans invalidation, un fichier créé
+    /// par F2, renommé ou supprimé par F3 cesserait d'être vu. C'est le défaut
+    /// que la spec §7.4 reproche à l'ancien pont, dont le cache de données
+    /// n'avait **aucun TTL**. Voir [`crate::pont::cache`].
+    pub cache: Mutex<crate::pont::cache::CacheEnumeration>,
+    /// `PONT_CACHE=0` : `false` = le bras désarmé de l'A/B du critère ①.
+    ///
+    /// ⚠️ **Désarmé, le pont se comporte EXACTEMENT comme avant F5** : chaque
+    /// listage paie son aller-retour. C'est ce qui rend le critère ① falsifiable
+    /// **sur le produit lui-même**, et non par une mutation de source.
+    pub cache_arme: bool,
     pub octets_hydrates: AtomicU64,
     pub entrees_hydratees: AtomicU64,
 }
