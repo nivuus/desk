@@ -1,0 +1,8 @@
+=== ROUGE r0 ===
+fichier      : proto/src/control.rs
+copie nommée : /tmp/rouge-r0-9LA8d6
+sha256 avant : 3e817dc87a2479175d9e50471b223a4b0d74e399bda0810beb8aaa7959942de3
+lignes changées par la mutation : 0
+🔴 HARNAIS : mutation VIDE — la rouge est REFUSÉE, elle ne prouve rien.
+sha256 après restauration : 3e817dc87a2479175d9e50471b223a4b0d74e399bda0810beb8aaa7959942de3
+restauration : IDENTIQUE
