@@ -1,0 +1,65 @@
+=== UN TEST DE G4 EST INTERMITTENT, ET CE N'EST PAS DE G5 ===
+Releve le 21 aout 2026, pendant la cloture de la tranche F.
+
+SYMPTOME : `./scripts/verify-all.sh` sort en 1 sur son etape 1, avec
+  test result: FAILED. 982 passed; 1 failed
+  ---- apps::surveillance::faute::tests::une_famille_ne_consomme_pas_le_budget_d_une_autre
+
+ATTRIBUTION, PAR LA COMMANDE — CE N'EST PAS MOI :
+  git log --oneline -3 -- agent/src/apps/surveillance/faute.rs
+    -> 45880d2 apps(g4) : l'anti-rebond PUR, l'injection a budget GLOBAL, et six rouges
+  git diff --stat HEAD -- agent/src/apps/surveillance/
+    -> VIDE. G5 n'a touche aucun fichier de ce repertoire.
+
+MECANISME, MESURE ET NON SUPPOSE :
+  le module porte un etat GLOBAL AU PROCESSUS —
+    static ETAT: OnceLock<(AtomicU8, AtomicU32)>  (faute.rs:116)
+  — et `cargo test` execute les tests EN PARALLELE dans UN SEUL processus.
+  Plusieurs tests du module ecrivent et relisent ces deux atomiques ; deux
+  d'entre eux qui se recouvrent se marchent dessus.
+
+  DOUZE executions du module seul, en parallele (le defaut) :  1 echec / 12
+  DOUZE executions avec `-- --test-threads=1`               :  0 echec / 12
+
+  🔴 LE BUDGET GLOBAL AU PROCESSUS EST LA BONNE DECISION POUR LE PRODUIT — c'est
+  la lecon que D10 a payee sur `AUDIO_FAUTE_LECTURE`, ou un budget relu par fil
+  rendait le chiffre-juge structurellement incapable de quitter zero. Le defaut
+  n'est pas la conception : c'est que SES TESTS partagent cet etat sans le
+  serialiser.
+
+REMEDE POSSIBLE, NON APPLIQUE : un `Mutex` de test partage par les tests du
+module, ou `#[serial]`. **G5 N'Y TOUCHE PAS** : c'est un fichier de G4, G4 est
+clos, et corriger le test d'un voisin sans son plan est exactement la frontiere
+que ce depot demande de ne pas franchir en silence. LEGUE, avec sa mesure.
+
+CONSEQUENCE POUR LA CLOTURE DE G5 : `verify-all.sh` peut sortir en 1 SUR CETTE
+SEULE ETAPE, de facon intermittente. Le temoin de cloture le dit, et il nomme
+l'etape ET son proprietaire — « presenter le filet comme vert serait faux ; le
+presenter comme rouge le serait tout autant » (lecon du chantier E).
+
+
+=== ET UN SECOND ROUGE ETRANGER, D'UNE AUTRE NATURE, PENDANT LA CLOTURE ===
+Releve le 21 aout 2026, apres la revue transverse de G5.
+
+SYMPTOME : `cd client && npx vitest run` rend
+  FAIL src/fichiers/protocole.annonces.test.ts
+    > l'ANNONCE des ecritures dues > 🔴 ne repond RIEN, et appelle le rappel injecte
+
+ATTRIBUTION, PAR LA COMMANDE :
+  git status --porcelain client/src/fichiers/   -> VIDE (je n'y ai pas touche)
+  git log --oneline -2 -- client/src/fichiers/protocole.annonces.test.ts
+    -> 018fb70 pont(f5) : extraction PREALABLE de protocole.annonces.test.ts
+  git status --porcelain agent/src/pont/        -> QUATRE fichiers modifies par F5
+
+NATURE : DETERMINISTE, 3 echecs sur 3 relances — a la difference du flake de
+G4 ci-dessus, qui est 1 sur 12. Le titre du test porte le marqueur 🔴 de la
+discipline rouge-d'abord de ce depot, et le voisin F5 a du travail NON COMMITE
+dans `agent/src/pont/` : c'est SA ROUGE, en cours, pas une casse de G5.
+
+⚠️ CONSEQUENCE POUR LE TEMOIN DE CLOTURE DE G5 : `verify-all.sh` peut sortir en
+1 sur son etape `client : npm test`, POUR UNE RAISON QUI N'EST PAS LA MIENNE.
+Le temoin nomme l'etape ET son proprietaire — « presenter le filet comme vert
+serait faux ; le presenter comme rouge le serait tout autant ».
+
+CE QUE JE NE FAIS PAS : y toucher. C'est le fichier d'un voisin ACTIF, et
+corriger la rouge d'un chantier en cours la lui volerait.

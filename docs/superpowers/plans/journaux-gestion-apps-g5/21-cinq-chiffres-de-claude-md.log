@@ -1,0 +1,48 @@
+=== LES CINQ CHIFFRES PERIMES QUE LE PLAN DE G5 ANNONCAIT DANS CLAUDE.md ===
+Verifies UN A UN, PAR LA COMMANDE, le 21 aout 2026, JUSTE AVANT d'ecrire.
+
+Le §13 n°9 du plan annonce : « CLAUDE.md porte au moins CINQ chiffres perimes
+[...] La tache 22 les corrige a LEUR PLACE ».
+
+VERDICT : AUCUN DES CINQ N'EST DU. Et ce n'est pas une dispense — c'est le
+resultat de les avoir cherches. Le detail, chiffre par chiffre :
+
+① « le tableau de dette a QUATRE lignes »
+   -> FAUX AU PRESENT : il en a DEUX, et il est JUSTE.
+   🔴 C'EST UN VOISIN QUI L'A CORRIGE, PAS MOI : `sous-bloc G2, taches 1 et 2`,
+      le matin meme, et CLAUDE.md le dit en toutes lettres. J'ai failli me
+      l'attribuer — le TROISIEME chantier a le faire, d'apres le coordinateur.
+      Mon propre journal d'entree portait l'erreur ; il est corrige a sa place.
+   LECON : j'avais mesure JUSTE et compare a un SOUVENIR de CLAUDE.md, jamais
+   au fichier du disque.
+
+② « §7.1 : 53 paires et non 52 »
+   -> Les deux occurrences de « 52 paires » sont des RELEVES DATES (sections S2
+      et S3), vrais a leur date — le 53 arrive avec S4. Les barrer les rendrait
+      FAUX. Aucune affirmation AU PRESENT ne porte 52.
+   -> RIEN A CORRIGER.
+
+③ « COULEURS_HORS_THEME : sept et non six »
+   -> `grep -n COULEURS_HORS_THEME CLAUDE.md` rend ZERO ligne. CLAUDE.md n'en
+      parle plus du tout.
+   -> RIEN A CORRIGER.
+
+④ « lecteurs de tokens.css : neuf et non sept »
+   -> `grep -n 'lecteurs.*tokens\.css' CLAUDE.md` ne rend que MES PROPRES lignes,
+      ecrites a l'instant.
+   -> RIEN A CORRIGER. ⚠️ ET LE CHIFFRE LUI-MEME A BOUGE PENDANT G5 : il y en a
+      ONZE, pas neuf — `manifeste.test.ts` et `catalogue.test.ts` en ont ajoute
+      un chacun, PARCE QUE §7.2 m'a interdit d'ecrire une couleur et m'a force a
+      la LIRE sur la source. Le remede a un controle a alourdi le cout d'un
+      autre. Voir `20-scission-tokens.md`.
+
+⑤ « verify-webrtc.mjs : 494 et non 497, en quatre places datees »
+   -> Les 497 restants sont TOUS des releves DATES (D10, D11, P2), et D10 avait
+      deja tranche de ne pas reecrire un enonce date. Les releves POSTERIEURS
+      (P5, et le mien) portent bien 494.
+   -> RIEN A CORRIGER, et c'est la doctrine du depot, pas une commodite.
+
+⚠️ CE QUE CELA AJOUTE : un plan qui annonce des corrections a faire annonce un
+ETAT DU MONDE, et cet etat vieillit comme tout le reste — ici en quelques
+heures, parce que deux voisins ont travaille dans le meme fichier. LA TACHE
+N'ETAIT PAS « CORRIGER CINQ CHIFFRES », C'ETAIT « LES CHERCHER ».

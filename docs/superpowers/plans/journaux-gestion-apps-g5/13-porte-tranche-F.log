@@ -1,0 +1,67 @@
+=== PORTE DE LA TRANCHE F (plan §6.7), evaluee le 21 aout 2026 ===
+
+La table du plan, verbatim :
+  G4 clos, proto/ sans modification d'un voisin, VM disponible -> F est jouee
+  G4 NON clos, ou proto/ tenu par un voisin -> F est RETIREE
+  A1 NON clos -> agent/src/accent.rs est a lui : la tache 17 est RETIREE,
+                 la tache 18 (les associations) peut rester
+
+RELEVE, PAR LA COMMANDE :
+
+  G4 : CLOS. `git log --oneline` porte `05adf72 index(g4)` puis
+       `751caf3 correction(g4)`, et `git status --porcelain` ne montre plus
+       aucun fichier de `agent/src/apps/surveillance/` ni de CLAUDE.md.
+       (Au controle d'entree, il en portait CINQ plus CLAUDE.md.)
+
+  A1 : NON CLOS. Son dernier commit est `fe0296b recette(a1)` — sa RECETTE,
+       pas son index. Il tient `proto/src/control.*`, `client/src/design/`,
+       `agent/src/accent*`, et LA VM.
+
+  proto/ : propre a cette heure — mais A1 en est PROPRIETAIRE et n'a pas
+       fini. `git status` a un instant n'est pas une garantie sur la suite.
+
+  VM : tenue par A1, dont la recette vient de tourner.
+
+VERDICT : LA TRANCHE F EST RETIREE.
+
+Deux clauses de la table s'appliquent, et elles concordent :
+  - « A1 non clos » retire la tache 17 sans discussion ;
+  - la tache 19 monte `PLATEFORME_VERSION` de 4 a 5, et `Application` porte
+    `#[serde(deny_unknown_fields)]` : TOUT CHAMP NEUF EST CASSANT. La
+    collision n'est pas une hypothese, c'est un fait mesure de ce depot — la
+    corroboration de P4 a ete PERDUE parce que G1 avait monte la version dans
+    le meme arbre, et l'agent deploye s'est mis a boucler SANS POUVOIR LIRE
+    LE REFUS. Monter la version pendant qu'un voisin tient `proto/` et la VM
+    rejouerait cela a l'identique.
+
+CE QUE CE RETRAIT COUTE, ECRIT PLUTOT QUE TU :
+  - le manifeste par application OMET `theme_color`. Il ne l'invente pas :
+    `batirManifeste` rend le champ ABSENT quand aucun accent n'est connu, et
+    un test le tient. La clause « Livre » de la conception (§5 « G5 ») n'est
+    donc tenue qu'a moitie sur ce point, et c'est ANNOTE dans la spec ;
+  - les `file_handlers` PAR APPLICATION n'existent pas. Ceux du HUB, eux,
+    sont livres et MESURES — c'est ce que l'amendement du 28/07/2026 demande,
+    et c'est le critere ③.
+
+CE QUE CE RETRAIT NE COUTE PAS : aucun des trois criteres de la conception
+n'en depend (plan §2.2). G5 reste LIVRABLE, et il est recette.
+
+
+=== RE-EVALUATION, LE MEME JOUR, APRES LA CLOTURE DE A1 ===
+
+⚠️ LE RELEVE CI-DESSUS RESTE VRAI A SON HEURE, ET C'EST POURQUOI IL N'EST PAS
+   EFFACE. Ce qui a change n'est pas la regle, c'est le monde qu'elle lisait.
+
+RELEVE, PAR LA COMMANDE :
+  A1 : CLOS. Il a rendu la VM (0 processus `agent`, vivier de sorties purge).
+  proto/ : `git status --porcelain proto/ agent/ plateforme/` rend VIDE.
+  VM : `virsh list --all` -> Windows en cours d'execution ; /media/vm accessible.
+  /dev/null : character special file (le defaut d'hote n'est pas la).
+
+VERDICT : LA PORTE EST OUVERTE. LA TRANCHE F EST JOUEE.
+
+⚠️ CE QUE CE RENVERSEMENT ENSEIGNE, ET QUI VAUT AU-DELA DE G5 : une porte qui
+   lit l'etat des voisins n'a de verdict qu'ASSORTI DE SON HEURE. Le premier
+   releve etait juste, sa conclusion l'etait aussi, et les deux ont cesse de
+   l'etre en une heure — sans qu'aucune ligne du plan ne bouge. C'est la meme
+   lecon que D11 a payee sur un compte de tests, transposee a une DECISION.
