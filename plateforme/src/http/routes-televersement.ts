@@ -18,16 +18,22 @@
 // motifs parlent tous de VM, d'agent ou d'attribution. `routes-icone.ts` a
 // tranché pareil.
 //
-// 🔴 LE `PUT` N'EST PAS ATTEIGNABLE DEPUIS UN NAVIGATEUR EN ORIGINE CROISÉE, ET
-// CE MODULE NE PEUT PAS LE RÉPARER : `http/cors.ts` annonce
-// `Access-Control-Allow-Methods: 'GET, POST, OPTIONS'` — **`PUT` n'y est pas**.
-// Le déposant EST le navigateur, et un `PUT` portant `Authorization` est NON
-// SIMPLE : il demande la préalable, n'y trouve pas `PUT`, et ABANDONNE SANS
-// ENVOYER LA VRAIE REQUÊTE. Aucun test de Node ne peut le voir (`fetch` Node
-// n'applique pas la politique d'origine) — la classe de défaut que la
-// corroboration navigateur de P4 a trouvée. ⚠️ LA CORRECTION APPARTIENT À
-// `http/cors.ts`, QUE CETTE TÂCHE NE TOUCHE PAS. Sans effet en origine unique
-// (profil `deploiement` de P5) ; mord en développement, `vite` servant sur 5173.
+// ✅ LE `PUT` EST ATTEIGNABLE DEPUIS UN NAVIGATEUR EN ORIGINE CROISÉE, ET IL NE
+// L'ÉTAIT PAS QUAND CE FICHIER A ÉTÉ ÉCRIT. `http/cors.ts` n'annonçait alors que
+// `Access-Control-Allow-Methods: 'GET, POST, OPTIONS'` : le déposant ÉTANT le
+// navigateur, et un `PUT` portant `Authorization` étant NON SIMPLE, il demandait
+// la préalable, n'y trouvait pas `PUT`, et ABANDONNAIT SANS ENVOYER LA VRAIE
+// REQUÊTE. La valeur porte désormais `PUT`, et `cors.test.ts` l'assère
+// nommément — rouge vue, `2 failed | 6 passed`.
+//
+// ⚠️ CE QUI RESTE ENTIÈREMENT VRAI, ET QU'IL NE FAUT PAS LIRE COMME FERMÉ :
+// **aucun test de Node ne peut voir cette classe de défaut**, `fetch` Node
+// n'appliquant pas la politique d'origine. C'est la classe que la corroboration
+// navigateur de P4 a trouvée et qu'elle a déclarée SANS GARDE AUTOMATIQUE ; elle
+// a mordu deux fois chez P4 et une troisième fois ici, sur la MÉTHODE. Le seul
+// garde est une assertion sur la VALEUR, dans `cors.test.ts`. Sans effet en
+// origine unique (profil `deploiement` de P5) ; mordait en développement, `vite`
+// servant sur 5173 et le service sur 8080 — donc là où on le met au point.
 //
 // ⚠️ `routes-auth.ts::lireCorps` N'EST NI RELEVÉ NI RÉEMPLOYÉ, ET LES DEUX
 // MOITIÉS COMPTENT. Il accumule dans une CHAÎNE UTF-8 : un corps BINAIRE y
