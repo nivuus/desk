@@ -28,6 +28,7 @@ import type { Config } from '../config';
 import type { Pilote } from '../base/pilote';
 import { garde } from '../identite/garde';
 import { servirAuth } from './routes-auth';
+import { servirIdentite } from './routes-identite';
 import { servirVm } from './routes-vm';
 import { servirSession } from './routes-session';
 import { servirApplications } from './routes-applications';
@@ -211,6 +212,10 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
         secretJeton: config.secretJeton,
         origineClient: config.origineClient,
         maintenant: Date.now,
+        // ⚠️ SEUL `servirIdentite` LE LIT — c'est lui qui décide si
+        // `/auth/moi` sert (mode `pomerium`) ou rend le 404 générique (mode
+        // `motdepasse`), voir son en-tête.
+        auth: config.auth,
         // ⚠️ `servirApplications` ET `servirInstallation` LE LISENT — le
         // premier pour lancer une application, le second pour pousser un ordre
         // d'installation à une VM déjà connectée. Les autres l'ignorent. Il est posé ici plutôt que passé à part pour que le
@@ -259,6 +264,12 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
         requete: IncomingMessage,
         reponse: ServerResponse,
     ): Promise<boolean> {
+        // 🔴 `servirIdentite` EST CHAÎNÉ EN TÊTE, ET CE N'EST PAS INDIFFÉRENT :
+        // `/auth/moi` et les deux chemins de `servirAuth` sont DISJOINTS
+        // aujourd'hui, mais les trois partagent le préfixe `/auth/`. Le jour
+        // où l'un comparerait par préfixe, c'est cet ordre qui trancherait —
+        // en silence.
+        if (await servirIdentite(requete, reponse, deps)) return true;
         if (await servirAuth(requete, reponse, deps)) return true;
         if (await servirVm(requete, reponse, deps)) return true;
         if (await servirApplications(requete, reponse, deps)) return true;
