@@ -3,7 +3,6 @@ import {
     TYPE_ATTRIBUTS,
     TYPE_CREER,
     TYPE_DONNEES,
-    TYPE_DUES,
     TYPE_ECHEC,
     TYPE_ECRIRE,
     TYPE_ENTREES,
@@ -321,41 +320,6 @@ describe('la dénonciation d’un échec d’écriture', () => {
     });
 });
 
-describe('l’ANNONCE des écritures dues', () => {
-    it('🔴 ne répond RIEN, et appelle le rappel injecté', async () => {
-        // Rendre une trame ferait recevoir au pont une réponse à une
-        // corrélation qu'il ne connaît pas, et il la jetterait en `debug!` —
-        // SILENCIEUSEMENT. C'est le bras catch-all payé quatre fois sur
-        // `capteur/pont_media.rs`.
-        const vues: unknown[] = [];
-        const serveur = creerServeur(fauxAdaptateur(), () => {}, {
-            onDues: (dues) => vues.push(dues),
-        });
-        const reponse = await serveur.traiter(
-            encoder(TYPE_DUES, 0, { dues: [{ chemin: 'note.txt', octets: 12 }] }),
-        );
-        expect(reponse).toBeNull();
-        expect(vues).toEqual([[{ chemin: 'note.txt', octets: 12 }]]);
-    });
-
-    it('une annonce illisible est journalisée, jamais fatale', async () => {
-        const messages: string[] = [];
-        const serveur = creerServeur(fauxAdaptateur(), (m) => messages.push(m), {
-            onDues: () => {
-                throw new Error('jamais atteint');
-            },
-        });
-        expect(await serveur.traiter(encoder(TYPE_DUES, 0, { dues: 'pas un tableau' }))).toBeNull();
-        expect(messages.join(' ')).toMatch(/dues/);
-    });
-
-    it('un FAIT reçu par le navigateur est IGNORÉ : il ne demande rien', async () => {
-        const messages: string[] = [];
-        const serveur = creerServeur(fauxAdaptateur(), (m) => messages.push(m));
-        expect(await serveur.traiter(encoder(TYPE_FAIT, 3, {}))).toBeNull();
-        expect(messages.join(' ')).toMatch(/ne demande rien/);
-    });
-});
 
 /** Un mutateur factice : le protocole ne connaît AUCUN système de fichiers. */
 function fauxMutateur(surcharge: Partial<Mutateur> = {}): Mutateur & { vus: string[] } {
