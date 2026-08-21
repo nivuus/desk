@@ -455,8 +455,25 @@ tous `dead_code`**, **706 tests d'hôte**, conformes aux références d'entrée.
 2. ⛔ **Le refus d'exclusivité n'est PAS dit au client** (Décision 9) : à deux
    fenêtres, le bouton micro de la perdante s'allume et **rien ne sort**. Le
    fermer demande un message de contrôle neuf, donc `proto/` **et** `client/`.
+
+   ✅ **FERMÉ SUR PIÈCES par le bloc E3** (21 août 2026), et par exactement le
+   remède annoncé : `AgentControl::MicState { granted }`, `proto/` **et**
+   `client/`. Émis **SUR TRANSITION** — cinquante messages par seconde
+   entreraient sinon dans une file bornée à 32. Le bouton reste `'actif'`,
+   seuls le libellé et le bandeau changent : éteindre un bouton dont le
+   navigateur émet réellement est le mensonge visuel que la spec §9 écarte.
+   ⚠️ **FERMÉ SUR PIÈCES, PAS EXERCÉ SUR LA VM** : cinq tests d'hôte et trois
+   rouges (R3, R4, R5) l'établissent ; **aucune session réelle ne l'a montré**,
+   la VM étant tenue par un chantier concurrent pendant tout E3.
 3. ⛔ **L'exclusivité à DEUX ENFANTS n'est pas exercée** (§5) — il y faut le mode
    superviseur.
+
+   ⛔ **TOUJOURS PAS EXERCÉE après E3, et pour une raison EXTERNE au produit** :
+   la VM Windows était tenue par le chantier « pont fichiers F5 » pendant tout
+   le bloc. ⚠️ **Une des trois raisons que ce document donnait est en revanche
+   PÉRIMÉE** : « le registre reste pollué » (§5) ne borne plus rien depuis D10,
+   qui fait tolérer au superviseur une sortie née trop grande — 3 → 10 fenêtres,
+   32 → 0 erreur, sur un registre laissé sale. Les deux autres tiennent.
 
 ### Sur le câble
 
@@ -473,6 +490,16 @@ tous `dead_code`**, **706 tests d'hôte**, conformes aux références d'entrée.
 7. 🔴 **La latence ajoutée par l'agent n'est pas jugée**, et l'occupation du
    tampon **n'est pas observable** sur le chemin de production (§8). La rendre
    observable demanderait de l'ajouter à la trace du câble.
+
+   ✅ **La SECONDE moitié est fermée par le bloc E3** : `occupation_ms` et
+   `famines` sont sur la trace `micro ecrit sur le cable`, lus **sous le même
+   verrou** que les compteurs pour qu'ils décrivent le même instant. Les deux
+   grandeurs existaient déjà et n'étaient lues par personne sur ce chemin.
+   🔴 **La PREMIÈRE moitié tient ENTIÈREMENT** : la latence de bout en bout
+   n'est mesurée par **rien** dans ce dépôt depuis D1, et **le troisième critère
+   de la spec §13 reste NON JUGÉ**. E3 en rend la seconde composante observable,
+   il ne la juge pas — et **le contrôle qui la lirait n'a pas été joué**, faute
+   de VM.
 8. ⛔ **Deux replis livrés et jamais courus** : `Local\` et `Reveil::Echeance`.
 9. ⛔ **`MICRO_FAUTE_ECRITURE` n'a jamais été armée.**
 10. ⛔ **La décroissance de 17,6 % de l'amplitude** sur sept minutes, non

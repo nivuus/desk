@@ -38,35 +38,14 @@ where
     Ok(v)
 }
 
-/// Ce que l'utilisateur doit comprendre de l'état du lien.
-///
-/// Trois valeurs et non un booléen : « dégradé » et « insuffisant » sont deux
-/// situations distinctes, et la seconde ne se déduit pas de la première par
-/// une négation.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum LinkQuality {
-    /// Pleine résolution, lien confortable.
-    Bonne,
-    /// Résolution réduite pour tenir le lien.
-    Degradee,
-    /// Plancher atteint : le lien ne permet plus le jeu nerveux. C'est
-    /// l'avertissement explicite exigé par le cadrage jeu (§3).
-    Insuffisante,
-}
-
-/// L'agent reçoit-il de quoi s'asservir ?
-///
-/// Indépendant de `LinkQuality` : une session sans estimation de bande
-/// passante peut très bien tourner en `Bonne` sur un lien large.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum LinkAdaptation {
-    Active,
-    /// Aucune estimation ne parvient à l'agent : le débit reste figé au
-    /// plafond configuré. À dire, pas à taire.
-    Indisponible,
-}
+/// Les deux vocabulaires de l'état du lien — **extraits** vers
+/// `control/lien.rs` par la revue transverse du bloc E3, pour que ses
+/// corrections d'énoncé tiennent sous la porte des 500 lignes sans
+/// compression. Les deux types restent `pub` et ré-exportés ici : aucun site
+/// d'appel n'a bougé.
+#[path = "control/lien.rs"]
+mod lien;
+pub use lien::{LinkAdaptation, LinkQuality};
 
 /// Message du client web vers l'agent.
 ///
@@ -151,10 +130,22 @@ pub enum AgentControl {
         ///
         /// ⚠️ **Ce drapeau est décidé à l'ÉTABLISSEMENT et ne peut pas
         /// exprimer un refus ultérieur** : l'exclusivité du câble s'acquiert au
-        /// premier paquet montant (bloc E2), donc après ce message. Un second
-        /// utilisateur verra le bouton et n'aura pas le son. Lacune NOMMÉE,
-        /// pas dissimulée — le refus est journalisé une fois côté agent
-        /// (`transport/piste_micro.rs`).
+        /// premier paquet montant (bloc E2), donc après ce message. **Cette
+        /// moitié-là reste entièrement vraie.**
+        ///
+        /// ✅ **Sa conséquence, elle, ne l'est plus.** Ce paragraphe disait :
+        /// « Un second utilisateur verra le bouton et n'aura pas le son. Lacune
+        /// NOMMÉE, pas dissimulée — le refus est journalisé une fois côté
+        /// agent ». **Le bloc E3 a fermé la lacune** : le refus remonte
+        /// désormais en [`AgentControl::MicState`], émis SUR TRANSITION, et le
+        /// bouton de la fenêtre perdante le dit. Le journal, lui, reste unique.
+        ///
+        /// ⚠️ **`mic` n'est PAS devenu redondant pour autant, et les deux ne
+        /// disent pas la même chose** : `mic` dit « cette session a une piste
+        /// montante et un puits » — une panne WASAPI, une piste non négociée —,
+        /// `MicState` dit « ce que ce micro capte atteint la VM ». Une session
+        /// peut parfaitement avoir `mic: true` et `granted: false`, et c'est
+        /// même le cas nominal de la fenêtre perdante.
         #[serde(default)]
         mic: bool,
     },

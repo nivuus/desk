@@ -26,8 +26,26 @@ use crate::opus::{echantillons_de, SAMPLE_RATE_HZ};
 
 use super::Session;
 
-// Les quatre champs que ce module ajoute à `Session` (`transport.rs`) n'y
+// Les CINQ champs que ce module ajoute à `Session` (`transport.rs`) n'y
 // portent qu'une ligne de doc chacun ; leur raisonnement est ici.
+//
+// ❌ **DEUX comptes de ce même commentaire étaient faux, et la revue transverse
+// du bloc E3 les corrige ensemble** — ils vivaient à deux endroits, ici et en
+// tête du bloc de champs de `transport.rs` :
+//
+//  - « les QUATRE champs » : rendu faux par le bloc E3 lui-même, qui ajoute
+//    `exclusivite_annoncee`. C'est le patron habituel — la tâche qui écrit le
+//    compte et celle qui l'invalide ne se relisent jamais l'une l'autre ;
+//  - « ce fichier est à TROIS lignes de son plafond » : **jamais trouvé vrai**.
+//    Au commit qui l'a écrit (`784f1fc`, E1), `transport.rs` faisait **491**
+//    lignes, soit une marge de **9** — le chiffre que la section E1 de
+//    `CLAUDE.md` porte également. ⚠️ *Rien n'établit qu'il ait été faux à
+//    l'INSTANT de l'écriture ; il l'était au commit, seul état vérifiable.*
+//
+// ⚠️ **Et le nombre n'est PAS remplacé par un autre nombre.** Un compte de
+// lignes recopié dans un commentaire vieillit à la première insertion — ce
+// dépôt l'a payé neuf fois. La règle qui vaut est celle de `CLAUDE.md` :
+// relancer la commande, jamais recopier une table.
 //
 // - `puits_micro` — absent tant qu'aucun puits n'a été installé : une session
 //   sans micro reste une session vidéo parfaitement normale, et c'est ce qui
