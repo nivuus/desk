@@ -24,7 +24,12 @@ I="$RACINE/docs/superpowers/plans/journaux-micro-e3/instrument"
 J="$RACINE/docs/superpowers/plans/journaux-micro-e3"
 mkdir -p /tmp/e3
 
+# 🔴 `.env` EN PREMIER, mais les réglages de recette sont MÉMORISÉS avant lui :
+# `.env` porte `SIGNALING_URL`, et un `source` postérieur les écraserait EN
+# SILENCE. Même garde que `e2-lancer.sh`.
+GARDE_FAUTE="${MICRO_FAUTE_ECRITURE:-}"
 set -a; source "$RACINE/.env"; set +a
+[ -n "$GARDE_FAUTE" ] && export MICRO_FAUTE_ECRITURE="$GARDE_FAUTE" || true
 source /tmp/f2/env.sh   # le montage de F2, RÉEMPLOYÉ : même VM, même compte, même préfixe
 
 echo "=== [$ETIQUETTE] $(date -u '+%Y-%m-%dT%H:%M:%SZ') — un compte n'est attribuable qu'assorti de son heure ==="
@@ -66,7 +71,7 @@ echo "=== [$ETIQUETTE] pilote (la shell d abord, l agent ensuite) ==="
 # et `fenetre_hwnd` est `Some` dans un enfant — la garde de boucle locale est
 # INERTE par construction. Toute la recette de E2 la posait ; c'est un artefact
 # du mono-fenêtre, et la poser ici ferait mesurer autre chose que le produit.
-APRES_CONNEXION="cd $RACINE && set -a && source .env && set +a && export AGENT_VM=$AGENT_VM AGENT_SECRET=$AGENT_SECRET SUPERVISEUR=1 SIGNALING_URL=ws://192.168.3.1:8080 RUST_LOG=${NIVEAU_LOG:-info} && scripts/run-agent.sh" \
+APRES_CONNEXION="cd $RACINE && set -a && source .env && set +a && export AGENT_VM=$AGENT_VM AGENT_SECRET=$AGENT_SECRET SUPERVISEUR=1 SIGNALING_URL=ws://192.168.3.1:8080 RUST_LOG=${NIVEAU_LOG:-info} ${MICRO_FAUTE_ECRITURE:+MICRO_FAUTE_ECRITURE=$MICRO_FAUTE_ECRITURE} && scripts/run-agent.sh" \
 UDD="/tmp/e3/udd-$ETIQUETTE" PORT_CDP="${PORT_CDP:-9470}" WAV="${WAV:-/tmp/e3/ton-440.wav}" \
     node "$I/pilote-e3.mjs" "/tmp/e3/pilote-$ETIQUETTE.json" \
     2>&1 | tee "$J/pilote-$ETIQUETTE.log"

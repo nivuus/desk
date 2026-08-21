@@ -340,8 +340,20 @@ pub enum AgentControl {
     ///
     /// ⚠️ **`granted` est un BOOLÉEN, pas un motif**, et c'est un choix : le
     /// seul refus qui existe est l'exclusivité du câble. Un motif ouvert
-    /// inviterait à y ranger la panne WASAPI, que `Ready.mic` dit déjà, et
-    /// deux façons de dire la même panne divergent.
+    /// inviterait à y ranger la panne WASAPI, et deux façons de dire la même
+    /// panne divergent.
+    ///
+    /// 🔴 **CE CHAMP EST UN VERDICT D'EXCLUSIVITÉ, JAMAIS UN ACCUSÉ DE
+    /// RÉCEPTION**, et la recette du bloc E3 l'a mesuré : sous
+    /// `MICRO_FAUTE_ECRITURE`, le fil de rendu WASAPI meurt, le juge sur CABLE
+    /// Output relève une amplitude de **0,000000**, et la fenêtre reçoit
+    /// pourtant `granted: true`. Le mutex vit dans `PuitsCable::deposer` ; le
+    /// fil de rendu est ailleurs, et rien ne les relie.
+    ///
+    /// **Un `false` est donc concluant — une autre fenêtre tient le câble —
+    /// quand un `true` ne l'est pas** : il écarte UNE cause de silence, pas
+    /// les autres. Y adosser un « vous êtes entendu » serait une promesse que
+    /// ce booléen ne peut pas tenir.
     ///
     /// ⚠️ **Le nom est en DEUX mots, et ce n'est pas décoratif** : le
     /// sous-bloc G1 a mesuré qu'un `rename_all` est **inobservable** sur un

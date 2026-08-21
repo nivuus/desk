@@ -1,0 +1,29 @@
+﻿**********************
+Début de la transcription Windows PowerShell
+Heure de début : 20260821163519
+Nom d'utilisateur : WIN-A54I2AHJF0C\Administrateur
+Utilisateur runAs :  WIN-A54I2AHJF0C\Administrateur
+Nom de la configuration : 
+Ordinateur : WIN-A54I2AHJF0C (Microsoft Windows NT 10.0.20348.0)
+Application hôte : C:\Windows\System32\WindowsPowerShell\v1.0\powershell.EXE -NoProfile -ExecutionPolicy Bypass -File C:\dev\e3-defaut-capture.ps1
+ID de processus : 9356
+PSVersion: 5.1.20348.5499
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.20348.5499
+BuildVersion: 10.0.20348.5499
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+SESSION=1
+CAPTURE_Default=\\?\SWD#MMDEVAPI#{0.0.1.00000000}.{5fae72b2-f885-4038-9827-0d91f862a7d5}#{2eef81be-33fa-4800-9670-1cd474972c3f}
+CAPTURE_Communications=\\?\SWD#MMDEVAPI#{0.0.1.00000000}.{5fae72b2-f885-4038-9827-0d91f862a7d5}#{2eef81be-33fa-4800-9670-1cd474972c3f}
+ENDPOINT=HDP-V104 (NVIDIA High Definition Audio) | SWD\MMDEVAPI\{0.0.0.00000000}.{8BF867BF-5EBE-45EA-B488-3D70CE3E430C}
+ENDPOINT=Haut-parleurs (Steam Streaming Speakers) | SWD\MMDEVAPI\{0.0.0.00000000}.{8695A111-ABF2-4199-88C0-FE4A9176F3E9}
+ENDPOINT=Haut-parleurs (VB-Audio Virtual Cable) | SWD\MMDEVAPI\{0.0.0.00000000}.{DEEC1914-6490-47EE-9475-091B9A2EA537}
+ENDPOINT=CABLE Output (VB-Audio Virtual Cable) | SWD\MMDEVAPI\{0.0.1.00000000}.{5FAE72B2-F885-4038-9827-0D91F862A7D5}
+**********************
+Fin de la transcription Windows PowerShell
+Heure de fin : 20260821163519
+**********************

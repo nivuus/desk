@@ -181,10 +181,24 @@ export interface AccentAgentMessage {
 /// le bloc E2, confirmé par lecture du code en E3.
 ///
 /// ⚠️ **`granted: true` NE VEUT PAS DIRE « le micro est ouvert »** — c'est
-/// `mic` et l'état du bouton qui le disent. Il veut dire « ce que ce micro
-/// capte atteint la VM ». Confondre les deux ferait éteindre le bouton d'une
-/// fenêtre dont le navigateur émet réellement, ce que la spec §9 « Vie
-/// privée » interdit : l'indicateur de Chrome, lui, reste allumé.
+/// `mic` et l'état du bouton qui le disent. Confondre les deux ferait éteindre
+/// le bouton d'une fenêtre dont le navigateur émet réellement, ce que la spec
+/// §9 « Vie privée » interdit : l'indicateur de Chrome, lui, reste allumé.
+///
+/// 🔴 **ET IL NE VEUT PAS DIRE « CE MICRO EST ENTENDU » NON PLUS.** Cette
+/// phrase disait « il veut dire : ce que ce micro capte atteint la VM », et la
+/// recette du bloc E3 l'a RÉFUTÉE en armant `MICRO_FAUTE_ECRITURE` : le fil de
+/// rendu WASAPI meurt (`micro : ecriture sur le cable echouee, fil de rendu
+/// arrete`), le juge sur CABLE Output relève une amplitude de **0,000000**, et
+/// la fenêtre reçoit pourtant `granted: true` — le mutex vit dans
+/// `PuitsCable::deposer`, le fil de rendu est ailleurs.
+///
+/// **Ce que ce champ dit exactement : « aucune AUTRE fenêtre ne tient le câble
+/// de la VM ».** C'est un verdict d'EXCLUSIVITÉ, jamais un accusé de
+/// réception. Un `false` est donc concluant — quelqu'un d'autre l'a — quand un
+/// `true` ne l'est pas : il écarte une cause de silence, il n'en écarte pas
+/// deux autres (la panne WASAPI, que `mic` ne voit pas non plus une fois la
+/// session établie, et le micro simplement fermé).
 export interface MicStateMessage {
     v: number;
     type: 'mic-state';
