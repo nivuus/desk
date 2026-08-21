@@ -8,7 +8,7 @@
 //! que le sous-bloc D9 a traités APRÈS coup ont d'abord été **compressés**,
 //! geste que `CLAUDE.md` interdit nommément.
 
-use std::collections::{HashMap, VecDeque};
+use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::mpsc::Sender;
 use std::sync::Mutex;
@@ -75,10 +75,23 @@ pub enum ContexteProjFs {
     Existence,
     Lecture {
         flux: FluxDonnees,
-        /// Les morceaux qui restent à demander. **Un seul en vol à la fois**
-        /// en F1 ; le contrôle de flux par `bufferedAmount` est un livrable de
-        /// F3.
-        restants: VecDeque<Morceau>,
+        /// ✅ **LA FENÊTRE DE F3, PARTAGÉE ENTRE LES *N* CORRÉLATIONS EN VOL.**
+        ///
+        /// *(Ce champ était `restants: VecDeque<Morceau>`, avec « un seul en
+        /// vol à la fois en F1 ; le contrôle de flux par `bufferedAmount` est
+        /// un livrable de F3 ». F3 est arrivé.)*
+        ///
+        /// 🔴 **UN `Arc<Mutex<…>>` ET NON UNE COPIE, et c'est la fenêtre qui
+        /// l'impose** : les *N* entrées d'`en_attente` d'une même lecture
+        /// décrivent **UN SEUL** état d'avancement. Cloner la fenêtre ferait
+        /// que chaque réponse verrait sa propre copie, redemanderait les mêmes
+        /// morceaux, et le fichier serait écrit *N* fois — ou tronqué, selon
+        /// l'ordre.
+        ///
+        /// ⚠️ **Le verrou est pris par le FIL DU PONT seul**, jamais par un
+        /// rappel : la discipline de fil interdit d'attendre sur un fil que le
+        /// système possède. Il n'y a donc aucune contention.
+        fenetre: std::sync::Arc<Mutex<crate::pont::lecture::Fenetre>>,
     },
     Enumeration {
         tampon: TamponEntrees,
@@ -254,7 +267,7 @@ impl Etat {
         chemin: &str,
         morceau: Morceau,
         flux: windows::core::GUID,
-        restants: VecDeque<Morceau>,
+        fenetre: std::sync::Arc<Mutex<crate::pont::lecture::Fenetre>>,
     ) {
         let entete = serde_json::to_string(&proto::fichiers::entetes::Lire {
             chemin: chemin.to_string(),
@@ -270,7 +283,7 @@ impl Etat {
                 longueur: morceau.longueur,
             },
             std::time::Instant::now() + crate::pont::table::DELAI_LIRE,
-            ContexteProjFs::Lecture { flux: FluxDonnees(flux), restants },
+            ContexteProjFs::Lecture { flux: FluxDonnees(flux), fenetre },
             proto::fichiers::TYPE_LIRE,
             &entete,
         );

@@ -5,8 +5,6 @@
 //! `projfs.rs` : **avant** que l'addition ne rende l'extraction nécessaire, et
 //! non après. Ce fichier porte les `unsafe`, [`super`] porte la boucle.
 
-use std::collections::VecDeque;
-
 use windows::core::{GUID, HRESULT, PCWSTR};
 use windows::Win32::Foundation::S_OK;
 use windows::Win32::Storage::ProjectedFileSystem::{
@@ -16,7 +14,6 @@ use windows::Win32::Storage::ProjectedFileSystem::{
     PRJ_PLACEHOLDER_INFO,
 };
 
-use crate::pont::decoupe::Morceau;
 use crate::pont::entetes::filetime_depuis_ms;
 use crate::pont::enumeration::{Entree, Session};
 use crate::pont::projfs::{chargement::ProjFs, Contexte, Etat};
@@ -259,11 +256,6 @@ pub(super) fn remplir(etat: &Etat, session: &mut Session, tampon: PRJ_DIR_ENTRY_
         session.avancer();
     }
     S_OK
-}
-
-/// Le prochain morceau d'une lecture, s'il en reste.
-pub(super) fn prochain_morceau(restants: &mut VecDeque<Morceau>) -> Option<Morceau> {
-    restants.pop_front()
 }
 
 /// Convertit les entrées du protocole en entrées d'énumération.

@@ -241,15 +241,37 @@ impl Table {
         self.en_vol.remove(&correlation).map(|e| (e.command_id, e.quoi))
     }
 
-    /// Annule la commande ProjFS `command_id`, et rend sa corrélation.
-    pub fn annuler(&mut self, command_id: i32) -> Option<u32> {
-        let correlation = *self
+    /// Annule la commande ProjFS `command_id`, et rend **TOUTES** ses
+    /// corrélations.
+    ///
+    /// 🔴 **TOUTES, ET C'EST LA FENÊTRE DE LECTURE DE F3 QUI L'EXIGE.** Jusqu'à
+    /// F2, une commande n'avait qu'UNE corrélation en vol — le morceau *n+1*
+    /// n'étant demandé qu'à réception du *n* —, et cette fonction n'en rendait
+    /// qu'une. Depuis F3, une lecture peut en avoir jusqu'à
+    /// `pont::lecture::MORCEAUX_EN_VOL`.
+    ///
+    /// **Ce qu'une version qui n'en rendrait qu'une produirait :** les *N−1*
+    /// autres resteraient en vol, expireraient au budget, et
+    /// `service::balayer` appellerait alors `PrjCompleteCommand` sur une
+    /// commande **DÉJÀ COMPLÉTÉE** — c'est-à-dire un appel au système sur un
+    /// identifiant qui appartient désormais à quelqu'un d'autre. *Le pire des
+    /// modes de défaillance : muet, différé, et hors de notre processus.*
+    ///
+    /// L'ordre des corrélations rendues est **déterministe** : un `HashMap` n'en
+    /// a aucun, et un appelant qui les journaliserait produirait un ordre
+    /// différent à chaque exécution.
+    pub fn annuler(&mut self, command_id: i32) -> Vec<u32> {
+        let mut correlations: Vec<u32> = self
             .en_vol
             .iter()
-            .find(|(_, e)| e.command_id == Some(command_id))
-            .map(|(c, _)| c)?;
-        self.en_vol.remove(&correlation);
-        Some(correlation)
+            .filter(|(_, e)| e.command_id == Some(command_id))
+            .map(|(c, _)| *c)
+            .collect();
+        correlations.sort_unstable();
+        for c in &correlations {
+            self.en_vol.remove(c);
+        }
+        correlations
     }
 
     /// Retire et rend tout ce qui est échu à `maintenant`.

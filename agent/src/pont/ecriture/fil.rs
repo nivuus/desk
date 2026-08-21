@@ -51,6 +51,7 @@ use std::time::Instant;
 use super::{Evenement, File};
 use crate::pont::decoupe::{decouper, Morceau};
 use crate::pont::journal::Journal;
+use crate::pont::mutation::{ordonnancer, FileMutations, Mutation, Ordonnancement};
 use crate::pont::table::{Attendue, Table, DELAI_ECRIRE};
 use crate::pont::transport::VersNavigateur;
 use proto::fichiers::{entetes, CodeEchec};
@@ -136,6 +137,15 @@ struct Fil {
     journal: Journal,
     file: File,
     en_cours: Option<EnCours>,
+    /// Les mutations en vol et en attente (F3).
+    ///
+    /// ⚠️ **DISTINCTE de la file d'écriture, et le rester est le point.** Une
+    /// mutation ne porte aucun octet, ne s'inscrit pas au journal des dues, et
+    /// **ne se coalesce pas** : `a`→`b` puis `b`→`c` sont deux gestes dont
+    /// l'ordre est le sens.
+    mutations: FileMutations,
+    /// La corrélation de la mutation en vol, s'il y en a une.
+    mutation_en_vol: Option<u32>,
 }
 
 impl Fil {
@@ -154,7 +164,14 @@ impl Fil {
             // taire ferait croire à un journal intact.
             tracing::warn!(ignorees, "lignes illisibles jetees au rechargement du journal");
         }
-        let mut fil = Self { config, journal, file: File::nouvelle(), en_cours: None };
+        let mut fil = Self {
+            config,
+            journal,
+            file: File::nouvelle(),
+            en_cours: None,
+            mutations: FileMutations::nouvelle(),
+            mutation_en_vol: None,
+        };
         fil.reprendre();
         fil
     }
@@ -247,21 +264,120 @@ impl Fil {
 
     /// Ce qu'on fait d'un renommage ou d'une suppression.
     ///
-    /// ⚠️ **CE CORPS EST PROVISOIRE, ET IL EST DÉCLARÉ COMME TEL** : il
-    /// journalise et ne pousse rien. La poussée arrive avec
-    /// `crate::pont::mutation`, qui doit d'abord ORDONNANCER la mutation par
-    /// rapport aux écritures dues sur le même chemin (règle §0.3 du plan de
-    /// F3) — pousser un renommage avant d'avoir vidé les octets dus sur la
-    /// source perdrait l'enregistrement de LibreOffice.
-    ///
-    /// 🔵 **Ce qu'il fait déjà, et qui n'est pas rien : il EXISTE.** Le bras
-    /// qui l'appelle est ce qui empêche une mutation de tomber dans le chemin
-    /// de contenu, où elle tronquerait.
+    /// ⚠️ **Elle ne passe NI par le journal des écritures dues, NI par la file
+    /// de contenu** : elle ne porte aucun octet, et l'inscrire ferait monter le
+    /// compteur de la page-shell pour un geste qui n'a rien à transférer.
     fn mutation(&mut self, evenement: Evenement) {
-        tracing::warn!(
-            ?evenement,
-            "mutation recue par le fil d'ecriture : reconnue, PAS ENCORE POUSSEE"
-        );
+        let quoi = match evenement {
+            Evenement::Renomme { de, vers, repertoire } => {
+                Mutation::Renommer { de, vers, repertoire }
+            }
+            Evenement::Supprime { chemin, repertoire } => {
+                Mutation::Supprimer { chemin, repertoire }
+            }
+            // Le bras appelant garantit `est_mutation()` ; ce cas est
+            // inatteignable, et le DIRE vaut mieux que de le supposer.
+            autre => {
+                tracing::warn!(?autre, "evenement non-mutation route vers le fil de mutation");
+                return;
+            }
+        };
+        if let Some(a_pousser) = self.mutations.signaler(quoi) {
+            self.commencer_mutation(a_pousser);
+        }
+    }
+
+    /// 🔴 **L'ENTRELACEMENT AVEC LES ÉCRITURES DUES — la règle du §0.3, celle
+    /// dont l'oubli produit une PERTE DE DONNÉES.**
+    ///
+    /// L'idiome d'enregistrement de la spec §3.5 — écrire un temporaire,
+    /// renommer, supprimer l'ancien — envoie ses trois gestes EN RAFALE, alors
+    /// que F2 pousse les écritures **après coup**. La décision vit dans
+    /// `pont::mutation`, qui est PUR et testé sur l'hôte ; ce corps ne fait
+    /// qu'obéir.
+    fn commencer_mutation(&mut self, quoi: Mutation) {
+        if !self.config.armee {
+            // Le bras DÉSARMÉ de `PONT_ECRITURE` : on journalise, on ne pousse
+            // jamais. Rien n'est dû au journal pour une mutation, donc rien ne
+            // reste — c'est dit plutôt que supposé.
+            tracing::warn!(?quoi, "mutation NON poussee : PONT_ECRITURE=0");
+            if let Some(suivante) = self.mutations.terminee() {
+                self.commencer_mutation(suivante);
+            }
+            return;
+        }
+        match ordonnancer(&self.file.chemins_dus(), &quoi) {
+            Ordonnancement::Pousser => {}
+            Ordonnancement::AttendreEcrituresDues { chemins } => {
+                // 🔴 **LA MUTATION N'EST PAS POUSSÉE, et elle repasse DEVANT**
+                // celles qui l'ont suivie : l'ordre des gestes de
+                // l'utilisateur est le sens même.
+                tracing::warn!(
+                    ?quoi, ?chemins,
+                    "renommage suspendu : ecriture due sur la source. La mutation repartira                      quand les octets seront pousses"
+                );
+                self.mutations.differer();
+                return;
+            }
+            Ordonnancement::AbandonnerEcrituresDues { chemins } => {
+                // 🔴 **POUSSER RECRÉERAIT CE QUE L'UTILISATEUR EFFACE.**
+                for chemin in &chemins {
+                    tracing::warn!(
+                        chemin,
+                        "ecriture due abandonnee : le chemin a ete supprime"
+                    );
+                    self.file.oublier(chemin);
+                    let ligne = self.journal.retirer(chemin);
+                    self.ecrire_journal(&ligne);
+                }
+                self.annoncer_les_dues();
+            }
+        }
+        let (type_message, entete, chemin, renommage) = match &quoi {
+            Mutation::Renommer { de, vers, repertoire } => (
+                proto::fichiers::TYPE_RENOMMER,
+                serde_json::to_string(&entetes::Renommer {
+                    de: de.clone(),
+                    vers: vers.clone(),
+                    repertoire: *repertoire,
+                })
+                .expect("un en-tete Renommer se serialise toujours"),
+                de.clone(),
+                true,
+            ),
+            Mutation::Supprimer { chemin, repertoire } => (
+                proto::fichiers::TYPE_SUPPRIMER,
+                serde_json::to_string(&entetes::Supprimer {
+                    chemin: chemin.clone(),
+                    repertoire: *repertoire,
+                })
+                .expect("un en-tete Supprimer se serialise toujours"),
+                chemin.clone(),
+                false,
+            ),
+        };
+        let correlation = self.inscrire_mutation(Attendue::Muter { chemin, renommage });
+        self.mutation_en_vol = Some(correlation);
+        self.emettre(type_message, correlation, &entete, &[]);
+        tracing::debug!(?quoi, correlation, "mutation poussee");
+    }
+
+    /// La mutation en vol est finie. `acquittee` ne décide de rien au journal —
+    /// **une mutation n'y est jamais inscrite** — mais la trace en dépend.
+    fn terminer_mutation(&mut self, acquittee: bool) {
+        self.mutation_en_vol = None;
+        if let Some(suivante) = self.mutations.terminee() {
+            self.commencer_mutation(suivante);
+        }
+        let _ = acquittee;
+    }
+
+    fn inscrire_mutation(&self, quoi: Attendue) -> u32 {
+        let echeance = Instant::now() + crate::pont::table::DELAI_MUTATION;
+        match self.config.table.lock() {
+            Ok(mut table) => table.inscrire_sans_commande(quoi, echeance),
+            Err(empoisonne) => empoisonne.into_inner().inscrire_sans_commande(quoi, echeance),
+        }
     }
 
     fn commencer(&mut self, evenement: Evenement) {
@@ -373,6 +489,11 @@ impl Fil {
     }
 
     fn acquitte(&mut self, correlation: u32) {
+        if self.mutation_en_vol == Some(correlation) {
+            tracing::info!(correlation, "mutation acquittee : le poste local a suivi");
+            self.terminer_mutation(true);
+            return;
+        }
         let Some(en_cours) = self.en_cours.as_ref() else { return };
         if en_cours.correlation != correlation {
             // Un `Fait` tardif, arrivé après une expiration. Le jeter est
@@ -396,6 +517,19 @@ impl Fil {
     }
 
     fn refuse(&mut self, correlation: u32, code: CodeEchec) {
+        if self.mutation_en_vol == Some(correlation) {
+            // 🔴 **UNE MUTATION EN ÉCHEC NE SERA JAMAIS REJOUÉE**, et c'est ce
+            // qui la distingue d'une écriture : ProjFS ne renvoie pas de
+            // notification pour un geste déjà accompli dans la VM. Les deux
+            // côtés ont DIVERGÉ, définitivement, et le seul remède est humain —
+            // d'où le `warn!` et la ligne de la page-shell.
+            tracing::warn!(
+                correlation, ?code,
+                "MUTATION REFUSEE : le poste local n'a PAS suivi, et rien ne le rejouera"
+            );
+            self.terminer_mutation(false);
+            return;
+        }
         let Some(en_cours) = self.en_cours.as_ref() else { return };
         if en_cours.correlation != correlation {
             return;

@@ -17,7 +17,7 @@ fn une_reponse_arrivee_apres_annulation_est_jetee() {
     let c = t.inscrire(42, attributs("a.txt"), maintenant() + DELAI_ATTRIBUTS);
     assert_eq!(t.en_vol(), 1);
 
-    assert_eq!(t.annuler(42), Some(c));
+    assert_eq!(t.annuler(42), vec![c]);
     assert_eq!(t.en_vol(), 0, "l'annulation doit retirer l'entrée");
     assert_eq!(t.resoudre(c), None, "la réponse tardive doit être JETÉE");
 }
@@ -88,7 +88,7 @@ fn vider_rend_tout_et_laisse_la_table_vide() {
 fn une_correlation_inconnue_rend_none_sans_paniquer() {
     let mut t = Table::nouvelle();
     assert_eq!(t.resoudre(12_345), None);
-    assert_eq!(t.annuler(999), None);
+    assert!(t.annuler(999).is_empty());
     assert!(t.expirees(maintenant()).is_empty());
 }
 
@@ -246,7 +246,7 @@ fn annuler_ne_vise_jamais_une_ecriture() {
     let mut t = Table::nouvelle();
     let ecriture =
         t.inscrire_sans_commande(Attendue::Ecrire { chemin: "a".into(), dernier: true }, e);
-    assert_eq!(t.annuler(0), None, "aucune commande ProjFS 0 n'existe");
+    assert!(t.annuler(0).is_empty(), "aucune commande ProjFS 0 n'existe");
     assert_eq!(t.en_vol(), 1, "l'écriture est toujours là");
     assert!(t.resoudre(ecriture).is_some());
 }
@@ -316,4 +316,29 @@ fn les_cinq_budgets_sont_distincts() {
     // O(taille) côté navigateur.
     assert!(DELAI_MUTATION > DELAI_LIRE);
     assert!(DELAI_MUTATION < DELAI_ECRIRE);
+}
+
+/// 🔴 **`annuler` REND TOUTES LES CORRÉLATIONS D'UNE COMMANDE, ET C'EST LA
+/// FENÊTRE DE LECTURE DE F3 QUI L'EXIGE.**
+///
+/// Rouge : n'en rendre qu'une, comme jusqu'à F2. Les *N−1* autres resteraient
+/// en vol, expireraient au budget, et `service::balayer` appellerait alors
+/// `PrjCompleteCommand` sur une commande **DÉJÀ COMPLÉTÉE** — un appel au
+/// système sur un identifiant qui appartient désormais à quelqu'un d'autre.
+/// *Muet, différé, et hors de notre processus.*
+#[test]
+fn annuler_retire_les_N_correlations_d_une_lecture_a_fenetre() {
+    let mut t = Table::nouvelle();
+    let e = maintenant() + DELAI_LIRE;
+    let a = t.inscrire(7, Attendue::Lire { chemin: "g".into(), position: 0, longueur: 4 }, e);
+    let b = t.inscrire(7, Attendue::Lire { chemin: "g".into(), position: 4, longueur: 4 }, e);
+    let c = t.inscrire(7, Attendue::Lire { chemin: "g".into(), position: 8, longueur: 4 }, e);
+    // Une commande VOISINE ne doit pas être emportée.
+    let autre = t.inscrire(8, attributs("x"), e);
+    assert_eq!(t.en_vol(), 4);
+
+    let annulees = t.annuler(7);
+    assert_eq!(annulees, vec![a, b, c], "les TROIS, dans un ordre déterministe");
+    assert_eq!(t.en_vol(), 1, "seule la commande 8 survit");
+    assert!(t.resoudre(autre).is_some());
 }

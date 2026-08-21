@@ -1,0 +1,74 @@
+TÂCHE 13 — LE CÂBLAGE : rouges du 21 août 2026.
+
+=== ROUGE 13a-annuler-n-en-rend-qu-une ===
+fichier      : agent/src/pont/table.rs
+sha256 avant : e7970dda3f2fefd06d93693e359c2110c7f379104a692ef0a9ea861107c1dd9c
+diff contre la copie : 1 ligne(s) — 0 SERAIT UN ÉCHEC DE LA ROUGE
+270a271
+>         correlations.truncate(1);
+--- contrôle ---
+thread 'pont::table::tests::annuler_retire_les_N_correlations_d_une_lecture_a_fenetre' (4138961) panicked at agent/src/pont/table/tests.rs:341:5:
+assertion `left == right` failed: les TROIS, dans un ordre déterministe
+  left: [0]
+ right: [0, 1, 2]
+test result: FAILED. 16 passed; 1 failed; 0 ignored; 0 measured; 887 filtered out; finished in 0.02s
+--- restauration DEPUIS LA COPIE NOMMÉE (jamais `git checkout --`) ---
+sha256 identique ✅
+état git inchangé ✅ [ M agent/src/pont/table.rs]
+
+=== ROUGE 13b-chemin-canonique-tronque ===
+fichier      : agent/src/pont/chemins.rs
+sha256 avant : e904a5e41d6139401e7ede55f8a29229f216fa767cae32a3c12138599f551256
+diff contre la copie : 2 ligne(s) — 0 SERAIT UN ÉCHEC DE LA ROUGE
+175c175
+<             Some(format!("{}{}", &chemin_projfs[..=i], nom))
+---
+>             Some(nom.to_string())
+--- contrôle ---
+thread 'pont::chemins::tests::avec_dernier_composant_ne_touche_que_le_dernier' (4139777) panicked at agent/src/pont/chemins/tests.rs:121:5:
+assertion `left == right` failed
+  left: Some("gros.bin")
+ right: Some("Dossier\\gros.bin")
+test result: FAILED. 11 passed; 1 failed; 0 ignored; 0 measured; 892 filtered out; finished in 0.00s
+--- restauration DEPUIS LA COPIE NOMMÉE (jamais `git checkout --`) ---
+sha256 identique ✅
+état git inchangé ✅ [ M agent/src/pont/chemins.rs]
+
+════════════════════════════════════════════════════════════════════════════
+LECTURE
+════════════════════════════════════════════════════════════════════════════
+13a `annuler` qui n'en rend qu'une : `left: [0] / right: [0, 1, 2]`.
+    🔴 **C'EST LE MODE DE DÉFAILLANCE LE PLUS GRAVE DE LA FENÊTRE**, et il est
+    muet, différé, et hors de notre processus : les *N−1* corrélations
+    survivantes expireraient au budget, et `service::balayer` appellerait
+    `PrjCompleteCommand` sur une commande **DÉJÀ COMPLÉTÉE** — un appel au
+    système sur un identifiant qui appartient désormais à quelqu'un d'autre.
+13b le chemin canonique tronqué à son dernier composant :
+    `left: Some("gros.bin") / right: Some("Dossier\gros.bin")`. Le substitut
+    serait créé à la RACINE au lieu du sous-répertoire.
+
+════════════════════════════════════════════════════════════════════════════
+🔴 CE QUE LA TÂCHE 13 LIVRE SANS POUVOIR LE VÉRIFIER, ET IL FAUT LE DIRE
+════════════════════════════════════════════════════════════════════════════
+La fenêtre de lecture est **branchée** dans `projfs/rappels.rs` et
+`service/reponses.rs` — jusqu'à `MORCEAUX_EN_VOL` corrélations pour une même
+commande ProjFS. **Elle n'a JAMAIS tourné sur la VM.**
+
+Le plan le sait, et il nomme son juge : « R-F3-6 — La fenêtre de lecture casse
+une lecture […] **Le seul critère qui l'attraperait est le condensat SHA-256**,
+que F1 n'a JAMAIS établi : la recette doit le faire, et c'est le premier geste
+que F1 lègue (son n°6). » **Ce juge n'a pas pu être convoqué** : la VM est tenue
+par deux chantiers voisins.
+
+Ce qui a été fait pour réduire le risque, et qui n'est pas rien :
+  - la décision d'ordre vit dans `pont::lecture`, **PUR et testé sur l'hôte**
+    (9 tests), et l'ordre est **VÉRIFIÉ AVANT L'ÉCRITURE**, jamais après — une
+    réponse hors d'ordre écrite puis dénoncée aurait déjà corrompu le fichier ;
+  - `Table::annuler` rend désormais **TOUTES** les corrélations, et le rouge
+    13a montre ce qu'une version partielle produirait ;
+  - la fenêtre est **partagée par `Arc<Mutex<…>>`**, jamais clonée : *N* copies
+    redemanderaient les mêmes morceaux, et le fichier serait écrit *N* fois ;
+  - `Suite::Poursuit` est rendu **même quand le lot est vide**, parce que
+    d'autres corrélations de la même commande sont encore en vol.
+
+**Ce qui reste dû, et c'est le legs le plus lourd de F3.**
