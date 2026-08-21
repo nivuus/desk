@@ -101,6 +101,21 @@ impl std::fmt::Debug for AgentControl {
                 .field("clipboard", clipboard).finish(),
             AgentControl::Fullscreen { version, active } => f
                 .debug_struct("Fullscreen").field("v", version).field("active", active).finish(),
+            // Sous-bloc A1. 🔴 **CE `match` EST CE QUI M'A FORCÉ À DÉCIDER**, et
+            // c'est exactement ce que son en-tête promet : « ajouter une
+            // variante oblige à décider ce qu'elle montre ». La décision est
+            // de MONTRER la couleur, et la raison est que ce message ne porte
+            // rien de privé — ni `hwnd`, ni PID, ni titre de fenêtre, ni chemin
+            // d'exécutable. Une teinte est une propriété visuelle publique de
+            // l'application, et elle est le seul champ utile au diagnostic.
+            //
+            // ⚠️ **Si une variante future d'accent portait le titre ou le
+            // chemin de l'application, elle devrait être rédigée ICI**, et pas
+            // au site de journalisation : c'est la leçon de P2, dont la fuite
+            // venait d'une trace ANTÉRIEURE et inoffensive rendue dangereuse
+            // par une variante neuve.
+            AgentControl::Accent { version, couleur } => f
+                .debug_struct("Accent").field("v", version).field("couleur", couleur).finish(),
             AgentControl::Link { version, bitrate, width, height, quality, adaptation } => f
                 .debug_struct("Link").field("v", version).field("bitrate", bitrate)
                 .field("width", width).field("height", height).field("quality", quality)

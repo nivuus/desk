@@ -1,0 +1,39 @@
+=== A1 — LA ROUGE DE TOUS_AGENT (tache 10), LE SEUL GARDE TypeScript ===
+Date : 21 aout 2026. RA1-4 : « Accent est oublie dans TOUS_AGENT » ->
+message perdu contre un console.warn, ET RIEN NE LE VOIT.
+Le plan exigeait de VOIR tsc echouer, jamais de le supposer.
+
+--- ETAT : l'interface et l'union EXISTENT, la cle de TOUS_AGENT NON ---
+$ cd proto && npm run typecheck
+ts/control.ts(187,7): error TS2741: Property 'accent' is missing in type
+  '{ ready: true; 'session-end': true; pointer: true; rumble: true;
+     capabilities: true; link: true; asleep: true; fullscreen: true;
+     clipboard: true; }'
+  but required in type 'Record<"pointer" | "clipboard" | "ready" |
+     "session-end" | "rumble" | "capabilities" | "link" | "asleep" |
+     "fullscreen" | "accent", true>'.
+
+--- APRES LA CLE ---
+$ cd proto && npm run typecheck   ->  sortie 0
+$ cd proto && npx vitest run      ->  298 passed, 9 fichiers
+   (attendu 296 + 2, ANNONCE D'AVANCE : le test de parse et celui de version)
+
+--- UN ONZIEME MAILLON QUE LE PLAN N'AVAIT PAS INVENTORIE ---
+🔴 Le §6.1 du plan liste DIX maillons. Il y en a ONZE, et le onzieme est
+   `proto/src/control/redaction.rs` — les deux `impl Debug` ECRITES A LA MAIN
+   qui remplacent le `#[derive(Debug)]` retire par P2 apres avoir trouve LE
+   PRESSE-PAPIER EN CLAIR dans agent.log.
+   Il est GARDE PAR LE COMPILATEUR (match exhaustif), et il a fait exactement
+   ce que son en-tete promet : « ajouter une variante oblige a DECIDER ce
+   qu'elle montre ».
+     error[E0004]: non-exhaustive patterns:
+       `&AgentControl::Accent { .. }` not covered
+       --> proto/src/control/redaction.rs:73:15
+   Decision prise : MONTRER la couleur. Ce message ne porte rien de prive — ni
+   hwnd, ni PID, ni titre de fenetre, ni chemin d'executable — et une teinte
+   est une propriete visuelle publique. La raison est ECRITE dans le bras, avec
+   l'injonction pour une variante future qui porterait, elle, un titre.
+
+⚠️ Ce que cette rouge N'ETABLIT PAS : rien du client, qui dispatche par `type`
+dans une chaine de `else if` SANS AUCUNE EXHAUSTIVITE (maillon 10, non garde).
+UNE execution : aucun taux.
