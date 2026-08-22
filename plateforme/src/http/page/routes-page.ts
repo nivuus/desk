@@ -42,32 +42,87 @@ export async function servirPage(
 }
 
 /// La même route, avec le flux de LECTURE injecté — seul point d'extension
-/// par rapport à `servirPage`, qui n'appelle jamais que `createReadStream`
-/// (et que TOUS les tests HTTP de ce lot exercent : ils passent par
-/// `demarrerServeur` → `servirTout` → `servirPage`, jamais directement par
-/// cette fonction-ci — le rappel par défaut n'est donc PAS un trou de
-/// couverture).
+/// par rapport à `servirPage`, qui n'appelle jamais que `createReadStream`.
+/// Il n'existe QUE pour rendre éprouvable le chemin d'erreur d'en dessous :
+/// une lecture qui casse APRÈS que les en-têtes sont partis.
 ///
-/// 🔴 CE QUE CE MONTAGE N'EST PAS — une revue (round 3, Neuf 3) l'a établi
-/// en réfutant la version précédente de ce commentaire : ce n'est PAS
-/// l'absence d'un précédent pour éprouver la mort d'un processus.
-/// `signaling/resilience.test.ts` EN EST UN, et il fait l'inverse de ce
-/// qu'on prétendait ici — il LANCE le service comme processus ENFANT
-/// (`spawn(tsxBin, …)`) et observe sa SURVIE. Ce montage-là existe dans le
-/// dépôt, et il est PLUS PROBANT que celui-ci : il exerce le chemin de
-/// PRODUCTION réel (un vrai `createReadStream`, un vrai processus, un vrai
-/// épuisement possible de descripteurs), là où l'injection ci-dessous
-/// n'exerce qu'un flux FACTICE, appelé hors de tout serveur HTTP.
+/// 🔴 CE COMMENTAIRE A MENTI TROIS FOIS DE SUITE SUR CE MÊME SUJET, CHAQUE
+/// CORRECTION EN PRODUISANT UNE NEUVE — le patron que `CLAUDE.md` nomme
+/// « corriger une affirmation fausse peut en produire une autre ». D'où la
+/// forme ci-dessous : CHAQUE affirmation porte la commande qui l'établit.
+/// Ne croire aucune d'elles ; les relancer. Toutes se lancent depuis la
+/// racine du dépôt, sauf les deux `vitest`, depuis `plateforme/`.
 ///
-/// IL N'A PAS ÉTÉ RETENU ICI, ET C'EST UN CHOIX ASSUMÉ, PAS UNE
-/// IMPOSSIBILITÉ : monter un processus enfant PAR TEST alourdirait une
-/// suite dont la durée vient déjà de régresser une fois dans ce lot (round
-/// 3, Neuf 4) — un aller-retour de processus coûte largement plus qu'un
-/// appel de fonction. CE QUE CE CHOIX COÛTE : le test qui utilise
-/// `servirAvecFlux` n'observe QUE son comportement face à une erreur de
-/// flux, jamais celui d'un serveur HTTP réel (sockets, `pipeline()` sur un
-/// VRAI descripteur, un VRAI `EMFILE`) — une garantie plus étroite,
-/// délibérément.
+/// ① LE RAPPEL PAR DÉFAUT N'EST PAS UN TROU DE COUVERTURE. Le seul appelant
+/// de `servirAvecFlux` dans le produit est `servirPage` lui-même ; tout le
+/// reste passe par `chaine.ts`, qui n'appelle que `servirPage`. Dans
+/// `routes-page.test.ts`, 18 des 20 tests montent un VRAI serveur
+/// (`demarrerServeur` → `servirTout` → `servirPage`, donc un vrai
+/// `createReadStream`) ; les 2 autres sont les tests unitaires d'ici.
+///   grep -rn 'servirPage\|servirAvecFlux' plateforme/src
+///   grep -c 'await demarrerServeur(' plateforme/src/http/page/routes-page.test.ts   → 18
+///   grep -c '    it(' plateforme/src/http/page/routes-page.test.ts                  → 20
+///
+/// ② CE QUE `signaling/resilience.test.ts` ÉTABLIT — le PATRON, et lui seul :
+/// éprouver la mort d'un processus EST possible dans ce dépôt. Il lance le
+/// vrai point d'entrée `src/index.ts` en processus ENFANT (`spawn(tsxBin,
+/// …)`) et observe sa SURVIE (`child.exitCode`, `child.killed`). Prétendre
+/// qu'un tel précédent manque serait faux — c'était le mensonge n°1.
+///   grep -n 'spawn(tsxBin\|child.exitCode' plateforme/src/signaling/resilience.test.ts
+///
+/// ③ 🔴 CE QU'IL N'ÉTABLIT PAS — c'était le mensonge n°2, qui lui prêtait
+/// « un vrai `createReadStream` » : il n'exerce AUCUNE lecture de fichier
+/// servie au réseau, et ne touche ni ce module ni aucune route HTTP. Ses 3
+/// tests n'ouvrent QUE des WebSocket, sur `/signal` et `/agent`, contre une
+/// trame `null` et une trame au-delà de `maxPayload`. Il n'est donc un
+/// précédent que pour la FORME du montage, jamais pour son objet.
+///   grep -n createReadStream plateforme/src/signaling/resilience.test.ts   → RIEN
+///   grep -n 'new WebSocket(' plateforme/src/signaling/resilience.test.ts
+///     (les 3 seules connexions du fichier ; aucun `http.get`/`http.request`)
+///   grep -c WebSocket        plateforme/src/signaling/resilience.test.ts   → 8
+///     (témoin négatif du même fichier : le RIEN ci-dessus est une absence
+///      mesurée, pas un grep qui ne peut pas trouver — `CLAUDE.md`, « un zéro
+///      n'est interprétable qu'avec un témoin négatif »)
+///   grep -n 'describe(' plateforme/src/signaling/resilience.test.ts
+///
+/// ④ POURQUOI CE PATRON N'A PAS ÉTÉ REPRIS ICI — un CHOIX, pas une
+/// impossibilité (③ dit pourquoi il ne se transposerait pas tel quel, mais
+/// rien n'interdisait d'en écrire l'équivalent) : son coût, et une suite
+/// dont la durée a déjà régressé une fois dans ce lot (round 3, Neuf 4).
+/// Mesuré le 22 août 2026, depuis `plateforme/`, QUATRE passes de chaque :
+///   npx vitest run src/signaling/resilience.test.ts
+///     → 3 tests, `tests` de 523 ms à 1,15 s, soit ~175 à ~385 ms par test
+///   npx vitest run src/http/page/routes-page.test.ts
+///     → 20 tests, `tests` de 516 à 872 ms, soit ~26 à ~44 ms par test
+/// 🔴 NE PAS CITER UNE PASSE UNIQUE : ces durées varient du simple au double
+/// d'une passe à l'autre, et une valeur isolée se lira comme fausse au
+/// premier relanceur — la première rédaction de ce bloc a fait exactement
+/// cela. Ce qui porte l'argument est l'ORDRE DE GRANDEUR, pas un chiffre :
+/// en appariant les EXTRÊMES, le montage à processus reste de 4× (175/44)
+/// à 15× (385/26) plus cher par test — jamais moins de 4×. ⚠️ Et vitest
+/// bascule en `1.15s` au-delà de la seconde : un dépouillement qui ne
+/// cherche que `ms` PERD la passe la plus lente.
+/// Ce facteur est en outre le cas le PLUS favorable au montage à processus :
+/// `resilience.test.ts` amortit son `spawn` sur tout le fichier par un
+/// `beforeAll` unique, là où le flux fautif d'ici se refabrique par test.
+///   grep -c '^beforeAll(' plateforme/src/signaling/resilience.test.ts   → 1
+///     (⚠️ `grep -c beforeAll` rendrait 2 : la ligne d'`import` compte aussi)
+///
+/// ⑤ 🔴 CE QUE CE CHOIX COÛTE, ET QUE PERSONNE NE DOIT LIRE COMME COUVERT :
+/// les DEUX tests qui appellent `servirAvecFlux` (par une fabrique commune)
+/// n'observent que la FONCTION face à une erreur de flux, sur un `req`/`rep`
+/// FABRIQUÉS — ni socket, ni port, ni processus serveur. AUCUN test de
+/// `plateforme/src` n'a jamais vu une erreur de lecture MI-RÉPONSE sur un
+/// serveur HTTP réel, ni la survie du service à un VRAI `EMFILE` : la seule
+/// erreur mi-flux jamais exercée est poussée à la main, et elle le dit.
+///   grep -rn EMFILE plateforme/src | grep -vE ':[0-9]+: *//'
+///     → UNE seule ligne, dans le test : un `this.emit('error', …)` sur un
+///       flux fabriqué. Tout le reste n'est que du commentaire.
+///     ⚠️ LE FILTRE `grep -v` N'EST PAS UN ORNEMENT : sans lui, ce grep SE
+///       COMPTE LUI-MÊME — le paragraphe que vous lisez nomme `EMFILE` trois
+///       fois. La première rédaction de ce bloc annonçait « 3 commentaires
+///       de ce fichier » et était fausse à l'instant où elle s'écrivait.
+///       N'en tirer AUCUN nombre sans le filtre.
 export async function servirAvecFlux(
     req: IncomingMessage,
     rep: ServerResponse,
