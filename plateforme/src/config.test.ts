@@ -26,36 +26,24 @@ describe('lireConfig', () => {
         // `PLATEFORME_SECRET_JETON` est fourni parce qu'il n'a AUCUN défaut :
         // c'est le sujet des trois tests suivants.
         const c = lireConfig({ PLATEFORME_HOTE: '127.0.0.1', PLATEFORME_SECRET_JETON: SECRET });
-        expect(c).toEqual({
+        // 🔴 PASSER À toStrictEqual, PAS toEqual : `toEqual` ignore les
+        // propriétés `undefined`, donc un champ facultatif ajouté à `Config`
+        // et retourné comme `undefined` ne causerait PAS de rouge. `toStrictEqual`
+        // exige que les deux objets aient exactement les mêmes clés — c'est le
+        // seul garde qui tienne contre la divergence. Preuve :
+        // `expect({a:1, u: undefined}).toEqual({a:1})` PASSE,
+        // `toStrictEqual` échoue.
+        expect(c).toStrictEqual({
             hote: '127.0.0.1',
             port: 8080,
             base: 'sqlite',
             urlBase: ':memory:',
             secretJeton: SECRET,
-            // Absente, donc le défaut : voir la description ci-dessous. Ce
-            // `toEqual` compare l'objet ENTIER — un champ ajouté à `Config`
-            // sans être ajouté ici le rendrait rouge, et c'est voulu.
             auth: 'pomerium',
-            // Absente, donc `undefined` : aucun en-tête CORS ne sera émis, et
-            // le refus est le défaut.
             origineClient: undefined,
-            // Absente, donc ensemble VIDE : on ne croit l'en-tête
-            // `X-Forwarded-For` d'aucune source. Voir les quatre tests dédiés
-            // en fin de fichier.
             proxyDeConfiance: new Set(),
-            // Absente, donc le défaut. ⚠️ L'ASYMÉTRIE AVEC `PLATEFORME_HOTE`
-            // est assumée : un mauvais répertoire coûte un retéléversement
-            // borné et automatique, là où une mauvaise adresse d'écoute
-            // exposerait le service.
             repertoireIcones: 'donnees/icones',
-            // Absente, donc le défaut — même asymétrie assumée, et une
-            // conséquence PLUS lourde : un magasin d'icônes perdu se
-            // reconstruit tout seul, un téléversement perdu exige qu'un humain
-            // redépose. Voir `config.ts`.
             repertoireTeleversements: 'donnees/televersements',
-            // Absente, donc `undefined` : la plateforme ne sert aucun fichier
-            // statique, et le comportement est celui d'avant le lot à l'octet
-            // près. C'est ce qui rend l'ajout strictement additif et sûr.
             racinePage: undefined,
         });
     });
