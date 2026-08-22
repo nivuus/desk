@@ -128,7 +128,15 @@ fichier qu'un déploiement aurait laissé dans la racine — un `.env`, une clé
 sur `client/dist` : `html`, `js`, `css`, `webmanifest`) plus les formes d'icône
 et de police attendues (`ico`, `png`, `svg`, `woff2`).
 
-⚠️ **`GET` et `HEAD` seuls.** Toute autre méthode rend `405`.
+🔴 **`GET` ET `HEAD` SEULS — ET TOUTE AUTRE MÉTHODE REND `false`, JAMAIS
+`405`.** La première rédaction de ce document prescrivait `405`, ce qui est plus
+juste au sens de HTTP et **faux ici** : le repli SPA résout *n'importe quel*
+chemin sans extension vers `index.html`, si bien qu'un `POST /aplication/x`
+— une faute de frappe sur un appel d'API — obtiendrait `405 méthode` au lieu du
+`404` qui le désigne. Le service masquerait la faute au lieu de la nommer.
+Rendre `false` préserve le `404` générique pour toutes les méthodes, et
+maintient la promesse du § 4.2 : **hors `GET`/`HEAD`, le comportement est celui
+d'aujourd'hui à l'octet près, que `PLATEFORME_PAGE` soit posée ou non.**
 
 ### 4.4 Ce que le servant lit du disque
 
