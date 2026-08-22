@@ -226,11 +226,20 @@ export async function servirAvecFlux(
         // 🔴 UN `catch` MUET ÉTAIT LE DÉFAUT NEUF 1 DU ROUND 3 : sans cette
         // ligne, un `EMFILE` passait de FATAL ET BRUYANT (avant ce lot) à
         // SILENCIEUX ET SANS TRACE — la panne la plus discrète possible, ce
-        // que `CLAUDE.md` combat en premier. `serveur.ts:308` ne peut RIEN
-        // voir : `return true` en fin de fonction lui dit que la route a été
-        // servie. Le chemin demandé est journalisé, PAS le corps de la
-        // requête — ce dépôt n'écrit jamais dans un journal ce qui pourrait
-        // porter un secret.
+        // que `CLAUDE.md` combat en premier. Le POINT D'APPEL de `servirTout`
+        // dans `demarrerServeur` (`serveur.ts`) ne peut RIEN voir : `return
+        // true` en fin de fonction lui dit que la route a été servie. Le
+        // chemin demandé est journalisé, PAS le corps de la requête — ce
+        // dépôt n'écrit jamais dans un journal ce qui pourrait porter un
+        // secret.
+        // ⚠️ CE COMMENTAIRE CITAIT AUPARAVANT UN NUMÉRO DE LIGNE
+        // (`serveur.ts:308`) QUE `CLAUDE.md` PROSCRIT, ET QUI ÉTAIT FAUX DÈS
+        // SA POSE (la ligne réelle était 282, jamais 308 — vérifié par
+        // `git show 912f1e2:plateforme/src/http/serveur.ts | grep -n
+        // servirTout`) : un relevé ultérieur du même round l'a même requalifié
+        // à tort d'« exact aujourd'hui ». Corrigé en NOMMANT la chose plutôt
+        // qu'en comptant les lignes qui l'en séparent — revue transverse de
+        // fin de lot, 22 août 2026.
         console.error(`page servie en echec de lecture, chemin=${chemin} : ${String(cause)}`);
         if (!rep.destroyed) rep.destroy();
     }
