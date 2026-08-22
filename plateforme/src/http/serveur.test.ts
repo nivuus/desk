@@ -282,9 +282,14 @@ describe('le chaînage des quatre routeurs', () => {
 
     it('🔴 les DEUX montées WebSocket sont INCHANGÉES PAR LE CHAÎNAGE HTTP', async () => {
         // 🔴 La rouge : toucher au routage de l'`upgrade` DEPUIS CE CHAÎNAGE.
-        // C'est hors sujet de cette tâche, et ce test le fige — le chaînage
-        // HTTP et le routage WebSocket vivent dans la même fonction, donc à
-        // portée de main. ⚠️ Ce test vérifiait `/` avant le 21 août 2026 : le
+        // C'est hors sujet de cette tâche, et ce test le fige — le POINT
+        // D'APPEL du chaînage HTTP (`void servirTout(...)`, dans
+        // `demarrerServeur`) et le routage WebSocket vivent dans la même
+        // fonction, donc à portée de main. ⚠️ DEPUIS L'EXTRACTION DU 22 AOÛT
+        // 2026, LA LISTE DES ROUTEURS ELLE-MÊME NE VIT PLUS ICI : elle est
+        // dans `./chaine.ts` (`servirTout`, exporté) — seul le POINT D'APPEL
+        // reste voisin du routage `upgrade`, et c'est ce voisinage-là que ce
+        // test tient. ⚠️ Ce test vérifiait `/` avant le 21 août 2026 : le
         // relais a déménagé vers `/signal` DANS CE MÊME COMMIT (voir l'en-tête
         // de `serveur.ts`), pour une raison hors du champ de CE test — la
         // preuve du déplacement lui-même vit dans les trois tests dédiés plus

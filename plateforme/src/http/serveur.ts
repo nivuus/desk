@@ -159,13 +159,18 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
     // corps : rien ne le testait avant P2, et le changer serait un effet de
     // bord non déclaré. `routes-auth.test.ts` le fige désormais.
     //
-    // 🔴 LE CHAÎNAGE SE FAIT ICI, DANS UNE FONCTION LOCALE, ET LA FORME
-    // `void … .then(servie => …).catch(…)` EST CONSERVÉE TELLE QUELLE. C'est
-    // ce que ce fichier s'impose depuis P1 : le `.catch` est la seule chose qui
-    // empêche une promesse rejetée dans un gestionnaire d'évènement Node
-    // d'abattre tout le processus, et une réécriture de ce corps le perdrait
-    // sans que rien ne le dise. Le diff sur le corps du `createServer` est
-    // ainsi d'une seule ligne — l'appel remplacé.
+    // 🔴 LE CHAÎNAGE NE SE FAIT PLUS ICI DEPUIS LE 22 AOÛT 2026 : IL A ÉTÉ
+    // EXTRAIT VERS `./chaine.ts` (`servirTout`, exporté), PARCE QUE CE
+    // FICHIER ATTEIGNAIT 475/500 LIGNES ET QUE LE LOT SUIVANT DEVAIT Y
+    // AJOUTER UN ONZIÈME ROUTEUR — l'extraction a libéré la marge AVANT
+    // l'ajout, comme `CLAUDE.md` le prescrit. Ce qui reste ICI est le POINT
+    // D'APPEL, sous la forme `void … .then(servie => …).catch(…)`,
+    // CONSERVÉE TELLE QUELLE. C'est ce que ce fichier s'impose depuis P1 : le
+    // `.catch` est la seule chose qui empêche une promesse rejetée dans un
+    // gestionnaire d'évènement Node d'abattre tout le processus, et une
+    // réécriture de ce corps le perdrait sans que rien ne le dise. Le diff
+    // sur le corps du `createServer` reste ainsi d'une seule ligne — l'appel
+    // à `servirTout`, désormais importé, plutôt que défini localement.
     //
     // ⚠️ LES TROIS ROUTEURS PARTAGENT LEURS DÉPENDANCES, et `Date.now` est
     // passée ici comme à la garde, à la trace et au canal : aucun module du
@@ -268,10 +273,8 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
         // a été corrigé à sa place.
     };
 
-    // La chaîne des routeurs est désormais `servirTout`, importée de
-    // `./chaine` (extraction du 22 août 2026 — voir son en-tête). Le corps et
-    // ses commentaires n'ont pas bougé ; seul `deps` passe désormais en
-    // paramètre explicite au lieu d'être capturé par fermeture.
+    // `servirTout` : voir son extraction vers `./chaine.ts`, expliquée plus
+    // haut dans cette fonction.
     const http: Server = createServer((requete, reponse) => {
         void servirTout(requete, reponse, deps)
             .then((servie) => {
