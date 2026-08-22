@@ -1268,12 +1268,19 @@ annonce.
 cd /home/mallanic/Projects/Guacamole/client && npm ci && npm run build
 cd /home/mallanic/Projects/Guacamole/plateforme
 PLATEFORME_HOTE=127.0.0.1 \
-PLATEFORME_SECRET_JETON=un-secret-de-recette-de-quarante-octets-au-moins \
+PLATEFORME_SECRET_JETON="$(openssl rand -hex 24)" \
 PLATEFORME_AUTH=pomerium \
 PLATEFORME_PROXY_DE_CONFIANCE=127.0.0.1 \
 PLATEFORME_PAGE=../client/dist \
 npm start 2>&1 | tee ../docs/superpowers/plans/journaux-page-pomerium/service-arme.log
 ```
+
+🔴 **LE SECRET SE TIRE AU SORT, IL NE S'ÉCRIT PAS.** La première rédaction de ce
+plan y posait un littéral, et **le garde de secrets du dépôt
+(`plateforme/src/securite/secrets.test.ts`) a dénoncé le PLAN lui-même** — il
+balaie `git ls-files` à la racine, `docs/` compris, précisément parce qu'un
+journal de recette est ce qu'on verse le plus vite et ce qu'on relit le moins.
+Ce dépôt avait déjà payé ce patron une fois, sur le plan d'`auth-pomerium`.
 
 - [ ] **Step 3: Jouer les huit critères, et consigner chaque sortie**
 
