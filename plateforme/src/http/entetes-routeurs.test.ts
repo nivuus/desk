@@ -45,8 +45,14 @@ const CONFIG: Config = {
     // 🔴 TÂCHE 3 : `servirAuth` se RETIRE désormais en mode `pomerium` — voir
     // son garde. TROIS cas de ce fichier traversent `/auth/connexion`
     // ((1) GET→405, (6) POST→200, (8) OPTIONS→204) et exigent donc
-    // `auth: 'motdepasse'`, sinon ils rencontreraient le 404 générique au lieu
-    // de la réponse de `routes-auth`.
+    // `auth: 'motdepasse'`, sinon ils rencontreraient un 404 au lieu de la
+    // réponse de `routes-auth`.
+    //
+    // ⚠️ « LE 404 GÉNÉRIQUE » ÉTAIT LE MOT JUSQU'AU 22 AOÛT 2026, ET IL NE
+    // L'EST PLUS : la garde de mode rend désormais ce 404 ELLE-MÊME
+    // (`http/introuvable.ts`), parce que le repli SPA du servant de page
+    // l'avalait. Le corps et les en-têtes sont les mêmes à l'octet près — ce
+    // qui change est QUI répond, et ces trois cas-ci ne s'en aperçoivent pas.
     //
     // ⚠️ CE COMMENTAIRE A ÉCRIT « LES CINQ AUTRES », ET LE COMPTE ÉTAIT FAUX
     // (revue transverse, 21 août 2026) — dans un commentaire dont tout l'objet

@@ -44,6 +44,7 @@ import { servirLeCanalAgent } from '../agents/canal';
 import { RegistreAgents } from '../agents/registre';
 import { Frein } from '../securite/frein';
 import { servirTout } from './chaine';
+import { repondreIntrouvable } from './introuvable';
 import {
     annonceProxyDeConfiance,
     annonceRacinePage,
@@ -315,17 +316,21 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
         void servirTout(requete, reponse, deps)
             .then((servie) => {
                 if (servie) return;
-                // ⚠️ LE 404 NE VIENT D'AUCUN ROUTEUR, et c'est pourquoi il
-                // doit être traité ici : sans cette ligne, un chemin inconnu
-                // serait la SEULE réponse du service à ne pas porter
-                // `nosniff`. Le CORPS du 404 n'est pas touché — « rien ne le
+                // ⚠️ LE 404 GÉNÉRIQUE NE VIENT D'AUCUN ROUTEUR, et c'est
+                // pourquoi il doit être traité ici : sans cette ligne, un
+                // chemin inconnu serait la SEULE réponse du service à ne pas
+                // porter `nosniff`. Le CORPS n'est pas touché — « rien ne le
                 // testait avant P2, et le changer serait un effet de bord non
                 // déclaré ».
-                reponse.writeHead(404, {
-                    'content-type': 'text/plain; charset=utf-8',
-                    ...ENTETES_SECURITE,
-                });
-                reponse.end('introuvable\n');
+                //
+                // 🔴 IL A DÉMÉNAGÉ VERS `./introuvable.ts` LE 22 AOÛT 2026, ET
+                // CE N'EST PAS UNE FACTORISATION DE CONFORT : les deux gardes
+                // de mode répondent désormais CE 404-CI elles-mêmes, parce que
+                // le repli SPA du servant de page avalait celui d'ici. Un
+                // second texte écrit à la main dans chaque garde dériverait de
+                // celui-ci sans que rien ne le dise. Voir l'en-tête de ce
+                // module-là.
+                repondreIntrouvable(reponse);
             })
             .catch((cause) => {
                 // Une promesse rejetée sans `catch` dans un gestionnaire
