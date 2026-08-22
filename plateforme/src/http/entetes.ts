@@ -1,4 +1,8 @@
-// Les deux en-têtes de sécurité que la PLATEFORME pose, et rien de plus.
+// Les deux en-têtes de sécurité que la PLATEFORME pose sur TOUTE RÉPONSE
+// JSON — pas l'ensemble de ce qu'elle pose : depuis le lot « page derrière
+// Pomerium » (22 août 2026), un second jeu existe pour le DOCUMENT qu'elle
+// peut désormais servir (Content-Security-Policy, Referrer-Policy,
+// X-Frame-Options), et vit dans `page/entetes-page.ts` — jamais ici.
 //
 // 🔴 CE MODULE EST SÉPARÉ DE `cors.ts`, ET LA SÉPARATION EST LE POINT.
 // `entetesCors` rend `undefined` quand l'origine n'est pas autorisée ; ceux-ci

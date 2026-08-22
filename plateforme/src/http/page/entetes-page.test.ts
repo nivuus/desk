@@ -3,9 +3,19 @@ import { describe, expect, it } from 'vitest';
 import { CSP, ENTETES_DOCUMENT, ENTETES_RESSOURCE } from './entetes-page';
 
 describe('les en-têtes de document', () => {
-    it('porte la CSP, Referrer-Policy et X-Frame-Options', () => {
+    // 🔴 TROIS TESTS DISTINCTS, PAS TROIS ASSERTIONS DANS UN SEUL : `expect`
+    // s'arrête au premier échec, et ces trois propriétés de sécurité sont
+    // INDÉPENDANTES — si la CSP est fausse, personne n'apprend si
+    // `X-Frame-Options` l'est aussi.
+    it('porte la CSP', () => {
         expect(ENTETES_DOCUMENT['Content-Security-Policy']).toBe(CSP);
+    });
+
+    it('porte Referrer-Policy: no-referrer', () => {
         expect(ENTETES_DOCUMENT['Referrer-Policy']).toBe('no-referrer');
+    });
+
+    it('porte X-Frame-Options: DENY', () => {
         expect(ENTETES_DOCUMENT['X-Frame-Options']).toBe('DENY');
     });
 
@@ -28,8 +38,13 @@ describe('les en-têtes de ressource', () => {
         expect(ENTETES_RESSOURCE['Cache-Control']).toBe('public, max-age=31536000, immutable');
     });
 
-    it('ne porte NI CSP NI X-Frame-Options : ce sont des en-têtes de document', () => {
+    // 🔴 DEUX TESTS DISTINCTS, PAS DEUX ASSERTIONS DANS UN SEUL — même raison
+    // que ci-dessus.
+    it("ne porte PAS Content-Security-Policy : c'est un en-tête de document", () => {
         expect(ENTETES_RESSOURCE).not.toHaveProperty('Content-Security-Policy');
+    });
+
+    it("ne porte PAS X-Frame-Options : c'est un en-tête de document", () => {
         expect(ENTETES_RESSOURCE).not.toHaveProperty('X-Frame-Options');
     });
 });
