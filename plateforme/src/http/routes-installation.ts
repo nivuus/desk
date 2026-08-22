@@ -43,6 +43,7 @@
 // `lancer`, qui attend une issue —, addition à un fichier que G3 n'ouvre pas.
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import { CHEMIN_ORDRE, contenuDe, installationDe } from './installation-chemins';
 import { pipeline } from 'node:stream/promises';
 import { etatDe } from '../agents/fraicheur';
 import type { MagasinTranches } from '../apps/magasin-tranches';
@@ -82,8 +83,6 @@ export interface DependancesInstallation {
 /// AUCUN en-tête, jamais `*` (`cors.ts`).
 type Cors = Record<string, string> | undefined;
 
-const CHEMIN_ORDRE = '/installation';
-
 /// 4 Kio, pour un corps qui porte DEUX identifiants. 🔴 PLAFOND DE CETTE ROUTE
 /// ET D'ELLE SEULE (D8) : celui de `routes-auth.ts` ne s'applique pas ici et
 /// **ne doit surtout pas être relevé** pour arranger une route qui accepte des
@@ -114,29 +113,6 @@ function repondre(rep: ServerResponse, code: number, corps: unknown, cors: Cors)
         ...(cors ?? {}),
     });
     rep.end(corps === undefined ? undefined : JSON.stringify(corps));
-}
-
-/// Reconnaît `/installation/:id`, et RIEN d'autre. 🔴 DÉCOUPÉ PAR SEGMENTS,
-/// JAMAIS PAR `startsWith` : G1 a MESURÉ qu'un `startsWith('/application')`
-/// laissait DIX-SEPT tests verts — la route mangeait la famille et rendait SON
-/// PROPRE 404 typé, indiscernable du générique. Ancré des DEUX bouts.
-function installationDe(chemin: string): string | undefined {
-    const segments = chemin.split('/');
-    // ['', 'installation', '<id>'] — exactement trois.
-    if (segments.length !== 3) return undefined;
-    if (segments[1] !== 'installation') return undefined;
-    return segments[2] === '' ? undefined : segments[2];
-}
-
-/// Reconnaît `/televersement/:id/contenu`, et RIEN d'autre — même règle. ⚠️ LE
-/// MOTIF S'ARRÊTE À `contenu` : c'est ce qui laisse la place aux autres routes
-/// de la famille `/televersement/…`, qu'un `startsWith` mangerait toutes.
-function contenuDe(chemin: string): string | undefined {
-    const segments = chemin.split('/');
-    // ['', 'televersement', '<id>', 'contenu'] — exactement quatre.
-    if (segments.length !== 4) return undefined;
-    if (segments[1] !== 'televersement' || segments[3] !== 'contenu') return undefined;
-    return segments[2] === '' ? undefined : segments[2];
 }
 
 /// Lit le corps, ou rend `undefined` si la borne est franchie — la requête est
