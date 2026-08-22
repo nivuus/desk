@@ -5,6 +5,11 @@ import { lireConfig } from './config';
 /// secret de test explicite, comme l'exige la tâche 3.
 const SECRET = 'un-secret-de-plateforme-de-quarante-octets';
 
+/// Le montage minimal — réutilisé dans plusieurs `describe`.
+/// ⚠️ Le positionnement ici, avant tous les tests, rend `BASE` disponible
+/// partout sans redondance.
+const BASE = { PLATEFORME_HOTE: '127.0.0.1', PLATEFORME_SECRET_JETON: SECRET };
+
 describe('lireConfig', () => {
     it("refuse de démarrer sans PLATEFORME_HOTE — il n'y a pas de défaut", () => {
         // Le défaut DOIT être l'absence de défaut (spec §4, critère ④).
@@ -48,6 +53,10 @@ describe('lireConfig', () => {
             // reconstruit tout seul, un téléversement perdu exige qu'un humain
             // redépose. Voir `config.ts`.
             repertoireTeleversements: 'donnees/televersements',
+            // Absente, donc `undefined` : la plateforme ne sert aucun fichier
+            // statique, et le comportement est celui d'avant le lot à l'octet
+            // près. C'est ce qui rend l'ajout strictement additif et sûr.
+            racinePage: undefined,
         });
     });
 
@@ -127,7 +136,6 @@ describe('lireConfig', () => {
     /// `signaling/turn-harnais.ts`, dont le harnais existe précisément parce
     /// que `relais.ts` lit `process.env` en douce. Ajouter une variable à
     /// `Config` n'a pas rendu un seul test dépendant du shell qui le lance.
-    const BASE = { PLATEFORME_HOTE: '127.0.0.1', PLATEFORME_SECRET_JETON: SECRET };
 
     it("(a) PLATEFORME_PROXY_DE_CONFIANCE absente ⇒ on ne croit PERSONNE", () => {
         // 🔴 Le défaut est de ne rien croire, jamais de tout croire. Un défaut
@@ -162,6 +170,28 @@ describe('lireConfig', () => {
         // tout pair dont l'adresse est vide — c'est-à-dire `ADRESSE_INCONNUE`
         // s'il venait à valoir `''`.
         expect(c.proxyDeConfiance.has('')).toBe(false);
+    });
+});
+
+describe('PLATEFORME_PAGE', () => {
+    // 🔴 AUCUN DÉFAUT, à la différence de PLATEFORME_ICONES : un défaut comme
+    // `client/dist` ferait servir un répertoire au hasard du répertoire
+    // courant, et ferait passer le montage nginx — où la plateforme ne doit
+    // RIEN servir — d'un 404 franc à un 200 sur des fichiers non voulus.
+    it("est ABSENTE par défaut, et le service ne sert alors aucun fichier", () => {
+        expect(lireConfig(BASE).racinePage).toBeUndefined();
+    });
+
+    // ⚠️ Le test de la chaîne VIDE est DISTINCT de celui de l'absence :
+    // `env.X ?? 'defaut'` ne rattrape pas `''`. P1 a payé cette erreur exacte.
+    it('traite la chaîne VIDE comme une absence', () => {
+        expect(lireConfig({ ...BASE, PLATEFORME_PAGE: '' }).racinePage).toBeUndefined();
+    });
+
+    it('retient le chemin posé', () => {
+        expect(lireConfig({ ...BASE, PLATEFORME_PAGE: '/srv/page' }).racinePage).toBe(
+            '/srv/page',
+        );
     });
 });
 

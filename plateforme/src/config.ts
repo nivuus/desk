@@ -96,6 +96,18 @@ export interface Config {
     /// redépose son fichier. Le silence est donc encore moins acceptable
     /// ici — d'où la ligne de journal à l'ouverture du magasin.
     repertoireTeleversements: string;
+    /// PLATEFORME_PAGE — FACULTATIVE, et **AUCUN DÉFAUT**, à la différence de
+    /// `PLATEFORME_ICONES` et `PLATEFORME_TELEVERSEMENTS` juste en dessous.
+    ///
+    /// 🔴 ABSENTE OU VIDE ⇒ LE SERVICE NE SERT AUCUN FICHIER, et son
+    /// comportement est celui d'avant le lot À L'OCTET PRÈS : `GET /` rend
+    /// `404 introuvable`. C'est ce qui rend l'ajout strictement additif — et
+    /// c'est ce qui rend le témoin négatif de la recette jouable.
+    ///
+    /// ⚠️ UN DÉFAUT SERAIT UN DÉFAUT DE SÉCURITÉ, pas une commodité : dans le
+    /// montage nginx, la plateforme ne doit RIEN servir, et un défaut la
+    /// ferait publier ce que son répertoire courant contient.
+    racinePage?: string;
     /// PLATEFORME_AUTH, défaut 'pomerium'. Une valeur inconnue LÈVE.
     ///
     /// ⚠️ CE N'EST PAS UN ARMEMENT, C'EST UN CHOIX DE MODE — la convention
@@ -185,6 +197,11 @@ export function lireConfig(env: Record<string, string | undefined>): Config {
         brutTeleversements === undefined || brutTeleversements === ''
             ? 'donnees/televersements'
             : brutTeleversements;
+
+    // Même garde de la chaîne VIDE qu'au-dessus, mais SANS repli : ici, vide
+    // et absente valent toutes deux « aucun servant ».
+    const brutPage = env.PLATEFORME_PAGE;
+    const racinePage = brutPage === undefined || brutPage === '' ? undefined : brutPage;
 
     // 🔴 AUCUN DÉFAUT, et surtout pas un défaut ALÉATOIRE. Un secret tiré au
     // démarrage passerait tous les tests de forme, puis invaliderait à chaque
@@ -276,6 +293,7 @@ export function lireConfig(env: Record<string, string | undefined>): Config {
         proxyDeConfiance,
         repertoireIcones,
         repertoireTeleversements,
+        racinePage,
         auth,
     };
 }
