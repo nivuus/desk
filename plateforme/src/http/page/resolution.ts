@@ -22,7 +22,12 @@ export type Resolution =
     | { readonly ok: true; readonly fichier: string; readonly mime: string; readonly document: boolean }
     | {
           readonly ok: false;
-          readonly motif: 'chemin-invalide' | 'octet-nul' | 'traversee' | 'extension-inconnue';
+          readonly motif:
+              | 'chemin-invalide'
+              | 'octet-nul'
+              | 'traversee'
+              | 'extension-inconnue'
+              | 'nom-vide';
       };
 
 /// Normalise un chemin en segments, en refusant toute remontée qui SORT.
@@ -73,6 +78,24 @@ export function resoudre(cheminUrl: string): Resolution {
     const extension = fichier.slice(point + 1).toLowerCase();
     const mime = TYPES_MIME.get(extension);
     if (mime === undefined) return { ok: false, motif: 'extension-inconnue' };
+
+    // 🔴 UN NOM RÉDUIT À UNE EXTENSION NUE (`/.json`, `/assets/.webmanifest`…)
+    // A UN NOM VIDE AVANT L'EXTENSION — CE N'EST PAS UN CAS LÉGITIME, C'EST UN
+    // TROU DE LA RÈGLE. Une revue antérieure l'avait jugé SANS EXPLOITABILITÉ
+    // parce que CE MODULE ne lit rien lui-même ; mais celui qui l'applique
+    // (`page/routes-page.ts`) LIT LE DISQUE, et servirait tel quel un fichier
+    // littéralement nommé `.json` s'il existait à la racine bâtie. La garde
+    // est posée ICI, APRÈS la liste MIME et jamais avant : `/.env` et
+    // `/.htaccess` sont déjà refusés par `extension-inconnue` (leur
+    // « extension » n'y figure pas), et ce verdict-là reste inchangé — le
+    // déplacer aurait menti sur la raison de LEUR refus. Ce que cette ligne
+    // ferme est la CLASSE que la liste MIME laisse passer par accident :
+    // n'importe quelle extension CONNUE (`.json` en fait partie) portée par
+    // un nom vide. Fermer la classe évite de dépendre au cas par cas d'une
+    // liste qui n'a pas été écrite pour trancher cette question.
+    if (dernier !== undefined && dernier.lastIndexOf('.') === 0) {
+        return { ok: false, motif: 'nom-vide' };
+    }
 
     return { ok: true, fichier, mime, document: extension === 'html' };
 }
