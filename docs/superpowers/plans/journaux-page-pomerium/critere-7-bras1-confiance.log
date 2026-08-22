@@ -1,0 +1,10 @@
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+X-Content-Type-Options: nosniff
+Cache-Control: no-store
+Date: Sat, 22 Aug 2026 11:22:36 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+Transfer-Encoding: chunked
+
+{"acces":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI3MTM2MDM0My00MzAyLTQzZTUtOGEzOS04ZjliYjAxZDlmZTgiLCJleHAiOjE3ODczOTgzNTY2NjB9.fVJNA0SDS9UwzXUTiCv36-vQKKR9-ALZxCQ5y_OufyA"}

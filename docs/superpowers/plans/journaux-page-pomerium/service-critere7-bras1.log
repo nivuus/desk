@@ -1,0 +1,9 @@
+
+> @guacamole/plateforme@0.1.0 start
+> tsx src/index.ts
+
+magasin d icones : donnees/icones
+magasin de tranches : donnees/televersements
+(node:411768) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+plateforme à l'écoute sur 127.0.0.1, le port 8080
