@@ -271,6 +271,9 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
         // routeurs : `servirApplications` (le lancement) et `servirInstallation`
         // (la poussée de l'ordre). Le commentaire qui le disait lu par un seul
         // a été corrigé à sa place.
+        // ⚠️ SEUL `servirPage` LE LIT. Absent ⇒ le servant se retire et le 404
+        // générique reprend la main — le comportement d'avant le lot.
+        racinePage: config.racinePage,
     };
 
     // `servirTout` : voir son extraction vers `./chaine.ts`, expliquée plus
