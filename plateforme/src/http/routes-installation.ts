@@ -9,6 +9,14 @@
 // `routes-icone.ts` : `Promise<boolean>`, `true` = servie, `false` = pas mon
 // chemin. Le 404 générique de `http/serveur.ts` répond alors seul.
 //
+// ⚠️ « ALORS SEUL » N'EST PLUS VRAI SANS CONDITION DEPUIS LE 22 AOÛT 2026, et
+// la phrase est laissée telle quelle parce qu'elle reste juste dans le montage
+// nginx : quand `PLATEFORME_PAGE` est armée, un DIXIÈME routeur — le servant
+// de page — est chaîné APRÈS tous les autres, et il résout n'importe quel
+// chemin. Sur un `GET`/`HEAD`, c'est LUI qui répond `200 text/html` au `false`
+// rendu ici ; hors `GET`/`HEAD` il se retire, et le 404 générique reprend la
+// main. Voir `http/chaine.ts`, qui porte le compte et la règle.
+//
 // 🔴 LA GARDE LA PLUS IMPORTANTE DU SOUS-BLOC VIT DANS CE FICHIER :
 // `GET …/contenu` COMPARE LA VM DU JETON À CELLE DE L'INSTALLATION. Sans elle,
 // n'importe quelle VM enrôlée téléchargerait l'installeur de n'importe quelle

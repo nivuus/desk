@@ -77,6 +77,10 @@ export type Operation = (typeof OPERATIONS)[number];
 /// chemin portant un verbe absent d'ici n'est pas « refusé » : il n'est PAS
 /// SERVI, et le 404 générique s'applique. Un verbe inconnu qui recevrait un
 /// 501 mentirait sur l'existence de l'opération.
+/// ⚠️ Le servant de page (`http/page/`, chaîné en dernier depuis le 22 août
+/// 2026) ne supplante pas ce 404, et pour une raison précise plutôt que par
+/// chance : ces chemins n'arrivent que par `POST`, et le servant se retire
+/// hors `GET`/`HEAD`. Voir `http/chaine.ts`.
 ///
 /// 🔴 `attribuer` N'Y FIGURE PAS, ET C'EST TENU PAR UN TEST NOMMÉ. Il
 /// n'existe aucun rôle d'administration dans ce service (`identite/jeton.ts`

@@ -4,6 +4,14 @@
 // servie, `false` = pas mon chemin. Le 404 générique de `http/serveur.ts` est
 // alors seul à répondre, et il n'est pas dupliqué ici.
 //
+// ⚠️ « ALORS SEUL » N'EST PLUS VRAI SANS CONDITION DEPUIS LE 22 AOÛT 2026, et
+// la phrase est laissée telle quelle parce qu'elle reste juste dans le montage
+// nginx : quand `PLATEFORME_PAGE` est armée, un DIXIÈME routeur — le servant
+// de page — est chaîné APRÈS tous les autres, et il résout n'importe quel
+// chemin. Sur un `GET`/`HEAD`, c'est LUI qui répond `200 text/html` au `false`
+// rendu ici ; hors `GET`/`HEAD` il se retire, et le 404 générique reprend la
+// main. Voir `http/chaine.ts`, qui porte le compte et la règle.
+//
 // 🔴 `attribuer` N'EST PAS EXPOSÉE, et ce n'est pas un oubli. Il n'existe AUCUN
 // rôle d'administration dans ce service : `identite/jeton.ts` ne connaît que
 // `utilisateur` et `agent`, et `config.ts` n'a aucune variable
@@ -85,6 +93,9 @@ function repondre(
 /// la liste blanche ne produit PAS un refus : il produit `undefined`, la route
 /// rend `false`, et le 404 générique s'applique. Un 501 sur un verbe inventé
 /// affirmerait que l'opération existe et n'est pas supportée, ce qui est faux.
+/// ⚠️ Le servant de page ne le supplante pas ICI, et pour une raison précise
+/// plutôt que par chance : ces chemins n'arrivent que par `POST`, et le
+/// servant se retire hors `GET`/`HEAD`. Voir `http/chaine.ts`.
 function operationDe(chemin: string): { vmId: string; operation: Operation } | undefined {
     const segments = chemin.split('/');
     // ['', 'vm', '<id>', '<operation>'] — exactement quatre, ni plus ni moins.
