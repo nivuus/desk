@@ -35,6 +35,16 @@ contre une instance fantôme d'un tour précédent.
 ci-dessous) — aucun rebuild séparé n'a été lancé pour les critères 1 à 8, ce
 document le dit explicitement pour ne rien faire passer sous silence.
 
+🔴 **RONDE DE CORRECTION 1 : UN JOURNAL AUTHENTIQUE, MAL ATTRIBUÉ, A ÉTÉ TROUVÉ
+ET CORRIGÉ.** Voir le § « Incident de méthode — round 1 » après le Step 2 :
+`critere-2-page-armee.log` venait d'une instance armée antérieure, jamais
+divulguée, dont le journal de démarrage avait été écrasé par un démarrage
+suivant portant le même nom de fichier. Le contenu était vrai (identique à
+`client/dist/index.html`) mais sa provenance affichée était fausse. Corrigé en
+rejouant la capture sur une instance correctement séquencée, et **tous les
+journaux de cette recette ont depuis été passés au même contrôle
+d'horodatage** (§ ci-dessous) — un seul était fautif.
+
 ---
 
 ## Step 1 — la suite entière, depuis un shell propre
@@ -73,12 +83,34 @@ d'avant)`) — je ne l'ai donc pas rebâti une seconde fois séparément.
 `ls client/dist/` : `assets/`, `connexion.html`, `design.html`, `hub.html`,
 `hub.webmanifest`, `index.html`, `primitives.html`, `shell.html`.
 
-Le service a été démarré et arrêté **huit fois** au cours de cette recette,
-chaque fois avec un secret tiré au sort et une configuration adaptée au
-critère en cours. Le premier démarrage armé (`PLATEFORME_PAGE=../client/dist`,
+Le service a été démarré, à chaque fois avec un secret tiré au sort et une
+configuration adaptée au critère en cours. **Le compte exact, avec sa
+commande :**
+
+```
+$ ls docs/superpowers/plans/journaux-page-pomerium/service-*.log | wc -l
+7
+$ grep -l "> @guacamole/plateforme@0.1.0 start" docs/superpowers/plans/journaux-page-pomerium/*.log | wc -l
+8
+```
+
+Sept fichiers `service-*.log`, plus `critere-8-sans-proxy-confiance.log` qui
+capture lui-même un démarrage (avorté) sans passer par un fichier `service-*`
+séparé : **8 démarrages traçables dans les journaux actuels.** À cela s'ajoute
+**un démarrage inféré, non traçable dans aucun journal survivant** : le tout
+premier démarrage armé de cette recette, dont la sortie a été écrasée par un
+second démarrage armé qui a réutilisé le même nom de fichier
+(`service-arme.log`) — c'est précisément l'instance à l'origine de l'incident
+détaillé au § suivant, et la seule preuve qu'il a existé est le contenu
+horodaté (et depuis remplacé) de `critere-2-page-armee.log`. **Total pour
+l'exécution initiale de la recette : 8 traçables + 1 inféré = 9.** La
+correction elle-même (§ suivant) a rejoué **2 démarrages** de plus (témoin
+négatif puis instance armée, dans cet ordre) pour produire une capture
+correctement attribuée — portant le compte global de cette session de travail
+à **11**, dont 9 pour la recette et 2 pour sa correction. Le premier démarrage
+armé **encore journalisé** (`PLATEFORME_PAGE=../client/dist`,
 `PLATEFORME_AUTH=pomerium`, `PLATEFORME_PROXY_DE_CONFIANCE=127.0.0.1`) est
-journalisé dans
-[`service-arme.log`](journaux-page-pomerium/service-arme.log) :
+dans [`service-arme.log`](journaux-page-pomerium/service-arme.log) :
 
 ```
 > @guacamole/plateforme@0.1.0 start
@@ -89,6 +121,120 @@ magasin de tranches : donnees/televersements
 (node:407062) ExperimentalWarning: SQLite is an experimental feature and might change at any time
 plateforme à l'écoute sur 127.0.0.1, le port 8080
 ```
+
+---
+
+## Incident de méthode — round 1 de correction : une pièce authentique, mal attribuée
+
+**Ce que la revue a trouvé.** `critere-2-page-armee.log` était cité au critère
+② comme « la réponse complète » de l'instance journalisée dans
+`service-arme.log`. Ce n'était pas le cas : son horodatage disque et son
+en-tête `Date:` serveur (`Sat, 22 Aug 2026 11:20:42 GMT`, soit `13:20:42`
+local) précédaient de **48 secondes** la ligne « à l'écoute » de
+`service-arme.log` (`13:21:30`), et de **32 secondes** même le démarrage du
+témoin négatif (`service-sans-page.log`, `13:21:13`) — c'est-à-dire qu'il
+venait d'une instance armée antérieure à **tout** ce que ce document
+raconte comme premier geste de la recette.
+
+**Comment ça a été détecté** : en comparant le `mtime` disque de chaque
+journal de critère à celui du journal de service auquel il est rattaché, et
+en recoupant avec l'en-tête HTTP `Date:` capturé dans le fichier lui-même
+(deux sources indépendantes, qui s'accordent à la seconde près) :
+
+```
+$ date -d @$(stat -c %Y docs/superpowers/plans/journaux-page-pomerium/critere-2-page-armee.log) --iso-8601=seconds
+2026-08-22T13:20:42+02:00
+$ grep '^Date:' docs/superpowers/plans/journaux-page-pomerium/critere-2-page-armee.log
+Date: Sat, 22 Aug 2026 11:20:42 GMT
+```
+
+**Ce que ça n'était pas** : une pièce fabriquée. Le contenu était identique
+octet pour octet à `client/dist/index.html` — vérifié à nouveau après coup
+(voir plus bas). C'est une pièce **authentique**, mais rattachée à un récit
+qui n'était pas le sien : elle provenait du **tout premier** démarrage armé de
+la session (avant même le témoin négatif du critère ①), dont le journal de
+démarrage a ensuite été écrasé parce qu'un second démarrage armé, plus tard
+dans la même recette, a réutilisé le même nom de fichier
+(`service-arme.log`). C'est le patron que `CLAUDE.md` nomme sous sa forme
+douce : une pièce vraie, une provenance fausse — indétectable en relisant le
+seul contenu, seuls les horodatages l'ont révélée.
+
+**Le correctif.** La capture a été rejouée sur une instance **correctement
+séquencée** : témoin négatif d'abord, instance armée ensuite — dans cet ordre,
+avec un secret neuf tiré au sort à chaque démarrage.
+
+```
+$ # 1) témoin négatif D'ABORD, instance fraîche
+$ PLATEFORME_HOTE=127.0.0.1 PLATEFORME_SECRET_JETON="$(openssl rand -hex 24)" \
+  PLATEFORME_AUTH=pomerium PLATEFORME_PROXY_DE_CONFIANCE=127.0.0.1 \
+  npm start   # -> service-sans-page-remediation.log
+$ curl -si localhost:8080/   # -> critere-2-remediation-temoin-negatif.log (404, introuvable)
+$ # arrêt de l'instance
+$ # 2) instance ARMÉE ensuite
+$ PLATEFORME_HOTE=127.0.0.1 PLATEFORME_SECRET_JETON="$(openssl rand -hex 24)" \
+  PLATEFORME_AUTH=pomerium PLATEFORME_PROXY_DE_CONFIANCE=127.0.0.1 \
+  PLATEFORME_PAGE=../client/dist npm start   # -> service-arme-remediation.log
+$ curl -si localhost:8080/   # remplace critere-2-page-armee.log
+```
+
+Preuve de séquencement (mtimes Unix, croissants) :
+
+```
+service-sans-page-remediation=1787398565
+critere-2-remediation-temoin-negatif=1787398566
+service-arme-remediation=1787398578
+critere-2-page-armee(nouveau)=1787398591
+```
+
+Preuve que la nouvelle capture reste, elle aussi, byte-exacte :
+
+```
+$ awk 'BEGIN{body=0} body==1{print} /^\r?$/{body=1}' docs/superpowers/plans/journaux-page-pomerium/critere-2-page-armee.log > /tmp/corps-nouveau.html
+$ diff /tmp/corps-nouveau.html client/dist/index.html ; echo "diff exit=$?"
+diff exit=0
+$ md5sum /tmp/corps-nouveau.html client/dist/index.html
+b00cf1f63752bf80b487f711445b3907  /tmp/corps-nouveau.html
+b00cf1f63752bf80b487f711445b3907  client/dist/index.html
+```
+
+Journaux de cet incident, tous suivis par git :
+[`service-sans-page-remediation.log`](journaux-page-pomerium/service-sans-page-remediation.log),
+[`critere-2-remediation-temoin-negatif.log`](journaux-page-pomerium/critere-2-remediation-temoin-negatif.log),
+[`service-arme-remediation.log`](journaux-page-pomerium/service-arme-remediation.log),
+et le [`critere-2-page-armee.log`](journaux-page-pomerium/critere-2-page-armee.log)
+remplacé.
+
+**Le contrôle généralisé à tous les journaux.** Après ce correctif, chaque
+paire (journal de service → journal de critère) de toute la recette a été
+vérifiée de la même façon — le `mtime` du journal de critère doit être
+postérieur ou égal à celui du journal de service auquel il est rattaché :
+
+```
+$ # pour chaque paire (service, critère) : stat -c %Y sur les deux, comparaison
+OK   critere-1-temoin-negatif.log (1787397674) >= service-sans-page.log (1787397673)  delta=1s
+OK   critere-2-page-armee.log (1787398591) >= service-arme-remediation.log (1787398578)  delta=13s
+OK   critere-2-octets.log (1787397702) >= service-arme.log (1787397690)  delta=12s
+OK   critere-3-entetes.log (1787397707) >= service-arme.log (1787397690)  delta=17s
+OK   critere-4-cache.log (1787397711) >= service-arme.log (1787397690)  delta=21s
+OK   critere-5-traversee.log (1787397716) >= service-arme.log (1787397690)  delta=26s
+OK   critere-6-sante.log (1787397738) >= service-critere6.log (1787397738)  delta=0s
+OK   critere-7-bras1-confiance.log (1787397756) >= service-critere7-bras1.log (1787397755)  delta=1s
+OK   critere-7-bras2-etranger.log (1787397773) >= service-critere7-bras2.log (1787397773)  delta=0s
+OK   critere-2-remediation-temoin-negatif.log (1787398566) >= service-sans-page-remediation.log (1787398565)  delta=1s
+```
+
+Sortie complète, avec la commande exacte qui l'a produite :
+[`controle-horodatage.log`](journaux-page-pomerium/controle-horodatage.log).
+**Dix paires, dix `OK`** — après correction, plus aucune mauvaise
+attribution. Avant correction, ce même contrôle rendait un seul `FAUX` (celui
+décrit ci-dessus, `delta=-48s`) : c'est ce contrôle, relancé, qui certifie
+qu'il n'y en avait pas d'autre.
+
+⚠️ **Ce que cet incident enseigne pour le prochain qui rejoue cette classe de
+recette** : un nom de fichier de journal réutilisé entre deux démarrages
+successifs du même service écrase silencieusement la preuve du premier —
+**donner un nom distinct à chaque démarrage**, ou vérifier l'horodatage avant
+de faire confiance à un journal cité loin de l'endroit où il a été produit.
 
 ---
 
@@ -151,6 +297,11 @@ compte d'octets (5388 des deux côtés), même `md5sum`. Jugé sur les **octets*
 pas sur le seul code `200` — la réponse complète, en-têtes compris, est
 conservée dans
 [`critere-2-page-armee.log`](journaux-page-pomerium/critere-2-page-armee.log).
+⚠️ **Ce fichier a été REMPLACÉ pendant la ronde de correction 1** : sa
+première version provenait d'une instance armée antérieure non divulguée
+(voir « Incident de méthode — round 1 » ci-dessus). La version actuelle est
+issue d'une instance démarrée **après** le témoin négatif, dans une séquence
+rejouée et vérifiée par horodatage.
 
 ### ③ En-têtes de sécurité sur `/`
 
@@ -177,6 +328,31 @@ Contrôle de l'absence :
 $ grep -ci 'strict-transport-security' docs/superpowers/plans/journaux-page-pomerium/critere-3-entetes.log
 0
 ```
+
+🔴 **CONTRÔLE CROISÉ, AJOUTÉ EN RONDE DE CORRECTION 1** — un zéro n'est
+interprétable qu'avec un témoin négatif ; celui-ci doit vivre **dans la
+pièce**, pas dans la tête du relecteur. Sans lui, un `grep` sans `-a` sur un
+fichier mal classé binaire rendrait aussi une sortie vide, indiscernable d'un
+zéro légitime :
+
+```
+$ file docs/superpowers/plans/journaux-page-pomerium/critere-3-entetes.log
+docs/superpowers/plans/journaux-page-pomerium/critere-3-entetes.log: ASCII text, with CRLF line terminators
+
+$ for h in content-security-policy referrer-policy x-frame-options strict-transport-security; do \
+    printf '%s: ' "$h"; grep -ci "^$h:" docs/superpowers/plans/journaux-page-pomerium/critere-3-entetes.log; done
+content-security-policy: 1
+referrer-policy: 1
+x-frame-options: 1
+strict-transport-security: 0
+```
+
+Sortie complète :
+[`critere-3-controle-croise.log`](journaux-page-pomerium/critere-3-controle-croise.log).
+Le fichier est du texte ASCII lisible (pas binaire, pas mal classé), et les
+trois en-têtes **connus pour exister dans la même réponse** comptent chacun
+**1** — c'est ce qui rend le **0** de `strict-transport-security`, dans le
+**même** relevé, interprétable.
 
 **Verdict : VERT.** `Content-Security-Policy`, `Referrer-Policy` et
 `X-Frame-Options` présents ; `strict-transport-security` compte **0**

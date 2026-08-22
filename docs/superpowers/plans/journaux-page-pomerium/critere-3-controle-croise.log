@@ -1,0 +1,8 @@
+$ file docs/superpowers/plans/journaux-page-pomerium/critere-3-entetes.log
+docs/superpowers/plans/journaux-page-pomerium/critere-3-entetes.log: ASCII text, with CRLF line terminators
+
+$ for h in content-security-policy referrer-policy x-frame-options strict-transport-security; do echo -n "$h: "; grep -ci "^$h:" docs/superpowers/plans/journaux-page-pomerium/critere-3-entetes.log; done
+content-security-policy: 1
+referrer-policy: 1
+x-frame-options: 1
+strict-transport-security: 0

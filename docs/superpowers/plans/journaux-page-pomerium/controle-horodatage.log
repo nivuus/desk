@@ -1,0 +1,43 @@
+$ ls -la --time-style=full-iso docs/superpowers/plans/journaux-page-pomerium/ | sort -k6,7
+total 484
+-rw-r-----  1 root root 391991 2026-08-22 13:20:10.395213598 +0200 verify-all.log
+-rw-r-----  1 root root    358 2026-08-22 13:21:13.775256757 +0200 service-sans-page.log
+-rw-r-----  1 root root    249 2026-08-22 13:21:14.327257215 +0200 critere-1-temoin-negatif.log
+-rw-r-----  1 root root    358 2026-08-22 13:21:30.339271059 +0200 service-arme.log
+-rw-r-----  1 root root    399 2026-08-22 13:21:42.299282120 +0200 critere-2-octets.log
+-rw-r-----  1 root root    514 2026-08-22 13:21:47.191286817 +0200 critere-3-entetes.log
+-rw-r-----  1 root root    234 2026-08-22 13:21:51.919291451 +0200 critere-4-cache.log
+-rw-r-----  1 root root    249 2026-08-22 13:21:56.295295822 +0200 critere-5-traversee.log
+-rw-r-----  1 root root    358 2026-08-22 13:22:18.623319323 +0200 service-critere6.log
+-rw-r-----  1 root root    249 2026-08-22 13:22:18.727319437 +0200 critere-6-sante.log
+-rw-r-----  1 root root    358 2026-08-22 13:22:35.743338664 +0200 service-critere7-bras1.log
+-rw-r-----  1 root root    417 2026-08-22 13:22:36.663339736 +0200 critere-7-bras1-confiance.log
+-rw-r-----  1 root root    358 2026-08-22 13:22:53.347359705 +0200 service-critere7-bras2.log
+-rw-r-----  1 root root    279 2026-08-22 13:22:53.515359911 +0200 critere-7-bras2-etranger.log
+-rw-r-----  1 root root    924 2026-08-22 13:23:08.131378247 +0200 critere-8-sans-proxy-confiance.log
+drwxr-x--- 44 root root  12288 2026-08-22 13:24:57.399537887 +0200 ..
+-rw-r-----  1 root root    358 2026-08-22 13:36:05.641058027 +0200 service-sans-page-remediation.log
+-rw-r-----  1 root root    249 2026-08-22 13:36:06.397060065 +0200 critere-2-remediation-temoin-negatif.log
+-rw-r-----  1 root root    358 2026-08-22 13:36:18.085091623 +0200 service-arme-remediation.log
+-rw-r-----  1 root root   5930 2026-08-22 13:36:31.329127507 +0200 critere-2-page-armee.log
+drwxr-x---  2 root root   4096 2026-08-22 13:36:44.309162801 +0200 .
+-rw-r-----  1 root root    481 2026-08-22 13:36:44.365162954 +0200 critere-3-controle-croise.log
+-rw-r-----  1 root root     91 2026-08-22 13:37:10.365234013 +0200 controle-horodatage.log
+
+--- controle : chaque journal de critere doit etre POSTERIEUR (mtime) au journal de service auquel il est rattache ---
+OK   critere-1-temoin-negatif.log (1787397674) >= service-sans-page.log (1787397673)  delta=1s
+OK   critere-2-page-armee.log (1787398591) >= service-arme-remediation.log (1787398578)  delta=13s
+OK   critere-2-octets.log (1787397702) >= service-arme.log (1787397690)  delta=12s
+OK   critere-3-entetes.log (1787397707) >= service-arme.log (1787397690)  delta=17s
+OK   critere-4-cache.log (1787397711) >= service-arme.log (1787397690)  delta=21s
+OK   critere-5-traversee.log (1787397716) >= service-arme.log (1787397690)  delta=26s
+OK   critere-6-sante.log (1787397738) >= service-critere6.log (1787397738)  delta=0s
+OK   critere-7-bras1-confiance.log (1787397756) >= service-critere7-bras1.log (1787397755)  delta=1s
+OK   critere-7-bras2-etranger.log (1787397773) >= service-critere7-bras2.log (1787397773)  delta=0s
+OK   critere-2-remediation-temoin-negatif.log (1787398566) >= service-sans-page-remediation.log (1787398565)  delta=1s
+
+--- sequence de la remediation : temoin negatif D ABORD, instance armee ENSUITE ---
+service-sans-page-remediation=1787398565
+critere-2-remediation-temoin-negatif=1787398566
+service-arme-remediation=1787398578
+critere-2-page-armee(nouveau)=1787398591
