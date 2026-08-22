@@ -1,7 +1,17 @@
 // La RÈGLE de résolution d'un chemin d'URL vers un fichier de la page bâtie.
 // PURE : aucun `fs`, aucun `http`, aucune variable d'environnement. C'est ce
-// qui la rend éprouvable sur l'hôte, et c'est là que vit toute la sécurité du
-// servant — le module qui lit le disque ne fait qu'appliquer ce verdict.
+// qui la rend éprouvable sur l'hôte, SANS DISQUE.
+//
+// 🔴 CETTE RÈGLE NE PORTE PAS « TOUTE » LA SÉCURITÉ DU SERVANT, ET UNE REVUE
+// PAR EXÉCUTION L'A ÉTABLI (round 2, Critique 3) — CETTE PHRASE LE DISAIT
+// ENCORE ICI ALORS QU'ELLE ÉTAIT DÉJÀ FAUSSE DANS `page/routes-page.ts`.
+// Cette règle ferme la traversée LEXICALE (`..`, encodée ou non) — ce qui
+// SUFFISAIT tant que rien ne lisait le disque. `page/routes-page.ts`, lui,
+// LIT le disque, et un lien symbolique déposé dans la racine bâtie traverse
+// cette règle sans qu'aucun `..` n'apparaisse jamais dans l'URL : la garde
+// réelle contre les liens (`realpath`, sur le chemin CANONIQUE) vit donc
+// dans ce module-là, pas ici. Ce que CETTE règle garantit reste vrai et
+// nécessaire — elle n'est simplement plus SUFFISANTE seule.
 
 /// 🔴 LISTE CLOSE. Une extension absente d'ici REFUSE.
 export const TYPES_MIME: ReadonlyMap<string, string> = new Map([
