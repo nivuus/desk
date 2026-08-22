@@ -7,7 +7,10 @@ const SECRET = 'un-secret-de-plateforme-de-quarante-octets';
 
 /// Le montage minimal — réutilisé dans plusieurs `describe`.
 /// ⚠️ Le positionnement ici, avant tous les tests, rend `BASE` disponible
-/// partout sans redondance.
+/// partout sans redondance. AUCUN DE CES TESTS NE LIT `process.env` : `lireConfig`
+/// reçoit son environnement en PARAMÈTRE (voir `config.ts`), donc rien à poser ni
+/// restaurer. Ajouter une variable à `Config` n'a rendu aucun test dépendant du
+/// shell qui le lance.
 const BASE = { PLATEFORME_HOTE: '127.0.0.1', PLATEFORME_SECRET_JETON: SECRET };
 
 describe('lireConfig', () => {
@@ -116,15 +119,6 @@ describe('lireConfig', () => {
         expect(vide.origineClient).toBeUndefined();
     });
 
-    /// ⚠️ AUCUN DE CES TESTS NE LIT `process.env`, ET C'EST LA PROPRIÉTÉ DU
-    /// MODULE, PAS UNE PRÉCAUTION DU TEST : `lireConfig` reçoit son
-    /// environnement en PARAMÈTRE, et son en-tête l'écrit en toutes lettres —
-    /// « la lecture d'environnement se fait ICI et nulle part ailleurs ». Il
-    /// n'y a donc RIEN à poser ni à restaurer, contrairement à
-    /// `signaling/turn-harnais.ts`, dont le harnais existe précisément parce
-    /// que `relais.ts` lit `process.env` en douce. Ajouter une variable à
-    /// `Config` n'a pas rendu un seul test dépendant du shell qui le lance.
-
     it("(a) PLATEFORME_PROXY_DE_CONFIANCE absente ⇒ on ne croit PERSONNE", () => {
         // 🔴 Le défaut est de ne rien croire, jamais de tout croire. Un défaut
         // permissif ici rendrait l'adresse du client FORGEABLE par le client
@@ -180,6 +174,14 @@ describe('PLATEFORME_PAGE', () => {
         expect(lireConfig({ ...BASE, PLATEFORME_PAGE: '/srv/page' }).racinePage).toBe(
             '/srv/page',
         );
+    });
+
+    it('inclut le champ racinePage dans l\'objet, même absent', () => {
+        // 🔴 CE TEST FERME LE TROU : retirer `racinePage,` de l'objet que
+        // lireConfig rend fait échouer ce test, alors que les trois tests
+        // ci-dessus passent (puisqu'on peut lire `.racinePage` sur undefined).
+        // C'est le seul qui détecte la perte pure et simple du champ.
+        expect(Object.hasOwn(lireConfig(BASE), 'racinePage')).toBe(true);
     });
 });
 
