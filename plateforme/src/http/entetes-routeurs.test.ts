@@ -84,9 +84,20 @@ const CONFIG: Config = {
     // PARTAGÉ reste à `pomerium` (le défaut du produit, `config.ts`), et LES
     // TROIS SEULS cas qui en ont besoin reçoivent `{ ...CONFIG, auth:
     // 'motdepasse' }` localement — jamais l'inverse, qui aurait changé le
-    // mode des HUIT autres pour une raison qui ne les concerne pas, y compris
-    // pour un futur test de `/auth/moi` qui rejoindrait ce fichier sans le
-    // relire.
+    // mode des HUIT autres pour une raison qui ne les concerne pas.
+    //
+    // ⚠️ CETTE PHRASE DISAIT « ... y compris pour un futur test de /auth/moi
+    // qui rejoindrait ce fichier sans le relire », ET C'EST DEVENU FAUX
+    // (tâche 6, revue « round de correction 1 », 22 août 2026) : ce fichier
+    // reçoit maintenant SANS LE DIRE UN SECOND PIÈGE. `CONFIG.proxyDeConfiance`
+    // vaut `new Set()` — personne n'est déclaré de confiance —, et la garde
+    // de `routes-identite.ts` refuse alors TOUT pair, y compris la boucle
+    // locale d'où ces tests se connectent. Un futur test de `/auth/moi`
+    // ajouté ici SANS RELIRE CE COMMENTAIRE recevrait `401
+    // pair-non-de-confiance` quel que soit l'en-tête d'identité posé, et
+    // devrait poser `proxyDeConfiance: new Set(['127.0.0.1'])` localement
+    // pour observer autre chose que cette garde. Code non touché : ce
+    // fichier ne construit toujours aucune requête vers `/auth/moi`.
     auth: 'pomerium',
 };
 

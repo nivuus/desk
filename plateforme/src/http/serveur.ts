@@ -244,15 +244,23 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
         // chaînage reste une seule ligne par routeur, et parce qu'un objet de
         // dépendances par routeur ferait quatre listes à tenir à jour.
         registre: registreAgents,
-        // ⚠️ SEUL `servirAuth` LES LIT aujourd'hui ; les autres routeurs les
-        // ignorent, comme ils ignorent `registre`.
+        // ⚠️ `frein` : SEUL `servirAuth` LE LIT aujourd'hui ; les autres
+        // routeurs l'ignorent, comme ils ignorent `registre`.
         //
-        // ✅ TOUT CE BLOC REVÉRIFIÉ le 21 août 2026 PAR LA COMMANDE, non par
+        // 🔴 `proxyDeConfiance`, JUSTE EN DESSOUS, N'A PLUS UN SEUL LECTEUR —
+        // ET C'EST LA MÊME FAUTE QUE CELLE QUE `auth` PORTAIT DÉJÀ, REFAITE
+        // AU COMMIT SUIVANT (tâche 6, revue « round de correction 1 »,
+        // 22 août 2026) : cette phrase disait « seul servirAuth LES lit »,
+        // en désignant `frein` ET `proxyDeConfiance` ensemble, et c'est
+        // devenu faux pour la seconde dès que `routes-identite.ts` (la
+        // garde d'`/auth/moi`) l'a lue à son tour.
+        //
+        // ✅ TOUT CE BLOC REVÉRIFIÉ le 22 août 2026 PAR LA COMMANDE, non par
         // la lecture : `grep -ln 'deps\.<clé>' plateforme/src/http/routes-*.ts`
-        // (hors `*.test.ts`, qui POSENT la dépendance sans la consommer). Seuls
-        // lecteurs — `frein` et `proxyDeConfiance` : `routes-auth.ts` ; `cache` :
-        // `routes-sante.ts` ; `magasin` : `routes-icone.ts`. **`auth` était le
-        // SEUL de ce bloc devenu faux.**
+        // (hors `*.test.ts`, qui POSENT la dépendance sans la consommer).
+        // Lecteurs — `frein` : `routes-auth.ts` seul ; `proxyDeConfiance` :
+        // `routes-auth.ts` **ET** `routes-identite.ts`, désormais DEUX ;
+        // `cache` : `routes-sante.ts` ; `magasin` : `routes-icone.ts`.
         frein,
         proxyDeConfiance: config.proxyDeConfiance,
         cache: cacheSante,
