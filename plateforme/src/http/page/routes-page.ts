@@ -21,7 +21,11 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { resolve, sep } from 'node:path';
 import type { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
-import { ENTETES_DOCUMENT, ENTETES_RESSOURCE } from './entetes-page';
+import {
+    ENTETES_DOCUMENT,
+    ENTETES_RESSOURCE_EMPREINTEE,
+    ENTETES_RESSOURCE_REVALIDABLE,
+} from './entetes-page';
 import { resoudre } from './resolution';
 
 export interface DependancesPage {
@@ -56,12 +60,17 @@ export async function servirPage(
 /// ① LE RAPPEL PAR DÉFAUT N'EST PAS UN TROU DE COUVERTURE. Le seul appelant
 /// de `servirAvecFlux` dans le produit est `servirPage` lui-même ; tout le
 /// reste passe par `chaine.ts`, qui n'appelle que `servirPage`. Dans
-/// `routes-page.test.ts`, 18 des 20 tests montent un VRAI serveur
+/// `routes-page.test.ts`, 21 des 23 tests montent un VRAI serveur
 /// (`demarrerServeur` → `servirTout` → `servirPage`, donc un vrai
 /// `createReadStream`) ; les 2 autres sont les tests unitaires d'ici.
 ///   grep -rn 'servirPage\|servirAvecFlux' plateforme/src
-///   grep -c 'await demarrerServeur(' plateforme/src/http/page/routes-page.test.ts   → 18
-///   grep -c '    it(' plateforme/src/http/page/routes-page.test.ts                  → 20
+///   grep -c 'await demarrerServeur(' plateforme/src/http/page/routes-page.test.ts   → 21
+///   grep -c '    it(' plateforme/src/http/page/routes-page.test.ts                  → 23
+/// ⚠️ CES DEUX COMPTES DISAIENT 18 ET 20, ET ILS ÉTAIENT JUSTES À L'HEURE OÙ
+/// ILS ONT ÉTÉ ÉCRITS : la vague de correction de la revue finale a ajouté
+/// TROIS tests de cache au même fichier. **Les relancer, jamais les
+/// recopier** — c'est le « naufrage du 487 » de `CLAUDE.md`, et ce bloc-ci
+/// existe précisément pour que le prochain lecteur refasse le contrôle.
 ///
 /// ② CE QUE `signaling/resilience.test.ts` ÉTABLIT — le PATRON, et lui seul :
 /// éprouver la mort d'un processus EST possible dans ce dépôt. Il lance le
@@ -189,10 +198,19 @@ export async function servirAvecFlux(
     }
     if (!infos.isFile()) return false;
 
-    rep.writeHead(200, {
-        'content-type': verdict.mime,
-        ...(verdict.document ? ENTETES_DOCUMENT : ENTETES_RESSOURCE),
-    });
+    // 🔴 TROIS JEUX D'EN-TÊTES, ET LE CHOIX SE LIT EN UNE LIGNE PARCE QUE LA
+    // RÈGLE A DÉJÀ TRANCHÉ. `verdict.empreinte` vient de `resolution.ts`, qui
+    // classe par EMPLACEMENT (le répertoire d'actifs de Vite) et non par
+    // extension : c'est ce classement-là qui empêche un an d'`immutable` sur
+    // `hub.webmanifest` ou `favicon.ico`, dont le nom ne change jamais.
+    // Décider ici, sur le disque, aurait rendu la politique inéprouvable sans
+    // disque.
+    const entetes = verdict.document
+        ? ENTETES_DOCUMENT
+        : verdict.empreinte
+          ? ENTETES_RESSOURCE_EMPREINTEE
+          : ENTETES_RESSOURCE_REVALIDABLE;
+    rep.writeHead(200, { 'content-type': verdict.mime, ...entetes });
     if (req.method === 'HEAD') {
         rep.end();
         return true;
