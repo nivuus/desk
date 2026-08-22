@@ -428,9 +428,19 @@ describe('PLATEFORME_PAGE', () => {
 });
 ```
 
-⚠️ **`envValide()` n'existe peut-être pas sous ce nom** dans `config.test.ts`.
-Lire le fichier et réutiliser le fabricant d'environnement qui y est déjà —
-en créer un second ferait diverger les deux.
+🔴 **`envValide()` N'EXISTE PAS : `config.test.ts` emploie un `const BASE` et
+des littéraux en ligne.** Lire le fichier et reprendre ce qui s'y trouve — en
+créer un second fabricant ferait diverger les deux.
+
+🔴 **UN TEST EXISTANT VA ROUGIR, ET C'EST VOULU.** Le test « lit les champs,
+avec leurs défauts non permissifs » compare l'objet **ENTIER** par `toEqual`, et
+son commentaire le dit : « un champ ajouté à `Config` sans être ajouté ici le
+rendrait rouge, et c'est voulu ». **Y ajouter `racinePage: undefined,`**, avec la
+raison en commentaire.
+
+⚠️ **NE JAMAIS LE DESSERRER EN `toMatchObject`** pour le faire passer : cette
+assertion est le seul garde du dépôt contre un champ de `Config` ajouté sans
+qu'on décide de son défaut.
 
 - [ ] **Step 2: Exécuter et vérifier l'échec**
 
@@ -1080,6 +1090,37 @@ Dans `plateforme/src/config.ts`, **après** le calcul de `proxyDeConfiance` et d
         );
     }
 ```
+
+- [ ] **Step 7bis: Réparer les tests que la garde rend inconstructibles**
+
+🔴 **LA GARDE REND UN ÉTAT INATTEIGNABLE, ET UNE DIZAINE DE TESTS LE
+CONSTRUISENT.** « Mode `pomerium` + ensemble de confiance VIDE » n'existe plus,
+or `config.test.ts` bâtit exactement cet état pour documenter ses défauts sûrs.
+**C'est la conséquence recherchée de la garde, pas un dommage** — mais elle doit
+être réparée en disant ce qu'elle signifie, jamais en desserrant une assertion.
+
+Recenser d'abord, ne rien supposer :
+
+```bash
+cd /home/mallanic/Projects/Guacamole/plateforme && npx vitest run src/config.test.ts
+```
+
+**La règle de réparation, et elle dépend du SUJET du test :**
+
+| Le test porte sur… | Réparation |
+| --- | --- |
+| le mode `pomerium` lui-même (« vaut pomerium par défaut », « retombe sur le défaut quand VIDE », les deux « LAISSE PASSER » de la garde d'écoute) | ajouter `PLATEFORME_PROXY_DE_CONFIANCE: '172.18.0.5'` à son environnement |
+| autre chose que l'authentification (« lit les champs », les deux `PLATEFORME_ICONES`, `PLATEFORME_ORIGINE_CLIENT`) | idem — ajouter la variable, **et compléter le `toEqual` d'objet entier** avec `proxyDeConfiance: new Set(['172.18.0.5'])` |
+| **le défaut VIDE de `proxyDeConfiance` lui-même** — les tests `(a)` et `(b)` | 🔴 poser `PLATEFORME_AUTH: 'motdepasse'`, **et l'écrire en commentaire** : *depuis la garde, l'ensemble vide n'est atteignable qu'en `motdepasse` — et c'est précisément ce que la garde signifie* |
+
+🔴 **NE JAMAIS DESSERRER UNE ASSERTION POUR FAIRE PASSER UN TEST.** Le `toEqual`
+d'objet entier est le seul garde du dépôt contre un champ de `Config` ajouté sans
+qu'on décide de son défaut ; le transformer en `toMatchObject` le tuerait, et le
+tuerait en silence.
+
+⚠️ **Chaque commentaire de test qui explique un défaut désormais inatteignable
+doit être corrigé, pas seulement son code** — sinon le test dit une chose et le
+produit une autre.
 
 - [ ] **Step 8: Exécuter la suite entière**
 
