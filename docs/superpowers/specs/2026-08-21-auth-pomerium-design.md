@@ -206,7 +206,7 @@ déplacement n'apporterait rien.
 
 ## 7. Pomerium
 
-> 🔴 **ANNOTATION DU 21 AOÛT 2026 (revue transverse de fin de branche) — CE §
+> ~~🔴 **ANNOTATION DU 21 AOÛT 2026 (revue transverse de fin de branche) — CE §
 > LAISSE UN DÉFAUT DE CONCEPTION OUVERT, ET IL A ÉTÉ APPLIQUÉ TEL QUEL.**
 > La route nue du § 7.2, commentée « **La page et l'API** », pointe
 > `http://192.168.3.1:8080`, c'est-à-dire la **plateforme** — qui **ne sert
@@ -224,10 +224,29 @@ déplacement n'apporterait rien.
 > `listen 80` est un `return 301` vers HTTPS — boucle de redirection depuis un
 > Pomerium qui a déjà terminé TLS — et dont le `listen 443` exige
 > `deploiement/tls/`, gitignoré et absent), ou doter la plateforme d'un servant
-> de fichiers statiques. Legs inscrit à `CLAUDE.md`, § « Legs ouverts ».
+> de fichiers statiques. Legs inscrit à `CLAUDE.md`, § « Legs ouverts ».~~
 >
-> ⚠️ **Le reste de ce § tient**, et notamment l'ordre des routes, qui est juste :
-> l'annotation ne porte que sur la CIBLE de la route nue.
+> ✅ **ANNOTATION LEVÉE LE 22 AOÛT 2026.** Des deux voies laissées ouvertes
+> ci-dessus, c'est la seconde qui a été prise : **la plateforme est dotée d'un
+> servant de fichiers statiques** (`plateforme/src/http/page/`), armé par la
+> variable `PLATEFORME_PAGE` (facultative, aucun défaut — voir `CLAUDE.md`,
+> tableau des variables serveur). La route nue du § 7.2, inchangée, vise
+> toujours `http://192.168.3.1:8080` — c'est-à-dire la plateforme — mais ce
+> backend **répond désormais** : `GET /` y rend la page bâtie quand
+> `PLATEFORME_PAGE` pointe vers `client/dist`, et le `404 introuvable` d'hier
+> sinon (absente ou vide, à l'octet près — voir `plateforme/src/config.ts`).
+> **Le premier des deux blocages du critère ⑦ est donc LEVÉ.**
+>
+> 🔴 **LE SECOND BLOCAGE, LUI, DEMEURE, ET LE DIRE EXPLICITEMENT ÉVITE UN
+> RACCOURCI FAUX** : le flux OAuth Google exige un humain, qu'aucun Chrome
+> sans interface ne peut fournir. **Le critère ⑦ reste NON JOUÉ** — écrire
+> « critère ⑦ levé » serait faux, et c'est précisément la confusion que cette
+> note existe pour empêcher. Voir `CLAUDE.md`, § « Ce que le chantier
+> `auth-pomerium` laisse dû ».
+>
+> ⚠️ **Le reste de ce § tenait déjà**, et notamment l'ordre des routes, qui
+> reste juste : ce qui a changé est la CAPACITÉ du backend visé par la route
+> nue à répondre, pas la route elle-même.
 
 **Le nom d'hôte est `app.allanic.me`**, dont la route existe déjà et pointe un
 backend mort (§ 1). Ce qui change : la cible, et deux routes ajoutées.
