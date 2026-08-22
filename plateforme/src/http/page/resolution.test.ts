@@ -8,6 +8,7 @@ describe('resoudre', () => {
             fichier: 'index.html',
             mime: 'text/html; charset=utf-8',
             document: true,
+            empreinte: false,
         });
     });
 
@@ -17,6 +18,7 @@ describe('resoudre', () => {
             fichier: 'hub.html',
             mime: 'text/html; charset=utf-8',
             document: true,
+            empreinte: false,
         });
     });
 
@@ -29,6 +31,7 @@ describe('resoudre', () => {
             fichier: 'assets/index-a1b2c3.js',
             mime: 'text/javascript; charset=utf-8',
             document: false,
+            empreinte: true,
         });
     });
 
@@ -85,5 +88,54 @@ describe('resoudre', () => {
             document: false,
         });
         expect(resoudre('/favicon.ico')).toMatchObject({ ok: true, document: false });
+    });
+});
+
+// 🔴 CE BLOC EXISTE PARCE QUE LES ATTENTES CI-DESSUS FIGEAIENT LE COMPORTEMENT
+// FAUTIF. `/hub.webmanifest` et `/favicon.ico` y étaient classés comme les
+// actifs — même `document: false`, donc mêmes en-têtes —, et cette égalité
+// donnait un an d'`immutable` à deux noms que Vite n'empreinte JAMAIS. MESURÉ
+// sur le vrai `client/dist` : `/hub.webmanifest` rendait
+// `public, max-age=31536000, immutable`, donc **le manifeste PWA du hub non
+// révisable pendant un an** chez tout navigateur l'ayant vu.
+//
+// 🔴 CE QUI TRANCHE EST L'EMPLACEMENT, PAS L'EXTENSION NI LA FORME DU NOM. Un
+// `.js` posé à la racine n'est pas empreinté ; un `.png` sous le répertoire
+// d'actifs l'est. Une expression régulière sur « un tiret suivi de huit
+// caractères » se serait laissé tromper par un nom écrit à la main.
+describe("l'empreinte, qui décide du cache", () => {
+    it('un actif du répertoire de Vite EST empreinté', () => {
+        expect(resoudre('/assets/main-DOC38JmJ.css')).toMatchObject({ empreinte: true });
+    });
+
+    // 🔴 LE CAS MESURÉ. C'est CE test qui rougirait si le manifeste
+    // redevenait `immutable`.
+    it("le manifeste PWA du hub n'est PAS empreinté", () => {
+        expect(resoudre('/hub.webmanifest')).toMatchObject({ empreinte: false });
+    });
+
+    it("une icône de racine n'est PAS empreintée", () => {
+        expect(resoudre('/favicon.ico')).toMatchObject({ empreinte: false });
+    });
+
+    // ⚠️ LE TÉMOIN QUI SÉPARE « EMPLACEMENT » DE « EXTENSION » : même
+    // extension que l'actif du premier test, autre emplacement, autre verdict.
+    it("un `.js` posé à la RACINE n'est pas empreinté", () => {
+        expect(resoudre('/prefixe-iK9obSCN.js')).toMatchObject({ empreinte: false });
+    });
+
+    // ⚠️ LE PRÉFIXE PORTE SON SÉPARATEUR : sans lui, ce nom passerait pour un
+    // actif.
+    it("un fichier de racine dont le nom COMMENCE par `assets` n'est pas empreinté", () => {
+        expect(resoudre('/assetsX.js')).toMatchObject({ empreinte: false });
+    });
+
+    // ⚠️ LE REPLI SPA REND `index.html`, JAMAIS UN ACTIF : un chemin sans
+    // extension SOUS le répertoire d'actifs ne doit pas hériter de son cache.
+    it("un chemin sans extension sous `assets/` retombe sur la page, non empreintée", () => {
+        expect(resoudre('/assets/quelque-chose')).toMatchObject({
+            fichier: 'index.html',
+            empreinte: false,
+        });
     });
 });

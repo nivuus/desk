@@ -42,6 +42,11 @@ function racineJetable(): string {
     mkdirSync(join(racine, 'assets'));
     writeFileSync(join(racine, 'index.html'), '<!doctype html><title>page</title>');
     writeFileSync(join(racine, 'assets', 'index-a1b2c3.js'), 'export const x = 1;\n');
+    // ⚠️ UN NOM QUE VITE N'EMPREINTE JAMAIS, à la RACINE : c'est le cas que
+    // l'`immutable` d'un an rendait non révisable. `client/dist` en porte un
+    // vrai (`ls client/dist` -> `hub.webmanifest`), et ce fichier-ci le
+    // reproduit sans dépendre d'un build.
+    writeFileSync(join(racine, 'hub.webmanifest'), '{"name":"hub"}');
     // Le PIÈGE que le critère ⑥ éprouve : un fichier homonyme d'une route.
     writeFileSync(join(racine, 'sante'), 'ceci ne doit JAMAIS etre servi');
     writeFileSync(join(racine, 'secret.env'), 'MOT_DE_PASSE=x');
@@ -167,11 +172,46 @@ describe('GET /', () => {
         expect(r.headers.get('cache-control')).toBe('no-store');
     });
 
-    it('un actif porte immutable, JAMAIS no-store', async () => {
+    it('un actif EMPREINTÉ porte immutable, JAMAIS no-store', async () => {
         base = await baseNeuve('page-actif');
         service = await demarrerServeur({ ...CONFIG, racinePage: racineJetable() }, base);
         const r = await requeteFermee(`http://127.0.0.1:${service.port}/assets/index-a1b2c3.js`);
         expect(r.headers.get('cache-control')).toBe('public, max-age=31536000, immutable');
+    });
+
+    // 🔴 LE DÉFAUT MESURÉ SUR LE VRAI `client/dist` : `/hub.webmanifest`
+    // rendait `public, max-age=31536000, immutable`, donc **le manifeste PWA
+    // du hub non révisable pendant un an** chez tout navigateur l'ayant vu.
+    // La classification se faisait par EXTENSION, et la liste MIME admet
+    // `webmanifest`, `json`, `ico`, `png` — que Vite n'empreinte jamais à la
+    // racine. Sous nginx, `location /` n'émet AUCUN `Cache-Control` : c'était
+    // une régression que le seul montage Pomerium introduisait.
+    //
+    // 🔴 ANCRÉ SUR L'ABSENCE D'`immutable`, PAS SUR LA VALEUR EXACTE : c'est
+    // la propriété qui compte, et elle rougirait quelle que soit la forme
+    // qu'une régression prendrait pour revenir à un an.
+    it("une ressource NON empreintée n'obtient JAMAIS immutable", async () => {
+        base = await baseNeuve('page-manifeste-immutable');
+        service = await demarrerServeur({ ...CONFIG, racinePage: racineJetable() }, base);
+        const r = await requeteFermee(`http://127.0.0.1:${service.port}/hub.webmanifest`);
+        expect(r.headers.get('cache-control')).not.toContain('immutable');
+    });
+
+    // 🔴 SÉPARÉ, ET C'EST L'AUTRE EXTRÊME : `no-store` referait payer le
+    // transfert entier à chaque visite. Une seule assertion groupée
+    // n'éprouverait que la première.
+    it("une ressource NON empreintée n'obtient pas no-store non plus", async () => {
+        base = await baseNeuve('page-manifeste-nostore');
+        service = await demarrerServeur({ ...CONFIG, racinePage: racineJetable() }, base);
+        const r = await requeteFermee(`http://127.0.0.1:${service.port}/hub.webmanifest`);
+        expect(r.headers.get('cache-control')).not.toContain('no-store');
+    });
+
+    it('une ressource NON empreintée est RÉVALIDABLE', async () => {
+        base = await baseNeuve('page-manifeste-revalidable');
+        service = await demarrerServeur({ ...CONFIG, racinePage: racineJetable() }, base);
+        const r = await requeteFermee(`http://127.0.0.1:${service.port}/hub.webmanifest`);
+        expect(r.headers.get('cache-control')).toContain('must-revalidate');
     });
 
     // 🔴 LA ROUGE DE L'ORDRE DE CHAÎNAGE. Un fichier nommé `sante` déposé dans

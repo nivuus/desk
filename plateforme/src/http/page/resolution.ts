@@ -28,8 +28,44 @@ export const TYPES_MIME: ReadonlyMap<string, string> = new Map([
 
 const PAGE = 'index.html';
 
+/// 🔴 LE RÉPERTOIRE DONT VITE EMPREINTE **TOUS** LES NOMS, ET LE SEUL.
+///
+/// C'est `build.assetsDir`, dont le défaut est `assets` et que `client/
+/// vite.config.ts` ne surcharge pas. Relevé sur la page réellement bâtie, le
+/// 22 août 2026 :
+///   ls client/dist         -> assets/ + connexion.html design.html hub.html
+///                             hub.webmanifest index.html primitives.html
+///                             shell.html
+///   ls client/dist/assets  -> adresse-plateforme-uutwZeXQ.js,
+///                             main-DOC38JmJ.css, hub-B8O-1KAt.js, …
+/// **La racine ne porte AUCUN nom empreinté** ; le répertoire d'actifs n'en
+/// porte que. C'est cette partition-là, et non une expression régulière sur la
+/// forme d'un nom, qui décide du cache — un nom se déguise, un emplacement
+/// non.
+export const REPERTOIRE_ACTIFS = 'assets';
+
 export type Resolution =
-    | { readonly ok: true; readonly fichier: string; readonly mime: string; readonly document: boolean }
+    | {
+          readonly ok: true;
+          readonly fichier: string;
+          readonly mime: string;
+          readonly document: boolean;
+          /// 🔴 LE NOM PORTE-T-IL RÉELLEMENT UNE EMPREINTE ? C'est la question
+          /// que la première rédaction ne posait PAS : elle classait par
+          /// EXTENSION, et donnait donc un an d'`immutable` à `hub.webmanifest`
+          /// et `favicon.ico` — des noms que Vite n'empreinte JAMAIS. MESURÉ
+          /// sur le vrai `client/dist` : `/hub.webmanifest` rendait
+          /// `public, max-age=31536000, immutable`, ce qui rend **le manifeste
+          /// PWA du hub non révisable pendant un an** chez tout navigateur
+          /// l'ayant vu. Sous nginx, `location /` n'émet AUCUN
+          /// `Cache-Control` : c'était une régression que le seul montage
+          /// Pomerium introduisait.
+          ///
+          /// ⚠️ LA DISTINCTION VIT ICI, DANS LA RÈGLE PURE, ET NON DANS LE
+          /// SERVANT : c'est là que vit déjà la classification, et c'est ce
+          /// qui la rend éprouvable SANS DISQUE.
+          readonly empreinte: boolean;
+      }
     | {
           readonly ok: false;
           readonly motif:
@@ -107,5 +143,15 @@ export function resoudre(cheminUrl: string): Resolution {
         return { ok: false, motif: 'nom-vide' };
     }
 
-    return { ok: true, fichier, mime, document: extension === 'html' };
+    return {
+        ok: true,
+        fichier,
+        mime,
+        document: extension === 'html',
+        // ⚠️ LE PRÉFIXE PORTE LE SÉPARATEUR : sans lui, un fichier nommé
+        // `assetsX.js` posé à la racine passerait pour un actif empreinté.
+        // `fichier` est déjà NORMALISÉ (segments recomposés, aucune remontée
+        // survivante), donc ce test porte bien sur le premier segment.
+        empreinte: fichier.startsWith(`${REPERTOIRE_ACTIFS}/`),
+    };
 }

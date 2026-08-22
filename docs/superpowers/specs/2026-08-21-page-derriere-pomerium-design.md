@@ -162,10 +162,31 @@ elle est écrite, survivant à la réalité qu'elle décrivait.
 | --- | --- |
 | **JSON** (les dix routeurs) | **INCHANGÉ** — `X-Content-Type-Options: nosniff`, `Cache-Control: no-store` |
 | **document HTML** | `nosniff`, `Cache-Control: no-store`, **`Content-Security-Policy`**, `Referrer-Policy: no-referrer`, `X-Frame-Options: DENY` |
-| **ressource** (`assets/`, icônes, polices) | `nosniff`, **`Cache-Control: public, max-age=31536000, immutable`** |
+| ~~**ressource** (`assets/`, icônes, polices)~~ **ressource EMPREINTÉE** (`assets/` **seul**) | `nosniff`, **`Cache-Control: public, max-age=31536000, immutable`** |
+| **ressource NON empreintée** (`hub.webmanifest`, `favicon.ico`, toute icône de racine) | `nosniff`, **`Cache-Control: public, max-age=0, must-revalidate`** — **ligne AJOUTÉE le 22 août 2026** |
 
-🔴 **`no-store` APPLIQUÉ AUX RESSOURCES TUERAIT LE CACHE DU NAVIGATEUR** sur des
-noms que Vite empreinte déjà. Réutiliser `ENTETES_SECURITE` tel quel pour tout
+> 🔴 **CETTE TABLE N'AVAIT QUE TROIS LIGNES, ET LA TROISIÈME MÉLANGEAIT DEUX
+> CHOSES — corrigé le 22 août 2026, revue finale du lot.** « Ressource (`assets/`,
+> **icônes**, polices) » se lisait comme si les icônes étaient empreintées ; elles
+> ne le sont pas. La classification implémentée se faisait d'ailleurs par
+> **EXTENSION**, et la liste MIME admet `webmanifest`, `json`, `ico`, `png` —
+> que Vite n'empreinte **jamais** à la racine. **MESURÉ sur le vrai
+> `client/dist`** : `/hub.webmanifest` rendait `public, max-age=31536000,
+> immutable`, donc **le manifeste PWA du hub non révisable pendant un an** chez
+> tout navigateur l'ayant vu. Sous nginx, `location /` n'émet **aucun**
+> `Cache-Control` : c'était une **régression** que le seul montage Pomerium
+> introduisait.
+>
+> **La règle retenue** : l'`immutable` d'un an ne vaut que pour les chemins dont
+> le nom porte **réellement** une empreinte — en pratique, ceux du répertoire
+> d'actifs que Vite hache (`build.assetsDir`, défaut `assets`). Toute autre
+> ressource obtient un cache **révalidable** : jamais un an, jamais `no-store`.
+> La distinction vit dans la **règle pure** (`page/resolution.ts`, champ
+> `empreinte`), pas dans le servant — c'est ce qui la rend éprouvable sans
+> disque.
+
+🔴 **`no-store` APPLIQUÉ AUX RESSOURCES EMPREINTÉES TUERAIT LE CACHE DU
+NAVIGATEUR** sur des noms que Vite empreinte déjà. Réutiliser `ENTETES_SECURITE` tel quel pour tout
 ce que sert le servant est le geste naturel, et c'est le défaut : `no-store` y
 est **inconditionnel**, et il est là pour les réponses de `/auth/*`, qui
 portent des jetons en clair. Les deux besoins sont opposés ; le lot les sépare.
@@ -255,7 +276,7 @@ déduire serait une supposition déguisée en fait.
 | ① | `PLATEFORME_PAGE` **absente** ⇒ `GET /` rend `404 introuvable` | **le témoin négatif** — sans lui, le `200` du critère ② ne prouve rien |
 | ② | posée ⇒ `GET /` rend l'`index.html` bâti | comparer les octets au fichier de `client/dist`, jamais le seul code `200` |
 | ③ | le document porte la CSP, `Referrer-Policy`, `X-Frame-Options`, **et pas HSTS** | les quatre assertions dans des tests **séparés** — `expect` s'arrête au premier échec |
-| ④ | `/assets/<empreinte>.js` porte `immutable`, **jamais `no-store`** | idem, et c'est la moitié qui compte |
+| ④ | `/assets/<empreinte>.js` porte `immutable`, **jamais `no-store`** ; et `/hub.webmanifest` **n'obtient JAMAIS `immutable`** (ajouté le 22 août 2026 — voir la correction du § 5.2) | idem, et c'est la moitié qui compte |
 | ⑤ | une traversée encodée (`%2e%2e%2f`) refuse | ⚠️ éprouver **au moins** la forme encodée, un filtre par sous-chaîne la laisserait passer |
 | ⑥ | `GET /sante` reste servi par **son routeur**, même avec un `sante` déposé dans la racine | **la rouge de l'ordre de chaînage** |
 | ⑦ | `/auth/moi` : adresse étrangère ⇒ `401` ; adresse déclarée ⇒ `200` + jeton | **les DEUX bras** — un `401` seul serait rendu par une route en panne |

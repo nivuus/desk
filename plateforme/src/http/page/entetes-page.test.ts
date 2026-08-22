@@ -1,6 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { CSP, ENTETES_DOCUMENT, ENTETES_RESSOURCE } from './entetes-page';
+import {
+    CSP,
+    ENTETES_DOCUMENT,
+    ENTETES_RESSOURCE_EMPREINTEE,
+    ENTETES_RESSOURCE_REVALIDABLE,
+} from './entetes-page';
 
 describe('les en-têtes de document', () => {
     // 🔴 TROIS TESTS DISTINCTS, PAS TROIS ASSERTIONS DANS UN SEUL : `expect`
@@ -31,21 +36,47 @@ describe('les en-têtes de document', () => {
     });
 });
 
-describe('les en-têtes de ressource', () => {
+describe('les en-têtes de ressource EMPREINTÉE', () => {
     // 🔴 LA MOITIÉ QUI COMPTE. `no-store` ici tuerait le cache du navigateur
-    // sur des noms que Vite empreinte déjà — la panne silencieuse type.
+    // sur des noms que Vite empreinte réellement — la panne silencieuse type.
     it('est immutable, JAMAIS no-store', () => {
-        expect(ENTETES_RESSOURCE['Cache-Control']).toBe('public, max-age=31536000, immutable');
+        expect(ENTETES_RESSOURCE_EMPREINTEE['Cache-Control']).toBe(
+            'public, max-age=31536000, immutable',
+        );
     });
 
     // 🔴 DEUX TESTS DISTINCTS, PAS DEUX ASSERTIONS DANS UN SEUL — même raison
     // que ci-dessus.
     it("ne porte PAS Content-Security-Policy : c'est un en-tête de document", () => {
-        expect(ENTETES_RESSOURCE).not.toHaveProperty('Content-Security-Policy');
+        expect(ENTETES_RESSOURCE_EMPREINTEE).not.toHaveProperty('Content-Security-Policy');
     });
 
     it("ne porte PAS X-Frame-Options : c'est un en-tête de document", () => {
-        expect(ENTETES_RESSOURCE).not.toHaveProperty('X-Frame-Options');
+        expect(ENTETES_RESSOURCE_EMPREINTEE).not.toHaveProperty('X-Frame-Options');
+    });
+});
+
+describe('les en-têtes de ressource RÉVALIDABLE', () => {
+    // 🔴 LE JEU NEUF, ET LA RAISON DE SON EXISTENCE : `hub.webmanifest`,
+    // `favicon.ico` et toute ressource à nom STABLE recevaient un an
+    // d'`immutable` — donc devenaient non révisables chez tout navigateur les
+    // ayant vues.
+    it("n'est JAMAIS immutable", () => {
+        expect(ENTETES_RESSOURCE_REVALIDABLE['Cache-Control']).not.toContain('immutable');
+    });
+
+    // ⚠️ SÉPARÉ : `no-store` est l'AUTRE extrême, tout aussi faux ici, et il
+    // faut qu'une régression vers lui rougisse pour SA raison.
+    it("n'est JAMAIS no-store non plus", () => {
+        expect(ENTETES_RESSOURCE_REVALIDABLE['Cache-Control']).not.toContain('no-store');
+    });
+
+    it('exige une revalidation', () => {
+        expect(ENTETES_RESSOURCE_REVALIDABLE['Cache-Control']).toContain('must-revalidate');
+    });
+
+    it('porte nosniff comme les deux autres jeux', () => {
+        expect(ENTETES_RESSOURCE_REVALIDABLE['X-Content-Type-Options']).toBe('nosniff');
     });
 });
 
