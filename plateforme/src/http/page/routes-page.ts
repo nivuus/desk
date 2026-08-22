@@ -41,15 +41,33 @@ export async function servirPage(
     return servirAvecFlux(req, rep, deps, (chemin) => createReadStream(chemin));
 }
 
-/// La même route, avec le flux de LECTURE injecté.
+/// La même route, avec le flux de LECTURE injecté — seul point d'extension
+/// par rapport à `servirPage`, qui n'appelle jamais que `createReadStream`
+/// (et que TOUS les tests HTTP de ce lot exercent : ils passent par
+/// `demarrerServeur` → `servirTout` → `servirPage`, jamais directement par
+/// cette fonction-ci — le rappel par défaut n'est donc PAS un trou de
+/// couverture).
 ///
-/// 🔴 EXPORTÉE SÉPARÉMENT POUR LA SEULE RAISON DE LA RENDRE ÉPROUVABLE SANS
-/// DANGER : un test qui veut observer « la lecture échoue APRÈS que les
-/// en-têtes sont partis » (Critique 2) ne peut pas provoquer un vrai
-/// épuisement de descripteurs (`EMFILE`) sans risquer de faire mourir le
-/// PROCESSUS DE TEST lui-même — c'est la classe de défaut que
-/// `signaling/resilience.test.ts` documente déjà pour une autre route. En
-/// production, `servirPage` ci-dessus n'appelle jamais que `createReadStream`.
+/// 🔴 CE QUE CE MONTAGE N'EST PAS — une revue (round 3, Neuf 3) l'a établi
+/// en réfutant la version précédente de ce commentaire : ce n'est PAS
+/// l'absence d'un précédent pour éprouver la mort d'un processus.
+/// `signaling/resilience.test.ts` EN EST UN, et il fait l'inverse de ce
+/// qu'on prétendait ici — il LANCE le service comme processus ENFANT
+/// (`spawn(tsxBin, …)`) et observe sa SURVIE. Ce montage-là existe dans le
+/// dépôt, et il est PLUS PROBANT que celui-ci : il exerce le chemin de
+/// PRODUCTION réel (un vrai `createReadStream`, un vrai processus, un vrai
+/// épuisement possible de descripteurs), là où l'injection ci-dessous
+/// n'exerce qu'un flux FACTICE, appelé hors de tout serveur HTTP.
+///
+/// IL N'A PAS ÉTÉ RETENU ICI, ET C'EST UN CHOIX ASSUMÉ, PAS UNE
+/// IMPOSSIBILITÉ : monter un processus enfant PAR TEST alourdirait une
+/// suite dont la durée vient déjà de régresser une fois dans ce lot (round
+/// 3, Neuf 4) — un aller-retour de processus coûte largement plus qu'un
+/// appel de fonction. CE QUE CE CHOIX COÛTE : le test qui utilise
+/// `servirAvecFlux` n'observe QUE son comportement face à une erreur de
+/// flux, jamais celui d'un serveur HTTP réel (sockets, `pipeline()` sur un
+/// VRAI descripteur, un VRAI `EMFILE`) — une garantie plus étroite,
+/// délibérément.
 export async function servirAvecFlux(
     req: IncomingMessage,
     rep: ServerResponse,
@@ -84,6 +102,12 @@ export async function servirAvecFlux(
         // aussi, jamais seulement le fichier : comparer un chemin canonique
         // à un chemin qui ne l'est pas rendrait la comparaison de préfixe
         // arbitraire.
+        //
+        // ⚠️ COURSE `realpath` → `open` (TOCTOU), jugée et classée (round 3) :
+        // réelle, mais elle ne compte pas ici — il faudrait que l'attaquant
+        // puisse ÉCRIRE dans la racine bâtie, où il dispose déjà d'une
+        // attaque plus simple, et `createReadStream` plus bas ouvre le
+        // chemin CANONIQUE (`fichierReel`), pas le lien.
         racineReelle = await realpath(racine);
         fichierReel = await realpath(candidat);
     } catch {
@@ -136,13 +160,23 @@ export async function servirAvecFlux(
         // `try/catch` de ce fichier pourrait attraper : mesuré, le service
         // ENTIER meurt (signaling compris).
         await pipeline(ouvrirFlux(fichierReel), rep);
-    } catch {
+    } catch (cause) {
         // Les en-têtes sont déjà PARTIS : le statut ne peut plus changer, il
         // n'y a donc rien à renvoyer de plus juste qu'un refus. La seule
         // décision qui reste est de ne PAS laisser la réponse pendre sur un
         // corps chunked jamais terminé (`.pipe()` n'appelle `end()` que sur
         // l'évènement `'end'`, jamais sur une erreur) : on détruit la
         // connexion plutôt que de la laisser ouverte indéfiniment.
+        //
+        // 🔴 UN `catch` MUET ÉTAIT LE DÉFAUT NEUF 1 DU ROUND 3 : sans cette
+        // ligne, un `EMFILE` passait de FATAL ET BRUYANT (avant ce lot) à
+        // SILENCIEUX ET SANS TRACE — la panne la plus discrète possible, ce
+        // que `CLAUDE.md` combat en premier. `serveur.ts:308` ne peut RIEN
+        // voir : `return true` en fin de fonction lui dit que la route a été
+        // servie. Le chemin demandé est journalisé, PAS le corps de la
+        // requête — ce dépôt n'écrit jamais dans un journal ce qui pourrait
+        // porter un secret.
+        console.error(`page servie en echec de lecture, chemin=${chemin} : ${String(cause)}`);
         if (!rep.destroyed) rep.destroy();
     }
     return true;
