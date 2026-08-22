@@ -68,6 +68,16 @@ describe('resoudre', () => {
         expect(resoudre('/index.js.map')).toEqual({ ok: false, motif: 'extension-inconnue' });
     });
 
+    // 🔴 LE TROU QUE LA LISTE MIME LAISSAIT PASSER : `.json` EST une extension
+    // CONNUE, donc un nom réduit à cette seule extension nue franchissait la
+    // liste ci-dessus. `/.env` et `/.htaccess`, eux, restent refusés par
+    // `extension-inconnue` (leur « extension » n'y figure pas) : cette garde
+    // ne change RIEN à leur verdict, elle ferme le cas que la liste, à elle
+    // seule, ne pouvait pas fermer.
+    it('refuse un nom réduit à une extension nue, même connue de la liste', () => {
+        expect(resoudre('/.json')).toEqual({ ok: false, motif: 'nom-vide' });
+    });
+
     it('sert le manifeste et les icônes que le hub nomme', () => {
         expect(resoudre('/hub.webmanifest')).toMatchObject({
             ok: true,
