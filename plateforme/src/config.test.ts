@@ -28,7 +28,18 @@ describe('lireConfig', () => {
     it('lit les champs, avec leurs défauts non permissifs', () => {
         // `PLATEFORME_SECRET_JETON` est fourni parce qu'il n'a AUCUN défaut :
         // c'est le sujet des trois tests suivants.
-        const c = lireConfig({ PLATEFORME_HOTE: '127.0.0.1', PLATEFORME_SECRET_JETON: SECRET });
+        //
+        // 🔴 `PLATEFORME_PROXY_DE_CONFIANCE` EST FOURNIE, ET C'EST DEVENU
+        // OBLIGATOIRE (tâche 6, garde du refus de démarrer) : sans elle, le
+        // mode `pomerium` par défaut de ce test lèverait avant même
+        // d'atteindre l'assertion. Le sujet de CE test n'est pas cette garde
+        // — elle a son propre `describe` plus bas —, donc on la satisfait
+        // sans la questionner.
+        const c = lireConfig({
+            PLATEFORME_HOTE: '127.0.0.1',
+            PLATEFORME_SECRET_JETON: SECRET,
+            PLATEFORME_PROXY_DE_CONFIANCE: '172.18.0.5',
+        });
         // 🔴 PASSER À toStrictEqual, PAS toEqual : `toEqual` ignore les
         // propriétés `undefined`, donc un champ facultatif ajouté à `Config`
         // et retourné comme `undefined` ne causerait PAS de rouge. `toStrictEqual`
@@ -44,7 +55,7 @@ describe('lireConfig', () => {
             secretJeton: SECRET,
             auth: 'pomerium',
             origineClient: undefined,
-            proxyDeConfiance: new Set(),
+            proxyDeConfiance: new Set(['172.18.0.5']),
             repertoireIcones: 'donnees/icones',
             repertoireTeleversements: 'donnees/televersements',
             racinePage: undefined,
@@ -54,15 +65,31 @@ describe('lireConfig', () => {
     it('retient le répertoire d’icônes qu’on lui NOMME', () => {
         // 🔴 LA ROUGE : la variable posée et IGNORÉE. Le magasin se
         // reconstruirait ailleurs, en silence, en retéléversant tout.
-        expect(lireConfig({ ...BASE, PLATEFORME_ICONES: '/var/lib/guac/ic' }).repertoireIcones)
-            .toBe('/var/lib/guac/ic');
+        //
+        // `PLATEFORME_PROXY_DE_CONFIANCE` est posée pour satisfaire la garde
+        // du refus de démarrer (tâche 6) — ce n'est pas le sujet de ce test.
+        expect(
+            lireConfig({
+                ...BASE,
+                PLATEFORME_ICONES: '/var/lib/guac/ic',
+                PLATEFORME_PROXY_DE_CONFIANCE: '172.18.0.5',
+            }).repertoireIcones,
+        ).toBe('/var/lib/guac/ic');
     });
 
     it('🔴 un PLATEFORME_ICONES VIDE retombe sur le défaut, pas sur le répertoire courant', () => {
         // `env.X ?? 'defaut'` ne rattrape PAS la chaîne vide — P1 a payé cette
         // erreur exacte, où un des deux rouges annoncés était en réalité vert.
-        expect(lireConfig({ ...BASE, PLATEFORME_ICONES: '' }).repertoireIcones)
-            .toBe('donnees/icones');
+        //
+        // `PLATEFORME_PROXY_DE_CONFIANCE` est posée pour satisfaire la garde
+        // du refus de démarrer (tâche 6) — ce n'est pas le sujet de ce test.
+        expect(
+            lireConfig({
+                ...BASE,
+                PLATEFORME_ICONES: '',
+                PLATEFORME_PROXY_DE_CONFIANCE: '172.18.0.5',
+            }).repertoireIcones,
+        ).toBe('donnees/icones');
     });
 
     it('refuse un PLATEFORME_BASE inconnu, plutôt que de retomber sur sqlite', () => {
@@ -101,12 +128,21 @@ describe('lireConfig', () => {
         // d'écoute absente produirait une écoute universelle SILENCIEUSE.
         // Refuser de démarrer pour elle casserait le déploiement de P5, où le
         // proxy inverse met les deux sur la même origine.
-        const sans = lireConfig({ PLATEFORME_HOTE: '127.0.0.1', PLATEFORME_SECRET_JETON: SECRET });
+        //
+        // `PLATEFORME_PROXY_DE_CONFIANCE` est posée sur les trois appels pour
+        // satisfaire la garde du refus de démarrer (tâche 6) — ce n'est pas
+        // le sujet de ce test.
+        const sans = lireConfig({
+            PLATEFORME_HOTE: '127.0.0.1',
+            PLATEFORME_SECRET_JETON: SECRET,
+            PLATEFORME_PROXY_DE_CONFIANCE: '172.18.0.5',
+        });
         expect(sans.origineClient).toBeUndefined();
         const avec = lireConfig({
             PLATEFORME_HOTE: '127.0.0.1',
             PLATEFORME_SECRET_JETON: SECRET,
             PLATEFORME_ORIGINE_CLIENT: 'http://127.0.0.1:5173',
+            PLATEFORME_PROXY_DE_CONFIANCE: '172.18.0.5',
         });
         expect(avec.origineClient).toBe('http://127.0.0.1:5173');
         // Vide vaut absente, jamais la chaîne vide : un `Origin: ` vide ne
@@ -115,6 +151,7 @@ describe('lireConfig', () => {
             PLATEFORME_HOTE: '127.0.0.1',
             PLATEFORME_SECRET_JETON: SECRET,
             PLATEFORME_ORIGINE_CLIENT: '',
+            PLATEFORME_PROXY_DE_CONFIANCE: '172.18.0.5',
         });
         expect(vide.origineClient).toBeUndefined();
     });
@@ -124,14 +161,30 @@ describe('lireConfig', () => {
         // permissif ici rendrait l'adresse du client FORGEABLE par le client
         // lui-même, donc le frein par adresse contournable en une ligne
         // d'en-tête.
-        expect(lireConfig(BASE).proxyDeConfiance.size).toBe(0);
+        //
+        // 🔴 `PLATEFORME_AUTH: 'motdepasse'` EST POSÉE, ET C'EST LE POINT :
+        // depuis la garde du refus de démarrer (tâche 6), l'ensemble VIDE
+        // n'est atteignable qu'en mode `motdepasse` — en `pomerium`, ce même
+        // montage LÈVE désormais (voir le describe dédié). C'est précisément
+        // ce que la garde signifie : un ensemble de confiance vide n'est plus
+        // un état qu'on documente en `pomerium`, il est refusé au démarrage.
+        expect(lireConfig({ ...BASE, PLATEFORME_AUTH: 'motdepasse' }).proxyDeConfiance.size).toBe(0);
     });
 
     it("(b) chaîne VIDE ⇒ ensemble vide, et non une entrée vide", () => {
         // ⚠️ `env.X ?? 'defaut'` ne rattrape pas `''` — P1 a payé cette erreur
         // exacte à sa tâche 1, où un des deux rouges annoncés était vert.
-        expect(lireConfig({ ...BASE, PLATEFORME_PROXY_DE_CONFIANCE: '' }).proxyDeConfiance.size)
-            .toBe(0);
+        //
+        // 🔴 `PLATEFORME_AUTH: 'motdepasse'` EST POSÉE — même raison que (a) :
+        // depuis la garde du refus de démarrer (tâche 6), l'ensemble VIDE
+        // n'est atteignable qu'en mode `motdepasse`.
+        expect(
+            lireConfig({
+                ...BASE,
+                PLATEFORME_AUTH: 'motdepasse',
+                PLATEFORME_PROXY_DE_CONFIANCE: '',
+            }).proxyDeConfiance.size,
+        ).toBe(0);
     });
 
     it("(c) une liste séparée par des virgules, espaces RETIRÉES", () => {
@@ -155,25 +208,58 @@ describe('lireConfig', () => {
     });
 });
 
+describe('le refus de démarrer en mode pomerium sans proxy de confiance', () => {
+    // 🔴 UN REFUS DE DÉMARRER SE LIT AVANT D'AGIR. Un 401 silencieux pour
+    // tout le monde se lirait APRÈS, sur un service qui répond, écoute et
+    // sert les dix autres routeurs — la panne la plus discrète possible.
+    it('LÈVE en mode pomerium sans PLATEFORME_PROXY_DE_CONFIANCE', () => {
+        expect(() => lireConfig({ ...BASE, PLATEFORME_AUTH: 'pomerium' })).toThrow(
+            /PLATEFORME_PROXY_DE_CONFIANCE/,
+        );
+    });
+
+    // ⚠️ LA GARDE EST LIÉE AU MODE, comme celle de PLATEFORME_HOTE : en
+    // `motdepasse`, le service s'authentifie lui-même et l'en-tête n'est lu
+    // par personne.
+    it('ne lève PAS en mode motdepasse', () => {
+        expect(() => lireConfig({ ...BASE, PLATEFORME_AUTH: 'motdepasse' })).not.toThrow();
+    });
+});
+
 describe('PLATEFORME_PAGE', () => {
     // 🔴 AUCUN DÉFAUT, à la différence de PLATEFORME_ICONES : un défaut comme
     // `client/dist` ferait servir un répertoire au hasard du répertoire
     // courant, et ferait passer le montage nginx — où la plateforme ne doit
     // RIEN servir — d'un 404 franc à un 200 sur des fichiers non voulus.
+    // `PLATEFORME_PROXY_DE_CONFIANCE` est posée sur les quatre tests de ce
+    // bloc pour satisfaire la garde du refus de démarrer (tâche 6) — ce
+    // n'est pas leur sujet, qui reste `racinePage`.
     it("est ABSENTE par défaut, et le service ne sert alors aucun fichier", () => {
-        expect(lireConfig(BASE).racinePage).toBeUndefined();
+        expect(
+            lireConfig({ ...BASE, PLATEFORME_PROXY_DE_CONFIANCE: '172.18.0.5' }).racinePage,
+        ).toBeUndefined();
     });
 
     // ⚠️ Le test de la chaîne VIDE est DISTINCT de celui de l'absence :
     // `env.X ?? 'defaut'` ne rattrape pas `''`. P1 a payé cette erreur exacte.
     it('traite la chaîne VIDE comme une absence', () => {
-        expect(lireConfig({ ...BASE, PLATEFORME_PAGE: '' }).racinePage).toBeUndefined();
+        expect(
+            lireConfig({
+                ...BASE,
+                PLATEFORME_PAGE: '',
+                PLATEFORME_PROXY_DE_CONFIANCE: '172.18.0.5',
+            }).racinePage,
+        ).toBeUndefined();
     });
 
     it('retient le chemin posé', () => {
-        expect(lireConfig({ ...BASE, PLATEFORME_PAGE: '/srv/page' }).racinePage).toBe(
-            '/srv/page',
-        );
+        expect(
+            lireConfig({
+                ...BASE,
+                PLATEFORME_PAGE: '/srv/page',
+                PLATEFORME_PROXY_DE_CONFIANCE: '172.18.0.5',
+            }).racinePage,
+        ).toBe('/srv/page');
     });
 
     it('inclut le champ racinePage dans l\'objet, même absent', () => {
@@ -181,7 +267,12 @@ describe('PLATEFORME_PAGE', () => {
         // lireConfig rend fait échouer ce test, alors que les trois tests
         // ci-dessus passent (puisqu'on peut lire `.racinePage` sur undefined).
         // C'est le seul qui détecte la perte pure et simple du champ.
-        expect(Object.hasOwn(lireConfig(BASE), 'racinePage')).toBe(true);
+        expect(
+            Object.hasOwn(
+                lireConfig({ ...BASE, PLATEFORME_PROXY_DE_CONFIANCE: '172.18.0.5' }),
+                'racinePage',
+            ),
+        ).toBe(true);
     });
 });
 
@@ -201,7 +292,12 @@ describe('PLATEFORME_AUTH', () => {
     };
 
     it('vaut pomerium par défaut', () => {
-        expect(lireConfig({ ...base }).auth).toBe('pomerium');
+        // `PLATEFORME_PROXY_DE_CONFIANCE` est posée pour satisfaire la garde
+        // du refus de démarrer (tâche 6) — le sujet de ce test est le mode
+        // `pomerium` lui-même, pas cette garde.
+        expect(lireConfig({ ...base, PLATEFORME_PROXY_DE_CONFIANCE: '172.18.0.5' }).auth).toBe(
+            'pomerium',
+        );
     });
 
     it('accepte motdepasse', () => {
@@ -209,7 +305,16 @@ describe('PLATEFORME_AUTH', () => {
     });
 
     it('retombe sur le défaut quand la valeur est VIDE', () => {
-        expect(lireConfig({ ...base, PLATEFORME_AUTH: '' }).auth).toBe('pomerium');
+        // `PLATEFORME_PROXY_DE_CONFIANCE` est posée pour satisfaire la garde
+        // du refus de démarrer (tâche 6) : une valeur VIDE retombe sur
+        // `pomerium`, qui exige la variable.
+        expect(
+            lireConfig({
+                ...base,
+                PLATEFORME_AUTH: '',
+                PLATEFORME_PROXY_DE_CONFIANCE: '172.18.0.5',
+            }).auth,
+        ).toBe('pomerium');
     });
 
     // 🔴 LA ROUGE DU CRITÈRE ④ : une coquille de casse ne doit PAS retomber
@@ -267,13 +372,27 @@ describe("la garde d'écoute du mode pomerium", () => {
 
     // Le déploiement Docker pose un NOM DE SERVICE, pas une adresse : la garde
     // doit le laisser passer, sinon elle casse le montage le plus sûr des trois.
+    //
+    // `PLATEFORME_PROXY_DE_CONFIANCE` est posée sur ces deux tests pour
+    // satisfaire la garde du refus de démarrer (tâche 6) — le mode reste
+    // `pomerium` par défaut, c'est le sujet de ce describe.
     it('LAISSE PASSER un nom de service de réseau interne', () => {
-        const c = lireConfig({ ...base, PLATEFORME_HOTE: 'plateforme' });
+        const c = lireConfig({
+            ...base,
+            PLATEFORME_HOTE: 'plateforme',
+            PLATEFORME_PROXY_DE_CONFIANCE: '172.18.0.5',
+        });
         expect(c.hote).toBe('plateforme');
     });
 
     // Le montage retenu par la spec § 7.1.
     it("LAISSE PASSER l'adresse du pont libvirt", () => {
-        expect(lireConfig({ ...base, PLATEFORME_HOTE: '192.168.3.1' }).hote).toBe('192.168.3.1');
+        expect(
+            lireConfig({
+                ...base,
+                PLATEFORME_HOTE: '192.168.3.1',
+                PLATEFORME_PROXY_DE_CONFIANCE: '172.18.0.5',
+            }).hote,
+        ).toBe('192.168.3.1');
     });
 });

@@ -306,14 +306,31 @@ describe('PLATEFORME_TELEVERSEMENTS', () => {
     it('retient le répertoire qu’on lui NOMME', () => {
         // 🔴 LA ROUGE : la variable posée et IGNORÉE. Les tranches
         // s'écriraient ailleurs, en silence.
-        expect(lireConfig({ ...BASE, PLATEFORME_TELEVERSEMENTS: '/var/lib/guac/tel' })
-            .repertoireTeleversements).toBe('/var/lib/guac/tel');
+        //
+        // `PLATEFORME_PROXY_DE_CONFIANCE` est posée pour satisfaire la garde
+        // du refus de démarrer en mode `pomerium` (tâche 6, `config.ts`) —
+        // ce n'est pas le sujet de ce test.
+        expect(
+            lireConfig({
+                ...BASE,
+                PLATEFORME_TELEVERSEMENTS: '/var/lib/guac/tel',
+                PLATEFORME_PROXY_DE_CONFIANCE: '172.18.0.5',
+            }).repertoireTeleversements,
+        ).toBe('/var/lib/guac/tel');
     });
 
     it('🔴 une valeur VIDE retombe sur le défaut, pas sur le répertoire courant', () => {
         // `env.X ?? 'defaut'` ne rattrape PAS `''` — le sous-bloc P1 de la
         // plateforme a payé cette erreur exacte.
-        expect(lireConfig({ ...BASE, PLATEFORME_TELEVERSEMENTS: '' }).repertoireTeleversements)
-            .toBe('donnees/televersements');
+        //
+        // `PLATEFORME_PROXY_DE_CONFIANCE` est posée pour la même raison que
+        // ci-dessus.
+        expect(
+            lireConfig({
+                ...BASE,
+                PLATEFORME_TELEVERSEMENTS: '',
+                PLATEFORME_PROXY_DE_CONFIANCE: '172.18.0.5',
+            }).repertoireTeleversements,
+        ).toBe('donnees/televersements');
     });
 });

@@ -17,7 +17,9 @@ const CONFIG: Config = {
     urlBase: ':memory:',
     secretJeton: SECRET,
     auth: 'pomerium',
-    proxyDeConfiance: new Set(),
+    // Les tests de ce fichier se connectent en boucle locale : c'est
+    // l'adresse que `req.socket.remoteAddress` va réellement porter.
+    proxyDeConfiance: new Set(['127.0.0.1']),
     repertoireIcones: join(mkdtempSync(join(tmpdir(), 'moi-icones-')), 'icones'),
     repertoireTeleversements: join(mkdtempSync(join(tmpdir(), 'moi-tranches-')), 'televersements'),
 };
@@ -113,6 +115,30 @@ describe('GET /auth/moi', () => {
         expect(r.status).toBe(401);
         expect(await r.json()).toEqual({ refus: 'identite-absente' });
         expect(await combienDeComptes(base)).toBe(0);
+    });
+
+    // 🔴 LA GARDE QUI FERME LE CONTOURNEMENT : LES DEUX BRAS, SINON LE 401
+    // SEUL NE PROUVERAIT RIEN — il serait indiscernable d'une route entièrement
+    // en panne. Le bras VERT est ① et ② ci-dessus, qui se connectent en boucle
+    // locale et réussissent précisément parce que `CONFIG.proxyDeConfiance`
+    // déclare `127.0.0.1`.
+    it("REFUSE (401) l'en-tête d'identité venu d'un pair non déclaré", async () => {
+        base = await baseNeuve('moi-pair-etranger-statut');
+        service = await demarrerServeur({ ...CONFIG, proxyDeConfiance: new Set(['10.9.9.9']) }, base);
+        const r = await fetch(`http://127.0.0.1:${service.port}/auth/moi`, {
+            headers: { [ENTETE_IDENTITE]: 'a@b.c' },
+        });
+        expect(r.status).toBe(401);
+    });
+
+    it("REFUSE l'en-tête d'identité venu d'un pair non déclaré, avec le motif nommé", async () => {
+        base = await baseNeuve('moi-pair-etranger-motif');
+        service = await demarrerServeur({ ...CONFIG, proxyDeConfiance: new Set(['10.9.9.9']) }, base);
+        const r = await fetch(`http://127.0.0.1:${service.port}/auth/moi`, {
+            headers: { [ENTETE_IDENTITE]: 'a@b.c' },
+        });
+        const corps = (await r.json()) as { refus?: unknown };
+        expect(corps.refus).toBe('pair-non-de-confiance');
     });
 
     // 🔴 LES ROUGES DES CRITÈRES ② ET ③ EN UN SEUL TEST, ET L'EN-TÊTE EST
