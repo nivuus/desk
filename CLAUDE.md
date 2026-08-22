@@ -408,9 +408,10 @@ démarre donc pas — et il dit pourquoi.
 | `PLATEFORME_BASE_URL` | chemin SQLite (défaut `:memory:`) ou URL `pg`. ⚠️ **`pg` prend `:memory:` pour un nom d'hôte** |
 | `PLATEFORME_AUTH` | `pomerium` (défaut) ou `motdepasse`. 🔴 **UN CHOIX DE MODE, PAS UN ARMEMENT** — la convention `=0 désarme` de `agent/` ne s'applique pas ici, précédent `PLATEFORME_BASE` deux lignes plus haut, et pour la même raison : un repli silencieux ferait tourner un mode sous le nom de l'autre, et l'un des deux sens est une **ouverture**. **Une valeur inconnue LÈVE.** En mode `pomerium`, `GET /auth/moi` échange l'en-tête `X-Pomerium-Claim-Email` posé par le proxy contre le MÊME jeton interne que le mot de passe, et `POST /auth/connexion`/`/auth/rafraichir` rendent le 404 générique (route retirée). 🔴 **ELLE NE CHOISIT PAS QUE DES ROUTES : ELLE ARME UNE GARDE D'ÉCOUTE**, et ce tableau ne l'a pas dit pendant toute la branche. En mode `pomerium`, `PLATEFORME_HOTE` **refuse le démarrage** sur `0.0.0.0`, `::`, `[::]` et `*` (voir sa ligne, cinq plus haut) — un refus de démarrer se lit AVANT d'agir, pas après. 🔴 **ET LE PROFIL DE DÉPLOIEMENT LA POSE À `motdepasse`, AVEC UNE DIRECTIVE NGINX QUI VA AVEC** : `docker-compose.plateforme.yml` écrit `PLATEFORME_AUTH: motdepasse` et `deploiement/nginx.conf` efface l'en-tête entrant par `proxy_set_header X-Pomerium-Claim-Email "";` — **les deux ensemble, et elles s'inversent ensemble** ; n'en appliquer qu'une moitié donne soit un contournement complet de l'authentification, soit un service que personne ne peut atteindre. Invariant ⑤ de `deploiement/README.md`. Chantier `auth-pomerium`, tâches 1 à 3 — voir l'index des chantiers |
 | `PLATEFORME_ORIGINE_CLIENT` | l'origine CORS. **FACULTATIVE, et son défaut est le REFUS** : absente, aucun en-tête CORS n'est émis. **Jamais `*`, sous aucune condition.** ⚠️ Son absence est le cas **nominal** derrière le proxy, où page et API partagent l'origine |
-| `PLATEFORME_PROXY_DE_CONFIANCE` | **FACULTATIVE.** Absente, `X-Forwarded-For` **n'est pas cru du tout** — le défaut sûr. 🔴 **Mal posée, le frein par adresse dégénère en frein GLOBAL** et le premier attaquant bloque tout le monde ; le seul endroit où cela se voit est la ligne de journal du frein, qui **nomme l'adresse retenue** |
+| `PLATEFORME_PROXY_DE_CONFIANCE` | 🔴 **~~FACULTATIVE, SANS CONDITION~~ — FAUX DEPUIS `auth-pomerium` (21 août 2026) : facultative en mode `motdepasse`, OBLIGATOIRE en mode `pomerium`, où `lireConfig` REFUSE DE DÉMARRER sans elle.** Absente en `motdepasse`, `X-Forwarded-For` **n'est pas cru du tout** — le défaut sûr. **Mal posée** (trop large, ou une valeur qui n'est pas celle du proxy), **le frein par adresse dégénère en frein GLOBAL** et le premier attaquant bloque tout le monde ; le seul endroit où cela se voit est la ligne de journal du frein, qui **nomme l'adresse retenue**. 🔴 **ELLE PORTE DÉSORMAIS DEUX RÔLES, PAS UN** : ① le crédit de `X-Forwarded-For` (ci-dessus, inchangé) ; ② **l'autorisation de poser l'en-tête d'identité** — `routes-identite.ts::servirIdentite` n'accepte `X-Pomerium-Claim-Email` que d'un pair dont `req.socket.remoteAddress` figure dans cet ensemble (`pairDeConfiance`, `http/adresse-source.ts`), sinon `401 pair-non-de-confiance` **avant même de lire l'en-tête**. C'est ce second rôle qui la rend obligatoire en mode `pomerium` : sans lui, l'identité arrive dans un en-tête EN CLAIR qu'aucune signature ne vérifie, et quiconque atteint le port obtient un jeton pour l'identité de son choix — voir le legs `/auth/moi`, ci-dessous, **FERMÉ** par cette garde |
 | `PLATEFORME_ICONES` | **FACULTATIVE**, défaut `donnees/icones`. ⚠️ Une valeur **vide** retombe sur le défaut, à dessein |
 | `PLATEFORME_TELEVERSEMENTS` | **FACULTATIVE**, défaut `donnees/televersements`. Même raison : une valeur vide ferait de la racine le magasin |
+| `PLATEFORME_PAGE` | **Correction, 22 août 2026 — la plateforme SERT DÉSORMAIS LA PAGE BÂTIE**, ce qu'elle ne faisait pas avant ce lot (`plateforme/src/http/page/`). **FACULTATIVE, et AUCUN DÉFAUT** — à la différence de `PLATEFORME_ICONES` et `PLATEFORME_TELEVERSEMENTS` juste au-dessus. 🔴 **ABSENTE OU VIDE ⇒ AUCUN SERVANT, et `GET /` rend le `404 introuvable` D'HIER À L'OCTET PRÈS** : c'est ce qui rend l'ajout strictement additif. ⚠️ **UN DÉFAUT SERAIT UN DÉFAUT DE SÉCURITÉ, PAS UNE COMMODITÉ** : dans le montage nginx (docker-compose, mode `motdepasse`), la plateforme ne doit RIEN servir — nginx sert déjà `client/dist` — et un défaut la ferait publier ce que son répertoire courant contient. Valuée vers la racine `client/dist` **bâtie** (`npm run build`). Lue dans `plateforme/src/config.ts`, servie par `plateforme/src/http/page/routes-page.ts` (garde contre les liens symboliques par `realpath`, voir son commentaire) |
 
 **Le relais TURN** lit `TURN_URL` et `TURN_SECRET` (sans `TURN_URL`, il n'annonce
 aucun relais **et le journalise**), et `docker-compose.coturn.yml` exige
@@ -831,7 +832,7 @@ Ils sont **datés**, et plusieurs se réfutent les uns les autres à dessein.
 ### Chantier auth-pomerium — l'identité vient du proxy (CLOS)
 
 - **auth-pomerium : l'identité vient du proxy, le jeton interne RESTE (21 août 2026)** — [résultats](docs/superpowers/plans/2026-08-21-auth-pomerium-resultats.md)
-  — ⚠️ **RÉSERVE : le critère ⑦ (la page, dans un navigateur, derrière Pomerium) n'a JAMAIS été joué**, et l'un de ses deux blocages n'est pas une limite de recette mais un **défaut de conception déjà appliqué** au `config.yaml` réel : la route nue de Pomerium vise un backend qui **ne sert aucun fichier statique** (`GET /` rend `404`). **Il reste à CONCEVOIR, pas à mesurer.** Voir les legs ci-dessous.
+  — ⚠️ **RÉSERVE : le critère ⑦ (la page, dans un navigateur, derrière Pomerium) n'a TOUJOURS PAS été joué**, mais ~~un de ses deux blocages n'est pas une limite de recette mais un défaut de conception déjà appliqué au `config.yaml` réel~~ **LE BLOCAGE ① (LA PLATEFORME NE SERVAIT AUCUN FICHIER STATIQUE) EST LEVÉ le 22 août 2026** : elle sert désormais la page bâtie (`PLATEFORME_PAGE`, voir le tableau des variables ci-dessus), donc la route nue de la spec §7.2 vise un backend qui répond. **Le blocage ② DEMEURE** : le flux OAuth Google exige un humain, qu'aucun Chrome sans interface ne peut fournir — le critère ⑦ reste **NON JOUÉ**, pour cette seule raison désormais. Voir les legs ci-dessous et la spec `auth-pomerium` § 7.
 
 ### Le retrait du legacy (CLOS)
 
@@ -887,30 +888,51 @@ PERDU** — c'est la leçon du legs `403/404`, déclaré « ouvert » alors que 
 produit l'avait résolu, et de six constats de revue disparus avec un rapport
 gitignoré.
 
-- 🔴 **LE CRITÈRE ⑦ N'A JAMAIS ÉTÉ JOUÉ** — la page, dans un navigateur réel,
-  derrière Pomerium. **Ses deux blocages ne sont PAS de même nature, et les
-  confondre est l'erreur à éviter :**
-  - ① **un défaut de CONCEPTION, déjà appliqué au `config.yaml` réel** : la
+- 🔴 **LE CRITÈRE ⑦ RESTE NON JOUÉ** — la page, dans un navigateur réel,
+  derrière Pomerium — ~~**mais ses deux blocages ne sont PAS de même nature,
+  et les confondre est l'erreur à éviter**~~ **CE N'EST PLUS VRAI QUE D'UN
+  SEUL DES DEUX, DEPUIS LE 22 AOÛT 2026 :**
+  - ① ~~**un défaut de CONCEPTION, déjà appliqué au `config.yaml` réel** : la
     route nue de Pomerium (spec §7.2, commentée « La page et l'API ») vise
     `http://192.168.3.1:8080`, c'est-à-dire la plateforme — **qui ne sert
     aucun fichier statique**, `GET /` y rendant `404 introuvable` (mesuré).
-    C'est nginx qui sert la page, et ce bloc le saute. **Il reste à CONCEVOIR,
-    pas à mesurer** : soit router Pomerium vers nginx (dont le `listen 80` est
-    un `return 301`, donc une boucle depuis un Pomerium qui a déjà terminé
-    TLS, et dont le `listen 443` exige `deploiement/tls/`, gitignoré et
-    absent), soit doter la plateforme d'un servant statique. **Aucune des deux
-    n'est tranchée.**
-  - ② une limite de recette, celle-là ordinaire : le flux OAuth Google exige
-    **un humain**, et aucun Chrome sans interface ne le franchit.
-- 🔴 **AUCUN FREIN SUR `/auth/moi`, ET C'EST DÉSORMAIS LA SEULE SURFACE
+    C'est nginx qui sert la page, et ce bloc le saute. Il reste à CONCEVOIR,
+    pas à mesurer : soit router Pomerium vers nginx (…), soit doter la
+    plateforme d'un servant statique. Aucune des deux n'est tranchée.~~
+    **LEVÉ.** La plateforme sert désormais la page bâtie
+    (`plateforme/src/http/page/`, variable `PLATEFORME_PAGE` — voir le
+    tableau des variables serveur), donc la route nue de la spec §7.2, qui
+    vise `http://192.168.3.1:8080`, vise un backend qui répond
+    (`GET /` y rend la page si `PLATEFORME_PAGE` est posée vers `client/dist`
+    bâti, ou le `404` d'hier si elle ne l'est pas). Voir spec `auth-pomerium`
+    § 7, dont l'annotation du 21 août 2026 est levée à son tour.
+  - ② **DEMEURE, seul désormais** : une limite de recette, celle-là
+    ordinaire — le flux OAuth Google exige **un humain**, et aucun Chrome
+    sans interface ne le franchit. ⚠️ **Le critère ⑦ reste donc NON JOUÉ**,
+    et écrire « critère ⑦ levé » serait faux : lever un blocage de
+    conception ne joue pas le critère à sa place.
+- ~~🔴 **AUCUN FREIN SUR `/auth/moi`, ET C'EST DÉSORMAIS LA SEULE SURFACE
   D'AUTHENTIFICATION** en mode `pomerium`. `securite/frein.ts` n'est consulté
   que par `servirAuth` (`grep -ln 'deps\.frein' plateforme/src/http/routes-*.ts`
   ne rend que `routes-auth.ts`), or ce routeur **se retire** dans ce mode. La
   route **crée une ligne `utilisateur` par courriel distinct**, sans borne :
   qui atteint le port `8080` — dont la VM Windows — fait grossir la table à
-  volonté, l'en-tête n'étant vérifié par aucune signature. ⚠️ **Non mesuré**,
-  et ce n'est pas une raison de l'écrire moins fort : c'est une lecture de
-  code, elle est dite comme telle.
+  volonté, l'en-tête n'étant vérifié par aucune signature. Non mesuré, et ce
+  n'est pas une raison de l'écrire moins fort : c'est une lecture de code,
+  elle est dite comme telle.~~
+  🔴 **REQUALIFIÉ ET FERMÉ, 22 août 2026.** Ce legs se lisait comme un frein
+  manquant, appelant une borne de cadence — **ce n'en était pas un**. C'était
+  un **contournement COMPLET de l'authentification** : quiconque atteignait le
+  port `8080` — dont la VM Windows — obtenait, par un simple en-tête
+  `X-Pomerium-Claim-Email` qu'AUCUNE signature ne vérifiait, un jeton interne
+  valide pour l'identité de son choix. Un frein n'aurait borné que la
+  **cadence** d'un contournement qui n'a besoin d'aboutir **qu'une fois**. La
+  garde qui ferme ce trou est `PLATEFORME_PROXY_DE_CONFIANCE`, désormais
+  **obligatoire en mode `pomerium`** (`plateforme/src/config.ts::lireConfig`,
+  qui refuse de démarrer sans elle) : `routes-identite.ts::servirIdentite`
+  n'accepte l'en-tête que d'un pair dont l'adresse socket figure dans cette
+  liste (`pairDeConfiance`), et rend `401 pair-non-de-confiance` **avant même
+  de la lire** sinon. Voir sa ligne dans le tableau des variables serveur.
 - 🔴 **ONZE PILOTES DE RECETTE VISENT UNE RACINE QUE CE CHANTIER A FERMÉE.** Le
   relais a quitté `/` pour `/signal`, et `?signaling=` reste **explicite** —
   il ne reçoit pas le suffixe. Or les pilotes de
