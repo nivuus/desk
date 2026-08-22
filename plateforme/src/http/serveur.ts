@@ -44,6 +44,12 @@ import { servirLeCanalAgent } from '../agents/canal';
 import { RegistreAgents } from '../agents/registre';
 import { Frein } from '../securite/frein';
 import { servirTout } from './chaine';
+import {
+    annonceProxyDeConfiance,
+    annonceRacinePage,
+    ecrire,
+    etatRacinePage,
+} from './annonces';
 
 /// Le chemin du canal plateforme <-> agent (P3). ⚠️ Il est comparé
 /// EXACTEMENT : voir le routage plus bas.
@@ -224,6 +230,25 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
     const magasinTranches = ouvrirMagasinTranches(config.repertoireTeleversements, (chemin) => {
         console.info(`magasin de tranches : ${chemin}`);
     });
+
+    // 🔴 LA TROISIÈME RACINE DISQUE FACULTATIVE S'ANNONCE COMME LES DEUX
+    // AUTRES, ET ELLE NE LE FAISAIT PAS. Les deux magasins ci-dessus
+    // journalisent leur chemin retenu depuis G2 et G3, avec la raison écrite
+    // au-dessus d'eux ; `PLATEFORME_PAGE`, ajoutée le 22 août 2026, ne
+    // journalisait RIEN — ni au démarrage ni à la requête —, si bien qu'une
+    // racine inexistante rendait `404 introuvable` sur toute page, strictement
+    // indiscernable de la variable absente. Voir `./annonces.ts`.
+    //
+    // ⚠️ C'EST ICI, AVANT `http.listen`, ET PAS AILLEURS : une annonce postée
+    // après l'ouverture du port arriverait après la première requête servie.
+    ecrire(annonceRacinePage(await etatRacinePage(config.racinePage)));
+    // 🔴 MÊME CLASSE DE PANNE MUETTE, MÊME REMÈDE — et la revue finale les a
+    // classés ensemble à raison : un nom d'hôte dans
+    // `PLATEFORME_PROXY_DE_CONFIANCE` ne correspond à aucune `remoteAddress`,
+    // donc `pairDeConfiance` refuse tout le monde, `/auth/moi` rend `401` à
+    // Pomerium lui-même, et le service répond quand même. Le runbook le
+    // documente déjà — mais un runbook ne rougit pas.
+    ecrire(annonceProxyDeConfiance(config.proxyDeConfiance));
 
     const deps = {
         base,

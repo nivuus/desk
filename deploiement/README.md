@@ -329,7 +329,7 @@ des deux, jamais les deux à la fois sur la même écoute.**
 | --- | --- | --- |
 | `PLATEFORME_AUTH` | `pomerium` | c'est le **défaut** — l'écrire est une clarté, pas une nécessité. Une valeur inconnue LÈVE |
 | `PLATEFORME_HOTE` | `192.168.3.1` | ni `127.0.0.1` (Pomerium tourne en `network_mode: host` et atteint n'importe quelle adresse de l'hôte, mais l'agent Windows, depuis `192.168.3.2`, n'atteint JAMAIS la boucle locale de l'hôte), ni `0.0.0.0` (la garde du § ② ci-dessus **refuse de démarrer** en mode `pomerium`) — voir spec § 7.1, qui pose et vérifie les trois contraintes ensemble |
-| `PLATEFORME_PAGE` | le chemin **absolu** de `client/dist` **bâti** (`cd client && npm ci && npm run build`) | **AUCUN DÉFAUT** : absente ou vide, le service ne sert toujours rien et `GET /` rend `404` — c'est ce montage-ci qui a besoin qu'elle soit posée, puisque nginx n'est plus là pour servir la page |
+| `PLATEFORME_PAGE` | le chemin **absolu** de `client/dist` **bâti** (`cd client && npm ci && npm run build`) | **AUCUN DÉFAUT** : absente ou vide, le service ne sert toujours rien et `GET /` rend `404` — c'est ce montage-ci qui a besoin qu'elle soit posée, puisque nginx n'est plus là pour servir la page. 🔴 **UN BUILD OUBLIÉ, OU UN CHEMIN RELATIF, DONNAIENT UN SERVICE QUI ÉCOUTE, RÉPOND, SERT L'API ET NE SERT JAMAIS LA PAGE — sans une ligne nulle part.** Depuis le 22 août 2026, le démarrage annonce la racine **résolue** et **si elle est lisible** : `page servie racine=/…/client/dist lisible=oui`, `page servie racine=aucune …` quand la variable n'est pas posée, et un **`console.error`** portant `lisible=non` quand elle l'est mais que le disque refuse. **C'est cette ligne qu'il faut lire après le lancement, pas le `404`** |
 | `PLATEFORME_PROXY_DE_CONFIANCE` | l'adresse **mesurée** de Pomerium (ci-dessous) | **OBLIGATOIRE dans ce montage : le service REFUSE DE DÉMARRER sans elle** en mode `pomerium` (`plateforme/src/config.ts::lireConfig`) — voir l'invariant ③, qui documente son AUTRE rôle |
 
 ### Mesurer l'adresse de Pomerium, ne jamais la déduire
@@ -357,10 +357,24 @@ PROXY_DE_CONFIANCE`, ni `req.socket.remoteAddress` (qui est toujours une
 adresse) ne passent par une résolution DNS. Poser un nom d'hôte fait donc
 échouer **toute** comparaison, pour **toute** requête, y compris les requêtes
 légitimes de Pomerium : `GET /auth/moi` rend `401 pair-non-de-confiance` en
-boucle, sans qu'aucune ligne ne soit journalisée côté service (`routes-
-identite.ts` ne trace pas ce refus). **Le service répond, la page se charge,
-et personne ne peut se connecter** — c'est la même classe de panne muette que
-les cinq invariants ci-dessus.
+boucle, et `routes-identite.ts` ne trace pas ce refus. **Le service répond, la
+page se charge, et personne ne peut se connecter** — c'est la même classe de
+panne muette que les cinq invariants ci-dessus.
+
+✅ **CE QUI A CHANGÉ LE 22 AOÛT 2026, ET CE QUI N'A PAS CHANGÉ.** Le refus
+lui-même reste non tracé — c'est un chemin de requête, et le tracer par requête
+rendrait le service amplificateur (`serveur.ts`, `TRAME_MAX_OCTETS`). Mais **le
+démarrage annonce désormais l'ensemble RETENU**, si bien qu'un nom d'hôte s'y
+lit en toutes lettres :
+
+```
+proxys de confiance retenus=172.18.0.5 nombre=1
+```
+
+Ce que la ligne dit est ce que le service a **retenu**, jamais ce qu'on lui a
+donné : si le nom `pomerium.interne` y paraît, la comparaison ne peut pas
+réussir. **Un runbook ne rougit pas ; cette ligne, si** — `http/annonces.ts` et
+`http/annonces.test.ts`.
 
 ### Lancer le service
 
