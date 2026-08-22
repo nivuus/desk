@@ -112,7 +112,17 @@ function startRealServer(): Promise<{ child: ChildProcessWithoutNullStreams; por
                 // l'identité, seulement la résilience du relais : la valeur
                 // n'a donc aucune importance, sa seule PRÉSENCE suffit à
                 // laisser l'enfant démarrer.
-                PLATEFORME_PROXY_DE_CONFIANCE: '127.0.0.1',
+                //
+                // ⚠️ UNE ADRESSE ÉTRANGÈRE, DÉLIBÉRÉMENT — corrigé en revue
+                // (« round de correction 1 », 22 août 2026) : ce commentaire
+                // disait déjà « la valeur n'a aucune importance » tout en
+                // posant `127.0.0.1`, qui est précisément l'adresse depuis
+                // laquelle ce fichier se connecte (`connectTo`, plus bas).
+                // La phrase n'était donc vraie que par accident. `10.9.9.9`
+                // la rend vraie PAR CONSTRUCTION : ce fichier n'ouvre jamais
+                // `/auth/moi`, donc la garde de `routes-identite.ts` n'est
+                // jamais consultée ici, quelle que soit l'adresse déclarée.
+                PLATEFORME_PROXY_DE_CONFIANCE: '10.9.9.9',
             },
         });
 

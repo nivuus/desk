@@ -71,10 +71,22 @@ export function lireIdentitePomerium(
     entetes: Record<string, string | string[] | undefined>,
 ): VerdictIdentite {
     const brut = entetes[ENTETE_IDENTITE];
-    // Un en-tête RÉPÉTÉ est refusé, jamais désambiguïsé — précédent littéral
-    // de `porteur.ts`. Node rend un tableau quand il a vu plusieurs en-têtes
-    // du même nom ; en choisir un serait prendre une décision qu'un attaquant
-    // exploite dès que deux couches n'en prennent pas la même.
+    // ⚠️ CE COMMENTAIRE DISAIT « un en-tête RÉPÉTÉ est refusé », ET C'EST FAUX
+    // POUR CE CHEMIN PRÉCIS (mesuré, tâche 6, revue « round de correction 1 »,
+    // 22 août 2026) : Node ne rend PAS un tableau pour deux occurrences de
+    // `x-pomerium-claim-email` — ce nom n'est pas dans la petite liste
+    // d'en-têtes que Node expose en tableau (`set-cookie` en est ; celui-ci
+    // n'en est pas). Node les JOINT en UNE SEULE chaîne séparée par `, ` avant
+    // même que ce code ne s'exécute. Le garde `Array.isArray` ci-dessous est
+    // donc MORT pour ce chemin : mesuré, deux en-têtes distincts depuis un
+    // pair de confiance rendent aujourd'hui `200` et créent un compte au
+    // courriel joint (`"a@b.c, evil@x.y"`). **C'est un défaut PRÉEXISTANT,
+    // reporté à la revue finale — non corrigé ici, seul ce commentaire l'est.**
+    // Ce que ce garde referme réellement : le cas, différent, où un APPELANT
+    // interne construit lui-même `entetes` avec un tableau (les tests de ce
+    // fichier le font), et le précédent littéral de `porteur.ts` qui refuse
+    // ainsi de désambiguïser une valeur ambiguë quand elle SE PRÉSENTE sous
+    // cette forme.
     if (Array.isArray(brut) || brut === undefined) {
         return { ok: false, motif: 'identite-absente' };
     }

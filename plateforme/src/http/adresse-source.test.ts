@@ -98,8 +98,20 @@ describe('pairDeConfiance', () => {
     });
 
     // Le préfixe des adresses IPv4 mappées, comme `adresseSource` le fait déjà.
-    it('normalise le préfixe ::ffff:', () => {
+    it('normalise le préfixe ::ffff: DU CÔTÉ DU PAIR', () => {
         expect(pairDeConfiance('::ffff:10.0.0.1', new Set(['10.0.0.1']))).toBe(true);
+    });
+
+    // 🔴 ROUND DE CORRECTION 1 — LA NORMALISATION DU CÔTÉ DÉCLARÉ N'ÉTAIT
+    // ÉPROUVÉE PAR RIEN : mesuré, remplacer `normaliser(declare)` par
+    // `declare` dans `pairDeConfiance` laissait 645/645 tests verts. Le sens
+    // de la panne est fermé (un exploitant déclarant une forme encapsulée
+    // verrait TOUT LE MONDE refusé, jamais une ouverture), mais l'affirmation
+    // du commentaire de tête — « NORMALISER EST OBLIGATOIRE DES DEUX CÔTÉS » —
+    // ne tenait sur rien. Ce test ferme le trou : la confiance est déclarée
+    // sous forme ENCAPSULÉE, le pair se présente sous forme NUE.
+    it('normalise le préfixe ::ffff: DU CÔTÉ DÉCLARÉ', () => {
+        expect(pairDeConfiance('10.0.0.1', new Set(['::ffff:10.0.0.1']))).toBe(true);
     });
 
     it('refuse un pair non déclaré', () => {

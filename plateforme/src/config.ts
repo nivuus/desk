@@ -239,10 +239,18 @@ export function lireConfig(env: Record<string, string | undefined>): Config {
     const brutOrigine = env.PLATEFORME_ORIGINE_CLIENT;
     const origineClient = brutOrigine === undefined || brutOrigine === '' ? undefined : brutOrigine;
 
-    // FACULTATIVE, comme l'origine ci-dessus, et pour une raison voisine : un
-    // déploiement SANS proxy inverse — celui des tests, et celui d'un
-    // exploitant qui expose le service directement — n'a aucune valeur qui ait
-    // du sens ici. Refuser de démarrer casserait ces deux cas.
+    // FACULTATIVE — mais seulement EN MODE `motdepasse`, ET C'EST DEVENU FAUX
+    // DANS L'AUTRE MODE (tâche 6, revue « round de correction 1 », 22 août
+    // 2026). Cette phrase disait « refuser de démarrer casserait ces deux
+    // cas » : un déploiement SANS proxy inverse — celui des tests, et celui
+    // d'un exploitant qui expose le service directement — n'aurait aucune
+    // valeur qui ait du sens ici. C'ÉTAIT VRAI AVANT LA GARDE PLUS BAS DANS
+    // CETTE FONCTION, QUI FAIT PRÉCISÉMENT CELA EN MODE `pomerium` — LE
+    // DÉFAUT : `lireConfig` refuse désormais de démarrer si cette variable
+    // est absente ou vide ET que le mode est `pomerium`. La phrase reste
+    // vraie pour le SEUL mode `motdepasse`, où l'en-tête n'est lu par
+    // personne et où l'absence de proxy déclaré est un cas parfaitement sain
+    // (les tests de ce fichier, par exemple).
     //
     // 🔴 MAIS SON DÉFAUT EST LE REFUS DE CROIRE, JAMAIS UNE PERMISSION. Même
     // doctrine que `PLATEFORME_ORIGINE_CLIENT` : absente, l'ensemble est vide,
