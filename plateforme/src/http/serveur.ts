@@ -169,7 +169,7 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
     // 🔴 LE CHAÎNAGE NE SE FAIT PLUS ICI DEPUIS LE 22 AOÛT 2026 : IL A ÉTÉ
     // EXTRAIT VERS `./chaine.ts` (`servirTout`, exporté), PARCE QUE CE
     // FICHIER ATTEIGNAIT 475/500 LIGNES ET QUE LE LOT SUIVANT DEVAIT Y
-    // AJOUTER UN ONZIÈME ROUTEUR — l'extraction a libéré la marge AVANT
+    // AJOUTER UN DIXIÈME ROUTEUR — l'extraction a libéré la marge AVANT
     // l'ajout, comme `CLAUDE.md` le prescrit. Ce qui reste ICI est le POINT
     // D'APPEL, sous la forme `void … .then(servie => …).catch(…)`,
     // CONSERVÉE TELLE QUELLE. C'est ce que ce fichier s'impose depuis P1 : le
@@ -179,10 +179,15 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
     // sur le corps du `createServer` reste ainsi d'une seule ligne — l'appel
     // à `servirTout`, désormais importé, plutôt que défini localement.
     //
-    // ⚠️ LES TROIS ROUTEURS PARTAGENT LEURS DÉPENDANCES, et `Date.now` est
+    // ⚠️ LES DIX ROUTEURS PARTAGENT LEURS DÉPENDANCES, et `Date.now` est
     // passée ici comme à la garde, à la trace et au canal : aucun module du
     // service ne lit d'horloge lui-même. C'est ce qui rend la borne de
     // fraîcheur assertable sur une valeur exacte dans les tests de route.
+    // ⚠️ « LES TROIS ROUTEURS » ÉTAIT LE MOT, ET IL DATAIT DE P4 : sept ont
+    // été chaînés depuis, sans que cette phrase ne bouge. Le compte se
+    // relance, il ne se recopie pas :
+    //   grep -cE '^    (if \(await servir|return servir)' plateforme/src/http/chaine.ts
+    //     -> 10
     // Le registre des sockets d'agent vivants, construit UNE FOIS et partagé
     // entre le canal (qui y inscrit) et les routes (qui y lancent). C'est le
     // seul endroit du service qui en fabrique un.
@@ -268,7 +273,8 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
         // premier pour lancer une application, le second pour pousser un ordre
         // d'installation à une VM déjà connectée. Les autres l'ignorent. Il est posé ici plutôt que passé à part pour que le
         // chaînage reste une seule ligne par routeur, et parce qu'un objet de
-        // dépendances par routeur ferait quatre listes à tenir à jour.
+        // dépendances par routeur ferait DIX listes à tenir à jour — le
+        // compte disait « quatre », et il datait lui aussi de P4.
         registre: registreAgents,
         // ⚠️ `frein` : SEUL `servirAuth` LE LIT aujourd'hui ; les autres
         // routeurs l'ignorent, comme ils ignorent `registre`.
@@ -339,7 +345,9 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
                 // cause est journalisée SANS le corps de la requête, qui
                 // porterait le mot de passe (critère ④).
                 // ⚠️ LE LIBELLÉ NE NOMME PLUS « l'authentification » : depuis
-                // P4 ce `catch` couvre les TROIS routeurs, et un message qui
+                // P4 ce `catch` couvre TOUS les routeurs — ils sont DIX, non
+                // trois comme cette phrase l'a dit jusqu'au 22 août 2026, et
+                // le compte se relance depuis `chaine.ts`. Un message qui
                 // désignerait le mauvais ferait chercher au mauvais endroit.
                 // C'est la seule ligne de ce bloc que P4 change, et elle est
                 // changée parce qu'elle serait devenue FAUSSE autrement.
