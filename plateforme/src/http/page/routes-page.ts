@@ -233,13 +233,27 @@ export async function servirAvecFlux(
         // dépôt n'écrit jamais dans un journal ce qui pourrait porter un
         // secret.
         // ⚠️ CE COMMENTAIRE CITAIT AUPARAVANT UN NUMÉRO DE LIGNE
-        // (`serveur.ts:308`) QUE `CLAUDE.md` PROSCRIT, ET QUI ÉTAIT FAUX DÈS
-        // SA POSE (la ligne réelle était 282, jamais 308 — vérifié par
-        // `git show 912f1e2:plateforme/src/http/serveur.ts | grep -n
-        // servirTout`) : un relevé ultérieur du même round l'a même requalifié
-        // à tort d'« exact aujourd'hui ». Corrigé en NOMMANT la chose plutôt
-        // qu'en comptant les lignes qui l'en séparent — revue transverse de
-        // fin de lot, 22 août 2026.
+        // (`serveur.ts:308`) QUE `CLAUDE.md` PROSCRIT — ET LA CITATION N'ÉTAIT
+        // PAS FAUTIVE : elle était EXACTE au moment où elle a été posée, et
+        // ENCORE EXACTE la fois où un relevé ultérieur l'a requalifiée
+        // d'« exacte aujourd'hui ». Elle est devenue fausse APRÈS, en silence,
+        // parce qu'une tâche postérieure a ajouté des lignes plus haut dans
+        // `serveur.ts` et décalé la cible de 308 à 316 :
+        //   git show 912f1e2:plateforme/src/http/serveur.ts | grep -n "route HTTP en échec"
+        //     → 308:                console.error(`route HTTP en échec : ${String(cause)}`);
+        //   git show 9e06398:plateforme/src/http/serveur.ts | grep -n "route HTTP en échec"
+        //     → 308:                console.error(`route HTTP en échec : ${String(cause)}`);
+        //   grep -n "route HTTP en échec" plateforme/src/http/serveur.ts   # à HEAD
+        //     → 316:                console.error(`route HTTP en échec : ${String(cause)}`);
+        // C'est exactement ce que `CLAUDE.md` dit de ce patron : « un numéro
+        // de ligne est faux dès qu'on écrit au-dessus — et on écrit toujours
+        // au-dessus ». Personne n'a été négligent ; c'est ce qui rend la règle
+        // nécessaire contre le TEMPS, pas contre l'inattention. Corrigé en
+        // NOMMANT la chose plutôt qu'en comptant les lignes qui l'en séparent
+        // — revue transverse de fin de lot, 22 août 2026 (round de correction
+        // 1 : la première rédaction de ce correctif accusait à tort les deux
+        // commits ci-dessus d'avoir posé puis validé une citation fausse,
+        // faute d'avoir cherché ce texte précis sur ces commits précis).
         console.error(`page servie en echec de lecture, chemin=${chemin} : ${String(cause)}`);
         if (!rep.destroyed) rep.destroy();
     }
