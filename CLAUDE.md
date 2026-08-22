@@ -833,6 +833,7 @@ Ils sont **datés**, et plusieurs se réfutent les uns les autres à dessein.
 
 - **auth-pomerium : l'identité vient du proxy, le jeton interne RESTE (21 août 2026)** — [résultats](docs/superpowers/plans/2026-08-21-auth-pomerium-resultats.md)
   — ⚠️ **RÉSERVE : le critère ⑦ (la page, dans un navigateur, derrière Pomerium) n'a TOUJOURS PAS été joué**, mais ~~un de ses deux blocages n'est pas une limite de recette mais un défaut de conception déjà appliqué au `config.yaml` réel~~ **LE BLOCAGE ① (LA PLATEFORME NE SERVAIT AUCUN FICHIER STATIQUE) EST LEVÉ le 22 août 2026** : elle sert désormais la page bâtie (`PLATEFORME_PAGE`, voir le tableau des variables ci-dessus), donc la route nue de la spec §7.2 vise un backend qui répond. **Le blocage ② DEMEURE** : le flux OAuth Google exige un humain, qu'aucun Chrome sans interface ne peut fournir — le critère ⑦ reste **NON JOUÉ**, pour cette seule raison désormais. Voir les legs ci-dessous et la spec `auth-pomerium` § 7.
+- **page-derriere-pomerium : la plateforme sert la page bâtie, `/auth/moi` ne croit que le pair déclaré (22 août 2026)** — [résultats](docs/superpowers/plans/2026-08-22-page-derriere-pomerium-resultats.md) — les huit critères joués, chaque rouge comprise ; le blocage ① ci-dessus est ce que ce lot lève, le blocage ② (OAuth, un humain requis) reste dû, et ce document distingue nommément ce « critère ⑦ » (les deux bras de la garde d'identité) de celui d'`auth-pomerium` (la page dans un navigateur réel).
 
 ### Le retrait du legacy (CLOS)
 

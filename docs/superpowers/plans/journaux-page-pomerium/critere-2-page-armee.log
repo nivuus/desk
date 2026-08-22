@@ -1,0 +1,101 @@
+HTTP/1.1 200 OK
+content-type: text/html; charset=utf-8
+X-Content-Type-Options: nosniff
+Cache-Control: no-store
+Content-Security-Policy: default-src 'self'; connect-src 'self' wss: https:; img-src 'self' data: blob:; media-src 'self' blob:; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'
+Referrer-Policy: no-referrer
+X-Frame-Options: DENY
+Date: Sat, 22 Aug 2026 11:20:42 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+Transfer-Encoding: chunked
+
+<!doctype html>
+<html lang="fr">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Session distante</title>
+        <!-- Le socle EN PREMIER, la feuille de cette surface ensuite : l'ordre
+             porte la cascade. `style.css` n'importe rien de son côté, pour que
+             Vite PARTAGE le socle entre les pages au lieu de le ré-inliner
+             dans chacune — mesure au prototype, voir l'en-tête de style.css. -->
+      <script>/* L'amorce anti-FOUC : elle pose `data-theme` avant la première peinture.
+
+   🔴 CE FICHIER PART VERBATIM DANS CHAQUE PAGE BÂTIE, COMMENTAIRES COMPRIS.
+   Il n'est passé par AUCUN transform : le greffon `guac-amorce-theme` de
+   `client/vite.config.ts` lit son texte brut et le rend tel quel en ligne dans
+   le `<head>`. À l'inverse des commentaires de `theme.ts`, que le bundler
+   retire, ceux-ci sont livrés — mesuré le 19 août 2026 : un en-tête de
+   raisonnement de 1 921 octets pesait 1 921 octets DANS CHACUNE des pages, et
+   aucun des neuf contrôles ne l'aurait dit (§7.7 ne pèse que le CSS).
+   C'est pourquoi le raisonnement vit là où il est GRATUIT : le greffon, dans
+   `vite.config.ts`, qui n'est que du temps de build, et `theme.ts`.
+
+   Ce qu'il faut savoir ici, et rien de plus : aucune règle n'est portée par ce
+   fichier — il ignore les trois états et ce que l'absence d'attribut signifie
+   (voir `theme.ts`) ; sa chaîne de clé est la seule duplication du sous-bloc,
+   inévitable puisqu'un script en ligne ne peut rien importer, et
+   `theme.test.ts` refuse qu'elle diverge.
+   ⚠️ CETTE CLÉ N'EST NOMMÉE NULLE PART DANS CE COMMENTAIRE, ET C'EST VOULU.
+   Une première rédaction l'y écrivait entre quotes ; le garde de
+   `theme.test.ts` devenait alors VACUEUX — mesuré le 19 août 2026 en
+   remplaçant tout l'appel par `var t = null;` : les deux assertions
+   restaient VERTES, satisfaites par le commentaire seul. Un contrôle qu'on
+   peut satisfaire depuis un commentaire n'en est pas un.
+   Enfin, le `try` couvre l'ACCÈS à
+   `localStorage`, qui lève lui-même en mode privé strict. */
+(function () {
+    try {
+        var t = localStorage.getItem('guac.theme');
+        if (t === 'clair' || t === 'sombre') {
+            document.documentElement.setAttribute('data-theme', t);
+        }
+    } catch (_) {
+        /* stockage indisponible : on reste sur la préférence du système. */
+    }
+})();
+</script>
+      <script type="module" crossorigin src="/assets/main-DC1D5c0_.js"></script>
+      <link rel="modulepreload" crossorigin href="/assets/socle-BZq00WiM.js">
+      <link rel="modulepreload" crossorigin href="/assets/adresse-plateforme-uutwZeXQ.js">
+      <link rel="modulepreload" crossorigin href="/assets/webrtc-B33kBZql.js">
+      <link rel="stylesheet" crossorigin href="/assets/socle-DxxXR2Fj.css">
+      <link rel="stylesheet" crossorigin href="/assets/main-DOC38JmJ.css">
+    </head>
+    <body>
+        <video id="remote" autoplay playsinline muted tabindex="0"></video>
+        <!-- Les deux bandeaux prennent la famille `message` et sa variante
+             FLOTTANTE (sous-bloc S4, tâche 5) : `.message` seule poserait, en
+             thème clair, un panneau clair et opaque au-dessus de la vidéo —
+             ce que `tokens.css` interdit en une phrase. La variante troque le
+             fond opaque contre `--voile-flottant`, hors thème.
+             ⚠️ `#stats` naît VIDE, et `.message:empty` le fait DISPARAÎTRE au
+             lieu d'en laisser un cadre : c'est le comportement voulu, écrit
+             dans `primitives/message.css` depuis S3. -->
+        <div id="status" class="message message--flottant" role="status">Connexion…</div>
+        <div id="stats" class="message message--flottant" role="status"></div>
+        <!-- `hidden` par défaut : le bouton n'apparaît QUE si l'agent annonce
+             `mic: true` dans son message `ready` (spec §10). Un agent d'avant le
+             chantier E ne porte pas le champ, et un bouton qui ne mènerait nulle
+             part est pire que pas de bouton. -->
+        <button id="micro" type="button" title="Microphone" hidden>🎤</button>
+        <button id="fullscreen" type="button" title="Plein écran">⛶</button>
+        <!-- L'ÉCRAN PLEIN CADRE DES ÉTATS TERMINAUX (sous-bloc S4, tâche 9).
+             `hidden` par défaut, et la feuille `src/session/etat-terminal.css`
+             pose `.ecran[hidden] { display: none }` EXPLICITEMENT : la cascade
+             compare l'origine avant la spécificité, donc `.ecran { display:
+             grid }`, règle d'auteur, l'emporterait sur le `[hidden]` de
+             l'agent utilisateur et l'écran serait visible dès le chargement.
+             ⚠️ LE TITRE NAÎT VIDE, ET C'EST VOULU : `ecran-terminal.ts` l'écrit
+             depuis le TON, un titre statique étant faux de l'un des deux cas
+             (« Session terminée » ment sur un échec où aucune session n'a
+             commencé). L'y recopier ferait deux libellés à tenir d'accord. -->
+        <div id="fin" class="ecran" hidden>
+            <div class="carte ecran__carte">
+                <h1 class="ecran__titre"></h1>
+                <p class="message" id="fin-raison" role="status"></p>
+            </div>
+        </div>
+    </body>
+</html>
