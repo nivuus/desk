@@ -29,6 +29,7 @@ import { lireParEmail, remplacerEmpreinte } from '../depot/utilisateur';
 import { DUREE_JETON_ACCES_MS, signer } from '../identite/jeton';
 import { doitEtreRehache, hacher, verifier } from '../identite/mot-de-passe';
 import { entetesCors } from './cors';
+import { repondreIntrouvable } from './introuvable';
 import { ENTETES_SECURITE } from './entetes';
 import { adresseSource } from './adresse-source';
 import { ligne } from '../obs/journal';
@@ -135,10 +136,20 @@ export async function servirAuth(
     const chemin = new URL(req.url ?? '/', 'http://placeholder').pathname;
     if (!CHEMINS.has(chemin)) return false;
 
-    // 🔴 EN MODE `pomerium`, CES DEUX ROUTES N'EXISTENT PAS — `false`, donc le
-    // 404 générique du serveur. Les laisser vivantes derrière le proxy serait
-    // une SECONDE porte d'authentification, avec des mots de passe que plus
-    // personne ne tourne et un frein que plus personne ne regarde.
+    // 🔴 EN MODE `pomerium`, CES DEUX ROUTES N'EXISTENT PAS — `404`, rendu
+    // ICI. Les laisser vivantes derrière le proxy serait une SECONDE porte
+    // d'authentification, avec des mots de passe que plus personne ne tourne
+    // et un frein que plus personne ne regarde.
+    //
+    // 🔴 CE GARDE RENDAIT `false` JUSQU'AU 22 AOÛT 2026, POUR LAISSER RÉPONDRE
+    // LE 404 GÉNÉRIQUE — ET C'ÉTAIT LE JUMEAU SYMÉTRIQUE DU DÉFAUT DE
+    // `routes-identite.ts`. Le servant de page, chaîné en dernier, replie tout
+    // chemin sans extension sur `index.html` : `GET /auth/connexion` en mode
+    // `pomerium` avec `PLATEFORME_PAGE` armée rendait `200 text/html`. Les
+    // deux gardes ayant des polarités OPPOSÉES, elles avaient le MÊME défaut,
+    // chacune dans l'autre mode — et une revue par tâche ne pouvait pas le
+    // voir, chaque moitié étant juste. Le `404` vient de
+    // `http/introuvable.ts`, celui du serveur, jamais un second texte.
     //
     // ⚠️ LE GARDE EST APRÈS LA COMPARAISON DE CHEMIN ET NON AVANT, à dessein :
     // un routeur qui rendrait `false` pour TOUT chemin en mode pomerium serait
@@ -153,16 +164,19 @@ export async function servirAuth(
     // deux portes.
     //
     // 🔴 CE QUE CET INVARIANT COÛTE LE JOUR OÙ UN TROISIÈME MODE APPARAÎT :
-    // **les deux gardes se retirent en même temps, et le service n'a plus
+    // **les deux gardes rendent `404` en même temps, et le service n'a plus
     // AUCUNE route d'authentification — EN SILENCE.** Aucun 500, aucun `warn!` ;
-    // les deux routeurs rendent `false`, le serveur rend son 404 générique, et
-    // la page de connexion lit ce 404 comme « ce montage authentifie par mot de
-    // passe » avant de POSTer vers une route qui n'existe pas non plus.
+    // chacun des deux 404 est juste pris seul, et la page de connexion lit
+    // celui d'`/auth/moi` comme « ce montage authentifie par mot de passe »
+    // avant de POSTer vers une route qui n'existe pas non plus.
     // **Ajouter une valeur à `AUTHS` (`config.ts`) OBLIGE donc à revenir ici**
     // et à décider laquelle des deux portes le nouveau mode ouvre —
     // TypeScript ne le demandera pas, ces gardes comparant des chaînes et non
     // un `switch` exhaustif.
-    if (deps.auth !== 'motdepasse') return false;
+    if (deps.auth !== 'motdepasse') {
+        repondreIntrouvable(rep);
+        return true;
+    }
 
     const cors = entetesCors(req.headers.origin, deps.origineClient);
 

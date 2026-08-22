@@ -208,6 +208,17 @@ async function chercherLaSession(acces: string): Promise<void> {
 /// 404 signifie « ce montage authentifie par mot de passe » ; un 200, « le
 /// proxy m'a déjà identifié ».
 ///
+/// 🔴 CETTE PROMESSE A ÉTÉ MORTE SANS BRUIT, ET ELLE EST RÉPARÉE CÔTÉ SERVICE,
+/// PAS ICI (22 août 2026). Le servant de fichiers statiques de la plateforme,
+/// chaîné en dernier, replie tout chemin sans extension sur `index.html` :
+/// avec `PLATEFORME_PAGE` armée, `/auth/moi` rendait `200 text/html` en mode
+/// `motdepasse` — donc « le proxy m'a déjà identifié », ce qui est FAUX. Cette
+/// page ne cassait que par ACCIDENT : le `.catch(() => undefined)` de
+/// `reponse.json()` faisait retomber `accesDeReponse` sur `undefined`, donc le
+/// formulaire, au bon endroit pour une mauvaise raison. La garde de mode de
+/// `plateforme/src/http/routes-identite.ts` rend désormais le `404`
+/// ELLE-MÊME ; rien ne change ici.
+///
 /// ⚠️ TOUT ÉCHEC RETOMBE SUR LE FORMULAIRE, y compris un échec réseau. C'est
 /// le repli le moins surprenant : l'utilisateur voit un écran sur lequel il
 /// peut agir, plutôt qu'une page vide dont rien ne dit ce qu'elle attend.

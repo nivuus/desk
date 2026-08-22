@@ -33,6 +33,7 @@ import { creerUtilisateur, lireParEmail } from '../depot/utilisateur';
 import { signer } from '../identite/jeton';
 import { pairDeConfiance } from './adresse-source';
 import { entetesCors } from './cors';
+import { repondreIntrouvable } from './introuvable';
 import { ENTETES_SECURITE } from './entetes';
 
 export const CHEMIN_MOI = '/auth/moi';
@@ -111,11 +112,23 @@ function repondre(
 
 /// Rend `true` si la requête a été servie.
 ///
-/// 🔴 EN MODE `motdepasse`, ELLE REND `false` — donc le 404 GÉNÉRIQUE du
-/// serveur. C'est délibéré, et c'est ce qui porte le mode jusqu'au client : la
-/// page est bâtie statiquement par Vite et ne peut lire aucune variable du
-/// serveur, alors elle DEMANDE. Un `403` dirait « la route existe, tu n'y as
-/// pas droit », ce qui inviterait à réessayer ; `404` dit la vérité.
+/// 🔴 EN MODE `motdepasse`, ELLE REND LE `404` ELLE-MÊME — et c'est ce qui
+/// porte le mode jusqu'au client : la page est bâtie statiquement par Vite et
+/// ne peut lire aucune variable du serveur, alors elle DEMANDE. Un `403`
+/// dirait « la route existe, tu n'y as pas droit », ce qui inviterait à
+/// réessayer ; `404` dit la vérité.
+///
+/// 🔴 ELLE RENDAIT `false` JUSQU'AU 22 AOÛT 2026, POUR LAISSER RÉPONDRE LE 404
+/// GÉNÉRIQUE DU SERVEUR — ET CE MÉCANISME EST MORT SANS BRUIT dans le lot
+/// « page derrière Pomerium ». Le servant de fichiers, chaîné EN DERNIER,
+/// replie tout chemin sans extension sur `index.html` : `GET /auth/moi` en
+/// mode `motdepasse` avec `PLATEFORME_PAGE` armée rendait `200 text/html`
+/// (mesuré). Le client ne cassait que par accident — son `.catch(() =>
+/// undefined)` faisait tomber le formulaire au bon endroit.
+///
+/// ⚠️ CE N'EST PAS UN SECOND 404 : c'est LE MÊME, `http/introuvable.ts`, celui
+/// que `serveur.ts` rend aussi. Un texte écrit à la main ici dériverait de
+/// celui du serveur sans que rien ne le dise.
 export async function servirIdentite(
     req: IncomingMessage,
     rep: ServerResponse,
@@ -131,13 +144,17 @@ export async function servirIdentite(
     // c'est ce qui les fait PARTITIONNER les modes : à DEUX modes, tout mode
     // ouvre exactement une des deux portes.
     //
-    // 🔴 À TROIS MODES, LES DEUX SE RETIRENT ENSEMBLE et le service n'a plus
-    // AUCUNE route d'authentification, **en silence** : deux `false`, le 404
-    // générique du serveur, et rien qui le dise. **Ajouter une valeur à `AUTHS`
-    // (`config.ts`) OBLIGE à revenir ici** et à décider laquelle des deux portes
-    // le mode neuf ouvre — TypeScript ne le demandera pas, ces gardes comparant
-    // des chaînes plutôt qu'un `switch` exhaustif.
-    if (deps.auth !== 'pomerium') return false;
+    // 🔴 À TROIS MODES, LES DEUX RÉPONDENT `404` ENSEMBLE et le service n'a
+    // plus AUCUNE route d'authentification, **en silence** : deux `404` justes
+    // chacun pris seul, et rien qui dise qu'aucune porte n'est ouverte.
+    // **Ajouter une valeur à `AUTHS` (`config.ts`) OBLIGE à revenir ici** et à
+    // décider laquelle des deux portes le mode neuf ouvre — TypeScript ne le
+    // demandera pas, ces gardes comparant des chaînes plutôt qu'un `switch`
+    // exhaustif.
+    if (deps.auth !== 'pomerium') {
+        repondreIntrouvable(rep);
+        return true;
+    }
 
     const cors = entetesCors(req.headers.origin, deps.origineClient);
 
