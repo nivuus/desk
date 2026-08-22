@@ -31,6 +31,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Pilote } from '../base/pilote';
 import { creerUtilisateur, lireParEmail } from '../depot/utilisateur';
 import { signer } from '../identite/jeton';
+import { pairDeConfiance } from './adresse-source';
 import { entetesCors } from './cors';
 import { ENTETES_SECURITE } from './entetes';
 
@@ -59,6 +60,9 @@ export interface DependancesIdentite {
     origineClient?: string;
     maintenant: () => number;
     auth: 'pomerium' | 'motdepasse';
+    /// L'ensemble des adresses dont on croit l'en-tête `X-Pomerium-Claim-Email`.
+    /// Voir la garde ci-dessous, et `http/adresse-source.ts::pairDeConfiance`.
+    proxyDeConfiance: ReadonlySet<string>;
 }
 
 /// 🔴 PURE : ni base, ni socket, ni horloge. C'est ce qui la rend éprouvable
@@ -132,6 +136,25 @@ export async function servirIdentite(
     }
     if (req.method !== 'GET') {
         repondre(rep, 405, { refus: 'methode' }, cors);
+        return true;
+    }
+
+    // 🔴 LA GARDE QUI FERME LE CONTOURNEMENT. Sans elle, `/auth/moi` rend un
+    // jeton interne valide pour N'IMPORTE QUEL courriel posé dans un en-tête
+    // qu'AUCUNE SIGNATURE NE VÉRIFIE : quiconque atteint le port — donc la VM
+    // Windows, que le § 7.1 de la spec `auth-pomerium` place nommément dans ce
+    // périmètre — s'authentifie sous l'identité de son choix.
+    //
+    // ⚠️ ELLE EST PLACÉE AVANT LA LECTURE DE L'EN-TÊTE, PAS APRÈS. Après, elle
+    // serait correcte aussi — mais le service aurait déjà lu une identité qu'il
+    // refuse, et un successeur pourrait déplacer la lecture sans voir que la
+    // garde en dépendait.
+    //
+    // ⚠️ CE QU'ELLE NE PROMET PAS : que seul Pomerium porte cette adresse. Cela
+    // reste à la charge de l'exploitant, comme la garde d'écoute de
+    // `PLATEFORME_HOTE` le dit déjà d'elle-même.
+    if (!pairDeConfiance(req.socket.remoteAddress, deps.proxyDeConfiance)) {
+        repondre(rep, 401, { refus: 'pair-non-de-confiance' }, cors);
         return true;
     }
 

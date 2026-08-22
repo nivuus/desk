@@ -283,6 +283,24 @@ export function lireConfig(env: Record<string, string | undefined>): Config {
             .filter((entree) => entree !== ''),
     );
 
+    // 🔴 TROISIÈME GARDE LIÉE AU MODE, après celle de `PLATEFORME_HOTE`. Même
+    // raison : en `pomerium`, l'identité arrive dans un en-tête EN CLAIR
+    // qu'aucune signature ne vérifie, et sans la liste des adresses autorisées
+    // à le poser, l'en-tête est croyable par n'importe qui.
+    //
+    // ⚠️ POURQUOI UN REFUS DE DÉMARRER ET NON UN 401 : un refus se lit AVANT
+    // d'agir et nomme la variable. Un 401 pour tout le monde se lirait APRÈS,
+    // sur un service qui répond et sert les dix autres routeurs.
+    if (auth === 'pomerium' && proxyDeConfiance.size === 0) {
+        throw new Error(
+            'PLATEFORME_PROXY_DE_CONFIANCE est obligatoire en mode pomerium : ' +
+                "l'identité arrive dans un en-tête en clair qu'aucune signature ne vérifie, " +
+                'et sans la liste des adresses autorisées à le poser, quiconque atteint le ' +
+                "port obtient un jeton pour l'identité de son choix. Poser l'adresse du " +
+                'proxy, ou PLATEFORME_AUTH=motdepasse.',
+        );
+    }
+
     return {
         hote,
         port,

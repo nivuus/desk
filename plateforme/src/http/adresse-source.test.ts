@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ADRESSE_INCONNUE, adresseSource } from './adresse-source';
+import { ADRESSE_INCONNUE, adresseSource, pairDeConfiance } from './adresse-source';
 
 /// Des adresses de documentation (RFC 5737), toutes DISTINCTES et toutes
 /// plausibles : un module qui normalise des adresses ne peut pas être éprouvé
@@ -89,5 +89,30 @@ describe('adresseSource', () => {
         // Si `ADRESSE_INCONNUE` figurait par mégarde dans l'ensemble de
         // confiance, tous les pairs anonymes pourraient forger leur adresse.
         expect(adresseSource(undefined, CLIENT, new Set([ADRESSE_INCONNUE]))).toBe(ADRESSE_INCONNUE);
+    });
+});
+
+describe('pairDeConfiance', () => {
+    it('accepte un pair déclaré', () => {
+        expect(pairDeConfiance('10.0.0.1', new Set(['10.0.0.1']))).toBe(true);
+    });
+
+    // Le préfixe des adresses IPv4 mappées, comme `adresseSource` le fait déjà.
+    it('normalise le préfixe ::ffff:', () => {
+        expect(pairDeConfiance('::ffff:10.0.0.1', new Set(['10.0.0.1']))).toBe(true);
+    });
+
+    it('refuse un pair non déclaré', () => {
+        expect(pairDeConfiance('10.0.0.2', new Set(['10.0.0.1']))).toBe(false);
+    });
+
+    // 🔴 UNE LISTE VIDE NE FAIT CONFIANCE À PERSONNE. Le contraire ferait de
+    // l'absence de configuration une ouverture — l'inverse exact du défaut sûr.
+    it('refuse tout le monde quand la liste est vide', () => {
+        expect(pairDeConfiance('10.0.0.1', new Set())).toBe(false);
+    });
+
+    it('refuse une adresse absente', () => {
+        expect(pairDeConfiance(undefined, new Set(['10.0.0.1']))).toBe(false);
     });
 });

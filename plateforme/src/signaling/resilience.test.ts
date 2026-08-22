@@ -106,6 +106,13 @@ function startRealServer(): Promise<{ child: ChildProcessWithoutNullStreams; por
                 // signature, et n'en invente aucun : sans cette ligne
                 // l'enfant meurt avant d'annoncer son port.
                 PLATEFORME_SECRET_JETON: SECRET_ENFANT,
+                // 🔴 TÂCHE 6 : `lireConfig` refuse désormais de démarrer en
+                // mode `pomerium` — le défaut, ici non redéfini — sans
+                // `PLATEFORME_PROXY_DE_CONFIANCE`. Ce fichier n'éprouve pas
+                // l'identité, seulement la résilience du relais : la valeur
+                // n'a donc aucune importance, sa seule PRÉSENCE suffit à
+                // laisser l'enfant démarrer.
+                PLATEFORME_PROXY_DE_CONFIANCE: '127.0.0.1',
             },
         });
 
