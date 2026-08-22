@@ -21,6 +21,7 @@ import { servirIcone, type DependancesIcone } from './routes-icone';
 import { servirTeleversement, type DependancesTeleversement } from './routes-televersement';
 import { servirInstallation, type DependancesInstallation } from './routes-installation';
 import { servirSante, type DependancesSante } from './routes-sante';
+import { servirPage, type DependancesPage } from './page/routes-page';
 
 /// Tout ce que la chaîne consomme, réuni.
 ///
@@ -36,7 +37,8 @@ export type DependancesRoutage = DependancesIdentite &
     DependancesTeleversement &
     DependancesInstallation &
     DependancesSession &
-    DependancesSante;
+    DependancesSante &
+    DependancesPage;
 
 /// Essaie les routeurs dans l'ordre, et rend `false` si aucun n'a servi.
 ///
@@ -91,5 +93,12 @@ export async function servirTout(
     // routes gardées. Les SIX jeux de chemins restent DISJOINTS, donc
     // aucun ne peut voler le chemin d'un autre ; l'ordre est une ceinture,
     // pas une garantie.
-    return servirSante(requete, reponse, deps);
+    if (await servirSante(requete, reponse, deps)) return true;
+    // 🔴 LE SERVANT DE PAGE EST CHAÎNÉ EN DERNIER, ET C'EST LA GARANTIE, PAS
+    // UNE COMMODITÉ. Chaîné en tête, un fichier nommé `sante` ou `vm` déposé
+    // dans la racine volerait le chemin d'un routeur d'API, et le service
+    // répondrait 200 avec un corps plausible. Chaîné ici, un routeur d'API a
+    // déjà rendu `true` : il ne peut pas être supplanté.
+    // `routes-page.test.ts` tient cette ligne par un test dédié.
+    return servirPage(requete, reponse, deps);
 }
