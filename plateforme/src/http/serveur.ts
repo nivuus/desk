@@ -28,22 +28,14 @@
 // (`agent/src/signaling.rs`, `url_du_relais`). Aucun pair connu n'en est
 // affecté — chacun a été déplacé dans le même commit.
 
-import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
+import { createServer, type Server } from 'node:http';
 import { WebSocketServer } from 'ws';
 import type { Config } from '../config';
 import type { Pilote } from '../base/pilote';
 import { garde } from '../identite/garde';
-import { servirAuth } from './routes-auth';
-import { servirIdentite } from './routes-identite';
-import { servirVm } from './routes-vm';
-import { servirSession } from './routes-session';
-import { servirApplications } from './routes-applications';
-import { servirIcone } from './routes-icone';
-import { servirTeleversement } from './routes-televersement';
-import { servirInstallation } from './routes-installation';
 import { ouvrirMagasin } from '../apps/icones';
 import { ouvrirMagasinTranches } from '../apps/magasin-tranches';
-import { CacheSante, servirSante } from './routes-sante';
+import { CacheSante } from './routes-sante';
 import { ENTETES_SECURITE } from './entetes';
 import { createSignalingServer } from '../signaling/relais';
 import { ProprieteDeSession } from '../signaling/propriete';
@@ -51,6 +43,7 @@ import { observateurDeSession } from '../signaling/trace';
 import { servirLeCanalAgent } from '../agents/canal';
 import { RegistreAgents } from '../agents/registre';
 import { Frein } from '../securite/frein';
+import { servirTout } from './chaine';
 
 /// Le chemin du canal plateforme <-> agent (P3). ⚠️ Il est comparé
 /// EXACTEMENT : voir le routage plus bas.
@@ -275,63 +268,12 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
         // a été corrigé à sa place.
     };
 
-    /// Essaie les routeurs dans l'ordre, et rend `false` si aucun n'a servi.
-    ///
-    /// ⚠️ L'ORDRE EST SIGNIFIANT MAIS NON CONTRAIGNANT ICI : les quatre jeux de
-    /// chemins sont DISJOINTS (`/auth/*`, `/vm*`, `/session`, `/application*`),
-    /// et chacun compare exactement plutôt que par préfixe. Un `await` de plus
-    /// ne coûte donc rien à personne — mais le jour où deux routeurs se
-    /// disputeraient un chemin, c'est cet ordre qui trancherait, en silence.
-    ///
-    /// 🔴 LE ROUTEUR DES APPLICATIONS EST CHAÎNÉ AVANT LE 404, ET C'EST LA
-    /// SEULE LIGNE QUI LE FAIT VIVRE. Sans elle, ses deux routes rendraient le
-    /// 404 générique — c'est-à-dire la panne la plus discrète possible : le
-    /// service répond, écoute, et sert les trois autres. `serveur.test.ts` la
-    /// tient par un test dédié, comme il tient déjà le canal `/agent`.
-    ///
-    /// ⚠️ LE CORPS DU 404 N'EST PAS TOUCHÉ : « rien ne le testait avant P2, et
-    /// le changer serait un effet de bord non déclaré ».
-    async function servirTout(
-        requete: IncomingMessage,
-        reponse: ServerResponse,
-    ): Promise<boolean> {
-        // 🔴 `servirIdentite` EST CHAÎNÉ EN TÊTE, ET CE N'EST PAS INDIFFÉRENT :
-        // `/auth/moi` et les deux chemins de `servirAuth` sont DISJOINTS
-        // aujourd'hui, mais les trois partagent le préfixe `/auth/`. Le jour
-        // où l'un comparerait par préfixe, c'est cet ordre qui trancherait —
-        // en silence.
-        if (await servirIdentite(requete, reponse, deps)) return true;
-        if (await servirAuth(requete, reponse, deps)) return true;
-        if (await servirVm(requete, reponse, deps)) return true;
-        if (await servirApplications(requete, reponse, deps)) return true;
-        if (await servirIcone(requete, reponse, deps)) return true;
-        // 🔴 LES DEUX ROUTEURS DE G3, ET CE SONT LES SEULES LIGNES QUI LES FONT
-        // VIVRE. Sans elles, leurs sept routes tomberaient dans le 404
-        // générique : la panne la plus discrète qui soit, puisque le service
-        // répond, écoute, et sert correctement les six autres routeurs.
-        // ROUGE JOUÉE : retirer la première fait tomber le test (6ter) de
-        // `entetes-routeurs.test.ts`, et LUI SEUL — `1 failed | 10 passed`.
-        //
-        // ⚠️ Les deux se partagent le préfixe `/televersement/` : le premier
-        // sert `…/tranche/:n`, `…/sceller` et l'état, le second `…/contenu`
-        // seul. Les jeux restent DISJOINTS — chacun découpe par SEGMENTS et
-        // compare leur NOMBRE exactement, jamais par `startsWith` —, donc aucun
-        // ne peut voler le chemin de l'autre. L'ordre est une ceinture, pas la
-        // garantie.
-        if (await servirTeleversement(requete, reponse, deps)) return true;
-        if (await servirInstallation(requete, reponse, deps)) return true;
-        if (await servirSession(requete, reponse, deps)) return true;
-        // ⚠️ `/sante` EST CHAÎNÉE EN DERNIER, et l'ordre n'est pas indifférent
-        // ici : c'est la seule route NON AUTHENTIFIÉE du service, et la placer
-        // en tête ferait courir sa comparaison de chemin avant celles des
-        // routes gardées. Les SIX jeux de chemins restent DISJOINTS, donc
-        // aucun ne peut voler le chemin d'un autre ; l'ordre est une ceinture,
-        // pas une garantie.
-        return servirSante(requete, reponse, deps);
-    }
-
+    // La chaîne des routeurs est désormais `servirTout`, importée de
+    // `./chaine` (extraction du 22 août 2026 — voir son en-tête). Le corps et
+    // ses commentaires n'ont pas bougé ; seul `deps` passe désormais en
+    // paramètre explicite au lieu d'être capturé par fermeture.
     const http: Server = createServer((requete, reponse) => {
-        void servirTout(requete, reponse)
+        void servirTout(requete, reponse, deps)
             .then((servie) => {
                 if (servie) return;
                 // ⚠️ LE 404 NE VIENT D'AUCUN ROUTEUR, et c'est pourquoi il
