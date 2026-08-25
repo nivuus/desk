@@ -144,6 +144,64 @@ impl Vivier {
         self.arbitrer(maintenant)
     }
 
+    /// Annule la mutation d'état qu'un ordre a produite, quand cet ordre
+    /// **n'a pas pu être déposé** dans la file de sa fenêtre.
+    ///
+    /// 🔴 POURQUOI CETTE MÉTHODE EXISTE — LE SIXIÈME SITE DE MÉMORISATION,
+    /// TROUVÉ AU ROUND DE CORRECTION 2 (25 août 2026). `arbitrer` écrit
+    /// `eveillee` **AVANT que l'ordre parte** (étapes 1 et 5). C'est
+    /// exactement le patron de `dernieres_parts` et `derniers_audio` que le
+    /// round 1 a corrigé dans `sommeil/` — mais sur la seule variante que la
+    /// fenêtre APPLIQUE au lieu de la relayer, et avec un coût dans les DEUX
+    /// sens :
+    ///
+    /// - **`Reveiller` refusé** : `eveillee` reste `true`, la place du vivier
+    ///   est occupée sans qu'aucun encodeur réel ne l'occupe, et `arbitrer`
+    ///   étant idempotent, **aucun ré-arbitrage futur ne réémet l'ordre** —
+    ///   mesuré : dix `rearbitrer` de suite ne rendent rien. C'est une fenêtre
+    ///   qui ne se réveille plus, pour la vie du processus.
+    /// - **`Dormir` refusé** : `eveillee` passe à `false` et **la place est
+    ///   LIBÉRÉE alors que la fenêtre continue d'encoder**. Le plafond de 8
+    ///   encodeurs se sur-souscrit. ⚠️ **C'est la moitié la plus coûteuse, et
+    ///   c'est celle qu'on avait manquée** : il existe un `echec_de_reveil`
+    ///   pour le premier sens, il n'existe **aucun** `echec_de_sommeil`.
+    ///
+    /// 🔴 LE REMÈDE EST « NE PAS MENTIR », PAS « RETENTER ». L'état
+    /// redevient celui d'AVANT l'ordre, donc le vivier décrit à nouveau la
+    /// réalité ; le prochain arbitrage voit la fenêtre dans son ancien état et
+    /// **réémet l'ordre de lui-même**. Rien n'est retenté à l'intérieur de
+    /// `distribuer`, donc **la terminaison de sa boucle n'est pas touchée** —
+    /// c'est le tour de roue suivant qui reprend.
+    ///
+    /// ⚠️ **CE QUE L'ANNULATION NE RESTAURE PAS, et il faut le dire** : sur un
+    /// `Reveiller`, `arbitrer` a posé `dernier_echec = None`, et la valeur
+    /// d'avant n'est pas mémorisée. Elle n'est donc pas rendue. La
+    /// conséquence est **voulue** : la session redevient candidate sans
+    /// répit, ce qui est précisément ce qu'on cherche — que le prochain
+    /// arbitrage la réélise et réémette son ordre. `eveillee_depuis`, lui,
+    /// n'est lu que sur une entrée éveillée : le remettre serait sans effet.
+    /// Sur un `Dormir`, l'annulation est exacte — `arbitrer` n'y touche
+    /// qu'`eveillee`.
+    ///
+    /// **Sans effet si la session a disparu entre-temps**, jamais une panique :
+    /// c'est le régime de `echec_de_reveil` juste au-dessus, et pour la même
+    /// raison.
+    ///
+    /// **Ne ré-arbitre PAS et ne rend aucun ordre**, à la différence de
+    /// `echec_de_reveil` : elle est appelée DEPUIS la boucle de
+    /// `sommeil::registre::distribuer`, qui est en train de distribuer un lot.
+    /// Y engendrer un lot de plus ferait dépendre sa terminaison d'un chemin
+    /// que sa preuve ne couvre pas.
+    pub fn annuler_ordre_non_livre(&mut self, session: &str, ordre: Ordre) {
+        let Some(entree) = self.entrees.get_mut(session) else {
+            return;
+        };
+        match ordre {
+            Ordre::Reveiller => entree.eveillee = false,
+            Ordre::Dormir(_) => entree.eveillee = true,
+        }
+    }
+
     /// Ré-arbitrage périodique, appelé par le fil de `sommeil.rs`.
     ///
     /// **Indispensable, et pas un luxe** : sous hystérésis, une fenêtre qui

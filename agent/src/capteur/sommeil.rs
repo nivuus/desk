@@ -393,3 +393,11 @@ pub fn raison_en_texte(raison: Raison) -> &'static str {
 // l'en-tête de `sommeil/tests.rs`.
 #[cfg(test)]
 mod tests;
+
+// Les deux tests du SIXIÈME site de mémorisation (round de correction 2) dans
+// un fichier voisin DÉDIÉ, et non ajoutés à `tests.rs` : celui-ci est à 473
+// lignes pour un plafond de 500, et ils l'auraient fait franchir. Ne pas faire
+// grossir plutôt que d'avoir à extraire ensuite. Précédent :
+// `superviseur/table.rs`, qui range de même ses tests de relance à part.
+#[cfg(test)]
+mod tests_refus;

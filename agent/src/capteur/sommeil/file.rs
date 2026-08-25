@@ -162,6 +162,12 @@ struct Partage {
     /// poussant à *toutes*. Le champ aurait alors été FAUX, ce qui est pire
     /// qu'absent. Un exploitant lisant `refuses=8` sans savoir de quelle
     /// session n'apprend rien.
+    ///
+    /// ⚠️ **La trace le publie sous le nom `session_cible`, PAS `session`**
+    /// (round 2) : le span d'une autre session peut bel et bien envelopper
+    /// cette ligne, et deux `session=` de valeurs différentes côte à côte
+    /// rejoueraient la confusion d'un cran plus loin. Le nom distinct dit
+    /// lequel des deux désigne la fenêtre qui déborde.
     session: String,
 }
 
@@ -336,11 +342,19 @@ impl EmetteurSession {
     /// 🔴 ~~Le nom de la session n'est PAS ici ; le span de l'appelant
     /// l'attribue.~~ **CORRIGÉ AU ROUND 1 : IL N'EXISTE AUCUN SPAN**, et la
     /// trace n'était donc attribuable à personne. L'émetteur connaît sa
-    /// session : il la porte, et la trace la nomme. Voir `Partage::session`.
+    /// session : il la porte, et la trace la nomme — sous `session_cible`, pour
+    /// ne pas entrer en collision avec un span englobant. Voir
+    /// `Partage::session`.
     fn journaliser_le_refus(&self, refuses: u64) {
         if refuses.is_power_of_two() {
             tracing::warn!(
-                session = %self.partage.session,
+                // `session_cible` et non `session` : ce champ peut se poser
+                // SOUS le span `fenetre{session=…}` d'une AUTRE session — le
+                // fil de fenêtre qui appelle `signaler` fait pousser à
+                // TOUTES. Deux `session=` de valeurs différentes sur la même
+                // ligne rejoueraient, d'un cran plus loin, la confusion que ce
+                // champ vient supprimer.
+                session_cible = %self.partage.session,
                 refuses,
                 profondeur_max = PROFONDEUR_MAX,
                 "file d'une session pleine : message REFUSE (trace au palier, puissance de deux)"
