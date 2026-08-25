@@ -53,6 +53,8 @@ mod transitions;
 
 use std::io::Write;
 use std::sync::mpsc::{sync_channel, Receiver, Sender, SyncSender};
+
+use crate::capteur::sommeil::file::ReceveurSession;
 use std::time::{Duration, Instant};
 
 use anyhow::Result;
@@ -61,7 +63,6 @@ use windows::Win32::Foundation::HWND;
 use crate::accent;
 use crate::capteur::plein_ecran;
 use crate::capteur::protocole::{ecrire_image, ecrire_json, DepuisCapteur, VersCapteur};
-use crate::capteur::sommeil::Message;
 use crate::h264::AccessUnit;
 use crate::source::VideoSource;
 use crate::windows_source::WindowsSource;
@@ -290,7 +291,7 @@ impl Fenetre {
     fn boucler(
         &mut self,
         session: &str,
-        ordres: &Receiver<Message>,
+        ordres: &ReceveurSession,
         ecritures: &SyncSender<AEcrire>,
         commandes: &Receiver<VersCapteur>,
         reponses: &Sender<DepuisCapteur>,

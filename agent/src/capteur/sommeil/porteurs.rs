@@ -65,7 +65,8 @@ pub(super) fn distribuer_l_audio(garde: &mut MutexGuard<'static, Etat>) {
 
     // Les ordres de SE TAIRE partent d'abord, les ordres de PORTER ensuite.
     // Cet ordre RÉDUIT la fenêtre de recouvrement, il ne la ferme pas : les
-    // deux ordres empruntent deux canaux `mpsc` distincts, lus chacun par le
+    // deux ordres empruntent deux canaux DISTINCTS (`file.rs` depuis le
+    // 25 août 2026, `mpsc` avant lui), lus chacun par le
     // fil de SA fenêtre. L'ordre d'ENVOI est garanti, pas celui de
     // TRAITEMENT — si le fil qui doit se taire est déclassé par
     // l'ordonnanceur avant de lire son message, les deux fenêtres restent
@@ -95,7 +96,7 @@ pub(super) fn distribuer_l_audio(garde: &mut MutexGuard<'static, Etat>) {
             continue;
         }
         let envoye = match garde.canaux.get(&session) {
-            Some(canal) => canal.send(Message::Audio { actif }).is_ok(),
+            Some(canal) => canal.envoyer(Message::Audio { actif }).is_ok(),
             None => false,
         };
         if envoye {
@@ -116,8 +117,7 @@ pub(super) fn distribuer_l_audio(garde: &mut MutexGuard<'static, Etat>) {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::mpsc::Receiver;
-
+    use crate::capteur::sommeil::file::ReceveurSession;
     use crate::capteur::sommeil::tests::verrouiller_pour_le_test;
     use crate::capteur::sommeil::{inscrire, retirer, signaler, Message};
 
@@ -128,9 +128,10 @@ mod tests {
     /// module — même montage que `parts::tests`, qui importe
     /// `verrouiller_pour_le_test` de la même façon plutôt que d'ajouter ses
     /// propres tests au fichier parent.
-    fn dernier_audio(canal: &Receiver<Message>) -> Option<bool> {
+    fn dernier_audio(canal: &ReceveurSession) -> Option<bool> {
         canal
-            .try_iter()
+            .vider()
+            .into_iter()
             .filter_map(|m| match m {
                 Message::Audio { actif } => Some(actif),
                 _ => None,
@@ -180,10 +181,11 @@ mod tests {
         // `dernieres_parts`.
         let _verrou = verrouiller_pour_le_test();
         let (a, generation) = inscrire("t9-e", 333);
-        let _ = a.try_iter().count();
+        let _ = a.vider();
         signaler("t9-e", true, true);
         let ordres: Vec<Message> = a
-            .try_iter()
+            .vider()
+            .into_iter()
             .filter(|m| matches!(m, Message::Audio { .. }))
             .collect();
         assert!(ordres.is_empty(), "ordre audio inchange reemis : {ordres:?}");

@@ -83,7 +83,7 @@ pub(super) fn distribuer(garde: &mut MutexGuard<'static, Etat>, annonce: Annonce
     for session in sessions {
         let envoye = match garde.canaux.get(&session) {
             Some(canal) => canal
-                .send(Message::PressePapier { texte: texte.clone(), octets })
+                .envoyer(Message::PressePapier { texte: texte.clone(), octets })
                 .is_ok(),
             None => false,
         };
@@ -174,9 +174,15 @@ pub(super) fn armer_les_gardes(sondeur: &mut Sondeur) {
 ///
 /// ⚠️ **Un canal rompu n'est PAS traité ici**, à la différence de `distribuer`.
 /// Il ne peut pas l'être : ce canal vient d'être inséré dans la même fonction,
-/// son receveur est encore sur la pile de `inscrire`, et un `send` ne peut
-/// échouer que si le receveur a été lâché — ce qui n'a pas encore pu arriver.
+/// son receveur est encore sur la pile de `inscrire`, et `envoyer` ne rend
+/// `Err` que si le receveur a été lâché — ce qui n'a pas encore pu arriver.
 /// Appeler `oublier` ici retirerait une session qui vient de naître.
+///
+/// ⚠️ **Le REFUS de file pleine ne peut pas s'y produire non plus** (borne de
+/// `file.rs`, 25 août 2026) : la file de ce canal vient d'être créée, elle est
+/// vide. Le `let _ =` ci-dessous ignore donc une valeur dont les deux cas
+/// d'échec sont structurellement inatteignables ici, et c'est pour cela qu'il
+/// reste juste.
 pub(super) fn emettre_l_etat_courant(garde: &mut MutexGuard<'static, Etat>, session: &str) {
     let Some(annonce) = garde.dernier_presse_papier.clone() else {
         return;
@@ -195,7 +201,7 @@ pub(super) fn emettre_l_etat_courant(garde: &mut MutexGuard<'static, Etat>, sess
     tracing::info!(%session, octets, refus = texte.is_none(),
         "etat courant du presse-papier emis a l'inscription");
     if let Some(canal) = garde.canaux.get(session) {
-        let _ = canal.send(Message::PressePapier { texte, octets });
+        let _ = canal.envoyer(Message::PressePapier { texte, octets });
     }
 }
 
