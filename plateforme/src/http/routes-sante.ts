@@ -133,7 +133,14 @@ function repondre(
 }
 
 /// Rend `true` si la requête a été servie, `false` si elle ne concerne pas la
-/// santé — le serveur répond alors 404, comme les quatre autres routeurs.
+/// santé — le serveur répond alors 404, comme les neuf autres routeurs.
+///
+/// ⚠️ CETTE PHRASE N'EST PLUS VRAIE SANS CONDITION DEPUIS LE 22 AOÛT 2026 :
+/// quand `PLATEFORME_PAGE` est armée, un DIXIÈME routeur — le servant de
+/// page — est chaîné APRÈS tous les autres, et il résout n'importe quel
+/// chemin. Sur un `GET`, c'est LUI qui répond `200 text/html` au `false`
+/// rendu ici ; hors `GET`/`HEAD` il se retire, et le 404 générique reprend la
+/// main. Voir `http/chaine.ts`, qui porte le compte et la règle.
 export async function servirSante(
     req: IncomingMessage,
     rep: ServerResponse,

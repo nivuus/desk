@@ -7,9 +7,11 @@
 // `serveur.ts` : le compte était faux des deux côtés, et personne ne l'avait
 // relancé. Le voici, avec sa commande — la seule chose qui fasse foi :
 //   grep -cE '^    (if \(await servir|return servir)' plateforme/src/http/chaine.ts
-//     -> 10 `CLAUDE.md` prescrit l'extraction en tâche DÉDIÉE, AVANT celle qui
-// ajoute — « extraire, jamais comprimer » — parce que la marge regagnée par
-// une extraction se reperd si on la traite comme acquise (payé six fois).
+//     -> 10
+//
+// `CLAUDE.md` prescrit l'extraction en tâche DÉDIÉE, AVANT celle qui ajoute —
+// « extraire, jamais comprimer » — parce que la marge regagnée par une
+// extraction se reperd si on la traite comme acquise (payé six fois).
 //
 // ⚠️ CETTE EXTRACTION NE CHANGE AUCUN COMPORTEMENT. L'ordre des routeurs, les
 // commentaires qui l'expliquent et le `false` final sont repris VERBATIM. Le

@@ -128,6 +128,13 @@ function estObjet(v: unknown): v is Record<string, unknown> {
 
 /// Rend `true` si la requête a été servie, `false` si elle ne concerne pas
 /// l'authentification — le serveur répond alors 404, comme aujourd'hui.
+///
+/// ⚠️ « COMME AUJOURD'HUI » N'EST PLUS VRAI SANS CONDITION DEPUIS LE 22 AOÛT
+/// 2026 : quand `PLATEFORME_PAGE` est armée, un DIXIÈME routeur — le servant
+/// de page — est chaîné APRÈS tous les autres, et il résout n'importe quel
+/// chemin. Sur un `GET`/`HEAD`, c'est LUI qui répond `200 text/html` au
+/// `false` rendu ici ; hors `GET`/`HEAD` il se retire, et le 404 générique
+/// reprend la main. Voir `http/chaine.ts`, qui porte le compte et la règle.
 export async function servirAuth(
     req: IncomingMessage,
     rep: ServerResponse,
