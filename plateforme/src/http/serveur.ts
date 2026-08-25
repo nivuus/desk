@@ -276,23 +276,31 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
         // dépendances par routeur ferait DIX listes à tenir à jour — le
         // compte disait « quatre », et il datait lui aussi de P4.
         registre: registreAgents,
-        // ⚠️ `frein` : SEUL `servirAuth` LE LIT aujourd'hui ; les autres
-        // routeurs l'ignorent, comme ils ignorent `registre`.
+        // 🔴 CETTE PHRASE A DÉJÀ MENTI DEUX FOIS DE SUITE — « SEUL servirAuth
+        // LE LIT », PUIS « servirAuth ET routes-identite.ts, désormais DEUX »
+        // — À CHAQUE FOIS PARCE QU'UN LOT SUIVANT A AJOUTÉ UN LECTEUR SANS
+        // REVENIR CORRIGER CETTE LIGNE. Le legs des freins manquants (D24,
+        // 25 août 2026) en ajoute encore DEUX : `routes-vm.ts` et
+        // `routes-session.ts` consultent désormais `frein` ET
+        // `proxyDeConfiance` eux aussi, pour le budget « toute requête »
+        // (`securite/frein.ts::BUDGET_REQUETES`) — un budget de VOLUME,
+        // distinct de celui d'ÉCHECS que `servirAuth` consulte seul.
         //
-        // 🔴 `proxyDeConfiance`, JUSTE EN DESSOUS, N'A PLUS UN SEUL LECTEUR —
-        // ET C'EST LA MÊME FAUTE QUE CELLE QUE `auth` PORTAIT DÉJÀ, REFAITE
-        // AU COMMIT SUIVANT (tâche 6, revue « round de correction 1 »,
-        // 22 août 2026) : cette phrase disait « seul servirAuth LES lit »,
-        // en désignant `frein` ET `proxyDeConfiance` ensemble, et c'est
-        // devenu faux pour la seconde dès que `routes-identite.ts` (la
-        // garde d'`/auth/moi`) l'a lue à son tour.
-        //
-        // ✅ TOUT CE BLOC REVÉRIFIÉ le 22 août 2026 PAR LA COMMANDE, non par
+        // ✅ TOUT CE BLOC REVÉRIFIÉ le 25 août 2026 PAR LA COMMANDE, non par
         // la lecture : `grep -ln 'deps\.<clé>' plateforme/src/http/routes-*.ts`
         // (hors `*.test.ts`, qui POSENT la dépendance sans la consommer).
-        // Lecteurs — `frein` : `routes-auth.ts` seul ; `proxyDeConfiance` :
-        // `routes-auth.ts` **ET** `routes-identite.ts`, désormais DEUX ;
-        // `cache` : `routes-sante.ts` ; `magasin` : `routes-icone.ts`.
+        // Lecteurs — `frein` : `routes-auth.ts`, `routes-vm.ts`,
+        // `routes-session.ts` — TROIS ; `proxyDeConfiance` : les trois
+        // ci-dessus **ET** `routes-identite.ts` — QUATRE ; `cache` :
+        // `routes-sante.ts` ; `magasin` : `routes-icone.ts`.
+        //
+        // ⚠️ `signaling/relais.ts` LIT LES DEUX AUSSI, POUR LE MÊME BUDGET,
+        // MAIS PAS PAR CE CHEMIN : il ne reçoit pas cet objet `deps` — il est
+        // construit à part, plus bas dans cette fonction, et `frein` comme
+        // `config.proxyDeConfiance` lui sont passés en PARAMÈTRES POSITIONNELS
+        // de `createSignalingServer`. La commande `grep -ln 'deps\.frein'`
+        // ci-dessus ne le voit donc PAS — chercher `createSignalingServer`
+        // pour ce lecteur-là (voir plus bas dans cette même fonction).
         frein,
         proxyDeConfiance: config.proxyDeConfiance,
         cache: cacheSante,
@@ -413,9 +421,18 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
     // `Date.now` est passée ICI, et une seule fois pour la trace : c'est le
     // seul endroit du chemin de la trace qui lise une horloge réelle, tout le
     // reste la reçoit.
+    //
+    // ⚠️ `frein` ET `config.proxyDeConfiance` : LE MÊME frein que les routes
+    // HTTP et le canal `/agent`, jamais un second — voir sa construction plus
+    // haut et `securite/frein.ts::BUDGET_REQUETES`. Avant ce lot, aucune
+    // borne n'existait sur le nombre de connexions qu'une même adresse
+    // pouvait ouvrir sur `/signal` — le legs que `TRAME_MAX_OCTETS`,
+    // au-dessus, nommait déjà sans le fermer.
     const relais = createSignalingServer(
         wssRacine,
         gardeDuService,
+        frein,
+        config.proxyDeConfiance,
         observateurDeSession(base, Date.now),
     );
 

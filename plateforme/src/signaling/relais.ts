@@ -34,10 +34,14 @@
 // service, et ce n'est pas parce que la fenêtre `agent` s'est refermée
 // qu'elle cesse de compter.
 
+import type { IncomingMessage } from 'node:http';
 import { WebSocket, WebSocketServer } from 'ws';
 import { Appariement, isRole, type Role } from './appariement';
 import type { Garde } from '../identite/garde';
 import { configurationIce } from './ice';
+import { adresseSource } from '../http/adresse-source';
+import { ligne } from '../obs/journal';
+import { BUDGET_REQUETES, cleRequetes, type Budget, type Frein } from '../securite/frein';
 
 // Types que le serveur relaie au pair. Tout le reste est refusé — un relais
 // qui accepterait n'importe quoi deviendrait un canal de diffusion arbitraire.
@@ -91,6 +95,32 @@ function isJsonObject(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+/// Enregistre la connexion sur le budget « toute requête », et journalise SI
+/// ET SEULEMENT SI le frein vient de mordre — même règle et même raison que
+/// `http/routes-auth.ts::compterLEchec` : la connexion suivante sera refusée
+/// tout en haut du gestionnaire `connection`, avant de jamais rappeler cette
+/// fonction. Une ligne par connexion rendrait le service AMPLIFICATEUR sur le
+/// chemin même qu'on ferme (`CLAUDE.md`, chantier TURN).
+function compterLaConnexion(
+    frein: Frein,
+    cles: readonly (readonly [string, Budget])[],
+    adresse: string,
+): void {
+    const instant = Date.now();
+    frein.echec(cles, instant);
+    const apres = frein.consulter(cles, instant);
+    if (!apres.freine) return;
+    console.warn(
+        ligne('frein-requetes', {
+            route: '/signal',
+            adresse,
+            retry_apres_s: apres.retryApresS,
+            entrees: frein.taille(),
+            evictions: frein.evictions(),
+        }),
+    );
+}
+
 export interface SignalingServer {
     port: number;
     close(): Promise<void>;
@@ -139,11 +169,32 @@ export interface ObservateurDeSession {
 // Il n'existe par ailleurs aucun chemin qui produise une garde ouverte hors
 // d'un test : la seule fabrique de garde exige un secret, et
 // `PLATEFORME_SECRET_JETON` n'a AUCUN défaut (`config.ts`).
-export function createSignalingServer(port: number, garde: Garde, trace?: ObservateurDeSession): SignalingServer;
-export function createSignalingServer(wss: WebSocketServer, garde: Garde, trace?: ObservateurDeSession): SignalingServer;
+//
+// 🔴 `frein` ET `proxyDeConfiance` SONT REQUIS, JAMAIS OPTIONNELS — même
+// argument que `garde` juste au-dessus : un défaut permissif (aucun frein,
+// ou un ensemble de confiance ouvert) laisserait un service mal câblé ne
+// borner AUCUNE connexion sans qu'aucun test ne rougisse. Voir
+// `securite/frein.ts::BUDGET_REQUETES` : ce module partage le MÊME frein que
+// `http/routes-vm.ts` et `http/routes-session.ts`, jamais un second.
+export function createSignalingServer(
+    port: number,
+    garde: Garde,
+    frein: Frein,
+    proxyDeConfiance: ReadonlySet<string>,
+    trace?: ObservateurDeSession,
+): SignalingServer;
+export function createSignalingServer(
+    wss: WebSocketServer,
+    garde: Garde,
+    frein: Frein,
+    proxyDeConfiance: ReadonlySet<string>,
+    trace?: ObservateurDeSession,
+): SignalingServer;
 export function createSignalingServer(
     portOuWss: number | WebSocketServer,
     garde: Garde,
+    frein: Frein,
+    proxyDeConfiance: ReadonlySet<string>,
     trace?: ObservateurDeSession,
 ): SignalingServer {
     const port = typeof portOuWss === 'number' ? portOuWss : 0;
@@ -156,7 +207,50 @@ export function createSignalingServer(
         }
     }
 
-    wss.on('connection', (socket) => {
+    wss.on('connection', (socket: WebSocket, requete?: IncomingMessage) => {
+        // 🔴 LE FREIN « TOUTE REQUÊTE » EST CONSULTÉ ICI, À LA CONNEXION —
+        // AVANT LE PREMIER MESSAGE, donc avant `isJsonObject` et avant
+        // `garde.verifier`. Une connexion WebSocket est ici l'équivalent
+        // d'une requête : c'est elle qui coûte l'appariement et, si elle
+        // aboutit, une ligne en base (`ObservateurDeSession`).
+        // `TRAME_MAX_OCTETS` (`http/serveur.ts`) borne la taille d'un
+        // message ; RIEN, avant ce lot, ne bornait le NOMBRE de connexions
+        // qu'une même adresse pouvait ouvrir — le legs que ce même fichier
+        // nommait déjà : « un pair peut toujours ouvrir BEAUCOUP DE
+        // CONNEXIONS … il ne compte pas les sockets ouverts et MUETS ».
+        //
+        // ⚠️ `requete?.socket.remoteAddress` PEUT ÊTRE ABSENT : la forme
+        // `port` de cette fonction (`server.test.ts` depuis le jalon 1)
+        // n'émet aucune requête de montée. `adresseSource` rend alors
+        // `ADRESSE_INCONNUE`, budget PARTAGÉ par tous les pairs sans adresse
+        // — même comportement que `agents/canal.ts`.
+        const adresse = adresseSource(
+            requete?.socket.remoteAddress,
+            Array.isArray(requete?.headers['x-forwarded-for'])
+                ? requete.headers['x-forwarded-for'].join(',')
+                : requete?.headers['x-forwarded-for'],
+            proxyDeConfiance,
+        );
+        const clesRequetes: readonly (readonly [string, Budget])[] = [
+            [cleRequetes(adresse), BUDGET_REQUETES],
+        ];
+        // `Date.now()` lu ici, comme pour `configurationIce` plus bas dans ce
+        // même fichier : ce module ne reçoit pas d'horloge injectée.
+        const verdictRequetes = frein.consulter(clesRequetes, Date.now());
+        if (verdictRequetes.freine) {
+            // ⚠️ ENVOYER PUIS FERMER, jamais l'inverse — même règle que sur
+            // un refus de poignée de main plus bas : un `terminate()`
+            // immédiat tronquerait le message.
+            send(socket, {
+                type: 'error',
+                reason: 'trop de requêtes',
+                motif: 'trop-de-requetes',
+            });
+            socket.close(1008, 'trop-de-requetes');
+            return;
+        }
+        compterLaConnexion(frein, clesRequetes, adresse);
+
         let role: Role | undefined;
         let sessionId: string | undefined;
 

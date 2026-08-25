@@ -51,15 +51,28 @@ import { OPERATIONS_HTTP, type Operation } from '../orchestration/interface';
 import { inventaireStatique } from '../orchestration/inventaire-statique';
 import { BACKEND_STATIQUE, CODE_HTTP } from '../orchestration/refus';
 import { vmsDe } from '../orchestration/selection';
+import { adresseSource } from './adresse-source';
 import { entetesCors } from './cors';
 import { ENTETES_SECURITE } from './entetes';
+import { ligne } from '../obs/journal';
 import { lirePorteur } from './porteur';
+import { BUDGET_REQUETES, cleRequetes, type Budget, type Frein } from '../securite/frein';
 
 export interface DependancesVm {
     base: Pilote;
     secretJeton: string;
     origineClient?: string;
     maintenant: () => number;
+    /// 🔴 LE FREIN « TOUTE REQUÊTE », PARTAGÉ avec `routes-session.ts` ET
+    /// `signaling/relais.ts` — voir `securite/frein.ts::BUDGET_REQUETES`. Ni
+    /// `GET /vm` ni `POST /session` n'ont de notion d'échec : leur abus est
+    /// un VOLUME, jamais une suite de tentatives ratées, et c'est ce budget
+    /// qui le borne — jamais `BUDGET_COMPTE` ni `BUDGET_ADRESSE`, qui
+    /// comptent des ÉCHECS d'authentification et n'ont donc rien à voir ici.
+    frein: Frein;
+    /// Les proxys dont on croit l'en-tête `X-Forwarded-For` — même ensemble
+    /// que `routes-auth.ts`, jamais un second : voir `http/adresse-source.ts`.
+    proxyDeConfiance: ReadonlySet<string>;
 }
 
 const CHEMIN_LISTE = '/vm';
@@ -108,6 +121,32 @@ function operationDe(chemin: string): { vmId: string; operation: Operation } | u
     return operation === undefined ? undefined : { vmId, operation };
 }
 
+/// Enregistre la requête sur le budget « toute requête », et journalise SI ET
+/// SEULEMENT SI le frein vient de mordre — même règle et même raison que
+/// `routes-auth.ts::compterLEchec` : la requête suivante sera refusée tout en
+/// haut de `servirVm`, avant de jamais rappeler cette fonction. Une ligne par
+/// paquet rendrait le service AMPLIFICATEUR sur le chemin même qu'on ferme
+/// (`CLAUDE.md`, chantier TURN).
+function compterLaRequete(
+    frein: Frein,
+    cles: readonly (readonly [string, Budget])[],
+    adresse: string,
+    instant: number,
+): void {
+    frein.echec(cles, instant);
+    const apres = frein.consulter(cles, instant);
+    if (!apres.freine) return;
+    console.warn(
+        ligne('frein-requetes', {
+            route: CHEMIN_LISTE,
+            adresse,
+            retry_apres_s: apres.retryApresS,
+            entrees: frein.taille(),
+            evictions: frein.evictions(),
+        }),
+    );
+}
+
 export async function servirVm(
     req: IncomingMessage,
     rep: ServerResponse,
@@ -146,6 +185,30 @@ export async function servirVm(
         repondre(rep, 405, { refus: 'methode' }, cors);
         return true;
     }
+
+    // 🔴 LE FREIN « TOUTE REQUÊTE » EST CONSULTÉ ICI — AVANT `lirePorteur`,
+    // donc avant la moindre vérification HMAC et avant tout accès à la base.
+    // Même position que le frein d'ÉCHECS de `routes-auth.ts`, et la même
+    // raison : compter APRÈS le travail qu'on cherche à borner ne le borne
+    // pas. `OPTIONS` ne consomme rien — la requête préalable ne coûte que
+    // 204 octets et ne doit pas priver le navigateur de sa vraie requête.
+    const adresseRequete = adresseSource(
+        req.socket.remoteAddress,
+        Array.isArray(req.headers['x-forwarded-for'])
+            ? req.headers['x-forwarded-for'].join(',')
+            : req.headers['x-forwarded-for'],
+        deps.proxyDeConfiance,
+    );
+    const clesRequetes: readonly (readonly [string, Budget])[] = [
+        [cleRequetes(adresseRequete), BUDGET_REQUETES],
+    ];
+    const verdictRequetes = deps.frein.consulter(clesRequetes, deps.maintenant());
+    if (verdictRequetes.freine) {
+        rep.setHeader('Retry-After', String(verdictRequetes.retryApresS));
+        repondre(rep, 429, { refus: 'trop-de-requetes' }, cors);
+        return true;
+    }
+    compterLaRequete(deps.frein, clesRequetes, adresseRequete, deps.maintenant());
 
     // 🔴 L'AUTHENTIFICATION VIENT AVANT TOUTE LECTURE DE BASE. Une route qui
     // lirait l'inventaire puis refuserait le jeton ne fuiterait rien par sa
