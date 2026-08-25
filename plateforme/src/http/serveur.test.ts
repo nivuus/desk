@@ -16,7 +16,8 @@ import type { Config } from '../config';
 import { signer } from '../identite/jeton';
 import { demarrerServeur, TRAME_MAX_OCTETS, type ServicePlateforme } from './serveur';
 import type { Pilote as TypePilote } from '../base/pilote';
-import { mkdtempSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { existsSync, mkdirSync, mkdtempSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -408,4 +409,49 @@ describe('la trame maximale acceptée avant toute authentification', () => {
         // changement soit un geste délibéré.
         expect(TRAME_MAX_OCTETS).toBe(256 * 1024);
     });
+});
+
+// 🔴 LE TEST QUI AURAIT ATTRAPÉ LE ROUND DE CORRECTION 1 : `evincer` des deux
+// magasins (`apps/icones.ts`, `apps/magasin-tranches.ts`) était déclaré,
+// défini, testé UNITAIREMENT — et appelé par PERSONNE. Un test qui appelle
+// `unTour` ou `evincer` à la main ne peut PAS voir ce défaut : il prouve que
+// le mécanisme fonctionne, jamais que le SERVICE le déclenche. Celui-ci ne
+// touche qu'à `demarrerServeur`, le point d'entrée réel.
+describe('le câblage du nettoyage de fond (round de correction 1)', () => {
+    it(
+        '🔴 démarrer le service évince une icône orpheline et vieille — ' +
+            'SANS appel manuel à evincer, unTour, ni demarrerNettoyage',
+        async () => {
+            const racineIcones = join(mkdtempSync(join(tmpdir(), 'g2-icones-cablage-')), 'icones');
+            const racineTranches = join(
+                mkdtempSync(join(tmpdir(), 'g3-tranches-cablage-')),
+                'televersements',
+            );
+            mkdirSync(racineIcones, { recursive: true });
+
+            const orpheline = createHash('sha256').update('orpheline-cablage').digest('hex');
+            const chemin = join(racineIcones, orpheline);
+            writeFileSync(chemin, 'contenu jamais revalidé par lire()');
+            // 400 jours dans le passé : bien au-delà d'AGE_EVICTION_ICONE_MS
+            // (180 jours, `apps/icones.ts`).
+            const vieux = new Date(Date.now() - 400 * 24 * 60 * 60_000);
+            utimesSync(chemin, vieux, vieux);
+            expect(existsSync(chemin)).toBe(true);
+
+            const config: Config = {
+                ...CONFIG,
+                repertoireIcones: racineIcones,
+                repertoireTeleversements: racineTranches,
+            };
+            // 🔴 AUCUN APPEL À `evincer`, `unTour` NI `demarrerNettoyage` ICI :
+            // seul `demarrerServeur` a tourné. Sous le code du round 1 — la
+            // fonction existait, rien ne l'invoquait —, ce fichier serait
+            // ENCORE LÀ, et cette assertion aurait rougi. `demarrerNettoyage`
+            // est ATTENDU par `serveur.ts` avant que ce `await` ne rende la
+            // main : pas d'attente arbitraire, pas de sondage.
+            service = await servir('cablage-nettoyage', config);
+
+            expect(existsSync(chemin)).toBe(false);
+        },
+    );
 });

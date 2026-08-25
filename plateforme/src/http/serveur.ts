@@ -35,6 +35,7 @@ import type { Pilote } from '../base/pilote';
 import { garde } from '../identite/garde';
 import { ouvrirMagasin } from '../apps/icones';
 import { ouvrirMagasinTranches } from '../apps/magasin-tranches';
+import { demarrerNettoyage } from '../apps/nettoyage';
 import { CacheSante } from './routes-sante';
 import { ENTETES_SECURITE } from './entetes';
 import { createSignalingServer } from '../signaling/relais';
@@ -194,6 +195,17 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
     // nécessairement ce que le premier vient d'écrire.
     const magasinTranches = ouvrirMagasinTranches(config.repertoireTeleversements, (chemin) => {
         console.info(`magasin de tranches : ${chemin}`);
+    });
+
+    // 🔴 SANS CET APPEL, `evincer` DES DEUX MAGASINS CI-DESSUS N'EST INVOQUÉ
+    // PAR PERSONNE — round de correction 1, voir `apps/nettoyage.ts` pour la
+    // cadence et sa raison. ATTENDU : le premier tour a fini avant que ce
+    // service ne réponde à une requête, y compris dans les tests.
+    const nettoyage = await demarrerNettoyage({
+        base,
+        magasin,
+        tranches: magasinTranches,
+        maintenant: Date.now,
     });
 
     // 🔴 LA TROISIÈME RACINE DISQUE FACULTATIVE S'ANNONCE COMME LES DEUX
@@ -433,6 +445,9 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
     return {
         port,
         async close(): Promise<void> {
+            // Arrêté AVANT tout le reste : un tour en cours sur une base déjà
+            // fermée journaliserait une erreur pour rien.
+            nettoyage.arreter();
             await relais.close();
             // ⚠️ Le second serveur se ferme AUSSI, et explicitement. Un
             // `WebSocketServer` en `noServer` ne s'arrête pas avec le serveur
