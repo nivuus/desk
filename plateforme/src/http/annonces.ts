@@ -95,10 +95,36 @@ export function annonceRacinePage(etat: EtatRacinePage): Annonce {
 
 /// PURE. La ligne de l'ensemble de confiance RETENU.
 ///
-/// ⚠️ L'ENSEMBLE VIDE EST `info` ET NON `erreur` : c'est le défaut SÛR du mode
-/// `motdepasse` — on ne croit personne —, et `config.ts` refuse déjà de
-/// démarrer sur un ensemble vide en mode `pomerium`. Le rendre bruyant ici
-/// crierait sur le montage nominal.
+/// 🔴 **L'ENSEMBLE VIDE EST `info` ET NON `erreur` — MAIS PAS PARCE QUE CE
+/// SERAIT LE « DÉFAUT SÛR » DU MODE `motdepasse` : cette phrase-là a été
+/// FALSIFIÉE par la revue du round de correction 3 de `frein(pont)`, et
+/// corrigée à trois endroits (`docker-compose.plateforme.yml`, `frein.ts`,
+/// ici).** Un ensemble vide veut dire « `X-Forwarded-For` n'est pas cru, et
+/// `adresseSource` retombe sur `req.socket.remoteAddress` » — sûr SEULEMENT
+/// si cette adresse est celle du CLIENT réel, c'est-à-dire seulement si la
+/// plateforme est exposée DIRECTEMENT. **Ce n'est PAS le montage que ce
+/// dépôt LIVRE** : `docker-compose.plateforme.yml` place nginx devant elle,
+/// même en mode `motdepasse`, si bien que `remoteAddress` est TOUJOURS
+/// l'adresse du conteneur nginx pour toute requête réelle — l'ensemble vide y
+/// fait dégénérer `BUDGET_ADRESSE` **et** `BUDGET_REQUETES` (celui-ci
+/// couvrant `GET /vm`, `POST /session` et `/signal`, HTTP et WebSocket
+/// confondus depuis le lot « frein(volume) ») en un budget PARTAGÉ par TOUT
+/// LE TRAFIC, sans qu'aucun attaquant n'ait à forger quoi que ce soit — la
+/// dégénérescence est automatique dès que le second proxy existe.
+///
+/// ⚠️ **POURQUOI CE NIVEAU RESTE `info` MALGRÉ CETTE GRAVITÉ** : cette
+/// fonction est PURE et ne reçoit que l'ensemble RETENU — elle n'a AUCUN
+/// moyen de savoir si le processus qui l'appelle tourne DERRIÈRE un proxy ou
+/// exposé directement, et c'est une question de TOPOLOGIE DE DÉPLOIEMENT,
+/// pas de configuration que `config.ts` puisse trancher pour elle. Rendre ce
+/// cas `erreur` inconditionnellement alarmerait à tort le déploiement où
+/// l'ensemble vide est légitimement sûr (exposition directe, sans proxy).
+/// **La ligne `info` reste donc le seul témoin de l'exploitant** — c'est
+/// pour cela qu'elle nomme déjà l'effet exact (`X-Forwarded-For n est pas
+/// cru, et /auth/moi refuse tout pair`) plutôt qu'un simple booléen — et
+/// c'est `deploiement/README.md` (invariant ③) qui porte la responsabilité
+/// de dire, pour LE montage que ce dépôt livre spécifiquement, que cette
+/// ligne `info` annonce en réalité un risque `erreur`.
 export function annonceProxyDeConfiance(confiance: ReadonlySet<string>): Annonce {
     if (confiance.size === 0) {
         return {
