@@ -1,11 +1,18 @@
 #!/usr/bin/env node
 // Contrôle §7.4 de la spec ⑥ — LES BLOCS DE THÈME NE DIVERGENT PAS.
 //
-// Il ne porte AUCUNE règle : il lit `tokens.css` et délègue à
+// Il ne porte AUCUNE règle : il lit `tokens/couleurs.css` et délègue à
 // `ecartsEntreBlocs` de `client/src/design/tokens.ts`, qui est typechecké et
 // testé. C'est le point de conception du §7.1 : « un contrôle qui a sa propre
 // copie des valeurs valide sa copie. » Si une condition apparaissait ici,
 // c'est qu'elle serait au mauvais endroit.
+//
+// 🔴 `tokens/couleurs.css` SEUL, JAMAIS `tokens.css` : depuis l'extraction de
+// la tâche 6 (25 août 2026), les TROIS blocs de thème que ce contrôle compare
+// vivent ENTIÈREMENT dans `tokens/couleurs.css` — `tokens/echelles.css`, son
+// voisin, ne porte qu'un seul bloc `racine` sans thème. Lui donner les deux
+// fichiers concaténés ne changerait rien au verdict (aucune couleur n'y vit),
+// mais élargirait sans raison ce que ce contrôle prétend couvrir.
 //
 // ⚠️ CE `.mjs` IMPORTE UN `.ts` NATIVEMENT — mesuré sur Node v24.9.0, sans
 // `tsx`, sans `ts-node`, sans aucune dépendance neuve. Le coût est le retrait
@@ -39,7 +46,7 @@ import { COULEURS_HORS_THEME, ecartsEntreBlocs, lireBlocsDeTheme } from '../src/
 
 const args = process.argv.slice(2);
 const iFichier = args.indexOf('--fichier');
-const fichier = iFichier === -1 ? 'client/src/design/tokens.css' : args[iFichier + 1];
+const fichier = iFichier === -1 ? 'client/src/design/tokens/couleurs.css' : args[iFichier + 1];
 
 if (!existsSync(fichier)) {
     console.error(`${fichier} est absent : rien n'a été mesuré, ce n'est pas un succès.`);

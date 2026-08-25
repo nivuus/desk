@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import tokensCss from '../design/tokens.css?raw';
+import tokensCss from '../design/tokens/couleurs.css?raw';
 import { accepterDepuis, batirManifeste, cotePng, mimeDe, versDataUrl, type Sujet } from './manifeste';
 
 /// Un vrai PNG d'un côté donné — signature, IHDR, et rien d'autre. Il suffit à
@@ -27,12 +27,13 @@ const APP: Sujet = { id: 'u-1', nom: 'Bloc-notes' };
 /// couvre que `client/src/design/*.test.ts` — pas ce fichier-ci. Un premier
 /// jet y posait deux littérales et le contrôle les a relevées. **Élargir son
 /// exclusion aurait satisfait le contrôle en le VIDANT** ; les valeurs sont
-/// donc LUES sur `tokens.css`, ce qui est un meilleur test : il rougirait
+/// donc LUES sur `tokens/couleurs.css` (`tokens.css` avant l'extraction de la
+/// tâche 6, 25 août 2026), ce qui est un meilleur test : il rougirait
 /// aussi le jour où le token changerait de valeur sans que ce fichier bouge.
 function tokenSombre(nom: string): string {
     const racine = tokensCss.slice(tokensCss.indexOf(':root'));
     const trouve = new RegExp(`${nom}:\\s*([^;]+);`).exec(racine);
-    if (trouve === null) throw new Error(`tokens.css ne declare plus ${nom}`);
+    if (trouve === null) throw new Error(`tokens/couleurs.css ne declare plus ${nom}`);
     return trouve[1].trim();
 }
 const FOND = tokenSombre('--fond-0');

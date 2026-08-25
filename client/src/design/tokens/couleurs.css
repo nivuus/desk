@@ -1,0 +1,191 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   LA PALETTE — extraite de `design/tokens.css` (spec ⑥, §4.2 et §4.5), qui
+   l'IMPORTE et reste la porte d'entrée du socle. Voir son en-tête pour ce que
+   ce découpage change et ce qu'il ne change pas.
+
+   Aucune couleur ne s'écrit ailleurs que dans CE fichier. Le contrôle §7.2
+   (`client/outils/couleurs-litterales.mjs`) balaie tout `client/src/` SAUF
+   lui, et refuse la moindre valeur littérale hors d'ici.
+
+   ⚠️ IL N'Y A PAS DE MIROIR TYPESCRIPT DE CES VALEURS, et c'est délibéré : les
+   contrôles §7.1, §7.4 et §7.6 PARSENT ce fichier (concaténé à
+   `tokens/echelles.css`, voisin de premier niveau) plutôt que d'en recopier le
+   contenu. « Un contrôle qui a sa propre copie des valeurs valide sa copie »
+   (spec §7.1).
+
+   ── TROIS BLOCS, ET L'ORDRE COMPTE — ENTIÈREMENT DANS CE FICHIER ──────────
+   ① `:root`                                        palette SOMBRE, sans condition
+   ② `@media (prefers-color-scheme: light)`         palette CLAIRE, par préférence système
+      avec `:root:not([data-theme="sombre"])`
+   ③ `:root[data-theme="clair"]`                    palette CLAIRE, par choix explicite
+
+   Le sombre est le bloc SANS condition : c'est lui qui porte aussi les sept
+   tokens hors thème, que les deux blocs clairs ne redéclarent jamais.
+   L'ABSENCE de `data-theme` signifie « systeme » — voir `theme.ts`.
+
+   ⚠️ LA PALETTE CLAIRE EST ÉCRITE DEUX FOIS, ce qui est le coût du choix à
+   trois états du §4.2. Rien d'autre que le contrôle §7.4
+   (`client/outils/blocs-de-theme.mjs`) n'empêche les deux copies de diverger :
+   toute modification de l'une va dans l'autre, sans exception.
+
+   ⚠️ `color-scheme` SUIT LE THÈME (divergence D9) et n'est PAS un token `--*` :
+   il ne compte ni dans l'égalité d'ensembles de §7.4, ni dans les orphelins de
+   §7.6, et il est vérifié à part par un test de `tokens.ts`. Il décide de
+   l'apparence NATIVE des contrôles de formulaire — `client/connexion.html`
+   porte deux `<input>` dont un `type="password"` —, donc une page claire dont
+   les champs resteraient en rendu sombre serait le défaut le plus visible que
+   ce socle puisse introduire.
+
+   ⚠️ CE FICHIER NE PORTE AUCUNE ÉCHELLE : les crans typographiques,
+   l'espacement, les rayons, les durées, les épaisseurs de trait et les piles
+   de polices vivent dans `tokens/echelles.css`, son voisin. Les deux sont
+   déclarés dans un `:root {}` SÉPARÉ chacun ; le navigateur les fusionne par
+   le cascade, comme il fusionnait déjà les trois blocs ci-dessus au sein d'un
+   seul fichier avant ce découpage. `tokens.ts::lireBlocsDeTheme` en fait
+   autant côté lecture : deux occurrences de `:root {}` SANS CONDITION portant
+   le même nom `racine` sont FUSIONNÉES en un seul bloc logique, tokens et
+   corps unis — c'est ce que `client/src/design/tokens.test.ts` éprouve
+   directement, et ce que `reprise.test.ts` exerce en lisant un token de
+   COULEUR et un token d'ÉCHELLE sur le MÊME bloc `racine`.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+    color-scheme: dark;
+
+    /* ── Palette SOMBRE — quatorze couleurs (§4.5, plus `--accent-survol`) ────
+       ⚠️ `--fond-0` et `--texte-fort` reprennent EXACTEMENT les deux valeurs
+       déjà en place avant le socle (`style.css:3-4` : `--surface: #0b0d10` et
+       `--text: #e6e8eb`). Le thème sombre du produit ne change pas de teinte,
+       il gagne des voisins. `client/src/design/reprise.test.ts` le compare
+       caractère pour caractère — ce n'est pas une affirmation. */
+    --fond-0: #0b0d10;
+    --fond-1: #14171c;
+    --fond-2: #1c2027;
+    --bord: #2a2f38;
+    --bord-fort: #6a7484;
+    --texte-fort: #e6e8eb;
+    --texte: #c3c8d0;
+    --texte-faible: #8b94a3;
+    --accent: #7aa2f7;
+    /* ⚠️ LA QUATORZIÈME COULEUR, ajoutée par S2 là où la spec §4.5 en fixait
+       treize, et la raison est un CONTRÔLE, pas un goût : la spec exige un état
+       de survol pour le bouton principal et ne donne aucune couleur pour le
+       dire. Les trois voies sans token neuf — `filter: brightness()`,
+       `opacity`, `color-mix(…, black)` — composent toutes la couleur AU RENDU,
+       donc hors de portée du §7.1 qui « ne vérifie pas les couleurs composées à
+       l'exécution » ; et la troisième est en outre REFUSÉE par le §7.2, qui
+       attrape le mot-clé `black` du côté valeur (mesuré sur un arbre jetable).
+       L'état le plus fréquent du produit serait alors le seul non mesuré.
+       Ici il l'est : deux paires de plus, 50 → 52, et le survol contraste
+       PLUS que le repos — 7,73 → 9,39 en sombre, 5,72 → 7,27 en clair.
+       ⚠️ Le CHOIX des deux teintes reste un jugement humain, comme celui de
+       `#7aa2f7` (§8) ; seul leur contraste est mesuré.
+       ⚠️ IL N'Y A PAS DE TOKEN D'ÉTAT ACTIF : l'appui se dit par le RETOUR au
+       repos — voir `design/primitives.css`. */
+    --accent-survol: #93b4f9;
+    --sur-accent: #0b0d10;
+    --succes: #6ec08a;
+    --alerte: #e0b55c;
+    --danger: #f07a7a;
+
+    /* ── Sept tokens HORS THÈME — déclarés une fois, jamais redéfinis ─────
+       Ils sont posés SUR LA VIDÉO, dont le contenu ne suit aucun thème : un
+       encadrement clair autour d'une image vidéo se lit comme un défaut
+       d'affichage. Ils sont donc identiques dans les deux thèmes, et c'est
+       l'exception nommée au point 2 de §3.
+
+       ⚠️ LES SIX VOILES SONT HORS DES PAIRES DE CONTRASTE, et pas par oubli :
+       leur lisibilité dépend de la vidéo qui est dessous, qui n'est pas
+       connaissable. La spec §11 le déclare déjà — « `--voile-flottant` ne
+       suffit pas sur une vidéo très claire, non mesuré ».
+       ❌ ET CET ARGUMENT N'EST JUSTE QU'À MOITIÉ — réfuté par le sous-bloc S4,
+       tâche 4. Il vaut DU VOILE ; il ne vaut pas de L'ENCRE qu'on y pose, qui
+       est parfaitement connaissable dès que le fond l'est. Tant que personne
+       ne l'avait relevé, `base.css` posait `color: var(--texte-fort)` sur
+       `body`, `--texte-fort` valait `#10131a` en thème clair, et les cinq
+       éléments de la fenêtre de session écrivaient du quasi-noir sur un voile
+       quasi-noir. AUCUN des neuf contrôles ne pouvait le voir (le « huit »
+       d'origine était faux à la date même où la tâche 4 l'a écrit : voir
+       `design/contraste.ts`, qui porte le relevé).
+       ✅ D'où `--sur-voile`, le SEPTIÈME hors-thème, et la 53ᵉ paire de
+       contraste : `--sur-voile` sur `--video-letterbox`, la SEULE région où le
+       fond sous l'encre soit connu — les bandes que laisse `object-fit:
+       contain`. Au-dessus de l'image, le fond reste inconnaissable et la
+       réserve du §11 tient entière.
+
+       ⚠️ LES DEUX DERNIERS NE SONT PAS DES NOIRS, et ils ne se raccordent PAS
+       à `--danger` / `--alerte` (divergence D3). Les employer ferait CHANGER
+       DE COULEUR le bouton micro, et sa couleur suivrait le thème du produit
+       alors qu'elle est posée sur une vidéo qui n'en suit aucun. Ce serait un
+       changement d'apparence, que ce socle s'interdit.
+       ❌ « Le raccordement sémantique du micro appartient au sous-bloc S4 » —
+       écrit ici par S1, et S4 LE CORRIGE PLUTÔT QUE DE L'EXÉCUTER. Raccorder
+       `--voile-micro-actif` à `--danger` ferait suivre au bouton LE THÈME DU
+       PRODUIT alors qu'il est posé sur une vidéo qui n'en suit aucun : c'est
+       MOT POUR MOT l'argument que les six lignes ci-dessus emploient pour
+       tenir les six voiles hors thème. La phrase promettait donc ce que sa
+       propre page réfute. ✅ TRANCHÉ, et tranché NON : le micro reste hors
+       thème, et c'est sa raison — non pas une dette reportée. */
+    --video-letterbox: #000;
+    --voile-flottant: rgb(0 0 0 / 0.72);
+    --voile-bouton: rgb(0 0 0 / 0.55);
+    --voile-bouton-survol: rgb(0 0 0 / 0.75);
+    --voile-micro-actif: rgb(220 38 38 / 0.85);
+    --voile-micro-refuse: rgb(120 53 15 / 0.85);
+    /* L'ENCRE POSÉE SUR LES VOILES — hors thème pour la même raison qu'eux, et
+       AUCUN changement d'apparence en SOMBRE : `#e6e8eb` est exactement
+       `--texte-fort` de la racine, soixante-quinze lignes plus haut, et
+       exactement l'encre que la fenêtre de session portait avant le socle
+       (`style.css:4`, `--text: #e6e8eb`). En CLAIR, c'est la réparation du
+       défaut ci-dessus. */
+    --sur-voile: #e6e8eb;
+}
+
+/* Palette CLAIRE ①/② — par préférence système.
+   Le `:not([data-theme="sombre"])` laisse un choix explicite de sombre
+   l'emporter sur la préférence du système. */
+@media (prefers-color-scheme: light) {
+    :root:not([data-theme="sombre"]) {
+        color-scheme: light;
+
+        --fond-0: #ffffff;
+        --fond-1: #f6f7f9;
+        --fond-2: #eceef2;
+        --bord: #d5dae2;
+        --bord-fort: #7d8695;
+        --texte-fort: #10131a;
+        --texte: #3d4450;
+        --texte-faible: #5c6675;
+        --accent: #2f5fd0;
+        --accent-survol: #2650b4;
+        --sur-accent: #ffffff;
+        --succes: #1d7a4a;
+        --alerte: #8a5a00;
+        --danger: #c02b2b;
+    }
+}
+
+/* Palette CLAIRE ②/② — par choix explicite, l'attribut posé par `theme.ts`.
+   ⚠️ CE BLOC DOIT ÊTRE MOT POUR MOT IDENTIQUE À CELUI CI-DESSUS. Le contrôle
+   §7.4 vérifie l'égalité des ENSEMBLES DE NOMS dans les deux sens ; il ne
+   compare pas les VALEURS — deux copies aux mêmes noms mais aux teintes
+   divergentes passeraient. C'est une règle de revue, comme le §8 en nomme
+   d'autres. */
+:root[data-theme="clair"] {
+    color-scheme: light;
+
+    --fond-0: #ffffff;
+    --fond-1: #f6f7f9;
+    --fond-2: #eceef2;
+    --bord: #d5dae2;
+    --bord-fort: #7d8695;
+    --texte-fort: #10131a;
+    --texte: #3d4450;
+    --texte-faible: #5c6675;
+    --accent: #2f5fd0;
+    --accent-survol: #2650b4;
+    --sur-accent: #ffffff;
+    --succes: #1d7a4a;
+    --alerte: #8a5a00;
+    --danger: #c02b2b;
+}

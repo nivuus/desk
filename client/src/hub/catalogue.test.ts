@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import tokensCss from '../design/tokens.css?raw';
+import tokensCss from '../design/tokens/couleurs.css?raw';
 import {
     lancerApplication,
     listerVms,
@@ -36,13 +36,14 @@ function faux(reponses: Record<string, Partial<ReponseHttp>>): {
 /// 🔴 AUCUNE COULEUR N'EST ÉCRITE DANS CE FICHIER, ET §7.2 L'EXIGE : son
 /// balayage couvre les `.ts` autant que les `.css`, et il a relevé deux
 /// littérales que ce test portait. **Élargir son exclusion aurait satisfait le
-/// contrôle en le VIDANT** ; la valeur est donc LUE sur `tokens.css`, comme
+/// contrôle en le VIDANT** ; la valeur est donc LUE sur `tokens/couleurs.css`
+/// (`tokens.css` avant l'extraction de la tâche 6, 25 août 2026), comme
 /// dans `manifeste.test.ts` — il n'existe qu'une source de vérité pour une
 /// couleur.
 const ACCENT = (() => {
     const racine = tokensCss.slice(tokensCss.indexOf(':root'));
     const trouve = /--accent:\s*([^;]+);/.exec(racine);
-    if (trouve === null) throw new Error('tokens.css ne declare plus --accent');
+    if (trouve === null) throw new Error('tokens/couleurs.css ne declare plus --accent');
     return trouve[1].trim();
 })();
 
