@@ -187,11 +187,23 @@ pub(super) fn armer_les_gardes(sondeur: &mut Sondeur) {
 /// `Err` que si le receveur a été lâché — ce qui n'a pas encore pu arriver.
 /// Appeler `oublier` ici retirerait une session qui vient de naître.
 ///
-/// ⚠️ **Le REFUS de file pleine ne peut pas s'y produire non plus** (borne de
-/// `file.rs`, 25 août 2026) : la file de ce canal vient d'être créée, elle est
-/// vide. Le `let _ =` ci-dessous ignore donc une valeur dont les deux cas
-/// d'échec sont structurellement inatteignables ici, et c'est pour cela qu'il
-/// reste juste.
+/// ⚠️ **Le REFUS de file pleine ne peut pas s'y produire non plus** — mais
+/// **par un COMPTAGE, pas par la prémisse fausse qu'on avait d'abord écrite.**
+///
+/// ❌ ~~La file de ce canal vient d'être créée, elle est vide.~~ **FAUX**, et
+/// le round de correction 2 l'a mesuré par une sonde : cette fonction est
+/// appelée **en dernier** dans `inscrire`, donc APRÈS `distribuer`,
+/// `distribuer_les_parts` et `distribuer_l_audio`, qui ont déjà déposé dans ce
+/// même canal — la file contient au moins une `Part`.
+///
+/// 🔵 **LE COMPTAGE, qui lui tient.** Entre la création du canal et cet appel,
+/// `inscrire` ne peut déposer que trois messages pour CETTE session : au plus
+/// un `Sommeil` (le `Reveiller` que son inscription engendre, s'il y a une
+/// place), au plus une `Part` (`distribuer_les_parts` n'émet que si la valeur
+/// a changé), au plus un `Audio` (même filtre). **Trois au plus, contre
+/// `PROFONDEUR_MAX` = 64.** Le refus est donc inatteignable avec une marge de
+/// 61 messages — et si un jour un quatrième émetteur s'intercalait ici, le
+/// `match` ci-dessous resterait juste, il ne ferait que perdre une annonce.
 pub(super) fn emettre_l_etat_courant(garde: &mut MutexGuard<'static, Etat>, session: &str) {
     let Some(annonce) = garde.dernier_presse_papier.clone() else {
         return;

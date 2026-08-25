@@ -76,9 +76,17 @@ fn derniere_part(canal: &ReceveurSession) -> Option<u32> {
 /// `fenetre/transitions.rs` écrit « rien à faire localement » pour `Part`
 /// comme pour `Audio`, seul `Sommeil` ayant un effet local. Les deux
 /// politiques convergent vers le même état final, et la valeur livrée est
-/// dans les deux cas la dernière calculée. La borne du désordre est d'UN
-/// message, sur une fenêtre qui n'encode pas encore (elle attend son
-/// réveil).
+/// dans les deux cas la dernière calculée.
+///
+/// ⚠️ ~~La borne du désordre est d'UN message.~~ **VRAI DE CE TEST, FAUX EN
+/// GÉNÉRAL** (round de correction 2) : la coalescence en place fait remonter
+/// la valeur à la position du créneau le plus ancien, donc par-dessus jusqu'à
+/// `PROFONDEUR_MAX − 1` messages incoalescables. Le sauter d'un seul message
+/// est ce que ce test-ci observe, pas une borne du mécanisme — et l'écrire
+/// dans le paragraphe qui prétend JUSTIFIER le choix était le pire endroit
+/// pour une affirmation non établie. **Ce qui justifie le choix est
+/// au-dessus, et ne dépend d'aucune borne** : ces variantes sont relayées,
+/// pas appliquées, et la valeur livrée est la dernière calculée.
 #[test]
 fn une_session_qui_s_eveille_recoit_la_part_d_une_eveillee_et_une_seule() {
     let _verrou = verrouiller_pour_le_test();
@@ -271,12 +279,21 @@ fn un_rattachement_a_topologie_inchangee_renvoie_une_part_sur_le_canal_neuf() {
 /// été mémorisée à tort. Les deux premières passent des deux côtés : elles
 /// établissent la précondition (la file est bien pleine, la part n'est
 /// bien pas livrée), sans quoi la troisième ne mesurerait rien.
+///
+/// ⚠️ **RÉÉCRIT AU ROUND 2** : il provoquait la part neuve par un `signaler`
+/// qui ÉVEILLE la session. Depuis que `distribuer` rend au vivier l'état d'un
+/// ordre non déposé, ce `Reveiller` refusé est ANNULÉ — la session redevient
+/// endormie, sa part retombe au plancher DÉJÀ mémorisé, et plus aucune part
+/// n'est même tentée : le test mesurait alors le vide. Il provoque désormais
+/// la part neuve **sans toucher à l'éveil**, par une seconde session qui
+/// prend sa part du budget partagé.
 #[test]
 fn une_part_refusee_n_est_pas_memorisee_et_repart_au_tour_suivant() {
     let _verrou = verrouiller_pour_le_test();
     let (canal, generation) = inscrire("t17-refus", 6400);
-    // On part d'une file vide et d'une mémoire déjà posée par
-    // l'inscription : c'est l'état ordinaire d'une session vivante.
+    // La session s'éveille D'ABORD, file libre : sa part d'éveillée part et se
+    // mémorise normalement. C'est l'état ordinaire dont on part.
+    signaler("t17-refus", true, true);
     let _ = canal.vider();
 
     // Sature la file par des messages INCOALESCABLES — `Sommeil` ne se
@@ -289,9 +306,10 @@ fn une_part_refusee_n_est_pas_memorisee_et_repart_au_tour_suivant() {
         }
     }
 
-    // La session s'éveille : sa part passe du plancher au budget entier,
-    // donc une part NEUVE est calculée — et REFUSÉE, la file étant pleine.
-    signaler("t17-refus", true, true);
+    // Une seconde session prend sa part du budget : celle de "t17-refus"
+    // CHANGE, donc une part neuve est calculée pour elle — et REFUSÉE, sa file
+    // étant pleine. Son éveil, lui, ne bouge pas.
+    let (voisine, generation_voisine) = inscrire("t17-voisine", 6401);
 
     // La fenêtre reprend sa lecture. Aucune part ne s'y trouve : elle n'a
     // jamais été déposée.
@@ -321,5 +339,7 @@ fn une_part_refusee_n_est_pas_memorisee_et_repart_au_tour_suivant() {
         "une part refusée doit être RÉÉMISE au tour suivant : elle n'a jamais été livrée"
     );
 
+    retirer("t17-voisine", generation_voisine);
+    drop(voisine);
     retirer("t17-refus", generation);
 }

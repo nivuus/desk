@@ -28,7 +28,7 @@ use std::time::Instant;
 
 use crate::capteur::vivier::{Ordre, Vivier, HYSTERESIS, PLAFOND_EVEIL};
 
-use super::file::{canal_de_session, Depot, EmetteurSession, Envoi, ReceveurSession};
+use super::file::{canal_de_session, EmetteurSession, Envoi, ReceveurSession};
 use super::{parts, porteurs, presse_papier, purger_les_inaptitudes, retirer_est_perime, Message, PERIODE_REARBITRAGE};
 
 pub(super) struct Etat {
@@ -236,11 +236,22 @@ pub(super) fn distribuer(garde: &mut MutexGuard<'static, Etat>, ordres: Vec<(Str
         let mut suite = Vec::new();
         for (session, ordre) in a_traiter {
             let issue = match garde.canaux.get(&session) {
-                Some(canal) => canal.envoyer(Message::Sommeil(ordre)),
-                None => Envoi::Depose(Depot::Empilee),
+                Some(canal) => Some(canal.envoyer(Message::Sommeil(ordre))),
+                // 🔴 `None` N'EST PAS UNE LIVRAISON, ET LE ROUND 2 A CORRIGÉ
+                // CETTE RÉDACTION. Le comportement est celui d'avant (l'ancien
+                // `None => false` : ne rien purger, la session n'est déjà plus
+                // dans `canaux`), mais l'écrire `Envoi::Depose(...)` fabriquait
+                // une livraison et rendait cette perte INDISCERNABLE d'un vrai
+                // dépôt. Un `Option` la nomme pour ce qu'elle est : il n'y a
+                // eu aucun envoi.
+                None => None,
             };
             let rompu = match issue {
-                Envoi::Depose(_) => false,
+                // Aucun canal : rien n'est parti, et il n'y a rien à purger —
+                // `oublier` a déjà retiré cette session. La tracer ferait une
+                // ligne par ordre à chaque retrait, sur un chemin nominal.
+                None => false,
+                Some(Envoi::Depose(_)) => false,
                 // 🔴 UN ORDRE DE SOMMEIL REFUSÉ EST PERDU, ET IL NE DOIT PAS
                 // L'ÊTRE EN SILENCE (correctif du round 1 : il l'était).
                 // `Sommeil` est la SEULE des quatre variantes que la fenêtre
@@ -256,31 +267,52 @@ pub(super) fn distribuer(garde: &mut MutexGuard<'static, Etat>, ordres: Vec<(Str
                 // retard, et la purger tuerait l'arbitrage de la fenêtre la
                 // plus en peine.
                 //
-                // 🔴 **CE QUI RESTE DÛ, ET QUI N'EST PAS IMPROVISÉ ICI** : le
-                // remède serait de rendre sa place au vivier, comme le fait
-                // `echec_de_reveil` pour un réveil refusé PAR la fenêtre. Il
-                // ne peut pas être appliqué dans cette boucle sans en défaire
-                // la preuve de terminaison écrite plus haut — celle-ci repose
-                // sur le fait qu'un nouveau lot n'est engendré que par un
-                // canal ROMPU, et que chaque rompu QUITTE `canaux` avant le
-                // tour suivant. Un ordre refusé, lui, ne retire rien et peut
-                // être refusé à nouveau : la boucle divergerait. Le cadrer,
-                // pas l'improviser en round de correction.
+                // 🔴 **CE QUI EST FAIT ICI EST « NE PAS MENTIR », PAS
+                // « RETENTER »**, et la distinction porte toute la décision.
+                // L'annulation ci-dessus rend au vivier l'état d'AVANT
+                // l'ordre : rien n'est réémis à l'intérieur de cette boucle,
+                // c'est le prochain arbitrage qui reprend, en voyant la
+                // fenêtre dans son ancien état. **La terminaison de la boucle
+                // n'est donc pas touchée du tout.**
+                //
+                // ⚠️ ~~Rendre sa place au vivier ne peut pas être appliqué ici
+                // sans que la boucle DIVERGE.~~ **CETTE PHRASE ÉTAIT PLUS
+                // FORTE QUE CE QUI ÉTAIT ÉTABLI, et le round de correction 2
+                // l'a réfutée par la mesure** : la troisième voie — appeler
+                // `echec_de_reveil` depuis la boucle — a été jouée, et la
+                // suite termine en 0,02 s. `REPIT_APRES_ECHEC` exclut la
+                // session des candidates, donc avec un `maintenant` capturé
+                // une seule fois, l'ensemble en répit croît strictement.
+                // **Ce qui est vrai, et rien de plus : la preuve de
+                // terminaison ÉCRITE PLUS HAUT ne couvre pas ce cas** — elle
+                // repose sur le fait qu'un nouveau lot n'est engendré que par
+                // un canal ROMPU, et que chaque rompu QUITTE `canaux` avant le
+                // tour suivant. C'est une preuve à refaire, pas une
+                // divergence. Le remède retenu ne pose pas la question, et il
+                // couvre en outre les DEUX sens là où `echec_de_reveil` ne
+                // couvre que le réveil.
                 //
                 // La trace est un `error!` et non un `warn!` : c'est une perte
                 // d'état non réparable. Elle n'est pas cadencée, à la
                 // différence de celle du refus, parce que `distribuer` n'émet
                 // un ordre que sur un CHANGEMENT d'arbitrage — jamais à chaque
                 // tour de roue.
-                Envoi::Refuse => {
+                Some(Envoi::Refuse) => {
+                    // 🔴 ON REND AU VIVIER L'ÉTAT D'AVANT L'ORDRE. Sans cela,
+                    // il aurait déjà écrit `eveillee` pour un ordre jamais
+                    // parti — le SIXIÈME site de mémorisation, trouvé au round
+                    // de correction 2. Voir `Vivier::annuler_ordre_non_livre`
+                    // pour les deux sens et ce que chacun coûte.
+                    garde.vivier.annuler_ordre_non_livre(&session, ordre);
                     tracing::error!(
-                        %session,
+                        session_cible = %session,
                         ?ordre,
-                        "ordre de sommeil PERDU : file de la fenêtre pleine, aucune réémission"
+                        "ordre de sommeil NON DEPOSE : file de la fenêtre pleine, \
+                         etat du vivier rendu, l'ordre repartira au prochain arbitrage"
                     );
                     false
                 }
-                Envoi::Rompu => true,
+                Some(Envoi::Rompu) => true,
             };
             if rompu {
                 suite.extend(oublier(garde, &session));
