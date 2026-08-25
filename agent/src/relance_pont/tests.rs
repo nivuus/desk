@@ -65,6 +65,22 @@ fn seul_le_premier_lancement_du_cycle_est_signale() {
     assert_eq!(etat.tentative(), 3, "le COMPTE, lui, continue de croître");
 }
 
+/// 🔴 **`EtatObserve` N'A AUCUN CONSOMMATEUR SUR L'HÔTE** (les trois seuls
+/// vivent dans `surveillance_pont.rs` et `lanceur/pont.rs`, tous deux
+/// `#[cfg(windows)]` — voir la doc de tête du module). Sans ce test, son
+/// ré-export ET l'enum elle-même sont du code mort pour `cargo check` côté
+/// hôte : deux avertissements, dont un NEUF depuis l'extraction — la classe
+/// même que `CLAUDE.md` nomme pour les extractions (« elle laisse ses
+/// imports derrière elle »).
+#[test]
+fn etat_observe_distingue_mort_de_vivant_et_d_absent_par_son_issue() {
+    let mort_propre = EtatObserve::Mort(IssueDeSortie::Propre);
+    let mort_erreur = EtatObserve::Mort(IssueDeSortie::Erreur);
+    assert_ne!(mort_propre, mort_erreur, "l'issue distingue deux morts");
+    assert_ne!(EtatObserve::Vivant, EtatObserve::Absent);
+    assert_ne!(EtatObserve::Vivant, mort_propre);
+}
+
 /// La traduction du code de sortie, dans les trois sens — y compris celui
 /// qui ne court PAS sur la cible (voir la doc de `depuis_le_code`).
 #[test]
@@ -159,11 +175,20 @@ fn stable_pendant_un_sommeil_de_refus_ne_declare_jamais_stable() {
 /// au-delà du sommeil de refus le plus long possible — est bien déclaré
 /// stable, et une seule fois.
 ///
-/// 🔴 **ET IL TIENT UNE PROPRIÉTÉ QUE LE ROUND 4 A DÛ RÉTABLIR** : après
-/// cette déclaration de stabilité, `cycle_signale` est retombé. Un pont qui
-/// se termine alors PROPREMENT doit malgré tout réarmer son repli — la garde
-/// sur `cycle_signale` que le round 3 posait sur `reinitialiser_le_repli`
-/// l'en aurait empêché, et la panne suivante aurait hérité d'un plafond.
+/// 🔴 **CE QU'IL TENAIT AU ROUND 4 EST DEVENU INATTEIGNABLE AU ROUND 5, ET
+/// CE N'EST PAS UN TROU DE COUVERTURE — C'EST UNE MEILLEURE GARANTIE.** La
+/// version précédente visait l'état `cycle_signale == false && tentative >
+/// 0` (un pont déclaré stable puis terminé proprement, la garde du round 3
+/// sur `reinitialiser_le_repli` bloquant alors le réarmement) en appelant
+/// `reinitialiser_le_repli(Propre)` APRÈS `stable`. Depuis que `stable()`
+/// remet ELLE-MÊME `tentative` à zéro dans sa branche vraie (voir sa doc),
+/// cet appel ne pouvait plus rien prouver : `tentative` était déjà à zéro
+/// AVANT lui, quoi que fasse `reinitialiser_le_repli` — prouvé par
+/// mutation. La garantie réelle est l'INVARIANT qui rend cet état
+/// inatteignable, tenu directement ci-dessous plutôt que déduit : `stable()
+/// == true` remet `tentative` à zéro DANS LE MÊME GESTE qui fait retomber
+/// `cycle_signale`, donc il n'existe plus d'instant où `cycle_signale ==
+/// false` et `tentative > 0` à la fois.
 #[test]
 fn un_processus_reellement_stable_finit_par_etre_declare_stable_une_fois() {
     let mut etat = EtatRelance::neuve();
@@ -171,18 +196,17 @@ fn un_processus_reellement_stable_finit_par_etre_declare_stable_une_fois() {
     etat.tentative_lancee(); // le repli a grandi : tentative = 2
     assert!(!etat.stable(SEUIL_STABILITE_MS - 1));
     assert!(etat.stable(SEUIL_STABILITE_MS));
+    assert_eq!(
+        etat.tentative(),
+        0,
+        "l'invariant qui remplace la garantie visée au round 4 : `stable() \
+         == true` remet `tentative` à zéro dans le MÊME geste qui fait \
+         retomber `cycle_signale` — l'état que ce test visait avant \
+         (cycle retombé, tentative encore positive) n'existe plus"
+    );
     // Un second appel, cycle déjà retombé : plus rien à signaler tant
     // qu'aucune tentative neuve n'a eu lieu.
     assert!(!etat.stable(SEUIL_STABILITE_MS * 2));
-    // Et la sortie propre qui suit réarme, cycle retombé ou non.
-    etat.reinitialiser_le_repli(IssueDeSortie::Propre);
-    assert_eq!(
-        etat.espacement_ms(),
-        ESPACEMENT_PLANCHER_MS,
-        "une sortie propre après une stabilité déclarée doit réarmer : \
-         la garde `cycle_signale` ne peut jamais BLOQUER un réarmement, \
-         `tentative > 0` impliquant `cycle_signale == true`"
-    );
 }
 
 /// Sans cycle en cours (aucune tentative lancée depuis la dernière
@@ -339,10 +363,15 @@ fn un_pont_qui_meurt_en_erreur_apres_une_demi_seconde_ne_martele_pas() {
 /// PORTE DEPUIS LE ROUND 3 ÉTAIT FAUSSE POUR UN CAS ».** Un pont refusé six
 /// fois (espacement au PLAFOND), puis relancé une septième fois et qui SERT
 /// TROIS JOURS, puis qu'une coupure réseau tue — donc une mort EN ERREUR,
-/// qu'aucune sortie propre ne vient racheter — doit reprendre **en une
-/// demi-seconde, pas en trente**. C'est mot pour mot ce que
-/// `reinitialiser_le_repli` revendique, et ce que le round 4 avait laissé
-/// faux pour ce cas précis en retirant la durée EN BLOC.
+/// qu'aucune sortie propre ne vient racheter — doit voir son
+/// `espacement_ms()` RETOMBER au plancher plutôt que rester au plafond
+/// d'une panne déjà résolue. ⚠️ **CE N'EST PAS « reprendre en une
+/// demi-seconde, pas en trente » : la revue finale a mesuré, au niveau
+/// boucle, que la PREMIÈRE reprise après la coupure est immédiate dans les
+/// DEUX cas** (`doit_relancer` compare l'écoulé depuis le LANCEMENT, et
+/// trois jours de vie dépassent tout repli) — **c'est la RAMPE de
+/// l'épisode SUIVANT qui repart du plancher**, et ce test l'éprouve au
+/// niveau de l'état PUR, un cran avant la boucle.
 ///
 /// 🔵 **CE QUI REND LA DURÉE LÉGITIME ICI, LÀ OÙ ELLE NE L'ÉTAIT PAS AU
 /// ROUND 3** : le seuil franchi est `SEUIL_STABILITE_MS` (35 s), qu'un pont
@@ -370,10 +399,12 @@ fn une_longue_vie_stable_puis_une_mort_en_erreur_reprend_au_plancher() {
     assert_eq!(
         etat.espacement_ms(),
         ESPACEMENT_PLANCHER_MS,
-        "après trois jours de service, une coupure réseau doit se reprendre \
-         en une demi-seconde et non en {REPLI_MAX_MS} ms : c'est la citation \
-         que `reinitialiser_le_repli` porte, et que seule `stable` peut \
-         tenir pour une mort EN ERREUR"
+        "après trois jours de service, une coupure réseau doit retomber à \
+         l'espacement PLANCHER et non rester au plafond de {REPLI_MAX_MS} ms \
+         — la RAMPE de l'épisode de refus suivant, pas la première reprise \
+         (immédiate dans les deux cas) : c'est la citation que \
+         `reinitialiser_le_repli` porte, et que seule `stable` peut tenir \
+         pour une mort EN ERREUR"
     );
     assert!(etat.doit_relancer(ESPACEMENT_PLANCHER_MS));
 }

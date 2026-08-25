@@ -210,13 +210,21 @@ pub const ESPACEMENT_PLANCHER_MS: u64 = 500;
 ///    sortir ;
 /// 2. **TRACE** — le moment où `cycle_signale` retombe, donc où un épisode
 ///    de martèlement redevient bruyant sur son PROCHAIN lancement ;
-/// 3. 🔴 **CADENCE, depuis le round de correction 5** — [`EtatRelance::
-///    stable`] remet `tentative` à zéro dans sa branche vraie. C'est ce qui
-///    fait qu'un pont vivant **trois jours**, puis coupé par une panne
-///    réseau (donc mort EN ERREUR, que `reinitialiser_le_repli` refuse à bon
-///    droit de tenir pour une preuve), reprenne en une demi-seconde et non
-///    en trente — la propriété que la citation de `reinitialiser_le_repli`
-///    revendique, et que le round 4 avait laissée fausse pour ce cas.
+/// 3. 🔴 **CADENCE, depuis le round de correction 5 — ET SA JUSTIFICATION
+///    D'ORIGINE, RÉFUTÉE PAR LA MESURE, EST CORRIGÉE ICI PAR LA REVUE
+///    FINALE.** [`EtatRelance::stable`] remet `tentative` à zéro dans sa
+///    branche vraie. **Ce n'est PAS parce que, sans cette ligne, la reprise
+///    après une coupure attendrait 30 s** : `doit_relancer` compare
+///    l'écoulé depuis le LANCEMENT, donc trois jours de vie dépassent tout
+///    repli et la PREMIÈRE reprise est immédiate dans les deux cas.
+///    **Mesuré au niveau boucle** (6 refus → vie de trois jours → coupure
+///    en erreur, relances APRÈS la coupure) : sans la ligne, 0 / 30 000 /
+///    60 000 / 90 000 ms ; avec elle, 0 / 1 000 / 3 000 / 7 000 ms. **Ce
+///    que la ligne change réellement : la RAMPE de l'épisode de refus
+///    SUIVANT repart du plancher au lieu de reprendre au plafond d'une
+///    panne déjà résolue** — utile, mais « en une demi-seconde et non en
+///    trente » n'est **jamais** observé : c'est le deuxième essai, pas le
+///    premier, que cette ligne raccourcit.
 ///
 /// ⚠️ **POURQUOI CE N'EST PAS LE DÉFAUT DU ROUND 3, QUI ÉTAIT EXACTEMENT CE
 /// MÉCANISME.** Là-bas, la cadence était gouvernée par un seuil de 500 ms,
@@ -342,6 +350,13 @@ impl EtatRelance {
     /// réseau — le repli restait à **30 000 ms**, exactement le défaut que le
     /// round 3 existait pour corriger, rouvert pour le cas mort-en-erreur.
     ///
+    /// ⚠️ **CE « 30 000 ms » EST UN `espacement_ms()` NOMINAL, PAS UNE
+    /// ATTENTE QUE LE SUPERVISEUR IMPOSE** — voir la mesure au niveau boucle
+    /// dans la doc de [`SEUIL_STABILITE_MS`] (point 3) : la PREMIÈRE reprise
+    /// après une coupure est immédiate dans les deux cas (`doit_relancer`
+    /// compare l'écoulé depuis le LANCEMENT), et c'est la RAMPE des reprises
+    /// SUIVANTES que cette remise à zéro corrige.
+    ///
     /// **La citation est désormais tenue par DEUX portes, et il en faut
     /// deux** : celle-ci, `IssueDeSortie::Propre`, pour une session courte
     /// qui se termine bien ; et [`Self::stable`], qui remet `tentative` à
@@ -370,8 +385,8 @@ impl EtatRelance {
 
     /// Le processus est vu VIVANT depuis `ecoule_ms` millisecondes écoulées
     /// depuis la dernière tentative. Rend `true` — et RÉARME `cycle_signale`
-    /// pour le prochain cycle (jamais `tentative`, voir plus bas) — SI ET
-    /// SEULEMENT SI un cycle était en cours ET que `ecoule_ms` dépasse
+    /// pour le prochain cycle, ET remet `tentative` à zéro (voir plus bas) —
+    /// SI ET SEULEMENT SI un cycle était en cours ET que `ecoule_ms` dépasse
     /// `SEUIL_STABILITE_MS`, **jamais** le seul `ESPACEMENT_PLANCHER_MS`.
     ///
     /// 🔴 **C'EST LA LIGNE QUI CORRIGE LE ROUND DE CORRECTION 2** : avant lui,
