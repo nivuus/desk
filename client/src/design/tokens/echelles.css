@@ -22,6 +22,24 @@
    et `reprise.test.ts` pour l'exercice réel : il lit `--fond-0` (une couleur,
    déclarée dans `couleurs.css`) et `--e-3` (une échelle, déclarée ici) sur le
    MÊME bloc `racine`.
+   🔴 CETTE FUSION BORNE À 3 LE COMPTE DE BLOCS LOGIQUES : elle ne peut donc
+   plus dénoncer un `:root {}` de trop ajouté ici par erreur.
+   `tokens.ts::lireBlocsBruts` (SANS fusion) est le compte qui varie encore
+   avec le nombre d'occurrences physiques ; `tokens.test.ts` l'éprouve sur le
+   contenu RÉEL des deux fichiers.
+
+   ⚠️ CET ORDRE (APRÈS `couleurs.css`, donc après les deux blocs clairs dans
+   le document) EST NOUVEAU depuis ce découpage — avant, ces 31 tokens
+   vivaient dans le PREMIER `:root {}` du fichier unique, donc AVANT les
+   blocs clairs. Mesuré : AUCUN nom n'est commun aux deux fichiers, donc SANS
+   EFFET aujourd'hui — mais un token d'échelle qu'un futur bloc clair
+   surchargerait serait désormais défait par le cascade dans l'autre sens.
+   Voir la même note, plus détaillée, dans `tokens.css`.
+
+   ⚠️ PORTE ARMÉE À 300 LIGNES : si ce fichier les atteint, séparer
+   `tokens/typographie.css` (polices, échelle typographique, interlignes) de
+   `tokens/dimensions.css` (espacement, contenants, rayons, durées,
+   épaisseurs de trait) — AVANT l'addition qui franchirait, jamais après.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 :root {
