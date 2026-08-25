@@ -426,8 +426,25 @@ socket.addEventListener('message', (evenement) => {
     if (message.type === 'fenetre-ouverte') bureau.fenetreOuverte(message.session, message.titre);
     else if (message.type === 'fenetre-fermee') bureau.fenetreFermee(message.session);
     else if (message.type === 'refus') bureau.refus(message.titre, message.motif);
+    // 🔴 CORRECTIF DU LEGS DES FREINS MANQUANTS (round de correction 1,
+    // critique ④) — AUCUNE BRANCHE NE RECONNAISSAIT `type:'error'` AVANT CE
+    // LOT, alors que `signaling/relais.ts` peut désormais le rendre AVANT
+    // même de fermer le socket (refus de volume `trop-de-requetes`, voir son
+    // `retryApresS`). Sans cette branche, la page restait affichée « bureau
+    // connecté » et mourait en silence à la fermeture qui suit.
+    else if (message.type === 'error') {
+        bureau.canalDeControleRefuse(message.reason, message.motif, message.retryApresS);
+    }
     redessiner();
 });
+
+// 🔴 CORRECTIF DU LEGS DES FREINS MANQUANTS (round de correction 1,
+// critique ④) — CE SOCKET N'INSTALLAIT NI `close` NI `error` AVANT CE LOT.
+// Une perte de connexion (frein, redémarrage du service, coupure réseau)
+// laissait le bandeau à « bureau connecté » indéfiniment : c'est exactement
+// la panne muette que ce dépôt combat (`CLAUDE.md`), et c'est ce lot lui-même
+// qui l'ouvre en freinant `/signal`.
+socket.addEventListener('close', () => bureau.canalDeControlePerdu());
 
 // Les pages d'application annoncent leur viewport par `postMessage` sur leur
 // ouvreuse — c'est-à-dire ici.

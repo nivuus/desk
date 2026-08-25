@@ -314,7 +314,7 @@ describe('le budget « toute requête » du relais', () => {
         // indéfiniment — ce relais n'a aucune notion d'échec à ce stade.
         const sockets: WebSocket[] = [];
         try {
-            let dernierMessage: { type: string; motif?: string } | undefined;
+            let dernierMessage: { type: string; motif?: string; retryApresS?: number } | undefined;
             for (let i = 0; i <= REQUETES_MAX_ADRESSE; i++) {
                 const ws = new WebSocket(`ws://127.0.0.1:${server.port}`);
                 sockets.push(ws);
@@ -343,6 +343,12 @@ describe('le budget « toute requête » du relais', () => {
             }
             expect(dernierMessage?.type).toBe('error');
             expect(dernierMessage?.motif).toBe('trop-de-requetes');
+            // 🔴 round de correction 1, critique ② : sans `retryApresS`,
+            // l'agent qui se fait refuser ici ne peut pas savoir combien de
+            // temps attendre avant de retenter — c'est la moitié la moins
+            // chère du remède au verrouillage documenté par
+            // `agent/src/superviseur/boucle/surveillance_pont.rs`.
+            expect(dernierMessage?.retryApresS).toBeGreaterThan(0);
         } finally {
             for (const s of sockets) s.close();
         }

@@ -99,8 +99,16 @@ function isJsonObject(value: unknown): value is Record<string, unknown> {
 /// ET SEULEMENT SI le frein vient de mordre — même règle et même raison que
 /// `http/routes-auth.ts::compterLEchec` : la connexion suivante sera refusée
 /// tout en haut du gestionnaire `connection`, avant de jamais rappeler cette
-/// fonction. Une ligne par connexion rendrait le service AMPLIFICATEUR sur le
-/// chemin même qu'on ferme (`CLAUDE.md`, chantier TURN).
+/// fonction.
+///
+/// ⚠️ **CETTE LIGNE JOURNALISE À LA TRANSITION, ET NON À CHAQUE CONNEXION
+/// ADMISE — c'est ce qui la distingue d'une trace par connexion.** Une ligne
+/// à CHAQUE connexion, même après que le frein a commencé à refuser, ferait
+/// écrire le service à un rythme que l'attaquant contrôle sans plus rien lui
+/// coûter — la règle du chantier TURN (`CLAUDE.md`) : « compter ou
+/// échantillonner, jamais tracer par paquet ». Journaliser à la transition
+/// ferme cela : une adresse martelée écrit UNE ligne, jamais une par
+/// connexion.
 function compterLaConnexion(
     frein: Frein,
     cles: readonly (readonly [string, Budget])[],
@@ -215,9 +223,16 @@ export function createSignalingServer(
         // aboutit, une ligne en base (`ObservateurDeSession`).
         // `TRAME_MAX_OCTETS` (`http/serveur.ts`) borne la taille d'un
         // message ; RIEN, avant ce lot, ne bornait le NOMBRE de connexions
-        // qu'une même adresse pouvait ouvrir — le legs que ce même fichier
-        // nommait déjà : « un pair peut toujours ouvrir BEAUCOUP DE
-        // CONNEXIONS … il ne compte pas les sockets ouverts et MUETS ».
+        // qu'une même adresse pouvait ouvrir sur CE chemin-ci.
+        //
+        // 🔴 **C'EST CE LOT QUI FERME LA MOITIÉ `/signal` DU LEGS QUE
+        // `http/serveur.ts` nommait — les SOCKETS, pas leur MUTISME.** Une
+        // connexion est désormais comptée qu'elle envoie un message ou non :
+        // c'est l'évènement `connection` lui-même qui coûte, pas le premier
+        // message. Voir la note corrigée de `TRAME_MAX_OCTETS` dans
+        // `http/serveur.ts` : elle distingue désormais `/signal` (borné ICI)
+        // et `/agent` (`agents/canal.ts`, où le frein n'est TOUJOURS consulté
+        // qu'au message — un pair muet y reste incompté).
         //
         // ⚠️ `requete?.socket.remoteAddress` PEUT ÊTRE ABSENT : la forme
         // `port` de cette fonction (`server.test.ts` depuis le jalon 1)
@@ -231,6 +246,11 @@ export function createSignalingServer(
                 : requete?.headers['x-forwarded-for'],
             proxyDeConfiance,
         );
+        // 🔴 UNE `PLATEFORME_PROXY_DE_CONFIANCE` MAL POSÉE FAIT DÉGÉNÉRER CE
+        // FREIN EN FREIN GLOBAL, ET SA GRAVITÉ A CHANGÉ AVEC CE LOT — voir le
+        // paragraphe complet chez `http/routes-vm.ts` (même clé
+        // `BUDGET_REQUETES`, même témoin : la ligne `frein-requetes` qui
+        // nomme l'adresse retenue), jamais recopié pour ne pas diverger.
         const clesRequetes: readonly (readonly [string, Budget])[] = [
             [cleRequetes(adresse), BUDGET_REQUETES],
         ];
@@ -241,10 +261,20 @@ export function createSignalingServer(
             // ⚠️ ENVOYER PUIS FERMER, jamais l'inverse — même règle que sur
             // un refus de poignée de main plus bas : un `terminate()`
             // immédiat tronquerait le message.
+            //
+            // 🔴 `retryApresS` EST DÉSORMAIS PORTÉ SUR LE FIL (round de
+            // correction 1, critique ②) — LES DEUX ROUTES HTTP FREINÉES
+            // (`routes-vm.ts`, `routes-session.ts`) LE POSENT DÉJÀ, EN
+            // `Retry-After`, DEPUIS CE MÊME LOT ; SEUL CE REFUS WebSocket EN
+            // ÉTAIT PRIVÉ. Sans lui, l'agent ne peut deviner combien de temps
+            // attendre — c'est la moitié la moins chère du remède au
+            // verrouillage documenté par `surveillance_pont.rs`, l'autre
+            // moitié étant le repli exponentiel qu'il applique déjà.
             send(socket, {
                 type: 'error',
                 reason: 'trop de requêtes',
                 motif: 'trop-de-requetes',
+                retryApresS: verdictRequetes.retryApresS,
             });
             socket.close(1008, 'trop-de-requetes');
             return;

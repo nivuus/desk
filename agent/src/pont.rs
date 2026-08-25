@@ -81,7 +81,7 @@ pub async fn executer(config: crate::Config) -> anyhow::Result<()> {
     // Le socket et le `Rtc` **données seules** : ni piste, ni codec, ni BWE.
     let (socket, mut rtc) = transport::construire_rtc_donnees(config.local_ip)?;
 
-    let crate::signaling::SignalingHandle { mut offers, answers, closed, .. } =
+    let crate::signaling::SignalingHandle { mut offers, answers, closed, retry_apres_s, .. } =
         crate::signaling::run_signaling(
             &crate::signaling::url_du_relais(&config.signaling_url),
             &config.session_id,
@@ -89,7 +89,19 @@ pub async fn executer(config: crate::Config) -> anyhow::Result<()> {
         )
         .await?;
 
-    let offre = offers.recv().await.context("aucune offre SDP pour le pont fichiers")?;
+    // 🔴 CORRECTIF DU LEGS DES FREINS MANQUANTS (round de correction 1,
+    // critique ②) — LA MOITIÉ QUI HONORE `retryApresS`. Un refus de volume
+    // (`trop-de-requetes`) ferme le canal `offers` sans offre : `.recv()`
+    // rend `None`, et ce processus va mourir sur la ligne suivante. AVANT de
+    // rendre la main, on attend le délai que le relais a suggéré (borné,
+    // voir `honorer_retry_suggere`) : le temps que ce processus met à
+    // mourir compte dans l'espacement que `surveillance_pont.rs::EtatPont`
+    // mesure depuis son dernier LANCEMENT, sans qu'aucun canal ne franchisse
+    // la frontière de processus.
+    let Some(offre) = offers.recv().await else {
+        crate::signaling::honorer_retry_suggere(&retry_apres_s).await;
+        anyhow::bail!("aucune offre SDP pour le pont fichiers");
+    };
     let offre = str0m::change::SdpOffer::from_sdp_string(&offre)
         .map_err(|e| anyhow::anyhow!("offre SDP illisible : {e}"))?;
     let reponse = rtc

@@ -95,9 +95,17 @@ const CHEMIN_SIGNAL = '/signal';
 /// ordres de grandeur de marge. AUCUNE SDP RÉELLE N'A ÉTÉ MESURÉE pour poser
 /// ce chiffre, et le dire vaut mieux que de laisser croire à un calibrage.
 ///
-/// ⚠️ CE QU'ELLE NE FERME PAS, et qu'aucune tâche de P5 ne ferme : un pair
-/// peut toujours ouvrir BEAUCOUP DE CONNEXIONS. Le frein d'enrôlement en
-/// compte les tentatives ; il ne compte pas les sockets ouverts et MUETS.
+/// ⚠️ **CE QU'ELLE NE FERME PAS — CETTE PHRASE ÉTAIT DEVENUE FAUSSE DE MOITIÉ
+/// AU ROUND DE CORRECTION 1 (25 août 2026), qui a borné le NOMBRE de
+/// connexions sur `/signal` SEULEMENT.** Elle disait « un pair peut toujours
+/// ouvrir BEAUCOUP DE CONNEXIONS », vrai des deux chemins à l'écriture, plus
+/// vrai que d'un seul désormais : `/signal` (`signaling/relais.ts`) borne le
+/// nombre de connexions par adresse dès `connection`, AVANT le premier
+/// message (`securite/frein.ts::BUDGET_REQUETES`) ; `/agent`
+/// (`agents/canal.ts`) NE L'EST TOUJOURS PAS — son frein n'est consulté
+/// qu'au MESSAGE (une tentative `{vm, secret}`), jamais à la connexion, et
+/// un pair qui se tait après avoir ouvert n'est compté par rien, ni par lui
+/// ni par `deploiement/nginx.conf` (aucun `limit_conn`/`limit_req`).
 export const TRAME_MAX_OCTETS = 256 * 1024;
 
 export interface ServicePlateforme {

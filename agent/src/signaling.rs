@@ -35,6 +35,22 @@ pub struct SignalingHandle {
     /// dernière valeur compte, et l'appelant doit pouvoir le lire même s'il
     /// arrive après l'émission.
     pub ice_config: watch::Receiver<Option<ConfigIce>>,
+    /// 🔴 **NEUF — CORRECTIF DU LEGS DES FREINS MANQUANTS (round de
+    /// correction 1, critique ②), 25 août 2026.** Le nombre de secondes que
+    /// le relais demande d'attendre avant de retenter, quand le refus porte
+    /// le motif `trop-de-requetes` (`plateforme/src/signaling/relais.ts`,
+    /// champ `retryApresS`). `None` tant qu'aucun tel refus n'est arrivé, ou
+    /// si le champ était absent/illisible — un relais d'une version
+    /// antérieure à ce lot n'en envoie aucun.
+    ///
+    /// ⚠️ **CE N'EST PAS UN ORDRE, C'EST UNE INFORMATION** : rien ici ne fait
+    /// attendre qui que ce soit. C'est à l'appelant de la consulter avant de
+    /// mourir — voir `pont.rs::executer`, qui dort ce temps AVANT de rendre
+    /// son `Err`, de sorte que le superviseur (`surveillance_pont.rs`), qui
+    /// mesure l'espacement depuis le dernier LANCEMENT et non depuis la mort
+    /// du processus, ne relance jamais plus tôt que ce que le relais a
+    /// demandé — sans qu'aucun canal ne franchisse la frontière de processus.
+    pub retry_apres_s: watch::Receiver<Option<u64>>,
     /// Conservées pour que les deux tâches de fond ne soient pas
     /// complètement abandonnées : `demarrage.rs` ne les attend pas en
     /// fonctionnement normal (le transport ne dépend plus du signaling une
@@ -104,6 +120,7 @@ pub async fn run_signaling(
     // indéfiniment (voir les deux `select!` ci-dessous).
     let (closed_tx, closed_rx) = watch::channel(false);
     let (ice_tx, ice_config) = watch::channel::<Option<ConfigIce>>(None);
+    let (retry_apres_s_tx, retry_apres_s) = watch::channel::<Option<u64>>(None);
     let closed_tx_sender_side = closed_tx.clone();
     let closed_rx_sender_side = closed_rx.clone();
 
@@ -163,7 +180,23 @@ pub async fn run_signaling(
                 }
                 Some("peer-gone") => tracing::info!("le client s'est déconnecté"),
                 Some("error") => {
-                    tracing::error!(raison = %parsed["reason"], "erreur de signaling")
+                    // 🔴 `retryApresS` N'EST PORTÉ QUE SUR LE REFUS DE VOLUME
+                    // (`motif: "trop-de-requetes"`) — voir `relais.ts`. Un
+                    // refus de poignée de main (jeton absent ou invalide)
+                    // n'en porte aucun, et `as_u64()` rend alors `None` sans
+                    // qu'il y ait besoin de tester le motif ici : caler la
+                    // décision sur la SEULE présence du champ, jamais sur le
+                    // texte du motif, est ce qui laisse ce bras correct si le
+                    // relais gagne un jour un second motif porteur d'attente.
+                    let retry = parsed["retryApresS"].as_u64();
+                    if let Some(s) = retry {
+                        let _ = retry_apres_s_tx.send(Some(s));
+                    }
+                    tracing::error!(
+                        raison = %parsed["reason"],
+                        retry_apres_s = ?retry,
+                        "erreur de signaling"
+                    )
                 }
                 other => tracing::debug!(?other, "message de signaling ignoré"),
             }
@@ -205,9 +238,34 @@ pub async fn run_signaling(
         answers,
         closed: closed_rx,
         ice_config,
+        retry_apres_s,
         receiver_task,
         sender_task,
     })
+}
+
+/// Attend le délai que le relais a suggéré (`retryApresS`, refus
+/// `trop-de-requetes`) s'il en a envoyé un — coût nul sinon.
+///
+/// 🔴 **CORRECTIF DU LEGS DES FREINS MANQUANTS (round de correction 1,
+/// critique ②).** C'est l'appelant qui décide QUAND consulter cette valeur —
+/// typiquement juste avant de rendre une erreur fatale, une fois établi que
+/// la session ne s'ouvrira pas. Rien ici ne fait attendre `run_signaling`
+/// elle-même : le signaling reste un pur relais d'information.
+///
+/// ⚠️ **BORNÉE À `REPLI_MAX_MS`**, jamais la valeur brute du serveur : un
+/// relais qui enverrait une valeur aberrante (bogue, ou serveur compromis) ne
+/// doit pas pouvoir geler indéfiniment un processus dont la seule vocation,
+/// à ce stade, est de mourir vite pour que son superviseur retente.
+pub async fn honorer_retry_suggere(retry_apres_s: &watch::Receiver<Option<u64>>) {
+    let Some(secondes) = *retry_apres_s.borrow() else { return };
+    let bornees = secondes.min(crate::plateforme::repli::REPLI_MAX_MS / 1000);
+    tracing::info!(
+        secondes = bornees,
+        secondes_demandees = secondes,
+        "attente du délai suggéré par le relais (retryApresS) avant de céder la main"
+    );
+    tokio::time::sleep(std::time::Duration::from_secs(bornees)).await;
 }
 
 /// Extrait la première entrée TURN exploitable d'un message `ice-config`.
@@ -321,5 +379,45 @@ mod tests {
     #[test]
     fn le_canal_agent_n_est_pas_affecte() {
         assert_eq!(crate::plateforme::url_du_canal("ws://h:8080"), "ws://h:8080/agent");
+    }
+
+    /// 🔴 CORRECTIF DU LEGS DES FREINS MANQUANTS (round de correction 1,
+    /// critique ②) — `honorer_retry_suggere`, éprouvée sur l'hôte. Horloge
+    /// GELÉE (`start_paused`) : sans elle, ces trois tests attendraient
+    /// réellement des secondes entières, et une assertion sur la durée
+    /// écoulée deviendrait un bruit de mesure plutôt qu'un fait.
+    #[tokio::test(start_paused = true)]
+    async fn honorer_retry_suggere_n_attend_rien_sans_valeur() {
+        let (_tx, rx) = watch::channel::<Option<u64>>(None);
+        let debut = tokio::time::Instant::now();
+        honorer_retry_suggere(&rx).await;
+        assert_eq!(
+            tokio::time::Instant::now(),
+            debut,
+            "aucun refus de volume n'est jamais arrivé : rien à attendre"
+        );
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn honorer_retry_suggere_attend_exactement_la_valeur_recue() {
+        let (_tx, rx) = watch::channel(Some(5u64));
+        let debut = tokio::time::Instant::now();
+        honorer_retry_suggere(&rx).await;
+        assert_eq!(tokio::time::Instant::now() - debut, std::time::Duration::from_secs(5));
+    }
+
+    /// 🔴 Le test qui compte : sans ce plafond, un relais qui enverrait une
+    /// valeur aberrante (bogue, ou compromis) gèlerait indéfiniment un
+    /// processus dont la seule vocation, à ce stade, est de mourir vite pour
+    /// que son superviseur retente.
+    #[tokio::test(start_paused = true)]
+    async fn honorer_retry_suggere_est_bornee_au_plafond_de_repli() {
+        let (_tx, rx) = watch::channel(Some(999_999u64));
+        let debut = tokio::time::Instant::now();
+        honorer_retry_suggere(&rx).await;
+        assert_eq!(
+            tokio::time::Instant::now() - debut,
+            std::time::Duration::from_millis(crate::plateforme::repli::REPLI_MAX_MS),
+        );
     }
 }

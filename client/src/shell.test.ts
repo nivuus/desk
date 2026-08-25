@@ -432,3 +432,48 @@ describe('les mutations en échec (F3)', () => {
         expect(texte).toContain('2 renommages ou suppressions');
     });
 });
+
+// 🔴 CORRECTIF DU LEGS DES FREINS MANQUANTS (round de correction 1,
+// critique ④), 25 août 2026 — AVANT CE LOT, `type:'error'` ne correspondait à
+// AUCUNE branche de l'aiguillage de `shell-page.ts`, et le socket
+// n'installait ni `close` ni `error` : un refus arrivé sur `/signal` (le
+// budget « toute requête » que ce même lot ouvre, `signaling/relais.ts`)
+// laissait la page affichée « bureau connecté », morte en silence.
+describe('page-shell — le refus et la perte du canal de contrôle', () => {
+    it('un refus du canal affiche la RAISON, en DANGER', () => {
+        const { bureau, bandeaux } = bureauDeTest();
+        bureau.canalDeControleRefuse('trop de requêtes', 'trop-de-requetes', undefined);
+        expect(bandeaux).toHaveLength(1);
+        expect(bandeaux[0].ton).toBe('danger');
+        expect(bandeaux[0].message).toContain('trop de requêtes');
+    });
+
+    it('le refus de VOLUME porte le délai suggéré, quand il est fourni', () => {
+        // `retryApresS` n'accompagne QUE `trop-de-requetes` (`relais.ts`) —
+        // c'est la moitié la moins chère du remède au verrouillage que
+        // `agent/src/superviseur/boucle/surveillance_pont.rs` documente.
+        const { bureau, bandeaux } = bureauDeTest();
+        bureau.canalDeControleRefuse('trop de requêtes', 'trop-de-requetes', 42);
+        expect(bandeaux[0].message).toContain('42');
+    });
+
+    it("un refus de poignée de main SANS délai ne promet aucune attente", () => {
+        const { bureau, bandeaux } = bureauDeTest();
+        bureau.canalDeControleRefuse('jeton invalide', 'jeton-invalide', undefined);
+        expect(bandeaux[0].message).not.toMatch(/tentative/);
+    });
+
+    it('à défaut de `reason`, le `motif` sert de repli', () => {
+        const { bureau, bandeaux } = bureauDeTest();
+        bureau.canalDeControleRefuse(undefined, 'trop-de-requetes', undefined);
+        expect(bandeaux[0].message).toContain('trop-de-requetes');
+    });
+
+    it('la perte du canal est annoncée, en DANGER — jamais en silence', () => {
+        const { bureau, bandeaux } = bureauDeTest();
+        bureau.canalDeControlePerdu();
+        expect(bandeaux).toHaveLength(1);
+        expect(bandeaux[0].ton).toBe('danger');
+        expect(bandeaux[0].message).toMatch(/perdue|rechargez/i);
+    });
+});

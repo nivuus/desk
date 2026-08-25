@@ -11,8 +11,12 @@
 // L'horloge du service de test est INJECTÉE : le critère ② exige qu'elle
 // avance entre deux poignées de main, et `demarrerServeur` ne prend pas
 // d'horloge. Ce fichier construit donc sa garde lui-même et appelle
-// `createSignalingServer(port, garde)` — choix d'implémentation assumé, la
-// forme `port` étant celle qu'éprouve `server.test.ts` depuis le jalon 1.
+// `createSignalingServer(port, garde, frein, proxyDeConfiance)` — 🔴 QUATRE
+// ARGUMENTS DÉSORMAIS, PAS DEUX : `frein` et `proxyDeConfiance` l'ont
+// rejointe au sous-bloc P5 puis au round de correction 1 (budget « toute
+// requête »), et cette ligne disait encore « (port, garde) » alors que
+// l'appel plus bas en prend quatre — choix d'implémentation assumé, la forme
+// `port` étant celle qu'éprouve `server.test.ts` depuis le jalon 1.
 
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { WebSocket } from 'ws';
