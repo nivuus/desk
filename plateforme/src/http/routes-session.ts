@@ -33,9 +33,12 @@ import type { Pilote } from '../base/pilote';
 import { inventaireStatique } from '../orchestration/inventaire-statique';
 import { BACKEND_STATIQUE, CODE_HTTP } from '../orchestration/refus';
 import { laVmDe } from '../orchestration/selection';
+import { adresseSource } from './adresse-source';
 import { entetesCors } from './cors';
 import { ENTETES_SECURITE } from './entetes';
+import { ligne } from '../obs/journal';
 import { lirePorteur } from './porteur';
+import { BUDGET_REQUETES, cleRequetes, type Budget, type Frein } from '../securite/frein';
 
 export interface DependancesSession {
     base: Pilote;
@@ -45,6 +48,14 @@ export interface DependancesSession {
     /// ce qui rend la transition du critère ④ observable dans une exécution de
     /// test, où il n'y aurait autrement qu'un seul instant.
     maintenant: () => number;
+    /// 🔴 LE FREIN « TOUTE REQUÊTE », PARTAGÉ avec `routes-vm.ts` ET
+    /// `signaling/relais.ts` — voir `securite/frein.ts::BUDGET_REQUETES`.
+    /// Cette route n'a aucune notion d'échec : son abus est un VOLUME,
+    /// jamais une suite de tentatives ratées.
+    frein: Frein;
+    /// Les proxys dont on croit l'en-tête `X-Forwarded-For` — même ensemble
+    /// que `routes-auth.ts` et `routes-vm.ts`, jamais un second.
+    proxyDeConfiance: ReadonlySet<string>;
 }
 
 const CHEMIN = '/session';
@@ -66,6 +77,31 @@ function repondre(
         ...(cors ?? {}),
     });
     rep.end(JSON.stringify(corps));
+}
+
+/// Enregistre la requête sur le budget « toute requête », et journalise SI ET
+/// SEULEMENT SI le frein vient de mordre — même règle et même raison que
+/// `routes-auth.ts::compterLEchec` et `routes-vm.ts::compterLaRequete` : la
+/// requête suivante sera refusée tout en haut de `servirSession`, avant de
+/// jamais rappeler cette fonction.
+function compterLaRequete(
+    frein: Frein,
+    cles: readonly (readonly [string, Budget])[],
+    adresse: string,
+    instant: number,
+): void {
+    frein.echec(cles, instant);
+    const apres = frein.consulter(cles, instant);
+    if (!apres.freine) return;
+    console.warn(
+        ligne('frein-requetes', {
+            route: CHEMIN,
+            adresse,
+            retry_apres_s: apres.retryApresS,
+            entrees: frein.taille(),
+            evictions: frein.evictions(),
+        }),
+    );
 }
 
 export async function servirSession(
@@ -91,6 +127,27 @@ export async function servirSession(
         repondre(rep, 405, { refus: 'methode' }, cors);
         return true;
     }
+
+    // 🔴 LE FREIN « TOUTE REQUÊTE » EST CONSULTÉ ICI — AVANT `lirePorteur` et
+    // avant tout accès à la base. Même position et même raison que
+    // `routes-vm.ts` : compter après le travail qu'on borne ne le borne pas.
+    const adresseRequete = adresseSource(
+        req.socket.remoteAddress,
+        Array.isArray(req.headers['x-forwarded-for'])
+            ? req.headers['x-forwarded-for'].join(',')
+            : req.headers['x-forwarded-for'],
+        deps.proxyDeConfiance,
+    );
+    const clesRequetes: readonly (readonly [string, Budget])[] = [
+        [cleRequetes(adresseRequete), BUDGET_REQUETES],
+    ];
+    const verdictRequetes = deps.frein.consulter(clesRequetes, deps.maintenant());
+    if (verdictRequetes.freine) {
+        rep.setHeader('Retry-After', String(verdictRequetes.retryApresS));
+        repondre(rep, 429, { refus: 'trop-de-requetes' }, cors);
+        return true;
+    }
+    compterLaRequete(deps.frein, clesRequetes, adresseRequete, deps.maintenant());
 
     const porteur = lirePorteur(req.headers, deps.secretJeton, deps.maintenant());
     if (!porteur.ok) {

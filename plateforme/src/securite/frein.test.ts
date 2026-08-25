@@ -1,10 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import {
+    BUDGET_ADRESSE,
+    BUDGET_REQUETES,
     ECHECS_MAX_ADRESSE,
     ECHECS_MAX_COMPTE,
     ENTREES_MAX,
     FENETRE_MS,
+    FENETRE_REQUETES_MS,
+    REQUETES_MAX_ADRESSE,
     Frein,
+    cleAdresse as cleAdresseDuModule,
+    cleRequetes,
     type Budget,
 } from './frein';
 
@@ -139,5 +145,46 @@ describe('Frein', () => {
         expect(ECHECS_MAX_COMPTE).toBe(5);
         expect(ECHECS_MAX_ADRESSE).toBe(50);
         expect(ENTREES_MAX).toBe(10_000);
+        // ⚠️ NON CALIBRÉES NON PLUS — voir `BUDGET_REQUETES` dans le module.
+        expect(FENETRE_REQUETES_MS).toBe(60_000);
+        expect(REQUETES_MAX_ADRESSE).toBe(60);
+    });
+
+    // 🔴 LE TEST QUI COMPTE LE PLUS DE CE LOT. `Frein` COMPTE DES ÉCHECS —
+    // `echec()`, `succes()`, `BUDGET_COMPTE`, `BUDGET_ADRESSE` — et
+    // `BUDGET_REQUETES` réutilise la MÉTHODE `echec()` pour compter un
+    // VOLUME, jamais un échec. Si `cleRequetes` et `cleAdresse` produisaient
+    // la MÊME clé pour la MÊME adresse, un utilisateur actif épuiserait son
+    // propre budget d'ÉCHECS D'AUTHENTIFICATION en faisant simplement du
+    // trafic légitime sur `/vm` ou `/session` — ou l'inverse, et un
+    // attaquant s'offrirait des essais de mot de passe gratuits en générant
+    // du volume. Les deux DOIVENT donc vivre sous des préfixes disjoints
+    // (`req:` contre `adr:`), et c'est ce que ce test éprouve directement sur
+    // les fonctions RÉELLEMENT exportées — pas sur des clones locaux au
+    // fichier, comme les tests (a) à (i) ci-dessus : eux éprouvent la
+    // MÉCANIQUE générique de `Frein`, celui-ci éprouve le NAMESPACING réel de
+    // `securite/frein.ts`.
+    it("(k) le budget de requêtes n'entame PAS le budget d'échecs de la même adresse", () => {
+        const frein = new Frein();
+        for (let i = 0; i < 10; i++) {
+            frein.echec([[cleRequetes(ADR), BUDGET_REQUETES]], T0);
+        }
+        expect(frein.consulter([[cleAdresseDuModule(ADR), BUDGET_ADRESSE]], T0).freine).toBe(
+            false,
+        );
+    });
+
+    it('(k bis) — et RÉCIPROQUEMENT : des échecs sur une adresse n’entament PAS son budget de requêtes', () => {
+        // Symétrique de (k) : un attaquant qui épuise le budget D'ÉCHECS
+        // d'une adresse (en se trompant de mot de passe, par exemple) ne
+        // doit PAS voir son budget de VOLUME entamé pour autant — les deux
+        // sont des ressources distinctes, protégeant des abus distincts.
+        const frein = new Frein();
+        for (let i = 0; i < ECHECS_MAX_ADRESSE; i++) {
+            frein.echec([[cleAdresseDuModule(ADR), BUDGET_ADRESSE]], T0 + i);
+        }
+        expect(
+            frein.consulter([[cleRequetes(ADR), BUDGET_REQUETES]], T0 + ECHECS_MAX_ADRESSE).freine,
+        ).toBe(false);
     });
 });

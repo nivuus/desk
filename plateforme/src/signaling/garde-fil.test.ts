@@ -18,6 +18,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest
 import { WebSocket } from 'ws';
 import { garde as fabriquerGarde, type Garde } from '../identite/garde';
 import { signer, DUREE_JETON_ACCES_MS } from '../identite/jeton';
+import { Frein } from '../securite/frein';
 import { ProprieteDeSession } from './propriete';
 import { createSignalingServer } from './relais';
 import { poserTurnAmbiant } from './turn-harnais';
@@ -58,7 +59,12 @@ function demarrer(): number {
     maintenant = T0;
     proprietes = new ProprieteDeSession();
     garde = fabriquerGarde(SECRET, () => maintenant, proprietes);
-    serveur = createSignalingServer(0, garde);
+    // Un frein NEUF par appel, comme `garde` et `proprietes` juste au-dessus :
+    // ce fichier fait plusieurs poignées de main par test, très en dessous du
+    // budget « toute requête » (`securite/frein.ts::BUDGET_REQUETES`), mais
+    // un frein partagé entre tests ferait dériver un compte d'un test à
+    // l'autre.
+    serveur = createSignalingServer(0, garde, new Frein(), new Set());
     return serveur.port;
 }
 

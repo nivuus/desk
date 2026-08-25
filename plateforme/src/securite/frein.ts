@@ -133,6 +133,49 @@ export function cleVm(vmId: string): string {
     return `agent:${vmId}`;
 }
 
+/// 🔴 LE BUDGET « TOUTE REQUÊTE », PARTAGÉ PAR `GET /vm`, `POST /session` ET
+/// LE RELAIS `/signal` (`http/routes-vm.ts`, `http/routes-session.ts`,
+/// `signaling/relais.ts`) — comme `BUDGET_ADRESSE` l'est déjà entre
+/// `/auth/*` et `/agent`.
+///
+/// ⚠️ CE BUDGET N'A AUCUNE NOTION D'ÉCHEC, ET C'EST LE POINT : les trois
+/// surfaces qu'il couvre n'ont rien d'équivalent à un mot de passe faux —
+/// leur abus est un VOLUME de requêtes qui, individuellement, peuvent toutes
+/// RÉUSSIR. `Frein.echec` est réutilisée pour COMPTER, jamais pour signaler
+/// un échec : c'est la STRUCTURE — fenêtre glissante, plafond d'entrées,
+/// éviction — qui est reprise ici, jamais la sémantique du nom de la
+/// méthode. Rien n'appelle `succes()` sur ce budget : une entrée ne se vide
+/// QUE par expiration de sa fenêtre, jamais par un geste de l'appelant — il
+/// n'existe ici aucun équivalent d'une connexion réussie qui blanchirait un
+/// compte, précisément parce qu'il n'y a pas de compte.
+///
+/// ⚠️ AUCUNE CLÉ DE « COMPTE » N'EXISTE POUR CE BUDGET, À LA DIFFÉRENCE DE
+/// `BUDGET_COMPTE` : `/signal` ne connaît son pair qu'APRÈS sa poignée de
+/// main, et une clé posée sur l'utilisateur authentifié de `/vm` ou
+/// `/session` laisserait un jeton volé consommer le budget de SA VICTIME
+/// plutôt que celui de l'attaquant qui l'emploie — seule l'ADRESSE est donc
+/// retenue.
+///
+/// ⚠️ NON CALIBRÉ, comme les quatre constantes de `Frein` ci-dessus : aucun
+/// jugement d'usage n'a été porté. La fenêtre est plus COURTE que
+/// `FENETRE_MS` (une minute contre quinze) parce qu'il s'agit de brider un
+/// DÉBIT, pas de verrouiller un compte le temps qu'un humain réagisse.
+export const FENETRE_REQUETES_MS = 60_000;
+export const REQUETES_MAX_ADRESSE = 60;
+export const BUDGET_REQUETES: Budget = {
+    max: REQUETES_MAX_ADRESSE,
+    fenetreMs: FENETRE_REQUETES_MS,
+};
+
+/// 🔴 PRÉFIXE DISJOINT DE `compte:`, `adr:` ET `agent:` — POUR LA MÊME
+/// RAISON QU'EUX. Sans lui, l'adresse `203.0.113.7` sur ce budget
+/// partagerait sa clé avec la MÊME adresse sur `BUDGET_ADRESSE`
+/// (`cleAdresse`), et un attaquant pourrait épuiser l'un des deux budgets
+/// pour vider l'autre — le test exact que ce lot ajoute à `frein.test.ts`.
+export function cleRequetes(adresse: string): string {
+    return `req:${adresse}`;
+}
+
 interface Entree {
     compte: number;
     /// L'instant du PREMIER échec de la série — voir l'en-tête : c'est lui qui
