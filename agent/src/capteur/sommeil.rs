@@ -18,6 +18,13 @@
 // détecté par cette voie-là (voir `parts::distribuer_les_parts`). Il ne
 // s'appelle pas `repartiteur` : ce nom est déjà pris par le module qui porte
 // la RÈGLE pure ; celui-ci ne porte que sa BRANCHE sur ce registre.
+// `file` porte la RÈGLE PURE de coalescence du canal d'une session : aucun
+// verrou, aucun `cfg`, aucune API Windows — c'est ce qui la rend éprouvable
+// par `cargo test --workspace` sur l'hôte Linux, alors que ce fichier entier
+// ne l'est pas. Le verrou et le réveil restent chez cet appelant (tâche
+// ultérieure) ; ce module ne décide QUE si un dépôt s'empile, coalesce, ou
+// est refusé.
+mod file;
 mod parts;
 mod porteurs;
 // `presse_papier` porte la DISTRIBUTION du presse-papier de la VM, extraite
