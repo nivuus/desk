@@ -25,7 +25,11 @@
 //! de huit encodeurs se sur-souscrit. Il existe un `echec_de_reveil` pour le
 //! premier sens ; il n'existe **aucun** `echec_de_sommeil`.
 
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
 use std::time::Instant;
+
+use tracing_subscriber::layer::{Context, Layer, SubscriberExt};
 
 use super::file::PROFONDEUR_MAX;
 use super::tests::verrouiller_pour_le_test;
@@ -98,15 +102,26 @@ fn un_reveil_non_depose_laisse_le_vivier_intact_et_repart_au_tour_suivant() {
     retirer("r2-reveil", generation);
 }
 
-/// 🔴 SENS 2 — UN `Dormir` REFUSÉ NE DOIT PAS LIBÉRER LA PLACE D'UNE FENÊTRE
-/// QUI ENCODE ENCORE. **C'est la moitié la plus coûteuse**, et celle que le
-/// premier diagnostic avait manquée : sans le remède, `eveillee` passe à
-/// `false` et le plafond de huit encodeurs se sur-souscrit — la fenêtre n'a
-/// jamais reçu l'ordre et tient toujours le sien.
+/// 🔴 SENS 2 — UN `Dormir` REFUSÉ NE DOIT PAS LAISSER LE VIVIER COMPTER
+/// ENDORMIE UNE FENÊTRE QUI ENCODE ENCORE. **C'est la moitié la plus
+/// coûteuse**, et celle que le premier diagnostic avait manquée : sans le
+/// remède, `eveillee` passe à `false` définitivement — la fenêtre n'a jamais
+/// reçu l'ordre, tient toujours son encodeur, et **plus aucun arbitrage ne la
+/// réordonnera**, puisque le vivier la croit déjà endormie.
+///
+/// ⚠️ ~~Le plafond de huit encodeurs se sur-souscrit.~~ **CE N'EST PAS CE QUE
+/// LE REMÈDE EMPÊCHE, et l'écrire ainsi était sur-affirmé** (round 3) :
+/// `arbitrer` libère le créneau et élit la remplaçante DANS LA MÊME PASSE,
+/// étapes 1, 4 et 5, **avant que le dépôt ne soit seulement tenté** —
+/// l'annulation ne court qu'après. La sur-souscription a donc bien lieu ; ce
+/// que le remède obtient est qu'elle soit **TRANSITOIRE** au lieu de
+/// permanente. Voir
+/// `une_sur_souscription_par_un_dormir_non_depose_est_resorbee_au_tour_suivant`,
+/// juste en dessous, qui la mesure dans les deux temps.
 ///
 /// **Rougit sur sa PREMIÈRE assertion** — `un Dormir non déposé ne doit pas
-/// libérer la place d'une fenêtre qui encode encore` —, `eveillee` valant
-/// alors `Some(false)`.
+/// laisser le vivier compter endormie une fenêtre qui encode encore` —,
+/// `eveillee` valant alors `Some(false)`.
 #[test]
 fn un_sommeil_non_depose_laisse_le_vivier_intact_et_repart_au_tour_suivant() {
     let _verrou = verrouiller_pour_le_test();
@@ -127,7 +142,8 @@ fn un_sommeil_non_depose_laisse_le_vivier_intact_et_repart_au_tour_suivant() {
     assert_eq!(
         etat().vivier.eveillee("r2-sommeil"),
         Some(true),
-        "un Dormir non déposé ne doit pas libérer la place d'une fenêtre qui encode encore"
+        "un Dormir non déposé ne doit pas laisser le vivier compter endormie une \
+         fenêtre qui encode encore"
     );
 
     let recus = canal.vider();
@@ -147,4 +163,163 @@ fn un_sommeil_non_depose_laisse_le_vivier_intact_et_repart_au_tour_suivant() {
     );
 
     retirer("r2-sommeil", generation);
+}
+
+/// Compte les événements `tracing` émis par `sommeil::registre` sur ce fil.
+///
+/// 🔴 **C'EST CE QUI REND LA CADENCE MESURABLE PLUTÔT QU'AFFIRMÉE.** Sans lui,
+/// on ne pourrait éprouver que le prédicat arithmétique — vrai quel que soit
+/// le code qui l'emploie, donc un contrôle incapable d'échouer.
+///
+/// Le filtre est le `target`, que `tracing` remplit avec le chemin du module
+/// d'émission : seules les lignes de `registre.rs` sont comptées, jamais
+/// celles de `file.rs` qui sortent au même palier.
+struct CompteurDeTraces(Arc<AtomicUsize>);
+
+impl<S: tracing::Subscriber> Layer<S> for CompteurDeTraces {
+    fn on_event(&self, event: &tracing::Event<'_>, _ctx: Context<'_, S>) {
+        if event.metadata().target() == "agent::capteur::sommeil::registre" {
+            self.0.fetch_add(1, Ordering::Relaxed);
+        }
+    }
+}
+
+/// Le compte CUMULÉ de dépôts refusés d'une session.
+fn refus_de(session: &str) -> u64 {
+    etat().canaux.get(session).expect("la session est inscrite").refuses()
+}
+
+/// 🔴 LE DÉFAUT QUE LE REMÈDE DU ROUND 2 A LUI-MÊME CRÉÉ, ET SA CADENCE.
+///
+/// Tant que l'ordre était PERDU, `distribuer` n'émettait un ordre que sur un
+/// CHANGEMENT d'arbitrage — jamais à chaque tour. C'était le motif écrit pour
+/// ne pas cadencer sa trace, et **il était vrai**.
+///
+/// 🔴 **L'ANNULATION L'A RENVERSÉ.** L'état étant désormais RENDU, le
+/// ré-arbitrage suivant revoit la même divergence, réémet le même ordre, et il
+/// est refusé à nouveau : **+1 par tour, strictement, sans borne**. À
+/// `PERIODE_REARBITRAGE` (250 ms), cela ferait **quatre lignes par seconde et
+/// par fenêtre bloquée, indéfiniment** — le piège que `file.rs` évite dix
+/// lignes plus loin, et que `CLAUDE.md` nomme (18 619 lignes en quelques
+/// secondes ont déjà empêché une session de s'établir).
+///
+/// 🔴 **CE TEST COMPTE LES TRACES RÉELLEMENT ÉMISES**, par un abonné `tracing`
+/// posé sur ce fil — et non le prédicat arithmétique de la cadence. Un premier
+/// jet le faisait, et cette assertion-là était **structurellement incapable
+/// d'échouer** : elle aurait été vraie quel que soit le code de `distribuer`.
+///
+/// **Rougit sur sa SECONDE assertion sans la cadence** : `10` traces pour dix
+/// tours, au lieu des `<= 4` paliers.
+#[test]
+fn un_ordre_refuse_a_chaque_tour_est_trace_a_cadence_logarithmique() {
+    let _verrou = verrouiller_pour_le_test();
+    let (canal, generation) = inscrire("r3-cadence", 6600);
+    signaler("r3-cadence", true, true);
+    let _ = canal.vider();
+    boucher_la_file("r3-cadence");
+    // Le masquage engendre un `Dormir` — refusé, et annulé.
+    signaler("r3-cadence", false, false);
+    let depart = refus_de("r3-cadence");
+
+    const TOURS: u64 = 10;
+    let compte = Arc::new(AtomicUsize::new(0));
+    let abonne = tracing_subscriber::registry().with(CompteurDeTraces(Arc::clone(&compte)));
+    let comptes: Vec<u64> = tracing::subscriber::with_default(abonne, || {
+        (0..TOURS)
+            .map(|_| {
+                un_tour_de_roue();
+                refus_de("r3-cadence")
+            })
+            .collect()
+    });
+
+    // 🔴 LE PHÉNOMÈNE : chaque tour de roue réémet l'ordre, et chaque
+    // réémission est refusée. C'est ce que l'annulation du round 2 obtient —
+    // et c'est ce qui rend une trace non cadencée non bornée.
+    let attendus: Vec<u64> = (1..=TOURS).map(|i| depart + i).collect();
+    assert_eq!(comptes, attendus, "l'ordre doit être réémis à CHAQUE tour");
+
+    // 🔵 LA CADENCE, MESURÉE SUR LES LIGNES ÉMISES : au plus une par palier
+    // franchi, donc quatre au plus sur dix tours — jamais dix.
+    let traces = compte.load(Ordering::Relaxed);
+    assert!(
+        traces <= 4,
+        "la trace de l'ordre non déposé doit être CADENCÉE, pas émise à chaque \
+         refus : {traces} lignes pour {TOURS} tours"
+    );
+
+    retirer("r3-cadence", generation);
+}
+
+/// 🔴 CE QUE LE REMÈDE OBTIENT RÉELLEMENT, MESURÉ DANS LES DEUX TEMPS — et ce
+/// qu'il n'obtient PAS.
+///
+/// ⚠️ **Les deux tests ci-dessus ne peuvent pas voir ce défaut** : ils n'ont
+/// qu'UNE session, donc ils mesurent `eveillee(s)` et jamais
+/// `eveillees().len()`. C'est ce trou qui a laissé passer l'affirmation
+/// « la place n'est pas libérée », mesurée fausse au round 3.
+///
+/// **Le mécanisme** : `arbitrer` pose `eveillee = false` à l'étape 1, exclut
+/// donc la session des épinglées à l'étape 2, remplit le créneau libéré à
+/// l'étape 4, et émet le `Reveiller` de la neuvième à l'étape 5 — **tout dans
+/// la même passe, avant que le dépôt du `Dormir` ne soit seulement tenté**.
+/// L'annulation ne court qu'après : elle ne peut pas l'empêcher.
+///
+/// **Ce qui est vrai, et que ce test tient** : la sur-souscription est
+/// TRANSITOIRE. Au ré-arbitrage suivant, le vivier voit 9 > 8 et rendort
+/// quelqu'un. Sans le remède, il ne verrait jamais 9 — il compterait 8 en
+/// croyant la fenêtre bloquée endormie, et la dérive serait PERMANENTE.
+#[test]
+fn une_sur_souscription_par_un_dormir_non_depose_est_resorbee_au_tour_suivant() {
+    let _verrou = verrouiller_pour_le_test();
+    let plafond = crate::capteur::vivier::PLAFOND_EVEIL;
+
+    // Sature les places, en gardant les receveurs vivants.
+    let mut occupantes = Vec::new();
+    for i in 0..plafond {
+        let nom = format!("r3-plein-{i}");
+        let (canal, generation) = inscrire(&nom, 6700 + i as u32);
+        signaler(&nom, true, true);
+        occupantes.push((nom, canal, generation));
+    }
+    assert_eq!(
+        etat().vivier.eveillees().len(),
+        plafond,
+        "précondition : les places sont toutes prises"
+    );
+
+    // Une candidate de plus, qui attend qu'une place se libère.
+    let (attente, generation_attente) = inscrire("r3-attente", 6799);
+    signaler("r3-attente", true, true);
+    assert_eq!(etat().vivier.eveillees().len(), plafond, "précondition : elle attend");
+
+    // La file de la PREMIÈRE occupante se bouche, puis elle est masquée : son
+    // `Dormir` est refusé, et annulé — mais `arbitrer` a déjà élu la neuvième
+    // dans la même passe.
+    let (ref nom_bloquee, ref canal_bloquee, _) = occupantes[0];
+    let _ = canal_bloquee.vider();
+    boucher_la_file(nom_bloquee);
+    signaler(nom_bloquee, false, false);
+
+    assert_eq!(
+        etat().vivier.eveillees().len(),
+        plafond + 1,
+        "la sur-souscription a bien lieu : l'annulation ne court qu'APRÈS l'élection"
+    );
+
+    // La fenêtre bloquée reprend sa lecture ; le tour suivant résorbe.
+    let _ = canal_bloquee.vider();
+    un_tour_de_roue();
+    assert_eq!(
+        etat().vivier.eveillees().len(),
+        plafond,
+        "la sur-souscription doit être TRANSITOIRE : résorbée au ré-arbitrage suivant"
+    );
+
+    retirer("r3-attente", generation_attente);
+    drop(attente);
+    for (nom, canal, generation) in occupantes {
+        retirer(&nom, generation);
+        drop(canal);
+    }
 }

@@ -82,12 +82,22 @@ pub(super) fn distribuer(garde: &mut MutexGuard<'static, Etat>, annonce: Annonce
     let sessions: Vec<String> = garde.canaux.keys().cloned().collect();
     let mut rompus = Vec::new();
     for session in sessions {
+        // ⚠️ **`None` N'EST PAS UNE RUPTURE** — troisième site du même patron,
+        // et **celui-ci n'avait été montré par personne** : le round 3 nommait
+        // `parts.rs` et `porteurs.rs`, et la règle du dépôt est de CHERCHER
+        // les occurrences plutôt que de corriger là où on nous les montre.
+        // Inatteignable ici (les noms sortent de `canaux.keys()` sous le même
+        // verrou, deux lignes plus haut), donc sans conséquence — mais
+        // fabriquer une rupture ferait purger une session sur un fait qui n'a
+        // pas eu lieu si cette invariance venait à tomber.
         let issue = match garde.canaux.get(&session) {
-            Some(canal) => canal.envoyer(Message::PressePapier { texte: texte.clone(), octets }),
-            None => Envoi::Rompu,
+            Some(canal) => Some(canal.envoyer(Message::PressePapier { texte: texte.clone(), octets })),
+            None => None,
         };
         match issue {
-            Envoi::Depose(_) => {}
+            // Aucun canal : rien n'est parti, et il n'y a rien à purger.
+            None => {}
+            Some(Envoi::Depose(_)) => {}
             // ⚠️ **REFUSÉ N'EST PAS ROMPU** (correctif du round 1) : la file
             // de cette fenêtre est pleine, la session est VIVANTE, et la
             // purger tuerait son arbitrage. Rien n'est mémorisé sur ce
@@ -96,8 +106,8 @@ pub(super) fn distribuer(garde: &mut MutexGuard<'static, Etat>, annonce: Annonce
             // refusé, lui, est PERDU pour cette fenêtre : le journaliser une
             // seconde fois doublerait la trace de `journaliser_le_refus`, qui
             // nomme déjà la session.
-            Envoi::Refuse => {}
-            Envoi::Rompu => rompus.push(session),
+            Some(Envoi::Refuse) => {}
+            Some(Envoi::Rompu) => rompus.push(session),
         }
     }
 
@@ -227,11 +237,24 @@ pub(super) fn emettre_l_etat_courant(garde: &mut MutexGuard<'static, Etat>, sess
         // le `match` exhaustif remplace le `let _` pour que la prochaine
         // variante d'`Envoi`, elle, soit signalée ici comme ailleurs.
         match canal.envoyer(Message::PressePapier { texte, octets }) {
-            // Les trois issues sont sans conséquence ICI, et la doc ci-dessus
-            // dit pourquoi : ce canal vient d'être créé dans la même fonction,
-            // sa file est vide et son receveur est encore sur la pile de
-            // `inscrire`. `Refuse` et `Rompu` sont structurellement
-            // inatteignables — ce qui se DÉMONTRE, et ne se suppose pas.
+            // Les trois issues sont sans conséquence ICI, et la doc de cette
+            // fonction dit pourquoi — PAR UN COMPTAGE, pas par la prémisse
+            // fausse qu'on lisait ici.
+            //
+            // ❌ ~~Ce canal vient d'être créé dans la même fonction, sa file
+            // est vide.~~ **DEUX FOIS FAUX, et le round 3 l'a relevé TRENTE-
+            // HUIT LIGNES SOUS SA PROPRE RÉFUTATION** : le canal est créé par
+            // `registre::inscrire`, pas ici, et sa file n'est pas vide —
+            // `distribuer`, `distribuer_les_parts` et `distribuer_l_audio` y
+            // ont déjà déposé (mesuré : `[Part, Audio]`, et `[Part, Audio]`
+            // encore avec douze voisines éveillées). **C'est le naufrage du
+            // 487 dans sa forme pure : corrigé là où on nous l'avait montré,
+            // pas cherché.**
+            //
+            // Ce qui tient, et que la doc établit : **au plus 3 messages
+            // contre `PROFONDEUR_MAX` = 64**, et le receveur est encore sur la
+            // pile de `inscrire`. `Refuse` et `Rompu` sont donc bien
+            // inatteignables.
             Envoi::Depose(_) | Envoi::Refuse | Envoi::Rompu => {}
         }
     }

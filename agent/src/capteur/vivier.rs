@@ -160,11 +160,26 @@ impl Vivier {
     ///   étant idempotent, **aucun ré-arbitrage futur ne réémet l'ordre** —
     ///   mesuré : dix `rearbitrer` de suite ne rendent rien. C'est une fenêtre
     ///   qui ne se réveille plus, pour la vie du processus.
-    /// - **`Dormir` refusé** : `eveillee` passe à `false` et **la place est
-    ///   LIBÉRÉE alors que la fenêtre continue d'encoder**. Le plafond de 8
-    ///   encodeurs se sur-souscrit. ⚠️ **C'est la moitié la plus coûteuse, et
-    ///   c'est celle qu'on avait manquée** : il existe un `echec_de_reveil`
-    ///   pour le premier sens, il n'existe **aucun** `echec_de_sommeil`.
+    /// - **`Dormir` refusé** : `eveillee` passe à `false` **définitivement**
+    ///   alors que la fenêtre tient toujours son encodeur — et **plus aucun
+    ///   arbitrage ne la réordonnera**, puisque le vivier la croit déjà
+    ///   endormie. ⚠️ **C'est la moitié la plus coûteuse, et c'est celle qu'on
+    ///   avait manquée** : il existe un `echec_de_reveil` pour le premier
+    ///   sens, il n'existe **aucun** `echec_de_sommeil`.
+    ///
+    /// 🔴 **CE QUE CETTE MÉTHODE N'EMPÊCHE PAS, ET QUI A ÉTÉ SUR-AFFIRMÉ**
+    /// (round de correction 3) : elle n'empêche **pas** la sur-souscription du
+    /// plafond d'encodeurs. `arbitrer` libère le créneau à l'étape 1, élit la
+    /// remplaçante à l'étape 4 et émet son `Reveiller` à l'étape 5 — **tout
+    /// dans la même passe, avant que le dépôt ne soit seulement tenté** ;
+    /// l'annulation ne court qu'après. Mesuré : `eveillees()` monte bien à 9
+    /// pour un plafond de 8. **Ce qu'elle obtient est que cette
+    /// sur-souscription soit TRANSITOIRE au lieu de permanente** — au
+    /// ré-arbitrage suivant, le vivier voit 9 > 8 et rendort quelqu'un, là où
+    /// sans elle il ne verrait jamais 9 et laisserait la dérive s'installer.
+    /// Le test
+    /// `sommeil::tests_refus::une_sur_souscription_par_un_dormir_non_depose_est_resorbee_au_tour_suivant`
+    /// la mesure dans les deux temps.
     ///
     /// 🔴 LE REMÈDE EST « NE PAS MENTIR », PAS « RETENTER ». L'état
     /// redevient celui d'AVANT l'ordre, donc le vivier décrit à nouveau la

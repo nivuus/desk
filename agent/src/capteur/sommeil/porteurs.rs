@@ -96,12 +96,23 @@ pub(super) fn distribuer_l_audio(garde: &mut MutexGuard<'static, Etat>) {
         if garde.derniers_audio.get(&session) == Some(&actif) {
             continue;
         }
+        // ⚠️ **`None` N'EST PAS UNE RUPTURE, et le round 3 a corrigé cette
+        // rédaction** — même grief que `registre::distribuer` au round 2.
+        // C'est inatteignable aujourd'hui (les sessions sortent de
+        // `canaux.keys()` sous le MÊME verrou, quelques lignes plus haut),
+        // donc sans conséquence ; mais ce lot s'était donné pour règle de ne
+        // plus FABRIQUER d'issue, et l'écrire `Envoi::Rompu` ferait purger une
+        // session sur un fait qui n'a pas eu lieu si cette invariance venait à
+        // tomber. Un `Option` nomme la chose : il n'y a eu aucun envoi.
         let issue = match garde.canaux.get(&session) {
-            Some(canal) => canal.envoyer(Message::Audio { actif }),
-            None => Envoi::Rompu,
+            Some(canal) => Some(canal.envoyer(Message::Audio { actif })),
+            None => None,
         };
         match issue {
-            Envoi::Depose(_) => {
+            // Aucun canal : rien n'est parti, et il n'y a rien à purger — la
+            // session n'est déjà plus dans `canaux`.
+            None => {}
+            Some(Envoi::Depose(_)) => {
                 garde.derniers_audio.insert(session, actif);
             }
             // 🔴 REFUSÉ : ON NE MÉMORISE PAS. Même correctif que
@@ -115,8 +126,8 @@ pub(super) fn distribuer_l_audio(garde: &mut MutexGuard<'static, Etat>) {
             // résidu-ci n'était borné par rien du tout.
             //
             // ⚠️ **Et surtout PAS `rompus.push`** : la session est VIVANTE.
-            Envoi::Refuse => {}
-            Envoi::Rompu => rompus.push(session),
+            Some(Envoi::Refuse) => {}
+            Some(Envoi::Rompu) => rompus.push(session),
         }
     }
 
