@@ -37,6 +37,21 @@ import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import type { Tranche } from '../../../proto/ts/tranches';
 
+/// ⚠️ **NON CALIBRÉE.** Aucune constante de ce dépôt ne l'est.
+///
+/// 🔴 LE PLANCHER DE RÉFÉRENCE (voir `evincer`, plus bas) EST CE QUI DISTINGUE
+/// UNE ÉVICTION D'UNE CORRUPTION : évincer un téléversement encore nommé par
+/// une installation en cours ferait disparaître ses tranches sans que rien ne
+/// le dise — la reprise redemanderait des octets qu'un utilisateur croit
+/// avoir déjà envoyés.
+///
+/// ⚠️ CE QUE CETTE RÈGLE NE FAIT PAS : elle ne borne PAS le disque. Un
+/// répertoire de téléversements qui grossit sans cesse grossit sans cesse. Le
+/// plafond de taille a été ÉCARTÉ par décision, parce qu'il peut évincer un
+/// objet encore référencé — c'est-à-dire échanger une croissance visible
+/// contre une panne silencieuse.
+export const AGE_EVICTION_TRANCHES_MS = 30 * 24 * 60 * 60_000;
+
 /// 🔴 L'IDENTIFIANT D'UN TÉLÉVERSEMENT DEVIENT UN NOM DE RÉPERTOIRE, ET IL
 /// VIENT DU RÉSEAU. `/televersement/..%2f..%2fetc/tranche/0` doit être refusé,
 /// jamais assaini : assainir en silence ferait écrire quelque part, et
@@ -93,6 +108,10 @@ export interface MagasinTranches {
     concatener(id: string, rangs: readonly number[]): Readable;
     /// Retire tout un téléversement.
     supprimer(id: string): void;
+    /// Évince PAR ÂGE, avec un PLANCHER DE RÉFÉRENCE — voir `AGE_EVICTION_TRANCHES_MS`.
+    /// `maintenant` est un PARAMÈTRE, jamais lu de l'horloge : même règle que
+    /// partout ailleurs dans ce dépôt.
+    evincer(options: { maintenant: number; referencees: ReadonlySet<string> }): void;
 }
 
 /// Ouvre — ou crée — la racine des téléversements, et JOURNALISE le chemin.
@@ -320,6 +339,39 @@ export function ouvrirMagasinTranches(
         /// passe après un dépôt abandonné avant sa première trame.
         supprimer(id: string): void {
             rmSync(repertoireDe(id), { recursive: true, force: true });
+        },
+
+        /// 🔴 LE PLANCHER D'ABORD : un identifiant RÉFÉRENCÉ n'est jamais
+        /// examiné pour son âge, quelle que soit sa vétusté — voir le
+        /// commentaire de `AGE_EVICTION_TRANCHES_MS`.
+        ///
+        /// 🔴 L'ÂGE EST CELUI DU RÉPERTOIRE, PAS D'UNE TRANCHE : chaque dépôt
+        /// (`ecrire`, via son `renameSync` final) touche le répertoire parent,
+        /// donc son horodatage suit la dernière activité du téléversement
+        /// entier, tranche par tranche, sans qu'il faille les lister toutes.
+        ///
+        /// ⚠️ UN NOM QUI N'EST PAS UN IDENTIFIANT VALIDE N'EST JAMAIS TOUCHÉ,
+        /// même s'il est vieux : ce magasin n'écrit jamais un tel nom
+        /// lui-même, et un répertoire étranger n'est pas sa responsabilité.
+        evincer({ maintenant, referencees }: { maintenant: number; referencees: ReadonlySet<string> }): void {
+            let noms: string[];
+            try {
+                noms = readdirSync(racine);
+            } catch {
+                return;
+            }
+            for (const nom of noms) {
+                if (!identifiantValide(nom) || referencees.has(nom)) continue;
+                let mtimeMs: number;
+                try {
+                    mtimeMs = statSync(join(racine, nom)).mtimeMs;
+                } catch {
+                    continue;
+                }
+                if (maintenant - mtimeMs >= AGE_EVICTION_TRANCHES_MS) {
+                    rmSync(join(racine, nom), { recursive: true, force: true });
+                }
+            }
         },
     };
 }

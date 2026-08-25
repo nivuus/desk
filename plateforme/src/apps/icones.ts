@@ -22,9 +22,21 @@
 // critère ⑦ de recette, et il doit être ÉPROUVÉ plutôt que supposé.
 
 import { createHash } from 'node:crypto';
-import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
+
+/// ⚠️ **NON CALIBRÉE.** Aucune constante de ce dépôt ne l'est.
+///
+/// 🔴 LE PLANCHER DE RÉFÉRENCE (voir `evincer`, plus bas) EST CE QUI DISTINGUE
+/// UNE ÉVICTION D'UNE CORRUPTION : évincer une icône encore nommée par une
+/// application ferait disparaître son image sans que rien ne le dise.
+///
+/// ⚠️ CE QUE CETTE RÈGLE NE FAIT PAS : elle ne borne PAS le disque. Un
+/// catalogue qui grossit sans cesse grossit sans cesse. Le plafond de taille a
+/// été ÉCARTÉ par décision, parce qu'il peut évincer un objet encore référencé
+/// — c'est-à-dire échanger une croissance visible contre une panne silencieuse.
+export const AGE_EVICTION_ICONE_MS = 180 * 24 * 60 * 60_000;
 
 /// 🔴 EXACTEMENT 64 CARACTÈRES HEXADÉCIMAUX MINUSCULES, ET RIEN D'AUTRE.
 ///
@@ -46,6 +58,11 @@ export interface Magasin {
     manquantes(annoncees: readonly string[]): string[];
     ecrire(empreinte: string, octets: Buffer): void;
     lire(empreinte: string): Buffer | undefined;
+    /// Évince PAR ÂGE, avec un PLANCHER DE RÉFÉRENCE — voir `AGE_EVICTION_ICONE_MS`.
+    /// `maintenant` est un PARAMÈTRE, jamais lu de l'horloge : même règle que
+    /// partout ailleurs dans ce dépôt (`depot/application.ts`, etc.), et c'est
+    /// ce qui rend `icones.test.ts` capable de rejouer un âge exact.
+    evincer(options: { maintenant: number; referencees: ReadonlySet<string> }): void;
     repertoire: string;
 }
 
@@ -134,6 +151,36 @@ export function ouvrirMagasin(repertoire: string, journaliser: (chemin: string) 
                 return readFileSync(join(repertoire, empreinte));
             } catch {
                 return undefined;
+            }
+        },
+
+        /// 🔴 LE PLANCHER D'ABORD : une empreinte RÉFÉRENCÉE n'est jamais
+        /// examinée pour son âge, quelle que soit sa vétusté. C'est la seule
+        /// chose qui distingue une éviction d'une corruption — voir le
+        /// commentaire de `AGE_EVICTION_ICONE_MS`.
+        ///
+        /// ⚠️ UN NOM QUI N'EST PAS UNE EMPREINTE VALIDE N'EST JAMAIS TOUCHÉ :
+        /// un fichier étranger déposé à la main dans le magasin (le cas
+        /// couvert par `icones.test.ts::'un fichier étranger…'`) n'est pas de
+        /// la responsabilité de cette éviction.
+        evincer({ maintenant, referencees }: { maintenant: number; referencees: ReadonlySet<string> }): void {
+            let noms: string[];
+            try {
+                noms = readdirSync(repertoire);
+            } catch {
+                return;
+            }
+            for (const nom of noms) {
+                if (!empreinteValide(nom) || referencees.has(nom)) continue;
+                let mtimeMs: number;
+                try {
+                    mtimeMs = statSync(join(repertoire, nom)).mtimeMs;
+                } catch {
+                    continue;
+                }
+                if (maintenant - mtimeMs >= AGE_EVICTION_ICONE_MS) {
+                    rmSync(join(repertoire, nom), { force: true });
+                }
             }
         },
     };
