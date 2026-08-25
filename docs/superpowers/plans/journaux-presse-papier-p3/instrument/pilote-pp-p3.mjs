@@ -108,6 +108,13 @@ const IDENTITE = arg('identite', '');
 const PLATEFORME_URL = arg('plateforme', 'http://127.0.0.1:8090');
 const CLIENT_URL = arg('client', 'http://127.0.0.1:5174');
 const SIGNALING_WS = arg('signaling', `ws://${process.env.HOTE ?? '192.168.3.1'}:8090`);
+// 🔴 CHANTIER auth-pomerium : le relais a quitté `/` pour `/signal`.
+// SIGNALING_WS RESTE LA BASE — c'est elle qui va dans SIGNALING_URL au
+// lancement de l'agent (`agent/src/signaling.rs::url_du_relais` y ajoute
+// `/signal` lui-même). `?signaling=` côté NAVIGATEUR, lui, est EXPLICITE et
+// NE REÇOIT AUCUN AJOUT (client/src/adresse-plateforme.ts::adresseSignaling) :
+// c'est ce pilote qui doit fournir l'URL du relais, pas sa seule base.
+const SIGNALING_RELAIS = `${SIGNALING_WS.replace(/\/+$/, '')}/signal`;
 // ⚠️ Le nombre DEMANDÉ. Le nombre OBTENU est relevé, et c'est lui qui compte
 // (D-P3-8). Moins de deux ⟹ P3 n'est pas livrable (RP3-1).
 const N_DEMANDE = Number(arg('fenetres', '3'));
@@ -326,15 +333,15 @@ const SEMENCE = `(() => { try {
   localStorage.setItem('guac.jeton.rafraichissement', ${JSON.stringify(paire.rafraichissement)});
   localStorage.setItem('guac.prefixe', ${JSON.stringify(identite.PREFIXE_VM)});
 } catch (e) { } })();`;
-const URL_SHELL = `${CLIENT_URL}/shell.html?signaling=${encodeURIComponent(SIGNALING_WS)}`
+const URL_SHELL = `${CLIENT_URL}/shell.html?signaling=${encodeURIComponent(SIGNALING_RELAIS)}`
     + `&prefixe=${encodeURIComponent(identite.PREFIXE_VM)}`;
 
 // 🔴 Substitution VÉRIFIÉE : un marqueur survivant produirait une URL de
 // signaling littérale, la page ne se connecterait à rien, et le seul symptôme
 // serait « l'agent n'a pas répondu » — indiscernable d'une panne du produit.
-const AMORCE_FINALE = AMORCE.replaceAll('__SIGNALING__', SIGNALING_WS);
+const AMORCE_FINALE = AMORCE.replaceAll('__SIGNALING__', SIGNALING_RELAIS);
 if (AMORCE_FINALE.includes('__SIGNALING__')) throw new Error('marqueur __SIGNALING__ non substitué');
-if (!AMORCE_FINALE.includes(SIGNALING_WS)) throw new Error('substitution du signaling sans effet');
+if (!AMORCE_FINALE.includes(SIGNALING_RELAIS)) throw new Error('substitution du signaling sans effet');
 
 const dir = await mkdtemp(join(tmpdir(), `pp3-${ETIQUETTE}-`));
 const port = 9460 + (Number(ETIQUETTE) || 1);

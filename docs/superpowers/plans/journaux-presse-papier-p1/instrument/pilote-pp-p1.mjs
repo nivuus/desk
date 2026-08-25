@@ -78,6 +78,13 @@ const IDENTITE = arg('identite', '');
 const PLATEFORME_URL = arg('plateforme', 'http://127.0.0.1:8090');
 const CLIENT_URL = arg('client', 'http://127.0.0.1:5173');
 const SIGNALING_WS = arg('signaling', `ws://${process.env.HOTE ?? '192.168.3.1'}:8090`);
+// 🔴 CHANTIER auth-pomerium : le relais a quitté `/` pour `/signal`.
+// SIGNALING_WS RESTE LA BASE — c'est elle qui va dans SIGNALING_URL au
+// lancement de l'agent (`agent/src/signaling.rs::url_du_relais` y ajoute
+// `/signal` lui-même). `?signaling=` côté NAVIGATEUR, lui, est EXPLICITE et
+// NE REÇOIT AUCUN AJOUT (client/src/adresse-plateforme.ts::adresseSignaling) :
+// c'est ce pilote qui doit fournir l'URL du relais, pas sa seule base.
+const SIGNALING_RELAIS = `${SIGNALING_WS.replace(/\/+$/, '')}/signal`;
 const NONCE = `${ETIQUETTE}-${Math.random().toString(36).slice(2, 8)}`;
 const log = (...a) => console.log(new Date().toISOString(), ...a);
 
@@ -273,16 +280,16 @@ const SEMENCE = `(() => { try {
   localStorage.setItem('guac.jeton.rafraichissement', ${JSON.stringify(paire.rafraichissement)});
   localStorage.setItem('guac.prefixe', ${JSON.stringify(identite.PREFIXE_VM)});
 } catch (e) { } })();`;
-const URL_SHELL = `${CLIENT_URL}/shell.html?signaling=${encodeURIComponent(SIGNALING_WS)}`
+const URL_SHELL = `${CLIENT_URL}/shell.html?signaling=${encodeURIComponent(SIGNALING_RELAIS)}`
     + `&prefixe=${encodeURIComponent(identite.PREFIXE_VM)}`;
 
 // 🔴 Substitution VERIFIEE : un marqueur survivant produirait une URL de
 // signaling litterale, la page ne se connecterait a rien, et le seul symptome
 // serait « l'agent n'a pas repondu » -- indiscernable d'une panne du produit.
 // C'est le controle que F1 a du ajouter apres l'avoir paye.
-const AMORCE_FINALE = AMORCE.replaceAll('__SIGNALING__', SIGNALING_WS);
+const AMORCE_FINALE = AMORCE.replaceAll('__SIGNALING__', SIGNALING_RELAIS);
 if (AMORCE_FINALE.includes('__SIGNALING__')) throw new Error('marqueur __SIGNALING__ non substitue');
-if (!AMORCE_FINALE.includes(SIGNALING_WS)) throw new Error('substitution du signaling sans effet');
+if (!AMORCE_FINALE.includes(SIGNALING_RELAIS)) throw new Error('substitution du signaling sans effet');
 
 const dir = await mkdtemp(join(tmpdir(), `pp-p1-${ETIQUETTE}-`));
 const port = 9420 + (DESARME ? 2 : 0) + (ETIQUETTE.endsWith('2') ? 1 : 0);
@@ -452,7 +459,7 @@ try {
                 } catch { /* journal pas encore là */ }
                 if (session) {
                     const u = `${CLIENT_URL}/?session=${encodeURIComponent(session)}`
-                        + `&signaling=${encodeURIComponent(SIGNALING_WS)}`;
+                        + `&signaling=${encodeURIComponent(SIGNALING_RELAIS)}`;
                     log('repli : ouverture directe de la page d\'application', u);
                     releve.repli_page_directe = u;
                     await cdp.send('Target.createTarget', { url: u }).catch(() => { });
