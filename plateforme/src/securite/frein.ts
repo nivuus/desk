@@ -142,7 +142,8 @@ export function cleVm(vmId: string): string {
 /// surfaces qu'il couvre n'ont rien d'équivalent à un mot de passe faux —
 /// leur abus est un VOLUME de requêtes qui, individuellement, peuvent toutes
 /// RÉUSSIR. `Frein.echec` est réutilisée pour COMPTER, jamais pour signaler
-/// un échec : c'est la STRUCTURE — fenêtre glissante, plafond d'entrées,
+/// un échec : c'est la STRUCTURE — fenêtre ANCRÉE au premier échec d'une
+/// série (jamais glissante, voir l'en-tête du module), plafond d'entrées,
 /// éviction — qui est reprise ici, jamais la sémantique du nom de la
 /// méthode. Rien n'appelle `succes()` sur ce budget : une entrée ne se vide
 /// QUE par expiration de sa fenêtre, jamais par un geste de l'appelant — il

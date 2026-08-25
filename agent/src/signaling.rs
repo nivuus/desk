@@ -257,6 +257,18 @@ pub async fn run_signaling(
 /// relais qui enverrait une valeur aberrante (bogue, ou serveur compromis) ne
 /// doit pas pouvoir geler indéfiniment un processus dont la seule vocation,
 /// à ce stade, est de mourir vite pour que son superviseur retente.
+///
+/// 🔴 **DÉCLARÉ, PAS CORRIGÉ (revue, round de correction 2)** : ce plafond
+/// (`REPLI_MAX_MS` = 30 s) peut être STRICTEMENT INFÉRIEUR à ce que le relais
+/// suggère (`retryApresS` peut valoir jusqu'à `FENETRE_REQUETES_MS / 1000` =
+/// 60 s, `plateforme/src/securite/frein.ts`). Conséquence : un agent qui
+/// honore une suggestion de 60 s ne dort que 30, retente, et — le budget de
+/// la fenêtre n'ayant pas encore expiré — se fait refuser une SECONDE fois
+/// avant que la fenêtre ne se vide réellement. Une connexion `/signal`
+/// gaspillée par fenêtre de refus prolongé, jamais plus : le repli
+/// exponentiel de l'appelant (`relance_pont::EtatRelance`, ou
+/// `plateforme::repli` pour le canal `/agent`) continue de croître par
+/// ailleurs, donc cela ne dégénère jamais en martèlement.
 pub async fn honorer_retry_suggere(retry_apres_s: &watch::Receiver<Option<u64>>) {
     let Some(secondes) = *retry_apres_s.borrow() else { return };
     let bornees = secondes.min(crate::plateforme::repli::REPLI_MAX_MS / 1000);

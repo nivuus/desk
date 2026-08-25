@@ -259,9 +259,21 @@ describe('Frein', () => {
         // que le remède agent laisse le budget quasi entier disponible pour
         // les AUTRES pairs de la même adresse.
         expect(admises).toBeLessThan(REQUETES_MAX_ADRESSE / 4);
-        // Et le VERROUILLAGE que la revue dénonçait n'a plus lieu : passé la
-        // rafale initiale, un pair LÉGITIME de la même adresse (une fenêtre
-        // neuve, par exemple) obtient un verdict NON freiné.
+        // 🔴 CETTE SECONDE ASSERTION EST INCAPABLE DE ROUGIR, ET C'EST DIT ICI
+        // PLUTÔT QUE LAISSÉ IMPLICITE (revue, round de correction 2) : sous
+        // TOUT espacement qui respecte ne serait-ce que le plancher documenté
+        // (≥ 500 ms), `admises` ne peut structurellement PAS approcher
+        // `REQUETES_MAX_ADRESSE` sur une fenêtre de `FENETRE_REQUETES_MS`
+        // (60 s) — l'assertion ci-dessus l'établit déjà. `freine` ne peut donc
+        // JAMAIS devenir vrai ici, quelle que soit la qualité RÉELLE du repli
+        // exponentiel simulé : cette ligne ne fait que reformuler la même
+        // propriété sous une autre forme, elle ne l'éprouve pas
+        // indépendamment. **C'est `(m bis)`, seul, qui porte la preuve que le
+        // frein sait encore verrouiller** — en retentant plus vite que le
+        // plancher documenté, il fait bien rougir cette même assertion
+        // (`freine === true` là-bas). Conservée ici pour la LISIBILITÉ du
+        // scénario (« et donc, un pair légitime n'est pas bloqué »), jamais
+        // comme un contrôle à part entière.
         expect(frein.consulter([cle], dernierInstant).freine).toBe(false);
     });
 
