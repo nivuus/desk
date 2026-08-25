@@ -25,6 +25,7 @@ use anyhow::Result;
 
 use crate::presse_papier::{Annonce, Sondeur};
 
+use super::file::Envoi;
 use super::{distribuer as distribuer_les_ordres, etat, oublier, Etat, Message};
 
 /// Pousse une annonce de presse-papier à **toutes** les fenêtres inscrites.
@@ -81,14 +82,22 @@ pub(super) fn distribuer(garde: &mut MutexGuard<'static, Etat>, annonce: Annonce
     let sessions: Vec<String> = garde.canaux.keys().cloned().collect();
     let mut rompus = Vec::new();
     for session in sessions {
-        let envoye = match garde.canaux.get(&session) {
-            Some(canal) => canal
-                .envoyer(Message::PressePapier { texte: texte.clone(), octets })
-                .is_ok(),
-            None => false,
+        let issue = match garde.canaux.get(&session) {
+            Some(canal) => canal.envoyer(Message::PressePapier { texte: texte.clone(), octets }),
+            None => Envoi::Rompu,
         };
-        if !envoye {
-            rompus.push(session);
+        match issue {
+            Envoi::Depose(_) => {}
+            // ⚠️ **REFUSÉ N'EST PAS ROMPU** (correctif du round 1) : la file
+            // de cette fenêtre est pleine, la session est VIVANTE, et la
+            // purger tuerait son arbitrage. Rien n'est mémorisé sur ce
+            // chemin — l'émission est inconditionnelle —, donc le prochain
+            // changement de presse-papier repartira de lui-même. Le contenu
+            // refusé, lui, est PERDU pour cette fenêtre : le journaliser une
+            // seconde fois doublerait la trace de `journaliser_le_refus`, qui
+            // nomme déjà la session.
+            Envoi::Refuse => {}
+            Envoi::Rompu => rompus.push(session),
         }
     }
 
@@ -201,7 +210,18 @@ pub(super) fn emettre_l_etat_courant(garde: &mut MutexGuard<'static, Etat>, sess
     tracing::info!(%session, octets, refus = texte.is_none(),
         "etat courant du presse-papier emis a l'inscription");
     if let Some(canal) = garde.canaux.get(session) {
-        let _ = canal.envoyer(Message::PressePapier { texte, octets });
+        // 🔴 LE CINQUIÈME SITE, ET LE SEUL QUE LE COMPILATEUR N'A PAS POINTÉ :
+        // `let _ =` absorbe même un `#[must_use]`. Il est traité à la main, et
+        // le `match` exhaustif remplace le `let _` pour que la prochaine
+        // variante d'`Envoi`, elle, soit signalée ici comme ailleurs.
+        match canal.envoyer(Message::PressePapier { texte, octets }) {
+            // Les trois issues sont sans conséquence ICI, et la doc ci-dessus
+            // dit pourquoi : ce canal vient d'être créé dans la même fonction,
+            // sa file est vide et son receveur est encore sur la pile de
+            // `inscrire`. `Refuse` et `Rompu` sont structurellement
+            // inatteignables — ce qui se DÉMONTRE, et ne se suppose pas.
+            Envoi::Depose(_) | Envoi::Refuse | Envoi::Rompu => {}
+        }
     }
 }
 

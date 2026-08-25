@@ -7,15 +7,35 @@
 //! coalescence, elles cessent de faire croître la file en régime permanent,
 //! quelle que soit la cadence d'arrivée.
 //!
-//! 🔴 LA COALESCENCE CONSERVE LA POSITION, ET C'EST L'INVARIANT DU CANAL.
-//! `sommeil.rs` écrit qu'au sein d'une session, un canal unique garantit
-//! l'ORDRE DE LIVRAISON entre les variantes. Remplacer en place préserve cet
-//! ordre ; déplacer en queue ferait franchir à une part de débit un ordre de
-//! dormir déposé entre-temps, et livrerait la part APRÈS l'ordre qui aurait dû
-//! la rendre caduque.
+//! 🔴 LA COALESCENCE CONSERVE LA POSITION DU CRÉNEAU — ELLE NE CONSERVE PAS
+//! L'ORDRE D'ARRIVÉE DES VALEURS, ET LA DISTINCTION EST TOUT LE SUJET.
 //!
-//! ⚠️ SÉPARER LES VARIANTES EN CANAUX DISTINCTS DÉTRUIRAIT CET INVARIANT.
-//! C'est la solution qui vient d'abord à l'esprit, et elle est fausse.
+//! ❌ ~~Remplacer en place préserve l'ordre de livraison ; déplacer en queue
+//! ferait franchir à une part de débit un ordre de dormir déposé entre-temps,
+//! et livrerait la part APRÈS l'ordre qui aurait dû la rendre caduque.~~
+//! **CET ARGUMENT ÉTAIT FAUX, et le round de correction 1 l'a réfuté** :
+//! coalescer en QUEUE placerait toujours la valeur la plus récente en queue,
+//! donc `Part(dormante), Sommeil(Reveiller), Part(éveillée)` y rendrait
+//! `[Reveiller, Part(éveillée)]` — chronologiquement juste ET portant la
+//! bonne valeur. Le mode de défaillance décrit n'existe pas. Barré plutôt
+//! qu'effacé.
+//!
+//! **CE QUI EST VRAI, ET QUI TIENT LA DÉCISION.** Remplacer en place conserve
+//! la POSITION du créneau : la file garde exactement autant d'entrées, aux
+//! mêmes places. Elle ne conserve PAS l'ordre d'arrivée des valeurs — la
+//! valeur d'éveillée est livrée à la place qu'occupait celle de dormante,
+//! donc AVANT le `Sommeil` arrivé entre les deux. **C'est acceptable parce que
+//! le capteur RELAIE ces deux variantes sans les appliquer** :
+//! `fenetre/transitions.rs` écrit « rien à faire localement » pour `Part` et
+//! pour `Audio` — seul `Sommeil` a un effet local. Les deux politiques
+//! convergent donc vers le même état final, et c'est cet argument-là, pas le
+//! précédent, qui justifie le choix.
+//!
+//! ⚠️ SÉPARER LES VARIANTES EN CANAUX DISTINCTS RESTE FAUX, pour une raison
+//! qui, elle, n'a pas bougé : `Sommeil` a un effet local, et deux canaux
+//! parallèles laisseraient un ordre de dormir doubler une part déjà livrée ou
+//! l'inverse, sans qu'aucun ordre total n'existe entre eux. C'est la solution
+//! qui vient d'abord à l'esprit, et elle est fausse.
 //!
 //! ⚠️ ~~CE MODULE EST PUR : il ne connaît ni verrou, ni fil, ni Windows.~~
 //! **DEVENU FAUX quand ce module a reçu le CANAL lui-même** (`Partage`,
@@ -27,13 +47,27 @@
 //! `cargo test --workspace`. La RÈGLE (`deposer`, `coalescable`) est restée
 //! pure, elle : elle prend une `VecDeque` et rien d'autre.
 //!
-//! 🔴 CE MODULE REMPLACE `std::sync::mpsc::channel()`, ET IL DOIT EN REPRODUIRE
-//! UN COMPORTEMENT PRÉCIS : `envoyer` rend `Err` quand le receveur est tombé.
-//! C'est là-dessus, et sur rien d'autre, que `registre.rs::distribuer` et
-//! `parts::distribuer_les_parts` PURGENT une session morte. Un `envoyer` qui
-//! rendrait toujours `Ok` ne casserait aucun test de ce fichier et laisserait
-//! les sessions mortes s'accumuler au vivier, en silence, pour la vie du
-//! processus capteur.
+//! 🔴 CE MODULE REMPLACE `std::sync::mpsc::channel()`, MAIS SON `envoyer` A
+//! TROIS ISSUES LÀ OÙ `send` EN AVAIT DEUX — ET C'EST LE PIÈGE QUE LE ROUND
+//! DE CORRECTION 1 A PAYÉ.
+//!
+//! Sous `mpsc`, `send(...).is_ok()` valait **« livré »**. Ici il ne vaudrait
+//! plus que « pas déconnecté » : un refus de file pleine est un ÉCHEC DE
+//! LIVRAISON sur une session parfaitement VIVANTE. Les cinq points d'appel de
+//! production avaient gardé l'ancienne lecture, et deux d'entre eux
+//! MÉMORISAIENT le refus comme un envoi (`dernieres_parts`,
+//! `derniers_audio`), ce qui supprimait toute réémission future de cette
+//! valeur — une fenêtre bloquée au débit précédent, ou muette, **sans
+//! borne**.
+//!
+//! 🔴 C'EST POURQUOI `envoyer` NE REND PAS UN `Result` MAIS UN `Envoi` À
+//! TROIS VARIANTES, `#[must_use]`, QUE CHAQUE APPELANT TRAITE PAR UN `match`
+//! EXHAUSTIF. Le remède est MÉCANIQUE : le compilateur refuse un site qui
+//! oublie un cas, et refusera de même toute variante future.
+//! ⚠️ **`#[must_use]` sur `Depot` seul ne suffisait PAS, et cela a été
+//! mesuré** : `Result` est lui-même `#[must_use]`, et `.is_ok()`, `.is_err()`
+//! ou `let _ =` le consomment — ce qui éteint le `must_use` du `Depot` qu'il
+//! contient. `cargo check` ne signalait AUCUN des cinq sites.
 
 use std::collections::VecDeque;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -50,6 +84,13 @@ use super::Message;
 pub(crate) const PROFONDEUR_MAX: usize = 64;
 
 /// Ce qu'un dépôt a fait.
+///
+/// ⚠️ **`#[must_use]` est posé ici par principe — il ne garde PAS les appels
+/// à `envoyer`.** Mesuré : enveloppé dans un `Result` (lui-même `must_use`),
+/// il est éteint dès qu'on écrit `.is_ok()` ou `let _ =`. C'est `Envoi`,
+/// plus bas, qui porte la garde réelle. Ce `must_use`-ci ne couvre que les
+/// appels DIRECTS à `deposer`.
+#[must_use]
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum Depot {
     /// Ajouté en queue.
@@ -107,9 +148,21 @@ pub(crate) fn deposer(file: &mut VecDeque<Message>, message: Message) -> Depot {
 /// détection du receveur tombé **sans qu'aucun test ne bronche**.
 struct Partage {
     file: Mutex<VecDeque<Message>>,
-    /// Compte CUMULÉ des dépôts refusés de cette session. **Par session, et
-    /// c'est le point** : c'est ce qui permet de dire *laquelle* déborde.
+    /// Compte CUMULÉ des dépôts refusés de cette session.
     refuses: AtomicU64,
+    /// Le nom de la session, porté ICI et pour une seule raison : **rendre la
+    /// trace du refus ATTRIBUABLE**.
+    ///
+    /// 🔴 ~~Le nom de la session n'est pas ici, le span de l'appelant
+    /// l'attribue.~~ **FAUX, et le round de correction 1 l'a établi : IL
+    /// N'EXISTE AUCUN SPAN.** Le seul `info_span!` du capteur est posé sur le
+    /// fil de FENÊTRE (`capteur/fenetre.rs`) ; les cinq appels à `envoyer`
+    /// courent soit sur le fil du tour de roue — aucun span —, soit, via
+    /// `signaler`, **sous le span d'une AUTRE session**, `distribuer_les_parts`
+    /// poussant à *toutes*. Le champ aurait alors été FAUX, ce qui est pire
+    /// qu'absent. Un exploitant lisant `refuses=8` sans savoir de quelle
+    /// session n'apprend rien.
+    session: String,
 }
 
 /// Le bout par lequel le registre écrit à une fenêtre.
@@ -120,6 +173,35 @@ pub(crate) struct EmetteurSession {
 /// Le bout par lequel le fil de fenêtre lit. **Rendu par `inscrire`.**
 pub(crate) struct ReceveurSession {
     partage: Arc<Partage>,
+}
+
+/// Ce qu'il est advenu d'un `envoyer`. **TROIS issues, jamais deux.**
+///
+/// 🔴 UN ENUM ET NON UN `Result<Depot, ()>`, ET C'EST LE REMÈDE MÉCANIQUE AU
+/// CRITIQUE DU ROUND 1. Un `Result` invite à `.is_ok()` / `.is_err()`, qui
+/// écrasent `Depose` et `Refuse` sur une seule valeur — c'est exactement la
+/// confusion qui a coûté deux mémorisations fautives. Ici le compilateur
+/// **exige** que chaque site nomme les trois cas, et le fera encore pour
+/// toute variante ajoutée plus tard. Précédent du dépôt : le `match`
+/// exhaustif de `transport/controle.rs`, qui « se signale au compilateur »,
+/// par opposition au catch-all de `capteur/pont_media.rs` qui a tué un fil en
+/// silence six fois.
+#[must_use]
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) enum Envoi {
+    /// Le message est dans la file : il ATTEINDRA la fenêtre. Porte ce que le
+    /// dépôt a fait (empilé, ou coalescé sur une occurrence en attente).
+    Depose(Depot),
+    /// La file était pleine : **rien n'a été déposé**, et le message est
+    /// perdu. ⚠️ **La session est VIVANTE** — la purger serait tuer
+    /// l'arbitrage de la fenêtre la plus en peine. Et **il ne faut pas non
+    /// plus le compter comme livré** : tout appelant qui MÉMORISE ce qu'il a
+    /// envoyé doit s'abstenir ici, sans quoi son garde d'écrasement supprime
+    /// la réémission de cette valeur pour toujours.
+    Refuse,
+    /// Le receveur est tombé : la session est MORTE, il faut la PURGER. C'est
+    /// le seul cas qui remplace l'ancien `send(...).is_err()`.
+    Rompu,
 }
 
 /// Pourquoi une réception n'a rien rendu.
@@ -137,10 +219,15 @@ pub(crate) enum VideOuFerme {
 }
 
 /// Le couple d'une session. **Un émetteur, un receveur, et jamais davantage.**
-pub(crate) fn canal_de_session() -> (EmetteurSession, ReceveurSession) {
+///
+/// `session` n'est retenu que pour rendre la trace du refus attribuable —
+/// voir le champ `Partage::session`, qui dit pourquoi aucun span ne peut le
+/// faire à sa place.
+pub(crate) fn canal_de_session(session: &str) -> (EmetteurSession, ReceveurSession) {
     let partage = Arc::new(Partage {
         file: Mutex::new(VecDeque::new()),
         refuses: AtomicU64::new(0),
+        session: session.to_string(),
     });
     (
         EmetteurSession { partage: Arc::clone(&partage) },
@@ -178,12 +265,14 @@ fn sous_verrou<T>(
 impl EmetteurSession {
     /// Dépose un message pour la fenêtre, et dit ce qu'il en est advenu.
     ///
-    /// 🔴 `Err(())` SIGNIFIE « LE RECEVEUR EST TOMBÉ », et **c'est le contrat
-    /// que `std::sync::mpsc::Sender::send` donnait avant ce module**.
-    /// `registre.rs::distribuer` et `parts::distribuer_les_parts` purgent une
-    /// session morte sur cette valeur, et **rien d'autre ne la purge sur ce
-    /// chemin** : la faire rendre `Ok` inconditionnellement laisserait les
-    /// sessions mortes occuper une place au vivier pour la vie du processus.
+    /// 🔴 `Envoi::Rompu` SIGNIFIE « LE RECEVEUR EST TOMBÉ », et **c'est le
+    /// contrat que `std::sync::mpsc::Sender::send(...).is_err()` donnait avant
+    /// ce module**. `registre.rs::distribuer`,
+    /// `parts::distribuer_les_parts`, `porteurs::distribuer_l_audio` et
+    /// `presse_papier::distribuer` purgent une session morte sur cette valeur,
+    /// et **rien d'autre ne la purge sur ces chemins** : ne jamais la rendre
+    /// laisserait les sessions mortes occuper une place au vivier pour la vie
+    /// du processus.
     ///
     /// ⚠️ **COMMENT ON LE SAIT : `Arc::strong_count(&self.partage) == 1`.**
     /// C'est le SEUL signal disponible — il n'y a plus de `mpsc` pour le
@@ -191,24 +280,35 @@ impl EmetteurSession {
     /// deux détenteurs et qu'aucun des deux bouts n'est `Clone` : `1` veut
     /// alors dire « je suis seul », donc « le receveur a été laissé choir ».
     ///
-    /// ⚠️ **Un refus n'est PAS une erreur** : il rend `Ok(Depot::Refusee)`.
-    /// Les appelants du registre ne jugent que « rompu ou non », et confondre
-    /// les deux ferait purger une session bien vivante dont la file déborde —
-    /// c'est-à-dire tuer l'arbitrage de la fenêtre la plus en peine.
-    #[allow(clippy::result_unit_err)]
-    pub(crate) fn envoyer(&self, message: Message) -> Result<Depot, ()> {
+    /// 🔴 **`Envoi::Refuse` N'EST NI UNE LIVRAISON NI UNE RUPTURE**, et c'est
+    /// la troisième issue que `mpsc` n'avait pas. La confondre avec la
+    /// première fait mémoriser un message jamais parti ; avec la seconde, elle
+    /// purge une session bien vivante. Le `match` exhaustif qu'`Envoi` impose
+    /// est ce qui empêche les deux.
+    pub(crate) fn envoyer(&self, message: Message) -> Envoi {
         if Arc::strong_count(&self.partage) == 1 {
-            return Err(());
+            return Envoi::Rompu;
         }
-        let depot = sous_verrou(&self.partage.file, |file| deposer(file, message));
-        if depot == Depot::Refusee {
-            let refuses = self.partage.refuses.fetch_add(1, Ordering::Relaxed) + 1;
-            self.journaliser_le_refus(refuses);
+        match sous_verrou(&self.partage.file, |file| deposer(file, message)) {
+            Depot::Refusee => {
+                let refuses = self.partage.refuses.fetch_add(1, Ordering::Relaxed) + 1;
+                self.journaliser_le_refus(refuses);
+                Envoi::Refuse
+            }
+            depose => Envoi::Depose(depose),
         }
-        Ok(depot)
     }
 
     /// Le compte CUMULÉ des dépôts refusés de cette session.
+    ///
+    /// ⚠️ **`#[cfg(test)]`, et c'est une correction du round 1 : il n'avait
+    /// AUCUN appelant de production** (`method 'refuses' is never used` sur la
+    /// cible Windows), alors que sa doc annonçait le bénéfice « dire LAQUELLE
+    /// déborde ». Ce bénéfice est réalisé par la TRACE, qui porte désormais le
+    /// nom de session ; cet accesseur n'existe que pour que le test puisse
+    /// éprouver le compteur. Le gater est ce qui empêche de réaffirmer un
+    /// bénéfice d'exploitation qui n'existe pas.
+    #[cfg(test)]
     pub(crate) fn refuses(&self) -> u64 {
         self.partage.refuses.load(Ordering::Relaxed)
     }
@@ -233,12 +333,14 @@ impl EmetteurSession {
     /// qu'il arrive, et la ligne porte le compte, donc l'ampleur reste
     /// lisible sans qu'on ait à compter les lignes.
     ///
-    /// ⚠️ Le nom de la session n'est PAS ici : ce module ne le connaît pas, et
-    /// le lui donner ferait porter au canal une identité qui appartient au
-    /// registre. Le span de l'appelant l'attribue.
+    /// 🔴 ~~Le nom de la session n'est PAS ici ; le span de l'appelant
+    /// l'attribue.~~ **CORRIGÉ AU ROUND 1 : IL N'EXISTE AUCUN SPAN**, et la
+    /// trace n'était donc attribuable à personne. L'émetteur connaît sa
+    /// session : il la porte, et la trace la nomme. Voir `Partage::session`.
     fn journaliser_le_refus(&self, refuses: u64) {
         if refuses.is_power_of_two() {
             tracing::warn!(
+                session = %self.partage.session,
                 refuses,
                 profondeur_max = PROFONDEUR_MAX,
                 "file d'une session pleine : message REFUSE (trace au palier, puissance de deux)"
@@ -274,6 +376,12 @@ impl ReceveurSession {
     /// `parts`, `porteurs` et `presse_papier` se servent pour lire le DERNIER
     /// message d'une variante. **En une seule prise de verrou** plutôt qu'une
     /// par message.
+    ///
+    /// ⚠️ **`#[cfg(test)]`, et c'est une correction du round 1** : ses six
+    /// appelants sont TOUS des helpers de test (`method 'vider' is never used`
+    /// sur la cible Windows). La production, elle, ne lit ce canal que par
+    /// `essayer_recevoir`, en boucle.
+    #[cfg(test)]
     pub(crate) fn vider(&self) -> Vec<Message> {
         sous_verrou(&self.partage.file, |file| file.drain(..).collect())
     }

@@ -16,6 +16,7 @@ use std::sync::{MutexGuard, OnceLock};
 
 use crate::capteur::repartiteur::{self, Fenetre};
 
+use super::file::Envoi;
 use super::{distribuer, oublier, Etat, Message};
 
 /// Budget de débit de la session entière, en bits par seconde.
@@ -126,14 +127,34 @@ pub(super) fn distribuer_les_parts(garde: &mut MutexGuard<'static, Etat>) {
         if garde.dernieres_parts.get(&session) == Some(&bps) {
             continue;
         }
-        let envoye = match garde.canaux.get(&session) {
-            Some(canal) => canal.envoyer(Message::Part { bps }).is_ok(),
-            None => false,
+        let issue = match garde.canaux.get(&session) {
+            Some(canal) => canal.envoyer(Message::Part { bps }),
+            None => Envoi::Rompu,
         };
-        if envoye {
-            garde.dernieres_parts.insert(session, bps);
-        } else {
-            rompus.push(session);
+        match issue {
+            // Livrée : on peut mémoriser, et le garde d'écrasement en tête de
+            // boucle évitera de la réémettre tant qu'elle ne change pas.
+            Envoi::Depose(_) => {
+                garde.dernieres_parts.insert(session, bps);
+            }
+            // 🔴 REFUSÉE : ON NE MÉMORISE PAS, ET C'EST TOUT LE CORRECTIF DU
+            // ROUND 1. La file de cette fenêtre était pleine : la part n'est
+            // jamais partie. L'inscrire dans `dernieres_parts` ferait juger la
+            // valeur « déjà livrée » par le garde d'écrasement ci-dessus, qui
+            // supprimerait alors TOUTE réémission future de cette valeur — la
+            // fenêtre resterait à son débit précédent tant que sa part
+            // calculée ne change pas, sans borne. En ne mémorisant rien, le
+            // tour de roue suivant la repropose de lui-même.
+            //
+            // ⚠️ **Et surtout PAS `rompus.push`** : la session est VIVANTE,
+            // seulement en retard. La purger reviendrait à tuer l'arbitrage de
+            // la fenêtre la plus en peine — exactement la mauvaise réaction.
+            //
+            // Le refus est déjà journalisé, au palier et avec le nom de la
+            // session, par `EmetteurSession::journaliser_le_refus` : le
+            // retracer ici doublerait la ligne sans rien ajouter.
+            Envoi::Refuse => {}
+            Envoi::Rompu => rompus.push(session),
         }
     }
 
@@ -160,8 +181,8 @@ pub(super) fn distribuer_les_parts(garde: &mut MutexGuard<'static, Etat>) {
 mod tests {
 
     use crate::capteur::sommeil::tests::{premier_ordre, verrouiller_pour_le_test};
-    use crate::capteur::sommeil::file::ReceveurSession;
-    use crate::capteur::sommeil::{inscrire, retirer, signaler, Message};
+    use crate::capteur::sommeil::file::{ReceveurSession, PROFONDEUR_MAX};
+    use crate::capteur::sommeil::{etat, inscrire, retirer, signaler, Message};
     use crate::capteur::vivier::Ordre;
 
     /// Dernière part reçue sur un canal, en vidant ce qui s'y trouve.
@@ -196,14 +217,29 @@ mod tests {
     ///
     /// 🔵 **CONSÉQUENCE ASSUMÉE, ET IL FAUT LA DIRE : L'ORDRE ENTRE UNE `Part`
     /// ET UN `Sommeil` N'EST PLUS GARANTI** quand la fenêtre n'a pas lu entre
-    /// les deux. La part peut précéder d'un message l'ordre qui la motive.
-    /// **C'est le moindre des deux maux, et c'est pour cela que la coalescence
-    /// est EN PLACE** : la valeur livrée est toujours la DERNIÈRE calculée,
-    /// donc jamais périmée. Coalescer en QUEUE livrerait au contraire une part
-    /// après un ordre qui la rend caduque — et comme `dernieres_parts` filtre
-    /// les répétitions, cette part périmée ne serait jamais corrigée. La borne
-    /// du désordre est ici d'UN message, sur une fenêtre qui n'encode pas
-    /// encore (elle attend son réveil).
+    /// les deux. La coalescence en place conserve la position du CRÉNEAU, pas
+    /// l'ordre d'arrivée des VALEURS : la part peut précéder d'un message
+    /// l'ordre qui la motive.
+    ///
+    /// ❌ ~~C'est le moindre des deux maux : coalescer en QUEUE livrerait une
+    /// part après un ordre qui la rend caduque, et `dernieres_parts` filtrant
+    /// les répétitions, cette part périmée ne serait jamais corrigée.~~
+    /// **CET ARGUMENT ÉTAIT FAUX, et le round de correction 1 l'a réfuté** :
+    /// coalescer en queue placerait toujours la valeur la plus RÉCENTE en
+    /// queue, donc `[Reveiller, Part(éveillée)]` — chronologiquement juste ET
+    /// portant la bonne valeur. Le mode de défaillance décrit n'existe pas.
+    /// ⚠️ Cette phrase contredisait de surcroît l'en-tête de `file.rs`, écrit
+    /// dans le MÊME commit, qui affirmait que remplacer en place « préserve
+    /// l'ordre » : les deux disent désormais la même chose, et la vraie.
+    ///
+    /// 🔵 **CE QUI JUSTIFIE RÉELLEMENT LE CHOIX** : le désordre ne porte que
+    /// sur des variantes que le capteur RELAIE sans les appliquer —
+    /// `fenetre/transitions.rs` écrit « rien à faire localement » pour `Part`
+    /// comme pour `Audio`, seul `Sommeil` ayant un effet local. Les deux
+    /// politiques convergent vers le même état final, et la valeur livrée est
+    /// dans les deux cas la dernière calculée. La borne du désordre est d'UN
+    /// message, sur une fenêtre qui n'encode pas encore (elle attend son
+    /// réveil).
     #[test]
     fn une_session_qui_s_eveille_recoit_la_part_d_une_eveillee_et_une_seule() {
         let _verrou = verrouiller_pour_le_test();
@@ -379,4 +415,74 @@ mod tests {
 
         retirer("t8-rattache", generation_neuve);
     }
+    /// 🔴 LA ROUGE DU CRITIQUE DU ROUND 1 : UNE PART REFUSÉE ÉTAIT MÉMORISÉE
+    /// COMME ENVOYÉE, ET N'ÉTAIT PLUS JAMAIS RÉÉMISE.
+    ///
+    /// Sous `mpsc`, `send(...).is_ok()` valait « livré ». Depuis la file
+    /// bornée, il ne vaut plus que « pas déconnecté » : `Ok(Depot::Refusee)`
+    /// est un refus de file pleine, et le lire comme une livraison faisait
+    /// écrire la valeur dans `dernieres_parts`. Le garde d'écrasement en tête
+    /// de boucle (`if dernieres_parts.get(&session) == Some(&bps) { continue }`)
+    /// supprimait alors **toute réémission future de cette valeur** : la
+    /// fenêtre restait à son débit précédent tant que sa part calculée ne
+    /// changeait pas — sans borne, et sans une ligne de journal.
+    ///
+    /// **Ce test échoue sur sa DERNIÈRE assertion avant le correctif**
+    /// (`une part refusée doit être RÉÉMISE au tour suivant`), la part ayant
+    /// été mémorisée à tort. Les deux premières passent des deux côtés : elles
+    /// établissent la précondition (la file est bien pleine, la part n'est
+    /// bien pas livrée), sans quoi la troisième ne mesurerait rien.
+    #[test]
+    fn une_part_refusee_n_est_pas_memorisee_et_repart_au_tour_suivant() {
+        let _verrou = verrouiller_pour_le_test();
+        let (canal, generation) = inscrire("t17-refus", 6400);
+        // On part d'une file vide et d'une mémoire déjà posée par
+        // l'inscription : c'est l'état ordinaire d'une session vivante.
+        let _ = canal.vider();
+
+        // Sature la file par des messages INCOALESCABLES — `Sommeil` ne se
+        // coalesce jamais, c'est ce qui permet d'atteindre la borne.
+        {
+            let garde = etat();
+            let emetteur = garde.canaux.get("t17-refus").expect("la session est inscrite");
+            for _ in 0..PROFONDEUR_MAX {
+                let _ = emetteur.envoyer(Message::Sommeil(Ordre::Reveiller));
+            }
+        }
+
+        // La session s'éveille : sa part passe du plancher au budget entier,
+        // donc une part NEUVE est calculée — et REFUSÉE, la file étant pleine.
+        signaler("t17-refus", true, true);
+
+        // La fenêtre reprend sa lecture. Aucune part ne s'y trouve : elle n'a
+        // jamais été déposée.
+        let recus = canal.vider();
+        assert_eq!(recus.len(), PROFONDEUR_MAX, "précondition : la file était bien pleine");
+        assert!(
+            !recus.iter().any(|m| matches!(m, Message::Part { .. })),
+            "précondition : la part refusée n'a PAS été livrée : {recus:?}"
+        );
+
+        // Le tour suivant, sans que rien n'ait changé : la MÊME valeur doit
+        // repartir, puisqu'elle n'a jamais atteint la fenêtre.
+        {
+            let mut garde = etat();
+            super::distribuer_les_parts(&mut garde);
+        }
+        let parts: Vec<u32> = canal
+            .vider()
+            .into_iter()
+            .filter_map(|m| match m {
+                Message::Part { bps } => Some(bps),
+                _ => None,
+            })
+            .collect();
+        assert!(
+            !parts.is_empty(),
+            "une part refusée doit être RÉÉMISE au tour suivant : elle n'a jamais été livrée"
+        );
+
+        retirer("t17-refus", generation);
+    }
 }
+
