@@ -179,82 +179,14 @@ pub const ESPACEMENT_PLANCHER_MS: u64 = 500;
 /// retard** — la cadence, elle, ne dépend d'aucun seuil de durée.
 pub const SEUIL_STABILITE_MS: u64 = REPLI_MAX_MS + 5_000;
 
-/// Ce qu'un processus supervisé laisse derrière lui en mourant — **le
-/// discriminant du réarmement du repli depuis le round de correction 4**, à
-/// la place d'une durée de vie qui ne distinguait pas une session saine d'un
-/// refus endormi (voir la doc de tête).
-///
-/// Le type est PUR : il ne connaît ni `std::process::ExitStatus`, ni Windows,
-/// ni `tracing`. La conversion depuis le code de sortie est
-/// [`IssueDeSortie::depuis_le_code`], et c'est le seul point de contact.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum IssueDeSortie {
-    /// Code de sortie **0** : le processus a fini son travail et s'est
-    /// arrêté normalement. Pour le pont, c'est le `Ok(())` de
-    /// `pont::executer` — la page-shell a fermé sa session.
-    Propre,
-    /// Code de sortie **non nul** : `bail!`, panique, `exit(n)`. Pour le
-    /// pont, c'est le refus du relais, honoré puis propagé.
-    Erreur,
-    /// **Aucun code n'est disponible** : le processus a été tué par un signal
-    /// (POSIX), ou l'état n'a pas pu être lu.
-    Inconnue,
-}
-
-impl IssueDeSortie {
-    /// Depuis le code de sortie, tel que `std::process::ExitStatus::code()`
-    /// le rend — `None` quand il n'y en a pas.
-    ///
-    /// 🔴 **`None` DEVIENT `Inconnue`, ET `Inconnue` NE RÉARME PAS.** C'est
-    /// le sens SÛR, et voici pourquoi : le coût des deux erreurs n'est pas
-    /// symétrique. Réarmer à tort rouvre le défaut que ce round ferme — le
-    /// martèlement à 100 connexions/minute contre un budget partagé de 120,
-    /// c'est-à-dire le **verrouillage de la VM entière**, aucune fenêtre
-    /// neuve ne pouvant plus s'attacher. Ne PAS réarmer à tort coûte, au
-    /// pire, une reconnexion saine retardée de `REPLI_MAX_MS` (30 s) une
-    /// fois — un inconfort borné, sur un service que le cadrage §4 déclare
-    /// FACULTATIF et dont une panne ne touche jamais le flux vidéo.
-    ///
-    /// ⚠️ **Sur la cible réelle, ce cas ne court pas** : Windows rend
-    /// toujours un code de sortie, `ExitStatus::code()` y étant `Some(_)`
-    /// même pour un `TerminateProcess`. `Inconnue` couvre l'hôte POSIX (où
-    /// ce module compile et se teste) et l'avenir — il est livré, éprouvé,
-    /// et **jamais exercé en production** : c'est dit plutôt que supposé.
-    pub fn depuis_le_code(code: Option<i32>) -> Self {
-        match code {
-            Some(0) => Self::Propre,
-            Some(_) => Self::Erreur,
-            None => Self::Inconnue,
-        }
-    }
-
-    /// Cette issue prouve-t-elle qu'une panne passée est RÉSOLUE, donc que le
-    /// repli exponentiel peut repartir de son plancher ?
-    pub fn prouve_une_panne_resolue(self) -> bool {
-        matches!(self, Self::Propre)
-    }
-}
-
-/// Ce que le superviseur OBSERVE d'un processus à un tour de boucle.
-///
-/// 🔴 **`Mort` N'EST RENDU QU'UNE FOIS PAR MORT**, et tout ce module en
-/// dépend — voir la doc de tête : la propriété vit dans le câblage
-/// `#[cfg(windows)]` (`etat_du_pont` pose `*pont = None` en constatant la
-/// mort), donc hors de portée de `cargo test --workspace`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum EtatObserve {
-    /// Le processus tourne — ou son état est illisible et **tenu pour
-    /// vivant**, ce qui est la décision de `etat_du_pont` (deux ponts se
-    /// disputant la même racine ProjFS coûtent plus cher qu'un tour perdu).
-    Vivant,
-    /// Le processus vient d'être vu mort, avec cette issue.
-    Mort(IssueDeSortie),
-    /// Aucun processus : jamais lancé (un `spawn` en échec), ou mort déjà
-    /// constatée à un tour précédent. **Ne réarme rien** — un `spawn` qui
-    /// échoue en boucle doit voir son repli croître, c'est le cas même que
-    /// le critique ③ du round 1 a mesuré.
-    Absent,
-}
+/// Les deux types d'observation — [`IssueDeSortie`] et [`EtatObserve`] —
+/// vivent dans leur propre fichier depuis le 25 août 2026 : voir son en-tête
+/// pour la raison (règle des 500 lignes, extraction jouée AVANT l'addition
+/// qui la rendait nécessaire). **Ré-exportés ici**, si bien qu'aucun
+/// appelant ne change de chemin : `crate::relance_pont::IssueDeSortie` reste
+/// valide.
+mod issue;
+pub use issue::{EtatObserve, IssueDeSortie};
 
 /// L'état, PUR, d'un processus supervisé et relancé avec repli exponentiel.
 ///
