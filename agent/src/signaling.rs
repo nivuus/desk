@@ -393,6 +393,39 @@ mod tests {
         assert_eq!(crate::plateforme::url_du_canal("ws://h:8080"), "ws://h:8080/agent");
     }
 
+    /// 🔴 `SIGNALING_URL` EST LA BASE DU SERVICE, JAMAIS L'URL DU RELAIS.
+    /// `url_du_relais` y ajoute `/signal`, `url_du_canal` y ajoute `/agent`.
+    /// Y écrire `/signal` casserait l'enrôlement — `ws://h:8080/signal/agent` —
+    /// et AUCUN test ne le disait : celui d'à côté (`le_canal_agent_n_est_pas_
+    /// affecte`, juste au-dessus) passe une base PROPRE, donc n'éprouve jamais
+    /// ce cas, alors que son commentaire prétendait le fermer.
+    ///
+    /// ⚠️ **CE TEST FIGE, IL NE CORRIGE PAS** (round du 25 août 2026,
+    /// `legs-sans-vm` tâche 4) : `url_du_canal` est une concaténation pure
+    /// (`format!("{}/agent", …trim_end_matches('/'))`), sans garde sur le
+    /// contenu de la base — jouée sur `"ws://h:8080/signal"`, elle rend
+    /// `"ws://h:8080/signal/agent"` **exactement comme documenté ici**, et le
+    /// test passait déjà avant cette tâche (VÉRIFIÉ : la rouge n'existe qu'en
+    /// mutant `url_du_canal`, jamais sur le produit d'aujourd'hui). Le
+    /// contrat que ce test ferme n'est donc pas « le produit refuse une base
+    /// fausse » — il ne le fait pas, et rien dans cette tâche ne le lui fait
+    /// faire — mais « le comportement sur une base fausse est CONNU et fixé
+    /// par un test », là où hier aucun test ne le regardait.
+    #[test]
+    fn une_base_portant_deja_signal_casse_le_canal_agent() {
+        // La base JUSTE : `url_du_canal` y ajoute `/agent`.
+        assert_eq!(crate::plateforme::url_du_canal("ws://h:8080"), "ws://h:8080/agent");
+        // 🔴 LA BASE FAUSSE, celle qu'aucun test n'éprouvait : elle porte déjà
+        // le suffixe du relais, et l'enrôlement part alors vers un chemin qui
+        // n'existe pas côté plateforme. C'est CE cas que le contrat fixe ici.
+        assert_eq!(
+            crate::plateforme::url_du_canal("ws://h:8080/signal"),
+            "ws://h:8080/signal/agent",
+            "le contrat de SIGNALING_URL a changé : cette égalité documentait \
+             que le produit accepte une base déjà suffixée EN SILENCE"
+        );
+    }
+
     /// 🔴 CORRECTIF DU LEGS DES FREINS MANQUANTS (round de correction 1,
     /// critique ②) — `honorer_retry_suggere`, éprouvée sur l'hôte. Horloge
     /// GELÉE (`start_paused`) : sans elle, ces trois tests attendraient
