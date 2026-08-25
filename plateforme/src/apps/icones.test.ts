@@ -1,9 +1,9 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { empreinteValide, ouvrirMagasin } from './icones';
+import { AGE_EVICTION_ICONE_MS, empreinteValide, ouvrirMagasin } from './icones';
 
 let racines: string[] = [];
 function magasinNeuf() {
@@ -133,5 +133,68 @@ describe('le magasin d’icônes sur disque', () => {
         const m = magasinNeuf();
         writeFileSync(join(m.repertoire, EMPREINTE), 'pas le bon contenu');
         expect(m.lire(EMPREINTE)?.toString()).toBe('pas le bon contenu');
+    });
+});
+
+describe('l’éviction par âge, avec plancher', () => {
+    // Le temps est INJECTÉ, jamais lu de l'horloge : un test qui attendrait
+    // réellement l'âge d'éviction serait un test qu'on désactive au premier
+    // ralentissement de la machine.
+    const JOUR_MS = 24 * 60 * 60_000;
+
+    /// Une icône dont le contenu et l'empreinte se correspondent, comme
+    /// `ecrire` l'exige.
+    function icone(texte: string): { empreinte: string; octets: Buffer } {
+        const octets = Buffer.from(texte);
+        return { empreinte: createHash('sha256').update(octets).digest('hex'), octets };
+    }
+
+    /// Dépose une icône, puis FORCE sa date de dernière modification : c'est
+    /// l'équivalent, sur le magasin RÉEL, du `deposer(cle, octets, quand)` de
+    /// la tâche — `ecrire` seul n'a aucune prise sur l'horloge du disque.
+    function deposerA(m: ReturnType<typeof magasinNeuf>, texte: string, quandMs: number): string {
+        const { empreinte, octets } = icone(texte);
+        m.ecrire(empreinte, octets);
+        utimesSync(join(m.repertoire, empreinte), new Date(quandMs), new Date(quandMs));
+        return empreinte;
+    }
+
+    it('évince une icône vieille et NON référencée', () => {
+        const m = magasinNeuf();
+        const orpheline = deposerA(m, 'orpheline', 0);
+        m.evincer({ maintenant: 400 * JOUR_MS, referencees: new Set() });
+        expect(m.possede(orpheline)).toBe(false);
+    });
+
+    // 🔴 LE SEUL TEST QUI DISTINGUE UNE ÉVICTION D'UNE CORRUPTION. Sans lui,
+    // une éviction qui emporte TOUT passerait le test précédent.
+    it('NE PEUT PAS évincer une icône vieille mais RÉFÉRENCÉE par une entrée vivante', () => {
+        const m = magasinNeuf();
+        const enService = deposerA(m, 'en-service', 0);
+        m.evincer({ maintenant: 400 * JOUR_MS, referencees: new Set([enService]) });
+        expect(m.possede(enService)).toBe(true);
+    });
+
+    it('n’évince pas une icône jeune', () => {
+        const m = magasinNeuf();
+        const recente = deposerA(m, 'recente', 0);
+        m.evincer({ maintenant: 1 * JOUR_MS, referencees: new Set() });
+        expect(m.possede(recente)).toBe(true);
+    });
+
+    it('🔴 la constante N n’est PAS calibrée : le plancher, lui, tient à n’importe quelle valeur', () => {
+        // Contrôle de cohérence du montage lui-même : si `AGE_EVICTION_ICONE_MS`
+        // dérivait un jour hors de l'intervalle [1 jour, 400 jours], les deux
+        // tests ci-dessus perdraient leur sens sans qu'aucune rouge ne le dise.
+        expect(AGE_EVICTION_ICONE_MS).toBeGreaterThan(1 * JOUR_MS);
+        expect(AGE_EVICTION_ICONE_MS).toBeLessThan(400 * JOUR_MS);
+    });
+
+    it('un nom qui n’est pas une empreinte valide n’est jamais touché', () => {
+        const m = magasinNeuf();
+        writeFileSync(join(m.repertoire, 'etranger'), 'pas une empreinte');
+        utimesSync(join(m.repertoire, 'etranger'), new Date(0), new Date(0));
+        m.evincer({ maintenant: 400 * JOUR_MS, referencees: new Set() });
+        expect(existsSync(join(m.repertoire, 'etranger'))).toBe(true);
     });
 });
