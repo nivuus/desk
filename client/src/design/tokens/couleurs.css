@@ -98,6 +98,39 @@
     --alerte: #e0b55c;
     --danger: #f07a7a;
 
+    /* ── `--accent-fenetre` — posé PAR FENÊTRE, jamais par thème (sous-bloc
+       A1, tâche 7 du chantier `legs-sans-vm`) ────────────────────────────
+       Ce n'est ni une couleur de thème (les quatorze ci-dessus, redéclarées
+       dans les deux blocs clairs) ni un hors-thème IDENTIQUE dans les deux
+       thèmes (les sept ci-dessous) : c'est une RÉFÉRENCE, écrite `var(--accent)`
+       et non un littéral, donc jamais attrapée par `estUneCouleur` de
+       `tokens.ts` (elle ne commence ni par `#`, ni par `rgb(`/`rgba(`, ni par
+       `hsl(`/`hsla(`) — l'inclusion ③ de §7.4 (`ecartsEntreBlocs`) ne l'exige
+       donc PAS dans les blocs clairs, et il n'y a AUCUNE redéclaration à tenir
+       à jour ici. Une seule ligne, dans le bloc SANS condition, qui se
+       résout contre le thème courant PAR CASCADE.
+
+       `client/src/accent-dom.ts` (`TOKEN_ACCENT`) la RÉÉCRIT à l'exécution, une
+       fois par icône de fenêtre annoncée par l'agent — c'est le premier
+       `setProperty` du dépôt (A1). Cette ligne-ci n'est que sa valeur AVANT le
+       premier message, et sur un REFUS de lisibilité (`accent-dom.ts` pose
+       alors explicitement `--accent`) : sans elle, `var(--accent-fenetre)` est
+       INDÉFINI, et `client/src/style.css` — la seule feuille qui la peint —
+       doit de toute façon porter son propre repli
+       (`var(--accent-fenetre, var(--accent))`), au cas où cette déclaration
+       venait à disparaître par erreur.
+
+       🔴 **DÉCLARER SANS PEINDRE A ÉTÉ ESSAYÉ ET MESURÉ FAUX** (D-A1-2, sonde
+       H1 du 21 août 2026, relevé dans `accent-dom.ts`) : le contrôle §7.6
+       de CETTE ÉPOQUE ne voyait qu'un `var(--…)` dans du CSS, jamais un
+       `poserToken(...)` en TypeScript — déclarer sans qu'aucune feuille ne
+       l'emploie rendait le token ORPHELIN. C'est cette tâche qui ferme les
+       deux moitiés à la fois : `style.css` peint, et
+       `client/outils/tokens-orphelins.mjs` voit désormais aussi l'appel JS
+       (voir `tokens-orphelins/js.mjs`) — la déclaration seule ne suffirait
+       toujours pas à l'une des deux lectures si l'autre manquait. */
+    --accent-fenetre: var(--accent);
+
     /* ── Sept tokens HORS THÈME — déclarés une fois, jamais redéfinis ─────
        Ils sont posés SUR LA VIDÉO, dont le contenu ne suit aucun thème : un
        encadrement clair autour d'une image vidéo se lit comme un défaut

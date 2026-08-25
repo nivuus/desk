@@ -74,12 +74,29 @@ html,
 body {
     overflow: hidden;
 }
+/* 🔴 `--accent-fenetre` EST PEINTE ICI, ET NULLE PART AILLEURS (sous-bloc A1,
+   tâche 7 du chantier `legs-sans-vm`) — c'était le legs déclaré par
+   `accent-dom.ts` : le token était POSÉ (`TOKEN_ACCENT`, `setProperty` sur
+   `document.documentElement`) sans qu'AUCUNE feuille ne le LISE. `#remote`
+   est la seule surface de cette page — la fenêtre de session EST la vidéo,
+   100vw/100vh — donc le bord de la vidéo est le seul endroit où « la couleur
+   de CETTE fenêtre » a un sens : `client/src/shell.ts` liste plusieurs
+   fenêtres à la fois et n'en peint aucune, `hub/` n'en a pas.
+
+   ⚠️ LE REPLI EST OBLIGATOIRE, PAS DÉCORATIF : avant le premier message de
+   l'agent, `accent-dom.ts` n'a encore rien posé, et `var(--accent-fenetre)`
+   SEUL serait donc indéfini si sa déclaration dans `tokens/couleurs.css`
+   venait à disparaître. `var(--accent-fenetre, var(--accent))` retombe sur
+   l'accent DU THÈME dans les deux cas — déclaration absente, ou valeur pas
+   encore posée —, exactement ce que `accent-dom.ts` fait lui-même sur un
+   refus de lisibilité. */
 #remote {
     display: block;
     width: 100vw;
     height: 100vh;
     object-fit: contain;
     background: var(--video-letterbox);
+    border: var(--trait) solid var(--accent-fenetre, var(--accent));
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
