@@ -1,6 +1,7 @@
-//! Le registre lui-même : l'état global (`Etat`), son point d'accès
-//! (`etat`), et les quatre opérations qui le touchent (`distribuer`,
-//! `oublier`, `inscrire`, `retirer`).
+//! Le registre lui-même : ~~l'état global (`Etat`)~~ **`Etat` a quitté ce
+//! fichier au round de correction 3, pour `registre/tables.rs` — voir plus
+//! bas** —, son point d'accès (`etat`), et les quatre opérations qui le
+//! touchent (`distribuer`, `oublier`, `inscrire`, `retirer`).
 //!
 //! ⚠️ **~~et le tour de roue~~ : il a quitté ce fichier au round de correction
 //! 1** (25 août 2026), pour `registre/tour_de_roue.rs` — la phrase ci-dessus
@@ -20,7 +21,12 @@
 //! de `Etat`/`etat`/`distribuer`/`oublier` est passée à `pub(super)` pour
 //! rester atteignable depuis `sommeil.rs` et ses autres descendants
 //! (`parts.rs`, `porteurs.rs`, `tests.rs`), exactement comme avant
-//! l'extraction.
+//! l'extraction. ⚠️ **CE QUI PRÉCÈDE DÉCRIT L'EXTRACTION DEPUIS
+//! `sommeil.rs`, ET N'EST PLUS L'ÉTAT ACTUEL DE CE FICHIER** : `Etat` a
+//! quitté `registre.rs` une SECONDE fois, au round de correction 3, pour
+//! `registre/tables.rs` (voir l'en-tête plus haut, et `mod tables;` plus
+//! bas). Ce paragraphe reste exact pour l'extraction qu'il décrit ; il ne
+//! doit pas se lire comme « `Etat` vit ici aujourd'hui ».
 
 use std::collections::HashMap;
 use std::sync::{Mutex, MutexGuard, OnceLock};
@@ -198,6 +204,17 @@ pub(super) fn distribuer(garde: &mut MutexGuard<'static, Etat>, ordres: Vec<(Str
                 // doublement sans ligne. Ce qui se perd est le détail de quel
                 // ordre, à quel tour ; ce qui compte — cette fenêtre déborde
                 // et perd des ordres — sort toujours.
+                //
+                // ⚠️ **NUANCE RELEVÉE EN REVUE ET RESTÉE NON ÉCRITE : « reste
+                // visible » est OPTIMISTE, une fois traduite en secondes.**
+                // Le compteur `refuses` est CUMULATIF et ne retombe JAMAIS
+                // (voir `file.rs`) : une session ayant déjà accumulé ~1 000
+                // refus n'émettra sa prochaine ligne qu'au palier 2048, soit,
+                // à un refus par `PERIODE_REARBITRAGE` (250 ms), PLUSIEURS
+                // MINUTES de silence sur un blocage tardif. La borne « jamais
+                // plus d'un doublement sans ligne » reste vraie en NOMBRE de
+                // refus ; sa traduction en TEMPS croît avec l'historique déjà
+                // accumulé par la session, et n'est donc pas une borne fixe.
                 Some(Envoi::Refuse) => {
                     // 🔴 ON REND AU VIVIER L'ÉTAT D'AVANT L'ORDRE. Sans cela,
                     // il aurait déjà écrit `eveillee` pour un ordre jamais
