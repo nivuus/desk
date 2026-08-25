@@ -313,7 +313,7 @@ describe('l’éviction par âge, avec plancher', () => {
         const m = magasinNeuf();
         const orphelin = randomUUID();
         await deposerA(m, orphelin, 0);
-        m.evincer({ maintenant: 400 * JOUR_MS, referencees: new Set() });
+        await m.evincer({ maintenant: 400 * JOUR_MS, referencees: new Set() });
         expect(existsSync(join(m.racine, orphelin))).toBe(false);
     });
 
@@ -323,7 +323,7 @@ describe('l’éviction par âge, avec plancher', () => {
         const m = magasinNeuf();
         const enService = randomUUID();
         await deposerA(m, enService, 0);
-        m.evincer({ maintenant: 400 * JOUR_MS, referencees: new Set([enService]) });
+        await m.evincer({ maintenant: 400 * JOUR_MS, referencees: new Set([enService]) });
         expect(existsSync(join(m.racine, enService))).toBe(true);
         expect(m.lister(enService)).toEqual([{ n: 0, octets: 1 }]);
     });
@@ -332,7 +332,7 @@ describe('l’éviction par âge, avec plancher', () => {
         const m = magasinNeuf();
         const recent = randomUUID();
         await deposerA(m, recent, 0);
-        m.evincer({ maintenant: 1 * JOUR_MS, referencees: new Set() });
+        await m.evincer({ maintenant: 1 * JOUR_MS, referencees: new Set() });
         expect(existsSync(join(m.racine, recent))).toBe(true);
     });
 
@@ -345,12 +345,12 @@ describe('l’éviction par âge, avec plancher', () => {
         expect(AGE_EVICTION_TRANCHES_MS).toBeLessThan(400 * JOUR_MS);
     });
 
-    it('un nom qui n’est pas un identifiant valide n’est jamais touché', () => {
+    it('un nom qui n’est pas un identifiant valide n’est jamais touché', async () => {
         const m = magasinNeuf();
         const etranger = join(m.racine, 'pas-un-uuid');
         writeFileSync(etranger, 'x');
         utimesSync(etranger, new Date(0), new Date(0));
-        m.evincer({ maintenant: 400 * JOUR_MS, referencees: new Set() });
+        await m.evincer({ maintenant: 400 * JOUR_MS, referencees: new Set() });
         expect(existsSync(etranger)).toBe(true);
     });
 });

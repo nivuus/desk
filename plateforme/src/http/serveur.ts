@@ -445,8 +445,13 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
     return {
         port,
         async close(): Promise<void> {
-            // Arrêté AVANT tout le reste : un tour en cours sur une base déjà
-            // fermée journaliserait une erreur pour rien.
+            // Appelé AVANT tout le reste — mais CORRIGÉ (round de correction
+            // 2) : `arreter()` empêche seulement la PROCHAINE planification
+            // du nettoyage de fond, il n'interrompt PAS un tour déjà en vol.
+            // Un tour démarré juste avant `close()` peut donc encore heurter
+            // une base sur le point de fermer ; s'il échoue, c'est
+            // journalisé (`apps/nettoyage.ts`), jamais fatal. Voir le
+            // commentaire d'`arreter()` pour ce qu'il garantit réellement.
             nettoyage.arreter();
             await relais.close();
             // ⚠️ Le second serveur se ferme AUSSI, et explicitement. Un

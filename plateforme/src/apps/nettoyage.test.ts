@@ -15,7 +15,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, mkdtempSync, rmSync, utimesSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { baseNeuve, MOTEUR } from '../base/harnais';
 import type { Pilote } from '../base/pilote';
 import { appliquer } from '../depot/application';
@@ -27,7 +27,7 @@ import { creer as creerInstallation } from '../depot/installation';
 import type { Application } from '../../../proto/ts/plateforme-apps';
 import { ouvrirMagasin, type Magasin } from './icones';
 import { ouvrirMagasinTranches, type MagasinTranches } from './magasin-tranches';
-import { referencesIcones, referencesTranches, unTour } from './nettoyage';
+import { demarrerNettoyage, referencesIcones, referencesTranches, unTour } from './nettoyage';
 
 let base: Pilote | undefined;
 let racines: string[] = [];
@@ -95,6 +95,14 @@ function appAvecIcone(nom: string, cle: string, empreinteIcone: string | null): 
 /// et `magasin-tranches.test.ts`.
 function vieillir(chemin: string, quandMs: number): void {
     utimesSync(chemin, new Date(quandMs), new Date(quandMs));
+}
+
+/// Un flux d'un seul morceau — suffisant pour ce fichier, qui n'éprouve pas
+/// le découpage lui-même (voir `magasin-tranches.test.ts` pour ça).
+function flux(s: string): AsyncIterable<Uint8Array> {
+    return (async function* () {
+        yield Buffer.from(s);
+    })();
 }
 
 describe(`nettoyage de fond, moteur=${MOTEUR}`, () => {
@@ -236,7 +244,6 @@ describe(`nettoyage de fond, moteur=${MOTEUR}`, () => {
             );
 
             const tranches = magasinTranchesNeuf();
-            const flux = (s: string): AsyncIterable<Uint8Array> => (async function* () { yield Buffer.from(s); })();
             await tranches.ecrire(a.id, 0, flux('a'), 1024);
             await tranches.ecrire(b.id, 0, flux('b'), 1024);
             await tranches.ecrire(c.id, 0, flux('c'), 1024);
@@ -260,4 +267,158 @@ describe(`nettoyage de fond, moteur=${MOTEUR}`, () => {
             expect(existsSync(join(tranches.racine, c.id))).toBe(true);
         },
     );
+
+    // 🔴 LE CRITIQUE DU ROUND DE CORRECTION 2 — LES DEUX PLANCHERS NE
+    // MESURAIENT PAS LE MÊME ÂGE. La purge de LIGNE filtrait sur `cree_a` ;
+    // l'éviction du DISQUE filtre sur `mtime`, la DERNIÈRE ACTIVITÉ — ce
+    // n'est PAS la même chose, et l'écart est DÉTERMINISTE, pas une course :
+    // un téléversement créé il y a 31 jours dont une tranche vient
+    // d'arriver À L'INSTANT voyait sa ligne supprimée (candidate par
+    // `cree_a`, aucune installation ne la référençant) alors que son
+    // répertoire restait — la reprise meurt, le disque n'est même pas
+    // libéré. Ce test rejoue EXACTEMENT ce scénario.
+    it(
+        '🔴 CRITIQUE : un téléversement CRÉÉ il y a 31 jours, dont une tranche ' +
+            'vient d’ARRIVER, conserve SA LIGNE ET SON DISQUE',
+        async () => {
+            base = await baseNeuve('nettoyage-critique-planchers');
+            await avecUtilisateur(base, 'u1');
+
+            const maintenant = MS;
+            const t = await creerTeleversement(
+                base,
+                {
+                    utilisateurId: 'u1',
+                    nom: 'actif.exe',
+                    taille: 1,
+                    sha256: 'c'.repeat(64),
+                    tailleTranche: 8,
+                },
+                maintenant - 31 * JOUR_MS,
+            );
+
+            const tranches = magasinTranchesNeuf();
+            await tranches.ecrire(t.id, 0, flux('x'), 1024);
+            // La tranche « vient d'arriver » : sa date d'activité est FORCÉE
+            // à `maintenant`, jamais laissée à vieillir — c'est elle qui
+            // distingue ce scénario du cas orphelin réel (le test au-dessus).
+            vieillir(join(tranches.racine, t.id), maintenant);
+
+            const magasin = magasinIconesNeuf();
+            await unTour({ base, magasin, tranches, maintenant });
+
+            // AVANT LE REMÈDE : la ligne aurait disparu (31 jours > les 30
+            // du plancher de LIGNE) alors que le disque restait intact (le
+            // plancher de DISQUE, lui, la voit jeune) — la corruption
+            // déterministe. APRÈS : les deux planchers s'accordent, et les
+            // DEUX survivent.
+            expect(await lireTeleversement(base, t.id)).toBeDefined();
+            expect(existsSync(join(tranches.racine, t.id))).toBe(true);
+        },
+    );
+
+    // ⚠️ Important ① (round de correction 2) : le refus de clé étrangère —
+    // le SEUL échec ATTENDU de la purge de ligne — reste MUET ; tout le
+    // reste se journalise. Les deux bras du même mécanisme, dans deux tests
+    // séparés pour qu'on ne les confonde pas.
+    it('un refus de clé étrangère (ATTENDU) ne journalise RIEN', async () => {
+        base = await baseNeuve('nettoyage-fk-muet');
+        await avecUtilisateur(base, 'u1');
+        await avecVm(base, 'v1');
+        const t = await creerTeleversement(
+            base,
+            { utilisateurId: 'u1', nom: 'ref.exe', taille: 1, sha256: 'e'.repeat(64), tailleTranche: 8 },
+            MS - 400 * JOUR_MS,
+        );
+        await creerInstallation(base, { vmId: 'v1', televersementId: t.id }, MS);
+
+        const tranches = magasinTranchesNeuf();
+        await tranches.ecrire(t.id, 0, flux('x'), 1024);
+        vieillir(join(tranches.racine, t.id), 0);
+
+        const espion = vi.spyOn(console, 'error').mockImplementation(() => {});
+        try {
+            const magasin = magasinIconesNeuf();
+            await unTour({ base, magasin, tranches, maintenant: MS });
+            expect(espion).not.toHaveBeenCalled();
+        } finally {
+            espion.mockRestore();
+        }
+    });
+
+    it('🔴 un échec de purge qui N’EST PAS une clé étrangère SE JOURNALISE', async () => {
+        base = await baseNeuve('nettoyage-fk-pas-muet');
+        await avecUtilisateur(base, 'u1');
+        // Vraiment orphelin — rien ne le référence, la suppression de sa
+        // ligne RÉUSSIRAIT normalement (voir le test « un TOUR RÉEL… » plus
+        // haut) : c'est ce qui rend la faute injectée ci-dessous imputable
+        // au `catch`, jamais à la clé étrangère.
+        const t = await creerTeleversement(
+            base,
+            { utilisateurId: 'u1', nom: 'orph.exe', taille: 1, sha256: 'f'.repeat(64), tailleTranche: 8 },
+            MS - 400 * JOUR_MS,
+        );
+        const tranches = magasinTranchesNeuf();
+        await tranches.ecrire(t.id, 0, flux('x'), 1024);
+        vieillir(join(tranches.racine, t.id), 0);
+
+        // Un pilote qui fait échouer SPÉCIFIQUEMENT le DELETE, d'une cause
+        // SANS RAPPORT avec une clé étrangère — la mutation jouée par la
+        // revue elle-même (« base coupée »), reproduite ici comme fixture.
+        const basePannee: Pilote = {
+            ...base,
+            async executer(sql, params) {
+                if (sql.startsWith('DELETE FROM televersement')) {
+                    throw new Error('base coupee — rien a voir avec une cle etrangere');
+                }
+                return base!.executer(sql, params);
+            },
+        };
+
+        const espion = vi.spyOn(console, 'error').mockImplementation(() => {});
+        try {
+            const magasin = magasinIconesNeuf();
+            await unTour({ base: basePannee, magasin, tranches, maintenant: MS });
+            expect(espion).toHaveBeenCalledTimes(1);
+            expect(espion.mock.calls[0][0]).toContain(t.id);
+            expect(espion.mock.calls[0][0]).toContain('base coupee');
+            // La ligne n'a PAS été supprimée : l'échec a bien empêché la
+            // suppression, il ne l'a pas seulement rendue muette.
+            expect(await lireTeleversement(base, t.id)).toBeDefined();
+        } finally {
+            espion.mockRestore();
+        }
+    });
+
+    // ⚠️ Important ③ (round de correction 2) : `arreter()` empêche
+    // réellement les tours SUIVANTS. `clearInterval` n'interrompt pas un
+    // tour déjà en vol — ce test ne prouve QUE l'absence de tours après
+    // l'appel, pas l'interruption d'un tour en cours, exactement ce que le
+    // commentaire corrigé d'`arreter()` promet et rien de plus.
+    it('🔴 arreter() empêche VRAIMENT les tours SUIVANTS', async () => {
+        base = await baseNeuve('nettoyage-arret-reel');
+        let tours = 0;
+        const magasinReel = magasinIconesNeuf();
+        const magasin: typeof magasinReel = {
+            ...magasinReel,
+            async evincer(opts) {
+                tours += 1;
+                return magasinReel.evincer(opts);
+            },
+        };
+        const tranches = magasinTranchesNeuf();
+
+        const nettoyage = await demarrerNettoyage(
+            { base, magasin, tranches, maintenant: () => MS },
+            20, // periodeMs minuscule — un test, jamais une valeur livrée.
+        );
+        expect(tours).toBe(1); // le premier tour, ATTENDU.
+
+        nettoyage.arreter();
+        // Largement plus long que `periodeMs` (20 ms) : si `arreter()`
+        // n'empêchait rien, plusieurs tours de plus auraient eu le temps de
+        // s'exécuter dans cette fenêtre.
+        await new Promise((resolve) => setTimeout(resolve, 150));
+        expect(tours).toBe(1);
+    });
 });

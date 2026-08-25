@@ -32,10 +32,21 @@
 // qu'on sache lequel des deux bouts a tort. Ici on écrit, on liste, on relit.
 
 import { createReadStream, createWriteStream, mkdirSync, openSync, readdirSync, rmSync, renameSync, statSync } from 'node:fs';
+import { readdir, rm, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import type { Tranche } from '../../../proto/ts/tranches';
+
+/// Même remède, même raison, que `icones.ts::PAS_DE_REPRISE` — MESURÉ par la
+/// revue (round de correction 2), sur un banc de 3 200 téléversements : 272 ms
+/// d'un seul tenant, ZÉRO battement de 10 ms servi pendant, port ouvert.
+/// ⚠️ NON CALIBRÉ, même raisonnement que côté icônes.
+const PAS_DE_REPRISE = 50;
+
+async function rendreLaMain(): Promise<void> {
+    await new Promise<void>((resolve) => setImmediate(resolve));
+}
 
 /// ⚠️ **NON CALIBRÉE.** Aucune constante de ce dépôt ne l'est.
 ///
@@ -111,7 +122,21 @@ export interface MagasinTranches {
     /// Évince PAR ÂGE, avec un PLANCHER DE RÉFÉRENCE — voir `AGE_EVICTION_TRANCHES_MS`.
     /// `maintenant` est un PARAMÈTRE, jamais lu de l'horloge : même règle que
     /// partout ailleurs dans ce dépôt.
-    evincer(options: { maintenant: number; referencees: ReadonlySet<string> }): void;
+    evincer(options: { maintenant: number; referencees: ReadonlySet<string> }): Promise<void>;
+    /// 🔴 AJOUTÉE AU ROUND DE CORRECTION 2 — la date de DERNIÈRE ACTIVITÉ
+    /// (mtime) du répertoire d'un téléversement, ou `undefined` s'il n'existe
+    /// pas sur le disque. C'est elle qui permet à `apps/nettoyage.ts` de faire
+    /// mesurer LE MÊME ÂGE à la purge de la LIGNE (`cree_a`, en base) et à
+    /// l'éviction du DISQUE (`mtime`) : sans elle, un téléversement CRÉÉ
+    /// vieux mais dont une tranche vient d'arriver voyait sa ligne supprimée
+    /// pendant que ses octets restaient — déterministe, mesuré par la revue,
+    /// voir `nettoyage.ts::nettoyerTranches`.
+    ///
+    /// ⚠️ LÈVE SUR UN IDENTIFIANT INVALIDE, comme `lister`/`concatener`/
+    /// `supprimer` : ce magasin n'écrit jamais un tel nom lui-même, et un
+    /// appelant qui lui en tend un a un défaut de câblage, pas une donnée de
+    /// fil à encaisser en silence.
+    derniereActivite(id: string): Promise<number | undefined>;
 }
 
 /// Ouvre — ou crée — la racine des téléversements, et JOURNALISE le chemin.
@@ -353,24 +378,36 @@ export function ouvrirMagasinTranches(
         /// ⚠️ UN NOM QUI N'EST PAS UN IDENTIFIANT VALIDE N'EST JAMAIS TOUCHÉ,
         /// même s'il est vieux : ce magasin n'écrit jamais un tel nom
         /// lui-même, et un répertoire étranger n'est pas sa responsabilité.
-        evincer({ maintenant, referencees }: { maintenant: number; referencees: ReadonlySet<string> }): void {
+        async evincer({ maintenant, referencees }: { maintenant: number; referencees: ReadonlySet<string> }): Promise<void> {
             let noms: string[];
             try {
-                noms = readdirSync(racine);
+                noms = await readdir(racine);
             } catch {
                 return;
             }
+            let i = 0;
             for (const nom of noms) {
+                if (i > 0 && i % PAS_DE_REPRISE === 0) await rendreLaMain();
+                i += 1;
                 if (!identifiantValide(nom) || referencees.has(nom)) continue;
                 let mtimeMs: number;
                 try {
-                    mtimeMs = statSync(join(racine, nom)).mtimeMs;
+                    mtimeMs = (await stat(join(racine, nom))).mtimeMs;
                 } catch {
                     continue;
                 }
                 if (maintenant - mtimeMs >= AGE_EVICTION_TRANCHES_MS) {
-                    rmSync(join(racine, nom), { recursive: true, force: true });
+                    await rm(join(racine, nom), { recursive: true, force: true });
                 }
+            }
+        },
+
+        async derniereActivite(id: string): Promise<number | undefined> {
+            const rep = repertoireDe(id);
+            try {
+                return (await stat(rep)).mtimeMs;
+            } catch {
+                return undefined;
             }
         },
     };
