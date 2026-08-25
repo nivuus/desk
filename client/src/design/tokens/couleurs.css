@@ -8,10 +8,20 @@
    lui, et refuse la moindre valeur littérale hors d'ici.
 
    ⚠️ IL N'Y A PAS DE MIROIR TYPESCRIPT DE CES VALEURS, et c'est délibéré : les
-   contrôles §7.1, §7.4 et §7.6 PARSENT ce fichier (concaténé à
-   `tokens/echelles.css`, voisin de premier niveau) plutôt que d'en recopier le
-   contenu. « Un contrôle qui a sa propre copie des valeurs valide sa copie »
-   (spec §7.1).
+   contrôles §7.1 et §7.4 PARSENT CE FICHIER SEUL (les trois blocs de thème y
+   vivent en entier — `tokens/echelles.css` n'a aucune couleur à leur offrir),
+   §7.6 le PARSE CONCATÉNÉ à `tokens/echelles.css` (il a besoin de la liste
+   complète des tokens déclarés, couleurs et échelles). Aucun des trois ne
+   recopie ces valeurs. « Un contrôle qui a sa propre copie des valeurs valide
+   sa copie » (spec §7.1).
+
+   ⚠️ PORTE ARMÉE À 350 LIGNES : si ce fichier les atteint, séparer le bloc
+   `:root` SANS CONDITION (palette sombre + sept tokens hors thème) des deux
+   blocs clairs, dans un `tokens/couleurs-claire.css` voisin — les deux blocs
+   clairs restent byte-identiques entre eux par construction (voir §7.4
+   ci-dessous), donc solidaires l'un de l'autre, jamais du bloc sombre. AVANT
+   l'addition qui franchirait, jamais après — la leçon que ce fichier
+   applique à lui-même depuis qu'il existe.
 
    ── TROIS BLOCS, ET L'ORDRE COMPTE — ENTIÈREMENT DANS CE FICHIER ──────────
    ① `:root`                                        palette SOMBRE, sans condition

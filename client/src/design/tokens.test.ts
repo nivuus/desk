@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
     ecartsEntreBlocs,
+    lireBlocsBruts,
     lireBlocsDeTheme,
     tokensDeclares,
     tokensReferences,
@@ -116,6 +117,20 @@ describe('lireBlocsDeTheme — deux occurrences DU MÊME bloc se FUSIONNENT', ()
         const racine = blocs.find((b) => b.nom === 'racine');
         expect(racine?.tokens.get('--a')).toBe('1');
         expect(racine?.tokens.get('--b')).toBe('2');
+    });
+
+    it('`lireBlocsBruts` NE FUSIONNE PAS — c\'est tout son intérêt', () => {
+        // 🔴 CORRECTIF DE LA REVUE (round 1) : `lireBlocsDeTheme` borne
+        // désormais son compte à 3 PAR CONSTRUCTION, donc AUCUNE assertion
+        // sur `lireBlocsDeTheme(...).length` ne peut plus dénoncer un
+        // `:root` de trop — `lireBlocsBruts` est le SEUL compte qui varie
+        // encore avec le nombre d'occurrences physiques.
+        const bruts = lireBlocsBruts(deuxRacines);
+        expect(bruts).toHaveLength(2);
+        expect(bruts.map((b) => b.nom)).toEqual(['racine', 'racine']);
+        // Et la fusion qui en découle rend bien UN SEUL bloc — la même
+        // propriété que les deux tests ci-dessus, vue depuis l'autre bout.
+        expect(lireBlocsDeTheme(deuxRacines)).toHaveLength(1);
     });
 });
 
@@ -289,11 +304,33 @@ describe('ecartsEntreBlocs — inclusion ③, les COULEURS de la racine', () => 
         // sans lui `?raw` rend la chaîne VIDE, `lireBlocsDeTheme` ne trouve
         // aucun bloc, et l'assertion « zéro écart » passerait en ne mesurant
         // rien. L'assertion sur le compte de blocs est ce qui l'empêche.
-        // ⚠️ TROIS blocs, PAS QUATRE : `couleurs.css` et `echelles.css`
-        // déclarent chacun un `:root {}` sans condition, et c'est la fusion
-        // ajoutée par la tâche 6 qui les ramène à UN SEUL bloc « racine ».
+        // ⚠️ TROIS blocs LOGIQUES, PAS QUATRE : `couleurs.css` et
+        // `echelles.css` déclarent chacun un `:root {}` sans condition, et
+        // c'est la fusion ajoutée par la tâche 6 qui les ramène à UN SEUL
+        // bloc « racine ». 🔴 CE COMPTE-CI EST DÉSORMAIS BORNÉ À 3 PAR
+        // CONSTRUCTION — voir le test suivant, qui porte le compte capable
+        // de dénoncer un `:root` de trop.
         const blocs = lireBlocsDeTheme(tokensCss);
         expect(blocs).toHaveLength(3);
         expect(ecartsEntreBlocs(blocs)).toEqual([]);
+    });
+
+    it('EXACTEMENT QUATRE occurrences PHYSIQUES — le garde qu\'un `:root` de trop doit faire rougir', () => {
+        // 🔴 CORRECTIF DE LA REVUE (round 1, 25 août 2026). Mesuré : ajouter
+        // `:root { --e-4: 999rem; }` en trop dans `tokens/echelles.css` (une
+        // régression réelle — tout `--e-4` passerait de 1rem à 999rem) se
+        // fond dans le bloc « racine » existant SANS FAIRE BOUGER LE COMPTE
+        // LOGIQUE ci-dessus, qui reste à 3. `lireBlocsBruts`, qui ne fusionne
+        // rien, est le SEUL compte que cette régression fait encore varier :
+        // 4 aujourd'hui (racine de `couleurs.css`, media-clair,
+        // attribut-clair, racine de `echelles.css`), 5 avec l'ajout en trop.
+        const bruts = lireBlocsBruts(tokensCss);
+        expect(bruts).toHaveLength(4);
+        expect(bruts.map((b) => b.nom)).toEqual([
+            'racine',
+            'media-clair',
+            'attribut-clair',
+            'racine',
+        ]);
     });
 });
