@@ -140,6 +140,19 @@ pub(crate) async fn executer(config: Config) -> Result<()> {
     // (`trop-de-requetes`) ferme `offers` sans offre, ce processus va
     // mourir, et on honore le délai suggéré par le relais AVANT de rendre la
     // main — voir `signaling::honorer_retry_suggere`.
+    //
+    // 🔴 **DÉCLARÉ, PAS CORRIGÉ (revue, round de correction 2)** : CE
+    // PROCESSUS-CI EST L'ENFANT D'UNE FENÊTRE, PAS LE PONT — et le sommeil
+    // qui suit (jusqu'à 30 s, `REPLI_MAX_MS`) retarde d'AUTANT le moment où
+    // `superviseur::table::orphelines::relancer_les_orphelines` voit cette
+    // entrée redevenir `SansSession` et la relance. Avec `RELANCES_MAX = 3`
+    // tolérées (`superviseur/table.rs`) et un refus qui se reproduit à
+    // chaque relance, l'échec d'attache d'une fenêtre — le message « la
+    // session n'a pas tenu après 3 tentatives » — peut donc mettre jusqu'à
+    // quelques dizaines de secondes à quelques minutes à devenir visible à
+    // l'utilisateur, au lieu de quelques secondes avant ce lot. Non mesuré
+    // en recette ; le mécanisme, lui, est vérifiable par lecture croisée de
+    // `orphelines.rs` et de ce fichier.
     let Some(offer) = offers.recv().await else {
         signaling::honorer_retry_suggere(&retry_apres_s).await;
         return Err(anyhow::anyhow!("le signaling s'est fermé avant l'offre"));

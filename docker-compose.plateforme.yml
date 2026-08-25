@@ -264,10 +264,29 @@ services:
     #                                 figurant ici. Mal posée, elle fait
     #                                 dégénérer le frein par adresse en frein
     #                                 GLOBAL : toutes les requêtes arrivant du
-    #                                 proxy partageraient une seule clé, et le
-    #                                 premier attaquant bloquerait tout le
-    #                                 monde. Absente, l'en-tête n'est pas cru du
-    #                                 tout — c'est le défaut SÛR ;
+    #                                 proxy partageraient une seule clé.
+    #                                 🔴 ABSENTE, CE N'EST PLUS LE DÉFAUT SÛR
+    #                                 DANS CE MONTAGE — corrigé (round de
+    #                                 correction 2, 25 août 2026) : ce dépôt
+    #                                 tourne DERRIÈRE nginx (voir ce fichier
+    #                                 plus bas), donc `req.socket.remoteAddress`
+    #                                 EST DÉJÀ l'IP du CONTENEUR nginx pour
+    #                                 toute requête réelle — l'en-tête non cru
+    #                                 dégénère alors en la MÊME adresse pour
+    #                                 tout le monde, sans qu'aucun attaquant
+    #                                 n'ait à forger quoi que ce soit. 🔴 ET LA
+    #                                 GRAVITÉ D'UNE TELLE DÉGÉNÉRESCENCE A
+    #                                 CHANGÉ AVEC LE LOT « frein(volume) » :
+    #                                 avant lui, elle ne plafonnait que
+    #                                 `ECHECS_MAX_ADRESSE` (50) échecs
+    #                                 d'authentification par quart d'heure ;
+    #                                 depuis lui, elle plafonne LE SERVICE
+    #                                 ENTIER à `REQUETES_MAX_ADRESSE` (120)
+    #                                 évènements par minute, HTTP ET WebSocket
+    #                                 CONFONDUS (`GET /vm`, `POST /session`,
+    #                                 `/signal`) — voir le paragraphe complet
+    #                                 dans `plateforme/src/http/routes-vm.ts`,
+    #                                 au point de consultation du budget ;
     #   PLATEFORME_ORIGINE_CLIENT     FACULTATIVE. Absente, aucun en-tête CORS
     #                                 n'est posé — le cas nominal ici, la page
     #                                 et l'API étant servies par le même proxy,
