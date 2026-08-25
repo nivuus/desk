@@ -378,6 +378,17 @@ export function ouvrirMagasinTranches(
         /// ⚠️ UN NOM QUI N'EST PAS UN IDENTIFIANT VALIDE N'EST JAMAIS TOUCHÉ,
         /// même s'il est vieux : ce magasin n'écrit jamais un tel nom
         /// lui-même, et un répertoire étranger n'est pas sa responsabilité.
+        ///
+        /// 🔴 LEG DÉCLARÉ (round de correction 3) : LA MÊME CÉSURE `stat` →
+        /// `rm` QUE `icones.ts::evincer` — même forme de code, même fenêtre.
+        /// Une tranche déposée entre la lecture de l'âge et la suppression
+        /// peut se faire faucher. ⚠️ **SANS LE FILET DES ICÔNES** : côté
+        /// icônes, `manquantes` fait redemander toute empreinte absente à la
+        /// PROCHAINE réconciliation (auto-réparant, mesuré par la revue) ;
+        /// côté tranches, RIEN de comparable n'existe — un téléversement
+        /// fauché ici perd des octets qu'AUCUN mécanisme ne redemande de
+        /// lui-même. Non mesuré séparément pour ce magasin ; déclaré par
+        /// analogie de code, pas par une mesure dédiée.
         async evincer({ maintenant, referencees }: { maintenant: number; referencees: ReadonlySet<string> }): Promise<void> {
             let noms: string[];
             try {

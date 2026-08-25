@@ -184,6 +184,22 @@ export function ouvrirMagasin(repertoire: string, journaliser: (chemin: string) 
         /// un fichier étranger déposé à la main dans le magasin (le cas
         /// couvert par `icones.test.ts::'un fichier étranger…'`) n'est pas de
         /// la responsabilité de cette éviction.
+        ///
+        /// 🔴 LEG DÉCLARÉ (round de correction 3) : LA CÉSURE `stat` → `rm`
+        /// PEUT FAUCHER UNE ÉCRITURE CONCURRENTE. Entre la lecture de l'âge
+        /// et la suppression, un `ecrire()` sur ce MÊME nom (réécriture d'une
+        /// icône récemment redemandée par la réconciliation, par exemple)
+        /// peut retomber dans la fenêtre — le fichier vient d'être touché,
+        /// mais son âge a été lu AVANT. MESURÉ PAR LA REVUE : 0 à 3 icônes
+        /// sur 2 000 fauchées malgré une date fraîche, sur 5 exécutions.
+        /// CETTE FENÊTRE N'EXISTAIT PAS EN SYNCHRONE (`stat` puis `rm`
+        /// s'enchaînaient sans qu'aucune E/S concurrente ne puisse
+        /// s'intercaler). ⚠️ AUTO-RÉPARANT ICI, PAS AILLEURS : la
+        /// réconciliation suivante (`agents/canal-apps.ts::manquantes`)
+        /// redemande toute empreinte absente — la revue a vérifié que cette
+        /// promesse n'est pas vacueuse. `MagasinTranches.evincer` a EXACTEMENT
+        /// la même forme de code, donc la MÊME césure, mais SANS ce filet :
+        /// voir son propre commentaire.
         async evincer({ maintenant, referencees }: { maintenant: number; referencees: ReadonlySet<string> }): Promise<void> {
             let noms: string[];
             try {
