@@ -124,21 +124,32 @@ function operationDe(chemin: string): { vmId: string; operation: Operation } | u
 /// Enregistre la requête sur le budget « toute requête », et journalise SI ET
 /// SEULEMENT SI le frein vient de mordre — même règle et même raison que
 /// `routes-auth.ts::compterLEchec` : la requête suivante sera refusée tout en
-/// haut de `servirVm`, avant de jamais rappeler cette fonction. Une ligne par
-/// paquet rendrait le service AMPLIFICATEUR sur le chemin même qu'on ferme
-/// (`CLAUDE.md`, chantier TURN).
+/// haut de `servirVm`, avant de jamais rappeler cette fonction.
+///
+/// ⚠️ **CETTE LIGNE JOURNALISE À LA TRANSITION, ET NON À CHAQUE REQUÊTE
+/// ADMISE — c'est ce qui la distingue d'une trace par paquet.** Une ligne à
+/// CHAQUE requête, même après que le frein a commencé à refuser, ferait
+/// écrire le service à un rythme que l'attaquant contrôle sans plus rien lui
+/// coûter — la règle du chantier TURN (`CLAUDE.md`) : « compter ou
+/// échantillonner, jamais tracer par paquet ». Journaliser à la transition
+/// ferme cela : une adresse martelée écrit UNE ligne, jamais une par requête.
 function compterLaRequete(
     frein: Frein,
     cles: readonly (readonly [string, Budget])[],
     adresse: string,
     instant: number,
+    // 🔴 MINEUR CORRIGÉ (round de correction 1) : ce paramètre manquait, et
+    // la ligne journalisait INCONDITIONNELLEMENT `CHEMIN_LISTE` (`/vm`),
+    // y compris pour `POST /vm/:id/:operation` — la trace nommait la
+    // mauvaise route.
+    chemin: string,
 ): void {
     frein.echec(cles, instant);
     const apres = frein.consulter(cles, instant);
     if (!apres.freine) return;
     console.warn(
         ligne('frein-requetes', {
-            route: CHEMIN_LISTE,
+            route: chemin,
             adresse,
             retry_apres_s: apres.retryApresS,
             entrees: frein.taille(),
@@ -199,6 +210,50 @@ export async function servirVm(
             : req.headers['x-forwarded-for'],
         deps.proxyDeConfiance,
     );
+    // 🔴 **LA GRAVITÉ D'UNE `PLATEFORME_PROXY_DE_CONFIANCE` MAL POSÉE A
+    // CHANGÉ AVEC CE LOT (round de correction 1, critique ③), ET C'EST ICI
+    // QU'IL FAUT LE DIRE — c'est la première des trois consultations de
+    // `BUDGET_REQUETES` (`routes-session.ts`, `signaling/relais.ts` la
+    // renvoient à ce paragraphe).**
+    //
+    // Le piège lui-même n'est pas neuf : `adresseSource` (`http/
+    // adresse-source.ts`) ne croit `X-Forwarded-For` QUE d'un pair dont
+    // `remoteAddress` figure dans `proxyDeConfiance`. Un ensemble trop
+    // large — ou une valeur qui n'est plus celle du proxy — fait que
+    // `adresseRequete` devient la MÊME chaîne pour tout le monde : celle
+    // que le premier arrivant a bien voulu écrire dans l'en-tête, ou celle
+    // du proxy lui-même. Le frein par adresse dégénère alors en frein
+    // GLOBAL, et le premier attaquant bloque tout le monde.
+    //
+    // 🔴 CE QUI EST NEUF : AVANT CE LOT, cette dégénérescence ne plafonnait
+    // que `ECHECS_MAX_ADRESSE` = 50 échecs D'AUTHENTIFICATION par quart
+    // d'heure à cette adresse fusionnée — gênant, borné aux routes
+    // `/auth/*` et `/agent`. **DEPUIS CE LOT, LA MÊME DÉGÉNÉRESCENCE
+    // PLAFONNE LE SERVICE ENTIER À `REQUETES_MAX_ADRESSE` ÉVÉNEMENTS PAR
+    // FENÊTRE, HTTP ET WebSocket CONFONDUS** : `GET /vm`, `POST /session`
+    // ET le relais `/signal` partagent ce même compteur (`cleRequetes`), à
+    // cette même adresse fusionnée. Un pair anonyme ouvre ou consomme ce
+    // budget commun, et plus personne — authentifié ou non — ne peut plus
+    // ouvrir de VM, de session, ni de connexion `/signal` derrière ce proxy.
+    //
+    // ⚠️ **AGGRAVANT, ET IL FAUT LE DIRE AUSSI** : le profil livré
+    // (`docker-compose.plateforme.yml`) pose `PLATEFORME_AUTH: motdepasse`,
+    // mode où `PLATEFORME_PROXY_DE_CONFIANCE` est FACULTATIVE — rien
+    // n'oblige à la poser correctement, ni même à la poser du tout ; elle
+    // vit dans un fichier `.env` NON VERSIONNÉ, donc invisible à toute revue
+    // de dépôt ; et sa valeur correcte est l'IP de CONTENEUR de nginx, qui
+    // CHANGE quand le réseau docker est recréé — une valeur juste hier peut
+    // être fausse aujourd'hui sans qu'aucun déploiement n'ait touché au
+    // code.
+    //
+    // 🔴 **LE SEUL TÉMOIN** : la ligne `frein-requetes` que `compterLaRequete`
+    // émet plus bas (et ses jumelles de `routes-session.ts` et
+    // `relais.ts`), qui NOMME l'adresse retenue — voir son champ `adresse`.
+    // Une même adresse sur toutes les lignes, tous chemins confondus, EST le
+    // signal. Voir aussi `PLATEFORME_PROXY_DE_CONFIANCE` dans `CLAUDE.md`,
+    // qui documente le second rôle de cette variable (l'autorisation
+    // d'`X-Pomerium-Claim-Email`) — cette note-ci ne porte que sur le
+    // premier, le crédit d'`X-Forwarded-For`.
     const clesRequetes: readonly (readonly [string, Budget])[] = [
         [cleRequetes(adresseRequete), BUDGET_REQUETES],
     ];
@@ -208,7 +263,7 @@ export async function servirVm(
         repondre(rep, 429, { refus: 'trop-de-requetes' }, cors);
         return true;
     }
-    compterLaRequete(deps.frein, clesRequetes, adresseRequete, deps.maintenant());
+    compterLaRequete(deps.frein, clesRequetes, adresseRequete, deps.maintenant(), chemin);
 
     // 🔴 L'AUTHENTIFICATION VIENT AVANT TOUTE LECTURE DE BASE. Une route qui
     // lirait l'inventaire puis refuserait le jeton ne fuiterait rien par sa

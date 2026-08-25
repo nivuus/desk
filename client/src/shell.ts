@@ -102,6 +102,24 @@ export interface Bureau {
     /// l'utilisateur à ignorer l'avertissement, ce qui le rendrait inutile
     /// exactement le jour où il compte.
     doitPrevenir(): boolean;
+    /// 🔴 **NEUF — CORRECTIF DU LEGS DES FREINS MANQUANTS (round de
+    /// correction 1, critique ④), 25 août 2026.** Le socket de la session de
+    /// contrôle (`shell-page.ts`) peut désormais recevoir un message
+    /// `{type:'error'}` qu'AUCUNE branche de son aiguillage ne reconnaissait —
+    /// notamment le refus de volume `trop-de-requetes` que ce même lot vient
+    /// d'ouvrir sur `/signal` (`signaling/relais.ts`). Sans cette méthode, la
+    /// page restait affichée « bureau connecté » et mourait en silence : la
+    /// panne muette exacte que ce dépôt combat, ouverte par ce lot lui-même.
+    ///
+    /// `motif` prime sur `reason` quand les deux sont absents de sens pour
+    /// l'utilisateur — VOIR L'IMPLÉMENTATION, qui documente l'arbitrage.
+    canalDeControleRefuse(reason: string | undefined, motif: string | undefined, retryApresS: number | undefined): void;
+    /// Le socket de la session de contrôle s'est fermé alors qu'il était
+    /// ouvert — perte réseau, redémarrage du service, ou fin d'un refus. Le
+    /// même défaut de silence que ci-dessus, sur l'événement `close` plutôt
+    /// que sur un message `error` : `shell-page.ts` n'installait AUCUN
+    /// écouteur `close` ni `error` sur ce socket avant ce correctif.
+    canalDeControlePerdu(): void;
 }
 
 interface Entree {
@@ -292,6 +310,33 @@ export function creerBureau(options: OptionsBureau): Bureau {
             // pas le même geste que « le partage a raté, voici pourquoi ».
             options.afficherEtatFichiers(
                 `Le lecteur « Mes Fichiers » n’a pas pu être monté : ${motif}.`,
+                'danger',
+            );
+        },
+
+        canalDeControleRefuse(reason, motif, retryApresS) {
+            // 🔴 `reason` D'ABORD : c'est la phrase destinée à un humain
+            // (`identite/garde.ts::Verdict.message`, ou le texte fixe de
+            // `relais.ts` pour `trop-de-requetes`) ; `motif` est un MOT-CLÉ
+            // stable pour le code, pas une phrase — voir `bureau.refus`
+            // ci-dessus, qui suit la même hiérarchie pour la même raison.
+            const cause = reason ?? motif ?? 'raison inconnue';
+            // ⚠️ `retryApresS` n'accompagne QUE le refus de volume
+            // (`signaling/relais.ts`) : un refus de poignée de main (jeton
+            // absent ou invalide) n'a rien à retenter, se reconnecter ne
+            // changera rien. Absent, la phrase ne promet donc rien qui ne
+            // tiendrait pas.
+            const attente =
+                typeof retryApresS === 'number' ? ` Nouvelle tentative possible dans ${retryApresS} s.` : '';
+            options.afficher(`Bureau refusé : ${cause}.${attente}`, 'danger');
+        },
+
+        canalDeControlePerdu() {
+            // DANGER, jamais NEUTRE : plus aucune fenêtre ne peut s'ouvrir ni
+            // se refermer tant que la page n'est pas rechargée, et le dire en
+            // neutre laisserait croire à un bureau qui fonctionne encore.
+            options.afficher(
+                'Connexion au bureau perdue. Rechargez la page pour vous reconnecter.',
                 'danger',
             );
         },

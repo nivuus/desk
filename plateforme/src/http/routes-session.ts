@@ -138,6 +138,11 @@ export async function servirSession(
             : req.headers['x-forwarded-for'],
         deps.proxyDeConfiance,
     );
+    // 🔴 UNE `PLATEFORME_PROXY_DE_CONFIANCE` MAL POSÉE FAIT DÉGÉNÉRER CE
+    // FREIN EN FREIN GLOBAL, ET SA GRAVITÉ A CHANGÉ AVEC CE LOT — voir le
+    // paragraphe complet chez `routes-vm.ts` (même position, même clé
+    // `BUDGET_REQUETES`, même témoin : la ligne `frein-requetes` qui nomme
+    // l'adresse retenue), jamais recopié pour ne pas diverger.
     const clesRequetes: readonly (readonly [string, Budget])[] = [
         [cleRequetes(adresseRequete), BUDGET_REQUETES],
     ];

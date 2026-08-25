@@ -35,11 +35,19 @@
 // que la trame n'atteigne le moindre contrôle de forme — et il est éprouvé
 // par le `describe` de ce fichier même, plus bas.
 //
-// ⚠️ **CE QUI RESTE OUVERT, ET QUE `maxPayload` NE FERME PAS** : un pair peut
-// toujours ouvrir BEAUCOUP DE CONNEXIONS, et des connexions muettes ne sont
-// comptées par rien — ni par le frein, qui compte des tentatives, ni par
-// `deploiement/nginx.conf`, qui ne pose ni `limit_conn` ni `limit_req`.
-// `http/serveur.ts` le dit déjà auprès de la constante.
+// ⚠️ **CE QUI RESTAIT OUVERT, ET QUE `maxPayload` NE FERMAIT PAS — CORRIGÉ DE
+// MOITIÉ PAR LE ROUND DE CORRECTION 1 (25 août 2026) : un pair pouvait
+// toujours ouvrir BEAUCOUP DE CONNEXIONS, et des connexions muettes n'étaient
+// comptées par rien.** Ce n'est plus vrai que d'UN des deux chemins :
+// `signaling/relais.ts` borne désormais le NOMBRE de connexions sur
+// `/signal`, à l'évènement `connection` — avant tout message, donc avant
+// même qu'un pair muet ait eu l'occasion d'en envoyer un
+// (`securite/frein.ts::BUDGET_REQUETES`). `/agent` (`agents/canal.ts`), lui,
+// NE L'EST PAS : son frein d'enrôlement compte des TENTATIVES, au message,
+// jamais des connexions ; ni lui ni `deploiement/nginx.conf` (qui ne pose ni
+// `limit_conn` ni `limit_req`) ne comptent un pair qui ouvre puis se tait.
+// `http/serveur.ts` le dit désormais auprès de la constante, à jour des deux
+// chemins.
 //
 
 // Ce fichier ne teste PAS `createSignalingServer` en mémoire : vitest installe
