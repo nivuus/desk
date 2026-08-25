@@ -83,13 +83,19 @@ body {
    de CETTE fenêtre » a un sens : `client/src/shell.ts` liste plusieurs
    fenêtres à la fois et n'en peint aucune, `hub/` n'en a pas.
 
-   ⚠️ LE REPLI EST OBLIGATOIRE, PAS DÉCORATIF : avant le premier message de
-   l'agent, `accent-dom.ts` n'a encore rien posé, et `var(--accent-fenetre)`
-   SEUL serait donc indéfini si sa déclaration dans `tokens/couleurs.css`
-   venait à disparaître. `var(--accent-fenetre, var(--accent))` retombe sur
-   l'accent DU THÈME dans les deux cas — déclaration absente, ou valeur pas
-   encore posée —, exactement ce que `accent-dom.ts` fait lui-même sur un
-   refus de lisibilité. */
+   ⚠️ LE REPLI PROTÈGE D'UNE RÉGRESSION, PAS DE L'INSTANT D'AVANT LE PREMIER
+   MESSAGE — et c'est une correction (round de correction 1, 25 août 2026) :
+   la première rédaction affirmait qu'il protégeait « déclaration absente, ou
+   valeur pas encore posée », et la seconde moitié était FAUSSE.
+   `tokens/couleurs.css` déclare `--accent-fenetre: var(--accent);` dans le
+   bloc `:root` SANS CONDITION, avec une valeur PAR DÉFAUT valide : le token
+   n'est donc JAMAIS indéfini tant que cette déclaration existe — avant le
+   premier message compris. Le repli n'est atteignable QUE si cette
+   déclaration disparaît de `couleurs.css`, c'est-à-dire sur une régression,
+   jamais dans le cours normal. 🔵 Il reste utile pour autant :
+   `var(--accent-fenetre, var(--accent))` retombe sur l'accent DU THÈME si
+   cette régression survient — la même valeur que celle qu'`accent-dom.ts`
+   pose lui-même sur un refus de lisibilité. */
 #remote {
     display: block;
     width: 100vw;

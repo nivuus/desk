@@ -68,17 +68,20 @@
 // effacé, trois blocs que le plan EXIGE. **Les raboter échangerait une vérité
 // contre un nombre**, ce que `CLAUDE.md` interdit nommément.
 //
-// 🔴 « 270 contre 300 » (tâche 8 de S2) ÉTAIT DÉJÀ FAUX AVANT CETTE TÂCHE : la
-// tâche 6 de S2/A1 (extraction de `SOURCES`, 25 août 2026) l'avait fait
-// redescendre à 256 sans qu'aucune ligne ne le dise ; la tâche 7 d'A1 (moitié
-// « posé par le JS », voir `tokens-orphelins/js.mjs`) le fait remonter encore.
-// AUCUN NOMBRE N'EST PLUS ÉCRIT ICI, À DESSEIN : `wc -l
-// client/outils/tokens-orphelins.mjs`, RELANCÉ, est la seule source de
-// vérité. La règle ne change pas : TOUTE ADDITION SUBSTANTIELLE À CE FICHIER
-// APPELLE UNE EXTRACTION, JAMAIS UNE COMPRESSION — point de chute nommé
-// d'avance, `client/outils/tokens-orphelins/attente.mjs`, qui emporterait
-// `EN_ATTENTE_D_APPELANT` **avec sa doctrine**, comme `serveur/instances.rs` a
-// emporté `TAMPON` avec le commentaire qui le justifie.
+// 🔴 « 270 contre 300 » (tâche 8 de S2) ÉTAIT DÉJÀ FAUX AVANT CETTE TÂCHE
+// (256 depuis la tâche 6 de S2/A1) ; la tâche 7 d'A1 (moitié « posé par le
+// JS », `tokens-orphelins/js.mjs`) le fait remonter encore. AUCUN NOMBRE
+// N'EST PLUS ÉCRIT ICI : `wc -l client/outils/tokens-orphelins.mjs`, RELANCÉ,
+// est la seule source de vérité.
+//
+// ⚠️ PORTE ARMÉE À 300 LIGNES (auto-imposée, comme ses deux voisins des
+// jetons) : à ce seuil, séparer LE RAPPORT — les `console.log` des trois
+// inclusions et du total — dans `tokens-orphelins/rapport.mjs` (paramètres :
+// `declares`, `employePar`, `orphelins`, `nonDeclares`,
+// `EN_ATTENTE_D_APPELANT`, `SOUS_BLOCS_CLOS`), en ne gardant ici que la
+// COLLECTE (CSS, surfaces, JS) et le CALCUL des écarts — le point de chute
+// de la tâche 8 de S2 (`attente.mjs`) est déjà atteint, celui-ci est le
+// SUIVANT. AVANT l'addition qui franchirait, jamais après.
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
