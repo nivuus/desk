@@ -840,6 +840,10 @@ Ils sont **datés**, et plusieurs se réfutent les uns les autres à dessein.
 - **Retrait du legacy — état des verrous : DEUX satisfaits sur dix (21 août 2026)** — [relevé](docs/superpowers/plans/2026-08-21-retrait-legacy-etat-des-verrous.md)
 - **Retrait du legacy — EXÉCUTÉ, sur décision du propriétaire (21 août 2026)** — [résultats](docs/superpowers/plans/2026-08-21-retrait-legacy-resultats.md)
 
+### Chantier legs-sans-vm (CLOS)
+
+- **legs-sans-vm : huit legs fermés sans la VM, et la revue transverse de fin de lot (26 août 2026)** — [résultats](docs/superpowers/plans/2026-08-26-legs-sans-vm-resultats.md) — canal `Message` du capteur borné, `GET /vm`/`POST /session`/`/signal` freinés par un budget de volume, le contrat de `SIGNALING_URL` figé par un test, les deux magasins évincés par âge, `tokens.css` extrait à marge nulle, `--accent-fenetre` déclaré et peint, douze pilotes de recette réparés vers `/signal`, les galeries dotées d'un test de liste de cas. Le **WCO reste ouvert**, écarté par décision (hub non installable) ; aucun pilote n'est rejoué, aucun jugement visuel n'est porté.
+
 
 ---
 
@@ -934,26 +938,34 @@ gitignoré.
   n'accepte l'en-tête que d'un pair dont l'adresse socket figure dans cette
   liste (`pairDeConfiance`), et rend `401 pair-non-de-confiance` **avant même
   de la lire** sinon. Voir sa ligne dans le tableau des variables serveur.
-- 🔴 **ONZE PILOTES DE RECETTE VISENT UNE RACINE QUE CE CHANTIER A FERMÉE.** Le
+- ~~🔴 **ONZE PILOTES DE RECETTE VISENT UNE RACINE QUE CE CHANTIER A FERMÉE.** Le
   relais a quitté `/` pour `/signal`, et `?signaling=` reste **explicite** —
   il ne reçoit pas le suffixe. Or les pilotes de
   `docs/superpowers/plans/journaux-*/instrument/` posent tous une URL **sans
   chemin** : `accent-a1`, `micro-e3` (le pilote et son `injection-e3.js`),
   `pont-fichiers` f1 à f5, `presse-papier` p1 à p3 — **plus un douzième hors de
   ce répertoire**, `journaux-micro-e2/pilote-recette-e2.mjs`. **Aucun n'a été
-  réparé** : c'est un chantier à part. ⚠️ **Le commentaire qui affirmait
-  qu'« aucune recette n'en pose » a été corrigé** dans
-  `client/src/adresse-plateforme.ts` : son `grep` ne couvrait pas
-  `docs/superpowers/`, où vivent TOUS les pilotes — patron du « naufrage du
-  487 ».
-- 🔴 **LE CONTRAT DE `SIGNALING_URL` N'EST FIGÉ PAR AUCUN TEST.** La variable
+  réparé** : c'est un chantier à part.~~ **FERMÉ (lot `legs-sans-vm`)** : onze
+  des douze pilotes réparés vers `/signal` (le douzième,
+  `injection-e3.js`, n'avait rien à changer — sa valeur vient déjà corrigée de
+  son pilote appelant). ⚠️ **Aucun pilote n'est rejoué** : la VM Windows est
+  hors périmètre de ce lot, le contrôle joué est `node --check` sur chaque
+  fichier modifié. ⚠️ **Le commentaire qui affirmait qu'« aucune recette n'en
+  pose » a été corrigé** dans `client/src/adresse-plateforme.ts` : son `grep`
+  ne couvrait pas `docs/superpowers/`, où vivent TOUS les pilotes — patron du
+  « naufrage du 487 ».
+- ~~🔴 **LE CONTRAT DE `SIGNALING_URL` N'EST FIGÉ PAR AUCUN TEST.** La variable
   est **la BASE du service**, jamais l'URL du relais : `url_du_relais` y ajoute
   `/signal`, `url_du_canal` y ajoute `/agent`. **Y écrire `/signal` casserait
   l'enrôlement** (`ws://h:8080/signal/agent`) **sans qu'aucun test ne
   bronche** — le test `le_canal_agent_n_est_pas_affecte` d'`agent/src/
   signaling.rs` passe une base PROPRE, donc n'éprouve pas ce cas, alors que son
   commentaire prétendait le fermer. Le commentaire est corrigé ; **le test
-  manquant, lui, reste dû.**
+  manquant, lui, reste dû.**~~ **FERMÉ (lot `legs-sans-vm`)** : le test
+  `une_base_portant_deja_signal_casse_le_canal_agent` (`agent/src/
+  signaling.rs`) joue désormais ce cas et fige le contrat — vérifié VERT sur
+  le produit d'aujourd'hui, puis rougi par mutation ciblée d'`url_du_canal`,
+  restaurée depuis une copie nommée.
 
 ### Ce qu'aucun chantier n'a jamais mesuré
 
@@ -994,10 +1006,10 @@ par D11, et **toujours le quatrième**, inexpliqué.
 | **D** multi-fenêtres | l'A/B sur `set_desired_bitrate` (**écarté par décision**, condition de réouverture : charge d'hôte **contrôlée**, ≥ 8 paires) ; le maillon fautif du `Resize` **non identifié** ; **six constats de revue PERDUS** avec un rapport gitignoré ; aucune **cause naturelle** de mort de capture audio |
 | **E** microphone | 🔴 **personne n'a écouté** — le critère de fin n'est atteint que par un juge logiciel ; le son d'une **autre application** n'est pas annulé (−13 dB, donc **amplifié**) et rien ne le dit à l'utilisateur ; le rééchantillonnage 48 → 44,1 kHz du câble, **remède inapplicable** ; deux replis livrés et **jamais courus** ; la licence VB-Audio est **personnelle seulement** |
 | **③** pont fichiers | 🔴 **~33 Kio/s**, et **aucun fichier de plus de 128 Kio n'est lisible** ; 🔴 **aucun listage de plus de ~3 150 entrées n'aboutit** (taille d'un message SCTP) ; 🔴 **l'idiome « temporaire + renommage » n'a jamais été exercé sur un éditeur réel** — *le seul chemin par lequel une sauvegarde peut se perdre en silence* ; un renommage fait **disparaître un répertoire frère** ; aucune éviction, le disque grossit |
-| **④** gestion d'apps | 🔴 **un `<img src>` ne porte pas d'`Authorization`** — le hub n'est **pas installable**, faute d'icône, et ses `file_handlers` sont donc inertes ; 71 applications restent `NonMesuree` ; une icône qui change **sans que le raccourci change** n'est jamais revue ; le magasin n'est **jamais nettoyé** |
-| **⑤** plateforme | 🔴 **la scalabilité horizontale est IMPOSSIBLE** — **quatre** états de routage vivent en mémoire, et `--scale plateforme=2` donne une panne **muette** que rien n'empêche ; 🔴 **TURNS sur 443 n'est pas livré**, donc **la cible « réseaux restrictifs » n'est pas couverte** ; `GET /vm` et `POST /session` ne sont **pas freinées** ; le relais de signaling — `/signal` depuis le chantier `auth-pomerium` (il vivait à la racine `/` avant) — non plus ; le jeton vit dans `localStorage` (**aucun cookie livré**) ; le secret d'enrôlement est **en clair sur la VM** (rotation possible, retrait non) |
-| **⑥** design system | le **WCO** n'a jamais été rendu ; `--accent-fenetre` **n'est déclaré nulle part et peint par rien** ; `client/src/design/tokens.css` **n'est plus à sa porte** — scindé en `tokens/couleurs.css` et `tokens/echelles.css` le 25 août 2026, chacun avec sa propre porte armée et son découpage suivant nommé (voir leur en-tête). 🔴 **AUCUNE TAILLE N'EST RECOPIÉE ICI, ET C'EST DÉLIBÉRÉ** : la première rédaction de cette ligne portait trois nombres, et le round qui les a écrits les a rendus faux **dans le même round** — 45/191/149 annoncés, 64/201/167 mesurés. `wc -l` sur les trois fichiers — avec **treize** lecteurs qui le nommaient par son chemin AVANT ce découpage (« onze » et « 33 » étaient tous deux vrais de choses différentes, faute de règle énoncée ; chaque lecteur explique désormais son choix dans son propre en-tête) ; les galeries n'ont **aucun test** |
-| **①** divers | le **propriétaire mono-fenêtre n'existe pas** (ni presse-papier, ni accent) ; le canal `Message` du registre est **non borné**, et trois sous-blocs l'ont aggravé ; le **niveau 2** du presse-papier (qu'un humain puisse coller) reste **non mesurable** |
+| **④** gestion d'apps | 🔴 **un `<img src>` ne porte pas d'`Authorization`** — le hub n'est **pas installable**, faute d'icône, et ses `file_handlers` sont donc inertes ; 71 applications restent `NonMesuree` ; une icône qui change **sans que le raccourci change** n'est jamais revue ; ~~le magasin n'est **jamais nettoyé**~~ **FERMÉ (lot `legs-sans-vm`)** : `apps/nettoyage.ts` câble une éviction par âge sur les deux magasins (icônes, tranches), avec un plancher de référence contre la corruption, câblée sur la base réelle au démarrage du service — voir le document de résultats du lot pour les legs qu'elle laisse (course stat→rm, fenêtre d'obsolescence de l'instantané d'icônes) |
+| **⑤** plateforme | 🔴 **la scalabilité horizontale est IMPOSSIBLE** — **quatre** états de routage vivent en mémoire, et `--scale plateforme=2` donne une panne **muette** que rien n'empêche ; 🔴 **TURNS sur 443 n'est pas livré**, donc **la cible « réseaux restrictifs » n'est pas couverte** ; ~~`GET /vm` et `POST /session` ne sont **pas freinées** ; le relais de signaling — `/signal` depuis le chantier `auth-pomerium` (il vivait à la racine `/` avant) — non plus~~ **FERMÉ (lot `legs-sans-vm`)** : un budget de VOLUME (`securite/frein.ts::BUDGET_REQUETES`), distinct du budget d'échecs, protège désormais `GET /vm`, `POST /session` et la connexion `/signal` ; le jeton vit dans `localStorage` (**aucun cookie livré**) ; le secret d'enrôlement est **en clair sur la VM** (rotation possible, retrait non) |
+| **⑥** design system | le **WCO** n'a jamais été rendu — **écarté du lot `legs-sans-vm` par décision : inatteignable tant que le hub n'est pas installable**, une décision de sécurité qui appartient au propriétaire ; ~~`--accent-fenetre` **n'est déclaré nulle part et peint par rien**~~ **FERMÉ (lot `legs-sans-vm`)** : déclaré dans `tokens/couleurs.css`, peint sur `#remote` par `style.css`, et le garde des orphelins (§7.6) reconnaît désormais `poserToken(...)` en plus d'un `var(--…)` CSS ; `client/src/design/tokens.css` **n'est plus à sa porte** — scindé en `tokens/couleurs.css` et `tokens/echelles.css` le 25 août 2026, chacun avec sa propre porte armée et son découpage suivant nommé (voir leur en-tête). 🔴 **AUCUNE TAILLE N'EST RECOPIÉE ICI, ET C'EST DÉLIBÉRÉ** : la première rédaction de cette ligne portait trois nombres, et le round qui les a écrits les a rendus faux **dans le même round** — 45/191/149 annoncés, 64/201/167 mesurés. `wc -l` sur les trois fichiers — avec **treize** lecteurs qui le nommaient par son chemin AVANT ce découpage (« onze » et « 33 » étaient tous deux vrais de choses différentes, faute de règle énoncée ; chaque lecteur explique désormais son choix dans son propre en-tête) ; ~~les galeries n'ont **aucun test**~~ **FERMÉ (lot `legs-sans-vm`)** : `galerie.test.ts` et `galerie-primitives.test.ts` figent la LISTE des cas (tokens, primitives balisées) — **aucun jugement visuel**, ce que ces deux fichiers disent eux-mêmes ne pas établir |
+| **①** divers | le **propriétaire mono-fenêtre n'existe pas** (ni presse-papier, ni accent) ; ~~le canal `Message` du registre est **non borné**, et trois sous-blocs l'ont aggravé~~ **FERMÉ (lot `legs-sans-vm`)** : une file bornée par coalescence par variante (`capteur/sommeil/file.rs`), branchée sur les cinq points d'appel de production, avec trace au palier ; ce lot n'a rien exercé en charge réelle — voir le document de résultats ; le **niveau 2** du presse-papier (qu'un humain puisse coller) reste **non mesurable** |
 
 ---
 
