@@ -105,8 +105,18 @@ figurant dans cette liste.
 
 - **Absente ou fausse** — l'en-tête n'est pas cru, donc toutes les requêtes
   portent l'adresse du **proxy**. Elles partagent alors **une seule clé de
-  frein** : le frein par adresse dégénère en **frein global**, et le premier
-  attaquant bloque tous les usagers.
+  frein** : le frein par adresse dégénère en **frein global**. 🔴 **CORRIGÉ
+  (revue, round de correction 3 de `frein(pont)`) : AUCUN ATTAQUANT N'EST
+  REQUIS** — la dégénérescence est automatique dès que ce montage (nginx
+  devant la plateforme) existe, pas le fait d'un premier arrivant malveillant.
+  **Et la gravité a changé avec le lot « frein(volume) »** : ce n'est plus
+  seulement `BUDGET_ADRESSE` (les échecs d'authentification, 50/quart
+  d'heure) qui dégénère, mais aussi `BUDGET_REQUETES` — `GET /vm`,
+  `POST /session` **et** le relais `/signal`, HTTP et WebSocket confondus,
+  120/minute — c'est-à-dire que **le service ENTIER** plafonne pour tous les
+  usagers derrière ce proxy, pas seulement leurs tentatives de connexion.
+  Voir `plateforme/src/http/annonces.ts::annonceProxyDeConfiance`, corrigée à
+  sa place.
 - **Trop large** — n'importe qui peut se déclarer sous l'adresse de son choix,
   et le frein par adresse ne freine plus rien du tout.
 

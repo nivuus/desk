@@ -141,14 +141,31 @@ impl EtatPont {
     /// propriété.
     pub(super) fn surveiller(&mut self, lanceur: &LanceurDeProcessus) {
         if lanceur.pont_vivant() {
-            // 🔴 LA DÉCISION DE STABILITÉ EST DÉLÉGUÉE À `EtatRelance::stable`
-            // (round de correction 2) — PLUS AU SEUL ÉCOULEMENT DE
-            // `ESPACEMENT_PLANCHER_MS`. Voir sa doc pour la raison complète :
-            // un pont REFUSÉ peut désormais rester vivant jusqu'à
-            // `REPLI_MAX_MS` (30 s, `honorer_retry_suggere`) avant de mourir,
-            // et le déclarer stable après 500 ms rouvrait la boucle de trace
-            // que ce correctif ferme.
             let ecoule_ms = self.derniere_tentative.elapsed().as_millis() as u64;
+            // 🔴 DEUX PORTES DISTINCTES DEPUIS LE ROUND DE CORRECTION 3 (la
+            // revue l'a exigé, après avoir mesuré qu'un pont SAIN à sessions
+            // courtes — 1 s, 5 s, 20 s — ne réarmait plus jamais son repli
+            // sous le seuil unique du round 2) :
+            // `EtatRelance::reinitialiser_le_repli` (seuil COURT,
+            // `ESPACEMENT_PLANCHER_MS`) réarme la CADENCE dès qu'une vie
+            // normale le prouve — c'est ce qui fait qu'une panne FUTURE,
+            // sans rapport, reparte de l'espacement minimal plutôt que du
+            // plafond d'une panne PASSÉE déjà résolue (argument restauré
+            // depuis ce qu'un round antérieur avait supprimé, voir la doc de
+            // la méthode). `EtatRelance::stable` (seuil LONG,
+            // `SEUIL_STABILITE_MS`) ne gouverne plus que la TRACE — voir sa
+            // doc : un pont REFUSÉ peut rester vivant jusqu'à `REPLI_MAX_MS`
+            // (30 s, `honorer_retry_suggere`) avant de mourir, et le
+            // déclarer stable trop tôt rouvrait la boucle de trace que le
+            // round 2 ferme.
+            //
+            // ⚠️ L'ORDRE COMPTE : `reinitialiser_le_repli` doit s'exécuter
+            // en PREMIER pour que `tentative` soit déjà à zéro le jour où
+            // `stable` rend vrai — garanti par
+            // `ESPACEMENT_PLANCHER_MS < SEUIL_STABILITE_MS`, testé dans
+            // `relance_pont.rs` (`le_plancher_reste_strictement_sous_le_
+            // seuil_de_stabilite`), pas seulement supposé.
+            self.relance.reinitialiser_le_repli(ecoule_ms);
             if self.relance.stable(ecoule_ms) {
                 tracing::info!(pid = self.pid, "pont fichiers de nouveau stable");
             }

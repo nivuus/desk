@@ -134,9 +134,18 @@ describe("l'ensemble de confiance annoncé", () => {
         expect(annonceProxyDeConfiance(new Set()).texte).toContain('retenus=aucun');
     });
 
-    // ⚠️ L'ENSEMBLE VIDE EST LE DÉFAUT SÛR du mode `motdepasse`, et `config.ts`
-    // refuse déjà de démarrer sans lui en mode `pomerium` : crier ici crierait
-    // sur le montage nominal.
+    // ⚠️ CE N'EST PAS PARCE QUE L'ENSEMBLE VIDE SERAIT LE « DÉFAUT SÛR » —
+    // cette justification a été FALSIFIÉE (revue, round de correction 3 de
+    // `frein(pont)`) : dans LE MONTAGE que ce dépôt livre
+    // (`docker-compose.plateforme.yml`, nginx devant la plateforme même en
+    // mode `motdepasse`), un ensemble vide fait dégénérer le frein en un
+    // budget PARTAGÉ par tout le trafic, sans qu'aucun attaquant n'ait à
+    // forger quoi que ce soit — voir la doc de `annonceProxyDeConfiance`,
+    // corrigée à sa place. `info` reste le niveau attendu parce que cette
+    // fonction PURE n'a aucun moyen de savoir si l'appelant tourne derrière
+    // un proxy — un `erreur` inconditionnel alarmerait à tort le montage où
+    // l'ensemble vide est légitimement sûr (exposition directe). `config.ts`
+    // refuse déjà de démarrer sans lui en mode `pomerium`.
     it("un ensemble vide n'est PAS une erreur", () => {
         expect(annonceProxyDeConfiance(new Set()).niveau).toBe('info');
     });

@@ -282,8 +282,13 @@ describe('Frein', () => {
     // VERROUILLE bel et bien l'adresse. Sans ce témoin, (m) ne prouverait
     // rien : un contrôle qu'on n'a jamais vu rougir n'est pas un contrôle.
     it('(m bis) — témoin négatif : un pair qui retente À PLAT, plus vite que le plancher documenté, VERROUILLE son adresse', () => {
-        // ⚠️ PAS 500 ms : c'est PRÉCISÉMENT `PERIODE_RELANCE_PONT_MIN`, le
-        // PLANCHER documenté de `surveillance_pont.rs`, et il coïncide —
+        // ⚠️ PAS 500 ms : c'est PRÉCISÉMENT `ESPACEMENT_PLANCHER_MS`, le
+        // PLANCHER documenté d'`agent/src/relance_pont.rs` (`PERIODE_
+        // RELANCE_PONT_MIN`, l'ex-nom cité ici avant le round de correction
+        // 2, a été SUPPRIMÉE par ce round — cette citation, qui traverse
+        // Rust depuis TypeScript, était devenue une référence morte
+        // qu'AUCUN compilateur ne pouvait attraper ; corrigée par la revue
+        // du round de correction 3), et il coïncide —
         // c'est un hasard d'arrondi — avec `REQUETES_MAX_ADRESSE` (120) sur
         // une fenêtre de 60 s : 60000/500 = 120 exactement, si bien qu'un
         // martèlement à EXACTEMENT 500 ms n'atteint JAMAIS le seuil `>=`

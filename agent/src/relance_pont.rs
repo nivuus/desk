@@ -9,6 +9,28 @@
 //! les deux appels à `honorer_retry_suggere` laissaient les DEUX `cargo test
 //! --workspace` et `cargo check --target x86_64-pc-windows-gnu` intacts.
 //!
+//! 🔴 **CE ZÉRO N'EST PAS UNE FATALITÉ DU `#[cfg(windows)]` — C'EST UN
+//! ARBITRAGE, ET LA REVUE DU ROUND DE CORRECTION 3 L'A RELEVÉ.** Le
+//! paragraphe ci-dessus se lisait comme si aucun autre découpage n'était
+//! possible ; il en existe un : `surveiller` (`surveillance_pont.rs`) est
+//! une décision à TROIS branches — vivant-et-stable, vivant-mais-pas-encore-
+//! stable, mort-donc-à-relancer — qui pourrait s'écrire comme une fonction
+//! PURE rendant un VERDICT (`Decision::{RienAFaire, Stable, Relancer}`, ou
+//! équivalent), ne laissant dans le fichier gaté qu'une quinzaine de lignes
+//! d'E/S (lire `pont_vivant()`, lire l'horloge, appliquer le verdict,
+//! tracer). **Non fait dans ce round** — la prescription portait sur le SENS
+//! des seuils, pas sur la frontière d'extraction, et la déplacer aurait
+//! élargi la portée sans y être invitée. **CE QUE CE CHOIX LAISSE NON
+//! GARDÉ** : l'ORDRE dans lequel `surveiller` appelle ses deux méthodes
+//! (`reinitialiser_le_repli` avant `stable`, ci-dessous — un ordre inversé
+//! ne casserait rien AUJOURD'HUI vu l'invariant `ESPACEMENT_PLANCHER_MS <
+//! SEUIL_STABILITE_MS`, testé plus bas, mais rien ne l'empêcherait de casser
+//! un jour si l'un des deux seuils changeait de sens) et le CÂBLAGE
+//! lui-même (quelle méthode est appelée, avec quel argument, dans quelle
+//! branche) restent `#[cfg(windows)]`, donc non exercés par
+//! `cargo test --workspace` — seule la DÉCISION, une fois les deux entrées
+//! connues, est éprouvée ici.
+//!
 //! 🔴 **CONVENTION DE NOMMAGE (`CLAUDE.md`, « Convention de module enfant »),
 //! APPLIQUÉE ICI, PAS DEVINÉE.** Ce module ne porte le préfixe d'AUCUN module
 //! de premier niveau existant : `relance` n'est déclaré nulle part dans
@@ -58,12 +80,42 @@
 //! son sommeil d'attente n'est JAMAIS déclaré stable entre-temps.
 //! `ESPACEMENT_PLANCHER_MS`, inchangé, continue de border la cadence des
 //! VRAIES tentatives de relance (`delai_de_repli(0)`).
+//!
+//! 🔴 **RAFFINÉ AU ROUND DE CORRECTION 3 : `SEUIL_STABILITE_MS` NE GOUVERNE
+//! PLUS QUE LA TRACE, JAMAIS LA CADENCE — LA REVUE A MESURÉ LE DÉFAUT ET
+//! DÉCIDÉ LE DÉCOUPLAGE.** Le round 2 (paragraphe ci-dessus) faisait porter
+//! à `SEUIL_STABILITE_MS` DEUX décisions à la fois — quand la ligne
+//! « stable » peut sortir, ET quand le repli exponentiel peut se réarmer
+//! (`tentative = 0`). Mesuré au banc, sur un pont SAIN dont les sessions
+//! durent 1 s, 5 s ou 20 s (donc SOUS ce seuil de 35 s) : le repli ne se
+//! réarmait alors JAMAIS, et l'espacement restait CLOUÉ au plafond (30 s)
+//! atteint par une panne PASSÉE et déjà résolue — jusqu'à 29 s d'attente
+//! pour une reconnexion parfaitement saine, là où le comportement d'AVANT le
+//! round 2 en coûtait 0. **Les deux seuils gouvernent désormais chacun UNE
+//! question distincte** : `ESPACEMENT_PLANCHER_MS` (COURT) réarme le repli
+//! ([`EtatRelance::reinitialiser_le_repli`]) dès qu'une vie NORMALE le
+//! prouve — restaurant un argument que le round 2 avait supprimé sans le
+//! relocaliser, voir la doc de cette méthode ; `SEUIL_STABILITE_MS` (LONG)
+//! continue de gouverner SEULEMENT la trace ([`EtatRelance::stable`], qui ne
+//! touche plus `tentative`). **Le découplage NE ROUVRE PAS la boucle de
+//! trace** : `reinitialiser_le_repli` ne touche jamais `cycle_signale`, qui
+//! reste l'UNIQUE porte des lignes « lancé »/« stable » — voir les deux
+//! rouges rejouées, ci-dessous.
 
 use crate::plateforme::repli::{delai_de_repli, REPLI_MAX_MS};
 
 /// Espacement PLANCHER entre deux tentatives, ET valeur du premier terme de
 /// `delai_de_repli` (`delai_de_repli(0) == ESPACEMENT_PLANCHER_MS`, éprouvé
 /// ci-dessous). Reprise de l'ex-`PERIODE_RELANCE_PONT_MIN`.
+///
+/// 🔴 **RÉUTILISÉE DEPUIS LE ROUND DE CORRECTION 3 POUR UN SECOND RÔLE** :
+/// le seuil COURT au-delà duquel [`EtatRelance::reinitialiser_le_repli`]
+/// considère qu'une vie suffit à prouver qu'une panne passée est résolue.
+/// Les deux rôles partagent la MÊME valeur par choix, pas par nécessité — la
+/// cadence PLANCHER entre deux tentatives et la preuve de vie « suffisante »
+/// pour réarmer le repli n'ont aucune raison structurelle de coïncider, mais
+/// aucune mesure ne les distingue non plus. Les découpler resterait à faire
+/// le jour où l'une des deux raisons se calibre indépendamment de l'autre.
 pub const ESPACEMENT_PLANCHER_MS: u64 = 500;
 
 /// Seuil de STABILITÉ — voir le commentaire de tête du module. **Distinct de
@@ -73,10 +125,27 @@ pub const ESPACEMENT_PLANCHER_MS: u64 = 500;
 /// `REPLI_MAX_MS` couvre le SOMMEIL que `honorer_retry_suggere` s'impose ;
 /// la marge couvre le temps qu'il faut pour l'ATTEINDRE (connexion WS,
 /// refus, lecture du message d'erreur) — non mesuré, choisi large plutôt que
-/// juste : un seuil de stabilité trop court coûte une boucle de trace
-/// entière (ce correctif), un seuil trop long ne coûte qu'un `info!` en
-/// retard, jamais un défaut fonctionnel (voir la doc de
-/// [`EtatRelance::stable`]).
+/// juste.
+///
+/// 🔴 **CE QUE CE SEUIL NE GOUVERNE PLUS, DEPUIS LE ROUND DE CORRECTION 3 —
+/// LA CORRECTION D'UNE AFFIRMATION FAUSSE, RELEVÉE PAR LA REVUE.** Ce
+/// commentaire affirmait ici qu'« un seuil trop long ne coûte qu'un `info!`
+/// en retard, jamais un défaut fonctionnel ». **C'était FAUX tant que ce
+/// seuil gouvernait AUSSI la remise à zéro du repli** (`EtatRelance::
+/// tentative`, via `stable`) : un pont sain dont les sessions durent 1 s,
+/// 5 s ou 20 s — bien sous ce seuil — ne réarmait alors JAMAIS son repli, et
+/// après quelques cycles l'espacement restait CLOUÉ à `REPLI_MAX_MS` (30 s)
+/// même pour des pannes FUTURES sans aucun rapport avec la précédente,
+/// mesuré au banc. **Depuis ce round, `stable` ne touche plus `tentative` :
+/// seul [`EtatRelance::reinitialiser_le_repli`] le fait, sur un seuil COURT**
+/// (`ESPACEMENT_PLANCHER_MS`, voir sa doc). `SEUIL_STABILITE_MS` ne gouverne
+/// donc plus désormais que DEUX choses, toutes deux des questions de TRACE,
+/// jamais de CADENCE : le moment où la ligne « pont de nouveau stable » peut
+/// sortir, et le moment où `cycle_signale` retombe (donc où un épisode de
+/// martèlement redevient bruyant sur son PROCHAIN lancement). **C'est
+/// SEULEMENT sous cette portée réduite que l'affirmation redevient vraie** :
+/// un seuil de TRACE trop long ne coûte qu'un `info!` en retard — la CADENCE,
+/// elle, ne dépend plus de ce seuil du tout.
 pub const SEUIL_STABILITE_MS: u64 = REPLI_MAX_MS + 5_000;
 
 /// L'état, PUR, d'un processus supervisé et relancé avec repli exponentiel.
@@ -88,7 +157,7 @@ pub const SEUIL_STABILITE_MS: u64 = REPLI_MAX_MS + 5_000;
 /// gate rien ici).
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct EtatRelance {
-    /// Tentatives CONSÉCUTIVES sans stabilité observée. Voir `tentative()`.
+    /// Tentatives CONSÉCUTIVES sans repli réarmé. Voir `tentative()`.
     tentative: u32,
     /// Vrai dès qu'un cycle de relance en cours a été signalé — voir la doc
     /// de `cycle_signale` dans `surveillance_pont.rs`, qui reste la seule
@@ -134,21 +203,77 @@ impl EtatRelance {
         premier_du_cycle
     }
 
+    /// Réarme le repli exponentiel — remet `tentative` à zéro — dès qu'un
+    /// cycle est en cours ET que le processus a été vu vivant au moins
+    /// `ESPACEMENT_PLANCHER_MS` depuis sa dernière tentative. **Ne touche
+    /// PAS `cycle_signale`** : la trace reste gouvernée par `stable` et son
+    /// seuil LONG — voir la doc de tête du module pour la raison du
+    /// découplage (round de correction 3).
+    ///
+    /// 🔴 **RESTAURE UN ARGUMENT QUE LE ROUND DE CORRECTION 2 A SUPPRIMÉ SANS
+    /// LE RELOCALISER** (relevé par la revue du round de correction 3,
+    /// `grep -rn 'REMISE À ZÉRO' agent/src` ne rendait plus rien). Avant
+    /// l'extraction de ce module, ce texte vivait sur la remise à zéro de
+    /// `EtatPont::tentative`, dans `surveillance_pont.rs` :
+    ///
+    /// > « REMISE À ZÉRO ICI, ET NULLE PART AILLEURS : c'est ce qui fait
+    /// > qu'une panne FUTURE reparte de l'espacement minimal plutôt que de
+    /// > rester bloquée au plafond atteint par une panne PASSÉE, déjà
+    /// > résolue […] un agent connecté depuis trois jours qui perd son
+    /// > réseau une seconde doit reprendre en une demi-seconde, pas en
+    /// > trente. »
+    ///
+    /// Le round 2 a déplacé la remise à zéro dans `stable`, sur le seuil
+    /// LONG (`SEUIL_STABILITE_MS`) — ce qui rendait l'argument FAUX : un
+    /// pont sain dont les sessions durent 1 s, 5 s ou 20 s (donc SOUS ce
+    /// seuil) ne réarmait plus JAMAIS le repli, et une panne future, sans
+    /// rapport, héritait du plafond d'une panne passée déjà résolue.
+    /// **CETTE MÉTHODE RESTAURE LA PROPRIÉTÉ, ICI, SUR LE SEUIL COURT.**
+    /// C'est désormais la SEULE remise à zéro de `tentative` du module —
+    /// `stable` ne le fait plus, voir sa doc — et elle a TOUJOURS déjà agi
+    /// avant que `stable` ne puisse rendre vrai, puisque
+    /// `ESPACEMENT_PLANCHER_MS < SEUIL_STABILITE_MS` (fixé par un test
+    /// dédié, ci-dessous, plutôt que laissé à une transitivité qu'un
+    /// lecteur pressé pourrait manquer).
+    ///
+    /// 🔴 **NE ROUVRE PAS LA BOUCLE DE TRACE** : cette méthode ne touche
+    /// jamais `cycle_signale`, donc ne peut jamais faire rendre `true` à
+    /// `tentative_lancee` prématurément — c'est `cycle_signale`, jamais
+    /// `tentative`, qui gouverne le silence des traces. Un pont dont le
+    /// repli vient d'être réarmé peut très bien mourir l'instant suivant :
+    /// il relancera VITE (bon), mais SILENCIEUSEMENT tant que le cycle, lui,
+    /// n'a pas atteint la VRAIE stabilité — voir
+    /// `une_vie_normale_mais_pas_stable_reinitialise_quand_meme_le_repli`,
+    /// ci-dessous, qui éprouve exactement cette distinction.
+    pub fn reinitialiser_le_repli(&mut self, ecoule_ms: u64) {
+        if self.cycle_signale && ecoule_ms >= ESPACEMENT_PLANCHER_MS {
+            self.tentative = 0;
+        }
+    }
+
     /// Le processus est vu VIVANT depuis `ecoule_ms` millisecondes écoulées
-    /// depuis la dernière tentative. Rend `true` — et RÉARME l'état pour le
-    /// prochain cycle (`tentative` à zéro, `cycle_signale` à faux) — SI ET
+    /// depuis la dernière tentative. Rend `true` — et RÉARME `cycle_signale`
+    /// pour le prochain cycle (jamais `tentative`, voir plus bas) — SI ET
     /// SEULEMENT SI un cycle était en cours ET que `ecoule_ms` dépasse
     /// `SEUIL_STABILITE_MS`, **jamais** le seul `ESPACEMENT_PLANCHER_MS`.
     ///
     /// 🔴 **C'EST LA LIGNE QUI CORRIGE LE ROUND DE CORRECTION 2** : avant lui,
     /// le seuil ici était `ESPACEMENT_PLANCHER_MS` (500 ms), si bien qu'un
     /// processus refusé et endormi jusqu'à `REPLI_MAX_MS` (30 s) avant de
-    /// mourir était déclaré stable dès 500 ms — see `stable_pendant_un_
-    /// sommeil_de_refus_ne_declare_jamais_stable`, la rouge exacte de ce
-    /// défaut, ci-dessous.
+    /// mourir était déclaré stable dès 500 ms — voir
+    /// `stable_pendant_un_sommeil_de_refus_ne_declare_jamais_stable`, la
+    /// rouge exacte de ce défaut, ci-dessous.
+    ///
+    /// 🔴 **DEPUIS LE ROUND DE CORRECTION 3, CETTE MÉTHODE NE TOUCHE PLUS
+    /// `tentative`** — seule [`Self::reinitialiser_le_repli`] le fait
+    /// désormais, sur un seuil COURT. Un seuil UNIQUE pour les deux
+    /// questions à la fois (CADENCE du repli et VISIBILITÉ de la trace)
+    /// rendait forcément l'une des deux fausse, quel que soit le choix :
+    /// trop court, la trace boucle (le défaut du round 2) ; trop long, le
+    /// repli reste CLOUÉ pour des pannes FUTURES sans rapport (le défaut que
+    /// ce round-ci corrige — voir la doc de `SEUIL_STABILITE_MS`).
     pub fn stable(&mut self, ecoule_ms: u64) -> bool {
         if self.cycle_signale && ecoule_ms >= SEUIL_STABILITE_MS {
-            self.tentative = 0;
             self.cycle_signale = false;
             true
         } else {
@@ -157,176 +282,15 @@ impl EtatRelance {
     }
 }
 
+// Module de tests extrait dans son propre fichier — la règle des 500 lignes
+// (`CLAUDE.md`) l'exige : les onze tests de ce module, avec leurs
+// commentaires (chacun documente une propriété distincte, notamment les
+// deux rouges rejouées au round de correction 3), pesaient à eux seuls plus
+// que le fichier entier avant l'extraction. Même mécanisme que
+// `superviseur/table.rs::#[path = "table/tests.rs"] mod tests;` — la clause
+// de `CLAUDE.md` qui l'exempte de la convention de nommage des modules
+// enfants le dit explicitement : « le même mécanisme Rust, employé pour une
+// raison différente (la règle des 500 lignes) ».
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn neuve_n_a_rien_a_relancer_ni_rien_a_stabiliser() {
-        let etat = EtatRelance::neuve();
-        assert_eq!(etat.tentative(), 0);
-        assert_eq!(etat.espacement_ms(), ESPACEMENT_PLANCHER_MS);
-    }
-
-    /// `delai_de_repli(0)` est ÉGAL à `ESPACEMENT_PLANCHER_MS` — la propriété
-    /// que la doc du module affirme, éprouvée plutôt que crue.
-    #[test]
-    fn le_premier_espacement_egale_le_plancher() {
-        assert_eq!(delai_de_repli(0), ESPACEMENT_PLANCHER_MS);
-    }
-
-    /// 🔴 LE TEST QUI ANCRE LE CORRECTIF : `SEUIL_STABILITE_MS` doit rester
-    /// STRICTEMENT AU-DESSUS de `REPLI_MAX_MS`, sans quoi la propriété que ce
-    /// module existe pour garantir retombe le jour où l'un des deux dérive
-    /// sans que l'autre suive — même patron que
-    /// `frein.test.ts::FENETRE_REQUETES_MS_reste_plus_courte_que_FENETRE_MS`.
-    #[test]
-    fn le_seuil_de_stabilite_reste_strictement_au_dessus_du_plafond_de_repli() {
-        assert!(
-            SEUIL_STABILITE_MS > REPLI_MAX_MS,
-            "SEUIL_STABILITE_MS = {SEUIL_STABILITE_MS} n'est pas > REPLI_MAX_MS = {REPLI_MAX_MS}"
-        );
-    }
-
-    #[test]
-    fn doit_relancer_est_faux_juste_apres_une_tentative() {
-        let mut etat = EtatRelance::neuve();
-        etat.tentative_lancee();
-        assert!(!etat.doit_relancer(0));
-        assert!(!etat.doit_relancer(ESPACEMENT_PLANCHER_MS - 1));
-    }
-
-    #[test]
-    fn doit_relancer_devient_vrai_a_l_espacement_exact() {
-        let etat = EtatRelance::neuve();
-        assert!(etat.doit_relancer(ESPACEMENT_PLANCHER_MS));
-    }
-
-    #[test]
-    fn seul_le_premier_lancement_du_cycle_est_signale() {
-        let mut etat = EtatRelance::neuve();
-        assert!(etat.tentative_lancee(), "le premier lancement doit être signalé");
-        assert!(!etat.tentative_lancee(), "le second, du MÊME cycle, ne doit plus l'être");
-        assert!(!etat.tentative_lancee(), "ni le troisième");
-        assert_eq!(etat.tentative(), 3, "le COMPTE, lui, continue de croître");
-    }
-
-    /// 🔴 LA ROUGE EXACTE DU DÉFAUT CORRIGÉ PAR CE ROUND : un processus REFUSÉ
-    /// qui reste vivant jusqu'à `REPLI_MAX_MS` avant de mourir (le sommeil de
-    /// `honorer_retry_suggere`) ne doit JAMAIS être déclaré stable pendant ce
-    /// sommeil. Sondé à intervalles réguliers, comme le ferait la boucle du
-    /// superviseur à ~10 Hz.
-    #[test]
-    fn stable_pendant_un_sommeil_de_refus_ne_declare_jamais_stable() {
-        let mut etat = EtatRelance::neuve();
-        etat.tentative_lancee();
-        let mut ecoule = 0u64;
-        while ecoule < REPLI_MAX_MS {
-            assert!(
-                !etat.stable(ecoule),
-                "déclaré stable à {ecoule} ms, alors que le sommeil de refus \
-                 peut durer jusqu'à {REPLI_MAX_MS} ms — c'est la boucle de \
-                 trace du round de correction 2"
-            );
-            ecoule += 97; // un pas non-rond, pour ne pas tomber sur un cas pile
-        }
-    }
-
-    /// 🔵 TÉMOIN POSITIF : un processus RÉELLEMENT stable — vivant bien
-    /// au-delà du sommeil de refus le plus long possible — est bien déclaré
-    /// stable, et une seule fois.
-    #[test]
-    fn un_processus_reellement_stable_finit_par_etre_declare_stable_une_fois() {
-        let mut etat = EtatRelance::neuve();
-        etat.tentative_lancee();
-        assert!(!etat.stable(SEUIL_STABILITE_MS - 1));
-        assert!(etat.stable(SEUIL_STABILITE_MS));
-        assert_eq!(etat.tentative(), 0, "réarmé");
-        // Un second appel, cycle déjà retombé : plus rien à signaler tant
-        // qu'aucune tentative neuve n'a eu lieu.
-        assert!(!etat.stable(SEUIL_STABILITE_MS * 2));
-    }
-
-    /// Sans cycle en cours (aucune tentative lancée depuis la dernière
-    /// stabilité), `stable` ne doit rien déclarer, quel que soit `ecoule_ms`
-    /// — un pont jamais relancé n'a rien à « redevenir » stable.
-    #[test]
-    fn sans_cycle_en_cours_stable_ne_declare_jamais_rien() {
-        let mut etat = EtatRelance::neuve();
-        assert!(!etat.stable(SEUIL_STABILITE_MS * 10));
-    }
-
-    /// 🔴 LA SIMULATION DE PLUSIEURS CYCLES DE REFUS — le test qui compte les
-    /// LIGNES QUI SERAIENT ÉMISES, pas les appels : c'est la forme que la
-    /// revue a demandée. Chaque cycle : une tentative lancée, un sommeil de
-    /// refus jusqu'à `REPLI_MAX_MS` sondé à ~10 Hz, puis la mort — le cycle
-    /// suivant recommence.
-    ///
-    /// 🔵 **CE QUE LA PREMIÈRE VERSION DE CE TEST CROYAIT À TORT** (rougie
-    /// avant correction, et c'est la preuve que la propriété n'était pas
-    /// supposée) : « une ligne "lancé" par cycle ». C'est FAUX, et c'est même
-    /// MEILLEUR que ça — parce que `stable()` ne rearme JAMAIS `cycle_signale`
-    /// tant qu'aucun cycle n'atteint la VRAIE stabilité, `tentative_lancee()`
-    /// rend `premier_du_cycle = false` pour TOUTE relance après la toute
-    /// première de l'épisode entier. La ligne « lancé » ne sort donc **qu'UNE
-    /// SEULE FOIS pour tout l'épisode de martèlement**, pas une fois par
-    /// cycle — exactement la promesse de tête du module : « signaler la
-    /// première fois, se taire tant que la situation se répète ». Le
-    /// correctif du round 2 ne fait pas que fermer la fausse ligne « stable » :
-    /// il restaure aussi le silence attendu sur « lancé », que le bug du
-    /// seuil unique avait rouvert en réarmant `cycle_signale` à chaque
-    /// fausse stabilité.
-    #[test]
-    fn sur_plusieurs_cycles_de_refus_une_seule_ligne_lancee_et_aucune_ligne_stable() {
-        const PAS_MS: u64 = 100; // ~10 Hz, la cadence réelle de la boucle
-        let mut etat = EtatRelance::neuve();
-        let mut lignes_lancees = 0u32;
-        let mut lignes_stables = 0u32;
-        for _cycle in 0..5 {
-            if etat.tentative_lancee() {
-                lignes_lancees += 1;
-            }
-            let mut ecoule = 0u64;
-            while ecoule < REPLI_MAX_MS {
-                if etat.stable(ecoule) {
-                    lignes_stables += 1;
-                }
-                ecoule += PAS_MS;
-            }
-            // Le processus meurt ici (fin du sommeil de refus) : la boucle
-            // suivante relancera, donc un cycle NEUF commence côté OS — mais
-            // `cycle_signale` reste vrai côté `EtatRelance`, puisqu'aucune
-            // stabilité RÉELLE n'a été observée. C'est exactement le
-            // `EtatPont` réel entre deux tours de `surveiller`.
-        }
-        assert_eq!(
-            lignes_lancees, 1,
-            "UNE SEULE ligne « lancé » pour tout l'épisode — jamais une par \
-             cycle : c'est la propriété de silence que le module promet déjà, \
-             et que le bug du seuil unique cassait en réarmant `cycle_signale` \
-             à chaque fausse stabilité"
-        );
-        assert_eq!(
-            lignes_stables, 0,
-            "AUCUNE ligne « stable » ne doit sortir tant qu'aucun cycle n'a \
-             vraiment tenu : c'est exactement la boucle que le round de \
-             correction 2 ferme"
-        );
-    }
-
-    /// 🔵 TÉMOIN : si un cycle finit par tenir RÉELLEMENT (le pont cesse
-    /// d'être refusé), la ligne « stable » sort UNE fois, et le cycle SUIVANT
-    /// redevient bruyant sur son premier lancement — la moitié du mécanisme
-    /// que le test ci-dessus, à lui seul, ne peut pas prouver puisqu'aucun de
-    /// ses cycles n'atteint jamais la stabilité.
-    #[test]
-    fn apres_une_vraie_stabilite_le_cycle_suivant_redevient_bruyant() {
-        let mut etat = EtatRelance::neuve();
-        assert!(etat.tentative_lancee(), "premier lancement de l'épisode : bruyant");
-        assert!(etat.stable(SEUIL_STABILITE_MS), "vraiment resté vivant assez longtemps");
-        assert!(
-            etat.tentative_lancee(),
-            "un cycle NEUF, après une vraie stabilité, redevient bruyant"
-        );
-    }
-}
+#[path = "relance_pont/tests.rs"]
+mod tests;
