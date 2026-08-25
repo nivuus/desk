@@ -180,7 +180,8 @@ fn un_processus_reellement_stable_finit_par_etre_declare_stable_une_fois() {
         etat.espacement_ms(),
         ESPACEMENT_PLANCHER_MS,
         "une sortie propre après une stabilité déclarée doit réarmer : \
-         `cycle_signale` ne garde plus AUCUNE décision de cadence"
+         la garde `cycle_signale` ne peut jamais BLOQUER un réarmement, \
+         `tentative > 0` impliquant `cycle_signale == true`"
     );
 }
 
@@ -291,8 +292,14 @@ fn un_pont_qui_meurt_en_erreur_apres_une_demi_seconde_ne_martele_pas() {
     const PAS_MS: u64 = 100;
     const DUREE_MS: u64 = 60_000;
     const VIE_MS: u64 = 600;
-    // Le budget PARTAGÉ de la plateforme, et la part qu'on tolère pour le
-    // pont seul : un dixième, pour qu'il reste de la place aux sessions.
+    // 🔴 LA VALEUR MESURÉE, PAS UNE BORNE LÂCHE. Une rédaction antérieure
+    // assertait `<= 120 / 10`, soit 12, là où la mesure rend 6 : **une
+    // régression qui DOUBLERAIT la cadence serait passée** (relevé par la
+    // revue du round de correction 5). L'égalité exacte oblige à REMESURER
+    // le jour où `REPLI_MIN_MS` ou `REPLI_MAX_MS` bougent, ce qui est
+    // exactement ce qu'on veut d'un chiffre-juge.
+    const LANCEMENTS_MESURES: u32 = 6;
+    // Le budget PARTAGÉ de la plateforme, pour la lecture du message.
     const BUDGET_PARTAGE_PAR_MINUTE: u32 = 120;
 
     let mut relance = EtatRelance::neuve();
@@ -319,10 +326,54 @@ fn un_pont_qui_meurt_en_erreur_apres_une_demi_seconde_ne_martele_pas() {
         }
         horloge += PAS_MS as i64;
     }
-    assert!(
-        lancements <= BUDGET_PARTAGE_PAR_MINUTE / 10,
+    assert_eq!(
+        lancements, LANCEMENTS_MESURES,
         "{lancements} connexions /signal en une minute pour le pont SEUL, \
-         contre un budget PARTAGÉ de {BUDGET_PARTAGE_PAR_MINUTE} : c'est le \
-         verrouillage de la VM que ce lot existe pour fermer"
+         contre un budget PARTAGÉ de {BUDGET_PARTAGE_PAR_MINUTE} et une \
+         mesure de {LANCEMENTS_MESURES} : c'est le verrouillage de la VM que \
+         ce lot existe pour fermer"
     );
+}
+
+/// 🔴 **LA ROUGE DU ROUND DE CORRECTION 5 — « LA CITATION QUE LE MODULE
+/// PORTE DEPUIS LE ROUND 3 ÉTAIT FAUSSE POUR UN CAS ».** Un pont refusé six
+/// fois (espacement au PLAFOND), puis relancé une septième fois et qui SERT
+/// TROIS JOURS, puis qu'une coupure réseau tue — donc une mort EN ERREUR,
+/// qu'aucune sortie propre ne vient racheter — doit reprendre **en une
+/// demi-seconde, pas en trente**. C'est mot pour mot ce que
+/// `reinitialiser_le_repli` revendique, et ce que le round 4 avait laissé
+/// faux pour ce cas précis en retirant la durée EN BLOC.
+///
+/// 🔵 **CE QUI REND LA DURÉE LÉGITIME ICI, LÀ OÙ ELLE NE L'ÉTAIT PAS AU
+/// ROUND 3** : le seuil franchi est `SEUIL_STABILITE_MS` (35 s), qu'un pont
+/// refusé qui dort ne peut PAS atteindre — son sommeil est borné à
+/// `REPLI_MAX_MS` (30 s). Les deux tests qui tiennent cet invariant sont
+/// `le_seuil_de_stabilite_reste_strictement_au_dessus_du_plafond_de_repli`
+/// et `stable_pendant_un_sommeil_de_refus_ne_declare_jamais_stable`.
+#[test]
+fn une_longue_vie_stable_puis_une_mort_en_erreur_reprend_au_plancher() {
+    const TROIS_JOURS_MS: u64 = 3 * 24 * 60 * 60 * 1_000;
+    let mut etat = EtatRelance::neuve();
+    for _ in 0..6 {
+        etat.tentative_lancee();
+    }
+    assert_eq!(etat.espacement_ms(), REPLI_MAX_MS, "six refus : le repli est au PLAFOND");
+
+    // Septième lancement — celui-là tient, et longtemps.
+    etat.tentative_lancee();
+    assert!(etat.stable(TROIS_JOURS_MS), "trois jours de vie, c'est stable");
+
+    // Puis la coupure réseau : `pont::executer` rend une `Err`, donc un code
+    // de sortie non nul, donc `IssueDeSortie::Erreur` — que
+    // `reinitialiser_le_repli` refuse à bon droit de tenir pour une preuve.
+    etat.reinitialiser_le_repli(IssueDeSortie::Erreur);
+    assert_eq!(
+        etat.espacement_ms(),
+        ESPACEMENT_PLANCHER_MS,
+        "après trois jours de service, une coupure réseau doit se reprendre \
+         en une demi-seconde et non en {REPLI_MAX_MS} ms : c'est la citation \
+         que `reinitialiser_le_repli` porte, et que seule `stable` peut \
+         tenir pour une mort EN ERREUR"
+    );
+    assert!(etat.doit_relancer(ESPACEMENT_PLANCHER_MS));
 }

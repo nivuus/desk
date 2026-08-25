@@ -87,24 +87,52 @@
 //! round 1 a créé. **Mesuré au banc** (connexions `/signal` par minute contre
 //! le budget PARTAGÉ `REQUETES_MAX_ADRESSE`, 120 par 60 s) :
 //!
-//! | vie du pont | round 3 | round 4 |
-//! | --- | --- | --- |
-//! | 600 ms | **100** | 6 |
-//! | 1 s | **60** | 6 |
-//! | 2 s | **30** | 6 |
-//! | 5 s | **12** | 6 |
-//! | 10 s | 6 | 6 |
+//! | vie du pont | round 3 | round 4, mort en ERREUR | round 4, sortie PROPRE |
+//! | --- | --- | --- | --- |
+//! | 600 ms | **100** | 6 | **100** |
+//! | 1 s | **60** | 6 | **60** |
+//! | 2 s | **30** | 6 | **30** |
+//! | 5 s | **12** | 6 | **12** |
+//! | 10 s | 6 | 6 | 6 |
 //!
 //! ⚠️ **La ligne 600 ms s'atteignait SANS AUCUN `retryApresS`** : toute mort
 //! répétée après une demi-seconde de vie (panne ProjFS, plantage) suffisait —
 //! 100 connexions/minute, 83 % du budget partagé consommé par le pont seul.
+//!
+//! 🔴 **LA TROISIÈME COLONNE EST UNE RÉSERVE OUVERTE, ET ELLE VIT ICI PARCE
+//! QU'UNE PREUVE QUI NE VIT QUE DANS UN RAPPORT GITIGNORÉ EST UNE PREUVE
+//! PERDUE** (`CLAUDE.md` l'interdit nommément, après en avoir perdu six).
+//! **Une sortie PROPRE réarme le repli sans aucune borne de cadence** : un
+//! pont qui se terminerait proprement toutes les 600 ms rendrait toujours
+//! 100 connexions/minute, et le plancher de 500 ms de
+//! [`EtatRelance::doit_relancer`] serait alors la SEULE borne. Ce régime est
+//! hors de portée de la boucle du superviseur seule — `pont::executer` ne
+//! rend `Ok(())` qu'après la mort de son fil de transport, ce qui exige un
+//! pair qui émette des offres, et ce pair consomme lui-même le budget
+//! `/signal`. ⚠️ **Mais l'argument est plus faible qu'il n'y paraît** : ce
+//! `Ok(())` court AUSSI sur un échec ICE survenu APRÈS l'envoi de la réponse
+//! SDP, pas seulement après une session réellement établie. **Non mesuré,
+//! non borné, et écrit ici plutôt que passé sous silence.**
 //!
 //! **Ce n'était PAS un réglage de seuil, et il ne faut pas y retourner** :
 //! une session SAINE qui se termine occupe le MÊME intervalle (1 à 30 s)
 //! qu'un pont refusé qui a dormi. Seuil LONG ⇒ le défaut que le round 3
 //! corrigeait (un pont sain à sessions courtes ne réarme jamais, jusqu'à 29 s
 //! d'indisponibilité pour une panne future sans rapport) ; seuil COURT ⇒ le
-//! défaut ci-dessus. **La durée n'est pas le discriminant.**
+//! défaut ci-dessus.
+//!
+//! ⚠️ **UNE DURÉE *COURTE* NE DISCRIMINE PAS — ET LA PREMIÈRE RÉDACTION DE
+//! CE PARAGRAPHE ÉCRIVAIT « la durée n'est pas le discriminant », CE QUI EST
+//! TROP FORT** (relevé par la revue du round de correction 5). Une durée
+//! **au-dessus de `REPLI_MAX_MS`** discrimine parfaitement, et ce module en
+//! possède une : `SEUIL_STABILITE_MS` (35 s) est **structurellement
+//! inatteignable par un pont refusé qui dort**, puisque ce sommeil est borné
+//! à 30 s — c'est l'invariant que
+//! `le_seuil_de_stabilite_reste_strictement_au_dessus_du_plafond_de_repli`
+//! et `stable_pendant_un_sommeil_de_refus_ne_declare_jamais_stable` tiennent
+//! déjà. Le round 4 avait retiré la durée **en bloc**, emportant le seul cas
+//! qu'elle traitait juste ; le round 5 le lui rend, et **`stable()` remet
+//! `tentative` à zéro** (voir sa doc).
 //!
 //! 🔵 **LE DISCRIMINANT ÉTAIT DÉJÀ LU, PUIS JETÉ.** `pont::executer` rend
 //! `Ok(())` en fin normale et `bail!` sur refus — juste après avoir honoré
@@ -123,9 +151,16 @@
 //! que ce round-là corrigeait. La garde a disparu avec la durée : elle
 //! n'était plus seulement non nommée, elle était devenue **fausse**, un pont
 //! déclaré stable puis mort proprement ayant `cycle_signale == false` et ne
-//! réarmant donc rien. `cycle_signale` ne gouverne de nouveau QUE la trace,
-//! et l'affirmation de `SEUIL_STABILITE_MS` — « deux choses, toutes deux des
-//! questions de TRACE, jamais de CADENCE » — redevient vraie sans réserve.
+//! réarmant donc rien. `cycle_signale` ne gouverne de nouveau QUE la trace.
+//!
+//! 🔴 **EN REVANCHE, `SEUIL_STABILITE_MS` GOUVERNE DE NOUVEAU UNE CADENCE
+//! DEPUIS LE ROUND 5, ET C'EST ÉCRIT ICI PLUTÔT QUE DÉCOUVERT** — le round 4
+//! affirmait à cet endroit qu'il ne gouvernait « que la trace, sans
+//! réserve », et cette phrase serait devenue fausse en silence. La
+//! différence avec le round 3, qui avait payé exactement ce mécanisme : le
+//! seuil qui gouverne cette cadence-ci est **au-dessus de `REPLI_MAX_MS`**,
+//! donc hors d'atteinte d'un refus endormi, là où celui du round 3 était le
+//! plancher de 500 ms. Voir la doc de la constante.
 
 use crate::plateforme::repli::{delai_de_repli, REPLI_MAX_MS};
 
@@ -166,17 +201,40 @@ pub const ESPACEMENT_PLANCHER_MS: u64 = 500;
 /// refus, lecture du message d'erreur) — non mesuré, choisi large plutôt que
 /// juste.
 ///
-/// 🔴 **CE SEUIL NE GOUVERNE QUE LA TRACE, ET DEPUIS LE ROUND 4 CETTE PHRASE
-/// EST VRAIE SANS RÉSERVE.** Le round 3 l'écrivait déjà — « deux choses,
-/// toutes deux des questions de TRACE, jamais de CADENCE » : le moment où la
-/// ligne « pont de nouveau stable » peut sortir, et le moment où
-/// `cycle_signale` retombe (donc où un épisode de martèlement redevient
-/// bruyant sur son PROCHAIN lancement). **Elle était pourtant FAUSSE par une
-/// porte indirecte**, que la revue a relevée : `cycle_signale`, que `stable`
-/// est seul à faire retomber, gardait aussi `reinitialiser_le_repli`, donc
-/// gouvernait bel et bien une CADENCE. Cette garde n'existe plus. **Sous
-/// cette portée, un seuil de trace trop long ne coûte qu'un `info!` en
-/// retard** — la cadence, elle, ne dépend d'aucun seuil de durée.
+/// 🔴 **CE SEUIL GOUVERNE TROIS CHOSES, ET LA TROISIÈME EST UNE CADENCE.**
+/// Les rounds 3 et 4 ont écrit tour à tour qu'il ne gouvernait « que la
+/// trace » — les deux fois, c'était faux, et pas de la même façon. Voici les
+/// trois, énumérées plutôt que découvertes :
+///
+/// 1. **TRACE** — le moment où la ligne « pont de nouveau stable » peut
+///    sortir ;
+/// 2. **TRACE** — le moment où `cycle_signale` retombe, donc où un épisode
+///    de martèlement redevient bruyant sur son PROCHAIN lancement ;
+/// 3. 🔴 **CADENCE, depuis le round de correction 5** — [`EtatRelance::
+///    stable`] remet `tentative` à zéro dans sa branche vraie. C'est ce qui
+///    fait qu'un pont vivant **trois jours**, puis coupé par une panne
+///    réseau (donc mort EN ERREUR, que `reinitialiser_le_repli` refuse à bon
+///    droit de tenir pour une preuve), reprenne en une demi-seconde et non
+///    en trente — la propriété que la citation de `reinitialiser_le_repli`
+///    revendique, et que le round 4 avait laissée fausse pour ce cas.
+///
+/// ⚠️ **POURQUOI CE N'EST PAS LE DÉFAUT DU ROUND 3, QUI ÉTAIT EXACTEMENT CE
+/// MÉCANISME.** Là-bas, la cadence était gouvernée par un seuil de 500 ms,
+/// qu'un pont refusé atteint TOUJOURS avant de mourir : le réarmement était
+/// donc systématique et le repli ne pouvait plus croître. Ici, le seuil est
+/// `REPLI_MAX_MS + 5 s` = 35 s, et le sommeil de `honorer_retry_suggere` est
+/// borné à 30 s : **un pont refusé ne peut STRUCTURELLEMENT pas l'atteindre**
+/// — c'est l'invariant que
+/// `le_seuil_de_stabilite_reste_strictement_au_dessus_du_plafond_de_repli`
+/// fixe, et que `stable_pendant_un_sommeil_de_refus_ne_declare_jamais_stable`
+/// éprouve tick par tick. **Coût mesuré au banc : NUL** — la table de
+/// martèlement de la doc de tête ne bouge d'aucune unité, pour toute durée de
+/// vie inférieure ou égale à `REPLI_MAX_MS`.
+///
+/// ⚠️ **CONSÉQUENCE : « un seuil de trace trop long ne coûte qu'un `info!` en
+/// retard » REDEVIENT FAUX.** Le relever au-delà de la durée de vie réelle
+/// des sessions saines rendrait le rôle ③ inatteignable, et la reprise après
+/// une panne réseau repasserait à 30 s.
 pub const SEUIL_STABILITE_MS: u64 = REPLI_MAX_MS + 5_000;
 
 /// Les deux types d'observation — [`IssueDeSortie`] et [`EtatObserve`] —
@@ -202,7 +260,20 @@ pub struct EtatRelance {
     /// Vrai dès qu'un cycle de relance en cours a été signalé — voir la doc
     /// de `cycle_signale` dans `surveillance_pont.rs`, qui reste la seule
     /// responsable de la trace elle-même (ce module ne journalise rien).
-    /// **Ne garde plus AUCUNE décision de cadence depuis le round 4.**
+    ///
+    /// ⚠️ **IL GARDE DE NOUVEAU UNE REMISE À ZÉRO DE `tentative` DEPUIS LE
+    /// ROUND 5, ET C'EST NOMMÉ ICI PLUTÔT QUE DÉCOUVERT** — c'est le défaut
+    /// de forme que la revue du round 4 avait relevé sur ce champ, et il ne
+    /// sera pas payé deux fois. [`EtatRelance::stable`] exige `cycle_signale`
+    /// AVANT de remettre `tentative` à zéro, donc ce booléen conditionne bel
+    /// et bien une cadence. **Il ne peut cependant jamais la BLOQUER**, par
+    /// un invariant qui se lit sur les trois seules écritures du champ :
+    /// `tentative` ne croît QUE dans `tentative_lancee`, qui pose
+    /// `cycle_signale = true` dans le même geste ; et les deux remises à zéro
+    /// laissent `tentative` nul. Donc **`tentative > 0` implique
+    /// `cycle_signale == true`**, et la garde ne peut refuser qu'un
+    /// réarmement qui n'aurait rien à réarmer. Éprouvé par
+    /// `un_processus_reellement_stable_finit_par_etre_declare_stable_une_fois`.
     cycle_signale: bool,
 }
 
@@ -262,17 +333,30 @@ impl EtatRelance {
     /// > réseau une seconde doit reprendre en une demi-seconde, pas en
     /// > trente. »
     ///
-    /// La propriété tient toujours, mais sa PREUVE a changé : ce n'est plus
-    /// « avoir vécu assez longtemps » — un refus endormi vit tout aussi
-    /// longtemps — c'est **s'être terminé proprement**. C'est la SEULE remise
-    /// à zéro de `tentative` du module ; `stable` n'y touche pas.
+    /// 🔴 **CETTE MÉTHODE, SEULE, NE TIENT PAS CETTE CITATION — ET LE ROUND
+    /// 4 AFFIRMAIT LE CONTRAIRE ICI MÊME** (« la propriété tient toujours,
+    /// mais sa PREUVE a changé »). **Elle ne tenait pas** : « perdre son
+    /// réseau » est une mort EN ERREUR, pas une sortie propre. Scénario
+    /// simulé par la revue du round 5 : six refus (espacement au plafond),
+    /// puis un septième lancement qui SERT TROIS JOURS, puis une coupure
+    /// réseau — le repli restait à **30 000 ms**, exactement le défaut que le
+    /// round 3 existait pour corriger, rouvert pour le cas mort-en-erreur.
+    ///
+    /// **La citation est désormais tenue par DEUX portes, et il en faut
+    /// deux** : celle-ci, `IssueDeSortie::Propre`, pour une session courte
+    /// qui se termine bien ; et [`Self::stable`], qui remet `tentative` à
+    /// zéro dès qu'une vie dépasse `SEUIL_STABILITE_MS` (35 s), pour une
+    /// longue vie qui finit MAL. **Ce n'est donc plus la seule remise à zéro
+    /// du module**, et le dire faux coûtait un défaut.
     ///
     /// 🔴 **AUCUNE GARDE SUR `cycle_signale`, ET C'EST DÉLIBÉRÉ.** Le round 3
     /// en posait une ; elle serait devenue FAUSSE ici : un pont déclaré
     /// stable (donc `cycle_signale == false`) puis terminé proprement ne
     /// réarmerait rien, et la panne suivante hériterait d'un plafond. Elle
     /// faisait en outre de `cycle_signale` un gouverneur de CADENCE, ce que
-    /// sa doc nie — voir `SEUIL_STABILITE_MS`.
+    /// sa doc nie. ⚠️ **`SEUIL_STABILITE_MS`, LUI, EN GOUVERNE BIEN UNE
+    /// DEPUIS LE ROUND 5** — mais par `stable`, sur un seuil hors d'atteinte
+    /// d'un refus endormi, et sa doc l'énumère plutôt que de le nier.
     ///
     /// 🔴 **NE ROUVRE PAS LA BOUCLE DE TRACE** : cette méthode ne touche
     /// jamais `cycle_signale`, donc ne peut jamais faire rendre `true` à
@@ -297,15 +381,31 @@ impl EtatRelance {
     /// `stable_pendant_un_sommeil_de_refus_ne_declare_jamais_stable`, la
     /// rouge exacte de ce défaut, ci-dessous.
     ///
-    /// 🔴 **DEPUIS LE ROUND DE CORRECTION 3, CETTE MÉTHODE NE TOUCHE PLUS
-    /// `tentative`** — seule [`Self::reinitialiser_le_repli`] le fait. Un
-    /// seuil de durée UNIQUE pour les deux questions à la fois (CADENCE du
-    /// repli et VISIBILITÉ de la trace) rendait forcément l'une des deux
-    /// fausse ; le round 4 est allé plus loin en retirant la durée de la
-    /// question de cadence tout entière.
+    /// 🔴 **ET ELLE REMET `tentative` À ZÉRO, DEPUIS LE ROUND DE CORRECTION
+    /// 5 — CETTE LIGNE FERME UN DÉFAUT AU LIEU DE LE DOCUMENTER.** Le round 3
+    /// faisait cette remise à zéro sur un seuil de 500 ms (donc systématique,
+    /// donc un repli qui ne pouvait plus croître) ; le round 4 l'a retirée
+    /// **en bloc**, emportant avec elle le seul cas qu'elle traitait juste :
+    /// **un pont vivant TROIS JOURS puis coupé par une panne réseau meurt EN
+    /// ERREUR**, donc `reinitialiser_le_repli` refuse — à bon droit — d'y
+    /// voir une preuve, et l'attente restait à `REPLI_MAX_MS` (30 s) si un
+    /// épisode de refus l'avait précédée. Voir la citation de
+    /// [`Self::reinitialiser_le_repli`], que ce round rend enfin vraie.
+    ///
+    /// ⚠️ **CE QUI REND CETTE REMISE À ZÉRO SÛRE, LÀ OÙ CELLE DU ROUND 3 NE
+    /// L'ÉTAIT PAS** : le seuil vaut `REPLI_MAX_MS + 5 s`, qu'un pont refusé
+    /// qui dort **ne peut pas atteindre** — son sommeil est borné à 30 s. La
+    /// table de martèlement de la doc de tête ne bouge donc d'AUCUNE unité,
+    /// et c'est mesuré, pas déduit. ⚠️ Cela redonne à `SEUIL_STABILITE_MS` un
+    /// rôle de CADENCE : sa doc l'énumère, en troisième position.
     pub fn stable(&mut self, ecoule_ms: u64) -> bool {
         if self.cycle_signale && ecoule_ms >= SEUIL_STABILITE_MS {
             self.cycle_signale = false;
+            // 🔴 LA LIGNE DU ROUND 5. Voir la doc ci-dessus : une vie qui
+            // dépasse `SEUIL_STABILITE_MS` est une preuve de santé qu'aucun
+            // refus endormi ne peut fabriquer, et c'est la SEULE porte par
+            // laquelle une longue vie terminée EN ERREUR réarme le repli.
+            self.tentative = 0;
             true
         } else {
             false
