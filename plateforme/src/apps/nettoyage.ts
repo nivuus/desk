@@ -64,6 +64,22 @@ async function rendreLaMain(): Promise<void> {
 /// empreinte absente, exactement comme un magasin perdu se reconstruit tout
 /// seul (voir l'en-tête d'`icones.ts`, critère ⑦). L'icône est cassée pour
 /// une fenêtre bornée par `PERIODE_NETTOYAGE_MS`, jamais indéfiniment.
+///
+/// 🔴 CETTE FENÊTRE A GRANDI, ET IL FALLAIT LE DIRE — CORRIGÉ (round de
+/// correction 3) : elle dure aussi longtemps que l'appel à
+/// `magasin.evincer` lui-même (l'instantané est lu AVANT, l'éviction tourne
+/// APRÈS), et ce dernier est devenu PLUS LENT depuis l'Important ② (passage
+/// à l'async + points de reprise). MESURÉ, en A/B apparié dans une même
+/// exécution : à 1 000 icônes, ≈55 ms (contre ≈8 ms avant l'async — icônes
+/// n'accordant aucun mérite à l'exactitude de la troisième décimale, l'ordre
+/// de grandeur est ce qui compte) ; à 20 000 icônes, ≈640 ms (contre ≈147 ms
+/// avant). La fenêtre grandit sur DEUX axes à la fois : avec la taille du
+/// catalogue (déjà vrai avant ce lot) ET avec le passage à l'async
+/// (facteur supplémentaire d'environ 4 à 7×, mesuré). ⚠️ CÔTÉ TRANCHES,
+/// L'INSTANTANÉ EST FRAIS : `referencesTranches` est lu juste AVANT
+/// `tranches.evincer`, dans la dernière ligne de `nettoyerTranches` — aucune
+/// éviction longue ne s'intercale entre la lecture et l'usage, à la
+/// différence des icônes.
 export async function referencesIcones(p: Pilote): Promise<Set<string>> {
     const lignes = await p.interroger<{ icone: string }>(
         'SELECT DISTINCT icone FROM application WHERE disparue_a IS NULL AND icone IS NOT NULL',
@@ -91,8 +107,9 @@ export async function referencesIcones(p: Pilote): Promise<Set<string>> {
 /// protéger son répertoire ; l'ordre inverse est sans risque symétrique — une
 /// ligne encore là protège son répertoire jusqu'au TOUR SUIVANT au pire.
 ///
-/// 🔴 CRITIQUE FERMÉE (round de correction 2) — LES DEUX PLANCHERS DOIVENT
-/// MESURER LE MÊME ÂGE. `lirePlusVieuxQue` filtre sur `cree_a` (la ligne),
+/// 🔴 CRITIQUE RÉTRÉCI EN COURSE, PAS FERMÉ (round de correction 2, puis
+/// CORRIGÉ round de correction 3) — LES DEUX PLANCHERS DOIVENT MESURER LE
+/// MÊME ÂGE. `lirePlusVieuxQue` filtre sur `cree_a` (la ligne),
 /// `MagasinTranches.evincer` filtre sur `mtime` (le disque, la DERNIÈRE
 /// ACTIVITÉ) — CE N'EST PAS LA MÊME CHOSE, et c'était DÉTERMINISTE, pas une
 /// course : un téléversement créé il y a 31 jours dont une tranche vient
@@ -104,7 +121,26 @@ export async function referencesIcones(p: Pilote): Promise<Set<string>> {
 /// pour empêcher, entrée par la porte de la BASE plutôt que par celle du
 /// DISQUE. LE REMÈDE : on ne supprime la ligne QUE SI SON RÉPERTOIRE EST LUI
 /// AUSSI ÉVINCIBLE (ou absent) — `derniereActivite` fait mesurer le MÊME âge
-/// aux deux planchers, PAR CONSTRUCTION, sans toucher au schéma.
+/// aux deux planchers, SANS TOUCHER AU SCHÉMA.
+///
+/// 🔴 CE N'EST PAS « PAR CONSTRUCTION » — C'ÉTAIT FAUX, ET LA REVUE L'A
+/// MESURÉ (round de correction 3, scénario ⑤) : l'âge du disque est lu DEUX
+/// FOIS, À DEUX INSTANTS DIFFÉRENTS — ici (`derniereActivite`), puis À
+/// NOUVEAU dans `MagasinTranches.evincer` (son propre `stat`, exécuté après
+/// avoir traversé tout le reste de la boucle et de `referencesTranches`) —
+/// et la fenêtre entre les deux lectures couvre TOUT LE TOUR. Une tranche qui
+/// arrive ENTRE CES DEUX LECTURES reproduit le Critique du round 2 À
+/// L'IDENTIQUE : ligne supprimée, octets gardés, reprise morte, rien de
+/// libéré. 🔵 C'EST UN VRAI PROGRÈS — d'un défaut DÉTERMINISTE (100 % des
+/// tours) à une COURSE (une fenêtre étroite, ouverte seulement pendant LA
+/// DURÉE D'UN TOUR) — mais ce n'est pas une fermeture, et l'écrire « par
+/// construction » l'aurait fait passer pour telle.
+///
+/// ⚠️ LA FERMETURE RÉELLE EST UNE PISTE POUR UN LOT SUIVANT, PAS UNE
+/// CONDITION DE CETTE CLÔTURE-CI : `rm` le répertoire DANS LA MÊME ITÉRATION
+/// que la suppression de la ligne (une seule lecture d'âge, réutilisée pour
+/// les deux gestes), plutôt que de s'en remettre à la passe `evincer`
+/// séparée qui relit l'âge de zéro à la fin du tour.
 async function nettoyerTranches(
     p: Pilote,
     tranches: MagasinTranches,
@@ -123,7 +159,23 @@ async function nettoyerTranches(
         if (i > 0 && i % PAS_DE_REPRISE === 0) await rendreLaMain();
         i += 1;
 
-        const activite = await tranches.derniereActivite(ligne.id);
+        let activite: number | undefined;
+        try {
+            activite = await tranches.derniereActivite(ligne.id);
+        } catch {
+            // 🔴 DURCISSEMENT (round de correction 3) : NON ATTEIGNABLE
+            // AUJOURD'HUI — `creer` (`depot/televersement.ts`) est le SEUL
+            // `INSERT` de cette table et pose toujours un UUID —, mais
+            // `derniereActivite` LÈVE sur un identifiant invalide (même
+            // convention que `lister`/`concatener`/`supprimer`). SANS ce
+            // `catch`, une seule ligne malformée ferait REMONTER l'exception
+            // hors de la boucle : le tour entier s'arrêterait là, l'orphelin
+            // VOISIN — pourtant légitime — ne serait jamais évincé, NI À CE
+            // TOUR NI AUX SUIVANTS (la ligne fautive resterait avant lui dans
+            // le même ordre de lecture, à chaque tour). `continue` : on saute
+            // la ligne FAUTIVE, jamais le tour.
+            continue;
+        }
         if (activite !== undefined && maintenant - activite < AGE_EVICTION_TRANCHES_MS) {
             // Le RÉPERTOIRE est encore actif : la ligne reste, quel que soit
             // l'âge de `cree_a`. C'est le remède à la critique ci-dessus.
@@ -189,12 +241,22 @@ export async function referencesTranches(p: Pilote): Promise<Set<string>> {
 /// sont IDEMPOTENTES : `evincer` sur un fichier déjà parti est un `rm force`
 /// qui ne trouve rien, et `supprimer` sur une ligne déjà purgée touche zéro
 /// ligne. Un garde ajouterait de la surface pour un risque qui n'en a pas
-/// besoin. ⚠️ CETTE ANALYSE SUPPOSAIT LE TOUR SYNCHRONE ; il ne l'est plus
-/// depuis le remède à l'Important ② ci-dessous (`evincer` rend la main entre
-/// les entrées), ce qui allonge sa durée réelle et rapproche — sans l'ouvrir
-/// — la fenêtre d'un chevauchement en régime de test à cadence minuscule.
-/// L'idempotence ci-dessus tient toujours, et c'est elle qui reste le
-/// répondant, pas l'absence de chevauchement.
+/// besoin.
+///
+/// 🔴 CORRIGÉ (round de correction 3) : CETTE ANALYSE SUPPOSAIT LE TOUR
+/// SYNCHRONE, et depuis le remède à l'Important ② (`evincer` rend la main
+/// entre les entrées), la phrase disait que le passage à l'async « rapproche
+/// — SANS L'OUVRIR — » la fenêtre d'un chevauchement. **C'ÉTAIT FAUX.** La
+/// revue a MESURÉ, à cadence de test minuscule : 78 TOURS SIMULTANÉS, et
+/// `arreter()` en laisse 77 EN VOL, chacun journalisant `database is not
+/// open` une fois la base fermée sous ses pieds — le chevauchement est bien
+/// RÉEL, pas seulement rapproché. 🔵 SANS CONSÉQUENCE EN PRODUCTION (la
+/// période, six heures, reste des ordres de grandeur au-dessus de la durée
+/// d'un tour) ET SANS CORRUPTION (l'idempotence ci-dessus tient — confirmée
+/// par la revue sur QUATRE scénarios de désaccord, sur les DEUX moteurs) —
+/// mais la phrase doit dire ce qui EST, pas ce qu'on voudrait qu'il soit.
+/// L'idempotence reste le répondant ; l'absence de chevauchement n'en est
+/// plus un, et ne l'a jamais été à cadence minuscule.
 export async function unTour(deps: {
     base: Pilote;
     magasin: Magasin;
@@ -258,9 +320,13 @@ export async function demarrerNettoyage(
         /// requêtes, et peut encore échouer (et se journaliser, voir plus
         /// haut) si la base ferme entre-temps. Ce que cette méthode GARANTIT
         /// réellement : après son retour, AUCUN NOUVEAU tour ne démarrera.
-        /// `nettoyage.test.ts` en tient la preuve — un test ferme le service
-        /// et vérifie qu'aucun tour supplémentaire ne s'exécute au-delà de
-        /// celui déjà en vol au moment de l'appel.
+        /// `nettoyage.test.ts` en tient la preuve — CORRIGÉ (round de
+        /// correction 3) : ce test-là appelle `arreter()` DIRECTEMENT, il ne
+        /// ferme AUCUN service, et vérifie qu'aucun tour supplémentaire ne
+        /// s'exécute au-delà de celui déjà en vol au moment de l'appel. Le
+        /// chemin RÉEL — `close()` de `serveur.ts`, qui appelle CETTE
+        /// méthode — est lui exercé, mais par l'`afterEach` de
+        /// `serveur.test.ts`, pas par le test cité ici.
         arreter(): void {
             clearInterval(minuteur);
         },

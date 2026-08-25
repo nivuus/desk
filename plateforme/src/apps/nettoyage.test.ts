@@ -421,4 +421,40 @@ describe(`nettoyage de fond, moteur=${MOTEUR}`, () => {
         await new Promise((resolve) => setTimeout(resolve, 150));
         expect(tours).toBe(1);
     });
+
+    // 🔴 DURCISSEMENT (round de correction 3) : une ligne MALFORMÉE (id qui
+    // n'est pas un UUID — NON ATTEIGNABLE aujourd'hui, `creer` étant le seul
+    // `INSERT`, mais provoquée ici directement en SQL) ne doit PAS faire
+    // abandonner le tour entier. L'ordre de retour de `lirePlusVieuxQue`
+    // n'étant pas garanti, ce test ne suppose AUCUN ordre : que la ligne
+    // fautive soit vue avant ou après l'orpheline légitime, celle-ci doit,
+    // dans tous les cas, finir purgée — ligne ET disque.
+    it('une ligne malformée n’abandonne pas le tour : l’orpheline voisine est quand même évincée', async () => {
+        base = await baseNeuve('nettoyage-durcissement-id-malforme');
+        await avecUtilisateur(base, 'u1');
+
+        const vieux = MS - 400 * JOUR_MS;
+        // La ligne FAUTIVE, posée directement en SQL — jamais par `creer`.
+        await base.executer(
+            'INSERT INTO televersement(id,utilisateur_id,nom,taille,sha256,taille_tranche,cree_a,scelle_a)'
+                + ' VALUES(?,?,?,?,?,?,?,?)',
+            ['pas-un-uuid', 'u1', 'fautif.exe', 1, 'a'.repeat(64), 8, vieux, null],
+        );
+        // L'orpheline LÉGITIME, par le chemin normal.
+        const orpheline = await creerTeleversement(
+            base,
+            { utilisateurId: 'u1', nom: 'orph.exe', taille: 1, sha256: 'b'.repeat(64), tailleTranche: 8 },
+            vieux,
+        );
+
+        const tranches = magasinTranchesNeuf();
+        await tranches.ecrire(orpheline.id, 0, flux('x'), 1024);
+        vieillir(join(tranches.racine, orpheline.id), 0);
+
+        const magasin = magasinIconesNeuf();
+        await unTour({ base, magasin, tranches, maintenant: MS });
+
+        expect(await lireTeleversement(base, orpheline.id)).toBeUndefined();
+        expect(existsSync(join(tranches.racine, orpheline.id))).toBe(false);
+    });
 });
