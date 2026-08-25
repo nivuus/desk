@@ -314,7 +314,13 @@ impl EmetteurSession {
     /// nom de session ; cet accesseur n'existe que pour que le test puisse
     /// éprouver le compteur. Le gater est ce qui empêche de réaffirmer un
     /// bénéfice d'exploitation qui n'existe pas.
-    #[cfg(test)]
+    ///
+    /// ✅ **LE GATE `#[cfg(test)]` EST TOMBÉ AU ROUND 3** : la méthode a
+    /// désormais un appelant de PRODUCTION — `registre::distribuer` s'en sert
+    /// pour cadencer sa propre trace sur le MÊME palier que
+    /// `journaliser_le_refus`, de sorte que les deux lignes sortent ensemble.
+    /// Le raisonnement qui l'avait gatée reste juste : on ne dégate pas pour
+    /// faire joli, on dégate parce qu'un appelant est apparu.
     pub(crate) fn refuses(&self) -> u64 {
         self.partage.refuses.load(Ordering::Relaxed)
     }

@@ -100,8 +100,12 @@ pub(super) fn distribuer(garde: &mut MutexGuard<'static, Etat>, ordres: Vec<(Str
     while !a_traiter.is_empty() {
         let mut suite = Vec::new();
         for (session, ordre) in a_traiter {
-            let issue = match garde.canaux.get(&session) {
-                Some(canal) => Some(canal.envoyer(Message::Sommeil(ordre))),
+            // `refuses` est relevé APRÈS l'envoi, donc il compte le refus qui
+            // vient d'arriver : le palier est exactement celui sur lequel
+            // `EmetteurSession::journaliser_le_refus` vient de décider, ce qui
+            // fait sortir les deux lignes ensemble.
+            let (issue, refuses) = match garde.canaux.get(&session) {
+                Some(canal) => (Some(canal.envoyer(Message::Sommeil(ordre))), canal.refuses()),
                 // 🔴 `None` N'EST PAS UNE LIVRAISON, ET LE ROUND 2 A CORRIGÉ
                 // CETTE RÉDACTION. Le comportement est celui d'avant (l'ancien
                 // `None => false` : ne rien purger, la session n'est déjà plus
@@ -109,7 +113,7 @@ pub(super) fn distribuer(garde: &mut MutexGuard<'static, Etat>, ordres: Vec<(Str
                 // une livraison et rendait cette perte INDISCERNABLE d'un vrai
                 // dépôt. Un `Option` la nomme pour ce qu'elle est : il n'y a
                 // eu aucun envoi.
-                None => None,
+                None => (None, 0),
             };
             let rompu = match issue {
                 // Aucun canal : rien n'est parti, et il n'y a rien à purger —
@@ -117,16 +121,22 @@ pub(super) fn distribuer(garde: &mut MutexGuard<'static, Etat>, ordres: Vec<(Str
                 // ligne par ordre à chaque retrait, sur un chemin nominal.
                 None => false,
                 Some(Envoi::Depose(_)) => false,
-                // 🔴 UN ORDRE DE SOMMEIL REFUSÉ EST PERDU, ET IL NE DOIT PAS
-                // L'ÊTRE EN SILENCE (correctif du round 1 : il l'était).
-                // `Sommeil` est la SEULE des quatre variantes que la fenêtre
-                // APPLIQUE au lieu de la relayer, et la doc de cette fonction
-                // dit ce que sa perte coûte : le vivier a déjà posé
-                // `eveillee = true` en interne, aucun ré-arbitrage futur ne
-                // réémettra cet ordre, et « la place resterait occupée dans le
-                // vivier sans qu'aucun encodeur réel ne l'occupe, pour toute
-                // la vie du processus ». C'est mot pour mot une fenêtre qui ne
-                // s'endort plus.
+                // 🔴 UN ORDRE DE SOMMEIL NON DÉPOSÉ NE DOIT PAS L'ÊTRE EN
+                // SILENCE (correctif du round 1 : il l'était). `Sommeil` est
+                // la SEULE des quatre variantes que la fenêtre APPLIQUE au
+                // lieu de la relayer — c'est ce qui lui vaut son propre
+                // traitement ici.
+                //
+                // ❌ ~~C'est une perte d'état NON RÉPARABLE : le vivier a déjà
+                // posé `eveillee`, aucun ré-arbitrage futur ne réémettra cet
+                // ordre, et la place resterait occupée pour toute la vie du
+                // processus.~~ **DEVENU FAUX DANS LE MÊME BLOC, ET LE ROUND 3
+                // L'A RELEVÉ** : c'était le motif du niveau `error!`, et il
+                // contredisait le message émis douze lignes plus bas
+                // (« l'ordre repartira au prochain arbitrage »). Les deux ne
+                // pouvaient pas être vrais ; c'est le premier qui est tombé
+                // avec l'annulation. **Le niveau est donc `warn!`** — un
+                // message retardé, pas un état perdu.
                 //
                 // ⚠️ **PAS de purge** : la session est VIVANTE, seulement en
                 // retard, et la purger tuerait l'arbitrage de la fenêtre la
@@ -157,11 +167,37 @@ pub(super) fn distribuer(garde: &mut MutexGuard<'static, Etat>, ordres: Vec<(Str
                 // couvre en outre les DEUX sens là où `echec_de_reveil` ne
                 // couvre que le réveil.
                 //
-                // La trace est un `error!` et non un `warn!` : c'est une perte
-                // d'état non réparable. Elle n'est pas cadencée, à la
-                // différence de celle du refus, parce que `distribuer` n'émet
-                // un ordre que sur un CHANGEMENT d'arbitrage — jamais à chaque
-                // tour de roue.
+                // 🔴 LA TRACE EST CADENCÉE, ET C'EST LE REMÈDE LUI-MÊME QUI
+                // L'A RENDU NÉCESSAIRE.
+                //
+                // ❌ ~~Elle n'est pas cadencée parce que `distribuer` n'émet un
+                // ordre que sur un CHANGEMENT d'arbitrage — jamais à chaque
+                // tour de roue.~~ **CE MOTIF ÉTAIT VRAI TANT QUE L'ORDRE ÉTAIT
+                // PERDU.** L'annulation ci-dessous REND l'état : le
+                // ré-arbitrage suivant revoit donc la même divergence, réémet
+                // le même ordre, et il est refusé à nouveau. **Mesuré : +1 par
+                // tour, strictement, sans borne** — soit quatre lignes par
+                // seconde et par fenêtre bloquée à `PERIODE_REARBITRAGE`
+                // (250 ms), indéfiniment. Ce n'est pas un oubli : c'est le
+                // remède qui a changé la nature du phénomène.
+                //
+                // **La cadence est celle de `file.rs` — les puissances de deux
+                // du compte cumulé de refus DE CETTE SESSION**, donc au plus
+                // 64 lignes pour toute sa vie. Elle s'appuie sur le compteur
+                // que l'émetteur tient déjà (`EmetteurSession::refuses`)
+                // plutôt que sur une table de plus dans `Etat` : aucun état
+                // neuf, rien à purger dans `oublier`, et **les deux lignes
+                // sortent au MÊME palier** — celle de `file.rs` dit que la
+                // session déborde, celle-ci dit quel ordre en a pâti.
+                //
+                // ⚠️ **CE QUE CE COUPLAGE COÛTE, et il faut le dire** : le
+                // compteur agrège les quatre variantes, donc un ordre de
+                // sommeil qui ne tombe pas sur un palier n'est pas tracé
+                // INDIVIDUELLEMENT. Le phénomène, lui, reste visible — les
+                // paliers se succèdent en log₂, donc jamais plus d'un
+                // doublement sans ligne. Ce qui se perd est le détail de quel
+                // ordre, à quel tour ; ce qui compte — cette fenêtre déborde
+                // et perd des ordres — sort toujours.
                 Some(Envoi::Refuse) => {
                     // 🔴 ON REND AU VIVIER L'ÉTAT D'AVANT L'ORDRE. Sans cela,
                     // il aurait déjà écrit `eveillee` pour un ordre jamais
@@ -169,12 +205,16 @@ pub(super) fn distribuer(garde: &mut MutexGuard<'static, Etat>, ordres: Vec<(Str
                     // de correction 2. Voir `Vivier::annuler_ordre_non_livre`
                     // pour les deux sens et ce que chacun coûte.
                     garde.vivier.annuler_ordre_non_livre(&session, ordre);
-                    tracing::error!(
-                        session_cible = %session,
-                        ?ordre,
-                        "ordre de sommeil NON DEPOSE : file de la fenêtre pleine, \
-                         etat du vivier rendu, l'ordre repartira au prochain arbitrage"
-                    );
+                    if refuses.is_power_of_two() {
+                        tracing::warn!(
+                            session_cible = %session,
+                            ?ordre,
+                            refuses,
+                            "ordre de sommeil NON DEPOSE : file de la fenêtre pleine, \
+                             etat du vivier rendu, l'ordre repartira au prochain \
+                             arbitrage (trace au palier, puissance de deux)"
+                        );
+                    }
                     false
                 }
                 Some(Envoi::Rompu) => true,

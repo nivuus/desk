@@ -127,14 +127,25 @@ pub(super) fn distribuer_les_parts(garde: &mut MutexGuard<'static, Etat>) {
         if garde.dernieres_parts.get(&session) == Some(&bps) {
             continue;
         }
+        // ⚠️ **`None` N'EST PAS UNE RUPTURE, et le round 3 a corrigé cette
+        // rédaction** — même grief que `registre::distribuer` au round 2.
+        // C'est inatteignable aujourd'hui (les sessions sortent de
+        // `canaux.keys()` sous le MÊME verrou, quelques lignes plus haut),
+        // donc sans conséquence ; mais ce lot s'était donné pour règle de ne
+        // plus FABRIQUER d'issue, et l'écrire `Envoi::Rompu` ferait purger une
+        // session sur un fait qui n'a pas eu lieu si cette invariance venait à
+        // tomber. Un `Option` nomme la chose : il n'y a eu aucun envoi.
         let issue = match garde.canaux.get(&session) {
-            Some(canal) => canal.envoyer(Message::Part { bps }),
-            None => Envoi::Rompu,
+            Some(canal) => Some(canal.envoyer(Message::Part { bps })),
+            None => None,
         };
         match issue {
+            // Aucun canal : rien n'est parti, et il n'y a rien à purger — la
+            // session n'est déjà plus dans `canaux`.
+            None => {}
             // Livrée : on peut mémoriser, et le garde d'écrasement en tête de
             // boucle évitera de la réémettre tant qu'elle ne change pas.
-            Envoi::Depose(_) => {
+            Some(Envoi::Depose(_)) => {
                 garde.dernieres_parts.insert(session, bps);
             }
             // 🔴 REFUSÉE : ON NE MÉMORISE PAS, ET C'EST TOUT LE CORRECTIF DU
@@ -153,8 +164,8 @@ pub(super) fn distribuer_les_parts(garde: &mut MutexGuard<'static, Etat>) {
             // Le refus est déjà journalisé, au palier et avec le nom de la
             // session, par `EmetteurSession::journaliser_le_refus` : le
             // retracer ici doublerait la ligne sans rien ajouter.
-            Envoi::Refuse => {}
-            Envoi::Rompu => rompus.push(session),
+            Some(Envoi::Refuse) => {}
+            Some(Envoi::Rompu) => rompus.push(session),
         }
     }
 

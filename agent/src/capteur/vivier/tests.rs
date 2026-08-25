@@ -291,3 +291,42 @@ fn eveillees_rend_exactement_les_sessions_reveillees() {
     vivier.retirer("a", base);
     assert_eq!(vivier.eveillees(), vec!["b".to_string()]);
 }
+
+/// Les deux clauses du contrat écrit d'`annuler_ordre_non_livre` que son
+/// unique appelant ne peut pas atteindre.
+///
+/// ⚠️ **Elle n'avait AUCUN test pur** : les deux rouges qui la tiennent
+/// passent par `sommeil::registre::distribuer`, donc par le chemin qui compte
+/// — mais deux clauses restaient tenues par une phrase seule. Le garde « sans
+/// effet si la session a disparu, jamais une panique » est **du code défensif
+/// qu'aucun appelant ne peut exercer** (les noms viennent de `canaux`, sous le
+/// même verrou), et l'invariant « elle ne touche QU'`eveillee` » n'était figé
+/// par rien.
+#[test]
+fn annuler_un_ordre_non_livre_ne_touche_qu_eveillee_et_ignore_une_session_disparue() {
+    let t = t0();
+    let mut v = Vivier::nouveau(PLAFOND_EVEIL, HYSTERESIS);
+    v.inscrire("a", t);
+    v.signaler("a", true, true, t);
+    assert_eq!(v.eveillee("a"), Some(true), "précondition : elle est éveillée");
+
+    // Un `Dormir` non livré la ramène à son état d'avant l'ordre.
+    v.annuler_ordre_non_livre("a", Ordre::Dormir(Raison::Masquee));
+    assert_eq!(v.eveillee("a"), Some(true), "un Dormir non livré la laisse éveillée");
+    v.annuler_ordre_non_livre("a", Ordre::Reveiller);
+    assert_eq!(v.eveillee("a"), Some(false), "un Reveiller non livré la laisse endormie");
+
+    // Le garde : une session disparue est ignorée, jamais une panique. C'est
+    // la clause qu'aucun appelant ne peut atteindre.
+    v.annuler_ordre_non_livre("jamais-inscrite", Ordre::Reveiller);
+    assert_eq!(v.eveillee("jamais-inscrite"), None);
+
+    // L'invariant : rien d'autre qu'`eveillee` n'a bougé — la session reste
+    // connue, et un ré-arbitrage la réélit aussitôt (donc ni sa visibilité ni
+    // sa récence n'ont été effacées).
+    let ordres = v.rearbitrer(t);
+    assert!(
+        ordres.contains(&("a".to_string(), Ordre::Reveiller)),
+        "l'annulation ne doit rien effacer d'autre : {ordres:?}"
+    );
+}
