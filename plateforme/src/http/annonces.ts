@@ -97,9 +97,27 @@ export function annonceRacinePage(etat: EtatRacinePage): Annonce {
 ///
 /// 🔴 **L'ENSEMBLE VIDE EST `info` ET NON `erreur` — MAIS PAS PARCE QUE CE
 /// SERAIT LE « DÉFAUT SÛR » DU MODE `motdepasse` : cette phrase-là a été
-/// FALSIFIÉE par la revue du round de correction 3 de `frein(pont)`, et
-/// corrigée à trois endroits (`docker-compose.plateforme.yml`, `frein.ts`,
-/// ici).** Un ensemble vide veut dire « `X-Forwarded-For` n'est pas cru, et
+/// FALSIFIÉE par la revue du round de correction 3 de `frein(pont)`.**
+///
+/// ⚠️ **CETTE DOC ANNONÇAIT « corrigée à trois endroits
+/// (`docker-compose.plateforme.yml`, `frein.ts`, ici) » : L'ÉNUMÉRATION
+/// ÉTAIT FAUSSE DANS LES DEUX SENS** (relevé par la revue du round de
+/// correction 4). `frein.ts` n'a JAMAIS porté cette affirmation — il n'en
+/// dit pas un mot —, et deux sites corrigés par ce même round manquaient à
+/// la liste. **AUCUN COMPTE N'EST ÉCRIT ICI, ET C'EST VOULU** — un compte
+/// vieillit d'une ronde à l'autre, et le round 4 en a lui-même ajouté deux
+/// sites. Les places se RELÈVENT :
+///
+/// ```sh
+/// grep -rln 'aucun attaquant\|AUCUN ATTAQUANT' --include='*.ts' \
+///   --include='*.yml' --include='*.md' --include='*.exemple' \
+///   plateforme deploiement docker-compose.plateforme.yml
+/// ```
+///
+/// Une affirmation de COMPLÉTUDE dans du code de production se vérifie par
+/// une commande, jamais de mémoire.
+///
+/// Un ensemble vide veut dire « `X-Forwarded-For` n'est pas cru, et
 /// `adresseSource` retombe sur `req.socket.remoteAddress` » — sûr SEULEMENT
 /// si cette adresse est celle du CLIENT réel, c'est-à-dire seulement si la
 /// plateforme est exposée DIRECTEMENT. **Ce n'est PAS le montage que ce

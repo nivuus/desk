@@ -23,6 +23,7 @@
 //! sur l'hôte, ce que celui-ci n'a aucune raison d'être.
 
 use super::*;
+use crate::relance_pont::EtatObserve;
 
 impl LanceurDeProcessus {
     /// Lance le pont fichiers unique (`agent/src/pont.rs`) : même exécutable,
@@ -99,26 +100,54 @@ impl LanceurDeProcessus {
         Ok(pid)
     }
 
-    /// Vrai tant que le pont lancé par le dernier `lancer_pont` réussi est
-    /// vivant. Rend `false` si aucun pont n'a jamais été lancé, ou si le
-    /// précédent est mort — aux appelants de rappeler `lancer_pont`.
+    /// Ce que le superviseur observe du pont lancé par le dernier
+    /// `lancer_pont` réussi : vivant, mort avec une ISSUE, ou absent.
+    ///
+    /// 🔴 **C'EST L'ISSUE, ET NON PLUS UN SEUL BOOLÉEN, QUI FRANCHIT CETTE
+    /// FRONTIÈRE DEPUIS LE ROUND DE CORRECTION 4.** L'ex-`pont_vivant`
+    /// recevait déjà le code de sortie dans `Ok(Some(code))` — **pour le
+    /// journaliser et le laisser tomber** —, et `surveillance_pont.rs`
+    /// devait alors DEVINER, à partir de la seule durée de vie, si une panne
+    /// passée était résolue. Il ne le pouvait pas : une session saine qui se
+    /// termine occupe le même intervalle qu'un pont refusé qui a dormi
+    /// jusqu'à `REPLI_MAX_MS` avant de mourir. Voir la doc de tête de
+    /// `crate::relance_pont` pour la mesure qui l'a établi.
+    ///
+    /// 🔴 **`Mort` N'EST RENDU QU'UNE FOIS PAR MORT, ET TOUT `relance_pont`
+    /// EN DÉPEND** : `*pont = None` juste après la lecture du code fait que
+    /// le tour suivant rend `Absent`. Rendre `Mort(Propre)` à chaque tour
+    /// réarmerait le repli en boucle sur une sortie propre ANCIENNE, ce qui
+    /// est exactement le défaut que ce round ferme. **Cette propriété-ci vit
+    /// derrière `#[cfg(windows)]` et n'est éprouvée par aucun test** — elle
+    /// est nommée dans les deux fichiers plutôt que supposée.
     ///
     /// Même logique que `capteur_vivant` : un état illisible n'est **PAS**
     /// traité comme une mort — le déclarer mort ferait relancer un pont qui
     /// tourne peut-être encore, et deux ponts se disputeraient la même racine
     /// de virtualisation — et n'est journalisé qu'une fois tant qu'il persiste.
-    pub fn pont_vivant(&self) -> bool {
+    pub fn etat_du_pont(&self) -> EtatObserve {
         let mut pont = self.pont();
-        let Some(en_cours) = pont.as_mut() else { return false };
+        let Some(en_cours) = pont.as_mut() else { return EtatObserve::Absent };
         match en_cours.processus.try_wait() {
             Ok(None) => {
                 en_cours.etat_illisible_signale = false;
-                true
+                EtatObserve::Vivant
             }
             Ok(Some(code)) => {
-                tracing::info!(pid = en_cours.processus.id(), ?code, "pont fichiers terminé");
+                // ⚠️ `code.code()` et non `code.success()` : le module pur
+                // distingue TROIS issues, pas deux — voir `IssueDeSortie`,
+                // dont la variante `Inconnue` couvre le `None` que POSIX rend
+                // sur une mort par signal. Sur Windows le `None` ne court
+                // jamais, et `IssueDeSortie::depuis_le_code` le dit.
+                let issue = crate::relance_pont::IssueDeSortie::depuis_le_code(code.code());
+                tracing::info!(
+                    pid = en_cours.processus.id(),
+                    ?code,
+                    ?issue,
+                    "pont fichiers terminé"
+                );
                 *pont = None;
-                false
+                EtatObserve::Mort(issue)
             }
             Err(erreur) => {
                 if !en_cours.etat_illisible_signale {
@@ -129,7 +158,7 @@ impl LanceurDeProcessus {
                          (signalé une seule fois tant que l'état reste illisible)"
                     );
                 }
-                true
+                EtatObserve::Vivant
             }
         }
     }

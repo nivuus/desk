@@ -223,7 +223,24 @@ export async function servirVm(
     // `adresseRequete` devient la MÊME chaîne pour tout le monde : celle
     // que le premier arrivant a bien voulu écrire dans l'en-tête, ou celle
     // du proxy lui-même. Le frein par adresse dégénère alors en frein
-    // GLOBAL, et le premier attaquant bloque tout le monde.
+    // GLOBAL.
+    //
+    // 🔴 **ET IL FAUT LE DIRE SANS ATTAQUANT — CE PARAGRAPHE ÉCRIVAIT « et
+    // le premier attaquant bloque tout le monde », CE QUI EST FAUX DEPUIS
+    // QUE CE LOT FREINE LE VOLUME** (falsifié par la revue, round de
+    // correction 4). **AUCUN ATTAQUANT N'EST REQUIS** : dans le montage que
+    // ce dépôt LIVRE (`docker-compose.plateforme.yml`, nginx devant la
+    // plateforme même en mode `motdepasse`), `remoteAddress` est TOUJOURS
+    // l'adresse du conteneur nginx pour toute requête réelle — la
+    // dégénérescence est donc AUTOMATIQUE dès que ce montage existe, et le
+    // trafic ORDINAIRE suffit à épuiser le budget commun. Ce que la phrase
+    // fausse laissait croire, c'est qu'il fallait une malveillance pour
+    // l'atteindre ; il ne faut que des usagers.
+    //
+    // ⚠️ **CETTE CORRECTION VAUT POUR LES TROIS CONSULTATIONS**, ce
+    // paragraphe étant celui auquel `routes-session.ts` et
+    // `signaling/relais.ts` renvoient : l'erreur s'y propageait par
+    // référence, sans y être écrite.
     //
     // 🔴 CE QUI EST NEUF : AVANT CE LOT, cette dégénérescence ne plafonnait
     // que `ECHECS_MAX_ADRESSE` = 50 échecs D'AUTHENTIFICATION par quart
