@@ -61,6 +61,19 @@ function tokensDuCorps(corps: string): Map<string, string> {
  * Découpe le texte de `tokens.css` en ses trois blocs de thème, en ordre de
  * document. Le bloc `racine` est celui SANS condition — c'est lui qui porte la
  * palette sombre, les tokens hors thème et les échelles (spec §4.2, §4.4).
+ *
+ * 🔴 FUSIONNE LES OCCURRENCES DE MÊME NOM, DEPUIS L'EXTRACTION DE LA TÂCHE 6
+ * (25 août 2026) : `tokens/couleurs.css` et `tokens/echelles.css` déclarent
+ * chacun leur propre `:root {}` SANS CONDITION, et le texte qu'on passe ici
+ * est leur CONCATÉNATION — deux occurrences physiques du même bloc logique
+ * `racine`. Le navigateur les unit déjà par le cascade ; sans cette fusion,
+ * ce parseur rendrait DEUX blocs nommés `racine`, et tout appelant qui en
+ * cherche UN SEUL (`Array.find`, ou une `Map` clé par nom, qui ne garde que
+ * le DERNIER) perdrait silencieusement les tokens de l'autre — exactement le
+ * défaut que `tokens.test.ts` et `reprise.test.ts` existent pour ne jamais
+ * laisser passer. Avant l'extraction, un seul fichier ne pouvait produire
+ * qu'UNE occurrence par nom : cette fusion ne change donc RIEN à la lecture
+ * d'un texte qui n'en a qu'une — elle rend seulement le cas à deux correct.
  */
 export function lireBlocsDeTheme(css: string): BlocDeTheme[] {
     const propre = sansCommentaires(css);
@@ -72,7 +85,7 @@ export function lireBlocsDeTheme(css: string): BlocDeTheme[] {
     }
     const dansMedia = (i: number) => plagesMedia.some(([d, f]) => i > d && i < f);
 
-    const blocs: BlocDeTheme[] = [];
+    const fusionnes = new Map<string, BlocDeTheme>();
     for (const m of propre.matchAll(/(:root[^{}]*)\{/g)) {
         const selecteur = m[1];
         const ouvrante = m.index + m[0].length - 1;
@@ -84,9 +97,15 @@ export function lireBlocsDeTheme(css: string): BlocDeTheme[] {
         if (/\[data-theme\s*=\s*["']clair["']\]/.test(selecteur)) nom = 'attribut-clair';
         else if (dansMedia(m.index)) nom = 'media-clair';
 
-        blocs.push({ nom, tokens: tokensDuCorps(corps), corps });
+        const existant = fusionnes.get(nom);
+        if (!existant) {
+            fusionnes.set(nom, { nom, tokens: tokensDuCorps(corps), corps });
+            continue;
+        }
+        for (const [cle, valeur] of tokensDuCorps(corps)) existant.tokens.set(cle, valeur);
+        existant.corps += `\n${corps}`;
     }
-    return blocs;
+    return [...fusionnes.values()];
 }
 
 /**

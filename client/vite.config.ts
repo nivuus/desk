@@ -87,8 +87,12 @@ const AMORCE = readFileSync(
    ⚠️ CE FICHIER N'EST PAS TYPECHECKÉ (voir plus haut) : une erreur ici est un
    ÉCHEC DE BUILD, jamais une erreur `tsc`.
    ═══════════════════════════════════════════════════════════════════════════ */
+// 🔴 `tokens/couleurs.css` SEUL, JAMAIS `tokens.css` : depuis l'extraction de
+// la tâche 6 (25 août 2026), `tokenRacine` ci-dessous n'est appelée qu'avec
+// des noms de COULEUR (`--fond-0`, `--accent`, pour le manifeste web) —
+// `tokens/echelles.css`, son voisin, n'en a aucune à offrir.
 const TOKENS_CSS = readFileSync(
-    fileURLToPath(new URL('./src/design/tokens.css', import.meta.url)),
+    fileURLToPath(new URL('./src/design/tokens/couleurs.css', import.meta.url)),
     'utf8',
 );
 
@@ -96,13 +100,13 @@ const TOKENS_CSS = readFileSync(
 function tokenRacine(nom: string): string {
     const blocs = lireBlocsDeTheme(TOKENS_CSS);
     const racine = blocs.find((b) => b.nom === 'racine');
-    if (racine === undefined) throw new Error('tokens.css ne porte plus de bloc racine');
+    if (racine === undefined) throw new Error('tokens/couleurs.css ne porte plus de bloc racine');
     const valeur = valeurDePropriete(racine, nom);
     // 🔴 ON LÈVE PLUTÔT QUE DE REPLIER SUR UNE COULEUR PAR DÉFAUT : un repli
     //    poserait une couleur qui n'est celle d'aucun token, c'est-à-dire la
     //    seconde source de vérité que ce greffon existe pour éviter — et il le
     //    ferait EN SILENCE.
-    if (valeur === null) throw new Error(`tokens.css ne déclare plus ${nom}`);
+    if (valeur === null) throw new Error(`tokens/couleurs.css ne déclare plus ${nom}`);
     return valeur;
 }
 

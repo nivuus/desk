@@ -20,14 +20,16 @@
  *
  * ⚠️ **La voie facile aurait été de ranger les fixtures dans un `.json`**, que
  * §7.2 ne balaie pas — c'est-à-dire de satisfaire un contrôle en le VIDANT, ce
- * que ce dépôt refuse. Tout est donc **LU DANS `tokens.css`**, ce qui est
- * strictement plus fort qu'un littéral : « un contrôle qui a sa propre copie
- * des valeurs valide sa copie » (spec ⑥ §7.1).
+ * que ce dépôt refuse. Tout est donc **LU DANS `tokens/couleurs.css`**
+ * (`tokens.css` avant l'extraction de la tâche 6, 25 août 2026 — ce fichier
+ * ne lit que des COULEURS, jamais une échelle), ce qui est strictement plus
+ * fort qu'un littéral : « un contrôle qui a sa propre copie des valeurs
+ * valide sa copie » (spec ⑥ §7.1).
  */
 
 import { describe, expect, it } from 'vitest';
 import { lireBlocsDeTheme } from './design/tokens';
-import tokensCss from './design/tokens.css?raw';
+import tokensCss from './design/tokens/couleurs.css?raw';
 import { conformer } from './accent';
 
 const blocs = lireBlocsDeTheme(tokensCss);
@@ -35,7 +37,7 @@ const sombre = blocs.find((b) => b.nom === 'racine')!.tokens;
 
 const jeton = (nom: string): string => {
     const v = sombre.get(nom);
-    if (!v) throw new Error(`token absent de tokens.css : ${nom}`);
+    if (!v) throw new Error(`token absent de tokens/couleurs.css : ${nom}`);
     return v;
 };
 

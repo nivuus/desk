@@ -1,8 +1,17 @@
 /// <reference types="vite/client" />
 import { describe, expect, it } from 'vitest';
 import { lireBlocsDeTheme } from './tokens';
-import tokensCss from './tokens.css?raw';
+import couleursCss from './tokens/couleurs.css?raw';
+import echellesCss from './tokens/echelles.css?raw';
 import baseCss from './base.css?raw';
+
+// 🔴 DEPUIS L'EXTRACTION DE LA TÂCHE 6 (25 août 2026) : les couleurs et les
+// échelles vivent dans deux fichiers distincts, chacun son propre `:root {}`
+// sans condition. Ce test-ci a BESOIN des deux dans le MÊME bloc « racine »
+// — il compare `--fond-0` (couleur) ET `--e-3` (échelle) sur `racine` — donc
+// c'est ICI, et non dans un test isolé, que la fusion de `lireBlocsDeTheme`
+// est exercée sur du contenu RÉEL plutôt que sur une démonstration.
+const tokensCss = `${couleursCss}\n${echellesCss}`;
 
 /**
  * LA COMPARAISON QUI PROUVE LA REPRISE — pas l'affirmation.

@@ -2,8 +2,11 @@
 // Contrôle §7.6 de la spec ⑥ — AUCUN TOKEN ORPHELIN, AUCUN `var()` NON DÉCLARÉ.
 //
 // TROIS assertions — deux inclusions dans les deux sens entre les tokens
-// DÉCLARÉS par `tokens.css` et les tokens EMPLOYÉS par les feuilles de
-// production, plus une sur la liste d'attente elle-même :
+// DÉCLARÉS par `tokens/couleurs.css` et `tokens/echelles.css` (`tokens.css`
+// avant l'extraction de la tâche 6, 25 août 2026 — ce contrôle a besoin des
+// DEUX, la liste d'orphelins portant aussi bien des couleurs que des
+// échelles) et les tokens EMPLOYÉS par les feuilles de production, plus une
+// sur la liste d'attente elle-même :
 //
 //   ① employé ⊆ déclaré — un `var(--fond-O)` (lettre O au lieu du zéro) est une
 //      faute de frappe que le navigateur avale en silence : la propriété prend
@@ -70,8 +73,18 @@ import configVite from '../vite.config.ts';
 import { EN_ATTENTE_D_APPELANT } from './tokens-orphelins/attente.mjs';
 import { SOUS_BLOCS_CLOS } from './tokens-orphelins/sous-blocs-clos.mjs';
 
-/** La source unique : elle DÉCLARE, elle n'emploie pas. Hors du périmètre. */
-const SOURCE = 'client/src/design/tokens.css';
+/**
+ * 🔴 DEUX SOURCES DEPUIS L'EXTRACTION DE LA TÂCHE 6 (25 août 2026), PAS UNE :
+ * elles DÉCLARENT, elles n'emploient pas. Hors du périmètre — comme
+ * `tokens.css`, leur porte d'entrée commune, qui n'en déclare plus aucun
+ * lui-même (il ne fait plus qu'IMPORTER les deux) et rejoint donc l'exclusion
+ * pour la même raison, ci-dessous.
+ */
+const SOURCES = [
+    'client/src/design/tokens/couleurs.css',
+    'client/src/design/tokens/echelles.css',
+];
+const PORTE = 'client/src/design/tokens.css';
 
 /**
  * 🔴 LA SEULE EXCLUSION DU PÉRIMÈTRE « EMPLOYÉ ». Voir l'encadré ci-dessus.
@@ -124,13 +137,17 @@ function fichiersCss(repertoire, acc = []) {
     return acc;
 }
 
-const source = join(racine, SOURCE);
-if (!existsSync(source)) {
-    console.error(`${SOURCE} est absent : rien n'a été mesuré, ce n'est pas un succès.`);
-    process.exit(2);
+const sources = SOURCES.map((s) => join(racine, s));
+for (const [i, chemin] of sources.entries()) {
+    if (!existsSync(chemin)) {
+        console.error(`${SOURCES[i]} est absent : rien n'a été mesuré, ce n'est pas un succès.`);
+        process.exit(2);
+    }
 }
+const porte = join(racine, PORTE);
 
-// Le périmètre « employé » : toute feuille de `client/src/` sauf la source, et
+// Le périmètre « employé » : toute feuille de `client/src/` sauf les sources
+// (et leur porte d'entrée commune, `tokens.css`), et
 // toute surface HTML sauf celles d'`EXCLUS`. Les surfaces sont incluses parce
 // qu'un `<style>` en ligne emploie des tokens comme une feuille.
 //
@@ -144,7 +161,9 @@ if (!existsSync(source)) {
 // ⚠️ La liste est LUE depuis `vite.config.ts`, pas recopiée : c'est la même
 // raison qui interdit à ce script d'avoir sa propre copie des valeurs. Node
 // v24.9.0 importe le `.ts` nativement, comme pour `tokens.ts`.
-const feuilles = fichiersCss(join(racine, 'client/src')).filter((f) => f !== source);
+const feuilles = fichiersCss(join(racine, 'client/src')).filter(
+    (f) => !sources.includes(f) && f !== porte,
+);
 const surfaces = Object.values(configVite.build.rollupOptions.input).map((n) =>
     join(racine, 'client', n),
 );
@@ -161,11 +180,12 @@ for (const chemin of [...feuilles, ...surfaces]) {
     }
 }
 
-const declares = tokensDeclares(readFileSync(source, 'utf8'));
+const texteSource = sources.map((chemin) => readFileSync(chemin, 'utf8')).join('\n');
+const declares = tokensDeclares(texteSource);
 const orphelins = [...declares].filter((t) => !employePar.has(t)).sort();
 const nonDeclares = [...employePar.keys()].filter((t) => !declares.has(t)).sort();
 
-console.log(`source        : ${SOURCE} — ${declares.size} token(s) déclaré(s)`);
+console.log(`sources       : ${SOURCES.join(', ')} — ${declares.size} token(s) déclaré(s)`);
 console.log(
     `périmètre     : ${balayes.length} fichier(s) — ${employePar.size} token(s) employé(s)`,
 );

@@ -1,5 +1,7 @@
 #!/usr/bin/env node
-// Contrôle §7.2 de la spec ⑥ — AUCUNE COULEUR LITTÉRALE HORS DE `tokens.css`.
+// Contrôle §7.2 de la spec ⑥ — AUCUNE COULEUR LITTÉRALE HORS DE
+// `tokens/couleurs.css` (`tokens.css` avant l'extraction de la tâche 6,
+// 25 août 2026).
 //
 // Sort 1 dès qu'une couleur est écrite en dur ailleurs que dans la source
 // unique. Ce script ne porte AUCUNE règle de design : il balaie, il compte, il
@@ -202,7 +204,17 @@ const racine = iRacine === -1 ? 'client' : args[iRacine + 1];
 
 // ⚠️ DEUX EXCLUSIONS, ET LA SECONDE EST UNE DIVERGENCE ASSUMÉE AVEC LE PLAN.
 // Voir l'encadré « QUATRE EXIGENCES QUI NE PEUVENT PAS TENIR ENSEMBLE ».
-const exclus = new Set([join(racine, 'src/design/tokens.css')]);
+//
+// 🔴 `tokens/couleurs.css` SEUL, DEPUIS L'EXTRACTION DE LA TÂCHE 6
+// (25 août 2026) : c'est désormais le seul fichier où une couleur littérale
+// est LÉGITIME. `tokens.css` (la porte d'entrée, qui ne fait plus qu'importer
+// ses deux enfants) et `tokens/echelles.css` (aucune couleur, seulement des
+// longueurs et des durées) n'ont besoin d'aucune exclusion : ni l'un ni
+// l'autre ne porte de notation `#…`/`rgb(`/`hsl(`, donc les exclure serait
+// inerte — mais ce serait aussi FAUX PAR CONSTRUCTION : l'exclusion est « par
+// FICHIER, jamais par rôle » (voir l'encadré ci-dessus), et le rôle qui la
+// justifie n'appartient plus qu'à `couleurs.css`.
+const exclus = new Set([join(racine, 'src/design/tokens/couleurs.css')]);
 const estTestDuSocle = (chemin) =>
     chemin.startsWith(join(racine, 'src/design/')) && chemin.endsWith('.test.ts');
 const aBalayer = [
@@ -223,6 +235,6 @@ for (const chemin of aBalayer) {
 console.log(`fichiers balayés : ${aBalayer.length}`);
 console.log(`couleurs littérales : ${total}`);
 if (total > 0) {
-    console.log('→ elles doivent vivre dans client/src/design/tokens.css');
+    console.log('→ elles doivent vivre dans client/src/design/tokens/couleurs.css');
 }
 process.exit(total > 0 ? 1 : 0);

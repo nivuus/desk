@@ -10,7 +10,9 @@
  *
  * ═══════════════════════════════════════════════════════════════════════════
  * 🔴 LA LISTE DES TOKENS N'EST PAS ÉCRITE ICI : elle est PARSÉE de
- * `tokens.css`, par le même `lireBlocsDeTheme` que les contrôles §7.1, §7.4 et
+ * `tokens/couleurs.css` et `tokens/echelles.css` (extraits de `tokens.css` par
+ * la tâche 6, 25 août 2026 — la galerie rend les DEUX familles, couleurs et
+ * échelles), par le même `lireBlocsDeTheme` que les contrôles §7.1, §7.4 et
  * §7.6. C'est le point de conception du §7.1 — « un contrôle qui a sa propre
  * copie des valeurs valide sa copie » — appliqué à un instrument plutôt qu'à
  * un contrôle : une galerie avec sa propre liste montrerait sa liste, et un
@@ -31,9 +33,11 @@
  */
 import { lireBlocsDeTheme } from './tokens';
 import { installerSelecteurDeThemeAuDOM } from './selecteur-theme';
-import tokensCss from './tokens.css?raw';
+import couleursCss from './tokens/couleurs.css?raw';
+import echellesCss from './tokens/echelles.css?raw';
 
 const racine = document.documentElement;
+const tokensCss = `${couleursCss}\n${echellesCss}`;
 
 /** Tous les noms déclarés, dans l'ordre du fichier source. */
 const NOMS: string[] = [];
