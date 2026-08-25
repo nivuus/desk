@@ -307,13 +307,15 @@ impl EmetteurSession {
 
     /// Le compte CUMULÉ des dépôts refusés de cette session.
     ///
-    /// ⚠️ **`#[cfg(test)]`, et c'est une correction du round 1 : il n'avait
-    /// AUCUN appelant de production** (`method 'refuses' is never used` sur la
+    /// ⚠️ ~~**`#[cfg(test)]`**~~ **FAUX AU PRÉSENT — le gate est tombé au
+    /// round 3, voir juste en dessous ; ce qui suit décrit l'état d'ALORS,
+    /// au round 1.** C'était une correction du round 1 : elle n'avait AUCUN
+    /// appelant de production (`method 'refuses' is never used` sur la
     /// cible Windows), alors que sa doc annonçait le bénéfice « dire LAQUELLE
-    /// déborde ». Ce bénéfice est réalisé par la TRACE, qui porte désormais le
-    /// nom de session ; cet accesseur n'existe que pour que le test puisse
-    /// éprouver le compteur. Le gater est ce qui empêche de réaffirmer un
-    /// bénéfice d'exploitation qui n'existe pas.
+    /// déborde ». Ce bénéfice était réalisé par la TRACE, qui porte désormais le
+    /// nom de session ; cet accesseur n'existait que pour que le test puisse
+    /// éprouver le compteur. Le gater était ce qui empêchait de réaffirmer un
+    /// bénéfice d'exploitation qui n'existait pas.
     ///
     /// ✅ **LE GATE `#[cfg(test)]` EST TOMBÉ AU ROUND 3** : la méthode a
     /// désormais un appelant de PRODUCTION — `registre::distribuer` s'en sert

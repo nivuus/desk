@@ -192,10 +192,16 @@ pub(super) fn armer_les_gardes(sondeur: &mut Sondeur) {
 /// page n'y pourrait rien : il ne ferme que le renvoi vers l'agent.
 ///
 /// ⚠️ **Un canal rompu n'est PAS traité ici**, à la différence de `distribuer`.
-/// Il ne peut pas l'être : ce canal vient d'être inséré dans la même fonction,
-/// son receveur est encore sur la pile de `inscrire`, et `envoyer` ne rend
-/// `Err` que si le receveur a été lâché — ce qui n'a pas encore pu arriver.
-/// Appeler `oublier` ici retirerait une session qui vient de naître.
+/// Il ne peut pas l'être : ~~ce canal vient d'être inséré dans la même
+/// fonction~~ — **FAUX, MÊME PRÉMISSE QUE CELLE BARRÉE DIX LIGNES PLUS BAS,
+/// SURVIVANTE ICI SOUS UN AUTRE VERBE** : le canal est créé par
+/// `registre::inscrire`, PAS par cette fonction (`emettre_l_etat_courant`
+/// est appelée DEPUIS `inscrire`, après que le canal existe déjà — voir la
+/// correction ❌ ci-dessous). Ce qui reste vrai, et qui porte réellement la
+/// conclusion : son receveur est encore sur la pile de `inscrire`, et
+/// `envoyer` ne rend `Err` que si le receveur a été lâché — ce qui n'a pas
+/// encore pu arriver. Appeler `oublier` ici retirerait une session qui
+/// vient de naître.
 ///
 /// ⚠️ **Le REFUS de file pleine ne peut pas s'y produire non plus** — mais
 /// **par un COMPTAGE, pas par la prémisse fausse qu'on avait d'abord écrite.**

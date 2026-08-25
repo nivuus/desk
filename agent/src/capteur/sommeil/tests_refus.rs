@@ -21,9 +21,14 @@
 //! ⚠️ **LES DEUX SENS SONT ÉPROUVÉS, ET C'EST LE POINT** : le premier jet du
 //! diagnostic ne nommait que `Reveiller` (« une fenêtre qui ne s'endort
 //! plus »). `Dormir` est l'autre moitié, et c'est **la plus coûteuse** — le
-//! vivier libère la place alors que la fenêtre encode encore, donc le plafond
-//! de huit encodeurs se sur-souscrit. Il existe un `echec_de_reveil` pour le
-//! premier sens ; il n'existe **aucun** `echec_de_sommeil`.
+//! vivier libère la place alors que la fenêtre encode encore, donc
+//! ~~le plafond de huit encodeurs se sur-souscrit~~. **SUR-AFFIRMÉ ICI
+//! AUSSI, ET LAISSÉ NON BARRÉ ALORS QUE LE MÊME FICHIER LE CORRIGE PLUS BAS**
+//! (vers la ligne 112, et `vivier.rs` le réécrit à son tour) : la
+//! sur-souscription a bien lieu, mais ce n'est pas ce que le remède empêche
+//! — il la rend TRANSITOIRE au lieu de permanente. Il existe un
+//! `echec_de_reveil` pour le premier sens ; il n'existe **aucun**
+//! `echec_de_sommeil`.
 
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
@@ -208,8 +213,12 @@ fn refus_de(session: &str) -> u64 {
 /// jet le faisait, et cette assertion-là était **structurellement incapable
 /// d'échouer** : elle aurait été vraie quel que soit le code de `distribuer`.
 ///
-/// **Rougit sur sa SECONDE assertion sans la cadence** : `10` traces pour dix
-/// tours, au lieu des `<= 4` paliers.
+/// **Rougit sur sa SECONDE assertion, DES DEUX CÔTÉS** — et c'est une
+/// égalité (`assert_eq!`), pas une borne haute : une borne `<= 4` ne
+/// dénonce pas une trace SUPPRIMÉE (`0 <= 4` est vrai). Sans la trace
+/// (`if refuses.is_power_of_two()` → `if false` dans `registre.rs`) :
+/// `0` au lieu de `3`. Sans la cadence (→ `if true`) : `10` traces pour dix
+/// tours, au lieu des `3` paliers réellement franchis (2, 4, 8).
 #[test]
 fn un_ordre_refuse_a_chaque_tour_est_trace_a_cadence_logarithmique() {
     let _verrou = verrouiller_pour_le_test();
@@ -239,13 +248,27 @@ fn un_ordre_refuse_a_chaque_tour_est_trace_a_cadence_logarithmique() {
     let attendus: Vec<u64> = (1..=TOURS).map(|i| depart + i).collect();
     assert_eq!(comptes, attendus, "l'ordre doit être réémis à CHAQUE tour");
 
-    // 🔵 LA CADENCE, MESURÉE SUR LES LIGNES ÉMISES : au plus une par palier
-    // franchi, donc quatre au plus sur dix tours — jamais dix.
+    // 🔴 LA CADENCE, MESURÉE SUR LES LIGNES ÉMISES ET ÉGALÉE, PAS SEULEMENT
+    // BORNÉE PAR LE HAUT.
+    //
+    // ⚠️ **UNE BORNE `<= 4` NE ROUGIT PAS SI LA TRACE DISPARAÎT ENTIÈREMENT**
+    // — mesuré : `if refuses.is_power_of_two()` remplacé par `if false` dans
+    // `registre.rs` (la trace supprimée) laisse `cargo test --workspace`
+    // entièrement VERT, `0 <= 4` étant vrai. Ce que ce test doit tenir n'est
+    // pas seulement « pas trop de lignes », mais « exactement les lignes
+    // attendues ».
+    //
+    // Sur les dix tours de cette boucle, partant d'un compte de refus
+    // CUMULÉ non nul (`depart`), les paliers de puissance de deux réellement
+    // franchis sont **2, 4 et 8** — trois lignes, ni plus ni moins.
+    // `assert_eq!` rougit donc des DEUX côtés : la trace supprimée (`0`,
+    // au lieu de `3`) ET la trace non cadencée (`10`, au lieu de `3`).
     let traces = compte.load(Ordering::Relaxed);
-    assert!(
-        traces <= 4,
-        "la trace de l'ordre non déposé doit être CADENCÉE, pas émise à chaque \
-         refus : {traces} lignes pour {TOURS} tours"
+    assert_eq!(
+        traces, 3,
+        "la trace de l'ordre non déposé doit être CADENCÉE aux puissances de \
+         deux, ni supprimée ni émise à chaque refus : {traces} lignes pour \
+         {TOURS} tours, 3 attendues (paliers 2, 4, 8)"
     );
 
     retirer("r3-cadence", generation);
