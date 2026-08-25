@@ -11,12 +11,13 @@
 //! précédent (`vivier.rs` et `vivier/tests.rs`), et la règle qui l'impose est
 //! « extraction, jamais compression ».
 
-use std::sync::mpsc::{Receiver, SyncSender, TryRecvError};
+use std::sync::mpsc::SyncSender;
 use std::time::Instant;
 
 use anyhow::{Context, Result};
 
 use crate::capteur::protocole::DepuisCapteur;
+use crate::capteur::sommeil::file::{ReceveurSession, VideOuFerme};
 use crate::capteur::sommeil::Message;
 use crate::capteur::vivier::Ordre;
 use crate::source::VideoSource;
@@ -113,12 +114,12 @@ impl Fenetre {
     /// réveil arrivé trop tôt.
     pub(super) fn appliquer_les_ordres(
         &mut self,
-        ordres: &Receiver<Message>,
+        ordres: &ReceveurSession,
         ecritures: &SyncSender<AEcrire>,
         ctx: &Contexte,
     ) -> Fin {
         loop {
-            match ordres.try_recv() {
+            match ordres.essayer_recevoir() {
                 Ok(Message::Sommeil(Ordre::Dormir(raison))) => {
                     self.dormir();
                     let raison = crate::capteur::sommeil::raison_en_texte(raison);
@@ -204,11 +205,11 @@ impl Fenetre {
                         return Fin::Terminer(motif);
                     }
                 }
-                Err(TryRecvError::Empty) => return Fin::Continuer,
+                Err(VideOuFerme::Vide) => return Fin::Continuer,
                 // Le registre a laissé tomber notre émetteur : la fenêtre n'est
                 // plus arbitrée. On continue de servir plutôt que de clore —
                 // perdre l'arbitrage n'est pas perdre la session.
-                Err(TryRecvError::Disconnected) => return Fin::Continuer,
+                Err(VideOuFerme::Ferme) => return Fin::Continuer,
             }
         }
     }

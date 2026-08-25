@@ -42,9 +42,9 @@ pub(super) fn verrouiller_pour_le_test() -> MutexGuard<'static, ()> {
 ///
 /// `pub(super)` : repris par `parts::tests`, pour la même raison que
 /// `verrouiller_pour_le_test`.
-pub(super) fn premier_ordre(canal: &Receiver<Message>) -> Option<Ordre> {
+pub(super) fn premier_ordre(canal: &ReceveurSession) -> Option<Ordre> {
     loop {
-        match canal.try_recv() {
+        match canal.essayer_recevoir() {
             Ok(Message::Sommeil(ordre)) => return Some(ordre),
             Ok(Message::Part { .. }) => continue,
             Ok(Message::Audio { .. }) => continue,
@@ -152,7 +152,7 @@ fn un_canal_rompu_libere_aussi_le_focus_de_la_session_morte() {
 fn un_retrait_qui_libere_une_place_reveille_bien_la_session_qui_l_attendait() {
     let _verrou = verrouiller_pour_le_test();
     // Sature les PLAFOND_EVEIL (8) places avec des sessions dediees, dont
-    // on garde les Receiver vivants pour que leur canal ne soit jamais
+    // on garde les ReceveurSession vivants pour que leur canal ne soit jamais
     // rompu par accident pendant le test.
     let mut recepteurs_pleins = Vec::new();
     for i in 0..8 {
@@ -414,4 +414,60 @@ fn un_rattachement_recoit_une_generation_neuve_et_le_retirer_precedent_est_perim
 
     drop(premier_canal);
     drop(second_canal);
+}
+
+/// 🔴 LE TROU DE COUVERTURE MESURÉ LE 25 AOÛT 2026, ET CE QU'IL A APPRIS.
+///
+/// La détection du canal rompu de `distribuer` — `envoyer(...).is_err()`, le
+/// chemin des ORDRES — n'était rougie par **aucun** test du dépôt. Mesuré par
+/// mutation ciblée de cette seule ligne (`is_err()` remplacé par `false`,
+/// tout le reste intact) : **1 022 tests, zéro échec**.
+///
+/// **Pourquoi**, et ce n'est pas un oubli de rédaction : les trois appelants
+/// de `distribuer` (`inscrire`, `retirer`, le tour de roue) enchaînent tous
+/// sur `parts::distribuer_les_parts`, qui porte la MÊME détection. Un ordre
+/// change l'état d'éveil de la session, donc sa part, donc la seconde
+/// détection tire à coup sûr et purge ce que la première a laissé passer.
+/// **La première est masquée par la seconde sur tout chemin de bout en bout**,
+/// et c'est pour cela que `un_retrait_qui_libere_une_place_reveille_bien_la_
+/// session_qui_l_attendait` — qui rompt pourtant délibérément un canal — reste
+/// vert sous la mutation.
+///
+/// ⚠️ **CE N'EST PAS UNE RAISON DE RETIRER LA DÉTECTION DE `distribuer`.**
+/// Elle n'est redondante que tant que la part de la session morte CHANGE avec
+/// son ordre ; `distribuer_les_parts` saute toute session dont la part est
+/// inchangée (`dernieres_parts`), et rien n'oblige un ordre futur à faire
+/// varier une part. Elle décide aussi de l'ORDRE de la purge, dont dépend la
+/// boucle jusqu'à épuisement documentée sur `distribuer`.
+///
+/// **Ce test l'isole donc en appelant `distribuer` DIRECTEMENT**, sans le
+/// `distribuer_les_parts` qui la masque — la seule façon d'éprouver cette
+/// ligne-là et rien d'autre. Il rougit sous la mutation ci-dessus.
+#[test]
+fn distribuer_purge_a_lui_seul_une_session_dont_le_canal_est_rompu() {
+    let _verrou = verrouiller_pour_le_test();
+    let (canal, generation) = inscrire("t16-ordres", 5600);
+    // Le fil de fenêtre meurt SANS passer par `retirer` : c'est ce qui arrive
+    // quand il panique avant son point de retrait unique.
+    drop(canal);
+    assert!(
+        etat().canaux.contains_key("t16-ordres"),
+        "précondition : la session est inscrite, et rien ne l'a encore purgée"
+    );
+
+    {
+        // `distribuer` SEUL. Le `MutexGuard` est pris ici et relâché à la fin
+        // du bloc : `etat()` n'est pas réentrant, et le reprendre sans l'avoir
+        // rendu interbloquerait ce fil.
+        let mut garde = etat();
+        distribuer(&mut garde, vec![("t16-ordres".to_string(), Ordre::Reveiller)]);
+        assert!(
+            !garde.canaux.contains_key("t16-ordres"),
+            "`distribuer` doit purger de lui-même la session dont l'envoi a rendu Err"
+        );
+    }
+
+    // Sans effet : la session est déjà oubliée. Présent pour que ce test ne
+    // laisse rien derrière lui dans le registre GLOBAL du processus.
+    retirer("t16-ordres", generation);
 }

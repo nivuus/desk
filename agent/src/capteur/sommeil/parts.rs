@@ -127,7 +127,7 @@ pub(super) fn distribuer_les_parts(garde: &mut MutexGuard<'static, Etat>) {
             continue;
         }
         let envoye = match garde.canaux.get(&session) {
-            Some(canal) => canal.send(Message::Part { bps }).is_ok(),
+            Some(canal) => canal.envoyer(Message::Part { bps }).is_ok(),
             None => false,
         };
         if envoye {
@@ -158,16 +158,17 @@ pub(super) fn distribuer_les_parts(garde: &mut MutexGuard<'static, Etat>) {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::mpsc::Receiver;
 
     use crate::capteur::sommeil::tests::{premier_ordre, verrouiller_pour_le_test};
+    use crate::capteur::sommeil::file::ReceveurSession;
     use crate::capteur::sommeil::{inscrire, retirer, signaler, Message};
     use crate::capteur::vivier::Ordre;
 
     /// Dernière part reçue sur un canal, en vidant ce qui s'y trouve.
-    fn derniere_part(canal: &Receiver<Message>) -> Option<u32> {
+    fn derniere_part(canal: &ReceveurSession) -> Option<u32> {
         canal
-            .try_iter()
+            .vider()
+            .into_iter()
             .filter_map(|m| match m {
                 Message::Part { bps } => Some(bps),
                 _ => None,
@@ -175,32 +176,63 @@ mod tests {
             .last()
     }
 
+    /// 🔴 CE TEST A ÉTÉ RÉÉCRIT LE 25 AOÛT 2026, PARCE QUE LA BORNE PAR
+    /// COALESCENCE (`file.rs`) A RENDU SON ASSERTION D'ORIGINE FAUSSE — et
+    /// c'est la seule rouge qu'elle a produite sur les 1 022 tests du dépôt.
+    ///
+    /// **Ce qu'il éprouvait**, sous le canal `mpsc` NON BORNÉ : que la part
+    /// d'éveillée arrive APRÈS l'ordre de réveil (`position_reveil <
+    /// position_part`), son nom étant
+    /// `une_session_qui_s_eveille_recoit_une_part_apres_son_ordre_de_reveil`.
+    /// Il tenait parce que la file gardait les DEUX parts : celle du plancher
+    /// endormi émise par `inscrire`, puis celle d'éveillée émise après le
+    /// `Reveiller`.
+    ///
+    /// **Ce que la coalescence en place fait, et c'est voulu** : la seconde
+    /// part REMPLACE la première À SA PLACE, c'est-à-dire AVANT le
+    /// `Reveiller`. Il n'existe donc plus de part après l'ordre — non parce
+    /// qu'elle manque, mais parce qu'il n'y en a plus qu'UNE, et qu'elle porte
+    /// déjà la valeur d'éveillée.
+    ///
+    /// 🔵 **CONSÉQUENCE ASSUMÉE, ET IL FAUT LA DIRE : L'ORDRE ENTRE UNE `Part`
+    /// ET UN `Sommeil` N'EST PLUS GARANTI** quand la fenêtre n'a pas lu entre
+    /// les deux. La part peut précéder d'un message l'ordre qui la motive.
+    /// **C'est le moindre des deux maux, et c'est pour cela que la coalescence
+    /// est EN PLACE** : la valeur livrée est toujours la DERNIÈRE calculée,
+    /// donc jamais périmée. Coalescer en QUEUE livrerait au contraire une part
+    /// après un ordre qui la rend caduque — et comme `dernieres_parts` filtre
+    /// les répétitions, cette part périmée ne serait jamais corrigée. La borne
+    /// du désordre est ici d'UN message, sur une fenêtre qui n'encode pas
+    /// encore (elle attend son réveil).
     #[test]
-    fn une_session_qui_s_eveille_recoit_une_part_apres_son_ordre_de_reveil() {
+    fn une_session_qui_s_eveille_recoit_la_part_d_une_eveillee_et_une_seule() {
         let _verrou = verrouiller_pour_le_test();
         let (messages, generation) = inscrire("t6-a", 6001);
         signaler("t6-a", true, true);
 
-        let recus: Vec<Message> = messages.try_iter().collect();
-        let position_reveil = recus
-            .iter()
-            .position(|m| matches!(m, Message::Sommeil(Ordre::Reveiller)))
-            .expect("l'ordre de réveil doit être présent");
-        // La recherche part de `position_reveil`, pas du début : l'inscription
-        // elle-même envoie déjà une PREMIÈRE part (le plancher endormi, avant
-        // tout ordre — voir la doc de `inscrire`), et c'est légitime. La
-        // recherche depuis le début confondrait cette part-là, envoyée AVANT
-        // le réveil, avec celle que ce test veut vérifier : celle qui décrit
-        // la fenêtre ÉVEILLÉE, et qui doit suivre son ordre.
-        let position_part = recus[position_reveil..]
-            .iter()
-            .position(|m| matches!(m, Message::Part { .. }))
-            .map(|i| i + position_reveil)
-            .expect("une part doit suivre le réveil");
+        let recus: Vec<Message> = messages.vider();
         assert!(
-            position_reveil < position_part,
-            "la part suit l'ordre, jamais l'inverse : une fenêtre encore endormie \
-             recevrait sinon une part d'éveillée"
+            recus.iter().any(|m| matches!(m, Message::Sommeil(Ordre::Reveiller))),
+            "l'ordre de réveil doit être présent : {recus:?}"
+        );
+        let parts: Vec<u32> = recus
+            .iter()
+            .filter_map(|m| match m {
+                Message::Part { bps } => Some(*bps),
+                _ => None,
+            })
+            .collect();
+        // **UNE seule**, et c'est la preuve directe de la coalescence : sans
+        // elle il y en aurait deux, le plancher endormi de `inscrire` puis
+        // celle d'éveillée.
+        assert_eq!(parts.len(), 1, "les deux parts doivent s'être coalescées : {recus:?}");
+        // **La valeur qui survit est la DERNIÈRE calculée**, celle d'une
+        // éveillée — pas le plancher qu'elle a remplacé. C'est ce qui rend le
+        // désordre d'un message inoffensif, et sans cette assertion le test
+        // passerait aussi si la coalescence avait gardé la PREMIÈRE valeur.
+        assert!(
+            parts[0] > crate::capteur::repartiteur::PART_DORMANTE_BPS,
+            "la part qui survit est celle d'une ÉVEILLÉE, pas le plancher : {parts:?}"
         );
         retirer("t6-a", generation);
     }
@@ -210,12 +242,13 @@ mod tests {
         let _verrou = verrouiller_pour_le_test();
         let (messages, generation) = inscrire("t6-b", 6002);
         signaler("t6-b", true, true);
-        let _ = messages.try_iter().count();
+        let _ = messages.vider();
 
         // Même signal, donc même état, donc même part : rien ne doit partir.
         signaler("t6-b", true, true);
         let parts: Vec<Message> = messages
-            .try_iter()
+            .vider()
+            .into_iter()
             .filter(|m| matches!(m, Message::Part { .. }))
             .collect();
         assert!(parts.is_empty(), "une part inchangée ne se réémet pas : {parts:?}");

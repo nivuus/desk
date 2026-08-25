@@ -18,17 +18,26 @@
 //! l'extraction.
 
 use std::collections::HashMap;
-use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Mutex, MutexGuard, OnceLock};
 use std::time::Instant;
 
 use crate::capteur::vivier::{Ordre, Vivier, HYSTERESIS, PLAFOND_EVEIL};
 
+use super::file::{canal_de_session, EmetteurSession, ReceveurSession};
 use super::{parts, porteurs, presse_papier, purger_les_inaptitudes, retirer_est_perime, Message, PERIODE_REARBITRAGE};
 
 pub(super) struct Etat {
     pub(super) vivier: Vivier,
-    pub(super) canaux: HashMap<String, Sender<Message>>,
+    /// Le bout ÉMETTEUR du canal de chaque session.
+    ///
+    /// 🔴 **`EmetteurSession` et non `Sender<Message>` depuis le 25 août
+    /// 2026** : le canal `mpsc` était NON BORNÉ, et une fenêtre qui cesse de
+    /// lire faisait croître sa file sans terme. Le contrat qui compte ici est
+    /// INCHANGÉ — `envoyer` rend `Err` quand le receveur est tombé, et c'est
+    /// sur cette valeur que `distribuer` et `parts::distribuer_les_parts`
+    /// purgent une session morte. Voir `file.rs` pour la borne, la
+    /// coalescence, le compte des refus et sa trace.
+    pub(super) canaux: HashMap<String, EmetteurSession>,
     /// La session que le client déclare focalisée, si elle existe encore.
     ///
     /// Tenue ici et non dans `Vivier` : le vivier arbitre des places
@@ -297,7 +306,11 @@ pub(super) fn distribuer(garde: &mut MutexGuard<'static, Etat>, ordres: Vec<(Str
         let mut suite = Vec::new();
         for (session, ordre) in a_traiter {
             let rompu = match garde.canaux.get(&session) {
-                Some(canal) => canal.send(Message::Sommeil(ordre)).is_err(),
+                // `is_err()` — le receveur est tombé —, JAMAIS un refus de
+                // file pleine : `envoyer` rend `Ok(Depot::Refusee)` dans ce
+                // second cas, et purger dessus tuerait l'arbitrage de la
+                // fenêtre la plus en peine. Voir `EmetteurSession::envoyer`.
+                Some(canal) => canal.envoyer(Message::Sommeil(ordre)).is_err(),
                 None => false,
             };
             if rompu {
@@ -384,8 +397,8 @@ pub(super) fn oublier(garde: &mut MutexGuard<'static, Etat>, session: &str) -> V
 ///
 /// L'appelant (`Fenetre::servir`) retient la valeur rendue le temps de son
 /// service et la redonne telle quelle à `retirer`.
-pub fn inscrire(session: &str, pid: u32) -> (Receiver<Message>, u64) {
-    let (emetteur, receveur) = channel::<Message>();
+pub fn inscrire(session: &str, pid: u32) -> (ReceveurSession, u64) {
+    let (emetteur, receveur) = canal_de_session();
     let mut garde = etat();
     // Frappée INCONDITIONNELLEMENT, à CHAQUE appel — y compris un
     // rattachement sous le même nom : c'est la seule façon de distinguer
