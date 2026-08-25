@@ -22,9 +22,30 @@
 // critère ⑦ de recette, et il doit être ÉPROUVÉ plutôt que supposé.
 
 import { createHash } from 'node:crypto';
-import { mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { existsSync } from 'node:fs';
+import { readdir, rm, stat } from 'node:fs/promises';
 import { join } from 'node:path';
+
+/// 🔴 TOUS LES 50 NOMS EXAMINÉS, LE TOUR REND LA MAIN AU BOUCLE D'ÉVÈNEMENTS
+/// (round de correction 2) — `setImmediate` plutôt qu'un `Promise.resolve()`
+/// : ce dernier ne planifie qu'une MICROTÂCHE, qui ne cède la main à AUCUNE
+/// E/S ni horloge en attente ; `setImmediate` planifie une VRAIE tâche, après
+/// la phase "poll" — ce qui laisse une requête HTTP ou un message WebSocket
+/// déjà prêts s'exécuter avant l'entrée suivante. MESURÉ (banc de 20 000
+/// icônes, 25 août 2026, AVANT ce remède) : 222 ms d'un seul tenant,
+/// ZÉRO battement de 10 ms servi pendant (≈22 attendus) — le port était
+/// ouvert, et rien ne répondait. ⚠️ NON CALIBRÉ : 50 est raisonné (assez petit
+/// pour qu'aucune E/S en attente ne patiente plus de quelques passages
+/// d'entrées, assez grand pour ne pas noyer le tour sous des tâches de
+/// planification), jamais mesuré finement. La mesure AVANT ce remède est
+/// celle de la REVUE (round de correction 2), pas la mienne : reprise ici
+/// pour ne pas la perdre, avec sa provenance dite.
+const PAS_DE_REPRISE = 50;
+
+async function rendreLaMain(): Promise<void> {
+    await new Promise<void>((resolve) => setImmediate(resolve));
+}
 
 /// ⚠️ **NON CALIBRÉE.** Aucune constante de ce dépôt ne l'est.
 ///
@@ -62,7 +83,7 @@ export interface Magasin {
     /// `maintenant` est un PARAMÈTRE, jamais lu de l'horloge : même règle que
     /// partout ailleurs dans ce dépôt (`depot/application.ts`, etc.), et c'est
     /// ce qui rend `icones.test.ts` capable de rejouer un âge exact.
-    evincer(options: { maintenant: number; referencees: ReadonlySet<string> }): void;
+    evincer(options: { maintenant: number; referencees: ReadonlySet<string> }): Promise<void>;
     repertoire: string;
 }
 
@@ -163,23 +184,26 @@ export function ouvrirMagasin(repertoire: string, journaliser: (chemin: string) 
         /// un fichier étranger déposé à la main dans le magasin (le cas
         /// couvert par `icones.test.ts::'un fichier étranger…'`) n'est pas de
         /// la responsabilité de cette éviction.
-        evincer({ maintenant, referencees }: { maintenant: number; referencees: ReadonlySet<string> }): void {
+        async evincer({ maintenant, referencees }: { maintenant: number; referencees: ReadonlySet<string> }): Promise<void> {
             let noms: string[];
             try {
-                noms = readdirSync(repertoire);
+                noms = await readdir(repertoire);
             } catch {
                 return;
             }
+            let i = 0;
             for (const nom of noms) {
+                if (i > 0 && i % PAS_DE_REPRISE === 0) await rendreLaMain();
+                i += 1;
                 if (!empreinteValide(nom) || referencees.has(nom)) continue;
                 let mtimeMs: number;
                 try {
-                    mtimeMs = statSync(join(repertoire, nom)).mtimeMs;
+                    mtimeMs = (await stat(join(repertoire, nom))).mtimeMs;
                 } catch {
                     continue;
                 }
                 if (maintenant - mtimeMs >= AGE_EVICTION_ICONE_MS) {
-                    rmSync(join(repertoire, nom), { force: true });
+                    await rm(join(repertoire, nom), { force: true });
                 }
             }
         },

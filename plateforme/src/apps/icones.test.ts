@@ -159,26 +159,26 @@ describe('l’éviction par âge, avec plancher', () => {
         return empreinte;
     }
 
-    it('évince une icône vieille et NON référencée', () => {
+    it('évince une icône vieille et NON référencée', async () => {
         const m = magasinNeuf();
         const orpheline = deposerA(m, 'orpheline', 0);
-        m.evincer({ maintenant: 400 * JOUR_MS, referencees: new Set() });
+        await m.evincer({ maintenant: 400 * JOUR_MS, referencees: new Set() });
         expect(m.possede(orpheline)).toBe(false);
     });
 
     // 🔴 LE SEUL TEST QUI DISTINGUE UNE ÉVICTION D'UNE CORRUPTION. Sans lui,
     // une éviction qui emporte TOUT passerait le test précédent.
-    it('NE PEUT PAS évincer une icône vieille mais RÉFÉRENCÉE par une entrée vivante', () => {
+    it('NE PEUT PAS évincer une icône vieille mais RÉFÉRENCÉE par une entrée vivante', async () => {
         const m = magasinNeuf();
         const enService = deposerA(m, 'en-service', 0);
-        m.evincer({ maintenant: 400 * JOUR_MS, referencees: new Set([enService]) });
+        await m.evincer({ maintenant: 400 * JOUR_MS, referencees: new Set([enService]) });
         expect(m.possede(enService)).toBe(true);
     });
 
-    it('n’évince pas une icône jeune', () => {
+    it('n’évince pas une icône jeune', async () => {
         const m = magasinNeuf();
         const recente = deposerA(m, 'recente', 0);
-        m.evincer({ maintenant: 1 * JOUR_MS, referencees: new Set() });
+        await m.evincer({ maintenant: 1 * JOUR_MS, referencees: new Set() });
         expect(m.possede(recente)).toBe(true);
     });
 
@@ -190,11 +190,11 @@ describe('l’éviction par âge, avec plancher', () => {
         expect(AGE_EVICTION_ICONE_MS).toBeLessThan(400 * JOUR_MS);
     });
 
-    it('un nom qui n’est pas une empreinte valide n’est jamais touché', () => {
+    it('un nom qui n’est pas une empreinte valide n’est jamais touché', async () => {
         const m = magasinNeuf();
         writeFileSync(join(m.repertoire, 'etranger'), 'pas une empreinte');
         utimesSync(join(m.repertoire, 'etranger'), new Date(0), new Date(0));
-        m.evincer({ maintenant: 400 * JOUR_MS, referencees: new Set() });
+        await m.evincer({ maintenant: 400 * JOUR_MS, referencees: new Set() });
         expect(existsSync(join(m.repertoire, 'etranger'))).toBe(true);
     });
 });
