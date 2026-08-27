@@ -14,7 +14,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 str0m = "0.21"
 tokio-tungstenite = "0.24"
 futures-util = "0.3"
-opus = "0.3.1"
+opus = "0.4.0"
 # Codec STUN de str0m, en dépendance DIRECTE plutôt que par le module
 # `str0m::ice` qui est `#[doc(hidden)]` — on ne bâtit pas sur une porte que
 # l'auteur a explicitement fermée. Version alignée sur celle que Cargo.lock
