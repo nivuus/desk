@@ -12,7 +12,7 @@ tokio = { version = "1", features = ["full"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 str0m = "0.21"
-tokio-tungstenite = "0.24"
+tokio-tungstenite = "0.30"
 futures-util = "0.3"
 opus = "0.3.1"
 # Codec STUN de str0m, en dépendance DIRECTE plutôt que par le module
