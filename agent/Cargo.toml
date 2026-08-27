@@ -22,7 +22,7 @@ opus = "0.3.1"
 # l'arbre. Même précédent que `windows-core` plus bas.
 is = "0.10"
 # MESSAGE-INTEGRITY des requêtes TURN.
-hmac = "0.12"
+hmac = "0.13"
 sha1 = "0.10"
 # Clé longue durée : MD5(user:realm:pass), imposé par la RFC 5766. MD5 n'est
 # employé ici QUE comme dérivation de clé normative, jamais comme primitive
