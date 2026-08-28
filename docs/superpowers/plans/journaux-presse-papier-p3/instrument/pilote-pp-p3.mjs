@@ -94,7 +94,8 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 import { Cdp, attendreDevtools, dodo, lancerChrome } from
     '../../journaux-multifenetres-d11/instrument/commun-d11.mjs';
 
@@ -102,11 +103,11 @@ const arg = (n, d) => (process.argv.find((a) => a.startsWith(`--${n}=`)) ?? `--$
 const ETIQUETTE = arg('etiquette', '1');
 const SORTIE = arg('sortie', `pp3-${ETIQUETTE}.json`);
 function racineDepot() {
-    const r = spawnSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' });
-    if (r.status !== 0) {
-        throw new Error(`hors du depot git : impossible de deriver RACINE (git rev-parse a echoue : ${(r.stderr ?? '').trim()})`);
-    }
-    return r.stdout.trim();
+    // Chemin du DEPOT, derive de l'EMPLACEMENT du fichier (jamais du cwd) :
+    // patron prescrit, deja employe par pilote-f4.mjs (fileURLToPath).
+    // .../docs/superpowers/plans/journaux-*/instrument/<ce-fichier>.mjs
+    // remonter 5 niveaux : instrument, journaux-*, plans, superpowers, docs.
+    return join(dirname(fileURLToPath(import.meta.url)), '../../../../..');
 }
 const RACINE = process.env.RACINE ?? racineDepot();
 const P3 = `${RACINE}/docs/superpowers/plans/journaux-presse-papier-p3`;

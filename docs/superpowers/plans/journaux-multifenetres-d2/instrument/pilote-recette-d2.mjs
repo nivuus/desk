@@ -25,14 +25,15 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { mkdtemp, rm, writeFile, mkdir, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 
 function racineDepot() {
-    const r = spawnSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' });
-    if (r.status !== 0) {
-        throw new Error(`hors du depot git : impossible de deriver RACINE (git rev-parse a echoue : ${(r.stderr ?? '').trim()})`);
-    }
-    return r.stdout.trim();
+    // Chemin du DEPOT, derive de l'EMPLACEMENT du fichier (jamais du cwd) :
+    // patron prescrit, deja employe par pilote-f4.mjs (fileURLToPath).
+    // .../docs/superpowers/plans/journaux-*/instrument/<ce-fichier>.mjs
+    // remonter 5 niveaux : instrument, journaux-*, plans, superpowers, docs.
+    return join(dirname(fileURLToPath(import.meta.url)), '../../../../..');
 }
 const RACINE = racineDepot();
 const AIDE = process.env.AIDE ?? '/tmp/user/0/claude-0/-home-mallanic-Projects-Guacamole/ecebb0d5-b8a9-404c-a078-652572f86f2e/scratchpad/recette';

@@ -31,14 +31,16 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { mkdtemp, rm, writeFile, mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 
 function racineDepot() {
-    const r = spawnSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' });
-    if (r.status !== 0) {
-        throw new Error(`hors du depot git : impossible de deriver RACINE (git rev-parse a echoue : ${(r.stderr ?? '').trim()})`);
-    }
-    return r.stdout.trim();
+    // Chemin du DEPOT, derive de l'EMPLACEMENT du fichier (jamais du cwd) :
+    // patron prescrit, deja employe par pilote-f4.mjs (fileURLToPath).
+    // .../docs/superpowers/plans/journaux-multifenetres-d1/<ce-fichier>.mjs
+    // (PAS de sous-repertoire instrument/ ici) remonter 4 niveaux :
+    // journaux-multifenetres-d1, plans, superpowers, docs.
+    return join(dirname(fileURLToPath(import.meta.url)), '../../../..');
 }
 const RACINE = racineDepot();
 const AIDE = '/tmp/user/0/claude-0/-home-mallanic-Projects-Guacamole/b24a1a5a-167f-4286-98f7-e73ff7946fd6/scratchpad/recette';
