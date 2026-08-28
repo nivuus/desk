@@ -45,11 +45,11 @@ const PORT_CDP = Number(process.env.PORT_CDP ?? 9470);
 const UDD = process.env.UDD ?? '/tmp/e3/udd';
 const WAV = process.env.WAV ?? '/tmp/e3/ton-440.wav';
 function racineDepot() {
-    try {
-        return execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim();
-    } catch (e) {
-        throw new Error('hors du depot git : impossible de deriver RACINE (git rev-parse a echoue)');
-    }
+    // Chemin du DEPOT, derive de l'EMPLACEMENT du fichier (jamais du cwd) :
+    // patron prescrit, deja employe par pilote-f4.mjs (fileURLToPath).
+    // .../docs/superpowers/plans/journaux-micro-e3/instrument/<ce-fichier>.mjs
+    // remonter 5 niveaux : instrument, journaux-micro-e3, plans, superpowers, docs.
+    return path.join(path.dirname(fileURLToPath(import.meta.url)), '../../../../..');
 }
 const RACINE = racineDepot();
 

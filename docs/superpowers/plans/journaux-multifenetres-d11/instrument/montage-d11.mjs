@@ -29,13 +29,15 @@
 // EN SILENCE).
 
 import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 
 function racineDepot() {
-    const r = spawnSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' });
-    if (r.status !== 0) {
-        throw new Error(`hors du depot git : impossible de deriver RACINE (git rev-parse a echoue : ${(r.stderr ?? '').trim()})`);
-    }
-    return r.stdout.trim();
+    // Chemin du DEPOT, derive de l'EMPLACEMENT du fichier (jamais du cwd) :
+    // patron prescrit, deja employe par pilote-f4.mjs (fileURLToPath).
+    // .../docs/superpowers/plans/journaux-*/instrument/<ce-fichier>.mjs
+    // remonter 5 niveaux : instrument, journaux-*, plans, superpowers, docs.
+    return join(dirname(fileURLToPath(import.meta.url)), '../../../../..');
 }
 export const RACINE = process.env.RACINE ?? racineDepot();
 export const D11 = `${RACINE}/docs/superpowers/plans/journaux-multifenetres-d11`;
