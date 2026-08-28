@@ -651,7 +651,7 @@ Expected: la ligne porte `session_cible=<id>`, un compte de refus, `profondeur_m
 
 **Interfaces:**
 - Consumes: `commun-f1.mjs` (`Cdp`, `attendreDevtools`, `dodo`, `lancerChrome`) **par lecture** ; `journaux-pont-fichiers/instrument/it-mire.ps1` pour la mire animée.
-- Produces: une **distribution** (médiane, p90, p99) de `now - captureTime`, par régime (une fenêtre, puis N).
+- Produces: une **distribution** (médiane, p90, p99) de `presentationTime - captureTime` — le MÊME nom que celui du code de l'étape 1, les deux horodatages étant rendus dans l'horloge du document — par régime (une fenêtre, puis N).
 
 - [ ] **Step 1: Écrire la sonde — `requestVideoFrameCallback`, rien d'autre**
 
