@@ -35,11 +35,19 @@
 // que la trame n'atteigne le moindre contrôle de forme — et il est éprouvé
 // par le `describe` de ce fichier même, plus bas.
 //
-// ⚠️ **CE QUI RESTE OUVERT, ET QUE `maxPayload` NE FERME PAS** : un pair peut
-// toujours ouvrir BEAUCOUP DE CONNEXIONS, et des connexions muettes ne sont
-// comptées par rien — ni par le frein, qui compte des tentatives, ni par
-// `deploiement/nginx.conf`, qui ne pose ni `limit_conn` ni `limit_req`.
-// `http/serveur.ts` le dit déjà auprès de la constante.
+// ⚠️ **CE QUI RESTAIT OUVERT, ET QUE `maxPayload` NE FERMAIT PAS — CORRIGÉ DE
+// MOITIÉ PAR LE ROUND DE CORRECTION 1 (25 août 2026) : un pair pouvait
+// toujours ouvrir BEAUCOUP DE CONNEXIONS, et des connexions muettes n'étaient
+// comptées par rien.** Ce n'est plus vrai que d'UN des deux chemins :
+// `signaling/relais.ts` borne désormais le NOMBRE de connexions sur
+// `/signal`, à l'évènement `connection` — avant tout message, donc avant
+// même qu'un pair muet ait eu l'occasion d'en envoyer un
+// (`securite/frein.ts::BUDGET_REQUETES`). `/agent` (`agents/canal.ts`), lui,
+// NE L'EST PAS : son frein d'enrôlement compte des TENTATIVES, au message,
+// jamais des connexions ; ni lui ni `deploiement/nginx.conf` (qui ne pose ni
+// `limit_conn` ni `limit_req`) ne comptent un pair qui ouvre puis se tait.
+// `http/serveur.ts` le dit désormais auprès de la constante, à jour des deux
+// chemins.
 //
 
 // Ce fichier ne teste PAS `createSignalingServer` en mémoire : vitest installe
@@ -106,6 +114,23 @@ function startRealServer(): Promise<{ child: ChildProcessWithoutNullStreams; por
                 // signature, et n'en invente aucun : sans cette ligne
                 // l'enfant meurt avant d'annoncer son port.
                 PLATEFORME_SECRET_JETON: SECRET_ENFANT,
+                // 🔴 TÂCHE 6 : `lireConfig` refuse désormais de démarrer en
+                // mode `pomerium` — le défaut, ici non redéfini — sans
+                // `PLATEFORME_PROXY_DE_CONFIANCE`. Ce fichier n'éprouve pas
+                // l'identité, seulement la résilience du relais : la valeur
+                // n'a donc aucune importance, sa seule PRÉSENCE suffit à
+                // laisser l'enfant démarrer.
+                //
+                // ⚠️ UNE ADRESSE ÉTRANGÈRE, DÉLIBÉRÉMENT — corrigé en revue
+                // (« round de correction 1 », 22 août 2026) : ce commentaire
+                // disait déjà « la valeur n'a aucune importance » tout en
+                // posant `127.0.0.1`, qui est précisément l'adresse depuis
+                // laquelle ce fichier se connecte (`connectTo`, plus bas).
+                // La phrase n'était donc vraie que par accident. `10.9.9.9`
+                // la rend vraie PAR CONSTRUCTION : ce fichier n'ouvre jamais
+                // `/auth/moi`, donc la garde de `routes-identite.ts` n'est
+                // jamais consultée ici, quelle que soit l'adresse déclarée.
+                PLATEFORME_PROXY_DE_CONFIANCE: '10.9.9.9',
             },
         });
 

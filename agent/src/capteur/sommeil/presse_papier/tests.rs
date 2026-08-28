@@ -19,8 +19,7 @@
 //! `superviseur/table.rs` et `presse_papier.rs`. Ce module ne se hisse PAS à la
 //! racine du crate.
 
-use std::sync::mpsc::Receiver;
-
+use crate::capteur::sommeil::file::ReceveurSession;
 use crate::capteur::sommeil::tests::{premier_ordre, verrouiller_pour_le_test};
 use crate::capteur::sommeil::{etat, inscrire, retirer, signaler, Message};
 use crate::capteur::vivier::Ordre;
@@ -29,9 +28,10 @@ use crate::presse_papier::Sondeur;
 
 /// Le dernier presse-papier reçu sur un canal, en vidant ce qui s'y
 /// trouve : parts et ordres de sommeil s'y intercalent librement.
-fn dernier_presse_papier(canal: &Receiver<Message>) -> Option<(Option<String>, u32)> {
+fn dernier_presse_papier(canal: &ReceveurSession) -> Option<(Option<String>, u32)> {
     canal
-        .try_iter()
+        .vider()
+        .into_iter()
         .filter_map(|m| match m {
             Message::PressePapier { texte, octets } => Some((texte, octets)),
             _ => None,

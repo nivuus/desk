@@ -28,22 +28,15 @@
 // (`agent/src/signaling.rs`, `url_du_relais`). Aucun pair connu n'en est
 // affecté — chacun a été déplacé dans le même commit.
 
-import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
+import { createServer, type Server } from 'node:http';
 import { WebSocketServer } from 'ws';
 import type { Config } from '../config';
 import type { Pilote } from '../base/pilote';
 import { garde } from '../identite/garde';
-import { servirAuth } from './routes-auth';
-import { servirIdentite } from './routes-identite';
-import { servirVm } from './routes-vm';
-import { servirSession } from './routes-session';
-import { servirApplications } from './routes-applications';
-import { servirIcone } from './routes-icone';
-import { servirTeleversement } from './routes-televersement';
-import { servirInstallation } from './routes-installation';
 import { ouvrirMagasin } from '../apps/icones';
 import { ouvrirMagasinTranches } from '../apps/magasin-tranches';
-import { CacheSante, servirSante } from './routes-sante';
+import { demarrerNettoyage } from '../apps/nettoyage';
+import { CacheSante } from './routes-sante';
 import { ENTETES_SECURITE } from './entetes';
 import { createSignalingServer } from '../signaling/relais';
 import { ProprieteDeSession } from '../signaling/propriete';
@@ -51,6 +44,15 @@ import { observateurDeSession } from '../signaling/trace';
 import { servirLeCanalAgent } from '../agents/canal';
 import { RegistreAgents } from '../agents/registre';
 import { Frein } from '../securite/frein';
+import { servirTout } from './chaine';
+import { repondreIntrouvable } from './introuvable';
+import { encaisserLesErreursDeSocket } from './erreurs-socket';
+import {
+    annonceProxyDeConfiance,
+    annonceRacinePage,
+    ecrire,
+    etatRacinePage,
+} from './annonces';
 
 /// Le chemin du canal plateforme <-> agent (P3). ⚠️ Il est comparé
 /// EXACTEMENT : voir le routage plus bas.
@@ -95,9 +97,17 @@ const CHEMIN_SIGNAL = '/signal';
 /// ordres de grandeur de marge. AUCUNE SDP RÉELLE N'A ÉTÉ MESURÉE pour poser
 /// ce chiffre, et le dire vaut mieux que de laisser croire à un calibrage.
 ///
-/// ⚠️ CE QU'ELLE NE FERME PAS, et qu'aucune tâche de P5 ne ferme : un pair
-/// peut toujours ouvrir BEAUCOUP DE CONNEXIONS. Le frein d'enrôlement en
-/// compte les tentatives ; il ne compte pas les sockets ouverts et MUETS.
+/// ⚠️ **CE QU'ELLE NE FERME PAS — CETTE PHRASE ÉTAIT DEVENUE FAUSSE DE MOITIÉ
+/// AU ROUND DE CORRECTION 1 (25 août 2026), qui a borné le NOMBRE de
+/// connexions sur `/signal` SEULEMENT.** Elle disait « un pair peut toujours
+/// ouvrir BEAUCOUP DE CONNEXIONS », vrai des deux chemins à l'écriture, plus
+/// vrai que d'un seul désormais : `/signal` (`signaling/relais.ts`) borne le
+/// nombre de connexions par adresse dès `connection`, AVANT le premier
+/// message (`securite/frein.ts::BUDGET_REQUETES`) ; `/agent`
+/// (`agents/canal.ts`) NE L'EST TOUJOURS PAS — son frein n'est consulté
+/// qu'au MESSAGE (une tentative `{vm, secret}`), jamais à la connexion, et
+/// un pair qui se tait après avoir ouvert n'est compté par rien, ni par lui
+/// ni par `deploiement/nginx.conf` (aucun `limit_conn`/`limit_req`).
 export const TRAME_MAX_OCTETS = 256 * 1024;
 
 export interface ServicePlateforme {
@@ -110,74 +120,34 @@ export interface ServicePlateforme {
 /// c'est la classe exacte de panne muette contre laquelle tout ce dépôt est
 /// écrit. `demarrage.ts` garantit par ailleurs que le port ne s'ouvre qu'après
 /// la base et ses migrations.
-/// 🔴 SANS CETTE FONCTION, `TRAME_MAX_OCTETS` DONNE UN DÉNI DE SERVICE PIRE
-/// QUE CELUI QU'IL FERME, et ce n'est pas une conjecture : MESURÉ le 20 août
-/// 2026 sur le vrai point d'entrée, `connect ECONNREFUSED` — LE PROCESS ÉTAIT
-/// MORT, tué par UNE SEULE TRAME ANONYME.
-///
-/// LA CHAÎNE, en trois maillons dont chacun est banal : `ws` refuse une trame
-/// au-delà de `maxPayload` et ÉMET `error` sur le socket serveur ; aucun
-/// socket serveur de ce service n'avait d'écouteur `error` (vérifié :
-/// `grep -n "on('error'" relais.ts canal.ts serveur.ts` ne rendait que le
-/// `http.once('error', reject)` du démarrage) ; et un `EventEmitter` qui émet
-/// `error` sans écouteur LÈVE. L'exception traverse alors un gestionnaire
-/// d'évènement Node, qui n'a personne pour l'attraper — le mode de défaillance
-/// exact que `signaling/relais.ts` et `signaling/trace.ts` documentent tous
-/// deux, atteint ici par une porte neuve.
-///
-/// ⚠️ AUCUN TEST « DANS » VITEST NE POUVAIT LE VOIR : vitest installe son
-/// propre gestionnaire d'exceptions non interceptées, si bien que les tests de
-/// `http/serveur.test.ts` restaient VERTS pendant que le service réel mourait
-/// (ils signalaient seulement « Vitest caught N unhandled errors »). La preuve
-/// vit donc dans `signaling/resilience.test.ts`, qui lance `index.ts` comme un
-/// vrai process enfant — c'est précisément la raison d'être de ce fichier-là,
-/// et son en-tête l'écrivait avant P5.
-///
-/// ⚠️ ELLE NE JOURNALISE RIEN, ET C'EST UN CHOIX MOTIVÉ, PAS UNE NÉGLIGENCE.
-/// `CLAUDE.md` porte la règle depuis le chantier TURN : « ne jamais tracer par
-/// paquet dans la boucle de transport — compter ou échantillonner, jamais
-/// tracer par paquet », après qu'une trace par `Transmit` a écrit 18 619
-/// lignes en quelques secondes et détruit la mesure qu'elle servait. Une ligne
-/// par socket fautif rendrait ici le service à nouveau amplificateur : un
-/// attaquant ouvrant N sockets ferait écrire N lignes, sur le chemin même que
-/// `TRAME_MAX_OCTETS` vient de fermer.
-///
-/// ⚠️ LE COÛT EST NOMMÉ : une erreur de socket est donc INVISIBLE à
-/// l'exploitant. Ce qui reste observable est la FERMETURE, que le pair voit
-/// (code 1009), et le fait que le service continue de servir. Le jour où il
-/// faudra les compter, c'est un compteur qu'il faudra — pas une trace.
-function encaisserLesErreursDeSocket(wss: WebSocketServer): void {
-    // Enregistré AVANT `createSignalingServer` et `servirLeCanalAgent`, qui
-    // posent leurs propres gestionnaires `connection` : les écouteurs courent
-    // dans leur ordre d'enregistrement, et celui-ci doit être attaché au
-    // socket avant que quoi que ce soit d'autre ne lui parle.
-    wss.on('connection', (socket) => {
-        socket.on('error', () => {
-            // Volontairement vide — voir ci-dessus. La seule chose qui compte
-            // est qu'un écouteur EXISTE : c'est lui, et lui seul, qui empêche
-            // `EventEmitter` de lever.
-        });
-    });
-}
-
 export async function demarrerServeur(config: Config, base: Pilote): Promise<ServicePlateforme> {
     // Les routeurs sont essayés DANS L'ORDRE ; si aucun ne reconnaît le
     // chemin, le 404 de P1 est conservé MOT POUR MOT. ⚠️ Ne pas changer son
     // corps : rien ne le testait avant P2, et le changer serait un effet de
     // bord non déclaré. `routes-auth.test.ts` le fige désormais.
     //
-    // 🔴 LE CHAÎNAGE SE FAIT ICI, DANS UNE FONCTION LOCALE, ET LA FORME
-    // `void … .then(servie => …).catch(…)` EST CONSERVÉE TELLE QUELLE. C'est
-    // ce que ce fichier s'impose depuis P1 : le `.catch` est la seule chose qui
-    // empêche une promesse rejetée dans un gestionnaire d'évènement Node
-    // d'abattre tout le processus, et une réécriture de ce corps le perdrait
-    // sans que rien ne le dise. Le diff sur le corps du `createServer` est
-    // ainsi d'une seule ligne — l'appel remplacé.
+    // 🔴 LE CHAÎNAGE NE SE FAIT PLUS ICI DEPUIS LE 22 AOÛT 2026 : IL A ÉTÉ
+    // EXTRAIT VERS `./chaine.ts` (`servirTout`, exporté), PARCE QUE CE
+    // FICHIER ATTEIGNAIT 475/500 LIGNES ET QUE LE LOT SUIVANT DEVAIT Y
+    // AJOUTER UN DIXIÈME ROUTEUR — l'extraction a libéré la marge AVANT
+    // l'ajout, comme `CLAUDE.md` le prescrit. Ce qui reste ICI est le POINT
+    // D'APPEL, sous la forme `void … .then(servie => …).catch(…)`,
+    // CONSERVÉE TELLE QUELLE. C'est ce que ce fichier s'impose depuis P1 : le
+    // `.catch` est la seule chose qui empêche une promesse rejetée dans un
+    // gestionnaire d'évènement Node d'abattre tout le processus, et une
+    // réécriture de ce corps le perdrait sans que rien ne le dise. Le diff
+    // sur le corps du `createServer` reste ainsi d'une seule ligne — l'appel
+    // à `servirTout`, désormais importé, plutôt que défini localement.
     //
-    // ⚠️ LES TROIS ROUTEURS PARTAGENT LEURS DÉPENDANCES, et `Date.now` est
+    // ⚠️ LES DIX ROUTEURS PARTAGENT LEURS DÉPENDANCES, et `Date.now` est
     // passée ici comme à la garde, à la trace et au canal : aucun module du
     // service ne lit d'horloge lui-même. C'est ce qui rend la borne de
     // fraîcheur assertable sur une valeur exacte dans les tests de route.
+    // ⚠️ « LES TROIS ROUTEURS » ÉTAIT LE MOT, ET IL DATAIT DE P4 : sept ont
+    // été chaînés depuis, sans que cette phrase ne bouge. Le compte se
+    // relance, il ne se recopie pas :
+    //   grep -cE '^    (if \(await servir|return servir)' plateforme/src/http/chaine.ts
+    //     -> 10
     // Le registre des sockets d'agent vivants, construit UNE FOIS et partagé
     // entre le canal (qui y inscrit) et les routes (qui y lancent). C'est le
     // seul endroit du service qui en fabrique un.
@@ -227,6 +197,36 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
         console.info(`magasin de tranches : ${chemin}`);
     });
 
+    // 🔴 SANS CET APPEL, `evincer` DES DEUX MAGASINS CI-DESSUS N'EST INVOQUÉ
+    // PAR PERSONNE — round de correction 1, voir `apps/nettoyage.ts` pour la
+    // cadence et sa raison. ATTENDU : le premier tour a fini avant que ce
+    // service ne réponde à une requête, y compris dans les tests.
+    const nettoyage = await demarrerNettoyage({
+        base,
+        magasin,
+        tranches: magasinTranches,
+        maintenant: Date.now,
+    });
+
+    // 🔴 LA TROISIÈME RACINE DISQUE FACULTATIVE S'ANNONCE COMME LES DEUX
+    // AUTRES, ET ELLE NE LE FAISAIT PAS. Les deux magasins ci-dessus
+    // journalisent leur chemin retenu depuis G2 et G3, avec la raison écrite
+    // au-dessus d'eux ; `PLATEFORME_PAGE`, ajoutée le 22 août 2026, ne
+    // journalisait RIEN — ni au démarrage ni à la requête —, si bien qu'une
+    // racine inexistante rendait `404 introuvable` sur toute page, strictement
+    // indiscernable de la variable absente. Voir `./annonces.ts`.
+    //
+    // ⚠️ C'EST ICI, AVANT `http.listen`, ET PAS AILLEURS : une annonce postée
+    // après l'ouverture du port arriverait après la première requête servie.
+    ecrire(annonceRacinePage(await etatRacinePage(config.racinePage)));
+    // 🔴 MÊME CLASSE DE PANNE MUETTE, MÊME REMÈDE — et la revue finale les a
+    // classés ensemble à raison : un nom d'hôte dans
+    // `PLATEFORME_PROXY_DE_CONFIANCE` ne correspond à aucune `remoteAddress`,
+    // donc `pairDeConfiance` refuse tout le monde, `/auth/moi` rend `401` à
+    // Pomerium lui-même, et le service répond quand même. Le runbook le
+    // documente déjà — mais un runbook ne rougit pas.
+    ecrire(annonceProxyDeConfiance(config.proxyDeConfiance));
+
     const deps = {
         base,
         secretJeton: config.secretJeton,
@@ -244,17 +244,34 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
         // premier pour lancer une application, le second pour pousser un ordre
         // d'installation à une VM déjà connectée. Les autres l'ignorent. Il est posé ici plutôt que passé à part pour que le
         // chaînage reste une seule ligne par routeur, et parce qu'un objet de
-        // dépendances par routeur ferait quatre listes à tenir à jour.
+        // dépendances par routeur ferait DIX listes à tenir à jour — le
+        // compte disait « quatre », et il datait lui aussi de P4.
         registre: registreAgents,
-        // ⚠️ SEUL `servirAuth` LES LIT aujourd'hui ; les autres routeurs les
-        // ignorent, comme ils ignorent `registre`.
+        // 🔴 CETTE PHRASE A DÉJÀ MENTI DEUX FOIS DE SUITE — « SEUL servirAuth
+        // LE LIT », PUIS « servirAuth ET routes-identite.ts, désormais DEUX »
+        // — À CHAQUE FOIS PARCE QU'UN LOT SUIVANT A AJOUTÉ UN LECTEUR SANS
+        // REVENIR CORRIGER CETTE LIGNE. Le legs des freins manquants (D24,
+        // 25 août 2026) en ajoute encore DEUX : `routes-vm.ts` et
+        // `routes-session.ts` consultent désormais `frein` ET
+        // `proxyDeConfiance` eux aussi, pour le budget « toute requête »
+        // (`securite/frein.ts::BUDGET_REQUETES`) — un budget de VOLUME,
+        // distinct de celui d'ÉCHECS que `servirAuth` consulte seul.
         //
-        // ✅ TOUT CE BLOC REVÉRIFIÉ le 21 août 2026 PAR LA COMMANDE, non par
+        // ✅ TOUT CE BLOC REVÉRIFIÉ le 25 août 2026 PAR LA COMMANDE, non par
         // la lecture : `grep -ln 'deps\.<clé>' plateforme/src/http/routes-*.ts`
-        // (hors `*.test.ts`, qui POSENT la dépendance sans la consommer). Seuls
-        // lecteurs — `frein` et `proxyDeConfiance` : `routes-auth.ts` ; `cache` :
-        // `routes-sante.ts` ; `magasin` : `routes-icone.ts`. **`auth` était le
-        // SEUL de ce bloc devenu faux.**
+        // (hors `*.test.ts`, qui POSENT la dépendance sans la consommer).
+        // Lecteurs — `frein` : `routes-auth.ts`, `routes-vm.ts`,
+        // `routes-session.ts` — TROIS ; `proxyDeConfiance` : les trois
+        // ci-dessus **ET** `routes-identite.ts` — QUATRE ; `cache` :
+        // `routes-sante.ts` ; `magasin` : `routes-icone.ts`.
+        //
+        // ⚠️ `signaling/relais.ts` LIT LES DEUX AUSSI, POUR LE MÊME BUDGET,
+        // MAIS PAS PAR CE CHEMIN : il ne reçoit pas cet objet `deps` — il est
+        // construit à part, plus bas dans cette fonction, et `frein` comme
+        // `config.proxyDeConfiance` lui sont passés en PARAMÈTRES POSITIONNELS
+        // de `createSignalingServer`. La commande `grep -ln 'deps\.frein'`
+        // ci-dessus ne le voit donc PAS — chercher `createSignalingServer`
+        // pour ce lecteur-là (voir plus bas dans cette même fonction).
         frein,
         proxyDeConfiance: config.proxyDeConfiance,
         cache: cacheSante,
@@ -273,78 +290,32 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
         // routeurs : `servirApplications` (le lancement) et `servirInstallation`
         // (la poussée de l'ordre). Le commentaire qui le disait lu par un seul
         // a été corrigé à sa place.
+        // ⚠️ SEUL `servirPage` LE LIT. Absent ⇒ le servant se retire et le 404
+        // générique reprend la main — le comportement d'avant le lot.
+        racinePage: config.racinePage,
     };
 
-    /// Essaie les routeurs dans l'ordre, et rend `false` si aucun n'a servi.
-    ///
-    /// ⚠️ L'ORDRE EST SIGNIFIANT MAIS NON CONTRAIGNANT ICI : les quatre jeux de
-    /// chemins sont DISJOINTS (`/auth/*`, `/vm*`, `/session`, `/application*`),
-    /// et chacun compare exactement plutôt que par préfixe. Un `await` de plus
-    /// ne coûte donc rien à personne — mais le jour où deux routeurs se
-    /// disputeraient un chemin, c'est cet ordre qui trancherait, en silence.
-    ///
-    /// 🔴 LE ROUTEUR DES APPLICATIONS EST CHAÎNÉ AVANT LE 404, ET C'EST LA
-    /// SEULE LIGNE QUI LE FAIT VIVRE. Sans elle, ses deux routes rendraient le
-    /// 404 générique — c'est-à-dire la panne la plus discrète possible : le
-    /// service répond, écoute, et sert les trois autres. `serveur.test.ts` la
-    /// tient par un test dédié, comme il tient déjà le canal `/agent`.
-    ///
-    /// ⚠️ LE CORPS DU 404 N'EST PAS TOUCHÉ : « rien ne le testait avant P2, et
-    /// le changer serait un effet de bord non déclaré ».
-    async function servirTout(
-        requete: IncomingMessage,
-        reponse: ServerResponse,
-    ): Promise<boolean> {
-        // 🔴 `servirIdentite` EST CHAÎNÉ EN TÊTE, ET CE N'EST PAS INDIFFÉRENT :
-        // `/auth/moi` et les deux chemins de `servirAuth` sont DISJOINTS
-        // aujourd'hui, mais les trois partagent le préfixe `/auth/`. Le jour
-        // où l'un comparerait par préfixe, c'est cet ordre qui trancherait —
-        // en silence.
-        if (await servirIdentite(requete, reponse, deps)) return true;
-        if (await servirAuth(requete, reponse, deps)) return true;
-        if (await servirVm(requete, reponse, deps)) return true;
-        if (await servirApplications(requete, reponse, deps)) return true;
-        if (await servirIcone(requete, reponse, deps)) return true;
-        // 🔴 LES DEUX ROUTEURS DE G3, ET CE SONT LES SEULES LIGNES QUI LES FONT
-        // VIVRE. Sans elles, leurs sept routes tomberaient dans le 404
-        // générique : la panne la plus discrète qui soit, puisque le service
-        // répond, écoute, et sert correctement les six autres routeurs.
-        // ROUGE JOUÉE : retirer la première fait tomber le test (6ter) de
-        // `entetes-routeurs.test.ts`, et LUI SEUL — `1 failed | 10 passed`.
-        //
-        // ⚠️ Les deux se partagent le préfixe `/televersement/` : le premier
-        // sert `…/tranche/:n`, `…/sceller` et l'état, le second `…/contenu`
-        // seul. Les jeux restent DISJOINTS — chacun découpe par SEGMENTS et
-        // compare leur NOMBRE exactement, jamais par `startsWith` —, donc aucun
-        // ne peut voler le chemin de l'autre. L'ordre est une ceinture, pas la
-        // garantie.
-        if (await servirTeleversement(requete, reponse, deps)) return true;
-        if (await servirInstallation(requete, reponse, deps)) return true;
-        if (await servirSession(requete, reponse, deps)) return true;
-        // ⚠️ `/sante` EST CHAÎNÉE EN DERNIER, et l'ordre n'est pas indifférent
-        // ici : c'est la seule route NON AUTHENTIFIÉE du service, et la placer
-        // en tête ferait courir sa comparaison de chemin avant celles des
-        // routes gardées. Les SIX jeux de chemins restent DISJOINTS, donc
-        // aucun ne peut voler le chemin d'un autre ; l'ordre est une ceinture,
-        // pas une garantie.
-        return servirSante(requete, reponse, deps);
-    }
-
+    // `servirTout` : voir son extraction vers `./chaine.ts`, expliquée plus
+    // haut dans cette fonction.
     const http: Server = createServer((requete, reponse) => {
-        void servirTout(requete, reponse)
+        void servirTout(requete, reponse, deps)
             .then((servie) => {
                 if (servie) return;
-                // ⚠️ LE 404 NE VIENT D'AUCUN ROUTEUR, et c'est pourquoi il
-                // doit être traité ici : sans cette ligne, un chemin inconnu
-                // serait la SEULE réponse du service à ne pas porter
-                // `nosniff`. Le CORPS du 404 n'est pas touché — « rien ne le
+                // ⚠️ LE 404 GÉNÉRIQUE NE VIENT D'AUCUN ROUTEUR, et c'est
+                // pourquoi il doit être traité ici : sans cette ligne, un
+                // chemin inconnu serait la SEULE réponse du service à ne pas
+                // porter `nosniff`. Le CORPS n'est pas touché — « rien ne le
                 // testait avant P2, et le changer serait un effet de bord non
                 // déclaré ».
-                reponse.writeHead(404, {
-                    'content-type': 'text/plain; charset=utf-8',
-                    ...ENTETES_SECURITE,
-                });
-                reponse.end('introuvable\n');
+                //
+                // 🔴 IL A DÉMÉNAGÉ VERS `./introuvable.ts` LE 22 AOÛT 2026, ET
+                // CE N'EST PAS UNE FACTORISATION DE CONFORT : les deux gardes
+                // de mode répondent désormais CE 404-CI elles-mêmes, parce que
+                // le repli SPA du servant de page avalait celui d'ici. Un
+                // second texte écrit à la main dans chaque garde dériverait de
+                // celui-ci sans que rien ne le dise. Voir l'en-tête de ce
+                // module-là.
+                repondreIntrouvable(reponse);
             })
             .catch((cause) => {
                 // Une promesse rejetée sans `catch` dans un gestionnaire
@@ -353,7 +324,9 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
                 // cause est journalisée SANS le corps de la requête, qui
                 // porterait le mot de passe (critère ④).
                 // ⚠️ LE LIBELLÉ NE NOMME PLUS « l'authentification » : depuis
-                // P4 ce `catch` couvre les TROIS routeurs, et un message qui
+                // P4 ce `catch` couvre TOUS les routeurs — ils sont DIX, non
+                // trois comme cette phrase l'a dit jusqu'au 22 août 2026, et
+                // le compte se relance depuis `chaine.ts`. Un message qui
                 // désignerait le mauvais ferait chercher au mauvais endroit.
                 // C'est la seule ligne de ce bloc que P4 change, et elle est
                 // changée parce qu'elle serait devenue FAUSSE autrement.
@@ -419,9 +392,18 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
     // `Date.now` est passée ICI, et une seule fois pour la trace : c'est le
     // seul endroit du chemin de la trace qui lise une horloge réelle, tout le
     // reste la reçoit.
+    //
+    // ⚠️ `frein` ET `config.proxyDeConfiance` : LE MÊME frein que les routes
+    // HTTP et le canal `/agent`, jamais un second — voir sa construction plus
+    // haut et `securite/frein.ts::BUDGET_REQUETES`. Avant ce lot, aucune
+    // borne n'existait sur le nombre de connexions qu'une même adresse
+    // pouvait ouvrir sur `/signal` — le legs que `TRAME_MAX_OCTETS`,
+    // au-dessus, nommait déjà sans le fermer.
     const relais = createSignalingServer(
         wssRacine,
         gardeDuService,
+        frein,
+        config.proxyDeConfiance,
         observateurDeSession(base, Date.now),
     );
 
@@ -463,6 +445,14 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
     return {
         port,
         async close(): Promise<void> {
+            // Appelé AVANT tout le reste — mais CORRIGÉ (round de correction
+            // 2) : `arreter()` empêche seulement la PROCHAINE planification
+            // du nettoyage de fond, il n'interrompt PAS un tour déjà en vol.
+            // Un tour démarré juste avant `close()` peut donc encore heurter
+            // une base sur le point de fermer ; s'il échoue, c'est
+            // journalisé (`apps/nettoyage.ts`), jamais fatal. Voir le
+            // commentaire d'`arreter()` pour ce qu'il garantit réellement.
+            nettoyage.arreter();
             await relais.close();
             // ⚠️ Le second serveur se ferme AUSSI, et explicitement. Un
             // `WebSocketServer` en `noServer` ne s'arrête pas avec le serveur

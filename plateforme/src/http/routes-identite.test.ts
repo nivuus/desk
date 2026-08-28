@@ -17,7 +17,9 @@ const CONFIG: Config = {
     urlBase: ':memory:',
     secretJeton: SECRET,
     auth: 'pomerium',
-    proxyDeConfiance: new Set(),
+    // Les tests de ce fichier se connectent en boucle locale : c'est
+    // l'adresse que `req.socket.remoteAddress` va réellement porter.
+    proxyDeConfiance: new Set(['127.0.0.1']),
     repertoireIcones: join(mkdtempSync(join(tmpdir(), 'moi-icones-')), 'icones'),
     repertoireTeleversements: join(mkdtempSync(join(tmpdir(), 'moi-tranches-')), 'televersements'),
 };
@@ -113,6 +115,71 @@ describe('GET /auth/moi', () => {
         expect(r.status).toBe(401);
         expect(await r.json()).toEqual({ refus: 'identite-absente' });
         expect(await combienDeComptes(base)).toBe(0);
+    });
+
+    // 🔴 LA GARDE QUI FERME LE CONTOURNEMENT : LES DEUX BRAS, SINON LE 401
+    // SEUL NE PROUVERAIT RIEN — il serait indiscernable d'une route entièrement
+    // en panne. Le bras VERT est ① et ② ci-dessus, qui se connectent en boucle
+    // locale et réussissent précisément parce que `CONFIG.proxyDeConfiance`
+    // déclare `127.0.0.1`.
+    it("REFUSE (401) l'en-tête d'identité venu d'un pair non déclaré", async () => {
+        base = await baseNeuve('moi-pair-etranger-statut');
+        service = await demarrerServeur({ ...CONFIG, proxyDeConfiance: new Set(['10.9.9.9']) }, base);
+        const r = await fetch(`http://127.0.0.1:${service.port}/auth/moi`, {
+            headers: { [ENTETE_IDENTITE]: 'a@b.c' },
+        });
+        expect(r.status).toBe(401);
+    });
+
+    it("REFUSE l'en-tête d'identité venu d'un pair non déclaré, avec le motif nommé", async () => {
+        base = await baseNeuve('moi-pair-etranger-motif');
+        service = await demarrerServeur({ ...CONFIG, proxyDeConfiance: new Set(['10.9.9.9']) }, base);
+        const r = await fetch(`http://127.0.0.1:${service.port}/auth/moi`, {
+            headers: { [ENTETE_IDENTITE]: 'a@b.c' },
+        });
+        const corps = (await r.json()) as { refus?: unknown };
+        expect(corps.refus).toBe('pair-non-de-confiance');
+    });
+
+    // 🔴 ROUND DE CORRECTION 1 — LE GARDE CONTRE UNE CRÉATION DE COMPTE NON
+    // AUTHENTIFIÉE, RÉTABLI COMME TEST DISTINCT (convention « une assertion
+    // par test »). Retiré une première fois en jugeant qu'il « n'apportait
+    // rien que le statut et le motif ne disaient déjà » : FAUX, mesuré — en
+    // déplaçant la garde APRÈS `identifiantDe`, le 401 et le motif restent
+    // IDENTIQUES et pourtant 3 comptes se créent dans `utilisateur` depuis un
+    // pair non déclaré, un par courriel choisi par l'attaquant. C'est le
+    // vecteur que `CLAUDE.md` nomme au § legs `auth-pomerium` : « crée une
+    // ligne `utilisateur` par courriel distinct, sans borne ».
+    it("REFUSE l'en-tête d'identité venu d'un pair non déclaré, SANS CRÉER DE COMPTE", async () => {
+        base = await baseNeuve('moi-pair-etranger-compte');
+        service = await demarrerServeur({ ...CONFIG, proxyDeConfiance: new Set(['10.9.9.9']) }, base);
+        await fetch(`http://127.0.0.1:${service.port}/auth/moi`, {
+            headers: { [ENTETE_IDENTITE]: 'attaquant@x.y' },
+        });
+        expect(await combienDeComptes(base)).toBe(0);
+    });
+
+    // 🔴 ROUND DE CORRECTION 1 — LA PROPRIÉTÉ QUE CETTE TÂCHE EXISTE POUR
+    // ÉTABLIR, FIGÉE PAR UN TEST. Sans lui, remplacer
+    // `req.socket.remoteAddress` par le premier saut de `X-Forwarded-For`
+    // dans `routes-identite.ts` laisse LA SUITE ENTIÈRE VERTE (mesuré :
+    // 62 fichiers / 645 tests) et rouvre le contournement complet : un pair
+    // NON déclaré forge l'en-tête pour se faire passer pour un pair déclaré,
+    // et reçoit un jeton interne valide. `pairDeConfiance` ne lit QUE
+    // `remoteAddress` par construction (`adresse-source.ts`) ; ce test
+    // éprouve que la ROUTE, à son tour, ne se laisse pas convaincre par
+    // l'en-tête.
+    it("IGNORE X-Forwarded-For : un pair non déclaré qui forge l'adresse d'un pair déclaré reste REFUSÉ", async () => {
+        base = await baseNeuve('moi-xff-forge');
+        // Le pair RÉEL de ce test est `127.0.0.1` (boucle locale) ; la
+        // confiance ne déclare QUE `10.9.9.9`, l'adresse que l'en-tête va
+        // prétendre porter. Si la garde lisait l'en-tête, `10.9.9.9` serait
+        // reconnue de confiance et la requête réussirait.
+        service = await demarrerServeur({ ...CONFIG, proxyDeConfiance: new Set(['10.9.9.9']) }, base);
+        const r = await fetch(`http://127.0.0.1:${service.port}/auth/moi`, {
+            headers: { [ENTETE_IDENTITE]: 'a@b.c', 'x-forwarded-for': '10.9.9.9' },
+        });
+        expect(r.status).toBe(401);
     });
 
     // 🔴 LES ROUGES DES CRITÈRES ② ET ③ EN UN SEUL TEST, ET L'EN-TÊTE EST

@@ -96,6 +96,18 @@ export interface Config {
     /// redépose son fichier. Le silence est donc encore moins acceptable
     /// ici — d'où la ligne de journal à l'ouverture du magasin.
     repertoireTeleversements: string;
+    /// PLATEFORME_PAGE — FACULTATIVE, et **AUCUN DÉFAUT**, à la différence de
+    /// `PLATEFORME_ICONES` et `PLATEFORME_TELEVERSEMENTS` juste en dessous.
+    ///
+    /// 🔴 ABSENTE OU VIDE ⇒ LE SERVICE NE SERT AUCUN FICHIER, et son
+    /// comportement est celui d'avant le lot À L'OCTET PRÈS : `GET /` rend
+    /// `404 introuvable`. C'est ce qui rend l'ajout strictement additif — et
+    /// c'est ce qui rend le témoin négatif de la recette jouable.
+    ///
+    /// ⚠️ UN DÉFAUT SERAIT UN DÉFAUT DE SÉCURITÉ, pas une commodité : dans le
+    /// montage nginx, la plateforme ne doit RIEN servir, et un défaut la
+    /// ferait publier ce que son répertoire courant contient.
+    racinePage?: string;
     /// PLATEFORME_AUTH, défaut 'pomerium'. Une valeur inconnue LÈVE.
     ///
     /// ⚠️ CE N'EST PAS UN ARMEMENT, C'EST UN CHOIX DE MODE — la convention
@@ -186,6 +198,11 @@ export function lireConfig(env: Record<string, string | undefined>): Config {
             ? 'donnees/televersements'
             : brutTeleversements;
 
+    // Même garde de la chaîne VIDE qu'au-dessus, mais SANS repli : ici, vide
+    // et absente valent toutes deux « aucun servant ».
+    const brutPage = env.PLATEFORME_PAGE;
+    const racinePage = brutPage === undefined || brutPage === '' ? undefined : brutPage;
+
     // 🔴 AUCUN DÉFAUT, et surtout pas un défaut ALÉATOIRE. Un secret tiré au
     // démarrage passerait tous les tests de forme, puis invaliderait à chaque
     // redémarrage l'ensemble des jetons délivrés — les utilisateurs seraient
@@ -222,10 +239,18 @@ export function lireConfig(env: Record<string, string | undefined>): Config {
     const brutOrigine = env.PLATEFORME_ORIGINE_CLIENT;
     const origineClient = brutOrigine === undefined || brutOrigine === '' ? undefined : brutOrigine;
 
-    // FACULTATIVE, comme l'origine ci-dessus, et pour une raison voisine : un
-    // déploiement SANS proxy inverse — celui des tests, et celui d'un
-    // exploitant qui expose le service directement — n'a aucune valeur qui ait
-    // du sens ici. Refuser de démarrer casserait ces deux cas.
+    // FACULTATIVE — mais seulement EN MODE `motdepasse`, ET C'EST DEVENU FAUX
+    // DANS L'AUTRE MODE (tâche 6, revue « round de correction 1 », 22 août
+    // 2026). Cette phrase disait « refuser de démarrer casserait ces deux
+    // cas » : un déploiement SANS proxy inverse — celui des tests, et celui
+    // d'un exploitant qui expose le service directement — n'aurait aucune
+    // valeur qui ait du sens ici. C'ÉTAIT VRAI AVANT LA GARDE PLUS BAS DANS
+    // CETTE FONCTION, QUI FAIT PRÉCISÉMENT CELA EN MODE `pomerium` — LE
+    // DÉFAUT : `lireConfig` refuse désormais de démarrer si cette variable
+    // est absente ou vide ET que le mode est `pomerium`. La phrase reste
+    // vraie pour le SEUL mode `motdepasse`, où l'en-tête n'est lu par
+    // personne et où l'absence de proxy déclaré est un cas parfaitement sain
+    // (les tests de ce fichier, par exemple).
     //
     // 🔴 MAIS SON DÉFAUT EST LE REFUS DE CROIRE, JAMAIS UNE PERMISSION. Même
     // doctrine que `PLATEFORME_ORIGINE_CLIENT` : absente, l'ensemble est vide,
@@ -266,6 +291,24 @@ export function lireConfig(env: Record<string, string | undefined>): Config {
             .filter((entree) => entree !== ''),
     );
 
+    // 🔴 TROISIÈME GARDE LIÉE AU MODE, après celle de `PLATEFORME_HOTE`. Même
+    // raison : en `pomerium`, l'identité arrive dans un en-tête EN CLAIR
+    // qu'aucune signature ne vérifie, et sans la liste des adresses autorisées
+    // à le poser, l'en-tête est croyable par n'importe qui.
+    //
+    // ⚠️ POURQUOI UN REFUS DE DÉMARRER ET NON UN 401 : un refus se lit AVANT
+    // d'agir et nomme la variable. Un 401 pour tout le monde se lirait APRÈS,
+    // sur un service qui répond et sert les dix autres routeurs.
+    if (auth === 'pomerium' && proxyDeConfiance.size === 0) {
+        throw new Error(
+            'PLATEFORME_PROXY_DE_CONFIANCE est obligatoire en mode pomerium : ' +
+                "l'identité arrive dans un en-tête en clair qu'aucune signature ne vérifie, " +
+                'et sans la liste des adresses autorisées à le poser, quiconque atteint le ' +
+                "port obtient un jeton pour l'identité de son choix. Poser l'adresse du " +
+                'proxy, ou PLATEFORME_AUTH=motdepasse.',
+        );
+    }
+
     return {
         hote,
         port,
@@ -276,6 +319,7 @@ export function lireConfig(env: Record<string, string | undefined>): Config {
         proxyDeConfiance,
         repertoireIcones,
         repertoireTeleversements,
+        racinePage,
         auth,
     };
 }

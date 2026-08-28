@@ -165,21 +165,28 @@ const identite = lireIdentite(IDENTITE);
 const PLATEFORME_URL = identite.PLATEFORME_URL;
 const CLIENT_URL = identite.CLIENT_URL;
 const SIGNALING_WS = identite.SIGNALING_WS;
+// 🔴 CHANTIER auth-pomerium : le relais a quitté `/` pour `/signal`.
+// SIGNALING_WS RESTE LA BASE — c'est elle qui va dans SIGNALING_URL au
+// lancement de l'agent (`agent/src/signaling.rs::url_du_relais` y ajoute
+// `/signal` lui-même). `?signaling=` côté NAVIGATEUR, lui, est EXPLICITE et
+// NE REÇOIT AUCUN AJOUT (client/src/adresse-plateforme.ts::adresseSignaling) :
+// c'est ce pilote qui doit fournir l'URL du relais, pas sa seule base.
+const SIGNALING_RELAIS = `${SIGNALING_WS.replace(/\/+$/, '')}/signal`;
 const paire = await obtenirPaire(identite, PLATEFORME_URL);
 const SEMENCE = `(() => { try {
   localStorage.setItem('guac.jeton.acces', ${JSON.stringify(paire.acces)});
   localStorage.setItem('guac.jeton.rafraichissement', ${JSON.stringify(paire.rafraichissement)});
   localStorage.setItem('guac.prefixe', ${JSON.stringify(identite.PREFIXE_VM)});
 } catch (e) { } })();`;
-const URL_SHELL = `${CLIENT_URL}/shell.html?signaling=${encodeURIComponent(SIGNALING_WS)}`
+const URL_SHELL = `${CLIENT_URL}/shell.html?signaling=${encodeURIComponent(SIGNALING_RELAIS)}`
     + `&prefixe=${encodeURIComponent(identite.PREFIXE_VM)}`;
 
 // 🔴 Substitution VÉRIFIÉE : un marqueur survivant produirait une URL littérale,
 // la page ne se connecterait à rien, et le seul symptôme serait « l'agent n'a
 // pas répondu » — indiscernable d'une panne du produit.
-const AMORCE_FINALE = AMORCE.replaceAll('__SIGNALING__', SIGNALING_WS);
+const AMORCE_FINALE = AMORCE.replaceAll('__SIGNALING__', SIGNALING_RELAIS);
 if (AMORCE_FINALE.includes('__SIGNALING__')) throw new Error('marqueur non substitué');
-if (!AMORCE_FINALE.includes(SIGNALING_WS)) throw new Error('substitution sans effet');
+if (!AMORCE_FINALE.includes(SIGNALING_RELAIS)) throw new Error('substitution sans effet');
 
 const dir = await mkdtemp(join(tmpdir(), `a1-${ETIQUETTE}-`));
 const port = 9480 + (Number(ETIQUETTE) || 1);

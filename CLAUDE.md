@@ -408,9 +408,10 @@ démarre donc pas — et il dit pourquoi.
 | `PLATEFORME_BASE_URL` | chemin SQLite (défaut `:memory:`) ou URL `pg`. ⚠️ **`pg` prend `:memory:` pour un nom d'hôte** |
 | `PLATEFORME_AUTH` | `pomerium` (défaut) ou `motdepasse`. 🔴 **UN CHOIX DE MODE, PAS UN ARMEMENT** — la convention `=0 désarme` de `agent/` ne s'applique pas ici, précédent `PLATEFORME_BASE` deux lignes plus haut, et pour la même raison : un repli silencieux ferait tourner un mode sous le nom de l'autre, et l'un des deux sens est une **ouverture**. **Une valeur inconnue LÈVE.** En mode `pomerium`, `GET /auth/moi` échange l'en-tête `X-Pomerium-Claim-Email` posé par le proxy contre le MÊME jeton interne que le mot de passe, et `POST /auth/connexion`/`/auth/rafraichir` rendent le 404 générique (route retirée). 🔴 **ELLE NE CHOISIT PAS QUE DES ROUTES : ELLE ARME UNE GARDE D'ÉCOUTE**, et ce tableau ne l'a pas dit pendant toute la branche. En mode `pomerium`, `PLATEFORME_HOTE` **refuse le démarrage** sur `0.0.0.0`, `::`, `[::]` et `*` (voir sa ligne, cinq plus haut) — un refus de démarrer se lit AVANT d'agir, pas après. 🔴 **ET LE PROFIL DE DÉPLOIEMENT LA POSE À `motdepasse`, AVEC UNE DIRECTIVE NGINX QUI VA AVEC** : `docker-compose.plateforme.yml` écrit `PLATEFORME_AUTH: motdepasse` et `deploiement/nginx.conf` efface l'en-tête entrant par `proxy_set_header X-Pomerium-Claim-Email "";` — **les deux ensemble, et elles s'inversent ensemble** ; n'en appliquer qu'une moitié donne soit un contournement complet de l'authentification, soit un service que personne ne peut atteindre. Invariant ⑤ de `deploiement/README.md`. Chantier `auth-pomerium`, tâches 1 à 3 — voir l'index des chantiers |
 | `PLATEFORME_ORIGINE_CLIENT` | l'origine CORS. **FACULTATIVE, et son défaut est le REFUS** : absente, aucun en-tête CORS n'est émis. **Jamais `*`, sous aucune condition.** ⚠️ Son absence est le cas **nominal** derrière le proxy, où page et API partagent l'origine |
-| `PLATEFORME_PROXY_DE_CONFIANCE` | **FACULTATIVE.** Absente, `X-Forwarded-For` **n'est pas cru du tout** — le défaut sûr. 🔴 **Mal posée, le frein par adresse dégénère en frein GLOBAL** et le premier attaquant bloque tout le monde ; le seul endroit où cela se voit est la ligne de journal du frein, qui **nomme l'adresse retenue** |
+| `PLATEFORME_PROXY_DE_CONFIANCE` | 🔴 **~~FACULTATIVE, SANS CONDITION~~ — FAUX DEPUIS `auth-pomerium` (21 août 2026) : facultative en mode `motdepasse`, OBLIGATOIRE en mode `pomerium`, où `lireConfig` REFUSE DE DÉMARRER sans elle.** Absente en `motdepasse`, `X-Forwarded-For` **n'est pas cru du tout** — le défaut sûr. **Mal posée** (trop large, ou une valeur qui n'est pas celle du proxy), **le frein par adresse dégénère en frein GLOBAL** et le premier attaquant bloque tout le monde ; le seul endroit où cela se voit est la ligne de journal du frein, qui **nomme l'adresse retenue**. 🔴 **ELLE PORTE DÉSORMAIS DEUX RÔLES, PAS UN** : ① le crédit de `X-Forwarded-For` (ci-dessus, inchangé) ; ② **l'autorisation de poser l'en-tête d'identité** — `routes-identite.ts::servirIdentite` n'accepte `X-Pomerium-Claim-Email` que d'un pair dont `req.socket.remoteAddress` figure dans cet ensemble (`pairDeConfiance`, `http/adresse-source.ts`), sinon `401 pair-non-de-confiance` **avant même de lire l'en-tête**. C'est ce second rôle qui la rend obligatoire en mode `pomerium` : sans lui, l'identité arrive dans un en-tête EN CLAIR qu'aucune signature ne vérifie, et quiconque atteint le port obtient un jeton pour l'identité de son choix — voir le legs `/auth/moi`, ci-dessous, **FERMÉ** par cette garde. 🔴 **ET L'ENSEMBLE RETENU EST ANNONCÉ AU DÉMARRAGE depuis le 22 août 2026** : `proxys de confiance retenus=<entrées> nombre=<n>`, ou `retenus=aucun`. C'est ce qui rend visible **un nom d'hôte** — qui ne correspond à AUCUNE `remoteAddress` et fait donc refuser TOUT LE MONDE, service répondant, sans qu'aucune requête ne le trace. ⚠️ **Le refus par requête reste non tracé, à dessein** : une trace par requête rendrait le service amplificateur. `plateforme/src/http/annonces.ts` |
 | `PLATEFORME_ICONES` | **FACULTATIVE**, défaut `donnees/icones`. ⚠️ Une valeur **vide** retombe sur le défaut, à dessein |
 | `PLATEFORME_TELEVERSEMENTS` | **FACULTATIVE**, défaut `donnees/televersements`. Même raison : une valeur vide ferait de la racine le magasin |
+| `PLATEFORME_PAGE` | **Correction, 22 août 2026 — la plateforme SERT DÉSORMAIS LA PAGE BÂTIE**, ce qu'elle ne faisait pas avant ce lot (`plateforme/src/http/page/`). **FACULTATIVE, et AUCUN DÉFAUT** — à la différence de `PLATEFORME_ICONES` et `PLATEFORME_TELEVERSEMENTS` juste au-dessus. 🔴 **ABSENTE OU VIDE ⇒ AUCUN SERVANT, et `GET /` rend le `404 introuvable` D'HIER À L'OCTET PRÈS** : c'est ce qui rend l'ajout strictement additif. ⚠️ **UN DÉFAUT SERAIT UN DÉFAUT DE SÉCURITÉ, PAS UNE COMMODITÉ** : dans le montage nginx (docker-compose, mode `motdepasse`), la plateforme ne doit RIEN servir — nginx sert déjà `client/dist` — et un défaut la ferait publier ce que son répertoire courant contient. Valuée vers la racine `client/dist` **bâtie** (`npm run build`). Lue dans `plateforme/src/config.ts`, servie par `plateforme/src/http/page/routes-page.ts` (garde contre les liens symboliques par `realpath`, voir son commentaire). 🔴 **LE DÉMARRAGE L'ANNONCE, DEPUIS LE 22 AOÛT 2026 — et il ne le faisait pas quand ce lot a été livré** : `page servie racine=<chemin RÉSOLU> lisible=oui`, ou `racine=aucune` quand elle n'est pas posée, ou un **`console.error`** portant `lisible=non` quand elle l'est et que le disque refuse. **Sans cette ligne, une racine inexistante rendait `404` sur toute page, STRICTEMENT indiscernable de la variable absente.** `plateforme/src/http/annonces.ts` |
 
 **Le relais TURN** lit `TURN_URL` et `TURN_SECRET` (sans `TURN_URL`, il n'annonce
 aucun relais **et le journalise**), et `docker-compose.coturn.yml` exige
@@ -831,12 +832,17 @@ Ils sont **datés**, et plusieurs se réfutent les uns les autres à dessein.
 ### Chantier auth-pomerium — l'identité vient du proxy (CLOS)
 
 - **auth-pomerium : l'identité vient du proxy, le jeton interne RESTE (21 août 2026)** — [résultats](docs/superpowers/plans/2026-08-21-auth-pomerium-resultats.md)
-  — ⚠️ **RÉSERVE : le critère ⑦ (la page, dans un navigateur, derrière Pomerium) n'a JAMAIS été joué**, et l'un de ses deux blocages n'est pas une limite de recette mais un **défaut de conception déjà appliqué** au `config.yaml` réel : la route nue de Pomerium vise un backend qui **ne sert aucun fichier statique** (`GET /` rend `404`). **Il reste à CONCEVOIR, pas à mesurer.** Voir les legs ci-dessous.
+  — ⚠️ **RÉSERVE : le critère ⑦ (la page, dans un navigateur, derrière Pomerium) n'a TOUJOURS PAS été joué**, mais ~~un de ses deux blocages n'est pas une limite de recette mais un défaut de conception déjà appliqué au `config.yaml` réel~~ **LE BLOCAGE ① (LA PLATEFORME NE SERVAIT AUCUN FICHIER STATIQUE) EST LEVÉ le 22 août 2026** : elle sert désormais la page bâtie (`PLATEFORME_PAGE`, voir le tableau des variables ci-dessus), donc la route nue de la spec §7.2 vise un backend qui répond. **Le blocage ② DEMEURE** : le flux OAuth Google exige un humain, qu'aucun Chrome sans interface ne peut fournir — le critère ⑦ reste **NON JOUÉ**, pour cette seule raison désormais. Voir les legs ci-dessous et la spec `auth-pomerium` § 7.
+- **page-derriere-pomerium : la plateforme sert la page bâtie, `/auth/moi` ne croit que le pair déclaré (22 août 2026)** — [résultats](docs/superpowers/plans/2026-08-22-page-derriere-pomerium-resultats.md) — les huit critères joués, chaque rouge comprise ; le blocage ① ci-dessus est ce que ce lot lève, le blocage ② (OAuth, un humain requis) reste dû, et ce document distingue nommément ce « critère ⑦ » (les deux bras de la garde d'identité) de celui d'`auth-pomerium` (la page dans un navigateur réel).
 
 ### Le retrait du legacy (CLOS)
 
 - **Retrait du legacy — état des verrous : DEUX satisfaits sur dix (21 août 2026)** — [relevé](docs/superpowers/plans/2026-08-21-retrait-legacy-etat-des-verrous.md)
 - **Retrait du legacy — EXÉCUTÉ, sur décision du propriétaire (21 août 2026)** — [résultats](docs/superpowers/plans/2026-08-21-retrait-legacy-resultats.md)
+
+### Chantier legs-sans-vm (CLOS)
+
+- **legs-sans-vm : huit legs fermés sans la VM, et la revue transverse de fin de lot (26 août 2026)** — [résultats](docs/superpowers/plans/2026-08-26-legs-sans-vm-resultats.md) — canal `Message` du capteur borné, `GET /vm`/`POST /session`/`/signal` freinés par un budget de volume, le contrat de `SIGNALING_URL` figé par un test, les deux magasins évincés par âge, `tokens.css` extrait à marge nulle, `--accent-fenetre` déclaré et peint, douze pilotes de recette réparés vers `/signal`, les galeries dotées d'un test de liste de cas. Le **WCO reste ouvert**, écarté par décision (hub non installable) ; aucun pilote n'est rejoué, aucun jugement visuel n'est porté.
 
 
 ---
@@ -887,50 +893,79 @@ PERDU** — c'est la leçon du legs `403/404`, déclaré « ouvert » alors que 
 produit l'avait résolu, et de six constats de revue disparus avec un rapport
 gitignoré.
 
-- 🔴 **LE CRITÈRE ⑦ N'A JAMAIS ÉTÉ JOUÉ** — la page, dans un navigateur réel,
-  derrière Pomerium. **Ses deux blocages ne sont PAS de même nature, et les
-  confondre est l'erreur à éviter :**
-  - ① **un défaut de CONCEPTION, déjà appliqué au `config.yaml` réel** : la
+- 🔴 **LE CRITÈRE ⑦ RESTE NON JOUÉ** — la page, dans un navigateur réel,
+  derrière Pomerium — ~~**mais ses deux blocages ne sont PAS de même nature,
+  et les confondre est l'erreur à éviter**~~ **CE N'EST PLUS VRAI QUE D'UN
+  SEUL DES DEUX, DEPUIS LE 22 AOÛT 2026 :**
+  - ① ~~**un défaut de CONCEPTION, déjà appliqué au `config.yaml` réel** : la
     route nue de Pomerium (spec §7.2, commentée « La page et l'API ») vise
     `http://192.168.3.1:8080`, c'est-à-dire la plateforme — **qui ne sert
     aucun fichier statique**, `GET /` y rendant `404 introuvable` (mesuré).
-    C'est nginx qui sert la page, et ce bloc le saute. **Il reste à CONCEVOIR,
-    pas à mesurer** : soit router Pomerium vers nginx (dont le `listen 80` est
-    un `return 301`, donc une boucle depuis un Pomerium qui a déjà terminé
-    TLS, et dont le `listen 443` exige `deploiement/tls/`, gitignoré et
-    absent), soit doter la plateforme d'un servant statique. **Aucune des deux
-    n'est tranchée.**
-  - ② une limite de recette, celle-là ordinaire : le flux OAuth Google exige
-    **un humain**, et aucun Chrome sans interface ne le franchit.
-- 🔴 **AUCUN FREIN SUR `/auth/moi`, ET C'EST DÉSORMAIS LA SEULE SURFACE
+    C'est nginx qui sert la page, et ce bloc le saute. Il reste à CONCEVOIR,
+    pas à mesurer : soit router Pomerium vers nginx (…), soit doter la
+    plateforme d'un servant statique. Aucune des deux n'est tranchée.~~
+    **LEVÉ.** La plateforme sert désormais la page bâtie
+    (`plateforme/src/http/page/`, variable `PLATEFORME_PAGE` — voir le
+    tableau des variables serveur), donc la route nue de la spec §7.2, qui
+    vise `http://192.168.3.1:8080`, vise un backend qui répond
+    (`GET /` y rend la page si `PLATEFORME_PAGE` est posée vers `client/dist`
+    bâti, ou le `404` d'hier si elle ne l'est pas). Voir spec `auth-pomerium`
+    § 7, dont l'annotation du 21 août 2026 est levée à son tour.
+  - ② **DEMEURE, seul désormais** : une limite de recette, celle-là
+    ordinaire — le flux OAuth Google exige **un humain**, et aucun Chrome
+    sans interface ne le franchit. ⚠️ **Le critère ⑦ reste donc NON JOUÉ**,
+    et écrire « critère ⑦ levé » serait faux : lever un blocage de
+    conception ne joue pas le critère à sa place.
+- ~~🔴 **AUCUN FREIN SUR `/auth/moi`, ET C'EST DÉSORMAIS LA SEULE SURFACE
   D'AUTHENTIFICATION** en mode `pomerium`. `securite/frein.ts` n'est consulté
   que par `servirAuth` (`grep -ln 'deps\.frein' plateforme/src/http/routes-*.ts`
   ne rend que `routes-auth.ts`), or ce routeur **se retire** dans ce mode. La
   route **crée une ligne `utilisateur` par courriel distinct**, sans borne :
   qui atteint le port `8080` — dont la VM Windows — fait grossir la table à
-  volonté, l'en-tête n'étant vérifié par aucune signature. ⚠️ **Non mesuré**,
-  et ce n'est pas une raison de l'écrire moins fort : c'est une lecture de
-  code, elle est dite comme telle.
-- 🔴 **ONZE PILOTES DE RECETTE VISENT UNE RACINE QUE CE CHANTIER A FERMÉE.** Le
+  volonté, l'en-tête n'étant vérifié par aucune signature. Non mesuré, et ce
+  n'est pas une raison de l'écrire moins fort : c'est une lecture de code,
+  elle est dite comme telle.~~
+  🔴 **REQUALIFIÉ ET FERMÉ, 22 août 2026.** Ce legs se lisait comme un frein
+  manquant, appelant une borne de cadence — **ce n'en était pas un**. C'était
+  un **contournement COMPLET de l'authentification** : quiconque atteignait le
+  port `8080` — dont la VM Windows — obtenait, par un simple en-tête
+  `X-Pomerium-Claim-Email` qu'AUCUNE signature ne vérifiait, un jeton interne
+  valide pour l'identité de son choix. Un frein n'aurait borné que la
+  **cadence** d'un contournement qui n'a besoin d'aboutir **qu'une fois**. La
+  garde qui ferme ce trou est `PLATEFORME_PROXY_DE_CONFIANCE`, désormais
+  **obligatoire en mode `pomerium`** (`plateforme/src/config.ts::lireConfig`,
+  qui refuse de démarrer sans elle) : `routes-identite.ts::servirIdentite`
+  n'accepte l'en-tête que d'un pair dont l'adresse socket figure dans cette
+  liste (`pairDeConfiance`), et rend `401 pair-non-de-confiance` **avant même
+  de la lire** sinon. Voir sa ligne dans le tableau des variables serveur.
+- ~~🔴 **ONZE PILOTES DE RECETTE VISENT UNE RACINE QUE CE CHANTIER A FERMÉE.** Le
   relais a quitté `/` pour `/signal`, et `?signaling=` reste **explicite** —
   il ne reçoit pas le suffixe. Or les pilotes de
   `docs/superpowers/plans/journaux-*/instrument/` posent tous une URL **sans
   chemin** : `accent-a1`, `micro-e3` (le pilote et son `injection-e3.js`),
   `pont-fichiers` f1 à f5, `presse-papier` p1 à p3 — **plus un douzième hors de
   ce répertoire**, `journaux-micro-e2/pilote-recette-e2.mjs`. **Aucun n'a été
-  réparé** : c'est un chantier à part. ⚠️ **Le commentaire qui affirmait
-  qu'« aucune recette n'en pose » a été corrigé** dans
-  `client/src/adresse-plateforme.ts` : son `grep` ne couvrait pas
-  `docs/superpowers/`, où vivent TOUS les pilotes — patron du « naufrage du
-  487 ».
-- 🔴 **LE CONTRAT DE `SIGNALING_URL` N'EST FIGÉ PAR AUCUN TEST.** La variable
+  réparé** : c'est un chantier à part.~~ **FERMÉ (lot `legs-sans-vm`)** : onze
+  des douze pilotes réparés vers `/signal` (le douzième,
+  `injection-e3.js`, n'avait rien à changer — sa valeur vient déjà corrigée de
+  son pilote appelant). ⚠️ **Aucun pilote n'est rejoué** : la VM Windows est
+  hors périmètre de ce lot, le contrôle joué est `node --check` sur chaque
+  fichier modifié. ⚠️ **Le commentaire qui affirmait qu'« aucune recette n'en
+  pose » a été corrigé** dans `client/src/adresse-plateforme.ts` : son `grep`
+  ne couvrait pas `docs/superpowers/`, où vivent TOUS les pilotes — patron du
+  « naufrage du 487 ».
+- ~~🔴 **LE CONTRAT DE `SIGNALING_URL` N'EST FIGÉ PAR AUCUN TEST.** La variable
   est **la BASE du service**, jamais l'URL du relais : `url_du_relais` y ajoute
   `/signal`, `url_du_canal` y ajoute `/agent`. **Y écrire `/signal` casserait
   l'enrôlement** (`ws://h:8080/signal/agent`) **sans qu'aucun test ne
   bronche** — le test `le_canal_agent_n_est_pas_affecte` d'`agent/src/
   signaling.rs` passe une base PROPRE, donc n'éprouve pas ce cas, alors que son
   commentaire prétendait le fermer. Le commentaire est corrigé ; **le test
-  manquant, lui, reste dû.**
+  manquant, lui, reste dû.**~~ **FERMÉ (lot `legs-sans-vm`)** : le test
+  `une_base_portant_deja_signal_casse_le_canal_agent` (`agent/src/
+  signaling.rs`) joue désormais ce cas et fige le contrat — vérifié VERT sur
+  le produit d'aujourd'hui, puis rougi par mutation ciblée d'`url_du_canal`,
+  restaurée depuis une copie nommée.
 
 ### Ce qu'aucun chantier n'a jamais mesuré
 
@@ -971,10 +1006,10 @@ par D11, et **toujours le quatrième**, inexpliqué.
 | **D** multi-fenêtres | l'A/B sur `set_desired_bitrate` (**écarté par décision**, condition de réouverture : charge d'hôte **contrôlée**, ≥ 8 paires) ; le maillon fautif du `Resize` **non identifié** ; **six constats de revue PERDUS** avec un rapport gitignoré ; aucune **cause naturelle** de mort de capture audio |
 | **E** microphone | 🔴 **personne n'a écouté** — le critère de fin n'est atteint que par un juge logiciel ; le son d'une **autre application** n'est pas annulé (−13 dB, donc **amplifié**) et rien ne le dit à l'utilisateur ; le rééchantillonnage 48 → 44,1 kHz du câble, **remède inapplicable** ; deux replis livrés et **jamais courus** ; la licence VB-Audio est **personnelle seulement** |
 | **③** pont fichiers | 🔴 **~33 Kio/s**, et **aucun fichier de plus de 128 Kio n'est lisible** ; 🔴 **aucun listage de plus de ~3 150 entrées n'aboutit** (taille d'un message SCTP) ; 🔴 **l'idiome « temporaire + renommage » n'a jamais été exercé sur un éditeur réel** — *le seul chemin par lequel une sauvegarde peut se perdre en silence* ; un renommage fait **disparaître un répertoire frère** ; aucune éviction, le disque grossit |
-| **④** gestion d'apps | 🔴 **un `<img src>` ne porte pas d'`Authorization`** — le hub n'est **pas installable**, faute d'icône, et ses `file_handlers` sont donc inertes ; 71 applications restent `NonMesuree` ; une icône qui change **sans que le raccourci change** n'est jamais revue ; le magasin n'est **jamais nettoyé** |
-| **⑤** plateforme | 🔴 **la scalabilité horizontale est IMPOSSIBLE** — **quatre** états de routage vivent en mémoire, et `--scale plateforme=2` donne une panne **muette** que rien n'empêche ; 🔴 **TURNS sur 443 n'est pas livré**, donc **la cible « réseaux restrictifs » n'est pas couverte** ; `GET /vm` et `POST /session` ne sont **pas freinées** ; le relais de signaling — `/signal` depuis le chantier `auth-pomerium` (il vivait à la racine `/` avant) — non plus ; le jeton vit dans `localStorage` (**aucun cookie livré**) ; le secret d'enrôlement est **en clair sur la VM** (rotation possible, retrait non) |
-| **⑥** design system | le **WCO** n'a jamais été rendu ; `--accent-fenetre` **n'est déclaré nulle part et peint par rien** ; `client/src/design/tokens.css` est à **300/300, marge nulle**, avec **onze** lecteurs qui le nomment par son chemin ; les galeries n'ont **aucun test** |
-| **①** divers | le **propriétaire mono-fenêtre n'existe pas** (ni presse-papier, ni accent) ; le canal `Message` du registre est **non borné**, et trois sous-blocs l'ont aggravé ; le **niveau 2** du presse-papier (qu'un humain puisse coller) reste **non mesurable** |
+| **④** gestion d'apps | 🔴 **un `<img src>` ne porte pas d'`Authorization`** — le hub n'est **pas installable**, faute d'icône, et ses `file_handlers` sont donc inertes ; 71 applications restent `NonMesuree` ; une icône qui change **sans que le raccourci change** n'est jamais revue ; ~~le magasin n'est **jamais nettoyé**~~ **FERMÉ (lot `legs-sans-vm`)** : `apps/nettoyage.ts` câble une éviction par âge sur les deux magasins (icônes, tranches), avec un plancher de référence contre la corruption, câblée sur la base réelle au démarrage du service — voir le document de résultats du lot pour les legs qu'elle laisse (course stat→rm, fenêtre d'obsolescence de l'instantané d'icônes) |
+| **⑤** plateforme | 🔴 **la scalabilité horizontale est IMPOSSIBLE** — **quatre** états de routage vivent en mémoire, et `--scale plateforme=2` donne une panne **muette** que rien n'empêche ; 🔴 **TURNS sur 443 n'est pas livré**, donc **la cible « réseaux restrictifs » n'est pas couverte** ; ~~`GET /vm` et `POST /session` ne sont **pas freinées** ; le relais de signaling — `/signal` depuis le chantier `auth-pomerium` (il vivait à la racine `/` avant) — non plus~~ **FERMÉ (lot `legs-sans-vm`)** : un budget de VOLUME (`securite/frein.ts::BUDGET_REQUETES`), distinct du budget d'échecs, protège désormais `GET /vm`, `POST /session` et la connexion `/signal` ; le jeton vit dans `localStorage` (**aucun cookie livré**) ; le secret d'enrôlement est **en clair sur la VM** (rotation possible, retrait non) |
+| **⑥** design system | le **WCO** n'a jamais été rendu — **écarté du lot `legs-sans-vm` par décision : inatteignable tant que le hub n'est pas installable**, une décision de sécurité qui appartient au propriétaire ; ~~`--accent-fenetre` **n'est déclaré nulle part et peint par rien**~~ **FERMÉ (lot `legs-sans-vm`)** : déclaré dans `tokens/couleurs.css`, peint sur `#remote` par `style.css`, et le garde des orphelins (§7.6) reconnaît désormais `poserToken(...)` en plus d'un `var(--…)` CSS ; `client/src/design/tokens.css` **n'est plus à sa porte** — scindé en `tokens/couleurs.css` et `tokens/echelles.css` le 25 août 2026, chacun avec sa propre porte armée et son découpage suivant nommé (voir leur en-tête). 🔴 **AUCUNE TAILLE N'EST RECOPIÉE ICI, ET C'EST DÉLIBÉRÉ** : la première rédaction de cette ligne portait trois nombres, et le round qui les a écrits les a rendus faux **dans le même round** — 45/191/149 annoncés, 64/201/167 mesurés. `wc -l` sur les trois fichiers — avec **treize** lecteurs qui le nommaient par son chemin AVANT ce découpage (« onze » et « 33 » étaient tous deux vrais de choses différentes, faute de règle énoncée ; chaque lecteur explique désormais son choix dans son propre en-tête) ; ~~les galeries n'ont **aucun test**~~ **FERMÉ (lot `legs-sans-vm`)** : `galerie.test.ts` et `galerie-primitives.test.ts` figent la LISTE des cas (tokens, primitives balisées) — **aucun jugement visuel**, ce que ces deux fichiers disent eux-mêmes ne pas établir |
+| **①** divers | le **propriétaire mono-fenêtre n'existe pas** (ni presse-papier, ni accent) ; ~~le canal `Message` du registre est **non borné**, et trois sous-blocs l'ont aggravé~~ **FERMÉ (lot `legs-sans-vm`)** : une file bornée par coalescence par variante (`capteur/sommeil/file.rs`), branchée sur les cinq points d'appel de production, avec trace au palier ; ce lot n'a rien exercé en charge réelle — voir le document de résultats ; le **niveau 2** du presse-papier (qu'un humain puisse coller) reste **non mesurable** |
 
 ---
 

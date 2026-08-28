@@ -1,5 +1,23 @@
 // Câblage de la page-shell : WebSocket du signaling d'un côté, DOM de
 // l'autre. Aucune règle ici — elles sont dans `shell.ts`, qui est testé.
+//
+// 🔴 **CE FICHIER LUI-MÊME N'EST TESTÉ PAR RIEN, ET C'EST UN LEGS DÉCLARÉ,
+// PAS UN CHOIX DE CONCEPTION** (requalifié à la revue, round de correction
+// 2, 25 août 2026 — une réserve antérieure disait « choix assumé », ce qui
+// était faux : ce dépôt a une convention pour rendre CE GENRE de câblage
+// éprouvable, et elle n'est pas appliquée ici). Mesuré : retirer la branche
+// `type === 'error'` ET l'écouteur `close` ci-dessous laisse `client/`
+// entièrement vert (555/555) et `tsc --noEmit` propre — rien ne garde ce
+// câblage. Le précédent existe : `accent-dom.ts` et `presse-papier-dom.ts`
+// extraient leur câblage DOM/WebSocket dans un module à dépendances
+// INJECTÉES (`ecrire`, `focalise`, `cible`, `emettre`…) plutôt que de
+// toucher `document`/`window`/`WebSocket` directement — « injecté plutôt que
+// pris de la session : c'est ce qui rend ce fichier éprouvable »
+// (`presse-papier-dom.ts`). `shell-page.ts` ne suit pas ce patron : il
+// construit son `WebSocket` en dur (`new WebSocket(signalingUrl)`,
+// ci-dessous) et lit le DOM par des identifiants littéraux. Le porter au même
+// patron est un chantier à part, non fait ici — il fallait le NOMMER plutôt
+// que le confondre avec une décision.
 
 import { creerBureau, type Ton } from './shell';
 import { installerSelecteurDeThemeAuDOM } from './design/selecteur-theme';
@@ -422,12 +440,42 @@ async function lancerLApplicationDemandee(): Promise<void> {
 }
 
 socket.addEventListener('message', (evenement) => {
+    // ⚠️ `JSON.parse` REND `any`, ET C'EST DÉCLARÉ ICI PLUTÔT QUE TU (revue,
+    // round de correction 2) : `message.reason`/`message.motif`/
+    // `message.retryApresS`, lus quelques lignes plus bas pour `type:'error'`,
+    // ne sont appariés au vocabulaire que `signaling/relais.ts` émet
+    // réellement (`retryApresS`, pas `retry_apres_s` — voir la convention
+    // camelCase du fil, distincte du snake_case des journaux) NI PAR UN TYPE
+    // PARTAGÉ NI PAR AUCUN TEST. Un renommage de champ côté serveur laisserait
+    // ce fichier compiler et tourner, silencieusement muet sur le nouveau
+    // nom — la même classe de risque que documente `webrtc.ts`
+    // (`SignalingMessage`, un type discriminé PROPRE À ce fichier, jamais
+    // partagé non plus). Non corrigé ici : un type partagé impliquerait de le
+    // faire vivre dans `proto/`, épinglé des deux côtés, ce qui dépasse la
+    // portée d'un round de correction.
     const message = JSON.parse(evenement.data);
     if (message.type === 'fenetre-ouverte') bureau.fenetreOuverte(message.session, message.titre);
     else if (message.type === 'fenetre-fermee') bureau.fenetreFermee(message.session);
     else if (message.type === 'refus') bureau.refus(message.titre, message.motif);
+    // 🔴 CORRECTIF DU LEGS DES FREINS MANQUANTS (round de correction 1,
+    // critique ④) — AUCUNE BRANCHE NE RECONNAISSAIT `type:'error'` AVANT CE
+    // LOT, alors que `signaling/relais.ts` peut désormais le rendre AVANT
+    // même de fermer le socket (refus de volume `trop-de-requetes`, voir son
+    // `retryApresS`). Sans cette branche, la page restait affichée « bureau
+    // connecté » et mourait en silence à la fermeture qui suit.
+    else if (message.type === 'error') {
+        bureau.canalDeControleRefuse(message.reason, message.motif, message.retryApresS);
+    }
     redessiner();
 });
+
+// 🔴 CORRECTIF DU LEGS DES FREINS MANQUANTS (round de correction 1,
+// critique ④) — CE SOCKET N'INSTALLAIT NI `close` NI `error` AVANT CE LOT.
+// Une perte de connexion (frein, redémarrage du service, coupure réseau)
+// laissait le bandeau à « bureau connecté » indéfiniment : c'est exactement
+// la panne muette que ce dépôt combat (`CLAUDE.md`), et c'est ce lot lui-même
+// qui l'ouvre en freinant `/signal`.
+socket.addEventListener('close', () => bureau.canalDeControlePerdu());
 
 // Les pages d'application annoncent leur viewport par `postMessage` sur leur
 // ouvreuse — c'est-à-dire ici.

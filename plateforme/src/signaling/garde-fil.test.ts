@@ -11,13 +11,18 @@
 // L'horloge du service de test est INJECTÉE : le critère ② exige qu'elle
 // avance entre deux poignées de main, et `demarrerServeur` ne prend pas
 // d'horloge. Ce fichier construit donc sa garde lui-même et appelle
-// `createSignalingServer(port, garde)` — choix d'implémentation assumé, la
-// forme `port` étant celle qu'éprouve `server.test.ts` depuis le jalon 1.
+// `createSignalingServer(port, garde, frein, proxyDeConfiance)` — 🔴 QUATRE
+// ARGUMENTS DÉSORMAIS, PAS DEUX : `frein` et `proxyDeConfiance` l'ont
+// rejointe au sous-bloc P5 puis au round de correction 1 (budget « toute
+// requête »), et cette ligne disait encore « (port, garde) » alors que
+// l'appel plus bas en prend quatre — choix d'implémentation assumé, la forme
+// `port` étant celle qu'éprouve `server.test.ts` depuis le jalon 1.
 
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { WebSocket } from 'ws';
 import { garde as fabriquerGarde, type Garde } from '../identite/garde';
 import { signer, DUREE_JETON_ACCES_MS } from '../identite/jeton';
+import { Frein } from '../securite/frein';
 import { ProprieteDeSession } from './propriete';
 import { createSignalingServer } from './relais';
 import { poserTurnAmbiant } from './turn-harnais';
@@ -58,7 +63,12 @@ function demarrer(): number {
     maintenant = T0;
     proprietes = new ProprieteDeSession();
     garde = fabriquerGarde(SECRET, () => maintenant, proprietes);
-    serveur = createSignalingServer(0, garde);
+    // Un frein NEUF par appel, comme `garde` et `proprietes` juste au-dessus :
+    // ce fichier fait plusieurs poignées de main par test, très en dessous du
+    // budget « toute requête » (`securite/frein.ts::BUDGET_REQUETES`), mais
+    // un frein partagé entre tests ferait dériver un compte d'un test à
+    // l'autre.
+    serveur = createSignalingServer(0, garde, new Frein(), new Set());
     return serveur.port;
 }
 

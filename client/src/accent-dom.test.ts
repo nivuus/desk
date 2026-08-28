@@ -7,12 +7,13 @@
  *
  * 🔴 **Aucune couleur en littéral** — voir l'en-tête d'`accent.test.ts` : §7.2
  * balaie les `.ts` de `client/src/`, et son exclusion ne couvre que le socle.
- * Tout est LU dans `tokens.css`.
+ * Tout est LU dans `tokens/couleurs.css` (`tokens.css` avant l'extraction de
+ * la tâche 6, 25 août 2026).
  */
 
 import { describe, expect, it } from 'vitest';
 import { lireBlocsDeTheme } from './design/tokens';
-import tokensCss from './design/tokens.css?raw';
+import tokensCss from './design/tokens/couleurs.css?raw';
 import { attacherAccentAuDOM, TOKEN_ACCENT, type AccesTokens } from './accent-dom';
 
 const blocs = lireBlocsDeTheme(tokensCss);

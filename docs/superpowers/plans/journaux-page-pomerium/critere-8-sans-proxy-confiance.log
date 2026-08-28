@@ -1,0 +1,16 @@
+
+> @guacamole/plateforme@0.1.0 start
+> tsx src/index.ts
+
+/home/mallanic/Projects/Guacamole/plateforme/src/config.ts:303
+        throw new Error(
+              ^
+
+Error: PLATEFORME_PROXY_DE_CONFIANCE est obligatoire en mode pomerium : l'identité arrive dans un en-tête en clair qu'aucune signature ne vérifie, et sans la liste des adresses autorisées à le poser, quiconque atteint le port obtient un jeton pour l'identité de son choix. Poser l'adresse du proxy, ou PLATEFORME_AUTH=motdepasse.
+    at lireConfig (/home/mallanic/Projects/Guacamole/plateforme/src/config.ts:303:15)
+    at <anonymous> (/home/mallanic/Projects/Guacamole/plateforme/src/index.ts:18:16)
+    at ModuleJob.run (node:internal/modules/esm/module_job:377:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:689:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+
+Node.js v24.9.0

@@ -58,11 +58,25 @@ function tokensDuCorps(corps: string): Map<string, string> {
 }
 
 /**
- * Découpe le texte de `tokens.css` en ses trois blocs de thème, en ordre de
- * document. Le bloc `racine` est celui SANS condition — c'est lui qui porte la
- * palette sombre, les tokens hors thème et les échelles (spec §4.2, §4.4).
+ * Découpe le texte en UN BLOC PAR OCCURRENCE PHYSIQUE de `:root[…]{…}`, SANS
+ * FUSION — le compte qu'elle rend est donc CAPABLE de dépasser trois, et
+ * c'est précisément pourquoi elle existe séparément de `lireBlocsDeTheme`
+ * ci-dessous.
+ *
+ * 🔴 CORRECTIF DE LA REVUE DE LA TÂCHE 6 (25 août 2026, round 1) : la fusion
+ * de `lireBlocsDeTheme` avait été ajoutée à l'intérieur de la seule boucle de
+ * découpage, sans qu'aucun compte PRÉ-fusion ne reste accessible. Résultat
+ * mesuré : un `:root { --e-4: 999rem; }` ajouté en trop dans
+ * `tokens/echelles.css` (une régression réelle, tout `--e-4` passant de 1rem
+ * à 999rem) se fondait dans le bloc `racine` existant SANS FAIRE VARIER LE
+ * COMPTE DE BLOCS LOGIQUES, qui reste borné à 3 par construction — le seul
+ * garde capable de le voir (`expect(blocs).toHaveLength(3)`, sur le compte
+ * fusionné) ne POUVAIT PLUS rougir. Cette fonction restaure un compte que la
+ * fusion ne peut pas masquer : voir `tokensDeclares`… non, voir le test
+ * dédié dans `tokens.test.ts`, qui l'exerce sur le VRAI contenu concaténé et
+ * rejoue la régression exacte ci-dessus.
  */
-export function lireBlocsDeTheme(css: string): BlocDeTheme[] {
+export function lireBlocsBruts(css: string): BlocDeTheme[] {
     const propre = sansCommentaires(css);
 
     const plagesMedia: Array<[number, number]> = [];
@@ -87,6 +101,46 @@ export function lireBlocsDeTheme(css: string): BlocDeTheme[] {
         blocs.push({ nom, tokens: tokensDuCorps(corps), corps });
     }
     return blocs;
+}
+
+/**
+ * Découpe le texte de `tokens.css` en ses trois blocs LOGIQUES de thème, en
+ * ordre de document. Le bloc `racine` est celui SANS condition — c'est lui
+ * qui porte la palette sombre, les tokens hors thème et les échelles
+ * (spec §4.2, §4.4).
+ *
+ * 🔴 FUSIONNE LES OCCURRENCES DE MÊME NOM, DEPUIS L'EXTRACTION DE LA TÂCHE 6
+ * (25 août 2026) : `tokens/couleurs.css` et `tokens/echelles.css` déclarent
+ * chacun leur propre `:root {}` SANS CONDITION, et le texte qu'on passe ici
+ * est leur CONCATÉNATION — deux occurrences physiques du même bloc logique
+ * `racine`. Le navigateur les unit déjà par le cascade ; sans cette fusion,
+ * ce parseur rendrait DEUX blocs nommés `racine`, et tout appelant qui en
+ * cherche UN SEUL (`Array.find`, ou une `Map` clé par nom, qui ne garde que
+ * le DERNIER) perdrait silencieusement les tokens de l'autre — exactement le
+ * défaut que `tokens.test.ts` et `reprise.test.ts` existent pour ne jamais
+ * laisser passer. Avant l'extraction, un seul fichier ne pouvait produire
+ * qu'UNE occurrence par nom : cette fusion ne change donc RIEN à la lecture
+ * d'un texte qui n'en a qu'une — elle rend seulement le cas à deux correct.
+ *
+ * 🔴 RÉTROCOMPATIBLE SUR LES VALEURS, RÉGRESSIF SUR LE GARDE — et c'est pour
+ * cela que `lireBlocsBruts` existe : la fusion, en bornant le compte de
+ * blocs LOGIQUES à 3 par construction, retire au SEUL garde qui comparait ce
+ * compte (`tokens.test.ts`) la capacité de dénoncer un `:root` de trop. Tout
+ * appelant qui veut détecter une duplication doit comparer le compte de
+ * `lireBlocsBruts` (variable, capable de dépasser 3), jamais celui-ci.
+ */
+export function lireBlocsDeTheme(css: string): BlocDeTheme[] {
+    const fusionnes = new Map<string, BlocDeTheme>();
+    for (const bloc of lireBlocsBruts(css)) {
+        const existant = fusionnes.get(bloc.nom);
+        if (!existant) {
+            fusionnes.set(bloc.nom, bloc);
+            continue;
+        }
+        for (const [cle, valeur] of bloc.tokens) existant.tokens.set(cle, valeur);
+        existant.corps += `\n${bloc.corps}`;
+    }
+    return [...fusionnes.values()];
 }
 
 /**

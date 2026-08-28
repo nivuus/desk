@@ -47,6 +47,13 @@ mod presse_papier;
 // spécifique à Windows.
 mod plateforme;
 mod pont;
+// Racine nue, pas `pont/relance.rs` : le nom ne décrit rien du PONT
+// lui-même, seulement une politique de supervision (relance espacée, seuil
+// de stabilité) — voir l'en-tête du fichier pour l'application complète de
+// la convention de nommage. Extrait de `superviseur::boucle::
+// surveillance_pont` (round de correction 2) pour compiler et se tester sur
+// l'hôte : ce dernier vit derrière `superviseur::boucle::#![cfg(windows)]`.
+mod relance_pont;
 mod rebuild;
 mod signaling;
 // Pas de `#[cfg(windows)]` ici : c'est la part portable de `capture.rs`

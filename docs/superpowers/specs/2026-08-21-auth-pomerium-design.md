@@ -206,7 +206,7 @@ déplacement n'apporterait rien.
 
 ## 7. Pomerium
 
-> 🔴 **ANNOTATION DU 21 AOÛT 2026 (revue transverse de fin de branche) — CE §
+> ~~🔴 **ANNOTATION DU 21 AOÛT 2026 (revue transverse de fin de branche) — CE §
 > LAISSE UN DÉFAUT DE CONCEPTION OUVERT, ET IL A ÉTÉ APPLIQUÉ TEL QUEL.**
 > La route nue du § 7.2, commentée « **La page et l'API** », pointe
 > `http://192.168.3.1:8080`, c'est-à-dire la **plateforme** — qui **ne sert
@@ -224,10 +224,29 @@ déplacement n'apporterait rien.
 > `listen 80` est un `return 301` vers HTTPS — boucle de redirection depuis un
 > Pomerium qui a déjà terminé TLS — et dont le `listen 443` exige
 > `deploiement/tls/`, gitignoré et absent), ou doter la plateforme d'un servant
-> de fichiers statiques. Legs inscrit à `CLAUDE.md`, § « Legs ouverts ».
+> de fichiers statiques. Legs inscrit à `CLAUDE.md`, § « Legs ouverts ».~~
 >
-> ⚠️ **Le reste de ce § tient**, et notamment l'ordre des routes, qui est juste :
-> l'annotation ne porte que sur la CIBLE de la route nue.
+> ✅ **ANNOTATION LEVÉE LE 22 AOÛT 2026.** Des deux voies laissées ouvertes
+> ci-dessus, c'est la seconde qui a été prise : **la plateforme est dotée d'un
+> servant de fichiers statiques** (`plateforme/src/http/page/`), armé par la
+> variable `PLATEFORME_PAGE` (facultative, aucun défaut — voir `CLAUDE.md`,
+> tableau des variables serveur). La route nue du § 7.2, inchangée, vise
+> toujours `http://192.168.3.1:8080` — c'est-à-dire la plateforme — mais ce
+> backend **répond désormais** : `GET /` y rend la page bâtie quand
+> `PLATEFORME_PAGE` pointe vers `client/dist`, et le `404 introuvable` d'hier
+> sinon (absente ou vide, à l'octet près — voir `plateforme/src/config.ts`).
+> **Le premier des deux blocages du critère ⑦ est donc LEVÉ.**
+>
+> 🔴 **LE SECOND BLOCAGE, LUI, DEMEURE, ET LE DIRE EXPLICITEMENT ÉVITE UN
+> RACCOURCI FAUX** : le flux OAuth Google exige un humain, qu'aucun Chrome
+> sans interface ne peut fournir. **Le critère ⑦ reste NON JOUÉ** — écrire
+> « critère ⑦ levé » serait faux, et c'est précisément la confusion que cette
+> note existe pour empêcher. Voir `CLAUDE.md`, § « Ce que le chantier
+> `auth-pomerium` laisse dû ».
+>
+> ⚠️ **Le reste de ce § tenait déjà**, et notamment l'ordre des routes, qui
+> reste juste : ce qui a changé est la CAPACITÉ du backend visé par la route
+> nue à répondre, pas la route elle-même.
 
 **Le nom d'hôte est `app.allanic.me`**, dont la route existe déjà et pointe un
 backend mort (§ 1). Ce qui change : la cible, et deux routes ajoutées.
@@ -320,6 +339,37 @@ du fichier » était bonne ; c'est la lecture du précédent qui était fausse.
 vers `authenticate.allanic.me`, tandis que `GET /signal` et `GET /agent`
 rendent **404 depuis le backend**. C'est le **404 — et non un 302 —** qui
 prouve que Pomerium les laisse passer.
+
+> 🔴 **CE DIAGNOSTIC NE VAUT PLUS QUAND `PLATEFORME_PAGE` EST ARMÉE — c'est-à-dire
+> dans le montage Pomerium lui-même, le SEUL qui pose cette variable** (relevé
+> le 22 août 2026, revue finale du lot « page derrière Pomerium »).
+> `/signal` et `/agent` sont des points **WebSocket**, hors de la chaîne HTTP :
+> une requête HTTP simple sur ces chemins ne les atteint pas et redescend dans
+> la chaîne, où le **servant de page**, chaîné en dernier, replie tout chemin
+> **sans extension** sur `index.html`. Ils rendent donc **`200 text/html`**, et
+> non plus `404` — la page, pas une preuve. **Leur comportement WebSocket est
+> INCHANGÉ** : rien n'a été modifié sur ces deux chemins, et le routage de la
+> montée (`serveur.ts`, `http.on('upgrade')`) court avant toute chaîne HTTP.
+>
+> **PAR QUOI LE REMPLACER — un diagnostic qui distingue les mêmes deux choses.**
+> Ce que la mesure d'origine voulait établir est « Pomerium ne s'interpose pas
+> sur ces chemins » : ce qui la portait n'était pas la valeur `404` mais le fait
+> que **la réponse vienne du backend et non du proxy**. Deux formes, au choix :
+> - **la montée elle-même**, qui est le geste réel :
+>   `websocat -H='Origin: https://app.allanic.me' wss://app.allanic.me/signal`
+>   — une montée acceptée prouve la traversée ; un `302`, ou une redirection
+>   vers `authenticate.allanic.me`, prouve l'inverse. C'est la seule forme qui
+>   éprouve le chemin qu'un pair emprunte vraiment ;
+> - **à défaut**, `curl -sI https://app.allanic.me/signal` et **lire le
+>   `content-type`** plutôt que le statut : `text/plain` (le 404 du service, ou
+>   celui de la montée refusée) contre `text/html` (la page) contre un `302`
+>   vers l'authentification (Pomerium s'interpose). ⚠️ **Un `200` ne prouve
+>   plus rien à lui seul** — il est rendu par la page.
+>
+> ⚠️ **Le `404` de `/auth/moi` et de `/auth/connexion`, lui, TIENT TOUJOURS**
+> (critère ③ du § 8) : les deux gardes de mode le rendent **elles-mêmes** depuis
+> le 22 août 2026, précisément pour ne pas dépendre d'un 404 générique que le
+> repli SPA avale. Voir `plateforme/src/http/introuvable.ts`.
 
 🔴 **`allow_public_unauthenticated_access` SUR LES DEUX WEBSOCKETS N'OUVRE
 RIEN**, et c'est le point le plus facile à mal lire de tout ce document. Ces

@@ -1,0 +1,11 @@
+$ curl -s localhost:8080/ | diff - client/dist/index.html ; echo "diff exit=$?"
+diff exit=0
+
+$ wc -c /tmp/curl-index-body.html client/dist/index.html
+ 5388 /tmp/curl-index-body.html
+ 5388 client/dist/index.html
+10776 total
+
+$ md5sum /tmp/curl-index-body.html client/dist/index.html
+b00cf1f63752bf80b487f711445b3907  /tmp/curl-index-body.html
+b00cf1f63752bf80b487f711445b3907  client/dist/index.html

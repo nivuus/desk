@@ -2,8 +2,11 @@
 // Contrôle §7.6 de la spec ⑥ — AUCUN TOKEN ORPHELIN, AUCUN `var()` NON DÉCLARÉ.
 //
 // TROIS assertions — deux inclusions dans les deux sens entre les tokens
-// DÉCLARÉS par `tokens.css` et les tokens EMPLOYÉS par les feuilles de
-// production, plus une sur la liste d'attente elle-même :
+// DÉCLARÉS par `tokens/couleurs.css` et `tokens/echelles.css` (`tokens.css`
+// avant l'extraction de la tâche 6, 25 août 2026 — ce contrôle a besoin des
+// DEUX, la liste d'orphelins portant aussi bien des couleurs que des
+// échelles) et les tokens EMPLOYÉS par les feuilles de production, plus une
+// sur la liste d'attente elle-même :
 //
 //   ① employé ⊆ déclaré — un `var(--fond-O)` (lettre O au lieu du zéro) est une
 //      faute de frappe que le navigateur avale en silence : la propriété prend
@@ -14,6 +17,17 @@
 //      la mitigation partielle du re-étiquetage, bâtie au sous-bloc S3, et que
 //      le plan de S2 déclarait impossible TROIS fois. Sa doctrine et son
 //      objection vivent auprès de la liste.
+//
+// 🔴 « EMPLOYÉ » A DEUX SOURCES DEPUIS LA TÂCHE 7 D'A1 (25 août 2026), PAS UNE
+// SEULE : un `var(--…)` dans du CSS (ci-dessous), ET un `poserToken(...)`
+// TypeScript hors tests (`tokens-orphelins/js.mjs`, avec sa doctrine et sa
+// règle de sélection). Sans la seconde, un token posé À L'EXÉCUTION et
+// référencé par AUCUN CSS — le cas exact d'`--accent-fenetre` — n'avait que
+// deux issues, TOUTES DEUX FAUSSES : NON DÉCLARÉ DU TOUT, et le token reste
+// invisible aux deux inclusions (le legs réel, choisi par `accent-dom.ts`
+// plutôt que l'autre) ; ou DÉCLARÉ SANS EMPLOYEUR CSS, et ② le signale
+// ORPHELIN — pour la MAUVAISE raison, puisque le JS l'emploie bel et bien.
+// Voir `accent-dom.ts` pour le legs que ce trou a forcé.
 //
 // Il ne porte AUCUNE règle de parsing : `tokensDeclares` et `tokensReferences`
 // vivent dans `client/src/design/tokens.ts`, qui est typechecké et testé.
@@ -54,13 +68,20 @@
 // effacé, trois blocs que le plan EXIGE. **Les raboter échangerait une vérité
 // contre un nombre**, ce que `CLAUDE.md` interdit nommément.
 //
-// 🔴 CE FICHIER NE FRANCHIT AUCUNE PORTE : 270 contre 300, marge 30. Mais la
-// marge n'est plus confortable, et la règle du dépôt s'applique — TOUTE
-// ADDITION SUBSTANTIELLE À CE FICHIER APPELLE UNE EXTRACTION, JAMAIS UNE
-// COMPRESSION. Le point de chute est nommé d'avance :
-// `client/outils/tokens-orphelins/attente.mjs`, qui emporterait
-// `EN_ATTENTE_D_APPELANT` **avec sa doctrine**, comme `serveur/instances.rs` a
-// emporté `TAMPON` avec le commentaire qui le justifie.
+// 🔴 « 270 contre 300 » (tâche 8 de S2) ÉTAIT DÉJÀ FAUX AVANT CETTE TÂCHE
+// (256 depuis la tâche 6 de S2/A1) ; la tâche 7 d'A1 (moitié « posé par le
+// JS », `tokens-orphelins/js.mjs`) le fait remonter encore. AUCUN NOMBRE
+// N'EST PLUS ÉCRIT ICI : `wc -l client/outils/tokens-orphelins.mjs`, RELANCÉ,
+// est la seule source de vérité.
+//
+// ⚠️ PORTE ARMÉE À 300 LIGNES (auto-imposée, comme ses deux voisins des
+// jetons) : à ce seuil, séparer LE RAPPORT — les `console.log` des trois
+// inclusions et du total — dans `tokens-orphelins/rapport.mjs` (paramètres :
+// `declares`, `employePar`, `orphelins`, `nonDeclares`,
+// `EN_ATTENTE_D_APPELANT`, `SOUS_BLOCS_CLOS`), en ne gardant ici que la
+// COLLECTE (CSS, surfaces, JS) et le CALCUL des écarts — le point de chute
+// de la tâche 8 de S2 (`attente.mjs`) est déjà atteint, celui-ci est le
+// SUIVANT. AVANT l'addition qui franchirait, jamais après.
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
@@ -69,9 +90,20 @@ import { tokensDeclares, tokensReferences } from '../src/design/tokens.ts';
 import configVite from '../vite.config.ts';
 import { EN_ATTENTE_D_APPELANT } from './tokens-orphelins/attente.mjs';
 import { SOUS_BLOCS_CLOS } from './tokens-orphelins/sous-blocs-clos.mjs';
+import { tokensPosesParLeJs } from './tokens-orphelins/js.mjs';
 
-/** La source unique : elle DÉCLARE, elle n'emploie pas. Hors du périmètre. */
-const SOURCE = 'client/src/design/tokens.css';
+/**
+ * 🔴 DEUX SOURCES DEPUIS L'EXTRACTION DE LA TÂCHE 6 (25 août 2026), PAS UNE :
+ * elles DÉCLARENT, elles n'emploient pas. Hors du périmètre — comme
+ * `tokens.css`, leur porte d'entrée commune, qui n'en déclare plus aucun
+ * lui-même (il ne fait plus qu'IMPORTER les deux) et rejoint donc l'exclusion
+ * pour la même raison, ci-dessous.
+ */
+const SOURCES = [
+    'client/src/design/tokens/couleurs.css',
+    'client/src/design/tokens/echelles.css',
+];
+const PORTE = 'client/src/design/tokens.css';
 
 /**
  * 🔴 LA SEULE EXCLUSION DU PÉRIMÈTRE « EMPLOYÉ ». Voir l'encadré ci-dessus.
@@ -124,13 +156,17 @@ function fichiersCss(repertoire, acc = []) {
     return acc;
 }
 
-const source = join(racine, SOURCE);
-if (!existsSync(source)) {
-    console.error(`${SOURCE} est absent : rien n'a été mesuré, ce n'est pas un succès.`);
-    process.exit(2);
+const sources = SOURCES.map((s) => join(racine, s));
+for (const [i, chemin] of sources.entries()) {
+    if (!existsSync(chemin)) {
+        console.error(`${SOURCES[i]} est absent : rien n'a été mesuré, ce n'est pas un succès.`);
+        process.exit(2);
+    }
 }
+const porte = join(racine, PORTE);
 
-// Le périmètre « employé » : toute feuille de `client/src/` sauf la source, et
+// Le périmètre « employé » : toute feuille de `client/src/` sauf les sources
+// (et leur porte d'entrée commune, `tokens.css`), et
 // toute surface HTML sauf celles d'`EXCLUS`. Les surfaces sont incluses parce
 // qu'un `<style>` en ligne emploie des tokens comme une feuille.
 //
@@ -144,7 +180,9 @@ if (!existsSync(source)) {
 // ⚠️ La liste est LUE depuis `vite.config.ts`, pas recopiée : c'est la même
 // raison qui interdit à ce script d'avoir sa propre copie des valeurs. Node
 // v24.9.0 importe le `.ts` nativement, comme pour `tokens.ts`.
-const feuilles = fichiersCss(join(racine, 'client/src')).filter((f) => f !== source);
+const feuilles = fichiersCss(join(racine, 'client/src')).filter(
+    (f) => !sources.includes(f) && f !== porte,
+);
 const surfaces = Object.values(configVite.build.rollupOptions.input).map((n) =>
     join(racine, 'client', n),
 );
@@ -161,15 +199,33 @@ for (const chemin of [...feuilles, ...surfaces]) {
     }
 }
 
-const declares = tokensDeclares(readFileSync(source, 'utf8'));
+// 🔴 LA SECONDE FAÇON D'« EMPLOYER » UN TOKEN — posé par le JS, jamais lu par
+// un `var()`. Voir `tokens-orphelins/js.mjs` pour la règle de sélection (et
+// pourquoi elle exclut les `*.test.ts`) et pour la raison d'être de ce bloc :
+// sans lui, un token DÉCLARÉ et posé par `poserToken(...)` mais référencé par
+// AUCUN CSS reste invisible aux deux inclusions ci-dessous — c'est
+// exactement l'angle mort qui a empêché `accent-dom.ts` de déclarer
+// `--accent-fenetre` (D-A1-2, sonde H1 du 21 août 2026).
+const posesJs = tokensPosesParLeJs(racine);
+for (const [token, fichiers] of posesJs) {
+    if (!employePar.has(token)) employePar.set(token, []);
+    for (const relatif of fichiers) employePar.get(token).push(`${relatif} (JS, poserToken)`);
+}
+
+const texteSource = sources.map((chemin) => readFileSync(chemin, 'utf8')).join('\n');
+const declares = tokensDeclares(texteSource);
 const orphelins = [...declares].filter((t) => !employePar.has(t)).sort();
 const nonDeclares = [...employePar.keys()].filter((t) => !declares.has(t)).sort();
 
-console.log(`source        : ${SOURCE} — ${declares.size} token(s) déclaré(s)`);
+console.log(`sources       : ${SOURCES.join(', ')} — ${declares.size} token(s) déclaré(s)`);
 console.log(
     `périmètre     : ${balayes.length} fichier(s) — ${employePar.size} token(s) employé(s)`,
 );
 console.log(`  balayés : ${balayes.join(', ')}`);
+console.log(
+    `posé par le JS : ${posesJs.size} token(s) (poserToken, hors *.test.ts) — ` +
+        `${[...posesJs.keys()].sort().join(', ') || 'aucun'}`,
+);
 for (const [chemin, raison] of EXCLUS) {
     console.log(`  ${sansExclusion ? 'INCLUS (--sans-exclusion)' : 'exclu'} : ${chemin} — ${raison}`);
 }

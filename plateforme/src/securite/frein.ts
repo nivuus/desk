@@ -133,6 +133,106 @@ export function cleVm(vmId: string): string {
     return `agent:${vmId}`;
 }
 
+/// 🔴 LE BUDGET « TOUTE REQUÊTE », PARTAGÉ PAR `GET /vm`, `POST /session` ET
+/// LE RELAIS `/signal` (`http/routes-vm.ts`, `http/routes-session.ts`,
+/// `signaling/relais.ts`) — comme `BUDGET_ADRESSE` l'est déjà entre
+/// `/auth/*` et `/agent`.
+///
+/// ⚠️ CE BUDGET N'A AUCUNE NOTION D'ÉCHEC, ET C'EST LE POINT : les trois
+/// surfaces qu'il couvre n'ont rien d'équivalent à un mot de passe faux —
+/// leur abus est un VOLUME de requêtes qui, individuellement, peuvent toutes
+/// RÉUSSIR. `Frein.echec` est réutilisée pour COMPTER, jamais pour signaler
+/// un échec : c'est la STRUCTURE — fenêtre ANCRÉE au premier échec d'une
+/// série (jamais glissante, voir l'en-tête du module), plafond d'entrées,
+/// éviction — qui est reprise ici, jamais la sémantique du nom de la
+/// méthode. Rien n'appelle `succes()` sur ce budget : une entrée ne se vide
+/// QUE par expiration de sa fenêtre, jamais par un geste de l'appelant — il
+/// n'existe ici aucun équivalent d'une connexion réussie qui blanchirait un
+/// compte, précisément parce qu'il n'y a pas de compte.
+///
+/// ⚠️ AUCUNE CLÉ DE « COMPTE » N'EXISTE POUR CE BUDGET, À LA DIFFÉRENCE DE
+/// `BUDGET_COMPTE` : `/signal` ne connaît son pair qu'APRÈS sa poignée de
+/// main, et une clé posée sur l'utilisateur authentifié de `/vm` ou
+/// `/session` laisserait un jeton volé consommer le budget de SA VICTIME
+/// plutôt que celui de l'attaquant qui l'emploie — seule l'ADRESSE est donc
+/// retenue.
+///
+/// 🔵 **PROPRIÉTÉ FAVORABLE, ÉTABLIE PAR LA REVUE (round de correction 1,
+/// 25 août 2026), ET PERSONNE NE L'AVAIT CHERCHÉE : L'ÉVICTION CROISÉE NE
+/// MORD PAS.** `Frein` tient TOUTES ses clés dans UNE seule `Map`
+/// (`entrees`), avec un plafond COMMUN (`ENTREES_MAX`) et une purge qui
+/// retire d'abord les entrées EXPIRÉES avant d'évincer la plus proche de
+/// l'expiration (`faireDeLaPlace`). Parce que `FENETRE_REQUETES_MS` (une
+/// minute) est **STRICTEMENT PLUS COURTE** que `FENETRE_MS` (quinze
+/// minutes) — un rapport EXACT de 15 —, une clé `req:` expire et se purge
+/// TOUJOURS avant qu'une clé `compte:`/`adr:` de même âge n'ait ne serait-ce
+/// qu'atteint UN QUINZIÈME de sa propre fenêtre. Sous saturation, la purge
+/// réclame donc très
+/// préférentiellement les entrées `req:` — celles qu'un simple VOLUME de
+/// trafic fait naître en masse — et épargne les entrées `compte:`/`adr:`,
+/// qui portent la mémoire d'un COMPTE ou d'une ADRESSE ciblés par une
+/// attaque en cours. **CE QUE CELA FERME** : sans cette propriété, un
+/// attaquant pourrait inonder `/vm` d'adresses jetables pour saturer la
+/// table et faire évincer l'entrée `adr:`/`compte:` de SA PROPRE cible,
+/// lui rendant tout son budget d'échecs — exactement le coût que
+/// `ENTREES_MAX` documente déjà (« un attaquant peut faire évincer l'entrée
+/// d'un compte qu'il vise pour lui rendre son budget »), ici fermé par un
+/// heureux accident d'ordre de grandeur entre les deux fenêtres.
+///
+/// 🔴 **CETTE PROPRIÉTÉ N'EST PAS GARANTIE PAR LE CODE — ELLE TIENT PARCE
+/// QUE `FENETRE_REQUETES_MS < FENETRE_MS`, ET RIEN NE LE VÉRIFIE AILLEURS
+/// QUE DANS `frein.test.ts`.** Un futur réglage de `FENETRE_REQUETES_MS`
+/// (calibration, ou un besoin de fenêtre plus longue) qui l'élèverait
+/// au-delà de `FENETRE_MS` casserait cette propriété SANS AUCUN AUTRE
+/// SIGNAL : le test `(l) FENETRE_REQUETES_MS reste PLUS COURTE que
+/// FENETRE_MS` est le seul garde-fou. Le lire avant de toucher l'une ou
+/// l'autre constante.
+///
+/// ⚠️ NON CALIBRÉ, comme les quatre constantes de `Frein` ci-dessus. La
+/// fenêtre est plus COURTE que `FENETRE_MS` (une minute contre quinze) parce
+/// qu'il s'agit de brider un DÉBIT, pas de verrouiller un compte le temps
+/// qu'un humain réagisse — et voir la propriété favorable ci-dessus pour la
+/// SECONDE raison, découverte après coup, de ne jamais l'allonger sans y
+/// repenser.
+///
+/// 🔴 **`REQUETES_MAX_ADRESSE` RECONSIDÉRÉ (round de correction 1, critique
+/// ⑥) — 60 ÉTAIT TROP MINCE, ET LE CALCUL QUI LE MONTRE :** une session
+/// avec toutes ses fenêtres ouvre, côté AGENT (une seule adresse — celle de
+/// la VM), 1 connexion `/signal` pour la session de contrôle (`bureau`) + 1
+/// pour le pont fichiers + jusqu'à `CAPACITE` = 10 pour les fenêtres
+/// (`agent/src/superviseur/boucle.rs::CAPACITE`) = **12** connexions
+/// `/signal`, PLUS 2 requêtes HTTP qui partagent le MÊME seau (`GET /vm`,
+/// `POST /session`) = **14** « coups » pour ouvrir une seule session
+/// tout-fenêtres. Une coupure réseau fait reconnecter tout ce monde en
+/// rafale rapprochée (chaque processus a son propre repli, mais tous
+/// démarrent au même délai minimal, ~500 ms) : même ordre de grandeur en une
+/// seule rafale. Et CÔTÉ CLIENT, plusieurs utilisateurs derrière un même NAT
+/// d'entreprise PARTAGENT LA CLÉ — chacun pouvant ouvrir sa propre session
+/// tout-fenêtres — même raison, au même facteur qu'entre `ECHECS_MAX_COMPTE`
+/// et `ECHECS_MAX_ADRESSE` (un ordre de grandeur), qui existe déjà
+/// précisément pour ce cas. `120` = environ 8-9 rafales de 14, ou l'équivalent
+/// de plusieurs utilisateurs simultanés derrière un même NAT ouvrant chacun
+/// leur session — **RAISONNÉ, TOUJOURS PAS MESURÉ.**
+export const FENETRE_REQUETES_MS = 60_000;
+export const REQUETES_MAX_ADRESSE = 120;
+export const BUDGET_REQUETES: Budget = {
+    max: REQUETES_MAX_ADRESSE,
+    fenetreMs: FENETRE_REQUETES_MS,
+};
+
+/// 🔴 PRÉFIXE DISJOINT DE `compte:`, `adr:` ET `agent:` — POUR LA MÊME
+/// RAISON QU'EUX. Sans lui, l'adresse `203.0.113.7` sur ce budget
+/// partagerait sa clé avec la MÊME adresse sur `BUDGET_ADRESSE`
+/// (`cleAdresse`), et un attaquant pourrait épuiser l'un des deux budgets
+/// pour vider l'autre — le test exact que ce lot ajoute à `frein.test.ts`.
+/// ⚠️ **CE PRÉFIXE EST AUSSI CE QUI PORTE LA PROPRIÉTÉ FAVORABLE
+/// CI-DESSUS** : sans lui, il n'y aurait qu'UNE seule entrée par adresse,
+/// dont la fenêtre serait celle du DERNIER budget consulté — la distinction
+/// entre « expire vite » et « expire lentement » disparaîtrait avec lui.
+export function cleRequetes(adresse: string): string {
+    return `req:${adresse}`;
+}
+
 interface Entree {
     compte: number;
     /// L'instant du PREMIER échec de la série — voir l'en-tête : c'est lui qui

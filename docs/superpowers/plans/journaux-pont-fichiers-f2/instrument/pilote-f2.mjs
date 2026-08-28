@@ -25,6 +25,12 @@ const SORTIE = process.argv[3] ?? '/tmp/f2/pilote-f2.json';
 const PLATEFORME_URL = process.env.PLATEFORME_URL ?? 'http://127.0.0.1:8080';
 const CLIENT_URL = process.env.CLIENT_URL ?? 'http://127.0.0.1:5173';
 const SIGNALING = process.env.SIGNALING_WS ?? 'ws://192.168.3.1:8080';
+// 🔴 CHANTIER auth-pomerium : le relais a quitté `/` pour `/signal`.
+// `?signaling=` est EXPLICITE côté client
+// (client/src/adresse-plateforme.ts::adresseSignaling) et NE REÇOIT AUCUN
+// AJOUT — SIGNALING reste la BASE, c'est ce pilote qui fournit l'URL du
+// relais à la page.
+const SIGNALING_RELAIS = `${SIGNALING.replace(/\/+$/, '')}/signal`;
 const BASE_JEU = process.env.BASE_JEU ?? 'http://127.0.0.1:5399';
 const PREFIXE = process.env.PREFIXE_VM;
 const PORT_CDP = Number(process.env.PORT_CDP ?? 9440);
@@ -162,7 +168,7 @@ try {
     });
     resultat.console_page = console_page;
 
-    const url = `${CLIENT_URL}/shell.html?signaling=${encodeURIComponent(SIGNALING)}&prefixe=${encodeURIComponent(PREFIXE)}`;
+    const url = `${CLIENT_URL}/shell.html?signaling=${encodeURIComponent(SIGNALING_RELAIS)}&prefixe=${encodeURIComponent(PREFIXE)}`;
     dire(`navigation : ${url}`);
     await cdp.send('Page.navigate', { url }, sessionShell);
     await dodo(4000);

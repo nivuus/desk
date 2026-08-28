@@ -60,10 +60,17 @@ const duree = Number(argument('duree', '60000'));
 const releveMs = Number(argument('releve-ms', '30000'));
 const plateforme = process.env.PLATEFORME_URL ?? 'http://127.0.0.1:8091';
 const signaling = argument('signaling', plateforme.replace(/^http/, 'ws'));
+// 🔴 CHANTIER auth-pomerium : le relais a quitté `/` pour `/signal`.
+// `?signaling=` est EXPLICITE côté client
+// (client/src/adresse-plateforme.ts::adresseSignaling) et NE REÇOIT AUCUN
+// AJOUT — `signaling` ci-dessus reste la BASE (dérivée de `plateforme`,
+// mêmes conventions que `SIGNALING_URL` côté agent), c'est ce pilote qui
+// fournit l'URL du relais à la page.
+const signalingRelais = `${signaling.replace(/\/+$/, '')}/signal`;
 const url = argument(
     'url',
     `http://127.0.0.1:5173/?session=${encodeURIComponent(session)}` +
-        `&plateforme=${encodeURIComponent(plateforme)}&signaling=${encodeURIComponent(signaling)}`,
+        `&plateforme=${encodeURIComponent(plateforme)}&signaling=${encodeURIComponent(signalingRelais)}`,
 );
 const sortie = argument('sortie', '');
 const chromeBin = process.env.CHROME_BIN ?? 'google-chrome';

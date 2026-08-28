@@ -18,6 +18,7 @@ import { creerUtilisateur } from '../depot/utilisateur';
 import { ouvrirSession } from '../depot/session';
 import { signer } from '../identite/jeton';
 import { BACKEND_STATIQUE } from '../orchestration/refus';
+import { Frein, REQUETES_MAX_ADRESSE } from '../securite/frein';
 import { servirVm } from './routes-vm';
 
 const SECRET = 'un-secret-de-plateforme-de-quarante-octets';
@@ -37,7 +38,18 @@ afterEach(async () => {
 /// Monte un serveur qui ne porte QUE cette route, plus le 404 générique de
 /// `serveur.ts` reproduit mot pour mot : c'est ainsi qu'un `false` rendu par
 /// `servirVm` devient observable.
-async function servir(nom: string, origineClient?: string): Promise<string> {
+///
+/// ⚠️ `frein` EST UN PARAMÈTRE, PAS UNE VALEUR FIGÉE DANS LA FERMETURE : sans
+/// lui, chaque test recevrait le MÊME défaut par la même expression, ce qui
+/// serait sans conséquence ICI (chaque test appelle `servir` une fois), mais
+/// c'est la même construction que `routes-auth.test.ts` emploie pour ses
+/// propres tests de frein — la garder ici évite qu'un futur test de ce
+/// fichier n'ait à la réinventer.
+async function servir(
+    nom: string,
+    origineClient?: string,
+    frein: Frein = new Frein(),
+): Promise<string> {
     base = await baseNeuve(nom);
     const b = base;
     http = createServer((req, rep) => {
@@ -46,6 +58,8 @@ async function servir(nom: string, origineClient?: string): Promise<string> {
             secretJeton: SECRET,
             origineClient,
             maintenant: () => MS,
+            frein,
+            proxyDeConfiance: new Set<string>(),
         })
             .then((servie) => {
                 if (servie) return;
@@ -319,5 +333,22 @@ describe(`routes /vm, moteur=${MOTEUR}`, () => {
         const r = await fetch(`${url}/vm`, { method: 'POST', headers: avec(jetonDe(alice)) });
         expect(r.status).toBe(405);
         expect((await corpsDe(r)).refus).toBe('methode');
+    });
+
+    it('🔴 le budget « toute requête » freine `GET /vm` après trop de requêtes de la même adresse', async () => {
+        // 🔴 La rouge : ne jamais consulter `BUDGET_REQUETES`. Sans jeton,
+        // chaque requête rendrait 401 indéfiniment — `GET /vm` n'a aucune
+        // notion d'échec, et c'est exactement pourquoi ce budget existe
+        // (voir `securite/frein.ts`).
+        const url = await servir('rvm-frein-requetes');
+        let dernier: Response | undefined;
+        for (let i = 0; i < REQUETES_MAX_ADRESSE + 1; i++) {
+            dernier = await fetch(`${url}/vm`);
+        }
+        expect(dernier!.status).toBe(429);
+        expect((await corpsDe(dernier!)).refus).toBe('trop-de-requetes');
+        const retry = dernier!.headers.get('retry-after');
+        expect(retry).not.toBeNull();
+        expect(Number(retry)).toBeGreaterThan(0);
     });
 });

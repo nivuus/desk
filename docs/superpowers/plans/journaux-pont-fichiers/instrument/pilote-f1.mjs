@@ -24,6 +24,12 @@ const SORTIE = process.argv[3] ?? '/tmp/pilote-f1.json';
 const PLATEFORME_URL = process.env.PLATEFORME_URL ?? 'http://127.0.0.1:8080';
 const CLIENT_URL = process.env.CLIENT_URL ?? 'http://127.0.0.1:5173';
 const SIGNALING = process.env.SIGNALING_WS ?? 'ws://192.168.3.1:8080';
+// 🔴 CHANTIER auth-pomerium : le relais de signaling a quitté la racine `/`
+// pour `/signal`. `?signaling=` est EXPLICITE côté client
+// (client/src/adresse-plateforme.ts::adresseSignaling) et NE REÇOIT AUCUN
+// AJOUT — SIGNALING ci-dessus reste la BASE, c'est ce module qui doit fournir
+// l'URL du relais lui-même à la page.
+const SIGNALING_RELAIS = `${SIGNALING.replace(/\/+$/, '')}/signal`;
 const BASE_JEU = process.env.BASE_JEU ?? 'http://127.0.0.1:5399';
 const PREFIXE = process.env.PREFIXE_VM;
 const PORT_CDP = Number(process.env.PORT_CDP ?? 9411);
@@ -142,8 +148,10 @@ try {
 
     // La page-shell : 127.0.0.1 est un CONTEXTE SECURISE (OPFS et la FSA
     // l'exigent) ; `?signaling=` est explicite parce que le defaut viserait
-    // `ws://127.0.0.1:8080`, alors que l'agent parle a 192.168.3.1.
-    const url = `${CLIENT_URL}/shell.html?signaling=${encodeURIComponent(SIGNALING)}&prefixe=${encodeURIComponent(PREFIXE)}`;
+    // `ws://127.0.0.1:8080`, alors que l'agent parle a 192.168.3.1. Et
+    // explicite signifie explicite jusqu'au bout : SIGNALING_RELAIS, jamais
+    // SIGNALING seul, sous peine de viser la racine que auth-pomerium a fermée.
+    const url = `${CLIENT_URL}/shell.html?signaling=${encodeURIComponent(SIGNALING_RELAIS)}&prefixe=${encodeURIComponent(PREFIXE)}`;
     dire(`navigation : ${url}`);
     await cdp.send('Page.navigate', { url }, sessionShell);
     await dodo(4000);

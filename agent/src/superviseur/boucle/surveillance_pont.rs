@@ -1,7 +1,7 @@
 //! Lancement et surveillance du **pont fichiers**.
 //!
 //! Jumeau de `surveillance_capteur.rs`, dont il transpose les trois
-//! mécanismes — l'espacement minimal des relances, le signalement une fois par
+//! mécanismes — l'espacement DES relances, le signalement une fois par
 //! cycle, et la condition de durée du réarmement. **Une seule chose diffère,
 //! et c'est la seule décision de ce module : le démarrage n'est PAS fatal.**
 //!
@@ -13,27 +13,69 @@
 //! superviseur ; il ne virtualise rien. Ce fichier fait `use super::*`, et
 //! deux `pont` dans le même graphe de modules n'attendraient qu'un lecteur
 //! pressé pour se confondre.
+//!
+//! 🔴 **CORRECTIF DU LEGS DES FREINS MANQUANTS (round de correction 1,
+//! 25 août 2026), CRITIQUE ③.** L'espacement des relances était une
+//! constante FIXE (`PERIODE_RELANCE_PONT_MIN`, 500 ms) : un PLANCHER entre
+//! deux tentatives, jamais un PLAFOND. Chaîne MESURÉE : le pont ouvre
+//! `/signal` → le budget « toute requête » de la plateforme
+//! (`plateforme/src/securite/frein.ts::BUDGET_REQUETES`, 60/minute) est déjà
+//! épuisé pour l'adresse de cette VM → le relais refuse et ferme en `1008`
+//! → `agent/src/signaling.rs` voit son canal `offers` se fermer sans offre
+//! → `pont::executer` rend une `Err` → le PROCESSUS meurt → ce module le
+//! relance 500 ms plus tard → refusé de nouveau. **120 relances par minute
+//! contre un budget de 60, sur une clé PARTAGÉE avec la session de contrôle
+//! du superviseur ET chaque enfant de fenêtre** (même adresse source) :
+//! aucune fenêtre neuve ne peut plus s'attacher tant que ce pont s'obstine.
+//!
+//! **Le remède RÉUTILISE `plateforme::repli::delai_de_repli`** — celui qui
+//! protège déjà le canal `/agent` (`plateforme.rs`, boucle de reprise de
+//! `une_session`) — plutôt que d'en écrire un second. L'état PUR qui compte
+//! les tentatives et décide de la stabilité vit désormais dans
+//! [`crate::relance_pont::EtatRelance`] (round de correction 2, voir sa doc
+//! pour la raison de l'extraction et la convention de nommage appliquée) :
+//! un pont qui meurt en boucle finit donc par ne plus revenir qu'à
+//! 2 tentatives/minute — largement sous le budget partagé — plutôt qu'à 120.
+//!
+//! 🔴 **LES DEUX MOITIÉS DE CE REMÈDE NE S'ADDITIONNENT PAS — ET NE SE
+//! SUBSTITUENT PAS NON PLUS AU SENS OÙ L'UNE REMPLACERAIT L'AUTRE : ELLES SE
+//! COMPOSENT PAR UN MAXIMUM**, et une formulation antérieure de ce
+//! paragraphe (round 2) affirmait à tort que le repli exponentiel d'ici
+//! restait « la SEULE chose » à borner la cadence — corrigé à son tour,
+//! pour ne pas remplacer une formulation trop optimiste par une autre.
+//!
+//! `agent::signaling::honorer_retry_suggere` (round 1, critique ②) fait
+//! dormir le pont refusé jusqu'au délai que le relais a suggéré (borné à
+//! `REPLI_MAX_MS`, 30 s) ; le pont ne meurt qu'APRÈS ce sommeil. Le prochain
+//! `tenter()` compare alors le temps RÉELLEMENT écoulé depuis le dernier
+//! lancement — qui inclut ce sommeil — à `EtatRelance::espacement_ms()`
+//! (`delai_de_repli(tentative)`), et ne relance QUE si le premier dépasse le
+//! second : **le délai effectif entre deux lancements est donc le PLUS
+//! GRAND des deux**, jamais leur somme.
+//!
+//! **Les deux plafonnent à LA MÊME VALEUR** (`REPLI_MAX_MS`, 30 s) —
+//! `delai_de_repli` par construction (`repli.rs`), le sommeil de
+//! `honorer_retry_suggere` par la borne qu'il s'impose sur `retryApresS` —
+//! si bien que ni l'un ni l'autre ne peut jamais DÉPASSER durablement
+//! l'autre : `delai_de_repli(tentative)` atteint 30 s pile à `tentative = 6`
+//! (`500 × 2⁶ = 32 000`, ÉCRÊTÉ à `30 000`, jamais 32 000) et y reste.
+//! Sur le scénario RÉELLEMENT mesuré — un budget de volume saturé qui
+//! suggère un `retryApresS` proche de 60 s, donc un sommeil constamment
+//! écrêté à 30 s — le sommeil DOMINE (est la valeur RÉELLEMENT contraignante
+//! du `max`) pour les six premières tentatives consécutives, où `delai_de_
+//! repli` reste sous 30 s : le repli d'ici n'y fait alors QUE constater que
+//! l'espacement est déjà satisfait, sans jamais l'imposer. À partir de la
+//! sixième, les deux valent 30 s et deviennent indiscernables l'un de
+//! l'autre — ni ne « domine » l'autre, ils coïncident. **Le round de
+//! correction 1 documentait donc un plafond de cadence correct dans sa
+//! conclusion (« 2 tentatives/minute »), mais pour une raison INCOMPLÈTE** :
+//! sur ce scénario précis, ce plafond vient du sommeil de `honorer_retry_
+//! suggere` au moins autant que du repli exponentiel, jamais de ce dernier
+//! SEUL. Un `retryApresS` plus court (fenêtre moins saturée) inverserait
+//! l'équilibre en faveur du repli — non mesuré non plus.
 
 use super::*;
-
-/// Espacement minimal entre deux tentatives de relance du pont.
-///
-/// Même raison, au mot près, que `PERIODE_RELANCE_CAPTEUR_MIN` : sans cette
-/// borne, un pont qui meurt AUSSITÔT après avoir été relancé ferait retenter
-/// un vrai `Command::spawn` à la cadence de la boucle (~10 Hz). Elle espace
-/// les tentatives, elle ne les empêche jamais.
-///
-/// ⚠️ **Constante PROPRE à ce module, et délibérément pas un emprunt à celle
-/// du capteur** : les deux valent 500 ms aujourd'hui, et rien n'exige qu'elles
-/// restent égales. Les coupler ferait qu'un réglage du capteur — mesuré, un
-/// jour, sur le coût de sa relance — déplacerait en silence celui du pont, qui
-/// n'a ni les mêmes ressources à reprendre ni le même coût de démarrage.
-/// C'est le raisonnement que le sous-bloc D8 a tenu pour `PERIODE_STYLE`
-/// contre `PERIODE_REARBITRAGE`.
-///
-/// ⚠️ **NON CALIBRÉE**, comme sa jumelle : reprise telle quelle, jamais
-/// mesurée.
-const PERIODE_RELANCE_PONT_MIN: std::time::Duration = std::time::Duration::from_millis(500);
+use crate::relance_pont::{EtatObserve, EtatRelance};
 
 /// Ce que la boucle retient du pont d'un tour à l'autre.
 ///
@@ -43,16 +85,14 @@ const PERIODE_RELANCE_PONT_MIN: std::time::Duration = std::time::Duration::from_
 pub(super) struct EtatPont {
     pid: Option<u32>,
     derniere_tentative: std::time::Instant,
-    /// Vrai dès qu'un cycle de relance en cours a été signalé.
-    ///
-    /// Même motif que `EtatCapteur::cycle_signale` (correctif I3) et
-    /// qu'`Enfant::etat_illisible_signale` : `PERIODE_RELANCE_PONT_MIN` espace
-    /// les `spawn`, **pas les LIGNES**. Un pont qui remeurt aussitôt après
-    /// chaque relance produirait deux lignes par seconde, indéfiniment, sur un
-    /// partage CIFS — environ 170 000 par jour. Signaler la première fois, se
-    /// taire tant que la situation se répète, redevenir bruyant au premier
-    /// retour à la normale.
-    cycle_signale: bool,
+    /// La décision PURE — tentatives, espacement, stabilité — vit dans
+    /// [`EtatRelance`] depuis le round de correction 2 : ce champ ne porte
+    /// plus lui-même ni compteur ni booléen, seulement l'horloge murale
+    /// (`derniere_tentative`, ci-dessus) et l'identité du processus (`pid`),
+    /// qui restent propres à CE module parce qu'ils touchent
+    /// `std::time::Instant` et `LanceurDeProcessus` — non portables, donc
+    /// non extraits.
+    relance: EtatRelance,
 }
 
 impl EtatPont {
@@ -78,20 +118,33 @@ impl EtatPont {
     pub(super) fn demarrer(lanceur: &LanceurDeProcessus) -> Self {
         let mut etat = Self {
             pid: None,
-            // Reculée d'une période : la toute première tentative doit avoir
-            // lieu MAINTENANT, pas dans 500 ms. Sans ce recul, `tenter`
-            // rendrait la main sans rien faire et le pont ne démarrerait qu'au
-            // tour de boucle suivant la période — ce qui passerait inaperçu,
-            // le pont n'étant pas sur le chemin critique.
-            derniere_tentative: std::time::Instant::now() - PERIODE_RELANCE_PONT_MIN,
-            cycle_signale: false,
+            // Reculée d'un espacement plancher : la toute première tentative
+            // doit avoir lieu MAINTENANT, pas dans 500 ms. Sans ce recul,
+            // `tenter` rendrait la main sans rien faire et le pont ne
+            // démarrerait qu'au tour de boucle suivant l'espacement — ce qui
+            // passerait inaperçu, le pont n'étant pas sur le chemin critique.
+            //
+            // 🔴 **C'EST LE SECOND RÔLE DE `ESPACEMENT_PLANCHER_MS`, ET IL
+            // N'ÉTAIT NOMMÉ NULLE PART AVANT LE ROUND DE CORRECTION 4** —
+            // relevé par la revue : la doc de la constante en énumérait deux
+            // quand le code en servait trois. Ce n'est pas une cadence, c'est
+            // une AMORCE, et elle lie les deux fichiers : relever la
+            // constante retarderait d'autant le démarrage du pont, ce qui ne
+            // se lit pas depuis `relance_pont.rs`. La constante le dit
+            // désormais de son côté, et ⚠️ elle est **soudée** à
+            // `plateforme::repli::REPLI_MIN_MS` par le test
+            // `le_premier_espacement_egale_le_plancher` : elle ne peut pas
+            // être relevée seule.
+            derniere_tentative: std::time::Instant::now()
+                - std::time::Duration::from_millis(crate::relance_pont::ESPACEMENT_PLANCHER_MS),
+            relance: EtatRelance::neuve(),
         };
         etat.tenter(lanceur, "lancement initial du pont fichiers échoué");
         etat
     }
 
-    /// Relance le pont s'il est mort, au plus une fois par
-    /// `PERIODE_RELANCE_PONT_MIN`.
+    /// Relance le pont s'il est mort, espacé selon
+    /// `EtatRelance::espacement_ms` (`plateforme::repli::delai_de_repli`).
     ///
     /// **Ne ferme jamais aucune fenêtre, et ne touche à rien d'autre.** Une
     /// panne du pont est sans effet sur les sessions vidéo : c'est tout
@@ -99,23 +152,38 @@ impl EtatPont {
     /// moindre effet de bord sur la table ou sur les enfants annulerait cette
     /// propriété.
     pub(super) fn surveiller(&mut self, lanceur: &LanceurDeProcessus) {
-        if lanceur.pont_vivant() {
-            // Le pont a SURVÉCU à sa période de relance : le cycle est rompu,
-            // une mort ultérieure sera une information neuve.
-            //
-            // La condition de durée n'est pas décorative — même raisonnement
-            // que chez le capteur : la boucle tourne à ~10 Hz quand la période
-            // vaut 500 ms, donc un pont qui vivrait deux ou trois tours avant
-            // de mourir serait vu vivant au moins une fois entre deux
-            // relances, ce qui réarmerait le signalement à chaque cycle et
-            // rendrait la parade sans effet. Exiger qu'il tienne au moins
-            // aussi longtemps que l'espacement des relances est ce qui
-            // distingue « il repart » de « il agonise en boucle ».
-            if self.cycle_signale && self.derniere_tentative.elapsed() >= PERIODE_RELANCE_PONT_MIN {
-                self.cycle_signale = false;
-                tracing::info!(pid = self.pid, "pont fichiers de nouveau stable");
+        // 🔴 TROIS BRANCHES DEPUIS LE ROUND DE CORRECTION 4, ET LES DEUX
+        // DÉCISIONS DE `EtatRelance` NE PEUVENT PLUS SE CROISER : `stable`
+        // (seuil LONG, question de TRACE) ne se pose que sur un pont VIVANT ;
+        // `reinitialiser_le_repli` (question de CADENCE) ne se pose que sur
+        // une MORT, et sur son ISSUE — plus jamais sur une durée de vie.
+        //
+        // La revue du round 4 l'a mesuré : réarmer sur « vivant depuis
+        // 500 ms » faisait retomber `tentative` à zéro après CHAQUE
+        // lancement, et le repli ne pouvait plus croître pour tout mode de
+        // panne où le pont vit entre ~0,5 s et ~35 s — jusqu'à 100
+        // connexions `/signal` par minute contre un budget PARTAGÉ de 120,
+        // sans qu'aucun `retryApresS` n'ait à intervenir. Une durée ne
+        // pouvait pas trancher : une session SAINE qui se termine occupe le
+        // même intervalle qu'un pont REFUSÉ qui a dormi. L'issue, elle,
+        // tranche — voir la doc de tête de `crate::relance_pont`.
+        match lanceur.etat_du_pont() {
+            EtatObserve::Vivant => {
+                let ecoule_ms = self.derniere_tentative.elapsed().as_millis() as u64;
+                if self.relance.stable(ecoule_ms) {
+                    tracing::info!(pid = self.pid, "pont fichiers de nouveau stable");
+                }
+                return;
             }
-            return;
+            // Une sortie PROPRE (`pont::executer` rend `Ok(())`) prouve
+            // qu'une panne passée est résolue : le repli repart du plancher.
+            // Un `bail!` — dont le refus du relais, honoré puis propagé —
+            // ne prouve rien, et le repli continue de croître.
+            EtatObserve::Mort(issue) => self.relance.reinitialiser_le_repli(issue),
+            // ⚠️ AUCUN RÉARMEMENT ICI, ET C'EST LE POINT : `Absent` couvre
+            // un `spawn` en échec répété, exactement le cas que le critique
+            // ③ du round 1 a mesuré, dont le repli doit croître.
+            EtatObserve::Absent => {}
         }
         self.tenter(lanceur, "relance du pont fichiers échouée");
     }
@@ -127,21 +195,37 @@ impl EtatPont {
     /// précisément ce qui distingue ce module de son jumeau, où `demarrer` ne
     /// retente rien parce qu'il est fatal.
     fn tenter(&mut self, lanceur: &LanceurDeProcessus, quoi: &str) {
-        if self.derniere_tentative.elapsed() < PERIODE_RELANCE_PONT_MIN {
+        // 🔴 L'ESPACEMENT VIENT DE `EtatRelance::doit_relancer`, PAS D'UNE
+        // CONSTANTE FIXE — c'est tout le correctif du critique ③ de D1.
+        // `espacement_ms()` vaut exactement `ESPACEMENT_PLANCHER_MS` (500 ms)
+        // à la première tentative d'un cycle : un pont qui ne meurt jamais
+        // deux fois de suite n'observe donc AUCUN changement de comportement.
+        // Ce n'est qu'à partir de la deuxième tentative consécutive sans
+        // stabilité que l'espacement s'allonge.
+        let ecoule_ms = self.derniere_tentative.elapsed().as_millis() as u64;
+        if !self.relance.doit_relancer(ecoule_ms) {
             return;
         }
+        let espacement_ms = self.relance.espacement_ms();
         self.derniere_tentative = std::time::Instant::now();
-        // Lu AVANT la tentative, et armé quoi qu'il arrive : les deux issues
-        // journalisent, et les deux doivent se taire au tour suivant si le
-        // cycle se poursuit.
-        let premier_du_cycle = !self.cycle_signale;
-        self.cycle_signale = true;
+        // 🔴 ENREGISTRÉ ICI, PAS SEULEMENT DANS LA BRANCHE `Err` PLUS BAS —
+        // et c'est le point qui rend ce correctif correct sur le cas
+        // RÉELLEMENT mesuré : `lancer_pont()` RÉUSSIT (`Ok`), le processus se
+        // lance, se fait refuser par `/signal`, et meurt après avoir honoré
+        // le délai suggéré. Ce cycle-là ne passe JAMAIS par la branche `Err`
+        // de `lancer_pont()` — c'est un `Command::spawn` parfaitement
+        // réussi —, et un compteur incrémenté seulement sur `Err` resterait
+        // bloqué à `tentative = 0`, donc à un espacement de 500 ms, dans
+        // EXACTEMENT le cas que ce lot doit corriger.
+        let premier_du_cycle = self.relance.tentative_lancee();
         match lanceur.lancer_pont() {
             Ok(nouveau) => {
                 if premier_du_cycle {
                     tracing::warn!(
                         pid_mort = self.pid,
                         pid_neuf = nouveau,
+                        tentative = self.relance.tentative(),
+                        espacement_ms,
                         "pont fichiers lancé ou relancé (tentatives suivantes silencieuses \
                          tant que le cycle se répète)"
                     );
@@ -162,8 +246,11 @@ impl EtatPont {
                 if premier_du_cycle {
                     tracing::warn!(
                         %erreur,
-                        "{quoi} — la capture n'est PAS affectée ; retenté indéfiniment passé \
-                         le délai minimal, et silencieusement tant que l'échec se répète"
+                        tentative = self.relance.tentative(),
+                        espacement_ms,
+                        "{quoi} — la capture n'est PAS affectée ; retenté indéfiniment, à un \
+                         espacement CROISSANT (plateforme::repli::delai_de_repli), et \
+                         silencieusement tant que l'échec se répète"
                     );
                 }
             }
