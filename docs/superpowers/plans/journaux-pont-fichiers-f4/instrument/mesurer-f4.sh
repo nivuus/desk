@@ -10,7 +10,7 @@
 set -uo pipefail
 PLAN="$1"
 REPOS="${2:-25}"
-RACINE=/home/mallanic/Projects/Guacamole
+RACINE="$(git rev-parse --show-toplevel)" || { echo "🔴 hors du depot git : impossible de deriver RACINE (git rev-parse a echoue)" >&2; exit 1; }
 I="$RACINE/docs/superpowers/plans/journaux-pont-fichiers-f4/instrument"
 set -a; source "$RACINE/.env"; set +a
 

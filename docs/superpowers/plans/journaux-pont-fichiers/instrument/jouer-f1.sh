@@ -14,7 +14,7 @@ ETIQUETTE="$1"
 MAINTIEN="$2"
 SANS_PROJFS="${3:-}"
 
-RACINE=/home/mallanic/Projects/Guacamole
+RACINE="$(git rev-parse --show-toplevel)" || { echo "🔴 hors du depot git : impossible de deriver RACINE (git rev-parse a echoue)" >&2; exit 1; }
 INSTR="$RACINE/docs/superpowers/plans/journaux-pont-fichiers/instrument"
 J="$RACINE/docs/superpowers/plans/journaux-pont-fichiers"
 SCRATCH="${SCRATCH:?SCRATCH doit pointer le repertoire de travail hors depot}"

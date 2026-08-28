@@ -75,7 +75,14 @@ const arg = (n, d) => (process.argv.find((a) => a.startsWith(`--${n}=`)) ?? `--$
 const ETIQUETTE = arg('etiquette', 'arme-1');
 const DESARME = arg('desarme', '') === '1';
 const SORTIE = arg('sortie', `pp2-${ETIQUETTE}.json`);
-const RACINE = process.env.RACINE ?? '/home/mallanic/Projects/Guacamole';
+function racineDepot() {
+    const r = spawnSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' });
+    if (r.status !== 0) {
+        throw new Error(`hors du depot git : impossible de deriver RACINE (git rev-parse a echoue : ${(r.stderr ?? '').trim()})`);
+    }
+    return r.stdout.trim();
+}
+const RACINE = process.env.RACINE ?? racineDepot();
 const P2 = `${RACINE}/docs/superpowers/plans/journaux-presse-papier-p2`;
 const VMIT = `${RACINE}/docs/superpowers/plans/journaux-multifenetres-d10/instrument/vm-it.sh`;
 const IDENTITE = arg('identite', '');

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Joue le rouge (i) du Step 6 et attend son verdict.
 set -uo pipefail
-RACINE=/home/mallanic/Projects/Guacamole
+RACINE="$(git rev-parse --show-toplevel)" || { echo "🔴 hors du depot git : impossible de deriver RACINE (git rev-parse a echoue)" >&2; exit 1; }
 set -a; source "$RACINE/.env"; set +a
 rm -f /media/vm/dev/rouge-i.txt
 

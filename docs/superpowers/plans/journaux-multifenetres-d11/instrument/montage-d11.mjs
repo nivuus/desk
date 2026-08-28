@@ -30,7 +30,14 @@
 
 import { spawnSync } from 'node:child_process';
 
-export const RACINE = process.env.RACINE ?? '/home/mallanic/Projects/Guacamole';
+function racineDepot() {
+    const r = spawnSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' });
+    if (r.status !== 0) {
+        throw new Error(`hors du depot git : impossible de deriver RACINE (git rev-parse a echoue : ${(r.stderr ?? '').trim()})`);
+    }
+    return r.stdout.trim();
+}
+export const RACINE = process.env.RACINE ?? racineDepot();
 export const D11 = `${RACINE}/docs/superpowers/plans/journaux-multifenetres-d11`;
 export const INSTRUMENT = `${D11}/instrument`;
 export const VMIT = `${RACINE}/docs/superpowers/plans/journaux-multifenetres-d10/instrument/vm-it.sh`;

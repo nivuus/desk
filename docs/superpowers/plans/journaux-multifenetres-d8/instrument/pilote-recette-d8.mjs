@@ -182,7 +182,14 @@ import { mkdtemp, rm, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-const RACINE = process.env.RACINE ?? '/home/mallanic/Projects/Guacamole';
+function racineDepot() {
+    const r = spawnSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' });
+    if (r.status !== 0) {
+        throw new Error(`hors du depot git : impossible de deriver RACINE (git rev-parse a echoue : ${(r.stderr ?? '').trim()})`);
+    }
+    return r.stdout.trim();
+}
+const RACINE = process.env.RACINE ?? racineDepot();
 // `ton.html` n'est PAS recopié dans ce répertoire : c'est un ASSET du sous-bloc
 // D7, réutilisé en lecture seule depuis son propre répertoire.
 const TON_HTML_D7 = join(RACINE, 'docs/superpowers/plans/journaux-multifenetres-d7/instrument/ton.html');

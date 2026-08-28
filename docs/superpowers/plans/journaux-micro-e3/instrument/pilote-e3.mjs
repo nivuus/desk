@@ -44,7 +44,14 @@ const PREFIXE = process.env.PREFIXE_VM;
 const PORT_CDP = Number(process.env.PORT_CDP ?? 9470);
 const UDD = process.env.UDD ?? '/tmp/e3/udd';
 const WAV = process.env.WAV ?? '/tmp/e3/ton-440.wav';
-const RACINE = '/home/mallanic/Projects/Guacamole';
+function racineDepot() {
+    try {
+        return execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim();
+    } catch (e) {
+        throw new Error('hors du depot git : impossible de deriver RACINE (git rev-parse a echoue)');
+    }
+}
+const RACINE = racineDepot();
 
 const execFileAsync = promisify(execFile);
 

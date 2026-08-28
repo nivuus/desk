@@ -3,7 +3,7 @@
 # via une tâche planifiée /IT — mécanisme établi par la tâche 6.
 # Usage : vm-it.sh <nom-tache> '<powershell>'
 set -euo pipefail
-ROOT=/home/mallanic/Projects/Guacamole
+ROOT="$(git rev-parse --show-toplevel)" || { echo "🔴 hors du depot git : impossible de deriver ROOT (git rev-parse a echoue)" >&2; exit 1; }
 NOM="$1"; shift
 SCRIPT="$*"
 USER_NAME="${WINDOWS_ADMIN_USERNAME:-Administrateur}"

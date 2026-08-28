@@ -17,7 +17,7 @@
 # l'execution a echoue.
 set -uo pipefail
 ETIQUETTE="$1"
-RACINE=/home/mallanic/Projects/Guacamole
+RACINE="$(git rev-parse --show-toplevel)" || { echo "🔴 hors du depot git : impossible de deriver RACINE (git rev-parse a echoue)" >&2; exit 1; }
 I="$RACINE/docs/superpowers/plans/journaux-pont-fichiers-f4/instrument"
 J="$RACINE/docs/superpowers/plans/journaux-pont-fichiers-f4"
 MONTAGE="${MONTAGE:-m1}"
