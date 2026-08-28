@@ -44,6 +44,40 @@ inatteignables** par l'outillage livré. L'item devient « constater l'absence,
 mesurer ce que le `Force` laisse derrière, PUIS décider » — la décision de
 construire le chemin est arbitrée dans sa tâche, pas ici.
 
+## 2 bis. Un blocage matériel que ni le cadrage ni cette conception n'avaient vu
+
+🔴 **RELEVÉ LE 28 AOÛT 2026, PENDANT L'ÉCRITURE DU PLAN.** Le dépôt a été
+déplacé de `/home/mallanic/Projects/Guacamole` vers
+`/home/mallanic/Projects/Nivuus/packages/desk`. **48 scripts exécutables des
+répertoires de journaux portent l'ancien chemin EN DUR** — relevé par
+`grep -rl "Projects/Guacamole" docs/superpowers/plans/journaux-*/ | grep -E '\.(sh|mjs|js|ps1|py|mts)$' | wc -l`,
+**à relancer, jamais à recopier**. Vingt d'entre eux vivent dans les
+répertoires des **douze pilotes** que ce lot doit rejouer : `jouer-f2.sh`
+ouvre sur `RACINE=/home/mallanic/Projects/Guacamole`, et ce répertoire existe
+encore, **vide**.
+
+**Conséquence sur l'ordre du lot** : aucun rejeu n'est possible avant cette
+réparation, qui devient la **tâche 1 du plan**, juste après le harnais. Un
+rejeu tenté sans elle échouerait pour une raison qui n'a rien à voir avec ce
+qu'il mesure — et le dépôt a déjà payé de classer une rouge au lieu de la
+diagnostiquer.
+
+⚠️ **Le remède n'est PAS une substitution du chemin** : c'est une **racine
+dérivée** (`git rev-parse --show-toplevel` pour les `.sh`,
+`fileURLToPath(import.meta.url)` pour les `.mjs`, un **paramètre** pour les
+`.ps1`, la VM n'ayant pas le dépôt) — patron que
+`journaux-accent-a1/instrument/monter-a1.sh` emploie déjà correctement.
+
+🔴 **LES JOURNAUX NE SE RÉÉCRIVENT PAS.** Les `.log`, `.json` et `.md` qui
+portent l'ancien chemin sont des **pièces datées** : ils disent où la mesure a
+été faite le jour où elle l'a été. Les réécrire serait **falsifier une
+pièce**, ce que ce dépôt s'interdit nommément.
+
+⚠️ **Le même mécanisme avait déjà mordu ailleurs, et pour la même raison** :
+les unités compilées de `target/` portaient ce chemin, et une cinquantaine de
+tests Rust échouaient sur un `testdata` introuvable — diagnostiqué le même
+jour, avant la fusion de `main`, remède `cargo clean -p agent -p proto`.
+
 ## 3. Le harnais de campagne — tâche 0, avant tout le reste
 
 🔴 **La VM s'éteint seule, par deux mécanismes distincts** : une hibernation
