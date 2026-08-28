@@ -34,6 +34,14 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Cdp, attendreDevtools, dodo, lancerChrome } from './commun-d11.mjs';
 
+function racineDepot() {
+    const r = spawnSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' });
+    if (r.status !== 0) {
+        throw new Error(`hors du depot git : impossible de deriver RACINE (git rev-parse a echoue : ${(r.stderr ?? '').trim()})`);
+    }
+    return r.stdout.trim();
+}
+
 const arg = (n, d) => (process.argv.find((a) => a.startsWith(`--${n}=`)) ?? `--${n}=${d}`).split('=').slice(1).join('=');
 const PROFIL = Number(arg('profil', '1'));
 // `--url` accepte PLUSIEURS pages séparées par des virgules : les recettes
@@ -273,7 +281,7 @@ try {
     if (SUPERVISEUR) {
         log('>>> lancement du superviseur');
         const r = spawnSync('bash', ['-c',
-            `cd ${process.env.RACINE ?? '/home/mallanic/Projects/Guacamole'} && SUPERVISEUR=1 scripts/run-agent.sh`],
+            `cd ${process.env.RACINE ?? racineDepot()} && SUPERVISEUR=1 scripts/run-agent.sh`],
             { encoding: 'utf8', env: process.env });
         log('run-agent.sh :', (r.stdout ?? '').trim().split('\n').pop());
         if ((r.stderr ?? '').trim()) log('run-agent.sh STDERR :', r.stderr.trim().slice(0, 300));

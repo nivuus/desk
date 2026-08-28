@@ -14,7 +14,7 @@ MAINTIEN="${2:-40}"
 # l'execution precedente. C'est ce qui rend le critere ③ mesurable — le pont
 # relance doit RELIRE son journal et repousser ce qui y reste.
 SANS_PURGE="${3:-}"
-RACINE=/home/mallanic/Projects/Guacamole
+RACINE="$(git rev-parse --show-toplevel)" || { echo "🔴 hors du depot git : impossible de deriver RACINE (git rev-parse a echoue)" >&2; exit 1; }
 I="$RACINE/docs/superpowers/plans/journaux-pont-fichiers-f2/instrument"
 J="$RACINE/docs/superpowers/plans/journaux-pont-fichiers-f2"
 

@@ -27,7 +27,14 @@ import { mkdtemp, rm, writeFile, mkdir, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-const RACINE = '/home/mallanic/Projects/Guacamole';
+function racineDepot() {
+    const r = spawnSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' });
+    if (r.status !== 0) {
+        throw new Error(`hors du depot git : impossible de deriver RACINE (git rev-parse a echoue : ${(r.stderr ?? '').trim()})`);
+    }
+    return r.stdout.trim();
+}
+const RACINE = racineDepot();
 const AIDE = process.env.AIDE ?? '/tmp/user/0/claude-0/-home-mallanic-Projects-Guacamole/ecebb0d5-b8a9-404c-a078-652572f86f2e/scratchpad/recette';
 const CAPTURES = process.env.CAPTURES ?? join(AIDE, 'captures');
 const HOTE = process.env.HOTE ?? '192.168.3.1';

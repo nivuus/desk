@@ -18,7 +18,14 @@ import { Cdp, attendreDevtools, dodo, lancerChrome } from
 
 const arg = (n, d) => (process.argv.find((a) => a.startsWith(`--${n}=`)) ?? `--${n}=${d}`).split('=').slice(1).join('=');
 const ETIQUETTE = arg('etiquette', '1');
-const RACINE = process.env.RACINE ?? '/home/mallanic/Projects/Guacamole';
+function racineDepot() {
+    const r = spawnSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' });
+    if (r.status !== 0) {
+        throw new Error(`hors du depot git : impossible de deriver RACINE (git rev-parse a echoue : ${(r.stderr ?? '').trim()})`);
+    }
+    return r.stdout.trim();
+}
+const RACINE = process.env.RACINE ?? racineDepot();
 const A1 = `${RACINE}/docs/superpowers/plans/journaux-accent-a1`;
 const VMIT = `${RACINE}/docs/superpowers/plans/journaux-multifenetres-d10/instrument/vm-it.sh`;
 const IDENTITE = arg('identite', '/tmp/a1-identite.env');

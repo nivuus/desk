@@ -8,7 +8,7 @@
 # même s'il est interrompu.
 set -uo pipefail
 MODE="${1:?s1 ou s1bis}"; ETIQ="${2:?etiquette}"; XV="${3:-}"
-RACINE=/home/mallanic/Projects/Guacamole
+RACINE="$(git rev-parse --show-toplevel)" || { echo "🔴 hors du depot git : impossible de deriver RACINE (git rev-parse a echoue)" >&2; exit 1; }
 I="$RACINE/docs/superpowers/plans/journaux-micro-e3/instrument"
 J="$RACINE/docs/superpowers/plans/journaux-micro-e3"
 export XDG_RUNTIME_DIR=/run/user/1000

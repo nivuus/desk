@@ -3,7 +3,7 @@
 #   $1 etiquette  $2 valeur d'AUDIO_PERIPHERIQUE ('' = absente)
 #   $3 prefixe waveOut ou jouer ('' = rien)  $4 frequence Hz
 set -uo pipefail
-ROOT=/home/mallanic/Projects/Guacamole
+ROOT="$(git rev-parse --show-toplevel)" || { echo "🔴 hors du depot git : impossible de deriver ROOT (git rev-parse a echoue)" >&2; exit 1; }
 cd "$ROOT"
 set -a && source .env && set +a
 ETIQ="$1"; VAR="$2"; JOUER="$3"; HZ="${4:-440}"

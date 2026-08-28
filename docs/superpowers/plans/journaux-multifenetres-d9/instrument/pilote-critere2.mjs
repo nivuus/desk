@@ -96,7 +96,14 @@ import { mkdtemp, rm, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-const RACINE = process.env.RACINE ?? '/home/mallanic/Projects/Guacamole';
+function racineDepot() {
+    const r = spawnSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' });
+    if (r.status !== 0) {
+        throw new Error(`hors du depot git : impossible de deriver RACINE (git rev-parse a echoue : ${(r.stderr ?? '').trim()})`);
+    }
+    return r.stdout.trim();
+}
+const RACINE = process.env.RACINE ?? racineDepot();
 const TON_HTML = join(RACINE, 'docs/superpowers/plans/journaux-multifenetres-d7/instrument/ton.html');
 const HOTE = process.env.HOTE ?? '192.168.3.1';
 const PORT_SHELL = process.env.PORT_SHELL ?? '5173';

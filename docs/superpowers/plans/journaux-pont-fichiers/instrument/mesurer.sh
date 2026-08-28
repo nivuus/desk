@@ -12,7 +12,7 @@
 # Ici : on demarre la mesure detachee, et on attend `FIN DE MESURE` dans le
 # fichier -- le FAIT, jamais une duree (piege maison, sous-bloc D3).
 set -uo pipefail
-RACINE=/home/mallanic/Projects/Guacamole
+RACINE="$(git rev-parse --show-toplevel)" || { echo "🔴 hors du depot git : impossible de deriver RACINE (git rev-parse a echoue)" >&2; exit 1; }
 DELAI="${DELAI_MESURE:-900}"
 
 set -a; source "$RACINE/.env"; set +a

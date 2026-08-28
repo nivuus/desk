@@ -79,7 +79,14 @@ import { mkdtemp, rm, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-const RACINE = process.env.RACINE ?? '/home/mallanic/Projects/Guacamole';
+function racineDepot() {
+    const r = spawnSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' });
+    if (r.status !== 0) {
+        throw new Error(`hors du depot git : impossible de deriver RACINE (git rev-parse a echoue : ${(r.stderr ?? '').trim()})`);
+    }
+    return r.stdout.trim();
+}
+const RACINE = process.env.RACINE ?? racineDepot();
 // Réutilisé en lecture seule depuis son propre répertoire (D7) : un ASSET
 // HTML animé (Desktop Duplication n'émet qu'au changement du bureau), requis
 // pour que la fenêtre Windows source produise des trames.

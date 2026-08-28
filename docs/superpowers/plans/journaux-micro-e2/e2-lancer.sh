@@ -14,7 +14,7 @@
 #
 # Usage : SESSION_ID=… MICRO=… [AUDIO_PERIPHERIQUE=…] ./e2-lancer.sh <agent.env>
 set -euo pipefail
-RACINE=/home/mallanic/Projects/Guacamole
+RACINE="$(git rev-parse --show-toplevel)" || { echo "🔴 hors du depot git : impossible de deriver RACINE (git rev-parse a echoue)" >&2; exit 1; }
 ENVRECETTE="${1:?chemin du fichier agent.env attendu}"
 # Les réglages de recette, mémorisés AVANT que .env ne puisse les écraser.
 GARDE_SESSION="${SESSION_ID:-}"; GARDE_MICRO="${MICRO:-}"

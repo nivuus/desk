@@ -50,8 +50,15 @@ import { mkdtemp, rm, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+function racineDepot() {
+    const r = spawnSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' });
+    if (r.status !== 0) {
+        throw new Error(`hors du depot git : impossible de deriver RACINE (git rev-parse a echoue : ${(r.stderr ?? '').trim()})`);
+    }
+    return r.stdout.trim();
+}
 const RACINE = process.env.RACINE
-    ?? '/home/mallanic/Projects/Guacamole/.claude/worktrees/chantier-multifenetres-d5';
+    ?? join(racineDepot(), '.claude/worktrees/chantier-multifenetres-d5');
 const AIDE = process.env.AIDE
     ?? '/tmp/user/0/claude-0/-home-mallanic-Projects-Guacamole/41109bc6-2e4c-4722-a247-302540bd93f0/scratchpad/instrument';
 const HOTE = process.env.HOTE ?? '192.168.3.1';

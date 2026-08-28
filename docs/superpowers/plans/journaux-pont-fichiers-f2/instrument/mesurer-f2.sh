@@ -6,7 +6,7 @@
 # meme le fournisseur, mais le Bloc-notes du critere ② n'y a aucun bureau. Un
 # seul chemin pour les deux, c'est un chemin de moins a expliquer.
 set -uo pipefail
-RACINE=/home/mallanic/Projects/Guacamole
+RACINE="$(git rev-parse --show-toplevel)" || { echo "🔴 hors du depot git : impossible de deriver RACINE (git rev-parse a echoue)" >&2; exit 1; }
 I="$RACINE/docs/superpowers/plans/journaux-pont-fichiers-f2/instrument"
 set -a; source "$RACINE/.env"; set +a
 
