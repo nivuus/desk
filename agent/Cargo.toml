@@ -167,3 +167,12 @@ windows = { version = "0.62", features = [
 # de vibration — sans elle, `request_notification` n'existe même pas sur
 # `Xbox360Wired` (vérifié sur le code source publié, docs.rs 0.1.4).
 vigem-client = { version = "0.1", features = ["unstable_xtarget_notification"] }
+
+[dev-dependencies]
+# `test-util` : horloge tokio GELÉE (`#[tokio::test(start_paused = true)]`),
+# nécessaire aux tests de `signaling::honorer_retry_suggere` (round de
+# correction 1) — sans elle, éprouver un délai de plusieurs secondes
+# attendrait réellement ces secondes. `full`, ci-dessus, ne l'inclut PAS :
+# c'est une fonctionnalité de TEST, jamais liée dans un binaire de
+# production, d'où sa place ici plutôt que dans `[dependencies]`.
+tokio = { version = "1", features = ["test-util"] }

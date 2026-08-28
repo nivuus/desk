@@ -31,7 +31,9 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Pilote } from '../base/pilote';
 import { creerUtilisateur, lireParEmail } from '../depot/utilisateur';
 import { signer } from '../identite/jeton';
+import { pairDeConfiance } from './adresse-source';
 import { entetesCors } from './cors';
+import { repondreIntrouvable } from './introuvable';
 import { ENTETES_SECURITE } from './entetes';
 
 export const CHEMIN_MOI = '/auth/moi';
@@ -59,6 +61,9 @@ export interface DependancesIdentite {
     origineClient?: string;
     maintenant: () => number;
     auth: 'pomerium' | 'motdepasse';
+    /// L'ensemble des adresses dont on croit l'en-tête `X-Pomerium-Claim-Email`.
+    /// Voir la garde ci-dessous, et `http/adresse-source.ts::pairDeConfiance`.
+    proxyDeConfiance: ReadonlySet<string>;
 }
 
 /// 🔴 PURE : ni base, ni socket, ni horloge. C'est ce qui la rend éprouvable
@@ -67,10 +72,22 @@ export function lireIdentitePomerium(
     entetes: Record<string, string | string[] | undefined>,
 ): VerdictIdentite {
     const brut = entetes[ENTETE_IDENTITE];
-    // Un en-tête RÉPÉTÉ est refusé, jamais désambiguïsé — précédent littéral
-    // de `porteur.ts`. Node rend un tableau quand il a vu plusieurs en-têtes
-    // du même nom ; en choisir un serait prendre une décision qu'un attaquant
-    // exploite dès que deux couches n'en prennent pas la même.
+    // ⚠️ CE COMMENTAIRE DISAIT « un en-tête RÉPÉTÉ est refusé », ET C'EST FAUX
+    // POUR CE CHEMIN PRÉCIS (mesuré, tâche 6, revue « round de correction 1 »,
+    // 22 août 2026) : Node ne rend PAS un tableau pour deux occurrences de
+    // `x-pomerium-claim-email` — ce nom n'est pas dans la petite liste
+    // d'en-têtes que Node expose en tableau (`set-cookie` en est ; celui-ci
+    // n'en est pas). Node les JOINT en UNE SEULE chaîne séparée par `, ` avant
+    // même que ce code ne s'exécute. Le garde `Array.isArray` ci-dessous est
+    // donc MORT pour ce chemin : mesuré, deux en-têtes distincts depuis un
+    // pair de confiance rendent aujourd'hui `200` et créent un compte au
+    // courriel joint (`"a@b.c, evil@x.y"`). **C'est un défaut PRÉEXISTANT,
+    // reporté à la revue finale — non corrigé ici, seul ce commentaire l'est.**
+    // Ce que ce garde referme réellement : le cas, différent, où un APPELANT
+    // interne construit lui-même `entetes` avec un tableau (les tests de ce
+    // fichier le font), et le précédent littéral de `porteur.ts` qui refuse
+    // ainsi de désambiguïser une valeur ambiguë quand elle SE PRÉSENTE sous
+    // cette forme.
     if (Array.isArray(brut) || brut === undefined) {
         return { ok: false, motif: 'identite-absente' };
     }
@@ -95,11 +112,23 @@ function repondre(
 
 /// Rend `true` si la requête a été servie.
 ///
-/// 🔴 EN MODE `motdepasse`, ELLE REND `false` — donc le 404 GÉNÉRIQUE du
-/// serveur. C'est délibéré, et c'est ce qui porte le mode jusqu'au client : la
-/// page est bâtie statiquement par Vite et ne peut lire aucune variable du
-/// serveur, alors elle DEMANDE. Un `403` dirait « la route existe, tu n'y as
-/// pas droit », ce qui inviterait à réessayer ; `404` dit la vérité.
+/// 🔴 EN MODE `motdepasse`, ELLE REND LE `404` ELLE-MÊME — et c'est ce qui
+/// porte le mode jusqu'au client : la page est bâtie statiquement par Vite et
+/// ne peut lire aucune variable du serveur, alors elle DEMANDE. Un `403`
+/// dirait « la route existe, tu n'y as pas droit », ce qui inviterait à
+/// réessayer ; `404` dit la vérité.
+///
+/// 🔴 ELLE RENDAIT `false` JUSQU'AU 22 AOÛT 2026, POUR LAISSER RÉPONDRE LE 404
+/// GÉNÉRIQUE DU SERVEUR — ET CE MÉCANISME EST MORT SANS BRUIT dans le lot
+/// « page derrière Pomerium ». Le servant de fichiers, chaîné EN DERNIER,
+/// replie tout chemin sans extension sur `index.html` : `GET /auth/moi` en
+/// mode `motdepasse` avec `PLATEFORME_PAGE` armée rendait `200 text/html`
+/// (mesuré). Le client ne cassait que par accident — son `.catch(() =>
+/// undefined)` faisait tomber le formulaire au bon endroit.
+///
+/// ⚠️ CE N'EST PAS UN SECOND 404 : c'est LE MÊME, `http/introuvable.ts`, celui
+/// que `serveur.ts` rend aussi. Un texte écrit à la main ici dériverait de
+/// celui du serveur sans que rien ne le dise.
 export async function servirIdentite(
     req: IncomingMessage,
     rep: ServerResponse,
@@ -115,13 +144,17 @@ export async function servirIdentite(
     // c'est ce qui les fait PARTITIONNER les modes : à DEUX modes, tout mode
     // ouvre exactement une des deux portes.
     //
-    // 🔴 À TROIS MODES, LES DEUX SE RETIRENT ENSEMBLE et le service n'a plus
-    // AUCUNE route d'authentification, **en silence** : deux `false`, le 404
-    // générique du serveur, et rien qui le dise. **Ajouter une valeur à `AUTHS`
-    // (`config.ts`) OBLIGE à revenir ici** et à décider laquelle des deux portes
-    // le mode neuf ouvre — TypeScript ne le demandera pas, ces gardes comparant
-    // des chaînes plutôt qu'un `switch` exhaustif.
-    if (deps.auth !== 'pomerium') return false;
+    // 🔴 À TROIS MODES, LES DEUX RÉPONDENT `404` ENSEMBLE et le service n'a
+    // plus AUCUNE route d'authentification, **en silence** : deux `404` justes
+    // chacun pris seul, et rien qui dise qu'aucune porte n'est ouverte.
+    // **Ajouter une valeur à `AUTHS` (`config.ts`) OBLIGE à revenir ici** et à
+    // décider laquelle des deux portes le mode neuf ouvre — TypeScript ne le
+    // demandera pas, ces gardes comparant des chaînes plutôt qu'un `switch`
+    // exhaustif.
+    if (deps.auth !== 'pomerium') {
+        repondreIntrouvable(rep);
+        return true;
+    }
 
     const cors = entetesCors(req.headers.origin, deps.origineClient);
 
@@ -132,6 +165,25 @@ export async function servirIdentite(
     }
     if (req.method !== 'GET') {
         repondre(rep, 405, { refus: 'methode' }, cors);
+        return true;
+    }
+
+    // 🔴 LA GARDE QUI FERME LE CONTOURNEMENT. Sans elle, `/auth/moi` rend un
+    // jeton interne valide pour N'IMPORTE QUEL courriel posé dans un en-tête
+    // qu'AUCUNE SIGNATURE NE VÉRIFIE : quiconque atteint le port — donc la VM
+    // Windows, que le § 7.1 de la spec `auth-pomerium` place nommément dans ce
+    // périmètre — s'authentifie sous l'identité de son choix.
+    //
+    // ⚠️ ELLE EST PLACÉE AVANT LA LECTURE DE L'EN-TÊTE, PAS APRÈS. Après, elle
+    // serait correcte aussi — mais le service aurait déjà lu une identité qu'il
+    // refuse, et un successeur pourrait déplacer la lecture sans voir que la
+    // garde en dépendait.
+    //
+    // ⚠️ CE QU'ELLE NE PROMET PAS : que seul Pomerium porte cette adresse. Cela
+    // reste à la charge de l'exploitant, comme la garde d'écoute de
+    // `PLATEFORME_HOTE` le dit déjà d'elle-même.
+    if (!pairDeConfiance(req.socket.remoteAddress, deps.proxyDeConfiance)) {
+        repondre(rep, 401, { refus: 'pair-non-de-confiance' }, cors);
         return true;
     }
 

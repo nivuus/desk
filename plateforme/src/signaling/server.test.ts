@@ -1,6 +1,7 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { WebSocket } from 'ws';
 import type { Garde } from '../identite/garde';
+import { Frein, REQUETES_MAX_ADRESSE } from '../securite/frein';
 import { createSignalingServer } from './relais';
 import { poserTurnAmbiant } from './turn-harnais';
 
@@ -78,8 +79,11 @@ function closeAndWait(ws: WebSocket): Promise<void> {
     });
 }
 
+// 🔴 UN FREIN NEUF PAR TEST, jamais partagé : sans quoi le nouveau test du
+// budget « toute requête », plus bas, épuiserait le budget de TOUS les
+// tests qui le suivent dans ce fichier, sur la même adresse `127.0.0.1`.
 beforeEach(() => {
-    server = createSignalingServer(0, GARDE_OUVERTE);
+    server = createSignalingServer(0, GARDE_OUVERTE, new Frein(), new Set());
 });
 
 afterEach(async () => {
@@ -293,6 +297,61 @@ describe('serveur de signaling', () => {
         await expect(nextMessage(agent)).rejects.toThrow(/aucun message/);
 
         agent.close();
+    });
+});
+
+// 🔴 LE BUDGET « TOUTE REQUÊTE » DU RELAIS — legs des freins manquants
+// (25 août 2026). Avant ce lot, RIEN ne bornait le nombre de connexions
+// qu'une même adresse pouvait ouvrir sur `/signal` : `TRAME_MAX_OCTETS`
+// (`http/serveur.ts`) borne la taille d'un message, pas le nombre de
+// sockets. Ce `describe` est SÉPARÉ du premier : il a besoin de compter des
+// CONNEXIONS brutes, sans jamais envoyer de `{role, session}` — le frein
+// mord AVANT le premier message, voir `relais.ts`.
+describe('le budget « toute requête » du relais', () => {
+    it('🔴 refuse la connexion après trop de connexions de la même adresse', async () => {
+        // 🔴 La rouge : ne jamais consulter `BUDGET_REQUETES` à la connexion.
+        // Sans jeton ni message, chaque connexion resterait ouverte
+        // indéfiniment — ce relais n'a aucune notion d'échec à ce stade.
+        const sockets: WebSocket[] = [];
+        try {
+            let dernierMessage: { type: string; motif?: string; retryApresS?: number } | undefined;
+            for (let i = 0; i <= REQUETES_MAX_ADRESSE; i++) {
+                const ws = new WebSocket(`ws://127.0.0.1:${server.port}`);
+                sockets.push(ws);
+                if (i < REQUETES_MAX_ADRESSE) {
+                    // Sous le budget : la connexion s'ouvre normalement, et ne
+                    // reçoit RIEN tant qu'elle n'envoie pas de message.
+                    await new Promise<void>((resolve, reject) => {
+                        ws.once('open', () => resolve());
+                        ws.once('error', reject);
+                    });
+                } else {
+                    // La (N+1)ᵉ : refusée avant tout message, sur le seul
+                    // évènement `connection`.
+                    dernierMessage = await new Promise((resolve, reject) => {
+                        const minuteur = setTimeout(
+                            () => reject(new Error('aucun message reçu')),
+                            2000,
+                        );
+                        ws.once('message', (raw) => {
+                            clearTimeout(minuteur);
+                            resolve(JSON.parse(raw.toString()));
+                        });
+                        ws.once('error', reject);
+                    });
+                }
+            }
+            expect(dernierMessage?.type).toBe('error');
+            expect(dernierMessage?.motif).toBe('trop-de-requetes');
+            // 🔴 round de correction 1, critique ② : sans `retryApresS`,
+            // l'agent qui se fait refuser ici ne peut pas savoir combien de
+            // temps attendre avant de retenter — c'est la moitié la moins
+            // chère du remède au verrouillage documenté par
+            // `agent/src/superviseur/boucle/surveillance_pont.rs`.
+            expect(dernierMessage?.retryApresS).toBeGreaterThan(0);
+        } finally {
+            for (const s of sockets) s.close();
+        }
     });
 });
 

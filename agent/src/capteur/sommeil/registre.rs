@@ -1,6 +1,12 @@
-//! Le registre lui-même : l'état global (`Etat`), son point d'accès
-//! (`etat`), le tour de roue, et les quatre opérations qui le touchent
-//! (`distribuer`, `oublier`, `inscrire`, `retirer`).
+//! Le registre lui-même : ~~l'état global (`Etat`)~~ **`Etat` a quitté ce
+//! fichier au round de correction 3, pour `registre/tables.rs` — voir plus
+//! bas** —, son point d'accès (`etat`), et les quatre opérations qui le
+//! touchent (`distribuer`, `oublier`, `inscrire`, `retirer`).
+//!
+//! ⚠️ **~~et le tour de roue~~ : il a quitté ce fichier au round de correction
+//! 1** (25 août 2026), pour `registre/tour_de_roue.rs` — la phrase ci-dessus
+//! le nommait, et elle est corrigée dans le même mouvement plutôt que laissée
+//! à vieillir.
 //!
 //! **Extrait de `sommeil.rs` pour rester sous le plafond de 500 lignes du
 //! projet** (revue de la tâche 10, D9) — même motif et même montage que
@@ -15,151 +21,37 @@
 //! de `Etat`/`etat`/`distribuer`/`oublier` est passée à `pub(super)` pour
 //! rester atteignable depuis `sommeil.rs` et ses autres descendants
 //! (`parts.rs`, `porteurs.rs`, `tests.rs`), exactement comme avant
-//! l'extraction.
+//! l'extraction. ⚠️ **CE QUI PRÉCÈDE DÉCRIT L'EXTRACTION DEPUIS
+//! `sommeil.rs`, ET N'EST PLUS L'ÉTAT ACTUEL DE CE FICHIER** : `Etat` a
+//! quitté `registre.rs` une SECONDE fois, au round de correction 3, pour
+//! `registre/tables.rs` (voir l'en-tête plus haut, et `mod tables;` plus
+//! bas). Ce paragraphe reste exact pour l'extraction qu'il décrit ; il ne
+//! doit pas se lire comme « `Etat` vit ici aujourd'hui ».
 
 use std::collections::HashMap;
-use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Mutex, MutexGuard, OnceLock};
 use std::time::Instant;
 
 use crate::capteur::vivier::{Ordre, Vivier, HYSTERESIS, PLAFOND_EVEIL};
 
+use super::file::{canal_de_session, Envoi, ReceveurSession};
 use super::{parts, porteurs, presse_papier, purger_les_inaptitudes, retirer_est_perime, Message, PERIODE_REARBITRAGE};
 
-pub(super) struct Etat {
-    pub(super) vivier: Vivier,
-    pub(super) canaux: HashMap<String, Sender<Message>>,
-    /// La session que le client déclare focalisée, si elle existe encore.
-    ///
-    /// Tenue ici et non dans `Vivier` : le vivier arbitre des places
-    /// d'encodeur, le répartiteur des parts de débit. Le client émet `blur`
-    /// aussi bien que `focus` (`client/src/visibilite.ts`), donc ce champ se
-    /// vide bien quand la fenêtre perd le focus.
-    pub(super) focalisee: Option<String>,
-    /// Dernière part envoyée à chaque session. **Le seul rempart contre une
-    /// inondation** : le tour de roue ré-arbitre toutes les 250 ms, et sans
-    /// cette mémoire huit fenêtres recevraient 32 messages par seconde à vie.
-    pub(super) dernieres_parts: HashMap<String, u32>,
-    /// PID du processus propriétaire de chaque fenêtre. **Ici et pas dans un
-    /// second registre** : le capteur n'a qu'une vérité à tenir, et deux
-    /// tables à synchroniser en feraient deux.
-    pub(super) pids: HashMap<String, u32>,
-    /// Rang d'arrivée de chaque session, et rang du dernier focus reçu. Deux
-    /// compteurs tirés du même `horloge`, strictement croissante.
-    pub(super) arrivees: HashMap<String, u64>,
-    pub(super) derniers_focus: HashMap<String, u64>,
-    /// Compteur monotone qui sert de rang aux deux tables ci-dessus. Un
-    /// `Instant` ne conviendrait pas : il faut un ordre total, stable et
-    /// comparable, pas une durée.
-    pub(super) horloge: u64,
-    /// Dernier ordre audio envoyé à chaque session. **Le rempart contre
-    /// l'inondation**, exactement comme `dernieres_parts` : le tour de roue
-    /// ré-arbitre toutes les 250 ms.
-    pub(super) derniers_audio: HashMap<String, bool>,
-    /// Instant après lequel une session dont la capture audio est morte
-    /// redevient éligible au portage. Absente = apte.
-    ///
-    /// **Ici et pas dans `capteur::audio`** : ce module a l'horloge, l'autre
-    /// est pur et le reste.
-    pub(super) inaptes: HashMap<String, Instant>,
-    /// La DERNIÈRE annonce de presse-papier distribuée, quelle qu'elle soit.
-    ///
-    /// 🔴 **C'est la moitié AGENT du legs n°3 de P1** — « une fenêtre attachée
-    /// après une copie ne reçoit jamais ce contenu ». Sans cette mémoire, une
-    /// fenêtre qui s'attache attend la copie SUIVANTE, et le `Sondeur` le dit
-    /// de lui-même : son premier tour prend l'état courant pour référence et
-    /// n'annonce rien.
-    ///
-    /// ⚠️ **Elle mémorise AUSSI les `Annonce::Refus`, et il le faut** : une
-    /// fenêtre qui s'attache après un refus doit voir le bandeau, sans quoi
-    /// elle attendrait un contenu qui n'arrivera jamais.
-    ///
-    /// 🔴 **AUCUNE PURGE À LA RÉ-INSCRIPTION, et la symétrie avec
-    /// `dernieres_parts` / `derniers_audio` est TROMPEUSE** (D-P3-3). Ces
-    /// deux-là se purgent parce que `distribuer_les_parts` et
-    /// `distribuer_l_audio` FILTRENT sur eux : sans purge, une part identique
-    /// à celle envoyée sur l'ANCIEN canal serait jugée déjà livrée sur le
-    /// canal NEUF, qui ne l'a jamais reçue. L'émission du presse-papier à
-    /// l'inscription, elle, est INCONDITIONNELLE : il n'y a rien à filtrer,
-    /// donc rien à purger — et purger ici retirerait la mémoire au moment
-    /// précis où l'on veut s'en servir, le remède ne remédiant alors à rien.
-    pub(super) dernier_presse_papier: Option<crate::presse_papier::Annonce>,
-    /// Le couple (numéro de séquence, texte) de NOTRE PROPRE écriture du
-    /// presse-papier, en attente d'être consommé par le tour de roue pour
-    /// armer les gardes n°1 et n°2 de D5 (sous-bloc P2).
-    ///
-    /// 🔴 **Il vit ICI, sous le verrou, et non à côté du `Sondeur`, parce que
-    /// les deux ne courent pas sur le même fil.** Le `Sondeur` est local au fil
-    /// du tour de roue ; l'écriture, elle, arrive du fil de FENÊTRE qui sert la
-    /// commande `PressePapierEcrire`. Il n'existe aucun moyen d'armer le garde
-    /// depuis là sans course — sinon ce registre, qui est déjà le point de
-    /// rendez-vous verrouillé des deux.
-    ///
-    /// ⚠️ **Cela DÉPLACE la course, cela ne la supprime pas, et il faut le
-    /// dire** : jusqu'à `PERIODE_REARBITRAGE` (250 ms) peut s'écouler entre
-    /// notre `SetClipboardData` et la consommation ci-dessous. Si une AUTRE
-    /// copie survient dans cet intervalle, poser `reference` sur *notre* `seq`
-    /// ne la masque pas — le compteur aura encore bougé, et cette copie sera
-    /// annoncée. **C'est le comportement voulu**, exact au sens de D5, et un
-    /// test le vérifie plutôt que de le supposer.
-    ///
-    /// Écrasement du dernier : deux écritures en moins d'un tour de roue ne
-    /// laissent que la seconde, qui est celle que le presse-papier porte
-    /// réellement.
-    pub(super) notre_ecriture: Option<(u32, String)>,
-    /// Nombre de réarmements consécutifs déjà accordés à chaque session.
-    ///
-    /// ❌ **« Remis à zéro dès qu'elle porte le son sans mourir » décrit la
-    /// sémantique que le sous-bloc D10 a précisément RETIRÉE** (relevé par la
-    /// revue transverse : ce fichier n'a pas été touché par la branche, d'où
-    /// le résidu). La remise à zéro sur la **décision** d'arbitrage a quitté
-    /// `sommeil/porteurs.rs` ; `signaler_audio_vivant` (`capteur/sommeil.rs`)
-    /// en est désormais le seul point, et il ne court que sur une **PREUVE**
-    /// — un paquet réel, remonté par `VersCapteur::AudioVivant`. C'est le
-    /// leg 6 de D9, et c'était son objet : le compteur comptait des échecs
-    /// non consécutifs.
-    ///
-    /// **Conséquence assumée, à connaître** : une session peut « porter le
-    /// son sans mourir » et ne jamais voir son compteur retomber, si aucun
-    /// paquet n'arrive jamais. C'est voulu — c'est exactement l'état que la
-    /// recette ② de D10 a trouvé en production (une source reconstruite qui
-    /// naissait muette) et que le compteur doit dénoncer, pas absoudre.
-    pub(super) rearmements: HashMap<String, u32>,
-    /// Génération de la dernière inscription connue de chaque session (D9,
-    /// F5 de D7 — course au `retirer` quand un nom se réinscrit). Posée par
-    /// `inscrire`, lue et effacée par `retirer` via `retirer_est_perime`.
-    ///
-    /// **Volontairement absente d'`oublier`** : c'est `retirer` seul qui la
-    /// purge, et seulement quand il n'est pas périmé. La purger depuis
-    /// `oublier` la ferait disparaître aussi sur les chemins de canal rompu,
-    /// qui n'ont aucune génération à comparer et ne doivent donc jamais
-    /// l'effacer à la place d'un rattachement déjà inscrit. **Conséquence
-    /// assumée** : sur ces chemins-là, l'entrée d'un nom survit à sa session
-    /// pour le reste de la vie du processus capteur — sans effet
-    /// fonctionnel (elle ne fait que dormir dans une `HashMap`), et les noms
-    /// de session n'étant jamais réemployés (`Table::compteur`,
-    /// `superviseur/table.rs`), cette table ne fait que croître avec le
-    /// nombre de fenêtres jamais ouvertes sur la durée de vie du capteur.
-    pub(super) generations: HashMap<String, u64>,
-    /// Compteur qui frappe la génération de chaque `inscrire` — **DISTINCT
-    /// de `horloge` ci-dessus, délibérément**.
-    ///
-    /// `horloge` a une invariant que `generations` viole nécessairement :
-    /// `arrivees`/`derniers_focus` ne sont posées qu'à la PREMIÈRE
-    /// inscription d'un nom (`if !garde.arrivees.contains_key(session)`) et
-    /// restent ensuite STABLES tant que le nom vit — c'est ce qui leur donne
-    /// un sens de rang d'ARRIVÉE. `generations` a l'exigence inverse :
-    /// **chaque** appel à `inscrire`, y compris un rattachement sous le même
-    /// nom, doit recevoir une valeur NEUVE — c'est le seul moyen de
-    /// distinguer l'instance vivante de la précédente. Faire porter cette
-    /// exigence par `horloge` demanderait de le frapper inconditionnellement
-    /// à `inscrire`, donc de désolidariser sa progression de la garde qui
-    /// protège `arrivees`/`derniers_focus` — un couplage qui rendrait cette
-    /// exigence dépendante d'une logique écrite pour un autre besoin, et
-    /// silencieusement cassable par une évolution future de cette garde.
-    /// Deux compteurs, deux invariants, aucun risque de confusion.
-    pub(super) prochaine_generation: u64,
-}
+// Les TABLES du registre vivent chez le voisin : `Etat` est un agrégat de
+// tables presque entièrement fait de documentation, ce fichier-ci porte ce qui
+// AGIT sur elles. Extrait au round de correction 3, AVANT d'écrire ici — le
+// fichier était à 470 pour un plafond de 500. Le module s'appelle `tables` et
+// non `etat` parce qu'une fonction `etat()` vit juste en dessous.
+mod tables;
+pub(super) use tables::Etat;
+
+
+// Le FIL du tour de roue vit chez le voisin : il porte une horloge et une E/S
+// Win32, ce fichier-ci porte le registre. Extrait au round de correction 1,
+// qui avait porté ce fichier à 508 lignes pour un plafond de 500 — extraire,
+// jamais comprimer.
+mod tour_de_roue;
+use tour_de_roue::demarrer_le_tour_de_roue;
 
 static ETAT: OnceLock<Mutex<Etat>> = OnceLock::new();
 
@@ -190,88 +82,6 @@ pub(super) fn etat() -> MutexGuard<'static, Etat> {
     mutex.lock().unwrap_or_else(|empoisonne| empoisonne.into_inner())
 }
 
-/// **Un seul fil pour tout le processus**, démarré à la première inscription.
-///
-/// **La sûreté ne tient pas au `sleep` ci-dessous.** Ce fil est lancé DEPUIS la
-/// fermeture d'initialisation de `ETAT.get_or_init` ; c'est
-/// `OnceLock::get_or_init` lui-même qui garantit qu'un second fil appelant
-/// `etat()` pendant que cette fermeture tourne encore **bloque** jusqu'à ce
-/// qu'elle se termine — la réentrance qui paniquerait serait celle du *même*
-/// fil, qui n'a pas lieu ici. Le `sleep` n'est qu'une cadence, pas une garde.
-fn demarrer_le_tour_de_roue() {
-    std::thread::spawn(|| {
-        let mut sondeur = crate::presse_papier::Sondeur::nouveau();
-        loop {
-            std::thread::sleep(PERIODE_REARBITRAGE);
-
-            // 🔴 **HORS DU VERROU, ET C'EST TOUT L'INTÉRÊT DE CETTE LIGNE.**
-            // `sondeur.tour()` fait une E/S Win32 — `GetClipboardSequenceNumber`,
-            // puis `OpenClipboard`/`GetClipboardData` quand le compteur a bougé.
-            // `OpenClipboard` est une ressource CONTENDUE de la station de
-            // fenêtres : il échoue, ou attend, dès qu'une autre application la
-            // tient. Placée sous `etat()` — le verrou GLOBAL du registre, un
-            // unique `Mutex<Etat>` pour tout le processus —, elle bloquerait
-            // pendant tout ce temps `inscrire`, `retirer`, `signaler` et
-            // `echec_de_reveil`, c'est-à-dire l'attache et le retrait de TOUTES
-            // les fenêtres, et le retour d'un réveil refusé.
-            //
-            // La spécification place le sondage « sur le tour de roue » sans
-            // dire de quel côté du verrou ; c'est le plan (D-P1-3, divergence
-            // E3) qui a tranché, et c'est un défaut corrigé avant d'exister.
-            //
-            // Seul le RÉSULTAT — une `Annonce` déjà normalisée, bornée et
-            // dédupliquée — entre sous le verrou, plus bas.
-            //
-            // Le garde d'armement `presse_papier::actif()` vit à l'intérieur de
-            // `tour()`, AVANT toute lecture : `PRESSE_PAPIER=0` empêche donc
-            // jusqu'à la lecture du compteur, pas seulement l'envoi. Le
-            // dupliquer ici doublerait une décision déjà prise au bon endroit.
-            //
-            // ⚠️ **Le sens INVERSE le teste une seconde fois, et ce n'est PAS
-            // le doublon que la phrase ci-dessus interdit** : `actif()` y garde
-            // un autre point de décision — l'ÉCRITURE, servie depuis un fil de
-            // fenêtre (`sommeil::presse_papier::ecrire_avec`). Sans lui,
-            // `PRESSE_PAPIER=0` couperait la lecture et laisserait l'écriture,
-            // et « le mécanisme entier est désarmé » serait une demi-vérité.
-            // 🔴 **AVANT `tour()`, et l'ordre EST le mécanisme** (sous-bloc
-            // P2). Consomme l'écriture que le fil de FENÊTRE a posée dans
-            // `Etat` en servant un collage, et arme sur elle les gardes n°1 et
-            // n°2 de D5. Placée après `tour()`, elle arriverait trop tard : le
-            // tour aurait déjà relu notre propre texte et l'aurait renvoyé aux
-            // fenêtres.
-            presse_papier::armer_les_gardes(&mut sondeur);
-
-            let annonce = sondeur.tour();
-
-            // 🔴 **LA SECONDE PRISE (D-P3-6), APRÈS `tour()` ET AVANT
-            // `distribuer`.** `armer_les_gardes` ci-dessus a consommé
-            // l'écriture qui EXISTAIT avant le tour ; celle-ci consomme celle
-            // qui est ARRIVÉE PENDANT. Sans elle, un second collage survenu
-            // entre l'armement et la lecture passe les DEUX gardes de D5 — le
-            // n°1 parce que le compteur a rebougé, le n°2 parce que le texte
-            // mémorisé est celui du collage PRÉCÉDENT — et son propre texte
-            // repart vers les N fenêtres.
-            //
-            // La course a été MESURÉE avant d'être fermée, par un test rouge
-            // sur l'arbre intact et sans aucune mutation ; sa démonstration et
-            // le résidu qui subsiste vivent auprès de
-            // `Sondeur::ecarter_notre_ecriture`.
-            let annonce = presse_papier::filtrer_nos_ecritures_tardives(&mut sondeur, annonce);
-
-            let mut garde = etat();
-            let maintenant = Instant::now();
-            let ordres = garde.vivier.rearbitrer(maintenant);
-            distribuer(&mut garde, ordres);
-            parts::distribuer_les_parts(&mut garde);
-            purger_les_inaptitudes(&mut garde.inaptes, Instant::now());
-            porteurs::distribuer_l_audio(&mut garde);
-            if let Some(annonce) = annonce {
-                presse_papier::distribuer(&mut garde, annonce);
-            }
-        }
-    });
-}
-
 /// Envoie chaque ordre à la fenêtre concernée. Un canal rompu signale une
 /// fenêtre déjà morte : on retire son entrée plutôt que de la journaliser à
 /// chaque tour de roue.
@@ -296,9 +106,135 @@ pub(super) fn distribuer(garde: &mut MutexGuard<'static, Etat>, ordres: Vec<(Str
     while !a_traiter.is_empty() {
         let mut suite = Vec::new();
         for (session, ordre) in a_traiter {
-            let rompu = match garde.canaux.get(&session) {
-                Some(canal) => canal.send(Message::Sommeil(ordre)).is_err(),
+            // `refuses` est relevé APRÈS l'envoi, donc il compte le refus qui
+            // vient d'arriver : le palier est exactement celui sur lequel
+            // `EmetteurSession::journaliser_le_refus` vient de décider, ce qui
+            // fait sortir les deux lignes ensemble.
+            let (issue, refuses) = match garde.canaux.get(&session) {
+                Some(canal) => (Some(canal.envoyer(Message::Sommeil(ordre))), canal.refuses()),
+                // 🔴 `None` N'EST PAS UNE LIVRAISON, ET LE ROUND 2 A CORRIGÉ
+                // CETTE RÉDACTION. Le comportement est celui d'avant (l'ancien
+                // `None => false` : ne rien purger, la session n'est déjà plus
+                // dans `canaux`), mais l'écrire `Envoi::Depose(...)` fabriquait
+                // une livraison et rendait cette perte INDISCERNABLE d'un vrai
+                // dépôt. Un `Option` la nomme pour ce qu'elle est : il n'y a
+                // eu aucun envoi.
+                None => (None, 0),
+            };
+            let rompu = match issue {
+                // Aucun canal : rien n'est parti, et il n'y a rien à purger —
+                // `oublier` a déjà retiré cette session. La tracer ferait une
+                // ligne par ordre à chaque retrait, sur un chemin nominal.
                 None => false,
+                Some(Envoi::Depose(_)) => false,
+                // 🔴 UN ORDRE DE SOMMEIL NON DÉPOSÉ NE DOIT PAS L'ÊTRE EN
+                // SILENCE (correctif du round 1 : il l'était). `Sommeil` est
+                // la SEULE des quatre variantes que la fenêtre APPLIQUE au
+                // lieu de la relayer — c'est ce qui lui vaut son propre
+                // traitement ici.
+                //
+                // ❌ ~~C'est une perte d'état NON RÉPARABLE : le vivier a déjà
+                // posé `eveillee`, aucun ré-arbitrage futur ne réémettra cet
+                // ordre, et la place resterait occupée pour toute la vie du
+                // processus.~~ **DEVENU FAUX DANS LE MÊME BLOC, ET LE ROUND 3
+                // L'A RELEVÉ** : c'était le motif du niveau `error!`, et il
+                // contredisait le message émis douze lignes plus bas
+                // (« l'ordre repartira au prochain arbitrage »). Les deux ne
+                // pouvaient pas être vrais ; c'est le premier qui est tombé
+                // avec l'annulation. **Le niveau est donc `warn!`** — un
+                // message retardé, pas un état perdu.
+                //
+                // ⚠️ **PAS de purge** : la session est VIVANTE, seulement en
+                // retard, et la purger tuerait l'arbitrage de la fenêtre la
+                // plus en peine.
+                //
+                // 🔴 **CE QUI EST FAIT ICI EST « NE PAS MENTIR », PAS
+                // « RETENTER »**, et la distinction porte toute la décision.
+                // L'annulation ci-dessus rend au vivier l'état d'AVANT
+                // l'ordre : rien n'est réémis à l'intérieur de cette boucle,
+                // c'est le prochain arbitrage qui reprend, en voyant la
+                // fenêtre dans son ancien état. **La terminaison de la boucle
+                // n'est donc pas touchée du tout.**
+                //
+                // ⚠️ ~~Rendre sa place au vivier ne peut pas être appliqué ici
+                // sans que la boucle DIVERGE.~~ **CETTE PHRASE ÉTAIT PLUS
+                // FORTE QUE CE QUI ÉTAIT ÉTABLI, et le round de correction 2
+                // l'a réfutée par la mesure** : la troisième voie — appeler
+                // `echec_de_reveil` depuis la boucle — a été jouée, et la
+                // suite termine en 0,02 s. `REPIT_APRES_ECHEC` exclut la
+                // session des candidates, donc avec un `maintenant` capturé
+                // une seule fois, l'ensemble en répit croît strictement.
+                // **Ce qui est vrai, et rien de plus : la preuve de
+                // terminaison ÉCRITE PLUS HAUT ne couvre pas ce cas** — elle
+                // repose sur le fait qu'un nouveau lot n'est engendré que par
+                // un canal ROMPU, et que chaque rompu QUITTE `canaux` avant le
+                // tour suivant. C'est une preuve à refaire, pas une
+                // divergence. Le remède retenu ne pose pas la question, et il
+                // couvre en outre les DEUX sens là où `echec_de_reveil` ne
+                // couvre que le réveil.
+                //
+                // 🔴 LA TRACE EST CADENCÉE, ET C'EST LE REMÈDE LUI-MÊME QUI
+                // L'A RENDU NÉCESSAIRE.
+                //
+                // ❌ ~~Elle n'est pas cadencée parce que `distribuer` n'émet un
+                // ordre que sur un CHANGEMENT d'arbitrage — jamais à chaque
+                // tour de roue.~~ **CE MOTIF ÉTAIT VRAI TANT QUE L'ORDRE ÉTAIT
+                // PERDU.** L'annulation ci-dessous REND l'état : le
+                // ré-arbitrage suivant revoit donc la même divergence, réémet
+                // le même ordre, et il est refusé à nouveau. **Mesuré : +1 par
+                // tour, strictement, sans borne** — soit quatre lignes par
+                // seconde et par fenêtre bloquée à `PERIODE_REARBITRAGE`
+                // (250 ms), indéfiniment. Ce n'est pas un oubli : c'est le
+                // remède qui a changé la nature du phénomène.
+                //
+                // **La cadence est celle de `file.rs` — les puissances de deux
+                // du compte cumulé de refus DE CETTE SESSION**, donc au plus
+                // 64 lignes pour toute sa vie. Elle s'appuie sur le compteur
+                // que l'émetteur tient déjà (`EmetteurSession::refuses`)
+                // plutôt que sur une table de plus dans `Etat` : aucun état
+                // neuf, rien à purger dans `oublier`, et **les deux lignes
+                // sortent au MÊME palier** — celle de `file.rs` dit que la
+                // session déborde, celle-ci dit quel ordre en a pâti.
+                //
+                // ⚠️ **CE QUE CE COUPLAGE COÛTE, et il faut le dire** : le
+                // compteur agrège les quatre variantes, donc un ordre de
+                // sommeil qui ne tombe pas sur un palier n'est pas tracé
+                // INDIVIDUELLEMENT. Le phénomène, lui, reste visible — les
+                // paliers se succèdent en log₂, donc jamais plus d'un
+                // doublement sans ligne. Ce qui se perd est le détail de quel
+                // ordre, à quel tour ; ce qui compte — cette fenêtre déborde
+                // et perd des ordres — sort toujours.
+                //
+                // ⚠️ **NUANCE RELEVÉE EN REVUE ET RESTÉE NON ÉCRITE : « reste
+                // visible » est OPTIMISTE, une fois traduite en secondes.**
+                // Le compteur `refuses` est CUMULATIF et ne retombe JAMAIS
+                // (voir `file.rs`) : une session ayant déjà accumulé ~1 000
+                // refus n'émettra sa prochaine ligne qu'au palier 2048, soit,
+                // à un refus par `PERIODE_REARBITRAGE` (250 ms), PLUSIEURS
+                // MINUTES de silence sur un blocage tardif. La borne « jamais
+                // plus d'un doublement sans ligne » reste vraie en NOMBRE de
+                // refus ; sa traduction en TEMPS croît avec l'historique déjà
+                // accumulé par la session, et n'est donc pas une borne fixe.
+                Some(Envoi::Refuse) => {
+                    // 🔴 ON REND AU VIVIER L'ÉTAT D'AVANT L'ORDRE. Sans cela,
+                    // il aurait déjà écrit `eveillee` pour un ordre jamais
+                    // parti — le SIXIÈME site de mémorisation, trouvé au round
+                    // de correction 2. Voir `Vivier::annuler_ordre_non_livre`
+                    // pour les deux sens et ce que chacun coûte.
+                    garde.vivier.annuler_ordre_non_livre(&session, ordre);
+                    if refuses.is_power_of_two() {
+                        tracing::warn!(
+                            session_cible = %session,
+                            ?ordre,
+                            refuses,
+                            "ordre de sommeil NON DEPOSE : file de la fenêtre pleine, \
+                             etat du vivier rendu, l'ordre repartira au prochain \
+                             arbitrage (trace au palier, puissance de deux)"
+                        );
+                    }
+                    false
+                }
+                Some(Envoi::Rompu) => true,
             };
             if rompu {
                 suite.extend(oublier(garde, &session));
@@ -384,8 +320,8 @@ pub(super) fn oublier(garde: &mut MutexGuard<'static, Etat>, session: &str) -> V
 ///
 /// L'appelant (`Fenetre::servir`) retient la valeur rendue le temps de son
 /// service et la redonne telle quelle à `retirer`.
-pub fn inscrire(session: &str, pid: u32) -> (Receiver<Message>, u64) {
-    let (emetteur, receveur) = channel::<Message>();
+pub fn inscrire(session: &str, pid: u32) -> (ReceveurSession, u64) {
+    let (emetteur, receveur) = canal_de_session(session);
     let mut garde = etat();
     // Frappée INCONDITIONNELLEMENT, à CHAQUE appel — y compris un
     // rattachement sous le même nom : c'est la seule façon de distinguer

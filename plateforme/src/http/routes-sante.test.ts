@@ -70,10 +70,15 @@ describe('GET /sante', () => {
 
     it("(c) 🔴 la réponse ne porte RIEN D'AUTRE", async () => {
         // 🔴 COMPARAISON DE L'OBJET ENTIER, jamais un `toContain` : une page de
-        // santé bavarde est un INVENTAIRE offert à un anonyme, et c'est par
-        // construction la seule route non authentifiée qui reste après P2.
+        // santé bavarde est un INVENTAIRE offert à un anonyme.
         // Un ajout futur de version, de compte de sessions, d'URL de base ou
         // de nom de moteur doit faire ROUGIR ce test.
+        // ⚠️ « LA SEULE ROUTE NON AUTHENTIFIÉE QUI RESTE APRÈS P2 » ÉTAIT
+        // ÉCRIT ICI, ET C'EST FAUX DEPUIS LE 22 AOÛT 2026 : le servant de page
+        // en est une SECONDE. Ce qui reste vrai — et qui est la raison de ce
+        // test — est que `/sante` est la seule route non authentifiée qui
+        // TOUCHE LA BASE, donc la seule dont la réponse puisse en dire
+        // quelque chose. Voir `routes-sante.ts`.
         base = await baseNeuve('sante-rien-d-autre');
         service = await demarrerServeur(CONFIG, base);
         const corps = (await (await fetch(`http://127.0.0.1:${service.port}/sante`)).json()) as Record<string, unknown>;

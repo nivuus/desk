@@ -20,6 +20,7 @@ import { enroler, marquerVu } from '../depot/agent';
 import { creerUtilisateur } from '../depot/utilisateur';
 import { signer } from '../identite/jeton';
 import { BACKEND_STATIQUE } from '../orchestration/refus';
+import { Frein, REQUETES_MAX_ADRESSE } from '../securite/frein';
 import { servirSession } from './routes-session';
 
 const SECRET = 'un-secret-de-plateforme-de-quarante-octets';
@@ -60,7 +61,15 @@ afterEach(async () => {
 
 /// L'horloge est INJECTÉE : c'est ce qui rend la transition du critère ④c
 /// observable. Un `Date.now()` lu dans le module ne laisserait qu'un instant.
-async function servir(nom: string, instant = MS, origineClient?: string): Promise<string> {
+///
+/// ⚠️ `frein` EST UN PARAMÈTRE, DÉFAUT NEUF PAR APPEL : chaque test isole
+/// ainsi son propre budget, sans qu'aucun ne puisse en épuiser un autre.
+async function servir(
+    nom: string,
+    instant = MS,
+    origineClient?: string,
+    frein: Frein = new Frein(),
+): Promise<string> {
     base = await baseNeuve(nom);
     const b = base;
     http = createServer((req, rep) => {
@@ -69,6 +78,8 @@ async function servir(nom: string, instant = MS, origineClient?: string): Promis
             secretJeton: SECRET,
             origineClient,
             maintenant: () => instant,
+            frein,
+            proxyDeConfiance: new Set<string>(),
         })
             .then((servie) => {
                 if (servie) return;
@@ -285,5 +296,21 @@ describe(`route POST /session, moteur=${MOTEUR}`, () => {
         expect(r.status).toBe(204);
         expect(r.headers.get('access-control-allow-origin')).toBe(ORIGINE);
         expect(r.headers.get('access-control-allow-headers')).toContain('authorization');
+    });
+
+    it('🔴 le budget « toute requête » freine `POST /session` après trop de requêtes de la même adresse', async () => {
+        // 🔴 La rouge : ne jamais consulter `BUDGET_REQUETES`. Sans jeton,
+        // chaque requête rendrait 401 indéfiniment — cette route n'a aucune
+        // notion d'échec (voir `securite/frein.ts`).
+        const url = await servir('rs-frein-requetes');
+        let dernier: Response | undefined;
+        for (let i = 0; i < REQUETES_MAX_ADRESSE + 1; i++) {
+            dernier = await demander(url);
+        }
+        expect(dernier!.status).toBe(429);
+        expect((await corpsDe(dernier!)).refus).toBe('trop-de-requetes');
+        const retry = dernier!.headers.get('retry-after');
+        expect(retry).not.toBeNull();
+        expect(Number(retry)).toBeGreaterThan(0);
     });
 });

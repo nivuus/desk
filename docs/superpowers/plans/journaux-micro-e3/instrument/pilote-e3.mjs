@@ -32,6 +32,14 @@ const SORTIE = process.argv[2] ?? '/tmp/e3/pilote-e3.json';
 const PLATEFORME_URL = process.env.PLATEFORME_URL ?? 'http://127.0.0.1:8080';
 const CLIENT_URL = process.env.CLIENT_URL ?? 'http://127.0.0.1:5173';
 const SIGNALING = process.env.SIGNALING_WS ?? 'ws://192.168.3.1:8080';
+// 🔴 CHANTIER auth-pomerium : le relais a quitté `/` pour `/signal`.
+// `?signaling=` est EXPLICITE côté client
+// (client/src/adresse-plateforme.ts::adresseSignaling) et NE REÇOIT AUCUN
+// AJOUT — SIGNALING reste la BASE, c'est ce pilote qui fournit l'URL du
+// relais à la page, y compris pour le marqueur `__SIGNALING__` que
+// `injection-e3.js` substitue à son tour dans les fenêtres ouvertes par
+// `window.open` : ce fichier n'a donc rien à changer lui-même.
+const SIGNALING_RELAIS = `${SIGNALING.replace(/\/+$/, '')}/signal`;
 const PREFIXE = process.env.PREFIXE_VM;
 const PORT_CDP = Number(process.env.PORT_CDP ?? 9470);
 const UDD = process.env.UDD ?? '/tmp/e3/udd';
@@ -124,7 +132,7 @@ try {
         .replaceAll('__JETON_ACCES__', paire.acces)
         .replaceAll('__JETON_RAFRAICHISSEMENT__', paire.rafraichissement)
         .replaceAll('__PREFIXE__', PREFIXE)
-        .replaceAll('__SIGNALING__', SIGNALING);
+        .replaceAll('__SIGNALING__', SIGNALING_RELAIS);
     const restants = ['__JETON_ACCES__', '__JETON_RAFRAICHISSEMENT__', '__PREFIXE__', '__SIGNALING__']
         .filter((m) => injection.includes(m));
     if (restants.length > 0) throw new Error(`marqueurs non substitues : ${restants.join(', ')}`);
@@ -188,7 +196,7 @@ try {
     });
     resultat.console_pages = console_pages;
 
-    const url = `${CLIENT_URL}/shell.html?signaling=${encodeURIComponent(SIGNALING)}&prefixe=${encodeURIComponent(PREFIXE)}`;
+    const url = `${CLIENT_URL}/shell.html?signaling=${encodeURIComponent(SIGNALING_RELAIS)}&prefixe=${encodeURIComponent(PREFIXE)}`;
     dire(`navigation : ${url}`);
     await cdp.send('Page.navigate', { url }, sessionShell);
     await dodo(4000);

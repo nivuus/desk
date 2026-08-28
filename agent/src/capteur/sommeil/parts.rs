@@ -16,6 +16,7 @@ use std::sync::{MutexGuard, OnceLock};
 
 use crate::capteur::repartiteur::{self, Fenetre};
 
+use super::file::Envoi;
 use super::{distribuer, oublier, Etat, Message};
 
 /// Budget de débit de la session entière, en bits par seconde.
@@ -126,14 +127,45 @@ pub(super) fn distribuer_les_parts(garde: &mut MutexGuard<'static, Etat>) {
         if garde.dernieres_parts.get(&session) == Some(&bps) {
             continue;
         }
-        let envoye = match garde.canaux.get(&session) {
-            Some(canal) => canal.send(Message::Part { bps }).is_ok(),
-            None => false,
+        // ⚠️ **`None` N'EST PAS UNE RUPTURE, et le round 3 a corrigé cette
+        // rédaction** — même grief que `registre::distribuer` au round 2.
+        // C'est inatteignable aujourd'hui (les sessions sortent de
+        // `canaux.keys()` sous le MÊME verrou, quelques lignes plus haut),
+        // donc sans conséquence ; mais ce lot s'était donné pour règle de ne
+        // plus FABRIQUER d'issue, et l'écrire `Envoi::Rompu` ferait purger une
+        // session sur un fait qui n'a pas eu lieu si cette invariance venait à
+        // tomber. Un `Option` nomme la chose : il n'y a eu aucun envoi.
+        let issue = match garde.canaux.get(&session) {
+            Some(canal) => Some(canal.envoyer(Message::Part { bps })),
+            None => None,
         };
-        if envoye {
-            garde.dernieres_parts.insert(session, bps);
-        } else {
-            rompus.push(session);
+        match issue {
+            // Aucun canal : rien n'est parti, et il n'y a rien à purger — la
+            // session n'est déjà plus dans `canaux`.
+            None => {}
+            // Livrée : on peut mémoriser, et le garde d'écrasement en tête de
+            // boucle évitera de la réémettre tant qu'elle ne change pas.
+            Some(Envoi::Depose(_)) => {
+                garde.dernieres_parts.insert(session, bps);
+            }
+            // 🔴 REFUSÉE : ON NE MÉMORISE PAS, ET C'EST TOUT LE CORRECTIF DU
+            // ROUND 1. La file de cette fenêtre était pleine : la part n'est
+            // jamais partie. L'inscrire dans `dernieres_parts` ferait juger la
+            // valeur « déjà livrée » par le garde d'écrasement ci-dessus, qui
+            // supprimerait alors TOUTE réémission future de cette valeur — la
+            // fenêtre resterait à son débit précédent tant que sa part
+            // calculée ne change pas, sans borne. En ne mémorisant rien, le
+            // tour de roue suivant la repropose de lui-même.
+            //
+            // ⚠️ **Et surtout PAS `rompus.push`** : la session est VIVANTE,
+            // seulement en retard. La purger reviendrait à tuer l'arbitrage de
+            // la fenêtre la plus en peine — exactement la mauvaise réaction.
+            //
+            // Le refus est déjà journalisé, au palier et avec le nom de la
+            // session, par `EmetteurSession::journaliser_le_refus` : le
+            // retracer ici doublerait la ligne sans rien ajouter.
+            Some(Envoi::Refuse) => {}
+            Some(Envoi::Rompu) => rompus.push(session),
         }
     }
 
@@ -156,194 +188,11 @@ pub(super) fn distribuer_les_parts(garde: &mut MutexGuard<'static, Etat>) {
     }
 }
 
+// Module de tests extrait dans un fichier voisin : ce fichier était à 488
+// lignes pour un plafond de projet à 500, et le round de correction 2 y
+// ajoute. Extraire, jamais comprimer — et dans une tâche DÉDIÉE, avant celle
+// qui ajoute. Même idiome que `file/tests.rs` et `superviseur/table.rs` ;
+// voir la doc en tête du fichier extrait.
 #[cfg(test)]
-mod tests {
-    use std::sync::mpsc::Receiver;
-
-    use crate::capteur::sommeil::tests::{premier_ordre, verrouiller_pour_le_test};
-    use crate::capteur::sommeil::{inscrire, retirer, signaler, Message};
-    use crate::capteur::vivier::Ordre;
-
-    /// Dernière part reçue sur un canal, en vidant ce qui s'y trouve.
-    fn derniere_part(canal: &Receiver<Message>) -> Option<u32> {
-        canal
-            .try_iter()
-            .filter_map(|m| match m {
-                Message::Part { bps } => Some(bps),
-                _ => None,
-            })
-            .last()
-    }
-
-    #[test]
-    fn une_session_qui_s_eveille_recoit_une_part_apres_son_ordre_de_reveil() {
-        let _verrou = verrouiller_pour_le_test();
-        let (messages, generation) = inscrire("t6-a", 6001);
-        signaler("t6-a", true, true);
-
-        let recus: Vec<Message> = messages.try_iter().collect();
-        let position_reveil = recus
-            .iter()
-            .position(|m| matches!(m, Message::Sommeil(Ordre::Reveiller)))
-            .expect("l'ordre de réveil doit être présent");
-        // La recherche part de `position_reveil`, pas du début : l'inscription
-        // elle-même envoie déjà une PREMIÈRE part (le plancher endormi, avant
-        // tout ordre — voir la doc de `inscrire`), et c'est légitime. La
-        // recherche depuis le début confondrait cette part-là, envoyée AVANT
-        // le réveil, avec celle que ce test veut vérifier : celle qui décrit
-        // la fenêtre ÉVEILLÉE, et qui doit suivre son ordre.
-        let position_part = recus[position_reveil..]
-            .iter()
-            .position(|m| matches!(m, Message::Part { .. }))
-            .map(|i| i + position_reveil)
-            .expect("une part doit suivre le réveil");
-        assert!(
-            position_reveil < position_part,
-            "la part suit l'ordre, jamais l'inverse : une fenêtre encore endormie \
-             recevrait sinon une part d'éveillée"
-        );
-        retirer("t6-a", generation);
-    }
-
-    #[test]
-    fn une_part_inchangee_n_est_pas_reemise() {
-        let _verrou = verrouiller_pour_le_test();
-        let (messages, generation) = inscrire("t6-b", 6002);
-        signaler("t6-b", true, true);
-        let _ = messages.try_iter().count();
-
-        // Même signal, donc même état, donc même part : rien ne doit partir.
-        signaler("t6-b", true, true);
-        let parts: Vec<Message> = messages
-            .try_iter()
-            .filter(|m| matches!(m, Message::Part { .. }))
-            .collect();
-        assert!(parts.is_empty(), "une part inchangée ne se réémet pas : {parts:?}");
-        retirer("t6-b", generation);
-    }
-
-    #[test]
-    fn l_arrivee_d_une_seconde_fenetre_reduit_la_part_de_la_premiere() {
-        let _verrou = verrouiller_pour_le_test();
-        let (a, generation_a) = inscrire("t6-c", 6003);
-        signaler("t6-c", true, true);
-        let premiere = derniere_part(&a).expect("la première doit avoir une part");
-
-        let (b, generation_b) = inscrire("t6-d", 6004);
-        signaler("t6-d", true, false);
-        let apres = derniere_part(&a).expect("la première doit être ré-servie");
-        assert!(
-            apres < premiere,
-            "part de la première : {premiere} puis {apres} — elle doit baisser"
-        );
-        assert!(derniere_part(&b).is_some(), "la seconde doit recevoir une part");
-
-        retirer("t6-c", generation_a);
-        retirer("t6-d", generation_b);
-    }
-
-    /// Le test qui couvre le défaut trouvé en revue : un canal rompu détecté
-    /// PENDANT la distribution des PARTS (pas pendant celle des ordres) doit
-    /// libérer sa place au vivier, pas seulement dans `canaux`. Avant le
-    /// remède, l'entrée y survivait pour toute la vie du processus dès qu'un
-    /// fil de fenêtre mourait sans passer par `retirer` — le cas nominal
-    /// d'une panique, court-circuitant le point de passage unique de
-    /// `Fenetre::servir`.
-    #[test]
-    fn un_canal_rompu_detecte_par_les_parts_est_retire_du_vivier() {
-        let _verrou = verrouiller_pour_le_test();
-        // Sature les PLAFOND_EVEIL (8) places.
-        let mut recepteurs_pleins = Vec::new();
-        for i in 0..8 {
-            let nom = format!("t7-plein-{i}");
-            let (ordres, generation) = inscrire(&nom, 6100 + i as u32);
-            signaler(&nom, true, false);
-            assert_eq!(
-                premier_ordre(&ordres),
-                Some(Ordre::Reveiller),
-                "{nom} devrait s'eveiller"
-            );
-            recepteurs_pleins.push((nom, ordres, generation));
-        }
-
-        // Le fil de la premiere "meurt" : son recepteur est jete SANS passer
-        // par `retirer`, exactement ce qui arrive quand un fil de fenetre
-        // panique avant d'atteindre son point de retrait unique. `canaux`
-        // garde donc une entree dont plus personne ne lit.
-        let (session_morte, recepteur_mort, generation_morte) = recepteurs_pleins.remove(0);
-        drop(recepteur_mort);
-
-        // "t7-attend" arrive. La simple INSCRIPTION d'une session neuve
-        // (endormie) fait deja varier le calcul des parts des huit eveillees
-        // existantes : chaque endormie retranche son `PART_DORMANTE_BPS` du
-        // budget partage AVANT que le reste ne soit divise (voir `repartir`),
-        // donc `reste` change, donc la part de CHAQUE eveillee change — y
-        // compris celle de la session morte. La tentative d'envoi qui en
-        // resulte sur son canal rompu declenche le remede : elle est retiree
-        // du VIVIER (et pas seulement de `canaux`), ce qui libere sa place.
-        let (ordres_attend, generation_attend) = inscrire("t7-attend", 6200);
-
-        // Se signaler visible suffit desormais : la place est deja libre.
-        // Sans le remede (retrait du vivier en plus de `canaux`), la session
-        // morte y resterait comptee comme eveillee pour toujours, la place ne
-        // se libererait jamais, et "t7-attend" resterait endormie ici.
-        signaler("t7-attend", true, false);
-        assert_eq!(
-            premier_ordre(&ordres_attend),
-            Some(Ordre::Reveiller),
-            "le retrait de la session morte, detecte par la distribution des parts, \
-             doit liberer sa place au vivier"
-        );
-
-        // Nettoyage. `retirer` sur la session deja retiree par le remede est
-        // un no-op sur une cle deja absente, aussi bien pour `Vivier::retirer`
-        // (HashMap::remove) que pour `canaux` — pas un double retrait.
-        retirer("t7-attend", generation_attend);
-        retirer(&session_morte, generation_morte);
-        for (nom, _, generation) in recepteurs_pleins {
-            retirer(&nom, generation);
-        }
-    }
-
-    /// Le défaut trouvé en revue de la tâche 6 : `sommeil::inscrire` remplace
-    /// le canal d'une session déjà connue (rattachement après rupture de
-    /// tube) sans purger `dernieres_parts`. Si la topologie n'a pas changé
-    /// entre les deux inscriptions, la part recalculée est identique à celle
-    /// déjà mémorisée, le filtre d'écrasement de `distribuer_les_parts` la
-    /// juge donc déjà livrée, et le canal NEUF ne reçoit jamais rien — le
-    /// plafond de débit de cet enfant reste périmé sans terme.
-    #[test]
-    fn un_rattachement_a_topologie_inchangee_renvoie_une_part_sur_le_canal_neuf() {
-        let _verrou = verrouiller_pour_le_test();
-
-        // Premier canal : inscription seule, aucune autre fenêtre, aucun
-        // signal — la fenêtre naît endormie et reçoit tout de même la part
-        // plancher à l'inscription (voir la doc de `inscrire`).
-        let (premier_canal, _generation_initiale) = inscrire("t8-rattache", 6300);
-        let premiere_part = derniere_part(&premier_canal)
-            .expect("une première part doit partir à l'inscription initiale");
-
-        // Le tube se rompt et l'enfant se rattache : MÊME session, rien
-        // d'autre dans la topologie n'a bougé (aucune autre fenêtre, aucun
-        // signal de visibilité entre-temps). `inscrire` détecte le
-        // remplacement (elle journalise « canal d'ordres remplacé pour
-        // cette session ») et rend un canal neuf, avec une génération neuve
-        // (D9, F5 de D7).
-        let (canal_neuf, generation_neuve) = inscrire("t8-rattache", 6300);
-
-        // Sans le remède, la part recalculée est identique à `premiere_part`
-        // : `dernieres_parts` la juge déjà livrée (elle l'était, mais sur
-        // L'ANCIEN canal, disparu avec la rupture) et rien ne part sur le
-        // canal neuf, qui reste muet pour toujours tant que la topologie ne
-        // change pas.
-        assert_eq!(
-            derniere_part(&canal_neuf),
-            Some(premiere_part),
-            "le canal neuf doit recevoir sa part même si elle est identique à celle \
-             déjà envoyée sur l'ancien canal : dernieres_parts doit être purgée pour \
-             cette session au moment où son canal est remplacé"
-        );
-
-        retirer("t8-rattache", generation_neuve);
-    }
-}
+#[path = "parts/tests.rs"]
+mod tests;

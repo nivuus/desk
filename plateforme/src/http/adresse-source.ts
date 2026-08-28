@@ -61,6 +61,25 @@ function normaliser(adresse: string): string {
     return adresse.startsWith(PREFIXE_MAPPE) ? adresse.slice(PREFIXE_MAPPE.length) : adresse;
 }
 
+/// Le pair est-il l'un des proxys déclarés ?
+///
+/// 🔴 IL NE REGARDE QUE `remoteAddress`, JAMAIS `X-Forwarded-For` — à la
+/// différence d'`adresseSource` juste au-dessus, et la différence est le point.
+/// Honorer un en-tête fourni par l'attaquant pour décider si l'on croit
+/// l'attaquant est circulaire. `adresseSource` a raison de le faire, elle :
+/// elle attribue une requête à un client une fois le pair déjà jugé.
+export function pairDeConfiance(
+    remote: string | undefined,
+    confiance: ReadonlySet<string>,
+): boolean {
+    if (remote === undefined || remote === '') return false;
+    const pair = normaliser(remote);
+    for (const declare of confiance) {
+        if (normaliser(declare) === pair) return true;
+    }
+    return false;
+}
+
 export function adresseSource(
     remote: string | undefined,
     enteteXff: string | undefined,

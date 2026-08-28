@@ -38,7 +38,7 @@ const racine = join(paquet, '..');
 const CONTROLES = [
     ['§7.4  les trois blocs de thème ne divergent pas', 'blocs-de-theme.mjs'],
     ['§7.1  les contrastes tiennent les seuils WCAG', 'contraste.mjs'],
-    ['§7.2  aucune couleur littérale hors de tokens.css', 'couleurs-litterales.mjs'],
+    ['§7.2  aucune couleur littérale hors de tokens/couleurs.css', 'couleurs-litterales.mjs'],
     ['§7.6  aucun token orphelin, aucun var() non déclaré', 'tokens-orphelins.mjs'],
     ['§7.9  toute classe employée est déclarée, et une primitive atteint le produit', 'classes-employees.mjs'],
     ['§7.3  toute surface bâtie porte les tokens', 'surfaces-baties.mjs'],

@@ -1,10 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import {
+    BUDGET_ADRESSE,
+    BUDGET_REQUETES,
     ECHECS_MAX_ADRESSE,
     ECHECS_MAX_COMPTE,
     ENTREES_MAX,
     FENETRE_MS,
+    FENETRE_REQUETES_MS,
+    REQUETES_MAX_ADRESSE,
     Frein,
+    cleAdresse as cleAdresseDuModule,
+    cleRequetes,
     type Budget,
 } from './frein';
 
@@ -139,5 +145,179 @@ describe('Frein', () => {
         expect(ECHECS_MAX_COMPTE).toBe(5);
         expect(ECHECS_MAX_ADRESSE).toBe(50);
         expect(ENTREES_MAX).toBe(10_000);
+        // ⚠️ NON CALIBRÉES NON PLUS — voir `BUDGET_REQUETES` dans le module.
+        expect(FENETRE_REQUETES_MS).toBe(60_000);
+        expect(REQUETES_MAX_ADRESSE).toBe(120);
+    });
+
+    // 🔴 LE TEST QUI COMPTE LE PLUS DE CE LOT. `Frein` COMPTE DES ÉCHECS —
+    // `echec()`, `succes()`, `BUDGET_COMPTE`, `BUDGET_ADRESSE` — et
+    // `BUDGET_REQUETES` réutilise la MÉTHODE `echec()` pour compter un
+    // VOLUME, jamais un échec. Si `cleRequetes` et `cleAdresse` produisaient
+    // la MÊME clé pour la MÊME adresse, un utilisateur actif épuiserait son
+    // propre budget d'ÉCHECS D'AUTHENTIFICATION en faisant simplement du
+    // trafic légitime sur `/vm` ou `/session` — ou l'inverse, et un
+    // attaquant s'offrirait des essais de mot de passe gratuits en générant
+    // du volume. Les deux DOIVENT donc vivre sous des préfixes disjoints
+    // (`req:` contre `adr:`), et c'est ce que ce test éprouve directement sur
+    // les fonctions RÉELLEMENT exportées — pas sur des clones locaux au
+    // fichier, comme les tests (a) à (i) ci-dessus : eux éprouvent la
+    // MÉCANIQUE générique de `Frein`, celui-ci éprouve le NAMESPACING réel de
+    // `securite/frein.ts`.
+    it("(k) le budget de requêtes n'entame PAS le budget d'échecs de la même adresse", () => {
+        // 🔴 CORRECTIF (round de correction 1, critique ①) : le brief d'origine
+        // prescrivait `i < 10` contre un budget d'échecs de 50 — l'assertion
+        // NE POUVAIT PAS tomber, fusion des clés ou pas (10 < 50 dans les DEUX
+        // cas). MESURÉ : en fusionnant `cleRequetes` et `cleAdresse` sur le
+        // même préfixe, ce test restait VERT. `ECHECS_MAX_ADRESSE + 1` est le
+        // plus PETIT nombre qui rende la fusion détectable : au budget
+        // exactement, `Frein` freine (comparaison `>=`, jamais `>`).
+        const frein = new Frein();
+        for (let i = 0; i < ECHECS_MAX_ADRESSE + 1; i++) {
+            frein.echec([[cleRequetes(ADR), BUDGET_REQUETES]], T0);
+        }
+        expect(frein.consulter([[cleAdresseDuModule(ADR), BUDGET_ADRESSE]], T0).freine).toBe(
+            false,
+        );
+    });
+
+    it('(k bis) — et RÉCIPROQUEMENT : des échecs sur une adresse n’entament PAS son budget de requêtes', () => {
+        // Symétrique de (k) : un attaquant qui épuise le budget D'ÉCHECS
+        // d'une adresse (en se trompant de mot de passe, par exemple) ne
+        // doit PAS voir son budget de VOLUME entamé pour autant — les deux
+        // sont des ressources distinctes, protégeant des abus distincts.
+        //
+        // 🔴 MÊME CORRECTIF QUE (k) : `ECHECS_MAX_ADRESSE` (50) échecs contre
+        // un budget de requêtes de `REQUETES_MAX_ADRESSE` (120) ne pouvait PAS
+        // tomber, fusion ou pas (50 < 120 dans les DEUX cas). `REQUETES_MAX_
+        // ADRESSE + 1` est le plus petit nombre qui rende la fusion détectable
+        // de CE côté-ci.
+        const frein = new Frein();
+        for (let i = 0; i < REQUETES_MAX_ADRESSE + 1; i++) {
+            frein.echec([[cleAdresseDuModule(ADR), BUDGET_ADRESSE]], T0 + i);
+        }
+        expect(
+            frein.consulter(
+                [[cleRequetes(ADR), BUDGET_REQUETES]],
+                T0 + REQUETES_MAX_ADRESSE + 1,
+            ).freine,
+        ).toBe(false);
+    });
+
+    // 🔵 LA PROPRIÉTÉ FAVORABLE QUE LA REVUE A TROUVÉE (round de correction 1) :
+    // l'éviction croisée ne mord pas parce que `req:` (une minute) expire
+    // TOUJOURS avant `compte:`/`adr:` (quinze minutes). Elle ne tient QUE si
+    // cette inégalité tient — voir `BUDGET_REQUETES` dans le module.
+    it('(l) 🔴 FENETRE_REQUETES_MS reste PLUS COURTE que FENETRE_MS — sans quoi la propriété favorable de purge tombe', () => {
+        expect(FENETRE_REQUETES_MS).toBeLessThan(FENETRE_MS);
+    });
+
+    // 🔴 LA ROUGE DEMANDÉE PAR LA REVUE (round de correction 1, critique ③) :
+    // « un pair refusé retente en boucle et ne verrouille pas son adresse ».
+    // Reproduit ici, EN TS, le calendrier EXACT de
+    // `agent/src/plateforme/repli.rs::delai_de_repli` — le remède que le
+    // correctif agent réutilise pour `/signal` — et montre que, contrairement
+    // au martèlement à plat de 500 ms d'AVANT ce correctif, un pair qui recule
+    // ainsi entre deux tentatives ne consomme jamais qu'une fraction infime du
+    // budget partagé : le reste demeure ouvert à toute autre requête de la
+    // même adresse (session de contrôle du superviseur, autres fenêtres).
+    it("(m) 🔴 un pair refusé qui retente selon delai_de_repli (repli.rs) NE VERROUILLE PAS son adresse", () => {
+        // Copie fidèle de `agent/src/plateforme/repli.rs::delai_de_repli` —
+        // mêmes constantes (`REPLI_MIN_MS`/`REPLI_MAX_MS`), même formule.
+        // Si l'une des deux dérive un jour sans que l'autre suive, ce test
+        // ne le verra pas — c'est un COMPARATIF, pas un miroir garanti.
+        const REPLI_MIN_MS = 500;
+        const REPLI_MAX_MS = 30_000;
+        function delaiDeRepli(tentative: number): number {
+            const facteur = tentative >= 63 ? Number.MAX_SAFE_INTEGER : 2 ** tentative;
+            return Math.min(REPLI_MIN_MS * facteur, REPLI_MAX_MS);
+        }
+
+        const frein = new Frein();
+        const cle: readonly [string, Budget] = [cleRequetes(ADR), BUDGET_REQUETES];
+        const CINQ_MINUTES_MS = 5 * 60_000;
+        let instant = T0;
+        let tentative = 0;
+        let admises = 0;
+        // ⚠️ LE DERNIER INSTANT SIMULÉ, PAS UN INSTANT NEUF choisi après coup :
+        // un instant neuf pourrait tomber exactement sur une frontière de
+        // fenêtre (`restant === 0`, cas limite documenté dans `consulter`) et
+        // rendrait le test dépendant du hasard de cette coïncidence plutôt que
+        // du comportement qu'il éprouve.
+        let dernierInstant = instant;
+        while (instant < T0 + CINQ_MINUTES_MS) {
+            const verdict = frein.consulter([cle], instant);
+            if (!verdict.freine) {
+                frein.echec([cle], instant);
+                admises++;
+            }
+            dernierInstant = instant;
+            instant += delaiDeRepli(tentative);
+            tentative++;
+        }
+        // Loin, très loin du plafond de `REQUETES_MAX_ADRESSE` : la preuve
+        // que le remède agent laisse le budget quasi entier disponible pour
+        // les AUTRES pairs de la même adresse.
+        expect(admises).toBeLessThan(REQUETES_MAX_ADRESSE / 4);
+        // 🔴 CETTE SECONDE ASSERTION EST INCAPABLE DE ROUGIR, ET C'EST DIT ICI
+        // PLUTÔT QUE LAISSÉ IMPLICITE (revue, round de correction 2) : sous
+        // TOUT espacement qui respecte ne serait-ce que le plancher documenté
+        // (≥ 500 ms), `admises` ne peut structurellement PAS approcher
+        // `REQUETES_MAX_ADRESSE` sur une fenêtre de `FENETRE_REQUETES_MS`
+        // (60 s) — l'assertion ci-dessus l'établit déjà. `freine` ne peut donc
+        // JAMAIS devenir vrai ici, quelle que soit la qualité RÉELLE du repli
+        // exponentiel simulé : cette ligne ne fait que reformuler la même
+        // propriété sous une autre forme, elle ne l'éprouve pas
+        // indépendamment. **C'est `(m bis)`, seul, qui porte la preuve que le
+        // frein sait encore verrouiller** — en retentant plus vite que le
+        // plancher documenté, il fait bien rougir cette même assertion
+        // (`freine === true` là-bas). Conservée ici pour la LISIBILITÉ du
+        // scénario (« et donc, un pair légitime n'est pas bloqué »), jamais
+        // comme un contrôle à part entière.
+        expect(frein.consulter([cle], dernierInstant).freine).toBe(false);
+    });
+
+    // 🔵 TÉMOIN NÉGATIF DE (m) : sans le correctif agent, un pair qui retente
+    // À PLAT toutes les 500 ms — le comportement MESURÉ avant ce round —
+    // VERROUILLE bel et bien l'adresse. Sans ce témoin, (m) ne prouverait
+    // rien : un contrôle qu'on n'a jamais vu rougir n'est pas un contrôle.
+    it('(m bis) — témoin négatif : un pair qui retente À PLAT, plus vite que le plancher documenté, VERROUILLE son adresse', () => {
+        // ⚠️ PAS 500 ms : c'est PRÉCISÉMENT `ESPACEMENT_PLANCHER_MS`, le
+        // PLANCHER documenté d'`agent/src/relance_pont.rs` (`PERIODE_
+        // RELANCE_PONT_MIN`, l'ex-nom cité ici avant le round de correction
+        // 2, a été SUPPRIMÉE par ce round — cette citation, qui traverse
+        // Rust depuis TypeScript, était devenue une référence morte
+        // qu'AUCUN compilateur ne pouvait attraper ; corrigée par la revue
+        // du round de correction 3), et il coïncide —
+        // c'est un hasard d'arrondi — avec `REQUETES_MAX_ADRESSE` (120) sur
+        // une fenêtre de 60 s : 60000/500 = 120 exactement, si bien qu'un
+        // martèlement à EXACTEMENT 500 ms n'atteint JAMAIS le seuil `>=`
+        // (la 121ᵉ requête arrive PILE quand la fenêtre expire). Ce témoin
+        // retente à 200 ms — plus vite que le plancher, ce que ce lot ne
+        // permet PAS en pratique (voir `surveillance_pont.rs`), mais qui
+        // reste la meilleure façon d'éprouver que LE FREIN LUI-MÊME sait
+        // encore verrouiller une adresse en l'absence de tout repli.
+        const frein = new Frein();
+        const cle: readonly [string, Budget] = [cleRequetes(ADR), BUDGET_REQUETES];
+        const CINQ_MINUTES_MS = 5 * 60_000;
+        let instant = T0;
+        let admises = 0;
+        let dernierInstant = instant;
+        while (instant < T0 + CINQ_MINUTES_MS) {
+            const verdict = frein.consulter([cle], instant);
+            if (!verdict.freine) {
+                frein.echec([cle], instant);
+                admises++;
+            }
+            dernierInstant = instant;
+            instant += 200;
+        }
+        // Le patron du bug MESURÉ, à une cadence plus agressive que le
+        // plancher : le budget entier est consommé par CE SEUL pair, encore
+        // et encore.
+        expect(admises).toBeGreaterThanOrEqual(REQUETES_MAX_ADRESSE);
+        // Et un pair LÉGITIME arrivant juste après cette rafale reste freiné
+        // — c'est exactement « une fenêtre neuve ne peut plus s'attacher ».
+        expect(frein.consulter([cle], dernierInstant).freine).toBe(true);
     });
 });

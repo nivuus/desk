@@ -6,6 +6,14 @@
 // générique de `http/serveur.ts` est alors seul à répondre, et il n'est pas
 // dupliqué ici.
 //
+// ⚠️ « ALORS SEUL » N'EST PLUS VRAI SANS CONDITION DEPUIS LE 22 AOÛT 2026, et
+// la phrase est laissée telle quelle parce qu'elle reste juste dans le montage
+// nginx : quand `PLATEFORME_PAGE` est armée, un DIXIÈME routeur — le servant
+// de page — est chaîné APRÈS tous les autres, et il résout n'importe quel
+// chemin. Sur un `GET`/`HEAD`, c'est LUI qui répond `200 text/html` au `false`
+// rendu ici ; hors `GET`/`HEAD` il se retire, et le 404 générique reprend la
+// main. Voir `http/chaine.ts`, qui porte le compte et la règle.
+//
 // 🔴 L'AUTHENTIFICATION PASSE PAR `http/porteur.ts`, JAMAIS PAR UNE COPIE.
 // Le plan de G1 (décision D9) prescrivait d'appeler `verifierJeton` puis
 // d'exiger `verdict.type === 'utilisateur'` — c'est-à-dire de réécrire ici,

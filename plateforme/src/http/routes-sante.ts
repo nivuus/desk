@@ -3,9 +3,18 @@
 // 🔴 CE QUE CETTE ROUTE NE REND PAS, ET C'EST L'ESSENTIEL : ni version, ni
 // compte de sessions, ni URL de base, ni nom de moteur, ni durée de
 // fonctionnement. Une page de santé bavarde est un INVENTAIRE offert à un
-// anonyme — et depuis P2, c'est par construction LA SEULE ROUTE NON
-// AUTHENTIFIÉE du service. Son test compare l'objet ENTIER, jamais une
-// sous-chaîne, précisément pour qu'un ajout futur le fasse rougir.
+// anonyme. Son test compare l'objet ENTIER, jamais une sous-chaîne,
+// précisément pour qu'un ajout futur le fasse rougir.
+//
+// 🔴 « DEPUIS P2, C'EST PAR CONSTRUCTION LA SEULE ROUTE NON AUTHENTIFIÉE DU
+// SERVICE » — CETTE PHRASE ÉTAIT ICI, ET ELLE EST MORTE LE 22 AOÛT 2026 : le
+// servant de page (`http/page/routes-page.ts`, armé par `PLATEFORME_PAGE`) en
+// est une SECONDE, et il ne consulte aucun jeton. Elle est réécrite plutôt que
+// supprimée, parce que ce qu'elle protégeait reste vrai sous une forme PLUS
+// ÉTROITE et plus utile : `/sante` est la seule route non authentifiée qui
+// TOUCHE LA BASE. C'est exactement ce que le cache ci-dessous existe pour
+// borner — le servant, lui, ne lit qu'un disque, et rien d'anonyme n'y
+// traduit une requête HTTP en requête SQL.
 //
 // 🔴 LE VERDICT EST MIS EN CACHE, ET LE CACHE EST LE POINT DE CETTE ROUTE, PAS
 // UN RAFFINEMENT. Sans lui, `/sante` traduit une requête HTTP ANONYME en
@@ -124,7 +133,14 @@ function repondre(
 }
 
 /// Rend `true` si la requête a été servie, `false` si elle ne concerne pas la
-/// santé — le serveur répond alors 404, comme les quatre autres routeurs.
+/// santé — le serveur répond alors 404, comme les neuf autres routeurs.
+///
+/// ⚠️ CETTE PHRASE N'EST PLUS VRAIE SANS CONDITION DEPUIS LE 22 AOÛT 2026 :
+/// quand `PLATEFORME_PAGE` est armée, un DIXIÈME routeur — le servant de
+/// page — est chaîné APRÈS tous les autres, et il résout n'importe quel
+/// chemin. Sur un `GET`, c'est LUI qui répond `200 text/html` au `false`
+/// rendu ici ; hors `GET`/`HEAD` il se retire, et le 404 générique reprend la
+/// main. Voir `http/chaine.ts`, qui porte le compte et la règle.
 export async function servirSante(
     req: IncomingMessage,
     rep: ServerResponse,

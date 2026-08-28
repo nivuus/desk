@@ -18,6 +18,13 @@
 // détecté par cette voie-là (voir `parts::distribuer_les_parts`). Il ne
 // s'appelle pas `repartiteur` : ce nom est déjà pris par le module qui porte
 // la RÈGLE pure ; celui-ci ne porte que sa BRANCHE sur ce registre.
+// `file` porte la RÈGLE PURE de coalescence du canal d'une session : aucun
+// verrou, aucun `cfg`, aucune API Windows — c'est ce qui la rend éprouvable
+// par `cargo test --workspace` sur l'hôte Linux, alors que ce fichier entier
+// ne l'est pas. Le verrou et le réveil restent chez cet appelant (tâche
+// ultérieure) ; ce module ne décide QUE si un dépôt s'empile, coalesce, ou
+// est refusé.
+pub(crate) mod file;
 mod parts;
 mod porteurs;
 // `presse_papier` porte la DISTRIBUTION du presse-papier de la VM, extraite
@@ -46,13 +53,16 @@ use registre::{distribuer, etat, oublier, Etat};
 pub use registre::{inscrire, retirer};
 
 use std::collections::HashMap;
-// `Receiver`, `Mutex` et `MutexGuard` : plus employés par le code de PRODUCTION
-// de ce fichier depuis l'extraction ci-dessus — seul `sommeil::tests` s'en
-// sert encore (`premier_ordre`, `VERROU_TESTS`), via `use super::*`. Gater sur
-// `cfg(test)` évite un `unused_imports` en dehors de la compilation de test,
-// sans toucher `tests.rs`.
+// `ReceveurSession`, `Mutex` et `MutexGuard` : plus employés par le code de
+// PRODUCTION de ce fichier depuis l'extraction ci-dessus — seul
+// `sommeil::tests` s'en sert encore (`premier_ordre`, `VERROU_TESTS`), via
+// `use super::*`. Gater sur `cfg(test)` évite un `unused_imports` en dehors de
+// la compilation de test, sans toucher `tests.rs`.
+//
+// ⚠️ `Receiver` jusqu'au 25 août 2026 : le canal du registre n'est plus un
+// `std::sync::mpsc` non borné (voir `file.rs`).
 #[cfg(test)]
-use std::sync::mpsc::Receiver;
+use file::ReceveurSession;
 #[cfg(test)]
 use std::sync::{Mutex, MutexGuard};
 use std::time::{Duration, Instant};
@@ -212,13 +222,23 @@ pub enum Message {
     /// grandeur, et non « deux » comme cette phrase l'annonçait d'abord. Le
     /// « deux ordres de grandeur » de `protocole.rs`, sa voisine, est exact
     /// (8 Mio contre 64 Kio) : les deux phrases n'employaient pas la même
-    /// échelle (revue transverse, 20 août 2026). Le
-    /// canal du registre est NON BORNÉ (`std::sync::mpsc::channel`), donc
-    /// `send` ne bloque jamais — mais un fil de fenêtre bloqué accumulerait
-    /// ces messages. Borné en pratique par le fait qu'on n'émet qu'au
-    /// changement et que le garde d'égalité de contenu supprime les
+    /// échelle (revue transverse, 20 août 2026).
+    ///
+    /// 🔴 ~~Le canal du registre est NON BORNÉ (`std::sync::mpsc::channel`),
+    /// donc `send` ne bloque jamais — mais un fil de fenêtre bloqué
+    /// accumulerait ces messages. Borné en pratique par le fait qu'on n'émet
+    /// qu'au changement et que le garde d'égalité de contenu supprime les
     /// répétitions ; nommé ici plutôt que découvert, et à surveiller si P3
-    /// mesure une fenêtre lente.
+    /// mesure une fenêtre lente.~~ **FAUX DEPUIS LE 25 AOÛT 2026 : le canal
+    /// est BORNÉ**, par `capteur/sommeil/file.rs` — `PROFONDEUR_MAX` (64
+    /// messages), et un dépôt au-delà est **REFUSÉ et COMPTÉ**, jamais
+    /// bloquant ni tronqué. Le « borné en pratique » ci-dessus était un
+    /// raisonnement de bonne foi sur le régime NORMAL : c'est le régime
+    /// ANORMAL — un fil de fenêtre qui cesse de lire — qu'il ne bornait pas,
+    /// et c'est celui-là qui coûtait la mémoire. ⚠️ **`PressePapier` n'est PAS
+    /// coalescable** (elle porte la donnée de l'utilisateur), donc c'est la
+    /// variante par laquelle la borne se heurte réellement : 64 messages ×
+    /// 64 Kio, soit 4 Mio au pire pour une fenêtre bloquée.
     PressePapier { texte: Option<String>, octets: u32 },
 }
 
@@ -373,3 +393,11 @@ pub fn raison_en_texte(raison: Raison) -> &'static str {
 // l'en-tête de `sommeil/tests.rs`.
 #[cfg(test)]
 mod tests;
+
+// Les deux tests du SIXIÈME site de mémorisation (round de correction 2) dans
+// un fichier voisin DÉDIÉ, et non ajoutés à `tests.rs` : celui-ci est à 473
+// lignes pour un plafond de 500, et ils l'auraient fait franchir. Ne pas faire
+// grossir plutôt que d'avoir à extraire ensuite. Précédent :
+// `superviseur/table.rs`, qui range de même ses tests de relance à part.
+#[cfg(test)]
+mod tests_refus;

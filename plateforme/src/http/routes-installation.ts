@@ -9,6 +9,14 @@
 // `routes-icone.ts` : `Promise<boolean>`, `true` = servie, `false` = pas mon
 // chemin. Le 404 générique de `http/serveur.ts` répond alors seul.
 //
+// ⚠️ « ALORS SEUL » N'EST PLUS VRAI SANS CONDITION DEPUIS LE 22 AOÛT 2026, et
+// la phrase est laissée telle quelle parce qu'elle reste juste dans le montage
+// nginx : quand `PLATEFORME_PAGE` est armée, un DIXIÈME routeur — le servant
+// de page — est chaîné APRÈS tous les autres, et il résout n'importe quel
+// chemin. Sur un `GET`/`HEAD`, c'est LUI qui répond `200 text/html` au `false`
+// rendu ici ; hors `GET`/`HEAD` il se retire, et le 404 générique reprend la
+// main. Voir `http/chaine.ts`, qui porte le compte et la règle.
+//
 // 🔴 LA GARDE LA PLUS IMPORTANTE DU SOUS-BLOC VIT DANS CE FICHIER :
 // `GET …/contenu` COMPARE LA VM DU JETON À CELLE DE L'INSTALLATION. Sans elle,
 // n'importe quelle VM enrôlée téléchargerait l'installeur de n'importe quelle
@@ -35,6 +43,7 @@
 // `lancer`, qui attend une issue —, addition à un fichier que G3 n'ouvre pas.
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import { CHEMIN_ORDRE, contenuDe, installationDe } from './installation-chemins';
 import { pipeline } from 'node:stream/promises';
 import { etatDe } from '../agents/fraicheur';
 import type { MagasinTranches } from '../apps/magasin-tranches';
@@ -74,8 +83,6 @@ export interface DependancesInstallation {
 /// AUCUN en-tête, jamais `*` (`cors.ts`).
 type Cors = Record<string, string> | undefined;
 
-const CHEMIN_ORDRE = '/installation';
-
 /// 4 Kio, pour un corps qui porte DEUX identifiants. 🔴 PLAFOND DE CETTE ROUTE
 /// ET D'ELLE SEULE (D8) : celui de `routes-auth.ts` ne s'applique pas ici et
 /// **ne doit surtout pas être relevé** pour arranger une route qui accepte des
@@ -106,29 +113,6 @@ function repondre(rep: ServerResponse, code: number, corps: unknown, cors: Cors)
         ...(cors ?? {}),
     });
     rep.end(corps === undefined ? undefined : JSON.stringify(corps));
-}
-
-/// Reconnaît `/installation/:id`, et RIEN d'autre. 🔴 DÉCOUPÉ PAR SEGMENTS,
-/// JAMAIS PAR `startsWith` : G1 a MESURÉ qu'un `startsWith('/application')`
-/// laissait DIX-SEPT tests verts — la route mangeait la famille et rendait SON
-/// PROPRE 404 typé, indiscernable du générique. Ancré des DEUX bouts.
-function installationDe(chemin: string): string | undefined {
-    const segments = chemin.split('/');
-    // ['', 'installation', '<id>'] — exactement trois.
-    if (segments.length !== 3) return undefined;
-    if (segments[1] !== 'installation') return undefined;
-    return segments[2] === '' ? undefined : segments[2];
-}
-
-/// Reconnaît `/televersement/:id/contenu`, et RIEN d'autre — même règle. ⚠️ LE
-/// MOTIF S'ARRÊTE À `contenu` : c'est ce qui laisse la place aux autres routes
-/// de la famille `/televersement/…`, qu'un `startsWith` mangerait toutes.
-function contenuDe(chemin: string): string | undefined {
-    const segments = chemin.split('/');
-    // ['', 'televersement', '<id>', 'contenu'] — exactement quatre.
-    if (segments.length !== 4) return undefined;
-    if (segments[1] !== 'televersement' || segments[3] !== 'contenu') return undefined;
-    return segments[2] === '' ? undefined : segments[2];
 }
 
 /// Lit le corps, ou rend `undefined` si la borne est franchie — la requête est

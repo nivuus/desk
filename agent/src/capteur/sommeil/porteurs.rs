@@ -13,6 +13,7 @@ use std::sync::MutexGuard;
 
 use crate::capteur::audio::{arbitrer, FenetreAudio};
 
+use super::file::Envoi;
 use super::{oublier, Etat, Message};
 
 /// Recalcule qui porte le son et n'envoie que ce qui a changé.
@@ -65,7 +66,8 @@ pub(super) fn distribuer_l_audio(garde: &mut MutexGuard<'static, Etat>) {
 
     // Les ordres de SE TAIRE partent d'abord, les ordres de PORTER ensuite.
     // Cet ordre RÉDUIT la fenêtre de recouvrement, il ne la ferme pas : les
-    // deux ordres empruntent deux canaux `mpsc` distincts, lus chacun par le
+    // deux ordres empruntent deux canaux DISTINCTS (`file.rs` depuis le
+    // 25 août 2026, `mpsc` avant lui), lus chacun par le
     // fil de SA fenêtre. L'ordre d'ENVOI est garanti, pas celui de
     // TRAITEMENT — si le fil qui doit se taire est déclassé par
     // l'ordonnanceur avant de lire son message, les deux fenêtres restent
@@ -94,14 +96,38 @@ pub(super) fn distribuer_l_audio(garde: &mut MutexGuard<'static, Etat>) {
         if garde.derniers_audio.get(&session) == Some(&actif) {
             continue;
         }
-        let envoye = match garde.canaux.get(&session) {
-            Some(canal) => canal.send(Message::Audio { actif }).is_ok(),
-            None => false,
+        // ⚠️ **`None` N'EST PAS UNE RUPTURE, et le round 3 a corrigé cette
+        // rédaction** — même grief que `registre::distribuer` au round 2.
+        // C'est inatteignable aujourd'hui (les sessions sortent de
+        // `canaux.keys()` sous le MÊME verrou, quelques lignes plus haut),
+        // donc sans conséquence ; mais ce lot s'était donné pour règle de ne
+        // plus FABRIQUER d'issue, et l'écrire `Envoi::Rompu` ferait purger une
+        // session sur un fait qui n'a pas eu lieu si cette invariance venait à
+        // tomber. Un `Option` nomme la chose : il n'y a eu aucun envoi.
+        let issue = match garde.canaux.get(&session) {
+            Some(canal) => Some(canal.envoyer(Message::Audio { actif })),
+            None => None,
         };
-        if envoye {
-            garde.derniers_audio.insert(session, actif);
-        } else {
-            rompus.push(session);
+        match issue {
+            // Aucun canal : rien n'est parti, et il n'y a rien à purger — la
+            // session n'est déjà plus dans `canaux`.
+            None => {}
+            Some(Envoi::Depose(_)) => {
+                garde.derniers_audio.insert(session, actif);
+            }
+            // 🔴 REFUSÉ : ON NE MÉMORISE PAS. Même correctif que
+            // `parts::distribuer_les_parts`, et **le plus coûteux des deux** :
+            // mémoriser un ordre audio jamais parti fait juger l'état « déjà
+            // livré » par le garde d'écrasement en tête de boucle, et la
+            // fenêtre reste sur son état précédent — donc potentiellement
+            // MUETTE, ou audible en même temps qu'une voisine, **sans borne**.
+            // ⚠️ Le commentaire ci-dessus s'inquiète d'un silence perceptible
+            // pendant jusqu'à 250 ms sur le chemin du canal rompu ; ce
+            // résidu-ci n'était borné par rien du tout.
+            //
+            // ⚠️ **Et surtout PAS `rompus.push`** : la session est VIVANTE.
+            Some(Envoi::Refuse) => {}
+            Some(Envoi::Rompu) => rompus.push(session),
         }
     }
 
@@ -116,10 +142,10 @@ pub(super) fn distribuer_l_audio(garde: &mut MutexGuard<'static, Etat>) {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::mpsc::Receiver;
-
+    use crate::capteur::sommeil::file::{ReceveurSession, PROFONDEUR_MAX};
     use crate::capteur::sommeil::tests::verrouiller_pour_le_test;
-    use crate::capteur::sommeil::{inscrire, retirer, signaler, Message};
+    use crate::capteur::sommeil::{etat, inscrire, retirer, signaler, Message};
+    use crate::capteur::vivier::Ordre;
 
     /// Dernier ordre audio reçu sur un canal, en vidant ce qui s'y trouve.
     ///
@@ -128,9 +154,10 @@ mod tests {
     /// module — même montage que `parts::tests`, qui importe
     /// `verrouiller_pour_le_test` de la même façon plutôt que d'ajouter ses
     /// propres tests au fichier parent.
-    fn dernier_audio(canal: &Receiver<Message>) -> Option<bool> {
+    fn dernier_audio(canal: &ReceveurSession) -> Option<bool> {
         canal
-            .try_iter()
+            .vider()
+            .into_iter()
             .filter_map(|m| match m {
                 Message::Audio { actif } => Some(actif),
                 _ => None,
@@ -180,13 +207,76 @@ mod tests {
         // `dernieres_parts`.
         let _verrou = verrouiller_pour_le_test();
         let (a, generation) = inscrire("t9-e", 333);
-        let _ = a.try_iter().count();
+        let _ = a.vider();
         signaler("t9-e", true, true);
         let ordres: Vec<Message> = a
-            .try_iter()
+            .vider()
+            .into_iter()
             .filter(|m| matches!(m, Message::Audio { .. }))
             .collect();
         assert!(ordres.is_empty(), "ordre audio inchange reemis : {ordres:?}");
         retirer("t9-e", generation);
     }
+    /// 🔴 LA ROUGE DU CRITIQUE DU ROUND 1, CÔTÉ AUDIO — LE MÊME PATRON QUE
+    /// `parts.rs`, ET LE PLUS COÛTEUX DES DEUX : une fenêtre pouvait rester
+    /// MUETTE indéfiniment.
+    ///
+    /// `envoyer(...).is_ok()` valait « livré » sous `mpsc` ; depuis la file
+    /// bornée il ne vaut plus que « pas déconnecté ». Un `Audio` refusé était
+    /// donc écrit dans `derniers_audio`, et le garde d'écrasement en tête de
+    /// boucle (`if derniers_audio.get(&session) == Some(&actif) { continue }`)
+    /// supprimait toute réémission — la fenêtre restait sur son état audio
+    /// précédent **sans borne**.
+    ///
+    /// ⚠️ **Le commentaire de `distribuer_l_audio` s'inquiète d'un silence
+    /// perceptible pendant jusqu'à 250 ms sur un autre chemin ; ce résidu-ci
+    /// n'était borné par rien.**
+    ///
+    /// **Ce test échoue sur sa DERNIÈRE assertion avant le correctif.**
+    #[test]
+    fn un_ordre_audio_refuse_n_est_pas_memorise_et_repart_au_tour_suivant() {
+        let _verrou = verrouiller_pour_le_test();
+        let (a, generation_a) = inscrire("t9-refus-a", 4300);
+        // "a" est seule de son PID : elle porte le son, et `derniers_audio`
+        // retient `true`.
+        assert_eq!(dernier_audio(&a), Some(true), "précondition : la seule du PID porte le son");
+
+        // Sature la file de "a" par des messages INCOALESCABLES.
+        {
+            let garde = etat();
+            let emetteur = garde.canaux.get("t9-refus-a").expect("la session est inscrite");
+            for _ in 0..PROFONDEUR_MAX {
+                let _ = emetteur.envoyer(Message::Sommeil(Ordre::Reveiller));
+            }
+        }
+
+        // "b" arrive sur le MÊME PID et prend le focus : "a" doit recevoir
+        // l'ordre de se taire — qui est REFUSÉ, sa file étant pleine.
+        let (b, generation_b) = inscrire("t9-refus-b", 4300);
+        signaler("t9-refus-b", true, true);
+
+        // "a" reprend sa lecture. Aucun ordre audio ne s'y trouve.
+        let recus = a.vider();
+        assert!(
+            !recus.iter().any(|m| matches!(m, Message::Audio { .. })),
+            "précondition : l'ordre de se taire n'a PAS été livré : {recus:?}"
+        );
+
+        // Le tour suivant : l'ordre doit repartir, sans quoi "a" reste
+        // audible en même temps que "b", pour toujours.
+        {
+            let mut garde = etat();
+            super::distribuer_l_audio(&mut garde);
+        }
+        assert_eq!(
+            dernier_audio(&a),
+            Some(false),
+            "un ordre audio refusé doit être RÉÉMIS au tour suivant : il n'a jamais été livré"
+        );
+
+        retirer("t9-refus-b", generation_b);
+        retirer("t9-refus-a", generation_a);
+        drop(b);
+    }
 }
+

@@ -9,13 +9,18 @@
 // l'objet ENTIER, donc un champ de plus le rend rouge.
 
 import { randomUUID } from 'node:crypto';
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Readable } from 'node:stream';
 import { afterEach, describe, expect, it } from 'vitest';
 import { lireConfig } from '../config';
-import { identifiantValide, ouvrirMagasinTranches, rangValide } from './magasin-tranches';
+import {
+    AGE_EVICTION_TRANCHES_MS,
+    identifiantValide,
+    ouvrirMagasinTranches,
+    rangValide,
+} from './magasin-tranches';
 import { verdict } from '../../../proto/ts/tranches';
 import { SECRET as SECRET_PLATEFORME } from '../agents/canal-harnais';
 
@@ -289,6 +294,67 @@ describe('le magasin des tranches sur disque', () => {
     });
 });
 
+describe('l’éviction par âge, avec plancher', () => {
+    // Le temps est INJECTÉ, jamais lu de l'horloge : un test qui attendrait
+    // réellement l'âge d'éviction serait un test qu'on désactive au premier
+    // ralentissement de la machine.
+    const JOUR_MS = 24 * 60 * 60_000;
+
+    /// Dépose une tranche unique pour `id`, puis FORCE la date de dernière
+    /// modification du RÉPERTOIRE du téléversement — c'est lui, et non une
+    /// tranche isolée, que `evincer` mesure. Équivalent, sur le magasin RÉEL,
+    /// du `deposer(cle, octets, quand)` de la tâche.
+    async function deposerA(m: ReturnType<typeof magasinNeuf>, id: string, quandMs: number): Promise<void> {
+        await m.ecrire(id, 0, flux('x'), PLAFOND);
+        utimesSync(join(m.racine, id), new Date(quandMs), new Date(quandMs));
+    }
+
+    it('évince un téléversement vieux et NON référencé', async () => {
+        const m = magasinNeuf();
+        const orphelin = randomUUID();
+        await deposerA(m, orphelin, 0);
+        await m.evincer({ maintenant: 400 * JOUR_MS, referencees: new Set() });
+        expect(existsSync(join(m.racine, orphelin))).toBe(false);
+    });
+
+    // 🔴 LE SEUL TEST QUI DISTINGUE UNE ÉVICTION D'UNE CORRUPTION. Sans lui,
+    // une éviction qui emporte TOUT passerait le test précédent.
+    it('NE PEUT PAS évincer un téléversement vieux mais RÉFÉRENCÉ par une entrée vivante', async () => {
+        const m = magasinNeuf();
+        const enService = randomUUID();
+        await deposerA(m, enService, 0);
+        await m.evincer({ maintenant: 400 * JOUR_MS, referencees: new Set([enService]) });
+        expect(existsSync(join(m.racine, enService))).toBe(true);
+        expect(m.lister(enService)).toEqual([{ n: 0, octets: 1 }]);
+    });
+
+    it('n’évince pas un téléversement jeune', async () => {
+        const m = magasinNeuf();
+        const recent = randomUUID();
+        await deposerA(m, recent, 0);
+        await m.evincer({ maintenant: 1 * JOUR_MS, referencees: new Set() });
+        expect(existsSync(join(m.racine, recent))).toBe(true);
+    });
+
+    it('🔴 la constante N n’est PAS calibrée : le plancher, lui, tient à n’importe quelle valeur', () => {
+        // Contrôle de cohérence du montage lui-même : si
+        // `AGE_EVICTION_TRANCHES_MS` dérivait un jour hors de l'intervalle
+        // [1 jour, 400 jours], les trois tests ci-dessus perdraient leur sens
+        // sans qu'aucune rouge ne le dise.
+        expect(AGE_EVICTION_TRANCHES_MS).toBeGreaterThan(1 * JOUR_MS);
+        expect(AGE_EVICTION_TRANCHES_MS).toBeLessThan(400 * JOUR_MS);
+    });
+
+    it('un nom qui n’est pas un identifiant valide n’est jamais touché', async () => {
+        const m = magasinNeuf();
+        const etranger = join(m.racine, 'pas-un-uuid');
+        writeFileSync(etranger, 'x');
+        utimesSync(etranger, new Date(0), new Date(0));
+        await m.evincer({ maintenant: 400 * JOUR_MS, referencees: new Set() });
+        expect(existsSync(etranger)).toBe(true);
+    });
+});
+
 describe('PLATEFORME_TELEVERSEMENTS', () => {
     // 🔴 LE SECRET PASSE PAR UNE CONSTANTE PARTAGÉE, ET CE N'EST PAS DU STYLE.
     // Le scanner de `securite/secrets.test.ts` cherche une affectation
@@ -306,14 +372,31 @@ describe('PLATEFORME_TELEVERSEMENTS', () => {
     it('retient le répertoire qu’on lui NOMME', () => {
         // 🔴 LA ROUGE : la variable posée et IGNORÉE. Les tranches
         // s'écriraient ailleurs, en silence.
-        expect(lireConfig({ ...BASE, PLATEFORME_TELEVERSEMENTS: '/var/lib/guac/tel' })
-            .repertoireTeleversements).toBe('/var/lib/guac/tel');
+        //
+        // `PLATEFORME_PROXY_DE_CONFIANCE` est posée pour satisfaire la garde
+        // du refus de démarrer en mode `pomerium` (tâche 6, `config.ts`) —
+        // ce n'est pas le sujet de ce test.
+        expect(
+            lireConfig({
+                ...BASE,
+                PLATEFORME_TELEVERSEMENTS: '/var/lib/guac/tel',
+                PLATEFORME_PROXY_DE_CONFIANCE: '172.18.0.5',
+            }).repertoireTeleversements,
+        ).toBe('/var/lib/guac/tel');
     });
 
     it('🔴 une valeur VIDE retombe sur le défaut, pas sur le répertoire courant', () => {
         // `env.X ?? 'defaut'` ne rattrape PAS `''` — le sous-bloc P1 de la
         // plateforme a payé cette erreur exacte.
-        expect(lireConfig({ ...BASE, PLATEFORME_TELEVERSEMENTS: '' }).repertoireTeleversements)
-            .toBe('donnees/televersements');
+        //
+        // `PLATEFORME_PROXY_DE_CONFIANCE` est posée pour la même raison que
+        // ci-dessus.
+        expect(
+            lireConfig({
+                ...BASE,
+                PLATEFORME_TELEVERSEMENTS: '',
+                PLATEFORME_PROXY_DE_CONFIANCE: '172.18.0.5',
+            }).repertoireTeleversements,
+        ).toBe('donnees/televersements');
     });
 });

@@ -25,6 +25,7 @@ use anyhow::Result;
 
 use crate::presse_papier::{Annonce, Sondeur};
 
+use super::file::Envoi;
 use super::{distribuer as distribuer_les_ordres, etat, oublier, Etat, Message};
 
 /// Pousse une annonce de presse-papier à **toutes** les fenêtres inscrites.
@@ -81,14 +82,32 @@ pub(super) fn distribuer(garde: &mut MutexGuard<'static, Etat>, annonce: Annonce
     let sessions: Vec<String> = garde.canaux.keys().cloned().collect();
     let mut rompus = Vec::new();
     for session in sessions {
-        let envoye = match garde.canaux.get(&session) {
-            Some(canal) => canal
-                .send(Message::PressePapier { texte: texte.clone(), octets })
-                .is_ok(),
-            None => false,
+        // ⚠️ **`None` N'EST PAS UNE RUPTURE** — troisième site du même patron,
+        // et **celui-ci n'avait été montré par personne** : le round 3 nommait
+        // `parts.rs` et `porteurs.rs`, et la règle du dépôt est de CHERCHER
+        // les occurrences plutôt que de corriger là où on nous les montre.
+        // Inatteignable ici (les noms sortent de `canaux.keys()` sous le même
+        // verrou, deux lignes plus haut), donc sans conséquence — mais
+        // fabriquer une rupture ferait purger une session sur un fait qui n'a
+        // pas eu lieu si cette invariance venait à tomber.
+        let issue = match garde.canaux.get(&session) {
+            Some(canal) => Some(canal.envoyer(Message::PressePapier { texte: texte.clone(), octets })),
+            None => None,
         };
-        if !envoye {
-            rompus.push(session);
+        match issue {
+            // Aucun canal : rien n'est parti, et il n'y a rien à purger.
+            None => {}
+            Some(Envoi::Depose(_)) => {}
+            // ⚠️ **REFUSÉ N'EST PAS ROMPU** (correctif du round 1) : la file
+            // de cette fenêtre est pleine, la session est VIVANTE, et la
+            // purger tuerait son arbitrage. Rien n'est mémorisé sur ce
+            // chemin — l'émission est inconditionnelle —, donc le prochain
+            // changement de presse-papier repartira de lui-même. Le contenu
+            // refusé, lui, est PERDU pour cette fenêtre : le journaliser une
+            // seconde fois doublerait la trace de `journaliser_le_refus`, qui
+            // nomme déjà la session.
+            Some(Envoi::Refuse) => {}
+            Some(Envoi::Rompu) => rompus.push(session),
         }
     }
 
@@ -173,10 +192,34 @@ pub(super) fn armer_les_gardes(sondeur: &mut Sondeur) {
 /// page n'y pourrait rien : il ne ferme que le renvoi vers l'agent.
 ///
 /// ⚠️ **Un canal rompu n'est PAS traité ici**, à la différence de `distribuer`.
-/// Il ne peut pas l'être : ce canal vient d'être inséré dans la même fonction,
-/// son receveur est encore sur la pile de `inscrire`, et un `send` ne peut
-/// échouer que si le receveur a été lâché — ce qui n'a pas encore pu arriver.
-/// Appeler `oublier` ici retirerait une session qui vient de naître.
+/// Il ne peut pas l'être : ~~ce canal vient d'être inséré dans la même
+/// fonction~~ — **FAUX, MÊME PRÉMISSE QUE CELLE BARRÉE DIX LIGNES PLUS BAS,
+/// SURVIVANTE ICI SOUS UN AUTRE VERBE** : le canal est créé par
+/// `registre::inscrire`, PAS par cette fonction (`emettre_l_etat_courant`
+/// est appelée DEPUIS `inscrire`, après que le canal existe déjà — voir la
+/// correction ❌ ci-dessous). Ce qui reste vrai, et qui porte réellement la
+/// conclusion : son receveur est encore sur la pile de `inscrire`, et
+/// `envoyer` ne rend `Err` que si le receveur a été lâché — ce qui n'a pas
+/// encore pu arriver. Appeler `oublier` ici retirerait une session qui
+/// vient de naître.
+///
+/// ⚠️ **Le REFUS de file pleine ne peut pas s'y produire non plus** — mais
+/// **par un COMPTAGE, pas par la prémisse fausse qu'on avait d'abord écrite.**
+///
+/// ❌ ~~La file de ce canal vient d'être créée, elle est vide.~~ **FAUX**, et
+/// le round de correction 2 l'a mesuré par une sonde : cette fonction est
+/// appelée **en dernier** dans `inscrire`, donc APRÈS `distribuer`,
+/// `distribuer_les_parts` et `distribuer_l_audio`, qui ont déjà déposé dans ce
+/// même canal — la file contient au moins une `Part`.
+///
+/// 🔵 **LE COMPTAGE, qui lui tient.** Entre la création du canal et cet appel,
+/// `inscrire` ne peut déposer que trois messages pour CETTE session : au plus
+/// un `Sommeil` (le `Reveiller` que son inscription engendre, s'il y a une
+/// place), au plus une `Part` (`distribuer_les_parts` n'émet que si la valeur
+/// a changé), au plus un `Audio` (même filtre). **Trois au plus, contre
+/// `PROFONDEUR_MAX` = 64.** Le refus est donc inatteignable avec une marge de
+/// 61 messages — et si un jour un quatrième émetteur s'intercalait ici, le
+/// `match` ci-dessous resterait juste, il ne ferait que perdre une annonce.
 pub(super) fn emettre_l_etat_courant(garde: &mut MutexGuard<'static, Etat>, session: &str) {
     let Some(annonce) = garde.dernier_presse_papier.clone() else {
         return;
@@ -195,7 +238,31 @@ pub(super) fn emettre_l_etat_courant(garde: &mut MutexGuard<'static, Etat>, sess
     tracing::info!(%session, octets, refus = texte.is_none(),
         "etat courant du presse-papier emis a l'inscription");
     if let Some(canal) = garde.canaux.get(session) {
-        let _ = canal.send(Message::PressePapier { texte, octets });
+        // 🔴 LE CINQUIÈME SITE, ET LE SEUL QUE LE COMPILATEUR N'A PAS POINTÉ :
+        // `let _ =` absorbe même un `#[must_use]`. Il est traité à la main, et
+        // le `match` exhaustif remplace le `let _` pour que la prochaine
+        // variante d'`Envoi`, elle, soit signalée ici comme ailleurs.
+        match canal.envoyer(Message::PressePapier { texte, octets }) {
+            // Les trois issues sont sans conséquence ICI, et la doc de cette
+            // fonction dit pourquoi — PAR UN COMPTAGE, pas par la prémisse
+            // fausse qu'on lisait ici.
+            //
+            // ❌ ~~Ce canal vient d'être créé dans la même fonction, sa file
+            // est vide.~~ **DEUX FOIS FAUX, et le round 3 l'a relevé TRENTE-
+            // HUIT LIGNES SOUS SA PROPRE RÉFUTATION** : le canal est créé par
+            // `registre::inscrire`, pas ici, et sa file n'est pas vide —
+            // `distribuer`, `distribuer_les_parts` et `distribuer_l_audio` y
+            // ont déjà déposé (mesuré : `[Part, Audio]`, et `[Part, Audio]`
+            // encore avec douze voisines éveillées). **C'est le naufrage du
+            // 487 dans sa forme pure : corrigé là où on nous l'avait montré,
+            // pas cherché.**
+            //
+            // Ce qui tient, et que la doc établit : **au plus 3 messages
+            // contre `PROFONDEUR_MAX` = 64**, et le receveur est encore sur la
+            // pile de `inscrire`. `Refuse` et `Rompu` sont donc bien
+            // inatteignables.
+            Envoi::Depose(_) | Envoi::Refuse | Envoi::Rompu => {}
+        }
     }
 }
 

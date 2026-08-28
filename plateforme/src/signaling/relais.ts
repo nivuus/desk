@@ -34,10 +34,14 @@
 // service, et ce n'est pas parce que la fenêtre `agent` s'est refermée
 // qu'elle cesse de compter.
 
+import type { IncomingMessage } from 'node:http';
 import { WebSocket, WebSocketServer } from 'ws';
 import { Appariement, isRole, type Role } from './appariement';
 import type { Garde } from '../identite/garde';
 import { configurationIce } from './ice';
+import { adresseSource } from '../http/adresse-source';
+import { ligne } from '../obs/journal';
+import { BUDGET_REQUETES, cleRequetes, type Budget, type Frein } from '../securite/frein';
 
 // Types que le serveur relaie au pair. Tout le reste est refusé — un relais
 // qui accepterait n'importe quoi deviendrait un canal de diffusion arbitraire.
@@ -91,6 +95,40 @@ function isJsonObject(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+/// Enregistre la connexion sur le budget « toute requête », et journalise SI
+/// ET SEULEMENT SI le frein vient de mordre — même règle et même raison que
+/// `http/routes-auth.ts::compterLEchec` : la connexion suivante sera refusée
+/// tout en haut du gestionnaire `connection`, avant de jamais rappeler cette
+/// fonction.
+///
+/// ⚠️ **CETTE LIGNE JOURNALISE À LA TRANSITION, ET NON À CHAQUE CONNEXION
+/// ADMISE — c'est ce qui la distingue d'une trace par connexion.** Une ligne
+/// à CHAQUE connexion, même après que le frein a commencé à refuser, ferait
+/// écrire le service à un rythme que l'attaquant contrôle sans plus rien lui
+/// coûter — la règle du chantier TURN (`CLAUDE.md`) : « compter ou
+/// échantillonner, jamais tracer par paquet ». Journaliser à la transition
+/// ferme cela : une adresse martelée écrit UNE ligne, jamais une par
+/// connexion.
+function compterLaConnexion(
+    frein: Frein,
+    cles: readonly (readonly [string, Budget])[],
+    adresse: string,
+): void {
+    const instant = Date.now();
+    frein.echec(cles, instant);
+    const apres = frein.consulter(cles, instant);
+    if (!apres.freine) return;
+    console.warn(
+        ligne('frein-requetes', {
+            route: '/signal',
+            adresse,
+            retry_apres_s: apres.retryApresS,
+            entrees: frein.taille(),
+            evictions: frein.evictions(),
+        }),
+    );
+}
+
 export interface SignalingServer {
     port: number;
     close(): Promise<void>;
@@ -139,11 +177,32 @@ export interface ObservateurDeSession {
 // Il n'existe par ailleurs aucun chemin qui produise une garde ouverte hors
 // d'un test : la seule fabrique de garde exige un secret, et
 // `PLATEFORME_SECRET_JETON` n'a AUCUN défaut (`config.ts`).
-export function createSignalingServer(port: number, garde: Garde, trace?: ObservateurDeSession): SignalingServer;
-export function createSignalingServer(wss: WebSocketServer, garde: Garde, trace?: ObservateurDeSession): SignalingServer;
+//
+// 🔴 `frein` ET `proxyDeConfiance` SONT REQUIS, JAMAIS OPTIONNELS — même
+// argument que `garde` juste au-dessus : un défaut permissif (aucun frein,
+// ou un ensemble de confiance ouvert) laisserait un service mal câblé ne
+// borner AUCUNE connexion sans qu'aucun test ne rougisse. Voir
+// `securite/frein.ts::BUDGET_REQUETES` : ce module partage le MÊME frein que
+// `http/routes-vm.ts` et `http/routes-session.ts`, jamais un second.
+export function createSignalingServer(
+    port: number,
+    garde: Garde,
+    frein: Frein,
+    proxyDeConfiance: ReadonlySet<string>,
+    trace?: ObservateurDeSession,
+): SignalingServer;
+export function createSignalingServer(
+    wss: WebSocketServer,
+    garde: Garde,
+    frein: Frein,
+    proxyDeConfiance: ReadonlySet<string>,
+    trace?: ObservateurDeSession,
+): SignalingServer;
 export function createSignalingServer(
     portOuWss: number | WebSocketServer,
     garde: Garde,
+    frein: Frein,
+    proxyDeConfiance: ReadonlySet<string>,
     trace?: ObservateurDeSession,
 ): SignalingServer {
     const port = typeof portOuWss === 'number' ? portOuWss : 0;
@@ -156,7 +215,72 @@ export function createSignalingServer(
         }
     }
 
-    wss.on('connection', (socket) => {
+    wss.on('connection', (socket: WebSocket, requete?: IncomingMessage) => {
+        // 🔴 LE FREIN « TOUTE REQUÊTE » EST CONSULTÉ ICI, À LA CONNEXION —
+        // AVANT LE PREMIER MESSAGE, donc avant `isJsonObject` et avant
+        // `garde.verifier`. Une connexion WebSocket est ici l'équivalent
+        // d'une requête : c'est elle qui coûte l'appariement et, si elle
+        // aboutit, une ligne en base (`ObservateurDeSession`).
+        // `TRAME_MAX_OCTETS` (`http/serveur.ts`) borne la taille d'un
+        // message ; RIEN, avant ce lot, ne bornait le NOMBRE de connexions
+        // qu'une même adresse pouvait ouvrir sur CE chemin-ci.
+        //
+        // 🔴 **C'EST CE LOT QUI FERME LA MOITIÉ `/signal` DU LEGS QUE
+        // `http/serveur.ts` nommait — les SOCKETS, pas leur MUTISME.** Une
+        // connexion est désormais comptée qu'elle envoie un message ou non :
+        // c'est l'évènement `connection` lui-même qui coûte, pas le premier
+        // message. Voir la note corrigée de `TRAME_MAX_OCTETS` dans
+        // `http/serveur.ts` : elle distingue désormais `/signal` (borné ICI)
+        // et `/agent` (`agents/canal.ts`, où le frein n'est TOUJOURS consulté
+        // qu'au message — un pair muet y reste incompté).
+        //
+        // ⚠️ `requete?.socket.remoteAddress` PEUT ÊTRE ABSENT : la forme
+        // `port` de cette fonction (`server.test.ts` depuis le jalon 1)
+        // n'émet aucune requête de montée. `adresseSource` rend alors
+        // `ADRESSE_INCONNUE`, budget PARTAGÉ par tous les pairs sans adresse
+        // — même comportement que `agents/canal.ts`.
+        const adresse = adresseSource(
+            requete?.socket.remoteAddress,
+            Array.isArray(requete?.headers['x-forwarded-for'])
+                ? requete.headers['x-forwarded-for'].join(',')
+                : requete?.headers['x-forwarded-for'],
+            proxyDeConfiance,
+        );
+        // 🔴 UNE `PLATEFORME_PROXY_DE_CONFIANCE` MAL POSÉE FAIT DÉGÉNÉRER CE
+        // FREIN EN FREIN GLOBAL, ET SA GRAVITÉ A CHANGÉ AVEC CE LOT — voir le
+        // paragraphe complet chez `http/routes-vm.ts` (même clé
+        // `BUDGET_REQUETES`, même témoin : la ligne `frein-requetes` qui
+        // nomme l'adresse retenue), jamais recopié pour ne pas diverger.
+        const clesRequetes: readonly (readonly [string, Budget])[] = [
+            [cleRequetes(adresse), BUDGET_REQUETES],
+        ];
+        // `Date.now()` lu ici, comme pour `configurationIce` plus bas dans ce
+        // même fichier : ce module ne reçoit pas d'horloge injectée.
+        const verdictRequetes = frein.consulter(clesRequetes, Date.now());
+        if (verdictRequetes.freine) {
+            // ⚠️ ENVOYER PUIS FERMER, jamais l'inverse — même règle que sur
+            // un refus de poignée de main plus bas : un `terminate()`
+            // immédiat tronquerait le message.
+            //
+            // 🔴 `retryApresS` EST DÉSORMAIS PORTÉ SUR LE FIL (round de
+            // correction 1, critique ②) — LES DEUX ROUTES HTTP FREINÉES
+            // (`routes-vm.ts`, `routes-session.ts`) LE POSENT DÉJÀ, EN
+            // `Retry-After`, DEPUIS CE MÊME LOT ; SEUL CE REFUS WebSocket EN
+            // ÉTAIT PRIVÉ. Sans lui, l'agent ne peut deviner combien de temps
+            // attendre — c'est la moitié la moins chère du remède au
+            // verrouillage documenté par `surveillance_pont.rs`, l'autre
+            // moitié étant le repli exponentiel qu'il applique déjà.
+            send(socket, {
+                type: 'error',
+                reason: 'trop de requêtes',
+                motif: 'trop-de-requetes',
+                retryApresS: verdictRequetes.retryApresS,
+            });
+            socket.close(1008, 'trop-de-requetes');
+            return;
+        }
+        compterLaConnexion(frein, clesRequetes, adresse);
+
         let role: Role | undefined;
         let sessionId: string | undefined;
 

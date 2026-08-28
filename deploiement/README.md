@@ -105,10 +105,27 @@ figurant dans cette liste.
 
 - **Absente ou fausse** — l'en-tête n'est pas cru, donc toutes les requêtes
   portent l'adresse du **proxy**. Elles partagent alors **une seule clé de
-  frein** : le frein par adresse dégénère en **frein global**, et le premier
-  attaquant bloque tous les usagers.
+  frein** : le frein par adresse dégénère en **frein global**. 🔴 **CORRIGÉ
+  (revue, round de correction 3 de `frein(pont)`) : AUCUN ATTAQUANT N'EST
+  REQUIS** — la dégénérescence est automatique dès que ce montage (nginx
+  devant la plateforme) existe, pas le fait d'un premier arrivant malveillant.
+  **Et la gravité a changé avec le lot « frein(volume) »** : ce n'est plus
+  seulement `BUDGET_ADRESSE` (les échecs d'authentification, 50/quart
+  d'heure) qui dégénère, mais aussi `BUDGET_REQUETES` — `GET /vm`,
+  `POST /session` **et** le relais `/signal`, HTTP et WebSocket confondus,
+  120/minute — c'est-à-dire que **le service ENTIER** plafonne pour tous les
+  usagers derrière ce proxy, pas seulement leurs tentatives de connexion.
+  Voir `plateforme/src/http/annonces.ts::annonceProxyDeConfiance`, corrigée à
+  sa place.
 - **Trop large** — n'importe qui peut se déclarer sous l'adresse de son choix,
   et le frein par adresse ne freine plus rien du tout.
+
+⚠️ **CE QUI PRÉCÈDE DÉCRIT SON RÔLE DANS *CE* MONTAGE (nginx, `motdepasse`),
+où elle reste FACULTATIVE.** Depuis le chantier `auth-pomerium` (21 août
+2026), la variable porte un **second** rôle — l'autorisation de poser l'en-tête
+d'identité `X-Pomerium-Claim-Email` — qui la rend **OBLIGATOIRE** dans l'autre
+montage possible de ce service. Voir « Le montage Pomerium », plus bas, qui ne
+partage avec celui-ci ni son proxy ni sa méthode de relevé.
 
 Relever la bonne valeur, après le premier démarrage :
 
@@ -290,6 +307,111 @@ valides jusqu'à leur expiration (`DUREE_JETON_ACCES_MS`).
 curl -sk https://<hôte>/sante          # le verdict, sans aucun détail divulgué
 docker compose -f docker-compose.plateforme.yml --profile deploiement logs -f plateforme
 ```
+
+---
+
+## Le montage Pomerium
+
+**Un second montage possible du même service, EXCLUSIF du premier.** Celui
+décrit dans « Mettre en route » ci-dessus s'authentifie **lui-même**
+(`PLATEFORME_AUTH=motdepasse`) derrière **nginx**, qui termine TLS et sert la
+page depuis `client/dist` monté en volume. Celui-ci délègue l'identité à
+**Pomerium** (`PLATEFORME_AUTH=pomerium`, le **défaut**), qui termine TLS,
+authentifie l'utilisateur par OAuth Google et pose l'en-tête
+`X-Pomerium-Claim-Email` — et c'est la plateforme **elle-même** qui sert
+désormais la page, `nginx` n'étant plus dans la chaîne. Introduit par le
+chantier `auth-pomerium` (21 août 2026) et complété par la variable
+`PLATEFORME_PAGE` (22 août 2026), voir `CLAUDE.md` et
+`docs/superpowers/specs/2026-08-21-auth-pomerium-design.md` § 7.
+
+🔴 **LES DEUX MONTAGES SONT EXCLUSIFS, ET LE MÉLANGE EST LA PANNE.** Un service
+ne peut porter qu'une valeur de `PLATEFORME_AUTH` à la fois. Faire tourner ce
+montage-ci en laissant `deploiement/nginx.conf` en face (avec sa directive
+`proxy_set_header X-Pomerium-Claim-Email "";` de l'invariant ⑤) effacerait
+l'en-tête que Pomerium vient de poser et couperait toute authentification ;
+faire tourner le montage nginx sans cette directive, comme l'invariant ⑤ le
+dit déjà, est le contournement complet inverse. **Un déploiement choisit l'un
+des deux, jamais les deux à la fois sur la même écoute.**
+
+### Les quatre variables du montage
+
+| Variable | Valeur | Pourquoi |
+| --- | --- | --- |
+| `PLATEFORME_AUTH` | `pomerium` | c'est le **défaut** — l'écrire est une clarté, pas une nécessité. Une valeur inconnue LÈVE |
+| `PLATEFORME_HOTE` | `192.168.3.1` | ni `127.0.0.1` (Pomerium tourne en `network_mode: host` et atteint n'importe quelle adresse de l'hôte, mais l'agent Windows, depuis `192.168.3.2`, n'atteint JAMAIS la boucle locale de l'hôte), ni `0.0.0.0` (la garde du § ② ci-dessus **refuse de démarrer** en mode `pomerium`) — voir spec § 7.1, qui pose et vérifie les trois contraintes ensemble |
+| `PLATEFORME_PAGE` | le chemin **absolu** de `client/dist` **bâti** (`cd client && npm ci && npm run build`) | **AUCUN DÉFAUT** : absente ou vide, le service ne sert toujours rien et `GET /` rend `404` — c'est ce montage-ci qui a besoin qu'elle soit posée, puisque nginx n'est plus là pour servir la page. 🔴 **UN BUILD OUBLIÉ, OU UN CHEMIN RELATIF, DONNAIENT UN SERVICE QUI ÉCOUTE, RÉPOND, SERT L'API ET NE SERT JAMAIS LA PAGE — sans une ligne nulle part.** Depuis le 22 août 2026, le démarrage annonce la racine **résolue** et **si elle est lisible** : `page servie racine=/…/client/dist lisible=oui`, `page servie racine=aucune …` quand la variable n'est pas posée, et un **`console.error`** portant `lisible=non` quand elle l'est mais que le disque refuse. **C'est cette ligne qu'il faut lire après le lancement, pas le `404`** |
+| `PLATEFORME_PROXY_DE_CONFIANCE` | l'adresse **mesurée** de Pomerium (ci-dessous) | **OBLIGATOIRE dans ce montage : le service REFUSE DE DÉMARRER sans elle** en mode `pomerium` (`plateforme/src/config.ts::lireConfig`) — voir l'invariant ③, qui documente son AUTRE rôle |
+
+### Mesurer l'adresse de Pomerium, ne jamais la déduire
+
+🔴 **NE PAS ÉCRIRE UNE ADRESSE EN DUR ICI.** Pomerium tourne en
+`network_mode: host` : c'est le **noyau**, pas ce document, qui choisit
+l'adresse source d'une connexion sortante vers le port `8080`. Toute valeur
+recopiée d'une exécution précédente peut être fausse sur la suivante. La
+mesurer sur une connexion **réelle**, pas par déduction :
+
+```bash
+# Provoquer une requête RÉELLE depuis Pomerium au préalable (par exemple
+# GET /auth/moi), puis, pendant qu'une connexion est établie ou vient de
+# l'être :
+ss -tn state established '( dport = :8080 or sport = :8080 )'
+```
+
+Poser `PLATEFORME_PROXY_DE_CONFIANCE` à l'adresse ainsi lue, jamais à un nom
+d'hôte — voir l'avertissement ci-dessous.
+
+⚠️ **PIÈGE MESURÉ PAR LA REVUE : UN NOM D'HÔTE AU LIEU D'UNE ADRESSE REFUSE
+TOUT LE MONDE, SANS AUCUNE TRACE.** `http/adresse-source.ts::pairDeConfiance`
+compare des **chaînes**, sans jamais résoudre de nom — ni `PLATEFORME_
+PROXY_DE_CONFIANCE`, ni `req.socket.remoteAddress` (qui est toujours une
+adresse) ne passent par une résolution DNS. Poser un nom d'hôte fait donc
+échouer **toute** comparaison, pour **toute** requête, y compris les requêtes
+légitimes de Pomerium : `GET /auth/moi` rend `401 pair-non-de-confiance` en
+boucle, et `routes-identite.ts` ne trace pas ce refus. **Le service répond, la
+page se charge, et personne ne peut se connecter** — c'est la même classe de
+panne muette que les cinq invariants ci-dessus.
+
+✅ **CE QUI A CHANGÉ LE 22 AOÛT 2026, ET CE QUI N'A PAS CHANGÉ.** Le refus
+lui-même reste non tracé — c'est un chemin de requête, et le tracer par requête
+rendrait le service amplificateur (`serveur.ts`, `TRAME_MAX_OCTETS`). Mais **le
+démarrage annonce désormais l'ensemble RETENU**, si bien qu'un nom d'hôte s'y
+lit en toutes lettres :
+
+```
+proxys de confiance retenus=172.18.0.5 nombre=1
+```
+
+Ce que la ligne dit est ce que le service a **retenu**, jamais ce qu'on lui a
+donné : si le nom `pomerium.interne` y paraît, la comparaison ne peut pas
+réussir. **Un runbook ne rougit pas ; cette ligne, si** — `http/annonces.ts` et
+`http/annonces.test.ts`.
+
+### Lancer le service
+
+Ce montage n'a pas de profil `docker compose` dédié : il tourne sur l'hôte,
+directement, pour que Pomerium (lui aussi sur l'hôte, en `network_mode: host`)
+et l'agent Windows (sur `192.168.3.0/24`) l'atteignent tous deux à la même
+adresse — voir spec § 7.1.
+
+```bash
+cd client && npm ci && npm run build && cd ..   # produit client/dist/, servi CETTE FOIS par la plateforme
+cd plateforme
+set -a && source ../deploiement/plateforme.env && set +a   # secret, URL de base, proxy, PAGE
+PLATEFORME_AUTH=pomerium \
+PLATEFORME_HOTE=192.168.3.1 \
+npm start
+```
+
+⚠️ **`deploiement/plateforme.env` reste le même gabarit que pour le montage
+nginx** (`deploiement/plateforme.env.exemple`) : il porte le secret, l'URL de
+base, `PLATEFORME_PROXY_DE_CONFIANCE` — **obligatoire ici** — et
+`PLATEFORME_PAGE`, **commentée dans le gabarit** parce que le montage nginx ne
+doit rien servir lui-même : **décommenter cette ligne et la faire pointer vers
+`client/dist` bâti, en chemin ABSOLU**, est le seul geste propre à ce montage
+sur ce fichier. `PLATEFORME_AUTH` et `PLATEFORME_HOTE`, eux, restent hors du
+gabarit — ce sont des littéraux qui CHOISISSENT le montage, pas des secrets ni
+des chemins propres à une machine, à l'image de ce que
+`docker-compose.plateforme.yml` pose déjà en clair pour le premier montage.
 
 ---
 

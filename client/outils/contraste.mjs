@@ -1,11 +1,17 @@
 #!/usr/bin/env node
 // Contrôle §7.1 de la spec ⑥ — LES CONTRASTES TIENNENT LES SEUILS WCAG.
 //
-// Il ne connaît AUCUNE couleur : il lit `tokens.css`, le fait parser par
-// `client/src/design/tokens.ts` et évaluer par `client/src/design/contraste.ts`,
-// tous deux typecheckés et testés. C'est LE point de conception du §7.1 : une
-// table jumelle est exactement ce que le §4.1 refuse ailleurs, et un contrôle
-// qui a sa propre copie des valeurs valide sa copie.
+// Il ne connaît AUCUNE couleur : il lit `tokens/couleurs.css`, le fait parser
+// par `client/src/design/tokens.ts` et évaluer par
+// `client/src/design/contraste.ts`, tous deux typecheckés et testés. C'est LE
+// point de conception du §7.1 : une table jumelle est exactement ce que le
+// §4.1 refuse ailleurs, et un contrôle qui a sa propre copie des valeurs
+// valide sa copie.
+//
+// 🔴 `tokens/couleurs.css` SEUL, JAMAIS `tokens.css` : depuis l'extraction de
+// la tâche 6 (25 août 2026), c'est le seul fichier où vivent des couleurs —
+// `tokens/echelles.css`, son voisin, n'en porte aucune, et les paires de
+// contraste que ce contrôle évalue n'en ont donc rien à lire là-bas.
 //
 // ⚠️ CE QU'IL NE VÉRIFIE PAS, d'après la spec §7.1 : que le BON token ait été
 // employé au bon endroit (c'est une règle de revue, §8), ni les couleurs
@@ -21,7 +27,7 @@ import { evaluer } from '../src/design/contraste.ts';
 
 const args = process.argv.slice(2);
 const iFichier = args.indexOf('--fichier');
-const fichier = iFichier === -1 ? 'client/src/design/tokens.css' : args[iFichier + 1];
+const fichier = iFichier === -1 ? 'client/src/design/tokens/couleurs.css' : args[iFichier + 1];
 
 if (!existsSync(fichier)) {
     console.error(`${fichier} est absent : rien n'a été mesuré, ce n'est pas un succès.`);
