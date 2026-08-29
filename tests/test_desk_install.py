@@ -388,6 +388,33 @@ with tempfile.TemporaryDirectory() as tmp4src, tempfile.TemporaryDirectory() as 
         import shutil as _shutil
         _shutil.rmtree(root4b, ignore_errors=True)
 
+# --- Installation 6 : facts["hote"] universel DOIT ETRE REFUSE -------------
+# 🔴 RONDE DE CORRECTION 1 (29 août 2026) : la revue a démontré que
+# `facts.get("hote")`, quand il est VRAI, court-circuitait `lire_hote()` —
+# la SEULE fonction qui vérifiait `ECOUTES_UNIVERSELLES` — et traversait
+# donc SANS AUCUN CONTRÔLE. `facts = {..., "hote": "0.0.0.0", ...}` rendait
+# code 0 et écrivait PLATEFORME_HOTE=0.0.0.0 dans desk.env : exactement le
+# défaut que ce lot existe pour fermer, revenu par un second chemin.
+# Inatteignable par le moteur réel AUJOURD'HUI (il ne passe aucun `facts` à
+# `install`), mais le docstring de tête d'install.py dit lui-même que ce
+# canal existe pour « un futur moteur, ou ce fichier de tests » — et le
+# contrat de `facts` a gagné des clés PENDANT ce lot même. Ce scénario fige
+# le contrat : une écoute universelle dans facts["hote"] DOIT refuser,
+# exactement comme DESK_HOTE=0.0.0.0 le fait déjà pour la valeur dérivée.
+with tempfile.TemporaryDirectory() as tmp6:
+    root6 = pathlib.Path(tmp6)
+    facts_hote_universel = dict(FACTS)
+    facts_hote_universel["hote"] = "0.0.0.0"
+    r6 = appeler(root6, facts=facts_hote_universel)
+    check("facts['hote']='0.0.0.0' : code de sortie NON NUL (refus)",
+          r6.returncode != 0, True)
+    check("facts['hote']='0.0.0.0' : le refus nomme l'ecoute universelle",
+          "universelle" in (r6.stderr or "").lower(), True)
+    check("facts['hote']='0.0.0.0' : le refus nomme facts[\"hote\"] (pas DESK_HOTE)",
+          'facts["hote"]' in (r6.stderr or ""), True)
+    check("facts['hote']='0.0.0.0' : desk.env n'est PAS ecrit avec cette valeur",
+          (root6 / "etc" / "nivuus" / "desk.env").is_file(), False)
+
 # --- Installation 5 : REJOUER install DEUX FOIS SUR LA MÊME RACINE ---------
 # 🔴 BUG RÉEL TROUVÉ AU LOT 10A (29 août 2026) : une réinstallation réelle
 # sur `--root /`, avec un `plateforme/node_modules/.bin/` qui porte des
