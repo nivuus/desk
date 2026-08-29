@@ -16,10 +16,17 @@ Légitime parce que le manifeste déclare `requires: packages: [console]`
 fonctions publiques (`poser_projfs`, `poser_vb_audio`) prennent un
 paramètre `executer` : en test, un exécuteur FACTIQUE ; en production,
 `executer_winrm_reel` par défaut, qui invoque réellement `winrm_exec.py`.
-`tests/test_desk_vm.py` n'injecte jamais autre chose qu'un exécuteur
-factice, sauf pour SA PROPRE ROUGE (Step 5), qui n'atteint de toute façon
-jamais le réseau : `chemin_winrm_exec()` lève sur un fichier absent AVANT
-tout `subprocess.run`.
+
+⚠️ CE PARAGRAPHE A DIT UNE CHOSE FAUSSE JUSQU'AU 30 AOÛT 2026 : « [ce
+fichier] n'injecte jamais autre chose qu'un exécuteur factice, sauf pour SA
+PROPRE ROUGE, qui n'atteint de toute façon jamais le réseau ». C'est faux
+depuis la ronde 1 de la tâche 6 — `tests/test_desk_vm.py` porte DEUX
+scénarios (A et B) qui passent délibérément par `executer_winrm_reel`, donc
+par un vrai `subprocess.run`, pour éprouver son bras d'échec et son
+round-trip. Ce qu'ils exécutent est un FAUX `winrm_exec.py` de quatre lignes
+posé sous un `NIVUUS_PACKAGES_DIR` temporaire : le sous-processus est réel,
+la VM et le réseau ne le sont jamais. Le correctif était bon ; ce docstring
+ne l'avait pas suivi (relevé par la revue finale de branche).
 
 --- Par où on apprend le chemin de `winrm_exec.py` (jamais supposé) -------
 

@@ -8,14 +8,26 @@ suffirait pour personne.
 
 | Phase | Ce qu'elle fait |
 |---|---|
-| `resolve` | Lecture seule. Dérive l'adresse d'écoute, le port et l'origine CORS de la machine cible ; **refuse**, avec une raison, une machine où ces éléments ne peuvent pas être dérivés. Émet un événement `refuse` et sort en code 0 — jamais une exception non rattrapée (voir `hooks/resolve.py`). |
-| `install` | Pose les fichiers sur la cible : la plateforme (`plateforme/`) et le client bâti (`client/dist`) sous `/opt/nivuus/desk/`, l'unité systemd `desk-plateforme.service`, `desk.env` (secrets tirés au sort, jamais demandés au wizard), `turnserver.conf`. N'a **aucun** canal `refuse` : une erreur ici est une anomalie, pas une décision à motiver (voir `hooks/install.py`). |
-| `activate` | Arme le lien systemd que `install` n'a fait que poser, crée le compte administrateur initial et enrôle l'agent auprès de la plateforme (`hooks/administration.py`), puis **compile `agent.exe` par compilation croisée et le dépose là où `console` le cherche** (`scripts/build-agent-croise.sh`, `hooks/activate.py::deposer_agent_console`) — sans jamais toucher la VM Windows. |
+| `resolve` | Lecture seule, et **avant `partition()`** — le disque cible n'existe pas encore. Dérive l'adresse d'écoute, le port, les deux adresses TURN et le proxy de confiance ; valide `node` contre `engines.node` ; **refuse**, avec une raison, ce qui ne peut pas être dérivé. Émet un événement `refuse` et sort en code 0 — jamais une exception non rattrapée (voir `hooks/resolve.py`). ⚠️ Il ne dérive **aucune origine CORS** : `PLATEFORME_ORIGINE_CLIENT` n'est écrite par aucun hook, son absence étant le cas nominal derrière un proxy. Cette ligne l'affirmait ; c'était faux, relevé par la revue finale de branche. |
+| `install` | **Un pré-vol d'abord** : ce qui manque à la source (`client/dist`, `plateforme/node_modules/.bin/tsx`, `proto/ts/`, un runtime Node à déposer) est dit **avant qu'un secret soit tiré**. Pose ensuite la plateforme, le client bâti et `proto/ts/` sous `/opt/nivuus/desk/`, **le runtime Node sous `/opt/nivuus/node/`**, l'unité systemd `desk-plateforme.service`, `desk.env` (secrets tirés au sort, jamais demandés au wizard), `turnserver.conf`. N'a **aucun** canal `refuse` : une erreur ici sort en code non nul, avec une phrase (voir `hooks/install.py`). |
+| `activate` | **C'est ici que la VM Windows est éprouvée**, par un échange WinRM réel — la seule phase où elle peut exister (voir plus bas). Arme le lien systemd que `install` n'a fait que poser, pose ProjFS dans la VM, crée le compte administrateur initial, enrôle l'agent, **lui attribue la VM** (`hooks/administration.py`), puis **compile `agent.exe` par compilation croisée et le dépose là où `console` le cherche** (`scripts/build-agent-croise.sh`, `hooks/agent_payload.py`). |
 
 **Dépendance dure** : `desk` ne peut pas s'installer sans `console`
 (`nivuus-package.yaml::requires.packages`) — c'est `console` qui provisionne
 la VM Windows, y déploie l'agent et l'arme en session 1. Sans elle, `desk`
 installerait un service qui n'a rien à piloter.
+
+🔴 **C'est cette dépendance, et elle seule, qui garantit la VM — jamais un
+contrôle de `resolve`.** Le moteur refuse un pré-requis manquant
+(`missing_dependencies`) **avant** le premier hook `resolve` et **avant**
+`partition()`. `resolve` a porté, jusqu'au 30 août 2026, une porte
+`hw["vm_windows"]` : une clé qu'aucun producteur du moteur ne pose
+(`common/hardware.py::detect_all()` en rend huit), éprouvée à une phase où la
+VM ne peut pas encore exister. Elle refusait donc toujours, et le moteur
+traduit un refus en arrêt de l'installation **entière**. La porte vit
+désormais dans `activate`, où elle est une mesure ;
+`tests/test_desk_contrat_hw.py` fige le contrat de `hw` en lisant les clés du
+**producteur** au lieu de les inventer.
 
 ## Le wizard
 
@@ -53,8 +65,25 @@ croire qu'un `make test` vert vaut recette du produit.**
 
 | | Ce qu'il éprouve | Ce qu'il ne touche jamais |
 |---|---|---|
-| `make test` (ce package) | le **packaging** : le manifeste et le wizard (`nivuus-package.yaml`, `wizard.yaml`), les trois hooks (`resolve`/`install`/`activate`) contre un moteur et un système de fichiers **factices**, et le script de compilation croisée qui dépose `agent.exe` | l'agent Rust réel, la plateforme, le client, le protocole partagé — aucun d'eux ne tourne ici |
+| `make test` (ce package) | le **packaging** : le manifeste et le wizard (`nivuus-package.yaml`, `wizard.yaml`), les trois hooks (`resolve`/`install`/`activate`), le contrat de `hw` avec le moteur voisin, et le script de compilation croisée qui dépose `agent.exe` | l'agent Rust réel, la plateforme, le client, le protocole partagé — aucun d'eux ne tourne ici |
 | `env -u TURN_URL -u TURN_SECRET ./scripts/verify-all.sh` | le **produit** : `cargo test`/`cargo clippy` du workspace agent+proto, les suites et le typecheck du client, `design:verifier` (les huit contrôles de token/contraste/poids CSS), les suites et le typecheck de `proto/ts/`, les suites et le typecheck de la plateforme (SQLite et Postgres) | le packaging — aucune de ses dix étapes ne lit `nivuus-package.yaml`, un hook ou un wizard |
+
+🔴 **`make test` N'EST PAS HERMÉTIQUE, ET CETTE PAGE A AFFIRMÉ LE CONTRAIRE.**
+Elle disait « contre un moteur et un système de fichiers **factices** » ;
+c'est faux, relevé par la revue finale de branche. Les installations 1, 2, 3,
+5 et 7 de `tests/test_desk_install.py` lisent le **vrai dépôt** (elles ne
+posent pas `DESK_SOURCE_RACINE`) et copient le vrai
+`plateforme/node_modules` et le vrai `client/dist` ; l'installation 7 dépose
+le **vrai runtime Node** de cette machine ; `tests/test_desk_manifeste.py` et
+`tests/test_desk_contrat_hw.py` lisent le **vrai dépôt voisin**
+`../installer`. Sur un clone frais, `make test` échoue. Ce qu'il exige :
+
+```bash
+cd plateforme && npm install     # node_modules/.bin/tsx
+cd client && npm run build       # client/dist
+# un node conforme a engines.node de plateforme/package.json dans le PATH
+# le depot voisin installer/ a cote de desk/ (ou DESK_INSTALLER_RACINE)
+```
 
 Un `make test` vert ne dit donc **rien** de l'agent, de la plateforme, du
 client ou du protocole ; un `verify-all.sh` vert ne dit **rien** du
@@ -65,11 +94,11 @@ aucun ne couvre l'autre.
 
 `make test` **découvre** les suites, il ne les énumère pas à la main : toute
 suite de `tests/` porte le préfixe `test_`, et rien d'autre dans ce
-répertoire ne le porte. `tests/desk_activate_fixtures.py` — le module de
-fixtures partagées par `test_desk_activate.py` — s'appelle délibérément
-SANS ce préfixe précisément pour ne pas être découvert : ce n'est pas une
-suite, `python3 tests/desk_activate_fixtures.py` ne fait rien d'utile
-(voir son propre en-tête). Une suite ajoutée demain n'a donc rien à câbler
+répertoire ne le porte. `tests/desk_activate_fixtures.py` et
+`tests/desk_install_fixtures.py` — les deux modules de fixtures partagées —
+s'appellent délibérément SANS ce préfixe précisément pour ne pas être
+découverts : ce ne sont pas des suites, les exécuter directement ne fait rien
+d'utile (voir leurs propres en-têtes). Une suite ajoutée demain n'a donc rien à câbler
 dans le `Makefile` : il suffit qu'elle s'appelle `test_desk_*.py`.
 
 ## Commandes

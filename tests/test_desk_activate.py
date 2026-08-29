@@ -406,13 +406,16 @@ with tempfile.TemporaryDirectory() as tmp:
     (guest / "winrm_exec.py").write_text(
         "#!/usr/bin/env python3\n"
         "import sys\n"
-        "sys.stderr.write('error: cannot reach guest at 192.168.3.2:5985: "
-        "timeout\\n')\n"
+        # Le texte DIT qu'il est factice : voir la meme precaution dans
+        # tests/test_desk_vm.py, ou un message imitant une vraie panne
+        # reseau avait trompe une relectrice.
+        "sys.stderr.write('FAUX winrm_exec.py de test : echec simule, "
+        "aucune VM contactee\\n')\n"
         "sys.exit(1)\n", encoding="utf-8")
     (guest / "winrm_exec.py").chmod(0o755)
 
     r = appeler(root, bin_dir, packages_dir=packages_dir)
-    _check_refus_propre("VM injoignable", r, "cannot reach guest", root)
+    _check_refus_propre("VM injoignable", r, "echec simule", root)
     check("VM injoignable : le refus nomme la VM Windows, pas ProjFS",
           "la VM Windows ne repond pas" in (r.stderr or ""), True)
     check("VM injoignable : le refus dit que console la provisionne",
