@@ -88,6 +88,28 @@ rc, ev = appeler(hw={"vm_windows": True},
                  answers={**REPONSES, "auth_mode": "motdepass"})
 check("mode inconnu : refus", len(refus(ev)), 1)
 
+# --- vb_audio=true : REFUS avant l'installation, jamais un blocage APRÈS —
+# ronde de correction 1 sur la tâche 6. Aucune charge VB-Audio n'est fournie
+# par ce package (licence personnelle) : `poser_vb_audio(armee=True)` lève
+# `NotImplementedError` dans `hooks/vm.py`, mais APRÈS que le compte et
+# l'enrôlement de l'agent aient déjà été tentés (voir hooks/activate.py) —
+# une activation qui ne passerait alors plus JAMAIS. Le refus doit arriver
+# ICI, avant qu'un octet touche le disque.
+rc, ev = appeler(hw={"vm_windows": True}, answers={**REPONSES, "vb_audio": True})
+r = refus(ev)
+check("vb_audio=true : refus", len(r), 1)
+check("vb_audio=true : code de sortie 0", rc, 0)
+check("vb_audio=true : la phrase nomme VB-Audio",
+      bool(r and "VB-Audio" in r[0].get("reason", "")), True)
+check("vb_audio=true : la phrase dit la licence personnelle",
+      bool(r and "personnelle" in r[0].get("reason", "").lower()), True)
+check("vb_audio=true : la phrase invite à décocher l'option",
+      bool(r and "décoch" in r[0].get("reason", "").lower()), True)
+
+# --- vb_audio=false (le défaut du wizard) : aucun refus lié à VB-Audio ----
+rc, ev = appeler(hw={"vm_windows": True}, answers={**REPONSES, "vb_audio": False})
+check("vb_audio=false : aucun refus", refus(ev), [])
+
 # --- Une entrée mal formée est un refus, jamais une exception ------------
 # Ronde de correction 1 (29 août 2026) : le hook laissait ces trois entrées
 # lever telles quelles (JSONDecodeError ou AttributeError, code de sortie 1,
