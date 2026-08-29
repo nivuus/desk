@@ -15,6 +15,9 @@ tourner ces tests. `npm` et `systemctl` sont remplacés par des scripts
 factices posés sur un `PATH` reconstruit pour chaque appel — jamais le
 `npm`/`systemctl` du système réel.
 
+🔴 TÂCHE 6 : `main()` résout `winrm_exec.py` avant `plateforme/` ; `appeler()`
+fabrique donc par défaut un faux (`packages_dir=False` simule `console` absent).
+
 Run: python3 tests/test_desk_activate.py
 """
 import configparser
@@ -79,6 +82,23 @@ def poser_faux_npm(bin_dir: pathlib.Path, log: pathlib.Path) -> None:
     script.chmod(0o755)
 
 
+# --- Le faux winrm_exec.py (tâche 6, contrat `<script> {mode} <commande>`) --
+FAUX_WINRM_EXEC = """#!/usr/bin/env python3
+import json, sys
+with open({log!r}, "a", encoding="utf-8") as fh:
+    fh.write(json.dumps({{"argv": sys.argv[1:]}}) + "\\n")
+sys.exit(0)
+"""
+
+
+def poser_faux_winrm_exec(packages_dir: pathlib.Path, log: pathlib.Path) -> None:
+    guest_dir = packages_dir / "console" / "guest"
+    guest_dir.mkdir(parents=True, exist_ok=True)
+    script = guest_dir / "winrm_exec.py"
+    script.write_text(FAUX_WINRM_EXEC.format(log=str(log)), encoding="utf-8")
+    script.chmod(0o755)
+
+
 def poser_faux_systemctl(bin_dir: pathlib.Path, log: pathlib.Path) -> None:
     """Un systemctl qui n'agit sur RIEN : juste une trace de ses arguments,
     pour prouver qu'il n'est jamais invoqué sous un --root de test."""
@@ -130,9 +150,9 @@ def poser_racine_installee(root: pathlib.Path, contenu_env: dict = None) -> None
     os.chmod(chemin_env, stat.S_IRUSR | stat.S_IWUSR)
 
 
-def appeler(root, bin_dir, hw=None, answers=None, root_arg=None):
-    """Appelle le hook comme le moteur (--phase, --root), PATH réécrit vers
-    bin_dir en tête, pour que npm/systemctl résolus soient les factices."""
+def appeler(root, bin_dir, hw=None, answers=None, root_arg=None, packages_dir=None):
+    """Appelle le hook (--phase, --root), PATH vers bin_dir en tête (faux npm/systemctl).
+    packages_dir (tâche 6, NIVUUS_PACKAGES_DIR) : None fabrique un faux, False simule console absent."""
     contexte = {"hw": hw if hw is not None else HW_AVEC_FACTS,
                 "answers": answers if answers is not None else REPONSES}
     env = dict(os.environ)
@@ -141,6 +161,12 @@ def appeler(root, bin_dir, hw=None, answers=None, root_arg=None):
     # FUSION que le hook fait depuis desk.env — jamais parce que le shell qui
     # fait tourner ces tests l'exportait déjà par accident.
     env.pop("PLATEFORME_BASE_URL", None)
+    if packages_dir is None:
+        packages_dir = root / "faux-packages-dir"
+        poser_faux_winrm_exec(packages_dir, root / "winrm.log")
+    elif packages_dir is False:
+        packages_dir = root / "console-absent-ici"
+    env["NIVUUS_PACKAGES_DIR"] = str(packages_dir)
     cmd = [sys.executable, str(HOOK), "--phase", "activate",
            "--root", str(root_arg if root_arg is not None else root)]
     return subprocess.run(cmd, input=json.dumps(contexte), env=env,
@@ -385,6 +411,9 @@ with tempfile.TemporaryDirectory() as tmp:
 # --- Bras 1 : la fonction elle-meme, appelee directement -------------------
 import importlib.util  # noqa: E402
 
+# TÂCHE 6 : `from vm import ...` exige vm.py sur sys.path (sinon ModuleNotFoundError).
+sys.path.insert(0, str(HOOK.parent))
+
 spec = importlib.util.spec_from_file_location("desk_activate", HOOK)
 activate = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(activate)
@@ -425,6 +454,42 @@ with tempfile.TemporaryDirectory() as tmp:
     # npm n'a jamais ete lancee.
     check("ROUGE : aucune commande npm n'a ete lancee",
           (root / "npm.log").exists(), False)
+
+
+# === Tâche 6 : câblage de hooks/vm.py — B éprouve poser_projfs, C éprouve
+# poser_vb_audio ; leur comportement propre est dans test_desk_vm.py.
+def _racine_pour_tache6(tmp):
+    root = pathlib.Path(tmp)
+    poser_racine_installee(root)
+    bin_dir = root / "faux-bin"
+    bin_dir.mkdir()
+    poser_faux_npm(bin_dir, root / "npm.log")
+    return root, bin_dir
+def _check_refus_propre(prefix, r, doit_contenir, root):
+    """rc != 0, raison nommee, aucune trace Python, aucun npm (le refus precede tout)."""
+    check(f"{prefix} : refus propre (rc != 0)", r.returncode != 0, True)
+    check(f"{prefix} : le refus nomme {doit_contenir!r}", doit_contenir in (r.stderr or ""), True)
+    check(f"{prefix} : aucune trace Python", "Traceback" in (r.stderr or ""), False)
+    check(f"{prefix} : aucun npm lance", (root / "npm.log").exists(), False)
+
+# --- B : `console` absent (aucun winrm_exec.py) — refus propre ------------
+with tempfile.TemporaryDirectory() as tmp:
+    root, bin_dir = _racine_pour_tache6(tmp)
+    r = appeler(root, bin_dir, packages_dir=False)
+    chemin_attendu = str(root / "console-absent-ici" / "console" / "guest" / "winrm_exec.py")
+    _check_refus_propre("console absent", r, chemin_attendu, root)
+    lien = root / "etc" / "systemd" / "system" / "multi-user.target.wants" / "desk-plateforme.service"
+    check("console absent : l'armement a quand meme eu lieu", os.path.islink(lien), True)
+
+# --- C : VB-Audio ARMÉ (vb_audio=true), aucun payload — refus propre ------
+with tempfile.TemporaryDirectory() as tmp:
+    root, bin_dir = _racine_pour_tache6(tmp)
+    packages_dir, log_winrm = root / "faux-packages-dir", root / "winrm.log"
+    poser_faux_winrm_exec(packages_dir, log_winrm)  # ProjFS reussit
+    r = appeler(root, bin_dir, answers=dict(REPONSES, vb_audio=True), packages_dir=packages_dir)
+    _check_refus_propre("vb_audio arme sans payload", r, "VB-Audio", root)
+    check("ProjFS pose avant le refus vb_audio (leve avant winrm_exec.py)",
+          len(lire_commandes(log_winrm)), 1)
 
 
 if failures:
