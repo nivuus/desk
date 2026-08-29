@@ -228,6 +228,37 @@ un préfixe plus court et valide.
 
 ## 🖥️ Cycle de vie de la VM Windows
 
+> 🔴 **CE QUI SUIT DÉCRIT LA VM DE DÉVELOPPEMENT D'AVANT LE CHANTIER
+> `package-nivuus` (29 août 2026) — trois faits que ce fichier ne disait
+> nulle part avant ce chantier, et qui ont coûté une demi-journée à
+> retrouver :**
+>
+> 1. **La VM cible est désormais une APPLIANCE**, provisionnée par le
+>    package voisin `packages/installer` (dépôt `console`) : `C:\dev`, la
+>    chaîne Rust et le montage CIFS décrits juste en dessous **n'existent
+>    plus, retirés délibérément** — vérifié le 29 août 2026 (`/media/vm` est
+>    aujourd'hui un répertoire vide, non monté).
+> 2. **WinRM n'accepte plus Basic** : `scripts/winrm.js` (compte
+>    `Administrateur`, transport Basic, cité plus bas) **ne fonctionne
+>    plus** (401 mesuré le 22 août 2026). Le chemin qui répond aujourd'hui
+>    est `installer/console/guest/winrm_exec.py`, en **NTLM**, mot de passe
+>    lu depuis `/root/.config/nivuus/windows-admin.pass` (jamais sur
+>    l'argv).
+> 3. **Le lot 3 du chantier `package-nivuus` (une campagne de douze items de
+>    mesure visant cette VM) est SUSPENDU** pour cette raison — spec et plan
+>    restent valides pour le jour où la VM sera rééquipée pour les recevoir.
+>
+> Voir
+> [`docs/superpowers/plans/2026-08-29-package-nivuus-resultats.md`](docs/superpowers/plans/2026-08-29-package-nivuus-resultats.md)
+> pour le détail.
+>
+> ⚠️ **Le sort de `scripts/winrm.js`, de `/media/vm` et de
+> `scripts/build-agent.sh` ci-dessous — qui visent tous cette VM de
+> développement qui n'existe plus sous cette forme — N'EST PAS TRANCHÉ.**
+> Les corriger, les retirer ou les garder est une décision du propriétaire
+> du dépôt, pas de ce chantier. Ce qui suit reste donc écrit tel quel,
+> **à lire désormais comme un relevé historique**, jusqu'à cette décision.
+
 **La VM cible est une machine libvirt/QEMU nommée `Windows`, et elle n'est pas
 démarrée automatiquement.** Tout travail touchant l'agent Rust, la capture, la
 recette WebRTC ou WinRM exige qu'elle tourne. Symptômes d'une VM éteinte :
@@ -298,6 +329,11 @@ muette. Voir les pièges.
 démarre donc pas après un simple `source .env`, et elle dit pourquoi.
 
 ### L'agent, sur la VM
+
+⚠️ **Ce tableau documente le workflow de développement D'AVANT le 29 août
+2026 — voir la réserve en tête de « Cycle de vie de la VM Windows » ci-dessus :
+`C:\dev`, le montage CIFS et `scripts/winrm.js` (transport Basic) visent une
+machine qui n'existe plus sous cette forme ; leur sort n'est pas tranché.**
 
 | Commande | Ce qu'elle fait |
 | --- | --- |
@@ -843,6 +879,10 @@ Ils sont **datés**, et plusieurs se réfutent les uns les autres à dessein.
 ### Chantier legs-sans-vm (CLOS)
 
 - **legs-sans-vm : huit legs fermés sans la VM, et la revue transverse de fin de lot (26 août 2026)** — [résultats](docs/superpowers/plans/2026-08-26-legs-sans-vm-resultats.md) — canal `Message` du capteur borné, `GET /vm`/`POST /session`/`/signal` freinés par un budget de volume, le contrat de `SIGNALING_URL` figé par un test, les deux magasins évincés par âge, `tokens.css` extrait à marge nulle, `--accent-fenetre` déclaré et peint, douze pilotes de recette réparés vers `/signal`, les galeries dotées d'un test de liste de cas. Le **WCO reste ouvert**, écarté par décision (hub non installable) ; aucun pilote n'est rejoué, aucun jugement visuel n'est porté.
+
+### Chantier package-nivuus — `desk` devient un package Nivuus
+
+- **package-nivuus : `desk` devient un package Nivuus, et l'agent redevient refabricable (29 août 2026)** — [résultats](docs/superpowers/plans/2026-08-29-package-nivuus-resultats.md) — `scripts/build-agent-croise.sh` refabrique `agent.exe` en croisé (mingw, jamais exécuté sur la VM) là où l'appliance le déclarait « never fetchable » ; manifeste et wizard (`requires.packages: [console]`) ; trois hooks (`resolve`/`install`/`activate`) qui refusent avant que le disque ne soit touché, posent le service systemd (jamais armé par `install`) et l'arment par un lien ; `hooks/vm.py` pose ProjFS et VB-Audio dans la VM par le chemin WinRM de `console` ; `agent.exe` déposé là où `console` va le chercher ; `Makefile`/`README-package.md`. **N'établit ni que l'agent croisé fonctionne, ni qu'une installation a été jouée de bout en bout sur une machine neuve, ni aucun des douze items du lot 3 (suspendu)** — voir son § « Ce que ce lot n'établit PAS ». 🔴 **Défaut transverse trouvé, non corrigé** : rien ne pousse `AGENT_VM`/`AGENT_SECRET` dans l'environnement de l'agent qui tourne réellement dans la VM — sans ce couple, aucune session ne peut s'établir, quelle que soit la qualité de l'installation.
 
 
 ---
