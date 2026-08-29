@@ -18,45 +18,24 @@ import { defineConfig } from 'vitest/config';
 // l'extension là où Vite s'en passe. Écrite sans elle, la ligne laissait le
 // build VERT et faisait tomber §7.6 et §7.9 en `ERR_MODULE_NOT_FOUND`.
 import { lireBlocsDeTheme, valeurDePropriete } from './src/design/tokens.ts';
+// 🔴 `NOM_FICHIER_AMORCE` ET `baliseAmorce` VIVENT SOUS `src/`, PAS ICI —
+// extraits le 29 août 2026 (lot `csp-amorce`) précisément pour rester
+// TYPECHECKÉS, ce que ce fichier n'est jamais (voir plus bas). `AMORCE`, elle,
+// RESTE lue ici, par `node:fs` — voir le commentaire de
+// `amorce-theme-greffon.ts` sur pourquoi un import `?raw` ne résout PAS
+// quand Vite bundle sa PROPRE configuration. Lire ce fichier pour le
+// raisonnement complet : pourquoi l'amorce est un fichier externe `'self'`
+// (jamais `children:` en ligne) et pourquoi un hash `sha256-…` dans la CSP a
+// été écarté.
+import { NOM_FICHIER_AMORCE, baliseAmorce } from './src/design/amorce-theme-greffon.ts';
 
-/* ── L'AMORCE ANTI-FOUC, INJECTÉE DEPUIS UNE SOURCE UNIQUE ─────────────────
-   Le texte de `src/design/amorce-theme.js` est lu UNE FOIS, à la construction
-   du greffon, et rendu tel quel dans le `<head>` de CHAQUE entrée. Il n'y a
-   donc aucune copie du script dans ce fichier, et aucune page ne peut recevoir
-   une version différente d'une autre.
-
-   ⚠️ LE CHEMIN EST RÉSOLU DEPUIS `import.meta.url`, PAS DEPUIS `process.cwd()`.
-   `verifier-design.mjs` bâtit depuis la racine du dépôt aussi bien que depuis
-   `client/` ; un chemin relatif au répertoire courant ferait échouer le build
-   d'un côté et pas de l'autre.
-
-   🔴 `injectTo: 'head'` ET NON `'head-prepend'`, ET C'EST UNE MESURE.
-   `'head-prepend'` est le DÉFAUT de Vite (`HtmlTagDescriptor.injectTo`,
-   documenté « default: 'head-prepend' » dans
-   `client/node_modules/vite/dist/node/index.d.ts`) : le script sortirait AVANT
-   `<meta charset>`. Or ce fichier porte des commentaires accentués, qui
-   seraient donc décodés avant que l'encodage du document ne soit connu, et la
-   déclaration de charge utile serait repoussée plus loin dans les 1 024
-   premiers octets que la spécification HTML lui accorde.
-   Avec `'head'`, le script sort APRÈS `<meta charset>` et `<title>`, AVANT le
-   module et la feuille de style — et cela SUFFIT à l'anti-FOUC : un script en
-   ligne synchrone dans `<head>` s'exécute avant que `<body>` ne soit analysé,
-   donc avant la première peinture. Poser l'attribut plus tôt que cela n'achète
-   rien et coûte le charset.
-
-   ⚠️ CE FICHIER N'EST PAS TYPECHECKÉ : `client/tsconfig.json:12` n'inclut que
-   les fichiers `.ts` sous `src/` et sous `../proto/ts/` — deux motifs que
-   `vite.config.ts`, à la racine du paquet, ne satisfait ni l'un ni l'autre. Une erreur de type ici se manifeste comme un ÉCHEC DE BUILD,
-   jamais comme une erreur `tsc`. Et un greffon qui « marcherait » sans rien
-   injecter ne serait attrapé par aucun des deux : c'est le contrôle §7.3 qui
-   le rattrape, plus le relevé de la tâche 10 (`grep -c 'guac.theme'` sur
-   chaque `dist/*.html`).
-
-   ⚠️ IL N'Y A DÉLIBÉRÉMENT AUCUN FILTRE SUR L'ENTRÉE. Le handler ignore son
-   contexte et rend le même script pour toutes les pages : c'est ce qui rend
-   impossible le défaut que la spec §11 nomme — « le greffon Vite d'injection
-   casse une entrée ». La rouge correspondante a été jouée en filtrant sur
-   `index.html` (1, 0, 0) ; voir le document de résultats de S1. */
+/// Le CONTENU de l'amorce, lu UNE FOIS par `node:fs` — jamais `?raw`, voir le
+/// commentaire de `amorce-theme-greffon.ts` : un tel import ne résout pas
+/// quand Vite bundle sa PROPRE configuration (mesuré : « No matching export …
+/// for import "default" »). `amorce-theme.csp.test.ts`, lui, lit ce même
+/// fichier par `?raw` — qui résout très bien sous Vitest — pour comparer,
+/// octet pour octet, la source à ce que `dist/amorce-theme.js` porte
+/// réellement.
 const AMORCE = readFileSync(
     fileURLToPath(new URL('./src/design/amorce-theme.js', import.meta.url)),
     'utf8',
@@ -162,13 +141,26 @@ const greffonManifesteHub = {
     },
 };
 
-const greffonAmorce = {
+export const greffonAmorce = {
     name: 'guac-amorce-theme',
+    // Émet le texte de l'amorce comme un ACTIF du build, au même titre que
+    // `hub.webmanifest` plus haut — jamais recopié, toujours la même lecture.
+    generateBundle(_options: unknown, _bundle: unknown) {
+        // @ts-expect-error — `this.emitFile` est l'API de Rollup, et ce
+        // fichier n'est pas typechecké : l'annotation dit l'intention.
+        this.emitFile({
+            type: 'asset',
+            fileName: NOM_FICHIER_AMORCE,
+            source: AMORCE,
+        });
+    },
     transformIndexHtml: {
         order: 'pre' as const,
-        handler() {
-            return [{ tag: 'script', children: AMORCE, injectTo: 'head' as const }];
-        },
+        // 🔴 `baliseAmorce()` VIENT DE `src/design/amorce-theme-greffon.ts`,
+        // JAMAIS RECOPIÉE ICI : c'est la MÊME fonction que
+        // `amorce-theme.csp.test.ts` appelle pour vérifier la forme de la
+        // balise — un greffon qui aurait sa propre copie validerait sa copie.
+        handler: () => [baliseAmorce()],
     },
 };
 

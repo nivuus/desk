@@ -26,6 +26,20 @@
 /// 🔴 ELLE EST RECOPIÉE DE `deploiement/nginx.conf`, ET `entetes-page.test.ts`
 /// LIT LES DEUX ET LES COMPARE. Sans ce test, un durcissement appliqué d'un
 /// seul côté livrerait deux montages aux sécurités différentes.
+///
+/// 🔴 `script-src 'self'` SANS `'unsafe-inline'` NI HASH, ET C'EST DÉLIBÉRÉ —
+/// mesuré cassé le 29 août 2026 (`https://app.allanic.me`, Chrome) tant que
+/// l'amorce anti-FOUC de `client/` partait EN LIGNE dans le HTML : ce module
+/// et `client/vite.config.ts` vivent dans deux paquets, et rien ne les
+/// reliait avant `client/src/design/amorce-theme.csp.test.ts`. Corrigé côté
+/// CLIENT (l'amorce est désormais un fichier externe `'self'`, jamais en
+/// ligne) plutôt qu'ici par un hash : ce fichier a une copie STATIQUE dans
+/// `deploiement/nginx.conf` (ligne ci-dessus) qui ne peut PAS calculer un
+/// hash à la volée sur le contenu qu'il sert — un hash aurait donc dû être
+/// recopié à la main dans les DEUX fichiers, le « naufrage du 487 » que
+/// `CLAUDE.md` interdit. Lire le grand commentaire au-dessus de
+/// `NOM_FICHIER_AMORCE` dans `client/vite.config.ts` avant de reproposer un
+/// hash ici.
 export const CSP =
     "default-src 'self'; connect-src 'self' wss: https:; img-src 'self' data: blob:; " +
     "media-src 'self' blob:; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
