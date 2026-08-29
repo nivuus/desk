@@ -37,12 +37,34 @@ import json
 import os
 import pathlib
 import secrets
-import shutil
 import sys
 
-from commun import PORT_DEFAUT, adresse_ipv4_de, interface_de_route_par_defaut
+from commun import (
+    PORT_DEFAUT,
+    adresse_ipv4_de,
+    interface_de_route_par_defaut,
+    lire_hote,
+    lire_node_bin,
+    lire_proxy_confiance,
+)
+from depot_arbre import copier_arbre, rendre_lisible_par_tous
 
-RACINE = pathlib.Path(__file__).resolve().parents[1]
+
+def _racine_source() -> pathlib.Path:
+    """La racine du dépôt SOURCE (ce qui est copié vers la cible).
+
+    Surchargeable par `DESK_SOURCE_RACINE` (tests seuls — voir
+    `tests/test_desk_install.py`, scénario du nœud_modules absent) : le
+    moteur réel, comme tous les autres hooks de ce package, n'a besoin
+    d'aucun défaut différent de la racine du dépôt cloné.
+    """
+    brut = os.environ.get("DESK_SOURCE_RACINE")
+    if brut:
+        return pathlib.Path(brut)
+    return pathlib.Path(__file__).resolve().parents[1]
+
+
+RACINE = _racine_source()
 ASSETS = pathlib.Path(__file__).resolve().parent / "assets"
 
 # PORT_DEFAUT (3445) et sa raison vivent dans `commun.py`, seul endroit qui
@@ -59,20 +81,37 @@ def emettre(evenement: dict) -> None:
     print(json.dumps(evenement), flush=True)
 
 
-# --- Dérivation de l'adresse d'écoute, partagée avec resolve.py -----------
+# --- Dérivation des adresses TURN (PUBLIQUES), partagée avec resolve.py ---
 #
-# PLATEFORME_HOTE, TURN_LISTENING_IP et TURN_RELAY_IP sont la MÊME adresse
-# sur ce déploiement : celle de l'interface de la route IPv4 par défaut,
-# joignable à la fois par Pomerium (réseau hôte) et par la VM Windows —
-# vérifiée être 192.168.3.1 le 29 août 2026. Une seule dérivation, réutilisée
-# trois fois plutôt que trois lectures indépendantes de `ip`.
+# 🔴 CORRIGÉ AU LOT 10A (29 août 2026) : CE BLOC S'APPELAIT
+# `deriver_adresse_hote()` ET SON COMMENTAIRE AFFIRMAIT QUE PLATEFORME_HOTE,
+# TURN_LISTENING_IP ET TURN_RELAY_IP ÉTAIENT LA MÊME ADRESSE. C'ÉTAIT FAUX,
+# ET C'ÉTAIT UN BUG RÉEL, PAS UNE IMPRÉCISION DE COMMENTAIRE : mesuré le
+# 29 août 2026 avec `/usr/bin/ip` (hors de tout alias de shell), l'interface
+# de la route IPv4 PAR DÉFAUT sur cette machine est `ppp0` (PPPoE), dont
+# l'adresse est PUBLIQUE (90.87.35.18) — pas `internalBridge`
+# (192.168.3.1). `install.py` posait donc `PLATEFORME_HOTE=90.87.35.18`,
+# exposant le bureau distant sur l'internet public SANS Pomerium devant lui,
+# un trou que la garde des écoutes universelles de `config.ts` ne peut PAS
+# attraper (90.87.35.18 n'est pas une des quatre valeurs universelles).
+#
+# Ce bloc dérive désormais UNIQUEMENT l'adresse TURN (publique, par
+# construction : coturn doit être joignable depuis l'internet par des
+# clients WebRTC derrière un NAT restrictif — c'est le SEUL rôle légitime
+# de la route par défaut ici). `PLATEFORME_HOTE` est dérivée séparément,
+# par `commun.lire_hote()` (adresse FIXE, interne, jamais la route par
+# défaut) — voir son commentaire pour le détail complet du bug et du
+# correctif.
 #
 # `interface_de_route_par_defaut()` et `adresse_ipv4_de()` viennent de
 # `commun.py` (importées en tête de fichier) : elles étaient dupliquées
 # octet pour octet avec `resolve.py` avant la ronde de correction 1.
 
-def deriver_adresse_hote() -> str:
-    """L'adresse IPv4 de la route par défaut, ou lève RuntimeError.
+def deriver_adresse_turn() -> str:
+    """L'adresse IPv4 PUBLIQUE de la route par défaut, ou lève RuntimeError.
+
+    ⚠️ NE JAMAIS employer cette fonction pour `PLATEFORME_HOTE` — voir le
+    commentaire ci-dessus. Elle ne sert QUE TURN_LISTENING_IP/TURN_RELAY_IP.
 
     🔴 JAMAIS UNE ÉCOUTE UNIVERSELLE : cette fonction ne rend jamais
     '0.0.0.0'/'::'/'[::]'/'*' — elle échoue plutôt que d'inventer une valeur,
@@ -82,13 +121,14 @@ def deriver_adresse_hote() -> str:
     if not interface:
         raise RuntimeError(
             "aucune route IPv4 par défaut : impossible de dériver l'adresse "
-            "sur laquelle la plateforme et coturn doivent écouter"
+            "sur laquelle coturn doit écouter et relayer"
         )
     adresse = adresse_ipv4_de(interface)
     if not adresse:
         raise RuntimeError(
             f"aucune adresse IPv4 lisible sur l'interface {interface} (route "
-            "par défaut) : impossible de dériver PLATEFORME_HOTE/TURN_*"
+            "par défaut) : impossible de dériver TURN_LISTENING_IP/"
+            "TURN_RELAY_IP"
         )
     return adresse
 
@@ -129,19 +169,6 @@ def ecrire_env(chemin: pathlib.Path, valeurs: dict) -> None:
     descripteur = os.open(chemin, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     with os.fdopen(descripteur, "w", encoding="utf-8") as fh:
         fh.write(corps)
-
-
-def copier_arbre(source: pathlib.Path, destination: pathlib.Path,
-                  exclure: tuple = ()) -> None:
-    """Copie `source` sous `destination`, en écartant les noms d'`exclure`.
-
-    `dirs_exist_ok=True` : une installation rejouée sur une racine déjà
-    posée ne doit pas lever sur un répertoire déjà présent.
-    """
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copytree(source, destination, symlinks=True,
-                     ignore=shutil.ignore_patterns(*exclure) if exclure else None,
-                     dirs_exist_ok=True)
 
 
 def ecrire_turnserver_conf(chemin: pathlib.Path, turn_ecoute: str,
@@ -219,16 +246,31 @@ def main() -> int:
              "msg": "Dérivation des adresses et du port"})
 
     try:
-        turn_ecoute = facts.get("turn_ecoute") or deriver_adresse_hote()
+        turn_ecoute = facts.get("turn_ecoute") or deriver_adresse_turn()
         turn_relais = facts.get("turn_relais") or turn_ecoute
     except RuntimeError as exc:
         print(f"desk install : {exc}", file=sys.stderr)
         return 1
-    # 🔴 PLATEFORME_HOTE NE DOIT JAMAIS ÊTRE UNIVERSELLE : en mode pomerium,
-    # `lireConfig` refuse de démarrer sur 0.0.0.0/::/[::]/*. La valeur juste
-    # sur cet hôte est 192.168.3.1 (interface de la route par défaut, la
-    # même que TURN_ecoute) — jamais une valeur écrite en dur.
-    hote_plateforme = turn_ecoute
+
+    # 🔴 PLATEFORME_HOTE NE DOIT JAMAIS ÊTRE UNIVERSELLE, ET NE DOIT JAMAIS
+    # ÊTRE L'ADRESSE TURN (voir le commentaire de `deriver_adresse_turn` :
+    # confondre les deux exposait le service sur l'adresse PUBLIQUE). Dérivée
+    # séparément, par `commun.lire_hote()` — une adresse FIXE et interne,
+    # jamais la route par défaut.
+    hote_plateforme, raison_hote = facts.get("hote"), None
+    if not hote_plateforme:
+        hote_plateforme, raison_hote = lire_hote()
+    if raison_hote:
+        print(f"desk install : {raison_hote}", file=sys.stderr)
+        return 1
+
+    # PLATEFORME_PROXY_DE_CONFIANCE — voir `commun.py::lire_proxy_confiance`
+    # pour le raisonnement complet (une valeur DÉRIVÉE, jamais demandée).
+    # Écrite quel que soit auth_mode : elle ne nuit pas en mode motdepasse
+    # (elle y sert seulement à faire croire X-Forwarded-For depuis cette
+    # adresse), et devient obligatoire côté service en mode pomerium.
+    proxy_confiance = facts.get("proxy_confiance") or lire_proxy_confiance()
+
     port = int(facts.get("port") or PORT_DEFAUT)
 
     secret_jeton = ecrire_secret()
@@ -251,6 +293,9 @@ def main() -> int:
         # vide, GET / rendrait 404 : elle ne se laisse donc jamais vide.
         "PLATEFORME_PAGE": "/opt/nivuus/desk/client/dist",
         "PLATEFORME_AUTH": auth_mode,
+        # Voir le commentaire de `proxy_confiance` ci-dessus : obligatoire
+        # en mode pomerium, inoffensive en mode motdepasse.
+        "PLATEFORME_PROXY_DE_CONFIANCE": proxy_confiance,
         # 🔴 POSÉES EXPLICITEMENT, ET C'EST OBLIGATOIRE (ronde de correction
         # 1, tâche 4) : leur défaut produit (`donnees/icones`,
         # `donnees/televersements`, relatifs à `WorkingDirectory`) tomberait
@@ -287,12 +332,96 @@ def main() -> int:
     copier_arbre(RACINE / "client" / "dist",
                  sous("opt/nivuus/desk/client/dist"))
 
+    # 🔴 TROUVAILLE RÉELLE DU LOT 10A (29 août 2026), EN LANÇANT LE VRAI
+    # SERVICE : `proto/ts/` N'ÉTAIT PAS COPIÉ DU TOUT, ET LE SERVICE NE
+    # DÉMARRE PAS SANS LUI. `plateforme/src/agents/canal.ts` (et vingt
+    # autres fichiers de `plateforme/src/`) importe `../../../proto/ts/…`
+    # — un chemin RELATIF qui suppose que `proto/ts/` est un FRÈRE de
+    # `plateforme/`, exactement comme dans ce dépôt de développement.
+    # `tsx` transpile à la VOLÉE (contrairement à `tsc`, qui n'aurait
+    # rejeté le module qu'au type-check) : sans les fichiers SOURCE de
+    # `proto/ts/` déployés au même endroit relatif, `npm start` échoue à
+    # l'instant même où le premier module qui l'importe est chargé
+    # (`ERR_MODULE_NOT_FOUND`, mesuré sur ce service réel). Copié SANS ses
+    # fichiers `*.test.ts` (jamais exécutés par le service, seulement par
+    # `vitest` en développement).
+    copier_arbre(RACINE / "proto" / "ts", sous("opt/nivuus/desk/proto/ts"),
+                 exclure=("*.test.ts",))
+    proto_plateforme_ts = sous("opt/nivuus/desk/proto/ts/plateforme.ts")
+    if not proto_plateforme_ts.is_file():
+        print(
+            f"desk install : {proto_plateforme_ts} est absent apres la copie "
+            "de proto/ts ; le service ne demarrera pas "
+            "(ERR_MODULE_NOT_FOUND sur '../../../proto/ts/plateforme').",
+            file=sys.stderr,
+        )
+        return 1
+
+    # Voir `rendre_lisible_par_tous` : nécessaire pour que l'UID éphémère de
+    # `DynamicUser=yes` puisse seulement TRAVERSER `/opt/nivuus/desk/…` —
+    # posé sur `sous("opt/nivuus/desk")`, un cran AU-DESSUS des deux copies,
+    # pour couvrir aussi ce répertoire parent lui-même (créé par le premier
+    # `copier_arbre` via `destination.parent.mkdir`, sous l'umask du
+    # processus qui exécute `install`, jamais garanti world-traversable).
+    rendre_lisible_par_tous(sous("opt/nivuus/desk"))
+
+    # 🔴 PROBLÈME B DU LOT 10A : `npm start` EXIGE `node_modules`, ET RIEN NE
+    # LE GARANTISSAIT. `copier_arbre()` ci-dessus copie tout `plateforme/`
+    # (seul `donnees/` est exclu), donc `node_modules` EST copié en pratique
+    # DÈS QU'IL EST PRÉSENT côté source — vérifié le 29 août 2026 : 56
+    # paquets, le lien relatif `node_modules/.bin/tsx` se résout encore
+    # correctement sous la racine copiée. Mais ce n'est qu'un EFFET DE BORD
+    # de la copie du répertoire entier, jamais une garantie : un dépôt
+    # fraîchement cloné (ou empaqueté par une pipeline qui n'a jamais lancé
+    # `npm install`) copierait un `plateforme/` SANS `node_modules`, et
+    # l'installation « réussirait » quand même — le service ne le
+    # découvrirait qu'à son premier démarrage, `ExecStart` échouant faute de
+    # trouver `tsx`. Cette garde ferme le trou : elle vérifie la présence
+    # RÉELLE du binaire dont `npm start` a besoin (`node_modules/.bin/tsx`,
+    # jamais un simple test de non-vacuité du répertoire, qui laisserait
+    # passer un `node_modules` partiel), et REFUSE plutôt que de laisser un
+    # service inerte être posé sans le dire.
+    tsx_bin = sous("opt/nivuus/desk/plateforme/node_modules/.bin/tsx")
+    if not tsx_bin.exists():
+        print(
+            f"desk install : {tsx_bin} est absent ; `npm start` "
+            "(= `tsx src/index.ts`, voir plateforme/package.json) ne pourra "
+            "pas demarrer. Executer `npm install` dans plateforme/ AVANT "
+            "d'empaqueter/d'installer ce depot.",
+            file=sys.stderr,
+        )
+        return 1
+
     emettre({"event": "progress", "pct": 80, "msg": "Dépôt de l'unité systemd"})
+
+    # 🔴 PROBLÈME A DU LOT 10A : L'UNITÉ PORTAIT `ExecStart=/usr/bin/npm
+    # start`, UN CHEMIN QUI N'EXISTE SUR AUCUNE DEBIAN SANS PAQUET `nodejs`.
+    # Voir `commun.py::lire_node_bin` pour le diagnostic complet et la
+    # décision de déploiement. Le fichier `assets/desk-plateforme.service`
+    # est désormais un GABARIT portant le jeton `__NODE_BIN__` (à la fois
+    # dans `ExecStart=` et dans `Environment=PATH=…`, pour que `npm`
+    # lui-même — un script `#!/usr/bin/env node` — retrouve `node` quand le
+    # noyau résout son interpréteur) : la substitution ci-dessous est
+    # TEXTUELLE, faite une fois pour toutes à l'installation, jamais une
+    # expansion de variable côté systemd (qui n'expanse pas le programme
+    # exécuté lui-même). Écrit avec `os.open(..., 0o644)` plutôt que
+    # `shutil.copy2` : ce fichier n'est plus une copie verbatim.
+    node_bin = lire_node_bin()
+    gabarit_unite = (ASSETS / "desk-plateforme.service").read_text(encoding="utf-8")
+    if "__NODE_BIN__" not in gabarit_unite:
+        print(
+            "desk install : hooks/assets/desk-plateforme.service ne porte "
+            "plus le jeton __NODE_BIN__ ; le gabarit a-t-il change de forme "
+            "sans que install.py ne suive ?",
+            file=sys.stderr,
+        )
+        return 1
+    contenu_unite = gabarit_unite.replace("__NODE_BIN__", node_bin)
 
     # POSÉE, PAS ARMÉE : voir le commentaire de tête de l'unité elle-même.
     unite_dest = sous("etc/systemd/system/desk-plateforme.service")
     unite_dest.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(ASSETS / "desk-plateforme.service", unite_dest)
+    unite_dest.write_text(contenu_unite, encoding="utf-8")
     os.chmod(unite_dest, 0o644)  # une unité est une DONNÉE, pas un programme
 
     emettre({"event": "progress", "pct": 95,

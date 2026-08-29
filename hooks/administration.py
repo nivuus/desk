@@ -23,8 +23,11 @@ seul ; en pratique, ce module est déjà entièrement couvert au travers du
 hook complet par `tests/test_desk_activate.py` (Scénario 1), qui n'a pas
 changé de comportement.
 """
+import os
 import pathlib
 import subprocess
+
+from commun import lire_node_bin
 
 
 def lancer_npm(cwd: pathlib.Path, sous_commande: str, arguments: list,
@@ -37,11 +40,30 @@ def lancer_npm(cwd: pathlib.Path, sous_commande: str, arguments: list,
     — un chemin d'échec que le code nominal (un `npm` présent, une
     commande qui refuse poliment) ne couvre pas, et qui deviendrait une
     trace Python non rattrapée sans cette garde.
+
+    🔴 PROBLÈME A DU LOT 10A (29 août 2026) : `npm` invoqué par son seul nom
+    dépend de ce que le PATH du PROCESSUS APPELANT contient déjà — vrai par
+    accident sur ce poste de développement (nvm y est sourcé dans le shell
+    interactif), FAUX en général pour un `python3 hooks/activate.py` lancé
+    par le vrai moteur d'installation, sans PATH nvm. `commun.lire_node_bin()`
+    (voir son commentaire pour le diagnostic complet) est donc APPONDU en
+    fin de PATH — jamais en tête, pour ne jamais court-circuiter un `npm`
+    que l'appelant aurait délibérément placé plus tôt dans le PATH (c'est
+    exactement ce que fait `tests/desk_activate_fixtures.py::appeler`, dont
+    le faux `npm` factice doit continuer à être trouvé en premier).
     """
     commande = ["npm", "run", sous_commande, "--", *arguments]
+    env_complet = dict(env)
+    node_bin = lire_node_bin()
+    chemin_actuel = env_complet.get("PATH", "")
+    composants = chemin_actuel.split(os.pathsep) if chemin_actuel else []
+    if node_bin not in composants:
+        env_complet["PATH"] = (
+            f"{chemin_actuel}{os.pathsep}{node_bin}" if chemin_actuel else node_bin
+        )
     try:
-        proc = subprocess.run(commande, cwd=str(cwd), env=env, input=entree,
-                               capture_output=True, text=True)
+        proc = subprocess.run(commande, cwd=str(cwd), env=env_complet,
+                               input=entree, capture_output=True, text=True)
     except OSError as exc:
         return 127, "", f"impossible de lancer {' '.join(commande)} : {exc}"
     return proc.returncode, proc.stdout, proc.stderr
