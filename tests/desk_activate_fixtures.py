@@ -32,12 +32,17 @@ REPONSES = {"admin_email": "ada@exemple.test", "admin_password": "hunter2hunter2
 # Les facts de resolve, telles qu'elles arrivent RÉELLEMENT : fusionnées
 # dans hw (installer/packages/runner.py::run_activate, ligne 337), jamais
 # sous une clé "facts" séparée.
-# ⚠️ LES SEPT CLÉS, PAS CINQ (revue finale de branche, 30 août 2026) :
+# ⚠️ LES SIX CLÉS, PAS CINQ (revue finale de branche, 30 août 2026) :
 # `hote` et `proxy_confiance` sont entrées dans le contrat de `facts` au lot
 # 10A et cette fixture ne les avait pas suivies. Sans conséquence — `activate`
 # ne lit que `port` — mais une fixture qui décrit un contrat périmé finit par
 # faire passer un test pour une forme que le moteur n'envoie jamais.
-HW_AVEC_FACTS = {"vm_repond": True, "node_version": "24.9.0",
+# 🔴 `vm_repond` A DISPARU DU CONTRAT (même revue) : ce n'était pas un fait
+# mesuré mais un littéral (`True` en dur dans `hooks/resolve.py`), à une
+# phase qui ne peut rien savoir de la VM — voir `hooks/activate.py` (tête)
+# et `tests/test_desk_contrat_hw.py` (garde ⑤, qui refuse tout retour de
+# ce défaut).
+HW_AVEC_FACTS = {"node_version": "24.9.0",
                   "turn_ecoute": "203.0.113.9", "turn_relais": "203.0.113.9",
                   "hote": "198.51.100.1", "proxy_confiance": "198.51.100.1",
                   "port": 9999}
