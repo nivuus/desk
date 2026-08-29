@@ -1,0 +1,52 @@
+# Unite systemd du service desk (bureau distant Windows, WebRTC).
+#
+# Deposee TELLE QUELLE par hooks/install.py sous
+# etc/systemd/system/desk-plateforme.service : aucune valeur n'est
+# substituee dans ce fichier, ses trois chemins (WorkingDirectory,
+# ExecStart, EnvironmentFile) sont les chemins REELS de la cible une fois
+# l'installation terminee (root == "/"), jamais prefixes par la racine
+# temporaire qu'un test pose sous --root.
+#
+# 🔴 POSEE, PAS ARMEE. install ne fait que deposer ce fichier — ni
+# `systemctl daemon-reload`, ni `enable`, ni `start`. C'est la tache 5
+# (activate) qui l'arme, par un LIEN vers cette unite (jamais un
+# `systemctl enable`, qui echoue en silence dans un environnement
+# contraint). Meme doctrine que console/hooks/install.py pour ses unites de
+# reveil : « Placed, deliberately NOT enabled ... The activate phase arms
+# them ».
+[Unit]
+Description=Plateforme desk (bureau distant Windows, WebRTC) - paquet Nivuus
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/nivuus/desk/plateforme
+
+# ⚠️ SUPPOSE un `npm` systeme a /usr/bin/npm (paquet Debian ou NodeSource).
+# CE N'EST PAS VRAI SUR TOUTES LES MACHINES : sur celle qui a servi a
+# developper ce hook, Node est fourni par nvm sous /root/.nvm, un
+# repertoire en mode 700 qu'aucun utilisateur non root — DynamicUser
+# compris — ne peut traverser. Aucune tache de ce plan ne provisionne
+# Node.js sur la cible ; c'est un prerequis NON COUVERT ici, nomme plutot
+# que masque (voir le rapport de la tache 4, § Reserves).
+ExecStart=/usr/bin/npm start
+
+EnvironmentFile=/etc/nivuus/desk.env
+Restart=on-failure
+RestartSec=5
+
+# Un utilisateur DEDIE, sans provisioning a la charge de ce hook : c'est
+# precisement ce que `DynamicUser=yes` offre — systemd cree et detruit un
+# UID/GID ephemere a chaque demarrage/arret, sans `useradd` ni entree
+# durable dans /etc/passwd. `StateDirectory=nivuus-desk` fait creer et
+# posseder /var/lib/nivuus-desk par ce meme utilisateur a chaque demarrage
+# — c'est la ou PLATEFORME_BASE_URL (voir desk.env) range son fichier
+# SQLite, pour que le service garde son etat d'un redemarrage a l'autre
+# plutot que de retomber sur `:memory:`.
+DynamicUser=yes
+StateDirectory=nivuus-desk
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=multi-user.target
