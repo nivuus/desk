@@ -88,6 +88,43 @@ rc, ev = appeler(hw={"vm_windows": True},
                  answers={**REPONSES, "auth_mode": "motdepass"})
 check("mode inconnu : refus", len(refus(ev)), 1)
 
+# --- Une entrée mal formée est un refus, jamais une exception ------------
+# Ronde de correction 1 (29 août 2026) : le hook laissait ces trois entrées
+# lever telles quelles (JSONDecodeError ou AttributeError, code de sortie 1,
+# trace complète) — l'invariant central de ce hook cassé par un chemin
+# trivialement atteignable. Chaque contrôle éprouve les DEUX choses à la
+# fois : le code de sortie 0 ET la présence d'un `refuse` portant une
+# phrase — un contrôle qui ne vérifierait que le code de sortie passerait
+# sur un hook devenu muet.
+def appeler_brut(stdin_texte):
+    """Comme appeler(), mais envoie stdin_texte TEL QUEL — pas du JSON
+    ré-encodé — pour éprouver les entrées que json.dumps ne peut pas
+    produire (JSON illisible, racine qui n'est pas un objet)."""
+    r = subprocess.run([sys.executable, str(HOOK)], input=stdin_texte,
+                       capture_output=True, text=True)
+    evenements = []
+    for ligne in r.stdout.splitlines():
+        ligne = ligne.strip()
+        if not ligne:
+            continue
+        try:
+            evenements.append(json.loads(ligne))
+        except json.JSONDecodeError:
+            pass
+    return r.returncode, evenements
+
+
+for label, stdin_texte in [
+    ("JSON illisible", "ceci nest pas du json"),
+    ("racine qui n'est pas un objet", "[1,2,3]"),
+    ("hw mal typé", json.dumps({"hw": "pas un dict", "answers": {}})),
+]:
+    rc, ev = appeler_brut(stdin_texte)
+    r = refus(ev)
+    check(f"{label} : code de sortie 0", rc, 0)
+    check(f"{label} : un refus est émis", len(r), 1)
+    check(f"{label} : le refus porte une phrase", bool(r and r[0].get("reason")), True)
+
 if failures:
     print(f"FAIL ({len(failures)})")
     for f in failures:
