@@ -28,6 +28,12 @@ import { lireBlocsDeTheme, valeurDePropriete } from './src/design/tokens.ts';
 // (jamais `children:` en ligne) et pourquoi un hash `sha256-…` dans la CSP a
 // été écarté.
 import { NOM_FICHIER_AMORCE, baliseAmorce } from './src/design/amorce-theme-greffon.ts';
+// 🔴 `baliseManifesteHub` VIT SOUS `src/hub/`, PAS ICI — extraite le 29 août
+// 2026 (lot `manifeste-hub-crossorigin`) pour la MÊME raison que
+// `baliseAmorce` ci-dessus : rester TYPECHECKÉE. Voir son commentaire pour le
+// défaut mesuré (`default-src 'self'` bloquant la redirection Pomerium) et
+// pourquoi `crossorigin="use-credentials"` est le remède retenu.
+import { baliseManifesteHub } from './src/hub/manifeste-hub-greffon.ts';
 
 /// Le CONTENU de l'amorce, lu UNE FOIS par `node:fs` — jamais `?raw`, voir le
 /// commentaire de `amorce-theme-greffon.ts` : un tel import ne résout pas
@@ -130,13 +136,12 @@ const greffonManifesteHub = {
             //    cinq autres pages en ferait des PWA qu'on n'a pas voulues, et
             //    §7.3 ne le dirait pas — il ne juge que les feuilles de style.
             if (!ctx.path.endsWith('/hub.html')) return [];
-            return [
-                {
-                    tag: 'link',
-                    attrs: { rel: 'manifest', href: '/hub.webmanifest' },
-                    injectTo: 'head' as const,
-                },
-            ];
+            // 🔴 `baliseManifesteHub()`, JAMAIS RÉÉCRITE ICI : c'est la MÊME
+            //    fonction que `manifeste-hub-greffon.test.ts` éprouve pour
+            //    `crossorigin="use-credentials"` — un greffon qui aurait sa
+            //    propre copie des attributs validerait sa copie, pas le
+            //    produit. Voir son commentaire pour le défaut mesuré.
+            return [baliseManifesteHub()];
         },
     },
 };
