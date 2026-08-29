@@ -128,6 +128,24 @@ with tempfile.TemporaryDirectory() as tmp1:
     check("PLATEFORME_AUTH vient de la reponse auth_mode",
           env1.get("PLATEFORME_AUTH"), "motdepasse")
 
+    # 🔴 Ronde de correction 1, trouvaille ① : DynamicUser=yes rend
+    # /opt/nivuus/desk/plateforme EN LECTURE SEULE (ProtectSystem=strict
+    # implicite) — le defaut relatif de PLATEFORME_ICONES/
+    # PLATEFORME_TELEVERSEMENTS ("donnees/icones"/"donnees/televersements",
+    # sous WorkingDirectory) y echouerait en EROFS au premier usage. Les
+    # deux DOIVENT pointer sous /var/lib/nivuus-desk, le seul repertoire que
+    # StateDirectory= rend inscriptible.
+    check("PLATEFORME_ICONES pointe sous le repertoire d'etat inscriptible",
+          env1.get("PLATEFORME_ICONES"), "/var/lib/nivuus-desk/icones")
+    check("PLATEFORME_TELEVERSEMENTS pointe sous le repertoire d'etat inscriptible",
+          env1.get("PLATEFORME_TELEVERSEMENTS"),
+          "/var/lib/nivuus-desk/televersements")
+    check("les deux repertoires ne sont PAS le defaut relatif sous WorkingDirectory",
+          any(v.startswith("donnees/")
+              for v in (env1.get("PLATEFORME_ICONES", ""),
+                        env1.get("PLATEFORME_TELEVERSEMENTS", ""))),
+          False)
+
     # La configuration coturn (TURN_URL/TURN_SECRET) que `plateforme/src/
     # signaling/ice.ts::configurationIce` exige TOUTES LES DEUX pour annoncer
     # un relais.
