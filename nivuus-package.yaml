@@ -1,0 +1,32 @@
+apiVersion: nivuus.dev/v1
+name: desk
+version: 1.0.0
+label: "Bureau distant Windows (WebRTC)"
+tier: userspace
+
+requires:
+  # 🔴 desk ne doit pas pouvoir s'installer sans console : c'est console qui
+  # provisionne la VM Windows, y déploie l'agent (guest/provision/40-agent.ps1)
+  # et l'arme en session 1. Sans elle, ce package installerait un service qui
+  # n'a rien à piloter.
+  packages: [console]
+  features: [networking]
+
+# tier userspace : ni modules, ni kernel-cmdline, ni hugepages. console a déjà
+# pris VFIO, le GPU et le NVMe ; desk n'ajoute qu'un service et sa config.
+
+apt:
+  # coturn : le relais TURN. Sans lui, la traversée NAT n'a pas de repli et la
+  # cible « réseaux restrictifs » n'est pas couverte. Déclaré ICI, comme
+  # console déclare firewalld et python3-jinja2 : un package porte ses propres
+  # dépendances, et l'installation autonome sur une Debian ordinaire doit
+  # marcher sans supposer les choix de l'assistant.
+  - coturn
+
+wizard:
+  questions: wizard.yaml
+
+hooks:
+  resolve: hooks/resolve.py
+  install: hooks/install.py
+  activate: hooks/activate.py

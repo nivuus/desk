@@ -1,0 +1,32 @@
+# Quatre questions, et pas une de plus : tout le reste est DÉRIVÉ (les deux
+# adresses TURN, le port) ou TIRÉ AU SORT (le secret de jeton). Une question de
+# plus est une occasion de plus de se tromper, et l'opérateur n'a pas les
+# éléments pour y répondre.
+- key: admin_email
+  type: texte
+  label: "Adresse de courriel du premier compte"
+  required: true
+
+- key: admin_password
+  type: secret
+  label: "Mot de passe de ce compte"
+  required: true
+
+# 🔴 UN MODE, PAS UN ARMEMENT. Une valeur inconnue LÈVE côté service : un repli
+# silencieux ferait tourner un mode sous le nom de l'autre, et l'un des deux
+# sens est une OUVERTURE (en `pomerium`, l'identité arrive dans un en-tête que
+# seule la garde du pair de confiance protège).
+- key: auth_mode
+  type: choix
+  label: "Comment les utilisateurs s'authentifient"
+  choices: [motdepasse, pomerium]
+  default: motdepasse
+  required: true
+
+# 🔴 LICENCE PERSONNELLE SEULEMENT : la pose de VB-Audio s'arme, elle ne se
+# suppose pas. Désarmée, le produit le dit déjà de lui-même — `mic: false` dans
+# son message `ready`, et le bouton du navigateur ne paraît pas.
+- key: vb_audio
+  type: bool
+  label: "Installer VB-Audio dans la VM (micro) — licence personnelle seulement"
+  default: false
