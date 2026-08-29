@@ -106,3 +106,25 @@ def enroler_agent_plateforme(plateforme_dir: pathlib.Path, nom_vm: str,
     if not vm_id or not secret:
         return None, f"sortie d'enrolement illisible (vm_id/AGENT_SECRET absents) : {out!r}"
     return (vm_id, secret), None
+
+
+def attribuer_vm_a_utilisateur(plateforme_dir: pathlib.Path, email: str,
+                                vm_id: str, env: dict):
+    """`npm run admin:attribuer -- --email <email> --vm <vm_id>` (tâche 13,
+    trou trouvé en production le 29 août 2026 — voir le commentaire
+    d'`activate.py::main()` pour le pourquoi et le placement).
+
+    Ni `email` ni `vm_id` ne sont des secrets : aucun besoin de stdin ici,
+    à la différence de `creer_compte_admin`. `attribuer-vm.ts` REFUSE de
+    toute façon tout drapeau qui ferait passer un secret par l'argv
+    (`DRAPEAUX_INTERDITS`) — cette commande n'en emploie aucun.
+
+    Rend `(sortie, None)` en succès, `(None, raison)` sinon. `sortie` porte
+    `vm=…\\nnom=…\\nutilisateur=…\\nemail=…\\n` (voir `attribuer-vm.ts::appliquer`),
+    ignorée par l'appelant : seul l'échec compte ici.
+    """
+    code, out, err = lancer_npm(plateforme_dir, "admin:attribuer",
+                                 ["--email", email, "--vm", vm_id], env)
+    if code != 0:
+        return None, (err or out).strip() or f"code de sortie {code}"
+    return out.strip(), None

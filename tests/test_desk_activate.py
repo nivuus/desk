@@ -124,6 +124,25 @@ with tempfile.TemporaryDirectory() as tmp:
     check("--roter n'est PAS employe (ce hook n'enrole qu'une fois)",
           "--roter" in appel_agent["argv"], False)
 
+    # --- TACHE 13 : la VM tout juste enrolee est ATTRIBUEE au compte cree --
+    # Trou trouve en production le 29 aout 2026 : sans cet appel,
+    # `vm.utilisateur_id` reste NULL et `GET /vm` rend `{"vms":[]}` pour
+    # l'utilisateur pourtant bien cree - voir le commentaire d'activate.py.
+    appel_attribuer = next((c for c in entrees if "admin:attribuer" in c["argv"]), None)
+    check("admin:attribuer est invoque apres l'enrolement (attribution de la VM)",
+          appel_attribuer is not None, True)
+    if appel_attribuer is not None:
+        check("--email est passe a l'attribution (le compte tout juste cree)",
+              "ada@exemple.test" in appel_attribuer["argv"], True)
+        check("--vm est passe a l'attribution, et c'est le vm_id rendu par "
+              "admin:agent (jamais le nom, jamais invente)",
+              "vm-test-uuid" in appel_attribuer["argv"], True)
+        idx_attribuer = ordre.index(appel_attribuer["argv"])
+        check("l'attribution est lancee APRES l'enrolement, jamais avant",
+              idx_attribuer > idx_agent, True)
+        check("aucun secret dans l'appel d'attribution (email/vm ne le sont pas)",
+              appel_attribuer["stdin"], "")
+
     # --- L'environnement transmis a npm porte la config de desk.env --------
     # 🔴 CORRECTION, RONDE 1 : la version precedente de ce controle regardait
     # "cwd" sous une etiquette qui parlait de PLATEFORME_BASE_URL — il ne
@@ -387,6 +406,32 @@ with tempfile.TemporaryDirectory() as tmp:
     # winrm_exec.py, donc une seule commande (celle de ProjFS) a été vue.
     check("ProjFS pose avant le refus vb_audio (leve avant winrm_exec.py)",
           len(lire_commandes(log_winrm)), 1)
+
+
+# === Scenario 5 (TACHE 13) : l'attribution est REFUSEE (VM deja attribuee
+# a un autre compte) - le hook doit echouer proprement, nommer la cause, et
+# ne PAS ecrire AGENT_VM/AGENT_SECRET comme si de rien n'etait. ============
+with tempfile.TemporaryDirectory() as tmp:
+    root = pathlib.Path(tmp)
+    poser_racine_installee(root)
+    bin_dir = root / "faux-bin"
+    bin_dir.mkdir()
+    poser_faux_npm(bin_dir, root / "npm.log")
+
+    os.environ["FAUX_NPM_ATTRIBUER_ECHEC"] = "1"
+    try:
+        r = appeler(root, bin_dir)
+    finally:
+        del os.environ["FAUX_NPM_ATTRIBUER_ECHEC"]
+
+    check("attribution refusee : le hook echoue proprement (rc != 0)",
+          r.returncode != 0, True)
+    check("aucune trace Python", "Traceback" in (r.stderr or ""), False)
+    check("le refus nomme l'attribution",
+          "attribution" in (r.stderr or ""), True)
+    entrees = lire_commandes(root / "npm.log")
+    check("compte ET enrolement ont bien tourne avant le refus d'attribution",
+          any("admin:agent" in c["argv"] for c in entrees), True)
 
 
 if failures:

@@ -58,6 +58,16 @@ if "admin:agent" in argv:
     sys.stdout.write("vm_id=vm-test-uuid\\nprefixe=abcd\\n"
                       "AGENT_SECRET=secret-de-test-0123456789abcdef\\n")
     sys.exit(0)
+if "admin:attribuer" in argv:
+    # Bras d'echec (tache 13) : simule le refus reel d'attribuer-vm.ts
+    # ('vm-deja-attribuee'), sans jamais toucher a une vraie base.
+    if os.environ.get("FAUX_NPM_ATTRIBUER_ECHEC"):
+        sys.stderr.write("la VM vm-test-uuid (windows) appartient deja a "
+                          "quelqu'un d'autre - la detacher d'abord\\n")
+        sys.exit(2)
+    sys.stdout.write("vm=vm-test-uuid\\nnom=windows\\n"
+                      "utilisateur=u-test-0001\\nemail=ada@exemple.test\\n")
+    sys.exit(0)
 sys.exit(1)
 """
 
