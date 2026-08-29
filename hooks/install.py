@@ -40,8 +40,7 @@ import sys
 
 from commun import (
     PORT_DEFAUT,
-    adresse_ipv4_de,
-    interface_de_route_par_defaut,
+    deriver_adresse_turn,
     lire_hote,
     lire_node_bin,
     lire_proxy_confiance,
@@ -81,58 +80,6 @@ ASSETS = pathlib.Path(__file__).resolve().parent / "assets"
 
 def emettre(evenement: dict) -> None:
     print(json.dumps(evenement), flush=True)
-
-
-# --- Dérivation des adresses TURN (PUBLIQUES), partagée avec resolve.py ---
-#
-# 🔴 CORRIGÉ AU LOT 10A (29 août 2026) : CE BLOC S'APPELAIT
-# `deriver_adresse_hote()` ET SON COMMENTAIRE AFFIRMAIT QUE PLATEFORME_HOTE,
-# TURN_LISTENING_IP ET TURN_RELAY_IP ÉTAIENT LA MÊME ADRESSE. C'ÉTAIT FAUX,
-# ET C'ÉTAIT UN BUG RÉEL, PAS UNE IMPRÉCISION DE COMMENTAIRE : mesuré le
-# 29 août 2026 avec `/usr/bin/ip` (hors de tout alias de shell), l'interface
-# de la route IPv4 PAR DÉFAUT sur cette machine est `ppp0` (PPPoE), dont
-# l'adresse est PUBLIQUE (90.87.35.18) — pas `internalBridge`
-# (192.168.3.1). `install.py` posait donc `PLATEFORME_HOTE=90.87.35.18`,
-# exposant le bureau distant sur l'internet public SANS Pomerium devant lui,
-# un trou que la garde des écoutes universelles de `config.ts` ne peut PAS
-# attraper (90.87.35.18 n'est pas une des quatre valeurs universelles).
-#
-# Ce bloc dérive désormais UNIQUEMENT l'adresse TURN (publique, par
-# construction : coturn doit être joignable depuis l'internet par des
-# clients WebRTC derrière un NAT restrictif — c'est le SEUL rôle légitime
-# de la route par défaut ici). `PLATEFORME_HOTE` est dérivée séparément,
-# par `commun.lire_hote()` (adresse FIXE, interne, jamais la route par
-# défaut) — voir son commentaire pour le détail complet du bug et du
-# correctif.
-#
-# `interface_de_route_par_defaut()` et `adresse_ipv4_de()` viennent de
-# `commun.py` (importées en tête de fichier) : elles étaient dupliquées
-# octet pour octet avec `resolve.py` avant la ronde de correction 1.
-
-def deriver_adresse_turn() -> str:
-    """L'adresse IPv4 PUBLIQUE de la route par défaut, ou lève RuntimeError.
-
-    ⚠️ NE JAMAIS employer cette fonction pour `PLATEFORME_HOTE` — voir le
-    commentaire ci-dessus. Elle ne sert QUE TURN_LISTENING_IP/TURN_RELAY_IP.
-
-    🔴 JAMAIS UNE ÉCOUTE UNIVERSELLE : cette fonction ne rend jamais
-    '0.0.0.0'/'::'/'[::]'/'*' — elle échoue plutôt que d'inventer une valeur,
-    exactement comme `resolve.py::deriver_adresses_turn`.
-    """
-    interface = interface_de_route_par_defaut()
-    if not interface:
-        raise RuntimeError(
-            "aucune route IPv4 par défaut : impossible de dériver l'adresse "
-            "sur laquelle coturn doit écouter et relayer"
-        )
-    adresse = adresse_ipv4_de(interface)
-    if not adresse:
-        raise RuntimeError(
-            f"aucune adresse IPv4 lisible sur l'interface {interface} (route "
-            "par défaut) : impossible de dériver TURN_LISTENING_IP/"
-            "TURN_RELAY_IP"
-        )
-    return adresse
 
 
 # --- Le PRÉ-VOL : tout ce qui manque se dit AVANT qu'un secret soit écrit --
