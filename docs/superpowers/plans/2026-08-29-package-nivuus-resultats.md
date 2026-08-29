@@ -260,15 +260,19 @@ garanti.
 `hooks/assets/desk-plateforme.service::ExecStart=/usr/bin/npm start`
 suppose un `npm` **à l'échelle du système** (paquet Debian ou NodeSource).
 **Aucune tâche de ce plan ne provisionne Node.js ni `plateforme/node_modules`
-sur la machine cible.** Sur cette machine de développement, Node vient de
-`nvm`, sous `/root/.nvm` (répertoire en mode **700**), inatteignable par un
-utilisateur non-root — et `DynamicUser=yes` **est précisément** un
-utilisateur non-root, créé et détruit par systemd à chaque démarrage. Le
-service, tel quel, ne démarrerait donc **pas** sur cette machine si son unité
-était armée pour de vrai : c'est nommé dans le code lui-même
-(`hooks/assets/desk-plateforme.service`, commentaire au-dessus de
-`ExecStart`) et dans le rapport de la tâche 4 (réserve 2). Aucune tâche de ce
-plan ne referme ce trou.
+sur la machine cible.** 🔴 **Vérifié dans sa forme la plus dure sur cette
+machine de développement** (`ls /usr/bin/node /usr/bin/npm
+/usr/local/bin/node /usr/local/bin/npm`, `dpkg -l | grep nodejs`, `type node
+npm`) : **il n'existe AUCUN Node à l'échelle du système, ni pour root ni
+pour personne d'autre** — pas seulement « sous `/root/.nvm`, en mode 700,
+inatteignable à un non-root » (la première formulation de la réserve 2 de
+la tâche 4). `node` et `npm` ne sont que des **fonctions shell** qui
+sourcent `nvm` depuis `$HOME/.nvm` ; `/usr/bin/npm` n'existe **pour
+personne**, `DynamicUser=yes` ou non. Le service, tel quel, ne démarrerait
+donc pas sur cette machine si son unité était armée pour de vrai : c'est
+nommé dans le code lui-même (`hooks/assets/desk-plateforme.service`,
+commentaire au-dessus de `ExecStart`) et dans le rapport de la tâche 4
+(réserve 2). Aucune tâche de ce plan ne referme ce trou.
 
 ### 4.7 coturn : posée, jamais armée
 
@@ -333,7 +337,15 @@ autant que cette reconnaissance en lecture seule ait pu l'établir).
 `desk.env` (`hooks/activate.py:444`) et sa documentation — aucune fonction
 de `hooks/vm.py` (qui, lui, pose ProjFS et VB-Audio dans la VM par le
 même chemin WinRM) ne s'occupe de ce couple. Aucun rapport de tâche (1 à 8)
-ni aucune ligne de `progress.md` ne nomme ce trou avant cette revue.
+ne nomme ce trou. ⚠️ **Corrigé après une première rédaction de ce
+paragraphe** : le contrôleur a lui-même consigné le même constat dans
+`progress.md` (« FAIT B », section « Deux faits établis par moi avant le
+lot 10 »), en parallèle de cette revue et sans connaissance de son
+avancement — trouvaille indépendante, pas reprise l'une de l'autre,
+convergente sur les mêmes trois fichiers (`hooks/activate.py:444`,
+`console/guest/provision/assets/run-agent.ps1`,
+`agent/src/plateforme/identite.rs` — le contrôleur cite en outre
+`configuration.rs:200-201` et `main.rs:270`, lus et confirmés ici aussi).
 
 **Je ne l'ai pas corrigé** (règle du plan pour cette tâche 9 : aucune
 modification de code). C'est, à mon jugement, le défaut le plus important
