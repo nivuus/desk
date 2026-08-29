@@ -51,8 +51,40 @@ FACTS = {"vm_repond": True, "node_version": "24.9.0",
          "port": 9999}
 
 
-def appeler(root, hw=None, answers=None, facts=None, env=None):
-    """Appelle le hook comme le moteur : --phase/--root, stdin JSON."""
+def poser_faux_node_source(racine: pathlib.Path) -> pathlib.Path:
+    """Un préfixe Node FACTICE : `bin/node`, `bin/npm` (un VRAI lien
+    relatif, comme le vrai arbre), et `lib/node_modules/npm/`.
+
+    ⚠️ POURQUOI UN FACTICE PAR DÉFAUT, ET PAS LE VRAI : le runtime réel pèse
+    144 Mio (mesuré le 29 août 2026 sur `/opt/nivuus/node`), et chaque
+    scénario de cette suite le recopierait. Le scénario dédié
+    « installation 7 » ci-dessous emploie, LUI, le VRAI runtime de cette
+    machine — c'est lui qui éprouve le chemin de production, les autres n'ont
+    pas à le repayer.
+    """
+    prefixe = racine / "faux-node"
+    (prefixe / "bin").mkdir(parents=True, exist_ok=True)
+    (prefixe / "bin" / "node").write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    (prefixe / "bin" / "node").chmod(0o755)
+    npm_cli = prefixe / "lib" / "node_modules" / "npm" / "bin"
+    npm_cli.mkdir(parents=True, exist_ok=True)
+    (npm_cli / "npm-cli.js").write_text("// factice\n", encoding="utf-8")
+    for nom, cible in (("npm", "../lib/node_modules/npm/bin/npm-cli.js"),):
+        lien = prefixe / "bin" / nom
+        if not lien.is_symlink():
+            lien.symlink_to(cible)
+    return prefixe
+
+
+def appeler(root, hw=None, answers=None, facts=None, env=None,
+            node_source=True):
+    """Appelle le hook comme le moteur : --phase/--root, stdin JSON.
+
+    `node_source` (30 août 2026) : `True` pose `DESK_NODE_SOURCE` vers un
+    préfixe Node FACTICE fabriqué sous `root` (voir
+    `poser_faux_node_source`) ; `False` laisse le hook dériver le VRAI
+    runtime de cette machine ; une chaîne la pose telle quelle (scénarios de
+    refus)."""
     # `hw` par défaut VIDE : le moteur envoie `detect_all()` verbatim, et
     # `install.py` n'y lit rien — voir tests/test_desk_contrat_hw.py, qui
     # fige ce contrat. Il portait `{"vm_windows": True}`, une clé qu'aucun
@@ -61,6 +93,11 @@ def appeler(root, hw=None, answers=None, facts=None, env=None):
                 "answers": answers if answers is not None else REPONSES}
     if facts is not None:
         contexte["facts"] = facts
+    if node_source is not False:
+        env = dict(os.environ) if env is None else env
+        env["DESK_NODE_SOURCE"] = (
+            str(poser_faux_node_source(pathlib.Path(root)))
+            if node_source is True else str(node_source))
     r = subprocess.run(
         [sys.executable, str(HOOK), "--phase", "install", "--root", str(root)],
         input=json.dumps(contexte), capture_output=True, text=True, env=env)

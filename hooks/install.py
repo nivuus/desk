@@ -45,9 +45,12 @@ from commun import (
     lire_hote,
     lire_node_bin,
     lire_proxy_confiance,
+    valider_adresse_de_facts,
     valider_hote,
+    valider_port_de_facts,
 )
 from depot_arbre import copier_arbre, rendre_lisible_par_tous
+from depot_node import deposer_node, racine_node_source
 from fichiers_installes import (
     PORT_TURN,
     ecrire_env,
@@ -132,6 +135,61 @@ def deriver_adresse_turn() -> str:
     return adresse
 
 
+# --- Le PRÉ-VOL : tout ce qui manque se dit AVANT qu'un secret soit écrit --
+#
+# 🔴 IMPORTANTE DE LA REVUE FINALE DE BRANCHE (30 août 2026), DÉMONTRÉE PAR
+# EXÉCUTION. `client/dist/` et `plateforme/node_modules/` sont TOUS DEUX
+# gitignorés : un dépôt fraîchement cloné, ou empaqueté par une chaîne qui
+# n'a jamais lancé `npm install` ni `npm run build`, n'en porte aucun. Or la
+# copie de `client/dist` arrivait AVANT le garde `tsx`, si bien que ce hook
+# rendait une TRACE PYTHON (`FileNotFoundError` remontée de
+# `shutil.copytree`) là où il sait écrire une phrase partout ailleurs — et
+# il la rendait APRÈS avoir déjà écrit `desk.env` AVEC SES DEUX SECRETS
+# FRAÎCHEMENT TIRÉS. Un `install` avorté laissait donc un fichier de secrets
+# orphelin, ce que la mineure #9 (« un install rejoué reforge le secret en
+# silence ») décrivait à moitié sans voir cette moitié-là.
+#
+# 🔴 LE PRÉ-VOL ÉNUMÈRE, IL NE S'ARRÊTE PAS AU PREMIER MANQUE. Un opérateur
+# à qui l'on dit « `client/dist` manque », qui le bâtit, puis à qui l'on dit
+# « `node_modules` manque » a payé deux allers-retours là où un seul
+# suffisait. Il rend la liste ENTIÈRE.
+#
+# ⚠️ CE PRÉ-VOL NE REMPLACE PAS LES GARDES D'APRÈS-COPIE (`proto/ts/
+# plateforme.ts` retrouvé, `node_modules/.bin/tsx` retrouvé) : ceux-là
+# éprouvent que la COPIE a abouti, celui-ci que la SOURCE existe. Les deux
+# peuvent échouer indépendamment — une copie partielle sur un disque plein
+# ne se voit que par les seconds.
+
+def raisons_de_pre_vol(racine_source: pathlib.Path, prefixe_node) -> list:
+    """La liste (éventuellement vide) des raisons de refuser AVANT d'écrire.
+
+    `prefixe_node` est le préfixe Node résolu, ou None ; sa propre raison
+    d'échec est passée par `raison_node` dans `main()`.
+    """
+    raisons = []
+    exigences = [
+        (racine_source / "plateforme" / "node_modules" / ".bin" / "tsx",
+         "`npm start` vaut `tsx src/index.ts` (plateforme/package.json) : "
+         "lancer `npm install` dans plateforme/ avant d'empaqueter ou "
+         "d'installer ce dépôt"),
+        (racine_source / "client" / "dist",
+         "la plateforme sert elle-même la page bâtie (PLATEFORME_PAGE) : "
+         "lancer `npm run build` dans client/ avant d'empaqueter ou "
+         "d'installer ce dépôt — ce répertoire est gitignoré, un clone frais "
+         "ne le porte jamais"),
+        (racine_source / "proto" / "ts" / "plateforme.ts",
+         "plateforme/src importe `../../../proto/ts/…` à l'exécution : sans "
+         "ces sources, `npm start` échoue en ERR_MODULE_NOT_FOUND"),
+    ]
+    for chemin, pourquoi in exigences:
+        if not chemin.exists():
+            raisons.append(f"{chemin} est absent — {pourquoi}")
+    if prefixe_node is None:
+        raisons.append("aucun runtime Node à déposer (voir la raison "
+                       "ci-dessus)")
+    return raisons
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--phase")
@@ -145,6 +203,13 @@ def main() -> int:
     contexte = json.load(sys.stdin)
     answers = contexte.get("answers") or {}
     facts = contexte.get("facts") or {}
+    # `facts` et `answers` mal typés donnaient un `AttributeError` sur le
+    # premier `.get()` — une trace là où ce hook écrit des phrases.
+    for nom, valeur in (("answers", answers), ("facts", facts)):
+        if not isinstance(valeur, dict):
+            print(f"desk install : {nom} doit etre un objet, recu "
+                  f"{type(valeur).__name__}", file=sys.stderr)
+            return 1
 
     auth_mode = answers.get("auth_mode")
     if not auth_mode:
@@ -159,12 +224,29 @@ def main() -> int:
     emettre({"event": "progress", "pct": 10,
              "msg": "Dérivation des adresses et du port"})
 
-    try:
-        turn_ecoute = facts.get("turn_ecoute") or deriver_adresse_turn()
-        turn_relais = facts.get("turn_relais") or turn_ecoute
-    except RuntimeError as exc:
-        print(f"desk install : {exc}", file=sys.stderr)
-        return 1
+    # 🔴 MINEURE #7, RENVERSÉE PAR LA REVUE FINALE DE BRANCHE : une valeur
+    # venue de `facts` passe par le MÊME validateur qu'une valeur dérivée —
+    # voir `commun.py`, § « Ce qui vient du canal facts », pour la réfutation
+    # qui l'impose. Sans cela, `facts["turn_ecoute"]="0.0.0.0"` faisait
+    # écouter et relayer coturn sur TOUTES les interfaces, en silence.
+    adresses_turn = {}
+    for cle in ("turn_ecoute", "turn_relais"):
+        brut = facts.get(cle)
+        if brut is None:
+            continue
+        adresses_turn[cle], raison = valider_adresse_de_facts(
+            brut, f'facts["{cle}"]', "coturn (TURN_LISTENING_IP/TURN_RELAY_IP)")
+        if raison:
+            print(f"desk install : {raison}", file=sys.stderr)
+            return 1
+    if "turn_ecoute" not in adresses_turn:
+        try:
+            adresses_turn["turn_ecoute"] = deriver_adresse_turn()
+        except RuntimeError as exc:
+            print(f"desk install : {exc}", file=sys.stderr)
+            return 1
+    turn_ecoute = adresses_turn["turn_ecoute"]
+    turn_relais = adresses_turn.get("turn_relais") or turn_ecoute
 
     # 🔴 PLATEFORME_HOTE NE DOIT JAMAIS ÊTRE UNIVERSELLE, ET NE DOIT JAMAIS
     # ÊTRE L'ADRESSE TURN (voir le commentaire de `deriver_adresse_turn` :
@@ -199,9 +281,41 @@ def main() -> int:
     # Écrite quel que soit auth_mode : elle ne nuit pas en mode motdepasse
     # (elle y sert seulement à faire croire X-Forwarded-For depuis cette
     # adresse), et devient obligatoire côté service en mode pomerium.
-    proxy_confiance = facts.get("proxy_confiance") or lire_proxy_confiance()
+    brut_proxy = facts.get("proxy_confiance")
+    if brut_proxy is None:
+        proxy_confiance = lire_proxy_confiance()
+    else:
+        proxy_confiance, raison_proxy = valider_adresse_de_facts(
+            brut_proxy, 'facts["proxy_confiance"]',
+            "PLATEFORME_PROXY_DE_CONFIANCE")
+        if raison_proxy:
+            print(f"desk install : {raison_proxy}", file=sys.stderr)
+            return 1
 
-    port = int(facts.get("port") or PORT_DEFAUT)
+    brut_port = facts.get("port")
+    if brut_port is None:
+        port = PORT_DEFAUT
+    else:
+        port, raison_port = valider_port_de_facts(brut_port)
+        if raison_port:
+            print(f"desk install : {raison_port}", file=sys.stderr)
+            return 1
+
+    # --- LE PRÉ-VOL, AVANT LE PREMIER SECRET ------------------------------
+    # Voir le commentaire de `raisons_de_pre_vol` : tout ce qui manque se dit
+    # ICI, avant qu'un octet de `desk.env` — donc avant qu'un secret — touche
+    # le disque.
+    prefixe_node, raison_node = racine_node_source()
+    raisons = raisons_de_pre_vol(RACINE, prefixe_node)
+    if raison_node:
+        raisons = [r for r in raisons if not r.startswith("aucun runtime")]
+        raisons.append(raison_node)
+    if raisons:
+        print("desk install : refus AVANT toute ecriture (aucun secret n'a "
+              "ete tire, desk.env n'existe pas) :", file=sys.stderr)
+        for raison in raisons:
+            print(f"  - {raison}", file=sys.stderr)
+        return 1
 
     secret_jeton = ecrire_secret()
     secret_turn = ecrire_secret()
@@ -321,6 +435,19 @@ def main() -> int:
             file=sys.stderr,
         )
         return 1
+
+    # 🔴 LE RUNTIME NODE, DÉPOSÉ ET PLUS SEULEMENT SUPPOSÉ (revue finale de
+    # branche, 30 août 2026). `NODE_BIN_DEFAUT` désignait un répertoire que
+    # RIEN dans ce dépôt ne créait : l'arbre présent sur la machine de
+    # développement y avait été copié à la main pendant le lot 10A, et la
+    # commande ne vivait que dans un rapport gitignoré. Voir
+    # `hooks/depot_node.py` pour le raisonnement complet et pour ce qui est
+    # déposé exactement. Le préfixe cible est le PARENT du `bin/` que
+    # `lire_node_bin()` rend, pour que les deux ne puissent pas diverger.
+    emettre({"event": "progress", "pct": 70,
+             "msg": "Dépôt du runtime Node (node, npm, npx)"})
+    prefixe_cible = pathlib.PurePosixPath(lire_node_bin()).parent
+    deposer_node(prefixe_node, sous(str(prefixe_cible).lstrip("/")))
 
     emettre({"event": "progress", "pct": 80, "msg": "Dépôt de l'unité systemd"})
 

@@ -1,4 +1,9 @@
-"""Module partagé entre les hooks du package desk (`resolve.py`, `install.py`).
+"""Module partagé entre les TROIS hooks du package desk.
+
+⚠️ L'en-tête disait « (`resolve.py`, `install.py`) ». C'est FAUX depuis le
+lot 10A : `activate.py` l'emploie aussi, par `administration.py`
+(`from commun import lire_node_bin`) — relevé par la revue finale de branche,
+30 août 2026, et corrigé ici plutôt que laissé vieillir.
 
 Extrait le 29 août 2026 (ronde de correction 1 sur la tâche 4) : la revue a
 relevé `interface_de_route_par_defaut()` et `adresse_ipv4_de()` dupliquées
@@ -110,6 +115,15 @@ HOTE_DEFAUT = "192.168.3.1"
 ECOUTES_UNIVERSELLES = ("0.0.0.0", "::", "[::]", "*")
 
 
+def _est_universelle(brut) -> bool:
+    """Vrai si `brut` est l'une des quatre écoutes universelles.
+
+    Le SEUL endroit de ce package qui teste cette appartenance : les trois
+    validateurs publics ci-dessous s'en servent, aucun ne redit le test.
+    """
+    return isinstance(brut, str) and brut.strip() in ECOUTES_UNIVERSELLES
+
+
 def valider_hote(brut: str, origine: str = "DESK_HOTE"):
     """Le SEUL contrôle qui refuse une écoute universelle pour
     `PLATEFORME_HOTE`, quelle que soit la PROVENANCE de `brut`.
@@ -137,7 +151,7 @@ def valider_hote(brut: str, origine: str = "DESK_HOTE"):
     écoute universelle : un refus ICI, jamais un service qui démarre puis
     s'expose sur toutes les interfaces.
     """
-    if brut.strip() in ECOUTES_UNIVERSELLES:
+    if _est_universelle(brut):
         return None, (
             f"{origine}={brut!r} est une écoute universelle : PLATEFORME_HOTE "
             "ne doit jamais l'être (voir plateforme/src/config.ts, la garde du "
@@ -238,3 +252,71 @@ NODE_BIN_DEFAUT = "/opt/nivuus/node/bin"
 def lire_node_bin():
     """`NODE_BIN_DEFAUT`, surchargeable par `DESK_NODE_BIN`."""
     return os.environ.get("DESK_NODE_BIN") or NODE_BIN_DEFAUT
+
+
+# --- Ce qui vient du canal `facts` : validé, jamais cru sur parole ---------
+#
+# 🔴 MINEURE #7 DE LA TÂCHE 4, DONT LA RAISON A ÉTÉ RÉFUTÉE PAR CETTE BRANCHE
+# ELLE-MÊME. Elle était classée « reste due » au motif que « `facts` a une
+# forme fixe, produite par `resolve.py` du même package et jamais par un
+# tiers ». Le lot 10A a démontré l'inverse SUR LA CLÉ VOISINE : `facts["hote"]`
+# traversait `install.py` sans jamais rencontrer la garde des écoutes
+# universelles, code 0, `PLATEFORME_HOTE=0.0.0.0` écrit dans `desk.env` — il a
+# fallu une Importante pour le fermer. La même raison restait écrite pour
+# `turn_ecoute`, `turn_relais`, `proxy_confiance` et `port`. La revue finale
+# de branche l'a renversée ; ces trois fonctions sont ce renversement.
+#
+# ⚠️ CE QUE CES VALIDATEURS NE PROMETTENT PAS : que l'adresse soit PRIVÉE.
+# Le ruling du lot 10A a refusé une liste blanche RFC1918 — elle créerait une
+# seconde notion d'« adresse sûre », divergente de la garde du produit
+# (`plateforme/src/config.ts::ECOUTES_UNIVERSELLES`, quatre littéraux), et
+# interdirait des déploiements légitimes. Cette réserve tient, et elle est
+# nommée au document de résultats.
+
+
+def valider_adresse_de_facts(brut, origine: str, role: str):
+    """Une adresse venue de `facts` : ni vide, ni d'un autre type, ni
+    universelle.
+
+    Rend `(adresse, None)` en succès, `(None, raison)` sinon. `role` nomme ce
+    que l'adresse sert (« coturn », « le proxy de confiance ») — il n'entre
+    que dans le message, jamais dans la logique.
+    """
+    if not isinstance(brut, str) or not brut.strip():
+        return None, (
+            f"{origine}={brut!r} n'est pas une adresse exploitable pour "
+            f"{role} : une chaîne non vide est attendue"
+        )
+    if _est_universelle(brut):
+        return None, (
+            f"{origine}={brut!r} est une écoute universelle : {role} ne doit "
+            "jamais l'être — borner la seule écoute laisserait de surcroît "
+            "les allocations de relais sur toutes les interfaces (mesuré le "
+            "21 août 2026 : 23 adresses distinctes, dont l'adresse publique)"
+        )
+    return brut.strip(), None
+
+
+def valider_port_de_facts(brut, origine: str = 'facts["port"]'):
+    """Un port venu de `facts` : un entier de 1 à 65535, jamais autre chose.
+
+    🔴 `int(facts.get("port"))` LEVAIT une `ValueError` non rattrapée sur
+    n'importe quelle valeur non numérique — donc une trace Python et un code
+    de sortie 1 chez l'opérateur, là où `install.py` sait écrire une phrase
+    partout ailleurs. Un booléen est refusé explicitement : `int(True)` vaut
+    `1`, un port parfaitement valide et parfaitement absurde.
+    """
+    if isinstance(brut, bool):
+        return None, f"{origine}={brut!r} est un booléen, pas un port"
+    if isinstance(brut, str):
+        brut_nettoye = brut.strip()
+        if not brut_nettoye.isdigit():
+            return None, f"{origine}={brut!r} n'est pas un entier"
+        valeur = int(brut_nettoye)
+    elif isinstance(brut, int):
+        valeur = brut
+    else:
+        return None, f"{origine}={brut!r} n'est pas un entier"
+    if not 1 <= valeur <= 65535:
+        return None, f"{origine}={valeur} est hors de la plage 1-65535"
+    return valeur, None
