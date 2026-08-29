@@ -46,6 +46,7 @@ from commun import (
     lire_hote,
     lire_node_bin,
     lire_proxy_confiance,
+    valider_hote,
 )
 from depot_arbre import copier_arbre, rendre_lisible_par_tous
 
@@ -257,8 +258,24 @@ def main() -> int:
     # confondre les deux exposait le service sur l'adresse PUBLIQUE). Dérivée
     # séparément, par `commun.lire_hote()` — une adresse FIXE et interne,
     # jamais la route par défaut.
-    hote_plateforme, raison_hote = facts.get("hote"), None
-    if not hote_plateforme:
+    #
+    # 🔴 RONDE DE CORRECTION 1 (29 août 2026) : LA REVUE A DÉMONTRÉ QUE LA
+    # FORME PRÉCÉDENTE — `lire_hote()` appelée SEULEMENT quand
+    # `facts.get("hote")` était vide — laissait `facts["hote"] = "0.0.0.0"`
+    # traverser SANS jamais rencontrer `ECOUTES_UNIVERSELLES` : code 0,
+    # `PLATEFORME_HOTE=0.0.0.0` écrit dans `desk.env`. Inatteignable par le
+    # moteur réel AUJOURD'HUI (il ne passe aucun `facts` à `install`), mais
+    # ce hook accepte ce canal précisément pour « un futur moteur, ou ce
+    # fichier de tests » (voir le docstring de tête) — et le contrat de
+    # `facts` a gagné des clés PENDANT ce lot même. `valider_hote()` est
+    # désormais appelée sur LA VALEUR RETENUE, quelle que soit sa
+    # provenance : `facts["hote"]` s'il est présent, `commun.lire_hote()`
+    # (qui appelle elle-même `valider_hote`) sinon — un SEUL contrôle, deux
+    # chemins d'entrée, jamais l'un sans l'autre.
+    brut_hote = facts.get("hote")
+    if brut_hote:
+        hote_plateforme, raison_hote = valider_hote(brut_hote, origine='facts["hote"]')
+    else:
         hote_plateforme, raison_hote = lire_hote()
     if raison_hote:
         print(f"desk install : {raison_hote}", file=sys.stderr)

@@ -110,24 +110,54 @@ HOTE_DEFAUT = "192.168.3.1"
 ECOUTES_UNIVERSELLES = ("0.0.0.0", "::", "[::]", "*")
 
 
-def lire_hote():
-    """`HOTE_DEFAUT`, surchargeable par `DESK_HOTE` (tests, ou un futur
-    changement de topologie réseau) — jamais dérivée de la route par défaut,
-    voir le commentaire ci-dessus.
+def valider_hote(brut: str, origine: str = "DESK_HOTE"):
+    """Le SEUL contrôle qui refuse une écoute universelle pour
+    `PLATEFORME_HOTE`, quelle que soit la PROVENANCE de `brut`.
 
-    Rend `(hote, None)` en succès, `(None, raison)` si la valeur retenue
-    (défaut ou surchargée) est une écoute universelle : un refus ICI, jamais
-    un service qui démarre puis s'expose sur toutes les interfaces.
+    🔴 EXTRAIT DE `lire_hote()` EN RONDE DE CORRECTION 1 (lot 10A,
+    29 août 2026) : la revue a démontré qu'`install.py` appelait
+    `lire_hote()` SEULEMENT quand `facts.get("hote")` était vide —
+    `facts["hote"] = "0.0.0.0"` traversait donc SANS jamais rencontrer ce
+    contrôle, rendait code 0, et écrivait `PLATEFORME_HOTE=0.0.0.0` dans
+    `desk.env`. Inatteignable par le moteur réel AUJOURD'HUI (qui ne passe
+    aucun `facts` à `install`), mais le docstring de tête d'`install.py`
+    dit lui-même que ce canal existe pour « un futur moteur, ou ce fichier
+    de tests » — et le contrat de `facts` a gagné des clés PENDANT ce lot
+    même. Un garde qui ne mord que sur UN des deux chemins d'entrée n'est
+    pas le garde que ce lot existe pour poser. `install.py` appelle
+    désormais CETTE fonction sur `facts.get("hote")` s'il est présent,
+    EXACTEMENT comme sur la valeur dérivée — même contrôle, quelle que soit
+    la provenance.
+
+    `origine` ne sert qu'au message de refus (« DESK_HOTE » pour la valeur
+    dérivée par défaut, « facts["hote"] » pour une valeur fournie par le
+    moteur) — jamais à la logique : la garde est IDENTIQUE dans les deux cas.
+
+    Rend `(hote, None)` en succès, `(None, raison)` si `brut` est une
+    écoute universelle : un refus ICI, jamais un service qui démarre puis
+    s'expose sur toutes les interfaces.
     """
-    brut = os.environ.get("DESK_HOTE") or HOTE_DEFAUT
     if brut.strip() in ECOUTES_UNIVERSELLES:
         return None, (
-            f"DESK_HOTE={brut!r} est une écoute universelle : PLATEFORME_HOTE "
+            f"{origine}={brut!r} est une écoute universelle : PLATEFORME_HOTE "
             "ne doit jamais l'être (voir plateforme/src/config.ts, la garde du "
             "mode pomerium — et la doctrine de ce package, plus stricte : "
             "aucune écoute universelle, dans aucun mode)"
         )
     return brut, None
+
+
+def lire_hote():
+    """`HOTE_DEFAUT`, surchargeable par `DESK_HOTE` (tests, ou un futur
+    changement de topologie réseau) — jamais dérivée de la route par défaut,
+    voir le commentaire ci-dessus. Passe TOUJOURS par `valider_hote` — voir
+    son docstring pour pourquoi ce n'est plus un `if` inline ici.
+
+    Rend `(hote, None)` en succès, `(None, raison)` si la valeur retenue
+    (défaut ou surchargée) est une écoute universelle.
+    """
+    brut = os.environ.get("DESK_HOTE") or HOTE_DEFAUT
+    return valider_hote(brut, origine="DESK_HOTE")
 
 
 # --- PLATEFORME_PROXY_DE_CONFIANCE : le trou C du lot 10A -------------------
