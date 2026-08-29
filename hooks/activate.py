@@ -102,7 +102,7 @@ import pathlib
 import subprocess
 import sys
 
-from administration import creer_compte_admin, enroler_agent_plateforme
+from administration import attribuer_vm_a_utilisateur, creer_compte_admin, enroler_agent_plateforme
 from agent_payload import chemin_agent_console, construire_agent_reel, deposer_agent_console  # noqa: F401
 from env_fichier import ajouter_variables_env, lire_env_fichier
 from vm import poser_projfs, poser_vb_audio
@@ -374,8 +374,64 @@ def main() -> int:
 
     ajouter_variables_env(env_chemin, {"AGENT_VM": vm_id, "AGENT_SECRET": secret})
 
+    # 🔴 TÂCHE 13 — TROU TROUVÉ EN PRODUCTION LE 29 AOÛT 2026 : `enroler_agent_
+    # plateforme()` (donc `admin:agent`, donc `enrolerLaVm`) fait
+    # `INSERT INTO vm(id, nom, adresse)` SANS jamais passer d'utilisateur —
+    # `vm.utilisateur_id` restait NULL, et `plateforme/src/http/
+    # routes-applications.ts` l'annonçait EN TOUTES LETTRES depuis avant ce
+    # correctif : « tant qu'aucune VM n'est attribuée, TOUT UTILISATEUR
+    # AUTHENTIFIÉ VOIT TOUTES LES VMS : ce n'est PAS une isolation » — et le
+    # symptôme MESURÉ chez le propriétaire était le miroir de cette même case
+    # restée NULL : `GET /vm` rendait `{"vms":[]}` pour un compte pourtant
+    # bien créé, donc un hub vide. Réparé sur l'instance en cours à la main
+    # (`npm run admin:attribuer -- --email … --vm windows`) ; ce qui suit est
+    # ce qui manquait pour qu'une installation NEUVE n'ait plus jamais besoin
+    # de cette réparation manuelle.
+    #
+    # 🔴 PLACEMENT : NI DANS LE COURT-CIRCUIT D'IDEMPOTENCE CI-DESSUS, NI HORS
+    # DE TOUTE GARDE — les deux pièges évidents, et aucun des deux ne marche :
+    #   - DANS le court-circuit (qui ne s'exécute qu'À LA RÉACTIVATION, une
+    #     fois `AGENT_VM`/`AGENT_SECRET` déjà écrits) : le passage NORMAL —
+    #     celui qui tourne UNE SEULE FOIS par package, à l'activation — ne
+    #     l'atteindrait JAMAIS. C'est très exactement le trou trouvé en
+    #     production : une installation qui ne rejoue jamais l'activation ne
+    #     se rattrape jamais toute seule.
+    #   - HORS de toute garde (rejouée à CHAQUE appel, court-circuit compris) :
+    #     `admin:attribuer` N'EST PAS idempotent pour un rejeu — l'orchestrateur
+    #     refuse `vm-deja-attribuee` dès que `utilisateur_id` n'est plus NULL,
+    #     MÊME pour la ré-attribution au même utilisateur
+    #     (`inventaire-statique.ts::attribuer`, lecture ①). Rejouer à chaque
+    #     réactivation ferait donc échouer TOUTE réactivation après la
+    #     première réussite, sur un refus qui ne dit rien de faux mais qui
+    #     n'est pas non plus une panne.
+    #   Elle vit donc ICI, dans le PROLONGEMENT du chemin normal — protégée
+    #   par LA MÊME garde que le compte et l'enrôlement juste au-dessus (le
+    #   court-circuit la saute tout autant qu'eux) : elle s'exécute une seule
+    #   fois, au passage qui vient justement de créer ce compte et d'enrôler
+    #   cet agent — jamais aux réactivations suivantes.
+    #
+    # ⚠️ CE QUE CE PLACEMENT NE COUVRE PAS, MÊME LIMITE QUE LA GARDE
+    # D'IDEMPOTENCE CI-DESSUS (voir son propre commentaire) : un échec ICI
+    # survient APRÈS que `AGENT_VM`/`AGENT_SECRET` sont déjà écrits (ligne
+    # précédente) — une réactivation court-circuitera donc désormais AVANT
+    # d'atteindre cette attribution, sans jamais la retenter. C'est le choix
+    # le MOINS mauvais des deux ordres possibles : écrire ces deux variables
+    # APRÈS l'attribution rouvrirait plutôt, sur ce même échec, le REJEU de
+    # `admin:agent` — qui LUI crée une VM ORPHELINE supplémentaire à chaque
+    # appel (voir le commentaire de la garde d'idempotence ci-dessus) : une
+    # régression pire que celle qu'on répare ici. Une attribution manquée à
+    # cet endroit reste diagnosticable (le message ci-dessous nomme la cause)
+    # et réparable À LA MAIN par ce même `npm run admin:attribuer` — c'est
+    # exactement ainsi que l'instance réelle du 29 août 2026 a été réparée.
+    emettre({"event": "progress", "pct": 90,
+             "msg": "Attribution de la VM au compte administrateur"})
+    _sortie_attribution, raison = attribuer_vm_a_utilisateur(plateforme_dir, email, vm_id, env_npm)
+    if raison:
+        print(f"desk activate: attribution de la VM refusee : {raison}", file=sys.stderr)
+        return 1
+
     emettre({"event": "progress", "pct": 100,
-             "msg": "desk : service arme, compte cree, agent enrole"})
+             "msg": "desk : service arme, compte cree, agent enrole, VM attribuee"})
     emettre({"event": "done"})
     return 0
 
