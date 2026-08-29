@@ -318,6 +318,44 @@ with tempfile.TemporaryDirectory() as tmp5src, tempfile.TemporaryDirectory() as 
     check("le symlink survit a la reinstallation, toujours un lien",
           lien5.is_symlink(), True)
 
+# --- Installation 7 : LE RUNTIME NODE EST DÉPOSÉ, PAS SUPPOSÉ -------------
+# 🔴 IMPORTANTE DE LA REVUE FINALE DE BRANCHE (30 août 2026) : `commun.py::
+# NODE_BIN_DEFAUT` désigne `/opt/nivuus/node/bin`, et AUCUN hook n'y déposait
+# quoi que ce soit — l'arbre présent sur la machine de développement y avait
+# été copié À LA MAIN pendant le lot 10A, par une commande qui ne vivait que
+# dans un rapport gitignoré. Une installation neuve posait donc un service
+# structurellement incapable de démarrer, sans un mot.
+# Ce scénario emploie le VRAI runtime de cette machine (`node_source=False`),
+# c'est-à-dire le chemin de production : un préfixe dérivé de
+# `process.execPath`, ses vrais liens relatifs, ses ~144 Mio. Les autres
+# scénarios emploient un préfixe factice — ils n'ont pas à repayer la copie.
+with tempfile.TemporaryDirectory() as tmp7:
+    root7 = pathlib.Path(tmp7)
+    r7 = appeler(root7, facts=FACTS, node_source=False)
+    check("installation 7 (vrai runtime) : code de sortie 0", r7.returncode, 0)
+    if r7.returncode != 0:
+        failures.append(f"stderr installation 7 : {r7.stderr!r}")
+    node_dep = root7 / NODE_BIN_DEFAUT.lstrip("/")
+    check("bin/node est depose", (node_dep / "node").is_file(), True)
+    check("bin/npm est depose", (node_dep / "npm").exists(), True)
+    # 🔴 `npm` DOIT RESTER UN LIEN : sa cible est RELATIVE et pointe dans
+    # l'arbre deposé. Le suivre deposerait une COPIE de npm-cli.js sous un
+    # nom qui pretend etre npm, et `npm` cesserait de retrouver ses modules.
+    check("bin/npm est un LIEN, jamais une copie suivie",
+          (node_dep / "npm").is_symlink(), True)
+    check("le paquet global npm est depose",
+          (node_dep.parent / "lib" / "node_modules" / "npm").is_dir(), True)
+    # 🔴 `DynamicUser=yes` fait tourner le service sous un UID ephemere : un
+    # `bin/node` en rwxr-x--- ferait echouer ExecStart avant la premiere
+    # ligne de JavaScript (bug reel du lot 10A sur /opt/nivuus/desk).
+    check("bin/node est executable par autrui (DynamicUser)",
+          bool(os.stat(node_dep / "node").st_mode & 0o001), True)
+    # Temoin negatif : l'unite deposee pointe bien sur CE chemin-la.
+    ini7 = load_unit(root7 / "etc" / "systemd" / "system" / "desk-plateforme.service")
+    check("ExecStart pointe sur le npm reellement depose",
+          ini7.get("Service", "ExecStart", fallback=""),
+          f"{NODE_BIN_DEFAUT}/npm start")
+
 if failures:
     print(f"FAIL ({len(failures)})")
     for f in failures:
