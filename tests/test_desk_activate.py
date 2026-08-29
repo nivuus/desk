@@ -388,6 +388,39 @@ with tempfile.TemporaryDirectory() as tmp:
     check("console absent : l'armement a quand meme eu lieu", os.path.islink(lien), True)
 
 
+# --- B-bis : LA PORTE DE LA VM WINDOWS, MIGRÉE DEPUIS `resolve` -----------
+# 🔴 CORRECTION DE LA CRITIQUE DE LA REVUE FINALE DE BRANCHE (30 août 2026).
+# `hooks/resolve.py` portait `if not hw.get("vm_windows"): refuser(...)` :
+# une clé qu'AUCUN producteur du moteur ne pose, éprouvée à une phase où la
+# VM ne peut pas encore exister. La porte vit désormais ICI, et elle est une
+# MESURE — un échange WinRM réel. Ce scénario est sa ROUGE : `console` EST
+# installé (le contrat inter-packages se résout), mais le guest ne répond
+# pas. Il se distingue du scénario B ci-dessus, où c'est `console` qui
+# manque : deux causes différentes, deux messages différents.
+with tempfile.TemporaryDirectory() as tmp:
+    root, bin_dir = _racine_pour_tache6(tmp)
+    packages_dir = root / "faux-packages-dir"
+    guest = packages_dir / "console" / "guest"
+    guest.mkdir(parents=True)
+    (guest / "fetch_payload.py").write_text("", encoding="utf-8")
+    (guest / "winrm_exec.py").write_text(
+        "#!/usr/bin/env python3\n"
+        "import sys\n"
+        "sys.stderr.write('error: cannot reach guest at 192.168.3.2:5985: "
+        "timeout\\n')\n"
+        "sys.exit(1)\n", encoding="utf-8")
+    (guest / "winrm_exec.py").chmod(0o755)
+
+    r = appeler(root, bin_dir, packages_dir=packages_dir)
+    _check_refus_propre("VM injoignable", r, "cannot reach guest", root)
+    check("VM injoignable : le refus nomme la VM Windows, pas ProjFS",
+          "la VM Windows ne repond pas" in (r.stderr or ""), True)
+    check("VM injoignable : le refus dit que console la provisionne",
+          "console la provisionne" in (r.stderr or ""), True)
+    check("VM injoignable : le refus dit que ce n'est PAS le role de resolve",
+          "jamais dans resolve" in (r.stderr or ""), True)
+
+
 # --- C : VB-Audio ARMÉ (vb_audio=true), aucun payload — refus propre du
 # hook complet. ⚠️ Depuis la ronde de correction 1, `hooks/resolve.py`
 # refuse déjà ce cas PLUS TÔT, avant l'installation (voir

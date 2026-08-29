@@ -53,23 +53,29 @@ def refus(evenements):
     return [e for e in evenements if e.get("event") == "refuse"]
 
 
-# --- Le refus est une DONNÉE, jamais une exception -----------------------
-# Sans VM, le hook doit REFUSER avec une phrase, et sortir 0 : un code non nul
-# donne à l'opérateur une trace sur laquelle il ne peut rien agir.
-rc, ev = appeler(hw={"vm_windows": False}, answers=REPONSES)
-r = refus(ev)
-check("sans VM : un refus est émis", len(r), 1)
-check("sans VM : le refus porte une phrase", bool(r and r[0].get("reason")), True)
-check("sans VM : la phrase nomme la VM",
-      bool(r and "vm" in r[0]["reason"].lower()), True)
-check("sans VM : code de sortie 0", rc, 0)
+# 🔴 CE FICHIER NE POSE PLUS AUCUNE CLÉ `hw` — ET C'EST LA CORRECTION DE LA
+# CRITIQUE DE LA REVUE FINALE DE BRANCHE (30 août 2026). Chaque appel
+# ci-dessous posait une clé `vm_windows` vraie, et un scénario de tête
+# éprouvait le refus sur la même clé fausse. Les deux étaient VERTS, et les
+# deux étaient faux du monde réel : **aucun producteur de cette clé n'existe**
+# (`installer/installer/common/hardware.py::detect_all()` en rend huit, aucune
+# de ce nom), donc le hook refusait TOUJOURS chez le moteur — un refus que
+# `steps/packages.py` traduit en `StepError`, c'est-à-dire l'arrêt de
+# l'installation ENTIÈRE. La suite ne pouvait pas le voir parce qu'elle
+# FABRIQUAIT elle-même le fait dont elle vérifiait la consommation.
+#
+# La porte a migré vers `hooks/activate.py` (la seule phase où la VM peut
+# exister), et le contrat de `hw` est désormais figé par une suite dédiée :
+# `tests/test_desk_contrat_hw.py`, qui lit les clés du PRODUCTEUR au lieu de
+# les inventer. `hw={}` ci-dessous n'est pas une commodité : c'est ce que
+# `resolve` doit savoir accepter.
 
 # --- Le cas nominal : des faits, aucun refus ------------------------------
-rc, ev = appeler(hw={"vm_windows": True}, answers=REPONSES)
-check("avec VM : aucun refus", refus(ev), [])
-check("avec VM : code de sortie 0", rc, 0)
+rc, ev = appeler(hw={}, answers=REPONSES)
+check("hw sans aucune clé : aucun refus", refus(ev), [])
+check("hw sans aucune clé : code de sortie 0", rc, 0)
 faits = [e for e in ev if e.get("event") == "facts"]
-check("avec VM : un événement facts", len(faits), 1)
+check("hw sans aucune clé : un événement facts", len(faits), 1)
 mesures = faits[0]["facts"] if faits else {}
 check("les DEUX adresses TURN sont dérivées",
       all(k in mesures for k in ("turn_ecoute", "turn_relais")), True)
@@ -101,7 +107,7 @@ check("proxy_confiance vaut le défaut (raisonné, voir commun.py)",
 # Choisi explicitement par le propriétaire du dépôt pour la mise en service
 # réelle. Le proxy de confiance est DÉRIVÉ (commun.py::lire_proxy_confiance),
 # jamais demandé : aucun refus ne doit plus mordre ici.
-rc, ev = appeler(hw={"vm_windows": True},
+rc, ev = appeler(hw={},
                  answers={**REPONSES, "auth_mode": "pomerium"})
 check("pomerium : aucun refus (proxy dérivé, plus demandé)", refus(ev), [])
 faits_pomerium = [e for e in ev if e.get("event") == "facts"]
@@ -117,7 +123,7 @@ check("pomerium : facts porte proxy_confiance",
 # déjà partitionné.
 env_hote_universelle = dict(os.environ)
 env_hote_universelle["DESK_HOTE"] = "0.0.0.0"
-rc, ev = appeler(hw={"vm_windows": True},
+rc, ev = appeler(hw={},
                  answers={**REPONSES, "auth_mode": "pomerium"},
                  env=env_hote_universelle)
 r = refus(ev)
@@ -126,7 +132,7 @@ check("DESK_HOTE=0.0.0.0 : le refus nomme l'écoute universelle",
       bool(r and "universelle" in r[0].get("reason", "").lower()), True)
 
 # --- Une valeur de mode inconnue LÈVE, elle ne se replie pas -------------
-rc, ev = appeler(hw={"vm_windows": True},
+rc, ev = appeler(hw={},
                  answers={**REPONSES, "auth_mode": "motdepass"})
 check("mode inconnu : refus", len(refus(ev)), 1)
 
@@ -137,7 +143,7 @@ check("mode inconnu : refus", len(refus(ev)), 1)
 # l'enrôlement de l'agent aient déjà été tentés (voir hooks/activate.py) —
 # une activation qui ne passerait alors plus JAMAIS. Le refus doit arriver
 # ICI, avant qu'un octet touche le disque.
-rc, ev = appeler(hw={"vm_windows": True}, answers={**REPONSES, "vb_audio": True})
+rc, ev = appeler(hw={}, answers={**REPONSES, "vb_audio": True})
 r = refus(ev)
 check("vb_audio=true : refus", len(r), 1)
 check("vb_audio=true : code de sortie 0", rc, 0)
@@ -149,7 +155,7 @@ check("vb_audio=true : la phrase invite à décocher l'option",
       bool(r and "décoch" in r[0].get("reason", "").lower()), True)
 
 # --- vb_audio=false (le défaut du wizard) : aucun refus lié à VB-Audio ----
-rc, ev = appeler(hw={"vm_windows": True}, answers={**REPONSES, "vb_audio": False})
+rc, ev = appeler(hw={}, answers={**REPONSES, "vb_audio": False})
 check("vb_audio=false : aucun refus", refus(ev), [])
 
 # --- Une entrée mal formée est un refus, jamais une exception ------------
@@ -188,6 +194,73 @@ for label, stdin_texte in [
     check(f"{label} : code de sortie 0", rc, 0)
     check(f"{label} : un refus est émis", len(r), 1)
     check(f"{label} : le refus porte une phrase", bool(r and r[0].get("reason")), True)
+
+# --- Le garde GÉNÉRIQUE : ce qu'AUCUN chemin n'a prévu -------------------
+# 🔴 MINEURE #4 DE LA TÂCHE 3, RECOMMANDÉE AVANT FUSION PAR LE DOCUMENT DE
+# RÉSULTATS ET CONFIRMÉE PAR LA REVUE FINALE DE BRANCHE. Les trois entrées
+# ci-dessus tombent toutes dans les cas que `charger_contexte()` sait NOMMER
+# — elles n'éprouvent donc PAS le `try/except Exception` de `main()`, qui est
+# l'invariant central de ce hook (« un refus est une donnée, jamais une
+# exception »). Le seul témoin de sa rouge était un `RecursionError` joué à
+# la main par un relecteur, dans une session qui n'existe plus.
+#
+# Les DEUX entrées ci-dessous lèvent DANS `json.load` lui-même, chacune par
+# une exception qui n'est PAS `json.JSONDecodeError` — donc hors de tout
+# `except` nommé de `charger_contexte()` :
+#   - des octets qui ne sont pas de l'UTF-8 : `UnicodeDecodeError`, levée
+#     par le décodeur du flux AVANT que le moindre caractère JSON existe ;
+#   - un entier littéral de plus de 4 300 chiffres : `ValueError` levée par
+#     la conversion entière de CPython (limite `sys.set_int_max_str_digits`),
+#     sur un JSON pourtant parfaitement BIEN FORMÉ.
+# Aucune des deux n'est un cas que ce hook a anticipé, et c'est le point :
+# un garde générique qui ne serait éprouvé que par des entrées qu'on lui a
+# dictées ne prouverait rien de ce qu'il existe pour couvrir.
+#
+# ⚠️ CE QUE J'AI ESSAYÉ D'ABORD, ET QUI NE MORD PLUS : un JSON de profondeur
+# excessive (le `RecursionError` du relecteur). Mesuré le 30 août 2026 sur
+# cet interpréteur : `json.load` avale sans broncher une profondeur de
+# 4 × `sys.getrecursionlimit()`, et l'entrée retombe alors dans le cas NOMMÉ
+# « la racine n'est pas un objet ». Le test aurait été vert sans jamais
+# atteindre le garde — exactement le patron « un contrôle qu'on n'a jamais vu
+# rouge ». Il est remplacé, pas rafistolé.
+def appeler_octets(donnees: bytes):
+    """Comme `appeler_brut`, mais envoie des OCTETS bruts — nécessaire pour
+    éprouver une entrée qui n'est pas décodable en UTF-8, ce que le mode
+    texte de `subprocess` ne peut pas exprimer."""
+    r = subprocess.run([sys.executable, str(HOOK)], input=donnees,
+                       capture_output=True)
+    evenements = []
+    for ligne in r.stdout.decode("utf-8", "replace").splitlines():
+        ligne = ligne.strip()
+        if not ligne:
+            continue
+        try:
+            evenements.append(json.loads(ligne))
+        except json.JSONDecodeError:
+            pass
+    return r.returncode, evenements
+
+
+for label, octets in [
+    ("octets non décodables en UTF-8", b"\xff\xfe\x00{"),
+    ("entier littéral de 5 000 chiffres", b'{"hw":' + b"1" * 5000 + b"}"),
+]:
+    rc, ev = appeler_octets(octets)
+    r = refus(ev)
+    check(f"garde générique ({label}) : code de sortie 0", rc, 0)
+    check(f"garde générique ({label}) : un refus est émis", len(r), 1)
+    check(f"garde générique ({label}) : le refus nomme l'imprévu",
+          bool(r and "inattendue" in r[0].get("reason", "").lower()), True)
+
+# Témoin négatif de CE contrôle : une entrée mal formée que le hook sait
+# NOMMER ne doit PAS finir dans le garde générique — sinon l'assertion
+# ci-dessus passerait pour n'importe quelle entrée et ne prouverait rien du
+# chemin imprévu.
+rc_temoin, ev_temoin = appeler_brut("[1,2,3]")
+r_temoin = refus(ev_temoin)
+check("témoin négatif : une entrée NOMMÉE ne passe pas par le garde générique",
+      bool(r_temoin and "inattendue" not in r_temoin[0].get("reason", "").lower()),
+      True)
 
 if failures:
     print(f"FAIL ({len(failures)})")

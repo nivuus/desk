@@ -289,17 +289,50 @@ def resoudre(hw: dict, answers: dict) -> int:
     aussi cette fonction : toute exception qu'AUCUN chemin ci-dessous n'a
     prévue redevient un refus là-bas, jamais une trace pour l'opérateur.
     """
-    emettre({"event": "progress", "pct": 10, "msg": "Vérification de la VM Windows"})
+    emettre({"event": "progress", "pct": 10,
+             "msg": "Vérification du mode d'authentification"})
 
-    # --- La VM d'abord : sans elle, rien de ce que desk orchestre n'existe --
-    if not hw.get("vm_windows"):
-        refuser(
-            "aucune VM Windows détectée ou répondante : desk orchestre un "
-            "bureau distant Windows en WebRTC, et n'a rien à faire sans elle "
-            "(console la provisionne — voir le pré-requis 'console' du "
-            "manifeste)"
-        )
-        return 0
+    # 🔴 IL N'Y A PLUS DE PORTE « VM WINDOWS » ICI, ET C'EST LA CORRECTION
+    # DE LA CRITIQUE DE LA REVUE FINALE DE BRANCHE (30 août 2026). Ce hook
+    # portait `if not hw.get("vm_windows"): refuser(...)`. Trois faits, dont
+    # chacun suffit à condamner cette porte :
+    #
+    #   ① AUCUN PRODUCTEUR DE CETTE CLÉ N'EXISTE. Le moteur passe à `resolve`
+    #      EXACTEMENT ce que rend `installer/installer/common/hardware.py::
+    #      detect_all()` — huit clés (`disks`, `ethernet`, `wifi`, `gpus`,
+    #      `cpu`, `iommu`, `memory_mib`, `passthrough_candidates`), aucune
+    #      nommée `vm_windows` — passé verbatim par `install-engine/run.py`
+    #      (`hw = hardware.detect_all()`) à `steps/packages.py::plan_packages`
+    #      puis à `run_resolve`, sans enrichissement. `hw.get("vm_windows")`
+    #      rendait donc TOUJOURS `None`, ce hook refusait TOUJOURS, et
+    #      `steps/packages.py` traduit un refus en `StepError` — c'est-à-dire
+    #      que l'installation ENTIÈRE s'arrêtait, pas seulement `desk`. Le
+    #      package ne pouvait pas s'installer, la seule chose qu'il existe
+    #      pour faire.
+    #   ② LE MOMENT REND LA CONDITION INSATISFIABLE. `plan_packages()` appelle
+    #      `resolve` AVANT `partition()` (`installer/installer/packages/
+    #      runner.py`, docstring de tête : « plan_packages() runs resolve
+    #      BEFORE partition() »). À cet instant, le disque cible n'existe pas,
+    #      donc le système que `console` va installer n'existe pas, donc la VM
+    #      Windows que `console` provisionne ne peut pas exister. Aucun
+    #      détecteur qu'on ajouterait au moteur ne changerait cela : la porte
+    #      était fausse par construction, pas par oubli.
+    #   ③ LA GARANTIE EXISTE DÉJÀ, PLUS TÔT ET PLUS FORTE, ET ELLE N'EST PAS
+    #      LA NÔTRE. `nivuus-package.yaml` déclare `requires: packages:
+    #      [console]`, et `plan_packages()` refuse par `missing_dependencies`
+    #      AVANT le premier hook `resolve` et AVANT `partition()`. « La VM
+    #      existera » est donc acquis par le manifeste ; le redire ici en
+    #      interrogeant une clé inventée n'ajoutait rien et cassait tout.
+    #
+    # 🔴 LA PORTE N'EST PAS SUPPRIMÉE, ELLE MIGRE VERS `activate` — la seule
+    # phase où la VM peut exister (après le redémarrage, sur le système
+    # installé, avec le réseau). Voir `hooks/activate.py`, le bloc
+    # « LA PORTE DE LA VM WINDOWS VIT ICI » : la VM y est éprouvée par un
+    # ÉCHANGE WinRM RÉEL, jamais par une clé que personne ne produit.
+    #
+    # 🔴 CE QUE CE HOOK PEUT ENCORE LIRE DANS `hw` : rien qui ne figure dans
+    # `detect_all()`. `tests/test_desk_contrat_hw.py` fige ce contrat et
+    # rougit si une clé absente du producteur réapparaît ici.
 
     # --- Le mode d'authentification, et sa garde pomerium ------------------
     raison_auth = valider_auth_mode(answers)

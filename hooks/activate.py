@@ -244,12 +244,42 @@ def main() -> int:
     # rejouer ne casse rien), et les gater derrière l'idempotence du compte
     # laisserait un premier échec ICI, survenu APRÈS un enrôlement déjà
     # réussi, ne plus jamais être retenté par un rejeu ultérieur.
+    #
+    # 🔴 LA PORTE DE LA VM WINDOWS VIT ICI, DEPUIS LA REVUE FINALE DE BRANCHE
+    # (30 août 2026), ET PLUS DANS `resolve`. `hooks/resolve.py` portait
+    # `if not hw.get("vm_windows"): refuser(...)` : une clé qu'AUCUN
+    # producteur du moteur ne pose (`common/hardware.py::detect_all()` en rend
+    # huit, aucune de ce nom), éprouvée à une phase — avant `partition()` — où
+    # le disque cible, donc le système, donc la VM, n'existent pas encore.
+    # Voir le bloc de commentaire correspondant dans `resolve.py` pour les
+    # trois raisons complètes.
+    #
+    # ICI, la VM peut exister : `activate` court après le redémarrage, sur le
+    # système installé, avec le réseau, et `console` — pré-requis DUR du
+    # manifeste, donc activé AVANT `desk` — l'a provisionnée. La porte est
+    # donc une MESURE, jamais une lecture de clé : le premier échange WinRM
+    # ci-dessous EST l'épreuve. S'il échoue, ce n'est pas « ProjFS n'a pas pu
+    # s'activer », c'est « la VM n'est pas là », et le message le dit.
+    #
+    # ⚠️ POURQUOI PAS UNE SONDE SÉPARÉE, EN LECTURE SEULE, AVANT CELLE-CI :
+    # elle coûterait un second aller-retour WinRM qui ne pourrait rien dire de
+    # plus que le premier — et son critère de succès (une sortie non vide)
+    # n'est pas fiable, `winrm_exec.py` rendant légitimement une sortie vide
+    # pour une commande qui n'imprime rien. Un contrôle qui ne peut pas
+    # distinguer ses deux valeurs n'est pas un contrôle : on garde celui qui
+    # le peut.
     emettre({"event": "progress", "pct": 25,
-             "msg": "Pose de ProjFS et VB-Audio dans la VM (chemin WinRM de console)"})
+             "msg": "Verification de la VM Windows, puis pose de ProjFS "
+                    "(chemin WinRM de console)"})
     try:
         etat_projfs = poser_projfs()
     except (FileNotFoundError, RuntimeError) as exc:
-        print(f"desk activate: pose de ProjFS dans la VM refusee : {exc}",
+        print("desk activate: la VM Windows ne repond pas au chemin WinRM de "
+              "console — desk orchestre un bureau distant Windows en WebRTC "
+              "et n'a rien a faire sans elle (console la provisionne, voir le "
+              "pre-requis 'console' du manifeste ; c'est ICI, apres le "
+              "redemarrage, que cette condition est eprouvee, jamais dans "
+              f"resolve, ou la VM ne peut pas encore exister) : {exc}",
               file=sys.stderr)
         return 1
     # Le redémarrage se CONSTATE et se DIT ICI, il ne se prend jamais : voir

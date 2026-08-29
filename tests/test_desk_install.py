@@ -64,7 +64,11 @@ FACTS = {"vm_repond": True, "node_version": "24.9.0",
 
 def appeler(root, hw=None, answers=None, facts=None, env=None):
     """Appelle le hook comme le moteur : --phase/--root, stdin JSON."""
-    contexte = {"hw": hw if hw is not None else {"vm_windows": True},
+    # `hw` par défaut VIDE : le moteur envoie `detect_all()` verbatim, et
+    # `install.py` n'y lit rien — voir tests/test_desk_contrat_hw.py, qui
+    # fige ce contrat. Il portait `{"vm_windows": True}`, une clé qu'aucun
+    # producteur ne pose (Critique de la revue finale de branche).
+    contexte = {"hw": hw if hw is not None else {},
                 "answers": answers if answers is not None else REPONSES}
     if facts is not None:
         contexte["facts"] = facts
