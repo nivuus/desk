@@ -441,3 +441,129 @@ ce plan, rappelé ici pour qu'il ne se perde pas :
   dépôts concernés (`desk`, `console` via `installer/`, et `agent/src`),
   jamais par une exécution réelle sur la VM (qui n'a pas été touchée par
   cette revue, conformément à son périmètre en lecture seule).
+
+---
+
+## 9. Correction de `CLAUDE.md` — méthode, compte, ventilation, et ce qui a été laissé
+
+> **Ronde de correction 1 (relue par le contrôleur)** : la première version
+> de ce document ne portait cette méthode, ce compte et cette ventilation
+> nulle part — ils ne vivaient que dans un rapport de tâche **gitignoré**
+> (`task-9-report.md`). Le contrôleur a nommément rappelé la règle que ce
+> dépôt dit avoir payée : *une preuve ne doit jamais vivre dans un rapport
+> gitignoré*. Cette section la déplace ici, dans le document **versionné**
+> qui fait foi.
+
+### Méthode et premier passage
+
+Recherche par le sens, pas par une seule formule, sur les quatre familles
+que le brief de la tâche 9 nomme explicitement : montage CIFS, `C:\dev`,
+`scripts/winrm.js`, compilation sur la VM.
+
+Premier passage (motifs littéraux) :
+
+```
+grep -c "sync-agent\|build-agent.sh\|run-agent.sh\|C:\\dev\|/media/vm\|winrm.js\|montage CIFS\|scripts/check-session\|scripts/stop-agent\|scripts/sonde-multifenetre" CLAUDE.md
+```
+
+Résultat mesuré **avant** les éditions de cette tâche : **48**. Ventilation
+par famille à ce moment-là :
+
+- `CIFS` / `/media/vm` : 7 lignes.
+- `C:\dev` : 2 lignes.
+- `scripts/winrm.js` : 2 lignes.
+- `build-agent.sh`/`sync-agent.sh` (« compile SUR la VM ») : 9 lignes.
+
+Après élimination des recoupements entre familles, ces occurrences se
+regroupaient en **deux blocs contigus** portant l'affirmation périmée
+(« la VM est une machine de développement sur laquelle on compile ») :
+la section « 🖥️ Cycle de vie de la VM Windows » et le tableau
+« ### L'agent, sur la VM » — chacun corrigé par un bandeau nommant les
+trois faits neufs, sans réécrire le contenu qui suit (dont le sort n'est
+pas ma décision).
+
+⚠️ **Ce premier passage a MANQUÉ une affirmation contraire réelle** — relevé
+par la revue de la ronde 1 : `CLAUDE.md` (juste après le tableau
+« L'agent, sur la VM ») portait encore, sans aucun des dix termes du grep
+ci-dessus :
+
+> 🔴 **Avant toute compilation qui touche `proto/`** — l'horloge de la VM
+> avance sur celle de l'hôte, et cargo saute alors le rlib de `proto` […]
+
+Ce paragraphe affirme, lui aussi, qu'on compile Rust **sur la VM** — exactement
+le mode d'échec contre lequel la tâche 9 avait été mise en garde d'avance
+(« chercher par la formule au lieu du sens »). **Corrigé** : il reçoit
+désormais le même bandeau que le tableau au-dessus de lui, nommant qu'il vise
+la VM de développement d'avant le 29 août 2026 et que son sort n'est pas
+tranché, avec un renvoi à cette section.
+
+### Second passage, par concepts (ronde de correction 1)
+
+Relancé, cette fois sur des **concepts** plutôt que des chaînes : « compiler
+sur la machine distante », « l'horloge de la VM », « le rlib », « la tâche
+planifiée », « le partage », plus une vérification directe
+(`cargo build`, `link.exe`, `MSVC`, `rustc`, `target\release`, `\dev\`).
+
+**Aucune nouvelle affirmation contraire** trouvée au-delà de celle déjà
+traitée ci-dessus. Les autres occurrences de ces concepts vivent toutes dans
+la sous-section « ### Outillage VM et Windows » de « 🪤 Pièges transverses »,
+et s'en distinguent d'une façon qui justifie de les LAISSER plutôt que de les
+encadrer : cette section est explicitement rétrospective (son propre titre :
+« ceux que ce dépôt a payés PLUSIEURS fois »), donc déjà lue comme un relevé
+historique, jamais comme une instruction à exécuter aujourd'hui — à la
+différence du tableau et du paragraphe `proto/`, qui vivent dans
+« 🔨 Commandes » et se lisent comme des gestes à faire maintenant. Les cinq
+pièges concernés, tous dans cette même sous-section, et pourquoi chacun reste
+en l'état :
+
+- « `build-agent.sh` RSYNCHRONISE L'ARBRE ENTIER » — leçon sur un script dont
+  le sort n'est pas tranché (déjà repérée au premier passage).
+- « LE DÉFAUT À DEUX RÉGLAGES… dans `build-agent.sh` / `run-agent.sh` » —
+  même raison (déjà repérée au premier passage).
+- « UN AGENT SURVIVANT TIENT `agent.log` […] `link.exe` en 1104 » — leçon
+  méthodologique sur la lecture d'un journal après un échec de build,
+  indépendante de la nature dev-VM/appliance de la machine.
+- « UN RELEVÉ WinRM EST CELUI DE LA SESSION 0 […] une tâche planifiée `/it` »
+  — leçon générale sur WinRM et la session 0, qui reste vraie quel que soit
+  le chemin WinRM employé (`scripts/winrm.js` ou `winrm_exec.py`) : elle ne
+  décrit pas une capacité de la VM, mais une propriété de WinRM lui-même.
+- « `nodejs-winrm` ENVELOPPE TOUJOURS LA COMMANDE […] Écrire le script sur le
+  partage et l'invoquer par `-File` » — piège spécifique à la bibliothèque
+  `nodejs-winrm` qu'utilise `scripts/winrm.js` ; son sort suit celui de ce
+  script, déjà nommé comme non tranché.
+
+Une sixième occurrence, hors sujet et laissée sans y toucher : « … 18 619
+lignes en quelques secondes sur un partage CIFS ont empêché une session de
+s'établir » (section « Ce que le montage de recette ne peut pas voir ») — un
+piège de traçage par paquet dans la boucle de transport WebRTC, sans rapport
+avec la nature de la VM cible.
+
+### Compte final, et pourquoi il diffère du premier
+
+**Rechercher à nouveau la même commande après TOUTES les éditions de cette
+tâche (y compris celle de la ronde de correction 1) rend 55, pas 48.**
+L'écart n'est pas une erreur : les bandeaux correctifs eux-mêmes citent
+`C:\dev`, `/media/vm`, `scripts/winrm.js` et `scripts/build-agent.sh` pour
+les nommer, ce qui fait mécaniquement remonter le compte du grep qui les
+cherche. **Le 48 mesure l'état AVANT correction ; le 55 mesure l'état
+APRÈS.** Un lecteur qui relance la commande sur `HEAD` doit s'attendre à 55,
+pas à 48 — les deux nombres sont vrais, de deux instants différents, et
+c'est la raison qu'il fallait écrire plutôt que recopier un seul chiffre.
+
+### Bilan complet, en un tableau
+
+| Catégorie | Compte | Traitement |
+| --- | --- | --- |
+| Blocs corrigés par un bandeau | 3 (section VM, tableau « L'agent, sur la VM », paragraphe `proto/`) | Bandeau nommant les trois faits neufs + sort non tranché, sans réécrire le contenu qui suit |
+| Pièges historiques laissés tels quels, avec raison | 5 (`build-agent.sh` rsync, encodage PowerShell, `agent.log`/`link.exe`, session 0/`tâche planifiée`, `nodejs-winrm`/partage) | Laissés : rétrospectifs par construction (section « Pièges transverses »), liés au sort non tranché des mêmes scripts |
+| Mention hors sujet, non touchée | 1 (partage CIFS générique dans le traçage WebRTC) | Aucun rapport avec la nature de la VM — écartée |
+
+### Une mineure différée, nommée par le contrôleur, non corrigée ici
+
+Le chemin exact cité pour `guest-ready-watch.py` (§2 ci-dessus, et dans
+`hooks/vm.py`) ne porte jamais son répertoire parent : le fichier vit sous
+`console/host/guest-ready-watch.py`, **pas** sous `console/guest/` — vérifié
+(`find … -iname guest-ready-watch.py`). Aucun document de ce lot n'affirme
+le mauvais chemin, mais aucun ne dit non plus le bon. Classé mineure et
+**délibérément non corrigé** par cette ronde — instruction du contrôleur,
+qui l'a lui-même différée plutôt que demandé de la traiter.

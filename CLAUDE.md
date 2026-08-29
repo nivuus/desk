@@ -345,6 +345,13 @@ machine qui n'existe plus sous cette forme ; leur sort n'est pas tranché.**
 | `scripts/sonde-multifenetre.sh` | enchaîne les sondes du chantier D, **une par exécution du binaire** (ces API échouent par plantage de processus) |
 | `node scripts/winrm.js '<PowerShell>'` | exécute une commande sur la VM — ⚠️ **en session 0** |
 
+⚠️ **Ce piège aussi vise la compilation SUR la VM de développement d'avant le
+29 août 2026 — même réserve qu'en tête de section : le sort de ce chemin
+n'est pas tranché.** Trouvé par une recherche par le SENS (« l'horloge de la
+VM », « le rlib ») après qu'une première recherche par motifs littéraux
+l'avait manqué — voir
+[`docs/superpowers/plans/2026-08-29-package-nivuus-resultats.md`](docs/superpowers/plans/2026-08-29-package-nivuus-resultats.md).
+
 🔴 **Avant toute compilation qui touche `proto/`** — l'horloge de la VM avance
 sur celle de l'hôte, et cargo saute alors le rlib de `proto` :
 
