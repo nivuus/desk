@@ -2,12 +2,18 @@
 """Tests du module `hooks/vm.py` : ce que `desk` pose DANS la VM Windows,
 par le chemin WinRM de `console` (ProjFS, VB-Audio).
 
-🔴 AUCUN APPEL WINRM RÉEL N'EST FAIT ICI. Tous les tests de comportement
-injectent un exécuteur FACTICE (`faux_winrm_rendant`) — jamais le vrai
-`winrm_exec.py`, jamais la VM. Seule la ROUGE du contrat inter-packages
-(en bas de ce fichier) touche à la résolution de chemin réelle, et elle
-échoue AVANT tout appel réseau : `chemin_winrm_exec()` lève sur un fichier
-absent, sans jamais atteindre `subprocess.run`.
+🔴 AUCUN APPEL WINRM RÉEL N'EST FAIT ICI, ET AUCUN PAQUET NE QUITTE CETTE
+MACHINE. La plupart des tests de comportement injectent un exécuteur FACTICE
+(`faux_winrm_rendant`), qui court-circuite tout sous-processus.
+
+⚠️ MAIS « AUCUN `subprocess.run` N'EST ATTEINT » SERAIT FAUX, et cet en-tête
+l'a écrit jusqu'au 30 août 2026 (relevé par la revue finale de branche) : les
+scénarios A et B en bas de ce fichier passent DÉLIBÉRÉMENT par
+`executer_winrm_reel`, donc par un vrai `subprocess.run`, pour éprouver son
+bras d'échec et son round-trip — deux chemins qu'aucun exécuteur factice ne
+peut couvrir. Ce qu'ils lancent est un FAUX `winrm_exec.py` de quatre lignes,
+posé sous un `NIVUUS_PACKAGES_DIR` temporaire : le sous-processus est réel,
+la VM et le réseau ne le sont jamais.
 
 `hooks/vm.py` n'est pas un hook exécutable seul (pas de `--phase`/stdin
 JSON) : c'est un module importé par `hooks/activate.py`, au même titre que
@@ -194,8 +200,15 @@ try:
         poser_script_winrm_reel(packages_dir, (
             "#!/usr/bin/env python3\n"
             "import sys\n"
-            "sys.stderr.write('error: cannot reach guest at 192.168.3.2:5985: "
-            "timeout\\n')\n"
+            # ⚠️ LE TEXTE DIT QU'IL EST FACTICE, ET C'EST DÉLIBÉRÉ : la
+            # version précédente imprimait « error: cannot reach guest at
+            # 192.168.3.2:5985: timeout », que `make test` affichait telle
+            # quelle en sortie NORMALE — la relectrice de la revue finale a
+            # cru, en la lisant, que la suite avait touché la VM. Un texte de
+            # banc qui ne peut pas se confondre avec une panne réelle coûte
+            # une ligne.
+            "sys.stderr.write('FAUX winrm_exec.py de test : echec simule, "
+            "aucune VM contactee\\n')\n"
             "sys.exit(1)\n"
         ))
         os.environ["NIVUUS_PACKAGES_DIR"] = str(packages_dir)
@@ -211,7 +224,7 @@ try:
         check("executeur reel, echec : le message nomme le mode et le code",
               "winrm_exec.py ps a echoue (code 1)" in message, True)
         check("executeur reel, echec : le message porte la raison distante",
-              "cannot reach guest" in message, True)
+              "echec simule" in message, True)
         print(f"ROUGE (executeur reel, echec) : {message}")
 finally:
     if ancien_packages_dir is None:
