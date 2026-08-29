@@ -163,6 +163,21 @@ const EXCEPTIONS: readonly Exception[] = [
             "La valeur est littéralement « trop-court » : c'est le test qui vérifie " +
             "que `lireConfig` REFUSE un secret sous `LONGUEUR_SECRET_MIN`.",
     },
+    {
+        fichier: 'tests/desk_activate_fixtures.py',
+        nom: 'AGENT_SECRET',
+        empreinte: 'fc66b5649cf2782e',
+        raison:
+            "La sortie SIMULÉE d'un faux `npm run admin:agent`, dans les tests du " +
+            "package `desk` : ce script factice imprime cette ligne pour que le hook " +
+            "activate.py sous test croie avoir enrôlé un agent, sans jamais parler à " +
+            "une vraie plateforme. Ce n'est l'identifiant d'AUCUN agent réel. " +
+            "Réécrire la fixture ne servirait à rien — le détecteur cherche des NOMS, " +
+            "jamais des valeurs (voir l'en-tête du fichier), donc une valeur changée " +
+            "resterait tout autant dénoncée ; et concaténer la chaîne pour esquiver " +
+            "l'expression régulière serait pire que le mal : la fixture deviendrait " +
+            "invisible à tout audit futur, alors qu'elle est ici visible et discutée.",
+    },
 ];
 
 /// Une valeur est INOFFENSIVE si elle ne peut pas être un secret collé.
