@@ -163,6 +163,88 @@ finally:
         os.environ["NIVUUS_PACKAGES_DIR"] = ancien_packages_dir
 
 
+# === Ronde de correction 1 : le bras d'échec RÉEL de `executer_winrm_reel` =
+# 🔴 Jusqu'ici, AUCUN test ne passait par le vrai sous-processus : tous les
+# tests de comportement ci-dessus injectent `FauxWinRM`, qui court-circuite
+# `executer_winrm_reel` (et donc son `subprocess.run`) entièrement. Le bras
+# `if proc.returncode != 0: raise RuntimeError(...)` de `hooks/vm.py` n'était
+# donc éprouvé par RIEN — un contrôle qu'on n'a jamais vu rouge n'est pas un
+# contrôle. Les deux scénarios ci-dessous posent un VRAI fichier
+# `console/guest/winrm_exec.py` (un script Python autonome, jamais la VM) et
+# appellent `poser_projfs()` SANS exécuteur injecté (`executer=None`), pour
+# que `executer_winrm_reel` — donc `subprocess.run` — soit réellement exercé.
+
+def poser_script_winrm_reel(packages_dir: pathlib.Path, corps: str) -> None:
+    """Un VRAI fichier `console/guest/winrm_exec.py` (jamais la VM) : un
+    script Python autonome dont `corps` est le contenu intégral."""
+    guest_dir = packages_dir / "console" / "guest"
+    guest_dir.mkdir(parents=True, exist_ok=True)
+    script = guest_dir / "winrm_exec.py"
+    script.write_text(corps, encoding="utf-8")
+    script.chmod(0o755)
+
+
+# --- A : la commande distante ÉCHOUE (code de sortie non nul, message sur
+# stderr) — `executer_winrm_reel` doit lever `RuntimeError`, et le MESSAGE
+# de cette exception doit porter la raison distante, pas seulement lever. --
+ancien_packages_dir = os.environ.get("NIVUUS_PACKAGES_DIR")
+try:
+    with tempfile.TemporaryDirectory() as tmp:
+        packages_dir = pathlib.Path(tmp)
+        poser_script_winrm_reel(packages_dir, (
+            "#!/usr/bin/env python3\n"
+            "import sys\n"
+            "sys.stderr.write('error: cannot reach guest at 192.168.3.2:5985: "
+            "timeout\\n')\n"
+            "sys.exit(1)\n"
+        ))
+        os.environ["NIVUUS_PACKAGES_DIR"] = str(packages_dir)
+
+        a_leve = False
+        message = ""
+        try:
+            vm.poser_projfs()  # executer=None : passe par executer_winrm_reel REEL
+        except RuntimeError as exc:
+            a_leve = True
+            message = str(exc)
+        check("executeur reel, echec : RuntimeError leve", a_leve, True)
+        check("executeur reel, echec : le message nomme le mode et le code",
+              "winrm_exec.py ps a echoue (code 1)" in message, True)
+        check("executeur reel, echec : le message porte la raison distante",
+              "cannot reach guest" in message, True)
+        print(f"ROUGE (executeur reel, echec) : {message}")
+finally:
+    if ancien_packages_dir is None:
+        os.environ.pop("NIVUUS_PACKAGES_DIR", None)
+    else:
+        os.environ["NIVUUS_PACKAGES_DIR"] = ancien_packages_dir
+
+
+# --- B (symétrique, promu de Mineure) : la commande distante RÉUSSIT en
+# émettant `RestartNeeded` — le round-trip réel stdout -> redemarrage_requis
+# est ainsi couvert directement, pas seulement par ricochet via FauxWinRM. --
+ancien_packages_dir = os.environ.get("NIVUUS_PACKAGES_DIR")
+try:
+    with tempfile.TemporaryDirectory() as tmp:
+        packages_dir = pathlib.Path(tmp)
+        poser_script_winrm_reel(packages_dir, (
+            "#!/usr/bin/env python3\n"
+            "import sys\n"
+            "sys.stdout.write('RestartNeeded\\n')\n"
+            "sys.exit(0)\n"
+        ))
+        os.environ["NIVUUS_PACKAGES_DIR"] = str(packages_dir)
+
+        etat = vm.poser_projfs()  # executer=None : passe par executer_winrm_reel REEL
+        check("executeur reel, succes : round-trip stdout -> redemarrage_requis",
+              etat.redemarrage_requis, True)
+finally:
+    if ancien_packages_dir is None:
+        os.environ.pop("NIVUUS_PACKAGES_DIR", None)
+    else:
+        os.environ["NIVUUS_PACKAGES_DIR"] = ancien_packages_dir
+
+
 if failures:
     print(f"FAIL ({len(failures)})")
     for f in failures:

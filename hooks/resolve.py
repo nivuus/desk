@@ -218,6 +218,35 @@ def valider_auth_mode(answers: dict):
     return None
 
 
+def valider_vb_audio(answers: dict):
+    """Rend None en succès, ou la phrase de refus sinon.
+
+    🔴 RONDE DE CORRECTION 1 sur la tâche 6 (29 août 2026) : `hooks/vm.py::
+    poser_vb_audio(armee=True)` lève `NotImplementedError` faute de charge
+    VB-Audio fournie par ce package (licence personnelle seulement) — mais
+    ce hook-là tourne dans `activate`, APRÈS que le compte administrateur
+    et l'enrôlement de l'agent ont déjà été tentés (`hooks/activate.py`).
+    Un opérateur qui coche la case du wizard (« Installer VB-Audio dans la
+    VM (micro) ») obtiendrait donc une activation qui échoue à CHAQUE
+    exécution, indéfiniment : aucun compte, aucun agent enrôlé. Le refus
+    doit arriver ICI, dans `resolve`, avant qu'un octet touche le disque —
+    exactement la doctrine de ce hook (voir le docstring de tête). La levée
+    de `poser_vb_audio` reste en place par ailleurs : une défense en
+    profondeur, pas un doublon — si ce refus était un jour contourné, le
+    hook ne doit toujours pas prétendre avoir installé quoi que ce soit.
+    """
+    if not answers.get("vb_audio"):
+        return None
+    return (
+        "vb_audio demandé, mais ce package ne fournit aucune charge "
+        "VB-Audio : sa licence est personnelle seulement, et aucune tâche "
+        "de ce lot n'en dépose dans l'arborescence que console construit. "
+        "Laisser l'option décochée — le micro se signale alors de lui-même "
+        "côté produit (mic: false dans le message ready, le bouton du "
+        "navigateur ne paraît pas)."
+    )
+
+
 def charger_contexte():
     """Lit et valide `{"hw":…, "answers":…}` sur stdin.
 
@@ -275,6 +304,12 @@ def resoudre(hw: dict, answers: dict) -> int:
     raison_auth = valider_auth_mode(answers)
     if raison_auth:
         refuser(raison_auth)
+        return 0
+
+    # --- VB-Audio : aucune charge fournie, le refus arrive ICI -------------
+    raison_vb_audio = valider_vb_audio(answers)
+    if raison_vb_audio:
+        refuser(raison_vb_audio)
         return 0
 
     emettre({"event": "progress", "pct": 40, "msg": "Vérification de node"})
