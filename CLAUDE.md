@@ -890,6 +890,8 @@ Ils sont **datés**, et plusieurs se réfutent les uns les autres à dessein.
 ### Chantier package-nivuus — `desk` devient un package Nivuus
 
 - **package-nivuus : `desk` devient un package Nivuus, et l'agent redevient refabricable (29 août 2026)** — [résultats](docs/superpowers/plans/2026-08-29-package-nivuus-resultats.md) — `scripts/build-agent-croise.sh` refabrique `agent.exe` en croisé (mingw, jamais exécuté sur la VM) là où l'appliance le déclarait « never fetchable » ; manifeste et wizard (`requires.packages: [console]`) ; trois hooks (`resolve`/`install`/`activate`) qui refusent avant que le disque ne soit touché, posent le service systemd (jamais armé par `install`) et l'arment par un lien ; `hooks/vm.py` pose ProjFS et VB-Audio dans la VM par le chemin WinRM de `console` ; `agent.exe` déposé là où `console` va le chercher ; `Makefile`/`README-package.md`. **N'établit ni que l'agent croisé fonctionne, ni qu'une installation a été jouée de bout en bout sur une machine neuve, ni aucun des douze items du lot 3 (suspendu)** — voir son § « Ce que ce lot n'établit PAS ». 🔴 **Défaut transverse trouvé, non corrigé** : rien ne pousse `AGENT_VM`/`AGENT_SECRET` dans l'environnement de l'agent qui tourne réellement dans la VM — sans ce couple, aucune session ne peut s'établir, quelle que soit la qualité de l'installation.
+- **package-nivuus, lots 10A à 13 : la MISE EN SERVICE réelle, et quatre défauts que seul un navigateur voyait (30 août 2026)** — [résultats](docs/superpowers/plans/2026-08-29-package-nivuus-resultats.md) § 10 — un service `desk` **tourne en production** sur cette machine (`192.168.3.1:3445`, derrière `https://app.allanic.me`, mode **`pomerium`** sur décision du propriétaire), servi par une copie déployée sous `/opt/nivuus/desk`. 🔴 **Le bug le plus grave n'était pas dans le package** : `PLATEFORME_HOTE` était confondu avec l'adresse TURN dérivée de la route par défaut — **l'adresse PUBLIQUE de cet hôte** —, et la garde du produit ne pouvait pas l'attraper (`ECOUTES_UNIVERSELLES` ne connaît que quatre littéraux, jamais « une adresse routable ordinaire »). Aussi : la CSP interdisait l'amorce anti-FOUC de la plateforme (sortie du HTML plutôt qu'un hash, parce que `deploiement/nginx.conf` porte une copie STATIQUE de la même CSP) ; le hub était **vide** faute d'attribution de VM, alors que `routes-applications.ts` l'écrivait déjà en toutes lettres. ⚠️ **La racine `/` sert la PAGE DE SESSION, qui se rabat sur la session `demo` sans jeton** : décision non prise, offerte au propriétaire.
+- **package-nivuus, revue finale de branche : une Critique et six Importantes (30 août 2026)** — [résultats](docs/superpowers/plans/2026-08-29-package-nivuus-resultats.md) § 12 — 🔴 **le package NE POUVAIT PAS S'INSTALLER** : `hooks/resolve.py` refusait sur `hw["vm_windows"]`, une clé qu'**aucun producteur du moteur ne pose**, à une phase (avant `partition()`) où la VM ne peut pas exister ; le refus devient un `StepError` qui arrête l'installation **entière**. **Huit suites et neuf revues ne pouvaient pas le voir : elles FABRIQUAIENT la clé dont elles vérifiaient la consommation.** La porte a migré dans `activate`, où elle est une mesure, et `tests/test_desk_contrat_hw.py` fige le contrat en lisant le **producteur**. Aussi fermés : le runtime Node **déposé** au lieu d'être supposé (il l'était par un geste manuel consigné dans un rapport gitignoré), un refus qui arrive **avant** le premier secret écrit, et les `facts` validés au lieu d'être crus sur parole.
 
 
 ---
@@ -1013,6 +1015,61 @@ gitignoré.
   signaling.rs`) joue désormais ce cas et fige le contrat — vérifié VERT sur
   le produit d'aujourd'hui, puis rougi par mutation ciblée d'`url_du_canal`,
   restaurée depuis une copie nommée.
+
+### Ce que le chantier `package-nivuus` laisse dû (30 août 2026)
+
+🔴 **INSCRIT ICI ET NON DANS LE SEUL DOCUMENT DE RÉSULTATS, POUR LA MÊME
+RAISON QUE LE CHANTIER `auth-pomerium` — et parce que ce chantier vient de
+payer DEUX FOIS le patron « une preuve ne doit jamais vivre dans un rapport
+gitignoré » : la revue de sa tâche 9 l'a fait corriger, et quatre lots plus
+tard il était rouvert en plus grand.**
+
+- 🔴 **UNE FENÊTRE OUVERTE PLUS DE 30 SECONDES AVANT LA CONNEXION DU
+  NAVIGATEUR EST PERDUE, DÉFINITIVEMENT, ET RIEN NE LA REPROPOSE.** C'est un
+  défaut du **PRODUIT**, pas du package, établi par capture réseau et
+  messages du protocole décodés (lot 10D). `agent/src/superviseur/table/
+  orphelines.rs::relancer_les_orphelines`, second garde-fou : toute entrée en
+  `AttendLeViewport` depuis plus de `DELAI_ATTENTE_VIEWPORT_MAX`
+  (`agent/src/superviseur/table.rs`, **30 s**) est retirée et refusée
+  (« la page-shell n'a jamais répondu après la relance »). Le commentaire
+  d'`orphelines.rs` le dit lui-même : **« une entrée abandonnée n'est JAMAIS
+  reproposée, le hook ne réémettant rien pour une fenêtre déjà ouverte »** —
+  la seule façon de la revoir est de fermer puis rouvrir la fenêtre Windows.
+  Et **rien ne bufferise côté plateforme** : `plateforme/src/signaling/
+  appariement.ts` ne conserve aucun état pour `fenetre-ouverte`/`refus`
+  (seule l'offre SDP l'est), un message dont le pair n'est pas connecté est
+  simplement **non relayé, sans mise en file**. 🔴 **C'est exactement le mode
+  d'usage réel derrière Pomerium** — l'OAuth prend du temps — et c'est le
+  symptôme que le propriétaire a rapporté (« aucune fenêtre disponible »).
+  **NON CORRIGÉ, à dessein** : le corriger est un changement de conception
+  (rejeu à la connexion, ou file côté plateforme, ou relance du hook) qui
+  mérite sa propre tâche. Détail et mesures : document de résultats, § 11.
+- 🔴 **`AGENT_VM`/`AGENT_SECRET` NE SONT POUSSÉS PAR RIEN DANS LA VM.**
+  `agent/src/configuration.rs` les lit, `main.rs` refuse explicitement sans
+  eux, et `run-agent.ps1` de `console` ne pose que `SIGNALING_URL`,
+  `LOCAL_IP` et `RUST_LOG`. Le hook `activate` les écrit dans `desk.env`
+  **côté hôte**. Sans ce couple, **aucune session ne peut s'établir**, quelle
+  que soit la qualité de l'installation. Vérifié encore le 30 août 2026.
+- ⚠️ **UN SERVICE `desk` TOURNE EN PRODUCTION SUR CETTE MACHINE**
+  (`192.168.3.1:3445`, derrière `https://app.allanic.me`, mode `pomerium`,
+  copie déployée sous `/opt/nivuus/desk`) — **ce n'est pas le dépôt qui le
+  sert**. Tout redéploiement par `rsync -a` doit refaire un
+  `chmod -R a+rX` : `DynamicUser=yes` fait tourner le service sous un UID
+  éphémère, et des droits trop restrictifs lui rendent la page illisible
+  (incident réel, page blanche d'une minute).
+- ⚠️ **LA RACINE `/` SERT LA PAGE DE SESSION**, qui se rabat sur la session
+  `demo` sans jeton : un utilisateur qui tape l'adresse du service tombe
+  mécaniquement sur la seule page qui ne peut pas marcher. **Décision non
+  prise** (servir le hub, ou rediriger) — elle appartient au propriétaire.
+- ⚠️ **`coturn` EST POSÉ, JAMAIS ARMÉ** : `/etc/turnserver.conf` est écrit,
+  `/etc/default/coturn` ne l'est pas, et **rien n'écoute sur le port 3478**
+  alors que le service annonce `TURN_URL=turn:90.87.35.18:3478` à ses
+  clients.
+- 🔴 **AUCUNE INSTALLATION N'A JAMAIS ÉTÉ JOUÉE PAR LE MOTEUR RÉEL.** La
+  Critique de la revue finale — un `resolve` qui refusait toujours — a
+  survécu à huit suites vertes et neuf revues **pour cette seule raison**.
+  Tant que `run.py` n'a pas appelé ces hooks pour de vrai, la même classe de
+  défaut reste possible.
 
 ### Ce qu'aucun chantier n'a jamais mesuré
 
