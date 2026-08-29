@@ -36,7 +36,6 @@ import argparse
 import json
 import os
 import pathlib
-import secrets
 import sys
 
 from commun import (
@@ -49,6 +48,12 @@ from commun import (
     valider_hote,
 )
 from depot_arbre import copier_arbre, rendre_lisible_par_tous
+from fichiers_installes import (
+    PORT_TURN,
+    ecrire_env,
+    ecrire_secret,
+    ecrire_turnserver_conf,
+)
 
 
 def _racine_source() -> pathlib.Path:
@@ -70,13 +75,6 @@ ASSETS = pathlib.Path(__file__).resolve().parent / "assets"
 
 # PORT_DEFAUT (3445) et sa raison vivent dans `commun.py`, seul endroit qui
 # les porte désormais — voir son commentaire.
-
-# Le port TURN standard, celui que docker-compose.coturn.yml pose par
-# `--listening-port=3478` — la seule valeur qui fasse correspondre l'URL
-# annoncée aux clients (TURN_URL) et le port sur lequel coturn écoute
-# réellement.
-PORT_TURN = 3478
-
 
 def emettre(evenement: dict) -> None:
     print(json.dumps(evenement), flush=True)
@@ -132,91 +130,6 @@ def deriver_adresse_turn() -> str:
             "TURN_RELAY_IP"
         )
     return adresse
-
-
-# --- Fichiers ----------------------------------------------------------
-
-def ecrire_secret() -> str:
-    """Tire un secret au hasard — jamais demandé, jamais constant.
-
-    🔴 `PLATEFORME_SECRET_JETON` n'a AUCUN défaut côté produit
-    (`plateforme/src/config.ts::lireConfig`) : un défaut aléatoire À CHAQUE
-    DÉMARRAGE invaliderait toutes les sessions à chaque redémarrage du
-    service. Ce hook tire donc le secret UNE SEULE FOIS, à l'installation,
-    et le persiste dans `desk.env` — jamais recalculé ensuite.
-    `secrets.token_hex(32)` rend 64 caractères hexadécimaux, largement
-    au-dessus du minimum de 32 que `LONGUEUR_SECRET_MIN` exige.
-    """
-    return secrets.token_hex(32)
-
-
-def ecrire_env(chemin: pathlib.Path, valeurs: dict) -> None:
-    """Écrit `chemin` en KEY=VALUE, un par ligne, DÉJÀ CRÉÉ en mode 600.
-
-    🔴 CRÉÉ EN 0600, JAMAIS ÉCRIT PUIS `chmod`É APRÈS COUP (ronde de
-    correction 1, tâche 4) : entre un `write_text` et un `os.chmod`
-    ultérieur, le fichier existe brièvement au mode par défaut du `umask`
-    du processus (644 dans le cas le plus courant) — une fenêtre
-    d'exposition réelle pour un fichier qui porte `PLATEFORME_SECRET_JETON`
-    en clair. `os.open(..., mode=0o600)` pose la permission ATOMIQUEMENT à
-    la création : le `mode` d'un `open(2)` avec `O_CREAT` est toujours
-    masqué par le `umask` du processus (qui ne peut que RETIRER des bits,
-    jamais en ajouter), donc le résultat est au plus 0600, jamais plus
-    permissif — il n'existe aucun instant où le fichier est lisible par
-    autrui.
-    """
-    chemin.parent.mkdir(parents=True, exist_ok=True)
-    corps = "\n".join(f"{cle}={valeur}" for cle, valeur in valeurs.items()) + "\n"
-    descripteur = os.open(chemin, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    with os.fdopen(descripteur, "w", encoding="utf-8") as fh:
-        fh.write(corps)
-
-
-def ecrire_turnserver_conf(chemin: pathlib.Path, turn_ecoute: str,
-                            turn_relais: str, secret: str) -> None:
-    """Pose la configuration native du paquet Debian `coturn`.
-
-    ⚠️ FORMAT NON VÉRIFIÉ SUR CETTE MACHINE — `coturn` n'y est pas installé
-    (`dpkg -l coturn` n'y rend rien à la date d'écriture). Les directives
-    ci-dessous reprennent, telles quelles, les options déjà vérifiées et
-    commentées de `docker-compose.coturn.yml` (`--listening-ip`,
-    `--relay-ip`, `--static-auth-secret`, etc.) : chaque option de coturn a,
-    par construction du logiciel, une directive de fichier de configuration
-    du même nom sans le préfixe `--`. C'est une extrapolation raisonnable,
-    pas une mesure — à confirmer au premier `turnserver -c ce-fichier`
-    réellement joué.
-
-    🔴 POSÉE, PAS ARMÉE : ce fichier ne suffit pas à faire tourner coturn —
-    `/etc/default/coturn` (TURNSERVER_ENABLED) n'est pas touché ici, par la
-    même doctrine que l'unité desk-plateforme (voir son commentaire) :
-    poser n'est pas armer. Aucune tâche de ce plan n'arme coturn ; c'est un
-    legs nommé, pas un oubli — voir le rapport de cette tâche.
-    """
-    corps = f"""# turnserver.conf — posé par le hook install du package desk.
-# Format extrapolé de docker-compose.coturn.yml, NON VÉRIFIÉ sur ce disque
-# (coturn n'y est pas installé) — voir le docstring d'ecrire_turnserver_conf.
-listening-port={PORT_TURN}
-listening-ip={turn_ecoute}
-relay-ip={turn_relais}
-min-port=49160
-max-port=49200
-fingerprint
-use-auth-secret
-static-auth-secret={secret}
-realm=nivuus
-no-tls
-no-dtls
-no-cli
-log-file=stdout
-"""
-    chemin.parent.mkdir(parents=True, exist_ok=True)
-    # Même précaution que `ecrire_env` (voir son docstring) : ce fichier
-    # porte `static-auth-secret` en clair, et une fenêtre write-puis-chmod
-    # y serait PIRE que sur desk.env — créé déjà en 0600, jamais chmod après
-    # coup.
-    descripteur = os.open(chemin, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    with os.fdopen(descripteur, "w", encoding="utf-8") as fh:
-        fh.write(corps)
 
 
 def main() -> int:
