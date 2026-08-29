@@ -390,7 +390,6 @@ def resoudre(hw: dict, answers: dict) -> int:
     emettre({
         "event": "facts",
         "facts": {
-            "vm_repond": True,
             "node_version": version_node,
             "turn_ecoute": turn_ecoute,
             "turn_relais": turn_relais,

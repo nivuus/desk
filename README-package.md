@@ -70,11 +70,18 @@ croire qu'un `make test` vert vaut recette du produit.**
 
 🔴 **`make test` N'EST PAS HERMÉTIQUE, ET CETTE PAGE A AFFIRMÉ LE CONTRAIRE.**
 Elle disait « contre un moteur et un système de fichiers **factices** » ;
-c'est faux, relevé par la revue finale de branche. Les installations 1, 2, 3,
-5 et 7 de `tests/test_desk_install.py` lisent le **vrai dépôt** (elles ne
+c'est faux, relevé par la revue finale de branche. Les installations 1, 2, 3
+et 7 de `tests/test_desk_install.py` lisent le **vrai dépôt** (elles ne
 posent pas `DESK_SOURCE_RACINE`) et copient le vrai
 `plateforme/node_modules` et le vrai `client/dist` ; l'installation 7 dépose
-le **vrai runtime Node** de cette machine ; `tests/test_desk_manifeste.py` et
+le **vrai runtime Node** de cette machine. ⚠️ **L'installation 5 EST
+HERMÉTIQUE, à la différence des quatre autres** : elle pose
+`DESK_SOURCE_RACINE` vers une source minimale FACTICE
+(`tests/desk_install_fixtures.py::poser_source_minimale`), pour rejouer
+`install` deux fois de suite sans dépendre du vrai dépôt — corrigé ici après
+que la revue finale suivante l'a relevé (le fond ne change pas : quatre
+scénarios sur cinq lisent le vrai dépôt, et cela suffit à rendre `make test`
+non hermétique). `tests/test_desk_manifeste.py` et
 `tests/test_desk_contrat_hw.py` lisent le **vrai dépôt voisin**
 `../installer`. Sur un clone frais, `make test` échoue. Ce qu'il exige :
 

@@ -45,7 +45,11 @@ REPONSES = {"admin_email": "a@b.c", "admin_password": "hunter2hunter2",
 # ce correctif, `install.py` posait `PLATEFORME_HOTE = turn_ecoute`, ce qui
 # aurait fait écouter le service sur l'adresse dérivée pour TURN (publique,
 # sur la machine réelle) plutôt que sur une adresse interne.
-FACTS = {"vm_repond": True, "node_version": "24.9.0",
+# 🔴 `vm_repond` A DISPARU DU CONTRAT (revue finale de branche, 30 août
+# 2026) : ce n'était pas un fait mesuré mais un littéral (`True` en dur
+# dans `hooks/resolve.py`), à une phase qui ne peut rien savoir de la VM.
+# Voir `tests/test_desk_contrat_hw.py` (garde ⑤).
+FACTS = {"node_version": "24.9.0",
          "turn_ecoute": "203.0.113.9", "turn_relais": "203.0.113.9",
          "hote": "198.51.100.1", "proxy_confiance": "198.51.100.1",
          "port": 9999}

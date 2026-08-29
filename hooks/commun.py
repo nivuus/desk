@@ -332,13 +332,23 @@ def lire_node_bin():
 # nommée au document de résultats.
 
 
-def valider_adresse_de_facts(brut, origine: str, role: str):
+def valider_adresse_de_facts(brut, origine: str, role: str, consequence: str):
     """Une adresse venue de `facts` : ni vide, ni d'un autre type, ni
     universelle.
 
     Rend `(adresse, None)` en succès, `(None, raison)` sinon. `role` nomme ce
-    que l'adresse sert (« coturn », « le proxy de confiance ») — il n'entre
-    que dans le message, jamais dans la logique.
+    que l'adresse sert (« coturn », « PLATEFORME_PROXY_DE_CONFIANCE ») — il
+    n'entre que dans le message, jamais dans la logique.
+
+    🔴 `consequence` EXISTE PARCE QUE CE VALIDATEUR SERT TROIS RÔLES
+    (`turn_ecoute`, `turn_relais`, `proxy_confiance`), ET LE MESSAGE
+    D'ÉCOUTE UNIVERSELLE N'EST PAS LE MÊME POUR CHACUN — revue finale de
+    branche, 30 août 2026 : le message était rédigé POUR coturn (« les
+    allocations de relais sur toutes les interfaces ») et rendait donc un
+    refus juste avec un motif HORS SUJET dès que `role` valait
+    `PLATEFORME_PROXY_DE_CONFIANCE`, qui ne relaie rien. `consequence` nomme
+    ce que CE rôle précis romprait ; l'appelant la fournit, jamais ce
+    validateur ne la devine.
     """
     if not isinstance(brut, str) or not brut.strip():
         return None, (
@@ -348,9 +358,7 @@ def valider_adresse_de_facts(brut, origine: str, role: str):
     if _est_universelle(brut):
         return None, (
             f"{origine}={brut!r} est une écoute universelle : {role} ne doit "
-            "jamais l'être — borner la seule écoute laisserait de surcroît "
-            "les allocations de relais sur toutes les interfaces (mesuré le "
-            "21 août 2026 : 23 adresses distinctes, dont l'adresse publique)"
+            f"jamais l'être — {consequence}"
         )
     return brut.strip(), None
 

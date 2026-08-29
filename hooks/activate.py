@@ -20,12 +20,23 @@ passé en production ; `argparse` ci-dessous lui donne quand même un défaut
 façon par les tests). La règle de précédence est dans
 `installer/packages/facts.py::merge_into_hw` : `hw` (la fraîche détection)
 l'emporte sur un fait de même clé, un fait ne comble que ce que `hw` n'a pas
-produit. Aucune clé de `hw` que `resolve.py` a mesurée (`vm_repond`,
-`node_version`, `turn_ecoute`, `turn_relais`, `port`) n'a de détecteur
-générique connu à ce jour, donc en pratique ces cinq clés survivent
-toujours la fusion — mais ce hook les LIT dans `hw`, jamais dans un
-`facts` frère, pour rester correct le jour où un détecteur générique les
-produirait aussi.
+produit. Aucune clé de `hw` que `resolve.py` a mesurée (`node_version`,
+`turn_ecoute`, `turn_relais`, `port`) n'a de détecteur générique connu à ce
+jour, donc en pratique ces quatre clés survivent toujours la fusion — mais
+ce hook les LIT dans `hw`, jamais dans un `facts` frère, pour rester correct
+le jour où un détecteur générique les produirait aussi.
+
+🔴 CORRECTION DE LA REVUE FINALE DE BRANCHE (30 août 2026) : cette liste
+portait aussi `vm_repond`, une clé que `resolve.py` n'a JAMAIS mesurée —
+elle valait `True` EN DUR dans le dict d'émission, à la phase même dont ce
+lot a établi qu'elle ne peut rien savoir de la VM (`resolve` court avant
+`partition()` ; voir le commentaire de tête de `resolve.py::resoudre`). La
+clé a été retirée des `facts` : aucun consommateur ne la lisait, ni dans ce
+dépôt (`grep -rn vm_repond hooks/`, avant retrait, ne rendait que
+`resolve.py` et les fixtures de test) ni dans le dépôt voisin `installer/`.
+`tests/test_desk_contrat_hw.py` (garde ⑤) refuse désormais tout fait futur
+qui referait la même chose : une valeur écrite en dur dans le dict
+d'émission de `resolve.py`, plutôt que dérivée d'une mesure.
 
 🔴 L'ARMEMENT EST UN LIEN, JAMAIS `systemctl enable`. Même doctrine que
 `console/hooks/activate.py` (le seul précédent de ce dépôt voisin) :

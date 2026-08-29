@@ -52,11 +52,14 @@ plutôt que laissées vieillir** (revue finale, 30 août 2026) : ① le refus de
 `pomerium` « sans garde de confiance possible » est **levé** depuis le lot
 10A — le proxy de confiance est désormais dérivé, pas demandé ; ② le refus
 « VM injoignable » **n'existe plus du tout** — c'était la Critique de la
-revue finale, voir §12.1. Les faits émis ne sont pas cinq mais **sept**
-(`vm_repond`, `node_version`, `turn_ecoute`, `turn_relais`, `hote`,
-`proxy_confiance`, `port`) : `hote` et `proxy_confiance` sont entrés au lot
-10A. Le compte se relit dans le code, il ne se recopie pas —
-`tests/test_desk_contrat_hw.py` le mesure à chaque exécution.
+revue finale, voir §12.1. Les faits émis ne sont pas cinq mais **six**
+(`node_version`, `turn_ecoute`, `turn_relais`, `hote`, `proxy_confiance`,
+`port`) : `hote` et `proxy_confiance` sont entrés au lot 10A. Le compte se
+relit dans le code, il ne se recopie pas — `tests/test_desk_contrat_hw.py`
+le mesure à chaque exécution. ⚠️ **CE COMPTE A ENCORE CHANGÉ APRÈS LA REVUE
+FINALE** : elle avait laissé un septième fait, `vm_repond`, qui **valait
+`True` en dur** dans le dict d'émission plutôt que d'être mesuré — une
+trouvaille de la vague de correction suivante (30 août 2026), voir §12.5.
 | 4 | `hooks/install.py` — pose `desk.env` (600), `/opt/nivuus/desk/{plateforme,client/dist}`, l'unité systemd (posée, pas armée), `turnserver.conf` (posé, pas armé) | `b6a0c92`, `92cacfb` |
 | 5 | `hooks/activate.py` — arme l'unité par un LIEN, crée le compte admin et enrôle l'agent (mot de passe et secret jamais sur l'argv), idempotent | `911c910`, `cc1da83` |
 | 6 | `hooks/vm.py` — pose ProjFS et VB-Audio dans la VM par le chemin WinRM de `console` ; `vb_audio: true` refusé dans `resolve` avant tout octet écrit | `a7cffb4`, `ca03468` |
@@ -238,11 +241,31 @@ une cinquième, **avant** l'ajout et jamais après.
 
 ---
 
-> ⚠️ **TOUS LES NUMÉROS DE LIGNE DE CE DOCUMENT ONT ÉTÉ REMPLACÉS PAR DES
-> NOMS le 30 août 2026.** La revue finale en a relevé **six** devenus faux —
-> dont `hooks/activate.py:444`, cité trois fois, dans un fichier qui en
-> comptait alors 440. `CLAUDE.md` l'interdit nommément : « NOMMER LA CHOSE,
-> jamais compter les lignes qui l'en séparent ».
+> ⚠️ **« TOUS » ÉTAIT FAUX — CE N'EST PAS LA COMPLÉTUDE DE LA REVUE FINALE
+> QUI EST EN CAUSE, MAIS CETTE AFFIRMATION-CI.** Ce que la revue finale a
+> réellement fait le 30 août 2026 : elle a relevé **six** numéros DEVENUS
+> FAUX (dont `hooks/activate.py:444`, cité trois fois, dans un fichier qui
+> en comptait alors 440) et les a remplacés par des NOMS **à ces six
+> endroits précis** — jamais « dans tout le document ». `CLAUDE.md`
+> l'interdit nommément : « NOMMER LA CHOSE, jamais compter les lignes qui
+> l'en séparent ».
+>
+> 🔴 **ONZE CITATIONS DE NUMÉRO DE LIGNE SUBSISTENT**, remesurées à la vague
+> de correction suivante (30 août 2026, `grep -noE
+> '[A-Za-z0-9_./-]+\.(py|rs|ts|sh|yaml|yml|service)[:：][0-9]+(-[0-9]+)?'`
+> sur ce fichier) : `config.ts:302-308`, `fetch_payload.py:61`,
+> `discovery.py:22`, `activate_cli.py:107-108`, `guest-ready-watch.py:113`,
+> `runner.py:315-338` (§2) ; `hooks/activate.py:444` ci-dessus et
+> `hooks/install.py:149-166` (§4.7), **cités comme exemples de numéros
+> DEVENUS FAUX**, pas comme des citations vivantes du code d'aujourd'hui ;
+> `scripts/build-agent-croise.sh:9-11` (§4.1) ; `dependencies.py:59` (§4.4) ;
+> `identite.rs:44-49`, `configuration.rs:200-201` et `main.rs:270` (§5, ces
+> deux derniers étant une citation **du contrôleur**, rapportée telle
+> quelle). **Les quatre qui pointent le code D'AUJOURD'HUI ont été
+> revérifiées exactes** (`config.ts:302-308`, `package.json:6-8`,
+> `build-agent-croise.sh:9-11`, `identite.rs:44-49`) : c'est donc
+> l'affirmation de COMPLÉTUDE qui était fausse, pas les numéros qui
+> restent.
 
 ## 4. Ce que ce lot n'établit PAS
 
@@ -1030,3 +1053,99 @@ revue : `/var/tmp/desk-admin-password.txt` porte le mot de passe
 administrateur **en clair**, et `/var/tmp/lot10*`, `/var/tmp/lot10d/`,
 `/var/tmp/desk-contexte.json` subsistent. Hors du dépôt, donc non bloquant
 pour la fusion — mais ce document est le seul endroit versionné qui le dit.
+
+### 12.5 La dernière trouvaille avant fusion — `resolve` publiait un fait qu'il ne mesurait plus (30 août 2026)
+
+**Trouvée par le relecteur après §12.1-12.4 ci-dessus, corrigée dans une
+vague séparée le même jour.** §12.1 a retiré de `hooks/resolve.py` la porte
+qui testait `hw["vm_windows"]` — mais a laissé le LITTÉRAL qu'elle gardait :
+`hooks/resolve.py` émettait toujours `"vm_repond": True`, EN DUR, à la phase
+même dont §12.1 vient d'établir qu'elle ne peut RIEN savoir de la VM
+(`resolve` court avant `partition()`). Trois conséquences, toutes
+vérifiées : le commentaire de tête de `hooks/activate.py` affirmait que
+`vm_repond` était une clé « MESURÉE » par `resolve.py` — devenu faux par
+§12.1 ; ce document (§1) listait `vm_repond` parmi les faits émis sans dire
+qu'il était inventé ; et **le garde neuf de §12.1 le blanchissait** — le
+contrôle ③ de `tests/test_desk_contrat_hw.py` autorise `activate` à lire
+toute clé PRÉSENTE dans `CLES_FACTS`, jamais une clé dont la valeur a été
+réellement mesurée, donc un `hw.get("vm_repond")` futur y passerait VERT.
+
+**Tranché : `vm_repond` est RETIRÉ des `facts`**, plutôt que gardé sous un
+nom déclarant son absence de mesure. Raison : la valeur ne servait à rien —
+vérifié qu'AUCUN consommateur ne la lit, dans ce dépôt (`grep -rn vm_repond
+hooks/ tests/` avant retrait : `hooks/resolve.py:393` — l'émission —, et
+deux fixtures de test qui ne font que reproduire la forme du dict, jamais
+lire cette clé précise) et dans le dépôt voisin `installer/`
+(`grep -rn vm_repond ../installer` : aucune sortie). Un fait qu'on ne
+mesure pas et que personne ne lit n'a aucune raison de continuer à
+voyager dans `hw` jusqu'à `activate`.
+
+**Le garde qui ferme le trou, ajouté à `tests/test_desk_contrat_hw.py`
+(contrôle ⑤)** : aucune valeur du dict `facts` que `resolve.py` émet ne
+doit être un littéral Python codé en dur (`ast.Constant` — `True`, `None`,
+un nombre, une chaîne) ; une valeur mesurée vient toujours d'une variable
+déjà validée plus haut dans le hook, jamais d'une constante écrite à la
+main dans le dict d'émission lui-même.
+
+**ROUGE, sur le `resolve.py` d'AVANT ce correctif** (copie nommée d'abord,
+`/var/tmp/resolve.py.avant-mutation-vm_repond`,
+sha256 `68f314e915c41ea39a87955a1e78abbb38c89ddd99e95aba2bddb0b6e04b9034`) :
+
+```
+FAIL (1)
+  - aucun fait émis par resolve n'est un littéral codé en dur: got ['vm_repond'], want []
+EXIT=1
+```
+
+**VERTE, après retrait de `"vm_repond": True` du dict d'émission** :
+
+```
+OK - contrat de hw : 8 cles produites par detect_all(), 6 facts emis par resolve
+EXIT=0
+```
+
+**Ce qui a été corrigé en conséquence** : `hooks/activate.py` (tête, la
+liste des clés « mesurées » perd `vm_repond`, quatre restent — pas cinq —
+et le retrait est expliqué) ; `tests/desk_activate_fixtures.py` et
+`tests/desk_install_fixtures.py` (le dict de fixture perd la clé, le
+commentaire de compte passe de « sept » à « six ») ; ce document, §1
+(« sept » → « six », `vm_repond` retiré de la liste).
+
+**Les trois Mineures corrigées dans le même passage** :
+
+- **L'encadré ci-dessus (§3 fin), qui affirmait que « TOUS » les numéros de
+  ligne du document avaient été remplacés par des noms.** Remesuré
+  (`grep -noE '[A-Za-z0-9_./-]+\.(py|rs|ts|sh|yaml|yml|service)[:：][0-9]+
+  (-[0-9]+)?'` sur ce fichier, DEUX FOIS, à des instants différents de cette
+  vague) : **onze** citations de numéro de ligne subsistent, pas zéro.
+  L'affirmation de COMPLÉTUDE était fausse ; les numéros eux-mêmes ne le
+  sont pas — les quatre qui pointent le code d'aujourd'hui
+  (`config.ts:302-308`, `package.json:6-8`,
+  `scripts/build-agent-croise.sh:9-11`, `identite.rs:44-49`) ont été
+  revérifiés exacts en lisant les fichiers cités, à l'instant où cette
+  phrase est écrite.
+- **`README-package.md`**, qui affirmait que les installations « 1, 2, 3, 5
+  et 7 » de `tests/test_desk_install.py` ne posent pas `DESK_SOURCE_RACINE`.
+  Faux pour l'installation 5 (`tests/test_desk_install.py:302`,
+  `env_source5["DESK_SOURCE_RACINE"] = str(source5)` — une source FACTICE,
+  pour rejouer `install` deux fois de suite sans dépendre du vrai dépôt).
+  Le fond reste vrai par les installations 1, 2, 3 et 7, qui, elles, ne la
+  posent pas.
+- **`hooks/commun.py::valider_adresse_de_facts`**, qui sert trois rôles
+  (`turn_ecoute`, `turn_relais`, `proxy_confiance`) avec un message d'écoute
+  universelle rédigé pour un seul (coturn, « les allocations de relais sur
+  toutes les interfaces ») — hors sujet pour `PLATEFORME_PROXY_DE_CONFIANCE`,
+  qui ne relaie rien. La fonction prend désormais un paramètre `consequence`
+  fourni par l'appelant (`hooks/install.py`, aux deux sites d'appel) : le
+  message coturn est inchangé, le message proxy nomme
+  `pairDeConfiance` (`plateforme/src/http/adresse-source.ts`) et le fait,
+  vérifié dans ce fichier, qu'il compare `remote` à l'adresse RÉELLE d'un
+  pair — jamais à une interface d'écoute.
+
+**`make test` rejoué après toutes ces corrections : dix suites, EXIT 0**,
+y compris `test_desk_contrat_hw` (`OK - contrat de hw : 8 cles produites
+par detect_all(), 6 facts emis par resolve`) et `test_desk_install`/
+`test_desk_install_gardes` (les deux validateurs `commun.py` touchés).
+
+⚠️ **Réserve** : cette vague n'a pas rejoué d'installation par le moteur
+réel — même réserve que §12.3, inchangée par ce correctif.

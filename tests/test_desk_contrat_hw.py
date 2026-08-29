@@ -29,7 +29,17 @@ Ce que cette suite fige, et que rien d'autre ne fige :
      `merge_into_hw`) ;
   ④ qu'un `resolve` nourri du contexte que le MOTEUR enverrait — un `hw`
      portant exactement les clés de `detect_all()`, et rien de plus —
-     n'émet AUCUN refus.
+     n'émet AUCUN refus ;
+  ⑤ qu'AUCUN fait émis par `resolve` n'est un LITTÉRAL codé en dur dans le
+     dict d'émission — c'est le TROU que ③ laissait ouvert, sous un nom
+     voisin de la Critique : ③ autorise `activate` à lire toute clé
+     PRÉSENTE dans `CLES_FACTS`, mais ne dit RIEN sur la façon dont cette
+     clé a été obtenue. Un fait posé en dur (`"vm_repond": True`) est une
+     clé de `CLES_FACTS` comme une autre, et ③ le laisserait donc passer
+     tel quel — c'est exactement la forme du défaut réel trouvé le 30 août
+     2026 (`hooks/resolve.py:393`, avant correction), et le motif pour
+     lequel la Critique ci-dessus a pu se reproduire sous un nom différent
+     malgré ③ déjà en place.
 
 ⚠️ SI LE DÉPÔT VOISIN EST ABSENT, CETTE SUITE ÉCHOUE, elle ne se saute pas :
 un contrat qu'on ne peut pas vérifier n'est pas un contrat vérifié, et « un
@@ -180,6 +190,34 @@ check("contexte du MOTEUR : code de sortie 0", proc.returncode, 0)
 check("contexte du MOTEUR : AUCUN refus", [e.get("reason") for e in refus], [])
 check("contexte du MOTEUR : un événement facts est émis",
       len([e for e in evenements if e.get("event") == "facts"]), 1)
+
+
+# --- ⑤ Aucun fait émis n'est un littéral codé en dur -----------------------
+# 🔴 CE QUI A ÉCHAPPÉ À ③ CI-DESSUS : ③ vérifie que la clé est CONNUE
+# (présente dans `CLES_FACTS`), jamais que sa VALEUR a été MESURÉE. Une
+# valeur mesurée vient toujours d'une EXPRESSION (une variable déjà validée
+# plus haut dans le hook, un appel) ; une constante écrite à la main
+# directement dans le dict d'émission (`True`, `None`, un nombre, une
+# chaîne littérale) ne peut PAS être une mesure — par construction, elle ne
+# dépend d'aucune entrée. C'est exactement la forme de `"vm_repond": True`.
+def facts_avec_litteraux(chemin: pathlib.Path) -> list:
+    """Les clés du dict `facts` dont la valeur est un littéral en dur."""
+    arbre = ast.parse(chemin.read_text(encoding="utf-8"))
+    for noeud in ast.walk(arbre):
+        if not isinstance(noeud, ast.Dict):
+            continue
+        for cle, valeur in zip(noeud.keys, noeud.values):
+            if (isinstance(cle, ast.Constant) and cle.value == "facts"
+                    and isinstance(valeur, ast.Dict)):
+                return sorted(
+                    k.value for k, v in zip(valeur.keys, valeur.values)
+                    if isinstance(k, ast.Constant) and isinstance(v, ast.Constant)
+                )
+    return []
+
+
+check("aucun fait émis par resolve n'est un littéral codé en dur",
+      facts_avec_litteraux(RACINE / "hooks" / "resolve.py"), [])
 
 if failures:
     print(f"FAIL ({len(failures)})")

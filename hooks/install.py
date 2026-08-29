@@ -182,7 +182,10 @@ def main() -> int:
         if brut is None:
             continue
         adresses_turn[cle], raison = valider_adresse_de_facts(
-            brut, f'facts["{cle}"]', "coturn (TURN_LISTENING_IP/TURN_RELAY_IP)")
+            brut, f'facts["{cle}"]', "coturn (TURN_LISTENING_IP/TURN_RELAY_IP)",
+            "borner la seule écoute laisserait de surcroît les allocations "
+            "de relais sur toutes les interfaces (mesuré le 21 août 2026 : "
+            "23 adresses distinctes, dont l'adresse publique)")
         if raison:
             print(f"desk install : {raison}", file=sys.stderr)
             return 1
@@ -234,7 +237,13 @@ def main() -> int:
     else:
         proxy_confiance, raison_proxy = valider_adresse_de_facts(
             brut_proxy, 'facts["proxy_confiance"]',
-            "PLATEFORME_PROXY_DE_CONFIANCE")
+            "PLATEFORME_PROXY_DE_CONFIANCE",
+            "`pairDeConfiance` (plateforme/src/http/adresse-source.ts) compare "
+            "cette valeur à l'adresse RÉELLE d'un pair (`req.socket."
+            "remoteAddress`), jamais à une interface d'écoute : aucun pair "
+            "ne se présente jamais sous l'une de ces quatre valeurs, donc la "
+            "poser ici ne fait QUE casser la garde du mode pomerium (personne "
+            "n'y correspondra jamais), sans rien ouvrir")
         if raison_proxy:
             print(f"desk install : {raison_proxy}", file=sys.stderr)
             return 1
