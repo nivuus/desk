@@ -28,20 +28,17 @@ import re
 import subprocess
 import sys
 
+from commun import PORT_DEFAUT, adresse_ipv4_de, interface_de_route_par_defaut
+
 RACINE = pathlib.Path(__file__).resolve().parents[1]
 
-# 🔴 LE PORT EST 3445, ET IL EST DÉRIVÉ, JAMAIS DEMANDÉ.
-#
-# /etc/pomerium/config.yaml porte une route `from: https://app.allanic.me`
-# vers `to: http://127.0.0.1:3445` (relevé le 29 août 2026) : c'est le port
-# que la plateforme doit prendre pour que l'adresse publique serve — aucun
-# autre choix ne fait marcher l'existant. Ce n'est pas une cinquième question
-# du wizard : l'opérateur n'a aucune information qui lui permettrait d'y
-# répondre différemment sans casser la route Pomerium déjà en place.
+# PORT_DEFAUT (3445) et sa raison vivent désormais dans `commun.py`, seul
+# endroit qui les porte — voir son commentaire. Repris ici tel quel par
+# `lire_port()`, jamais recopié.
 #
 # Surchargeable par DESK_PORT pour que les tests (et un futur opérateur qui
-# changerait de proxy) puissent poser une autre valeur ; le défaut reste 3445.
-PORT_DEFAUT = 3445
+# changerait de proxy) puissent poser une autre valeur ; le défaut reste
+# celui de `commun.PORT_DEFAUT`.
 
 MODES_CONNUS = ("motdepasse", "pomerium")
 
@@ -140,35 +137,6 @@ def valider_node():
             "déclaré par plateforme/package.json"
         )
     return version, None
-
-
-def interface_de_route_par_defaut():
-    """Le périphérique réseau de la route IPv4 par défaut, ou None."""
-    try:
-        r = subprocess.run(["ip", "-4", "route", "show", "default"],
-                            capture_output=True, text=True, timeout=10)
-    except (OSError, subprocess.TimeoutExpired):
-        return None
-    if r.returncode != 0:
-        return None
-    for ligne in r.stdout.splitlines():
-        correspond = re.search(r"\bdev\s+(\S+)", ligne)
-        if correspond:
-            return correspond.group(1)
-    return None
-
-
-def adresse_ipv4_de(interface: str):
-    """La première adresse IPv4 portée par `interface`, ou None."""
-    try:
-        r = subprocess.run(["ip", "-4", "-o", "addr", "show", "dev", interface],
-                            capture_output=True, text=True, timeout=10)
-    except (OSError, subprocess.TimeoutExpired):
-        return None
-    if r.returncode != 0:
-        return None
-    correspond = re.search(r"inet\s+(\d+\.\d+\.\d+\.\d+)", r.stdout)
-    return correspond.group(1) if correspond else None
 
 
 def deriver_adresses_turn():
