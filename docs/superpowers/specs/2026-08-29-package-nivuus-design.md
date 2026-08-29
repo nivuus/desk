@@ -34,15 +34,77 @@ produire, et c'est la raison la plus concrète d'en faire un package.
 
 ## 2. Ce que ce chantier livre, et ce qu'il ne livre pas
 
-**Il livre** : la dépendance inter-packages dans le moteur d'`installer`, et
-le package `desk` — manifeste, wizard, trois hooks, tests, et la production
-reproductible d'`agent.exe`.
+**Il livre** : le package `desk` — manifeste, wizard, trois hooks, tests, et
+la production reproductible d'`agent.exe`.
+
+⚠️ **Il ne livre PAS la dépendance inter-packages** : elle est déjà spécifiée
+et planifiée ailleurs (§3), et ce chantier s'y **conforme** au lieu de la
+réimplémenter. La première rédaction de cette conception disait le contraire ;
+elle avait été écrite sans chercher.
 
 **Il ne livre pas** : le lot 3. Les douze items de mesure attendent une VM
 équipée, et ce chantier est ce qui rend cette VM atteignable — il ne mesure
 rien lui-même.
 
-## 3. Volet A — la dépendance inter-packages, dans `installer`
+## 3. Volet A — la dépendance inter-packages : ELLE EST DÉJÀ SPÉCIFIÉE ET PLANIFIÉE
+
+🔴 **CORRECTION DU 29 AOÛT 2026, AVANT TOUT CODE. Ce que la première
+rédaction de cette section concevait EXISTE DÉJÀ, et je ne l'avais pas
+cherché.** Relevé en ouvrant le dépôt `installer` pour y écrire :
+
+| Ce qui existe | Où |
+| --- | --- |
+| La **spec** de `requires.packages`, avec son modèle socle/satellite | `packages/home-manager/docs/superpowers/specs/2026-08-28-package-nivuus-home-manager-design.md`, § « Extension du contrat » |
+| Le **plan d'implémentation**, 787 lignes, tâche par tâche | `packages/installer/docs/superpowers/plans/2026-08-28-requires-packages-dependances.md` |
+
+Elles vont plus loin que ma rédaction sur trois points que je n'avais pas
+vus, et qui ne sont pas des détails :
+
+1. **Un module neuf `installer/packages/dependencies.py`**, calqué sur
+   `conflicts.py` — un concept, un module — plutôt qu'une addition à
+   `discovery.py` comme je l'écrivais. `missing_dependencies()` y distingue
+   **deux cas que je confondais** : le pré-requis **absent du support** et le
+   pré-requis **présent mais non coché**, « le second est le cas courant et
+   mérite son propre message ».
+2. **Le durcissement des clés inconnues sous `requires:`** — aujourd'hui
+   `requires:` accepte n'importe quelle clé en silence, donc un
+   `requires: package:` **au singulier**, la faute de frappe évidente, serait
+   ignoré et le satellite s'installerait avant son socle **sans que personne
+   le sache**. Je n'avais pas vu ce trou.
+3. **Le point d'insertion exact** : dans `plan_packages()`, **avant**
+   `check_conflicts()` et avant tout hook `resolve` — donc avant
+   `partition()`. Et la cause première y est nommée : `chosen` se construit
+   par `sorted(selected)`, un **ordre alphabétique**, ce qui est le bug réel.
+
+**CE QUE CELA CHANGE POUR CE CHANTIER** : le volet A n'est **pas à
+concevoir**, et surtout pas à réimplémenter en parallèle. `desk` s'y
+**conforme** et l'attend. Sa seule obligation est de déclarer
+`requires: packages: [console]` dans son manifeste, et de ne pas être
+installable par un moteur qui ne connaît pas encore la clé.
+
+⚠️ **DÉPENDANCE D'ORDONNANCEMENT ENTRE DEUX CHANTIERS, À DIRE PLUTÔT QU'À
+DÉCOUVRIR** : tant que le plan de `installer` n'est pas exécuté, le manifeste
+de `desk` est **rejeté** par le moteur — le parseur refuse ce qu'il ne
+comprend pas. Le package `desk` peut donc s'écrire et se tester dès
+maintenant ; il ne s'installe qu'après.
+
+⚠️ **UNE QUESTION QUE JE NE TRANCHE PAS** : la spec de `home-manager` nomme
+`home-desk` parmi les satellites à créer, aux côtés de `home-stock`. Le
+contrat satellite qu'elle décrit est le dépôt d'un **custom_component
+HomeAssistant** dans `/opt/nivuus/home-manager/config/custom_components/`, ce
+qui n'a aucun rapport avec un bureau distant WebRTC — `home-desk` est donc
+**vraisemblablement un autre projet**, et ce package-ci dépend de `console`,
+pas de `home-manager`. **Vraisemblablement n'est pas mesuré** : le nom du
+package (`desk` ou `home-desk`) appartient au propriétaire du dépôt, et il
+est posé comme question plutôt que choisi ici — un nom de package devient un
+répertoire et un nom d'instance systemd, il ne se rattrape pas.
+
+### 3 bis. Ce que la première rédaction disait, conservé pour son raisonnement
+
+⚠️ **Barré plutôt qu'effacé**, comme ce dépôt le fait partout : le
+raisonnement ci-dessous reste juste, il est simplement **arrivé second**.
+
+#### ~~Volet A — la dépendance inter-packages, dans `installer`~~ *(rédaction initiale)*
 
 Le manifeste `nivuus.dev/v1` ne sait pas exprimer qu'un package en exige un
 autre : `requires` ne connaît que `capabilities` (matériel : `iommu`,
