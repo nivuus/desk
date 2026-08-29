@@ -40,10 +40,22 @@
 /// `CLAUDE.md` interdit. Lire le grand commentaire au-dessus de
 /// `NOM_FICHIER_AMORCE` dans `client/vite.config.ts` avant de reproposer un
 /// hash ici.
+///
+/// 🔴 `manifest-src 'self'` EST EXPLICITE, ET NON UN REPLI SUR `default-src` —
+/// mesuré cassé le 29 août 2026 (`https://app.allanic.me/hub.html`, Chrome) :
+/// « manifest-src was not explicitly set, so default-src is used as a
+/// fallback » (le navigateur le DIT lui-même dans le message de violation).
+/// Le défaut réel n'était pas la directive manquante mais un
+/// `<link rel="manifest">` sans `crossorigin="use-credentials"` — corrigé
+/// côté CLIENT (`client/src/hub/manifeste-hub-greffon.ts`), sur le même
+/// principe que `script-src` deux paragraphes plus haut : un repli implicite
+/// est une règle que personne n'a écrite, donc on l'écrit, même quand ce
+/// n'était pas elle qui bloquait.
 export const CSP =
     "default-src 'self'; connect-src 'self' wss: https:; img-src 'self' data: blob:; " +
     "media-src 'self' blob:; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
-    "font-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'";
+    "font-src 'self'; manifest-src 'self'; frame-ancestors 'none'; base-uri 'self'; " +
+    "form-action 'self'";
 
 export const ENTETES_DOCUMENT: Readonly<Record<string, string>> = Object.freeze({
     'X-Content-Type-Options': 'nosniff',
