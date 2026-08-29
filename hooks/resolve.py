@@ -28,7 +28,13 @@ import re
 import subprocess
 import sys
 
-from commun import PORT_DEFAUT, adresse_ipv4_de, interface_de_route_par_defaut
+from commun import (
+    PORT_DEFAUT,
+    adresse_ipv4_de,
+    interface_de_route_par_defaut,
+    lire_hote,
+    lire_proxy_confiance,
+)
 
 RACINE = pathlib.Path(__file__).resolve().parents[1]
 
@@ -189,6 +195,19 @@ def valider_auth_mode(answers: dict):
     un repli silencieux sur `motdepasse` ferait tourner un mode sous le nom
     de l'autre, et l'un des deux sens est une ouverture. Donc refus, jamais
     de repli.
+
+    ✅ CORRIGÉ AU LOT 10A (29 août 2026, problème C) : cette fonction
+    refusait CATÉGORIQUEMENT `auth_mode=pomerium`, au motif qu'aucune des
+    quatre questions du wizard ne permet de déclarer un proxy de confiance.
+    C'était vrai, mais rendait IMPOSSIBLE le choix explicite du propriétaire
+    du dépôt pour la mise en service réelle (« PLATEFORME_AUTH=pomerium »,
+    contre l'autre option qui lui était présentée). Le refus est levé : le
+    proxy de confiance est désormais DÉRIVÉ, comme `PORT_DEFAUT` et
+    `commun.HOTE_DEFAUT` — voir `commun.py::lire_proxy_confiance` pour le
+    raisonnement complet et sa réserve (valeur RAISONNÉE, pas mesurée, à
+    confirmer par le volet 10B). `resoudre()` l'inclut désormais dans les
+    facts sous la clé `proxy_confiance`, et `hooks/install.py` l'écrit dans
+    `PLATEFORME_PROXY_DE_CONFIANCE`.
     """
     mode = answers.get("auth_mode")
     if mode not in MODES_CONNUS:
@@ -196,24 +215,6 @@ def valider_auth_mode(answers: dict):
             f"auth_mode inconnu : {mode!r} ; valeurs attendues "
             f"{' ou '.join(MODES_CONNUS)} — un repli silencieux ferait tourner "
             "un mode sous le nom de l'autre"
-        )
-    if mode == "pomerium":
-        # Le wizard de la tâche 2 pose exactement quatre questions, et aucune
-        # ne permet de déclarer un proxy de confiance. Or
-        # `plateforme/src/config.ts::lireConfig` refuse de démarrer en mode
-        # `pomerium` sans PLATEFORME_PROXY_DE_CONFIANCE (l'identité arrive
-        # alors dans un en-tête `X-Pomerium-Claim-Email` en clair, qu'aucune
-        # signature ne vérifie) : sans ce hook, l'opérateur ne l'apprendrait
-        # qu'APRÈS l'installation, la plateforme refusant de démarrer sur un
-        # disque déjà partitionné. Autant refuser ici, avant.
-        return (
-            "auth_mode=pomerium demandé, mais ce wizard ne permet de déclarer "
-            "aucun proxy de confiance : plateforme/src/config.ts::lireConfig "
-            "refuse de démarrer sans PLATEFORME_PROXY_DE_CONFIANCE en mode "
-            "pomerium (l'identité arriverait dans un en-tête en clair "
-            "qu'aucune signature ne vérifie), et l'opérateur ne l'apprendrait "
-            "qu'après l'installation, sur un disque déjà partitionné. "
-            "Choisir auth_mode=motdepasse."
         )
     return None
 
@@ -328,6 +329,25 @@ def resoudre(hw: dict, answers: dict) -> int:
         refuser(raison_turn)
         return 0
 
+    # --- L'adresse d'écoute de la plateforme (jamais celle de TURN) --------
+    # 🔴 DÉLIBÉRÉMENT UNE DÉRIVATION SÉPARÉE de `deriver_adresses_turn()`
+    # ci-dessus : cette dernière résout l'interface de la route INTERNET
+    # (publique, requise pour TURN) ; `lire_hote()` rend une adresse
+    # INTERNE fixe (voir `commun.py::HOTE_DEFAUT` pour le bug réel que cette
+    # séparation corrige — les deux étaient confondues avant le lot 10A).
+    hote, raison_hote = lire_hote()
+    if raison_hote:
+        refuser(raison_hote)
+        return 0
+
+    # --- Le proxy de confiance (PLATEFORME_PROXY_DE_CONFIANCE) --------------
+    # Voir `commun.py::lire_proxy_confiance` : une valeur RAISONNÉE, jamais
+    # demandée, jamais absente. Exposée dans les facts quel que soit
+    # auth_mode — elle ne nuit pas en mode motdepasse (elle y sert
+    # seulement à faire croire X-Forwarded-For depuis cette adresse), et
+    # c'est en mode pomerium qu'elle devient obligatoire côté service.
+    proxy_confiance = lire_proxy_confiance()
+
     port, raison_port = lire_port()
     if raison_port:
         refuser(raison_port)
@@ -341,6 +361,8 @@ def resoudre(hw: dict, answers: dict) -> int:
             "node_version": version_node,
             "turn_ecoute": turn_ecoute,
             "turn_relais": turn_relais,
+            "hote": hote,
+            "proxy_confiance": proxy_confiance,
             "port": port,
         },
     })

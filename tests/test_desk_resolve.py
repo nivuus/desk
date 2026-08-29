@@ -9,12 +9,16 @@ tourner sur une Debian qui n'a jamais vu ce moteur.
 Run: python3 tests/test_desk_resolve.py
 """
 import json
+import os
 import pathlib
 import subprocess
 import sys
 
 RACINE = pathlib.Path(__file__).resolve().parents[1]
 HOOK = RACINE / "hooks" / "resolve.py"
+
+sys.path.insert(0, str(RACINE / "hooks"))
+from commun import HOTE_DEFAUT, PROXY_DEFAUT  # noqa: E402
 
 failures = []
 
@@ -75,13 +79,51 @@ check("les DEUX adresses TURN sont dérivées",
 # de relais sur toutes les interfaces — mesuré le 21 août 2026, 23 adresses
 # distinctes dont l'adresse publique.
 
-# --- Le mode pomerium fait mordre ses gardes AVANT l'installation --------
+# --- L'adresse d'écoute de la plateforme (hote), et le proxy de confiance --
+# 🔴 CORRIGE UN BUG RÉEL TROUVÉ AU LOT 10A (29 août 2026) : `hote` DOIT être
+# DIFFÉRENTE de `turn_ecoute` — les deux étaient confondues avant ce
+# correctif (voir commun.py::HOTE_DEFAUT), ce qui aurait fait écouter le
+# service sur l'adresse PUBLIQUE dérivée pour TURN. Ce test aurait dû
+# rougir avant le correctif (un contrôle qu'on n'a jamais vu rouge n'est
+# pas un contrôle) : il ne le pouvait pas, faute d'assertion sur `hote` du
+# tout — c'est précisément ce que cette addition ferme.
+check("hote est présente et non vide", bool(mesures.get("hote")), True)
+check("hote vaut le défaut fixe (jamais la route par défaut)",
+      mesures.get("hote"), HOTE_DEFAUT)
+check("hote n'est JAMAIS l'adresse TURN (les deux dérivations sont séparées)",
+      mesures.get("hote") == mesures.get("turn_ecoute"), False)
+check("proxy_confiance est présente et non vide",
+      bool(mesures.get("proxy_confiance")), True)
+check("proxy_confiance vaut le défaut (raisonné, voir commun.py)",
+      mesures.get("proxy_confiance"), PROXY_DEFAUT)
+
+# --- Le mode pomerium est ACCEPTÉ depuis le lot 10A (problème C) ----------
+# Choisi explicitement par le propriétaire du dépôt pour la mise en service
+# réelle. Le proxy de confiance est DÉRIVÉ (commun.py::lire_proxy_confiance),
+# jamais demandé : aucun refus ne doit plus mordre ici.
 rc, ev = appeler(hw={"vm_windows": True},
                  answers={**REPONSES, "auth_mode": "pomerium"})
+check("pomerium : aucun refus (proxy dérivé, plus demandé)", refus(ev), [])
+faits_pomerium = [e for e in ev if e.get("event") == "facts"]
+mesures_pomerium = faits_pomerium[0]["facts"] if faits_pomerium else {}
+check("pomerium : facts porte proxy_confiance",
+      bool(mesures_pomerium.get("proxy_confiance")), True)
+
+# --- Mais le refus MORD TOUJOURS si l'adresse dérivée est inutilisable ----
+# 🔴 UN CONTRÔLE QU'ON N'A JAMAIS VU ROUGE N'EST PAS UN CONTRÔLE : ce
+# scénario force `DESK_HOTE` vers une écoute universelle et vérifie que
+# `resolve` refuse AVANT l'installation plutôt que de laisser
+# `plateforme/src/config.ts::lireConfig` échouer plus tard sur un disque
+# déjà partitionné.
+env_hote_universelle = dict(os.environ)
+env_hote_universelle["DESK_HOTE"] = "0.0.0.0"
+rc, ev = appeler(hw={"vm_windows": True},
+                 answers={**REPONSES, "auth_mode": "pomerium"},
+                 env=env_hote_universelle)
 r = refus(ev)
-check("pomerium sans proxy déclaré : refus", len(r), 1)
-check("pomerium : le refus nomme le proxy de confiance",
-      bool(r and "proxy" in r[0]["reason"].lower()), True)
+check("DESK_HOTE=0.0.0.0 : refus", len(r), 1)
+check("DESK_HOTE=0.0.0.0 : le refus nomme l'écoute universelle",
+      bool(r and "universelle" in r[0].get("reason", "").lower()), True)
 
 # --- Une valeur de mode inconnue LÈVE, elle ne se replie pas -------------
 rc, ev = appeler(hw={"vm_windows": True},

@@ -1,9 +1,19 @@
 # Unite systemd du service desk (bureau distant Windows, WebRTC).
 #
-# Deposee TELLE QUELLE par hooks/install.py sous
-# etc/systemd/system/desk-plateforme.service : aucune valeur n'est
-# substituee dans ce fichier, ses trois chemins (WorkingDirectory,
-# ExecStart, EnvironmentFile) sont les chemins REELS de la cible une fois
+# Deposee par hooks/install.py sous etc/systemd/system/desk-plateforme.service.
+# 🔴 CE FICHIER EST UN GABARIT DEPUIS LE LOT 10A (29 aout 2026, probleme A) :
+# un seul jeton (deux occurrences ci-dessous, dans ExecStart= et dans
+# Environment=PATH=) est remplace TEXTUELLEMENT par `hooks/install.py::main()`
+# avec la valeur de `commun.lire_node_bin()` — jamais une expansion de
+# variable systemd (systemd n'expanse pas le PROGRAMME execute lui-meme,
+# seulement ses arguments). ⚠️ CE TOKEN EST DELIBEREMENT ABSENT DE CE
+# COMMENTAIRE DE TETE, alors qu'il apparait litteralement plus bas : la
+# substitution d'install.py est un remplacement de SOUS-CHAINE global sur
+# tout le fichier, et l'ecrire ici aussi le ferait remplacer dans le
+# commentaire lui-meme (mesure une fois, corrige — voir git blame). Le
+# nommer par sa valeur : chercher `NODE_BIN_DEFAUT` dans commun.py. Les
+# trois AUTRES chemins (WorkingDirectory, EnvironmentFile, et le chemin
+# substitue plus bas) sont les chemins REELS de la cible une fois
 # l'installation terminee (root == "/"), jamais prefixes par la racine
 # temporaire qu'un test pose sous --root.
 #
@@ -23,14 +33,23 @@ Wants=network-online.target
 Type=simple
 WorkingDirectory=/opt/nivuus/desk/plateforme
 
-# ⚠️ SUPPOSE un `npm` systeme a /usr/bin/npm (paquet Debian ou NodeSource).
-# CE N'EST PAS VRAI SUR TOUTES LES MACHINES : sur celle qui a servi a
-# developper ce hook, Node est fourni par nvm sous /root/.nvm, un
-# repertoire en mode 700 qu'aucun utilisateur non root — DynamicUser
-# compris — ne peut traverser. Aucune tache de ce plan ne provisionne
-# Node.js sur la cible ; c'est un prerequis NON COUVERT ici, nomme plutot
-# que masque (voir le rapport de la tache 4, § Reserves).
-ExecStart=/usr/bin/npm start
+# 🔴 IL N'Y A AUCUN `npm` SYSTEME SUR CETTE MACHINE (ni paquet Debian, ni
+# NodeSource) — voir commun.py::lire_node_bin pour le diagnostic complet.
+# Le jeton ci-dessous est substitue par install.py vers le repertoire ou ce
+# lot deploie une copie de Node lisible par tous (a+rX), par defaut
+# /opt/nivuus/node/bin (commun.NODE_BIN_DEFAUT), surchargeable par
+# DESK_NODE_BIN.
+ExecStart=__NODE_BIN__/npm start
+
+# 🔴 OBLIGATOIRE EN PLUS DE ExecStart= : `npm` lui-meme est un script
+# `#!/usr/bin/env node` — le noyau resout `node` en cherchant dans PATH au
+# moment ou il execute le shebang, meme si `npm` est invoque par un chemin
+# absolu. Et `npm start` (= `tsx src/index.ts`) spawn a son tour
+# `node_modules/.bin/tsx`, un AUTRE script `#!/usr/bin/env node`, dont la
+# resolution repasse par CE MEME PATH (npm ne fait que prefixer
+# node_modules/.bin devant la valeur heritee). Sans cette ligne, l'unite
+# echouerait a l'exec meme avec ExecStart= correct.
+Environment=PATH=__NODE_BIN__:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 EnvironmentFile=/etc/nivuus/desk.env
 Restart=on-failure
