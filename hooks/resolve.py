@@ -250,16 +250,47 @@ def valider_auth_mode(answers: dict):
     return None
 
 
-def main() -> int:
-    # sys.argv est délibérément ignoré : le moteur réel appelle ce hook avec
-    # `--phase resolve` (voir installer/packages/runner.py), mais son test
-    # l'appelle sans aucun argument. La seule chose qui compte est stdin —
-    # ainsi le hook répond aux deux appels sans avoir à distinguer lequel
-    # c'est.
-    contexte = json.load(sys.stdin)
-    hw = contexte.get("hw") or {}
-    answers = contexte.get("answers") or {}
+def charger_contexte():
+    """Lit et valide `{"hw":…, "answers":…}` sur stdin.
 
+    Rend (hw, answers, None) en succès, ou (None, None, raison) sur les deux
+    formes d'entrée mal formée qu'on sait NOMMER : un JSON illisible, ou une
+    racine / `hw` / `answers` qui ne sont pas des objets. Nommer ces deux cas
+    plutôt que de les laisser tomber dans le garde générique de `main()` évite
+    à l'opérateur un aller-retour : la phrase dit PRÉCISÉMENT ce qui cloche,
+    pas seulement qu'une exception a eu lieu.
+    """
+    try:
+        contexte = json.load(sys.stdin)
+    except json.JSONDecodeError as exc:
+        return None, None, f"entrée illisible : stdin n'est pas du JSON valide ({exc})"
+    if not isinstance(contexte, dict):
+        return None, None, (
+            "entrée malformée : la racine JSON doit être un objet portant "
+            f"'hw' et 'answers', reçu {type(contexte).__name__}"
+        )
+    hw = contexte.get("hw")
+    if hw is None:
+        hw = {}
+    elif not isinstance(hw, dict):
+        return None, None, f"entrée malformée : 'hw' doit être un objet, reçu {type(hw).__name__}"
+    answers = contexte.get("answers")
+    if answers is None:
+        answers = {}
+    elif not isinstance(answers, dict):
+        return None, None, (
+            f"entrée malformée : 'answers' doit être un objet, reçu {type(answers).__name__}"
+        )
+    return hw, answers, None
+
+
+def resoudre(hw: dict, answers: dict) -> int:
+    """Le corps du hook, une fois `hw`/`answers` garantis être des objets.
+
+    Isolé de `main()` pour que le garde générique de `main()` enveloppe
+    aussi cette fonction : toute exception qu'AUCUN chemin ci-dessous n'a
+    prévue redevient un refus là-bas, jamais une trace pour l'opérateur.
+    """
     emettre({"event": "progress", "pct": 10, "msg": "Vérification de la VM Windows"})
 
     # --- La VM d'abord : sans elle, rien de ce que desk orchestre n'existe --
@@ -312,6 +343,36 @@ def main() -> int:
     })
     emettre({"event": "done"})
     return 0
+
+
+def main() -> int:
+    # sys.argv est délibérément ignoré : le moteur réel appelle ce hook avec
+    # `--phase resolve` (voir installer/packages/runner.py), mais son test
+    # l'appelle sans aucun argument. La seule chose qui compte est stdin —
+    # ainsi le hook répond aux deux appels sans avoir à distinguer lequel
+    # c'est.
+    #
+    # 🔴 GARDE GÉNÉRIQUE, RONDE DE CORRECTION 1 (29 août 2026) : la première
+    # version laissait `json.load` et l'accès `.get()` sur un `hw`/`answers`
+    # mal typé lever tels quels — mesuré : un JSON illisible, une racine qui
+    # n'est pas un objet, ou `hw` valant une chaîne au lieu d'un dict
+    # donnaient tous les trois une trace Python et un code de sortie 1,
+    # cassant l'invariant central de ce hook. `charger_contexte()` nomme les
+    # deux cas qu'on sait distinguer (JSON illisible ; `hw`/`answers` mal
+    # typés) ; CE `try` couvre tout le reste — ce qu'aucun chemin de
+    # `resoudre()` n'a prévu. Les deux sont nécessaires ensemble : le garde
+    # générique seul rendrait un « erreur inattendue » sur un cas qu'on sait
+    # nommer, coûtant un aller-retour à l'opérateur ; les cas nommés seuls
+    # laisseraient passer tout ce qu'on n'a pas anticipé.
+    try:
+        hw, answers, raison = charger_contexte()
+        if raison:
+            refuser(raison)
+            return 0
+        return resoudre(hw, answers)
+    except Exception as exc:  # noqa: BLE001 — c'est le garde générique lui-même
+        refuser(f"erreur inattendue dans resolve : {exc}")
+        return 0
 
 
 if __name__ == "__main__":
