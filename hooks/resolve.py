@@ -251,13 +251,11 @@ def valider_auth_mode(answers: dict):
 
 
 def main() -> int:
-    # --phase est l'appel réel du moteur (voir installer/packages/runner.py) ;
-    # accepté mais jamais requis, pour que ce hook reste appelable exactement
-    # comme le décrit son test — stdin seul, sans argument.
-    argv = sys.argv[1:]
-    if argv and argv[0] == "--phase" and len(argv) > 1:
-        pass  # ignoré : la seule chose qui compte est stdin.
-
+    # sys.argv est délibérément ignoré : le moteur réel appelle ce hook avec
+    # `--phase resolve` (voir installer/packages/runner.py), mais son test
+    # l'appelle sans aucun argument. La seule chose qui compte est stdin —
+    # ainsi le hook répond aux deux appels sans avoir à distinguer lequel
+    # c'est.
     contexte = json.load(sys.stdin)
     hw = contexte.get("hw") or {}
     answers = contexte.get("answers") or {}
