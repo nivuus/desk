@@ -103,6 +103,8 @@ import stat
 import subprocess
 import sys
 
+from vm import poser_projfs, poser_vb_audio
+
 RACINE = pathlib.Path(__file__).resolve().parents[1]
 
 # --- Ce que la tâche 4 a posé, et que ce hook arme ou complète -----------
@@ -339,6 +341,37 @@ def main() -> int:
                   "prendra effet au prochain redemarrage", file=sys.stderr)
             for item in echecs:
                 print(f"  - {item}", file=sys.stderr)
+
+    # 🔴 TÂCHE 6 — CE QUE `desk` POSE DANS LA VM, PAR LE CHEMIN WINRM DE
+    # `console`. Placé ICI, AVANT le reste (compte, enrôlement), et jamais
+    # derrière la garde d'idempotence plus bas (`AGENT_VM`/`AGENT_SECRET`) :
+    # ces deux poses sont indépendantes de l'état de `plateforme/`
+    # (`Enable-WindowsOptionalFeature` est nativement idempotent — la
+    # rejouer ne casse rien), et les gater derrière l'idempotence du compte
+    # laisserait un premier échec ICI, survenu APRÈS un enrôlement déjà
+    # réussi, ne plus jamais être retenté par un rejeu ultérieur.
+    emettre({"event": "progress", "pct": 25,
+             "msg": "Pose de ProjFS et VB-Audio dans la VM (chemin WinRM de console)"})
+    try:
+        etat_projfs = poser_projfs()
+    except (FileNotFoundError, RuntimeError) as exc:
+        print(f"desk activate: pose de ProjFS dans la VM refusee : {exc}",
+              file=sys.stderr)
+        return 1
+    # Le redémarrage se CONSTATE et se DIT ICI, il ne se prend jamais : voir
+    # hooks/vm.py::poser_projfs. Un opérateur qui lit ce message sait qu'un
+    # redémarrage de la VM reste à sa charge.
+    if etat_projfs.redemarrage_requis:
+        print("desk activate: ProjFS active dans la VM ; un redemarrage de "
+              "la VM est requis pour qu'il prenne effet (non declenche "
+              "automatiquement)", file=sys.stderr)
+
+    try:
+        poser_vb_audio(armee=bool(answers.get("vb_audio", False)))
+    except (FileNotFoundError, RuntimeError, NotImplementedError) as exc:
+        print(f"desk activate: pose de VB-Audio dans la VM refusee : {exc}",
+              file=sys.stderr)
+        return 1
 
     plateforme_dir = root / PLATEFORME_RELATIF
     if not plateforme_dir.is_dir():
