@@ -91,6 +91,34 @@ def poser_faux_winrm_exec(packages_dir: pathlib.Path, log: pathlib.Path) -> None
     script.chmod(0o755)
 
 
+# --- Le faux fetch_payload.py (tâche 7) : simple MARQUEUR de présence.
+# `activate.py::chemin_agent_console()` ne fait que tester son existence
+# (`is_file()`) — jamais l'exécuter — donc un contenu vide suffit à prouver
+# que « console est installé » sans rien exécuter du vrai fichier.
+def poser_faux_fetch_payload(packages_dir: pathlib.Path) -> None:
+    guest_dir = packages_dir / "console" / "guest"
+    guest_dir.mkdir(parents=True, exist_ok=True)
+    (guest_dir / "fetch_payload.py").write_text("", encoding="utf-8")
+
+
+# --- Le faux scripts/build-agent-croise.sh (tâche 7) : jamais le vrai (il
+# compilerait l'agent réel, ~40 s, boîte à outils croisée). Contrat exact du
+# vrai script (lu intégralement) : appelé `<script> <destination_dir>`, il y
+# dépose lui-même `agent.exe`. Ici, un contenu FACTICE fixe suffit : aucune
+# recette de ce lot ne juge le binaire produit, seulement son EMPLACEMENT.
+FAUX_BUILD_AGENT = """#!/usr/bin/env python3
+import pathlib, sys
+d = pathlib.Path(sys.argv[1])
+d.mkdir(parents=True, exist_ok=True)
+(d / "agent.exe").write_bytes(b"faux-agent-exe-de-test")
+"""
+
+
+def poser_faux_build_agent(chemin: pathlib.Path) -> None:
+    chemin.write_text(FAUX_BUILD_AGENT, encoding="utf-8")
+    chemin.chmod(0o755)
+
+
 def poser_faux_systemctl(bin_dir: pathlib.Path, log: pathlib.Path) -> None:
     """Un systemctl qui n'agit sur RIEN : juste une trace de ses arguments,
     pour prouver qu'il n'est jamais invoqué sous un --root de test."""
@@ -147,13 +175,22 @@ def appeler(root, bin_dir, hw=None, answers=None, root_arg=None, packages_dir=No
     bin_dir en tête, pour que npm/systemctl résolus soient les factices.
 
     `packages_dir` (tâche 6) : où pointer `NIVUUS_PACKAGES_DIR` pour la
-    résolution de `winrm_exec.py`. Par défaut (`None`), un faux
-    `console/guest/winrm_exec.py` FONCTIONNEL est fabriqué sous `root`
-    lui-même — sans quoi tout scénario qui n'a rien à voir avec
-    ProjFS/VB-Audio échouerait sur « console absent » avant d'atteindre la
-    raison qu'il veut réellement éprouver. `packages_dir=False` simule
-    `console` ABSENT (aucun fichier n'est créé, pour les scénarios dédiés
-    de la tâche 6).
+    résolution de `winrm_exec.py` ET, depuis la tâche 7, de
+    `fetch_payload.py`. Par défaut (`None`), un faux
+    `console/guest/winrm_exec.py` FONCTIONNEL et un faux
+    `console/guest/fetch_payload.py` (simple marqueur) sont fabriqués sous
+    `root` lui-même — sans quoi tout scénario qui n'a rien à voir avec
+    ProjFS/VB-Audio/le dépôt d'agent.exe échouerait sur « console absent »
+    avant d'atteindre la raison qu'il veut réellement éprouver.
+    `packages_dir=False` simule `console` ABSENT (aucun fichier n'est créé,
+    pour les scénarios dédiés).
+
+    🔴 TÂCHE 7 — `DESK_BUILD_AGENT_SCRIPT` est TOUJOURS posée (peu importe
+    `packages_dir`) vers un script FACTICE qui ne compile rien : sans elle,
+    `deposer_agent_console()`, appelé sans condition par `main()`,
+    invoquerait le VRAI `scripts/build-agent-croise.sh` à CHAQUE scénario
+    de ce fichier — la compilation réelle que la tâche interdit dans les
+    tests.
     """
     contexte = {"hw": hw if hw is not None else HW_AVEC_FACTS,
                 "answers": answers if answers is not None else REPONSES}
@@ -166,9 +203,14 @@ def appeler(root, bin_dir, hw=None, answers=None, root_arg=None, packages_dir=No
     if packages_dir is None:
         packages_dir = root / "faux-packages-dir"
         poser_faux_winrm_exec(packages_dir, root / "winrm.log")
+        poser_faux_fetch_payload(packages_dir)
     elif packages_dir is False:
         packages_dir = root / "console-absent-ici"
     env["NIVUUS_PACKAGES_DIR"] = str(packages_dir)
+    faux_build = root / "faux-build-agent.py"
+    if not faux_build.is_file():
+        poser_faux_build_agent(faux_build)
+    env["DESK_BUILD_AGENT_SCRIPT"] = str(faux_build)
     cmd = [sys.executable, str(HOOK), "--phase", "activate",
            "--root", str(root_arg if root_arg is not None else root)]
     return subprocess.run(cmd, input=json.dumps(contexte), env=env,
