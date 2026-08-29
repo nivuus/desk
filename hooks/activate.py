@@ -206,13 +206,25 @@ def ajouter_variables_env(chemin: pathlib.Path, nouvelles: dict) -> None:
     déjà posé, SANS toucher aux lignes qui y sont déjà, et referme le
     fichier en mode 600 — le même mode que `install.py::ecrire_env` lui a
     donné, et qu'il doit garder : ce fichier porte des secrets.
+
+    🔴 PRÉCONDITION, EXIGÉE PAR L'APPELANT : `chemin` DOIT DÉJÀ EXISTER
+    (`main()` refuse plus haut si `desk.env` est absent — voir son
+    commentaire). `write_text()` sur un fichier EXISTANT réutilise le mode
+    déjà en place, il ne le recrée pas au umask du processus ; c'est
+    SEULEMENT sur un fichier NEUF que ce patron ouvrirait la fenêtre
+    écriture-puis-`chmod` qu'`install.py::ecrire_env` a éliminée (commit
+    `92cacfb`) en passant à `os.open(..., 0o600)`. Cette fonction ne
+    recrée jamais ce fichier depuis rien — c'est la garde de `main()`, pas
+    elle, qui rend cette précondition vraie.
     """
     corps = chemin.read_text(encoding="utf-8") if chemin.is_file() else ""
     if corps and not corps.endswith("\n"):
         corps += "\n"
     corps += "".join(f"{cle}={valeur}\n" for cle, valeur in nouvelles.items())
     chemin.write_text(corps, encoding="utf-8")
-    os.chmod(chemin, stat.S_IRUSR | stat.S_IWUSR)  # 0o600
+    os.chmod(chemin, stat.S_IRUSR | stat.S_IWUSR)  # 0o600, redondant si la
+    # précondition tient déjà — mais gratuit, et une seconde ligne de
+    # défense ne coûte rien.
 
 
 # --- Les deux commandes d'administration ----------------------------------
@@ -328,7 +340,40 @@ def main() -> int:
             for item in echecs:
                 print(f"  - {item}", file=sys.stderr)
 
+    plateforme_dir = root / PLATEFORME_RELATIF
+    if not plateforme_dir.is_dir():
+        print(f"desk activate: {plateforme_dir} est absent ; le hook install "
+              "ne semble pas avoir tourne sur cette racine", file=sys.stderr)
+        return 1
+
     env_chemin = root / ENV_RELATIF
+
+    # 🔴 CORRECTION, RONDE 1 — `desk.env` DOIT DÉJÀ EXISTER À CE STADE, ET
+    # SON ABSENCE EST UN REFUS, JAMAIS UNE CRÉATION SILENCIEUSE. Deux
+    # raisons, la seconde étant celle qui tranche :
+    #   1. c'est le SYMPTÔME d'une installation partielle (`plateforme/`
+    #      posé, `desk.env` jamais écrit ou supprimé depuis) — un problème
+    #      plus grave qu'un simple fichier absent, qui mérite un refus nommé
+    #      plutôt qu'un repli silencieux ;
+    #   2. `ajouter_variables_env()` (plus bas) écrit par `write_text()` PUIS
+    #      `chmod`, exactement le patron qu'`install.py::ecrire_env` a
+    #      abandonné (commit `92cacfb`, « un secret jamais lisible entre
+    #      creation et chmod ») pour un `os.open(..., 0o600)` atomique — un
+    #      fichier NEUF naîtrait ici au umask du processus, brièvement lisible
+    #      par quiconque avant que le `chmod` ne rattrape, et ce fichier va
+    #      recevoir `AGENT_SECRET`. Refuser ici garantit que
+    #      `ajouter_variables_env()` n'écrit JAMAIS que sur un fichier déjà en
+    #      600 : `write_text()` sur un fichier EXISTANT ne touche pas à son
+    #      mode, donc aucune fenêtre ne s'ouvre. `tests/test_desk_activate.py`
+    #      éprouve ce refus (scénario dédié : `plateforme/` posé, `desk.env`
+    #      absent).
+    if not env_chemin.is_file():
+        print(f"desk activate: {env_chemin} est absent ; le hook install ne "
+              "semble pas avoir pose de fichier d'environnement sur cette "
+              "racine (installation partielle, ou fichier supprime depuis) — "
+              "rien n'est cree a sa place", file=sys.stderr)
+        return 1
+
     env_deja_pose = lire_env_fichier(env_chemin)
 
     # 🔴 IDEMPOTENCE : une activation DÉJÀ ABOUTIE ne rejoue ni la création
@@ -361,12 +406,6 @@ def main() -> int:
     if not email or not mot_de_passe:
         print("desk activate: answers.admin_email et answers.admin_password "
               "sont requis et absents", file=sys.stderr)
-        return 1
-
-    plateforme_dir = root / PLATEFORME_RELATIF
-    if not plateforme_dir.is_dir():
-        print(f"desk activate: {plateforme_dir} est absent ; le hook install "
-              "ne semble pas avoir tourne sur cette racine", file=sys.stderr)
         return 1
 
     # `admin:utilisateur`/`admin:agent` lisent leur configuration (quelle

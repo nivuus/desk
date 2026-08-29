@@ -58,7 +58,9 @@ argv = sys.argv[1:]
 stdin_data = sys.stdin.read()
 with open({log!r}, "a", encoding="utf-8") as fh:
     fh.write(json.dumps({{"argv": ["npm", *argv], "cwd": os.getcwd(),
-                          "stdin": stdin_data}}) + "\\n")
+                          "stdin": stdin_data,
+                          "env_base_url": os.environ.get("PLATEFORME_BASE_URL", ""),
+                          }}) + "\\n")
 
 if "admin:utilisateur" in argv:
     sys.stdout.write("u-test-0001\\n")
@@ -135,6 +137,10 @@ def appeler(root, bin_dir, hw=None, answers=None, root_arg=None):
                 "answers": answers if answers is not None else REPONSES}
     env = dict(os.environ)
     env["PATH"] = str(bin_dir) + os.pathsep + env.get("PATH", "")
+    # Le contrôle ② veut prouver que PLATEFORME_BASE_URL atteint npm PAR LA
+    # FUSION que le hook fait depuis desk.env — jamais parce que le shell qui
+    # fait tourner ces tests l'exportait déjà par accident.
+    env.pop("PLATEFORME_BASE_URL", None)
     cmd = [sys.executable, str(HOOK), "--phase", "activate",
            "--root", str(root_arg if root_arg is not None else root)]
     return subprocess.run(cmd, input=json.dumps(contexte), env=env,
@@ -227,8 +233,18 @@ with tempfile.TemporaryDirectory() as tmp:
           "--roter" in appel_agent["argv"], False)
 
     # --- L'environnement transmis a npm porte la config de desk.env --------
-    check("PLATEFORME_BASE_URL de desk.env atteint la commande npm",
-          appel_utilisateur.get("cwd", "").endswith("plateforme"), True)
+    # 🔴 CORRECTION, RONDE 1 : la version precedente de ce controle regardait
+    # "cwd" sous une etiquette qui parlait de PLATEFORME_BASE_URL — il ne
+    # pouvait pas rougir, cwd est pose INCONDITIONNELLEMENT par lancer_npm(),
+    # que la fusion d'environnement soit correcte ou non. Le faux npm
+    # journalise desormais la valeur REELLEMENT recue par le processus fils
+    # (env_base_url, voir FAUX_NPM) ; on la compare a celle ecrite par
+    # poser_racine_installee() dans desk.env.
+    valeur_attendue = "/var/lib/nivuus-desk/plateforme.sqlite"
+    check("PLATEFORME_BASE_URL de desk.env atteint le processus npm (admin:utilisateur)",
+          appel_utilisateur.get("env_base_url"), valeur_attendue)
+    check("PLATEFORME_BASE_URL de desk.env atteint le processus npm (admin:agent)",
+          appel_agent.get("env_base_url"), valeur_attendue)
 
     # --- AGENT_VM / AGENT_SECRET ecrits dans desk.env, APRES le contenu deja
     # la ------------------------------------------------------------------
@@ -287,6 +303,46 @@ with tempfile.TemporaryDirectory() as tmp:
     # compte dans l'ordre du hook.
     lien = unite_dir / "multi-user.target.wants" / "desk-plateforme.service"
     check("l'armement a quand meme eu lieu avant le refus", os.path.islink(lien), True)
+
+
+# === Scénario 2bis (CORRECTION, RONDE 1) : plateforme/ posee, desk.env
+# ABSENT — le cas precis que la revue a nomme : install partielle, ou un
+# operateur qui a supprime le fichier. Le hook doit REFUSER plutot que
+# recreer desk.env en silence — c'est ce refus qui empeche
+# ajouter_variables_env() d'ecrire un fichier NEUF (fenetre ecriture-puis-
+# chmod), puisqu'il ne l'atteint jamais dans ce cas. ========================
+with tempfile.TemporaryDirectory() as tmp:
+    root = pathlib.Path(tmp)
+    unite_dir = root / "etc" / "systemd" / "system"
+    unite_dir.mkdir(parents=True)
+    (unite_dir / "desk-plateforme.service").write_text(
+        (RACINE / "hooks" / "assets" / "desk-plateforme.service").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+    # plateforme/ EST posee (install partiellement joue) ...
+    (root / "opt" / "nivuus" / "desk" / "plateforme").mkdir(parents=True)
+    # ... mais etc/nivuus/desk.env n'existe PAS.
+    env_absent = root / "etc" / "nivuus" / "desk.env"
+    check("precondition du scenario : desk.env n'existe pas", env_absent.exists(), False)
+
+    bin_dir = root / "faux-bin"
+    bin_dir.mkdir()
+    poser_faux_npm(bin_dir, root / "npm.log")
+
+    r = appeler(root, bin_dir)
+    check("desk.env absent (plateforme present) : refus propre (rc != 0)",
+          r.returncode != 0, True)
+    check("le refus nomme desk.env, pas seulement plateforme",
+          "desk.env" in (r.stderr or ""), True)
+    check("aucune trace Python", "Traceback" in (r.stderr or ""), False)
+    check("desk.env n'a PAS ete cree a sa place (aucune ecriture en silence)",
+          env_absent.exists(), False)
+    check("aucune commande npm n'a ete lancee (le refus precede tout appel)",
+          (root / "npm.log").exists(), False)
+    # L'armement, lui, precede ce refus : il a quand meme du se faire.
+    lien = unite_dir / "multi-user.target.wants" / "desk-plateforme.service"
+    check("l'armement a quand meme eu lieu avant ce refus aussi",
+          os.path.islink(lien), True)
 
 
 # === Scénario 3 : reponses manquantes — refus propre =======================
