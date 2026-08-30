@@ -8,7 +8,8 @@
 //! **Écart au brief d'origine, vérifié empiriquement sur la VM cible** : la
 //! capture (`crate::capture`) fournit des textures `DXGI_FORMAT_B8G8R8A8_UNORM`
 //! (BGRA), mais l'encodeur `NVIDIA H.264 Encoder MFT` n'annonce QUE `NV12` en
-//! type d'entrée disponible (voir `log_supported_input_types`, qui journalise
+//! type d'entrée disponible (voir `fabrique::log_supported_input_types`, qui
+//! journalise
 //! la liste réelle renvoyée par `GetInputAvailableType` au démarrage — aucune
 //! variante RGB/ARGB n'y figure). Envelopper directement la texture BGRA dans
 //! un échantillon annoncé NV12 produirait un échec de `ProcessInput` ou, pire,
@@ -46,25 +47,22 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, OnceLock};
 
 use anyhow::{anyhow, bail, Context, Result};
-use windows::core::{Interface, PWSTR, GUID};
-use windows::Win32::Graphics::Direct3D11::{
-    ID3D11Device, ID3D11Texture2D, D3D11_BIND_RENDER_TARGET, D3D11_TEXTURE2D_DESC,
-    D3D11_USAGE_DEFAULT,
-};
-use windows::Win32::Graphics::Dxgi::Common::{DXGI_FORMAT_NV12, DXGI_SAMPLE_DESC};
+use windows::core::Interface;
+use windows::Win32::Graphics::Direct3D11::{ID3D11Device, ID3D11Texture2D};
 use windows::Win32::Media::MediaFoundation::*;
-use windows::Win32::System::Com::{CoCreateInstance, CoTaskMemFree, CLSCTX_INPROC_SERVER};
-// écart d'API windows-rs 0.62 : `VARIANT_TRUE`/`VARIANT_FALSE` vivent dans
-// `Win32::Foundation` (constantes `VARIANT_BOOL`), pas dans
-// `Win32::System::Variant` où on les attendrait à côté du reste du type
-// `VARIANT` — confirmé en lisant les sources de la crate sur la VM.
-use windows::Win32::Foundation::{VARIANT_FALSE, VARIANT_TRUE};
-use windows::Win32::System::Variant::{VARIANT, VARIANT_0, VARIANT_0_0, VARIANT_0_0_0, VT_BOOL, VT_UI4};
 
 use crate::capture::CapturedFrame;
 use crate::h264::{group_access_units, AccessUnit};
 
 mod arret;
+// Extraits le 30 août 2026 (lot 31), AVANT toute addition : ce fichier
+// pesait 1536 lignes. `fabrique` TROUVE et ACTIVE les MFT, `reglages` POSE
+// les réglages sur une MFT obtenue. Enfants ordinaires (un simple `mod`
+// chez leur parent gaté) et non `#[path]` : ils n'ont jamais besoin de
+// sortir du `#![cfg(windows)]` ci-dessus — voir la convention de module
+// enfant dans `CLAUDE.md`.
+mod fabrique;
+mod reglages;
 
 /// Identifiants d'événements des MFT asynchrones (repris des constantes
 /// fournies par le crate plutôt que dupliqués en dur, comme suggéré par le
@@ -373,7 +371,7 @@ impl H264Encoder {
         // ci-dessus évite. Voir `arret::FileMft::allouer`.
         let mut file_encodeur = arret::FileMft::allouer();
 
-        let transform = find_hardware_encoder()?;
+        let transform = fabrique::find_hardware_encoder()?;
         let attributes = unsafe { transform.GetAttributes() }?;
 
         // Débloquer le mode asynchrone : obligatoire pour toute MFT matérielle.
@@ -387,10 +385,10 @@ impl H264Encoder {
 
         // Preuve empirique (voir commentaire de module) : la liste réelle des
         // types d'entrée annoncés par cet encodeur, avant toute configuration.
-        log_supported_input_types(&transform);
+        fabrique::log_supported_input_types(&transform);
 
         // Partager le périphérique D3D11 pour recevoir des textures GPU.
-        let device_manager = share_device(device)?;
+        let device_manager = fabrique::share_device(device)?;
         unsafe {
             transform.ProcessMessage(
                 MFT_MESSAGE_SET_D3D_MANAGER,
@@ -399,9 +397,9 @@ impl H264Encoder {
         }
         .context("partage du périphérique D3D avec l'encodeur")?;
 
-        configure_output(&transform, encode.0, encode.1, fps, bitrate)?;
-        configure_input(&transform, encode.0, encode.1, fps)?;
-        configure_rate_control(&transform, bitrate)?;
+        reglages::configure_output(&transform, encode.0, encode.1, fps, bitrate)?;
+        reglages::configure_input(&transform, encode.0, encode.1, fps)?;
+        reglages::configure_rate_control(&transform, bitrate)?;
 
         let events: IMFMediaEventGenerator = transform.cast()?;
 
@@ -426,7 +424,7 @@ impl H264Encoder {
         }
 
         // Convertisseur BGRA→NV12, partageant le même périphérique D3D.
-        let converter = create_color_converter(&device_manager, capture, encode, fps)?;
+        let converter = fabrique::create_color_converter(&device_manager, capture, encode, fps)?;
         let converter_stream_info = unsafe { converter.GetOutputStreamInfo(0) }
             .context("interrogation du flux de sortie du convertisseur")?;
         let converter_provides_samples = converter_stream_info.dwFlags
@@ -750,7 +748,7 @@ impl H264Encoder {
             pSample: std::mem::ManuallyDrop::new(if self.converter_provides_samples {
                 None
             } else {
-                Some(create_nv12_sample(&self.device, self.encode.0, self.encode.1)?)
+                Some(fabrique::create_nv12_sample(&self.device, self.encode.0, self.encode.1)?)
             }),
             dwStatus: 0,
             pEvents: std::mem::ManuallyDrop::new(None),
@@ -1002,7 +1000,7 @@ impl H264Encoder {
     /// Force la production d'une image clé sur l'image suivante.
     pub fn request_keyframe(&mut self) -> Result<()> {
         let codec: ICodecAPI = self.transform.cast()?;
-        let value = variant_bool(true);
+        let value = reglages::variant_bool(true);
         unsafe { codec.SetValue(&CODECAPI_AVEncVideoForceKeyFrame, &value) }?;
         Ok(())
     }
@@ -1018,7 +1016,7 @@ impl H264Encoder {
     /// (voir tâche 7).
     pub fn set_bitrate(&mut self, bitrate: u32) -> Result<()> {
         let codec: ICodecAPI = self.transform.cast()?;
-        let rate = variant_u32(bitrate);
+        let rate = reglages::variant_u32(bitrate);
         unsafe { codec.SetValue(&CODECAPI_AVEncCommonMeanBitRate, &rate) }
             .context("réglage à chaud du débit d'encodage")?;
         Ok(())
@@ -1110,427 +1108,4 @@ unsafe fn take_output_sample(buffer: &mut MFT_OUTPUT_DATA_BUFFER) -> Option<IMFS
     // d'événements elle nous appartient exactement au même titre.
     drop(std::mem::ManuallyDrop::take(&mut buffer.pEvents));
     std::mem::ManuallyDrop::take(&mut buffer.pSample)
-}
-
-/// Construit une `VARIANT` `VT_UI4` manuellement : cette version de
-/// windows-rs ne fournit pas de `From<u32>` pour `VARIANT` (écart au brief,
-/// vérifié en lisant les sources de la crate sur la VM — aucun `impl From<`
-/// n'existe pour ce type dans `Win32::System::Variant`).
-fn variant_u32(value: u32) -> VARIANT {
-    VARIANT {
-        Anonymous: VARIANT_0 {
-            Anonymous: std::mem::ManuallyDrop::new(VARIANT_0_0 {
-                vt: VT_UI4,
-                wReserved1: 0,
-                wReserved2: 0,
-                wReserved3: 0,
-                Anonymous: VARIANT_0_0_0 { ulVal: value },
-            }),
-        },
-    }
-}
-
-/// Construit une `VARIANT` `VT_BOOL` manuellement (même raison que
-/// `variant_u32`).
-fn variant_bool(value: bool) -> VARIANT {
-    VARIANT {
-        Anonymous: VARIANT_0 {
-            Anonymous: std::mem::ManuallyDrop::new(VARIANT_0_0 {
-                vt: VT_BOOL,
-                wReserved1: 0,
-                wReserved2: 0,
-                wReserved3: 0,
-                Anonymous: VARIANT_0_0_0 {
-                    boolVal: if value { VARIANT_TRUE } else { VARIANT_FALSE },
-                },
-            }),
-        },
-    }
-}
-
-/// Journalise les types d'entrée réellement annoncés par l'encodeur, avant
-/// toute configuration. Sert de preuve empirique à la question BGRA/NV12
-/// (voir le commentaire de module) : sur la VM cible, seul NV12 apparaît.
-fn log_supported_input_types(transform: &IMFTransform) {
-    let mut index = 0u32;
-    loop {
-        let media_type = match unsafe { transform.GetInputAvailableType(0, index) } {
-            Ok(t) => t,
-            Err(_) => break, // MF_E_NO_MORE_TYPES : fin de l'énumération.
-        };
-        let subtype = unsafe { media_type.GetGUID(&MF_MT_SUBTYPE) };
-        match subtype {
-            Ok(guid) => tracing::info!(
-                index,
-                subtype = %format_subtype(guid),
-                "type d'entrée annoncé par l'encodeur"
-            ),
-            Err(_) => tracing::info!(index, "type d'entrée annoncé (sous-type illisible)"),
-        }
-        index += 1;
-    }
-}
-
-/// Traduit les GUID de sous-type vidéo les plus courants en texte lisible,
-/// pour les journaux. Sans rapport avec la logique de conversion elle-même.
-fn format_subtype(guid: GUID) -> String {
-    if guid == MFVideoFormat_NV12 {
-        "NV12".to_string()
-    } else if guid == MFVideoFormat_ARGB32 {
-        "ARGB32 (BGRA)".to_string()
-    } else if guid == MFVideoFormat_RGB32 {
-        "RGB32 (BGRX)".to_string()
-    } else if guid == MFVideoFormat_YUY2 {
-        "YUY2".to_string()
-    } else if guid == MFVideoFormat_YV12 {
-        "YV12".to_string()
-    } else if guid == MFVideoFormat_IYUV {
-        "IYUV".to_string()
-    } else {
-        format!("{guid:?}")
-    }
-}
-
-/// Crée le convertisseur GPU BGRA→NV12 (Video Processor MFT de Media
-/// Foundation, `CLSID_VideoProcessorMFT`). Contrairement à l'encodeur, cette
-/// MFT est synchrone : pas d'événements à suivre, `ProcessInput` suivi de
-/// `ProcessOutput` suffit.
-fn create_color_converter(
-    device_manager: &IMFDXGIDeviceManager,
-    capture: (u32, u32),
-    encode: (u32, u32),
-    fps: u32,
-) -> Result<IMFTransform> {
-    // Essai (ronde de correction 1/5, investigation du débit) :
-    // `CoCreateInstance(CLSID_VideoProcessorMFT)` instancie l'implémentation
-    // par défaut de ce CLSID, qui pourrait être un chemin logiciel/mixte
-    // plutôt qu'une implémentation matérielle. On tente d'abord de trouver
-    // un convertisseur explicitement enregistré comme matériel via
-    // `MFTEnumEx`, comme pour l'encodeur — repli sur `CoCreateInstance` si
-    // rien n'est trouvé.
-    let converter: IMFTransform = match find_hardware_video_processor() {
-        Ok(t) => t,
-        Err(e) => {
-            tracing::debug!(erreur = %e, "aucun convertisseur vidéo matériel énuméré, repli sur CLSID_VideoProcessorMFT");
-            unsafe { CoCreateInstance(&CLSID_VideoProcessorMFT, None, CLSCTX_INPROC_SERVER) }
-                .context("création du convertisseur vidéo (Video Processor MFT)")?
-        }
-    };
-
-    // Essai : le mode faible latence n'était appliqué qu'à l'encodeur, pas au
-    // convertisseur — potentiellement lié à l'attente d'~1 s observée dans
-    // `drain_converter_output` (voir son commentaire). `GetAttributes` peut
-    // échouer si le convertisseur n'expose pas d'attributs modifiables ; dans
-    // ce cas on continue sans bloquer la construction.
-    if let Ok(converter_attributes) = unsafe { converter.GetAttributes() } {
-        let _ = unsafe { converter_attributes.SetUINT32(&MF_LOW_LATENCY, 1) };
-    }
-
-    unsafe {
-        converter.ProcessMessage(MFT_MESSAGE_SET_D3D_MANAGER, device_manager.as_raw() as usize)
-    }
-    .context("partage du périphérique D3D avec le convertisseur")?;
-
-    // Piège rencontré à l'essai : avec le pool par défaut, la séquence
-    // documentée « ProcessOutput jusqu'à MF_E_TRANSFORM_NEED_MORE_INPUT »
-    // échoue avec `MF_E_SAMPLEALLOCATOR_EMPTY` (0xC00D4A3E) après exactement 5
-    // images — l'encodeur matériel en garde plusieurs « en vol » avant d'en
-    // libérer, et le pool par défaut n'a pas cette marge.
-    //
-    // Premier correctif tenté, insuffisant : `MF_SA_MINIMUM_OUTPUT_SAMPLE_COUNT`
-    // seul, avec les valeurs 4 puis 16 — dans les deux cas, échec au exactement
-    // le même 5e appel, preuve que cet attribut seul n'a aucun effet ici.
-    // Cause : notre flux est **progressif**
-    // (`MF_MT_INTERLACE_MODE` = `MFVideoInterlace_Progressive`), et ce MFT
-    // distingue apparemment deux attributs de taille de pool — un pour le
-    // contenu entrelacé, un pour le progressif
-    // (`MF_SA_MINIMUM_OUTPUT_SAMPLE_COUNT_PROGRESSIVE`) — seul ce second
-    // attribut est honoré pour du contenu progressif. On positionne les deux
-    // par prudence (documentation MF ambiguë sur ce point).
-    let output_stream_attributes = unsafe { converter.GetOutputStreamAttributes(0) }
-        .context("attributs du flux de sortie du convertisseur")?;
-    unsafe {
-        output_stream_attributes.SetUINT32(&MF_SA_MINIMUM_OUTPUT_SAMPLE_COUNT, 16)?;
-        output_stream_attributes
-            .SetUINT32(&MF_SA_MINIMUM_OUTPUT_SAMPLE_COUNT_PROGRESSIVE, 16)?;
-    }
-
-    let input_type = unsafe { MFCreateMediaType() }?;
-    unsafe {
-        input_type.SetGUID(&MF_MT_MAJOR_TYPE, &MFMediaType_Video)?;
-        // Format d'entrée = ce que produit la capture (BGRA, avec alpha) ;
-        // `MFVideoFormat_ARGB32` correspond à `DXGI_FORMAT_B8G8R8A8_UNORM`.
-        input_type.SetGUID(&MF_MT_SUBTYPE, &MFVideoFormat_ARGB32)?;
-        input_type.SetUINT64(&MF_MT_FRAME_SIZE, pack_u64(capture.0, capture.1))?;
-        input_type.SetUINT64(&MF_MT_FRAME_RATE, pack_u64(fps, 1))?;
-        input_type.SetUINT32(&MF_MT_INTERLACE_MODE, MFVideoInterlace_Progressive.0 as u32)?;
-        converter
-            .SetInputType(0, &input_type, 0)
-            .context("configuration du type d'entrée du convertisseur de couleur (Video Processor MFT)")?;
-    }
-
-    let output_type = unsafe { MFCreateMediaType() }?;
-    unsafe {
-        output_type.SetGUID(&MF_MT_MAJOR_TYPE, &MFMediaType_Video)?;
-        output_type.SetGUID(&MF_MT_SUBTYPE, &MFVideoFormat_NV12)?;
-        output_type.SetUINT64(&MF_MT_FRAME_SIZE, pack_u64(encode.0, encode.1))?;
-        output_type.SetUINT64(&MF_MT_FRAME_RATE, pack_u64(fps, 1))?;
-        output_type.SetUINT32(&MF_MT_INTERLACE_MODE, MFVideoInterlace_Progressive.0 as u32)?;
-        converter.SetOutputType(0, &output_type, 0).context(
-            "configuration du type de sortie du convertisseur de couleur (Video Processor MFT)",
-        )?;
-    }
-
-    Ok(converter)
-}
-
-/// Énumère les convertisseurs vidéo (BGRA→NV12) explicitement enregistrés
-/// comme matériels, et active le premier — même logique que
-/// `find_hardware_encoder`, avec les mêmes précautions de libération
-/// mémoire (voir son commentaire).
-fn find_hardware_video_processor() -> Result<IMFTransform> {
-    let input_info = MFT_REGISTER_TYPE_INFO {
-        guidMajorType: MFMediaType_Video,
-        guidSubtype: MFVideoFormat_ARGB32,
-    };
-    let output_info = MFT_REGISTER_TYPE_INFO {
-        guidMajorType: MFMediaType_Video,
-        guidSubtype: MFVideoFormat_NV12,
-    };
-
-    let mut activates: *mut Option<IMFActivate> = std::ptr::null_mut();
-    let mut count: u32 = 0;
-
-    unsafe {
-        MFTEnumEx(
-            MFT_CATEGORY_VIDEO_PROCESSOR,
-            MFT_ENUM_FLAG_HARDWARE | MFT_ENUM_FLAG_SORTANDFILTER,
-            Some(&input_info),
-            Some(&output_info),
-            &mut activates,
-            &mut count,
-        )
-        .context("énumération des convertisseurs vidéo matériels")?;
-    }
-
-    if count == 0 {
-        unsafe { CoTaskMemFree(Some(activates as *const _)) };
-        bail!("aucun convertisseur vidéo matériel enregistré");
-    }
-
-    let slice = unsafe { std::slice::from_raw_parts_mut(activates, count as usize) };
-    let mut first: Option<IMFActivate> = None;
-    for (index, slot) in slice.iter_mut().enumerate() {
-        let activate = slot.take();
-        if index == 0 {
-            first = activate;
-        }
-    }
-    let first = first.ok_or_else(|| anyhow!("activateur de convertisseur absent"))?;
-
-    let mut name_ptr = PWSTR::null();
-    let mut name_len = 0u32;
-    if unsafe { first.GetAllocatedString(&MFT_FRIENDLY_NAME_Attribute, &mut name_ptr, &mut name_len) }
-        .is_ok()
-    {
-        let name = unsafe { name_ptr.to_string() }.unwrap_or_default();
-        tracing::info!(convertisseur = %name, "convertisseur vidéo matériel retenu");
-        unsafe { CoTaskMemFree(Some(name_ptr.0 as *const _)) };
-    }
-
-    let transform: IMFTransform = unsafe { first.ActivateObject() }
-        .context("activation du convertisseur vidéo matériel (ActivateObject)")?;
-    unsafe { CoTaskMemFree(Some(activates as *const _)) };
-    Ok(transform)
-}
-
-/// Alloue une texture NV12 GPU et l'enveloppe dans un échantillon Media
-/// Foundation réutilisable, pour les cas où le convertisseur ne s'auto-alloue
-/// pas (`MFT_OUTPUT_STREAM_PROVIDES_SAMPLES` absent — voir
-/// `H264Encoder::new`).
-fn create_nv12_sample(device: &ID3D11Device, width: u32, height: u32) -> Result<IMFSample> {
-    let desc = D3D11_TEXTURE2D_DESC {
-        Width: width,
-        Height: height,
-        MipLevels: 1,
-        ArraySize: 1,
-        Format: DXGI_FORMAT_NV12,
-        SampleDesc: DXGI_SAMPLE_DESC { Count: 1, Quality: 0 },
-        Usage: D3D11_USAGE_DEFAULT,
-        BindFlags: D3D11_BIND_RENDER_TARGET.0 as u32,
-        CPUAccessFlags: 0,
-        MiscFlags: 0,
-    };
-    let mut texture: Option<ID3D11Texture2D> = None;
-    unsafe { device.CreateTexture2D(&desc, None, Some(&mut texture)) }
-        .context("allocation de la texture NV12 intermédiaire")?;
-    let texture = texture.ok_or_else(|| anyhow!("texture NV12 absente"))?;
-
-    let sample = unsafe { MFCreateSample() }?;
-    let buffer = unsafe { MFCreateDXGISurfaceBuffer(&ID3D11Texture2D::IID, &texture, 0, false) }
-        .context("enveloppement de la texture NV12")?;
-    unsafe { sample.AddBuffer(&buffer) }?;
-    Ok(sample)
-}
-
-/// Énumère les encodeurs H.264 matériels et active le premier.
-fn find_hardware_encoder() -> Result<IMFTransform> {
-    let input_info = MFT_REGISTER_TYPE_INFO {
-        guidMajorType: MFMediaType_Video,
-        guidSubtype: MFVideoFormat_NV12,
-    };
-    let output_info = MFT_REGISTER_TYPE_INFO {
-        guidMajorType: MFMediaType_Video,
-        guidSubtype: MFVideoFormat_H264,
-    };
-
-    let mut activates: *mut Option<IMFActivate> = std::ptr::null_mut();
-    let mut count: u32 = 0;
-
-    unsafe {
-        MFTEnumEx(
-            MFT_CATEGORY_VIDEO_ENCODER,
-            MFT_ENUM_FLAG_HARDWARE | MFT_ENUM_FLAG_SORTANDFILTER,
-            Some(&input_info),
-            Some(&output_info),
-            &mut activates,
-            &mut count,
-        )
-        .context("énumération des encodeurs H.264 matériels")?;
-    }
-
-    if count == 0 {
-        unsafe { CoTaskMemFree(Some(activates as *const _)) };
-        bail!(
-            "aucun encodeur H.264 matériel trouvé sur cette machine. \
-             Vérifier le pilote GPU ; le jalon 1 n'a pas de repli logiciel."
-        );
-    }
-
-    // Récupérer les objets AVANT de libérer le tableau alloué par CoTaskMemAlloc.
-    //
-    // Ronde de correction 1/5 — fuite corrigée ici : la version précédente
-    // ne relâchait que le premier `IMFActivate` (par `.clone()`, qui ajoute
-    // une référence sans jamais libérer celle que `MFTEnumEx` a placée dans
-    // la case du tableau). `CoTaskMemFree` ne libère que la mémoire brute du
-    // tableau, pas les références COM qu'il contient : chaque entrée, y
-    // compris la première, fuyait donc une référence. `slot.take()` déplace
-    // chaque entrée hors du tableau (remplacée par `None`) ; les entrées
-    // qu'on ne garde pas sont droppées immédiatement (donc relâchées), la
-    // première est conservée dans `first` sans référence supplémentaire.
-    // Latent tant qu'un seul encodeur est présent, mais réel dès qu'il y en
-    // aurait plusieurs.
-    let slice = unsafe { std::slice::from_raw_parts_mut(activates, count as usize) };
-    let mut first: Option<IMFActivate> = None;
-    for (index, slot) in slice.iter_mut().enumerate() {
-        let activate = slot.take();
-        if index == 0 {
-            first = activate;
-        }
-        // Sinon : `activate` est droppé ici, relâchant sa référence COM.
-    }
-    let first = first.ok_or_else(|| anyhow!("activateur d'encodeur absent"))?;
-
-    let mut name_ptr = PWSTR::null();
-    let mut name_len = 0u32;
-    // écart d'API windows-rs 0.62 : `GetStringAlloc` n'existe pas sur
-    // `IMFAttributes` dans cette version ; la méthode s'appelle
-    // `GetAllocatedString` (mémoire allouée par `CoTaskMemAlloc`, à libérer
-    // explicitement après usage).
-    if unsafe { first.GetAllocatedString(&MFT_FRIENDLY_NAME_Attribute, &mut name_ptr, &mut name_len) }
-        .is_ok()
-    {
-        let name = unsafe { name_ptr.to_string() }.unwrap_or_default();
-        tracing::info!(encodeur = %name, "encodeur matériel retenu");
-        unsafe { CoTaskMemFree(Some(name_ptr.0 as *const _)) };
-    }
-
-    let transform: IMFTransform = unsafe { first.ActivateObject() }
-        .context("activation de l'encodeur H.264 matériel (ActivateObject)")?;
-    unsafe { CoTaskMemFree(Some(activates as *const _)) };
-    Ok(transform)
-}
-
-fn configure_output(
-    transform: &IMFTransform,
-    width: u32,
-    height: u32,
-    fps: u32,
-    bitrate: u32,
-) -> Result<()> {
-    let media_type = unsafe { MFCreateMediaType() }?;
-    unsafe {
-        media_type.SetGUID(&MF_MT_MAJOR_TYPE, &MFMediaType_Video)?;
-        media_type.SetGUID(&MF_MT_SUBTYPE, &MFVideoFormat_H264)?;
-        media_type.SetUINT32(&MF_MT_AVG_BITRATE, bitrate)?;
-        media_type.SetUINT64(&MF_MT_FRAME_SIZE, pack_u64(width, height))?;
-        media_type.SetUINT64(&MF_MT_FRAME_RATE, pack_u64(fps, 1))?;
-        media_type.SetUINT64(&MF_MT_PIXEL_ASPECT_RATIO, pack_u64(1, 1))?;
-        media_type.SetUINT32(&MF_MT_INTERLACE_MODE, MFVideoInterlace_Progressive.0 as u32)?;
-        // Baseline évite les images B : ordre de décodage = ordre d'affichage.
-        media_type.SetUINT32(&MF_MT_MPEG2_PROFILE, eAVEncH264VProfile_Base.0 as u32)?;
-        transform
-            .SetOutputType(0, &media_type, 0)
-            .context("configuration du type de sortie de l'encodeur H.264 (transform matériel)")?;
-    }
-    Ok(())
-}
-
-fn configure_input(transform: &IMFTransform, width: u32, height: u32, fps: u32) -> Result<()> {
-    let media_type = unsafe { MFCreateMediaType() }?;
-    unsafe {
-        media_type.SetGUID(&MF_MT_MAJOR_TYPE, &MFMediaType_Video)?;
-        media_type.SetGUID(&MF_MT_SUBTYPE, &MFVideoFormat_NV12)?;
-        media_type.SetUINT64(&MF_MT_FRAME_SIZE, pack_u64(width, height))?;
-        media_type.SetUINT64(&MF_MT_FRAME_RATE, pack_u64(fps, 1))?;
-        media_type.SetUINT32(&MF_MT_INTERLACE_MODE, MFVideoInterlace_Progressive.0 as u32)?;
-        transform
-            .SetInputType(0, &media_type, 0)
-            .context("configuration du type d'entrée de l'encodeur H.264 (transform matériel)")?;
-    }
-    Ok(())
-}
-
-fn configure_rate_control(transform: &IMFTransform, bitrate: u32) -> Result<()> {
-    let codec: ICodecAPI = transform.cast()?;
-    unsafe {
-        // Débit constant : latence prévisible, indispensable en interactif.
-        let mode = variant_u32(eAVEncCommonRateControlMode_CBR.0 as u32);
-        codec.SetValue(&CODECAPI_AVEncCommonRateControlMode, &mode)?;
-        let rate = variant_u32(bitrate);
-        codec.SetValue(&CODECAPI_AVEncCommonMeanBitRate, &rate)?;
-        // Pas de groupe d'images fermé : on demande les images clés à la
-        // volée (`H264Encoder::request_keyframe`, câblé depuis
-        // `Event::KeyframeRequest` de str0m dans `transport/evenements.rs`). Le retour
-        // de `SetValue` est vérifié plutôt que jeté : un refus silencieux du
-        // pilote laisserait croire le contrat honoré alors qu'un groupe
-        // d'images fermé rendrait les images clés à la demande inopérantes.
-        let gop = variant_u32(0);
-        if let Err(e) = codec.SetValue(&CODECAPI_AVEncMPVGOPSize, &gop) {
-            tracing::warn!(
-                erreur = %e,
-                "réglage CODECAPI_AVEncMPVGOPSize (groupe d'images ouvert) refusé par le pilote"
-            );
-        }
-        let low_latency = variant_bool(true);
-        let _ = codec.SetValue(&CODECAPI_AVLowLatencyMode, &low_latency);
-    }
-    Ok(())
-}
-
-/// Empaquette deux entiers 32 bits dans l'attribut 64 bits attendu par MF.
-fn pack_u64(high: u32, low: u32) -> u64 {
-    ((high as u64) << 32) | low as u64
-}
-
-fn share_device(device: &ID3D11Device) -> Result<IMFDXGIDeviceManager> {
-    let mut token = 0u32;
-    let mut manager: Option<IMFDXGIDeviceManager> = None;
-    unsafe {
-        MFCreateDXGIDeviceManager(&mut token, &mut manager)?;
-    }
-    let manager = manager.ok_or_else(|| anyhow!("gestionnaire DXGI absent"))?;
-    unsafe { manager.ResetDevice(device, token) }
-        .context("liaison du périphérique D3D11 au gestionnaire DXGI")?;
-    Ok(manager)
 }
