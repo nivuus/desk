@@ -115,10 +115,7 @@ pub fn tourner(
     let mut prises: Vec<String> = Vec::new();
 
     // Les fenêtres déjà ouvertes : le hook ne rapporte que les changements.
-    let mut effets = Vec::new();
-    for (fenetre, titre) in hook::enumerer_existantes() {
-        effets.extend(table.fenetre_apparue(fenetre, titre));
-    }
+    let mut effets = recenser_les_fenetres_existantes(&mut table);
 
     let mut dernier_ping = std::time::Instant::now();
     let mut dernier_controle_placement = std::time::Instant::now();
@@ -205,8 +202,43 @@ pub fn tourner(
         // écrire ce qu'il veut. C'est `viewport_recu` qui garde — elle ignore
         // une session inconnue, et une session qui n'attend plus son viewport.
         while let Ok(message) = rx_shell.try_recv() {
-            let DepuisLaShell::Viewport { session, largeur, hauteur } = message;
-            effets.extend(table.viewport_recu(&IdSession(session), largeur, hauteur));
+            match message {
+                DepuisLaShell::Viewport { session, largeur, hauteur } => {
+                    effets.extend(table.viewport_recu(&IdSession(session), largeur, hauteur));
+                }
+                // 🔴 UNE PAGE-SHELL VIENT DE REJOINDRE LA SESSION DE
+                // CONTRÔLE. Tout ce que le superviseur a annoncé avant cet
+                // instant est PERDU — le relais laisse tomber sans une trace
+                // ce qu'il n'a personne à qui remettre — et c'est le défaut
+                // mesuré en production le 30 août 2026 : l'agent tournait
+                // depuis plusieurs minutes, ses trois fenêtres avaient été
+                // annoncées à t = 12 s puis refusées à t = 43 s, et
+                // l'utilisateur, retenu par l'authentification du proxy,
+                // n'a jamais rien vu.
+                //
+                // 🔴 L'ORDRE DES DEUX GESTES EST LA CORRECTION, PAS UN
+                // DÉTAIL :
+                //   ① redire les entrées ENCORE en attente
+                //      (`reannoncer_les_attentes`), qui remet aussi leur
+                //      compte à rebours à zéro — l'horloge des 30 s repart
+                //      du moment où une shell est là, ce qui est ce que la
+                //      constante prétend mesurer ;
+                //   ② rejouer l'énumération de démarrage, dont
+                //      `fenetre_apparue` est idempotente par `HWND` : elle
+                //      ne rattrape donc que les fenêtres ABANDONNÉES entre
+                //      temps, qui ne sont plus dans la table.
+                // Inverser les deux annoncerait DEUX fois une entrée encore
+                // en attente, et la page-shell rechargerait
+                // (`window.open(url, "guac-<session>")` vise une fenêtre
+                // NOMMÉE) la fenêtre qu'elle vient d'ouvrir.
+                DepuisLaShell::PairPresent => {
+                    tracing::info!(
+                        "une page-shell a rejoint la session de contrôle : les fenêtres sont réannoncées"
+                    );
+                    effets.extend(table.reannoncer_les_attentes(std::time::Instant::now()));
+                    effets.extend(recenser_les_fenetres_existantes(&mut table));
+                }
+            }
         }
 
         // 5. Enfants morts d'eux-mêmes.
@@ -244,6 +276,27 @@ pub fn tourner(
             std::thread::sleep(std::time::Duration::from_millis(100));
         }
     }
+}
+
+/// Fait entrer dans la table toutes les fenêtres Windows déjà ouvertes.
+///
+/// Appelée à DEUX moments, et c'est ce qui lui vaut d'exister plutôt que
+/// d'être recopiée : au démarrage du superviseur (le hook ne rapporte que
+/// les CHANGEMENTS, donc rien de ce qui existait avant lui), et à l'arrivée
+/// d'une page-shell, pour rattraper les fenêtres que le délai d'attente a
+/// abandonnées entre temps.
+///
+/// ⚠️ **Elle ne dédouble rien** : `Table::fenetre_apparue` est idempotente
+/// par `HWND` et rend un vecteur VIDE pour une fenêtre déjà connue, quel que
+/// soit son état. C'est cette idempotence — posée pour une tout autre raison
+/// (le recouvrement entre l'énumération et le hook) — qui rend le second
+/// appel gratuit.
+fn recenser_les_fenetres_existantes(table: &mut Table) -> Vec<Effet> {
+    let mut effets = Vec::new();
+    for (fenetre, titre) in hook::enumerer_existantes() {
+        effets.extend(table.fenetre_apparue(fenetre, titre));
+    }
+    effets
 }
 
 /// Ce qu'une demande de sortie porte. Un `struct` plutôt que quatre

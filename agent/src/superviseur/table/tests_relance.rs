@@ -250,3 +250,151 @@ fn une_fenetre_neuve_qui_repond_dans_le_delai_n_est_pas_abandonnee() {
     let effets = t.relancer_les_orphelines(instant(base, 30_001));
     assert!(effets.is_empty(), "reçu {effets:?}");
 }
+
+/// 🔴 LE DÉFAUT DE PRODUCTION DU 30 AOÛT 2026, JOUÉ SUR LA TABLE PURE.
+///
+/// Le superviseur annonce ses fenêtres à un relais où personne n'écoute ;
+/// l'annonce est perdue, et trente secondes plus tard la fenêtre est
+/// abandonnée. Quand la page-shell arrive enfin, elle ne doit PAS trouver un
+/// bureau vide.
+///
+/// ⚠️ **Ce test éprouve la moitié « redite » (`reannoncer_les_attentes`) ; la
+/// moitié « rattrapage des abandonnées » vit dans `boucle.rs`, qui rejoue
+/// l'énumération Windows — donc hors de portée d'un test d'hôte.** Le test
+/// suivant éprouve que ce rattrapage-là est bien possible : une fenêtre
+/// abandonnée peut RENTRER dans la table.
+#[test]
+fn une_page_shell_qui_arrive_apres_coup_reçoit_les_fenetres_en_attente() {
+    let base = std::time::Instant::now();
+    let mut t = Table::nouvelle(4);
+    let effets = t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into());
+    let Some(Effet::AnnoncerOuverture { session, .. }) = effets.first() else {
+        panic!("ouverture attendue, reçu {effets:?}");
+    };
+    let session = session.clone();
+    // Cette annonce-là est PERDUE : aucun pair `client` n'est connecté.
+    t.relancer_les_orphelines(base);
+
+    // La shell arrive 20 s plus tard, avant l'abandon.
+    let effets = t.reannoncer_les_attentes(instant(base, 20_000));
+    let Some(Effet::AnnoncerOuverture { session: redite, titre }) = effets.first() else {
+        panic!("réannonce attendue, reçu {effets:?}");
+    };
+    assert_eq!(*redite, session, "la session ne change pas : la fenêtre non plus");
+    assert_eq!(titre, "Bloc-notes");
+    assert_eq!(effets.len(), 1, "une seule fenêtre, une seule annonce : {effets:?}");
+}
+
+/// 🔴 L'HORLOGE REPART DE L'ARRIVÉE DE LA SHELL, ET NON DU DÉMARRAGE — c'est
+/// la différence entre corriger le défaut et rallonger le délai, que la
+/// consigne interdisait nommément.
+///
+/// Sans la remise à zéro, une shell qui arrive à 20 s ne disposerait que de
+/// 10 s pour ouvrir sa pop-up et renvoyer le viewport ; ici elle en a bien
+/// trente pleines.
+#[test]
+fn la_reannonce_remet_le_compte_a_rebours_a_zero() {
+    let base = std::time::Instant::now();
+    let mut t = Table::nouvelle(4);
+    t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into());
+    t.relancer_les_orphelines(base);
+
+    t.reannoncer_les_attentes(instant(base, 20_000));
+
+    // 20 s + 25 s = 45 s après le démarrage : l'ancien compte aurait
+    // abandonné depuis longtemps.
+    let effets = t.relancer_les_orphelines(instant(base, 45_000));
+    assert!(
+        !effets.iter().any(|e| matches!(e, Effet::AnnoncerRefus { .. })),
+        "la fenêtre a 25 s d'attente depuis l'arrivée de la shell, reçu {effets:?}"
+    );
+}
+
+/// 🔴 CE QUE LA BORNE PROTÉGEAIT RESTE PROTÉGÉ : la réannonce ne la
+/// supprime pas, elle la fait courir depuis un instant qui a un sens. Une
+/// page-shell PRÉSENTE mais muette perd toujours sa fenêtre au bout de
+/// trente secondes, et la place est rendue.
+///
+/// **Sans ce test, la correction serait indiscernable d'une suppression de
+/// la borne** — le patron « un contrôle qu'on n'a jamais vu rouge ».
+#[test]
+fn une_shell_presente_mais_muette_perd_toujours_sa_fenetre() {
+    let base = std::time::Instant::now();
+    let mut t = Table::nouvelle(1);
+    t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into());
+    t.relancer_les_orphelines(base);
+    t.reannoncer_les_attentes(instant(base, 20_000));
+
+    let effets = t.relancer_les_orphelines(instant(base, 50_001));
+    assert!(
+        effets.iter().any(|e| matches!(e, Effet::AnnoncerRefus { .. })),
+        "30 s après l'arrivée de la shell, l'abandon doit avoir lieu : {effets:?}"
+    );
+    // La place est réellement rendue : la table n'en offrait qu'UNE.
+    assert_eq!(t.fenetre_apparue(IdFenetre(2), "Autre".into()).len(), 1);
+}
+
+/// 🔴 LA SORTIE VIRTUELLE RETENUE — la ressource COÛTEUSE que la borne
+/// protège — est toujours rendue à l'abandon, réannonce ou pas.
+#[test]
+fn la_sortie_retenue_est_toujours_rendue_a_l_abandon_apres_une_reannonce() {
+    let base = std::time::Instant::now();
+    let mut t = Table::nouvelle(4);
+    let effets = t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into());
+    let Some(Effet::AnnoncerOuverture { session, .. }) = effets.first() else {
+        panic!("ouverture attendue, reçu {effets:?}");
+    };
+    let session = session.clone();
+    t.viewport_recu(&session, 1280, 720);
+    t.sortie_creee(&session, 42, "\\\\.\\DISPLAY7".into(), (1280, 720));
+    // L'enfant meurt : l'entrée retient sa sortie (§7.1 de D3) et repasse en
+    // attente de viewport à la relance.
+    t.enfant_mort(&session);
+    t.relancer_les_orphelines(base);
+
+    t.reannoncer_les_attentes(instant(base, 5_000));
+
+    let effets = t.relancer_les_orphelines(instant(base, 35_001));
+    assert!(
+        effets
+            .iter()
+            .any(|e| matches!(e, Effet::DetruireSortie { sortie_pilote: 42, .. })),
+        "la sortie retenue doit repartir au pilote, reçu {effets:?}"
+    );
+}
+
+/// 🔴 UNE FENÊTRE **VIVANTE** N'EST PAS REDITE, ET C'EST DÉLIBÉRÉ : son
+/// enfant consomme UNE offre et ne renégocie jamais
+/// (`agent/src/demarrage.rs`), donc la page rouverte enverrait une offre que
+/// personne ne prendrait. Redire une session vivante ouvrirait une fenêtre
+/// définitivement muette — pire que de ne rien dire.
+///
+/// **C'est un legs nommé** : un rechargement de la page-shell ne récupère
+/// pas les fenêtres déjà vivantes.
+#[test]
+fn une_fenetre_vivante_n_est_pas_redite() {
+    let base = std::time::Instant::now();
+    let mut t = Table::nouvelle(4);
+    let effets = t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into());
+    let Some(Effet::AnnoncerOuverture { session, .. }) = effets.first() else {
+        panic!("ouverture attendue, reçu {effets:?}");
+    };
+    let session = session.clone();
+    t.viewport_recu(&session, 1280, 720);
+    // `sortie_creee` fait passer l'entrée en `Vivante` : c'est le seul
+    // chemin, et l'assertion ci-dessous le vérifie plutôt que de le croire.
+    t.sortie_creee(&session, 42, "\\\\.\\DISPLAY7".into(), (1280, 720));
+    assert_eq!(t.etat(&session), Some(&Etat::Vivante));
+
+    let effets = t.reannoncer_les_attentes(instant(base, 1_000));
+    assert!(effets.is_empty(), "une session vivante ne se redit pas, reçu {effets:?}");
+}
+
+/// La réannonce n'invente rien : sur une table vide elle ne rend rien.
+/// **Le témoin négatif du test ci-dessus** — sans lui, `is_empty()` serait
+/// vrai d'une méthode qui ne rend JAMAIS rien.
+#[test]
+fn la_reannonce_sur_une_table_vide_ne_rend_rien() {
+    let mut t = Table::nouvelle(4);
+    assert!(t.reannoncer_les_attentes(std::time::Instant::now()).is_empty());
+}
