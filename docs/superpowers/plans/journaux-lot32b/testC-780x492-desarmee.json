@@ -1,0 +1,90 @@
+{
+  "etiquette": "C-780x492-desarmee",
+  "instant": "2026-08-30T17:55:32.336Z",
+  "viewport": "780x492",
+  "messages": [
+    {
+      "ms": 7,
+      "type": "ice-config"
+    },
+    {
+      "ms": 103,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-2",
+      "titre": "This PC - File Explorer"
+    },
+    {
+      "ms": 105,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-1",
+      "titre": "Untitled - Notepad"
+    },
+    {
+      "ms": 106,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-3",
+      "titre": "Untitled - Notepad"
+    },
+    {
+      "ms": 6210,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-4",
+      "titre": "Untitled - Notepad"
+    },
+    {
+      "ms": 6211,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-5",
+      "titre": "Install"
+    },
+    {
+      "ms": 6212,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-6",
+      "titre": "Dismiss"
+    }
+  ],
+  "vm": "677a3953-14c7-4364-92c3-bd17ecddf8d2",
+  "etat_vm": "prete",
+  "session": "3sxuA9dd56NpVdHi37R86g:bureau",
+  "lancement": {
+    "nom": "Notepad",
+    "id": "7f2a7df5-765f-4f6c-b5c8-485e8c1a4e19",
+    "statut": 200,
+    "reponse": {
+      "issue": "raccourci"
+    },
+    "ms": 6166
+  },
+  "compte_fenetre_ouverte": 6,
+  "compte_refus": 0,
+  "motifs_de_refus": [],
+  "titres": [
+    "This PC - File Explorer",
+    "Untitled - Notepad",
+    "Untitled - Notepad",
+    "Untitled - Notepad",
+    "Install",
+    "Dismiss"
+  ],
+  "sessions_apres_lancement": [
+    "3sxuA9dd56NpVdHi37R86g:w-4",
+    "3sxuA9dd56NpVdHi37R86g:w-5",
+    "3sxuA9dd56NpVdHi37R86g:w-6"
+  ],
+  "tenues": [
+    {
+      "session": "3sxuA9dd56NpVdHi37R86g:w-4",
+      "titre": "Untitled - Notepad"
+    },
+    {
+      "session": "3sxuA9dd56NpVdHi37R86g:w-5",
+      "titre": "Install"
+    },
+    {
+      "session": "3sxuA9dd56NpVdHi37R86g:w-6",
+      "titre": "Dismiss"
+    }
+  ],
+  "verdict": "VERT"
+}

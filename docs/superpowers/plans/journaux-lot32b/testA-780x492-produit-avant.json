@@ -1,0 +1,52 @@
+{
+  "etiquette": "A-780x492-produit-avant",
+  "instant": "2026-08-30T17:48:42.060Z",
+  "viewport": "780x492",
+  "messages": [
+    {
+      "ms": 7,
+      "type": "ice-config"
+    },
+    {
+      "ms": 39,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-4",
+      "titre": "explorer.exe"
+    },
+    {
+      "ms": 6174,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-5",
+      "titre": "Untitled - Notepad"
+    }
+  ],
+  "vm": "677a3953-14c7-4364-92c3-bd17ecddf8d2",
+  "etat_vm": "prete",
+  "session": "3sxuA9dd56NpVdHi37R86g:bureau",
+  "lancement": {
+    "nom": "Notepad",
+    "id": "7f2a7df5-765f-4f6c-b5c8-485e8c1a4e19",
+    "statut": 200,
+    "reponse": {
+      "issue": "raccourci"
+    },
+    "ms": 6127
+  },
+  "compte_fenetre_ouverte": 2,
+  "compte_refus": 0,
+  "motifs_de_refus": [],
+  "titres": [
+    "explorer.exe",
+    "Untitled - Notepad"
+  ],
+  "sessions_apres_lancement": [
+    "3sxuA9dd56NpVdHi37R86g:w-5"
+  ],
+  "tenues": [
+    {
+      "session": "3sxuA9dd56NpVdHi37R86g:w-5",
+      "titre": "Untitled - Notepad"
+    }
+  ],
+  "verdict": "VERT"
+}
