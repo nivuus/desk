@@ -749,6 +749,16 @@ indépendants : ce sont eux qui coûtent.
   qu'un `cd` court dans un sous-shell : `unset -f chpwd` avant toute collecte.
 - ⚠️ **`grep -qa $'\000'` CHERCHE LA CHAÎNE VIDE ET MATCHE TOUT** : un contrôle
   d'octets NUL écrit ainsi ne peut pas échouer.
+- 🔴 **`sed 's/[^ -~]//g'` SANS `LC_ALL=C` MANGE DES LETTRES ASCII** — la plage
+  ` -~` est dépendante de la **collation** de la locale, pas des octets. Payé
+  au lot 32O : un `.ps1` « nettoyé » de son unique caractère non-ASCII est
+  ressorti avec `[System.Diagnostics.Process]::GetCurrentProcess()` réduit à
+  `[..]::()`, et la sonde a échoué à l'analyse — **sans que rien ne dise que
+  le fichier avait été mutilé**. ⚠️ Le contrôle `LC_ALL=C grep -c '[^ -~]'`,
+  lui, est juste : c'est le `sed` qui doit porter `LC_ALL=C`, pas seulement le
+  `grep` qui le vérifie. **Et le symptôme se lit comme une erreur de syntaxe
+  du script**, jamais comme une corruption — c'est en LISANT la sortie plutôt
+  qu'en la supposant qu'on le voit.
 - ⚠️ **UN FICHIER DE CONTRÔLE PEUT SE POLLUER LUI-MÊME** : `echo` interprète
   `\x1b` et `\r`, si bien qu'un fichier qui **décrit** ses motifs les
   **contient**. Heredoc **cité**.
