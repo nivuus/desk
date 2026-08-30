@@ -46,6 +46,23 @@
 //! NVENC ; lui retirer la MFT la priverait de **tout** encodeur matériel.
 //! La MFT est donc le repli **générique**, et elle reste inchangée.
 
+/// La transcription de l'ABI amont, isolée dans son propre fichier parce
+/// qu'elle porte une notice de licence qui ne s'applique qu'à elle.
+///
+/// ⚠️ **Le `#[path]` ci-dessous N'EST PAS celui de la convention du dépôt,
+/// et les confondre embrouillerait le prochain lecteur.** La convention vise
+/// les modules qu'on extrait d'un parent **non portable** pour les compiler
+/// sur l'hôte ; `abi` n'a rien à fuir, son parent est déjà pur. Ce `#[path]`
+/// est imposé par une règle de **rustc** : quand un module est lui-même
+/// chargé par `#[path = "encode/nvenc.rs"]`, ses enfants sont cherchés dans
+/// le répertoire de CE fichier — `encode/` — et non dans un `encode/nvenc/`
+/// homonyme. Sans la ligne explicite, rustc réclame `encode/abi.rs`
+/// (mesuré : `error[E0583]: file not found for module 'abi'`). C'est le même
+/// mécanisme employé pour une autre raison, exactement comme `table.rs` s'en
+/// sert pour scinder ses tests.
+#[path = "nvenc/abi.rs"]
+pub mod abi;
+
 /// L'identifiant de vendeur PCI de NVIDIA.
 ///
 /// Relevé sur la VM cible plutôt que recopié d'une liste : la sonde du lot 31
