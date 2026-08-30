@@ -1,0 +1,89 @@
+{
+  "etiquette": "verte-1",
+  "instant": "2026-08-30T01:04:16.723Z",
+  "secondes": 50,
+  "messages": [
+    {
+      "ms": 13,
+      "type": "ice-config"
+    },
+    {
+      "ms": 67,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-5",
+      "titre": "Administrator: C:\\Windows\\System32\\cmd.exe"
+    },
+    {
+      "ms": 67,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-6",
+      "titre": "Character Map"
+    },
+    {
+      "ms": 68,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-7",
+      "titre": "Untitled - Paint"
+    },
+    {
+      "ms": 68,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-8",
+      "titre": "Untitled - Notepad"
+    },
+    {
+      "ms": 14996,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-9",
+      "titre": "C:\\Windows\\System32\\cmd.exe"
+    },
+    {
+      "ms": 30501,
+      "type": "refus",
+      "titre": "Character Map",
+      "motif": "la page-shell n'a jamais répondu après la relance"
+    },
+    {
+      "ms": 30501,
+      "type": "refus",
+      "titre": "Administrator: C:\\Windows\\System32\\cmd.exe",
+      "motif": "la page-shell n'a jamais répondu après la relance"
+    },
+    {
+      "ms": 30502,
+      "type": "refus",
+      "titre": "Untitled - Paint",
+      "motif": "la page-shell n'a jamais répondu après la relance"
+    },
+    {
+      "ms": 30502,
+      "type": "refus",
+      "titre": "Untitled - Notepad",
+      "motif": "la page-shell n'a jamais répondu après la relance"
+    },
+    {
+      "ms": 41550,
+      "type": "refus",
+      "titre": "C:\\Windows\\System32\\cmd.exe",
+      "motif": "la page-shell n'a jamais répondu après la relance"
+    }
+  ],
+  "attente_s": 90,
+  "vm": "677a3953-14c7-4364-92c3-bd17ecddf8d2",
+  "etat_vm": "prete",
+  "session": "3sxuA9dd56NpVdHi37R86g:bureau",
+  "temoin_positif": {
+    "exe": "C:\\Windows\\System32\\cmd.exe",
+    "ms": 10002,
+    "session": "session=1"
+  },
+  "compte_fenetre_ouverte": 5,
+  "compte_refus": 5,
+  "titres": [
+    "Administrator: C:\\Windows\\System32\\cmd.exe",
+    "Character Map",
+    "Untitled - Paint",
+    "Untitled - Notepad",
+    "C:\\Windows\\System32\\cmd.exe"
+  ]
+}

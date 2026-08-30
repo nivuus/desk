@@ -1,0 +1,37 @@
+{
+  "etiquette": "rouge-3",
+  "instant": "2026-08-30T01:00:24.339Z",
+  "secondes": 50,
+  "messages": [
+    {
+      "ms": 11,
+      "type": "ice-config"
+    },
+    {
+      "ms": 13148,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-4",
+      "titre": "C:\\Windows\\System32\\cmd.exe"
+    },
+    {
+      "ms": 39344,
+      "type": "refus",
+      "titre": "C:\\Windows\\System32\\cmd.exe",
+      "motif": "la page-shell n'a jamais répondu après la relance"
+    }
+  ],
+  "attente_s": 75,
+  "vm": "677a3953-14c7-4364-92c3-bd17ecddf8d2",
+  "etat_vm": "prete",
+  "session": "3sxuA9dd56NpVdHi37R86g:bureau",
+  "temoin_positif": {
+    "exe": "C:\\Windows\\System32\\cmd.exe",
+    "ms": 8007,
+    "session": "session=0"
+  },
+  "compte_fenetre_ouverte": 1,
+  "compte_refus": 1,
+  "titres": [
+    "C:\\Windows\\System32\\cmd.exe"
+  ]
+}
