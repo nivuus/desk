@@ -398,3 +398,32 @@ pub struct PresetConfig {
 forme!(PresetConfig, 5128, 8, "NV_ENC_PRESET_CONFIG");
 deport!(PresetConfig, reserved1, 3592, "NV_ENC_PRESET_CONFIG.reserved1");
 deport!(PresetConfig, reserved2, 4616, "NV_ENC_PRESET_CONFIG.reserved2");
+
+/// `NV_ENC_RECONFIGURE_PARAMS` — change le débit d'un encodeur VIVANT.
+///
+/// 🔴 **Transcrite plutôt que de laisser `set_bitrate` sans effet.** Le dépôt
+/// pilote le débit vidéo par cette voie (`transport/adaptation.rs`) ; un
+/// second dos qui accepterait l'appel sans rien faire rendrait toute
+/// l'adaptation de bande passante **invisiblement inopérante** — la panne
+/// muette exactement.
+///
+/// ⚠️ Elle porte une `InitializeParams` ENTIÈRE : reconfigurer, c'est
+/// re-soumettre l'initialisation, débit modifié. D'où le fait que la session
+/// garde sa configuration d'origine.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct ReconfigureParams {
+    pub version: u32,
+    pub reserved: u32,
+    pub re_init_encode_params: InitializeParams,
+    /// Champ de bits : `resetEncoder`(1), `forceIDR`(1), `reserved1`(30).
+    pub drapeaux: u32,
+    pub reserved2: u32,
+}
+forme!(ReconfigureParams, 1816, 8, "NV_ENC_RECONFIGURE_PARAMS");
+deport!(ReconfigureParams, re_init_encode_params, 8, "NV_ENC_RECONFIGURE_PARAMS.reInitEncodeParams");
+
+/// `resetEncoder`, 1ᵉʳ bit.
+pub const RECONFIGURE_RESET: u32 = 1 << 0;
+/// `forceIDR`, 2ᵉ bit.
+pub const RECONFIGURE_FORCE_IDR: u32 = 1 << 1;

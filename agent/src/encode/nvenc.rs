@@ -84,6 +84,10 @@ pub mod fonctions;
 /// `encode.rs` pour que la frontiere d'attribution de la notice de licence
 /// reste UN seul sous-arbre.
 #[cfg(windows)]
+#[path = "nvenc/porte.rs"]
+pub mod porte;
+
+#[cfg(windows)]
 #[path = "nvenc/session.rs"]
 pub mod session;
 

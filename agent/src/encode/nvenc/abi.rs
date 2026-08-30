@@ -84,11 +84,16 @@
 // 🔴 **POURQUOI CE `allow`, ET QUAND LE RETIRER.** Ce module transcrit une
 // ABI, et une ABI se transcrit ENTIÈRE : n'en déclarer que la moitié
 // aujourd'hui obligerait le prochain à rouvrir l'en-tête amont, donc à
-// repayer la vérification de provenance. Tant que la session d'encodage
-// n'est pas écrite, ces constantes n'ont donc aucun appelant — 31
-// avertissements `dead_code` (compté au 30 août 2026), qui NOIERAIENT les 24
-// avertissements préexistants du binaire et rendraient inutilisable la règle
-// du dépôt « vérifier la NATURE des avertissements, jamais leur nombre ».
+// repayer la vérification de provenance. Une partie n'a donc aucun appelant.
+//
+// ⚠️ **Le compte a changé, et il est remesuré plutôt que recopié** : il
+// valait **31** avant que la session d'encodage n'existe, il vaut **7** pour
+// les quatre modules de transcription réunis une fois la façade branchée
+// (mesuré le 30 août 2026 en retirant les quatre `allow` et en comptant).
+// Sept avertissements de plus ne noieraient plus grand-chose ; ce qui
+// justifie encore ce `allow`, c'est que les éléments restants sont
+// **délibérément** déclarés — `BUFFER_FORMAT_ABGR` n'existe que pour qu'un
+// test puisse établir qu'on ne l'a PAS pris.
 //
 // ⚠️ **Il est posé sur CE MODULE SEUL, jamais sur le crate**, et il masque
 // exactement une famille : `dead_code`. Une constante fausse resterait
@@ -153,6 +158,10 @@ pub const CREATE_BITSTREAM_BUFFER_VER: u32 = version_de_structure(1);
 pub const PIC_PARAMS_VER: u32 = version_de_structure_marquee(7);
 pub const LOCK_BITSTREAM_VER: u32 = version_de_structure_marquee(2);
 pub const FUNCTION_LIST_VER: u32 = version_de_structure(2);
+/// ⚠️ **Même valeur que `LOCK_BITSTREAM_VER`** — les deux structures
+/// portent la révision 2 et le bit de poids fort. Ce n'est pas une
+/// coquille : deux structures peuvent partager une version.
+pub const RECONFIGURE_PARAMS_VER: u32 = version_de_structure_marquee(2);
 
 // --- Les constantes d'énumération du chemin d'encodage. ---
 
@@ -224,6 +233,11 @@ mod tests {
         assert_eq!(PIC_PARAMS_VER, 0xF207_000C);
         assert_eq!(LOCK_BITSTREAM_VER, 0xF202_000C);
         assert_eq!(FUNCTION_LIST_VER, 0x7202_000C);
+        assert_eq!(RECONFIGURE_PARAMS_VER, 0xF202_000C);
+        assert_eq!(
+            RECONFIGURE_PARAMS_VER, LOCK_BITSTREAM_VER,
+            "les deux partagent la révision 2 : relevé, pas supposé"
+        );
     }
 
     /// 🔴 Le bit `1 << 31` sépare les deux familles. S'il disparaissait des
@@ -236,6 +250,7 @@ mod tests {
             ("PRESET_CONFIG", PRESET_CONFIG_VER),
             ("PIC_PARAMS", PIC_PARAMS_VER),
             ("LOCK_BITSTREAM", LOCK_BITSTREAM_VER),
+            ("RECONFIGURE_PARAMS", RECONFIGURE_PARAMS_VER),
         ] {
             assert_ne!(v & (1 << 31), 0, "{nom} doit porter le bit 31");
         }

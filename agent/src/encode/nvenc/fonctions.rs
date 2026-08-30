@@ -30,6 +30,7 @@ use core::ffi::c_void;
 
 use super::structures::{
     Config, Guid, InitializeParams, OpenEncodeSessionExParams, PresetConfig,
+    ReconfigureParams,
 };
 use super::tampons::{CreateBitstreamBuffer, LockBitstream, MapInputResource, PicParams, RegisterResource};
 
@@ -80,10 +81,8 @@ pub type DetruireEncodeur = unsafe extern "system" fn(*mut c_void) -> Statut;
 /// ⚠️ **Ne rend PAS un `Statut`** mais une chaîne C — seule exception de la
 /// table, et elle est facile à transcrire de travers.
 pub type DerniereErreur = unsafe extern "system" fn(*mut c_void) -> *const core::ffi::c_char;
-/// `NV_ENC_RECONFIGURE_PARAMS` n'est pas transcrite : ce chemin passera
-/// probablement par une reconstruction d'encodeur, comme le fait déjà la MFT.
-/// L'emplacement reste typé « opaque mais nommé » pour qu'on le retrouve.
-pub type ReconfigurerEncodeur = unsafe extern "system" fn(*mut c_void, *mut c_void) -> Statut;
+pub type ReconfigurerEncodeur =
+    unsafe extern "system" fn(*mut c_void, *mut ReconfigureParams) -> Statut;
 
 /// `NV_ENCODE_API_FUNCTION_LIST`.
 #[repr(C)]
