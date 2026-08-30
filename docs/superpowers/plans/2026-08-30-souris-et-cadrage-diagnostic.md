@@ -215,7 +215,7 @@ les confondre serait une erreur.
 
 | # | Hypothèse | Ce qui la confirmerait |
 | --- | --- | --- |
-| **S1** | **La souris est démappée sur la FENÊTRE alors que l'image est la SORTIE.** | Mesurer `GetCursorPos` après injection, hors du flux, **deux bras** (§ 2.4). |
+| **S1** | **La souris est démappée sur la FENÊTRE alors que l'image est la SORTIE.** ✅ **Les deux bouts sont LUS (§ 6) et l'erreur est DÉRIVÉE : origine + échelle.** | Mesurer `GetCursorPos` après injection, hors du flux, **deux bras** (§ 2.4, § 6.5). |
 | **S2** | Le `hwnd` de l'injecteur n'est pas celui de la fenêtre capturée. | Comparer les deux `hwnd`. **Sépare S1 de S2** — elles prédisent le même symptôme. |
 | **P1** | `SetWindowPos` réussit sans déplacer (fenêtre maximisée, contrainte de moniteur, ou style). | Relever le rectangle **immédiatement après** l'appel, dans le même tour. Un succès qui ne bouge rien est la preuve. |
 | **P2** | La cible du placement est **périmée** : la disposition du bureau virtuel a changé depuis la création. | Comparer le `sortie.rect` **courant** de la sortie attribuée au `vers=` que le contrôle vise. Un écart de +1288 les apparie. |
@@ -237,3 +237,102 @@ réglée.**
 - **le décalage de +1288 n'est pas expliqué** (§ 3.3) ;
 - ⚠️ **la latence de bout en bout reste non mesurée**, et le jugement visuel
   porté ne couvre que la **fluidité**.
+
+---
+
+## 6. Les deux bouts, lus — et l'erreur DÉRIVÉE, pas devinée
+
+**Correction du propriétaire** : la souris **fonctionne**, elle ne clique
+simplement **pas au bon endroit**. Cela réfute au passage l'hypothèse « les
+clics partent sur l'écran principal » : le curseur **paraît** dans le flux,
+donc il est bien sur la bonne sortie. **Il est décalé.**
+
+### 6.1 Ce que le CLIENT envoie
+
+`client/src/input.ts` :
+
+```js
+// Les coordonnées sont normalisées sur 0..65535 par rapport à la zone d'image
+const rect = video.getBoundingClientRect();
+const x = ((clientX - rect.x) / Math.max(1, rect.width)) * 65535;
+```
+
+🔵 **Une FRACTION de l'image reçue** — la zone du `<video>` —, jamais des
+pixels de la VM. `proto::input::MouseMove { x: u16, y: u16 }`.
+
+### 6.2 Ce que l'AGENT en fait
+
+`agent/src/input.rs::move_mouse` applique cette fraction à
+**`client_rect_on_screen(self.hwnd)`** : la **zone client de la FENÊTRE**.
+
+### 6.3 🔴 Les deux ne parlent pas du même rectangle — et l'erreur se calcule
+
+Soit **`O`** le rectangle de la **sortie** (ce que l'image montre, en
+`SortieEntiere`) et **`W`** celui de la **zone client de la fenêtre** :
+
+```
+point VRAI    = ( Ox + fx·Ow ,  Oy + fy·Oh )
+point INJECTÉ = ( Wx + fx·Ww ,  Wy + fy·Wh )
+
+erreur(fx) = (Wx − Ox) + fx·(Ww − Ow)
+             └── ORIGINE ──┘   └── ÉCHELLE ──┘
+```
+
+🔵 **Réponse à la question posée : c'est LES DEUX.** Un terme **constant**
+égal à la position de la fenêtre dans sa sortie, **plus** un terme
+**proportionnel** à l'écart de taille. Et les deux sont non nuls dans l'état
+observé :
+
+- **terme d'origine** — les relevés de replacement donnent la fenêtre à
+  `+4428+51` (`w-2`) et `+6288+51` (`w-3`) pour des sorties dont l'origine
+  visée est `3140` et `5000` : **+1288 en x, +51 en y** ;
+- **terme d'échelle** — la barre des tâches est **visible dans l'image**, donc
+  `Oh > Wh` par construction, et le redimensionnement est **ignoré**
+  (§ 3), donc rien ne les réaccorde.
+
+⚠️ **Nul au coin haut-gauche seulement si la fenêtre est à l'origine de sa
+sortie** — ce qui n'est pas le cas ici.
+
+### 6.4 🔵 Ce que cela réconcilie
+
+**Une seule racine pour les trois symptômes** : au sous-bloc D10, **la sortie a
+cessé d'être la fenêtre** (`ModeCapture::SortieEntiere`), et le chemin des
+entrées est resté sur l'**ancienne référence**. Le commentaire de `move_mouse`
+le dit encore aujourd'hui, au présent :
+
+> cette image est l'intersection de la fenêtre avec l'écran
+
+**C'était vrai avant D10. Ce ne l'est plus.** Et c'est le patron
+`placement.rs:4-7` — une affirmation exacte à l'écriture, devenue fausse sous
+elle, jamais relue.
+
+⚠️ **Le clavier n'est pas concerné** : il ne porte aucune coordonnée. Le
+partage clavier/souris est **prédit** par cette hypothèse, il n'est pas une
+coïncidence à expliquer en plus.
+
+### 6.5 Le contrôle qui trancherait — **toujours demandé, toujours pas joué**
+
+Viser deux ou trois points connus, relever `GetCursorPos` depuis une tâche
+`/it` qui imprime sa session, comparer :
+
+| Ce qu'on observerait | Ce que cela dirait |
+| --- | --- |
+| décalage **constant** | terme d'origine seul |
+| décalage **croissant avec la distance** | terme d'échelle seul |
+| **nul en haut-gauche et croissant** | les deux — **ce que la dérivation prédit** |
+
+⚠️ **Non joué** : cela bougerait le curseur du propriétaire pendant qu'il
+travaille. **Je le demande.**
+
+### 6.6 Un fait neuf, relevé au passage et NON expliqué
+
+```
+w-10 : de="160x28+-32000+-32000"  vers="1428x1080+1280+0"
+```
+
+**`-32000,-32000` est le rectangle d'une fenêtre MINIMISÉE.** Le contrôle
+périodique tente de la replacer **chaque seconde**, sans effet, alors que
+`placement::poser` appelle pourtant `ShowWindow(SW_SHOWNORMAL)` avant
+`SetWindowPos`. **Troisième cas distinct sous la même trace** — après le
+décalage constant (`w-2`, `w-3`) et l'écart de hauteur (`w-1`). **Non
+expliqué, et à ne pas confondre avec les deux autres.**
