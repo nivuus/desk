@@ -108,6 +108,13 @@ mod win {
         /// laquelle une sortie naît ou meurt (de l'ordre de l'ouverture d'une
         /// fenêtre) et longue devant la cadence des mouvements de souris. Ce
         /// n'est pas une constante mesurée, et elle est déclarée telle.
+        ///
+        /// ⚠️ **CE QU'ELLE COÛTE, écrit ici pour que personne n'ait à le
+        /// redériver** : si la sortie capturée change d'origine ou de taille,
+        /// le démappage reste faux **au pire une seconde**, puis se corrige
+        /// tout seul au prochain relevé. Le décalage est alors borné par le
+        /// déplacement qu'a subi la sortie pendant cette seconde — jamais
+        /// cumulatif, jamais permanent.
         const PEREMPTION_SORTIE: std::time::Duration = std::time::Duration::from_secs(1);
 
         pub fn new(
