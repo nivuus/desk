@@ -36,7 +36,52 @@
 //! amené à ~496 — la marge que ce dépôt a mesuré six fois se reperdre, une
 //! fois le jour même dans la branche qui l'avait gagnée.
 
+use std::sync::OnceLock;
+
 use crate::sortie_dxgi::SortieDxgi;
+
+/// Le chemin ① (DÉSIGNER) est-il armé ?
+///
+/// **`SORTIE_DESIGNEE=0` DÉSARME ; une simple PRÉSENCE n'active pas** —
+/// convention de `PLEIN_ECRAN`, `AUDIO`, `SUPERVISEUR`, `CAPTEUR`,
+/// `PART_SONDAGE`, `PRESSE_PAPIER`, `APPS` et `PONT_ECRITURE`, et pour la même
+/// raison : tester `is_ok()` armerait le mécanisme chez qui écrit
+/// `SORTIE_DESIGNEE=0` pour le couper.
+///
+/// 🔴 **VARIABLE DE BANC, JAMAIS UNE CONFIGURATION LIVRÉE**, même statut que
+/// `PART_SONDAGE`, `PONT_ECRITURE`, `PONT_CACHE` et `PRESSE_PAPIER_GARDE`.
+/// Désarmée, elle rend **exactement le produit d'avant le lot 32** : c'est le
+/// bras ROUGE de la recette, et il existe parce que « le bras rouge est le
+/// binaire d'avant » n'est pas reproductible — dans trois semaines ce binaire
+/// n'existe plus.
+///
+/// **Le prédicat est RÉUTILISÉ, pas recopié** : `crate::apps::desarme` porte
+/// déjà exactement cet argument, et le précédent est `ICONES` (G2) puis
+/// `APPS_SURVEILLANCE` (G4).
+///
+/// ⚠️ **Forcée au DÉMARRAGE du superviseur, pas au premier appariement** —
+/// sans quoi la trace ne sortirait qu'à la première fenêtre, donc APRÈS les
+/// premiers gestes d'une recette courte. C'est la leçon que `PONT_MESURE` a
+/// payée en F4.
+pub fn armee() -> bool {
+    static ARMEE: OnceLock<bool> = OnceLock::new();
+    *ARMEE.get_or_init(|| {
+        let armee = !crate::apps::desarme(std::env::var("SORTIE_DESIGNEE").ok().as_deref());
+        // Émise SEULEMENT si désarmé : une trace inconditionnelle ferait lire
+        // un armement à qui n'en a aucun.
+        //
+        // 🔴 **ELLE PROUVE QUE LA VARIABLE A ATTEINT LE PROCESSUS, JAMAIS QUE
+        // LE MÉCANISME EST COUPÉ** — leçon de P1 sur `PRESSE_PAPIER=0`. Ce qui
+        // discrimine est le champ `designee` VIDE du refus, et la fenêtre non
+        // servie.
+        if !armee {
+            tracing::warn!(
+                "designation de sortie DESARMEE (SORTIE_DESIGNEE=0) : bras de banc,                  jamais une configuration livree"
+            );
+        }
+        armee
+    })
+}
 
 /// Les sorties parmi lesquelles `placement::sortie_pour_viewport` a le droit
 /// de choisir.
@@ -162,6 +207,18 @@ mod tests {
     /// et la sortie inutilisable. Sans ce garde, la scrutation rendrait la
     /// main sur une sortie que Windows n'a pas encore attachée, et
     /// `sortie_pour_viewport` refuserait — en consommant l'attente.
+    /// Le prédicat de `SORTIE_DESIGNEE`, éprouvé sur le PRÉDICAT et non sur la
+    /// variable : `armee()` porte un `OnceLock` que deux tests du même
+    /// processus ne pourraient pas réinitialiser, et un test qui pose une
+    /// variable d'environnement empoisonnerait ses voisins.
+    #[test]
+    fn seul_le_zero_desarme_la_designation() {
+        assert!(crate::apps::desarme(Some("0")));
+        for valeur in [None, Some(""), Some("1"), Some("0 "), Some("oui")] {
+            assert!(!crate::apps::desarme(valeur), "{valeur:?} ne doit PAS désarmer");
+        }
+    }
+
     #[test]
     fn une_sortie_detachee_n_est_pas_designee() {
         let mut detachee = sortie(NOTRE, 1860, 1080);
