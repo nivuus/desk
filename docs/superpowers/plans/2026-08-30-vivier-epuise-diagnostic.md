@@ -399,3 +399,93 @@ enfin un chiffre : **146 sorties non détruites** sur ce journal.
   suggéré est donc déjà considéré et rejeté par le produit, avec sa raison.**
 - **l'axe A est sans cible mesurée** (§ 4) : les six fenêtres relevées ne
   cessent jamais de passer le prédicat.
+
+---
+
+## 14. Axe B — la règle d'appartenance est PRATICABLE, mesuré
+
+### 14.1 Le relevé, en session 1
+
+⚠️ **Premier essai fait depuis la session 0** : `EnumWindows` y rend **zéro**
+fenêtre. C'est le piège que `CLAUDE.md` nomme, respecté partout ailleurs dans
+ce chantier et manqué ici. Le relevé qui suit passe par une tâche `/it`, et
+**imprime sa session**.
+
+`journaux-lot32i/appartenance.ps1` calcule le prédicat ACTUEL, puis remonte la
+chaîne de parenté jusqu'à un processus `agent` :
+
+| adoptée si appartenance | classe | titre | chaîne |
+| --- | --- | --- | --- |
+| ✅ **oui** | `MSPaintApp` | Untitled - Paint | `mspaint.exe(4104) ← agent(3720)` |
+| ✅ **oui** | `CalcFrame` | **Calculator** | `win32calc.exe(10108) ← agent(3720)` |
+| ✅ **oui** | `Notepad` | Untitled - Notepad | `notepad.exe(1880) ← agent(3720)` |
+| ❌ non | `SDL_app` | Steam : mode Big Picture | `steamwebhelper ← steam` |
+| ❌ non | `App` | Forza Horizon 6 | `forzahorizon6.exe` |
+| ❌ non | `ConsoleWindowClass` | cmd.exe | `← svchost ← services ← wininit` |
+| ❌ non | `Open With Dummy…` | **Pick an app** | `OpenWith.exe(7024) ← svchost` |
+| ❌ non | `Open With Dummy…` | **Pick an app** | `OpenWith.exe(9292) ← svchost` |
+
+🔵 **Huit fenêtres adoptées aujourd'hui → TROIS avec la règle.** Le vivier de
+dix redevient large, et le témoin est dans le même relevé : **les trois
+applications du catalogue lancées par desk passent toutes.**
+
+🔵 **Bénéfice non demandé** : les deux dialogues **« Pick an app »**
+(`OpenWith.exe`, parentés à `svchost`) tombent aussi. Ils consommaient deux
+sorties, et ils ne sont l'application de personne.
+
+### 14.2 ② Le piège du courtier — **il ne se matérialise pas ICI**
+
+`Calculator` est servi par **`win32calc.exe`**, la calculatrice Win32 héritée,
+enfant direct de l'agent — **pas** l'application du Store passant par
+`ApplicationFrameHost`. Ce dernier existe bien sur la machine
+(`ApplicationFrameHost.exe(9440) ← svchost ← services ← wininit`,
+**DESCEND=False**), mais **aucune fenêtre du catalogue ne lui appartient**.
+
+🔴 **Ce que cela établit, et sa limite exacte** : la règle d'appartenance tient
+**sur CE catalogue**, dont les 41 entrées sont des raccourcis Win32. **Elle ne
+tiendrait pas pour une application du Store**, et rien ne garantit que le
+catalogue n'en accueillera jamais. **Le risque est repoussé, pas supprimé** —
+et une application du Store serait alors **muette**, sans qu'aucune trace ne
+dise pourquoi, ce qui est le pire des symptômes.
+
+---
+
+## 15. La conception que je propose — **et je demande avant d'écrire**
+
+Deux mécanismes, et le choix change la façon dont desk lance ses applications.
+
+**(a) Remonter la chaîne de parenté.** C'est ce que la mesure ci-dessus fait.
+**Aucun changement au lancement.** ⚠️ Fragile pour la raison déjà nommée : un
+PID parent est réutilisable après la mort du processus, et
+`ParentProcessId` n'est pas invalidé — une fenêtre pourrait être adoptée à
+tort.
+
+**(b) Un JOB OBJECT d'appartenance seule.** 🔵 **La nuance qui m'a été donnée
+est JUSTE, et je l'ai vérifiée dans le code** : ce que `apps/lancement.rs`
+rejette est `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`, un **drapeau optionnel** que
+`superviseur/lanceur.rs` pose sur SES enfants. Un job sans ce drapeau ne tue
+rien. **Le commentaire du produit rejette donc le drapeau, pas le job.**
+
+🔵 **Et la voie est libre** : la mesure montre que les applications sont lancées
+par **le superviseur lui-même** (`agent(3720)`, parent `powershell.exe`), or
+`lanceur.rs` « n'assigne que ses ENFANTS et jamais lui-même » — **le
+superviseur n'est dans aucun job**, donc rien n'empêche d'assigner ses
+lancements à un job d'appartenance.
+
+⚠️ **Ce que (b) coûte, et pourquoi je ne l'écris pas sans accord** :
+- il faut demander `SEE_MASK_NOCLOSEPROCESS` à `ShellExecuteExW` pour obtenir
+  le handle, puis `AssignProcessToJobObject` — **c'est un changement au chemin
+  de lancement**, celui que le cadrage me demandait d'annoncer avant ;
+- une **course** existe : les enfants créés entre `ShellExecuteEx` et
+  l'assignation ne seraient pas dans le job ;
+- les jobs **imbriqués** ne sont acceptés que depuis Windows 8 ; sur une
+  machine plus ancienne, un processus déjà dans un job ferait échouer
+  l'assignation. ⚠️ **Non mesuré ici.**
+
+**Ma recommandation : (b)**, pour la robustesse, en assumant la course. Mais
+c'est un changement du chemin de lancement, **et je m'arrête pour le demander**.
+
+⚠️ **Dans les deux cas, une décision reste à prendre et elle n'est pas
+technique** : une fenêtre **déjà ouverte avant desk** ne sera plus reprise. Le
+propriétaire l'a acceptée ; **le relevé ci-dessus la rend concrète** — `cmd.exe`
+et `Forza Horizon 6` disparaîtraient du hub.
