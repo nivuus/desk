@@ -1,10 +1,38 @@
 //! Apparier une sortie virtuelle fraîchement créée à une sortie DXGI, puis y
 //! poser la fenêtre.
 //!
-//! **Le pilote et DXGI ne parlent pas le même langage.** Le premier rend un
-//! identifiant de cible qui lui appartient, le second énumère par
+//! 🔴 **« AUCUNE CORRESPONDANCE N'EST EXPOSÉE » ÉTAIT FAUX, ET CETTE PHRASE A
+//! GOUVERNÉ LA CONCEPTION DE L'APPARIEMENT DEPUIS D1.** Elle disait : « Le
+//! pilote rend un identifiant de cible qui lui appartient, DXGI énumère par
 //! `(index_adaptateur, index_sortie)`. Aucune correspondance n'est exposée :
-//! l'appariement se fait donc par dimensions et par élimination.
+//! l'appariement se fait donc par dimensions et par élimination. » Le premier
+//! fait est exact, le second aussi, **la conclusion ne l'est pas** — et c'est
+//! d'elle que sortait l'appariement par différence d'ensembles, dont le lot 30
+//! a mesuré qu'il refuse toute fenêtre quand la première sortie virtuelle
+//! remplace une cible forcée.
+//!
+//! **Ce qui est vrai** : l'API CCD de Win32 expose la correspondance. Le
+//! pilote rend `(adapterId, id de cible)` — `sudovda::SortieAjoutee`, trois
+//! nombres dont le produit n'en gardait qu'un —, et ce couple se change en nom
+//! GDI par `QueryDisplayConfig` puis `DisplayConfigGetDeviceInfo`. Voir
+//! `moniteurs_virtuels::config_affichage`, qui le fait, et
+//! `superviseur::designation`, qui s'en sert.
+//!
+//! **Les commandes qui l'établissent, pour que le prochain lecteur refasse le
+//! contrôle sans croire personne** — la première montre les trois nombres que
+//! le pilote rend, la seconde que l'API existe dans le crate épinglé :
+//!
+//! ```text
+//! grep -n 'identifiant_cible\|adaptateur_bas' agent/src/moniteurs_virtuels/sudovda.rs
+//! grep -rn 'pub unsafe fn QueryDisplayConfig' \
+//!   ~/.cargo/registry/src/*/windows-0.62.2/src/Windows/Win32/Devices/Display/mod.rs
+//! ```
+//!
+//! ⚠️ **Ce que la correction ne prétend PAS** : que le couple rendu par
+//! SudoVDA soit celui qu'emploie CCD. C'est une hypothèse, elle est dite comme
+//! telle dans `config_affichage`, et son échec fait retomber le produit sur
+//! l'appariement par élimination décrit ci-dessous — qui reste donc vivant, et
+//! reste la raison d'être de tout ce module.
 //!
 //! **`GetDesc`/`DesktopCoordinates` est la source de vérité, jamais WMI** —
 //! le champ WMI a été vu périmé de 68 s sur ce terrain, et la sortie virtuelle

@@ -36,12 +36,32 @@ pub mod sudovda;
 // commentaire de tête (correctif I1).
 pub mod numeros;
 
+// Hors `#[cfg(windows)]` pour la même raison encore : la RÈGLE qui échange un
+// identifiant de cible contre un nom GDI décide de l'appariement de TOUTE
+// fenêtre, et elle doit avoir des tests. Sa moitié Win32 est dans son `mod
+// win` interne — patron de `superviseur/placement.rs`.
+pub mod config_affichage;
+
 use anyhow::{Context, Result};
 
 use crate::geometry::Rect;
 
 /// Identifiant d'une sortie virtuelle, tel que le pilote le rend.
 pub type IdSortie = u32;
+
+/// L'adaptateur sur lequel le pilote a créé une sortie : un `LUID` Win32,
+/// écrit en deux moitiés — exactement comme `sudovda::SortieAjoutee` l'écrit
+/// déjà, et pour la même raison (la disposition supposée doit être lisible là
+/// où elle est en jeu).
+///
+/// 🔴 **Le pilote rend TROIS nombres, et le produit n'en gardait qu'UN.**
+/// `SortieAjoutee` porte `(adaptateur_bas, adaptateur_haut, identifiant_cible)`
+/// ; jusqu'au lot 32 seul le troisième survivait à `creer`, les deux autres
+/// n'étant que journalisés. Or c'est le COUPLE qui désigne une cible
+/// d'affichage sans ambiguïté : un identifiant de cible n'est unique que PAR
+/// adaptateur, et cette VM en a plus d'un (SudoVDA, plus le VGA de QEMU quand
+/// il est présent).
+pub type Adaptateur = (u32, i32);
 
 /// Ce que ce bloc attend d'un pilote d'affichage virtuel, quel qu'il soit.
 ///

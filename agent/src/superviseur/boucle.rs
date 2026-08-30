@@ -11,6 +11,7 @@ use anyhow::Result;
 use super::enfants::{Consigne, Enfants};
 use super::hook;
 use super::lanceur::LanceurDeProcessus;
+use super::designation;
 use super::placement;
 use super::protocole::{DepuisLaShell, VersLaShell};
 use super::table::{Effet, IdSession, Table};
@@ -38,7 +39,7 @@ use crate::capture::{enumerer_sorties_silencieux, SortieDxgi};
 // création, et une fois de plus si l'attente expire (voir la doc
 // d'`attendre_une_sortie_neuve`) — jamais à chaque tour de la scrutation.
 use crate::diagnostics::multifenetre::montee::{noms_attaches, relever_topologie};
-use crate::moniteurs_virtuels::{pilote::PiloteParIoctl, Sorties};
+use crate::moniteurs_virtuels::{config_affichage, pilote::PiloteParIoctl, Sorties};
 
 /// Nombre maximal de fenêtres servies simultanément.
 ///
