@@ -1,0 +1,17 @@
+{
+ "etiquette": "juge-diag",
+ "instant": "2026-08-30T18:14:04.282Z",
+ "palier_ms": 5000,
+ "vm": "677a3953-14c7-4364-92c3-bd17ecddf8d2",
+ "etat_vm": "prete",
+ "prefixe": "3sxuA9dd56NpVdHi37R86g",
+ "diagnostic_shell": {
+  "url": "http://192.168.3.1:3445/shell.html",
+  "cartes": 17,
+  "bandeau": null,
+  "corps": "Bureau\n« Chrome Legacy Window » n'a pas pu s'ouvrir : plus aucune sortie virtuelle disponible.\nMes fichiers\nChoisir mon dossier\n\nRafraîchir\nReprendre l’enregistrement\n\nMes fenêtres\nAdministrator: C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\n\nouverte\n\nUntitled - Notepad\n\nouverte\n\nMIRE-LOT32C\n\nouverte\n\nThis PC - File Explorer\n\nouverte\n\nUntitled - Notepad\n\nouverte\n\nUntitled - Notepad\n\nou",
+  "cibles": 0
+ },
+ "erreur": "aucune page de session n'est apparue : la shell a-t-elle recu une fenetre ?",
+ "verdict": "ROUGE"
+}

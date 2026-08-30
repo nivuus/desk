@@ -1,0 +1,23 @@
+{
+ "etiquette": "juge-7",
+ "instant": "2026-08-30T18:29:17.549Z",
+ "palier_ms": 20000,
+ "vm": "677a3953-14c7-4364-92c3-bd17ecddf8d2",
+ "etat_vm": "prete",
+ "prefixe": "3sxuA9dd56NpVdHi37R86g",
+ "diagnostic_shell": {
+  "url": "http://192.168.3.1:3445/shell.html",
+  "cartes": 0,
+  "corps": "Bureau\nbureau connecté\nMes fichiers\nChoisir mon dossier\n\nRafraîchir\nReprendre l’enregistrement\n\nMes fenêtres\nThème\n\nsysteme\nclair\nsombre"
+ },
+ "cibles_cdp": [
+  "background_page chrome-extension://nkeimhogjdpnpccoofpliimaahmaaome/background.html",
+  "page http://192.168.3.1:3445/shell.html",
+  "browser_ui chrome://omnibox-popup.top-chrome/",
+  "browser_ui chrome://omnibox-popup.top-chrome/omnibox_popup_aim.html",
+  "service_worker chrome-extension://fignfifoniblkonapihmkfakmlgkbkcf/service_worker.js",
+  "service_worker chrome-extension://ghbmnnjooekpmoecnnnilnnbdlolhkhi/service_worker_bin_prod.js"
+ ],
+ "erreur": "aucune page de session n'est apparue : la shell a-t-elle recu une fenetre ?",
+ "verdict": "ROUGE"
+}

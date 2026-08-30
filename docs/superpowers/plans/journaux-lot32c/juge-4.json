@@ -1,0 +1,31 @@
+{
+ "etiquette": "juge-4",
+ "instant": "2026-08-30T18:24:04.058Z",
+ "palier_ms": 20000,
+ "vm": "677a3953-14c7-4364-92c3-bd17ecddf8d2",
+ "etat_vm": "prete",
+ "prefixe": "3sxuA9dd56NpVdHi37R86g",
+ "url_session": "http://192.168.3.1:3445/index.html?session=3sxuA9dd56NpVdHi37R86g%3Aw-21",
+ "a": {
+  "ice": "new",
+  "framesDecoded": null,
+  "framesReceived": null,
+  "bytesVideo": null,
+  "bytesAudio": null,
+  "t": 1788114295892
+ },
+ "b": {
+  "ice": "new",
+  "framesDecoded": null,
+  "framesReceived": null,
+  "bytesVideo": null,
+  "bytesAudio": null,
+  "t": 1788114315916
+ },
+ "framesDecoded_delta": 0,
+ "palier_s": 20.024,
+ "cadence_ips": 0,
+ "bytesVideo_delta": 0,
+ "ice": "new",
+ "verdict": "ROUGE"
+}

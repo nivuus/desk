@@ -1,0 +1,10 @@
+{
+ "etiquette": "juge-1",
+ "instant": "2026-08-30T18:11:35.489Z",
+ "palier_ms": 20000,
+ "vm": "677a3953-14c7-4364-92c3-bd17ecddf8d2",
+ "etat_vm": "prete",
+ "prefixe": "3sxuA9dd56NpVdHi37R86g",
+ "erreur": "aucune page de session n'est apparue : la shell a-t-elle recu une fenetre ?",
+ "verdict": "ROUGE"
+}

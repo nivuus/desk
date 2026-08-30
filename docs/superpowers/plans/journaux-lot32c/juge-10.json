@@ -1,0 +1,31 @@
+{
+ "etiquette": "juge-10",
+ "instant": "2026-08-30T18:34:38.636Z",
+ "palier_ms": 25000,
+ "vm": "677a3953-14c7-4364-92c3-bd17ecddf8d2",
+ "etat_vm": "prete",
+ "prefixe": "3sxuA9dd56NpVdHi37R86g",
+ "url_session": "http://192.168.3.1:3445/index.html?session=3sxuA9dd56NpVdHi37R86g%3Aw-2",
+ "a": {
+  "ice": "connected",
+  "framesDecoded": 14,
+  "framesReceived": 14,
+  "bytesVideo": 180602,
+  "bytesAudio": 15781,
+  "t": 1788114886667
+ },
+ "b": {
+  "ice": "connected",
+  "framesDecoded": 498,
+  "framesReceived": 499,
+  "bytesVideo": 1359491,
+  "bytesAudio": 418281,
+  "t": 1788114911684
+ },
+ "framesDecoded_delta": 484,
+ "palier_s": 25.017,
+ "cadence_ips": 19.346844145980732,
+ "bytesVideo_delta": 1178889,
+ "ice": "connected",
+ "verdict": "VERT"
+}
