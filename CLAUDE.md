@@ -676,11 +676,19 @@ indépendants : ce sont eux qui coûtent.
   build, pas seulement le premier**, ou bâtir depuis un `git worktree` isolé —
   ⚠️ avec `node_modules` lié, sans quoi le script s'arrête en silence.
 - 🔴 **UNE VARIABLE NEUVE DOIT ÊTRE AJOUTÉE À `scripts/run-agent.sh` PAR UNE
-  TÂCHE DÉDIÉE** — payé en D1 (`SUPERVISEUR`), D2 (`MULTIFENETRE_REPRISE`) et
-  D7 (`AUDIO`), où implémenteur **et** relecteur avaient vérifié la propriété
-  **en traçant le code** : le tracé était juste, la valeur ne pouvait pas
-  atteindre le processus. **Le contrôle qui vaut est de lire la ligne dans le
-  `run-agent.ps1` GÉNÉRÉ**, jamais le code.
+  TÂCHE DÉDIÉE** — payé en D1 (`SUPERVISEUR`), D2 (`MULTIFENETRE_REPRISE`),
+  D7 (`AUDIO`) et **lot 32 (`SORTIE_DESIGNEE`)**, où implémenteur **et**
+  relecteur avaient vérifié la propriété **en traçant le code** : le tracé
+  était juste, la valeur ne pouvait pas atteindre le processus.
+  🔴 **LIRE LA LIGNE DANS LE SCRIPT GÉNÉRÉ NE SUFFIT PAS — LE LOT 32 L'A
+  MESURÉ.** Une ligne peut être présente dans le `.ps1` **et n'être jamais
+  exécutée** : posée APRÈS l'invocation de l'agent, elle n'atteint rien, et le
+  fichier semble parfaitement bon. **Ce qui compte est sa POSITION RELATIVE À
+  L'INVOCATION** — et le seul contrôle qui ne peut pas mentir est **la trace
+  émise par le processus lui-même** (un `warn!` de désarmement, un champ de
+  journal), parce qu'elle n'existe que si la valeur est arrivée. ⚠️ **Une
+  rouge de banc dont la variable n'atteint pas le processus est VACUEUSE et
+  se lit exactement comme une bonne** : elle rougit, pour la mauvaise raison.
 - ⚠️ **`nodejs-winrm` ENVELOPPE TOUJOURS LA COMMANDE** dans
   `powershell -Command "& { … }"` : un script en ligne portant guillemets ou
   parenthèses entre en collision, **et le symptôme est un script qui ne tourne
@@ -894,6 +902,7 @@ Ils sont **datés**, et plusieurs se réfutent les uns les autres à dessein.
 - **lot 17 — un pair qui arrive tard voit les fenêtres (30 août 2026)** — [résultats](docs/superpowers/plans/2026-08-30-lot17-reannonce-fenetres-resultats.md) — le relais gagne `pair-present`, **le jumeau symétrique de `peer-gone`**, et le superviseur redit ses fenêtres à une page-shell qui arrive après lui. 🔴 **Le défaut n'était PAS que `DELAI_ATTENTE_VIEWPORT_MAX` soit trop court** : les annonces partaient vers un socket inexistant et `send(peer, …)` les laissait tomber sans une trace — la borne ne faisait que rendre la perte visible trente secondes plus tard. Elle est **intacte**, et court désormais depuis l'arrivée de la shell. Mesuré sur la VM : **0** fenêtre au bras rouge, **4** et **5** aux deux bras verts. 🔴 **Legs distinct trouvé et NON corrigé : la connexion de contrôle du superviseur ne se reconnecte JAMAIS** — voir « Ce qu'aucun chantier n'a jamais mesuré ».
 - **package-nivuus, lots 10A à 13 : la MISE EN SERVICE réelle, et quatre défauts que seul un navigateur voyait (30 août 2026)** — [résultats](docs/superpowers/plans/2026-08-29-package-nivuus-resultats.md) § 10 — un service `desk` **tourne en production** sur cette machine (`192.168.3.1:3445`, derrière `https://app.allanic.me`, mode **`pomerium`** sur décision du propriétaire), servi par une copie déployée sous `/opt/nivuus/desk`. 🔴 **Le bug le plus grave n'était pas dans le package** : `PLATEFORME_HOTE` était confondu avec l'adresse TURN dérivée de la route par défaut — **l'adresse PUBLIQUE de cet hôte** —, et la garde du produit ne pouvait pas l'attraper (`ECOUTES_UNIVERSELLES` ne connaît que quatre littéraux, jamais « une adresse routable ordinaire »). Aussi : la CSP interdisait l'amorce anti-FOUC de la plateforme (sortie du HTML plutôt qu'un hash, parce que `deploiement/nginx.conf` porte une copie STATIQUE de la même CSP) ; le hub était **vide** faute d'attribution de VM, alors que `routes-applications.ts` l'écrivait déjà en toutes lettres. ⚠️ **La racine `/` sert la PAGE DE SESSION, qui se rabat sur la session `demo` sans jeton** : décision non prise, offerte au propriétaire.
 - **package-nivuus, revue finale de branche : une Critique et six Importantes (30 août 2026)** — [résultats](docs/superpowers/plans/2026-08-29-package-nivuus-resultats.md) § 12 — 🔴 **le package NE POUVAIT PAS S'INSTALLER** : `hooks/resolve.py` refusait sur `hw["vm_windows"]`, une clé qu'**aucun producteur du moteur ne pose**, à une phase (avant `partition()`) où la VM ne peut pas exister ; le refus devient un `StepError` qui arrête l'installation **entière**. **Huit suites et neuf revues ne pouvaient pas le voir : elles FABRIQUAIENT la clé dont elles vérifiaient la consommation.** La porte a migré dans `activate`, où elle est une mesure, et `tests/test_desk_contrat_hw.py` fige le contrat en lisant le **producteur**. Aussi fermés : le runtime Node **déposé** au lieu d'être supposé (il l'était par un geste manuel consigné dans un rapport gitignoré), un refus qui arrive **avant** le premier secret écrit, et les `facts` validés au lieu d'être crus sur parole.
+- **lot 32 — la première sortie virtuelle et la cible forcée (30 août 2026)** — [résultats](docs/superpowers/plans/2026-08-30-premiere-sortie-cible-forcee-resultats.md) — l'appariement cesse de DEVINER la sortie par une différence d'ensembles et la DÉSIGNE par le couple `(adaptateur, identifiant de cible)` que le pilote rend déjà (API CCD, `moniteurs_virtuels/config_affichage.rs`) ; le repli d'hier reste en place mot pour mot. 🔴 **La cause première était une affirmation FAUSSE de `placement.rs` écrite en D1 — « aucune correspondance n'est exposée » — corrigée avec les commandes qui l'établissent.** Mesuré sur la VM, VGA retiré : bras désarmé **8 sorties créées, 8 refus, 0 fenêtre tenue** ; bras armé **`chemin ① = 1`, `nom_designe="\\.\DISPLAY5"`** — le nom que portait la cible forcée (`statusFlags=0x11`, relevé AVANT de conclure). L'hypothèse que `sudovda.rs` déclarait « non confirmée » est **établie** : id pilote = cible CCD = UID du moniteur = 257.
 
 
 ---
@@ -1072,6 +1081,21 @@ tard il était rouvert en plus grand.**
   survécu à huit suites vertes et neuf revues **pour cette seule raison**.
   Tant que `run.py` n'a pas appelé ces hooks pour de vrai, la même classe de
   défaut reste possible.
+- 🔴 **`SORTIE_DESIGNEE` N'ATTEINT PAS L'AGENT DE L'APPLIANCE** (lot 32,
+  30 août 2026). La variable est posée par `scripts/run-agent.sh`, ce
+  qu'exige la règle du dépôt — mais ce script vise la VM de développement
+  **qui n'existe plus sous cette forme**. L'agent réel est lancé par la tâche
+  planifiée `guacamole-agent`, qui exécute **`C:\nivuus\agent\run-agent.ps1`**,
+  un fichier du package **`console`** ne posant que `SIGNALING_URL`,
+  `LOCAL_IP`, `RUST_LOG`, `AGENT_VM`, `AGENT_SECRET` et `SUPERVISEUR`.
+  🔴 **CE QUE CELA EMPÊCHE : le bras ROUGE du remède du lot 32 n'est PAS
+  rejouable sur l'agent réel de l'appliance** — seulement sur celui que
+  `scripts/run-agent.sh` lance, ou par une injection à la main dans le `.ps1`
+  de `console` (ce que la recette du lot 32 a dû faire). ⚠️ **Corriger cela
+  touche un AUTRE package** : hors périmètre du lot 32, la décision
+  appartient au propriétaire. **Consigné ici et non dans le seul relevé daté,
+  parce que ce dépôt a constaté deux fois qu'un legs qui ne vit que là est un
+  legs perdu.**
 
 ### Ce qu'aucun chantier n'a jamais mesuré
 
