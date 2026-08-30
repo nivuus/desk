@@ -326,7 +326,7 @@ impl WindowsSource {
                 }
                 Some(Ok(None)) | None => break,
                 Some(Err(e)) => {
-                    tracing::warn!(erreur = %e, "récupération de l'image encodée échouée");
+                    tracing::warn!(erreur = %crate::cause::chaine(&e), "récupération de l'image encodée échouée");
                     break;
                 }
             }
@@ -334,7 +334,7 @@ impl WindowsSource {
         // Les emplacements d'entrée libérés par le drainage ci-dessus sont
         // réutilisables dès maintenant : ne pas attendre le tour suivant.
         if let Err(e) = self.encoder_mut().and_then(H264Encoder::flush_pending_inputs) {
-            tracing::warn!(erreur = %e, "réalimentation de l'encodeur échouée");
+            tracing::warn!(erreur = %crate::cause::chaine(&e), "réalimentation de l'encodeur échouée");
         }
         self.ready.pop_front()
     }
@@ -545,7 +545,7 @@ impl VideoSource for WindowsSource {
                     std::sync::atomic::Ordering::Relaxed,
                 );
                 if let Err(e) = fed {
-                    tracing::warn!(erreur = %e, "soumission à l'encodeur échouée");
+                    tracing::warn!(erreur = %crate::cause::chaine(&e), "soumission à l'encodeur échouée");
                 } else {
                     submitted = true;
                 }

@@ -172,7 +172,13 @@ impl VideoSource for SourceDistante {
                             // de 250 ms sur une fenêtre de 15 s, un capteur
                             // durablement absent produirait 60 lignes par
                             // fenêtre et par session.
-                            Err(erreur) => tracing::debug!(%erreur, "rattachement refusé"),
+                            // `cause::chaine` : même raison qu'ailleurs sur
+                            // ce chemin — le `Display` simple d'`anyhow` ne
+                            // rend que la couche externe. Voir `crate::cause`.
+                            Err(erreur) => tracing::debug!(
+                                erreur = %crate::cause::chaine(&erreur),
+                                "rattachement refusé"
+                            ),
                         }
                     }
                     return None;

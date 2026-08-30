@@ -6,6 +6,9 @@ mod audio;
 // tester sur Linux. Les sous-modules qui touchent DXGI et les tubes sont
 // gatés à l'intérieur de `capteur.rs`.
 mod capteur;
+// Le rendu LISIBLE de la chaine de causes d'une `anyhow::Error` dans une
+// trace. Racine nue : son nom ne prefixe aucun module de premier niveau.
+mod cause;
 mod clock;
 mod congestion;
 // La lecture et la validation de l'environnement, extraites de ce fichier le

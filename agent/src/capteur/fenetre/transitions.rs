@@ -138,7 +138,14 @@ impl Fenetre {
                     if let Err(erreur) = self.reveiller() {
                         tracing::warn!(
                             session = %ctx.session,
-                            %erreur,
+                            // `cause::chaine` et NON `%erreur` : le `Display`
+                            // simple d'`anyhow` ne rendait que le
+                            // `with_context` posé quinze lignes plus haut
+                            // (« réveil de la session … »), et jetait la
+                            // cause — donc le HRESULT. Le lot 25 a compté 74
+                            // puis 52 refus d'affilée sans pouvoir dire
+                            // pourquoi. Voir `crate::cause`.
+                            erreur = %crate::cause::chaine(&erreur),
                             "réveil refusé, la fenêtre reste endormie"
                         );
                         // **Indispensable, et rien d'autre ne le remplace.** Le

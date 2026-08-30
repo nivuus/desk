@@ -188,7 +188,13 @@ impl Session {
                 // en tête de fichier même appelé depuis `handle_event`.
                 tracing::debug!(mid = ?request.mid, "image clé demandée par le pair");
                 if let Err(e) = self.source.request_keyframe() {
-                    tracing::warn!(erreur = %e, mid = ?request.mid, "échec de la demande d'image clé");
+                    // `cause::chaine` : même chaîne `commander_simple` que
+                    // le réveil. Voir `crate::cause`.
+                    tracing::warn!(
+                        erreur = %crate::cause::chaine(&e),
+                        mid = ?request.mid,
+                        "échec de la demande d'image clé"
+                    );
                 }
             }
             Event::EgressBitrateEstimate(kind) => {

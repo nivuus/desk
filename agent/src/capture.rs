@@ -279,7 +279,7 @@ impl DesktopCapture {
                             // suivant trouvait `self.duplication` à `None` et
                             // rompait la fenêtre en panne malgré ce texte.
                             tracing::info!(
-                                erreur = %erreur,
+                                erreur = %crate::cause::chaine(&erreur),
                                 cible = ?self.cible,
                                 "réouverture de la duplication échouée, la fenêtre de reprise court toujours"
                             );

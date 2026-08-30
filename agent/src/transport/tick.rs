@@ -177,7 +177,15 @@ impl Session {
         if let Some((visible, focalisee)) = self.pending_visibility.take() {
             if let Err(erreur) = self.source.set_awake(visible, focalisee) {
                 // Non fatal : perdre l'arbitrage n'est pas perdre la session.
-                tracing::warn!(%erreur, visible, focalisee, "visibilité refusée par le capteur");
+                // `cause::chaine` et non `%erreur` : `set_awake` traverse
+                // `commander_simple`, qui empile un contexte — le `Display`
+                // simple d'`anyhow` ne rendrait que lui. Voir `crate::cause`.
+                tracing::warn!(
+                    erreur = %crate::cause::chaine(&erreur),
+                    visible,
+                    focalisee,
+                    "visibilité refusée par le capteur"
+                );
             }
             return Ok(Tick::Continue);
         }
