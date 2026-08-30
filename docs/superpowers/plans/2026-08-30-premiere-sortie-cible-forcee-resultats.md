@@ -352,9 +352,20 @@ déclarait non vérifiable sur l'hôte ; il a été vu sortir.
 
 ⚠️ **Le binaire de production est celui d'avant**, à dessein : il doit venir du
 package (`hooks/activate.py`, `chemin_agent_console`), jamais d'une
-fabrication de travail. Le binaire du lot 32 reste sous
-`C:\nivuus\agent\agent.exe.lot32`. **Déployer le remède est une décision du
-propriétaire**, et elle est désormais adossée à une mesure.
+fabrication de travail.
+
+🔴 **LE BINAIRE DE TRAVAIL DU LOT 32 A ÉTÉ RETIRÉ DE LA VM** (ainsi que la
+sonde et sa sortie). Il n'avait aucun usage futur — le remède se refabrique en
+une commande depuis les sources commitées — et un `agent.exe.lot32` posé à côté
+d'`agent.exe` est exactement ce qu'on copie par inadvertance. **La copie nommée
+de l'ORIGINAL est conservée** : c'est elle qui atteste ce que la production
+faisait tourner.
+
+⚠️ **LE DÉPLOIEMENT N'EST PAS ORDONNANCÉ PAR CE LOT, ET C'EST DÉLIBÉRÉ.** Le
+lot voisin réécrit l'encodeur au même moment ; déployer ce remède seul
+obligerait à redéployer dans quelques heures, et **deux déploiements sont deux
+occasions de se tromper pour un seul gain**. Une seule refabrication par
+`scripts/build-agent-croise.sh` quand les deux remèdes seront là.
 
 ### 5.6 Un défaut de câblage, TROUVÉ et NON corrigé
 
@@ -389,6 +400,11 @@ package : hors périmètre, la décision appartient au propriétaire.**
 - **le comportement au-delà d'une fenêtre sans VGA** : le bras C n'en a servi
   qu'UNE. Le lot 30 avait mesuré 4 créées → 4 attachées, mais **par la sonde**,
   pas par le produit ;
+- 🔴 **le bras ROUGE de ce remède n'est PAS rejouable sur l'agent réel de
+  l'appliance** : `SORTIE_DESIGNEE` n'atteint que l'agent lancé par
+  `scripts/run-agent.sh`, pas celui de `C:\nivuus\agent\run-agent.ps1` (§ 5.6).
+  La recette a dû l'y injecter à la main. **Legs inscrit au § « Legs ouverts »
+  de `CLAUDE.md`**, sous `package-nivuus` ;
 - **la voie A reste non éprouvée**, et n'a plus lieu d'être : ⚠️ **ne pas la
   livrer avec C**, l'amorce masquerait le défaut et rendrait cette recette
   injouable ;
@@ -403,7 +419,10 @@ package : hors périmètre, la décision appartient au propriétaire.**
 
 ## 7. Ce qu'il reste à faire
 
-1. **Décider du déploiement du remède** en production (le binaire d'origine est
-   en place ; celui du lot 32 attend sous `agent.exe.lot32`).
-2. **Décider du sort de `SORTIE_DESIGNEE` dans `console`** (§ 5.6).
+1. **Déployer le remède**, en **une** refabrication commune avec le lot voisin
+   (encodeur) — ordonnancé hors de ce lot. Le binaire d'origine est en place.
+2. **Décider du sort de `SORTIE_DESIGNEE` dans `console`** (§ 5.6) —
+   **inscrit au § « Legs ouverts » de `CLAUDE.md`**, sous le chantier
+   `package-nivuus`, parce qu'un legs qui ne vit que dans un relevé daté est
+   un legs perdu.
 3. **Mesurer plusieurs fenêtres sans VGA** — le bras C n'en a servi qu'une.
