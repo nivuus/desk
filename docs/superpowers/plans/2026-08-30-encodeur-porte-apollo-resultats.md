@@ -875,3 +875,17 @@ là pour que la frontière d'attribution soit vérifiable d'un coup d'œil.
 ⚠️ **L'usage de NVENC à l'exécution relève de la licence du pilote NVIDIA,
 qui n'est pas celle-ci et qui n'a pas été lue** : question distincte, **non
 tranchée**, et elle appartient au propriétaire.
+
+🔵 **STATUÉ LE 30 AOÛT 2026 PAR LE PROPRIÉTAIRE DU DÉPÔT : cette question ne
+bloque pas ce lot, et elle est CONSIGNÉE ICI plutôt que laissée dans un
+échange** — ce dépôt a perdu six constats de revue dans un rapport gitignoré,
+et un legs qui ne vit que dans un message est un legs perdu. Les deux raisons
+posées, telles quelles : ① **nous ne redistribuons pas `nvEncodeAPI64.dll`**,
+elle vient du pilote déjà installé sur la machine ; ② **c'est l'usage même que
+cette API publique existe pour servir**, et le produit voisin sur cette
+machine (Apollo) en fait autant. ⚠️ **Ce n'est PAS une lecture de la licence
+du pilote — personne ne l'a lue.** C'est une décision de **distribution**,
+prise en connaissance de ce qu'elle ne recouvre pas, et elle **ne change pas
+une ligne de code**. Elle reste **ouverte** au sens où elle devra être reprise
+le jour où ce dépôt distribuerait autre chose que du code source, ou
+distribuerait la DLL elle-même.
