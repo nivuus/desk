@@ -124,6 +124,17 @@ mod wasapi_peripherique;
 #[path = "wasapi/format.rs"]
 mod wasapi_format;
 
+/// La part PURE du chemin NVENC (lot 31) : choix de la voie, traduction des
+/// réglages, arithmétique de version des structures.
+///
+/// ⚠️ **Hissée ici pour la même raison que `wasapi_format` juste au-dessus** :
+/// `encode.rs` est `#![cfg(windows)]`, et cette logique-ci doit se tester sur
+/// l'hôte. Le nom porte le préfixe `encode_` d'un module de premier niveau
+/// existant, donc la convention la range CHEZ son parent, par `#[path]` —
+/// et non à la racine nue. Voir l'en-tête du fichier.
+#[path = "encode/nvenc.rs"]
+mod encode_nvenc;
+
 #[cfg(windows)]
 mod capture;
 #[cfg(windows)]

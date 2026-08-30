@@ -45,10 +45,12 @@ use windows::Win32::Graphics::Direct3D11::{
     D3D11_USAGE_DEFAULT,
 };
 use windows::Win32::Graphics::Dxgi::Common::{DXGI_FORMAT_NV12, DXGI_SAMPLE_DESC};
+use windows::Win32::Graphics::Dxgi::{CreateDXGIFactory1, IDXGIFactory1};
 use windows::Win32::Media::MediaFoundation::*;
 use windows::Win32::System::Com::{CoCreateInstance, CoTaskMemFree, CLSCTX_INPROC_SERVER};
 
 use super::reglages;
+use crate::encode_nvenc;
 
 /// Journalise les types d'entrée réellement annoncés par l'encodeur, avant
 /// toute configuration. Sert de preuve empirique à la question BGRA/NV12
@@ -348,10 +350,46 @@ pub(super) fn find_hardware_encoder() -> Result<IMFTransform> {
         unsafe { CoTaskMemFree(Some(name_ptr.0 as *const _)) };
     }
 
-    let transform: IMFTransform = unsafe { first.ActivateObject() }
-        .context("activation de l'encodeur H.264 matériel (ActivateObject)")?;
+    let active = unsafe { first.ActivateObject::<IMFTransform>() };
     unsafe { CoTaskMemFree(Some(activates as *const _)) };
-    Ok(transform)
+    match active {
+        Ok(transform) => Ok(transform),
+        Err(erreur) => Err(anyhow!(
+            "{}",
+            // La COMPOSITION du message est pure et vit chez
+            // `encode_nvenc`, où elle est testée sur l'hôte : ici on ne
+            // fait que lui donner le code et ce que la machine porte.
+            encode_nvenc::diagnostic_activation(erreur.code().0, &erreur.to_string(), &adaptateurs_dxgi())
+        )),
+    }
+}
+
+/// Les adaptateurs DXGI, réduits à ce que la règle PURE de
+/// `crate::encode_nvenc` sait lire.
+///
+/// ⚠️ **Rend une liste VIDE plutôt qu'une erreur** : cette fonction ne sert
+/// qu'à enrichir un diagnostic et à choisir une voie. La faire échouer
+/// remplacerait un message utile par un autre message d'erreur, et masquerait
+/// la panne qu'on essaie justement de décrire.
+pub(super) fn adaptateurs_dxgi() -> Vec<encode_nvenc::Adaptateur> {
+    let Ok(fabrique) = (unsafe { CreateDXGIFactory1::<IDXGIFactory1>() }) else {
+        return Vec::new();
+    };
+    let mut vus = Vec::new();
+    let mut index = 0u32;
+    while let Ok(adaptateur) = unsafe { fabrique.EnumAdapters1(index) } {
+        if let Ok(desc) = unsafe { adaptateur.GetDesc1() } {
+            vus.push(encode_nvenc::Adaptateur {
+                nom: String::from_utf16_lossy(&desc.Description)
+                    .trim_end_matches('\0')
+                    .to_string(),
+                vendeur: desc.VendorId,
+                luid: (desc.AdapterLuid.HighPart, desc.AdapterLuid.LowPart),
+            });
+        }
+        index += 1;
+    }
+    vus
 }
 
 pub(super) fn share_device(device: &ID3D11Device) -> Result<IMFDXGIDeviceManager> {
