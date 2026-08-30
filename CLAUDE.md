@@ -108,7 +108,7 @@ où l'on travaille dedans, pas en chantier séparé.
 
 | Fichier | Lignes | Pourquoi elle reste |
 | --- | --- | --- |
-| ✅ ~~`agent/src/encode.rs`~~ **SORTI DE LA DETTE** | ~~1536~~ → **427** (30 août 2026, lot 31) | 🔵 **Il ne franchit plus le plafond** — vérifié par la commande ci-dessus, qui ne rend plus que `windows_source.rs`. L'extraction du lot 31 l'a scindé en `encode/mft.rs` (301) + `encode/mft/convertisseur.rs` (337) + `encode/mft/encodeur.rs` (287) pour le dos Media Foundation, et `encode/natif.rs` (146) + le sous-arbre `encode/nvenc/` pour le dos NVENC. ⚠️ **Jouée dans des tâches DÉDIÉES et AVANT l'addition qu'elle préparait**, jamais par compression. ⚠️ `encode/arret.rs` reste à **500 lignes EXACTES**, donc à sa porte : toute addition dedans exige sa propre extraction |
+| ✅ ~~`agent/src/encode.rs`~~ **SORTI DE LA DETTE** | ~~1536~~ → **427** (30 août 2026, lot 31) | 🔵 **Il ne franchit plus le plafond** — vérifié par la commande ci-dessus, qui ne rend plus que `windows_source.rs`. L'extraction du lot 31 l'a scindé en `encode/mft.rs` (301) + `encode/mft/convertisseur.rs` (337) + `encode/mft/encodeur.rs` (287) pour le dos Media Foundation, et `encode/natif.rs` (152) + le sous-arbre `encode/nvenc/` pour le dos NVENC. ⚠️ **Jouée dans des tâches DÉDIÉES et AVANT l'addition qu'elle préparait**, jamais par compression. ⚠️ `encode/arret.rs` reste à **500 lignes EXACTES**, donc à sa porte : toute addition dedans exige sa propre extraction |
 | `agent/src/windows_source.rs` | ~~638~~ ~~628~~ **630** (7 août 2026, D10) | `#[cfg(windows)]`, aucun test |
 
 

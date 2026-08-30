@@ -8,8 +8,17 @@
 //! qui ajoute — jamais de comprimer. Le pendant de ce module est
 //! `encode::reglages`, qui POSE les réglages sur une MFT une fois obtenue.
 //!
-//! 🔴 **C'EST ICI QUE LE PRODUIT ÉCHOUE AUJOURD'HUI SUR LA VM CIBLE.**
-//! `find_hardware_encoder` énumère une seule MFT — `NVIDIA H.264 Encoder
+//! ⚠️ **CECI N'EST PLUS LE CHEMIN PAR DÉFAUT SUR LA VM CIBLE, DEPUIS LE
+//! 30 AOÛT 2026 (lot 31)** — la phrase qui ouvrait ce paragraphe disait
+//! « c'est ici que le produit échoue aujourd'hui », et elle est devenue
+//! FAUSSE le jour où NVENC natif est passé devant : `H264Encoder::new`
+//! essaie d'abord la porte native quand un adaptateur NVIDIA est présent, et
+//! **elle réussit** (1195 unités d'accès mesurées). Cette MFT reste le dos
+//! **générique** — Intel Quick Sync, AMD VCE, et la session 0 où elle
+//! fonctionne — et ce qui suit décrit ce qu'elle fait *quand on y arrive*.
+//!
+//! 🔴 **CE QUI RESTE VRAI, ET QUI EXPLIQUE POURQUOI ELLE N'EST PLUS
+//! PREMIÈRE.** `find_hardware_encoder` énumère une seule MFT — `NVIDIA H.264 Encoder
 //! MFT` — et son `ActivateObject` rend `0x8000FFFF` (« Catastrophic
 //! failure ») en **session 1**, alors que le même appel réussit en
 //! **session 0**, dans le même binaire et à la même minute. Mesuré le

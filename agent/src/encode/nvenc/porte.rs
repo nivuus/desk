@@ -7,7 +7,11 @@
 //! la coupe suit une frontière réelle : ouvrir la porte n'est pas s'en
 //! servir. `session.rs` retombe à ~440.
 //!
-//! 🔴 **CE MODULE N'A JAMAIS TOURNÉ**, comme le reste du chemin NVENC.
+//! 🟢 **CE MODULE A TOURNÉ** (30 août 2026, VM cible) : le pilote a annoncé
+//! **`0xd1`** — soit **13.1**, plus récent que la **12.2** transcrite — et
+//! `abi::pilote_compatible` l'a accepté. ⚠️ **La branche du REFUS, elle,
+//! n'a jamais couru** : aucune machine ici ne porte un pilote antérieur à
+//! 12.2, et ce chemin-là reste donc non éprouvé.
 //!
 //! ⚠️ **Notice de licence et provenance de l'ABI : `super::abi`.**
 

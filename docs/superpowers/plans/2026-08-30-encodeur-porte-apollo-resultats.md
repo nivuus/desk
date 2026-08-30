@@ -11,14 +11,34 @@ dans laquelle Apollo réussit, donc la condition de toute mesure de ce lot.
 
 ---
 
-## 0. Le résultat en une phrase
+## 0. Le résultat, et l'état LIVRÉ
 
-Apollo n'emprunte **pas** la porte que `desk` emprunte : il appelle l'**API
-NVENC native** (`nvEncodeAPI64.dll`), là où `desk` passe par la **MFT Media
-Foundation de NVIDIA** — et cette MFT, **mesurée aujourd'hui**, refuse de
-s'activer en **session 1** sur cette machine (`0x8000FFFF`) alors qu'elle
-s'active en **session 0**, dans le même binaire, à la même minute, sur les
-quatre arrangements que l'API Media Foundation permet d'essayer.
+**L'enquête.** Apollo n'empruntait **pas** la porte que `desk` empruntait : il
+appelle l'**API NVENC native** (`nvEncodeAPI64.dll`), là où `desk` passait par
+la **MFT Media Foundation de NVIDIA** — et cette MFT refuse de s'activer en
+**session 1** sur cette machine (`0x8000FFFF`) alors qu'elle s'active en
+**session 0**, dans le même binaire, à la même minute, sur les quatre
+arrangements que l'API Media Foundation permet d'essayer.
+
+**Ce qui est livré.** `desk` emprunte désormais **la même porte qu'Apollo**
+quand un adaptateur NVIDIA est présent, et garde la MFT comme dos
+**générique** (Intel Quick Sync, AMD VCE, session 0). Mesuré sur la VM le
+30 août 2026, au même point de code et sur le même périphérique de capture que
+l'échec du lot 30 : **1195 unités d'accès en 10 s**, contre **aucune**.
+
+> 🔴 **CE QUE CE DOCUMENT N'ÉTABLIT PAS, ET QU'AUCUNE LIGNE NE DOIT LAISSER
+> CROIRE.** Le chiffre-juge — **une image qui arrive au navigateur** — n'a
+> **pas** été relevé : `framesDecoded` reste dû (§11.2, cause mesurée et
+> étrangère à ce lot). Le plafond d'encodeurs **à N fenêtres** n'est **pas**
+> mesuré : le banc n'en ouvre qu'un. Et **personne n'a regardé une image** —
+> `verdicts_faux=0` dit qu'aucun verdict n'est faux, **pas qu'une image est
+> juste**.
+
+> ⚠️ **Ce document est chronologique.** Les §§ 1 à 10 sont l'enquête et la
+> conception, écrites AVANT la mesure ; les §§ 11 et suivants sont l'état
+> livré. Là où une section antérieure a été dépassée, elle le dit sur place
+> plutôt que d'être réécrite — ce dépôt préfère un relevé daté et annoté à une
+> histoire lissée.
 
 ---
 
@@ -278,12 +298,12 @@ d'encodeur ; le choix d'adaptateur est là, et c'est le seul qui compte.
 
 | Où | Quoi |
 | --- | --- |
-| `agent/src/encode/fabrique.rs:280` | `find_hardware_encoder()` |
-| `agent/src/encode/fabrique.rs:294` | `MFTEnumEx(MFT_CATEGORY_VIDEO_ENCODER, MFT_ENUM_FLAG_HARDWARE \| MFT_ENUM_FLAG_SORTANDFILTER, NV12 → H264)` — **aucun CLSID n'est nommé** : c'est une énumération, et elle rend **une** entrée, `NVIDIA H.264 Encoder MFT` |
-| `agent/src/encode/fabrique.rs:351-352` | 🔴 **LA PORTE** : `first.ActivateObject()` → `0x8000FFFF` en session 1 |
-| `agent/src/encode.rs:374` | l'appel, depuis `H264Encoder::new` |
-| `agent/src/encode.rs:378-380` | `bail!` si la MFT n'est **pas asynchrone** — ce qui **exclut d'office** la MFT logicielle (épreuve E, `async=0`) |
-| `agent/src/encode.rs:391-398` | `share_device` + `MFT_MESSAGE_SET_D3D_MANAGER` — **APRÈS** l'activation |
+| `agent/src/encode/fabrique.rs:292` | `find_hardware_encoder()` |
+| `agent/src/encode/fabrique.rs:306` | `MFTEnumEx(MFT_CATEGORY_VIDEO_ENCODER, MFT_ENUM_FLAG_HARDWARE \| MFT_ENUM_FLAG_SORTANDFILTER, NV12 → H264)` — **aucun CLSID n'est nommé** : c'est une énumération, et elle rend **une** entrée, `NVIDIA H.264 Encoder MFT` |
+| `agent/src/encode/fabrique.rs:363` | 🔴 **LA PORTE** : `first.ActivateObject()` → `0x8000FFFF` en session 1 |
+| `agent/src/encode/mft.rs:119` | l'appel, depuis `H264Encoder::new` |
+| `agent/src/encode/mft.rs:123-125` | `bail!` si la MFT n'est **pas asynchrone** — ce qui **exclut d'office** la MFT logicielle (épreuve E, `async=0`) |
+| `agent/src/encode/mft.rs:136-143` | `share_device` + `MFT_MESSAGE_SET_D3D_MANAGER` — **APRÈS** l'activation |
 | `agent/src/capture/ouverture.rs:125-131` | le périphérique D3D11, créé **sur l'adaptateur qui porte la sortie capturée** |
 
 **Ce que cette porte suppose et que l'autre ne suppose pas** : que le pilote
@@ -294,18 +314,18 @@ un périphérique D3D11 — **mesuré disponible en session 1** (épreuve H).
 
 🔴 **Et une supposition tombe, mesurée** : `MFT_MESSAGE_SET_D3D_MANAGER` ne
 peut **pas** être en cause. La documentation Microsoft l'impose *après*
-l'activation et *avant* `SetInputType`/`SetOutputType`, et `encode.rs:391-398`
-le fait bien après `encode.rs:374`. On échoue **avant** d'avoir la moindre
+l'activation et *avant* `SetInputType`/`SetOutputType`, et `encode/mft.rs:136-143`
+le fait bien après `encode/mft.rs:119`. On échoue **avant** d'avoir la moindre
 occasion de désigner un périphérique.
 
 🔴 **TROUVAILLE COLLATÉRALE, NON CHERCHÉE, ET QUI DÉBORDE LARGEMENT CE
 LOT — elle ne parle pas d'un chemin hypothétique, elle parle de la
 PRODUCTION D'AUJOURD'HUI.** L'épreuve F montre qu'**aucun convertisseur de
 couleur MATÉRIEL n'est énuméré** sur cette machine, **dans les deux
-sessions**. Donc `find_hardware_video_processor()` (`encode/fabrique.rs:194`) échoue
-**toujours**, et `create_color_converter` (`encode/fabrique.rs:101`) retombe
+sessions**. Donc `find_hardware_video_processor()` (`encode/fabrique.rs:206`) échoue
+**toujours**, et `create_color_converter` (`encode/fabrique.rs:112`) retombe
 **toujours** sur son `CoCreateInstance(&CLSID_VideoProcessorMFT)`
-(`encode/fabrique.rs:118`) — c'est-à-dire sur le **`Microsoft Video Processor MFT`,
+(`encode/fabrique.rs:129`) — c'est-à-dire sur le **`Microsoft Video Processor MFT`,
 LOGICIEL** (épreuve G, activé OK).
 
 **Ce que cela veut dire, en clair : la conversion BGRA → NV12 de chaque
@@ -313,7 +333,7 @@ image de chaque fenêtre passe par le CPU, sur cette VM, depuis toujours — et
 personne dans ce dépôt ne le savait.** Le commentaire d'en-tête d'`encode.rs`
 décrit ce convertisseur comme celui qui « convertit BGRA→NV12 **sans quitter
 le GPU** » : cette phrase est **fausse sur cette machine**. Le repli de
-`encode/fabrique.rs:117` journalise pourtant sa raison en `debug!`, un niveau que la
+`encode/fabrique.rs:128` journalise pourtant sa raison en `debug!`, un niveau que la
 production n'émet pas.
 
 ⚠️ **Ce lot ne mesure PAS le coût de cette conversion logicielle** (ni CPU, ni
@@ -356,7 +376,9 @@ antérieure à ce jour.
 - 🔴 **La CAUSE du `0x8000FFFF` n'est pas établie.** Ce lot établit
   **l'endroit**, la **spécificité** (session 1, MFT matérielle NVIDIA seule,
   témoins verts à côté) et **quatre remèdes réfutés**. Il ne dit pas pourquoi.
-- 🔴 **Aucun remède n'a été JOUÉ.** Aucune ligne de produit n'a été modifiée.
+- ~~🔴 **Aucun remède n'a été JOUÉ.** Aucune ligne de produit n'a été
+  modifiée.~~ **DÉPASSÉ le 30 août 2026** : R1 a été autorisé, écrit, branché
+  et **mesuré** (§§ 10 et 11). La MFT, elle, n'a pas changé d'une ligne.
 - ⚠️ **La variante « un seul affichage » n'a pas été essayée** — elle exige de
   désactiver `\\.\DISPLAY1`, donc de retirer au VGA QEMU son rôle, ce que la
   consigne de ce lot interdit.
@@ -369,7 +391,7 @@ antérieure à ce jour.
 
 ## 5. Les remèdes, chacun avec son coût et son degré de preuve
 
-### R1 — l'API NVENC native, la porte d'Apollo · 🟢 **précédent MESURÉ ici**
+### R1 — l'API NVENC native, la porte d'Apollo · ✅ **RETENU, ÉCRIT, MESURÉ (§ 11)**
 
 Remplacer la fabrication de l'encodeur par `nvEncodeAPI64.dll` :
 `NvEncodeAPICreateInstance`, `nvEncOpenEncodeSessionEx` avec
@@ -385,7 +407,7 @@ Remplacer la fabrication de l'encodeur par `nvEncodeAPI64.dll` :
   de débit, et le portage des quatre verbes que `encode.rs` expose déjà
   (`submit`, `poll_output`, `request_keyframe`, `set_bitrate`).
 - 🔵 **Ce qu'il RETIRE** : NVENC accepte `NV_ENC_BUFFER_FORMAT_ARGB`
-  directement. Le convertisseur de couleur (`encode/fabrique.rs:101-133`) — qui, sur
+  directement. Le convertisseur de couleur (`encode/fabrique.rs:112-145`) — qui, sur
   cette machine, est **logiciel** faute de MFT matérielle (épreuve F) —
   pourrait **disparaître** du chemin chaud. Le remède est donc moins cher
   qu'il n'en a l'air, et il supprime un étage.
@@ -413,8 +435,8 @@ un handle NT partagé.
 
 `H264 Encoder MFT` s'active dans **les deux** sessions (épreuve E).
 
-- **Où** : `agent/src/encode/fabrique.rs:280-355` (un second `MFTEnumEx` avec
-  `MFT_ENUM_FLAG_SYNCMFT` en repli) **et** `agent/src/encode.rs:378-380`, dont
+- **Où** : `agent/src/encode/fabrique.rs:292-375` (un second `MFTEnumEx` avec
+  `MFT_ENUM_FLAG_SYNCMFT` en repli) **et** `agent/src/encode/mft.rs:123-125`, dont
   le `bail!` sur `is_async == 0` **rejette aujourd'hui cette MFT d'office** —
   les deux points doivent bouger ensemble, sinon le repli ne peut pas être
   atteint.
@@ -445,18 +467,24 @@ DXGI rattache **déjà** les sorties virtuelles de `desk` à l'adaptateur NVIDIA
 
 ## 6. Les demandes d'autorisation
 
-🔴 **Aucune n'a été appliquée.**
+> ✅ **TRANCHÉES LE 30 AOÛT 2026, et ce qui suit est le relevé de la demande
+> telle qu'elle a été faite.** R1 : **autorisé**, écrit et mesuré (§§ 10, 11).
+> R3 : **écarté** sur l'estimation du § 9. Le relevé Moonlight : **abandonné**
+> (§ 4). La section est conservée telle quelle : c'est la pièce qui montre ce
+> qui a été demandé, et sur quoi la décision a porté.
+
+🔴 **Aucune n'était appliquée au moment de la demande.**
 
 1. **R1 — implémenter l'encodeur NVENC natif.** Point d'entrée :
-   `agent/src/encode/fabrique.rs:280-355` (`find_hardware_encoder`) et
-   `agent/src/encode.rs:374` (son appelant), plus un module neuf pour la
-   liaison FFI. Effet de bord souhaité : `agent/src/encode/fabrique.rs:101-133`
+   `agent/src/encode/fabrique.rs:292-375` (`find_hardware_encoder`) et
+   `agent/src/encode/mft.rs:119` (son appelant), plus un module neuf pour la
+   liaison FFI. Effet de bord souhaité : `agent/src/encode/fabrique.rs:112-145`
    (le convertisseur) pourrait sortir du chemin chaud.
    ⚠️ `encode.rs` pèse **1536 lignes** — la règle des 500 impose que toute
    addition substantielle s'accompagne d'une **extraction**, dans une tâche
    dédiée et **avant** celle qui ajoute.
-2. **R3 — repli logiciel, en filet.** `agent/src/encode/fabrique.rs:280-355` **et**
-   `agent/src/encode.rs:378-380` (le `bail!` sur `is_async == 0`), qui
+2. **R3 — repli logiciel, en filet.** `agent/src/encode/fabrique.rs:292-375` **et**
+   `agent/src/encode/mft.rs:123-125` (le `bail!` sur `is_async == 0`), qui
    doivent changer **ensemble**.
 3. **Le relevé qui manque (§4).** Autorisation d'un des trois chemins :
    ① modifier `perm` de `nivuus-hote` dans
@@ -466,7 +494,11 @@ DXGI rattache **déjà** les sorties virtuelles de `desk` à l'adaptateur NVIDIA
 
 ---
 
-## 7. État de la VM à la fin de ce lot
+## 7. État de la VM à la fin de la PHASE D'ENQUÊTE
+
+> ⚠️ **CE N'EST PAS L'ÉTAT FINAL** — la VM a été reprise pour la recette du
+> § 11, qui donne l'état rendu et fait foi. Ce qui suit décrit la fin de
+> l'enquête (§§ 1 à 6), et rien d'autre.
 
 - **Définition libvirt inchangée. VGA QEMU en place. VM jamais redémarrée.**
 - **Aucun service de la VM n'a été redémarré** (les deux tentatives ont été
@@ -563,15 +595,15 @@ construire la moitié ».*
 
 ### 9.1 Ce n'est pas un drapeau à retirer : c'est une SECONDE POMPE
 
-Le `bail!` d'`encode.rs:380` n'est que le premier des obstacles, et le moins
+Le `bail!` d'`encode/mft.rs:125` n'est que le premier des obstacles, et le moins
 cher. Une MFT **synchrone** — ce qu'est l'encodeur logiciel, mesuré `async=0`
 à l'épreuve E — diverge de l'asynchrone sur **tout le pilotage** :
 
 | Ce que le code fait aujourd'hui | Pourquoi une MFT synchrone ne le supporte pas |
 | --- | --- |
-| `encode.rs:404` : `let events: IMFMediaEventGenerator = transform.cast()?;` — **inconditionnel**, et le champ `events` de `H264Encoder` n'est **pas** une `Option` | une MFT synchrone n'expose aucun générateur d'événements ; le `cast` échoue, donc `new()` échoue **avant** même d'atteindre le `bail!` |
-| `encode.rs:382` : `SetUINT32(&MF_TRANSFORM_ASYNC_UNLOCK, 1)` | sans objet |
-| `encode.rs:409` : `file_encodeur.confier(&transform, "encodeur")` | `arret::FileMft` existe pour poser **une barrière sur le travail ASYNCHRONE** de la MFT — son propre commentaire le dit. Sans travail asynchrone, l'apparat est inapplicable, et `Drop` s'appuie dessus (`arret::mettre_au_repos`) |
+| `encode/mft.rs:149` : `let events: IMFMediaEventGenerator = transform.cast()?;` — **inconditionnel**, et le champ `events` de `H264Encoder` n'est **pas** une `Option` | une MFT synchrone n'expose aucun générateur d'événements ; le `cast` échoue, donc `new()` échoue **avant** même d'atteindre le `bail!` |
+| `encode/mft.rs:127` : `SetUINT32(&MF_TRANSFORM_ASYNC_UNLOCK, 1)` | sans objet |
+| `encode/mft.rs:154` : `file_encodeur.confier(&transform, "encodeur")` | `arret::FileMft` existe pour poser **une barrière sur le travail ASYNCHRONE** de la MFT — son propre commentaire le dit. Sans travail asynchrone, l'apparat est inapplicable, et `Drop` s'appuie dessus (`arret::mettre_au_repos`) |
 | `drain_events` compte `METransformNeedInput` / `METransformHaveOutput` | ces événements **n'arrivent jamais**. Les deux compteurs restent à zéro |
 | `submit` : `while self.pending_input_requests > 0 { … ProcessInput … }` | le compteur restant à zéro, **`ProcessInput` n'est jamais appelé**. Il faudrait « pousser jusqu'à `MF_E_NOTACCEPTING` » |
 | `poll_output` : `if self.pending_outputs == 0 { return Ok(None) }` | idem : **rend toujours `None`**. Il faudrait « `ProcessOutput` et lire `MF_E_TRANSFORM_NEED_MORE_INPUT` comme un None » |
@@ -653,7 +685,7 @@ raisons, dans l'ordre de leur poids :
 
 ⚠️ **Si le propriétaire veut malgré tout un filet**, le moins cher n'est pas
 R3 : c'est de rendre l'échec **lisible et actionnable** là où il se produit
-(`agent/src/encode/fabrique.rs:351-352`), en nommant la cause connue et le
+(`agent/src/encode/fabrique.rs:363`), en nommant la cause connue et le
 document qui l'établit, plutôt que de laisser un `0x8000FFFF` nu remonter la
 pile. Cela ne fait pas marcher le produit — **et ce n'est pas présenté comme
 tel** —, cela évite qu'un prochain lecteur repaie les lots 30 et 31.
@@ -678,7 +710,7 @@ reste **inchangée**.
 | --- | --- | --- |
 | ① **NVENC natif** | un adaptateur de vendeur `0x10DE` est présent | à écrire |
 | ② **MFT**, inchangée | tout le reste : Intel, AMD, et la session 0 où la MFT NVIDIA fonctionne | **existe déjà**, `encode/fabrique.rs` |
-| ③ **échec LISIBLE** | les deux ont échoué | à écrire, `encode/fabrique.rs:351-352` |
+| ③ **échec LISIBLE** | les deux ont échoué | à écrire, `encode/fabrique.rs:363` |
 
 ⚠️ **L'étage ③ NE FAIT PAS MARCHER LE PRODUIT**, et ne doit être présenté ni
 écrit comme s'il le faisait. Il évite qu'un prochain lecteur repaie les lots
@@ -738,7 +770,13 @@ quelque chose plutôt que d'être « non nul, donc bon ».
 sans quoi Chrome gèle une page jamais mise au premier plan et la session
 tombe vers 331–340 s.
 
-### 10.4 Ce qu'il reste à faire, et ce que je NE peux pas faire sans la VM
+### 10.4 Ce qu'il restait à faire, et ce que je ne pouvais pas faire sans la VM
+
+> ✅ **TOUT CE QUE CETTE SECTION ANNONÇAIT A ÉTÉ FAIT** (§§ 10.6, 10.7 et 11).
+> Elle est gardée pour ce qu'elle disait des risques — dont la variable de
+> banc, qui **n'a finalement pas été nécessaire** : le contraste mesuré est
+> celui du lot 30 contre le lot 31, deux binaires, pas deux bras d'une même
+> exécution.
 
 🔴 **`agent/src/encode/arret.rs` PÈSE 500 LIGNES EXACTES** (remesuré par
 `wc -l` après la dernière édition de cette ronde, pas recopié). Il est donc
@@ -890,7 +928,12 @@ une ligne de code**. Elle reste **ouverte** au sens où elle devra être reprise
 le jour où ce dépôt distribuerait autre chose que du code source, ou
 distribuerait la DLL elle-même.
 
-### 10.7 Les dispositions, la table de fonctions, la session — et la frontière où je m'arrête
+### 10.7 Les dispositions, la table de fonctions, la session — et la frontière franchie ensuite
+
+> ✅ **La frontière décrite en fin de section — l'extraction du chemin MFT
+> avant le branchement — a été AUTORISÉE puis jouée** : trois fichiers, aucun
+> né au-dessus de 500 lignes, et le branchement derrière la façade sans qu'un
+> seul appelant bouge.
 
 **Écrit, compilé pour la cible, et pour la part pure testé sur l'hôte :**
 
@@ -1065,3 +1108,133 @@ effacés. ⚠️ Il reste sous `C:\nivuus\lot31\` **les journaux seuls** ; les t
 occurrences d'`AGENT_SECRET` qui y subsistent sont des messages qui **nomment
 la variable**, jamais sa valeur (vérifié). `virsh list` : la VM n'a pas été
 redémarrée, **aucune extinction**.
+
+---
+
+## 12. Les pièges que ce lot a payés
+
+**Rassemblés ici pour être trouvables** — le § 11.3 les raconte dans leur
+contexte, celui-ci les énonce comme des règles. Aucun n'est théorique : chacun
+m'a fait conclure faux, ou aurait pu.
+
+### 12.1 🔴 L'ABSENCE DE TRACE N'EST PAS L'ABSENCE D'ÉVÉNEMENT
+
+**Le plus coûteux du lot, parce qu'il RESSEMBLE à une mesure.** J'ai écrit
+« le superviseur n'annonce aucune fenêtre » sur la foi d'un journal muet —
+relancé jusqu'en `RUST_LOG=debug` pour être sûr. **C'était faux.** Le chemin
+d'annonce (`Effet::AnnoncerOuverture` → `envoyer`) **ne journalise rien du
+tout**, à aucun niveau. Les fenêtres étaient bien détectées, annoncées, et la
+page-shell demandait ses viewports : ce sont les `ERROR` d'un **autre** module,
+plus loin dans le même journal, qui l'ont montré.
+
+**La règle** : un journal muet sur un chemin *qui n'écrit rien* ne dit pas que
+le chemin n'a pas couru — il ne dit **rien**. Avant d'en conclure quoi que ce
+soit, établir que ce chemin **écrirait** s'il courait. C'est le cousin de
+« un zéro n'est interprétable qu'avec un témoin négatif », appliqué aux traces
+plutôt qu'aux compteurs.
+
+### 12.2 🔴 `MainWindowTitle` LU DEPUIS LA SESSION 0 REND UNE CHAÎNE VIDE
+
+`Get-Process | Select MainWindowTitle`, exécuté par WinRM (donc en session 0),
+rend **vide** pour une fenêtre pourtant bien présente en session 1. J'en ai
+conclu que ma mire ne s'affichait pas, et je suis parti chercher du côté de
+WinForms et de l'apartment STA — deux impasses.
+
+**Ce qui a tranché est un témoin négatif** : un `notepad.exe` lancé exprès,
+dont personne ne doute qu'il ait une fenêtre, et qui rendait lui aussi un
+titre vide. **Le relevé qui vaut est une énumération `EnumWindows` exécutée
+EN session 1.**
+
+### 12.3 ⚠️ UN MÉNAGE EN `finally` PEUT REMPLACER LA VRAIE ERREUR
+
+Le pilote de recette échouait en affichant `ENOTEMPTY: rmdir` — son propre
+nettoyage de profil Chrome, levant depuis le `finally` et **écrasant** la
+cause réelle (un simple nom de méthode). Le diagnostic est parti du mauvais
+côté pendant deux essais. **Le ménage ne doit jamais pouvoir lever.**
+
+### 12.4 🔴 UNE ROUGE RESTÉE VERTE SE DIAGNOSTIQUE, ELLE NE SE CLASSE PAS
+
+Détail en § 10.6 : ramener un tableau `reserved` de 278 à 277 `u32` n'a rien
+fait rougir, et j'ai d'abord écrit que le contrôle était faible. **Mesure
+faite, la disposition obtenue est octet pour octet la MÊME** — le remplissage
+d'alignement absorbe les quatre octets. Ce n'était pas un défaut qui passe,
+c'était un **non-défaut**, et rester vert était la bonne réponse. **C'était mon
+affirmation qui était fausse, pas le contrôle.**
+
+### 12.5 ⚠️ MESURER UNE DISPOSITION SUR L'HÔTE POUR UNE CIBLE ÉTRANGÈRE
+
+Les tailles de l'ABI NVENC ont d'abord été mesurées **sur Linux** alors que la
+cible est `x86_64-pc-windows-gnu`. « Ça devrait être identique » n'est pas
+« c'est mesuré » : c'est le patron *réutiliser la sortie d'une commande pour
+répondre à la question d'une autre*. Remplacé par 29 `_Static_assert`
+compilées par **mingw** — sans exécution, donc rejouables par quiconque.
+
+### 12.6 ⚠️ UN IMPORT STATIQUE D'UN SYMBOLE ABSENT EMPÊCHE TOUT CHARGEMENT
+
+Lier `MFTEnum2` statiquement alors qu'il n'existe pas sous ce nom a rendu la
+sonde **incapable de démarrer** (`0xC0000139`,
+`STATUS_ENTRYPOINT_NOT_FOUND`) — avant la première ligne de `main`, et le
+symptôme se lit comme un plantage de la sonde. Résoudre par `GetProcAddress`.
+
+### 12.7 ⚠️ UN NOM DXGI PERD SES ANTISLASHS EN TRAVERSANT LES COUCHES
+
+`\\.\DISPLAY6` passé de bash à pywinrm à PowerShell à `schtasks` arrive en
+`\.\DISPLAY6`, et l'agent répond « aucune sortie DXGI nommée » — un message
+juste, sur une valeur qu'on n'a pas envoyée. **Construire le nom au plus près
+de son usage**, pas à l'autre bout de la chaîne.
+
+---
+
+## 13. Le plafond d'encodeurs NVENC à N fenêtres — protocole PRÉPARÉ, NON JOUÉ
+
+🔴 **RIEN DE CE QUI SUIT N'A ÉTÉ EXÉCUTÉ.** C'est un protocole, écrit pendant
+que la VM appartient au lot voisin, pour être joué tel quel quand elle se
+libère. Il ne rapporte aucun chiffre, et n'en suggère aucun.
+
+**Pourquoi il compte.** C'est lui qui décidera **combien de fenêtres le produit
+peut réellement servir** — la question que le chantier D a contournée sans
+jamais l'expliquer : son plafond de **8 encodeurs** MFT est resté une des
+« trois couches inconnues ». Le dos natif est une conception différente ; rien
+n'autorise à lui prêter le même plafond, ni un autre.
+
+### 13.1 Le chiffre-juge, et ce qu'il n'est pas
+
+| | |
+| --- | --- |
+| **Chiffre-juge** | le nombre d'instances qui **produisent encore des unités d'accès**, pas le nombre qui se crée |
+| **Relevé** | `unites=[…]` et `cadences=[…]`, **une entrée par instance**, dans la ligne `passe terminée` du banc |
+| **Rouge attendu** | le rang **N** où la création échoue, **avec son `NVENCSTATUS` nommé** — pas un code de retour, la valeur |
+| **Témoin négatif** | **N = 1**, connu pour rendre ~1195 unités en 10 s (§ 11.1) : si N=1 ne le rend plus, la machine a changé et la campagne ne mesure pas ce qu'on croit |
+
+🔴 **UN ENCODEUR QUI SE CRÉE NE COMPTE PAS.** Huit instances construites dont
+trois muettes valent trois, pas huit — et c'est exactement ce qu'un compte de
+créations ferait lire à l'envers. **La condition est `unites > 0` pour
+CHAQUE instance retenue.**
+
+### 13.2 Le montage
+
+```text
+MULTIFENETRE_BANC=duplication  MULTIFENETRE_N=<1..8>  MULTIFENETRE_SORTIE=\\.\DISPLAY<n>
+```
+
+- ⚠️ **La sortie doit être ATTACHÉE et portée par l'adaptateur NVIDIA** :
+  c'est l'adaptateur de la sortie capturée qui porte le périphérique D3D11, et
+  donc la session NVENC. Le relever par la ligne `sortie retenue pour la
+  duplication` **avant** de conclure quoi que ce soit du résultat.
+- ⚠️ **Construire le nom `\\.\DISPLAY<n>` DANS le script distant** — § 12.7.
+- ⚠️ **`Get-Process` avant CHAQUE tentative, y compris échouée**, et **purge**
+  (`MULTIFENETRE_VDD_PURGE=1`) entre deux exécutions.
+- ⚠️ **Deux exécutions par valeur de N**, et **N croissant puis décroissant** :
+  un plafond de *créations cumulées* ne se distingue d'un plafond de
+  *concurrence* que si l'on redescend. C'est la leçon de
+  `MULTIFENETRE_NVENC_CYCLES` au sous-bloc D5, et elle vaut ici sans changement.
+
+### 13.3 Ce que ce protocole ne mesurera PAS, et qu'il ne faut pas lui faire dire
+
+- **Il ne juge aucune image** : le banc rend `verdicts` tous `inconnues`.
+  Il compte des unités d'accès, pas des images justes.
+- **Il ne dit rien du produit réel à N fenêtres** : le banc ouvre N encodeurs
+  sur **une seule** sortie capturée, là où le produit ouvre une capture **par
+  fenêtre**, dans **N processus distincts**. C'est un plafond d'encodeurs, pas
+  un plafond de sessions.
+- **Il n'éprouve pas `regler_debit`**, jamais appelé sur la machine à ce jour.
