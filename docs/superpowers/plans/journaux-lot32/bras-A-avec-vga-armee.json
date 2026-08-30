@@ -1,0 +1,64 @@
+{
+  "etiquette": "A-avec-vga-armee",
+  "instant": "2026-08-30T16:00:02.990Z",
+  "viewport": "1860x1080",
+  "messages": [
+    {
+      "ms": 10,
+      "type": "ice-config"
+    },
+    {
+      "ms": 65,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-1",
+      "titre": "Steam"
+    },
+    {
+      "ms": 66,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-2",
+      "titre": "PUBG: BATTLEGROUNDS "
+    },
+    {
+      "ms": 6642,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-3",
+      "titre": "Untitled - Notepad"
+    },
+    {
+      "ms": 38903,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-2"
+    }
+  ],
+  "vm": "677a3953-14c7-4364-92c3-bd17ecddf8d2",
+  "etat_vm": "prete",
+  "session": "3sxuA9dd56NpVdHi37R86g:bureau",
+  "lancement": {
+    "nom": "Notepad",
+    "id": "7f2a7df5-765f-4f6c-b5c8-485e8c1a4e19",
+    "statut": 200,
+    "reponse": {
+      "issue": "raccourci"
+    },
+    "ms": 6330
+  },
+  "compte_fenetre_ouverte": 3,
+  "compte_refus": 0,
+  "motifs_de_refus": [],
+  "titres": [
+    "Steam",
+    "PUBG: BATTLEGROUNDS ",
+    "Untitled - Notepad"
+  ],
+  "sessions_apres_lancement": [
+    "3sxuA9dd56NpVdHi37R86g:w-3"
+  ],
+  "tenues": [
+    {
+      "session": "3sxuA9dd56NpVdHi37R86g:w-3",
+      "titre": "Untitled - Notepad"
+    }
+  ],
+  "verdict": "VERT"
+}
