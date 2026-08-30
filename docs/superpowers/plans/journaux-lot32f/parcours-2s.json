@@ -1,0 +1,371 @@
+{
+  "etiquette": "recensement",
+  "instant": "2026-08-30T19:24:54.103Z",
+  "viewport": "1280x720",
+  "messages": [
+    {
+      "ms": 6,
+      "type": "ice-config"
+    },
+    {
+      "ms": 70,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-42",
+      "titre": "C:\\WINDOWS\\SYSTEM32\\cmd.exe"
+    },
+    {
+      "ms": 874,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-43",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "ms": 974,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-43"
+    },
+    {
+      "ms": 1175,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-44",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "ms": 2621,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-45",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "ms": 2623,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-46",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "ms": 2624,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "plus aucune sortie virtuelle disponible"
+    },
+    {
+      "ms": 2625,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "plus aucune sortie virtuelle disponible"
+    },
+    {
+      "ms": 2625,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "plus aucune sortie virtuelle disponible"
+    },
+    {
+      "ms": 2722,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "plus aucune sortie virtuelle disponible"
+    },
+    {
+      "ms": 4035,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "plus aucune sortie virtuelle disponible"
+    },
+    {
+      "ms": 4336,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "plus aucune sortie virtuelle disponible"
+    },
+    {
+      "ms": 6346,
+      "type": "refus",
+      "titre": "Untitled - Notepad",
+      "motif": "plus aucune sortie virtuelle disponible"
+    },
+    {
+      "ms": 6447,
+      "type": "refus",
+      "titre": "Install",
+      "motif": "plus aucune sortie virtuelle disponible"
+    },
+    {
+      "ms": 6450,
+      "type": "refus",
+      "titre": "Dismiss",
+      "motif": "plus aucune sortie virtuelle disponible"
+    },
+    {
+      "ms": 10246,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-46"
+    },
+    {
+      "ms": 10796,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-45"
+    },
+    {
+      "ms": 11933,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-47",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "ms": 13854,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-48",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "ms": 13855,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "plus aucune sortie virtuelle disponible"
+    },
+    {
+      "ms": 13855,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "plus aucune sortie virtuelle disponible"
+    },
+    {
+      "ms": 13855,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "plus aucune sortie virtuelle disponible"
+    },
+    {
+      "ms": 13856,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "plus aucune sortie virtuelle disponible"
+    },
+    {
+      "ms": 13955,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "plus aucune sortie virtuelle disponible"
+    },
+    {
+      "ms": 16260,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "plus aucune sortie virtuelle disponible"
+    },
+    {
+      "ms": 20351,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-48"
+    },
+    {
+      "ms": 20767,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-47"
+    },
+    {
+      "ms": 21811,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-49",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "ms": 23224,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-50",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "ms": 23225,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "plus aucune sortie virtuelle disponible"
+    },
+    {
+      "ms": 23225,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "plus aucune sortie virtuelle disponible"
+    },
+    {
+      "ms": 23225,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "plus aucune sortie virtuelle disponible"
+    },
+    {
+      "ms": 24604,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "plus aucune sortie virtuelle disponible"
+    },
+    {
+      "ms": 25937,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "plus aucune sortie virtuelle disponible"
+    },
+    {
+      "ms": 28076,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-44"
+    },
+    {
+      "ms": 29026,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-51",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "ms": 29912,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "plus aucune sortie virtuelle disponible"
+    },
+    {
+      "ms": 30614,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "plus aucune sortie virtuelle disponible"
+    },
+    {
+      "ms": 35181,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-50"
+    },
+    {
+      "ms": 35595,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-49"
+    },
+    {
+      "ms": 36617,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-52",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "ms": 38293,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-53",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "ms": 38295,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "plus aucune sortie virtuelle disponible"
+    },
+    {
+      "ms": 38296,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "plus aucune sortie virtuelle disponible"
+    },
+    {
+      "ms": 38297,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "plus aucune sortie virtuelle disponible"
+    },
+    {
+      "ms": 38297,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "plus aucune sortie virtuelle disponible"
+    },
+    {
+      "ms": 39462,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "plus aucune sortie virtuelle disponible"
+    },
+    {
+      "ms": 41102,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "plus aucune sortie virtuelle disponible"
+    },
+    {
+      "ms": 43687,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-51"
+    },
+    {
+      "ms": 44100,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-52"
+    },
+    {
+      "ms": 45032,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-54",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "ms": 45743,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-55",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "ms": 46928,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "plus aucune sortie virtuelle disponible"
+    },
+    {
+      "ms": 47968,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "plus aucune sortie virtuelle disponible"
+    }
+  ],
+  "vm": "677a3953-14c7-4364-92c3-bd17ecddf8d2",
+  "etat_vm": "prete",
+  "session": "3sxuA9dd56NpVdHi37R86g:bureau",
+  "lancement": {
+    "nom": "Notepad",
+    "id": "7f2a7df5-765f-4f6c-b5c8-485e8c1a4e19",
+    "statut": 200,
+    "reponse": {
+      "issue": "raccourci"
+    },
+    "ms": 6205
+  },
+  "compte_fenetre_ouverte": 14,
+  "compte_refus": 30,
+  "motifs_de_refus": [
+    "plus aucune sortie virtuelle disponible"
+  ],
+  "titres": [
+    "C:\\WINDOWS\\SYSTEM32\\cmd.exe",
+    "DesktopWindowXamlSource",
+    "DesktopWindowXamlSource",
+    "DesktopWindowXamlSource",
+    "DesktopWindowXamlSource",
+    "DesktopWindowXamlSource",
+    "DesktopWindowXamlSource",
+    "DesktopWindowXamlSource",
+    "DesktopWindowXamlSource",
+    "DesktopWindowXamlSource",
+    "DesktopWindowXamlSource",
+    "DesktopWindowXamlSource",
+    "DesktopWindowXamlSource",
+    "DesktopWindowXamlSource"
+  ],
+  "sessions_apres_lancement": [
+    "3sxuA9dd56NpVdHi37R86g:w-47",
+    "3sxuA9dd56NpVdHi37R86g:w-48",
+    "3sxuA9dd56NpVdHi37R86g:w-49",
+    "3sxuA9dd56NpVdHi37R86g:w-50",
+    "3sxuA9dd56NpVdHi37R86g:w-51",
+    "3sxuA9dd56NpVdHi37R86g:w-52",
+    "3sxuA9dd56NpVdHi37R86g:w-53",
+    "3sxuA9dd56NpVdHi37R86g:w-54",
+    "3sxuA9dd56NpVdHi37R86g:w-55"
+  ],
+  "tenues": [],
+  "verdict": "ROUGE"
+}
