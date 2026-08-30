@@ -63,6 +63,12 @@
 #[path = "nvenc/abi.rs"]
 pub mod abi;
 
+/// Les dispositions de structures, même frontière d'attribution qu'`abi`.
+/// Même raison pour le `#[path]` — c'est rustc qui l'impose, pas la
+/// convention de nommage du dépôt.
+#[path = "nvenc/structures.rs"]
+pub mod structures;
+
 /// L'identifiant de vendeur PCI de NVIDIA.
 ///
 /// Relevé sur la VM cible plutôt que recopié d'une liste : la sonde du lot 31
