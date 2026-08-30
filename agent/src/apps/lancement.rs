@@ -12,7 +12,8 @@
 use proto::plateforme::IssueLancement;
 use windows::core::PCWSTR;
 use windows::Win32::UI::Shell::{
-    ShellExecuteExW, SEE_MASK_FLAG_NO_UI, SEE_MASK_NOASYNC, SHELLEXECUTEINFOW,
+    ShellExecuteExW, SEE_MASK_FLAG_NO_UI, SEE_MASK_NOASYNC, SEE_MASK_NOCLOSEPROCESS,
+    SHELLEXECUTEINFOW,
 };
 
 /// Lance le raccourci, et retombe sur la cible enregistrée s'il a disparu.
@@ -33,14 +34,21 @@ use windows::Win32::UI::Shell::{
 /// tuerait avec l'agent, c'est-à-dire au premier redéploiement. `ShellExecuteEx`
 /// crée son processus hors de tout job, et c'est ce qu'on veut.
 ///
-/// ⚠️ **CETTE DERNIÈRE PHRASE N'A JAMAIS ÉTÉ MESURÉE, ET ELLE EST VRAIE POUR
-/// UNE RAISON QU'ELLE NE DONNE PAS** (relevé par le sous-bloc G3, sa
-/// divergence E8). En général, un processus créé par un processus assigné à un
-/// job **est assigné au MÊME job** : ce n'est donc pas une propriété de
-/// `ShellExecuteEx`, c'est une conséquence du fait que
-/// `superviseur/lanceur.rs` **n'assigne que ses ENFANTS et jamais lui-même**.
-/// La phrase cesserait d'être vraie le jour où ce lancement viendrait d'un
-/// enfant — et le PONT, lui, EST dans le job.
+/// 🔴 **CETTE DERNIÈRE PHRASE A ÉTÉ MESURÉE LE 30 AOÛT 2026, ET ELLE EST
+/// FAUSSE.** Elle disait : « `ShellExecuteEx` crée son processus hors de tout
+/// job », par la conséquence que `superviseur/lanceur.rs` « n'assigne que ses
+/// ENFANTS et jamais lui-même ». **Le superviseur EST dans un job** — celui du
+/// **Planificateur de tâches**, qui lance l'agent — et les applications qu'il
+/// lance en **héritent** : `DANS_UN_JOB=True` relevé pour le superviseur, ses
+/// douze enfants, et le `notepad.exe` lancé par le catalogue (relevé en
+/// session 1, `journaux-lot32j/`).
+///
+/// ⚠️ **Ce que cela ne change PAS** : rien ne tue ces processus, parce que le
+/// job du Planificateur ne porte pas `KILL_ON_JOB_CLOSE` de notre fait, et que
+/// `installation::execution::tue_a_la_fermeture` mesure ce drapeau au lieu de
+/// le supposer. **Ce que cela change** : `IsProcessInJob(p, None)` ne
+/// discrimine plus rien ici, et la seule question qui vaille est « dans CE
+/// job-ci ». Voir `crate::appartenance`.
 ///
 /// 🔴 **G3 NE S'APPUIE PAS DESSUS : il MESURE et il REFUSE.**
 /// `apps::installation::execution::dans_un_job` appelle `IsProcessInJob` avant
@@ -103,7 +111,13 @@ fn executer(fichier: &str, montrer: i32) -> windows::core::Result<()> {
         // `SEE_MASK_FLAG_NO_UI` supprime les boîtes de dialogue d'erreur : la
         // session interactive de la VM n'a personne pour les fermer, et une
         // modale bloquerait l'appel jusqu'au prochain redémarrage.
-        fMask: SEE_MASK_NOASYNC | SEE_MASK_FLAG_NO_UI,
+        // 🔴 `SEE_MASK_NOCLOSEPROCESS` NOUS REND LE HANDLE DU PROCESSUS, et
+        // c'est la seule raison de sa présence : sans lui, aucun moyen
+        // d'inscrire l'application au job d'APPARTENANCE (`crate::appartenance`),
+        // donc aucun moyen de distinguer nos fenêtres de celles d'Apollo ou de
+        // Steam. ⚠️ Il nous rend aussi PROPRIÉTAIRES du handle : il faut le
+        // fermer, sans quoi chaque lancement fuit un handle noyau.
+        fMask: SEE_MASK_NOASYNC | SEE_MASK_FLAG_NO_UI | SEE_MASK_NOCLOSEPROCESS,
         lpFile: PCWSTR(large.as_ptr()),
         // Le `nShow` du raccourci est rejoué tel quel, pour qu'un lancement
         // par l'agent et un double-clic dans l'Explorateur donnent la même
@@ -114,5 +128,29 @@ fn executer(fichier: &str, montrer: i32) -> windows::core::Result<()> {
     // SÉCURITÉ : appel FFI. `info` vit jusqu'à la fin de la fonction, et
     // `large` aussi — le pointeur de `lpFile` ne peut donc pas pendre pendant
     // l'appel, qui est synchrone par `SEE_MASK_NOASYNC`.
-    unsafe { ShellExecuteExW(&mut info) }
+    let issue = unsafe { ShellExecuteExW(&mut info) };
+
+    // ⚠️ LA COURSE, NOMMÉE ET BORNÉE. `ShellExecuteEx` ne sait pas créer un
+    // processus SUSPENDU : le patron « créer suspendu, assigner, reprendre »
+    // n'existe pas sur ce chemin. Entre le retour ci-dessus et l'assignation,
+    // il s'écoule un appel système — des microsecondes —, et un descendant né
+    // dans cet intervalle n'hériterait pas du job. Le processus LANCÉ, lui,
+    // est toujours assigné : c'est son handle qu'on tient. Et une fenêtre
+    // écartée pour cette raison le serait BRUYAMMENT (voir la trace de refus
+    // de `superviseur::hook`), jamais en silence.
+    if !info.hProcess.is_invalid() {
+        crate::appartenance::adopter(info.hProcess);
+        // `SEE_MASK_NOCLOSEPROCESS` nous en rend propriétaires.
+        let _ = unsafe { windows::Win32::Foundation::CloseHandle(info.hProcess) };
+    } else if issue.is_ok() {
+        // Un lancement réussi SANS handle : l'application a rejoint une
+        // instance existante (Chrome sans `--user-data-dir` distinct le fait,
+        // ce dépôt l'a relevé). Ses fenêtres appartiendront au processus
+        // d'origine, qui n'est pas dans notre job — et seront donc écartées.
+        tracing::warn!(
+            "lancement réussi sans handle de processus : l'application a rejoint \
+             une instance existante, ses fenêtres ne seront PAS adoptées"
+        );
+    }
+    issue
 }

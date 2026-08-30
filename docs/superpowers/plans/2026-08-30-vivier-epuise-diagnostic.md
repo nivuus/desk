@@ -489,3 +489,109 @@ c'est un changement du chemin de lancement, **et je m'arrête pour le demander**
 technique** : une fenêtre **déjà ouverte avant desk** ne sera plus reprise. Le
 propriétaire l'a acceptée ; **le relevé ci-dessus la rend concrète** — `cmd.exe`
 et `Forza Horizon 6` disparaîtraient du hub.
+
+---
+
+## 16. Axe B LIVRÉ — la règle d'appartenance, et son couple de mesure
+
+### 16.1 Ce qui a été mesuré AVANT d'écrire une ligne, et qui a corrigé le produit
+
+🔴 **`apps/lancement.rs` affirmait que le processus lancé « n'entre dans aucun
+job object », par une conséquence qu'il énonçait : que `superviseur/lanceur.rs`
+n'assigne que ses enfants et jamais lui-même. MESURÉ FAUX.**
+
+```
+AGENT pid=3720 parent=9676(powershell.exe) DANS_UN_JOB=True
+APPLI notepad pid=13980                    DANS_UN_JOB=True
+```
+
+Le superviseur **est** dans un job — celui du **Planificateur de tâches** — et
+les applications qu'il lance en **héritent**. Conséquence directe :
+`IsProcessInJob(p, None)` ne discrimine **rien** ici, et la seule question qui
+vaille est **« dans CE job-ci »**. ⚠️ **Rien ne meurt pour autant** : le garde
+d'installation mesure `KILL_ON_JOB_CLOSE` au lieu de le supposer. La
+correction est portée **dans le commentaire de `lancement.rs` lui-même**.
+
+**La précondition restante, mesurée elle aussi** (`journaux-lot32i/imbrique.ps1`) :
+
+```
+CIBLE notepad dans_NOTRE_job_avant=False ASSIGNATION=True err=0
+              dans_NOTRE_job_apres=True
+SURVIE_APRES_FERMETURE notepad = 1
+```
+
+🔵 **L'assignation IMBRIQUÉE réussit** (Windows 10.0.26100) **et fermer notre
+job ne tue rien** — parce qu'on ne pose pas `KILL_ON_JOB_CLOSE`. **La nuance
+qui m'avait été donnée est vérifiée : c'est le DRAPEAU que le produit rejetait,
+pas le job.**
+
+### 16.2 Le couple, avec son témoin
+
+| Bras | fenêtres ÉCARTÉES | trace de désarmement | sorties créées | refus `plus aucune sortie` |
+| --- | --- | --- | --- | --- |
+| **armé** | **18** | 0 | **5** | **0** |
+| **désarmé** (`APPARTENANCE=0`) | **0** | **1** | **10** (vivier plein) | **7** |
+
+🔴 **Le bras désarmé reproduit le défaut d'origine à l'identique.** Le bras
+armé le fait disparaître.
+
+🔵 **Le témoin est dans le même relevé, et c'est le plus important** : les
+applications du catalogue lancées par `desk` (Notepad, Paint) sont **inscrites
+au job** (`processus inscrits au job = 2`) **et servies** — cinq fenêtres
+servies, zéro refus. **La règle n'a pas rendu le produit muet.**
+
+Et **qui** est écarté est nommé, processus compris :
+
+```
+fenêtre ÉCARTÉE : desk ne l'a pas lancée (règle d'appartenance)…
+    titre="Steam : mode Big Picture"  pid=9948  processus=steamwebhelper.exe
+    titre="Pick an app"               pid=7024  processus=OpenWith.exe
+    titre="Pick an app"               pid=9292  processus=OpenWith.exe
+    titre="Forza Horizon 6"           pid=12736 processus=forzahorizon6.exe
+```
+
+⚠️ **`info!`, jamais `error!`** : écarter une fenêtre qui n'est pas à nous est
+le fonctionnement **normal** de la règle. Ce lot venait de corriger une fausse
+alerte pour cette raison exacte ; crier à chaque fenêtre de Steam serait la
+même faute.
+
+### 16.3 Ce que la règle emporte — assumé, pas une régression
+
+**`cmd.exe` et `Forza Horizon 6` quittent le hub**, et toute fenêtre **déjà
+ouverte avant `desk`** avec elles. Le propriétaire a choisi la règle en
+sachant cela. **Ce n'est pas une régression : c'est la contrepartie annoncée.**
+
+### 16.4 🔴 Le legs que cette règle ouvre, et qui n'est PAS muet
+
+Une application du **Windows Store** paraît sous un intermédiaire du système
+(`ApplicationFrameHost.exe`), **qui ne descend pas de nous** — mesuré :
+`ApplicationFrameHost.exe(9440) ← svchost ← services ← wininit`,
+`DESCEND=False`. Elle serait donc **écartée**.
+
+🔵 **Mais elle ne serait pas MUETTE**, et c'est ce que la trace de refus
+change : le journal nomme la fenêtre, son processus et la raison, et dit
+comment désarmer. **La limite cesse d'être une panne muette et devient un legs
+diagnosticable.**
+
+⚠️ **Aucune application du catalogue n'est dans ce cas AUJOURD'HUI** : les 41
+entrées sont des raccourcis Win32, et `Calculator` est servi par
+`win32calc.exe`, la version héritée, enfant direct de l'agent. **Le risque est
+repoussé, pas supprimé.**
+
+### 16.5 La course, nommée et bornée
+
+`ShellExecuteExW` ne sait pas créer un processus **suspendu** : le patron
+« créer suspendu, assigner, reprendre » n'existe pas sur ce chemin. Entre son
+retour et `AssignProcessToJobObject` il s'écoule **un appel système**. Le
+processus lancé est toujours assigné — c'est son handle qu'on tient ; seul un
+descendant né dans cet intervalle y échapperait, **et il serait écarté
+bruyamment**. ⚠️ Un cas voisin est traité et tracé : un lancement qui **rejoint
+une instance existante** ne rend aucun handle, donc ses fenêtres ne sont pas
+adoptées — un `warn!` le dit.
+
+### 16.6 Le déploiement
+
+Payload `console` : `d34213d8…` → **`b490ed67…`**, déposé par
+`hooks/agent_payload.py`, **identique à ma fabrication** (`cmp`). VM : même
+binaire, relancé par la tâche de l'appliance, **session 1**, `APPARTENANCE`
+retirée du script (donc **armée**). `install` **non rejoué**.

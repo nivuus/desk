@@ -1,0 +1,57 @@
+{
+  "etiquette": "appartenance-armee",
+  "instant": "2026-08-30T20:07:32.626Z",
+  "viewport": "1280x720",
+  "messages": [
+    {
+      "ms": 22,
+      "type": "ice-config"
+    },
+    {
+      "ms": 74,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-3",
+      "titre": "Dismiss"
+    },
+    {
+      "ms": 77,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-5",
+      "titre": "UIRibbonWorkPane"
+    },
+    {
+      "ms": 79,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-1",
+      "titre": "Untitled - Notepad"
+    },
+    {
+      "ms": 80,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-4",
+      "titre": "Paint"
+    },
+    {
+      "ms": 82,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-2",
+      "titre": "Install"
+    }
+  ],
+  "vm": "677a3953-14c7-4364-92c3-bd17ecddf8d2",
+  "etat_vm": "prete",
+  "session": "3sxuA9dd56NpVdHi37R86g:bureau",
+  "compte_fenetre_ouverte": 5,
+  "compte_refus": 0,
+  "motifs_de_refus": [],
+  "titres": [
+    "Dismiss",
+    "UIRibbonWorkPane",
+    "Untitled - Notepad",
+    "Paint",
+    "Install"
+  ],
+  "sessions_apres_lancement": [],
+  "tenues": [],
+  "verdict": "ROUGE"
+}
