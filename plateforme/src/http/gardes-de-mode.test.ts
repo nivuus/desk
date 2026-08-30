@@ -50,12 +50,19 @@ afterEach(async () => {
     base = undefined;
 });
 
-/// Une racine bâtie à la main, qui porte le `index.html` du repli SPA : sans
+/// Une racine bâtie à la main, qui porte le `hub.html` du repli SPA : sans
 /// lui, le servant échouerait au `stat` et le `404` reviendrait pour une
 /// raison qui n'est PAS celle qu'on éprouve.
+///
+/// 🔴 `hub.html`, PAS `index.html`, depuis la décision « sers le hub à la
+/// racine » (30 août 2026) : c'est désormais CE nom que `resolution.ts::PAGE`
+/// résout pour la racine et pour tout chemin sans extension. Écrire l'autre
+/// nom laisserait, si une garde de mode régressait, le servant échouer au
+/// `stat` pour une raison qui n'est pas celle qu'on éprouve — exactement le
+/// piège que ce commentaire dénonce.
 function racineArmee(): string {
     const racine = mkdtempSync(join(tmpdir(), 'garde-page-'));
-    writeFileSync(join(racine, 'index.html'), '<!doctype html><title>page</title>');
+    writeFileSync(join(racine, 'hub.html'), '<!doctype html><title>page</title>');
     return racine;
 }
 

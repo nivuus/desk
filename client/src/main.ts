@@ -16,6 +16,7 @@ import { attacherPressePapierAuDOM } from './presse-papier-dom';
 import type { Recu } from './presse-papier';
 import { attacherResizeAuDOM } from './resize-dom';
 import { adresseSignaling } from './adresse-plateforme';
+import { sessionIdDepuisParametres } from './session-id';
 
 const video = document.querySelector<HTMLVideoElement>('#remote')!;
 const statusElement = document.querySelector<HTMLDivElement>('#status')!;
@@ -31,7 +32,7 @@ const microElement = document.querySelector<HTMLButtonElement>('#micro')!;
 const statut = creerStatut(statusElement, creerEcranTerminalAuDOM());
 
 // La session et le signaling sont paramétrables par l'URL pour faciliter les
-// essais : ?session=demo&signaling=ws://192.168.3.2:8080/signal
+// essais : ?session=abc123&signaling=ws://192.168.3.2:8080/signal
 //
 // 🔴 SANS PARAMÈTRE, L'ADRESSE SUIT LE PROTOCOLE DE LA PAGE — `wss:` si la page
 // est en `https:`, `ws:` sinon —, ET SON PORT. Le littéral d'avant,
@@ -40,8 +41,21 @@ const statut = creerStatut(statusElement, creerEcranTerminalAuDOM());
 // média ne s'établissait jamais. La règle vit dans `adresse-plateforme.ts`,
 // qui est PUR et testé — aucun test Node ne peut voir un refus de contenu mixte.
 const params = new URLSearchParams(window.location.search);
-const sessionId = params.get('session') ?? 'demo';
+const sessionId = sessionIdDepuisParametres(params);
 const signalingUrl = adresseSignaling(window.location, params.get('signaling'));
+
+// 🔴 SANS PARAMÈTRE, CETTE PAGE REFUSE ET S'ARRÊTE LÀ — elle n'invente PLUS
+// de session `demo` (voir `session-id.ts` : ce vestige, trouvé en PRODUCTION
+// le 30 août 2026, faisait échouer `connectSession` sans jeton, avec un
+// message INDISCERNABLE d'une vraie panne réseau). `throw` arrête
+// l'évaluation de CE module ES : aucune connexion n'est tentée ensuite.
+if (sessionId === undefined) {
+    statut.afficher('Aucune session indiquée — ouvrez une application depuis le hub.', {
+        terminal: true,
+        ton: 'danger',
+    });
+    throw new Error('main.ts : aucun paramètre `session` dans l’URL');
+}
 
 // Annonce du viewport à la page-shell qui nous a ouverts.
 //
