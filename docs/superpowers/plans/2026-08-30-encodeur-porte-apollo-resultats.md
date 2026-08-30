@@ -946,3 +946,122 @@ une compression. Je m'arrête donc ici et je la demande.
 ⚠️ **Aucune signature des huit verbes n'a besoin de changer** — vérifié
 contre les ~10 appelants. Si l'exécution montrait le contraire, ce serait
 une frontière à rouvrir, pas un détail à absorber.
+
+---
+
+## 11. La recette sur la VM — NVENC ENCODE, et le juge qui n'a pas pu être joué
+
+**30 août 2026, VM rendue par le lot 32.** État reçu et rendu : VGA en place,
+`agent.exe` de production au sha256 `7DB1C0FA…`, trois agents en session 1.
+
+### 11.1 🟢 CE QUI EST MESURÉ : le chemin NVENC ouvre, s'initialise et ENCODE
+
+Binaire de travail (`110C002B…`) déposé **à côté** de la production, jamais à
+sa place, et lancé par une copie du lanceur de production pointée sur lui.
+Banc de duplication du produit sur `\\.\DISPLAY6` — la sortie **attachée** et
+portée par l'adaptateur **NVIDIA** :
+
+```
+INFO agent::encode_nvenc::porte: porte NVENC : pilote compatible
+     version_pilote="0xd1" version_attendue="0xc2"
+INFO agent::encode_nvenc::session: session NVENC native initialisée
+     (P1, ultra faible latence, CBR) largeur=2410 hauteur=1080 fps=60 debit_bps=8000000
+INFO agent::encode: encodeur NVENC natif retenu
+     adaptateur=NVIDIA GeForce RTX 4070 luid="00000000:000076D9"
+…
+INFO …::compteurs: passe terminée passe="capture+encodage" voie="duplication"
+     nombre=1 cadences=[119.5] unites=[1195] verdicts_faux=0
+```
+
+🔴 **C'EST EXACTEMENT LÀ QUE LE LOT 30 MESURAIT `0x8000FFFF`.** Le même
+constructeur `H264Encoder::new`, sur le même périphérique de capture, sur la
+même machine : là où la MFT rendait « Catastrophic failure » et **aucune**
+unité, le chemin natif rend **1195 unités d'accès en 10 s**, `verdicts_faux=0`,
+et se détruit proprement.
+
+🔵 **Le garde de version a servi, et il n'était pas décoratif.** Le pilote
+annonce **`0xd1`** — soit **13.1**, plus récent que la **12.2** transcrite — et
+`pilote_compatible` l'accepte. Les deux empaquetages étant différents,
+confondre `0xd1` avec `NVENCAPI_VERSION` aurait fait rejeter ce pilote.
+⚠️ **Corollaire, à dire clairement** : ce relevé montre qu'un pilote **plus
+récent** que l'en-tête fonctionne ; il ne dit **rien** d'un pilote plus ancien
+que 12.2, qu'aucune machine ici ne porte.
+
+### 11.2 🔴 CE QUI N'EST PAS ÉTABLI : l'image qui arrive au navigateur
+
+**Le chiffre-juge n'a pas pu être relevé**, et la cause est **mesurée, pas
+supposée** — elle est étrangère à ce lot.
+
+La chaîne a été montée entièrement : plateforme de recette en mode
+`motdepasse` (la production est en `pomerium`, dont l'OAuth exige un humain),
+compte de recette, VM enrôlée et attribuée, agent enrôlé, page-shell
+authentifiée **par le formulaire** (`prefixe posé : S8XrX3jz…`), et une mire
+animée à **10 Hz affichant sa propre cadence** — Desktop Duplication n'émettant
+qu'au changement du bureau.
+
+**Le superviseur a bien détecté et annoncé les fenêtres, et la shell a bien
+demandé ses viewports** (`session=…:w-1`, `w-3`, `w-4`, `w-5`,
+`demande="780x492"`). **C'est la création de SORTIE VIRTUELLE qui échoue** :
+
+```
+INFO  …::moniteurs_virtuels::pilote: sortie virtuelle créée id=264 … largeur=780 hauteur=492
+ERROR …::creation_sortie: aucune sortie neuve n'est apparue dans la limite limite_ms=5000
+ERROR …::creation_sortie: la cible n'a jamais été nommée par la configuration
+      d'affichage dans la limite — voir moniteurs_virtuels::config_affichage id_pilote=264
+ERROR …::creation_sortie: aucune sortie candidate ne peut servir ce viewport
+      — elle est rendue au pilote session=…:w-4 demande="780x492" designee="" candidates=[]
+```
+
+Le pilote SudoVDA **crée** la sortie ; Windows ne la **nomme** jamais dans sa
+configuration d'affichage, donc `candidates=[]` et la session est refusée.
+⚠️ **C'est le chemin de désignation des sorties, celui que le lot voisin
+travaille — pas l'encodeur, que le §11.1 vient de voir encoder 1195 unités.**
+
+### 11.3 Deux erreurs de mesure que j'ai commises, et corrigées
+
+Elles valent d'être écrites : chacune m'a fait conclure faux un moment.
+
+1. 🔴 **`Get-Process | MainWindowTitle` LU DEPUIS LA SESSION 0 REND UNE CHAÎNE
+   VIDE, même pour une fenêtre bien présente.** J'en ai conclu « la mire ne
+   s'affiche pas » et j'ai cherché du côté de WinForms et de l'apartment STA.
+   **Le témoin qui a tranché est un `notepad.exe`** — lancé exprès, certain
+   d'avoir une fenêtre, et rendant lui aussi un titre vide. Une énumération
+   `EnumWindows` **exécutée EN session 1** a montré les six fenêtres, mire
+   comprise. *Un zéro n'est interprétable qu'avec un témoin négatif.*
+2. 🔴 **« LE SUPERVISEUR N'ANNONCE AUCUNE FENÊTRE » ÉTAIT FAUX**, et je l'ai
+   cru parce que le chemin d'annonce **ne journalise rien** — pas même en
+   `debug`. L'absence de trace n'était pas l'absence d'événement. Ce sont les
+   `ERROR` de `creation_sortie`, **plus loin dans le même journal**, qui ont
+   montré que les sessions `w-1`…`w-5` existaient bel et bien.
+
+🔵 **Et un contrôle a servi exactement comme prévu** : les cinq champs que
+`merite_une_fenetre` juge, relevés un par un en session 1, donnent
+`MERITE=True` pour les **six** fenêtres. Ce relevé a écarté « le prédicat les
+rejette » avant que j'aille y chercher une cause qui n'y était pas.
+
+### 11.4 Ce que la recette laisse dû
+
+- 🔴 **`framesDecoded` reste à relever.** Le pilote existe
+  (`journaux-lot31/instrument/pilote-lot31.mjs`), va jusqu'à la shell
+  authentifiée, et s'arrête faute de page de session. Il sera jouable **le jour
+  où une sortie virtuelle se laisse nommer** sur cette VM.
+- ⚠️ **Le mode synchrone de `SessionNvenc` n'est pas éprouvé en régime
+  multi-fenêtres** : le banc n'ouvre qu'un encodeur (`nombre=1`). Le plafond
+  d'encodeurs NVENC natifs et leur comportement à N fenêtres restent **non
+  mesurés**.
+- ⚠️ **Aucun jugement d'image n'a été porté** : `verdicts_faux=0` dit que le
+  banc n'a relevé aucun verdict FAUX, pas qu'une image est juste — ses
+  verdicts sont tous `inconnues`. **Personne n'a regardé une image.**
+
+### 11.5 État de la VM à la fin
+
+Rendue telle que reçue, et **vérifié** plutôt qu'affirmé : `agent.exe` de
+production au **même sha256** (`7DB1C0FA…`), `run-agent.ps1` identique à sa
+sauvegarde nommée, **trois** agents de production vivants en session 1 (comme
+au début), sorties virtuelles purgées, six tâches planifiées `lot31-*`
+désenregistrées, **binaire de travail RETIRÉ** — « c'est exactement le fichier
+qu'on copie par inadvertance » — et les scripts porteurs d'un `AGENT_SECRET`
+effacés. ⚠️ Il reste sous `C:\nivuus\lot31\` **les journaux seuls** ; les trois
+occurrences d'`AGENT_SECRET` qui y subsistent sont des messages qui **nomment
+la variable**, jamais sa valeur (vérifié). `virsh list` : la VM n'a pas été
+redémarrée, **aucune extinction**.
