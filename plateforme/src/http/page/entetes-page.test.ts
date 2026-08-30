@@ -99,3 +99,16 @@ describe('la CSP ne dérive pas de celle de nginx', () => {
         expect(trouvees[0][1]).toBe(CSP);
     });
 });
+
+// 🔴 RÉGRESSION DU 30 AOÛT 2026, TROUVÉE EN PRODUCTION PAR LE PROPRIÉTAIRE :
+// `manifest-src 'self'` (ajoutée le 29 août 2026 pour ne plus dépendre du
+// repli implicite sur `default-src`) ne couvre PAS le manifeste PAR
+// APPLICATION, publié en `blob:` par `client/src/hub/page.ts`
+// (`publierLeManifeste`, voie V1 de G5) — `'self'` seul le bloque en boucle
+// sur `https://app.allanic.me`. Ce test rougit si `manifest-src` perd `blob:`.
+describe("manifest-src admet blob:, sans quoi le manifeste PAR APPLICATION ne charge plus", () => {
+    it('admet blob: en plus de self', () => {
+        const [, directive] = CSP.match(/manifest-src ([^;]+);/) ?? [];
+        expect(directive).toBe("'self' blob:");
+    });
+});
