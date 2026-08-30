@@ -90,8 +90,27 @@ pub(super) fn replacer_si_besoin(table: &Table, session: &IdSession, toutes: &[S
     let hwnd = windows::Win32::Foundation::HWND(fenetre.0 as *mut core::ffi::c_void);
     let Ok(actuel) = placement::rectangle_de(hwnd) else { return };
     if placement::doit_etre_replacee(&actuel, &cible) {
+        // 🔴 `hwnd` ET `fenetre_vivante` : sans eux, l'hypothèse « le
+        // handle de la table est PÉRIMÉ » est INDÉCIDABLE, et le lot 32O l'a
+        // payé — vingt minutes après la rafale, deux `hwnd` relevés dans le
+        // journal rendaient `IsWindow=false`, ce qui ne prouvait RIEN : ces
+        // fenêtres avaient simplement fermé depuis.
+        //
+        // Le phénomène est **intermittent et lié à une session** : sans une
+        // trace qui porte la réponse À L'INSTANT du replacement, il faudrait
+        // épier le journal en direct pour espérer le mesurer. **Une panne
+        // qu'on ne peut pas diagnostiquer coûte plus qu'une trace de plus.**
+        //
+        // ⚠️ `fenetre_vivante = false` **expliquerait D'UN COUP** les deux
+        // faits ouverts : un `SetWindowPos` qui « réussit » sans rien
+        // déplacer, et un rectangle de fenêtre minimisée lu sur un objet qui
+        // n'existe plus. `true` les laisserait tous deux entiers.
+        let fenetre_vivante =
+            unsafe { windows::Win32::UI::WindowsAndMessaging::IsWindow(Some(hwnd)) }.as_bool();
         tracing::info!(
             session = %session.0,
+            hwnd = format!("{:#x}", fenetre.0),
+            fenetre_vivante,
             de = format!("{}x{}+{}+{}", actuel.width, actuel.height, actuel.x, actuel.y),
             vers = format!("{}x{}+{}+{}", cible.width, cible.height, cible.x, cible.y),
             "fenêtre sortie de sa sortie, replacement"
