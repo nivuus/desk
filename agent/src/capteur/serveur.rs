@@ -240,7 +240,13 @@ fn ouvrir_les_commandes(
             receveur_commandes,
             reponses,
         ) {
-            tracing::warn!(%erreur, "fil de fenêtre terminé sur erreur");
+            // `cause::chaine` : `tenir_la_fenetre` propage des erreurs
+            // contextualisées de bout en bout du chemin de réveil. Voir
+            // `crate::cause`.
+            tracing::warn!(
+                erreur = %crate::cause::chaine(&erreur),
+                "fil de fenêtre terminé sur erreur"
+            );
         }
     });
 
