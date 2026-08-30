@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { accesDeReponse, CLE_ACCES, CLE_RAFRAICHISSEMENT, expireAvant, jetonAcces, poser, poserAcces, rafraichirSiNecessaire, vider } from './jeton';
+import { accesDeReponse, accesParPomerium, assurerAcces, CLE_ACCES, CLE_RAFRAICHISSEMENT, expireAvant, jetonAcces, poser, poserAcces, rafraichirSiNecessaire, vider } from './jeton';
 import type { Coffre } from './jeton';
 
 /// Un coffre factice, en mémoire. Il n'y a AUCUN `localStorage` dans
@@ -218,6 +218,94 @@ describe('le rafraîchissement', () => {
         const coffre = coffreFactice({ [CLE_ACCES]: jetonFactice(10_000) });
         const appel = vi.fn();
         expect(await rafraichirSiNecessaire(coffre, 0, 30_000, appel)).toBe(false);
+        expect(appel).not.toHaveBeenCalled();
+    });
+});
+
+/* ── L'ACCÈS AUTOMATIQUE — CE QUI MANQUAIT, TROUVÉ EN PRODUCTION LE 30 AOÛT
+   2026 ────────────────────────────────────────────────────────────────────
+   Le hub (`hub/page.ts`) se contentait de LIRE le coffre et de se plaindre
+   s'il était vide ("Aucun jeton : connectez-vous d'abord.") ; le seul code
+   qui savait obtenir un jeton par Pomerium (`connexion.ts::tenterPomerium`)
+   ne courait qu'au CHARGEMENT DE LA PAGE DE CONNEXION. Tant que la racine
+   servait la page de session, personne n'avait vu un visiteur atterrir
+   DIRECTEMENT sur le hub sans être passé par cet écran — le lot qui a mis le
+   hub à la racine avait vérifié que `/` SERT le hub, jamais qu'un visiteur
+   SANS JETON puisse s'en servir. `accesParPomerium` et `assurerAcces`
+   n'existaient pas : c'est CE QUE ce bloc rougit, avant toute implémentation
+   — `accesParPomerium` et `assurerAcces` sont absents de l'export de
+   `./jeton` sur le produit d'aujourd'hui, donc cet `import`, à lui seul,
+   fait échouer TOUT le fichier (voir le rapport de tâche pour la sortie
+   réelle de cette rougeur). */
+function appelFactice(
+    reponses: { ok?: boolean; corps?: unknown; leve?: boolean }[],
+): (url: string) => Promise<{ ok: boolean; json(): Promise<unknown> }> {
+    let i = 0;
+    return vi.fn(async () => {
+        const r = reponses[Math.min(i, reponses.length - 1)];
+        i += 1;
+        if (r.leve === true) throw new Error('reseau injoignable');
+        return { ok: r.ok ?? false, json: async () => r.corps };
+    });
+}
+
+describe('accesParPomerium — le chemin de `tenterPomerium`, extrait', () => {
+    it("rend le jeton quand `/auth/moi` répond 200 avec un corps valide", async () => {
+        const appel = appelFactice([{ ok: true, corps: { acces: 'J' } }]);
+        expect(await accesParPomerium('https://h', appel)).toBe('J');
+        expect(appel).toHaveBeenCalledWith('https://h/auth/moi');
+    });
+
+    it("rend `undefined` sur le 404 QUE `routes-identite.ts` REND EN MODE motdepasse", async () => {
+        // 🔴 CE CAS PORTE LE MODE JUSQU'ICI (en-tête de `connexion.ts`) : un
+        // 404 n'est pas une panne, c'est le service qui dit « ce montage
+        // authentifie par mot de passe ». Le prendre pour une panne serait
+        // déjà correct ICI (les deux rendent `undefined`) ; c'est le SENS
+        // qui diffère, et il n'a besoin d'aucune branche de plus.
+        const appel = appelFactice([{ ok: false }]);
+        expect(await accesParPomerium('https://h', appel)).toBeUndefined();
+    });
+
+    it('rend `undefined` sur un réseau injoignable, sans lever', async () => {
+        const appel = appelFactice([{ leve: true }]);
+        expect(await accesParPomerium('https://h', appel)).toBeUndefined();
+    });
+
+    it("rend `undefined` sur un corps sans `acces` exploitable", async () => {
+        const appel = appelFactice([{ ok: true, corps: {} }]);
+        expect(await accesParPomerium('https://h', appel)).toBeUndefined();
+    });
+});
+
+describe('assurerAcces — LE VISITEUR NEUF, coffre vide', () => {
+    it('mode `pomerium` : obtient son jeton par `/auth/moi`, et le POSE au coffre', async () => {
+        // 🔴 C'EST LE TEST QUI MANQUAIT. Un coffre vide, exactement celui
+        // d'un premier visiteur qui ouvre `https://app.allanic.me/`, en mode
+        // `pomerium` — le défaut mesuré en production ce matin.
+        const coffre = coffreFactice();
+        const appel = appelFactice([{ ok: true, corps: { acces: 'J' } }]);
+        expect(await assurerAcces(coffre, 'https://h', appel)).toBe('J');
+        expect(coffre.contenu.get(CLE_ACCES)).toBe('J');
+        expect(appel).toHaveBeenCalledTimes(1);
+    });
+
+    it("mode `motdepasse` : `/auth/moi` rend 404, aucun jeton n'est obtenu, le coffre reste VIDE", async () => {
+        // Le second test demandé : la panne n'est PAS confondue avec le 404
+        // qui porte le mode. Le résultat `undefined` est ce qui fait
+        // rediriger `hub/page.ts` vers `connexion.html`, où l'utilisateur
+        // PEUT agir — jamais sur une erreur.
+        const coffre = coffreFactice();
+        const appel = appelFactice([{ ok: false }]);
+        expect(await assurerAcces(coffre, 'https://h', appel)).toBeUndefined();
+        expect(coffre.contenu.size).toBe(0);
+    });
+
+    it('un jeton déjà présent au coffre est rendu SANS appeler le réseau', async () => {
+        // Le rouge serait un aller-retour à chaque ouverture du hub, pour un
+        // cas qui n'en a pas besoin.
+        const coffre = coffreFactice({ [CLE_ACCES]: 'deja-la' });
+        const appel = vi.fn();
+        expect(await assurerAcces(coffre, 'https://h', appel)).toBe('deja-la');
         expect(appel).not.toHaveBeenCalled();
     });
 });

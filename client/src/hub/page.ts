@@ -12,7 +12,7 @@
 
 import { adressePlateforme } from '../adresse-plateforme';
 import { installerSelecteurDeThemeAuDOM } from '../design/selecteur-theme';
-import { jetonAcces } from '../jeton';
+import { assurerAcces } from '../jeton';
 import {
     lancerApplication,
     lireIcone,
@@ -32,7 +32,6 @@ const CLASSE_DE_TON: Record<Ton, string> = {
 
 const params = new URLSearchParams(window.location.search);
 const base = adressePlateforme(window.location, params.get('plateforme'));
-const jeton = jetonAcces();
 
 const elMessage = document.getElementById('message') as HTMLDivElement;
 const elListe = document.getElementById('applications') as HTMLUListElement;
@@ -47,15 +46,13 @@ function dire(ton: Ton, texte: string): void {
     elMessage.textContent = texte;
 }
 
-// ⚠️ SANS JETON, ON NE MONTRE RIEN ET ON LE DIT. Rediriger vers l'écran de
-// connexion serait une décision que `shell-page.ts` prend pour la page-shell ;
-// la reprendre ici sans l'avoir éprouvée ferait boucler deux pages l'une sur
-// l'autre le jour où l'une des deux se tromperait.
-if (jeton === undefined) {
-    dire('danger', "Aucun jeton : connectez-vous d'abord.");
-}
-
-const deps: DepsCatalogue = { base, jeton: jeton ?? '', fetch: window.fetch.bind(window) };
+// 🔴 `deps` PORTE UN JETON VIDE JUSQU'À CE QUE `demarrer()` (en pied de
+// fichier) L'AIT OBTENU — voir son en-tête pour ce que ce correctif répare.
+// `let`, et non `const` : les fermetures qui suivent (`traiterUnFichier`,
+// `entree`, `peupler`) lisent `deps` À L'APPEL, jamais à la déclaration,
+// donc voient la valeur finale une fois `demarrer()` résolue — aucune n'est
+// invoquée avant.
+let deps: DepsCatalogue = { base, jeton: '', fetch: window.fetch.bind(window) };
 
 /* ── LE MANIFESTE PAR APPLICATION, PUBLIÉ EN `blob:` ───────────────────── */
 
@@ -125,9 +122,7 @@ async function publierLeManifeste(application: ApplicationListee): Promise<void>
 async function traiterUnFichier(fichier: File): Promise<void> {
     dire('neutre', `Téléversement de ${fichier.name}…`);
     const resume = await deposer(fichier, {
-        base,
-        jeton: jeton ?? '',
-        fetch: window.fetch.bind(window),
+        ...deps,
         maintenant: () => Date.now(),
         progression: (p) => {
             if (p.total > 0) {
@@ -208,7 +203,9 @@ function entree(application: ApplicationListee): HTMLLIElement {
 }
 
 async function peupler(): Promise<void> {
-    if (jeton === undefined) return;
+    // ⚠️ AUCUNE GARDE SUR LE JETON ICI : `peupler` n'est appelée par
+    // `demarrer()` (pied de fichier) qu'APRÈS que `assurerAcces` en a rendu
+    // un — c'est cette fonction-là qui décide, et `jeton.test.ts` la tient.
     const vms = await listerVms(deps);
     if (vms.etat !== 'ok') {
         dire('danger', `Les machines n'ont pas pu être lues : ${vms.refus.motif}.`);
@@ -280,4 +277,44 @@ if ('launchQueue' in window) {
     });
 }
 
-void peupler();
+/* ── L'ACCÈS : LE COFFRE D'ABORD, POMERIUM ENSUITE, LA CONNEXION EN DERNIER
+   RECOURS ────────────────────────────────────────────────────────────────
+
+   🔴 CE QUE CE BLOC RÉPARE — DÉFAUT TROUVÉ EN PRODUCTION LE 30 AOÛT 2026 :
+   ce fichier se contentait, la veille, de LIRE le coffre et de se plaindre
+   s'il était vide ("Aucun jeton : connectez-vous d'abord.", sans bouton, sans
+   lien, sans rien à faire). Le seul code qui savait obtenir un jeton par
+   Pomerium (`connexion.ts::tenterPomerium`) ne courait QU'AU CHARGEMENT DE
+   LA PAGE DE CONNEXION. Tant que la racine servait la page de session,
+   personne n'avait vu un visiteur atterrir DIRECTEMENT sur le hub sans être
+   passé par cet écran — le lot qui a mis le hub à la racine avait vérifié
+   que `/` SERT le hub, jamais qu'un visiteur SANS JETON puisse s'en servir :
+   encore un contrôle incapable de rougir.
+
+   🔴 LA RÈGLE (« essayer le coffre, puis Pomerium, sinon renvoyer vers la
+   connexion ») VIT DANS `jeton.ts::assurerAcces`, PAS ICI : au sens du
+   critère posé en tête de ce fichier, la changer changerait ce que le
+   produit DÉCIDE, ce n'est donc pas du câblage. `assurerAcces` réutilise
+   `accesParPomerium` — le chemin de `connexion.ts::tenterPomerium`, EXTRAIT
+   plutôt que recopié — et les deux sont tenus par `jeton.test.ts`. Ce qui
+   reste ICI est du câblage pur : lire le résultat, et soit peupler, soit
+   rediriger. */
+async function demarrer(): Promise<void> {
+    dire('neutre', 'identification…');
+    const acces = await assurerAcces(window.localStorage, base, window.fetch.bind(window));
+    if (acces === undefined) {
+        // ⚠️ REDIRIGER VERS UN ÉCRAN OÙ L'UTILISATEUR PEUT AGIR, JAMAIS SUR
+        // UN MESSAGE QUI NE DIT PAS QUOI FAIRE — la règle que `connexion.ts`
+        // s'impose déjà. `suite` reconduit vers CETTE page, chaîne de
+        // requête comprise (`?app=…`), pour qu'une connexion réussie revienne
+        // ici plutôt que sur la shell.
+        const suite = `hub.html${window.location.search}`;
+        window.location.href = `connexion.html?suite=${encodeURIComponent(suite)}`;
+        return;
+    }
+    deps = { base, jeton: acces, fetch: window.fetch.bind(window) };
+    dire('neutre', '');
+    await peupler();
+}
+
+void demarrer();

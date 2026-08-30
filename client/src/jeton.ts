@@ -136,6 +136,82 @@ export function jetonAcces(coffre: Coffre | undefined = coffreParDefaut()): stri
     return coffre?.getItem(CLE_ACCES) ?? undefined;
 }
 
+/* ── L'ACCÈS AUTOMATIQUE — AJOUTÉ LE 30 AOÛT 2026, POUR FERMER UNE
+   INCOMPLÉTUDE TROUVÉE EN PRODUCTION CE MATIN-LÀ ─────────────────────────
+
+   Le hub (`hub/page.ts`), servi à la racine depuis la veille, se contentait
+   de LIRE le coffre et de se plaindre s'il était vide ("Aucun jeton :
+   connectez-vous d'abord.", sans rien à faire). Le seul code qui savait
+   obtenir un jeton par Pomerium était `connexion.ts::tenterPomerium`, et il
+   ne courait QU'AU CHARGEMENT DE LA PAGE DE CONNEXION. Tant que la racine
+   servait la page de session, personne n'avait vu un visiteur atterrir
+   DIRECTEMENT sur le hub sans être passé par cet écran : le lot qui a mis le
+   hub à la racine avait vérifié que `/` SERT le hub, jamais qu'un visiteur
+   SANS JETON puisse s'en servir — un contrôle qu'on n'a jamais vu rougir.
+
+   Les deux fonctions ci-dessous DESCENDENT ici, où elles sont testées, pour
+   que `connexion.ts` (qui appelle toujours Pomerium au chargement) ET
+   `hub/page.ts` (qui ne doit l'appeler QUE si le coffre est vide) les
+   PARTAGENT au lieu de la recopier — la clause que ce correctif s'impose. */
+
+export interface ReponseAuthMoi {
+    ok: boolean;
+    json(): Promise<unknown>;
+}
+export type AppelAuthMoi = (url: string) => Promise<ReponseAuthMoi>;
+
+/// Demande un jeton d'accès frais à Pomerium — le CHEMIN qu'avait
+/// `tenterPomerium` (`connexion.ts`), EXTRAIT ici tel quel (mêmes trois
+/// gestes : appeler, vérifier `ok`, valider le corps par `accesDeReponse`).
+///
+/// Rend `undefined` sur toute issue qui n'est PAS un jeton exploitable : un
+/// réseau injoignable, un corps illisible, et — le cas du mode
+/// `motdepasse` — un `404`, que `routes-identite.ts::servirIdentite` rend
+/// LUI-MÊME pour porter le mode jusqu'au client (voir l'en-tête de
+/// `connexion.ts` autour de `tenterPomerium`). Cette fonction ne distingue
+/// PAS ces issues entre elles : c'est à l'APPELANT de décider quoi en faire
+/// (rediriger vers l'écran de connexion, par exemple), jamais à elle de
+/// choisir à sa place.
+export async function accesParPomerium(
+    base: string,
+    appel: AppelAuthMoi,
+): Promise<string | undefined> {
+    try {
+        const reponse = await appel(`${base}/auth/moi`);
+        if (!reponse.ok) return undefined;
+        return accesDeReponse(await reponse.json().catch(() => undefined));
+    } catch {
+        return undefined;
+    }
+}
+
+/// Assure qu'un jeton d'accès est disponible, EN L'OBTENANT SI BESOIN.
+///
+/// Rend le jeton du coffre s'il y en a déjà un — SANS appeler le réseau : un
+/// aller-retour à chaque ouverture de page serait un coût pour un cas qui
+/// n'en a pas besoin. Sinon, tente `accesParPomerium` et, s'il aboutit, POSE
+/// le jeton obtenu (`poserAcces`) avant de le rendre — c'est ce qui rend un
+/// rechargement ultérieur du hub gratuit, comme il l'est déjà pour la page de
+/// connexion.
+///
+/// Rend `undefined` quand aucun jeton n'a pu être obtenu par AUCUNE des deux
+/// voies : c'est le signal, pour l'appelant, qu'il doit renvoyer vers l'écran
+/// de connexion plutôt que de montrer une page vide ou un message qui ne dit
+/// pas quoi faire — la règle que `connexion.ts` s'impose déjà pour ses
+/// propres échecs.
+export async function assurerAcces(
+    coffre: Coffre,
+    base: string,
+    appel: AppelAuthMoi,
+): Promise<string | undefined> {
+    const existant = jetonAcces(coffre);
+    if (existant !== undefined) return existant;
+    const frais = await accesParPomerium(base, appel);
+    if (frais === undefined) return undefined;
+    poserAcces(coffre, frais);
+    return frais;
+}
+
 export function jetonRafraichissement(
     coffre: Coffre | undefined = coffreParDefaut(),
 ): string | undefined {
