@@ -1,0 +1,45 @@
+{
+  "etiquette": "C-sans-vga-armee",
+  "instant": "2026-08-30T16:21:29.105Z",
+  "viewport": "1860x1080",
+  "messages": [
+    {
+      "ms": 7,
+      "type": "ice-config"
+    },
+    {
+      "ms": 6135,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-1",
+      "titre": "Untitled - Notepad"
+    }
+  ],
+  "vm": "677a3953-14c7-4364-92c3-bd17ecddf8d2",
+  "etat_vm": "prete",
+  "session": "3sxuA9dd56NpVdHi37R86g:bureau",
+  "lancement": {
+    "nom": "Notepad",
+    "id": "7f2a7df5-765f-4f6c-b5c8-485e8c1a4e19",
+    "statut": 200,
+    "reponse": {
+      "issue": "raccourci"
+    },
+    "ms": 6095
+  },
+  "compte_fenetre_ouverte": 1,
+  "compte_refus": 0,
+  "motifs_de_refus": [],
+  "titres": [
+    "Untitled - Notepad"
+  ],
+  "sessions_apres_lancement": [
+    "3sxuA9dd56NpVdHi37R86g:w-1"
+  ],
+  "tenues": [
+    {
+      "session": "3sxuA9dd56NpVdHi37R86g:w-1",
+      "titre": "Untitled - Notepad"
+    }
+  ],
+  "verdict": "VERT"
+}

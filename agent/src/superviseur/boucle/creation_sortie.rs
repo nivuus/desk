@@ -300,6 +300,28 @@ fn attendre_notre_sortie(
         // `#[cfg(windows)]` de bout en bout.
         let candidates = designation::candidates(&toutes, designee.as_deref(), avant);
         if !candidates.is_empty() {
+            // 🔴 LA TRACE DE CHEMIN, ET ELLE N'EST PAS COSMÉTIQUE. Sans elle,
+            // une fenêtre servie ne dit pas PAR QUEL CHEMIN elle l'a été, et
+            // une verte obtenue par le repli — parce que Windows n'a pas
+            // fabriqué de cible forcée ce jour-là — serait indiscernable
+            // d'une verte obtenue par la désignation. Le `designee` du
+            // journal ne paraissait que sur le REFUS, donc jamais quand tout
+            // se passe bien : le succès était muet sur sa propre cause.
+            //
+            // Émise UNE FOIS par création (la boucle rend la main ici), et
+            // non à la cadence de la scrutation.
+            match designee.as_deref() {
+                Some(nom) => tracing::info!(
+                    id_pilote, ?adaptateur, nom_designe = nom,
+                    "sortie DESIGNEE par son identifiant de cible (chemin ① — \
+                     la correspondance CCD a rendu son nom GDI)"
+                ),
+                None => tracing::info!(
+                    id_pilote,
+                    "sortie retenue par DIFFERENCE D'ENSEMBLES (chemin ② de repli — \
+                     la designation n'a rien rendu)"
+                ),
+            }
             return (designee, candidates);
         }
         if std::time::Instant::now() >= echeance {
@@ -320,12 +342,12 @@ fn attendre_notre_sortie(
             match adaptateur {
                 None => tracing::error!(
                     id_pilote,
-                    "le pilote ne connaît pas l'adaptateur de cette sortie —                      la désignation n'a pas pu être tentée, seul le repli a couru"
+                    "le pilote ne connaît pas l'adaptateur de cette sortie — la désignation n'a pas pu être tentée, seul le repli a couru"
                 ),
                 Some(adaptateur) => tracing::error!(
                     id_pilote,
                     ?adaptateur,
-                    "la cible n'a jamais été nommée par la configuration                      d'affichage dans la limite — voir moniteurs_virtuels::config_affichage"
+                    "la cible n'a jamais été nommée par la configuration d'affichage dans la limite — voir moniteurs_virtuels::config_affichage"
                 ),
             }
             return (None, Vec::new());

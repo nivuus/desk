@@ -76,7 +76,7 @@ pub fn armee() -> bool {
         // servie.
         if !armee {
             tracing::warn!(
-                "designation de sortie DESARMEE (SORTIE_DESIGNEE=0) : bras de banc,                  jamais une configuration livree"
+                "designation de sortie DESARMEE (SORTIE_DESIGNEE=0) : bras de banc, jamais une configuration livree"
             );
         }
         armee

@@ -215,131 +215,195 @@ génération entièrement en panne.
 
 ---
 
-## 5. La mesure sur la VM — un bras sur trois
+## 5. La mesure sur la VM — les TROIS bras joués
 
-### 5.1 Le protocole, et le chiffre-juge
+Le propriétaire a autorisé le retrait temporaire du VGA. Il est
+`primary='yes'` et alimente la console VNC (`127.0.0.1:5900`), seule sortie
+hors bande : pendant le retrait, **aucun filet**.
 
-Trois bras, tous avec le binaire du lot 32, pilotés par
-`journaux-lot22/instrument/pilote-parcours.mjs` — **réutilisé, pas réécrit** :
-il relève déjà « ouverte **et non refusée** » et le **motif** des refus.
+### 5.1 La condition est REPRODUITE — la cible forcée est bien là
 
-| Bras | Condition | Attendu |
-| --- | --- | --- |
-| **A** témoin | **avec** VGA, désignation armée | VERT |
-| **B** rouge | **sans** VGA, `SORTIE_DESIGNEE=0` | ROUGE |
-| **C** vert | **sans** VGA, désignation armée | VERT |
-
-🔴 **Le chiffre-juge est un COUPLE, parce que 1 contre 0 est un écart d'une
-unité.** `créées` (sorties virtuelles créées, relevé dans `agent.log`) doit
-être **≥ 1 dans tout bras**, sinon le bras est **DISQUALIFIÉ** — un zéro de
-fenêtres rendu par un agent qui n'a jamais démarré serait indiscernable du
-défaut. C'est le patron « mécanisme présent, résultat absent » de
-`PONT_MUTATION`.
-
-### 5.2 Bras A — JOUÉ, **VERT**
+Sonde CCD en **session 1** (tâche planifiée `/it` ; elle **imprime sa
+session** plutôt que de la supposer), VM sans VGA, agent arrêté :
 
 ```
-VERDICT VERT : ouvertes=3 refus=0 tenues=1
+SESSION = 1
+BUFFERSIZES = 0  chemins=1 modes=2
+CHEMIN 0 : cible_luid=64057/0 cible_id=256 statusFlags=0x11 | source_id=0
+moniteurs_pnp_ok = 0
+```
+
+🔵 **`statusFlags=0x11`** = `IN_USE | FORCED_AVAILABILITY_SYSTEM`, et **0
+moniteur PnP** : c'est exactement l'état du lot 30. **Sans ce relevé, une verte
+obtenue un jour où Windows n'aurait pas fabriqué de cible forcée serait
+indiscernable d'une bonne.**
+
+### 5.2 Bras C — sans VGA, désignation armée : **VERT**
+
+```
+VERDICT VERT : ouvertes=1 refus=0 tenues=1
 motifs de refus : []
 ```
 
-Relevé : `docs/superpowers/plans/journaux-lot32/bras-A-avec-vga-armee.json`.
-Côté agent, entre les marqueurs du bras : **145 lignes**, **3 sorties
-virtuelles créées**, **0** refus `aucune sortie candidate ne peut servir`,
-**0** trace de désarmement (la désignation était bien armée), et deux
-duplications ouvertes sur `\\.\DISPLAY6` et `\\.\DISPLAY7`,
-`adaptateur=NVIDIA GeForce RTX 4070`, `attachee=true`.
+🔴 **Et surtout, QUELLE assertion passe.** Le journal, entre les marqueurs du
+bras :
 
-**Ce que le bras A établit** : que le binaire du lot 32 **ne régresse pas** sur
-la condition nominale, et que le montage entier (plateforme, route de
-lancement, pilote, superviseur, pilote d'affichage) fonctionne — donc qu'un
-zéro dans un autre bras serait imputable au bras, pas au montage.
+| Mesure | Valeur |
+| --- | --- |
+| sorties virtuelles créées | **1** |
+| **chemin ① DÉSIGNÉE** | **1** |
+| chemin ② repli | **0** |
+| refus de viewport | **0** |
+| trace de désarmement | **0** |
 
-**Ce qu'il n'établit PAS** : rien sur le défaut. Le défaut n'existe que **sans**
-le VGA.
+```
+sortie virtuelle créée id=257 adaptateur_bas=64057 adaptateur_haut=0
+sortie DESIGNEE par son identifiant de cible (chemin ① — la correspondance CCD
+  a rendu son nom GDI) id_pilote=257 adaptateur=Some((64057, 0))
+  nom_designe="\\.\DISPLAY5"
+```
 
-### 5.3 Bras B et C — **NON JOUÉS**, et pourquoi
+🔴 **`nom_designe="\\.\DISPLAY5"` est le nom que portait la CIBLE FORCÉE.**
+Le remplacement sur la même source est donc établi, et la désignation a rendu
+ce nom là où la différence d'ensembles rend le vide. **Le chemin ① a couru sur
+une cible forcée — ce qu'il n'avait jamais fait.**
 
-Ils exigent de retirer le VGA, c'est-à-dire d'écrire une définition libvirt
-modifiée puis de la redéfinir. **Trois tentatives ont été refusées par le
-garde de permission de l'environnement** — y compris la simple écriture du
-fichier XML modifié dans `/var/tmp`. Le refus est cohérent et vise cette
-classe d'action.
+🔵 **L'hypothèse centrale est CONFIRMÉE, pas seulement rendue crédible.** La
+sonde relancée pendant que la fenêtre était servie :
 
-🔴 **Je me suis arrêté plutôt que de chercher un contournement.** C'est une
-autorisation à donner, pas un obstacle technique : le reste est prêt.
+```
+CHEMIN 0 : cible_luid=64057/0 cible_id=257 statusFlags=0x1 | source_id=0
+moniteurs_pnp_ok = 1
+  DISPLAY\SMKD1CE\1&28A6823A&0&UID257
+```
 
-### 5.4 🔴 Un défaut de câblage TROUVÉ en préparant la mesure, et NON corrigé
+`id` rendu par le pilote = **257** ; `cible_id` CCD = **257** ; UID du moniteur
+= **257** ; et `statusFlags` est retombé de `0x11` à `0x1` — la cible forcée a
+cédé la place. **`sudovda.rs:96` disait la disposition « non confirmée » : elle
+l'est désormais pour ces trois champs.**
 
-**`SORTIE_DESIGNEE` n'atteint pas l'agent de l'appliance.** La tâche 3 a posé
-la ligne dans `scripts/run-agent.sh`, ce qu'exige la règle du dépôt — mais ce
-script vise la VM de développement **qui n'existe plus sous cette forme**
-(réserve de `CLAUDE.md`, sort « non tranché »). L'agent réel est lancé par la
-tâche planifiée `guacamole-agent`, qui exécute
-**`C:\nivuus\agent\run-agent.ps1`**, un fichier de `console` qui ne pose que
-`SIGNALING_URL`, `LOCAL_IP`, `RUST_LOG`, `AGENT_VM`, `AGENT_SECRET` et
-`SUPERVISEUR`.
+⚠️ **Une réserve honnête sur ma sonde, et elle est à MA charge.** Sa colonne
+`nom_gdi` rend `(GetDeviceInfo=31)` — `ERROR_GEN_FAILURE`. **Ce n'est pas
+l'API qui échoue : c'est le marshalling C# de ma sonde PowerShell.**
+L'implémentation Rust du produit, elle, a rendu `\\.\DISPLAY5` sur le même
+chemin, au même instant. La sonde établit les identifiants et les
+`statusFlags` ; **elle n'établit pas le nom, et le produit s'en charge.**
 
-**Le contrôle qui vaut l'a montré, et le tracé de code ne l'aurait pas fait** —
-c'est exactement le piège payé en D1, D2 et D7. Mon script de cycle injecte
-donc la ligne **dans le script qui lance réellement**, et le bras A a été
-vérifié à **0 occurrence** (donc armé).
+### 5.3 Bras B — sans VGA, `SORTIE_DESIGNEE=0` : **ROUGE**
 
-⚠️ **Ce n'est pas corrigé** : ajouter la variable au `run-agent.ps1` de
-`console` est une modification d'un **autre package**, et elle appartient au
-propriétaire.
+```
+VERDICT ROUGE : ouvertes=8 refus=10 tenues=0
+motifs de refus : ["aucune sortie d'affichage ne peut servir cette fenêtre",
+                   "la session n'a pas tenu après 3 tentatives"]
+```
 
-### 5.5 L'état dans lequel la VM est rendue
+🔴 **La rouge rougit pour la BONNE raison** — le motif est mot pour mot celui
+du défaut, lu et non déduit d'un code de sortie.
+
+| Mesure | Valeur |
+| --- | --- |
+| sorties virtuelles **créées** | **8** |
+| chemin ① DÉSIGNÉE | **0** |
+| chemin ② repli | **0** |
+| refus de viewport | **8** |
+| trace de désarmement | **1** |
+
+```
+ERROR … aucune sortie candidate ne peut servir ce viewport — elle est rendue
+  au pilote session=…:w-1 demande="1860x1080" designee="" candidates=[]
+```
+
+🔵 **Le couple juge fait son travail** : **8 créées** — le mécanisme tourne,
+le bras n'est pas disqualifié — et **0 tenue**. Mécanisme présent, résultat
+absent, patron de `PONT_MUTATION`.
+
+### 5.4 🔴 L'INCIDENT — une rouge vacueuse, attrapée par la trace et non par le fichier
+
+**La première tentative du bras B n'a rien mesuré.** Mon script de cycle a
+échoué à poser la variable (un `-replace` à travers trois couches de
+guillemets), puis, corrigé, l'a posée **à la fin** de
+`C:\nivuus\agent\run-agent.ps1` — c'est-à-dire **après** la ligne qui lance
+l'agent (`:61`), donc **jamais exécutée**.
+
+**Les deux fois, le fichier contenait la ligne. Les deux fois, la valeur
+n'atteignait pas le processus.** Ce qui l'a dit est le contrôle prescrit par
+`CLAUDE.md` : **`TRACE DE DESARMEMENT : 0`** dans le journal. Un tracé de code
+aurait conclu l'inverse — c'est le piège payé en D1, D2 et D7, **revécu ici
+pour la quatrième fois**, et attrapé.
+
+Après pose **avant** le lancement (ligne 35, contre 61 pour l'invocation) :
+`TRACE DE DESARMEMENT : 1`, `WARN agent::superviseur::designation`.
+
+🔵 **Effet de bord : le `warn!` est désormais ÉTABLI.** La ronde précédente le
+déclarait non vérifiable sur l'hôte ; il a été vu sortir.
+
+### 5.5 Ce que la VM est devenue, et la restauration
 
 | Ce qui a été touché | État final | Preuve |
 | --- | --- | --- |
-| Définition libvirt | **intacte, VGA compris** | `diff` contre la copie nommée : **aucune différence** |
-| `agent.exe` | **l'original restauré** | sha256 `7DB1C0FA…74C3`, identique à l'empreinte relevée avant |
-| `run-agent.ps1` (VM) | **0** occurrence de `SORTIE_DESIGNEE` | relu après restauration |
+| Définition libvirt | **le VGA est revenu**, restauré **depuis la copie nommée** | `diff` : **2 lignes**, l'`id` de domaine (34→36) et le tap (`vnet34`→`vnet36`), **toutes deux éphémères**, réattribuées par libvirt à chaque démarrage |
+| Console VNC | **rétablie** | un port `5900` en écoute |
+| `agent.exe` | **l'original**, depuis sa copie nommée | sha256 `7DB1C0FA…74C3` |
+| `SORTIE_DESIGNEE` | **retirée** du script qui lance | 0 occurrence relue |
+| Tâche `lot32-sonde` | **supprimée** | `schtasks /delete` |
 | Agent | **3 processus vivants** | `Get-Process agent` |
-| VM | **en cours d'exécution** | `virsh list --all` après la séquence |
-| Serveur HTTP de dépôt | arrêté **par PID relevé** | jamais `pkill -f` |
+| VM | **en exécution, WinRM répond** (~72 s après `virsh start`) | `virsh list --all` + `/dev/tcp/…/5985` |
+| Extinctions hôte pendant la séquence | **0** | `journalctl -u libvirtd`, `terminating on signal 15` |
 
-Le binaire du lot 32 reste sur la VM sous
-`C:\nivuus\agent\agent.exe.lot32` : **un re-essai est une copie, pas une
-refabrication.** La copie nommée de l'original reste à côté
-(`agent.exe.copie-nommee-avant-lot32`).
+⚠️ **Le binaire de production est celui d'avant**, à dessein : il doit venir du
+package (`hooks/activate.py`, `chemin_agent_console`), jamais d'une
+fabrication de travail. Le binaire du lot 32 reste sous
+`C:\nivuus\agent\agent.exe.lot32`. **Déployer le remède est une décision du
+propriétaire**, et elle est désormais adossée à une mesure.
 
-⚠️ **Décision prise, et offerte au propriétaire** : j'ai remis le binaire
-d'origine. Le lot 32 n'a validé que la non-régression (bras A) ; laisser la
-production sur un binaire dont le bras qui compte n'a pas été joué n'est pas à
-moi de le décider.
+### 5.6 Un défaut de câblage, TROUVÉ et NON corrigé
 
----
-
-## 6. Ce que ce lot n'établit PAS
-
-- 🔴 **Que le remède ferme le défaut.** Bras B et C non joués. Le bras A ne
-  montre qu'une non-régression, dans la condition où le défaut **n'existe
-  pas**.
-- 🔴 **Que `identifiant_cible` soit un `id` de cible CCD.** Deux pièces
-  concordantes (§ 2), aucune preuve. Le chemin ① n'a **jamais couru sur une
-  cible forcée**.
-- 🔴 **Que le `warn!` de `SORTIE_DESIGNEE=0` sorte.** Son `OnceLock` ne peut
-  pas être réinitialisé entre deux tests, et un test qui poserait la variable
-  d'environnement empoisonnerait ses voisins : c'est le **prédicat** qui est
-  figé. La sortie de la trace se vérifiera au bras B.
-- **Que la voie A soit superflue en toutes circonstances.** Elle l'est *si C
-  tient* ; elle redevient le repli si les bras B/C réfutent C. ⚠️ **Ne pas
-  livrer A et C ensemble** : l'amorce masquerait le défaut que C corrige, et
-  la recette de C deviendrait injouable.
-- **Que `montee.rs` verrait le remplacement.** Prédiction de lecture ; cette
-  sonde n'a jamais été jouée sans le VGA.
+**`SORTIE_DESIGNEE` n'atteint pas l'agent de l'appliance.** La tâche 3 l'a
+posée dans `scripts/run-agent.sh`, ce qu'exige la règle du dépôt — mais ce
+script vise la VM de développement qui n'existe plus sous cette forme. L'agent
+réel est lancé par `C:\nivuus\agent\run-agent.ps1`, un fichier du package
+`console`. La recette l'y a injectée à la main. **Corriger cela touche un autre
+package : hors périmètre, la décision appartient au propriétaire.**
 
 ---
 
-## 7. Ce qu'il reste à faire, dans l'ordre
+## 6. Ce que ce lot établit, et ce qu'il n'établit pas
 
-1. **Autoriser la modification de la définition libvirt**, puis jouer les bras
-   B et C. Tout est prêt : `/var/tmp/lot32-cycle.sh` (arrêt par PID, purge
-   `MULTIFENETRE_VDD_PURGE=1` entre deux exécutions, marqueur de bras dans un
-   journal de 15 Mio, pose/retrait de la variable dans le script qui lance
-   réellement), le binaire déjà sur la VM, la copie nommée de la définition
-   dans ce répertoire, et l'instrument du lot 22.
-2. **Décider du sort de `SORTIE_DESIGNEE` dans `console`** (§ 5.4).
-3. **Décider du binaire de production** : l'original est en place.
+**Établi :**
+- 🔴 **le remède ferme le défaut** — même VM, même viewport, même instrument,
+  seule la variable de banc diffère : **1 fenêtre tenue contre 0**, **0 refus
+  contre 8** ;
+- 🔴 **le chemin ① a couru sur une cible forcée** et a rendu le nom que la
+  différence d'ensembles ne peut pas voir ;
+- 🔴 **l'hypothèse de `sudovda.rs` est confirmée** pour `identifiant_cible` et
+  le LUID : id pilote = cible CCD = UID du moniteur = 257 ;
+- la condition du lot 30 est **reproduite et mesurée** (`statusFlags=0x11`,
+  0 moniteur PnP), donc la verte ne verdit pas pour la mauvaise raison ;
+- le `warn!` de désarmement **sort** ;
+- **non-régression** avec VGA (bras A).
+
+**NON établi, et il faut le dire :**
+- **qu'aucun média ne traverse n'a été vérifié** : l'instrument n'a aucune pile
+  WebRTC et n'émet aucune offre SDP. Il éprouve la chaîne jusqu'à la sortie
+  virtuelle, pas l'image ;
+- **le comportement au-delà d'une fenêtre sans VGA** : le bras C n'en a servi
+  qu'UNE. Le lot 30 avait mesuré 4 créées → 4 attachées, mais **par la sonde**,
+  pas par le produit ;
+- **la voie A reste non éprouvée**, et n'a plus lieu d'être : ⚠️ **ne pas la
+  livrer avec C**, l'amorce masquerait le défaut et rendrait cette recette
+  injouable ;
+- **`montee.rs` verrait-elle le remplacement** : prédiction de lecture, jamais
+  jouée ;
+- ⚠️ **trois chaînes de trace portaient des suites d'espaces** (mes heredocs
+  Python ayant mangé les continuations `\` de Rust). **Corrigées après la
+  mesure** ; les relevés ci-dessus montrent la forme espacée. Le `grep` des
+  recettes porte sur le préfixe et n'est pas affecté.
+
+---
+
+## 7. Ce qu'il reste à faire
+
+1. **Décider du déploiement du remède** en production (le binaire d'origine est
+   en place ; celui du lot 32 attend sous `agent.exe.lot32`).
+2. **Décider du sort de `SORTIE_DESIGNEE` dans `console`** (§ 5.6).
+3. **Mesurer plusieurs fenêtres sans VGA** — le bras C n'en a servi qu'une.
