@@ -1,0 +1,160 @@
+{
+  "etiquette": "deploiement-verif",
+  "instant": "2026-08-30T18:47:22.359Z",
+  "viewport": "1280x720",
+  "messages": [
+    {
+      "ms": 15,
+      "type": "ice-config"
+    },
+    {
+      "ms": 63,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-5",
+      "titre": "Forza Horizon 6"
+    },
+    {
+      "ms": 65,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-6",
+      "titre": "Untitled - Notepad"
+    },
+    {
+      "ms": 66,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-7",
+      "titre": "Steam"
+    },
+    {
+      "ms": 5227,
+      "type": "refus",
+      "titre": "Forza Horizon 6",
+      "motif": "aucune sortie d'affichage ne peut servir cette fenêtre"
+    },
+    {
+      "ms": 10292,
+      "type": "refus",
+      "titre": "Untitled - Notepad",
+      "motif": "aucune sortie d'affichage ne peut servir cette fenêtre"
+    },
+    {
+      "ms": 15361,
+      "type": "refus",
+      "titre": "Steam",
+      "motif": "aucune sortie d'affichage ne peut servir cette fenêtre"
+    },
+    {
+      "ms": 15362,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-5"
+    },
+    {
+      "ms": 15362,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-6"
+    },
+    {
+      "ms": 15363,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-7"
+    },
+    {
+      "ms": 15363,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-8",
+      "titre": "Untitled - Notepad"
+    },
+    {
+      "ms": 15364,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-9",
+      "titre": "Install"
+    },
+    {
+      "ms": 15364,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-10",
+      "titre": "Dismiss"
+    },
+    {
+      "ms": 15365,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-11",
+      "titre": "Forza Horizon 6"
+    },
+    {
+      "ms": 15366,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-12",
+      "titre": "Steam"
+    },
+    {
+      "ms": 15366,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-13",
+      "titre": "Untitled - Notepad"
+    },
+    {
+      "ms": 20534,
+      "type": "refus",
+      "titre": "Untitled - Notepad",
+      "motif": "aucune sortie d'affichage ne peut servir cette fenêtre"
+    },
+    {
+      "ms": 25605,
+      "type": "refus",
+      "titre": "Install",
+      "motif": "aucune sortie d'affichage ne peut servir cette fenêtre"
+    },
+    {
+      "ms": 30684,
+      "type": "refus",
+      "titre": "Dismiss",
+      "motif": "aucune sortie d'affichage ne peut servir cette fenêtre"
+    },
+    {
+      "ms": 35763,
+      "type": "refus",
+      "titre": "Forza Horizon 6",
+      "motif": "aucune sortie d'affichage ne peut servir cette fenêtre"
+    }
+  ],
+  "vm": "677a3953-14c7-4364-92c3-bd17ecddf8d2",
+  "etat_vm": "prete",
+  "session": "3sxuA9dd56NpVdHi37R86g:bureau",
+  "lancement": {
+    "nom": "Notepad",
+    "id": "7f2a7df5-765f-4f6c-b5c8-485e8c1a4e19",
+    "statut": 200,
+    "reponse": {
+      "issue": "raccourci"
+    },
+    "ms": 6164
+  },
+  "compte_fenetre_ouverte": 9,
+  "compte_refus": 7,
+  "motifs_de_refus": [
+    "aucune sortie d'affichage ne peut servir cette fenêtre"
+  ],
+  "titres": [
+    "Forza Horizon 6",
+    "Untitled - Notepad",
+    "Steam",
+    "Untitled - Notepad",
+    "Install",
+    "Dismiss",
+    "Forza Horizon 6",
+    "Steam",
+    "Untitled - Notepad"
+  ],
+  "sessions_apres_lancement": [
+    "3sxuA9dd56NpVdHi37R86g:w-8",
+    "3sxuA9dd56NpVdHi37R86g:w-9",
+    "3sxuA9dd56NpVdHi37R86g:w-10",
+    "3sxuA9dd56NpVdHi37R86g:w-11",
+    "3sxuA9dd56NpVdHi37R86g:w-12",
+    "3sxuA9dd56NpVdHi37R86g:w-13"
+  ],
+  "tenues": [],
+  "verdict": "ROUGE"
+}

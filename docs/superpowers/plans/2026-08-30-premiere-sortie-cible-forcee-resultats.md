@@ -487,6 +487,18 @@ Trois pièces, dont deux mesurées après coup :
 
 ### 8.2 ② Ce qui différait — **Apollo, et son `ensure_only_display`**
 
+> 🔴 **ANNOTATION DU 30 AOÛT 2026 (lot 32C) — CE TITRE EST INCOMPLET, ET LA
+> MESURE L'A MONTRÉ.** Imputer l'échec au seul réglage `ensure_only_display`
+> était trop étroit : avec `dd_configuration_option = ensure_active` **et
+> aucun client connecté**, l'interférence PERSISTE — Apollo `Running` rend
+> **7 refus / 0 fenêtre tenue**, Apollo `Stopped` rend **0 refus / 4 tenues**,
+> même binaire à deux minutes d'intervalle. La cause suffisante est la **sonde
+> d'encodeur** qu'Apollo relance à **chaque changement de topologie**, à la
+> cadence de 5 s de `LIMITE_RATTACHEMENT`. Voir
+> [`2026-08-30-juge-image-au-navigateur-resultats.md`](2026-08-30-juge-image-au-navigateur-resultats.md)
+> § 6.2. **Ce qui suit reste exact sur les FAITS relevés ; c'est la portée de
+> la conclusion qui était trop large.**
+
 Ce n'est **pas** la taille (§ 8.1), et ce n'est pas la limite d'attente : une
 sortie qui n'apparaît jamais dans la topologie n'apparaîtra pas davantage en
 attendant plus longtemps. La différence est **environnementale**, et elle est
