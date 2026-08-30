@@ -1,6 +1,14 @@
-//! Le contrôle périodique des entrées qui n'avancent plus : celles dont
-//! l'enfant est mort mais dont la fenêtre Windows vit toujours, et celles
-//! que la page-shell a laissées en attente de leur viewport.
+//! Les entrées qui n'avancent plus : celles dont l'enfant est mort mais dont
+//! la fenêtre Windows vit toujours, celles que la page-shell a laissées en
+//! attente de leur viewport, et — depuis le 30 août 2026 — celles qu'il faut
+//! REDIRE à une page-shell qui vient tout juste d'arriver.
+//!
+//! ⚠️ **Le titre de ce module disait « le contrôle PÉRIODIQUE », et ce n'est
+//! plus vrai de tout son contenu** : `reannoncer_les_attentes` est appelée
+//! sur un ÉVÉNEMENT (l'arrivée d'un pair `client`), pas au tour d'horloge.
+//! Les deux fonctions partagent en revanche exactement ce qui compte ici —
+//! l'horloge de `DELAI_ATTENTE_VIEWPORT_MAX` —, et c'est ce qui leur vaut de
+//! vivre côte à côte plutôt que de se séparer.
 //!
 //! Extrait de `table.rs` (tâche 17 du sous-bloc P3) pour rester sous le
 //! plafond de 500 lignes du projet — pas pour une raison de conception,
@@ -116,6 +124,78 @@ impl Table {
             });
         }
 
+        effets
+    }
+
+    /// Redit à une page-shell qui vient d'arriver ce que la table sait déjà,
+    /// et remet à zéro le compte à rebours de chaque entrée redite.
+    ///
+    /// 🔴 **LE DÉFAUT QU'ELLE CORRIGE, MESURÉ EN PRODUCTION LE 30 AOÛT
+    /// 2026** (capture réseau `vnet30`, `tcpdump` + `tshark`) : le
+    /// superviseur annonce ses fenêtres à t = 12,0 s, dans une session de
+    /// contrôle où AUCUN pair `client` n'est encore connecté. Le relais
+    /// laisse tomber l'annonce sans une trace
+    /// (`plateforme/src/signaling/relais.ts`, `send(peer, …)` sur un `peer`
+    /// absent), et à t = 43,1 s les mêmes fenêtres sont refusées par la
+    /// boucle ci-dessus, faute de `viewport` en retour. L'utilisateur passe
+    /// précisément ces secondes-là dans l'authentification du proxy : il
+    /// arrive donc devant un bureau vide, sur une VM pleine de fenêtres.
+    ///
+    /// 🔴 **CE N'EST PAS UN RALLONGEMENT DU DÉLAI, ET C'ÉTAIT LA CONSIGNE.**
+    /// Rallonger `DELAI_ATTENTE_VIEWPORT_MAX` déplacerait la course sans la
+    /// supprimer : un utilisateur plus lent la reperdrait. Ici l'horloge
+    /// REPART du moment où une page-shell est effectivement là — ce qui est
+    /// précisément ce que la constante prétend mesurer (« le temps qu'une
+    /// page-shell met à répondre »), et jamais ce qu'elle mesurait
+    /// réellement (le temps écoulé depuis le démarrage du superviseur,
+    /// page-shell ou pas).
+    ///
+    /// 🔴 **CE QUE LA BORNE PROTÉGEAIT EST INTACT.** Elle protège deux
+    /// choses : une place dans `capacite` (10), et — pour une entrée
+    /// RELANCÉE — la sortie virtuelle RETENUE par `enfant_mort` (§7.1 de
+    /// D3), qui est la ressource coûteuse. Ni l'une ni l'autre n'est
+    /// relâchée ici : la borne continue de courir, elle court simplement à
+    /// partir d'un instant qui a un sens. Une entrée dont la shell reste
+    /// muette trente secondes APRÈS son arrivée est abandonnée comme avant.
+    ///
+    /// ⚠️ **SEULES LES ENTRÉES EN `AttendLeViewport` SONT REDITES, ET LE
+    /// RESTE EST DÉLIBÉRÉ :**
+    /// - `AttendLaSortie` : le viewport est déjà connu, la sortie est en
+    ///   cours de création — la shell qui l'a demandée est partie, mais
+    ///   l'enfant qui suit atterrira sur une session dont plus personne
+    ///   n'attend l'offre ; c'est un cas qu'aucune mesure n'a exercé et
+    ///   qu'on ne devine pas ici.
+    /// - `Vivante` : **la redire ferait OUVRIR une page qui ne peut pas se
+    ///   connecter.** L'enfant consomme UNE offre et ne renégocie jamais
+    ///   (`agent/src/demarrage.rs` : « pas de renégociation dans cette
+    ///   session »), donc la page rouverte enverrait une offre que personne
+    ///   ne prendrait. **C'est un legs nommé, pas un oubli** : un
+    ///   rechargement de la page-shell ne récupère pas les fenêtres déjà
+    ///   vivantes.
+    /// - `SansSession` : déjà servie par `relancer_les_orphelines`
+    ///   ci-dessus, qui la repropose sous une session neuve. La redire ici
+    ///   la dédoublerait.
+    ///
+    /// ⚠️ **CE QUI MANQUE ICI EST AILLEURS, ET C'EST VOULU** : les fenêtres
+    /// déjà ABANDONNÉES ne sont plus dans la table, donc cette méthode ne
+    /// peut rien pour elles. C'est `boucle.rs` qui rejoue pour cela
+    /// l'énumération de démarrage (`hook::enumerer_existantes`), dont
+    /// `fenetre_apparue` est idempotente par `HWND` — d'où l'ORDRE imposé
+    /// là-bas : redire d'abord, énumérer ensuite, sans quoi une entrée
+    /// encore en attente serait annoncée DEUX fois et la page-shell
+    /// rechargerait la fenêtre qu'elle vient d'ouvrir.
+    pub fn reannoncer_les_attentes(&mut self, maintenant: std::time::Instant) -> Vec<Effet> {
+        let mut effets = Vec::new();
+        for (session, entree) in self.entrees.iter_mut() {
+            if entree.etat != Etat::AttendLeViewport {
+                continue;
+            }
+            entree.attente_depuis = Some(maintenant);
+            effets.push(Effet::AnnoncerOuverture {
+                session: session.clone(),
+                titre: entree.titre.clone(),
+            });
+        }
         effets
     }
 }

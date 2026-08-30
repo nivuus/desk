@@ -58,13 +58,37 @@ function connect(role: 'agent' | 'client', session: string): Promise<WebSocket> 
     });
 }
 
+/// Le prochain message qui n'est pas un message de SERVICE du relais.
+///
+/// 🔴 `pair-present` EST FILTRÉ ICI, ET LE FILTRE N'EST PAS UNE COMMODITÉ.
+/// Depuis le 30 août 2026 le relais prévient un pair `agent` déjà en place
+/// qu'un `client` vient de le rejoindre (`signaling/pair-present.ts`) : un
+/// test qui attend « le message suivant » sur le socket de l'agent recevrait
+/// donc cette nouvelle-là et non la réponse qu'il a provoquée.
+///
+/// ⚠️ **IL RÉPARE AUSSI UNE FRAGILITÉ QUI PRÉEXISTAIT À CE LOT.** L'ancienne
+/// forme employait `ws.once`, qui n'écoute qu'à partir de son attachement :
+/// un message arrivé plus tôt était perdu, et l'assertion suivante passait ou
+/// non selon l'ordonnancement. Ici, l'écouteur est posé pour la durée de
+/// l'attente et retiré à la sortie, quelle que soit l'issue.
+///
+/// **Ce que ce filtre ne fait PAS** : établir que `pair-present` est bien
+/// émis. C'est `pair-present.test.ts` qui le mesure — sans lui, ce filtre
+/// serait indiscernable d'une mise sous le tapis.
 function nextMessage(ws: WebSocket): Promise<any> {
     return new Promise((resolve, reject) => {
-        const timer = setTimeout(() => reject(new Error('aucun message reçu')), 2000);
-        ws.once('message', (raw) => {
+        const finir = (action: () => void) => {
             clearTimeout(timer);
-            resolve(JSON.parse(raw.toString()));
-        });
+            ws.off('message', surMessage);
+            action();
+        };
+        const surMessage = (raw: any) => {
+            const message = JSON.parse(raw.toString());
+            if (message?.type === 'pair-present') return;
+            finir(() => resolve(message));
+        };
+        const timer = setTimeout(() => finir(() => reject(new Error('aucun message reçu'))), 2000);
+        ws.on('message', surMessage);
     });
 }
 

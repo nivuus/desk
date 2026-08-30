@@ -99,6 +99,27 @@ pub enum VersLaShell {
 pub enum DepuisLaShell {
     #[serde(rename = "viewport")]
     Viewport { session: String, largeur: u32, hauteur: u32 },
+    /// **Un pair `client` vient de rejoindre la session de contrôle** —
+    /// émis par le RELAIS, jamais par la page
+    /// (`plateforme/src/signaling/pair-present.ts`). Ce n'est donc pas un
+    /// message « de la shell » au sens strict, mais il arrive par le même
+    /// socket et se lit par le même désérialiseur : le loger ailleurs
+    /// obligerait `signalisation.rs` à tenir deux chemins de lecture pour
+    /// une seule connexion.
+    ///
+    /// 🔴 CE QU'IL DÉCLENCHE, ET POURQUOI IL EXISTE : le superviseur
+    /// annonce ses fenêtres AU MOMENT OÙ IL LES DÉCOUVRE, dans une session
+    /// où personne n'écoute encore — le relais laisse alors tomber
+    /// l'annonce sans une trace, et trente secondes plus tard l'agent
+    /// refuse ses propres fenêtres faute de `viewport` en retour
+    /// (`table/orphelines.rs`). Ce message est le signal qui dit « quelqu'un
+    /// écoute MAINTENANT, redis-lui ce que tu sais ». Mesure de production
+    /// du 30 août 2026 : voir `pair-present.ts`.
+    ///
+    /// **Aucun champ**, à dessein : le relais ne sait rien de plus que
+    /// l'arrivée, et l'agent n'a besoin de rien de plus.
+    #[serde(rename = "pair-present")]
+    PairPresent,
 }
 
 #[cfg(test)]
@@ -143,7 +164,9 @@ mod tests {
             r#"{"type":"viewport","session":"w-1","largeur":1600,"hauteur":900}"#,
         )
         .unwrap();
-        let DepuisLaShell::Viewport { session, largeur, hauteur } = message;
+        let DepuisLaShell::Viewport { session, largeur, hauteur } = message else {
+            panic!("un viewport doit se lire comme un viewport")
+        };
         assert_eq!((session.as_str(), largeur, hauteur), ("w-1", 1600, 900));
     }
 
@@ -195,11 +218,36 @@ mod tests {
     /// connexion : ils doivent tomber du côté « refusé » de cette frontière,
     /// pour que `signalisation.rs` les ignore sans les prendre pour un
     /// viewport.
+    ///
+    /// ⚠️ **`pair-present` EST DÉSORMAIS DE L'AUTRE CÔTÉ DE CETTE
+    /// FRONTIÈRE**, et c'est le seul message de service qui y soit passé :
+    /// il est émis par le relais comme ces deux-là, mais l'agent doit AGIR
+    /// dessus. Le test suivant le tient — sans lui, une coquille dans le
+    /// `rename` rendrait le message muet, ce qui est exactement le défaut
+    /// que ce lot corrige, rejoué un cran plus bas.
     #[test]
     fn les_messages_de_service_du_signaling_ne_sont_pas_des_viewports() {
         assert!(serde_json::from_str::<DepuisLaShell>(r#"{"type":"peer-gone"}"#).is_err());
         assert!(
             serde_json::from_str::<DepuisLaShell>(r#"{"type":"ice-config","urls":[]}"#).is_err()
         );
+    }
+
+    /// 🔴 LE NOM SUR LE FIL EST LE CONTRAT, ET IL EST ÉCRIT DANS DEUX
+    /// DÉPÔTS DE MOTS DIFFÉRENTS : ici en Rust, et dans
+    /// `plateforme/src/signaling/pair-present.ts::TYPE_PAIR_PRESENT`. Ce
+    /// test fige la moitié Rust ; s'il rougissait, c'est que le `rename`
+    /// a dérivé — et une dérive de ce nom rend le mécanisme MUET, sans
+    /// aucune erreur, des deux côtés.
+    #[test]
+    fn l_arrivee_d_un_pair_se_lit_sur_la_session_de_controle() {
+        let message: DepuisLaShell =
+            serde_json::from_str(r#"{"type":"pair-present"}"#).unwrap();
+        assert!(matches!(message, DepuisLaShell::PairPresent));
+        // …et un champ superflu ne le casse pas : le relais peut en ajouter
+        // un demain sans rendre l'agent sourd.
+        let avec_extra: DepuisLaShell =
+            serde_json::from_str(r#"{"type":"pair-present","role":"client"}"#).unwrap();
+        assert!(matches!(avec_extra, DepuisLaShell::PairPresent));
     }
 }

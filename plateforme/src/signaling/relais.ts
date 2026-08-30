@@ -37,6 +37,7 @@
 import type { IncomingMessage } from 'node:http';
 import { WebSocket, WebSocketServer } from 'ws';
 import { Appariement, isRole, type Role } from './appariement';
+import { messagePairPresent, prevenirLePairEnPlace } from './pair-present';
 import type { Garde } from '../identite/garde';
 import { configurationIce } from './ice';
 import { adresseSource } from '../http/adresse-source';
@@ -367,8 +368,16 @@ export function createSignalingServer(
                 // L'APPARIEMENT, et non la déclaration : le pair d'en face
                 // existe, donc les deux rôles sont là. `pair` rend le socket
                 // d'EN FACE — s'il est défini, ce pair-ci est le second.
-                if (sessions.pair(declaredSession, declaredRole)) {
+                const pairEnFace = sessions.pair(declaredSession, declaredRole);
+                if (pairEnFace) {
                     trace?.apparie(declaredSession, verdict.utilisateurId);
+                    // Le jumeau symétrique du `peer-gone` émis en pied de
+                    // fichier : le relais savait dire « ton pair est parti »
+                    // et ne savait pas dire « ton pair est arrivé ». Toute la
+                    // raison d'être — et la mesure de production qui l'a
+                    // imposée — vit dans `pair-present.ts`, jamais recopiée
+                    // ici pour ne pas diverger.
+                    if (prevenirLePairEnPlace(declaredRole)) send(pairEnFace, messagePairPresent());
                 }
 
                 // Configuration ICE : envoyée à CHAQUE pair dès qu'il se
