@@ -124,7 +124,8 @@ pub(super) fn create_color_converter(
 
     // Essai : le mode faible latence n'était appliqué qu'à l'encodeur, pas au
     // convertisseur — potentiellement lié à l'attente d'~1 s observée dans
-    // `drain_converter_output` (voir son commentaire). `GetAttributes` peut
+    // `mft::convertisseur::drain_converter_output` (voir son commentaire).
+    // `GetAttributes` peut
     // échouer si le convertisseur n'expose pas d'attributs modifiables ; dans
     // ce cas on continue sans bloquer la construction.
     if let Ok(converter_attributes) = unsafe { converter.GetAttributes() } {

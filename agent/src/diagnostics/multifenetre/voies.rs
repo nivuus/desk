@@ -63,7 +63,8 @@ pub(super) trait VoieDeCapture {
 }
 
 /// Alloue une texture D3D11 de destination pour un recadrage : format et
-/// usage attendus par l'encodeur (`encode.rs::feed_converter`, qui enveloppe
+/// usage attendus par l'encodeur (`encode/mft/convertisseur.rs::feed_converter`,
+/// qui enveloppe
 /// la texture via `MFCreateDXGISurfaceBuffer` en BGRA non-sRGB).
 ///
 /// Chaque voie possède la SIENNE, jamais une texture partagée avec une autre
