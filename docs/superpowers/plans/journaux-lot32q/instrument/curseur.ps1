@@ -24,7 +24,7 @@ $s = [System.Diagnostics.Process]::GetCurrentProcess().SessionId
 "BUREAU_VIRTUEL x={0} y={1} l={2} h={3}" -f [C]::GetSystemMetrics(76), [C]::GetSystemMetrics(77), [C]::GetSystemMetrics(78), [C]::GetSystemMetrics(79)
 $chrono = [Diagnostics.Stopwatch]::StartNew()
 $dernier = ""
-while ($chrono.Elapsed.TotalSeconds -lt 40) {
+while ($chrono.Elapsed.TotalSeconds -lt 100) {
   $p = New-Object C+P
   [void][C]::GetCursorPos([ref]$p)
   $cle = "$($p.x),$($p.y)"
