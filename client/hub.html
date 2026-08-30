@@ -28,6 +28,24 @@
         <main class="hub">
             <header class="hub__entete">
                 <h1 class="hub__titre">Applications</h1>
+                <p class="hub__actions">
+                    <!-- 🔴 LE CHEMIN VERS LE BUREAU, ET IL EST VISIBLE.
+                         Avant le 30 août 2026, AUCUN lien de navigation ne
+                         menait du hub à `shell.html` — la seule page qui
+                         traite `fenetre-ouverte`. Le hub étant servi à la
+                         racine depuis le lot 14, l'utilisateur n'atteignait
+                         donc plus jamais son bureau : il lançait une
+                         application et ne voyait rien.
+
+                         ⚠️ UN VRAI `<a>`, PAS UN BOUTON QUI APPELLE
+                         `window.open` : une navigation partie d'un clic sur
+                         un lien n'est bloquée par aucun navigateur, là où
+                         une pop-up ouverte par script l'est hors geste.
+                         `href` et `target` sont posés par `hub/page.ts`
+                         depuis `hub/bureau.ts` : la page du bureau et le nom
+                         de sa fenêtre n'ont qu'UNE source de vérité. -->
+                    <a id="bureau" class="bouton bouton--secondaire">Mon bureau</a>
+                </p>
                 <p id="themes" class="hub__actions" role="group" aria-label="Thème"></p>
             </header>
 
