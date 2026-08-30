@@ -51,10 +51,44 @@
 /// principe que `script-src` deux paragraphes plus haut : un repli implicite
 /// est une règle que personne n'a écrite, donc on l'écrit, même quand ce
 /// n'était pas elle qui bloquait.
+///
+/// 🔴 `blob:` A DÛ REJOINDRE `manifest-src` LE 30 AOÛT 2026 — régression
+/// commandée par CE dépôt LA VEILLE, et trouvée EN PRODUCTION par le
+/// propriétaire (`https://app.allanic.me`, boucle de violations) :
+///
+///   Loading a manifest from 'blob:https://app.allanic.me/…' violates the
+///   following Content Security Policy directive: "manifest-src 'self'".
+///
+/// Le manifeste DU HUB est servi par HTTP (`hub.webmanifest`, couvert par
+/// `'self'`), mais le manifeste PAR APPLICATION ne peut pas l'être : aucune
+/// route authentifiée ne le sert (⑤ ne pose aucun cookie), donc
+/// `client/src/hub/page.ts::publierLeManifeste` le construit en mémoire et le
+/// publie par `URL.createObjectURL` — voie V1 de G5, documentée dans
+/// `client/hub.html` et `client/src/hub/manifeste.ts`. En n'écrivant QUE
+/// `'self'`, l'explicitation d'hier a rendu VISIBLE — et donc BLOQUANT — ce
+/// que le repli implicite sur `default-src 'self'` bloquait déjà en silence
+/// (`default-src` ne portait pas non plus `blob:`) : la boucle du propriétaire
+/// est le symptôme d'un défaut préexistant, pas une régression de comportement
+/// pur — mais une régression de VISIBILITÉ suffit à casser une fonctionnalité
+/// livrée (G5), et c'est bien ce qui s'est produit.
+///
+/// ⚠️ CE QUE `blob:` ADMET ICI, ET POURQUOI C'EST ACCEPTABLE : une origine
+/// `blob:` n'est pas un tiers — c'est une URL que LA PAGE ELLE-MÊME fabrique,
+/// à partir d'octets qu'ELLE a construits (`new Blob([JSON.stringify(...)])`),
+/// et qu'aucune requête réseau ne peut produire depuis l'extérieur : un
+/// attaquant qui n'a pas déjà de JavaScript actif dans cette origine ne peut
+/// pas faire naviguer `<link rel="manifest">` vers une `blob:` de son choix.
+/// Admettre `manifest-src blob:` revient donc à dire « je fais confiance à ce
+/// que MON script produit », pas « je fais confiance à une origine externe » —
+/// c'est la même confiance que `script-src 'self'` accorde déjà à tout le
+/// code de cette page, un cran plus bas. Le risque théorique est qu'une
+/// injection XSS réussie pourrait de toute façon fabriquer sa propre `blob:`
+/// (ou pire, exécuter du script directement) : `manifest-src blob:` n'ouvre
+/// donc aucune surface qu'une XSS n'ouvrirait pas déjà. **Acceptable.**
 export const CSP =
     "default-src 'self'; connect-src 'self' wss: https:; img-src 'self' data: blob:; " +
     "media-src 'self' blob:; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
-    "font-src 'self'; manifest-src 'self'; frame-ancestors 'none'; base-uri 'self'; " +
+    "font-src 'self'; manifest-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; " +
     "form-action 'self'";
 
 export const ENTETES_DOCUMENT: Readonly<Record<string, string>> = Object.freeze({
