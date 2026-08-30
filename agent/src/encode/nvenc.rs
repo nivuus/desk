@@ -78,6 +78,15 @@ pub mod tampons;
 #[path = "nvenc/fonctions.rs"]
 pub mod fonctions;
 
+/// La session d'encodage elle-meme. **Le SEUL fichier du sous-arbre NVENC
+/// qui ait besoin de Windows** : tout le reste -- regle de choix, ABI,
+/// dispositions -- se teste sur l'hote. Il vit ici plutot que sous
+/// `encode.rs` pour que la frontiere d'attribution de la notice de licence
+/// reste UN seul sous-arbre.
+#[cfg(windows)]
+#[path = "nvenc/session.rs"]
+pub mod session;
+
 /// L'identifiant de vendeur PCI de NVIDIA.
 ///
 /// Relevé sur la VM cible plutôt que recopié d'une liste : la sonde du lot 31
