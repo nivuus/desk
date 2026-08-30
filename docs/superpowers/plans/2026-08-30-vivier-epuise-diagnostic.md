@@ -595,3 +595,111 @@ Payload `console` : `d34213d8…` → **`b490ed67…`**, déposé par
 `hooks/agent_payload.py`, **identique à ma fabrication** (`cmp`). VM : même
 binaire, relancé par la tâche de l'appliance, **session 1**, `APPARTENANCE`
 retirée du script (donc **armée**). `install` **non rejoué**.
+
+---
+
+## 17. CLÔTURE — les trois réfutations, dans l'ordre où elles sont tombées
+
+C'est la pièce la plus utile de ce document. Trois hypothèses plausibles, trois
+mesures, trois abandons, et la bonne cible trouvée **en dernier**.
+
+### ① « Le critère de fenêtre est incomplet » — réfutée par LECTURE puis par MESURE
+
+**Le cadrage** disait qu'il manquait un critère, et nommait l'occultation DWM
+comme « celle qu'on oublie ». **Lu** (§ 2) : `merite_une_fenetre` **la porte
+déjà**, avec trois autres, et il est pur et testé depuis l'origine.
+
+**Puis mesuré** (§ 3) : `DesktopWindowXamlSource`, la fenêtre technique qu'une
+règle d'exclusion aurait visée, **n'apparaît à AUCUNE cadence** — ni à 2 s, ni
+à 150 ms — alors que la page-shell en avait reçu un refus. **Une règle
+d'exclusion fondée sur elle aurait exclu une chose que le relevé ne montre pas,
+c'est-à-dire une règle qu'on n'aurait jamais pu voir rouge.**
+
+### ② « Le critère est consulté trop tôt » — **la mienne**, réfutée par ma propre sonde
+
+J'avais **déduit par lecture** que le crochet évaluait le prédicat sur
+`EVENT_OBJECT_SHOW`, avant que DWM n'occulte — et je l'avais écrit **« établi »**.
+
+**Réfutée** (§ 4) par une sonde à **15 ms**, 1641 échantillons, pendant un
+parcours produisant le refus : les **six** fenêtres rendent `passant_ms = -1`,
+c'est-à-dire qu'**aucune ne cesse jamais de passer**. Rien à décanter. La
+conception que j'avais proposée — et que le coordinateur avait retenue — tombe
+avec.
+
+⚠️ **C'est la leçon de `placement.rs:4-7`, repayée par moi : une cause
+« établie par lecture » n'est pas établie.** J'ai écrit *établie* là où il
+fallait *déduite*.
+
+### ③ « Les sorties fuient » — réfutée par le comptage
+
+**Réfutée** (§ 11) : 458 créées / 312 détruites sur le journal entier, mais
+**zéro** échec de destruction — et, sur la vie courante de l'agent **sans
+aucun arrêt brutal**, **10 créées pour 10 sessions réellement servies**. **La
+fuite en régime est de zéro.** Les 146 non détruites sont réparties sur les
+vies antérieures et s'expliquent par l'arrêt brutal — **mon propre sillage**,
+des dizaines de `Stop-Process -Force`.
+
+### La bonne cible, trouvée en dernier
+
+**Le NOMBRE de fenêtres adoptées.** Dix fenêtres légitimement adoptées, pour un
+vivier de dix — le pilote refuse la onzième. C'est l'hypothèse **H1** du § 12,
+et c'est exactement la règle que le propriétaire avait tranchée de son côté,
+sans que les deux se soient vus.
+
+---
+
+## 18. Ce que la production porte — et **à deux niveaux de preuve différents**
+
+🔴 **Ne pas les lire au même niveau.**
+
+| Ce qui tourne | Niveau de preuve |
+| --- | --- |
+| **Règle d'appartenance** (axe B) | 🔵 **MESURÉE des deux côtés** : armé 18 écartées / 5 sorties / **0 refus** ; désarmé 0 écartée / 10 sorties / **7 refus**. Témoin dans le même relevé : les applications du catalogue servies. |
+| **Verdict de purge** (`verdict_purge.rs`) | 🔵 **Testé sur l'hôte, vu rouge** par mutation. Les deux relevés qui criaient à tort sont figés comme cas de test. |
+| **Reprise de rattachement** (lot 32E) | 🔴 **NON DÉMONTRÉE.** Trois bras verts, **`on RÉESSAIE` = 0 dans les trois** : la reprise n'a **jamais tiré**. C'est une **non-régression**, pas une preuve. Le binaire de production porte donc **un remède non démontré**, strictement additif et sans régression sur trois bras. |
+| **Désignation de sortie** (lot 32) | 🔵 Mesurée : `chemin ① = 1`, `nom_designe="\\.\DISPLAY5"` sur une cible forcée. |
+| **Encodeur NVENC natif** (lot 31) | 🔵 Mesuré par `framesDecoded` : **+494** et **+484** sur 25 s. |
+
+---
+
+## 19. Ce qui reste NON ÉTABLI — conservé mot pour mot
+
+- 🔴 **La reprise de rattachement n'a jamais tiré** : elle est plausible,
+  bornée, sans régression ; **elle n'est pas démontrée** (§ 18).
+- 🔴 **Une application du Windows Store ne serait pas adoptée** : elle paraît
+  sous `ApplicationFrameHost`, qui ne descend pas de nous. 🔵 Elle ne serait
+  **pas muette** — le refus est journalisé, nommé, et dit comment désarmer.
+  ⚠️ **Aucune du catalogue n'est dans ce cas aujourd'hui** (41 raccourcis
+  Win32, `Calculator` = `win32calc.exe`). **Le risque est repoussé, pas
+  supprimé.**
+- ⚠️ **Un lancement qui REJOINT UNE INSTANCE EXISTANTE ne rend aucun handle**,
+  donc n'est pas inscrit au job, donc ses fenêtres ne sont **pas adoptées**.
+  Un `warn!` le dit. **Ce cas mordra un jour sur une application réelle** —
+  Chrome sans `--user-data-dir` distinct le fait, ce dépôt l'a déjà relevé, et
+  c'est le premier endroit où regarder si une application « ne paraît plus ».
+- ⚠️ **La course de l'assignation** : un descendant né entre le retour de
+  `ShellExecuteExW` et `AssignProcessToJobObject` échapperait au job. Nommée,
+  bornée à un appel système, et **bruyante** si elle mord.
+- 🔴 **PERSONNE N'A JAMAIS REGARDÉ UNE IMAGE.** Le juge dit que des images
+  arrivent et à quelle cadence ; **rien sur ce qu'elles montrent**. Aucun
+  jugement visuel n'a été porté, d'un bout à l'autre de ce chantier.
+- 🔴 **La latence de bout en bout n'a jamais été mesurée**, depuis D1.
+- 🔴 **La chaîne complète par `app.allanic.me` n'a pas été éprouvée** :
+  l'OAuth exige un humain. C'est au propriétaire, et c'est le seul contrôle
+  qui reste.
+- ⚠️ **`ensure_active` n'empêche pas mesurément la désactivation par Apollo**
+  (lot 32C) : sémantique documentée, comportement non mesuré.
+
+---
+
+## 20. L'état final
+
+| | |
+| --- | --- |
+| Agent en production | `b490ed67…`, session 1, `APPARTENANCE` **armée** |
+| Payload `console` | même binaire, déposé par `hooks/agent_payload.py` |
+| Apollo | `Running`, `dd_configuration_option = ensure_active` |
+| Sorties virtuelles | **0** SudoVDA active au repos |
+| Sondes | toutes supprimées |
+| `desk-plateforme` | **active**, `NRestarts=0`, `GET /` → **200** |
+| Dépôt `installer` | **seul** `console/guest/payload/agent/agent.exe` est de moi, non commité (travail concurrent) |
