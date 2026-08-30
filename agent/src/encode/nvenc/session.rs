@@ -1,12 +1,17 @@
 //! La session NVENC : charger la porte, l'ouvrir sur notre périphérique
 //! D3D11, encoder une texture, relire le flux.
 //!
-//! 🔴 **CE MODULE N'A JAMAIS TOURNÉ.** Il compile pour la cible ; il n'a été
-//! exécuté sur aucune machine. La VM appartenait à un autre lot au moment où
-//! il a été écrit. **Tout ce qu'il affirme sur le comportement de NVENC vient
-//! de l'en-tête ou d'une mesure faite sur Apollo, jamais d'une mesure faite
-//! sur CE code.** Ce que la recette du document de résultats doit trancher
-//! est exactement cela.
+//! 🟢 **CE MODULE A TOURNÉ**, le 30 août 2026, sur la VM cible : la porte
+//! s'ouvre, la session s'initialise, et l'encodage rend **1195 unités
+//! d'accès en 10 s**. L'en-tête de ce fichier a porté « ce module n'a jamais
+//! tourné » entre son écriture et cette mesure — c'était vrai alors, et
+//! l'effacer sans le dire aurait fait disparaître la seule chose qui
+//! distinguait une conception d'un fait.
+//!
+//! ⚠️ **CE QUI N'EST TOUJOURS PAS ÉPROUVÉ ICI** : le mode synchrone à
+//! **plusieurs encodeurs** (le banc n'en ouvre qu'un), la reconfiguration de
+//! débit (`regler_debit` n'a **jamais** été appelée sur la machine), et le
+//! chemin d'erreur de chaque appel. Ce qui a couru est la voie NOMINALE.
 //!
 //! ⚠️ **`#[cfg(windows)]` chez son parent, qui est pur** : c'est l'inverse du
 //! motif habituel, et c'est voulu. Tout le chemin NVENC vit sous

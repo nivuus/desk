@@ -6,8 +6,14 @@
 //! vit sous `encode_nvenc`, et **rien de la notice de licence ne déborde
 //! ici**.
 //!
-//! 🔴 **CE CHEMIN N'A JAMAIS ENCODÉ UNE IMAGE.** Comme `session.rs`, il
-//! compile pour la cible et n'a tourné nulle part au moment où il est écrit.
+//! 🟢 **CE CHEMIN A ENCODÉ**, mesuré sur la VM le 30 août 2026 : **1195
+//! unités d'accès en 10 s** sur le périphérique de capture réel, porté par
+//! l'adaptateur NVIDIA — là où la MFT rendait `0x8000FFFF` et **aucune**
+//! unité. ⚠️ **Ce qui n'est PAS établi pour autant**, et qu'il ne faut pas
+//! lire dans la ligne ci-dessus : aucune image n'est arrivée à un navigateur
+//! (`framesDecoded` non relevé), le plafond à **N fenêtres** n'est pas
+//! mesuré — le banc n'ouvre qu'un encodeur — et **personne n'a regardé une
+//! image**. Voir le § 11 du document de résultats.
 //!
 //! ## Deux différences de fond avec le chemin MFT, et pourquoi elles sont sûres
 //!
