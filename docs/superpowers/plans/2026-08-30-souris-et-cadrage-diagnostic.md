@@ -735,3 +735,80 @@ ne dépend des deux autres.**
 
 **Rien n'a été cassé** : l'ancien binaire est resté en place tout du long, et le
 bras d'AVANT a donc été mesuré sur le bon binaire.
+
+---
+
+## 15. M3 DÉCIDÉE — **réfutée**, et la vraie cause est ailleurs
+
+Le binaire déployé porte la trace `hwnd` / `fenetre_vivante`. La rafale a été
+**provoquée** en ouvrant plusieurs applications du catalogue.
+
+### 15.1 Le verdict
+
+| Relevé | Valeur |
+| --- | --- |
+| replacements pendant la rafale provoquée | **99** puis **175** |
+| dont `fenetre_vivante=false` | **0** |
+| dont `fenetre_vivante=true` | **tous** |
+
+🔴 **M3 est RÉFUTÉE** : le `hwnd` que la table croit sien est **vivant**, à
+l'instant même du replacement. L'hypothèse « une seule cause pour les deux
+faits » tombe.
+
+### 15.2 M1 et M2 tombent aussi — interrogées directement
+
+```
+HWND=0x190360  IsWindow=True  VISIBLE=True  ICONIC=False  CLOAKED=0
+               WS_VISIBLE=True  rect=1280x720+8148+31
+               classe='UIRibbonWorkPane'  titre='Ribbon'
+HWND=0x2A03C8  (idem)  rect=1280x720+26748+31
+```
+
+- **M1** (`ShowWindow` échoue et le `let _` l'avale) : sans objet — la fenêtre
+  n'est **pas** minimisée (`ICONIC=False`), il n'y a rien à restaurer.
+- **M2** (quelque chose la re-minimise entre deux tours) : **réfutée par
+  l'échantillonnage**. Sonde à **50 ms pendant 25 s** — 500 relevés — alors que
+  le produit émettait un `SetWindowPos` **par seconde** : **AUCUN changement de
+  rectangle**, sur aucune fenêtre. **Ce n'est pas un aller-retour : la fenêtre
+  ne bouge pas du tout.**
+
+### 15.3 🔵 CE QUE C'EST VRAIMENT : `UIRibbonWorkPane`
+
+Les fenêtres que le produit poursuit sont des **panneaux de ruban de Paint** —
+classe `UIRibbonWorkPane`, titre `Ribbon`. Elles passent le critère
+`merite_une_fenetre` **sans le tromper** : visibles, sans propriétaire, titre
+non vide, ni `TOOLWINDOW` ni occultées. Et elles appartiennent bien à `desk`
+(Paint a été lancé par lui), donc **la règle d'appartenance ne les écarte pas
+non plus** — elle n'était pas faite pour ça.
+
+**Elles sont simplement IMMOBILES** : `SetWindowPos` rend un succès et ne les
+déplace pas. Le contrôle périodique les repoursuit **chaque seconde**, jusqu'à
+la fin de la session.
+
+⚠️ **Et le `+31` en y** est la position du panneau sous l'origine de sa sortie —
+le même ordre de grandeur que le `+51` observé sur d'autres fenêtres, mais
+**ce n'est pas la même chose** et il ne faut pas les confondre.
+
+### 15.4 Ce qui reste ouvert, et ce qui a changé de nature
+
+| Fait | État |
+| --- | --- |
+| La rafale de replacements | **EXPLIQUÉE** : des fenêtres immobiles poursuivies indéfiniment par un contrôle qui ne juge `poser` que sur son `Result` |
+| Le `-32000,-32000` du lot 32M | 🔴 **TOUJOURS PAS EXPLIQUÉ, ET DISTINCT** — les fenêtres d'aujourd'hui ne sont pas minimisées. Ce cas-là ne s'est **pas reproduit** |
+| `SetWindowPos` qui réussit sans déplacer | **CONFIRMÉ par mesure directe** (50 ms, 500 relevés, zéro mouvement) |
+
+🔴 **Le remède évident — relire après `poser`, et borner — n'est PAS écrit** :
+il n'est pas autorisé, et il aura sa tâche avec sa mesure. **Ce diagnostic lui
+donne son critère** : la relecture doit constater l'immobilité et **cesser de
+poursuivre**, plutôt que de journaliser une intention chaque seconde.
+
+### 15.5 ⚠️ Un instrument qui a rendu un vide qui n'était pas une mesure
+
+La première version de la sonde de suivi **imprimait depuis le callback**
+d'`EnumWindows`. **Les chaînes émises dans un callback appelé par du code natif
+ne rejoignent pas le pipeline PowerShell** : le relevé est sorti **vide** alors
+que 175 replacements couraient au même instant. Corrigée en accumulant dans une
+liste et en imprimant à la fin.
+
+**Un vide n'est une mesure que si l'instrument peut rendre non-vide.** C'est la
+règle de ce dépôt, et je l'ai reprise en flagrant délit sur mon propre outil.
