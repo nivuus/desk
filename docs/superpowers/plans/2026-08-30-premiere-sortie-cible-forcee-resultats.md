@@ -426,3 +426,141 @@ package : hors périmètre, la décision appartient au propriétaire.**
    `package-nivuus`, parce qu'un legs qui ne vit que dans un relevé daté est
    un legs perdu.
 3. **Mesurer plusieurs fenêtres sans VGA** — le bras C n'en a servi qu'une.
+
+---
+
+## 8. Enquête — « une sortie créée que Windows ne nomme jamais » (lot 31)
+
+Le lot 31 a buté sur ce chemin en montant sa recette d'encodeur : sortie créée
+à **780×492**, jamais nommée, `designee=""` **et** `candidates=[]`. Trois
+questions m'ont été posées dans l'ordre ; voici les réponses **mesurées**.
+
+### 8.0 🔴 Deux pièges de MÉTHODE, payés avant la première conclusion
+
+**① J'ai failli lire MON PROPRE échec en croyant lire celui du lot 31.**
+`C:\nivuus\agent.log` porte 52 000 lignes ; sa dernière occurrence de « la
+cible n'a jamais été nommée » est datée `16:26`, avec `demande="1860x1080"` et
+les sessions `w-6`…`w-8` — **c'est mon bras B**, pas le lot 31. Le lot 31
+écrivait dans un journal séparé, `C:\nivuus\lot31\agent-lot31.log`, et
+**`agent.log` ne contient AUCUN `780x492`**. C'est le piège de `CLAUDE.md`
+(« un agent survivant tient `agent.log` ») sous une forme neuve : **deux
+journaux distincts, et le plus récent des deux échecs était le mien.**
+⚠️ **Ce qui a tranché est une donnée du relevé lui-même** — le viewport et les
+numéros de session —, pas la date.
+
+**② UN MARQUEUR AJOUTÉ PAR `Add-Content` DANS UN JOURNAL TENU PAR UN AGENT
+VIVANT EST SILENCIEUSEMENT PERDU.** `Add-Content` a rendu la main sans erreur,
+et le marqueur n'existait pas : l'agent tient le fichier par un `StreamWriter`
+qui écrit à SA position et recouvre ce qu'un autre processus a ajouté. Mes
+bras précédents marchaient parce que l'agent était **arrêté** quand je posais
+le marqueur. **Segmenter par HORODATAGE quand l'agent tourne**, jamais par
+marqueur. Détecté parce que le relevé rendait 52 282 lignes « du bras » —
+c'est-à-dire tout le journal.
+
+### 8.1 ① Régression de la voie C, ou défaut distinct ? — **DÉFAUT DISTINCT**
+
+Trois pièces, dont deux mesurées après coup :
+
+- 🔵 **Le produit d'AVANT la voie C sert 780×492 sans broncher.** Le binaire de
+  production est resté celui d'hier — vérifié par ses chaînes : il porte
+  `aucune sortie apparue ne peut servir` (l'ancienne) et **pas**
+  `aucune sortie candidate` (la neuve). Sur lui, viewport `780x492` :
+  **`ouvertes=2 refus=0 tenues=1`**, deux sorties créées, attachées, servies
+  sur `DISPLAY6` et `DISPLAY7`.
+- 🔵 **L'A/B explicite, sur MON binaire, au même viewport** :
+
+  | Bras | créées | chemin ① | chemin ② | refus | verdict |
+  | --- | --- | --- | --- | --- | --- |
+  | désignation **armée** | 5 | **5** | 0 | **0** | VERT |
+  | `SORTIE_DESIGNEE=0` | 6 | 0 | **6** | **0** | VERT |
+
+  Les deux chemins servent. **La voie C ne fait aucune différence ici**, et le
+  bras désarmé — qui *est* le produit d'hier — ne rougit pas davantage.
+- 🔵 **Le relevé du lot 31 le disait déjà** : `candidates=[]` signifie que le
+  **repli** ne trouvait rien non plus. Et la topologie à l'expiration porte
+  `nombre=1` — le **total** des sorties DXGI, attachées ou non —, inchangé
+  avant et après la création. **La sortie n'entrait pas du tout dans la
+  topologie** : aucune règle d'appariement, ni l'ancienne ni la nouvelle, ne
+  pouvait la voir.
+
+**Verdict : la voie C est hors de cause, et ce n'est pas un défaut de `desk`.**
+
+### 8.2 ② Ce qui différait — **Apollo, et son `ensure_only_display`**
+
+Ce n'est **pas** la taille (§ 8.1), et ce n'est pas la limite d'attente : une
+sortie qui n'apparaît jamais dans la topologie n'apparaîtra pas davantage en
+attendant plus longtemps. La différence est **environnementale**, et elle est
+nommée dans la configuration de la VM :
+
+```
+C:\Program Files\Apollo\config\sunshine.conf
+  # Deactivate every other display and stream the virtual one alone.
+  dd_configuration_option = ensure_only_display
+```
+
+et dans le journal d'Apollo :
+
+```
+[19:42:38] Info: config: 'dd_configuration_option' = ensure_only_display
+[19:42:48] Info: Creating a temporary virtual display to probe for encoders...
+```
+
+🔴 **Apollo crée ses propres sorties SudoVDA et DÉSACTIVE toutes les autres.**
+Le lot 31 mesurait précisément Apollo ; sa topologie portait une `\\.\DISPLAY6`
+préexistante à **2410×1080** — ni la nôtre (la purge inter-processus du
+démarrage a balayé les seize GUID du gabarit et **n'a rien retiré**), ni un
+écran physique. C'est la sortie d'Apollo.
+
+🔵 **`montee.rs` connaissait déjà ce comportement et le nomme** : son garde
+`disparues`/`parues` a été écrit contre « le remplacement qu'Apollo faisait par
+son réglage `ensure_only_display` ». **La sonde de banc voyait ce que le
+produit subit.**
+
+⚠️ **Ce que je n'ai PAS reproduit** : je n'ai pas rejoué une session Apollo
+active pour observer le retrait en direct. Apollo tournait pendant mes trois
+tests verts (`ApolloService Running`, `sunshine` pid 7372) **sans session**, et
+n'a rien gêné. **L'explication repose donc sur la configuration, le journal
+d'Apollo et la topologie du lot 31 — pas sur une reproduction.** Elle est dite
+comme telle.
+
+### 8.3 ③ Le registre — **ce n'est pas mon sillage**
+
+Le registre porte bien de nombreuses clés `…mesureN…` sous
+`GraphicsDrivers\Configuration`, héritées de toutes les campagnes. **Mais le
+symptôme de cette pollution, établi par le lot 22, est une sortie qui PARAÎT à
+la mauvaise taille** — ici elle ne paraît **pas du tout**. Et le produit
+d'hier, sur ce même registre, sert `780×492` correctement (§ 8.1). **La
+pollution du registre n'explique pas cet échec**, et ma campagne n'est pas en
+cause.
+
+⚠️ `2410×1080` figure dans la liste des tailles polluées relevées par le lot 22
+— **c'est une coïncidence de valeur, pas une preuve** : ici cette taille est
+celle de la sortie d'Apollo, vivante et attachée, pas d'une sortie née à une
+mauvaise taille.
+
+### 8.4 Ce que cette enquête N'établit PAS
+
+- **qu'Apollo est bien la cause**, au sens d'une reproduction : je n'ai pas
+  rejoué une session Apollo active (§ 8.2). La chaîne d'indices est forte et
+  concordante ; ce n'est pas une mesure du mécanisme ;
+- **que le produit devrait s'en défendre.** Deux clients qui pilotent le même
+  pilote d'affichage avec des politiques opposées est un conflit de
+  configuration, pas un défaut de code — **la décision appartient au
+  propriétaire** (couper `ensure_only_display`, ou ne pas faire tourner les
+  deux ensemble) ;
+- **rien sur la limite de 5 s** : elle n'a pas été mise en cause, donc pas
+  éprouvée. Si un cas d'attente légitime apparaît un jour, il reste à mesurer.
+
+### 8.5 L'état dans lequel la VM est rendue
+
+| Ce qui a été touché | État final | Preuve |
+| --- | --- | --- |
+| `agent.exe` | **l'original**, depuis la copie nommée | sha256 `7DB1C0FA…74C3` |
+| `run-agent.ps1` | `SORTIE_DESIGNEE` retirée | 0 occurrence relue |
+| Définition libvirt | **jamais touchée** — le retrait du VGA n'a pas été reconduit | VGA présent au `dumpxml` |
+| Agent | 3 processus vivants | `Get-Process agent` |
+| VM | en exécution | `virsh list --all` |
+
+**Aucune sortie virtuelle laissée** : les trois tests se sont terminés par des
+sessions servies puis fermées, et le superviseur purge au démarrage
+(`superviseur.rs:72`).

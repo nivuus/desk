@@ -1,0 +1,83 @@
+{
+  "etiquette": "B-780x492-voieC-armee",
+  "instant": "2026-08-30T17:54:02.764Z",
+  "viewport": "780x492",
+  "messages": [
+    {
+      "ms": 7,
+      "type": "ice-config"
+    },
+    {
+      "ms": 94,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-1",
+      "titre": "This PC - File Explorer"
+    },
+    {
+      "ms": 95,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-2",
+      "titre": "Untitled - Notepad"
+    },
+    {
+      "ms": 6263,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-3",
+      "titre": "Untitled - Notepad"
+    },
+    {
+      "ms": 6264,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-4",
+      "titre": "Install"
+    },
+    {
+      "ms": 6264,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-5",
+      "titre": "Dismiss"
+    }
+  ],
+  "vm": "677a3953-14c7-4364-92c3-bd17ecddf8d2",
+  "etat_vm": "prete",
+  "session": "3sxuA9dd56NpVdHi37R86g:bureau",
+  "lancement": {
+    "nom": "Notepad",
+    "id": "7f2a7df5-765f-4f6c-b5c8-485e8c1a4e19",
+    "statut": 200,
+    "reponse": {
+      "issue": "raccourci"
+    },
+    "ms": 6153
+  },
+  "compte_fenetre_ouverte": 5,
+  "compte_refus": 0,
+  "motifs_de_refus": [],
+  "titres": [
+    "This PC - File Explorer",
+    "Untitled - Notepad",
+    "Untitled - Notepad",
+    "Install",
+    "Dismiss"
+  ],
+  "sessions_apres_lancement": [
+    "3sxuA9dd56NpVdHi37R86g:w-3",
+    "3sxuA9dd56NpVdHi37R86g:w-4",
+    "3sxuA9dd56NpVdHi37R86g:w-5"
+  ],
+  "tenues": [
+    {
+      "session": "3sxuA9dd56NpVdHi37R86g:w-3",
+      "titre": "Untitled - Notepad"
+    },
+    {
+      "session": "3sxuA9dd56NpVdHi37R86g:w-4",
+      "titre": "Install"
+    },
+    {
+      "session": "3sxuA9dd56NpVdHi37R86g:w-5",
+      "titre": "Dismiss"
+    }
+  ],
+  "verdict": "VERT"
+}

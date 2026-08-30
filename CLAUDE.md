@@ -666,6 +666,18 @@ indépendants : ce sont eux qui coûtent.
   la tentative **précédente** en croyant lire le sien. **`Get-Process agent`
   avant CHAQUE tentative, y compris échouée** — c'est aussi ce qui fait échouer
   `link.exe` en 1104 / `os error 5`.
+  🔴 **ET IL EN EXISTE PLUSIEURS : le journal le plus récent n'est pas
+  forcément celui qu'on cherche.** Un lot qui monte sa propre recette écrit
+  ailleurs (`C:\nivuus\lot31\agent-lot31.log`), et la dernière occurrence
+  d'une erreur dans `agent.log` peut être **la sienne propre**, vieille d'une
+  heure. **Trancher sur une DONNÉE du relevé** — le viewport demandé, le
+  numéro de session —, jamais sur la seule date.
+  🔴 **UN MARQUEUR ÉCRIT PAR `Add-Content` DANS UN JOURNAL TENU PAR UN AGENT
+  VIVANT EST SILENCIEUSEMENT PERDU** : l'agent le tient par un `StreamWriter`
+  qui écrit à SA position et recouvre l'ajout, et `Add-Content` rend la main
+  sans erreur. Poser un marqueur **quand l'agent est ARRÊTÉ** ; s'il tourne,
+  **segmenter par HORODATAGE**. Le symptôme est un « bras » qui compte tout le
+  journal.
 - 🔴 **UN RELEVÉ WinRM EST CELUI DE LA SESSION 0**, jamais de la session
   interactive : identité, intégrité, presse-papier, audio et périphériques y
   diffèrent. **Tout ce qui dépend de la session passe par une tâche planifiée
