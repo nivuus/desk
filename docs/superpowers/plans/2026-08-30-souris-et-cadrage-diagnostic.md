@@ -480,3 +480,92 @@ visible (§ 8.1) — **une seule cause pour les deux faits**.
 - ⚠️ **le cadrage n'est pas touché** : décision de D9, deux Critiques ouvertes
   à dessein, et rétablir l'accord fenêtre/sortie les rouvrirait. **Cette
   décision appartient au propriétaire.**
+
+---
+
+## 10. M3 éprouvé — **NON DÉCIDÉ**, et je dis pourquoi plutôt que de conclure
+
+M3 était : *le `hwnd` que la table croit sien est périmé*, ce qui expliquerait
+**à la fois** le `SetWindowPos` qui « réussit » sans effet et la lecture d'un
+rectangle de fenêtre minimisée. Une seule cause pour deux faits — c'est
+pourquoi elle méritait d'être éprouvée en premier.
+
+### 10.1 Ce que la sonde a rendu (session 1, lecture seule)
+
+| Relevé | Valeur |
+| --- | --- |
+| `IsWindow(0x180360)` — un `hwnd` du journal de 20:17 | **false** |
+| `IsWindow(0x1A064A)` — l'autre | **false** |
+| fenêtres de premier niveau, session 1 | **126** |
+| fenêtres à `-32000,-32000` | **0** |
+| dernier `fenêtre sortie de sa sortie` | **20:20:51** |
+
+### 10.2 🔴 Pourquoi cela ne décide RIEN
+
+**Mes observations sont séparées du phénomène par une vingtaine de minutes.**
+
+- Les deux `hwnd` `IsWindow=false` **ne prouvent pas** qu'ils étaient périmés
+  quand l'agent s'en servait : ils datent de 20:17, et ces fenêtres ont
+  simplement **fermé depuis**. Conclure de leur invalidité *aujourd'hui* à
+  leur invalidité *alors* serait exactement le défaut que ce chantier a
+  dénoncé trois fois — **un relevé daté n'est pas une mesure du présent, et
+  l'inverse n'est pas plus vrai.**
+- **Zéro fenêtre à `-32000`** aujourd'hui est **cohérent** avec le fait que le
+  phénomène a cessé — ce n'est pas une réfutation de M2 ni de M1.
+
+**Ce qui déciderait** : une corrélation **simultanée** — pendant qu'une ligne
+`de="…-32000…"` s'écrit, interroger `IsWindow` sur le `hwnd` de CETTE session.
+⚠️ Le `hwnd` de la table **n'est journalisé nulle part** ; il faudrait soit
+l'ajouter à la trace de replacement (une ligne), soit lire `FENETRE_HWND` dans
+l'environnement de l'enfant. **Ni l'un ni l'autre n'est fait** : le premier est
+une modification du produit, que je n'ai pas à écrire ici.
+
+### 10.3 🔵 Un fait neuf qui CORRIGE ma propre affirmation
+
+J'ai écrit au § 8.1 que la boucle retentait **« indéfiniment »**. **C'est
+faux, et la mesure le montre** : la dernière trace de replacement est à
+**20:20:51**, identique avant et après une sonde de seize secondes lancée
+vingt minutes plus tard. **La rafale des 587 lignes était BORNÉE** — elle a
+cessé d'elle-même, très probablement avec la fin de la session `w-10`.
+
+⚠️ **Ce que cela change au diagnostic** : ce n'est pas « une boucle qui tourne
+à vide en permanence sur une machine dont quelqu'un se sert », c'est **une
+rafale d'une à trois minutes liée à une session**. Moins grave, et il faut le
+dire — j'avais forcé le trait.
+
+⚠️ **Ce que cela ne change pas** : le mécanisme reste celui du § 8.1 —
+`poser` n'est jugé que sur son `Result`, jamais sur une relecture. La rafale
+s'arrête parce que la **session** s'arrête, pas parce que le produit constate
+quoi que ce soit.
+
+### 10.4 L'état des trois hypothèses
+
+| # | État |
+| --- | --- |
+| **M1** `ShowWindow` échoue et le `let _` l'avale | **non éprouvée** — demande de journaliser son retour |
+| **M2** quelque chose re-minimise entre deux tours | **non éprouvée** — demande un échantillonnage à ~15 ms *pendant* le phénomène |
+| **M3** le `hwnd` est périmé | 🔴 **NON DÉCIDÉE** — le phénomène a cessé avant que je puisse corréler |
+
+**Aucune n'est écartée. Aucune n'est confirmée.** Le phénomène est
+**intermittent et lié à une session**, donc reproductible seulement en en
+ouvrant une — ce que je n'ai pas fait, le propriétaire se servant de la
+machine.
+
+---
+
+## 11. Le bras « AVANT » de la mesure du curseur existe déjà, sous deux formes
+
+⚠️ **Il serait injuste de présenter la mesure sur la VM comme la seule
+preuve.** Le décalage est déjà établi par **deux pièces indépendantes** :
+
+1. 🔵 **Le test d'hôte** `la_formule_d_avant_rend_le_decalage_releve_de_1288_et_51`,
+   qui **reproduit** le décalage à partir des rectangles relevés dans le
+   journal de production ;
+2. 🔵 **Le témoignage du propriétaire**, qui a vu ses clics tomber à côté —
+   c'est lui qui a rapporté le symptôme.
+
+**La mesure du curseur sur la VM serait une TROISIÈME pièce** : précieuse,
+parce qu'elle mesurerait l'effet réel plutôt que la formule, mais **non
+décisive à elle seule** et **non nécessaire** pour établir le défaut. Ce
+qu'elle apporterait de propre : le bras **AVANT**, qui **disparaît au
+déploiement** et n'existera plus jamais.
