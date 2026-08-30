@@ -1,0 +1,100 @@
+{
+  "etiquette": "sans-apollo",
+  "instant": "2026-08-30T18:49:43.921Z",
+  "viewport": "1280x720",
+  "messages": [
+    {
+      "ms": 7,
+      "type": "ice-config"
+    },
+    {
+      "ms": 91,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-18",
+      "titre": "Steam"
+    },
+    {
+      "ms": 583,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-19",
+      "titre": "Chrome Legacy Window"
+    },
+    {
+      "ms": 6254,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-20",
+      "titre": "Untitled - Notepad"
+    },
+    {
+      "ms": 6255,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-21",
+      "titre": "Install"
+    },
+    {
+      "ms": 6256,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-22",
+      "titre": "Dismiss"
+    },
+    {
+      "ms": 6264,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-19"
+    },
+    {
+      "ms": 6842,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-23",
+      "titre": "Chrome Legacy Window"
+    }
+  ],
+  "vm": "677a3953-14c7-4364-92c3-bd17ecddf8d2",
+  "etat_vm": "prete",
+  "session": "3sxuA9dd56NpVdHi37R86g:bureau",
+  "lancement": {
+    "nom": "Notepad",
+    "id": "7f2a7df5-765f-4f6c-b5c8-485e8c1a4e19",
+    "statut": 200,
+    "reponse": {
+      "issue": "raccourci"
+    },
+    "ms": 6203
+  },
+  "compte_fenetre_ouverte": 6,
+  "compte_refus": 0,
+  "motifs_de_refus": [],
+  "titres": [
+    "Steam",
+    "Chrome Legacy Window",
+    "Untitled - Notepad",
+    "Install",
+    "Dismiss",
+    "Chrome Legacy Window"
+  ],
+  "sessions_apres_lancement": [
+    "3sxuA9dd56NpVdHi37R86g:w-20",
+    "3sxuA9dd56NpVdHi37R86g:w-21",
+    "3sxuA9dd56NpVdHi37R86g:w-22",
+    "3sxuA9dd56NpVdHi37R86g:w-23"
+  ],
+  "tenues": [
+    {
+      "session": "3sxuA9dd56NpVdHi37R86g:w-20",
+      "titre": "Untitled - Notepad"
+    },
+    {
+      "session": "3sxuA9dd56NpVdHi37R86g:w-21",
+      "titre": "Install"
+    },
+    {
+      "session": "3sxuA9dd56NpVdHi37R86g:w-22",
+      "titre": "Dismiss"
+    },
+    {
+      "session": "3sxuA9dd56NpVdHi37R86g:w-23",
+      "titre": "Chrome Legacy Window"
+    }
+  ],
+  "verdict": "VERT"
+}

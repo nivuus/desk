@@ -193,3 +193,129 @@ retour en ~5 s), l'une après que j'ai tué `explorer` — geste trop brutal de 
 part, que je n'ai pas répété. La VM n'a jamais cessé de tourner
 (`virsh list --all` à chaque fois), et le VGA étant resté en place, la console
 VNC est demeurée disponible tout du long.
+
+---
+
+## 6. Le DÉPLOIEMENT, et le fait qui contredit le § 1
+
+Autorisation du propriétaire, donnée en connaissance de cause.
+
+### 6.1 Moonlight — réserve LEVÉE, et par qui
+
+🔵 **Moonlight fonctionne après l'assouplissement.** ⚠️ **Établi par le
+PROPRIÉTAIRE, avec son propre client — pas par une mesure de ce lot.** C'est
+exactement la vérification que le § 1.3 disait ne pas pouvoir faire.
+
+🔴 **Cela ne lève PAS l'autre réserve**, et la suite la transforme en constat.
+
+### 6.2 🔴 LE FAIT NEUF : `ensure_active` NE SUFFIT PAS, et c'est mesuré
+
+L'A/B, sur la production, même binaire, même viewport, même instrument, à deux
+minutes d'intervalle :
+
+| Apollo | ouvertes | refus | tenues | verdict |
+| --- | --- | --- | --- | --- |
+| **`ApolloService` Running** (`ensure_active`) | 9 | **7** | **0** | ROUGE |
+| **`ApolloService` Stopped** | 6 | **0** | **4** | **VERT** |
+
+Le motif des refus est mot pour mot celui du défaut :
+`aucune sortie d'affichage ne peut servir cette fenêtre`, avec `designee=""` et
+`candidates=[]` — la sortie créée n'entre jamais dans la topologie.
+
+🔴 **ET AUCUN CLIENT N'ÉTAIT CONNECTÉ** : `Get-NetTCPConnection` sur le
+processus `sunshine` rend **0 connexion établie**. Ce n'est donc pas la
+politique de session (`ensure_only_display`) qui mord ici.
+
+🔵 **Le mécanisme, lu dans le journal d'Apollo** : il **relance sa sonde
+d'encodeur à chaque changement de topologie d'affichage** — `Starting async
+encoder teardown`, `Active GPU has HAGS enabled`, `Display refresh rate`,
+`Client dynamicRange` —, **à une cadence de 5 s exactement**, celle de
+`LIMITE_RATTACHEMENT`. Chaque sortie que notre agent crée déclenche une sonde
+d'Apollo, qui crée et détruit sa propre sortie virtuelle temporaire ; la nôtre
+ne s'attache jamais.
+
+**Conséquence, dite sans ménagement : l'assouplissement décidé par le
+propriétaire N'ATTEINT PAS son but.** Passer de `ensure_only_display` à
+`ensure_active` ne suffit pas à la coexistence — **et la conclusion du lot
+précédent, qui imputait l'échec du lot 31 à `ensure_only_display`, était
+INCOMPLÈTE** : la sonde d'encodeur d'Apollo suffit à elle seule, sans session
+et sans cette politique.
+
+⚠️ **Ce qui reste à décider, et qui appartient au propriétaire** : les deux ne
+peuvent pas tourner en même temps en l'état. `disabled` reste à éprouver, et
+rien ne dit qu'il suffira — la sonde d'encodeur n'est pas gouvernée par
+`dd_configuration_option`.
+
+### 6.3 Ce qui a été livré, et par quel chemin
+
+| Geste | Fait |
+| --- | --- |
+| Fabrication | `scripts/build-agent-croise.sh` depuis l'arbre courant — jamais sur la VM |
+| Dépôt | **par `hooks/agent_payload.py::deposer_agent_console()` lui-même**, chemin **lu** et non deviné : `<NIVUUS_PACKAGES_DIR>/console/guest/payload/agent/agent.exe` |
+| Copie nommée | sha256 **avant** `63491776…21eea` ; **et le fichier est suivi par git** dans le dépôt `installer` (commit `639c3cd`, arbre propre) — le retour est un `git checkout` |
+| Empreinte livrée | `f0ee4f1477c30a16…dcac2`, **identique à ma fabrication** (`cmp`) |
+| Les deux remèdes dans le binaire | `sortie DESIGNEE…` **1**, `porte NVENC` **1**, `session NVENC native initialisée` **1** ; **témoin négatif** (`aucune sortie apparue…`, la formule d'avant) **0** ; chaîne préexistante **1** |
+| VM | binaire déposé (`F0EE4F14…`), relancé **par la tâche `guacamole-agent`**, jamais par `scripts/run-agent.sh` |
+| Session | **`C:\nivuus\state\agent-session.txt` = `1`** — la session 1, attestée par l'appliance elle-même |
+| `install` | 🔴 **NON rejoué** — il refrapperait `PLATEFORME_SECRET_JETON` |
+
+**Les deux remèdes tournent sur le binaire de production**, mesuré au bras vert
+(Apollo arrêté) : **6 sorties créées, chemin ① = 6, chemin ② = 0, 0 refus.**
+⚠️ Les traces `porte NVENC` sont à **0** dans ce relevé, et c'est **normal** :
+l'instrument du lot 22 n'ouvre aucune page de session, donc aucun encodeur
+n'est créé. Elles ont été relevées au § 3, sous le juge.
+
+### 6.4 `AGENT_VM` / `AGENT_SECRET` — le legs est PÉRIMÉ pour cette machine
+
+🔵 **Le couple ATTEINT l'agent réel**, mesuré **sur le processus vivant**, dans
+les deux sens :
+
+```
+agent enrôlé auprès de la plateforme url="ws://192.168.3.1:3445/agent"
+    prefixe=3sxuA9dd56NpVdHi37R86g            ← 1 occurrence
+"AGENT_VM ou AGENT_SECRET absent…"            ← 0 occurrence
+```
+
+⚠️ **Correction à `main.rs` telle qu'on me l'a décrite : il ne REFUSE pas.**
+`SourceIdentite::Aucune` émet un `warn!` et continue **sans canal** — « la
+plateforme REFUSERA la poignée de main et aucune session ne s'établira ». La
+distinction compte : l'agent démarre quand même, et seul le journal le dit.
+
+🔴 **CE QUI RESTE VRAI, ET QU'IL FAUT PORTER AU PROPRIÉTAIRE.** Le couple est
+posé **à la main** dans `C:\nivuus\agent\run-agent.ps1` **de cette machine**.
+L'**asset livré par le package `console`** —
+`console/guest/provision/assets/run-agent.ps1` — ne pose toujours que
+`SIGNALING_URL`, `LOCAL_IP` et `RUST_LOG`. **Une installation NEUVE
+retomberait donc dans le legs.**
+
+**Ce qu'il faudrait écrire, et où** : dans
+`console/guest/provision/assets/run-agent.ps1`, **avant** la ligne
+`& 'C:\nivuus\agent\agent.exe'` (l'ordre est ce qui compte — une variable
+posée après l'invocation n'atteint rien, ce lot l'a payé), deux lignes
+`$env:AGENT_VM` et `$env:AGENT_SECRET` alimentées par ce que `desk activate`
+écrit déjà dans `desk.env` côté hôte. **Non fait : autre package, autre
+dépôt.**
+
+### 6.5 ⑤ Le service de production
+
+| Contrôle | Résultat |
+| --- | --- |
+| `desk-plateforme.service` | **active (running)** |
+| `NRestarts` | **0** — il n'a pas redémarré à cause de moi |
+| `GET http://192.168.3.1:3445/` | **200** |
+| `GET …/shell.html` | **200** |
+
+⚠️ **Je me suis arrêté avant `app.allanic.me`** : l'OAuth exige un humain, et
+c'est le propriétaire qui le franchira. Tout ce qui précède est mesuré **en
+local sur l'hôte de la plateforme**.
+
+### 6.6 L'état rendu
+
+Apollo **Running**, `dd_configuration_option = ensure_active`, `sunshine.conf`
+à **une ligne** de sa copie nommée. Agent : le **binaire neuf**
+(`F0EE4F14…`), 3 processus, session 1. Copie nommée de l'ancien conservée sur
+la VM. VM en exécution, WinRM répond. **Définition libvirt jamais touchée.**
+
+⚠️ **Une coupure WinRM de plus** (connexion refusée, ~75 s), pendant l'arrêt
+d'Apollo. La VM n'a jamais cessé de tourner, et Apollo a été remis en marche
+dès le retour.
