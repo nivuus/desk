@@ -1,0 +1,455 @@
+# Lot 31 — par quelle porte Apollo obtient ses encodeurs, et laquelle reste ouverte à `desk`
+
+**30 août 2026.** Dépôt `desk`, branche `package-nivuus`. VM `Windows`
+(libvirt), **définition inchangée, VGA QEMU en place** — c'est la condition
+dans laquelle Apollo réussit, donc la condition de toute mesure de ce lot.
+
+> 🔴 **CE DOCUMENT NE MODIFIE AUCUN CODE DE PRODUIT.** Les remèdes sont
+> **nommés avec leur `fichier:ligne`** et laissés à la décision du
+> propriétaire du dépôt. Les seuls artefacts écrits sont des **sondes
+> jetables** (`/var/tmp/lot31/`, et `C:\nivuus\lot31\` sur la VM).
+
+---
+
+## 0. Le résultat en une phrase
+
+Apollo n'emprunte **pas** la porte que `desk` emprunte : il appelle l'**API
+NVENC native** (`nvEncodeAPI64.dll`), là où `desk` passe par la **MFT Media
+Foundation de NVIDIA** — et cette MFT, **mesurée aujourd'hui**, refuse de
+s'activer en **session 1** sur cette machine (`0x8000FFFF`) alors qu'elle
+s'active en **session 0**, dans le même binaire, à la même minute, sur les
+quatre arrangements que l'API Media Foundation permet d'essayer.
+
+---
+
+## 1. Ce qui a été MESURÉ
+
+### 1.1 L'instrument
+
+Une sonde jetable, `sonde-mft.exe`, écrite pour ce lot, **hors du dépôt**
+(`/var/tmp/lot31/sonde-mft/`, crate autonome, `windows` 0.62, bâtie en croisé
+mingw `x86_64-pc-windows-gnu`). Elle n'écrit rien : elle énumère, active,
+relâche, imprime. Elle **imprime sa propre session** (`ProcessIdToSessionId`)
+plutôt que de la supposer.
+
+⚠️ **Un piège payé, et consigné parce qu'il se repaiera** : la première
+version liait `MFTEnum2` **statiquement** (`windows_core::link!`). Le symbole
+n'étant pas celui que je croyais, le binaire **ne se chargeait plus du tout**
+— `LastExitCode = -1073741511` (`0xC0000139`, `STATUS_ENTRYPOINT_NOT_FOUND`),
+avant la première ligne de `main`. Le symptôme se lit comme un plantage de la
+sonde, pas comme un import manquant. La version qui a mesuré résout
+`MFTEnum2` par `GetProcAddress`.
+
+Exécution en **session 1** par une tâche planifiée `Register-ScheduledTask`
+`-LogonType Interactive` (pas de mot de passe sur l'argv, à la différence du
+`schtasks /rp` de `scripts/run-agent.sh:160`), et en **session 0** par WinRM
+NTLM (`installer/console/guest/winrm_exec.py`).
+
+### 1.2 La matrice, même binaire, deux sessions
+
+Relevés bruts archivés sur la VM : `C:\nivuus\lot31\lot31-mft-s0.txt` et
+`C:\nivuus\lot31\lot31-mft-s1.txt`.
+
+| Épreuve | Ce qu'elle fait | **session 0** | **session 1** |
+| --- | --- | --- | --- |
+| **A** | `MFTEnumEx(VIDEO_ENCODER, HARDWARE\|SORTANDFILTER, NV12→H264)` puis `ActivateObject` — **exactement ce que `desk` fait** | **OK**, `async=1` | **ÉCHEC `0x8000FFFF`** |
+| **B** | idem, `HARDWARE` seul (sans `SORTANDFILTER`) | **OK** | **ÉCHEC `0x8000FFFF`** |
+| **C** | idem A, mais énumération **bornée à l'adaptateur NVIDIA** par `MFT_ENUM_ADAPTER_LUID` (via `MFTEnum2`) | **OK** | **ÉCHEC `0x8000FFFF`** |
+| **D** | idem A, mais **un périphérique D3D11 NVIDIA vivant** au moment de l'activation | **OK** | **ÉCHEC `0x8000FFFF`** |
+| **E** | 🔵 **TÉMOIN** — encodeur H.264 **LOGICIEL** (`MFT_ENUM_FLAG_SYNCMFT`) | **OK**, `async=0` | **OK**, `async=0` |
+| **F** | convertisseur de couleur **MATÉRIEL** (`VIDEO_PROCESSOR`, ARGB32→NV12) | **0 énuméré** | **0 énuméré** |
+| **G** | 🔵 **TÉMOIN** — convertisseur de couleur **LOGICIEL** | **OK** | **OK** |
+| **H** | `LoadLibrary("nvEncodeAPI64.dll")` + `GetProcAddress("NvEncodeAPICreateInstance")` | **OK, présent** | **OK, présent** |
+
+🔴 **C'EST LE TÉMOIN E QUI DONNE SON SENS AU ROUGE.** Sans lui, « `0x8000FFFF`
+en session 1 » serait indiscernable d'une session 1 où **toute** activation de
+MFT échouerait. Le même processus, dans la même exécution, active sans peine
+la MFT H.264 **logicielle** et la MFT de traitement vidéo **logicielle** : la
+machinerie COM/Media Foundation fonctionne en session 1. **Seule la MFT
+matérielle NVIDIA refuse.**
+
+Dans les deux sessions, une **seule** MFT H.264 matérielle est énumérée :
+
+```
+[0] nom="NVIDIA H.264 Encoder MFT" url="NVIDIA H.264 Encoder MFT"
+    luid=<absent HRESULT(0xC00D36E6)> vendeur="VEN_10DE"
+```
+
+⚠️ **`MFT_ENUM_ADAPTER_LUID` n'est pas LISIBLE sur l'activateur**
+(`MF_E_ATTRIBUTENOTFOUND`, `0xC00D36E6`) — il est seulement **posable** en
+entrée d'énumération. Une lecture de code qui espérerait s'en servir pour
+« voir sur quel adaptateur la MFT est branchée » ne trouverait rien.
+
+### 1.3 La topologie DXGI, et pourquoi elle ne suffit pas à expliquer
+
+Session 1, au moment de la mesure (aucune sortie virtuelle vivante) :
+
+```
+[0] Microsoft Basic Render Driver vendeur=0x1414 luid=00000000:0000753D
+      sortie[0] \\.\DISPLAY1 bureau=true
+[1] NVIDIA GeForce RTX 4070 vendeur=0x10DE luid=00000000:000076D7
+[2] NVIDIA GeForce RTX 4070 vendeur=0x10DE luid=00000000:000103A0
+[3] Microsoft Basic Render Driver vendeur=0x1414 luid=00000000:000075E4
+```
+
+En session 0, les **mêmes quatre adaptateurs**, **aucune sortie** sur aucun.
+
+🔴 **ET VOICI LA RÉFUTATION QUI COMPTE, parce qu'elle tue l'explication la
+plus séduisante.** L'hypothèse naturelle — « la MFT NVIDIA refuse parce que le
+GPU NVIDIA ne pilote aucun affichage » — est **fausse telle quelle** : le
+journal du produit, `C:\nivuus\agent.log`, montre qu'à **10:21:04 aujourd'hui**,
+en session 1, `desk` capturait
+
+```
+agent::capture::ouverture: sortie retenue pour la duplication
+  adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+  index_sortie=0 nom_sortie=\\.\DISPLAY6 attachee=true
+```
+
+— c'est-à-dire une sortie **attachée au bureau** et **portée par l'adaptateur
+NVIDIA** — et la ligne suivante est `encodeur matériel retenu
+encodeur=NVIDIA H.264 Encoder MFT`, immédiatement suivie du chemin d'erreur.
+**Le GPU NVIDIA pilotait un affichage attaché, et l'activation a échoué quand
+même.**
+
+🔵 **Conséquence de conception, non triviale** : les sorties virtuelles de
+`desk` (SudoVDA) sont **déjà** rattachées par DXGI à l'adaptateur NVIDIA. Le
+`IOCTL_SET_RENDER_ADAPTER` que `agent/src/moniteurs_virtuels/sudovda.rs:33-37`
+déclare volontairement ne pas employer — et qui est **exactement** le levier
+d'Apollo (`virtual_display.cpp::setRenderAdapterByName`) — **n'a rien à
+corriger ici** : l'effet qu'il produirait est déjà obtenu. C'est une piste
+tentante, et elle est **refermée par la mesure**.
+
+Ce qui **reste** différent entre les deux mondes : l'affichage **PRIMAIRE**.
+Il est resté `\\.\DISPLAY1` (VGA QEMU) dans tous les relevés. Apollo, lui,
+pose `dd_configuration_option = ensure_only_display`, qui **désactive tous les
+autres affichages**. ⚠️ **Cette différence n'est PAS mesurée comme cause** :
+le lot 28 a déjà relevé (`C:\nivuus\lot28\primaire.log`) qu'un
+`ChangeDisplaySettingsEx` avec `CDS_SET_PRIMARY` vers une sortie virtuelle
+**n'a pas pris** (`BASCULE_EFFECTIVE=False`), et personne n'a joué la variante
+« plus qu'un seul affichage ». Elle entre par ailleurs en conflit direct avec
+la consigne qui gouverne ce lot : **le VGA QEMU doit rester**.
+
+### 1.4 Apollo, mesuré sur la machine qui marche
+
+**Ses modules, processus vivant** (`sunshine.exe`, **PID 7304, session 1**,
+`Get-Process -Id 7304 | %{$_.Modules}`, 79 modules) :
+
+- **présents** : `nvapi64.dll`, `nvapi64_impl.dll`, `nvcuda.dll`,
+  `nvcuda64.dll`, `nvdxgdmal64.dll`, `nvobjectloader64.dll`, `nvppex.dll`,
+  `d3d11.dll`, `dxgi.dll`, `dxcore.dll` ;
+- 🔴 **ABSENTS, et c'est le fait** : `mfplat.dll`, `mfreadwrite.dll`,
+  `mfcore.dll`, `nvEncMFTH264x.dll` — **aucun module Media Foundation, du
+  tout**.
+
+⚠️ **Ce relevé est au repos, et il faut dire ce qu'il vaut et ce qu'il ne vaut
+pas.** Il ne vaut pas « pendant une session Moonlight » — voir §4. Mais il
+n'est pas « avant tout encodage » non plus : ce processus, démarré à
+**17:13:12**, avait **déjà créé et détruit six encodeurs NVENC** à
+**17:13:23–17:13:24** (son journal, ci-dessous), et **quatorze minutes plus
+tard il ne portait toujours aucun module Media Foundation**. Un processus qui
+avait fabriqué des encodeurs n'a jamais chargé `mfplat.dll` : c'est une preuve
+d'absence, pas une absence de preuve.
+
+⚠️ `nvEncodeAPI64.dll` n'est **pas** dans la liste au repos non plus. C'est
+cohérent avec un `LoadLibraryEx` / `FreeLibrary` autour de la fabrication des
+encodeurs (le code amont le fait), mais **je ne l'ai pas mesuré chargé** :
+c'est une déduction, elle est marquée comme telle en §3.
+
+**Son journal**, `C:\Program Files\Apollo\config\sunshine.log`, processus
+courant, **17:13:23–17:13:24** :
+
+```
+Info: config: 'adapter_name' = NVIDIA GeForce RTX 4070
+Info: Creating a temporary virtual display to probe for encoders...
+Info: Trying encoder [nvenc]
+Device Description : NVIDIA GeForce RTX 4070
+Device Vendor ID   : 0x000010DE
+Device Device ID   : 0x00002786
+Device Video Mem   : 12012 MiB
+Info: Creating encoder [h264_nvenc]
+Info: NvEnc: created encoder H.264 P1 async two-pass rfi
+Info: NvEnc: created encoder HEVC P1 async two-pass rfi
+Info: NvEnc: created encoder AV1 P1 async two-pass rfi
+Info: NvEnc: created encoder H.264 P1 async yuv444 two-pass rfi
+Error: NvEnc: gpu doesn't support YUV444 encode
+Error: NvEnc: NvEncUnregisterAsyncEvent() failed: NV_ENC_ERR_DEVICE_NOT_EXIST
+Info: Found H.264 encoder: h264_nvenc [nvenc]
+```
+
+🔴 **`NvEnc:` et `NvEncUnregisterAsyncEvent()` sont des noms de l'API NVENC
+NATIVE**, pas de Media Foundation. Et **`h264_nvenc` n'est PAS un nom de codec
+ffmpeg ici** : sur Windows, cette chaîne n'est qu'un identifiant passé à
+`is_codec_supported`, la fabrication passant par
+`display_vram.cpp::make_nvenc_encode_device` — jamais par
+`avcodec_find_encoder_by_name`.
+
+**Sa configuration**, `C:\Program Files\Apollo\config\sunshine.conf`
+(Apollo 0.4.6, relevée intégralement) — les clés qui décident :
+
+| Clé | Valeur relevée | Ce qu'elle fait |
+| --- | --- | --- |
+| `adapter_name` | `NVIDIA GeForce RTX 4070` | 🔴 **le cœur** — filtre l'adaptateur DXGI **par sa `Description` exacte** |
+| `dd_configuration_option` | `ensure_only_display` | désactive tous les autres affichages pendant la session |
+| `isolated_virtual_display_option` | `disabled` | — |
+| `dd_hdr_option` | `auto` | — |
+| `dd_config_revert_delay` | `3000` | — |
+| `sunshine_name` | `Nivuus` | — |
+| `native_pen_touch`, `gamepad` | `enabled`, `x360` | — |
+| `encoder` | **absente** | sonde dans l'ordre : `nvenc` d'abord |
+
+Aucune clé de choix d'encodeur : c'est la sonde de démarrage qui tranche, et
+elle a tranché `nvenc` — l'API native — sur les trois codecs.
+
+---
+
+## 2. Ce qui a été ÉTABLI PAR LECTURE DE SOURCE AMONT
+
+Sources lues à `LizardByte/Sunshine@5cbb44d3` et `ClassicOldSong/Apollo@adc5c5a0`.
+**Ce n'est pas une mesure sur cette machine** — c'est une lecture, elle est
+dite comme telle, et elle est **corroborée** par le journal du §1.4.
+
+1. **`MFTEnumEx`, `IMFActivate`, `ActivateObject`, `mfplat`, `nvEncMFT`
+   n'apparaissent NULLE PART** dans `src/` des deux dépôts. Sunshine ne touche
+   jamais l'API Media Foundation lui-même.
+2. **La porte est `nvEncodeAPI64.dll`**, chargée par
+   `src/nvenc/nvenc_dynamic_factory.cpp:21,49`
+   (`LoadLibraryEx(nvenc_dll_name, nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32)`),
+   puis `GetProcAddress("NvEncodeAPICreateInstance")`
+   (`src/nvenc/nvenc_d3d11.cpp:30-32`), puis `nvEncOpenEncodeSessionEx` avec
+   `NV_ENC_DEVICE_TYPE_DIRECTX` (`src/nvenc/nvenc_base.cpp:592-597`). Le
+   chemin natif est arrivé dans Sunshine 0.21.0 (commit `68fa43a61c`,
+   25 avril 2023) ; avant, c'était ffmpeg `h264_nvenc`.
+3. **L'encodeur tourne TOUJOURS sur l'adaptateur de CAPTURE.** `adapter_name`
+   filtre l'adaptateur dans la boucle de recherche de sortie
+   (`display_base.cpp:488-541`), et `make_nvenc_encode_device`
+   (`display_vram.cpp:2133`) crée un **second** périphérique D3D11 **sur ce
+   même adaptateur**. ⚠️ **`D3D11_RESOURCE_MISC_SHARED_CROSSADAPTER`
+   n'apparaît nulle part** : il n'y a **aucun** pont entre deux GPU.
+4. **Apollo ne déplace pas l'encodeur vers le GPU NVIDIA : il y déplace
+   l'AFFICHAGE.** `virtual_display.cpp:624-652::setRenderAdapterByName` envoie
+   un IOCTL au pilote SudoVDA pour lier l'affichage virtuel à un GPU **par
+   LUID**, appelé depuis `main.cpp:370` **avant** la sonde d'encodeurs.
+   🔵 **C'est le levier — et le §1.3 montre qu'il est déjà en place chez
+   `desk`, sans que cela suffise.**
+5. **Rien dans Sunshine ne choisit un adaptateur par identifiant de vendeur.**
+   `0x10de` n'y apparaît que deux fois, et les deux sont des **garde-fous**
+   réagissant à un adaptateur déjà choisi, jamais des sélecteurs.
+6. **Ce que tout le monde fait** : Sunshine, Apollo, Parsec → NVENC natif ;
+   OBS a **retiré** son implémentation Media Foundation de NVENC après 0.14.0 ;
+   `h264_mf` de ffmpeg n'a **aucun** code spécifique NVIDIA. Chromium emploie
+   bien la MFT, mais avec des listes d'exclusion NVIDIA et une boucle
+   d'activation qui **s'attend à ce que certaines échouent**.
+
+**Le seul témoignage public qui décrit exactement notre panne** est un billet
+de blog de Roman Ryltsov (2018, `alax.info/blog/1830`) : la MFT H.264 de
+NVIDIA rend `0x8000FFFF` « quand l'affichage principal n'est pas celui qui est
+connecté à l'adaptateur NVIDIA ». ⚠️ **C'est un blog, pas une position de
+l'éditeur** ; le fil NVIDIA d'avril 2025 qui rapporte le même `E_UNEXPECTED`
+sur un GPU portable est **resté sans réponse**. **Aucune documentation NVIDIA
+ou Microsoft n'explique ce code de retour.** Et notre §1.3 le contredit
+partiellement : chez nous le GPU NVIDIA pilotait **une** sortie attachée, sans
+que cela suffise.
+
+---
+
+## 3. Les cinq réponses
+
+**① Quelles DLL `sunshine.exe` charge-t-il ?** — **MESURÉ, avec une réserve
+nommée.** En session 1 : `nvapi64`, `nvcuda`, `nvcuda64`, `nvdxgdmal64`,
+`nvobjectloader64`, `nvppex`, `d3d11`, `dxgi`, `dxcore`. **Aucun module Media
+Foundation**, quatorze minutes après avoir fabriqué six encodeurs NVENC.
+`nvEncodeAPI64.dll` n'y figure pas au repos — **déduit** (non mesuré) : chargé
+puis relâché autour de la fabrication, ce que fait le code amont. ⚠️ **Le
+relevé « pendant une session Moonlight active » n'a PAS été obtenu** — §4.
+
+**② Quel adaptateur, et comment ?** — **MESURÉ (sa configuration et son
+journal) et LU (sa source).** `adapter_name = NVIDIA GeForce RTX 4070`, filtre
+par `Description` **exacte**. Apollo choisit donc l'adaptateur NVIDIA
+**explicitement**, mais **pas indépendamment du primaire** : il choisit un
+adaptateur qui porte une sortie utilisable, et il **fabrique** cette sortie —
+un affichage virtuel SudoVDA lié au GPU NVIDIA par LUID — puis désactive les
+autres (`ensure_only_display`).
+
+**③ Sa configuration ?** — **RELEVÉE**, tableau du §1.4. Aucun choix
+d'encodeur ; le choix d'adaptateur est là, et c'est le seul qui compte.
+
+**④ La porte de `desk`, et ce qu'elle suppose** — **LUE, et éprouvée** :
+
+| Où | Quoi |
+| --- | --- |
+| `agent/src/encode.rs:1377` | `find_hardware_encoder()` |
+| `agent/src/encode.rs:1391` | `MFTEnumEx(MFT_CATEGORY_VIDEO_ENCODER, MFT_ENUM_FLAG_HARDWARE \| MFT_ENUM_FLAG_SORTANDFILTER, NV12 → H264)` — **aucun CLSID n'est nommé** : c'est une énumération, et elle rend **une** entrée, `NVIDIA H.264 Encoder MFT` |
+| `agent/src/encode.rs:1448-1449` | 🔴 **LA PORTE** : `first.ActivateObject()` → `0x8000FFFF` en session 1 |
+| `agent/src/encode.rs:376` | l'appel, depuis `H264Encoder::new` |
+| `agent/src/encode.rs:380-382` | `bail!` si la MFT n'est **pas asynchrone** — ce qui **exclut d'office** la MFT logicielle (épreuve E, `async=0`) |
+| `agent/src/encode.rs:393-400` | `share_device` + `MFT_MESSAGE_SET_D3D_MANAGER` — **APRÈS** l'activation |
+| `agent/src/capture/ouverture.rs:125-131` | le périphérique D3D11, créé **sur l'adaptateur qui porte la sortie capturée** |
+
+**Ce que cette porte suppose et que l'autre ne suppose pas** : que le pilote
+NVIDIA veuille bien instancier **son objet COM d'encodeur enregistré dans le
+magasin Media Foundation**, dans le contexte de session/station où on le lui
+demande. La porte native ne suppose que `LoadLibrary` + `GetProcAddress` +
+un périphérique D3D11 — **mesuré disponible en session 1** (épreuve H).
+
+🔴 **Et une supposition tombe, mesurée** : `MFT_MESSAGE_SET_D3D_MANAGER` ne
+peut **pas** être en cause. La documentation Microsoft l'impose *après*
+l'activation et *avant* `SetInputType`/`SetOutputType`, et `encode.rs:393-400`
+le fait bien après `encode.rs:376`. On échoue **avant** d'avoir la moindre
+occasion de désigner un périphérique.
+
+⚠️ **Trouvaille collatérale, non cherchée** : l'épreuve F montre qu'**aucun
+convertisseur de couleur MATÉRIEL n'est énuméré** sur cette machine, dans les
+deux sessions. `find_hardware_video_processor()` (`encode.rs:1291`) échouerait
+donc toujours, et `create_color_converter` (`encode.rs:1198`) retomberait sur
+son `CoCreateInstance(&CLSID_VideoProcessorMFT)` (`encode.rs:1215`) —
+**logiciel**. Ce repli existe et fonctionne (épreuve G) ; il n'est simplement
+jamais atteint, l'encodeur échouant en amont.
+
+**⑤ Le remède** — §5.
+
+---
+
+## 4. Ce que ce lot N'ÉTABLIT PAS
+
+- 🔴 **La liste des modules d'Apollo PENDANT une session Moonlight active n'a
+  pas été relevée**, et c'était la formulation exacte de la mission. Le client
+  Moonlight de l'hôte (flatpak 6.1.0, appairé sous le nom `nivuus-hote`) reçoit
+  **`403 Permission denied`** sur `/launch` : son entrée dans
+  `sunshine_state.json` porte `perm = 50331648` là où les quatre autres
+  appareils portent `118693632`. **Deux gestes qui l'auraient débloqué ont été
+  REFUSÉS par la politique de permissions de l'outil, et je ne les ai pas
+  contournés** : ① écrire `perm` dans `sunshine_state.json` (avec sauvegarde) ;
+  ② `Restart-Service ApolloService` — qui aurait suffi, la sonde de modules à
+  100 ms étant déjà posée, puisque Apollo fabrique ses encodeurs **à chaque
+  démarrage**. L'API web (`https://192.168.3.2:47990`) rend `401` avec
+  `nivuus` + `/root/.config/nivuus/apollo-ui.pass` : le mot de passe du
+  fichier n'est pas celui que porte l'état. **Ce relevé reste dû, et il est
+  peu coûteux le jour où l'un de ces trois chemins s'ouvre.**
+- 🔴 **La CAUSE du `0x8000FFFF` n'est pas établie.** Ce lot établit
+  **l'endroit**, la **spécificité** (session 1, MFT matérielle NVIDIA seule,
+  témoins verts à côté) et **quatre remèdes réfutés**. Il ne dit pas pourquoi.
+- 🔴 **Aucun remède n'a été JOUÉ.** Aucune ligne de produit n'a été modifiée.
+- ⚠️ **La variante « un seul affichage » n'a pas été essayée** — elle exige de
+  désactiver `\\.\DISPLAY1`, donc de retirer au VGA QEMU son rôle, ce que la
+  consigne de ce lot interdit.
+- ⚠️ **Le confondant session/topologie n'est pas démêlé** : entre session 0 et
+  session 1, **deux** choses changent — la session, et le fait qu'un bureau
+  avec un affichage primaire non-NVIDIA existe. Aucune mesure de ce lot ne les
+  sépare.
+
+---
+
+## 5. Les remèdes, chacun avec son coût et son degré de preuve
+
+### R1 — l'API NVENC native, la porte d'Apollo · 🟢 **précédent MESURÉ ici**
+
+Remplacer la fabrication de l'encodeur par `nvEncodeAPI64.dll` :
+`NvEncodeAPICreateInstance`, `nvEncOpenEncodeSessionEx` avec
+`NV_ENC_DEVICE_TYPE_DIRECTX` sur le périphérique D3D11 existant.
+
+- **Preuve** : Apollo le fait sur **cette** machine, en **session 1**, **avec
+  le VGA QEMU en place**, et crée **six** encodeurs (§1.4). La DLL charge et
+  exporte son point d'entrée depuis un processus de `desk` en session 1
+  (épreuve H).
+- **Ce qu'il exige de neuf** : une liaison FFI `nvEncodeAPI` (aucune n'existe
+  dans l'arbre ; à écrire à la main contre `nv-codec-headers`, ou à prendre
+  d'un crate), la boucle d'événements asynchrone NVENC, le mappage du contrôle
+  de débit, et le portage des quatre verbes que `encode.rs` expose déjà
+  (`submit`, `poll_output`, `request_keyframe`, `set_bitrate`).
+- 🔵 **Ce qu'il RETIRE** : NVENC accepte `NV_ENC_BUFFER_FORMAT_ARGB`
+  directement. Le convertisseur de couleur (`encode.rs:1198-1230`) — qui, sur
+  cette machine, est **logiciel** faute de MFT matérielle (épreuve F) —
+  pourrait **disparaître** du chemin chaud. Le remède est donc moins cher
+  qu'il n'en a l'air, et il supprime un étage.
+- **Coût** : un chantier, pas une correction. C'est le prix de la seule voie
+  dont on ait la preuve qu'elle marche ici.
+- ⚠️ **Ce qu'il n'est pas** : un portage « générique ». Il lie `desk` à NVIDIA
+  là où la MFT était neutre. La MFT ne marche pas ; la neutralité qu'elle
+  offrait était théorique.
+
+### R2 — encoder en session 0 · 🟡 **le fait est mesuré, la faisabilité ne l'est pas**
+
+L'activation **réussit** en session 0 (épreuves A–D). On pourrait capturer en
+session 1 et encoder dans un processus de session 0, les textures passant par
+un handle NT partagé.
+
+- **Preuve** : l'activation, oui. **Le partage D3D11 entre sessions, non** —
+  rien de ce lot ne l'établit, et je ne connais pas de précédent.
+- **Coût** : un quatrième mode de processus, une IPC de textures, et un
+  doublement de la surface de panne. `desk` a déjà superviseur/capteur/pont/
+  enfant ; un cinquième rôle pour contourner un bug de pilote est cher.
+- **Franchement : spéculatif.** À ne considérer que si R1 se révélait
+  impraticable.
+
+### R3 — repli logiciel · 🟢 **mesuré**, 🔴 **insuffisant comme état final**
+
+`H264 Encoder MFT` s'active dans **les deux** sessions (épreuve E).
+
+- **Où** : `agent/src/encode.rs:1377-1451` (un second `MFTEnumEx` avec
+  `MFT_ENUM_FLAG_SYNCMFT` en repli) **et** `agent/src/encode.rs:380-382`, dont
+  le `bail!` sur `is_async == 0` **rejette aujourd'hui cette MFT d'office** —
+  les deux points doivent bouger ensemble, sinon le repli ne peut pas être
+  atteint.
+- **Coût** : petit en code, **lourd en CPU**. N fenêtres en 1080p par un
+  encodeur logiciel n'est pas un produit.
+- **Valeur réelle** : faire passer `desk` de « rien ne s'affiche » à « quelque
+  chose s'affiche », et donner un **témoin** qui distingue « l'encodeur est en
+  panne » de « tout le reste est en panne ». À traiter comme un filet, pas
+  comme la réponse.
+
+### R4 — désigner l'adaptateur du côté Media Foundation · 🔴 **RÉFUTÉ PAR MESURE**
+
+`MFT_ENUM_ADAPTER_LUID` posé sur `MFTEnum2` (épreuve **C**) et un périphérique
+D3D11 NVIDIA vivant avant l'activation (épreuve **D**) échouent **tous les
+deux**, identiquement. Et `MFT_MESSAGE_SET_D3D_MANAGER` arrive **après**
+l'activation : il ne peut pas être la clé. **Cette famille de remèdes bon
+marché est fermée.**
+
+### R5 — lier l'affichage virtuel au GPU NVIDIA · 🔴 **SANS OBJET**
+
+C'est le levier d'Apollo (`IOCTL_SET_RENDER_ADAPTER`, `0x00222008`, que
+`agent/src/moniteurs_virtuels/sudovda.rs:33-37` déclare ne pas employer). Or
+DXGI rattache **déjà** les sorties virtuelles de `desk` à l'adaptateur NVIDIA
+(§1.3, journal du produit à 10:21:04), et l'activation échoue quand même.
+**Rien à gagner.**
+
+---
+
+## 6. Les demandes d'autorisation
+
+🔴 **Aucune n'a été appliquée.**
+
+1. **R1 — implémenter l'encodeur NVENC natif.** Point d'entrée :
+   `agent/src/encode.rs:1377-1451` (`find_hardware_encoder`) et
+   `agent/src/encode.rs:376` (son appelant), plus un module neuf pour la
+   liaison FFI. Effet de bord souhaité : `agent/src/encode.rs:1198-1230`
+   (le convertisseur) pourrait sortir du chemin chaud.
+   ⚠️ `encode.rs` pèse **1536 lignes** — la règle des 500 impose que toute
+   addition substantielle s'accompagne d'une **extraction**, dans une tâche
+   dédiée et **avant** celle qui ajoute.
+2. **R3 — repli logiciel, en filet.** `agent/src/encode.rs:1377-1451` **et**
+   `agent/src/encode.rs:380-382` (le `bail!` sur `is_async == 0`), qui
+   doivent changer **ensemble**.
+3. **Le relevé qui manque (§4).** Autorisation d'un des trois chemins :
+   ① modifier `perm` de `nivuus-hote` dans
+   `C:\Program Files\Apollo\config\sunshine_state.json` (sauvegarde nommée,
+   restauration après) ; ② `Restart-Service ApolloService` ; ③ le vrai mot de
+   passe de l'interface web d'Apollo.
+
+---
+
+## 7. État de la VM à la fin de ce lot
+
+- **Définition libvirt inchangée. VGA QEMU en place. VM jamais redémarrée.**
+- **Aucun service de la VM n'a été redémarré** (les deux tentatives ont été
+  refusées, §4). `ApolloService` et les trois `agent.exe` de `desk` tournent
+  comme au début.
+- **Aucun fichier de configuration de la VM n'a été modifié.**
+- Traces laissées, volontairement : `C:\nivuus\lot31\lot31-mft-s0.txt`,
+  `lot31-mft-s1.txt`, `lot31-modules.txt`. La tâche planifiée `lot31-mft` est
+  **désenregistrée** ; la sonde `.exe` et les `.ps1` sont **retirés** de
+  `C:\Windows\Temp`.
+- Côté hôte : `Xvfb :99`, le serveur HTTP de dépôt (port 8931) et le client
+  Moonlight sont **arrêtés** (tués **par PID relevé**, jamais par motif).
+  Sources de la sonde jetable : `/var/tmp/lot31/sonde-mft/`.
