@@ -1,0 +1,507 @@
+{
+  "etiquette": "reprise-temoin-apollo-arrete",
+  "instant": "2026-08-30T19:17:23.722Z",
+  "viewport": "1280x720",
+  "messages": [
+    {
+      "ms": 6,
+      "type": "ice-config"
+    },
+    {
+      "ms": 59,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-1",
+      "titre": "Untitled - Notepad"
+    },
+    {
+      "ms": 60,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-2",
+      "titre": "Untitled - Notepad"
+    },
+    {
+      "ms": 653,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-3",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "ms": 655,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-3"
+    },
+    {
+      "ms": 853,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-4",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "ms": 855,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-4"
+    },
+    {
+      "ms": 6177,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-5",
+      "titre": "Untitled - Notepad"
+    },
+    {
+      "ms": 6179,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-6",
+      "titre": "Install"
+    },
+    {
+      "ms": 6181,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-7",
+      "titre": "Dismiss"
+    },
+    {
+      "ms": 7318,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-8",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "ms": 7877,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-9",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "ms": 8165,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-8"
+    },
+    {
+      "ms": 8207,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-10",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "ms": 8695,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-10"
+    },
+    {
+      "ms": 8738,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-11",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "ms": 8739,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-12",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "ms": 9378,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-12"
+    },
+    {
+      "ms": 9769,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-13",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "ms": 9988,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-13"
+    },
+    {
+      "ms": 10088,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-14",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "ms": 10189,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-14"
+    },
+    {
+      "ms": 10231,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-15",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "ms": 10289,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-15"
+    },
+    {
+      "ms": 10331,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-16",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "ms": 10390,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-16"
+    },
+    {
+      "ms": 10431,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-17",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "ms": 10431,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-17"
+    },
+    {
+      "ms": 10490,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-18",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "ms": 10591,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-18"
+    },
+    {
+      "ms": 10635,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-19",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "ms": 10799,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-19"
+    },
+    {
+      "ms": 10843,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-20",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "ms": 10843,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-21",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "ms": 10844,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-20"
+    },
+    {
+      "ms": 11004,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-21"
+    },
+    {
+      "ms": 11750,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "la session n'a pas tenu après 3 tentatives"
+    },
+    {
+      "ms": 15235,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-9"
+    },
+    {
+      "ms": 15953,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-22",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "ms": 16441,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-23",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "ms": 17850,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-24",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "ms": 17851,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-24"
+    },
+    {
+      "ms": 18332,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-25",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "ms": 18333,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-25"
+    },
+    {
+      "ms": 20842,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-11"
+    },
+    {
+      "ms": 21588,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-26",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "ms": 22699,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-27",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "ms": 22701,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-28",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "ms": 22702,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "plus aucune sortie virtuelle disponible"
+    },
+    {
+      "ms": 25135,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "plus aucune sortie virtuelle disponible"
+    },
+    {
+      "ms": 25336,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "plus aucune sortie virtuelle disponible"
+    },
+    {
+      "ms": 25537,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "plus aucune sortie virtuelle disponible"
+    },
+    {
+      "ms": 28433,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-22"
+    },
+    {
+      "ms": 29384,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-29",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "ms": 30245,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "plus aucune sortie virtuelle disponible"
+    },
+    {
+      "ms": 30287,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "plus aucune sortie virtuelle disponible"
+    },
+    {
+      "ms": 30287,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "plus aucune sortie virtuelle disponible"
+    },
+    {
+      "ms": 31498,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "plus aucune sortie virtuelle disponible"
+    },
+    {
+      "ms": 34701,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-28"
+    },
+    {
+      "ms": 35113,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-27"
+    },
+    {
+      "ms": 36043,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-30",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "ms": 37125,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-31",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "ms": 37127,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "plus aucune sortie virtuelle disponible"
+    },
+    {
+      "ms": 37127,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "plus aucune sortie virtuelle disponible"
+    },
+    {
+      "ms": 38301,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "plus aucune sortie virtuelle disponible"
+    },
+    {
+      "ms": 39790,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "plus aucune sortie virtuelle disponible"
+    },
+    {
+      "ms": 42098,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-31"
+    },
+    {
+      "ms": 42624,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-30"
+    },
+    {
+      "ms": 43654,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-32",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "ms": 44589,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-33",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "ms": 44591,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "plus aucune sortie virtuelle disponible"
+    }
+  ],
+  "vm": "677a3953-14c7-4364-92c3-bd17ecddf8d2",
+  "etat_vm": "prete",
+  "session": "3sxuA9dd56NpVdHi37R86g:bureau",
+  "lancement": {
+    "nom": "Notepad",
+    "id": "7f2a7df5-765f-4f6c-b5c8-485e8c1a4e19",
+    "statut": 200,
+    "reponse": {
+      "issue": "raccourci"
+    },
+    "ms": 6091
+  },
+  "compte_fenetre_ouverte": 33,
+  "compte_refus": 14,
+  "motifs_de_refus": [
+    "la session n'a pas tenu après 3 tentatives",
+    "plus aucune sortie virtuelle disponible"
+  ],
+  "titres": [
+    "Untitled - Notepad",
+    "Untitled - Notepad",
+    "DesktopWindowXamlSource",
+    "DesktopWindowXamlSource",
+    "Untitled - Notepad",
+    "Install",
+    "Dismiss",
+    "DesktopWindowXamlSource",
+    "DesktopWindowXamlSource",
+    "DesktopWindowXamlSource",
+    "DesktopWindowXamlSource",
+    "DesktopWindowXamlSource",
+    "DesktopWindowXamlSource",
+    "DesktopWindowXamlSource",
+    "DesktopWindowXamlSource",
+    "DesktopWindowXamlSource",
+    "DesktopWindowXamlSource",
+    "DesktopWindowXamlSource",
+    "DesktopWindowXamlSource",
+    "DesktopWindowXamlSource",
+    "DesktopWindowXamlSource",
+    "DesktopWindowXamlSource",
+    "DesktopWindowXamlSource",
+    "DesktopWindowXamlSource",
+    "DesktopWindowXamlSource",
+    "DesktopWindowXamlSource",
+    "DesktopWindowXamlSource",
+    "DesktopWindowXamlSource",
+    "DesktopWindowXamlSource",
+    "DesktopWindowXamlSource",
+    "DesktopWindowXamlSource",
+    "DesktopWindowXamlSource",
+    "DesktopWindowXamlSource"
+  ],
+  "sessions_apres_lancement": [
+    "3sxuA9dd56NpVdHi37R86g:w-5",
+    "3sxuA9dd56NpVdHi37R86g:w-6",
+    "3sxuA9dd56NpVdHi37R86g:w-7",
+    "3sxuA9dd56NpVdHi37R86g:w-8",
+    "3sxuA9dd56NpVdHi37R86g:w-9",
+    "3sxuA9dd56NpVdHi37R86g:w-10",
+    "3sxuA9dd56NpVdHi37R86g:w-11",
+    "3sxuA9dd56NpVdHi37R86g:w-12",
+    "3sxuA9dd56NpVdHi37R86g:w-13",
+    "3sxuA9dd56NpVdHi37R86g:w-14",
+    "3sxuA9dd56NpVdHi37R86g:w-15",
+    "3sxuA9dd56NpVdHi37R86g:w-16",
+    "3sxuA9dd56NpVdHi37R86g:w-17",
+    "3sxuA9dd56NpVdHi37R86g:w-18",
+    "3sxuA9dd56NpVdHi37R86g:w-19",
+    "3sxuA9dd56NpVdHi37R86g:w-20",
+    "3sxuA9dd56NpVdHi37R86g:w-21",
+    "3sxuA9dd56NpVdHi37R86g:w-22",
+    "3sxuA9dd56NpVdHi37R86g:w-23",
+    "3sxuA9dd56NpVdHi37R86g:w-24",
+    "3sxuA9dd56NpVdHi37R86g:w-25",
+    "3sxuA9dd56NpVdHi37R86g:w-26",
+    "3sxuA9dd56NpVdHi37R86g:w-27",
+    "3sxuA9dd56NpVdHi37R86g:w-28",
+    "3sxuA9dd56NpVdHi37R86g:w-29",
+    "3sxuA9dd56NpVdHi37R86g:w-30",
+    "3sxuA9dd56NpVdHi37R86g:w-31",
+    "3sxuA9dd56NpVdHi37R86g:w-32",
+    "3sxuA9dd56NpVdHi37R86g:w-33"
+  ],
+  "tenues": [
+    {
+      "session": "3sxuA9dd56NpVdHi37R86g:w-5",
+      "titre": "Untitled - Notepad"
+    },
+    {
+      "session": "3sxuA9dd56NpVdHi37R86g:w-6",
+      "titre": "Install"
+    },
+    {
+      "session": "3sxuA9dd56NpVdHi37R86g:w-7",
+      "titre": "Dismiss"
+    }
+  ],
+  "verdict": "VERT"
+}

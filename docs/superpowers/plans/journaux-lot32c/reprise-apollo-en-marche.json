@@ -1,0 +1,120 @@
+{
+  "etiquette": "reprise-apollo-marche",
+  "instant": "2026-08-30T19:13:21.897Z",
+  "viewport": "1280x720",
+  "messages": [
+    {
+      "ms": 7,
+      "type": "ice-config"
+    },
+    {
+      "ms": 6118,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-1",
+      "titre": "Untitled - Notepad"
+    },
+    {
+      "ms": 6218,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-2",
+      "titre": "Install"
+    },
+    {
+      "ms": 6219,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-3",
+      "titre": "Dismiss"
+    },
+    {
+      "ms": 6538,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-4",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "ms": 6540,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-4"
+    },
+    {
+      "ms": 7212,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-5",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "ms": 7212,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-5"
+    },
+    {
+      "ms": 7212,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-6",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "ms": 7213,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-6"
+    }
+  ],
+  "vm": "677a3953-14c7-4364-92c3-bd17ecddf8d2",
+  "etat_vm": "prete",
+  "session": "3sxuA9dd56NpVdHi37R86g:bureau",
+  "lancement": {
+    "nom": "Notepad",
+    "id": "7f2a7df5-765f-4f6c-b5c8-485e8c1a4e19",
+    "statut": 200,
+    "reponse": {
+      "issue": "raccourci"
+    },
+    "ms": 6083
+  },
+  "compte_fenetre_ouverte": 6,
+  "compte_refus": 0,
+  "motifs_de_refus": [],
+  "titres": [
+    "Untitled - Notepad",
+    "Install",
+    "Dismiss",
+    "DesktopWindowXamlSource",
+    "DesktopWindowXamlSource",
+    "DesktopWindowXamlSource"
+  ],
+  "sessions_apres_lancement": [
+    "3sxuA9dd56NpVdHi37R86g:w-1",
+    "3sxuA9dd56NpVdHi37R86g:w-2",
+    "3sxuA9dd56NpVdHi37R86g:w-3",
+    "3sxuA9dd56NpVdHi37R86g:w-4",
+    "3sxuA9dd56NpVdHi37R86g:w-5",
+    "3sxuA9dd56NpVdHi37R86g:w-6"
+  ],
+  "tenues": [
+    {
+      "session": "3sxuA9dd56NpVdHi37R86g:w-1",
+      "titre": "Untitled - Notepad"
+    },
+    {
+      "session": "3sxuA9dd56NpVdHi37R86g:w-2",
+      "titre": "Install"
+    },
+    {
+      "session": "3sxuA9dd56NpVdHi37R86g:w-3",
+      "titre": "Dismiss"
+    },
+    {
+      "session": "3sxuA9dd56NpVdHi37R86g:w-4",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "session": "3sxuA9dd56NpVdHi37R86g:w-5",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "session": "3sxuA9dd56NpVdHi37R86g:w-6",
+      "titre": "DesktopWindowXamlSource"
+    }
+  ],
+  "verdict": "VERT"
+}

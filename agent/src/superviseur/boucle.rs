@@ -13,6 +13,7 @@ use super::hook;
 use super::lanceur::LanceurDeProcessus;
 use super::designation;
 use super::placement;
+use super::reprise;
 use super::protocole::{DepuisLaShell, VersLaShell};
 use super::table::{Effet, IdSession, Table};
 use crate::capture::{enumerer_sorties_silencieux, SortieDxgi};
