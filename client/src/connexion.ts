@@ -51,7 +51,7 @@
 // d'énumération de comptes). Enrichir le texte ici défairait cette propriété
 // depuis le seul endroit où personne ne penserait à la chercher.
 
-import { accesDeReponse, poser, poserAcces } from './jeton';
+import { accesParPomerium, poser, poserAcces } from './jeton';
 import type { Ton } from './shell';
 import { installerSelecteurDeThemeAuDOM } from './design/selecteur-theme';
 import { effacerPrefixe, poserPrefixe } from './prefixe';
@@ -222,25 +222,23 @@ async function chercherLaSession(acces: string): Promise<void> {
 /// ⚠️ TOUT ÉCHEC RETOMBE SUR LE FORMULAIRE, y compris un échec réseau. C'est
 /// le repli le moins surprenant : l'utilisateur voit un écran sur lequel il
 /// peut agir, plutôt qu'une page vide dont rien ne dit ce qu'elle attend.
+///
+/// 🔴 LE CORPS DE CETTE FONCTION A DESCENDU DANS `jeton.ts::accesParPomerium`
+/// LE 30 AOÛT 2026 — la fonction, PAS la décision qui l'entoure. Le hub
+/// (`hub/page.ts`) avait le MÊME besoin (obtenir un jeton par Pomerium) sans
+/// pouvoir courir au chargement inconditionnellement comme cette page-ci
+/// (lui ne doit appeler le réseau QUE si le coffre est vide) : recopier ce
+/// bloc aurait laissé deux copies dériver, exactement le patron que
+/// `CLAUDE.md` interdit. Ce qui reste ICI — appeler, poser, enchaîner sur
+/// `chercherLaSession` — est du câblage propre à CETTE page ; la validation
+/// du corps (`accesDeReponse`, dans `jeton.ts` depuis le 21 août 2026) et
+/// désormais l'appel réseau lui-même sont partagés, testés là-bas.
 async function tenterPomerium(): Promise<boolean> {
-    try {
-        const reponse = await fetch(`${plateformeUrl}/auth/moi`);
-        if (!reponse.ok) return false;
-        // 🔴 LA VALIDATION DU CORPS VIT DANS `jeton.ts`, ET NON ICI. Elle y a
-        // été FAITE DESCENDRE par la revue transverse du chantier
-        // `auth-pomerium` (21 août 2026) : c'est une RÈGLE au sens du critère
-        // de l'en-tête de ce fichier — la retirer fait écrire la chaîne
-        // `"undefined"` au coffre, envoyer `Bearer undefined`, et laisser le
-        // coffre EMPOISONNÉ —, et une règle ne vit pas dans un fichier non
-        // testé. `accesDeReponse` et ses cinq tests la tiennent désormais.
-        const acces = accesDeReponse(await reponse.json().catch(() => undefined));
-        if (acces === undefined) return false;
-        poserAcces(window.localStorage, acces);
-        await chercherLaSession(acces);
-        return true;
-    } catch {
-        return false;
-    }
+    const acces = await accesParPomerium(plateformeUrl, window.fetch.bind(window));
+    if (acces === undefined) return false;
+    poserAcces(window.localStorage, acces);
+    await chercherLaSession(acces);
+    return true;
 }
 
 formulaire.addEventListener('submit', async (evenement) => {
