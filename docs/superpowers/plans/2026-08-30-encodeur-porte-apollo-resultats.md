@@ -801,3 +801,77 @@ dérivée : la notice devra donc figurer dans l'en-tête du module de liaison.
 NVIDIA installé sur la machine — **nous n'en déclarons que l'ABI** ; c'est la
 transcription de l'en-tête, pas la DLL, qui pose la question de licence.
 **Ce point est signalé et non tranché : il appartient au propriétaire.**
+
+### 10.6 L'ABI NVENC : transcrite, **dérivée** plutôt que recopiée, et vérifiée SUR LA CIBLE
+
+`agent/src/encode/nvenc/abi.rs` — **pur, testé sur l'hôte**, et déclaré
+depuis `nvenc.rs` par `#[path = "nvenc/abi.rs"]`. ⚠️ **Ce `#[path]` n'est PAS
+celui de la convention du dépôt** : il est imposé par une règle de rustc — un
+module lui-même chargé par `#[path]` fait chercher ses enfants dans le
+répertoire de *son* fichier, ici `encode/`, et non dans un `encode/nvenc/`
+homonyme (mesuré : `error[E0583]: file not found for module 'abi'`). Même
+mécanisme que celui dont `superviseur/table.rs` se sert pour scinder ses
+tests, employé pour une raison différente. Le fichier le dit lui-même, pour
+qu'on ne le confonde pas avec la règle de nommage.
+
+**Provenance** : `FFmpeg/nv-codec-headers`, tag **`n12.2.72.0`**, commit
+`c69278340ab1d5559c7d7bf0edf615dc33ddbba7`, sha256
+`4677a397…857cba16`. **Ce tag et pas le dernier** : son plancher de pilote
+est **Windows 551.76**, quand `n13.1.15.0` exige **610.0**, qui n'existe pas ;
+et les dispositions dont ce chemin dépend sont identiques entre les deux.
+
+🔴 **AUCUNE VALEUR N'A ÉTÉ RECOPIÉE DE MÉMOIRE — CHACUNE A ÉTÉ DÉRIVÉE EN
+COMPILANT L'EN-TÊTE RÉEL.** La commande qui la refait est **dans le module**,
+pas dans ce document seul, pour que le prochain lecteur la rejoue sans croire
+personne.
+
+**La vérification qui comptait le plus, et qu'on aurait pu sauter** : les
+tailles et déports ont d'abord été mesurés sur **Linux**. Notre cible est
+`x86_64-pc-windows-gnu`. « Ça devrait être identique » n'est pas « c'est
+mesuré » — alors ce sont **18 `_Static_assert` de taille et 11 de déport**,
+compilés par **`x86_64-w64-mingw32-gcc`**, qui l'établissent. Aucune
+exécution n'est nécessaire : l'assertion tranche à la compilation, donc pas
+de wine, et le contrôle est franchissable par quiconque.
+🔴 **Ce contrôle a été VU ROUGE deux fois** — une taille fausse
+(`NV_ENC_CONFIG` à 3585) et un déport faux (`rcParams` à 44) font chacun
+échouer la compilation en nommant la structure et le champ.
+
+**Ce que les tests d'hôte figent**, et qui sont tous des pannes **muettes**
+si on se trompe :
+
+| Test | La panne qu'il empêche |
+| --- | --- |
+| les onze `_VER` contre les valeurs mesurées | une version fausse ⇒ `NV_ENC_ERR_INVALID_VERSION`, c'est-à-dire **un encodeur qui ne se crée pas** — le symptôme même du lot 30 |
+| le bit `1 << 31` sur les cinq structures qui le portent, absent des six autres | idem, et rien ne le signale |
+| `(majeure << 4) \| mineure` ≠ `majeure \| (mineure << 24)` | **les deux empaquetages de version diffèrent** ; les confondre fait comparer `0x0200000C` à `0xC2` et **rejeter tous les pilotes du monde** |
+| `ARGB` et non `ABGR` | 🔴 `NV_ENC_BUFFER_FORMAT_ARGB` **est** ce que DXGI nomme `B8G8R8A8_UNORM`, ce que rend Desktop Duplication. Se tromper **intervertit le rouge et le bleu SANS AUCUNE ERREUR** |
+| `PIC_STRUCT_FRAME == 1` | il vaut **1, pas 0** : mettre la structure à zéro et oublier ce champ est une erreur silencieuse |
+
+**Six tests, et les rouges ont été jouées** : retirer le `1 << 31` fait
+tomber *deux* tests et laisse les quatre autres verts ; confondre les deux
+empaquetages en fait tomber *deux autres*, disjoints des premiers. Restauré
+depuis une **copie nommée** à chaque fois.
+
+⚠️ **Un `#![allow(dead_code)]` est posé sur ce module SEUL**, et le fichier
+dit pourquoi et quand le retirer : une ABI se transcrit **entière** — n'en
+déclarer que la moitié ferait rouvrir l'en-tête amont au suivant — mais tant
+que la session d'encodage n'existe pas, ces constantes n'ont aucun appelant,
+et leurs **31** avertissements noieraient les 24 préexistants, rendant
+inutilisable la règle « vérifier la NATURE des avertissements, jamais leur
+nombre ». Il masque **une seule famille**, sur **un seul module**.
+
+🔴 **LA LICENCE EST TRANCHÉE PAR LA LECTURE, ET ELLE OBLIGE.** La notice de
+l'en-tête est **le texte de la licence MIT**, mais l'en-tête **ne la nomme
+jamais « MIT »** et son titulaire est **NVIDIA Corporation**, pas FFmpeg ; sa
+première ligne borne sa propre portée (« applies to this header file only »).
+⚠️ **Et le dépôt `nv-codec-headers` ne porte AUCUN fichier `LICENSE`** —
+vérifié à ce tag : la notice par en-tête **est** la licence. Elle exige que
+« the above copyright notice and this permission notice » soient inclus dans
+« all copies or **substantial portions** ». Une transcription des versions,
+constantes et dispositions en est une : **la notice de 26 lignes est donc
+reproduite verbatim en tête du module**, et la transcription est regroupée
+là pour que la frontière d'attribution soit vérifiable d'un coup d'œil.
+🔵 **Nous ne redistribuons pas la DLL** — elle vient du pilote installé.
+⚠️ **L'usage de NVENC à l'exécution relève de la licence du pilote NVIDIA,
+qui n'est pas celle-ci et qui n'a pas été lue** : question distincte, **non
+tranchée**, et elle appartient au propriétaire.
