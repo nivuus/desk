@@ -12,6 +12,7 @@ pub mod fenetres;
 #[cfg(windows)]
 pub mod hook;
 pub mod placement;
+pub mod reprise;
 pub mod protocole;
 pub mod table;
 

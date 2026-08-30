@@ -319,3 +319,114 @@ la VM. VM en exécution, WinRM répond. **Définition libvirt jamais touchée.**
 ⚠️ **Une coupure WinRM de plus** (connexion refusée, ~75 s), pendant l'arrêt
 d'Apollo. La VM n'a jamais cessé de tourner, et Apollo a été remis en marche
 dès le retour.
+
+---
+
+## 7. Rendre `desk` tolérant — le remède, et **il n'a PAS été exercé**
+
+Décision du propriétaire : encaisser, ni `disabled`, ni arrêter Apollo.
+
+### 7.1 🔴 Le fait qui a commandé la conception — et il renverse la prémisse
+
+Prémisse de départ : « notre limite d'attente tombe dans la fenêtre de
+perturbation ». **Mesuré, c'est plus précis que cela.** Une sortie virtuelle
+**tenue** et relevée à 1 Hz (`MULTIFENETRE_VDD_VEILLE=45`, Apollo en marche) :
+
+```
+seconde=1  attachees=2  presente=Some(true)   nom=\\.\DISPLAY6
+seconde=2..45 : idem
+```
+
+**Elle s'attache en moins d'UNE seconde.** Et dans la même heure, sur la même
+machine, deux autres sondes ont vu la sortie **ne pas s'attacher du tout** en
+3 s (`parues=[]`, `0 sorties DXGI neuves`).
+
+🔴 **L'attachement n'est donc pas LENT, il est INTERMITTENT.** Allonger
+`LIMITE_RATTACHEMENT` n'aurait fait qu'attendre plus longtemps **dans la même
+fenêtre de perturbation** — d'où le refus de toucher la constante, et le choix
+de **plusieurs chances espacées**.
+
+### 7.2 Les trois décisions, et leur raison
+
+**③ La reprise se fait sur la MÊME sortie, jamais sur une neuve.** Détruire
+puis recréer change la topologie, donc **redéclenche la sonde d'Apollo** : la
+reprise nourrirait exactement ce qu'elle attend. Et c'est ce qui consomme le
+vivier — le bras rouge portait **9 sorties créées pour 7 refus**. Le pilote a
+déjà accepté la création ; il n'y a rien à refaire.
+
+**② Bornée par construction, épuisement lisible.** `superviseur/reprise.rs` :
+`TOURS = 3`, `REPIT = 1 s`. `apres_un_tour` rend `Renoncer` dès
+`tour >= tours` **et** pour `tours == 0` — un nombre de tours nul ne doit pas
+se lire « à l'infini ». Un tour perdu est un **`warn!`** (« on RÉESSAIE ») ; un
+abandon est un **`error!`** portant `tours_epuises` : les deux ne se lisent
+plus pareil.
+
+**② bis — l'interaction avec la borne des 30 s, VÉRIFIÉE et non supposée.**
+`DELAI_ATTENTE_VIEWPORT_MAX` ne filtre que `Etat::AttendLeViewport`
+(`table/orphelines.rs`), or `creer_sortie` court en `Etat::AttendLaSortie`
+(`table/attribution.rs:62`). **La reprise est hors de sa portée**, donc aucun
+garde-fou voisin ne l'annule.
+
+**⑤ Ce qu'elle coûte, dit et figé par un test.** `creer_sortie` court DANS la
+boucle du superviseur, **mono-fil** : pendant l'attente, rien d'autre n'est
+traité. Le pire cas passe de **5 s à 17 s** (`3 × 5 s + 2 × 1 s`), et c'est du
+temps d'attente **pur** avant que l'utilisateur voie son refus quand la sortie
+ne viendra jamais. Un test l'affirme (`le_pire_cas_est_borne_et_calculable`).
+
+⚠️ `TOURS = 3` est **dérivé d'une mesure, pas calibré** : l'attachement réussit
+en < 1 s, la perturbation d'Apollo revient à ~5 s ; trois tours espacés
+couvrent plusieurs cycles. **Ce n'est pas la même chose qu'une constante
+calibrée**, et ce dépôt n'en a aucune.
+
+**④ Six tests d'hôte** figent la règle, dont le cas dégénéré (`tours = 0`) et
+**le produit d'AVANT la reprise** (`tours = 1` → `Renoncer` immédiat) — ce
+dernier est le témoin qui rend la règle discriminante.
+
+### 7.3 🔴 CE QUE LA MESURE N'ÉTABLIT PAS : la reprise n'a JAMAIS TIRÉ
+
+Trois bras joués, binaire `D34213D8…` :
+
+| Bras | Apollo | verdict | tenues | **reprise déclenchée** | refus « ne peut servir » |
+| --- | --- | --- | --- | --- | --- |
+| 1 | Running, **silencieux** (0 ligne) | VERT | 6 | **0** | **0** |
+| 2 | Running **et SONDANT** (96 lignes, 2 sondes) | VERT | 3 | **0** | **0** |
+| 3 témoin | **Stopped** | VERT | 3 | **0** | **0** |
+
+🔴 **Le compteur `on RÉESSAIE` est à ZÉRO dans les trois bras.** Le remède est
+livré, borné, testé sur l'hôte — **et jamais exercé**. Aucune de ces vertes ne
+prouve qu'il répare quoi que ce soit ; elles établissent une **non-régression**,
+rien d'autre.
+
+🔵 **Et le bras 2 est celui qui aurait dû rougir.** J'ai **provoqué**
+délibérément la condition — redémarrage d'`ApolloService` pendant que le
+pilote ouvrait ses fenêtres, Apollo confirmé sondant dans la même fenêtre de
+temps — et le produit a servi ses fenêtres **du premier coup** : **21 sorties
+créées, chemin ① = 21, zéro refus du motif du défaut**. La condition qui
+échouait à 18:47 **ne s'est pas reproduite**.
+
+**Conséquence, dite sans l'arrondir : je ne peux pas affirmer que ce remède
+corrige le défaut mesuré.** Il est plausible, borné et sans régression ; il
+n'est pas démontré.
+
+### 7.4 🔵 Un défaut DISTINCT, celui-là bien mesuré : le vivier s'épuise
+
+Les refus des bras 2 et 3 ne portent **jamais** le motif du défaut, mais
+**`plus aucune sortie virtuelle disponible`** : **27 puis 33 fenêtres
+annoncées** en une minute (dont des `DesktopWindowXamlSource` transitoires)
+pour un vivier de **dix**. C'est aujourd'hui le refus DOMINANT, et il n'a rien
+à voir avec Apollo. **Non corrigé, nommé.**
+
+### 7.5 Le déploiement, et l'état rendu
+
+| | |
+| --- | --- |
+| Payload `console` | `f0ee4f14…` → **`d34213d8…`**, déposé par `hooks/agent_payload.py`, **identique à ma fabrication** (`cmp`) |
+| VM | même binaire, relancé par la tâche `guacamole-agent`, **session 1** |
+| `install` | **non rejoué** |
+| Apollo | **Running**, `ensure_active` |
+| Dépôt `installer` | **seul `console/guest/payload/agent/agent.exe` modifié**, non commité (travail concurrent) — retour par `git checkout` |
+
+⚠️ **Le binaire de production porte donc un remède non démontré.** Il est
+strictement additif — il n'ajoute que des tours là où il y avait un refus
+immédiat — et les trois bras ne montrent aucune régression. **Revenir en
+arrière est un `git checkout` plus un redéploiement.**

@@ -277,7 +277,14 @@ fn attendre_notre_sortie(
     // à 10 Hz. `None` pour un pilote qui ne connaît pas cet identifiant —
     // l'appelant retombe alors sur le repli, jamais sur une devinette.
     let adaptateur = pilote.adaptateur_de(id_pilote);
-    let echeance = std::time::Instant::now() + limite;
+    // 🔴 LA REPRISE SE FAIT SUR LA MÊME SORTIE, JAMAIS SUR UNE NEUVE. Détruire
+    // puis recréer changerait la topologie, donc redéclencherait la sonde
+    // d'encodeur d'Apollo — la reprise nourrirait ce qu'elle attend — et
+    // consommerait le vivier de dix (le bras rouge a relevé 9 sorties créées
+    // pour 7 refus). Voir `superviseur::reprise`, qui porte la règle et ses
+    // tests d'hôte.
+    let mut tour: u32 = 1;
+    let mut echeance = std::time::Instant::now() + limite;
     loop {
         if let Err(erreur) = pilote.pinguer() {
             tracing::warn!(%erreur, "ping du chien de garde pendant l'attente de rattachement");
@@ -325,9 +332,30 @@ fn attendre_notre_sortie(
             return (designee, candidates);
         }
         if std::time::Instant::now() >= echeance {
+            // Le tour est écoulé. La règle — bornée, testée sur l'hôte — dit
+            // s'il en reste un.
+            if let reprise::Suite::Reessayer { tour_suivant, apres } =
+                reprise::apres_un_tour(tour, reprise::TOURS, reprise::REPIT)
+            {
+                // ⚠️ `warn!` et non `error!` : ce n'est pas encore un refus.
+                // Un tour perdu et un abandon ne doivent pas se lire pareil.
+                tracing::warn!(
+                    id_pilote, tour, tours = reprise::TOURS,
+                    limite_ms = limite.as_millis() as u64,
+                    repit_ms = apres.as_millis() as u64,
+                    "la sortie ne s'est pas attachée dans ce tour — on RÉESSAIE \
+                     sur la MÊME sortie (l'attachement est intermittent, pas lent)"
+                );
+                std::thread::sleep(apres);
+                tour = tour_suivant;
+                echeance = std::time::Instant::now() + limite;
+                continue;
+            }
             tracing::error!(
+                tours_epuises = tour,
                 limite_ms = limite.as_millis() as u64,
-                "aucune sortie neuve n'est apparue dans la limite"
+                "aucune sortie neuve n'est apparue — TOUS LES TOURS DE REPRISE \
+                 SONT ÉPUISÉS"
             );
             // Relevé complet, nommé, UNE fois — sur ce seul chemin d'échec.
             // C'est ici, et seulement ici, que ce diagnostic vaut : voir la
