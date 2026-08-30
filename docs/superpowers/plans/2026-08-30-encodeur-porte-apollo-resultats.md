@@ -550,3 +550,111 @@ verbatim* :
 **Ce que cette tâche n'établit PAS** : que le produit fonctionne mieux. Elle
 ne change **aucun comportement** — c'est tout son propos. L'encodeur échoue
 exactement où il échouait, désormais à `agent/src/encode/fabrique.rs`.
+
+---
+
+## 9. R3 — l'estimation demandée AVANT de s'engager, et pourquoi je m'arrête
+
+Le propriétaire du dépôt a autorisé R3 **sous condition explicite** : *« si
+cette boucle est un chantier en soi, ARRÊTE-TOI et dis-le-moi plutôt que d'en
+construire la moitié ».*
+
+🔴 **C'EN EST UN. JE M'ARRÊTE.** Voici sur quoi je fonde ce verdict.
+
+### 9.1 Ce n'est pas un drapeau à retirer : c'est une SECONDE POMPE
+
+Le `bail!` d'`encode.rs:380` n'est que le premier des obstacles, et le moins
+cher. Une MFT **synchrone** — ce qu'est l'encodeur logiciel, mesuré `async=0`
+à l'épreuve E — diverge de l'asynchrone sur **tout le pilotage** :
+
+| Ce que le code fait aujourd'hui | Pourquoi une MFT synchrone ne le supporte pas |
+| --- | --- |
+| `encode.rs:404` : `let events: IMFMediaEventGenerator = transform.cast()?;` — **inconditionnel**, et le champ `events` de `H264Encoder` n'est **pas** une `Option` | une MFT synchrone n'expose aucun générateur d'événements ; le `cast` échoue, donc `new()` échoue **avant** même d'atteindre le `bail!` |
+| `encode.rs:382` : `SetUINT32(&MF_TRANSFORM_ASYNC_UNLOCK, 1)` | sans objet |
+| `encode.rs:409` : `file_encodeur.confier(&transform, "encodeur")` | `arret::FileMft` existe pour poser **une barrière sur le travail ASYNCHRONE** de la MFT — son propre commentaire le dit. Sans travail asynchrone, l'apparat est inapplicable, et `Drop` s'appuie dessus (`arret::mettre_au_repos`) |
+| `drain_events` compte `METransformNeedInput` / `METransformHaveOutput` | ces événements **n'arrivent jamais**. Les deux compteurs restent à zéro |
+| `submit` : `while self.pending_input_requests > 0 { … ProcessInput … }` | le compteur restant à zéro, **`ProcessInput` n'est jamais appelé**. Il faudrait « pousser jusqu'à `MF_E_NOTACCEPTING` » |
+| `poll_output` : `if self.pending_outputs == 0 { return Ok(None) }` | idem : **rend toujours `None`**. Il faudrait « `ProcessOutput` et lire `MF_E_TRANSFORM_NEED_MORE_INPUT` comme un None » |
+| `flush_pending_inputs` : même garde | même panne |
+
+**28 sites** d'`encode.rs` référencent `pending_input_requests`,
+`pending_outputs`, `self.events` ou `file_encodeur` (compté, pas estimé). Ce
+n'est pas une branche : c'est un second mode qui traverse la structure, son
+constructeur, quatre méthodes publiques et son `Drop`.
+
+### 9.2 La pompe synchrone existante ne se réemploie PAS
+
+Objection que je me suis faite, et qui tombe : `desk` **pilote déjà** une MFT
+synchrone — le convertisseur de couleur, par `feed_converter` /
+`drain_converter_output`. Pourquoi ne pas la réemployer ?
+
+🔴 **Parce que son propre commentaire interdit ce transfert.** Il dit, mesures
+à l'appui : *« Le pilotage correct pour ce transform **1-entrée/1-sortie** est
+celui d'origine : un `ProcessOutput` par `ProcessInput` »*, et il raconte
+comment la version « boucler jusqu'à `MF_E_TRANSFORM_NEED_MORE_INPUT` » a
+vidé le pool d'échantillons, dupliqué des images jamais soumises et imposé une
+seconde d'attente par tour.
+
+Or **un encodeur H.264 n'est pas 1-entrée/1-sortie** : il tamponne, il a un
+groupe d'images, il peut réclamer plusieurs entrées avant de rendre une
+sortie, et il exige un `MFT_MESSAGE_COMMAND_DRAIN` en fin de flux. Le modèle
+qu'il lui faut est **exactement celui que le convertisseur a rejeté**.
+Réemployer la pompe du convertisseur, ce serait réintroduire ailleurs la
+famille de défaut que la correction du 28/07 a payée.
+
+### 9.3 Le coût : ce que je NE peux PAS mesurer, et ce que je peux dire
+
+⚠️ **Je n'ai mesuré ni CPU, ni latence, ni cadence.** Je ne le peux pas : la
+VM est passée au lot voisin, et `encode.rs` est `#![cfg(windows)]` sans un
+seul `#[cfg(test)]` (vérifié : `grep -rn 'cfg(test)' agent/src/encode.rs
+agent/src/encode/` ne rend **rien**). Toute autre affirmation chiffrée de ma
+part serait inventée. Ce que je peux dire tient en trois faits :
+
+1. **Le coût se paie N FOIS, sans partage.** L'architecture est *N SESSIONS,
+   pas N pistes* : une fenêtre = un processus = un encodeur. Quatre fenêtres,
+   ce sont **quatre encodeurs logiciels indépendants**, chacun à sa
+   résolution pleine — là où le matériel les mutualisait sur une puce dédiée.
+2. **Il s'empilerait sur une conversion DÉJÀ logicielle** — c'est la
+   trouvaille du §3 : faute de processeur vidéo matériel sur cette machine,
+   BGRA → NV12 passe **déjà** par le CPU. R3 mettrait un encodeur logiciel
+   derrière une conversion logicielle, pour chaque image de chaque fenêtre.
+3. **L'enveloppe** : la VM dispose de **14 vCPU et 16 GiB** (`virsh dominfo`,
+   lecture seule côté hôte). Ce n'est pas rien — un flux 1080p60 logiciel est
+   plausible ; **quatre, avec leur conversion, ne le sont pas**, et c'est le
+   cas d'usage du produit. ⚠️ **« Plausible » et « pas plausible » sont ici
+   des jugements de structure, pas des mesures**, et je ne les présente pas
+   autrement.
+
+### 9.4 Et surtout : il serait bâti À L'AVEUGLE
+
+🔴 **C'est la raison qui, seule, suffirait.** `encode.rs` n'a **aucun test**,
+son code ne compile que pour Windows, et la VM ne m'appartient plus. Un repli
+écrit dans ces conditions **ne serait jamais exécuté avant d'être livré**.
+
+Le propriétaire l'a nommé lui-même : *« un repli à demi bâti est pire que pas
+de repli : il transforme "pas d'encodeur" en panne muette »*. Un repli bâti
+en entier mais **jamais couru** tombe dans la même catégorie — pire, il
+inspire confiance. Ce dépôt a un nom pour cela : **un contrôle qu'on n'a
+jamais vu rouge n'est pas un contrôle**, et un chemin de repli qu'on n'a
+jamais vu vert n'est pas un repli.
+
+### 9.5 Ce que je recommande
+
+**Aller directement à R1 (NVENC natif), et ne pas construire R3.** Quatre
+raisons, dans l'ordre de leur poids :
+
+1. R3 est un second pilotage complet, pas un drapeau — §9.1 et §9.2.
+2. Il serait livré sans avoir jamais tourné — §9.4.
+3. Son bénéfice est douteux au-delà d'une fenêtre — §9.3.
+4. **R1 le rend inutile** : NVENC natif est *aussi* une pompe à écrire, mais
+   c'est celle qui **fonctionne**, avec un précédent mesuré sur cette machine
+   exacte (Apollo, six encodeurs en session 1, §1.4). À pompe pour pompe,
+   autant écrire la bonne.
+
+⚠️ **Si le propriétaire veut malgré tout un filet**, le moins cher n'est pas
+R3 : c'est de rendre l'échec **lisible et actionnable** là où il se produit
+(`agent/src/encode/fabrique.rs:351-352`), en nommant la cause connue et le
+document qui l'établit, plutôt que de laisser un `0x8000FFFF` nu remonter la
+pile. Cela ne fait pas marcher le produit — **et ce n'est pas présenté comme
+tel** —, cela évite qu'un prochain lecteur repaie les lots 30 et 31.
+Autorisation non demandée ici : c'est une proposition, pas un plan.
