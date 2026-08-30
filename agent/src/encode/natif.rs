@@ -9,11 +9,21 @@
 //! 🟢 **CE CHEMIN A ENCODÉ**, mesuré sur la VM le 30 août 2026 : **1195
 //! unités d'accès en 10 s** sur le périphérique de capture réel, porté par
 //! l'adaptateur NVIDIA — là où la MFT rendait `0x8000FFFF` et **aucune**
-//! unité. ⚠️ **Ce qui n'est PAS établi pour autant**, et qu'il ne faut pas
-//! lire dans la ligne ci-dessus : aucune image n'est arrivée à un navigateur
-//! (`framesDecoded` non relevé), le plafond à **N fenêtres** n'est pas
-//! mesuré — le banc n'ouvre qu'un encodeur — et **personne n'a regardé une
-//! image**. Voir le § 11 du document de résultats.
+//! unité. (§ 11.1 du document de résultats.)
+//!
+//! 🟢 **ET SES IMAGES ARRIVENT AU NAVIGATEUR** — `framesDecoded` **+494** et
+//! **+484** sur 25 s, deux exécutions, contre **0** sur une source statique
+//! dont l'audio coulait pourtant dans le même relevé.
+//! 🔴 **CETTE MESURE EST CELLE DU LOT 32, PAS DU LOT 31** : elle a été jouée
+//! avec DEUX remèdes en place — ce chemin natif, et la désignation de sortie
+//! du lot voisin. Elle établit que ce chemin produit des images qui
+//! traversent ; elle n'est pas à porter au crédit de ce fichier seul.
+//!
+//! ⚠️ **CE QUI N'EST TOUJOURS PAS ÉTABLI**, et qu'il ne faut pas lire dans
+//! les lignes ci-dessus : le plafond à **N fenêtres** n'est pas mesuré — le
+//! banc n'ouvre qu'un encodeur — et **personne n'a regardé une image**.
+//! `framesDecoded` compte des images décodées, il ne dit **rien** de la
+//! justesse de ce qui s'affiche.
 //!
 //! ## Deux différences de fond avec le chemin MFT, et pourquoi elles sont sûres
 //!
