@@ -1,0 +1,84 @@
+{
+  "etiquette": "verte-3-viewport",
+  "instant": "2026-08-30T01:09:18.549Z",
+  "secondes": 45,
+  "messages": [
+    {
+      "ms": 15,
+      "type": "ice-config"
+    },
+    {
+      "ms": 103,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-6",
+      "titre": "Administrator: C:\\Windows\\System32\\cmd.exe"
+    },
+    {
+      "ms": 105,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-7",
+      "titre": "Administrator: C:\\Windows\\System32\\cmd.exe"
+    },
+    {
+      "ms": 106,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-8",
+      "titre": "Character Map"
+    },
+    {
+      "ms": 106,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-9",
+      "titre": "Untitled - Paint"
+    },
+    {
+      "ms": 107,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-10",
+      "titre": "Untitled - Notepad"
+    },
+    {
+      "ms": 30788,
+      "type": "refus",
+      "titre": "Administrator: C:\\Windows\\System32\\cmd.exe",
+      "motif": "la page-shell n'a jamais répondu après la relance"
+    },
+    {
+      "ms": 30830,
+      "type": "refus",
+      "titre": "Untitled - Notepad",
+      "motif": "la page-shell n'a jamais répondu après la relance"
+    },
+    {
+      "ms": 30831,
+      "type": "refus",
+      "titre": "Untitled - Paint",
+      "motif": "la page-shell n'a jamais répondu après la relance"
+    },
+    {
+      "ms": 30831,
+      "type": "refus",
+      "titre": "Character Map",
+      "motif": "la page-shell n'a jamais répondu après la relance"
+    }
+  ],
+  "attente_s": 5,
+  "vm": "677a3953-14c7-4364-92c3-bd17ecddf8d2",
+  "etat_vm": "prete",
+  "session": "3sxuA9dd56NpVdHi37R86g:bureau",
+  "viewport_envoye": {
+    "session": "3sxuA9dd56NpVdHi37R86g:w-6",
+    "largeur": 1280,
+    "hauteur": 720,
+    "ms": 104
+  },
+  "compte_fenetre_ouverte": 5,
+  "compte_refus": 4,
+  "titres": [
+    "Administrator: C:\\Windows\\System32\\cmd.exe",
+    "Administrator: C:\\Windows\\System32\\cmd.exe",
+    "Character Map",
+    "Untitled - Paint",
+    "Untitled - Notepad"
+  ]
+}

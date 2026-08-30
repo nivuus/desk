@@ -1,0 +1,84 @@
+{
+  "etiquette": "verte-2-attente-courte",
+  "instant": "2026-08-30T01:07:29.139Z",
+  "secondes": 55,
+  "messages": [
+    {
+      "ms": 7,
+      "type": "ice-config"
+    },
+    {
+      "ms": 25,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-2",
+      "titre": "Administrator: C:\\Windows\\System32\\cmd.exe"
+    },
+    {
+      "ms": 26,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-4",
+      "titre": "Untitled - Paint"
+    },
+    {
+      "ms": 26,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-3",
+      "titre": "Character Map"
+    },
+    {
+      "ms": 26,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-5",
+      "titre": "Untitled - Notepad"
+    },
+    {
+      "ms": 27,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-1",
+      "titre": "Administrator: C:\\Windows\\System32\\cmd.exe"
+    },
+    {
+      "ms": 30843,
+      "type": "refus",
+      "titre": "Administrator: C:\\Windows\\System32\\cmd.exe",
+      "motif": "la page-shell n'a jamais répondu après la relance"
+    },
+    {
+      "ms": 30844,
+      "type": "refus",
+      "titre": "Untitled - Paint",
+      "motif": "la page-shell n'a jamais répondu après la relance"
+    },
+    {
+      "ms": 30845,
+      "type": "refus",
+      "titre": "Character Map",
+      "motif": "la page-shell n'a jamais répondu après la relance"
+    },
+    {
+      "ms": 30845,
+      "type": "refus",
+      "titre": "Untitled - Notepad",
+      "motif": "la page-shell n'a jamais répondu après la relance"
+    },
+    {
+      "ms": 30846,
+      "type": "refus",
+      "titre": "Administrator: C:\\Windows\\System32\\cmd.exe",
+      "motif": "la page-shell n'a jamais répondu après la relance"
+    }
+  ],
+  "attente_s": 22,
+  "vm": "677a3953-14c7-4364-92c3-bd17ecddf8d2",
+  "etat_vm": "prete",
+  "session": "3sxuA9dd56NpVdHi37R86g:bureau",
+  "compte_fenetre_ouverte": 5,
+  "compte_refus": 5,
+  "titres": [
+    "Administrator: C:\\Windows\\System32\\cmd.exe",
+    "Untitled - Paint",
+    "Character Map",
+    "Untitled - Notepad",
+    "Administrator: C:\\Windows\\System32\\cmd.exe"
+  ]
+}
