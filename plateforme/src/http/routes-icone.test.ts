@@ -13,7 +13,6 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { ouvrirMagasin, type Magasin } from '../apps/icones';
 import { MOTEUR } from '../base/harnais';
-import { creerUtilisateur } from '../depot/utilisateur';
 import {
     attribuer,
     avec,
@@ -26,6 +25,7 @@ import {
     SECRET,
     type Montage,
 } from './routes-harnais';
+import { signerUrlIcone } from '../apps/url-icone';
 import { ICONE_MAX_OCTETS, servirIcone } from './routes-icone';
 
 const PNG = Buffer.from('\x89PNG\r\n\x1a\n-des-octets-d-icone');
@@ -177,7 +177,7 @@ describe(`routes d'icône, moteur=${MOTEUR}`, () => {
         });
     });
 
-    describe('GET /application/:id/icone?e= — l’utilisateur lit', () => {
+    describe('GET /application/:id/icone — l’URL SIGNÉE, sans en-tête', () => {
         async function poser(nom: string): Promise<{ url: string; id: string; u: string }> {
             const url = await servir(nom);
             const base = montage!.base;
@@ -190,16 +190,21 @@ describe(`routes d'icône, moteur=${MOTEUR}`, () => {
             return { url, id, u };
         }
 
-        it('sert le PNG, avec un `Cache-Control` immuable', async () => {
-            const { url, id, u } = await poser('icone-get');
-            const r = await fetch(`${url}/application/${id}/icone?e=${EMPREINTE}`, {
-                headers: avec(jetonDe(u)),
-            });
+        /// L'URL signée telle que `routes-applications.ts` la frappe — la MÊME
+        /// fonction que le produit, jamais une réimplémentation `fetch` qui
+        /// n'éprouverait qu'elle-même.
+        function signee(id: string, vm = 'vm-1', empreinte = EMPREINTE, t = MS): string {
+            return signerUrlIcone(id, vm, empreinte, SECRET, t);
+        }
+
+        it('🔴 sert le PNG SANS AUCUN EN-TÊTE — c’est tout l’objet du lot', async () => {
+            // 🔴 LE CONTRÔLE QUI VAUT EST L'ABSENCE D'`Authorization`, PAS LE
+            // 200 : un `<img src>` ne peut rien porter d'autre que son URL, et
+            // c'est exactement ce que cette requête reproduit.
+            const { url, id } = await poser('icone-get-signee');
+            const r = await fetch(`${url}${signee(id)}`);
             expect(r.status).toBe(200);
             expect(r.headers.get('content-type')).toBe('image/png');
-            // ⚠️ `private`, JAMAIS `public` : la réponse est authentifiée par
-            // le porteur, et un cache partagé n'a rien à faire d'une icône
-            // servie sous un jeton.
             expect(r.headers.get('cache-control')).toBe('private, max-age=31536000, immutable');
             // 🔴 L'EXCEPTION NE S'ÉLARGIT PAS : `cache-control` est écrasé,
             // `nosniff` NE L'EST PAS. C'est le seul des deux en-têtes de
@@ -210,67 +215,113 @@ describe(`routes d'icône, moteur=${MOTEUR}`, () => {
             expect(Buffer.from(await r.arrayBuffer())).toEqual(PNG);
         });
 
+        it('🔴 REFUSE une signature FALSIFIÉE, en 403 typé', async () => {
+            const { url, id } = await poser('icone-get-faussaire');
+            const chemin = signee(id);
+            // Un seul caractère de la signature change, et il change vraiment.
+            const p = new URL(chemin, 'http://interne');
+            const vraie = p.searchParams.get('s')!;
+            p.searchParams.set('s', (vraie[0] === 'a' ? 'b' : 'a') + vraie.slice(1));
+            const r = await fetch(`${url}${p.pathname}${p.search}`);
+            expect(r.status).toBe(403);
+            expect(await r.json()).toEqual({ refus: 'signature-invalide' });
+        });
+
+        it('🔴 REFUSE une URL EXPIRÉE, en 403 typé', async () => {
+            // 🔴 L'EXPIRATION EST JUGÉE CÔTÉ SERVEUR, contre `deps.maintenant`
+            // — jamais en croyant le champ `x` du client. L'URL est frappée
+            // pour un instant assez ancien pour être morte à `MS`.
+            const { url, id } = await poser('icone-get-expiree');
+            const r = await fetch(`${url}${signee(id, 'vm-1', EMPREINTE, MS - 3_600_000)}`);
+            expect(r.status).toBe(403);
+            expect(await r.json()).toEqual({ refus: 'url-expiree' });
+            // Le TÉMOIN, sans lequel le refus ne prouverait rien : la MÊME
+            // URL frappée à l'instant courant est servie.
+            expect((await fetch(`${url}${signee(id)}`)).status).toBe(200);
+        });
+
+        it('🔴 une URL signée pour une APPLICATION ne vaut pas pour une AUTRE', async () => {
+            // 🔴 LA ROUGE DE SÉCURITÉ N°3, DE BOUT EN BOUT : deux applications
+            // de la MÊME VM, du MÊME utilisateur, avec la MÊME icône — donc
+            // rien d'autre que l'identifiant ne les sépare.
+            const { url, id } = await poser('icone-get-permutee');
+            const autre = await poserApp(montage!.base, 'vm-1', 'Autre', 'c3d4', EMPREINTE, {
+                pixels: 256,
+            });
+            expect(autre).not.toBe(id);
+            // L'URL de `id`, servie sur le chemin d'`autre`.
+            const p = new URL(signee(id), 'http://interne');
+            const r = await fetch(`${url}/application/${autre}/icone${p.search}`);
+            expect(r.status).toBe(403);
+            expect(await r.json()).toEqual({ refus: 'signature-invalide' });
+            // Les DEUX témoins : chacune sur SA propre URL est servie.
+            expect((await fetch(`${url}${signee(id)}`)).status).toBe(200);
+            expect((await fetch(`${url}${signee(autre)}`)).status).toBe(200);
+        });
+
+        it('🔴 une URL signée pour une AUTRE VM rend 404 vm-inconnue', async () => {
+            // La signature est BONNE — elle est frappée avec `vm-2` — mais la
+            // base dit que l'application vit sur `vm-1`. C'est le contrôle qui
+            // empêche que couvrir la VM soit un ornement.
+            const { url, id } = await poser('icone-get-vm-permutee');
+            const r = await fetch(`${url}${signee(id, 'vm-2')}`);
+            expect(r.status).toBe(404);
+            expect(await r.json()).toEqual({ refus: 'vm-inconnue' });
+        });
+
         it('🔴 un `?e=` PÉRIMÉ rend 404, et c’est ce qui rend `immutable` HONNÊTE', async () => {
             // 🔴 SANS CE REFUS, une vieille URL servirait l'icône COURANTE
             // sous un en-tête immuable — le cache serait empoisonné POUR UN AN
             // avec une image qui n'est pas celle que l'URL nomme.
-            const { url, id, u } = await poser('icone-get-perime');
+            const { url, id } = await poser('icone-get-perime');
             magasin.ecrire(AUTRE, Buffer.from('autre'));
-            const r = await fetch(`${url}/application/${id}/icone?e=${AUTRE}`, {
-                headers: avec(jetonDe(u)),
-            });
+            const r = await fetch(`${url}${signee(id, 'vm-1', AUTRE)}`);
             expect(r.status).toBe(404);
             expect(await r.json()).toEqual({ refus: 'icone-inconnue' });
         });
 
-        it('🔴 l’icône d’une VM D’AUTRUI répond comme une VM INCONNUE', async () => {
-            // 🔴 LE REFUS EST INDISTINGUABLE — `404 vm-inconnue`, jamais un
-            // `403` qui dirait « celle-là existe, mais pas pour vous ». C'est
-            // l'oracle d'énumération que le propriétaire du dépôt a RETIRÉ, et
-            // le réintroduire ici serait le rouvrir par une porte de derrière.
-            const { url, id } = await poser('icone-get-autrui');
-            const autre = await creerUtilisateur(montage!.base, 'autre@exemple.test', 'x', MS);
-            const etrangere = await fetch(`${url}/application/${id}/icone?e=${EMPREINTE}`, {
-                headers: avec(jetonDe(autre)),
+        it('un jeton porteur ne suffit PLUS — l’ancien chemin est RETIRÉ', async () => {
+            // 🔴 LE PROPRIÉTAIRE A TRANCHÉ : UN SEUL CHEMIN. Deux surfaces
+            // pour une même ressource, ce sont deux gardes d'autorisation qui
+            // divergent en silence. Ce test fige le retrait — sans lui, on
+            // pourrait rouvrir la porte sans que rien ne le dise.
+            const { url, id, u } = await poser('icone-get-porteur-retire');
+            const r = await fetch(`${url}/application/${id}/icone?e=${EMPREINTE}`, {
+                headers: avec(jetonDe(u)),
             });
-            const inconnue = await fetch(`${url}/application/pas-un-id/icone?e=${EMPREINTE}`, {
-                headers: avec(jetonDe(autre)),
-            });
-            expect(etrangere.status).toBe(404);
-            expect(inconnue.status).toBe(404);
-            // Le CORPS aussi : c'est là que l'oracle se lirait.
-            expect(await etrangere.json()).toEqual({ refus: 'vm-inconnue' });
-            expect(await inconnue.json()).toEqual({ refus: 'application-inconnue' });
+            expect(r.status).toBe(400);
+            expect(await r.json()).toEqual({ refus: 'signature-absente' });
         });
 
-        it('🔴 REFUSE un jeton d’AGENT sur le GET — le symétrique du PUT', async () => {
-            const { url, id } = await poser('icone-get-agent');
-            const r = await fetch(`${url}/application/${id}/icone?e=${EMPREINTE}`, {
-                headers: avec(jetonDe('vm-1', 'agent')),
-            });
-            expect(r.status).toBe(403);
-            expect(await r.json()).toEqual({ refus: 'jeton-agent' });
+        it('sans `?e=` du tout : 400 typé, distinct du refus de signature', async () => {
+            const url = await servir('icone-sans-e-signee');
+            const r = await fetch(`${url}/application/x/icone`);
+            expect(r.status).toBe(400);
+            expect(await r.json()).toEqual({ refus: 'empreinte-absente' });
+        });
+
+        it('une application INCONNUE rend 404, même sous une signature valide', async () => {
+            const url = await servir('icone-get-app-inconnue');
+            const r = await fetch(`${url}${signee('pas-un-id')}`);
+            expect(r.status).toBe(404);
+            expect(await r.json()).toEqual({ refus: 'application-inconnue' });
         });
 
         it('une application SANS icône rend 404, pas une image vide', async () => {
             const url = await servir('icone-get-sans');
             const base = montage!.base;
             await poserVm(base, 'vm-1');
-            const u = await attribuer(base, 'vm-1', 'ada@exemple.test');
+            await attribuer(base, 'vm-1', 'ada@exemple.test');
             const id = await poserApp(base, 'vm-1', 'Sans', 'c3d4');
-            const r = await fetch(`${url}/application/${id}/icone?e=${EMPREINTE}`, {
-                headers: avec(jetonDe(u)),
-            });
+            const r = await fetch(`${url}${signee(id)}`);
             expect(r.status).toBe(404);
             expect(await r.json()).toEqual({ refus: 'icone-inconnue' });
         });
 
         it('la base connaît l’empreinte, le DISQUE ne l’a pas : 404, et cela se répare seul', async () => {
-            const { url, id, u } = await poser('icone-get-disque-vide');
+            const { url, id } = await poser('icone-get-disque-vide');
             rmSync(join(magasin.repertoire, EMPREINTE));
-            const r = await fetch(`${url}/application/${id}/icone?e=${EMPREINTE}`, {
-                headers: avec(jetonDe(u)),
-            });
+            const r = await fetch(`${url}${signee(id)}`);
             expect(r.status).toBe(404);
             // Et l'inventaire la redemande : c'est l'auto-reconstruction.
             expect(magasin.manquantes([EMPREINTE])).toEqual([EMPREINTE]);

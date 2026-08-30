@@ -27,6 +27,7 @@ import {
     poserVm,
     SECRET,
 } from './routes-harnais';
+import { signerUrlIcone, verifierUrlIcone } from '../apps/url-icone';
 import { servirApplications } from './routes-applications';
 
 let base: Pilote | undefined;
@@ -185,6 +186,42 @@ describe(`routes /applications, moteur=${MOTEUR}`, () => {
         expect(r.status).toBe(200);
         const corps = (await r.json()) as { applications: Array<{ nom: string }> };
         expect(corps.applications.map((a) => a.nom)).toEqual(['Firefox']);
+    });
+
+    it("🔴 frappe l'URL SIGNÉE de l'icône, et `null` quand il n'y en a pas", async () => {
+        // 🔴 DÉCISION DU PROPRIÉTAIRE DU DÉPÔT, 30 AOÛT 2026 : c'est ICI, sous
+        // le jeton porteur et APRÈS le contrôle d'appartenance de la VM,
+        // qu'une URL d'icône est frappée — jamais librement. Ce test fige ce
+        // chaînage : sans lui, on pourrait déplacer la frappe sur une route
+        // ouverte sans que rien ne le dise.
+        const url = await servir('apps-icone-url');
+        await poserVm(base!, 'v-1');
+        const u = await attribuer(base!, 'v-1', 'a@exemple.test');
+        const empreinte = 'a'.repeat(64);
+        await poserApp(base!, 'v-1', 'Avec', 'c-1', empreinte, { pixels: 256 });
+        await poserApp(base!, 'v-1', 'Sans', 'c-2');
+
+        const r = await fetch(`${url}/applications?vm=v-1`, { headers: avec(jetonDe(u)) });
+        const corps = (await r.json()) as {
+            applications: Array<{ id: string; nom: string; icone_url: string | null }>;
+        };
+        const parNom = new Map(corps.applications.map((a) => [a.nom, a]));
+        // Sans icône : `null`, jamais une URL qui rendrait 404.
+        expect(parNom.get('Sans')!.icone_url).toBe(null);
+        // Avec icône : EXACTEMENT ce que la règle du produit frappe — jamais
+        // une URL réécrite ici, qui n'éprouverait qu'elle-même.
+        const avecIcone = parNom.get('Avec')!;
+        expect(avecIcone.icone_url).toBe(
+            signerUrlIcone(avecIcone.id, 'v-1', empreinte, SECRET, maintenant),
+        );
+        // 🔴 ET ELLE SE VÉRIFIE : la signature frappée est celle que la route
+        // d'icône acceptera. Un chaînage qui frapperait avec une AUTRE clé
+        // rendrait une URL bien formée et systématiquement refusée.
+        const p = new URL(avecIcone.icone_url!, 'http://interne');
+        expect(verifierUrlIcone(avecIcone.id, p.searchParams, SECRET, maintenant)).toEqual({
+            ok: true,
+            vm: 'v-1',
+        });
     });
 
     it("🔴 une VM ÉTRANGÈRE répond EXACTEMENT comme une VM INCONNUE", async () => {

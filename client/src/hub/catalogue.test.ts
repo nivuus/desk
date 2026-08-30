@@ -47,10 +47,17 @@ const ACCENT = (() => {
     return trouve[1].trim();
 })();
 
+/// L'URL SIGNÉE telle que la plateforme la frappe. ⚠️ ELLE EST ÉCRITE ICI EN
+/// DUR, ET C'EST CORRECT : `client/` ne peut pas importer `plateforme/`, et ce
+/// module ne la FABRIQUE pas — il la RELAIE. Ce qu'on éprouve est justement
+/// qu'il la relaie sans y toucher.
+const URL_SIGNEE = '/application/u-1/icone?e=abc123&v=vm-1&x=1787136780000&s=une-signature';
+
 const APP: ApplicationListee = {
     id: 'u-1',
     nom: 'Bloc-notes',
     icone: 'abc123',
+    icone_url: URL_SIGNEE,
     source_max: '256',
     accent: null,
     associations: [],
@@ -66,6 +73,7 @@ describe('listerApplications', () => {
                             id: 'u-1',
                             nom: 'Bloc-notes',
                             icone: 'abc123',
+                            icone_url: URL_SIGNEE,
                             source_max: '256',
                             accent: ACCENT,
                             associations: ['.txt', '.log'],
@@ -81,6 +89,12 @@ describe('listerApplications', () => {
         if (issue.etat !== 'ok') return;
         expect(issue.valeur.map((a) => a.nom)).toEqual(['Bloc-notes', 'Paint']);
         expect(issue.valeur[1].icone).toBeNull();
+        // 🔴 L'URL SIGNÉE TRAVERSE, ET UNE ENTRÉE SANS ELLE REND `null` —
+        //    jamais `undefined`, jamais une URL fabriquée ici. Le hub ne doit
+        //    pas avoir à distinguer « pas d'icône » de « champ absent », et il
+        //    ne doit surtout pas se croire capable d'en écrire une.
+        expect(issue.valeur[0].icone_url).toBe(URL_SIGNEE);
+        expect(issue.valeur[1].icone_url).toBeNull();
         expect(issue.valeur[0].accent).toBe(ACCENT);
         expect(issue.valeur[0].associations).toEqual(['.txt', '.log']);
         // ⚠️ UNE ENTRÉE SANS LES DEUX CHAMPS RETOMBE SUR DES VALEURS NEUTRES,
@@ -147,10 +161,14 @@ describe('listerApplications', () => {
 });
 
 describe('lireIcone', () => {
-    it("appelle la route d'icône AVEC l'empreinte et le porteur", async () => {
+    it("🔴 suit l'URL SIGNÉE, et n'envoie AUCUN en-tête", async () => {
+        // 🔴 C'EST LA PROPRIÉTÉ QUE LE LOT DU 30 AOÛT 2026 LIVRE : la même URL
+        // se pose dans un `<img src>`, qui ne peut rien porter d'autre. Un
+        // `authorization` envoyé quand même ferait vivre une seconde voie
+        // d'autorisation que la plateforme a retirée.
         const octets = new Uint8Array([0x89, 0x50, 0x4e, 0x47]);
         const { fetch, appels } = faux({
-            'https://x/application/u-1/icone?e=abc123': {
+            [`https://x${URL_SIGNEE}`]: {
                 arrayBuffer: async () => octets.buffer.slice(0),
             },
         });
@@ -158,12 +176,18 @@ describe('lireIcone', () => {
         expect(issue.etat).toBe('ok');
         if (issue.etat !== 'ok') return;
         expect(Array.from(issue.valeur)).toEqual([0x89, 0x50, 0x4e, 0x47]);
-        expect(appels[0].init?.headers).toEqual({ authorization: 'Bearer J' });
+        // 🔴 L'URL EST RELAYÉE TELLE QUELLE, jamais reconstruite : le client
+        // n'a pas la clé, et une URL qu'il fabriquerait serait refusée.
+        expect(appels[0].url).toBe(`https://x${URL_SIGNEE}`);
+        expect(appels[0].init?.headers).toBeUndefined();
     });
 
     it("refuse sans appeler quand l'application n'a pas d'icône", async () => {
         const { fetch, appels } = faux({});
-        const issue = await lireIcone({ ...APP, icone: null }, { base: 'https://x', jeton: 'J', fetch });
+        const issue = await lireIcone(
+            { ...APP, icone: null, icone_url: null },
+            { base: 'https://x', jeton: 'J', fetch },
+        );
         expect(issue.etat).toBe('refus');
         // 🔴 ZÉRO APPEL : le contrôle qui vaut n'est pas le refus, c'est
         //    l'ABSENCE de requête. Un refus rendu APRÈS un aller-retour

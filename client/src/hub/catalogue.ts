@@ -5,13 +5,22 @@
 // navigateur, et ce qui permet à une recette d'exécuter LE CODE DU PRODUIT
 // plutôt qu'une réimplémentation `curl` qui n'éprouverait qu'elle-même.
 //
-// 🔴 L'ICÔNE EST LUE PAR UN `fetch` AUTHENTIFIÉ, ET C'EST LA SEULE VOIE.
-// `plateforme/src/http/routes-icone.ts:20-26` l'a écrit en toutes lettres :
-// **un `<img src>` ne porte pas d'en-tête `Authorization`**. G5 mesure que
-// l'obstacle est plus large encore — un `<link rel="manifest">` non plus, et
-// ⑤ ne pose AUCUN cookie, son porteur vivant dans `localStorage`. D'où la
-// voie V1, reçue par la porte P0 : la page lit tout elle-même, et publie ce
-// qu'elle a lu en `data:` et en `blob:`.
+// 🔴 ❌ ~~L'ICÔNE EST LUE PAR UN `fetch` AUTHENTIFIÉ, ET C'EST LA SEULE VOIE.
+// `routes-icone.ts` l'a écrit en toutes lettres : un `<img src>` ne porte pas
+// d'en-tête `Authorization`.~~ **PLUS VRAI DEPUIS LE 30 AOÛT 2026**, sur
+// DÉCISION DU PROPRIÉTAIRE DU DÉPÔT — pas par commodité : la route d'icône
+// est désormais atteinte par une **URL SIGNÉE**, frappée par le catalogue
+// (donc sous jeton porteur, et après le contrôle d'appartenance de la VM) et
+// rendue dans le champ `icone_url`. Un `<img src>` peut la charger telle
+// quelle. Voir `plateforme/src/apps/url-icone.ts` pour la clé dérivée, ce que
+// la signature couvre et la durée retenue.
+//
+// ⚠️ CE QUI RESTE VRAI DE G5, ET QUI EXPLIQUE POURQUOI `lireIcone` SURVIT :
+// un `<link rel="manifest">` est allé chercher SANS cookie, et le manifeste
+// par application continue donc de porter son icône en `data:` — forme que G5
+// a mesurée installable. Bâtir ce `data:` demande les OCTETS du PNG, que
+// `lireIcone` va chercher. **Ce qui change est qu'elle n'envoie plus
+// d'en-tête** : l'URL signée se suffit.
 //
 // ⚠️ UN REFUS ATTENDU EST UNE ISSUE, JAMAIS UNE EXCEPTION — l'arbitrage de
 // `plateforme/src/orchestration/refus.ts`, déjà tenu par `televersement.ts`.
@@ -58,6 +67,18 @@ export interface ApplicationListee {
     nom: string;
     /// L'empreinte sha256 de l'icône, ou `null` s'il n'y en a pas.
     icone: string | null;
+    /// L'URL SIGNÉE de l'icône — relative, donc à résoudre contre l'origine
+    /// de la page —, ou `null` s'il n'y a pas d'icône.
+    ///
+    /// 🔴 ELLE EST FRAPPÉE PAR LA PLATEFORME, ET JAMAIS RECONSTRUITE ICI : le
+    /// client n'a pas la clé, et une URL qu'il fabriquerait serait refusée.
+    /// C'est aussi ce qui empêche qu'une page prolonge elle-même la durée de
+    /// vie d'une capacité.
+    ///
+    /// ⚠️ ELLE EXPIRE — 5 à 6 minutes (`apps/url-icone.ts`). Une page qui la
+    /// garderait des heures verrait ses images échouer ; la relire, c'est
+    /// relire le catalogue.
+    icone_url: string | null;
     source_max: string;
     /// La couleur dominante de l'icône, en `#rrggbb`, ou `null`.
     ///
@@ -136,6 +157,7 @@ export async function listerApplications(
             id: e.id,
             nom: e.nom,
             icone: typeof e.icone === 'string' ? e.icone : null,
+            icone_url: typeof e.icone_url === 'string' ? e.icone_url : null,
             source_max: typeof e.source_max === 'string' ? e.source_max : 'non-mesuree',
             accent: typeof e.accent === 'string' ? e.accent : null,
             // ⚠️ ON FILTRE LES ÉLÉMENTS, ET ON NE SE CONTENTE PAS DE VÉRIFIER
@@ -208,19 +230,25 @@ export async function listerVms(deps: DepsCatalogue): Promise<Issue<VmListee[]>>
 
 /* ── LA LECTURE D'UNE ICÔNE ───────────────────────────────────────────── */
 
-/// `GET /application/:id/icone?e=<empreinte>` — les octets du PNG.
+/// Les OCTETS du PNG, par l'URL signée que le catalogue a rendue.
 ///
-/// ⚠️ L'EMPREINTE EST OBLIGATOIRE côté service : elle est ce qui rend le cache
-/// immuable. La passer est donc une propriété du protocole, pas une option.
+/// 🔴 AUCUN EN-TÊTE N'EST ENVOYÉ, ET C'EST LE POINT DU LOT DU 30 AOÛT 2026 :
+/// la même URL, posée telle quelle dans un `src`, se charge à l'identique.
+/// Envoyer quand même le porteur serait garder vivante une seconde voie
+/// d'autorisation que la plateforme a précisément retirée.
+///
+/// 🔴 ELLE N'EST PAS RECONSTRUITE ICI. La version antérieure fabriquait
+/// `/application/:id/icone?e=…` de ses propres mains ; ce chemin est
+/// désormais REFUSÉ (`400 signature-absente`), et le reconstruire serait un
+/// contrôle qu'on ne verrait jamais rouge autrement.
 export async function lireIcone(
     application: ApplicationListee,
     deps: DepsCatalogue,
 ): Promise<Issue<Uint8Array>> {
-    if (application.icone === null) {
+    if (application.icone_url === null) {
         return illisible(`l'application ${application.id} n'a pas d'icône`);
     }
-    const url = `${deps.base}/application/${encodeURIComponent(application.id)}/icone?e=${encodeURIComponent(application.icone)}`;
-    const r = await deps.fetch(url, { method: 'GET', headers: entetes(deps) });
+    const r = await deps.fetch(`${deps.base}${application.icone_url}`, { method: 'GET' });
     if (!r.ok) return { etat: 'refus', refus: { source: 'service', statut: r.status, motif: await motifDuService(r) } };
     return { etat: 'ok', valeur: new Uint8Array(await r.arrayBuffer()) };
 }

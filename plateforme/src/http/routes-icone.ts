@@ -1,5 +1,7 @@
-// Les deux routes d'icône : `PUT /icone/:sha256` (l'AGENT dépose) et
-// `GET /application/:id/icone?e=<empreinte>` (l'UTILISATEUR lit).
+// Les deux routes d'icône : `PUT /icone/:sha256` (l'AGENT dépose, sous jeton
+// d'agent) et `GET /application/:id/icone?e=&v=&x=&s=` (le NAVIGATEUR lit,
+// par une URL SIGNÉE, SANS aucun en-tête — décision du propriétaire du dépôt
+// du 30 août 2026, voir plus bas).
 //
 // 🔴 POURQUOI L'EMPREINTE ENTRE DANS L'URL DU `GET`. La spécification écrit
 // « `GET /application/:id/icone` avec `Cache-Control` immuable clé sur
@@ -17,49 +19,72 @@
 // ⚠️ `private`, JAMAIS `public` : la réponse est authentifiée par le porteur,
 // et un cache partagé n'a rien à faire d'une icône servie sous un jeton.
 //
-// 🔴 CONSÉQUENCE NOMMÉE ICI PLUTÔT QUE DÉCOUVERTE PLUS TARD, ET ELLE APPARTIENT
-// AU SOUS-BLOC G5 : **un `<img src>` NE PORTE PAS D'EN-TÊTE `Authorization`.**
-// Une page qui afficherait ces icônes devra les chercher par `fetch()` puis
-// `URL.createObjectURL`, et **un manifeste PWA — dont le navigateur va chercher
-// les icônes tout seul, sans en-tête — NE POURRA PAS pointer cette route en
-// l'état**. G2 ne le tranche pas : le trancher demanderait de décider si une
-// icône peut être servie sans jeton, ce qui est une décision de sécurité.
+// 🔴 ✅ **TRANCHÉ LE 30 AOÛT 2026 PAR LE PROPRIÉTAIRE DU DÉPÔT — ET CE QUI SUIT
+// N'EST PLUS L'ÉTAT DU PRODUIT.** Tout le paragraphe barré ci-dessous décrit
+// le legs que ce lot ferme ; il est conservé parce qu'il porte le diagnostic,
+// et parce que ce dépôt barre plutôt qu'il n'efface.
 //
-// ✅ LE SOUS-BLOC G5 A TRANCHÉ LA QUESTION SANS PRENDRE LA DÉCISION, ET C'EST
-// LE POINT (21 août 2026). Il a d'abord MESURÉ que l'obstacle est **plus large
-// encore** que ce que ce paragraphe dit : un `<link rel="manifest">` est lui
-// aussi allé chercher **sans en-tête**, et ⑤ ne pose **aucun cookie** — son
-// porteur vit dans `localStorage`, qui ne voyage sur aucune requête que le
-// navigateur émet de lui-même. **Le manifeste, et pas seulement ses icônes,
-// était donc hors d'atteinte.**
+// ❌ ~~CONSÉQUENCE NOMMÉE ICI PLUTÔT QUE DÉCOUVERTE PLUS TARD, ET ELLE
+// APPARTIENT AU SOUS-BLOC G5 : un `<img src>` NE PORTE PAS D'EN-TÊTE
+// `Authorization`. Une page qui afficherait ces icônes devra les chercher par
+// `fetch()` puis `URL.createObjectURL`, et un manifeste PWA NE POURRA PAS
+// pointer cette route en l'état. G2 ne le tranche pas : le trancher
+// demanderait de décider si une icône peut être servie sans jeton, ce qui est
+// une décision de sécurité.~~
 //
-// La voie retenue ne touche NI cette route NI aucune autre : la page, elle,
-// est authentifiée. Elle lit le catalogue et les icônes par `fetch` porteur,
-// encode l'image en `data:`, publie le manifeste en `blob:`, et pose
-// `<link rel="manifest" href="blob:…">`. **Mesuré, deux exécutions par
-// sonde** : Chromium charge, analyse et juge ce manifeste **installable**
-// (`getInstallabilityErrors` vide, `beforeinstallprompt` déclenché), et le
-// témoin servi par HTTP ordinaire rend **exactement le même relevé**.
+// ✅ **LA DÉCISION, ET SES DEUX BRANCHES ÉCARTÉES** (30 août 2026). Le
+// propriétaire a retenu **l'URL SIGNÉE**, et écarté nommément :
+//   ① servir les icônes SANS jeton — cela révélerait la liste des
+//      applications installées sur la VM à quiconque atteint le port ;
+//   ② les inliner en `data:` dans le catalogue — support inégal des `data:`
+//      dans un manifeste PWA.
+// **Ce n'est pas une commodité d'implémentation** : c'est un arbitrage de
+// sécurité, et c'est pour cela que G5 l'avait laissé au propriétaire.
 //
-// 🔴 AUCUN CONTRÔLE DE PORTEUR NE SAUTE, ET LA DÉCISION DE SÉCURITÉ RESTE
-// ENTIÈRE ET NON PRISE : ouvrir cette route — ou signer une URL expirante —
-// reste possible, reste au propriétaire du dépôt, et **n'est plus
-// nécessaire**. Ce que G5 ajoute pour éclairer ce choix s'il se posait un
-// jour : ce qu'une route ouverte exposerait à un porteur d'UUID est **le `nom`
-// et le PNG, et rien d'autre** — `cible`, `arguments` et `repertoire` ne
-// traversent jamais (`routes-applications.ts`), et l'`id` est un UUID engendré
-// par la plateforme.
+// 🔴 **L'ANCIEN CHEMIN À `Authorization` NE SURVIT PAS, ET C'EST TRANCHÉ.**
+// Deux chemins pour une même ressource, ce sont deux gardes d'autorisation à
+// tenir — et ce dépôt a écrit dix fois que deux copies d'une garde de
+// sécurité divergent en silence, « celle qu'on corrige et celle qu'on
+// oublie » (`agents/canal.ts`, `porteur-agent.ts`). Le `GET` n'accepte donc
+// plus que l'URL signée, et **aucune autorité n'est perdue** : l'URL n'est
+// frappée que par `routes-applications.ts::servirApplications`, qui exige le
+// jeton porteur ET vérifie l'appartenance de la VM avant de la rendre.
+//
+// ⚠️ **CE QUE LE CHANGEMENT COÛTE, DIT PLUTÔT QUE TU.**
+//   ① **La fraîcheur de l'autorisation.** L'appartenance de la VM est
+//      vérifiée à la FRAPPE, plus à la lecture : une VM réattribuée laisse
+//      les URL déjà frappées valides jusqu'à leur expiration (5 à 6 min).
+//      C'est le prix d'une capacité au porteur, et c'est ce que la durée
+//      courte borne.
+//   ② **La réponse n'identifie plus personne.** Elle ne le peut pas : un
+//      `<img src>` ne porte rien d'autre que son URL. Ce qu'une URL fuitée
+//      donne est **une icône, celle d'une application, pendant cinq
+//      minutes** — jamais le catalogue, jamais un lancement, jamais une
+//      session.
+//
+// ⚠️ **CE QUE CE LOT N'ÉTABLIT PAS, ET IL FAUT LE LIRE AVANT DE S'EN
+// RÉCLAMER.** Derrière Pomerium, un `<img src>` posé par une page
+// authentifiée voyage avec les cookies de session (sous-ressource de même
+// origine) et passe. **Un `icons[].src` de MANIFESTE, lui, est allé chercher
+// SANS les cookies** — c'est ce que `client/src/hub/manifeste-hub-greffon.ts`
+// a mesuré sur `<link rel="manifest">`, et le même mécanisme vaut pour les
+// icônes qu'un manifeste nomme. Une URL signée placée dans un manifeste
+// exigerait donc que la politique du proxy l'ouvre : elle ne finit ni par
+// `.png`, ni par `.ico`, ni par `manifest.json`, les trois seuls suffixes que
+// `config.yaml` laisse passer. **Ce lot NE TOUCHE PAS à Pomerium**, et c'est
+// pourquoi le manifeste par application continue de porter son icône en
+// `data:` (`client/src/hub/manifeste.ts`), forme que G5 a mesurée
+// installable.
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Pilote } from '../base/pilote';
 import type { Magasin } from '../apps/icones';
 import { empreinteValide } from '../apps/icones';
 import { lireParId } from '../depot/application';
-import { lireParId as lireVm } from '../depot/vm';
 import { entetesCors } from './cors';
 import { ENTETES_SECURITE } from './entetes';
 import { lirePorteurAgent } from './porteur-agent';
-import { lirePorteur } from './porteur';
+import { verifierUrlIcone } from '../apps/url-icone';
 
 export interface DependancesIcone {
     base: Pilote;
@@ -152,11 +177,19 @@ export async function servirIcone(
 
     const cors = entetesCors(req.headers.origin, deps.origineClient);
 
-    // ⚠️ LES DEUX ROUTES EXIGENT `Authorization`, DONC LA REQUÊTE EST NON
-    // SIMPLE : le navigateur envoie d'abord un `OPTIONS`, et **abandonne sans
-    // jamais envoyer la vraie requête** si la réponse ne lui convient pas.
-    // C'est le défaut exact que la corroboration navigateur du sous-bloc P4 a
-    // trouvé, et qu'aucun test de Node ne pouvait voir.
+    // ⚠️ LE `PUT` EXIGE `Authorization`, DONC LA REQUÊTE EST NON SIMPLE : le
+    // navigateur envoie d'abord un `OPTIONS`, et **abandonne sans jamais
+    // envoyer la vraie requête** si la réponse ne lui convient pas. C'est le
+    // défaut exact que la corroboration navigateur du sous-bloc P4 a trouvé,
+    // et qu'aucun test de Node ne pouvait voir.
+    //
+    // ⚠️ LE `GET`, LUI, N'EN A PLUS BESOIN DEPUIS L'URL SIGNÉE — il ne porte
+    // aucun en-tête, donc un `<img src>` n'émet aucune requête préalable.
+    // **La réponse préalable reste servie pour les deux**, et ce n'est pas de
+    // la négligence : un `fetch` porteur reste possible côté page (c'est ce
+    // que fait `client/src/hub/catalogue.ts::lireIcone` pour lire les octets
+    // du PNG), et lui déclenche bien un `OPTIONS` dès qu'il vient d'une autre
+    // origine — le montage `PLATEFORME_ORIGINE_CLIENT`.
     if (req.method === 'OPTIONS') {
         repondre(rep, 204, undefined, cors);
         return true;
@@ -242,7 +275,15 @@ async function depot(
     return true;
 }
 
-/// `GET /application/:id/icone?e=<empreinte>` — l'utilisateur lit.
+/// `GET /application/:id/icone?e=&v=&x=&s=` — le NAVIGATEUR lit, par une URL
+/// SIGNÉE, sans en-tête.
+///
+/// 🔴 L'ORDRE DES CONTRÔLES EST CELUI DE `routes-applications.ts` : LA FORME,
+/// PUIS LA SIGNATURE, PUIS SEULEMENT LA BASE. « Une route qui lirait le
+/// catalogue puis refuserait le jeton ne fuiterait rien par sa réponse, mais
+/// elle offrirait un travail gratuit à un pair anonyme » — c'est pour tenir
+/// cette règle que la VM voyage dans l'URL (`v=`) plutôt que d'être lue en
+/// base pour vérifier la signature.
 async function service(
     req: IncomingMessage,
     rep: ServerResponse,
@@ -250,16 +291,43 @@ async function service(
     cors: Record<string, string> | undefined,
     idApplication: string,
 ): Promise<boolean> {
-    const porteur = lirePorteur(req.headers, deps.secretJeton, deps.maintenant());
-    if (!porteur.ok) {
-        repondre(rep, porteur.code, { refus: porteur.motif }, cors);
-        return true;
-    }
-
     const url = new URL(req.url ?? '', 'http://interne');
     const attendue = url.searchParams.get('e');
     if (attendue === null || attendue === '') {
         repondre(rep, 400, { refus: 'empreinte-absente' }, cors);
+        return true;
+    }
+
+    // 🔴 LA SIGNATURE EST VÉRIFIÉE EN TEMPS CONSTANT, ET L'EXPIRATION CONTRE
+    // L'HORLOGE DU SERVEUR — jamais en croyant un champ du client. Les deux
+    // règles vivent dans `apps/url-icone.ts`, avec leurs raisons ; cette
+    // route ne fait que traduire le verdict en réponse HTTP.
+    const verdict = verifierUrlIcone(
+        idApplication,
+        url.searchParams,
+        deps.secretJeton,
+        deps.maintenant(),
+    );
+    if (!verdict.ok) {
+        // ⚠️ `400` POUR UNE FORME INCOMPLÈTE, `403` POUR UN REFUS : une URL à
+        // laquelle il manque un paramètre n'est pas une URL refusée, c'est
+        // une URL qu'on n'a pas fini d'écrire — et le dire évite de chercher
+        // une autorisation là où il manque un morceau.
+        if (verdict.motif === 'parametre-absent') {
+            repondre(rep, 400, { refus: 'signature-absente' }, cors);
+            return true;
+        }
+        // 🔴 `url-expiree` EST DISTINGUÉ DE `signature-invalide`, ET CE N'EST
+        // PAS UN ORACLE. Les deux motifs supposent déjà connu l'identifiant
+        // d'application, et aucun ne dit rien de l'existence ni de
+        // l'appartenance d'une VM — ce que l'uniformisation du `404` protège.
+        // Ce qu'ils distinguent est ACTIONNABLE côté client : une URL expirée
+        // se répare en relisant le catalogue, une signature fausse jamais.
+        // ⚠️ L'INVERSE SERAIT UN ORACLE, et `url-icone.ts` s'en garde :
+        // une URL forgée ET périmée s'entend dire « signature », jamais
+        // « expirée » — sans quoi le refus renseignerait un faussaire sur la
+        // moitié de son travail qui a abouti.
+        repondre(rep, 403, { refus: verdict.motif }, cors);
         return true;
     }
 
@@ -269,16 +337,17 @@ async function service(
         return true;
     }
 
-    // 🔴 L'AUTORISATION PASSE PAR LA MÊME RÈGLE QUE LES DEUX ROUTES DE G1, et
-    // le refus est INDISTINGUABLE — `404 vm-inconnue`, jamais un `403` qui
-    // dirait « celle-là existe, mais pas pour vous ». C'est l'oracle
-    // d'énumération que le propriétaire du dépôt a retiré, et le
-    // réintroduire ici serait le rouvrir par une porte de derrière.
-    const vm = await lireVm(deps.base, application.vm_id);
-    const autorise =
-        vm !== undefined
-        && (vm.utilisateur_id === null || vm.utilisateur_id === porteur.utilisateurId);
-    if (!autorise) {
+    // 🔴 LA VM SIGNÉE EST RECONFRONTÉE À CELLE DE LA BASE. Sans cela, la
+    // couvrir par la signature serait un ornement : une signature qui ne
+    // vérifie pas ce qu'elle prétend autoriser n'autorise rien. C'est ce
+    // contrôle qui fait qu'une application repointée vers une AUTRE VM cesse
+    // d'être servie par les URL déjà frappées.
+    //
+    // ⚠️ LE REFUS EST CELUI DE G1, MOT POUR MOT — `404 vm-inconnue` : le
+    // même code et le même motif que la route du catalogue, pour ne pas
+    // rouvrir par une porte de derrière l'oracle d'énumération que le
+    // propriétaire a retiré.
+    if (application.vm_id !== verdict.vm) {
         repondre(rep, 404, { refus: 'vm-inconnue' }, cors);
         return true;
     }
@@ -287,6 +356,9 @@ async function service(
     // c'est ce qui rend `immutable` honnête : sans ce refus, une vieille URL
     // servirait l'icône COURANTE sous un en-tête immuable, empoisonnant le
     // cache pour un an avec une image qui n'est pas celle que l'URL nomme.
+    //
+    // ⚠️ L'EMPREINTE N'EST PAS SIGNÉE, ET C'EST VOULU : elle est une VERSION,
+    // pas une autorisation. Voir `apps/url-icone.ts::PorteeIcone`.
     if (application.icone === null || application.icone !== attendue) {
         repondre(rep, 404, { refus: 'icone-inconnue' }, cors);
         return true;
@@ -321,8 +393,20 @@ async function service(
         ...(cors ?? {}),
         'content-type': 'image/png',
         'content-length': String(octets.length),
-        // ⚠️ `private` ET NON `public` : la réponse est authentifiée par le
-        // porteur. `immutable` DIT VRAI parce que l'URL porte l'empreinte.
+        // ⚠️ `private` ET NON `public`, ET LA RAISON A CHANGÉ LE 30 AOÛT
+        // 2026 SANS QUE LA VALEUR CHANGE : la réponse n'est plus authentifiée
+        // par un porteur mais par une URL SIGNÉE, c'est-à-dire par une
+        // capacité que son URL porte tout entière. Un cache PARTAGÉ la
+        // servirait donc à quiconque rejoue cette URL — ce qui est vrai de
+        // toute façon, mais un cache partagé la garderait **après
+        // l'expiration**, c'est-à-dire au-delà de la borne qui donne son sens
+        // au mécanisme. `private` la confine au navigateur qui l'a demandée.
+        //
+        // ⚠️ `immutable` DIT VRAI parce que l'URL porte l'empreinte — et il ne
+        // remplit pas le cache d'entrées mortes parce que l'expiration est
+        // ARRONDIE : deux frappes de la même minute rendent la MÊME URL. Sans
+        // cet arrondi, la clé de cache aurait changé à chaque lecture du
+        // catalogue. Voir `apps/url-icone.ts::PAS_URL_ICONE_MS`.
         //
         // 🔴 LA CASSE DE CETTE CLÉ N'EST PAS LIBRE : elle doit être CELLE
         // D'`ENTETES_SECURITE`, à la lettre. Un objet JavaScript distingue
