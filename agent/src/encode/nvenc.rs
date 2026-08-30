@@ -69,6 +69,15 @@ pub mod abi;
 #[path = "nvenc/structures.rs"]
 pub mod structures;
 
+/// Les dispositions qui s'echangent par image. Meme frontiere
+/// d'attribution, meme raison de `#[path]`.
+#[path = "nvenc/tampons.rs"]
+pub mod tampons;
+
+/// La table de fonctions du pilote. Meme frontiere, meme raison de `#[path]`.
+#[path = "nvenc/fonctions.rs"]
+pub mod fonctions;
+
 /// L'identifiant de vendeur PCI de NVIDIA.
 ///
 /// Relevé sur la VM cible plutôt que recopié d'une liste : la sonde du lot 31
