@@ -21,6 +21,7 @@ import {
     type ApplicationListee,
     type DepsCatalogue,
 } from './catalogue';
+import { NOM_FENETRE_BUREAU, PAGE_DU_BUREAU, ouvrirLeBureau } from './bureau';
 import { deposer, type Ton } from './depot';
 import { batirManifeste } from './manifeste';
 
@@ -38,8 +39,27 @@ const elListe = document.getElementById('applications') as HTMLUListElement;
 const elDepot = document.getElementById('depot') as HTMLElement;
 const elChoisir = document.getElementById('choisir') as HTMLButtonElement;
 const elThemes = document.getElementById('themes');
+const elBureau = document.getElementById('bureau') as HTMLAnchorElement | null;
 
 if (elThemes !== null) installerSelecteurDeThemeAuDOM(elThemes);
+
+/* ── LE CHEMIN VERS LE BUREAU ─────────────────────────────────────────────
+   🔴 DÉFAUT TROUVÉ EN PRODUCTION LE 30 AOÛT 2026, ET CONSÉQUENCE DIRECTE DU
+   PASSAGE DU HUB À LA RACINE (lot 14). Le hub est la seule surface que
+   l'utilisateur atteint, il n'ouvre aucune connexion de signaling, et rien
+   ici ne menait à `shell.html` — la seule page qui traite `fenetre-ouverte`.
+   Le superviseur annonçait donc ses fenêtres à un pair ABSENT (no-op
+   silencieux de `signaling/relais.ts`) et les refusait trente secondes plus
+   tard. Le raisonnement complet — pourquoi ce chemin plutôt que « le hub
+   tient lui-même la session », et ce que le rôle `client` EXCLUSIF impose —
+   est dans l'en-tête de `hub/bureau.ts`.
+
+   L'`href` et le `target` viennent de là-bas, jamais du HTML : une seule
+   source de vérité pour la page du bureau et le nom de sa fenêtre. */
+if (elBureau !== null) {
+    elBureau.href = PAGE_DU_BUREAU;
+    elBureau.target = NOM_FENETRE_BUREAU;
+}
 
 function dire(ton: Ton, texte: string): void {
     elMessage.className = `${CLASSE_DE_TON[ton]} hub__message`;
@@ -175,10 +195,43 @@ function entree(application: ApplicationListee): HTMLLIElement {
     lancer.className = 'bouton bouton--principal';
     lancer.textContent = 'Lancer';
     lancer.addEventListener('click', () => {
+        // 🔴 LE MÊME CLIC OUVRE LE BUREAU, ET C'EST LE FOND DU CORRECTIF DU
+        //    30 AOÛT 2026. Un lien visible en en-tête ne suffit pas : il
+        //    demande à l'utilisateur de savoir, AVANT de lancer, qu'une
+        //    seconde surface existe. Ici c'est son geste de lancement qui
+        //    ouvre la surface où la fenêtre paraîtra — et parce que c'est un
+        //    GESTE, aucun navigateur ne bloque cette ouverture-là.
+        //
+        // ⚠️ AVANT le `POST /lancer`, jamais après : un `await` intercalé
+        //    consommerait l'activation transitoire du clic, et l'ouverture
+        //    redeviendrait une pop-up bloquable — c'est le mur que
+        //    `shell-page.ts` heurte déjà, et qu'il ne s'agit pas de déplacer
+        //    d'un cran.
+        //
+        // ⚠️ Le bureau ARRIVE APRÈS l'annonce dans le cas le plus rapide, et
+        //    ce n'est pas un défaut : le relais dit à l'agent qu'un pair est
+        //    présent (`pair-present`, lot 17) et le superviseur REDIT alors
+        //    ses fenêtres en attente, compte à rebours remis à zéro.
+        const bureau = ouvrirLeBureau({ ouvrir: (url, nom) => window.open(url, nom) });
         dire('neutre', `Lancement de ${application.nom}…`);
         void lancerApplication(application.id, deps).then((issue) => {
-            if (issue.etat === 'ok') dire('succes', `${application.nom} a été lancée.`);
-            else dire('danger', `${application.nom} n'a pas pu être lancée : ${issue.refus.motif}.`);
+            if (issue.etat !== 'ok') {
+                dire('danger', `${application.nom} n'a pas pu être lancée : ${issue.refus.motif}.`);
+                return;
+            }
+            // 🔴 AUCUN ÉCHEC MUET, ET LE LANCEMENT A LIEU QUAND MÊME. Refuser
+            //    de lancer parce que le bureau n'a pas pu s'ouvrir ferait
+            //    d'une gêne une panne ; taire le bureau manquant ramènerait
+            //    la panne d'origine — une application lancée que personne ne
+            //    voit. On fait les deux, et on le dit.
+            if (bureau) dire('succes', `${application.nom} a été lancée.`);
+            else {
+                dire(
+                    'danger',
+                    `${application.nom} a été lancée, mais le navigateur a bloqué l’ouverture du bureau : ` +
+                        'sa fenêtre ne peut pas paraître. Employez « Mon bureau » en haut de page.',
+                );
+            }
         });
     });
     boutons.appendChild(lancer);
