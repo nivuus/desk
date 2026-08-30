@@ -74,7 +74,34 @@ d'échantillonnage.
 
 ---
 
-## 4. La cause, établie par lecture : le critère est évalué TROP TÔT
+## 4. ~~La cause, établie par lecture : le critère est évalué TROP TÔT~~ — **RÉFUTÉ PAR MA PROPRE MESURE**
+
+> 🔴 **ANNOTATION DU 30 AOÛT 2026 (lot 32G). CE QUI SUIT EST FAUX, ET C'EST MA
+> MESURE QUI L'A DÉFAIT.** J'avais déduit — par lecture seule, sans mesure —
+> que le crochet évaluait le prédicat avant que DWM n'occulte la fenêtre. Une
+> sonde à **15 ms** (1641 échantillons, `journaux-lot32g/decantation.ps1`),
+> pendant un parcours produisant le refus, mesure pour **chaque** fenêtre le
+> temps qu'elle passe le prédicat :
+>
+> ```
+> passant_ms=-1  Open With Dummy Window Class For Interim Dialog  "Pick an app"
+> passant_ms=-1  Open With Dummy Window Class For Interim Dialog  "Pick an app"
+> passant_ms=-1  SDL_app        "Steam : mode Big Picture"
+> passant_ms=-1  App            "Forza Horizon 6"
+> passant_ms=-1  ConsoleWindowClass  "Administrator: …cmd.exe"
+> passant_ms=-1  Notepad        "Untitled - Notepad"
+> ```
+>
+> **`-1` signifie « n'a JAMAIS cessé de passer ».** Les six fenêtres sont
+> persistantes ; **aucune ne se fait occulter après coup.** Il n'y a donc rien
+> à décanter, et **la conception du § 5 tombe avec.** Voir § 8.
+>
+> ⚠️ **La leçon est celle de `placement.rs:4-7`, et je viens de la repayer :**
+> une cause « établie par lecture » n'est pas établie. J'ai écrit *établie*
+> là où il fallait *déduite*.
+
+### (le raisonnement réfuté, conservé)
+
 
 `agent/src/superviseur/hook.rs` : le crochet est armé sur **`EVENT_OBJECT_SHOW`**
 (`:123`) et appelle `decrire` **immédiatement** (`:124`), qui lit à cet instant
@@ -95,7 +122,7 @@ seul instant où elles passent.**
 
 ---
 
-## 5. ③ Ce que je propose, et l'ARBITRAGE que je demande
+## 5. ~~Ce que je propose~~ — **CADUC** (voir § 4 et § 8)
 
 **La règle qui décrit ce qu'est une fenêtre d'application est déjà écrite.**
 Ce qu'il faut lui ajouter n'est pas un critère de plus, c'est une
@@ -149,3 +176,81 @@ comportement perçu, sur le chemin le plus visible du produit.
 Tâche de sonde supprimée, fichiers retirés, Notepad accumulés fermés, agent
 relancé (**session 1**, `D34213D8…`, 3 processus), Apollo **Running** en
 `ensure_active`. VM en exécution. **Rien n'a été déployé par ce lot.**
+
+
+---
+
+## 8. LA CAUSE RÉELLE, mesurée : les sorties FUITENT en régime
+
+Ce ne sont ni les fenêtres techniques, ni un critère incomplet, ni une
+évaluation trop précoce. **Le vivier se remplit de sorties que personne ne
+tient.**
+
+| Relevé | Valeur |
+| --- | --- |
+| Fenêtres passant le prédicat (sonde 15 ms, 1641 échantillons) | **6** |
+| Moniteurs PnP **actifs** | **9** |
+| dont **SudoVDA** actifs | **8** |
+| Vivier du pilote | **10** |
+
+**Huit sorties virtuelles vivantes pour six fenêtres**, et le vivier est
+pratiquement plein. C'est ce qui produit `plus aucune sortie virtuelle
+disponible`, et aussi le refus
+`création d'une sortie 1280x720@60 (IOCTL 0x00222000)` — le **pilote** lui-même
+refuse de créer.
+
+🔵 **Le produit le dit déjà, et personne ne l'écoutait.** La purge du démarrage
+émet une `ERROR` explicite :
+
+```
+purge terminée SANS retrouver le compte attendu — topologie non conforme à ce
+que la purge a retiré   retirees=5 avant=7 apres=1 attendu=2
+```
+
+et, au relevé suivant, `retirees=7 avant=9 apres=1 attendu=2`.
+
+🔵 **Et la purge, elle, fonctionne** : forcée à la main
+(`MULTIFENETRE_VDD_PURGE=1`), elle fait passer les moniteurs SudoVDA actifs de
+**8 à 0**. **La fuite n'est donc pas irrécupérable — elle est simplement
+jamais récupérée entre deux démarrages de l'agent.**
+
+**La cible se déplace donc**, et il faut le dire : ce n'est plus « quelles
+fenêtres méritent une sortie », c'est **« pourquoi une sortie attribuée n'est
+pas rendue »**. Le chemin de restitution existe
+(`creation_sortie::rendre_la_sortie`), et le compte ne tombe pas juste.
+
+⚠️ **Ce que ma propre campagne y a mis, et je ne l'écarte pas** : j'ai tué
+l'agent par `Stop-Process -Force` des dizaines de fois aujourd'hui, et
+`CLAUDE.md` prévient qu'une sortie virtuelle survit à un arrêt brutal
+(le `Drop` ne court pas sur un `TerminateProcess`). **Une part de ces huit
+sorties est mon sillage.** Ce qui n'est PAS mon sillage : la purge du
+démarrage court à chaque relance et rapporte **elle-même** qu'elle ne
+réconcilie pas — c'est un constat du produit sur lui-même, pas de moi.
+
+---
+
+## 9. Ce que je n'ai pas fait, et pourquoi
+
+🔴 **Aucun remède, pour la seconde fois de suite, et c'est délibéré.** J'ai
+réfuté deux cadrages successifs — le mien inclus — par la mesure. Écrire un
+troisième remède sur une troisième hypothèse non mesurée serait exactement ce
+que la manche précédente a coûté.
+
+**Ce qu'il faut mesurer avant d'écrire quoi que ce soit** : compter, sur une
+exécution propre, les créations et les restitutions de sortie, et voir
+lesquelles ne s'apparient pas. Les deux traces existent déjà
+(`sortie virtuelle créée id=…` et `sortie virtuelle rendue au pilote
+sortie_pilote=…`) : **le comptage est à portée, sans une ligne de code neuve.**
+
+**Ce qui reste vrai des manches précédentes** : le critère de fenêtre est bon
+(§ 2), et la piste de l'exclusion est réfutée (§ 3). Ces deux résultats
+tiennent.
+
+---
+
+## 10. L'état rendu
+
+Sondes supprimées (`lot32f-rec`, `lot32g-dec`, `lot32g-purge`) et leurs
+fichiers retirés. **Sorties virtuelles purgées : 8 → 0.** Notepad accumulés
+fermés. Agent relancé, **session 1**, `D34213D8…`, 3 processus. Apollo
+**Running** en `ensure_active`. VM en exécution. **Rien n'a été déployé.**
