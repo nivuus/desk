@@ -1,0 +1,136 @@
+{
+  "etiquette": "appartenance-desarmee",
+  "instant": "2026-08-30T20:09:40.383Z",
+  "viewport": "1280x720",
+  "messages": [
+    {
+      "ms": 17,
+      "type": "ice-config"
+    },
+    {
+      "ms": 41,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-2",
+      "titre": "Untitled - Paint"
+    },
+    {
+      "ms": 45,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-3",
+      "titre": "Steam : mode Big Picture"
+    },
+    {
+      "ms": 46,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-1",
+      "titre": "Untitled - Notepad"
+    },
+    {
+      "ms": 47,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-6",
+      "titre": "Forza Horizon 6"
+    },
+    {
+      "ms": 48,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-4",
+      "titre": "Pick an app"
+    },
+    {
+      "ms": 49,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-5",
+      "titre": "Pick an app"
+    },
+    {
+      "ms": 3807,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-7",
+      "titre": "Chrome Legacy Window"
+    },
+    {
+      "ms": 3809,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-8",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "ms": 3823,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-9",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "ms": 6535,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-10",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "ms": 14039,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "plus aucune sortie virtuelle disponible"
+    },
+    {
+      "ms": 15712,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "plus aucune sortie virtuelle disponible"
+    },
+    {
+      "ms": 17135,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "plus aucune sortie virtuelle disponible"
+    },
+    {
+      "ms": 17635,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "plus aucune sortie virtuelle disponible"
+    },
+    {
+      "ms": 18036,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "plus aucune sortie virtuelle disponible"
+    },
+    {
+      "ms": 18036,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "plus aucune sortie virtuelle disponible"
+    },
+    {
+      "ms": 18136,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "plus aucune sortie virtuelle disponible"
+    }
+  ],
+  "vm": "677a3953-14c7-4364-92c3-bd17ecddf8d2",
+  "etat_vm": "prete",
+  "session": "3sxuA9dd56NpVdHi37R86g:bureau",
+  "compte_fenetre_ouverte": 10,
+  "compte_refus": 7,
+  "motifs_de_refus": [
+    "plus aucune sortie virtuelle disponible"
+  ],
+  "titres": [
+    "Untitled - Paint",
+    "Steam : mode Big Picture",
+    "Untitled - Notepad",
+    "Forza Horizon 6",
+    "Pick an app",
+    "Pick an app",
+    "Chrome Legacy Window",
+    "DesktopWindowXamlSource",
+    "DesktopWindowXamlSource",
+    "DesktopWindowXamlSource"
+  ],
+  "sessions_apres_lancement": [],
+  "tenues": [],
+  "verdict": "ROUGE"
+}

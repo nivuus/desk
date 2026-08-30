@@ -22,12 +22,13 @@ use windows::Win32::Graphics::Dwm::{DwmGetWindowAttribute, DWMWA_CLOAKED};
 use windows::Win32::UI::Accessibility::{SetWinEventHook, UnhookWinEvent, HWINEVENTHOOK};
 use windows::Win32::UI::WindowsAndMessaging::{
     DispatchMessageW, EnumWindows, GetMessageW, GetWindow, GetWindowLongPtrW, GetWindowTextLengthW,
-    GetWindowTextW, IsWindowVisible, PostThreadMessageW, TranslateMessage, EVENT_OBJECT_DESTROY,
+    GetWindowTextW, GetWindowThreadProcessId, IsWindowVisible, PostThreadMessageW,
+    TranslateMessage, EVENT_OBJECT_DESTROY,
     EVENT_OBJECT_HIDE, EVENT_OBJECT_SHOW, GWL_EXSTYLE, GW_OWNER, MSG, OBJID_WINDOW, WINEVENT_OUTOFCONTEXT,
     WM_QUIT, WS_EX_APPWINDOW, WS_EX_TOOLWINDOW,
 };
 
-use super::fenetres::{merite_une_fenetre, DescriptionFenetre};
+use super::fenetres::{ecartee_pour_non_appartenance, merite_une_fenetre, DescriptionFenetre};
 use super::table::IdFenetre;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -125,6 +126,12 @@ unsafe extern "system" fn rappel(
                 Some(d) if merite_une_fenetre(&d) => d,
                 _ => return,
             };
+            // La porte d'appartenance est CONSULTÉE ICI et dans l'énumération
+            // initiale — les deux chemins d'entrée, jamais un seul. Ce dépôt a
+            // déjà payé un garde qui ne mordait que sur l'un des deux.
+            if refusee_pour_appartenance(hwnd, &description.titre) {
+                return;
+            }
             EvenementFenetre::Apparue {
                 fenetre: IdFenetre(hwnd.0 as u64),
                 titre: description.titre,
@@ -165,11 +172,76 @@ pub fn enumerer_existantes() -> Vec<(IdFenetre, String)> {
 unsafe extern "system" fn rappel_enumeration(hwnd: HWND, lparam: LPARAM) -> BOOL {
     let trouvees = &mut *(lparam.0 as *mut Vec<(IdFenetre, String)>);
     if let Some(d) = decrire(hwnd) {
-        if merite_une_fenetre(&d) {
+        if merite_une_fenetre(&d) && !refusee_pour_appartenance(hwnd, &d.titre) {
             trouvees.push((IdFenetre(hwnd.0 as u64), d.titre));
         }
     }
     TRUE
+}
+
+/// La porte d'APPARTENANCE, et **sa trace**.
+///
+/// 🔴 **CETTE TRACE EST UNE EXIGENCE, PAS UN CONFORT.** Sans elle, une
+/// application que `desk` n'a pas pu adopter serait **muette** : elle ne
+/// paraîtrait jamais, et rien nulle part ne dirait pourquoi. Ce dépôt paie une
+/// panne muette plus cher qu'un défaut bruyant, et le cas est RÉEL — une
+/// application du **Windows Store** paraît sous un intermédiaire du système
+/// (`ApplicationFrameHost`) qui ne descend pas de nous. Aucune du catalogue
+/// n'est dans ce cas aujourd'hui (mesuré, 41 raccourcis Win32) ; **le risque
+/// est repoussé, pas supprimé.**
+///
+/// ⚠️ **`info!`, jamais `error!`** : écarter une fenêtre qui n'est pas à nous
+/// est le fonctionnement NORMAL de la règle, pas une panne. Ce lot vient de
+/// corriger une fausse alerte pour cette raison exacte
+/// (`moniteurs_virtuels::verdict_purge`), et un `error!` qui crie à chaque
+/// fenêtre de Steam serait la même faute.
+fn refusee_pour_appartenance(hwnd: HWND, titre: &str) -> bool {
+    let armee = crate::appartenance::armee();
+    let mut pid = 0u32;
+    let _ = unsafe { GetWindowThreadProcessId(hwnd, Some(&mut pid)) };
+    let appartient = crate::appartenance::est_des_notres(pid);
+    if !ecartee_pour_non_appartenance(appartient, armee) {
+        return false;
+    }
+    tracing::info!(
+        titre,
+        pid,
+        processus = %nom_du_processus(pid).unwrap_or_else(|| "?".into()),
+        "fenêtre ÉCARTÉE : desk ne l'a pas lancée (règle d'appartenance). \
+         Désarmer par APPARTENANCE=0 pour retrouver le comportement d'avant"
+    );
+    true
+}
+
+/// Le nom du processus, pour que la trace ci-dessus soit lisible sans une
+/// seconde enquête. `None` si on ne peut pas l'obtenir — la trace le dit
+/// plutôt que de taire la ligne entière.
+fn nom_du_processus(pid: u32) -> Option<String> {
+    // ⚠️ `QueryFullProcessImageNameW` et non `GetModuleBaseNameW` : la seconde
+    // vit dans `Win32_System_ProcessStatus`, une feature que ce crate n'active
+    // pas. La première est dans `Win32_System_Threading`, déjà active — et
+    // ajouter une feature pour un nom de journal serait payer cher un confort.
+    use windows::core::PWSTR;
+    use windows::Win32::System::Threading::{
+        OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_WIN32,
+        PROCESS_QUERY_LIMITED_INFORMATION,
+    };
+    let processus =
+        unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid) }.ok()?;
+    let mut tampon = [0u16; 260];
+    let mut taille = tampon.len() as u32;
+    let issue = unsafe {
+        QueryFullProcessImageNameW(
+            processus,
+            PROCESS_NAME_WIN32,
+            PWSTR(tampon.as_mut_ptr()),
+            &mut taille,
+        )
+    };
+    let _ = unsafe { windows::Win32::Foundation::CloseHandle(processus) };
+    issue.ok()?;
+    let chemin = String::from_utf16_lossy(&tampon[..taille as usize]);
+    Some(chemin.rsplit(['\\', '/']).next().unwrap_or(&chemin).to_string())
 }
 
 /// Pose le hook global et lance sa pompe de messages sur un fil dédié.
