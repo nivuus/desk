@@ -646,3 +646,92 @@ brut de l'élément ferait mesurer au pilote **sa propre erreur de cadrage**.
 
 ⚠️ **Le bras d'AVANT n'existe qu'une fois** : il disparaît au redémarrage. Ne
 pas inverser l'ordre, ne pas le sauter — c'est écrit en tête du script.
+
+---
+
+## 14. LA MESURE — les deux bras, sur les trois mêmes points
+
+### 14.1 Ce qui a été mesuré
+
+Sonde `curseur.ps1` en **session 1** (elle imprime sa session), `GetCursorPos`
+à 100 ms ; pilote dispatchant un `pointermove` sur l'élément vidéo — **le
+chemin du produit**, pas un raccourci.
+
+| Point | fraction | **AVANT** | **APRÈS** |
+| --- | --- | --- | --- |
+| **A** coin haut-gauche | 0,02 | (1302, 60) | **(1316, 22)** |
+| **B** centre | 0,50 | (1669, 267) | **(2209, 540)** |
+| **C** coin bas-droite | 0,98 | (2036, 473) | **(3102, 1057)** |
+
+Les trois points sont **alignés** dans les deux bras (Δ constants), donc le
+mappage est affine et son rectangle se dérive :
+
+| Bras | rectangle sur lequel le curseur est mappé | Ce que c'est |
+| --- | --- | --- |
+| **AVANT** | **(1287, 51) — 765 × 430** | la **zone client de la FENÊTRE** |
+| **APRÈS** | **(1279, 0) — 1860 × 1078** | la **SORTIE capturée** |
+
+🔵 **Le `+51` en y du bras d'avant est celui-là même que les traces de
+replacement portaient** (`de="…+4428+51"`), et l'origine d'après, `x = 1279`,
+est celle que le produit visait (`vers="…+1280+0"`). **Les deux bouts se
+recoupent.**
+
+### 14.2 🔴 Quelle assertion passe — la grille, appliquée
+
+| Bras | A | B | C | Verdict selon la grille écrite d'avance |
+| --- | --- | --- | --- | --- |
+| **AVANT** | −14, +38 | **−540, −272** | **−1066, −583** | l'erreur **croît avec la distance** : origine **et** échelle |
+| **APRÈS** | 0, 0 | 0, +1 | 0, +1 | **« A, B, C tous justes » ⇒ la référence est corrigée** |
+
+🔴 **Et c'est bien la case « tous justes », pas une autre.** Le cas « A juste,
+C faux » (échelle résiduelle) est exclu : C tombe à **un pixel**. Le cas « A et
+C faux du même nombre » (origine résiduelle) est exclu : l'écart est **nul**.
+Le cas impossible — A et C justes, B faux — ne s'est pas produit.
+
+⚠️ **Le pixel résiduel en y sur B et C** est un arrondi : `to_virtual_desktop`
+normalise sur 0..65535 puis arrondit, et 1078 px de haut ne se divisent pas
+exactement. **Ce n'est pas une erreur de référence.**
+
+### 14.3 🔵 Le bras d'AVANT reproduit bien ce que le propriétaire a vécu
+
+**Au centre de l'image, le curseur tombait 540 px à gauche et 272 px au-dessus
+du point visé.** Un clic sur la barre des tâches — bas de l'image — atterrissait
+donc **au milieu de la fenêtre**, où il ne se passe rien de visible. **C'est
+exactement « je clique et rien ne se passe ».**
+
+🔴 **Et c'est la troisième pièce indépendante** : la formule dérivée du code, le
+test d'hôte qui reproduit `+1288/+51`, et maintenant le curseur mesuré. **Aucune
+ne dépend des deux autres.**
+
+### 14.4 Le déploiement
+
+| | |
+| --- | --- |
+| Copie nommée | `agent.exe.copie-nommee-avant-lot32q`, sha256 **`B490ED67…D47C7`** |
+| Déployé | **`03E2E752…4BED1`**, identique au payload `console` déposé par le hook |
+| Session | **1**, attestée par `agent-session.txt` de l'appliance |
+| Processus | 3 |
+| Hook `install` | **non rejoué** |
+| `desk-plateforme` | **active**, `NRestarts=0`, `GET /` → **200** |
+
+### 14.5 🔴 Ce qui a échoué en chemin, et que je ne masque pas
+
+**La première exécution de la séquence n'a RIEN déployé**, et les deux mesures
+étaient vides :
+
+1. **Le serveur HTTP de l'étape 0 n'a pas été tué** — mon fichier de PID
+   contenait le mauvais identifiant à cause de la construction
+   `(cd X && python3 … & echo $!)`. Le second serveur n'a donc jamais démarré,
+   et l'ancien a répondu **404** sur `agent.exe`. ⚠️ **C'est parce que le
+   script imprimait les DEUX empreintes qu'on l'a vu** : `deploye sha256` était
+   identique à l'avant. Sans cette impression, j'aurais mesuré deux fois le
+   même binaire en croyant mesurer un remède.
+2. **Aucune fenêtre n'était servie** : le propriétaire ayant rendu la machine,
+   il n'y avait plus de session, et le pilote rendait « aucune page de
+   session ». Il faut **ouvrir une application soi-même** avant de mesurer.
+3. 🔴 **En nettoyant, j'ai tué mon propre shell avec `pkill -f 'http.server
+   8099'`** — exit 144, le piège que `CLAUDE.md` nomme et que j'avais moi-même
+   relu ce jour. **Tuer par PID relevé**, jamais par motif.
+
+**Rien n'a été cassé** : l'ancien binaire est resté en place tout du long, et le
+bras d'AVANT a donc été mesuré sur le bon binaire.

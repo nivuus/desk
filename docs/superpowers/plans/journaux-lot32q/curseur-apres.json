@@ -1,0 +1,65 @@
+{
+ "etiquette": "apres",
+ "instant": "2026-08-30T21:23:18.261Z",
+ "points": [
+  {
+   "nom": "A_coin_haut_gauche",
+   "fx": 0.02,
+   "fy": 0.02,
+   "a_t": 6,
+   "t_ms": 6016,
+   "cx": 16,
+   "cy": 10,
+   "image": {
+    "x": 0,
+    "y": 1,
+    "l": 780,
+    "h": 492
+   },
+   "source": {
+    "l": 780,
+    "h": 492
+   }
+  },
+  {
+   "nom": "B_centre",
+   "fx": 0.5,
+   "fy": 0.5,
+   "a_t": 16,
+   "t_ms": 16013,
+   "cx": 390,
+   "cy": 247,
+   "image": {
+    "x": 0,
+    "y": 1,
+    "l": 780,
+    "h": 492
+   },
+   "source": {
+    "l": 780,
+    "h": 492
+   }
+  },
+  {
+   "nom": "C_coin_bas_droite",
+   "fx": 0.98,
+   "fy": 0.98,
+   "a_t": 26,
+   "t_ms": 26013,
+   "cx": 764,
+   "cy": 483,
+   "image": {
+    "x": 0,
+    "y": 1,
+    "l": 780,
+    "h": 492
+   },
+   "source": {
+    "l": 780,
+    "h": 492
+   }
+  }
+ ],
+ "prefixe": "3sxuA9dd56NpVdHi37R86g",
+ "url_session": "http://192.168.3.1:3445/index.html?session=3sxuA9dd56NpVdHi37R86g%3Aw-1"
+}
