@@ -278,12 +278,12 @@ d'encodeur ; le choix d'adaptateur est là, et c'est le seul qui compte.
 
 | Où | Quoi |
 | --- | --- |
-| `agent/src/encode.rs:1377` | `find_hardware_encoder()` |
-| `agent/src/encode.rs:1391` | `MFTEnumEx(MFT_CATEGORY_VIDEO_ENCODER, MFT_ENUM_FLAG_HARDWARE \| MFT_ENUM_FLAG_SORTANDFILTER, NV12 → H264)` — **aucun CLSID n'est nommé** : c'est une énumération, et elle rend **une** entrée, `NVIDIA H.264 Encoder MFT` |
-| `agent/src/encode.rs:1448-1449` | 🔴 **LA PORTE** : `first.ActivateObject()` → `0x8000FFFF` en session 1 |
-| `agent/src/encode.rs:376` | l'appel, depuis `H264Encoder::new` |
-| `agent/src/encode.rs:380-382` | `bail!` si la MFT n'est **pas asynchrone** — ce qui **exclut d'office** la MFT logicielle (épreuve E, `async=0`) |
-| `agent/src/encode.rs:393-400` | `share_device` + `MFT_MESSAGE_SET_D3D_MANAGER` — **APRÈS** l'activation |
+| `agent/src/encode/fabrique.rs:280` | `find_hardware_encoder()` |
+| `agent/src/encode/fabrique.rs:294` | `MFTEnumEx(MFT_CATEGORY_VIDEO_ENCODER, MFT_ENUM_FLAG_HARDWARE \| MFT_ENUM_FLAG_SORTANDFILTER, NV12 → H264)` — **aucun CLSID n'est nommé** : c'est une énumération, et elle rend **une** entrée, `NVIDIA H.264 Encoder MFT` |
+| `agent/src/encode/fabrique.rs:351-352` | 🔴 **LA PORTE** : `first.ActivateObject()` → `0x8000FFFF` en session 1 |
+| `agent/src/encode.rs:374` | l'appel, depuis `H264Encoder::new` |
+| `agent/src/encode.rs:378-380` | `bail!` si la MFT n'est **pas asynchrone** — ce qui **exclut d'office** la MFT logicielle (épreuve E, `async=0`) |
+| `agent/src/encode.rs:391-398` | `share_device` + `MFT_MESSAGE_SET_D3D_MANAGER` — **APRÈS** l'activation |
 | `agent/src/capture/ouverture.rs:125-131` | le périphérique D3D11, créé **sur l'adaptateur qui porte la sortie capturée** |
 
 **Ce que cette porte suppose et que l'autre ne suppose pas** : que le pilote
@@ -294,17 +294,33 @@ un périphérique D3D11 — **mesuré disponible en session 1** (épreuve H).
 
 🔴 **Et une supposition tombe, mesurée** : `MFT_MESSAGE_SET_D3D_MANAGER` ne
 peut **pas** être en cause. La documentation Microsoft l'impose *après*
-l'activation et *avant* `SetInputType`/`SetOutputType`, et `encode.rs:393-400`
-le fait bien après `encode.rs:376`. On échoue **avant** d'avoir la moindre
+l'activation et *avant* `SetInputType`/`SetOutputType`, et `encode.rs:391-398`
+le fait bien après `encode.rs:374`. On échoue **avant** d'avoir la moindre
 occasion de désigner un périphérique.
 
-⚠️ **Trouvaille collatérale, non cherchée** : l'épreuve F montre qu'**aucun
-convertisseur de couleur MATÉRIEL n'est énuméré** sur cette machine, dans les
-deux sessions. `find_hardware_video_processor()` (`encode.rs:1291`) échouerait
-donc toujours, et `create_color_converter` (`encode.rs:1198`) retomberait sur
-son `CoCreateInstance(&CLSID_VideoProcessorMFT)` (`encode.rs:1215`) —
-**logiciel**. Ce repli existe et fonctionne (épreuve G) ; il n'est simplement
-jamais atteint, l'encodeur échouant en amont.
+🔴 **TROUVAILLE COLLATÉRALE, NON CHERCHÉE, ET QUI DÉBORDE LARGEMENT CE
+LOT — elle ne parle pas d'un chemin hypothétique, elle parle de la
+PRODUCTION D'AUJOURD'HUI.** L'épreuve F montre qu'**aucun convertisseur de
+couleur MATÉRIEL n'est énuméré** sur cette machine, **dans les deux
+sessions**. Donc `find_hardware_video_processor()` (`encode/fabrique.rs:194`) échoue
+**toujours**, et `create_color_converter` (`encode/fabrique.rs:101`) retombe
+**toujours** sur son `CoCreateInstance(&CLSID_VideoProcessorMFT)`
+(`encode/fabrique.rs:118`) — c'est-à-dire sur le **`Microsoft Video Processor MFT`,
+LOGICIEL** (épreuve G, activé OK).
+
+**Ce que cela veut dire, en clair : la conversion BGRA → NV12 de chaque
+image de chaque fenêtre passe par le CPU, sur cette VM, depuis toujours — et
+personne dans ce dépôt ne le savait.** Le commentaire d'en-tête d'`encode.rs`
+décrit ce convertisseur comme celui qui « convertit BGRA→NV12 **sans quitter
+le GPU** » : cette phrase est **fausse sur cette machine**. Le repli de
+`encode/fabrique.rs:117` journalise pourtant sa raison en `debug!`, un niveau que la
+production n'émet pas.
+
+⚠️ **Ce lot ne mesure PAS le coût de cette conversion logicielle** (ni CPU, ni
+latence, ni cadence) : il établit seulement qu'elle a lieu. C'est un legs
+distinct, et il vaut d'être traité pour lui-même — **y compris si R1 le
+supprime**, puisque le savoir change la lecture de toute mesure de débit
+antérieure à ce jour.
 
 **⑤ Le remède** — §5.
 
@@ -324,8 +340,19 @@ jamais atteint, l'encodeur échouant en amont.
   100 ms étant déjà posée, puisque Apollo fabrique ses encodeurs **à chaque
   démarrage**. L'API web (`https://192.168.3.2:47990`) rend `401` avec
   `nivuus` + `/root/.config/nivuus/apollo-ui.pass` : le mot de passe du
-  fichier n'est pas celui que porte l'état. **Ce relevé reste dû, et il est
-  peu coûteux le jour où l'un de ces trois chemins s'ouvre.**
+  fichier n'est pas celui que porte l'état.
+
+  🔴 **CE RELEVÉ EST ABANDONNÉ, PAR DÉCISION DU PROPRIÉTAIRE DU DÉPÔT
+  (30 août 2026), ET NE SERA PAS REPRIS.** Deux raisons, et la première n'est
+  pas une commodité : `ApolloService` est le service de bureau distant dont le
+  propriétaire de cette machine **se sert réellement**, et le redémarrer pour
+  une commodité de mesure ne nous appartient pas. La seconde est qu'il
+  n'établirait plus rien de neuf : **six encodeurs NVENC créés sans que
+  `mfplat.dll` ait jamais paru** — c'est ce que dit le §1.4 — est déjà la
+  preuve d'absence recherchée. Un `mfplat.dll` chargé puis relâché serait un
+  fait remarquable ; six encodeurs fabriqués sans qu'il ait jamais paru, non.
+  ⚠️ **Ce document n'affirme donc NULLE PART que ce relevé a été obtenu**, et
+  ce paragraphe existe pour qu'aucun lecteur pressé ne puisse le croire.
 - 🔴 **La CAUSE du `0x8000FFFF` n'est pas établie.** Ce lot établit
   **l'endroit**, la **spécificité** (session 1, MFT matérielle NVIDIA seule,
   témoins verts à côté) et **quatre remèdes réfutés**. Il ne dit pas pourquoi.
@@ -358,7 +385,7 @@ Remplacer la fabrication de l'encodeur par `nvEncodeAPI64.dll` :
   de débit, et le portage des quatre verbes que `encode.rs` expose déjà
   (`submit`, `poll_output`, `request_keyframe`, `set_bitrate`).
 - 🔵 **Ce qu'il RETIRE** : NVENC accepte `NV_ENC_BUFFER_FORMAT_ARGB`
-  directement. Le convertisseur de couleur (`encode.rs:1198-1230`) — qui, sur
+  directement. Le convertisseur de couleur (`encode/fabrique.rs:101-133`) — qui, sur
   cette machine, est **logiciel** faute de MFT matérielle (épreuve F) —
   pourrait **disparaître** du chemin chaud. Le remède est donc moins cher
   qu'il n'en a l'air, et il supprime un étage.
@@ -386,8 +413,8 @@ un handle NT partagé.
 
 `H264 Encoder MFT` s'active dans **les deux** sessions (épreuve E).
 
-- **Où** : `agent/src/encode.rs:1377-1451` (un second `MFTEnumEx` avec
-  `MFT_ENUM_FLAG_SYNCMFT` en repli) **et** `agent/src/encode.rs:380-382`, dont
+- **Où** : `agent/src/encode/fabrique.rs:280-355` (un second `MFTEnumEx` avec
+  `MFT_ENUM_FLAG_SYNCMFT` en repli) **et** `agent/src/encode.rs:378-380`, dont
   le `bail!` sur `is_async == 0` **rejette aujourd'hui cette MFT d'office** —
   les deux points doivent bouger ensemble, sinon le repli ne peut pas être
   atteint.
@@ -421,15 +448,15 @@ DXGI rattache **déjà** les sorties virtuelles de `desk` à l'adaptateur NVIDIA
 🔴 **Aucune n'a été appliquée.**
 
 1. **R1 — implémenter l'encodeur NVENC natif.** Point d'entrée :
-   `agent/src/encode.rs:1377-1451` (`find_hardware_encoder`) et
-   `agent/src/encode.rs:376` (son appelant), plus un module neuf pour la
-   liaison FFI. Effet de bord souhaité : `agent/src/encode.rs:1198-1230`
+   `agent/src/encode/fabrique.rs:280-355` (`find_hardware_encoder`) et
+   `agent/src/encode.rs:374` (son appelant), plus un module neuf pour la
+   liaison FFI. Effet de bord souhaité : `agent/src/encode/fabrique.rs:101-133`
    (le convertisseur) pourrait sortir du chemin chaud.
    ⚠️ `encode.rs` pèse **1536 lignes** — la règle des 500 impose que toute
    addition substantielle s'accompagne d'une **extraction**, dans une tâche
    dédiée et **avant** celle qui ajoute.
-2. **R3 — repli logiciel, en filet.** `agent/src/encode.rs:1377-1451` **et**
-   `agent/src/encode.rs:380-382` (le `bail!` sur `is_async == 0`), qui
+2. **R3 — repli logiciel, en filet.** `agent/src/encode/fabrique.rs:280-355` **et**
+   `agent/src/encode.rs:378-380` (le `bail!` sur `is_async == 0`), qui
    doivent changer **ensemble**.
 3. **Le relevé qui manque (§4).** Autorisation d'un des trois chemins :
    ① modifier `perm` de `nivuus-hote` dans
@@ -453,3 +480,73 @@ DXGI rattache **déjà** les sorties virtuelles de `desk` à l'adaptateur NVIDIA
 - Côté hôte : `Xvfb :99`, le serveur HTTP de dépôt (port 8931) et le client
   Moonlight sont **arrêtés** (tués **par PID relevé**, jamais par motif).
   Sources de la sonde jetable : `/var/tmp/lot31/sonde-mft/`.
+
+---
+
+## 8. L'extraction d'`encode.rs` (lot 31, tâche ①)
+
+**Autorisée par le propriétaire du dépôt le 30 août 2026, jouée dans sa
+propre tâche et AVANT toute addition** — la forme forte que `CLAUDE.md`
+prescrit : *extraire, jamais comprimer*, et *l'extraction jouée dans une
+tâche DÉDIÉE, AVANT celle qui ajoute*.
+
+**Ce qui a bougé**, et rien d'autre :
+
+| Nouveau module | Ce qu'il porte | Lignes |
+| --- | --- | --- |
+| `agent/src/encode/fabrique.rs` | ce qui **TROUVE et ACTIVE** les MFT : `find_hardware_encoder`, `find_hardware_video_processor`, `create_color_converter`, `create_nv12_sample`, `share_device`, `log_supported_input_types`, `format_subtype` | **367** |
+| `agent/src/encode/reglages.rs` | ce qui **POSE** les réglages : `configure_output`, `configure_input`, `configure_rate_control`, `pack_u64`, `variant_u32`, `variant_bool` | **136** |
+
+`agent/src/encode.rs` : **1536 → 1111**. ⚠️ **Toujours au-dessus du plafond de
+500, et c'est attendu** — la règle est de *geler la dette, pas de la purger*.
+La ligne du tableau de dette de `CLAUDE.md` est corrigée **avec la taille
+remesurée après la dernière édition**, jamais avant.
+
+🔵 **Enfants ordinaires, pas `#[path]`** : `encode.rs` est entièrement
+`#![cfg(windows)]`, et ces deux modules n'ont **jamais besoin d'en sortir**
+pour compiler sur l'hôte. Ils se déclarent donc par un simple `mod` chez leur
+parent gaté, à côté de `mod arret;` — c'est le cas que la convention de
+`CLAUDE.md` range explicitement hors de la portée de la règle `#[path]`.
+
+**Ce que l'extraction a laissé derrière elle, et qu'il a fallu aller
+chercher** — le dépôt prévient qu'*une extraction n'est jamais rigoureusement
+verbatim* :
+
+1. **Six `unused_imports`** dans `encode.rs` (`PWSTR`, `GUID`, trois
+   constantes D3D11, deux DXGI, trois `System::Com`, deux `Foundation`, six
+   `System::Variant`). Tous retirés.
+2. **Un commentaire qui n'expliquait plus rien** : les quatre lignes sur
+   l'écart d'API `VARIANT_TRUE`/`VARIANT_FALSE` décrivaient un import parti
+   chez `reglages` ; elles l'ont suivi.
+3. **Trois déictiques cassés**, réparés : l'en-tête d'`encode.rs` citait
+   `log_supported_input_types` (→ `fabrique::`) ; le doc de cette même
+   fonction disait « voir le commentaire de module », qui désignait désormais
+   le **mauvais** module (→ « d'`encode.rs`, PAS celui de ce fichier-ci ») ;
+   `create_nv12_sample` citait `H264Encoder::new` (→ `super::`).
+4. **`pack_u64` est appelé par les DEUX modules** : il vit chez `reglages`, et
+   `fabrique` le qualifie (4 sites).
+
+**Les contrôles, et le rouge de chacun :**
+
+- `cargo check --target x86_64-pc-windows-gnu` : **aucune erreur**. 🔵 **Les
+  familles d'avertissements sont IDENTIQUES avant et après** — relevé par un
+  A/B qui restaure l'`encode.rs` d'origine, relance, et `diff` les familles :
+  *aucune différence*. ⚠️ Ce sont bien les **familles** qui sont comparées, pas
+  un compte : le seul avertissement citant `encode.rs`
+  (`field 'capture' is never read`) **existait avant l'extraction**, vérifié
+  dans le relevé d'avant.
+- `cargo test --workspace` : **1071 + 114 passés, 0 échec**.
+- **Un comparateur de corps**, écrit pour ce lot : il rejoue les 13 fonctions
+  déplacées depuis une copie de l'`encode.rs` d'origine, applique les **seuls
+  écarts déclarés** (la visibilité `pub(super)`, la qualification de
+  `pack_u64`) et exige l'égalité **caractère pour caractère**. Verdict :
+  **aucun écart non déclaré**, et **aucune définition restée** dans
+  `encode.rs`. 🔴 **Ce contrôle a été VU ROUGE** : une mutation d'un seul
+  caractère dans `find_hardware_video_processor` (`count: u32 = 0` → `= 1`)
+  le fait dénoncer cette fonction et elle seule. La mutation a ensuite été
+  **restaurée depuis une COPIE NOMMÉE**, jamais par `git checkout --`, que ce
+  dépôt a déjà payé une fois.
+
+**Ce que cette tâche n'établit PAS** : que le produit fonctionne mieux. Elle
+ne change **aucun comportement** — c'est tout son propos. L'encodeur échoue
+exactement où il échouait, désormais à `agent/src/encode/fabrique.rs`.

@@ -108,7 +108,7 @@ où l'on travaille dedans, pas en chantier séparé.
 
 | Fichier | Lignes | Pourquoi elle reste |
 | --- | --- | --- |
-| `agent/src/encode.rs` | 1536 | `#[cfg(windows)]`, aucun test |
+| `agent/src/encode.rs` | ~~1536~~ **1111** (30 août 2026, lot 31) | `#[cfg(windows)]`, aucun test. **Toujours au-dessus du plafond, et c'est attendu : la règle est de GELER la dette, pas de la purger.** L'extraction du lot 31 a sorti `encode/fabrique.rs` (**367**) et `encode/reglages.rs` (**136**), dans une tâche DÉDIÉE et **avant** l'addition qu'elle prépare (le repli logiciel, puis NVENC natif) — la forme forte que ce fichier prescrit. ⚠️ `encode/arret.rs` pèse **500 lignes exactes**, donc à sa porte : toute addition dedans exige sa propre extraction |
 | `agent/src/windows_source.rs` | ~~638~~ ~~628~~ **630** (7 août 2026, D10) | `#[cfg(windows)]`, aucun test |
 
 
