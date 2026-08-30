@@ -740,6 +740,14 @@ tombe vers 331–340 s.
 
 ### 10.4 Ce qu'il reste à faire, et ce que je NE peux pas faire sans la VM
 
+🔴 **`agent/src/encode/arret.rs` PÈSE 500 LIGNES EXACTES** (remesuré par
+`wc -l` après la dernière édition de cette ronde, pas recopié). Il est donc
+**à sa porte** : toute addition dedans exige **sa propre extraction, dans sa
+propre tâche, avant**. Et R1 pourrait vouloir y toucher — c'est lui qui porte
+la mise au repos de la MFT et la barrière sur son travail asynchrone, deux
+choses dont l'équivalent NVENC devra bien vivre quelque part. **Le prévoir
+plutôt que le découvrir en débordant.**
+
 **Reste à écrire** : la liaison FFI de `nvEncodeAPI64.dll` (déclarations
 d'ABI, `NvEncodeAPICreateInstance`, la liste de fonctions), la session
 d'encodage sur le périphérique D3D11, et le branchement des trois étages
@@ -764,3 +772,32 @@ propre gestion de périphérique D3D11 et son propre affichage virtuel. Que la
 même porte s'ouvre depuis notre processus, sur notre périphérique, dans notre
 session, **reste à mesurer** — et c'est précisément ce que la recette du
 §10.3 est faite pour trancher.
+
+### 10.5 L'ABI NVENC : ce que je refuse d'écrire de mémoire
+
+🔴 **LE VERSIONNAGE DES STRUCTURES EST LE PIÈGE PRINCIPAL DE CETTE API, ET
+IL SE MANIFESTE EXACTEMENT COMME LA PANNE QU'ON ESSAIE DE FAIRE
+DISPARAÎTRE.** NVENC porte dans chaque structure un champ `version` construit
+par macro (`NVENCAPI_STRUCT_VERSION`). Une valeur fausse ne donne **ni
+plantage ni message** : elle donne un **REFUS** — c'est-à-dire un encodeur
+qui ne se crée pas, le symptôme même du lot 30. Un contresens sur une
+disposition de structure, lui, corrompt la mémoire.
+
+⚠️ **Je n'écris donc AUCUNE constante de version ni AUCUNE disposition de
+structure de mémoire.** Elles seront transcrites depuis l'en-tête réel, avec
+**le dépôt, le tag et le commit exacts** consignés dans le code à côté de
+chaque constante, et l'arithmétique de version sera réimplémentée en
+`const fn` **PURE, testée sur l'hôte contre les valeurs de l'en-tête** — c'est
+la seule façon de rendre relisable une constante dont l'erreur est muette.
+
+⚠️ **LICENCE — à trancher avant de transcrire, pas après.** L'en-tête de
+référence est celui du dépôt `FFmpeg/nv-codec-headers`, sous licence **MIT**,
+et non le `nvEncodeAPI.h` de NVIDIA, dont la licence est propre à NVIDIA.
+**MIT exige que la notice de copyright et la notice de permission soient
+reproduites** dans les redistributions. Transcrire des dispositions de
+structures et des constantes en Rust est très plausiblement une œuvre
+dérivée : la notice devra donc figurer dans l'en-tête du module de liaison.
+🔵 **Nous ne redistribuons pas `nvEncodeAPI64.dll`** — elle vient du pilote
+NVIDIA installé sur la machine — **nous n'en déclarons que l'ABI** ; c'est la
+transcription de l'en-tête, pas la DLL, qui pose la question de licence.
+**Ce point est signalé et non tranché : il appartient au propriétaire.**
