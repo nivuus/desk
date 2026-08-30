@@ -288,7 +288,7 @@ fn attendre_notre_sortie(
         // autour. `chemins_actifs` est SILENCIEUSE, et il le faut : on est
         // dans une boucle à 10 Hz, et ce dépôt a payé deux fois une trace
         // émise à la cadence d'une boucle.
-        let designee = adaptateur.and_then(|adaptateur| {
+        let designee = adaptateur.filter(|_| designation::armee()).and_then(|adaptateur| {
             let chemins = config_affichage::chemins_actifs().ok()?;
             config_affichage::nom_gdi_de_la_cible(&chemins, adaptateur, id_pilote)
                 .map(str::to_owned)

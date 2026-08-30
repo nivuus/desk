@@ -97,6 +97,11 @@ pub fn tourner(
     // exactement le nom qu'elles avaient avant P3.
     prefixe: String,
 ) -> Result<()> {
+    // Forcé ICI, et non au premier appariement : la trace de désarmement doit
+    // sortir AVANT la première fenêtre, sinon une recette courte se termine
+    // sans elle. Leçon payée par `PONT_MESURE` au sous-bloc F4.
+    let _ = designation::armee();
+
     let mut sorties = Sorties::nouvelles(pilote);
     let mut enfants = Enfants::nouveaux(lanceur);
     let mut table = Table::avec_prefixe(CAPACITE, prefixe);
