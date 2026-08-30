@@ -569,3 +569,80 @@ parce qu'elle mesurerait l'effet réel plutôt que la formule, mais **non
 décisive à elle seule** et **non nécessaire** pour établir le défaut. Ce
 qu'elle apporterait de propre : le bras **AVANT**, qui **disparaît au
 déploiement** et n'existera plus jamais.
+
+---
+
+## 12. La trace qui rend M3 décidable (lot 32P)
+
+`fenêtre sortie de sa sortie, replacement` porte désormais **`hwnd`** et
+**`fenetre_vivante`** — `IsWindow` **à l'instant même** du replacement.
+
+🔵 **C'est ce qui manquait, et rien d'autre n'a été touché** — ni la boucle, ni
+la relecture après `poser`. `fenetre_vivante = false` expliquerait **d'un
+coup** les deux faits ouverts ; `true` les laisserait tous deux entiers.
+
+---
+
+## 13. La fenêtre de déploiement — **prête, et chiffrée**
+
+`journaux-lot32q/instrument/fenetre-de-deploiement.sh`, plus la sonde
+`curseur.ps1` (session 1, `GetCursorPos` à 100 ms) et le pilote
+`pilote-curseur.mjs`.
+
+### 13.1 🔴 Ce qui interrompt le propriétaire commence AVANT le redémarrage
+
+⚠️ **Le rôle `client` est EXCLUSIF par session** (établi au lot 22) : le pilote
+lui **prend sa place dès qu'il se connecte**, donc **dès la mesure d'avant**.
+La fenêtre est **continue**, de la première mesure à la dernière — ce n'est pas
+« deux minutes de redémarrage », c'est **tout le créneau**.
+
+### 13.2 Ce qui en est SORTI, et pourquoi
+
+**La fabrication croisée et le dépôt par le hook ne touchent pas la VM.** Ils
+se font **avant**, hors créneau — les y mettre coûterait au propriétaire deux
+minutes pour rien.
+
+### 13.3 Le chiffrage, à partir des durées mesurées ce jour
+
+| Étape | Durée | Dans le créneau ? |
+| --- | --- | --- |
+| Fabrication croisée + dépôt par le hook | ~80 s | **non** |
+| Mesure du curseur **avant** (sonde 40 s + pilote) | ~90 s | oui |
+| Arrêt, copie nommée, dépôt VM, relance, session 1 | ~60 s | oui |
+| Mesure du curseur **après**, mêmes points | ~90 s | oui |
+| Marge pour les à-coups WinRM (trois observés ce jour) | ~60 s | oui |
+
+🔵 **Créneau à annoncer : SIX MINUTES**, dont quatre de travail utile et deux de
+marge. **Le propriétaire ne peut pas se servir du système pendant tout ce
+temps**, et devra **rouvrir sa session** ensuite.
+
+### 13.4 Les trois points, et pourquoi trois
+
+Le test d'hôte a montré que l'erreur a **un terme d'origine et un terme
+d'échelle**, et qu'ils **ne se distinguent qu'à distance**. Donc :
+
+| Point | Fraction de l'image | Ce qu'il isole |
+| --- | --- | --- |
+| **A** | 0,02 / 0,02 | le terme d'**ORIGINE** presque seul |
+| **B** | 0,50 / 0,50 | départage — une erreur affine passe par B |
+| **C** | 0,98 / 0,98 | la **somme** des deux termes |
+
+🔴 **Deux points auraient pu tomber juste par hasard.** A seul ne verrait pas
+l'échelle ; C seul confondrait les deux termes.
+
+⚠️ **Le pilote vise dans `contentRect(video)`** — l'image **bandes noires
+exclues**, calculée depuis `videoWidth`/`videoHeight` —, c'est-à-dire
+**exactement le rectangle sur lequel le client normalise**. Viser le rectangle
+brut de l'élément ferait mesurer au pilote **sa propre erreur de cadrage**.
+
+### 13.5 Comment se lira le bras d'APRÈS
+
+| Ce qu'on observerait | Ce que cela dirait |
+| --- | --- |
+| A, B, C **tous justes** | la référence est corrigée |
+| A juste, C faux | il reste un terme d'**échelle** |
+| A et C faux du même nombre | il reste un terme d'**origine** |
+| A juste et C juste, B faux | **impossible pour une erreur affine** — donc autre chose, et il faudrait chercher |
+
+⚠️ **Le bras d'AVANT n'existe qu'une fois** : il disparaît au redémarrage. Ne
+pas inverser l'ordre, ne pas le sauter — c'est écrit en tête du script.
