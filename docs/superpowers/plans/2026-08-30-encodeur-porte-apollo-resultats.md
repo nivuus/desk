@@ -26,13 +26,23 @@ quand un adaptateur NVIDIA est présent, et garde la MFT comme dos
 30 août 2026, au même point de code et sur le même périphérique de capture que
 l'échec du lot 30 : **1195 unités d'accès en 10 s**, contre **aucune**.
 
-> 🔴 **CE QUE CE DOCUMENT N'ÉTABLIT PAS, ET QU'AUCUNE LIGNE NE DOIT LAISSER
-> CROIRE.** Le chiffre-juge — **une image qui arrive au navigateur** — n'a
-> **pas** été relevé : `framesDecoded` reste dû (§11.2, cause mesurée et
-> étrangère à ce lot). Le plafond d'encodeurs **à N fenêtres** n'est **pas**
-> mesuré : le banc n'en ouvre qu'un. Et **personne n'a regardé une image** —
-> `verdicts_faux=0` dit qu'aucun verdict n'est faux, **pas qu'une image est
-> juste**.
+> 🟢 **LE CHIFFRE-JUGE A ÉTÉ RELEVÉ — PAR LE LOT 32, PAS PAR CELUI-CI.**
+> `framesDecoded` **+494** et **+484** sur 25 s (deux exécutions, mire
+> animée), contre **0** sur une source **statique** dont l'audio coulait
+> pourtant et dont l'ICE était `connected` dans le même relevé. **Des images
+> produites par ce chemin natif traversent jusqu'à un navigateur.**
+> 🔴 **L'ATTRIBUTION EST LA MOITIÉ DU FAIT** : cette mesure a été montée et
+> jouée par le **lot 32**, avec **DEUX** remèdes en place — la porte NVENC de
+> ce lot-ci *et* la désignation de sortie du sien. Elle n'est pas une mesure
+> du lot 31, et l'écrire autrement serait fabriquer une pièce. Voir § 11.2.
+>
+> 🔴 **CE QUE CE DOCUMENT N'ÉTABLIT TOUJOURS PAS, ET QU'AUCUNE LIGNE NE DOIT
+> LAISSER CROIRE.** Le plafond d'encodeurs **à N fenêtres** n'est **pas**
+> mesuré : le banc n'en ouvre qu'un (protocole § 13, **préparé et non joué**).
+> Et **personne n'a regardé une image** — `verdicts_faux=0` dit qu'aucun
+> verdict n'est faux, **pas qu'une image est juste**, et `framesDecoded`
+> compte des images décodées sans rien dire de la **justesse** de ce qui
+> s'affiche.
 
 > ⚠️ **Ce document est chronologique.** Les §§ 1 à 10 sont l'enquête et la
 > conception, écrites AVANT la mesure ; les §§ 11 et suivants sont l'état
@@ -1030,10 +1040,29 @@ confondre `0xd1` avec `NVENCAPI_VERSION` aurait fait rejeter ce pilote.
 récent** que l'en-tête fonctionne ; il ne dit **rien** d'un pilote plus ancien
 que 12.2, qu'aucune machine ici ne porte.
 
-### 11.2 🔴 CE QUI N'EST PAS ÉTABLI : l'image qui arrive au navigateur
+### 11.2 Le juge que CE lot n'a pas pu relever — et qui l'a relevé ensuite
 
-**Le chiffre-juge n'a pas pu être relevé**, et la cause est **mesurée, pas
-supposée** — elle est étrangère à ce lot.
+> 🟢 **DÉPASSÉ, ET PAR LA MAIN DU LOT VOISIN.** Le blocage décrit ci-dessous
+> — la sortie virtuelle que Windows ne nomme jamais — était bien la cause, et
+> **le lot 32 l'a corrigé puis a relevé le chiffre-juge** :
+>
+> | Bras | source | `framesDecoded` Δ / 25 s | vidéo | audio | ICE |
+> | --- | --- | --- | --- | --- | --- |
+> | verte ×2 | mire **animée** | **+494** et **+484** | ~1,2 Mo | ~0,4 Mo | `connected` |
+> | rouge ×2 | fenêtre **statique** | **0** | **0** | coule | `connected` |
+>
+> 🔵 **Le zéro des rouges est interprétable**, et c'est ce qui en fait une
+> mesure : dans le **même** relevé l'audio coule et l'ICE est connecté — le
+> transport marche, seule la vidéo manque, parce que la source ne change pas.
+> C'est le témoin négatif que la mire animée existait pour fournir.
+>
+> 🔴 **MESURE DU LOT 32, jouée avec DEUX remèdes en place** — cette porte
+> NVENC et sa désignation de sortie. Elle établit que le chemin natif produit
+> des images qui traversent ; **elle n'a pas été jouée par le lot 31**, et ce
+> document ne se l'attribue pas.
+
+**Le chiffre-juge n'a pas pu être relevé PAR CE LOT**, et la cause est
+**mesurée, pas supposée** — elle est étrangère à ce lot.
 
 La chaîne a été montée entièrement : plateforme de recette en mode
 `motdepasse` (la production est en `pomerium`, dont l'OAuth exige un humain),
@@ -1084,10 +1113,14 @@ rejette » avant que j'aille y chercher une cause qui n'y était pas.
 
 ### 11.4 Ce que la recette laisse dû
 
-- 🔴 **`framesDecoded` reste à relever.** Le pilote existe
-  (`journaux-lot31/instrument/pilote-lot31.mjs`), va jusqu'à la shell
-  authentifiée, et s'arrête faute de page de session. Il sera jouable **le jour
-  où une sortie virtuelle se laisse nommer** sur cette VM.
+- ✅ ~~🔴 **`framesDecoded` reste à relever.**~~ **RELEVÉ LE 30 AOÛT 2026 —
+  PAR LE LOT 32, PAS PAR CELUI-CI** (tableau au § 11.2) : +494 et +484 contre
+  0, avec le témoin négatif qui rend ce zéro lisible. La condition que cette
+  ligne posait — « le jour où une sortie virtuelle se laisse nommer » — est
+  exactement ce que le lot voisin a corrigé. ⚠️ **Le pilote de ce lot
+  (`journaux-lot31/instrument/pilote-lot31.mjs`) n'est PAS celui qui a servi**
+  : il reste au dépôt pour ce qu'il montre du montage, pas comme la pièce de
+  cette mesure.
 - ⚠️ **Le mode synchrone de `SessionNvenc` n'est pas éprouvé en régime
   multi-fenêtres** : le banc n'ouvre qu'un encodeur (`nombre=1`). Le plafond
   d'encodeurs NVENC natifs et leur comportement à N fenêtres restent **non
@@ -1108,6 +1141,27 @@ effacés. ⚠️ Il reste sous `C:\nivuus\lot31\` **les journaux seuls** ; les t
 occurrences d'`AGENT_SECRET` qui y subsistent sont des messages qui **nomment
 la variable**, jamais sa valeur (vérifié). `virsh list` : la VM n'a pas été
 redémarrée, **aucune extinction**.
+
+### 11.6 Ce que la production porte, et à quels niveaux de preuve
+
+⚠️ **TROIS REMÈDES COEXISTENT DÉSORMAIS SUR CE PRODUIT, ET ILS NE SE VALENT
+PAS.** Les ranger au même niveau serait la faute que ce document passe son
+temps à éviter.
+
+| Remède | Niveau de preuve |
+| --- | --- |
+| **La porte NVENC native** (ce lot) | 🟢 **MESURÉ** — 1195 unités d'accès (§ 11.1), puis des images au navigateur (§ 11.2, mesure du lot 32) |
+| **La règle d'appartenance des sorties** (lot 32) | 🟢 **MESURÉ** — voir ses propres relevés |
+| **La reprise d'attachement** (lot 32) | 🔴 **NON DÉMONTRÉE** — elle n'a **jamais pu être vue tirer** |
+
+🔴 **« Livré » n'est pas « démontré ».** Le troisième est dans la production
+sans qu'aucune mesure ne l'ait vu s'exercer ; c'est le lot 32 qui le dit de
+son propre travail, et ce tableau ne fait que refuser de l'aplatir avec les
+deux autres.
+
+⚠️ **Et la chaîne complète, par `app.allanic.me`, reste à éprouver par le
+propriétaire** : l'OAuth exige un humain, et c'est le seul bras qu'aucun lot
+ne peut jouer.
 
 ---
 
@@ -1224,6 +1278,15 @@ MULTIFENETRE_BANC=duplication  MULTIFENETRE_N=<1..8>  MULTIFENETRE_SORTIE=\\.\DI
 - ⚠️ **Construire le nom `\\.\DISPLAY<n>` DANS le script distant** — § 12.7.
 - ⚠️ **`Get-Process` avant CHAQUE tentative, y compris échouée**, et **purge**
   (`MULTIFENETRE_VDD_PURGE=1`) entre deux exécutions.
+- 🔵 **LES CONDITIONS ONT CHANGÉ DEPUIS QUE CE PROTOCOLE A ÉTÉ ÉCRIT, et
+  c'est le lot 32 qui l'a établi** : le vivier de sorties virtuelles est de
+  **dix**, et il était **entièrement consommé** par des fenêtres que personne
+  n'avait demandées. Une règle d'appartenance est désormais livrée — `desk`
+  n'adopte que ce qu'il lance — et **cinq sorties suffisent là où dix étaient
+  épuisées**. ⚠️ **Conséquence directe pour ce protocole** : un plafond
+  mesuré AVANT cette règle aurait pu être celui du **vivier de sorties**, pas
+  celui des **encodeurs** — deux choses différentes qu'un seul chiffre aurait
+  confondues. Le relever à nouveau aujourd'hui n'a pas le même sens qu'hier.
 - ⚠️ **Deux exécutions par valeur de N**, et **N croissant puis décroissant** :
   un plafond de *créations cumulées* ne se distingue d'un plafond de
   *concurrence* que si l'on redescend. C'est la leçon de
