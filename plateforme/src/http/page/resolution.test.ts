@@ -2,10 +2,16 @@ import { describe, expect, it } from 'vitest';
 import { resoudre } from './resolution';
 
 describe('resoudre', () => {
-    it('rend index.html pour la racine, et le marque DOCUMENT', () => {
+    // 🔴 LA ROUGE DE « SERS LE HUB À LA RACINE » (décision du propriétaire,
+    // 30 août 2026). Avant ce lot, `/` rendait `index.html` — la page de
+    // SESSION — mesurée en PRODUCTION comme la panne : sans paramètre
+    // `?session=`, cette page invente une session, échoue, et rend « Échec
+    // de la session ». Ce test rougit si `PAGE` revient un jour à
+    // `index.html`.
+    it('rend hub.html pour la racine, et le marque DOCUMENT', () => {
         expect(resoudre('/')).toEqual({
             ok: true,
-            fichier: 'index.html',
+            fichier: 'hub.html',
             mime: 'text/html; charset=utf-8',
             document: true,
             empreinte: false,
@@ -35,10 +41,11 @@ describe('resoudre', () => {
         });
     });
 
-    // Le `try_files $uri $uri/ /index.html` de nginx, reproduit : un chemin
-    // sans extension retombe sur la page, jamais sur un 404.
-    it('replie un chemin sans extension sur index.html', () => {
-        expect(resoudre('/hub')).toMatchObject({ ok: true, fichier: 'index.html' });
+    // Le repli SPA, reproduit : un chemin sans extension retombe sur la
+    // page, jamais sur un 404 — et depuis le 30 août 2026, cette page est le
+    // HUB, pas la session (voir le test de racine ci-dessus).
+    it('replie un chemin sans extension sur hub.html', () => {
+        expect(resoudre('/quelconque')).toMatchObject({ ok: true, fichier: 'hub.html' });
     });
 
     // 🔴 LA TRAVERSÉE SE JUGE SUR LE CHEMIN RÉSOLU. Un filtre par sous-chaîne
@@ -130,11 +137,12 @@ describe("l'empreinte, qui décide du cache", () => {
         expect(resoudre('/assetsX.js')).toMatchObject({ empreinte: false });
     });
 
-    // ⚠️ LE REPLI SPA REND `index.html`, JAMAIS UN ACTIF : un chemin sans
-    // extension SOUS le répertoire d'actifs ne doit pas hériter de son cache.
+    // ⚠️ LE REPLI SPA REND `hub.html` (depuis le 30 août 2026), JAMAIS UN
+    // ACTIF : un chemin sans extension SOUS le répertoire d'actifs ne doit
+    // pas hériter de son cache.
     it("un chemin sans extension sous `assets/` retombe sur la page, non empreintée", () => {
         expect(resoudre('/assets/quelque-chose')).toMatchObject({
-            fichier: 'index.html',
+            fichier: 'hub.html',
             empreinte: false,
         });
     });

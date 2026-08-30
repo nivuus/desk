@@ -60,8 +60,10 @@ export type DependancesRoutage = DependancesIdentite &
 /// exactement, ou découpe par SEGMENTS et compare leur NOMBRE, jamais par
 /// `startsWith`. **LE DIXIÈME, LE SERVANT DE PAGE, N'EST PAS DISJOINT DES
 /// AUTRES : il résout N'IMPORTE QUEL chemin**, son repli SPA repliant tout
-/// chemin sans extension sur `index.html`. Sa position n'est donc pas une
-/// commodité mais une garantie — voir sa ligne, en fin de fonction.
+/// chemin sans extension sur la page (`hub.html` depuis le 30 août 2026,
+/// `index.html` avant — voir `page/resolution.ts::PAGE`). Sa position n'est
+/// donc pas une commodité mais une garantie — voir sa ligne, en fin de
+/// fonction.
 ///
 /// 🔴 CE QUE CE DIXIÈME ROUTEUR CHANGE POUR TOUS LES AUTRES, ET QU'AUCUN
 /// D'EUX N'AVAIT ÉCRIT : quand `PLATEFORME_PAGE` est armée, un `false` rendu

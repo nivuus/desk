@@ -135,7 +135,13 @@ const socket = new WebSocket(signalingUrl);
 
 const bureau = creerBureau({
     ouvrirFenetre(session) {
-        return window.open(`/?session=${encodeURIComponent(session)}`, `guac-${session}`);
+        // 🔴 `/index.html`, PAS `/` — DEPUIS LE 30 AOÛT 2026 (« sers le hub
+        // à la racine »). La racine sert désormais le HUB
+        // (`plateforme/src/http/page/resolution.ts::PAGE`) ; la page de
+        // SESSION que cette fenêtre doit ouvrir reste servie, mais à SON
+        // PROPRE chemin explicite. Ouvrir `/?session=…` ouvrirait le hub
+        // avec un paramètre de requête qu'il ignore, jamais une session.
+        return window.open(`/index.html?session=${encodeURIComponent(session)}`, `guac-${session}`);
     },
     envoyer(message) {
         if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(message));

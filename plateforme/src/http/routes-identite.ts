@@ -121,10 +121,11 @@ function repondre(
 /// 🔴 ELLE RENDAIT `false` JUSQU'AU 22 AOÛT 2026, POUR LAISSER RÉPONDRE LE 404
 /// GÉNÉRIQUE DU SERVEUR — ET CE MÉCANISME EST MORT SANS BRUIT dans le lot
 /// « page derrière Pomerium ». Le servant de fichiers, chaîné EN DERNIER,
-/// replie tout chemin sans extension sur `index.html` : `GET /auth/moi` en
-/// mode `motdepasse` avec `PLATEFORME_PAGE` armée rendait `200 text/html`
-/// (mesuré). Le client ne cassait que par accident — son `.catch(() =>
-/// undefined)` faisait tomber le formulaire au bon endroit.
+/// replie tout chemin sans extension sur la page (`hub.html` depuis le
+/// 30 août 2026, `index.html` avant — voir `page/resolution.ts::PAGE`) :
+/// `GET /auth/moi` en mode `motdepasse` avec `PLATEFORME_PAGE` armée rendait
+/// `200 text/html` (mesuré). Le client ne cassait que par accident — son
+/// `.catch(() => undefined)` faisait tomber le formulaire au bon endroit.
 ///
 /// ⚠️ CE N'EST PAS UN SECOND 404 : c'est LE MÊME, `http/introuvable.ts`, celui
 /// que `serveur.ts` rend aussi. Un texte écrit à la main ici dériverait de

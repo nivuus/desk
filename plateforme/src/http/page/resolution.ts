@@ -26,7 +26,22 @@ export const TYPES_MIME: ReadonlyMap<string, string> = new Map([
     ['woff2', 'font/woff2'],
 ]);
 
-const PAGE = 'index.html';
+// 🔴 `hub.html`, PAS `index.html` — DÉCISION DU PROPRIÉTAIRE DU DÉPÔT
+// (« Sers le hub à la racine », 30 août 2026), après un défaut mesuré EN
+// PRODUCTION : `https://app.allanic.me/` rendait `index.html`, la page de
+// SESSION — et sans paramètre `?session=`, `client/src/main.ts` inventait
+// alors une session `demo` SANS jeton (corrigé dans le même lot, voir
+// `client/src/session-id.ts`). L'agent journalisait « poignée de main
+// refusée : poignée de main sans jeton sur la session demo », et le
+// propriétaire voyait « Échec de la session » — une panne INDISCERNABLE
+// d'une vraie pour qui ouvre juste l'adresse du service.
+//
+// La racine et tout chemin sans extension replient désormais sur le HUB, la
+// seule surface qui ouvre une session avec un jeton réel. `index.html` (la
+// page de session) N'EST PAS RETIRÉ : il reste servi à SON PROPRE chemin
+// EXPLICITE, `/index.html` — segment avec extension, donc jamais résolu par
+// `PAGE` ci-dessous (voir `resoudre()`). Seul le repli change de cible.
+const PAGE = 'hub.html';
 
 /// 🔴 LE RÉPERTOIRE DONT VITE EMPREINTE **TOUS** LES NOMS, ET LE SEUL.
 ///
@@ -117,7 +132,9 @@ export function resoudre(cheminUrl: string): Resolution {
     if (segments === undefined) return { ok: false, motif: 'traversee' };
 
     const dernier = segments[segments.length - 1];
-    // Racine, ou chemin sans extension : le `try_files … /index.html` de nginx.
+    // Racine, ou chemin sans extension : le repli SPA — l'équivalent du
+    // `try_files … /index.html` de nginx, sauf que la CIBLE, ici, est
+    // `hub.html` depuis le 30 août 2026 (voir `PAGE` ci-dessus).
     const fichier = dernier === undefined || !dernier.includes('.') ? PAGE : segments.join('/');
 
     const point = fichier.lastIndexOf('.');

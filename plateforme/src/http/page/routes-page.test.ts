@@ -40,6 +40,13 @@ afterEach(async () => {
 function racineJetable(): string {
     const racine = mkdtempSync(join(tmpdir(), 'page-'));
     mkdirSync(join(racine, 'assets'));
+    // 🔴 `hub.html` PORTE UN CORPS DISTINCT D'`index.html` — délibérément :
+    // c'est ce qui rend le test « GET / rend le corps EXACT de hub.html »
+    // discriminant. Depuis la décision « sers le hub à la racine » (30 août
+    // 2026), `resolution.ts::PAGE` résout `hub.html` pour `/` ; `index.html`
+    // (la page de session) reste servi, mais à SON PROPRE chemin explicite —
+    // voir le test dédié « GET /index.html sert encore la page de session ».
+    writeFileSync(join(racine, 'hub.html'), '<!doctype html><title>hub</title>');
     writeFileSync(join(racine, 'index.html'), '<!doctype html><title>page</title>');
     writeFileSync(join(racine, 'assets', 'index-a1b2c3.js'), 'export const x = 1;\n');
     // ⚠️ UN NOM QUE VITE N'EMPREINTE JAMAIS, à la RACINE : c'est le cas que
@@ -150,11 +157,25 @@ describe('GET /', () => {
         expect(r.status).toBe(200);
     });
 
-    it('avec PLATEFORME_PAGE, GET / rend le corps EXACT de index.html', async () => {
+    // 🔴 LA ROUGE DE « SERS LE HUB À LA RACINE » (30 août 2026) : avant ce
+    // lot, `GET /` rendait le corps d'`index.html` — la page de SESSION,
+    // mesurée en PRODUCTION comme la panne (voir `resolution.ts::PAGE`).
+    it('avec PLATEFORME_PAGE, GET / rend le corps EXACT de hub.html', async () => {
         base = await baseNeuve('page-index-corps');
         service = await demarrerServeur({ ...CONFIG, racinePage: racineJetable() }, base);
         const r = await requeteFermee(`http://127.0.0.1:${service.port}/`);
         // Comparer les OCTETS, jamais le seul code 200.
+        expect(await r.text()).toBe('<!doctype html><title>hub</title>');
+    });
+
+    // ⚠️ AUCUN CHEMIN EXISTANT NE CASSE : `index.html` reste servi, à SON
+    // PROPRE chemin explicite — c'est CE test qui le garantit, distinct du
+    // repli SPA de `/` ci-dessus.
+    it('GET /index.html sert encore la page de session, explicitement', async () => {
+        base = await baseNeuve('page-index-explicite');
+        service = await demarrerServeur({ ...CONFIG, racinePage: racineJetable() }, base);
+        const r = await requeteFermee(`http://127.0.0.1:${service.port}/index.html`);
+        expect(r.status).toBe(200);
         expect(await r.text()).toBe('<!doctype html><title>page</title>');
     });
 

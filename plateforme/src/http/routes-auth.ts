@@ -151,9 +151,11 @@ export async function servirAuth(
     // 🔴 CE GARDE RENDAIT `false` JUSQU'AU 22 AOÛT 2026, POUR LAISSER RÉPONDRE
     // LE 404 GÉNÉRIQUE — ET C'ÉTAIT LE JUMEAU SYMÉTRIQUE DU DÉFAUT DE
     // `routes-identite.ts`. Le servant de page, chaîné en dernier, replie tout
-    // chemin sans extension sur `index.html` : `GET /auth/connexion` en mode
-    // `pomerium` avec `PLATEFORME_PAGE` armée rendait `200 text/html`. Les
-    // deux gardes ayant des polarités OPPOSÉES, elles avaient le MÊME défaut,
+    // chemin sans extension sur la page (`hub.html` depuis le 30 août 2026,
+    // `index.html` avant — voir `page/resolution.ts::PAGE`) : `GET
+    // /auth/connexion` en mode `pomerium` avec `PLATEFORME_PAGE` armée
+    // rendait `200 text/html`. Les deux gardes ayant des polarités OPPOSÉES,
+    // elles avaient le MÊME défaut,
     // chacune dans l'autre mode — et une revue par tâche ne pouvait pas le
     // voir, chaque moitié étant juste. Le `404` vient de
     // `http/introuvable.ts`, celui du serveur, jamais un second texte.
