@@ -29,6 +29,22 @@ désormais dans `activate`, où elle est une mesure ;
 `tests/test_desk_contrat_hw.py` fige le contrat de `hw` en lisant les clés du
 **producteur** au lieu de les inventer.
 
+🔴 **ET DEPUIS LE 30 AOÛT 2026, LA CHAÎNE ENTIÈRE EST JOUÉE PAR L'API DU
+MOTEUR** — `tests/test_desk_moteur_reel.py`. Le garde ci-dessus est
+STATIQUE (il lit les clés du producteur par `ast`) ; celui-ci les FAIT
+COURIR : `hw` vient de `detect_all()`, le manifeste de `load_manifest`, les
+réponses de `validate_answers`, et les trois hooks sont lancés par
+`packages/runner.py` (`run_resolve`, `run_install`, puis la phase `activate`
+avec la fusion réelle `merge_into_hw`). ⚠️ **Il n'appelle NI `run.py`, NI
+`plan_packages()`, NI `apply_packages()`** : le premier partitionne
+(`run.py:82`), le dernier fait un `apt-get` en chroot. Et il n'appelle pas
+`run_activate` telle quelle — cette fonction ne passe **aucun `--root`**,
+donc le hook travaillerait sur le `/` de la machine de test ; la suite passe
+par `_run_hook(..., root=<racine temporaire>)` et éprouve ce contrat par
+`inspect.signature` plutôt que de le supposer. Voir son docstring, qui porte
+la ROUGE mesurée sur la porte réinsérée et la preuve que la suite d'hier
+restait VERTE dessus.
+
 ## Le wizard
 
 Quatre questions, et pas une de plus — le reste est **dérivé** (les deux
@@ -83,7 +99,11 @@ que la revue finale suivante l'a relevé (le fond ne change pas : quatre
 scénarios sur cinq lisent le vrai dépôt, et cela suffit à rendre `make test`
 non hermétique). `tests/test_desk_manifeste.py` et
 `tests/test_desk_contrat_hw.py` lisent le **vrai dépôt voisin**
-`../installer`. Sur un clone frais, `make test` échoue. Ce qu'il exige :
+`../installer`. ⚠️ **`tests/test_desk_moteur_reel.py` fait les DEUX** : il
+importe le moteur voisin ET joue un `install` réel sous `$TMPDIR` — environ
+**215 Mio copiés** par exécution (le runtime Node 124 Mio, `npm` 20 Mio,
+`plateforme/` 70 Mio). Poser `TMPDIR=/var/tmp` si `/tmp` est un tmpfs
+étroit. Sur un clone frais, `make test` échoue. Ce qu'il exige :
 
 ```bash
 cd plateforme && npm install     # node_modules/.bin/tsx
