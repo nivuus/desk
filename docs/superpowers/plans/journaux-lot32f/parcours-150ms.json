@@ -1,0 +1,393 @@
+{
+  "etiquette": "rec2",
+  "instant": "2026-08-30T19:26:54.208Z",
+  "viewport": "1280x720",
+  "messages": [
+    {
+      "ms": 16,
+      "type": "ice-config"
+    },
+    {
+      "ms": 78,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-4",
+      "titre": "Steam : mode Big Picture"
+    },
+    {
+      "ms": 80,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-7",
+      "titre": "Chrome Legacy Window"
+    },
+    {
+      "ms": 81,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-6",
+      "titre": "Chrome Legacy Window"
+    },
+    {
+      "ms": 82,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-3",
+      "titre": "C:\\WINDOWS\\SYSTEM32\\cmd.exe"
+    },
+    {
+      "ms": 83,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-5",
+      "titre": "Chrome Legacy Window"
+    },
+    {
+      "ms": 2443,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-8",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "ms": 2543,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-8"
+    },
+    {
+      "ms": 2585,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-9",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "ms": 2643,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-9"
+    },
+    {
+      "ms": 2685,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-10",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "ms": 2754,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-10"
+    },
+    {
+      "ms": 2797,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-11",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "ms": 2854,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-11"
+    },
+    {
+      "ms": 2954,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-12",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "ms": 2955,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-12"
+    },
+    {
+      "ms": 3055,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-13",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "ms": 3155,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-13"
+    },
+    {
+      "ms": 6173,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-14",
+      "titre": "Chrome Legacy Window"
+    },
+    {
+      "ms": 6274,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-15",
+      "titre": "Untitled - Notepad"
+    },
+    {
+      "ms": 6278,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-16",
+      "titre": "Install"
+    },
+    {
+      "ms": 6278,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-17",
+      "titre": "Dismiss"
+    },
+    {
+      "ms": 9745,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-18",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "ms": 9848,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "création d'une sortie 1280x720@60 (IOCTL 0x00222000)"
+    },
+    {
+      "ms": 9891,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-18"
+    },
+    {
+      "ms": 9948,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "plus aucune sortie virtuelle disponible"
+    },
+    {
+      "ms": 10083,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-19",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "ms": 10184,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "plus aucune sortie virtuelle disponible"
+    },
+    {
+      "ms": 10225,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "création d'une sortie 1280x720@60 (IOCTL 0x00222000)"
+    },
+    {
+      "ms": 10225,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-19"
+    },
+    {
+      "ms": 10490,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "plus aucune sortie virtuelle disponible"
+    },
+    {
+      "ms": 10690,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "plus aucune sortie virtuelle disponible"
+    },
+    {
+      "ms": 10892,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "plus aucune sortie virtuelle disponible"
+    },
+    {
+      "ms": 11112,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "plus aucune sortie virtuelle disponible"
+    },
+    {
+      "ms": 11112,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-20",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "ms": 11220,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "création d'une sortie 1280x720@60 (IOCTL 0x00222000)"
+    },
+    {
+      "ms": 11261,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-20"
+    },
+    {
+      "ms": 12157,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-21",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "ms": 12270,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "création d'une sortie 1280x720@60 (IOCTL 0x00222000)"
+    },
+    {
+      "ms": 12313,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-21"
+    },
+    {
+      "ms": 13200,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "la session n'a pas tenu après 3 tentatives"
+    },
+    {
+      "ms": 18128,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-22",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "ms": 18232,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "création d'une sortie 1280x720@60 (IOCTL 0x00222000)"
+    },
+    {
+      "ms": 18272,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-22"
+    },
+    {
+      "ms": 18332,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "plus aucune sortie virtuelle disponible"
+    },
+    {
+      "ms": 19237,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-23",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "ms": 19340,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "création d'une sortie 1280x720@60 (IOCTL 0x00222000)"
+    },
+    {
+      "ms": 19380,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-23"
+    },
+    {
+      "ms": 20245,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-24",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "ms": 20346,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "création d'une sortie 1280x720@60 (IOCTL 0x00222000)"
+    },
+    {
+      "ms": 20389,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-24"
+    },
+    {
+      "ms": 21250,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-25",
+      "titre": "DesktopWindowXamlSource"
+    },
+    {
+      "ms": 21352,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "création d'une sortie 1280x720@60 (IOCTL 0x00222000)"
+    },
+    {
+      "ms": 21393,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-25"
+    },
+    {
+      "ms": 22256,
+      "type": "refus",
+      "titre": "DesktopWindowXamlSource",
+      "motif": "la session n'a pas tenu après 3 tentatives"
+    }
+  ],
+  "vm": "677a3953-14c7-4364-92c3-bd17ecddf8d2",
+  "etat_vm": "prete",
+  "session": "3sxuA9dd56NpVdHi37R86g:bureau",
+  "lancement": {
+    "nom": "Notepad",
+    "id": "7f2a7df5-765f-4f6c-b5c8-485e8c1a4e19",
+    "statut": 200,
+    "reponse": {
+      "issue": "raccourci"
+    },
+    "ms": 6235
+  },
+  "compte_fenetre_ouverte": 23,
+  "compte_refus": 17,
+  "motifs_de_refus": [
+    "création d'une sortie 1280x720@60 (IOCTL 0x00222000)",
+    "plus aucune sortie virtuelle disponible",
+    "la session n'a pas tenu après 3 tentatives"
+  ],
+  "titres": [
+    "Steam : mode Big Picture",
+    "Chrome Legacy Window",
+    "Chrome Legacy Window",
+    "C:\\WINDOWS\\SYSTEM32\\cmd.exe",
+    "Chrome Legacy Window",
+    "DesktopWindowXamlSource",
+    "DesktopWindowXamlSource",
+    "DesktopWindowXamlSource",
+    "DesktopWindowXamlSource",
+    "DesktopWindowXamlSource",
+    "DesktopWindowXamlSource",
+    "Chrome Legacy Window",
+    "Untitled - Notepad",
+    "Install",
+    "Dismiss",
+    "DesktopWindowXamlSource",
+    "DesktopWindowXamlSource",
+    "DesktopWindowXamlSource",
+    "DesktopWindowXamlSource",
+    "DesktopWindowXamlSource",
+    "DesktopWindowXamlSource",
+    "DesktopWindowXamlSource",
+    "DesktopWindowXamlSource"
+  ],
+  "sessions_apres_lancement": [
+    "3sxuA9dd56NpVdHi37R86g:w-15",
+    "3sxuA9dd56NpVdHi37R86g:w-16",
+    "3sxuA9dd56NpVdHi37R86g:w-17",
+    "3sxuA9dd56NpVdHi37R86g:w-18",
+    "3sxuA9dd56NpVdHi37R86g:w-19",
+    "3sxuA9dd56NpVdHi37R86g:w-20",
+    "3sxuA9dd56NpVdHi37R86g:w-21",
+    "3sxuA9dd56NpVdHi37R86g:w-22",
+    "3sxuA9dd56NpVdHi37R86g:w-23",
+    "3sxuA9dd56NpVdHi37R86g:w-24",
+    "3sxuA9dd56NpVdHi37R86g:w-25"
+  ],
+  "tenues": [
+    {
+      "session": "3sxuA9dd56NpVdHi37R86g:w-15",
+      "titre": "Untitled - Notepad"
+    },
+    {
+      "session": "3sxuA9dd56NpVdHi37R86g:w-16",
+      "titre": "Install"
+    },
+    {
+      "session": "3sxuA9dd56NpVdHi37R86g:w-17",
+      "titre": "Dismiss"
+    }
+  ],
+  "verdict": "VERT"
+}
