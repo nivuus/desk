@@ -658,3 +658,109 @@ document qui l'établit, plutôt que de laisser un `0x8000FFFF` nu remonter la
 pile. Cela ne fait pas marcher le produit — **et ce n'est pas présenté comme
 tel** —, cela évite qu'un prochain lecteur repaie les lots 30 et 31.
 Autorisation non demandée ici : c'est une proposition, pas un plan.
+
+---
+
+## 10. R1 — la conception tranchée, et la recette PRÊTE à jouer
+
+**R1 autorisé le 30 août 2026 ; R3 écarté sur l'estimation du §9.**
+
+### 10.1 Trois étages, et le MFT n'est pas retiré
+
+🔴 **La décision du propriétaire, et sa raison, qui n'était PAS dans mon
+rapport** : `MFTEnumEx` n'énumère pas « l'encodeur NVIDIA », il énumère **les
+encodeurs H.264 MATÉRIELS** — Intel Quick Sync et AMD VCE compris. Une
+machine sans NVIDIA n'a aucun NVENC : lui retirer la MFT la priverait de
+**tout** encodeur matériel. La MFT est donc le repli **générique**, et elle
+reste **inchangée**.
+
+| Étage | Quand | État |
+| --- | --- | --- |
+| ① **NVENC natif** | un adaptateur de vendeur `0x10DE` est présent | à écrire |
+| ② **MFT**, inchangée | tout le reste : Intel, AMD, et la session 0 où la MFT NVIDIA fonctionne | **existe déjà**, `encode/fabrique.rs` |
+| ③ **échec LISIBLE** | les deux ont échoué | à écrire, `encode/fabrique.rs:351-352` |
+
+⚠️ **L'étage ③ NE FAIT PAS MARCHER LE PRODUIT**, et ne doit être présenté ni
+écrit comme s'il le faisait. Il évite qu'un prochain lecteur repaie les lots
+30 et 31 : il nomme la cause connue et le document qui l'établit, au lieu de
+laisser remonter un `0x8000FFFF` nu.
+
+### 10.2 Ce qui est FAIT, et testé sur l'hôte
+
+`agent/src/encode/nvenc.rs`, déclaré `#[path = "encode/nvenc.rs"]
+mod encode_nvenc;` dans `main.rs`. **PUR, aucun `cfg`**, donc compilé et
+testé sur l'hôte Linux — c'est ce qui rend R1 éprouvable **avant** que la VM
+se libère. Le placement suit la convention : le nom porte le préfixe
+`encode_` d'un module de premier niveau existant, donc `#[path]` chez le
+parent et non racine nue ; même précédent que `wasapi_format`.
+
+Il porte aujourd'hui **le choix de la voie** et **le POURQUOI de cet ordre,
+avec les commandes qui l'établissent**, écrit à l'endroit du choix — la leçon
+de `placement.rs`, dont un commentaire faux a fait concevoir un défaut.
+
+**Cinq tests d'hôte, et ils ont été VUS ROUGES.** Une mutation d'une ligne
+(`None => Voie::Mft` → `Voie::Nvenc(0)`, c'est-à-dire *exactement* la
+régression « une machine sans NVIDIA perd son encodeur matériel ») fait
+tomber **trois** tests sur cinq — et laisse verts les deux qui portent sur le
+cas NVIDIA, ce qui montre que le rouge est **spécifique** et non un échec en
+bloc. Restauré depuis une **copie nommée**.
+
+L'un des tests fige la topologie **mesurée** de la VM : VGA QEMU en
+adaptateur 0 portant le seul affichage attaché, deux NVIDIA sans aucune
+sortie — et exige que la voie vise l'indice **1**, pas 0.
+
+### 10.3 La recette, prête à jouer — le chiffre-juge et ses deux bras
+
+🔴 **CE QUI JUGE N'EST PAS QU'UN ENCODEUR SE CRÉE.** Un encodeur qui
+s'instancie, se configure et n'émet jamais rendrait tous les contrôles verts.
+**Le chiffre-juge est une IMAGE QUI ARRIVE AU NAVIGATEUR.**
+
+| | |
+| --- | --- |
+| **Chiffre-juge** | le **delta de `framesDecoded`** de la piste `inbound-rtp` vidéo, entre deux relevés `getStats()` espacés d'un palier |
+| **Instrument** | `client/verify-webrtc.mjs` — **il existe déjà** et fait exactement ces deux relevés espacés ; rien à écrire |
+| **Bras ROUGE** | la voie **MFT** en session 1 : l'encodeur ne s'active pas ⇒ **0 image décodée** |
+| **Bras VERT** | la voie **NVENC** : `framesDecoded` croît, et se compare à la cadence de la mire |
+| **Témoins négatifs** | ① la session s'établit (`ice=connected`) et ② un compteur **connu pour exister** croît dans le MÊME relevé — sans quoi un zéro ne dit pas « pas d'encodeur » mais « rien ne marche » |
+
+⚠️ **`bytesReceived` NE JUGE PAS.** Ce dépôt a déjà mesuré qu'il croît sur un
+spectre audio à −1000 dB ; l'analogue vidéo est un flux qui porte des octets
+sans jamais rendre une image décodable. C'est `framesDecoded` qui tranche.
+
+🔴 **ET LA MIRE DOIT BOUGER.** Desktop Duplication **n'émet qu'au changement
+du bureau** : une mire immobile rendrait `framesDecoded = 0` sur les DEUX
+bras, et le rouge serait vacueux. La source doit être **animée à une cadence
+CONNUE et affichée par la source elle-même**, pour que le vert se compare à
+quelque chose plutôt que d'être « non nul, donc bon ».
+
+⚠️ **Palier de plus de 5 minutes** : `--disable-background-timer-throttling`,
+`--disable-backgrounding-occluded-windows`, `--disable-renderer-backgrounding`,
+sans quoi Chrome gèle une page jamais mise au premier plan et la session
+tombe vers 331–340 s.
+
+### 10.4 Ce qu'il reste à faire, et ce que je NE peux pas faire sans la VM
+
+**Reste à écrire** : la liaison FFI de `nvEncodeAPI64.dll` (déclarations
+d'ABI, `NvEncodeAPICreateInstance`, la liste de fonctions), la session
+d'encodage sur le périphérique D3D11, et le branchement des trois étages
+derrière la façade `H264Encoder` — dont les **huit verbes** consommés
+ailleurs (`new`, `submit`, `poll_output`, `flush_pending_inputs`,
+`request_keyframe`, `set_bitrate`, `encode_size`, `telemetry`, plus `Drop`)
+**ne doivent pas changer** : aucun des ~10 appelants ne doit être touché.
+
+🔴 **UNE VARIABLE DE BANC SERA NÉCESSAIRE POUR JOUER LE BRAS ROUGE** (forcer
+la MFT alors qu'un NVIDIA est présent). Elle devra être ajoutée à
+`scripts/run-agent.sh` **par une TÂCHE DÉDIÉE**, et le contrôle qui vaut est
+de **lire la ligne dans le `run-agent.ps1` GÉNÉRÉ** — jamais de tracer le
+code. Ce dépôt l'a payé quatre fois (`SUPERVISEUR`, `MULTIFENETRE_REPRISE`,
+`AUDIO`, évité de justesse pour `APPS`). ⚠️ **Que cette variable doive rester
+un bras de banc ou devenir un bouton de PRODUIT** — un exploitant dont NVENC
+est cassé voudrait la MFT — **est une décision qui appartient au
+propriétaire**, et je ne la prends pas.
+
+⚠️ **RIEN DE CE QUI PRÉCÈDE N'ÉTABLIT QUE NVENC FONCTIONNERA DANS `desk`.**
+Le précédent mesuré est celui d'**Apollo**, un autre programme, avec sa
+propre gestion de périphérique D3D11 et son propre affichage virtuel. Que la
+même porte s'ouvre depuis notre processus, sur notre périphérique, dans notre
+session, **reste à mesurer** — et c'est précisément ce que la recette du
+§10.3 est faite pour trancher.
