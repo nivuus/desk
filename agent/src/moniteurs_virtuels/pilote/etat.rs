@@ -17,7 +17,7 @@
 use windows::core::GUID;
 
 use crate::moniteurs_virtuels::numeros::Numeros;
-use crate::moniteurs_virtuels::IdSortie;
+use crate::moniteurs_virtuels::{Adaptateur, IdSortie};
 
 /// Tout ce que le pilote doit retenir entre deux appels, sous un verrou
 /// unique — le distributeur de numéros et les deux listes ne servent qu'un
@@ -27,8 +27,9 @@ use crate::moniteurs_virtuels::IdSortie;
 /// **Deux listes en revanche, et non une**, parce que ce sont deux rôles et
 /// deux durées de vie.
 ///
-/// Une entrée d'`apparies` sert à **traduire un identifiant en GUID**. Une
-/// entrée d'`a_purger` sert à **se souvenir d'un retrait dû**. Confondre les
+/// Une entrée d'`apparies` sert à **traduire un identifiant en GUID** — et,
+/// depuis le lot 32, à **retrouver l'adaptateur** sur lequel la sortie a été
+/// créée. Une entrée d'`a_purger` sert à **se souvenir d'un retrait dû**. Confondre les
 /// deux fait qu'une sortie dont le retrait a échoué reste indexée par un
 /// identifiant que le pilote peut réattribuer : un `detruire` ultérieur
 /// apparierait alors l'entrée périmée, enverrait le mauvais GUID, et la sortie
@@ -40,7 +41,15 @@ pub(super) struct EtatSorties {
     /// un tampon de sortie de la bonne taille. Le trait rend un `IdSortie`
     /// (`u32`) alors que le pilote retire par GUID : c'est ici que se fait la
     /// traduction, et rien d'autre n'a le droit d'y figurer.
-    pub(super) apparies: Vec<(IdSortie, GUID)>,
+    ///
+    /// 🔴 **DEUX RÔLES DEPUIS LE LOT 32, ET LE SECOND NE DÉTRUIT RIEN.**
+    /// L'`Adaptateur` accompagne le GUID pour que `adaptateur_de` puisse
+    /// rendre le couple `(adaptateur, identifiant de cible)` qui DÉSIGNE la
+    /// sortie auprès du système d'affichage. ⚠️ **Il ne sert QU'À DÉSIGNER,
+    /// jamais à détruire** : le pilote ne retire que par GUID, et rien
+    /// d'autre — c'est l'invariant que toute la documentation ci-dessus
+    /// protège, et l'ajout d'un troisième membre ne l'entame pas.
+    pub(super) apparies: Vec<(IdSortie, GUID, Adaptateur)>,
     /// GUID de sorties dont la création a réussi et dont le retrait est DÛ,
     /// sans qu'aucun identifiant fiable ne permette de les redemander. Jamais
     /// consultée par `detruire` : elle ne sert qu'à ne pas perdre la trace de

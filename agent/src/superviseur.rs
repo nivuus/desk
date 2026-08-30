@@ -7,6 +7,7 @@
 //! testés sur l'hôte.
 
 pub mod enfants;
+pub mod designation;
 pub mod fenetres;
 #[cfg(windows)]
 pub mod hook;

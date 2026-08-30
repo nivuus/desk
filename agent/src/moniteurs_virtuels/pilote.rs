@@ -50,7 +50,7 @@ use crate::moniteurs_virtuels::sudovda::{
     en_champ_14, DemandeAjout, DemandeRetrait, SortieAjoutee, IOCTL_AJOUTER_SORTIE,
     IOCTL_RETIRER_SORTIE,
 };
-use super::{IdSortie, PiloteAffichageVirtuel};
+use super::{Adaptateur, IdSortie, PiloteAffichageVirtuel};
 
 /// Les trois IOCTL sans effet de bord (version, ping, veille), extraites pour
 /// tenir sous le plafond de 500 lignes — voir son commentaire de tête. Module
@@ -146,7 +146,7 @@ impl PiloteParIoctl {
     pub(super) fn oublier(&self, guid_moniteur: GUID) {
         let mut etat = self.etat();
         etat.a_purger.retain(|connu| *connu != guid_moniteur);
-        etat.apparies.retain(|(_, connu)| *connu != guid_moniteur);
+        etat.apparies.retain(|(_, connu, _)| *connu != guid_moniteur);
         // `None` seulement pour un GUID qui ne vient pas de notre gabarit :
         // rien à rendre, et surtout rien à deviner (voir `guid::numero_de`).
         if let Some(numero) = numero_de(guid_moniteur) {
@@ -219,6 +219,23 @@ impl PiloteParIoctl {
     /// journaliser un retrait raté, jamais à le retenter.
     pub(super) fn a_purger(&self) -> Vec<GUID> {
         self.etat().a_purger.clone()
+    }
+
+    /// L'adaptateur sur lequel une sortie appariée a été créée.
+    ///
+    /// `None` pour un identifiant que ce pilote n'a pas créé, ou dont le
+    /// retrait a échoué : l'entrée a alors quitté `apparies`, à dessein (voir
+    /// la doc d'`EtatSorties`). Un `None` fait retomber l'appelant sur son
+    /// repli, jamais sur une devinette.
+    ///
+    /// ⚠️ **Le couple rendu ne sert QU'À DÉSIGNER une cible d'affichage,
+    /// jamais à détruire** : le pilote ne retire que par GUID.
+    pub(crate) fn adaptateur_de(&self, id: IdSortie) -> Option<Adaptateur> {
+        self.etat()
+            .apparies
+            .iter()
+            .find(|(connu, _, _)| *connu == id)
+            .map(|(_, _, adaptateur)| *adaptateur)
     }
 }
 
@@ -333,9 +350,15 @@ impl PiloteAffichageVirtuel for PiloteParIoctl {
         // Le compte d'octets est bon : l'identifiant est fiable. La sortie
         // passe de « retrait dû » à « appariée ».
         let id = ajoutee.identifiant_cible;
+        // 🔴 LES TROIS NOMBRES SONT RETENUS, PLUS SEULEMENT LE TROISIÈME.
+        // L'adaptateur n'était que journalisé douze lignes plus bas, puis
+        // jeté — et sans lui, `identifiant_cible` ne désigne rien : un
+        // identifiant de cible n'est unique que PAR adaptateur. C'est ce
+        // couple que `config_affichage` échange contre un nom GDI.
+        let adaptateur: Adaptateur = (ajoutee.adaptateur_bas, ajoutee.adaptateur_haut);
         let mut etat = self.etat();
         etat.a_purger.retain(|connu| *connu != guid_moniteur);
-        etat.apparies.push((id, guid_moniteur));
+        etat.apparies.push((id, guid_moniteur, adaptateur));
         drop(etat);
 
         tracing::info!(
@@ -359,9 +382,9 @@ impl PiloteAffichageVirtuel for PiloteParIoctl {
         let rang = etat
             .apparies
             .iter()
-            .position(|(connu, _)| *connu == id)
+            .position(|(connu, _, _)| *connu == id)
             .with_context(|| format!("sortie {id} inconnue de ce pilote — rien à détruire"))?;
-        let (_, guid_moniteur) = etat.apparies[rang];
+        let (_, guid_moniteur, _) = etat.apparies[rang];
         drop(etat);
 
         // L'appariement n'est retiré qu'APRÈS l'appel, jamais avant : sur
@@ -383,7 +406,7 @@ impl PiloteAffichageVirtuel for PiloteParIoctl {
                 // serait jamais détruite. Le retrait reste dû, il n'est
                 // simplement plus adressable par identifiant.
                 let mut etat = self.etat();
-                etat.apparies.retain(|(_, connu)| *connu != guid_moniteur);
+                etat.apparies.retain(|(_, connu, _)| *connu != guid_moniteur);
                 etat.a_purger.push(guid_moniteur);
                 drop(etat);
                 tracing::error!(
@@ -417,7 +440,7 @@ impl Drop for PiloteParIoctl {
         // pas utilisé la garde, un GUID d'`a_purger` accuse un retrait que le
         // pilote a refusé.
         let etat = self.etat();
-        let apparies: Vec<GUID> = etat.apparies.iter().map(|(_, guid)| *guid).collect();
+        let apparies: Vec<GUID> = etat.apparies.iter().map(|(_, guid, _)| *guid).collect();
         let a_purger = etat.a_purger.clone();
         // Numéros attribués et non rendus : normalement égal au nombre de GUID
         // ci-dessous. Un écart signalerait une fuite du distributeur (un numéro

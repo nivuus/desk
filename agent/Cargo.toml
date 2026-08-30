@@ -43,6 +43,13 @@ md-5 = "0.10"
 windows-core = "0.62"
 windows = { version = "0.62", features = [
     "Win32_Devices_DeviceAndDriverInstallation",
+    # `QueryDisplayConfig` / `DisplayConfigGetDeviceInfo` : la seule
+    # correspondance EXPOSEE entre l'identifiant de cible que rend le pilote
+    # d'affichage virtuel et le nom GDI (`\\.\DISPLAYn`) que DXGI enumere.
+    # `placement.rs` a affirme le contraire de D1 au lot 32, et cette feature
+    # est ce qui rend la correction verifiable. Voir
+    # `moniteurs_virtuels/config_affichage.rs`.
+    "Win32_Devices_Display",
     # `PKEY_Device_FriendlyName` : le nom convivial d'un point de terminaison
     # audio, sur lequel porte la sélection explicite d'`AUDIO_PERIPHERIQUE`
     # (correction « A-bis », `wasapi/rendu.rs`). La clé de propriété vit dans

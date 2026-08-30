@@ -57,7 +57,11 @@ pub(super) fn creer_sortie(
     let (largeur, hauteur) =
         crate::windows_source_sortie::borner_a_la_taille_max((largeur, hauteur));
 
-    // Relevé AVANT création, et c'est la pièce maîtresse de l'appariement.
+    // Relevé AVANT création. ⚠️ **Il a CESSÉ d'être la pièce maîtresse de
+    // l'appariement au lot 32** — il en est désormais le REPLI, le chemin
+    // principal étant de désigner notre sortie par le couple que le pilote
+    // nous a rendu (voir `superviseur::designation`). Il n'est pas pour autant
+    // devenu inutile, et ce qui suit dit pourquoi il reste calculé.
     //
     // `sortie_pour_viewport` ne filtre que sur « attachée, ASSEZ GRANDE, pas
     // déjà prise » : rien n'y exclut les sorties PRÉEXISTANTES. Or le viewport
@@ -65,9 +69,15 @@ pub(super) fn creer_sortie(
     // petit que, la résolution d'un moniteur physique — c'est même le cas
     // banal en plein écran. Sans ce relevé, la fenêtre serait posée sur
     // l'écran RÉEL de la VM et la sortie virtuelle qu'on vient de créer
-    // deviendrait orpheline. On n'apparie donc que parmi les sorties
-    // APPARUES, et le dépôt a déjà écrit la doctrine : comparer des ensembles
-    // de NOMS, jamais des nombres.
+    // deviendrait orpheline. Quand la désignation ne rend rien, on n'apparie
+    // donc que parmi les sorties APPARUES, et le dépôt a déjà écrit la
+    // doctrine : comparer des ensembles de NOMS, jamais des nombres.
+    //
+    // 🔴 **CE RELEVÉ SEUL NE SUFFISAIT PAS, et le lot 30 l'a mesuré** : quand
+    // la sortie neuve REMPLACE une cible forcée sur la même source, elle
+    // hérite du nom d'avant, n'apparaît donc jamais, et cette différence
+    // d'ensembles refusait une sortie parfaitement utilisable. Voir l'en-tête
+    // de `superviseur::designation`.
     let avant = match relever_topologie("avant création de sortie") {
         Ok(avant) => noms_attaches(&avant),
         Err(erreur) => {
@@ -94,39 +104,58 @@ pub(super) fn creer_sortie(
         }
     };
 
-    // Attend le FAIT — qu'une sortie neuve apparaisse dans la topologie DXGI —
-    // plutôt qu'un délai plat, tout en continuant de battre le chien de garde
-    // du pilote (voir la doc d'`attendre_une_sortie_neuve`).
-    let apparues = attendre_une_sortie_neuve(pilote, &avant, LIMITE_RATTACHEMENT);
+    // Attend le FAIT — que NOTRE sortie soit là — plutôt qu'un délai plat, et
+    // sans cesser de battre le chien de garde du pilote (voir la doc
+    // d'`attendre_notre_sortie`).
+    let (designee, candidates) =
+        attendre_notre_sortie(pilote, id_pilote, &avant, LIMITE_RATTACHEMENT);
 
-    let Some(cible) = placement::sortie_pour_viewport(&apparues, largeur, hauteur, prises)
+    let Some(cible) = placement::sortie_pour_viewport(&candidates, largeur, hauteur, prises)
     else {
         // Ce refus ne peut plus venir d'une sortie née TROP GRANDE — c'est le
         // leg 4 de D9, qui plafonnait le produit à trois fenêtres sur une VM
-        // au registre pollué. Il reste TROIS causes, et les énumérer toutes
-        // est le seul service que ce commentaire rende à qui débogue cette
-        // `ERROR` :
-        //   1. aucune sortie n'est apparue du tout ;
-        //   2. celle qui est apparue est plus PETITE que la demande, de plus
-        //      de `TOLERANCE_PX` ;
-        //   3. celle qui est apparue est DÉJÀ PRISE — `sortie_pour_viewport`
-        //      filtre aussi sur `!deja_prises`, et `rendre_la_sortie` CRÉE
-        //      délibérément ce cas : quand la destruction est refusée par le
-        //      pilote, le nom reste réservé pour ne pas être réattribué.
+        // au registre pollué. Les énumérer toutes est le seul service que ce
+        // commentaire rende à qui débogue cette `ERROR`, et **le champ
+        // `designee` du journal ci-dessous dit laquelle des deux familles
+        // s'applique** :
+        //
+        // `designee` NON VIDE — notre sortie a été nommée, et refusée quand
+        // même :
+        //   1. elle est plus PETITE que la demande, de plus de `TOLERANCE_PX` ;
+        //   2. elle est DÉJÀ PRISE — `sortie_pour_viewport` filtre aussi sur
+        //      `!deja_prises`, et `rendre_la_sortie` CRÉE délibérément ce cas :
+        //      quand la destruction est refusée par le pilote, le nom reste
+        //      réservé pour ne pas être réattribué.
+        //
+        // `designee` VIDE — la désignation n'a rien rendu (pilote sans
+        // adaptateur connu, CCD muette ou en erreur, cible pas encore dans un
+        // chemin actif, paire ambiguë) et le REPLI a couru :
+        //   3. aucune sortie n'est apparue du tout ;
+        //   4. celle qui est apparue est trop petite, ou déjà prise (1 et 2
+        //      ci-dessus, mais sur une sortie qui n'est pas forcément la
+        //      nôtre) ;
+        //   5. 🔴 **notre sortie a REMPLACÉ une sortie préexistante**, donc
+        //      elle n'est pas « apparue » — le défaut du lot 30, que la
+        //      désignation ferme et que le repli, lui, ne peut pas voir.
         //
         // ❌ **Ce commentaire a dit « il ne reste que deux causes » pendant
-        // toute la branche** (constat de la revue de la tâche 6, différé puis
-        // repris à la revue finale) : il envoyait un débogueur cesser de
-        // chercher après deux hypothèses, sur une `ERROR` dont la troisième
-        // cause est produite par le code du même module.
+        // toute une branche** (constat de la revue de la tâche 6 de D10,
+        // différé puis repris à la revue finale), puis « TROIS » jusqu'au
+        // lot 32 : il envoyait un débogueur cesser de chercher trop tôt, sur
+        // une `ERROR` dont les causes manquantes étaient produites par le code
+        // du même module. **Toute addition à ce chemin recompte cette liste.**
         tracing::error!(
             session = %session.0,
             demande = format!("{largeur}x{hauteur}"),
-            apparues = ?apparues
+            // Vide quand la désignation n'a rien rendu : c'est ce qui départage
+            // les deux familles de causes énumérées juste au-dessus, et sans ce
+            // champ elles seraient indiscernables au journal.
+            designee = designee.as_deref().unwrap_or(""),
+            candidates = ?candidates
                 .iter()
                 .map(|s| format!("{} {}x{}", s.nom_sortie, s.rect.width, s.rect.height))
                 .collect::<Vec<_>>(),
-            "aucune sortie apparue ne peut servir ce viewport — elle est rendue au pilote"
+            "aucune sortie candidate ne peut servir ce viewport — elle est rendue au pilote"
         );
         rendre_sans_apparier(sorties, id_pilote);
         envoyer(&VersLaShell::Refus {
@@ -202,8 +231,17 @@ fn rendre_sans_apparier(sorties: &mut Sorties<'_>, id_pilote: u32) {
     }
 }
 
-/// Attend qu'une sortie neuve apparaisse dans la topologie, sans cesser de
-/// battre le chien de garde.
+/// Attend que NOTRE sortie soit là, sans cesser de battre le chien de garde.
+///
+/// 🔴 **« NOTRE », et non « une sortie neuve » — c'est tout le lot 32.** La
+/// fonction s'appelait `attendre_une_sortie_neuve`, et son prédicat
+/// (`!avant.contains(…)`) était le défaut mesuré par le lot 30 : une sortie
+/// qui REMPLACE une cible forcée hérite du nom d'avant et n'est donc jamais
+/// « neuve ». Voir l'en-tête de `superviseur::designation`.
+///
+/// Rend le nom DÉSIGNÉ (vide si la désignation n'a rien rendu) et les
+/// candidates. Le premier ne sert qu'au journal de l'appelant, où il départage
+/// deux familles de causes qui seraient sinon indiscernables.
 ///
 /// Le battement n'est pas un détail : le pilote retire les sorties d'un client
 /// qui cesse de pinguer, **y compris celles qu'on vient de créer**, et l'étape
@@ -228,24 +266,41 @@ fn rendre_sans_apparier(sorties: &mut Sorties<'_>, id_pilote: u32) {
 /// jamais apparue du tout ». Le relevé complet et nommé — toutes les sorties,
 /// attachées et non attachées — tranche entre les deux, et ne coûte rien en
 /// régime normal : il ne s'exécute que sur le chemin d'échec.
-fn attendre_une_sortie_neuve(
+fn attendre_notre_sortie(
     pilote: &PiloteParIoctl,
+    id_pilote: crate::moniteurs_virtuels::IdSortie,
     avant: &[String],
     limite: std::time::Duration,
-) -> Vec<SortieDxgi> {
+) -> (Option<String>, Vec<SortieDxgi>) {
+    // Relu UNE fois : le couple ne bouge pas pendant l'attente, et un
+    // aller-retour sous le verrou du pilote n'a rien à faire dans une boucle
+    // à 10 Hz. `None` pour un pilote qui ne connaît pas cet identifiant —
+    // l'appelant retombe alors sur le repli, jamais sur une devinette.
+    let adaptateur = pilote.adaptateur_de(id_pilote);
     let echeance = std::time::Instant::now() + limite;
     loop {
         if let Err(erreur) = pilote.pinguer() {
             tracing::warn!(%erreur, "ping du chien de garde pendant l'attente de rattachement");
         }
         let toutes = enumerer_sorties_silencieux().unwrap_or_default();
-        let apparues: Vec<_> = toutes
-            .iter()
-            .filter(|s| s.attachee_au_bureau && !avant.contains(&s.nom_sortie))
-            .cloned()
-            .collect();
-        if !apparues.is_empty() {
-            return apparues;
+
+        // ① DÉSIGNER — par ce qu'on a DONNÉ au pilote, pas par ce qui a changé
+        // autour. `chemins_actifs` est SILENCIEUSE, et il le faut : on est
+        // dans une boucle à 10 Hz, et ce dépôt a payé deux fois une trace
+        // émise à la cadence d'une boucle.
+        let designee = adaptateur.and_then(|adaptateur| {
+            let chemins = config_affichage::chemins_actifs().ok()?;
+            config_affichage::nom_gdi_de_la_cible(&chemins, adaptateur, id_pilote)
+                .map(str::to_owned)
+        });
+
+        // ② Le REPLI vit dans `designation::candidates`, avec ses tests
+        // d'hôte — la boucle ne fait que lui passer ce qu'elle a relevé. C'est
+        // ce qui rend la règle éprouvable sans Windows : `creation_sortie` est
+        // `#[cfg(windows)]` de bout en bout.
+        let candidates = designation::candidates(&toutes, designee.as_deref(), avant);
+        if !candidates.is_empty() {
+            return (designee, candidates);
         }
         if std::time::Instant::now() >= echeance {
             tracing::error!(
@@ -258,7 +313,22 @@ fn attendre_une_sortie_neuve(
             if let Err(erreur) = relever_topologie("attente de rattachement expirée") {
                 tracing::error!(%erreur, "topologie DXGI illisible au moment de l'expiration");
             }
-            return Vec::new();
+            // Le relevé complet ci-dessus ne dit pas POURQUOI la désignation
+            // s'est tue. Cette ligne-là le dit, une fois, sur ce seul chemin
+            // d'échec : sans elle, « CCD n'a jamais nommé notre cible » et
+            // « CCD l'a nommée mais DXGI ne l'énumère pas » se confondraient.
+            match adaptateur {
+                None => tracing::error!(
+                    id_pilote,
+                    "le pilote ne connaît pas l'adaptateur de cette sortie —                      la désignation n'a pas pu être tentée, seul le repli a couru"
+                ),
+                Some(adaptateur) => tracing::error!(
+                    id_pilote,
+                    ?adaptateur,
+                    "la cible n'a jamais été nommée par la configuration                      d'affichage dans la limite — voir moniteurs_virtuels::config_affichage"
+                ),
+            }
+            return (None, Vec::new());
         }
         std::thread::sleep(PAS_RATTACHEMENT);
     }
