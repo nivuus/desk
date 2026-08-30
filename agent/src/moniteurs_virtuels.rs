@@ -42,6 +42,11 @@ pub mod numeros;
 // win` interne — patron de `superviseur/placement.rs`.
 pub mod config_affichage;
 
+// Hors `#[cfg(windows)]` pour la même raison : le VERDICT d'une purge est une
+// règle pure, et un `ERROR` qui crie à tort à chaque démarrage est un `ERROR`
+// que plus personne ne lit. Voir son commentaire de tête.
+pub mod verdict_purge;
+
 use anyhow::{Context, Result};
 
 use crate::geometry::Rect;

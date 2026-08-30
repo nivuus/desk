@@ -71,6 +71,7 @@ use anyhow::Result;
 
 use crate::moniteurs_virtuels::guid::guid_pour;
 use crate::moniteurs_virtuels::numeros::PLAFOND_NUMEROS;
+use crate::moniteurs_virtuels::verdict_purge::{verdict, Verdict};
 use crate::moniteurs_virtuels::pilote::{ouvrir_pilote, PiloteParIoctl};
 // Ce module reste consommateur de `diagnostics::multifenetre::montee` pour
 // deux items de mesure — le relevé de topologie DXGI avant/après et son délai
@@ -120,17 +121,28 @@ pub(crate) fn purger() -> Result<()> {
     // EST de restaurer serait alors la seule à ne rien juger, alors que
     // `monter_en_n` (montee.rs) en émet un dans le cas symétrique.
     let attendu = avant.len().saturating_sub(retirees);
-    if apres.len() == attendu {
-        tracing::info!(retirees, avant = avant.len(), apres = apres.len(), "purge terminée");
-    } else {
-        tracing::error!(
+    match verdict(avant.len(), apres.len(), retirees) {
+        Verdict::Conforme => {
+            tracing::info!(retirees, avant = avant.len(), apres = apres.len(), "purge terminée")
+        }
+        Verdict::UnTiersAAussiRetire => tracing::info!(
             retirees,
             avant = avant.len(),
             apres = apres.len(),
             attendu,
-            "purge terminée SANS retrouver le compte attendu — topologie non \
-             conforme à ce que la purge a retiré"
-        );
+            "purge terminée — MOINS de sorties qu'attendu, ce que la purge ne \
+             peut pas expliquer et n'a pas à dénoncer : un tiers en a retiré \
+             une pendant ce temps (Apollo crée puis détruit une sortie \
+             temporaire pour sonder ses encodeurs, mesuré au lot 32C)"
+        ),
+        Verdict::RetraitsSansEffet => tracing::error!(
+            retirees,
+            avant = avant.len(),
+            apres = apres.len(),
+            attendu,
+            "purge terminée SANS retrouver le compte attendu — il reste PLUS de \
+             sorties qu'attendu : des retraits déclarés réussis n'ont rien retiré"
+        ),
     }
     Ok(())
 }
