@@ -73,6 +73,19 @@ mod win {
     /// Windows courante, via `SendInput`.
     pub struct InputInjector {
         hwnd: HWND,
+        /// 🔴 SUR QUOI LES COORDONNÉES SE DÉMAPPENT — voir `crate::entrees`.
+        /// Dérivée de `config.sortie_dxgi`, **le même discriminant que le mode
+        /// de capture** : il n'y a pas deux descriptions à tenir d'accord.
+        reference: crate::entrees::Reference,
+        /// Le rectangle de la sortie capturée, et l'instant de son relevé.
+        ///
+        /// ⚠️ **Mis en cache, et il le faut** : `move_mouse` court à la cadence
+        /// des mouvements de souris, et énumérer DXGI à chaque événement
+        /// coûterait des appels COM par dizaines par seconde. ⚠️ **Mais pas
+        /// figé non plus** : la disposition du bureau virtuel change quand une
+        /// sortie naît ou meurt, et une origine périmée redonnerait exactement
+        /// le défaut qu'on corrige. D'où la péremption ci-dessous.
+        sortie: Option<(Rect, std::time::Instant)>,
         /// Renseigné par le fil de sondage du curseur (`cursor.rs`).
         /// L'agent est SEUL décideur du mode : le client n'a rien à savoir,
         /// et il n'existe qu'une source de vérité — la seule construction
@@ -89,8 +102,26 @@ mod win {
     }
 
     impl InputInjector {
-        pub fn new(hwnd: HWND, mode_relatif: Arc<AtomicBool>) -> Self {
-            Self { hwnd, mode_relatif, premier_plan_obtenu: None }
+        /// Durée de validité du rectangle de la sortie.
+        ///
+        /// ⚠️ **Non calibrée** : une seconde est courte devant la fréquence à
+        /// laquelle une sortie naît ou meurt (de l'ordre de l'ouverture d'une
+        /// fenêtre) et longue devant la cadence des mouvements de souris. Ce
+        /// n'est pas une constante mesurée, et elle est déclarée telle.
+        const PEREMPTION_SORTIE: std::time::Duration = std::time::Duration::from_secs(1);
+
+        pub fn new(
+            hwnd: HWND,
+            sortie_dxgi: Option<&str>,
+            mode_relatif: Arc<AtomicBool>,
+        ) -> Self {
+            let reference = crate::entrees::reference(sortie_dxgi);
+            tracing::info!(
+                ?reference,
+                "reference des entrees retenue (elle DERIVE de config.sortie_dxgi, \
+                 le meme discriminant que le mode de capture)"
+            );
+            Self { hwnd, reference, sortie: None, mode_relatif, premier_plan_obtenu: None }
         }
 
         pub fn inject(&mut self, message: InputMessage) -> Result<()> {
@@ -207,14 +238,40 @@ mod win {
             }
         }
 
-        fn move_mouse(&self, x: u16, y: u16) -> Result<()> {
-            let window = self.client_rect_on_screen()?;
+        fn move_mouse(&mut self, x: u16, y: u16) -> Result<()> {
+            let window = self.rectangle_de_reference()?;
             let desktop = virtual_desktop();
-            // Sur la région RÉELLEMENT capturée, pas sur la zone client
-            // entière : le navigateur normalise ses coordonnées sur l'image
-            // qu'il reçoit, et cette image est l'intersection de la fenêtre
-            // avec l'écran. Mapper sur la zone client complète fait dériver le
-            // pointeur de tout ce qui dépasse.
+            // Sur la région RÉELLEMENT capturée : le navigateur normalise ses
+            // coordonnées sur l'image qu'il reçoit.
+            //
+            // 🔴 **CE COMMENTAIRE A ÉTÉ FAUX, AU PRÉSENT, DU SOUS-BLOC D10 AU
+            // LOT 32M.** Il affirmait : « cette image est l'intersection de la
+            // fenêtre avec l'écran ». **C'était vrai avant D10** — la capture
+            // recadrait alors la fenêtre. Depuis, le chemin multi-fenêtres
+            // capture la SORTIE ENTIÈRE (`ModeCapture::SortieEntiere`), fond
+            // d'écran et barre des tâches compris, et cette phrase a cessé
+            // d'être vraie sous elle sans que personne ne la relise. Le
+            // démappage sur la zone client de la fenêtre produisait alors une
+            // erreur à deux termes — origine + échelle —, mesurée à +1288 px
+            // en x et +51 px en y sur la machine du propriétaire.
+            //
+            // **Ce qui est vrai aujourd'hui** : la référence est
+            // `rectangle_de_reference()`, qui DÉRIVE de `config.sortie_dxgi` —
+            // le même discriminant que le mode de capture. Voir
+            // `crate::entrees`.
+            //
+            // **Les commandes qui l'établissent**, pour que le prochain
+            // lecteur refasse le contrôle sans croire personne :
+            //
+            // ```text
+            // grep -n 'normalisées sur 0..65535' client/src/input.ts
+            // grep -rn 'ModeCapture::SortieEntiere' agent/src/windows_source/
+            // cargo test --workspace entrees::
+            // ```
+            //
+            // ⚠️ C'est le second commentaire de ce dépôt à mentir au présent
+            // après `superviseur/placement.rs`, et pour la même raison : exact
+            // à l'écriture, jamais relu après le changement qui l'a défait.
             let Some((absolute_x, absolute_y)) = to_virtual_desktop_visible(x, y, window, desktop)
             else {
                 // Fenêtre entièrement hors écran : aucune image n'est envoyée,
@@ -228,6 +285,41 @@ mod win {
                 dwFlags: MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_VIRTUALDESK,
                 ..Default::default()
             })
+        }
+
+        /// 🔴 LE RECTANGLE SUR LEQUEL LE NAVIGATEUR A NORMALISÉ SES
+        /// COORDONNÉES — c'est-à-dire **ce qui a été capturé**, jamais autre
+        /// chose. Voir `crate::entrees` pour le défaut que cette indirection
+        /// ferme et pour l'erreur qu'elle annule, terme par terme.
+        fn rectangle_de_reference(&mut self) -> Result<Rect> {
+            let nom = match &self.reference {
+                crate::entrees::Reference::ZoneClientDeLaFenetre => {
+                    return self.client_rect_on_screen()
+                }
+                crate::entrees::Reference::SortieCapturee(nom) => nom.clone(),
+            };
+            if let Some((rect, releve)) = self.sortie {
+                if releve.elapsed() < Self::PEREMPTION_SORTIE {
+                    return Ok(rect);
+                }
+            }
+            let sorties = crate::capture::enumerer_sorties_silencieux()
+                .context("énumération DXGI pour la référence des entrées")?;
+            let trouvee = sorties.iter().find(|s| s.nom_sortie == nom).map(|s| s.rect);
+            match trouvee {
+                Some(rect) => {
+                    self.sortie = Some((rect, std::time::Instant::now()));
+                    Ok(rect)
+                }
+                // ⚠️ **On NE retombe PAS sur la fenêtre.** Ce serait réintroduire
+                // en silence le décalage que ce chemin existe pour supprimer, et
+                // le symptôme redeviendrait « la souris clique à côté » sans
+                // qu'aucune trace ne le dise. Mieux vaut une erreur nommée.
+                None => Err(anyhow!(
+                    "sortie capturée {nom} introuvable dans la topologie DXGI : \
+                     aucune référence fiable pour démapper les entrées"
+                )),
+            }
         }
 
         /// Zone client de la fenêtre, exprimée en coordonnées écran.

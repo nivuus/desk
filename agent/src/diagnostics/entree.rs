@@ -96,7 +96,9 @@ pub(super) fn executer_linearite() -> Result<()> {
 
     let injecteur_hwnd = windows::Win32::Foundation::HWND(std::ptr::null_mut());
     let mode = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(true));
-    let mut injecteur = input::InputInjector::new(injecteur_hwnd, mode);
+    // `None` : cette sonde de banc vise une FENÊTRE, jamais une sortie
+    // entière — la référence des entrées est donc celle d'origine.
+    let mut injecteur = input::InputInjector::new(injecteur_hwnd, None, mode);
     for _ in 0..repetitions {
         injecteur.inject(proto::input::InputMessage::MouseMoveRelative { dx: pas, dy: pas })?;
         std::thread::sleep(std::time::Duration::from_millis(2));
