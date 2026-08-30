@@ -889,3 +889,60 @@ prise en connaissance de ce qu'elle ne recouvre pas, et elle **ne change pas
 une ligne de code**. Elle reste **ouverte** au sens où elle devra être reprise
 le jour où ce dépôt distribuerait autre chose que du code source, ou
 distribuerait la DLL elle-même.
+
+### 10.7 Les dispositions, la table de fonctions, la session — et la frontière où je m'arrête
+
+**Écrit, compilé pour la cible, et pour la part pure testé sur l'hôte :**
+
+| Fichier | Ce qu'il porte | Lignes |
+| --- | --- | --- |
+| `encode/nvenc.rs` | la règle de choix des trois étages | 284 |
+| `encode/nvenc/abi.rs` | versions et constantes d'énumération | 293 |
+| `encode/nvenc/structures.rs` | ce qu'on configure **une fois** par session | 400 |
+| `encode/nvenc/tampons.rs` | ce qui s'échange **par image** | 241 |
+| `encode/nvenc/fonctions.rs` | `NV_ENCODE_API_FUNCTION_LIST` et ses signatures | 216 |
+| `encode/nvenc/session.rs` | **le seul fichier du sous-arbre qui exige Windows** | 448 |
+
+🔵 **Tout le chemin NVENC vit sous un seul sous-arbre**, `session.rs`
+compris : c'est ce qui garde la **frontière d'attribution** de la notice de
+licence vérifiable d'un coup d'œil. Seul `session.rs` est
+`#[cfg(windows)]` ; le reste se teste sur l'hôte.
+
+**Ce que les assertions attrapent, vu rouge à chaque fois, message nommant
+la structure** : un champ retiré au milieu (`mv_precision` ⇒ *« déport ABI
+faux pour NV_ENC_CONFIG.rcParams »*) ; le dernier membre de
+`NV_ENC_LOCK_BITSTREAM` oublié — celui dont l'absence ferait écrire NVENC
+**32 octets au-delà de notre allocation** (⇒ *« taille ABI fausse pour
+NV_ENC_LOCK_BITSTREAM »*) ; un champ décalé dans `NV_ENC_PIC_PARAMS`.
+
+🔵 **Trente des quarante-cinq emplacements de la table de fonctions sont
+laissés OPAQUES** : un emplacement de pointeur de fonction pèse la taille
+d'un pointeur quel que soit son type, donc les laisser opaques **préserve
+exactement l'ABI** tout en retirant trente signatures à transcrire. Les
+quinze qui servent sont typées, **et chacune a son déport asserté** — c'est
+ce qui transforme « l'ordre est l'ABI » en une propriété que le compilateur
+vérifie.
+
+🔴 **`session.rs` N'A JAMAIS TOURNÉ, et son en-tête le dit en toutes
+lettres.** Il compile pour la cible ; il n'a été exécuté sur aucune machine.
+Tout ce qu'il affirme du comportement de NVENC vient de l'en-tête ou d'une
+mesure faite sur **Apollo**, jamais sur **ce** code.
+
+#### La frontière, et pourquoi je m'y arrête
+
+**Le branchement des trois étages derrière `H264Encoder` est un changement
+de STRUCTURE, pas une ligne.** `H264Encoder` est aujourd'hui un `struct`
+dont **tous** les champs sont ceux du chemin MFT (le `IMFTransform`, le
+convertisseur, la file d'arrêt, les compteurs d'événements). Lui donner un
+second dos demande d'en faire un **aiguillage** — ce que les huit verbes
+consommés ailleurs permettent sans changer une seule signature.
+
+⚠️ **Mais cela oblige à extraire d'abord le chemin MFT** d'`encode.rs` :
+**~800 lignes**, donc **au-dessus du plafond de 500 à elles seules**, donc à
+scinder en deux (l'objet et sa pompe). La doctrine du dépôt est explicite :
+cette extraction est **sa propre tâche, jouée AVANT l'addition**, et jamais
+une compression. Je m'arrête donc ici et je la demande.
+
+⚠️ **Aucune signature des huit verbes n'a besoin de changer** — vérifié
+contre les ~10 appelants. Si l'exécution montrait le contraire, ce serait
+une frontière à rouvrir, pas un détail à absorber.
