@@ -148,26 +148,23 @@ function entree(application: ApplicationListee): HTMLLIElement {
     const img = document.createElement('img');
     img.className = application.icone === null ? 'hub__icone hub__icone--absente' : 'hub__icone';
     img.alt = '';
-    // ⚠️ L'ICÔNE NE PEUT PAS ÊTRE POSÉE PAR `src` VERS LA ROUTE : un `<img src>`
-    //    ne porte pas d'`Authorization` (`routes-icone.ts:20-26`). Elle est LUE
-    //    par `fetch` authentifié, puis publiée en objet — la seule voie.
+    // 🔴 ❌ ~~L'ICÔNE NE PEUT PAS ÊTRE POSÉE PAR `src` VERS LA ROUTE : un
+    //    `<img src>` ne porte pas d'`Authorization`. Elle est LUE par `fetch`
+    //    authentifié, puis publiée en objet — la seule voie.~~ **PLUS VRAI
+    //    DEPUIS LE 30 AOÛT 2026**, décision du propriétaire du dépôt : la
+    //    route d'icône s'atteint par une URL SIGNÉE, que le catalogue frappe
+    //    sous jeton porteur et rend dans `icone_url`. **Elle se pose
+    //    directement dans `src`**, et c'est très exactement ce que le lot
+    //    livre. Le détour par `fetch` + `createObjectURL` disparaît d'ici —
+    //    il survit dans `publierLeManifeste`, qui a besoin des OCTETS pour
+    //    bâtir le `data:` du manifeste, la seule forme que G5 ait mesurée
+    //    installable et la seule qu'un manifeste atteigne sans cookie.
+    //
+    // ⚠️ CE QUE CETTE LIGNE N'ÉTABLIT PAS : qu'un navigateur RÉEL l'affiche.
+    //    Ce fichier n'est pas testé unitairement (voir l'en-tête), et aucun
+    //    jugement visuel n'a été porté sur le hub à ce jour.
     li.appendChild(img);
-    if (application.icone !== null) {
-        void lireIcone(application, deps).then((issue) => {
-            if (issue.etat !== 'ok') return;
-            // ⚠️ `new Uint8Array(…)` PLUTÔT QUE LE TAMPON TEL QUEL, et ce
-            //    n'est pas un ornement : `Uint8Array` vaut désormais
-            //    `Uint8Array<ArrayBufferLike>` — possiblement adossé à un
-            //    `SharedArrayBuffer` — et n'est donc PAS un `BlobPart`. La
-            //    recopie rend un tampon dont le type est `ArrayBuffer`.
-            //    Trouvé par `npm run typecheck`, PAS par Vitest, qui
-            //    transpile sans vérifier les types — c'est la raison d'être
-            //    de `verify-all.sh`. Même piège que `televersement.ts` a
-            //    documenté sur `InitHttp.body`.
-            const copie = new Uint8Array(issue.valeur);
-            img.src = URL.createObjectURL(new Blob([copie], { type: 'image/png' }));
-        });
-    }
+    if (application.icone_url !== null) img.src = `${base}${application.icone_url}`;
 
     const corps = document.createElement('div');
     corps.className = 'hub__corps';

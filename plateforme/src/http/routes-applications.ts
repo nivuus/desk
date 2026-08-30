@@ -61,6 +61,7 @@ import type { RegistreAgents } from '../agents/registre';
 import type { Pilote } from '../base/pilote';
 import { associationsDe, lireParId, lireParVm, sourceMaxDepuis } from '../depot/application';
 import { lireParId as lireVm } from '../depot/vm';
+import { signerUrlIcone } from '../apps/url-icone';
 import { entetesCors } from './cors';
 import { ENTETES_SECURITE } from './entetes';
 import { lirePorteur } from './porteur';
@@ -288,6 +289,29 @@ export async function servirApplications(
                     // vaut `0` — c'est-à-dire ferait dire à une provenance
                     // INCONNUE qu'elle vaut quelque chose.
                     icone: l.icone,
+                    // 🔴 L'URL SIGNÉE DE L'ICÔNE — DÉCISION DU PROPRIÉTAIRE DU
+                    // DÉPÔT, 30 AOÛT 2026, ET NON UNE COMMODITÉ. C'est ici, et
+                    // NULLE PART AILLEURS, qu'une URL d'icône est frappée :
+                    // cette route exige le jeton porteur (`lirePorteur`,
+                    // plus haut) et a déjà vérifié l'appartenance de la VM
+                    // (`acces`, plus haut). **Une URL signée s'obtient AVEC un
+                    // jeton, jamais librement**, et c'est ce chaînage qui la
+                    // rend légitime — voir `apps/url-icone.ts` pour la clé
+                    // dérivée, ce que la signature couvre, et la durée.
+                    //
+                    // ⚠️ `null` QUAND IL N'Y A PAS D'ICÔNE, jamais une URL
+                    // qui rendrait 404 : le navigateur ne doit pas avoir à
+                    // distinguer « pas d'icône » de « icône introuvable ».
+                    icone_url:
+                        l.icone === null
+                            ? null
+                            : signerUrlIcone(
+                                  l.id,
+                                  vmId,
+                                  l.icone,
+                                  deps.secretJeton,
+                                  deps.maintenant(),
+                              ),
                     source_max: sourceMaxDepuis(l.source_max_px),
                     // ⚠️ CES DEUX-LÀ TRAVERSENT AUSSI, ET LE RAISONNEMENT
                     // CI-DESSUS NE S'Y OPPOSE PAS : une couleur n'est le

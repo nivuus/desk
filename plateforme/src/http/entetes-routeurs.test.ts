@@ -211,9 +211,17 @@ describe('les en-têtes de sécurité, un routeur à la fois', () => {
         porteLesEntetes(r, '401 de /icone/:sha256');
 
         // Et sur l'autre chemin de ce même routeur.
+        //
+        // ⚠️ CE CHEMIN NE REND PLUS 401 MAIS 400 DEPUIS LE 30 AOÛT 2026, et
+        // ce n'est pas une régression : le `GET` n'exige plus `Authorization`
+        // — il exige une URL SIGNÉE (décision du propriétaire du dépôt, voir
+        // `routes-icone.ts`). Sans les paramètres de signature, la requête est
+        // INCOMPLÈTE, pas non authentifiée. **Ce que ce test éprouve est
+        // inchangé** : que les en-têtes de sécurité soient posés sur une
+        // réponse d'ERREUR de ce routeur.
         const g = await fetch(`${url}/application/x/icone?e=${'a'.repeat(64)}`);
-        expect(g.status).toBe(401);
-        porteLesEntetes(g, '401 de /application/:id/icone');
+        expect(g.status).toBe(400);
+        porteLesEntetes(g, '400 de /application/:id/icone');
     });
 
     it('(6ter) `routes-televersement` les pose — LE SEPTIÈME ROUTEUR', async () => {
