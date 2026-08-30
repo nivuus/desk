@@ -141,6 +141,7 @@ mod capture;
 mod encode;
 #[cfg(windows)]
 mod appartenance;
+mod entrees;
 mod window;
 #[cfg(windows)]
 mod wasapi;

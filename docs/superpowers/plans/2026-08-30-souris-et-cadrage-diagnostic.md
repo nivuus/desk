@@ -336,3 +336,147 @@ périodique tente de la replacer **chaque seconde**, sans effet, alors que
 `SetWindowPos`. **Troisième cas distinct sous la même trace** — après le
 décalage constant (`w-2`, `w-3`) et l'écart de hauteur (`w-1`). **Non
 expliqué, et à ne pas confondre avec les deux autres.**
+
+---
+
+## 7. LE REMÈDE DES ENTRÉES — livré, testé, **non déployé**
+
+### 7.1 Le principe : une seule source, pas deux descriptions à tenir d'accord
+
+🔴 **Ce défaut est né parce que deux endroits décrivaient le même rectangle et
+qu'un seul a suivi D10.** Une correction qui laisserait subsister deux
+descriptions se redéferait au prochain changement de mode.
+
+🔵 **La source unique existait déjà** : `config.sortie_dxgi` est **le
+discriminant du mode de capture** (`demarrage/source.rs` : `Some(nom)` ⇒ source
+distante servie par le capteur, sortie entière ; `None` ⇒ capture locale de la
+fenêtre recadrée). **La référence des entrées en dérive désormais, de la même
+valeur** — `crate::entrees::reference(config.sortie_dxgi)`. Il n'y a plus rien
+à tenir d'accord.
+
+| | Avant | Après |
+| --- | --- | --- |
+| Le client normalise sur | l'image reçue | l'image reçue |
+| L'agent démappe sur | **la zone client de la FENÊTRE** | **ce qui a été capturé** |
+
+### 7.2 Les cinq tests d'hôte, et la rouge porte les chiffres du relevé
+
+`agent/src/entrees.rs`, module **pur**. La rouge demandée :
+
+```rust
+la_formule_d_avant_rend_le_decalage_releve_de_1288_et_51
+    assert_eq!(faux_x - juste_x, 1288);   // le terme d'ORIGINE en x
+    assert_eq!(faux_y - juste_y,   51);   // le terme d'ORIGINE en y
+```
+
+🔵 **Et un second test montre que ce n'est PAS un simple décalage** :
+`l_erreur_n_est_pas_un_simple_decalage_elle_croit_avec_la_distance` — l'écart
+vaut 1288 au coin haut-gauche et **1288 − 492** au bout, `492 = Ow − Ww`. **Une
+correction par soustraction d'une constante aurait été fausse partout ailleurs
+qu'au coin.**
+
+🔵 **Le témoin** : `quand_la_fenetre_occupe_sa_sortie_les_deux_references_coincident`
+— la correction ne change rien quand il n'y avait rien à changer, ce qui
+prouve que la rouge vient bien de l'écart des rectangles.
+
+🔴 **Vue rouge par mutation** (référence forcée à la fenêtre, comme avant) :
+`left: ZoneClientDeLaFenetre, right: SortieCapturee("\\.\DISPLAY7")`.
+Restauration depuis une **copie nommée**.
+
+### 7.3 Deux décisions à connaître
+
+- ⚠️ **Le rectangle de la sortie est mis en CACHE** (`PEREMPTION_SORTIE = 1 s`,
+  **non calibrée et déclarée telle**) : `move_mouse` court à la cadence de la
+  souris, et énumérer DXGI à chaque événement coûterait des dizaines d'appels
+  COM par seconde. Mais **pas figé** : la disposition du bureau change quand
+  une sortie naît ou meurt, et une origine périmée redonnerait le défaut.
+- 🔴 **Aucun repli sur la fenêtre si la sortie est introuvable.** Ce serait
+  réintroduire **en silence** le décalage qu'on supprime. Le chemin rend une
+  **erreur nommée** — bruyant plutôt que faux.
+
+### 7.4 Le commentaire menteur, corrigé là où il vit
+
+`move_mouse` affirmait **au présent** : « cette image est l'intersection de la
+fenêtre avec l'écran ». **Vrai avant D10, faux depuis.** Le commentaire dit
+désormais ce qui est vrai, ce qui l'était, **et porte les trois commandes qui
+l'établissent**. ⚠️ **Second commentaire de ce dépôt à mentir au présent** après
+`superviseur/placement.rs`, et pour la même raison : exact à l'écriture, jamais
+relu après le changement qui l'a défait.
+
+---
+
+## 8. Les deux faits neufs — DIAGNOSTIC, et ils sont expliqués par LECTURE
+
+### 8.1 ① Pourquoi la boucle recommence, et pourquoi elle ne voit pas son échec
+
+`boucle.rs:74` : `PERIODE_PLACEMENT = 1 s`. `replacer_si_besoin` :
+
+```rust
+let Ok(actuel) = placement::rectangle_de(hwnd) else { return };
+if placement::doit_etre_replacee(&actuel, &cible) {
+    tracing::info!(… "fenêtre sortie de sa sortie, replacement");
+    if let Err(erreur) = placement::poser(hwnd, &cible) { … }
+}
+```
+
+🔴 **Elle recommence parce que `doit_etre_replacee` est réévaluée à chaque
+seconde sur le rectangle COURANT.** Si `poser` ne déplace pas, le tour suivant
+retrouve le même écart, journalise, retente — **indéfiniment**. D'où les
+**587** lignes.
+
+🔴 **Et elle ne voit pas son échec parce qu'elle ne juge `poser` QUE sur son
+`Result`.** `poser` rend `Ok` dès que `SetWindowPos` rend un succès ; **il ne
+relit jamais le rectangle après l'appel**. Un `SetWindowPos` qui réussit sans
+rien déplacer est donc **indiscernable** d'un qui a marché.
+
+⚠️ **C'est très exactement la règle que ce dépôt s'est écrite** — *« JUGER SUR
+LA RELECTURE, JAMAIS SUR LE CODE DE RETOUR. Une API peut rendre 0 sur une
+sortie qui n'a pas bougé d'un pixel »* — **violée ici**. Le remède évident
+serait de relire après `poser` et de ne réessayer qu'un nombre borné de fois,
+**mais je ne l'écris pas** : ce n'est pas ce qui m'est autorisé.
+
+### 8.2 ② La fenêtre minimisée — et c'est probablement LE symptôme d'origine
+
+`w-10` à `160x28+-32000+-32000` : le rectangle canonique d'une fenêtre
+**minimisée** sous Windows.
+
+🔵 **Cela expliquerait le premier symptôme du propriétaire, entièrement** :
+*« je vois le fond d'écran et la barre des tâches, pas Notepad »*. **Une
+fenêtre minimisée n'est sur aucun écran** — la sortie capturée ne montre donc
+que le bureau. Et l'aller-retour en plein écran du navigateur l'aurait
+**restaurée**, ce qui est le symptôme ③.
+
+⚠️ **Ce qui rend le fait troublant** : `placement::poser` appelle pourtant
+`ShowWindow(hwnd, SW_SHOWNORMAL)` **avant** `SetWindowPos` — donc le produit
+demande la restauration **une fois par seconde**, et la fenêtre reste
+minimisée. ⚠️ **Le résultat de `ShowWindow` est ignoré** (`let _ = …`) : s'il
+échoue, rien ne le dit.
+
+**Trois hypothèses, et ce qui les départagerait** :
+
+| # | Hypothèse | Ce qui la confirmerait |
+| --- | --- | --- |
+| **M1** | `ShowWindow` **échoue** et le `let _` l'avale. | Journaliser sa valeur de retour, ou la relever depuis une sonde `/it`. |
+| **M2** | `ShowWindow` **réussit**, et quelque chose **re-minimise** la fenêtre entre deux tours. | Échantillonner le rectangle à ~15 ms : on verrait l'aller-retour, invisible à 1 Hz. |
+| **M3** | La fenêtre n'est pas minimisée mais **détruite/remplacée**, et le `hwnd` de la table est **périmé**. | Comparer le `hwnd` de la table à celui d'une énumération courante. |
+
+🔴 **M3 se teste sans rien perturber** et devrait être fait en premier : un
+`hwnd` périmé expliquerait AUSSI que `SetWindowPos` « réussisse » sans effet
+visible (§ 8.1) — **une seule cause pour les deux faits**.
+
+---
+
+## 9. Ce que cette manche N'établit PAS
+
+- **rien n'est déployé** : le binaire en place a été jugé bon par un humain,
+  et **un remède non mesuré ne le remplace pas** ;
+- **la correction des entrées n'est pas MESURÉE sur la VM** : elle est dérivée,
+  testée sur l'hôte, et sa rouge porte les chiffres du relevé — **ce n'est pas
+  la même chose qu'un curseur qui atterrit au bon endroit** ;
+- **la mesure du curseur reste à jouer**, et **l'AVANT disparaîtra dès le
+  déploiement** : elle est préparée (§ 2.4, § 6.5), et j'attends le créneau ;
+- **les deux faits neufs ne sont pas corrigés** — expliqués par lecture pour
+  l'un, trois hypothèses départageables pour l'autre ;
+- ⚠️ **le cadrage n'est pas touché** : décision de D9, deux Critiques ouvertes
+  à dessein, et rétablir l'accord fenêtre/sortie les rouvrirait. **Cette
+  décision appartient au propriétaire.**
