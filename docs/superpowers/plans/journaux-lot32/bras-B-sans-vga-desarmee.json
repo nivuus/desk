@@ -1,0 +1,197 @@
+{
+  "etiquette": "B-sans-vga-desarmee",
+  "instant": "2026-08-30T16:25:57.544Z",
+  "viewport": "1860x1080",
+  "messages": [
+    {
+      "ms": 7,
+      "type": "ice-config"
+    },
+    {
+      "ms": 63,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-1",
+      "titre": "Untitled - Notepad"
+    },
+    {
+      "ms": 5236,
+      "type": "refus",
+      "titre": "Untitled - Notepad",
+      "motif": "aucune sortie d'affichage ne peut servir cette fenêtre"
+    },
+    {
+      "ms": 5279,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-1"
+    },
+    {
+      "ms": 5280,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-2",
+      "titre": "Untitled - Notepad"
+    },
+    {
+      "ms": 10366,
+      "type": "refus",
+      "titre": "Untitled - Notepad",
+      "motif": "aucune sortie d'affichage ne peut servir cette fenêtre"
+    },
+    {
+      "ms": 10408,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-2"
+    },
+    {
+      "ms": 10409,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-3",
+      "titre": "Untitled - Notepad"
+    },
+    {
+      "ms": 10409,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-4",
+      "titre": "Untitled - Notepad"
+    },
+    {
+      "ms": 15493,
+      "type": "refus",
+      "titre": "Untitled - Notepad",
+      "motif": "aucune sortie d'affichage ne peut servir cette fenêtre"
+    },
+    {
+      "ms": 20556,
+      "type": "refus",
+      "titre": "Untitled - Notepad",
+      "motif": "aucune sortie d'affichage ne peut servir cette fenêtre"
+    },
+    {
+      "ms": 20556,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-3"
+    },
+    {
+      "ms": 20557,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-4"
+    },
+    {
+      "ms": 20557,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-5",
+      "titre": "Untitled - Notepad"
+    },
+    {
+      "ms": 20557,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-6",
+      "titre": "Untitled - Notepad"
+    },
+    {
+      "ms": 25695,
+      "type": "refus",
+      "titre": "Untitled - Notepad",
+      "motif": "aucune sortie d'affichage ne peut servir cette fenêtre"
+    },
+    {
+      "ms": 30755,
+      "type": "refus",
+      "titre": "Untitled - Notepad",
+      "motif": "aucune sortie d'affichage ne peut servir cette fenêtre"
+    },
+    {
+      "ms": 30755,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-5"
+    },
+    {
+      "ms": 30755,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-6"
+    },
+    {
+      "ms": 30756,
+      "type": "refus",
+      "titre": "Untitled - Notepad",
+      "motif": "la session n'a pas tenu après 3 tentatives"
+    },
+    {
+      "ms": 30756,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-7",
+      "titre": "Untitled - Notepad"
+    },
+    {
+      "ms": 35885,
+      "type": "refus",
+      "titre": "Untitled - Notepad",
+      "motif": "aucune sortie d'affichage ne peut servir cette fenêtre"
+    },
+    {
+      "ms": 35927,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-7"
+    },
+    {
+      "ms": 35928,
+      "type": "fenetre-ouverte",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-8",
+      "titre": "Untitled - Notepad"
+    },
+    {
+      "ms": 41008,
+      "type": "refus",
+      "titre": "Untitled - Notepad",
+      "motif": "aucune sortie d'affichage ne peut servir cette fenêtre"
+    },
+    {
+      "ms": 41051,
+      "type": "fenetre-fermee",
+      "session": "3sxuA9dd56NpVdHi37R86g:w-8"
+    },
+    {
+      "ms": 41052,
+      "type": "refus",
+      "titre": "Untitled - Notepad",
+      "motif": "la session n'a pas tenu après 3 tentatives"
+    }
+  ],
+  "vm": "677a3953-14c7-4364-92c3-bd17ecddf8d2",
+  "etat_vm": "prete",
+  "session": "3sxuA9dd56NpVdHi37R86g:bureau",
+  "lancement": {
+    "nom": "Notepad",
+    "id": "7f2a7df5-765f-4f6c-b5c8-485e8c1a4e19",
+    "statut": 200,
+    "reponse": {
+      "issue": "raccourci"
+    },
+    "ms": 6109
+  },
+  "compte_fenetre_ouverte": 8,
+  "compte_refus": 10,
+  "motifs_de_refus": [
+    "aucune sortie d'affichage ne peut servir cette fenêtre",
+    "la session n'a pas tenu après 3 tentatives"
+  ],
+  "titres": [
+    "Untitled - Notepad",
+    "Untitled - Notepad",
+    "Untitled - Notepad",
+    "Untitled - Notepad",
+    "Untitled - Notepad",
+    "Untitled - Notepad",
+    "Untitled - Notepad",
+    "Untitled - Notepad"
+  ],
+  "sessions_apres_lancement": [
+    "3sxuA9dd56NpVdHi37R86g:w-3",
+    "3sxuA9dd56NpVdHi37R86g:w-4",
+    "3sxuA9dd56NpVdHi37R86g:w-5",
+    "3sxuA9dd56NpVdHi37R86g:w-6",
+    "3sxuA9dd56NpVdHi37R86g:w-7",
+    "3sxuA9dd56NpVdHi37R86g:w-8"
+  ],
+  "tenues": [],
+  "verdict": "ROUGE"
+}
