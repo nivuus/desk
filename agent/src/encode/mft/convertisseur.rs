@@ -22,10 +22,13 @@ use windows::Win32::Media::MediaFoundation::*;
 // tenir à jour — celle qui se désynchronise. La règle du dépôt vise les
 // affirmations recopiées ; une importation globale n'en recopie aucune.
 use crate::encode::*;
+// Le type du dos MFT vient du PARENT, pas du glob : `crate::encode`
+// exporte la FAÇADE, qui n'est pas ce qu'on implémente ici.
+use super::EncodeurMft;
 use crate::capture::CapturedFrame;
 
 /// Résultat d'un appel à `ProcessOutput` sur le convertisseur BGRA→NV12 (voir
-/// `H264Encoder::drain_converter_output`).
+/// `EncodeurMft::drain_converter_output`).
 enum ConverterPoll {
     /// Un échantillon converti est disponible.
     Sample(IMFSample),
@@ -38,7 +41,7 @@ enum ConverterPoll {
     Busy,
 }
 
-impl H264Encoder {
+impl EncodeurMft {
     /// Convertit **une** texture BGRA capturée en **un** échantillon NV12,
     /// empilé dans `pending_nv12`. Contrairement à l'encodeur, ce transform se
     /// pilote par une paire `ProcessInput`/`ProcessOutput` classique : pas

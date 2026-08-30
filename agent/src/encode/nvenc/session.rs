@@ -27,102 +27,19 @@
 //! Puis, par image : enregistrer, projeter, encoder, verrouiller, **copier**,
 //! déverrouiller, déprojeter.
 
-// 🔴 **POURQUOI CE `allow`, ET QUAND LE RETIRER — ce n'est PAS la même
-// raison que celui d'`abi`.** Là-bas, une ABI se transcrit entière. Ici,
-// rien n'appelle encore cette session parce que **le branchement derrière la
-// façade `H264Encoder` est un changement de STRUCTURE, pas une ligne** :
-// `H264Encoder` est aujourd'hui un `struct` dont tous les champs sont ceux
-// du chemin MFT, et accueillir un second dos demande de l'extraire d'abord
-// (~800 lignes, donc au-dessus du plafond de 500 à elles seules, donc à
-// scinder). La doctrine du dépôt impose que cette extraction soit sa
-// PROPRE tâche, jouée AVANT l'addition.
-//
-// ⚠️ **Sans ce `allow`, cinq `dead_code` de plus s'ajouteraient aux 24
-// avertissements préexistants** et rendraient inapplicable la règle
-// « vérifier la NATURE des avertissements, jamais leur nombre ».
-// **À retirer dans le commit qui branche la façade** — et ce qui le
-// rappellera est ce commentaire.
-#![allow(dead_code)]
-
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{anyhow, Result};
 use std::collections::HashMap;
 use std::ffi::c_void;
 
 use windows::core::Interface;
 use windows::Win32::Graphics::Direct3D11::{ID3D11Device, ID3D11Texture2D};
-use windows::Win32::System::LibraryLoader::{GetProcAddress, LoadLibraryA};
 
 use super::abi;
-use super::fonctions::{self, ListeDeFonctions, Statut};
-use super::structures::{Config, InitializeParams, OpenEncodeSessionExParams, PresetConfig};
+use super::porte::{verifier, Porte};
+use super::structures::{
+    Config, InitializeParams, OpenEncodeSessionExParams, PresetConfig, ReconfigureParams,
+};
 use super::tampons::{CreateBitstreamBuffer, LockBitstream, MapInputResource, PicParams, RegisterResource};
-
-/// Traduit un `NVENCSTATUS` en erreur, en nommant l'appel.
-fn verifier(statut: Statut, quoi: &str) -> Result<()> {
-    if statut == abi::SUCCESS {
-        return Ok(());
-    }
-    // 🔴 Ce code-ci mérite d'être nommé : il veut dire « une version de
-    // structure est fausse », et c'est le défaut le plus silencieux de cette
-    // API — voir `super::abi`.
-    if statut == abi::ERR_INVALID_VERSION {
-        bail!(
-            "{quoi} : NV_ENC_ERR_INVALID_VERSION ({statut}) — une version de \
-             structure est fausse. Voir `encode_nvenc::abi` et sa commande de \
-             relecture ; ce n'est PAS un défaut de pilote."
-        );
-    }
-    bail!("{quoi} : NVENCSTATUS {statut}")
-}
-
-/// La porte : la DLL du pilote et sa table de fonctions.
-///
-/// ⚠️ **La DLL n'est jamais relâchée**, à dessein : plusieurs sessions
-/// coexistent (une par fenêtre), et un `FreeLibrary` sous les pieds d'une
-/// voisine serait un plantage. Le processus la rend en mourant.
-pub struct Porte {
-    fonctions: ListeDeFonctions,
-}
-
-impl Porte {
-    pub fn ouvrir() -> Result<Self> {
-        let module = unsafe { LoadLibraryA(windows::core::s!("nvEncodeAPI64.dll")) }
-            .context("chargement de nvEncodeAPI64.dll (la DLL vient du pilote NVIDIA)")?;
-
-        // ① La version du pilote AVANT tout, pour que le refus soit lisible.
-        let version_max = unsafe { GetProcAddress(module, windows::core::s!("NvEncodeAPIGetMaxSupportedVersion")) }
-            .ok_or_else(|| anyhow!("NvEncodeAPIGetMaxSupportedVersion absente de la DLL"))?;
-        let version_max: fonctions::VersionMaxSupportee = unsafe { std::mem::transmute(version_max) };
-        let mut rendue = 0u32;
-        verifier(unsafe { version_max(&mut rendue) }, "NvEncodeAPIGetMaxSupportedVersion")?;
-        if !abi::pilote_compatible(rendue) {
-            bail!(
-                "pilote NVIDIA trop ancien pour l'API transcrite : il annonce \
-                 {rendue:#x}, il faut au moins {:#x} (soit {}.{}). \
-                 ⚠️ Cet empaquetage est (majeure << 4) | mineure, PAS celui de \
-                 NVENCAPI_VERSION.",
-                abi::version_pilote_attendue(),
-                abi::VERSION_MAJEURE,
-                abi::VERSION_MINEURE
-            );
-        }
-        tracing::info!(
-            version_pilote = format!("{rendue:#x}"),
-            version_attendue = format!("{:#x}", abi::version_pilote_attendue()),
-            "porte NVENC : pilote compatible"
-        );
-
-        // ② La table de fonctions.
-        let creer = unsafe { GetProcAddress(module, windows::core::s!("NvEncodeAPICreateInstance")) }
-            .ok_or_else(|| anyhow!("NvEncodeAPICreateInstance absente de la DLL"))?;
-        let creer: fonctions::CreerInstance = unsafe { std::mem::transmute(creer) };
-        let mut table: ListeDeFonctions = unsafe { std::mem::zeroed() };
-        table.version = abi::FUNCTION_LIST_VER;
-        verifier(unsafe { creer(&mut table) }, "NvEncodeAPICreateInstance")?;
-
-        Ok(Self { fonctions: table })
-    }
-}
 
 /// Une session d'encodage : un encodeur, son tampon de flux, et le cache des
 /// textures déjà enregistrées.
@@ -143,6 +60,20 @@ pub struct SessionNvenc {
     debit_bps: u32,
     /// Posé par `demander_image_cle`, consommé par la prochaine image.
     image_cle_demandee: bool,
+    /// 🔴 **Gardés parce que `nvEncReconfigureEncoder` les re-exige.**
+    /// Reconfigurer, c'est re-soumettre l'initialisation entière avec le
+    /// débit changé ; sans copie de l'originale, `regler_debit` devrait la
+    /// réinventer, et toute divergence deviendrait un changement de réglage
+    /// silencieux.
+    ///
+    /// ⚠️ **La `Box` est indispensable** : `InitializeParams::encode_config`
+    /// est un pointeur BRUT vers cette `Config`. Sur la pile, elle bougerait.
+    config: Box<Config>,
+    /// L'initialisation d'origine, **son pointeur de configuration remis à
+    /// zéro** : il est reposé à chaque usage, plutôt que gardé — un champ
+    /// qui pointe vers un frère de la même structure est exactement le
+    /// motif auto-référentiel que Rust ne garantit pas.
+    init: InitializeParams,
 }
 
 impl SessionNvenc {
@@ -190,6 +121,8 @@ impl SessionNvenc {
             hauteur,
             debit_bps,
             image_cle_demandee: false,
+            config: Box::new(unsafe { std::mem::zeroed() }),
+            init: unsafe { std::mem::zeroed() },
         };
         session.initialiser(fps, debit_bps)?;
         Ok(session)
@@ -261,7 +194,8 @@ impl SessionNvenc {
         // Décision de type d'image confiée à l'encodeur : c'est ce que
         // `NV_ENC_PIC_FLAG_FORCEIDR` exige pour être honoré.
         init.enable_ptd = 1;
-        init.encode_config = &mut config;
+        *self.config = config;
+        init.encode_config = &mut *self.config;
         init.tuning_info = abi::TUNING_ULTRA_LOW_LATENCY;
         // 🔴 ARGB, pas ABGR : c'est `DXGI_FORMAT_B8G8R8A8_UNORM`, ce que rend
         // la duplication. Voir `abi::BUFFER_FORMAT_ARGB`.
@@ -276,6 +210,10 @@ impl SessionNvenc {
             unsafe { initialiser(self.encodeur, &mut init) },
             "nvEncInitializeEncoder",
         )?;
+        // Garder l'initialisation SANS son pointeur : il est reposé à chaque
+        // usage, sur la `Box` qui, elle, ne bouge pas.
+        init.encode_config = std::ptr::null_mut();
+        self.init = init;
 
         let mut tampon: CreateBitstreamBuffer = unsafe { std::mem::zeroed() };
         tampon.version = abi::CREATE_BITSTREAM_BUFFER_VER;
@@ -342,6 +280,39 @@ impl SessionNvenc {
 
     pub fn debit(&self) -> u32 {
         self.debit_bps
+    }
+
+    /// Change le débit d'un encodeur vivant.
+    ///
+    /// 🔴 **Un vrai appel, pas un silence.** Le dépôt pilote le débit vidéo
+    /// par cette voie (`transport/adaptation.rs`) ; accepter l'appel sans
+    /// rien faire rendrait toute l'adaptation de bande passante
+    /// **invisiblement inopérante**.
+    ///
+    /// ⚠️ **Sans `resetEncoder`** : réinitialiser rendrait la référence
+    /// temporelle et forcerait une image clé à chaque ajustement de débit,
+    /// c'est-à-dire une rafale à l'instant précis où l'on essaie de réduire
+    /// le trafic. Le débit se change à chaud.
+    pub fn regler_debit(&mut self, bps: u32) -> Result<()> {
+        self.config.rc_params.average_bit_rate = bps;
+        self.config.rc_params.max_bit_rate = bps;
+
+        let mut params: ReconfigureParams = unsafe { std::mem::zeroed() };
+        params.version = abi::RECONFIGURE_PARAMS_VER;
+        params.re_init_encode_params = self.init;
+        params.re_init_encode_params.encode_config = &mut *self.config;
+
+        let reconfigurer = self
+            .porte
+            .fonctions
+            .reconfigurer_encodeur
+            .ok_or_else(|| anyhow!("emplacement nvEncReconfigureEncoder vide"))?;
+        verifier(
+            unsafe { reconfigurer(self.encodeur, &mut params) },
+            "nvEncReconfigureEncoder",
+        )?;
+        self.debit_bps = bps;
+        Ok(())
     }
 
     /// Encode une texture et rend les octets du flux.

@@ -1,4 +1,4 @@
-//! Le chemin **Media Foundation** : l'objet `H264Encoder`, sa construction et
+//! Le chemin **Media Foundation** : l'objet `EncodeurMft`, sa construction et
 //! sa destruction.
 //!
 //! Extrait d'`encode.rs` le 30 août 2026 (lot 31), dans une tâche DÉDIÉE et
@@ -14,7 +14,7 @@
 //! et `encodeur` (la MFT asynchrone) — et non tranchée au hasard.
 //!
 //! ⚠️ **Ce module n'est PAS la façade.** `encode.rs` réexporte
-//! `H264Encoder` : les ~10 appelants du dépôt n'ont pas bougé d'une ligne, et
+//! `EncodeurMft` : les ~10 appelants du dépôt n'ont pas bougé d'une ligne, et
 //! aucun des huit verbes n'a changé de signature.
 
 use std::collections::VecDeque;
@@ -34,7 +34,7 @@ use crate::encode::{arret, fabrique, reglages};
 mod convertisseur;
 mod encodeur;
 
-pub struct H264Encoder {
+pub struct EncodeurMft {
     transform: IMFTransform,
     events: IMFMediaEventGenerator,
     device_manager: IMFDXGIDeviceManager,
@@ -94,12 +94,12 @@ pub struct H264Encoder {
     /// `arret::mettre_au_repos` dit pourquoi).
     ///
     /// **Déclarée en dernier volontairement** : les champs sont détruits dans
-    /// l'ordre de déclaration, après l'exécution de `Drop for H264Encoder`.
+    /// l'ordre de déclaration, après l'exécution de `Drop for EncodeurMft`.
     /// La file ne doit être rendue qu'une fois relâchée la MFT qui la détient.
     file_encodeur: arret::FileMft,
 }
 
-impl H264Encoder {
+impl EncodeurMft {
     pub fn new(
         device: &ID3D11Device,
         capture: (u32, u32),
@@ -279,7 +279,7 @@ impl H264Encoder {
     }
 }
 
-impl Drop for H264Encoder {
+impl Drop for EncodeurMft {
     fn drop(&mut self) {
         if self.skipped_busy > 0 {
             tracing::debug!(

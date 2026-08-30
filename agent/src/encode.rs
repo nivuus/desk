@@ -47,7 +47,7 @@ use std::sync::atomic::AtomicU64;
 use std::sync::{Arc, OnceLock};
 
 use anyhow::{bail, Result};
-use windows::Win32::Graphics::Direct3D11::ID3D11Texture2D;
+use windows::Win32::Graphics::Direct3D11::{ID3D11Device, ID3D11Texture2D};
 use windows::Win32::Media::MediaFoundation::*;
 
 use crate::capture::CapturedFrame;
@@ -68,8 +68,7 @@ mod reglages;
 // les ~10 appelants du dépôt continuent d'écrire `crate::encode::H264Encoder`,
 // et aucun des huit verbes n'a changé de signature.
 mod mft;
-
-pub use mft::H264Encoder;
+mod natif;
 
 /// Identifiants d'événements des MFT asynchrones (repris des constantes
 /// fournies par le crate plutôt que dupliqués en dur, comme suggéré par le
@@ -289,3 +288,140 @@ fn demarrer_media_foundation() -> Result<()> {
 
 
 
+
+/// **La façade.** Un encodeur H.264, quel que soit le dos qui l'exécute.
+///
+/// 🔴 **LES HUIT VERBES N'ONT PAS CHANGÉ DE SIGNATURE**, et c'est la
+/// contrainte qui a gouverné cette conception : les ~10 appelants du dépôt
+/// n'ont pas bougé d'une ligne.
+///
+/// ## L'ordre des dos, et POURQUOI — avec de quoi le refaire
+///
+/// 1. **NVENC natif** quand un adaptateur NVIDIA est présent.
+/// 2. **La MFT**, inchangée, pour tout le reste.
+///
+/// 🔴 **LA MFT N'EST PAS UN PIS-ALLER, C'EST LE DOS GÉNÉRIQUE.** `MFTEnumEx`
+/// n'énumère pas « l'encodeur NVIDIA » : il énumère **les encodeurs H.264
+/// matériels**, Intel Quick Sync et AMD VCE compris. Une machine sans NVIDIA
+/// n'a aucun NVENC ; la lui retirer la priverait de **tout** encodeur
+/// matériel. Trois tests d'hôte figent cette régression
+/// (`encode_nvenc::tests`).
+///
+/// **Pourquoi NVENC d'abord** : sur la VM cible, le 30 août 2026, la MFT
+/// `NVIDIA H.264 Encoder MFT` s'active en session 0 et rend `0x8000FFFF` en
+/// **session 1** — celle où le produit tourne — sur les quatre arrangements
+/// que Media Foundation permet. Deux témoins verts posés dans la même
+/// exécution (encodeur H.264 **logiciel**, processeur vidéo **logiciel**)
+/// établissent que la machinerie n'est pas en cause. Apollo, sur la même
+/// machine et dans la même session, fabrique six encodeurs par la porte
+/// native.
+///
+/// **Refaire la mesure**, plutôt que de me croire :
+///
+/// ```text
+/// (Get-Process sunshine).Modules | ? { $_.ModuleName -match 'mfplat|nvEnc' }
+/// Select-String 'NvEnc: created encoder' 'C:\Program Files\Apollo\config\sunshine.log'
+/// ```
+///
+/// Détail, relevés bruts et **trois remèdes réfutés par la mesure** :
+/// `docs/superpowers/plans/2026-08-30-encodeur-porte-apollo-resultats.md`.
+pub enum H264Encoder {
+    /// L'API NVENC native — la porte qu'Apollo emprunte.
+    Natif(natif::EncodeurNatif),
+    /// La MFT Media Foundation — le dos **générique**.
+    Mft(mft::EncodeurMft),
+}
+
+impl H264Encoder {
+    pub fn new(
+        device: &ID3D11Device,
+        capture: (u32, u32),
+        encode: (u32, u32),
+        fps: u32,
+        bitrate: u32,
+    ) -> Result<Self> {
+        let adaptateurs = fabrique::adaptateurs_dxgi();
+        if let crate::encode_nvenc::Voie::Nvenc(index) =
+            crate::encode_nvenc::choisir_voie(&adaptateurs)
+        {
+            let vu = &adaptateurs[index];
+            match natif::EncodeurNatif::new(device, encode, fps, bitrate) {
+                Ok(encodeur) => {
+                    tracing::info!(
+                        adaptateur = %vu.nom,
+                        luid = format!("{:08X}:{:08X}", vu.luid.0, vu.luid.1),
+                        "encodeur NVENC natif retenu"
+                    );
+                    return Ok(Self::Natif(encodeur));
+                }
+                // 🔴 **Le repli est BRUYANT, à dessein.** Retomber en silence
+                // sur la MFT ferait lire « NVENC marche » à qui voit une
+                // session s'établir, alors que le dos qui tourne est l'autre.
+                Err(erreur) => tracing::warn!(
+                    %erreur,
+                    adaptateur = %vu.nom,
+                    "NVENC natif indisponible : repli sur la MFT Media Foundation"
+                ),
+            }
+        }
+        Ok(Self::Mft(mft::EncodeurMft::new(
+            device, capture, encode, fps, bitrate,
+        )?))
+    }
+
+    pub fn telemetry(&self) -> Arc<EncoderTelemetry> {
+        match self {
+            Self::Natif(e) => e.telemetry(),
+            Self::Mft(e) => e.telemetry(),
+        }
+    }
+
+    pub fn eprouver_file(&self, duree: std::time::Duration) {
+        match self {
+            Self::Natif(e) => e.eprouver_file(duree),
+            Self::Mft(e) => e.eprouver_file(duree),
+        }
+    }
+
+    pub fn submit(&mut self, frame: &CapturedFrame, pts_90k: u64) -> Result<()> {
+        match self {
+            Self::Natif(e) => e.submit(frame, pts_90k),
+            Self::Mft(e) => e.submit(frame, pts_90k),
+        }
+    }
+
+    pub fn poll_output(&mut self) -> Result<Option<AccessUnit>> {
+        match self {
+            Self::Natif(e) => e.poll_output(),
+            Self::Mft(e) => e.poll_output(),
+        }
+    }
+
+    pub fn flush_pending_inputs(&mut self) -> Result<()> {
+        match self {
+            Self::Natif(e) => e.flush_pending_inputs(),
+            Self::Mft(e) => e.flush_pending_inputs(),
+        }
+    }
+
+    pub fn request_keyframe(&mut self) -> Result<()> {
+        match self {
+            Self::Natif(e) => e.request_keyframe(),
+            Self::Mft(e) => e.request_keyframe(),
+        }
+    }
+
+    pub fn set_bitrate(&mut self, bitrate: u32) -> Result<()> {
+        match self {
+            Self::Natif(e) => e.set_bitrate(bitrate),
+            Self::Mft(e) => e.set_bitrate(bitrate),
+        }
+    }
+
+    pub fn encode_size(&self) -> (u32, u32) {
+        match self {
+            Self::Natif(e) => e.encode_size(),
+            Self::Mft(e) => e.encode_size(),
+        }
+    }
+}

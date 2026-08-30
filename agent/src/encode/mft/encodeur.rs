@@ -17,9 +17,12 @@ use windows::Win32::Media::MediaFoundation::*;
 // tenir à jour — celle qui se désynchronise. La règle du dépôt vise les
 // affirmations recopiées ; une importation globale n'en recopie aucune.
 use crate::encode::*;
+// Le type du dos MFT vient du PARENT, pas du glob : `crate::encode`
+// exporte la FAÇADE, qui n'est pas ce qu'on implémente ici.
+use super::EncodeurMft;
 // Les deux seuls elements que ce fichier emprunte a son pendant.
 use super::convertisseur::take_output_sample;
-impl H264Encoder {
+impl EncodeurMft {
     /// Draine les événements disponibles sans bloquer.
     fn drain_events(&mut self) -> Result<()> {
         loop {
