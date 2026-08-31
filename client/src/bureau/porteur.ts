@@ -84,9 +84,9 @@ export function estPlacePrise(message: unknown): boolean {
 /// 🔴 **IL NE PORTE QUE DE L'ÉTAT, JAMAIS UN ORDRE.** `window.open` exige une
 /// activation utilisateur **dans l'onglet qui a le geste** : relayer un clic
 /// vers le porteur le ferait ouvrir hors activation, donc bloqué. Ce serait
-/// déplacer le mur d'un cran — ce que `hub/bureau.ts` a explicitement refusé
-/// de faire. Chaque onglet ouvre ses propres fenêtres depuis ses propres
-/// clics.
+/// déplacer le mur d'un cran — ce que `porteur-dom.ts` refuse explicitement
+/// de faire (voir son suiveur, qui ouvre depuis SON PROPRE clic). Chaque
+/// onglet ouvre ses propres fenêtres depuis ses propres clics.
 export interface EtatDiffuse {
     type: 'etat-bureau';
     fenetres: FenetreConnue[];
