@@ -914,3 +914,170 @@ sont des résidus possibles, pas des explications concurrentes.
   par l'accord avec le témoignage, **pas par un curseur observé**. ⚠️ **Et après
   ce que je viens de commettre, je ne présenterai plus un accord comme une
   mesure.**
+
+---
+
+## 17. Lot 32T — E1 écrite, vue rouge, déployée ; la mesure du curseur RESTE DUE (31 août 2026)
+
+### 17.1 Le remède, et le principe qui le gouverne
+
+**La capture n'est pas la sortie : c'est un RECADRAGE de la sortie à
+`taille_retenue`, posé à son origine.** Le lot 32Q avait corrigé l'ORIGINE et
+laissé la TAILLE — d'où une dérive purement proportionnelle, nulle à gauche,
+maximale à droite, nulle en y. C'est mot pour mot le symptôme décrit par le
+propriétaire.
+
+🔴 **LA TAILLE N'EST PAS RECALCULÉE, ELLE EST PARTAGÉE.** La recalculer dans
+l'enfant — même avec la même fonction pure et les mêmes entrées — rétablirait
+**deux descriptions du même rectangle**, c'est-à-dire le mécanisme des défauts
+32M et 32Q. Le nouveau type `entrees::TailleImage` (un seul `AtomicU64`, pour
+qu'un redimensionnement ne puisse pas faire lire une largeur neuve avec une
+hauteur périmée) **devient le seul stockage de la taille de `SourceDistante`** :
+`dimensions()` la lit, l'injecteur d'entrées la lit, personne ne la duplique.
+`Reference::SortieCapturee { nom, image }` rend l'état « une sortie nommée sans
+son recadrage » **non représentable**, et `demarrage.rs` transporte la référence
+dans une `Option` plutôt que derrière un défaut — un défaut serait ici une
+variante légitime, donc un repli silencieux.
+
+Fichiers : `agent/src/entrees.rs`, `agent/src/input.rs`,
+`agent/src/demarrage/source.rs`, `agent/src/demarrage.rs`,
+`agent/src/capteur/distante.rs`, `agent/src/capteur/distante/video_source.rs`,
+`agent/src/diagnostics/entree.rs`. Commit `75b06fd`.
+
+### 17.2 La rouge, et son attendu écrit d'avance
+
+L'attendu vient de **deux lignes du journal du processus VIVANT**, relevées
+**avant** d'ouvrir le moindre créneau, et **d'aucun point mesuré** :
+
+```text
+duplication de sortie établie  desktop_width=1860 desktop_height=1080
+session NVENC native initialisée   largeur=1428   hauteur=1080
+```
+
+`rectangle_capture` mutée vers la formule du lot 32Q (la sortie entière) fait
+rougir `le_recadrage_annule_les_432_px_de_derive_en_x_et_ne_touche_pas_l_y`
+**sur l'assertion attendue** :
+
+```text
+assertion `left == right` failed: le bord droit de l'IMAGE
+  left: 5000
+ right: 4568
+```
+
+soit **exactement 432 px**. Restauré depuis une copie nommée, sha256 identique.
+`cargo test --workspace` : 1110 + 114, 0 échec.
+
+### 17.3 🔴 LE DÉFAUT EST SYSTÉMATIQUE, ET C'EST UN FAIT NEUF
+
+Relevé **depuis une tâche `/it` qui imprime sa session** (`SESSION=1`), sans
+toucher au curseur, le 31 août 2026 :
+
+```text
+MONITEUR \\.\DISPLAY1 x=0    y=0 l=1280 h=800
+MONITEUR \\.\DISPLAY6 x=1280 y=0 l=1860 h=1080
+MONITEUR \\.\DISPLAY7 x=3140 y=0 l=1860 h=1080
+MONITEUR \\.\DISPLAY8 x=5000 y=0 l=1860 h=1080
+```
+
+alors que **les trois ont été créées à 1428×1080** :
+
+```text
+sortie virtuelle créée id=259 guid=…0001 largeur=1428 hauteur=1080 hertz=60
+sortie virtuelle créée id=260 guid=…0002 largeur=1428 hauteur=1080 hertz=60
+sortie virtuelle créée id=261 guid=…0003 largeur=1428 hauteur=1080 hertz=60
+```
+
+⚠️ **Ce n'est donc pas « la sortie polluée » d'un cas particulier** : sur cette
+machine, **toute** sortie virtuelle naît à 1860 de large quelle que soit la
+taille demandée, donc **toute** session portait les 432 px. Le rapport
+1860/1428 = **1,3025**.
+
+### 17.4 Ce que ce lot a fait sur la VM, et ce qu'il n'a PAS fait
+
+✅ **Fait** — binaire E1 fabriqué en croisé (`12040BEAAE905B3D…`), attesté par
+**une chaîne posée par ce lot** (`la taille de l'image y est PARTAGEE avec la
+source`) : présente **1** fois dans le binaire neuf, **0** dans un binaire
+d'avant, avec une chaîne préexistante rendant **1** des deux côtés comme témoin
+positif. Déployé, copie nommée conservée sur la VM
+(`agent.exe.copie-nommee-avant-lot32t` = `03E2E752A4645AA2…`), agent relancé,
+**session 1 attestée par l'appliance**.
+
+❌ **PAS fait — LA MESURE DU CURSEUR, NI ROUGE NI VERTE.** Le pilote a été
+refusé par le produit, et il l'a dit :
+
+```text
+Bureau refusé : un client est déjà connecté à la session 3sxuA9dd56NpVdHi37R86g:bureau.
+```
+
+🔴 **Le rôle `client` est EXCLUSIF par session (lot 22), et le propriétaire est
+connecté.** Aucune recette navigateur ne peut être jouée sur cette VM tant
+qu'il l'est — et je ne le déconnecte pas. **La mesure reste due, et E1 n'est
+donc établie que par l'arithmétique et par les tests d'hôte, jamais par un
+curseur observé.**
+
+❌ **La trace d'E1 n'est jamais sortie non plus** (`batie par le match` :
+**0** occurrence dans `agent.log`) : `InputInjector::new` n'est atteint qu'à
+l'établissement d'une session WebRTC réelle — la trace d'avant n'apparaît que
+**3** fois dans tout le journal, aux trois seules sessions qu'un humain a
+ouvertes. **Le binaire est en place ; rien ne prouve encore qu'il ait couru.**
+
+### 17.5 🔴 Fait neuf, indépendant de E1 : UN REDÉMARRAGE DE L'AGENT ORPHELINE TOUTES LES FENÊTRES
+
+Mesuré deux fois aujourd'hui, à chaque relance :
+
+```text
+fenêtre ÉCARTÉE : desk ne l'a pas lancée (règle d'appartenance).
+  titre="Untitled - Notepad" pid=11928 processus=notepad.exe
+fenêtre ÉCARTÉE : … titre="C:\WINDOWS\SYSTEM32\cmd.exe" pid=11320 processus=cmd.exe
+```
+
+La règle d'appartenance du lot 32I fait ce qu'elle promet — et **sa conséquence
+d'exploitation n'avait pas été énoncée** : après toute relance de l'agent,
+**aucune fenêtre préexistante n'est adoptée**, donc le hub est vide et le
+propriétaire ne retrouve rien tant qu'il n'a pas **relancé** ses applications
+depuis le hub. Le job d'appartenance ne survit pas au processus qui le crée, et
+rien ne persiste la liste des PID adoptés.
+
+⚠️ **NON CORRIGÉ, à dessein** : les remèdes possibles (persister l'ensemble des
+PID adoptés, ré-adopter au démarrage, ou adopter les fenêtres dont le processus
+est descendant d'un PID connu) sont un **changement de conception** qui mérite
+sa propre tâche et une décision du propriétaire.
+
+### 17.6 Ce que ce lot disculpe, et ce qu'il laisse ouvert
+
+🔵 **LE LOT VOISIN (NVENC / porte Apollo) EST DISCULPÉ.** Le défaut mesuré est
+entièrement expliqué par le rapport 1860/1428 entre la sortie DXGI et l'image
+encodée, arithmétique à l'appui, et il ne fait intervenir ni l'encodeur, ni la
+porte Apollo, ni aucune de leurs constantes.
+
+- **E2** (la bordure CSS de `#remote`) : toujours **non éprouvée**, et toujours
+  incompatible avec « nul à gauche » — au plus un résidu.
+- **E3** (la taille encodée change en cours de session sans que la référence
+  suive) : **NON ÉPROUVÉE**. La cellule partagée la rend structurellement
+  correcte — la source pose, l'injecteur lit — mais **aucune mesure ne
+  l'établit**, et l'écrire autrement serait présenter un raisonnement pour une
+  preuve.
+- **Les bandes noires et la barre des tâches restent HORS PÉRIMÈTRE** (décision
+  du propriétaire).
+
+### 17.7 Pièges payés dans ce lot
+
+- 🔴 **UN SERVEUR HTTP ORPHELIN D'UNE EXÉCUTION PRÉCÉDENTE SERT LE MAUVAIS
+  RÉPERTOIRE, ET LE SYMPTÔME EST UN 404 QU'ON LIT COMME UN DÉPÔT RATÉ.** Payé
+  **deux fois** (32Q, 32T). Cause exacte, prouvée par PID et ligne de commande :
+  `(cd D && python3 -m http.server … & echo $!)` met le `cd && python3`
+  **entier** en arrière-plan, si bien que `$!` désigne le **sous-shell** ; le
+  `kill` le tue, python survit, le serveur suivant ne peut plus se lier, et le
+  **premier** répond — depuis l'autre répertoire. Remède : `--directory`, pas de
+  `cd`, et libération du port **par PID relevé**. ⚠️ **Le contrôle qui a attrapé
+  le défaut les deux fois est la comparaison des DEUX sha256**, jamais le code
+  de retour.
+- ⚠️ **`/applications` EXIGE `?vm=<id>`** et rend `400 {"refus":"vm-absente"}`
+  sinon. Un pilote qui suppose la forme d'une réponse échoue **après** avoir
+  ouvert le créneau.
+- ⚠️ **UNE BOUCLE D'ATTENTE QUI NE DIT PAS CE QU'ELLE A VU rend un échec
+  indiscernable d'un produit en panne** : la boucle « aucune page de session »
+  a coûté deux créneaux avant qu'on ne lui fasse journaliser les cibles CDP et
+  l'état de la shell — qui portait la réponse en toutes lettres.
+- ⚠️ **`Add-Type` refuse une lambda C# à paramètres mixtes** (`ref` explicite,
+  le reste implicite) : passer par un `delegate(…)` nommé.

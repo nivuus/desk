@@ -735,6 +735,18 @@ indépendants : ce sont eux qui coûtent.
 
 ### Shell de l'hôte
 
+- 🔴 **UN SERVICE LAISSÉ PAR UNE EXÉCUTION PRÉCÉDENTE RÉPOND À LA PLACE DU
+  VÔTRE, ET LE SYMPTÔME EST UN `404` QU'ON LIT COMME UN DÉPÔT RATÉ.** Payé
+  **deux fois** sur `python3 -m http.server` (lots 32Q et 32T). Cause prouvée
+  par PID et ligne de commande : `(cd D && python3 … & echo $!)` met le
+  `cd && python3` **entier** en arrière-plan, donc `$!` désigne le
+  **sous-shell** — le `kill` le tue, le serveur survit, le suivant ne peut plus
+  se lier au port, et c'est **l'ancien** qui répond, depuis l'autre répertoire.
+  **Ne jamais mettre un `cd` dans la commande qu'on met en arrière-plan**
+  (`--directory`, `--chdir`, un chemin absolu), **libérer le port par PID
+  relevé** avant de servir, et **juger sur ce qui est arrivé à destination** —
+  ici la comparaison des deux sha256, qui a attrapé le défaut les deux fois là
+  où aucun code de retour ne le pouvait.
 - 🔴 **`pkill -f <motif>` DEPUIS UN SHELL DONT LA LIGNE DE COMMANDE CONTIENT LE
   MOTIF TUE LE SHELL** (exit 144, la suite de la chaîne ne s'exécute pas).
   Payé **au moins quatre fois**. **Tuer par PID relevé**, jamais par motif — et
@@ -826,6 +838,18 @@ indépendants : ce sont eux qui coûtent.
   **Une sonde qui croit reproduire un geste doit le RELIRE, pas s'en souvenir.**
 - 🔴 **`Page.addScriptToEvaluateOnNewDocument` NE COURT PAS sur une page ouverte
   par `window.open`** : poser l'amorce explicitement, page par page.
+- 🔴 **UNE BOUCLE D'ATTENTE QUI NE DIT PAS CE QU'ELLE A VU REND UN ÉCHEC
+  INDISCERNABLE D'UN PRODUIT EN PANNE.** Une boucle « aucune page de session »
+  a coûté **deux créneaux d'interruption du propriétaire** avant qu'on ne lui
+  fasse journaliser les cibles CDP **et l'état de la page** — laquelle portait
+  la réponse en toutes lettres : *« Bureau refusé : un client est déjà connecté
+  à la session … »*. **Faire dire à l'attente ce qu'elle observe**, pas
+  seulement qu'elle a renoncé.
+- 🔴 **LE RÔLE `client` EST EXCLUSIF PAR SESSION (lot 22) : AUCUNE RECETTE
+  NAVIGATEUR NE PEUT ÊTRE JOUÉE PENDANT QUE LE PROPRIÉTAIRE EST CONNECTÉ**, et
+  réciproquement un pilote qui se connecte **lui prend sa place**. Toute
+  campagne visant cette VM doit donc être **annoncée et bornée dans le temps**,
+  et son échec le plus probable n'est pas technique : c'est un humain déjà là.
   🔵 **LE REMÈDE, trouvé au lot 32C : `Target.setAutoAttach` avec
   `waitForDebuggerOnStart` au niveau NAVIGATEUR.** Chaque cible neuve pause
   avant son premier script ; on y pose l'amorce, puis `Runtime.
@@ -943,6 +967,7 @@ Ils sont **datés**, et plusieurs se réfutent les uns les autres à dessein.
 - **package-nivuus : `desk` devient un package Nivuus, et l'agent redevient refabricable (29 août 2026)** — [résultats](docs/superpowers/plans/2026-08-29-package-nivuus-resultats.md) — `scripts/build-agent-croise.sh` refabrique `agent.exe` en croisé (mingw, jamais exécuté sur la VM) là où l'appliance le déclarait « never fetchable » ; manifeste et wizard (`requires.packages: [console]`) ; trois hooks (`resolve`/`install`/`activate`) qui refusent avant que le disque ne soit touché, posent le service systemd (jamais armé par `install`) et l'arment par un lien ; `hooks/vm.py` pose ProjFS et VB-Audio dans la VM par le chemin WinRM de `console` ; `agent.exe` déposé là où `console` va le chercher ; `Makefile`/`README-package.md`. **N'établit ni que l'agent croisé fonctionne, ni qu'une installation a été jouée de bout en bout sur une machine neuve, ni aucun des douze items du lot 3 (suspendu)** — voir son § « Ce que ce lot n'établit PAS ». 🔴 **Défaut transverse trouvé, non corrigé** : rien ne pousse `AGENT_VM`/`AGENT_SECRET` dans l'environnement de l'agent qui tourne réellement dans la VM — sans ce couple, aucune session ne peut s'établir, quelle que soit la qualité de l'installation.
 - **lot 17 — un pair qui arrive tard voit les fenêtres (30 août 2026)** — [résultats](docs/superpowers/plans/2026-08-30-lot17-reannonce-fenetres-resultats.md) — le relais gagne `pair-present`, **le jumeau symétrique de `peer-gone`**, et le superviseur redit ses fenêtres à une page-shell qui arrive après lui. 🔴 **Le défaut n'était PAS que `DELAI_ATTENTE_VIEWPORT_MAX` soit trop court** : les annonces partaient vers un socket inexistant et `send(peer, …)` les laissait tomber sans une trace — la borne ne faisait que rendre la perte visible trente secondes plus tard. Elle est **intacte**, et court désormais depuis l'arrivée de la shell. Mesuré sur la VM : **0** fenêtre au bras rouge, **4** et **5** aux deux bras verts. 🔴 **Legs distinct trouvé et NON corrigé : la connexion de contrôle du superviseur ne se reconnecte JAMAIS** — voir « Ce qu'aucun chantier n'a jamais mesuré ».
 - **package-nivuus, lots 10A à 13 : la MISE EN SERVICE réelle, et quatre défauts que seul un navigateur voyait (30 août 2026)** — [résultats](docs/superpowers/plans/2026-08-29-package-nivuus-resultats.md) § 10 — un service `desk` **tourne en production** sur cette machine (`192.168.3.1:3445`, derrière `https://app.allanic.me`, mode **`pomerium`** sur décision du propriétaire), servi par une copie déployée sous `/opt/nivuus/desk`. 🔴 **Le bug le plus grave n'était pas dans le package** : `PLATEFORME_HOTE` était confondu avec l'adresse TURN dérivée de la route par défaut — **l'adresse PUBLIQUE de cet hôte** —, et la garde du produit ne pouvait pas l'attraper (`ECOUTES_UNIVERSELLES` ne connaît que quatre littéraux, jamais « une adresse routable ordinaire »). Aussi : la CSP interdisait l'amorce anti-FOUC de la plateforme (sortie du HTML plutôt qu'un hash, parce que `deploiement/nginx.conf` porte une copie STATIQUE de la même CSP) ; le hub était **vide** faute d'attribution de VM, alors que `routes-applications.ts` l'écrivait déjà en toutes lettres. ⚠️ **La racine `/` sert la PAGE DE SESSION, qui se rabat sur la session `demo` sans jeton** : décision non prise, offerte au propriétaire.
+- **lots 32M à 32T — la souris, le cadrage, et une dérive qui n'était pas un décalage (31 août 2026)** — [diagnostic et suites](docs/superpowers/plans/2026-08-30-souris-et-cadrage-diagnostic.md) — la référence des entrées était **la zone client de la fenêtre** alors que la capture est **un recadrage de la sortie DXGI** : erreur à deux termes, origine (+1288 px, fermée au lot 32Q) puis échelle (**+432 px au bord droit**, fermée au lot 32T). 🔴 **Le défaut d'échelle est SYSTÉMATIQUE sur cette machine** : les trois sorties virtuelles mesurent **1860×1080** alors qu'elles sont toutes créées à **1428×1080** (relevé en session 1). 🔴 **La taille de l'image n'est pas recalculée dans l'enfant, elle est PARTAGÉE** (`entrees::TailleImage`, un seul `AtomicU64`, seul stockage de la taille de `SourceDistante`) — deux descriptions du même rectangle sont le mécanisme des deux défauts. ⚠️ **La mesure du curseur reste DUE, rouge comme verte** : le rôle `client` est exclusif et le propriétaire était connecté ; E1 n'est établie que par l'arithmétique et les tests d'hôte. 🔵 **Le lot voisin (NVENC / porte Apollo) est DISCULPÉ.**
 - **package-nivuus, revue finale de branche : une Critique et six Importantes (30 août 2026)** — [résultats](docs/superpowers/plans/2026-08-29-package-nivuus-resultats.md) § 12 — 🔴 **le package NE POUVAIT PAS S'INSTALLER** : `hooks/resolve.py` refusait sur `hw["vm_windows"]`, une clé qu'**aucun producteur du moteur ne pose**, à une phase (avant `partition()`) où la VM ne peut pas exister ; le refus devient un `StepError` qui arrête l'installation **entière**. **Huit suites et neuf revues ne pouvaient pas le voir : elles FABRIQUAIENT la clé dont elles vérifiaient la consommation.** La porte a migré dans `activate`, où elle est une mesure, et `tests/test_desk_contrat_hw.py` fige le contrat en lisant le **producteur**. Aussi fermés : le runtime Node **déposé** au lieu d'être supposé (il l'était par un geste manuel consigné dans un rapport gitignoré), un refus qui arrive **avant** le premier secret écrit, et les `facts` validés au lieu d'être crus sur parole.
 - **lot 31 — la porte d'Apollo, et `desk` qui la prend (30 août 2026)** — [résultats](docs/superpowers/plans/2026-08-30-encodeur-porte-apollo-resultats.md) — 🔴 **La MFT `NVIDIA H.264 Encoder MFT` s'active en session 0 et rend `0x8000FFFF` en SESSION 1**, sur les QUATRE arrangements que Media Foundation permet — avec **deux témoins verts dans la même exécution** (encodeur H.264 *logiciel* et processeur vidéo *logiciel* s'activent, eux) : la machinerie n'est pas en cause, seule la MFT matérielle refuse. Apollo, même machine et même session, fabrique six encodeurs par l'**API NVENC native** et ne charge **aucun** module Media Foundation. **Trois remèdes bon marché sont RÉFUTÉS PAR LA MESURE** — `MFT_ENUM_ADAPTER_LUID`, un périphérique D3D11 NVIDIA vivant, et lier l'affichage virtuel au GPU NVIDIA (déjà vrai chez nous). ✅ **`desk` emprunte désormais la même porte** : NVENC natif quand un adaptateur NVIDIA est présent, **la MFT restant le dos GÉNÉRIQUE** (Intel Quick Sync, AMD VCE, session 0) — la retirer priverait une machine sans NVIDIA de TOUT encodeur matériel, et trois tests d'hôte figent cette régression. Mesuré : **1195 unités d'accès en 10 s** là où la MFT rendait *aucune*. 🔵 L'ABI est **dérivée en compilant l'en-tête réel** (`FFmpeg/nv-codec-headers` `n12.2.72.0`, notice MIT/NVIDIA reproduite, frontière d'attribution en UN sous-arbre) et vérifiée **SUR LA CIBLE** par 29 `_Static_assert` compilées par mingw — sans exécution, donc rejouables. Quatre pièges qu'aucune erreur lisible n'aurait signalés : les **deux empaquetages de version** (`(majeure<<4)|mineure` du pilote ≠ `majeure|(mineure<<24)` de l'API), **`ARGB` et non `ABGR`** (intervertir rouge et bleu SANS erreur), `PIC_STRUCT_FRAME` qui vaut **1 et non 0**, et le membre de queue oublié qui ferait écrire NVENC **32 octets au-delà de l'allocation**. 🔵 **`encode.rs` SORT DE LA DETTE** (1536 → 427). ⚠️ **CE QUE CE LOT N'ÉTABLIT PAS** : le **plafond d'encodeurs à N fenêtres** n'est pas mesuré — son banc n'en ouvre qu'un, protocole écrit et **NON JOUÉ** — et **personne n'a regardé une image** : `verdicts_faux=0` dit qu'aucun verdict n'est faux, **pas qu'une image est juste**. 🔴 **Le chiffre-juge — `framesDecoded` — a été relevé par le LOT 32, pas par celui-ci**, et avec DEUX remèdes en place : voir sa ligne.
 - **lot 32 — la première sortie virtuelle et la cible forcée (30 août 2026)** — [résultats](docs/superpowers/plans/2026-08-30-premiere-sortie-cible-forcee-resultats.md) — l'appariement cesse de DEVINER la sortie par une différence d'ensembles et la DÉSIGNE par le couple `(adaptateur, identifiant de cible)` que le pilote rend déjà (API CCD, `moniteurs_virtuels/config_affichage.rs`) ; le repli d'hier reste en place mot pour mot. 🔴 **La cause première était une affirmation FAUSSE de `placement.rs` écrite en D1 — « aucune correspondance n'est exposée » — corrigée avec les commandes qui l'établissent.** Mesuré sur la VM, VGA retiré : bras désarmé **8 sorties créées, 8 refus, 0 fenêtre tenue** ; bras armé **`chemin ① = 1`, `nom_designe="\\.\DISPLAY5"`** — le nom que portait la cible forcée (`statusFlags=0x11`, relevé AVANT de conclure). L'hypothèse que `sudovda.rs` déclarait « non confirmée » est **établie** : id pilote = cible CCD = UID du moniteur = 257.
@@ -1149,6 +1174,27 @@ tard il était rouvert en plus grand.**
   `/etc/default/coturn` ne l'est pas, et **rien n'écoute sur le port 3478**
   alors que le service annonce `TURN_URL=turn:90.87.35.18:3478` à ses
   clients.
+- 🔴 **UN REDÉMARRAGE DE L'AGENT ORPHELINE TOUTES LES FENÊTRES OUVERTES, ET
+  RIEN NE LES RÉCUPÈRE.** Conséquence d'exploitation de la règle
+  d'appartenance du lot 32I, mesurée deux fois le 31 août 2026 : après toute
+  relance, chaque fenêtre préexistante est refusée (`fenêtre ÉCARTÉE : desk ne
+  l'a pas lancée`), le hub est vide, et le propriétaire ne retrouve rien tant
+  qu'il n'a pas **relancé** ses applications depuis le hub. Le job
+  d'appartenance ne survit pas au processus qui le crée, et **rien ne persiste
+  l'ensemble des PID adoptés**. ⚠️ **NON CORRIGÉ, à dessein** : persister les
+  PID, ré-adopter au démarrage ou adopter par ascendance sont un **changement
+  de conception**, qui appartient au propriétaire. Se cumule avec le legs
+  « une fenêtre ouverte plus de 30 secondes avant la connexion du navigateur
+  est perdue », ci-dessus.
+- 🔴 **LA MESURE DU CURSEUR DU LOT 32T RESTE DUE, ROUGE COMME VERTE.** Le
+  remède E1 est écrit, éprouvé sur l'hôte, **vu rouge** (432 px à l'assertion
+  attendue) et **déployé** (`12040BEAAE905B3D…`, session 1 attestée) — mais
+  **aucune session ne l'a encore exercé** : sa trace n'apparaît **0** fois dans
+  `agent.log`, `InputInjector::new` n'étant atteint qu'à l'établissement d'une
+  session WebRTC réelle. Le pilote a été refusé par le produit lui-même
+  (« Bureau refusé : un client est déjà connecté »), le rôle `client` étant
+  exclusif par session. **Il faut un créneau où le propriétaire est
+  déconnecté** — ou son propre jugement, la correction étant en place.
 - 🔴 **AUCUNE INSTALLATION N'A JAMAIS ÉTÉ JOUÉE PAR LE MOTEUR RÉEL.** La
   Critique de la revue finale — un `resolve` qui refusait toujours — a
   survécu à huit suites vertes et neuf revues **pour cette seule raison**.
