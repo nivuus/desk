@@ -220,29 +220,50 @@ export function cotePng(octets: Uint8Array): number | undefined {
 /// `origine` est `location.origin` — SANS barre oblique finale. `fond` est la
 /// valeur de `--fond-0` LUE SUR LE THÈME VIVANT, jamais une constante d'ici.
 ///
-/// 🔴 `start_url` POINTE LA PAGE-SHELL, ET NON LE HUB (décision D9 du plan).
-/// C'est le seul des trois candidats où **la fenêtre de session** tourne dans
-/// une fenêtre de PWA, donc le seul où le legs de S4 — « c'est à SA recette de
-/// regarder LA FENÊTRE DE SESSION sous une barre superposée » — puisse être
-/// exercé. ⚠️ **Le coût est déclaré** : la session s'ouvre par `window.open`,
-/// donc dans une SECONDE fenêtre de la PWA. L'alternative — héberger la
-/// session DANS la page-shell — est une refonte du client, hors périmètre.
+/// 🔴 LA DÉCISION D9 DU PLAN — « `start_url` POINTE LA PAGE-SHELL, ET NON LE
+/// HUB » — EST RENVERSÉE DEPUIS LE 31 AOÛT 2026, PAR DÉCISION DU PROPRIÉTAIRE
+/// DU DÉPÔT. Le hub est devenu la SEULE surface du produit (plan
+/// `2026-08-31-navigation-hub-unique`) : c'est désormais LUI qui tient la
+/// session de contrôle, et `client/shell.html` n'est plus qu'une redirection
+/// permanente vers `/` (`client/src/bureau/redirection.ts`). `start_url`
+/// migre donc vers la RACINE — voir le commentaire de `id`, juste en dessous,
+/// pour ce qui NE bouge PAS et pourquoi.
 ///
 /// 🔴 `scope` EST PARTAGÉ, DONC C'EST `id` QUI PORTE L'IDENTITÉ. Deux
-/// applications ne peuvent pas avoir deux `scope` disjoints — elles vivent
-/// toutes deux sous `/shell.html`. ⚠️ Que deux manifestes de même `scope` et
-/// d'`id` distincts produisent deux applications DISTINCTES **n'est pas
-/// mesurable par le montage de G5** : il faudrait en installer deux, et l'hôte
-/// n'a pas d'interface graphique.
+/// applications ne peuvent pas avoir deux `scope` disjoints — depuis le
+/// 31 août 2026, `id` (`/shell.html?app=`) et `start_url` (`/?app=`) ne
+/// vivent PLUS sous le même chemin, mais tous deux restent sous la même
+/// ORIGINE, qui est tout ce qu'un `scope` de racine (`${base}/`) peut
+/// distinguer — le nommer par `/shell.html` seul serait devenu faux. ⚠️ Que
+/// deux manifestes de même `scope` et d'`id` distincts produisent deux
+/// applications DISTINCTES **n'est pas mesurable par le montage de G5** : il
+/// faudrait en installer deux, et l'hôte n'a pas d'interface graphique.
 export function batirManifeste(sujet: Sujet, origine: string, fond: string): Manifeste {
     const base = origine.replace(/\/$/, '');
     const app = encodeURIComponent(sujet.id);
     const manifeste: Manifeste = {
         name: sujet.nom,
         short_name: sujet.nom,
-        // L'identité de l'application, distincte pour chacune.
+        // 🔴 `id` ET `start_url` DIVERGENT DEPUIS LE 31 AOÛT 2026, ET C'EST
+        // DÉLIBÉRÉ.
+        //
+        // `id` est l'IDENTITÉ de l'application installée. Le changer n'est pas
+        // une mise à jour : c'est une SECONDE application, la première
+        // devenant orpheline. Il reste donc figé sur `shell.html?app=`, la
+        // valeur que portent les installations déjà faites — et comme le
+        // manifeste est publié en `blob:` (voir l'en-tête de ce fichier), une
+        // PWA installée ne relira JAMAIS le sien : elle ouvrira `shell.html`
+        // pour toujours, où `client/src/bureau/redirection.ts` la rattrape.
+        //
+        // `start_url`, lui, migre vers la RACINE : le hub y est servi et y
+        // tient désormais la session de contrôle (décision du propriétaire,
+        // 31 août 2026). C'est la valeur que prendront les installations
+        // FUTURES.
+        //
+        // ⚠️ IL RESTE DANS LE `scope` (`${base}/`), condition que Chromium
+        // vérifie et refuse en toutes lettres sinon.
         id: `${base}/shell.html?app=${app}`,
-        start_url: `${base}/shell.html?app=${app}`,
+        start_url: `${base}/?app=${app}`,
         scope: `${base}/`,
         display: 'standalone',
         // La DÉCLARATION du Window Controls Overlay. Ce que G5 apporte est
