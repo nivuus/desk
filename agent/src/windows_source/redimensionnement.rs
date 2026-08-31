@@ -355,7 +355,22 @@ impl WindowsSource {
         // `taille_pour_viewport` n'a pas (le sien est 2) : sous 160×120 la
         // fenêtre reste plus grande que la région, et l'image montre alors un
         // coin de l'application. Cas dégénéré, non corrigé, dit ici.
-        crate::window::resize_window(self.hwnd, l, h)?;
+        // 🔴 **COMPENSER LE LISÈRE INVISIBLE DE DWM, comme `placement::poser`.**
+        // `GetWindowRect` — l'espace où `SetWindowPos` écrit — inclut des
+        // bordures de redimensionnement TRANSPARENTES (mesuré en session 1 :
+        // 7 px à gauche, à droite et en bas, 0 en haut). Retailler à `l x h`
+        // dans cet espace-là laisse le cadre VISIBLE plus petit d'autant, et
+        // le recadrage — qui, lui, fait bien `l x h` — montre alors du bureau
+        // sur trois côtés. C'est le résidu que le propriétaire voyait après
+        // le correctif d'aspect, et il est CONSTANT, insensible au rapport :
+        // c'est cette signature-là qui l'a départagé d'un défaut de forme.
+        //
+        // `SWP_NOMOVE` : l'origine ne bouge pas, et elle est déjà compensée
+        // par la pose du superviseur — seule la TAILLE reste à corriger ici.
+        // Un échec de DWM rend `Lisere::NUL`, donc le comportement d'avant.
+        let lisere = crate::window::lisere_dwm(self.hwnd).unwrap_or_default();
+        let (lp, hp) = crate::superviseur::placement::taille_a_poser((l, h), lisere);
+        crate::window::resize_window(self.hwnd, lp, hp)?;
 
         let region = crate::windows_source_sortie::region_de_sortie(l, h)
             .ok_or_else(|| anyhow::anyhow!("recadrage inexploitable ({l}x{h})"))?;

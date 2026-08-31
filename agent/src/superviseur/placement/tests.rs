@@ -282,3 +282,123 @@ mod tests_taille {
         assert_eq!(taille_retenue((1920, 720), (1280, 2160)), (1280, 720));
     }
 }
+
+mod lisere {
+    use super::super::*;
+    use crate::geometry::Rect;
+
+    /// 🔴 **LES NOMBRES VIENNENT DE LA SONDE, PAS D'UN CALCUL SUR CE QU'ILS
+    /// JUGENT.** Relevés en SESSION 1 le 31 août 2026, par tâche planifiée
+    /// `/it`, sur la session VIVANTE du propriétaire pendant qu'il testait :
+    ///
+    /// ```text
+    /// GetWindowRect = 1732x1032+1280+0   <- exactement la `retenue` du journal
+    /// DWM frame     = 1718x1025+1287+0
+    /// lisere : gauche=7 haut=0 droite=7 bas=7
+    /// ```
+    ///
+    /// Les deux fenêtres servies ont rendu **le même lisère**, sur deux
+    /// sorties différentes.
+    const MESURE: Lisere = Lisere { gauche: 7, haut: 0, droite: 7, bas: 7 };
+
+    /// La cible telle que le superviseur la calcule : origine de la sortie
+    /// `\\.\DISPLAY6` (+1280+0), taille retenue `1732x1032` — les deux lues au
+    /// journal du produit.
+    fn cible_mesuree() -> Rect {
+        Rect { x: 1280, y: 0, width: 1732, height: 1032 }
+    }
+
+    /// Ce que `SetWindowPos` doit recevoir pour que l'œil voie exactement la
+    /// cible : la cible gonflée du lisère, décalée de son coin haut-gauche.
+    #[test]
+    fn le_rectangle_pose_est_la_cible_gonflee_du_lisere() {
+        let pose = rect_a_poser(&cible_mesuree(), MESURE);
+        assert_eq!(pose, Rect { x: 1273, y: 0, width: 1746, height: 1039 });
+    }
+
+    /// 🔴 **LA PROPRIÉTÉ QUI COMPTE, ET ELLE EST UN ALLER-RETOUR** : ce que
+    /// DWM rendra du rectangle posé doit être **exactement** la cible. C'est
+    /// elle qui garantit qu'il ne reste aucun pixel de bureau dans l'image.
+    ///
+    /// La « simulation de DWM » n'est pas une pétition de principe : elle
+    /// applique la DÉFINITION du lisère (cadre visible = brut rétréci de
+    /// chaque côté), telle que la sonde l'a mesurée, et non une inversion de
+    /// `rect_a_poser`.
+    #[test]
+    fn le_cadre_visible_du_rectangle_pose_redonne_exactement_la_cible() {
+        let cible = cible_mesuree();
+        let pose = rect_a_poser(&cible, MESURE);
+        let visible = Rect {
+            x: pose.x + MESURE.gauche,
+            y: pose.y + MESURE.haut,
+            width: (pose.width as i32 - MESURE.gauche - MESURE.droite) as u32,
+            height: (pose.height as i32 - MESURE.haut - MESURE.bas) as u32,
+        };
+        assert_eq!(visible, cible);
+    }
+
+    /// 🔴 **LE GARDE CONTRE L'OSCILLATION À 1 Hz.** `rectangle_de` rend
+    /// désormais le cadre VISIBLE, et le contrôle périodique le compare à la
+    /// cible : si les deux moitiés du correctif n'allaient pas ensemble,
+    /// l'écart serait permanent et la fenêtre serait reposée **chaque
+    /// seconde**. Ce test est la version pure de cette boucle.
+    #[test]
+    fn apres_compensation_le_controle_periodique_ne_replace_plus() {
+        let cible = cible_mesuree();
+        let pose = rect_a_poser(&cible, MESURE);
+        let visible = Rect {
+            x: pose.x + MESURE.gauche,
+            y: pose.y + MESURE.haut,
+            width: (pose.width as i32 - MESURE.gauche - MESURE.droite) as u32,
+            height: (pose.height as i32 - MESURE.haut - MESURE.bas) as u32,
+        };
+        assert!(!doit_etre_replacee(&visible, &cible), "replacement en boucle");
+        // …et le contre-exemple : si l'on comparait le rectangle BRUT à la
+        // cible — ce que faisait `rectangle_de` avant ce correctif —, le
+        // contrôle replacerait indéfiniment.
+        assert!(
+            doit_etre_replacee(&pose, &cible),
+            "le brut DOIT differer de la cible, sinon ce test ne prouve rien"
+        );
+    }
+
+    /// ⚠️ **LE LISÈRE N'EST PAS SYMÉTRIQUE, ET LE SUPPOSER DÉCALERAIT
+    /// L'IMAGE.** `haut = 0` parce que la barre de titre est peinte. Ce test
+    /// emploie quatre valeurs DIFFÉRENTES pour que toute confusion entre deux
+    /// côtés le fasse rougir — un `gauche` employé à la place du `haut`
+    /// passerait inaperçu avec le lisère mesuré, où trois côtés sur quatre
+    /// valent 7.
+    #[test]
+    fn chaque_cote_du_lisere_est_honore_separement() {
+        let l = Lisere { gauche: 3, haut: 5, droite: 11, bas: 17 };
+        let pose = rect_a_poser(&Rect { x: 100, y: 200, width: 1000, height: 500 }, l);
+        assert_eq!(pose, Rect { x: 97, y: 195, width: 1014, height: 522 });
+    }
+
+    /// Le repli : DWM refuse, le lisère est nul, et l'on retrouve **exactement
+    /// le comportement d'avant ce correctif**. Une correction qui ne saurait
+    /// pas se désarmer serait pire que le défaut.
+    #[test]
+    fn un_lisere_nul_rend_la_cible_telle_quelle() {
+        let cible = cible_mesuree();
+        assert_eq!(rect_a_poser(&cible, Lisere::NUL), cible);
+        assert_eq!(taille_a_poser((1732, 1032), Lisere::NUL), (1732, 1032));
+        assert!(Lisere::NUL.est_nul());
+        assert!(!MESURE.est_nul());
+    }
+
+    /// Le pendant pour le chemin du CAPTEUR, qui retaille sans déplacer.
+    #[test]
+    fn la_taille_posee_est_la_taille_visible_gonflee_du_lisere() {
+        assert_eq!(taille_a_poser((1732, 1032), MESURE), (1746, 1039));
+    }
+
+    /// Un lisère aberrant — DWM qui rendrait n'importe quoi — ne doit pas
+    /// faire déborder l'arithmétique et produire une fenêtre minuscule.
+    #[test]
+    fn un_lisere_aberrant_ne_fait_pas_deborder() {
+        let fou = Lisere { gauche: -100_000, haut: 0, droite: -100_000, bas: 0 };
+        let pose = rect_a_poser(&Rect { x: 0, y: 0, width: 100, height: 100 }, fou);
+        assert_eq!(pose.width, 0, "saturation vers le bas, jamais un repli par le haut");
+    }
+}
