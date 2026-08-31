@@ -801,3 +801,80 @@ toucher les bords de la fenêtre du navigateur.
 - 🔴 **L'écart desktop/texture du lot 32T reste inchangé** — ni créé ni corrigé.
 - ⚠️ **Cinq hypothèses ont été réfutées par la mesure au cours de ce lot**,
   dont trois miennes.
+
+
+---
+
+## 14. Le résidu de 1-2 px : ce n'est pas un défaut, c'est le liseré d'accent
+
+*« J'ai encore une très légère marge en haut (entre 1 et 5px) »*, puis la
+correction : *« En fait y en a encore une à gauche et à droite, elle doit faire
+1 ou 2px. »* — **fine, constante, sur les quatre côtés.**
+
+### 14.1 D'abord là où j'étais suspect
+
+Le premier retour désignait le **haut seul**, c'est-à-dire exactement le côté
+où ma mesure donne `haut = 0` : le mode d'échec que j'avais moi-même nommé
+(« du bureau sur UN seul côté ⇒ l'asymétrie du haut mal traitée »). **Vérifié
+en premier, et écarté par la mesure**, avant toute autre piste. La correction
+du propriétaire l'a ensuite confirmé indépendamment.
+
+🔵 **Et le mode d'échec le plus grave — l'oscillation à 1 Hz — est écarté par
+le journal** : **3** replacements en quinze minutes, dont les `de=` portent
+`+1392+107`, `+1223+41`, `+1130+131`. Ce sont des positions arbitraires : c'est
+le propriétaire qui **déplace** sa fenêtre, et le superviseur qui la remet.
+Le mécanisme fait son travail, il ne se bat pas contre lui-même.
+
+### 14.2 Le recadrage et la fenêtre visible coïncident EXACTEMENT
+
+Journal (dernière demande) et sonde session 1, sur la fenêtre servie `w-1` :
+
+```
+demande  = 1378x1080   ->  retenue = 1316x1032   (recadrage, a l'origine de la sortie 1280,0)
+cadre VU (DWM)         =   1316x1032  a  +1280+0
+ecart : taille 0x0 , origine 0x0
+```
+
+🔴 **Zéro écart géométrique, sur les deux axes et sur l'origine.** Il ne reste
+aucun pixel de bureau dans l'image : les trois lisières de 7 px sont bien
+parties, et le correctif DWM a mordu.
+
+⚠️ **Deux autres `Notepad` du relevé portent une compensation À MOITIÉ**
+(taille compensée, position non) — ce sont des fenêtres **ÉCARTÉES** par la
+règle d'appartenance (13 au journal), donc **capturées par personne**. Vérifié
+plutôt que supposé : si elles étaient servies, `doit_etre_replacee` verrait
+7 px d'écart et les reposerait chaque seconde, ce que le journal dément.
+
+### 14.3 Les deux candidats, tranchés par l'arithmétique
+
+| | |
+| --- | --- |
+| **Liseré d'accent** — `#remote { border: var(--trait) … }`, `--trait: 1px`, `box-sizing: border-box` | `clientWidth` **exclut** la bordure : la demande `1378x1080` EST la boîte de contenu, et le liseré est peint **1 px CSS à l'extérieur, sur les QUATRE côtés**. Soit **1,00 à 2,00 px écran** selon `devicePixelRatio` (1,0 → 1 px ; 2,0 → 2 px) |
+| **Résidu d'aspect** — `object-fit: contain` | rapport boîte `1,27593` contre image `1,27519` → **0,40 px**, **sur GAUCHE/DROITE seulement** |
+
+🔴 **`contain` centre l'image : il laisse AU PLUS UNE paire de bords opposés,
+JAMAIS quatre.** Il ne peut donc pas, structurellement, expliquer une marge sur
+les quatre côtés — et son épaisseur ici est **sous-pixellique**, donc invisible.
+
+**Le liseré d'accent explique seul, et exactement, ce qu'il décrit :** fine,
+constante, sur les quatre côtés, de 1 à 2 px.
+
+### 14.4 Verdict : PAS de quatrième envoi
+
+🔵 **Il n'y a rien à corriger** — c'est la peinture de `--accent-fenetre`,
+livrée délibérément par le chantier `legs-sans-vm`, et la seule surface de
+cette page où « la couleur de CETTE fenêtre » ait un sens. **Elle n'est pas
+retirée.**
+
+**Ce que coûterait un quatrième envoi** : défaire une fonctionnalité voulue,
+pour un symptôme d'un pixel, sur la foi d'une description à l'œil nu — alors
+que le seul nombre en jeu est **la largeur du liseré**, qui est un choix de
+design et non un défaut. **Ce qu'il gagnerait** : rien que le propriétaire ne
+puisse obtenir par une décision de design (passer `--trait` à `0` sur
+`#remote`, ou lui donner la couleur du fond).
+
+⚠️ **Ce qui reste incertain, et qui appartient à son œil** : si la marge lui
+paraît **noire** plutôt que colorée, alors ce n'est PAS le liseré d'accent et
+ce raisonnement tombe — il faudra rouvrir. Le liseré porte
+`var(--accent-fenetre, var(--accent))`, donc une couleur, jamais du noir.
+**C'est le discriminant, et il ne coûte qu'un regard.**

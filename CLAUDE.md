@@ -1253,8 +1253,23 @@ tard il était rouvert en plus grand.**
   huit fenêtres à `TAILLE_MAX_SORTIE` sont **2,25×** les macroblocs de huit
   fenêtres à 720p. **Décision du propriétaire**, et le dossier complet est au
   § 11.3 du document de résultats.
-- ✅ ~~**LA MARGE SUR LES QUATRE CÔTÉS N'EST PAS EXPLIQUÉE**~~ **EXPLIQUÉE ET
-  CORRIGÉE le 31 août 2026** — c'était **le cadre INVISIBLE de DWM**, mesuré en
+- ⚠️ **UNE MARGE DE 1 À 2 PX SUBSISTE SUR LES QUATRE CÔTÉS, ET CE N'EST PAS UN
+  DÉFAUT** (lot 33, 31 août 2026) : c'est le **liseré d'accent**,
+  `#remote { border: var(--trait) solid var(--accent-fenetre, var(--accent)) }`
+  avec `--trait: 1px` et `box-sizing: border-box` — 1 px CSS peint **hors de la
+  boîte de contenu**, sur les quatre côtés, soit 1 à 2 px écran selon
+  `devicePixelRatio`. **Établi par l'arithmétique, pas par préférence** : le
+  recadrage et le cadre visible coïncident à **0x0 près, origine comprise**
+  (mesuré), et le résidu d'`object-fit: contain` vaut **0,40 px sur DEUX côtés
+  seulement** — `contain` centre l'image et ne laisse **jamais** quatre bords.
+  🔵 **Rien n'est corrigé, à dessein** : c'est la peinture de
+  `--accent-fenetre`, livrée par `legs-sans-vm`, et la retirer défairait une
+  fonctionnalité voulue. **Décision de design du propriétaire** (passer
+  `--trait` à `0` sur `#remote`, ou lui donner la couleur du fond).
+  ⚠️ **Discriminant si l'on doit rouvrir** : le liseré est **COLORÉ**. Une
+  marge **noire** ne serait pas lui.
+- ✅ ~~**LA MARGE SUR LES QUATRE CÔTÉS N'EST PAS EXPLIQUÉE**~~ **LES ~7 PX SUR
+  TROIS CÔTÉS : EXPLIQUÉS ET CORRIGÉS le 31 août 2026** — c'était **le cadre INVISIBLE de DWM**, mesuré en
   session 1 sur la session vivante du propriétaire : `GetWindowRect` rend
   `1732x1032+1280+0` là où `DWMWA_EXTENDED_FRAME_BOUNDS` rend
   `1718x1025+1287+0`, soit **7 px à gauche, à droite et en bas, 0 en haut**.
