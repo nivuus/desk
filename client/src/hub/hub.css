@@ -180,3 +180,23 @@
     margin-block-start: var(--e-4);
     line-height: var(--lh-normal);
 }
+
+/* ── LES DEUX SECTIONS VENUES DE `shell.html`, LE 31 AOÛT 2026 ─────────────
+   « Mes fenêtres » et « Mes fichiers » gardent leurs identifiants et leurs
+   crochets `data-*` de `shell.html`, mais PAS ses classes : `bureau__section`
+   et `bureau__section-titre` viennent de `shell.css`, une feuille que le hub
+   lie déjà pour réutiliser `shell.ts` tel quel — les redéclarer ici, sous le
+   préfixe `hub__`, évite qu'une évolution future de `shell.css` (renommée
+   `bureau/bureau.css` à la tâche 9, où `shell.html` disparaît) ne peigne ces
+   sections sans qu'on l'ait décidé. Même valeurs que `.bureau__section` et
+   `.bureau__section-titre` de `shell.css`, à dessein. */
+.hub__section {
+    margin-block-start: var(--e-6);
+}
+
+.hub__section-titre {
+    margin-block: 0 var(--e-4);
+    color: var(--texte-fort);
+    font-size: var(--t-xl);
+    line-height: var(--lh-serre);
+}
