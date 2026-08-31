@@ -98,7 +98,13 @@ pub(super) fn executer_linearite() -> Result<()> {
     let mode = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(true));
     // `None` : cette sonde de banc vise une FENÊTRE, jamais une sortie
     // entière — la référence des entrées est donc celle d'origine.
-    let mut injecteur = input::InputInjector::new(injecteur_hwnd, None, mode);
+    let mut injecteur = input::InputInjector::new(
+        injecteur_hwnd,
+        // Sonde mono-fenêtre : la capture recadre la fenêtre, la zone
+        // client EST l'image.
+        crate::entrees::Reference::ZoneClientDeLaFenetre,
+        mode,
+    );
     for _ in 0..repetitions {
         injecteur.inject(proto::input::InputMessage::MouseMoveRelative { dx: pas, dy: pas })?;
         std::thread::sleep(std::time::Duration::from_millis(2));

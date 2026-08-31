@@ -117,16 +117,22 @@ mod win {
         /// cumulatif, jamais permanent.
         const PEREMPTION_SORTIE: std::time::Duration = std::time::Duration::from_secs(1);
 
+        /// 🔴 **LA RÉFÉRENCE ARRIVE CONSTRUITE, ELLE N'EST PLUS DÉDUITE ICI.**
+        /// Elle est bâtie par le `match` de `demarrage::source::construire`
+        /// — le MÊME `match` qui choisit le mode de capture et qui, dans le
+        /// bras multi-fenêtres, tient la cellule de taille de la source. Un
+        /// second calcul ici, même correct le jour où il est écrit, est
+        /// exactement ce qui a produit les défauts des lots 32M et 32Q.
         pub fn new(
             hwnd: HWND,
-            sortie_dxgi: Option<&str>,
+            reference: crate::entrees::Reference,
             mode_relatif: Arc<AtomicBool>,
         ) -> Self {
-            let reference = crate::entrees::reference(sortie_dxgi);
             tracing::info!(
                 ?reference,
-                "reference des entrees retenue (elle DERIVE de config.sortie_dxgi, \
-                 le meme discriminant que le mode de capture)"
+                "reference des entrees retenue (batie par le match qui choisit \
+                 le mode de capture ; la taille de l'image y est PARTAGEE avec \
+                 la source, jamais recalculee)"
             );
             Self { hwnd, reference, sortie: None, mode_relatif, premier_plan_obtenu: None }
         }
@@ -263,9 +269,14 @@ mod win {
             // en x et +51 px en y sur la machine du propriétaire.
             //
             // **Ce qui est vrai aujourd'hui** : la référence est
-            // `rectangle_de_reference()`, qui DÉRIVE de `config.sortie_dxgi` —
-            // le même discriminant que le mode de capture. Voir
-            // `crate::entrees`.
+            // `rectangle_de_reference()` — l'ORIGINE de la sortie capturée et
+            // la TAILLE DE L'IMAGE, cette dernière PARTAGÉE avec la source et
+            // non recalculée. Voir `crate::entrees`.
+            //
+            // ⚠️ **Le lot 32Q a corrigé l'origine et laissé la taille**, d'où
+            // une dérive résiduelle purement proportionnelle : +432 px au bord
+            // droit sur la machine du propriétaire (sortie 1860, image 1428),
+            // nulle à gauche, nulle en y. C'est ce que E1 ferme.
             //
             // **Les commandes qui l'établissent**, pour que le prochain
             // lecteur refasse le contrôle sans croire personne :
@@ -273,6 +284,7 @@ mod win {
             // ```text
             // grep -n 'normalisées sur 0..65535' client/src/input.ts
             // grep -rn 'ModeCapture::SortieEntiere' agent/src/windows_source/
+            // grep -rn 'TailleImage' agent/src/
             // cargo test --workspace entrees::
             // ```
             //
@@ -299,12 +311,39 @@ mod win {
         /// chose. Voir `crate::entrees` pour le défaut que cette indirection
         /// ferme et pour l'erreur qu'elle annule, terme par terme.
         fn rectangle_de_reference(&mut self) -> Result<Rect> {
-            let nom = match &self.reference {
+            let (nom, image) = match &self.reference {
                 crate::entrees::Reference::ZoneClientDeLaFenetre => {
                     return self.client_rect_on_screen()
                 }
-                crate::entrees::Reference::SortieCapturee(nom) => nom.clone(),
+                crate::entrees::Reference::SortieCapturee { nom, image } => {
+                    // Relue à CHAQUE appel, jamais mise en cache avec le
+                    // rectangle de la sortie : c'est la seule moitié des deux
+                    // qui change sans qu'aucune sortie ne naisse ni ne meure
+                    // (un `resize` du navigateur), et sa lecture ne coûte
+                    // qu'un chargement atomique — rien à économiser.
+                    (nom.clone(), image.lire())
+                }
             };
+            // L'ORIGINE vient de la sortie DXGI (mise en cache, voir
+            // `PEREMPTION_SORTIE`) ; la TAILLE vient de l'image. Les deux
+            // moitiés ont des sources différentes parce qu'elles ont des
+            // durées de vie différentes — et c'est `crate::entrees` qui les
+            // assemble, en un seul endroit.
+            let sortie = self.rectangle_de_la_sortie(&nom)?;
+            crate::entrees::rectangle_capture(sortie, image).ok_or_else(|| {
+                anyhow!(
+                    "taille de l'image capturée encore inconnue ({}x{}) : aucune \
+                     référence fiable pour démapper les entrées",
+                    image.0,
+                    image.1
+                )
+            })
+        }
+
+        /// Le rectangle de la sortie DXGI nommée — **son ORIGINE seule est
+        /// employée** (`crate::entrees::rectangle_capture`) ; sa taille est
+        /// celle de la SORTIE, qui n'est pas celle de l'image.
+        fn rectangle_de_la_sortie(&mut self, nom: &str) -> Result<Rect> {
             if let Some((rect, releve)) = self.sortie {
                 if releve.elapsed() < Self::PEREMPTION_SORTIE {
                     return Ok(rect);
