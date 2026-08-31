@@ -172,7 +172,18 @@ pub(super) fn creer_sortie(
     // bureau, d'où l'absence du risque de fuite entre sessions que porte
     // `ModeCapture::FenetreRecadree` (voir l'en-tête de
     // `windows_source/sortie.rs`).
-    let retenue = placement::taille_retenue((largeur, hauteur), (cible.rect.width, cible.rect.height));
+    // 🔴 **BORNÉE PAR LA ZONE DE TRAVAIL DEPUIS LE LOT 33, PLUS PAR LE
+    // RECTANGLE DE LA SORTIE.** Une barre des tâches SECONDAIRE de 48 px est
+    // collée en bas de chaque sortie servie (défaut Windows, mesuré en
+    // session 1 le 31 août 2026) : poser la fenêtre au rectangle du moniteur
+    // la faisait recouvrir par la barre — 48 px de contenu applicatif perdus —
+    // et mettait ces 48 rangées dans le recadrage. `taille_pour_viewport`
+    // compose le même `borner_a_la_taille_max` et le même `taille_retenue`
+    // qu'avant : seule la BORNE change.
+    let retenue = crate::windows_source_sortie::taille_pour_viewport(
+        (largeur, hauteur),
+        placement_periodique::borne_de(&cible),
+    );
 
     let nom = cible.nom_sortie.clone();
     prises.push(nom.clone());

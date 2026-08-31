@@ -13,7 +13,10 @@ use windows::core::BOOL;
 // (convention historique de gdi32), pas un `windows::core::Result<()>` comme
 // les fonctions user32 annotées succès/échec du même fichier.
 use windows::Win32::Foundation::{HWND, LPARAM, POINT, RECT, TRUE};
-use windows::Win32::Graphics::Gdi::ClientToScreen;
+use windows::Win32::Graphics::Gdi::{
+    ClientToScreen, GetMonitorInfoW, MonitorFromPoint, MonitorFromWindow, HMONITOR, MONITORINFO,
+    MONITOR_DEFAULTTONEAREST,
+};
 use windows::Win32::UI::WindowsAndMessaging::{
     EnumWindows, GetClientRect, GetWindowTextLengthW, GetWindowTextW, IsWindow, IsWindowVisible,
     SetWindowPos, SWP_NOMOVE, SWP_NOZORDER,
@@ -110,6 +113,68 @@ pub fn client_rect_on_screen(hwnd: HWND) -> Result<Rect> {
         .context("ClientToScreen")?;
 
     Ok(Rect { x: origin.x, y: origin.y, width, height })
+}
+
+/// Le rectangle du moniteur et sa **zone de travail**, pour le moniteur qui
+/// contient un point du bureau virtuel.
+///
+/// 🔴 **PREMIER LECTEUR DE `rcWork` DE TOUT LE DÉPÔT** (lot 33) : avant lui,
+/// `grep -rni 'rcWork\|SPI_GETWORKAREA\|zone_de_travail'` sur `agent/`,
+/// `client/`, `plateforme/` et `proto/` rendait **zéro**, et la distinction
+/// moniteur / zone de travail n'existait donc nulle part dans ce produit.
+/// C'est ce qui mettait les 48 rangées de la barre des tâches secondaire dans
+/// le recadrage de chaque fenêtre servie — voir
+/// `windows_source_sortie::borne_de_la_sortie`, qui porte la mesure.
+///
+/// **Deux points d'entrée, un seul corps, et c'est délibéré** : le SUPERVISEUR
+/// interroge par l'ORIGINE de la sortie (il connaît le rectangle DXGI avant
+/// même d'avoir posé la fenêtre), le CAPTEUR par SA FENÊTRE (il ne connaît que
+/// le nom de la sortie, mais sa fenêtre est posée dessus). Les deux tombent
+/// sur le même `HMONITOR`, donc sur la même réponse — c'est ce qui permet aux
+/// deux processus de calculer la même borne sans échanger un message.
+pub fn zones_du_moniteur_au_point(x: i32, y: i32) -> Result<(Rect, Rect)> {
+    // `MONITOR_DEFAULTTONEAREST` : un point hors de tout moniteur — une sortie
+    // que Windows vient de détacher — rendrait `NULL` avec
+    // `MONITOR_DEFAULTTONULL`, et l'appelant retomberait sur le rectangle de
+    // la sortie. Le plus proche est une réponse, pas une devinette : le point
+    // vient de l'origine d'une sortie que DXGI énumère encore.
+    let moniteur = unsafe {
+        MonitorFromPoint(POINT { x, y }, MONITOR_DEFAULTTONEAREST)
+    };
+    zones_de_l_hmoniteur(moniteur)
+}
+
+/// Le rectangle du moniteur et sa zone de travail, pour le moniteur qui porte
+/// une fenêtre. Voir [`zones_du_moniteur_au_point`] pour le pourquoi des deux
+/// points d'entrée.
+pub fn zones_du_moniteur_de(hwnd: HWND) -> Result<(Rect, Rect)> {
+    let moniteur = unsafe { MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST) };
+    zones_de_l_hmoniteur(moniteur)
+}
+
+fn zones_de_l_hmoniteur(moniteur: HMONITOR) -> Result<(Rect, Rect)> {
+    if moniteur.is_invalid() {
+        bail!("aucun moniteur pour ce repère");
+    }
+    let mut info = MONITORINFO {
+        cbSize: std::mem::size_of::<MONITORINFO>() as u32,
+        ..Default::default()
+    };
+    // `GetMonitorInfoW` rend un `BOOL` brut : un `false` n'est pas une
+    // `windows::core::Error`, et un `?` ne l'attraperait pas.
+    if !unsafe { GetMonitorInfoW(moniteur, &mut info) }.as_bool() {
+        bail!("GetMonitorInfoW a refusé");
+    }
+    Ok((depuis_rect(info.rcMonitor), depuis_rect(info.rcWork)))
+}
+
+fn depuis_rect(r: RECT) -> Rect {
+    Rect {
+        x: r.left,
+        y: r.top,
+        width: (r.right - r.left).max(0) as u32,
+        height: (r.bottom - r.top).max(0) as u32,
+    }
 }
 
 /// Redimensionne la fenêtre sans la déplacer ni changer son ordre d'affichage.

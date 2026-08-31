@@ -101,11 +101,133 @@ fn une_sortie_degeneree_ne_donne_aucune_region() {
 }
 
 /// Le défaut C1 en une ligne : c'est ce booléen qui empêche `resize` de
-/// retailler une fenêtre qui a sa propre sortie, donc de relâcher la
-/// duplication de cette sortie et de lui substituer celle du bureau
-/// physique.
+/// relâcher la duplication d'une sortie virtuelle pour lui substituer
+/// celle du bureau physique — la fuite du contenu d'un moniteur vers la
+/// session d'autrui.
 #[test]
-fn seul_le_mode_recadre_redimensionne_la_fenetre() {
-    assert!(ModeCapture::FenetreRecadree.redimensionne_la_fenetre());
-    assert!(!ModeCapture::SortieEntiere.redimensionne_la_fenetre());
+fn seul_le_mode_recadre_recapture_le_bureau() {
+    assert!(ModeCapture::FenetreRecadree.recapture_le_bureau());
+    assert!(!ModeCapture::SortieEntiere.recapture_le_bureau());
+}
+
+/// Le pendant du test ci-dessus, et **les deux ensemble sont le contrat du
+/// lot 33** : les deux modes ne se partagent pas seulement un booléen, ils
+/// prennent deux chemins EXCLUSIFS. Sans cette seconde assertion, faire
+/// rendre `false` aux deux à `suit_le_viewport` ramènerait le `no-op`
+/// d'hier sans qu'aucun test ne bronche.
+#[test]
+fn seul_le_mode_sortie_entiere_suit_le_viewport() {
+    assert!(ModeCapture::SortieEntiere.suit_le_viewport());
+    assert!(!ModeCapture::FenetreRecadree.suit_le_viewport());
+    // Exclusifs, et exhaustifs : tout mode prend exactement un chemin.
+    for mode in [ModeCapture::FenetreRecadree, ModeCapture::SortieEntiere] {
+        assert!(
+            mode.recapture_le_bureau() ^ mode.suit_le_viewport(),
+            "{mode:?} doit prendre exactement un des deux chemins"
+        );
+    }
+}
+
+/// 🔴 **L'ATTENDU DE CE TEST VIENT DU JOURNAL DU PRODUIT EN PRODUCTION, PAS
+/// D'UN CALCUL SUR CE QU'IL JUGE** — c'est la règle que le lot 32R a payée
+/// (« un attendu dérivé de la mesure ne peut pas la réfuter »).
+///
+/// Les nombres sont relevés le 31 août 2026 sur l'agent qui tournait :
+///   - `778x491` : la demande la PLUS FRÉQUENTE des 34 que le garde d'hier a
+///     jetées (15 occurrences sur 34, `C:\nivuus\agent.log`, lignes
+///     « redimensionnement ignoré … ») ;
+///   - `1428x1032` : la borne réelle de la sortie servie — `mon=1428x1080`,
+///     `work=1428x1032`, relevé en SESSION 1 par
+///     `docs/superpowers/plans/2026-08-31-barre-des-taches-diagnostic.md` ;
+///   - `1428x1080` : ce que le produit servait, **quoi qu'on lui demande**.
+///
+/// 🔴 **ET VOICI CE QUE LE PREMIER JET DE CE TEST AVAIT FAUX, ATTRAPÉ PAR LE
+/// TEST LUI-MÊME.** Il attendait `(1723, 1080)` pour une demande `1723x1303`,
+/// en croyant `borner_a_la_taille_max` un ÉCRÊTAGE axe par axe. **C'en est un
+/// de MISE À L'ÉCHELLE, à rapport d'aspect PRÉSERVÉ** : `1723x1303` en sort
+/// `1428x1080`, c'est-à-dire exactement la taille que le produit servait déjà.
+/// Conséquence qui change le diagnostic et qui est dite ici plutôt qu'oubliée :
+/// **les bandes noires ne viennent PAS du plafond**, qui respecte l'aspect
+/// demandé, mais du fait que la taille retenue est **FIGÉE à l'ouverture** et
+/// que toute demande ultérieure est jetée. C'est ce gel-là que ce lot lève.
+#[test]
+fn la_demande_la_plus_frequente_est_desormais_honoree_a_l_aspect_pres() {
+    // Sous la borne sur les deux axes : elle passe telle quelle (au pair
+    // près), donc l'image épouse EXACTEMENT le rapport demandé.
+    assert_eq!(taille_pour_viewport((778, 491), (1428, 1032)), (778, 490));
+    // …et ce n'est plus 1428×1080, la taille figée d'hier. Sans cette seconde
+    // assertion, une règle qui ignorerait sa demande resterait verte si la
+    // borne valait 778×490.
+    assert_ne!(taille_pour_viewport((778, 491), (1428, 1032)), (1428, 1080));
+}
+
+/// 🔴 **CE QUE LE LOT NE RÉSOUT PAS, ÉCRIT EN TEST POUR QUE PERSONNE NE CROIE
+/// LE CAS FERMÉ.** `taille_retenue` borne par un `min` axe par axe, qui NE
+/// préserve pas le rapport d'aspect — on recadre une texture, on ne la met pas
+/// à l'échelle. Un viewport plus large que la borne reste donc servi à la
+/// borne, et les bandes noires demeurent sur l'axe débordé.
+///
+/// Les deux entrées sont mesurées : `5118x1438` est la plus large des 34
+/// demandes du journal, `1428x1032` la borne réelle de la sortie servie.
+/// `borner_a_la_taille_max` la ramène d'abord à `1919x539` (aspect préservé,
+/// 3,559), puis le `min` la borne à `1428x539` — aspect 2,65 contre 3,559
+/// demandé.
+///
+/// **Sans changement de mode d'affichage — que D9 a mesuré et retiré — il n'y
+/// a pas d'autre issue**, et créer la sortie plus grande n'est pas établi en
+/// donner davantage (D8 : une sortie ne naît pas forcément à la taille
+/// demandée).
+#[test]
+fn un_viewport_plus_large_que_la_borne_garde_ses_bandes_noires() {
+    assert_eq!(taille_pour_viewport((5118, 1438), (1428, 1032)), (1428, 538));
+}
+
+/// La borne est la ZONE DE TRAVAIL, et c'est ce qui sort la barre des tâches
+/// du recadrage. Mesure du 31 août 2026 : `mon=1428x1080`, `work=1428x1032`,
+/// `Shell_SecondaryTrayWnd rect=(1280,1032)-(2708,1080)` — 48 rangées.
+#[test]
+fn la_zone_de_travail_retire_les_quarante_huit_rangees_de_la_barre() {
+    assert_eq!(borne_de_la_sortie((1428, 1080), Some((1428, 1032))), (1428, 1032));
+    // Et le recadrage d'une fenêtre plein cadre les perd donc aussi : c'est le
+    // même 1032, et non 1080, qui part à `region_de_sortie`.
+    assert_eq!(taille_pour_viewport((1428, 1080), (1428, 1032)), (1428, 1032));
+}
+
+/// 🔴 **LE REPLI EST LE COMPORTEMENT D'AVANT LE LOT, ET IL DOIT L'ÊTRE
+/// EXACTEMENT.** `GetMonitorInfoW` peut refuser ; une zone de travail
+/// dégénérée (Windows en rend une le temps d'une transition) doit être
+/// refusée de la même façon. Dans les deux cas la borne redevient le
+/// rectangle du moniteur — donc le cadrage d'hier, barre des tâches comprise,
+/// plutôt qu'une fenêtre de deux pixels.
+#[test]
+fn une_zone_de_travail_absente_ou_degeneree_rend_le_rectangle_du_moniteur() {
+    assert_eq!(borne_de_la_sortie((1428, 1080), None), (1428, 1080));
+    assert_eq!(borne_de_la_sortie((1428, 1080), Some((0, 0))), (1428, 1080));
+    assert_eq!(borne_de_la_sortie((1428, 1080), Some((1428, 1))), (1428, 1080));
+}
+
+/// Une zone de travail que Windows annoncerait PLUS GRANDE que son moniteur
+/// ne doit pas faire sortir la région de la texture : le `min` est un filet,
+/// et rien d'autre ne le tient.
+#[test]
+fn une_zone_de_travail_plus_grande_que_le_moniteur_est_ramenee_a_lui() {
+    assert_eq!(borne_de_la_sortie((1428, 1080), Some((4096, 4096))), (1428, 1080));
+}
+
+/// Le court-circuit du capteur compare la valeur rendue à la taille
+/// courante : elle doit donc être **stable**, sinon chaque tour
+/// reconstruirait l'encodeur. Un point fixe, éprouvé.
+#[test]
+fn la_regle_est_stable_sur_son_propre_resultat() {
+    let sortie = (1860, 1080);
+    let une = taille_pour_viewport((1723, 1303), sortie);
+    assert_eq!(taille_pour_viewport(une, sortie), une);
+}
+
+/// Une boîte vidéo repliée émet `(0, 0)` (cas réel relevé en D8) : la
+/// règle ne doit jamais rendre une dimension nulle, que l'encodeur NV12
+/// refuserait.
+#[test]
+fn une_boite_video_repliee_ne_rend_jamais_une_dimension_nulle() {
+    assert_eq!(taille_pour_viewport((0, 0), (1860, 1080)), (2, 2));
 }

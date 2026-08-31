@@ -33,7 +33,33 @@ export interface SessionResize {
 }
 
 /// Branche le suivi de taille. **À appeler SYNCHRONEMENT** — voir l'en-tête.
-export function attacherResizeAuDOM(video: HTMLVideoElement, session: SessionResize): void {
+/// Ce que ce module fait de l'annonce de viewport, quand on lui en donne une.
+///
+/// 🔴 **POURQUOI LE VIEWPORT REPART D'ICI, ET NON DE `main.ts`.** `main.ts`
+/// annonce le viewport **une seule fois, au chargement**, à la page-shell qui
+/// l'a ouvert (`window.opener.postMessage`) : c'est cette annonce qui décide
+/// la taille de la sortie virtuelle. Rien ne le réannonçait ensuite — si bien
+/// que le SUPERVISEUR, qui ne connaît la taille voulue QUE par ce message,
+/// gardait pour toujours celle du jour de l'ouverture, et reposait la fenêtre
+/// dessus chaque seconde.
+///
+/// 🔴 **ET IL DOIT PARTIR DE LA MÊME MESURE QUE LE `Resize`, C'EST TOUT
+/// L'INTÉRÊT.** Le `Resize` du canal de contrôle va au CAPTEUR (recadrage et
+/// encodeur) ; le `viewport` du `postMessage` va au SUPERVISEUR (fenêtre
+/// Windows et taille retenue). Les deux processus appliquent la même règle
+/// pure (`windows_source_sortie::taille_pour_viewport`) sur la même borne : si
+/// on leur donnait deux NOMBRES différents — `video.clientWidth` ici et
+/// `window.innerWidth` là-bas —, ils calculeraient deux tailles et se
+/// battraient à 1 Hz. Une seule mesure, deux destinataires.
+export interface AnnonceViewport {
+    (largeur: number, hauteur: number): void;
+}
+
+export function attacherResizeAuDOM(
+    video: HTMLVideoElement,
+    session: SessionResize,
+    annoncerViewport?: AnnonceViewport,
+): void {
     // Le redimensionnement reconstruit la chaîne d'encodage côté agent :
     // on n'émet donc qu'une fois le geste terminé, pas à chaque pixel
     // parcouru pendant que l'utilisateur tire un bord.
@@ -60,6 +86,15 @@ export function attacherResizeAuDOM(video: HTMLVideoElement, session: SessionRes
             innerHeight: window.innerHeight,
         });
         session.controlChannel.send(encodeResize(taille.largeur, taille.hauteur));
+        // MÊME TAILLE, MÊME INSTANT, DEUX DESTINATAIRES — voir l'en-tête
+        // d'`AnnonceViewport`. Émise APRÈS le `Resize` et non avant : le
+        // capteur est le chemin court (canal de données puis tube nommé), le
+        // superviseur le chemin long (relais de la plateforme), et il n'y a
+        // aucune raison de retarder le premier pour le second. **L'ordre
+        // d'arrivée n'a de toute façon aucune importance** : les deux
+        // convergent sur la même valeur, et le geste du second est alors sans
+        // effet.
+        annoncerViewport?.(taille.largeur, taille.hauteur);
         rejeu.confirmer(taille);
     };
 

@@ -1,5 +1,13 @@
 //! `WindowsSource::resize` : retailler la fenêtre et reconstruire la chaîne
-//! d'encodage — ou ne rien faire du tout.
+//! d'encodage — par l'UN de deux chemins, selon le mode de capture.
+//!
+//! ❌ **Ce titre disait « — ou ne rien faire du tout », et le lot 33 l'a rendu
+//! faux.** Il n'y a plus de chemin qui ne fait rien : `FenetreRecadree`
+//! recapture le bureau (chemin mono-fenêtre historique), `SortieEntiere` suit
+//! le viewport **à l'intérieur d'une sortie qui ne bouge pas**
+//! (`suivre_le_viewport`, en pied de fichier). Voir
+//! `ModeCapture::suit_le_viewport` pour la mesure qui l'a motivé et pour la
+//! distinction d'avec le chemin `ChangeDisplaySettingsExW` que D9 a retiré.
 //!
 //! **Module ENFANT de `windows_source`**, et non frère : c'est ce qui lui donne
 //! accès aux champs privés de `WindowsSource` sans qu'aucun ait à être ouvert
@@ -21,7 +29,7 @@
 //! c'est la DÉTECTION et l'ANNONCE** (`capteur/fenetre.rs` →
 //! `AgentControl::Fullscreen`), qui ne passent pas par ici.
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 
 use super::WindowsSource;
 use crate::capture::DesktopCapture;
@@ -71,7 +79,10 @@ impl WindowsSource {
         // Ne rien faire est le comportement JUSTE, pas un pis-aller : la spec
         // §3.3 acte que le redimensionnement d'une fenêtre déjà ouverte est
         // hors périmètre de D1 (le pilote SudoVDA n'expose aucun `SET_MODE`,
-        // la sortie ne peut donc pas suivre). `Ok(())` et non `Err` : rien n'a
+        // la sortie ne peut donc pas suivre — ⚠️ **et c'est toujours vrai de
+        // la SORTIE, que le lot 33 ne fait pas bouger non plus ; ce qui a
+        // changé est que le RECADRAGE et la FENÊTRE, eux, la suivent à
+        // l'intérieur**). `Ok(())` et non `Err` : rien n'a
         // échoué, et une erreur ferait journaliser un incident à chaque
         // connexion. L'adaptation réseau, elle, passe par `set_encode_size` et
         // n'est pas concernée.
@@ -86,15 +97,8 @@ impl WindowsSource {
         // `capteur/plein_ecran.rs`. **Ne rien faire est donc redevenu, à
         // nouveau, le comportement juste — cette fois sur la foi d'une
         // mesure, et non d'une limite seulement supposée du pilote.**
-        if !self.mode.redimensionne_la_fenetre() {
-            tracing::info!(
-                width,
-                height,
-                mode = ?self.mode,
-                "redimensionnement ignoré : la source capture une sortie DXGI entière \
-                 (voir le constat de mesure de capteur::plein_ecran, sous-bloc D9)"
-            );
-            return Ok(());
+        if self.mode.suit_le_viewport() {
+            return self.suivre_le_viewport(width, height);
         }
 
         let (width, height) = (width.max(160) & !1, height.max(120) & !1);
@@ -253,5 +257,124 @@ impl WindowsSource {
                 Err(primary_error)
             }
         }
+    }
+
+    /// Fait suivre au recadrage — et à la fenêtre Windows — le viewport
+    /// annoncé par le navigateur, **à l'intérieur d'une sortie qui ne bouge
+    /// pas**.
+    ///
+    /// 🔴 **CE CHEMIN REMPLACE UN `Ok(())` QUI NE FAISAIT RIEN**, et ce n'est
+    /// pas une régression de D9 : voir `ModeCapture::suit_le_viewport`, qui
+    /// porte la mesure du 31 août 2026 (34 demandes jetées, rapports d'aspect
+    /// de 1,105 à 3,559 servis à 1,3222) et la distinction d'avec le chemin
+    /// `ChangeDisplaySettingsExW` que D9 a retiré. **Aucun mode d'affichage
+    /// n'est changé ici**, et le registre n'est pas touché.
+    ///
+    /// 🔴 **LA DUPLICATION N'EST JAMAIS RELÂCHÉE, ET C'EST LE CORRECTIF C1 DE
+    /// D1 QU'IL NE FAUT PAS DÉFAIRE.** `resize` en mode `FenetreRecadree` pose
+    /// `self.capture = None` puis rouvre `DesktopCapture::new()`, qui duplique
+    /// **le bureau physique primaire** — sur cette VM, le VGA QEMU
+    /// `\\.\DISPLAY1`, que nulle session ne sert. Ici on garde la
+    /// duplication de NOTRE sortie et on ne reconstruit que la région et
+    /// l'encodeur, comme `set_encode_size` (voir `encodage.rs`) : aucune
+    /// contrainte de duplication DXGI, donc aucun besoin de
+    /// `rebuild_or_recover`.
+    fn suivre_le_viewport(&mut self, width: u32, height: u32) -> Result<()> {
+        // Même garde que `set_encode_size`, et pour la même raison : sur une
+        // source définitivement épuisée, `capture_mut()` paniquerait, et une
+        // panique traverse `spawn_blocking` et emporte TOUT le processus —
+        // donc les huit autres fenêtres du capteur avec.
+        if self.fatal {
+            anyhow::bail!("source épuisée : recadrage inchangé");
+        }
+
+        // La borne vient de la ZONE DE TRAVAIL du moniteur qui porte la
+        // fenêtre — c'est ce qui sort la barre des tâches du recadrage. Le
+        // superviseur interroge le même moniteur par l'origine de la sortie :
+        // même `HMONITOR`, même borne, donc aucune bataille entre les deux
+        // processus (voir `taille_pour_viewport`).
+        //
+        // ⚠️ **Le repli est le comportement d'avant ce lot** : quand
+        // `GetMonitorInfoW` refuse, on borne par la texture de la duplication,
+        // exactement comme `sur_sortie` le faisait seul.
+        let texture = self.capture_mut().desktop_size();
+        let borne = match crate::window::zones_du_moniteur_de(self.hwnd) {
+            Ok((moniteur, travail)) => {
+                let borne = crate::windows_source_sortie::borne_de_la_sortie(
+                    (moniteur.width, moniteur.height),
+                    Some((travail.width, travail.height)),
+                );
+                // 🔴 ET LA TEXTURE RESTE UNE BORNE, PAS UNE INFORMATION.
+                // `rcMonitor` est en coordonnées de BUREAU, la région de
+                // recadrage en pixels de TEXTURE, et les deux ne coïncident
+                // pas sur cette machine : la duplication rend 1860×1080 là où
+                // `GetDesc().DesktopCoordinates` rend 1428×1080 (écart mesuré
+                // par le lot 32T, reconfirmé le 31 août 2026). Sans ce `min`,
+                // une zone de travail plus large que la texture ferait sortir
+                // la région de l'image et `crop_region` échouerait.
+                (borne.0.min(texture.0), borne.1.min(texture.1))
+            }
+            Err(erreur) => {
+                tracing::warn!(%erreur, "zone de travail illisible : recadrage borné par la texture");
+                texture
+            }
+        };
+
+        let (l, h) = crate::windows_source_sortie::taille_pour_viewport((width, height), borne);
+        // Court-circuit AVANT toute destruction, et il n'est pas cosmétique :
+        // le `ResizeObserver` du client émet toutes les 200 ms pendant qu'on
+        // tire un bord, et chaque passage reconstruirait sinon un encodeur.
+        if (l, h) == (self.width, self.height) {
+            return Ok(());
+        }
+
+        // La fenêtre d'abord : `resize_window` porte `SWP_NOMOVE`, donc
+        // l'origine — celle de la sortie, posée par le superviseur — ne bouge
+        // pas, et le recadrage à l'origine reste juste.
+        //
+        // ⚠️ `resize_window` impose un plancher de 160×120 que
+        // `taille_pour_viewport` n'a pas (le sien est 2) : sous 160×120 la
+        // fenêtre reste plus grande que la région, et l'image montre alors un
+        // coin de l'application. Cas dégénéré, non corrigé, dit ici.
+        crate::window::resize_window(self.hwnd, l, h)?;
+
+        let region = crate::windows_source_sortie::region_de_sortie(l, h)
+            .ok_or_else(|| anyhow::anyhow!("recadrage inexploitable ({l}x{h})"))?;
+
+        let device = self.capture_mut().device().clone();
+        // Détruire AVANT de construire : à `vivier::PLAFOND_EVEIL` encodeurs
+        // vivants, le transitoire à N+1 est refusé par la MFT NVIDIA
+        // (`MF_E_UNSUPPORTED_D3D_TYPE`, 18 refus sur 18 en D4). Même remède,
+        // même prix, que `set_encode_size`.
+        drop(self.encoder.take());
+        let neuf = H264Encoder::new(&device, (l, h), (l, h), self.fps, self.bitrate);
+        let mut encoder = match neuf {
+            Ok(encoder) => encoder,
+            Err(erreur) => {
+                self.fatal = true;
+                return Err(erreur).context(
+                    "encodeur neuf refusé après destruction de l'ancien : source épuisée",
+                );
+            }
+        };
+        if let Err(erreur) = encoder.request_keyframe() {
+            self.fatal = true;
+            return Err(erreur).context("image clé refusée par l'encodeur neuf : source épuisée");
+        }
+
+        self.region = region;
+        self.width = l;
+        self.height = h;
+        self.encoder = Some(encoder);
+        // L'encodeur neuf n'a rien produit : le budget de sondage de démarrage
+        // repart, comme après `resize` et après `set_encode_size`.
+        self.encoder_warmed_up = false;
+        tracing::info!(
+            demande = format!("{width}x{height}"),
+            borne = format!("{}x{}", borne.0, borne.1),
+            retenue = format!("{l}x{h}"),
+            "recadrage et fenêtre alignés sur le viewport (la sortie, elle, n'a pas bougé)"
+        );
+        Ok(())
     }
 }

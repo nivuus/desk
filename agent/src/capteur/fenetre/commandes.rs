@@ -200,13 +200,29 @@ fn executer_commande(
             // le sommeil serait **perdu**. ❌ **Cette seconde rédaction est
             // périmée depuis la tâche 3 du sous-bloc D9**, qui a retiré le
             // changement de mode de sortie sur mesure (voir le constat en tête
-            // de `capteur/plein_ecran.rs`) : `resize` est redevenu, sans
-            // réserve, sans effet en `SortieEntiere`
-            // (`ModeCapture::redimensionne_la_fenetre` rend `false` et
-            // `WindowsSource::resize` retourne avant tout), et il n'y a donc
-            // plus AUCUN plein écran à perdre par ce chemin — la détection et
-            // l'annonce, la seule moitié qui reste livrée, ne passent pas par
-            // `Redimensionner`.
+            // de `capteur/plein_ecran.rs`) : `resize` était redevenu, sans
+            // réserve, sans effet en `SortieEntiere`, et il n'y avait donc
+            // plus AUCUN plein écran à perdre par ce chemin.
+            //
+            // ❌ **CETTE TROISIÈME RÉDACTION EST FAUSSE À SON TOUR DEPUIS LE
+            // LOT 33 — la QUATRIÈME sur ce seul commentaire, et le dépôt a
+            // prévenu que « la durée de vie d'un *cela reste vrai* est d'un
+            // sous-bloc ».** `resize` n'est plus sans effet en
+            // `SortieEntiere` : il fait suivre le recadrage et la fenêtre au
+            // viewport (`ModeCapture::suit_le_viewport`). **Un
+            // redimensionnement demandé pendant le SOMMEIL est donc à nouveau
+            // PERDU** — ce bras rend la taille retenue telle quelle, sans
+            // rien appliquer.
+            //
+            // 🔵 **Et c'est acceptable, pour une raison qui n'est pas un
+            // vœu** : le réveil reconstruit la source par `sur_sortie` sur
+            // `self.dimensions()`, que `boucler` tient désormais à jour (voir
+            // son point 3) ; et le client REJOUE — `RejeuResize` réémet toute
+            // taille observée mais non confirmée, et le `ResizeObserver` du
+            // navigateur n'a pas cessé d'observer pendant le sommeil de la
+            // VM. La taille perdue ici revient au premier `Resize` suivant.
+            // **Non mesuré** : aucune recette n'a exercé « retailler pendant
+            // le sommeil », et c'est dit comme tel.
             //
             // Ce qui reste vrai, et pourquoi ce bras existe : rendre une
             // `Taille` plutôt qu'un `Fait`, parce que `SourceDistante::resize`

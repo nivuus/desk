@@ -68,13 +68,21 @@ impl Fenetre {
         let debut = Instant::now();
         // `self.dimensions()` : la taille RETENUE, celle que `ouvrir` a
         // résolue — jamais celle de la sortie, qui peut être plus grande
-        // (registre pollué, D9 §9). `resize` ne la met JAMAIS à jour : il est
-        // un no-op en mode `SortieEntiere` (`ModeCapture::redimensionne_la_fenetre`
-        // rend `false`, `WindowsSource::resize` retourne avant tout), et rien
-        // d'autre n'écrit `self.largeur`/`self.hauteur` entre deux réveils —
-        // seuls `ouvrir` et `reveiller` le font. Un réveil relit donc toujours
-        // la même valeur que le précédent, jamais une valeur périmée par un
-        // redimensionnement qui n'a jamais eu lieu.
+        // (registre pollué, D9 §9).
+        //
+        // ❌ **CE PARAGRAPHE DISAIT « `resize` ne la met JAMAIS à jour : il
+        // est un no-op en mode `SortieEntiere` … un réveil relit donc toujours
+        // la même valeur que le précédent », ET LE LOT 33 L'A RENDU FAUX.**
+        // `resize` fait désormais suivre le recadrage et la fenêtre au
+        // viewport (`ModeCapture::suit_le_viewport`), donc `self.largeur` et
+        // `self.hauteur` PEUVENT changer entre deux réveils. Une fenêtre
+        // retaillée puis endormie se serait réveillée à sa taille
+        // d'ouverture, effaçant le redimensionnement sans une trace — c'est
+        // pourquoi `boucler` écrit désormais ces deux champs au changement
+        // d'état (voir son point 3). **Ce que `dimensions()` rend reste donc
+        // la taille RETENUE la plus fraîche**, ce qui est exactement ce dont
+        // ce réveil a besoin ; c'est la RAISON qui a changé, pas la valeur
+        // attendue.
         let taille = self.dimensions();
         let p = &self.parametres;
         let mut source =

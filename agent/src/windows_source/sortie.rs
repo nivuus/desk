@@ -11,8 +11,13 @@
 //! fenêtre à la **taille retenue**, et `sur_sortie` ci-dessous **recadre ce
 //! rectangle dans la duplication de la sortie**. Il reste donc bien un
 //! recadrage, et la sortie n'est la fenêtre que dans le cas — non garanti —
-//! où elle naît à la taille demandée. Ce qui n'a pas changé : `resize` ne
-//! retaille toujours pas la fenêtre en ce mode (voir `ModeCapture`).
+//! où elle naît à la taille demandée.
+//!
+//! ❌ **La phrase qui suivait — « Ce qui n'a pas changé : `resize` ne retaille
+//! toujours pas la fenêtre en ce mode » — est FAUSSE depuis le lot 33.**
+//! `resize` retaille désormais la fenêtre et refait le recadrage pour suivre
+//! le viewport, **sans jamais toucher au mode d'affichage de la sortie** :
+//! voir `ModeCapture::suit_le_viewport` et `taille_pour_viewport` ci-dessous.
 //!
 //! Deux moitiés, séparées par un `#[cfg(windows)]` en milieu de fichier :
 //! au-dessus, le calcul pur de région et `ModeCapture`, tous deux testables sur
@@ -52,36 +57,162 @@ pub enum ModeCapture {
     /// taille demandée (registre pollué), auquel cas `sur_sortie` recadre la
     /// **taille retenue** à l'origine de la sortie. Le nom est conservé
     /// plutôt que renommé : ce qu'il discrimine réellement — et la seule
-    /// chose dont dépende `redimensionne_la_fenetre` ci-dessous — est
-    /// **l'absence de fenêtre Windows à retailler**, qui reste vraie.
+    /// chose dont dépende `recapture_le_bureau` ci-dessous — est **l'absence
+    /// de bureau physique à recapturer**, qui reste vraie.
+    ///
+    /// ❌ **Ce texte disait « l'absence de fenêtre Windows à retailler », et
+    /// le lot 33 l'a réfuté** : il y a bien une fenêtre Windows, et elle est
+    /// désormais retaillée pour suivre le viewport. Ce que ce mode discrimine
+    /// vraiment, et a toujours discriminé, est qu'on capture **une sortie
+    /// DXGI** et non le bureau — d'où le renommage du prédicat.
     SortieEntiere,
 }
 
 impl ModeCapture {
-    /// Vrai si un redimensionnement doit réellement retailler la fenêtre et
-    /// reconstruire la chaîne de capture.
+    /// Vrai si un redimensionnement doit **relâcher la duplication courante et
+    /// recapturer le bureau** — le chemin mono-fenêtre historique.
     ///
-    /// Faux en `SortieEntiere` : la spec §3.3 a tranché que le
-    /// redimensionnement d'une fenêtre déjà ouverte est **hors périmètre de
-    /// D1** — le pilote SudoVDA n'expose aucun changement de mode (aucun
-    /// `SET_MODE` parmi ses six IOCTL), donc la sortie ne peut pas suivre. La
-    /// seule issue correcte est de ne rien faire ; l'adaptation réseau, qui
-    /// change la taille d'**encodage** et non celle de la source
-    /// (`set_encode_size`), continue de fonctionner sans passer par ici.
+    /// ❌ **CETTE MÉTHODE S'APPELAIT `redimensionne_la_fenetre`, ET CE NOM EST
+    /// DEVENU UN MENSONGE AU LOT 33.** Depuis ce lot, `SortieEntiere` retaille
+    /// bel et bien la fenêtre Windows (voir `suit_le_viewport` ci-dessous) :
+    /// un prédicat nommé « redimensionne la fenêtre » qui rend `false` pour un
+    /// mode qui la redimensionne est exactement le patron que `CLAUDE.md`
+    /// nomme « le naufrage du 487 ». Le nom dit désormais ce que le prédicat
+    /// discrimine RÉELLEMENT, et ce qu'il a toujours discriminé : **relâcher
+    /// la duplication pour en ouvrir une du bureau physique**.
     ///
-    /// ⚠️ **Le sous-bloc D8 avait établi que la PRÉMISSE ci-dessus était
-    /// exacte, mais la CONCLUSION réfutable** : une autre voie
-    /// (`ChangeDisplaySettingsExW`) faisait bien suivre la sortie au viewport.
-    /// Le sous-bloc D9 l'a mesurée en conditions de produit et l'a
-    /// **retirée** — le changement ne survivait pas à l'ouverture de la
-    /// fenêtre suivante, et il polluait le registre au point de bloquer le
-    /// produit (voir le constat de mesure en tête de
-    /// `capteur/plein_ecran.rs`). **Le paragraphe ci-dessus décrit donc à
-    /// nouveau, sans réserve, le comportement du dépôt** : `false` ne mène
-    /// plus qu'à « ne rien faire », comme avant D8.
-    pub fn redimensionne_la_fenetre(self) -> bool {
+    /// Faux en `SortieEntiere`, et c'est le correctif C1 de D1 : sur ce
+    /// chemin-là, relâcher la duplication de la sortie virtuelle pour
+    /// `DesktopCapture::new()` faisait diffuser **le coin du bureau physique
+    /// de la VM** dans la fenêtre du navigateur — en multi-fenêtres, une fuite
+    /// du contenu d'un moniteur vers la session d'autrui.
+    pub fn recapture_le_bureau(self) -> bool {
         matches!(self, ModeCapture::FenetreRecadree)
     }
+
+    /// Vrai si un redimensionnement doit **suivre le viewport à l'intérieur
+    /// d'une sortie qui ne bouge pas** : retailler la fenêtre, refaire le
+    /// recadrage et l'encodeur, **sans jamais toucher à la duplication**.
+    ///
+    /// 🔴 **CE BRAS EST NEUF AU LOT 33, ET IL REMPLACE UN `Ok(())` QUI NE
+    /// FAISAIT RIEN.** Mesuré sur le produit en production le 31 août 2026
+    /// (`C:\nivuus\agent.log`, 34 demandes) : le navigateur a demandé des
+    /// rapports d'aspect allant de **1,105 à 3,559** — dont un `5118x1438` —
+    /// pendant que la fenêtre restait servie à **1428×1080, soit 1,3222**, et
+    /// **les 34 ont été jetées**. Le `#remote` du client étant
+    /// `width:100vw; height:100vh; object-fit:contain;
+    /// background:var(--video-letterbox)` (`client/src/style.css`), l'écart se
+    /// peint littéralement en `#000` de chaque côté de l'image : ce sont les
+    /// « bordures noires » rapportées par le propriétaire.
+    ///
+    /// ⚠️ **CE N'EST PAS LA RÉSURRECTION DU CHEMIN QUE D9 A RETIRÉ.** D8
+    /// faisait suivre **la SORTIE** au viewport par `ChangeDisplaySettingsExW`
+    /// ; D9 l'a mesuré et retiré (le changement ne survit pas à l'ouverture de
+    /// la fenêtre suivante, et `CDS_UPDATEREGISTRY` pollue le registre au
+    /// point de bloquer le produit — constat en tête de
+    /// `capteur/plein_ecran.rs`). **Rien ici ne change de mode d'affichage** :
+    /// la sortie garde la taille à laquelle elle est née, et seuls **le
+    /// recadrage** et **la fenêtre Windows** bougent à l'intérieur.
+    ///
+    /// ⚠️ **Ce que ce bras NE PEUT PAS FAIRE** : grandir au-delà de la sortie.
+    /// `taille_pour_viewport` borne par un `min` axe par axe ; un viewport
+    /// plus large que la sortie (le `5118x1438` mesuré) reste servi à la
+    /// taille de la sortie, et les bandes noires demeurent. Sans changement de
+    /// mode — que D9 interdit —, il n'y a pas d'autre issue.
+    pub fn suit_le_viewport(self) -> bool {
+        matches!(self, ModeCapture::SortieEntiere)
+    }
+}
+
+/// La borne à laquelle une fenêtre servie, et le recadrage qui la suit,
+/// doivent se tenir : **la ZONE DE TRAVAIL de la sortie, pas son rectangle**.
+///
+/// 🔴 **RIEN, DANS TOUT LE DÉPÔT, NE CONSULTAIT LA ZONE DE TRAVAIL AVANT CE
+/// LOT** — `grep -rni 'rcWork\|SPI_GETWORKAREA\|zone_de_travail'` sur
+/// `agent/ client/ plateforme/ proto/` rendait **zéro**. La distinction
+/// moniteur / zone de travail n'existait pas dans ce produit, et c'est la
+/// cause d'un défaut mesuré le 31 août 2026 en session 1 (voir
+/// `docs/superpowers/plans/2026-08-31-barre-des-taches-diagnostic.md`) :
+///
+/// ```text
+/// device=\\.\DISPLAY8 mon=(1280,0)-(2708,1080) 1428x1080 work=1428x1032
+/// hwnd=0x201DC cls=Shell_SecondaryTrayWnd rect=(1280,1032)-(2708,1080) 1428x48
+/// hwnd=0x60242 cls=Notepad                rect=(1280,0)-(2708,1080) 1428x1080
+/// ```
+///
+/// **Une barre des tâches SECONDAIRE de 48 px est collée en bas de CHACUNE des
+/// sorties servies** (le défaut Windows, `MMTaskbarEnabled` absente), et la
+/// fenêtre est posée au rectangle du MONITEUR, pas à sa zone de travail. Trois
+/// conséquences, dont deux que le symptôme ne disait pas :
+///   ① la barre est **dans le recadrage** — 48 des 1080 rangées, 4,4 % de
+///      l'image ;
+///   ② l'application **perd 48 px de contenu** : sa fenêtre fait bien 1080, et
+///      ses dernières rangées sont **recouvertes** — ce n'est pas une bande
+///      ajoutée sous elle ;
+///   ③ **un clic dans les 4,4 % bas de la vidéo atteint la barre des tâches**,
+///      pas l'application (`input.rs::move_mouse` démappe sur la taille
+///      d'image, donc `y = 65535` tombe dans la barre).
+///
+/// ⚠️ **CE BORNAGE NE DOIT PAS ÊTRE LIVRÉ SEUL.** Pris isolément, recadrer sur
+/// la zone de travail **ajoute** une bande de letterbox de 48 px sous l'image
+/// — c'est-à-dire précisément ce dont le propriétaire se plaint. Il ne vaut
+/// qu'accompagné du suivi de viewport (`taille_pour_viewport` ci-dessous), qui
+/// fait épouser à l'image le rapport d'aspect demandé.
+///
+/// `travail` est un `Option` parce que `GetMonitorInfoW` peut échouer : le
+/// repli est **le rectangle du moniteur, c'est-à-dire le comportement exact
+/// d'avant ce lot**. Un repli qui rendrait autre chose ferait dépendre le
+/// cadrage d'un appel qui échoue silencieusement.
+///
+/// Une zone de travail **dégénérée** (nulle sur un axe) est refusée pour la
+/// même raison : Windows la rend ainsi le temps d'une transition, et s'y fier
+/// donnerait une fenêtre de deux pixels.
+pub fn borne_de_la_sortie(moniteur: (u32, u32), travail: Option<(u32, u32)>) -> (u32, u32) {
+    match travail {
+        Some((l, h)) if l >= 2 && h >= 2 => (l.min(moniteur.0), h.min(moniteur.1)),
+        _ => moniteur,
+    }
+}
+
+/// La taille à laquelle une source en mode `SortieEntiere` doit se recadrer,
+/// et à laquelle sa fenêtre Windows doit être posée, pour un viewport donné.
+///
+/// 🔴 **C'EST LA FONCTION QUI EMPÊCHE LES DEUX PROCESSUS DE SE BATTRE, ET
+/// C'EST TOUTE LA CONCEPTION DE CE LOT.** La fenêtre Windows a **deux**
+/// prétendants : le CAPTEUR, qui reçoit le `Resize` du navigateur, et le
+/// SUPERVISEUR, qui repose la fenêtre **chaque seconde** sur la taille que sa
+/// table retient (`boucle::placement_periodique::replacer_si_besoin`, cible
+/// lue dans `Table::taille_sortie_de`). Un remède qui ne vivrait que dans le
+/// capteur serait **défait une seconde plus tard**, et le symptôme serait
+/// « ça marche, puis ça revient ».
+///
+/// La parade n'est ni un verrou ni un message de plus : c'est que **les deux
+/// processus calculent la MÊME valeur par CETTE fonction**, à partir des mêmes
+/// deux entrées — le viewport annoncé par le navigateur, et la borne rendue
+/// par `borne_de_la_sortie` pour le MÊME moniteur (le superviseur l'interroge
+/// par l'origine de la sortie, le capteur par sa fenêtre, qui est dessus :
+/// même `HMONITOR`, même réponse). Quel que soit celui qui agit le premier, le
+/// geste de l'autre est alors un `no-op` : `doit_etre_replacee` ne voit aucun
+/// écart, et le court-circuit de `suivre_le_viewport` retourne sans rien
+/// reconstruire.
+///
+/// ⚠️ **Et si les deux divergeaient quand même**, le désaccord serait **borné
+/// et s'auto-résout** : le superviseur repose la fenêtre au tour suivant, donc
+/// en une seconde au plus (`PERIODE_PLACEMENT`), et le capteur suit au
+/// `Resize` suivant. Une divergence coûte une image mal cadrée, jamais une
+/// oscillation sans fin.
+///
+/// Composition de deux règles qui existaient déjà, **réutilisées et non
+/// recopiées** :
+///   ① `borner_a_la_taille_max` — le viewport arrive en pixels périphériques
+///      depuis D9, et un client à `devicePixelRatio > 1` s'engouffrerait sans
+///      limite ; c'est le bornage que `creer_sortie` et `viewport_recu`
+///      appliquent déjà, aux deux points d'entrée de la création ;
+///   ② `superviseur::placement::taille_retenue` — `min` axe par axe, pair et
+///      jamais nul : on **recadre** une texture, on ne la met pas à l'échelle,
+///      donc aucun rapport d'aspect à préserver ici.
+pub fn taille_pour_viewport(demande: (u32, u32), borne: (u32, u32)) -> (u32, u32) {
+    crate::superviseur::placement::taille_retenue(borner_a_la_taille_max(demande), borne)
 }
 
 /// Taille maximale qu'une sortie virtuelle prendra sur demande de viewport.
@@ -232,9 +363,30 @@ impl WindowsSource {
         let (dw, dh) = capture.desktop_size();
         // La sortie peut être PLUS GRANDE que la fenêtre depuis le sous-bloc
         // D10 : on recadre à l'origine de la sortie, là où le superviseur a
-        // posé la fenêtre. `taille_retenue` garantit que la région tient dans
-        // la texture — c'est elle qui borne, pas cette fonction.
-        let (rl, rh) = crate::superviseur::placement::taille_retenue(taille, (dw, dh));
+        // posé la fenêtre.
+        //
+        // 🔴 **LA BORNE EST LA ZONE DE TRAVAIL DEPUIS LE LOT 33, PLUS LA
+        // TEXTURE SEULE** — c'est ce qui sort les 48 rangées de la barre des
+        // tâches secondaire du recadrage dès la PREMIÈRE image, et non
+        // seulement au premier redimensionnement. La texture reste une borne
+        // (`min` ci-dessous) : elle est en pixels de TEXTURE quand `rcWork`
+        // est en coordonnées de BUREAU, et les deux ne coïncident pas sur
+        // cette machine (1860 contre 1428 en largeur, lot 32T). Le repli d'un
+        // `GetMonitorInfoW` en échec est le comportement d'avant ce lot.
+        let borne = match crate::window::zones_du_moniteur_de(hwnd) {
+            Ok((moniteur, travail)) => {
+                let b = borne_de_la_sortie(
+                    (moniteur.width, moniteur.height),
+                    Some((travail.width, travail.height)),
+                );
+                (b.0.min(dw), b.1.min(dh))
+            }
+            Err(erreur) => {
+                tracing::warn!(%erreur, "zone de travail illisible : recadrage borné par la texture");
+                (dw, dh)
+            }
+        };
+        let (rl, rh) = taille_pour_viewport(taille, borne);
         let region = region_de_sortie(rl, rh).with_context(|| {
             format!("sortie {nom_sortie} de dimensions inexploitables ({dw}x{dh})")
         })?;
