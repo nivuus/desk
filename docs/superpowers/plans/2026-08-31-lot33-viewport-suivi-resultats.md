@@ -1045,3 +1045,80 @@ tourné.
 🔴 **Non déployé à dessein : un autre lot travaille dans le même arbre**, et
 deux envois concurrents se détruiraient. L'agent en production reste
 `b6b984e889366259`, intouché.
+
+---
+
+## 17. Clôture — la contrepartie assumée, l'instrument légué, et le déploiement DIFFÉRÉ
+
+### 17.1 🔴 La contrepartie de `SM_CXBORDER`, nommée
+
+Le correctif rogne **un pixel de chaque bord**, pris à
+`GetSystemMetrics(SM_CXBORDER/SM_CYBORDER)`. Cette métrique **ne distingue pas
+une fenêtre SANS bordure peinte** — une application en plein écran sans cadre,
+un jeu, une fenêtre `WS_POPUP` nue. Sur celles-là, **on retirera 1 px de
+contenu réel** au lieu d'une bordure.
+
+**Arbitrage pris par le propriétaire du dépôt le 31 août 2026** : un pixel
+perdu sur le cas RARE vaut mieux qu'une ligne sombre permanente sur les quatre
+bords du cas COURANT.
+
+⚠️ **Où regarder le jour où quelqu'un sert une application vraiment sans
+cadre** — la commande qui fait reparaître le symptôme sous sa forme inverse
+(du contenu mangé, au lieu d'une bordure ajoutée) :
+
+```bash
+# rejouer l'instrument du §17.2 sur CETTE application, et comparer
+#   rangee 0 / colonne 0   contre   rangee 1 / colonne 1
+# Si la rangee 0 porte du CONTENU (et non une bordure), on le mange.
+# Le desarmement est alors local et tient en une ligne :
+#   agent/src/superviseur/placement.rs :: enveloppe()  -> ignorer `bordure`
+# ce qui redonne EXACTEMENT le comportement du troisième envoi.
+```
+
+Le test `sans_bordure_peinte_on_retrouve_le_comportement_precedent` fige ce
+désarmement : `enveloppe(dwm, (0, 0)) == dwm`.
+
+### 17.2 L'instrument, légué
+
+`docs/superpowers/plans/journaux-lot33/pixels/` — la sonde, son **mode
+d'emploi complet** (dépôt par le partage `D$`, exécution par tâche planifiée
+`/it`, relecture par le partage et non par WinRM), son **témoin**, le relevé
+d'avant correctif, l'image et deux coins agrandis ×12. **Versionné**, pour que
+le prochain n'ait pas à le réinventer — ce dépôt a déjà perdu six constats de
+revue faute de les avoir versés.
+
+### 17.3 🔴 Le critère de vérification, en une phrase
+
+**`rangee 0` et `colonne 0` doivent rendre les mêmes couleurs CLAIRES que
+`rangee 1` et `colonne 1` ; si elles rendent encore `#2F2F2F` pendant que la
+voisine reste claire, le correctif n'a pas mordu — et si les DEUX sont
+sombres, c'est l'instrument qui n'a rien capturé.**
+
+### 17.4 Le déploiement est DIFFÉRÉ, à dessein
+
+🔴 **Le correctif est côté agent, donc son déploiement coûte un redémarrage,
+donc il orphelinerait toutes les fenêtres du propriétaire — qui a déjà payé ce
+prix trois fois aujourd'hui.** Un autre lot travaille au même moment côté
+agent et devra redémarrer de toute façon : **ses commits emporteront les
+miens, et un seul redémarrage portera les deux corrections.**
+
+Le binaire `a4b8ba1604b9279a` est bâti et attesté, **et il ne sera pas
+déposé** : c'est la branche qui le portera. ⚠️ **Ce correctif n'ajoute aucune
+chaîne** — il ne change que de l'arithmétique — donc il **n'est pas attestable
+par `strings`** ; son témoin de déploiement est le §17.3.
+
+### 17.5 Ce que le lot 33 laisse, au total
+
+**Trois défauts corrigés et déployés**, jugés par un humain sur le produit
+réel : la fenêtre suit le viewport, la barre des tâches est hors du cadre, les
+marges ne varient plus avec la forme. **Un quatrième corrigé, non déployé.**
+
+**Ce qu'il n'établit toujours pas** : personne d'autre que le propriétaire n'a
+jugé l'image à l'usage ; aucune recette navigateur n'a été jouée ; l'écart
+desktop/texture du lot 32T est inchangé ; et le lisère de 7 px comme la
+bordure d'1 px sont ceux de **cette** machine, à **ce** thème et à **ce** DPI —
+tous deux relevés à chaque pose, jamais écrits en dur, mais jamais mesurés
+ailleurs.
+
+**Six hypothèses ont été réfutées par la mesure au cours de ce lot, dont
+quatre miennes.**
