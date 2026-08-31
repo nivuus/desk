@@ -18,10 +18,15 @@
 
    ⚠️ ET LA COULEUR SEULE NE PORTE PAS L'INFORMATION : le §3 l'interdit, et le
    balisage devait donner au message son `role` et son libellé. ✅ S3 L'A FAIT,
-   et cette phrase cesse d'être au futur : les trois bandeaux du produit portent
-   `role="status"` dans leur HTML (`client/shell.html` ×2,
-   `client/connexion.html` ×1). S2 ne livrait que du CSS — il n'ajoutait aucun
-   rôle ARIA, et n'en retirait aucun ; c'est toujours vrai de ce fichier.
+   et cette phrase cesse d'être au futur : les bandeaux du produit portent
+   `role="status"` dans leur HTML — MESURÉ le 31 août 2026 par
+   `grep -c 'role="status"' client/*.html`, RELANCÉ et non recopié :
+   `client/hub.html` ×4, `client/index.html` ×3, `client/connexion.html` ×1.
+   ⚠️ CETTE PARENTHÈSE DISAIT « `client/shell.html` ×2 » jusqu'à la revue
+   finale du 31 août 2026 : `shell.html` est devenue une redirection SANS
+   AUCUN balisage (tâche 9), et son compte y est désormais ZÉRO — les deux
+   bandeaux ont migré dans le hub. S2 ne livrait que du CSS — il n'ajoutait
+   aucun rôle ARIA, et n'en retirait aucun ; c'est toujours vrai de ce fichier.
 
    ⚠️ LE PIRE CAS CONNU DE LA PALETTE EST ICI : `--succes` sur `--fond-2` rend
    4,59 en clair (spec §4.5), soit 0,09 au-dessus du seuil. Le fond du message

@@ -3,8 +3,11 @@
 // `jeton.ts`, qui est testé.
 //
 // ⚠️ CE FICHIER N'EST PAS TESTÉ UNITAIREMENT, et c'est DÉCLARÉ plutôt que
-// subi : c'est la même convention que `shell-page.ts` et `main.ts`, qui ne le
-// sont pas non plus. Ce qui la rend tenable est la clause qui l'accompagne :
+// subi : c'est la même convention que `hub/page.ts`, `hub/cartes.ts` et
+// `main.ts`, qui ne le sont pas non plus. ⚠️ CETTE LISTE NOMMAIT
+// `shell-page.ts` jusqu'à la revue finale du 31 août 2026 : depuis la
+// tâche 9, ce fichier n'est plus qu'une redirection de seize lignes, et
+// l'invoquer comme précédent d'un CÂBLAGE non testé ne dit plus rien. Ce qui la rend tenable est la clause qui l'accompagne :
 // **toute règle que ce fichier porterait doit descendre dans `jeton.ts`**. Si
 // une condition apparaît ici, c'est qu'elle est au mauvais endroit.
 //
@@ -102,7 +105,11 @@ installerSelecteurDeThemeAuDOM(document.querySelector<HTMLElement>('#themes')!);
    `className = '…'`, jamais une classe qui transite par une variable. Elles
    sont bien déclarées par `design/primitives/message.css` et employées par
    `primitives.html` — c'est la galerie et l'œil qui le disent ici, pas la
-   commande. Même arbitrage que `shell-page.ts`. */
+   commande. Même arbitrage que `bureau/porteur-dom.ts`, qui porte
+   aujourd'hui ce câblage. ⚠️ CETTE PHRASE NOMMAIT `shell-page.ts` jusqu'à
+   la revue finale du 31 août 2026 : ce fichier ne porte plus AUCUN
+   `CLASSE_DE_TON` depuis la tâche 9, et l'arbitrage qu'on lui prêtait a
+   déménagé avec le reste. */
 const CLASSE_DE_TON: Record<Ton, string> = {
     neutre: '',
     succes: 'message--succes',

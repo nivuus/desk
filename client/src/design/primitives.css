@@ -40,15 +40,21 @@
    mots-clés, et `transparent` n'est pas une couleur, c'est une absence.
 
    ── CE QUE CE FICHIER FAIT, DEPUIS LE SOUS-BLOC S3 ────────────────────────
-   ✅ DEUX SURFACES DU PRODUIT LE LIENT — `client/shell.html` et
-   `client/connexion.html`. À la fin de S2, cet encadré disait l'inverse :
+   ✅ TROIS SURFACES DU PRODUIT LE LIENT — `client/index.html`,
+   `client/hub.html` et `client/connexion.html`. ⚠️ CET ENCADRÉ DISAIT
+   « DEUX SURFACES … `client/shell.html` » jusqu'à la revue finale du
+   31 août 2026, et les deux moitiés étaient fausses : `shell.html` est
+   devenue une redirection qui ne lie AUCUNE feuille (tâche 9), et le
+   relevé ci-dessous a été RELANCÉ plutôt que réécrit de mémoire.
+   À la fin de S2, cet encadré disait l'inverse :
    « AUCUNE SURFACE DU PRODUIT NE LE LIE […] les tokens qu'il fait sortir de la
    liste d'attente ont UN APPELANT ÉCRIT, pas UN PIXEL RENDU […] C'est S3 qui
    referme cet écart. » S3 l'a refermé, et ce n'est pas une intention mais un
    RELEVÉ : le contrôle §7.9, né avec S3, rend à chaque exécution
 
-       ② A — les primitives atteignent le PRODUIT :
-         client/shell.html : bouton, message, surface
+       ② A — les primitives atteignent le PRODUIT, CHACUNE des trois surfaces :
+         client/index.html : message, surface
+         client/hub.html : bouton, message, surface
          client/connexion.html : bouton, champ, message, surface
 
    et son assertion ② A a été ROUGE sur l'arbre intact, entre les tâches 2 et 4,

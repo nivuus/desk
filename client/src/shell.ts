@@ -1,5 +1,12 @@
-// La page-shell : le bureau. C'est elle qui ouvre une fenêtre navigateur par
+// LE BUREAU : la règle de la surface qui ouvre une fenêtre navigateur par
 // fenêtre Windows, et elle seule — aucune page d'application n'a ce pouvoir.
+//
+// ⚠️ CETTE SURFACE S'APPELAIT « LA PAGE-SHELL » JUSQU'AU 31 AOÛT 2026, et
+// ce fichier ouvrait sur ce nom. **C'est le HUB depuis** (`hub.html`, servi
+// à la racine, câblé par `bureau/porteur-dom.ts`) : `shell.html` n'est plus
+// qu'une redirection. Le mot « page-shell » subsiste plus bas dans ce
+// fichier et chez ses voisins comme NOM DE RÔLE — la surface qui tient la
+// session de contrôle —, jamais comme nom de page.
 //
 // Pourquoi une page dédiée plutôt que la première page d'application : sans
 // elle, fermer cette première page couperait la capacité d'ouvrir toutes les

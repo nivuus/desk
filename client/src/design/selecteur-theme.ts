@@ -10,13 +10,19 @@
  * valeurs, et il n'y a pas de raison de l'accorder aux modules.
  *
  * ── OÙ IL VIT, ET OÙ IL NE VIT PAS ────────────────────────────────────────
- * Sur la PAGE-SHELL, que la spec §5.2 nomme, et sur l'ÉCRAN DE CONNEXION, que
- * la spec ne nomme pas parce qu'il n'existait pas quand elle a été écrite
- * (son §2.5 le dit) — EXTENSION RAISONNÉE, déclarée : `shell-page.ts` y
- * redirige tout visiteur sans jeton, si bien que c'est aujourd'hui la première
- * surface, et parfois la seule, qu'un utilisateur non authentifié voie. Un
- * défaut sombre qu'on ne peut pas changer avant de s'être connecté est ce que
- * la spec §11 range sous « réversible par un utilisateur en un clic dès S3 ».
+ * Sur le HUB — la surface que la spec §5.2 appelle « la page-shell », et qui
+ * l'a absorbée le 31 août 2026 — et sur l'ÉCRAN DE CONNEXION, que la spec ne
+ * nomme pas parce qu'il n'existait pas quand elle a été écrite (son §2.5 le
+ * dit) — EXTENSION RAISONNÉE, déclarée : `hub/page.ts` y redirige tout
+ * visiteur sans jeton, si bien que c'est aujourd'hui la première surface, et
+ * parfois la seule, qu'un utilisateur non authentifié voie. Un défaut sombre
+ * qu'on ne peut pas changer avant de s'être connecté est ce que la spec §11
+ * range sous « réversible par un utilisateur en un clic dès S3 ».
+ *
+ * ⚠️ CE PARAGRAPHE DISAIT « Sur la PAGE-SHELL … `shell-page.ts` y redirige »
+ * jusqu'à la revue finale du 31 août 2026. Les DEUX moitiés étaient fausses :
+ * le sélecteur est câblé depuis `hub/page.ts` (`#themes`), et c'est
+ * `hub/page.ts::demarrer` qui renvoie vers `connexion.html`.
  *
  * ⛔ JAMAIS DANS LA FENÊTRE DE SESSION. La spec §5.2 l'interdit nommément :
  * une barre d'outils sur un jeu en plein écran est une régression. « La

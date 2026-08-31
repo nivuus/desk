@@ -1,5 +1,20 @@
-// L'annonce du viewport à la page-shell : la mesure, et les deux moments où
-// elle part.
+// L'annonce du viewport à l'onglet qui nous a ouverts : la mesure, et les
+// deux moments où elle part.
+//
+// ⚠️ **CET EN-TÊTE DISAIT « à la page-shell » JUSQU'À LA REVUE FINALE DU
+// 31 AOÛT 2026**, et le mot désigne aujourd'hui une page qui n'est plus
+// qu'une redirection. L'ouvreuse est le HUB (`bureau/porteur-dom.ts`).
+//
+// 🔴 **ET LE DESTINATAIRE N'EST PAS TOUJOURS CELUI QUI TIENT LA SESSION —
+// LIMITE DÉCLARÉE, NON CORRIGÉE (Important ⑤ de cette même revue).** Le
+// hub élit un onglet PORTEUR ; un onglet SUIVEUR peut néanmoins rouvrir
+// une fenêtre depuis son propre clic (`window.open` exige l'activation de
+// l'onglet qui a le geste, spec §4). L'annonce ci-dessous part alors vers
+// CE suiveur : son `bureau.viewportRecu` retourne immédiatement — sa table
+// `connues` est vide, aucun `fenetreOuverte` ne l'ayant jamais alimentée —
+// et son `envoyer` est un no-op, faute de socket. **Conséquence, celle du
+// lot 33 : le recadrage et la taille restent ceux de la session
+// précédente, et rien ne le trace.**
 //
 // **Extrait de `main.ts` VERBATIM (lot 33).** Le fichier était à **500 lignes
 // EXACTEMENT** — sa porte — et l'addition du lot (le réannonceur, sans lequel

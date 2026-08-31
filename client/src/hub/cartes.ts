@@ -7,7 +7,9 @@
 // comprimer, et jamais dans le commit qui ajoute.
 //
 // ⚠️ CE FICHIER N'EST PAS TESTÉ UNITAIREMENT, ET C'EST DÉCLARÉ PLUTÔT QUE
-// SUBI — la convention de `hub/page.ts`, `shell-page.ts` et `main.ts`. Ce qui
+// SUBI — la convention de `hub/page.ts`, `bureau/porteur-dom.ts` et
+// `main.ts` (`shell-page.ts` jusqu'à la revue finale du 31 août 2026 : il
+// n'est plus qu'une redirection de seize lignes). Ce qui
 // la rend tenable est la clause qui l'accompagne : **une condition est une
 // RÈGLE si la changer change ce que le produit DÉCIDE ; elle est du CÂBLAGE si
 // elle ne fait que router une décision déjà prise ailleurs.** Cloner un

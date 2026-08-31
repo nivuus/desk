@@ -35,7 +35,11 @@
    fenêtre de session, `connexion.css` celle de l'écran de connexion, celle-ci
    celle du bureau. Aucune ne connaît les deux autres.
 
-   🔴 ELLE SE LIE DEPUIS `shell.html`, ELLE NE S'IMPORTE JAMAIS. C'est
+   🔴 ELLE SE LIE DEPUIS `hub.html`, ELLE NE S'IMPORTE JAMAIS. ⚠️ CETTE
+   LIGNE DISAIT `shell.html` jusqu'à la revue finale du 31 août 2026 : la
+   tâche 9 a vidé cette page de tout balisage ET de tout `<link>`, et c'est
+   `client/hub.html:19` qui porte désormais le lien (mesuré par
+   `grep -n 'bureau.css' client/*.html`). C'est
    l'arrangement B, mesuré par S1 et reconfirmé par le plan S3 : un `@import`
    fait RÉ-INLINER la feuille dans chaque entrée qui la traverse, un `<link>`
    laisse Vite la PARTAGER. C'est ce qui permet à `primitives.css` d'être servie
