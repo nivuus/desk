@@ -17,9 +17,16 @@ import { lignes, sectionVisible } from './fenetres';
 export interface DepsFenetres {
     liste: HTMLUListElement;
     modele: HTMLTemplateElement;
-    /// La section à révéler. `undefined` quand la page affiche la liste sans
-    /// pli — c'est le cas de `shell.html`, qui n'a pas de section masquable.
-    section?: HTMLElement;
+    /// La section à révéler ou à recacher.
+    ///
+    /// ⚠️ **OBLIGATOIRE DEPUIS LA REVUE FINALE (Minor ①).** Sa doc disait
+    /// « `undefined` quand la page affiche la liste sans pli — c'est le cas de
+    /// `shell.html` » : **faux depuis la tâche 9**, où `shell.html` est devenue
+    /// une redirection sans aucune UI. L'unique appelant
+    /// (`bureau/porteur-dom.ts`) passait TOUJOURS une section, si bien que
+    /// l'optionnel n'était plus que du code mort justifié par une phrase
+    /// fausse.
+    section: HTMLElement;
     rouvrir(session: string): void;
 }
 
@@ -48,5 +55,5 @@ export function dessinerFenetres(fenetres: FenetreConnue[], deps: DepsFenetres):
     }
     // ⚠️ RÉVÉLER **ET** RECACHER. Ne faire que le premier laisserait une
     // section vide sur un hub qui n'a plus rien à montrer.
-    if (deps.section !== undefined) deps.section.hidden = !sectionVisible(fenetres);
+    deps.section.hidden = !sectionVisible(fenetres);
 }

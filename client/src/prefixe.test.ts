@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
-import { CLE_PREFIXE, composer, effacerPrefixe, lirePrefixe, poserPrefixe } from './prefixe';
+import {
+    CLE_PREFIXE,
+    composer,
+    effacerPrefixe,
+    lirePrefixe,
+    poserPrefixe,
+    prefixeDeLaVm,
+    retenirLePrefixe,
+} from './prefixe';
 
 /// Un coffre en mémoire : le module ne doit jamais toucher `localStorage`
 /// autrement que par le défaut de son argument (précédent de `jeton.ts`).
@@ -128,5 +136,61 @@ describe('effacerPrefixe', () => {
         const c = coffre({ [CLE_PREFIXE]: 'ANCIEN' });
         effacerPrefixe(c);
         expect(lirePrefixe(c, '?prefixe=Q')).toBe('Q');
+    });
+});
+
+/* ══ CE QUE LA REVUE FINALE DU 31 AOUT 2026 A AJOUTE ═════════════════════ */
+
+describe('prefixeDeLaVm — la decision, PURE', () => {
+    // 🔴 CETTE REGLE EXISTE PARCE QUE LE HUB NE POSAIT AUCUN PREFIXE (critique
+    // ② de la revue finale). `poserPrefixe` n avait qu UN appelant de
+    // production, sur la PAGE DE CONNEXION ; un visiteur derriere Pomerium
+    // obtient son jeton SUR LE HUB et ne passe jamais par cet ecran. Le hub
+    // ecoutait donc `bureau` pendant que l agent annoncait sur
+    // `<prefixe>:bureau`, et AUCUN `fenetre-ouverte` n arrivait jamais.
+
+    it('retient le prefixe annonce par la VM', () => {
+        expect(prefixeDeLaVm('vm-7')).toEqual({ action: 'poser', prefixe: 'vm-7' });
+    });
+
+    it('efface quand la VM n en annonce AUCUN (`null`)', () => {
+        // `catalogue.ts::VmListee.prefixe` est `string | null` : `null` veut
+        // dire « cette VM n a pas de prefixe », et laisser celui d hier ferait
+        // ouvrir les sessions au nom d une AUTRE machine.
+        expect(prefixeDeLaVm(null)).toEqual({ action: 'effacer' });
+    });
+
+    it('efface sur la CHAINE VIDE, au lieu de faire lever `poserPrefixe`', () => {
+        // ⚠️ `poserPrefixe` LEVE sur `''`, et c est juste POUR LUI : un
+        // appelant qui n a pas de prefixe n en a pas a ecrire. Mais un service
+        // qui annoncerait `prefixe: ''` n est pas une programmation fausse du
+        // client -- et faire lever le peuplement du catalogue serait pire que
+        // le defaut qu on repare.
+        expect(prefixeDeLaVm('')).toEqual({ action: 'effacer' });
+    });
+
+    it('efface sur ce qui n est meme pas une chaine', () => {
+        expect(prefixeDeLaVm(undefined)).toEqual({ action: 'effacer' });
+        expect(prefixeDeLaVm(42)).toEqual({ action: 'effacer' });
+    });
+});
+
+describe('retenirLePrefixe — l application au coffre', () => {
+    it('ecrit le prefixe recu', () => {
+        const c = coffre();
+        retenirLePrefixe(c, 'vm-7');
+        expect(lirePrefixe(c, '')).toBe('vm-7');
+    });
+
+    it('EFFACE celui d hier quand la VM n en annonce plus', () => {
+        const c = coffre({ [CLE_PREFIXE]: 'ANCIEN' });
+        retenirLePrefixe(c, null);
+        expect(lirePrefixe(c, '')).toBe('');
+    });
+
+    it('ne LEVE pas sur une chaine vide', () => {
+        const c = coffre({ [CLE_PREFIXE]: 'ANCIEN' });
+        expect(() => retenirLePrefixe(c, '')).not.toThrow();
+        expect(lirePrefixe(c, '')).toBe('');
     });
 });

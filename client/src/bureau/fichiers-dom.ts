@@ -34,6 +34,20 @@ import type { Bureau } from '../shell';
 export interface DepsFichiers {
     bureau: Bureau;
     signalingUrl: string;
+    /// 🔴 **UN FOURNISSEUR DE JETON FRAIS, ET IL N'Y EN AVAIT AUCUN** (critique
+    /// ① de la revue finale du 31 août 2026). `fichiers/canal.ts` lisait
+    /// `jetonAcces()` — le contenu **BRUT** du coffre, sans passer par
+    /// `assurerAccesFrais` —, or « Choisir mon dossier » est un geste qui peut
+    /// arriver n'importe quand après le chargement de la page, et un jeton
+    /// d'accès vit **dix minutes** (`plateforme/src/identite/jeton.ts`).
+    /// Le pont se voyait donc refuser sa session sans que rien ne relie
+    /// l'échec à l'expiration.
+    ///
+    /// ⚠️ **APPELÉ APRÈS LE SÉLECTEUR DE RÉPERTOIRE, JAMAIS AVANT** : un
+    /// `await` posé avant `showDirectoryPicker()` consommerait l'activation
+    /// utilisateur transitoire, et le sélecteur serait refusé sans que rien ne
+    /// le dise. Voir `monterLeLecteur`, où l'ordre est appliqué.
+    jetonFrais(): Promise<string | undefined>;
     /// `?faute-fichiers=1` — variable de BANC, jamais une configuration
     /// livrée. Lue UNE fois par la page et passée ici, jamais relue : c'est la
     /// convention de `PLEIN_ECRAN` et de `PART_SONDAGE` côté agent — le
@@ -43,9 +57,16 @@ export interface DepsFichiers {
     boutonDossier: HTMLButtonElement;
     boutonRafraichir: HTMLButtonElement;
     boutonReprendre: HTMLButtonElement;
-    /// Le `<details>` à déplier au clic ; `undefined` quand la page n'a pas de
-    /// pli — c'est le cas de `shell.html`.
-    section?: HTMLDetailsElement;
+    /// Le `<details>` à déplier au clic.
+    ///
+    /// ⚠️ **OBLIGATOIRE DEPUIS LA REVUE FINALE (Minor ①).** Sa doc disait
+    /// « `undefined` quand la page n'a pas de pli — c'est le cas de
+    /// `shell.html` » : **faux depuis la tâche 9**, où `shell.html` est
+    /// devenue une redirection sans aucune UI. L'unique appelant
+    /// (`bureau/porteur-dom.ts`) passait TOUJOURS une section, si bien que
+    /// l'optionnel n'était plus que du code mort justifié par une phrase
+    /// fausse.
+    section: HTMLDetailsElement;
 }
 
 export function installerLePont(deps: DepsFichiers): void {
@@ -55,7 +76,7 @@ export function installerLePont(deps: DepsFichiers): void {
         // ⚠️ LE DÉPLIAGE EST AU CLIC, ET AVANT TOUT `await`. Le déplier au
         // montage RÉUSSI donnerait l'impression, sur une annulation du
         // sélecteur, que le clic n'a rien fait.
-        if (deps.section !== undefined) deps.section.open = true;
+        deps.section.open = true;
         // 🔴 `showDirectoryPicker()` EXIGE UNE ACTIVATION UTILISATEUR TRANSITOIRE,
         // et c'est pourquoi il est appelé depuis ce gestionnaire, et
         // jamais depuis un message de canal. Le gestionnaire n'est pas `async` : un
@@ -79,6 +100,20 @@ export function installerLePont(deps: DepsFichiers): void {
         });
         // `null` = annulation délibérée, `undefined` = échec déjà signalé.
         if (choix === null || choix === undefined) return;
+
+        // 🔴 **LE JETON EST REDEMANDÉ ICI, ET SEULEMENT ICI** — après le
+        // sélecteur (qui exige l'activation utilisateur, donc aucun `await`
+        // avant lui) et avant la poignée de main de signaling. C'est la
+        // moitié « pont » de la critique ① de la revue finale : `canal.ts`
+        // lisait le coffre BRUT, dont le jeton peut avoir expiré depuis le
+        // chargement de la page.
+        const jeton = await deps.jetonFrais();
+        if (jeton === undefined) {
+            deps.bureau.lecteurEchoue(
+                'Votre session a expiré. Rechargez la page pour vous reconnecter.',
+            );
+            return;
+        }
 
         // 🔴 LA MÊME POIGNÉE SERT À LIRE, À ÉCRIRE ET À MUTER.
         //
@@ -126,6 +161,7 @@ export function installerLePont(deps: DepsFichiers): void {
             pont = await connecterCanalFichiers({
                 signalingUrl: deps.signalingUrl,
                 sessionId: sessionDuPont(),
+                jeton,
                 onStatus: (m) => console.info(m),
                 traiter: (octets) => serveur.traiter(octets),
             });

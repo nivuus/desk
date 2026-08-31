@@ -2,7 +2,10 @@
 // `manifeste.ts` de l'autre.
 //
 // ⚠️ CE FICHIER N'EST PAS TESTÉ UNITAIREMENT, et c'est DÉCLARÉ plutôt que
-// subi : c'est la convention de `connexion.ts`, `shell-page.ts` et `main.ts`.
+// subi : c'est la convention de `connexion.ts`, `bureau/porteur-dom.ts` et
+// `main.ts`. ⚠️ CETTE LISTE NOMMAIT `shell-page.ts` jusqu'à la revue finale
+// du 31 août 2026 : depuis la tâche 9 il n'est plus qu'une redirection de
+// seize lignes, donc un précédent qui ne dit plus rien d'un câblage.
 // Ce qui la rend tenable est la clause qui l'accompagne, resserrée par la revue
 // transverse de P4 : **une condition est une RÈGLE si la changer change ce que
 // le produit DÉCIDE ; elle est du CÂBLAGE si elle ne fait que router une
@@ -14,7 +17,7 @@ import { adressePlateforme, adresseSignaling } from '../adresse-plateforme';
 import { installerLeBureau } from '../bureau/porteur-dom';
 import { installerSelecteurDeThemeAuDOM } from '../design/selecteur-theme';
 import { assurerAccesFrais, paireDeReponse } from '../jeton';
-import { lirePrefixe } from '../prefixe';
+import { lirePrefixe, retenirLePrefixe } from '../prefixe';
 import {
     lancerApplication,
     lireIcone,
@@ -191,6 +194,26 @@ async function peupler(): Promise<void> {
         return;
     }
     const vm = vms.valeur[0];
+
+    // 🔴 **LE PRÉFIXE DE LA VM EST RETENU ICI, ET IL NE L'ÉTAIT NULLE PART**
+    // (critique ② de la revue finale du 31 août 2026). `poserPrefixe` n'avait
+    // qu'un appelant de production — `connexion.ts::chercherLaSession` —, qui
+    // ne court **que sur la page de connexion**. Or ce chantier fait
+    // précisément qu'un visiteur derrière Pomerium obtienne son jeton SUR LE
+    // HUB (`assurerAccesFrais` → `/auth/moi`) sans jamais passer par cet
+    // écran : `lirePrefixe()` rendait `''`, le hub écoutait la session
+    // `bureau` pendant que l'agent annonçait sur `<prefixe>:bureau`, et
+    // **aucun `fenetre-ouverte` n'arrivait jamais**. La valeur était pourtant
+    // là, à trois lignes : `routes-vm.ts` la renvoie, `catalogue.ts` la parse
+    // déjà dans `VmListee.prefixe`.
+    //
+    // 🔴 **L'ORDRE EST LE POINT** : `demarrer()` n'installe le bureau
+    // qu'APRÈS cet appel, pour que `lirePrefixe()` compose les bons noms de
+    // session et de verrou. La décision « quel préfixe retenir ? » vit dans
+    // `prefixe.ts::prefixeDeLaVm`, pure et testée ; ce qui reste ici est du
+    // câblage.
+    retenirLePrefixe(window.localStorage, vm.prefixe);
+
     const applications = await listerApplications(vm.id, deps);
     if (applications.etat !== 'ok') {
         dire('danger', `Le catalogue n'a pas pu être lu : ${applications.refus.motif}.`);
@@ -285,7 +308,27 @@ async function demarrer(): Promise<void> {
     }
     deps = { base, jeton: acces, fetch: window.fetch.bind(window) };
     dire('neutre', '');
-    await peupler();
+
+    // 🔴 **LE BUREAU EST INSTALLÉ MÊME SI LE CATALOGUE ÉCHOUE** (Important ④
+    // de la revue finale). `await peupler()` précédait `installerLeBureau`
+    // sans garde : une panne réseau sur `GET /vm` remontait non rattrapée —
+    // `catalogue.ts` déclare qu'une panne d'ENVIRONNEMENT remonte telle
+    // quelle —, `#message` avait déjà été vidé deux lignes plus haut, et
+    // l'utilisateur voyait une page **blanche, sans bureau et sans
+    // explication**. Avant ce chantier le bureau vivait ailleurs et survivait
+    // à une panne du catalogue : **ce couplage est neuf**.
+    //
+    // ⚠️ **L'INTERACTION AVEC LA CRITIQUE ② EST LE POINT DÉLICAT** : le
+    // préfixe DOIT être connu avant l'installation (voir `peupler`), et il
+    // vient justement de l'appel qui peut échouer. Le remède est donc
+    // d'attraper et d'installer **avec ce qu'on sait** — c'est-à-dire le
+    // préfixe déjà au coffre, posé par un chargement antérieur ou par
+    // `connexion.ts` —, jamais de renoncer au bureau.
+    try {
+        await peupler();
+    } catch (e) {
+        dire('danger', `Le catalogue n'a pas pu être lu : ${(e as Error).message}.`);
+    }
 
     // ── LE BUREAU, DANS CETTE PAGE ────────────────────────────────────────
     // 🔴 LE HUB EST DÉSORMAIS LA SEULE SURFACE (décision du propriétaire,
@@ -293,7 +336,13 @@ async function demarrer(): Promise<void> {
     // « Lancer » étaient les correctifs du 30 août ; ils n'ont plus d'objet.
     installerLeBureau({
         signalingUrl: adresseSignaling(window.location, params.get('signaling')),
-        jeton: acces,
+        // 🔴 **UN FOURNISSEUR, JAMAIS `acces`** (critique ① de la revue
+        // finale) : `ouvrirLaSession` ne court, pour un suiveur, qu'au moment
+        // de sa PROMOTION — potentiellement des heures plus tard —, et un
+        // jeton d'accès vit dix minutes.
+        jetonFrais,
+        // 🔴 **LU ICI, DONC APRÈS `peupler()`** : c'est ce qui donne au verrou
+        // et à la session de contrôle le préfixe de la VM (critique ②).
         prefixe: lirePrefixe(),
         fautesArmees: params.get('faute-fichiers') === '1',
         elements: {

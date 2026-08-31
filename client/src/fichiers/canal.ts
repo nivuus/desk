@@ -25,7 +25,6 @@ import {
     waitForAnswer,
     waitForIceGathering,
 } from '../webrtc';
-import { jetonAcces } from '../jeton';
 import { composer, lirePrefixe } from '../prefixe';
 import type { Racine } from './adaptateur';
 import type { RacineInscriptible } from './ecriture';
@@ -56,6 +55,16 @@ export interface OptionsCanal {
     signalingUrl: string;
     /// L'identifiant COMPLET, préfixe compris. `sessionDuPont()` le compose.
     sessionId: string;
+    /// 🔴 **REÇU, JAMAIS LU DANS LE COFFRE — CORRECTION DE LA REVUE FINALE DU
+    /// 31 AOÛT 2026 (critique ①).** Ce module appelait `jetonAcces()`,
+    /// c'est-à-dire le contenu **BRUT** de `localStorage`, sans passer par
+    /// `jeton.ts::assurerAccesFrais`. Un jeton d'accès vit **dix minutes**
+    /// (`plateforme/src/identite/jeton.ts`) et « Choisir mon dossier » est un
+    /// geste qui peut arriver n'importe quand : le pont présentait donc un
+    /// jeton expiré, et se voyait refuser sa session sans que rien ne relie
+    /// l'échec à l'expiration. **L'appelant redemande un jeton frais et le
+    /// passe ici** (`bureau/fichiers-dom.ts`).
+    jeton: string;
     onStatus?: (message: string) => void;
     /// Appelé pour chaque trame reçue. Rend la trame à réémettre, ou `null`.
     traiter(octets: ArrayBuffer): Promise<ArrayBuffer | null>;
@@ -83,7 +92,7 @@ export async function connecterCanalFichiers(options: OptionsCanal): Promise<Can
         });
     });
     socket.send(
-        JSON.stringify({ role: 'client', session: options.sessionId, jeton: jetonAcces() }),
+        JSON.stringify({ role: 'client', session: options.sessionId, jeton: options.jeton }),
     );
 
     const iceServers = await attendreConfigIce(socket, 2000);

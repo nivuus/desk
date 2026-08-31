@@ -105,6 +105,49 @@ function fermetureDImports(depart: string): string[] {
     return [...vus];
 }
 
+/// Ce module AIGUILLE-T-IL réellement sur `fenetre-ouverte` ?
+///
+/// 🔴 **ANCRÉ SUR LA SYNTAXE, ET IL NE L'ÉTAIT PAS** (Minor ⑦ de la revue
+/// finale du 31 août 2026). Le garde ① cherchait la SOUS-CHAÎNE
+/// `fenetre-ouverte` dans le texte source, **commentaires compris**. La
+/// faiblesse était déclarée comme préexistante — elle est devenue **ARMÉE**
+/// par ce chantier : `bureau/porteur.ts` porte désormais ce mot **en prose**
+/// et vit dans la fermeture d'imports de la racine, si bien que supprimer la
+/// branche réelle de `porteur-dom.ts` aurait laissé ce test **VERT**.
+///
+/// La comparaison `… .type === 'fenetre-ouverte'` est de la syntaxe : elle ne
+/// peut pas naître d'une phrase française. **Un commentaire qui la CITERAIT
+/// entre backticks la satisferait encore** — c'est la limite, et elle est
+/// dite : ce garde exclut la prose ORDINAIRE, jamais un commentaire qui
+/// recopierait le code. Le prix d'un ancrage plus fort (analyser du
+/// TypeScript) n'est pas payable ici.
+const AIGUILLAGE_FENETRE_OUVERTE = /\.type === 'fenetre-ouverte'/;
+
+function aiguilleSurFenetreOuverte(source: string): boolean {
+    return AIGUILLAGE_FENETRE_OUVERTE.test(source);
+}
+
+describe('le garde ① lui-même : ce qu’il accepte et ce qu’il REFUSE', () => {
+    // 🔴 UN CONTRÔLE QU'ON N'A JAMAIS VU ROUGE N'EST PAS UN CONTRÔLE, et le
+    // témoin ne vit PAS dans le dépôt : une prose de test est stable, une
+    // prose de produit ne l'est pas. On éprouve donc le prédicat sur deux
+    // chaînes fabriquées ici, dont l'une est exactement le cas que l'ancien
+    // garde laissait passer.
+    it('REFUSE une simple mention en prose', () => {
+        expect(
+            aiguilleSurFenetreOuverte(
+                '// aucun message fenetre-ouverte n atteint son bureau, qui n ouvre aucun socket',
+            ),
+        ).toBe(false);
+    });
+
+    it('ACCEPTE la comparaison réelle', () => {
+        expect(
+            aiguilleSurFenetreOuverte("if (message.type === 'fenetre-ouverte') bureau.fenetreOuverte(s, t);"),
+        ).toBe(true);
+    });
+});
+
 describe('le parcours : ouvrir le produit, lancer une application, voir sa fenêtre', () => {
     it("① la page servie à la racine traite elle-même « fenetre-ouverte »", () => {
         // 🔴 RÉÉCRIT PAR LA TÂCHE 8 (31 août 2026) : le hub cesse de MENER à
@@ -117,11 +160,45 @@ describe('le parcours : ouvrir le produit, lancer une application, voir sa fenê
         const modules = fermetureDImports(entreeDeLaPage(racine));
         expect(modules.length, 'la fermeture ne peut pas être vide').toBeGreaterThan(1);
 
-        const traite = modules.some((cle) => MODULES[cle].includes('fenetre-ouverte'));
+        // 🔴 SUR LA SYNTAXE, PAS SUR UNE SOUS-CHAÎNE DU TEXTE SOURCE — voir
+        // `AIGUILLAGE_FENETRE_OUVERTE` ci-dessus, et le garde qui l'éprouve.
+        const traite = modules.some((cle) => aiguilleSurFenetreOuverte(MODULES[cle]));
         expect(
             traite,
-            `aucun module de la fermeture de ${racine} ne traite « fenetre-ouverte » : ${modules.join(', ')}`,
+            `aucun module de la fermeture de ${racine} n’AIGUILLE sur « fenetre-ouverte » : ${modules.join(', ')}`,
         ).toBe(true);
+    });
+
+    it('③ la racine RETIENT le préfixe de la VM AVANT d’installer le bureau', () => {
+        // 🔴 CRITIQUE ② DE LA REVUE FINALE : le hub ne posait AUCUN préfixe.
+        // `poserPrefixe` n'avait qu'un appelant de production — `connexion.ts`,
+        // sur la page de CONNEXION —, or ce chantier fait qu'un visiteur
+        // derrière Pomerium obtient son jeton SUR LE HUB et ne passe jamais par
+        // cet écran. `lirePrefixe()` rendait `''`, `composer('', 'bureau')`
+        // rendait `bureau`, et l'agent annonçait sur `<prefixe>:bureau` :
+        // **aucun `fenetre-ouverte` n'arrivait jamais**. Le verrou d'élection,
+        // lui non plus préfixé, rendait vacueuse la protection que
+        // `nomDuVerrou` déclare offrir.
+        //
+        // 🔴 **L'ORDRE EST TOUT** : le bureau compose ses noms de session et de
+        // verrou à partir de `lirePrefixe()`, donc il doit être installé APRÈS.
+        //
+        // ⚠️ **CE QUE CE GARDE VAUT, ET CE QU'IL NE VAUT PAS.** Il lit le
+        // TEXTE SOURCE, comme tout ce fichier — il ne peut pas exécuter
+        // `hub/page.ts`, qui touche le DOM au chargement et que `client/` ne
+        // sait pas monter (ni jsdom ni happy-dom, par convention). Il exige
+        // donc **UNE occurrence de chacun** : une seconde, fût-elle en prose,
+        // le fait ÉCHOUER bruyamment au lieu de le laisser choisir — c'est le
+        // patron de `pageServieALaRacine` ci-dessus.
+        const source = MODULES[entreeDeLaPage(pageServieALaRacine())];
+        const prefixe = [...source.matchAll(/\bretenirLePrefixe\(/g)];
+        const bureau = [...source.matchAll(/\binstallerLeBureau\(/g)];
+        expect(prefixe, 'un seul appel à retenirLePrefixe attendu').toHaveLength(1);
+        expect(bureau, 'un seul appel à installerLeBureau attendu').toHaveLength(1);
+        expect(
+            prefixe[0].index,
+            'le préfixe doit être retenu AVANT que le bureau ne compose ses noms de session',
+        ).toBeLessThan(bureau[0].index);
     });
 
     it('② la surface qui reçoit l’annonce ouvre la fenêtre de l’application', () => {
