@@ -7,7 +7,9 @@ Symptômes rapportés par le propriétaire, qui testait en direct : **« des
 bordures noires de chaque côté »** et **« ça ne resize pas la fenêtre Notepad
 quand je resize la PWA »**.
 
-🔴 **RIEN N'EST DÉPLOYÉ PAR CE LOT.** L'agent n'a pas été redémarré, aucune
+✅ **DÉPLOYÉ LE 31 AOÛT 2026 À 11:48, SUR AUTORISATION EXPLICITE DU PROPRIÉTAIRE**, qui a choisi le moment en sachant que son hub se viderait. Voir le § 7. *(La phrase qui suivait ici — « RIEN N'EST DÉPLOYÉ PAR CE LOT » — était vraie à la rédaction et ne l'est plus : elle est remplacée plutôt que laissée à contredire le § 7.)*
+
+⚠️ **Ce qui reste vrai du paragraphe d'origine :** L'agent n'a pas été redémarré, aucune
 fenêtre du propriétaire n'a été touchée, aucune recette navigateur n'a été
 jouée — le rôle `client` est exclusif et il était connecté. Le binaire croisé
 est bâti et attesté ; sa mise en service appartient au propriétaire.
@@ -236,3 +238,181 @@ donc ouverte — inscrite en legs.
   précéder, contrairement à celle de `windows_source/sortie.rs`. Dit plutôt que
   maquillé : les deux besoins sont apparus à mi-lot, avec la mesure de la barre
   des tâches.
+
+
+---
+
+## 7. Le déploiement (31 août 2026, 11:48)
+
+**Autorisé explicitement par le propriétaire**, qui a choisi le moment.
+
+### 7.1 Une coupling que le plan de déploiement ne nommait pas
+
+🔴 **LES DEUX MOITIÉS DOIVENT PARTIR ENSEMBLE, ET DÉPLOYER `agent.exe` SEUL
+AURAIT ÉTÉ PIRE QUE DE NE RIEN FAIRE.** Le capteur aurait retaillé fenêtre et
+recadrage ; le superviseur, dont la table garde l'ancienne taille tant que le
+client ne la réannonce pas, l'aurait reposée **chaque seconde**. Le symptôme
+aurait été une oscillation à 1 Hz — le « ça marche puis ça revient » que le
+cadrage du lot redoutait, produit par le déploiement et non par le code.
+
+**Ordre retenu : le client D'ABORD** (un vieux superviseur ignore simplement le
+`viewport` d'une session vivante — sans effet), **puis l'agent**.
+
+### 7.2 Le client
+
+| | |
+| --- | --- |
+| Témoin | `type:"viewport"` dans le bundle `main-*.js` : **1 avant, 2 après** — l'ancien déploiement est son propre témoin négatif |
+| Source → destination | `sha256 332f089df2433dc6…` des **deux** côtés |
+| Droits | `chmod -R a+rX` refait — `DynamicUser=yes` rend un UID éphémère, et un incident réel de page blanche l'a déjà coûté |
+| Sauvegarde | `/var/tmp/lot33/dist-avant-lot33` (25 fichiers) |
+
+### 7.3 L'agent — déposé PAR LE PACKAGE
+
+`hooks/agent_payload.py::deposer_agent_console`, `NIVUUS_PACKAGES_DIR` pointé
+sur le checkout `installer` (le défaut `/opt/nivuus-packages` n'existe pas sur
+cette machine, et le hook **lève** en le nommant plutôt que de déposer ailleurs
+en silence).
+
+| | |
+| --- | --- |
+| Payload `console` | `03e2e752…` → **`021556b8947edd80`** |
+| Identité à ma fabrication | `cmp` : **identiques à l'octet près** |
+| **À DESTINATION** (`C:\nivuus\agent\agent.exe`) | **`021556b8947edd80`** — vérifié par `Get-FileHash` DANS la VM, pas à la source |
+| Binaire remplacé | `12040beaae905b3d` (celui du lot 32T), **conservé** en `agent.exe.avant-lot33` |
+
+⚠️ **La taille ne prouve rien et n'a servi à rien** : 20 487 090 → 20 517 753
+octets, un écart qu'une compilation quelconque produirait.
+
+### 7.4 Les cinq témoins, sur le binaire EN PLACE — et l'ancien en contrôle négatif
+
+Mesurés dans la VM, sur `C:\nivuus\agent\agent.exe`, c'est-à-dire le chemin
+que la tâche `guacamole-agent` lance :
+
+| Chaîne | Neuf | Ancien |
+| --- | --- | --- |
+| `zone de travail illisible` (**neuve**) | **2** | **0** |
+| `viewport suivi` (**neuve**) | **1** | — |
+| `sortie virtuelle rendue au pilote` (préexistante) | **1** | — |
+| `zone de travail INEXISTANTE` (**témoin négatif**) | **0** | — |
+| `redimensionnement ignor` (**retirée par le lot**) | **0** | **1** |
+
+🔵 **L'ancien binaire, mesuré par le MÊME instrument dans la MÊME exécution,
+est le contrôle négatif** : il rend l'inverse exact sur les deux chaînes qui
+discriminent.
+
+### 7.5 La relance, et la session
+
+`Get-Process agent` **avant** (5 processus, tués), tâche arrêtée, binaire
+remplacé, tâche relancée à **11:48:00**.
+
+| | |
+| --- | --- |
+| Processus | **3**, tous en **`SessionId = 1`** |
+| Enrôlement | `agent enrôlé auprès de la plateforme url="ws://192.168.3.1:3445/agent" prefixe=3sxuA9dd56NpVdHi37R86g` |
+| `ERROR` depuis la relance | **0** |
+| `redimensionnement ignor` au journal | **0** |
+| Fenêtres adoptées par moi | **0** — aucune recette jouée, aucune fenêtre laissée |
+
+🔴 **DEUX ZÉROS ONT FAILLI ÊTRE LUS COMME DES MESURES, ET AUCUN N'EN ÉTAIT UN.**
+① Un premier relevé visait `C:\nivuus\agent\agent.log`, **qui n'existe pas** :
+les six compteurs rendaient `0`, y compris « ERROR : 0 ». Le vrai journal est
+`C:\nivuus\agent.log`. ② Puis `enrol` et `identite` rendaient `0` — parce que
+le produit écrit **`enrôlé`** et **`identité`**, avec leurs accents : le piège
+que `CLAUDE.md` nomme déjà. **Les deux n'ont été vus qu'en LISANT les lignes au
+lieu de croire les comptes**, et le second relevé porte désormais un témoin
+positif explicite.
+
+### 7.6 Retour en arrière
+
+Un `Copy-Item` : `agent.exe.avant-lot33` → `agent.exe`, plus un `rsync` depuis
+`/var/tmp/lot33/dist-avant-lot33`. **Les deux moitiés doivent revenir
+ensemble**, pour la raison du § 7.1.
+
+---
+
+## 8. Ce que le propriétaire doit regarder — et à quoi ressemble un ÉCHEC
+
+🔴 **Le risque est qu'il dise « ça marche » sur un symptôme voisin.** Ce lot
+touche TROIS choses ; elles se jugent séparément.
+
+### 8.1 Ce qui doit changer
+
+1. **Retailler la PWA doit retailler la fenêtre Windows dedans.** C'est le
+   signe le plus net, et le seul qui ne demande aucun œil exercé.
+2. **Les bandes noires latérales doivent disparaître tant que la PWA reste
+   plus petite que la sortie** — le cas mesuré le plus fréquent (15 des 34).
+3. **La barre des tâches doit sortir du bas de l'image**, et les ~48 px
+   d'application qu'elle recouvrait doivent redevenir visibles et cliquables.
+
+### 8.2 À quoi ressemblerait un ÉCHEC — à dire, pas à taire
+
+- 🔴 **La fenêtre change de taille puis revient, une fois par seconde** : les
+  deux moitiés ne s'accordent pas. C'est le mode d'échec propre à ce lot, et
+  le plus important à rapporter.
+- 🔴 **L'image montre du bureau, du fond d'écran ou une bordure grise** sur un
+  ou deux côtés : la fenêtre a suivi, le recadrage non.
+- ⚠️ **Les bandes noires demeurent quand la PWA est TRÈS large** (plein écran
+  sur un grand moniteur) : **ce n'est PAS une régression, c'est la limite
+  déclarée** — on ne peut pas grandir au-delà de la sortie. Le distinguer du
+  premier cas se fait en rétrécissant la PWA : si les bandes disparaissent en
+  petit, le remède marche et c'est la borne qu'on touche.
+- ⚠️ **La barre des tâches est toujours là mais les bandes ont disparu** (ou
+  l'inverse) : une seule des deux moitiés mord.
+- ⚠️ **Le hub est vide au premier abord** : attendu, c'est le prix du
+  redémarrage, et non un défaut du lot.
+
+### 8.3 Ce qu'un « ça marche » ne prouverait PAS
+
+Ni la latence, ni le curseur (legs du lot 32T, toujours dû), ni l'écart
+desktop/texture de 432 px du lot 32T — qui est **inchangé** : l'image couvre
+toujours la même fraction de la fenêtre qu'avant.
+
+---
+
+## 9. Le contrôle des secrets qui criait à tort — rétractation et fermeture
+
+🔴 **J'AI RAPPORTÉ « un secret en clair dans `journaux-lot31/instrument/
+pilote-lot31.mjs` ». C'ÉTAIT FAUX, ET JE LE RETIRE.** Le dépôt garde ses
+réfutations plutôt que de les effacer.
+
+**Le mécanisme de mon erreur** : j'ai relayé la FORMULATION de l'assertion
+(« des secrets sont affectés en clair ») **sans ouvrir la ligne 19**. C'est
+nommément le patron « réutiliser la sortie d'une commande pour répondre à la
+question d'une AUTRE ». Le message d'échec était exact sur ce que le contrôle
+avait trouvé ; la conclusion que j'en ai tirée était mienne, et fausse.
+
+**La pièce.** La ligne 19 est un commentaire d'usage, et la « valeur » est
+l'ellipse :
+
+```
+//   RECETTE_EMAIL=... RECETTE_MOTDEPASSE=... PLATEFORME_URL=http://h:p \
+```
+
+```
+printf '%s' '...' | sha256sum | cut -c1-16   ->  ab5df625bc76dbd4
+```
+
+— exactement l'empreinte du message d'échec, et une exception préexistante du
+contrôle la décrivait déjà, pour un autre fichier, comme « un OBJET DE
+REMPLACEMENT que le lecteur doit substituer, pas une valeur ».
+
+**La « seconde défaillance » n'existe pas** : `test:sqlite` et `test:postgres`
+sont le MÊME fichier de test et la MÊME assertion, joués contre les deux dos de
+base. J'avais rapporté « 2 étapes » d'une façon qui laissait croire à deux
+trouvailles.
+
+**Fermé au niveau de la VALEUR** (commit `c1bbe6f`), et non du chemin : scanner
+l'intérieur des commentaires est correct et n'était pas le défaut ; le défaut
+était qu'aucune règle générale ne couvrait l'objet de remplacement, exempté
+fichier par fichier — donc destiné à re-crier à chaque nouvel exemple d'usage.
+L'exemption par chemin devenue redondante
+(`2026-07-27-jalon1-tranche-verticale.md` / `WINDOWS_ADMIN_PASSWORD`) est
+**retirée**, et c'est elle qui prouve que la branche mord.
+
+**Vue rouge en trois points**, fichier jetable et suivi, valeur factice
+engendrée à l'instant : un littéral réel **dénoncé**, `abc...` **dénoncé**
+(pas de sur-acceptation), `...` exempté. Fichier désindexé et détruit.
+
+✅ `verify-all.sh` rend **« Les 10 étapes sont passées »** — il en rendait deux
+en échec depuis le lot 31.
