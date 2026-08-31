@@ -162,24 +162,23 @@ fn la_demande_la_plus_frequente_est_desormais_honoree_a_l_aspect_pres() {
 }
 
 /// 🔴 **CE QUE LE LOT NE RÉSOUT PAS, ÉCRIT EN TEST POUR QUE PERSONNE NE CROIE
-/// LE CAS FERMÉ.** `taille_retenue` borne par un `min` axe par axe, qui NE
-/// préserve pas le rapport d'aspect — on recadre une texture, on ne la met pas
-/// à l'échelle. Un viewport plus large que la borne reste donc servi à la
-/// borne, et les bandes noires demeurent sur l'axe débordé.
+/// LE CAS FERMÉ** — la limite est sur la TAILLE, jamais sur la FORME.
 ///
-/// Les deux entrées sont mesurées : `5118x1438` est la plus large des 34
-/// demandes du journal, `1428x1032` la borne réelle de la sortie servie.
-/// `borner_a_la_taille_max` la ramène d'abord à `1919x539` (aspect préservé,
-/// 3,559), puis le `min` la borne à `1428x539` — aspect 2,65 contre 3,559
-/// demandé.
+/// ❌ **CE TEST S'APPELAIT `un_viewport_plus_large_que_la_borne_garde_ses_
+/// bandes_noires` ET ATTENDAIT `(1428, 538)`. LES DEUX ÉTAIENT L'EXPRESSION
+/// DU DÉFAUT**, pas de la limite : `min` axe par axe rendait un rectangle au
+/// mauvais RAPPORT, donc des bandes. Depuis le fit à aspect préservé, un
+/// viewport plus large que la borne est servi **plus PETIT, mais à sa forme
+/// exacte** — et il n'y a plus de bandes du tout.
 ///
-/// **Sans changement de mode d'affichage — que D9 a mesuré et retiré — il n'y
-/// a pas d'autre issue**, et créer la sortie plus grande n'est pas établi en
-/// donner davantage (D8 : une sortie ne naît pas forcément à la taille
-/// demandée).
+/// Ce qui reste vrai, et que ce test garde : on ne dépasse jamais la borne.
 #[test]
-fn un_viewport_plus_large_que_la_borne_garde_ses_bandes_noires() {
-    assert_eq!(taille_pour_viewport((5118, 1438), (1428, 1032)), (1428, 538));
+fn un_viewport_plus_large_que_la_borne_est_reduit_sans_etre_deforme() {
+    let borne = (1428, 1032);
+    let (l, h) = taille_pour_viewport((5118, 1438), borne);
+    assert!(l <= borne.0 && h <= borne.1, "{l}x{h} doit tenir dans {borne:?}");
+    let ecart = ((l as f64 / h as f64) - (5118.0 / 1438.0)).abs() / (5118.0 / 1438.0);
+    assert!(ecart < 0.005, "rapport {l}/{h} contre 5118/1438 : ecart {ecart}");
 }
 
 /// La borne est la ZONE DE TRAVAIL, et c'est ce qui sort la barre des tâches
@@ -190,7 +189,11 @@ fn la_zone_de_travail_retire_les_quarante_huit_rangees_de_la_barre() {
     assert_eq!(borne_de_la_sortie((1428, 1080), Some((1428, 1032))), (1428, 1032));
     // Et le recadrage d'une fenêtre plein cadre les perd donc aussi : c'est le
     // même 1032, et non 1080, qui part à `region_de_sortie`.
-    assert_eq!(taille_pour_viewport((1428, 1080), (1428, 1032)), (1428, 1032));
+    //
+    // ⚠️ La LARGEUR descend avec, à 1364 : c'est le fit à aspect préservé, et
+    // c'est voulu. Rendre `(1428, 1032)` — l'ancien `min` axe par axe —
+    // servirait un 1,384 pour un 1,322 demandé, donc les bandes.
+    assert_eq!(taille_pour_viewport((1428, 1080), (1428, 1032)), (1364, 1032));
 }
 
 /// 🔴 **LE REPLI EST LE COMPORTEMENT D'AVANT LE LOT, ET IL DOIT L'ÊTRE
@@ -230,4 +233,140 @@ fn la_regle_est_stable_sur_son_propre_resultat() {
 #[test]
 fn une_boite_video_repliee_ne_rend_jamais_une_dimension_nulle() {
     assert_eq!(taille_pour_viewport((0, 0), (1860, 1080)), (2, 2));
+}
+
+
+/// Les HUIT tailles que le navigateur du propriétaire a RÉELLEMENT demandées,
+/// relevées le 31 août 2026 dans une capture réseau des trames `viewport`
+/// relayées vers la VM pendant qu'il tirait les bords de sa fenêtre (28
+/// trames, 8 valeurs distinctes).
+///
+/// 🔴 **L'ATTENDU NE VIENT PAS DE CE QU'IL JUGE.** Le seuil de 0,5 % est
+/// dérivé de la RÈGLE, pas d'un calcul sur le résultat : les deux axes sont
+/// arrondis à une valeur PAIRE, donc chacun bouge d'au plus 1 pixel, ce qui
+/// déplace le rapport d'au plus `1/l + 1/h` — de l'ordre de 0,17 % aux
+/// dimensions servies ici. **0,5 % est ce plafond d'arrondi avec de la
+/// marge**, et rien d'autre.
+///
+/// 🔴 **VU ROUGE** : avec le `min` axe par axe d'avant le correctif, les
+/// écarts mesurés sur ces mêmes huit valeurs sont de **2,4 % à 4,7 %** —
+/// jusqu'à neuf fois le seuil. Chacun est une bande de `--video-letterbox`
+/// dont l'épaisseur varie avec le rapport, ce que le propriétaire a décrit.
+const VIEWPORTS_MESURES: [(u32, u32); 8] = [
+    (1724, 1304),
+    (1723, 1303),
+    (2058, 851),
+    (1922, 1092),
+    (1865, 1303),
+    (1785, 1303),
+    (1652, 1206),
+    (1438, 1062),
+];
+
+/// Le plafond d'erreur que l'arrondi pair impose à lui seul. Voir la doc de
+/// `VIEWPORTS_MESURES` pour sa dérivation — il ne se recopie pas d'un
+/// résultat.
+const ECART_D_ARRONDI_MAX: f64 = 0.005;
+
+fn ecart_de_rapport(servi: (u32, u32), demande: (u32, u32)) -> f64 {
+    let (rs, rd) = (servi.0 as f64 / servi.1 as f64, demande.0 as f64 / demande.1 as f64);
+    (rs - rd).abs() / rd
+}
+
+#[test]
+fn les_huit_viewports_mesures_sont_servis_a_leur_propre_rapport() {
+    // La borne relevée sur SA session (sortie 1860×1080, zone de travail
+    // amputée des 48 rangées de la barre des tâches).
+    let borne = (1860, 1032);
+    for demande in VIEWPORTS_MESURES {
+        let servi = taille_pour_viewport(demande, borne);
+        let ecart = ecart_de_rapport(servi, demande);
+        assert!(
+            ecart < ECART_D_ARRONDI_MAX,
+            "{demande:?} servi {servi:?} : ecart de rapport {:.3} % — c'est une bande de \
+             --video-letterbox le long d'une paire de bords",
+            ecart * 100.0
+        );
+        assert!(
+            servi.0 <= borne.0 && servi.1 <= borne.1,
+            "{servi:?} doit tenir dans {borne:?}"
+        );
+    }
+}
+
+/// ⚠️ **NI 1428 NI 1860 NE SONT DES CONSTANTES DE CE PRODUIT**, et ce test est
+/// là pour qu'aucun lecteur ne recopie l'un des deux. La borne en vigueur a
+/// été relevée **différente d'une session à l'autre sur la MÊME machine**
+/// (1428×1032 après un redémarrage, 1860×1032 la session suivante) : elle
+/// vient de `borne_de`, à chaque fois, et jamais d'un nombre écrit quelque
+/// part. Ce dépôt a payé neuf fois le naufrage du 487.
+#[test]
+fn la_regle_honore_la_borne_qu_on_lui_donne_quelle_qu_elle_soit() {
+    for borne in [(1428, 1032), (1860, 1032), (1280, 752), (3840, 2160), (800, 600)] {
+        for demande in VIEWPORTS_MESURES {
+            let servi = taille_pour_viewport(demande, borne);
+            assert!(
+                servi.0 <= borne.0 && servi.1 <= borne.1,
+                "{demande:?} sur {borne:?} rend {servi:?}, qui DÉBORDE"
+            );
+            assert!(
+                ecart_de_rapport(servi, demande) < ECART_D_ARRONDI_MAX,
+                "{demande:?} sur {borne:?} rend {servi:?}, au mauvais rapport"
+            );
+        }
+    }
+}
+
+/// 🔴 **LE CORRECTIF D'ASPECT NE DOIT PAS RENDRE LA BARRE DES TÂCHES.**
+///
+/// ❌ **LA PREMIÈRE RÉDACTION DE CE TEST ÉTAIT VACUEUSE, ET LA MUTATION L'A
+/// MONTRÉ** : elle n'éprouvait que `VIEWPORTS_MESURES`, tous PLUS GRANDS que
+/// la borne sur au moins un axe, donc tous à facteur ≤ 1 — la propriété
+/// « on ne remonte pas » n'y était jamais exercée, et retirer le plafond `1.0`
+/// laissait ce test VERT. *Un test qu'on n'a jamais vu rouge n'est pas un
+/// test.*
+///
+/// 🔵 **Et la mutation a réfuté la RAISON qu'on lui prêtait** : retirer le
+/// plafond ne fait pas rentrer la barre (le résultat reste dans la borne).
+/// Ce qui sort la barre du cadre est `borne_de_la_sortie`, et elle seule.
+///
+/// Ce test garde donc la propriété qui compte vraiment et qui est
+/// falsifiable : **la hauteur servie ne dépasse JAMAIS la zone de travail
+/// qu'on lui donne**, y compris pour une zone de travail que personne n'a
+/// écrite en dur. La hauteur `900` ci-dessous n'est celle d'aucun relevé :
+/// elle est choisie DIFFÉRENTE des valeurs qui traînent dans ce fichier
+/// (1032, 1080) précisément pour qu'un nombre en dur la fasse rougir.
+#[test]
+fn la_hauteur_servie_ne_depasse_jamais_la_zone_de_travail_donnee() {
+    for travail in [(1860, 1032), (1860, 900), (1428, 700), (1280, 752)] {
+        for demande in VIEWPORTS_MESURES {
+            let servi = taille_pour_viewport(demande, travail);
+            assert!(
+                servi.1 <= travail.1,
+                "{demande:?} sur une zone de travail {travail:?} rend une hauteur de {} : \
+                 les rangées de la barre des tâches rentreraient dans le cadre",
+                servi.1
+            );
+        }
+    }
+    // Le cas le plus tentant : une demande DÉJÀ à la hauteur du moniteur. Elle
+    // doit être rabaissée à la zone de travail, jamais servie à 1080.
+    assert!(taille_pour_viewport((1860, 1080), (1860, 1032)).1 <= 1032);
+}
+
+/// Le plafond `1.0` a sa PROPRE propriété, distincte de celle du dessus, et
+/// elle a besoin de son propre test — c'est ce que la mutation a révélé :
+/// **on ne sert jamais une image plus grande que la demande.** Sans lui, un
+/// viewport de 900×500 serait encodé en 1854×1030, soit quatre fois les
+/// macroblocs pour des pixels que la page ne peut pas afficher.
+#[test]
+fn une_demande_plus_petite_que_la_borne_n_est_jamais_agrandie() {
+    let borne = (1860, 1032);
+    for demande in [(900u32, 500u32), (640, 480), (1280, 720)] {
+        let servi = taille_pour_viewport(demande, borne);
+        assert!(
+            servi.0 <= demande.0 && servi.1 <= demande.1,
+            "{demande:?} servi {servi:?} : plus grand que ce que le navigateur a demandé"
+        );
+    }
 }
