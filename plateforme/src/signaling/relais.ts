@@ -353,7 +353,21 @@ export function createSignalingServer(
 
                 const refus = sessions.declarer(declaredSession, declaredRole, socket);
                 if (refus) {
-                    send(socket, { type: 'error', reason: refus });
+                    // 🔴 `motif` EST TYPÉ, `reason` EST UNE PHRASE. Ajouté le
+                    // 31 août 2026 : le hub élit un onglet porteur par Web
+                    // Locks, et son REPLI (navigateur sans cette API) doit
+                    // distinguer « la place est prise » — à avaler en silence,
+                    // un second onglet n'étant pas une faute de l'utilisateur —
+                    // d'un refus d'une autre cause, qu'il faut afficher.
+                    // Trancher sur `reason` obligerait le client à comparer une
+                    // phrase FRANÇAISE, qui se reformule : c'est le piège de F1,
+                    // payé neuf minutes sur deux messages qui partageaient une
+                    // sous-chaîne.
+                    //
+                    // ⚠️ STRICTEMENT ADDITIF : le champ est ajouté, aucun n'est
+                    // retiré (règle §10.2). Un client d'hier ne lit pas `motif`
+                    // et continue de lire `reason`.
+                    send(socket, { type: 'error', reason: refus, motif: 'role-occupe' });
                     return;
                 }
 

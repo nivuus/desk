@@ -172,11 +172,30 @@ describe('serveur de signaling', () => {
     it('rejette un second agent sur la même session', async () => {
         const first = await connect('agent', 's4');
         const second = await connect('agent', 's4');
+        // 🔴 `motif` EST TYPÉ, `reason` EST UNE PHRASE. `toEqual` est STRICT :
+        // c'est lui qui garantit qu'aucun champ n'est parti en douce, et c'est
+        // pourquoi cette assertion est étendue plutôt que doublée.
         expect(await nextMessage(second)).toEqual({
             type: 'error',
             reason: 'un agent est déjà connecté à la session s4',
+            motif: 'role-occupe',
         });
         first.close();
+        second.close();
+    });
+
+    it('le refus porte un motif que le client peut trancher SANS lire la phrase', async () => {
+        // 🔴 C'EST LA RAISON D'ÊTRE DU CHAMP. Le hub élit un onglet porteur
+        // par Web Locks ; son REPLI (navigateur sans cette API) doit
+        // distinguer « la place est prise » — à avaler en silence — d'un refus
+        // d'une autre cause, qu'il faut afficher. Trancher sur `reason`
+        // obligerait le client à comparer une phrase FRANÇAISE, qui se
+        // reformule : le piège de F1.
+        const premier = await connect('client', 's-motif');
+        const second = await connect('client', 's-motif');
+        const message = await nextMessage(second);
+        expect(message.motif).toBe('role-occupe');
+        premier.close();
         second.close();
     });
 
