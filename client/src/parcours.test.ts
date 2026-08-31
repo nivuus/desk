@@ -106,32 +106,22 @@ function fermetureDImports(depart: string): string[] {
 }
 
 describe('le parcours : ouvrir le produit, lancer une application, voir sa fenêtre', () => {
-    it("① la page servie à la racine mène à la surface qui traite « fenetre-ouverte »", () => {
+    it("① la page servie à la racine traite elle-même « fenetre-ouverte »", () => {
+        // 🔴 RÉÉCRIT PAR LA TÂCHE 8 (31 août 2026) : le hub cesse de MENER à
+        // une seconde surface — il tient lui-même la session de contrôle
+        // (`bureau/porteur-dom.ts`, câblé depuis `hub/page.ts`). Chercher une
+        // PAGE NOMMÉE distincte de la racine serait retomber sur la prémisse
+        // que cette tâche retire ; le bon contrôle est désormais que la
+        // fermeture d'imports de la racine elle-même porte le traitement.
         const racine = pageServieALaRacine();
         const modules = fermetureDImports(entreeDeLaPage(racine));
         expect(modules.length, 'la fermeture ne peut pas être vide').toBeGreaterThan(1);
 
-        // La page de bureau que le code de la racine NOMME. Un utilisateur ne
-        // connaît aucune URL : si aucun module de cette fermeture ne nomme une
-        // page, il n'y a pas de chemin — et c'est très exactement l'état du
-        // produit du 30 août 2026 au matin.
-        const pagesNommees = new Set<string>();
-        for (const cle of modules) {
-            for (const m of MODULES[cle].matchAll(/'([a-z-]+\.html)'/g)) pagesNommees.add(m[1]);
-        }
-
-        // 🔴 NOMMER UNE PAGE NE SUFFIT PAS : il faut que ce soit CELLE qui
-        // écoute. Le hub nomme déjà `connexion.html`, qui ne traite aucune
-        // annonce — un contrôle qui se serait contenté de « une page est
-        // nommée » aurait pu virer au VERT sur le produit cassé.
-        const qui = [...pagesNommees].filter(
-            (page) =>
-                page !== racine &&
-                PAGES[clePage(page)] !== undefined &&
-                MODULES[entreeDeLaPage(page)]?.includes('fenetre-ouverte') === true,
-        );
-        expect(qui, `pages nommées depuis ${racine} : ${[...pagesNommees].join(', ')}`)
-            .not.toHaveLength(0);
+        const traite = modules.some((cle) => MODULES[cle].includes('fenetre-ouverte'));
+        expect(
+            traite,
+            `aucun module de la fermeture de ${racine} ne traite « fenetre-ouverte » : ${modules.join(', ')}`,
+        ).toBe(true);
     });
 
     it('② la surface qui reçoit l’annonce ouvre la fenêtre de l’application', () => {

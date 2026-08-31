@@ -33,24 +33,6 @@
         <main class="hub">
             <header class="hub__entete">
                 <h1 class="hub__titre">Applications</h1>
-                <p class="hub__actions">
-                    <!-- 🔴 LE CHEMIN VERS LE BUREAU, ET IL EST VISIBLE.
-                         Avant le 30 août 2026, AUCUN lien de navigation ne
-                         menait du hub à `shell.html` — la seule page qui
-                         traite `fenetre-ouverte`. Le hub étant servi à la
-                         racine depuis le lot 14, l'utilisateur n'atteignait
-                         donc plus jamais son bureau : il lançait une
-                         application et ne voyait rien.
-
-                         ⚠️ UN VRAI `<a>`, PAS UN BOUTON QUI APPELLE
-                         `window.open` : une navigation partie d'un clic sur
-                         un lien n'est bloquée par aucun navigateur, là où
-                         une pop-up ouverte par script l'est hors geste.
-                         `href` et `target` sont posés par `hub/page.ts`
-                         depuis `hub/bureau.ts` : la page du bureau et le nom
-                         de sa fenêtre n'ont qu'UNE source de vérité. -->
-                    <a id="bureau" class="bouton bouton--secondaire">Mon bureau</a>
-                </p>
                 <p id="themes" class="hub__actions" role="group" aria-label="Thème"></p>
             </header>
 
@@ -185,16 +167,18 @@
         </template>
 
         <!--
-          LE BALISAGE D'UNE CARTE VIT ICI, PAS DANS LE TYPESCRIPT. `shell-page.ts`
-          clone ce modèle et le remplit ; il ne construit plus d'éléments à la main.
+          LE BALISAGE D'UNE CARTE VIT ICI, PAS DANS LE TYPESCRIPT.
+          `bureau/fenetres-dom.ts::dessinerFenetres` clone ce modèle et le
+          remplit ; il ne construit plus d'éléments à la main.
 
           Trois raisons, dont la première décide :
             ① toutes les classes restent dans le HTML, donc dans le périmètre le
                plus simple du contrôle §7.9 — celui qui ne dépend d'aucune analyse
                de TypeScript ;
             ② le balisage d'une carte se lit à l'endroit où l'on regarde une page ;
-            ③ `shell-page.ts` reste ce que son en-tête dit qu'il est — « aucune
-               règle ici ».
+            ③ `fenetres-dom.ts` reste ce que son en-tête dit qu'il est — « du
+               câblage, et rien d'autre » (les décisions vivent dans `fenetres.ts`,
+               pur et testé).
 
           ⚠️ LES CROCHETS SONT DES ATTRIBUTS `data-*`, PAS DES CLASSES. Une classe
           sert à peindre ; s'en servir aussi comme point d'accroche du script

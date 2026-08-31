@@ -10,9 +10,11 @@
 // porterait doit descendre dans `catalogue.ts`, `depot.ts` ou `manifeste.ts`,
 // qui sont purs et testés.
 
-import { adressePlateforme } from '../adresse-plateforme';
+import { adressePlateforme, adresseSignaling } from '../adresse-plateforme';
+import { installerLeBureau } from '../bureau/porteur-dom';
 import { installerSelecteurDeThemeAuDOM } from '../design/selecteur-theme';
 import { assurerAccesFrais, paireDeReponse } from '../jeton';
+import { lirePrefixe } from '../prefixe';
 import {
     lancerApplication,
     lireIcone,
@@ -22,7 +24,6 @@ import {
     type DepsCatalogue,
 } from './catalogue';
 import { batirCarte } from './cartes';
-import { NOM_FENETRE_BUREAU, PAGE_DU_BUREAU, ouvrirLeBureau } from './bureau';
 import { deposer, type Ton } from './depot';
 import { batirManifeste } from './manifeste';
 
@@ -40,27 +41,8 @@ const elListe = document.getElementById('applications') as HTMLUListElement;
 const elDepot = document.getElementById('depot') as HTMLElement;
 const elChoisir = document.getElementById('choisir') as HTMLButtonElement;
 const elThemes = document.getElementById('themes');
-const elBureau = document.getElementById('bureau') as HTMLAnchorElement | null;
 
 if (elThemes !== null) installerSelecteurDeThemeAuDOM(elThemes);
-
-/* ── LE CHEMIN VERS LE BUREAU ─────────────────────────────────────────────
-   🔴 DÉFAUT TROUVÉ EN PRODUCTION LE 30 AOÛT 2026, ET CONSÉQUENCE DIRECTE DU
-   PASSAGE DU HUB À LA RACINE (lot 14). Le hub est la seule surface que
-   l'utilisateur atteint, il n'ouvre aucune connexion de signaling, et rien
-   ici ne menait à `shell.html` — la seule page qui traite `fenetre-ouverte`.
-   Le superviseur annonçait donc ses fenêtres à un pair ABSENT (no-op
-   silencieux de `signaling/relais.ts`) et les refusait trente secondes plus
-   tard. Le raisonnement complet — pourquoi ce chemin plutôt que « le hub
-   tient lui-même la session », et ce que le rôle `client` EXCLUSIF impose —
-   est dans l'en-tête de `hub/bureau.ts`.
-
-   L'`href` et le `target` viennent de là-bas, jamais du HTML : une seule
-   source de vérité pour la page du bureau et le nom de sa fenêtre. */
-if (elBureau !== null) {
-    elBureau.href = PAGE_DU_BUREAU;
-    elBureau.target = NOM_FENETRE_BUREAU;
-}
 
 function dire(ton: Ton, texte: string): void {
     elMessage.className = `${CLASSE_DE_TON[ton]} hub__message`;
@@ -162,24 +144,13 @@ function entree(application: ApplicationListee): DocumentFragment {
         modele: document.querySelector<HTMLTemplateElement>('#modele-application')!,
         urlIcone: application.icone_url === null ? null : `${base}${application.icone_url}`,
         lancer: () => {
-            // 🔴 LE MÊME CLIC OUVRE LE BUREAU, ET C'EST LE FOND DU CORRECTIF DU
-            //    30 AOÛT 2026. Un lien visible en en-tête ne suffit pas : il
-            //    demande à l'utilisateur de savoir, AVANT de lancer, qu'une
-            //    seconde surface existe. Ici c'est son geste de lancement qui
-            //    ouvre la surface où la fenêtre paraîtra — et parce que c'est un
-            //    GESTE, aucun navigateur ne bloque cette ouverture-là.
-            //
-            // ⚠️ AVANT le `POST /lancer`, jamais après : un `await` intercalé
-            //    consommerait l'activation transitoire du clic, et l'ouverture
-            //    redeviendrait une pop-up bloquable — c'est le mur que
-            //    `shell-page.ts` heurte déjà, et qu'il ne s'agit pas de déplacer
-            //    d'un cran.
-            //
-            // ⚠️ Le bureau ARRIVE APRÈS l'annonce dans le cas le plus rapide, et
-            //    ce n'est pas un défaut : le relais dit à l'agent qu'un pair est
-            //    présent (`pair-present`, lot 17) et le superviseur REDIT alors
-            //    ses fenêtres en attente, compte à rebours remis à zéro.
-            const bureau = ouvrirLeBureau({ ouvrir: (url, nom) => window.open(url, nom) });
+            // 🔴 LE HUB EST DÉSORMAIS LA SEULE SURFACE (décision du
+            //    propriétaire, 31 août 2026) : il tient lui-même la session de
+            //    contrôle (`installerLeBureau`, en pied de fichier), et la
+            //    fenêtre lancée paraîtra dans la section « Mes fenêtres » de
+            //    CETTE page — plus besoin d'en ouvrir une seconde depuis ce
+            //    clic. Le correctif du 30 août (ouvrir `shell.html` depuis ce
+            //    même geste) n'a donc plus d'objet.
             dire('neutre', `Lancement de ${application.nom}…`);
             void jetonFrais().then((frais) => {
                 if (frais === undefined) {
@@ -187,32 +158,11 @@ function entree(application: ApplicationListee): DocumentFragment {
                     return;
                 }
                 return lancerApplication(application.id, deps).then((issue) => {
-                    // Le corps existant, INCHANGÉ : le bandeau de succès, et
-                    // le bandeau de danger quand le lancement est refusé. Le
-                    // relire dans `hub/page.ts` plutôt que de le retaper — il
-                    // porte deux commentaires 🔴 qui expliquent pourquoi le
-                    // lancement a lieu même si l'ouverture a échoué.
-                    //
-                    // ⚠️ SEULE LA MENTION « Employez « Mon bureau » en haut de
-                    // page » devra partir, en tâche 8 : le lien disparaît, et une
-                    // consigne qui désigne un bouton absent est pire qu'aucune.
                     if (issue.etat !== 'ok') {
                         dire('danger', `${application.nom} n'a pas pu être lancée : ${issue.refus.motif}.`);
                         return;
                     }
-                    // 🔴 AUCUN ÉCHEC MUET, ET LE LANCEMENT A LIEU QUAND MÊME. Refuser
-                    //    de lancer parce que le bureau n'a pas pu s'ouvrir ferait
-                    //    d'une gêne une panne ; taire le bureau manquant ramènerait
-                    //    la panne d'origine — une application lancée que personne ne
-                    //    voit. On fait les deux, et on le dit.
-                    if (bureau) dire('succes', `${application.nom} a été lancée.`);
-                    else {
-                        dire(
-                            'danger',
-                            `${application.nom} a été lancée, mais le navigateur a bloqué l’ouverture du bureau : ` +
-                                'sa fenêtre ne peut pas paraître. Employez « Mon bureau » en haut de page.',
-                        );
-                    }
+                    dire('succes', `${application.nom} a été lancée.`);
                 });
             });
         },
@@ -336,6 +286,30 @@ async function demarrer(): Promise<void> {
     deps = { base, jeton: acces, fetch: window.fetch.bind(window) };
     dire('neutre', '');
     await peupler();
+
+    // ── LE BUREAU, DANS CETTE PAGE ────────────────────────────────────────
+    // 🔴 LE HUB EST DÉSORMAIS LA SEULE SURFACE (décision du propriétaire,
+    // 31 août 2026). Le lien « Mon bureau » et l'ouverture au clic sur
+    // « Lancer » étaient les correctifs du 30 août ; ils n'ont plus d'objet.
+    installerLeBureau({
+        signalingUrl: adresseSignaling(window.location, params.get('signaling')),
+        jeton: acces,
+        prefixe: lirePrefixe(),
+        fautesArmees: params.get('faute-fichiers') === '1',
+        elements: {
+            statut: document.querySelector<HTMLDivElement>('#statut')!,
+            liste: document.querySelector<HTMLUListElement>('#fenetres')!,
+            modele: document.querySelector<HTMLTemplateElement>('#modele-fenetre')!,
+            sectionFenetres: document.querySelector<HTMLElement>('#section-fenetres')!,
+            sectionFichiers: document.querySelector<HTMLDetailsElement>('#section-fichiers')!,
+            boutonDossier: document.querySelector<HTMLButtonElement>('#choisir-dossier')!,
+            etatFichiers: document.querySelector<HTMLDivElement>('#etat-fichiers')!,
+            ecrituresDues: document.querySelector<HTMLDivElement>('#ecritures-dues')!,
+            actionsFichiers: document.querySelector<HTMLParagraphElement>('#actions-fichiers')!,
+            boutonRafraichir: document.querySelector<HTMLButtonElement>('#rafraichir')!,
+            boutonReprendre: document.querySelector<HTMLButtonElement>('#reprendre-enregistrement')!,
+        },
+    });
 }
 
 /// 🔴 **APPELÉE AVANT CHAQUE USAGE, ET C'EST LE POINT DE LA DÉCISION DU
