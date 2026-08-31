@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { accesDeReponse, accesParPomerium, assurerAcces, CLE_ACCES, CLE_RAFRAICHISSEMENT, expireAvant, jetonAcces, poser, poserAcces, rafraichirSiNecessaire, vider } from './jeton';
+import { accesDeReponse, accesParPomerium, assurerAccesFrais, CLE_ACCES, CLE_RAFRAICHISSEMENT, expireAvant, jetonAcces, poser, poserAcces, rafraichirSiNecessaire, vider } from './jeton';
 import type { Coffre } from './jeton';
 
 /// Un coffre factice, en mémoire. Il n'y a AUCUN `localStorage` dans
@@ -277,35 +277,111 @@ describe('accesParPomerium — le chemin de `tenterPomerium`, extrait', () => {
     });
 });
 
-describe('assurerAcces — LE VISITEUR NEUF, coffre vide', () => {
-    it('mode `pomerium` : obtient son jeton par `/auth/moi`, et le POSE au coffre', async () => {
-        // 🔴 C'EST LE TEST QUI MANQUAIT. Un coffre vide, exactement celui
-        // d'un premier visiteur qui ouvre `https://app.allanic.me/`, en mode
-        // `pomerium` — le défaut mesuré en production ce matin.
-        const coffre = coffreFactice();
-        const appel = appelFactice([{ ok: true, corps: { acces: 'J' } }]);
-        expect(await assurerAcces(coffre, 'https://h', appel)).toBe('J');
-        expect(coffre.contenu.get(CLE_ACCES)).toBe('J');
-        expect(appel).toHaveBeenCalledTimes(1);
+describe('assurerAccesFrais', () => {
+    /// Un jeton dont `exp` vaut `expMs`. La signature n'est pas vérifiée par
+    /// le navigateur (voir `expireAvant`), donc un en-tête et une signature
+    /// factices suffisent — c'est ce que font déjà les tests d'`expireAvant`.
+    function jetonExpirantA(expMs: number): string {
+        const charge = btoa(JSON.stringify({ exp: expMs })).replace(/=+$/, '');
+        return `x.${charge}.y`;
+    }
+
+    function coffreAvec(entrees: Record<string, string>): Coffre {
+        const carte = new Map(Object.entries(entrees));
+        return {
+            getItem: (c) => carte.get(c) ?? null,
+            setItem: (c, v) => void carte.set(c, v),
+            removeItem: (c) => void carte.delete(c),
+        };
+    }
+
+    it('un jeton frais est rendu SANS aucun appel reseau', async () => {
+        const coffre = coffreAvec({ [CLE_ACCES]: jetonExpirantA(100_000) });
+        let appels = 0;
+        const acces = await assurerAccesFrais(
+            coffre,
+            'https://h',
+            async () => { appels += 1; return { ok: false, json: async () => ({}) }; },
+            0,
+            async () => { appels += 1; return undefined; },
+        );
+        // 🔴 LE ZERO D'APPELS EST LE SUJET DU TEST, ET IL EST SEUL :
+        // `expect` s'arrete au premier echec, donc une assertion qui compte
+        // ne se place jamais en seconde position.
+        expect(appels).toBe(0);
+        expect(acces).toBe(jetonExpirantA(100_000));
     });
 
-    it("mode `motdepasse` : `/auth/moi` rend 404, aucun jeton n'est obtenu, le coffre reste VIDE", async () => {
-        // Le second test demandé : la panne n'est PAS confondue avec le 404
-        // qui porte le mode. Le résultat `undefined` est ce qui fait
-        // rediriger `hub/page.ts` vers `connexion.html`, où l'utilisateur
-        // PEUT agir — jamais sur une erreur.
-        const coffre = coffreFactice();
-        const appel = appelFactice([{ ok: false }]);
-        expect(await assurerAcces(coffre, 'https://h', appel)).toBeUndefined();
-        expect(coffre.contenu.size).toBe(0);
+    it('un jeton qui expire DANS LA MARGE est traite comme perime', async () => {
+        // `exp` = 20 s, marge = 30 s, maintenant = 0 : encore valide a
+        // l'instant meme, deja perime au sens de la marge.
+        const coffre = coffreAvec({ [CLE_ACCES]: jetonExpirantA(20_000) });
+        const acces = await assurerAccesFrais(
+            coffre,
+            'https://h',
+            async () => ({ ok: true, json: async () => ({ acces: 'FRAIS' }) }),
+            0,
+            async () => undefined,
+        );
+        expect(acces).toBe('FRAIS');
     });
 
-    it('un jeton déjà présent au coffre est rendu SANS appeler le réseau', async () => {
-        // Le rouge serait un aller-retour à chaque ouverture du hub, pour un
-        // cas qui n'en a pas besoin.
-        const coffre = coffreFactice({ [CLE_ACCES]: 'deja-la' });
-        const appel = vi.fn();
-        expect(await assurerAcces(coffre, 'https://h', appel)).toBe('deja-la');
-        expect(appel).not.toHaveBeenCalled();
+    it('un jeton perime avec rafraichissement passe par le rafraichissement, PAS par Pomerium', async () => {
+        const coffre = coffreAvec({
+            [CLE_ACCES]: jetonExpirantA(0),
+            [CLE_RAFRAICHISSEMENT]: 'R',
+        });
+        let pomerium = 0;
+        const acces = await assurerAccesFrais(
+            coffre,
+            'https://h',
+            async () => { pomerium += 1; return { ok: true, json: async () => ({ acces: 'PAR-POMERIUM' }) }; },
+            10_000,
+            async () => ({ acces: jetonExpirantA(999_000), rafraichissement: 'R2' }),
+        );
+        expect(pomerium).toBe(0);
+        expect(acces).toBe(jetonExpirantA(999_000));
+    });
+
+    it('sans jeton de rafraichissement, Pomerium prend le relais et le jeton est POSE', async () => {
+        const coffre = coffreAvec({ [CLE_ACCES]: jetonExpirantA(0) });
+        const acces = await assurerAccesFrais(
+            coffre,
+            'https://h',
+            async () => ({ ok: true, json: async () => ({ acces: 'FRAIS' }) }),
+            10_000,
+            async () => undefined,
+        );
+        expect(acces).toBe('FRAIS');
+        // Pose, sinon le rechargement suivant repaierait l'aller-retour.
+        expect(coffre.getItem(CLE_ACCES)).toBe('FRAIS');
+    });
+
+    it('les deux voies echouent : rend undefined ET vide le coffre', async () => {
+        const coffre = coffreAvec({ [CLE_ACCES]: jetonExpirantA(0) });
+        const acces = await assurerAccesFrais(
+            coffre,
+            'https://h',
+            async () => ({ ok: false, json: async () => ({}) }),
+            10_000,
+            async () => undefined,
+        );
+        expect(acces).toBeUndefined();
+        // 🔴 LE COFFRE EST VIDE, ET C'EST LE POINT : un acces perime laisse
+        // en place ferait echouer la poignee de main plus tard, ailleurs, sur
+        // un refus que rien ne relierait a ici.
+        expect(coffre.getItem(CLE_ACCES)).toBeNull();
+    });
+
+    it('un coffre VIDE va directement a Pomerium', async () => {
+        const coffre = coffreAvec({});
+        const acces = await assurerAccesFrais(
+            coffre,
+            'https://h',
+            async () => ({ ok: true, json: async () => ({ acces: 'FRAIS' }) }),
+            0,
+            async () => undefined,
+        );
+        expect(acces).toBe('FRAIS');
     });
 });

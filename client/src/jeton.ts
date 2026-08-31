@@ -185,28 +185,58 @@ export async function accesParPomerium(
     }
 }
 
-/// Assure qu'un jeton d'accès est disponible, EN L'OBTENANT SI BESOIN.
+/// La marge de fraîcheur : un jeton qui expire dans moins que cela est
+/// traité comme périmé.
 ///
-/// Rend le jeton du coffre s'il y en a déjà un — SANS appeler le réseau : un
-/// aller-retour à chaque ouverture de page serait un coût pour un cas qui
-/// n'en a pas besoin. Sinon, tente `accesParPomerium` et, s'il aboutit, POSE
-/// le jeton obtenu (`poserAcces`) avant de le rendre — c'est ce qui rend un
-/// rechargement ultérieur du hub gratuit, comme il l'est déjà pour la page de
-/// connexion.
+/// ⚠️ **CONSTANTE NON CALIBRÉE, ET DÉCLARÉE COMME TELLE** — comme les
+/// quarante autres de ce dépôt (`CLAUDE.md`, « aucune constante n'est
+/// calibrée »). Elle vaut assez pour qu'un appel parti avec un jeton valide
+/// n'arrive pas expiré, sans forcer un aller-retour à chaque geste.
+export const MARGE_FRAICHEUR_MS = 30_000;
+
+/// Assure qu'un jeton d'accès **UTILISABLE** est disponible, en l'obtenant
+/// si besoin.
 ///
-/// Rend `undefined` quand aucun jeton n'a pu être obtenu par AUCUNE des deux
-/// voies : c'est le signal, pour l'appelant, qu'il doit renvoyer vers l'écran
-/// de connexion plutôt que de montrer une page vide ou un message qui ne dit
-/// pas quoi faire — la règle que `connexion.ts` s'impose déjà pour ses
-/// propres échecs.
-export async function assurerAcces(
+/// 🔴 **CE QUI LA DISTINGUE D'`assurerAcces`, QU'ELLE REMPLACE : elle regarde
+/// si le jeton du coffre est PÉRIMÉ.** `assurerAcces` rendait le contenu du
+/// coffre dès qu'il n'était pas vide — un jeton expiré était donc rendu tel
+/// quel, et chaque appel échouait ensuite sans que rien ne relie l'échec à
+/// l'expiration. C'est la seconde moitié de la demande du 31 août 2026
+/// (« si je vais sur hub.html, ça valide et rafraîchit ma connexion »).
+///
+/// Quatre étapes, dans cet ordre, chacune tentée seulement si la précédente
+/// échoue :
+///   ① le coffre porte un jeton encore frais à `margeMs` près → le rendre,
+///      **sans aucun réseau** : un aller-retour à chaque geste serait un coût
+///      pour un cas qui n'en a pas besoin ;
+///   ② `rafraichirSiNecessaire` — le chemin du mode `motdepasse` ;
+///   ③ `accesParPomerium` → `GET /auth/moi` — le mode `pomerium`, celui de
+///      la production ;
+///   ④ `undefined`, **coffre vidé** : à l'appelant de renvoyer vers l'écran
+///      de connexion.
+///
+/// 🔴 **ELLE NE VÉRIFIE AUCUNE SIGNATURE**, et `expireAvant` le dit déjà : le
+/// navigateur n'a pas le secret. Ce qu'on évite ici est un aller-retour
+/// inutile et un échec inexpliqué, jamais une décision d'autorisation —
+/// celle-ci reste au service, sur chaque poignée de main.
+export async function assurerAccesFrais(
     coffre: Coffre,
     base: string,
-    appel: AppelAuthMoi,
+    appelAuthMoi: AppelAuthMoi,
+    maintenant: number,
+    appelRafraichissement: (
+        corps: unknown,
+    ) => Promise<{ acces: string; rafraichissement: string } | undefined>,
+    margeMs: number = MARGE_FRAICHEUR_MS,
 ): Promise<string | undefined> {
-    const existant = jetonAcces(coffre);
-    if (existant !== undefined) return existant;
-    const frais = await accesParPomerium(base, appel);
+    // ① et ② : `rafraichirSiNecessaire` porte DÉJÀ les deux, et il est testé.
+    // Le réécrire ici en produirait une seconde version à tenir d'accord.
+    if (await rafraichirSiNecessaire(coffre, maintenant, margeMs, appelRafraichissement)) {
+        return jetonAcces(coffre);
+    }
+    // ⚠️ `rafraichirSiNecessaire` a VIDÉ le coffre en rendant `false` : il n'y
+    // a plus rien à présenter, et c'est bien l'état voulu si ③ échoue aussi.
+    const frais = await accesParPomerium(base, appelAuthMoi);
     if (frais === undefined) return undefined;
     poserAcces(coffre, frais);
     return frais;
