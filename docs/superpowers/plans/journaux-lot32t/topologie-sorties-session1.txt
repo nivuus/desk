@@ -1,0 +1,18 @@
+Lot 32T, 31 aout 2026 — releve EnumDisplayMonitors depuis une tache /it,
+la sonde imprimant sa session. Aucune interaction avec le curseur.
+
+SESSION=1
+MONITEUR \\.\DISPLAY1 x=0    y=0 l=1280 h=800
+MONITEUR \\.\DISPLAY6 x=1280 y=0 l=1860 h=1080
+MONITEUR \\.\DISPLAY7 x=3140 y=0 l=1860 h=1080
+MONITEUR \\.\DISPLAY8 x=5000 y=0 l=1860 h=1080
+
+A comparer aux trois creations, dans C:\nivuus\agent.log le meme jour :
+  sortie virtuelle creee id=259 guid=...0001 largeur=1428 hauteur=1080 hertz=60
+  sortie virtuelle creee id=260 guid=...0002 largeur=1428 hauteur=1080 hertz=60
+  sortie virtuelle creee id=261 guid=...0003 largeur=1428 hauteur=1080 hertz=60
+
+LES TROIS SORTIES NAISSENT A 1860 DE LARGE ALORS QUE TOUTES SONT DEMANDEES
+A 1428. Le defaut d'echelle des entrees (1860/1428 = 1,3025, soit +432 px au
+bord droit) etait donc SYSTEMATIQUE sur cette machine, et non le fait d'une
+sortie polluee particuliere.
