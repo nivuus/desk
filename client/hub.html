@@ -12,10 +12,11 @@
         <link rel="stylesheet" href="/src/design/primitives.css" />
         <link rel="stylesheet" href="/src/hub/hub.css" />
         <!-- ⚠️ APRÈS `hub.css`, ET L'ORDRE PORTE LA CASCADE. Cette feuille
-             vient de `shell.html` avec les sections ci-dessous ; elle sera
-             renommée `bureau/bureau.css` quand la page-shell disparaîtra
-             (tâche 9), le nom `shell` mentant dès lors sur ce qu'elle peint. -->
-        <link rel="stylesheet" href="/src/shell.css" />
+             vient de `shell.html` avec les sections ci-dessous ; RENOMMÉE
+             `shell.css` → `bureau/bureau.css` à la tâche 9 (31 août 2026),
+             où `shell.html` cesse de porter tout balisage — le nom `shell`
+             mentait dès lors sur ce qu'elle peint. -->
+        <link rel="stylesheet" href="/src/bureau/bureau.css" />
         <!-- ⚠️ AUCUN `<link rel="manifest">` ICI, ET C'EST LE FOND DE G5.
              Le manifeste du HUB est engendré AU BUILD depuis `tokens.ts` et
              posé par le greffon `guac-manifeste-hub` de `vite.config.ts` : une
@@ -133,8 +134,11 @@
           le HTML, donc dans le périmètre le plus simple du contrôle §7.9 —
           celui qui ne dépend d'aucune analyse de TypeScript ; ② le balisage
           d'une carte se lit à l'endroit où l'on regarde une page. C'est
-          exactement la convention que `shell.html` applique déjà à
-          `#modele-fenetre`.
+          exactement la convention que `#modele-fenetre` applique déjà plus
+          bas dans cette même page — venue de `shell.html` (voir le bloc
+          « CE QUI VIENT DE `shell.html` » plus haut), qui ne porte plus ce
+          gabarit depuis que la page-shell est devenue une redirection
+          (tâche 9).
 
           🔴 `hub__icone--absente` EST DÉCLARÉE ICI, SUR UN ÉLÉMENT QUI NE LA
           PORTE PAS : le script l'AJOUTE quand l'application n'a pas d'icône,

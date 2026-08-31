@@ -71,7 +71,11 @@ const plateformeUrl = adressePlateforme(window.location, params.get('plateforme'
 // Où l'on repart une fois connecté. Le paramètre existe pour que l'écran
 // puisse renvoyer vers la page qui a exigé la connexion, et pas seulement vers
 // la shell.
-const suite = params.get('suite') ?? 'shell.html';
+//
+// 🔴 LA RACINE, PLUS `shell.html` (31 août 2026) : la page-shell est devenue
+// une redirection, et y renvoyer ferait faire un aller-retour inutile à qui
+// vient de se connecter.
+const suite = params.get('suite') ?? '/';
 
 const formulaire = document.querySelector<HTMLFormElement>('#connexion')!;
 const champEmail = document.querySelector<HTMLInputElement>('#email')!;

@@ -93,17 +93,21 @@ const racine = iRacine === -1 ? process.cwd() : args[iRacine + 1];
 
 /** Les surfaces du PRODUIT — celles qu'un utilisateur voit.
  *
- * 🔴 `client/hub.html` Y ENTRE LE 31 AOÛT 2026, ET IL N'Y ÉTAIT PAS : le hub
- * est servi à la racine depuis le lot 14, donc c'est LA surface que
+ * 🔴 `client/hub.html` Y EST ENTRÉ LE 31 AOÛT 2026, ET IL N'Y ÉTAIT PAS : le
+ * hub est servi à la racine depuis le lot 14, donc c'est LA surface que
  * l'utilisateur atteint, et elle était pourtant hors de tout contrôle §7.9.
- * `client/shell.html` y reste jusqu'à ce qu'elle devienne une redirection
- * (tâche 9) — les deux pages emploient les mêmes classes pendant la
- * transition, ce qui est licite et voulu.
+ *
+ * 🔴 ET `client/shell.html` EN EST SORTI LE MÊME JOUR (tâche 9) : la page-shell
+ * est devenue une simple redirection (`shell-page.ts`, trois lignes), et ne
+ * porte plus AUCUNE classe — ni sur `<html>`, ni sur `<body>`, qui ne contient
+ * qu'un `<script>`. La garder ici la ferait compter comme une surface NUE
+ * (aucune famille de primitives employée), ce qui échouerait l'assertion ②
+ * pour une page qui ne peint plus rien : ce n'est pas un manque de primitive,
+ * c'est l'absence de tout balisage.
  */
 const SURFACES_PRODUIT = [
     'client/index.html',
     'client/hub.html',
-    'client/shell.html',
     'client/connexion.html',
 ];
 /** La galerie du jugement humain, celle que ③ interroge. */

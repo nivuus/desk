@@ -30,6 +30,19 @@
 // évaluée sur QUATRE pages au lieu d'une. Ce paragraphe est un relevé DATÉ,
 // donc vrai comme histoire : ne pas le relire au présent.
 //
+// 🔴 `shell.html` EST EXCLU DE L'ASSERTION A DEPUIS LE 31 AOÛT 2026
+// (tâche 9). Elle est devenue une REDIRECTION PURE (`shell-page.ts`, trois
+// lignes) : « AUCUN `<link>` ICI, à dessein » dit son propre commentaire —
+// la page ne peint rien, et lier une feuille ferait un éclair de style avant
+// la redirection. Sans cette exclusion, cette assertion serait FAUSSE PAR
+// CONCEPTION, pour toujours, sur une page qui se comporte exactement comme
+// voulu — le patron que `tokens-orphelins.mjs` nomme « la raison pour
+// laquelle un fichier NE PEUT PAS faire échouer le contrôle, jamais celle
+// pour laquelle il gênerait ». Elle reste comptée dans `pages bâties` (elle
+// sort bien de `npm run build`, `vite.config.ts` la garde dans
+// `rollupOptions.input` pour les PWA déjà installées) — seule l'assertion A
+// l'ignore, B ne pouvant de toute façon pas se juger sur zéro lien.
+//
 // ────────────────────────────────────────────────────────────────────────────
 // PORTÉE HONNÊTE. Ce contrôle vérifie qu'une surface CHARGE les tokens, pas
 // qu'elle les EMPLOIE. Une page qui chargerait la feuille et écrirait ses
@@ -48,6 +61,19 @@ import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 
 const TOKEN_TEMOIN = '--fond-0';
+
+/**
+ * 🔴 LA SEULE EXCLUSION DE L'ASSERTION A. Voir l'encadré ci-dessus. Toute
+ * addition à cette liste doit porter la raison pour laquelle la page NE PEUT
+ * PAS faire échouer le contrôle — pas la raison pour laquelle elle gênerait.
+ */
+const EXCLUS_DE_A = new Map([
+    [
+        'shell.html',
+        'redirection pure depuis le 31 août 2026 (tâche 9) ; elle ne peint ' +
+            'rien et ne lie donc AUCUNE feuille, à dessein — voir son commentaire',
+    ],
+]);
 
 const args = process.argv.slice(2);
 const iDist = args.indexOf('--dist');
@@ -78,6 +104,8 @@ const echecsA = [];
 const echecsB = [];
 
 for (const page of pages) {
+    if (EXCLUS_DE_A.has(page)) continue; // voir l'encadré : redirection pure, aucun lien à dessein.
+
     const chemin = join(dist, page);
     const feuilles = feuillesLiees(chemin);
 
@@ -95,12 +123,18 @@ for (const page of pages) {
 }
 
 console.log(`pages bâties : ${pages.length} (${pages.join(', ')})`);
+for (const [page, raison] of EXCLUS_DE_A) {
+    console.log(`  exclue de A : ${page} — ${raison}`);
+}
 console.log('');
 console.log(`assertion A — un <link rel="stylesheet"> par page : ${echecsA.length} échec(s)`);
 for (const page of echecsA) console.log(`  ÉCHEC A  ${page} : aucune feuille de style liée`);
 console.log(
     `assertion B — une feuille liée déclarant ${TOKEN_TEMOIN} : ${echecsB.length} échec(s)` +
-        ` (évaluée sur ${pages.length - echecsA.length} page(s))`,
+        // Ni les échecs de A, ni les pages EXCLUES DE A (`continue` avant B) ne
+        // sont évaluées par B — les trois pages bâties comptées, les échecs, les
+        // exclues et les évaluées, doivent se retrouver dans ce total.
+        ` (évaluée sur ${pages.length - echecsA.length - EXCLUS_DE_A.size} page(s))`,
 );
 for (const e of echecsB) {
     console.log(`  ÉCHEC B  ${e.page} : lie ${e.feuilles.join(', ')}, aucune ne déclare ${TOKEN_TEMOIN}`);

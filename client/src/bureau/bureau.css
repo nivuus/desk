@@ -1,3 +1,33 @@
+/* La peinture des sections du bureau — « Mes fenêtres » et « Mes fichiers ».
+   🔴 RENOMMÉE DEPUIS `shell.css` LE 31 AOÛT 2026 : la page-shell est devenue
+   une redirection, et le nom `shell` mentait dès lors sur ce qu'elle peint.
+   Elle est liée par `hub.html`, la seule surface du produit.
+
+   🔴 QUATRE RÈGLES EN SONT SORTIES LE MÊME JOUR, DEVENUES ORPHELINES QUAND
+   `shell.html` A CESSÉ DE PORTER SON BALISAGE : `.bureau__titre`,
+   `.bureau__section` et `.bureau__section-titre`. Le hub n'emploie pas ces
+   noms — il a ses propres `hub__section`/`hub__section-titre` (`hub.css`),
+   déclarés à dessein depuis la tâche 5 pour ne PAS dépendre d'une évolution
+   future de cette feuille (voir le commentaire de `hub.css` à leur sujet,
+   écrit avant même que cette tâche n'existe). Retirées ici plutôt que
+   redoublées côté hub : c'est `hub.css` qui porte la décision, cette feuille
+   ne fait que la respecter.
+   ⚠️ `.bureau`, LUI, RESTE — ET CE N'EST PAS UN OUBLI. Aucune classe ne
+   l'emploie plus non plus (le hub porte son propre conteneur, `.hub`), mais
+   sa seule déclaration, `margin-block: var(--e-7)`, est l'UNIQUE emploi de
+   `--e-7` dans tout le dépôt (`grep -rn -- '--e-7\b' client/src` le confirme,
+   hors la déclaration du token lui-même et l'énumération de
+   `galerie.test.ts`). Le retirer ferait tomber `--e-7` en orphelin pour le
+   contrôle §7.6 (`tokens-orphelins.mjs`), qui n'admet aucune exception
+   déclarée (`EN_ATTENTE_D_APPELANT` est VIDE depuis S4) — un échec RÉEL et
+   automatisé, contrairement au risque purement théorique sur les classes
+   elles-mêmes (§7.9 ne vérifie que « employé ⊆ déclaré », jamais le sens
+   inverse — voir son propre commentaire « CE QUE CE CONTRÔLE NE DIT PAS »).
+   Les trois autres retirées ci-dessus n'ont, elles, AUCUN token exclusif :
+   `--e-6`, `--t-2xl`, `--t-xl`, `--texte-fort` et `--lh-serre` ont tous un
+   employeur ailleurs (`hub.css` en tête), vérifié avant de trancher.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 /* ═══════════════════════════════════════════════════════════════════════════
    LA FEUILLE DE LA PAGE-SHELL, ET D'ELLE SEULE — sous-projet ⑥, sous-bloc S3.
 
@@ -80,26 +110,10 @@
     padding-inline: var(--e-5);
 }
 
-.bureau__titre {
-    margin-block: 0 var(--e-5);
-    color: var(--texte-fort);
-    /* `--t-2xl` : le titre de PAGE (spec §4.4). Le cran au-dessus, `--t-3xl`,
-       est celui de l'écran de connexion, qui n'a que lui à montrer. */
-    font-size: var(--t-2xl);
-    line-height: var(--lh-serre);
-}
-
-.bureau__section {
-    /* `--e-6` : la marge des sections. */
-    margin-block-start: var(--e-6);
-}
-
-.bureau__section-titre {
-    margin-block: 0 var(--e-4);
-    color: var(--texte-fort);
-    font-size: var(--t-xl);
-    line-height: var(--lh-serre);
-}
+/* `.bureau__titre`, `.bureau__section` et `.bureau__section-titre` vivaient
+   ici — retirées le 31 août 2026, orphelines dès que `shell.html` a cessé de
+   porter son balisage (le hub emploie `hub__section`/`hub__section-titre`,
+   voir l'en-tête de ce fichier et celui de `hub.css`). */
 
 /* Le bandeau VIDE disparaît, et cette règle-là vit dans
    `design/primitives/message.css` : l'écran de connexion en a besoin à
