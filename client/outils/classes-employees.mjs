@@ -91,8 +91,21 @@ const args = process.argv.slice(2);
 const iRacine = args.indexOf('--racine');
 const racine = iRacine === -1 ? process.cwd() : args[iRacine + 1];
 
-/** Les trois surfaces du PRODUIT — celles qu'un utilisateur voit. */
-const SURFACES_PRODUIT = ['client/index.html', 'client/shell.html', 'client/connexion.html'];
+/** Les surfaces du PRODUIT — celles qu'un utilisateur voit.
+ *
+ * 🔴 `client/hub.html` Y ENTRE LE 31 AOÛT 2026, ET IL N'Y ÉTAIT PAS : le hub
+ * est servi à la racine depuis le lot 14, donc c'est LA surface que
+ * l'utilisateur atteint, et elle était pourtant hors de tout contrôle §7.9.
+ * `client/shell.html` y reste jusqu'à ce qu'elle devienne une redirection
+ * (tâche 9) — les deux pages emploient les mêmes classes pendant la
+ * transition, ce qui est licite et voulu.
+ */
+const SURFACES_PRODUIT = [
+    'client/index.html',
+    'client/hub.html',
+    'client/shell.html',
+    'client/connexion.html',
+];
 /** La galerie du jugement humain, celle que ③ interroge. */
 const GALERIE_PRIMITIVES = 'client/primitives.html';
 

@@ -11,6 +11,11 @@
         <link rel="stylesheet" href="/src/design/socle.css" />
         <link rel="stylesheet" href="/src/design/primitives.css" />
         <link rel="stylesheet" href="/src/hub/hub.css" />
+        <!-- ⚠️ APRÈS `hub.css`, ET L'ORDRE PORTE LA CASCADE. Cette feuille
+             vient de `shell.html` avec les sections ci-dessous ; elle sera
+             renommée `bureau/bureau.css` quand la page-shell disparaîtra
+             (tâche 9), le nom `shell` mentant dès lors sur ce qu'elle peint. -->
+        <link rel="stylesheet" href="/src/shell.css" />
         <!-- ⚠️ AUCUN `<link rel="manifest">` ICI, ET C'EST LE FOND DE G5.
              Le manifeste du HUB est engendré AU BUILD depuis `tokens.ts` et
              posé par le greffon `guac-manifeste-hub` de `vite.config.ts` : une
@@ -73,6 +78,69 @@
             <div id="message" class="message hub__message" role="status"></div>
 
             <ul id="applications" class="hub__grille"></ul>
+
+            <!-- ═══ CE QUI VIENT DE `shell.html`, LE 31 AOÛT 2026 ═══════════
+                 La page-shell est devenue une redirection : le hub est
+                 désormais la SEULE surface. Ces deux sections viennent d'elle
+                 telles quelles — mêmes identifiants, mêmes crochets `data-*`,
+                 même `<template>` — pour que `shell.ts`, qui est pur et testé,
+                 soit RÉUTILISÉ et non réécrit.
+
+                 🔴 LES CROCHETS D'INSTRUMENT SURVIVENT AU DÉPLACEMENT :
+                 `data-dues`, `data-vues` et `data-retenues` sont lus par les
+                 pilotes de recette, et JAMAIS le texte — piège de F1, payé
+                 neuf minutes sur deux messages qui partageaient une
+                 sous-chaîne. -->
+
+            <div id="statut" class="message hub__message" role="status"></div>
+
+            <!-- ⚠️ `hidden` PAR DÉFAUT, ET RETIRÉ PAR LE SCRIPT DÈS QU'IL Y A
+                 UNE FENÊTRE. Une section montrant en permanence « aucune
+                 fenêtre ouverte » serait du bruit sur l'état NOMINAL d'un hub
+                 qu'on vient d'ouvrir (décision du propriétaire, spec §4.1). -->
+            <section id="section-fenetres" class="hub__section" hidden>
+                <h2 class="hub__section-titre">Mes fenêtres</h2>
+                <ul id="fenetres" class="bureau__fenetres"></ul>
+            </section>
+
+            <!-- ⚠️ REPLIÉE, JAMAIS RETIRÉE : « Choisir mon dossier » doit
+                 rester atteignable en un geste. `<details>` porte le pli
+                 nativement — un élément replié reste dans le DOM, donc reste
+                 lisible par un pilote de recette ; un élément RETIRÉ ne l'est
+                 pas, et c'est pourquoi c'est un pli et non un rendu
+                 conditionnel. Le script l'ouvre (`open = true`) dès qu'un pont
+                 est monté, pour que le compteur d'écritures dues et le bouton
+                 « Reprendre » ne soient jamais cachés au moment où ils
+                 comptent. -->
+            <details id="section-fichiers" class="hub__section">
+                <summary class="hub__section-titre">Mes fichiers</summary>
+                <div class="bureau__actions">
+                    <button id="choisir-dossier" type="button" class="bouton bouton--secondaire">
+                        Choisir mon dossier
+                    </button>
+                </div>
+                <div id="etat-fichiers" class="message bureau__bandeau" role="status"></div>
+                <div
+                    id="ecritures-dues"
+                    class="message bureau__bandeau"
+                    role="status"
+                    data-dues="0"
+                    data-vues="0"
+                ></div>
+                <p class="bureau__actions" data-retenues="false" id="actions-fichiers">
+                    <button id="rafraichir" type="button" class="bouton bouton--discret">
+                        Rafraîchir
+                    </button>
+                    <button
+                        id="reprendre-enregistrement"
+                        type="button"
+                        class="bouton bouton--secondaire"
+                        hidden
+                    >
+                        Reprendre l’enregistrement
+                    </button>
+                </p>
+            </details>
         </main>
 
         <!--
@@ -114,6 +182,36 @@
                     </p>
                 </div>
             </li>
+        </template>
+
+        <!--
+          LE BALISAGE D'UNE CARTE VIT ICI, PAS DANS LE TYPESCRIPT. `shell-page.ts`
+          clone ce modèle et le remplit ; il ne construit plus d'éléments à la main.
+
+          Trois raisons, dont la première décide :
+            ① toutes les classes restent dans le HTML, donc dans le périmètre le
+               plus simple du contrôle §7.9 — celui qui ne dépend d'aucune analyse
+               de TypeScript ;
+            ② le balisage d'une carte se lit à l'endroit où l'on regarde une page ;
+            ③ `shell-page.ts` reste ce que son en-tête dit qu'il est — « aucune
+               règle ici ».
+
+          ⚠️ LES CROCHETS SONT DES ATTRIBUTS `data-*`, PAS DES CLASSES. Une classe
+          sert à peindre ; s'en servir aussi comme point d'accroche du script
+          rendrait tout renommage visuel capable de casser le câblage en silence.
+        -->
+        <template id="modele-fenetre">
+          <li class="bureau__fenetre">
+            <article class="carte bureau__carte">
+              <h3 class="carte__titre" data-titre></h3>
+              <p class="carte__corps">
+                <span class="bureau__pastille" data-etat></span>
+              </p>
+              <div class="bureau__actions">
+                <button type="button" class="bouton bouton--discret" data-rouvrir>Rouvrir</button>
+              </div>
+            </article>
+          </li>
         </template>
         <script type="module" src="/src/hub/page.ts"></script>
     </body>
