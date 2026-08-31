@@ -2,8 +2,11 @@
    LA FEUILLE DE L'ÉCRAN DE CONNEXION, ET DE LUI SEUL — sous-bloc S3.
 
    Trois surfaces, trois feuilles, une convention : `style.css` pour la fenêtre
-   de session, `shell.css` pour le bureau, celle-ci pour la connexion. Aucune ne
-   connaît les deux autres, et aucun sélecteur d'élément nu n'y apparaît — c'est
+   de session, `bureau/bureau.css` pour le bureau (`shell.css` jusqu'au 31 août
+   2026, renommée avec la page), celle-ci pour la connexion. ⚠️ Une QUATRIÈME
+   feuille existe depuis G5, `hub/hub.css` — cette phrase est un énoncé de S3
+   dont seul le NOMBRE a vieilli, et la convention, elle, tient. Aucune ne
+   connaît les autres, et aucun sélecteur d'élément nu n'y apparaît — c'est
    ce qui garantit qu'elle ne peut RIEN changer aux deux autres surfaces.
 
    🔴 ELLE SE LIE DEPUIS `connexion.html`, ELLE NE S'IMPORTE JAMAIS —
@@ -11,8 +14,9 @@
    Vite partager.
 
    ⚠️ CET ÉCRAN EST SOUVENT LA PREMIÈRE SURFACE, ET PARFOIS LA SEULE, qu'un
-   utilisateur non authentifié voie : `shell-page.ts` y redirige tout visiteur
-   sans jeton. C'est la raison pour laquelle le sélecteur de thème y figure,
+   utilisateur non authentifié voie : `hub/page.ts` y redirige tout visiteur
+   sans jeton (`shell-page.ts` le faisait jusqu'au 31 août 2026 ; depuis que le
+   hub est la SEULE surface, cette page n'est plus qu'une redirection vers `/`). C'est la raison pour laquelle le sélecteur de thème y figure,
    alors que la spec §5.2 ne le nomme que pour la page-shell et le hub —
    extension raisonnée, déclarée au §6.2 du plan S3.
 
@@ -45,7 +49,8 @@
    L'étiquette « hors échelle » posée deux fois plus bas est donc plus LARGE
    que le compte : elle dit « ne vient d'aucun cran », ce qui est vrai des
    deux ; le compte, lui, en retient une. Total à la fin de S3 : SIX, énuméré
-   dans l'en-tête de `shell.css`.
+   dans l'en-tête de `bureau/bureau.css` (`shell.css` à l'époque de cet
+   énoncé — le fichier a été renommé le 31 août 2026, pas déplacé de contenu).
    ⚠️ CE BLOC EST UN ÉNONCÉ DATÉ, ET IL RESTE VRAI COMME HISTOIRE : le barrer
    le rendrait faux. Annotation datée du sous-bloc S4, tâche 8 : `26rem` est
    devenue `--contenant-carte` et le total est tombé à ZÉRO ; il ne reste
@@ -109,7 +114,8 @@
 }
 
 /* Le groupe des trois boutons de thème. Même forme que `.bureau__actions` de
-   `shell.css` — mais la règle N'EST PAS IDENTIQUE (celle-ci porte en plus
+   `bureau/bureau.css` (`shell.css` avant le 31 août 2026) — mais la règle
+   N'EST PAS IDENTIQUE (celle-ci porte en plus
    l'alignement centré propre à une carte), donc elle ne remonte pas dans les
    primitives : le §6.3 ne fait remonter que ce qui est écrit PAREIL. */
 .connexion__actions {

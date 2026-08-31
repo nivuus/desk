@@ -2,8 +2,12 @@
    LA FEUILLE DU HUB, ET DE LUI SEUL — sous-bloc G5.
 
    Quatre surfaces, quatre feuilles, une convention héritée de S3 : `style.css`
-   pour la fenêtre de session, `shell.css` pour le bureau, `connexion.css` pour
-   la connexion, celle-ci pour le hub. Aucune ne connaît les trois autres, et
+   pour la fenêtre de session, `bureau/bureau.css` pour le bureau (`shell.css`
+   jusqu'au 31 août 2026), `connexion.css` pour la connexion, celle-ci pour le
+   hub. ⚠️ DEPUIS LE 31 AOÛT 2026 LES DEUX DERNIÈRES SE LISENT DANS LA MÊME
+   PAGE : le hub étant la seule surface, `hub.html` lie `hub.css` ET
+   `bureau/bureau.css` — « quatre feuilles » reste vrai, « quatre surfaces » ne
+   l'est plus. Aucune ne connaît les trois autres, et
    AUCUN SÉLECTEUR D'ÉLÉMENT NU n'y apparaît — c'est ce qui garantit qu'elle ne
    peut RIEN changer aux autres surfaces.
 

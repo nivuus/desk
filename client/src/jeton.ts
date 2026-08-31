@@ -76,25 +76,35 @@ export function vider(coffre: Coffre): void {
 /// après chaque ouverture de page.
 ///
 /// ⚠️ CE QUE FAIT LE PRODUIT À L'EXPIRATION, ET NON CE QU'ON VOUDRAIT QU'IL
-/// FASSE. Ce commentaire a écrit « à l'expiration, le client rappelle
-/// `GET /auth/moi` » : **aucun code ne le fait**, et la revue transverse du
-/// chantier `auth-pomerium` l'a relevé. `rafraichirSiNecessaire` (plus bas)
-/// n'a **aucun appelant de production** :
+/// FASSE — ET CE PARAGRAPHE A ÉTÉ FAUX PENDANT DIX JOURS, PUIS DE NOUVEAU
+/// PENDANT UNE JOURNÉE. Il a d'abord écrit « à l'expiration, le client
+/// rappelle `GET /auth/moi` » alors qu'**aucun code ne le faisait**, et la
+/// revue transverse du chantier `auth-pomerium` l'a relevé. Il a ensuite
+/// affirmé l'inverse — que `rafraichirSiNecessaire` (plus bas) « n'a aucun
+/// appelant de production », que le `grep` ci-dessous « rend CINQ lignes, une
+/// définition et quatre usages de test, pas un appel », et que le seul chemin
+/// vers `/auth/moi` était un rechargement à la main. 🔴 **LES TROIS SONT
+/// DEVENUES FAUSSES LE 31 AOÛT 2026**, quand `assurerAccesFrais` (plus bas) a
+/// pris `rafraichirSiNecessaire` pour son étape ② et `accesParPomerium` pour
+/// son étape ③, et que `hub/page.ts` a appelé `assurerAccesFrais` avant chaque
+/// usage. **Relancer la commande, ne jamais recopier son chiffre :**
 ///
 ///     grep -rn 'rafraichirSiNecessaire(' client/src --include='*.ts' | grep -v '///'
 ///
-/// rend CINQ lignes — une définition et quatre usages de test, pas un appel.
 /// ⚠️ LE SECOND `grep` N'EST PAS DÉCORATIF : sans lui, la commande compte LES
 /// LIGNES DE CE COMMENTAIRE, et le chiffre annoncé cesse d'être celui qu'elle
 /// rend. La vague de correction du 21 août 2026 a payé ce patron QUATRE fois
 /// dans la même ronde — un `grep` cité s'ancre sur la syntaxe, jamais sur un
-/// nom que la prose environnante répète. Et `tenterPomerium`
-/// (`connexion.ts`) ne court **qu'au chargement de la page de connexion**. Ce
-/// qui se passe réellement en mode `pomerium` : le jeton expire, la poignée de
-/// main suivante est refusée, et l'utilisateur RECHARGE la page — c'est ce
-/// rechargement, et lui seul, qui rappelle `/auth/moi`. Le cookie Pomerium
-/// vivant 8640 h, ce rechargement est silencieux pour lui ; il n'en reste pas
-/// moins un geste, pas un rafraîchissement automatique.
+/// nom que la prose environnante répète.
+///
+/// **CE QUE FAIT LE PRODUIT AUJOURD'HUI**, en mode `pomerium` : le jeton du
+/// coffre est éprouvé par `assurerAccesFrais` **avant chaque usage** ; s'il
+/// est périmé à `MARGE_FRAICHEUR_MS` près, `/auth/moi` est rappelé sans qu'un
+/// geste soit nécessaire. Le cookie Pomerium vivant 8640 h, cet aller-retour
+/// est silencieux. ⚠️ Ce qui n'a PAS changé : `tenterPomerium`
+/// (`connexion.ts`) ne court toujours **qu'au chargement de la page de
+/// connexion**, et `poserAcces` — la fonction ci-dessous — reste le seul
+/// endroit qui efface le jeton de rafraîchissement.
 export function poserAcces(coffre: Coffre, acces: string): void {
     coffre.setItem(CLE_ACCES, acces);
     coffre.removeItem(CLE_RAFRAICHISSEMENT);

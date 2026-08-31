@@ -98,7 +98,9 @@ const racine = iRacine === -1 ? process.cwd() : args[iRacine + 1];
  * l'utilisateur atteint, et elle était pourtant hors de tout contrôle §7.9.
  *
  * 🔴 ET `client/shell.html` EN EST SORTI LE MÊME JOUR (tâche 9) : la page-shell
- * est devenue une simple redirection (`shell-page.ts`, trois lignes), et ne
+ * est devenue une simple redirection — le corps de `shell-page.ts` tient en un
+ * `import` et un `location.replace`, tout le reste y étant du commentaire ;
+ * `wc -l` pour la taille, jamais un nombre recopié ici. Elle ne
  * porte plus AUCUNE classe — ni sur `<html>`, ni sur `<body>`, qui ne contient
  * qu'un `<script>`. La garder ici la ferait compter comme une surface NUE
  * (aucune famille de primitives employée), ce qui échouerait l'assertion ②

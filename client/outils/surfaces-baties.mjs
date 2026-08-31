@@ -31,8 +31,10 @@
 // donc vrai comme histoire : ne pas le relire au présent.
 //
 // 🔴 `shell.html` EST EXCLU DE L'ASSERTION A DEPUIS LE 31 AOÛT 2026
-// (tâche 9). Elle est devenue une REDIRECTION PURE (`shell-page.ts`, trois
-// lignes) : « AUCUN `<link>` ICI, à dessein » dit son propre commentaire —
+// (tâche 9). Elle est devenue une REDIRECTION PURE — le corps de
+// `shell-page.ts` tient en un `import` et un `location.replace`, tout le
+// reste y étant du commentaire ; `wc -l` pour la taille, jamais un nombre
+// recopié ici. « AUCUN `<link>` ICI, à dessein » dit son propre commentaire —
 // la page ne peint rien, et lier une feuille ferait un éclair de style avant
 // la redirection. Sans cette exclusion, cette assertion serait FAUSSE PAR
 // CONCEPTION, pour toujours, sur une page qui se comporte exactement comme

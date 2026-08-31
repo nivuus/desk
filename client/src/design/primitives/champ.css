@@ -22,7 +22,8 @@
    encore en liste d'attente sous l'annotation "l'écart interne d'une
    étiquette", c'est-à-dire d'une famille que la spec §6 ne confie PAS à S2 ».
    `--e-1` EST SORTI DE LA LISTE au sous-bloc S3, tâche 4 : la pastille d'état
-   de la page-shell le consomme (`client/src/shell.css`, `.bureau__pastille`).
+   du bureau le consomme (`client/src/bureau/bureau.css`, `.bureau__pastille` —
+   `client/src/shell.css` jusqu'au renommage du 31 août 2026).
    Ce qui tient toujours est le fond de l'argument — le consommer ICI pour
    vider une ligne de liste aurait été satisfaire un contrôle en vidant
    l'autre, et l'écart interne d'un champ n'est pas celui d'une étiquette.
