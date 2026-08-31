@@ -176,6 +176,64 @@ impl Lisere {
     }
 }
 
+/// L'enveloppe totale à ajouter autour du recadrage : le lisère **invisible**
+/// de DWM, **plus** la bordure que Windows **PEINT** autour de la fenêtre.
+///
+/// 🔴 **LA SECONDE MOITIÉ A ÉTÉ TROUVÉE EN REGARDANT L'IMAGE, ce que ce lot
+/// n'avait jamais fait.** Capture de la sortie virtuelle en session 1, le
+/// 31 août 2026, et relevé des couleurs sur les bords du recadrage
+/// (1548×1032) :
+///
+/// ```text
+/// rangee 0    (bord HAUT)   : #494949    | rangee 1    (voisine) : #F3F3F3
+/// rangee 1031 (bord BAS)    : #2F2F2F    | rangee 1030 (voisine) : #F0F0F0
+/// colonne 0   (bord GAUCHE) : #2F2F2F    | colonne 1   (voisine) : #FFFFFF
+/// colonne 1547(bord DROIT)  : #2F2F2F    | colonne 1546(voisine) : #F0F0F0
+/// ```
+///
+/// **Exactement UN pixel sombre sur les quatre bords, et la voisine immédiate
+/// est claire.** `#2F2F2F` est la bordure de fenêtre de Windows en thème
+/// sombre. En faisant coïncider le recadrage avec
+/// `DWMWA_EXTENDED_FRAME_BOUNDS` **au pixel près**, le correctif précédent a
+/// cadré pile dessus : ce n'est pas une erreur de calcul, c'est **la
+/// définition du rectangle qu'on avait choisi pour cible**.
+///
+/// 🔴 **ET CETTE MESURE ÉLIMINE AUSSI LA PISTE DU CACHE NAVIGATEUR** : les
+/// pixels sont lus **dans la VM**, sans navigateur d'aucune sorte. La bordure
+/// est DANS l'image, quel que soit ce que la page affiche.
+///
+/// ⚠️ **`bordure` N'EST PAS UN NOMBRE ÉCRIT ICI** : elle vient de
+/// `GetSystemMetrics(SM_CXBORDER/SM_CYBORDER)`, une métrique documentée qui
+/// **suit le DPI** — relevée à `1` pour un DPI système de `96` sur cette
+/// machine. Écrire `1` en dur serait le naufrage du 487.
+pub fn enveloppe(dwm: Lisere, bordure: (i32, i32)) -> Lisere {
+    Lisere {
+        gauche: dwm.gauche + bordure.0,
+        haut: dwm.haut + bordure.1,
+        droite: dwm.droite + bordure.0,
+        bas: dwm.bas + bordure.1,
+    }
+}
+
+/// Le rectangle **du recadrage** correspondant à un cadre visible donné :
+/// le cadre, **débarrassé de la bordure peinte**.
+///
+/// 🔴 **LE PENDANT EXACT DE `enveloppe`, ET IL DOIT LE RESTER.** `poser` pose
+/// la fenêtre 1 px plus au large que le recadrage ; si `rectangle_de` rendait
+/// le cadre visible **brut**, le contrôle périodique comparerait `crop + 1` à
+/// `crop` et verrait un écart permanent. Il tomberait sous `TOLERANCE_PX`
+/// aujourd'hui — mais s'appuyer là-dessus serait faire reposer une propriété
+/// sur une tolérance faite pour autre chose (les arrondis de DWM). Les deux
+/// fonctions se répondent, et le test d'aller-retour les tient ensemble.
+pub fn sans_la_bordure(cadre: &Rect, bordure: (i32, i32)) -> Rect {
+    Rect {
+        x: cadre.x + bordure.0,
+        y: cadre.y + bordure.1,
+        width: cadre.width.saturating_add_signed(-2 * bordure.0),
+        height: cadre.height.saturating_add_signed(-2 * bordure.1),
+    }
+}
+
 /// Le rectangle à passer à `SetWindowPos` pour que le cadre **VISIBLE** occupe
 /// exactement `cible`.
 ///
@@ -282,7 +340,16 @@ mod win {
             // Le lisère est relu APRÈS `ShowWindow` : sur une fenêtre
             // minimisée, DWM rend un cadre qui ne veut rien dire. Un échec de
             // DWM rend `Lisere::NUL`, donc le comportement d'avant.
-            let pose = rect_a_poser(cible, crate::window::lisere_dwm(hwnd).unwrap_or_default());
+            // L'enveloppe TOTALE : le lisère invisible de DWM, plus la
+            // bordure que Windows peint (mesurée à 1 px sur les quatre bords
+            // du recadrage — voir `enveloppe`). La fenêtre est donc posée
+            // légèrement PLUS AU LARGE que le recadrage, et sa bordure tombe
+            // hors de l'image.
+            let enveloppe_totale = enveloppe(
+                crate::window::lisere_dwm(hwnd).unwrap_or_default(),
+                crate::window::bordure_peinte(),
+            );
+            let pose = rect_a_poser(cible, enveloppe_totale);
             SetWindowPos(
                 hwnd,
                 Some(HWND_TOP),
@@ -321,7 +388,10 @@ mod win {
     pub fn rectangle_de(hwnd: HWND) -> Result<Rect> {
         let brut = crate::window::rectangle_brut(hwnd)?;
         Ok(match crate::window::cadre_visible(hwnd) {
-            Ok(visible) => visible,
+            // Le cadre visible INCLUT la bordure peinte ; le recadrage, lui,
+            // s'arrête juste en dedans. On rend donc ce à quoi la cible est
+            // comparable — voir `sans_la_bordure`.
+            Ok(visible) => sans_la_bordure(&visible, crate::window::bordure_peinte()),
             Err(_) => brut,
         })
     }

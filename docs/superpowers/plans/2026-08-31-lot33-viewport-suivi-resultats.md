@@ -962,3 +962,86 @@ pas mordre, mais la page elle-même peut être servie depuis le cache.
 - 🔴 **Les trois gains perdus** — la fenêtre ne suit plus, la barre des tâches
   revient, les marges se remettent à varier avec la forme : ce serait une
   régression du côté agent, **que ce déploiement n'a pourtant pas touché**.
+
+---
+
+## 16. La bordure noire d'1 px : j'ai regardé l'image, et c'est la fenêtre elle-même
+
+*« J'ai encore une bordure noir de 1px des 4 côtés »* — après le retrait du
+liseré d'accent, dont l'attestation était pourtant bonne (0 lecteur dans le CSS
+bâti, servi en `HTTP 200`).
+
+🔴 **C'est nommément le mode d'échec que j'avais écrit** (« une marge NOIRE
+subsiste ⇒ ce n'était jamais la bordure, le §14 tombe »). Rouvert.
+
+### 16.1 Ce que les pixels disent
+
+Capture de la sortie virtuelle **en session 1**, et relevé des couleurs sur les
+bords du recadrage (1548×1032) — **la première fois que ce lot regarde une
+image** :
+
+```
+rangee 0    (bord HAUT)   : #494949  |  rangee 1     (voisine) : #F3F3F3
+rangee 1031 (bord BAS)    : #2F2F2F  |  rangee 1030  (voisine) : #F0F0F0
+colonne 0   (bord GAUCHE) : #2F2F2F  |  colonne 1    (voisine) : #FFFFFF
+colonne 1547(bord DROIT)  : #2F2F2F  |  colonne 1546 (voisine) : #F0F0F0
+```
+
+**Exactement UN pixel sombre sur les quatre bords, clair juste en dedans.** La
+prédiction était falsifiable et elle est confirmée. Le coin agrandi ×12 le
+montre à l'œil : une ligne d'un pixel en haut et à gauche, la barre de titre
+claire immédiatement à l'intérieur.
+
+`#2F2F2F` est **la bordure que Windows peint autour de la fenêtre** en thème
+sombre. En faisant coïncider le recadrage avec `DWMWA_EXTENDED_FRAME_BOUNDS`
+**au pixel près** (§ 13, écart 0x0), le correctif précédent a cadré **pile
+dessus** : ce n'est pas une erreur de calcul, c'est **la définition du
+rectangle qu'on avait choisi pour cible**.
+
+### 16.2 Les deux autres pistes, éliminées — et l'une l'est par cette mesure
+
+- 🔵 **Le cache navigateur : ÉLIMINÉ.** Les pixels sont lus **dans la VM**,
+  sans navigateur d'aucune sorte. La bordure est **dans l'image**, quoi que la
+  page affiche. Il n'a pas été nécessaire d'attendre sa réponse.
+- 🔵 **La lisière sous-pixel de `contain` : ÉLIMINÉE par l'arithmétique.**
+  Boîte `1378x1080` contre image `1316x1032` → **0,40 px sur GAUCHE/DROITE**,
+  et **exactement 0,00 px** sur l'autre paire. `contain` centre l'image : il ne
+  laisse **jamais** quatre bords, même à `devicePixelRatio` fractionnaire, où
+  l'arrondi n'ajoute au plus ~1 px que sur **la même paire**.
+
+### 16.3 Le remède, et pourquoi il n'est pas un nombre magique
+
+La fenêtre est posée **un pixel plus au large** que le recadrage sur chaque
+bord, de sorte que sa bordure peinte tombe **hors** de l'image.
+
+🔴 **L'épaisseur n'est PAS écrite en dur** : elle vient de
+`GetSystemMetrics(SM_CXBORDER/SM_CYBORDER)`, métrique documentée qui **suit le
+DPI**, relevée à **`(1, 1)` pour un DPI système de 96** — et **la mesure de
+l'image et la métrique du système concordent**, ce qui est ce qui autorise à se
+fier à la seconde. Écrire `1` serait le naufrage du 487.
+
+`enveloppe()` compose lisère invisible + bordure peinte ; `sans_la_bordure()`
+est son pendant exact côté relecture. **Les deux vont ensemble** : sans le
+second, le contrôle périodique comparerait `crop + 1` à `crop` — un écart qui
+tomberait sous `TOLERANCE_PX` aujourd'hui, mais faire reposer une propriété sur
+une tolérance faite pour autre chose est précisément ce qu'on ne veut pas.
+
+**Rouges** : bordure ignorée → **3** tests rouges ; `sans_la_bordure` neutralisée
+→ **2** rouges, dont l'aller-retour.
+
+⚠️ **Le coût, nommé** : `SM_CXBORDER` ne distingue pas une fenêtre **sans**
+bordure peinte (plein écran sans cadre). On retirerait alors **1 px de contenu
+réel**. Jugé moindre qu'une ligne sombre permanente sur les quatre bords —
+mais c'est un arbitrage, pas une évidence.
+
+### 16.4 État : bâti, attesté, **NON DÉPLOYÉ**
+
+`a4b8ba1604b9279a`. ⚠️ **Ce correctif n'ajoute AUCUNE chaîne** — il ne change
+que de l'arithmétique — donc il **n'est pas attestable par `strings`**. Son
+témoin de déploiement est **la relecture des pixels** : la rangée 0 et la
+colonne 0 doivent cesser d'être `#2F2F2F`. L'instrument est écrit et a déjà
+tourné.
+
+🔴 **Non déployé à dessein : un autre lot travaille dans le même arbre**, et
+deux envois concurrents se détruiraient. L'agent en production reste
+`b6b984e889366259`, intouché.

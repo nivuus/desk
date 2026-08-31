@@ -19,9 +19,9 @@ use windows::Win32::Graphics::Gdi::{
     MONITOR_DEFAULTTONEAREST,
 };
 use windows::Win32::UI::WindowsAndMessaging::{
-    EnumWindows, GetClientRect, GetWindowRect, GetWindowTextLengthW, GetWindowTextW, IsWindow,
-    IsWindowVisible,
-    SetWindowPos, SWP_NOMOVE, SWP_NOZORDER,
+    EnumWindows, GetClientRect, GetSystemMetrics, GetWindowRect, GetWindowTextLengthW,
+    GetWindowTextW, IsWindow, SM_CXBORDER, SM_CYBORDER,
+    IsWindowVisible, SetWindowPos, SWP_NOMOVE, SWP_NOZORDER,
 };
 
 use crate::geometry::Rect;
@@ -152,6 +152,27 @@ pub fn cadre_visible(hwnd: HWND) -> Result<Rect> {
     }
     .context("DwmGetWindowAttribute(DWMWA_EXTENDED_FRAME_BOUNDS)")?;
     Ok(depuis_rect(r))
+}
+
+/// L'épaisseur de la bordure que Windows **PEINT** autour d'une fenêtre, en
+/// pixels, `(x, y)`.
+///
+/// 🔴 **MESURÉE, PAS ÉCRITE EN DUR** : `SM_CXBORDER` / `SM_CYBORDER` sont des
+/// métriques documentées qui **suivent le DPI**. Relevées à `(1, 1)` pour un
+/// DPI système de `96` sur cette machine — et c'est exactement l'épaisseur de
+/// la ligne sombre lue sur les quatre bords du recadrage (voir
+/// `superviseur::placement::enveloppe`, qui porte les couleurs relevées).
+///
+/// ⚠️ **Elles ne distinguent pas une fenêtre SANS bordure peinte** (plein
+/// écran sans cadre) : on retirerait alors 1 px de contenu réel. Coût connu,
+/// nommé, et jugé moindre qu'une ligne sombre permanente sur les quatre bords.
+pub fn bordure_peinte() -> (i32, i32) {
+    unsafe {
+        (
+            GetSystemMetrics(SM_CXBORDER).max(0),
+            GetSystemMetrics(SM_CYBORDER).max(0),
+        )
+    }
 }
 
 /// Le lisère invisible de CETTE fenêtre : `GetWindowRect` moins le cadre

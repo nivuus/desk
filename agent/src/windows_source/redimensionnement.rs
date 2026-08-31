@@ -368,7 +368,14 @@ impl WindowsSource {
         // `SWP_NOMOVE` : l'origine ne bouge pas, et elle est déjà compensée
         // par la pose du superviseur — seule la TAILLE reste à corriger ici.
         // Un échec de DWM rend `Lisere::NUL`, donc le comportement d'avant.
-        let lisere = crate::window::lisere_dwm(self.hwnd).unwrap_or_default();
+        // L'enveloppe TOTALE, comme `placement::poser` : le lisère invisible
+        // de DWM **plus** la bordure que Windows peint. Sans la seconde, la
+        // ligne sombre d'un pixel relevée sur les quatre bords du recadrage
+        // (mesure du 31 août 2026) rentre dans l'image.
+        let lisere = crate::superviseur::placement::enveloppe(
+            crate::window::lisere_dwm(self.hwnd).unwrap_or_default(),
+            crate::window::bordure_peinte(),
+        );
         let (lp, hp) = crate::superviseur::placement::taille_a_poser((l, h), lisere);
         crate::window::resize_window(self.hwnd, lp, hp)?;
 
