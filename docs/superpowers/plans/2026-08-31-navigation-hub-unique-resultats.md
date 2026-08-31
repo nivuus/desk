@@ -45,10 +45,23 @@ et le journal de bord — décisions, `Ruling:`, constats différés — dans
 | **10** | Le manifeste : `start_url` migre vers la racine, **`id` reste figé** ; balayage des commentaires | `a100e46`, `fc70199`, `57f622a` |
 | **11** | Cette revue transverse, ce document, et la ligne d'index | *ce commit* |
 
-**Portée mesurée du chantier** (`git diff --stat 412e989..HEAD`, relancé le
-31 août 2026) : **37 fichiers**, **4 534 insertions**, **1 021 suppressions** —
-dont **11 fichiers créés**, **2 supprimés** (`hub/bureau.ts` et son test) et
-**1 renommé** (`client/src/shell.css` → `client/src/bureau/bureau.css`, R077).
+**Portée mesurée du chantier** — 🔴 **LA PLAGE EST EXPLICITE, ET CE N'EST PAS UN
+DÉTAIL** : `git diff --stat 412e989..57f622a`, relancé le 31 août 2026. **Écrire
+`..HEAD` rendrait d'autres nombres** dès le commit suivant, et un lecteur qui
+suit la consigne « relance la commande » obtiendrait un écart sans en comprendre
+la cause — mesuré : contre `HEAD` après la clôture, la même commande rend
+**41 fichiers, 4 910 insertions, 1 047 suppressions**. ⚠️ **Le commit de clôture
+n'est donc PAS compté ci-dessous**, à dessein : ces chiffres sont ceux des dix
+tâches d'implémentation.
+
+**37 fichiers**, **4 534 insertions**, **1 021 suppressions** — dont **12 créés**
+(11 de source sous `client/src/`, le douzième étant le plan lui-même sous
+`docs/`), **2 supprimés** (`hub/bureau.ts` et son test) et **1 renommé**
+(`client/src/shell.css` → `client/src/bureau/bureau.css`, R077).
+
+⚠️ **« 11 fichiers créés » était écrit ici au premier jet**, et
+`git diff --name-status | grep '^A' | nl` en compte **12** : le plan versionné
+n'avait pas été compté. Corrigé en relançant, pas en relisant.
 
 ## 3. Les rouges VUES — et **laquelle** a rougi
 
@@ -136,7 +149,7 @@ par une après.**
 
 | # | Où | Ce qui était faux |
 | --- | --- | --- |
-| **1** | `client/src/jeton.ts` (doc de `poserAcces`) | 🔴 **La plus grave.** Affirmait que `rafraichirSiNecessaire` « n'a **aucun appelant de production** », que le `grep` cité « rend **CINQ** lignes — une définition et quatre usages de test, pas un appel », et que le seul chemin vers `/auth/moi` était un **rechargement à la main**. **Les trois ont été rendues fausses par la tâche 1 elle-même.** La commande citée, relancée, rend **SIX** lignes, dont `jeton.ts:261` — **un appel de production**. 🔵 Aucune formule sur `shell*` ne pouvait l'attraper : le mot « shell » n'y figure pas. |
+| **1** | `client/src/jeton.ts` (doc de `poserAcces`) | 🔴 **La plus grave.** Affirmait que `rafraichirSiNecessaire` « n'a **aucun appelant de production** », que le `grep` cité « rend **CINQ** lignes — une définition et quatre usages de test, pas un appel », et que le seul chemin vers `/auth/moi` était un **rechargement à la main**. **Les trois ont été rendues fausses par la tâche 1 elle-même.** La commande citée, relancée, rend **SIX** lignes, dont `jeton.ts:271` — **un appel de production**. ⚠️ **CE NUMÉRO A ÉTÉ FAUX DANS LA PREMIÈRE VERSION DE CE DOCUMENT (`261`), ET C'EST LE NAUFRAGE DU 487 COMMIS DANS LE PARAGRAPHE MÊME QUI EN CORRIGE UNE INSTANCE.** `261` est `    base: string,` — un paramètre de la signature d'`assurerAccesFrais` ; il venait de `jeton.test.ts:261`, qui est une **assertion de test**, c'est-à-dire exactement la catégorie que ce constat existe pour distinguer d'un appel de production. Trouvé par la revue de la tâche 11, corrigé en **relançant la commande** plutôt qu'en relisant. 🔵 Aucune formule sur `shell*` ne pouvait l'attraper : le mot « shell » n'y figure pas. |
 | **2** | `client/outils/classes-employees.mjs` | « `shell-page.ts`, **trois lignes** » — **mesuré : 16**. Le naufrage du 487, dans un fichier écrit le jour même. |
 | **3** | `client/outils/surfaces-baties.mjs` | la **même** affirmation, dans un second fichier — c'est pourquoi « corriger là où on nous l'a montrée » ne suffit jamais. |
 | **4** | `client/src/hub/hub.css` (en-tête) | inventaire **au présent** : « `shell.css` pour le bureau ». Le fichier n'existe plus sous ce nom, et « quatre **surfaces** » a cessé d'être vrai le jour où le hub a absorbé le bureau. |
@@ -158,7 +171,7 @@ histoire au passé, et c'est légitime.
 | `client/src/design/tokens/echelles.css:123`, `primitives/message.css:40`, `connexion.css:41` | énoncés **datés** de S3/S4, au passé (« le sous-bloc S3 en avait besoin », « leçon payée à la tâche 4 de S3 »). |
 | `bureau.css:2`, `hub.css:191`, `hub.html:16` | **déjà qualifiés** par la date du renommage — le travail de la tâche 9. |
 | ~40 mentions de `shell-page.ts` | **déjà qualifiées** par la tâche 10 (« avant que le hub ne devienne la seule surface »). |
-| `jeton.test.ts:265-280`, `parcours.test.ts:8 et 111`, `porteur.ts:8`, `hub/page.ts:292` | récits de rouge et notes d'histoire, **au passé et datés**. |
+| `jeton.test.ts:266-280`, `parcours.test.ts:8 et 111`, `porteur.ts:8`, `hub/page.ts:292` | récits de rouge et notes d'histoire, **au passé et datés**. |
 | les `docs/superpowers/specs/*` | documents datés : un plan et une conception décrivent ce qu'on allait faire, pas ce qui est. |
 
 ### 5.3 La suite complète, depuis un shell PROPRE
