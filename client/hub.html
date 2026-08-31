@@ -74,6 +74,47 @@
 
             <ul id="applications" class="hub__grille"></ul>
         </main>
+
+        <!--
+          LE BALISAGE D'UNE CARTE D'APPLICATION VIT ICI, PAS DANS LE TYPESCRIPT.
+          `hub/cartes.ts` clone ce modèle et le remplit.
+
+          Deux raisons, la première décide : ① toutes les classes restent dans
+          le HTML, donc dans le périmètre le plus simple du contrôle §7.9 —
+          celui qui ne dépend d'aucune analyse de TypeScript ; ② le balisage
+          d'une carte se lit à l'endroit où l'on regarde une page. C'est
+          exactement la convention que `shell.html` applique déjà à
+          `#modele-fenetre`.
+
+          🔴 `hub__icone--absente` EST DÉCLARÉE ICI, SUR UN ÉLÉMENT QUI NE LA
+          PORTE PAS : le script l'AJOUTE quand l'application n'a pas d'icône,
+          par `classList.add` d'un LITTÉRAL. Avant cette extraction elle vivait
+          dans un ternaire (`className = application.icone === null ? … : …`),
+          donc dans une valeur CALCULÉE — invisible au contrôle §7.9, qui ne
+          voit que les littéraux. L'extraction est l'occasion de ne pas
+          reconduire ce trou (ruling R3).
+
+          ⚠️ LES CROCHETS SONT DES ATTRIBUTS `data-*`, PAS DES CLASSES. Une
+          classe sert à peindre ; s'en servir aussi comme point d'accroche du
+          script rendrait tout renommage visuel capable de casser le câblage
+          en silence.
+        -->
+        <template id="modele-application">
+            <li class="carte hub__entree">
+                <img class="hub__icone" data-icone alt="" />
+                <div class="hub__corps">
+                    <h2 class="hub__nom" data-nom></h2>
+                    <p class="hub__boutons">
+                        <button type="button" class="bouton bouton--principal" data-lancer>
+                            Lancer
+                        </button>
+                        <button type="button" class="bouton bouton--discret" data-installer>
+                            Installer
+                        </button>
+                    </p>
+                </div>
+            </li>
+        </template>
         <script type="module" src="/src/hub/page.ts"></script>
     </body>
 </html>

@@ -21,6 +21,7 @@ import {
     type ApplicationListee,
     type DepsCatalogue,
 } from './catalogue';
+import { batirCarte } from './cartes';
 import { NOM_FENETRE_BUREAU, PAGE_DU_BUREAU, ouvrirLeBureau } from './bureau';
 import { deposer, type Ton } from './depot';
 import { batirManifeste } from './manifeste';
@@ -156,118 +157,74 @@ async function traiterUnFichier(fichier: File): Promise<void> {
 
 /* ── LA LISTE ─────────────────────────────────────────────────────────── */
 
-function entree(application: ApplicationListee): HTMLLIElement {
-    const li = document.createElement('li');
-    li.className = 'carte hub__entree';
-
-    const img = document.createElement('img');
-    img.className = application.icone === null ? 'hub__icone hub__icone--absente' : 'hub__icone';
-    img.alt = '';
-    // 🔴 ❌ ~~L'ICÔNE NE PEUT PAS ÊTRE POSÉE PAR `src` VERS LA ROUTE : un
-    //    `<img src>` ne porte pas d'`Authorization`. Elle est LUE par `fetch`
-    //    authentifié, puis publiée en objet — la seule voie.~~ **PLUS VRAI
-    //    DEPUIS LE 30 AOÛT 2026**, décision du propriétaire du dépôt : la
-    //    route d'icône s'atteint par une URL SIGNÉE, que le catalogue frappe
-    //    sous jeton porteur et rend dans `icone_url`. **Elle se pose
-    //    directement dans `src`**, et c'est très exactement ce que le lot
-    //    livre. Le détour par `fetch` + `createObjectURL` disparaît d'ici —
-    //    il survit dans `publierLeManifeste`, qui a besoin des OCTETS pour
-    //    bâtir le `data:` du manifeste, la seule forme que G5 ait mesurée
-    //    installable et la seule qu'un manifeste atteigne sans cookie.
-    //
-    // ⚠️ CE QUE CETTE LIGNE N'ÉTABLIT PAS : qu'un navigateur RÉEL l'affiche.
-    //    Ce fichier n'est pas testé unitairement (voir l'en-tête), et aucun
-    //    jugement visuel n'a été porté sur le hub à ce jour.
-    li.appendChild(img);
-    if (application.icone_url !== null) img.src = `${base}${application.icone_url}`;
-
-    const corps = document.createElement('div');
-    corps.className = 'hub__corps';
-    const nom = document.createElement('h2');
-    nom.className = 'hub__nom';
-    nom.textContent = application.nom;
-    corps.appendChild(nom);
-
-    const boutons = document.createElement('p');
-    boutons.className = 'hub__boutons';
-    const lancer = document.createElement('button');
-    lancer.type = 'button';
-    lancer.className = 'bouton bouton--principal';
-    lancer.textContent = 'Lancer';
-    lancer.addEventListener('click', () => {
-        // 🔴 LE MÊME CLIC OUVRE LE BUREAU, ET C'EST LE FOND DU CORRECTIF DU
-        //    30 AOÛT 2026. Un lien visible en en-tête ne suffit pas : il
-        //    demande à l'utilisateur de savoir, AVANT de lancer, qu'une
-        //    seconde surface existe. Ici c'est son geste de lancement qui
-        //    ouvre la surface où la fenêtre paraîtra — et parce que c'est un
-        //    GESTE, aucun navigateur ne bloque cette ouverture-là.
-        //
-        // ⚠️ AVANT le `POST /lancer`, jamais après : un `await` intercalé
-        //    consommerait l'activation transitoire du clic, et l'ouverture
-        //    redeviendrait une pop-up bloquable — c'est le mur que
-        //    `shell-page.ts` heurte déjà, et qu'il ne s'agit pas de déplacer
-        //    d'un cran.
-        //
-        // ⚠️ Le bureau ARRIVE APRÈS l'annonce dans le cas le plus rapide, et
-        //    ce n'est pas un défaut : le relais dit à l'agent qu'un pair est
-        //    présent (`pair-present`, lot 17) et le superviseur REDIT alors
-        //    ses fenêtres en attente, compte à rebours remis à zéro.
-        const bureau = ouvrirLeBureau({ ouvrir: (url, nom) => window.open(url, nom) });
-        dire('neutre', `Lancement de ${application.nom}…`);
-        void jetonFrais().then((frais) => {
-            if (frais === undefined) {
-                dire('danger', 'Votre session a expiré. Rechargez la page pour vous reconnecter.');
-                return;
-            }
-            return lancerApplication(application.id, deps).then((issue) => {
-                // Le corps existant, INCHANGÉ : le bandeau de succès, et
-                // le bandeau de danger quand le lancement est refusé. Le
-                // relire dans `hub/page.ts` plutôt que de le retaper — il
-                // porte deux commentaires 🔴 qui expliquent pourquoi le
-                // lancement a lieu même si l'ouverture a échoué.
-                //
-                // ⚠️ SEULE LA MENTION « Employez « Mon bureau » en haut de
-                // page » devra partir, en tâche 8 : le lien disparaît, et une
-                // consigne qui désigne un bouton absent est pire qu'aucune.
-                if (issue.etat !== 'ok') {
-                    dire('danger', `${application.nom} n'a pas pu être lancée : ${issue.refus.motif}.`);
+function entree(application: ApplicationListee): DocumentFragment {
+    return batirCarte(application, {
+        modele: document.querySelector<HTMLTemplateElement>('#modele-application')!,
+        urlIcone: application.icone_url === null ? null : `${base}${application.icone_url}`,
+        lancer: () => {
+            // 🔴 LE MÊME CLIC OUVRE LE BUREAU, ET C'EST LE FOND DU CORRECTIF DU
+            //    30 AOÛT 2026. Un lien visible en en-tête ne suffit pas : il
+            //    demande à l'utilisateur de savoir, AVANT de lancer, qu'une
+            //    seconde surface existe. Ici c'est son geste de lancement qui
+            //    ouvre la surface où la fenêtre paraîtra — et parce que c'est un
+            //    GESTE, aucun navigateur ne bloque cette ouverture-là.
+            //
+            // ⚠️ AVANT le `POST /lancer`, jamais après : un `await` intercalé
+            //    consommerait l'activation transitoire du clic, et l'ouverture
+            //    redeviendrait une pop-up bloquable — c'est le mur que
+            //    `shell-page.ts` heurte déjà, et qu'il ne s'agit pas de déplacer
+            //    d'un cran.
+            //
+            // ⚠️ Le bureau ARRIVE APRÈS l'annonce dans le cas le plus rapide, et
+            //    ce n'est pas un défaut : le relais dit à l'agent qu'un pair est
+            //    présent (`pair-present`, lot 17) et le superviseur REDIT alors
+            //    ses fenêtres en attente, compte à rebours remis à zéro.
+            const bureau = ouvrirLeBureau({ ouvrir: (url, nom) => window.open(url, nom) });
+            dire('neutre', `Lancement de ${application.nom}…`);
+            void jetonFrais().then((frais) => {
+                if (frais === undefined) {
+                    dire('danger', 'Votre session a expiré. Rechargez la page pour vous reconnecter.');
                     return;
                 }
-                // 🔴 AUCUN ÉCHEC MUET, ET LE LANCEMENT A LIEU QUAND MÊME. Refuser
-                //    de lancer parce que le bureau n'a pas pu s'ouvrir ferait
-                //    d'une gêne une panne ; taire le bureau manquant ramènerait
-                //    la panne d'origine — une application lancée que personne ne
-                //    voit. On fait les deux, et on le dit.
-                if (bureau) dire('succes', `${application.nom} a été lancée.`);
-                else {
-                    dire(
-                        'danger',
-                        `${application.nom} a été lancée, mais le navigateur a bloqué l’ouverture du bureau : ` +
-                            'sa fenêtre ne peut pas paraître. Employez « Mon bureau » en haut de page.',
-                    );
-                }
+                return lancerApplication(application.id, deps).then((issue) => {
+                    // Le corps existant, INCHANGÉ : le bandeau de succès, et
+                    // le bandeau de danger quand le lancement est refusé. Le
+                    // relire dans `hub/page.ts` plutôt que de le retaper — il
+                    // porte deux commentaires 🔴 qui expliquent pourquoi le
+                    // lancement a lieu même si l'ouverture a échoué.
+                    //
+                    // ⚠️ SEULE LA MENTION « Employez « Mon bureau » en haut de
+                    // page » devra partir, en tâche 8 : le lien disparaît, et une
+                    // consigne qui désigne un bouton absent est pire qu'aucune.
+                    if (issue.etat !== 'ok') {
+                        dire('danger', `${application.nom} n'a pas pu être lancée : ${issue.refus.motif}.`);
+                        return;
+                    }
+                    // 🔴 AUCUN ÉCHEC MUET, ET LE LANCEMENT A LIEU QUAND MÊME. Refuser
+                    //    de lancer parce que le bureau n'a pas pu s'ouvrir ferait
+                    //    d'une gêne une panne ; taire le bureau manquant ramènerait
+                    //    la panne d'origine — une application lancée que personne ne
+                    //    voit. On fait les deux, et on le dit.
+                    if (bureau) dire('succes', `${application.nom} a été lancée.`);
+                    else {
+                        dire(
+                            'danger',
+                            `${application.nom} a été lancée, mais le navigateur a bloqué l’ouverture du bureau : ` +
+                                'sa fenêtre ne peut pas paraître. Employez « Mon bureau » en haut de page.',
+                        );
+                    }
+                });
             });
-        });
+        },
+        installer: () => {
+            void publierLeManifeste(application).then(() => {
+                dire(
+                    'neutre',
+                    `${application.nom} est prête à être installée : employez « Installer l'application » du navigateur.`,
+                );
+            });
+        },
     });
-    boutons.appendChild(lancer);
-
-    const installer = document.createElement('button');
-    installer.type = 'button';
-    installer.className = 'bouton bouton--discret';
-    installer.textContent = 'Installer';
-    installer.addEventListener('click', () => {
-        void publierLeManifeste(application).then(() => {
-            dire(
-                'neutre',
-                `${application.nom} est prête à être installée : employez « Installer l'application » du navigateur.`,
-            );
-        });
-    });
-    boutons.appendChild(installer);
-    corps.appendChild(boutons);
-
-    li.appendChild(corps);
-    return li;
 }
 
 async function peupler(): Promise<void> {
