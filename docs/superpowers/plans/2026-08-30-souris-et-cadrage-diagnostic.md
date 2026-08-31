@@ -812,3 +812,105 @@ liste et en imprimant à la fin.
 
 **Un vide n'est une mesure que si l'instrument peut rendre non-vide.** C'est la
 règle de ce dépôt, et je l'ai reprise en flagrant délit sur mon propre outil.
+
+---
+
+## 16. L'échelle en X — mesurée, et **ma mesure d'hier était CIRCULAIRE**
+
+### 16.1 🔴 D'abord la faute de méthode, parce qu'elle décide du reste
+
+**Hypothèse ② du cadrage est confirmée, et elle est de mon fait.**
+
+Hier, pour le bras d'après, j'ai dérivé le rectangle de mappage **à partir des
+trois points mesurés**, puis j'ai comparé **chaque point à ce même rectangle**.
+
+```
+rectangle derive des points mesures : origine x=1279 largeur=1860
+j ai compare chaque point A CE rectangle -> TOUT mapping affine passait
+```
+
+🔴 **Cette assertion était structurellement incapable de rougir.** Trois points
+alignés définissent toujours exactement le rectangle qu'on en déduit :
+« l'écart est nul » ne disait rien d'autre que « les points sont alignés ». J'ai
+écrit **« tous justes, au pixel »** sur un contrôle qui ne pouvait pas échouer —
+c'est le patron que ce dépôt nomme en premier, et je l'ai commis en le citant.
+
+**L'attendu VRAI n'était pas dérivable de la mesure** : il fallait le prendre du
+produit — l'origine de la sortie **et la taille de l'image**. L'erreur réelle au
+bord droit était de **432 px**.
+
+⚠️ **Hypothèse ① aussi joue, mais elle n'est pas la cause** : dans ma fenêtre
+sans interface, l'image faisait **780×492 pour un élément de 780×493** — donc
+**aucune bande noire**, et le chemin de cadrage de `contentRect` n'était pas
+exercé du tout. Ce n'est pas ce qui m'a trompé, mais cela aurait pu.
+
+### 16.2 Le fait, relevé sur la session vivante du propriétaire
+
+```
+agent::capture: duplication de sortie établie desktop_width=1860 desktop_height=1080
+agent::encode_nvenc::session: session NVENC native initialisée … largeur=1428 hauteur=1080
+```
+
+🔵 **L'image montre 1428 des 1860 colonnes de la sortie. La hauteur, elle, est
+identique (1080).**
+
+| fraction | l'image montre | l'agent injecte | écart |
+| --- | --- | --- | --- |
+| 0,00 | 0 | 0 | **0** |
+| 0,25 | 357 | 465 | +108 |
+| 0,50 | 714 | 930 | +216 |
+| 0,75 | 1071 | 1395 | +324 |
+| 1,00 | 1428 | 1860 | **+432** |
+
+**Facteur 1860/1428 = 1,3025. En Y : 1080 contre 1080, écart nul.**
+
+🔵 **C'est exactement ce que le propriétaire décrit** : *« un décalage en x
+multiplicateur — en 0 ok, et totalement à droite pas bon du tout, c'est
+progressif »*. **En X seulement, nul à gauche, progressif.** L'accord est
+arithmétique, pas approximatif.
+
+### 16.3 La cause : la référence est le bon POINT mais la mauvaise TAILLE
+
+Mon remède a mappé sur **la sortie entière**. Or `creer_sortie` pose la fenêtre
+et **recadre la capture** sur `taille_retenue` — `min(viewport, sortie)` axe par
+axe — **à l'origine de la sortie**. L'image est donc un **sous-rectangle** de la
+sortie, ancré en haut à gauche.
+
+**L'origine est juste** — d'où l'absence d'erreur à gauche, et c'est bien la
+part que le remède a corrigée. **La taille ne l'est pas.**
+
+⚠️ **Ce N'EST PAS un défaut d'alignement de l'encodeur, et le chemin NVENC natif
+n'est pas en cause** : `1428` est la largeur du **viewport demandé par le
+navigateur**, pas un arrondi de `1860` à un multiple de 16 ou 32. **Le lot
+voisin est hors de cause**, et il faut le dire.
+
+### 16.4 Les bandes noires — normales, mais **plus larges qu'elles ne devraient**
+
+L'image est **1428×1080**, soit un rapport de **1,322**. Toute fenêtre plus
+large que 4:3 reçoit donc des bandes **gauche/droite** par `object-fit: contain`
+— c'est le comportement attendu, et `contentRect()` les exclut correctement.
+
+⚠️ **Mais elles seraient plus étroites si l'image portait la sortie entière**
+(1860×1080, rapport 1,722). **Les bandes ne sont donc pas la cause ; elles sont
+un second symptôme du même recadrage.**
+
+### 16.5 Les hypothèses, avec leur critère
+
+| # | Hypothèse | Ce qui la confirmerait |
+| --- | --- | --- |
+| **E1** | La référence doit être **origine de la sortie + taille de l'IMAGE**, pas la sortie entière. | Rejouer la mesure du curseur avec un attendu **pris du produit** (`desktop_width` et la taille encodée), **jamais dérivé des points**. Bord droit : écart nul au lieu de 432 px. |
+| **E2** | La bordure CSS de `#remote` fausse `contentRect` (il lit la **boîte de bordure**). | Comparer `getBoundingClientRect()` et la boîte de contenu sur la page réelle. ⚠️ **Erreur symétrique autour du centre**, donc **incompatible** avec « nul à gauche » : E2 ne peut pas être la cause principale, au plus un résidu de quelques pixels. |
+| **E3** | La taille encodée peut **changer en cours de session** (le viewport bouge) sans que la référence suive. | Faire varier la taille de la fenêtre du navigateur et remesurer. **Non éprouvé.** |
+
+🔴 **E1 explique seule la totalité du symptôme, à l'arithmétique près.** E2 et E3
+sont des résidus possibles, pas des explications concurrentes.
+
+### 16.6 Ce que cette manche n'établit PAS
+
+- **aucun remède n'est écrit, rien n'est déployé, l'agent n'a pas été relancé** ;
+- **la mesure du curseur n'a pas été refaite** : elle prendrait le rôle `client`
+  au propriétaire, qui vient de rouvrir sa session. **Je la demande.**
+- **E1 n'est pas mesurée sur la VM** : elle est établie par l'arithmétique et
+  par l'accord avec le témoignage, **pas par un curseur observé**. ⚠️ **Et après
+  ce que je viens de commettre, je ne présenterai plus un accord comme une
+  mesure.**
