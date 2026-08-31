@@ -214,7 +214,21 @@ pub fn tourner(
         while let Ok(message) = rx_shell.try_recv() {
             match message {
                 DepuisLaShell::Viewport { session, largeur, hauteur } => {
-                    effets.extend(table.viewport_recu(&IdSession(session), largeur, hauteur));
+                    // 🔴 **LE POINT LE PLUS EN AMONT, ET IL EST INCONDITIONNEL.**
+                    // Il distingue « le message n'arrive JAMAIS » (rien ici) de
+                    // « il arrive et la table n'en fait rien » (ligne ici,
+                    // `effets=0`). Sans lui, les deux se lisent pareil, et
+                    // c'est ce qui a bloqué le diagnostic du premier envoi.
+                    let session = IdSession(session);
+                    let suite = table.viewport_recu(&session, largeur, hauteur);
+                    tracing::info!(
+                        session = %session.0,
+                        demande = format!("{largeur}x{hauteur}"),
+                        effets = suite.len(),
+                        etat = ?table.etat(&session),
+                        "viewport recu de la page-shell"
+                    );
+                    effets.extend(suite);
                 }
                 // 🔴 UNE PAGE-SHELL VIENT DE REJOINDRE LA SESSION DE
                 // CONTRÔLE. Tout ce que le superviseur a annoncé avant cet

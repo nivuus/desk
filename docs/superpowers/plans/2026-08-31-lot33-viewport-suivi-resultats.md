@@ -416,3 +416,88 @@ engendrée à l'instant : un littéral réel **dénoncé**, `abc...` **dénoncé
 
 ✅ `verify-all.sh` rend **« Les 10 étapes sont passées »** — il en rendait deux
 en échec depuis le lot 31.
+
+
+---
+
+## 10. Le second envoi : je m'étais rendu aveugle à mon propre échec
+
+**31 août 2026, après le retour du propriétaire** : *« La taskbar ne s'affiche
+plus ! Par contre j'ai des bordures noires de chaque côté de la fenêtre du
+notepad. »*
+
+### 10.1 Ce qui est ÉTABLI
+
+**La moitié agent MORD.** Trois nombres du journal, sur les mêmes sessions :
+le superviseur demande **`largeur=1428 hauteur=1032`** à l'attache (c'était
+1428×**1080** avant le lot), NVENC s'initialise à **1428×1032**, la texture
+reste **1860×1080**. La barre des tâches est hors cadre — le propriétaire le
+confirme, et les nombres disent pourquoi.
+
+### 10.2 Ce qui N'A PAS PU ÊTRE ÉTABLI, ET C'EST MA FAUTE
+
+`viewport suivi` = **0** et `recadrage et fenêtre alignés` = **0**, avec
+témoins positifs dans le même relevé (32 attaches, 4 désignations, 9 NVENC).
+
+🔴 **CE ZÉRO EST ININTERPRÉTABLE, ET LE CODE DIT POURQUOI.** Toutes les traces
+du chemin neuf étaient placées **après un court-circuit** :
+`placement_periodique::suivre_le_viewport` porte trois `return` avant son
+`tracing::info!`, le `suivre_le_viewport` du capteur un, et
+`table/attribution.rs` **zéro trace**. Un `0` confondait donc « aucun viewport
+n'arrive », « la session n'a pas de sortie retenue », et « il arrive et sature
+la borne » — ce dernier cas étant **la limite déclarée du remède**, pas un
+défaut.
+
+🔴 **ET LA TRACE QUE J'AI REMPLACÉE ÉTAIT PRÉCISÉMENT CELLE QUI AVAIT RENDU CE
+LOT POSSIBLE** : `redimensionnement ignoré` sortait à CHAQUE demande, et c'est
+d'elle que viennent les 34 mesures du § 1.1. Le remède a supprimé son propre
+instrument de diagnostic. **Une trace qui ne peut sortir qu'en cas de succès ne
+peut pas diagnostiquer un échec** — piège de méthode, désormais inscrit dans
+`CLAUDE.md`.
+
+### 10.3 Une sonde session 1 QUI NE PROUVE RIEN, et pourquoi je l'écarte
+
+Jouée par tâche planifiée `/it`, elle imprime bien `== session = 1` et trouve
+**un seul moniteur** (`\\.\DISPLAY1 bounds=1280x800 work=1280x752`), tous les
+Notepad dessus, un à `1278x750+1+1` et quatre minimisés.
+
+❌ **Elle est INADMISSIBLE pour la question posée**, et c'est le journal qui la
+récuse : à **10:05:46Z l'agent a détruit ses sorties virtuelles**
+(`sortie virtuelle détruite id=259`, `id=260`) et **aucune session ne tournait**
+depuis. La sonde décrit l'après, pas le symptôme. *Trancher sur une donnée du
+relevé, jamais sur la seule date* — la donnée dit « pas de session ».
+
+⚠️ **Et j'ai écrasé ma première sonde session 1** en rejouant le script à la
+main depuis WinRM, qui écrit le MÊME fichier depuis la session 0 : le relevé
+lu portait `== session = 0`. Le piège des « plusieurs journaux », rejoué sur
+un fichier de sonde.
+
+### 10.4 Ce que le second envoi contient
+
+**Trois traces INCONDITIONNELLES**, chacune posée AVANT tout court-circuit :
+
+| Où | Ce qu'elle dit |
+| --- | --- |
+| `boucle.rs`, bras `DepuisLaShell::Viewport` | le message **arrive** — session, demande, `effets`, `etat` |
+| `placement_periodique::suivre_le_viewport` | demande, borne, retenue, **précédente**, et un champ `decision` qui NOMME la branche |
+| `windows_source::suivre_le_viewport` | demande, borne, texture, retenue, courante, `change` |
+
+Elles rendent les quatre branches distinguables, et le volume reste borné : le
+`ResizeObserver` est lissé à 200 ms et ne bat que pendant un geste.
+
+### 10.5 La capture réseau, et ce qu'elle ne dit pas encore
+
+Lancée **avant** le geste demandé (12:13:10), sur `host 192.168.3.2 and tcp
+port 3445`. 🔵 **L'instrument est prouvé VOYANT** : les trames serveur→agent se
+lisent en clair (`{"type":"battement-recu","v":5,…}`), donc un zéro y serait
+une mesure.
+
+⚠️ **Mais le `Resize` NE PASSE PAS PAR LÀ** — il voyage sur le canal de données
+WebRTC, de pair à pair, pas par le signaling. Le témoin négatif « je vois des
+`Resize` mais pas de `viewport` » **n'est pas disponible sur cette capture**,
+contrairement à ce que le cadrage supposait ; le témoin utilisable est le
+battement.
+
+⚠️ **Et au moment d'écrire, le propriétaire n'avait pas encore joué son geste**
+(aucune création de sortie, aucune attache depuis 12:13) : le zéro observé
+mesure un système **au repos**, et ne conclut rien.
