@@ -1,13 +1,15 @@
 // LE LECTEUR « MES FICHIERS » — le câblage du pont ProjFS, à dépendances
 // injectées.
 //
-// 🔴 EXTRAIT DE `shell-page.ts` LE 31 AOÛT 2026, VERBATIM. Les cinq blocs 🔴
-// qu'il porte documentent chacun un défaut MESURÉ — l'ordre du `Bonjour`,
-// l'attente de l'ouverture du canal (le `Bonjour` partait dans le vide, et
-// AUCUNE écriture due n'aurait jamais été poussée), la garde `pont !== ce`
-// (un écouteur qui survit à son objet), la fermeture des flux, et le
-// transtypage qui n'est PAS un contrôle. Aucun n'est décoratif : ils ont été
-// déplacés à la lettre, jamais résumés.
+// 🔴 EXTRAIT DE `shell-page.ts` LE 31 AOÛT 2026, VERBATIM. Les six blocs
+// (quatre 🔴, deux ⚠️) qu'il porte documentent chacun un défaut MESURÉ :
+// 🔴 l'activation utilisateur transitoire qu'exige `showDirectoryPicker()`,
+// 🔴 le transtypage qui n'est PAS un contrôle, 🔴 l'ordre du `Bonjour` (F5),
+// 🔴 l'attente de l'ouverture du canal (le `Bonjour` partait dans le vide, et
+// AUCUNE écriture due n'aurait jamais été poussée), ⚠️ la garde `pont !== ce`
+// (un écouteur qui survit à son objet), et ⚠️ la fermeture des flux au
+// `close`. Aucun n'est décoratif : ils ont été déplacés à la lettre, jamais
+// résumés.
 //
 // ⚠️ CE FICHIER N'EST PAS TESTÉ, ET NE PEUT PAS L'ÊTRE ICI : il ouvre un
 // `RTCPeerConnection`, un `WebSocket` et un sélecteur de répertoire, dont
@@ -54,10 +56,12 @@ export function installerLePont(deps: DepsFichiers): void {
         // montage RÉUSSI donnerait l'impression, sur une annulation du
         // sélecteur, que le clic n'a rien fait.
         if (deps.section !== undefined) deps.section.open = true;
-        // 🔴 `showDirectoryPicker()` EXIGE UNE ACTIVATION UTILISATEUR
-        // TRANSITOIRE, et c'est pourquoi il est appelé depuis ce gestionnaire.
-        // Celui-ci n'est pas `async` : un `await` avant l'appel consommerait
-        // l'activation, et le sélecteur serait refusé sans que rien ne le dise.
+        // 🔴 `showDirectoryPicker()` EXIGE UNE ACTIVATION UTILISATEUR TRANSITOIRE,
+        // et c'est pourquoi il est appelé depuis ce gestionnaire, et
+        // jamais depuis un message de canal. Le gestionnaire n'est pas `async` : un
+        // `await` avant l'appel consommerait l'activation, et le sélecteur serait
+        // refusé sans que rien ne le dise. Même contrainte que `window.open()`, que
+        // cette page connaît déjà.
         void monterLeLecteur();
     });
 
