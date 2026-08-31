@@ -501,3 +501,120 @@ battement.
 ⚠️ **Et au moment d'écrire, le propriétaire n'avait pas encore joué son geste**
 (aucune création de sortie, aucune attache depuis 12:13) : le zéro observé
 mesure un système **au repos**, et ne conclut rien.
+
+---
+
+## 11. La capture qui tranche, et la réfutation de « c'est la limite déclarée »
+
+### 11.1 Points 1 à 4, sur les valeurs
+
+**① Les tailles demandées VARIENT, elles ne plafonnent pas.** 28 trames
+`viewport` relayées vers la VM pendant ses gestes, **8 valeurs distinctes** :
+`1724x1304`, `1723x1303`, `2058x851`, `1922x1092`, `1865x1303`, `1785x1303`,
+`1652x1206`, `1438x1062`. Et le produit les suivait déjà : **11 tailles
+d'encodage distinctes** au journal sur la même période, de `1266x480` à
+`1860x1032`.
+
+**② La borne effective de sa session est `1860x1032`** — sorties relevées
+`largeur=1860 hauteur=1080` dans la topologie, moins les 48 rangées de la
+barre. ⚠️ **Ni 1428 ni 1860 n'est une constante** : un attachement de la même
+séance porte `largeur=1428 hauteur=1080`, c'est-à-dire une zone de travail
+**égale au moniteur** — Explorer ne pose sa barre secondaire sur une sortie
+neuve qu'avec un délai, si bien que la borne de CRÉATION peut être la pleine
+hauteur et se resserrer ensuite. Le suivi de viewport la rattrape ; c'est un
+mécanisme, pas un nombre.
+
+**③ LE DISCRIMINANT, ET IL DÉSIGNE UN DÉFAUT.** Sous la borne sur les deux
+axes, l'ancien code rendait bien le viewport **exactement** (`min` = identité) —
+c'est ce qui rendait la lecture « saturation » tentante. Mais **aucune de ses
+huit demandes n'était sous la borne sur les deux axes** (hauteurs 1303, 1092,
+1206, 1062 contre 1032 ; largeur 2058 contre 1860). Et dès qu'**un seul** axe
+dépasse, le bon comportement est de **réduire à l'échelle en préservant la
+forme**, jamais d'écrêter un axe : `1723x1303` tient en `1364x1032`, sous la
+borne sur les deux axes et au rapport exact. **Dépasser la borne n'oblige à
+aucune bande.** C'est donc un défaut, et il est de moi.
+
+**④ LA MARGE SUR LES QUATRE CÔTÉS RESTE INEXPLIQUÉE PAR MON ARITHMÉTIQUE, ET
+JE NE LA RÉTRO-AJUSTE PAS.** `object-fit: contain` ne peut produire qu'**une
+seule paire** de bandes à la fois. Deux candidats, ni l'un ni l'autre établi :
+① la bordure CSS de `#remote` (`border: var(--trait) solid
+var(--accent-fenetre)`), qui court sur les quatre côtés mais **ne varie pas
+avec le rapport** ; ② la composition des deux — une paire de bandes qui varie
+avec le rapport, plus une bordure constante. **À vérifier après déploiement,
+pas avant.**
+
+### 11.2 Ce qui resterait visible si le correctif ne mordait pas
+
+- 🔴 **Des bandes dont l'épaisseur VARIE encore avec la forme de la fenêtre** :
+  le correctif n'a pas mordu. C'est le critère central, et il est distinctif —
+  après correction, l'écart de rapport est borné par l'arrondi pair, donc
+  invisible.
+- ⚠️ **Une marge FINE et CONSTANTE sur les quatre côtés, insensible au
+  rapport** : ce n'est PAS le défaut corrigé, c'est le candidat ① ci-dessus
+  (la bordure CSS). À rapporter comme tel, pas comme un échec.
+- 🔴 **Du bureau ou du fond d'écran** dans l'image : la fenêtre et le recadrage
+  ont divergé — autre défaut, à rapporter distinctement.
+- 🔴 **La barre des tâches de retour** : le fit à aspect préservé aurait mangé
+  le bornage par la zone de travail. Les deux doivent tenir ensemble.
+- ⚠️ **Une image visiblement plus DOUCE qu'avant** : attendu et assumé. Servir
+  la forme juste impose de réduire la taille (1723×1303 demandé → 1364×1032
+  servi, remonté par le navigateur). C'est le prix du rapport exact, et c'est
+  exactement ce que le § 11.3 propose d'acheter autrement.
+
+### 11.3 Le dossier pour la décision du propriétaire : créer la sortie généreusement
+
+🔵 **LA QUESTION A CHANGÉ DE NATURE DEPUIS LE CORRECTIF D'ASPECT, ET C'EST LE
+POINT LE PLUS IMPORTANT DE CE DOSSIER.** Tant que la forme servie était fausse,
+une sortie plus grande était la seule façon d'atténuer les bandes. **Elle ne
+l'est plus** : le rapport est désormais exact quelle que soit la borne. Ce
+qu'une sortie plus grande achète n'est donc plus l'absence de bandes — c'est
+**la NETTETÉ** : servir 1723×1303 nativement au lieu de 1364×1032 remonté par
+le navigateur. La décision est réelle, mais elle n'est plus urgente.
+
+**Ce qu'elle coûte**
+
+| | |
+| --- | --- |
+| Pixels à encoder | l'encodeur suit le RECADRAGE, pas la sortie : le coût ne monte que si la borne monte ET que le viewport la suit. De `1860x1032` à `1920x1080` : **+8 %** de pixels. Une sortie plus HAUTE (1440) coûterait bien davantage |
+| Débit | non mesuré à taille variable ; `BUDGET_BPS` découpe un budget de session en parts, il ne s'adapte pas à la résolution |
+| **Plafond d'encodeurs à N fenêtres** | 🔴 **JAMAIS MESURÉ** au-delà de 720p — protocole écrit et **non joué** au lot 31. NVENC borne en **macroblocs par seconde**, pas en nombre de sessions : huit fenêtres à `TAILLE_MAX_SORTIE` sont **2,25×** les macroblocs de huit fenêtres à 720p. C'est le risque le moins connu et le plus structurel |
+| Mémoire du pilote | non mesurée ; le vivier de dix sorties est un plafond de NOMBRE, jamais de taille |
+| Décodeur du navigateur | D6 a relevé **18,03 % d'images jetées** dès huit fenêtres de 1280×720 (une exécution) |
+
+**⚠️ Ce qui fragilise l'option, et cela reste entier**
+
+D8 a établi qu'**une sortie ne naît pas à la taille demandée** : elle naît à la
+dernière taille laissée au registre. **En demander plus ne donne pas
+nécessairement plus.** Et la relation entre les trois nombres —
+taille demandée, `GetDesc().DesktopCoordinates` (1428 hier, 1860 aujourd'hui),
+`DXGI_OUTDUPL_DESC` (1860) — **n'est toujours pas comprise**. Sur cette machine
+la même journée, une sortie créée à 1428 a été relevée à 1428 puis à 1860 selon
+la session. **Changer l'entrée d'une boîte noire qu'on ne comprend pas est un
+pari, et il faut le dire au propriétaire dans ces termes.**
+
+**`borner_a_la_taille_max` — correction d'une prémisse**
+
+❌ « Elle a perdu son dernier appelant » **n'est plus vrai** : c'était le leg 5
+de D9, **fermé par les tâches 6 et 7 de D10**. Elle a aujourd'hui **trois**
+appelants de production — `creation_sortie::creer_sortie` (taille de création),
+`table::attribution::viewport_recu` (chemin de réutilisation), et
+`taille_pour_viewport` (les deux moitiés du lot 33). Vérifié par `grep`, pas de
+mémoire. L'option ne la rebranche donc pas : elle **déplacerait** ce qu'elle
+borne, de « le viewport du jour de l'ouverture » vers « le plafond ».
+
+**Le cas HiDPI, entier lui aussi**
+
+À `devicePixelRatio = 2`, une fenêtre de 1280×720 CSS demande **2560×1440**,
+soit quatre fois les pixels. `borner_a_la_taille_max` le ramène à 1920×1080 —
+donc la demande EST bornée aujourd'hui, contrairement à ce que le legs de D9
+disait avant D10. Ce qui n'est pas borné, c'est le **coût cumulé** à N
+fenêtres, faute du plafond d'encodeurs jamais mesuré.
+
+### 11.4 Une correction de plan à consigner, pour ne pas la repayer
+
+⚠️ **Le `Resize` NE PASSE PAS par le signaling.** Il voyage sur le canal de
+données **WebRTC**, de pair à pair ; seul le `viewport` transite par le relais
+(port 3445). Le témoin négatif « je vois des `Resize` mais pas de `viewport` »
+n'existe donc pas sur une capture du signaling — **le témoin utilisable est le
+battement** (`{"type":"battement-recu"}`), qui prouve que l'instrument lit les
+trames serveur→agent en clair. Détail qui coûte une heure à qui l'ignore.
