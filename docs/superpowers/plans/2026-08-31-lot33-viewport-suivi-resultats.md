@@ -618,3 +618,76 @@ données **WebRTC**, de pair à pair ; seul le `viewport` transite par le relais
 n'existe donc pas sur une capture du signaling — **le témoin utilisable est le
 battement** (`{"type":"battement-recu"}`), qui prouve que l'instrument lit les
 trames serveur→agent en clair. Détail qui coûte une heure à qui l'ignore.
+
+---
+
+## 12. Le SECOND déploiement (31 août 2026, 12:30) — et la clôture
+
+**Autorisation permanente du propriétaire** (« ne me demande pas pour
+déployer »), prix du redémarrage connu et accepté.
+
+**Envoi AGENT SEUL** : `git diff --stat 25d6d78..HEAD -- client/ proto/` est
+vide, donc l'ordre client-puis-agent est sans objet ici. Il a été vérifié, non
+supposé.
+
+| | |
+| --- | --- |
+| Payload `console` | `021556b8…` → **`ac19c67185daea25`**, `cmp`-identique au binaire attesté |
+| **À DESTINATION** (`C:\nivuus\agent\agent.exe`) | **`ac19c67185daea25`**, par `Get-FileHash` DANS la VM |
+| Binaire remplacé | conservé en `agent.exe.avant-lot33b` |
+| Processus | **3**, tous en **`SessionId = 1`** |
+| Enrôlement | présent (témoin positif) ; **`ERROR` = 0** |
+| Laissé sur sa machine | **rien** — `D:\nivuus-lot33` retiré, aucune tâche planifiée, aucune fenêtre ouverte |
+
+**Les témoins, à destination, avec l'ANCIEN binaire en contrôle négatif dans la
+même exécution :**
+
+| Chaîne | Neuf | Ancien |
+| --- | --- | --- |
+| `viewport recu de la page-shell` (neuve) | **1** | **0** |
+| `viewport recu par le superviseur` (neuve) | **1** | **0** |
+| `Resize recu par le capteur` (neuve) | **1** | **0** |
+| `sortie virtuelle rendue au pilote` (préexistante) | **1** | **1** |
+| `viewport INEXISTANT` (témoin négatif) | **0** | **0** |
+
+⚠️ **Le correctif d'aspect lui-même n'est PAS attestable par une chaîne** — il
+ne change aucun littéral. Son témoin est **la trace `viewport recu par le
+superviseur`**, qui porte `demande` et `retenue` côte à côte : le rapport se
+lit directement au journal dès le premier geste. C'est ce que le premier envoi
+n'avait pas, et c'est pourquoi il a fallu deux allers-retours.
+
+### 12.1 Ce qu'il doit regarder
+
+1. **Les marges qui variaient avec la forme de la fenêtre doivent disparaître.**
+   C'est le critère central de ce second envoi.
+2. La fenêtre doit continuer de suivre, et la barre des tâches rester hors du
+   cadre — **les deux acquis du premier envoi ne doivent pas régresser**.
+
+### 12.2 À quoi ressemblerait un échec
+
+- 🔴 **Des marges qui VARIENT encore avec le rapport** : le correctif n'a pas
+  mordu.
+- ⚠️ **Une marge fine et CONSTANTE sur les quatre côtés, insensible au
+  rapport** : ce n'est pas le défaut corrigé — c'est le candidat « bordure
+  CSS » du § 11.1. **À rapporter comme tel, pas comme un échec.**
+- 🔴 **Du bureau ou du fond d'écran dans l'image** : fenêtre et recadrage ont
+  divergé.
+- 🔴 **La barre des tâches de retour** : le fit aurait mangé le bornage par la
+  zone de travail.
+- ⚠️ **Une image plus DOUCE qu'avant** : **attendu et assumé**. Servir la forme
+  juste impose de réduire la taille, que le navigateur remonte. C'est
+  exactement ce que le § 11.3 propose d'acheter autrement.
+
+### 12.3 Ce que ce lot N'ÉTABLIT toujours PAS
+
+- 🔴 **Personne n'a regardé une image.** Aucun jugement visuel n'est porté par
+  moi ; le seul œil est celui du propriétaire, et il juge après coup.
+- 🔴 **Aucune recette navigateur n'a été jouée**, à aucun moment : le rôle
+  `client` est exclusif et il est resté connecté.
+- 🔴 **La marge sur les quatre côtés reste inexpliquée** (§ 11.1), et je la
+  laisse telle plutôt que de l'ajuster après coup.
+- 🔴 **L'écart desktop/texture du lot 32T est inchangé** — ni créé ni corrigé.
+- ⚠️ **Quatre hypothèses ont été réfutées par la mesure au cours de ce lot**,
+  dont deux miennes (« le placement périodique est en bataille permanente » ;
+  « le plafond `1.0` garde la barre des tâches hors du cadre »). C'est le
+  relevé qui a tranché à chaque fois, jamais le raisonnement.
