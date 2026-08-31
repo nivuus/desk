@@ -550,6 +550,17 @@ indépendants : ce sont eux qui coûtent.
   valeur** — c'est ainsi qu'un `grep` de recette écrit pour révéler une panne
   muette a couru sans pouvoir échouer. **Un plan n'immunise pas contre ce
   patron : il en est une source.**
+  🔴 **SA FORME LA PLUS TRAÎTRE : UN ATTENDU DÉRIVÉ DE LA MESURE ELLE-MÊME.**
+  Payé au lot 32R, en citant la règle dans le même document. Trois points de
+  curseur mesurés, le rectangle de mappage **déduit de ces trois points**, puis
+  chaque point comparé **à ce rectangle-là** : « écart nul au pixel » ne disait
+  rien d'autre que « les trois points sont alignés », et **tout mapping affine
+  passait**. L'erreur réelle était de **432 px** au bord droit, et un humain
+  l'a vue le lendemain. **L'attendu doit venir du PRODUIT — une dimension
+  relevée dans son journal, une constante de sa configuration —, jamais d'un
+  calcul sur les points qu'on juge.** ⚠️ Le symptôme est un contrôle qui
+  « passe parfaitement » : plus l'accord est bon, plus il faut se demander
+  d'où vient l'attendu.
 - 🔴 **UNE ROUGE QUI ROUGIT POUR LA MAUVAISE RAISON NE PROUVE RIEN**, et elle
   est indiscernable d'une bonne si l'on ne lit que son code de sortie. **Lire
   QUELLE assertion a rougi.** Corollaire : **une rouge restée VERTE se
