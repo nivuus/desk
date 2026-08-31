@@ -12,7 +12,7 @@
 
 import { adressePlateforme } from '../adresse-plateforme';
 import { installerSelecteurDeThemeAuDOM } from '../design/selecteur-theme';
-import { assurerAcces } from '../jeton';
+import { assurerAccesFrais } from '../jeton';
 import {
     lancerApplication,
     lireIcone,
@@ -214,24 +214,39 @@ function entree(application: ApplicationListee): HTMLLIElement {
         //    ses fenêtres en attente, compte à rebours remis à zéro.
         const bureau = ouvrirLeBureau({ ouvrir: (url, nom) => window.open(url, nom) });
         dire('neutre', `Lancement de ${application.nom}…`);
-        void lancerApplication(application.id, deps).then((issue) => {
-            if (issue.etat !== 'ok') {
-                dire('danger', `${application.nom} n'a pas pu être lancée : ${issue.refus.motif}.`);
+        void jetonFrais().then((frais) => {
+            if (frais === undefined) {
+                dire('danger', 'Votre session a expiré. Rechargez la page pour vous reconnecter.');
                 return;
             }
-            // 🔴 AUCUN ÉCHEC MUET, ET LE LANCEMENT A LIEU QUAND MÊME. Refuser
-            //    de lancer parce que le bureau n'a pas pu s'ouvrir ferait
-            //    d'une gêne une panne ; taire le bureau manquant ramènerait
-            //    la panne d'origine — une application lancée que personne ne
-            //    voit. On fait les deux, et on le dit.
-            if (bureau) dire('succes', `${application.nom} a été lancée.`);
-            else {
-                dire(
-                    'danger',
-                    `${application.nom} a été lancée, mais le navigateur a bloqué l’ouverture du bureau : ` +
-                        'sa fenêtre ne peut pas paraître. Employez « Mon bureau » en haut de page.',
-                );
-            }
+            return lancerApplication(application.id, deps).then((issue) => {
+                // Le corps existant, INCHANGÉ : le bandeau de succès, et
+                // le bandeau de danger quand le lancement est refusé. Le
+                // relire dans `hub/page.ts` plutôt que de le retaper — il
+                // porte deux commentaires 🔴 qui expliquent pourquoi le
+                // lancement a lieu même si l'ouverture a échoué.
+                //
+                // ⚠️ SEULE LA MENTION « Employez « Mon bureau » en haut de
+                // page » devra partir, en tâche 8 : le lien disparaît, et une
+                // consigne qui désigne un bouton absent est pire qu'aucune.
+                if (issue.etat !== 'ok') {
+                    dire('danger', `${application.nom} n'a pas pu être lancée : ${issue.refus.motif}.`);
+                    return;
+                }
+                // 🔴 AUCUN ÉCHEC MUET, ET LE LANCEMENT A LIEU QUAND MÊME. Refuser
+                //    de lancer parce que le bureau n'a pas pu s'ouvrir ferait
+                //    d'une gêne une panne ; taire le bureau manquant ramènerait
+                //    la panne d'origine — une application lancée que personne ne
+                //    voit. On fait les deux, et on le dit.
+                if (bureau) dire('succes', `${application.nom} a été lancée.`);
+                else {
+                    dire(
+                        'danger',
+                        `${application.nom} a été lancée, mais le navigateur a bloqué l’ouverture du bureau : ` +
+                            'sa fenêtre ne peut pas paraître. Employez « Mon bureau » en haut de page.',
+                    );
+                }
+            });
         });
     });
     boutons.appendChild(lancer);
@@ -257,8 +272,8 @@ function entree(application: ApplicationListee): HTMLLIElement {
 
 async function peupler(): Promise<void> {
     // ⚠️ AUCUNE GARDE SUR LE JETON ICI : `peupler` n'est appelée par
-    // `demarrer()` (pied de fichier) qu'APRÈS que `assurerAcces` en a rendu
-    // un — c'est cette fonction-là qui décide, et `jeton.test.ts` la tient.
+    // `demarrer()` (pied de fichier) qu'APRÈS que `assurerAccesFrais` en a
+    // rendu un — c'est cette fonction-là qui décide, et `jeton.test.ts` la tient.
     const vms = await listerVms(deps);
     if (vms.etat !== 'ok') {
         dire('danger', `Les machines n'ont pas pu être lues : ${vms.refus.motif}.`);
@@ -344,30 +359,50 @@ if ('launchQueue' in window) {
    que `/` SERT le hub, jamais qu'un visiteur SANS JETON puisse s'en servir :
    encore un contrôle incapable de rougir.
 
-   🔴 LA RÈGLE (« essayer le coffre, puis Pomerium, sinon renvoyer vers la
-   connexion ») VIT DANS `jeton.ts::assurerAcces`, PAS ICI : au sens du
-   critère posé en tête de ce fichier, la changer changerait ce que le
-   produit DÉCIDE, ce n'est donc pas du câblage. `assurerAcces` réutilise
-   `accesParPomerium` — le chemin de `connexion.ts::tenterPomerium`, EXTRAIT
-   plutôt que recopié — et les deux sont tenus par `jeton.test.ts`. Ce qui
-   reste ICI est du câblage pur : lire le résultat, et soit peupler, soit
-   rediriger. */
+   🔴 LA RÈGLE (« essayer le coffre, puis le rafraîchissement, puis Pomerium,
+   sinon renvoyer vers la connexion ») VIT DANS `jeton.ts::assurerAccesFrais`,
+   PAS ICI : au sens du critère posé en tête de ce fichier, la changer
+   changerait ce que le produit DÉCIDE, ce n'est donc pas du câblage.
+   `assurerAccesFrais` réutilise `rafraichirSiNecessaire` et
+   `accesParPomerium` — le second est le chemin de
+   `connexion.ts::tenterPomerium`, EXTRAIT plutôt que recopié — et les trois
+   sont tenus par `jeton.test.ts`. Ce qui reste ICI est du câblage pur : lire
+   le résultat, et soit peupler, soit rediriger. */
 async function demarrer(): Promise<void> {
     dire('neutre', 'identification…');
-    const acces = await assurerAcces(window.localStorage, base, window.fetch.bind(window));
+    const acces = await jetonFrais();
     if (acces === undefined) {
-        // ⚠️ REDIRIGER VERS UN ÉCRAN OÙ L'UTILISATEUR PEUT AGIR, JAMAIS SUR
-        // UN MESSAGE QUI NE DIT PAS QUOI FAIRE — la règle que `connexion.ts`
-        // s'impose déjà. `suite` reconduit vers CETTE page, chaîne de
-        // requête comprise (`?app=…`), pour qu'une connexion réussie revienne
-        // ici plutôt que sur la shell.
-        const suite = `hub.html${window.location.search}`;
+        const suite = `/${window.location.search}`;
         window.location.href = `connexion.html?suite=${encodeURIComponent(suite)}`;
         return;
     }
     deps = { base, jeton: acces, fetch: window.fetch.bind(window) };
     dire('neutre', '');
     await peupler();
+}
+
+/// 🔴 **APPELÉE AVANT CHAQUE USAGE, ET C'EST LE POINT DE LA DÉCISION DU
+/// 31 AOÛT 2026.** Un test local d'expiration, un appel réseau seulement s'il
+/// est périmé : le chargement, chaque lancement et chaque lecture d'icône
+/// passent par ici, sans aucune minuterie à calibrer.
+async function jetonFrais(): Promise<string | undefined> {
+    const acces = await assurerAccesFrais(
+        window.localStorage,
+        base,
+        window.fetch.bind(window),
+        Date.now(),
+        async (corps) => {
+            const reponse = await fetch(`${base}/auth/rafraichir`, {
+                method: 'POST',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify(corps),
+            });
+            if (!reponse.ok) return undefined;
+            return (await reponse.json()) as { acces: string; rafraichissement: string };
+        },
+    );
+    if (acces !== undefined) deps = { ...deps, jeton: acces };
+    return acces;
 }
 
 void demarrer();
