@@ -991,6 +991,7 @@ Ils sont **datés**, et plusieurs se réfutent les uns les autres à dessein.
 - **lot 32 — la première sortie virtuelle et la cible forcée (30 août 2026)** — [résultats](docs/superpowers/plans/2026-08-30-premiere-sortie-cible-forcee-resultats.md) — l'appariement cesse de DEVINER la sortie par une différence d'ensembles et la DÉSIGNE par le couple `(adaptateur, identifiant de cible)` que le pilote rend déjà (API CCD, `moniteurs_virtuels/config_affichage.rs`) ; le repli d'hier reste en place mot pour mot. 🔴 **La cause première était une affirmation FAUSSE de `placement.rs` écrite en D1 — « aucune correspondance n'est exposée » — corrigée avec les commandes qui l'établissent.** Mesuré sur la VM, VGA retiré : bras désarmé **8 sorties créées, 8 refus, 0 fenêtre tenue** ; bras armé **`chemin ① = 1`, `nom_designe="\\.\DISPLAY5"`** — le nom que portait la cible forcée (`statusFlags=0x11`, relevé AVANT de conclure). L'hypothèse que `sudovda.rs` déclarait « non confirmée » est **établie** : id pilote = cible CCD = UID du moniteur = 257.
 - **lot 32C — Apollo assoupli, et le JUGE : une image de la VM arrive au navigateur (30 août 2026)** — [résultats](docs/superpowers/plans/2026-08-30-juge-image-au-navigateur-resultats.md) — 🔴 **le chiffre-juge est TOMBÉ, VERT, deux fois** : `framesDecoded` **+494** et **+484** sur 25 s (≈19 i/s), `bytesVideo` **+1,29 Mo**, ICE `connected` — avec son **témoin négatif mesuré par le même instrument** (source STATIQUE : `framesDecoded` **0** et `bytesVideo` **0**, alors que `bytesAudio` coule et qu'ICE est connecté). Les deux remèdes courent ensemble : la **désignation** du lot 32 et l'**encodeur NVENC natif** du lot 31. L'agent bâti en croisé est **DÉPLOYÉ** (`hooks/agent_payload.py::deposer_agent_console`, session 1 attestée par l'appliance), et `AGENT_VM`/`AGENT_SECRET` **atteignent le processus vivant** (trace d'enrôlement présente, avertissement d'absence à 0). ✅ **Moonlight fonctionne** — établi par le PROPRIÉTAIRE avec son client, pas par ce lot. 🔴 **MAIS `ensure_active` NE SUFFIT PAS, et c'est MESURÉ** : Apollo `Running` → **7 refus, 0 fenêtre tenue** ; Apollo `Stopped` → **0 refus, 4 tenues**, même binaire à deux minutes d'intervalle, **et AUCUN client connecté** (`Get-NetTCPConnection` = 0). Apollo **relance sa sonde d'encodeur à chaque changement de topologie**, à la cadence de 5 s de `LIMITE_RATTACHEMENT`. **La coexistence n'est PAS acquise, et le diagnostic qui imputait tout à `ensure_only_display` était INCOMPLET.** **Suite (lot 32E) : `desk` gagne une REPRISE bornée** (`superviseur/reprise.rs`, 3 tours sur la MÊME sortie — recréer redéclencherait la sonde d'Apollo —, 6 tests d'hôte, pire cas 5 s → **17 s de boucle bloquée**, hors portée de `DELAI_ATTENTE_VIEWPORT_MAX` **vérifié**). 🔴 **ELLE N'A JAMAIS TIRÉ** : `on RÉESSAIE` = **0** dans les trois bras, y compris celui où Apollo sondait pour de bon — la condition qui échouait ne s'est pas reproduite. **Non-régression seulement ; le remède n'est PAS démontré.** 🔵 Et le refus DOMINANT est désormais un autre défaut, mesuré : **`plus aucune sortie virtuelle disponible`**, 27 à 33 fenêtres annoncées pour un vivier de dix.
 - **lot 33 — le recadrage et la fenêtre suivent le viewport, à la forme demandée (31 août 2026)** — [résultats](docs/superpowers/plans/2026-08-31-lot33-viewport-suivi-resultats.md) — 🔴 **le `Resize` du navigateur était JETÉ**, mesuré sur l'agent de production : 34 demandes, rapports d'aspect de **1,105 à 3,559**, toutes servies à un rapport fixe — et le `#remote` étant `object-fit: contain` sur `--video-letterbox: #000`, l'écart **se peint littéralement en noir**. 🔴 **Les deux moitiés du défaut se couvraient l'une l'autre** : `viewport_recu` ignorait tout viewport sur une session `Vivante`, et le client n'en réannonçait aucun. Remède : **une règle pure (`taille_pour_viewport`), deux processus, UNE seule mesure côté client** — le capteur retaille fenêtre + recadrage + encodeur **sans relâcher la duplication** (C1 de D1), le superviseur corrige `taille_sortie` ; même `HMONITOR`, même borne, donc le second geste est un `no-op`. 🔵 **La borne est la ZONE DE TRAVAIL** — premier lecteur de `rcWork` du dépôt — ce qui sort les 48 rangées de la barre des tâches du cadre. 🔴 **QUATRE DÉFAUTS DE MOI, TROUVÉS PAR LES RETOURS SUCCESSIFS D'UN HUMAIN** : ① la composition `borner_a_la_taille_max` ∘ `taille_retenue` **détruisait le rapport À L'INTÉRIEUR de la borne** (écarts de **2,4 % à 4,7 %**, mesurés par capture réseau sur 28 trames `viewport`) ; ② toutes mes traces étaient posées **après un court-circuit**, si bien qu'un `0` ne distinguait plus un défaut de la limite déclarée — **je m'étais rendu aveugle à mon propre échec** ; ③ le **cadre INVISIBLE de DWM** (7/0/7/7 px, mesuré) mettait du bureau sur trois côtés ; ④ le recadrage coïncidant alors **au pixel près** avec le cadre DWM, il capturait **la bordure que Windows PEINT** — un pixel `#2F2F2F` sur les quatre bords. 🔵 **④ A ÉTÉ ÉTABLI EN REGARDANT L'IMAGE**, ce que ce chantier n'avait jamais fait : sonde, relevé, témoin et coins agrandis sont versionnés dans `docs/superpowers/plans/journaux-lot33/pixels/`, **réutilisables**. ⚠️ **Les trois premiers sont déployés et jugés par un humain sur le produit réel ; le quatrième est bâti, attesté et NON DÉPLOYÉ** — il voyagera avec le lot voisin, pour n'imposer qu'un seul redémarrage. ⚠️ **CE QUE CE LOT N'ÉTABLIT PAS : aucune recette navigateur n'a été jouée**, et le lisère comme la bordure sont ceux de CETTE machine, à CE thème et à CE DPI.
+- **lot 34 — la session de contrôle se REPREND, et le relais dit à l'agent qui ARRIVE qu'on l'attendait (31 août 2026)** — [résultats](docs/superpowers/plans/2026-08-31-lot34-reprise-session-controle-resultats.md) — 🔴 **le socket de contrôle du superviseur ne se rouvrait JAMAIS** : après un redémarrage de `desk-plateforme`, aucune fenêtre ne pouvait plus être annoncée **ni réannoncée**, ce qui rendait le lot 17 inopérant, et le seul remède — relancer l'agent — **orpheline toutes les fenêtres** depuis le lot 32I. **Mesuré sur la VM, le même geste aux deux bras** : ancien binaire, `session de contr` = **0** sur 3 min 27 s, avec `reprise du canal /agent` et `pont fichiers lancé` comme témoins **dans le même segment** ; binaire neuf, **2,04 s** de perte à rétablissement, le même motif rendant **5**. 🔴 **LE PIÈGE QUI AURAIT RENDU LE REMÈDE PLACEBO** : le jeton est relu à CHAQUE tentative depuis la veille d'identité — l'instantané du démarrage dure dix minutes, et `main.rs` portait déjà l'argument pour le LANCEUR sans que `signalisation.rs` en profite. 🔵 **Les DEUX côtés du seuil de réarmement ont été exercés en production** : `vecu_ms=31672 repli_rearme=false` puis `vecu_ms=423791 repli_rearme=true`. 🔵 **ET LE CHEMIN DU JETON RAFRAÎCHI EST MESURÉ, PAS DÉDUIT** : une troisième coupure a été provoquée **après** l'expiration du jeton de démarrage (11:57:26Z) — rétablissement **accepté** à 11:58:18.006Z, soit 147 ms **avant** que le canal `/agent` ne se réenrôle, et sans aucun refus au journal de la plateforme, laquelle rejette bel et bien un jeton expiré (**17 fois** aujourd'hui sur des sessions réelles). 🔵 **Le legs « une fenêtre ouverte 30 s trop tôt est perdue » était PÉRIMÉ** — écrit à 00:43:11 le 30 août, corrigé à 02:49:53 le même jour par le lot 17 : le patron du legs `403/404`, payé une seconde fois. Ce qui restait dû était ailleurs, et le relais sait désormais prévenir l'agent qui **ARRIVE** (`prevenirLArrivant`). ⚠️ **CE QUE CE LOT N'ÉTABLIT PAS** : la jonction « le relais prévient l'agent reconnecté » n'est mesurée que **par test contre le code réel du relais**, jamais en production — l'exercer demande un pair `client` sur la session de contrôle, et ce rôle est **exclusif** ; la branche d'échec de reconnexion **n'a jamais tiré** (les **trois** reconnexions ont abouti à `tentative=1`, et le repli n'a donc été exercé qu'à sa première marche) ; et le critère PIXEL du lot 33 est **NON JOUÉ**, son relevé étant **non concluant** (aucune fenêtre servie après le redémarrage, sonde tournée sur un `Notepad` que `desk` ne place pas).
 - **lot 32E→32I — le vivier épuisé : trois réfutations, puis la règle d'APPARTENANCE (30 août 2026)** — [résultats](docs/superpowers/plans/2026-08-30-vivier-epuise-diagnostic.md) — 🔴 **trois cadrages successifs réfutés par la mesure, le mien inclus** : ni un critère de fenêtre incomplet (il porte déjà l'occultation DWM), ni une évaluation trop précoce (les six fenêtres relevées à 15 ms ne cessent JAMAIS de passer), ni une fuite de sorties (10 créées / 10 servies, **zéro** fuite en régime — les 146 non détruites du journal sont le sillage d'arrêts brutaux). **La cause est le NOMBRE de fenêtres adoptées** : dix, pour un vivier de dix. ✅ **Règle d'appartenance livrée** (`crate::appartenance`, job object **sans aucune limite**) : armé **18 écartées, 5 sorties, 0 refus** ; désarmé (`APPARTENANCE=0`) **0 écartée, 10 sorties, 7 refus** — et le **témoin** dans le même relevé, les applications du catalogue servies. 🔵 Aussi : le verdict de `purge.rs` cesse de crier à tort (`verdict_purge.rs`, trois cas), et `apps/lancement.rs` est corrigé — **le superviseur EST dans un job**, celui du Planificateur, et ses lancements en héritent.
 
 
@@ -1141,9 +1142,63 @@ tard il était rouvert en plus grand.**
   simplement **non relayé, sans mise en file**. 🔴 **C'est exactement le mode
   d'usage réel derrière Pomerium** — l'OAuth prend du temps — et c'est le
   symptôme que le propriétaire a rapporté (« aucune fenêtre disponible »).
-  **NON CORRIGÉ, à dessein** : le corriger est un changement de conception
-  (rejeu à la connexion, ou file côté plateforme, ou relance du hook) qui
-  mérite sa propre tâche. Détail et mesures : document de résultats, § 11.
+  ✅ **CE LEGS ÉTAIT PÉRIMÉ QUAND ON L'A RELU, ET C'EST LE PATRON DU LEGS
+  `403/404` PAYÉ UNE SECONDE FOIS** (établi le 31 août 2026, lot 34, **par
+  les dates et non par une impression**) : il a été écrit par `5d01f1e` le
+  30 août à **00:43:11**, et **corrigé par `6a7c98e` le même jour à
+  02:49:53** — le lot 17, qui a donné au relais le message `pair-present` et
+  fait redire ses fenêtres au superviseur, sans jamais revenir mettre à jour
+  ce paragraphe. `git merge-base --is-ancestor 5d01f1e 6a7c98e` le confirme,
+  et `f4e25f4` l'a mesuré (0 / 4 / 5 fenêtres). **La borne de 30 s est
+  intacte et reste le bon mécanisme** : elle court depuis l'arrivée de la
+  page-shell, l'instant que sa propre documentation prétend mesurer.
+  🔴 **CE QUI RESTAIT RÉELLEMENT DÛ, ET QUE LE LOT 34 A FERMÉ, EST AILLEURS,
+  EN DEUX POINTS** : ① tout le mécanisme du lot 17 est **inopérant** tant que
+  la session de contrôle est morte, et elle ne se rouvrait jamais (voir
+  « Ce qu'aucun chantier n'a jamais mesuré », legs fermé le 31 août) ; ② si
+  la page-shell revient **avant** l'agent — le cas ORDINAIRE, le navigateur
+  se rechargeant à la main en quelques secondes quand l'agent respecte un
+  repli qui atteint trente secondes —, **personne ne prévenait l'agent** :
+  `pair-present` ne partait qu'au pair DÉJÀ EN PLACE. Le relais sait
+  désormais le dire aussi à l'agent qui **ARRIVE**
+  (`pair-present.ts::prevenirLArrivant`). ⚠️ **UN TROISIÈME RÉSIDU RESTE, ET
+  IL EST DEVENU LE SYMPTÔME DOMINANT** : une fenêtre `Vivante` n'est jamais
+  redite à une shell rechargée — **décision du propriétaire**, dossier au § 8
+  des résultats du lot 34.
+- 🔴 **UNE FENÊTRE `Vivante` N'EST JAMAIS REDITE À UNE PAGE-SHELL QUI ARRIVE,
+  ET C'EST DEVENU LE SYMPTÔME DOMINANT** (lot 34, 31 août 2026 ; nommé par le
+  lot 17, jamais inscrit ici). `reannoncer_les_attentes` ne redit que les
+  entrées en `AttendLeViewport` ; `recenser_les_fenetres_existantes` ne
+  rattrape que les fenêtres ABANDONNÉES, `fenetre_apparue` étant idempotente
+  par `HWND`. Une fenêtre dont l'enfant tourne reste donc **invisible à toute
+  shell rechargée**, pendant que sa pop-up continue de diffuser. **Ce n'est
+  pas un oubli, c'est la borne de la conception** : l'enfant consomme **une**
+  offre et ne renégocie jamais (`agent/src/demarrage.rs`), donc la redire
+  ferait ouvrir une page dont personne ne prendrait l'offre. 🔵 **DÉCISION DU
+  PROPRIÉTAIRE, dossier à trois voies chiffrées au § 8 des résultats du lot
+  34** — dont une (`window.open('', 'guac-<session>')`, qui rend la fenêtre
+  existante **sans la naviguer**) est côté client seul, donc déployable
+  **sans redémarrer l'agent**.
+- ⚠️ **AUCUN BATTEMENT APPLICATIF SUR `/signal`, DONC UNE RECONNEXION PEUT
+  ÊTRE REFUSÉE UN TEMPS INDÉTERMINÉ** (lot 34). Si un pair perd son socket
+  sans que la plateforme voie le FIN, son rôle reste occupé dans
+  l'appariement et la reconnexion est refusée en « un agent est déjà
+  connecté » jusqu'au délai TCP de l'hôte. Relevé par `grep` sur
+  `relais.ts` et `http/serveur.ts` : **aucun** `ping`/`pong`/`isAlive`. Le
+  repli tient la cadence et le refus est **tracé** depuis le lot 34
+  (`session de contrôle REFUSÉE par la plateforme`), mais la fenêtre
+  d'indisponibilité n'est ni bornée ni mesurée.
+- ⚠️ **LE PRÉFIXE DE SESSION N'EST PAS RELU À LA RECONNEXION** (lot 34) :
+  seul le jeton l'est. Un réenrôlement qui délivrerait un préfixe différent
+  ferait rouvrir l'ANCIENNE session de contrôle. Non observé (le préfixe
+  dérive de la VM), non gardé, écrit ici plutôt que découvert.
+- ⚠️ **LA PAGE-SHELL, ELLE, NE SE RECONNECTE PAS** — `shell.ts::
+  canalDeControlePerdu` affiche « Rechargez la page pour vous reconnecter ».
+  **Délibérément non touché par le lot 34** : ce n'est pas une panne muette
+  (le message est exact et actionnable), et une reconnexion automatique
+  rappellerait `ouvrir()` pour chaque fenêtre connue, donc **rechargerait les
+  pop-ups vivantes** (`window.open(url, "guac-<session>")` vise une fenêtre
+  NOMMÉE). Le remède juste suppose de trancher le legs précédent d'abord.
 - 🔴 **UNE APPLICATION DU WINDOWS STORE NE SERAIT PAS ADOPTÉE** (lot 32I,
   30 août 2026). Depuis la règle d'appartenance, `desk` n'adopte que les
   fenêtres des processus qu'il a lancés, reconnus par un **job object sans
@@ -1332,17 +1387,21 @@ tard il était rouvert en plus grand.**
 - 🔴 **AUCUN JUGEMENT VISUEL N'A ÉTÉ PORTÉ SUR ⑥, D'UN BOUT À L'AUTRE** : aucune
   page n'a été ouverte dans un navigateur par un humain, de S1 à S4. **Vingt-cinq
   jugements humains attendent un œil**, et la galerie existe pour cela.
-- 🔴 **LA CONNEXION DE CONTRÔLE DU SUPERVISEUR NE SE RECONNECTE JAMAIS**
-  (trouvé le 30 août 2026 en mesurant le lot 17, **non corrigé**). Après un
-  redémarrage du service `desk-plateforme`, le superviseur journalise
-  `émission vers la shell échouée erreur=Trying to work with closed connection`
-  et **reste ainsi** : le pont fichiers se relance
-  (`boucle/surveillance_pont.rs`), le superviseur non
-  (`superviseur/signalisation.rs` se contente de journaliser « connexion de
-  contrôle au signaling perdue »). ⚠️ **Tant que ce socket est mort, AUCUNE
-  fenêtre ne peut être annoncée ni réannoncée, et la correction du lot 17 est
-  inopérante** — le seul remède connu est de relancer l'agent. Panne muette
-  d'exploitation, à traiter dans son propre lot.
+- ✅ ~~🔴 **LA CONNEXION DE CONTRÔLE DU SUPERVISEUR NE SE RECONNECTE
+  JAMAIS**~~ **FERMÉ LE 31 AOÛT 2026 (lot 34)** : `superviseur/
+  signalisation.rs` la ROUVRE, à repli exponentiel
+  (`plateforme::repli::delai_de_repli`, la primitive que le canal `/agent`
+  emploie déjà), décision PURE dans `superviseur/reprise_controle.rs`.
+  **Mesuré sur la VM de production, le même geste aux deux bras** : ancien
+  binaire, `session de contr` = **0** pendant 3 min 27 s après la coupure,
+  avec `reprise du canal /agent` et `pont fichiers lancé` comme témoins dans
+  le même segment ; binaire neuf, **2,04 s** entre `session de contrôle
+  PERDUE` et `session de contrôle RÉTABLIE`, et le même motif rend **5**.
+  🔴 **LE PIÈGE QUI AURAIT RENDU LE REMÈDE PLACEBO, ET QUI EST FERMÉ AVEC** :
+  le jeton est relu **à chaque tentative** depuis la veille d'identité, jamais
+  `config.jeton` — l'instantané du démarrage dure dix minutes, et une
+  reconnexion qui le présenterait serait refusée (`jeton refusé (expire)`)
+  **à chaque tentative, pour toujours**. Voir les résultats du lot 34.
 - 🔴 **LE CHEMIN D'EXTINCTION PROPRE DU SUPERVISEUR N'A JAMAIS ÉTÉ EXERCÉ**,
   depuis D1 — chaque recette se termine par un `Stop-Process -Force`. C'est ce
   qui laisse des sorties virtuelles et des racines ProjFS orphelines.
