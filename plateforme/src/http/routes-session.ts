@@ -16,9 +16,12 @@
 //    garder synchrone, dont on n'a pas le droit de se servir.
 //
 // ② LE NOM DE SESSION COMPOSÉ SERAIT UNE TROISIÈME COPIE DE `bureau`. La
-//    constante vit déjà en Rust (`agent/src/superviseur/protocole.rs`) et en
-//    TypeScript (`client/src/shell-page.ts`), et la spec §2.6 nomme déjà cette
-//    duplication comme un défaut connu.
+//    constante vit déjà en Rust (`agent/src/superviseur/protocole.rs`,
+//    `NOM_SESSION_DE_CONTROLE`) et, côté TypeScript, en littéral inline dans
+//    `client/src/bureau/porteur-dom.ts` (`composer(deps.prefixe, 'bureau')` —
+//    un `NOM_SESSION_DE_CONTROLE` nommé vivait dans `client/src/shell-page.ts`
+//    avant que la tâche 9 ne l'inline, 31 août 2026), et la spec §2.6 nomme
+//    déjà cette duplication comme un défaut connu.
 //
 // ⚠️ ELLE NE REND PAS NON PLUS `adresse` : c'est de la topologie interne dont
 // le navigateur n'a aucun usage — il parle au signaling, jamais à la VM.

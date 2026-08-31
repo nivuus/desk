@@ -168,10 +168,12 @@ describe(`route POST /session, moteur=${MOTEUR}`, () => {
         // N n'est pas une simplification, c'est un second endroit à garder
         // synchrone dont on n'a pas le droit de se servir.
         //
-        // `bureau` : la constante vit déjà en Rust et en TypeScript
-        // (`client/src/shell-page.ts` fait `composer(prefixe, …)`), et la spec
-        // §2.6 nomme déjà cette duplication comme un défaut connu. En ajouter
-        // une TROISIÈME pour économiser une concaténation au navigateur serait
+        // `bureau` : la constante vit déjà en Rust et, côté TypeScript, en
+        // littéral inline (`client/src/bureau/porteur-dom.ts` fait
+        // `composer(deps.prefixe, 'bureau')` — un `shell-page.ts` qui le
+        // nommait a été retiré à la tâche 9, 31 août 2026), et la spec §2.6
+        // nomme déjà cette duplication comme un défaut connu. En ajouter une
+        // TROISIÈME pour économiser une concaténation au navigateur serait
         // aggraver un défaut qu'on sait nommer.
         const url = await servir('rs-sobre');
         await poserVm(base!, 'v1', 'w1', 'PREFIXEv1', MS);

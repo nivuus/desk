@@ -58,7 +58,8 @@ import { effacerPrefixe, poserPrefixe } from './prefixe';
 import { adressePlateforme } from './adresse-plateforme';
 
 const params = new URLSearchParams(window.location.search);
-// La MÊME convention que le signaling de `shell-page.ts` : un paramètre de
+// La MÊME convention que le signaling de `hub/page.ts` (`shell-page.ts` avant
+// que le hub ne devienne la seule surface, 31 août 2026) : un paramètre de
 // requête, sinon L'ORIGINE DE LA PAGE. Inventer une seconde convention
 // obligerait à savoir laquelle s'applique où.
 //

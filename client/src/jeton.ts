@@ -12,8 +12,9 @@
 // 🔴 LE STOCKAGE EST `localStorage`, ET LE COÛT EST ICI PLUTÔT QUE DÉCOUVERT :
 // un jeton en `localStorage` est lisible par TOUT script de la page, donc par
 // une injection de script. `sessionStorage` ne convient pas — la page-shell
-// ouvre ses fenêtres par `window.open` (`shell-page.ts`), et le stockage de
-// session n'est pas garanti partagé avec elles, ce qui obligerait chaque
+// ouvre ses fenêtres par `window.open` (`bureau/porteur-dom.ts`, `shell-page.ts`
+// avant que le hub ne devienne la seule surface, 31 août 2026), et le stockage
+// de session n'est pas garanti partagé avec elles, ce qui obligerait chaque
 // fenêtre à se reconnecter. C'est un ARBITRAGE, pas un oubli.
 //
 // ⚠️ **P5 EST PASSÉ, ET L'ARBITRAGE N'A PAS ÉTÉ ROUVERT** (revue transverse,

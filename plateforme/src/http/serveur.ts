@@ -23,10 +23,12 @@
 // différentes (le navigateur, que le proxy authentifie ; l'agent Windows, qui
 // n'a ni navigateur ni cookie), il fallait un chemin distinct pour que le
 // proxy puisse garder la racine sans couper l'agent. La page de session
-// (`client/src/main.ts`) et la page-shell (`client/src/shell-page.ts`) visent
-// désormais `/signal` (via `client/src/adresse-plateforme.ts`), comme l'agent
-// (`agent/src/signaling.rs`, `url_du_relais`). Aucun pair connu n'en est
-// affecté — chacun a été déplacé dans le même commit.
+// (`client/src/main.ts`) et la page-shell (`client/src/hub/page.ts` depuis
+// que le hub est devenu la seule surface, 31 août 2026 ; `client/src/
+// shell-page.ts` à l'époque de ce commit) visent désormais `/signal` (via
+// `client/src/adresse-plateforme.ts`), comme l'agent (`agent/src/
+// signaling.rs`, `url_du_relais`). Aucun pair connu n'en est affecté —
+// chacun a été déplacé dans le même commit.
 
 import { createServer, type Server } from 'node:http';
 import { WebSocketServer } from 'ws';

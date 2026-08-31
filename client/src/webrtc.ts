@@ -232,9 +232,10 @@ export async function connectSession(options: SessionOptions): Promise<SessionHa
     // précisément l'objet du sous-bloc.
     //
     // ⚠️ AUCUNE REDIRECTION ICI, et ce n'est pas un oubli. Sans jeton, la
-    // session est refusée et le refus s'affiche ; c'est `shell-page.ts` qui
-    // renvoie vers l'écran de connexion, parce qu'il est l'entrée réelle de
-    // l'utilisateur. Une page de session est TOUJOURS ouverte par la shell, sur
+    // session est refusée et le refus s'affiche ; c'est `hub/page.ts`
+    // (`shell-page.ts` avant que le hub ne devienne la seule surface,
+    // 31 août 2026) qui renvoie vers l'écran de connexion, parce qu'il est
+    // l'entrée réelle de l'utilisateur. Une page de session est TOUJOURS ouverte par la shell, sur
     // la même origine, donc le jeton y est déjà. Rediriger depuis une
     // bibliothèque lui donnerait un pouvoir sur la navigation de ses appelants.
     const jeton = options.jeton ?? jetonAcces();

@@ -40,9 +40,11 @@ import { encodeEchec } from '../../../proto/ts/fichiers-entetes';
  * ⚠️ MIROIR de `NOM_SESSION_DU_PONT` (`agent/src/superviseur/protocole.rs`) :
  * les deux bouts composent le MÊME identifiant, et une divergence ne se verrait
  * qu'en session réelle. C'est exactement le régime de `SEPARATEUR`
- * (`client/src/prefixe.ts`) et de `NOM_SESSION_DE_CONTROLE`
- * (`client/src/shell-page.ts`), et la même dette : ce dépôt n'a pas de source
- * unique pour les noms de session, seulement des miroirs commentés.
+ * (`client/src/prefixe.ts`) et du nom de la session de contrôle — `'bureau'`,
+ * composé par `client/src/bureau/porteur-dom.ts` (`NOM_SESSION_DE_CONTROLE`
+ * dans `shell-page.ts` avant que la tâche 9 ne l'inline, 31 août 2026) —, et
+ * la même dette : ce dépôt n'a pas de source unique pour les noms de session,
+ * seulement des miroirs commentés.
  *
  * ⚠️ CE N'EST PAS UN IDENTIFIANT À LUI SEUL : il se compose avec le préfixe de
  * la VM (sous-bloc P3), sans quoi deux VMs se disputeraient la même session sur

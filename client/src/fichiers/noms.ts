@@ -212,7 +212,9 @@ export const FAUTE_SILENCE = 'silence';
  * module (`location.search`, une variable de module) le rendrait intestable, et
  * surtout : un utilisateur qui créerait un dossier nommé `.faute-disque-plein`
  * casserait son propre pont. Le drapeau est lu **une fois** dans
- * `shell-page.ts` et passé en argument, comme `PLEIN_ECRAN` l'est côté agent.
+ * `hub/page.ts` (`shell-page.ts` avant que le hub ne devienne la seule
+ * surface, 31 août 2026) et passé en argument, comme `PLEIN_ECRAN` l'est côté
+ * agent.
  *
  * ⚠️ **LE PREMIER COMPOSANT, ET LUI SEUL.** Un balayage de tous les composants
  * ferait qu'un chemin traversant un dossier ainsi nommé — même en profondeur —

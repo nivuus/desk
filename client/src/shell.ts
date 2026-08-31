@@ -11,8 +11,9 @@
 /**
  * Le TON d'un bandeau — l'un des quatre de la famille `message` des primitives
  * (sous-bloc S2). C'est une RÈGLE, et elle vit ici plutôt que dans le câblage :
- * `shell-page.ts` ne fait que poser la classe correspondante, et une condition
- * qui apparaîtrait là-bas serait au mauvais endroit.
+ * `bureau/porteur-dom.ts` (`shell-page.ts` avant que le hub ne devienne la
+ * seule surface, 31 août 2026) ne fait que poser la classe correspondante, et
+ * une condition qui apparaîtrait là-bas serait au mauvais endroit.
  *
  * ⚠️ `alerte` N'A AUCUN APPELANT DANS CE FICHIER, et c'est délibéré : la page-
  * shell n'a aujourd'hui aucun état qui soit un avertissement sans être un
@@ -98,13 +99,14 @@ export interface Bureau {
     /// Faut-il prévenir l'utilisateur avant qu'il ne referme l'onglet ?
     ///
     /// ⚠️ **PRÉDICAT PUR, testé ici** ; le câblage de `beforeunload` vit dans
-    /// `shell-page.ts`, qui n'est pas testé. Prévenir TOUJOURS apprendrait à
-    /// l'utilisateur à ignorer l'avertissement, ce qui le rendrait inutile
-    /// exactement le jour où il compte.
+    /// `bureau/porteur-dom.ts` (`shell-page.ts` avant que le hub ne devienne
+    /// la seule surface, 31 août 2026), qui n'est pas testé. Prévenir
+    /// TOUJOURS apprendrait à l'utilisateur à ignorer l'avertissement, ce qui
+    /// le rendrait inutile exactement le jour où il compte.
     doitPrevenir(): boolean;
     /// 🔴 **NEUF — CORRECTIF DU LEGS DES FREINS MANQUANTS (round de
     /// correction 1, critique ④), 25 août 2026.** Le socket de la session de
-    /// contrôle (`shell-page.ts`) peut désormais recevoir un message
+    /// contrôle (`bureau/porteur-dom.ts`, `shell-page.ts` à l'époque) peut désormais recevoir un message
     /// `{type:'error'}` qu'AUCUNE branche de son aiguillage ne reconnaissait —
     /// notamment le refus de volume `trop-de-requetes` que ce même lot vient
     /// d'ouvrir sur `/signal` (`signaling/relais.ts`). Sans cette méthode, la
