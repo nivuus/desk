@@ -13,9 +13,13 @@
    c'est à lui de poser `--bord-fort` ». S3 a fait AUTREMENT — la carte reste
    INERTE, et c'est un `.bouton--discret` POSÉ DANS la carte qui porte l'action
    « Rouvrir » (`client/hub.html`, `<template id="modele-fenetre">` —
-   `client/shell.html` jusqu'à la tâche 9 du 31 août 2026, qui l'a vidée ;
-   mesuré par `grep -ln 'modele-fenetre' client/*.html`, qui ne rend plus
-   que le hub). Le
+   `client/shell.html` jusqu'à la tâche 9 du 31 août 2026, qui l'a vidée).
+   ⚠️ **DEUX MESURES, PARCE QUE LA PHRASE EN AFFIRME DEUX** : où vit le
+   gabarit — `grep -ln 'modele-fenetre' client/*.html` ne rend plus que le
+   hub — ET quelle classe porte réellement le bouton, qui est l'affirmation
+   que cet encadré fait vraiment : `client/hub.html:199` rend
+   `<button type="button" class="bouton bouton--discret" data-rouvrir>`.
+   Le premier relevé seul aurait laissé la seconde moitié non établie. Le
    contour cliquable est donc celui du bouton, que `bouton.css` mesure déjà ;
    la carte reste le conteneur décoratif que WCAG 1.4.11 exempte, et
    `--bord-fort` N'EST TOUJOURS PAS POSÉ ICI. ⚠️ AUCUNE COMMANDE NE VÉRIFIE CE

@@ -18,10 +18,21 @@
 
    ⚠️ ET LA COULEUR SEULE NE PORTE PAS L'INFORMATION : le §3 l'interdit, et le
    balisage devait donner au message son `role` et son libellé. ✅ S3 L'A FAIT,
-   et cette phrase cesse d'être au futur : les bandeaux du produit portent
-   `role="status"` dans leur HTML — MESURÉ le 31 août 2026 par
-   `grep -c 'role="status"' client/*.html`, RELANCÉ et non recopié :
-   `client/hub.html` ×4, `client/index.html` ×3, `client/connexion.html` ×1.
+   et cette phrase cesse d'être au futur : **les HUIT bandeaux du produit**
+   portent `role="status"` dans leur HTML — MESURÉ le 31 août 2026,
+   RELANCÉ et non recopié : `client/hub.html` ×4, `client/index.html` ×3,
+   `client/connexion.html` ×1.
+
+   ⚠️ **CE COMPTE EST CELUI DES BANDEAUX, ET IL A FALLU L'ÉTABLIR PLUTÔT
+   QUE LE SUPPOSER** : `grep -c` compte des LIGNES, pas des éléments, et un
+   compteur qui compte des lignes en croyant compter des événements est un
+   piège que ce dépôt a déjà payé. Les trois relevés ont donc été croisés,
+   et ils COÏNCIDENT : `grep -c 'role="status"'` et
+   `grep -o 'role="status"' | wc -l` rendent les mêmes 4/3/1 (une seule
+   occurrence par ligne), et `grep -o 'class="[^"]*message[^"]*"'` rend
+   les mêmes 4/3/1 aux mêmes lignes. **Chaque élément `.message` porte le
+   rôle, et chaque rôle est porté par un `.message`** — c'est cette égalité
+   qui autorise à dire « les bandeaux » plutôt que « huit attributs ».
    ⚠️ CETTE PARENTHÈSE DISAIT « `client/shell.html` ×2 » jusqu'à la revue
    finale du 31 août 2026 : `shell.html` est devenue une redirection SANS
    AUCUN balisage (tâche 9), et son compte y est désormais ZÉRO — les deux

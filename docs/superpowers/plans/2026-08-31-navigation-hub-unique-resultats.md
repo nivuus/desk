@@ -506,6 +506,73 @@ sur `..HEAD`.
   nombre est un **relevé daté**, jamais une source de vérité : la commande de
   `CLAUDE.md`, relancée, ne rend que `agent/src/windows_source.rs` (**630**).
 
+### 8.7 🔴 Ce que la RE-REVUE a trouvé — une casse, et cinq résidus consignés
+
+**31 août 2026, après la vague du § 8.** La re-revue a rendu « prêt à fusionner »
+sur les douze points, et trouvé **un défaut que la vague avait elle-même
+introduit en corrigeant M2**.
+
+🔴 **`client/src/design/primitives.css` : « TROIS SURFACES DU PRODUIT LE
+LIENT — `client/index.html`, `client/hub.html` et `client/connexion.html` ».
+FAUX.** `grep -ln "primitives.css" client/*.html` rend `connexion.html`,
+`hub.html` et `primitives.html` — **la galerie**, qui n'est pas une surface du
+produit ; `client/index.html` ne lie que `socle.css` et `style.css`. Et le même
+encadré **se contredisait vingt lignes plus bas, texte intact** : « ⛔
+`client/index.html` … **N'EN LIE AUCUNE** ».
+
+🔴 **C'est exactement le patron que `CLAUDE.md` punit — « corriger une
+affirmation fausse peut en produire une autre » —, et il est ici AGGRAVÉ de deux
+façons.** ① La phrase fautive **se vantait** d'avoir été « RELANCÉ plutôt que
+réécrit de mémoire » : le relevé qui la suit l'avait été, la phrase de tête non.
+② **La cause est une confusion entre DEUX MESURES DIFFÉRENTES** : le contrôle
+§7.9 ② A mesure quelles surfaces **EMPLOIENT** une famille de primitives, jamais
+lesquelles **LIENT** la feuille. `index.html` emploie `.message` et `.surface`
+— ses règles lui venant de `style.css` — et ne lie rien. **Ce qu'il fallait
+corriger dans M2 était le seul NOM `shell.html` → `hub.html` ; le compte juste
+restait DEUX.**
+
+**Corrigé** : la tête dit **DEUX** surfaces qui **LIENT**, avec sa commande ; le
+relevé §7.9 conservé est **explicitement étiqueté « mesure l'EMPLOI, jamais le
+`<link>` »**, pour que DEUX et TROIS cessent de se contredire — ils sont vrais de
+choses différentes, et chacun dit désormais de quoi.
+
+🔵 **ET LA MÊME QUESTION A ÉTÉ POSÉE AUX TROIS AUTRES EN-TÊTES QUE LA VAGUE
+AVAIT TOUCHÉS** — *la phrase de tête dit-elle ce que le relevé mesure ?* Un
+compte juste sous une phrase fausse est très exactement ce qui venait de se
+produire.
+
+| Fichier | Ce que la relecture a établi |
+| --- | --- |
+| `primitives/message.css` | la phrase dit « les bandeaux », le relevé comptait des **lignes**. Les trois mesures ont été **croisées et coïncident** : `grep -c`, `grep -o … \| wc -l` et le compte des éléments `class="…message…"` rendent les mêmes **4/3/1** aux mêmes lignes. **Chaque `.message` porte le rôle, chaque rôle est porté par un `.message`** — c'est cette égalité, désormais écrite, qui autorise « les huit bandeaux » plutôt que « huit attributs » |
+| `primitives/surface.css` | la phrase affirmait **deux** choses (où vit le gabarit, **et** quelle classe porte le bouton) et n'en mesurait qu'une. La seconde est établie : `client/hub.html:199` rend `class="bouton bouton--discret"` |
+| `bureau/bureau.css` | l'affirmation était juste, **la commande citée ne l'était pas** : `grep -n 'bureau.css'` frappe **aussi un commentaire** de `hub.html`. Ancrée sur la syntaxe du `<link>`, elle rend cette seule ligne |
+
+**Les cinq résidus, CONSIGNÉS et non corrigés** — décision : aucun n'est une
+panne muette, tous sont des commentaires à compléter ou des minutes de travail
+pour le prochain lot. 🔴 **Ils sont inscrits ICI plutôt que laissés dans un
+rapport gitignoré** — ce dépôt a perdu six constats de revue de cette façon.
+
+- ⚠️ **LA DÉCLARATION I6 EST ABSENTE DU GESTIONNAIRE `lancer` DE
+  `hub/page.ts`**, dont le commentaire (« la fenêtre lancée paraîtra dans la
+  section « Mes fenêtres » de CETTE page ») **reste trompeur pour un suiveur** :
+  elle paraîtra chez le PORTEUR. La décision est au § 8.5 et dans la spec §4 ;
+  elle ne l'est pas à l'endroit où on la lirait.
+- ⚠️ **LA DÉCLARATION M5 N'EXISTE QUE DANS CE DOCUMENT**, pas dans le code
+  (`hub/page.ts::publierLeManifeste`, `hub/catalogue.ts::lireIcone`).
+- ⚠️ **LE BOUTON « CHOISIR MON DOSSIER » EST ACTIVÉ AVANT QUE SON ÉCOUTEUR
+  EXISTE**, depuis que `installerLePont` suit un `await` dans `promouvoir` :
+  `activerLePont()` court avant. Fenêtre d'un tour de boucle d'événements, où un
+  clic serait perdu **sans trace**.
+- ⚠️ **`#statut` CLIGNOTE SUR UN CHARGEMENT MONO-ONGLET** : `devenirSuiveur`
+  écrit « Bureau tenu par un autre onglet. » **synchroniquement**, et
+  `ouvrirLaSession` ne l'écrase qu'à l'octroi du verrou. Bref, mais faux.
+- 🔴 **LA DEMI-PHRASE OPTIMISTE DE `Election::relacher`** : « un autre onglet —
+  ou un rechargement — peut prendre la place » n'est vrai que d'un onglet
+  **NEUF OU RECHARGÉ**. Avec N onglets, la démission **ENCHAÎNE** — chaque
+  promu est refusé à son tour et relâche —, et l'état final est une partition
+  **sans aucun onglet dans la file**. C'est borné et sans dommage, mais le
+  commentaire promet plus que ce qu'il tient.
+
 ## 9. Ce qu'il faut retenir en une phrase
 
 Le hub tient désormais la session de contrôle, montre ses fenêtres et son pont
