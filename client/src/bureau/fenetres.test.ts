@@ -10,16 +10,15 @@ describe('lignes', () => {
         expect(lignes([{ session: 's', titre: 'Paint', ouverte: false }])[0].rouvrable).toBe(true);
     });
 
-    it('la pastille porte DEUX litteraux distincts, jamais une classe composee', () => {
-        // 🔴 UNE CLASSE CALCULEE EST INVISIBLE AU CONTROLE 7.9, qui ne voit que
-        // les litteraux. Les deux valeurs doivent donc etre des constantes du
-        // type, pas une concatenation.
+    it('le booleen ouverte distingue les deux etats : c est lui qui pilote la classe cote cablage', () => {
+        // 🔴 LA REGLE PURE NE DECIDE PLUS DU NOM DE CLASSE : un nom qui
+        // transiterait par une variable serait invisible au controle §7.9,
+        // qui ne voit que les litteraux passes a `classList.add('…')`. Ce que
+        // la regle pure decide, c est l ETAT ; le nom litteral de la classe
+        // vit dans fenetres-dom.ts.
         const ouverte = lignes([{ session: 'a', titre: 'x', ouverte: true }])[0];
         const fermee = lignes([{ session: 'b', titre: 'x', ouverte: false }])[0];
-        expect([ouverte.classePastille, fermee.classePastille]).toEqual([
-            'bureau__pastille--ouverte',
-            'bureau__pastille--fermee',
-        ]);
+        expect([ouverte.ouverte, fermee.ouverte]).toEqual([true, false]);
     });
 
     it('le mot de la pastille est accentue du cote FERME', () => {
