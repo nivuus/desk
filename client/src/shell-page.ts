@@ -30,6 +30,7 @@ import type { RacineMutable } from './fichiers/mutation';
 import { creerServeur, trameBonjour, trameRafraichir } from './fichiers/protocole';
 import { choisirDossier, connecterCanalFichiers, sessionDuPont, type CanalFichiers } from './fichiers/canal';
 import { adressePlateforme, adresseSignaling } from './adresse-plateforme';
+import { dessinerFenetres } from './bureau/fenetres-dom';
 
 const params = new URLSearchParams(window.location.search);
 // 🔴 L'ADRESSE SUIT LE PROTOCOLE ET LE PORT DE LA PAGE, elle n'est plus le
@@ -365,31 +366,12 @@ async function monterLeLecteur(): Promise<void> {
 }
 
 function redessiner(): void {
-    liste.replaceChildren();
-    for (const f of bureau.liste()) {
-        // Le balisage vient du `<template>` de `shell.html`, pas d'ici : les
-        // classes restent dans le HTML, où le contrôle §7.9 les lit sans avoir
-        // à analyser du TypeScript.
-        const item = modeleFenetre.content.cloneNode(true) as DocumentFragment;
-        item.querySelector('[data-titre]')!.textContent = f.titre;
-
-        const pastille = item.querySelector<HTMLElement>('[data-etat]')!;
-        pastille.textContent = f.ouverte ? 'ouverte' : 'fermée';
-        // Deux littéraux, et non une classe composée : une classe calculée est
-        // invisible au contrôle §7.9 (voir la table des tons ci-dessus).
-        if (f.ouverte) pastille.classList.add('bureau__pastille--ouverte');
-        else pastille.classList.add('bureau__pastille--fermee');
-
-        const bouton = item.querySelector<HTMLButtonElement>('[data-rouvrir]')!;
-        if (f.ouverte) {
-            // Une fenêtre ouverte n'a rien à rouvrir : le bouton part, plutôt
-            // que d'être désactivé — il n'y a pas d'action à suggérer.
-            bouton.remove();
-        } else {
-            bouton.addEventListener('click', () => { bureau.rouvrir(f.session); redessiner(); });
-        }
-        liste.append(item);
-    }
+    dessinerFenetres(bureau.liste(), {
+        liste,
+        modele: modeleFenetre,
+        // `shell.html` affiche la liste sans pli : aucune section à révéler.
+        rouvrir: (session) => { bureau.rouvrir(session); redessiner(); },
+    });
 }
 
 socket.addEventListener('open', () => {
