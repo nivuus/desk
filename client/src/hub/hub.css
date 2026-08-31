@@ -184,12 +184,18 @@
 /* ── LES DEUX SECTIONS VENUES DE `shell.html`, LE 31 AOÛT 2026 ─────────────
    « Mes fenêtres » et « Mes fichiers » gardent leurs identifiants et leurs
    crochets `data-*` de `shell.html`, mais PAS ses classes : `bureau__section`
-   et `bureau__section-titre` viennent de `shell.css`, une feuille que le hub
-   lie déjà pour réutiliser `shell.ts` tel quel — les redéclarer ici, sous le
-   préfixe `hub__`, évite qu'une évolution future de `shell.css` (renommée
-   `bureau/bureau.css` à la tâche 9, où `shell.html` disparaît) ne peigne ces
-   sections sans qu'on l'ait décidé. Même valeurs que `.bureau__section` et
-   `.bureau__section-titre` de `shell.css`, à dessein. */
+   et `bureau__section-titre` VENAIENT de `bureau/bureau.css` (`shell.css`
+   avant son renommage à la tâche 9, 31 août 2026, où `shell.html` cesse de
+   porter tout balisage mais SURVIT comme redirection — voir
+   `src/bureau/redirection.ts` pour le pourquoi) — les redéclarer ici, sous le
+   préfixe `hub__`, évitait qu'une évolution future de cette feuille ne
+   peigne ces sections sans qu'on l'ait décidé. 🔴 CETTE FEUILLE-LÀ NE LES
+   PORTE PLUS DU TOUT DEPUIS LA MÊME TÂCHE : `.bureau__section` et
+   `.bureau__section-titre` sont devenues orphelines (le hub ne les a jamais
+   employées, et lui seul les rendait vivantes) et ont été retirées de
+   `bureau/bureau.css`. Même valeurs qu'elles portaient, à dessein — la
+   duplication a cessé de protéger contre une évolution FUTURE et protège
+   désormais d'une dépendance qui n'existe simplement plus. */
 .hub__section {
     margin-block-start: var(--e-6);
 }
