@@ -1,0 +1,33 @@
+{
+ "etiquette": "diag2",
+ "instant": "2026-08-31T08:44:28.425Z",
+ "points": [],
+ "vm": "677a3953-14c7-4364-92c3-bd17ecddf8d2",
+ "prefixe": "3sxuA9dd56NpVdHi37R86g",
+ "lancement": {
+  "nom": "Notepad",
+  "id": "7f2a7df5-765f-4f6c-b5c8-485e8c1a4e19",
+  "statut": 200,
+  "reponse": "{\"issue\":\"raccourci\"}"
+ },
+ "cibles_vues": [
+  "background_page:chrome-extension://nkeimhogjdpnpccoofpliimaahmaaome/background.html ~ background_page:chrome-extension://nmmhkkegccagdldgiimedpiccmgmieda/_generated_background_page.html ~ browser_ui:chrome://omnibox-popup.top-chrome/ ~ browser_ui:chrome://omnibox-popup.top-chrome/omnibox_popup_aim.html ~ page:http://192.168.3.1:3445/shell.html ~ service_worker:chrome-extension://fignfifoniblkonapihmkfakmlgkbkcf/service_worker.js ~ service_worker:chrome-extension://ghbmnnjooekpmoecnnnilnnbdlolhkhi/service_worker_bin_prod.js",
+  "background_page:chrome-extension://nmmhkkegccagdldgiimedpiccmgmieda/_generated_background_page.html ~ browser_ui:chrome://omnibox-popup.top-chrome/ ~ browser_ui:chrome://omnibox-popup.top-chrome/omnibox_popup_aim.html ~ page:http://192.168.3.1:3445/shell.html ~ service_worker:chrome-extension://fignfifoniblkonapihmkfakmlgkbkcf/service_worker.js ~ service_worker:chrome-extension://ghbmnnjooekpmoecnnnilnnbdlolhkhi/service_worker_bin_prod.js",
+  "browser_ui:chrome://omnibox-popup.top-chrome/ ~ browser_ui:chrome://omnibox-popup.top-chrome/omnibox_popup_aim.html ~ page:http://192.168.3.1:3445/shell.html ~ service_worker:chrome-extension://fignfifoniblkonapihmkfakmlgkbkcf/service_worker.js ~ service_worker:chrome-extension://ghbmnnjooekpmoecnnnilnnbdlolhkhi/service_worker_bin_prod.js",
+  "browser_ui:chrome://omnibox-popup.top-chrome/ ~ browser_ui:chrome://omnibox-popup.top-chrome/omnibox_popup_aim.html ~ page:http://192.168.3.1:3445/shell.html ~ service_worker:chrome-extension://ghbmnnjooekpmoecnnnilnnbdlolhkhi/service_worker_bin_prod.js",
+  "browser_ui:chrome://omnibox-popup.top-chrome/ ~ browser_ui:chrome://omnibox-popup.top-chrome/omnibox_popup_aim.html ~ page:http://192.168.3.1:3445/shell.html"
+ ],
+ "shell": {
+  "texte": "Bureau\nBureau refusé : un client est déjà connecté à la session 3sxuA9dd56NpVdHi37R86g:bureau.\nMes fichiers\nChoisir mon dossier\n\nRafraîchir\nReprendre l’enregistrement\n\nMes fenêtres\nThème\n\nsysteme\nclair\nsombre",
+  "boutons": [
+   "Choisir mon dossier",
+   "Rafraîchir",
+   "Reprendre l’enregistrement",
+   "systeme",
+   "clair",
+   "sombre"
+  ],
+  "popup": "autorise"
+ },
+ "erreur": "aucune page de session : voir releve.shell"
+}

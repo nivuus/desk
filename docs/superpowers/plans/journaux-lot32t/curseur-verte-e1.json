@@ -1,0 +1,14 @@
+{
+ "etiquette": "verte-e1",
+ "instant": "2026-08-31T08:39:00.403Z",
+ "points": [],
+ "vm": "677a3953-14c7-4364-92c3-bd17ecddf8d2",
+ "prefixe": "3sxuA9dd56NpVdHi37R86g",
+ "lancement": {
+  "nom": "Notepad",
+  "id": "7f2a7df5-765f-4f6c-b5c8-485e8c1a4e19",
+  "statut": 200,
+  "reponse": "{\"issue\":\"raccourci\"}"
+ },
+ "erreur": "aucune page de session : la shell a-t-elle recu une fenetre ?"
+}
