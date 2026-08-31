@@ -13,6 +13,11 @@ pub mod fenetres;
 pub mod hook;
 pub mod placement;
 pub mod reprise;
+// La décision PURE de reconnexion de la session de contrôle. Enfant
+// ORDINAIRE — pas de `#[path]` : ce fichier-ci n'est pas `#[cfg(windows)]`,
+// donc `cargo test --workspace` compile et exécute ses tests sur l'hôte,
+// là où `signalisation.rs` (son seul appelant) reste hors de portée.
+pub mod reprise_controle;
 pub mod protocole;
 pub mod table;
 
@@ -42,10 +47,20 @@ pub async fn executer(
     // page-shell — qui, elle, a suivi le déplacement via
     // `client/src/adresse-plateforme.ts` — ne trouverait jamais personne en
     // face sur la session de contrôle.
+    // 🔴 LA VEILLE D'IDENTITÉ PART AVEC, ET PAS SEULEMENT `config.jeton`.
+    // Le socket de contrôle SE REPREND depuis ce lot ; une reconnexion
+    // survenue une heure plus tard présenterait l'instantané du démarrage,
+    // c'est-à-dire un jeton mort que la garde refuse (« jeton refusé
+    // (expire) », ligne réellement observée en production). C'est le même
+    // argument, mot pour mot, que `main.rs` porte déjà pour le LANCEUR —
+    // « un superviseur vit des heures ; le jeton d'agent dure dix minutes ».
+    // `config.jeton` reste la valeur de la PREMIÈRE ouverture, et le repli
+    // quand aucun canal `/agent` n'a été ouvert.
     let (rx_shell, envoyer) = signalisation::connecter(
         &crate::signaling::url_du_relais(&config.signaling_url),
         &session_de_controle,
         config.jeton.as_deref(),
+        identite.clone(),
     )
     .await?;
 
