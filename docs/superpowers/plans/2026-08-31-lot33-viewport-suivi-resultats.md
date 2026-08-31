@@ -691,3 +691,113 @@ n'avait pas, et c'est pourquoi il a fallu deux allers-retours.
   dont deux miennes (« le placement périodique est en bataille permanente » ;
   « le plafond `1.0` garde la barre des tâches hors du cadre »). C'est le
   relevé qui a tranché à chaque fois, jamais le raisonnement.
+
+
+---
+
+## 13. Le TROISIÈME envoi : le cadre invisible de DWM (31 août 2026, 12:47)
+
+*« Il y a moins de bordure, mais y en a toujours. »* puis, au discriminant :
+**« La marge ne varie pas. »**
+
+### 13.1 Le discriminant a fait son travail
+
+🔵 **Le critère « varie / ne varie pas » avait été écrit AVANT la mesure**
+(§ 11.2). Une marge insensible au rapport ne peut pas être une erreur de
+proportion : la piste de l'aspect résiduel est **éliminée par le juge humain**,
+et les traces neuves le confirment indépendamment — écart d'aspect **0,176 % au
+pire**, soit ~3 px sur 1700, et **exactement 0,000 %** sur deux des demandes
+relevées (`1592x880` et `1696x952`, servies à l'identique).
+
+### 13.2 Les quatre nombres, session 1, session vivante
+
+```
+GetWindowRect = 1732x1032+1280+0   <- exactement la `retenue` du journal
+DWM frame     = 1718x1025+1287+0
+lisere : gauche=7  haut=0  droite=7  bas=7
+sortie : 1860x1080+1280+0,  zone de travail 1860x1032
+```
+
+**Les DEUX fenêtres servies rendent le même lisère, sur deux sorties
+différentes.** `haut = 0` parce que la barre de titre est peinte : **le lisère
+n'est pas symétrique**, et le supposer décalerait l'image.
+
+Le recadrage part de l'origine de la sortie et couvre la taille POSÉE ; la
+fenêtre visible, elle, est le cadre DWM. D'où, dans l'image : **7 px de bureau
+à gauche, 7 à droite, 7 en bas, 0 en haut** — constants, insensibles au
+rapport.
+
+### 13.3 Le remède, et le piège qu'il fallait éviter
+
+`poser` gonfle la cible du lisère avant `SetWindowPos` ; `rectangle_de` rend
+désormais le **cadre DWM**. 🔴 **Les deux vont ENSEMBLE** : compenser à la pose
+sans compenser à la relecture ferait voir à `doit_etre_replacee` un écart
+permanent de 7 px, et la fenêtre serait reposée **chaque seconde** — la même
+oscillation à 1 Hz que la conception du premier envoi avait évitée. Un test pur
+tient cette boucle, **avec son contre-exemple** (le rectangle brut DOIT
+différer de la cible, sinon le test ne prouve rien). Le capteur compense de
+même, en taille seule (`SWP_NOMOVE`).
+
+**Repli** : DWM refuse → `Lisere::NUL` → comportement d'avant, **aux deux
+bouts** ; les deux moitiés dégradent ensemble.
+
+### 13.4 Le débordement est délibéré, et il est chiffré
+
+La fenêtre est posée **plus grande que le recadrage** — 7 px hors de la sortie
+à gauche. Relevé sur la topologie réelle :
+
+```
+DISPLAY6 [1280..3140] cible 1732x1032 -> posee [1273..3019] : 7 px a gauche sur DISPLAY1
+DISPLAY7 [3140..5000] cible 1592x880  -> posee [3133..4739] : 7 px a gauche sur DISPLAY6
+```
+
+🔵 **Elle ne mord sur AUCUN recadrage voisin** : le recadrage étant plus étroit
+que sa sortie (1732 sur 1860), la lisière tombe dans la marge **non capturée**
+du voisin. ⚠️ **Ce ne serait plus vrai si un recadrage occupait la largeur
+ENTIÈRE de sa sortie** — et la partie qui déborde est une bordure
+**transparente**, qui ne peint rien.
+
+### 13.5 Le déploiement
+
+| | |
+| --- | --- |
+| **À DESTINATION** | **`b6b984e889366259`**, `Get-FileHash` DANS la VM |
+| Témoin NEUF `DwmGetWindowAttribute(DWMWA_EXTENDED_FRAME_BOUNDS)` | **1** neuf / **0** ancien |
+| Témoins préexistants (`viewport recu…`, `sortie virtuelle rendue…`) | **1** / **1** des deux côtés |
+| Témoin négatif `lisere INEXISTANT` | **0** / **0** |
+| Processus | **3**, tous `SessionId = 1`, enrôlé, **`ERROR` = 0** |
+| Laissé chez lui | **rien** |
+
+🔵 **Ce correctif-ci EST attestable par une chaîne**, contrairement à celui
+d'aspect : le message de contexte de `DwmGetWindowAttribute` n'existe que dans
+le binaire neuf.
+
+### 13.6 Ce qu'il doit regarder, et à quoi ressemblerait un échec
+
+**Ce qui doit changer** : la marge **constante** doit disparaître ; l'image doit
+toucher les bords de la fenêtre du navigateur.
+
+**Un échec ressemblerait à :**
+- 🔴 **La fenêtre qui se replace en boucle, une fois par seconde** — les deux
+  moitiés du correctif ne vont pas ensemble. C'est le mode d'échec propre à ce
+  troisième envoi.
+- 🔴 **Une marge constante toujours là, de même épaisseur** : le lisère n'est
+  pas compensé (DWM a refusé, ou le repli a mordu).
+- 🔴 **Une image décalée, ou du bureau sur UN seul côté** : le lisère a été
+  appliqué de travers — c'est l'asymétrie (`haut = 0`) qui aurait été manquée.
+- ⚠️ **Un liseré coloré d'UN pixel tout autour** : ce n'est pas un défaut, c'est
+  `--accent-fenetre` peint par `#remote { border: var(--trait) … }`, **une
+  fonctionnalité voulue**. Il ne sera pas retiré.
+- 🔴 **Les acquis perdus** — fenêtre qui ne suit plus, barre des tâches de
+  retour, marges qui recommencent à varier avec la forme.
+
+### 13.7 Ce que ce lot N'ÉTABLIT toujours PAS
+
+- 🔴 **Personne d'autre que le propriétaire n'a regardé une image**, et il juge
+  après coup. Aucune recette navigateur n'a été jouée à aucun moment.
+- 🔴 **Le lisère de 7 px est celui de CETTE machine, à CE thème et à CE DPI** —
+  il est **relevé à chaque pose**, jamais écrit en dur, mais aucune autre
+  configuration n'a été mesurée.
+- 🔴 **L'écart desktop/texture du lot 32T reste inchangé** — ni créé ni corrigé.
+- ⚠️ **Cinq hypothèses ont été réfutées par la mesure au cours de ce lot**,
+  dont trois miennes.

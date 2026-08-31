@@ -1253,14 +1253,24 @@ tard il était rouvert en plus grand.**
   huit fenêtres à `TAILLE_MAX_SORTIE` sont **2,25×** les macroblocs de huit
   fenêtres à 720p. **Décision du propriétaire**, et le dossier complet est au
   § 11.3 du document de résultats.
-- ⚠️ **LA MARGE SUR LES QUATRE CÔTÉS N'EST PAS EXPLIQUÉE** (lot 33).
-  `object-fit: contain` ne peut produire qu'**une paire** de bandes à la fois ;
-  une marge simultanée sur les quatre côtés demande autre chose. Deux candidats
-  nommés, **aucun établi** : la bordure CSS de `#remote`
-  (`border: var(--trait) solid var(--accent-fenetre)`, quatre côtés, mais
-  **invariante avec le rapport**), ou la composition d'une paire de bandes et
-  de cette bordure. **Non rétro-ajusté à dessein** : à vérifier par
-  l'observation, pas par le raisonnement.
+- ✅ ~~**LA MARGE SUR LES QUATRE CÔTÉS N'EST PAS EXPLIQUÉE**~~ **EXPLIQUÉE ET
+  CORRIGÉE le 31 août 2026** — c'était **le cadre INVISIBLE de DWM**, mesuré en
+  session 1 sur la session vivante du propriétaire : `GetWindowRect` rend
+  `1732x1032+1280+0` là où `DWMWA_EXTENDED_FRAME_BOUNDS` rend
+  `1718x1025+1287+0`, soit **7 px à gauche, à droite et en bas, 0 en haut**.
+  Depuis Windows 10 les bordures de redimensionnement sont **transparentes** et
+  `GetWindowRect` les inclut : le dépôt posait, relisait et comparait de bout en
+  bout dans un espace **qui n'est pas celui qu'on voit**, et le recadrage
+  suivant la taille POSÉE, l'image contenait du bureau sur trois côtés.
+  🔵 **C'est le discriminant « la marge varie-t-elle avec la forme ? », écrit
+  AVANT la mesure, qui l'a départagé d'une erreur d'aspect résiduelle** — le
+  propriétaire a répondu « la marge ne varie pas », et l'aspect était de toute
+  façon tombé à 0,176 % au pire (~3 px sur 1700). Le quatrième côté est le
+  liseré d'accent d'un pixel (`#remote { border: var(--trait) … }`), **une
+  fonctionnalité voulue qui n'est pas retirée**. Remède :
+  `placement::{Lisere, rect_a_poser, taille_a_poser}` — et `rectangle_de` rend
+  désormais le cadre VISIBLE, **les deux moitiés allant ensemble sous peine
+  d'un replacement à 1 Hz**.
 - 🔴 **`client/src/main.ts` A FRANCHI SON PLAFOND POUR LA DEUXIÈME FOIS** par
   une addition d'une vingtaine de lignes (lot 33) ; il était à **500
   EXACTEMENT** au commit précédent. Troisième extraction (`viewport-dom.ts`,
