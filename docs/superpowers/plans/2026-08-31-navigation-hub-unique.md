@@ -381,23 +381,43 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 
 **Files:**
 - Create: `client/src/hub/cartes.ts`
-- Modify: `client/src/hub/page.ts` (retirer le balisage extrait)
-- Test: `client/src/hub/cartes.test.ts`
+- Modify: `client/hub.html` (le `<template>` d'une carte)
+- Modify: `client/src/hub/page.ts` (retirer la fonction `entree`)
 
 **Interfaces:**
 - Consumes: `ApplicationListee` (`hub/catalogue.ts`)
 - Produces:
   ```ts
   export interface DepsCarte {
-      lancer(application: ApplicationListee): void;
-      installer(application: ApplicationListee): void;
-      /// Le `<template>` du hub, cloné pour chaque carte.
       modele: HTMLTemplateElement;
+      /// L'URL absolue de l'icône, ou `null` : le calcul de la base reste
+      /// chez l'appelant, qui seul la connaît.
+      urlIcone: string | null;
+      lancer(): void;
+      installer(): void;
   }
   export function batirCarte(application: ApplicationListee, deps: DepsCarte): DocumentFragment;
   ```
 
-**Pourquoi cette tâche existe et pourquoi elle est AVANT :** `hub/page.ts` est à **373** lignes (relevé du 31 août 2026 — le revérifier, ne pas le croire) et va absorber deux sections. La règle du dépôt est « extraire, jamais comprimer », **dans une tâche dédiée jouée avant celle qui ajoute** : la marge regagnée par une extraction se reperd si on la traite comme acquise, ce qui a été payé six fois.
+🔴 **AUCUN TEST NEUF, ET AUCUNE DÉPENDANCE `jsdom` — ruling R2 du pré-vol.**
+`client/` n'a **ni jsdom ni happy-dom**, et ce n'est pas un manque : c'est une
+convention écrite (`accent-dom.test.ts` : « les dépendances sont injectées, et
+c'est ce qui rend ce module éprouvable là où `main.ts` ne l'est pas »). Or
+cloner un `<template>` et y poser du texte ne **décide** rien — au critère du
+dépôt, « une condition est une RÈGLE si la changer change ce que le produit
+DÉCIDE ; elle est du CÂBLAGE si elle ne fait que router une décision déjà prise
+ailleurs ». `cartes.ts` est du câblage, et il le **déclare**, comme
+`hub/page.ts` et `shell-page.ts` le déclarent déjà pour eux-mêmes.
+
+**Ce qui le garde, à défaut d'un test :** `tsc --noEmit`, la suite existante,
+`npm run design:verifier` (le contrôle §7.9, que le passage au `<template>`
+rend *plus* strict) et `npm run build`.
+
+**Pourquoi cette tâche est AVANT :** `hub/page.ts` est à **373** lignes
+(relevé du 31 août 2026 — le revérifier, ne pas le croire) et va absorber deux
+sections. La règle du dépôt est « extraire, jamais comprimer », **dans une
+tâche dédiée jouée avant celle qui ajoute** : la marge regagnée par une
+extraction se reperd si on la traite comme acquise, ce qui a été payé six fois.
 
 - [ ] **Step 1: Relever la taille AVANT**
 
@@ -408,6 +428,11 @@ wc -l client/src/hub/page.ts
 Noter le nombre. Il servira au commit.
 
 - [ ] **Step 2: Poser le `<template>` d'une carte dans `hub.html`**
+
+Les classes ci-dessous sont celles que `hub/page.ts::entree` pose
+**aujourd'hui**, relevées le 31 août 2026 — ne rien inventer : une classe
+inédite serait employée sans être déclarée, et `design:verifier` la
+dénoncerait.
 
 Ajouter avant `<script type="module" …>` dans `client/hub.html` :
 
@@ -423,153 +448,153 @@ Ajouter avant `<script type="module" …>` dans `client/hub.html` :
           exactement la convention que `shell.html` applique déjà à
           `#modele-fenetre`.
 
+          🔴 `hub__icone--absente` EST DÉCLARÉE ICI, SUR UN ÉLÉMENT QUI NE LA
+          PORTE PAS : le script l'AJOUTE quand l'application n'a pas d'icône,
+          par `classList.add` d'un LITTÉRAL. Avant cette extraction elle vivait
+          dans un ternaire (`className = application.icone === null ? … : …`),
+          donc dans une valeur CALCULÉE — invisible au contrôle §7.9, qui ne
+          voit que les littéraux. L'extraction est l'occasion de ne pas
+          reconduire ce trou (ruling R3).
+
           ⚠️ LES CROCHETS SONT DES ATTRIBUTS `data-*`, PAS DES CLASSES. Une
           classe sert à peindre ; s'en servir aussi comme point d'accroche du
           script rendrait tout renommage visuel capable de casser le câblage
           en silence.
         -->
         <template id="modele-application">
-            <li class="hub__carte">
-                <article class="carte">
-                    <img class="hub__icone" data-icone alt="" hidden />
-                    <h3 class="carte__titre" data-nom></h3>
+            <li class="carte hub__entree">
+                <img class="hub__icone" data-icone alt="" />
+                <div class="hub__corps">
+                    <h2 class="hub__nom" data-nom></h2>
                     <p class="hub__boutons">
                         <button type="button" class="bouton bouton--principal" data-lancer>
                             Lancer
                         </button>
-                        <button type="button" class="bouton bouton--secondaire" data-installer>
+                        <button type="button" class="bouton bouton--discret" data-installer>
                             Installer
                         </button>
                     </p>
-                </article>
+                </div>
             </li>
         </template>
 ```
 
-⚠️ **Les classes ci-dessus doivent être EXACTEMENT celles que `hub/page.ts` pose aujourd'hui.** Les relever avant d'écrire :
+⚠️ **Vérifier la liste des classes contre le code AVANT d'écrire**, plutôt que
+contre ce plan :
 ```bash
 grep -n "className = \|classList.add" client/src/hub/page.ts
 ```
-et corriger le `<template>` pour qu'il les reprenne littéralement. Un nom inventé ici créerait une classe employée mais non déclarée, que le contrôle §7.9 dénoncerait — ou pire, une classe déclarée jamais employée qu'il ne verrait pas.
+Attendu : `carte hub__entree`, `hub__icone` / `hub__icone--absente`,
+`hub__corps`, `hub__nom`, `hub__boutons`, `bouton bouton--principal`,
+`bouton bouton--discret`. Si le relevé diffère, **c'est le relevé qui a
+raison**.
 
-- [ ] **Step 3: Écrire le test qui échoue**
+- [ ] **Step 3: Créer `hub/cartes.ts` en DÉPLAÇANT le code**
 
-Créer `client/src/hub/cartes.test.ts` :
-
-```ts
-import { describe, expect, it } from 'vitest';
-import { batirCarte } from './cartes';
-import type { ApplicationListee } from './catalogue';
-
-/// ⚠️ **CE FICHIER A BESOIN D'UN DOM, ET `client/` N'EN A PAS PAR DÉFAUT** :
-/// il n'y a aucun `vitest.config.*` dans `client/`, donc l'environnement est
-/// le Node par défaut — ni `document`, ni `window`. La directive ci-dessous
-/// est ce qui donne un DOM à CE fichier seul, sans changer la configuration
-/// des 555 autres tests.
-// @vitest-environment jsdom
-
-const APP: ApplicationListee = {
-    id: 'u-1',
-    nom: 'Bloc-notes',
-    icone: null,
-    accent: null,
-    associations: undefined,
-} as ApplicationListee;
-
-function modele(): HTMLTemplateElement {
-    const t = document.createElement('template');
-    t.innerHTML = `<li class="hub__carte"><article class="carte">
-        <img class="hub__icone" data-icone alt="" hidden />
-        <h3 class="carte__titre" data-nom></h3>
-        <p class="hub__boutons">
-          <button type="button" class="bouton bouton--principal" data-lancer>Lancer</button>
-          <button type="button" class="bouton bouton--secondaire" data-installer>Installer</button>
-        </p></article></li>`;
-    return t;
-}
-
-describe('batirCarte', () => {
-    it('ecrit le nom de l application', () => {
-        const fragment = batirCarte(APP, { modele: modele(), lancer: () => {}, installer: () => {} });
-        expect(fragment.querySelector('[data-nom]')?.textContent).toBe('Bloc-notes');
-    });
-
-    it('le clic sur Lancer passe l APPLICATION, pas son seul identifiant', () => {
-        let recue: ApplicationListee | undefined;
-        const fragment = batirCarte(APP, {
-            modele: modele(),
-            lancer: (a) => { recue = a; },
-            installer: () => {},
-        });
-        fragment.querySelector<HTMLButtonElement>('[data-lancer]')!.click();
-        expect(recue).toBe(APP);
-    });
-});
-```
-
-- [ ] **Step 4: Installer `jsdom` s'il manque, puis lancer le test**
-
-```bash
-cd client && ls node_modules/jsdom >/dev/null 2>&1 || npm install --save-dev jsdom
-npx vitest run src/hub/cartes.test.ts
-```
-Attendu : ÉCHEC — `batirCarte` n'existe pas.
-
-⚠️ Si `npm install` est impossible (pas de réseau), **ne pas simuler un DOM à la main** : replier le test sur les seules parties pures et le dire dans le commit. Un test qui normalise ce qu'il éprouve n'éprouve plus rien.
-
-- [ ] **Step 5: Créer `hub/cartes.ts` en DÉPLAÇANT le code, pas en le réécrivant**
-
-Repérer dans `hub/page.ts` le bloc qui construit une carte (autour de `const boutons = document.createElement('p')`, l. ~185 à ~250) et le déplacer dans `client/src/hub/cartes.ts` sous la forme :
+Créer `client/src/hub/cartes.ts` :
 
 ```ts
 // LE BALISAGE D'UNE CARTE D'APPLICATION — cloné depuis le `<template>` du
 // hub, jamais construit élément par élément.
 //
-// 🔴 EXTRAIT DE `hub/page.ts` LE 31 AOÛT 2026, DANS UNE TÂCHE DÉDIÉE ET AVANT
-// L'ADDITION QU'ELLE PRÉPARE (le hub absorbe les deux sections du bureau).
-// C'est la forme forte que `CLAUDE.md` exige : extraire, jamais comprimer, et
-// jamais dans le commit qui ajoute.
+// 🔴 EXTRAIT DE `hub/page.ts::entree` LE 31 AOÛT 2026, DANS UNE TÂCHE DÉDIÉE
+// ET AVANT L'ADDITION QU'ELLE PRÉPARE (le hub absorbe les deux sections du
+// bureau). C'est la forme forte que `CLAUDE.md` exige : extraire, jamais
+// comprimer, et jamais dans le commit qui ajoute.
+//
+// ⚠️ CE FICHIER N'EST PAS TESTÉ UNITAIREMENT, ET C'EST DÉCLARÉ PLUTÔT QUE
+// SUBI — la convention de `hub/page.ts`, `shell-page.ts` et `main.ts`. Ce qui
+// la rend tenable est la clause qui l'accompagne : **une condition est une
+// RÈGLE si la changer change ce que le produit DÉCIDE ; elle est du CÂBLAGE si
+// elle ne fait que router une décision déjà prise ailleurs.** Cloner un
+// gabarit et y poser un nom ne décide rien. Et `client/` n'a **ni jsdom ni
+// happy-dom** : les modules qui veulent être éprouvés injectent leurs
+// dépendances (`accent-dom.ts`, `presse-papier-dom.ts`) — ce qui n'a pas de
+// sens ici, où tout le travail EST la manipulation du gabarit.
 //
 // ⚠️ UNE EXTRACTION N'EST JAMAIS RIGOUREUSEMENT VERBATIM : elle laisse ses
 // imports derrière elle (un `TS6133` est un ÉCHEC de `tsc`, pas un
-// avertissement), déplace les visibilités et casse les déictiques. Relire
-// `hub/page.ts` APRÈS ce déplacement, pas seulement avant.
+// avertissement) et casse les déictiques. Relire `hub/page.ts` APRÈS ce
+// déplacement, pas seulement avant.
 
 import type { ApplicationListee } from './catalogue';
 
 export interface DepsCarte {
     /// Le `<template id="modele-application">` du hub.
     modele: HTMLTemplateElement;
-    lancer(application: ApplicationListee): void;
-    installer(application: ApplicationListee): void;
+    /// L'URL absolue de l'icône, ou `null`. 🔴 LE CALCUL DE LA BASE RESTE CHEZ
+    /// L'APPELANT : ce module n'a aucune raison de connaître l'adresse de la
+    /// plateforme, et la lui donner en ferait un second endroit à tenir
+    /// d'accord avec `adresse-plateforme.ts`.
+    urlIcone: string | null;
+    lancer(): void;
+    installer(): void;
 }
 
-export function batirCarte(
-    application: ApplicationListee,
-    deps: DepsCarte,
-): DocumentFragment {
+export function batirCarte(application: ApplicationListee, deps: DepsCarte): DocumentFragment {
     const fragment = deps.modele.content.cloneNode(true) as DocumentFragment;
+
+    const icone = fragment.querySelector<HTMLImageElement>('[data-icone]')!;
+    // 🔴 UN LITTÉRAL, PAS UN TERNAIRE SUR `className`. Une classe calculée est
+    // invisible au contrôle §7.9, qui ne voit que les littéraux passés à
+    // `classList.add('…')` et `className = '…'`. C'est la forme que
+    // `fenetres-dom` emploie déjà pour ses pastilles.
+    if (application.icone === null) icone.classList.add('hub__icone--absente');
+    if (deps.urlIcone !== null) icone.src = deps.urlIcone;
+
     fragment.querySelector('[data-nom]')!.textContent = application.nom;
     fragment
         .querySelector<HTMLButtonElement>('[data-lancer]')!
-        .addEventListener('click', () => deps.lancer(application));
+        .addEventListener('click', () => deps.lancer());
     fragment
         .querySelector<HTMLButtonElement>('[data-installer]')!
-        .addEventListener('click', () => deps.installer(application));
+        .addEventListener('click', () => deps.installer());
     return fragment;
 }
 ```
 
-Puis, dans `hub/page.ts`, remplacer le bloc retiré par un appel à `batirCarte`, en passant les fermetures qui existaient déjà (le corps du clic « Lancer », celui d'« Installer », la pose de l'icône). **Le comportement ne change pas** : seul l'endroit où il est écrit change.
+⚠️ **Reprendre le commentaire 🔴 de l'icône qui vit dans `hub/page.ts`**
+(« l'icône ne peut pas être posée par `src` … PLUS VRAI DEPUIS LE 30 AOÛT
+2026 ») : il documente un renversement de décision, et le laisser derrière le
+rendrait orphelin de la ligne qu'il explique.
 
-- [ ] **Step 6: Lancer les tests**
+- [ ] **Step 4: Employer le module dans `hub/page.ts`**
+
+Remplacer la fonction `entree` par un appel, en gardant **verbatim** les corps
+des deux gestionnaires de clic (celui de « Lancer » porte deux commentaires 🔴
+sur l'activation transitoire ; celui d'« Installer » appelle
+`publierLeManifeste`) :
+
+```ts
+function entree(application: ApplicationListee): DocumentFragment {
+    return batirCarte(application, {
+        modele: document.querySelector<HTMLTemplateElement>('#modele-application')!,
+        urlIcone: application.icone_url === null ? null : `${base}${application.icone_url}`,
+        lancer: () => { /* … le corps existant du clic « Lancer », VERBATIM … */ },
+        installer: () => { /* … le corps existant du clic « Installer », VERBATIM … */ },
+    });
+}
+```
+
+⚠️ **Le type de retour change de `HTMLLIElement` à `DocumentFragment`.**
+Adapter l'appelant dans `peupler()` — `elListe.append(entree(a))` accepte les
+deux, mais `tsc` dira si une annotation explicite traîne.
+
+- [ ] **Step 5: Vérifier**
 
 ```bash
-cd client && npx vitest run src/hub/cartes.test.ts && npx tsc --noEmit
+cd client && npx tsc --noEmit && npx vitest run && npm run design:verifier && npm run build
 ```
-Attendu : PASS, aucune erreur de type. ⚠️ `tsc` est ce qui attrapera les imports laissés derrière — un `TS6133` est un échec.
+Attendu : aucune erreur de type, tous les tests verts, le contrôle des classes
+vert, le build passe. ⚠️ `tsc` est ce qui attrapera les imports laissés
+derrière — un `TS6133` est un **échec**.
 
-- [ ] **Step 7: Relever la taille APRÈS, et le contrôle du dépôt**
+⚠️ **Si `design:verifier` rougit**, lire le nom de classe exact qu'il rend et
+le corriger dans le HTML ou la feuille — **jamais en assouplissant le
+contrôle**. `hub.html` n'entre dans `SURFACES_PRODUIT` qu'en tâche 5 : un
+défaut introduit ici s'y révélerait, et il vaut mieux le trouver maintenant.
+
+- [ ] **Step 6: Relever la taille APRÈS, et le contrôle du dépôt**
 
 ```bash
 cd /home/mallanic/Projects/Nivuus/packages/desk
@@ -578,12 +603,15 @@ wc -l client/src/hub/page.ts client/src/hub/cartes.ts
   | grep -vE 'node_modules|package-lock|Cargo.lock|/dist/|testdata/|^docs/|^CLAUDE.md' \
   | xargs wc -l 2>/dev/null | sort -rn | awk '$1>500'
 ```
-Attendu : `page.ts` sensiblement sous son chiffre d'avant ; la dernière commande ne doit rendre que les fichiers déjà connus de la dette (`agent/src/windows_source.rs`, et `client/src/shell-page.ts` à 500 — qui sera vidé en tâche 9).
+Attendu : `page.ts` sensiblement sous son chiffre d'avant ; la dernière
+commande ne rend que les fichiers déjà connus de la dette
+(`agent/src/windows_source.rs`, et `client/src/shell-page.ts` à 500 — qui sera
+vidé en tâche 9).
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
-git add client/src/hub/cartes.ts client/src/hub/cartes.test.ts client/src/hub/page.ts client/hub.html
+git add client/src/hub/cartes.ts client/src/hub/page.ts client/hub.html
 git commit -m "extraction(navigation) : hub/cartes.ts, AVANT l addition qu elle prepare
 
 hub/page.ts va absorber les deux sections du bureau. La regle du depot est
@@ -594,6 +622,16 @@ comme acquise, ce qui a ete paye six fois.
 Le balisage d une carte descend dans un <template> de hub.html, comme
 shell.html le fait deja pour #modele-fenetre : les classes restent dans le
 HTML, donc dans le perimetre le plus simple du controle 7.9.
+
+AUCUN TEST NEUF, ET C EST DELIBERE : client/ n a ni jsdom ni happy-dom, ce qui
+est une convention ecrite et non un manque -- accent-dom.test.ts dit que les
+dependances sont injectees, et c est ce qui rend un module eprouvable. Cloner
+un gabarit et y poser un nom ne DECIDE rien : c est du cablage, et le fichier
+le declare comme hub/page.ts et shell-page.ts le declarent deja.
+
+Effet de bord recherche : hub__icone--absente cesse d etre posee par un
+ternaire sur className -- donc par une valeur CALCULEE, invisible au controle
+7.9 -- et devient un classList.add d un LITTERAL.
 
 Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 ```
@@ -1190,17 +1228,34 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 
 ---
 
-### Task 6: `bureau/fenetres-dom.ts` — extrait de `shell-page.ts`, qui l'emploie
+### Task 6: La liste des fenêtres — une règle PURE, et son câblage
 
 **Files:**
-- Create: `client/src/bureau/fenetres-dom.ts`
-- Modify: `client/src/shell-page.ts` (remplacer `redessiner` par un appel)
-- Test: `client/src/bureau/fenetres-dom.test.ts`
+- Create: `client/src/bureau/fenetres.ts` (**pur, testé**)
+- Create: `client/src/bureau/fenetres-dom.ts` (câblage, non testé)
+- Modify: `client/src/shell-page.ts` (remplacer `redessiner`)
+- Test: `client/src/bureau/fenetres.test.ts`
 
 **Interfaces:**
 - Consumes: `FenetreConnue` (`../shell`)
 - Produces:
   ```ts
+  // fenetres.ts — PUR
+  export interface LigneFenetre {
+      session: string;
+      titre: string;
+      /// Le mot affiché dans la pastille.
+      etat: 'ouverte' | 'fermée';
+      /// 🔴 DEUX LITTÉRAUX, jamais une classe composée : une classe calculée
+      /// est invisible au contrôle §7.9.
+      classePastille: 'bureau__pastille--ouverte' | 'bureau__pastille--fermee';
+      /// Faut-il un bouton « Rouvrir » ?
+      rouvrable: boolean;
+  }
+  export function lignes(fenetres: FenetreConnue[]): LigneFenetre[];
+  export function sectionVisible(fenetres: FenetreConnue[]): boolean;
+
+  // fenetres-dom.ts — CÂBLAGE
   export interface DepsFenetres {
       liste: HTMLUListElement;
       modele: HTMLTemplateElement;
@@ -1212,105 +1267,181 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
   export function dessinerFenetres(fenetres: FenetreConnue[], deps: DepsFenetres): void;
   ```
 
-**Pourquoi l'extraction se fait DEPUIS `shell-page.ts` :** le module est aussitôt employé par la page qui existe, donc aucun code n'est dupliqué entre les deux surfaces, et `shell.html` reste vert à chaque étape. Le hub s'en servira en tâche 8.
+🔴 **LA SCISSION EST LE POINT DE LA TÂCHE — ruling R2 du pré-vol.** `client/`
+n'a **ni jsdom ni happy-dom**, par convention écrite. Ce qui **décide** —
+quel mot, quelle classe, un bouton ou pas, la section visible ou non — descend
+donc dans un module PUR qu'on éprouve sans DOM ; ce qui ne fait que **poser**
+ces valeurs dans un gabarit reste du câblage déclaré non testé.
 
-- [ ] **Step 1: Écrire le test qui échoue**
+**Pourquoi l'extraction se fait DEPUIS `shell-page.ts` :** le module est
+aussitôt employé par la page qui existe, donc aucun code n'est dupliqué entre
+les deux surfaces, et `shell.html` reste vert à chaque étape. Le hub s'en
+servira en tâche 8.
 
-Créer `client/src/bureau/fenetres-dom.test.ts` :
+- [ ] **Step 1: Écrire les tests qui échouent**
+
+Créer `client/src/bureau/fenetres.test.ts` :
 
 ```ts
-// @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { dessinerFenetres } from './fenetres-dom';
+import { lignes, sectionVisible } from './fenetres';
 
-function montage() {
-    document.body.innerHTML = `
-      <section id="s" hidden><ul id="l"></ul></section>
-      <template id="m"><li class="bureau__fenetre"><article class="carte bureau__carte">
-        <h3 class="carte__titre" data-titre></h3>
-        <p class="carte__corps"><span class="bureau__pastille" data-etat></span></p>
-        <div class="bureau__actions">
-          <button type="button" class="bouton bouton--discret" data-rouvrir>Rouvrir</button>
-        </div></article></li></template>`;
-    return {
-        liste: document.querySelector<HTMLUListElement>('#l')!,
-        modele: document.querySelector<HTMLTemplateElement>('#m')!,
-        section: document.querySelector<HTMLElement>('#s')!,
-    };
-}
-
-describe('dessinerFenetres', () => {
-    it('une fenetre OUVERTE n a pas de bouton Rouvrir : il n y a rien a suggerer', () => {
-        const m = montage();
-        dessinerFenetres([{ session: 's', titre: 'Bloc-notes', ouverte: true }], {
-            ...m,
-            rouvrir: () => {},
-        });
-        expect(m.liste.querySelector('[data-rouvrir]')).toBeNull();
+describe('lignes', () => {
+    it('une fenetre OUVERTE n est pas rouvrable : il n y a rien a suggerer', () => {
+        expect(lignes([{ session: 's', titre: 'Bloc-notes', ouverte: true }])[0].rouvrable).toBe(false);
     });
 
-    it('une fenetre FERMEE porte un bouton qui rappelle sa session', () => {
-        const m = montage();
-        let rouverte = '';
-        dessinerFenetres([{ session: 's-7', titre: 'Paint', ouverte: false }], {
-            ...m,
-            rouvrir: (s) => { rouverte = s; },
-        });
-        m.liste.querySelector<HTMLButtonElement>('[data-rouvrir]')!.click();
-        expect(rouverte).toBe('s-7');
+    it('une fenetre FERMEE est rouvrable', () => {
+        expect(lignes([{ session: 's', titre: 'Paint', ouverte: false }])[0].rouvrable).toBe(true);
     });
 
-    it('la section est REVELEE des qu il y a une fenetre', () => {
-        const m = montage();
-        dessinerFenetres([{ session: 's', titre: 'x', ouverte: true }], { ...m, rouvrir: () => {} });
-        expect(m.section.hidden).toBe(false);
+    it('la pastille porte DEUX litteraux distincts, jamais une classe composee', () => {
+        // 🔴 UNE CLASSE CALCULEE EST INVISIBLE AU CONTROLE 7.9, qui ne voit que
+        // les litteraux. Les deux valeurs doivent donc etre des constantes du
+        // type, pas une concatenation.
+        const ouverte = lignes([{ session: 'a', titre: 'x', ouverte: true }])[0];
+        const fermee = lignes([{ session: 'b', titre: 'x', ouverte: false }])[0];
+        expect([ouverte.classePastille, fermee.classePastille]).toEqual([
+            'bureau__pastille--ouverte',
+            'bureau__pastille--fermee',
+        ]);
     });
 
-    it('la section REDEVIENT absente quand la derniere fenetre part', () => {
-        // 🔴 CE CAS EST LE POINT : reveler sans jamais recacher laisserait une
-        // section vide sur un hub qui n a plus rien a montrer.
-        const m = montage();
-        dessinerFenetres([{ session: 's', titre: 'x', ouverte: true }], { ...m, rouvrir: () => {} });
-        dessinerFenetres([], { ...m, rouvrir: () => {} });
-        expect(m.section.hidden).toBe(true);
+    it('le mot de la pastille est accentue du cote FERME', () => {
+        // `fermée`, pas `fermee` : c est du texte montre a un humain.
+        expect(lignes([{ session: 's', titre: 'x', ouverte: false }])[0].etat).toBe('fermée');
     });
 
-    it('un second dessin ne CUMULE pas les entrees', () => {
-        const m = montage();
-        const une = [{ session: 's', titre: 'x', ouverte: true }];
-        dessinerFenetres(une, { ...m, rouvrir: () => {} });
-        dessinerFenetres(une, { ...m, rouvrir: () => {} });
-        expect(m.liste.children.length).toBe(1);
+    it('la session est reconduite telle quelle : c est elle qui rouvre', () => {
+        expect(lignes([{ session: 's-7', titre: 'x', ouverte: false }])[0].session).toBe('s-7');
+    });
+
+    it('l ordre des fenetres est PRESERVE', () => {
+        const rendu = lignes([
+            { session: 'a', titre: 'Un', ouverte: true },
+            { session: 'b', titre: 'Deux', ouverte: false },
+        ]);
+        expect(rendu.map((l) => l.titre)).toEqual(['Un', 'Deux']);
+    });
+});
+
+describe('sectionVisible', () => {
+    it('aucune fenetre : la section est ABSENTE', () => {
+        // 🔴 ABSENTE, PAS VIDE. Une section montrant en permanence « aucune
+        // fenetre ouverte » serait du bruit sur l etat NOMINAL d un hub qu on
+        // vient d ouvrir (spec 4.1).
+        expect(sectionVisible([])).toBe(false);
+    });
+
+    it('une fenetre, meme FERMEE : la section est visible', () => {
+        // Une fenetre fermee a quelque chose a offrir -- son bouton Rouvrir --
+        // donc la cacher priverait l utilisateur du seul geste qui la ramene.
+        expect(sectionVisible([{ session: 's', titre: 'x', ouverte: false }])).toBe(true);
     });
 });
 ```
 
-- [ ] **Step 2: Lancer le test pour vérifier qu'il échoue**
+- [ ] **Step 2: Lancer les tests pour vérifier qu'ils échouent**
 
 ```bash
-cd client && npx vitest run src/bureau/fenetres-dom.test.ts
+cd client && npx vitest run src/bureau/fenetres.test.ts
 ```
-Attendu : ÉCHEC — module introuvable.
+Attendu : ÉCHEC — le module `./fenetres` n'existe pas.
 
-- [ ] **Step 3: Créer le module en DÉPLAÇANT `redessiner`**
-
-Créer `client/src/bureau/fenetres-dom.ts` avec le corps de la fonction `redessiner` de `shell-page.ts` (l. ~366-395), paramétré :
+- [ ] **Step 3: Écrire `client/src/bureau/fenetres.ts`**
 
 ```ts
-// LA LISTE « MES FENÊTRES » — le câblage DOM, à dépendances INJECTÉES.
+// CE QU'UNE FENÊTRE CONNUE DEVIENT À L'ÉCRAN — la règle, pure et testée.
+// La pose dans le gabarit vit dans `fenetres-dom.ts`, qui ne décide rien.
+//
+// 🔴 POURQUOI CETTE SCISSION PLUTÔT QU'UN SEUL MODULE DOM. `client/` n'a **ni
+// jsdom ni happy-dom**, et ce n'est pas un manque : `accent-dom.test.ts` le
+// déclare comme la convention du dépôt — « les dépendances sont injectées, et
+// c'est ce qui rend ce module éprouvable là où `main.ts` ne l'est pas ». Ce
+// fichier-ci prend l'autre voie, également admise : sortir la DÉCISION du
+// câblage, et ne laisser en face du DOM que ce qui pose des valeurs déjà
+// calculées.
+
+import type { FenetreConnue } from '../shell';
+
+export interface LigneFenetre {
+    session: string;
+    titre: string;
+    /// Le mot montré dans la pastille — du texte pour un humain, donc accentué.
+    etat: 'ouverte' | 'fermée';
+    /// 🔴 DEUX LITTÉRAUX, ET NON UNE CLASSE COMPOSÉE : une classe calculée est
+    /// invisible au contrôle §7.9, qui ne voit que les littéraux passés à
+    /// `classList.add('…')` et à `className = '…'`. Le type les énumère, ce
+    /// qui les rend aussi vérifiables par `tsc`.
+    classePastille: 'bureau__pastille--ouverte' | 'bureau__pastille--fermee';
+    /// Une fenêtre ouverte n'a rien à rouvrir : son bouton PART plutôt que
+    /// d'être désactivé — il n'y a pas d'action à suggérer.
+    rouvrable: boolean;
+}
+
+export function lignes(fenetres: FenetreConnue[]): LigneFenetre[] {
+    return fenetres.map((f) => ({
+        session: f.session,
+        titre: f.titre,
+        etat: f.ouverte ? 'ouverte' : 'fermée',
+        classePastille: f.ouverte ? 'bureau__pastille--ouverte' : 'bureau__pastille--fermee',
+        rouvrable: !f.ouverte,
+    }));
+}
+
+/// La section « Mes fenêtres » doit-elle paraître ?
+///
+/// 🔴 ABSENTE, PAS VIDE (spec §4.1) : une section montrant en permanence
+/// « aucune fenêtre ouverte » serait du bruit sur l'état NOMINAL d'un hub
+/// qu'on vient d'ouvrir. ⚠️ Une fenêtre FERMÉE compte : elle porte son bouton
+/// « Rouvrir », donc la cacher priverait l'utilisateur du seul geste qui la
+/// ramène.
+export function sectionVisible(fenetres: FenetreConnue[]): boolean {
+    return fenetres.length > 0;
+}
+```
+
+- [ ] **Step 4: Lancer les tests pour vérifier qu'ils passent**
+
+```bash
+cd client && npx vitest run src/bureau/fenetres.test.ts && npx tsc --noEmit
+```
+Attendu : PASS, aucune erreur de type.
+
+- [ ] **Step 5: Voir la rouge du contrôle qui compte**
+
+Le contrôle qui ne doit pas pouvoir passer par accident est « aucune fenêtre :
+la section est ABSENTE ».
+
+```bash
+cp client/src/bureau/fenetres.ts /tmp/fenetres.ts.copie
+sed -i 's/return fenetres.length > 0;/return true;/' client/src/bureau/fenetres.ts
+cd client && npx vitest run src/bureau/fenetres.test.ts   # ATTENDU : ROUGE sur « ABSENTE »
+cd .. && cp /tmp/fenetres.ts.copie client/src/bureau/fenetres.ts
+cd client && npx vitest run src/bureau/fenetres.test.ts   # ATTENDU : VERT
+```
+**Lire QUELLE assertion a rougi** : ce doit être `expected true to be false`
+sur `sectionVisible([])`, pas une autre. Une rouge qui rougit pour la mauvaise
+raison ne prouve rien.
+
+- [ ] **Step 6: Écrire le câblage `client/src/bureau/fenetres-dom.ts`**
+
+```ts
+// LA POSE DE LA LISTE « MES FENÊTRES » DANS LE GABARIT — du câblage, et rien
+// d'autre. Les décisions (quel mot, quelle classe, un bouton ou pas, la
+// section visible ou non) vivent dans `fenetres.ts`, qui est pur et testé.
 //
 // 🔴 EXTRAIT DE `shell-page.ts` LE 31 AOÛT 2026. Ce n'est pas un rangement :
 // `shell-page.ts` déclare lui-même, dans son en-tête, que son câblage n'est
-// éprouvable par RIEN et que le dépôt a une convention pour l'éviter
-// (`accent-dom.ts`, `presse-papier-dom.ts` : dépendances injectées plutôt que
-// `document` touché directement). Cette extraction applique cette convention
-// à la moitié du fichier que le hub va reprendre.
+// éprouvable par RIEN. Cette extraction ne rend pas CE fichier-ci éprouvable
+// non plus — elle sort de lui tout ce qui pouvait l'être.
 //
 // ⚠️ LE BALISAGE VIENT D'UN `<template>` DE LA PAGE, PAS D'ICI : les classes
 // restent dans le HTML, où le contrôle §7.9 les lit sans avoir à analyser du
 // TypeScript.
 
 import type { FenetreConnue } from '../shell';
+import { lignes, sectionVisible } from './fenetres';
 
 export interface DepsFenetres {
     liste: HTMLUListElement;
@@ -1323,34 +1454,27 @@ export interface DepsFenetres {
 
 export function dessinerFenetres(fenetres: FenetreConnue[], deps: DepsFenetres): void {
     deps.liste.replaceChildren();
-    for (const f of fenetres) {
+    for (const ligne of lignes(fenetres)) {
         const item = deps.modele.content.cloneNode(true) as DocumentFragment;
-        item.querySelector('[data-titre]')!.textContent = f.titre;
+        item.querySelector('[data-titre]')!.textContent = ligne.titre;
 
         const pastille = item.querySelector<HTMLElement>('[data-etat]')!;
-        pastille.textContent = f.ouverte ? 'ouverte' : 'fermée';
-        // Deux littéraux, et non une classe composée : une classe calculée est
-        // invisible au contrôle §7.9.
-        if (f.ouverte) pastille.classList.add('bureau__pastille--ouverte');
-        else pastille.classList.add('bureau__pastille--fermee');
+        pastille.textContent = ligne.etat;
+        pastille.classList.add(ligne.classePastille);
 
         const bouton = item.querySelector<HTMLButtonElement>('[data-rouvrir]')!;
-        if (f.ouverte) {
-            // Une fenêtre ouverte n'a rien à rouvrir : le bouton part plutôt
-            // que d'être désactivé — il n'y a pas d'action à suggérer.
-            bouton.remove();
-        } else {
-            bouton.addEventListener('click', () => deps.rouvrir(f.session));
-        }
+        if (ligne.rouvrable) bouton.addEventListener('click', () => deps.rouvrir(ligne.session));
+        else bouton.remove();
+
         deps.liste.append(item);
     }
     // ⚠️ RÉVÉLER **ET** RECACHER. Ne faire que le premier laisserait une
     // section vide sur un hub qui n'a plus rien à montrer.
-    if (deps.section !== undefined) deps.section.hidden = fenetres.length === 0;
+    if (deps.section !== undefined) deps.section.hidden = !sectionVisible(fenetres);
 }
 ```
 
-- [ ] **Step 4: Employer le module dans `shell-page.ts`**
+- [ ] **Step 7: Employer le module dans `shell-page.ts`**
 
 Remplacer la fonction `redessiner` de `shell-page.ts` par :
 
@@ -1364,57 +1488,47 @@ function redessiner(): void {
     });
 }
 ```
-et ajouter l'import `import { dessinerFenetres } from './bureau/fenetres-dom';`.
+et ajouter `import { dessinerFenetres } from './bureau/fenetres-dom';`.
 
-- [ ] **Step 5: Lancer les tests**
+- [ ] **Step 8: Lancer tout**
 
 ```bash
-cd client && npx vitest run && npx tsc --noEmit
+cd client && npx vitest run && npx vitest run --dir ../proto && npx tsc --noEmit
 ```
 Attendu : tous verts, aucune erreur de type.
 
-- [ ] **Step 6: Voir la rouge du contrôle qui compte**
+- [ ] **Step 9: Commit**
 
 ```bash
-cp client/src/bureau/fenetres-dom.ts /tmp/fenetres-dom.ts.copie
-# Muter : reveler sans jamais recacher
-sed -i 's/deps.section.hidden = fenetres.length === 0;/deps.section.hidden = false;/' client/src/bureau/fenetres-dom.ts
-cd client && npx vitest run src/bureau/fenetres-dom.test.ts  # ATTENDU : ROUGE sur « REDEVIENT absente »
-cd .. && cp /tmp/fenetres-dom.ts.copie client/src/bureau/fenetres-dom.ts
-cd client && npx vitest run src/bureau/fenetres-dom.test.ts  # ATTENDU : VERT
-```
-
-- [ ] **Step 7: Commit**
-
-```bash
-git add client/src/bureau/fenetres-dom.ts client/src/bureau/fenetres-dom.test.ts client/src/shell-page.ts
-git commit -m "extraction(navigation) : la liste des fenetres devient un module EPROUVABLE
+git add client/src/bureau/fenetres.ts client/src/bureau/fenetres.test.ts client/src/bureau/fenetres-dom.ts client/src/shell-page.ts
+git commit -m "extraction(navigation) : la liste des fenetres, sa REGLE separee de sa pose
 
 Extraite de shell-page.ts, et employee par lui immediatement : aucun code n est
 duplique entre les deux surfaces, et shell.html reste vert.
 
-Ce n est pas un rangement. shell-page.ts declare lui-meme que son cablage n est
-eprouvable par RIEN et que le depot a une convention pour l eviter --
-accent-dom.ts et presse-papier-dom.ts injectent leurs dependances plutot que de
-toucher document. Cette extraction l applique a la moitie que le hub reprendra.
+La scission est le point. client/ n a ni jsdom ni happy-dom, et ce n est pas un
+manque : accent-dom.test.ts le declare comme la convention du depot. Ce qui
+DECIDE -- quel mot, quelle classe, un bouton ou pas, la section visible ou non
+-- descend donc dans fenetres.ts, pur et teste sans DOM ; ce qui ne fait que
+poser ces valeurs dans un gabarit reste du cablage declare non teste.
 
 Reveler ET recacher : ne faire que le premier laisserait une section vide sur
-un hub qui n a plus rien a montrer. Ce controle-la a ete VU ROUGE.
+un hub qui n a plus rien a montrer. Ce controle-la a ete VU ROUGE, et l
+assertion qui a rougi est bien celle-la.
 
 Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 ```
 
 ---
 
-### Task 7: `bureau/fichiers-dom.ts` — le pont, extrait de `shell-page.ts`
+### Task 7: `bureau/fichiers-dom.ts` — le pont, extrait VERBATIM
 
 **Files:**
 - Create: `client/src/bureau/fichiers-dom.ts`
 - Modify: `client/src/shell-page.ts`
-- Test: `client/src/bureau/fichiers-dom.test.ts`
 
 **Interfaces:**
-- Consumes: `Bureau` (`../shell`), `CanalFichiers`, `choisirDossier`, `connecterCanalFichiers`, `sessionDuPont` (`../fichiers/canal`), `creerServeur`, `trameBonjour`, `trameRafraichir` (`../fichiers/protocole`), `creerAdaptateur`, `creerEcrivain`, `creerMutateur`
+- Consumes: `Bureau` (`../shell`), `CanalFichiers`, `choisirDossier`, `connecterCanalFichiers`, `sessionDuPont` (`../fichiers/canal`), `creerServeur`, `trameBonjour`, `trameRafraichir` (`../fichiers/protocole`), `creerAdaptateur` (`../fichiers/adaptateur`), `creerEcrivain`, `type RacineInscriptible` (`../fichiers/ecriture`), `creerMutateur` (`../fichiers/mutation-service`), `type RacineMutable` (`../fichiers/mutation`)
 - Produces:
   ```ts
   export interface DepsFichiers {
@@ -1424,113 +1538,137 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
       boutonDossier: HTMLButtonElement;
       boutonRafraichir: HTMLButtonElement;
       boutonReprendre: HTMLButtonElement;
-      /// Le `<details>` à déplier quand un pont est monté ; `undefined` si
-      /// la page n'a pas de pli.
+      /// Le `<details>` à déplier au clic ; `undefined` si la page n'a pas de
+      /// pli (`shell.html`).
       section?: HTMLDetailsElement;
   }
   export function installerLePont(deps: DepsFichiers): void;
   ```
 
-⚠️ **Cette extraction est la plus délicate du plan** : le bloc `monterLeLecteur` de `shell-page.ts` fait ~130 lignes et porte cinq commentaires 🔴 qui documentent des défauts mesurés (l'ordre du `Bonjour`, l'attente de l'ouverture du canal, la garde `if (pont !== ce)`, la fermeture des flux, le transtypage qui n'est pas un contrôle). **Les déplacer VERBATIM.** Aucun n'est décoratif ; chacun décrit une panne qui a coûté une mesure.
+🔴 **AUCUN TEST NEUF, ET C'EST UNE CONSÉQUENCE, PAS UN RENONCEMENT — ruling R2
+du pré-vol.** Ce bloc est du câblage de bout en bout : il ouvre un
+`RTCPeerConnection`, un `WebSocket` et un sélecteur de répertoire, dont aucun
+n'existe sous Node, et `client/` n'a **ni jsdom ni happy-dom** par convention.
+Tout ce qu'il porte de décidable est **déjà** testé ailleurs — `shell.ts`,
+`fichiers/protocole.ts` et `fichiers/adaptateur.ts` sont purs et couverts.
+**Cette tâche est une extraction, et son contrôle est que rien ne change** :
+`tsc --noEmit`, la suite existante entière, et le build.
 
-- [ ] **Step 1: Écrire le test qui échoue**
+⚠️ **C'EST L'EXTRACTION LA PLUS DÉLICATE DU PLAN.** `monterLeLecteur` fait
+~130 lignes et porte cinq blocs 🔴 qui documentent chacun un défaut **mesuré** :
+l'ordre du `Bonjour`, l'attente de l'ouverture du canal (« le `Bonjour` partait
+dans le vide, **et donc AUCUNE écriture due n'aurait jamais été poussée** »),
+la garde `if (pont !== ce)` (un écouteur qui survit à son objet), la fermeture
+des flux au `close`, et le transtypage qui **n'est PAS un contrôle**. **Les
+déplacer à la lettre.** Aucun n'est décoratif ; chacun décrit une panne qui a
+coûté une mesure.
 
-Créer `client/src/bureau/fichiers-dom.test.ts`. Le pont réel exige WebRTC, absent de Node : le test porte donc sur ce qui est **éprouvable sans réseau** — le câblage des boutons et le dépliage.
-
-```ts
-// @vitest-environment jsdom
-import { describe, expect, it, vi } from 'vitest';
-import { installerLePont } from './fichiers-dom';
-
-function montage() {
-    document.body.innerHTML = `
-      <details id="s"><summary>Mes fichiers</summary>
-        <button id="d"></button><button id="r"></button><button id="p" hidden></button>
-      </details>`;
-    return {
-        section: document.querySelector<HTMLDetailsElement>('#s')!,
-        boutonDossier: document.querySelector<HTMLButtonElement>('#d')!,
-        boutonRafraichir: document.querySelector<HTMLButtonElement>('#r')!,
-        boutonReprendre: document.querySelector<HTMLButtonElement>('#p')!,
-    };
-}
-
-describe('installerLePont', () => {
-    it('le clic sur « Choisir mon dossier » DEPLIE la section', () => {
-        // 🔴 LE DEPLIAGE EST AU CLIC, PAS AU MONTAGE REUSSI : le sélecteur de
-        // répertoire peut échouer ou être annulé, et une section qui se
-        // refermerait alors donnerait l'impression que le clic n'a rien fait.
-        const m = montage();
-        const deps = {
-            ...m,
-            bureau: { lecteurDemonte: vi.fn(), lecteurEchoue: vi.fn() } as never,
-            signalingUrl: 'ws://x/signal',
-            fautesArmees: false,
-        };
-        installerLePont(deps);
-        m.boutonDossier.click();
-        expect(m.section.open).toBe(true);
-    });
-
-    it('n installe RIEN sur les boutons de trame avant qu un pont existe', () => {
-        // ⚠️ Un « Rafraîchir » cliquable sans pont enverrait dans le vide et se
-        // tairait — la panne muette exacte que ce dépôt combat.
-        const m = montage();
-        installerLePont({
-            ...m,
-            bureau: { lecteurDemonte: vi.fn(), lecteurEchoue: vi.fn() } as never,
-            signalingUrl: 'ws://x/signal',
-            fautesArmees: false,
-        });
-        expect(m.boutonRafraichir.onclick).toBeNull();
-    });
-});
-```
-
-- [ ] **Step 2: Lancer le test pour vérifier qu'il échoue**
+- [ ] **Step 1: Relever ce qui doit être déplacé, AVANT de déplacer**
 
 ```bash
-cd client && npx vitest run src/bureau/fichiers-dom.test.ts
+cd /home/mallanic/Projects/Nivuus/packages/desk
+grep -n "let pont\|boutonDossier.addEventListener\|async function monterLeLecteur\|^}" client/src/shell-page.ts | head -20
+grep -c "🔴" client/src/shell-page.ts
 ```
-Attendu : ÉCHEC — module introuvable.
+Noter le nombre de blocs 🔴 **avant**, et le revérifier **après** : la somme
+des deux fichiers doit être au moins égale. Un commentaire perdu en chemin est
+une preuve perdue.
 
-- [ ] **Step 3: Créer le module en DÉPLAÇANT le bloc**
+- [ ] **Step 2: Créer le module en DÉPLAÇANT le bloc**
 
-Déplacer dans `client/src/bureau/fichiers-dom.ts` : la variable `let pont`, le gestionnaire de `boutonDossier`, la fonction `monterLeLecteur` **entière avec tous ses commentaires**, et l'en-tête :
+Créer `client/src/bureau/fichiers-dom.ts` avec cet en-tête, puis la variable
+`let pont`, le gestionnaire de `boutonDossier`, et la fonction
+`monterLeLecteur` **entière avec tous ses commentaires** :
 
 ```ts
 // LE LECTEUR « MES FICHIERS » — le câblage du pont ProjFS, à dépendances
 // injectées.
 //
-// 🔴 EXTRAIT DE `shell-page.ts` LE 31 AOÛT 2026, VERBATIM. Les cinq blocs
-// 🔴 qu'il porte documentent chacun un défaut MESURÉ — l'ordre du `Bonjour`,
-// l'attente de l'ouverture du canal (le `Bonjour` partait dans le vide et
+// 🔴 EXTRAIT DE `shell-page.ts` LE 31 AOÛT 2026, VERBATIM. Les cinq blocs 🔴
+// qu'il porte documentent chacun un défaut MESURÉ — l'ordre du `Bonjour`,
+// l'attente de l'ouverture du canal (le `Bonjour` partait dans le vide, et
 // AUCUNE écriture due n'aurait jamais été poussée), la garde `pont !== ce`
 // (un écouteur qui survit à son objet), la fermeture des flux, et le
-// transtypage qui n'est PAS un contrôle. Aucun n'est décoratif : les déplacer
-// à la lettre, jamais les résumer.
+// transtypage qui n'est PAS un contrôle. Aucun n'est décoratif : ils ont été
+// déplacés à la lettre, jamais résumés.
 //
-// ⚠️ AUCUNE RÈGLE ICI : elles vivent dans `shell.ts`, `fichiers/protocole.ts`
-// et `fichiers/adaptateur.ts`, tous trois testés.
-```
+// ⚠️ CE FICHIER N'EST PAS TESTÉ, ET NE PEUT PAS L'ÊTRE ICI : il ouvre un
+// `RTCPeerConnection`, un `WebSocket` et un sélecteur de répertoire, dont
+// aucun n'existe sous Node — et `client/` n'a ni jsdom ni happy-dom, par
+// convention (`accent-dom.test.ts`). Tout ce qu'il porte de DÉCIDABLE est
+// testé ailleurs : `shell.ts`, `fichiers/protocole.ts` et
+// `fichiers/adaptateur.ts` sont purs et couverts.
 
-Ajouter, dans le gestionnaire de `boutonDossier`, **avant** l'appel à `monterLeLecteur` :
+import { creerAdaptateur } from '../fichiers/adaptateur';
+import {
+    choisirDossier,
+    connecterCanalFichiers,
+    sessionDuPont,
+    type CanalFichiers,
+} from '../fichiers/canal';
+import { creerEcrivain, type RacineInscriptible } from '../fichiers/ecriture';
+import type { RacineMutable } from '../fichiers/mutation';
+import { creerMutateur } from '../fichiers/mutation-service';
+import { creerServeur, trameBonjour, trameRafraichir } from '../fichiers/protocole';
+import type { Bureau } from '../shell';
 
-```ts
+export interface DepsFichiers {
+    bureau: Bureau;
+    signalingUrl: string;
+    /// `?faute-fichiers=1` — variable de BANC, jamais une configuration
+    /// livrée. Lue UNE fois par la page et passée ici, jamais relue : c'est la
+    /// convention de `PLEIN_ECRAN` et de `PART_SONDAGE` côté agent — le
+    /// mécanisme lit un drapeau qu'on lui donne. Et un utilisateur qui
+    /// créerait un dossier au nom réservé ne casserait pas son propre pont.
+    fautesArmees: boolean;
+    boutonDossier: HTMLButtonElement;
+    boutonRafraichir: HTMLButtonElement;
+    boutonReprendre: HTMLButtonElement;
+    /// Le `<details>` à déplier au clic ; `undefined` quand la page n'a pas de
+    /// pli — c'est le cas de `shell.html`.
+    section?: HTMLDetailsElement;
+}
+
+export function installerLePont(deps: DepsFichiers): void {
+    let pont: CanalFichiers | null = null;
+
     deps.boutonDossier.addEventListener('click', () => {
         // ⚠️ LE DÉPLIAGE EST AU CLIC, ET AVANT TOUT `await`. Le déplier au
         // montage RÉUSSI donnerait l'impression, sur une annulation du
-        // sélecteur, que le clic n'a rien fait. Et il n'y a aucun `await` en
-        // amont : `showDirectoryPicker()` exige une activation utilisateur
-        // TRANSITOIRE, qu'un `await` intercalé consommerait.
+        // sélecteur, que le clic n'a rien fait.
         if (deps.section !== undefined) deps.section.open = true;
+        // 🔴 `showDirectoryPicker()` EXIGE UNE ACTIVATION UTILISATEUR
+        // TRANSITOIRE, et c'est pourquoi il est appelé depuis ce gestionnaire.
+        // Celui-ci n'est pas `async` : un `await` avant l'appel consommerait
+        // l'activation, et le sélecteur serait refusé sans que rien ne le dise.
         void monterLeLecteur();
     });
+
+    async function monterLeLecteur(): Promise<void> {
+        /* … LE CORPS EXISTANT DE `shell-page.ts::monterLeLecteur`, DÉPLACÉ
+           VERBATIM, avec ses cinq blocs 🔴 et ses ⚠️. Les seules substitutions
+           mécaniques sont :
+             `bureau.`            → `deps.bureau.`
+             `signalingUrl`       → `deps.signalingUrl`
+             `fautesFichiersArmees` → `deps.fautesArmees`
+             `boutonRafraichir`   → `deps.boutonRafraichir`
+             `boutonReprendre`    → `deps.boutonReprendre`
+           Aucune autre ligne ne change, et aucun commentaire n'est résumé. */
+    }
+}
 ```
 
-- [ ] **Step 4: Employer le module dans `shell-page.ts`**
+🔴 **NE PAS RETAPER LE CORPS DE MÉMOIRE.** Le copier depuis le fichier :
+```bash
+sed -n '/^async function monterLeLecteur/,/^}$/p' client/src/shell-page.ts
+```
+puis appliquer les cinq substitutions ci-dessus, **et relire le résultat contre
+la source**.
 
-Remplacer tout le bloc du lecteur par :
+- [ ] **Step 3: Employer le module dans `shell-page.ts`**
+
+Remplacer tout le bloc du lecteur (de `let pont` à la fin de
+`monterLeLecteur`) par :
 
 ```ts
 installerLePont({
@@ -1543,33 +1681,46 @@ installerLePont({
     // `shell.html` n'a aucun pli : sa section est toujours dépliée.
 });
 ```
+et ajouter `import { installerLePont } from './bureau/fichiers-dom';`.
 
-- [ ] **Step 5: Lancer les tests et vérifier les types**
+- [ ] **Step 4: Vérifier que RIEN n'a changé**
 
 ```bash
-cd client && npx vitest run && npx tsc --noEmit
+cd client && npx vitest run && npx vitest run --dir ../proto && npx tsc --noEmit && npm run build
 ```
-Attendu : tous verts, aucune erreur. ⚠️ `tsc` attrapera les imports restés dans `shell-page.ts` — un `TS6133` est un **échec**, pas un avertissement.
+Attendu : tous verts, aucune erreur, le build passe. ⚠️ `tsc` attrapera les
+imports restés dans `shell-page.ts` — un `TS6133` est un **échec**, pas un
+avertissement, et c'est le contrôle principal de cette tâche.
 
-- [ ] **Step 6: Relever les tailles**
+- [ ] **Step 5: Vérifier qu'aucune preuve n'a été perdue**
 
 ```bash
 cd /home/mallanic/Projects/Nivuus/packages/desk
-wc -l client/src/shell-page.ts client/src/bureau/*.ts
+grep -c "🔴" client/src/shell-page.ts client/src/bureau/fichiers-dom.ts
+wc -l client/src/shell-page.ts client/src/bureau/fichiers-dom.ts
 ```
-`shell-page.ts` doit être passé nettement sous 500. Noter les chiffres pour le commit — **et ne pas les recopier ailleurs**.
+La somme des 🔴 doit être **au moins** celle relevée à l'étape 1. Si elle a
+baissé, un commentaire a été résumé ou perdu : le retrouver dans
+`git show HEAD:client/src/shell-page.ts` avant de continuer.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add client/src/bureau/fichiers-dom.ts client/src/bureau/fichiers-dom.test.ts client/src/shell-page.ts
+git add client/src/bureau/fichiers-dom.ts client/src/shell-page.ts
 git commit -m "extraction(navigation) : le pont fichiers devient un module a dependances injectees
 
 Deplace VERBATIM depuis shell-page.ts, ses cinq blocs de commentaire compris :
 chacun documente un defaut MESURE -- l ordre du Bonjour, l attente de l
 ouverture du canal (le Bonjour partait dans le vide, et AUCUNE ecriture due n
 aurait jamais ete poussee), la garde pont !== ce, la fermeture des flux, et le
-transtypage qui n est PAS un controle. Aucun n est decoratif.
+transtypage qui n est PAS un controle. Aucun n est decoratif, et le compte des
+marqueurs a ete verifie de part et d autre.
+
+AUCUN TEST NEUF, et c est une consequence, pas un renoncement : ce bloc ouvre
+un RTCPeerConnection, un WebSocket et un selecteur de repertoire, dont aucun n
+existe sous Node, et client/ n a ni jsdom ni happy-dom par convention. Tout ce
+qu il porte de DECIDABLE est deja teste ailleurs. Le controle de cette tache
+est que rien ne change : tsc, la suite entiere, le build.
 
 Le depliage de la section est au CLIC et avant tout await : le deplier au
 montage REUSSI donnerait l impression, sur une annulation du selecteur, que le
@@ -1589,7 +1740,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 - Test: `client/src/bureau/porteur-dom.test.ts`
 
 **Interfaces:**
-- Consumes: `elire`, `estPlacePrise`, `batirEtat`, `lireEtat`, `NOM_VERROU` (`./porteur`) ; `creerBureau`, `type Bureau`, `type Ton` (`../shell`) ; `dessinerFenetres` (`./fenetres-dom`) ; `installerLePont` (`./fichiers-dom`) ; `composer`, `lirePrefixe` (`../prefixe`) ; `adresseSignaling` (`../adresse-plateforme`)
+- Consumes: `elire`, `estPlacePrise`, `batirEtat`, `lireEtat`, `NOM_VERROU` (`./porteur`) ; `dessinerFenetres` (`./fenetres-dom`, qui applique lui-même la règle pure de `./fenetres`) ; `creerBureau`, `type Bureau`, `type Ton` (`../shell`) ; `dessinerFenetres` (`./fenetres-dom`) ; `installerLePont` (`./fichiers-dom`) ; `composer`, `lirePrefixe` (`../prefixe`) ; `adresseSignaling` (`../adresse-plateforme`)
 - Produces:
   ```ts
   export interface DepsBureauPage {
@@ -1619,8 +1770,11 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 Créer `client/src/bureau/porteur-dom.test.ts`. Ce qui est éprouvable sans réseau : que le **suiveur n'ouvre aucun socket**, et que la diffusion peint la liste.
 
 ```ts
-// @vitest-environment jsdom
-import { describe, expect, it, vi } from 'vitest';
+// ⚠️ AUCUNE directive `@vitest-environment` : ces deux fonctions sont PURES,
+// et `client/` n'a ni jsdom ni happy-dom — par convention, pas par oubli
+// (`accent-dom.test.ts`). C'est pour cela qu'elles sont exportées séparément
+// du reste du module, qui, lui, touche le DOM et n'est pas testé.
+import { describe, expect, it } from 'vitest';
 import { diffuserSiChange, nomDuVerrou } from './porteur-dom';
 
 describe('nomDuVerrou', () => {
