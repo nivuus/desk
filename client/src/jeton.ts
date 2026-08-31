@@ -132,6 +132,32 @@ export function accesDeReponse(corps: unknown): string | undefined {
     return acces;
 }
 
+/// La paire portée par le corps de `POST /auth/rafraichir`, ou `undefined` si
+/// ce corps n'en porte pas d'utilisable.
+///
+/// 🔴 **RÉUTILISE `accesDeReponse` POUR LA MOITIÉ `acces`, NE LA RECOPIE PAS**
+/// — les deux routes partagent la même forme pour ce champ, et une seconde
+/// validation à tenir d'accord serait de la dette. Le même critère (chaîne,
+/// NON VIDE) est appliqué à `rafraichissement` : `typeof '' === 'string'`, le
+/// piège déjà payé par `plateforme/src/config.ts` et par `accesDeReponse`
+/// elle-même — une chaîne vide y échapperait sinon.
+///
+/// 🔴 **AJOUTÉE EN CORRECTION DE REVUE (round 1), PAS AU PREMIER JET** :
+/// `assurerAccesFrais` (ci-dessous) est le PREMIER appelant de production de
+/// `rafraichirSiNecessaire`, qui écrit tout ce que son `appel` lui rend
+/// directement au coffre (`poser`, dans `rafraichirSiNecessaire`). Sans cette
+/// garde, un corps `{ acces: 'X' }` sans `rafraichissement` — ou l'inverse —
+/// aurait empoisonné le coffre exactement comme le défaut qu'`accesDeReponse`
+/// existe pour empêcher sur `/auth/moi`, sans qu'aucun test ne le voie : ce
+/// chemin était resté SANS appelant de production jusqu'à cette tâche.
+export function paireDeReponse(corps: unknown): Paire | undefined {
+    const acces = accesDeReponse(corps);
+    if (acces === undefined) return undefined;
+    const rafraichissement = (corps as { rafraichissement?: unknown }).rafraichissement;
+    if (typeof rafraichissement !== 'string' || rafraichissement === '') return undefined;
+    return { acces, rafraichissement };
+}
+
 export function jetonAcces(coffre: Coffre | undefined = coffreParDefaut()): string | undefined {
     return coffre?.getItem(CLE_ACCES) ?? undefined;
 }
@@ -296,6 +322,18 @@ function decoderBase64url(segment: string): string {
 ///
 /// `appel` est INJECTÉ, jamais `fetch` global : c'est ce qui rend cette règle
 /// éprouvable sans réseau.
+///
+/// 🔴 **`await appel(...)` EST ENVELOPPÉ — AJOUTÉ EN CORRECTION DE REVUE
+/// (round 1), PAS AU PREMIER JET.** `accesParPomerium` (plus haut dans ce
+/// fichier) a sa propre garde de ce genre DEPUIS TOUJOURS, avec son test
+/// dédié (« rend `undefined` sur un réseau injoignable, sans lever ») — mais
+/// cette fonction-ci n'appelait AUCUN `appel` de production avant
+/// `assurerAccesFrais` (30-31 août 2026) : sans appelant réel, une exception
+/// non rattrapée ici n'avait jamais eu l'occasion de se voir. Une panne
+/// réseau (hors ligne, DNS, CORS) est donc traitée exactement comme un refus
+/// (`!neuve`) : le coffre est vidé, l'appelant retombe sur Pomerium plutôt
+/// que de voir l'exception remonter non gérée jusqu'à un `void demarrer()`
+/// ou un `.then()` sans `.catch`.
 export async function rafraichirSiNecessaire(
     coffre: Coffre,
     maintenant: number,
@@ -313,7 +351,12 @@ export async function rafraichirSiNecessaire(
         return false;
     }
 
-    const neuve = await appel({ rafraichissement });
+    let neuve: { acces: string; rafraichissement: string } | undefined;
+    try {
+        neuve = await appel({ rafraichissement });
+    } catch {
+        neuve = undefined;
+    }
     if (!neuve) {
         vider(coffre);
         return false;
