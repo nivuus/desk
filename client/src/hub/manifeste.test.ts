@@ -45,7 +45,7 @@ describe('batirManifeste', () => {
         // 🔴 SI CES TROIS-LÀ REDEVIENNENT RELATIVES, le manifeste `blob:` est
         //    refusé par Chromium et l'application cesse d'être installable.
         //    Mesuré 2 exécutions, sonde `f` de `instrument/porte-p0.mjs`.
-        expect(m.start_url).toBe('https://exemple.test/shell.html?app=u-1');
+        expect(m.start_url).toBe('https://exemple.test/?app=u-1');
         expect(m.scope).toBe('https://exemple.test/');
         expect(m.id).toBe('https://exemple.test/shell.html?app=u-1');
         for (const url of [m.start_url, m.scope, m.id]) {
@@ -56,12 +56,12 @@ describe('batirManifeste', () => {
     it('tolère une origine à barre oblique finale sans doubler la barre', () => {
         const m = batirManifeste(APP, 'https://exemple.test/', FOND);
         expect(m.scope).toBe('https://exemple.test/');
-        expect(m.start_url).toBe('https://exemple.test/shell.html?app=u-1');
+        expect(m.start_url).toBe('https://exemple.test/?app=u-1');
     });
 
     it("échappe l'identifiant dans start_url et id", () => {
         const m = batirManifeste({ id: 'a/b?c', nom: 'X' }, 'https://x', FOND);
-        expect(m.start_url).toBe('https://x/shell.html?app=a%2Fb%3Fc');
+        expect(m.start_url).toBe('https://x/?app=a%2Fb%3Fc');
         expect(m.id).toBe('https://x/shell.html?app=a%2Fb%3Fc');
     });
 
@@ -117,6 +117,38 @@ describe('batirManifeste', () => {
     it("N'AFFIRME RIEN sur des octets qui ne sont pas un PNG : aucune icône déclarée", () => {
         // Poser `256x256` par défaut serait affirmer ce qu'on ne sait pas.
         expect(batirManifeste({ ...APP, icone: new Uint8Array([1, 2, 3]) }, 'https://x', FOND).icons).toEqual([]);
+    });
+});
+
+describe('start_url et id DIVERGENT depuis le 31 aout 2026', () => {
+    it('start_url mene a la RACINE, ou le hub tient la session', () => {
+        const m = batirManifeste({ id: 'u-1', nom: 'x' }, 'https://exemple.test', FOND);
+        expect(m.start_url).toBe('https://exemple.test/?app=u-1');
+    });
+
+    it('id NE BOUGE PAS : il porte l identite de la PWA installee', () => {
+        // 🔴 CHANGER `id` N EST PAS UNE MISE A JOUR : c est une SECONDE
+        // application, la premiere devenant orpheline. Et comme le manifeste est
+        // publie en blob:, une PWA installee ne le relit JAMAIS -- elle
+        // continuera d ouvrir shell.html, que la redirection rattrape.
+        const m = batirManifeste({ id: 'u-1', nom: 'x' }, 'https://exemple.test', FOND);
+        expect(m.id).toBe('https://exemple.test/shell.html?app=u-1');
+    });
+
+    it('id et start_url DIVERGENT desormais, et c est voulu', () => {
+        const m = batirManifeste({ id: 'u-1', nom: 'x' }, 'https://exemple.test', FOND);
+        expect(m.id === m.start_url).toBe(false);
+    });
+
+    it('start_url reste DANS le scope, condition que Chromium verifie', () => {
+        const m = batirManifeste({ id: 'u-1', nom: 'x' }, 'https://exemple.test', FOND);
+        expect(m.start_url.startsWith(m.scope)).toBe(true);
+    });
+
+    it('l identifiant d application reste encode dans les DEUX', () => {
+        const m = batirManifeste({ id: 'a/b?c', nom: 'x' }, 'https://x', FOND);
+        expect(m.start_url).toBe('https://x/?app=a%2Fb%3Fc');
+        expect(m.id).toBe('https://x/shell.html?app=a%2Fb%3Fc');
     });
 });
 
