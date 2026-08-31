@@ -90,8 +90,36 @@ non porteurs l'affichent à l'identique.
 `window.open` exige une activation utilisateur **dans l'onglet qui a le geste** ;
 faire relayer un clic de l'onglet B vers le porteur A ferait ouvrir A hors
 activation, donc bloqué par le navigateur. Ce serait déplacer le mur d'un cran —
-la faute que `hub/bureau.ts` a explicitement refusé de commettre. **Chaque
-onglet ouvre ses propres fenêtres depuis ses propres clics.**
+la faute que `hub/bureau.ts` a explicitement refusé de commettre. ~~**Chaque
+onglet ouvre ses propres fenêtres depuis ses propres clics.**~~
+
+> ⚠️ **CORRECTION DATÉE DU 31 AOÛT 2026, revue finale — cette dernière phrase
+> est VRAIE de « Rouvrir » et FAUSSE de « Lancer », qui est pourtant le geste
+> PRINCIPAL.** Elle est barrée plutôt qu'effacée, comme ce dépôt le fait
+> partout ailleurs : une spec qui affirme faux se corrige par une note datée,
+> elle ne se réécrit pas en silence.
+>
+> `POST /application/:id/lancer` est une **route HTTP**, que n'importe quel
+> onglet peut appeler ; c'est ensuite l'AGENT qui annonce `fenetre-ouverte` sur
+> la session de contrôle, donc **au porteur seul**, lequel fait `window.open`
+> **hors activation utilisateur**. Deux effets, tous deux mesurables par un
+> humain et par personne d'autre : ① la pop-up sort d'un **autre onglet** que
+> celui où l'on a cliqué ; ② si le bloqueur de pop-ups intervient, le message
+> d'échec s'affiche **dans l'onglet que l'utilisateur ne regarde pas**.
+>
+> 🔴 **DÉCISION DU PROPRIÉTAIRE DU DÉPÔT : « Lancer » N'EST PAS DÉSACTIVÉ SUR
+> UN SUIVEUR.** `POST /lancer` ne porte **aucun rôle exclusif** et fonctionne
+> parfaitement depuis n'importe quel onglet ; le désactiver priverait
+> l'utilisateur d'une fonction qui marche, pour une gêne d'ergonomie. Ce qui
+> est livré à la place est **une ligne d'état** dans `#statut` du suiveur
+> (« Bureau tenu par un autre onglet. », `bureau/porteur-dom.ts`), pour que le
+> comportement cesse d'être inexplicable.
+>
+> 🔵 **LE POINT DE CONCEPTION DU §4 N'EST PAS TOUCHÉ** : aucun **ordre**
+> d'ouverture ne transite par le `BroadcastChannel`. La demande d'état ajoutée
+> par cette même revue (`porteur.ts::batirDemande`) est une demande de
+> **diffusion**, jamais d'ouverture — aucune activation utilisateur n'est en
+> jeu.
 
 Le repli déjà livré et déjà testé est conservé **mot pour mot** : la carte de
 fenêtre et son bouton « Rouvrir » (`shell.ts::rouvrir`), qui est un geste. Il
