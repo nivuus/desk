@@ -18,7 +18,7 @@ import type { Garde } from '../identite/garde';
 import { Frein } from '../securite/frein';
 import { createSignalingServer } from './relais';
 import { poserTurnAmbiant } from './turn-harnais';
-import { prevenirLePairEnPlace, TYPE_PAIR_PRESENT } from './pair-present';
+import { prevenirLArrivant, prevenirLePairEnPlace, TYPE_PAIR_PRESENT } from './pair-present';
 
 /// Locale à ce fichier, jamais exportée par du code de production — même
 /// argument et même forme que `server.test.ts` : ces tests éprouvent le
@@ -149,6 +149,87 @@ describe("l'arrivée d'un pair sur une session déjà tenue", () => {
 
         agent.close();
         client.close();
+    });
+
+    it("prévient l'agent qui ARRIVE quand un client l'attendait déjà", async () => {
+        // 🔴 LE CAS DE LA RECONNEXION, ET IL N'EXISTAIT PAS AVANT CE LOT.
+        // L'agent n'ouvrait sa session de contrôle qu'une fois, au démarrage :
+        // il était donc toujours le premier arrivé. Depuis qu'il la ROUVRE
+        // après une chute, l'ordre s'inverse dès que la page-shell revient
+        // avant lui — le cas ordinaire après un redémarrage du service, le
+        // navigateur étant rechargé à la main en quelques secondes là où
+        // l'agent respecte un repli qui peut atteindre trente secondes.
+        const client = await connecter('client', 'bureau');
+        const agent = await connecter('agent', 'bureau');
+        const recus = recueillir(agent);
+        await attendre(
+            () => recus.some((m) => m.type === TYPE_PAIR_PRESENT),
+            "le pair-present que l'agent reconnecté doit recevoir",
+        );
+
+        agent.close();
+        client.close();
+    });
+
+    it("ne prévient PAS l'agent qui arrive le PREMIER", async () => {
+        // 🔴 LE TÉMOIN NÉGATIF DU TEST CI-DESSUS : un agent qui arrive SEUL
+        // ne doit recevoir aucun pair-present, donc ne doit pas réannoncer
+        // ses fenêtres dans le vide — le geste même que ce mécanisme évite.
+        //
+        // ⚠️ **CE QU'IL N'ÉTABLIT PAS, ET LA PREMIÈRE RÉDACTION DE CE
+        // COMMENTAIRE LE PRÉTENDAIT À TORT** — corrigé après l'avoir mesuré
+        // par mutation. Il ne tient PAS la garde d'appariement
+        // `if (pairEnFace)` de `relais.ts` : la retirer laisse ce test VERT,
+        // parce que `send(undefined, …)` est déjà un no-op par la garde de
+        // nullité de `send` lui-même. La mutation qui retire `if (pairEnFace)`
+        // rougit le test voisin « ne se laisse pas FABRIQUER » (deux
+        // pair-present au lieu d'un), et c'est LUI qui tient cette propriété.
+        // Ce test-ci ne tient que la règle `prevenirLArrivant` telle qu'elle
+        // est CÂBLÉE — vérifié : rendre `prevenirLArrivant` toujours `true`
+        // ne le rougit pas non plus, pour la même raison.
+        const agent = await connecter('agent', 'bureau');
+        const recus = recueillir(agent);
+
+        // Une chose CONNUE POUR ARRIVER borne l'attente : l'arrivée du client
+        // déclenche, elle, un pair-present LÉGITIME (l'autre moitié de la
+        // règle). S'il n'y en a qu'UN, c'est que l'arrivée de l'agent seul
+        // n'en a produit aucun. Un zéro nu ne prouverait rien : il serait
+        // aussi celui d'un relais entièrement muet.
+        const client = await connecter('client', 'bureau');
+        await attendre(
+            () => recus.filter((m) => m.type === TYPE_PAIR_PRESENT).length >= 1,
+            "le pair-present légitime, celui de l'arrivée du client",
+        );
+        expect(recus.filter((m) => m.type === TYPE_PAIR_PRESENT)).toHaveLength(1);
+
+        agent.close();
+        client.close();
+    });
+
+    it("la règle pure de l'arrivant dit oui à l’agent, non au client", () => {
+        // Le symétrique exact de la règle voisine, éprouvé SÉPARÉMENT du
+        // socket pour la même raison : c'est elle qui porte l'asymétrie.
+        //
+        // 🔴 `prevenirLArrivant('client')` DOIT ÊTRE FAUX, et ce n'est pas
+        // une redondance avec la règle d'à côté : le vrai enverrait le
+        // message à la page navigateur de CHAQUE session `w-N`, qui ne le
+        // reconnaît pas — le bruit mesurable que le lot 17 a nommément
+        // écarté.
+        expect(prevenirLArrivant('agent')).toBe(true);
+        expect(prevenirLArrivant('client')).toBe(false);
+    });
+
+    it("les deux règles ne prévient JAMAIS deux fois le même socket", () => {
+        // 🔴 ELLES SONT MUTUELLEMENT EXCLUSIVES PAR CONSTRUCTION, et c'est ce
+        // qui garantit qu'un appariement produit UN pair-present, jamais deux.
+        // Deux annonces feraient réannoncer l'agent deux fois, donc
+        // `AnnoncerOuverture` deux fois par fenêtre en attente, donc une
+        // page-shell qui RECHARGE la fenêtre qu'elle vient d'ouvrir
+        // (`window.open(url, "guac-<session>")` vise une fenêtre NOMMÉE).
+        for (const role of ['agent', 'client'] as const) {
+            expect(prevenirLePairEnPlace(role) && prevenirLArrivant(role)).toBe(false);
+            expect(prevenirLePairEnPlace(role) || prevenirLArrivant(role)).toBe(true);
+        }
     });
 
     it('la règle pure dit oui au client, non à l’agent', () => {

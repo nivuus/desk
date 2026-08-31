@@ -69,3 +69,47 @@ export function messagePairPresent(): { type: string } {
 export function prevenirLePairEnPlace(roleArrivant: 'agent' | 'client'): boolean {
     return roleArrivant === 'client';
 }
+
+/// Vrai si le pair QUI VIENT D'ARRIVER doit être prévenu qu'un pair l'attendait
+/// déjà.
+///
+/// 🔴 **LE TROISIÈME CAS, ET IL MANQUAIT — C'EST L'AUTRE MOITIÉ DU MÊME
+/// MÉCANISME, PAS UN MÉCANISME DE PLUS.** `prevenirLePairEnPlace` ci-dessus
+/// répond à « le client arrive, l'agent est là ». Celle-ci répond à la
+/// question SYMÉTRIQUE, que rien ne posait : **« l'agent arrive, le client est
+/// déjà là »**. Les deux ensemble énoncent une règle unique et complète :
+/// *l'agent est prévenu dès que l'appariement est complet, quel que soit le
+/// côté arrivé en dernier.*
+///
+/// 🔴 **POURQUOI CE CAS EXISTE MAINTENANT ET PAS AVANT.** Jusqu'à ce lot,
+/// l'agent n'ouvrait sa session de contrôle QU'UNE FOIS, au démarrage : il
+/// était donc toujours le premier arrivé, et le cas ne pouvait pas se
+/// produire. Depuis que `agent/src/superviseur/signalisation.rs` la ROUVRE
+/// après une chute, l'ordre s'inverse dès que la page-shell revient avant lui
+/// — ce qui est le cas ORDINAIRE après un redémarrage du service : le
+/// navigateur de l'utilisateur est rechargé à la main en quelques secondes,
+/// l'agent, lui, respecte un repli exponentiel qui peut atteindre trente
+/// secondes. Sans cette règle, l'agent se reconnecterait **sans jamais
+/// apprendre que quelqu'un l'attend**, et ne réannoncerait rien : une
+/// reconnexion parfaitement réussie, et un bureau vide malgré tout — la panne
+/// muette d'hier, déplacée d'un cran.
+///
+/// ⚠️ **ET LE PAIR EN FACE EST NÉCESSAIREMENT UN `client`** : le relais
+/// n'admet qu'un `agent` et un `client` par session
+/// (`appariement.ts::declarer`), donc quand l'arrivant est l'`agent`, celui
+/// qui l'attendait ne peut être que le `client`. C'est ce qui autorise cette
+/// règle à ne regarder QUE le rôle de l'arrivant, comme sa voisine.
+///
+/// ⚠️ **CE QUE CE MESSAGE COÛTE AILLEURS, MESURÉ EN LISANT LE CODE PLUTÔT QUE
+/// SUPPOSÉ.** Il part désormais aussi aux agents des sessions `w-N` et
+/// `fichiers`, où la page se connecte d'ordinaire la première : ces processus
+/// lisent leur signaling dans `agent/src/signaling.rs`, dont l'aiguillage
+/// finit par `other => tracing::debug!(?other, "message de signaling
+/// ignoré")` — un fourre-tout qui journalise et **continue**, jamais un
+/// `break`. Ils l'ignorent donc sans casser, au prix d'une ligne de `debug!`
+/// qui n'est même pas émise sous le `RUST_LOG=info` de l'exploitation.
+/// ⚠️ Le jour où cet aiguillage cesserait de tolérer un type inconnu, c'est
+/// ce paragraphe qu'il faudra CONTREDIRE, pas découvrir.
+export function prevenirLArrivant(roleArrivant: 'agent' | 'client'): boolean {
+    return roleArrivant === 'agent';
+}

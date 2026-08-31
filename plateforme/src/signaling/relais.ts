@@ -37,7 +37,7 @@
 import type { IncomingMessage } from 'node:http';
 import { WebSocket, WebSocketServer } from 'ws';
 import { Appariement, isRole, type Role } from './appariement';
-import { messagePairPresent, prevenirLePairEnPlace } from './pair-present';
+import { messagePairPresent, prevenirLArrivant, prevenirLePairEnPlace } from './pair-present';
 import type { Garde } from '../identite/garde';
 import { configurationIce } from './ice';
 import { adresseSource } from '../http/adresse-source';
@@ -378,6 +378,14 @@ export function createSignalingServer(
                     // imposée — vit dans `pair-present.ts`, jamais recopiée
                     // ici pour ne pas diverger.
                     if (prevenirLePairEnPlace(declaredRole)) send(pairEnFace, messagePairPresent());
+                    // Et la moitié SYMÉTRIQUE : l'agent qui ARRIVE sur une
+                    // session où un client attend déjà. Elle n'existait pas
+                    // tant que l'agent n'ouvrait sa session de contrôle
+                    // qu'une fois ; elle devient le cas ordinaire depuis
+                    // qu'il la ROUVRE. Raison complète dans
+                    // `pair-present.ts::prevenirLArrivant`, jamais recopiée
+                    // ici pour ne pas diverger.
+                    if (prevenirLArrivant(declaredRole)) send(socket, messagePairPresent());
                 }
 
                 // Configuration ICE : envoyée à CHAQUE pair dès qu'il se
