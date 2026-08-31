@@ -212,7 +212,67 @@ pub fn borne_de_la_sortie(moniteur: (u32, u32), travail: Option<(u32, u32)>) -> 
 ///      jamais nul : on **recadre** une texture, on ne la met pas à l'échelle,
 ///      donc aucun rapport d'aspect à préserver ici.
 pub fn taille_pour_viewport(demande: (u32, u32), borne: (u32, u32)) -> (u32, u32) {
-    crate::superviseur::placement::taille_retenue(borner_a_la_taille_max(demande), borne)
+    // ⑵ **FIT À RAPPORT D'ASPECT PRÉSERVÉ, ET NON UN `min` AXE PAR AXE.**
+    //
+    // 🔴 **CE FUT UN DÉFAUT RÉEL, MESURÉ SUR LE PRODUIT EN PRODUCTION, ET IL
+    // ÉTAIT DE MON FAIT.** La première rédaction composait
+    // `borner_a_la_taille_max` (qui préserve l'aspect) avec
+    // `placement::taille_retenue` (un `min` axe par axe, qui ne le préserve
+    // pas) — si bien que **le second détruisait ce que le premier venait de
+    // garantir**. Capture réseau du 31 août 2026, 28 trames `viewport`
+    // relayées pendant que le propriétaire tirait les bords de sa fenêtre :
+    //
+    // ```text
+    // demandé 1723x1303 (1,322) -> servi 1428x1032 (1,384) : ecart 4,6 %
+    // demandé 2058x851  (2,418) -> servi 1860x794  (2,343) : ecart 3,1 %
+    // demandé 1922x1092 (1,760) -> servi 1860x1032 (1,802) : ecart 2,4 %
+    // ```
+    //
+    // Un écart d'aspect de quelques pour cent est **exactement** une bande de
+    // `--video-letterbox` (`#000`) le long d'une paire de bords, dont
+    // l'épaisseur **varie avec le rapport demandé** — ce que le propriétaire a
+    // décrit mot pour mot (« la taille des bordures est différente selon la
+    // taille/ratio »).
+    //
+    // ⚠️ **CE N'ÉTAIT PAS LA LIMITE DÉCLARÉE, ET LES CONFONDRE A COÛTÉ UN
+    // ALLER-RETOUR.** La limite dit « on ne peut pas grandir AU-DELÀ de la
+    // borne » ; ce défaut-ci servait **une forme fausse À L'INTÉRIEUR de la
+    // borne**. `1723x1303` tient parfaitement en `1364x1032` — sous la borne
+    // sur les deux axes, et au rapport exact.
+    //
+    // ⚠️ **LE `min` AXE PAR AXE RESTE JUSTE LÀ D'OÙ IL VIENT** :
+    // `placement::taille_retenue` recadre une texture dans une sortie née trop
+    // grande, où il n'y a aucun rapport d'aspect à honorer. Ici on choisit la
+    // FORME du rectangle servi, et cette forme doit être celle que le
+    // navigateur demande. Deux besoins, deux règles ; c'est de les avoir
+    // confondus que venait le défaut.
+    //
+    // ⚠️ **LE PLAFOND À `1.0` N'AGRANDIT JAMAIS UNE PETITE DEMANDE**, et
+    // ❌ **ce n'est PAS lui qui garde la barre des tâches hors du cadre —
+    // la première rédaction de ce commentaire l'affirmait, et la mutation l'a
+    // réfutée.** Retirer le plafond laisse le résultat DANS la borne (il ne
+    // fait que monter jusqu'à elle) : la barre ne rentre pas pour autant, et
+    // le test qui prétendait garder cette propriété est resté VERT sous la
+    // mutation. C'est `borne_de_la_sortie`, et elle seule, qui sort la barre
+    // du cadre.
+    //
+    // Ce que le plafond fait réellement : **ne jamais servir une image PLUS
+    // GRANDE que ce que le navigateur a demandé.** Sans lui, un viewport de
+    // 900×500 serait encodé en 1854×1030 — quatre fois les macroblocs, pour
+    // des pixels que la page ne peut pas afficher.
+    let (dl, dh) = borner_a_la_taille_max(demande);
+    let f = f64::min(
+        f64::min(borne.0 as f64 / dl as f64, borne.1 as f64 / dh as f64),
+        1.0,
+    );
+    // `.max(2)` puis `& !1` : l'encodeur NV12 exige des dimensions paires, et
+    // une boîte vidéo repliée émet `(0, 0)` (cas réel de D8).
+    let mets = |x: u32| (((x as f64 * f).round() as u32).max(2)) & !1;
+    // ⚠️ L'arrondi peut, sur un seul axe, rendre un pixel de plus que la
+    // borne (`round` monte). Le `min` final est un filet : `region_de_sortie`
+    // doit rester DANS la texture, et une région qui déborde ferait échouer
+    // le recadrage.
+    (mets(dl).min(borne.0 & !1).max(2), mets(dh).min(borne.1 & !1).max(2))
 }
 
 /// Taille maximale qu'une sortie virtuelle prendra sur demande de viewport.
