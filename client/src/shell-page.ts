@@ -23,13 +23,8 @@ import { creerBureau, type Ton } from './shell';
 import { installerSelecteurDeThemeAuDOM } from './design/selecteur-theme';
 import { jetonAcces } from './jeton';
 import { composer, lirePrefixe } from './prefixe';
-import { creerAdaptateur } from './fichiers/adaptateur';
-import { creerEcrivain, type RacineInscriptible } from './fichiers/ecriture';
-import { creerMutateur } from './fichiers/mutation-service';
-import type { RacineMutable } from './fichiers/mutation';
-import { creerServeur, trameBonjour, trameRafraichir } from './fichiers/protocole';
-import { choisirDossier, connecterCanalFichiers, sessionDuPont, type CanalFichiers } from './fichiers/canal';
 import { adressePlateforme, adresseSignaling } from './adresse-plateforme';
+import { installerLePont } from './bureau/fichiers-dom';
 import { dessinerFenetres } from './bureau/fenetres-dom';
 
 const params = new URLSearchParams(window.location.search);
@@ -201,169 +196,15 @@ window.addEventListener('beforeunload', (evenement) => {
    protocole dans `fichiers/protocole.ts` et `fichiers/adaptateur.ts`, tous
    trois testés. Ce bloc n'est que du câblage, comme le reste de ce fichier. */
 
-let pont: CanalFichiers | null = null;
-
-boutonDossier.addEventListener('click', () => {
-    // 🔴 `showDirectoryPicker()` EXIGE UNE ACTIVATION UTILISATEUR TRANSITOIRE,
-    // et c'est pourquoi il est appelé ici, dans le gestionnaire de clic, et
-    // jamais depuis un message de canal. Le gestionnaire n'est pas `async` : un
-    // `await` avant l'appel consommerait l'activation, et le sélecteur serait
-    // refusé sans que rien ne le dise. Même contrainte que `window.open()`, que
-    // cette page connaît déjà.
-    void monterLeLecteur();
+installerLePont({
+    bureau,
+    signalingUrl,
+    fautesArmees: fautesFichiersArmees,
+    boutonDossier,
+    boutonRafraichir,
+    boutonReprendre,
+    // `shell.html` n'a aucun pli : sa section est toujours dépliée.
 });
-
-async function monterLeLecteur(): Promise<void> {
-    // Un second clic remplace le dossier : l'ancien pont part d'abord, sans
-    // quoi deux `PeerConnection` se disputeraient la session `…:fichiers` et
-    // la seconde serait refusée par le relais.
-    pont?.close();
-    pont = null;
-    bureau.lecteurDemonte();
-
-    const choix = await choisirDossier().catch((e: unknown) => {
-        bureau.lecteurEchoue((e as Error).message);
-        return undefined;
-    });
-    // `null` = annulation délibérée, `undefined` = échec déjà signalé.
-    if (choix === null || choix === undefined) return;
-
-    // 🔴 LA MÊME POIGNÉE SERT À LIRE, À ÉCRIRE ET À MUTER.
-    //
-    // ❌ **CE TRANSTYPAGE N'EST PAS UN CONTRÔLE, ET F2 LE DÉCLARAIT COMME TEL.**
-    // Ces lignes disaient : « le transtypage est le CONTRÔLE DE COMPATIBILITÉ
-    // STRUCTURELLE de F2 : si la vraie poignée cessait de le satisfaire,
-    // `tsc --noEmit` le dirait ICI ». **C'est faux, et c'est mesuré** :
-    // `choix.racine` est typée `Racine`, et `RacineInscriptible` en est un
-    // SOUS-type — un `as` vers un sous-type ASSERTE, il ne vérifie pas.
-    // Ajouter à `RacineInscriptible` une méthode que
-    // `FileSystemDirectoryHandle` n'a pas ne faisait rougir QUE le faux de
-    // test.
-    //
-    // ✅ **LE CONTRÔLE RÉEL VIT DÉSORMAIS DANS `fichiers/canal.ts`**, sur la
-    // VRAIE poignée, avant tout élargissement — et il a trouvé une
-    // incompatibilité de F2 dès qu'il a été posé (voir
-    // `journaux-pont-fichiers-f3/t9-controle-structurel-de-f2-vacueux.txt`).
-    // Ces deux lignes-ci ne sont plus que du câblage.
-    const racineInscriptible: RacineInscriptible = choix.racine as RacineInscriptible;
-    const racineMutable: RacineMutable = choix.racine as RacineMutable;
-    const ecrivain = creerEcrivain(racineInscriptible);
-    const mutateur = creerMutateur(racineMutable);
-    const serveur = creerServeur(
-        creerAdaptateur(choix.racine, fautesFichiersArmees),
-        (m) => console.warn(m),
-        {
-            ecrivain,
-            mutateur,
-            onDues: (dues, retenues) => bureau.ecrituresDues(dues, retenues),
-            onEchecEcriture: (chemin, code) => bureau.ecritureEchouee(chemin, code),
-            onEchecMutation: (quoi, code) => bureau.mutationEchouee(quoi, code),
-            // 🔵 **L'INSTRUMENTATION QUE LA SPEC §3.5.1 EXIGE**, et elle part
-            // par le journal parce que le navigateur est le seul à SAVOIR ce
-            // qu'il a fait. Le pont, lui, journalise ce que LUI sait — voir la
-            // divergence déclarée dans `protocole.ts`.
-            onRenommagePorCopie: (de, vers, octets, entrees) => {
-                console.warn(
-                    `renommage par copie « ${de} » → « ${vers} » : ${octets} octets, ` +
-                        `${entrees} entree(s) — move() absente, repli LOCAL (zero octet sur le canal)`,
-                );
-            },
-        },
-    );
-    try {
-        pont = await connecterCanalFichiers({
-            signalingUrl,
-            sessionId: sessionDuPont(),
-            onStatus: (m) => console.info(m),
-            traiter: (octets) => serveur.traiter(octets),
-        });
-    } catch (e) {
-        bureau.lecteurEchoue((e as Error).message);
-        return;
-    }
-    bureau.lecteurMonte(choix.nom);
-
-    // ════════════════════════════════════════════════════════════════════
-    // 🔴 **F5 — `Bonjour` PART ICI, ET L'ORDRE N'EST PAS INDIFFÉRENT.**
-    //
-    // Il est envoyé **APRÈS** que l'écrivain, le mutateur et l'adaptateur sont
-    // posés et que le canal est ouvert — jamais avant. C'est lui, et lui seul,
-    // qui déclenche la reprise des écritures dues côté pont : avant F5, celle-ci
-    // courait au démarrage du FIL, c'est-à-dire *sans savoir si un navigateur
-    // est là, ni lequel, ni sur quel répertoire*. F2 a mesuré, deux fois sur
-    // deux, la poussée du rejeu **0,8 s AVANT** cette annonce de montage, puis
-    // une expiration **+30,2 s** plus tard.
-    //
-    // ⚠️ **`choix.nom` est le `name` de la poignée de répertoire**, et c'est la
-    // MÊME valeur qu'un répertoire choisi par `showDirectoryPicker()` ou par
-    // OPFS rendrait : c'est ce qui permet à la recette d'éprouver la règle sans
-    // le sélecteur. **Elle n'éprouve pas pour autant le modèle de permission**,
-    // qui n'est appelé nulle part dans ce dépôt.
-    //
-    // ⚠️ **`forcer: false` au montage, TOUJOURS.** Forcer est un geste de
-    // l'utilisateur, jamais un défaut : un `true` ici rendrait le bouton
-    // « Reprendre » inatteignable et réintroduirait le danger du §6.4 cas 2.
-    // ════════════════════════════════════════════════════════════════════
-    // 🔴 **L'ANNONCE ATTEND L'OUVERTURE DU CANAL, ET C'EST UN DÉFAUT QUE SEUL
-    // LE CHEMIN RÉEL POUVAIT MONTRER.**
-    //
-    // *La première rédaction envoyait ici même, sans attendre.*
-    // `connecterCanalFichiers` rend dès que la réponse SDP est reçue ; le canal
-    // de données, lui, s'ouvre **après**. Mesuré sur la VM, dans cet ordre :
-    // « pont fichiers : réponse reçue » → **`canal fichiers ferme : annonce non
-    // envoyee`** → « connecting » → « connected » → « canal fichiers ouvert ».
-    // Le `Bonjour` partait dans le vide, **et donc AUCUNE écriture due n'aurait
-    // jamais été poussée** — un silence, c'est-à-dire pire que les trente
-    // secondes que F2 avait mesurées et que F5 existe pour supprimer.
-    //
-    // 🔵 **C'est mon propre `console.warn` qui l'a dénoncé.** Un envoi qui
-    // aurait échoué en silence aurait laissé la recette verte sur ses critères
-    // de cache et muette sur celui-ci.
-    //
-    // ⚠️ **LES DEUX BRANCHES SONT NÉCESSAIRES** : le canal peut être déjà
-    // ouvert quand on arrive ici (rien ne l'interdit), et n'écouter que
-    // `'open'` manquerait alors l'événement pour toujours.
-    const envoyerAuPont = (trame: ArrayBuffer): void => {
-        if (!pont) {
-            console.warn('aucun pont : annonce non envoyee');
-            return;
-        }
-        const canal = pont.canal;
-        if (canal.readyState === 'open') canal.send(trame);
-        else if (canal.readyState === 'connecting') {
-            canal.addEventListener('open', () => canal.send(trame), { once: true });
-        } else console.warn('canal fichiers ferme : annonce non envoyee');
-    };
-    envoyerAuPont(trameBonjour(choix.nom, false));
-    boutonRafraichir.onclick = () => envoyerAuPont(trameRafraichir());
-    boutonReprendre.onclick = () => {
-        // **Reprendre est un `Bonjour` FORCÉ**, et non un verbe de plus : c'est
-        // exactement « je confirme que ce répertoire est le bon ». Le pont
-        // mémorise alors le nom annoncé, et le bouton disparaît à l'annonce
-        // suivante — sans qu'aucun état local n'ait à être remis à zéro ici.
-        envoyerAuPont(trameBonjour(choix.nom, true));
-    };
-
-    // ⚠️ LE DÉMONTAGE SUIT LA CONNEXION, PAS LE CANAL SEUL : un canal fermé sur
-    // une connexion qui se rétablit serait rouvert par l'agent, alors qu'une
-    // connexion `failed` ou `closed` est définitive pour ce pont-ci.
-    //
-    // ⚠️ LE PONT COURANT EST CAPTURÉ, et l'écouteur se tait s'il n'est plus
-    // celui-là. Sans cette garde, la fermeture de l'ANCIEN pont — que le
-    // remontage vient de provoquer — effacerait l'état du NOUVEAU : un
-    // écouteur qui survit à son objet est le patron exact d'une course qu'on
-    // ne voit qu'en cliquant deux fois.
-    const ce = pont;
-    ce.pc.addEventListener('connectionstatechange', () => {
-        if (pont !== ce) return;
-        const etat = ce.pc.connectionState;
-        if (etat === 'failed' || etat === 'closed') bureau.lecteurDemonte();
-    });
-    // ⚠️ **LES FLUX OUVERTS SE FERMENT AVEC LE CANAL.** Un flux
-    // `createWritable()` laissé ouvert garde son fichier d'échange, et son
-    // fichier de destination reste INCHANGÉ — la committaison est au `close()`.
-    ce.canal.addEventListener('close', () => ecrivain.abandonner());
-}
 
 function redessiner(): void {
     dessinerFenetres(bureau.liste(), {
