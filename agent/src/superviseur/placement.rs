@@ -131,6 +131,87 @@ pub fn sortie_pour_viewport(
         .cloned()
 }
 
+/// Le **lisère invisible de DWM** : ce dont `GetWindowRect` est plus grand que
+/// la fenêtre réellement peinte.
+///
+/// 🔴 **MESURÉ SUR LE PRODUIT, EN SESSION 1, LE 31 AOÛT 2026** — c'est le
+/// résidu que le propriétaire voyait encore après le correctif d'aspect
+/// (« il y a moins de bordure, mais y en a toujours ») :
+///
+/// ```text
+/// GetWindowRect = 1732x1032+1280+0   <- exactement la taille RETENUE
+/// DWM frame     = 1718x1025+1287+0
+/// lisere : gauche=7 haut=0 droite=7 bas=7
+/// ```
+///
+/// Depuis Windows 10, les bordures de redimensionnement d'une fenêtre sont
+/// **transparentes** : `GetWindowRect` les inclut, l'œil ne les voit pas.
+/// Comme `poser` posait dans cet espace-là et que le recadrage suit la taille
+/// posée, l'image contenait **7 px de bureau à gauche, 7 à droite, 7 en bas**
+/// — constants, **insensibles au rapport d'aspect**, et donc parfaitement
+/// distincts des bandes de letterbox que le correctif d'aspect a supprimées.
+/// Deux défauts superposés, deux signatures différentes ; c'est le contraste
+/// « varie avec la forme » / « constant » qui les a départagés.
+///
+/// ⚠️ **`haut = 0` et ce n'est pas une erreur** : la barre de titre est peinte,
+/// donc le bord supérieur de `GetWindowRect` coïncide avec le cadre visible.
+/// Le lisère n'est pas symétrique, et le supposer l'être décalerait l'image.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct Lisere {
+    pub gauche: i32,
+    pub haut: i32,
+    pub droite: i32,
+    pub bas: i32,
+}
+
+impl Lisere {
+    /// Le lisère nul — le repli quand DWM refuse de répondre, et donc
+    /// **exactement le comportement d'avant ce correctif**.
+    pub const NUL: Lisere = Lisere { gauche: 0, haut: 0, droite: 0, bas: 0 };
+
+    /// Vrai s'il n'y a rien à compenser : évite un second `SetWindowPos` et,
+    /// surtout, rend la correction inerte là où elle n'a pas lieu d'être.
+    pub fn est_nul(self) -> bool {
+        self == Lisere::NUL
+    }
+}
+
+/// Le rectangle à passer à `SetWindowPos` pour que le cadre **VISIBLE** occupe
+/// exactement `cible`.
+///
+/// 🔴 **TOUT LE CORRECTIF TIENT DANS CES QUATRE ADDITIONS**, et sa difficulté
+/// n'est pas l'arithmétique : c'est que le dépôt raisonnait de bout en bout
+/// dans l'espace de `GetWindowRect` — `poser` y écrivait, `rectangle_de` y
+/// relisait, `doit_etre_replacee` y comparait — sans que rien ne dise que cet
+/// espace **n'est pas celui qu'on voit**.
+///
+/// ⚠️ **`rectangle_de` rend désormais le cadre VISIBLE**, précisément pour que
+/// la comparaison périodique se fasse dans le même espace que la cible. Les
+/// changer séparément ferait replacer la fenêtre **chaque seconde** : le
+/// contrôle verrait un écart permanent de 7 px et n'arriverait jamais à le
+/// résorber. Les deux moitiés vont ensemble ou pas du tout.
+pub fn rect_a_poser(cible: &Rect, lisere: Lisere) -> Rect {
+    Rect {
+        x: cible.x - lisere.gauche,
+        y: cible.y - lisere.haut,
+        // `saturating_add_signed` : un lisère aberrant ne doit pas faire
+        // déborder la largeur, ce qui donnerait une fenêtre minuscule.
+        width: cible.width.saturating_add_signed(lisere.gauche + lisere.droite),
+        height: cible.height.saturating_add_signed(lisere.haut + lisere.bas),
+    }
+}
+
+/// La taille à passer à `SetWindowPos` pour que le cadre **VISIBLE** mesure
+/// `taille`. Le pendant de [`rect_a_poser`] pour le chemin du CAPTEUR, qui
+/// retaille sans déplacer (`SWP_NOMOVE`) — l'origine étant déjà compensée par
+/// la pose du superviseur, seule la taille reste à corriger.
+pub fn taille_a_poser(taille: (u32, u32), lisere: Lisere) -> (u32, u32) {
+    (
+        taille.0.saturating_add_signed(lisere.gauche + lisere.droite),
+        taille.1.saturating_add_signed(lisere.haut + lisere.bas),
+    )
+}
+
 /// Vrai si la fenêtre a quitté sa sortie ou changé de taille au point qu'il
 /// faille la remettre en place.
 ///
@@ -198,13 +279,17 @@ mod win {
     pub fn poser(hwnd: HWND, cible: &Rect) -> Result<()> {
         unsafe {
             let _ = ShowWindow(hwnd, SW_SHOWNORMAL);
+            // Le lisère est relu APRÈS `ShowWindow` : sur une fenêtre
+            // minimisée, DWM rend un cadre qui ne veut rien dire. Un échec de
+            // DWM rend `Lisere::NUL`, donc le comportement d'avant.
+            let pose = rect_a_poser(cible, crate::window::lisere_dwm(hwnd).unwrap_or_default());
             SetWindowPos(
                 hwnd,
                 Some(HWND_TOP),
-                cible.x,
-                cible.y,
-                cible.width as i32,
-                cible.height as i32,
+                pose.x,
+                pose.y,
+                pose.width as i32,
+                pose.height as i32,
                 // `SWP_NOACTIVATE` : poser une fenêtre ne doit pas voler le
                 // premier plan à celle que l'utilisateur manipule.
                 SWP_NOACTIVATE,
@@ -214,21 +299,30 @@ mod win {
         Ok(())
     }
 
-    /// Rectangle actuel de la fenêtre, en coordonnées du bureau virtuel.
+    /// Rectangle **VISIBLE** de la fenêtre, en coordonnées du bureau virtuel.
     ///
-    /// `GetWindowRect` et non `GetClientRect` : c'est la position dans
-    /// l'espace du bureau qu'on compare à celle de la sortie, et
-    /// `GetClientRect` rend un rectangle dont l'origine est toujours (0,0).
+    /// ❌ **CETTE FONCTION RENDAIT `GetWindowRect`, ET C'ÉTAIT LA MOITIÉ
+    /// LECTURE DU DÉFAUT DU LISÈRE.** Son commentaire disait « `GetWindowRect`
+    /// et non `GetClientRect` : c'est la position dans l'espace du bureau
+    /// qu'on compare à celle de la sortie » — vrai, mais incomplet : depuis
+    /// Windows 10, `GetWindowRect` inclut des bordures **transparentes** de
+    /// ~7 px, si bien que l'espace où l'on comparait n'était **pas celui qu'on
+    /// voit** (mesure en session 1, voir [`Lisere`]).
+    ///
+    /// 🔴 **ELLE DOIT CHANGER EN MÊME TEMPS QUE `poser`, JAMAIS SÉPARÉMENT.**
+    /// `poser` écrit désormais un rectangle gonflé du lisère ; si la relecture
+    /// rendait encore `GetWindowRect`, `doit_etre_replacee` verrait un écart
+    /// permanent de 7 px et replacerait la fenêtre **chaque seconde**, sans
+    /// jamais converger.
+    ///
+    /// Le repli sur `GetWindowRect` quand DWM refuse est **exactement le
+    /// comportement d'avant**, et il est cohérent avec celui de `poser`, qui
+    /// retombe alors sur un lisère nul : les deux moitiés dégradent ensemble.
     pub fn rectangle_de(hwnd: HWND) -> Result<Rect> {
-        use windows::Win32::Foundation::RECT;
-        use windows::Win32::UI::WindowsAndMessaging::GetWindowRect;
-        let mut r = RECT::default();
-        unsafe { GetWindowRect(hwnd, &mut r) }.context("GetWindowRect")?;
-        Ok(Rect {
-            x: r.left,
-            y: r.top,
-            width: (r.right - r.left).max(0) as u32,
-            height: (r.bottom - r.top).max(0) as u32,
+        let brut = crate::window::rectangle_brut(hwnd)?;
+        Ok(match crate::window::cadre_visible(hwnd) {
+            Ok(visible) => visible,
+            Err(_) => brut,
         })
     }
 }

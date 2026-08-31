@@ -13,12 +13,14 @@ use windows::core::BOOL;
 // (convention historique de gdi32), pas un `windows::core::Result<()>` comme
 // les fonctions user32 annotées succès/échec du même fichier.
 use windows::Win32::Foundation::{HWND, LPARAM, POINT, RECT, TRUE};
+use windows::Win32::Graphics::Dwm::{DwmGetWindowAttribute, DWMWA_EXTENDED_FRAME_BOUNDS};
 use windows::Win32::Graphics::Gdi::{
     ClientToScreen, GetMonitorInfoW, MonitorFromPoint, MonitorFromWindow, HMONITOR, MONITORINFO,
     MONITOR_DEFAULTTONEAREST,
 };
 use windows::Win32::UI::WindowsAndMessaging::{
-    EnumWindows, GetClientRect, GetWindowTextLengthW, GetWindowTextW, IsWindow, IsWindowVisible,
+    EnumWindows, GetClientRect, GetWindowRect, GetWindowTextLengthW, GetWindowTextW, IsWindow,
+    IsWindowVisible,
     SetWindowPos, SWP_NOMOVE, SWP_NOZORDER,
 };
 
@@ -113,6 +115,59 @@ pub fn client_rect_on_screen(hwnd: HWND) -> Result<Rect> {
         .context("ClientToScreen")?;
 
     Ok(Rect { x: origin.x, y: origin.y, width, height })
+}
+
+/// Le rectangle de la fenêtre tel que `GetWindowRect` le rend — **bordures
+/// invisibles de DWM COMPRISES**.
+///
+/// ⚠️ **Ce n'est PAS le rectangle qu'on voit** : voir
+/// `superviseur::placement::Lisere`. Cette fonction est le brut ; le cadre
+/// visible est [`cadre_visible`].
+pub fn rectangle_brut(hwnd: HWND) -> Result<Rect> {
+    let mut r = RECT::default();
+    unsafe { GetWindowRect(hwnd, &mut r) }.context("GetWindowRect")?;
+    Ok(depuis_rect(r))
+}
+
+/// Le cadre **VISIBLE** de la fenêtre, par `DWMWA_EXTENDED_FRAME_BOUNDS`.
+///
+/// 🔴 **C'EST LE SEUL RECTANGLE QUI CORRESPONDE À CE QUE L'ŒIL VOIT.** Depuis
+/// Windows 10 les bordures de redimensionnement sont transparentes et
+/// `GetWindowRect` les inclut : mesuré en session 1 le 31 août 2026, une
+/// fenêtre servie rendait `1732x1032+1280+0` au brut et `1718x1025+1287+0`
+/// au cadre visible — 7 px à gauche, à droite et en bas, 0 en haut.
+///
+/// `Err` quand DWM refuse (composition désactivée, fenêtre détruite) :
+/// l'appelant retombe alors sur le brut, c'est-à-dire sur le comportement
+/// d'avant ce correctif.
+pub fn cadre_visible(hwnd: HWND) -> Result<Rect> {
+    let mut r = RECT::default();
+    unsafe {
+        DwmGetWindowAttribute(
+            hwnd,
+            DWMWA_EXTENDED_FRAME_BOUNDS,
+            &mut r as *mut RECT as *mut core::ffi::c_void,
+            std::mem::size_of::<RECT>() as u32,
+        )
+    }
+    .context("DwmGetWindowAttribute(DWMWA_EXTENDED_FRAME_BOUNDS)")?;
+    Ok(depuis_rect(r))
+}
+
+/// Le lisère invisible de CETTE fenêtre : `GetWindowRect` moins le cadre
+/// visible, côté par côté.
+///
+/// ⚠️ **À relire APRÈS `ShowWindow`** : sur une fenêtre minimisée, DWM rend un
+/// cadre qui ne veut rien dire (rectangle à `-32000`).
+pub fn lisere_dwm(hwnd: HWND) -> Result<crate::superviseur::placement::Lisere> {
+    let brut = rectangle_brut(hwnd)?;
+    let vu = cadre_visible(hwnd)?;
+    Ok(crate::superviseur::placement::Lisere {
+        gauche: vu.x - brut.x,
+        haut: vu.y - brut.y,
+        droite: (brut.x + brut.width as i32) - (vu.x + vu.width as i32),
+        bas: (brut.y + brut.height as i32) - (vu.y + vu.height as i32),
+    })
 }
 
 /// Le rectangle du moniteur et sa **zone de travail**, pour le moniteur qui
