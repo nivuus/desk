@@ -18,6 +18,24 @@ impl Table {
         let Some(entree) = self.entrees.get_mut(session) else {
             return Vec::new();
         };
+        // 🔴 **UNE SESSION DÉJÀ VIVANTE N'EST PLUS IGNORÉE, ET C'EST LE LOT
+        // 33.** Ce `return Vec::new()` valait pour TOUT état autre
+        // qu'`AttendLeViewport`, donc aussi pour `Vivante` — si bien qu'un
+        // viewport annoncé après l'ouverture ne faisait **rien**, et que la
+        // fenêtre restait servie pour toujours à la taille du jour de son
+        // ouverture. Le navigateur, lui, n'en réannonçait aucun (le
+        // `postMessage` de `client/src/main.ts` ne partait qu'au chargement) :
+        // les deux moitiés du défaut se couvraient l'une l'autre, et aucune
+        // n'était visible depuis l'autre.
+        //
+        // Le bornage ci-dessous n'a pas encore couru : on le refait ici plutôt
+        // que de déplacer la ligne, pour que les deux chemins restent lisibles
+        // séparément.
+        if entree.etat == Etat::Vivante && entree.nom_sortie.is_some() {
+            let (largeur, hauteur) =
+                crate::windows_source_sortie::borner_a_la_taille_max((largeur, hauteur));
+            return vec![Effet::SuivreLeViewport { session: session.clone(), largeur, hauteur }];
+        }
         if entree.etat != Etat::AttendLeViewport {
             return Vec::new();
         }

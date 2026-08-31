@@ -47,6 +47,21 @@ pub enum Effet {
     /// quitté la table quand cet effet est rendu : sans lui, l'appelant ne
     /// pourrait plus savoir quelle place DXGI redevient libre.
     DetruireSortie { sortie_pilote: u32, nom_sortie: String },
+    /// Le navigateur a retaillé sa fenêtre, et la session est DÉJÀ vivante :
+    /// il n'y a ni sortie à créer ni enfant à lancer, seulement une taille
+    /// retenue à corriger et une fenêtre à reposer.
+    ///
+    /// 🔴 **POURQUOI UN EFFET, ET NON UNE DÉCISION DE LA TABLE.** La nouvelle
+    /// taille se borne à la ZONE DE TRAVAIL de la sortie, que seule une lecture
+    /// Win32 fraîche donne (`window::zones_du_moniteur_au_point`) — et la table
+    /// est PURE, éprouvée sur l'hôte Linux. Elle ne retient d'ailleurs que la
+    /// taille RETENUE, jamais celle de la sortie : elle ne pourrait donc pas
+    /// faire GRANDIR une fenêtre qu'un viewport plus petit avait rétrécie. La
+    /// table décide QU'IL FAUT SUIVRE, la boucle mesure et applique.
+    ///
+    /// `largeur`/`hauteur` sont déjà bornées par `borner_a_la_taille_max`,
+    /// comme sur les deux autres chemins d'entrée du viewport.
+    SuivreLeViewport { session: IdSession, largeur: u32, hauteur: u32 },
     AnnoncerFermeture { session: IdSession },
     AnnoncerRefus { titre: String, motif: String },
 }

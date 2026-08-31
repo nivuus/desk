@@ -247,10 +247,77 @@ fn une_sortie_retenue_incompatible_est_rendue_puis_remplacee() {
     assert_eq!(t.etat(&neuve), Some(&Etat::AttendLaSortie));
 }
 
+/// 🔴 **LE TEST QUI VOIT LE DÉFAUT, ET SANS LUI SON VOISIN EST VACUEUX.**
+/// `un_viewport_rejoue_ne_fait_avancer_aucune_machine` assertait
+/// `rejeu.iter().all(matches!(SuivreLeViewport))` — et **un vecteur VIDE
+/// satisfait `all()`**. Rendre `Vec::new()` sur une session vivante, c'est-à-
+/// dire le comportement d'hier, le laissait donc VERT. C'est le patron que
+/// `CLAUDE.md` nomme « un contrôle qu'on n'a jamais vu rouge n'est pas un
+/// contrôle », et il a été attrapé en jouant la mutation, pas en relisant.
+///
+/// Ce test-ci assère que l'effet EST produit, et avec la taille demandée :
+/// c'est lui qui rougit si la branche `Vivante` disparaît.
+#[test]
+fn un_viewport_sur_une_session_vivante_demande_de_suivre() {
+    let mut t = Table::nouvelle(4);
+    let session = session_vivante(&mut t, 1, "Bloc-notes", 42, "\\\\.\\DISPLAY7");
+    assert_eq!(t.etat(&session), Some(&Etat::Vivante), "précondition");
+
+    let effets = t.viewport_recu(&session, 1600, 900);
+
+    match effets.as_slice() {
+        [Effet::SuivreLeViewport { session: s, largeur, hauteur }] => {
+            assert_eq!(s, &session);
+            assert_eq!((*largeur, *hauteur), (1600, 900));
+        }
+        autre => panic!("un seul suivi de viewport attendu, reçu {autre:?}"),
+    }
+    // La table n'a rien avancé : c'est la boucle qui mesure et applique.
+    assert_eq!(t.etat(&session), Some(&Etat::Vivante));
+}
+
+/// Le plafond ① court AUSSI sur ce chemin : sans lui, un client à
+/// `devicePixelRatio = 2` ferait poser une fenêtre de 2560×1440 sur une sortie
+/// qui ne peut pas la porter. Même bornage qu'aux deux autres points d'entrée
+/// du viewport (`creer_sortie`, chemin de réutilisation).
+#[test]
+fn un_viewport_hidpi_sur_une_session_vivante_est_borne_avant_de_partir() {
+    let mut t = Table::nouvelle(4);
+    let session = session_vivante(&mut t, 1, "Bloc-notes", 42, "\\\\.\\DISPLAY7");
+
+    let effets = t.viewport_recu(&session, 3840, 2160);
+
+    let [Effet::SuivreLeViewport { largeur, hauteur, .. }] = effets.as_slice() else {
+        panic!("un suivi de viewport attendu, reçu {effets:?}");
+    };
+    assert_eq!(
+        (*largeur, *hauteur),
+        crate::windows_source_sortie::TAILLE_MAX_SORTIE,
+        "le plafond doit être appliqué AVANT que l'effet ne parte"
+    );
+}
+
 /// Un message du navigateur est une source externe : rejoué, il ne doit pas
 /// relancer un second enfant sur la même sortie.
+///
+/// ❌ **CE TEST S'APPELAIT `un_viewport_rejoue_apres_reutilisation_ne_fait_rien`
+/// ET ASSERTAIT `is_empty()`. LE LOT 33 LE REND FAUX, DÉLIBÉRÉMENT** : un
+/// viewport reçu sur une session VIVANTE rend désormais
+/// `Effet::SuivreLeViewport`, parce que c'est exactement le message par lequel
+/// le navigateur dit qu'il a été retaillé. L'ancienne assertion était le
+/// **défaut**, pas la protection.
+///
+/// 🔴 **CE QUE LA PROPRIÉTÉ DEVIENT, ET POURQUOI ELLE PROTÈGE ENCORE.** Ce que
+/// ce test gardait réellement — « un message rejoué, tardif ou inventé ne doit
+/// pas faire AVANCER LA MACHINE deux fois » — reste vrai et est désormais
+/// asserté explicitement : le rejeu ne crée aucune sortie, n'en détruit
+/// aucune, ne lance aucun enfant, et ne change pas l'état. `SuivreLeViewport`
+/// est de surcroît idempotent chez son exécutant
+/// (`placement_periodique::suivre_le_viewport` court-circuite quand la taille
+/// retenue vaut déjà celle qu'il calcule), donc un rejeu à l'identique ne pose
+/// même pas un second `SetWindowPos`.
 #[test]
-fn un_viewport_rejoue_apres_reutilisation_ne_fait_rien() {
+fn un_viewport_rejoue_ne_fait_avancer_aucune_machine() {
     let mut t = Table::nouvelle(4);
     let session = session_vivante(&mut t, 1, "Bloc-notes", 42, "\\\\.\\DISPLAY7");
     t.enfant_mort(&session);
@@ -260,8 +327,23 @@ fn un_viewport_rejoue_apres_reutilisation_ne_fait_rien() {
     };
     let neuve = neuve.clone();
     t.viewport_recu(&neuve, 1280, 720);
+    let avant = t.taille_sortie_de(&neuve);
 
-    assert!(t.viewport_recu(&neuve, 1280, 720).is_empty());
+    let rejeu = t.viewport_recu(&neuve, 1280, 720);
+
+    // Le SEUL effet toléré, et rien d'autre : pas de `CreerSortie`, pas de
+    // `DetruireSortie`, pas de `LancerEnfant`.
+    assert!(
+        rejeu.iter().all(|e| matches!(e, Effet::SuivreLeViewport { .. })),
+        "un rejeu ne doit produire qu'un suivi de viewport, reçu {rejeu:?}"
+    );
+    assert_eq!(t.etat(&neuve), Some(&Etat::Vivante), "l'état ne doit pas avancer");
+    assert_eq!(
+        t.taille_sortie_de(&neuve),
+        avant,
+        "la TABLE ne borne pas elle-même : c'est la boucle qui écrit la taille retenue, \
+         après avoir lu la zone de travail — un rejeu ne doit rien changer ici"
+    );
 }
 
 /// Contrepartie du §7.1 : une entrée abandonnée porte désormais une sortie,

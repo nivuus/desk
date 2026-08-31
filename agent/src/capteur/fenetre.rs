@@ -386,6 +386,18 @@ impl Fenetre {
             if let Some(etat) = etat {
                 if etat != dernier_etat {
                     dernier_etat = etat;
+                    // 🔴 **LA TAILLE RETENUE SUIT, ET C'EST NEUF AU LOT 33.**
+                    // `reveiller` reconstruit la source sur `self.dimensions()`
+                    // et le bras endormi de `servir_les_commandes` répond
+                    // `ctx.taille` : tant que `resize` était un `no-op` en
+                    // `SortieEntiere`, ces deux champs ne pouvaient pas
+                    // dériver, et `transitions.rs` s'appuyait dessus en toutes
+                    // lettres. Depuis que le recadrage suit le viewport, ils
+                    // le peuvent — une fenêtre retaillée puis endormie se
+                    // réveillerait à SA TAILLE D'OUVERTURE, effaçant le
+                    // redimensionnement sans une trace.
+                    self.largeur = etat.2;
+                    self.hauteur = etat.3;
                     let message = DepuisCapteur::Etat {
                         vivante: etat.0,
                         epuisee: etat.1,

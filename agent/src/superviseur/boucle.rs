@@ -175,6 +175,9 @@ pub fn tourner(
                     // suffirait sinon à bloquer toute nouvelle fenêtre.
                     rendre_la_sortie(&mut sorties, &mut prises, sortie_pilote, nom_sortie);
                 }
+                Effet::SuivreLeViewport { session, largeur, hauteur } => {
+                    suivre_le_viewport(&mut table, &session, largeur, hauteur);
+                }
                 Effet::AnnoncerFermeture { session } => {
                     envoyer(&VersLaShell::FenetreFermee { session: session.0 });
                 }
@@ -322,7 +325,7 @@ struct Demande {
 // franchir ce plafond à ce fichier. Extraire plutôt que compresser, même
 // raison et même schéma que `superviseur/table/attribution.rs`.
 mod placement_periodique;
-use placement_periodique::{controler_le_placement, replacer_si_besoin};
+use placement_periodique::{controler_le_placement, replacer_si_besoin, suivre_le_viewport};
 
 // Lancement et surveillance du capteur (tâche 7 du sous-bloc D4) : extrait
 // côté production, pour la même raison et le même schéma que

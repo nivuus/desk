@@ -10,6 +10,84 @@
 use super::*;
 use crate::geometry::Rect;
 
+/// La borne d'une sortie : sa ZONE DE TRAVAIL quand Windows la donne, son
+/// rectangle sinon.
+///
+/// 🔴 **C'EST LA MOITIÉ SUPERVISEUR DE L'ACCORD ENTRE LES DEUX PROCESSUS.** Le
+/// capteur interroge le même moniteur par SA FENÊTRE
+/// (`window::zones_du_moniteur_de`), le superviseur par l'ORIGINE de la sortie
+/// — il connaît le rectangle DXGI avant même d'avoir posé la fenêtre. Même
+/// `HMONITOR`, donc même borne, donc même `taille_pour_viewport` des deux
+/// côtés : aucun message à échanger, et aucune bataille à 1 Hz.
+///
+/// ⚠️ **Le superviseur ne borne PAS par la texture de la duplication**, à la
+/// différence du capteur : il n'ouvre aucune duplication, et `SortieDxgi.rect`
+/// est déjà en coordonnées de bureau comme `rcWork`. Sur cette machine la
+/// texture est PLUS grande que le rectangle (1860 contre 1428, lot 32T) : le
+/// `min` du capteur est donc inerte ici, et les deux bornes coïncident. **Si
+/// elles divergeaient**, le superviseur l'emporterait au tour suivant — un
+/// désaccord borné à une seconde, jamais une oscillation.
+pub(super) fn borne_de(sortie: &SortieDxgi) -> (u32, u32) {
+    let moniteur = (sortie.rect.width, sortie.rect.height);
+    match crate::window::zones_du_moniteur_au_point(sortie.rect.x, sortie.rect.y) {
+        Ok((_, travail)) => crate::windows_source_sortie::borne_de_la_sortie(
+            moniteur,
+            Some((travail.width, travail.height)),
+        ),
+        Err(erreur) => {
+            tracing::warn!(%erreur, nom = %sortie.nom_sortie, "zone de travail illisible : la sortie entière sert de borne");
+            moniteur
+        }
+    }
+}
+
+/// Fait suivre au placement le viewport que le navigateur vient d'annoncer,
+/// sur une session DÉJÀ vivante.
+///
+/// 🔴 **CE QUE CETTE FONCTION FAIT, ET CE QU'ELLE NE FAIT PAS.** Elle corrige
+/// la taille RETENUE dans la table et repose la fenêtre — donc la moitié
+/// SUPERVISEUR du remède. Elle ne touche ni au recadrage ni à l'encodeur, qui
+/// vivent dans le capteur : c'est le `Resize` du canal de contrôle qui les
+/// fait suivre (`WindowsSource::suivre_le_viewport`), depuis la même mesure du
+/// même `ResizeObserver`, par la même règle pure.
+///
+/// ⚠️ **Si le `Resize` se perdait et que seul le `viewport` arrivait**, la
+/// fenêtre changerait de taille sans que le recadrage suive : l'image
+/// montrerait du bureau, jusqu'au `Resize` suivant. Ce n'est pas rattrapé ici,
+/// et c'est dit plutôt que supposé impossible.
+pub(super) fn suivre_le_viewport(
+    table: &mut Table,
+    session: &IdSession,
+    largeur: u32,
+    hauteur: u32,
+) {
+    let Some(nom) = table.nom_sortie_de(session).map(str::to_owned) else {
+        return;
+    };
+    let toutes = enumerer_sorties_silencieux().unwrap_or_default();
+    let Some(sortie) = toutes.iter().find(|s| s.nom_sortie == nom).cloned() else {
+        // La sortie a disparu de la topologie entre l'annonce et ce tour : ne
+        // rien écrire vaut mieux qu'écrire une taille calculée sur rien.
+        return;
+    };
+    let retenue =
+        crate::windows_source_sortie::taille_pour_viewport((largeur, hauteur), borne_de(&sortie));
+    // Court-circuit : le `ResizeObserver` du client émet toutes les 200 ms
+    // pendant qu'on tire un bord, et chaque passage relirait sinon la
+    // topologie DXGI puis reposerait la fenêtre.
+    if table.taille_sortie_de(session) == Some(retenue) {
+        return;
+    }
+    tracing::info!(
+        session = %session.0, nom_sortie = %nom,
+        demande = format!("{largeur}x{hauteur}"),
+        retenue = format!("{}x{}", retenue.0, retenue.1),
+        "viewport suivi : la taille retenue change, la sortie ne bouge pas"
+    );
+    table.rafraichir_taille_sortie(session, retenue);
+    replacer_si_besoin(table, session, &toutes);
+}
+
 /// Remet sur sa sortie toute fenêtre qui en est partie.
 ///
 /// **`&Table`, et non `&mut Table`.** Jusqu'au sous-bloc D10, cette fonction
