@@ -402,3 +402,84 @@ mod lisere {
         assert_eq!(pose.width, 0, "saturation vers le bas, jamais un repli par le haut");
     }
 }
+
+mod bordure_peinte {
+    use super::super::*;
+    use crate::geometry::Rect;
+
+    /// 🔴 **LES NOMBRES VIENNENT DES PIXELS DE L'IMAGE, PAS D'UN CALCUL.**
+    /// Capture de la sortie virtuelle en session 1, 31 août 2026, recadrage
+    /// 1548×1032 — couleurs relevées sur les bords et sur leurs voisines :
+    ///
+    /// ```text
+    /// rangee 0    (HAUT)   #494949 | rangee 1     #F3F3F3
+    /// rangee 1031 (BAS)    #2F2F2F | rangee 1030  #F0F0F0
+    /// colonne 0   (GAUCHE) #2F2F2F | colonne 1    #FFFFFF
+    /// colonne 1547(DROIT)  #2F2F2F | colonne 1546 #F0F0F0
+    /// ```
+    ///
+    /// Un pixel sombre sur les quatre bords, clair juste en dedans. Et
+    /// `GetSystemMetrics(SM_CXBORDER/SM_CYBORDER)` rend `(1, 1)` à 96 DPI :
+    /// **la mesure de l'image et la métrique du système concordent**, ce qui
+    /// est ce qui autorise à se fier à la seconde plutôt qu'à écrire `1`.
+    const BORDURE: (i32, i32) = (1, 1);
+    const DWM: Lisere = Lisere { gauche: 7, haut: 0, droite: 7, bas: 7 };
+
+    #[test]
+    fn l_enveloppe_ajoute_la_bordure_peinte_au_lisere_invisible() {
+        assert_eq!(
+            enveloppe(DWM, BORDURE),
+            Lisere { gauche: 8, haut: 1, droite: 8, bas: 8 }
+        );
+    }
+
+    /// 🔴 **L'ALLER-RETOUR QUI TIENT LES DEUX MOITIÉS ENSEMBLE.** `poser` pose
+    /// à `crop + enveloppe` ; `rectangle_de` rend `cadre visible − bordure`.
+    /// Le résultat doit être **exactement** le recadrage, sinon le contrôle
+    /// périodique voit un écart permanent.
+    #[test]
+    fn poser_puis_relire_redonne_exactement_le_recadrage() {
+        let crop = Rect { x: 1280, y: 0, width: 1548, height: 1032 };
+        let pose = rect_a_poser(&crop, enveloppe(DWM, BORDURE));
+        // Ce que DWM rendra du rectangle posé : le posé, rétréci du lisère
+        // INVISIBLE seul — la bordure peinte, elle, fait partie du cadre vu.
+        let cadre_vu = Rect {
+            x: pose.x + DWM.gauche,
+            y: pose.y + DWM.haut,
+            width: (pose.width as i32 - DWM.gauche - DWM.droite) as u32,
+            height: (pose.height as i32 - DWM.haut - DWM.bas) as u32,
+        };
+        assert_eq!(sans_la_bordure(&cadre_vu, BORDURE), crop);
+        assert!(!doit_etre_replacee(&sans_la_bordure(&cadre_vu, BORDURE), &crop));
+    }
+
+    /// La bordure peinte tombe bien **HORS** du recadrage : le cadre visible
+    /// déborde d'exactement un pixel de chaque côté, et c'est là que Windows
+    /// peint sa ligne sombre.
+    #[test]
+    fn la_ligne_sombre_tombe_hors_du_recadrage() {
+        let crop = Rect { x: 1280, y: 0, width: 1548, height: 1032 };
+        let pose = rect_a_poser(&crop, enveloppe(DWM, BORDURE));
+        let cadre_vu_gauche = pose.x + DWM.gauche;
+        assert_eq!(crop.x - cadre_vu_gauche, BORDURE.0, "le bord peint doit etre EN DEHORS");
+        let cadre_vu_droite = pose.x + pose.width as i32 - DWM.droite;
+        assert_eq!(cadre_vu_droite - (crop.x + crop.width as i32), BORDURE.0);
+    }
+
+    /// Le repli : pas de bordure peinte → l'enveloppe est le lisère seul, et
+    /// `sans_la_bordure` est l'identité. Le comportement d'avant, exactement.
+    #[test]
+    fn sans_bordure_peinte_on_retrouve_le_comportement_precedent() {
+        assert_eq!(enveloppe(DWM, (0, 0)), DWM);
+        let r = Rect { x: 10, y: 20, width: 100, height: 50 };
+        assert_eq!(sans_la_bordure(&r, (0, 0)), r);
+    }
+
+    /// Une bordure aberrante ne doit pas faire déborder l'arithmétique et
+    /// rendre un recadrage géant par repli entier.
+    #[test]
+    fn une_bordure_aberrante_ne_fait_pas_deborder() {
+        let r = Rect { x: 0, y: 0, width: 10, height: 10 };
+        assert_eq!(sans_la_bordure(&r, (100, 100)).width, 0);
+    }
+}
