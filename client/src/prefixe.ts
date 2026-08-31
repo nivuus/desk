@@ -115,6 +115,49 @@ export function effacerPrefixe(coffre: CoffreEcrivable): void {
     coffre.removeItem(CLE_PREFIXE);
 }
 
+/// Ce qu'il faut faire du préfixe qu'une VM vient d'annoncer.
+///
+/// 🔴 **CETTE RÈGLE EXISTE PARCE QUE LE HUB NE POSAIT AUCUN PRÉFIXE** (revue
+/// finale du 31 août 2026, critique ②). `poserPrefixe` n'avait qu'UN SEUL
+/// appelant de production — `connexion.ts::chercherLaSession` —, qui ne court
+/// que sur la page de connexion. Or un visiteur derrière Pomerium obtient son
+/// jeton **sur le hub** (`jeton.ts::assurerAccesFrais` → `/auth/moi`) sans
+/// jamais passer par cet écran : `lirePrefixe()` rendait alors `''`, le hub
+/// écoutait la session `bureau` pendant que l'agent annonçait sur
+/// `<prefixe>:bureau`, et **aucun `fenetre-ouverte` n'arrivait jamais**. Le
+/// verrou d'élection, lui non plus préfixé, rendait vacueuse la protection que
+/// `bureau/porteur-dom.ts::nomDuVerrou` déclare bruyamment offrir.
+/// ⚠️ **Le défaut PRÉEXISTE au chantier `navigation-hub-unique`** — il date du
+/// correctif Pomerium du 30 août 2026, et `shell-page.ts` en souffrait aussi.
+/// Il devient critique parce que le hub est devenu la SEULE surface.
+///
+/// 🔴 **UNE RÈGLE, PAS DU CÂBLAGE**, au critère reproductible de ce dépôt : la
+/// changer change ce que le produit DÉCIDE (quelle session il écoute), elle ne
+/// route pas une décision prise ailleurs.
+///
+/// ⚠️ **LA CHAÎNE VIDE VAUT « EFFACER », ELLE NE LÈVE PAS.** `poserPrefixe`
+/// lève sur `''`, et c'est juste pour LUI : un appelant qui n'a pas de préfixe
+/// n'en a pas à écrire. Mais un service qui annoncerait `prefixe: ''` n'est pas
+/// une programmation fausse du client — c'est une VM sans préfixe, et le geste
+/// correct est d'effacer, jamais de faire lever le peuplement du catalogue.
+/// C'est ce qui distingue cette règle de la garde de `poserPrefixe`, et les
+/// deux sont écrites côte à côte pour qu'on ne les confonde pas.
+export type ChoixPrefixe = { action: 'poser'; prefixe: string } | { action: 'effacer' };
+
+export function prefixeDeLaVm(annonce: unknown): ChoixPrefixe {
+    if (typeof annonce === 'string' && annonce !== '') return { action: 'poser', prefixe: annonce };
+    return { action: 'effacer' };
+}
+
+/// Applique le choix ci-dessus au coffre. **Du câblage**, gardé ici pour que
+/// les deux appelants (`connexion.ts` un jour, `hub/page.ts` aujourd'hui) ne
+/// recopient pas le `if`.
+export function retenirLePrefixe(coffre: CoffreEcrivable, annonce: unknown): void {
+    const choix = prefixeDeLaVm(annonce);
+    if (choix.action === 'poser') poserPrefixe(coffre, choix.prefixe);
+    else effacerPrefixe(coffre);
+}
+
 /// Compose un identifiant de session : `<préfixe>:<nom>`, ou `<nom>` seul
 /// quand aucun préfixe n'est connu.
 export function composer(prefixe: string, nom: string): string {

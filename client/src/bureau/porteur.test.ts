@@ -1,5 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { batirEtat, elire, estPlacePrise, fenetresAPeindre, lireEtat } from './porteur';
+import {
+    batirDemande,
+    batirEtat,
+    elire,
+    estDemandeEtat,
+    estPlacePrise,
+    fenetresAPeindre,
+    lireEtat,
+    lireTrame,
+    ouvertureParLeBureau,
+    promouvoir,
+} from './porteur';
 
 describe('elire', () => {
     it('sans API de verrou, l onglet devient porteur : le repli est OPTIMISTE', () => {
@@ -103,5 +114,132 @@ describe('fenetresAPeindre', () => {
         const propre = [{ session: 's', titre: 'Bloc-notes', ouverte: false }];
         const recuPerime = [{ session: 's', titre: 'Bloc-notes', ouverte: true }];
         expect(fenetresAPeindre('porteur', propre, recuPerime)).toEqual(propre);
+    });
+});
+
+/* ══ CE QUE LA REVUE FINALE DU 31 AOUT 2026 A AJOUTE ═════════════════════ */
+
+describe('promouvoir : le cycle de promotion', () => {
+    it(
+        'redemande un jeton FRAIS, puis installe le pont, PUIS ouvre le socket',
+        async () => {
+            // 🔴 C EST LA JONCTION QUI ETAIT FAUSSE, PAS LA REGLE DE
+            // FRAICHEUR. Le socket etait ouvert avec `deps.jeton`, une chaine
+            // FIGEE AU CHARGEMENT ; or un suiveur n est promu qu a la mort du
+            // porteur, potentiellement des heures plus tard, et un jeton d
+            // acces vit DIX MINUTES. Un test d `assurerAccesFrais` ne pouvait
+            // pas voir ce defaut : il ne vit qu ici.
+            const ordre: string[] = [];
+            let demandes = 0;
+            await promouvoir({
+                jetonFrais: () => { demandes += 1; return Promise.resolve('frais-a-la-promotion'); },
+                installerPont: () => { ordre.push('pont'); },
+                ouvrirSocket: (jeton) => { ordre.push(`socket:${jeton}`); },
+                sansJeton: () => { ordre.push('sans-jeton'); },
+            });
+            expect(demandes, 'le jeton doit etre REDEMANDE a la promotion').toBe(1);
+            expect(ordre).toEqual(['pont', 'socket:frais-a-la-promotion']);
+        },
+    );
+
+    it('sans jeton obtenable, n ouvre AUCUN socket et le DIT', async () => {
+        // ⚠️ Ouvrir un socket voue au refus afficherait un refus que
+        // `canalDeControlePerdu` ecraserait aussitot par « Rechargez la
+        // page » : l utilisateur ne saurait pas que sa session a expire.
+        const ordre: string[] = [];
+        await promouvoir({
+            jetonFrais: () => Promise.resolve(undefined),
+            installerPont: () => { ordre.push('pont'); },
+            ouvrirSocket: () => { ordre.push('socket'); },
+            sansJeton: () => { ordre.push('sans-jeton'); },
+        });
+        expect(ordre).toEqual(['sans-jeton']);
+    });
+});
+
+describe('elire : le verrou se RELACHE', () => {
+    it('un porteur demis rend son verrou, et sa partition peut en elire un autre', async () => {
+        // 🔴 IMPORTANT ③ : la promesse tenue etait un `Promise<never>` que
+        // rien ne resolvait -- un porteur demis par `estPlacePrise` gardait
+        // le verrou POUR TOUJOURS, et sa partition n aurait PLUS JAMAIS eu de
+        // porteur.
+        let rendu = false;
+        let tenue: Promise<void> | undefined;
+        const election = elire('v', {
+            verrou: (_nom, pendant) => { tenue = pendant(); },
+            devenirPorteur: () => {},
+            devenirSuiveur: () => {},
+        });
+        void tenue!.then(() => { rendu = true; });
+        // Tant que personne ne relache, la promesse ne se regle pas.
+        await Promise.resolve();
+        expect(rendu, 'le verrou ne se rend PAS de lui-meme').toBe(false);
+        election.relacher();
+        // ⚠️ ON N ATTEND PAS `tenue` : un `await` sur une promesse qui pourrait
+        // ne JAMAIS se regler rougirait par EXPIRATION, et une expiration ne
+        // dit pas QUELLE assertion a echoue. On laisse courir les microtaches
+        // du `then`, puis on ASSERTE.
+        await Promise.resolve();
+        await Promise.resolve();
+        expect(rendu, 'le verrou doit etre RENDU quand on le relache').toBe(true);
+    });
+
+    it('relacher est IDEMPOTENTE, et inerte sans verrou detenu', () => {
+        // Le repli sans `navigator.locks` ne detient aucun verrou : il n y a
+        // rien a rendre, et le dire ne doit pas lever.
+        const election = elire('v', { devenirPorteur: () => {}, devenirSuiveur: () => {} });
+        expect(() => { election.relacher(); election.relacher(); }).not.toThrow();
+    });
+});
+
+describe('estDemandeEtat', () => {
+    it('reconnait la demande qu un onglet neuf pose au montage', () => {
+        // 🔴 IMPORTANT ① : `diffuserSiChange` ne poste que sur CHANGEMENT. En
+        // regime -- trois fenetres, rien qui bouge -- un onglet qui rejoint
+        // montrait une liste VIDE POUR TOUJOURS.
+        expect(estDemandeEtat(batirDemande())).toBe(true);
+    });
+
+    it('ne confond PAS une diffusion d etat avec une demande', () => {
+        expect(estDemandeEtat(batirEtat([]))).toBe(false);
+    });
+
+    it('ne leve pas sur une entree qui n est pas un objet', () => {
+        expect(estDemandeEtat(undefined)).toBe(false);
+        expect(estDemandeEtat('demande-etat')).toBe(false);
+    });
+});
+
+describe('lireTrame', () => {
+    it('rend l objet d une trame bien formee', () => {
+        expect(lireTrame('{"type":"fenetre-ouverte","session":"s"}')?.type).toBe('fenetre-ouverte');
+    });
+
+    it('rend undefined sur une trame NON-JSON, au lieu de lever', () => {
+        // 🔴 MINOR ③ : `JSON.parse(evenement.data)` etait NU dans l ecouteur
+        // du socket de controle.
+        expect(lireTrame('pas du json')).toBeUndefined();
+    });
+
+    it('rend undefined sur `null`, `42` et un TABLEAU -- que JSON.parse accepte', () => {
+        // `null.type` leve une `TypeError` ; un tableau et un nombre ont bien
+        // un `.type` `undefined`, mais ne sont pas des trames.
+        expect(lireTrame('null')).toBeUndefined();
+        expect(lireTrame('42')).toBeUndefined();
+        expect(lireTrame('[1,2]')).toBeUndefined();
+    });
+
+    it('rend undefined sur ce qui n est meme pas une chaine', () => {
+        expect(lireTrame(new ArrayBuffer(4))).toBeUndefined();
+    });
+});
+
+describe('ouvertureParLeBureau', () => {
+    it('le porteur passe par le bureau, qui MEMORISE le handle', () => {
+        expect(ouvertureParLeBureau('porteur')).toBe(true);
+    });
+
+    it('un suiveur ouvre directement : son `bureau` n est alimente par rien', () => {
+        expect(ouvertureParLeBureau('suiveur')).toBe(false);
     });
 });
