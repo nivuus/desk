@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { batirEtat, elire, estPlacePrise, lireEtat } from './porteur';
+import { batirEtat, elire, estPlacePrise, fenetresAPeindre, lireEtat } from './porteur';
 
 describe('elire', () => {
     it('sans API de verrou, l onglet devient porteur : le repli est OPTIMISTE', () => {
@@ -76,5 +76,32 @@ describe('lireEtat', () => {
             fenetres: [{ session: 's', titre: 'bon', ouverte: false }, { session: 42 }],
         });
         expect(lu?.length).toBe(1);
+    });
+});
+
+describe('fenetresAPeindre', () => {
+    it('un suiveur qui n a encore rien recu ne peint rien', () => {
+        expect(fenetresAPeindre('suiveur', [], undefined)).toEqual([]);
+    });
+
+    it(
+        'un suiveur qui a recu N fenetres les garde au tour de minuterie suivant, ' +
+            'MEME QUAND SA PROPRE LISTE EST VIDE',
+        () => {
+            // 🔴 C EST CE CAS QUI ATTRAPE LE DEFAUT DU ROUND 1 (critique ①) :
+            // la minuterie repeint a 1 Hz depuis `bureau.liste()`, qui est
+            // STRUCTURELLEMENT VIDE chez un suiveur -- aucun socket, donc
+            // aucun `fenetreOuverte` ne l alimente jamais. Une regle qui
+            // peindrait `listePropre` chez un suiveur effacerait donc, au
+            // tour SUIVANT une diffusion, ce qu elle venait de montrer.
+            const recues = [{ session: 's', titre: 'Bloc-notes', ouverte: true }];
+            expect(fenetresAPeindre('suiveur', [], recues)).toEqual(recues);
+        },
+    );
+
+    it('le porteur peint TOUJOURS sa propre liste, jamais un etat recu perime', () => {
+        const propre = [{ session: 's', titre: 'Bloc-notes', ouverte: false }];
+        const recuPerime = [{ session: 's', titre: 'Bloc-notes', ouverte: true }];
+        expect(fenetresAPeindre('porteur', propre, recuPerime)).toEqual(propre);
     });
 });

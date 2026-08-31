@@ -29,6 +29,10 @@ describe('diffuserSiChange', () => {
         dernier = diffuserSiChange(canal, liste, dernier);
         dernier = diffuserSiChange(canal, liste, dernier);
         expect(envoyes.length).toBe(1);
+        // ⚠️ MINOR round 1 : `dernier` reaffecte et jamais relu suggerait une
+        // assertion absente. Elle porte l empreinte -- verifier qu elle EST
+        // celle de la liste stable, jamais une chaine vide oubliee.
+        expect(dernier).toBe(JSON.stringify(liste));
     });
 
     it('diffuse quand une fenetre change d etat', () => {
@@ -37,5 +41,8 @@ describe('diffuserSiChange', () => {
         let dernier = diffuserSiChange(canal, [{ session: 's', titre: 'x', ouverte: true }], '');
         dernier = diffuserSiChange(canal, [{ session: 's', titre: 'x', ouverte: false }], dernier);
         expect(envoyes.length).toBe(2);
+        // Meme raison que ci-dessus : l empreinte rendue suit la DERNIERE
+        // diffusion, pas la premiere.
+        expect(dernier).toBe(JSON.stringify([{ session: 's', titre: 'x', ouverte: false }]));
     });
 });

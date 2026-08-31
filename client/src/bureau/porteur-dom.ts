@@ -7,6 +7,13 @@
 //
 // ⚠️ AUCUNE RÈGLE ICI. Une condition qui déciderait quelque chose du produit
 // doit descendre dans `porteur.ts` ou `shell.ts`.
+//
+// 🔴 CETTE DÉCLARATION A ÉTÉ PRISE EN DÉFAUT UNE FOIS (revue round 1,
+// critique ①) : « quelle liste cet onglet peint-il » ÉTAIT une règle, posée
+// ici sous la forme d'un `bureau.liste()` appelé sans condition par la
+// minuterie. Elle est descendue dans `porteur.ts::fenetresAPeindre`, pure et
+// testée — ce fichier ne fait plus que lui PASSER le rôle, sa propre liste,
+// et le dernier état reçu.
 
 // ⚠️ AUCUN import d'`adresseSignaling` ICI : l'URL arrive par `deps`, calculée
 // par `hub/page.ts`. L'importer sans l'employer serait un `TS6133`, c'est-à-dire
@@ -15,7 +22,7 @@ import { composer } from '../prefixe';
 import { creerBureau, type FenetreConnue, type Ton } from '../shell';
 import { dessinerFenetres } from './fenetres-dom';
 import { installerLePont } from './fichiers-dom';
-import { NOM_VERROU, batirEtat, elire, estPlacePrise, lireEtat } from './porteur';
+import { NOM_VERROU, batirEtat, elire, estPlacePrise, fenetresAPeindre, lireEtat } from './porteur';
 
 declare global {
     interface Navigator {
@@ -86,6 +93,10 @@ export function installerLeBureau(deps: DepsBureauPage): void {
     const canal = new BroadcastChannel(nomDuVerrou(deps.prefixe));
     let empreinte = '';
     let porteur = false;
+    /// Le DERNIER état reçu sur le canal, côté SUIVEUR. `undefined` tant
+    /// qu'aucune diffusion n'est encore arrivée — c'est ce que
+    /// `fenetresAPeindre` distingue d'une liste vide diffusée pour de vrai.
+    let dernierEtatRecu: FenetreConnue[] | undefined;
     // ⚠️ DÉCLARÉ AVANT `creerBureau`, dont le rappel `envoyer` le lit : une
     // fermeture qui capture un `let` déclaré plus bas compile, mais se lit
     // mal — et la zone morte temporelle est une classe d'erreur qu'on évite
@@ -126,42 +137,103 @@ export function installerLeBureau(deps: DepsBureauPage): void {
         },
     });
 
+    // ── LE SEUL CHEMIN DE PEINTURE, POUR LES DEUX RÔLES ─────────────────────
+    // 🔴 LA MINUTERIE ET LA RÉCEPTION D'UNE DIFFUSION APPELAIENT CHACUNE LEUR
+    // PROPRE `dessinerFenetres(...)`, EN DOUBLE — c'est cette duplication qui
+    // a produit la critique ① : la minuterie peignait depuis `bureau.liste()`
+    // sans se soucier du rôle, effaçant chez un suiveur, moins d'une seconde
+    // après, ce que la réception venait de montrer. Il n'y a plus qu'un seul
+    // chemin : `redessiner()`, appelé par les DEUX déclencheurs, qui demande
+    // à `fenetresAPeindre` (pure, testée) ce qu'il faut peindre.
     const redessiner = (): void => {
-        const fenetres = bureau.liste();
+        const listePropre = bureau.liste();
+        const fenetres = fenetresAPeindre(porteur ? 'porteur' : 'suiveur', listePropre, dernierEtatRecu);
         dessinerFenetres(fenetres, {
             liste: el.liste,
             modele: el.modele,
             section: el.sectionFenetres,
-            rouvrir: (session) => { bureau.rouvrir(session); redessiner(); },
+            rouvrir: porteur
+                ? (session) => { bureau.rouvrir(session); redessiner(); }
+                : (session) => {
+                      // ⚠️ UN SUIVEUR OUVRE SA PROPRE FENÊTRE, DEPUIS SON
+                      // PROPRE CLIC : `window.open` exige l'activation de CET
+                      // onglet-ci. Il ne prévient pas le porteur, et RIEN NE
+                      // LE RATTRAPE ENSUITE : `shell.ts::liste` calcule
+                      // `ouverte` depuis le HANDLE que le porteur détient
+                      // LUI-MÊME (`e.fenetre !== null && !e.fenetre.closed`),
+                      // et ce handle-là reste fermé pour toujours — le
+                      // suiveur vient de créer un AUTRE objet `Window`, que
+                      // le porteur ne voit jamais. La liste du porteur dira
+                      // donc « fermée » EN PERMANENCE, jusqu'à ce que le
+                      // PORTEUR LUI-MÊME clique « Rouvrir ». **Limite
+                      // déclarée** : le remède serait un ordre sur le canal,
+                      // que la conception exclut (spec §4), ou une méthode
+                      // neuve sur `shell.ts`, que la spec laisse INCHANGÉ
+                      // (spec §6). Recliquer « Rouvrir », côté suiveur,
+                      // ramène la même fenêtre au premier plan chez LUI :
+                      // aucun dommage pour lui ; seule la vue du porteur
+                      // reste fausse.
+                      window.open(`/index.html?session=${encodeURIComponent(session)}`, `guac-${session}`);
+                  },
         });
-        if (porteur) empreinte = diffuserSiChange(canal, fenetres, empreinte);
+        // La diffusion, elle, reste réservée au porteur, et porte SA PROPRE
+        // liste — jamais `fenetres`, qui chez un suiveur est le dernier état
+        // REÇU : le rediffuser bouclerait l'écho au lieu de porter du neuf.
+        if (porteur) empreinte = diffuserSiChange(canal, listePropre, empreinte);
     };
 
-    // ── LE SUIVEUR : il n'ouvre AUCUN socket, et peint ce qu'on lui dit ────
+    // ── LE SUIVEUR : il n'ouvre AUCUN socket ; il mémorise ce qu'on lui
+    // diffuse et le fait peindre par LE MÊME `redessiner()` que la minuterie
+    // — un seul chemin, jamais deux qui pourraient diverger.
     canal.addEventListener('message', (evenement) => {
         if (porteur) return;
         const fenetres = lireEtat(evenement.data);
         if (fenetres === undefined) return;
-        dessinerFenetres(fenetres, {
-            liste: el.liste,
-            modele: el.modele,
-            section: el.sectionFenetres,
-            // ⚠️ UN SUIVEUR OUVRE SA PROPRE FENÊTRE, DEPUIS SON PROPRE CLIC :
-            // `window.open` exige l'activation de CET onglet-ci. Il ne
-            // prévient pas le porteur, dont la liste continuera d'afficher
-            // « fermée » jusqu'à sa prochaine relecture. **Limite déclarée** :
-            // le remède serait un ordre sur le canal, que la conception exclut
-            // (spec §4), ou une méthode neuve sur `shell.ts`, que la spec
-            // laisse INCHANGÉ (spec §6). Recliquer « Rouvrir » ramène la même
-            // fenêtre au premier plan : aucun dommage.
-            rouvrir: (session) => {
-                window.open(`/index.html?session=${encodeURIComponent(session)}`, `guac-${session}`);
-            },
-        });
+        dernierEtatRecu = fenetres;
+        redessiner();
     });
+
+    // 🔴 **LE PONT FICHIERS SUIT L'ÉLECTION, ET C'EST UNE CONSÉQUENCE DE CETTE
+    // TÂCHE, PAS UN OUBLI** (Important ③, revue round 1) : la session du pont
+    // (`fichiers/canal.ts::sessionDuPont`) est FIXE PAR VM et porte, elle
+    // aussi, le rôle `client` — EXCLUSIF. Le raisonnement de `porteur.ts`
+    // pour la session de contrôle (« tant que le bureau vivait dans une
+    // fenêtre NOMMÉE, il ne pouvait pas y en avoir deux ») vaut MOT POUR MOT
+    // ici. Un suiveur qui l'installerait quand même ouvrirait un second
+    // socket que la plateforme refuserait — pas une erreur à montrer : un
+    // ÉTAT à DIRE, l'onglet suiveur n'étant pas fautif de ne pas gérer les
+    // fichiers. **Les deux fonctions ci-dessous sont PARTAGÉES** entre
+    // `devenirSuiveur` et le rattrapage du repli optimiste démis
+    // (`estPlacePrise`, plus bas) : les deux chemins mènent au même « cet
+    // onglet ne gère pas les fichiers ».
+    const desactiverLePont = (): void => {
+        el.boutonDossier.disabled = true;
+        el.etatFichiers.textContent = 'Les fichiers sont gérés par l’onglet qui tient le bureau.';
+        poserTon(el.etatFichiers, 'neutre');
+    };
+    const activerLePont = (): void => {
+        el.boutonDossier.disabled = false;
+        el.etatFichiers.textContent = '';
+        poserTon(el.etatFichiers, 'neutre');
+    };
 
     const ouvrirLaSession = (): void => {
         porteur = true;
+        // CET onglet vient d'être promu : annuler l'état que `devenirSuiveur`
+        // avait posé, et installer le pont ICI plutôt qu'au montage du
+        // module — ainsi un onglet promu PLUS TARD (le cas ordinaire :
+        // suiveur au chargement, porteur seulement quand le précédent ferme)
+        // l'obtient lui aussi, sans code supplémentaire.
+        activerLePont();
+        installerLePont({
+            bureau,
+            signalingUrl: deps.signalingUrl,
+            fautesArmees: deps.fautesArmees,
+            boutonDossier: el.boutonDossier,
+            boutonRafraichir: el.boutonRafraichir,
+            boutonReprendre: el.boutonReprendre,
+            section: el.sectionFichiers,
+        });
         socket = new WebSocket(deps.signalingUrl);
         socket.addEventListener('open', () => {
             socket!.send(JSON.stringify({ role: 'client', session: sessionDeControle, jeton: deps.jeton }));
@@ -174,13 +246,42 @@ export function installerLeBureau(deps: DepsBureauPage): void {
             else if (message.type === 'fenetre-fermee') bureau.fenetreFermee(message.session);
             else if (message.type === 'refus') bureau.refus(message.titre, message.motif);
             else if (message.type === 'error') {
-                // 🔴 « LA PLACE EST PRISE » N'EST PAS UNE ERREUR À MONTRER.
-                // Ce chemin n'est atteint que dans le REPLI (navigateur sans
-                // Web Locks) : cet onglet a tenté, un autre tenait déjà. Il
-                // redevient suiveur, EN SILENCE — un second onglet n'est pas
-                // une faute de l'utilisateur. Tout autre refus, dont le frein
-                // de volume, reste affiché.
-                if (estPlacePrise(message)) { porteur = false; socket?.close(); return; }
+                if (estPlacePrise(message)) {
+                    // 🔴 « LA PLACE EST PRISE » N'EST PAS UNE ERREUR À
+                    // MONTRER. Cet onglet a tenté de devenir porteur, un
+                    // autre tenait déjà la session côté plateforme. Il
+                    // redevient suiveur, EN SILENCE — un second onglet n'est
+                    // pas une faute de l'utilisateur. Tout autre refus, dont
+                    // le frein de volume, reste affiché.
+                    //
+                    // ⚠️ **CE CHEMIN N'EST PAS RÉSERVÉ AU REPLI SANS WEB
+                    // LOCKS** — une affirmation trop large (Minor round 1) :
+                    // les Web Locks sont cloisonnés PAR PARTITION DE
+                    // STOCKAGE (une fenêtre de navigation privée, ou un
+                    // second navigateur, tient SA PROPRE partition), donc un
+                    // onglet peut très bien détenir SON verrou et viser
+                    // pourtant la MÊME session côté plateforme. Ce chemin est
+                    // donc atteint aussi HORS repli, chaque fois que deux
+                    // partitions distinctes visent la même VM.
+                    porteur = false;
+                    socket?.close();
+                    // Minor round 1 : le bandeau tenait encore « bureau
+                    // connecté », posé de façon optimiste à l'ouverture du
+                    // socket, AVANT de savoir si la plateforme refuserait.
+                    // Le dire tel quel après la démotion : cet onglet N'EST
+                    // PLUS celui qui tient le bureau.
+                    el.statut.textContent = 'Bureau tenu par un autre onglet.';
+                    poserTon(el.statut, 'neutre');
+                    // 🔴 CE CHEMIN (repli SANS Web Locks) a installé le pont
+                    // de façon OPTIMISTE, EN MÊME TEMPS que `porteur = true`
+                    // ci-dessus, avant de savoir si la plateforme refuserait
+                    // -- exactement comme le bandeau. Le rattraper de la
+                    // même façon : ce n'est plus cet onglet qui gère les
+                    // fichiers.
+                    desactiverLePont();
+                    redessiner();
+                    return;
+                }
                 bureau.canalDeControleRefuse(message.reason, message.motif, message.retryApresS);
             }
             redessiner();
@@ -198,17 +299,10 @@ export function installerLeBureau(deps: DepsBureauPage): void {
                 ? (nom, pendant) => void navigator.locks!.request(nom, { mode: 'exclusive' }, pendant)
                 : undefined,
         devenirPorteur: ouvrirLaSession,
-        devenirSuiveur: () => { porteur = false; },
-    });
-
-    installerLePont({
-        bureau,
-        signalingUrl: deps.signalingUrl,
-        fautesArmees: deps.fautesArmees,
-        boutonDossier: el.boutonDossier,
-        boutonRafraichir: el.boutonRafraichir,
-        boutonReprendre: el.boutonReprendre,
-        section: el.sectionFichiers,
+        devenirSuiveur: () => {
+            porteur = false;
+            desactiverLePont();
+        },
     });
 
     window.addEventListener('beforeunload', (evenement) => {

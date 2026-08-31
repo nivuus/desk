@@ -117,3 +117,31 @@ export function lireEtat(donnees: unknown): FenetreConnue[] | undefined {
             typeof (f as FenetreConnue).ouverte === 'boolean',
     );
 }
+
+/// Ce qu'un onglet doit PEINDRE, étant donné son rôle, sa PROPRE liste (celle
+/// que `shell.ts::creerBureau().liste()` rend), et le DERNIER état reçu sur
+/// le canal — jamais `bureau.liste()` seule.
+///
+/// 🔴 **CETTE RÈGLE VIVAIT DANS `porteur-dom.ts`, DONT L'EN-TÊTE DÉCLARE
+/// N'EN PORTER AUCUNE — ET C'EST LÀ QUE LE DÉFAUT S'EST LOGÉ** (revue round
+/// 1, critique ①). Sur un SUIVEUR, `bureau.liste()` est structurellement
+/// VIDE : aucun message `fenetre-ouverte` n'atteint son `bureau`, qui
+/// n'ouvre aucun socket (`porteur-dom.ts::ouvrirLaSession` ne court QUE chez
+/// le porteur), et son `rouvrir` appelle `window.open` DIRECTEMENT sans
+/// passer par `bureau.rouvrir`. Une minuterie qui repeindrait depuis
+/// `bureau.liste()` chez un suiveur EFFACERAIT donc, moins d'une seconde
+/// après chaque diffusion reçue, la liste qu'elle venait de montrer — pas
+/// une absence d'information, une information FAUSSE : la panne muette que
+/// ce chantier prétend éviter.
+export function fenetresAPeindre(
+    role: Role,
+    listePropre: FenetreConnue[],
+    dernierEtatRecu: FenetreConnue[] | undefined,
+): FenetreConnue[] {
+    // Le porteur EST la source de vérité : sa propre liste, toujours — un
+    // état reçu avant sa propre promotion serait périmé.
+    if (role === 'porteur') return listePropre;
+    // Le suiveur n'a QUE ce qu'on lui a diffusé. Rien reçu encore n'est pas
+    // un mensonge : c'est l'état initial exact, avant toute diffusion.
+    return dernierEtatRecu ?? [];
+}
