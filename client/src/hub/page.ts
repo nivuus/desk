@@ -12,7 +12,7 @@
 
 import { adressePlateforme } from '../adresse-plateforme';
 import { installerSelecteurDeThemeAuDOM } from '../design/selecteur-theme';
-import { assurerAccesFrais } from '../jeton';
+import { assurerAccesFrais, paireDeReponse } from '../jeton';
 import {
     lancerApplication,
     lireIcone,
@@ -392,13 +392,30 @@ async function jetonFrais(): Promise<string | undefined> {
         window.fetch.bind(window),
         Date.now(),
         async (corps) => {
-            const reponse = await fetch(`${base}/auth/rafraichir`, {
-                method: 'POST',
-                headers: { 'content-type': 'application/json' },
-                body: JSON.stringify(corps),
-            });
-            if (!reponse.ok) return undefined;
-            return (await reponse.json()) as { acces: string; rafraichissement: string };
+            // 🔴 **ENVELOPPÉ, LÀ OÙ `accesParPomerium` (`jeton.ts:175-186`)
+            // L'EST DEPUIS TOUJOURS** : ce chemin-ci était resté SANS APPELANT
+            // DE PRODUCTION jusqu'à cette tâche, donc jamais mis à l'épreuve
+            // d'un réseau injoignable. Sans ce `try/catch`, une exception
+            // (hors ligne, DNS, CORS) remonterait non rattrapée à travers
+            // `assurerAccesFrais` → `jetonFrais()` → `demarrer()` (rejet non
+            // géré sur `void demarrer()`) ou le gestionnaire de clic, et la
+            // page resterait bloquée sur « identification… » au lieu de
+            // retomber sur Pomerium (étape ③ d'`assurerAccesFrais`).
+            try {
+                const reponse = await fetch(`${base}/auth/rafraichir`, {
+                    method: 'POST',
+                    headers: { 'content-type': 'application/json' },
+                    body: JSON.stringify(corps),
+                });
+                if (!reponse.ok) return undefined;
+                // La forme est VALIDÉE, jamais affirmée : un corps `ok: true`
+                // mais incomplet écrirait tel quel au coffre (`poser`, dans
+                // `rafraichirSiNecessaire`) — le scénario « coffre empoisonné »
+                // qu'`accesDeReponse` existe pour empêcher sur `/auth/moi`.
+                return paireDeReponse(await reponse.json().catch(() => undefined));
+            } catch {
+                return undefined;
+            }
         },
     );
     if (acces !== undefined) deps = { ...deps, jeton: acces };

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { accesDeReponse, accesParPomerium, assurerAccesFrais, CLE_ACCES, CLE_RAFRAICHISSEMENT, expireAvant, jetonAcces, poser, poserAcces, rafraichirSiNecessaire, vider } from './jeton';
+import { accesDeReponse, accesParPomerium, assurerAccesFrais, CLE_ACCES, CLE_RAFRAICHISSEMENT, expireAvant, jetonAcces, paireDeReponse, poser, poserAcces, rafraichirSiNecessaire, vider } from './jeton';
 import type { Coffre } from './jeton';
 
 /// Un coffre factice, en mémoire. Il n'y a AUCUN `localStorage` dans
@@ -148,6 +148,47 @@ describe('le corps de `GET /auth/moi`', () => {
         expect(accesDeReponse(undefined)).toBeUndefined();
         expect(accesDeReponse(null)).toBeUndefined();
         expect(accesDeReponse('J')).toBeUndefined();
+    });
+});
+
+/// 🔴 AJOUTÉ EN CORRECTION DE REVUE (round 1) : `paireDeReponse` réutilise
+/// `accesDeReponse` pour la moitié `acces` — ses cas sont donc redémontrés
+/// une seule fois ici, pas répétés en entier — et applique le MÊME critère
+/// (chaîne, non vide) à `rafraichissement`, sur le modèle exact des tests
+/// ci-dessus.
+describe('le corps de `POST /auth/rafraichir`', () => {
+    it('rend la paire quand le corps en porte une complète', () => {
+        expect(paireDeReponse({ acces: 'A', rafraichissement: 'R' })).toEqual({
+            acces: 'A',
+            rafraichissement: 'R',
+        });
+    });
+
+    it('rend `undefined` quand `acces` est absent, vide ou non une chaîne — via `accesDeReponse`', () => {
+        expect(paireDeReponse({ rafraichissement: 'R' })).toBeUndefined();
+        expect(paireDeReponse({ acces: '', rafraichissement: 'R' })).toBeUndefined();
+        expect(paireDeReponse({ acces: 42, rafraichissement: 'R' })).toBeUndefined();
+    });
+
+    it("rend `undefined` quand `rafraichissement` est ABSENT — le cas que la revue a trouve manquant", () => {
+        expect(paireDeReponse({ acces: 'A' })).toBeUndefined();
+    });
+
+    // ⚠️ DISTINCT DU CAS CI-DESSUS, ET NON REDONDANT : `typeof '' === 'string'`,
+    // le même piège que celui d'`accesDeReponse`, appliqué ici au second champ.
+    it('rend `undefined` sur un `rafraichissement` VIDE', () => {
+        expect(paireDeReponse({ acces: 'A', rafraichissement: '' })).toBeUndefined();
+    });
+
+    it("rend `undefined` quand `rafraichissement` n'est pas une chaîne", () => {
+        expect(paireDeReponse({ acces: 'A', rafraichissement: 42 })).toBeUndefined();
+        expect(paireDeReponse({ acces: 'A', rafraichissement: null })).toBeUndefined();
+    });
+
+    it('rend `undefined` sur `undefined`, `null` et un corps qui n’est pas un objet', () => {
+        expect(paireDeReponse(undefined)).toBeUndefined();
+        expect(paireDeReponse(null)).toBeUndefined();
+        expect(paireDeReponse('J')).toBeUndefined();
     });
 });
 
@@ -383,5 +424,65 @@ describe('assurerAccesFrais', () => {
             async () => undefined,
         );
         expect(acces).toBe('FRAIS');
+    });
+
+    // 🔴 AJOUTES EN CORRECTION DE REVUE (round 1) : le chemin de
+    // rafraichissement etait le PREMIER appelant de production de
+    // `rafraichirSiNecessaire`, et rien n'eprouvait ni une exception ni un
+    // corps malforme avant cette ronde.
+    it('un callback de rafraichissement qui LEVE ne fait PAS lever assurerAccesFrais : passe par Pomerium', async () => {
+        // Le rouge serait l'exception qui remonte non rattrapee, au lieu de
+        // retomber sur l'etape suivante (Pomerium), et la page resterait
+        // bloquee sur "identification...".
+        const coffre = coffreAvec({
+            [CLE_ACCES]: jetonExpirantA(0),
+            [CLE_RAFRAICHISSEMENT]: 'R',
+        });
+        const acces = await assurerAccesFrais(
+            coffre,
+            'https://h',
+            async () => ({ ok: true, json: async () => ({ acces: 'FRAIS' }) }),
+            10_000,
+            async () => { throw new Error('reseau injoignable'); },
+        );
+        expect(acces).toBe('FRAIS');
+    });
+
+    // Le callback est cable comme `hub/page.ts` le fait reellement : il passe
+    // le corps recu par `paireDeReponse` avant de le rendre. Un corps
+    // incomplet (`ok: true` mais sans `rafraichissement`, ou avec une chaine
+    // vide) doit donc etre rejete PAR LE CALLBACK, jamais ecrit tel quel au
+    // coffre par `rafraichirSiNecessaire::poser`.
+    it("un corps de rafraichissement MALFORME (ok:true, sans `rafraichissement`) ne poison PAS le coffre", async () => {
+        const coffre = coffreAvec({
+            [CLE_ACCES]: jetonExpirantA(0),
+            [CLE_RAFRAICHISSEMENT]: 'R',
+        });
+        const acces = await assurerAccesFrais(
+            coffre,
+            'https://h',
+            async () => ({ ok: true, json: async () => ({ acces: 'FRAIS' }) }),
+            10_000,
+            async () => paireDeReponse({ acces: 'X' }),
+        );
+        expect(acces).toBe('FRAIS');
+        // 🔴 LE POINT DU TEST : le coffre ne doit JAMAIS avoir vu 'X'.
+        expect(coffre.getItem(CLE_ACCES)).toBe('FRAIS');
+    });
+
+    it("un corps de rafraichissement MALFORME (`acces` vide) ne poison PAS le coffre", async () => {
+        const coffre = coffreAvec({
+            [CLE_ACCES]: jetonExpirantA(0),
+            [CLE_RAFRAICHISSEMENT]: 'R',
+        });
+        const acces = await assurerAccesFrais(
+            coffre,
+            'https://h',
+            async () => ({ ok: true, json: async () => ({ acces: 'FRAIS' }) }),
+            10_000,
+            async () => paireDeReponse({ acces: '', rafraichissement: 'R2' }),
+        );
+        expect(acces).toBe('FRAIS');
+        expect(coffre.getItem(CLE_ACCES)).toBe('FRAIS');
     });
 });
