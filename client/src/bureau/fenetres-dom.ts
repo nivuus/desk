@@ -31,7 +31,14 @@ export function dessinerFenetres(fenetres: FenetreConnue[], deps: DepsFenetres):
 
         const pastille = item.querySelector<HTMLElement>('[data-etat]')!;
         pastille.textContent = ligne.etat;
-        pastille.classList.add(ligne.classePastille);
+        // 🔴 DEUX LITTÉRAUX, ET NON UNE CLASSE CALCULÉE. `design/classes.ts::
+        // classesEmployeesTs` ne reconnaît que `classList.add('…')` et
+        // `className = '…'` avec un littéral DANS l'appel : passer un nom par une
+        // variable rendrait ces deux classes invisibles au contrôle §7.9, donc
+        // orphelines sans que rien ne le dise. C'est la forme qu'avait
+        // `shell-page.ts`, et elle est conservée à dessein.
+        if (ligne.ouverte) pastille.classList.add('bureau__pastille--ouverte');
+        else pastille.classList.add('bureau__pastille--fermee');
 
         const bouton = item.querySelector<HTMLButtonElement>('[data-rouvrir]')!;
         if (ligne.rouvrable) bouton.addEventListener('click', () => deps.rouvrir(ligne.session));

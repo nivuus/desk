@@ -16,11 +16,14 @@ export interface LigneFenetre {
     titre: string;
     /// Le mot montré dans la pastille — du texte pour un humain, donc accentué.
     etat: 'ouverte' | 'fermée';
-    /// 🔴 DEUX LITTÉRAUX, ET NON UNE CLASSE COMPOSÉE : une classe calculée est
-    /// invisible au contrôle §7.9, qui ne voit que les littéraux passés à
-    /// `classList.add('…')` et à `className = '…'`. Le type les énumère, ce
-    /// qui les rend aussi vérifiables par `tsc`.
-    classePastille: 'bureau__pastille--ouverte' | 'bureau__pastille--fermee';
+    /// 🔴 UN BOOLÉEN, PAS UN NOM DE CLASSE : `design/classes.ts::
+    /// classesEmployeesTs` ne reconnaît que `classList.add('…')` et
+    /// `className = '…'` avec un littéral DANS l'appel — une classe qui
+    /// transiterait par une variable serait invisible au contrôle §7.9. La
+    /// règle pure décide donc de l'ÉTAT, jamais du NOM de la classe ; le nom
+    /// littéral vit dans le câblage (`fenetres-dom.ts`), la seule forme que
+    /// le contrôle peut voir.
+    ouverte: boolean;
     /// Une fenêtre ouverte n'a rien à rouvrir : son bouton PART plutôt que
     /// d'être désactivé — il n'y a pas d'action à suggérer.
     rouvrable: boolean;
@@ -31,7 +34,7 @@ export function lignes(fenetres: FenetreConnue[]): LigneFenetre[] {
         session: f.session,
         titre: f.titre,
         etat: f.ouverte ? 'ouverte' : 'fermée',
-        classePastille: f.ouverte ? 'bureau__pastille--ouverte' : 'bureau__pastille--fermee',
+        ouverte: f.ouverte,
         rouvrable: !f.ouverte,
     }));
 }
