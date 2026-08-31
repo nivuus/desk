@@ -51,6 +51,14 @@ pub(crate) async fn executer(config: Config) -> Result<()> {
     #[cfg(windows)]
     let mut window_hwnd_addr: Option<isize> = None;
 
+    // 🔴 **`Option`, et surtout PAS un défaut `ZoneClientDeLaFenetre`.** Un
+    // défaut serait une variante parfaitement légitime, donc un repli
+    // silencieux : le chemin multi-fenêtres qui aurait oublié de la poser
+    // démapperait sur la fenêtre — exactement le défaut du lot 32M, revenu
+    // par la porte de derrière. `None` ne peut construire aucun injecteur.
+    #[cfg(windows)]
+    let mut reference_entrees: Option<crate::entrees::Reference> = None;
+
     // Origine d'horloge unique de la session. Les deux médias l'utilisent :
     // c'est ce qui rend leurs lignes de temps comparables, et donc la synchro
     // A/V exacte par construction. La créer ici, une seule fois, garantit
@@ -82,6 +90,7 @@ pub(crate) async fn executer(config: Config) -> Result<()> {
                 let construite = source::construire(&config, clock_origin)?;
                 window_hwnd_addr = Some(construite.hwnd_addr);
                 bitrate = construite.bitrate;
+                reference_entrees = Some(construite.reference_entrees);
                 construite.source
             }
             #[cfg(not(windows))]
@@ -259,19 +268,16 @@ pub(crate) async fn executer(config: Config) -> Result<()> {
     // bas), faute de quoi elle est indiscernable de celle de tout autre
     // enfant partageant le même `agent.log` (D4).
     let session_id = config.session_id.clone();
-    // Cloné AVANT le `move` : c'est la même valeur qui a choisi le mode de
-    // capture plus haut, et c'est elle — et elle seule — qui doit choisir la
-    // référence des entrées.
-    let sortie_dxgi_entrees = config.sortie_dxgi.clone();
     let transport = tokio::task::spawn_blocking(move || {
         #[cfg(windows)]
-        let mut injector = window_hwnd_addr.map(|addr| {
+        let mut injector = window_hwnd_addr.zip(reference_entrees).map(|(addr, reference)| {
             let hwnd = windows::Win32::Foundation::HWND(addr as *mut core::ffi::c_void);
-            // La référence des entrées DÉRIVE de `sortie_dxgi`, le même
-            // discriminant que le mode de capture (`demarrage/source.rs`) :
-            // deux descriptions indépendantes du même rectangle sont ce qui a
-            // produit le défaut du lot 32M.
-            input::InputInjector::new(hwnd, sortie_dxgi_entrees.as_deref(), mode_relatif.clone())
+            // La référence des entrées vient TELLE QUELLE de
+            // `demarrage::source` : deux descriptions indépendantes du même
+            // rectangle sont ce qui a produit le défaut du lot 32M, et une
+            // taille recalculée à côté de celle de la source est ce qui a
+            // produit celui du lot 32Q.
+            input::InputInjector::new(hwnd, reference, mode_relatif.clone())
         });
 
         // Branchement paresseux : à la PREMIÈRE réception d'un état de

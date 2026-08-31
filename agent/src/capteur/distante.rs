@@ -70,8 +70,17 @@ pub enum Recu {
 pub struct SourceDistante {
     canal: Box<dyn Canal + Send>,
     images: Receiver<Recu>,
-    largeur: u32,
-    hauteur: u32,
+    /// 🔴 **LA TAILLE DE L'IMAGE, ET ELLE EST PARTAGÉE — voir
+    /// [`crate::entrees::TailleImage`].** Ce n'était qu'un couple de `u32`
+    /// jusqu'au lot 32T ; l'injecteur d'entrées en avait besoin, et le seul
+    /// moyen de ne PAS avoir deux descriptions du même rectangle est de
+    /// n'avoir qu'un stockage. `dimensions()` la relit, l'injecteur la relit.
+    ///
+    /// ⚠️ **Les trois écritures sont celles de `video_source.rs`** (attache,
+    /// `Etat`, `Taille`), plus la valeur initiale. En ajouter une quatrième
+    /// ailleurs, sans passer par ici, réintroduirait exactement le défaut du
+    /// lot 32M.
+    taille: std::sync::Arc<crate::entrees::TailleImage>,
     vivante: bool,
     epuisee: bool,
     /// Rupture du canal en cours. Une rupture n'épuise pas la source tant que
@@ -160,8 +169,7 @@ impl SourceDistante {
         Self {
             canal,
             images,
-            largeur,
-            hauteur,
+            taille: std::sync::Arc::new(crate::entrees::TailleImage::nouvelle(largeur, hauteur)),
             vivante: true,
             epuisee: false,
             fenetre: FenetreCanal::nouvelle(),
@@ -174,6 +182,15 @@ impl SourceDistante {
             endormie: true,
             rattache: false,
         }
+    }
+
+    /// La cellule de taille, à confier à l'injecteur d'entrées.
+    ///
+    /// 🔴 **Un CLONE d'`Arc`, jamais une copie de la valeur** : c'est la
+    /// différence entre « le même rectangle » et « deux rectangles qui se
+    /// ressemblaient au démarrage ».
+    pub fn taille_partagee(&self) -> std::sync::Arc<crate::entrees::TailleImage> {
+        std::sync::Arc::clone(&self.taille)
     }
 
     /// Émet une commande et n'accepte que `Fait` comme succès.

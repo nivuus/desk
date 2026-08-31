@@ -40,8 +40,7 @@ impl VideoSource for SourceDistante {
                 Ok(Recu::Etat { vivante, epuisee, largeur, hauteur }) => {
                     self.vivante = vivante;
                     self.epuisee = epuisee;
-                    self.largeur = largeur;
-                    self.hauteur = hauteur;
+                    self.taille.poser(largeur, hauteur);
                 }
                 Ok(Recu::Sommeil { endormie, raison }) => {
                     // Deux écritures, deux durées de vie : l'état courant, qui
@@ -101,8 +100,7 @@ impl VideoSource for SourceDistante {
                             Ok(Rattachee { images, largeur, hauteur }) => {
                                 tracing::info!(largeur, hauteur, "canal rattaché au capteur");
                                 self.images = images;
-                                self.largeur = largeur;
-                                self.hauteur = hauteur;
+                                self.taille.poser(largeur, hauteur);
                                 self.vivante = true;
                                 self.epuisee = false;
                                 // Un rattachement passe par `VersCapteur::Attache`,
@@ -188,7 +186,7 @@ impl VideoSource for SourceDistante {
     }
 
     fn dimensions(&self) -> (u32, u32) {
-        (self.largeur, self.hauteur)
+        self.taille.lire()
     }
 
     fn is_exhausted(&self) -> bool {
@@ -208,8 +206,7 @@ impl VideoSource for SourceDistante {
             // pilote quantifie, et une fenêtre Windows impose des dimensions
             // paires. Même règle qu'en mono-fenêtre.
             DepuisCapteur::Taille { largeur, hauteur } => {
-                self.largeur = largeur;
-                self.hauteur = hauteur;
+                self.taille.poser(largeur, hauteur);
                 Ok(())
             }
             DepuisCapteur::Erreur { motif } => bail!("le capteur a refusé : {motif}"),
