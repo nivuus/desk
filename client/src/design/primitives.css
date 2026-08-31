@@ -40,17 +40,40 @@
    mots-clés, et `transparent` n'est pas une couleur, c'est une absence.
 
    ── CE QUE CE FICHIER FAIT, DEPUIS LE SOUS-BLOC S3 ────────────────────────
-   ✅ TROIS SURFACES DU PRODUIT LE LIENT — `client/index.html`,
-   `client/hub.html` et `client/connexion.html`. ⚠️ CET ENCADRÉ DISAIT
-   « DEUX SURFACES … `client/shell.html` » jusqu'à la revue finale du
-   31 août 2026, et les deux moitiés étaient fausses : `shell.html` est
-   devenue une redirection qui ne lie AUCUNE feuille (tâche 9), et le
-   relevé ci-dessous a été RELANCÉ plutôt que réécrit de mémoire.
+   ✅ DEUX SURFACES DU PRODUIT LA LIENT — `client/hub.html` et
+   `client/connexion.html`. **MESURÉ** par
+   `grep -ln "primitives.css" client/*.html`, qui rend TROIS fichiers :
+   ces deux-là, plus `client/primitives.html` — la GALERIE, qui n'est pas
+   une surface du produit.
+
+   ⚠️ CET ENCADRÉ A ÉTÉ FAUX DEUX FOIS, ET LA SECONDE EST PIRE QUE LA
+   PREMIÈRE. ① Il nommait `client/shell.html`, devenue une redirection qui
+   ne lie AUCUNE feuille (tâche 9, 31 août 2026). ② La vague de correction
+   du 31 août 2026 a « corrigé » cela en écrivant « TROIS SURFACES …
+   `client/index.html` » — **et `index.html` NE LIE PAS cette feuille**
+   (elle ne lie que `socle.css` et `style.css`), ce que le ⛔ vingt lignes
+   plus bas disait déjà, texte intact. 🔴 **C'est le patron que ce dépôt
+   punit : corriger une affirmation fausse peut en produire une autre** —
+   aggravé ici par une phrase qui se VANTAIT d'avoir été relancée alors que
+   seul le relevé qui la suit l'avait été. **Ce qu'il fallait corriger
+   était le NOM, `shell.html` → `hub.html` ; le compte juste restait DEUX.**
+
+   🔴 **LA CAUSE, NOMMÉE POUR QUE PERSONNE NE LA REFASSE : DEUX MESURES
+   DIFFÉRENTES ONT ÉTÉ CONFONDUES.** Le relevé §7.9 ② A reproduit
+   ci-dessous mesure quelles surfaces **EMPLOIENT** une famille de
+   primitives (`classes-employees.mjs` lit les classes du HTML) ; il ne
+   mesure PAS lesquelles **LIENT** la feuille. `client/index.html` y
+   figure à bon droit — il emploie `.message` et `.surface` — **et ne la
+   lie pourtant pas** : ses règles lui viennent de `style.css`. Les deux
+   chiffres, DEUX et TROIS, sont vrais de choses différentes, et chacun
+   dit désormais de quoi.
+
    À la fin de S2, cet encadré disait l'inverse :
    « AUCUNE SURFACE DU PRODUIT NE LE LIE […] les tokens qu'il fait sortir de la
    liste d'attente ont UN APPELANT ÉCRIT, pas UN PIXEL RENDU […] C'est S3 qui
    referme cet écart. » S3 l'a refermé, et ce n'est pas une intention mais un
-   RELEVÉ : le contrôle §7.9, né avec S3, rend à chaque exécution
+   RELEVÉ : le contrôle §7.9, né avec S3, rend à chaque exécution — ⚠️ et il
+   mesure l'EMPLOI des classes, JAMAIS le `<link>` (voir ci-dessus) :
 
        ② A — les primitives atteignent le PRODUIT, CHACUNE des trois surfaces :
          client/index.html : message, surface

@@ -38,8 +38,11 @@
    🔴 ELLE SE LIE DEPUIS `hub.html`, ELLE NE S'IMPORTE JAMAIS. ⚠️ CETTE
    LIGNE DISAIT `shell.html` jusqu'à la revue finale du 31 août 2026 : la
    tâche 9 a vidé cette page de tout balisage ET de tout `<link>`, et c'est
-   `client/hub.html:19` qui porte désormais le lien (mesuré par
-   `grep -n 'bureau.css' client/*.html`). C'est
+   `client/hub.html:19` qui porte désormais le lien — mesuré par
+   `grep -n '<link rel="stylesheet" href="/src/bureau/bureau.css"' client/*.html`,
+   qui rend CETTE SEULE ligne. ⚠️ La commande citée ici visait d'abord le
+   seul nom `bureau.css`, qui frappe AUSSI un commentaire de `hub.html` :
+   un relevé doit s'ancrer sur la SYNTAXE de ce qu'il prétend compter. C'est
    l'arrangement B, mesuré par S1 et reconfirmé par le plan S3 : un `@import`
    fait RÉ-INLINER la feuille dans chaque entrée qui la traverse, un `<link>`
    laisse Vite la PARTAGER. C'est ce qui permet à `primitives.css` d'être servie
