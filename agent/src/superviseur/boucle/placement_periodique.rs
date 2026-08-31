@@ -61,29 +61,55 @@ pub(super) fn suivre_le_viewport(
     largeur: u32,
     hauteur: u32,
 ) {
-    let Some(nom) = table.nom_sortie_de(session).map(str::to_owned) else {
-        return;
-    };
+    // 🔴 **TRACE INCONDITIONNELLE, ET C'EST LE POINT DE CE SECOND ENVOI.**
+    //
+    // La première rédaction ne journalisait QUE le cas où la taille change :
+    // les quatre autres chemins — pas de sortie retenue, sortie disparue de la
+    // topologie, taille inchangée — sortaient en silence. Un `0` au journal
+    // était donc indiscernable entre « aucun viewport n'arrive » et « il
+    // arrive et ne change rien », c'est-à-dire entre un défaut et la LIMITE
+    // DÉCLARÉE du lot. **Une trace qui ne peut sortir qu'en cas de succès ne
+    // peut pas diagnostiquer un échec** — et celle-ci remplaçait
+    // `redimensionnement ignoré`, qui, elle, sortait à CHAQUE demande et est
+    // ce qui a rendu le diagnostic du lot 33 possible.
+    //
+    // Le champ `decision` nomme la branche prise. Volume : le
+    // `ResizeObserver` du client est lissé à 200 ms et ne bat que pendant un
+    // geste, donc quelques lignes par redimensionnement — jamais une trace par
+    // paquet dans une boucle, ce que `CLAUDE.md` interdit.
+    let precedente = table.taille_sortie_de(session);
+    let nom = table.nom_sortie_de(session).map(str::to_owned);
     let toutes = enumerer_sorties_silencieux().unwrap_or_default();
-    let Some(sortie) = toutes.iter().find(|s| s.nom_sortie == nom).cloned() else {
-        // La sortie a disparu de la topologie entre l'annonce et ce tour : ne
-        // rien écrire vaut mieux qu'écrire une taille calculée sur rien.
-        return;
+    let sortie = nom
+        .as_deref()
+        .and_then(|n| toutes.iter().find(|s| s.nom_sortie == n).cloned());
+    let borne = sortie.as_ref().map(borne_de);
+    let retenue = borne
+        .map(|b| crate::windows_source_sortie::taille_pour_viewport((largeur, hauteur), b));
+
+    let decision = match (&nom, &sortie, retenue) {
+        (None, _, _) => "AUCUNE sortie retenue pour cette session",
+        (Some(_), None, _) => "sortie ABSENTE de la topologie DXGI",
+        (Some(_), Some(_), Some(r)) if Some(r) == precedente => {
+            "taille INCHANGEE : rien a reposer (viewport sature la borne, ou geste sans effet)"
+        }
+        _ => "taille CHANGEE : la table est corrigee et la fenetre reposee",
     };
-    let retenue =
-        crate::windows_source_sortie::taille_pour_viewport((largeur, hauteur), borne_de(&sortie));
-    // Court-circuit : le `ResizeObserver` du client émet toutes les 200 ms
-    // pendant qu'on tire un bord, et chaque passage relirait sinon la
-    // topologie DXGI puis reposerait la fenêtre.
-    if table.taille_sortie_de(session) == Some(retenue) {
+    tracing::info!(
+        session = %session.0,
+        demande = format!("{largeur}x{hauteur}"),
+        nom_sortie = nom.as_deref().unwrap_or(""),
+        borne = borne.map(|b| format!("{}x{}", b.0, b.1)).unwrap_or_default(),
+        retenue = retenue.map(|r| format!("{}x{}", r.0, r.1)).unwrap_or_default(),
+        precedente = precedente.map(|p| format!("{}x{}", p.0, p.1)).unwrap_or_default(),
+        decision,
+        "viewport recu par le superviseur"
+    );
+
+    let (Some(_), Some(retenue)) = (sortie, retenue) else { return };
+    if Some(retenue) == precedente {
         return;
     }
-    tracing::info!(
-        session = %session.0, nom_sortie = %nom,
-        demande = format!("{largeur}x{hauteur}"),
-        retenue = format!("{}x{}", retenue.0, retenue.1),
-        "viewport suivi : la taille retenue change, la sortie ne bouge pas"
-    );
     table.rafraichir_taille_sortie(session, retenue);
     replacer_si_besoin(table, session, &toutes);
 }

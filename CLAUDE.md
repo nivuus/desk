@@ -561,6 +561,24 @@ indépendants : ce sont eux qui coûtent.
   calcul sur les points qu'on juge.** ⚠️ Le symptôme est un contrôle qui
   « passe parfaitement » : plus l'accord est bon, plus il faut se demander
   d'où vient l'attendu.
+- 🔴 **UNE TRACE QUI NE PEUT SORTIR QU'EN CAS DE SUCCÈS NE PEUT PAS
+  DIAGNOSTIQUER UN ÉCHEC.** Payé au lot 33, **sur une trace que le lot venait
+  lui-même de retirer**. Le produit émettait `redimensionnement ignoré` à
+  CHAQUE demande — c'est elle qui a rendu le diagnostic possible (34 demandes
+  relevées, rapports d'aspect de 1,105 à 3,559). Le remède l'a remplacée par
+  des traces placées **après un court-circuit** (« si la taille n'a pas
+  changé, retourner »), si bien qu'un `0` au journal ne distinguait plus
+  **« le message n'arrive jamais »** de **« il arrive et ne change rien »** —
+  c'est-à-dire un défaut de la **limite déclarée du remède**. Le lot s'est
+  ainsi rendu aveugle à son propre échec, et il a fallu un second envoi pour
+  rouvrir les yeux. ⚠️ **Le symptôme est traître : le journal est SILENCIEUX,
+  ce qui se lit comme « rien ne se passe » alors que le mécanisme tourne.**
+  **La règle : sur un chemin qu'on instrumente pour diagnostiquer, la trace se
+  pose AVANT le court-circuit, et elle nomme la BRANCHE prise** (un champ
+  `decision`), jamais seulement le cas nominal. Corollaire : **remplacer une
+  trace inconditionnelle par une trace conditionnelle est une PERTE
+  d'observabilité, à traiter comme une régression** — et à mesurer avant, pas
+  après.
 - 🔴 **UNE ROUGE QUI ROUGIT POUR LA MAUVAISE RAISON NE PROUVE RIEN**, et elle
   est indiscernable d'une bonne si l'on ne lit que son code de sortie. **Lire
   QUELLE assertion a rougi.** Corollaire : **une rouge restée VERTE se

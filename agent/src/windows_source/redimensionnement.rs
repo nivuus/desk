@@ -321,6 +321,25 @@ impl WindowsSource {
         };
 
         let (l, h) = crate::windows_source_sortie::taille_pour_viewport((width, height), borne);
+        // 🔴 **TRACE INCONDITIONNELLE — elle remplace celle que ce lot avait
+        // RETIRÉE.** `redimensionnement ignoré` sortait à CHAQUE demande, et
+        // c'est elle qui a rendu le diagnostic du lot 33 possible (34 demandes
+        // relevées, rapports d'aspect de 1,105 à 3,559). Sa remplaçante ne
+        // sortait qu'en cas de CHANGEMENT : un `0` au journal ne distinguait
+        // donc plus « aucun `Resize` n'arrive » de « il arrive et sature la
+        // borne », c'est-à-dire un défaut de la limite déclarée.
+        //
+        // **Une trace qui ne peut sortir qu'en cas de succès ne peut pas
+        // diagnostiquer un échec.**
+        tracing::info!(
+            demande = format!("{width}x{height}"),
+            borne = format!("{}x{}", borne.0, borne.1),
+            texture = format!("{}x{}", texture.0, texture.1),
+            retenue = format!("{l}x{h}"),
+            courante = format!("{}x{}", self.width, self.height),
+            change = (l, h) != (self.width, self.height),
+            "Resize recu par le capteur"
+        );
         // Court-circuit AVANT toute destruction, et il n'est pas cosmétique :
         // le `ResizeObserver` du client émet toutes les 200 ms pendant qu'on
         // tire un bord, et chaque passage reconstruirait sinon un encodeur.
