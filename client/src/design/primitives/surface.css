@@ -12,7 +12,10 @@
    « c'est S3 qui en aura besoin pour la liste de fenêtres de la page-shell, et
    c'est à lui de poser `--bord-fort` ». S3 a fait AUTREMENT — la carte reste
    INERTE, et c'est un `.bouton--discret` POSÉ DANS la carte qui porte l'action
-   « Rouvrir » (`client/shell.html`, `<template id="modele-fenetre">`). Le
+   « Rouvrir » (`client/hub.html`, `<template id="modele-fenetre">` —
+   `client/shell.html` jusqu'à la tâche 9 du 31 août 2026, qui l'a vidée ;
+   mesuré par `grep -ln 'modele-fenetre' client/*.html`, qui ne rend plus
+   que le hub). Le
    contour cliquable est donc celui du bouton, que `bouton.css` mesure déjà ;
    la carte reste le conteneur décoratif que WCAG 1.4.11 exempte, et
    `--bord-fort` N'EST TOUJOURS PAS POSÉ ICI. ⚠️ AUCUNE COMMANDE NE VÉRIFIE CE
