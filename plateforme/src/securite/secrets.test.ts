@@ -96,15 +96,14 @@ const EXCEPTIONS: readonly Exception[] = [
             "expliquer pourquoi elle est exemptée. C'est la même valeur de fixture, " +
             'recopiée dans une phrase.',
     },
-    {
-        fichier: 'docs/superpowers/plans/2026-07-27-jalon1-tranche-verticale.md',
-        nom: 'WINDOWS_ADMIN_PASSWORD',
-        empreinte: 'ab5df625bc76dbd4',
-        raison:
-            "Un exemple de ligne de commande dont la valeur est littéralement « ... » : " +
-            "c'est un OBJET DE REMPLACEMENT que le lecteur doit substituer, pas une " +
-            'valeur.',
-    },
+    // ❌ **UNE EXCEPTION PAR CHEMIN A ÉTÉ RETIRÉE ICI AU LOT 33** :
+    // `docs/superpowers/plans/2026-07-27-jalon1-tranche-verticale.md` /
+    // `WINDOWS_ADMIN_PASSWORD` / empreinte `ab5df625bc76dbd4`. Sa raison
+    // écrite était « une valeur littéralement « ... », un OBJET DE
+    // REMPLACEMENT » — c'est-à-dire exactement ce que la branche `...` d'
+    // `inoffensive` couvre désormais, pour TOUS les chemins. La retirer est
+    // ce qui prouve que la branche mord : si elle ne mordait pas, ce fichier
+    // rougirait.
     {
         fichier: 'docs/superpowers/plans/2026-07-29-traversee-nat.md',
         nom: 'TURN_SECRET',
@@ -199,6 +198,27 @@ function inoffensive(valeur: string): boolean {
     if (/^[A-Z][A-Z0-9_]*$/.test(valeur)) return true;
     // Un OBJET de remplacement explicite : `<généré>`, `<votre secret>`.
     if (valeur.startsWith('<')) return true;
+    // 🔴 L'ELLIPSE, QUI EST LE MÊME OBJET DE REMPLACEMENT SOUS UN AUTRE
+    // SIGNE — ajoutée au lot 33, après que le contrôle a CRIÉ À TORT.
+    //
+    // `RECETTE_MOTDEPASSE=...` dans une ligne d'usage
+    // (`journaux-lot31/instrument/pilote-lot31.mjs:19`) faisait rougir tout
+    // `verify-all.sh`, deux étapes durant, sur une ligne qui ne porte aucune
+    // valeur. **Ce n'était pas un faux positif isolé : c'était une CLASSE**,
+    // et elle était traitée exception par exception, PAR CHEMIN — donc un
+    // nouvel exemple d'usage, dans n'importe quel document ou instrument de
+    // recette, la rouvrait.
+    //
+    // ⚠️ **UN CONTRÔLE QU'IL FAUT AMENDER À CHAQUE NON-TROUVAILLE APPREND À
+    // SES LECTEURS À LE BALAYER D'UN REVERS DE MAIN** — et c'est ainsi qu'une
+    // vraie trouvaille finit balayée aussi. Fermer la classe au niveau de la
+    // VALEUR vaut mieux que d'allonger la liste des chemins.
+    //
+    // ⚠️ **CE QUE CETTE BRANCHE N'OUVRE PAS** : elle n'accepte que la valeur
+    // ENTIÈRE `...` (ou `…`), jamais un préfixe ni un suffixe. `abc...` reste
+    // dénoncé, et un secret réel qui vaudrait exactement trois points n'est
+    // pas un secret.
+    if (valeur === '...' || valeur === '…') return true;
     return false;
 }
 
