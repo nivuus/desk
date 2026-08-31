@@ -878,3 +878,87 @@ paraît **noire** plutôt que colorée, alors ce n'est PAS le liseré d'accent e
 ce raisonnement tombe — il faudra rouvrir. Le liseré porte
 `var(--accent-fenetre, var(--accent))`, donc une couleur, jamais du noir.
 **C'est le discriminant, et il ne coûte qu'un regard.**
+
+---
+
+## 15. Le retrait du liseré d'accent — décision du propriétaire, et la régression qu'elle rouvre
+
+**31 août 2026.** *« Oui supprime cette bordure. »* — choix éclairé, pris après
+qu'on lui a dit ce qu'il perdait.
+
+**Changement CLIENT SEUL : aucun redémarrage d'agent, son hub n'a pas été
+vidé.** L'agent est resté sur `b6b984e889366259`, session 1, intouché.
+
+### 15.1 Ce qui a été retiré, et rien d'autre
+
+**La seule déclaration `border` de `#remote`.** Le token
+(`tokens/couleurs.css`), `accent-dom.ts`, l'annonce et tout le chemin agent
+sont **conservés à dessein** : le propriétaire pourra vouloir repeindre cette
+couleur ailleurs, et détruire le mécanisme rendrait ce retour coûteux.
+
+Le commentaire de `style.css` qui expliquait pourquoi la bordure existait est
+**CORRIGÉ, pas effacé** — il devenait faux à l'instant du retrait, et ce dépôt
+a payé neuf fois une affirmation devenue fausse laissée en place. Il porte
+désormais la raison du retrait, ce que le retrait rouvre, et l'interdiction de
+« nettoyer » le reste.
+
+### 15.2 🔴 La régression, nommée
+
+**La couleur d'accent est désormais LUE (Win32, capteur), ANNONCÉE (protocole),
+POSÉE en token (`accent-dom.ts`) — et PEINTE PAR RIEN.** C'est exactement le
+legs que `legs-sans-vm` avait fermé, et il est **rouvert** dans `CLAUDE.md`
+plutôt que laissé dire qu'il est clos. **Régression assumée, jamais un oubli.**
+
+### 15.3 🔴 Le garde des orphelins est VERT, et ce n'est PAS une preuve
+
+`npm run design:verifier` rend **7/7 vert**, dont :
+
+```
+posé par le JS : 1 token(s) (poserToken, hors *.test.ts) — --accent-fenetre
+inclusion ② — tout token déclaré a un appelant : 0 orphelin(s)
+```
+
+⚠️ **Il n'a pas été assoupli, ni exempté, ni désarmé — il est STRUCTURELLEMENT
+AVEUGLE À CE CAS.** `tokens-orphelins.mjs` compte `poserToken(...)`, c'est-à-
+dire un **ÉCRIVAIN**, comme un « appelant » ; son propre commentaire dit que ce
+bras a été ajouté au sous-bloc A1 précisément pour qu'un token posé par le JS
+et lu par aucun CSS **cesse** d'être signalé. Le vert atteste donc qu'il existe
+un **écrivain**, jamais qu'il existe un **lecteur**.
+
+🔵 **Dit plutôt que masqué**, et **rien n'a été modifié dans l'outil** : le
+renforcer ferait rougir un token que le propriétaire a délibérément laissé sans
+peinture, et ce choix lui appartient.
+
+### 15.4 Le déploiement, attesté aux deux bouts
+
+| | |
+| --- | --- |
+| Lecteurs de `--accent-fenetre` dans le CSS bâti | **1 avant → 0 après** — l'ancien déploiement est son propre témoin négatif |
+| Token toujours **DÉCLARÉ** (témoin positif) | **1** dans `socle-*.css` — seul le lecteur est parti, pas le token |
+| Réannonce du viewport (témoin de non-régression) | **2** occurrences de `type:"viewport"`, comme avant |
+| `sha256` source / destination | `f0da5529927577bb` des deux côtés |
+| Droits (`DynamicUser=yes`) | `644`, `chmod -R a+rX` refait |
+| **Servi par le service vivant** | `HTTP 200`, **0** lecteur, `#remote` présent (témoin positif) |
+| Agent | **intouché**, `b6b984e889366259`, session 1 |
+| Sauvegarde | `/var/tmp/lot33/dist-avant-retrait-bordure` (25 fichiers) |
+
+**Contrôles** : `vitest` client **599/599**, `vitest --dir ../proto`
+**308/308**, `tsc --noEmit` propre, `design:verifier` **7/7**.
+
+### 15.5 Ce qu'il doit regarder, et à quoi ressemblerait un échec
+
+**Ce qui doit changer** : l'image doit toucher le bord de la fenêtre du
+navigateur — **plus aucune marge**, ni colorée ni noire.
+
+⚠️ **Un rechargement forcé peut être nécessaire** : le nom du fichier CSS a
+changé (`main-t92LkIix.css` → `main-DOC38JmJ.css`), donc le cache ne devrait
+pas mordre, mais la page elle-même peut être servie depuis le cache.
+
+**Un échec ressemblerait à :**
+- 🔴 **Une marge NOIRE qui subsiste** : ce n'était pas le liseré, et le
+  diagnostic du § 14 tombe — à rouvrir.
+- 🔴 **Une marge COLORÉE qui subsiste** : le CSS servi n'est pas le neuf
+  (cache), ou le déploiement n'a pas pris.
+- 🔴 **Les trois gains perdus** — la fenêtre ne suit plus, la barre des tâches
+  revient, les marges se remettent à varier avec la forme : ce serait une
+  régression du côté agent, **que ce déploiement n'a pourtant pas touché**.
