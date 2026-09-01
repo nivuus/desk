@@ -214,7 +214,90 @@ relevé. Corrigé dans la foulée.
   ni classe au journal, ce qui a empêché d'identifier les 16 fenêtres de Steam
   sans une sonde séparée.
 
-## 8. Legs ouverts par ce lot
+## 8. Le SURSIS — « j'ai plein d'onglets qui se sont ouverts »
+
+Le correctif de la §2 a rendu les fenêtres servies ; le propriétaire a alors
+rapporté une **multiplication d'onglets**. Ce n'était pas une régression, mais
+ce n'était pas non plus acceptable.
+
+### 8.1 La mesure a RÉFUTÉ la correction évidente
+
+La correction qui vient à l'esprit est de **durcir le critère statique**
+(`fenetres::merite_une_fenetre`). Un inventaire des fenêtres de Steam en
+**session 1** — titre, classe, styles étendus, propriétaire, `DWMWA_CLOAKED`,
+en rejouant exactement le prédicat du produit — l'a réfutée avant qu'on ne
+l'applique :
+
+```text
+== session = 1
+== FENETRES STEAM (26) ==
+MERITE=False | ... CLASSE=[vguiPopupWindow]  TITRE=[]
+MERITE=False | ... CLASSE=[Chrome_WidgetWin_0] TITRE=[]
+MERITE=False | ... CLASSE=[SDL_app] owner=True tool=True TITRE=[]
+...  (25 lignes MERITE=False)
+MERITE=True  | steamwebhelper | 1280x752+0+0 | vis=True cloak=0 owner=False
+               tool=False app=True | CLASSE=[SDL_app] TITRE=[Steam]
+```
+
+🔴 **26 fenêtres de haut niveau, UNE SEULE retenue.** Le critère écarte déjà
+les 25 autres — par propriétaire, par `WS_EX_TOOLWINDOW`, par titre vide, par
+invisibilité. **Le durcir aurait écarté des fenêtres légitimes sans toucher la
+cause.**
+
+### 8.2 La vraie cause : la TRANSIENCE, pas la nature
+
+Les durées de vie des 23 sessions servies, lues au journal :
+
+```text
+w-4  21:18:00.668 -> 21:18:00.776   0,11 s
+w-12 21:18:08.101 -> 21:18:08.235   0,13 s
+w-19 21:20:37.437 -> 21:20:37.589   0,15 s
+w-20 21:20:37.587 -> 21:20:37.694   0,11 s
+w-26 21:20:39.596 -> 21:20:39.703   0,11 s
+w-27 21:20:40.480 -> 21:20:40.589   0,11 s
+```
+
+Ce sont les fenêtres transitoires du démarrage de Steam. **Ce qui distingue les
+fausses des vraies n'est pas ce qu'elles SONT à l'instant où elles paraissent,
+c'est qu'elles ne DURENT pas** — et la pop-up du navigateur, elle, survit à la
+fenêtre Windows.
+
+### 8.3 Le remède, en deux moitiés
+
+`superviseur::sursis` (module **PUR**, 6 tests d'hôte) : une fenêtre est mise en
+**sursis** de `DUREE_SURSIS` avant d'être annoncée. Précédent du dépôt :
+l'anti-rebond d'`APPS_SURVEILLANCE` (G4).
+
+🔴 **`murs()` NE SUFFIT PAS À ANNONCER, et c'est la seconde moitié qui fait que
+le sursis n'est pas un simple retard** : `hook::merite_encore` redemande à
+l'échéance si la fenêtre mérite TOUJOURS un onglet (`IsWindow` d'abord — sur un
+`HWND` mort, `decrire` rendrait des valeurs par défaut que le prédicat pourrait
+juger recevables).
+
+🔵 **DEUX CHEMINS INDÉPENDANTS EMPÊCHENT L'ONGLET**, et c'est délibéré : ① le
+`Disparue` du hook retire la fenêtre du sursis avant l'échéance ; ② si ce
+message n'arrive jamais, `merite_encore` rend `false` à l'échéance sur une
+fenêtre détruite. Le remède ne dépend donc pas de la fiabilité du hook.
+
+⚠️ **`DUREE_SURSIS` = 500 ms N'EST PAS CALIBRÉE.** Choisie entre le plus long
+transitoire mesuré (0,15 s) et le délai qu'un humain remarquerait. Trop grande,
+elle se paie en latence perçue ; trop petite, en onglets fantômes. **Aucun
+jugement d'usage ne l'a jugée** — elle rejoint la liste des constantes non
+calibrées.
+
+⚠️ **Une trace nomme la branche prise dans les deux cas** (`disparue pendant son
+sursis`, `ECARTEE a l'echeance`) : sans elles, une fenêtre légitime écartée à
+tort serait indiscernable d'une fenêtre jamais apparue, et le symptôme serait
+« mon application ne s'ouvre pas » sans une ligne pour le dire.
+
+⚠️ **`recenser_les_fenetres_existantes` ne passe PAS par le sursis**, à dessein :
+ces fenêtres existent déjà, donc elles ont déjà duré.
+
+🔴 **NON MESURÉ EN PRODUCTION À L'HEURE OÙ CECI EST ÉCRIT** : le sursis est
+éprouvé par ses tests d'hôte et déployé, mais **aucun relancement de Steam ne
+l'a exercé**. Le contrôle qui vaudra est le compte d'onglets, pas la trace.
+
+## 9. Legs ouverts par ce lot
 
 - 🔴 **UNE BOUCLE DE REPLACEMENT À 1 Hz**, ci-dessus. Elle coûte du CPU en
   continu et fait bouger les fenêtres à l'écran.
