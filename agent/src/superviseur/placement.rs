@@ -115,17 +115,49 @@ pub fn taille_retenue(demandee: (u32, u32), sortie: (u32, u32)) -> (u32, u32) {
 /// navigateur peut égaler la résolution d'un moniteur PHYSIQUE, et l'inégalité
 /// rend ce risque plus grand, pas moins — un moniteur 4K conviendrait
 /// désormais à n'importe quel viewport.
+///
+/// 🔴 **`designee` EXEMPTE DU SEUL CRITÈRE DE TAILLE, ET C'EST BIEN UN GARDE
+/// QU'ON DESSERRE — dit plutôt que maquillé.** L'en-tête de
+/// `superviseur::designation` écrit que « la désignation resserre l'ensemble
+/// des candidates, elle ne desserre aucun garde » : cette phrase cesse d'être
+/// vraie ici, et voici ce qui l'a réfutée.
+///
+/// **Mesuré sur l'agent de production le 31 août 2026**, huit fois en boucle,
+/// sur la même exécution : `demande="1614x1080" designee="\\.\DISPLAY6"
+/// candidates=["\\.\DISPLAY6 1428x1080"]`. La sortie refusée était **la
+/// nôtre, nommée par CCD** — le pilote SudoVDA ne la fait pas naître à la
+/// taille demandée, et la même demande a rendu 1860×1080 à 12:14Z (servie)
+/// puis 1428×1080 à 20:46Z (refusée). Créer → refuser → détruire, et **plus
+/// aucune fenêtre ne s'affichait, quelle que soit l'application**.
+///
+/// Sur une sortie **désignée**, la taille n'est donc plus un critère de refus
+/// mais une CONTRAINTE : `windows_source_sortie::taille_pour_viewport` y ajuste
+/// déjà la fenêtre à rapport d'aspect préservé (lot 33). Refuser, c'était
+/// refuser la seule sortie qu'on pouvait servir.
+///
+/// ⚠️ **CE QUI N'EST PAS DESSERRÉ, et sans quoi ce serait une régression** :
+/// `attachee_au_bureau` (une sortie non rattachée n'a rien à dupliquer) et
+/// `deja_prises` — c'est LUI, et non la taille, qui empêche deux fenêtres de
+/// montrer la même image. L'exemption est **nominative** : elle ne vaut que
+/// pour la sortie que la désignation a nommée, jamais pour ses voisines.
+///
+/// ⚠️ **`None` reste le produit d'hier, ligne pour ligne** — donc le repli par
+/// différence d'ensembles continue de refuser un écran PHYSIQUE trop petit, et
+/// c'est le témoin négatif de l'exemption.
 pub fn sortie_pour_viewport(
     sorties: &[SortieDxgi],
     largeur: u32,
     hauteur: u32,
     deja_prises: &[String],
+    designee: Option<&str>,
 ) -> Option<SortieDxgi> {
     sorties
         .iter()
         .find(|s| {
+            let notre = designee == Some(s.nom_sortie.as_str());
             s.attachee_au_bureau
-                && sortie_assez_grande((s.rect.width, s.rect.height), (largeur, hauteur))
+                && (notre
+                    || sortie_assez_grande((s.rect.width, s.rect.height), (largeur, hauteur)))
                 && !deja_prises.contains(&s.nom_sortie)
         })
         .cloned()
@@ -407,4 +439,13 @@ pub use win::{poser, rectangle_de};
 #[cfg(test)]
 #[path = "placement/tests.rs"]
 mod tests;
+
+// Le lisère de DWM et la bordure peinte ont leurs propres cas, sortis de
+// `placement/tests.rs` le 31 août 2026 : ce fichier-là était à 485 lignes,
+// donc à sa porte, et le correctif de la sortie DÉSIGNÉE devait y écrire.
+// Extraction JOUÉE AVANT l'addition qu'elle préparait, et dans sa propre
+// tâche — la forme forte que ce dépôt s'impose après l'avoir manquée six fois.
+#[cfg(test)]
+#[path = "placement/tests_lisere.rs"]
+mod tests_lisere;
 
