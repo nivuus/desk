@@ -120,6 +120,8 @@ pub fn tourner(
     // session -> sortie ; ceci n'est que l'ensemble des sorties occupées, par
     // leur nom DXGI (stable), et non plus par un couple d'index (positionnel).
     let mut prises: Vec<String> = Vec::new();
+    // Les fenêtres en sursis : voir `superviseur::sursis`.
+    let mut sursis = super::sursis::Sursis::new();
 
     // Les fenêtres déjà ouvertes : le hook ne rapporte que les changements.
     let mut effets = recenser_les_fenetres_existantes(&mut table);
@@ -196,13 +198,56 @@ pub fn tourner(
         }
 
         // 3. Événements de fenêtres.
+        //
+        // 🔴 **UNE FENÊTRE N'EST PLUS ANNONCÉE À SA NAISSANCE : ELLE PASSE PAR
+        // UN SURSIS.** Un seul lancement de Steam a fait servir 23 fenêtres en
+        // trois minutes, dont six mortes en 110 à 150 ms — chacune ayant ouvert
+        // une pop-up qui, elle, survit à la fenêtre Windows. Voir
+        // `superviseur::sursis`, qui porte la mesure et le raisonnement, et
+        // notamment POURQUOI durcir le critère statique aurait été la mauvaise
+        // correction (25 des 26 fenêtres de Steam sont déjà écartées par lui).
         while let Ok(evenement) = rx_hook.try_recv() {
-            effets.extend(match evenement {
+            match evenement {
                 hook::EvenementFenetre::Apparue { fenetre, titre } => {
-                    table.fenetre_apparue(fenetre, titre)
+                    sursis.deposer(fenetre, titre, std::time::Instant::now());
                 }
-                hook::EvenementFenetre::Disparue { fenetre } => table.fenetre_disparue(fenetre),
-            });
+                hook::EvenementFenetre::Disparue { fenetre } => {
+                    // Retirée du sursis ET signalée à la table : les deux, car
+                    // une fenêtre peut disparaître avant son échéance (le
+                    // premier mord) ou bien après avoir été annoncée (le
+                    // second). `retirer` rend faux dans ce cas, et ne ment donc
+                    // pas sur l'onglet évité.
+                    if sursis.retirer(fenetre) {
+                        tracing::info!(
+                            hwnd = format!("{:#x}", fenetre.0),
+                            "fenetre disparue pendant son sursis : aucun onglet n'a ete ouvert"
+                        );
+                    }
+                    effets.extend(table.fenetre_disparue(fenetre));
+                }
+            }
+        }
+
+        // 3 bis. Les fenêtres qui ont fait la preuve qu'elles durent.
+        //
+        // ⚠️ **`murs` ne suffit PAS à annoncer** : il établit qu'une fenêtre a
+        // DURÉ, jamais qu'elle est encore présentable. `merite_encore` est la
+        // seconde moitié, et sans elle le sursis ne serait qu'un retard.
+        for (fenetre, titre) in sursis.murs(std::time::Instant::now()) {
+            if hook::merite_encore(fenetre) {
+                effets.extend(table.fenetre_apparue(fenetre, titre));
+            } else {
+                // 🔴 LA BRANCHE PRISE, NOMMÉE. Sans cette trace, une fenêtre
+                // légitime écartée à tort par le sursis serait indiscernable
+                // d'une fenêtre qui n'est jamais apparue — et le symptôme
+                // serait « mon application ne s'ouvre pas », sans une ligne
+                // pour le dire.
+                tracing::info!(
+                    hwnd = format!("{:#x}", fenetre.0),
+                    %titre,
+                    "fenetre ECARTEE a l'echeance de son sursis : elle ne merite plus d'onglet"
+                );
+            }
         }
 
         // 4. Messages de la shell.
