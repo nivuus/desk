@@ -407,6 +407,37 @@ try {
         releve.animation = { moyen: 'aucun', cadence_hz: 0 };
     }
 
+    // ── ITEM 12 (3.10) : PROVOQUER DES `Resize`, POUR SUIVRE LE MAILLON ────
+    // Le client emet un `Resize` sur son propre `ResizeObserver`
+    // (client/src/resize-dom.ts, cable par main.ts). On change donc la
+    // METRIQUE DE LA PAGE — le chemin du produit — et non une taille interne.
+    // ⚠️ Chaque taille est TENUE assez longtemps pour que le lissage du client
+    // la laisse partir ; une rafale serait coalescee et le journal ne porterait
+    // qu'une demande.
+    const TAILLES = arg('resize', '').split(',').filter(Boolean);
+    if (TAILLES.length) {
+        releve.resize = [];
+        for (const t of TAILLES) {
+            const [l, h] = t.split('x').map(Number);
+            for (const s of sessions) {
+                await s.cdp.envoyer('Emulation.setDeviceMetricsOverride',
+                    { width: l, height: h, deviceScaleFactor: 1, mobile: false });
+            }
+            await dormir(6000);
+            const vu = await sessions[0].cdp.evaluer(`(() => {
+              const v = document.querySelector('video');
+              return { innerWidth, innerHeight, dpr: devicePixelRatio,
+                       video: v ? { cw: v.clientWidth, ch: v.clientHeight,
+                                    vw: v.videoWidth, vh: v.videoHeight } : null };
+            })()`);
+            releve.resize.push({ demande: t, vu });
+            log(`resize ${t} -> ${JSON.stringify(vu)}`);
+        }
+        for (const s of sessions) {
+            await s.cdp.envoyer('Emulation.clearDeviceMetricsOverride').catch(() => {});
+        }
+    }
+
     log(`mesure en cours : ${DUREE_S} s, régime ${FENETRES} fenêtre(s)`);
     await dormir(DUREE_S * 1000);
     for (const s of sessions) {
