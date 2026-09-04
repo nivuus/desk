@@ -1,5 +1,16 @@
 #!/usr/bin/env bash
 # Synchronise puis compile l'agent sur la VM Windows.
+
+# ── VOIE MORTE, 29 août 2026 — voir scripts/voie-morte.sh ───────────────────
+. "$(dirname "$0")/voie-morte.sh"
+voie_morte "synchronisait les sources Rust vers C:\\dev via /media/vm, puis les compilait SUR la VM" \
+"     scripts/build-agent-croise.sh <destination>
+       bâtit agent.exe en croisé (mingw, x86_64-pc-windows-gnu) SUR L'HÔTE,
+       sans la VM. Le déposer ensuite sur l'invité par un serveur HTTP local
+       et Invoke-WebRequest, en COMPARANT LES DEUX sha256 — l'idiome est dans
+       docs/superpowers/plans/journaux-lot32t/instrument/fenetre-e1.sh."
+# ─── Ci-dessous, le corps d'origine, conservé comme relevé historique. ──────
+
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"

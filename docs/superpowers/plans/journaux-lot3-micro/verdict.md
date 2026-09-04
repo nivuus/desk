@@ -95,7 +95,43 @@ livrés et JAMAIS COURUS ». C'est faux de l'un des deux.** Le repli
 cinq jours. Ce qui reste vrai de l'affirmation : `Ambigu` n'a jamais couru — et
 ce document ajoute qu'il **ne peut pas** courir sur cette machine.
 
-## 6. Ce que cet item N'ÉTABLIT PAS
+## 6. 🔴 CES DEUX BLOCAGES NE SONT PAS DUS À `desk` — ILS SONT DUS À LA DETTE C7
+
+**Et le dire est le point de cette section** : sans elle, quelqu'un rejouera
+indéfiniment ces deux bras en croyant que le produit est en cause.
+
+L'invité tourne un provisionnement **périmé**, relevé le 5 septembre 2026 dans
+le marqueur que l'appliance écrit elle-même :
+
+```
+C:\nivuus\state\PROVISION.done :
+    provision_version=B1
+    completed=2026-08-26T18:39:36.5576588+02:00
+    computer=NIVUUS-WIN
+```
+
+Le dépôt voisin déclare, lui, `PROVISION_VERSION = "B4"`
+(`packages/installer/console/guest/payload.py:32`) : **trois versions
+d'écart**. C'est exactement la dette **C7** de `nivuus/installer` —
+« *L'invité tourne trois versions de provisionnement en retard, et rien ne le
+crie* » (`docs/console-dettes.md` § C7), dont le remède déclaré est une
+**reconstruction complète de l'invité**.
+
+**Les deux bras inatteignables de cet item en découlent directement :**
+
+| Bras | Ce qui manque | Imputable à |
+| --- | --- | --- |
+| le cas **nominal** (`cable de rendu retenu`) | **VB-Audio n'est pas installé** — relevé : `Get-CimInstance Win32_SoundDevice \| Where-Object { $_.Name -match "VB-Audio\|CABLE" }` rend **0** | **C7**, pas `desk` |
+| le repli **`Ambigu`** | un seul point de terminaison de **rendu ACTIF** existe (`Speakers (Steam Streaming Speakers)`), donc aucune sous-chaîne ne peut être ambiguë | **C7**, pas `desk` |
+| `MICRO_FAUTE_ECRITURE` | elle injecte des fautes d'**écriture sur le câble** ; sans câble, aucune écriture n'a lieu | **C7**, pas `desk` |
+
+⚠️ **Le produit n'est donc PAS disculpé par cette mesure — il n'est pas
+accusé** : ces trois chemins n'ont simplement pas pu être exercés sur cette
+machine, et ils le seront le jour où l'invité sera reconstruit en B4.
+🔴 **Ne pas rejouer ces bras avant que C7 soit levée** : ils rendront le même
+résultat, pour la même raison, et ce ne sera toujours pas une mesure de `desk`.
+
+## 7. Ce que cet item N'ÉTABLIT PAS
 
 - ⚠️ **Le chemin nominal du micro n'est pas éprouvé** : sans VB-Audio, ni
   `cable de rendu retenu`, ni `mic: true`, ni `critere=`.

@@ -569,6 +569,42 @@ indépendants : ce sont eux qui coûtent.
   calcul sur les points qu'on juge.** ⚠️ Le symptôme est un contrôle qui
   « passe parfaitement » : plus l'accord est bon, plus il faut se demander
   d'où vient l'attendu.
+- 🔴 **UN CONTRÔLE QUI NOMME UNE CHAÎNE QUE LE PRODUIT N'ÉMET PAS REND ZÉRO
+  POUR TOUJOURS — ET C'EST INDISCERNABLE D'UN VRAI ZÉRO.** ⚠️ **C'est le
+  jumeau lexical du piège précédent, et il mord plus souvent** : là-bas le
+  contrôle ne pouvait pas rendre l'autre valeur pour une raison de
+  *construction* ; ici, pour une raison de **VOCABULAIRE** — il cherche un mot
+  que le produit n'écrit nulle part. **La règle qui les couvre tous les deux :
+  un contrôle dont on n'a pas vu la valeur NON ATTENDUE au moins une fois n'est
+  pas un contrôle.** Corollaire pratique : **le motif d'un `grep` de recette se
+  vérifie contre le CODE QUI L'ÉMET** (`grep -n` sur le `tracing::`/`console.`
+  lui-même), jamais contre la spec, le plan, ou le souvenir qu'on en a.
+  🔴 **TROIS INSTANCES DATÉES DU MÊME JOUR — le 5 septembre 2026, lot 3 —, et
+  les trois venaient du PLAN, pas de l'implémenteur :**
+  - **une variante d'énumération n'est pas une chaîne de journal.**
+    `grep -ac "NonMesuree" agent.log` rend **0** et ne peut rendre que 0 :
+    `SourceMax::NonMesuree` est un identifiant Rust (34 occurrences dans
+    `agent/` et `proto/`, **aucune** dans un `tracing::`), et sur le fil la
+    sérialisation est `"source_max":"non-mesuree"`. Le chiffre existait — 34
+    sur 41 — mais dans le catalogue servi par la plateforme, pas dans le
+    journal. **Le legs qui en découlait annonçait 71.**
+  - **un accent suffit, et c'était le TÉMOIN.** Le plan prescrivait
+    `grep -ac "attache au capteur"` comme témoin destiné à rendre le zéro de
+    `message REFUSE` interprétable. Le produit écrit `"attaché au capteur"`
+    (`capteur/tube.rs:153`) : le motif du plan rend **0**, celui du code rend
+    **457**. **Un témoin faux ne dégrade pas la mesure, il l'ANNULE** — « zéro
+    refus, témoin à zéro » ne distingue pas un produit sain d'un produit mort.
+  - **un commentaire dicté verbatim peut être faux.** Le plan faisait écrire à
+    la sonde de latence que l'agent annonce l'instant de capture « par le
+    sender report RTCP […] rendu dans `metadata.captureTime` ». La première
+    moitié est vraie et vérifiée (204 SR sur le fil, 63 lus par Chrome) ; la
+    seconde est **fausse** — `captureTime` vient de l'extension d'en-tête RTP
+    `abs-capture-time`. La mesure a rendu **0 échantillon sur 9 084 trames**
+    avec un produit qui marchait.
+  🔵 **Ce qui a sauvé les trois est le même geste** : un compteur qui SÉPARE
+  les causes d'un zéro (« aucune trame » contre « des trames sans le champ »),
+  et la relecture du code émetteur avant de conclure. Voir
+  [les résultats partiels du lot 3](docs/superpowers/plans/2026-09-05-lot3-campagne-vm-resultats-partiels.md) § 3.
 - 🔴 **UN CONTRÔLE D'EMPLOI PEUT COMPTER UN `var(--…)` QUE PERSONNE NE PEINT,
   OU UN ÉCRIVAIN, COMME UN « EMPLOI » — ET IL REND ALORS `0 orphelin(s)` SUR UN
   TOKEN QUI N'A PLUS AUCUN LECTEUR.** **Payé DEUX fois, ce qui le fait monter
@@ -1295,6 +1331,46 @@ tard il était rouvert en plus grand.**
   fois et n'a pas empêchée : un § « Legs ouverts » consolidé À LA MAIN
   vieillit comme n'importe quel relevé daté.** Voir
   [les résultats du chantier](docs/superpowers/plans/2026-08-31-navigation-hub-unique-resultats.md).
+- 🔴 **`metadata.captureTime` EST INATTEIGNABLE TANT QUE L'AGENT NE NÉGOCIE
+  PAS L'EXTENSION D'EN-TÊTE RTP `abs-capture-time`** (lot 3, item 7, 5 septembre
+  2026). **Ce n'est PAS que l'agent se taise** : il émet bien des sender reports
+  RTCP — **204** relevés sur le fil en 110 s (tous `192.168.3.2 > 192.168.3.1`),
+  et Chrome les lit (`remote-outbound-rtp` vidéo, `reportsSent=63`,
+  `remoteTimestamp` peuplé). Mais un sender report alimente `remoteTimestamp`,
+  **jamais `captureTime`** : ce dernier, comme
+  `RTCRtpContributingSource.captureTimestamp` et `senderCaptureTimeOffset`
+  (relevés **absents**), vient de l'extension `abs-capture-time`.
+  **Relevé : `grep -rn "abs-capture-time\|absolute-capture-time\|extmap"
+  agent/src/ --include='*.rs'` rend `0`** — aucune extension d'en-tête n'est
+  déclarée nulle part. **Où cela se poserait** : la négociation SDP passe par
+  `agent/src/transport/boucle.rs::accept_offer` (`sdp_api().accept_offer`), et
+  l'horodatage de capture est déjà calculé côté émission —
+  `agent/src/transport/piste_video.rs::capture_instant`, tenu par le test
+  `write_frame_annonce_l_instant_de_capture_au_pair_via_le_sender_report_rtcp`.
+  🔴 **CONSÉQUENCE À DIRE À CHAQUE FOIS : toute mesure de latence reste un
+  SUBSTITUT tant que cette extension n'est pas livrée.** Le substitut mesuré
+  (`RTT/2 + totalProcessingDelay`) rend **9,18 et 9,04 ms** au nominal contre
+  **42,27 et 39,72 ms** sous `netem adsl` — il **borne par le bas** et ne
+  contient ni la capture, ni l'encodage, ni l'affichage après
+  `presentationTime`. **Décision du propriétaire du dépôt** : ce lot mesure et
+  ne répare pas ; une campagne qui modifie ce qu'elle mesure ne mesure plus rien.
+- ⚠️ **LE RETRAIT RÉEL DES SCRIPTS DE LA VOIE MORTE EST UNE DETTE NOMMÉE**
+  (5 septembre 2026). `scripts/winrm.js`, `scripts/build-agent.sh`,
+  `scripts/sync-agent.sh`, `scripts/run-agent.sh`, `scripts/stop-agent.sh`,
+  `scripts/check-session.sh` et `scripts/sonde-multifenetre.sh` **échouent
+  désormais vite en nommant leur successeur** (`scripts/voie-morte.sh`, code de
+  sortie **78**) — sur décision du propriétaire du dépôt, qui a écarté aussi
+  bien leur suppression (elle perdrait la trace de ce qu'ils faisaient) que le
+  statu quo (des scripts **morts qui ont l'air vivants**). **Ils ne sont PAS
+  supprimés**, leur corps reste lisible sous le garde. 🔴 **CE QUI EMPÊCHE LE
+  RETRAIT, ET QUI EST MESURÉ** : ils sont encore cités par **48** appelants
+  exécutables pour `scripts/winrm.js`, **57** pour `/media/vm` et **2** pour
+  `scripts/build-agent.sh` dans l'arbre suivi par git — dont **23 sont les
+  instruments mêmes que le lot 3 doit rejouer** (`jouer-f1.sh` à `jouer-f5.sh`,
+  `pilote-pp-p1/p2/p3.mjs`, `pilote-accent-a1.mjs`, `jouer-e3.sh`…).
+  ⚠️ **Relancer la commande, ne pas recopier ces trois nombres** :
+  `git ls-files | grep -E '\.(sh|mjs|js|py)$' | xargs grep -l -- <motif>`.
+  Le retrait se joue le jour où plus rien ne les cite.
 - ⚠️ **`coturn` EST POSÉ, JAMAIS ARMÉ** : `/etc/turnserver.conf` est écrit,
   `/etc/default/coturn` ne l'est pas, et **rien n'écoute sur le port 3478**
   alors que le service annonce `TURN_URL=turn:90.87.35.18:3478` à ses
