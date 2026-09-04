@@ -1,0 +1,174 @@
+{
+  "etiquette": "nominal-1f-exec2",
+  "regime_fenetres": 1,
+  "duree_demandee_s": 60,
+  "instant": "2026-09-04T22:38:04.255Z",
+  "bras": {
+    "temoin_negatif": {
+      "page": "about:blank (aucun <video>)",
+      "attache": {
+        "videos": 0
+      },
+      "echantillons": [],
+      "compteurs": {
+        "trames": 0,
+        "sans_capture": 0,
+        "videos": 0
+      }
+    },
+    "mesure": [
+      {
+        "url": "http://192.168.3.1:3445/index.html?session=3sxuA9dd56NpVdHi37R86g%3Aw-19",
+        "attente_video_s": 0,
+        "compteurs": {
+          "trames": 2500,
+          "sans_capture": 2500,
+          "videos": 1
+        },
+        "distribution": {
+          "n": 0,
+          "mediane_ms": null,
+          "p90_ms": null,
+          "p99_ms": null,
+          "min_ms": null,
+          "max_ms": null
+        },
+        "diagnostic_horloge": {
+          "pc": "attrapée",
+          "types": {
+            "media-playout": 1,
+            "certificate": 2,
+            "codec": 3,
+            "candidate-pair": 4,
+            "data-channel": 2,
+            "local-candidate": 7,
+            "remote-candidate": 2,
+            "inbound-rtp": 2,
+            "outbound-rtp": 1,
+            "peer-connection": 1,
+            "remote-outbound-rtp": 2,
+            "transport": 1
+          },
+          "remote_outbound": [
+            {
+              "kind": "audio",
+              "remoteTimestamp": 1788561555230.798,
+              "packetsSent": 5995,
+              "reportsSent": 12
+            },
+            {
+              "kind": "video",
+              "remoteTimestamp": 1788561558257.9731,
+              "packetsSent": 3495,
+              "reportsSent": 63
+            }
+          ],
+          "inbound": [
+            {
+              "framesDecoded": 3459,
+              "framesReceived": 3459,
+              "jitterBufferDelay": 26.505271,
+              "jitterBufferEmittedCount": 3459
+            }
+          ],
+          "sources": [
+            {
+              "source": 4244494958,
+              "timestamp": 1788561558592
+            }
+          ]
+        },
+        "echantillons_bruts": []
+      },
+      {
+        "url": "http://192.168.3.1:3445/index.html?session=3sxuA9dd56NpVdHi37R86g%3Aw-18",
+        "attente_video_s": 0,
+        "compteurs": {
+          "trames": 0,
+          "sans_capture": 0,
+          "videos": 1
+        },
+        "distribution": {
+          "n": 0,
+          "mediane_ms": null,
+          "p90_ms": null,
+          "p99_ms": null,
+          "min_ms": null,
+          "max_ms": null
+        },
+        "diagnostic_horloge": {
+          "pc": "attrapée",
+          "types": {
+            "media-playout": 1,
+            "certificate": 2,
+            "codec": 3,
+            "candidate-pair": 4,
+            "data-channel": 2,
+            "remote-candidate": 2,
+            "local-candidate": 7,
+            "inbound-rtp": 2,
+            "outbound-rtp": 1,
+            "peer-connection": 1,
+            "remote-outbound-rtp": 2,
+            "transport": 1
+          },
+          "remote_outbound": [
+            {
+              "kind": "audio",
+              "remoteTimestamp": 1788561555647.357,
+              "packetsSent": 6497,
+              "reportsSent": 13
+            },
+            {
+              "kind": "video",
+              "remoteTimestamp": 1788561557663.523,
+              "packetsSent": 3677,
+              "reportsSent": 67
+            }
+          ],
+          "inbound": [
+            {
+              "framesDecoded": 3614,
+              "framesReceived": 3614,
+              "jitterBufferDelay": 32.562951999999996,
+              "jitterBufferEmittedCount": 3614
+            }
+          ],
+          "sources": [
+            {
+              "source": 1003288765,
+              "timestamp": 1788561558592
+            }
+          ]
+        },
+        "echantillons_bruts": []
+      }
+    ]
+  },
+  "vm": "677a3953-14c7-4364-92c3-bd17ecddf8d2",
+  "prefixe": "3sxuA9dd56NpVdHi37R86g",
+  "lancements": [
+    {
+      "nom": "Notepad",
+      "id": "7f2a7df5-765f-4f6c-b5c8-485e8c1a4e19",
+      "statut": 200
+    }
+  ],
+  "cibles_vues": [
+    "background_page:chrome-extension://nkeimhogjdpnpccoofpliimaahmaaome/background.html ~ background_page:chrome-extension://nmmhkkegccagdldgiimedpiccmgmieda/_generated_background_page.html ~ browser_ui:chrome://omnibox-popup.top-chrome/ ~ browser_ui:chrome://omnibox-popup.top-chrome/omnibox_popup_aim.html ~ page:http://192.168.3.1:3445/ ~ page:http://192.168.3.1:3445/index.html?session=3sxuA9dd56NpVdHi37R86g%3Aw-18 ~ page:http://192.168.3.1:3445/index.html?session=3sxuA9dd56NpVdHi37R86g%3Aw-19 ~ service_worker:chrome-extension://fignfifoniblkonapihmkfakmlgkbkcf/service_worker.js ~ service_worker:chrome-extension://ghbmnnjooekpmoecnnnilnnbdlolhkhi/service_worker_bin_prod.js"
+  ],
+  "sessions_obtenues": 2,
+  "animation": {
+    "moyen": "pointermove sur <video>",
+    "cadence_hz": 30
+  },
+  "amorces_posees": 3,
+  "distribution_agregee": {
+    "n": 0,
+    "mediane_ms": null,
+    "p90_ms": null,
+    "p99_ms": null,
+    "min_ms": null,
+    "max_ms": null
+  }
+}
