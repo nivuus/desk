@@ -155,24 +155,36 @@ variable_de_banc() {
     # donc n'est JAMAIS exécutée — le fichier la contiendrait, un tracé de
     # code conclurait à tort, et seule la TRACE DANS LE JOURNAL le dirait
     # (piège payé deux fois le 30 août 2026, lot 32).
-    local geste="$1" nom="$2" valeur="${3:-}"
+    local geste="$1" nom="$2" valeur="${3:-}" script
+    # ⚠️ LE LITTÉRAL POWERSHELL EST CONSTRUIT ICI, PAS IMBRIQUÉ DANS DES
+    # GUILLEMETS DE SHELL. La première rédaction empilait quatre niveaux de
+    # citation et produisait `env:MICRO_PERIPHERIQUE = "NVIDIA""` — refusé à
+    # l'analyse (« Unexpected token »), donc AUCUNE variable posée. Ce n'est
+    # pas la trace qui l'a dit, c'est la RELECTURE DU run-agent.ps1 GÉNÉRÉ,
+    # qui ne portait aucune ligne : le contrôle que ce dépôt impose, et qui a
+    # servi ici même.
     if [ "${geste}" = "poser" ]; then
-        W '
-$p = "C:\nivuus\agent\run-agent.ps1"
-$l = @(Get-Content $p -Encoding UTF8 | Where-Object { $_ -notmatch "env:'"${nom}"'" })
-$idx = ($l | Select-String "env:SUPERVISEUR" | Select-Object -First 1).LineNumber
-if (-not $idx) { throw "ancre env:SUPERVISEUR introuvable" }
-$neuf = @()
-for ($i=0; $i -lt $l.Count; $i++) {
-  $neuf += $l[$i]
-  if ($i -eq ($idx-1)) { $neuf += ("{0}env:'"${nom}"' = ''"'"${valeur}"'"''" -f [char]36) }
+        script=$(cat <<PS
+\$p = "C:\\nivuus\\agent\\run-agent.ps1"
+\$l = @(Get-Content \$p -Encoding UTF8 | Where-Object { \$_ -notmatch "env:${nom}" })
+\$idx = (\$l | Select-String "env:SUPERVISEUR" | Select-Object -First 1).LineNumber
+if (-not \$idx) { throw "ancre env:SUPERVISEUR introuvable" }
+\$neuf = @()
+for (\$i=0; \$i -lt \$l.Count; \$i++) {
+  \$neuf += \$l[\$i]
+  if (\$i -eq (\$idx-1)) { \$neuf += ("{0}env:${nom} = '${valeur}'" -f [char]36) }
 }
-Set-Content -Path $p -Value $neuf -Encoding UTF8
-"'"${nom}"' posee apres l ancre SUPERVISEUR (ligne $idx)"' 90
+Set-Content -Path \$p -Value \$neuf -Encoding UTF8
+"${nom} posee apres l ancre SUPERVISEUR (ligne \$idx)"
+PS
+)
     else
-        W '
-$p = "C:\nivuus\agent\run-agent.ps1"
-Set-Content -Path $p -Value @(Get-Content $p -Encoding UTF8 | Where-Object { $_ -notmatch "env:'"${nom}"'" }) -Encoding UTF8
-"'"${nom}"' retiree"' 90
+        script=$(cat <<PS
+\$p = "C:\\nivuus\\agent\\run-agent.ps1"
+Set-Content -Path \$p -Value @(Get-Content \$p -Encoding UTF8 | Where-Object { \$_ -notmatch "env:${nom}" }) -Encoding UTF8
+"${nom} retiree"
+PS
+)
     fi
+    W "${script}" 90
 }

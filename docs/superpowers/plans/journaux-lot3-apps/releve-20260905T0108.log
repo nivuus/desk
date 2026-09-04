@@ -1,0 +1,17 @@
+=== 2026-09-05T01:08:08+02:00 ITEM 11 — le motif du plan est-il journalise ? ===
+--- occurrences de NonMesuree dans le CODE (aucune n est un tracing::) ---
+31
+0
+0 dans un tracing::
+--- la serialisation REELLE, figee par un test ---
+187:        r#""non-mesuree""#
+203:/// vert. `NonMesuree` a DEUX mots, donc `non-mesuree` contre `non_mesuree` :
+213:        r#""non-mesuree""#,
+
+=== les comptes sur le journal de la VM ===
+NonMesuree = 0
+NonMesur   = 0
+racine_surveillee = 352
+mode_surveillance = 91
+--- derniere ligne de catalogue reconcilie ---
+[2m2026-09-04T23:07:59.602654Z[0m [32m INFO[0m [2magent::apps::boucle::memoire[0m[2m:[0m catalogue reconcilie [3mtotal[0m[2m=[0m58 [3mretenus[0m[2m=[0m45 [3mcles[0m[2m=[0m41 [3micones[0m[2m=[0m0 [3micones_echouees[0m[2m=[0m0 [3micones_distinctes[0m[2m=[0m37 [3mapparues[0m[2m=[0m0 [3mmodifiees[0m[2m=[0m0 [3mdisparues[0m[2m=[0m0 [3mduree_ms[0m[2m=[0m27 [3mdeclencheur[0m[2m=[0m"periode" [3mnotifications[0m[2m=[0m0 [3mdebordements[0m[2m=[0m0
