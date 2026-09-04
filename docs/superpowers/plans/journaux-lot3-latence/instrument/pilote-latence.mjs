@@ -18,7 +18,7 @@
 //   node pilote-latence.mjs --etiquette=1f-nominal --fenetres=1 --duree=60 \
 //        --sortie=/chemin/distribution.json
 import { spawn } from 'node:child_process';
-import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -508,6 +508,12 @@ try {
     log('ERREUR : ' + releve.erreur);
 } finally {
     chrome.kill('SIGKILL');
+    // 🔴 LE PROFIL CHROME PART AVEC LE PILOTE. Chaque exécution en laissait un
+    // de ~100 Mio sous `tmpdir()` ; vingt-trois d'entre eux ont REMPLI le
+    // tmpfs de 10 Gio de cette machine le 5 septembre 2026, et le symptôme
+    // n'était pas « disque plein » mais **une commande qui ne rend RIEN** —
+    // l'enveloppe du shell n'arrivant plus à écrire la sortie de l'enfant.
+    await rm(profil, { recursive: true, force: true }).catch(() => {});
     await writeFile(SORTIE, JSON.stringify(releve, null, 2));
     log(`relevé écrit : ${SORTIE}`);
 }

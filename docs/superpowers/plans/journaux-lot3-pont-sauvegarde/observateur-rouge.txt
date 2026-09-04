@@ -1,0 +1,19 @@
+LastTaskResult = 0
+LastRunTime    = 09/05/2026 01:51:56
+--- sortie ---
+2026-09-04T23:51:56.7043142Z session = 1
+2026-09-04T23:51:56.7123556Z racine  = C:\Users\Administrator\Mes Fichiers
+2026-09-04T23:51:56.7123556Z fichier = item1-sauvegarde.txt
+2026-09-04T23:51:56.7163784Z le fichier est-il visible dans la racine ProjFS ? True
+2026-09-04T23:51:56.7204039Z contenu AVANT (longueur) : 122
+2026-09-04T23:51:56.7554732Z inventaire AVANT : item1-sauvegarde.txt
+2026-09-04T23:51:56.7574812Z marqueur = MARQUEUR-LOT3-ITEM1-235156
+2026-09-04T23:51:56.7574812Z ouverture du Bloc-notes
+2026-09-04T23:52:04.1624625Z Ctrl+S
+2026-09-04T23:52:07.2627063Z inventaire PENDANT (editeur ouvert, apres Ctrl+S) : item1-sauvegarde.txt
+2026-09-04T23:52:07.2647182Z fermeture
+2026-09-04T23:52:10.2822406Z inventaire APRES : item1-sauvegarde.txt
+2026-09-04T23:52:10.2842476Z contenu APRES (longueur) : 148
+2026-09-04T23:52:10.2862570Z le marqueur est-il dans le fichier, cote INVITE ? True
+2026-09-04T23:52:10.2882657Z nouveaux noms (APRES moins AVANT) : 
+2026-09-04T23:52:10.2902741Z FIN
