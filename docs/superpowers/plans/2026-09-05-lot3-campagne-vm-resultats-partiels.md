@@ -168,3 +168,27 @@ C'est le constat le plus transférable de cette campagne : **le plan lui-même
   665 tests `client/src`, 308 tests `proto/ts`, `tsc --noEmit` code 0.
 - **`etat-vm.sh` rend `extinctions=30` au début ET à la fin** de la campagne :
   aucune mesure n'est à cheval sur une extinction du domaine.
+
+## 8. 🔴 DEUX MESURES SONT BLOQUÉES PAR LE PROVISIONNEMENT, PAS PAR LE PRODUIT
+
+L'invité porte `provision_version=B1`, `completed=2026-08-26T18:39:36` —
+relevé dans `C:\nivuus\state\PROVISION.done`, que l'appliance écrit
+elle-même. Le dépôt voisin déclare `PROVISION_VERSION = "B4"`
+(`packages/installer/console/guest/payload.py:32`) : **trois versions
+d'écart**, c'est-à-dire la dette **C7** de `nivuus/installer` — *« L'invité
+tourne trois versions de provisionnement en retard, et rien ne le crie »*
+(`docs/console-dettes.md` § C7), dont le remède est une reconstruction
+complète de l'invité.
+
+**Ce qui en découle, et qu'il faut imputer à C7 et non à `desk` :**
+
+| Ce qui n'a pas pu être mesuré | Pourquoi |
+| --- | --- |
+| le cas **nominal** du micro (item 9) | VB-Audio absent — `Win32_SoundDevice` filtré sur `VB-Audio\|CABLE` rend **0** |
+| le repli **`Ambigu`** du micro (item 9) | un seul point de terminaison de rendu **actif** |
+| `MICRO_FAUTE_ECRITURE` (item 9) | injecte des fautes d'écriture **sur le câble**, qui n'existe pas |
+
+🔴 **Ne pas rejouer ces bras avant que C7 soit levée** : ils rendront le même
+résultat, pour la même raison, et ce ne sera toujours pas une mesure de `desk`.
+Sans cette section, quelqu'un les rejouera indéfiniment en croyant que le
+produit est en cause.
