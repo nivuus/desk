@@ -1,0 +1,17 @@
+=== 2026-09-05T01:08:05+02:00 ITEM 6 — les constantes, RELUES dans le code ===
+84:pub(crate) const PROFONDEUR_MAX: usize = 64;
+135:    if file.len() >= PROFONDEUR_MAX {
+343:    /// n'est PAS bornée : une file qui oscille autour de `PROFONDEUR_MAX` la
+367:                profondeur_max = PROFONDEUR_MAX,
+
+=== la chaine REELLEMENT journalisee, contre celle du plan ===
+368:                "file d'une session pleine : message REFUSE (trace au palier, puissance de deux)"
+agent/src/capteur/tube.rs:153:        "attaché au capteur"
+agent/src/capteur/distante/video_source.rs:101:                                tracing::info!(largeur, hauteur, "canal rattaché au capteur");
+
+=== les comptes, sur le journal de la VM ===
+lignes_totales       = 169993
+attache_SANS_accent  = 0
+attache_AVEC_accent  = 457
+message_REFUSE_sensible_casse = 0
+REFUSE_insensible_casse       = 61

@@ -1,0 +1,70 @@
+=== 2026-09-05T01:01:10+02:00 ITEM 9 — BRAS Ambigu : MICRO_PERIPHERIQUE=NVIDIA ===
+Deux points de terminaison portent la sous-chaine « NVIDIA », releve par
+Get-CimInstance Win32_SoundDevice : « NVIDIA High Definition Audio » et
+« NVIDIA Virtual Audio Device (Wave Extensible) (WDM) ». La sous-chaine est
+donc REELLEMENT ambigue, choisie dans l inventaire et non inventee.
+agents apres arret : 0
+[stderr] At line:9 char:66
++ ...  ($idx-1)) { $neuf += ("{0}env:MICRO_PERIPHERIQUE = "NVIDIA"" -f [cha ...
++                                                          ~~~~~~~~
+Unexpected token 'NVIDIA""' in expression or statement.
+At line:9 char:66
++ ...  ($i -eq ($idx-1)) { $neuf += ("{0}env:MICRO_PERIPHERIQUE = "NVIDIA"" ...
++                                                                  ~
+Missing closing ')' in expression.
+At line:9 char:24
++   if ($i -eq ($idx-1)) { $neuf += ("{0}env:MICRO_PERIPHERIQUE = "NVID ...
++                        ~
+Missing closing '}' in statement block or type definition.
+At line:7 char:35
++ for ($i=0; $i -lt $l.Count; $i++) {
++                                   ~
+Missing closing '}' in statement block or type definition.
+At line:9 char:86
++ ... 1)) { $neuf += ("{0}env:MICRO_PERIPHERIQUE = "NVIDIA"" -f [char]36) }
++                                                                       ~
+Unexpected token ')' in expression or statement.
+At line:9 char:88
++ ... 1)) { $neuf += ("{0}env:MICRO_PERIPHERIQUE = "NVIDIA"" -f [char]36) }
++                                                                         ~
+Unexpected token '}' in expression or statement.
+At line:10 char:1
++ }
++ ~
+Unexpected token '}' in expression or statement.
+    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : UnexpectedToken
+--- la ligne, LUE dans le run-agent.ps1 GENERE sur la VM (jamais tracee dans le code) ---
+60: & 'C:\nivuus\agent\agent.exe' *>&1 |
+repere=169667
+agents vivants : 3
+--- ce que l agent dit du micro dans CE bras ---
+2026-09-04T23:01:22.919466Z  INFO agent::apps::surveillance::fil: racine surveillée racine=C:\ProgramData\Microsoft\Windows\Start Menu
+2026-09-04T23:01:22.919527Z  INFO agent::apps::surveillance::fil: racine surveillée racine=C:\Users\Administrator\AppData\Roaming\Microsoft\Windows\Start Menu
+2026-09-04T23:01:22.928930Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=3
+2026-09-04T23:01:22.928979Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant purge" nom=\\.\DISPLAY1 adaptateur=Microsoft Basic Render Driver index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=1280 hauteur=800
+2026-09-04T23:01:23.027101Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\Users\Administrator\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\File Explorer.lnk motif="cible-vide"
+2026-09-04T23:01:23.058391Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\Users\Administrator\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\System Tools\Control Panel.lnk motif="cible-vide"
+2026-09-04T23:01:23.058415Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\Users\Administrator\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\System Tools\Run.lnk motif="cible-vide"
+2026-09-04T23:01:23.228441Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Blue Ripple Sound\Rapture3D - Help.lnk motif="extension" extension=chm
+
+=== 2026-09-05T01:03:07+02:00 BRAS Ambigu, SECONDE TENTATIVE (le harnais corrige) ===
+agents apres arret : 0
+MICRO_PERIPHERIQUE posee apres l ancre SUPERVISEUR (ligne 34)
+--- la ligne, LUE dans le run-agent.ps1 GENERE, avec sa POSITION relative a l invocation ---
+ligne 35 : $env:MICRO_PERIPHERIQUE = 'NVIDIA'
+ligne 61 : & 'C:\nivuus\agent\agent.exe' *>&1 |
+REPERE=169800
+agents vivants : 3
+--- LE RELEVE : ce que l agent dit du micro dans le bras Ambigu ---
+2026-09-04T23:04:01.951992Z  WARN agent::demarrage::micro: micro indisponible, la session continue sans session=3sxuA9dd56NpVdHi37R86g:w-1 erreur=aucun peripherique de rendu ne correspond a « NVIDIA » (MICRO_PERIPHERIQUE) :                  pas de micro. Disponibles : «Speakers (Steam Streaming Speakers)» [{0.0.0.00000000}.{fc5b7410-2341-47a7-88a1-894b051a02f1}]. Le cable virtuel est-il installe ?
+
+=== 2026-09-05T01:04:46+02:00 RETOUR A L ETAT LIVRE ===
+agents apres arret : 0
+MICRO_PERIPHERIQUE retiree
+--- le run-agent.ps1 ne doit plus porter la variable ---
+0
+notepad remis a zero
+agents vivants : 3
+--- etat final ---
+etat=encoursd’exécution extinctions=30 horodatage=2026-09-05T01:05:28+02:00
