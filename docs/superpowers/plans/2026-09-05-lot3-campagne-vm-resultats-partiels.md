@@ -3,8 +3,8 @@
 **5 septembre 2026.** Branche `campagne-vm-mesures`, quatre commits, de
 `ffdc839` **exclu** à `75c6200`.
 
-> 🔴 **CE DOCUMENT NE CLÔT PAS LE LOT.** Sept items sur douze portent un chiffre
-> daté ; cinq n'ont pas été joués. Écrire « lot 3 clos » serait faux, et le § 5
+> 🔴 **CE DOCUMENT NE CLÔT PAS LE LOT.** Huit items sur douze portent un chiffre
+> daté ; quatre n'ont pas été joués. Écrire « lot 3 clos » serait faux, et le § 5
 > nomme ce qui reste dû, item par item.
 >
 > ⚠️ **Aucun chiffre de ce document ne se recopie sans relancer sa commande.**
@@ -48,7 +48,7 @@ sha256 `3C270C6C2C65D6DB7CCA261E42AFB57902B63D2A76DC2EEFC8C3185A6713940C`,
 20 583 167 octets des deux côtés. Aucun binaire tiers n'a été réutilisé, et
 rien n'a été redéployé.
 
-## 2. Les sept items qui portent un chiffre
+## 2. Les huit items qui portent un chiffre
 
 | Item | Verdict | Le chiffre |
 | --- | --- | --- |
@@ -59,6 +59,7 @@ rien n'a été redéployé.
 | **11 (3.9)** les applications non mesurées | **le « 71 » RÉFUTÉ** | **41** au catalogue, dont **34** `non-mesuree`, 6 `pixels:256`, 1 `pixels:48` |
 | **12 (3.10)** le maillon fautif du `Resize` | **aucun maillon fautif aujourd'hui** | 3 viewports (1024×700, 1400×500, 640×900) servis **exactement**, jusqu'à `videoWidth×videoHeight` |
 | **1 (3.7)** « temporaire + renommage » | **aucune perte, aucun temporaire** | 44→**70** o et 44→**96** o au poste local, **1** acquittement chacun ; ROUGE : **44 o inchangé, 0** acquittement |
+| **3 (3.8)** le répertoire frère | **ne se reproduit plus** | `D sous-dossier` dans **5 listages / 5**, aux **trois** bras (cache armé ×2, `PONT_CACHE=0`) ; témoin négatif qui tire |
 
 Chaque item a son répertoire `journaux-lot3-<item>/`, avec son `verdict.md`,
 ses journaux bruts **versionnés**, et son instrument quand il en a un.
@@ -125,13 +126,13 @@ C'est le constat le plus transférable de cette campagne : **le plan lui-même
   (`The process cannot access the file … because it is being used by another
   process`). Le remède reste le bon ; la description du symptôme ne l'est pas.
 
-## 5. Ce qui reste dû — cinq items, et les moitiés manquantes des autres
+## 5. Ce qui reste dû — quatre items, et les moitiés manquantes des autres
 
 | Item | Ce qui reste |
 | --- | --- |
 | **1 (3.7)** | **JOUÉ** — reste : VS Code, Word, LibreOffice, **aucun installé sur cette appliance** (dette C7) |
 | **2 (3.6)** les trois murs du pont | **entier, non joué** |
-| **3 (3.8)** le répertoire frère qui disparaît | **entier, non joué** |
+| **3 (3.8)** | **JOUÉ** — ne se reproduit plus ; reste : le renommage de RÉPERTOIRE, et un jeu plus grand |
 | **4** le rejeu des douze pilotes | **entier, non joué** |
 | **8 (3.2)** le propriétaire mono-fenêtre | **entier, non joué** |
 | **10 (3.5)** une cause naturelle de mort de capture audio | **entier, non joué** |

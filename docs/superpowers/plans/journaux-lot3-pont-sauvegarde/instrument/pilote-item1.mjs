@@ -33,6 +33,13 @@ const ETIQUETTE = arg('etiquette', '1');
 const SORTIE = arg('sortie', `/var/tmp/item1-${ETIQUETTE}.json`);
 const MAINTIEN_S = Number(arg('maintien', '150'));
 const PORT = 9351;
+// 🔴 CE PILOTE EST PARTAGÉ PAR LES ITEMS DU PONT, ET IL SE RÉUTILISE PAR
+// PARAMÈTRE — jamais par copie : « une copie éprouverait la copie, pas
+// l'instrument » (F3). L'item 1 garde les défauts ci-dessous, donc son
+// invocation d'origine est inchangée ; l'item 3 passe les siens.
+const INJECTION_NOM = arg('injection', 'injection-item1.js');
+const PREPARER = arg('prepare', '__item1Preparer');
+const RELIRE = arg('relire', '__item1Relire');
 
 const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
 const log = (...a) => console.log(new Date().toISOString(), ...a);
@@ -105,7 +112,7 @@ async function prefixe(j, vm) {
 const releve = { etiquette: ETIQUETTE, instant: new Date().toISOString(), etapes: [] };
 const noter = (m, d) => { releve.etapes.push({ t: new Date().toISOString(), m, ...d }); log(m, d ? JSON.stringify(d).slice(0, 300) : ''); };
 
-const INJECTION = await readFile(join(ICI, 'injection-item1.js'), 'utf8');
+const INJECTION = await readFile(join(ICI, INJECTION_NOM), 'utf8');
 const profil = await mkdtemp(join(tmpdir(), 'lot3-item1-'));
 const chrome = spawn('google-chrome', [
     '--headless=new', `--remote-debugging-port=${PORT}`, `--user-data-dir=${profil}`,
@@ -164,10 +171,10 @@ try {
     await hub.envoyer('Page.navigate', { url: `${PLATEFORME}/` });
     await dormir(4000);
 
-    releve.injection_vue = await hub.evaluer('({presente: typeof window.__item1 === "object", chemin: location.pathname, etapes: (window.__item1||{}).etapes})');
+    releve.injection_vue = await hub.evaluer(`({presente: typeof window.${PREPARER} === "function", chemin: location.pathname, etapes: (window.__item1||{}).etapes})`);
     noter('injection vue dans le hub', releve.injection_vue);
 
-    releve.opfs_prepare = await hub.evaluer('window.__item1Preparer()');
+    releve.opfs_prepare = await hub.evaluer(`window.${PREPARER}()`);
     noter('racine locale préparée (OPFS)', releve.opfs_prepare);
 
     // 🔴 LE CLIC EST LE CHEMIN DU PRODUIT : `installerLePont` n'appelle
@@ -197,7 +204,7 @@ try {
     }
 
     noter(`maintien de ${MAINTIEN_S} s — l'observateur de l'invité travaille pendant ce temps`);
-    releve.relecture_avant_editeur = await hub.evaluer('window.__item1Relire()');
+    releve.relecture_avant_editeur = await hub.evaluer(`window.${RELIRE}()`);
     noter('relecture AVANT que l éditeur touche quoi que ce soit', releve.relecture_avant_editeur);
 
     await writeFile(`${SORTIE}.partiel`, JSON.stringify(releve, null, 2));
@@ -205,7 +212,7 @@ try {
 
     // 🔴 LE CRITÈRE. Ce que le POSTE LOCAL a reçu — pas ce que l'invité croit
     // avoir écrit, et pas ce que le journal de l'agent a notifié.
-    releve.relecture_apres_editeur = await hub.evaluer('window.__item1Relire()');
+    releve.relecture_apres_editeur = await hub.evaluer(`window.${RELIRE}()`);
     noter('relecture APRÈS l éditeur', releve.relecture_apres_editeur);
     releve.etapes_page = await hub.evaluer('(window.__item1||{}).etapes');
 } catch (e) {
