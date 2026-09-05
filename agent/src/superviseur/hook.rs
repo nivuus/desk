@@ -22,7 +22,7 @@ use windows::Win32::Graphics::Dwm::{DwmGetWindowAttribute, DWMWA_CLOAKED};
 use windows::Win32::UI::Accessibility::{SetWinEventHook, UnhookWinEvent, HWINEVENTHOOK};
 use windows::Win32::UI::WindowsAndMessaging::{
     DispatchMessageW, EnumWindows, GetMessageW, GetWindow, GetWindowLongPtrW, GetWindowTextLengthW,
-    GetWindowTextW, GetWindowThreadProcessId, IsWindowVisible, PostThreadMessageW,
+    GetWindowTextW, GetWindowThreadProcessId, IsWindow, IsWindowVisible, PostThreadMessageW,
     TranslateMessage, EVENT_OBJECT_DESTROY,
     EVENT_OBJECT_HIDE, EVENT_OBJECT_SHOW, GWL_EXSTYLE, GW_OWNER, MSG, OBJID_WINDOW, WINEVENT_OUTOFCONTEXT,
     WM_QUIT, WS_EX_APPWINDOW, WS_EX_TOOLWINDOW,
@@ -71,6 +71,25 @@ impl Drop for Hook {
 ///
 /// `None` si la fenêtre a déjà disparu entre l'événement et cet appel — cas
 /// courant et normal, pas une erreur.
+/// La fenêtre mérite-t-elle TOUJOURS un onglet, à l'échéance de son sursis ?
+///
+/// 🔴 **C'EST LA SECONDE MOITIÉ DE L'ANTI-REBOND, ET SANS ELLE LE SURSIS NE
+/// SERAIT QU'UN RETARD.** `superviseur::sursis` établit qu'une fenêtre a
+/// DURÉ ; celle-ci établit qu'elle est encore présentable. Une fenêtre peut
+/// parfaitement survivre 500 ms et avoir entre-temps perdu son titre, été
+/// masquée par DWM, ou reçu un propriétaire — c'est le cas des écrans de
+/// démarrage qui se muent en dialogue enfant.
+///
+/// `IsWindow` d'abord : `decrire` sur un `HWND` mort rendrait une description
+/// de valeurs par défaut, que `merite_une_fenetre` pourrait juger recevable.
+pub fn merite_encore(fenetre: IdFenetre) -> bool {
+    let hwnd = HWND(fenetre.0 as *mut std::ffi::c_void);
+    if !unsafe { IsWindow(Some(hwnd)) }.as_bool() {
+        return false;
+    }
+    decrire(hwnd).is_some_and(|d| super::fenetres::merite_une_fenetre(&d))
+}
+
 pub fn decrire(hwnd: HWND) -> Option<DescriptionFenetre> {
     unsafe {
         let longueur = GetWindowTextLengthW(hwnd);

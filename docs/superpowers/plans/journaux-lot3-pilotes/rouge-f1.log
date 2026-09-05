@@ -1,0 +1,15 @@
+=== LA ROUGE PRESCRITE : mutation de pilote-f1 vers la racine NUE ===
+--- avant mutation : la premiere erreur ---
+  Error: /auth/connexion a rendu 404 (sans motif)
+  mutation posee : /signal retire de SIGNALING_RELAIS
+--- apres mutation : la premiere erreur ---
+  Error: /auth/connexion a rendu 404 (sans motif)
+--- le garde : la mutation a-t-elle bien ete defaite ? ---
+  identique a la copie nommee : OK
+  '/signal' present a nouveau : 1
+
+=== LE VERDICT DE CE BRAS ===
+  🔴 LES DEUX ERREURS SONT IDENTIQUES : la mutation NE CHANGE RIEN.
+     L'execution n'atteint JAMAIS la ligne 32 — elle s'arrete avant, sur
+     l'authentification. LA ROUGE PRESCRITE EST DONC VACUEUSE ICI, et
+     l'ecrire verte aurait ete un mensonge.

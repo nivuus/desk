@@ -1,0 +1,71 @@
+=== 2026-09-05T00:51:45+02:00 BRAS 1 : etat de depart ===
+vm prête (journal=54053861 octets) : etat=encoursd’exécution extinctions=30 horodatage=2026-09-05T00:51:46+02:00
+repere=168949
+agents apres arret : 0
+aucun agent survivant
+agent_absent code=0
+
+=== 2026-09-05T00:51:57+02:00 BRAS 1 : redemarrage a FROID, la topologie que l agent releve LUI-MEME ===
+agents vivants : 3
+2026-09-04T22:51:58.489131Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant purge" nombre=1 attachees=1
+2026-09-04T22:51:58.489145Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant purge" nom=\\.\DISPLAY1 adaptateur=Microsoft Basic Render Driver index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=1280 hauteur=800
+2026-09-04T22:52:01.493159Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="après purge" nombre=1 attachees=1
+2026-09-04T22:52:01.493169Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après purge" nom=\\.\DISPLAY1 adaptateur=Microsoft Basic Render Driver index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=1280 hauteur=800
+
+=== 2026-09-05T00:54:10+02:00 BRAS 2 : ouvrir trois fenetres, releve AVANT l extinction ===
+repere=169008
+lancement 1/3 de Notepad : 200
+lancement 2/3 de Notepad : 200
+lancement 3/3 de Notepad : 200
+--- ce que l agent dit des sorties creees ---
+--- topologie vue par un processus NEUF (MULTIFENETRE_DXGI=1), AVANT extinction ---
+repere avant la sequence = 169024
+2026-09-04T22:55:34.317Z page de session 1 : http://192.168.3.1:3445/index.html?session=3sxuA9dd56NpVdHi37R86g%3Aw-6
+2026-09-04T22:55:34.325Z page de session 2 : http://192.168.3.1:3445/index.html?session=3sxuA9dd56NpVdHi37R86g%3Aw-5
+2026-09-04T22:55:34.334Z page de session 3 : http://192.168.3.1:3445/index.html?session=3sxuA9dd56NpVdHi37R86g%3Aw-4
+--- topologie AVANT extinction, vue par le journal de l agent vivant ---
+2026-09-04T22:55:24.728174Z  INFO agent::superviseur::boucle::creation_sortie: sortie DESIGNEE par son identifiant de cible (chemin ① — la correspondance CCD a rendu son nom GDI) id_pilote=259 adaptateur=Some((67235, 0)) nom_designe="\\\\.\\DISPLAY6"
+2026-09-04T22:55:24.728207Z  INFO agent::superviseur::boucle::creation_sortie: sortie retenue pour cette fenetre session=3sxuA9dd56NpVdHi37R86g:w-4 sortie=\\.\DISPLAY6 demande="780x492" sortie_reelle="1860x1080" exemptee=false
+2026-09-04T22:55:27.564932Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant création de sortie" nombre=2 attachees=2
+2026-09-04T22:55:27.565207Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle créée id=261 adaptateur_bas=67235 adaptateur_haut=0 guid=9C4A1F6E-2B73-4D51-9E08-677541430002 largeur=780 hauteur=492 hertz=60
+2026-09-04T22:55:27.686259Z  INFO agent::superviseur::boucle::creation_sortie: sortie DESIGNEE par son identifiant de cible (chemin ① — la correspondance CCD a rendu son nom GDI) id_pilote=261 adaptateur=Some((67235, 0)) nom_designe="\\\\.\\DISPLAY7"
+2026-09-04T22:55:27.686284Z  INFO agent::superviseur::boucle::creation_sortie: sortie retenue pour cette fenetre session=3sxuA9dd56NpVdHi37R86g:w-5 sortie=\\.\DISPLAY7 demande="780x492" sortie_reelle="1860x1080" exemptee=false
+2026-09-04T22:55:30.716067Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant création de sortie" nombre=3 attachees=3
+2026-09-04T22:55:30.716371Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle créée id=257 adaptateur_bas=67235 adaptateur_haut=0 guid=9C4A1F6E-2B73-4D51-9E08-677541430003 largeur=780 hauteur=492 hertz=60
+2026-09-04T22:55:30.861151Z  INFO agent::superviseur::boucle::creation_sortie: sortie DESIGNEE par son identifiant de cible (chemin ① — la correspondance CCD a rendu son nom GDI) id_pilote=257 adaptateur=Some((67235, 0)) nom_designe="\\\\.\\DISPLAY8"
+2026-09-04T22:55:30.861183Z  INFO agent::superviseur::boucle::creation_sortie: sortie retenue pour cette fenetre session=3sxuA9dd56NpVdHi37R86g:w-6 sortie=\\.\DISPLAY8 demande="780x492" sortie_reelle="1860x1080" exemptee=false
+
+=== 2026-09-05T00:56:53+02:00 BRAS 3 : EXTINCTION PAR LE CHEMIN LIVRE (schtasks /end puis Stop-Process -Force) ===
+agents apres arret : 0
+aucun agent survivant
+agent_absent code=0
+--- les trois Notepad ont-ils survecu a la mort du superviseur ? ---
+notepad restants : 3
+repere apres extinction=169289
+
+=== 2026-09-05T00:57:05+02:00 BRAS 4 : redemarrage — CE QUE L AGENT TROUVE (avant purge) EST LE COMPTE D ORPHELINS ===
+agents vivants : 3
+2026-09-04T22:57:06.612851Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant purge" nombre=4 attachees=4
+2026-09-04T22:57:06.612865Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant purge" nom=\\.\DISPLAY1 adaptateur=Microsoft Basic Render Driver index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=1280 hauteur=800
+2026-09-04T22:57:06.612874Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant purge" nom=\\.\DISPLAY6 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1 index_sortie=0 attachee=true x=1280 y=0 largeur=1860 hauteur=1080
+2026-09-04T22:57:06.612879Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant purge" nom=\\.\DISPLAY7 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1 index_sortie=1 attachee=true x=3140 y=0 largeur=1860 hauteur=1080
+2026-09-04T22:57:06.612886Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant purge" nom=\\.\DISPLAY8 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1 index_sortie=2 attachee=true x=5000 y=0 largeur=1860 hauteur=1080
+2026-09-04T22:57:06.623134Z  INFO agent::moniteurs_virtuels::purge: sortie virtuelle retirée par la purge numero=1 guid=9C4A1F6E-2B73-4D51-9E08-677541430001
+2026-09-04T22:57:06.630921Z  INFO agent::moniteurs_virtuels::purge: sortie virtuelle retirée par la purge numero=2 guid=9C4A1F6E-2B73-4D51-9E08-677541430002
+2026-09-04T22:57:06.641442Z  INFO agent::moniteurs_virtuels::purge: sortie virtuelle retirée par la purge numero=3 guid=9C4A1F6E-2B73-4D51-9E08-677541430003
+2026-09-04T22:57:09.643433Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="après purge" nombre=1 attachees=1
+2026-09-04T22:57:09.643447Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après purge" nom=\\.\DISPLAY1 adaptateur=Microsoft Basic Render Driver index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=1280 hauteur=800
+2026-09-04T22:57:09.643471Z  INFO agent::moniteurs_virtuels::purge: purge terminée retirees=3 avant=4 apres=1
+
+=== 2026-09-05T00:58:06+02:00 SECONDE EXECUTION : trois fenetres, extinction, compte ===
+notepad avant : 3
+notepad remis a zero
+repere=169352
+pages de session obtenues : 3
+--- extinction ---
+agents apres arret : 0
+repere apres extinction=169608
+agents vivants : 3
+2026-09-04T22:59:41.287444Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant purge" nombre=4 attachees=4
+2026-09-04T22:59:44.320252Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="après purge" nombre=1 attachees=1
+2026-09-04T22:59:44.320274Z  INFO agent::moniteurs_virtuels::purge: purge terminée retirees=3 avant=4 apres=1

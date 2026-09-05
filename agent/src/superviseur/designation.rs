@@ -93,10 +93,22 @@ pub fn armee() -> bool {
 ///
 /// ⚠️ **Ce que cette fonction NE fait PAS, à dessein : filtrer sur la taille
 /// ou sur `deja_prises`.** Ces deux filtres restent chez
-/// `placement::sortie_pour_viewport`, et ils continuent de courir sur la
-/// sortie désignée. La désignation **resserre** l'ensemble des candidates,
+/// `placement::sortie_pour_viewport`.
+///
+/// ❌ **CETTE DOC A DIT « la désignation resserre l'ensemble des candidates,
 /// elle ne desserre aucun garde — c'est toute la différence avec un
-/// relâchement de la règle d'appariement.
+/// relâchement de la règle d'appariement » JUSQU'AU 31 AOÛT 2026, ET C'EST
+/// DEVENU FAUX.** Le nom désigné est désormais passé à
+/// `placement::sortie_pour_viewport`, qui **exempte cette sortie-là du critère
+/// de TAILLE** : le pilote ne fait pas naître la sortie à la taille demandée
+/// (mesuré en production, 1614×1080 demandé, 1428×1080 rendu, huit refus en
+/// boucle et plus aucune fenêtre servie). La désignation resserre toujours
+/// l'ensemble ; elle desserre désormais **un** garde, nommément.
+///
+/// **`attachee_au_bureau` et `deja_prises` continuent de courir sur la sortie
+/// désignée**, et le second est ce qui empêche deux fenêtres de montrer la
+/// même image — voir la doc de `placement::sortie_pour_viewport`, qui porte
+/// la mesure et le raisonnement.
 pub fn candidates(
     toutes: &[SortieDxgi],
     notre_nom: Option<&str>,
@@ -173,8 +185,11 @@ mod tests {
         );
     }
 
-    /// La désignation ne court-circuite AUCUN garde de `placement` : elle
-    /// choisit parmi quoi chercher, elle ne décide pas du résultat.
+    /// La désignation ne court-circuite pas le garde des PRISES — et c'est
+    /// celui qui compte, depuis que le critère de taille, lui, est exempté
+    /// pour la sortie désignée (31 août 2026). Sans ce test, l'exemption
+    /// aurait pu s'étendre en silence à `deja_prises`, et deux fenêtres
+    /// auraient montré la même image.
     #[test]
     fn la_designation_ne_court_circuite_pas_le_filtre_des_prises() {
         let (toutes, avant) = montage_du_lot_30();
@@ -185,6 +200,7 @@ mod tests {
                 1860,
                 1080,
                 &[NOTRE.to_string()],
+                None,
             )
             .is_none(),
             "une sortie déjà attribuée à une session vivante reste refusée"

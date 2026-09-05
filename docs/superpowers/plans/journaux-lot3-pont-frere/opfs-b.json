@@ -1,0 +1,212 @@
+{
+  "etiquette": "b",
+  "instant": "2026-09-05T00:19:56.795Z",
+  "etapes": [
+    {
+      "t": "2026-09-05T00:19:57.259Z",
+      "m": "injection armée au niveau navigateur"
+    },
+    {
+      "t": "2026-09-05T00:20:03.873Z",
+      "m": "injection vue dans le hub",
+      "presente": true,
+      "chemin": "/",
+      "etapes": [
+        {
+          "t": 1788567599875,
+          "m": "injection item3 posée sur /"
+        }
+      ]
+    },
+    {
+      "0": {
+        "nom": "a-renommer.txt",
+        "kind": "file",
+        "taille": 38
+      },
+      "1": {
+        "nom": "sous-dossier",
+        "kind": "directory",
+        "enfants": [
+          "autre.txt"
+        ]
+      },
+      "2": {
+        "nom": "temoin-1.txt",
+        "kind": "file",
+        "taille": 24
+      },
+      "3": {
+        "nom": "temoin-2.txt",
+        "kind": "file",
+        "taille": 31
+      },
+      "t": "2026-09-05T00:20:03.963Z",
+      "m": "racine locale préparée (OPFS)"
+    },
+    {
+      "t": "2026-09-05T00:20:03.970Z",
+      "m": "clic sur « Choisir mon dossier »",
+      "clique": true,
+      "texte": "Choisir mon dossier"
+    },
+    {
+      "t": "2026-09-05T00:20:04.973Z",
+      "m": "pont monté côté navigateur",
+      "etat": "Lecteur « Mes Fichiers » monté sur « Mes documents ».",
+      "ouvert": true
+    },
+    {
+      "t": "2026-09-05T00:20:04.974Z",
+      "m": "maintien de 150 s — l'observateur de l'invité travaille pendant ce temps"
+    },
+    {
+      "0": {
+        "nom": "a-renommer.txt",
+        "kind": "file",
+        "taille": 38
+      },
+      "1": {
+        "nom": "sous-dossier",
+        "kind": "directory",
+        "enfants": [
+          "autre.txt"
+        ]
+      },
+      "2": {
+        "nom": "temoin-1.txt",
+        "kind": "file",
+        "taille": 24
+      },
+      "3": {
+        "nom": "temoin-2.txt",
+        "kind": "file",
+        "taille": 31
+      },
+      "t": "2026-09-05T00:20:04.982Z",
+      "m": "relecture AVANT que l éditeur touche quoi que ce soit"
+    },
+    {
+      "0": {
+        "nom": "renomme.txt",
+        "kind": "file",
+        "taille": 38
+      },
+      "1": {
+        "nom": "sous-dossier",
+        "kind": "directory",
+        "enfants": [
+          "autre.txt"
+        ]
+      },
+      "2": {
+        "nom": "temoin-1.txt",
+        "kind": "file",
+        "taille": 24
+      },
+      "t": "2026-09-05T00:22:35.086Z",
+      "m": "relecture APRÈS l éditeur"
+    }
+  ],
+  "vm": "677a3953-14c7-4364-92c3-bd17ecddf8d2",
+  "prefixe": "3sxuA9dd56NpVdHi37R86g",
+  "injection_vue": {
+    "presente": true,
+    "chemin": "/",
+    "etapes": [
+      {
+        "t": 1788567599875,
+        "m": "injection item3 posée sur /"
+      }
+    ]
+  },
+  "opfs_prepare": [
+    {
+      "nom": "a-renommer.txt",
+      "kind": "file",
+      "taille": 38
+    },
+    {
+      "nom": "sous-dossier",
+      "kind": "directory",
+      "enfants": [
+        "autre.txt"
+      ]
+    },
+    {
+      "nom": "temoin-1.txt",
+      "kind": "file",
+      "taille": 24
+    },
+    {
+      "nom": "temoin-2.txt",
+      "kind": "file",
+      "taille": 31
+    }
+  ],
+  "clic": {
+    "clique": true,
+    "texte": "Choisir mon dossier"
+  },
+  "etat_pont": {
+    "etat": "Lecteur « Mes Fichiers » monté sur « Mes documents ».",
+    "ouvert": true
+  },
+  "relecture_avant_editeur": [
+    {
+      "nom": "a-renommer.txt",
+      "kind": "file",
+      "taille": 38
+    },
+    {
+      "nom": "sous-dossier",
+      "kind": "directory",
+      "enfants": [
+        "autre.txt"
+      ]
+    },
+    {
+      "nom": "temoin-1.txt",
+      "kind": "file",
+      "taille": 24
+    },
+    {
+      "nom": "temoin-2.txt",
+      "kind": "file",
+      "taille": 31
+    }
+  ],
+  "relecture_apres_editeur": [
+    {
+      "nom": "renomme.txt",
+      "kind": "file",
+      "taille": 38
+    },
+    {
+      "nom": "sous-dossier",
+      "kind": "directory",
+      "enfants": [
+        "autre.txt"
+      ]
+    },
+    {
+      "nom": "temoin-1.txt",
+      "kind": "file",
+      "taille": 24
+    }
+  ],
+  "etapes_page": [
+    {
+      "t": 1788567599875,
+      "m": "injection item3 posée sur /"
+    },
+    {
+      "t": 1788567603927,
+      "m": "OPFS préparé : sous-dossier/, a-renommer.txt, temoin-1.txt, temoin-2.txt"
+    },
+    {
+      "t": 1788567603967,
+      "m": "showDirectoryPicker substitué : poignée OPFS rendue"
+    }
+  ]
+}

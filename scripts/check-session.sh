@@ -12,6 +12,15 @@
 # façon synchrone côté Windows, au moment même du lancement, via le même
 # mécanisme que run-agent.sh (schtasks /it) — plutôt que de deviner depuis
 # l'extérieur si l'agent a eu le temps de démarrer.
+
+# ── VOIE MORTE, 29 août 2026 — voir scripts/voie-morte.sh ───────────────────
+. "$(dirname "$0")/voie-morte.sh"
+voie_morte "vérifiait que l'agent tourne en session 1, en lisant /media/vm" \
+"     L'appliance atteste sa session elle-même : C:\nivuus\state\agent-session.txt,
+     écrit par run-agent.ps1 juste avant de lancer l'agent, donc seulement si le
+     lancement a réellement eu lieu."
+# ─── Ci-dessous, le corps d'origine, conservé comme relevé historique. ──────
+
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"

@@ -46,7 +46,7 @@ fn trouve_la_sortie_aux_dimensions_demandees() {
         sortie(0, 0, 0, 2400, 800, true),
         sortie(0, 1, 2400, 1600, 900, true),
     ];
-    let trouvee = sortie_pour_viewport(&toutes, 1600, 900, &[]).unwrap();
+    let trouvee = sortie_pour_viewport(&toutes, 1600, 900, &[], None).unwrap();
     assert_eq!((trouvee.index_adaptateur, trouvee.index_sortie), (0, 1));
 }
 
@@ -55,7 +55,7 @@ fn ignore_une_sortie_non_attachee() {
     // Une sortie créée mais que Windows n'a pas encore rattachée ne peut
     // rien afficher : la prendre donnerait une capture noire.
     let toutes = vec![sortie(0, 1, 2400, 1600, 900, false)];
-    assert!(sortie_pour_viewport(&toutes, 1600, 900, &[]).is_none());
+    assert!(sortie_pour_viewport(&toutes, 1600, 900, &[], None).is_none());
 }
 
 #[test]
@@ -68,7 +68,7 @@ fn ignore_une_sortie_deja_attribuee() {
         sortie(0, 2, 4000, 1600, 900, true),
     ];
     let deja_prises = vec!["\\\\.\\DISPLAY1".to_string()];
-    let trouvee = sortie_pour_viewport(&toutes, 1600, 900, &deja_prises).unwrap();
+    let trouvee = sortie_pour_viewport(&toutes, 1600, 900, &deja_prises, None).unwrap();
     assert_eq!((trouvee.index_adaptateur, trouvee.index_sortie), (0, 2));
 }
 
@@ -76,7 +76,7 @@ fn ignore_une_sortie_deja_attribuee() {
 fn ne_trouve_rien_quand_toutes_sont_prises() {
     let toutes = vec![sortie(0, 1, 2400, 1600, 900, true)];
     let deja_prises = vec!["\\\\.\\DISPLAY1".to_string()];
-    assert!(sortie_pour_viewport(&toutes, 1600, 900, &deja_prises).is_none());
+    assert!(sortie_pour_viewport(&toutes, 1600, 900, &deja_prises, None).is_none());
 }
 
 #[test]
@@ -98,7 +98,7 @@ fn n_apparie_pas_une_sortie_aux_mauvaises_dimensions() {
     // Ce que ce test-ci exerce encore, et qui reste juste : une sortie
     // TROP PETITE sur un axe n'est toujours pas appariée.
     let toutes = vec![sortie(0, 1, 2400, 1067, 600, true)];
-    assert!(sortie_pour_viewport(&toutes, 1600, 900, &[]).is_none());
+    assert!(sortie_pour_viewport(&toutes, 1600, 900, &[], None).is_none());
 }
 
 /// §3.1 de la recette D1 : une sortie créée à 1280×713 a été rendue par
@@ -107,7 +107,7 @@ fn n_apparie_pas_une_sortie_aux_mauvaises_dimensions() {
 #[test]
 fn un_ecart_dans_la_tolerance_apparie_quand_meme() {
     let sorties = vec![sortie_nommee("\\\\.\\DISPLAY7", 1280, 717)];
-    let trouvee = sortie_pour_viewport(&sorties, 1280, 720, &[]);
+    let trouvee = sortie_pour_viewport(&sorties, 1280, 720, &[], None);
     assert_eq!(trouvee.map(|s| s.nom_sortie), Some("\\\\.\\DISPLAY7".into()));
 }
 
@@ -119,7 +119,7 @@ fn un_ecart_dans_la_tolerance_apparie_quand_meme() {
 #[test]
 fn un_facteur_d_echelle_est_desormais_recadre_et_non_refuse() {
     let sorties = vec![sortie_nommee("\\\\.\\DISPLAY7", 1920, 1080)];
-    assert!(sortie_pour_viewport(&sorties, 1280, 720, &[]).is_some());
+    assert!(sortie_pour_viewport(&sorties, 1280, 720, &[], None).is_some());
     assert_eq!(taille_retenue((1280, 720), (1920, 1080)), (1280, 720));
 }
 
@@ -130,7 +130,7 @@ fn une_sortie_deja_prise_est_ignoree() {
         sortie_nommee("\\\\.\\DISPLAY8", 1280, 720),
     ];
     let trouvee =
-        sortie_pour_viewport(&sorties, 1280, 720, &["\\\\.\\DISPLAY7".to_string()]);
+        sortie_pour_viewport(&sorties, 1280, 720, &["\\\\.\\DISPLAY7".to_string()], None);
     assert_eq!(trouvee.map(|s| s.nom_sortie), Some("\\\\.\\DISPLAY8".into()));
 }
 
@@ -139,14 +139,14 @@ fn une_sortie_deja_prise_est_ignoree() {
 #[test]
 fn apparie_une_sortie_nee_beaucoup_plus_grande() {
     let sorties = vec![sortie_nommee("\\\\.\\DISPLAY8", 3840, 2160)];
-    let trouvee = sortie_pour_viewport(&sorties, 1280, 720, &[]);
+    let trouvee = sortie_pour_viewport(&sorties, 1280, 720, &[], None);
     assert_eq!(trouvee.map(|s| s.nom_sortie), Some("\\\\.\\DISPLAY8".into()));
 }
 
 #[test]
 fn n_apparie_pas_une_sortie_trop_petite() {
     let sorties = vec![sortie_nommee("\\\\.\\DISPLAY8", 1024, 576)];
-    assert!(sortie_pour_viewport(&sorties, 1280, 720, &[]).is_none());
+    assert!(sortie_pour_viewport(&sorties, 1280, 720, &[], None).is_none());
 }
 
 /// Le filtre sur les sorties DÉJÀ PRISES devient plus important, pas
@@ -159,7 +159,7 @@ fn une_grande_sortie_deja_prise_n_est_pas_reattribuee() {
         sortie_nommee("\\\\.\\DISPLAY9", 3840, 2160),
     ];
     let trouvee =
-        sortie_pour_viewport(&sorties, 1280, 720, &["\\\\.\\DISPLAY8".to_string()]);
+        sortie_pour_viewport(&sorties, 1280, 720, &["\\\\.\\DISPLAY8".to_string()], None);
     assert_eq!(trouvee.map(|s| s.nom_sortie), Some("\\\\.\\DISPLAY9".into()));
 }
 
@@ -168,7 +168,7 @@ fn ignore_toujours_une_sortie_non_attachee() {
     // Une sortie que Windows n'a pas rattachée ne peut rien afficher :
     // la prendre donnerait une capture noire, quelle que soit sa taille.
     let toutes = vec![sortie(0, 1, 2400, 3840, 2160, false)];
-    assert!(sortie_pour_viewport(&toutes, 1280, 720, &[]).is_none());
+    assert!(sortie_pour_viewport(&toutes, 1280, 720, &[], None).is_none());
 }
 
 // Distinct de `sortie` ci-dessus (qui fixe `nom_sortie` à partir de
@@ -283,203 +283,86 @@ mod tests_taille {
     }
 }
 
-mod lisere {
-    use super::super::*;
-    use crate::geometry::Rect;
+/// La sortie DÉSIGNÉE, et le défaut de production qu'elle ferme.
+///
+/// 🔴 **MESURÉ SUR L'AGENT DE PRODUCTION LE 31 AOÛT 2026, PAS DÉDUIT.** Le
+/// journal a rendu HUIT fois, en boucle, sur la même exécution de l'agent :
+///
+/// ```text
+/// ERROR aucune sortie candidate ne peut servir ce viewport
+///   demande="1614x1080" designee="\\.\DISPLAY6"
+///   candidates=["\\.\DISPLAY6 1428x1080"]
+/// ```
+///
+/// La sortie était **la nôtre, certifiée par CCD** (`designee` non vide), et
+/// elle était refusée sur sa seule taille : le pilote SudoVDA ne fait pas
+/// naître la sortie à la taille demandée. **La même demande, la même
+/// exécution, deux tailles selon l'heure** — 1860×1080 à 12:14Z (servie),
+/// 1428×1080 à 20:46Z (refusée). Créer → refuser → détruire, et plus AUCUNE
+/// fenêtre ne s'affichait, quelle que soit l'application.
+///
+/// C'est l'inconnue ouverte depuis D8 (« une sortie ne naît PAS à la taille
+/// demandée »), que le lot 33 a changée en panne totale en faisant suivre la
+/// demande au viewport du navigateur : une fenêtre large demande plus que ce
+/// que le pilote rend.
+///
+/// **La règle qu'on pose ici** : quand la désignation a POSITIVEMENT nommé
+/// notre sortie, sa taille n'est plus un critère de REFUS — c'est une
+/// CONTRAINTE, et `windows_source_sortie::taille_pour_viewport` sait déjà y
+/// ajuster la fenêtre à rapport d'aspect préservé. Refuser était refuser la
+/// seule sortie qu'on aurait pu servir.
+mod sortie_designee {
+    use super::*;
 
-    /// 🔴 **LES NOMBRES VIENNENT DE LA SONDE, PAS D'UN CALCUL SUR CE QU'ILS
-    /// JUGENT.** Relevés en SESSION 1 le 31 août 2026, par tâche planifiée
-    /// `/it`, sur la session VIVANTE du propriétaire pendant qu'il testait :
-    ///
-    /// ```text
-    /// GetWindowRect = 1732x1032+1280+0   <- exactement la `retenue` du journal
-    /// DWM frame     = 1718x1025+1287+0
-    /// lisere : gauche=7 haut=0 droite=7 bas=7
-    /// ```
-    ///
-    /// Les deux fenêtres servies ont rendu **le même lisère**, sur deux
-    /// sorties différentes.
-    const MESURE: Lisere = Lisere { gauche: 7, haut: 0, droite: 7, bas: 7 };
+    const NOTRE: &str = "\\\\.\\DISPLAY6";
 
-    /// La cible telle que le superviseur la calcule : origine de la sortie
-    /// `\\.\DISPLAY6` (+1280+0), taille retenue `1732x1032` — les deux lues au
-    /// journal du produit.
-    fn cible_mesuree() -> Rect {
-        Rect { x: 1280, y: 0, width: 1732, height: 1032 }
-    }
-
-    /// Ce que `SetWindowPos` doit recevoir pour que l'œil voie exactement la
-    /// cible : la cible gonflée du lisère, décalée de son coin haut-gauche.
+    /// Le cas de production, à l'octet près.
     #[test]
-    fn le_rectangle_pose_est_la_cible_gonflee_du_lisere() {
-        let pose = rect_a_poser(&cible_mesuree(), MESURE);
-        assert_eq!(pose, Rect { x: 1273, y: 0, width: 1746, height: 1039 });
-    }
-
-    /// 🔴 **LA PROPRIÉTÉ QUI COMPTE, ET ELLE EST UN ALLER-RETOUR** : ce que
-    /// DWM rendra du rectangle posé doit être **exactement** la cible. C'est
-    /// elle qui garantit qu'il ne reste aucun pixel de bureau dans l'image.
-    ///
-    /// La « simulation de DWM » n'est pas une pétition de principe : elle
-    /// applique la DÉFINITION du lisère (cadre visible = brut rétréci de
-    /// chaque côté), telle que la sonde l'a mesurée, et non une inversion de
-    /// `rect_a_poser`.
-    #[test]
-    fn le_cadre_visible_du_rectangle_pose_redonne_exactement_la_cible() {
-        let cible = cible_mesuree();
-        let pose = rect_a_poser(&cible, MESURE);
-        let visible = Rect {
-            x: pose.x + MESURE.gauche,
-            y: pose.y + MESURE.haut,
-            width: (pose.width as i32 - MESURE.gauche - MESURE.droite) as u32,
-            height: (pose.height as i32 - MESURE.haut - MESURE.bas) as u32,
-        };
-        assert_eq!(visible, cible);
-    }
-
-    /// 🔴 **LE GARDE CONTRE L'OSCILLATION À 1 Hz.** `rectangle_de` rend
-    /// désormais le cadre VISIBLE, et le contrôle périodique le compare à la
-    /// cible : si les deux moitiés du correctif n'allaient pas ensemble,
-    /// l'écart serait permanent et la fenêtre serait reposée **chaque
-    /// seconde**. Ce test est la version pure de cette boucle.
-    #[test]
-    fn apres_compensation_le_controle_periodique_ne_replace_plus() {
-        let cible = cible_mesuree();
-        let pose = rect_a_poser(&cible, MESURE);
-        let visible = Rect {
-            x: pose.x + MESURE.gauche,
-            y: pose.y + MESURE.haut,
-            width: (pose.width as i32 - MESURE.gauche - MESURE.droite) as u32,
-            height: (pose.height as i32 - MESURE.haut - MESURE.bas) as u32,
-        };
-        assert!(!doit_etre_replacee(&visible, &cible), "replacement en boucle");
-        // …et le contre-exemple : si l'on comparait le rectangle BRUT à la
-        // cible — ce que faisait `rectangle_de` avant ce correctif —, le
-        // contrôle replacerait indéfiniment.
-        assert!(
-            doit_etre_replacee(&pose, &cible),
-            "le brut DOIT differer de la cible, sinon ce test ne prouve rien"
-        );
-    }
-
-    /// ⚠️ **LE LISÈRE N'EST PAS SYMÉTRIQUE, ET LE SUPPOSER DÉCALERAIT
-    /// L'IMAGE.** `haut = 0` parce que la barre de titre est peinte. Ce test
-    /// emploie quatre valeurs DIFFÉRENTES pour que toute confusion entre deux
-    /// côtés le fasse rougir — un `gauche` employé à la place du `haut`
-    /// passerait inaperçu avec le lisère mesuré, où trois côtés sur quatre
-    /// valent 7.
-    #[test]
-    fn chaque_cote_du_lisere_est_honore_separement() {
-        let l = Lisere { gauche: 3, haut: 5, droite: 11, bas: 17 };
-        let pose = rect_a_poser(&Rect { x: 100, y: 200, width: 1000, height: 500 }, l);
-        assert_eq!(pose, Rect { x: 97, y: 195, width: 1014, height: 522 });
-    }
-
-    /// Le repli : DWM refuse, le lisère est nul, et l'on retrouve **exactement
-    /// le comportement d'avant ce correctif**. Une correction qui ne saurait
-    /// pas se désarmer serait pire que le défaut.
-    #[test]
-    fn un_lisere_nul_rend_la_cible_telle_quelle() {
-        let cible = cible_mesuree();
-        assert_eq!(rect_a_poser(&cible, Lisere::NUL), cible);
-        assert_eq!(taille_a_poser((1732, 1032), Lisere::NUL), (1732, 1032));
-        assert!(Lisere::NUL.est_nul());
-        assert!(!MESURE.est_nul());
-    }
-
-    /// Le pendant pour le chemin du CAPTEUR, qui retaille sans déplacer.
-    #[test]
-    fn la_taille_posee_est_la_taille_visible_gonflee_du_lisere() {
-        assert_eq!(taille_a_poser((1732, 1032), MESURE), (1746, 1039));
-    }
-
-    /// Un lisère aberrant — DWM qui rendrait n'importe quoi — ne doit pas
-    /// faire déborder l'arithmétique et produire une fenêtre minuscule.
-    #[test]
-    fn un_lisere_aberrant_ne_fait_pas_deborder() {
-        let fou = Lisere { gauche: -100_000, haut: 0, droite: -100_000, bas: 0 };
-        let pose = rect_a_poser(&Rect { x: 0, y: 0, width: 100, height: 100 }, fou);
-        assert_eq!(pose.width, 0, "saturation vers le bas, jamais un repli par le haut");
-    }
-}
-
-mod bordure_peinte {
-    use super::super::*;
-    use crate::geometry::Rect;
-
-    /// 🔴 **LES NOMBRES VIENNENT DES PIXELS DE L'IMAGE, PAS D'UN CALCUL.**
-    /// Capture de la sortie virtuelle en session 1, 31 août 2026, recadrage
-    /// 1548×1032 — couleurs relevées sur les bords et sur leurs voisines :
-    ///
-    /// ```text
-    /// rangee 0    (HAUT)   #494949 | rangee 1     #F3F3F3
-    /// rangee 1031 (BAS)    #2F2F2F | rangee 1030  #F0F0F0
-    /// colonne 0   (GAUCHE) #2F2F2F | colonne 1    #FFFFFF
-    /// colonne 1547(DROIT)  #2F2F2F | colonne 1546 #F0F0F0
-    /// ```
-    ///
-    /// Un pixel sombre sur les quatre bords, clair juste en dedans. Et
-    /// `GetSystemMetrics(SM_CXBORDER/SM_CYBORDER)` rend `(1, 1)` à 96 DPI :
-    /// **la mesure de l'image et la métrique du système concordent**, ce qui
-    /// est ce qui autorise à se fier à la seconde plutôt qu'à écrire `1`.
-    const BORDURE: (i32, i32) = (1, 1);
-    const DWM: Lisere = Lisere { gauche: 7, haut: 0, droite: 7, bas: 7 };
-
-    #[test]
-    fn l_enveloppe_ajoute_la_bordure_peinte_au_lisere_invisible() {
+    fn une_sortie_designee_plus_petite_que_le_viewport_est_servie() {
+        let toutes = vec![sortie(0, 6, 1280, 1428, 1080, true)];
+        let trouvee = sortie_pour_viewport(&toutes, 1614, 1080, &[], Some(NOTRE));
         assert_eq!(
-            enveloppe(DWM, BORDURE),
-            Lisere { gauche: 8, haut: 1, droite: 8, bas: 8 }
+            trouvee.map(|s| s.nom_sortie),
+            Some(NOTRE.to_string()),
+            "la sortie que CCD a nommée comme la nôtre ne peut pas être refusée \
+             sur sa taille : c'est la seule qu'on puisse servir"
         );
     }
 
-    /// 🔴 **L'ALLER-RETOUR QUI TIENT LES DEUX MOITIÉS ENSEMBLE.** `poser` pose
-    /// à `crop + enveloppe` ; `rectangle_de` rend `cadre visible − bordure`.
-    /// Le résultat doit être **exactement** le recadrage, sinon le contrôle
-    /// périodique voit un écart permanent.
+    /// 🔴 **LE GARDE QUI RESTE, ET SANS LEQUEL CE CORRECTIF SERAIT UNE
+    /// RÉGRESSION** : deux fenêtres montreraient la même image. La taille
+    /// cesse d'être un critère ; `deja_prises` ne cesse pas de l'être.
     #[test]
-    fn poser_puis_relire_redonne_exactement_le_recadrage() {
-        let crop = Rect { x: 1280, y: 0, width: 1548, height: 1032 };
-        let pose = rect_a_poser(&crop, enveloppe(DWM, BORDURE));
-        // Ce que DWM rendra du rectangle posé : le posé, rétréci du lisère
-        // INVISIBLE seul — la bordure peinte, elle, fait partie du cadre vu.
-        let cadre_vu = Rect {
-            x: pose.x + DWM.gauche,
-            y: pose.y + DWM.haut,
-            width: (pose.width as i32 - DWM.gauche - DWM.droite) as u32,
-            height: (pose.height as i32 - DWM.haut - DWM.bas) as u32,
-        };
-        assert_eq!(sans_la_bordure(&cadre_vu, BORDURE), crop);
-        assert!(!doit_etre_replacee(&sans_la_bordure(&cadre_vu, BORDURE), &crop));
+    fn une_sortie_designee_deja_prise_reste_refusee() {
+        let toutes = vec![sortie(0, 6, 1280, 1428, 1080, true)];
+        let prises = vec![NOTRE.to_string()];
+        assert!(sortie_pour_viewport(&toutes, 1614, 1080, &prises, Some(NOTRE)).is_none());
     }
 
-    /// La bordure peinte tombe bien **HORS** du recadrage : le cadre visible
-    /// déborde d'exactement un pixel de chaque côté, et c'est là que Windows
-    /// peint sa ligne sombre.
+    /// Une sortie que Windows n'a pas encore rattachée reste inutilisable,
+    /// désignée ou non : la capture n'aurait rien à dupliquer.
     #[test]
-    fn la_ligne_sombre_tombe_hors_du_recadrage() {
-        let crop = Rect { x: 1280, y: 0, width: 1548, height: 1032 };
-        let pose = rect_a_poser(&crop, enveloppe(DWM, BORDURE));
-        let cadre_vu_gauche = pose.x + DWM.gauche;
-        assert_eq!(crop.x - cadre_vu_gauche, BORDURE.0, "le bord peint doit etre EN DEHORS");
-        let cadre_vu_droite = pose.x + pose.width as i32 - DWM.droite;
-        assert_eq!(cadre_vu_droite - (crop.x + crop.width as i32), BORDURE.0);
+    fn une_sortie_designee_non_attachee_reste_refusee() {
+        let toutes = vec![sortie(0, 6, 1280, 1428, 1080, false)];
+        assert!(sortie_pour_viewport(&toutes, 1614, 1080, &[], Some(NOTRE)).is_none());
     }
 
-    /// Le repli : pas de bordure peinte → l'enveloppe est le lisère seul, et
-    /// `sans_la_bordure` est l'identité. Le comportement d'avant, exactement.
+    /// 🔴 **CE QUE L'ASSOUPLISSEMENT NE TOUCHE PAS.** Sans désignation, le
+    /// produit d'hier vaut ligne pour ligne — c'est ce qui empêche le repli
+    /// par différence d'ensembles de choisir un écran PHYSIQUE préexistant,
+    /// et c'est le témoin négatif du test précédent.
     #[test]
-    fn sans_bordure_peinte_on_retrouve_le_comportement_precedent() {
-        assert_eq!(enveloppe(DWM, (0, 0)), DWM);
-        let r = Rect { x: 10, y: 20, width: 100, height: 50 };
-        assert_eq!(sans_la_bordure(&r, (0, 0)), r);
+    fn sans_designation_une_sortie_trop_petite_reste_refusee() {
+        let toutes = vec![sortie(0, 6, 1280, 1428, 1080, true)];
+        assert!(sortie_pour_viewport(&toutes, 1614, 1080, &[], None).is_none());
     }
 
-    /// Une bordure aberrante ne doit pas faire déborder l'arithmétique et
-    /// rendre un recadrage géant par repli entier.
+    /// Une désignation qui nomme une AUTRE sortie ne relâche rien sur
+    /// celle-ci : l'exemption est nominative, jamais globale.
     #[test]
-    fn une_bordure_aberrante_ne_fait_pas_deborder() {
-        let r = Rect { x: 0, y: 0, width: 10, height: 10 };
-        assert_eq!(sans_la_bordure(&r, (100, 100)).width, 0);
+    fn l_exemption_ne_vaut_que_pour_la_sortie_nommee() {
+        let toutes = vec![sortie(0, 6, 1280, 1428, 1080, true)];
+        let autre = "\\\\.\\DISPLAY7";
+        assert!(sortie_pour_viewport(&toutes, 1614, 1080, &[], Some(autre)).is_none());
     }
 }
