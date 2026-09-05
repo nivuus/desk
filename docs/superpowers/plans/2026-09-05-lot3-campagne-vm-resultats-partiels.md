@@ -3,8 +3,9 @@
 **5 septembre 2026.** Branche `campagne-vm-mesures`, quatre commits, de
 `ffdc839` **exclu** à `75c6200`.
 
-> 🔴 **CE DOCUMENT NE CLÔT PAS LE LOT.** Onze items sur douze portent un chiffre
-> daté ; **un seul** n'a pas été joué. Écrire « lot 3 clos » serait faux, et le § 5
+> 🔴 **LES DOUZE ITEMS SONT JOUÉS, ET CE DOCUMENT NE CLÔT PAS LE LOT POUR
+> AUTANT.** Douze portent un relevé daté ; **plusieurs concluent par un
+> blocage NOMMÉ plutôt que par un chiffre**, et le § 5 dit lequel. Écrire « lot 3 clos » serait faux, et le § 5
 > nomme ce qui reste dû, item par item.
 >
 > ⚠️ **Aucun chiffre de ce document ne se recopie sans relancer sa commande.**
@@ -48,7 +49,7 @@ sha256 `3C270C6C2C65D6DB7CCA261E42AFB57902B63D2A76DC2EEFC8C3185A6713940C`,
 20 583 167 octets des deux côtés. Aucun binaire tiers n'a été réutilisé, et
 rien n'a été redéployé.
 
-## 2. Les onze items qui portent un chiffre
+## 2. Les douze items, et ce que chacun porte
 
 | Item | Verdict | Le chiffre |
 | --- | --- | --- |
@@ -63,6 +64,7 @@ rien n'a été redéployé.
 | **2 (3.6)** les trois murs | **deux confirmés, un DÉPLACÉ** | débit **32,82 Kio/s** / 78 s ; lecture **128 Kio OK, 192 ÉCHOUE** ; énumération **3 200 COMPLET** (F4 : échouant), 4 000 échoue |
 | **8 (3.2)** propriétaire mono-fenêtre | **n'existe pas — cohérent avec le legs** | livré **3 msg + 1 accent** ; mono **0 + 0** ; rouge **0 + 0** avec ses deux traces de désarmement |
 | **10 (3.5)** mort de capture audio | **2 causes tentées, aucune ne tue** | témoin : **15** fautes, **1** mort VUE, **1** reconstruction ; 3ᵉ cause non tentable (C7) |
+| **4** le rejeu des douze pilotes | **0 / 12 sessions — cause NOMMÉE** | 12/12 `node --check` OK ; **7** bloqués sur `/auth/connexion` **404** (mode `pomerium`) ; rouge **vacueuse**, mesurée |
 
 Chaque item a son répertoire `journaux-lot3-<item>/`, avec son `verdict.md`,
 ses journaux bruts **versionnés**, et son instrument quand il en a un.
@@ -129,14 +131,14 @@ C'est le constat le plus transférable de cette campagne : **le plan lui-même
   (`The process cannot access the file … because it is being used by another
   process`). Le remède reste le bon ; la description du symptôme ne l'est pas.
 
-## 5. Ce qui reste dû — un item, et les moitiés manquantes des autres
+## 5. Ce qui reste dû — aucun item entier, et les moitiés manquantes
 
 | Item | Ce qui reste |
 | --- | --- |
 | **1 (3.7)** | **JOUÉ** — reste : VS Code, Word, LibreOffice, **aucun installé sur cette appliance** (dette C7) |
 | **2 (3.6)** | **JOUÉ** — reste : encadrer le mur d'entrées entre 3 200 et 4 000, et la CAUSE de son déplacement |
 | **3 (3.8)** | **JOUÉ** — ne se reproduit plus ; reste : le renommage de RÉPERTOIRE, et un jeu plus grand |
-| **4** le rejeu des douze pilotes | **entier, non joué** |
+| **4** | **TENTÉ** — 0/12 sessions ; 7 bloqués par le mode `pomerium`, la rouge vacueuse |
 | **8 (3.2)** | **JOUÉ** — reste : séparer « pas de propriétaire » de « pas de session », bloqué par le `0x8000FFFF` du lot 31 |
 | **10 (3.5)** | **JOUÉ** — reste : la 3ᵉ cause (bascule du rendu par défaut), bloquée par **C7** |
 | 6 | le bras **« boucher »** (`SuspendThread` sur une session) n'a pas été monté : le refus au palier, la progression en puissances de deux et `session_cible` ne sont **pas** mesurés |

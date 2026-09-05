@@ -1,0 +1,109 @@
+======== pilote-accent-a1.mjs ========
+  node --check : OK
+  premiere erreur : Error: ENOENT: no such file or directory, open '/tmp/a1-identite.env'
+    at lireIdentite (file:///home/mallanic/Projects/Nivuus/packages/desk/docs/superpowers/plans/journaux-accent-a1/instrument/pilote-accent-a1.mjs:59:21)
+    at file:///home/mallanic/Projects/Nivuus/packages/desk/docs/superpowers/plans/journaux-accent-a1/instrument/pilote-accent-a1.mjs:172:18
+    at ModuleJob.run (node:internal/modules/esm/module_job:377:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:689:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/tmp/a1-identite.env'
+}
+
+Node.js v24.9.0
+======== pilote-recette-e2.mjs ========
+  node --check : OK
+  premiere erreur : Error: POST http://192.168.3.1:3445/auth/connexion a rendu 404 (sans motif) — le compte de recette RECETTE_EMAIL existe-t-il, et son mot de passe est-il celu
+        throw new Error(
+              ^
+
+Error: POST http://192.168.3.1:3445/auth/connexion a rendu 404 (sans motif) — le compte de recette RECETTE_EMAIL existe-t-il, et son mot de passe est-il celui de RECETTE_MOTDEPASSE ?
+    at obtenirPaire (file:///home/mallanic/Projects/Nivuus/packages/desk/client/recette/jeton-recette.mjs:75:15)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async semerJeton (file:///home/mallanic/Projects/Nivuus/packages/desk/client/recette/jeton-recette.mjs:106:19)
+    at async avecChrome (file:///home/mallanic/Projects/Nivuus/packages/desk/docs/superpowers/plans/journaux-micro-e2/pilote-recette-e2.mjs:358:9)
+    at async principal (file:///home/mallanic/Projects/Nivuus/packages/desk/docs/superpowers/plans/journaux-micro-e2/pilote-recette-e2.mjs:379:18)
+    at async file:///home/mallanic/Projects/Nivuus/packages/desk/docs/superpowers/plans/journaux-micro-e2/pilote-recette-e2.mjs:458:1
+
+Node.js v24.9.0
+======== pilote-e3.mjs ========
+  node --check : OK
+  premiere erreur : Error: /auth/connexion a rendu 404 (sans motif)
+[2026-09-05T01:55:36.778Z] ERREUR : Error: /auth/connexion a rendu 404 (sans motif)
+[2026-09-05T01:55:36.779Z] sortie : 12
+======== injection-e3.js ========
+  node --check : OK
+  NON EXECUTABLE : c'est une injection, posee par pilote-e3.mjs
+======== pilote-f1.mjs ========
+  node --check : OK
+  premiere erreur : Error: /auth/connexion a rendu 404 (sans motif)
+[2026-09-05T01:55:37.011Z] obtention du jeton de recette
+[2026-09-05T01:55:37.121Z] ERREUR : Error: /auth/connexion a rendu 404 (sans motif)
+[2026-09-05T01:55:37.122Z] resultat ecrit : /var/tmp/lot3-rejeu-pilote-f1.mjs.json
+======== pilote-f2.mjs ========
+  node --check : OK
+  premiere erreur : Error: /auth/connexion a rendu 404 (sans motif)
+[2026-09-05T01:55:38.145Z] ERREUR : Error: /auth/connexion a rendu 404 (sans motif)
+[2026-09-05T01:55:38.146Z] resultat ecrit : /var/tmp/lot3-rejeu-pilote-f2.mjs.json
+======== pilote-f3.mjs ========
+  node --check : OK
+  premiere erreur : Error: /auth/connexion a rendu 404 (sans motif)
+[2026-09-05T01:55:39.115Z] ERREUR : Error: /auth/connexion a rendu 404 (sans motif)
+[2026-09-05T01:55:39.116Z] resultat ecrit : /var/tmp/lot3-rejeu-pilote-f3.mjs.json
+======== pilote-f4.mjs ========
+  node --check : OK
+  premiere erreur : Error: /auth/connexion a rendu 404 (sans motif)
+[2026-09-05T01:55:40.165Z] ERREUR : Error: /auth/connexion a rendu 404 (sans motif)
+[2026-09-05T01:55:40.166Z] resultat ecrit : 12
+======== pilote-f5.mjs ========
+  node --check : OK
+  premiere erreur : Error: /auth/connexion a rendu 404 (sans motif)
+[2026-09-05T01:55:41.137Z] ERREUR : Error: /auth/connexion a rendu 404 (sans motif)
+[2026-09-05T01:55:41.138Z] releve ecrit : /var/tmp/lot3-rejeu-pilote-f5.mjs.json
+======== pilote-pp-p1.mjs ========
+  node --check : OK
+  premiere erreur : obligatoire : sans identité, '
+file:///home/mallanic/Projects/Nivuus/packages/desk/docs/superpowers/plans/journaux-presse-papier-p1/instrument/pilote-pp-p1.mjs:250
+    if (!chemin) throw new Error('--identite=<fichier> est obligatoire : sans identité, '
+                       ^
+
+Error: --identite=<fichier> est obligatoire : sans identité, la plateforme refuse l'agent et aucune session ne s'établit
+    at lireIdentite (file:///home/mallanic/Projects/Nivuus/packages/desk/docs/superpowers/plans/journaux-presse-papier-p1/instrument/pilote-pp-p1.mjs:250:24)
+    at file:///home/mallanic/Projects/Nivuus/packages/desk/docs/superpowers/plans/journaux-presse-papier-p1/instrument/pilote-pp-p1.mjs:282:18
+    at ModuleJob.run (node:internal/modules/esm/module_job:377:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:689:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+
+Node.js v24.9.0
+======== pilote-pp-p2.mjs ========
+  node --check : OK
+  premiere erreur : obligatoire : sans identité, '
+file:///home/mallanic/Projects/Nivuus/packages/desk/docs/superpowers/plans/journaux-presse-papier-p2/instrument/pilote-pp-p2.mjs:216
+    if (!chemin) throw new Error('--identite=<fichier> est obligatoire : sans identité, '
+                       ^
+
+Error: --identite=<fichier> est obligatoire : sans identité, la plateforme refuse l'agent et aucune session ne s'établit
+    at lireIdentite (file:///home/mallanic/Projects/Nivuus/packages/desk/docs/superpowers/plans/journaux-presse-papier-p2/instrument/pilote-pp-p2.mjs:216:24)
+    at file:///home/mallanic/Projects/Nivuus/packages/desk/docs/superpowers/plans/journaux-presse-papier-p2/instrument/pilote-pp-p2.mjs:243:18
+    at ModuleJob.run (node:internal/modules/esm/module_job:377:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:689:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+
+Node.js v24.9.0
+======== pilote-pp-p3.mjs ========
+  node --check : OK
+  premiere erreur : obligatoire : sans identité, '
+file:///home/mallanic/Projects/Nivuus/packages/desk/docs/superpowers/plans/journaux-presse-papier-p3/instrument/pilote-pp-p3.mjs:259
+    if (!chemin) throw new Error('--identite=<fichier> est obligatoire : sans identité, '
+                       ^
+
+Error: --identite=<fichier> est obligatoire : sans identité, la plateforme refuse l'agent et aucune session ne s'établit
+    at lireIdentite (file:///home/mallanic/Projects/Nivuus/packages/desk/docs/superpowers/plans/journaux-presse-papier-p3/instrument/pilote-pp-p3.mjs:259:24)
+    at file:///home/mallanic/Projects/Nivuus/packages/desk/docs/superpowers/plans/journaux-presse-papier-p3/instrument/pilote-pp-p3.mjs:335:18
+    at ModuleJob.run (node:internal/modules/esm/module_job:377:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:689:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+
+Node.js v24.9.0
