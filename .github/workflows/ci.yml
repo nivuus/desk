@@ -1,0 +1,21 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  policy:
+    uses: nivuus/.github/.github/workflows/policy.yml@main
+  security:
+    uses: nivuus/.github/.github/workflows/security.yml@main
+  rust:
+    uses: nivuus/.github/.github/workflows/ci-rust.yml@main
+  node:
+    uses: nivuus/.github/.github/workflows/ci-node.yml@main
+  shell:
+    uses: nivuus/.github/.github/workflows/ci-shell.yml@main
+    with:
+      test-dirs: ""
+      shellcheck-paths: "."
