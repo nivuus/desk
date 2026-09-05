@@ -1,0 +1,12 @@
+bras=temoin
+lignes du segment                                    : 172
+--- TEMOIN DE VIE : la capture audio a-t-elle seulement existe ? ---
+  'fenetre servie'                                   : 1
+  'audio'                                            : 24
+--- LA SIGNATURE D UNE MORT DE CAPTURE ---
+  injection ARMEE (banc)                             : 1
+  'faute injectée (AUDIO_FAUTE_LECTURE)'             : 15
+  'lecture audio échouée, nouvelle tentative'        : 14
+  🔴 'capture arrêtée définitivement'                : 1
+  'capture audio reconstruite'                       : 1
+  'reconstruction de la capture audio refusée'       : 0

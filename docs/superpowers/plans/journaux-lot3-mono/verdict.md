@@ -14,9 +14,11 @@ MESSAGE** — là où le produit livré en pousse **3 et 1** sur le même geste.
 | --- | --- | --- | --- | --- |
 | **témoin** — produit LIVRÉ | **3** | **1** | **oui** (21 lignes) | oui |
 | **mono** — `SUPERVISEUR=0 CAPTEUR=0` | **0** | **0** | — | oui (16 lignes) |
-| ~~**rouge** — `PRESSE_PAPIER=0 ACCENT=0`~~ | ~~0~~ | ~~0~~ | **NON (0)** | oui | 
+| **rouge** — `PRESSE_PAPIER=0 ACCENT=0` | **0** | **0** | **oui** (1) | oui |
 
-🔴 **LE BRAS ROUGE EST REJETÉ, PAS ENCAISSÉ** — voir § 4.
+🔵 **LE BRAS ROUGE VAUT, ET SES DEUX TRACES DE DÉSARMEMENT SORTENT** — voir
+§ 4. ⚠️ **Il a fallu le rejeter DEUX FOIS avant**, pour une cause qui n'était
+pas celle que j'avais d'abord nommée.
 
 ⚠️ **Les deux chaînes comptées sont celles du CODE QUI LES ÉMET**, relues le
 jour même, jamais celles du plan :
@@ -103,38 +105,57 @@ mené à celle-ci :
    (`agent/src/demarrage/source.rs:52`), absent de cette VM. Remède : ouvrir un
    Bloc-notes en session 1 et viser **son** titre.
 
-## 4. 🔴 LE BRAS ROUGE EST REJETÉ — DEUX FOIS
+## 4. Le bras ROUGE — et la fausse attribution que j'ai dû retirer
 
 `PRESSE_PAPIER=0 ACCENT=0`, variables **à la bonne position** (lignes 35–36
-contre l'invocation ligne 62), agent vivant, capteur lancé
-(`capteur démarré tube="\\.\pipe\agent-capteur"`), et **0 message, 0 accent**.
-
-**Ce zéro ne prouve rien**, pour une raison mesurée :
+contre l'invocation ligne 62), **1 fenêtre servie**, et :
 
 ```
-fenetres SERVIES : 0     (bras témoin : 21 lignes)
+WARN fenetre{session=…:w-1}: agent::accent: accent de fenetre DESARME (ACCENT=0) …
+WARN agent::presse_papier: presse-papier DESARME (PRESSE_PAPIER=0) …      (×2)
+messages 'presse-papier de la VM'       : 0
+annonces 'accent de la fenetre Windows' : 0
 ```
 
-**Aucune fenêtre n'a été servie**, donc **aucun accent n'était possible**, avec
-ou sans `ACCENT=0`. Le zéro est rendu par l'absence de fenêtre, pas par le
-désarmement — *une rouge qui rougit pour la mauvaise raison*.
+🔴 **DEUX PREMIÈRES TENTATIVES DE CE BRAS ONT RENDU `fenetres SERVIES : 0`, ET
+J'AI ATTRIBUÉ CE ZÉRO AU MAUVAIS DÉFAUT.** J'ai écrit — ici et dans
+`CLAUDE.md` — qu'il était « bloqué par le défaut du lot 31 »
+(`Catastrophic failure 0x8000FFFF`). **C'ÉTAIT FAUX.**
 
-⚠️ **ET UNE SECONDE ANOMALIE, NON EXPLIQUÉE** : les traces de désarmement que
-`CLAUDE.md` promet — `presse-papier DESARME (PRESSE_PAPIER=0)` et
-`accent de fenetre DESARME (ACCENT=0)`, qui existent bien dans le code
-(`agent/src/presse_papier.rs:96`, `agent/src/accent.rs:238`, toutes deux dans
-un `OnceLock::get_or_init`) — **ne sont sorties ni l'une ni l'autre**. Elles ne
-peuvent sortir que si `actif()` est **appelé**, ce qui n'a pas eu lieu.
-**Consigné, pas expliqué.**
+La vraie cause : le pilote de recette était invoqué **sans son paramètre
+`APP`**, donc il retombait sur son motif par défaut
+`chrome|edge|bloc.?notes|notepad`, qui retient **Microsoft Edge en premier** —
+l'application dont **cette campagne venait elle-même de mesurer** (item 7)
+qu'elle n'est **jamais adoptée** (règle d'appartenance). Relevé qui l'a
+établi, sur les journaux des trois bras :
 
-🔴 **LE BRAS ROUGE RESTE DÛ.** Il a été rejoué une seconde fois après purge des
-fenêtres résiduelles (`notepad restants : 0`) et a **de nouveau** servi zéro
-fenêtre. La cause n'est pas établie.
+```
+item8 / temoin : "nom":"Microsoft Edge"
+item8 / mono   : "nom":"Microsoft Edge"
+item8 / rouge  : "nom":"Microsoft Edge"
+```
+
+Avec `APP='^Notepad$'` imposé, le bras rouge sert **1** fenêtre et les deux
+traces sortent.
+
+🔴 **ET CELA RETIRE AUSSI UNE AFFIRMATION QUE J'AVAIS ÉCRITE DANS LES PIÈGES
+TRANSVERSES** : je concluais que les traces de désarmement étaient
+**impossibles à produire** parce qu'elles vivent dans un `OnceLock::get_or_init`.
+Le mécanisme est réel — sans fenêtre servie, `actif()` n'est jamais appelé — **mais
+l'exemple était faux** : elles sortent parfaitement dès qu'une fenêtre est
+servie. La réserve utile, conservée dans `CLAUDE.md`, est désormais énoncée
+**dans les deux sens**, avec le compte de fenêtres servies à relever à côté.
+
+⚠️ **`fenetres SERVIES` est devenu un garde du script**, imprimé à chaque bras :
+un bras qui rend zéro est à rejeter, quelle qu'en soit la cause.
 
 ## 5. Ce que cet item N'ÉTABLIT PAS
 
-- 🔴 **LA ROUGE PRESCRITE PAR LE PLAN N'EST PAS ACQUISE** (étape 4 de la
-  Task 9) : deux tentatives, deux rejets, aucune fenêtre servie.
+- ✅ ~~**LA ROUGE PRESCRITE PAR LE PLAN EST BLOQUÉE PAR UN DÉFAUT PRODUIT
+  NOMMÉ**~~ **RETIRÉ : C'ÉTAIT UNE FAUSSE ATTRIBUTION, LA MIENNE.** La rouge
+  est **acquise** (§ 4) ; ce qui la bloquait était un paramètre d'instrument
+  non passé, pas le défaut du lot 31. **L'attribution erronée a vécu le temps
+  d'un commit, et elle est corrigée ici et dans `CLAUDE.md`.**
 - 🔴 **LE ZÉRO DU MODE MONO-FENÊTRE N'EST PAS ATTRIBUÉ PAR LA SEULE MESURE** :
   l'agent y meurt à l'activation de l'encodeur (défaut du lot 31), donc
   « pas de propriétaire » et « pas de session » restent superposés.
