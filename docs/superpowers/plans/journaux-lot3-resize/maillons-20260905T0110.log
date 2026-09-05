@@ -1,0 +1,17 @@
+=== 2026-09-05T01:10:08+02:00 ITEM 12 — le trajet d un Resize, maillon par maillon ===
+notepad remis a zero
+REPERE=170001
+2026-09-04T23:10:26.040Z page de session 1 : http://192.168.3.1:3445/index.html?session=3sxuA9dd56NpVdHi37R86g%3Aw-1
+2026-09-04T23:10:32.048Z resize 1024x700 -> {"innerWidth":1024,"innerHeight":700,"dpr":1,"video":{"cw":1024,"ch":700,"vw":1024,"vh":700}}
+2026-09-04T23:10:38.072Z resize 1400x500 -> {"innerWidth":1400,"innerHeight":500,"dpr":1,"video":{"cw":1400,"ch":500,"vw":1400,"vh":500}}
+2026-09-04T23:10:44.084Z resize 640x900 -> {"innerWidth":640,"innerHeight":900,"dpr":1,"video":{"cw":640,"ch":900,"vw":640,"vh":900}}
+
+--- MAILLON 4 : ce que la source dit avoir recu et retenu ---
+2026-09-04T23:10:23.308209Z  INFO fenetre{session=3sxuA9dd56NpVdHi37R86g:w-1}: agent::windows_source::redimensionnement: Resize recu par le capteur demande="780x493" borne="1860x1080" texture="1860x1080" retenue="780x492" courante="780x492" change=false
+2026-09-04T23:10:26.017766Z  INFO fenetre{session=3sxuA9dd56NpVdHi37R86g:w-1}: agent::windows_source::redimensionnement: Resize recu par le capteur demande="1024x700" borne="1860x1080" texture="1860x1080" retenue="1024x700" courante="780x492" change=true
+2026-09-04T23:10:32.027332Z  INFO fenetre{session=3sxuA9dd56NpVdHi37R86g:w-1}: agent::windows_source::redimensionnement: Resize recu par le capteur demande="1400x500" borne="1860x1080" texture="1860x1080" retenue="1400x500" courante="1024x700" change=true
+2026-09-04T23:10:38.040388Z  INFO fenetre{session=3sxuA9dd56NpVdHi37R86g:w-1}: agent::windows_source::redimensionnement: Resize recu par le capteur demande="640x900" borne="1860x1080" texture="1860x1080" retenue="640x900" courante="1400x500" change=true
+2026-09-04T23:10:44.057536Z  INFO fenetre{session=3sxuA9dd56NpVdHi37R86g:w-1}: agent::windows_source::redimensionnement: Resize recu par le capteur demande="780x493" borne="1860x1080" texture="1860x1080" retenue="780x492" courante="640x900" change=true
+
+--- MAILLON 5 : la taille effectivement encodee / la sortie retenue ---
+2026-09-04T23:10:22.876817Z  INFO agent::superviseur::boucle::creation_sortie: sortie retenue pour cette fenetre session=3sxuA9dd56NpVdHi37R86g:w-1 sortie=\\.\DISPLAY6 demande="780x492" sortie_reelle="1860x1080" exemptee=false

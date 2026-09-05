@@ -12,6 +12,7 @@ pub mod fenetres;
 #[cfg(windows)]
 pub mod hook;
 pub mod placement;
+pub mod sursis;
 pub mod reprise;
 // La décision PURE de reconnexion de la session de contrôle. Enfant
 // ORDINAIRE — pas de `#[path]` : ce fichier-ci n'est pas `#[cfg(windows)]`,

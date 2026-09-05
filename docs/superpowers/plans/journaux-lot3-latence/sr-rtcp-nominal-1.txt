@@ -1,0 +1,15 @@
+horodatage=2026-09-05T00:36:44+02:00
+pcap=/var/tmp/lot3-sr-rtcp-20260905T003452.pcap
+secondes=110
+paquets_udp_total=35446
+udp9_eq_200=204
+udp9_eq_201=154
+udp9_eq_202=0
+udp9_eq_203=0
+udp9_eq_204=0
+udp9_eq_205=2020
+udp9_eq_206=0
+udp9_eq_207=0
+--- provenance des paquets udp[9]=200 (sender report) ---
+    102 In -> 192.168.3.2.56948
+    102 P -> 192.168.3.2.56948

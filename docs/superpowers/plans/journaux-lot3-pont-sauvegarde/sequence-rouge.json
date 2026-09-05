@@ -1,0 +1,122 @@
+{
+  "etiquette": "rouge",
+  "instant": "2026-09-04T23:51:46.991Z",
+  "etapes": [
+    {
+      "t": "2026-09-04T23:51:47.660Z",
+      "m": "injection armée au niveau navigateur"
+    },
+    {
+      "t": "2026-09-04T23:51:54.266Z",
+      "m": "injection vue dans le hub",
+      "presente": true,
+      "chemin": "/",
+      "etapes": [
+        {
+          "t": 1788565910277,
+          "m": "injection posée sur /"
+        }
+      ]
+    },
+    {
+      "t": "2026-09-04T23:51:54.286Z",
+      "m": "racine locale préparée (OPFS)",
+      "nom": "item1-sauvegarde.txt",
+      "octets": 44
+    },
+    {
+      "t": "2026-09-04T23:51:54.294Z",
+      "m": "clic sur « Choisir mon dossier »",
+      "clique": true,
+      "texte": "Choisir mon dossier"
+    },
+    {
+      "t": "2026-09-04T23:51:55.299Z",
+      "m": "pont monté côté navigateur",
+      "etat": "Lecteur « Mes Fichiers » monté sur « Mes documents ».",
+      "ouvert": true
+    },
+    {
+      "t": "2026-09-04T23:51:55.299Z",
+      "m": "maintien de 120 s — l'observateur de l'invité travaille pendant ce temps"
+    },
+    {
+      "0": {
+        "nom": "item1-sauvegarde.txt",
+        "taille": 44,
+        "modifie": 1788565914278,
+        "sha256": "12f5b6f5650950966daa690cdad790e214e02b45f07e1b50393472c9f3a9302b",
+        "debut": "contenu initial pose par le pilote du lot 3\n"
+      },
+      "t": "2026-09-04T23:51:55.308Z",
+      "m": "relecture AVANT que l éditeur touche quoi que ce soit"
+    },
+    {
+      "0": {
+        "nom": "item1-sauvegarde.txt",
+        "taille": 44,
+        "modifie": 1788565914278,
+        "sha256": "12f5b6f5650950966daa690cdad790e214e02b45f07e1b50393472c9f3a9302b",
+        "debut": "contenu initial pose par le pilote du lot 3\n"
+      },
+      "t": "2026-09-04T23:53:55.409Z",
+      "m": "relecture APRÈS l éditeur"
+    }
+  ],
+  "vm": "677a3953-14c7-4364-92c3-bd17ecddf8d2",
+  "prefixe": "3sxuA9dd56NpVdHi37R86g",
+  "injection_vue": {
+    "presente": true,
+    "chemin": "/",
+    "etapes": [
+      {
+        "t": 1788565910277,
+        "m": "injection posée sur /"
+      }
+    ]
+  },
+  "opfs_prepare": {
+    "nom": "item1-sauvegarde.txt",
+    "octets": 44
+  },
+  "clic": {
+    "clique": true,
+    "texte": "Choisir mon dossier"
+  },
+  "etat_pont": {
+    "etat": "Lecteur « Mes Fichiers » monté sur « Mes documents ».",
+    "ouvert": true
+  },
+  "relecture_avant_editeur": [
+    {
+      "nom": "item1-sauvegarde.txt",
+      "taille": 44,
+      "modifie": 1788565914278,
+      "sha256": "12f5b6f5650950966daa690cdad790e214e02b45f07e1b50393472c9f3a9302b",
+      "debut": "contenu initial pose par le pilote du lot 3\n"
+    }
+  ],
+  "relecture_apres_editeur": [
+    {
+      "nom": "item1-sauvegarde.txt",
+      "taille": 44,
+      "modifie": 1788565914278,
+      "sha256": "12f5b6f5650950966daa690cdad790e214e02b45f07e1b50393472c9f3a9302b",
+      "debut": "contenu initial pose par le pilote du lot 3\n"
+    }
+  ],
+  "etapes_page": [
+    {
+      "t": 1788565910277,
+      "m": "injection posée sur /"
+    },
+    {
+      "t": 1788565914285,
+      "m": "OPFS préparé : item1-sauvegarde.txt (44 octets)"
+    },
+    {
+      "t": 1788565914290,
+      "m": "showDirectoryPicker substitué : poignée OPFS rendue"
+    }
+  ]
+}

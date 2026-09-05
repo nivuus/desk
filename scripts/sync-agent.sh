@@ -1,6 +1,15 @@
 #!/usr/bin/env bash
 # Synchronise les sources Rust vers C:\dev (monté sur /media/vm) pour
 # compilation sur Windows.
+
+# ── VOIE MORTE, 29 août 2026 — voir scripts/voie-morte.sh ───────────────────
+. "$(dirname "$0")/voie-morte.sh"
+voie_morte "rsynchronisait les sources Rust vers C:\\dev, à travers le montage CIFS /media/vm" \
+"     Rien ne le remplace, et rien n'en a besoin : l'appliance ne compile plus.
+     Le binaire se bâtit sur l'hôte (scripts/build-agent-croise.sh) et se
+     dépose par HTTP. Voir le successeur de scripts/build-agent.sh."
+# ─── Ci-dessous, le corps d'origine, conservé comme relevé historique. ──────
+
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"

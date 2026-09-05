@@ -5,6 +5,18 @@
 # ni capturer une fenêtre (Windows.Graphics.Capture) ni injecter des entrées
 # (SendInput), ces API ne franchissant pas la frontière de session. La tâche
 # planifiée avec /IT s'exécute dans la session de l'utilisateur connecté.
+
+# ── VOIE MORTE, 29 août 2026 — voir scripts/voie-morte.sh ───────────────────
+. "$(dirname "$0")/voie-morte.sh"
+voie_morte "écrivait /media/vm/dev/run-agent.ps1 puis lançait C:\\dev\\target\\...\\agent.exe" \
+"     L'agent de l'appliance est lancé par la tâche planifiée « guacamole-agent »,
+     qui exécute C:\nivuus\agent\run-agent.ps1 — un fichier du package console.
+     Pour poser une variable de banc, l'insérer dans CE fichier APRÈS l'ancre
+     env:SUPERVISEUR (donc AVANT l'invocation de l'agent) :
+       docs/superpowers/plans/journaux-lot3/instrument/harnais-appliance.sh
+       (fonctions variable_de_banc, agent_arreter, agent_relancer)."
+# ─── Ci-dessous, le corps d'origine, conservé comme relevé historique. ──────
+
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"

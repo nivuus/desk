@@ -1,0 +1,16 @@
+2026-09-05T01:10:42.097317Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-09-05T01:10:42.251127Z  INFO agent::plateforme::session: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:3445/agent" prefixe=3sxuA9dd56NpVdHi37R86g expire_a=1788571242522
+2026-09-05T01:10:42.251251Z  INFO agent::apps: mode de surveillance retenu mode=Armee
+2026-09-05T01:10:42.251604Z  INFO agent::demarrage::source: capture de la fenêtre Windows (recadrage) bitrate=12000000 fps=90
+2026-09-05T01:10:42.255336Z  INFO agent::apps::surveillance::fil: racine surveillée racine=C:\ProgramData\Microsoft\Windows\Start Menu
+2026-09-05T01:10:42.255476Z  INFO agent::apps::surveillance::fil: racine surveillée racine=C:\Users\Administrator\AppData\Roaming\Microsoft\Windows\Start Menu
+2026-09-05T01:10:42.255723Z  INFO agent::apps::surveillance::fil: racine surveillée racine=C:\Users\Administrator\Desktop
+2026-09-05T01:10:42.255832Z  INFO agent::apps::surveillance::fil: racine surveillée racine=C:\Users\Public\Desktop
+2026-09-05T01:10:42.255840Z  INFO agent::apps::surveillance::fil: surveillance des raccourcis armée racines=4
+2026-09-05T01:10:42.264882Z  INFO agent::capture::ouverture: sortie retenue pour la duplication adaptateur=Microsoft Basic Render Driver index_adaptateur=0 index_sortie=0 nom_sortie=\\.\DISPLAY1 attachee=true
+2026-09-05T01:10:42.267127Z  INFO agent::capture::ouverture: protection multi-fils activée sur le contexte immédiat D3D11 protection_precedente=false
+2026-09-05T01:10:42.267379Z  INFO agent::capture: duplication de sortie établie desktop_width=1280 desktop_height=800
+2026-09-05T01:10:42.268766Z  INFO agent::encode_nvenc::porte: porte NVENC : pilote compatible version_pilote="0xd1" version_attendue="0xc2"
+2026-09-05T01:10:42.268919Z  WARN agent::encode: NVENC natif indisponible : repli sur la MFT Media Foundation erreur=nvEncOpenEncodeSessionEx : NVENCSTATUS 2 adaptateur=NVIDIA GeForce RTX 4070
+2026-09-05T01:10:42.276488Z  INFO agent::encode::fabrique: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+Error: activation de l'encodeur H.264 matériel (ActivateObject) : Catastrophic failure (0x8000FFFF) — adaptateurs vus : [Microsoft Basic Render Driver | NVIDIA GeForce RTX 4070 | NVIDIA GeForce RTX 4070 | Microsoft Basic Render Driver] — CAUSE CONNUE, MESUREE LE 30 AOUT 2026 (lot 31) : la MFT « NVIDIA H.264 Encoder MFT » rend 0x8000FFFF en SESSION 1 sur cette machine, alors qu'elle s'active en session 0. Ce n'est ni le pilote absent, ni Media Foundation en panne : dans la meme execution, l'encodeur H.264 LOGICIEL et le processeur video LOGICIEL s'activent tous deux. Poser MFT_ENUM_ADAPTER_LUID, tenir un peripherique D3D11 NVIDIA vivant, ou lier l'affichage virtuel au GPU NVIDIA sont TROIS remedes deja REFUTES PAR LA MESURE — ne pas les reessayer. La voie qui fonctionne ici est l'API NVENC native. Detail, releves bruts et remedes refutes : docs/superpowers/plans/2026-08-30-encodeur-porte-apollo-resultats.md

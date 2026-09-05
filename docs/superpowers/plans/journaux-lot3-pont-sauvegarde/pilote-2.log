@@ -1,0 +1,9 @@
+2026-09-04T23:41:25.437Z injection armée au niveau navigateur 
+2026-09-04T23:41:32.013Z injection vue dans le hub {"presente":true,"chemin":"/","etapes":[{"t":1788565288017,"m":"injection posée sur /"}]}
+2026-09-04T23:41:32.032Z racine locale préparée (OPFS) {"nom":"item1-sauvegarde.txt","octets":44}
+2026-09-04T23:41:32.040Z clic sur « Choisir mon dossier » {"clique":true,"texte":"Choisir mon dossier"}
+2026-09-04T23:41:33.045Z pont monté côté navigateur {"etat":"Lecteur « Mes Fichiers » monté sur « Mes documents ».","ouvert":true}
+2026-09-04T23:41:33.046Z maintien de 120 s — l'observateur de l'invité travaille pendant ce temps 
+2026-09-04T23:41:33.053Z relecture AVANT que l éditeur touche quoi que ce soit [{"nom":"item1-sauvegarde.txt","taille":44,"modifie":1788565292023,"sha256":"12f5b6f5650950966daa690cdad790e214e02b45f07e1b50393472c9f3a9302b","debut":"contenu initial pose par le pilote du lot 3\n"}]
+2026-09-04T23:43:33.155Z relecture APRÈS l éditeur [{"nom":"item1-sauvegarde.txt","taille":96,"modifie":1788565302183,"sha256":"0fdf281c764f4068e523a4633b9edc79c51af94beca5169c133b74b32de087b3","debut":"contenu initial pose par le pilote du lot 3\nMARQUEUR-LOT3-ITEM1-233836MARQUEUR-LOT3-ITEM1-234134"}]
+2026-09-04T23:43:33.157Z relevé écrit : /home/mallanic/Projects/Nivuus/packages/desk/docs/superpowers/plans/journaux-lot3-pont-sauvegarde/sequence-2.json

@@ -1,0 +1,151 @@
+2026-09-05T01:35:56.121458Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-09-05T01:35:56.286616Z  INFO agent::plateforme::session: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:3445/agent" prefixe=3sxuA9dd56NpVdHi37R86g expire_a=1788572756562
+2026-09-05T01:35:56.286722Z  INFO agent::apps: mode de surveillance retenu mode=Armee
+2026-09-05T01:35:56.288506Z  INFO agent::superviseur::signalisation: déclaration du superviseur émise sur la session de contrôle (acceptation encore inconnue) session="3sxuA9dd56NpVdHi37R86g:bureau" jeton_present=true
+2026-09-05T01:35:56.290912Z  INFO agent::apps::surveillance::fil: racine surveillée racine=C:\ProgramData\Microsoft\Windows\Start Menu
+2026-09-05T01:35:56.290983Z  INFO agent::apps::surveillance::fil: racine surveillée racine=C:\Users\Administrator\AppData\Roaming\Microsoft\Windows\Start Menu
+2026-09-05T01:35:56.291053Z  INFO agent::apps::surveillance::fil: racine surveillée racine=C:\Users\Administrator\Desktop
+2026-09-05T01:35:56.291113Z  INFO agent::apps::surveillance::fil: racine surveillée racine=C:\Users\Public\Desktop
+2026-09-05T01:35:56.291122Z  INFO agent::apps::surveillance::fil: surveillance des raccourcis armée racines=4
+2026-09-05T01:35:56.302242Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-09-05T01:35:56.302354Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=2
+2026-09-05T01:35:56.302449Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=3
+2026-09-05T01:35:56.302479Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant purge" nombre=1 attachees=1
+2026-09-05T01:35:56.302489Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant purge" nom=\\.\DISPLAY1 adaptateur=Microsoft Basic Render Driver index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=1280 hauteur=800
+2026-09-05T01:35:56.400403Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\Users\Administrator\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\File Explorer.lnk motif="cible-vide"
+2026-09-05T01:35:56.431334Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\Users\Administrator\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\System Tools\Control Panel.lnk motif="cible-vide"
+2026-09-05T01:35:56.431354Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\Users\Administrator\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\System Tools\Run.lnk motif="cible-vide"
+2026-09-05T01:35:56.606375Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Blue Ripple Sound\Rapture3D - Help.lnk motif="extension" extension=chm
+2026-09-05T01:35:56.635856Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Component Services.lnk motif="extension" extension=msc
+2026-09-05T01:35:56.635879Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Computer Management.lnk motif="extension" extension=msc
+2026-09-05T01:35:56.660830Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Event Viewer.lnk motif="extension" extension=msc
+2026-09-05T01:35:56.711518Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Performance Monitor.lnk motif="extension" extension=msc
+2026-09-05T01:35:56.711541Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Print Management.lnk motif="extension" extension=msc
+2026-09-05T01:35:56.742778Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Security Configuration Management.lnk motif="extension" extension=msc
+2026-09-05T01:35:56.742803Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\services.lnk motif="extension" extension=msc
+2026-09-05T01:35:56.768926Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Task Scheduler.lnk motif="extension" extension=msc
+2026-09-05T01:35:56.768948Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Windows Defender Firewall with Advanced Security.lnk motif="extension" extension=msc
+2026-09-05T01:35:56.815286Z  INFO agent::apps::boucle::memoire: catalogue reconcilie total=58 retenus=45 cles=41 icones=41 icones_echouees=0 icones_distinctes=37 apparues=41 modifiees=0 disparues=0 duree_ms=525 declencheur="demarrage" notifications=0 debordements=0
+2026-09-05T01:35:59.305511Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-09-05T01:35:59.305669Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=2
+2026-09-05T01:35:59.305815Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=3
+2026-09-05T01:35:59.305869Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="après purge" nombre=1 attachees=1
+2026-09-05T01:35:59.305880Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après purge" nom=\\.\DISPLAY1 adaptateur=Microsoft Basic Render Driver index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=1280 hauteur=800
+2026-09-05T01:35:59.305905Z  INFO agent::moniteurs_virtuels::purge: purge terminée retirees=0 avant=1 apres=1
+2026-09-05T01:35:59.311802Z  INFO agent::superviseur::lanceur: capteur lancé pid=9280
+2026-09-05T01:35:59.314048Z  INFO agent::superviseur::lanceur::pont: pont fichiers lancé pid=14664 session="3sxuA9dd56NpVdHi37R86g:fichiers"
+2026-09-05T01:35:59.314064Z  WARN agent::superviseur::boucle::surveillance_pont: pont fichiers lancé ou relancé (tentatives suivantes silencieuses tant que le cycle se répète) pid_neuf=14664 tentative=1 espacement_ms=500
+2026-09-05T01:35:59.314209Z  INFO agent::appartenance::win: job d'appartenance créé (aucune limite : il ne tue rien)
+2026-09-05T01:35:59.314258Z  INFO agent::superviseur::hook: fenêtre ÉCARTÉE : desk ne l'a pas lancée (règle d'appartenance). Désarmer par APPARTENANCE=0 pour retrouver le comportement d'avant titre="New tab - Personal - Microsoft\u{200b} Edge" pid=10260 processus=msedge.exe
+2026-09-05T01:35:59.314301Z  INFO agent::superviseur::hook: fenêtre ÉCARTÉE : desk ne l'a pas lancée (règle d'appartenance). Désarmer par APPARTENANCE=0 pour retrouver le comportement d'avant titre="New tab - Personal - Microsoft\u{200b} Edge" pid=10260 processus=msedge.exe
+2026-09-05T01:35:59.314336Z  INFO agent::superviseur::hook: fenêtre ÉCARTÉE : desk ne l'a pas lancée (règle d'appartenance). Désarmer par APPARTENANCE=0 pour retrouver le comportement d'avant titre="New tab - Personal - Microsoft\u{200b} Edge" pid=10260 processus=msedge.exe
+2026-09-05T01:35:59.314368Z  INFO agent::superviseur::hook: fenêtre ÉCARTÉE : desk ne l'a pas lancée (règle d'appartenance). Désarmer par APPARTENANCE=0 pour retrouver le comportement d'avant titre="New tab - Personal - Microsoft\u{200b} Edge" pid=10260 processus=msedge.exe
+2026-09-05T01:35:59.325749Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-09-05T01:35:59.325788Z  INFO agent: identité héritée du superviseur (AGENT_JETON) : ce processus n'ouvre aucun canal /agent, un seul socket par VM
+2026-09-05T01:35:59.325838Z  WARN agent::apps: decouverte d'applications inactive : ce processus n'a pas de canal /agent (identité héritée du superviseur, ou AGENT_VM/AGENT_SECRET absents)
+2026-09-05T01:35:59.325960Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-09-05T01:35:59.326006Z  INFO agent::capteur: capteur démarré tube="\\\\.\\pipe\\agent-capteur"
+2026-09-05T01:35:59.327947Z  INFO agent::pont::transport: socket UDP du pont fichiers addr=192.168.3.2:60650
+2026-09-05T01:35:59.349416Z  INFO agent::signaling: déclaration de l'agent émise au signaling (acceptation encore inconnue) session="3sxuA9dd56NpVdHi37R86g:fichiers"
+2026-09-05T01:35:59.351228Z  INFO agent::signaling: configuration TURN reçue serveur=90.87.35.18:3478
+2026-09-05T01:36:26.275676Z  INFO agent::apps::boucle: identité changée : le prochain catalogue sera COMPLET (rafraîchissement de jeton OU réenrôlement — cette boucle ne les distingue pas)
+2026-09-05T01:36:26.849703Z  INFO agent::apps::boucle::memoire: catalogue reconcilie total=58 retenus=45 cles=41 icones=0 icones_echouees=0 icones_distinctes=37 apparues=0 modifiees=0 disparues=0 duree_ms=33 declencheur="periode" notifications=0 debordements=0
+2026-09-05T01:36:32.368616Z  INFO agent::superviseur::boucle: une page-shell a rejoint la session de contrôle : les fenêtres sont réannoncées
+2026-09-05T01:36:32.368847Z  INFO agent::superviseur::hook: fenêtre ÉCARTÉE : desk ne l'a pas lancée (règle d'appartenance). Désarmer par APPARTENANCE=0 pour retrouver le comportement d'avant titre="New tab - Personal - Microsoft\u{200b} Edge" pid=10260 processus=msedge.exe
+2026-09-05T01:36:32.368912Z  INFO agent::superviseur::hook: fenêtre ÉCARTÉE : desk ne l'a pas lancée (règle d'appartenance). Désarmer par APPARTENANCE=0 pour retrouver le comportement d'avant titre="New tab - Personal - Microsoft\u{200b} Edge" pid=10260 processus=msedge.exe
+2026-09-05T01:36:32.368956Z  INFO agent::superviseur::hook: fenêtre ÉCARTÉE : desk ne l'a pas lancée (règle d'appartenance). Désarmer par APPARTENANCE=0 pour retrouver le comportement d'avant titre="New tab - Personal - Microsoft\u{200b} Edge" pid=10260 processus=msedge.exe
+2026-09-05T01:36:32.368990Z  INFO agent::superviseur::hook: fenêtre ÉCARTÉE : desk ne l'a pas lancée (règle d'appartenance). Désarmer par APPARTENANCE=0 pour retrouver le comportement d'avant titre="New tab - Personal - Microsoft\u{200b} Edge" pid=10260 processus=msedge.exe
+2026-09-05T01:36:34.376919Z  INFO agent::superviseur::boucle::surveillance_pont: pont fichiers de nouveau stable pid=14664
+2026-09-05T01:36:36.160494Z  INFO agent::plateforme::session: ordre de lancement reçu url="ws://192.168.3.1:3445/agent" demande=b31fee23-9504-45bd-b92e-0817029424b7 cle=741924e4a3ec3408bc2797010e48446c92b7364090a6be5ad2ce8ff4060e631c
+2026-09-05T01:36:36.286557Z  INFO agent::appartenance::win: processus lancé inscrit au job d'appartenance
+2026-09-05T01:36:36.286580Z  INFO agent::apps::lancement: raccourci lancé chemin="C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Notepad.lnk"
+2026-09-05T01:36:36.286586Z  INFO agent::apps::boucle: lancement demande="b31fee23-9504-45bd-b92e-0817029424b7" cle="741924e4a3ec3408bc2797010e48446c92b7364090a6be5ad2ce8ff4060e631c" issue=Raccourci
+2026-09-05T01:36:36.989314Z  INFO agent::superviseur::boucle: viewport recu de la page-shell session=3sxuA9dd56NpVdHi37R86g:w-1 demande="780x492" effets=1 etat=Some(AttendLaSortie)
+2026-09-05T01:36:36.990246Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-09-05T01:36:36.990538Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=2
+2026-09-05T01:36:36.990753Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=3
+2026-09-05T01:36:36.990784Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant création de sortie" nombre=1 attachees=1
+2026-09-05T01:36:36.990801Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY1 adaptateur=Microsoft Basic Render Driver index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=1280 hauteur=800
+2026-09-05T01:36:36.991073Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle créée id=261 adaptateur_bas=67235 adaptateur_haut=0 guid=9C4A1F6E-2B73-4D51-9E08-677541430001 largeur=780 hauteur=492 hertz=60
+2026-09-05T01:36:37.081617Z  INFO agent::superviseur::hook: fenêtre ÉCARTÉE : desk ne l'a pas lancée (règle d'appartenance). Désarmer par APPARTENANCE=0 pour retrouver le comportement d'avant titre="Chrome Legacy Window" pid=10260 processus=msedge.exe
+2026-09-05T01:36:37.253022Z  INFO agent::superviseur::hook: fenêtre ÉCARTÉE : desk ne l'a pas lancée (règle d'appartenance). Désarmer par APPARTENANCE=0 pour retrouver le comportement d'avant titre="DesktopWindowXamlSource" pid=8836 processus=explorer.exe
+2026-09-05T01:36:37.319403Z  INFO agent::superviseur::boucle::creation_sortie: sortie DESIGNEE par son identifiant de cible (chemin ① — la correspondance CCD a rendu son nom GDI) id_pilote=261 adaptateur=Some((67235, 0)) nom_designe="\\\\.\\DISPLAY6"
+2026-09-05T01:36:37.319437Z  INFO agent::superviseur::boucle::creation_sortie: sortie retenue pour cette fenetre session=3sxuA9dd56NpVdHi37R86g:w-1 sortie=\\.\DISPLAY6 demande="780x492" sortie_reelle="1860x1080" exemptee=false
+2026-09-05T01:36:37.335800Z  INFO agent::superviseur::enfants: enfant lancé session=3sxuA9dd56NpVdHi37R86g:w-1 pid=7472 sortie=\\.\DISPLAY6
+2026-09-05T01:36:37.353509Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-09-05T01:36:37.353551Z  INFO agent: identité héritée du superviseur (AGENT_JETON) : ce processus n'ouvre aucun canal /agent, un seul socket par VM
+2026-09-05T01:36:37.353583Z  WARN agent::apps: decouverte d'applications inactive : ce processus n'a pas de canal /agent (identité héritée du superviseur, ou AGENT_VM/AGENT_SECRET absents)
+2026-09-05T01:36:37.353599Z  INFO agent::demarrage::source: source distante servie par le capteur (mode multi-fenêtres) nom_sortie=\\.\DISPLAY6 bitrate=12000000 fps=90
+2026-09-05T01:36:37.366077Z  INFO agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1 index_sortie=0 nom_sortie=\\.\DISPLAY6 attachee=true
+2026-09-05T01:36:37.366197Z  INFO agent::capteur::tube: attaché au capteur session=3sxuA9dd56NpVdHi37R86g:w-1 sortie=\\.\DISPLAY6 largeur=780 hauteur=492
+2026-09-05T01:36:37.366403Z  INFO fenetre{session=3sxuA9dd56NpVdHi37R86g:w-1}: agent::capteur::fenetre: fenêtre attachée au capteur session=3sxuA9dd56NpVdHi37R86g:w-1 pid=8484 sortie=\\.\DISPLAY6 largeur=780 hauteur=492
+2026-09-05T01:36:37.366513Z  INFO fenetre{session=3sxuA9dd56NpVdHi37R86g:w-1}: agent::capteur::sommeil::parts: budget de debit de la session budget_bps=12000000
+2026-09-05T01:36:37.369688Z  INFO agent::signaling: déclaration de l'agent émise au signaling (acceptation encore inconnue) session="3sxuA9dd56NpVdHi37R86g:w-1"
+2026-09-05T01:36:37.369818Z  INFO agent::transport::initialisation: socket UDP de l'agent addr=192.168.3.2:55253
+2026-09-05T01:36:37.371475Z  INFO agent::signaling: configuration TURN reçue serveur=90.87.35.18:3478
+2026-09-05T01:36:37.395071Z  INFO agent::windows_audio: source audio démarrée format=process loopback pid=8484 — 48000 Hz, 2 canaux, 16 bits entiers
+2026-09-05T01:36:37.395088Z  INFO agent::demarrage::audio: audio activé format="process loopback pid=8484 — 48000 Hz, 2 canaux, 16 bits entiers" pid=8484
+2026-09-05T01:36:37.398020Z  WARN agent::demarrage::micro: micro indisponible, la session continue sans session=3sxuA9dd56NpVdHi37R86g:w-1 erreur=aucun peripherique de rendu ne correspond a « VB-Audio » (MICRO_PERIPHERIQUE) :                  pas de micro. Disponibles : «Speakers (Steam Streaming Speakers)» [{0.0.0.00000000}.{fc5b7410-2341-47a7-88a1-894b051a02f1}]. Le cable virtuel est-il installe ?
+2026-09-05T01:36:37.398052Z  INFO agent::demarrage: offre reçue
+2026-09-05T01:36:37.409230Z  INFO agent::demarrage: relais TURN alloué avant la réponse SDP
+2026-09-05T01:36:37.411755Z  INFO agent::demarrage: réponse envoyée
+2026-09-05T01:36:37.412092Z  INFO agent::input::win: reference des entrees retenue (batie par le match qui choisit le mode de capture ; la taille de l'image y est PARTAGEE avec la source, jamais recalculee) reference=SortieCapturee { nom: "\\\\.\\DISPLAY6", image: TailleImage(3350074491372) }
+2026-09-05T01:36:37.412206Z  INFO agent::transport::evenements: état ICE state=Checking écoulé=20.3019ms
+2026-09-05T01:36:37.419288Z  INFO agent::transport::evenements: état ICE state=Connected écoulé=27.3793ms
+2026-09-05T01:36:37.427282Z  INFO agent::transport::evenements: piste négociée mid=Mid(0) kind=Video direction=SendOnly
+2026-09-05T01:36:37.427305Z  INFO agent::transport::evenements: piste négociée mid=Mid(1) kind=Audio direction=SendOnly
+2026-09-05T01:36:37.427310Z  INFO agent::transport::evenements: piste négociée mid=Mid(2) kind=Audio direction=RecvOnly
+2026-09-05T01:36:37.427434Z  INFO agent::transport::part: part de budget appliquee session=3sxuA9dd56NpVdHi37R86g:w-1 part_bps=256000 endormie=true
+2026-09-05T01:36:37.427449Z  INFO agent::transport::piste_audio: ordre audio applique session=3sxuA9dd56NpVdHi37R86g:w-1 actif=true capture_morte=false
+2026-09-05T01:36:37.440315Z  INFO agent::transport::evenements: canal de données ouvert label=input
+2026-09-05T01:36:37.440419Z  INFO agent::transport::evenements: canal de données ouvert label=control
+2026-09-05T01:36:37.575125Z  INFO agent::demarrage: contrôle reçu session=3sxuA9dd56NpVdHi37R86g:w-1 Visibility { v: 3, visible: true, focused: true }
+2026-09-05T01:36:37.593466Z  INFO fenetre{session=3sxuA9dd56NpVdHi37R86g:w-1}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1 index_sortie=0 nom_sortie=\\.\DISPLAY6 attachee=true
+2026-09-05T01:36:37.731013Z  INFO fenetre{session=3sxuA9dd56NpVdHi37R86g:w-1}: agent::capture::ouverture: protection multi-fils activée sur le contexte immédiat D3D11 protection_precedente=false
+2026-09-05T01:36:37.737057Z  INFO fenetre{session=3sxuA9dd56NpVdHi37R86g:w-1}: agent::capture: duplication de sortie établie desktop_width=1860 desktop_height=1080
+2026-09-05T01:36:37.738955Z  INFO fenetre{session=3sxuA9dd56NpVdHi37R86g:w-1}: agent::encode_nvenc::porte: porte NVENC : pilote compatible version_pilote="0xd1" version_attendue="0xc2"
+2026-09-05T01:36:37.760243Z  INFO fenetre{session=3sxuA9dd56NpVdHi37R86g:w-1}: agent::encode_nvenc::session: session NVENC native initialisée (P1, ultra faible latence, CBR) largeur=780 hauteur=492 fps=90 debit_bps=12000000
+2026-09-05T01:36:37.760287Z  INFO fenetre{session=3sxuA9dd56NpVdHi37R86g:w-1}: agent::encode: encodeur NVENC natif retenu adaptateur=NVIDIA GeForce RTX 4070 luid="00000000:0000771F"
+2026-09-05T01:36:37.760300Z  INFO fenetre{session=3sxuA9dd56NpVdHi37R86g:w-1}: agent::capteur::fenetre::transitions: fenêtre réveillée session=3sxuA9dd56NpVdHi37R86g:w-1 largeur=780 hauteur=492 duree_ms=167
+2026-09-05T01:36:37.767793Z  INFO agent::transport::part: part de budget appliquee session=3sxuA9dd56NpVdHi37R86g:w-1 part_bps=12000000 endormie=false
+2026-09-05T01:36:37.774928Z  INFO agent::demarrage: contrôle reçu session=3sxuA9dd56NpVdHi37R86g:w-1 Resize { v: 3, width: 780, height: 493 }
+2026-09-05T01:36:37.785240Z  INFO fenetre{session=3sxuA9dd56NpVdHi37R86g:w-1}: agent::windows_source::redimensionnement: Resize recu par le capteur demande="780x493" borne="1860x1080" texture="1860x1080" retenue="780x492" courante="780x492" change=false
+2026-09-05T01:36:37.837697Z  INFO agent::superviseur::boucle: viewport recu de la page-shell session=3sxuA9dd56NpVdHi37R86g:w-1 demande="780x493" effets=1 etat=Some(Vivante)
+2026-09-05T01:36:37.838606Z  INFO agent::superviseur::boucle::placement_periodique: viewport recu par le superviseur session=3sxuA9dd56NpVdHi37R86g:w-1 demande="780x492" nom_sortie="\\\\.\\DISPLAY6" borne="1860x1080" retenue="780x492" precedente="780x492" decision="taille INCHANGEE : rien a reposer (viewport sature la borne, ou geste sans effet)"
+2026-09-05T01:36:42.373243Z  INFO fenetre{session=3sxuA9dd56NpVdHi37R86g:w-1}: agent::capteur::fenetre::accent_fenetre: accent de la fenetre Windows session=3sxuA9dd56NpVdHi37R86g:w-1 couleur=#8ec7d4
+2026-09-05T01:36:47.373841Z  INFO fenetre{session=3sxuA9dd56NpVdHi37R86g:w-1}: agent::capteur::fenetre: cadence du capteur session=3sxuA9dd56NpVdHi37R86g:w-1 images=43 endormie=false cadence="4.3"
+2026-09-05T01:36:47.397897Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=3sxuA9dd56NpVdHi37R86g:w-1 unites=43 cadence="4.3"
+2026-09-05T01:36:56.320476Z  INFO agent::apps::boucle: identité changée : le prochain catalogue sera COMPLET (rafraîchissement de jeton OU réenrôlement — cette boucle ne les distingue pas)
+2026-09-05T01:36:56.880928Z  INFO agent::apps::boucle::memoire: catalogue reconcilie total=58 retenus=45 cles=41 icones=0 icones_echouees=0 icones_distinctes=37 apparues=0 modifiees=0 disparues=0 duree_ms=30 declencheur="periode" notifications=0 debordements=0
+2026-09-05T01:36:57.379516Z  INFO fenetre{session=3sxuA9dd56NpVdHi37R86g:w-1}: agent::capteur::fenetre: cadence du capteur session=3sxuA9dd56NpVdHi37R86g:w-1 images=3 endormie=false cadence="0.3"
+2026-09-05T01:36:57.407844Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=3sxuA9dd56NpVdHi37R86g:w-1 unites=3 cadence="0.3"
+2026-09-05T01:37:07.385900Z  INFO fenetre{session=3sxuA9dd56NpVdHi37R86g:w-1}: agent::capteur::fenetre: cadence du capteur session=3sxuA9dd56NpVdHi37R86g:w-1 images=3 endormie=false cadence="0.3"
+2026-09-05T01:37:07.398971Z  INFO agent::windows_audio::fil: compteurs audio pid=8484 actif=true rejetes=0 complements=2 echantillons_jetes=0
+2026-09-05T01:37:07.417892Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=3sxuA9dd56NpVdHi37R86g:w-1 unites=3 cadence="0.3"
+2026-09-05T01:37:17.391794Z  INFO fenetre{session=3sxuA9dd56NpVdHi37R86g:w-1}: agent::capteur::fenetre: cadence du capteur session=3sxuA9dd56NpVdHi37R86g:w-1 images=4 endormie=false cadence="0.4"
+2026-09-05T01:37:17.417916Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=3sxuA9dd56NpVdHi37R86g:w-1 unites=4 cadence="0.4"
+2026-09-05T01:37:26.325061Z  INFO agent::apps::boucle: identité changée : le prochain catalogue sera COMPLET (rafraîchissement de jeton OU réenrôlement — cette boucle ne les distingue pas)
+2026-09-05T01:37:26.911881Z  INFO agent::apps::boucle::memoire: catalogue reconcilie total=58 retenus=45 cles=41 icones=0 icones_echouees=0 icones_distinctes=37 apparues=0 modifiees=0 disparues=0 duree_ms=30 declencheur="periode" notifications=0 debordements=0
+2026-09-05T01:37:27.395546Z  INFO fenetre{session=3sxuA9dd56NpVdHi37R86g:w-1}: agent::capteur::fenetre: cadence du capteur session=3sxuA9dd56NpVdHi37R86g:w-1 images=3 endormie=false cadence="0.3"
+2026-09-05T01:37:27.427682Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=3sxuA9dd56NpVdHi37R86g:w-1 unites=3 cadence="0.3"
+2026-09-05T01:37:37.396942Z  INFO fenetre{session=3sxuA9dd56NpVdHi37R86g:w-1}: agent::capteur::fenetre: cadence du capteur session=3sxuA9dd56NpVdHi37R86g:w-1 images=3 endormie=false cadence="0.3"
+2026-09-05T01:37:37.400490Z  INFO agent::turn::allocation: état du client TURN etat="allouée" prochaine_echeance_s=90 canaux=8
+2026-09-05T01:37:37.403001Z  INFO agent::windows_audio::fil: compteurs audio pid=8484 actif=true rejetes=0 complements=2 echantillons_jetes=0
+2026-09-05T01:37:37.437782Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=3sxuA9dd56NpVdHi37R86g:w-1 unites=3 cadence="0.3"
+2026-09-05T01:37:47.405954Z  INFO fenetre{session=3sxuA9dd56NpVdHi37R86g:w-1}: agent::capteur::fenetre: cadence du capteur session=3sxuA9dd56NpVdHi37R86g:w-1 images=4 endormie=false cadence="0.4"
+2026-09-05T01:37:47.447498Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=3sxuA9dd56NpVdHi37R86g:w-1 unites=4 cadence="0.4"
+2026-09-05T01:37:56.162667Z  INFO agent::apps::boucle: identité changée : le prochain catalogue sera COMPLET (rafraîchissement de jeton OU réenrôlement — cette boucle ne les distingue pas)
+2026-09-05T01:37:56.941928Z  INFO agent::apps::boucle::memoire: catalogue reconcilie total=58 retenus=45 cles=41 icones=0 icones_echouees=0 icones_distinctes=37 apparues=0 modifiees=0 disparues=0 duree_ms=29 declencheur="periode" notifications=0 debordements=0
+2026-09-05T01:37:57.413545Z  INFO fenetre{session=3sxuA9dd56NpVdHi37R86g:w-1}: agent::capteur::fenetre: cadence du capteur session=3sxuA9dd56NpVdHi37R86g:w-1 images=3 endormie=false cadence="0.3"
+2026-09-05T01:37:57.447655Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=3sxuA9dd56NpVdHi37R86g:w-1 unites=3 cadence="0.3"
+2026-09-05T01:38:07.404124Z  INFO agent::windows_audio::fil: compteurs audio pid=8484 actif=true rejetes=0 complements=2 echantillons_jetes=0
+2026-09-05T01:38:07.421319Z  INFO fenetre{session=3sxuA9dd56NpVdHi37R86g:w-1}: agent::capteur::fenetre: cadence du capteur session=3sxuA9dd56NpVdHi37R86g:w-1 images=3 endormie=false cadence="0.3"
+2026-09-05T01:38:07.457744Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=3sxuA9dd56NpVdHi37R86g:w-1 unites=3 cadence="0.3"
+2026-09-05T01:38:17.424536Z  INFO fenetre{session=3sxuA9dd56NpVdHi37R86g:w-1}: agent::capteur::fenetre: cadence du capteur session=3sxuA9dd56NpVdHi37R86g:w-1 images=4 endormie=false cadence="0.4"
+2026-09-05T01:38:17.457915Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=3sxuA9dd56NpVdHi37R86g:w-1 unites=4 cadence="0.4"
+2026-09-05T01:38:26.191190Z  INFO agent::apps::boucle: identité changée : le prochain catalogue sera COMPLET (rafraîchissement de jeton OU réenrôlement — cette boucle ne les distingue pas)
+2026-09-05T01:38:26.971423Z  INFO agent::apps::boucle::memoire: catalogue reconcilie total=58 retenus=45 cles=41 icones=0 icones_echouees=0 icones_distinctes=37 apparues=0 modifiees=0 disparues=0 duree_ms=29 declencheur="periode" notifications=0 debordements=0
+2026-09-05T01:38:27.434793Z  INFO fenetre{session=3sxuA9dd56NpVdHi37R86g:w-1}: agent::capteur::fenetre: cadence du capteur session=3sxuA9dd56NpVdHi37R86g:w-1 images=3 endormie=false cadence="0.3"
+2026-09-05T01:38:27.467753Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=3sxuA9dd56NpVdHi37R86g:w-1 unites=3 cadence="0.3"
+2026-09-05T01:38:30.485870Z  INFO agent::signaling: le client s'est déconnecté
+

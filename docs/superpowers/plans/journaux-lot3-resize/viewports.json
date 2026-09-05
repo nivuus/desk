@@ -1,0 +1,168 @@
+{
+  "etiquette": "t13-resize",
+  "regime_fenetres": 1,
+  "duree_demandee_s": 10,
+  "instant": "2026-09-04T23:10:11.799Z",
+  "bras": {
+    "temoin_negatif": {
+      "page": "about:blank (aucun <video>)",
+      "attache": {
+        "videos": 0
+      },
+      "echantillons": [],
+      "compteurs": {
+        "trames": 0,
+        "sans_capture": 0,
+        "videos": 0
+      }
+    },
+    "mesure": [
+      {
+        "url": "http://192.168.3.1:3445/index.html?session=3sxuA9dd56NpVdHi37R86g%3Aw-1",
+        "attente_video_s": 0,
+        "compteurs": {
+          "trames": 45,
+          "sans_capture": 45,
+          "videos": 1
+        },
+        "distribution": {
+          "n": 0,
+          "mediane_ms": null,
+          "p90_ms": null,
+          "p99_ms": null,
+          "min_ms": null,
+          "max_ms": null
+        },
+        "diagnostic_horloge": {
+          "pc": "attrapée",
+          "types": {
+            "media-playout": 1,
+            "certificate": 2,
+            "codec": 3,
+            "candidate-pair": 4,
+            "data-channel": 2,
+            "local-candidate": 7,
+            "remote-candidate": 2,
+            "inbound-rtp": 2,
+            "outbound-rtp": 1,
+            "peer-connection": 1,
+            "remote-outbound-rtp": 2,
+            "transport": 1
+          },
+          "remote_outbound": [
+            {
+              "kind": "audio",
+              "remoteTimestamp": 1788563452961.9832,
+              "packetsSent": 2997,
+              "reportsSent": 6
+            },
+            {
+              "kind": "video",
+              "remoteTimestamp": 1788563452970.011,
+              "packetsSent": 277,
+              "reportsSent": 30
+            }
+          ],
+          "inbound": [
+            {
+              "framesDecoded": 77,
+              "framesReceived": 77,
+              "jitterBufferDelay": 0.183055,
+              "jitterBufferEmittedCount": 77,
+              "totalProcessingDelay": 0.337874,
+              "totalAssemblyTime": 0.005996,
+              "framesAssembledFromMultiplePackets": 43,
+              "totalDecodeTime": 0.14705,
+              "totalInterFrameDelay": 26.131,
+              "frameWidth": 780,
+              "frameHeight": 492,
+              "bytesReceived": 580806
+            }
+          ],
+          "sources": [
+            {
+              "source": 517227442,
+              "timestamp": 1788563449685
+            }
+          ],
+          "paire": {
+            "currentRoundTripTime": 0.001,
+            "totalRoundTripTime": 0.027,
+            "responsesReceived": 15
+          }
+        },
+        "echantillons_bruts": []
+      }
+    ]
+  },
+  "vm": "677a3953-14c7-4364-92c3-bd17ecddf8d2",
+  "prefixe": "3sxuA9dd56NpVdHi37R86g",
+  "lancements": [
+    {
+      "nom": "Notepad",
+      "id": "7f2a7df5-765f-4f6c-b5c8-485e8c1a4e19",
+      "statut": 200
+    }
+  ],
+  "cibles_vues": [
+    "background_page:chrome-extension://nkeimhogjdpnpccoofpliimaahmaaome/background.html ~ background_page:chrome-extension://nmmhkkegccagdldgiimedpiccmgmieda/_generated_background_page.html ~ browser_ui:chrome://omnibox-popup.top-chrome/ ~ browser_ui:chrome://omnibox-popup.top-chrome/omnibox_popup_aim.html ~ page:http://192.168.3.1:3445/ ~ page:http://192.168.3.1:3445/index.html?session=3sxuA9dd56NpVdHi37R86g%3Aw-1 ~ service_worker:chrome-extension://fignfifoniblkonapihmkfakmlgkbkcf/service_worker.js ~ service_worker:chrome-extension://ghbmnnjooekpmoecnnnilnnbdlolhkhi/service_worker_bin_prod.js"
+  ],
+  "sessions_obtenues": 1,
+  "animation": {
+    "moyen": "aucun",
+    "cadence_hz": 0
+  },
+  "resize": [
+    {
+      "demande": "1024x700",
+      "vu": {
+        "innerWidth": 1024,
+        "innerHeight": 700,
+        "dpr": 1,
+        "video": {
+          "cw": 1024,
+          "ch": 700,
+          "vw": 1024,
+          "vh": 700
+        }
+      }
+    },
+    {
+      "demande": "1400x500",
+      "vu": {
+        "innerWidth": 1400,
+        "innerHeight": 500,
+        "dpr": 1,
+        "video": {
+          "cw": 1400,
+          "ch": 500,
+          "vw": 1400,
+          "vh": 500
+        }
+      }
+    },
+    {
+      "demande": "640x900",
+      "vu": {
+        "innerWidth": 640,
+        "innerHeight": 900,
+        "dpr": 1,
+        "video": {
+          "cw": 640,
+          "ch": 900,
+          "vw": 640,
+          "vh": 900
+        }
+      }
+    }
+  ],
+  "amorces_posees": 2,
+  "distribution_agregee": {
+    "n": 0,
+    "mediane_ms": null,
+    "p90_ms": null,
+    "p99_ms": null,
+    "min_ms": null,
+    "max_ms": null
+  }
+}

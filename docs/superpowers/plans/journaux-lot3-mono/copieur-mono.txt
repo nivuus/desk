@@ -1,0 +1,7 @@
+LastTaskResult = 0
+2026-09-05T01:11:58.2479251Z session = 1
+2026-09-05T01:11:58.2898233Z marqueur = ITEM8-mono-031015
+2026-09-05T01:12:01.3041570Z ecriture 1 : pose='ITEM8-mono-031015-1' relu='ITEM8-mono-031015-1' identique=True
+2026-09-05T01:12:04.3179629Z ecriture 2 : pose='ITEM8-mono-031015-2' relu='ITEM8-mono-031015-2' identique=True
+2026-09-05T01:12:07.3285094Z ecriture 3 : pose='ITEM8-mono-031015-3' relu='ITEM8-mono-031015-3' identique=True
+2026-09-05T01:12:07.3285094Z FIN

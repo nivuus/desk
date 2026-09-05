@@ -1,0 +1,36 @@
+### MAILLON 4 (référence) — CE QUE LE POSTE LOCAL CONTIENT, AVANT
+2026-09-05T00:09:16.940Z relecture AVANT que l éditeur touche quoi que ce soit [{"nom":"a-renommer.txt","kind":"file","taille":38},{"nom":"sous-dossier","kind":"directory","enfants":["autre.txt"]},{"nom":"temoin-1.txt","kind":"file","taille":24},{"nom":"temoin-2.txt","kind":"file","taille":31}]
+
+### LISTAGE DE LA VM — AVANT le renommage
+F a-renommer.txt
+D sous-dossier
+F temoin-1.txt
+F temoin-2.txt
+
+### LE GESTE : renommer a-renommer.txt DANS LA VM
+issue du renommage : True
+
+### LISTAGE DE LA VM — APRÈS le renommage (le frère est-il encore là ?)
+F renomme.txt
+D sous-dossier
+F temoin-1.txt
+F temoin-2.txt
+
+### LISTAGE DE LA VM — SECOND listage, sans aucun Rafraichir
+F renomme.txt
+D sous-dossier
+F temoin-1.txt
+F temoin-2.txt
+
+### LISTAGE DE LA VM — TROISIÈME, après plus de TTL_ENUMERATION (30 s)
+F renomme.txt
+D sous-dossier
+F temoin-1.txt
+F temoin-2.txt
+
+### 🔴 TÉMOIN NÉGATIF — CE LISTAGE PEUT-IL SEULEMENT MONTRER UNE DISPARITION ?
+issue de la suppression : True
+--- listage APRÈS la suppression de temoin-2.txt (il doit AVOIR DISPARU) ---
+F renomme.txt
+D sous-dossier
+F temoin-1.txt

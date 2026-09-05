@@ -1,0 +1,3 @@
+2026-09-05T00:24:00.441780Z  WARN agent::pont: cache d'enumeration DESARME (PONT_CACHE=0) : bras de banc, jamais une configuration livree
+2026-09-05T00:24:07.559509Z  INFO agent::pont::ecriture::fil: mutation acquittee : le poste local a suivi correlation=5
+2026-09-05T00:24:50.010732Z  INFO agent::pont::ecriture::fil: mutation acquittee : le poste local a suivi correlation=13

@@ -1,0 +1,14 @@
+=== 2026-09-05T00:22:28+02:00 BRAS 1 : vm_prete ===
+vm prête (journal=53576881 octets) : etat=encoursd’exécution extinctions=30 horodatage=2026-09-05T00:22:29+02:00
+code=0
+
+=== 2026-09-05T00:22:29+02:00 BRAS 2 : agent_absent, ATTENDU ROUGE (3 agents tournent depuis le 01/09) ===
+🔴 3 agent(s) survivant(s)
+code=1
+
+=== 2026-09-05T00:22:30+02:00 BRAS 3 : agent_arreter ===
+agents apres arret : 0
+
+=== 2026-09-05T00:22:38+02:00 BRAS 4 : agent_absent, ATTENDU VERT ===
+aucun agent survivant
+code=0

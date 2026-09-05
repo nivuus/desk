@@ -110,7 +110,13 @@ pub(super) fn creer_sortie(
     let (designee, candidates) =
         attendre_notre_sortie(pilote, id_pilote, &avant, LIMITE_RATTACHEMENT);
 
-    let Some(cible) = placement::sortie_pour_viewport(&candidates, largeur, hauteur, prises)
+    let Some(cible) = placement::sortie_pour_viewport(
+        &candidates,
+        largeur,
+        hauteur,
+        prises,
+        designee.as_deref(),
+    )
     else {
         // Ce refus ne peut plus venir d'une sortie née TROP GRANDE — c'est le
         // leg 4 de D9, qui plafonnait le produit à trois fenêtres sur une VM
@@ -120,12 +126,17 @@ pub(super) fn creer_sortie(
         // s'applique** :
         //
         // `designee` NON VIDE — notre sortie a été nommée, et refusée quand
-        // même :
-        //   1. elle est plus PETITE que la demande, de plus de `TOLERANCE_PX` ;
-        //   2. elle est DÉJÀ PRISE — `sortie_pour_viewport` filtre aussi sur
+        // même. ⚠️ **CETTE FAMILLE A PERDU SA CAUSE N°1 LE 31 AOÛT 2026** :
+        // « elle est plus PETITE que la demande » ne peut plus refuser une
+        // sortie DÉSIGNÉE — `sortie_pour_viewport` l'en exempte, parce que le
+        // pilote ne la fait pas naître à la taille demandée et que huit refus
+        // en boucle avaient rendu le produit entièrement muet. Il reste :
+        //   1. elle est DÉJÀ PRISE — `sortie_pour_viewport` filtre aussi sur
         //      `!deja_prises`, et `rendre_la_sortie` CRÉE délibérément ce cas :
         //      quand la destruction est refusée par le pilote, le nom reste
-        //      réservé pour ne pas être réattribué.
+        //      réservé pour ne pas être réattribué ;
+        //   2. elle n'est pas ATTACHÉE au bureau — Windows l'a nommée sans
+        //      l'avoir rattachée, et il n'y aurait rien à dupliquer.
         //
         // `designee` VIDE — la désignation n'a rien rendu (pilote sans
         // adaptateur connu, CCD muette ou en erreur, cible pas encore dans un
@@ -164,6 +175,25 @@ pub(super) fn creer_sortie(
         });
         return table.enfant_mort(&session);
     };
+
+    // 🔴 **LA BRANCHE PRISE, NOMMÉE — pas seulement le cas nominal.** Ce dépôt
+    // vient de payer (lot 33) une trace posée APRÈS un court-circuit, qui
+    // rendait un `0` au journal indiscernable entre « le message n'arrive
+    // jamais » et « il arrive et ne change rien ». Ici la sortie est retenue
+    // par DEUX chemins que rien d'autre ne distingue au journal : elle était
+    // assez grande, ou elle est la NÔTRE et on l'a exemptée du critère de
+    // taille (31 août 2026). Sans ce champ, une fenêtre servie ne dit pas
+    // lequel l'a servie, et l'exemption serait invérifiable en production.
+    let exemptee = designee.as_deref() == Some(cible.nom_sortie.as_str())
+        && !placement::sortie_assez_grande((cible.rect.width, cible.rect.height), (largeur, hauteur));
+    tracing::info!(
+        session = %session.0,
+        sortie = %cible.nom_sortie,
+        demande = format!("{largeur}x{hauteur}"),
+        sortie_reelle = format!("{}x{}", cible.rect.width, cible.rect.height),
+        exemptee,
+        "sortie retenue pour cette fenetre"
+    );
 
     // La sortie peut être bien plus grande que la fenêtre : c'est le cas
     // nominal sur une VM dont le registre a été pollué. La fenêtre est posée à
