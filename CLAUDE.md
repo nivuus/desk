@@ -579,8 +579,8 @@ indépendants : ce sont eux qui coûtent.
   pas un contrôle.** Corollaire pratique : **le motif d'un `grep` de recette se
   vérifie contre le CODE QUI L'ÉMET** (`grep -n` sur le `tracing::`/`console.`
   lui-même), jamais contre la spec, le plan, ou le souvenir qu'on en a.
-  🔴 **QUATRE INSTANCES DATÉES DU MÊME JOUR — le 5 septembre 2026, lot 3 —,
-  et les trois premières venaient du PLAN, pas de l'implémenteur :**
+  🔴 **CINQ INSTANCES DATÉES DU MÊME JOUR — le 5 septembre 2026, lot 3 —, et
+  les trois premières venaient du PLAN, pas de l'implémenteur :**
   - **une variante d'énumération n'est pas une chaîne de journal.**
     `grep -ac "NonMesuree" agent.log` rend **0** et ne peut rendre que 0 :
     `SourceMax::NonMesuree` est un identifiant Rust (34 occurrences dans
@@ -612,6 +612,23 @@ indépendants : ce sont eux qui coûtent.
     🔵 **Le seul remède est de lire le CODE DE RETOUR**, qui sépare « la
     requête a réussi et rend un compte » de « la requête a échoué et n'a rien
     à dire » — un filtre de caractères ne le peut jamais.
+  - 🔴 **LA PLUS DANGEREUSE DE LA SÉRIE : UN INSTRUMENT QUI FABRIQUE UNE
+    DONNÉE QUE RIEN NE SIGNALE COMME ABSURDE.** Les autres formes rendent un
+    contrôle incapable d'échouer ; celle-ci **rend un nombre**, dans un dépôt
+    dont la raison d'être est de porter des chiffres datés. Mesuré le
+    5 septembre 2026, item 2 : un banc de débit du pont a rendu
+    **1 312 669 Kio/s** — 615 327 tours, 80,6 Go en 60 s, **quarante mille
+    fois** le débit réel. Il relisait **le même fichier** en boucle, donc il
+    mesurait le **cache de fichiers de Windows**, pas la traversée.
+    ⚠️ **Le symptôme n'était pas une erreur : c'était un NOMBRE — et un nombre
+    se lit comme une mesure.** Un `0` intrigue, un `1 312 669` en impose.
+    🔵 **Le remède employé** : vingt fichiers **DISTINCTS** de 128 Kio, lus
+    **une seule fois** chacun — 32,82 Kio/s, dans la fourchette de F4.
+    🔵 **La règle générale** : *une mesure de débit qui ne relit jamais deux
+    fois la même donnée est la seule qui mesure le transport.* Corollaire :
+    **tout chiffre hors de l'ordre de grandeur attendu se traite comme un
+    défaut d'instrument jusqu'à preuve du contraire**, jamais comme une bonne
+    nouvelle.
   🔵 **Ce qui a sauvé les quatre est le même geste** : un compteur ou un code
   de retour qui SÉPARE les causes d'un zéro (« aucune trame » contre « des
   trames sans le champ » ; « échec de transport » contre « compte nul »), et la

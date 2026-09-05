@@ -1,0 +1,66 @@
+2026-09-05T01:19:17.385702Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-09-05T01:19:17.555957Z  INFO agent::plateforme::session: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:3445/agent" prefixe=3sxuA9dd56NpVdHi37R86g expire_a=1788571757828
+2026-09-05T01:19:17.556071Z  INFO agent::apps: mode de surveillance retenu mode=Armee
+2026-09-05T01:19:17.557772Z  INFO agent::superviseur::signalisation: déclaration du superviseur émise sur la session de contrôle (acceptation encore inconnue) session="3sxuA9dd56NpVdHi37R86g:bureau" jeton_present=true
+2026-09-05T01:19:17.559936Z  INFO agent::apps::surveillance::fil: racine surveillée racine=C:\ProgramData\Microsoft\Windows\Start Menu
+2026-09-05T01:19:17.560033Z  INFO agent::apps::surveillance::fil: racine surveillée racine=C:\Users\Administrator\AppData\Roaming\Microsoft\Windows\Start Menu
+2026-09-05T01:19:17.560107Z  INFO agent::apps::surveillance::fil: racine surveillée racine=C:\Users\Administrator\Desktop
+2026-09-05T01:19:17.560166Z  INFO agent::apps::surveillance::fil: racine surveillée racine=C:\Users\Public\Desktop
+2026-09-05T01:19:17.560175Z  INFO agent::apps::surveillance::fil: surveillance des raccourcis armée racines=4
+2026-09-05T01:19:17.571137Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-09-05T01:19:17.571293Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=2
+2026-09-05T01:19:17.571427Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=3
+2026-09-05T01:19:17.571469Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant purge" nombre=1 attachees=1
+2026-09-05T01:19:17.571481Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant purge" nom=\\.\DISPLAY1 adaptateur=Microsoft Basic Render Driver index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=1280 hauteur=800
+2026-09-05T01:19:17.673641Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\Users\Administrator\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\File Explorer.lnk motif="cible-vide"
+2026-09-05T01:19:17.705371Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\Users\Administrator\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\System Tools\Control Panel.lnk motif="cible-vide"
+2026-09-05T01:19:17.705392Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\Users\Administrator\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\System Tools\Run.lnk motif="cible-vide"
+2026-09-05T01:19:17.876030Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Blue Ripple Sound\Rapture3D - Help.lnk motif="extension" extension=chm
+2026-09-05T01:19:17.907114Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Component Services.lnk motif="extension" extension=msc
+2026-09-05T01:19:17.907134Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Computer Management.lnk motif="extension" extension=msc
+2026-09-05T01:19:17.931414Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Event Viewer.lnk motif="extension" extension=msc
+2026-09-05T01:19:17.978305Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Performance Monitor.lnk motif="extension" extension=msc
+2026-09-05T01:19:17.978327Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Print Management.lnk motif="extension" extension=msc
+2026-09-05T01:19:18.009880Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Security Configuration Management.lnk motif="extension" extension=msc
+2026-09-05T01:19:18.009905Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\services.lnk motif="extension" extension=msc
+2026-09-05T01:19:18.035259Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Task Scheduler.lnk motif="extension" extension=msc
+2026-09-05T01:19:18.035289Z  INFO agent::apps::boucle::memoire: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Windows Defender Firewall with Advanced Security.lnk motif="extension" extension=msc
+2026-09-05T01:19:18.084801Z  INFO agent::apps::boucle::memoire: catalogue reconcilie total=58 retenus=45 cles=41 icones=41 icones_echouees=0 icones_distinctes=37 apparues=41 modifiees=0 disparues=0 duree_ms=526 declencheur="demarrage" notifications=0 debordements=0
+2026-09-05T01:19:20.574631Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-09-05T01:19:20.574775Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=2
+2026-09-05T01:19:20.574920Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=3
+2026-09-05T01:19:20.574951Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="après purge" nombre=1 attachees=1
+2026-09-05T01:19:20.574966Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après purge" nom=\\.\DISPLAY1 adaptateur=Microsoft Basic Render Driver index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=1280 hauteur=800
+2026-09-05T01:19:20.574990Z  INFO agent::moniteurs_virtuels::purge: purge terminée retirees=0 avant=1 apres=1
+2026-09-05T01:19:20.581216Z  INFO agent::superviseur::lanceur: capteur lancé pid=14668
+2026-09-05T01:19:20.582911Z  INFO agent::superviseur::lanceur::pont: pont fichiers lancé pid=15008 session="3sxuA9dd56NpVdHi37R86g:fichiers"
+2026-09-05T01:19:20.582932Z  WARN agent::superviseur::boucle::surveillance_pont: pont fichiers lancé ou relancé (tentatives suivantes silencieuses tant que le cycle se répète) pid_neuf=15008 tentative=1 espacement_ms=500
+2026-09-05T01:19:20.583127Z  INFO agent::appartenance::win: job d'appartenance créé (aucune limite : il ne tue rien)
+2026-09-05T01:19:20.583165Z  INFO agent::superviseur::hook: fenêtre ÉCARTÉE : desk ne l'a pas lancée (règle d'appartenance). Désarmer par APPARTENANCE=0 pour retrouver le comportement d'avant titre="New tab - Personal - Microsoft\u{200b} Edge" pid=10260 processus=msedge.exe
+2026-09-05T01:19:20.583195Z  INFO agent::superviseur::hook: fenêtre ÉCARTÉE : desk ne l'a pas lancée (règle d'appartenance). Désarmer par APPARTENANCE=0 pour retrouver le comportement d'avant titre="New tab - Personal - Microsoft\u{200b} Edge" pid=10260 processus=msedge.exe
+2026-09-05T01:19:20.594525Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-09-05T01:19:20.594569Z  INFO agent: identité héritée du superviseur (AGENT_JETON) : ce processus n'ouvre aucun canal /agent, un seul socket par VM
+2026-09-05T01:19:20.594612Z  WARN agent::apps: decouverte d'applications inactive : ce processus n'a pas de canal /agent (identité héritée du superviseur, ou AGENT_VM/AGENT_SECRET absents)
+2026-09-05T01:19:20.595020Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-09-05T01:19:20.595062Z  INFO agent::capteur: capteur démarré tube="\\\\.\\pipe\\agent-capteur"
+2026-09-05T01:19:20.596745Z  INFO agent::pont::transport: socket UDP du pont fichiers addr=192.168.3.2:50510
+2026-09-05T01:19:20.618488Z  INFO agent::signaling: déclaration de l'agent émise au signaling (acceptation encore inconnue) session="3sxuA9dd56NpVdHi37R86g:fichiers"
+2026-09-05T01:19:20.619228Z  INFO agent::signaling: configuration TURN reçue serveur=90.87.35.18:3478
+2026-09-05T01:19:47.540911Z  INFO agent::apps::boucle: identité changée : le prochain catalogue sera COMPLET (rafraîchissement de jeton OU réenrôlement — cette boucle ne les distingue pas)
+2026-09-05T01:19:48.117354Z  INFO agent::apps::boucle::memoire: catalogue reconcilie total=58 retenus=45 cles=41 icones=0 icones_echouees=0 icones_distinctes=37 apparues=0 modifiees=0 disparues=0 duree_ms=32 declencheur="periode" notifications=0 debordements=0
+2026-09-05T01:19:53.938848Z  INFO agent::superviseur::boucle: une page-shell a rejoint la session de contrôle : les fenêtres sont réannoncées
+2026-09-05T01:19:53.939112Z  INFO agent::superviseur::hook: fenêtre ÉCARTÉE : desk ne l'a pas lancée (règle d'appartenance). Désarmer par APPARTENANCE=0 pour retrouver le comportement d'avant titre="New tab - Personal - Microsoft\u{200b} Edge" pid=10260 processus=msedge.exe
+2026-09-05T01:19:53.939206Z  INFO agent::superviseur::hook: fenêtre ÉCARTÉE : desk ne l'a pas lancée (règle d'appartenance). Désarmer par APPARTENANCE=0 pour retrouver le comportement d'avant titre="New tab - Personal - Microsoft\u{200b} Edge" pid=10260 processus=msedge.exe
+2026-09-05T01:19:55.645801Z  INFO agent::superviseur::boucle::surveillance_pont: pont fichiers de nouveau stable pid=15008
+2026-09-05T01:19:57.726266Z  INFO agent::plateforme::session: ordre de lancement reçu url="ws://192.168.3.1:3445/agent" demande=992ca262-869c-41a7-ac97-e96f5e87f25f cle=923d6fbca3a52f04cacb953bfb21e084c996bec66616a8eee9bb74449d449e65
+2026-09-05T01:19:57.755929Z  INFO agent::appartenance::win: processus lancé inscrit au job d'appartenance
+2026-09-05T01:19:57.755947Z  INFO agent::apps::lancement: raccourci lancé chemin="C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Microsoft Edge.lnk"
+2026-09-05T01:19:57.755952Z  INFO agent::apps::boucle: lancement demande="992ca262-869c-41a7-ac97-e96f5e87f25f" cle="923d6fbca3a52f04cacb953bfb21e084c996bec66616a8eee9bb74449d449e65" issue=Raccourci
+2026-09-05T01:19:57.804210Z  INFO agent::superviseur::hook: fenêtre ÉCARTÉE : desk ne l'a pas lancée (règle d'appartenance). Désarmer par APPARTENANCE=0 pour retrouver le comportement d'avant titre="New tab - Personal - Microsoft\u{200b} Edge" pid=10260 processus=msedge.exe
+2026-09-05T01:20:17.589644Z  INFO agent::apps::boucle: identité changée : le prochain catalogue sera COMPLET (rafraîchissement de jeton OU réenrôlement — cette boucle ne les distingue pas)
+2026-09-05T01:20:18.145526Z  INFO agent::apps::boucle::memoire: catalogue reconcilie total=58 retenus=45 cles=41 icones=0 icones_echouees=0 icones_distinctes=37 apparues=0 modifiees=0 disparues=0 duree_ms=27 declencheur="periode" notifications=0 debordements=0
+2026-09-05T01:20:33.007243Z  INFO agent::superviseur::hook: fenêtre ÉCARTÉE : desk ne l'a pas lancée (règle d'appartenance). Désarmer par APPARTENANCE=0 pour retrouver le comportement d'avant titre="C:\\WINDOWS\\SYSTEM32\\cmd.exe" pid=2768 processus=cmd.exe
+2026-09-05T01:20:47.596698Z  INFO agent::apps::boucle: identité changée : le prochain catalogue sera COMPLET (rafraîchissement de jeton OU réenrôlement — cette boucle ne les distingue pas)
+2026-09-05T01:20:48.173839Z  INFO agent::apps::boucle::memoire: catalogue reconcilie total=58 retenus=45 cles=41 icones=0 icones_echouees=0 icones_distinctes=37 apparues=0 modifiees=0 disparues=0 duree_ms=27 declencheur="periode" notifications=0 debordements=0
+2026-09-05T01:21:17.423315Z  INFO agent::apps::boucle: identité changée : le prochain catalogue sera COMPLET (rafraîchissement de jeton OU réenrôlement — cette boucle ne les distingue pas)
+

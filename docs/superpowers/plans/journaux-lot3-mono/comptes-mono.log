@@ -1,0 +1,10 @@
+bras=mono marqueur=ITEM8-mono-031015
+lignes du segment                        : 16
+messages 'presse-papier de la VM'         : 0
+annonces 'accent de la fenetre Windows'   : 0
+--- traces de DESARMEMENT (elles prouvent l'arrivee de la variable, JAMAIS la coupure) ---
+--- TEMOIN DE VIE DE L'AGENT dans CE bras : il tourne, meme si rien n'est pousse ---
+  lignes 'enrole' / 'session'   : 1
+  lignes 'capteur'              : 0
+  lignes ERROR                  : 0
+  🔴 'aucune fenetre visible'    : 0   (non nul = l'agent est MORT, le bras est a REJETER)

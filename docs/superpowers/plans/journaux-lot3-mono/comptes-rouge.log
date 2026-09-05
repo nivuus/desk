@@ -1,0 +1,11 @@
+bras=rouge marqueur=ITEM8-rouge-031855
+lignes du segment                        : 66
+messages 'presse-papier de la VM'         : 0
+annonces 'accent de la fenetre Windows'   : 0
+--- traces de DESARMEMENT (elles prouvent l'arrivee de la variable, JAMAIS la coupure) ---
+--- TEMOIN DE VIE DE L'AGENT dans CE bras : il tourne, meme si rien n'est pousse ---
+  lignes 'enrole' / 'session'   : 1
+  lignes 'capteur'              : 2
+  lignes ERROR                  : 0
+  🔴 'aucune fenetre visible'    : 0   (non nul = l'agent est MORT, le bras est a REJETER)
+  🔴 fenetres SERVIES            : 0   (zero en bras temoin/rouge = aucun accent possible, bras a REJETER)
