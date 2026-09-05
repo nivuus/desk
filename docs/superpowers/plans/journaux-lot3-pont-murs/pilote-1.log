@@ -1,0 +1,9 @@
+2026-09-05T00:33:16.005Z injection armée au niveau navigateur 
+2026-09-05T00:33:22.606Z injection vue dans le hub {"presente":true,"chemin":"/","etapes":[{"t":1788568398609,"m":"injection item2 posée sur /"}]}
+2026-09-05T00:33:38.938Z racine locale préparée (OPFS) {"tailles":[{"nom":"taille-4k.bin","octets":4096},{"nom":"taille-16k.bin","octets":16384},{"nom":"taille-32k.bin","octets":32768},{"nom":"taille-64k.bin","octets":65536},{"nom":"taille-128k.bin","octets":131072},{"nom":"taille-192k.bin","octets":196608},{"nom":"taille-256k.bin","octets":262144},{"no
+2026-09-05T00:33:38.946Z clic sur « Choisir mon dossier » {"clique":true,"texte":"Choisir mon dossier"}
+2026-09-05T00:33:39.949Z pont monté côté navigateur {"etat":"Lecteur « Mes Fichiers » monté sur « Mes documents ».","ouvert":true}
+2026-09-05T00:33:39.950Z maintien de 420 s — l'observateur de l'invité travaille pendant ce temps 
+2026-09-05T00:33:41.215Z relecture AVANT que l éditeur touche quoi que ce soit [{"nom":"rang-100","kind":"directory","entrees":100},{"nom":"rang-1000","kind":"directory","entrees":1000},{"nom":"rang-2000","kind":"directory","entrees":2000},{"nom":"rang-3000","kind":"directory","entrees":3000},{"nom":"rang-3150","kind":"directory","entrees":3150},{"nom":"rang-3200","kind":"dire
+2026-09-05T00:40:42.220Z relecture APRÈS l éditeur [{"nom":"rang-100","kind":"directory","entrees":100},{"nom":"rang-1000","kind":"directory","entrees":1000},{"nom":"rang-2000","kind":"directory","entrees":2000},{"nom":"rang-3000","kind":"directory","entrees":3000},{"nom":"rang-3150","kind":"directory","entrees":3150},{"nom":"rang-3200","kind":"dire
+2026-09-05T00:40:42.869Z relevé écrit : /home/mallanic/Projects/Nivuus/packages/desk/docs/superpowers/plans/journaux-lot3-pont-murs/opfs-1.json
