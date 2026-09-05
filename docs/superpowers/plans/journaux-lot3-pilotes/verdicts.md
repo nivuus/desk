@@ -117,6 +117,16 @@ ancre comptée à 1, mutation posée, restauration **depuis la copie nommée**
   **aucun n'a été exécuté assez loin pour y arriver** : ils s'arrêtent sur
   l'authentification, avant. Le panneau attend donc encore son premier
   lecteur.
+- ⚠️ **DEUX DES DOUZE N'ONT PAS LA MÊME FORME D'ARGUMENTS**, et mon lanceur
+  ne l'a pas vu : `pilote-e3.mjs` et `pilote-f4.mjs` prennent un **chemin de
+  sortie** en premier argument, là où `pilote-f1.mjs` prend une **durée**.
+  `rejouer.sh` leur a donc passé `12` comme nom de fichier, et ils ont écrit
+  un JSON nommé `12` **dans leur propre répertoire d'instrument** — retiré
+  depuis. ⚠️ **Cela ne change AUCUN verdict** : les deux échouent sur
+  `/auth/connexion` **404**, en amont de tout traitement d'argument, et leur
+  JSON accidentel porte exactement cette erreur. Mais c'est une seconde
+  instance, dans la même tâche, du patron *« l'appelant suppose une forme au
+  lieu de la lire »*.
 - ⚠️ **Aucune ligne de produit ni d'instrument n'a été modifiée.**
 
 ## 6. La VM a-t-elle tenu ?
