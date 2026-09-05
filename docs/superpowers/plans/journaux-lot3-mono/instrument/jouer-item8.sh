@@ -124,7 +124,14 @@ agent_relancer 30
 echo "REPERE=${REPERE}"
 
 etape "UNE FENETRE, pour que l'accent ait un objet — et un navigateur connecte"
-nohup node "${D}/pilote-latence.mjs" --etiquette="item8-${BRAS}" --fenetres=1 --duree=95 --animer=0 \
+# 🔴 `APP` EST OBLIGATOIRE, ET SON ABSENCE A COUTE PLUSIEURS BRAS.
+# Sans elle, `pilote-latence.mjs` retombe sur son motif par defaut
+# `chrome|edge|bloc.?notes|notepad`, qui apparie **Microsoft Edge en
+# premier** — or CETTE CAMPAGNE a mesure (item 7) qu'Edge n'est JAMAIS
+# adopte : lance par desk, sa fenetre est ECARTEE 60 ms plus tard par la
+# regle d'appartenance, et aucune session ne s'ouvre. Le bras rend alors
+# « fenetres SERVIES : 0 » pour une raison ETRANGERE a ce qu'il mesure.
+APP='^Notepad$' nohup node "${D}/pilote-latence.mjs" --etiquette="item8-${BRAS}" --fenetres=1 --duree=95 --animer=0 \
       --sortie="/var/tmp/lot3-item8-${BRAS}.json" > "${J}/pilote-${BRAS}.log" 2>&1 &
 PILOTE_PID=$!
 sleep 45

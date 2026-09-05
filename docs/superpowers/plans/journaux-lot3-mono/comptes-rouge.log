@@ -1,11 +1,14 @@
-bras=rouge marqueur=ITEM8-rouge-031855
-lignes du segment                        : 66
+bras=rouge marqueur=ITEM8-rouge-034506
+lignes du segment                        : 149
 messages 'presse-papier de la VM'         : 0
 annonces 'accent de la fenetre Windows'   : 0
 --- traces de DESARMEMENT (elles prouvent l'arrivee de la variable, JAMAIS la coupure) ---
+2026-09-05T01:46:08.370912Z  WARN fenetre{session=3sxuA9dd56NpVdHi37R86g:w-1}: agent::accent: accent de fenetre DESARME (ACCENT=0) : la couleur de l'icone n'est plus poussee au navigateur
+2026-09-05T01:46:08.403453Z  WARN agent::presse_papier: presse-papier DESARME (PRESSE_PAPIER=0) : le contenu copie dans la VM n'est plus pousse au navigateur
+2026-09-05T01:46:08.610938Z  WARN agent::presse_papier: presse-papier DESARME (PRESSE_PAPIER=0) : le contenu copie dans la VM n'est plus pousse au navigateur
 --- TEMOIN DE VIE DE L'AGENT dans CE bras : il tourne, meme si rien n'est pousse ---
   lignes 'enrole' / 'session'   : 1
-  lignes 'capteur'              : 2
+  lignes 'capteur'              : 17
   lignes ERROR                  : 0
   🔴 'aucune fenetre visible'    : 0   (non nul = l'agent est MORT, le bras est a REJETER)
-  🔴 fenetres SERVIES            : 0   (zero en bras temoin/rouge = aucun accent possible, bras a REJETER)
+  🔴 fenetres SERVIES            : 1   (zero en bras temoin/rouge = aucun accent possible, bras a REJETER)
