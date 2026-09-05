@@ -1,0 +1,552 @@
+{
+  "etiquette": "1",
+  "instant": "2026-09-05T00:33:15.615Z",
+  "etapes": [
+    {
+      "t": "2026-09-05T00:33:16.005Z",
+      "m": "injection armée au niveau navigateur"
+    },
+    {
+      "t": "2026-09-05T00:33:22.606Z",
+      "m": "injection vue dans le hub",
+      "presente": true,
+      "chemin": "/",
+      "etapes": [
+        {
+          "t": 1788568398609,
+          "m": "injection item2 posée sur /"
+        }
+      ]
+    },
+    {
+      "t": "2026-09-05T00:33:38.938Z",
+      "m": "racine locale préparée (OPFS)",
+      "tailles": [
+        {
+          "nom": "taille-4k.bin",
+          "octets": 4096
+        },
+        {
+          "nom": "taille-16k.bin",
+          "octets": 16384
+        },
+        {
+          "nom": "taille-32k.bin",
+          "octets": 32768
+        },
+        {
+          "nom": "taille-64k.bin",
+          "octets": 65536
+        },
+        {
+          "nom": "taille-128k.bin",
+          "octets": 131072
+        },
+        {
+          "nom": "taille-192k.bin",
+          "octets": 196608
+        },
+        {
+          "nom": "taille-256k.bin",
+          "octets": 262144
+        },
+        {
+          "nom": "taille-512k.bin",
+          "octets": 524288
+        }
+      ],
+      "rangs": [
+        {
+          "dossier": "rang-100",
+          "demande": 100,
+          "cree": 100
+        },
+        {
+          "dossier": "rang-1000",
+          "demande": 1000,
+          "cree": 1000
+        },
+        {
+          "dossier": "rang-2000",
+          "demande": 2000,
+          "cree": 2000
+        },
+        {
+          "dossier": "rang-3000",
+          "demande": 3000,
+          "cree": 3000
+        },
+        {
+          "dossier": "rang-3150",
+          "demande": 3150,
+          "cree": 3150
+        },
+        {
+          "dossier": "rang-3200",
+          "demande": 3200,
+          "cree": 3200
+        },
+        {
+          "dossier": "rang-4000",
+          "demande": 4000,
+          "cree": 4000
+        }
+      ]
+    },
+    {
+      "t": "2026-09-05T00:33:38.946Z",
+      "m": "clic sur « Choisir mon dossier »",
+      "clique": true,
+      "texte": "Choisir mon dossier"
+    },
+    {
+      "t": "2026-09-05T00:33:39.949Z",
+      "m": "pont monté côté navigateur",
+      "etat": "Lecteur « Mes Fichiers » monté sur « Mes documents ».",
+      "ouvert": true
+    },
+    {
+      "t": "2026-09-05T00:33:39.950Z",
+      "m": "maintien de 420 s — l'observateur de l'invité travaille pendant ce temps"
+    },
+    {
+      "0": {
+        "nom": "rang-100",
+        "kind": "directory",
+        "entrees": 100
+      },
+      "1": {
+        "nom": "rang-1000",
+        "kind": "directory",
+        "entrees": 1000
+      },
+      "2": {
+        "nom": "rang-2000",
+        "kind": "directory",
+        "entrees": 2000
+      },
+      "3": {
+        "nom": "rang-3000",
+        "kind": "directory",
+        "entrees": 3000
+      },
+      "4": {
+        "nom": "rang-3150",
+        "kind": "directory",
+        "entrees": 3150
+      },
+      "5": {
+        "nom": "rang-3200",
+        "kind": "directory",
+        "entrees": 3200
+      },
+      "6": {
+        "nom": "rang-4000",
+        "kind": "directory",
+        "entrees": 4000
+      },
+      "7": {
+        "nom": "taille-128k.bin",
+        "kind": "file",
+        "taille": 131072
+      },
+      "8": {
+        "nom": "taille-16k.bin",
+        "kind": "file",
+        "taille": 16384
+      },
+      "9": {
+        "nom": "taille-192k.bin",
+        "kind": "file",
+        "taille": 196608
+      },
+      "10": {
+        "nom": "taille-256k.bin",
+        "kind": "file",
+        "taille": 262144
+      },
+      "11": {
+        "nom": "taille-32k.bin",
+        "kind": "file",
+        "taille": 32768
+      },
+      "12": {
+        "nom": "taille-4k.bin",
+        "kind": "file",
+        "taille": 4096
+      },
+      "13": {
+        "nom": "taille-512k.bin",
+        "kind": "file",
+        "taille": 524288
+      },
+      "14": {
+        "nom": "taille-64k.bin",
+        "kind": "file",
+        "taille": 65536
+      },
+      "t": "2026-09-05T00:33:41.215Z",
+      "m": "relecture AVANT que l éditeur touche quoi que ce soit"
+    },
+    {
+      "0": {
+        "nom": "rang-100",
+        "kind": "directory",
+        "entrees": 100
+      },
+      "1": {
+        "nom": "rang-1000",
+        "kind": "directory",
+        "entrees": 1000
+      },
+      "2": {
+        "nom": "rang-2000",
+        "kind": "directory",
+        "entrees": 2000
+      },
+      "3": {
+        "nom": "rang-3000",
+        "kind": "directory",
+        "entrees": 3000
+      },
+      "4": {
+        "nom": "rang-3150",
+        "kind": "directory",
+        "entrees": 3150
+      },
+      "5": {
+        "nom": "rang-3200",
+        "kind": "directory",
+        "entrees": 3200
+      },
+      "6": {
+        "nom": "rang-4000",
+        "kind": "directory",
+        "entrees": 4000
+      },
+      "7": {
+        "nom": "taille-128k.bin",
+        "kind": "file",
+        "taille": 131072
+      },
+      "8": {
+        "nom": "taille-16k.bin",
+        "kind": "file",
+        "taille": 16384
+      },
+      "9": {
+        "nom": "taille-192k.bin",
+        "kind": "file",
+        "taille": 196608
+      },
+      "10": {
+        "nom": "taille-256k.bin",
+        "kind": "file",
+        "taille": 262144
+      },
+      "11": {
+        "nom": "taille-32k.bin",
+        "kind": "file",
+        "taille": 32768
+      },
+      "12": {
+        "nom": "taille-4k.bin",
+        "kind": "file",
+        "taille": 4096
+      },
+      "13": {
+        "nom": "taille-512k.bin",
+        "kind": "file",
+        "taille": 524288
+      },
+      "14": {
+        "nom": "taille-64k.bin",
+        "kind": "file",
+        "taille": 65536
+      },
+      "t": "2026-09-05T00:40:42.220Z",
+      "m": "relecture APRÈS l éditeur"
+    }
+  ],
+  "vm": "677a3953-14c7-4364-92c3-bd17ecddf8d2",
+  "prefixe": "3sxuA9dd56NpVdHi37R86g",
+  "injection_vue": {
+    "presente": true,
+    "chemin": "/",
+    "etapes": [
+      {
+        "t": 1788568398609,
+        "m": "injection item2 posée sur /"
+      }
+    ]
+  },
+  "opfs_prepare": {
+    "tailles": [
+      {
+        "nom": "taille-4k.bin",
+        "octets": 4096
+      },
+      {
+        "nom": "taille-16k.bin",
+        "octets": 16384
+      },
+      {
+        "nom": "taille-32k.bin",
+        "octets": 32768
+      },
+      {
+        "nom": "taille-64k.bin",
+        "octets": 65536
+      },
+      {
+        "nom": "taille-128k.bin",
+        "octets": 131072
+      },
+      {
+        "nom": "taille-192k.bin",
+        "octets": 196608
+      },
+      {
+        "nom": "taille-256k.bin",
+        "octets": 262144
+      },
+      {
+        "nom": "taille-512k.bin",
+        "octets": 524288
+      }
+    ],
+    "rangs": [
+      {
+        "dossier": "rang-100",
+        "demande": 100,
+        "cree": 100
+      },
+      {
+        "dossier": "rang-1000",
+        "demande": 1000,
+        "cree": 1000
+      },
+      {
+        "dossier": "rang-2000",
+        "demande": 2000,
+        "cree": 2000
+      },
+      {
+        "dossier": "rang-3000",
+        "demande": 3000,
+        "cree": 3000
+      },
+      {
+        "dossier": "rang-3150",
+        "demande": 3150,
+        "cree": 3150
+      },
+      {
+        "dossier": "rang-3200",
+        "demande": 3200,
+        "cree": 3200
+      },
+      {
+        "dossier": "rang-4000",
+        "demande": 4000,
+        "cree": 4000
+      }
+    ]
+  },
+  "clic": {
+    "clique": true,
+    "texte": "Choisir mon dossier"
+  },
+  "etat_pont": {
+    "etat": "Lecteur « Mes Fichiers » monté sur « Mes documents ».",
+    "ouvert": true
+  },
+  "relecture_avant_editeur": [
+    {
+      "nom": "rang-100",
+      "kind": "directory",
+      "entrees": 100
+    },
+    {
+      "nom": "rang-1000",
+      "kind": "directory",
+      "entrees": 1000
+    },
+    {
+      "nom": "rang-2000",
+      "kind": "directory",
+      "entrees": 2000
+    },
+    {
+      "nom": "rang-3000",
+      "kind": "directory",
+      "entrees": 3000
+    },
+    {
+      "nom": "rang-3150",
+      "kind": "directory",
+      "entrees": 3150
+    },
+    {
+      "nom": "rang-3200",
+      "kind": "directory",
+      "entrees": 3200
+    },
+    {
+      "nom": "rang-4000",
+      "kind": "directory",
+      "entrees": 4000
+    },
+    {
+      "nom": "taille-128k.bin",
+      "kind": "file",
+      "taille": 131072
+    },
+    {
+      "nom": "taille-16k.bin",
+      "kind": "file",
+      "taille": 16384
+    },
+    {
+      "nom": "taille-192k.bin",
+      "kind": "file",
+      "taille": 196608
+    },
+    {
+      "nom": "taille-256k.bin",
+      "kind": "file",
+      "taille": 262144
+    },
+    {
+      "nom": "taille-32k.bin",
+      "kind": "file",
+      "taille": 32768
+    },
+    {
+      "nom": "taille-4k.bin",
+      "kind": "file",
+      "taille": 4096
+    },
+    {
+      "nom": "taille-512k.bin",
+      "kind": "file",
+      "taille": 524288
+    },
+    {
+      "nom": "taille-64k.bin",
+      "kind": "file",
+      "taille": 65536
+    }
+  ],
+  "relecture_apres_editeur": [
+    {
+      "nom": "rang-100",
+      "kind": "directory",
+      "entrees": 100
+    },
+    {
+      "nom": "rang-1000",
+      "kind": "directory",
+      "entrees": 1000
+    },
+    {
+      "nom": "rang-2000",
+      "kind": "directory",
+      "entrees": 2000
+    },
+    {
+      "nom": "rang-3000",
+      "kind": "directory",
+      "entrees": 3000
+    },
+    {
+      "nom": "rang-3150",
+      "kind": "directory",
+      "entrees": 3150
+    },
+    {
+      "nom": "rang-3200",
+      "kind": "directory",
+      "entrees": 3200
+    },
+    {
+      "nom": "rang-4000",
+      "kind": "directory",
+      "entrees": 4000
+    },
+    {
+      "nom": "taille-128k.bin",
+      "kind": "file",
+      "taille": 131072
+    },
+    {
+      "nom": "taille-16k.bin",
+      "kind": "file",
+      "taille": 16384
+    },
+    {
+      "nom": "taille-192k.bin",
+      "kind": "file",
+      "taille": 196608
+    },
+    {
+      "nom": "taille-256k.bin",
+      "kind": "file",
+      "taille": 262144
+    },
+    {
+      "nom": "taille-32k.bin",
+      "kind": "file",
+      "taille": 32768
+    },
+    {
+      "nom": "taille-4k.bin",
+      "kind": "file",
+      "taille": 4096
+    },
+    {
+      "nom": "taille-512k.bin",
+      "kind": "file",
+      "taille": 524288
+    },
+    {
+      "nom": "taille-64k.bin",
+      "kind": "file",
+      "taille": 65536
+    }
+  ],
+  "etapes_page": [
+    {
+      "t": 1788568398609,
+      "m": "injection item2 posée sur /"
+    },
+    {
+      "t": 1788568404857,
+      "m": "rang-100 : 100 entrées créées"
+    },
+    {
+      "t": 1788568406139,
+      "m": "rang-1000 : 1000 entrées créées"
+    },
+    {
+      "t": 1788568408237,
+      "m": "rang-2000 : 2000 entrées créées"
+    },
+    {
+      "t": 1788568409857,
+      "m": "rang-3000 : 3000 entrées créées"
+    },
+    {
+      "t": 1788568412175,
+      "m": "rang-3150 : 3150 entrées créées"
+    },
+    {
+      "t": 1788568414986,
+      "m": "rang-3200 : 3200 entrées créées"
+    },
+    {
+      "t": 1788568418936,
+      "m": "rang-4000 : 4000 entrées créées"
+    }
+  ]
+}

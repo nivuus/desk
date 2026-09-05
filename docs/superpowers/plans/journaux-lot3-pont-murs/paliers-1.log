@@ -1,0 +1,42 @@
+### BRAS TEMOIN — ARME, AUCUN GESTE : le recensement doit COMPTER ZERO
+[2m2026-09-05T00:34:09.043228Z[0m [32m INFO[0m [2magent::pont::service::recensement[0m[2m:[0m pont en vol=0 sans_commande=0 plus_ancienne_ms=0 sessions=0 octets_hydrates=0 entrees_hydratees=0
+[2m2026-09-05T00:34:09.043297Z[0m [32m INFO[0m [2magent::pont::service::recensement[0m[2m:[0m codes rendus total=0 introuvable=0 chemin-introuvable=0 acces-refuse=0 canal-ferme=0 delai-depasse=0 abandonnee=0 disque-plein=0 non-supporte=0 repertoire-non-vide=0 deja-present=0 protege-en-ecriture=0 inattendue=0 | jamais rendus : introuvable,chemin-introuvable,acces-refuse,canal-ferme,delai-depasse,abandonnee,disque-plein,non-supporte,repertoire-non-vide,deja-present,protege-en-ecriture,inattendue
+[2m2026-09-05T00:34:09.043318Z[0m [32m INFO[0m [2magent::pont::service::recensement[0m[2m:[0m traversees attributs=n:0 moy_us:0 max_us:0 lister=n:0 moy_us:0 max_us:0 lire=n:0 moy_us:0 max_us:0 ecrire=n:0 moy_us:0 max_us:0 mutation=n:0 moy_us:0 max_us:0 | seaux_ms attributs=1:0,2:0,5:0,10:0,20:0,50:0,100:0,200:0,500:0,1000:0,2000:0,5000:0,inf:0 lister=1:0,2:0,5:0,10:0,20:0,50:0,100:0,200:0,500:0,1000:0,2000:0,5000:0,inf:0 lire=1:0,2:0,5:0,10:0,20:0,50:0,100:0,200:0,500:0,1000:0,2000:0,5000:0,inf:0 ecrire=1:0,2:0,5:0,10:0,20:0,50:0,100:0,200:0,500:0,1000:0,2000:0,5000:0,inf:0 mutation=1:0,2:0,5:0,10:0,20:0,50:0,100:0,200:0,500:0,1000:0,2000:0,5000:0,inf:0
+
+### ECHELLE DE TAILLE — duree et ISSUE a chaque barreau
+4 Kio : ABOUTIT       166 ms  lus=   4096 o  24,16 Kio/s
+    16 Kio : ABOUTIT       510 ms  lus=  16384 o  31,4 Kio/s
+    32 Kio : ABOUTIT     1 074 ms  lus=  32768 o  29,8 Kio/s
+    64 Kio : ABOUTIT     2 080 ms  lus=  65536 o  30,77 Kio/s
+   128 Kio : ABOUTIT     4 132 ms  lus= 131072 o  30,98 Kio/s
+   192 Kio : ECHOUE     10 493 ms  -- Exception calling "ReadAllBytes" with "1" argument(s): "An internal error occurred.
+"
+   256 Kio : ECHOUE      2 005 ms  -- Exception calling "ReadAllBytes" with "1" argument(s): "An internal error occurred.
+"
+   512 Kio : ECHOUE      2 037 ms  -- Exception calling "ReadAllBytes" with "1" argument(s): "An internal error occurred.
+"
+
+### 🔴 TEMOIN NEGATIF DE LA LECTURE — l'instrument sait-il seulement ECHOUER ?
+temoin OK : la lecture d un fichier absent ECHOUE -- MethodInvocationException
+
+### ECHELLE D ENTREES — duree, ISSUE, et le COMPTE RENDU
+rang   100 : ECHOUE      2 042 ms  -- Cannot find path 'C:\Users\Administrator\Mes Fichiers\rang-100' because it does not exist.
+  rang  1000 : ABOUTIT     3 160 ms  rendues= 1000  COMPLET
+  rang  2000 : ABOUTIT     5 406 ms  rendues= 2000  COMPLET
+  rang  3000 : ABOUTIT     8 167 ms  rendues= 3000  COMPLET
+  rang  3150 : ABOUTIT     8 783 ms  rendues= 3150  COMPLET
+  rang  3200 : ABOUTIT     8 530 ms  rendues= 3200  COMPLET
+  rang  4000 : ECHOUE      2 237 ms  -- An internal error occurred.
+
+### 🔴 TEMOIN NEGATIF DE L ENUMERATION — un repertoire absent doit ECHOUER
+temoin OK : le listage d un repertoire absent ECHOUE -- ItemNotFoundException
+
+### DEBIT SOUTENU — au moins 60 s de lecture continue
+barreau retenu pour le debit : 128 Kio
+  tours=615327  octets=80 652 140 544  duree=60,0 s  DEBIT=1 312 669,35 Kio/s
+
+### RECENSEMENT — la DIFFERENCE entre deux releves, jamais une ligne isolee
+[2m2026-09-05T00:36:30.805637Z[0m [32m INFO[0m [2magent::pont::service::recensement[0m[2m:[0m traversees attributs=n:14 moy_us:92433 max_us:508955 lister=n:6 moy_us:5872026 max_us:8630615 lire=n:10 moy_us:2236538 max_us:5079799 ecrire=n:0 moy_us:0 max_us:0 mutation=n:0 moy_us:0 max_us:0 | seaux_ms attributs=1:0,2:0,5:0,10:0,20:0,50:8,100:3,200:2,500:0,1000:1,2000:0,5000:0,inf:0 lister=1:0,2:0,5:0,10:0,20:0,50:0,100:0,200:0,500:0,1000:0,2000:0,5000:2,inf:4 lire=1:0,2:0,5:0,10:0,20:0,50:0,100:0,200:1,500:1,1000:0,2000:5,5000:2,inf:1 ecrire=1:0,2:0,5:0,10:0,20:0,50:0,100:0,200:0,500:0,1000:0,2000:0,5000:0,inf:0 mutation=1:0,2:0,5:0,10:0,20:0,50:0,100:0,200:0,500:0,1000:0,2000:0,5000:0,inf:0
+[2m2026-09-05T00:36:40.932742Z[0m [32m INFO[0m [2magent::pont::service::recensement[0m[2m:[0m pont en vol=0 sans_commande=0 plus_ancienne_ms=0 sessions=0 octets_hydrates=512000 entrees_hydratees=5
+[2m2026-09-05T00:36:40.932851Z[0m [32m INFO[0m [2magent::pont::service::recensement[0m[2m:[0m codes rendus total=25 introuvable=1 chemin-introuvable=0 acces-refuse=0 canal-ferme=0 delai-depasse=23 abandonnee=0 disque-plein=0 non-supporte=0 repertoire-non-vide=0 deja-present=0 protege-en-ecriture=0 inattendue=1 | jamais rendus : chemin-introuvable,acces-refuse,canal-ferme,abandonnee,disque-plein,non-supporte,repertoire-non-vide,deja-present,protege-en-ecriture
+[2m2026-09-05T00:36:40.932918Z[0m [32m INFO[0m [2magent::pont::service::recensement[0m[2m:[0m traversees attributs=n:14 moy_us:92433 max_us:508955 lister=n:6 moy_us:5872026 max_us:8630615 lire=n:10 moy_us:2236538 max_us:5079799 ecrire=n:0 moy_us:0 max_us:0 mutation=n:0 moy_us:0 max_us:0 | seaux_ms attributs=1:0,2:0,5:0,10:0,20:0,50:8,100:3,200:2,500:0,1000:1,2000:0,5000:0,inf:0 lister=1:0,2:0,5:0,10:0,20:0,50:0,100:0,200:0,500:0,1000:0,2000:0,5000:2,inf:4 lire=1:0,2:0,5:0,10:0,20:0,50:0,100:0,200:1,500:1,1000:0,2000:5,5000:2,inf:1 ecrire=1:0,2:0,5:0,10:0,20:0,50:0,100:0,200:0,500:0,1000:0,2000:0,5000:0,inf:0 mutation=1:0,2:0,5:0,10:0,20:0,50:0,100:0,200:0,500:0,1000:0,2000:0,5000:0,inf:0
