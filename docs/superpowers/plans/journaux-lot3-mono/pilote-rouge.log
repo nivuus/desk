@@ -1,0 +1,7 @@
+2026-09-05T01:19:48.340Z amorce armée au niveau navigateur (Target.setAutoAttach)
+2026-09-05T01:19:51.367Z témoin négatif : {"page":"about:blank (aucun <video>)","attache":{"videos":0},"echantillons":[],"compteurs":{"trames":0,"sans_capture":0,"videos":0}}
+2026-09-05T01:19:58.031Z application 1/1 lancée : {"nom":"Microsoft Edge","id":"1405567e-3881-4b35-9370-aa9cbdd1dca6","statut":200}
+2026-09-05T01:20:02.039Z cibles (t=0s) : background_page:chrome-extension://nkeimhogjdpnpccoofpliimaahmaaome/background.html ~ background_page:chrome-extension://nmmhkkegccagdldgiimedpiccmgmieda/_generated_background_page.html ~ browser_ui:chrome://omnibox-popup.top-chrome/ ~ browser_ui:chrome://omnibox-popup.top-chrome/omnibox_popup_aim.html ~ page:http://192.168.3.1:3445/ ~ service_worker:chrome-extension://fignfifoniblkonapihmkfakmlgkbkcf/service_worker.js ~ service_worker:chrome-extension://ghbmnnjooekpmoecnnnilnnbdlolhkhi/service_worker_bin_prod.js
+2026-09-05T01:20:07.059Z cibles (t=5s) : background_page:chrome-extension://nkeimhogjdpnpccoofpliimaahmaaome/background.html ~ browser_ui:chrome://omnibox-popup.top-chrome/ ~ browser_ui:chrome://omnibox-popup.top-chrome/omnibox_popup_aim.html ~ page:http://192.168.3.1:3445/ ~ service_worker:chrome-extension://fignfifoniblkonapihmkfakmlgkbkcf/service_worker.js ~ service_worker:chrome-extension://ghbmnnjooekpmoecnnnilnnbdlolhkhi/service_worker_bin_prod.js
+2026-09-05T01:21:31.357Z ERREUR : aucune page de session : voir releve.shell
+2026-09-05T01:21:31.465Z relevé écrit : /var/tmp/lot3-item8-rouge.json
