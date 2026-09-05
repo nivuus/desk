@@ -1,0 +1,9 @@
+2026-09-05T00:23:53.966Z injection armée au niveau navigateur 
+2026-09-05T00:24:00.531Z injection vue dans le hub {"presente":true,"chemin":"/","etapes":[{"t":1788567836535,"m":"injection item3 posée sur /"}]}
+2026-09-05T00:24:00.563Z racine locale préparée (OPFS) [{"nom":"a-renommer.txt","kind":"file","taille":38},{"nom":"sous-dossier","kind":"directory","enfants":["autre.txt"]},{"nom":"temoin-1.txt","kind":"file","taille":24},{"nom":"temoin-2.txt","kind":"file","taille":31}]
+2026-09-05T00:24:00.567Z clic sur « Choisir mon dossier » {"clique":true,"texte":"Choisir mon dossier"}
+2026-09-05T00:24:01.569Z pont monté côté navigateur {"etat":"Lecteur « Mes Fichiers » monté sur « Mes documents ».","ouvert":true}
+2026-09-05T00:24:01.569Z maintien de 150 s — l'observateur de l'invité travaille pendant ce temps 
+2026-09-05T00:24:01.573Z relecture AVANT que l éditeur touche quoi que ce soit [{"nom":"a-renommer.txt","kind":"file","taille":38},{"nom":"sous-dossier","kind":"directory","enfants":["autre.txt"]},{"nom":"temoin-1.txt","kind":"file","taille":24},{"nom":"temoin-2.txt","kind":"file","taille":31}]
+2026-09-05T00:26:31.678Z relecture APRÈS l éditeur [{"nom":"renomme.txt","kind":"file","taille":38},{"nom":"sous-dossier","kind":"directory","enfants":["autre.txt"]},{"nom":"temoin-1.txt","kind":"file","taille":24}]
+2026-09-05T00:26:31.735Z relevé écrit : /home/mallanic/Projects/Nivuus/packages/desk/docs/superpowers/plans/journaux-lot3-pont-frere/opfs-sans-cache.json
