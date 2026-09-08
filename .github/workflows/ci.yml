@@ -21,3 +21,18 @@ jobs:
       shellcheck-paths: "."
   package:
     uses: nivuus/.github/.github/workflows/ci-package.yml@main
+    with:
+      # desk needs auth_mode (own wizard.yaml) plus a full console answers
+      # set (requires.packages: [console] pulls console's install hook into
+      # the same idempotence proof, and the gate applies one answers file to
+      # the whole chain - see the fixture's own _comment). This job is STILL
+      # expected red today for two reasons this fixture cannot fix: (1) the
+      # checkout has no build step, so client/dist and
+      # plateforme/node_modules/.bin/tsx (both gitignored) are absent and the
+      # install hook's own pre-flight refuses before writing anything; (2)
+      # once those exist, desk/hooks/fichiers_installes.py::ecrire_secret()
+      # draws a fresh random secret on every run instead of reusing an
+      # existing one, so a replayed install is measurably NOT idempotent
+      # (etc/nivuus/desk.env and etc/turnserver.conf differ between the two
+      # passes). Both are real findings, reported not fixed here.
+      answers-file: tests/fixtures/ci-answers.json
