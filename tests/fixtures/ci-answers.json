@@ -1,0 +1,15 @@
+{
+  "_comment": "NIVUUS-CI-FIXTURE - synthetic wizard answers, not real credentials, paths or keys. Exists only so the package/Package contract CI gate (nivuus/.github ci-package.yml -> check-idempotence.sh -> desk/hooks/install.py) can exercise the desk install hook unattended. Every string value below is deliberately fake and namespaced NIVUUS-CI-FIXTURE-...; do not reuse any of them on a real deployment. admin_email/admin_password/auth_mode/vb_audio are desk's OWN wizard.yaml questions. The remaining nine keys (dedicated_nvme through guest_workdir) are NOT desk's - they exist only because desk declares requires.packages: [console], and the idempotence harness applies ONE shared answers dict to the whole prerequisite chain, so console's install hook needs its own answers satisfied too before desk's ever runs. Those nine keys are a DELIBERATE, TRACKED duplicate of installer's own console/tests/fixtures/ci-answers.json - the gate has no per-package-answers mechanism (a design change left to a later plan), so if console/wizard.yaml's required answers ever change, this copy must be updated in step or desk's CI goes red for a reason that has nothing to do with desk. EXTERNAL DEPENDENCY: windows_iso points at 'tests/fixtures/ci-fake-windows.iso', a file that lives in the INSTALLER repository (console/tests/fixtures/), not in desk. It resolves only because console's install hook runs with console/'s own directory as cwd inside a sibling installer checkout (NIVUUS_INSTALLER_DIR) - this fixture cannot be used standalone against a desk-only checkout with no such sibling present.",
+  "admin_email": "nivuus-ci-fixture@example.invalid",
+  "admin_password": "NIVUUS-CI-FIXTURE-NOT-A-REAL-PASSWORD",
+  "auth_mode": "motdepasse",
+  "vb_audio": false,
+  "dedicated_nvme": "NIVUUS-CI-FIXTURE-NOT-A-REAL-DISK",
+  "disk_mode": "wipe",
+  "target_disk_verified": false,
+  "retro": false,
+  "windows_iso": "tests/fixtures/ci-fake-windows.iso",
+  "ltsc_key": "NIVUUS-CI-FIXTURE-NOT-A-REAL-PRODUCT-KEY",
+  "apollo_password": "NIVUUS-CI-FIXTURE-NOT-A-REAL-PASSWORD",
+  "guest_workdir": "/NIVUUS-CI-FIXTURE/not-a-real-guest-workdir"
+}

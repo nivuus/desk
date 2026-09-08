@@ -19,3 +19,18 @@ jobs:
     with:
       test-dirs: ""
       shellcheck-paths: "."
+  # The package/Package contract job is DELIBERATELY NOT wired here yet.
+  # desk/hooks/install.py is idempotent now (fix 3e9b835: it reuses the
+  # secrets already written to desk.env on the target root instead of
+  # redrawing PLATEFORME_SECRET_JETON/TURN_SECRET on every run - see that
+  # commit and test_desk_install.py's "installation 8" for the proof), but
+  # the gate still cannot pass in CI: it needs client/dist and
+  # plateforme/node_modules/.bin/tsx, both gitignored build artefacts that
+  # no job in this workflow produces (no `npm ci`/`npm run build` step
+  # feeds a checkout-only job). Wiring the job today would ship a
+  # permanently red control - exactly the failure this plan exists to
+  # remove - so it stays unwired until a later plan adds that build step.
+  # tests/fixtures/ci-answers.json is CORRECT and already proven against
+  # the gate locally (with the build artefacts present) - keep it, a later
+  # plan will wire it via `with: answers-file:` the same way console's is
+  # wired in installer's ci.yml. Do not delete it as unused.

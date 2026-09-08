@@ -31,6 +31,7 @@ RACINE = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(RACINE / "hooks"))
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from commun import HOTE_DEFAUT, NODE_BIN_DEFAUT, PROXY_DEFAUT  # noqa: E402
+from fichiers_installes import lire_secret_persiste  # noqa: E402
 
 failures = []
 
@@ -355,6 +356,141 @@ with tempfile.TemporaryDirectory() as tmp7:
     check("ExecStart pointe sur le npm reellement depose",
           ini7.get("Service", "ExecStart", fallback=""),
           f"{NODE_BIN_DEFAUT}/npm start")
+
+# --- lire_secret_persiste : les cinq cas au niveau unite -------------------
+# 🔴 BUG RÉEL TROUVÉ ET CORRIGÉ LE 2026-09-08 : `install.py` tirait
+# `PLATEFORME_SECRET_JETON` et `TURN_SECRET` SANS CONDITION à chaque appel
+# (`ecrire_secret()` deux fois, jamais de relecture), en contradiction avec
+# le docstring d'`ecrire_secret` qui promettait « tiré une seule fois,
+# jamais recalculé » — l'idempotence gate du plan de release a détecté la
+# non-idempotence (etc/nivuus/desk.env et etc/turnserver.conf changent entre
+# deux passes). `lire_secret_persiste` (hooks/fichiers_installes.py) est la
+# fonction qui porte désormais réellement cet invariant ; ces cinq
+# scénarios éprouvent CHAQUE cas, séparément d'une installation complète,
+# parce qu'un seul hook subprocess ne peut pas facilement distinguer "clé
+# absente" de "valeur vide" de "fichier absent" dans une seule assertion
+# lisible.
+with tempfile.TemporaryDirectory() as tmp_ls:
+    dossier_ls = pathlib.Path(tmp_ls)
+
+    # Cas 1 : le fichier n'existe pas du tout (premier install).
+    absent = dossier_ls / "n-existe-pas.env"
+    check("lire_secret_persiste : fichier absent -> None",
+          lire_secret_persiste(absent, "PLATEFORME_SECRET_JETON"), None)
+
+    # Cas 2 : le fichier existe mais ne porte pas la cle demandee (une
+    # installation anterieure d'une version qui n'ecrivait pas encore
+    # cette cle).
+    sans_cle = dossier_ls / "sans-cle.env"
+    sans_cle.write_text("AUTRE_CLE=une-valeur\n", encoding="utf-8")
+    check("lire_secret_persiste : cle absente du fichier -> None",
+          lire_secret_persiste(sans_cle, "PLATEFORME_SECRET_JETON"), None)
+
+    # Cas 3 : la cle est presente mais sa valeur est vide, ou faite
+    # uniquement d'espaces (fichier tronque ou modifie a la main) — les
+    # DEUX formes comptent comme "rien a reutiliser".
+    valeur_vide = dossier_ls / "valeur-vide.env"
+    valeur_vide.write_text(
+        "PLATEFORME_SECRET_JETON=\nTURN_SECRET=   \n", encoding="utf-8")
+    check("lire_secret_persiste : valeur vide -> None",
+          lire_secret_persiste(valeur_vide, "PLATEFORME_SECRET_JETON"), None)
+    check("lire_secret_persiste : valeur faite d'espaces -> None",
+          lire_secret_persiste(valeur_vide, "TURN_SECRET"), None)
+
+    # Cas 4 : la cle est presente avec une valeur utilisable -> reutilisee
+    # telle quelle.
+    valeur_reelle = dossier_ls / "valeur-reelle.env"
+    valeur_reelle.write_text(
+        "PLATEFORME_SECRET_JETON=abc123\nAUTRE=x\n", encoding="utf-8")
+    check("lire_secret_persiste : valeur presente -> reutilisee telle quelle",
+          lire_secret_persiste(valeur_reelle, "PLATEFORME_SECRET_JETON"),
+          "abc123")
+
+    # Cas 5 : le fichier EXISTE mais sa LECTURE echoue (permissions faussees
+    # par une migration partielle, erreur disque, ...) — PAS "absent", donc
+    # PAS "rien a reutiliser". 🔴 REVUE DU 2026-09-08 : un `except OSError:
+    # return None` trop large avalait CE cas exactement comme le cas 1, et
+    # aurait fait tirer un secret NEUF EN SILENCE — la meme rotation
+    # silencieuse que le bug d'origine, par une porte plus etroite. Cette
+    # fonction doit LEVER, jamais rendre None, pour que install.py puisse
+    # refuser au lieu d'halluciner un secret.
+    #
+    # Un DOUBLE minimal plutot qu'un vrai fichier chmod'e : ces suites
+    # tournent en root sur cette machine, qui outrepasse les permissions
+    # POSIX — un vrai `chmod 000` ne produirait donc PAS de PermissionError
+    # ici, et le scenario resterait vert par accident. `CheminIllisible`
+    # n'imite QUE les deux methodes que `lire_secret_persiste` emploie,
+    # dans le meme esprit que les autres doubles factices de ce dossier
+    # (`poser_faux_node_source`, etc.) : is_file() dit "present", read_text()
+    # leve — exactement la forme d'un fichier reel mais illisible.
+    class CheminIllisible:
+        def is_file(self):
+            return True
+
+        def read_text(self, encoding="utf-8"):
+            raise PermissionError(
+                "permission refusee (factice, cas 5 de ce scenario)")
+
+    illisible = CheminIllisible()
+    try:
+        valeur_obtenue = lire_secret_persiste(illisible, "PLATEFORME_SECRET_JETON")
+        failures.append(
+            "lire_secret_persiste : fichier illisible aurait du LEVER une "
+            f"OSError, a rendu {valeur_obtenue!r} sans lever (secret neuf "
+            "tire en silence si ceci arrivait dans install.py)")
+    except FileNotFoundError:
+        failures.append(
+            "lire_secret_persiste : fichier illisible ne doit PAS etre "
+            "confondu avec FileNotFoundError (le fichier EST present)")
+    except OSError:
+        pass  # attendu : la panne de lecture se propage.
+
+# --- Installation 8 : REJOUER install PROUVE la reutilisation des secrets --
+# La propriete que le bug du 2026-09-08 violait, eprouvee de bout en bout
+# par le VRAI hook (subprocess complet), pas seulement par
+# lire_secret_persiste en isolation : un premier install sur une racine
+# VIDE produit bien les deux secrets (rien a reutiliser encore), et un
+# SECOND install sur la MEME racine les laisse INCHANGES.
+with tempfile.TemporaryDirectory() as tmp8:
+    root8 = pathlib.Path(tmp8)
+
+    r8a = appeler(root8, facts=FACTS)
+    check("installation 8, premiere passe : code de sortie 0",
+          r8a.returncode, 0)
+    if r8a.returncode != 0:
+        failures.append(f"stderr installation 8 (1ere passe) : {r8a.stderr!r}")
+    env8a, _chemin_env8a = lire_env(root8)
+    turnconf8 = root8 / "etc" / "turnserver.conf"
+
+    # Premiere passe sur une racine vide : rien a reutiliser -> les deux
+    # secrets SONT produits (le cas que le bug ne cassait pas).
+    check("premiere passe : PLATEFORME_SECRET_JETON est produit (>= 32 car.)",
+          len(env8a.get("PLATEFORME_SECRET_JETON", "")) >= 32, True)
+    check("premiere passe : TURN_SECRET est produit (>= 32 car.)",
+          len(env8a.get("TURN_SECRET", "")) >= 32, True)
+
+    r8b = appeler(root8, facts=FACTS)
+    check("installation 8, seconde passe SUR LA MEME RACINE : code de sortie 0",
+          r8b.returncode, 0)
+    if r8b.returncode != 0:
+        failures.append(f"stderr installation 8 (2e passe) : {r8b.stderr!r}")
+    env8b, _ = lire_env(root8)
+
+    # 🔴 LA REGRESSION QUE CE SCENARIO GARDE : avant le correctif, ces deux
+    # egalites echouaient a chaque replay (secrets.token_hex(32) tire deux
+    # valeurs differentes avec une probabilite ecrasante).
+    check("PLATEFORME_SECRET_JETON est REUTILISE, jamais redessine au replay",
+          env8b.get("PLATEFORME_SECRET_JETON"),
+          env8a.get("PLATEFORME_SECRET_JETON"))
+    check("TURN_SECRET est REUTILISE, jamais redessine au replay",
+          env8b.get("TURN_SECRET"), env8a.get("TURN_SECRET"))
+
+    # turnserver.conf reste coherent avec TURN_SECRET apres le replay
+    # (les deux ecrivains doivent toujours s'accorder, replay ou non).
+    contenu_turn8 = turnconf8.read_text(encoding="utf-8")
+    check("turnserver.conf porte TOUJOURS le meme secret que TURN_SECRET "
+          "apres un replay",
+          f"static-auth-secret={env8b['TURN_SECRET']}" in contenu_turn8, True)
 
 if failures:
     print(f"FAIL ({len(failures)})")

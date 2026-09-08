@@ -55,6 +55,7 @@ from fichiers_installes import (
     ecrire_env,
     ecrire_secret,
     ecrire_turnserver_conf,
+    lire_secret_persiste,
 )
 
 
@@ -273,8 +274,47 @@ def main() -> int:
             print(f"  - {raison}", file=sys.stderr)
         return 1
 
-    secret_jeton = ecrire_secret()
-    secret_turn = ecrire_secret()
+    # 🔴 CORRIGÉ LE 2026-09-08 : install N'ÉTAIT PAS IDEMPOTENT — ces deux
+    # secrets étaient tirés SANS CONDITION à chaque exécution, en
+    # contradiction directe avec le docstring d'`ecrire_secret` (« tiré UNE
+    # SEULE FOIS, jamais recalculé »), qui décrivait un invariant que le
+    # code ne tenait pas. Le plan de release repose sur un update qui
+    # REJOUE install EN PLACE : sans ce correctif, chaque mise à jour de
+    # desk aurait silencieusement fait tourner PLATEFORME_SECRET_JETON
+    # (invalidant toutes les sessions ouvertes) et TURN_SECRET (cassant
+    # l'authentification coturn en cours). `lire_secret_persiste` relit le
+    # `desk.env` DÉJÀ EN PLACE sur la racine CIBLE (jamais la racine
+    # source) ; elle ne renvoie une valeur que si elle est réellement
+    # réutilisable — fichier absent, clé absente, valeur vide ou blanche
+    # comptent tous comme « rien à réutiliser », jamais comme une erreur
+    # (voir son propre docstring) — et un secret n'est tiré que quand il
+    # n'y a rien à réutiliser.
+    #
+    # 🔴 REVUE DU 2026-09-08 : UN `desk.env` PRÉSENT MAIS ILLISIBLE N'EST
+    # PAS « RIEN À RÉUTILISER » — C'EST UNE PANNE. `lire_secret_persiste`
+    # ne rattrape QUE `FileNotFoundError` (une course TOCTOU, équivalente à
+    # « le fichier n'a jamais existé ») ; toute autre `OSError`
+    # (permissions faussées par une migration partielle, erreur disque, …)
+    # remonte jusqu'ici. La rattraper plus haut et tirer un secret neuf
+    # quand même referait EXACTEMENT le bug que ce correctif corrige, par
+    # une porte plus étroite. Le choix est donc un REFUS BRUYANT, jamais un
+    # avertissement qui laisserait l'install continuer : un avertissement
+    # qu'on peut ignorer ne protège rien, et faire tourner le jeton de
+    # session/le secret TURN parce qu'un fichier était momentanément
+    # illisible est pire que refuser d'installer.
+    env_existant = sous("etc/nivuus/desk.env")
+    try:
+        jeton_existant = lire_secret_persiste(env_existant, "PLATEFORME_SECRET_JETON")
+        turn_existant = lire_secret_persiste(env_existant, "TURN_SECRET")
+    except OSError as exc:
+        print(f"desk install : {env_existant} existe mais n'a pas pu etre "
+              f"lu ({exc}) - refus AVANT de tirer un secret neuf, pour ne "
+              "pas faire tourner PLATEFORME_SECRET_JETON/TURN_SECRET en "
+              "silence pendant une panne de lecture passagere.",
+              file=sys.stderr)
+        return 1
+    secret_jeton = jeton_existant or ecrire_secret()
+    secret_turn = turn_existant or ecrire_secret()
 
     emettre({"event": "progress", "pct": 30, "msg": "Écriture de desk.env"})
 

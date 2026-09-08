@@ -1,0 +1,24 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  release:
+    uses: nivuus/.github/.github/workflows/release.yml@main
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    with:
+      # desk's install hook is idempotent (fix 3e9b835), but the gate still
+      # cannot pass in CI: it needs client/dist and
+      # plateforme/node_modules/.bin/tsx, both gitignored build artefacts
+      # that no release step here produces (same reason package: is not yet
+      # wired into ci.yml - see the comment there). Passing no `with:` at
+      # all used to run the gate anyway, with no answers file and no
+      # console prerequisite resolved, failing it permanently on the first
+      # feat: merge. An explicit, visible opt-out until a later plan adds
+      # the build step and wires this back on.
+      prove-package: false
