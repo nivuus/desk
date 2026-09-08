@@ -1,6 +1,6 @@
 apiVersion: nivuus.dev/v1
 name: desk
-version: 1.0.0
+version: 0.0.0
 label: "Bureau distant Windows (WebRTC)"
 tier: userspace
 
