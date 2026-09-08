@@ -357,7 +357,7 @@ with tempfile.TemporaryDirectory() as tmp7:
           ini7.get("Service", "ExecStart", fallback=""),
           f"{NODE_BIN_DEFAUT}/npm start")
 
-# --- lire_secret_persiste : les quatre cas au niveau unite -----------------
+# --- lire_secret_persiste : les cinq cas au niveau unite -------------------
 # 🔴 BUG RÉEL TROUVÉ ET CORRIGÉ LE 2026-09-08 : `install.py` tirait
 # `PLATEFORME_SECRET_JETON` et `TURN_SECRET` SANS CONDITION à chaque appel
 # (`ecrire_secret()` deux fois, jamais de relecture), en contradiction avec
@@ -365,11 +365,11 @@ with tempfile.TemporaryDirectory() as tmp7:
 # jamais recalculé » — l'idempotence gate du plan de release a détecté la
 # non-idempotence (etc/nivuus/desk.env et etc/turnserver.conf changent entre
 # deux passes). `lire_secret_persiste` (hooks/fichiers_installes.py) est la
-# fonction qui porte désormais réellement cet invariant ; ces quatre
-# scénarios éprouvent CHAQUE cas qu'elle doit traiter comme « rien à
-# réutiliser », séparément d'une installation complète, parce qu'un seul
-# hook subprocess ne peut pas facilement distinguer "clé absente" de
-# "valeur vide" de "fichier absent" dans une seule assertion lisible.
+# fonction qui porte désormais réellement cet invariant ; ces cinq
+# scénarios éprouvent CHAQUE cas, séparément d'une installation complète,
+# parce qu'un seul hook subprocess ne peut pas facilement distinguer "clé
+# absente" de "valeur vide" de "fichier absent" dans une seule assertion
+# lisible.
 with tempfile.TemporaryDirectory() as tmp_ls:
     dossier_ls = pathlib.Path(tmp_ls)
 
@@ -405,6 +405,45 @@ with tempfile.TemporaryDirectory() as tmp_ls:
     check("lire_secret_persiste : valeur presente -> reutilisee telle quelle",
           lire_secret_persiste(valeur_reelle, "PLATEFORME_SECRET_JETON"),
           "abc123")
+
+    # Cas 5 : le fichier EXISTE mais sa LECTURE echoue (permissions faussees
+    # par une migration partielle, erreur disque, ...) — PAS "absent", donc
+    # PAS "rien a reutiliser". 🔴 REVUE DU 2026-09-08 : un `except OSError:
+    # return None` trop large avalait CE cas exactement comme le cas 1, et
+    # aurait fait tirer un secret NEUF EN SILENCE — la meme rotation
+    # silencieuse que le bug d'origine, par une porte plus etroite. Cette
+    # fonction doit LEVER, jamais rendre None, pour que install.py puisse
+    # refuser au lieu d'halluciner un secret.
+    #
+    # Un DOUBLE minimal plutot qu'un vrai fichier chmod'e : ces suites
+    # tournent en root sur cette machine, qui outrepasse les permissions
+    # POSIX — un vrai `chmod 000` ne produirait donc PAS de PermissionError
+    # ici, et le scenario resterait vert par accident. `CheminIllisible`
+    # n'imite QUE les deux methodes que `lire_secret_persiste` emploie,
+    # dans le meme esprit que les autres doubles factices de ce dossier
+    # (`poser_faux_node_source`, etc.) : is_file() dit "present", read_text()
+    # leve — exactement la forme d'un fichier reel mais illisible.
+    class CheminIllisible:
+        def is_file(self):
+            return True
+
+        def read_text(self, encoding="utf-8"):
+            raise PermissionError(
+                "permission refusee (factice, cas 5 de ce scenario)")
+
+    illisible = CheminIllisible()
+    try:
+        valeur_obtenue = lire_secret_persiste(illisible, "PLATEFORME_SECRET_JETON")
+        failures.append(
+            "lire_secret_persiste : fichier illisible aurait du LEVER une "
+            f"OSError, a rendu {valeur_obtenue!r} sans lever (secret neuf "
+            "tire en silence si ceci arrivait dans install.py)")
+    except FileNotFoundError:
+        failures.append(
+            "lire_secret_persiste : fichier illisible ne doit PAS etre "
+            "confondu avec FileNotFoundError (le fichier EST present)")
+    except OSError:
+        pass  # attendu : la panne de lecture se propage.
 
 # --- Installation 8 : REJOUER install PROUVE la reutilisation des secrets --
 # La propriete que le bug du 2026-09-08 violait, eprouvee de bout en bout

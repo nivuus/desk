@@ -72,24 +72,39 @@ def lire_secret_persiste(chemin_env: pathlib.Path, cle: str) -> str | None:
     recalculé » que le docstring d'`ecrire_secret` décrivait sans
     l'appliquer (bug corrigé le 2026-09-08 — voir son propre docstring).
 
-    Trois cas se traitent TOUS comme « rien à réutiliser », jamais comme une
+    Trois cas se traitent comme « rien à réutiliser », jamais comme une
     erreur qui ferait échouer l'install pour une raison qui n'a rien à voir
-    avec l'installation elle-même :
+    avec l'installation elle-même — dans TOUS les trois, `return None`,
+    silencieusement :
       - `chemin_env` n'existe pas (premier install sur cette racine) ;
-      - `chemin_env` existe mais ne porte pas `cle` (par exemple une
-        installation antérieure d'une version qui n'écrivait pas encore
-        cette clé) ;
+      - `chemin_env` a disparu ENTRE le test d'existence et la lecture — une
+        vraie course, mais qui revient au même cas que ci-dessus : rien à
+        lire, jamais une panne à signaler ;
       - `cle` est présente mais sa valeur est vide, ou faite uniquement
-        d'espaces (un fichier tronqué ou modifié à la main).
-    Une erreur de LECTURE (permissions, etc.) est traitée de la même façon,
-    pour la même raison — jamais une exception qui remonterait jusqu'à
-    `main()`.
+        d'espaces (un fichier tronqué ou modifié à la main), ou `chemin_env`
+        existe sans porter `cle` (une installation antérieure d'une version
+        qui n'écrivait pas encore cette clé).
+
+    🔴 UN QUATRIÈME CAS EST DÉLIBÉRÉMENT *EXCLU* DE CETTE LISTE, ET C'EST
+    LE POINT DE CE CORRECTIF (2026-09-08, revue) : `chemin_env` EXISTE mais
+    ne peut PAS être lu — permissions faussées par une migration partielle,
+    erreur disque, tout ce qui n'est pas « le fichier n'est simplement pas
+    là ». Un `except OSError` qui avalait CE cas-là aussi referait
+    EXACTEMENT le bug que ce module corrige, par une porte plus étroite :
+    un `desk.env` présent mais momentanément illisible ferait tirer un
+    secret NEUF EN SILENCE — la même rotation silencieuse du bug d'origine,
+    juste déclenchée différemment. Cette fonction ne l'avale donc PAS :
+    seule `FileNotFoundError` (la course TOCTOU ci-dessus) est rattrapée ;
+    toute AUTRE `OSError` (`PermissionError`, une erreur disque, …) se
+    propage à l'appelant tel quel. `install.py` la rattrape à son tour et
+    REFUSE l'installation plutôt que d'en tirer un secret halluciné — voir
+    son propre commentaire à l'appel.
     """
     if not chemin_env.is_file():
         return None
     try:
         contenu = chemin_env.read_text(encoding="utf-8")
-    except OSError:
+    except FileNotFoundError:
         return None
     for ligne in contenu.splitlines():
         ligne = ligne.strip()

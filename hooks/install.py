@@ -289,11 +289,32 @@ def main() -> int:
     # comptent tous comme « rien à réutiliser », jamais comme une erreur
     # (voir son propre docstring) — et un secret n'est tiré que quand il
     # n'y a rien à réutiliser.
+    #
+    # 🔴 REVUE DU 2026-09-08 : UN `desk.env` PRÉSENT MAIS ILLISIBLE N'EST
+    # PAS « RIEN À RÉUTILISER » — C'EST UNE PANNE. `lire_secret_persiste`
+    # ne rattrape QUE `FileNotFoundError` (une course TOCTOU, équivalente à
+    # « le fichier n'a jamais existé ») ; toute autre `OSError`
+    # (permissions faussées par une migration partielle, erreur disque, …)
+    # remonte jusqu'ici. La rattraper plus haut et tirer un secret neuf
+    # quand même referait EXACTEMENT le bug que ce correctif corrige, par
+    # une porte plus étroite. Le choix est donc un REFUS BRUYANT, jamais un
+    # avertissement qui laisserait l'install continuer : un avertissement
+    # qu'on peut ignorer ne protège rien, et faire tourner le jeton de
+    # session/le secret TURN parce qu'un fichier était momentanément
+    # illisible est pire que refuser d'installer.
     env_existant = sous("etc/nivuus/desk.env")
-    secret_jeton = (lire_secret_persiste(env_existant, "PLATEFORME_SECRET_JETON")
-                     or ecrire_secret())
-    secret_turn = (lire_secret_persiste(env_existant, "TURN_SECRET")
-                    or ecrire_secret())
+    try:
+        jeton_existant = lire_secret_persiste(env_existant, "PLATEFORME_SECRET_JETON")
+        turn_existant = lire_secret_persiste(env_existant, "TURN_SECRET")
+    except OSError as exc:
+        print(f"desk install : {env_existant} existe mais n'a pas pu etre "
+              f"lu ({exc}) - refus AVANT de tirer un secret neuf, pour ne "
+              "pas faire tourner PLATEFORME_SECRET_JETON/TURN_SECRET en "
+              "silence pendant une panne de lecture passagere.",
+              file=sys.stderr)
+        return 1
+    secret_jeton = jeton_existant or ecrire_secret()
+    secret_turn = turn_existant or ecrire_secret()
 
     emettre({"event": "progress", "pct": 30, "msg": "Écriture de desk.env"})
 
