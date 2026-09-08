@@ -40,7 +40,7 @@ md-5 = "0.10"
 # `windows` (qui ne fait que RÉ-EXPORTER `windows_core` sous le nom `core`)
 # est déclaré en dépendance. Version alignée sur celle que verrouille déjà
 # Cargo.lock comme dépendance transitive de `windows`.
-windows-core = "0.62"
+windows-core = "0.100"
 windows = { version = "0.62", features = [
     "Win32_Devices_DeviceAndDriverInstallation",
     # `QueryDisplayConfig` / `DisplayConfigGetDeviceInfo` : la seule
