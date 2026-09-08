@@ -19,3 +19,5 @@ jobs:
     with:
       test-dirs: ""
       shellcheck-paths: "."
+  package:
+    uses: nivuus/.github/.github/workflows/ci-package.yml@main
