@@ -20,7 +20,7 @@ opus = "0.3.1"
 # l'auteur a explicitement fermée. Version alignée sur celle que Cargo.lock
 # verrouille déjà comme dépendance transitive de str0m : aucun doublon dans
 # l'arbre. Même précédent que `windows-core` plus bas.
-is = "0.10"
+is = "0.11"
 # MESSAGE-INTEGRITY des requêtes TURN.
 hmac = "0.12"
 sha1 = "0.10"
