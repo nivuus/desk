@@ -31,7 +31,7 @@ sha1 = "0.10"
 # `md-5` (RustCrypto, API `Md5::digest`) et NON le crate `md5` d'Ivan Ukhov
 # (API `md5::compute`) : le premier partage le trait `Digest` avec `sha1`
 # déclaré juste au-dessus, donc une seule famille d'API dans ce module.
-md-5 = "0.10"
+md-5 = "0.11"
 
 [target.'cfg(windows)'.dependencies]
 # Dépendance directe requise par la macro `#[windows::core::implement]`
