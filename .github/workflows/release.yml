@@ -3,6 +3,13 @@ name: Release
 on:
   push:
     branches: [main]
+  # Every job here calls a reusable workflow from nivuus/.github@main, so what
+  # this means can change with no commit landing in this repository - and it
+  # does, often. Without this trigger the only way to ask whether main passes
+  # under the current socle is to push something to main, and re-running an
+  # old run does not answer it either: a re-run replays the workflow revision
+  # it was created with. `gh workflow run <name> --ref main` asks directly.
+  workflow_dispatch:
 
 jobs:
   release:
