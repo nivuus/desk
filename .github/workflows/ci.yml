@@ -19,6 +19,16 @@ jobs:
     with:
       test-dirs: ""
       shellcheck-paths: "."
+      # docs/superpowers/plans/*/instrument/ holds the scripts executed plans
+      # actually ran, kept beside the measurements they produced. 65 of this
+      # repository's 75 shell scripts live there, and 28 of them fail
+      # `shellcheck -S warning`: 18 unicode quotes, 15 unused variables, 7
+      # missing shebangs, 6 bare cds. None of those is a defect - they are
+      # facts about a run that already happened, and editing an archived
+      # script to satisfy a linter edits the record of what was run. The ten
+      # scripts under scripts/ ARE code and stay in the scan; the path stays
+      # "." so anything new outside docs/ is checked without being listed.
+      shellcheck-exclude: "./docs/*"
   # The package/Package contract job is DELIBERATELY NOT wired here yet.
   # desk/hooks/install.py is idempotent now (fix 3e9b835: it reuses the
   # secrets already written to desk.env on the target root instead of
