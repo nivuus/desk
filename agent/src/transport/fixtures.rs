@@ -1,17 +1,17 @@
-//! Échafaudages partagés des tests d'intégration de `transport` : l'adresse
-//! locale, la source vidéo de test, et le pair str0m en boucle locale qui
-//! joue le rôle du navigateur.
+//! Shared scaffolding for `transport`'s integration tests: the local
+//! address, the test video source, and the str0m peer on local loopback that
+//! plays the browser's role.
 //!
-//! `#[cfg(test)]` : rien de ceci n'est compilé en `release`.
+//! `#[cfg(test)]`: none of this is compiled in `release`.
 //!
-//! N'y figurent que les éléments réellement redéclarés par plusieurs tests —
-//! `DummyAudioSource`, `CountingSource` et `SourceRefusant` restent chacune
-//! avec l'unique test qui les définit, ce ne sont pas des échafaudages
-//! partagés.
+//! Only the items really redeclared by several tests appear here —
+//! `DummyAudioSource`, `CountingSource` and `SourceRefusant` each stay
+//! with the single test that defines them, they are not shared
+//! scaffolding.
 //!
-//! Les `use` y sont explicites plutôt qu'un `use super::*` : `transport.rs` ne
-//! porte plus que la structure et la boucle, et n'importe donc plus de
-//! lui-même tout ce dont ces échafaudages ont besoin.
+//! The `use`s here are explicit rather than a `use super::*`: `transport.rs` now
+//! only carries the structure and the loop, and therefore no longer imports
+//! by itself everything this scaffolding needs.
 
 use std::net::{IpAddr, SocketAddr, UdpSocket};
 use std::time::{Duration, Instant};
@@ -21,13 +21,13 @@ use str0m::net::{DatagramRecv, Protocol, Receive};
 use str0m::stats::MediaEgressStats;
 use str0m::{Candidate, Input, Rtc};
 
-/// Adresse locale utilisée par tous les pairs de test (loopback).
+/// Local address used by all test peers (loopback).
 pub(super) fn local_ip() -> IpAddr {
     "127.0.0.1".parse().unwrap()
 }
 
-/// Ouvre le flux H.264 de test partagé par les tests d'intégration de
-/// `transport` : `testdata/testsrc.264`, 1280x720 à 60 im/s.
+/// Opens the test H.264 stream shared by `transport`'s integration
+/// tests: `testdata/testsrc.264`, 1280x720 at 60 fps.
 pub(super) fn video_test_source() -> crate::source::FileSource {
     let source_path =
         std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/testdata/testsrc.264"));
@@ -35,10 +35,10 @@ pub(super) fn video_test_source() -> crate::source::FileSource {
         .expect("chargement du flux de test")
 }
 
-/// Construit le second `Rtc` str0m représentant le pair « navigateur » en
-/// boucle locale : socket UDP lié et candidate hôte ajoutée. La négociation
-/// SDP (pistes, canaux) reste propre à chaque test, qui négocie des
-/// combinaisons différentes de pistes.
+/// Builds the second str0m `Rtc` representing the "browser" peer on
+/// local loopback: UDP socket bound and host candidate added. The SDP
+/// negotiation (tracks, channels) stays specific to each test, which negotiates
+/// different combinations of tracks.
 pub(super) fn local_peer(local_ip: IpAddr, enable_opus: bool) -> (UdpSocket, SocketAddr, Rtc) {
     let peer_socket = UdpSocket::bind(SocketAddr::new(local_ip, 0)).expect("socket du pair");
     let peer_addr = peer_socket.local_addr().unwrap();
@@ -51,11 +51,11 @@ pub(super) fn local_peer(local_ip: IpAddr, enable_opus: bool) -> (UdpSocket, Soc
     (peer_socket, peer_addr, peer_rtc)
 }
 
-/// Statistiques d'émission minimales pour la piste `mid` : seuls `mid`, `rtt`
-/// et `loss` sont lus par `handle_event`, le reste n'a qu'à exister.
+/// Minimal emission statistics for track `mid`: only `mid`, `rtt`
+/// and `loss` are read by `handle_event`, the rest only has to exist.
 ///
-/// Partagée entre `adaptation` et `part` (sous-bloc D6) : les deux modules en
-/// ont besoin pour amener le contrôleur à observer une estimation réelle.
+/// Shared between `adaptation` and `part` (sub-block D6): both modules
+/// need it to bring the controller to observe a real estimate.
 pub(super) fn stats_video(mid: Mid) -> MediaEgressStats {
     MediaEgressStats {
         mid,
@@ -72,11 +72,11 @@ pub(super) fn stats_video(mid: Mid) -> MediaEgressStats {
     }
 }
 
-/// Reçoit un datagramme du pair et le transmet à son `Rtc`, en respectant
-/// `wait` — déjà borné par l'appelant selon ses propres échéances (fenêtre
-/// de mesure, échéance dure...). Renvoie `true` si l'appelant doit reprendre
-/// son tour de boucle immédiatement (délai déjà écoulé) : c'est à l'appelant
-/// de faire `continue`, cette fonction ne peut pas le faire à sa place.
+/// Receives a datagram from the peer and passes it to its `Rtc`, respecting
+/// `wait` — already bounded by the caller according to its own deadlines (measurement
+/// window, hard deadline...). Returns `true` if the caller must resume
+/// its loop round immediately (delay already elapsed): it is up to the caller
+/// to `continue`, this function cannot do it in its place.
 pub(super) fn poll_peer_socket(
     peer_rtc: &mut Rtc,
     peer_socket: &UdpSocket,

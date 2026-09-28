@@ -293,10 +293,10 @@ pays for it at each new message.
 /// outside str0m's crate.
 #[test]
 fn une_trame_arrivee_avant_tout_channel_open_est_refusee() {
-    // L'état initial : aucun canal n'est encore nommé.
+    // The initial state: no channel is named yet.
     assert_eq!(destination(1u8, None, None), Destination::Ignoree);
-    // Le transitoire réel : `control` s'ouvre, `input` pas encore. Une trame
-    // d'`input` reçue ici est refusée, PAS prise pour du contrôle.
+    // The real transient: `control` opens, `input` not yet. An `input`
+    // frame received here is refused, NOT taken for control.
     assert_eq!(destination(1u8, None, Some(2u8)), Destination::Ignoree);
 }
 
@@ -304,20 +304,20 @@ fn une_trame_arrivee_avant_tout_channel_open_est_refusee() {
 fn l_aiguillage_nomme_ses_deux_canaux_et_refuse_les_autres() {
     assert_eq!(destination(1u8, Some(1), Some(2)), Destination::Entree);
     assert_eq!(destination(2u8, Some(1), Some(2)), Destination::Controle);
-    // 🔴 LE CANAL TIERS : hier décodé comme une entrée souris dès qu'il était
-    // binaire, aujourd'hui refusé.
+    // 🔴 THE THIRD CHANNEL: yesterday decoded as a mouse input as soon as it was
+    // binary, today refused.
     assert_eq!(destination(3u8, Some(1), Some(2)), Destination::Ignoree);
 }
 
-/// 🔴 LE TEST DE NON-RÉGRESSION, ET C'EST LE PLUS IMPORTANT DES TROIS : une
-/// trame binaire du canal `input` doit TOUJOURS atteindre `on_input`. Un
-/// aiguillage plus strict qui casserait l'entrée serait pire que le défaut
-/// qu'il corrige.
+/// 🔴 THE NON-REGRESSION TEST, AND IT IS THE MOST IMPORTANT OF THE THREE: a
+/// binary frame on the `input` channel must ALWAYS reach `on_input`. A
+/// stricter routing that broke input would be worse than the defect
+/// it fixes.
 ///
-/// 🔴 ET LE ROUGE DU SECOND : un canal binaire PARASITE est négocié à côté
-/// d'`input`, et on écrit dessus. Sur le code d'avant cette tâche, `on_input`
-/// est appelé DEUX fois. **Sans ce second canal, le test serait vacueux** — il
-/// ne vérifierait que ce que le code faisait déjà.
+/// 🔴 AND THE SECOND ONE'S RED: a PARASITE binary channel is negotiated next to
+/// `input`, and we write on it. On the code before this task, `on_input`
+/// is called TWICE. **Without this second channel, the test would be vacuous** — it
+/// would only check what the code already did.
 #[test]
 fn une_trame_binaire_du_canal_input_atteint_on_input_et_un_canal_inconnu_est_refuse() {
     use proto::input::InputMessage;
@@ -340,8 +340,8 @@ fn une_trame_binaire_du_canal_input_atteint_on_input_et_un_canal_inconnu_est_ref
     api.add_media(MediaKind::Video, Direction::RecvOnly, None, None, None);
     api.add_channel("control".to_string());
     let canal_input = api.add_channel("input".to_string());
-    // 🔴 LE CANAL PARASITE. Il n'a pas besoin d'exister dans le produit : il
-    // exhibe qu'un canal binaire QUELCONQUE était décodé comme une entrée.
+    // 🔴 THE PARASITE CHANNEL. It does not need to exist in the product: it
+    // exhibits that ANY binary channel was decoded as an input.
     let canal_parasite = api.add_channel("parasite".to_string());
     let (offer, pending) = api.apply().expect("offre non vide");
 
@@ -369,16 +369,16 @@ fn une_trame_binaire_du_canal_input_atteint_on_input_et_un_canal_inconnu_est_ref
 
     let butoir = Instant::now() + Duration::from_secs(10);
     let mut ecrit = false;
-    // ⚠️ `Event::Connected` NE SUFFIT PAS : il marque la fin de la poignée de
-    // main DTLS/ICE, alors que les canaux SCTP s'ouvrent APRÈS. Écrire à ce
-    // moment-là fait rendre `None` à `peer_rtc.channel(...)` — ce qui, dans un
-    // test, se lit comme une panne du produit alors que c'est le protocole du
-    // test qui est en avance. On attend donc les `ChannelOpen` des DEUX canaux.
+    // ⚠️ `Event::Connected` IS NOT ENOUGH: it marks the end of the DTLS/ICE
+    // handshake, whereas the SCTP channels open AFTERWARDS. Writing at that
+    // moment makes `peer_rtc.channel(...)` return `None` — which, in a
+    // test, reads like a product failure whereas it is the test's
+    // protocol that is ahead. We therefore wait for the `ChannelOpen` of BOTH channels.
     let mut ouverts: Vec<str0m::channel::ChannelId> = Vec::new();
-    // Une fois le message attendu reçu, on continue de pomper un peu : le
-    // parasite voyage sur un AUTRE flux SCTP, donc son ordre d'arrivée n'est
-    // pas garanti par celui de l'écriture. Sans ce répit, « pas encore arrivé »
-    // se lirait comme « n'arrivera jamais ».
+    // Once the expected message is received, we keep pumping a little: the
+    // parasite travels on ANOTHER SCTP stream, so its arrival order is
+    // not guaranteed by the write order. Without this respite, "not arrived yet"
+    // would read as "will never arrive".
     let mut repit: Option<Instant> = None;
 
     loop {
@@ -423,8 +423,8 @@ fn une_trame_binaire_du_canal_input_atteint_on_input_et_un_canal_inconnu_est_ref
                 }
                 if !ecrit && ouverts.contains(&canal_input) && ouverts.contains(&canal_parasite) {
                     ecrit = true;
-                    // Le parasite EN PREMIER : s'il devait passer, il aurait
-                    // toute l'avance.
+                    // The parasite FIRST: if it were to get through, it would have
+                    // all the lead.
                     peer_rtc
                         .channel(canal_parasite)
                         .expect("canal parasite ouvert")
