@@ -459,11 +459,11 @@ fn tracer(
         // occupation that touched zero. The second alone would not say how many
         // times; the first alone would not say how far we are from the edge.
         //
-        // ⚠️ **Ce que cela NE donne PAS** : la latence de bout en bout, que
-        // RIEN ne mesure dans ce dépôt depuis D1. C'est la SECONDE des deux
-        // composantes de la latence ajoutée par l'agent, dont E2 n'avait que la
-        // première (`retards`). Le troisième critère de la spec §13 reste NON
-        // JUGÉ.
+        // ⚠️ **What this does NOT give**: end-to-end latency, which
+        // NOTHING in this repository has measured since D1. It is the SECOND of the two
+        // components of the latency added by the agent, of which E2 only had the
+        // first (`retards`). The third criterion of spec §13 stays NOT
+        // JUDGED.
         famines = d(compteurs.famines, precedents.famines),
         occupation_ms = occupation.as_millis(),
         "micro ecrit sur le cable"

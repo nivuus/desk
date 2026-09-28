@@ -1,33 +1,33 @@
-//! `WindowsSource::resize` : retailler la fenêtre et reconstruire la chaîne
-//! d'encodage — par l'UN de deux chemins, selon le mode de capture.
+//! `WindowsSource::resize`: resize the window and rebuild the encoding
+//! chain — through ONE of two paths, depending on the capture mode.
 //!
-//! ❌ **Ce titre disait « — ou ne rien faire du tout », et le lot 33 l'a rendu
-//! faux.** Il n'y a plus de chemin qui ne fait rien : `FenetreRecadree`
-//! recapture le bureau (chemin mono-fenêtre historique), `SortieEntiere` suit
-//! le viewport **à l'intérieur d'une sortie qui ne bouge pas**
-//! (`suivre_le_viewport`, en pied de fichier). Voir
-//! `ModeCapture::suit_le_viewport` pour la mesure qui l'a motivé et pour la
-//! distinction d'avec le chemin `ChangeDisplaySettingsExW` que D9 a retiré.
+//! ❌ **This title said "— or do nothing at all", and batch 33 made it
+//! wrong.** There is no longer a path that does nothing: `FenetreRecadree`
+//! recaptures the desktop (historical single-window path), `SortieEntiere` follows
+//! the viewport **inside an output that does not move**
+//! (`suivre_le_viewport`, at the bottom of the file). See
+//! `ModeCapture::suit_le_viewport` for the measurement that motivated it and for the
+//! distinction from the `ChangeDisplaySettingsExW` path D9 removed.
 //!
-//! **Module ENFANT de `windows_source`**, et non frère : c'est ce qui lui donne
-//! accès aux champs privés de `WindowsSource` sans qu'aucun ait à être ouvert
-//! en `pub(crate)` (voir le commentaire des champs dans `windows_source.rs`).
-//! Extrait de ce fichier-là parce qu'il est en dette de taille (`CLAUDE.md`) et
-//! que le correctif C1 de la revue finale y ajoutait par ailleurs
-//! `depuis_pieces` et le champ `mode` : l'addition s'accompagne de son
-//! extraction, comme la règle l'exige.
+//! **CHILD module of `windows_source`**, and not a sibling: that is what gives it
+//! access to the private fields of `WindowsSource` without any having to be opened
+//! as `pub(crate)` (see the fields' comment in `windows_source.rs`).
+//! Extracted from that file because it is in size debt (`CLAUDE.md`) and
+//! the final review's fix C1 moreover added
+//! `depuis_pieces` and the `mode` field to it: the addition comes with its
+//! extraction, as the rule requires.
 //!
-//! Aucune valeur, aucun ordre d'opération n'a changé au déplacement ; la seule
-//! addition est le garde de mode en tête de `resize`.
+//! No value, no order of operations changed in the move; the only
+//! addition is the mode guard at the head of `resize`.
 //!
-//! ⚠️ **Le sous-bloc D8 avait donné à ce module un enfant, `mode_sortie`**, qui
-//! faisait suivre à la sortie virtuelle le mode du viewport. Le sous-bloc D9
-//! l'a mesuré — le changement ne survit pas à l'ouverture de la fenêtre
-//! suivante, et `CDS_UPDATEREGISTRY` pollue le registre au point de bloquer le
-//! produit — et l'a **retiré**. Voir le constat de mesure en tête de
-//! `capteur/plein_ecran.rs`. **Ce qui reste actif et livré du plein écran,
-//! c'est la DÉTECTION et l'ANNONCE** (`capteur/fenetre.rs` →
-//! `AgentControl::Fullscreen`), qui ne passent pas par ici.
+//! ⚠️ **Sub-block D8 had given this module a child, `mode_sortie`**, which
+//! made the virtual output follow the viewport's mode. Sub-block D9
+//! measured it — the change does not survive the opening of the next
+//! window, and `CDS_UPDATEREGISTRY` pollutes the registry to the point of blocking the
+//! product — and **removed** it. See the measurement finding at the head of
+//! `capteur/plein_ecran.rs`. **What stays active and shipped of fullscreen
+//! is DETECTION and ANNOUNCEMENT** (`capteur/fenetre.rs` →
+//! `AgentControl::Fullscreen`), which do not go through here.
 
 use anyhow::{Context, Result};
 
@@ -39,32 +39,32 @@ use crate::rebuild::{rebuild_or_recover, RebuildOutcome};
 use crate::window;
 
 impl WindowsSource {
-    /// Redimensionne la fenêtre et reconstruit la chaîne d'encodage.
+    /// Resizes the window and rebuilds the encoding chain.
     ///
-    /// Media Foundation n'autorise pas le changement de résolution en cours de
-    /// route : il faut repartir d'un encodeur neuf. L'horodatage, lui, reste
-    /// continu — le décodeur du navigateur rejetterait un retour en arrière
-    /// (`next_pts_90k` n'est jamais réinitialisé ici).
+    /// Media Foundation does not allow changing resolution on the
+    /// way: one must start again from a new encoder. The timestamp, for its part, stays
+    /// continuous — the browser's decoder would reject going backwards
+    /// (`next_pts_90k` is never reset here).
     ///
-    /// **Sans effet quand la source capture une sortie DXGI entière** — voir le
-    /// garde en tête de fonction, et `ModeCapture` pour ce qui se produisait
-    /// avant lui.
+    /// **No effect when the source captures a whole DXGI output** — see the
+    /// guard at the head of the function, and `ModeCapture` for what happened
+    /// before it.
     pub fn resize(&mut self, width: u32, height: u32) -> Result<()> {
-        // CORRECTIF C1 (revue finale de la branche multi-fenêtres D1). Tout ce
-        // qui suit suppose que
-        // la fenêtre est libre d'être retaillée et que la capture est celle du
-        // bureau. Les deux sont faux en mode `SortieEntiere`, et le chemin
-        // était pourtant emprunté SYSTÉMATIQUEMENT : le `ResizeObserver` du
-        // client émet une fois à l'observation initiale, donc ~200 ms après
-        // chaque connexion, avec une taille qui n'avait alors aucune raison
-        // d'égaler celle de la sortie (elle vaut `clientWidth × devicePixelRatio`,
-        // là où la sortie était créée sur `innerWidth` SEUL, sans le facteur
-        // dpr), si bien que le court-circuit « taille inchangée » plus bas ne
-        // la retenait pas. ⚠️ **Ce désaccord d'unité est celui que la tâche 5
-        // du sous-bloc D9 a précisément fermé** (`client/src/main.ts`, l'annonce
-        // de viewport multiplie désormais par `devicePixelRatio`) : les deux
-        // unités concordent aujourd'hui, ce qui ne change rien à ce garde —
-        // il reste nécessaire en mode `SortieEntiere` quelle que soit l'unité.
+        // FIX C1 (final review of the multi-window branch D1). Everything
+        // that follows assumes that
+        // the window is free to be resized and that the capture is the
+        // desktop's. Both are false in `SortieEntiere` mode, and yet the path
+        // was taken SYSTEMATICALLY: the client's `ResizeObserver`
+        // emits once at initial observation, hence ~200 ms after
+        // each connection, with a size that then had no reason
+        // to equal the output's (it is `clientWidth × devicePixelRatio`,
+        // whereas the output was created on `innerWidth` ALONE, without the dpr
+        // factor), so that the "size unchanged" short-circuit below did not
+        // catch it. ⚠️ **This unit mismatch is the one task 5
+        // of sub-block D9 precisely closed** (`client/src/main.ts`, the viewport
+        // announcement now multiplies by `devicePixelRatio`): the two
+        // units agree today, which changes nothing for this guard —
+        // it stays necessary in `SortieEntiere` mode whatever the unit.
         //
         // La suite produisait alors, dans l'ordre : une fenêtre rétrécie qui
         // quitte sa sortie virtuelle (que le contrôle à 1 Hz du superviseur
