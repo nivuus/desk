@@ -82,44 +82,44 @@
 // a **pure case rename**, it is legal, and the fallback goes through an **intermediate
 // name** — two moves, never an overwrite.
 //
-// ⚠️ **CE CHEMIN N'EST PAS EXERÇABLE PAR L'INSTRUMENT DE RECETTE, et la sonde
-// S2 le mesure** : OPFS est **SENSIBLE à la casse**
-// (`opfs_sensible_a_la_casse: true`), donc `S2-Pure.txt` → `S2-PURE.TXT` y
-// réussit DIRECTEMENT, sans aucune collision à résoudre. Le nom intermédiaire
-// n'est éprouvé que sur l'hôte, par le faux INSENSIBLE de `mutation.test.ts`.
-// **Ne pas lire un « ok » de la sonde comme une validation de ce chemin.**
+// ⚠️ **THIS PATH CANNOT BE EXERCISED BY THE ACCEPTANCE INSTRUMENT, and probe
+// S2 measures it**: OPFS is **case SENSITIVE**
+// (`opfs_sensible_a_la_casse: true`), so `S2-Pure.txt` → `S2-PURE.TXT`
+// succeeds there DIRECTLY, without any collision to resolve. The intermediate name
+// is only tested on the host, by the case-INSENSITIVE fake of `mutation.test.ts`.
+// **Do not read an "ok" from the probe as a validation of this path.**
 //
 // ════════════════════════════════════════════════════════════════════════════
-// ⚠️ LA SUPPRESSION N'EST PAS RÉCURSIVE — DIVERGENCE AVEC LA SPEC §3.5
+// ⚠️ DELETION IS NOT RECURSIVE — DIVERGENCE FROM SPEC §3.5
 // ════════════════════════════════════════════════════════════════════════════
 //
-// Elle écrit `dir.removeEntry(nom, { recursive })`. **F3 appelle
-// `removeEntry(nom)` SANS `recursive`.**
+// It writes `dir.removeEntry(nom, { recursive })`. **F3 calls
+// `removeEntry(nom)` WITHOUT `recursive`.**
 //
-// Raison : `recursive: true` transforme UN geste dans la VM en **destruction
-// récursive** sur le disque du poste local, sur la foi d'un miroir qu'aucune
-// preuve ne dit à jour. Windows, lui, ne supprime jamais un répertoire non vide
-// en un geste : l'Explorateur et `rd /s` effacent les enfants un à un, et
-// **chaque enfant produit sa propre notification**. Le miroir non récursif suit
-// donc Windows pas à pas.
+// Reason: `recursive: true` turns ONE gesture in the VM into a **recursive
+// destruction** on the local machine's disk, on the strength of a mirror no
+// proof says is up to date. Windows, for its part, never deletes a non-empty directory
+// in one gesture: Explorer and `rd /s` erase the children one by one, and
+// **each child produces its own notification**. The non-recursive mirror therefore
+// follows Windows step by step.
 //
-// 🔵 **Bénéfice second, et il n'est pas décoratif** : si le navigateur répond
-// que le répertoire n'est pas vide, cela veut dire que **le miroir a dérivé** —
-// et `repertoire-non-vide` devient une cause RÉELLE et DIAGNOSTIQUE au lieu
-// d'un code jamais produit.
+// 🔵 **Secondary benefit, and it is not decorative**: if the browser answers
+// that the directory is not empty, it means **the mirror has drifted** —
+// and `repertoire-non-vide` becomes a REAL and DIAGNOSTIC cause instead of
+// a code never produced.
 //
-// ⚠️ **Ce que cela suppose, et qui N'EST PAS MESURÉ** : que ProjFS émette bien
-// une notification de suppression PAR ENFANT, y compris pour des enfants jamais
-// énumérés ni hydratés. C'est la question ③ de la sonde S1. Si la réponse est
-// non, la suppression d'un répertoire non vide laissera les enfants sur le
-// poste local — **dégrade, ne bloque pas**.
+// ⚠️ **What this assumes, and which IS NOT MEASURED**: that ProjFS does emit
+// a deletion notification PER CHILD, including for children never
+// enumerated nor hydrated. It is question ③ of probe S1. If the answer is
+// no, deleting a non-empty directory will leave the children on the
+// local machine — **degrades, does not block**.
 
 import { EchecFichiers, classer, type PoigneeBase, type PoigneeFichier } from './adaptateur';
 import type { FluxInscriptible, RacineInscriptible } from './ecriture';
 import { canoniser, canoniserOuLever } from './noms';
 import { copierFichier, copierRepertoire, ouvrirRepertoire, retirerArbre } from './copie';
 
-/** Ce qu'on sait faire d'une poignée de fichier qu'on veut déplacer. */
+/** What we can do with a file handle we want to move. */
 export interface PoigneeFichierMutable extends PoigneeFichier {
     createWritable(options?: { keepExistingData?: boolean }): Promise<FluxInscriptible>;
     /** **NON STANDARD** — extension Chromium. Absente ⇒ le repli local. */
@@ -127,29 +127,29 @@ export interface PoigneeFichierMutable extends PoigneeFichier {
 }
 
 /**
- * Une racine sur laquelle on peut muter.
+ * A root one can mutate.
  *
- * 🔵 **`move?` EST OPTIONNELLE DANS LE TYPE, et c'est ce qui permet d'écrire
- * DEUX faux — l'un qui l'expose, l'autre non — et de voir les deux branches
- * vertes sur l'hôte.** Un type qui l'imposerait rendrait le repli
- * **inatteignable par un test**.
+ * 🔵 **`move?` IS OPTIONAL IN THE TYPE, and that is what lets us write
+ * TWO fakes — one exposing it, the other not — and see both branches
+ * green on the host.** A type imposing it would make the fallback
+ * **unreachable by a test**.
  */
 export interface RacineMutable extends RacineInscriptible {
     getDirectoryHandle(nom: string, options?: { create?: boolean }): Promise<RacineMutable>;
     getFileHandle(nom: string, options?: { create?: boolean }): Promise<PoigneeFichierMutable>;
-    /** ⚠️ **SANS `recursive`** — voir l'en-tête. */
+    /** ⚠️ **WITHOUT `recursive`** — see the header. */
     removeEntry(nom: string): Promise<void>;
     /** **NON STANDARD**. */
     move?(parent: RacineMutable, nom: string): Promise<void>;
 }
 
-/** Ce qu'un renommage a coûté LOCALEMENT — l'instrumentation que la spec exige. */
+/** What a rename cost LOCALLY — the instrumentation the spec requires. */
 export interface TraceRenommage {
-    /** `true` si `move()` a servi, `false` si le repli a copié. */
+    /** `true` if `move()` served, `false` if the fallback copied. */
     parMove: boolean;
-    /** Octets recopiés. **Zéro sur la branche `move`.** */
+    /** Bytes copied. **Zero on the `move` branch.** */
     octets: number;
-    /** Entrées recréées. **Zéro sur la branche `move`**, 1 pour un fichier. */
+    /** Entries recreated. **Zero on the `move` branch**, 1 for a file. */
     entrees: number;
 }
 
@@ -159,8 +159,8 @@ function composants(chemin: string): string[] {
 }
 
 /**
- * Descend les `jusqua` premiers composants **en les canonicalisant**, sans en
- * créer aucun.
+ * Walks down the first `jusqua` components **while canonicalising them**, without
+ * creating any.
  */
 async function descendre(
     racine: RacineMutable,
@@ -179,7 +179,7 @@ async function descendre(
     return ici;
 }
 
-/** Descend en CRÉANT les répertoires manquants — pour la destination. */
+/** Walks down CREATING the missing directories — for the destination. */
 async function descendreEnCreant(
     racine: RacineMutable,
     parts: string[],
@@ -187,9 +187,9 @@ async function descendreEnCreant(
 ): Promise<RacineMutable> {
     let ici = racine;
     for (let i = 0; i < jusqua; i += 1) {
-        // ⚠️ On canonicalise D'ABORD : sans cela, `archives/` et `Archives/`
-        // deviendraient deux répertoires sur un poste SENSIBLE à la casse, et
-        // le même sur un poste insensible — deux comportements pour un chemin.
+        // ⚠️ We canonicalise FIRST: without that, `archives/` and `Archives/`
+        // would become two directories on a case-SENSITIVE machine, and
+        // the same one on an insensitive machine — two behaviours for one path.
         const r = await canoniser(ici, parts[i]);
         const nom = r.sorte === 'trouve' ? r.nom : parts[i];
         if (r.sorte === 'ambigu') {
@@ -208,11 +208,11 @@ async function descendreEnCreant(
 }
 
 /**
- * Renomme `de` en `vers`, tous deux relatifs à la racine.
+ * Renames `de` to `vers`, both relative to the root.
  *
- * ⚠️ **`repertoire` est TRANSPORTÉ depuis le rappel ProjFS**, jamais
- * redécouvert : le navigateur le redemanderait au prix d'un aller-retour, et se
- * tromperait sur une entrée que le renommage vient de faire disparaître.
+ * ⚠️ **`repertoire` is CARRIED from the ProjFS callback**, never
+ * rediscovered: the browser would ask for it again at the cost of a round trip, and would
+ * be wrong about an entry the rename has just made disappear.
  */
 export async function renommer(
     racine: RacineMutable,
@@ -234,9 +234,9 @@ export async function renommer(
     const parentDest = await descendreEnCreant(racine, partsVers, partsVers.length - 1);
     const nomDemande = partsVers[partsVers.length - 1];
 
-    // ── LA RÉSOLUTION DE LA DESTINATION, ET ELLE PRÉCÈDE TOUT ────────────────
-    // 🔴 `move()` ÉCRASE : sans ce bloc, renommer `brouillon.txt` en `note.txt`
-    // détruirait `note.txt` sans un mot.
+    // ── RESOLVING THE DESTINATION, AND IT PRECEDES EVERYTHING ────────────────
+    // 🔴 `move()` OVERWRITES: without this block, renaming `draft.txt` to `note.txt`
+    // would destroy `note.txt` without a word.
     const dest = await canoniser(parentDest, nomDemande);
     const memeParent = parentSource === parentDest;
     let cassePure = false;
@@ -247,9 +247,9 @@ export async function renommer(
         );
     }
     if (dest.sorte === 'trouve') {
-        // 🔴 **LE RENOMMAGE DE CASSE PURE.** Si l'unique homonyme de la
-        // destination EST la source, ce n'est pas une collision : c'est
-        // `a.txt` → `A.txt`, et il est licite.
+        // 🔴 **THE PURE CASE RENAME.** If the only namesake of the
+        // destination IS the source, it is not a collision: it is
+        // `a.txt` → `A.txt`, and it is legal.
         if (memeParent && dest.nom === nomSource) {
             cassePure = true;
         } else {
@@ -261,9 +261,9 @@ export async function renommer(
     }
 
     if (cassePure) {
-        // Deux mouvements, JAMAIS un écrasement : sur un poste insensible à la
-        // casse, se déplacer sur soi-même est ou bien refusé, ou bien — pire —
-        // une troncature.
+        // Two moves, NEVER an overwrite: on a case-insensitive
+        // machine, moving onto oneself is either refused, or — worse —
+        // a truncation.
         const intermediaire = nomIntermediaire(nomSource);
         await deplacer(parentSource, nomSource, parentSource, intermediaire, repertoire);
         await deplacer(parentSource, intermediaire, parentDest, nomDemande, repertoire);
@@ -273,18 +273,18 @@ export async function renommer(
 }
 
 /**
- * Un nom intermédiaire qui ne peut collisionner avec rien.
+ * An intermediate name that cannot collide with anything.
  *
- * ⚠️ **Il porte un composant aléatoire**, et non un suffixe fixe : deux
- * renommages de casse pure concurrents dans le même répertoire se
- * marcheraient dessus, et le second détruirait le fichier du premier.
+ * ⚠️ **It carries a random component**, and not a fixed suffix: two
+ * concurrent pure case renames in the same directory would
+ * step on each other, and the second would destroy the first one's file.
  */
 function nomIntermediaire(source: string): string {
     const jeton = Math.random().toString(36).slice(2, 10);
     return `${source}.pont-${jeton}.tmp`;
 }
 
-/** `move()` si elle existe, la copie locale sinon. */
+/** `move()` if it exists, the local copy otherwise. */
 async function deplacer(
     parentSource: RacineMutable,
     nomSource: string,
@@ -292,7 +292,7 @@ async function deplacer(
     nomDest: string,
     repertoire: boolean,
 ): Promise<TraceRenommage> {
-    // ⚠️ **DÉTECTÉE À L'APPEL**, sur la poignée réellement obtenue.
+    // ⚠️ **DETECTED AT CALL TIME**, on the handle actually obtained.
     const poignee: PoigneeBase & { move?: unknown } = repertoire
         ? await ouvrirRepertoire(parentSource, nomSource)
         : await ouvrirFichier(parentSource, nomSource);
@@ -307,15 +307,15 @@ async function deplacer(
             throw classer(e, 'introuvable');
         }
     }
-    // ── LE REPLI, ENTIÈREMENT DANS LE NAVIGATEUR ─────────────────────────────
+    // ── THE FALLBACK, ENTIRELY IN THE BROWSER ─────────────────────────────
     const trace = { parMove: false, octets: 0, entrees: 0 };
     if (repertoire) {
         await copierRepertoire(parentSource, nomSource, parentDest, nomDest, trace);
     } else {
         await copierFichier(parentSource, nomSource, parentDest, nomDest, trace);
     }
-    // 🔴 **LA SOURCE N'EST RETIRÉE QU'APRÈS**, et une copie interrompue la
-    // laisse donc INTACTE. L'inverse perdrait le fichier sur une coupure.
+    // 🔴 **THE SOURCE IS ONLY REMOVED AFTERWARDS**, and an interrupted copy
+    // therefore leaves it INTACT. The reverse would lose the file on a cut.
     try {
         if (repertoire) {
             await retirerArbre(parentSource, nomSource);
@@ -340,9 +340,9 @@ async function ouvrirFichier(
 }
 
 /**
- * Supprime `chemin`, relatif à la racine.
+ * Deletes `chemin`, relative to the root.
  *
- * ⚠️ **`removeEntry(nom)` SANS `recursive`** — voir l'en-tête.
+ * ⚠️ **`removeEntry(nom)` WITHOUT `recursive`** — see the header.
  */
 export async function supprimer(
     racine: RacineMutable,
@@ -358,23 +358,23 @@ export async function supprimer(
     try {
         await parent.removeEntry(nom);
     } catch (e) {
-        // 🔴 **`InvalidModificationError` VEUT DIRE DEUX CHOSES SELON LE VERBE,
-        // ET `adaptateur.classer` NE PEUT PAS LES DÉPARTAGER.**
+        // 🔴 **`InvalidModificationError` MEANS TWO THINGS DEPENDING ON THE VERB,
+        // AND `adaptateur.classer` CANNOT TELL THEM APART.**
         //
-        // Sur une CRÉATION, elle veut dire « une entrée du même nom existe » —
-        // et `classer` la traduit en `deja-present`, ce que F2 a écrit. Sur un
-        // `removeEntry` SANS `recursive`, elle veut dire **« le répertoire
-        // n'est pas vide »**, ce qui est un diagnostic tout différent : le
-        // miroir a dérivé.
+        // On a CREATION, it means "an entry of the same name exists" —
+        // and `classer` translates it into `deja-present`, which F2 wrote. On a
+        // `removeEntry` WITHOUT `recursive`, it means **"the directory
+        // is not empty"**, which is an entirely different diagnosis: the
+        // mirror has drifted.
         //
-        // La classification est donc faite ICI, où le verbe est connu.
-        // L'élargir dans `classer` ferait qu'une création rendrait
-        // `repertoire-non-vide`, ou l'inverse.
-        // ✅ **CE NOM D'EXCEPTION EST MESURÉ, pas supposé** : la sonde S2 rend
-        // `remove_non_vide: "REFUSE:InvalidModificationError"` sur un
-        // `removeEntry` SANS `recursive` d'un répertoire non vide, deux
-        // exécutions identiques. `repertoire-non-vide` est donc bien
-        // atteignable — ce n'est pas un code écrit pour la table.
+        // The classification is therefore done HERE, where the verb is known.
+        // Widening it in `classer` would make a creation return
+        // `repertoire-non-vide`, or the reverse.
+        // ✅ **THIS EXCEPTION NAME IS MEASURED, not assumed**: probe S2 returns
+        // `remove_non_vide: "REFUSE:InvalidModificationError"` on a
+        // `removeEntry` WITHOUT `recursive` of a non-empty directory, two
+        // identical runs. `repertoire-non-vide` is therefore indeed
+        // reachable — it is not a code written for the table.
         if (e instanceof DOMException && e.name === 'InvalidModificationError') {
             throw new EchecFichiers(
                 'repertoire-non-vide',

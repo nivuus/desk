@@ -1,52 +1,52 @@
-// Le serveur du protocole fichiers, côté navigateur. **PUR** — ni DOM, ni
-// WebRTC, ni File System Access API : il reçoit des octets et en rend, et
-// l'adaptateur lui est injecté.
+// The file protocol server, browser side. **PURE** — neither DOM, nor
+// WebRTC, nor File System Access API: it receives bytes and returns some, and
+// the adapter is injected into it.
 //
-// 🔴 LE NAVIGATEUR EST UN SERVEUR, ET RIEN D'AUTRE. Il ne demande jamais rien :
-// aucune corrélation ne lui appartient. Une trame portant un type de RÉPONSE
-// (`TYPE_ENTREES`, `TYPE_META`, `TYPE_DONNEES`, `TYPE_ECHEC`) ne peut donc être
-// qu'un écho, une boucle, ou un pair confus — elle est IGNORÉE et journalisée,
-// jamais interprétée comme une requête.
+// 🔴 THE BROWSER IS A SERVER, AND NOTHING ELSE. It never asks for anything:
+// no correlation belongs to it. A frame carrying an ANSWER type
+// (`TYPE_ENTREES`, `TYPE_META`, `TYPE_DONNEES`, `TYPE_ECHEC`) can therefore only be
+// an echo, a loop, or a confused peer — it is IGNORED and logged,
+// never interpreted as a request.
 //
-// C'est le symétrique exact du défaut que la tâche 17 corrige côté agent, où
-// `transport/evenements.rs` aiguillait sur le seul drapeau `data.binary` et
-// prenait donc toute trame binaire pour une entrée souris. Un aiguillage qui ne
-// nomme pas ses cas se paie à chaque message neuf — ce dépôt l'a payé quatre
-// fois sur le bras catch-all de `capteur/pont_media.rs`.
+// It is the exact mirror of the defect task 17 fixes on the agent side, where
+// `transport/evenements.rs` switched on the `data.binary` flag alone and
+// therefore took any binary frame for a mouse input. A switch that does not
+// name its cases is paid for with each new message — this repository paid for it four
+// times on the catch-all arm of `capteur/pont_media.rs`.
 //
-// ⚠️ TOUTE **REQUÊTE** REÇOIT UNE RÉPONSE, y compris quand elle échoue. Ne rien
-// répondre laisserait la commande en vol côté agent jusqu'à son expiration, et
-// l'Explorateur se figerait sur une panne pourtant immédiate.
+// ⚠️ EVERY **REQUEST** RECEIVES AN ANSWER, including when it fails. Answering
+// nothing would leave the command in flight on the agent side until it expires, and
+// Explorer would freeze on a failure that is nonetheless immediate.
 //
-// 🔴 UNE **ANNONCE** N'EN REÇOIT AUCUNE, ET LA LISTE DES ANNONCES EST CLOSE.
-// L'invariant ci-dessus était écrit en majuscules et sans exception — « UNE
-// REQUÊTE REÇOIT TOUJOURS UNE RÉPONSE » — et F2 introduit une TROISIÈME famille
-// de messages : `TYPE_DUES`, l'annonce des écritures dues. Elle n'attend rien,
-// et n'y pas répondre ne laisse RIEN en vol : aucune entrée de table ne lui
-// correspond côté pont.
+// 🔴 AN **ANNOUNCEMENT** RECEIVES NONE, AND THE LIST OF ANNOUNCEMENTS IS CLOSED.
+// The invariant above was written in capitals and without exception — "A
+// REQUEST ALWAYS RECEIVES AN ANSWER" — and F2 introduces a THIRD family
+// of messages: `TYPE_DUES`, the announcement of owed writes. It expects nothing,
+// and not answering it leaves NOTHING in flight: no table entry
+// corresponds to it on the bridge side.
 //
-// L'invariant est donc RÉÉCRIT, jamais contourné. Un bras qui rendrait `null`
-// SANS que la famille soit nommée serait exactement le bras catch-all
-// silencieux que ce dépôt a payé QUATRE fois sur `capteur/pont_media.rs` (D5
+// The invariant is therefore REWRITTEN, never bypassed. An arm returning `null`
+// WITHOUT the family being named would be exactly the silent catch-all
+// arm this repository paid for FOUR times on `capteur/pont_media.rs` (D5
 // `Sommeil`, D6 `Part`, D7 `Audio`, D8 `PleinEcran`).
 //
-// Les trois familles, et ce qu'on en fait :
-//   REQUÊTES  (1..5, 7, 8) → une réponse, toujours ;
-//   ANNONCES  (6)          → un rappel injecté, et `null` ;
-//   RÉPONSES  (64..)       → ignorées : le navigateur ne demande rien.
+// The three families, and what we do with them:
+//   REQUESTS      (1..5, 7, 8) → an answer, always;
+//   ANNOUNCEMENTS (6)          → an injected callback, and `null`;
+//   ANSWERS       (64..)       → ignored: the browser asks for nothing.
 //
-// ⚠️ LA NUMÉROTATION N'EST PAS CONTIGUË PAR FAMILLE : 6 est une ANNONCE, 7 et 8
-// des REQUÊTES. F2 a sauté 7 et 8 pour F3, ce qui a évité une renumérotation
-// tardive — et c'est cet aiguillage NOMMÉ qui dit la famille, jamais la valeur.
+// ⚠️ THE NUMBERING IS NOT CONTIGUOUS PER FAMILY: 6 is an ANNOUNCEMENT, 7 and 8
+// are REQUESTS. F2 skipped 7 and 8 for F3, which avoided a late
+// renumbering — and it is this NAMED switch that says the family, never the value.
 //
-// ⚠️ L'INVARIANT DE F3 EST CELUI DE F1, ET NON L'EXCEPTION DE F2 :
-// `TYPE_RENOMMER` et `TYPE_SUPPRIMER` sont des REQUÊTES. Elles reçoivent
-// `Fait` ou `Echec`, toujours. Ne rien répondre laisserait la commande en vol
-// côté pont jusqu'à son expiration, et l'Explorateur se figerait sur une panne
-// pourtant immédiate.
+// ⚠️ F3'S INVARIANT IS F1'S, AND NOT F2'S EXCEPTION:
+// `TYPE_RENOMMER` and `TYPE_SUPPRIMER` are REQUESTS. They receive
+// `Fait` or `Echec`, always. Answering nothing would leave the command in flight
+// on the bridge side until it expires, and Explorer would freeze on a failure
+// that is nonetheless immediate.
 //
-// Le seul cas où l'on ne répond pas SANS que ce soit une annonce est celui où
-// l'on n'a pas de requête — trame illisible, type de réponse, type inconnu.
+// The only case where we do not answer WITHOUT it being an announcement is when
+// we have no request — unreadable frame, answer type, unknown type.
 
 import {
     TYPE_ATTRIBUTS,
@@ -86,67 +86,67 @@ import { EchecFichiers, type Adaptateur } from './adaptateur';
 import type { Ecrivain } from './ecriture';
 import type { Mutateur } from './mutation-service';
 
-/** Où partent les trames qu'on n'a pas su traiter. Injecté, donc observable. */
+/** Where the frames we could not handle go. Injected, hence observable. */
 export type Journal = (message: string) => void;
 
 export interface Serveur {
     /**
-     * Traite une trame reçue et rend la trame à réémettre, ou `null` s'il n'y
-     * a rien à répondre.
+     * Handles a received frame and returns the frame to send back, or `null` if there
+     * is nothing to answer.
      */
     traiter(octets: ArrayBuffer): Promise<ArrayBuffer | null>;
 }
 
-/** Ce que le serveur sait faire en plus de lire, depuis F2. */
+/** What the server can do besides reading, since F2. */
 export interface OptionsServeur {
-    /** L'écrivain. **Absent = lecture seule**, c'est-à-dire le serveur de F1. */
+    /** The writer. **Absent = read-only**, that is, F1's server. */
     ecrivain?: Ecrivain;
     /**
-     * Le rappel de l'annonce `TYPE_DUES`. **INJECTÉ**, donc observable : c'est
-     * la page-shell qui décide ce qu'elle en fait, et ce module reste PUR.
+     * The callback of the `TYPE_DUES` announcement. **INJECTED**, hence observable: it is
+     * the shell page that decides what to do with it, and this module stays PURE.
      */
     onDues?: (dues: Due[], retenues: boolean) => void;
     /**
-     * Le mutateur — renommage et suppression. **Absent = lecture seule.**
+     * The mutator — renaming and deletion. **Absent = read-only.**
      *
-     * ⚠️ **DISTINCT de l'écrivain, et le rester est le point** : `PONT_MUTATION`
-     * et `PONT_ECRITURE` sont deux variables de banc distinctes côté agent, et
-     * les confondre ferait qu'une recette du renommage couperait aussi l'idiome
-     * temp+rename qu'elle veut exercer.
+     * ⚠️ **DISTINCT from the writer, and staying so is the point**: `PONT_MUTATION`
+     * and `PONT_ECRITURE` are two distinct bench variables on the agent side, and
+     * confusing them would make a renaming acceptance run also cut the
+     * temp+rename idiom it wants to exercise.
      */
     mutateur?: Mutateur;
     /**
-     * Une MUTATION a échoué ici. Même raison que [`onEchecEcriture`] : le
-     * navigateur est le seul à connaître la cause, et il n'a personne d'autre à
-     * qui la dire.
+     * A MUTATION failed here. Same reason as [`onEchecEcriture`]: the
+     * browser is the only one knowing the cause, and it has no one else to
+     * tell it to.
      *
-     * ⚠️ **Un renommage porte DEUX chemins**, et le message doit les nommer
-     * tous deux : « impossible de renommer X » ne dit pas vers quoi, et c'est
-     * précisément ce que l'utilisateur doit vérifier.
+     * ⚠️ **A rename carries TWO paths**, and the message must name
+     * both: "cannot rename X" does not say to what, and that is
+     * precisely what the user must check.
      */
     onEchecMutation?: (quoi: string, code: string) => void;
     /**
-     * Le repli de renommage a COPIÉ. **L'instrumentation que la spec §3.5.1
-     * exige.**
+     * The rename fallback COPIED. **The instrumentation spec §3.5.1
+     * requires.**
      *
-     * ⚠️ **DIVERGENCE DÉCLARÉE AVEC LE PLAN**, qui la fait « rendre au pont
-     * dans l'en-tête de la réponse `Fait` ». `TYPE_FAIT` n'a **aucune forme
-     * propre** — son en-tête est `{}`, F2 l'écrit en toutes lettres, et lui en
-     * donner une exigerait un vecteur partagé de plus pour une donnée purement
-     * diagnostique. La trace part donc par le journal injecté, **là où le
-     * navigateur SAIT ce qu'il a fait** ; le pont, lui, journalise ce que LUI
-     * sait — c'est la doctrine « une trace dit ce qu'elle SAIT ».
+     * ⚠️ **DECLARED DIVERGENCE FROM THE PLAN**, which has it "returned to the bridge
+     * in the header of the `Fait` answer". `TYPE_FAIT` has **no shape
+     * of its own** — its header is `{}`, F2 writes it out in full, and giving it
+     * one would require one more shared vector for purely
+     * diagnostic data. The trace therefore goes out through the injected log, **where the
+     * browser KNOWS what it did**; the bridge, for its part, logs what IT
+     * knows — it is the doctrine "a trace says what it KNOWS".
      */
     onRenommagePorCopie?: (de: string, vers: string, octets: number, entrees: number) => void;
     /**
-     * Une écriture a échoué ICI, côté navigateur.
+     * A write failed HERE, on the browser side.
      *
-     * 🔴 **LE NAVIGATEUR EST LE SEUL À CONNAÎTRE LA CAUSE, et il n'a personne à
-     * qui la dire.** Le code traverse bien le fil jusqu'à l'agent, qui le
-     * journalise — mais **il n'atteint AUCUNE application Windows** : le handle
-     * est refermé depuis longtemps (voir `pont::notifications`). Ce rappel est
-     * donc le chemin le plus COURT vers la seule personne que cela concerne :
-     * l'utilisateur, devant sa page-shell.
+     * 🔴 **THE BROWSER IS THE ONLY ONE KNOWING THE CAUSE, and it has no one to
+     * tell it to.** The code does cross the wire to the agent, which
+     * logs it — but **it reaches NO Windows application**: the handle
+     * has been closed for a long time (see `pont::notifications`). This callback is
+     * therefore the SHORTEST path to the only person it concerns:
+     * the user, in front of their shell page.
      */
     onEchecEcriture?: (chemin: string, code: string) => void;
 }
@@ -167,7 +167,7 @@ export function creerServeur(
             }
 
             switch (trame.type) {
-                // ── REQUÊTES : elles reçoivent une réponse, toujours.
+                // ── REQUESTS: they receive an answer, always.
                 case TYPE_LISTER:
                 case TYPE_ATTRIBUTS:
                 case TYPE_LIRE:
@@ -176,7 +176,7 @@ export function creerServeur(
                 case TYPE_RENOMMER:
                 case TYPE_SUPPRIMER:
                     break;
-                // ── ANNONCE : elle ne reçoit RIEN, et la famille est NOMMÉE.
+                // ── ANNOUNCEMENT: it receives NOTHING, and the family is NAMED.
                 case TYPE_DUES: {
                     try {
                         const annonce = parseDues(trame.entete);
@@ -186,7 +186,7 @@ export function creerServeur(
                     }
                     return null;
                 }
-                // ── RÉPONSES : le navigateur ne demande rien.
+                // ── ANSWERS: the browser asks for nothing.
                 case TYPE_FAIT:
                 case TYPE_ENTREES:
                 case TYPE_META:
@@ -215,22 +215,22 @@ export function creerServeur(
                     trame.charge,
                 );
             } catch (e) {
-                // Le code est celui de l'adaptateur quand il en porte un ; tout
-                // le reste — en-tête malformé compris — est `interne`. Inventer
-                // un code plus précis ferait traduire à l'agent un HRESULT faux
-                // plutôt qu'un HRESULT vague.
+                // The code is the adapter's when it carries one; everything
+                // else — malformed header included — is `interne`. Inventing
+                // a more precise code would make the agent translate a wrong HRESULT
+                // rather than a vague one.
                 const code = e instanceof EchecFichiers ? e.code : 'interne';
                 journal(`échec ${code} sur la corrélation ${trame.correlation} : ${(e as Error).message}`);
                 if (trame.type === TYPE_RENOMMER || trame.type === TYPE_SUPPRIMER) {
-                    // ⚠️ Le chemin est relu de l'en-tête plutôt que retenu :
-                    // l'échec a pu venir de son ANALYSE, auquel cas il n'y a
-                    // rien à nommer.
+                    // ⚠️ The path is reread from the header rather than kept:
+                    // the failure may have come from its PARSING, in which case there is
+                    // nothing to name.
                     const quoi = mutationDe(trame.type, trame.entete);
                     if (quoi !== undefined) options.onEchecMutation?.(quoi, code);
                 } else if (trame.type === TYPE_ECRIRE || trame.type === TYPE_CREER) {
-                    // ⚠️ Le chemin est relu de l'en-tête plutôt que retenu :
-                    // l'échec a pu venir de son ANALYSE, auquel cas il n'y a
-                    // rien à nommer, et deviner serait pire que se taire.
+                    // ⚠️ The path is reread from the header rather than kept:
+                    // the failure may have come from its PARSING, in which case there is
+                    // nothing to name, and guessing would be worse than keeping quiet.
                     const chemin = cheminDe(trame.entete);
                     if (chemin !== undefined) options.onEchecEcriture?.(chemin, code);
                 }
@@ -241,11 +241,11 @@ export function creerServeur(
 }
 
 /**
- * Ce qu'une mutation en échec doit NOMMER, si l'en-tête est lisible.
+ * What a failed mutation must NAME, if the header is readable.
  *
- * ⚠️ **Un renommage porte DEUX chemins**, et les deux comptent : « impossible
- * de renommer X » ne dit pas vers quoi, et c'est précisément ce que
- * l'utilisateur doit vérifier — la destination existe peut-être déjà.
+ * ⚠️ **A rename carries TWO paths**, and both matter: "cannot
+ * rename X" does not say to what, and that is precisely what the
+ * user must check — the destination may already exist.
  */
 function mutationDe(type: number, entete: unknown): string | undefined {
     if (typeof entete !== 'object' || entete === null) return undefined;
@@ -259,7 +259,7 @@ function mutationDe(type: number, entete: unknown): string | undefined {
     return undefined;
 }
 
-/** Le chemin d'un en-tête d'écriture, s'il est lisible. */
+/** The path of a write header, if it is readable. */
 function cheminDe(entete: unknown): string | undefined {
     if (typeof entete !== 'object' || entete === null) return undefined;
     const chemin = (entete as { chemin?: unknown }).chemin;
@@ -278,10 +278,10 @@ async function servir(
     if (type === TYPE_RENOMMER || type === TYPE_SUPPRIMER) {
         const mutateur = options.mutateur;
         if (mutateur === undefined) {
-            // ⚠️ **PAS `interne` : `protege-en-ecriture`.** Un lecteur monté
-            // sans mutateur et un lecteur en panne n'appellent pas le même
-            // geste — le contre-exemple est l'ancien pont, qui rendait `EPERM`
-            // à neuf sites distincts.
+            // ⚠️ **NOT `interne`: `protege-en-ecriture`.** A drive mounted
+            // without a mutator and a failed drive do not call for the same
+            // gesture — the counterexample is the old bridge, which returned `EPERM`
+            // at nine distinct sites.
             throw new EchecFichiers(
                 'protege-en-ecriture',
                 'ce lecteur ne sait pas renommer ni supprimer',
@@ -301,10 +301,10 @@ async function servir(
     }
     if (type === TYPE_ECRIRE || type === TYPE_CREER) {
         if (ecrivain === undefined) {
-            // ⚠️ **PAS `interne` : `protege-en-ecriture`.** Un serveur monté en
-            // lecture seule et un serveur en panne n'appellent pas le même
-            // geste, et c'est tout l'objet de `CodeEchec` — le contre-exemple
-            // est l'ancien pont, qui rendait `EPERM` à neuf sites distincts.
+            // ⚠️ **NOT `interne`: `protege-en-ecriture`.** A server mounted
+            // read-only and a failed server do not call for the same
+            // gesture, and that is the whole point of `CodeEchec` — the counterexample
+            // is the old bridge, which returned `EPERM` at nine distinct sites.
             throw new EchecFichiers(
                 'protege-en-ecriture',
                 'ce lecteur est monté en lecture seule',
@@ -312,11 +312,11 @@ async function servir(
         }
         if (type === TYPE_ECRIRE) {
             const e = parseEcrire(entete);
-            // 🔴 **L'EN-TÊTE ET LA CHARGE DOIVENT SE CORROBORER.** Écrire une
-            // quantité d'octets que l'émetteur ne croyait pas envoyer est le
-            // genre de divergence qu'aucun contrôle en aval ne rattrape : seul
-            // un condensat le dirait. C'est le symétrique exact du contrôle que
-            // l'agent applique déjà aux réponses `Donnees`.
+            // 🔴 **THE HEADER AND THE PAYLOAD MUST CORROBORATE EACH OTHER.** Writing a
+            // quantity of bytes the sender did not believe it was sending is the
+            // kind of divergence no downstream check catches: only
+            // a digest would say so. It is the exact mirror of the check
+            // the agent already applies to `Donnees` answers.
             if (e.longueur !== charge.length) {
                 throw new EchecFichiers(
                     'interne',
@@ -328,14 +328,14 @@ async function servir(
             const c = parseCreer(entete);
             await ecrivain.creer(c.chemin, c.repertoire);
         }
-        // ⚠️ **EN-TÊTE VIDE `{}`.** `TYPE_FAIT` n'a pas de forme propre : ce qui
-        // identifie l'écriture acquittée est la CORRÉLATION, pas l'en-tête.
+        // ⚠️ **EMPTY HEADER `{}`.** `TYPE_FAIT` has no shape of its own: what
+        // identifies the acknowledged write is the CORRELATION, not the header.
         return encoderTexte(TYPE_FAIT, correlation, '{}');
     }
     if (type === TYPE_LISTER) {
         const { chemin } = parseChemin(entete);
         const entrees = await adaptateur.lister(chemin);
-        // Charge binaire vide : les entrées tiennent dans l'en-tête.
+        // Empty binary payload: the entries fit in the header.
         return encoderTexte(TYPE_ENTREES, correlation, encodeEntrees(entrees));
     }
     if (type === TYPE_ATTRIBUTS) {
@@ -349,36 +349,36 @@ async function servir(
     }
     const { chemin, position, longueur } = parseLire(entete);
     const octets = await adaptateur.lire(chemin, position, longueur);
-    // 🔴 LA LONGUEUR ANNONCÉE EST CELLE RÉELLEMENT LUE, jamais celle demandée.
-    // Un fichier lu jusqu'à sa fin en rend moins ; recopier la demande ferait
-    // mentir la trame, et l'agent la refuserait pour incohérence en-tête/charge
-    // — c'est le seul contrôle qui empêche d'écrire dans le tampon de ProjFS
-    // une quantité que l'émetteur ne croyait pas envoyer.
+    // 🔴 THE ANNOUNCED LENGTH IS THE ONE ACTUALLY READ, never the one requested.
+    // A file read to its end returns less; copying the request would make
+    // the frame lie, and the agent would refuse it for header/payload inconsistency
+    // — it is the only check preventing writing into ProjFS's buffer
+    // a quantity the sender did not believe it was sending.
     return encoderTexte(TYPE_DONNEES, correlation, encodeDonnees(position, octets.length), octets);
 }
 
 /**
- * La trame de l'annonce `Bonjour` — **navigateur → pont**.
+ * The frame of the `Bonjour` announcement — **browser → bridge**.
  *
- * 🔴 **Elle n'attend AUCUNE réponse, et sa corrélation est IGNORÉE** : le pont
- * l'aiguille **avant** de chercher une corrélation en table, précisément parce
- * qu'elle n'en a pas. La valeur `0` est donc un remplissage, pas un identifiant.
+ * 🔴 **It expects NO answer, and its correlation is IGNORED**: the bridge
+ * routes it **before** looking up a correlation in the table, precisely because
+ * it has none. The value `0` is therefore padding, not an identifier.
  *
- * ⚠️ **`racine` est le `name` de la poignée de répertoire, et c'est un INDICE,
- * pas une preuve** : `isSameEntry()` compare deux poignées vivantes, jamais une
- * poignée à un souvenir. Deux répertoires homonymes sur deux disques différents
- * passeraient pour un seul, et rien ici ne le dirait.
+ * ⚠️ **`racine` is the `name` of the directory handle, and it is a HINT,
+ * not a proof**: `isSameEntry()` compares two live handles, never a
+ * handle with a memory. Two namesake directories on two different disks
+ * would pass for a single one, and nothing here would say so.
  */
 export function trameBonjour(racine: string, forcer: boolean): ArrayBuffer {
     return encoderTexte(TYPE_BONJOUR, 0, encodeBonjour(racine, forcer));
 }
 
 /**
- * La trame de l'annonce `Rafraichir` — **navigateur → pont**.
+ * The frame of the `Rafraichir` announcement — **browser → bridge**.
  *
- * Son en-tête est `{}` : ce qui l'identifie est son TYPE. Lui donner une forme
- * ferait une structure à épingler qui n'épingle rien — le précédent de
- * `TYPE_FAIT`, écrit dans `proto/src/fichiers/entetes.rs`.
+ * Its header is `{}`: what identifies it is its TYPE. Giving it a shape
+ * would make a structure to pin that pins nothing — the precedent of
+ * `TYPE_FAIT`, written in `proto/src/fichiers/entetes.rs`.
  */
 export function trameRafraichir(): ArrayBuffer {
     return encoderTexte(TYPE_RAFRAICHIR, 0, '{}');

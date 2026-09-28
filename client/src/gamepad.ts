@@ -1,36 +1,36 @@
-// Manette : sondage, conversion vers XInput, émission.
+// Gamepad: polling, conversion to XInput, emission.
 //
-// L'état voyage COMPLET et idempotent, jamais en différentiel : sur un canal
-// non fiable et non ordonné, un état perdu se répare au message suivant, là
-// où un événement « bouton relâché » perdu laisserait une touche coincée
-// jusqu'à la fin de la partie. D'où l'émission sur changement PLUS un
-// rafraîchissement périodique — et c'est ce rafraîchissement, pas la
-// fréquence de sondage, qui porte la garantie d'auto-réparation.
+// The state travels COMPLETE and idempotent, never as a delta: on an
+// unreliable and unordered channel, a lost state is repaired by the next message, whereas
+// a lost "button released" event would leave a key stuck
+// until the end of the game. Hence emission on change PLUS a
+// periodic refresh — and it is this refresh, not the
+// polling frequency, that carries the self-repair guarantee.
 //
-// Comme pointer.ts et fullscreen.ts, les dépendances (source de manettes,
-// minuteur, horloge) sont INJECTÉES plutôt que lues dans les objets globaux,
-// ce qui rend ce module testable sans `navigator` ni `window`.
+// Like pointer.ts and fullscreen.ts, dependencies (gamepad source,
+// timer, clock) are INJECTED rather than read from the global objects,
+// which makes this module testable without `navigator` or `window`.
 
 import { encodeGamepadState, type GamepadStateFields } from '../../proto/ts/input';
 
 /**
- * Période de sondage visée : 4 ms est le plancher déclaré des navigateurs.
- * Rien ne garantit qu'il soit tenu pendant une session vidéo active — la
- * sonde qui aurait mesuré la cadence réelle sous charge n'a pas été faite.
- * La correction de ce module ne dépend PAS de cette valeur : c'est le
- * rafraîchissement périodique ci-dessous, comparé à l'horloge injectée, qui
- * rend l'état auto-réparant, quelle que soit la cadence réellement obtenue.
+ * Targeted polling period: 4 ms is the browsers' declared floor.
+ * Nothing guarantees it holds during an active video session — the
+ * probe that would have measured the real cadence under load was not done.
+ * The correctness of this module does NOT depend on this value: it is the
+ * periodic refresh below, compared with the injected clock, that
+ * makes the state self-repairing, whatever cadence is actually obtained.
  */
 const PERIODE_MS = 4;
 
 /**
- * Rafraîchissement périodique même sans changement. C'est ce qui rend l'état
- * auto-réparant sur un canal non fiable : indépendant de la cadence réelle du
- * minuteur, il se contente de comparer l'horloge injectée au dernier envoi.
+ * Periodic refresh even without change. It is what makes the state
+ * self-repairing on an unreliable channel: independent of the timer's real
+ * cadence, it merely compares the injected clock with the last send.
  */
 const RAFRAICHISSEMENT_MS = 100;
 
-/** Masques de `XINPUT_GAMEPAD.wButtons`, dans l'ordre du mapping `standard`. */
+/** Masks of `XINPUT_GAMEPAD.wButtons`, in the order of the `standard` mapping. */
 const MASQUES: ReadonlyArray<number> = [
     0x1000, // 0  A
     0x2000, // 1  B
@@ -38,7 +38,7 @@ const MASQUES: ReadonlyArray<number> = [
     0x8000, // 3  Y
     0x0100, // 4  LB
     0x0200, // 5  RB
-    0, //      6  LT — gâchette analogique, pas un bouton XInput
+    0, //      6  LT — analogue trigger, not an XInput button
     0, //      7  RT
     0x0020, // 8  Back
     0x0010, // 9  Start
@@ -50,13 +50,13 @@ const MASQUES: ReadonlyArray<number> = [
     0x0008, // 15 croix droite
 ];
 
-/** Ce dont ce module a besoin d'une manette pour la conversion XInput. */
+/** What this module needs from a gamepad for the XInput conversion. */
 export interface GamepadLike {
     buttons: ReadonlyArray<{ pressed: boolean; value: number }>;
     axes: readonly number[];
 }
 
-/** Ce dont ce module a besoin de `GamepadHapticActuator.playEffect`. */
+/** What this module needs from `GamepadHapticActuator.playEffect`. */
 export interface ActuateurVibration {
     playEffect?(
         type: 'dual-rumble',
@@ -65,28 +65,28 @@ export interface ActuateurVibration {
 }
 
 /**
- * Ce dont la boucle de sondage a besoin en plus de `GamepadLike` : la
- * présence (`Gamepad.connected` reste `true` un moment après débranchement
- * sur certains navigateurs, d'où la vérification explicite) et l'actionneur
- * de vibration, optionnel.
+ * What the polling loop needs on top of `GamepadLike`: the
+ * presence (`Gamepad.connected` stays `true` for a while after unplugging
+ * on some browsers, hence the explicit check) and the rumble
+ * actuator, optional.
  */
 export interface GamepadConnectee extends GamepadLike {
     connected: boolean;
     vibrationActuator?: ActuateurVibration;
 }
 
-/** Ce dont ce module a besoin de `navigator.getGamepads()`. */
+/** What this module needs from `navigator.getGamepads()`. */
 export interface SourceManettes {
     obtenir(): ReadonlyArray<GamepadConnectee | null>;
 }
 
-/** Ce dont ce module a besoin de `window.setInterval`/`clearInterval`. */
+/** What this module needs from `window.setInterval`/`clearInterval`. */
 export interface Minuteur {
     poser(fonction: () => void, delaiMs: number): number;
     annuler(id: number): void;
 }
 
-/** Horloge injectée : `performance.now()` en production. */
+/** Injected clock: `performance.now()` in production. */
 export type Horloge = () => number;
 
 export const ETAT_NEUTRE: Omit<GamepadStateFields, 'seq'> = {
@@ -100,12 +100,12 @@ export const ETAT_NEUTRE: Omit<GamepadStateFields, 'seq'> = {
 };
 
 function axe(valeur: number | undefined): number {
-    // Aucune zone morte n'est appliquée : les jeux appliquent la leur, en
-    // ajouter une ici la creuserait deux fois.
+    // No dead zone is applied: games apply their own, adding
+    // one here would dig it twice.
     const borne = Math.max(-32768, Math.min(32767, Math.round((valeur ?? 0) * 32767)));
-    // `-(0)` produit `-0` (l'inversion de l'axe vertical le fait pour une
-    // manette au repos) : `+ 0` le ramène à `0` positif, sans quoi l'état
-    // neutre ne serait pas structurellement égal à `ETAT_NEUTRE`.
+    // `-(0)` produces `-0` (inverting the vertical axis does so for a
+    // gamepad at rest): `+ 0` brings it back to positive `0`, otherwise the neutral
+    // state would not be structurally equal to `ETAT_NEUTRE`.
     return borne + 0;
 }
 
@@ -120,16 +120,16 @@ export function versEtatXInput(pad: GamepadLike, seq: number): GamepadStateField
         leftTrigger: Math.round((pad.buttons[6]?.value ?? 0) * 255),
         rightTrigger: Math.round((pad.buttons[7]?.value ?? 0) * 255),
         thumbLX: axe(pad.axes[0]),
-        // La Gamepad API compte l'axe vertical vers le bas, XInput vers le
-        // haut : sans inversion, la visée verticale serait à l'envers dans
-        // tous les jeux.
+        // The Gamepad API counts the vertical axis downwards, XInput
+        // upwards: without inversion, vertical aiming would be upside down in
+        // every game.
         thumbLY: axe(-(pad.axes[1] ?? 0)),
         thumbRX: axe(pad.axes[2]),
         thumbRY: axe(-(pad.axes[3] ?? 0)),
     };
 }
 
-/** Compare deux états SANS tenir compte de `seq`, qui change à chaque appel. */
+/** Compares two states WITHOUT taking `seq` into account, which changes at each call. */
 export function aChange(a: GamepadStateFields, b: GamepadStateFields): boolean {
     return (
         a.buttons !== b.buttons ||
@@ -147,12 +147,12 @@ export interface GamepadOptions {
     minuteur: Minuteur;
     horloge: Horloge;
     envoyer: (payload: Uint8Array) => void;
-    /** Appelée quand une manette apparaît ou disparaît, pour l'affichage. */
+    /** Called when a gamepad appears or disappears, for display. */
     surPresence?: (present: boolean) => void;
 }
 
 export interface GamepadHandle {
-    /** À appeler à réception d'un message de contrôle `rumble`. */
+    /** To call on receiving a `rumble` control message. */
     surVibration(gauche: number, droite: number): void;
     detacher(): void;
 }
@@ -170,9 +170,9 @@ export function attachGamepad({
 }: GamepadOptions): GamepadHandle {
     let seq = 0;
     let dernier: GamepadStateFields = { ...ETAT_NEUTRE, seq: 0 };
-    // Initialisé à l'attache, pas à 0 : sans quoi le tout premier tour serait
-    // à tort considéré comme un rafraîchissement échu (voir le test dédié à
-    // l'émission sur changement, qui distingue les deux chemins).
+    // Initialised at attach time, not at 0: otherwise the very first round would
+    // wrongly be considered an elapsed refresh (see the test dedicated to
+    // emission on change, which distinguishes the two paths).
     let dernierEnvoi = horloge();
     let presentPrecedent = false;
 
@@ -190,9 +190,9 @@ export function attachGamepad({
             presentPrecedent = present;
             surPresence?.(present);
             if (!present) {
-                // Débranchement : un état neutre IMMÉDIAT, sans attendre le
-                // rafraîchissement — sans lui, la dernière touche enfoncée
-                // resterait coincée dans le jeu.
+                // Unplugging: an IMMEDIATE neutral state, without waiting for the
+                // refresh — without it, the last pressed key
+                // would stay stuck in the game.
                 seq = (seq + 1) & 0xffff;
                 emettre({ ...ETAT_NEUTRE, seq });
                 return;
@@ -211,8 +211,8 @@ export function attachGamepad({
     return {
         surVibration(gauche, droite) {
             const pad = manetteBranchee(manettes);
-            // Absent sur les manettes ou navigateurs qui ne l'implémentent
-            // pas : ignoré silencieusement.
+            // Absent on gamepads or browsers that do not implement
+            // it: silently ignored.
             void pad?.vibrationActuator?.playEffect?.('dual-rumble', {
                 // Durée volontairement supérieure à la période de
                 // rafraîchissement des vibrations côté agent : chaque message
