@@ -1,148 +1,148 @@
-// Le presse-papier reçu de la VM, côté navigateur : quoi écrire, quand, et
-// quoi dire quand ça ne marche pas.
+// The clipboard received from the VM, browser side: what to write, when, and
+// what to say when it does not work.
 //
-// **PUR — aucun `document`, aucun `navigator`, aucune promesse.** Ce module
-// décide ; c'est `presse-papier-dom.ts` qui appelle `writeText` — reçue par
-// injection, depuis `main.ts` — et qui lui rapporte le résultat (`confirmer`,
-// `echouer`). C'est le patron de `status.ts` et de `resize.ts`, et c'est ce
-// qui le rend éprouvable sans DOM.
+// **PURE — no `document`, no `navigator`, no promise.** This module
+// decides; it is `presse-papier-dom.ts` that calls `writeText` — received by
+// injection, from `main.ts` — and reports the result back to it (`confirmer`,
+// `echouer`). It is the pattern of `status.ts` and `resize.ts`, and it is what
+// makes it testable without a DOM.
 //
-// ⚠️ **Cette phrase disait « c'est `main.ts` qui […] lui rapporte le
-// résultat », et c'était vrai quand elle a été écrite.** L'extraction de
-// `presse-papier-dom.ts` — jouée AVANT l'addition, dans la même branche — a
-// déplacé le câblage : `main.ts` ne construit plus `PressePapierLocal` et ne
-// lui rapporte plus rien (`grep -c PressePapierLocal client/src/main.ts`
-// rend **0**). Corrigée par la revue transverse du 20 août 2026. C'est le
-// mode de défaillance dominant de ce dépôt : une affirmation devenue fausse
-// **dans sa propre branche**.
+// ⚠️ **This sentence said "it is `main.ts` that […] reports the
+// result back to it", and it was true when written.** The extraction of
+// `presse-papier-dom.ts` — played BEFORE the addition, in the same branch —
+// moved the wiring: `main.ts` no longer builds `PressePapierLocal` nor
+// reports anything back to it (`grep -c PressePapierLocal client/src/main.ts`
+// returns **0**). Fixed by the cross-cutting review of August 20th, 2026. It is the
+// dominant failure mode of this repository: a statement that became false
+// **in its own branch**.
 //
-// Il n'importe rien de `proto/ts/control.ts` : il prend une `Recu` locale.
-// C'est délibéré — le découpler du protocole est ce qui le garde pur, et un
-// changement de forme du message ne doit pas traverser jusqu'ici.
+// It imports nothing from `proto/ts/control.ts`: it takes a local `Recu`.
+// It is deliberate — decoupling it from the protocol is what keeps it pure, and a
+// change in the message's shape must not travel all the way here.
 
-/// Ce que l'agent a annoncé.
+/// What the agent announced.
 export interface Recu {
-    /// Le texte à écrire, ou `null` quand l'agent a REFUSÉ le contenu parce
-    /// qu'il dépassait sa borne. `null` n'est pas « rien » : c'est un refus,
-    /// et il se dit.
+    /// The text to write, or `null` when the agent REFUSED the content because
+    /// it exceeded its bound. `null` is not "nothing": it is a refusal,
+    /// and it is voiced.
     texte: string | null;
-    /// La taille en octets — celle du texte émis, ou celle du contenu refusé.
+    /// The size in bytes — that of the emitted text, or that of the refused content.
     octets: number;
 }
 
-/// Ce que le message d'échec doit porter : COMMENT rétablir, pas seulement
-/// qu'il manque quelque chose. Même règle que `DETAIL_REFUS` du micro
-/// (`micro.ts`), et pour la même raison — un message qui ne dit que le
-/// symptôme laisse l'utilisateur sans geste à faire.
+/// What the failure message must carry: HOW to restore, not only
+/// that something is missing. Same rule as the mic's `DETAIL_REFUS`
+/// (`micro.ts`), and for the same reason — a message that only states the
+/// symptom leaves the user with no gesture to make.
 export const MESSAGE_ECHEC =
     "copie de la VM non recopiée ici — cliquez dans la fenêtre pour lui rendre le focus, puis recopiez";
 
-/// Nombre d'échecs CONSÉCUTIFS avant de crier.
+/// Number of CONSECUTIVE failures before shouting.
 ///
-/// **Deux, pas un** : un premier échec est le cas ordinaire d'une fenêtre qui
-/// n'a pas le focus au moment où l'agent pousse, et crier là-dessus ferait un
-/// bandeau permanent sur un produit qui marche.
+/// **Two, not one**: a first failure is the ordinary case of a window that
+/// does not have focus when the agent pushes, and shouting about it would make a
+/// permanent banner on a product that works.
 export const ECHECS_AVANT_MESSAGE = 2;
 
-/// Taille maximale, en **octets d'UTF-8**, d'un texte que la page accepte
-/// d'émettre vers l'agent (sous-bloc P2).
+/// Maximum size, in **UTF-8 bytes**, of a text the page agrees
+/// to emit towards the agent (sub-block P2).
 ///
-/// 🔴 **C'EST UNE COPIE, ET RIEN DANS LE LANGAGE NE LA CONFRONTE À SA
-/// SOURCE.** La valeur qui fait foi est `agent::presse_papier::PRESSE_PAPIER_MAX`
-/// (`agent/src/presse_papier.rs`), et `client/` ne peut pas importer de Rust.
-/// Le dépôt a déjà payé cette classe — deux constantes écrites dans deux
-/// langages sans `import` possible divergent en SILENCE (sous-bloc P2 de la
-/// plateforme). Le remède employé est le même qu'alors : **un test qui relit
-/// le fichier Rust et refuse la divergence**, dans `presse-papier.test.ts`.
+/// 🔴 **IT IS A COPY, AND NOTHING IN THE LANGUAGE CONFRONTS IT WITH ITS
+/// SOURCE.** The authoritative value is `agent::presse_papier::PRESSE_PAPIER_MAX`
+/// (`agent/src/presse_papier.rs`), and `client/` cannot import Rust.
+/// The repository has already paid for this class — two constants written in two
+/// languages with no possible `import` diverge SILENTLY (the platform's
+/// sub-block P2). The remedy used is the same as then: **a test that rereads
+/// the Rust file and refuses the divergence**, in `presse-papier.test.ts`.
 ///
-/// **Pourquoi la borne est ici et pas seulement chez l'agent** : sans elle,
-/// l'agent la ferait bien respecter, mais le canal de contrôle aurait DÉJÀ
-/// porté la charge, et le bandeau ne paraîtrait jamais — l'agent refuse en
-/// journalisant, sans rien renvoyer. C'est ici, et ici seulement, que
-/// l'utilisateur peut être averti.
+/// **Why the bound is here and not only at the agent**: without it,
+/// the agent would indeed enforce it, but the control channel would ALREADY have
+/// carried the payload, and the banner would never appear — the agent refuses while
+/// logging, without sending anything back. It is here, and here only, that
+/// the user can be warned.
 export const PRESSE_PAPIER_MAX = 64 * 1024;
 
-/// Le message de refus, qui NOMME la taille — « trop grand » seul ne dit pas
-/// à l'utilisateur ce qu'il doit réduire.
+/// The refusal message, which NAMES the size — "too large" alone does not tell
+/// the user what they must reduce.
 export function messageDeRefus(octets: number): string {
     const kio = Math.round(octets / 1024);
     return `copie trop volumineuse (${kio} Kio) — elle n'a pas été recopiée ici, réduisez la sélection`;
 }
 
 export class PressePapierLocal {
-    /// Le dernier texte reçu et pas encore écrit. **Un seul**, jamais une
-    /// file : une écriture obsolète est impossible parce qu'on ne garde que
-    /// le dernier.
+    /// The last text received and not written yet. **Only one**, never a
+    /// queue: an obsolete write is impossible because we only keep
+    /// the last.
     private enAttente: string | undefined;
-    /// Le dernier texte réellement écrit — on ne le réécrit pas.
+    /// The last text actually written — we do not rewrite it.
     private ecrit: string | undefined;
-    /// Échecs consécutifs d'écriture.
+    /// Consecutive write failures.
     private echecs = 0;
-    /// Le refus à dire, **consommable** : sinon le bandeau se réafficherait à
-    /// chaque tour.
+    /// The refusal to voice, **consumable**: otherwise the banner would show again at
+    /// each round.
     private refus: string | undefined;
-    /// Le dernier texte REÇU de l'agent et pas encore réémis — le **garde n°3
-    /// de D5**, et il se **consomme**.
+    /// The last text RECEIVED from the agent and not yet re-emitted — **D5's guard
+    /// no. 3**, and it is **consumed**.
     ///
-    /// Il est posé par `recevoir`, jamais par `confirmer` : un texte reçu sans
-    /// focus reste en attente d'écriture, et l'utilisateur peut coller
-    /// entre-temps. Les deux cas sont indiscernables de l'extérieur, et le
-    /// choix est de se taire — un aller-retour évité de trop coûte un collage
-    /// répété que l'utilisateur peut refaire, là où un aller-retour de trop
-    /// est du trafic que rien ne borne (legs n°4 de P1).
+    /// It is set by `recevoir`, never by `confirmer`: a text received without
+    /// focus stays waiting to be written, and the user may paste
+    /// meanwhile. The two cases are indistinguishable from outside, and the
+    /// choice is to keep quiet — one round trip too many avoided costs a repeated
+    /// paste the user can redo, whereas one round trip too many
+    /// is traffic nothing bounds (P1's legacy no. 4).
     private recuNonReemis: string | undefined;
 
-    /// Un message est arrivé de l'agent. **Toujours mémorisé**, même sans
-    /// focus : c'est le dépôt différé.
+    /// A message arrived from the agent. **Always remembered**, even without
+    /// focus: it is the deferred write.
     recevoir(recu: Recu): void {
         if (recu.texte === null) {
-            // Un refus n'écrase PAS le dernier texte mémorisé : sinon il
-            // effacerait un contenu valide encore non écrit.
+            // A refusal does NOT overwrite the last remembered text: otherwise it
+            // would erase a valid content not written yet.
             this.refus = messageDeRefus(recu.octets);
             return;
         }
         this.enAttente = recu.texte;
-        // Arme le garde n°3 : ce texte-là ne repartira pas vers l'agent.
+        // Arms guard no. 3: this very text will not go back to the agent.
         this.recuNonReemis = recu.texte;
     }
 
-    /// Ce qu'il faut écrire MAINTENANT, ou `undefined`.
+    /// What must be written NOW, or `undefined`.
     ///
-    /// Sans focus on ne rend rien : `navigator.clipboard.writeText` échoue
-    /// sur un document qui n'a pas le focus, et l'échec coûterait un compteur
-    /// pour rien. Le texte reste en attente et sortira au retour du focus.
+    /// Without focus we return nothing: `navigator.clipboard.writeText` fails
+    /// on a document that does not have focus, and the failure would cost a counter
+    /// for nothing. The text stays waiting and will go out when focus returns.
     ///
-    /// ⚠️ **CETTE PHRASE AFFIRMAIT COMME UN FAIT CE QUE LA SPEC DÉCLARE
-    /// SUPPOSÉ DEPUIS LE 28 JUILLET 2026** (§3.3). Le sous-bloc P3 l'a
-    /// mesurée, et le verdict est plus fin que « vrai » ou « faux » :
+    /// ⚠️ **THIS SENTENCE ASSERTED AS A FACT WHAT THE SPEC HAS DECLARED
+    /// ASSUMED SINCE JULY 28TH, 2026** (§3.3). Sub-block P3 measured
+    /// it, and the verdict is finer than "true" or "false":
     ///
-    /// - la cellule qui TRANCHE — pas de focus, MAIS sous activation
-    ///   utilisateur — est **INATTEIGNABLE** à ce montage : le geste de
-    ///   confiance REND le focus à la fenêtre qui le reçoit, et
-    ///   `Page.bringToFront` ne le lui reprend plus. Le §3.3 reste donc
-    ///   **supposé au sens strict** ;
-    /// - **mais il est CORROBORÉ par une pièce** : sans focus et sans geste,
-    ///   `writeText` refuse en NOMMANT le focus —
-    ///   `NotAllowedError: … Document is not focused.` — là où le refus
-    ///   d'activation dit `… Write permission denied.` Les deux portent le
-    ///   MÊME NOM et des MESSAGES DIFFÉRENTS : **un chemin de refus propre au
-    ///   focus existe, et il se nomme lui-même**. Ce qui reste non mesuré est
-    ///   s'il survit à une activation.
+    /// - the cell that SETTLES it — no focus, BUT under user
+    ///   activation — is **UNREACHABLE** on this setup: the trusted
+    ///   gesture GIVES focus back to the window receiving it, and
+    ///   `Page.bringToFront` no longer takes it away. §3.3 therefore stays
+    ///   **assumed in the strict sense**;
+    /// - **but it is CORROBORATED by one piece of evidence**: without focus and without a gesture,
+    ///   `writeText` refuses while NAMING focus —
+    ///   `NotAllowedError: … Document is not focused.` — whereas the activation
+    ///   refusal says `… Write permission denied.` Both carry the
+    ///   SAME NAME and DIFFERENT MESSAGES: **a refusal path specific to
+    ///   focus exists, and it names itself**. What stays unmeasured is
+    ///   whether it survives an activation.
     ///
-    /// 🔵 **ET À N FENÊTRES, CE TEST FAIT AUTRE CHOSE QUE SE PROTÉGER D'UN
-    /// REFUS — il ÉLIT l'unique écrivain local.** Le capteur pousse le contenu
-    /// à TOUTES les fenêtres (D3), chacune a son propre `PressePapierLocal`,
-    /// et si toutes écrivaient, N appels concurrents à `writeText` partiraient
-    /// pour une seule copie, le dernier gagnant arbitrairement. Cette
-    /// justification-là vaut **indépendamment** du §3.3, et c'est pourquoi la
-    /// règle reste même si le §3.3 devait être réfuté un jour. Le retrait de
-    /// la règle serait alors une **décision du propriétaire du dépôt**, avec
-    /// son coût nommé — un régime que rien ne mesure —, jamais une conséquence
-    /// mécanique d'un verdict de sonde.
+    /// 🔵 **AND WITH N WINDOWS, THIS TEST DOES SOMETHING OTHER THAN PROTECT AGAINST A
+    /// REFUSAL — it ELECTS the single local writer.** The sensor pushes the content
+    /// to ALL windows (D3), each has its own `PressePapierLocal`,
+    /// and if all wrote, N concurrent calls to `writeText` would go out
+    /// for a single copy, the last one winning arbitrarily. That
+    /// justification holds **independently** of §3.3, and that is why the
+    /// rule stays even if §3.3 were one day refuted. Removing
+    /// the rule would then be a **decision of the repository owner**, with
+    /// its named cost — a regime nothing measures —, never a mechanical
+    /// consequence of a probe verdict.
     ///
-    /// ⚠️ **Sondes versées** : `journaux-presse-papier-p3/p3-writetext-{1,2}.json`
-    /// (le 2×2) et `p3-focus-{1,2}.json` (la mesurabilité du focus à N
-    /// fenêtres), deux exécutions chacune, relevés identiques.
+    /// ⚠️ **Probes filed**: `journaux-presse-papier-p3/p3-writetext-{1,2}.json`
+    /// (the 2×2) and `p3-focus-{1,2}.json` (measurability of focus with N
+    /// windows), two runs each, identical reports.
     aEcrire(focalise: boolean): string | undefined {
         if (!focalise) return undefined;
         if (this.enAttente === undefined) return undefined;
@@ -150,38 +150,38 @@ export class PressePapierLocal {
         return this.enAttente;
     }
 
-    /// L'écriture a réussi.
+    /// The write succeeded.
     confirmer(texte: string): void {
         this.ecrit = texte;
-        // Un succès remet le compteur à zéro : sans cela un échec au démarrage
-        // et un échec une heure plus tard crieraient ensemble.
+        // A success resets the counter to zero: without that, a failure at startup
+        // and a failure an hour later would shout together.
         this.echecs = 0;
     }
 
-    /// L'écriture a échoué. Rend le message à afficher au DEUXIÈME échec
-    /// consécutif, `undefined` avant.
+    /// The write failed. Returns the message to display at the SECOND consecutive
+    /// failure, `undefined` before.
     echouer(): string | undefined {
         this.echecs += 1;
         return this.echecs >= ECHECS_AVANT_MESSAGE ? MESSAGE_ECHEC : undefined;
     }
 
-    /// Rend le texte à émettre vers l'agent, ou `undefined` si c'est l'écho
-    /// d'un contenu qu'on vient de recevoir de lui — **le garde n°3 de D5**.
+    /// Returns the text to emit towards the agent, or `undefined` if it is the echo
+    /// of a content we have just received from it — **D5's guard no. 3**.
     ///
-    /// **Il ne vaut que pour le PREMIER renvoi**, et c'est délibéré : un
-    /// utilisateur qui colle deux fois le même texte le veut deux fois. Le
-    /// doublon n'en coûte rien côté VM — le garde n°2 de l'agent l'absorbe,
-    /// le presse-papier Windows portant déjà ce contenu.
+    /// **It only holds for the FIRST send-back**, and it is deliberate: a
+    /// user who pastes the same text twice wants it twice. The
+    /// duplicate costs nothing on the VM side — the agent's guard no. 2 absorbs it,
+    /// the Windows clipboard already carrying that content.
     ///
-    /// ⚠️ **Un refus n'arme pas ce garde** : rien n'a été écrit localement,
-    /// donc rien ne peut en être l'écho.
+    /// ⚠️ **A refusal does not arm this guard**: nothing was written locally,
+    /// so nothing can be its echo.
     aEmettre(texte: string): string | undefined {
         const recu = this.recuNonReemis;
         this.recuNonReemis = undefined;
         return recu === texte ? undefined : texte;
     }
 
-    /// Le refus à dire, ou `undefined`. **Se consomme.**
+    /// The refusal to voice, or `undefined`. **Is consumed.**
     refusADire(): string | undefined {
         const refus = this.refus;
         this.refus = undefined;

@@ -95,13 +95,13 @@ export function attachPointer(options: PointerOptions): PointerHandle {
         // `requestPointerLock` requires a transient user activation:
         // a message received over a data channel is not one. Hence the arming.
         //
-        // Depuis Chrome 111, l'appel renvoie une Promise qui se rejette
-        // précisément dans ce cas — l'échec est ATTENDU, `onPointerLockError`
-        // et le réarmement prennent déjà le relais. Sans ce `catch`, chaque
-        // bascule en mode relatif produirait une rejection non gérée dans la
-        // console, alors même que le mécanisme fonctionne comme prévu.
-        // `Promise.resolve` enrobe aussi bien un `void` qu'une Promise réelle :
-        // le `catch` reste sans effet sur un navigateur qui ne renvoie rien.
+        // Since Chrome 111, the call returns a Promise that rejects
+        // precisely in this case — the failure is EXPECTED, `onPointerLockError`
+        // and rearming already take over. Without this `catch`, every
+        // switch to relative mode would produce an unhandled rejection in the
+        // console, even though the mechanism works as intended.
+        // `Promise.resolve` wraps a `void` as well as a real Promise:
+        // the `catch` stays without effect on a browser that returns nothing.
         void Promise.resolve(video.requestPointerLock()).catch(() => {});
     };
 
@@ -116,8 +116,8 @@ export function attachPointer(options: PointerOptions): PointerHandle {
 
     const onPointerLockChange = (): void => {
         if (doc.pointerLockElement === video) echecs = 0;
-        // Sortie par Échap alors que l'agent est toujours en relatif : on
-        // reste armé, le prochain clic reverrouille.
+        // Exit through Escape while the agent is still relative: we
+        // stay armed, the next click locks again.
     };
 
     const onPointerMove = (event: PointerEvent): void => {
@@ -153,7 +153,7 @@ export function attachPointer(options: PointerOptions): PointerHandle {
     };
 }
 
-// Valeurs par défaut pour utilisation dans le navigateur réel (voir tâche 15 : câblage).
+// Default values for use in the real browser (see task 15: wiring).
 export function attachPointerAuDOM(options: Omit<PointerOptions, 'video' | 'doc'>): PointerHandle {
     return attachPointer({
         video: document.querySelector('video') as CibleVideo,
