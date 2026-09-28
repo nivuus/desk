@@ -266,13 +266,13 @@ export async function assurerAccesFrais(
     ) => Promise<{ acces: string; rafraichissement: string } | undefined>,
     margeMs: number = MARGE_FRAICHEUR_MS,
 ): Promise<string | undefined> {
-    // ① et ② : `rafraichirSiNecessaire` porte DÉJÀ les deux, et il est testé.
-    // Le réécrire ici en produirait une seconde version à tenir d'accord.
+    // ① and ②: `rafraichirSiNecessaire` ALREADY carries both, and it is tested.
+    // Rewriting it here would produce a second version to keep in agreement.
     if (await rafraichirSiNecessaire(coffre, maintenant, margeMs, appelRafraichissement)) {
         return jetonAcces(coffre);
     }
-    // ⚠️ `rafraichirSiNecessaire` a VIDÉ le coffre en rendant `false` : il n'y
-    // a plus rien à présenter, et c'est bien l'état voulu si ③ échoue aussi.
+    // ⚠️ `rafraichirSiNecessaire` EMPTIED the vault when returning `false`: there
+    // is nothing left to present, and that is indeed the desired state if ③ fails too.
     const frais = await accesParPomerium(base, appelAuthMoi);
     if (frais === undefined) return undefined;
     poserAcces(coffre, frais);
@@ -285,17 +285,17 @@ export function jetonRafraichissement(
     return coffre?.getItem(CLE_RAFRAICHISSEMENT) ?? undefined;
 }
 
-/// Dit si le jeton sera périmé à `instant`.
+/// Says whether the token will be stale at `instant`.
 ///
-/// 🔴 LIT `exp` SANS VÉRIFIER LA SIGNATURE, ET C'EST DÉLIBÉRÉ : le navigateur
-/// n'a pas le secret de signature et ne peut donc RIEN vérifier. Croire qu'il
-/// vérifie serait pire que savoir qu'il ne le fait pas — la seule vérification
-/// qui compte est celle du service (`identite/jeton.ts`), sur chaque poignée
-/// de main. Ce que cette fonction sert, c'est à éviter un aller-retour inutile,
-/// pas à décider d'une autorisation.
+/// 🔴 READS `exp` WITHOUT VERIFYING THE SIGNATURE, AND IT IS DELIBERATE: the browser
+/// does not have the signing secret and therefore cannot verify ANYTHING. Believing it
+/// verifies would be worse than knowing it does not — the only verification
+/// that counts is the service's (`identite/jeton.ts`), on each
+/// handshake. What this function serves is avoiding a useless round trip,
+/// not deciding an authorisation.
 ///
-/// Un jeton ILLISIBLE est réputé périmé : le tenir pour valable ferait échouer
-/// la session plus tard, ailleurs, sur un refus que rien ne relierait à ici.
+/// An UNREADABLE token is deemed stale: holding it valid would make
+/// the session fail later, elsewhere, on a refusal nothing would link back here.
 export function expireAvant(jeton: string, instant: number): boolean {
     const morceaux = jeton.split('.');
     if (morceaux.length !== 3) return true;
@@ -312,39 +312,39 @@ export function expireAvant(jeton: string, instant: number): boolean {
     }
 }
 
-/// Décode un segment base64url en texte. Écrit à la main plutôt qu'avec
-/// `Buffer` : ce module tourne dans un navigateur, où `Buffer` n'existe pas.
+/// Decodes a base64url segment into text. Written by hand rather than with
+/// `Buffer`: this module runs in a browser, where `Buffer` does not exist.
 function decoderBase64url(segment: string): string {
     const base64 = segment.replace(/-/g, '+').replace(/_/g, '/');
     const complet = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
     const binaire = atob(complet);
-    // `atob` rend des unités de code latin-1 : les recomposer en UTF-8 avant
-    // de parler de JSON, sans quoi un courriel accentué casserait la lecture.
+    // `atob` returns latin-1 code units: recompose them as UTF-8 before
+    // talking about JSON, otherwise an accented email would break the reading.
     const octets = Uint8Array.from(binaire, (c) => c.charCodeAt(0));
     return new TextDecoder().decode(octets);
 }
 
-/// Rafraîchit la paire si le jeton d'accès expire dans moins de `margeMs`.
+/// Refreshes the pair if the access token expires in less than `margeMs`.
 ///
-/// Rend `true` si, au retour, le coffre porte un jeton d'accès utilisable —
-/// qu'il ait fallu appeler ou non. Rend `false` quand il n'y a plus rien à
-/// présenter : le coffre est alors VIDÉ, pour que l'appelant renvoie vers
-/// l'écran de connexion plutôt que de boucler sur un refus.
+/// Returns `true` if, on return, the vault carries a usable access token —
+/// whether a call was needed or not. Returns `false` when there is nothing left to
+/// present: the vault is then EMPTIED, so that the caller sends back to
+/// the sign-in screen rather than looping on a refusal.
 ///
-/// `appel` est INJECTÉ, jamais `fetch` global : c'est ce qui rend cette règle
-/// éprouvable sans réseau.
+/// `appel` is INJECTED, never the global `fetch`: that is what makes this rule
+/// testable without a network.
 ///
-/// 🔴 **`await appel(...)` EST ENVELOPPÉ — AJOUTÉ EN CORRECTION DE REVUE
-/// (round 1), PAS AU PREMIER JET.** `accesParPomerium` (plus haut dans ce
-/// fichier) a sa propre garde de ce genre DEPUIS TOUJOURS, avec son test
-/// dédié (« rend `undefined` sur un réseau injoignable, sans lever ») — mais
-/// cette fonction-ci n'appelait AUCUN `appel` de production avant
-/// `assurerAccesFrais` (30-31 août 2026) : sans appelant réel, une exception
-/// non rattrapée ici n'avait jamais eu l'occasion de se voir. Une panne
-/// réseau (hors ligne, DNS, CORS) est donc traitée exactement comme un refus
-/// (`!neuve`) : le coffre est vidé, l'appelant retombe sur Pomerium plutôt
-/// que de voir l'exception remonter non gérée jusqu'à un `void demarrer()`
-/// ou un `.then()` sans `.catch`.
+/// 🔴 **`await appel(...)` IS WRAPPED — ADDED AS A REVIEW FIX
+/// (round 1), NOT IN THE FIRST DRAFT.** `accesParPomerium` (higher up in this
+/// file) has had its own guard of this kind SINCE ALWAYS, with its dedicated
+/// test ("returns `undefined` on an unreachable network, without throwing") — but
+/// this function called NO production `appel` before
+/// `assurerAccesFrais` (August 30-31st, 2026): without a real caller, an uncaught
+/// exception here had never had the opportunity to show. A network
+/// failure (offline, DNS, CORS) is therefore handled exactly like a refusal
+/// (`!neuve`): the vault is emptied, the caller falls back to Pomerium rather
+/// than seeing the exception propagate unhandled up to a `void demarrer()`
+/// or a `.then()` without `.catch`.
 export async function rafraichirSiNecessaire(
     coffre: Coffre,
     maintenant: number,
@@ -356,8 +356,8 @@ export async function rafraichirSiNecessaire(
 
     const rafraichissement = jetonRafraichissement(coffre);
     if (rafraichissement === undefined) {
-        // Rien à présenter : on efface ce qui reste plutôt que de laisser un
-        // accès périmé que la poignée de main refuserait.
+        // Nothing to present: we erase what remains rather than leave a
+        // stale access the handshake would refuse.
         vider(coffre);
         return false;
     }

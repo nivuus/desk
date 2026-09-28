@@ -1,15 +1,15 @@
-// Traduction de l'état du lien annoncé par l'agent en texte affichable.
+// Translating the link state announced by the agent into displayable text.
 //
-// Séparé de tout DOM pour être testable, comme `status.ts` et `audio.ts`.
-// L'agent décide ; ce module ne fait que dire, en français, ce qu'il a décidé.
+// Separated from any DOM to be testable, like `status.ts` and `audio.ts`.
+// The agent decides; this module only says, in plain words, what it decided.
 
 import type { LinkMessage } from '../../proto/ts/control';
 
 export interface TexteLien {
     resume: string;
-    /// Vrai quand l'utilisateur doit être averti : image dégradée ou lien
-    /// insuffisant. Une adaptation indisponible n'est PAS une alerte — le
-    /// lien peut être excellent, seul l'asservissement manque.
+    /// True when the user must be warned: degraded image or insufficient
+    /// link. An unavailable adaptation is NOT an alert — the
+    /// link can be excellent, only the control loop is missing.
     alerte: boolean;
 }
 

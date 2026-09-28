@@ -1,26 +1,26 @@
-// Les objets factices du chantier E, **partagés** par les deux fichiers de
-// tests du micro.
+// The fake objects of workstream E, **shared** by the mic's two test
+// files.
 //
-// ⚠️ **EXTRACTION, pas un remaniement.** `client/src/micro.test.ts` était à
-// **411** lignes ; la famille de tests du bloc E3 l'a porté à **515**, donc
-// AU-DELÀ de la porte des 500. La doctrine du dépôt est d'extraire, jamais de
-// comprimer — ce dépôt a franchi ce plafond cinq fois et l'a rattrapé deux
-// fois par une compression qu'il s'interdit.
+// ⚠️ **EXTRACTION, not a rework.** `client/src/micro.test.ts` was at
+// **411** lines; the test family of block E3 brought it to **515**, hence
+// BEYOND the 500 gate. The repository's doctrine is to extract, never to
+// compress — this repository crossed that ceiling five times and caught it twice
+// through a compression it forbids itself.
 //
-// 🔴 **Le franchissement a eu lieu AVANT d'être vu.** Le plan budgétait « ~50 »
-// lignes pour ce fichier ; la famille en a coûté **104**, et sa table de portes
-// portait « ⚠️ à remesurer avant d'écrire ». La leçon n'est pas « mieux
-// estimer » : c'est **remesurer après avoir écrit**, ce qu'aucune estimation ne
-// remplace.
+// 🔴 **The crossing happened BEFORE being seen.** The plan budgeted "~50"
+// lines for this file; the family cost **104**, and its gate table
+// said "⚠️ to remeasure before writing". The lesson is not "estimate
+// better": it is **remeasure after writing**, which no estimate
+// replaces.
 //
-// ⚠️ **Le contenu est VERBATIM.** Seule la visibilité a changé — les cinq
-// fonctions sont devenues `export` —, ce qui est la seule chose qu'une
-// extraction ait le droit de changer.
+// ⚠️ **The content is VERBATIM.** Only visibility changed — the five
+// functions became `export` —, which is the only thing an
+// extraction is allowed to change.
 
-/// Piste factice : ce que ce module fait d'une `MediaStreamTrack` se réduit à
-/// `stop()`, et c'est précisément l'appel que la spec §9 rend obligatoire.
-/// `arretee` est le seul instrument capable de distinguer une extinction RÉELLE
-/// d'un `enabled = false` — le « mensonge visuel » que la spec écarte.
+/// Fake track: what this module does with a `MediaStreamTrack` comes down to
+/// `stop()`, and it is precisely the call spec §9 makes mandatory.
+/// `arretee` is the only instrument able to distinguish a REAL switch-off
+/// from an `enabled = false` — the "visual lie" the spec rules out.
 export function faussePiste(): MediaStreamTrack & { arretee: boolean; enabled: boolean } {
     return {
         kind: 'audio',
@@ -32,14 +32,14 @@ export function faussePiste(): MediaStreamTrack & { arretee: boolean; enabled: b
     } as unknown as MediaStreamTrack & { arretee: boolean; enabled: boolean };
 }
 
-/// Flux factice porteur d'une seule piste audio, comme en rend `getUserMedia`.
+/// Fake stream carrying a single audio track, as `getUserMedia` returns one.
 export function fauxFlux(piste: MediaStreamTrack): MediaStream {
     return { getAudioTracks: () => [piste] } as unknown as MediaStream;
 }
 
-/// Sender factice : mémorise TOUT ce qui lui est passé, dans l'ordre. Un
-/// booléen « a reçu une piste » ne distinguerait pas une extinction d'une
-/// absence d'allumage.
+/// Fake sender: remembers EVERYTHING passed to it, in order. A
+/// "received a track" boolean would not distinguish a switch-off from an
+/// absence of switch-on.
 export function fauxSender() {
     const recus: Array<MediaStreamTrack | null> = [];
     return {
@@ -51,17 +51,17 @@ export function fauxSender() {
     };
 }
 
-/// Erreur telle que `getUserMedia` la lève : c'est le `name` qui porte le sens,
-/// jamais le message.
+/// Error as `getUserMedia` throws it: it is the `name` that carries the meaning,
+/// never the message.
 export function erreurDom(name: string): Error {
     const e = new Error(name);
     e.name = name;
     return e;
 }
 
-/// Bouton factice : ce que le module écrit dessus, et rien d'autre. Un vrai
-/// `HTMLButtonElement` exigerait un DOM, que `client/src` évite partout par
-/// injection de dépendances (`audio.ts`, `fullscreen.ts`, `visibilite.ts`).
+/// Fake button: what the module writes on it, and nothing else. A real
+/// `HTMLButtonElement` would require a DOM, which `client/src` avoids everywhere through
+/// dependency injection (`audio.ts`, `fullscreen.ts`, `visibilite.ts`).
 export function fauxBouton() {
     const ecouteurs = new Map<string, Set<EventListener>>();
     return {
