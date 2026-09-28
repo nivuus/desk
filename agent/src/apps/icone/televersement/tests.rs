@@ -10,10 +10,10 @@ use super::*;
 #[test]
 fn tls_est_refuse_explicitement() {
     for url in ["wss://plateforme.exemple:443", "https://plateforme.exemple"] {
-        let error = base_http(url).expect_err("TLS doit être refusé");
+        let error = base_http(url).expect_err("TLS must be refused");
         assert!(
-            error.to_string().contains("AUCUNE pile TLS"),
-            "le refus doit NOMMER sa cause : {error}"
+            error.to_string().contains("NO TLS stack"),
+            "the refusal must NAME its cause: {error}"
         );
     }
 }

@@ -55,7 +55,7 @@ fn la_coalescence_conserve_la_position() {
     assert_eq!(f.len(), 2);
     assert!(
         matches!(f[0], Message::Part { bps: 2 }),
-        "la part garde sa PLACE"
+        "the share keeps its PLACE"
     );
     assert!(matches!(f[1], Message::Sommeil(Ordre::Reveiller)));
 }
@@ -105,7 +105,7 @@ fn au_dela_de_la_borne_le_depot_est_refuse() {
         deposer(&mut f, Message::Sommeil(Ordre::Reveiller)),
         Depot::Refusee
     ));
-    assert_eq!(f.len(), PROFONDEUR_MAX, "la file n'a pas grossi");
+    assert_eq!(f.len(), PROFONDEUR_MAX, "the queue did not grow");
 }
 
 /// 🔴 THE NEGATIVE WITNESS, AND ITS EXACT GUARANTEE: **once an
@@ -148,7 +148,7 @@ fn un_premier_depot_coalescable_bute_bien_sur_la_borne() {
         deposer(&mut f, Message::Part { bps: 1 }),
         Depot::Refusee
     ));
-    assert_eq!(f.len(), PROFONDEUR_MAX, "la file n'a pas grossi");
+    assert_eq!(f.len(), PROFONDEUR_MAX, "the queue did not grow");
 }
 
 /// The pair behaves like the channel it replaces: what is dropped
@@ -189,7 +189,7 @@ fn les_refus_se_comptent() {
     assert_eq!(
         e.refuses(),
         0,
-        "aucun refus tant que la borne n'est pas atteinte"
+        "no refusal as long as the bound is not reached"
     );
     // 🔴 AND THE OUTCOME IS `Refuse`, NOT `Depose`: it is the distinction no
     // caller made before fix round 1, and which the type

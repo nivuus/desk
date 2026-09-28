@@ -67,7 +67,7 @@ async fn serveur(reactions: Vec<Reaction>) -> (String, Arc<Mutex<Vu>>) {
             }
             let texte = String::from_utf8_lossy(&brut).to_string();
             {
-                let mut j = journal.lock().expect("verrou");
+                let mut j = journal.lock().expect("lock");
                 j.ranges.push(depuis_range(&texte));
                 j.autorisations.push(
                     texte
@@ -177,13 +177,13 @@ async fn downloads_writes_and_verifies_the_digest() {
         |_, _| {},
     )
     .await
-    .expect("téléchargement");
+    .expect("download");
     assert_eq!(ecrits, corps.len() as u64);
-    assert_eq!(std::fs::read(&b.file).expect("relecture"), corps);
+    assert_eq!(std::fs::read(&b.file).expect("re-read"), corps);
     // The token does go out as `Authorization: Bearer` — without it the route
     // would refuse, and the symptom would be a 401 very far from here.
     assert_eq!(
-        vu.lock().expect("verrou").autorisations[0],
+        vu.lock().expect("lock").autorisations[0],
         "Authorization: Bearer jeton-d-agent"
     );
 }
@@ -205,7 +205,7 @@ async fn une_coupure_reprend_au_bon_offset_et_l_empreinte_reste_juste() {
         Reaction::Entier(corps.clone()),
     ])
     .await;
-    let b = bac("coupure");
+    let b = bac("cut");
     let ecrits = telecharger(
         Demande {
             url: &url,
@@ -217,15 +217,15 @@ async fn une_coupure_reprend_au_bon_offset_et_l_empreinte_reste_juste() {
         |_, _| {},
     )
     .await
-    .expect("téléchargement repris");
+    .expect("download resumed");
 
     assert_eq!(ecrits, corps.len() as u64);
-    assert_eq!(std::fs::read(&b.file).expect("relecture"), corps);
-    let ranges = vu.lock().expect("verrou").ranges.clone();
+    assert_eq!(std::fs::read(&b.file).expect("re-read"), corps);
+    let ranges = vu.lock().expect("lock").ranges.clone();
     assert_eq!(
         ranges,
         vec![None, Some(60_000)],
-        "la seconde requête doit demander EXACTEMENT ce qui manque"
+        "the second request must ask for EXACTLY what is missing"
     );
 }
 
@@ -264,19 +264,19 @@ async fn un_200_en_reponse_a_un_range_fait_repartir_de_zero() {
         |_, _| {},
     )
     .await
-    .expect("téléchargement recommencé");
+    .expect("download restarted");
 
-    assert_eq!(ecrits, corps.len() as u64, "PAS de concaténation");
+    assert_eq!(ecrits, corps.len() as u64, "NO concatenation");
     assert_eq!(
         std::fs::metadata(&b.file).expect("stat").len(),
         corps.len() as u64
     );
-    assert_eq!(std::fs::read(&b.file).expect("relecture"), corps);
-    let ranges = vu.lock().expect("verrou").ranges.clone();
+    assert_eq!(std::fs::read(&b.file).expect("re-read"), corps);
+    let ranges = vu.lock().expect("lock").ranges.clone();
     assert_eq!(
         ranges,
         vec![None, Some(40_000)],
-        "DEUX connexions, pas trois : la réponse au Range ignoré est CONSOMMÉE"
+        "TWO connections, not three: the response to the ignored Range is CONSUMED"
     );
 }
 
@@ -304,12 +304,12 @@ async fn un_transfert_chunked_est_refuse_et_le_motif_le_nomme() {
         |_, _| {},
     )
     .await
-    .expect_err("doit refuser");
+    .expect_err("must refuse");
     match refus {
         Refus::Reponse(reponse::Refus::TransfertCode(value)) => {
-            assert!(value.contains("chunked"), "le motif doit NOMMER chunked");
+            assert!(value.contains("chunked"), "the reason must NAME chunked");
         }
-        autre => panic!("refus inattendu : {autre:?}"),
+        autre => panic!("unexpected refusal: {autre:?}"),
     }
 }
 
@@ -320,7 +320,7 @@ async fn un_statut_inattendu_est_refuse_en_portant_son_statut() {
         "HTTP/1.1 500 Internal Server Error\r\nContent-Length: 0\r\n\r\n",
     )])
     .await;
-    let b = bac("cinq-cents");
+    let b = bac("five-hundred");
     let refus = telecharger(
         Demande {
             url: &url,
@@ -332,7 +332,7 @@ async fn un_statut_inattendu_est_refuse_en_portant_son_statut() {
         |_, _| {},
     )
     .await
-    .expect_err("doit refuser");
+    .expect_err("must refuse");
     assert_eq!(refus, Refus::Reponse(reponse::Refus::Statut(500)));
 }
 
@@ -357,7 +357,7 @@ async fn a_wrong_digest_is_refused_and_the_partial_file_disappears() {
         |_, _| {},
     )
     .await
-    .expect_err("doit refuser");
+    .expect_err("must refuse");
     match refus {
         Refus::Empreinte {
             attendue: a,
@@ -366,12 +366,12 @@ async fn a_wrong_digest_is_refused_and_the_partial_file_disappears() {
             assert_eq!(a, attendue);
             assert_eq!(obtenue, empreinte(&corps));
         }
-        autre => panic!("refus inattendu : {autre:?}"),
+        autre => panic!("unexpected refusal: {autre:?}"),
     }
     assert!(
         !b.file.exists(),
-        "le fichier partiel doit être SUPPRIMÉ : le garder inviterait un chemin \
-         ultérieur à le prendre pour un installeur valide"
+        "the partial file must be DELETED: keeping it would invite a later \
+         path to take it for a valid installer"
     );
 }
 
@@ -391,14 +391,14 @@ async fn https_est_refuse_en_nommant_la_capacite_manquante() {
         |_, _| {},
     )
     .await
-    .expect_err("doit refuser");
+    .expect_err("must refuse");
     match refus {
         Refus::Url(texte) => {
-            assert!(texte.contains("TLS"), "le refus doit nommer TLS : {texte}");
+            assert!(texte.contains("TLS"), "the refusal must name TLS: {texte}");
         }
-        autre => panic!("refus inattendu : {autre:?}"),
+        autre => panic!("unexpected refusal: {autre:?}"),
     }
-    assert!(!b.file.exists(), "aucun fichier ne doit être créé");
+    assert!(!b.file.exists(), "no file must be created");
 }
 
 /// The recovery budget is BOUNDED, and exhausting it is a typed
@@ -427,9 +427,9 @@ async fn le_budget_de_retablissements_est_borne() {
         |_, _| {},
     )
     .await
-    .expect_err("doit refuser");
+    .expect_err("must refuse");
     assert!(matches!(refus, Refus::TropDeCoupures(_)), "{refus:?}");
-    assert!(!b.file.exists(), "le fichier partiel doit être supprimé");
+    assert!(!b.file.exists(), "the partial file must be deleted");
 }
 
 #[test]
@@ -457,13 +457,13 @@ fn a_url_is_split_and_the_default_port_is_not_written_in_host() {
     // chain: the installer URL being DERIVED from the channel's, it
     // always arrives as `ws://`, and every installation order was refused.
     // A green test is a guard only if what it pins is true.
-    let ws = decouper("ws://h:9/x").expect("ws:// doit se lire comme http://");
+    let ws = decouper("ws://h:9/x").expect("ws:// must read as http://");
     assert_eq!(ws.hote, "h");
     assert_eq!(ws.port, 9);
     assert_eq!(ws.chemin, "/x");
     // The default port of a `ws://` is that of `http://` — 80 —, and that is
     // the direct consequence of treating it as such.
-    assert_eq!(decouper("ws://h/x").expect("ws sans port").port, 80);
+    assert_eq!(decouper("ws://h/x").expect("ws without a port").port, 80);
 
     // ⚠️ `wss://` STAYS REFUSED, AND BY NAME: accepting `ws://` says nothing about
     // TLS, which this client speaks no more than before.

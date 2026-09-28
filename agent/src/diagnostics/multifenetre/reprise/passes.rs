@@ -22,8 +22,8 @@
 //!   another. There is therefore **no elimination gate**, and a wrong verdict does not
 //!   disqualify the pass, it qualifies it.
 //! - **"before / after" is NOT "before / after covering".** The
-//!   `passe` field of these lines is "avant perturbation" / "après
-//!   perturbation", and the disruption in question is the **creation of one
+//!   `passe` field of these lines is "before disturbance" / "after
+//!   disturbance", and the disruption in question is the **creation of one
 //!   more virtual output**. The two vocabularies look alike and do not
 //!   speak of the same thing.
 //! - **`unites` stays at zero**: this bench does not encode.
@@ -89,7 +89,7 @@ pub(super) fn eprouver(
         count,
         ?places_bureau,
         ?places_texture,
-        "les k duplications sont ouvertes"
+        "the k duplications are open"
     );
 
     // --- Pass A: the control. It measures what duplications that
@@ -97,7 +97,7 @@ pub(super) fn eprouver(
     // is set against.
     let passe_a = passe(garde, &mut mires, &mut voies, virtuelles, None)?;
     compteurs::journaliser(
-        "avant perturbation",
+        "before disturbance",
         "duplication-reprise",
         count as u8,
         &passe_a.compteurs,
@@ -107,8 +107,8 @@ pub(super) fn eprouver(
     // taken here, where it can be read.
     anyhow::ensure!(
         passe_a.perdues.is_empty(),
-        "{:?} : ces voies ont perdu leur capture AVANT toute perturbation — rien n'a été \
-         perturbé, ce banc n'a rien éprouvé",
+        "{:?}: these paths lost their capture BEFORE any disturbance — nothing was \
+         disturbed, this bench tested nothing",
         passe_a.perdues
     );
 
@@ -116,14 +116,14 @@ pub(super) fn eprouver(
     let (largeur, hauteur, hertz) = RESOLUTION;
     tracing::info!(
         duplications_ouvertes = voies.len(),
-        "création d'une sortie de PLUS pendant que les duplications tournent — c'est la \
-         perturbation mesurée"
+        "creating ONE MORE output while the duplications run — that is the \
+         measured disturbance"
     );
     let id_perturbatrice = sorties
         .create(largeur, hauteur, hertz)
-        .context("création de la sortie perturbatrice")?;
+        .context("creating the disturbing output")?;
     let instant_perturbation = Instant::now();
-    tracing::info!(id = id_perturbatrice, "sortie perturbatrice créée");
+    tracing::info!(id = id_perturbatrice, "disturbing output created");
 
     // --- Pass B: identical to pass A, on a desktop that has just changed.
     let passe_b = passe(
@@ -134,7 +134,7 @@ pub(super) fn eprouver(
         Some(instant_perturbation),
     )?;
     compteurs::journaliser(
-        "après perturbation",
+        "after disturbance",
         "duplication-reprise",
         count as u8,
         &passe_b.compteurs,
@@ -143,16 +143,16 @@ pub(super) fn eprouver(
     // disruptor attach (otherwise nothing could have disrupted), and did the k
     // outputs move under their test patterns (otherwise a black image would be
     // attributable to the move and not to recovery).
-    constater_places("après perturbation", virtuelles, connues);
+    constater_places("after disturbance", virtuelles, connues);
 
     // The duplications are released BEFORE the post-mortem probe: DXGI
     // only allows one duplication per output, and the object of a dead path —
     // invalid but very much alive — would make the reopening the probe
     // attempts be refused. The probe would then conclude "the output would not re-duplicate"
     // for a reason that has nothing to do with recovery.
-    tracing::info!("libération des voies de capture : avant");
+    tracing::info!("releasing the capture paths: before");
     drop(voies);
-    tracing::info!("libération des voies de capture : après");
+    tracing::info!("releasing the capture paths: after");
     // Counting boundary, emitted UNCONDITIONALLY so that the command of
     // reading key no. 1 holds in all cases. The post-mortem probe also captures
     // through `next_frame`, which sets the same reopening trace: without
@@ -160,8 +160,8 @@ pub(super) fn eprouver(
     // those of the probe, which come after it and prove nothing about the
     // disruption.
     tracing::info!(
-        "borne de comptage des reprises — au-dessus de cette ligne, les lignes de réouverture \
-         appartiennent à la MESURE ; en dessous, à la sonde post-mortem et aux clés de lecture"
+        "recovery counting bound — above this line, the reopening lines \
+         belong to the MEASUREMENT; below it, to the post-mortem probe and to the reading keys"
     );
     if !passe_b.perdues.is_empty() {
         super::post_mortem::sonder(garde, &mut mires, virtuelles, &passe_b.perdues);
@@ -183,16 +183,16 @@ pub(super) fn eprouver(
         verdicts_faux_apres = passe_b.compteurs.apres_recouvrement.faux(),
         pass_before_degraded = passe_a.degradee,
         passe_apres_degradee = passe_b.degradee,
-        "bilan de la reprise"
+        "recovery summary"
     );
     if passe_a.degradee || passe_b.degradee {
         tracing::error!(
             pass_before_degraded = passe_a.degradee,
             passe_apres_degradee = passe_b.degradee,
-            "une passe au moins a tourné en mode DÉGRADÉ — dans ce bilan, `images_*`, les \
-             cadences et les `verdicts_faux_*` de la ou des passes concernées sont \
-             INEXPLOITABLES, et `voies_vivantes_apres` ne se lit qu'avec `voies_perdues_apres`. \
-             Voir la ligne d'erreur qui nomme ce qui a été perdu"
+            "at least one pass ran in DEGRADED mode — in this summary, `images_*`, the \
+             cadences and the `verdicts_faux_*` of the pass or passes concerned are \
+             UNUSABLE, and `voies_vivantes_apres` is only read together with `voies_perdues_apres`. \
+             See the error line that names what was lost"
         );
     }
     journaliser_cle_de_lecture();
@@ -213,30 +213,30 @@ pub(super) fn eprouver(
 /// be matched with the `nom_sortie` of the death lines.
 fn journaliser_cle_de_lecture() {
     tracing::info!(
-        "clé de lecture n°1 — ce bilan ne vaut QUE si la perturbation a perturbé. Compter les \
-         reprises DE LA MESURE, et elles seules : \
-         `sed '/borne de comptage des reprises/q' <journal> | grep -c \"perdu, réouverture\"`. \
-         Un `grep -c` sur le journal ENTIER serait faux dans le sens dangereux : il compterait \
-         aussi les réouvertures de la sonde post-mortem, postérieures à la mesure, plus cette \
-         clé de lecture elle-même. ZÉRO ligne signifie qu'aucune duplication n'a perdu son \
-         accès, donc que ce banc n'a RIEN éprouvé, et son bilan ne se lit alors PAS comme un \
-         succès de la reprise. Contrôler aussi la ligne « sorties tierces relevées » : sans \
-         perturbatrice ATTACHÉE, rien n'a pu perturber"
+        "reading key no. 1 — this summary only holds IF the disturbance did disturb. Count the \
+         recoveries OF THE MEASUREMENT, and only those: \
+         `sed '/recovery counting bound/q' <log> | grep -c \"lost, reopening\"`. \
+         A `grep -c` over the WHOLE log would be wrong in the dangerous direction: it would also count \
+         the reopenings of the post-mortem probe, after the measurement, plus this \
+         reading key itself. ZERO lines means that no duplication lost its \
+         access, hence that this bench tested NOTHING, and its summary is then NOT read as a \
+         success of the recovery. Also check the \"third-party outputs recorded\" line: without \
+         an ATTACHED disturbing output, nothing could disturb"
     );
     tracing::info!(
-        "clé de lecture n°2 — des voies mortes ne réfutent PAS la reprise à elles seules. La \
-         reprise est désormais une FENÊTRE de DUREE_FENETRE_REPRISE (8 s), retentée au plus \
-         toutes les PAS_REPRISE (150 ms) ; l'expiration se compte depuis l'OUVERTURE de la \
-         fenêtre, pas depuis la dernière tentative, et tout succès d'acquisition — « rien de \
-         neuf » compris — la referme. Une réouverture qui échoue à retrouver la sortie n'est PLUS \
-         définitive : elle consomme une tentative ET écrit désormais sa propre ligne d'échec, la \
-         fenêtre continuant de courir. Sur une fenêtre pleine, jusqu'à 54 tentatives sont \
-         possibles (8000 ms / 150 ms), chacune pouvant poser jusqu'à deux lignes (tentative puis \
-         échec) : voir plusieurs dizaines de lignes de réouverture pour UNE SEULE voie morte n'est \
-         donc PAS un emballement, c'est la fenêtre qui court normalement jusqu'à expiration. C'est \
-         ce que départage la « sonde post-mortem », qui retente UNE fois la topologie stabilisée. \
-         Ventiler les reprises par voie avec le champ `cible` des lignes de réouverture, à \
-         rapprocher du `nom_sortie` des lignes de mort"
+        "reading key no. 2 — dead paths do NOT refute the recovery on their own. The \
+         recovery is now a WINDOW of DUREE_FENETRE_REPRISE (8 s), retried at most \
+         every PAS_REPRISE (150 ms); the expiry counts from the OPENING of the \
+         window, not from the last attempt, and any acquisition success — \"nothing \
+         new\" included — closes it. A reopening that fails to find the output is NO LONGER \
+         final: it uses up an attempt AND now writes its own failure line, the \
+         window keeping on running. Over a full window, up to 54 attempts are \
+         possible (8000 ms / 150 ms), each one able to write up to two lines (attempt then \
+         failure): seeing several dozen reopening lines for ONE SINGLE dead path is \
+         therefore NOT a runaway, it is the window running normally until expiry. That is \
+         what the \"post-mortem probe\" decides, which retries ONCE the topology has settled. \
+         Break the recoveries down by path with the `cible` field of the reopening lines, to \
+         compare with the `nom_sortie` of the death lines"
     );
 }
 
@@ -272,7 +272,7 @@ fn ouvrir_duplications(
         let source =
             VoieDuplication::partagee_sur(Some(&sortie.nom_sortie)).with_context(|| {
                 format!(
-                    "ouverture de la duplication n°{} (sortie {}) — avant toute perturbation",
+                    "opening duplication no. {} (output {}) — before any disturbance",
                     rang + 1,
                     sortie.nom_sortie
                 )
@@ -283,7 +283,7 @@ fn ouvrir_duplications(
             nom = %sortie.nom_sortie,
             texture_largeur = dimensions.0,
             texture_hauteur = dimensions.1,
-            "duplication ouverte"
+            "duplication opened"
         );
         textures.push(dimensions);
         sources.push(source);
@@ -385,13 +385,13 @@ fn passe(
                     // the previous ones: nothing guarantees that the duplication
                     // stops emitting for those paths. Painting is
                     // partial OR nil, and that is all we know about it.
-                    "peinture des mires perdue — la passe continue en mode DÉGRADÉ. La peinture \
-                     est PARTIELLE ou NULLE à partir d'ici : `peindre` échoue au premier \
-                     `Present` fautif, après avoir présenté les mires précédentes, et rien ne dit \
-                     lesquelles changent encore. La CADENCE et le compte d'images de cette passe \
-                     ne mesurent donc plus la capture — ni justes, ni « sous-estimés » d'un \
-                     facteur connu. Ce qui reste valable : les morts de voies, `next_frame` \
-                     continuant d'être appelée à chaque tour"
+                    "painting of the test patterns lost — the pass goes on in DEGRADED mode. The painting \
+                     is PARTIAL or NONE from here on: `peindre` fails at the first \
+                     faulty `Present`, after presenting the preceding test patterns, and nothing says \
+                     which ones still change. The CADENCE and the image count of this pass \
+                     therefore no longer measure the capture — neither right, nor \"underestimated\" by a \
+                     known factor. What remains valid: the path deaths, `next_frame` \
+                     still being called on each round"
                 );
             }
         }
@@ -419,9 +419,9 @@ fn passe(
                         ms_depuis_perturbation = ?perturbation.map(|t| t.elapsed().as_millis() as u64),
                         frames_before_death = compteurs.images[id],
                         causes = %super::super::causes(error),
-                        "capture définitivement perdue sur cette voie — elle cesse d'être \
-                         sollicitée, les autres continuent. Ne PAS en conclure que la reprise \
-                         est impossible avant d'avoir lu la sonde post-mortem"
+                        "capture lost for good on this path — it stops being \
+                         polled, the others go on. Do NOT conclude from it that recovery \
+                         is impossible before reading the post-mortem probe"
                     );
                     continue;
                 }
@@ -443,9 +443,9 @@ fn passe(
                             tracing::error!(
                                 voie = id,
                                 causes = %super::super::causes(error),
-                                "lecture de pixel perdue — comptée « Inconnue » et la passe \
-                                 continue : les verdicts de cette passe sont DÉGRADÉS, leur \
-                                 nombre de faux ne dit plus rien de la justesse des images"
+                                "pixel read lost — counted as \"Inconnue\" and the pass \
+                                 goes on: the verdicts of this pass are DEGRADED, their \
+                                 number of false ones no longer says anything about the correctness of the images"
                             );
                         }
                         mire::Verdict::Inconnue
@@ -461,7 +461,7 @@ fn passe(
             tracing::info!(
                 images = ?compteurs.images,
                 verdicts = ?compteurs.apres_recouvrement,
-                "banc de reprise en cours"
+                "recovery bench running"
             );
             prochain_journal += PERIODE_JOURNAL;
         }

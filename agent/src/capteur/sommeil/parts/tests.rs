@@ -64,7 +64,7 @@ fn derniere_part(canal: &ReceveurSession) -> Option<u32> {
 /// repetitions, that stale share would never be corrected.~~
 /// **THIS ARGUMENT WAS FALSE, and fix round 1 refuted it**:
 /// coalescing at the tail would always put the MOST RECENT value at the
-/// tail, hence `[Reveiller, Part(éveillée)]` — chronologically right AND
+/// tail, hence `[Reveiller, Part(awake)]` — chronologically right AND
 /// carrying the right value. The failure mode described does not exist.
 /// ⚠️ This sentence moreover contradicted the header of `file.rs`, written
 /// in the SAME commit, which claimed that replacing in place "preserves
@@ -97,7 +97,7 @@ fn une_session_qui_s_eveille_recoit_la_part_d_une_eveillee_et_une_seule() {
         recus
             .iter()
             .any(|m| matches!(m, Message::Sommeil(Ordre::Reveiller))),
-        "l'ordre de réveil doit être présent : {recus:?}"
+        "the wake-up order must be present: {recus:?}"
     );
     let parts: Vec<u32> = recus
         .iter()
@@ -112,7 +112,7 @@ fn une_session_qui_s_eveille_recoit_la_part_d_une_eveillee_et_une_seule() {
     assert_eq!(
         parts.len(),
         1,
-        "les deux parts doivent s'être coalescées : {recus:?}"
+        "the two shares must have coalesced: {recus:?}"
     );
     // **The value that survives is the LAST one computed**, that of an
     // awake window — not the floor it replaced. That is what makes the
@@ -120,7 +120,7 @@ fn une_session_qui_s_eveille_recoit_la_part_d_une_eveillee_et_une_seule() {
     // would also pass if coalescing had kept the FIRST value.
     assert!(
         parts[0] > crate::capteur::repartiteur::PART_DORMANTE_BPS,
-        "la part qui survit est celle d'une ÉVEILLÉE, pas le plancher : {parts:?}"
+        "the share that survives is that of an AWAKE one, not the floor: {parts:?}"
     );
     retirer("t6-a", generation);
 }
@@ -141,7 +141,7 @@ fn une_part_inchangee_n_est_pas_reemise() {
         .collect();
     assert!(
         parts.is_empty(),
-        "une part inchangée ne se réémet pas : {parts:?}"
+        "an unchanged share is not re-emitted: {parts:?}"
     );
     retirer("t6-b", generation);
 }
@@ -151,18 +151,18 @@ fn l_arrivee_d_une_seconde_fenetre_reduit_la_part_de_la_premiere() {
     let _verrou = verrouiller_pour_le_test();
     let (a, generation_a) = inscrire("t6-c", 6003);
     signaler("t6-c", true, true);
-    let premiere = derniere_part(&a).expect("la première doit avoir une part");
+    let premiere = derniere_part(&a).expect("the first one must have a share");
 
     let (b, generation_b) = inscrire("t6-d", 6004);
     signaler("t6-d", true, false);
-    let apres = derniere_part(&a).expect("la première doit être ré-servie");
+    let apres = derniere_part(&a).expect("the first one must be served again");
     assert!(
         apres < premiere,
-        "part de la première : {premiere} puis {apres} — elle doit baisser"
+        "share of the first one: {premiere} then {apres} — it must drop"
     );
     assert!(
         derniere_part(&b).is_some(),
-        "la seconde doit recevoir une part"
+        "the second one must receive a share"
     );
 
     retirer("t6-c", generation_a);
@@ -188,7 +188,7 @@ fn un_canal_rompu_detecte_par_les_parts_est_retire_du_vivier() {
         assert_eq!(
             premier_ordre(&ordres),
             Some(Ordre::Reveiller),
-            "{nom} devrait s'eveiller"
+            "{nom} should wake up"
         );
         recepteurs_pleins.push((nom, ordres, generation));
     }
@@ -218,8 +218,8 @@ fn un_canal_rompu_detecte_par_les_parts_est_retire_du_vivier() {
     assert_eq!(
         premier_ordre(&ordres_attend),
         Some(Ordre::Reveiller),
-        "le retrait de la session morte, detecte par la distribution des parts, \
-         doit liberer sa place au vivier"
+        "removing the dead session, detected by the share distribution, \
+         must free its place in the pool"
     );
 
     // Cleanup. `retirer` on the session already removed by the remedy is
@@ -248,13 +248,13 @@ fn a_reattach_with_unchanged_topology_resends_a_share_on_the_new_channel() {
     // share at registration (see the doc of `inscrire`).
     let (premier_canal, _generation_initiale) = inscrire("t8-rattache", 6300);
     let premiere_part = derniere_part(&premier_canal)
-        .expect("une première part doit partir à l'inscription initiale");
+        .expect("a first share must go out at the initial registration");
 
     // The pipe breaks and the child re-attaches: SAME session, nothing
     // else in the topology moved (no other window, no
     // visibility signal in between). `inscrire` detects the
-    // replacement (it logs "canal d'ordres remplacé pour
-    // cette session") and returns a new channel, with a new generation
+    // replacement (it logs "order channel replaced for
+    // this session") and returns a new channel, with a new generation
     // (D9, F5 of D7).
     let (canal_neuf, generation_neuve) = inscrire("t8-rattache", 6300);
 
@@ -266,9 +266,9 @@ fn a_reattach_with_unchanged_topology_resends_a_share_on_the_new_channel() {
     assert_eq!(
         derniere_part(&canal_neuf),
         Some(premiere_part),
-        "le canal neuf doit recevoir sa part même si elle est identique à celle \
-         déjà envoyée sur l'ancien canal : dernieres_parts doit être purgée pour \
-         cette session au moment où son canal est remplacé"
+        "the fresh channel must receive its share even if it is identical to the one \
+         already sent on the old channel: dernieres_parts must be purged for \
+         this session at the moment its channel is replaced"
     );
 
     retirer("t8-rattache", generation_neuve);
@@ -286,7 +286,7 @@ fn a_reattach_with_unchanged_topology_resends_a_share_on_the_new_channel() {
 /// change — without bound, and without a log line.
 ///
 /// **This test fails on its LAST assertion before the fix**
-/// (`une part refusée doit être RÉÉMISE au tour next`), the share having
+/// (`a refused share must be RE-EMITTED on the next round`), the share having
 /// been wrongly memorised. The first two pass on both sides: they
 /// establish the precondition (the queue is indeed full, the share is
 /// indeed not delivered), without which the third would measure nothing.
@@ -314,7 +314,7 @@ fn a_refused_share_is_not_remembered_and_goes_again_next_round() {
         let emetteur = garde
             .canaux
             .get("t17-refus")
-            .expect("la session est inscrite");
+            .expect("the session is registered");
         for _ in 0..PROFONDEUR_MAX {
             let _ = emetteur.envoyer(Message::Sommeil(Ordre::Reveiller));
         }
@@ -331,11 +331,11 @@ fn a_refused_share_is_not_remembered_and_goes_again_next_round() {
     assert_eq!(
         recus.len(),
         PROFONDEUR_MAX,
-        "précondition : la file était bien pleine"
+        "precondition: the queue was indeed full"
     );
     assert!(
         !recus.iter().any(|m| matches!(m, Message::Part { .. })),
-        "précondition : la part refusée n'a PAS été livrée : {recus:?}"
+        "precondition: the refused share was NOT delivered: {recus:?}"
     );
 
     // The next round, without anything having changed: the SAME value must
@@ -354,7 +354,7 @@ fn a_refused_share_is_not_remembered_and_goes_again_next_round() {
         .collect();
     assert!(
         !parts.is_empty(),
-        "une part refusée doit être RÉÉMISE au tour suivant : elle n'a jamais été livrée"
+        "a refused share must be RE-EMITTED on the next round: it was never delivered"
     );
 
     retirer("t17-voisine", generation_voisine);

@@ -131,7 +131,7 @@ pub(crate) fn relever_topologie(moment: &str) -> Result<Vec<SortieDxgi>> {
         moment,
         count = sorties.len(),
         attachees,
-        "topologie relevée"
+        "topology recorded"
     );
     for sortie in &sorties {
         tracing::info!(
@@ -214,7 +214,7 @@ pub(super) fn eprouver_chien_de_garde() -> Result<()> {
         .ok()
         .and_then(|value| value.parse().ok())
         .map_or(DUREE_EPREUVE_PAR_DEFAUT, Duration::from_secs);
-    let names_before = noms_attaches(&relever_topologie("avant création")?);
+    let names_before = noms_attaches(&relever_topologie("before creation")?);
 
     let pilote = ouvrir_pilote()?;
     let (veille_initiale, _) = pilote.veille()?;
@@ -222,7 +222,7 @@ pub(super) fn eprouver_chien_de_garde() -> Result<()> {
         delai = veille_initiale.delai,
         decompte = veille_initiale.decompte,
         duree_epreuve_s = duree.as_secs(),
-        "chien de garde avant création — l'épreuve qui suit ne pingue JAMAIS"
+        "watchdog before creation — the following trial NEVER pings"
     );
 
     let (largeur, hauteur, hertz) = RESOLUTION;
@@ -240,7 +240,7 @@ pub(super) fn eprouver_chien_de_garde() -> Result<()> {
         let noms = match crate::capture::enumerer_sorties() {
             Ok(list) => noms_attaches(&list),
             Err(error) => {
-                tracing::warn!(seconde, %error, "énumération DXGI en échec pendant l'épreuve");
+                tracing::warn!(seconde, %error, "DXGI enumeration failed during the trial");
                 continue;
             }
         };
@@ -250,8 +250,8 @@ pub(super) fn eprouver_chien_de_garde() -> Result<()> {
                     seconde,
                     id,
                     nom = %new,
-                    "la sortie créée est repérée par son nom — c'est SA présence qui est \
-                     suivie ensuite, pas un cardinal"
+                    "the created output is identified by its name — it is ITS presence that is \
+                     followed afterwards, not a count"
                 );
                 nom_cree = Some(new.clone());
             }
@@ -265,7 +265,7 @@ pub(super) fn eprouver_chien_de_garde() -> Result<()> {
             decompte = veille.decompte,
             attachees = noms.len(),
             presente = ?presente,
-            "épreuve sans ping"
+            "trial without ping"
         );
         if presente == Some(false) && disparue_a.is_none() {
             disparue_a = Some(seconde);
@@ -276,23 +276,23 @@ pub(super) fn eprouver_chien_de_garde() -> Result<()> {
         (None, _) => tracing::error!(
             id,
             duree_epreuve_s = duree.as_secs(),
-            "la sortie créée n'a JAMAIS paru dans DXGI — cas distinct d'un retrait"
+            "the created output NEVER showed up in DXGI — a case distinct from a removal"
         ),
         (Some(nom), Some(seconde)) => tracing::error!(
             nom = %nom,
             disparue_apres_s = seconde,
             delai_annonce = veille_initiale.delai,
             decomptes = ?decomptes,
-            "SANS PING, la sortie est retirée — toute mesure de plafond doit pinguer"
+            "WITHOUT A PING, the output is removed — every ceiling measurement must ping"
         ),
         (Some(nom), None) => tracing::info!(
             nom = %nom,
             duree_epreuve_s = duree.as_secs(),
             delai_annonce = veille_initiale.delai,
             decomptes = ?decomptes,
-            "rien n'a été retiré pendant l'épreuve, sans un seul ping DE NOTRE PART \
-             — Apollo pinguant le même pilote pendant tout ce temps, cela n'établit \
-             ni l'unité de « delai », ni ce qu'il adviendrait d'un client seul et muet"
+            "nothing was removed during the trial, without a single ping ON OUR SIDE \
+             — with Apollo pinging the same driver all along, this establishes \
+             neither the unit of \"delai\", nor what would happen to a lone, silent client"
         ),
     }
 
@@ -315,14 +315,14 @@ pub(super) fn eprouver_chien_de_garde() -> Result<()> {
             tracing::info!(
                 countdown_before_ping = ?before_ping,
                 decompte_apres_ping = ?apres_ping,
-                "IOCTL_DRIVER_PING accepté par le pilote — le code non confirmé par octets \
-                 est le bon. ACCEPTÉ n'est pas AGISSANT : seul un décompte qui REMONTE \
-                 prouverait un réarmement"
+                "IOCTL_DRIVER_PING accepted by the driver — the code not confirmed byte by byte \
+                 is the right one. ACCEPTED is not ACTING: only a countdown that GOES BACK UP \
+                 would prove a re-arm"
             );
         }
         Err(error) => tracing::error!(
             causes = %super::causes(error),
-            "IOCTL_DRIVER_PING REFUSÉ — la montée en N ne pourra pas s'en servir"
+            "IOCTL_DRIVER_PING REFUSED — the climb to N will not be able to use it"
         ),
     }
 
@@ -343,7 +343,7 @@ pub(super) fn eprouver_chien_de_garde() -> Result<()> {
 pub(super) fn monter_en_n() -> Result<()> {
     // Surveyed BEFORE any creation: without it, a manual restoration after a
     // crash would be done blindly (spec §6.3).
-    let before = relever_topologie("avant toute création")?;
+    let before = relever_topologie("before any creation")?;
     let names_before = noms_attaches(&before);
 
     let pilote = ouvrir_pilote()?;
@@ -352,7 +352,7 @@ pub(super) fn monter_en_n() -> Result<()> {
         delai = veille.delai,
         decompte = veille.decompte,
         cadence_ping_s = CADENCE_PING.as_secs(),
-        "chien de garde pingué par précaution pendant toute la montée — effet non établi"
+        "watchdog pinged as a precaution during the whole climb — effect not established"
     );
     let (largeur, hauteur, hertz) = RESOLUTION;
 
@@ -370,19 +370,19 @@ pub(super) fn monter_en_n() -> Result<()> {
                         plafond = rang - 1,
                         causes = %super::causes(error),
                         presentes = ?noms_connus,
-                        "plafond de sorties virtuelles atteint — le pilote refuse la suivante, \
-                         et toutes les précédentes sont encore là, nommément"
+                        "virtual output ceiling reached — the driver refuses the next one, \
+                         and all the earlier ones are still there, by name"
                     );
-                    arret = Some("refus du pilote");
+                    arret = Some("driver refusal");
                     break;
                 }
                 Ok(id) => {
                     attendre_en_pinguant(&pilote, DELAI_TOPOLOGIE)?;
-                    let apres = relever_topologie(&format!("après création {rang}"))?;
+                    let apres = relever_topologie(&format!("after creation {rang}"))?;
                     let noms = noms_attaches(&apres);
 
                     // The check bears on NAMES, not on a cardinality.
-                    // Comparing `attachees` with `attachees_avant + rang` would let
+                    // Comparing `attachees` with `attachees_before + rang` would let
                     // through the case where one output disappears while another
                     // appears — yet Apollo drives the display configuration of
                     // this VM and can add one at any moment, which
@@ -404,7 +404,7 @@ pub(super) fn monter_en_n() -> Result<()> {
                         sorties_dxgi = apres.len(),
                         attachees = noms.len(),
                         parues = ?parues,
-                        "sortie virtuelle créée"
+                        "virtual output created"
                     );
                     if !disparues.is_empty() || parues.len() != 1 {
                         tracing::error!(
@@ -413,10 +413,10 @@ pub(super) fn monter_en_n() -> Result<()> {
                             parues = ?parues,
                             attachees = noms.len(),
                             attendu = noms_connus.len() + 1,
-                            "le pilote a accepté la demande mais la topologie ne suit pas \
-                             — sortie non parue, retrait d'une précédente, ou addition externe"
+                            "the driver accepted the request but the topology does not follow \
+                             — output not shown, removal of an earlier one, or external addition"
                         );
-                        arret = Some("topologie non suivie");
+                        arret = Some("topology not followed");
                         break;
                     }
                     noms_connus = noms;
@@ -426,7 +426,7 @@ pub(super) fn monter_en_n() -> Result<()> {
         if arret.is_none() {
             tracing::info!(
                 search_ceiling = SEARCH_CEILING,
-                "aucun plafond atteint sous {SEARCH_CEILING} sorties virtuelles"
+                "no ceiling reached below {SEARCH_CEILING} virtual outputs"
             );
         }
         // Destruction by the guard, here, when going out of scope.
@@ -438,7 +438,10 @@ pub(super) fn monter_en_n() -> Result<()> {
     // the inter-process purge of `purge.rs` will still be able to reach it.
     let rejoues = crate::moniteurs_virtuels::purge::rejouer_purge_due(&pilote);
     if rejoues > 0 {
-        tracing::info!(rejoues, "retraits dus rejoués avec succès après la garde");
+        tracing::info!(
+            rejoues,
+            "due removals replayed successfully after the guard"
+        );
     }
 
     // A virtual output outlives the process: not checking the return to
@@ -447,13 +450,13 @@ pub(super) fn monter_en_n() -> Result<()> {
     // measuring process, hence judge and party — the check that counts is a
     // `MULTIFENETRE_DXGI=1` survey from a fresh process, afterwards.
     std::thread::sleep(DELAI_TOPOLOGIE);
-    let apres = relever_topologie("après destruction")?;
+    let apres = relever_topologie("after destruction")?;
     let noms_apres = noms_attaches(&apres);
     if noms_apres == names_before && apres.len() == before.len() {
         tracing::info!(
-            arret = arret.unwrap_or("plafond de recherche épuisé"),
+            arret = arret.unwrap_or("search ceiling exhausted"),
             noms = ?noms_apres,
-            "état initial restauré — mêmes sorties, nommément"
+            "initial state restored — same outputs, by name"
         );
     } else {
         tracing::error!(
@@ -461,7 +464,7 @@ pub(super) fn monter_en_n() -> Result<()> {
             noms_apres = ?noms_apres,
             total_before = before.len(),
             total_apres = apres.len(),
-            "la topologie n'est PAS revenue à son état initial — purge requise"
+            "the topology did NOT return to its initial state — purge required"
         );
     }
     Ok(())

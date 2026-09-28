@@ -37,7 +37,7 @@ pub(super) fn write_media<E: Write>(mut ecrivain: E, charges: Receiver<AEcrire>,
         // payload may never come, and the child would wait for this one in
         // a buffer. Same lesson as the attach reply of task 9.
         if let Err(error) = written.and_then(|()| ecrivain.flush()) {
-            tracing::warn!(%session, %error, "écriture de la connexion média interrompue");
+            tracing::warn!(%session, %error, "writing to the media connection interrupted");
             return;
         }
     }

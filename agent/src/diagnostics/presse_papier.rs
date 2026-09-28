@@ -65,7 +65,7 @@ pub fn executer(secondes_texte: &str) -> Result<()> {
 
     tracing::info!(
         secondes,
-        "P0 DEBUT sonde presse-papier — elle ECRIT le presse-papier de la VM (phases C et D)"
+        "P0 START clipboard probe — it WRITES the VM clipboard (phases C and D)"
     );
 
     // ---- Phase A: does the counter exist, and is it STABLE at rest? ----
@@ -75,7 +75,7 @@ pub fn executer(secondes_texte: &str) -> Result<()> {
             std::thread::sleep(PAS_REPOS);
         }
         let seq = win::numero_de_sequence();
-        tracing::info!(releve = i, seq, "P0 A repos");
+        tracing::info!(releve = i, seq, "P0 A at rest");
         repos.push(seq);
     }
     let stable_au_repos = repos.windows(2).all(|paire| paire[0] == paire[1]);
@@ -106,13 +106,13 @@ pub fn executer(secondes_texte: &str) -> Result<()> {
     // returned by a vanished output).
     if repos.iter().all(|&s| s == 0) {
         tracing::info!(
-            "P0 A-bis : trois zeros — on ecrit le presse-papier pour departager \
-             « compteur absent » de « rien n'a encore ete copie »"
+            "P0 A-bis: three zeros — the clipboard is written to tell \
+             \"counter absent\" apart from \"nothing copied yet\""
         );
         let _ = win::write_text("sonde-presse-papier-desambiguisation");
         std::thread::sleep(PAS_REPOS);
         let apres = win::numero_de_sequence();
-        tracing::info!(apres, "P0 A-bis releve apres notre ecriture");
+        tracing::info!(apres, "P0 A-bis reading after our write");
         if apres != 0 {
             // The counter exists: the station was simply blank. We
             // start again from this reading, which is the real reference state.
@@ -121,25 +121,25 @@ pub fn executer(secondes_texte: &str) -> Result<()> {
     }
     let compteur_absent = repos.iter().all(|&s| s == 0);
     let q1 = if compteur_absent {
-        "NON-MESURABLE-compteur-absent"
+        "NOT-MEASURABLE-counter-absent"
     } else if stable_au_repos {
         "stable"
     } else {
-        "INSTABLE-au-repos"
+        "UNSTABLE-at-rest"
     };
     tracing::info!(
         q1,
         seq_min = repos.iter().min(),
         seq_max = repos.iter().max(),
-        "P0 A bilan"
+        "P0 A summary"
     );
 
     if compteur_absent {
         tracing::warn!(
-            "P0 NON MESURABLE : GetClipboardSequenceNumber rend 0 aux trois releves ET \
-             apres une ecriture de la sonde elle-meme — le processus n'a donc pas \
-             WINSTA_ACCESSCLIPBOARD. Les phases B a D ne peuvent rien mesurer, elles \
-             sont sautees."
+            "P0 NOT MEASURABLE: GetClipboardSequenceNumber returns 0 on the three readings AND \
+             after a write by the probe itself — so the process does not have \
+             WINSTA_ACCESSCLIPBOARD. Phases B to D cannot measure anything, they \
+             are skipped."
         );
         tracing::info!(
             q1,
@@ -165,8 +165,8 @@ pub fn executer(secondes_texte: &str) -> Result<()> {
     tracing::info!(
         secondes,
         seq_debut,
-        "P0 B debut — COPIER MAINTENANT trois textes distincts a la main dans la VM, \
-         puis RECOPIER le troisieme a l'identique"
+        "P0 B start — COPY NOW three distinct texts by hand in the VM, \
+         then COPY the third one AGAIN identically"
     );
     let fin = std::time::Instant::now() + std::time::Duration::from_secs(secondes);
     while std::time::Instant::now() < fin {
@@ -187,19 +187,19 @@ pub fn executer(secondes_texte: &str) -> Result<()> {
                     octets_utf16 = lecture.octets_utf16,
                     octets_utf8 = lecture.octets_utf8,
                     empreinte = lecture.empreinte,
-                    "P0 B mouvement, texte lu"
+                    "P0 B movement, text read"
                 );
             }
             Ok(None) => {
                 tracing::info!(
                     seq,
                     precedent = reference,
-                    "P0 B mouvement, aucun CF_UNICODETEXT"
+                    "P0 B movement, no CF_UNICODETEXT"
                 );
             }
             Err(error) => {
                 echecs_open += 1;
-                tracing::warn!(seq, precedent = reference, %error, "P0 B mouvement, ouverture refusee");
+                tracing::warn!(seq, precedent = reference, %error, "P0 B movement, opening refused");
             }
         }
         reference = seq;
@@ -207,9 +207,9 @@ pub fn executer(secondes_texte: &str) -> Result<()> {
     let q1bis = if mouvements == 0 {
         "AUCUN-MOUVEMENT"
     } else {
-        "bouge"
+        "moved"
     };
-    tracing::info!(q1bis, mouvements, lectures, echecs_open, "P0 B bilan");
+    tracing::info!(q1bis, mouvements, lectures, echecs_open, "P0 B summary");
 
     // ---- Phase C: does our OWN write make the counter move? ----
     let nonce = format!("{:x}", std::process::id());
@@ -220,9 +220,9 @@ pub fn executer(secondes_texte: &str) -> Result<()> {
     let apres_c = win::numero_de_sequence();
     // We judge on the movement read back, never on `written_c`.
     let q3 = if apres_c != before_c {
-        "bouge"
+        "moved"
     } else {
-        "PAS-DE-MOUVEMENT"
+        "NO-MOVEMENT"
     };
     tracing::info!(
         q3,
@@ -231,7 +231,7 @@ pub fn executer(secondes_texte: &str) -> Result<()> {
         api_annonce_succes = written_c.is_ok(),
         empreinte = empreinte(&notre_texte),
         octets = notre_texte.len(),
-        "P0 C notre ecriture"
+        "P0 C our write"
     );
 
     // ---- Phase D: does an IDENTICAL rewrite make the counter move? ----
@@ -240,16 +240,16 @@ pub fn executer(secondes_texte: &str) -> Result<()> {
     std::thread::sleep(PAS_REPOS);
     let apres_d = win::numero_de_sequence();
     let q2 = if apres_d != before_d {
-        "bouge"
+        "moved"
     } else {
-        "PAS-DE-MOUVEMENT"
+        "NO-MOVEMENT"
     };
     tracing::info!(
         q2,
         before = before_d,
         apres = apres_d,
         api_annonce_succes = written_d.is_ok(),
-        "P0 D reecriture identique"
+        "P0 D identical rewrite"
     );
 
     // ---- Phase E : le bilan ----
@@ -307,7 +307,7 @@ mod win {
             let global = HGLOBAL(poignee.0);
             let pointeur = GlobalLock(global) as *const u16;
             if pointeur.is_null() {
-                anyhow::bail!("GlobalLock a rendu un pointeur nul");
+                anyhow::bail!("GlobalLock returned a null pointer");
             }
             let mut length = 0usize;
             while *pointeur.add(length) != 0 {
@@ -333,7 +333,7 @@ mod win {
             let global = GlobalAlloc(GMEM_MOVEABLE, octets).context("GlobalAlloc")?;
             let pointeur = GlobalLock(global) as *mut u16;
             if pointeur.is_null() {
-                anyhow::bail!("GlobalLock a rendu un pointeur nul");
+                anyhow::bail!("GlobalLock returned a null pointer");
             }
             std::ptr::copy_nonoverlapping(unites.as_ptr(), pointeur, unites.len());
             let _ = GlobalUnlock(global);

@@ -81,7 +81,7 @@ fn budget_bps() -> u32 {
             .ok()
             .and_then(|v| v.parse::<u32>().ok())
             .unwrap_or(12_000_000);
-        tracing::info!(budget_bps = budget, "budget de debit de la session");
+        tracing::info!(budget_bps = budget, "session bitrate budget");
         budget
     })
 }

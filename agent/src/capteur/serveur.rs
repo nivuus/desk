@@ -95,7 +95,7 @@ pub fn servir() -> Result<()> {
             Ok(tube) => {
                 if echec_signale {
                     echec_signale = false;
-                    tracing::info!("création d'instances de tube rétablie");
+                    tracing::info!("creation of pipe instances restored");
                 }
                 tube
             }
@@ -104,8 +104,8 @@ pub fn servir() -> Result<()> {
                     echec_signale = true;
                     tracing::warn!(
                         %error,
-                        "création d'une instance de tube refusée, réessais \
-                         (signalé une seule fois tant que l'échec se répète)"
+                        "creation of a pipe instance refused, retrying \
+                         (reported only once while the failure repeats)"
                     );
                 }
                 std::thread::sleep(SOUFFLE_CREATION_INSTANCE);
@@ -134,7 +134,7 @@ pub fn servir() -> Result<()> {
                     // other windows carry on. That is the whole point
                     // of having a sensor that outlives its windows.
                     if let Err(error) = accueillir(tube) {
-                        tracing::warn!(%error, "attache d'un enfant refusée");
+                        tracing::warn!(%error, "a child's attach refused");
                     }
                 });
             }
@@ -144,9 +144,9 @@ pub fn servir() -> Result<()> {
             // server down either.
             Err(error) => {
                 if let Err(fermeture) = unsafe { CloseHandle(tube) } {
-                    tracing::warn!(%fermeture, "fermeture d'un tube refusé également en échec");
+                    tracing::warn!(%fermeture, "closing a refused pipe failed too");
                 }
-                tracing::warn!(%error, "connexion d'un enfant refusée");
+                tracing::warn!(%error, "a child's connection refused");
             }
         }
     }
@@ -163,13 +163,13 @@ fn accueillir(tube: HANDLE) -> Result<()> {
     // The reader works on a DUPLICATED handle: `file` stays whole and
     // can be handed as is to the window thread if it is a media
     // connection. Closing the duplicate does not close the pipe instance.
-    let mut lecteur = BufReader::new(file.try_clone().context("clone du tube en lecture")?);
+    let mut lecteur = BufReader::new(file.try_clone().context("clone of the pipe for reading")?);
 
-    let premiere = match lire_trame(&mut lecteur).context("première trame de l'enfant")? {
+    let premiere = match lire_trame(&mut lecteur).context("the child's first frame")? {
         Trame::Json(octets) => {
-            serde_json::from_slice::<VersCapteur>(&octets).context("première trame illisible")?
+            serde_json::from_slice::<VersCapteur>(&octets).context("unreadable first frame")?
         }
-        Trame::Image(_) => bail!("le premier message d'un enfant ne peut pas être une image"),
+        Trame::Image(_) => bail!("a child's first message cannot be an image"),
     };
 
     match premiere {
@@ -188,7 +188,7 @@ fn accueillir(tube: HANDLE) -> Result<()> {
                     if media.send(file).is_err() {
                         tracing::warn!(
                             %session,
-                            "fil de fenêtre disparu avant sa connexion média, connexion abandonnée"
+                            "window thread gone before its media connection, connection dropped"
                         );
                     }
                 }
@@ -196,12 +196,12 @@ fn accueillir(tube: HANDLE) -> Result<()> {
                 // names itself, and its connection closes on leaving here.
                 None => tracing::warn!(
                     %session,
-                    "connexion média pour une session inconnue, abandonnée"
+                    "media connection for an unknown session, dropped"
                 ),
             }
             Ok(())
         }
-        autre => bail!("première trame inattendue d'un enfant : {autre:?}"),
+        autre => bail!("unexpected first frame from a child: {autre:?}"),
     }
 }
 
@@ -214,7 +214,7 @@ fn ouvrir_les_commandes(
     attache: VersCapteur,
 ) -> Result<()> {
     let VersCapteur::Attache { ref session, .. } = attache else {
-        bail!("le premier message d'un enfant doit être une attache");
+        bail!("a child's first message must be an attach");
     };
     let session = session.clone();
 
@@ -245,7 +245,7 @@ fn ouvrir_les_commandes(
             // `crate::cause`.
             tracing::warn!(
                 error = %crate::cause::chain(&error),
-                "fil de fenêtre terminé sur erreur"
+                "window thread ended on an error"
             );
         }
     });
@@ -262,13 +262,15 @@ fn ouvrir_les_commandes(
             // thread stayed stuck in its source construction, it will never reach
             // its own wait, hence never its own removal.
             oublier(&session, generation);
-            tracing::warn!(%session, %error, "aucune réponse à l'attache, canal abandonné");
+            tracing::warn!(%session, %error, "no answer to the attach, channel dropped");
             // An explicit REFUSAL rather than a silent close: the child
             // reads it and fails loudly, instead of interpreting an end of pipe.
             let _ = write_json(
                 &mut ecrivain,
                 &DepuisCapteur::Refus {
-                    motif: format!("aucune réponse du fil de fenêtre en {DELAI_REPONSE_FENETRE:?}"),
+                    motif: format!(
+                        "no answer from the window thread within {DELAI_REPONSE_FENETRE:?}"
+                    ),
                 },
             );
             let _ = ecrivain.flush();
@@ -280,8 +282,8 @@ fn ouvrir_les_commandes(
     // until the first frame — which never comes in front of a still
     // window. The `flush` stays, but it is the absence of a buffer that guarantees it.
     let refusee = matches!(premiere, DepuisCapteur::Refus { .. });
-    write_json(&mut ecrivain, &premiere).context("réponse à l'attache")?;
-    ecrivain.flush().context("réponse à l'attache")?;
+    write_json(&mut ecrivain, &premiere).context("answer to the attach")?;
+    ecrivain.flush().context("answer to the attach")?;
     if refusee {
         // The refusal is written, the child will read it; nothing else will come on
         // this connection. Closing it on the way out is the normal end.
@@ -320,7 +322,7 @@ fn tenir_la_fenetre(
         .is_err()
     {
         oublier(&session, generation);
-        bail!("le fil de commandes de {session} est parti avant la réponse à l'attache");
+        bail!("the command thread of {session} left before the answer to the attach");
     }
 
     // The child only opens its media connection AFTER reading `Attachee`: that is
@@ -335,7 +337,7 @@ fn tenir_la_fenetre(
             tracing::warn!(
                 %session,
                 delai = ?DELAI_CONNEXION_MEDIA,
-                "aucune connexion média, fenêtre abandonnée"
+                "no media connection, window dropped"
             );
             return Ok(());
         }
@@ -343,7 +345,7 @@ fn tenir_la_fenetre(
         // dropped: the current entry no longer belongs to us, we must certainly
         // not remove it.
         Err(RecvTimeoutError::Disconnected) => {
-            tracing::warn!(%session, "attente de connexion média rompue, fenêtre abandonnée");
+            tracing::warn!(%session, "wait for a media connection broken, window dropped");
             return Ok(());
         }
     };
@@ -365,12 +367,12 @@ fn boucler_les_commandes(
             Ok(Trame::Json(octets)) => match serde_json::from_slice::<VersCapteur>(&octets) {
                 Ok(message) => message,
                 Err(error) => {
-                    tracing::warn!(%session, %error, "commande illisible, canal abandonné");
+                    tracing::warn!(%session, %error, "unreadable command, channel dropped");
                     return;
                 }
             },
             Ok(Trame::Image(_)) => {
-                tracing::warn!(%session, "un enfant a envoyé une image, canal abandonné");
+                tracing::warn!(%session, "a child sent an image, channel dropped");
                 return;
             }
             // End of pipe: the child has gone. Dropping `commandes`
@@ -391,10 +393,10 @@ fn boucler_les_commandes(
                 tracing::warn!(
                     %session,
                     delai = ?DELAI_REPONSE_FENETRE,
-                    "le fil de fenêtre n'a pas répondu, canal clos"
+                    "the window thread did not answer, channel closed"
                 );
                 let motif =
-                    format!("le fil de fenêtre n'a pas répondu en {DELAI_REPONSE_FENETRE:?}");
+                    format!("the window thread did not answer within {DELAI_REPONSE_FENETRE:?}");
                 let _ = write_json(&mut ecrivain, &DepuisCapteur::Error { motif });
                 let _ = ecrivain.flush();
                 return;

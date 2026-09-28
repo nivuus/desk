@@ -96,8 +96,8 @@ fn create_crop_texture(device: &ID3D11Device, region: Rect) -> Result<ID3D11Text
     };
     let mut texture = None;
     unsafe { device.CreateTexture2D(&desc, None, Some(&mut texture)) }
-        .context("allocation d'une texture de recadrage")?;
-    texture.ok_or_else(|| anyhow!("texture de recadrage absente"))
+        .context("allocating a crop texture")?;
+    texture.ok_or_else(|| anyhow!("crop texture absent"))
 }
 
 /// State shared between all `VoieDuplication` instances of the same bench:
@@ -196,7 +196,7 @@ impl VoieDuplication {
         };
         let (largeur, hauteur) = capture.desktop_size();
         let contexte = unsafe { capture.device().GetImmediateContext() }
-            .context("contexte immédiat pour les sous-recadrages partagés")?;
+            .context("immediate context for the shared sub-crops")?;
         Ok(Rc::new(RefCell::new(SourceDuplication {
             capture,
             bureau: Rect {
@@ -243,7 +243,7 @@ impl VoieDeCapture for VoieDuplication {
         let texture = self
             .texture
             .as_ref()
-            .ok_or_else(|| anyhow!("texture de recadrage non ouverte (ouvrir() jamais appelée)"))?;
+            .ok_or_else(|| anyhow!("crop texture not opened (ouvrir() never called)"))?;
         // GPU sub-crop, cheap, from the common desktop image
         // already primed by `SourceDuplication::amorcer` — not a new
         // `AcquireNextFrame`.
@@ -336,9 +336,9 @@ pub(super) fn create_device() -> Result<(ID3D11Device, ID3D11DeviceContext)> {
             Some(&mut context),
         )
     }
-    .context("périphérique D3D11 pour la voie printwindow")?;
-    let device = device.ok_or_else(|| anyhow!("périphérique D3D11 absent"))?;
-    let context = context.ok_or_else(|| anyhow!("contexte D3D11 absent"))?;
+    .context("D3D11 device for the printwindow path")?;
+    let device = device.ok_or_else(|| anyhow!("D3D11 device absent"))?;
+    let context = context.ok_or_else(|| anyhow!("D3D11 context absent"))?;
     Ok((device, context))
 }
 
@@ -436,7 +436,7 @@ impl VoieDeCapture for VoiePrintWindow {
         let texture = self
             .texture
             .as_ref()
-            .ok_or_else(|| anyhow!("texture printwindow non ouverte (ouvrir() jamais appelée)"))?;
+            .ok_or_else(|| anyhow!("printwindow texture not opened (ouvrir() never called)"))?;
         // The cost measured by this path: uploading the CPU bitmap to the
         // GPU texture the encoder will consume.
         unsafe {

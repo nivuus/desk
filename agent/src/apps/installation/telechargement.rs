@@ -112,7 +112,7 @@ fn decouper(url: &str) -> Result<Cible, Refus> {
     // where there is, once again, a missing capability.
     if url.starts_with("https://") || url.starts_with("wss://") {
         return Err(Refus::Url(format!(
-            "TLS non pris en charge : cet agent ne parle ni https ni wss ({url})"
+            "TLS not supported: this agent speaks neither https nor wss ({url})"
         )));
     }
     // 🔴 `ws://` IS ACCEPTED ON THE SAME FOOTING AS `http://`, AND IT WAS THE ACCEPTANCE
@@ -120,7 +120,7 @@ fn decouper(url: &str) -> Result<Cible, Refus> {
     // `canal-apps.ts` sends the relative path `/televersement/:id/contenu`, and
     // the agent resolves it against the address of its OWN channel — which is a
     // `ws://`, since it is a WebSocket. With the client accepting only `http://`,
-    // **every installation order was refused** on `schéma non reconnu :
+    // **every installation order was refused** on `unrecognised scheme:
     // ws://…`, measured on the real chain.
     //
     // ⚠️ THIS FILE ALREADY CARRIED THE FACT WITHOUT CARRYING THE REMEDY: the doc of
@@ -136,32 +136,32 @@ fn decouper(url: &str) -> Result<Cible, Refus> {
     let reste = url
         .strip_prefix("http://")
         .or_else(|| url.strip_prefix("ws://"))
-        .ok_or_else(|| Refus::Url(format!("schéma non reconnu : {url}")))?;
+        .ok_or_else(|| Refus::Url(format!("unrecognised scheme: {url}")))?;
     let (autorite, chemin) = match reste.find('/') {
         Some(i) => (&reste[..i], &reste[i..]),
         None => (reste, "/"),
     };
     if autorite.is_empty() {
-        return Err(Refus::Url(format!("hôte vide : {url}")));
+        return Err(Refus::Url(format!("empty host: {url}")));
     }
     // ⚠️ NO `rfind` ON `:` WITHOUT CARE: a literal IPv6 address
     // carries several. This client does not support them, and SAYS so.
     if autorite.starts_with('[') {
         return Err(Refus::Url(format!(
-            "adresse IPv6 littérale non prise en charge : {url}"
+            "literal IPv6 address not supported: {url}"
         )));
     }
     let (hote, port) = match autorite.split_once(':') {
         Some((h, p)) => {
             let port = p
                 .parse::<u16>()
-                .map_err(|_| Refus::Url(format!("port illisible : {url}")))?;
+                .map_err(|_| Refus::Url(format!("unreadable port: {url}")))?;
             (h.to_string(), port)
         }
         None => (autorite.to_string(), 80u16),
     };
     if hote.is_empty() {
-        return Err(Refus::Url(format!("hôte vide : {url}")));
+        return Err(Refus::Url(format!("empty host: {url}")));
     }
     Ok(Cible {
         hote,
@@ -221,7 +221,7 @@ where
             url = demande.url,
             deja,
             coupures,
-            "transfert coupé, reprise par Range"
+            "transfer cut, resuming with Range"
         );
     }
 
@@ -259,7 +259,7 @@ where
 {
     let mut socket = TcpStream::connect((cible.hote.as_str(), cible.port))
         .await
-        .map_err(|e| Refus::Reseau(format!("connexion à {}:{} : {e}", cible.hote, cible.port)))?;
+        .map_err(|e| Refus::Reseau(format!("connecting to {}:{}: {e}", cible.hote, cible.port)))?;
 
     let mut requete = format!(
         "GET {} HTTP/1.1\r\nHost: {}\r\nAuthorization: Bearer {}\r\n\
@@ -273,7 +273,7 @@ where
     socket
         .write_all(requete.as_bytes())
         .await
-        .map_err(|e| Refus::Reseau(format!("envoi de la requête : {e}")))?;
+        .map_err(|e| Refus::Reseau(format!("sending the request: {e}")))?;
 
     // --- the header, re-read until complete ---
     let mut tampon: Vec<u8> = Vec::with_capacity(TAMPON);
@@ -287,10 +287,10 @@ where
         let n = socket
             .read(&mut lecture)
             .await
-            .map_err(|e| Refus::Reseau(format!("lecture de l'en-tête : {e}")))?;
+            .map_err(|e| Refus::Reseau(format!("reading the header: {e}")))?;
         if n == 0 {
             return Err(Refus::Reseau(
-                "connexion fermée avant la fin de l'en-tête".into(),
+                "connection closed before the end of the header".into(),
             ));
         }
         tampon.extend_from_slice(&lecture[..n]);
@@ -310,7 +310,7 @@ where
         tracing::warn!(
             url = demande.url,
             deja,
-            "le serveur a ignoré le Range : le téléchargement REPART DE ZÉRO,              sur cette réponse même"
+            "the server ignored the Range: the download STARTS OVER FROM ZERO, on this very response"
         );
         *condensateur = Condensateur::neuf();
         0
@@ -332,13 +332,13 @@ where
         let n = socket
             .read(&mut lecture)
             .await
-            .map_err(|e| Refus::Reseau(format!("lecture du corps : {e}")))?;
+            .map_err(|e| Refus::Reseau(format!("reading the body: {e}")))?;
         if n == 0 {
             // ⚠️ CLOSED BEFORE THE ANNOUNCED END: this is a cut, not an
             // end. The caller will resume through `Range`.
             file.flush()
                 .await
-                .map_err(|e| Refus::Disque(format!("vidage : {e}")))?;
+                .map_err(|e| Refus::Disque(format!("flush: {e}")))?;
             return Ok(Passe {
                 total: deja + ecrits,
                 coupee: true,
@@ -354,7 +354,7 @@ where
     }
     file.flush()
         .await
-        .map_err(|e| Refus::Disque(format!("vidage : {e}")))?;
+        .map_err(|e| Refus::Disque(format!("flush: {e}")))?;
 
     Ok(Passe {
         total: deja + ecrits,
@@ -367,13 +367,13 @@ async fn ouvrir(destination: &Path, deja: u64) -> Result<tokio::fs::File, Refus>
     if deja == 0 {
         return tokio::fs::File::create(destination)
             .await
-            .map_err(|e| Refus::Disque(format!("création de {} : {e}", destination.display())));
+            .map_err(|e| Refus::Disque(format!("creating {}: {e}", destination.display())));
     }
     tokio::fs::OpenOptions::new()
         .append(true)
         .open(destination)
         .await
-        .map_err(|e| Refus::Disque(format!("réouverture de {} : {e}", destination.display())))
+        .map_err(|e| Refus::Disque(format!("reopening {}: {e}", destination.display())))
 }
 
 async fn write(
@@ -383,7 +383,7 @@ async fn write(
 ) -> Result<(), Refus> {
     file.write_all(bloc)
         .await
-        .map_err(|e| Refus::Disque(format!("écriture : {e}")))?;
+        .map_err(|e| Refus::Disque(format!("write: {e}")))?;
     condensateur.absorber(bloc);
     Ok(())
 }

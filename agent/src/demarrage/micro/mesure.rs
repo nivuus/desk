@@ -180,7 +180,7 @@ pub(super) fn consommer(lecteur: Arc<Mutex<LecteurMicro>>, session_id: String) {
 
         let (compteurs, occupation) = {
             let Ok(mut lecteur) = lecteur.lock() else {
-                tracing::warn!("verrou du puits de mesure empoisonne, fil de mesure arrete");
+                tracing::warn!("measurement sink lock poisoned, measurement thread stopped");
                 return;
             };
             // ⚠️ READ BEFORE `remplir`, never after: it is what the buffer
@@ -200,11 +200,11 @@ pub(super) fn consommer(lecteur: Arc<Mutex<LecteurMicro>>, session_id: String) {
         // ⚠️ `crete` and `frequence_hz` are SIDE BY SIDE, and that is the substance of
         // this trace: a frequency returned on a near-zero signal means
         // nothing. `frequence_par_passages_a_zero` then returns `None`, which
-        // is written "aucune" — a reader of the log cannot read one without
+        // is written "none" — a reader of the log cannot read one without
         // the other, nor take a number for proof of sound.
         let frequence = match releve.frequence_hz {
             Some(f) => format!("{f:.1}"),
-            None => "aucune".to_string(),
+            None => "none".to_string(),
         };
         // The counters are DELTAS of the elapsed second, not cumulative values.
         // `CompteursMicro` is cumulative; a cumulative value would drag a single
@@ -233,7 +233,7 @@ pub(super) fn consommer(lecteur: Arc<Mutex<LecteurMicro>>, session_id: String) {
             // recorded `plc = 50/s` during sixty seconds of silence, and
             // what must now be read there is `plc = 0` with
             // `plc_plafonnees = 50/s`, `crete = 0.000` and `frequence_hz =
-            // aucune`. See `micro/dissimulation.rs`.
+            // none`. See `micro/dissimulation.rs`.
             plc_plafonnees = d(compteurs.plc_plafonnees, precedents.plc_plafonnees),
             fec = d(compteurs.fec, precedents.fec),
             famines = d(compteurs.famines, precedents.famines),
@@ -248,7 +248,7 @@ pub(super) fn consommer(lecteur: Arc<Mutex<LecteurMicro>>, session_id: String) {
             // `LecteurMicro::occupation`.
             occupation_ms = occupation.as_millis() as u64,
             occupation_max_ms = occupation_max.as_millis() as u64,
-            "micro mesuré"
+            "mic measured"
         );
         precedents = compteurs;
         occupation_max = Duration::ZERO;
@@ -297,10 +297,10 @@ mod tests {
         // `Some("0")`, `Some("")` and `Some("true")`: an operator writing
         // `MICRO_MESURE=0` to be certain to turn the instrument off
         // would turn it on.
-        assert!(!arme(None), "absente : désarmé");
-        assert!(!arme(Some("0")), "« 0 » : désarmé, comme l'absence");
-        assert!(!arme(Some("")), "vide : désarmé");
-        assert!(!arme(Some("true")), "« true » n'est pas « 1 »");
+        assert!(!arme(None), "absent: disarmed");
+        assert!(!arme(Some("0")), "\"0\": disarmed, like absence");
+        assert!(!arme(Some("")), "empty: disarmed");
+        assert!(!arme(Some("true")), "\"true\" is not \"1\"");
     }
 
     #[test]
@@ -315,7 +315,7 @@ mod tests {
         }
         let releve = fenetre
             .absorber(blocs.next().unwrap())
-            .expect("la centième clôture la seconde");
+            .expect("the hundredth closes the second");
         assert_eq!(releve.echantillons, SAMPLE_RATE_HZ as usize);
     }
 
@@ -334,12 +334,12 @@ mod tests {
             }
         }
         let f = last
-            .expect("une seconde absorbée")
+            .expect("one second absorbed")
             .frequence_hz
-            .expect("un signal fort a une fréquence");
+            .expect("a strong signal has a frequency");
         assert!(
             (f - 440.0).abs() < 5.0,
-            "fréquence relevée {f:.1} Hz, attendue ≈ 440 Hz (220 signalerait un tampon non désentrelacé)"
+            "measured frequency {f:.1} Hz, expected ≈ 440 Hz (220 would reveal a non-deinterleaved buffer)"
         );
     }
 
@@ -353,7 +353,7 @@ mod tests {
                 last = Some(r);
             }
         }
-        let releve = last.expect("une seconde absorbée");
+        let releve = last.expect("one second absorbed");
         // A signal too weak has NO frequency: returning a number for
         // silence would make this instrument the byte counter it exists
         // to replace (doctrine paid for in D7).
@@ -378,7 +378,7 @@ mod tests {
                 last = Some(r);
             }
         }
-        assert_eq!(last.expect("une seconde absorbée").crete, 0.8);
+        assert_eq!(last.expect("one second absorbed").crete, 0.8);
     }
 
     #[test]
@@ -398,7 +398,7 @@ mod tests {
                 last = Some(r);
             }
         }
-        let releve = last.expect("une seconde absorbée");
+        let releve = last.expect("one second absorbed");
         assert_eq!(releve.crete, 0.0);
         assert_eq!(releve.frequence_hz, None);
     }
@@ -410,8 +410,8 @@ mod tests {
     /// criterion would pass without having measured anything.
     #[test]
     fn l_occupation_du_lecteur_est_celle_des_trames_en_attente() {
-        let mut lecteur = LecteurMicro::new().expect("décodeur Opus");
-        assert_eq!(lecteur.occupation(), Duration::ZERO, "à vide");
+        let mut lecteur = LecteurMicro::new().expect("Opus decoder");
+        assert_eq!(lecteur.occupation(), Duration::ZERO, "when empty");
 
         // Three 20 ms frames: 960 samples per channel each.
         for i in 0..3u64 {
@@ -424,7 +424,7 @@ mod tests {
         assert_eq!(
             lecteur.occupation(),
             Duration::from_millis(60),
-            "trois trames de 20 ms font 60 ms d'attente"
+            "three 20 ms frames make 60 ms of waiting"
         );
     }
 }

@@ -28,7 +28,7 @@
 //! `superviseur/lanceur.rs` "only assigns its CHILDREN and never itself".
 //! 🔴 **MEASURED FALSE on 30 August 2026**: the supervisor **IS** in a job —
 //! the one of the **Task Scheduler**, which launches the agent — and the applications
-//! it launches **inherit** it (`DANS_UN_JOB=True` for the supervisor, its
+//! it launches **inherit** it (in-job flag `True` for the supervisor, its
 //! twelve children, and the `notepad.exe` launched from the catalogue).
 //!
 //! **Direct consequence for the design**: `IsProcessInJob(p, NULL)` does not
@@ -81,8 +81,8 @@ pub fn armee() -> bool {
         let armee = !crate::apps::desarme(std::env::var("APPARTENANCE").ok().as_deref());
         if !armee {
             tracing::warn!(
-                "appartenance DESARMEE (APPARTENANCE=0) : desk adopte de nouveau les \
-                 fenetres qu'il n'a pas lancees — bras de banc, jamais une configuration livree"
+                "ownership DISARMED (APPARTENANCE=0): desk adopts again the \
+                 windows it did not launch — a bench arm, never a shipped configuration"
             );
         }
         armee
@@ -113,15 +113,15 @@ mod win {
     fn job() -> Option<HANDLE> {
         JOB.get_or_init(|| match unsafe { CreateJobObjectW(None, None) } {
             Ok(h) if !h.is_invalid() => {
-                tracing::info!("job d'appartenance créé (aucune limite : il ne tue rien)");
+                tracing::info!("ownership job created (no limit: it kills nothing)");
                 Some(Job(h))
             }
             Ok(_) => {
-                tracing::error!("job d'appartenance : poignée invalide, la règle sera INERTE");
+                tracing::error!("ownership job: invalid handle, the rule will be INERT");
                 None
             }
             Err(error) => {
-                tracing::error!(%error, "job d'appartenance NON créé — la règle sera INERTE");
+                tracing::error!(%error, "ownership job NOT created — the rule will be INERT");
                 None
             }
         })
@@ -137,11 +137,11 @@ mod win {
     pub fn adopter(processus: HANDLE) {
         let Some(job) = job() else { return };
         match unsafe { AssignProcessToJobObject(job, processus) } {
-            Ok(()) => tracing::info!("processus lancé inscrit au job d'appartenance"),
+            Ok(()) => tracing::info!("launched process added to the ownership job"),
             Err(error) => tracing::error!(
                 %error,
-                "processus lancé NON inscrit au job d'appartenance — ses fenêtres \
-                 seront ÉCARTÉES, et c'est une panne, pas un refus normal"
+                "launched process NOT added to the ownership job — its windows \
+                 will be DISCARDED, and that is a failure, not a normal refusal"
             ),
         }
     }

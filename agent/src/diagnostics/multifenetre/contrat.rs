@@ -56,7 +56,7 @@ const VERSION_AMONT: VersionProtocole = VersionProtocole {
 ///   fields is structurally indistinguishable.
 pub(super) fn valider_contrat() -> Result<()> {
     let pilote = ouvrir_pilote()?;
-    tracing::info!("périphérique SudoVDA ouvert — le GUID d'interface est le bon");
+    tracing::info!("SudoVDA device opened — the interface GUID is the right one");
 
     let (version, rendus_version) = pilote.version_protocole()?;
     tracing::info!(
@@ -66,7 +66,7 @@ pub(super) fn valider_contrat() -> Result<()> {
         version_de_test = version.version_de_test,
         octets_rendus = rendus_version,
         attendus = std::mem::size_of::<VersionProtocole>(),
-        "version de protocole annoncée par le pilote"
+        "protocol version announced by the driver"
     );
 
     let (veille, rendus_veille) = pilote.veille()?;
@@ -75,7 +75,7 @@ pub(super) fn valider_contrat() -> Result<()> {
         decompte = veille.decompte,
         octets_rendus = rendus_veille,
         attendus = std::mem::size_of::<Veille>(),
-        "watchdog du pilote (unité non documentée en amont — nombres bruts)"
+        "driver watchdog (unit not documented upstream — raw numbers)"
     );
 
     // The verdict is stated here rather than left to reading the log: what
@@ -99,10 +99,10 @@ pub(super) fn valider_contrat() -> Result<()> {
         // message is constant, it will be emitted identically when
         // `sizes_match` is `false`. Announcing "the returned sizes
         // (4 and 8)" there would then assert exactly what the verdict denies.
-        "verdict : les tailles rendues sont confrontées aux tailles supposées \
-         (4 et 8), et les quatre octets de version à la constante amont \
-         {{0, 2, 1, true}} — l'ordre des champs, lui, n'est testé que \
-         partiellement"
+        "verdict: the returned sizes are compared with the assumed sizes \
+         (4 and 8), and the four version bytes with the upstream constant \
+         {{0, 2, 1, true}} — the field order, for its part, is only \
+         partially tested"
     );
     Ok(())
 }

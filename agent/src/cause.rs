@@ -1,12 +1,12 @@
 //! Making the cause chain of an `anyhow::Error` READABLE in a trace.
 //!
 //! 🔴 **The defect this module closes is an INSTRUMENT defect, and it
-//! cost a whole batch.** Batch 25 measured 74 then 52 `réveil refusé, la
-//! fenêtre reste endormie` in a row without anyone being able to say
+//! cost a whole batch.** Batch 25 measured 74 then 52 `wake-up refused, the
+//! window stays asleep` in a row without anyone being able to say
 //! WHY: the trace site wrote `%error` on an `anyhow::Error`,
 //! yet `anyhow`'s PLAIN `Display` renders **only the OUTERMOST
 //! layer** — here the `with_context` set by `transitions.rs::reveiller`,
-//! that is "réveil de la session …:w-24", which says nothing more than
+//! that is "waking session …:w-24", which says nothing more than
 //! "it failed". The `HRESULT` of the Windows layer, the only datum that
 //! answers the question, stayed in the causes, thrown away at writing time.
 //!
@@ -22,7 +22,7 @@
 //!   `scripts/run-agent.sh` does not set. Ruled out for two reasons: the backtrace
 //!   would be empty in practice, and multi-line would break the only instrument
 //!   this repository has on `agent.log`, which is line counting through
-//!   `grep -c` (one `réveil refusé` would count for three).
+//!   `grep -c` (one `wake-up refused` would count for three).
 //!
 //! The repository had already decided this way, twice, without ever setting the rule
 //! in the same place: `transport/piste_audio.rs` (D10's hand-over 6, an `HRESULT`
@@ -54,31 +54,31 @@ mod tests {
     fn the_chain_carries_the_root_cause_that_plain_display_drops() {
         let profonde = anyhow!("0x88890004");
         let error = Err::<(), _>(profonde)
-            .context("activation de l'encodeur H.264 matériel (ActivateObject)")
-            .context("réveil de la session prefixe:w-24")
+            .context("activating the hardware H.264 encoder (ActivateObject)")
+            .context("waking session prefixe:w-24")
             .unwrap_err();
 
         let rendue = super::chain(&error);
         assert!(
             rendue.contains("0x88890004"),
-            "la cause profonde manque : {rendue}"
+            "the root cause is missing: {rendue}"
         );
         assert!(
             rendue.contains("ActivateObject"),
-            "la couche intermédiaire manque : {rendue}"
+            "the middle layer is missing: {rendue}"
         );
         assert!(
-            rendue.contains("réveil de la session"),
-            "la couche externe manque : {rendue}"
+            rendue.contains("waking session"),
+            "the outer layer is missing: {rendue}"
         );
 
         // The negative witness, in the SAME reading: the plain `Display`, the one
         // `%error` used, renders ONLY the outer layer.
         let simple = format!("{error}");
-        assert_eq!(simple, "réveil de la session prefixe:w-24");
+        assert_eq!(simple, "waking session prefixe:w-24");
         assert!(
             !simple.contains("0x88890004"),
-            "le témoin négatif est faux : {simple}"
+            "the negative control is wrong: {simple}"
         );
     }
 
@@ -87,8 +87,8 @@ mod tests {
     #[test]
     fn an_error_without_context_is_rendered_as_is() {
         assert_eq!(
-            super::chain(&anyhow!("aucune sortie DXGI nommée 0:1")),
-            "aucune sortie DXGI nommée 0:1"
+            super::chain(&anyhow!("no DXGI output named 0:1")),
+            "no DXGI output named 0:1"
         );
     }
 }

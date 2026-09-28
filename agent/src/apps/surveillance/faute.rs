@@ -85,8 +85,8 @@ pub fn lire(value: Option<&str>) -> Option<(Famille, u32)> {
         _ => {
             tracing::warn!(
                 value,
-                "APPS_FAUTE : famille inconnue, injection DESARMEE \
-                 (attendu : debordement:<n>, muette:<n> ou perte:<n>)"
+                "APPS_FAUTE: unknown family, injection DISARMED \
+                 (expected: debordement:<n>, muette:<n> or perte:<n>)"
             );
             return None;
         }
@@ -121,7 +121,7 @@ fn etat() -> &'static (AtomicU8, AtomicU32) {
                 tracing::warn!(
                     ?famille,
                     fautes_a_injecter = compte,
-                    "faute de surveillance ARMEE (APPS_FAUTE) : banc, jamais une configuration livrée"
+                    "watch fault ARMED (APPS_FAUTE): bench, never a shipped configuration"
                 );
                 (AtomicU8::new(famille.code()), AtomicU32::new(compte))
             }
@@ -159,11 +159,11 @@ mod tests {
 
     #[test]
     fn lire_desarme_sur_tout_ce_qui_n_est_pas_une_famille_suivie_d_un_compte() {
-        assert_eq!(lire(None), None, "absente = DÉSARMÉE");
+        assert_eq!(lire(None), None, "absent = DISARMED");
         assert_eq!(
             lire(Some("debordement")),
             None,
-            "sans compte : rien à tirer"
+            "without a count: nothing to fire"
         );
         assert_eq!(lire(Some("debordement:")), None);
         assert_eq!(lire(Some("debordement:x")), None);
@@ -192,13 +192,10 @@ mod tests {
         let (armee, reste) = etat();
         armee.store(Famille::Perte.code(), Ordering::Relaxed);
         reste.store(1, Ordering::Relaxed);
-        assert!(
-            consommer(Famille::Perte),
-            "le budget de 1 doit tirer une fois"
-        );
+        assert!(consommer(Famille::Perte), "the budget of 1 must fire once");
         assert!(
             !consommer(Famille::Perte),
-            "et une seule : un budget global s'épuise pour tout le processus"
+            "and only one: a global budget runs out for the whole process"
         );
         armee.store(0, Ordering::Relaxed);
         reste.store(0, Ordering::Relaxed);
@@ -213,7 +210,7 @@ mod tests {
         reste.store(5, Ordering::Relaxed);
         assert!(!consommer(Famille::Muette));
         assert!(!consommer(Famille::Perte));
-        assert_eq!(reste.load(Ordering::Relaxed), 5, "le budget n'a pas bougé");
+        assert_eq!(reste.load(Ordering::Relaxed), 5, "the budget did not move");
         assert!(consommer(Famille::Debordement));
         armee.store(0, Ordering::Relaxed);
         reste.store(0, Ordering::Relaxed);
@@ -225,7 +222,7 @@ mod tests {
         armee.store(0, Ordering::Relaxed);
         reste.store(0, Ordering::Relaxed);
         for famille in [Famille::Debordement, Famille::Muette, Famille::Perte] {
-            assert!(!consommer(famille), "{famille:?} sur un état désarmé");
+            assert!(!consommer(famille), "{famille:?} on a disarmed state");
         }
     }
 

@@ -19,7 +19,7 @@ fn deux_ajouts_du_meme_contenu_ne_font_qu_une_entree() {
     assert_eq!(
         m.len(),
         2,
-        "l'accumulation est ce que ce module existe pour éviter"
+        "the accumulation is what this module exists to avoid"
     );
 }
 
@@ -48,7 +48,7 @@ fn remplacer_fait_disparaitre_le_catalogue_precedent() {
     m.remplacer(neuf);
     assert!(
         !m.contient(&ancienne),
-        "le tour précédent doit avoir DISPARU"
+        "the previous round must have DISAPPEARED"
     );
     assert!(m.contient(&neuve));
     assert_eq!(m.len(), 1);
@@ -59,9 +59,9 @@ fn les_octets_se_relisent_a_l_identique() {
     let mut m = Magasin::new();
     let e = m.add(b"\x89PNG\r\n\x1a\n-corps".to_vec());
     assert_eq!(m.octets(&e), Some(&b"\x89PNG\r\n\x1a\n-corps"[..]));
-    assert_eq!(m.octets("pas-une-empreinte"), None);
+    assert_eq!(m.octets("not-a-hash"), None);
     assert!(m.contient(&e));
-    assert!(!m.contient("pas-une-empreinte"));
+    assert!(!m.contient("not-a-hash"));
 }
 
 /// 🔴 THE RULE OF CRITERION ⑤: what is already known is NOT requested again.

@@ -128,7 +128,7 @@ fn un_canal_rompu_libere_aussi_le_focus_de_la_session_morte() {
     assert_eq!(
         etat().focalisee.as_deref(),
         Some("m1-focus"),
-        "précondition : le registre tient bien cette session pour la focalisée"
+        "precondition: the registry does hold this session as the focused one"
     );
 
     // The thread of "m1-focus" dies WITHOUT going through `retirer`, exactly what
@@ -142,8 +142,8 @@ fn un_canal_rompu_libere_aussi_le_focus_de_la_session_morte() {
     assert_eq!(
         etat().focalisee,
         None,
-        "le focus d'une session morte doit être rendu avec le reste de ce que le registre \
-         retenait d'elle"
+        "the focus of a dead session must be returned with the rest of what the registry \
+         kept of it"
     );
 
     retirer("m1-focus", generation_focus);
@@ -164,7 +164,7 @@ fn un_retrait_qui_libere_une_place_reveille_bien_la_session_qui_l_attendait() {
         assert_eq!(
             premier_ordre(&ordres),
             Some(Ordre::Reveiller),
-            "{nom} devrait s'eveiller"
+            "{nom} should wake up"
         );
         recepteurs_pleins.push((nom, ordres, generation));
     }
@@ -177,7 +177,7 @@ fn un_retrait_qui_libere_une_place_reveille_bien_la_session_qui_l_attendait() {
     assert_eq!(
         premier_ordre(&ordres_attend),
         None,
-        "t5-attend devrait rester endormie"
+        "t5-attend should stay asleep"
     );
 
     // "t5-tardif" arrives next: more recent than "t5-attend", so it
@@ -199,7 +199,7 @@ fn un_retrait_qui_libere_une_place_reveille_bien_la_session_qui_l_attendait() {
     assert_eq!(
         premier_ordre(&ordres_attend),
         Some(Ordre::Reveiller),
-        "le reveil libere par la mort de t5-tardif doit atteindre t5-attend"
+        "the wake-up freed by the death of t5-tardif must reach t5-attend"
     );
 
     // Nettoyage.
@@ -222,8 +222,14 @@ fn le_repit_expire_et_rend_la_fenetre_apte() {
 
     purger_les_inaptitudes(&mut inaptes, t0 + Duration::from_millis(20));
 
-    assert!(!inaptes.contains_key("w-1"), "le répit de w-1 a expiré");
-    assert!(inaptes.contains_key("w-2"), "celui de w-2 court encore");
+    assert!(
+        !inaptes.contains_key("w-1"),
+        "the grace period of w-1 has expired"
+    );
+    assert!(
+        inaptes.contains_key("w-2"),
+        "the one of w-2 is still running"
+    );
 }
 
 #[test]
@@ -242,7 +248,7 @@ fn une_inaptitude_dont_l_echeance_vaut_exactement_maintenant_est_purgee() {
 
     assert!(
         !inaptes.contains_key("w-1"),
-        "une echeance egale a `maintenant` doit etre purgee, pas conservee"
+        "a deadline equal to `maintenant` must be purged, not kept"
     );
 }
 
@@ -259,25 +265,25 @@ fn un_retrait_purge_l_inaptitude_et_le_compteur_de_rearmements() {
     audio_mort("t8-purge");
     assert!(
         etat().inaptes.contains_key("t8-purge"),
-        "précondition : la session doit être marquée inapte"
+        "precondition: the session must be marked unfit"
     );
     assert_eq!(
         etat().rearmements.get("t8-purge"),
         Some(&1),
-        "précondition : un premier réarmement doit être compté"
+        "precondition: a first re-arm must be counted"
     );
 
     retirer("t8-purge", generation);
 
     assert!(
         !etat().inaptes.contains_key("t8-purge"),
-        "l'inaptitude d'une session retirée doit être oubliée, sinon un \
-         rattachement en hériterait à tort"
+        "the unfitness of a removed session must be forgotten, otherwise a \
+         reattachment would wrongly inherit it"
     );
     assert!(
         !etat().rearmements.contains_key("t8-purge"),
-        "le compteur de réarmements d'une session retirée doit être oublié, \
-         sinon un rattachement hériterait d'un compteur périmé"
+        "the re-arm counter of a removed session must be forgotten, \
+         otherwise a reattachment would inherit a stale counter"
     );
 
     drop(canal);
@@ -300,7 +306,7 @@ fn un_signal_audio_mort_redondant_ne_recompte_pas_le_rearmement() {
     assert_eq!(
         etat().rearmements.get("t9-redondant"),
         Some(&1),
-        "précondition : un premier réarmement doit être compté"
+        "precondition: a first re-arm must be counted"
     );
 
     // Second signal, without any removal having happened in between:
@@ -312,8 +318,8 @@ fn un_signal_audio_mort_redondant_ne_recompte_pas_le_rearmement() {
     assert_eq!(
         etat().rearmements.get("t9-redondant"),
         Some(&1),
-        "un signal redondant, reçu pendant que la session est encore \
-         inapte, ne doit pas avancer le compteur de réarmements"
+        "a redundant signal, received while the session is still \
+         unfit, must not advance the re-arm counter"
     );
 
     retirer("t9-redondant", generation);
@@ -332,13 +338,13 @@ fn un_signal_audio_vivant_remet_le_compteur_de_rearmements_a_zero() {
     assert_eq!(
         etat().rearmements.get("t10-preuve"),
         Some(&1),
-        "précondition : un premier réarmement doit être compté"
+        "precondition: a first re-arm must be counted"
     );
 
     signaler_audio_vivant("t10-preuve");
     assert!(
         !etat().rearmements.contains_key("t10-preuve"),
-        "une preuve de son doit remettre le compteur de réarmements à zéro"
+        "a proof of sound must reset the re-arm counter to zero"
     );
 
     retirer("t10-preuve", generation);
@@ -355,11 +361,11 @@ fn un_retirer_perime_n_emporte_pas_l_inscription_neuve() {
 
     assert!(
         retirer_est_perime(&generations, "w-1", 6),
-        "le retirer de la génération 6 est en retard : il ne doit rien retirer"
+        "the removal of generation 6 is late: it must remove nothing"
     );
     assert!(
         !retirer_est_perime(&generations, "w-1", 7),
-        "celui de la génération courante retire bien"
+        "the one of the current generation does remove"
     );
 }
 
@@ -399,7 +405,7 @@ fn un_rattachement_recoit_une_generation_neuve_et_le_retirer_precedent_est_perim
 
     assert_ne!(
         premiere_generation, seconde_generation,
-        "deux inscriptions du même nom doivent recevoir des générations distinctes"
+        "two registrations of the same name must receive distinct generations"
     );
 
     // The `retirer` of the PREVIOUS instance, arriving after the re-attachment
@@ -408,14 +414,14 @@ fn un_rattachement_recoit_une_generation_neuve_et_le_retirer_precedent_est_perim
     retirer("t10-rattache", premiere_generation);
     assert!(
         etat().canaux.contains_key("t10-rattache"),
-        "un retirer périmé ne doit pas emporter l'inscription neuve"
+        "a stale removal must not take the fresh registration with it"
     );
 
     // The `retirer` of the LIVE instance, for its part, does remove.
     retirer("t10-rattache", seconde_generation);
     assert!(
         !etat().canaux.contains_key("t10-rattache"),
-        "le retirer de la génération courante doit retirer réellement"
+        "the removal of the current generation must really remove"
     );
 
     drop(premier_canal);
@@ -458,7 +464,7 @@ fn distribuer_purge_a_lui_seul_une_session_dont_le_canal_est_rompu() {
     drop(canal);
     assert!(
         etat().canaux.contains_key("t16-ordres"),
-        "précondition : la session est inscrite, et rien ne l'a encore purgée"
+        "precondition: the session is registered, and nothing has purged it yet"
     );
 
     {
@@ -472,7 +478,7 @@ fn distribuer_purge_a_lui_seul_une_session_dont_le_canal_est_rompu() {
         );
         assert!(
             !garde.canaux.contains_key("t16-ordres"),
-            "`distribuer` doit purger de lui-même la session dont l'envoi a rendu Err"
+            "`distribuer` must itself purge the session whose send returned Err"
         );
     }
 

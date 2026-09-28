@@ -45,25 +45,25 @@ const SORTIES_MAX: u16 = 8;
 pub(super) fn analyser(value: &str) -> Result<(u8, u8)> {
     let (p, d) = value
         .split_once('x')
-        .with_context(|| format!("MULTIFENETRE_PLAFOND attend « <P>x<D> », reçu « {value} »"))?;
+        .with_context(|| format!("MULTIFENETRE_PLAFOND expects '<P>x<D>', got '{value}'"))?;
     let processus: u8 = p
         .trim()
         .parse()
-        .with_context(|| format!("nombre de processus illisible dans « {value} »"))?;
+        .with_context(|| format!("unreadable number of processes in '{value}'"))?;
     let duplications: u8 = d
         .trim()
         .parse()
-        .with_context(|| format!("nombre de duplications illisible dans « {value} »"))?;
-    anyhow::ensure!(processus >= 1, "au moins un processus sonde est nécessaire");
+        .with_context(|| format!("unreadable number of duplications in '{value}'"))?;
+    anyhow::ensure!(processus >= 1, "at least one probe process is required");
     anyhow::ensure!(
         duplications >= 1,
-        "au moins une duplication par sonde est nécessaire"
+        "at least one duplication per probe is required"
     );
     let total = u16::from(processus) * u16::from(duplications);
     anyhow::ensure!(
         total <= SORTIES_MAX,
-        "{processus}x{duplications} demande {total} sorties, le maximum est {SORTIES_MAX} \
-         (vivier du pilote de 10, dont deux de marge pour Apollo)"
+        "{processus}x{duplications} requests {total} outputs, the maximum is {SORTIES_MAX} \
+         (driver pool of 10, two of them kept as margin for Apollo)"
     );
     Ok((processus, duplications))
 }
@@ -76,12 +76,7 @@ pub(super) fn analyser(value: &str) -> Result<(u8, u8)> {
 /// "ceiling on duplications".
 pub(super) fn mesurer(processus: u8, duplications: u8) -> Result<()> {
     let total = u16::from(processus) * u16::from(duplications);
-    tracing::info!(
-        processus,
-        duplications,
-        total,
-        "campagne du plafond — début"
-    );
+    tracing::info!(processus, duplications, total, "ceiling campaign — start");
 
     // No residue from a previous draw: a stale verdict would read as a
     // success where the probe never started.
@@ -94,7 +89,7 @@ pub(super) fn mesurer(processus: u8, duplications: u8) -> Result<()> {
     // afterwards if a previous draw left it behind.
     let _ = std::fs::remove_file(sonde::chemin_verdict_rang_invalide());
 
-    let before = relever_topologie("avant création")?;
+    let before = relever_topologie("before creation")?;
     let names_before = noms_attaches(&before);
 
     let pilote = crate::moniteurs_virtuels::pilote::ouvrir_pilote()?;
@@ -119,7 +114,7 @@ pub(super) fn mesurer(processus: u8, duplications: u8) -> Result<()> {
         for rang in 1..=total {
             sorties
                 .create(largeur, hauteur, hertz)
-                .with_context(|| format!("création de la sortie virtuelle n°{rang}/{total}"))?;
+                .with_context(|| format!("creating virtual output no. {rang}/{total}"))?;
         }
 
         // Wait for the K outputs to be ATTACHED, while beating the
@@ -136,7 +131,7 @@ pub(super) fn mesurer(processus: u8, duplications: u8) -> Result<()> {
         // itself.
         attendre_en_pinguant(&pilote, DELAI_TOPOLOGIE)?;
 
-        let apres_creation = relever_topologie("après création")?;
+        let apres_creation = relever_topologie("after creation")?;
         let noms_apres_creation = noms_attaches(&apres_creation);
         let apparues: Vec<String> = noms_apres_creation
             .iter()
@@ -157,12 +152,12 @@ pub(super) fn mesurer(processus: u8, duplications: u8) -> Result<()> {
         // fix, so only the message is fixed here).
         anyhow::ensure!(
             apparues.len() == usize::from(total),
-            "{} sortie(s) DXGI attachée(s) neuve(s) après création de {total} ({apparues:?}) \
-             — addition externe, retrait par le chien de garde, ou sortie créée mais jamais \
-             composée par Windows (non attachée au bureau)",
+            "{} new attached DXGI output(s) after creating {total} ({apparues:?}) \
+             — external addition, removal by the watchdog, or output created but never \
+             composed by Windows (not attached to the desktop)",
             apparues.len()
         );
-        tracing::info!(attachees = apparues.len(), noms = ?apparues, "sorties rattachées");
+        tracing::info!(attachees = apparues.len(), noms = ?apparues, "outputs attached");
 
         // The `Garde` keeps beating the watchdog DURING the whole
         // conduct of the probes, not only during creation: without it,
@@ -178,7 +173,7 @@ pub(super) fn mesurer(processus: u8, duplications: u8) -> Result<()> {
         let issue_conduite = conduire_les_sondes(processus, duplications, &apparues, &mut garde);
         tracing::info!(
             intervalle_ping_max_ms = garde.intervalle_max().as_millis() as u64,
-            "chien de garde : plus grand écart entre deux battements sur toute la conduite"
+            "watchdog: largest gap between two beats over the whole run"
         );
         issue_conduite
     })();
@@ -191,7 +186,10 @@ pub(super) fn mesurer(processus: u8, duplications: u8) -> Result<()> {
     // of one rank would poison the following ranks.
     let rejoues = crate::moniteurs_virtuels::purge::rejouer_purge_due(&pilote);
     if rejoues > 0 {
-        tracing::info!(rejoues, "retraits dus rejoués avec succès après la garde");
+        tracing::info!(
+            rejoues,
+            "due removals replayed successfully after the guard"
+        );
     }
 
     // Stop signal removed: the next draw starts clean.
@@ -201,9 +199,9 @@ pub(super) fn mesurer(processus: u8, duplications: u8) -> Result<()> {
     // instantly: Windows reconfigures. Without this grace delay (same value and
     // same reason as `monter_en_n` and `paralleles::mesurer`), the survey
     // below would risk still seeing the K outputs being removed
-    // and wrongly writing "topologie NON restaurée".
+    // and wrongly writing "topology NOT restored".
     std::thread::sleep(DELAI_TOPOLOGIE);
-    let apres = relever_topologie("après destruction")?;
+    let apres = relever_topologie("after destruction")?;
     let noms_apres = noms_attaches(&apres);
     // Compare SETS OF NAMES, never cardinalities: Apollo can
     // add an output at any moment, and an external addition would exactly
@@ -211,10 +209,10 @@ pub(super) fn mesurer(processus: u8, duplications: u8) -> Result<()> {
     if noms_apres != names_before {
         tracing::error!(
             before = ?names_before, apres = ?noms_apres,
-            "topologie NON restaurée — contrôler depuis un processus neuf (MULTIFENETRE_DXGI=1)"
+            "topology NOT restored — check from a fresh process (MULTIFENETRE_DXGI=1)"
         );
     } else {
-        tracing::info!("topologie restaurée nom pour nom");
+        tracing::info!("topology restored name for name");
     }
     issue
 }
@@ -257,14 +255,14 @@ impl Drop for SondesEnCours {
         if let Err(error) = std::fs::write(sonde::chemin_arret(), b"1") {
             tracing::error!(
                 %error,
-                "dépôt du signal d'arrêt échoué — sondes potentiellement orphelines"
+                "setting the stop signal failed — probes possibly orphaned"
             );
         }
         for (rang, enfant) in &mut self.enfants {
             match enfant.wait() {
-                Ok(statut) => tracing::info!(sonde = *rang, ?statut, "sonde terminée"),
+                Ok(statut) => tracing::info!(sonde = *rang, ?statut, "probe finished"),
                 Err(error) => {
-                    tracing::error!(sonde = *rang, %error, "attente de la sonde échouée")
+                    tracing::error!(sonde = *rang, %error, "waiting for the probe failed")
                 }
             }
         }
@@ -285,7 +283,7 @@ fn conduire_les_sondes(
     noms: &[String],
     garde: &mut compteurs::Garde<'_>,
 ) -> Result<()> {
-    let executable = std::env::current_exe().context("chemin de l'exécutable courant")?;
+    let executable = std::env::current_exe().context("path of the current executable")?;
     let mut sondes = SondesEnCours::new();
     let mut verdicts: Vec<(u8, String)> = Vec::new();
 
@@ -295,7 +293,7 @@ fn conduire_les_sondes(
             .iter()
             .map(|s| s.as_str())
             .collect();
-        tracing::info!(sonde = rang, sorties = ?lot, "lancement de la sonde");
+        tracing::info!(sonde = rang, sorties = ?lot, "launching the probe");
 
         let enfant = std::process::Command::new(&executable)
             .env("MULTIFENETRE_PLAFOND_SONDE", lot.join(","))
@@ -306,11 +304,11 @@ fn conduire_les_sondes(
             // but removing the variable makes the invariant explicit.
             .env_remove("MULTIFENETRE_PLAFOND")
             .spawn()
-            .with_context(|| format!("lancement de la sonde {rang}"))?;
+            .with_context(|| format!("launching probe {rang}"))?;
         sondes.add(rang, enfant);
 
         let verdict = attendre_le_verdict(rang, duplications, garde)?;
-        tracing::info!(sonde = rang, %verdict, "verdict reçu");
+        tracing::info!(sonde = rang, %verdict, "verdict received");
         // `MORTE` stops the staircase just as a `KO` does: letting it
         // through would launch the next probe while this one may
         // still be opening its duplications (up to `D × 3 s` of retries alone),
@@ -339,7 +337,7 @@ fn conduire_les_sondes(
         duplications,
         lancees = verdicts.len(),
         verdicts = ?verdicts,
-        "campagne du plafond — bilan"
+        "ceiling campaign — summary"
     );
     Ok(())
 }
@@ -381,7 +379,7 @@ fn attendre_le_verdict(
             }
         }
         if std::time::Instant::now() >= echeance {
-            return Ok(format!("MORTE (aucun verdict en {} s)", limite.as_secs()));
+            return Ok(format!("DEAD (no verdict within {} s)", limite.as_secs()));
         }
         garde.battre_si_du()?;
         // No trace here: this loop polls at 10 Hz, and a per-round
@@ -404,14 +402,14 @@ mod tests {
             ("8x1", (8, 1)),
             ("4x1", (4, 1)),
         ] {
-            assert_eq!(analyser(value).unwrap(), attendu, "rang {value}");
+            assert_eq!(analyser(value).unwrap(), attendu, "rank {value}");
         }
     }
 
     #[test]
     fn un_produit_au_dela_du_vivier_est_refuse() {
         let error = analyser("4x4").unwrap_err().to_string();
-        assert!(error.contains("16 sorties"), "reçu « {error} »");
+        assert!(error.contains("16 outputs"), "got '{error}'");
     }
 
     #[test]
@@ -423,6 +421,6 @@ mod tests {
     #[test]
     fn a_malformed_value_is_refused() {
         assert!(analyser("4").is_err());
-        assert!(analyser("quatre x deux").is_err());
+        assert!(analyser("four x two").is_err());
     }
 }

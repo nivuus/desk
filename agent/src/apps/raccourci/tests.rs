@@ -90,7 +90,7 @@ fn n_ecarte_rien_par_le_nom() {
     ] {
         assert!(
             retenir(&brut(cible, "", ""), &tout_existe).is_ok(),
-            "{cible} doit être RETENU"
+            "{cible} must be RETAINED"
         );
     }
 }
@@ -178,7 +178,7 @@ struct EntreeCorpus {
 
 fn corpus() -> Vec<EntreeCorpus> {
     let raw = include_str!("../../../testdata/gapps-corpus-vm.json");
-    let doc: Corpus = serde_json::from_str(raw).expect("corpus lisible");
+    let doc: Corpus = serde_json::from_str(raw).expect("readable corpus");
     doc.raccourcis
 }
 
@@ -188,11 +188,7 @@ fn corpus() -> Vec<EntreeCorpus> {
 #[test]
 fn le_corpus_reel_rend_218_lus_167_retenus_154_cles_et_104_par_la_cible_seule() {
     let entrees = corpus();
-    assert_eq!(
-        entrees.len(),
-        218,
-        "218 raccourcis lus sur les quatre racines"
-    );
+    assert_eq!(entrees.len(), 218, "218 shortcuts read over the four roots");
 
     // The injected predicate re-reads the boolean MEASURED on the VM. That is
     // exactly what D7 buys: on the host, none of these targets exists.
@@ -223,27 +219,19 @@ fn le_corpus_reel_rend_218_lus_167_retenus_154_cles_et_104_par_la_cible_seule() 
         }
     }
 
-    assert_eq!(vides, 7, "cibles de l'espace de noms Shell");
-    assert_eq!(absentes, 3, "cibles .exe nommées mais absentes du disque");
-    assert_eq!(
-        retenus.len(),
-        167,
-        "raccourcis retenus par les trois règles"
-    );
+    assert_eq!(vides, 7, "Shell namespace targets");
+    assert_eq!(absentes, 3, ".exe targets named but absent from the disk");
+    assert_eq!(retenus.len(), 167, "shortcuts retained by the three rules");
     // Cross-check of spec §3.1, the only one in this paragraph:
     // 170 .exe targets minus 3 missing make 167.
-    assert_eq!(retenus.len() + absentes, 170, "cibles .exe non vides");
+    assert_eq!(retenus.len() + absentes, 170, "non-empty .exe targets");
     assert_eq!(vides + par_extension + absentes + retenus.len(), 218);
 
     let par_triplet: HashSet<String> = retenus
         .iter()
         .map(|b| cle(&b.cible, &b.arguments, &b.repertoire))
         .collect();
-    assert_eq!(
-        par_triplet.len(),
-        154,
-        "applications distinctes sur cette VM"
-    );
+    assert_eq!(par_triplet.len(), 154, "distinct applications on this VM");
 
     // 🔴 THIS IS THE FREE RED, AND IT IS HERE, ON THE HOST, WITHOUT A VM. A
     // `cle()` that ignored the arguments would make the previous assertion
@@ -254,7 +242,7 @@ fn le_corpus_reel_rend_218_lus_167_retenus_154_cles_et_104_par_la_cible_seule() 
         .iter()
         .map(|b| normaliser_chemin(&b.cible))
         .collect();
-    assert_eq!(par_cible_seule.len(), 104, "clés par la cible seule");
+    assert_eq!(par_cible_seule.len(), 104, "keys by target alone");
     assert_eq!(par_triplet.len() - par_cible_seule.len(), 50);
 }
 
@@ -278,7 +266,7 @@ fn the_corpus_holds_no_non_exe_target_among_the_retained() {
         if retenir(&b, &existe).is_ok() {
             assert!(
                 e.cible.to_lowercase().ends_with(".exe") && e.existe,
-                "retenu à tort : {}",
+                "wrongly retained: {}",
                 e.cible
             );
         }

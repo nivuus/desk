@@ -28,7 +28,7 @@ const DIVISEURS: [f32; 4] = [1.0, 1.25, 1.5, 2.0];
 /// value ("the full-resolution picture was visibly acceptable or
 /// degraded") assumes a visual judgement that was never made — no
 /// screenshot was compared by eye. See
-/// `docs/superpowers/plans/2026-07-29-reseau-adaptatif-resultats.md`, §5.
+/// `docs/superpowers/plans/2026-07-29-reseau-adaptatif-resultats.md`, §5. policy: allow-fr (file path)
 const BPP_MIN: f32 = 0.05;
 
 /// A rung of the ladder: an encoding size and the bitrate below
@@ -115,20 +115,16 @@ mod tests {
         let sizes: Vec<(u32, u32)> = echelle.barreaux().iter().map(|b| b.size).collect();
 
         // Pour 1920×1080, on attend exactement 4 barreaux (cas nominal).
-        assert_eq!(sizes.len(), 4, "quatre barreaux attendus pour 1920×1080");
-        assert_eq!(
-            sizes[0],
-            (1920, 1080),
-            "le premier barreau est la taille source"
-        );
+        assert_eq!(sizes.len(), 4, "four rungs expected for 1920×1080");
+        assert_eq!(sizes[0], (1920, 1080), "the first rung is the source size");
         for (i, (w, h)) in sizes.iter().enumerate() {
-            assert_eq!(w % 2, 0, "barreau {i} : largeur impaire, refusée par H.264");
-            assert_eq!(h % 2, 0, "barreau {i} : hauteur impaire, refusée par H.264");
+            assert_eq!(w % 2, 0, "rung {i}: odd width, refused by H.264");
+            assert_eq!(h % 2, 0, "rung {i}: odd height, refused by H.264");
         }
         for i in 1..sizes.len() {
             assert!(
                 sizes[i].0 < sizes[i - 1].0,
-                "barreau {i} pas plus petit que le précédent : {:?}",
+                "rung {i} not smaller than the previous one: {:?}",
                 sizes
             );
         }
@@ -144,20 +140,20 @@ mod tests {
         let echelle_8x8 = Echelle::depuis((8, 8), 60);
         let sizes_8x8: Vec<(u32, u32)> = echelle_8x8.barreaux().iter().map(|b| b.size).collect();
 
-        assert!(sizes_8x8.len() <= 4, "au plus 4 barreaux pour source 8×8");
+        assert!(sizes_8x8.len() <= 4, "at most 4 rungs for an 8×8 source");
         assert_eq!(
             sizes_8x8[0],
             (8, 8),
-            "le premier barreau est la taille source (8×8)"
+            "the first rung is the source size (8×8)"
         );
         for (i, (w, h)) in sizes_8x8.iter().enumerate() {
-            assert_eq!(w % 2, 0, "barreau {i} : largeur impaire");
-            assert_eq!(h % 2, 0, "barreau {i} : hauteur impaire");
+            assert_eq!(w % 2, 0, "rung {i}: odd width");
+            assert_eq!(h % 2, 0, "rung {i}: odd height");
         }
         for i in 1..sizes_8x8.len() {
             assert!(
                 sizes_8x8[i].0 < sizes_8x8[i - 1].0,
-                "barreau {i} pas plus petit que le précédent : {:?}",
+                "rung {i} not smaller than the previous one: {:?}",
                 sizes_8x8
             );
         }
@@ -168,12 +164,8 @@ mod tests {
         let echelle_2x2 = Echelle::depuis((2, 2), 60);
         let sizes_2x2: Vec<(u32, u32)> = echelle_2x2.barreaux().iter().map(|b| b.size).collect();
 
-        assert_eq!(
-            sizes_2x2.len(),
-            1,
-            "source 2×2 : un seul barreau (plancher)"
-        );
-        assert_eq!(sizes_2x2[0], (2, 2), "le barreau est le plancher (2, 2)");
+        assert_eq!(sizes_2x2.len(), 1, "2×2 source: a single rung (floor)");
+        assert_eq!(sizes_2x2[0], (2, 2), "the rung is the floor (2, 2)");
     }
 
     #[test]

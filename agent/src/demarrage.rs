@@ -95,7 +95,7 @@ pub(crate) async fn executer(config: Config) -> Result<()> {
             }
             #[cfg(not(windows))]
             {
-                anyhow::bail!("TEST_FILE est requis hors Windows")
+                anyhow::bail!("TEST_FILE is required outside Windows")
             }
         }
     };
@@ -156,17 +156,17 @@ pub(crate) async fn executer(config: Config) -> Result<()> {
     // `superviseur::table::orphelines::relancer_les_orphelines` sees this
     // entry become `SansSession` again and restarts it. With `RELANCES_MAX = 3`
     // tolerated (`superviseur/table.rs`) and a refusal that recurs at
-    // each restart, a window's attach failure — the message "la
-    // session n'a pas tenu après 3 tentatives" — may therefore take from
+    // each restart, a window's attach failure — the message "the
+    // session did not hold after 3 attempts" — may therefore take from
     // a few tens of seconds to a few minutes to become visible to
     // the user, instead of a few seconds before this batch. Not measured
     // in an acceptance run; the mechanism, for its part, can be checked by cross-reading
     // `orphelines.rs` and this file.
     let Some(offer) = offers.recv().await else {
         signaling::honour_suggested_retry(&retry_apres_s).await;
-        return Err(anyhow::anyhow!("le signaling s'est fermé avant l'offre"));
+        return Err(anyhow::anyhow!("the signaling closed before the offer"));
     };
-    tracing::info!("offre reçue");
+    tracing::info!("offer received");
 
     // The web client has no trickle ICE: it sends ONE offer after
     // complete gathering and waits for ONE answer. The relayed candidate must therefore
@@ -183,17 +183,17 @@ pub(crate) async fn executer(config: Config) -> Result<()> {
 
     if let Some(config) = ice_config.borrow().clone() {
         match session.allouer_relais(config, DELAI_ALLOCATION) {
-            Ok(()) => tracing::info!("relais TURN alloué avant la réponse SDP"),
+            Ok(()) => tracing::info!("TURN relay allocated before the SDP answer"),
             Err(e) => tracing::warn!(
                 error = %e,
-                "allocation TURN impossible : la session continue sans relais"
+                "TURN allocation impossible: the session goes on without a relay"
             ),
         }
     }
 
     let answer = session.accept_offer(&offer)?;
     answers.send(answer).await?;
-    tracing::info!("réponse envoyée");
+    tracing::info!("answer sent");
     // Note: `AgentControl::ready` is no longer sent here. At this instant SCTP
     // is not yet open (the control channel is still `None`), so
     // sending it now would be silently lost (I3 of the review).
@@ -207,7 +207,7 @@ pub(crate) async fn executer(config: Config) -> Result<()> {
     tokio::spawn(async move {
         if closed.changed().await.is_ok() && *closed.borrow() {
             tracing::warn!(
-                "connexion de signaling perdue (aucune renégociation possible pour cette session)"
+                "signaling connection lost (no renegotiation possible for this session)"
             );
         }
     });
@@ -264,7 +264,7 @@ pub(crate) async fn executer(config: Config) -> Result<()> {
     // much more once the session is no longer alive. We therefore move it
     // to tokio's blocking thread pool, dedicated to this use.
     // Cloned before the `move` closure below: it is this copy that
-    // gives the `contrôle reçu` trace its `session` (see `on_control`
+    // gives the `control received` trace its `session` (see `on_control`
     // below), without which it is indistinguishable from that of any other
     // child sharing the same `agent.log` (D4).
     let session_id = config.session_id.clone();
@@ -315,7 +315,7 @@ pub(crate) async fn executer(config: Config) -> Result<()> {
                                 arret_sondes_manette.clone(),
                             ) {
                                 Ok(_) => {}
-                                Err(e) => tracing::warn!(error = %e, "vibrations indisponibles"),
+                                Err(e) => tracing::warn!(error = %e, "rumble unavailable"),
                             }
                             pad = Some(new);
                             connexion_manette = None;
@@ -326,7 +326,7 @@ pub(crate) async fn executer(config: Config) -> Result<()> {
                             // `Capabilities` for this session.
                             pad_indisponible = true;
                             connexion_manette = None;
-                            tracing::warn!(error = %e, "manette virtuelle indisponible");
+                            tracing::warn!(error = %e, "virtual gamepad unavailable");
                             let _ = control_tx.send(proto::control::AgentControl::capabilities(
                                 false,
                                 crate::presse_papier::actif(),
@@ -347,7 +347,7 @@ pub(crate) async fn executer(config: Config) -> Result<()> {
                             pad_indisponible = true;
                             connexion_manette = None;
                             tracing::warn!(
-                                "fil de connexion à la manette virtuelle interrompu de façon inattendue"
+                                "connection thread to the virtual gamepad interrupted unexpectedly"
                             );
                             let _ = control_tx.send(proto::control::AgentControl::capabilities(
                                 false,
@@ -358,7 +358,7 @@ pub(crate) async fn executer(config: Config) -> Result<()> {
                 }
                 if let Some(pad) = pad.as_mut() {
                     if let Err(e) = pad.apply(&state) {
-                        tracing::warn!(error = %e, "application de l'état de manette échouée");
+                        tracing::warn!(error = %e, "applying the gamepad state failed");
                     }
                 }
                 return;
@@ -370,12 +370,12 @@ pub(crate) async fn executer(config: Config) -> Result<()> {
             // reconstruct the evidence another way (instrumenting the channel
             // on the client side). Making it available under Windows too lets
             // the next diagnosis read `agent.log` directly.
-            tracing::debug!(?message, "entrée reçue");
+            tracing::debug!(?message, "input received");
 
             #[cfg(windows)]
             if let Some(injector) = injector.as_mut() {
                 if let Err(e) = injector.inject(message) {
-                    tracing::warn!(error = %e, "injection d'entrée échouée");
+                    tracing::warn!(error = %e, "input injection failed");
                 }
             }
         };
@@ -385,22 +385,22 @@ pub(crate) async fn executer(config: Config) -> Result<()> {
         // the two lines carried no session, so nothing established
         // that they came from two distinct sessions.
         let mut on_control =
-            |message| tracing::info!(session = %session_id, ?message, "contrôle reçu");
+            |message| tracing::info!(session = %session_id, ?message, "control received");
         session.run(&mut on_input, &mut on_control)
     });
 
     match transport.await {
-        Ok(Ok(())) => tracing::info!("session terminée"),
+        Ok(Ok(())) => tracing::info!("session ended"),
         Ok(Err(e)) => {
             // `Session::run` only returns an error for a problem deemed
             // unrecoverable at the session level (see
             // `Session::begin_ending` for what is, on the contrary, treated
             // as a clean session end, via `Ok(())`).
-            tracing::error!(error = %e, "erreur fatale dans la boucle de transport");
+            tracing::error!(error = %e, "fatal error in the transport loop");
             return Err(e);
         }
         Err(join_err) => {
-            tracing::error!(error = %join_err, "la boucle de transport a paniqué");
+            tracing::error!(error = %join_err, "the transport loop panicked");
             return Err(join_err.into());
         }
     }
@@ -453,7 +453,7 @@ pub(crate) fn watch_encoder(telemetry: std::sync::Arc<encode::EncoderTelemetry>)
                 conv_in_status = telemetry.converter_input_status.load(Relaxed),
                 conv_out_status = telemetry.converter_output_status.load(Relaxed),
                 conv_refus = telemetry.converter_not_accepting.load(Relaxed),
-                "surveillance du pipeline d'encodage"
+                "encoding pipeline supervision"
             );
         }
     });

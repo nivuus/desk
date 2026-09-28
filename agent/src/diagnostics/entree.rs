@@ -32,8 +32,8 @@ fn point_depart_lineaire(
     let amplitude = pas as i32 * repetitions;
     anyhow::ensure!(
         largeur.min(hauteur) >= 2 * marge + amplitude.abs(),
-        "écran {largeur}x{hauteur} trop petit pour une amplitude de {amplitude} px \
-         (pas={pas}, répétitions={repetitions}) : le clampage fausserait la mesure"
+        "screen {largeur}x{hauteur} too small for an amplitude of {amplitude} px \
+         (step={pas}, repetitions={repetitions}): the clamping would skew the measurement"
     );
     let coord = |dimension: i32| {
         if amplitude >= 0 {
@@ -52,8 +52,8 @@ pub(super) fn executer_vigem() -> Result<()> {
         .and_then(|v| v.parse().ok())
         .unwrap_or(20);
     match crate::gamepad::probe(secondes) {
-        Ok(rapport) => tracing::info!(rapport, "sonde ViGEmBus"),
-        Err(e) => tracing::warn!(error = %e, "sonde ViGEmBus échouée"),
+        Ok(rapport) => tracing::info!(rapport, "ViGEmBus probe"),
+        Err(e) => tracing::warn!(error = %e, "ViGEmBus probe failed"),
     }
     Ok(())
 }
@@ -76,11 +76,11 @@ pub(super) fn executer_linearite() -> Result<()> {
 
     if std::env::var("INPUT_LINEARITY_NEUTRALISER").as_deref() != Ok("0") {
         match pointer_settings::neutraliser() {
-            Ok(rapport) => tracing::info!(rapport, "neutralisation appliquée"),
-            Err(e) => tracing::warn!(error = %e, "neutralisation échouée"),
+            Ok(rapport) => tracing::info!(rapport, "neutralisation applied"),
+            Err(e) => tracing::warn!(error = %e, "neutralisation failed"),
         }
     } else {
-        tracing::warn!("neutralisation SAUTÉE (mesure de référence)");
+        tracing::warn!("neutralisation SKIPPED (reference measurement)");
     }
 
     // Gap from the brief: the fixed point (960, 540) it proposes assumes a
@@ -99,7 +99,7 @@ pub(super) fn executer_linearite() -> Result<()> {
         centre_x,
         centre_y,
         amplitude,
-        "point de départ de la sonde"
+        "starting point of the probe"
     );
     unsafe { SetCursorPos(centre_x, centre_y) }?;
     std::thread::sleep(std::time::Duration::from_millis(200));
@@ -139,7 +139,7 @@ pub(super) fn executer_linearite() -> Result<()> {
         obtenu_y,
         ecart_x = obtenu_x - attendu,
         ecart_y = obtenu_y - attendu,
-        "sonde de linéarité terminée"
+        "linearity probe finished"
     );
     Ok(())
 }
@@ -157,7 +157,7 @@ mod tests {
 
     #[test]
     fn pas_positif_part_pres_du_bord_haut_gauche() {
-        // pas=10, répétitions=100: amplitude 1000, like measurement 2 of the
+        // step=10, repetitions=100: amplitude 1000, like measurement 2 of the
         // brief.
         let (x, y, amplitude) = point_depart_lineaire(LARGEUR_VM, HAUTEUR_VM, 10, 100, 20).unwrap();
         assert_eq!(amplitude, 1000);
@@ -179,7 +179,7 @@ mod tests {
 
     #[test]
     fn grand_pas_faible_repetition_donne_la_meme_amplitude() {
-        // pas=200, répétitions=5: amplitude 1000, like measurement 3 of the
+        // step=200, repetitions=5: amplitude 1000, like measurement 3 of the
         // brief — that is where acceleration would show if the
         // neutralisation had not taken.
         let (x, y, amplitude) = point_depart_lineaire(LARGEUR_VM, HAUTEUR_VM, 200, 5, 20).unwrap();
@@ -194,7 +194,7 @@ mod tests {
         // the guard must refuse rather than let clamping silently
         // skew the measurement.
         let error = point_depart_lineaire(100, 100, 200, 5, 20).unwrap_err();
-        assert!(error.to_string().contains("trop petit"));
+        assert!(error.to_string().contains("too small"));
     }
 
     #[test]
@@ -210,7 +210,7 @@ mod tests {
     #[test]
     fn refuses_just_below_the_margin_limit() {
         let error = point_depart_lineaire(1039, 2000, 10, 100, 20).unwrap_err();
-        assert!(error.to_string().contains("trop petit"));
+        assert!(error.to_string().contains("too small"));
     }
 
     #[test]

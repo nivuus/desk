@@ -128,7 +128,7 @@ pub(crate) fn config() -> Result<Config> {
         local_ip: std::env::var("LOCAL_IP")
             .unwrap_or_else(|_| "127.0.0.1".into())
             .parse()
-            .context("LOCAL_IP n'est pas une adresse IP valide")?,
+            .context("LOCAL_IP is not a valid IP address")?,
         test_file: std::env::var("TEST_FILE").ok().map(PathBuf::from),
         // `SUPERVISEUR=0` DISABLES the mode, as `AUDIO=0` disables sound.
         // A mere presence (`is_ok()`) would make writing `SUPERVISEUR=0`
@@ -149,7 +149,7 @@ pub(crate) fn config() -> Result<Config> {
         sortie_dxgi: match std::env::var("SORTIE_DXGI") {
             Ok(brut) => {
                 let nom = brut.trim().to_string();
-                anyhow::ensure!(!nom.is_empty(), "SORTIE_DXGI est vide");
+                anyhow::ensure!(!nom.is_empty(), "SORTIE_DXGI is empty");
                 Some(nom)
             }
             Err(_) => None,
@@ -164,13 +164,13 @@ pub(crate) fn config() -> Result<Config> {
             Ok(brut) => {
                 let (l, h) = brut
                     .split_once('x')
-                    .with_context(|| format!("TAILLE_FENETRE « {brut} » : format attendu LxH"))?;
+                    .with_context(|| format!("TAILLE_FENETRE '{brut}': expected format WxH"))?;
                 let largeur: u32 = l
                     .parse()
-                    .with_context(|| format!("TAILLE_FENETRE « {brut} » : largeur illisible"))?;
+                    .with_context(|| format!("TAILLE_FENETRE '{brut}': unreadable width"))?;
                 let hauteur: u32 = h
                     .parse()
-                    .with_context(|| format!("TAILLE_FENETRE « {brut} » : hauteur illisible"))?;
+                    .with_context(|| format!("TAILLE_FENETRE '{brut}': unreadable height"))?;
                 Some((largeur, hauteur))
             }
             Err(_) => None,
@@ -230,14 +230,14 @@ fn analyser_hwnd(brut: &str) -> Result<u64> {
         .or_else(|| texte.strip_prefix("0X"))
     {
         Some(hexa) => u64::from_str_radix(hexa, 16)
-            .with_context(|| format!("FENETRE_HWND « {texte} » : hexadécimal illisible"))?,
+            .with_context(|| format!("FENETRE_HWND '{texte}': unreadable hexadecimal"))?,
         None => texte
             .parse()
-            .with_context(|| format!("FENETRE_HWND « {texte} » : décimal illisible"))?,
+            .with_context(|| format!("FENETRE_HWND '{texte}': unreadable decimal"))?,
     };
     anyhow::ensure!(
         value != 0,
-        "FENETRE_HWND vaut 0 : aucune fenêtre ne porte ce handle"
+        "FENETRE_HWND is 0: no window carries this handle"
     );
     Ok(value)
 }
@@ -257,11 +257,14 @@ mod tests {
     /// imposed window", hence the silent fallback to capturing the desktop.
     #[test]
     fn un_hwnd_mal_forme_fait_echouer_le_demarrage() {
-        assert!(analyser_hwnd("").is_err(), "vide");
-        assert!(analyser_hwnd("0x").is_err(), "préfixe seul");
-        assert!(analyser_hwnd("0xzz").is_err(), "pas de l'hexadécimal");
-        assert!(analyser_hwnd("1a2b").is_err(), "hexadécimal sans préfixe");
-        assert!(analyser_hwnd("-1").is_err(), "négatif");
-        assert!(analyser_hwnd("0").is_err(), "handle nul");
+        assert!(analyser_hwnd("").is_err(), "empty");
+        assert!(analyser_hwnd("0x").is_err(), "prefix alone");
+        assert!(analyser_hwnd("0xzz").is_err(), "not hexadecimal");
+        assert!(
+            analyser_hwnd("1a2b").is_err(),
+            "hexadecimal without a prefix"
+        );
+        assert!(analyser_hwnd("-1").is_err(), "negative");
+        assert!(analyser_hwnd("0").is_err(), "null handle");
     }
 }

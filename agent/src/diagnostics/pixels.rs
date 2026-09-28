@@ -49,16 +49,16 @@ pub(crate) fn read_pixel(
     };
     let mut staging = None;
     unsafe { device.CreateTexture2D(&desc, None, Some(&mut staging)) }
-        .context("allocation de la texture de lecture")?;
-    let staging = staging.context("texture de lecture absente")?;
+        .context("allocating the readback texture")?;
+    let staging = staging.context("readback texture absent")?;
 
-    let context = unsafe { device.GetImmediateContext() }.context("contexte immédiat")?;
+    let context = unsafe { device.GetImmediateContext() }.context("immediate context")?;
 
     unsafe { context.CopyResource(&staging, texture) };
 
     let mut mapped = D3D11_MAPPED_SUBRESOURCE::default();
     unsafe { context.Map(&staging, 0, D3D11_MAP_READ, 0, Some(&mut mapped)) }
-        .context("projection de la texture de lecture en mémoire CPU")?;
+        .context("mapping the readback texture into CPU memory")?;
 
     let base = mapped.pData as *const u8;
     let offset = (y * mapped.RowPitch + x * 4) as isize;
@@ -102,5 +102,5 @@ pub(super) fn capture_center_pixel(
         }
         std::thread::sleep(Duration::from_millis(2));
     }
-    anyhow::bail!("aucune image obtenue pour {region:?} en {timeout:?}")
+    anyhow::bail!("no image obtained for {region:?} within {timeout:?}")
 }

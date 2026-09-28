@@ -44,7 +44,7 @@ pub(super) fn brancher(config: &Config, session: &mut Session, clock_origin: Ins
                 tracing::info!(
                     format = source_audio.description(),
                     pid = source_audio.pid(),
-                    "audio activé"
+                    "audio enabled"
                 );
                 session.set_audio_source(Box::new(source_audio));
 
@@ -85,12 +85,12 @@ pub(super) fn brancher(config: &Config, session: &mut Session, clock_origin: Ins
                 }));
             }
             Err(e) => {
-                tracing::warn!(error = %e, "audio indisponible, la session continue sans son");
+                tracing::warn!(error = %e, "audio unavailable, the session goes on without sound");
             }
         }
     }
     if !config.audio {
-        tracing::info!("son désactivé sur cet agent par AUDIO=0");
+        tracing::info!("sound disabled on this agent by AUDIO=0");
     }
 }
 
@@ -108,6 +108,6 @@ fn pid_de_fenetre(hwnd: u64) -> anyhow::Result<u32> {
     let mut pid = 0u32;
     // SAFETY: an invalid handle makes it return 0, which the `ensure` catches.
     unsafe { GetWindowThreadProcessId(handle, Some(&mut pid)) };
-    anyhow::ensure!(pid != 0, "aucun PID pour la fenêtre {hwnd:#x}");
+    anyhow::ensure!(pid != 0, "no PID for window {hwnd:#x}");
     Ok(pid)
 }

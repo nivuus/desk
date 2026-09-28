@@ -49,8 +49,8 @@ pub(super) fn tourner(veille: Veille) {
     let distinctes: BTreeSet<PathBuf> = crate::apps::lecture::racines().into_iter().collect();
     if distinctes.is_empty() {
         tracing::warn!(
-            "surveillance des raccourcis inactive : aucune racine résolue \
-             (la réconciliation périodique, elle, continue)"
+            "shortcut watch inactive: no root resolved \
+             (the periodic reconciliation, for its part, goes on)"
         );
         return;
     }
@@ -59,7 +59,7 @@ pub(super) fn tourner(veille: Veille) {
     for chemin in distinctes {
         match Racine::ouvrir(chemin.clone()) {
             Ok(racine) => {
-                tracing::info!(racine = %chemin.display(), "racine surveillée");
+                tracing::info!(racine = %chemin.display(), "root watched");
                 racines.push(racine);
             }
             // ⚠️ NAMED GAP, NOT CLOSED: a root ABSENT at start-up has
@@ -71,22 +71,22 @@ pub(super) fn tourner(veille: Veille) {
             // today.
             Err(error) => tracing::warn!(
                 racine = %chemin.display(), %error,
-                "racine non surveillée : la réconciliation périodique reste la source de vérité"
+                "root not watched: the periodic reconciliation stays the source of truth"
             ),
         }
     }
     if racines.is_empty() {
-        tracing::warn!("surveillance des raccourcis inactive : aucune racine ouverte");
+        tracing::warn!("shortcut watch inactive: no root open");
         return;
     }
-    tracing::info!(racines = racines.len(), "surveillance des raccourcis armée");
+    tracing::info!(racines = racines.len(), "shortcut watch armed");
 
     boucler(&mut racines, &veille);
 
     for racine in &mut racines {
         racine.fermer();
     }
-    tracing::info!("surveillance des raccourcis arrêtée");
+    tracing::info!("shortcut watch stopped");
 }
 
 fn boucler(racines: &mut [Racine], veille: &Veille) {
@@ -128,16 +128,13 @@ fn boucler(racines: &mut [Racine], veille: &Veille) {
             let code = unsafe { windows::Win32::Foundation::GetLastError() };
             tracing::error!(
                 error = %windows::core::Error::from_hresult(code.to_hresult()),
-                "attente de surveillance en échec : fil arrêté (la réconciliation périodique continue)"
+                "watch wait failed: thread stopped (the periodic reconciliation goes on)"
             );
             return;
         }
         let rang = (issue.0 - WAIT_OBJECT_0.0) as usize;
         let Some(&indice) = vivantes.get(rang) else {
-            tracing::error!(
-                ?issue,
-                "attente de surveillance : rang hors des racines, fil arrêté"
-            );
+            tracing::error!(?issue, "watch wait: rank outside the roots, thread stopped");
             return;
         };
         servir(&mut racines[indice], veille);
@@ -175,8 +172,8 @@ fn servir(racine: &mut Racine, veille: &Veille) {
             tracing::warn!(
                 racine = %racine.chemin().display(),
                 debordements = veille.debordements(),
-                "notifications perdues : tampon de surveillance débordé, \
-                 la réconciliation qui suit relit le disque entier"
+                "notifications lost: watch buffer overflowed, \
+                 the following reconciliation re-reads the whole disk"
             );
             rearmer(racine);
         }
@@ -189,8 +186,8 @@ fn servir(racine: &mut Racine, veille: &Veille) {
             if !racine.en_echec() {
                 tracing::warn!(
                     racine = %racine.chemin().display(), %error,
-                    "racine de surveillance PERDUE : réouverture programmée \
-                     (la réconciliation périodique reste la source de vérité)"
+                    "watch root LOST: reopening scheduled \
+                     (the periodic reconciliation stays the source of truth)"
                 );
             }
             racine.programmer_la_reprise(Instant::now());
@@ -203,7 +200,7 @@ fn rearmer(racine: &mut Racine) {
         if !racine.en_echec() {
             tracing::warn!(
                 racine = %racine.chemin().display(), %error,
-                "réarmement de surveillance en échec : réouverture programmée"
+                "watch re-arm failed: reopening scheduled"
             );
         }
         racine.programmer_la_reprise(Instant::now());
@@ -221,7 +218,7 @@ fn reprendre_les_echues(racines: &mut [Racine]) {
         match racine.rouvrir() {
             Ok(()) => tracing::warn!(
                 racine = %racine.chemin().display(),
-                "racine de surveillance RÉTABLIE"
+                "watch root RESTORED"
             ),
             // ⚠️ NO LINE HERE: the root was already failed, and its
             // entry into failure has already been reported. One line per attempt would make

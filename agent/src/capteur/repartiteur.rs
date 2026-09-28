@@ -23,7 +23,7 @@
 //! Sharing therefore remains the right mechanism, but **it acts through the RESOLUTION**:
 //! a smaller share moves the ladder of `congestion/echelle.rs` down
 //! one rung, and it is that rung that relieves the decoder. See
-//! `docs/superpowers/plans/2026-08-03-multifenetres-partage-capacite-resultats.md`,
+//! `docs/superpowers/plans/2026-08-03-multifenetres-partage-capacite-resultats.md`, policy: allow-fr (file path)
 //! §1 and §3.6.
 
 /// Boost granted to the window the user is looking at.

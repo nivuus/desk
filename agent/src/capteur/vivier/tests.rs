@@ -16,7 +16,7 @@ fn une_fenetre_inscrite_est_endormie_tant_qu_elle_n_est_pas_visible() {
     let ordres = v.inscrire("a", t0());
     assert!(
         ordres.is_empty(),
-        "une inscription seule n'ordonne rien : {ordres:?}"
+        "a registration alone orders nothing: {ordres:?}"
     );
     assert_eq!(v.eveillee("a"), Some(false));
 }
@@ -55,7 +55,7 @@ fn au_dela_du_plafond_la_moins_recemment_vue_est_evincee() {
         v.signaler(nom, true, true, quand);
     }
     // "a" was seen first, hence the least recently seen of the three.
-    assert_eq!(v.eveillee("a"), Some(false), "a devait être évincée");
+    assert_eq!(v.eveillee("a"), Some(false), "a had to be evicted");
     assert_eq!(v.eveillee("b"), Some(true));
     assert_eq!(v.eveillee("c"), Some(true));
 }
@@ -72,7 +72,7 @@ fn l_eviction_porte_la_raison_evincee_et_non_masquee() {
     let ordres = v.signaler("c", true, true, t + Duration::from_millis(200));
     assert!(
         ordres.contains(&("a".to_string(), Ordre::Dormir(Raison::Evincee))),
-        "l'éviction doit être motivée, pas confondue avec une mise en veille voulue : {ordres:?}"
+        "the eviction must carry its reason, not be mistaken for a wanted standby: {ordres:?}"
     );
     assert!(ordres.contains(&("c".to_string(), Ordre::Reveiller)));
 }
@@ -90,12 +90,8 @@ fn un_focus_rafraichit_la_recence_et_protege_de_l_eviction() {
     v.signaler("a", true, true, t + Duration::from_millis(500));
     v.inscrire("c", t + Duration::from_millis(600));
     v.signaler("c", true, true, t + Duration::from_millis(600));
-    assert_eq!(v.eveillee("a"), Some(true), "a venait d'être focalisée");
-    assert_eq!(
-        v.eveillee("b"),
-        Some(false),
-        "b est la plus anciennement vue"
-    );
+    assert_eq!(v.eveillee("a"), Some(true), "a had just been focused");
+    assert_eq!(v.eveillee("b"), Some(false), "b is the least recently seen");
 }
 
 #[test]
@@ -111,7 +107,7 @@ fn l_hysteresis_empeche_d_evincer_une_fenetre_tout_juste_reveillee() {
     let ordres = v.signaler("b", true, true, t + Duration::from_millis(500));
     assert!(
         ordres.is_empty(),
-        "rien ne doit bouger sous l'hystérésis : {ordres:?}"
+        "nothing must move below the hysteresis: {ordres:?}"
     );
     assert_eq!(v.eveillee("a"), Some(true));
     assert_eq!(v.eveillee("b"), Some(false));
@@ -160,7 +156,11 @@ fn retirer_une_fenetre_eveillee_rend_sa_place_a_une_endormie() {
     assert_eq!(v.eveillee("a"), Some(false));
     let ordres = v.retirer("c", t + Duration::from_secs(1));
     assert_eq!(ordres, vec![("a".to_string(), Ordre::Reveiller)]);
-    assert_eq!(v.eveillee("c"), None, "une session retirée n'a plus d'état");
+    assert_eq!(
+        v.eveillee("c"),
+        None,
+        "a removed session no longer has a state"
+    );
 }
 
 #[test]
@@ -181,7 +181,7 @@ fn un_ordre_n_est_jamais_emis_deux_fois_pour_le_meme_etat() {
     let ordres = v.signaler("a", true, true, t + Duration::from_millis(50));
     assert!(
         ordres.is_empty(),
-        "un état inchangé n'ordonne rien : {ordres:?}"
+        "an unchanged state orders nothing: {ordres:?}"
     );
 }
 
@@ -191,19 +191,19 @@ fn a_failing_wake_returns_the_entry_asleep_and_does_not_reelect_it_next_round() 
     let t = t0();
     v.inscrire("a", t);
     v.signaler("a", true, true, t);
-    assert_eq!(v.eveillee("a"), Some(true), "a était éveillée");
+    assert_eq!(v.eveillee("a"), Some(true), "a was awake");
 
     // The encoder fails to build: record the failure.
     let ordres = v.echec_de_reveil("a", t + Duration::from_millis(100));
     assert_eq!(
         v.eveillee("a"),
         Some(false),
-        "a doit s'endormir après l'échec"
+        "a must fall asleep after the failure"
     );
     // No new order must be emitted: a was already the only awake one.
     assert!(
         ordres.is_empty(),
-        "pas de réélection au tour même de l'échec : {ordres:?}"
+        "no re-election on the very round of the failure: {ordres:?}"
     );
 }
 
@@ -214,13 +214,17 @@ fn past_the_respite_a_rearbitrate_does_repropose_the_failed_window() {
     v.inscrire("a", t);
     v.signaler("a", true, true, t);
     v.echec_de_reveil("a", t + Duration::from_millis(100));
-    assert_eq!(v.eveillee("a"), Some(false), "a est endormie après l'échec");
+    assert_eq!(
+        v.eveillee("a"),
+        Some(false),
+        "a is asleep after the failure"
+    );
 
     // Before the respite: no re-proposal.
     let ordres = v.rearbitrer(t + Duration::from_millis(200));
     assert!(
         ordres.is_empty(),
-        "avant le répit, a n'est pas reproposée : {ordres:?}"
+        "before the grace period, a is not proposed again: {ordres:?}"
     );
     assert_eq!(v.eveillee("a"), Some(false));
 
@@ -229,7 +233,7 @@ fn past_the_respite_a_rearbitrate_does_repropose_the_failed_window() {
     assert_eq!(
         ordres,
         vec![("a".to_string(), Ordre::Reveiller)],
-        "après le répit, a doit être réveillée : {ordres:?}"
+        "after the grace period, a must be woken up: {ordres:?}"
     );
     assert_eq!(v.eveillee("a"), Some(true));
 }
@@ -264,16 +268,16 @@ fn returned_orders_place_every_sleep_before_any_wake() {
         .position(|(_, o)| matches!(o, Ordre::Reveiller));
     assert!(
         premiers_dormir.is_some(),
-        "ce scenario doit produire au moins un Dormir : {ordres:?}"
+        "this scenario must produce at least one Dormir: {ordres:?}"
     );
     assert!(
         premier_reveiller.is_some(),
-        "ce scenario doit produire au moins un Reveiller : {ordres:?}"
+        "this scenario must produce at least one Reveiller: {ordres:?}"
     );
     let (d_idx, r_idx) = (premiers_dormir.unwrap(), premier_reveiller.unwrap());
     assert!(
         d_idx < r_idx,
-        "tous les Dormir doivent précéder tout Reveiller : {ordres:?}"
+        "every Dormir must come before any Reveiller: {ordres:?}"
     );
 }
 
@@ -296,7 +300,7 @@ fn a_window_in_respite_stays_excluded_from_candidates_until_the_respite_elapses(
     let ordres = v.signaler("b", false, false, t + Duration::from_millis(300));
     assert!(
         !ordres.iter().any(|(nom, _)| nom == "a"),
-        "a ne doit pas être réveillée car elle est en répit depuis seulement 100 ms : {ordres:?}"
+        "a must not be woken up because it has been in its grace period for only 100 ms: {ordres:?}"
     );
     assert_eq!(v.eveillee("a"), Some(false));
 }
@@ -307,7 +311,7 @@ fn eveillees_rend_exactement_les_sessions_reveillees() {
     let mut vivier = Vivier::new(2, Duration::from_secs(2));
     vivier.inscrire("a", base);
     vivier.inscrire("b", base);
-    assert!(vivier.eveillees().is_empty(), "une fenêtre naît endormie");
+    assert!(vivier.eveillees().is_empty(), "a window is born asleep");
 
     vivier.signaler("a", true, true, base);
     assert_eq!(vivier.eveillees(), vec!["a".to_string()]);
@@ -337,24 +341,20 @@ fn annuler_un_ordre_non_livre_ne_touche_qu_eveillee_et_ignore_une_session_dispar
     let mut v = Vivier::new(PLAFOND_EVEIL, HYSTERESIS);
     v.inscrire("a", t);
     v.signaler("a", true, true, t);
-    assert_eq!(
-        v.eveillee("a"),
-        Some(true),
-        "précondition : elle est éveillée"
-    );
+    assert_eq!(v.eveillee("a"), Some(true), "precondition: it is awake");
 
     // An undelivered `Dormir` brings it back to its state before the order.
     v.annuler_ordre_non_livre("a", Ordre::Dormir(Raison::Masquee));
     assert_eq!(
         v.eveillee("a"),
         Some(true),
-        "un Dormir non livré la laisse éveillée"
+        "an undelivered Dormir leaves it awake"
     );
     v.annuler_ordre_non_livre("a", Ordre::Reveiller);
     assert_eq!(
         v.eveillee("a"),
         Some(false),
-        "un Reveiller non livré la laisse endormie"
+        "an undelivered Reveiller leaves it asleep"
     );
 
     // The guard: a vanished session is ignored, never a panic. It is
@@ -368,6 +368,6 @@ fn annuler_un_ordre_non_livre_ne_touche_qu_eveillee_et_ignore_une_session_dispar
     let ordres = v.rearbitrer(t);
     assert!(
         ordres.contains(&("a".to_string(), Ordre::Reveiller)),
-        "l'annulation ne doit rien effacer d'autre : {ordres:?}"
+        "the cancellation must erase nothing else: {ordres:?}"
     );
 }

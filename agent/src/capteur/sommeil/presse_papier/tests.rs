@@ -54,12 +54,12 @@ fn a_text_announcement_goes_to_all_subscribed_sessions() {
     assert_eq!(
         last_clipboard(&canal_a),
         Some((Some("bonjour".to_string()), 7)),
-        "la fenêtre focalisée doit recevoir le texte"
+        "the focused window must receive the text"
     );
     assert_eq!(
         last_clipboard(&canal_b),
         Some((Some("bonjour".to_string()), 7)),
-        "la fenêtre NON focalisée aussi : c'est le client qui décide d'écrire"
+        "the NON-focused window too: it is the client that decides to write"
     );
 
     retirer("pp-a", generation_a);
@@ -79,7 +79,7 @@ fn a_refusal_leaves_without_text_but_with_its_size() {
     assert_eq!(
         last_clipboard(&canal),
         Some((None, 100_000)),
-        "un refus doit partir, et porter sa taille"
+        "a refusal must go out, and carry its size"
     );
 
     retirer("pp-refus", generation);
@@ -109,7 +109,7 @@ fn un_canal_rompu_detecte_par_le_presse_papier_est_retire_du_vivier() {
     assert_eq!(
         premier_ordre(&canal_mort),
         Some(Ordre::Reveiller),
-        "pp-mort devrait s'éveiller avant qu'on ne tue son fil"
+        "pp-mort should wake up before its thread is killed"
     );
 
     // The thread "dies": its receiver is thrown away WITHOUT going through `retirer`.
@@ -121,9 +121,9 @@ fn un_canal_rompu_detecte_par_le_presse_papier_est_retire_du_vivier() {
 
     assert!(
         !etat().vivier.eveillees().iter().any(|s| s == "pp-mort"),
-        "la session dont le canal est rompu doit être retirée du VIVIER, \
-         pas seulement de `canaux` : sa place d'encodeur resterait sinon \
-         occupée pour toute la vie du processus"
+        "the session whose channel is broken must be removed from the POOL, \
+         not only from `canaux`: its encoder place would otherwise stay \
+         taken for the whole life of the process"
     );
 
     retirer("pp-mort", generation_morte);
@@ -171,9 +171,7 @@ fn armer_les_gardes_empeche_de_relire_notre_ecriture() {
     super::armer_les_gardes(&mut sondeur);
 
     assert_eq!(
-        sondeur.observer(42, || panic!(
-            "le garde n°1 a laissé rouvrir le presse-papier"
-        )),
+        sondeur.observer(42, || panic!("guard no. 1 let the clipboard be reopened")),
         None
     );
     // Consumed: a second arming finds nothing any more.
@@ -196,8 +194,8 @@ fn une_copie_tierce_survenue_apres_notre_ecriture_est_quand_meme_annoncee() {
     super::armer_les_gardes(&mut sondeur);
 
     assert_eq!(
-        sondeur.observer(43, || Some(String::from("autre chose"))),
-        Some(Annonce::Texte(String::from("autre chose")))
+        sondeur.observer(43, || Some(String::from("something else"))),
+        Some(Annonce::Texte(String::from("something else")))
     );
 }
 
@@ -218,12 +216,12 @@ fn une_ecriture_echouee_n_arme_aucun_garde() {
     let _verrou = verrouiller_pour_le_test();
     etat().notre_ecriture = None;
 
-    let result = super::write_with("colle", |_| anyhow::bail!("OpenClipboard refusé"));
+    let result = super::write_with("colle", |_| anyhow::bail!("OpenClipboard refused"));
 
-    assert!(result.is_err(), "l'échec doit remonter à l'appelant");
+    assert!(result.is_err(), "the failure must surface to the caller");
     assert!(
         etat().notre_ecriture.is_none(),
-        "rien ne doit être posé quand l'écriture a échoué"
+        "nothing must be set when the write failed"
     );
 }
 
@@ -239,10 +237,10 @@ fn une_ecriture_reussie_pose_le_numero_rendu_par_l_ecrivain() {
     etat().notre_ecriture = None;
 
     super::write_with("colle", |texte| {
-        assert_eq!(texte, "colle", "le texte doit arriver tel quel à Win32");
+        assert_eq!(texte, "colle", "the text must reach Win32 as is");
         Ok(1234)
     })
-    .expect("écriture");
+    .expect("write");
 
     assert_eq!(
         etat().notre_ecriture.clone(),
@@ -265,20 +263,20 @@ fn une_ecriture_reussie_pose_le_numero_rendu_par_l_ecrivain() {
 #[test]
 fn la_seconde_prise_consomme_notre_ecriture_et_ecarte_notre_texte() {
     let _verrou = verrouiller_pour_le_test();
-    etat().notre_ecriture = Some((11, String::from("colle-par-B")));
+    etat().notre_ecriture = Some((11, String::from("pasted-by-B")));
 
     let mut sondeur = Sondeur::new();
-    let annonce = Some(Annonce::Texte(String::from("colle-par-B")));
+    let annonce = Some(Annonce::Texte(String::from("pasted-by-B")));
 
     assert_eq!(
         super::filtrer_nos_ecritures_tardives(&mut sondeur, annonce),
         None,
-        "notre propre texte ne doit pas repartir vers les N fenêtres"
+        "our own text must not go back out to the N windows"
     );
     assert_eq!(
         etat().notre_ecriture.clone(),
         None,
-        "le couple doit être CONSOMMÉ : le laisser le ferait rejouer au tour suivant"
+        "the pair must be CONSUMED: leaving it would replay it on the next round"
     );
 }
 
@@ -292,7 +290,7 @@ fn la_seconde_prise_laisse_passer_une_copie_de_la_vm() {
     etat().notre_ecriture = None;
 
     let mut sondeur = Sondeur::new();
-    let annonce = Some(Annonce::Texte(String::from("copie-dans-la-vm")));
+    let annonce = Some(Annonce::Texte(String::from("copied-in-the-vm")));
 
     assert_eq!(
         super::filtrer_nos_ecritures_tardives(&mut sondeur, annonce.clone()),
@@ -336,7 +334,7 @@ fn a_session_that_subscribes_after_a_copy_receives_the_current_content() {
     assert_eq!(
         last_clipboard(&canal_tardif),
         Some((Some("deja-copie".to_string()), 10)),
-        "une fenêtre attachée après la copie doit recevoir le contenu courant"
+        "a window attached after the copy must receive the current content"
     );
 
     etat().last_clipboard = None;
@@ -366,12 +364,12 @@ fn l_emission_a_l_inscription_ne_part_que_sur_le_canal_neuf() {
     assert_eq!(
         last_clipboard(&canal_neuf),
         Some((Some("copie".to_string()), 5)),
-        "le canal neuf reçoit"
+        "the fresh channel receives"
     );
     assert_eq!(
         last_clipboard(&canal_present),
         None,
-        "la voisine NE DOIT RIEN recevoir de plus : ce serait un aller-retour par attache"
+        "the neighbour must receive NOTHING more: that would be a round trip per attach"
     );
 
     etat().last_clipboard = None;
@@ -397,7 +395,7 @@ fn une_session_qui_s_inscrit_apres_un_refus_recoit_le_refus() {
     assert_eq!(
         last_clipboard(&canal),
         Some((None, 123_456)),
-        "le refus doit être rejoué à l'attache, avec sa taille"
+        "the refusal must be replayed at attach, with its size"
     );
 
     etat().last_clipboard = None;
@@ -435,7 +433,7 @@ fn a_reattach_also_receives_the_current_content() {
     let (premier_canal, premiere_generation) = inscrire("t15-rattache", 7340);
     super::distribuer(
         &mut etat(),
-        crate::presse_papier::Annonce::Texte("avant-rupture".into()),
+        crate::presse_papier::Annonce::Texte("before-cutoff".into()),
     );
     let _ = last_clipboard(&premier_canal);
 
@@ -444,8 +442,8 @@ fn a_reattach_also_receives_the_current_content() {
 
     assert_eq!(
         last_clipboard(&second_canal),
-        Some((Some("avant-rupture".to_string()), 13)),
-        "un rattachement doit recevoir le contenu courant : rien n'est purgé"
+        Some((Some("before-cutoff".to_string()), 13)),
+        "a reattachment must receive the current content: nothing is purged"
     );
 
     etat().last_clipboard = None;

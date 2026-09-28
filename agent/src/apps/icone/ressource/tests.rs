@@ -29,8 +29,8 @@ fn le_temoin_48_annonce_48_et_rien_d_autre() {
 fn le_temoin_256_porte_bwidth_zero_et_vaut_256() {
     // The byte itself, re-read from the file: it is what makes the test
     // decidable rather than trusting.
-    assert_eq!(TEMOIN_256[6], 0, "bWidth du témoin 256 doit être l'octet 0");
-    assert_eq!(TEMOIN_48[6], 48, "bWidth du témoin 48 doit être 48");
+    assert_eq!(TEMOIN_256[6], 0, "bWidth of the 256 sample must be byte 0");
+    assert_eq!(TEMOIN_48[6], 48, "bWidth of the 48 sample must be 48");
     assert_eq!(icondir_sizes(TEMOIN_256), Some(vec![256]));
     assert_eq!(maximum(&[256]), SourceMax::Pixels(256));
 }
@@ -39,8 +39,8 @@ fn le_temoin_256_porte_bwidth_zero_et_vaut_256() {
 /// by the resource, where any measurement on the rendered image would confuse them.
 #[test]
 fn les_deux_temoins_se_distinguent_par_la_ressource() {
-    let a = maximum(&icondir_sizes(TEMOIN_48).expect("48 lisible"));
-    let b = maximum(&icondir_sizes(TEMOIN_256).expect("256 lisible"));
+    let a = maximum(&icondir_sizes(TEMOIN_48).expect("48 readable"));
+    let b = maximum(&icondir_sizes(TEMOIN_256).expect("256 readable"));
     assert_ne!(a, b);
     assert_eq!(a, SourceMax::Pixels(48));
     assert_eq!(b, SourceMax::Pixels(256));
@@ -78,7 +78,7 @@ fn le_mauvais_pas_d_entree_se_voit_a_partir_de_la_seconde_entree() {
     assert_eq!(
         icondir_sizes(&grp),
         None,
-        "le pas de 16 ne tient pas dans 34 octets"
+        "the stride of 16 does not fit in 34 bytes"
     );
 
     // And the other way round, on a buffer large enough for both: the
@@ -88,11 +88,11 @@ fn le_mauvais_pas_d_entree_se_voit_a_partir_de_la_seconde_entree() {
     ico.extend_from_slice(&[48, 48, 0, 0, 1, 0, 32, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
     ico.extend_from_slice(&[16, 16, 0, 0, 1, 0, 32, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
     assert_eq!(icondir_sizes(&ico), Some(vec![48, 16]));
-    let au_mauvais_pas = grpicondir_sizes(&ico).expect("34 octets suffisent au pas de 14");
+    let au_mauvais_pas = grpicondir_sizes(&ico).expect("34 bytes are enough at a stride of 14");
     assert_ne!(
         au_mauvais_pas,
         vec![48, 16],
-        "au pas de 14, la seconde entrée est lue au mauvais offset"
+        "at a stride of 14, the second entry is read at the wrong offset"
     );
 }
 
@@ -127,7 +127,7 @@ fn un_repertoire_a_zero_entree_se_lit_et_ne_mesure_rien() {
     let o = [0u8, 0, 1, 0, 0, 0];
     assert_eq!(icondir_sizes(&o), Some(vec![]));
     assert_eq!(
-        maximum(&icondir_sizes(&o).expect("valide")),
+        maximum(&icondir_sizes(&o).expect("valid")),
         SourceMax::NonMesuree
     );
 }

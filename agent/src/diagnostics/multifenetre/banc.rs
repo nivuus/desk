@@ -35,7 +35,7 @@ use super::voies::{VoieDeCapture, VoieDuplication, VoiePrintWindow, VoiesOuverte
 pub(super) fn executer(nom_voie: &str, count: u8, sortie: Option<&str>) -> Result<()> {
     anyhow::ensure!(
         (1..=mire::MIRES_MAX).contains(&count),
-        "MULTIFENETRE_N doit valoir 1 à {}",
+        "MULTIFENETRE_N must be 1 to {}",
         mire::MIRES_MAX
     );
 
@@ -53,7 +53,7 @@ pub(super) fn executer(nom_voie: &str, count: u8, sortie: Option<&str>) -> Resul
             .into_iter()
             .find(|s| s.nom_sortie == nom)
             .map(|s| s.rect)
-            .with_context(|| format!("sortie {nom} absente de l'énumération"))?,
+            .with_context(|| format!("output {nom} absent from the enumeration"))?,
         None => Rect {
             x: 0,
             y: 0,
@@ -75,12 +75,12 @@ pub(super) fn executer(nom_voie: &str, count: u8, sortie: Option<&str>) -> Resul
         texture_hauteur,
         facteur_horizontal = facteur.0,
         facteur_vertical = facteur.1,
-        "banc : coordonnées de fenêtre et de texture"
+        "bench: window and texture coordinates"
     );
 
     let places = disposition::tuiles(bureau, count as u32).with_context(|| {
         format!(
-            "{count} places sur un bureau {}x{}",
+            "{count} places on a {}x{} desktop",
             bureau.width, bureau.height
         )
     })?;
@@ -93,7 +93,7 @@ pub(super) fn executer(nom_voie: &str, count: u8, sortie: Option<&str>) -> Resul
         count,
         ?places,
         ?places_texture,
-        "banc : disposition retenue"
+        "bench: layout retained"
     );
 
     let mut mires = Mires::ouvrir(capture.device(), &places)?;
@@ -128,18 +128,18 @@ pub(super) fn executer(nom_voie: &str, count: u8, sortie: Option<&str>) -> Resul
             noires = compteurs.apres_recouvrement.noires,
             voisines = compteurs.apres_recouvrement.voisines,
             inconnues = compteurs.apres_recouvrement.inconnues,
-            "verdict : ÉLIMINÉE sous recouvrement — la passe d'encodage est sautée"
+            "verdict: ELIMINATED under overlap — the encoding pass is skipped"
         );
         return Ok(());
     }
     let compteurs = passe_capture(&mut mires, &mut voies, &regions, true)?;
-    compteurs::journaliser("capture+encodage", nom_voie, count, &compteurs);
+    compteurs::journaliser("capture+encoding", nom_voie, count, &compteurs);
     // The second suspect, after the encoders: the duplication source that
     // all paths share. Traced separately so that the log
     // distinguishes "died at the encoders" from "died at the duplication".
-    tracing::info!("libération des voies de capture : avant");
+    tracing::info!("releasing the capture paths: before");
     drop(voies);
-    tracing::info!("libération des voies de capture : après");
+    tracing::info!("releasing the capture paths: after");
     Ok(())
 }
 
@@ -192,7 +192,7 @@ fn ouvrir_voies(
         }
         autre => {
             anyhow::bail!(
-                "voie « {autre} » inconnue du banc — voies câblées : duplication, printwindow"
+                "path '{autre}' unknown to the bench — wired paths: duplication, printwindow"
             )
         }
     };
@@ -270,7 +270,7 @@ fn passe_capture(
             mires.recouvrir(count as u8 - 1, 0)?;
             recouvert = true;
             tracing::info!(
-                "recouvrement posé : la mire 0 est sous la mire {}",
+                "overlap set: test pattern 0 is under test pattern {}",
                 count - 1
             );
         }
@@ -319,7 +319,7 @@ fn passe_capture(
                 verdicts_faux = compteurs.apres_recouvrement.faux(),
                 before = ?compteurs.before_overlap,
                 apres = ?compteurs.apres_recouvrement,
-                "banc en cours"
+                "bench running"
             );
             prochain_journal += PERIODE_JOURNAL;
         }
@@ -335,13 +335,13 @@ fn passe_capture(
     // These traces are rare by construction (one per encoder, once per
     // pass): they do not violate the "no per-frame trace" rule.
     if !encodeurs.is_empty() {
-        tracing::info!(count = encodeurs.len(), "libération des encodeurs : début");
+        tracing::info!(count = encodeurs.len(), "releasing the encoders: start");
         for (id, encodeur) in encodeurs.drain(..).enumerate() {
-            tracing::info!(id, "libération d'un encodeur : avant");
+            tracing::info!(id, "releasing one encoder: before");
             drop(encodeur);
-            tracing::info!(id, "libération d'un encodeur : après");
+            tracing::info!(id, "releasing one encoder: after");
         }
-        tracing::info!("libération des encodeurs : terminée");
+        tracing::info!("releasing the encoders: done");
     }
     Ok(compteurs)
 }

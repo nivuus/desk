@@ -40,14 +40,14 @@ pub(super) fn sonder() -> Result<()> {
         y = before.1,
         largeur = before.2,
         hauteur = before.3,
-        "bureau virtuel AVANT création de la sortie"
+        "virtual desktop BEFORE creating the output"
     );
 
     let pilote = ouvrir_pilote()?;
     let mut sorties = Sorties::nouvelles(&pilote);
     let id = sorties
         .create(1280, 720, 60)
-        .context("création de la sortie virtuelle")?;
+        .context("creating the virtual output")?;
 
     // The driver creates the output asynchronously from the point of view of
     // the desktop space: Windows still has to attach it. We give
@@ -63,7 +63,7 @@ pub(super) fn sonder() -> Result<()> {
         largeur = apres.2,
         hauteur = apres.3,
         elargi = (apres != before),
-        "bureau virtuel APRÈS création de la sortie"
+        "virtual desktop AFTER creating the output"
     );
 
     // Find the virtual output among the DXGI outputs: it is its
@@ -75,7 +75,7 @@ pub(super) fn sonder() -> Result<()> {
             adaptateur = %s.adaptateur, nom = %s.nom_sortie,
             attachee = s.attachee_au_bureau,
             x = s.rect.x, y = s.rect.y, l = s.rect.width, h = s.rect.height,
-            "sortie DXGI énumérée"
+            "DXGI output enumerated"
         );
     }
     let cible = all
@@ -83,8 +83,8 @@ pub(super) fn sonder() -> Result<()> {
         .filter(|s| s.attachee_au_bureau && s.rect.width == 1280 && s.rect.height == 720)
         .max_by_key(|s| s.rect.x)
         .context(
-            "aucune sortie attachée de 1280x720 : la sortie virtuelle n'est pas \
-             entrée dans la topologie du bureau",
+            "no attached 1280x720 output: the virtual output did not \
+             enter the desktop topology",
         )?;
 
     // Centre of the output, in virtual desktop coordinates, converted into
@@ -129,7 +129,7 @@ pub(super) fn sonder() -> Result<()> {
         } else {
             "NON ATTEINTE"
         },
-        "injection absolue vers le centre de la sortie virtuelle"
+        "absolute injection towards the centre of the virtual output"
     );
 
     Ok(())

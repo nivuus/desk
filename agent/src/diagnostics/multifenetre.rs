@@ -87,7 +87,7 @@ pub(super) fn aiguiller() -> Result<bool> {
             return Ok(true);
         }
         Ok(_) => tracing::warn!(
-            "MULTIFENETRE_PLAFOND_SONDE posée mais vide : sonde ignorée, aiguillage poursuivi"
+            "MULTIFENETRE_PLAFOND_SONDE set but empty: probe ignored, dispatch continued"
         ),
         Err(_) => {}
     }
@@ -124,7 +124,7 @@ pub(super) fn aiguiller() -> Result<bool> {
         let count: u8 = std::env::var("MULTIFENETRE_N")
             .unwrap_or_else(|_| "8".to_string())
             .parse()
-            .context("MULTIFENETRE_N doit être un entier")?;
+            .context("MULTIFENETRE_N must be an integer")?;
         let sortie = std::env::var("MULTIFENETRE_SORTIE").ok();
         banc::executer(&voie, count, sortie.as_deref())?;
         return Ok(true);
@@ -199,7 +199,7 @@ pub(super) fn aiguiller() -> Result<bool> {
     if let Ok(texte) = std::env::var("MULTIFENETRE_VDD_CAPTURE") {
         let count: u8 = texte
             .parse()
-            .context("MULTIFENETRE_VDD_CAPTURE doit être un entier (nombre de mires)")?;
+            .context("MULTIFENETRE_VDD_CAPTURE must be an integer (number of test patterns)")?;
         capture_virtuelle::capturer_sur_virtuelle(count)?;
         return Ok(true);
     }
@@ -210,7 +210,7 @@ pub(super) fn aiguiller() -> Result<bool> {
     if let Ok(texte) = std::env::var("MULTIFENETRE_VDD_PARALLELE") {
         let count: u8 = texte
             .parse()
-            .context("MULTIFENETRE_VDD_PARALLELE doit être un entier (nombre de sorties)")?;
+            .context("MULTIFENETRE_VDD_PARALLELE must be an integer (number of outputs)")?;
         paralleles::mesurer(count)?;
         return Ok(true);
     }
@@ -221,7 +221,7 @@ pub(super) fn aiguiller() -> Result<bool> {
     if let Ok(texte) = std::env::var("MULTIFENETRE_REPRISE") {
         let count: u8 = texte
             .parse()
-            .context("MULTIFENETRE_REPRISE doit être un entier (nombre de duplications)")?;
+            .context("MULTIFENETRE_REPRISE must be an integer (number of duplications)")?;
         reprise::mesurer(count)?;
         return Ok(true);
     }
@@ -232,7 +232,7 @@ pub(super) fn aiguiller() -> Result<bool> {
     if let Ok(texte) = std::env::var("MULTIFENETRE_NVENC_CYCLES") {
         let cycles: usize = texte
             .parse()
-            .context("MULTIFENETRE_NVENC_CYCLES doit être un entier (nombre de recyclages)")?;
+            .context("MULTIFENETRE_NVENC_CYCLES must be an integer (number of recycles)")?;
         recyclage::mesurer(cycles)?;
         return Ok(true);
     }
@@ -255,17 +255,17 @@ pub(super) fn aiguiller() -> Result<bool> {
         // behind `#[cfg(windows)]` in `diagnostics.rs`.
         let (tx, rx) = std::sync::mpsc::channel();
         for (fenetre, titre) in crate::superviseur::hook::enumerer_existantes() {
-            tracing::info!(id = fenetre.0, titre, "fenêtre déjà ouverte");
+            tracing::info!(id = fenetre.0, titre, "window already open");
         }
         let _garde = crate::superviseur::hook::poser(tx)?;
-        tracing::info!("hook posé — ouvrez et fermez des fenêtres pendant 60 s");
+        tracing::info!("hook set — open and close windows for 60 s");
         let fin = std::time::Instant::now() + std::time::Duration::from_secs(60);
         while std::time::Instant::now() < fin {
             match rx.recv_timeout(std::time::Duration::from_millis(500)) {
-                Ok(evenement) => tracing::info!(?evenement, "événement de fenêtre"),
+                Ok(evenement) => tracing::info!(?evenement, "window event"),
                 Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {}
                 Err(e) => {
-                    tracing::warn!(error = %e, "canal du hook rompu");
+                    tracing::warn!(error = %e, "hook channel broken");
                     break;
                 }
             }
@@ -277,7 +277,7 @@ pub(super) fn aiguiller() -> Result<bool> {
 
 /// Full chain of an error's causes, from the outermost context to the
 /// underlying HRESULT — without it, an error contextualised by
-/// `H264Encoder::new` (e.g. `.context("partage du périphérique D3D avec
+/// `H264Encoder::new` (e.g. `.context("sharing the D3D device with
 /// l'encodeur")`) would only show that context and lose the native
 /// error code. See the equivalent defect fixed in task 6 of the probe.
 pub(super) fn causes(error: impl Into<anyhow::Error>) -> String {

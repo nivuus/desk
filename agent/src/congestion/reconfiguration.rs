@@ -150,11 +150,11 @@ mod tests {
         assert_eq!(
             decision.encode_size,
             new_ladder.barreaux()[2].size,
-            "le barreau 2 doit être conservé, à la taille de la NOUVELLE échelle"
+            "rung 2 must be kept, at the size of the NEW ladder"
         );
         assert_eq!(
             c.config.source, new_source,
-            "la source mémorisée doit suivre"
+            "the remembered source must follow"
         );
     }
 
@@ -169,7 +169,7 @@ mod tests {
         assert_eq!(
             c.echelle.barreaux().len(),
             4,
-            "précondition : 4 barreaux sur la source nominale"
+            "precondition: 4 rungs on the nominal source"
         );
 
         // Shrink to a tiny source whose ladder has
@@ -205,7 +205,7 @@ mod tests {
         assert_eq!(
             c.echelle.barreaux()[0].min_bps,
             echelle_attendue.barreaux()[0].min_bps,
-            "les seuils min_bps doivent suivre la nouvelle taille de source, pas rester ceux de 1920×1080"
+            "the min_bps thresholds must follow the new source size, not stay those of 1920×1080"
         );
     }
 
@@ -223,12 +223,12 @@ mod tests {
         let decision = c.changer_plafond(3_000_000);
         assert_eq!(
             decision.video_bitrate_bps, 3_000_000,
-            "le débit suit le nouveau plafond"
+            "the bitrate follows the new cap"
         );
         assert_eq!(
             c.echelle.barreaux().as_ptr(),
             ptr_before,
-            "l'échelle ne doit pas être reconstruite : même allocation avant et après"
+            "the ladder must not be rebuilt: same allocation before and after"
         );
     }
 
@@ -247,7 +247,7 @@ mod tests {
         let decision = c.changer_plafond(50_000_000);
         assert!(
             decision.video_bitrate_bps <= 2_000_000,
-            "le plafond ne doit jamais faire dépasser l'estimation : {}",
+            "the cap must never make the bitrate exceed the estimate: {}",
             decision.video_bitrate_bps
         );
     }
@@ -267,7 +267,7 @@ mod tests {
         let decision = c.changer_plafond(50_000_000);
         assert_eq!(
             decision.video_bitrate_bps, 50_000_000,
-            "sans estimation, le débit est une pure valeur de repli : il doit suivre le plafond"
+            "without an estimate, the bitrate is a pure fallback value: it must follow the cap"
         );
     }
 
@@ -285,11 +285,11 @@ mod tests {
                 loss: None,
                 at: base + Duration::from_secs(1),
             })
-            .expect("la première estimation doit produire une décision");
+            .expect("the first estimate must produce a decision");
         assert_eq!(
             d.adaptation,
             Adaptation::Active,
-            "précondition : l'estimation est active"
+            "precondition: the estimation is active"
         );
 
         // The link goes silent: no more estimates arrive (that is how
@@ -306,7 +306,7 @@ mod tests {
         assert_eq!(
             c.current().adaptation,
             Adaptation::Indisponible,
-            "précondition : le lien est déclaré indisponible, MAIS une estimation a déjà eu lieu"
+            "precondition: the link is declared unavailable, BUT an estimate has already happened"
         );
 
         // The current bitrate, inherited from the last real estimate — NOT the
@@ -314,13 +314,13 @@ mod tests {
         let bitrate_before = c.current().video_bitrate_bps;
         assert!(
             bitrate_before < 50_000_000,
-            "précondition : bien en dessous du plafond visé"
+            "precondition: well below the targeted cap"
         );
 
         let decision = c.changer_plafond(50_000_000);
         assert_eq!(
             decision.video_bitrate_bps, bitrate_before,
-            "une estimation périmée n'est pas « jamais reçue » : le débit ne doit pas sauter au plafond plein sur un lien qui vient de se taire"
+            "a stale estimate is not \"never received\": the bitrate must not jump to the full cap on a link that has just gone quiet"
         );
     }
 }

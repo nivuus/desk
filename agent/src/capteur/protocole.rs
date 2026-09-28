@@ -42,7 +42,7 @@ pub enum VersCapteur {
         fps: u32,
         debit: u32,
         /// The KEPT size the supervisor set on this window
-        /// (`TAILLE_FENETRE`), not the output size — which may be
+        /// (`TAILLE_FENETRE`), not the output size — which may be policy: allow-fr (env var name)
         /// much larger on a polluted registry. `(u32::MAX, u32::MAX)`
         /// when the child does not know it (single-window path, without a
         /// supervisor): `retained_size` then brings it back to the output
@@ -349,7 +349,7 @@ fn write_frame<W: Write>(sortie: &mut W, etiquette: u8, corps: &[u8]) -> io::Res
     if length > MAX_SIZE {
         return Err(io::Error::new(
             io::ErrorKind::InvalidInput,
-            format!("trame de {length} octets au-dessus de la borne {MAX_SIZE}"),
+            format!("frame of {length} bytes above the bound {MAX_SIZE}"),
         ));
     }
     sortie.write_all(&(length as u32).to_le_bytes())?;
@@ -377,7 +377,7 @@ pub fn lire_trame<R: Read>(entree: &mut R) -> io::Result<Trame> {
     if length == 0 || length > MAX_SIZE {
         return Err(io::Error::new(
             io::ErrorKind::InvalidData,
-            format!("longueur de trame aberrante : {length}"),
+            format!("absurd frame length: {length}"),
         ));
     }
     let mut corps = vec![0u8; length];
@@ -390,7 +390,7 @@ pub fn lire_trame<R: Read>(entree: &mut R) -> io::Result<Trame> {
             if corps.len() < EN_TETE_IMAGE {
                 return Err(io::Error::new(
                     io::ErrorKind::InvalidData,
-                    "trame image sans en-tête complet",
+                    "image frame without a complete header",
                 ));
             }
             let pts_90k = u64::from_le_bytes(corps[..8].try_into().expect("8 octets"));
@@ -404,7 +404,7 @@ pub fn lire_trame<R: Read>(entree: &mut R) -> io::Result<Trame> {
         // rather than make the read drift over arbitrary bytes.
         autre => Err(io::Error::new(
             io::ErrorKind::InvalidData,
-            format!("étiquette de trame inconnue : {autre}"),
+            format!("unknown frame tag: {autre}"),
         )),
     }
 }

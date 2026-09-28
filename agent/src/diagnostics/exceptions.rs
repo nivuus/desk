@@ -73,7 +73,7 @@ const CONTINUE_SEARCH: i32 = 0;
 /// Installs the filter if `AGENT_TRACE_EXCEPTIONS` is set to anything other than
 /// `0`. Silent and without effect otherwise.
 ///
-/// The log path is set through `AGENT_TRACE_EXCEPTIONS_FICHIER`; it
+/// The log path is set through `AGENT_TRACE_EXCEPTIONS_FICHIER`; it policy: allow-fr (env var name)
 /// defaults to `C:\dev\exceptions.log`, next to `agent.log`.
 pub(crate) fn installer() {
     if std::env::var("AGENT_TRACE_EXCEPTIONS").is_ok_and(|v| v != "0") {
@@ -86,7 +86,7 @@ pub(crate) fn installer() {
                 let _ = JOURNAL.set(file);
             }
             Err(e) => {
-                tracing::warn!(chemin, error = %e, "journal d'exceptions non ouvert");
+                tracing::warn!(chemin, error = %e, "exception log not opened");
                 return;
             }
         }
@@ -103,7 +103,7 @@ pub(crate) fn installer() {
             chemin,
             modules = count,
             fil_principal = FIL_PRINCIPAL.load(Ordering::SeqCst),
-            "filtre d'exception installé"
+            "exception filter installed"
         );
 
         if std::env::var("AGENT_TRACE_EXCEPTIONS_AUTOTEST").is_ok_and(|v| v != "0") {
@@ -125,7 +125,7 @@ pub(crate) fn installer() {
 /// than `0`, in addition to `AGENT_TRACE_EXCEPTIONS`.
 fn autotest() {
     tracing::warn!(
-        "AUTOTEST du filtre d'exception : violation d'accès délibérée, le processus va mourir"
+        "SELF-TEST of the exception filter: deliberate access violation, the process is about to die"
     );
     // Write to an unmapped address deliberately low and recognisable
     // in the report ("adresse fautive").
@@ -205,7 +205,7 @@ fn situer(tampon: &mut Tampon, adresse: usize) {
             }
         }
     }
-    let _ = write!(tampon, "<hors module>");
+    let _ = write!(tampon, "<outside any module>");
 }
 
 /// Writes a complete report to the dedicated log. No allocation.
@@ -223,12 +223,12 @@ unsafe fn consigner(
     let fil = unsafe { GetCurrentThreadId() };
 
     let _ = writeln!(t, "=== exception ({etiquette}) ===");
-    let _ = write!(t, "code=0x{code:08x} adresse=0x{adresse:016x} (");
+    let _ = write!(t, "code=0x{code:08x} address=0x{adresse:016x} (");
     situer(&mut t, adresse);
     let _ = writeln!(t, ")");
     let _ = writeln!(
         t,
-        "fil={} (fil principal={})",
+        "thread={} (main thread={})",
         fil,
         FIL_PRINCIPAL.load(Ordering::Relaxed)
     );
@@ -238,22 +238,19 @@ unsafe fn consigner(
         let genre = unsafe { (*enregistrement).ExceptionInformation[0] };
         let fautive = unsafe { (*enregistrement).ExceptionInformation[1] };
         let libelle = match genre {
-            0 => "lecture",
-            1 => "écriture",
-            8 => "exécution (DEP)",
-            _ => "genre inconnu",
+            0 => "read",
+            1 => "write",
+            8 => "execution (DEP)",
+            _ => "unknown kind",
         };
-        let _ = writeln!(
-            t,
-            "violation d'accès : {libelle} à l'adresse 0x{fautive:016x}"
-        );
+        let _ = writeln!(t, "access violation: {libelle} at address 0x{fautive:016x}");
     }
 
     if !contexte.is_null() {
         let c = unsafe { &*contexte };
         let _ = writeln!(
             t,
-            "registres : rip=0x{:016x} rsp=0x{:016x} rbp=0x{:016x}",
+            "registers: rip=0x{:016x} rsp=0x{:016x} rbp=0x{:016x}",
             c.Rip, c.Rsp, c.Rbp
         );
         let _ = writeln!(
@@ -275,7 +272,7 @@ unsafe fn consigner(
 
     let mut cadres: [*mut core::ffi::c_void; 62] = [std::ptr::null_mut(); 62];
     let count = unsafe { RtlCaptureStackBackTrace(0, &mut cadres, None) } as usize;
-    let _ = writeln!(t, "pile ({count} cadres, du plus récent au plus ancien) :");
+    let _ = writeln!(t, "stack ({count} frames, from most recent to oldest):");
     for (i, cadre) in cadres.iter().take(count).enumerate() {
         let a = *cadre as usize;
         let _ = write!(t, "  #{i:02} 0x{a:016x}  ");
@@ -325,7 +322,7 @@ unsafe extern "system" fn filtre_vectorise(infos: *mut EXCEPTION_POINTERS) -> i3
         return CONTINUE_SEARCH;
     }
     if autorise() {
-        unsafe { consigner("première chance", enregistrement, (*infos).ContextRecord) };
+        unsafe { consigner("first chance", enregistrement, (*infos).ContextRecord) };
         relacher();
     }
     CONTINUE_SEARCH
@@ -346,7 +343,7 @@ unsafe extern "system" fn filtre_final(infos: *const EXCEPTION_POINTERS) -> i32 
     // whatever it is, and it is exactly the one we want to see.
     RAPPORTS.store(0, Ordering::SeqCst);
     if autorise() {
-        unsafe { consigner("NON GÉRÉE — fatale", enregistrement, (*infos).ContextRecord) };
+        unsafe { consigner("UNHANDLED — fatal", enregistrement, (*infos).ContextRecord) };
         relacher();
     }
     CONTINUE_SEARCH

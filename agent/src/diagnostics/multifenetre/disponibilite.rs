@@ -10,7 +10,7 @@ use anyhow::Result;
 /// the whole sizing of paths 2 and 3 depends on it.
 pub(super) fn relever_dxgi() -> Result<()> {
     let sorties = crate::capture::enumerer_sorties()?;
-    tracing::info!(count = sorties.len(), "sorties DXGI relevées");
+    tracing::info!(count = sorties.len(), "DXGI outputs recorded");
     for sortie in &sorties {
         tracing::info!(
             adaptateur = %sortie.adaptateur,
@@ -28,8 +28,8 @@ pub(super) fn relever_dxgi() -> Result<()> {
     let attachees = sorties.iter().filter(|s| s.attachee_au_bureau).count();
     tracing::info!(
         attachees,
-        "verdict : {} sortie(s) attachée(s) au bureau — la voie « un moniteur \
-         par fenêtre » exige d'en obtenir 8",
+        "verdict: {} output(s) attached to the desktop — the \"one monitor \
+         per window\" path requires getting 8 of them",
         attachees
     );
     Ok(())

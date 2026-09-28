@@ -60,7 +60,7 @@ fn ouvrir_duplications(
                     nom = %sortie.nom_sortie,
                     texture_largeur = dimensions.0,
                     texture_hauteur = dimensions.1,
-                    "duplication ouverte"
+                    "duplication opened"
                 );
                 textures.push(dimensions);
                 sources.push(source);
@@ -76,7 +76,7 @@ fn ouvrir_duplications(
                     rang = rang + 1,
                     nom = %sortie.nom_sortie,
                     causes = %chain,
-                    "duplication REFUSÉE — c'est le résultat de la mesure, pas une panne"
+                    "duplication REFUSED — that is the result of the measurement, not a failure"
                 );
                 let nom = sortie.nom_sortie.clone();
                 // `Err(error).with_context(…)` and not `bail!`: the
@@ -84,7 +84,7 @@ fn ouvrir_duplications(
                 // of the answer to the question asked.
                 return Err(error).with_context(|| {
                     format!(
-                        "{rang} duplications DXGI ouvertes de front, la {}ᵉ refusée (sortie {nom})",
+                        "{rang} DXGI duplications opened side by side, number {} refused (output {nom})",
                         rang + 1
                     )
                 });
@@ -139,7 +139,7 @@ fn passe_capture(
                     60,
                     8_000_000,
                 )
-                .with_context(|| format!("encodeur n°{}", id + 1))?,
+                .with_context(|| format!("encoder no. {}", id + 1))?,
             );
         }
     }
@@ -192,7 +192,7 @@ fn passe_capture(
                 images = ?compteurs.images,
                 unites = ?compteurs.unites,
                 verdicts = ?compteurs.apres_recouvrement,
-                "banc parallèle en cours"
+                "parallel bench running"
             );
             prochain_journal += PERIODE_JOURNAL;
         }
@@ -230,16 +230,16 @@ fn passe_capture(
             .collect();
         tracing::info!(
             nv12_ecartees = ?ecartees,
-            "images converties puis écartées, encodeur par encodeur — l'écart entre \
-             « images » et « unites » se lit ici, pas dans le parallélisme"
+            "images converted then discarded, encoder by encoder — the gap between \
+             \"images\" and \"unites\" is read here, not in the parallelism"
         );
-        tracing::info!(count = encodeurs.len(), "libération des encodeurs : début");
+        tracing::info!(count = encodeurs.len(), "releasing the encoders: start");
         for (id, encodeur) in encodeurs.drain(..).enumerate() {
-            tracing::info!(id, "libération d'un encodeur : avant");
+            tracing::info!(id, "releasing one encoder: before");
             drop(encodeur);
-            tracing::info!(id, "libération d'un encodeur : après");
+            tracing::info!(id, "releasing one encoder: after");
         }
-        tracing::info!("libération des encodeurs : terminée");
+        tracing::info!("releasing the encoders: done");
     }
     Ok(compteurs)
 }
@@ -266,14 +266,14 @@ pub(super) fn executer_passes(garde: &mut Garde<'_>, virtuelles: &[SortieDxgi]) 
     // was a gap without a single ping (11.1 s measured in round 1, control and
     // opening of the duplications included).
     compteurs::passe_temoin(&mut mires, Some(garde))?;
-    constater_survie("témoin", virtuelles);
+    constater_survie("control", virtuelles);
 
     let (mut voies, places_texture) = ouvrir_duplications(garde, virtuelles, &mires)?;
     tracing::info!(
         count = voies.len(),
         ?places_bureau,
         ?places_texture,
-        "les N duplications sont ouvertes de front"
+        "the N duplications are opened side by side"
     );
 
     // Key for reading the log. `compteurs::journaliser` carries the labels of the
@@ -285,23 +285,23 @@ pub(super) fn executer_passes(garde: &mut Garde<'_>, virtuelles: &[SortieDxgi]) 
     let count = voies.len() as u8;
     // A survival check AFTER EACH PASS, and not a single one at the end: an
     // output removed during the "capture" pass would only be noticed after
-    // "capture+encodage", and both surveys would be equally suspect
+    // "capture+encoding", and both surveys would be equally suspect
     // with no way of saying which one is affected.
     let releve = passe_capture(garde, &mut mires, &mut voies, &places_texture, false)?;
-    compteurs::journaliser("capture", "duplication-parallele", count, &releve);
+    compteurs::journaliser("capture", "parallel-duplication", count, &releve);
     constater_survie("capture", virtuelles);
 
     let releve = passe_capture(garde, &mut mires, &mut voies, &places_texture, true)?;
-    compteurs::journaliser("capture+encodage", "duplication-parallele", count, &releve);
-    constater_survie("capture+encodage", virtuelles);
+    compteurs::journaliser("capture+encoding", "parallel-duplication", count, &releve);
+    constater_survie("capture+encoding", virtuelles);
 
     // The duplications were the second suspect of the inherited defect, after the
     // encoders. The defect has since been identified by its stack (a MFT work
     // item still in flight, `encode::arret`) and fixed: these two
     // traces no longer look for a culprit, they bracket the release — a
     // crash here would otherwise stay silent.
-    tracing::info!("libération des voies de capture : avant");
+    tracing::info!("releasing the capture paths: before");
     drop(voies);
-    tracing::info!("libération des voies de capture : après");
+    tracing::info!("releasing the capture paths: after");
     Ok(())
 }

@@ -9,7 +9,7 @@
 //! ✅ **It no longer is, and it is this module that closed it** (31 July
 //! 2026): the path is **accepted** — 90.1 fps per window in capture+encoding
 //! up to N=8, zero wrong verdicts, eight duplications open side by side
-//! (`docs/superpowers/plans/2026-07-31-duplications-paralleles-resultats.md`).
+//! (`docs/superpowers/plans/2026-07-31-duplications-paralleles-resultats.md`). policy: allow-fr (file path)
 //! **One run per rank, hence no rate**, and nothing beyond 8 outputs.
 //!
 //! Second difference from everything before: each output is 1280×720, so
@@ -62,11 +62,11 @@ use crate::mire;
 pub(super) fn mesurer(count: u8) -> Result<()> {
     anyhow::ensure!(
         (1..=mire::MIRES_MAX).contains(&count),
-        "MULTIFENETRE_VDD_PARALLELE doit valoir 1 à {}",
+        "MULTIFENETRE_VDD_PARALLELE must be 1 to {}",
         mire::MIRES_MAX
     );
 
-    let before = relever_topologie("avant création")?;
+    let before = relever_topologie("before creation")?;
     let names_before = noms_attaches(&before);
     let connues: HashSet<String> = before
         .iter()
@@ -83,12 +83,12 @@ pub(super) fn mesurer(count: u8) -> Result<()> {
         for rang in 1..=count {
             let id = sorties
                 .create(largeur, hauteur, hertz)
-                .with_context(|| format!("création de la sortie virtuelle n°{rang}"))?;
-            tracing::info!(rang, id, "sortie virtuelle créée");
+                .with_context(|| format!("creating virtual output no. {rang}"))?;
+            tracing::info!(rang, id, "virtual output created");
         }
         attendre_en_pinguant(&pilote, DELAI_TOPOLOGIE)?;
 
-        let apres = relever_topologie("après création")?;
+        let apres = relever_topologie("after creation")?;
         let virtuelles = designer_sorties_neuves(&apres, &connues, count)?;
         // Built right after `attendre_en_pinguant`, hence right after the
         // last known ping. The seam between the two is NOT counted in
@@ -104,13 +104,13 @@ pub(super) fn mesurer(count: u8) -> Result<()> {
         // output could have been taken back under it.
         tracing::info!(
             intervalle_ping_max_ms = garde.intervalle_max().as_millis() as u64,
-            "chien de garde : plus grand écart entre deux battements sur toute la mesure"
+            "watchdog: largest gap between two beats over the whole measurement"
         );
         // Last finding, that of the ERROR PATH: `executer_passes`
         // already checks survival after each of its passes, but a `?`
         // exits it without going through these checks. This one runs whatever
         // happens, and it is the only one covering an abandonment midway.
-        constater_survie("bilan", &virtuelles);
+        constater_survie("summary", &virtuelles);
         issue
     };
 
@@ -118,22 +118,25 @@ pub(super) fn mesurer(count: u8) -> Result<()> {
     // of THIS process, beyond that only the inter-process purge will reach them.
     let rejoues = crate::moniteurs_virtuels::purge::rejouer_purge_due(&pilote);
     if rejoues > 0 {
-        tracing::info!(rejoues, "retraits dus rejoués avec succès après la garde");
+        tracing::info!(
+            rejoues,
+            "due removals replayed successfully after the guard"
+        );
     }
 
     // A virtual output outlives the process. This check remains that of the
     // measuring process, hence judge and party — the check that counts is a
     // `MULTIFENETRE_DXGI=1` survey from a fresh process, afterwards.
     std::thread::sleep(DELAI_TOPOLOGIE);
-    let final_ = relever_topologie("après destruction")?;
+    let final_ = relever_topologie("after destruction")?;
     let noms_final = noms_attaches(&final_);
     if noms_final == names_before {
-        tracing::info!(noms = ?noms_final, "état initial restauré — mêmes sorties, nommément");
+        tracing::info!(noms = ?noms_final, "initial state restored — same outputs, by name");
     } else {
         tracing::error!(
             names_before = ?names_before,
             noms_apres = ?noms_final,
-            "la topologie n'est PAS revenue à son état initial — purge requise"
+            "the topology did NOT return to its initial state — purge required"
         );
     }
 
@@ -168,8 +171,8 @@ pub(super) fn designer_sorties_neuves(
     let noms: Vec<&str> = neuves.iter().map(|s| s.nom_sortie.as_str()).collect();
     anyhow::ensure!(
         neuves.len() == count as usize,
-        "{} sorties DXGI neuves après création de {count} ({noms:?}) — \
-         une addition ou un retrait externe rend la mesure inimputable",
+        "{} new DXGI outputs after creating {count} ({noms:?}) — \
+         an external addition or removal makes the measurement unattributable",
         neuves.len()
     );
     // An output enumerated but NOT attached to the desktop is not capturable:
@@ -184,8 +187,8 @@ pub(super) fn designer_sorties_neuves(
         .collect();
     anyhow::ensure!(
         detachees.is_empty(),
-        "{} sortie(s) neuve(s) NON attachée(s) au bureau ({detachees:?}) — \
-         le pilote a publié la sortie mais Windows n'y compose rien",
+        "{} new output(s) NOT attached to the desktop ({detachees:?}) — \
+         the driver published the output but Windows composes nothing on it",
         detachees.len()
     );
     for sortie in &neuves {
@@ -199,7 +202,7 @@ pub(super) fn designer_sorties_neuves(
             y = sortie.rect.y,
             largeur_annoncee = sortie.rect.width,
             hauteur_annoncee = sortie.rect.height,
-            "sortie virtuelle retenue"
+            "virtual output retained"
         );
     }
     Ok(neuves)
@@ -233,7 +236,7 @@ fn constater_survie(passe: &str, virtuelles: &[SortieDxgi]) {
             tracing::error!(
                 passe,
                 causes = %super::causes(error),
-                "topologie illisible après la passe — survie des sorties inconnue"
+                "topology unreadable after the pass — survival of the outputs unknown"
             );
             return;
         }
@@ -263,8 +266,8 @@ fn constater_survie(passe: &str, virtuelles: &[SortieDxgi]) {
         tracing::info!(
             passe,
             count = virtuelles.len(),
-            "les N sorties virtuelles sont encore là ET attachées — les verdicts de cette \
-             passe portent bien sur elles"
+            "the N virtual outputs are still there AND attached — the verdicts of this \
+             pass are indeed about them"
         );
         return;
     }
@@ -272,17 +275,17 @@ fn constater_survie(passe: &str, virtuelles: &[SortieDxgi]) {
         tracing::error!(
             passe,
             ?disparues,
-            "des sorties virtuelles ont DISPARU pendant cette passe — leurs verdicts ne sont \
-             pas imputables à Windows, elles n'existaient plus"
+            "virtual outputs DISAPPEARED during this pass — their verdicts cannot \
+             be blamed on Windows, they no longer existed"
         );
     }
     if !detachees.is_empty() {
         tracing::error!(
             passe,
             ?detachees,
-            "des sorties virtuelles ont été DÉTACHÉES du bureau pendant cette passe — encore \
-             énumérables, mais Windows n'y compose plus : une image noire y serait imputable \
-             au détachement, pas à la voie de capture"
+            "virtual outputs were DETACHED from the desktop during this pass — still \
+             enumerable, but Windows no longer composes on them: a black image there would be due \
+             to the detachment, not to the capture path"
         );
     }
 }

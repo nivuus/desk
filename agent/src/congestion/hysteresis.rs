@@ -18,7 +18,7 @@ const DELAI_DESCENTE: Duration = Duration::from_secs(2);
 /// `adsl` profile (8 Mb/s, 30 ms ±5 ms, no loss): 4 rung changes
 /// observed in 49 s, whereas the expected property is "at most two in
 /// 60 s". Evidence traced in the agent's log: a rise back to the
-/// full rung (764×242 → 764×484, `size d'encodage changée` at
+/// full rung (764×242 → 764×484, `encoding size changed` at
 /// 16:24:09.545) is followed, one second later, by a ×10 collapse of
 /// the BWE estimate in a single observation
 /// (`estimation=Some(6639480)` at 16:24:10 then `estimation=Some(619982)` at
@@ -43,7 +43,7 @@ const SEJOUR_MINIMAL: Duration = Duration::from_secs(5);
 /// The estimation subsystem deliberately starts low and probes upwards
 /// (see `ESTIMATION_INITIALE_BPS` on the transport side): during this rise, the
 /// available bitrate is low without the link being so. Without this window, any
-/// session on a 1080p source would announce "Image réduite par le réseau" on
+/// session on a 1080p source would announce "Image reduced by the network" on
 /// a perfect link, as a persistent banner — measured: the ramp reaches 8.7 to
 /// 17.7 Mb/s in 1 to 3 s on gigabit.
 ///

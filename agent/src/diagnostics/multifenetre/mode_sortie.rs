@@ -4,7 +4,7 @@
 //! ⚠️ **The criterion judges on the DXGI READ-BACK, never on the return code.**
 //! `mode-sortie-1728x1080.log` shows the `CDS_UPDATEREGISTRY|CDS_NORESET`
 //! then `CDS_RESET` idiom announcing `0` on an output that did not move by one pixel:
-//! a refusal disguised as a success. And D8's first P1 verdict was `REÇU`
+//! a refusal disguised as a success. And D8's first P1 verdict was `RECEIVED`
 //! returned by a criterion that could not return the other value — the probe
 //! asked the output for the size it already had.
 //!
@@ -56,7 +56,7 @@
 //!
 //! The first run returned "P1 RECU" with no value: it asked
 //! the output for the size it **already** had at creation time
-//! (`sortie moment="après création" … largeur=1920 hauteur=1080`, whereas
+//! (`sortie moment="after creation" … largeur=1920 hauteur=1080`, whereas
 //! the probe believed it had created 1280×720 — probable persistence in the
 //! registry of a `CDS_UPDATEREGISTRY` from an earlier run). The criterion
 //! `last_size == cible` was therefore true BEFORE any attempt:
@@ -68,7 +68,7 @@
 //! **The remedy fits in two points, both applied below:**
 //! 1. the current size is read through DXGI (`GetDesc`/`DesktopCoordinates`,
 //!    never WMI) **before any attempt**, under an unambiguous key
-//!    (`taille_avant_tentative_*`), and compared with the target;
+//!    (`size_before_attempt`), and compared with the target;
 //! 2. the target is no longer a fixed pair received as is: it is chosen
 //!    dynamically among the modes `EnumDisplaySettingsExW` advertises, **by
 //!    excluding the current size** (`choisir_cible`). If no mode
@@ -208,8 +208,8 @@ pub(super) fn choisir_cible(
 pub(super) fn executer(consigne: &str) -> Result<()> {
     let (l, h) = consigne.split_once('x').with_context(|| {
         format!(
-            "MULTIFENETRE_MODE_SORTIE='{consigne}' invalide, attendu <largeur>x<hauteur> \
-             (par exemple 1920x1080)"
+            "MULTIFENETRE_MODE_SORTIE='{consigne}' invalid, expected <width>x<height> \
+             (for example 1920x1080)"
         )
     })?;
     // `demande`: the operator's preference, NOT necessarily the retained
@@ -219,15 +219,15 @@ pub(super) fn executer(consigne: &str) -> Result<()> {
     let demande: (u32, u32) = (
         l.trim()
             .parse()
-            .context("largeur invalide dans MULTIFENETRE_MODE_SORTIE")?,
+            .context("invalid width in MULTIFENETRE_MODE_SORTIE")?,
         h.trim()
             .parse()
-            .context("hauteur invalide dans MULTIFENETRE_MODE_SORTIE")?,
+            .context("invalid height in MULTIFENETRE_MODE_SORTIE")?,
     );
 
     // Surveyed BEFORE any creation, like the neighbouring probes: without it, a
     // manual restoration after a crash would be done blindly.
-    let before = relever_topologie("avant création")?;
+    let before = relever_topologie("before creation")?;
     let names_before = noms_attaches(&before);
     let known_before_all: HashSet<String> = before
         .iter()
@@ -246,7 +246,7 @@ pub(super) fn executer(consigne: &str) -> Result<()> {
         // --- The output UNDER TEST ---
         let id = sorties.create(largeur_creation, hauteur_creation, hertz)?;
         attendre_en_pinguant(&pilote, DELAI_TOPOLOGIE)?;
-        let apres_creation = relever_topologie("après création (sortie testée)")?;
+        let apres_creation = relever_topologie("after creation (tested output)")?;
         let virtuelle = designer_sortie_neuve(&apres_creation, &known_before_all, id)?;
         let nom_sortie = virtuelle.nom_sortie.clone();
         // `size_before_attempt`: the size ACTUALLY read by DXGI right
@@ -263,7 +263,7 @@ pub(super) fn executer(consigne: &str) -> Result<()> {
             hauteur_demandee_a_la_creation = hauteur_creation,
             width_before_attempt = size_before_attempt.0,
             height_before_attempt = size_before_attempt.1,
-            "sortie de sonde créée -- taille relue par DXGI avant toute tentative de changement"
+            "probe output created -- size read back by DXGI before any change attempt"
         );
         let mut connues_a_ce_point = known_before_all.clone();
         connues_a_ce_point.insert(nom_sortie.clone());
@@ -275,8 +275,8 @@ pub(super) fn executer(consigne: &str) -> Result<()> {
         // sub-block D9 (see `capteur/plein_ecran.rs`); this probe keeps its
         // measurement value.
         let duplication = DesktopCapture::sur_sortie(&nom_sortie)
-            .context("ouverture de la duplication sur la sortie virtuelle neuve")?;
-        tracing::info!(sortie = %nom_sortie, "duplication ouverte et TENUE pendant les tentatives");
+            .context("opening the duplication on the new virtual output")?;
+        tracing::info!(sortie = %nom_sortie, "duplication opened and HELD during the attempts");
 
         // --- Two NEIGHBOURS, for side unknown no. 2 (D8): how many
         // access losses does a mode change inflict on them? The
@@ -315,7 +315,7 @@ pub(super) fn executer(consigne: &str) -> Result<()> {
             name_before = %nom_sortie,
             nom_apres = %nom_apres,
             nom_conserve = nom_sortie == nom_apres,
-            "inconnues annexes relevées au même moment que l'éliminatoire"
+            "side unknowns recorded at the same moment as the elimination round"
         );
         // The name that replaces `nom_sortie` (if it changed -- which the line
         // above just measured) is not yet known to ANYONE: neither to
@@ -324,7 +324,7 @@ pub(super) fn executer(consigne: &str) -> Result<()> {
         // new entries -- the renamed name AND the control -- and would fail with
         // "external addition" (Important 2, review of task 1)
         // precisely when the renaming is the phenomenon under study.
-        if nom_apres != "<disparue>" {
+        if nom_apres != "<gone>" {
             connues_a_ce_point.insert(nom_apres.clone());
         }
 
@@ -332,7 +332,7 @@ pub(super) fn executer(consigne: &str) -> Result<()> {
         // it could come from the chosen mode. The control replays the SAME
         // gesture on a fresh output, duplication closed.
         drop(duplication);
-        tracing::info!("duplication relâchée — début du témoin sans duplication");
+        tracing::info!("duplication released — start of the control without duplication");
         // The neighbours have nothing left to probe: the control bears on the
         // duplication of the TESTED output, not on that of the neighbours.
         drop(voisines);
@@ -342,7 +342,7 @@ pub(super) fn executer(consigne: &str) -> Result<()> {
                 let combo_temoin = combo_pour_temoin(result.gagnante);
                 let id_temoin = sorties.create(largeur_creation, hauteur_creation, hertz)?;
                 attendre_en_pinguant(&pilote, DELAI_TOPOLOGIE)?;
-                let apres_temoin = relever_topologie("après création (témoin)")?;
+                let apres_temoin = relever_topologie("after creation (control)")?;
                 // PERSISTENCE (task 2bis, D9): did the output under test
                 // keep, at the moment when ONE MORE virtual output has just
                 // been created, the size the round had just given it?
@@ -366,8 +366,8 @@ pub(super) fn executer(consigne: &str) -> Result<()> {
                 rejouer_temoin(&pilote, &nom_temoin, before_witness, cible, &combo_temoin)?;
             }
             None => tracing::info!(
-                "témoin non joué : le tour éliminatoire n'a désigné aucune cible mesurable \
-                 (P1 NON MESURABLE)"
+                "control not played: the elimination round designated no measurable target \
+                 (P1 NOT MEASURABLE)"
             ),
         }
 
@@ -381,7 +381,10 @@ pub(super) fn executer(consigne: &str) -> Result<()> {
     // reach them.
     let rejoues = crate::moniteurs_virtuels::purge::rejouer_purge_due(&pilote);
     if rejoues > 0 {
-        tracing::info!(rejoues, "retraits dus rejoués avec succès après la garde");
+        tracing::info!(
+            rejoues,
+            "due removals replayed successfully after the guard"
+        );
     }
 
     // A virtual output outlives the process. This check remains that of the
@@ -389,17 +392,17 @@ pub(super) fn executer(consigne: &str) -> Result<()> {
     // `MULTIFENETRE_DXGI=1` survey from a FRESH process, afterwards, by
     // comparing SETS OF NAMES and never cardinalities.
     std::thread::sleep(DELAI_TOPOLOGIE);
-    let final_ = relever_topologie("après destruction")?;
+    let final_ = relever_topologie("after destruction")?;
     let noms_final = noms_attaches(&final_);
     if noms_final == names_before && final_.len() == before.len() {
-        tracing::info!(noms = ?noms_final, "état initial restauré — mêmes sorties, nommément");
+        tracing::info!(noms = ?noms_final, "initial state restored — same outputs, by name");
     } else {
         tracing::error!(
             names_before = ?names_before,
             noms_apres = ?noms_final,
             total_before = before.len(),
             total_apres = final_.len(),
-            "la topologie n'est PAS revenue à son état initial — purge requise"
+            "the topology did NOT return to its initial state — purge required"
         );
     }
 

@@ -25,8 +25,8 @@ pub enum Mode {
     /// `0`: watch disarmed — **exactly G1's behaviour.**
     /// It is the RED of criterion ①. ✅ **PLAYED, and it is RED**:
     /// **29,997 ms and 29,966 ms** against **960 ms and 999 ms** on the shipped arm, as
-    /// `declencheur="periode"` against `"notification"`, two runs per arm.
-    /// ⚠️ And **no `racine surveillée` line appears** in this state: the
+    /// `declencheur="period"` against `"notification"`, two runs per arm.
+    /// ⚠️ And **no `root watched` line appears** in this state: the
     /// thread does not start. **It is that count that discriminates, never the mode's
     /// trace.**
     Desarmee,
@@ -56,7 +56,7 @@ pub enum Mode {
     /// 🔵 **THIS MODE NONETHELESS REMAINS THE INDISPENSABLE HALF OF THE ONLY SET-UP THAT
     /// IS DISCRIMINATING**: `seule` **plus** `APPS_FAUTE=muette`. Measured,
     /// two runs per arm — the armed period catches up (`cles=157`,
-    /// `declencheur="periode"`), `seule` **never** catches up (`cles=156`,
+    /// `declencheur="period"`), `seule` **never** catches up (`cles=156`,
     /// for ninety seconds). **It is the measurement that justifies the
     /// specification's decision D1, and it did not exist before G4.**
     ///
@@ -151,11 +151,11 @@ mod tests {
     fn an_unknown_value_keeps_the_shipped_behaviour_and_names_itself() {
         for value in ["seul", "SEULE", "", "00", "0 ", "sans_rebond", "false"] {
             let (mode, inconnue) = Mode::lire(Some(value));
-            assert_eq!(mode, Mode::Armee, "{value:?} doit retenir le mode livré");
+            assert_eq!(mode, Mode::Armee, "{value:?} must keep the shipped mode");
             assert_eq!(
                 inconnue.as_deref(),
                 Some(value),
-                "{value:?} doit être NOMMÉE au journal"
+                "{value:?} must be NAMED in the log"
             );
         }
     }
@@ -168,7 +168,7 @@ mod tests {
         assert!(!Mode::Desarmee.surveille());
         assert!(
             Mode::Desarmee.periodique(),
-            "`0` ne coupe PAS la source de vérité"
+            "`0` does NOT cut the source of truth"
         );
         assert!(Mode::SansRebond.surveille() && !Mode::SansRebond.rebond());
         assert!(Mode::SansRebond.periodique());

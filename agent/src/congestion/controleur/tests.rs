@@ -49,14 +49,14 @@ fn une_session_muette_ne_retranche_plus_le_budget_audio() {
 
     assert!(
         sans.current().video_bitrate_bps > with.current().video_bitrate_bps,
-        "sans piste audio, le budget video doit etre plus grand : {} vs {}",
+        "without an audio track, the video budget must be larger: {} vs {}",
         sans.current().video_bitrate_bps,
         with.current().video_bitrate_bps
     );
     assert_eq!(
         sans.current().video_bitrate_bps - with.current().video_bitrate_bps,
         crate::opus::BITRATE_BPS as u32,
-        "l'ecart doit valoir exactement le budget audio"
+        "the gap must be exactly the audio budget"
     );
 }
 
@@ -66,7 +66,7 @@ fn la_premiere_estimation_rend_l_adaptation_active() {
     let mut c = Controleur::new(config(), base);
     let d = c
         .observer(obs(Some(9_000_000), None, base + Duration::from_secs(1)))
-        .expect("la première estimation doit produire une décision");
+        .expect("the first estimate must produce a decision");
 
     assert_eq!(d.adaptation, Adaptation::Active);
     // 9 Mb/s × 0,9 − 128 kb/s d'audio = 7,972 Mb/s.
@@ -81,7 +81,7 @@ fn le_debit_ne_bouge_pas_pour_moins_de_dix_pour_cent_d_ecart() {
     let base = t0();
     let mut c = Controleur::new(config(), base);
     c.observer(obs(Some(9_000_000), None, base + Duration::from_secs(1)))
-        .expect("première décision");
+        .expect("first decision");
 
     // +5 %: under the threshold, no decision.
     assert_eq!(
@@ -100,10 +100,10 @@ fn le_debit_ne_depasse_jamais_le_plafond() {
     let mut c = Controleur::new(config(), base);
     let d = c
         .observer(obs(Some(80_000_000), None, base + Duration::from_secs(1)))
-        .expect("décision");
+        .expect("decision");
     assert_eq!(
         d.video_bitrate_bps, 12_000_000,
-        "le plafond BITRATE doit borner"
+        "the BITRATE cap must bound"
     );
 }
 
@@ -128,12 +128,8 @@ fn une_contrainte_durable_fait_descendre_un_barreau_et_marque_la_degradation() {
             derniere = Some(d);
         }
     }
-    let d = derniere.expect("une décision devait tomber");
-    assert_ne!(
-        d.encode_size,
-        (1920, 1080),
-        "la résolution devait descendre"
-    );
+    let d = derniere.expect("a decision had to come");
+    assert_ne!(d.encode_size, (1920, 1080), "the resolution had to drop");
     assert_eq!(d.qualite, Qualite::Degradee);
 }
 
@@ -150,7 +146,7 @@ fn below_the_floor_the_quality_is_declared_insufficient() {
             derniere = Some(d);
         }
     }
-    let d = derniere.expect("une décision devait tomber");
+    let d = derniere.expect("a decision had to come");
     assert_eq!(d.qualite, Qualite::Insuffisante);
     // We went down to the last rung, no lower: frame rate is
     // never sacrificed automatically.
@@ -169,7 +165,7 @@ fn la_perte_est_convertie_en_pourcentage_et_plafonnee_a_vingt_cinq() {
             Some(0.03),
             base + Duration::from_secs(1),
         ))
-        .expect("décision");
+        .expect("decision");
     assert_eq!(d.opus_loss_perc, 3);
 
     // 60 % loss: capped at 25, beyond which redundancy costs
@@ -180,7 +176,7 @@ fn la_perte_est_convertie_en_pourcentage_et_plafonnee_a_vingt_cinq() {
             Some(0.60),
             base + Duration::from_secs(3),
         ))
-        .expect("décision");
+        .expect("decision");
     assert_eq!(d.opus_loss_perc, 25);
 }
 
@@ -208,17 +204,17 @@ fn la_qualite_ne_ment_pas_pendant_la_fenetre_d_hysteresis() {
             None,
             base + Duration::from_millis(7500),
         ))
-        .expect("le débit a assez bougé pour produire une décision");
+        .expect("the bitrate moved enough to produce a decision");
 
     assert_eq!(
         d.encode_size,
         (1920, 1080),
-        "l'hystérésis n'a pas eu le temps de faire descendre la résolution"
+        "the hysteresis did not have time to bring the resolution down"
     );
     assert_ne!(
         d.qualite,
         Qualite::Bonne,
-        "le débit ne finance plus la résolution encore appliquée : la qualité ne doit pas mentir"
+        "the bitrate no longer funds the resolution still applied: the quality must not lie"
     );
 }
 
@@ -228,7 +224,7 @@ fn l_amorcage_ne_declenche_pas_de_fausse_alerte() {
     // 0 requires 6.22 Mb/s, but the BWE deliberately starts low
     // (`ESTIMATION_INITIALE_BPS` = 2.5 Mb/s on the transport side) and probes
     // upwards. Without a bootstrap window, the very first observation
-    // would announce "Image réduite par le réseau" on an otherwise
+    // would announce "Image reduced by the network" on an otherwise
     // perfect link.
     let base = t0();
     let mut c = Controleur::new(config(), base);
@@ -237,17 +233,17 @@ fn l_amorcage_ne_declenche_pas_de_fausse_alerte() {
     // available (2.5 M × 0.9 − 128 k), well under the minimum of rung 0.
     let d = c
         .observer(obs(Some(2_500_000), None, base + Duration::from_secs(1)))
-        .expect("le débit a assez bougé depuis le plafond pour produire une décision");
+        .expect("the bitrate moved enough since the cap to produce a decision");
 
     assert_eq!(
         d.qualite,
         Qualite::Bonne,
-        "la rampe de démarrage du BWE ne doit pas être prise pour une dégradation"
+        "the BWE start-up ramp must not be taken for a degradation"
     );
     assert_eq!(
         d.encode_size,
         (1920, 1080),
-        "aucune descente ne doit s'engager pendant l'amorçage"
+        "no descent must start during the warm-up"
     );
 
     // A second, equally low estimate, still within the bootstrap
@@ -270,15 +266,15 @@ fn l_amorcage_ne_declenche_pas_de_fausse_alerte() {
             derniere = Some(d);
         }
     }
-    let d = derniere.expect("une décision devait tomber une fois l'amorçage terminé");
+    let d = derniere.expect("a decision had to come once the warm-up was over");
     assert_eq!(
         d.qualite,
         Qualite::Degradee,
-        "un débit durablement insuffisant hors amorçage doit dégrader normalement"
+        "a durably insufficient bitrate outside the warm-up must degrade normally"
     );
     assert_ne!(
         d.encode_size,
         (1920, 1080),
-        "la résolution devait finir par descendre"
+        "the resolution had to end up dropping"
     );
 }

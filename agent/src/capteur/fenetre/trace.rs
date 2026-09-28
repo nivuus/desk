@@ -37,7 +37,7 @@ pub(super) fn tracer_les_compteurs(source: Option<&WindowsSource>) {
     if trace_source_active() {
         if let Some(source) = source {
             let (ticks, capturees, produites) = source.telemetrie.lire();
-            tracing::info!(ticks, capturees, produites, "compteurs de capture");
+            tracing::info!(ticks, capturees, produites, "capture counters");
         }
     }
 }

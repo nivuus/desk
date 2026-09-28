@@ -68,7 +68,7 @@ pub(super) fn distribuer(garde: &mut MutexGuard<'static, Etat>, annonce: Annonce
     // counted as two events — a home-grown trap of D6, where each
     // rung change produced two lines with the same timestamp and
     // counted double in all acceptance counters.
-    tracing::info!(octets, refus = texte.is_none(), "presse-papier de la VM");
+    tracing::info!(octets, refus = texte.is_none(), "VM clipboard");
 
     // The memory of the current state, for windows that will attach
     // LATER (D-P3-2, agent half). Set at EVERY announcement, refusals included —
@@ -148,7 +148,7 @@ pub(super) fn write(texte: &str) -> Result<()> {
 /// change.
 pub(super) fn write_with(texte: &str, ecrivain: impl FnOnce(&str) -> Result<u32>) -> Result<()> {
     if !crate::presse_papier::actif() {
-        anyhow::bail!("presse-papier desarme (PRESSE_PAPIER=0)");
+        anyhow::bail!("clipboard disarmed (PRESSE_PAPIER=0)");
     }
     let seq = ecrivain(texte)?;
     // ⚠️ The lock is taken ONLY AFTER the Win32 I/O, never around it:
@@ -235,7 +235,7 @@ pub(super) fn emit_current_state(garde: &mut MutexGuard<'static, Etat>, session:
     // repository. We only log its SIZE, and whether it is a
     // refusal — exactly like `distribuer`.
     tracing::info!(%session, octets, refus = texte.is_none(),
-        "etat courant du presse-papier emis a l'inscription");
+        "current clipboard state emitted at registration");
     if let Some(canal) = garde.canaux.get(session) {
         // 🔴 THE FIFTH SITE, AND THE ONLY ONE THE COMPILER DID NOT POINT AT:
         // `let _ =` absorbs even a `#[must_use]`. It is handled by hand, and

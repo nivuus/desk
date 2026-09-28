@@ -28,7 +28,7 @@
 //! ✅ **What follows is an account in the PAST tense.** The defect described here was
 //! diagnosed and fixed by the parallel duplications work stream
 //! (`agent/src/encode/arret.rs`, commits `486e182` / `beb3114`,
-//! `docs/superpowers/plans/2026-07-31-duplications-paralleles-resultats.md`
+//! `docs/superpowers/plans/2026-07-31-duplications-paralleles-resultats.md` policy: allow-fr (file path)
 //! §7). It was not deterministic but **intermittent** (2 crashes out of 6
 //! runs); its cause: the NVIDIA MFT kept a work item in flight
 //! when the encoder was released. Since the fix: **0 recurrence over 20
@@ -53,8 +53,8 @@
 //! pair.** The same bench on the physical desktop
 //! (`MULTIFENETRE_BANC=duplication MULTIFENETRE_N=1`) died at the same place:
 //! the virtual output was out of the question. And `printwindow-n4.log` as well as
-//! `printwindow-n8.log` carry their `passe terminée
-//! passe="capture+encodage"` line: on the `printwindow` path, the encoding pass
+//! `printwindow-n8.log` carry their `pass finished
+//! passe="capture+encoding"` line: on the `printwindow` path, the encoding pass
 //! ran to completion and the process survived. The defect was therefore in the
 //! "**duplication** path + H.264 encoder" pair, and in it alone.
 //!
@@ -81,7 +81,7 @@ use crate::capture::SortieDxgi;
 /// `MULTIFENETRE_VDD_CAPTURE` probe: creates ONE virtual output, places
 /// `count` test patterns on it, and runs the `duplication` path bench on it.
 pub(super) fn capturer_sur_virtuelle(count: u8) -> Result<()> {
-    let before = relever_topologie("avant création")?;
+    let before = relever_topologie("before creation")?;
     let names_before = noms_attaches(&before);
     let connues: std::collections::HashSet<String> = before
         .iter()
@@ -101,12 +101,12 @@ pub(super) fn capturer_sur_virtuelle(count: u8) -> Result<()> {
         // would leave the driver free to remove the output under the measurement.
         attendre_en_pinguant(&pilote, DELAI_TOPOLOGIE)?;
 
-        let apres = relever_topologie("après création")?;
+        let apres = relever_topologie("after creation")?;
         let virtuelle = designer_sortie_neuve(&apres, &connues, id)?;
         let nom_virtuelle = virtuelle.nom_sortie.clone();
 
         // The scale factor is read and applied by the bench itself
-        // (trace "banc : coordonnées de fenêtre et de texture"): measuring it
+        // (trace "bench: window and texture coordinates"): measuring it
         // a second time HERE would require opening a duplication on this
         // output, yet DXGI only allows ONE — the bench's would then fail
         // with 0x80070057.
@@ -126,24 +126,27 @@ pub(super) fn capturer_sur_virtuelle(count: u8) -> Result<()> {
     // of THIS process, beyond that only the inter-process purge will reach them.
     let rejoues = crate::moniteurs_virtuels::purge::rejouer_purge_due(&pilote);
     if rejoues > 0 {
-        tracing::info!(rejoues, "retraits dus rejoués avec succès après la garde");
+        tracing::info!(
+            rejoues,
+            "due removals replayed successfully after the guard"
+        );
     }
 
     // A virtual output outlives the process. This check remains that of the
     // measuring process, hence judge and party — the check that counts is a
     // `MULTIFENETRE_DXGI=1` survey from a fresh process, afterwards.
     std::thread::sleep(DELAI_TOPOLOGIE);
-    let final_ = relever_topologie("après destruction")?;
+    let final_ = relever_topologie("after destruction")?;
     let noms_final = noms_attaches(&final_);
     if noms_final == names_before && final_.len() == before.len() {
-        tracing::info!(noms = ?noms_final, "état initial restauré — mêmes sorties, nommément");
+        tracing::info!(noms = ?noms_final, "initial state restored — same outputs, by name");
     } else {
         tracing::error!(
             names_before = ?names_before,
             noms_apres = ?noms_final,
             total_before = before.len(),
             total_apres = final_.len(),
-            "la topologie n'est PAS revenue à son état initial — purge requise"
+            "the topology did NOT return to its initial state — purge required"
         );
     }
 
@@ -178,16 +181,16 @@ pub(super) fn designer_sortie_neuve<'s>(
     let virtuelle = match neuves.as_slice() {
         [] => {
             return Err(anyhow!(
-                "aucune sortie DXGI neuve après création de la sortie {id} — \
-                 le pilote a accepté la demande mais Windows n'a rien publié"
+                "no new DXGI output after creating output {id} — \
+                 the driver accepted the request but Windows published nothing"
             ))
         }
         [seule] => *seule,
         several => {
             let noms: Vec<&str> = several.iter().map(|s| s.nom_sortie.as_str()).collect();
             return Err(anyhow!(
-                "{} sorties DXGI neuves après création de la sortie {id} ({noms:?}) — \
-                 une addition externe rend la mesure inimputable",
+                "{} new DXGI outputs after creating output {id} ({noms:?}) — \
+                 an external addition makes the measurement unattributable",
                 several.len()
             ));
         }
@@ -203,7 +206,7 @@ pub(super) fn designer_sortie_neuve<'s>(
         y = virtuelle.rect.y,
         largeur_annoncee = virtuelle.rect.width,
         hauteur_annoncee = virtuelle.rect.height,
-        "sortie virtuelle retenue pour la capture"
+        "virtual output retained for the capture"
     );
     Ok(virtuelle)
 }
@@ -222,19 +225,19 @@ fn constater_survie(nom_virtuelle: &str) {
             if presente {
                 tracing::info!(
                     nom = %nom_virtuelle,
-                    "la sortie virtuelle a survécu au banc — le verdict porte bien sur elle"
+                    "the virtual output survived the bench — the verdict is indeed about it"
                 );
             } else {
                 tracing::error!(
                     nom = %nom_virtuelle,
-                    "la sortie virtuelle a DISPARU pendant le banc — le verdict de capture \
-                     n'est pas imputable à Windows, la sortie n'existait plus"
+                    "the virtual output DISAPPEARED during the bench — the capture verdict \
+                     cannot be blamed on Windows, the output no longer existed"
                 );
             }
         }
         Err(error) => tracing::error!(
             causes = %super::causes(error),
-            "topologie illisible après le banc — survie de la sortie virtuelle inconnue"
+            "topology unreadable after the bench — survival of the virtual output unknown"
         ),
     }
 }

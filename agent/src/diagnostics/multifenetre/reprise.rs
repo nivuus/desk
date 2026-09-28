@@ -68,11 +68,11 @@ use crate::mire;
 pub(super) fn mesurer(count: u8) -> Result<()> {
     anyhow::ensure!(
         (1..=mire::MIRES_MAX).contains(&count),
-        "MULTIFENETRE_REPRISE doit valoir 1 à {}",
+        "MULTIFENETRE_REPRISE must be 1 to {}",
         mire::MIRES_MAX
     );
 
-    let before = relever_topologie("avant création")?;
+    let before = relever_topologie("before creation")?;
     let names_before = noms_attaches(&before);
     let connues: HashSet<String> = before
         .iter()
@@ -101,12 +101,12 @@ pub(super) fn mesurer(count: u8) -> Result<()> {
             for rang in 1..=count {
                 let id = sorties
                     .create(largeur, hauteur, hertz)
-                    .with_context(|| format!("création de la sortie virtuelle n°{rang}"))?;
-                tracing::info!(rang, id, "sortie virtuelle créée");
+                    .with_context(|| format!("creating virtual output no. {rang}"))?;
+                tracing::info!(rang, id, "virtual output created");
             }
             attendre_en_pinguant(&pilote, DELAI_TOPOLOGIE)?;
 
-            let apres = relever_topologie("après création")?;
+            let apres = relever_topologie("after creation")?;
             let virtuelles = designer_sorties_neuves(&apres, &connues, count)?;
             // Built right after `attendre_en_pinguant`, hence right after the
             // last known ping (see `compteurs::Garde::new`).
@@ -115,7 +115,7 @@ pub(super) fn mesurer(count: u8) -> Result<()> {
             let issue = passes::eprouver(&mut garde, &mut sorties, &virtuelles, &connues);
             tracing::info!(
                 intervalle_ping_max_ms = garde.intervalle_max().as_millis() as u64,
-                "chien de garde : plus grand écart entre deux battements sur toute la mesure"
+                "watchdog: largest gap between two beats over the whole measurement"
             );
             // UNCONDITIONAL call, on the outcome of `eprouver` whatever it
             // is. It duplicates the check `eprouver` already makes after its
@@ -125,10 +125,10 @@ pub(super) fn mesurer(count: u8) -> Result<()> {
             // ⚠️ What this implies for reading: if the test failed BEFORE the
             // disruptor was created, the "no third-party
             // output" warning of `constater_tierces` bears on an IOCTL that was never
-            // issued. It is labelled at the "après perturbation" moment and
-            // therefore does not apply to the "bilan" moment — but a hurried reader
+            // issued. It is labelled at the "after disturbance" moment and
+            // therefore does not apply to the "summary" moment — but a hurried reader
             // could read it there, and it is this paragraph that prevents it.
-            constater_places("bilan", &virtuelles, &connues);
+            constater_places("summary", &virtuelles, &connues);
             issue
         })()
     };
@@ -138,22 +138,25 @@ pub(super) fn mesurer(count: u8) -> Result<()> {
     // Now also runs on ERROR paths (see the closure above).
     let rejoues = crate::moniteurs_virtuels::purge::rejouer_purge_due(&pilote);
     if rejoues > 0 {
-        tracing::info!(rejoues, "retraits dus rejoués avec succès après la garde");
+        tracing::info!(
+            rejoues,
+            "due removals replayed successfully after the guard"
+        );
     }
 
     // A virtual output outlives the process. This check remains that of the
     // measuring process, hence judge and party — the check that counts is a
     // `MULTIFENETRE_DXGI=1` survey from a fresh process, afterwards.
     std::thread::sleep(DELAI_TOPOLOGIE);
-    let final_ = relever_topologie("après destruction")?;
+    let final_ = relever_topologie("after destruction")?;
     let noms_final = noms_attaches(&final_);
     if noms_final == names_before {
-        tracing::info!(noms = ?noms_final, "état initial restauré — mêmes sorties, nommément");
+        tracing::info!(noms = ?noms_final, "initial state restored — same outputs, by name");
     } else {
         tracing::error!(
             names_before = ?names_before,
             noms_apres = ?noms_final,
-            "la topologie n'est PAS revenue à son état initial — purge requise"
+            "the topology did NOT return to its initial state — purge required"
         );
     }
 
@@ -172,8 +175,8 @@ pub(super) fn mesurer(count: u8) -> Result<()> {
 ///   their output and the captures turn black — and we would blame a
 ///   recovery defect for what is only a move.
 /// - **the third parties**, that is everything that is neither known in advance
-///   (`connues`) nor created by the set-up (`virtuelles`): at the "après
-///   perturbation" moment, it is the **disrupting output**, and it is the only proof
+///   (`connues`) nor created by the set-up (`virtuelles`): at the "after
+///   disturbance" moment, it is the **disrupting output**, and it is the only proof
 ///   that the disruption really took place. `Sorties::create` returns `Ok(id)`
 ///   as soon as the driver accepts the IOCTL; nothing then says that Windows
 ///   reconfigured anything at all. A disruptor created but not attached would
@@ -192,7 +195,7 @@ fn constater_places(moment: &str, virtuelles: &[SortieDxgi], connues: &HashSet<S
             tracing::error!(
                 moment,
                 causes = %super::causes(error),
-                "topologie illisible — état des sorties inconnu"
+                "topology unreadable — state of the outputs unknown"
             );
             return;
         }
@@ -222,8 +225,8 @@ fn constater_places(moment: &str, virtuelles: &[SortieDxgi], connues: &HashSet<S
         tracing::info!(
             moment,
             count = virtuelles.len(),
-            "les k sorties virtuelles sont là, attachées, et à la même place — les verdicts \
-             portent bien sur elles"
+            "the k virtual outputs are there, attached, and in the same place — the verdicts \
+             are indeed about them"
         );
         return;
     }
@@ -231,25 +234,25 @@ fn constater_places(moment: &str, virtuelles: &[SortieDxgi], connues: &HashSet<S
         tracing::error!(
             moment,
             ?disparues,
-            "des sorties virtuelles ont DISPARU — leurs verdicts ne sont pas imputables à \
-             Windows, elles n'existaient plus"
+            "virtual outputs DISAPPEARED — their verdicts cannot be blamed on \
+             Windows, they no longer existed"
         );
     }
     if !detachees.is_empty() {
         tracing::error!(
             moment,
             ?detachees,
-            "des sorties virtuelles ont été DÉTACHÉES du bureau — encore énumérables, mais \
-             Windows n'y compose plus : une image noire y serait imputable au détachement"
+            "virtual outputs were DETACHED from the desktop — still enumerable, but \
+             Windows no longer composes on them: a black image there would be due to the detachment"
         );
     }
     if !deplacees.is_empty() {
         tracing::error!(
             moment,
             ?deplacees,
-            "des sorties virtuelles ont CHANGÉ DE PLACE dans le bureau virtuel — les mires \
-             sont restées où elles étaient, une image noire y serait imputable au déplacement \
-             et non à la reprise"
+            "virtual outputs MOVED in the virtual desktop — the test patterns \
+             stayed where they were, a black image there would be due to the move \
+             and not to the recovery"
         );
     }
 }
@@ -276,10 +279,10 @@ fn constater_tierces(
     if tierces.is_empty() {
         tracing::warn!(
             moment,
-            "aucune sortie TIERCE dans la topologie — au moment « après perturbation », cela \
-             signifie que la perturbatrice ne s'est PAS attachée : le pilote a accepté l'IOCTL \
-             mais Windows n'a rien reconfiguré, donc rien n'a pu perturber les duplications, et \
-             une absence de réouverture ne dit alors RIEN de la reprise"
+            "no THIRD-PARTY output in the topology — at the \"after disturbance\" moment, this \
+             means the disturbing output did NOT attach: the driver accepted the IOCTL \
+             but Windows reconfigured nothing, so nothing could disturb the duplications, and \
+             an absence of reopening then says NOTHING about the recovery"
         );
         return;
     }
@@ -297,7 +300,7 @@ fn constater_tierces(
         moment,
         tierces_attachees = ?attachees,
         tierces_detachees = ?detachees,
-        "sorties tierces relevées — au moment « après perturbation », la perturbatrice doit \
-         figurer parmi les ATTACHÉES pour que la perturbation ait eu lieu"
+        "third-party outputs recorded — at the \"after disturbance\" moment, the disturbing one must \
+         appear among the ATTACHED ones for the disturbance to have happened"
     );
 }

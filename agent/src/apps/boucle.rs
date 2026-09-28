@@ -57,8 +57,8 @@ pub(super) enum Declencheur {
 impl Declencheur {
     fn mot(self) -> &'static str {
         match self {
-            Declencheur::Demarrage => "demarrage",
-            Declencheur::Periode => "periode",
+            Declencheur::Demarrage => "startup",
+            Declencheur::Periode => "period",
             Declencheur::Notification => "notification",
             Declencheur::Installation => "installation",
         }
@@ -80,7 +80,7 @@ fn honorer(memoire: &Memoire, demande: &str, cle: &str) -> IssueLancement {
     let Some((chemin, montrer)) = memoire.lancables.get(cle) else {
         // ⚠️ `Inconnue` IS RETURNED HERE AND NOWHERE ELSE: only this stage
         // knows the catalogue. `apps::lancement` knows nothing about keys.
-        tracing::warn!(demande, cle, "clé absente du catalogue de l'agent");
+        tracing::warn!(demande, cle, "key absent from the agent's catalogue");
         return IssueLancement::Inconnue;
     };
     let cible = memoire
@@ -90,7 +90,7 @@ fn honorer(memoire: &Memoire, demande: &str, cle: &str) -> IssueLancement {
         .map(|a| a.cible.as_str())
         .unwrap_or_default();
     let issue = lancement::lancer(chemin, cible, *montrer);
-    tracing::info!(demande, cle, ?issue, "lancement");
+    tracing::info!(demande, cle, ?issue, "launch");
     issue
 }
 
@@ -124,7 +124,7 @@ pub fn tourner(
         mode,
     } = reglages;
     if let Err(error) = lecture::initialize_com() {
-        tracing::error!(%error, "decouverte d'applications abandonnee : COM indisponible");
+        tracing::error!(%error, "application discovery given up: COM unavailable");
         return;
     }
 
@@ -327,7 +327,7 @@ pub fn tourner(
                     continue;
                 }
                 Err(mpsc::error::TryRecvError::Disconnected) => {
-                    tracing::warn!("canal /agent fermé : découverte d'applications arrêtée");
+                    tracing::warn!("/agent channel closed: application discovery stopped");
                     return;
                 }
                 Err(mpsc::error::TryRecvError::Empty) => {}
@@ -349,8 +349,8 @@ pub fn tourner(
                 // name. It now says what it OBSERVES, and declares what
                 // it cannot tell apart.
                 tracing::info!(
-                    "identité changée : le prochain catalogue sera COMPLET \
-                     (rafraîchissement de jeton OU réenrôlement — cette boucle ne les distingue pas)"
+                    "identity changed: the next catalogue will be COMPLETE \
+                     (token refresh OR re-enrolment — this loop does not tell them apart)"
                 );
                 complet = true;
             }

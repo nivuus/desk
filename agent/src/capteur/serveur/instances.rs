@@ -57,7 +57,7 @@ pub(super) fn connecter(tube: HANDLE) -> Result<()> {
     match unsafe { ConnectNamedPipe(tube, None) } {
         Ok(()) => Ok(()),
         Err(error) if error.code() == HRESULT::from_win32(ERROR_PIPE_CONNECTED.0) => Ok(()),
-        Err(error) => Err(error).context("attente d'un enfant"),
+        Err(error) => Err(error).context("waiting for a child"),
     }
 }
 
@@ -76,7 +76,7 @@ pub(super) fn create_instance() -> Result<HANDLE> {
         )
     };
     if tube.is_invalid() {
-        bail!("CreateNamedPipeW a rendu un handle invalide");
+        bail!("CreateNamedPipeW returned an invalid handle");
     }
     Ok(tube)
 }

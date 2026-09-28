@@ -13,7 +13,7 @@ fn part_de(parts: &[(String, u32)], session: &str) -> u32 {
         .iter()
         .find(|(s, _)| s == session)
         .map(|(_, bps)| *bps)
-        .expect("session absente")
+        .expect("session absent")
 }
 
 #[test]
@@ -42,7 +42,7 @@ fn la_focalisee_recoit_le_facteur_de_majoration() {
     assert_eq!(part_de(&parts, "a"), 8_000_000);
     assert!(
         part_de(&parts, "a") > part_de(&parts, "b"),
-        "la focalisée doit recevoir plus"
+        "the focused one must receive more"
     );
 }
 
@@ -53,7 +53,7 @@ fn une_endormie_recoit_le_plancher_et_ne_partage_pas_le_reste() {
     assert_eq!(
         part_de(&parts, "a"),
         12_000_000 - PART_DORMANTE_BPS,
-        "l'éveillée seule prend tout le reste"
+        "the awake one alone takes all the rest"
     );
 }
 
@@ -90,7 +90,7 @@ fn une_focalisee_endormie_reste_au_plancher_et_les_eveillees_se_partagent_egalem
 fn several_focused_give_a_single_boost() {
     let parts = repartir(12_000_000, &[f("a", true, true), f("b", true, true)]);
     let somme: u32 = parts.iter().map(|(_, bps)| bps).sum();
-    assert!(somme <= 12_000_000, "somme {somme} au-dessus du budget");
+    assert!(somme <= 12_000_000, "sum {somme} above the budget");
 }
 
 /// **The central invariant.** It holds at every rank the product allows:
@@ -110,16 +110,16 @@ fn la_somme_des_parts_ne_depasse_jamais_le_budget() {
             let somme: u32 = parts.iter().map(|(_, bps)| bps).sum();
             assert!(
                 somme <= 12_000_000,
-                "{eveillees} éveillées et {endormies} endormies : somme {somme}"
+                "{eveillees} awake and {endormies} asleep: sum {somme}"
             );
             assert_eq!(
                 parts.len(),
                 fenetres.len(),
-                "chaque fenêtre doit recevoir une part"
+                "each window must receive a share"
             );
             assert!(
                 parts.iter().all(|(_, bps)| *bps > 0),
-                "aucune part ne doit être nulle"
+                "no share must be zero"
             );
         }
     }
@@ -158,14 +158,11 @@ fn les_trois_regimes_sont_bornes_ou_jamais_paniquent() {
     let somme: u32 = parts.iter().map(|(_, bps)| bps).sum();
     assert!(
         somme <= 1_000_000,
-        "Régime 1 : somme {somme} dépasse budget 1 000 000"
+        "Regime 1: sum {somme} exceeds budget 1 000 000"
     );
     let e0_part = part_de(&parts, "e0");
     let e1_part = part_de(&parts, "e1");
-    assert!(
-        e0_part > e1_part,
-        "Régime 1 : majoration de focus doit exister"
-    );
+    assert!(e0_part > e1_part, "Regime 1: the focus boost must exist");
 
     // **Regime 2a: boundary with a focused window, remainder = divisor - 1**
     // 2 asleep = 512,000 bps, 1 focused + 1 unfocused
@@ -186,13 +183,13 @@ fn les_trois_regimes_sont_bornes_ou_jamais_paniquent() {
     let depassement = somme.saturating_sub(512_002);
     assert!(
         depassement <= 3,
-        "Régime 2 (focalisée) : dépassement {depassement} > diviseur 3"
+        "Regime 2 (focused): overrun {depassement} > divisor 3"
     );
     let e0_part = part_de(&parts, "e0");
     let e1_part = part_de(&parts, "e1");
     assert_eq!(
         e0_part, e1_part,
-        "Régime 2 (focalisée) : majoration doit disparaître, {e0_part} != {e1_part}"
+        "Regime 2 (focused): the boost must disappear, {e0_part} != {e1_part}"
     );
 
     // **Regime 2b: without a focused window, remainder = divisor - 1**
@@ -214,7 +211,7 @@ fn les_trois_regimes_sont_bornes_ou_jamais_paniquent() {
     let depassement = somme.saturating_sub(512_001);
     assert!(
         depassement <= 2,
-        "Régime 2 (sans focalisée) : dépassement {depassement} > diviseur 2"
+        "Regime 2 (without a focused one): overrun {depassement} > divisor 2"
     );
 
     // **Regime 3: budget too small, does not cover the floors**
@@ -236,10 +233,10 @@ fn les_trois_regimes_sont_bornes_ou_jamais_paniquent() {
     let expected_depassement = (512_000 - 100_000) + 2; // crushed floors + awake
     assert_eq!(
         depassement, expected_depassement,
-        "Régime 3 : dépassement {depassement} != {expected_depassement}"
+        "Regime 3: overrun {depassement} != {expected_depassement}"
     );
     assert!(
         parts.iter().all(|(_, bps)| *bps > 0),
-        "Régime 3 : aucune part ne doit être nulle"
+        "Regime 3: no share must be zero"
     );
 }

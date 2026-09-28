@@ -66,14 +66,14 @@ pub fn honorer(
     let base = match base_http(base) {
         Ok(b) => b,
         Err(error) => {
-            tracing::warn!(base, %error, "aucun televersement d'icone possible");
+            tracing::warn!(base, %error, "no icon upload possible");
             return;
         }
     };
     let Some(jeton) = identite.borrow().as_ref().map(|i| i.jeton.clone()) else {
         // Without a token there is no agent identity: the platform would refuse
         // with `403`, and insisting would cost a round trip per icon.
-        tracing::warn!("aucun jeton d'agent : televersement d'icones differe");
+        tracing::warn!("no agent token: icon upload deferred");
         return;
     };
 
@@ -87,8 +87,8 @@ pub fn honorer(
             sautees += 1;
             tracing::debug!(
                 empreinte,
-                "empreinte demandee absente du magasin courant, sautee \
-                 (la reconciliation a change depuis l'annonce)"
+                "requested hash absent from the current store, skipped \
+                 (the reconciliation changed since the announcement)"
             );
             continue;
         };
@@ -96,7 +96,7 @@ pub fn honorer(
             Ok(()) => envoyees += 1,
             Err(error) => {
                 echouees += 1;
-                tracing::warn!(empreinte, %error, "televersement d'icone echoue");
+                tracing::warn!(empreinte, %error, "icon upload failed");
             }
         }
     }
@@ -105,7 +105,7 @@ pub fn honorer(
         envoyees,
         sautees,
         echouees,
-        "televersement d'icones termine"
+        "icon upload finished"
     );
 }
 
@@ -121,8 +121,8 @@ fn base_http(signaling_url: &str) -> Result<String> {
     // 🔴 EXPLICIT REFUSAL, NEVER A CLEAR-TEXT ATTEMPT: see the header.
     if url.starts_with("wss://") || url.starts_with("https://") {
         bail!(
-            "TLS demande ({url}) mais l'agent n'a AUCUNE pile TLS : le televersement \
-             d'icones ne sait parler qu'en clair, et il refuse plutot que d'essayer"
+            "TLS requested ({url}) but the agent has NO TLS stack: the icon \
+             upload only speaks in clear, and it refuses rather than trying"
         );
     }
     // ⚠️ THE SCHEME IS REMOVED BEFORE ANY OTHER CUT. Trimming the
@@ -136,14 +136,14 @@ fn base_http(signaling_url: &str) -> Result<String> {
     // Any path is removed: only the authority is kept.
     let autorite = sans.split('/').next().unwrap_or(sans).trim();
     if autorite.is_empty() {
-        bail!("URL de plateforme sans hote : {url}");
+        bail!("platform URL without a host: {url}");
     }
     Ok(autorite.to_string())
 }
 
 fn envoyer(autorite: &str, jeton: &str, empreinte: &str, octets: &[u8]) -> Result<()> {
     let mut flux =
-        TcpStream::connect(autorite).with_context(|| format!("connexion a {autorite}"))?;
+        TcpStream::connect(autorite).with_context(|| format!("connecting to {autorite}"))?;
     flux.set_read_timeout(Some(DELAI))?;
     flux.set_write_timeout(Some(DELAI))?;
 
@@ -157,22 +157,22 @@ fn envoyer(autorite: &str, jeton: &str, empreinte: &str, octets: &[u8]) -> Resul
         octets.len()
     );
     flux.write_all(entete.as_bytes())
-        .context("envoi de l'en-tete")?;
-    flux.write_all(octets).context("envoi du corps")?;
-    flux.flush().context("vidage")?;
+        .context("sending the header")?;
+    flux.write_all(octets).context("sending the body")?;
+    flux.flush().context("flush")?;
 
     // ⚠️ THE RESPONSE IS READ, NOT DISCARDED. Without this read, a `413`
     // or a `400 {refus:'empreinte'}` would pass for a success, and the agent
     // would re-upload the same icon indefinitely without ever knowing why.
     let mut reponse = Vec::new();
     flux.read_to_end(&mut reponse)
-        .context("lecture de la reponse")?;
+        .context("reading the response")?;
     let statut = statut_http(&reponse)
-        .context("reponse HTTP illisible : la plateforme n'a pas repondu ce qu'on attend")?;
+        .context("unreadable HTTP response: the platform did not answer what is expected")?;
     if statut != 204 {
         let corps = String::from_utf8_lossy(&reponse);
         let corps = corps.rsplit("\r\n\r\n").next().unwrap_or("");
-        bail!("la plateforme a repondu {statut} au lieu de 204 : {corps}");
+        bail!("the platform answered {statut} instead of 204: {corps}");
     }
     Ok(())
 }

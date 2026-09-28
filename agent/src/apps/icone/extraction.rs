@@ -68,8 +68,8 @@ pub fn armee() -> bool {
         let armee = !crate::apps::desarme(std::env::var("ICONES").ok().as_deref());
         if !armee {
             tracing::warn!(
-                "extraction d'icones DESARMEE (ICONES=0) : le catalogue reste \
-                 complet, mais aucune application ne portera d'icone"
+                "icon extraction DISARMED (ICONES=0): the catalogue stays \
+                 complete, but no application will carry an icon"
             );
         }
         armee
@@ -91,11 +91,11 @@ pub fn extraire(lnk: &Path) -> Result<(Vec<u8>, Option<String>)> {
     // that we own for the whole duration of the call.
     let fabrique: IShellItemImageFactory =
         unsafe { SHCreateItemFromParsingName(windows::core::PCWSTR(large.as_ptr()), None) }
-            .with_context(|| format!("SHCreateItemFromParsingName sur {}", lnk.display()))?;
+            .with_context(|| format!("SHCreateItemFromParsingName on {}", lnk.display()))?;
 
     // SAFETY: FFI call. `SIIGBF_ICONONLY` alone — see the module header.
     let hbm = unsafe { fabrique.GetImage(SIZE { cx: COTE, cy: COTE }, SIIGBF_ICONONLY) }
-        .with_context(|| format!("GetImage 256 sur {}", lnk.display()))?;
+        .with_context(|| format!("GetImage 256 on {}", lnk.display()))?;
 
     // 🔴 THE PIXELS ARE READ BEFORE ENCODING, AND ON THE SAME HBITMAP.
     // Recomputing the accent from the PNG would require a decoder; the bitmap
@@ -216,21 +216,21 @@ fn encoder_png(hbm: windows::Win32::Graphics::Gdi::HBITMAP) -> Result<Vec<u8>> {
             windows::Win32::Graphics::Imaging::WICBitmapEncoderNoCache,
         )
     }
-    .context("Initialize de l'encodeur PNG")?;
+    .context("Initialize of the PNG encoder")?;
 
     let mut cadre = None;
     // SAFETY: FFI call. `cadre` is filled by the call.
     unsafe { encodeur.CreateNewFrame(&mut cadre, std::ptr::null_mut()) }
         .context("CreateNewFrame")?;
-    let cadre = cadre.context("l'encodeur n'a rendu aucun cadre")?;
+    let cadre = cadre.context("the encoder returned no frame")?;
     // SAFETY: FFI call.
-    unsafe { cadre.Initialize(None) }.context("Initialize du cadre")?;
+    unsafe { cadre.Initialize(None) }.context("Initialize of the frame")?;
     // SAFETY: FFI call.
     unsafe { cadre.WriteSource(&bitmap, std::ptr::null()) }.context("WriteSource")?;
     // SAFETY: FFI call.
-    unsafe { cadre.Commit() }.context("Commit du cadre")?;
+    unsafe { cadre.Commit() }.context("Commit of the frame")?;
     // SAFETY: FFI call.
-    unsafe { encodeur.Commit() }.context("Commit de l'encodeur")?;
+    unsafe { encodeur.Commit() }.context("Commit of the encoder")?;
 
     relire(&flux)
 }
@@ -240,26 +240,27 @@ fn relire(flux: &IStream) -> Result<Vec<u8>> {
     // SAFETY: FFI call. Seek back to the start: `Commit` leaves the cursor
     // at the end, and reading from there would return ZERO bytes — an empty PNG that would
     // look like a success.
-    unsafe { flux.Seek(0, STREAM_SEEK_SET, None) }.context("Seek au début du flux PNG")?;
+    unsafe { flux.Seek(0, STREAM_SEEK_SET, None) }
+        .context("Seek to the start of the PNG stream")?;
     let stat = {
         let mut s = Default::default();
         // SAFETY: FFI call.
         unsafe { flux.Stat(&mut s, windows::Win32::System::Com::STATFLAG_NONAME) }
-            .context("Stat du flux PNG")?;
+            .context("Stat of the PNG stream")?;
         s
     };
     let size = stat.cbSize as usize;
     if size == 0 {
-        bail!("l'encodeur PNG a rendu un flux VIDE");
+        bail!("the PNG encoder returned an EMPTY stream");
     }
     let mut octets = vec![0u8; size];
     let mut lus = 0u32;
     // SAFETY: FFI call. The buffer is exactly `size` bytes.
     unsafe { flux.Read(octets.as_mut_ptr().cast(), size as u32, Some(&mut lus)) }
         .ok()
-        .context("Read du flux PNG")?;
+        .context("Read of the PNG stream")?;
     if lus as usize != size {
-        bail!("flux PNG tronqué : {lus} octets lus sur {size}");
+        bail!("truncated PNG stream: {lus} bytes read out of {size}");
     }
     Ok(octets)
 }
@@ -284,7 +285,7 @@ pub fn provenance_de(icon_location: &str, cible: &str) -> SourceMax {
                 ressource::maximum(&ressource::icondir_sizes(&octets).unwrap_or_default())
             }
             Err(error) => {
-                tracing::debug!(chemin, %error, "ico illisible, provenance non mesuree");
+                tracing::debug!(chemin, %error, "unreadable ico, provenance not measured");
                 SourceMax::NonMesuree
             }
         },
@@ -295,7 +296,7 @@ pub fn provenance_de(icon_location: &str, cible: &str) -> SourceMax {
                     ressource::maximum(&ressource::grpicondir_sizes(&octets).unwrap_or_default())
                 }
                 Err(error) => {
-                    tracing::debug!(chemin, %error, "ressource illisible, provenance non mesuree");
+                    tracing::debug!(chemin, %error, "unreadable resource, provenance not measured");
                     SourceMax::NonMesuree
                 }
             }

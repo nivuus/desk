@@ -172,7 +172,7 @@ mod tests {
         fenetres.ouvrir("inst-1");
         fenetres.add(4);
         fenetres.ouvrir("inst-1");
-        assert_eq!(fenetres.en_vol(), 1, "l'identifiant reste unique");
+        assert_eq!(fenetres.en_vol(), 1, "the identifier stays unique");
         assert_eq!(fenetres.fermer("inst-1"), Some(0));
     }
 

@@ -66,14 +66,14 @@ mod tests {
 
     #[test]
     fn eight_slots_do_not_overlap_and_fit_in_the_desktop() {
-        let places = tuiles(BUREAU, 8).expect("huit places sur 2400x1080");
+        let places = tuiles(BUREAU, 8).expect("eight places on 2400x1080");
         assert_eq!(places.len(), 8);
         for (i, a) in places.iter().enumerate() {
             assert!(a.x >= 0 && a.y >= 0);
             assert!(a.x as u32 + a.width <= BUREAU.width);
             assert!(a.y as u32 + a.height <= BUREAU.height);
             for b in places.iter().skip(i + 1) {
-                assert!(!rects_overlap(*a, *b), "{a:?} recouvre {b:?}");
+                assert!(!rects_overlap(*a, *b), "{a:?} overlaps {b:?}");
             }
         }
     }

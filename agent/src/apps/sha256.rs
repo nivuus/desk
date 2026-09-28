@@ -285,7 +285,7 @@ mod tests {
                 assert_eq!(
                     hexa(condensateur.terminer()),
                     attendu,
-                    "vecteur de {} octets, morceaux de {size}",
+                    "vector of {} bytes, chunks of {size}",
                     message.len()
                 );
             }
@@ -302,7 +302,7 @@ mod tests {
             // We do not check the value — it is not in the standard —
             // but that nothing panics and that the fingerprint changes with the
             // size, which broken padding would not guarantee.
-            assert_eq!(hex(&message).len(), 64, "taille {size}");
+            assert_eq!(hex(&message).len(), 64, "size {size}");
 
             // And the INCREMENTAL path, one byte at a time, must return the
             // same thing: these lengths are the ones that move the residue
@@ -314,11 +314,11 @@ mod tests {
             assert_eq!(
                 hexa(condensateur.terminer()),
                 hex(&message),
-                "taille {size}, un octet à la fois"
+                "size {size}, one byte at a time"
             );
         }
         let all: std::collections::HashSet<String> =
             (0..130).map(|n| hex(&vec![b'a'; n])).collect();
-        assert_eq!(all.len(), 130, "130 longueurs, 130 empreintes distinctes");
+        assert_eq!(all.len(), 130, "130 lengths, 130 distinct hashes");
     }
 }

@@ -109,14 +109,11 @@ pub(crate) fn lire_le_media<R: Read>(mut lecteur: R, images: SyncSender<Recu>) {
                     images.send(Recu::Accent { couleur }).is_ok()
                 }
                 Ok(autre) => {
-                    tracing::warn!(
-                        ?autre,
-                        "trame inattendue sur la connexion média, abandonnée"
-                    );
+                    tracing::warn!(?autre, "unexpected frame on the media connection, dropped");
                     return;
                 }
                 Err(error) => {
-                    tracing::warn!(%error, "trame illisible du capteur, canal abandonné");
+                    tracing::warn!(%error, "unreadable frame from the sensor, channel dropped");
                     return;
                 }
             },
@@ -191,7 +188,7 @@ mod tests {
                 assert_eq!(unite.pts_90k, 42);
                 assert!(unite.is_keyframe);
             }
-            autre => panic!("attendu une image, reçu {autre:?}"),
+            autre => panic!("expected an image, got {autre:?}"),
         }
         assert_eq!(
             rx.recv().unwrap(),
@@ -202,7 +199,7 @@ mod tests {
         );
         assert!(
             rx.try_recv().is_err(),
-            "aucune trame de plus après la fin du tampon : le fil n'a rien perdu ni rien inventé"
+            "no more frames after the end of the buffer: the thread lost nothing and invented nothing"
         );
     }
 
@@ -236,11 +233,11 @@ mod tests {
         assert_eq!(rx.recv().unwrap(), Recu::Part { bps: 4_000_000 });
         match rx.recv().unwrap() {
             Recu::Image(unite) => assert_eq!(unite.pts_90k, 7),
-            autre => panic!("attendu une image après la part, reçu {autre:?}"),
+            autre => panic!("expected an image after the share, got {autre:?}"),
         }
         assert!(
             rx.try_recv().is_err(),
-            "aucune trame de plus après la fin du tampon : le fil n'a rien perdu ni rien inventé"
+            "no more frames after the end of the buffer: the thread lost nothing and invented nothing"
         );
     }
 
@@ -271,11 +268,11 @@ mod tests {
         assert_eq!(rx.recv().unwrap(), Recu::Audio { actif: true });
         match rx.recv().unwrap() {
             Recu::Image(unite) => assert_eq!(unite.pts_90k, 11),
-            autre => panic!("attendu une image après l'ordre audio, reçu {autre:?}"),
+            autre => panic!("expected an image after the audio order, got {autre:?}"),
         }
         assert!(
             rx.try_recv().is_err(),
-            "aucune trame de plus après la fin du tampon : le fil n'a rien perdu ni rien inventé"
+            "no more frames after the end of the buffer: the thread lost nothing and invented nothing"
         );
     }
 
@@ -306,11 +303,11 @@ mod tests {
         assert_eq!(rx.recv().unwrap(), Recu::PleinEcran { actif: true });
         match rx.recv().unwrap() {
             Recu::Image(unite) => assert_eq!(unite.pts_90k, 13),
-            autre => panic!("attendu une image après l'ordre plein écran, reçu {autre:?}"),
+            autre => panic!("expected an image after the fullscreen order, got {autre:?}"),
         }
         assert!(
             rx.try_recv().is_err(),
-            "aucune trame de plus après la fin du tampon : le fil n'a rien perdu ni rien inventé"
+            "no more frames after the end of the buffer: the thread lost nothing and invented nothing"
         );
     }
 
@@ -373,11 +370,11 @@ mod tests {
         );
         match rx.recv().unwrap() {
             Recu::Image(unite) => assert_eq!(unite.pts_90k, 21),
-            autre => panic!("attendu une image après le presse-papier, reçu {autre:?}"),
+            autre => panic!("expected an image after the clipboard, got {autre:?}"),
         }
         assert!(
             rx.try_recv().is_err(),
-            "aucune trame de plus après la fin du tampon : le fil n'a rien perdu ni rien inventé"
+            "no more frames after the end of the buffer: the thread lost nothing and invented nothing"
         );
     }
 
@@ -413,7 +410,7 @@ mod tests {
 
         assert!(
             rx.try_recv().is_err(),
-            "le fil doit abandonner à la première trame inattendue, sans lire la suite"
+            "the thread must give up at the first unexpected frame, without reading the rest"
         );
     }
     /// `DepuisCapteur::Accent` (task 8, sub-block A1): **the SIXTH time**
@@ -474,11 +471,11 @@ mod tests {
         );
         match rx.recv().unwrap() {
             Recu::Image(unite) => assert_eq!(unite.pts_90k, 42),
-            autre => panic!("attendu une image après l'accent, reçu {autre:?}"),
+            autre => panic!("expected an image after the accent, got {autre:?}"),
         }
         assert!(
             rx.try_recv().is_err(),
-            "aucune trame de plus après la fin du tampon : le fil n'a rien perdu ni rien inventé"
+            "no more frames after the end of the buffer: the thread lost nothing and invented nothing"
         );
     }
 }

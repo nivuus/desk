@@ -49,7 +49,7 @@ use super::CibleCapture;
 /// once the source is built.
 pub fn size_of_output(nom: &str) -> Result<(u32, u32)> {
     let factory: IDXGIFactory1 =
-        unsafe { CreateDXGIFactory1() }.context("création de la fabrique DXGI")?;
+        unsafe { CreateDXGIFactory1() }.context("creating the DXGI factory")?;
     // `ouvrir_sortie` already does exactly the resolution by name, with its
     // trace: redoing it here would be a second truth to maintain.
     let (_adaptateur, sortie) = ouvrir_sortie(&factory, &CibleCapture::Sortie(nom.to_string()))?;
@@ -60,7 +60,7 @@ pub fn size_of_output(nom: &str) -> Result<(u32, u32)> {
     // The same threshold as `region_de_sortie`: below it, the even alignment
     // NV12 requires leaves nothing to encode.
     if largeur < 2 || hauteur < 2 {
-        bail!("sortie {nom} de dimensions inexploitables ({largeur}x{hauteur})");
+        bail!("output {nom} with unusable dimensions ({largeur}x{hauteur})");
     }
     Ok((largeur, hauteur))
 }
@@ -94,12 +94,12 @@ pub(super) fn ouvrir_sortie(
                     Ok(adapter_desc) => String::from_utf16_lossy(&adapter_desc.Description)
                         .trim_end_matches('\0')
                         .to_string(),
-                    Err(_) => "<inconnu>".to_string(),
+                    Err(_) => "<unknown>".to_string(),
                 };
                 tracing::info!(
                     adaptateur = %name, index_adaptateur, index_sortie, nom_sortie = %nom,
                     attachee = desc.AttachedToDesktop.as_bool(),
-                    "sortie retenue pour la duplication"
+                    "output retained for the duplication"
                 );
                 return Ok((adapter.clone(), output.cast()?));
             }
@@ -108,9 +108,9 @@ pub(super) fn ouvrir_sortie(
         index_adaptateur += 1;
     }
     match cible {
-        CibleCapture::Sortie(nom) => bail!("aucune sortie DXGI nommée {nom}"),
+        CibleCapture::Sortie(nom) => bail!("no DXGI output named {nom}"),
         CibleCapture::Bureau => {
-            bail!("aucune sortie attachée au bureau : la session est-elle interactive ?")
+            bail!("no output attached to the desktop: is the session interactive?")
         }
     }
 }
@@ -140,10 +140,10 @@ pub(super) fn create_device_and_context(
             None,
             Some(&mut context),
         )
-        .context("création du périphérique D3D11")?;
+        .context("creating the D3D11 device")?;
     }
-    let device = device.ok_or_else(|| anyhow!("périphérique D3D11 absent"))?;
-    let context = context.ok_or_else(|| anyhow!("contexte D3D11 absent"))?;
+    let device = device.ok_or_else(|| anyhow!("D3D11 device absent"))?;
+    let context = context.ok_or_else(|| anyhow!("D3D11 context absent"))?;
 
     // The D3D11 immediate context is NOT safe for concurrent access by
     // default: the driver assumes a single thread and sets no lock. Yet this
@@ -170,11 +170,11 @@ pub(super) fn create_device_and_context(
     // device as it is at that instant.
     let multithread: ID3D11Multithread = context
         .cast()
-        .context("obtention de ID3D11Multithread depuis le contexte immédiat")?;
+        .context("getting ID3D11Multithread from the immediate context")?;
     let was_protected = unsafe { multithread.SetMultithreadProtected(true) };
     tracing::info!(
         protection_precedente = was_protected.as_bool(),
-        "protection multi-fils activée sur le contexte immédiat D3D11"
+        "multithread protection enabled on the D3D11 immediate context"
     );
 
     Ok((device, context))
@@ -192,7 +192,7 @@ pub(super) fn dupliquer(
     output: &IDXGIOutput1,
 ) -> Result<(IDXGIOutputDuplication, u32, u32)> {
     let duplication =
-        unsafe { output.DuplicateOutput(device) }.context("duplication de la sortie écran")?;
+        unsafe { output.DuplicateOutput(device) }.context("screen output duplication")?;
     let desc = unsafe { duplication.GetDesc() };
     Ok((duplication, desc.ModeDesc.Width, desc.ModeDesc.Height))
 }
@@ -254,14 +254,14 @@ pub(super) fn duplicate_with_retry(
                         hresult = code.map(|c| format!("{c:#010x}")),
                         attendu_ms = debut.elapsed().as_millis() as u64,
                         cible = ?cible,
-                        "ouverture de la duplication abandonnée"
+                        "opening the duplication given up"
                     );
                     break Err(error);
                 }
                 tracing::info!(
                     hresult = code.map(|c| format!("{c:#010x}")),
                     cible = ?cible,
-                    "duplication indisponible à l'ouverture, nouvel essai"
+                    "duplication unavailable at opening, retrying"
                 );
                 std::thread::sleep(crate::capture_reprise::PAS_REPRISE);
             }

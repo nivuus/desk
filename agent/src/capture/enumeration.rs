@@ -46,7 +46,7 @@ pub fn enumerer_sorties_silencieux() -> Result<Vec<SortieDxgi>> {
 
 fn enumerer(journaliser: bool) -> Result<Vec<SortieDxgi>> {
     let factory: IDXGIFactory1 =
-        unsafe { CreateDXGIFactory1() }.context("création de la fabrique DXGI")?;
+        unsafe { CreateDXGIFactory1() }.context("creating the DXGI factory")?;
     let mut sorties = Vec::new();
     let mut index_adaptateur = 0u32;
     while let Ok(adapter) = unsafe { factory.EnumAdapters1(index_adaptateur) } {
@@ -55,7 +55,7 @@ fn enumerer(journaliser: bool) -> Result<Vec<SortieDxgi>> {
                 .trim_end_matches('\0')
                 .trim()
                 .to_string(),
-            Err(_) => "<inconnu>".to_string(),
+            Err(_) => "<unknown>".to_string(),
         };
         let mut index_sortie = 0u32;
         let count_before = sorties.len();
@@ -89,7 +89,7 @@ fn enumerer(journaliser: bool) -> Result<Vec<SortieDxgi>> {
             tracing::info!(
                 adaptateur = %adaptateur,
                 index_adaptateur,
-                "adaptateur DXGI sans sortie"
+                "DXGI adapter without an output"
             );
         }
         index_adaptateur += 1;

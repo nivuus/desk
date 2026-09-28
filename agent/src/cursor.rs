@@ -16,7 +16,7 @@ pub const SEUIL: u8 = 3;
 
 /// Stability filter on a periodically observed boolean state.
 ///
-/// Returns `Some(nouvel_état)` at the precise moment a change is kept, and
+/// Returns `Some(new_state)` at the precise moment a change is kept, and
 /// `None` otherwise — including for all observations following the
 /// change. The caller therefore has nothing to memorise: it emits a message
 /// every time it is given `Some`.
@@ -176,7 +176,7 @@ mod win {
                         // We stay absolute: never a blind switch.
                         if !echec_signale {
                             echec_signale = true;
-                            tracing::warn!(error = %e, "sondage du curseur indisponible (avertissement unique)");
+                            tracing::warn!(error = %e, "cursor polling unavailable (single warning)");
                         }
                     }
                 }

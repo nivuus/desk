@@ -73,7 +73,7 @@ pub(super) fn mesurer(cycles: usize) -> Result<()> {
         hauteur = HAUTEUR,
         fps = FPS,
         debit = DEBIT,
-        "mesure pivot D5 : recyclage d'encodeurs, un périphérique D3D11 par encodeur"
+        "pivot measurement D5: encoder recycling, one D3D11 device per encoder"
     );
 
     // ── Phase 1 : monter jusqu'au refus, et le NOMMER.
@@ -87,7 +87,7 @@ pub(super) fn mesurer(cycles: usize) -> Result<()> {
         match construire() {
             Ok(instance) => {
                 vivants.push(instance);
-                tracing::info!(rang, vivants = vivants.len(), "phase 1 : encodeur créé");
+                tracing::info!(rang, vivants = vivants.len(), "phase 1: encoder created");
             }
             Err(error) => {
                 plafond = rang - 1;
@@ -96,7 +96,7 @@ pub(super) fn mesurer(cycles: usize) -> Result<()> {
                     plafond,
                     rang_refuse = rang,
                     causes = %super::causes(error),
-                    "phase 1 : plafond atteint — création refusée"
+                    "phase 1: ceiling reached — creation refused"
                 );
                 break;
             }
@@ -105,7 +105,7 @@ pub(super) fn mesurer(cycles: usize) -> Result<()> {
     if plafond == 0 {
         tracing::warn!(
             search_ceiling = SEARCH_CEILING,
-            "phase 1 : aucun refus sous le plafond de recherche — la mesure pivot est SANS OBJET"
+            "phase 1: no refusal below the search ceiling — the pivot measurement is MOOT"
         );
         drop(vivants);
         return Ok(());
@@ -120,28 +120,20 @@ pub(super) fn mesurer(cycles: usize) -> Result<()> {
     let mut reussis = 0usize;
     let mut premier_echec: Option<usize> = None;
     for cycle in 1..=cycles {
-        let retiree = vivants.pop().expect("le vivier ne peut pas être vide ici");
+        let retiree = vivants.pop().expect("the pool cannot be empty here");
         tracing::info!(
             cycle,
             restants = vivants.len(),
-            "cycle : relâchement d'un encodeur"
+            "cycle: releasing one encoder"
         );
         drop(retiree);
-        tracing::info!(
-            cycle,
-            restants = vivants.len(),
-            "cycle : relâchement terminé"
-        );
+        tracing::info!(cycle, restants = vivants.len(), "cycle: release finished");
 
         match construire() {
             Ok(instance) => {
                 vivants.push(instance);
                 reussis += 1;
-                tracing::info!(
-                    cycle,
-                    vivants = vivants.len(),
-                    "cycle : reconstruction RÉUSSIE"
-                );
+                tracing::info!(cycle, vivants = vivants.len(), "cycle: rebuild SUCCEEDED");
             }
             Err(error) => {
                 premier_echec = Some(cycle);
@@ -149,7 +141,7 @@ pub(super) fn mesurer(cycles: usize) -> Result<()> {
                     cycle,
                     vivants = vivants.len(),
                     causes = %super::causes(error),
-                    "cycle : reconstruction REFUSÉE"
+                    "cycle: rebuild REFUSED"
                 );
                 break;
             }
@@ -163,25 +155,25 @@ pub(super) fn mesurer(cycles: usize) -> Result<()> {
             cycles_demandes = cycles,
             cycles_reussis = reussis,
             verdict = "concurrence",
-            "VERDICT : détruire un encodeur libère la place, et les cycles tiennent"
+            "VERDICT: destroying an encoder frees the place, and the cycles hold"
         ),
         Some(0) | Some(1) => tracing::info!(
             plafond,
             cycles_reussis = reussis,
-            verdict = "aucune-liberation",
-            "VERDICT : détruire un encodeur ne libère PAS la place"
+            verdict = "no-release",
+            "VERDICT: destroying an encoder does NOT free the place"
         ),
         Some(k) => tracing::info!(
             plafond,
             cycles_reussis = reussis,
             premier_echec = k,
-            verdict = "cumule",
-            "VERDICT : plafond de créations CUMULÉES — le recyclage lâche au cycle {k}"
+            verdict = "cumulative",
+            "VERDICT: ceiling of CUMULATIVE creations — the recycling gives way at cycle {k}"
         ),
     }
 
-    tracing::info!(vivants = vivants.len(), "relâchement final");
+    tracing::info!(vivants = vivants.len(), "final release");
     drop(vivants);
-    tracing::info!("relâchement final terminé — le processus a survécu");
+    tracing::info!("final release finished — the process survived");
     Ok(())
 }

@@ -65,7 +65,7 @@ pub(in super::super) fn sonder(sorties: &[String]) -> Result<()> {
     let rang_brute = std::env::var("MULTIFENETRE_PLAFOND_RANG").unwrap_or_else(|_| "0".to_string());
     let rang: u8 = match rang_brute
         .parse()
-        .context("MULTIFENETRE_PLAFOND_RANG doit être un entier")
+        .context("MULTIFENETRE_PLAFOND_RANG must be an integer")
     {
         Ok(rang) => rang,
         Err(error) => {
@@ -84,14 +84,14 @@ pub(in super::super) fn sonder(sorties: &[String]) -> Result<()> {
             // value stays in the trace below, where interpolating it poses
             // no risk. Best-effort (a write failure makes nothing worse:
             // this trace remains the reference diagnostic).
-            tracing::error!(rang_brute = %rang_brute, %error, "MULTIFENETRE_PLAFOND_RANG illisible");
+            tracing::error!(rang_brute = %rang_brute, %error, "MULTIFENETRE_PLAFOND_RANG unreadable");
             let secours = chemin_verdict_rang_invalide();
             let _ = std::fs::write(&secours, format!("KO RANG_INVALIDE {rang_brute}"));
             return Err(error);
         }
     };
 
-    tracing::info!(sonde = rang, sorties = ?sorties, "sonde démarrée");
+    tracing::info!(sonde = rang, sorties = ?sorties, "probe started");
 
     // The duplications are HELD in this vector: releasing them would free
     // the slot and the measurement would no longer measure anything.
@@ -104,14 +104,14 @@ pub(in super::super) fn sonder(sorties: &[String]) -> Result<()> {
                     sonde = rang,
                     duplication = rang_local + 1,
                     %nom,
-                    "duplication ouverte"
+                    "duplication opened"
                 );
                 tenues.push(duplication);
             }
             Err(error) => {
                 // `{error:#}` and not `{error}`: `anyhow`'s simple Display
-                // only renders the OUTERMOST context ("duplication de la
-                // sortie écran"), and the HRESULT — the only data the
+                // only renders the OUTERMOST context ("screen output
+                // duplication"), and the HRESULT — the only data the
                 // matrix uses — would stay in the causes, invisible here.
                 // It only survived in the logs of the D3 campaign
                 // because `agent::capture::ouverture` logs it on its
@@ -125,7 +125,7 @@ pub(in super::super) fn sonder(sorties: &[String]) -> Result<()> {
                     duplication = rang_local + 1,
                     %nom,
                     error = %causes,
-                    "duplication REFUSÉE"
+                    "duplication REFUSED"
                 );
                 verdict = format!("KO {causes} {nom}");
                 break;
@@ -136,14 +136,14 @@ pub(in super::super) fn sonder(sorties: &[String]) -> Result<()> {
     // Pre-existing, out of scope of this fix: a write failure
     // HERE (valid rank, legitimate verdict) exits through `?` with no verdict dropped.
     std::fs::write(chemin_verdict(rang), &verdict)
-        .with_context(|| format!("écriture du verdict de la sonde {rang}"))?;
-    tracing::info!(sonde = rang, ouvertes = tenues.len(), %verdict, "verdict déposé");
+        .with_context(|| format!("writing the verdict of probe {rang}"))?;
+    tracing::info!(sonde = rang, ouvertes = tenues.len(), %verdict, "verdict written");
 
     // Hold until the bearer's signal. The duplications stay open as long
     // as `tenues` is alive.
     while !chemin_arret().exists() {
         std::thread::sleep(std::time::Duration::from_millis(100));
     }
-    tracing::info!(sonde = rang, "arrêt demandé, relâchement des duplications");
+    tracing::info!(sonde = rang, "stop requested, releasing the duplications");
     Ok(())
 }

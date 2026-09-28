@@ -11,12 +11,12 @@
 //!
 //! ```text
 //! === g2plan-temoin-48.ico
-//!    ICONDIR (the RESOURCE)          -> entrees=1 tailles=48
+//!    ICONDIR (the RESOURCE)          -> entries=1 sizes=48
 //!    ShellImageFactory 256 ICONONLY  -> 256x256 32bpp
 //!    ShellImageFactory 256 +BIGGEROK -> 256x256 32bpp
 //!    PrivateExtractIcons idx0 256    -> 256x256 32bpp
 //! === g2plan-temoin-256.ico
-//!    ICONDIR (the RESOURCE)          -> entrees=1 tailles=256
+//!    ICONDIR (the RESOURCE)          -> entries=1 sizes=256
 //!    ShellImageFactory 256 ICONONLY  -> 256x256 32bpp
 //!    ShellImageFactory 256 +BIGGEROK -> 256x256 32bpp
 //!    PrivateExtractIcons idx0 256    -> 256x256 32bpp

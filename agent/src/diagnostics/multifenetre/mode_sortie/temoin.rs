@@ -52,19 +52,20 @@ pub(super) fn rejouer_temoin(
     let Some(cible) = cible_du_temoin(nom_sortie, before, cible_eliminatoire) else {
         tracing::error!(
             verdict = "TEMOIN NON MESURABLE",
-            raison = "la sortie temoin nait deja a la cible de l'eliminatoire, et aucun mode \
-                      annonce ne differe de sa taille courante",
+            raison =
+                "the control output is born already at the elimination target, and no announced \
+                      mode differs from its current size",
             width_before_attempt = before.0,
             height_before_attempt = before.1,
             largeur_cible_eliminatoire = cible_eliminatoire.0,
             hauteur_cible_eliminatoire = cible_eliminatoire.1,
-            "verdict TEMOIN : mesure impossible, aucune tentative effectuee"
+            "CONTROL verdict: measurement impossible, no attempt made"
         );
         return Ok(());
     };
     let last_code = appliquer_combo(nom_sortie, cible.0, cible.1, combo);
     attendre_en_pinguant(pilote, DELAI_TOPOLOGIE)?;
-    let releve = relever_topologie(&format!("après tentative TÉMOIN « {} »", combo.etiquette()))?;
+    let releve = relever_topologie(&format!("after CONTROL attempt '{}'", combo.etiquette()))?;
     let read_size = releve
         .iter()
         .find(|sortie| sortie.nom_sortie == nom_sortie)
@@ -78,8 +79,8 @@ pub(super) fn rejouer_temoin(
         tracing::error!(
             etiquette = combo.etiquette(),
             nom_sortie,
-            "la sortie TEMOIN est ABSENTE de la relecture apres sa tentative -- aucun verdict \
-             ne peut en etre rendu"
+            "the CONTROL output is ABSENT from the read-back after its attempt -- no verdict \
+             can be given"
         );
         return Ok(());
     };
@@ -100,8 +101,8 @@ pub(super) fn rejouer_temoin(
         } else {
             "TEMOIN REFUSE"
         },
-        "verdict TEMOIN : le meme geste, SANS duplication ouverte, sur une sortie neuve -- \
-         departage si un refus de l'eliminatoire vient de la duplication tenue ou du mode choisi"
+        "CONTROL verdict: the same gesture, WITHOUT an open duplication, on a new output -- \
+         decides whether a refusal in the elimination round comes from the held duplication or from the chosen mode"
     );
     Ok(())
 }
@@ -147,9 +148,9 @@ fn cible_du_temoin(
             hauteur_cible_eliminatoire = cible_eliminatoire.1,
             largeur_cible_temoin = cible.0,
             hauteur_cible_temoin = cible.1,
-            "la sortie temoin nait deja a la cible de l'eliminatoire (persistance registre \
-             probable) -- cible substituee pour rester mesurable, meme parade que choisir_cible \
-             pour l'eliminatoire (defaut F1)"
+            "the control output is born already at the elimination target (likely registry \
+             persistence) -- target substituted to stay measurable, same countermeasure as choisir_cible \
+             for the elimination round (defect F1)"
         );
     }
     substituee
@@ -178,7 +179,7 @@ pub(super) fn nom_apres_tour(
     known_before_all: &HashSet<String>,
     autres_noms_a_nous: &HashSet<String>,
 ) -> Result<(String, Option<(u32, u32)>)> {
-    let releve = relever_topologie("après le tour (inconnues annexes)")?;
+    let releve = relever_topologie("after the round (side unknowns)")?;
     if let Some(sortie) = releve.iter().find(|sortie| sortie.nom_sortie == nom_sortie) {
         return Ok((
             nom_sortie.to_string(),
@@ -200,8 +201,8 @@ pub(super) fn nom_apres_tour(
     tracing::warn!(
         nom_sortie,
         ?candidats,
-        "la sortie testée n'apparaît plus sous son nom d'origine, et aucun successeur univoque \
-         ne se dégage -- nom_apres = <disparue>"
+        "the tested output no longer appears under its original name, and no unambiguous successor \
+         emerges -- nom_apres = <gone>"
     );
-    Ok(("<disparue>".to_string(), None))
+    Ok(("<gone>".to_string(), None))
 }

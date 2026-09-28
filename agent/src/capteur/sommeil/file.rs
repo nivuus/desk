@@ -15,8 +15,8 @@
 //! and would deliver the share AFTER the order that should have made it void.~~
 //! **THIS ARGUMENT WAS FALSE, and fix round 1 refuted it**:
 //! coalescing at the TAIL would always put the most recent value at the tail,
-//! so `Part(dormante), Sommeil(Reveiller), Part(éveillée)` would yield
-//! `[Reveiller, Part(éveillée)]` there — chronologically right AND carrying the
+//! so `Part(asleep), Sommeil(Reveiller), Part(awake)` would yield
+//! `[Reveiller, Part(awake)]` there — chronologically right AND carrying the
 //! right value. The failure mode described does not exist. Struck out rather
 //! than erased.
 //!
@@ -372,7 +372,7 @@ impl EmetteurSession {
                 session_cible = %self.partage.session,
                 refuses,
                 profondeur_max = PROFONDEUR_MAX,
-                "file d'une session pleine : message REFUSE (trace au palier, puissance de deux)"
+                "a session's queue is full: message REFUSED (traced at each step, power of two)"
             );
         }
     }

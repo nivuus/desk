@@ -310,7 +310,7 @@ mod tests {
         // MAX_PATH: that is what their sum buys.
         let nom = format!("{}.exe", "b".repeat(NOM_MAX_OCTETS - 4));
         let long = chemin(RACINE, &"a".repeat(IDENTIFIANT_MAX_OCTETS), &nom).unwrap();
-        assert!(long.0.len() < 260, "{} caractères", long.0.len());
+        assert!(long.0.len() < 260, "{} characters", long.0.len());
     }
 
     #[test]
@@ -326,7 +326,7 @@ mod tests {
             assert_eq!(
                 chemin(RACINE, id, "s.exe"),
                 Err(Refus::Identifiant(motif)),
-                "sur {id:?}"
+                "on {id:?}"
             );
         }
         let trop = "a".repeat(IDENTIFIANT_MAX_OCTETS + 1);
@@ -349,7 +349,7 @@ mod tests {
             ("", RefusNom::Vide),
             (trop.as_str(), RefusNom::TropLong(trop.len())),
         ] {
-            assert_eq!(valider_nom(nom), Err(motif), "sur {nom:?}");
+            assert_eq!(valider_nom(nom), Err(motif), "on {nom:?}");
         }
     }
 

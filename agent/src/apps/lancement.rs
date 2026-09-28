@@ -39,7 +39,7 @@ use windows::Win32::UI::Shell::{
 /// job", by the consequence that `superviseur/lanceur.rs` "assigns only its
 /// CHILDREN and never itself". **The supervisor IS in a job** — that of the
 /// **Task Scheduler**, which launches the agent — and the applications it
-/// launches **inherit** it: `DANS_UN_JOB=True` read for the supervisor, its
+/// launches **inherit** it: in-job flag `True` read for the supervisor, its
 /// twelve children, and the `notepad.exe` launched by the catalogue (read in
 /// session 1, `journaux-lot32j/`).
 ///
@@ -64,13 +64,13 @@ use windows::Win32::UI::Shell::{
 pub fn lancer(chemin_lnk: &str, cible: &str, montrer: i32) -> IssueLancement {
     match executer(chemin_lnk, montrer) {
         Ok(()) => {
-            tracing::info!(chemin = chemin_lnk, "raccourci lancé");
+            tracing::info!(chemin = chemin_lnk, "shortcut launched");
             return IssueLancement::Raccourci;
         }
         Err(error) => tracing::warn!(
             chemin = chemin_lnk,
             %error,
-            "lancement du raccourci échoué, repli sur la cible enregistrée"
+            "shortcut launch failed, falling back to the recorded target"
         ),
     }
 
@@ -80,7 +80,7 @@ pub fn lancer(chemin_lnk: &str, cible: &str, montrer: i32) -> IssueLancement {
     // path may therefore start differently — it is better than nothing, it
     // is not the same thing, and the caller must be able to know it.
     if cible.trim().is_empty() {
-        tracing::warn!(chemin = chemin_lnk, "aucune cible de repli enregistrée");
+        tracing::warn!(chemin = chemin_lnk, "no fallback target recorded");
         return IssueLancement::Echec;
     }
     match executer(cible, montrer) {
@@ -88,12 +88,12 @@ pub fn lancer(chemin_lnk: &str, cible: &str, montrer: i32) -> IssueLancement {
             tracing::warn!(
                 chemin = chemin_lnk,
                 cible,
-                "lancé par la CIBLE, pas par le raccourci"
+                "launched through the TARGET, not through the shortcut"
             );
             IssueLancement::Cible
         }
         Err(error) => {
-            tracing::error!(chemin = chemin_lnk, cible, %error, "lancement échoué des deux côtés");
+            tracing::error!(chemin = chemin_lnk, cible, %error, "launch failed on both sides");
             IssueLancement::Echec
         }
     }
@@ -152,8 +152,8 @@ fn executer(file: &str, montrer: i32) -> windows::core::Result<()> {
         // this repository has recorded it). Its windows will belong to the original
         // process, which is not in our job — and will therefore be discarded.
         tracing::warn!(
-            "lancement réussi sans handle de processus : l'application a rejoint \
-             une instance existante, ses fenêtres ne seront PAS adoptées"
+            "launch succeeded without a process handle: the application joined \
+             an existing instance, its windows will NOT be adopted"
         );
     }
     issue

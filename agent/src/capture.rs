@@ -128,7 +128,7 @@ impl DesktopCapture {
     /// `ouverture::duplicate_with_retry` for the complete trade-off.
     fn ouvrir(cible: CibleCapture, fenetre_ouverture: std::time::Duration) -> Result<Self> {
         let factory: IDXGIFactory1 =
-            unsafe { CreateDXGIFactory1() }.context("création de la fabrique DXGI")?;
+            unsafe { CreateDXGIFactory1() }.context("creating the DXGI factory")?;
 
         // Without a target (`new()`, `CibleCapture::Bureau`), we keep the first
         // adapter that has an output attached to the desktop: it is the one that
@@ -145,7 +145,7 @@ impl DesktopCapture {
         tracing::info!(
             desktop_width,
             desktop_height,
-            "duplication de sortie établie"
+            "output duplication established"
         );
 
         Ok(Self {
@@ -196,10 +196,10 @@ impl DesktopCapture {
         // `None` makes it be released here, not at the following assignment.
         self.duplication = None;
 
-        let factory: IDXGIFactory1 = unsafe { CreateDXGIFactory1() }
-            .context("création de la fabrique DXGI (réouverture)")?;
+        let factory: IDXGIFactory1 =
+            unsafe { CreateDXGIFactory1() }.context("creating the DXGI factory (reopening)")?;
         let (_adapter, output) =
-            ouvrir_sortie(&factory, &self.cible).context("résolution de la sortie à rouvrir")?;
+            ouvrir_sortie(&factory, &self.cible).context("resolving the output to reopen")?;
         let (duplication, largeur, hauteur) = dupliquer(&self.device, &output)?;
 
         // The dimensions may have changed: the destination texture is
@@ -274,7 +274,7 @@ impl DesktopCapture {
                             tentative = self.fenetre.tentatives(),
                             cible = ?self.cible,
                             hresult = format!("{code_perdu:#010x}"),
-                            "accès à la duplication perdu, réouverture"
+                            "access to the duplication lost, reopening"
                         );
                         if let Err(error) = self.rouvrir() {
                             // A reopening failure is NOT definitive: the
@@ -288,7 +288,7 @@ impl DesktopCapture {
                             tracing::info!(
                                 error = %crate::cause::chain(&error),
                                 cible = ?self.cible,
-                                "réouverture de la duplication échouée, la fenêtre de reprise court toujours"
+                                "reopening the duplication failed, the recovery window is still running"
                             );
                         }
                         Ok(None)
@@ -320,7 +320,7 @@ impl DesktopCapture {
         // exits the function at every round of the resumption window (up to
         // `DUREE_FENETRE_REPRISE`, 8 s), without ever reaching the return to
         // `PHASE_CAPTURE` set after the acquisition: the watchdog thread
-        // logged `étape = capture/AcquireNextFrame` during those 8 s while
+        // logged the `capture/AcquireNextFrame` step during those 8 s while
         // the call was not made a single time. This repository has already lost
         // a campaign attributing a block to the wrong call — a published step
         // must only designate code actually running.
@@ -359,7 +359,7 @@ impl DesktopCapture {
         // cover the case of an error that bubbles up and stops the loop,
         // nor that of a caller that retries after swallowing the error.
         let cropped: Result<CapturedFrame> = (|| {
-            let resource = resource.ok_or_else(|| anyhow!("ressource d'image absente"))?;
+            let resource = resource.ok_or_else(|| anyhow!("image resource absent"))?;
             let desktop: ID3D11Texture2D = resource.cast()?;
             self.crop(&desktop, region)
         })();
