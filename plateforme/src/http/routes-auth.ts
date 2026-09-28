@@ -1,4 +1,4 @@
-// Les deux routes d'authentification : `POST /auth/connexion` et
+// The two authentication routes: `POST /auth/connexion` and
 // `POST /auth/rafraichir`.
 //
 // 🔴 THE REFUSAL MESSAGE IS IDENTICAL for « unknown email » and « wrong

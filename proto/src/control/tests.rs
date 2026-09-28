@@ -291,7 +291,7 @@ fn a_client_paste_with_an_extra_field_is_rejected() {
     assert!(error.is_err(), "an unknown field must be refused");
 }
 
-/// 🔴 ROUGE si l'on oublie `#[serde(default)]` sur `Capabilities::clipboard`.
+/// 🔴 RED if `#[serde(default)]` is forgotten on `Capabilities::clipboard`.
 ///
 /// ⚠️ **The reason is NOT `deny_unknown_fields`**, contrary to what the
 /// spec claims: `deny_unknown_fields` refuses an UNKNOWN field; it is

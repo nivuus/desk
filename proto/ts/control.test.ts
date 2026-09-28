@@ -28,15 +28,15 @@ describe('control protocol', () => {
         });
     });
 
-    // Chantier E : `mic` est OPTIONNEL, et son absence vaut « pas de micro ».
+    // Workstream E: `mic` is OPTIONAL, and its absence means "no microphone".
     it('parses a ready message WITHOUT mic: the field stays undefined', () => {
         const msg = parseAgentControl(
             `{"v":${CONTROL_VERSION},"type":"ready","width":800,"height":600}`,
         ) as ReadyMessage;
         expect(msg.mic).toBeUndefined();
-        // …et `undefined` est falsy : c'est ce qui fait qu'un client récent
-        // face à un agent ancien n'affiche AUCUN bouton, sans une ligne de
-        // code pour le décider.
+        // …and `undefined` is falsy: it is what makes a recent client
+        // facing an old agent display NO button, without a line of
+        // code to decide it.
         expect(Boolean(msg.mic)).toBe(false);
     });
 
@@ -150,25 +150,25 @@ describe('control protocol', () => {
         expect(message).toEqual({ v: CONTROL_VERSION, type: 'clipboard', text: null, bytes: 102400 });
     });
 
-    // 🔴 La vérification de `v` précède celle du type : ce test la fige pour
-    // la variante neuve. Sans elle, un agent d'une version future ferait
-    // écrire n'importe quoi dans le presse-papier local.
+    // 🔴 The check of `v` precedes that of the type: this test pins it for
+    // the new variant. Without it, an agent of a future version would make
+    // anything be written into the local clipboard.
     it('rejects a clipboard at version 2', () => {
         const raw = JSON.stringify({ v: 2, type: 'clipboard', text: 'bonjour', bytes: 7 });
         expect(() => parseAgentControl(raw)).toThrow(/unsupported control version/);
     });
 
-    // 🔴 Le témoin d'EXÉCUTION de la dérivation de `TYPES_AGENT`. Les DIX
-    // valeurs sont écrites À LA MAIN ici, précisément pour que le test soit
-    // indépendant de la table qu'il juge : une clé de trop dans `ALL_AGENT`
-    // le fait tomber, et une clé manquante fait d'abord tomber `tsc`.
+    // 🔴 The RUNTIME witness of the derivation of `TYPES_AGENT`. The TEN
+    // values are written BY HAND here, precisely so that the test is
+    // independent of the table it judges: one key too many in `ALL_AGENT`
+    // makes it fail, and a missing key first makes `tsc` fail.
     //
-    // ⚠️ **Neuf jusqu'au sous-bloc A1, DIX depuis** — et le garde `tsc` a été
-    // VU échouer avant que la clé ne soit posée :
-    //   « Property 'accent' is missing in type { ready: true; … } but required
-    //     in type Record<… | "accent", true> »
-    // C'est le seul garde de compilation côté TypeScript, et RA1-4 exigeait
-    // qu'il soit vu, pas supposé.
+    // ⚠️ **Nine until sub-block A1, TEN since** — and the `tsc` guard was
+    // SEEN failing before the key was set:
+    //   "Property 'accent' is missing in type { ready: true; … } but required
+    //     in type Record<… | "accent", true>"
+    // It is the only compile-time guard on the TypeScript side, and RA1-4 required
+    // that it be seen, not assumed.
     it('TYPES_AGENT contains exactly the types of the union', () => {
         expect(TYPES_AGENT.slice().sort()).toEqual(
             [
@@ -179,9 +179,9 @@ describe('control protocol', () => {
         );
     });
 
-    // Sous-bloc A1 : la variante d'accent traverse `parseAgentControl`.
-    // ROUGE si l'interface, l'union ou `ALL_AGENT` manquaient — les trois
-    // sont éprouvés d'un coup ici, à l'EXÉCUTION.
+    // Sub-block A1: the accent variant goes through `parseAgentControl`.
+    // RED if the interface, the union or `ALL_AGENT` were missing — all three
+    // are tested at once here, at RUNTIME.
     it('parses an accent', () => {
         const raw = JSON.stringify({ v: CONTROL_VERSION, type: 'accent', couleur: '#7aa2f7' });
         expect(parseAgentControl(raw)).toEqual({
@@ -191,9 +191,9 @@ describe('control protocol', () => {
         });
     });
 
-    // 🔴 La vérification de `v` précède celle du type, comme pour le
-    // presse-papier : sans elle, un agent d'une version future ferait poser
-    // n'importe quoi sur `--accent-fenetre`.
+    // 🔴 The check of `v` precedes that of the type, as for the
+    // clipboard: without it, an agent of a future version would make
+    // anything be set on `--accent-fenetre`.
     it('rejects an accent at version 2', () => {
         const raw = JSON.stringify({ v: 2, type: 'accent', couleur: '#7aa2f7' });
         expect(() => parseAgentControl(raw)).toThrow(/unsupported control version/);
@@ -201,12 +201,12 @@ describe('control protocol', () => {
 
     // ── Bloc E3 : la variante `mic-state` ───────────────────────────────────
     //
-    // ⚠️ **Divergence V1, LÉGUÉE et non fermée :** il n'existe AUCUN fichier de
-    // vecteurs partagé pour `AgentControl`. Ces assertions épinglent la forme
-    // de fil **côté TypeScript** ; `proto/src/control/tests.rs` épingle **la
-    // sienne**. Les deux s'accordent parce que deux mains ont écrit la même
-    // chaîne, et **rien ne le vérifie** : un renommage de clé appliqué d'un
-    // seul côté resterait vert des deux côtés.
+    // ⚠️ **Divergence V1, HANDED DOWN and not closed:** there is NO shared
+    // vectors file for `AgentControl`. These assertions pin the wire
+    // shape **on the TypeScript side**; `proto/src/control/tests.rs` pins **its
+    // own**. The two agree because two hands wrote the same
+    // string, and **nothing checks it**: a key rename applied on only
+    // one side would stay green on both sides.
 
     it('parses a refused microphone state', () => {
         const msg = parseAgentControl(
@@ -224,8 +224,8 @@ describe('control protocol', () => {
     });
 
     it("mic-state is in TYPES_AGENT, hence in the derivation of the union", () => {
-        // Le témoin d'EXÉCUTION de `ALL_AGENT` : `tsc` garde déjà la liste,
-        // mais un test ne peut pas constater une erreur de compilation.
+        // The RUNTIME witness of `ALL_AGENT`: `tsc` already guards the list,
+        // but a test cannot observe a compile error.
         expect(TYPES_AGENT).toContain('mic-state');
     });
 
@@ -237,38 +237,38 @@ describe('control protocol', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Sous-bloc P2 du chantier presse-papier — le sens navigateur → VM.
+// Sub-block P2 of the clipboard workstream — the browser → VM direction.
 // ---------------------------------------------------------------------------
 
 describe('the browser → VM paste', () => {
-    // ROUGE si l'encodeur est absent, ou s'il n'émet pas la version courante.
-    // La forme exacte est celle que `proto/src/control.rs` désérialise, avec
-    // `deny_unknown_fields` : un champ de plus serait refusé côté agent.
+    // RED if the encoder is absent, or if it does not emit the current version.
+    // The exact shape is the one `proto/src/control.rs` deserialises, with
+    // `deny_unknown_fields`: one more field would be refused on the agent side.
     it('encodeClipboard returns the shape serde accepts', () => {
         expect(encodeClipboard('bonjour')).toBe(
             JSON.stringify({ v: CONTROL_VERSION, type: 'clipboard', text: 'bonjour' }),
         );
     });
 
-    // ROUGE si l'encodeur perdait les caractères non-ASCII ou les sauts de
-    // ligne — c'est `JSON.stringify` qui les porte, et ce test le fige.
+    // RED if the encoder lost non-ASCII characters or line
+    // breaks — it is `JSON.stringify` that carries them, and this test pins it.
     it('encodeClipboard carries line breaks and accents', () => {
         const decode = JSON.parse(encodeClipboard('une\r\ndeux\néàü')) as { text: string };
         expect(decode.text).toBe('une\r\ndeux\néàü');
     });
 
-    // 🔴 `CapabilitiesMessage.clipboard` doit être OPTIONNEL.
+    // 🔴 `CapabilitiesMessage.clipboard` must be OPTIONAL.
     //
-    // ROUGE si on le rend obligatoire : un agent d'avant P2 ne le porte pas, et
-    // `undefined` doit valoir `false` GRATUITEMENT — exactement comme
-    // `ReadyMessage.mic`. Le témoin est un `satisfies` : un objet sans le champ
-    // doit rester assignable, ce que `tsc` refuserait si le champ était requis.
+    // RED if made mandatory: an agent from before P2 does not carry it, and
+    // `undefined` must mean `false` FOR FREE — exactly like
+    // `ReadyMessage.mic`. The witness is a `satisfies`: an object without the field
+    // must stay assignable, which `tsc` would refuse if the field were required.
     //
-    // ⚠️ **Ce test-ci se juge à `npm run typecheck`, PAS à `vitest`** — vitest
-    // s'appuie sur esbuild, qui transpile sans vérifier les types. L'annotation
-    // explicite ci-dessous est le garde : si `clipboard` devenait obligatoire,
-    // `tsc` refuserait cette affectation. Les deux `expect` ne font qu'ancrer la
-    // conséquence d'exécution ; c'est la ligne de type qui porte la propriété.
+    // ⚠️ **This test is judged by `npm run typecheck`, NOT by `vitest`** — vitest
+    // relies on esbuild, which transpiles without checking types. The explicit
+    // annotation below is the guard: if `clipboard` became mandatory,
+    // `tsc` would refuse this assignment. The two `expect`s only anchor the
+    // runtime consequence; it is the type line that carries the property.
     it('CapabilitiesMessage.clipboard is optional', () => {
         const ancien: CapabilitiesMessage = {
             v: CONTROL_VERSION,
@@ -276,7 +276,7 @@ describe('the browser → VM paste', () => {
             gamepad: true,
         };
         expect(ancien.clipboard).toBeUndefined();
-        // Et le lire en booléen rend `false` sans qu'on ait rien à écrire.
+        // And reading it as a boolean gives `false` without anything to write.
         expect(Boolean(ancien.clipboard)).toBe(false);
     });
 });

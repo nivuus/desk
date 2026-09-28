@@ -147,7 +147,7 @@ pub struct Write {
     pub position: u64,
     #[serde(rename = "longueur")]
     pub length: u32,
-    /// Premier morceau : le flux s'ouvre **sans** `keepExistingData`.
+    /// First piece: the stream opens **without** `keepExistingData`.
     pub premier: bool,
     /// Last chunk: the stream closes, and **that is the commit**.
     #[serde(rename = "dernier")]

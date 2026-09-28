@@ -26,7 +26,7 @@ export const CHEMIN_ORDRE = '/installation';
 /// OWN typed 404, indistinguishable from the generic one. Anchored at BOTH ends.
 export function installationDe(chemin: string): string | undefined {
     const segments = chemin.split('/');
-    // ['', 'installation', '<id>'] — exactement trois.
+    // ['', 'installation', '<id>'] — exactly three.
     if (segments.length !== 3) return undefined;
     if (segments[1] !== 'installation') return undefined;
     return segments[2] === '' ? undefined : segments[2];

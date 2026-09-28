@@ -1,15 +1,15 @@
-// Les quatre routes du téléversement, éprouvées À TRAVERS un serveur HTTP réel.
+// The four upload routes, tested THROUGH a real HTTP server.
 //
-// 🔴 LE CONTRÔLE DE CHEMIN COMPARE LE CORPS, JAMAIS LE SEUL STATUT : G1 a
-// MESURÉ qu'un `startsWith('/application')` laissait DIX-SEPT tests VERTS — la
-// route mangeait toute la famille et rendait SON PROPRE 404 typé, indiscernable
-// du générique tant qu'on ne lisait que le statut. `monterRoute` reproduit le
-// 404 de `serveur.ts` mot pour mot : c'est lui qui rend observable un `false`.
+// 🔴 THE PATH CHECK COMPARES THE BODY, NEVER THE STATUS ALONE: G1
+// MEASURED that a `startsWith('/application')` left SEVENTEEN tests GREEN — the
+// route ate the whole family and returned ITS OWN typed 404, indistinguishable
+// from the generic one as long as one only read the status. `monterRoute` reproduces the
+// 404 of `serveur.ts` word for word: it is what makes a `false` observable.
 //
-// ⚠️ LA FAMILLE « DÉPOSER » VIT CHEZ LE FRÈRE,
-// `routes-televersement-tranches.test.ts` — extraction, jamais compression, ce
-// fichier ayant atteint 504 lignes pour un plafond de 500. Les fixtures des
-// deux viennent de `routes-televersement-harnais.ts`, jamais d'une copie.
+// ⚠️ THE "DROP" FAMILY LIVES IN THE SIBLING,
+// `routes-televersement-tranches.test.ts` — extraction, never compression, this
+// file having reached 504 lines for a cap of 500. The fixtures of
+// both come from `routes-televersement-harnais.ts`, never from a copy.
 
 import { createHash } from 'node:crypto';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -47,9 +47,9 @@ describe(`upload routes, engine=${MOTEUR}`, () => {
     /* ── LE CHEMIN ───────────────────────────────────────────────────── */
 
     it('🔴 eats ONLY its four paths — the body of the 404 is compared', async () => {
-        // 🔴 SI CETTE MUTATION SURVIT, LE TEST EST FAUX, PAS LA MUTATION —
-        // c'est la rouge que G1 a vue SURVIVRE. On compare le corps parce qu'un
-        // routeur à préfixe peut rendre SON PROPRE 404 typé.
+        // 🔴 IF THIS MUTATION SURVIVES, THE TEST IS WRONG, NOT THE MUTATION —
+        // it is the red G1 saw SURVIVE. We compare the body because a
+        // prefix router can return ITS OWN typed 404.
         const { url } = await monter('tel-chemins');
         for (const chemin of [
             '/televersementautre',
@@ -73,7 +73,7 @@ describe(`upload routes, engine=${MOTEUR}`, () => {
         for (const [nom, value] of Object.entries(ENTETES_SECURITE)) {
             expect(r.headers.get(nom), nom).toBe(value);
         }
-        // Sur un REFUS aussi — c'est là qu'ils comptent le plus.
+        // On a REFUSAL too — it is where they count the most.
         const refus = await fetch(`${url}/televersement`, { method: 'POST' });
         expect(refus.status).toBe(401);
         expect(refus.headers.get('X-Content-Type-Options')).toBe('nosniff');
@@ -105,12 +105,12 @@ describe(`upload routes, engine=${MOTEUR}`, () => {
             method: 'POST',
             headers: withIt(jetonDe('a1', 'agent')),
         });
-        // 403 et non 401 : le jeton est VALIDE, il n'est pas celui d'un humain.
+        // 403 and not 401: the token is VALID, it is not a human's.
         expect(agent.status).toBe(403);
         expect(await agent.json()).toEqual({ refus: 'jeton-agent' });
     });
 
-    /* ── ① DÉCLARER ──────────────────────────────────────────────────── */
+    /* ── ① DECLARE ──────────────────────────────────────────────────── */
 
     it('creates, and returns the step and an EMPTY chunk list', async () => {
         const { url, base } = await monter('tel-create');
@@ -126,7 +126,7 @@ describe(`upload routes, engine=${MOTEUR}`, () => {
         expect(corps.taille_tranche).toBe(CHUNK_SIZE);
         expect(corps.tranches_presentes).toEqual([]);
         expect(corps.scelle_a).toBe(null);
-        // La ligne existe RÉELLEMENT, et elle porte le demandeur.
+        // The row REALLY exists, and it carries the requester.
         const ligne = await lireParId(base, corps.id as string);
         expect(ligne?.utilisateur_id).toBe(u);
         expect(ligne?.taille_tranche).toBe(CHUNK_SIZE);
@@ -142,8 +142,8 @@ describe(`upload routes, engine=${MOTEUR}`, () => {
             [{ nom: 'a', taille: 1.5, sha256: SHA }, 'taille-invalide'],
             [{ nom: 'a', taille: '1', sha256: SHA }, 'taille-invalide'],
             [{ nom: 'a', taille: 1, sha256: 'trop-court' }, 'empreinte-invalide'],
-            // ⚠️ MAJUSCULES REFUSÉES : deux graphies de la même empreinte se
-            // compareraient FAUSSES au scellement.
+            // ⚠️ UPPER CASE REFUSED: two spellings of the same hash would
+            // compare FALSE at sealing.
             [{ nom: 'a', taille: 1, sha256: SHA.toUpperCase() }, 'empreinte-invalide'],
             [{ nom: 'a', taille: TELEVERSEMENT_MAX_OCTETS + 1, sha256: SHA }, 'trop-grand'],
         ];
@@ -151,7 +151,7 @@ describe(`upload routes, engine=${MOTEUR}`, () => {
             const r = await declarerChez(url, jeton, corps);
             expect(((await r.json()) as { refus: string }).refus, JSON.stringify(corps)).toBe(motif);
         }
-        // Ni un objet JSON, ni du JSON du tout : `forme`, et rien de plus.
+        // Neither a JSON object, nor JSON at all: `forme`, and nothing more.
         for (const brut of ['[1,2]', 'this-is-not-json']) {
             const r = await declarerChez(url, jeton, brut);
             expect(r.status, brut).toBe(400);
@@ -183,12 +183,12 @@ describe(`upload routes, engine=${MOTEUR}`, () => {
         });
     });
 
-    /* ── ② LA PROPRIÉTÉ ──────────────────────────────────────────────── */
+    /* ── ② OWNERSHIP ──────────────────────────────────────────────── */
 
     it('🔴 SOMEONE ELSE\'S upload returns the SAME body as the unknown one', async () => {
-        // 🔴 TROIS ROUGES SE JOUENT ICI : retirer la vérification de
-        // propriétaire (200), rendre 403 (statut), ou rendre un 404 au CORPS
-        // distinct — seule la comparaison du corps attrape la troisième.
+        // 🔴 THREE REDS PLAY OUT HERE: removing the owner check
+        // (200), returning 403 (status), or returning a 404 with a distinct
+        // BODY — only the body comparison catches the third.
         const { url, base } = await monter('tel-propriete');
         const ada = await user(base, 'ada@exemple.test');
         const bob = await user(base, 'bob@exemple.test');
@@ -203,11 +203,11 @@ describe(`upload routes, engine=${MOTEUR}`, () => {
         const corpsChez = await chez.text();
         expect(corpsChez).toBe(await absent.text());
         expect(corpsChez).toBe(JSON.stringify({ refus: 'televersement-inconnu' }));
-        // ⚠️ ET LE CORPS NE PORTE AUCUNE TRACE DU CAS RÉEL — c'est tout l'objet.
+        // ⚠️ AND THE BODY CARRIES NO TRACE OF THE REAL CASE — that is the whole point.
         expect(corpsChez).not.toContain('etranger');
         expect(corpsChez).not.toContain(ada);
 
-        // Le propriétaire, lui, voit le sien.
+        // The owner, for their part, sees theirs.
         const sien = await fetch(`${url}/televersement/${id}`, { headers: withIt(jetonDe(ada)) });
         expect(sien.status).toBe(200);
         expect((await sien.json()) as Record<string, unknown>).toMatchObject({
@@ -261,16 +261,16 @@ describe(`upload routes, engine=${MOTEUR}`, () => {
     });
 
     it('🔴 the right NUMBER of chunks is not enough: a wrong SIZE is inconsistent', async () => {
-        // 🔴 LA ROUGE : remplacer `verdict` par « le compte est bon » fait
-        // passer ce cas — les trois rangs sont là, la deuxième est trop courte.
-        // Le refus doit être `tranches-incoherentes`, JAMAIS `-manquantes` :
-        // redemander une tranche mal taillée ne la réparerait jamais.
+        // 🔴 THE RED: replacing `verdict` with "the count is right" makes
+        // this case pass — the three ranks are there, the second is too short.
+        // The refusal must be `tranches-incoherentes`, NEVER `-manquantes`:
+        // asking again for a badly cut chunk would never repair it.
         const { url, base } = await monter('tel-incoherentes');
         const ada = await user(base, 'ada@exemple.test');
         const jeton = jetonDe(ada);
         const id = await poser(base, ada);
         await deposer(url, id, 0, TRANCHES[0], jeton);
-        await deposer(url, id, 1, Buffer.from('ab'), jeton); // deux octets pour quatre
+        await deposer(url, id, 1, Buffer.from('ab'), jeton); // two bytes out of four
         await deposer(url, id, 2, TRANCHES[2], jeton);
         expect(magasin.lister(id).length).toBe(3);
 
@@ -281,9 +281,9 @@ describe(`upload routes, engine=${MOTEUR}`, () => {
     });
 
     it('🔴 RECOMPUTES the fingerprint: chunks of the right size with the wrong content are refused', async () => {
-        // 🔴 LA ROUGE : faire confiance au `sha256` ANNONCÉ scelle ce
-        // téléversement, dont les octets ne sont pas les siens. Les trois
-        // tranches ont la taille EXACTE du plan — seul un recalcul le voit.
+        // 🔴 THE RED: trusting the ANNOUNCED `sha256` seals this
+        // upload, whose bytes are not its own. The three
+        // chunks have the EXACT size of the plan — only a recomputation sees it.
         const { url, base } = await monter('tel-empreinte');
         const ada = await user(base, 'ada@exemple.test');
         const jeton = jetonDe(ada);
@@ -295,7 +295,7 @@ describe(`upload routes, engine=${MOTEUR}`, () => {
         const r = await sceller(url, id, jeton);
         expect(r.status).toBe(409);
         expect(await r.json()).toEqual({ refus: 'empreinte' });
-        // ⚠️ NI L'EMPREINTE ANNONCÉE NI LA RELUE NE TRAVERSENT.
+        // ⚠️ NEITHER THE ANNOUNCED HASH NOR THE REREAD ONE GO THROUGH.
         expect((await lireParId(base, id))?.scelle_a).toBe(null);
     });
 
@@ -314,21 +314,21 @@ describe(`upload routes, engine=${MOTEUR}`, () => {
         expect(await un.json()).toEqual(attendu);
         expect((await lireParId(base, id))?.scelle_a).toBe(MS);
 
-        // 🔴 UN DÉPÔT POSTÉRIEUR ANNULERAIT LE SCELLEMENT SANS LE DIRE.
+        // 🔴 A LATER DROP WOULD CANCEL THE SEALING WITHOUT SAYING SO.
         const apres = await deposer(url, id, 0, Buffer.from('ZZZZ'), jeton);
         expect(apres.status).toBe(409);
         expect(await apres.json()).toEqual({ refus: 'deja-scelle' });
 
-        // Sceller deux fois est un succès — un client qui réessaie doit
-        // retrouver LA MÊME réponse, à la lettre.
+        // Sealing twice is a success — a client that retries must
+        // get THE SAME response back, to the letter.
         const deux = await sceller(url, id, jeton);
         expect(deux.status).toBe(200);
         expect(await deux.text()).toBe(JSON.stringify(attendu));
     });
 
     it('seals an EMPTY file without requiring any chunk', async () => {
-        // Zéro tranche (`ceil(0 / pas)`), verdict `complet` sur une liste vide :
-        // sceller un fichier sans contenu n'exige pas une trame sans contenu.
+        // Zero chunks (`ceil(0 / pas)`), verdict `complet` on an empty list:
+        // sealing a file without content does not require a frame without content.
         const { url, base } = await monter('tel-vide');
         const ada = await user(base, 'ada@exemple.test');
         const vide = createHash('sha256').update('').digest('hex');

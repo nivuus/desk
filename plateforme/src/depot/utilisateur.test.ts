@@ -1,10 +1,10 @@
-// Le dépôt `user`, joué contre le pilote que `PLATEFORME_BASE` désigne.
+// The `user` repository, played against the driver `PLATEFORME_BASE` designates.
 //
-// 🔴 LES VALEURS SONT RÉELLES, jamais commodes : l'empreinte est produite par
-// `hacher` — donc de la longueur qu'une base de production portera —, et
-// l'horodatage est une ÉPOQUE EN MILLISECONDES. C'est le troisième angle mort
-// du couple lint / double passe, celui du CHOIX DES VALEURS : `1_000` tient
-// dans un entier 4 octets, `Date.now()` n'y tient pas.
+// 🔴 THE VALUES ARE REAL, never convenient: the hash is produced by
+// `hacher` — hence of the length a production database will carry —, and
+// the timestamp is an EPOCH IN MILLISECONDS. It is the third blind spot
+// of the lint / double pass pair, that of the CHOICE OF VALUES: `1_000` fits
+// in a 4-byte integer, `Date.now()` does not.
 
 import { afterEach, describe, expect, it } from 'vitest';
 import { baseNeuve, MOTEUR } from '../base/harnais';
@@ -12,7 +12,7 @@ import type { Pilote } from '../base/pilote';
 import { hacher } from '../identite/mot-de-passe';
 import { createUser, lireParEmail, remplacerEmpreinte } from './utilisateur';
 
-/// Une époque réelle en millisecondes, la même que `base/pilotes.test.ts`.
+/// A real epoch in milliseconds, the same as `base/pilotes.test.ts`.
 const MS = 1_787_136_773_742;
 
 let base: Pilote | undefined;
@@ -32,24 +32,24 @@ describe(`user repository, engine=${MOTEUR}`, () => {
         expect(ligne).toBeDefined();
         expect(ligne!.id).toBe(id);
         expect(ligne!.email).toBe('ada@exemple.test');
-        // La longueur réelle d'une empreinte scrypt, relue sans troncature :
-        // une colonne trop courte ferait ensuite LEVER `timingSafeEqual`.
+        // The real length of a scrypt hash, read back without truncation:
+        // a column too short would then make `timingSafeEqual` THROW.
         expect(ligne!.empreinte_mdp).toBe(empreinte);
-        // 🔴 Valeur EXACTE, et de magnitude d'époque : c'est l'assertion qui
-        // aurait rougi sur une colonne INTEGER côté Postgres.
+        // 🔴 EXACT value, and of epoch magnitude: it is the assertion that
+        // would have turned red on an INTEGER column on the Postgres side.
         expect(Number(ligne!.cree_a)).toBe(MS);
     });
 
     it('REFUSES a second account with the same email', async () => {
-        // L'index UNIQUE de `0001-socle.sql:32` : le retirer ferait passer les
-        // deux insertions, et deux comptes homonymes rendraient
-        // l'authentification non déterministe.
+        // The UNIQUE index of `0001-socle.sql:32`: removing it would let both
+        // insertions pass, and two accounts with the same email would make
+        // authentication non-deterministic.
         base = await baseNeuve('util-unique');
         const empreinte = await hacher('an-ordinary-password-42');
         await createUser(base, 'ada@exemple.test', empreinte, MS);
         await expect(createUser(base, 'ada@exemple.test', empreinte, MS + 1))
             .rejects.toThrow();
-        // Et rien n'a été ajouté.
+        // And nothing was added.
         const all = await base.interroger<{ n: number | string }>(
             'SELECT COUNT(*) AS n FROM utilisateur',
             [],
@@ -58,9 +58,9 @@ describe(`user repository, engine=${MOTEUR}`, () => {
     });
 
     it('returns undefined on an unknown email, NEVER an exception', async () => {
-        // Un `lignes[0].id` sur un tableau vide lèverait, et l'appelant HTTP
-        // répondrait 500 là où il doit répondre 401 — l'écart de comportement
-        // serait à lui seul un oracle d'énumération de comptes.
+        // A `lignes[0].id` on an empty array would throw, and the HTTP caller
+        // would answer 500 where it must answer 401 — the difference in behaviour
+        // would on its own be an account enumeration oracle.
         base = await baseNeuve('util-inconnu');
         await expect(lireParEmail(base, 'personne@exemple.test')).resolves.toBeUndefined();
     });
@@ -75,8 +75,8 @@ describe(`user repository, engine=${MOTEUR}`, () => {
 
         const ligne = await lireParEmail(base, 'ada@exemple.test');
         expect(ligne!.empreinte_mdp).toBe(neuve);
-        // Le courriel et l'instant de création sont intacts : un `UPDATE` trop
-        // large les emporterait sans que rien ne le dise.
+        // The email and the creation instant are intact: a too broad `UPDATE`
+        // would take them away without anything saying so.
         expect(ligne!.email).toBe('ada@exemple.test');
         expect(Number(ligne!.cree_a)).toBe(MS);
         expect(ligne!.id).toBe(id);

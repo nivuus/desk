@@ -1,16 +1,16 @@
-// Quelles VMs d'un inventaire sont à cet utilisateur. PUR, donc éprouvable
-// sans base ni socket.
+// Which VMs of an inventory belong to this user. PURE, hence testable
+// without a database or socket.
 //
-// 🔴 POURQUOI CE MODULE EXISTE PLUTÔT QU'UN `filter` DANS LA ROUTE : un défaut
-// de filtre qui vivrait dans `http/routes-vm.ts` fuiterait l'inventaire
-// ENTIER, et il n'y aurait aucun endroit où le rougir sans monter un serveur.
-// Ici, la mutation « rendre l'inventaire entier » tombe en quelques
-// microsecondes.
+// 🔴 WHY THIS MODULE EXISTS RATHER THAN A `filter` IN THE ROUTE: a filter
+// defect living in `http/routes-vm.ts` would leak the WHOLE
+// inventory, and there would be no place to turn it red without mounting a server.
+// Here, the mutation "return the whole inventory" fails within a few
+// microseconds.
 //
-// ⚠️ CINQ TESTS ET NON QUATRE, ET C'EST ANNONCÉ : le plan range « rend
-// l'unique VM » et « lève sur un doublon » dans une seule ligne de tableau,
-// alors que sa propre doctrine exige un `it()` par assertion (leçon ①A/①A-bis
-// de P2). Les deux sont donc séparés.
+// ⚠️ FIVE TESTS AND NOT FOUR, AND IT IS ANNOUNCED: the plan puts "returns
+// the only VM" and "throws on a duplicate" in a single table row,
+// while its own doctrine requires one `it()` per assertion (P2's lesson ①A/①A-bis).
+// The two are therefore separated.
 
 import { describe, expect, it } from 'vitest';
 import type { Vm } from './interface';
@@ -25,8 +25,8 @@ function vm(id: string, userId: string | null): Vm {
         adresse: '192.168.3.2',
         userId,
         prefixe: `prefixe-${id}`,
-        // Une époque en millisecondes, jamais un petit nombre commode : c'est
-        // la leçon la plus chère de P1.
+        // An epoch in milliseconds, never a convenient small number: it is
+        // the most expensive lesson of P1.
         vuA: MS,
     };
 }
@@ -40,21 +40,21 @@ const INVENTAIRE: readonly Vm[] = [
 
 describe('selection of the VMs of a user', () => {
     it('🔴 `vmsDe` returns ONLY the VMs of the requester', () => {
-        // 🔴 La rouge : rendre l'inventaire entier. C'est la mutation exacte
-        // que ce module existe pour rendre visible — et elle est indétectable
-        // si le filtre vit dans la route.
+        // 🔴 The red: returning the whole inventory. It is the exact mutation
+        // this module exists to make visible — and it is undetectable
+        // if the filter lives in the route.
         expect(vmsDe(INVENTAIRE, 'alice').map((v) => v.id)).toEqual(['v1']);
         expect(vmsDe(INVENTAIRE, 'bob').map((v) => v.id)).toEqual(['v2']);
-        // Et une comparaison par PRÉFIXE rendrait `v4` à alice.
+        // And a PREFIX comparison would give `v4` to alice.
         expect(vmsDe(INVENTAIRE, 'alice').map((v) => v.id)).not.toContain('v4');
     });
 
     it('🔴 a VM with a null `utilisateurId` is returned to NOBODY', () => {
-        // 🔴 La rouge : traiter `null` comme « libre pour tous ». Tout
-        // utilisateur authentifié verrait alors chaque VM non attribuée.
-        // ⚠️ C'est le comportement que le sous-bloc G1 retient délibérément
-        // pour SES routes (« servie, et journalisée ») ; P4 ne le retient pas
-        // — voir D8. Les deux chantiers divergent ici, et c'est déclaré.
+        // 🔴 The red: treating `null` as "free for all". Every
+        // authenticated user would then see every unassigned VM.
+        // ⚠️ It is the behaviour sub-block G1 deliberately keeps
+        // for ITS routes ("served, and logged"); P4 does not keep it
+        // — see D8. The two workstreams diverge here, and it is declared.
         for (const qui of ['alice', 'bob', 'personne', '']) {
             expect(vmsDe(INVENTAIRE, qui).map((v) => v.id)).not.toContain('v3');
         }
@@ -62,9 +62,9 @@ describe('selection of the VMs of a user', () => {
     });
 
     it('🔴 `laVmDe` returns `undefined` when the user has none', () => {
-        // 🔴 La rouge : rendre `inventaire[0]`. Le critère ③ — « un
-        // utilisateur sans VM reçoit 409 `aucune-vm` » — deviendrait
-        // invérifiable, la route croyant toujours en tenir une.
+        // 🔴 The red: returning `inventaire[0]`. Criterion ③ — "a
+        // user without a VM receives 409 `aucune-vm`" — would become
+        // unverifiable, the route always believing it holds one.
         expect(laVmDe(INVENTAIRE, 'carole')).toBeUndefined();
         expect(laVmDe([], 'alice')).toBeUndefined();
     });
@@ -75,18 +75,18 @@ describe('selection of the VMs of a user', () => {
     });
 
     it('🔴 `laVmDe` THROWS if the inventory carries TWO for the same user', () => {
-        // 🔴 La rouge : rendre la première en silence. L'index partiel
-        // `vm_un_utilisateur` rend ce cas impossible EN BASE — mais cette
-        // fonction reçoit un tableau, et rien dans sa signature ne dit d'où il
-        // vient. Le jour où l'index serait retiré (ce que la rouge ②b de la
-        // recette fait exprès), c'est cette exception qui dirait où regarder ;
-        // un silence, lui, ferait choisir une VM au hasard.
+        // 🔴 The red: returning the first one silently. The partial index
+        // `vm_un_utilisateur` makes this case impossible IN THE DATABASE — but this
+        // function receives an array, and nothing in its signature says where it
+        // comes from. The day the index were removed (which red ②b of the
+        // acceptance does on purpose), it is this exception that would say where to look;
+        // silence would make it pick a VM at random.
         const double: readonly Vm[] = [vm('v1', 'alice'), vm('v9', 'alice')];
-        // Le message NOMME l'index dont la disparition expliquerait le doublon :
-        // c'est ce qui dit où regarder, et c'est ce qu'on asserte.
+        // The message NAMES the index whose disappearance would explain the duplicate:
+        // it is what says where to look, and it is what is asserted.
         expect(() => laVmDe(double, 'alice')).toThrow(/vm_un_utilisateur/);
-        // `vmsDe`, elle, ne lève PAS : elle rend ce qu'elle voit. C'est
-        // `laVmDe` qui porte l'invariant « au plus une ».
+        // `vmsDe`, for its part, does NOT throw: it returns what it sees. It is
+        // `laVmDe` that carries the "at most one" invariant.
         expect(vmsDe(double, 'alice')).toHaveLength(2);
     });
 });

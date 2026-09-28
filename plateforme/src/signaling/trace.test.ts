@@ -1,16 +1,16 @@
-// Le critère ② de P1 : une session appariée laisse une ligne en base, et la
-// clôt en partant.
+// P1's criterion ②: a paired session leaves a row in the database, and
+// closes it on leaving.
 //
-// Deux étages sont éprouvés ici, et il faut les deux :
-//   - l'observateur SEUL, avec une horloge injectée, sur des VALEURS EXACTES ;
-//   - le service ENTIER, deux pairs sur `/signal` (le relais, déplacé de la
-//     racine le 21 août 2026 — voir l'en-tête de `http/serveur.ts`), où la
-//     seule preuve possible est une attente BORNÉE.
+// Two stages are tested here, and both are needed:
+//   - the observer ALONE, with an injected clock, on EXACT VALUES;
+//   - the WHOLE service, two peers on `/signal` (the relay, moved from the
+//     root on 21 August 2026 — see the header of `http/serveur.ts`), where the
+//     only possible proof is a BOUNDED wait.
 //
-// ⚠️ L'attente est bornée et échoue sur expiration, jamais une boucle infinie :
-// l'écriture est délibérément lancée sans être attendue (voir `trace.ts`), donc
-// une écriture perdue ne se manifeste que par une ligne qui n'arrive pas. Un
-// test qui bouclerait sans borne pendrait au lieu de rougir.
+// ⚠️ The wait is bounded and fails on expiry, never an infinite loop:
+// the write is deliberately launched without being awaited (see `trace.ts`), so
+// a lost write only shows as a row that does not arrive. A
+// test that looped without a bound would hang instead of turning red.
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { WebSocket } from 'ws';
@@ -27,17 +27,17 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-// Un secret de test EXPLICITE, jamais `''` : `lireConfig` refuse la chaîne
-// vide, et un littéral `Config` construit à la main doit porter une valeur
-// qu'un service accepterait réellement.
+// An EXPLICIT test secret, never `''`: `lireConfig` refuses the empty
+// string, and a `Config` literal built by hand must carry a value
+// a service would really accept.
 const CONFIG: Config = {
     hote: '127.0.0.1',
     port: 0,
     base: 'sqlite',
     urlBase: ':memory:',
     secretJeton: 'un-secret-de-plateforme-de-quarante-octets',
-    // Aucun proxy déclaré — voir `config.ts` : l'ensemble vide est le défaut,
-    // et il signifie « ne croire l'adresse annoncée par personne ».
+    // No proxy declared — see `config.ts`: the empty set is the default,
+    // and it means "trust nobody's announced address".
     proxyDeConfiance: new Set(),
     repertoireIcones: join(mkdtempSync(join(tmpdir(), 'g2-icones-')), 'icones'),
     repertoireTeleversements: join(mkdtempSync(join(tmpdir(), 'g3-tranches-')), 'televersements'),
@@ -54,7 +54,7 @@ afterEach(async () => {
     base = undefined;
 });
 
-/// Attend qu'une ligne satisfasse `predicat`, ou ÉCHOUE au bout de `borneMs`.
+/// Waits for a row to satisfy `predicat`, or FAILS after `borneMs`.
 async function attendreLigne(
     p: Pilote,
     nom: string,
@@ -74,9 +74,9 @@ async function attendreLigne(
     }
 }
 
-/// Le préfixe de la VM simulée. Toutes les sessions de ce fichier le portent,
-/// parce que la garde exige désormais que le sujet du jeton d'agent PRÉFIXE la
-/// session demandée (sous-bloc P3).
+/// The prefix of the simulated VM. All the sessions of this file carry it,
+/// because the guard now requires the agent token's subject to PREFIX the
+/// requested session (sub-block P3).
 const P = 'RhH1x2QmTz9kLpVbNc7dAw';
 
 function connecter(
@@ -88,14 +88,14 @@ function connecter(
     return new Promise((resolve) => {
         const w = new WebSocket(url);
         w.once('open', () => {
-            // 🔴 LES DEUX RÔLES EXIGENT UN JETON. Le rôle `client` depuis P2 ;
-            // le rôle `agent` depuis P3, qui a fermé la fenêtre anonyme de E2.
-            // Sans jeton, la garde refuse, le socket se ferme, et AUCUN
-            // appariement n'a lieu — donc aucune ligne de trace, et ces tests
-            // mesureraient un service qui n'apparie jamais rien.
+            // 🔴 BOTH ROLES REQUIRE A TOKEN. The `client` role since P2;
+            // the `agent` role since P3, which closed E2's anonymous window.
+            // Without a token, the guard refuses, the socket closes, and NO
+            // pairing takes place — hence no trace row, and these tests
+            // would measure a service that never pairs anything.
             //
-            // Le jeton d'agent est de TYPE `agent` et son sujet est le PRÉFIXE
-            // de la VM : la garde exige que ce sujet préfixe la session.
+            // The agent token is of TYPE `agent` and its subject is the VM's
+            // PREFIX: the guard requires this subject to prefix the session.
             const jeton = role === 'client'
                 ? signer(sujet, CONFIG.secretJeton, Date.now())
                 : signer(P, CONFIG.secretJeton, Date.now(), undefined, 'agent');
@@ -124,17 +124,17 @@ describe('session observer', () => {
         instant = 5_000_000_900;
         obs.separe('u-1');
         const close = await attendreLigne(base, 'u-1', (l) => l.fermee_a !== null, 'close');
-        // Valeurs EXACTES : c'est l'assertion qui interdit un `Date.now()`
-        // caché dans l'observateur.
+        // EXACT values: it is the assertion that forbids a `Date.now()`
+        // hidden in the observer.
         expect(Number(close.ouverte_a)).toBe(5_000_000_000);
         expect(Number(close.fermee_a)).toBe(5_000_000_900);
         expect(close.motif).toBe(MOTIF_DEPART);
     });
 
     it('a second pairing does not reopen a second row', async () => {
-        // Un pair qui se reconnecte pendant que l'autre reste en place
-        // rapparie la session. Sans cette garde, la première ligne serait
-        // orpheline — jamais close, jusqu'au balayage du prochain démarrage.
+        // A peer that reconnects while the other stays in place
+        // re-pairs the session. Without this guard, the first row would be
+        // orphaned — never closed, until the sweep of the next startup.
         base = await baseNeuve('trace-rappari');
         const obs = observateurDeSession(base, () => 7_000);
         obs.apparie('u-2');
@@ -153,13 +153,13 @@ describe('session observer', () => {
     });
 });
 
-/// Enrôle une VM à laquelle la session pourra se rattacher.
+/// Enrols a VM to which the session can attach.
 ///
-/// ⚠️ LA LIGNE `vm` D'ABORD : `agent_enrole.vm_id` la RÉFÉRENCE
-/// (`0003-agents.sql`), et SQLite applique la clé étrangère. L'empreinte est
-/// une VRAIE empreinte `scrypt`, jamais une chaîne courte — même règle que
-/// `depot/agent.test.ts`, et pour la même raison : une valeur commode ne
-/// mesure aucune longueur de colonne.
+/// ⚠️ THE `vm` ROW FIRST: `agent_enrole.vm_id` REFERENCES it
+/// (`0003-agents.sql`), and SQLite applies the foreign key. The hash is
+/// a REAL `scrypt` hash, never a short string — same rule as
+/// `depot/agent.test.ts`, and for the same reason: a convenient value
+/// measures no column length.
 async function enrolerUneVm(p: Pilote, vmId: string, prefixe: string): Promise<void> {
     await p.executer('INSERT INTO vm(id,nom,adresse) VALUES(?,?,?)', [
         vmId,
@@ -170,11 +170,11 @@ async function enrolerUneVm(p: Pilote, vmId: string, prefixe: string): Promise<v
 }
 
 describe('the session.vm_id column', () => {
-    // 🔴 C'EST LE LEGS N°3 DE P2 QUI SE FERME ICI : « `session.vm_id` reste
-    // entièrement NULL ». Le préfixe du nom de session désigne la VM, et
-    // c'est la TRACE qui le résout — jamais le relais, dont `apparie` reste
-    // synchrone et sans retour (E10). La résolution est donc éprouvée au
-    // niveau de l'observateur, là où elle vit.
+    // 🔴 IT IS P2'S LEGACY ITEM NO. 3 THAT CLOSES HERE: "`session.vm_id` stays
+    // entirely NULL". The prefix of the session name designates the VM, and
+    // it is the TRACE that resolves it — never the relay, whose `apparie` stays
+    // synchronous and without return (E10). The resolution is therefore tested at the
+    // level of the observer, where it lives.
 
     it('a session prefixed by an ENROLLED VM records its vm_id', async () => {
         base = await baseNeuve('trace-vm-connue');
@@ -187,10 +187,10 @@ describe('the session.vm_id column', () => {
     });
 
     it('a session WITHOUT a prefix leaves vm_id at `null`', async () => {
-        // Le mode d'essai local que la spec §10 pose comme LÉGITIME : un
-        // agent lancé sans `AGENT_VM` nomme sa session `bureau`, tout court.
-        // Lever, ou inscrire une chaîne vide, casserait ce mode — et une
-        // chaîne vide mentirait en prétendant connaître une VM.
+        // The local trial mode that spec §10 sets as LEGITIMATE: an
+        // agent launched without `AGENT_VM` names its session plain `bureau`.
+        // Throwing, or recording an empty string, would break this mode — and an
+        // empty string would lie by claiming to know a VM.
         base = await baseNeuve('trace-vm-sans-prefixe');
         await enrolerUneVm(base, 'v-1', P);
         const obs = observateurDeSession(base, () => 5_000_000_000);
@@ -201,23 +201,23 @@ describe('the session.vm_id column', () => {
     });
 
     it('🔴 the instant is read SYNCHRONOUSLY at pairing, NOT after the database read', async () => {
-        // 🔴 CE TEST EXISTE PARCE QU'UNE MUTATION EST RESTÉE VERTE SANS LUI.
-        // La résolution du préfixe intercale une lecture de base entre
-        // `apparie()` et l'INSERT : lire l'horloge dans l'appel à
-        // `ouvrirSession` daterait donc `ouverte_a` de la FIN D'UNE REQUÊTE et
-        // non de l'appariement. Aucun des trois tests ci-dessus ne le voyait —
-        // ils ne bougent pas leur horloge —, et le commentaire de `trace.ts`
-        // affirmait la règle sans que rien ne la tienne.
+        // 🔴 THIS TEST EXISTS BECAUSE A MUTATION STAYED GREEN WITHOUT IT.
+        // The prefix resolution inserts a database read between
+        // `apparie()` and the INSERT: reading the clock in the call to
+        // `ouvrirSession` would therefore date `ouverte_a` from the END OF A QUERY and
+        // not from the pairing. None of the three tests above saw it —
+        // they do not move their clock —, and the comment of `trace.ts`
+        // stated the rule without anything holding it.
         base = await baseNeuve('trace-instant-synchrone');
         await enrolerUneVm(base, 'v-1', P);
         let instant = 5_000_000_000;
         const obs = observateurDeSession(base, () => instant);
 
         obs.apparie(`${P}:bureau`);
-        // 🔴 CETTE LIGNE COURT AVANT QUE LA RÉSOLUTION N'AIT ABOUTI, et c'est
-        // ce qui rend le test décidable : `resoudreVm` est asynchrone, donc
-        // `apparie` a rendu la main ici sans que la base ait répondu. Une
-        // horloge lue plus tard verrait 9 000 000 000.
+        // 🔴 THIS LINE RUNS BEFORE THE RESOLUTION HAS COMPLETED, and it is
+        // what makes the test decidable: `resoudreVm` is asynchronous, so
+        // `apparie` has returned control here without the database having answered. A
+        // clock read later would see 9 000 000 000.
         instant = 9_000_000_000;
 
         const ligne = await attendreLigne(base, `${P}:bureau`, () => true, 'ouverte');
@@ -226,11 +226,11 @@ describe('the session.vm_id column', () => {
     });
 
     it('🔴 a session with an UNKNOWN prefix leaves vm_id at `null`, and LOGS it', async () => {
-        // 🔴 LES DEUX MOITIÉS COMPTENT. Inscrire quand même ferait MENTIR la
-        // colonne — elle nommerait une VM que la base ne connaît pas. Et se
-        // taire rendrait le cas indiscernable du précédent : un agent dont
-        // l'enrôlement a été révoqué apparierait des sessions sans que rien,
-        // nulle part, ne le signale.
+        // 🔴 BOTH HALVES COUNT. Recording anyway would make the
+        // column LIE — it would name a VM the database does not know. And staying
+        // silent would make the case indistinguishable from the previous one: an agent whose
+        // enrolment was revoked would pair sessions without anything,
+        // anywhere, flagging it.
         base = await baseNeuve('trace-vm-inconnue');
         const journal = vi.spyOn(console, 'warn').mockImplementation(() => {});
         const inconnu = 'Zz9QmRhH1x2kLpVbNc7dAw';
@@ -268,10 +268,10 @@ describe('the whole service', () => {
     });
 
     it('writes nothing when a single peer has declared itself', async () => {
-        // 🔴 Le premier test serait VERT avec une écriture posée trop tôt —
-        // dès la première déclaration. C'est ce test-ci qui distingue
-        // « appariement » de « connexion », et le superviseur se déclare seul
-        // sur `bureau` des heures durant au démarrage de la VM.
+        // 🔴 The first test would be GREEN with a write set too early —
+        // from the first declaration. It is this test that distinguishes
+        // "pairing" from "connection", and the supervisor declares itself alone
+        // on `bureau` for hours at VM startup.
         base = await baseNeuve('trace-solitaire');
         service = await startServer(CONFIG, base);
         const url = `ws://127.0.0.1:${service.port}/signal`;
@@ -286,12 +286,12 @@ describe('the whole service', () => {
     });
 
     it('records in the database the user of the authenticated client that pairs', async () => {
-        // ⚠️ CE TEST NE PEUT PAS ÊTRE CELUI D'UN CLIENT ANONYME : depuis que
-        // la garde est câblée, un client anonyme n'atteint jamais
-        // l'appariement. Un test qui en supposerait un mesurerait un état que
-        // le produit ne peut plus produire — vacueux par construction. Le cas
-        // réel est celui-ci : la session de contrôle `bureau`, où l'`agent`
-        // arrive seul et sans identité, et où le CLIENT, lui, est authentifié.
+        // ⚠️ THIS TEST CANNOT BE ONE OF AN ANONYMOUS CLIENT: since
+        // the guard is wired, an anonymous client never reaches
+        // pairing. A test assuming one would measure a state
+        // the product can no longer produce — vacuous by construction. The real
+        // case is this one: the `bureau` control session, where the `agent`
+        // arrives alone and without identity, and where the CLIENT, for its part, is authenticated.
         base = await baseNeuve('trace-appartenance');
         service = await startServer(CONFIG, base);
         const url = `ws://127.0.0.1:${service.port}/signal`;

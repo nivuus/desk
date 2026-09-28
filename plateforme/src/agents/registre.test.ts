@@ -1,20 +1,20 @@
-// Le registre des sockets d'agent vivants, éprouvé SANS SERVEUR.
+// The registry of live agent sockets, tested WITHOUT A SERVER.
 //
-// 🔴 LE SOCKET EST UN DOUBLE, et c'est ce que la frontière structurelle de
-// `SocketAgent` achète : ces sept cas se jouent sans ouvrir de port, sans
-// poignée de main, et sans attendre le réseau. Ce que le registre fait
-// réellement d'un vrai `ws.WebSocket` est éprouvé ailleurs — par
-// `canal-apps.test.ts`, qui monte le canal pour de bon.
+// 🔴 THE SOCKET IS A DOUBLE, and it is what the structural boundary of
+// `SocketAgent` buys: these seven cases play out without opening a port, without
+// a handshake, and without waiting for the network. What the registry
+// really does with a real `ws.WebSocket` is tested elsewhere — by
+// `canal-apps.test.ts`, which mounts the channel for real.
 //
-// 🔴 L'EXPIRATION SE JOUE SUR DES MINUTEURS FEINTS QUE LE TEST FAIT AVANCER.
-// Une horloge figée rendrait le cas inerte : il lirait un état final au lieu
-// de voir la TRANSITION, et c'est la leçon du critère ④ de P3.
+// 🔴 EXPIRY PLAYS OUT ON FAKE TIMERS THAT THE TEST ADVANCES.
+// A frozen clock would make the case inert: it would read a final state instead
+// of seeing the TRANSITION, and it is the lesson of P3's criterion ④.
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { encodeLancer, type IssueLancement } from '../../../proto/ts/plateforme';
 import { DELAI_LANCEMENT_MS, RegistreAgents, type SocketAgent } from './registre';
 
-/// Un double de socket : il retient ce qu'on lui écrit, et sait se fermer.
+/// A socket double: it keeps what is written to it, and knows how to close.
 function socketFeint(readyState = 1): SocketAgent & { ecrits: string[]; fermetures: number[] } {
     const ecrits: string[] = [];
     const fermetures: number[] = [];
@@ -40,22 +40,22 @@ afterEach(() => {
 
 describe('RegistreAgents', () => {
     it('returns `agent-injoignable` IMMEDIATELY for an absent VM', async () => {
-        // 🔴 Attendre `DELAI_LANCEMENT_MS` pour une VM dont on sait DÉJÀ
-        // qu'elle n'a pas de socket ferait payer cinq secondes à un appelant
-        // pour une réponse connue d'avance. Les minuteurs sont feints et ne
-        // sont PAS avancés : si la promesse attendait quoi que ce soit, elle
-        // ne se résoudrait jamais et le cas expirerait.
+        // 🔴 Waiting for `DELAI_LANCEMENT_MS` for a VM we ALREADY know
+        // has no socket would make a caller pay five seconds
+        // for an answer known in advance. The timers are fake and are
+        // NOT advanced: if the promise waited for anything at all, it
+        // would never resolve and the case would time out.
         vi.useFakeTimers();
         const registre = new RegistreAgents();
         await expect(registre.lancer('v-absente', 'cle-1', 'd-1')).resolves.toBe('agent-injoignable');
     });
 
     it("sends a `Lancer` ENCODED BY THE PROTOCOL, never a copied shape", async () => {
-        // 🔴 Recopier la forme du message ici la ferait diverger EN SILENCE de
-        // `proto/ts/plateforme.ts`, et `plateforme-vectors.json` ne
-        // comparerait plus rien de ce que la plateforme met sur le fil. C'est
-        // la règle que `agents/canal.ts` s'impose depuis P3 ; l'assertion
-        // compare à l'encodeur lui-même, caractère pour caractère.
+        // 🔴 Copying the message's shape here would make it diverge SILENTLY from
+        // `proto/ts/plateforme.ts`, and `plateforme-vectors.json` would
+        // no longer compare anything the platform puts on the wire. It is
+        // the rule `agents/canal.ts` has held itself to since P3; the assertion
+        // compares with the encoder itself, character for character.
         vi.useFakeTimers();
         const registre = new RegistreAgents();
         const socket = socketFeint();
@@ -66,9 +66,9 @@ describe('RegistreAgents', () => {
     });
 
     it('matches the answer on the REQUEST, never on the key', async () => {
-        // 🔴 Apparier sur la clé mélangerait deux lancements concurrents de la
-        // MÊME application — cas parfaitement ordinaire, deux onglets du hub
-        // suffisent. La demande est le seul identifiant unique d'un ordre.
+        // 🔴 Pairing on the key would mix up two concurrent launches of the
+        // SAME application — a perfectly ordinary case, two hub tabs
+        // are enough. The request is the only unique identifier of an order.
         vi.useFakeTimers();
         const registre = new RegistreAgents();
         registre.inscrire('v-1', socketFeint());
@@ -83,14 +83,14 @@ describe('RegistreAgents', () => {
     });
 
     it("IGNORES an unknown request, with its trace, and never THROWS", async () => {
-        // 🔴 Lever ici serait grave : l'appelant de `resoudre` est le
-        // gestionnaire `message` d'un socket, et une exception qui le
-        // traverse — ou une promesse rejetée qui en part — abat TOUT LE
-        // PROCESS Node. Mode de défaillance que `relais.ts`, `trace.ts` et
-        // `canal.ts` documentent tous les trois.
+        // 🔴 Throwing here would be serious: the caller of `resoudre` is the
+        // `message` handler of a socket, and an exception crossing
+        // it — or a rejected promise leaving it — takes down THE WHOLE Node
+        // PROCESS. A failure mode that `relais.ts`, `trace.ts` and
+        // `canal.ts` all three document.
         //
-        // Une demande inconnue n'a rien d'anormal : un agent peut répondre à
-        // un ordre dont l'attente a déjà expiré.
+        // An unknown request is nothing abnormal: an agent can answer
+        // an order whose wait has already expired.
         const traces: string[] = [];
         vi.spyOn(console, 'warn').mockImplementation((l: string) => void traces.push(l));
         const registre = new RegistreAgents();
@@ -100,10 +100,10 @@ describe('RegistreAgents', () => {
     });
 
     it('`retirer` REJECTS the in-flight requests of this VM', async () => {
-        // 🔴 Ne rien faire ferait attendre `DELAI_LANCEMENT_MS` à la route
-        // après une mort d'agent CONNUE À L'INSTANT MÊME : le socket vient de
-        // se fermer, et on ferait patienter cinq secondes pour une réponse qui
-        // n'arrivera jamais.
+        // 🔴 Doing nothing would make the route wait `DELAI_LANCEMENT_MS`
+        // after an agent death KNOWN AT THAT VERY INSTANT: the socket has just
+        // closed, and we would make it wait five seconds for an answer that
+        // will never come.
         vi.useFakeTimers();
         const registre = new RegistreAgents();
         registre.inscrire('v-1', socketFeint());
@@ -115,10 +115,10 @@ describe('RegistreAgents', () => {
     });
 
     it('a SECOND registration of the same VM closes the first and replaces it', async () => {
-        // 🔴 Garder les deux poserait la question à laquelle
-        // `0003-agents.sql` répond déjà pour la clé primaire d'`agent_enrole` :
-        // « laquelle serait la bonne ? ». Le dernier enrôlement gagne, et
-        // l'ancien socket est fermé plutôt que laissé à flotter.
+        // 🔴 Keeping both would raise the question that
+        // `0003-agents.sql` already answers for the primary key of `agent_enrole`:
+        // "which one would be the right one?". The last enrolment wins, and
+        // the old socket is closed rather than left floating.
         vi.useFakeTimers();
         const registre = new RegistreAgents();
         const ancien = socketFeint();
@@ -128,17 +128,17 @@ describe('RegistreAgents', () => {
 
         expect(ancien.fermetures).toEqual([1008]);
         void registre.lancer('v-1', 'cle-1', 'd-1');
-        // L'ordre part sur le NEUF, et le vieux n'a rien reçu.
+        // The order leaves on the NEW one, and the old one received nothing.
         expect(neuf.ecrits).toEqual([encodeLancer('d-1', 'cle-1')]);
         expect(ancien.ecrits).toEqual([]);
     });
 
     it("`retirer` of a socket ALREADY replaced does not unplug the new one", async () => {
-        // ⚠️ COURSE RÉELLE, ET ELLE EST ORDINAIRE : un agent qui se relance
-        // s'inscrit AVANT que la fermeture de son ancien socket ne soit
-        // notifiée. Un `retirer(vmId)` nu effacerait alors l'inscription du
-        // NEUF, et la VM deviendrait injoignable alors qu'elle vient de se
-        // reconnecter — panne muette, jusqu'au prochain enrôlement.
+        // ⚠️ A REAL RACE, AND AN ORDINARY ONE: an agent that restarts
+        // registers BEFORE the close of its old socket is
+        // notified. A bare `retirer(vmId)` would then erase the registration of the
+        // NEW one, and the VM would become unreachable while it has just
+        // reconnected — a silent failure, until the next enrolment.
         vi.useFakeTimers();
         const registre = new RegistreAgents();
         const ancien = socketFeint();
@@ -153,9 +153,9 @@ describe('RegistreAgents', () => {
     });
 
     it('returns `delai` at `DELAI_LANCEMENT_MS`, and the test ADVANCES the time', async () => {
-        // 🔴 LE CAS VOIT LA TRANSITION, il ne lit pas un état final : la
-        // promesse est encore en vol avant l'échéance, et résolue après. Une
-        // horloge figée le rendrait inerte.
+        // 🔴 THE CASE SEES THE TRANSITION, it does not read a final state: the
+        // promise is still in flight before the deadline, and resolved after. A
+        // frozen clock would make it inert.
         vi.useFakeTimers();
         const registre = new RegistreAgents();
         registre.inscrire('v-1', socketFeint());
@@ -166,7 +166,7 @@ describe('RegistreAgents', () => {
             resolue = i;
         });
 
-        // Une milliseconde AVANT l'échéance : rien.
+        // One millisecond BEFORE the deadline: nothing.
         await vi.advanceTimersByTimeAsync(DELAI_LANCEMENT_MS - 1);
         expect(resolue).toBeUndefined();
 
@@ -175,10 +175,10 @@ describe('RegistreAgents', () => {
     });
 
     it("does not write to a socket that is no longer OPEN", async () => {
-        // ⚠️ Un `send` sur un socket en cours de fermeture LÈVE, et cette
-        // exception traverserait l'appelant. Même garde que `envoyer` dans
-        // `agents/canal.ts`. Le lancement rend alors `agent-injoignable` :
-        // la VM est inscrite, mais son socket ne porte plus rien.
+        // ⚠️ A `send` on a closing socket THROWS, and that
+        // exception would cross the caller. Same guard as `envoyer` in
+        // `agents/canal.ts`. The launch then returns `agent-injoignable`:
+        // the VM is registered, but its socket no longer carries anything.
         vi.useFakeTimers();
         const registre = new RegistreAgents();
         const mourant = socketFeint(2 /* CLOSING */);

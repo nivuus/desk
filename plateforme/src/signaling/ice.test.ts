@@ -4,12 +4,12 @@ import { configurationIce, deriverIdentifiants } from './ice';
 
 describe('deriverIdentifiants', () => {
     it("prefixes the user name with the expiry instant", () => {
-        // `maintenant` est en MILLISECONDES (comme `Date.now()`), la durée en
-        // SECONDES : 1 000 000 ms = 1 000 s, plus 3 600 s, donc 4 600.
-        // Confondre les deux unités produit des identifiants valides mille
-        // fois trop longtemps — d'où ce test sur une valeur exacte.
+        // `maintenant` is in MILLISECONDS (like `Date.now()`), the duration in
+        // SECONDS: 1,000,000 ms = 1,000 s, plus 3,600 s, hence 4,600.
+        // Confusing the two units produces credentials valid a thousand
+        // times too long — hence this test on an exact value.
         const { username } = deriverIdentifiants('secret', 'ma-session', 3600, 1_000_000);
-        // Format imposé par coturn en mode use-auth-secret : <expiration>:<qui>
+        // Format imposed by coturn in use-auth-secret mode: <expiration>:<who>
         expect(username).toBe('4600:ma-session');
     });
 
@@ -28,9 +28,9 @@ describe('deriverIdentifiants', () => {
 
 describe('configurationIce', () => {
     it('returns undefined when no TURN server is configured', () => {
-        // Absence de configuration = déploiement local sans TURN. Ce n'est
-        // pas une erreur : la session doit continuer avec les seuls
-        // candidats hôtes.
+        // No configuration = local deployment without TURN. It is
+        // not an error: the session must go on with host
+        // candidates only.
         expect(configurationIce({}, 's', 0)).toBeUndefined();
     });
 
@@ -52,9 +52,9 @@ describe('configurationIce', () => {
     });
 
     it('returns undefined if the URL is there but not the secret', () => {
-        // Une configuration à moitié posée est une erreur de déploiement.
-        // Émettre une entrée sans identifiants valides ferait échouer toutes
-        // les allocations en 401, avec un diagnostic bien plus obscur.
+        // A half-set configuration is a deployment error.
+        // Emitting an entry without valid credentials would make every
+        // allocation fail with 401, with a much more obscure diagnosis.
         expect(configurationIce({ TURN_URL: 'turn:x:3478' }, 's', 0)).toBeUndefined();
     });
 });

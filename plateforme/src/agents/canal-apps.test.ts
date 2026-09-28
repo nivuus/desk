@@ -1,15 +1,15 @@
-// Le canal `/agent`, côté APPLICATIONS : le catalogue qu'un agent pousse, et
-// l'issue de lancement qu'il rapporte.
+// The `/agent` channel, APPLICATIONS side: the catalogue an agent pushes, and
+// the launch outcome it reports.
 //
-// 🔴 CE FICHIER EST NÉ D'UNE EXTRACTION, PAS D'UNE DUPLICATION : le harnais
-// qu'il partage avec `canal.test.ts` vit dans `canal-harnais.ts`, extrait avant
-// que ces cas ne soient écrits. Les recopier aurait produit deux `ouvrirUrl`
-// qui divergeraient à la première correction portée sur un seul des deux.
+// 🔴 THIS FILE WAS BORN OF AN EXTRACTION, NOT A DUPLICATION: the harness
+// it shares with `canal.test.ts` lives in `canal-harnais.ts`, extracted before
+// these cases were written. Copying them would have produced two `ouvrirUrl`
+// that would diverge at the first fix applied to only one of the two.
 //
-// 🔴 LES DEUX REFUS `sequence` SONT LA MOITIÉ QUI COMPTE. Un pair qui n'a
-// présenté aucun secret pourrait sinon écrire dans la table `application`
-// d'une VM qu'il n'a pas authentifiée — c'est le trou exact que le refus du
-// battement ferme déjà, par une autre porte.
+// 🔴 THE TWO `sequence` REFUSALS ARE THE HALF THAT COUNTS. A peer that
+// presented no secret could otherwise write into the `application` table
+// of a VM it did not authenticate — it is the exact hole that the heartbeat
+// refusal already closes, through another door.
 
 import { createHash } from 'node:crypto';
 import { mkdtempSync, rmSync } from 'node:fs';
@@ -49,7 +49,7 @@ afterEach(async () => {
     vi.restoreAllMocks();
 });
 
-/// Le magasin du montage courant — `undefined` tant qu'aucun test n'en demande.
+/// The store of the current mount — `undefined` as long as no test asks for one.
 let magasin: Magasin | undefined;
 let racinesIcones: string[] = [];
 
@@ -69,11 +69,11 @@ async function start(p: Pilote, withStore = false): Promise<number> {
         secretJeton: SECRET,
         maintenant: () => maintenant,
         registre,
-        // Un frein NEUF par montage : ce fichier eprouve le catalogue et le
-        // lancement, pas le freinage, et un frein partage entre tests ferait
-        // deborder les budgets d'ADRESSE (127.0.0.1 est la meme pour tous).
+        // A FRESH brake per mount: this file tests the catalogue and the
+        // launch, not the braking, and a brake shared between tests would make
+        // the ADDRESS budgets overflow (127.0.0.1 is the same for all).
         frein: new Frein(),
-        // Aucun proxy declare : la cle d'adresse est celle du pair reel.
+        // No proxy declared: the address key is that of the real peer.
         proxyDeConfiance: new Set(),
         magasin,
     });
@@ -96,12 +96,12 @@ function app(nom: string, cle: string, icone: string | null = null): Application
     };
 }
 
-/// Attend que le catalogue de la VM satisfasse `predicat`, ou ÉCHOUE.
+/// Waits until the VM's catalogue satisfies `predicat`, or FAILS.
 ///
-/// ⚠️ BORNÉE, ET ÉCHOUANT SUR EXPIRATION — même figure qu'`attendreVu`, et pour
-/// la même raison : l'écriture du catalogue est délibérément lancée SANS être
-/// attendue, donc une écriture perdue ne se manifeste que par un état qui
-/// n'arrive pas. Une boucle sans borne pendrait au lieu de rougir.
+/// ⚠️ BOUNDED, AND FAILING ON EXPIRY — same pattern as `attendreVu`, and for
+/// the same reason: the catalogue write is deliberately launched WITHOUT being
+/// awaited, so a lost write only shows as a state that
+/// never arrives. An unbounded loop would hang instead of turning red.
 async function attendreCatalogue(
     p: Pilote,
     vmId: string,
@@ -120,7 +120,7 @@ async function attendreCatalogue(
     }
 }
 
-/// Enrôle le pair et attend la réponse — préalable de tous les cas nominaux.
+/// Enrols the peer and waits for the answer — prerequisite of all nominal cases.
 async function enrole(pair: Pair): Promise<void> {
     const rep = await pair.dire(encodeEnroler('v-1', SECRET_VM));
     expect(rep.type).toBe('enrole');
@@ -128,27 +128,27 @@ async function enrole(pair: Pair): Promise<void> {
 
 describe('the /agent channel, applications side', () => {
     it('🔴 a `catalogue` BEFORE any enrolment is refused, reason `sequence`', async () => {
-        // 🔴 L'ACCEPTER LAISSERAIT UN PAIR ANONYME ÉCRIRE DANS LA TABLE
-        // `application` D'UNE VM QU'IL N'A PAS AUTHENTIFIÉE. C'est le trou
-        // exact que le refus `sequence` du battement ferme déjà, par une autre
-        // porte — et celle-ci écrit en base, là où celle-là ne délivrait qu'un
-        // jeton.
+        // 🔴 ACCEPTING IT WOULD LET AN ANONYMOUS PEER WRITE INTO THE
+        // `application` TABLE OF A VM IT DID NOT AUTHENTICATE. It is the
+        // exact hole the heartbeat's `sequence` refusal already closes, through another
+        // door — and this one writes to the database, where that one only handed out a
+        // token.
         base = await baseNeuve('canal-apps-sequence-catalogue');
         await enrolerUneVm(base, 'v-1');
         const pair = await ouvrir(await start(base));
 
         const rep = await pair.dire(encodeCatalogue(true, [app('Intrus', 'cle-intrus')], []));
         expect(rep).toEqual({ type: 'refus', v: PLATEFORME_VERSION, motif: 'sequence' });
-        // Et RIEN n'a été écrit : c'est la moitié qui décide. Un refus qui
-        // aurait quand même laissé passer l'écriture serait une porte ouverte
-        // avec un panneau « fermé ».
+        // And NOTHING was written: that is the half that decides. A refusal that
+        // still let the write through would be an open door
+        // with a "closed" sign.
         expect(await lireParVm(base, 'v-1')).toEqual([]);
         pair.socket.terminate();
     });
 
     it('🔴 a `lancee` before any enrolment is refused, reason `sequence`', async () => {
-        // Même raison : un anonyme pourrait sinon résoudre la demande d'un
-        // autre, et faire croire à un lancement réussi qui n'a pas eu lieu.
+        // Same reason: an anonymous peer could otherwise resolve another's
+        // request, and fake a successful launch that never happened.
         base = await baseNeuve('canal-apps-sequence-lancee');
         await enrolerUneVm(base, 'v-1');
         const pair = await ouvrir(await start(base));
@@ -168,8 +168,8 @@ describe('the /agent channel, applications side', () => {
         expect(await attendreCatalogue(base, 'v-1', (n) => n.length === 2, 'with two entries'))
             .toEqual(['Excel', 'Firefox']);
 
-        // Et un second message COMPLET sans Excel l'en retire — c'est la
-        // fusion qui décide, et elle est branchée sur le chemin réel.
+        // And a second COMPLETE message without Excel removes it — the
+        // merge decides, and it is wired on the real path.
         maintenant = T0 + 30_000;
         pair.socket.send(encodeCatalogue(true, [app('Firefox', 'c-1')], []));
         expect(await attendreCatalogue(base, 'v-1', (n) => n.length === 1, 'with one entry'))
@@ -178,14 +178,14 @@ describe('the /agent channel, applications side', () => {
     });
 
     it("🔴 writing the catalogue is NOT AWAITED, and its failure does not bring the connection down", async () => {
-        // 🔴 UN `await` DANS LE GESTIONNAIRE `message` FERAIT QU'UNE BASE
-        // MOMENTANÉMENT INDISPONIBLE ABATTRAIT LA CONNEXION D'UN AGENT QUI VA
-        // TRÈS BIEN — et une promesse rejetée SANS `catch` abattrait tout le
-        // process Node. C'est la règle que ce canal s'impose depuis P3 pour
+        // 🔴 AN `await` IN THE `message` HANDLER WOULD MEAN THAT A DATABASE
+        // MOMENTARILY UNAVAILABLE WOULD TAKE DOWN THE CONNECTION OF AN AGENT THAT IS
+        // PERFECTLY FINE — and a promise rejected WITHOUT `catch` would take down the whole
+        // Node process. It is the rule this channel has held itself to since P3 for
         // `marquerVu`.
         //
-        // La base est FERMÉE sous les pieds du canal : toute écriture lève.
-        // Le pair, lui, doit continuer d'être servi.
+        // The database is CLOSED under the channel's feet: every write throws.
+        // The peer, for its part, must keep being served.
         base = await baseNeuve('canal-apps-echec-ecriture');
         await enrolerUneVm(base, 'v-1');
         const journal = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -195,12 +195,12 @@ describe('the /agent channel, applications side', () => {
         await base.fermer();
         pair.socket.send(encodeCatalogue(true, [app('Firefox', 'c-1')], []));
 
-        // La connexion vit toujours, et répond encore : le refus d'un message
-        // mal formé est la preuve la moins ambiguë que la boucle tourne.
+        // The connection is still alive, and still answers: the refusal of a
+        // malformed message is the least ambiguous proof that the loop runs.
         const rep = await pair.dire('not json');
         expect(rep).toEqual({ type: 'refus', v: PLATEFORME_VERSION, motif: 'forme' });
-        // Et l'échec est AU JOURNAL, jamais silencieux : une écriture perdue
-        // ne se voit nulle part ailleurs.
+        // And the failure is IN THE LOG, never silent: a lost write
+        // shows nowhere else.
         expect(journal.mock.calls.map((c) => String(c[0])).join('\n')).toContain('v-1');
 
         pair.socket.terminate();
@@ -208,22 +208,22 @@ describe('the /agent channel, applications side', () => {
     });
 
     it("enrolment REGISTERS the VM in the registry, and closing REMOVES it", async () => {
-        // 🔴 Oublier l'inscription ferait rendre `agent-injoignable` à tout
-        // lancement, pour une VM parfaitement connectée. Oublier le retrait
-        // ferait l'inverse : une VM morte resterait « joignable » jusqu'au
-        // prochain enrôlement, et chaque lancement coûterait cinq secondes
-        // d'attente avant d'échouer.
+        // 🔴 Forgetting the registration would make every launch return
+        // `agent-injoignable`, for a perfectly connected VM. Forgetting the removal
+        // would do the opposite: a dead VM would stay "reachable" until the
+        // next enrolment, and each launch would cost five seconds
+        // of waiting before failing.
         base = await baseNeuve('canal-apps-registre');
         await enrolerUneVm(base, 'v-1');
         const pair = await ouvrir(await start(base));
 
-        // AVANT l'enrôlement : personne. C'est le témoin sans lequel
-        // l'assertion suivante serait vraie d'un registre qui accepterait tout.
+        // BEFORE enrolment: nobody. It is the witness without which
+        // the next assertion would hold for a registry that accepted everything.
         await expect(registre.lancer('v-1', 'c-1', 'd-0')).resolves.toBe('agent-injoignable');
 
         await enrole(pair);
         const enVol = registre.lancer('v-1', 'c-1', 'd-1');
-        // L'ordre est bien PARTI sur le socket : le pair le reçoit.
+        // The order did LEAVE on the socket: the peer receives it.
         const ordre = await pair.recevoir();
         expect(ordre).toEqual({
             type: 'lancer',
@@ -232,7 +232,7 @@ describe('the /agent channel, applications side', () => {
             cle: 'c-1',
         });
 
-        // La fermeture retire la VM — et rejette la demande en vol.
+        // Closing removes the VM — and rejects the request in flight.
         pair.socket.close();
         expect(await enVol).toBe('agent-injoignable');
         await expect(registre.lancer('v-1', 'c-1', 'd-2')).resolves.toBe('agent-injoignable');
@@ -249,36 +249,36 @@ describe('the /agent channel, applications side', () => {
         expect(ordre.demande).toBe('d-1');
 
         pair.socket.send(encodeLancee('d-1', 'raccourci'));
-        // 🔴 `raccourci` ET NON `true` : c'est le CHEMIN emprunté qui rend le
-        // critère de recette décidable — lancer par la cible reconstruite au
-        // lieu du `.lnk` passerait un critère qui ne dirait que « quelque chose
-        // s'est lancé ».
+        // 🔴 `raccourci` AND NOT `true`: it is the PATH taken that makes the
+        // acceptance criterion decidable — launching through the rebuilt target instead
+        // of the `.lnk` would pass a criterion that would only say "something
+        // launched".
         expect(await enVol).toBe('raccourci');
         pair.socket.terminate();
     });
 });
 
 // ---------------------------------------------------------------------------
-// Sous-bloc G2 — l'inventaire des icônes manquantes.
+// Sub-block G2 — the inventory of missing icons.
 // ---------------------------------------------------------------------------
 
-/// 🔴 LES EMPREINTES SONT DÉRIVÉES DE LEUR CONTENU, JAMAIS INVENTÉES. Une
-/// première rédaction posait `'a'.repeat(64)` et déposait des octets
-/// quelconques dessous : `write` l'a REFUSÉ — c'est la garde de recalcul
-/// faisant exactement son travail, sur le test qui l'ignorait.
+/// 🔴 THE HASHES ARE DERIVED FROM THEIR CONTENT, NEVER INVENTED. A
+/// first draft set `'a'.repeat(64)` and dropped arbitrary
+/// bytes under it: `write` REFUSED it — the recomputation guard
+/// doing exactly its job, on the test that ignored it.
 const OCTETS_1 = Buffer.from('\x89PNG-un');
 const OCTETS_2 = Buffer.from('\x89PNG-deux');
 const E1 = createHash('sha256').update(OCTETS_1).digest('hex');
 const E2 = createHash('sha256').update(OCTETS_2).digest('hex');
 
-/// Attend le prochain message poussé, ou rend `undefined` s'il n'en vient
-/// aucun.
+/// Waits for the next pushed message, or returns `undefined` if none
+/// comes.
 ///
-/// 🔴 IL FAUT UNE ATTENTE POSITIVE POUR POUVOIR CONCLURE À L'ABSENCE. Le
-/// message est poussé APRÈS l'écriture du catalogue, qui est délibérément
-/// lancée SANS être attendue : conclure trop tôt rendrait le critère ⑤ vert
-/// sur un produit qui pousse bel et bien un message. `recevoir()` est bornée à
-/// 2 000 ms et LÈVE sur expiration — c'est cette levée qui vaut « aucun ».
+/// 🔴 A POSITIVE WAIT IS NEEDED TO BE ABLE TO CONCLUDE ABSENCE. The
+/// message is pushed AFTER the catalogue write, which is deliberately
+/// launched WITHOUT being awaited: concluding too early would turn criterion ⑤ green
+/// on a product that does push a message. `recevoir()` is bounded to
+/// 2,000 ms and THROWS on expiry — that throw is what means "none".
 async function pousseOuRien(pair: Pair): Promise<Record<string, unknown> | undefined> {
     try {
         return await pair.recevoir();
@@ -309,10 +309,10 @@ describe("the inventory of missing icons", () => {
     });
 
     it('🔴 PUSHES NOTHING when the store already has everything — criterion ⑤', async () => {
-        // 🔴 UNE LISTE VIDE COÛTERAIT UN MESSAGE PAR RÉCONCILIATION SUR UN
-        // DISQUE AU REPOS, c'est-à-dire toutes les trente secondes, pour
-        // toujours. C'est très exactement ce que le diff de G1 existe pour
-        // éviter, et c'est là que le critère ⑤ se juge.
+        // 🔴 AN EMPTY LIST WOULD COST ONE MESSAGE PER RECONCILIATION ON AN
+        // IDLE DISK, that is every thirty seconds, forever.
+        // It is exactly what G1's diff exists to
+        // avoid, and it is where criterion ⑤ is judged.
         base = await baseNeuve('canal-icones-rien');
         const port = await start(base, true);
         magasin!.write(E1, OCTETS_1);
@@ -321,8 +321,8 @@ describe("the inventory of missing icons", () => {
         const pair = await ouvrir(port);
         await enrole(pair);
         pair.socket.send(encodeCatalogue(true, [app('A', 'c-a', E1), app('B', 'c-b', E2)], []));
-        // 🔴 LE CATALOGUE EST BIEN ARRIVÉ — sans quoi ce « rien » serait celui
-        // d'un produit EN PANNE, et ne dirait rien du tout.
+        // 🔴 THE CATALOGUE DID ARRIVE — otherwise this "nothing" would be that
+        // of a BROKEN product, and would say nothing at all.
         await attendreCatalogue(base, 'v-1', (n) => n.includes('A'), 'written');
         expect(await pousseOuRien(pair)).toBeUndefined();
         pair.socket.close();
@@ -344,10 +344,10 @@ describe("the inventory of missing icons", () => {
     });
 
     it('🔴 ASKS AGAIN for an icon whose FILE has disappeared — criterion ⑦', async () => {
-        // 🔴 L'INVENTAIRE INTERROGE LE DISQUE, PAS UNE TABLE. Une table de
-        // comptabilité ne verrait pas la perte, et l'icône serait perdue POUR
-        // TOUJOURS. C'est ce qui rend le magasin AUTO-RECONSTRUCTIBLE, et donc
-        // le disque acceptable.
+        // 🔴 THE INVENTORY QUERIES THE DISK, NOT A TABLE. A bookkeeping
+        // table would not see the loss, and the icon would be lost
+        // FOREVER. That is what makes the store SELF-REBUILDING, and therefore
+        // the disk acceptable.
         base = await baseNeuve('canal-icones-perdu');
         const port = await start(base, true);
         magasin!.write(E1, OCTETS_1);

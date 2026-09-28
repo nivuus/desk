@@ -38,7 +38,7 @@
 /// the agent re-announce at will — an amplifier offered to anyone with a token.
 export const TYPE_PAIR_PRESENT = 'pair-present';
 
-/// Le message complet, tel qu'il part.
+/// The complete message, as it leaves.
 export function messagePairPresent(): { type: string } {
     return { type: TYPE_PAIR_PRESENT };
 }

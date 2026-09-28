@@ -1,5 +1,5 @@
-// La règle complète de la poignée de main : qui passe, qui est refusé, avec
-// quel motif.
+// The complete handshake rule: who passes, who is refused, with
+// which reason.
 
 import { describe, expect, it } from 'vitest';
 import { signer, DUREE_JETON_ACCES_MS } from './jeton';
@@ -9,8 +9,8 @@ import { garde } from './garde';
 const SECRET = 'un-secret-de-plateforme-de-quarante-octets';
 const T0 = 1_787_000_000_000;
 
-/// Deux préfixes de la VRAIE longueur que `agents/prefixe.ts` produit — 22
-/// caractères de base64url. Une chaîne courte ne mesurerait pas la même chose.
+/// Two prefixes of the REAL length `agents/prefixe.ts` produces — 22
+/// base64url characters. A short string would not measure the same thing.
 const P = 'RhH1x2QmTz9kLpVbNc7dAw';
 const Q = 'Zk4pQw8sXt2vBn6mLr0eYu';
 
@@ -21,16 +21,16 @@ function neuve(maintenant: () => number = () => T0) {
 
 describe('handshake guard', () => {
     it('🔴 REFUSES an `agent` peer WITHOUT a token — the P2 window is CLOSED', () => {
-        // 🔴 CETTE ASSERTION EST L'INVERSE EXACT DE CELLE QUE P2 LIVRAIT, et
-        // c'est le geste central de P3. P2 écrivait ici « accepte un pair
-        // `agent` SANS jeton », en annonçant dans son propre commentaire que
-        // « le jour où P3 l'inversera, il faudra réécrire ce test À DESSEIN,
-        // pas par surprise ». C'est fait, et à dessein.
+        // 🔴 THIS ASSERTION IS THE EXACT INVERSE OF THE ONE P2 SHIPPED, and
+        // it is P3's central gesture. P2 wrote here "accepts an `agent`
+        // peer WITHOUT a token", announcing in its own comment that
+        // "the day P3 inverts it, this test will have to be rewritten ON PURPOSE,
+        // not by surprise". It is done, and on purpose.
         //
-        // 🔴 LA ROUGE EST GRATUITE : le binaire de P2 la porte. `garde.ts`
-        // ouvrait sur `if (role === 'agent') return { ok: true };`, et un pair
-        // qui se déclarait `{"role":"agent"}` obtenait des identifiants TURN
-        // valables 86 400 s sans présenter la moindre identité.
+        // 🔴 THE RED IS FREE: P2's binary carries it. `garde.ts`
+        // opened with `if (role === 'agent') return { ok: true };`, and a peer
+        // that declared itself `{"role":"agent"}` got TURN credentials
+        // valid for 86,400 s without presenting the slightest identity.
         const { g } = neuve();
         const v = g.verify({ role: 'agent', session: 'bureau' });
         expect(v.ok).toBe(false);
@@ -43,33 +43,33 @@ describe('handshake guard', () => {
         const jeton = signer(P, SECRET, T0, DUREE_JETON_ACCES_MS, 'agent');
         expect(g.verify({ role: 'agent', session: `${P}:bureau`, jeton }))
             .toEqual({ ok: true });
-        // La même VM sur une de SES fenêtres.
+        // The same VM on one of ITS windows.
         expect(g.verify({ role: 'agent', session: `${P}:w-1`, jeton }).ok).toBe(true);
     });
 
     it('🔴 REFUSES the SAME agent token on the session of ANOTHER VM', () => {
-        // 🔴 La rouge : omettre la comparaison de préfixe. Un agent enrôlé
-        // occuperait alors la session de TOUTE autre VM — c'est le pendant
-        // `agent` du critère ③ de P2, et sans lui l'enrôlement n'authentifie
-        // que l'existence d'une VM, jamais LAQUELLE.
+        // 🔴 The red: omitting the prefix comparison. An enrolled agent
+        // would then occupy the session of ANY other VM — it is the `agent`
+        // counterpart of P2's criterion ③, and without it enrolment only authenticates
+        // the existence of a VM, never WHICH one.
         const { g } = neuve();
         const jeton = signer(P, SECRET, T0, DUREE_JETON_ACCES_MS, 'agent');
         const refus = g.verify({ role: 'agent', session: `${Q}:bureau`, jeton });
         expect(refus).toMatchObject({ ok: false, motif: 'session-refusee' });
         if (refus.ok) return;
-        // Le message SUR LE FIL ne distingue pas les causes : il est le même
-        // que celui d'un client refusé pour appartenance. Le JOURNAL, lui,
-        // porte de quoi diagnostiquer.
+        // The message ON THE WIRE does not distinguish causes: it is the same
+        // as that of a client refused for ownership. The LOG, for its part,
+        // carries what is needed to diagnose.
         expect(refus.message).toBe('access refused to the requested session');
         expect(refus.journal).toContain(`${Q}:bureau`);
     });
 
     it('🔴 REFUSES a prefix that is only a START of the subject, without the separator', () => {
-        // 🔴 La rouge : comparer par `session.startsWith(sujet)` SANS le
-        // séparateur. Un agent de préfixe `AB` occuperait alors les sessions
-        // de la VM `ABC`, dont le préfixe le prolonge — une collision qui ne
-        // se produirait qu'entre deux VMs précises, donc jamais en essai et
-        // toujours en production.
+        // 🔴 The red: comparing by `session.startsWith(sujet)` WITHOUT the
+        // separator. An agent with prefix `AB` would then occupy the sessions
+        // of VM `ABC`, whose prefix extends it — a collision that would
+        // only happen between two specific VMs, hence never in testing and
+        // always in production.
         const { g } = neuve();
         const jeton = signer('AB', SECRET, T0, DUREE_JETON_ACCES_MS, 'agent');
         expect(g.verify({ role: 'agent', session: 'ABC:bureau', jeton }))
@@ -77,14 +77,14 @@ describe('handshake guard', () => {
     });
 
     it('🔴 REFUSES a HUMAN token presented as `role:agent` — confusion, direction 1', () => {
-        // 🔴 La rouge : omettre `type === 'agent'`. Les deux jetons sont signés
-        // par le MÊME secret : un jeton humain volé ouvrirait un rôle `agent`,
-        // donc un `ice-config` sur toute session dont il préfixerait le nom.
+        // 🔴 The red: omitting `type === 'agent'`. Both tokens are signed
+        // by the SAME secret: a stolen human token would open an `agent` role,
+        // hence an `ice-config` on any session whose name it prefixed.
         //
-        // ⚠️ DEUX SENS DE CONFUSION, DEUX TESTS, jamais un seul à deux
-        // assertions : `expect` interrompt à la première, et la seconde ne
-        // serait éprouvée par rien. C'est la leçon ①A-bis de P2, appliquée
-        // d'avance.
+        // ⚠️ TWO DIRECTIONS OF CONFUSION, TWO TESTS, never a single one with two
+        // assertions: `expect` interrupts at the first, and the second would
+        // be tested by nothing. It is P2's lesson ①A-bis, applied
+        // in advance.
         const { g } = neuve();
         const humain = signer(P, SECRET, T0);
         expect(g.verify({ role: 'agent', session: `${P}:bureau`, jeton: humain }))
@@ -92,10 +92,10 @@ describe('handshake guard', () => {
     });
 
     it('🔴 REFUSES an AGENT token presented as `role:client` — confusion, direction 2', () => {
-        // 🔴 La rouge : omettre `type !== 'agent'`. Un jeton d'agent ouvrirait
-        // un rôle `client`, contournant l'appartenance de session que P2 a
-        // posée (`signaling/propriete.ts`) : l'agent deviendrait un
-        // utilisateur, sur la session de n'importe qui.
+        // 🔴 The red: omitting `type !== 'agent'`. An agent token would open
+        // a `client` role, bypassing the session ownership P2
+        // set (`signaling/propriete.ts`): the agent would become a
+        // user, on anyone's session.
         const { g } = neuve();
         const agent = signer(P, SECRET, T0, DUREE_JETON_ACCES_MS, 'agent');
         expect(g.verify({ role: 'client', session: `${P}:bureau`, jeton: agent }))
@@ -120,8 +120,8 @@ describe('handshake guard', () => {
     });
 
     it('REFUSES a token of an unexpected type, without ever THROWING', () => {
-        // Un `String(jeton)` sans contrôle ferait passer un objet pour une
-        // chaîne, ou lèverait sur `null`.
+        // A `String(jeton)` without a check would pass an object off as a
+        // string, or would throw on `null`.
         const { g } = neuve();
         for (const jeton of [42, { sub: 'u1' }, null, [], true]) {
             expect(() => g.verify({ role: 'client', session: 's-1', jeton }))
@@ -150,10 +150,10 @@ describe('handshake guard', () => {
         });
         expect(refus).toMatchObject({ ok: false, motif: 'session-refusee' });
         if (refus.ok) return;
-        // 🔴 Le message SUR LE FIL ne nomme ni le propriétaire ni l'existence
-        // de la session : ce serait un oracle. Le JOURNAL, lui, porte le nom
-        // de session et l'identifiant du demandeur — c'est ce qui sépare un
-        // diagnostic d'un oracle.
+        // 🔴 The message ON THE WIRE names neither the owner nor the existence
+        // of the session: that would be an oracle. The LOG, for its part, carries the session
+        // name and the requester's identifier — it is what separates a
+        // diagnosis from an oracle.
         expect(refus.message).not.toContain('u1');
         expect(refus.message).not.toContain('s-1');
         expect(refus.journal).toContain('s-1');
@@ -161,8 +161,8 @@ describe('handshake guard', () => {
     });
 
     it('REFUSES an EXPIRED token, on a clock that VARIES', () => {
-        // 🔴 Le critère ② vécu de bout en bout : le MÊME jeton, deux instants.
-        // Figer l'horloge rendrait le second appel vert.
+        // 🔴 Criterion ② lived end to end: the SAME token, two instants.
+        // Freezing the clock would make the second call green.
         let maintenant = T0;
         const { g } = neuve(() => maintenant);
         const jeton = signer('u1', SECRET, T0);
@@ -174,15 +174,15 @@ describe('handshake guard', () => {
     });
 
     it('verify HAS NO SIDE EFFECT: two calls claim nothing', () => {
-        // 🔴 Y mettre la revendication laisserait une appartenance FANTÔME
-        // derrière un pair que `Appariement::declarer` refuse ensuite pour
-        // cause de rôle déjà occupé.
+        // 🔴 Putting the claim there would leave a GHOST ownership
+        // behind a peer that `Appariement::declarer` then refuses
+        // because the role is already taken.
         const { g, proprietes } = neuve();
         const jeton = signer('u1', SECRET, T0);
         g.verify({ role: 'client', session: 's-1', jeton });
         g.verify({ role: 'client', session: 's-1', jeton });
         expect(proprietes.proprietaire('s-1')).toBeUndefined();
-        // Et un AUTRE utilisateur passe encore, preuve que rien n'a été posé.
+        // And ANOTHER user still passes, proof that nothing was set.
         expect(g.verify({ role: 'client', session: 's-1', jeton: signer('u2', SECRET, T0) }).ok)
             .toBe(true);
     });
@@ -191,7 +191,7 @@ describe('handshake guard', () => {
         const { g, proprietes } = neuve();
         g.revendiquer('s-1', 'u1');
         expect(proprietes.proprietaire('s-1')).toBe('u1');
-        // Un `agent` n'a pas d'identifiant : il ne revendique rien.
+        // An `agent` has no identifier: it claims nothing.
         g.revendiquer('s-2', undefined);
         expect(proprietes.proprietaire('s-2')).toBeUndefined();
         g.liberer('s-1');

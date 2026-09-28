@@ -17,8 +17,8 @@ const CONFIG: Config = {
     urlBase: ':memory:',
     secretJeton: SECRET,
     auth: 'pomerium',
-    // Les tests de ce fichier se connectent en boucle locale : c'est
-    // l'adresse que `req.socket.remoteAddress` va réellement porter.
+    // The tests of this file connect over loopback: it is
+    // the address `req.socket.remoteAddress` will really carry.
     proxyDeConfiance: new Set(['127.0.0.1']),
     repertoireIcones: join(mkdtempSync(join(tmpdir(), 'moi-icones-')), 'icones'),
     repertoireTeleversements: join(mkdtempSync(join(tmpdir(), 'moi-tranches-')), 'televersements'),
@@ -35,8 +35,8 @@ describe('lireIdentitePomerium', () => {
         expect(v).toEqual({ ok: true, email: 'a@b.c' });
     });
 
-    // 🔴 AUCUN REPLI SUR UN UTILISATEUR PAR DÉFAUT : une mauvaise
-    // configuration du proxy doit être bruyante et refusante.
+    // 🔴 NO FALLBACK TO A DEFAULT USER: a bad proxy
+    // configuration must be loud and refusing.
     it("refuses the absent header", () => {
         expect(lireIdentitePomerium({})).toEqual({ ok: false, motif: 'identite-absente' });
     });
@@ -48,9 +48,9 @@ describe('lireIdentitePomerium', () => {
         });
     });
 
-    // Précédent littéral de `porteur.ts` : en choisir un serait prendre une
-    // décision qu'un attaquant exploite dès que deux couches n'en prennent pas
-    // la même.
+    // Literal precedent of `porteur.ts`: choosing one would be taking a
+    // decision an attacker exploits as soon as two layers do not take
+    // the same one.
     it("REFUSES a REPEATED header, never disambiguates it", () => {
         expect(lireIdentitePomerium({ [ENTETE_IDENTITE]: ['a@b.c', 'mechant@x.y'] })).toEqual({
             ok: false,
@@ -69,8 +69,8 @@ afterEach(async () => {
     base = undefined;
 });
 
-/// Compte les comptes. C'est LE COMPTE qui dit si l'upsert a créé une fois ou
-/// deux — jamais la seule absence d'erreur.
+/// Counts the accounts. It is THE COUNT that says whether the upsert created once or
+/// twice — never the mere absence of error.
 async function combienDeComptes(p: Pilote): Promise<number> {
     return (await p.interroger<{ id: string }>('SELECT id FROM utilisateur', [])).length;
 }
@@ -104,8 +104,8 @@ describe('GET /auth/moi', () => {
         expect(await combienDeComptes(base)).toBe(1);
     });
 
-    // 🔴 LA ROUGE DU CRITÈRE ① : sans `pass_identity_headers` chez Pomerium,
-    // le service REFUSE — il ne se replie sur aucun utilisateur par défaut.
+    // 🔴 THE RED OF CRITERION ①: without `pass_identity_headers` at Pomerium,
+    // the service REFUSES — it falls back to no default user.
     it('③ header absent ⇒ 401 identite-absente', async () => {
         base = await baseNeuve('moi-absent');
         service = await startServer(CONFIG, base);
@@ -117,11 +117,11 @@ describe('GET /auth/moi', () => {
         expect(await combienDeComptes(base)).toBe(0);
     });
 
-    // 🔴 LA GARDE QUI FERME LE CONTOURNEMENT : LES DEUX BRAS, SINON LE 401
-    // SEUL NE PROUVERAIT RIEN — il serait indiscernable d'une route entièrement
-    // en panne. Le bras VERT est ① et ② ci-dessus, qui se connectent en boucle
-    // locale et réussissent précisément parce que `CONFIG.proxyDeConfiance`
-    // déclare `127.0.0.1`.
+    // 🔴 THE GUARD THAT CLOSES THE BYPASS: BOTH ARMS, OTHERWISE THE 401
+    // ALONE WOULD PROVE NOTHING — it would be indistinguishable from an entirely
+    // broken route. The GREEN arm is ① and ② above, which connect over
+    // loopback and succeed precisely because `CONFIG.proxyDeConfiance`
+    // declares `127.0.0.1`.
     it("REFUSES (401) the identity header coming from an undeclared peer", async () => {
         base = await baseNeuve('moi-pair-etranger-statut');
         service = await startServer({ ...CONFIG, proxyDeConfiance: new Set(['10.9.9.9']) }, base);
@@ -141,15 +141,15 @@ describe('GET /auth/moi', () => {
         expect(corps.refus).toBe('pair-non-de-confiance');
     });
 
-    // 🔴 ROUND DE CORRECTION 1 — LE GARDE CONTRE UNE CRÉATION DE COMPTE NON
-    // AUTHENTIFIÉE, RÉTABLI COMME TEST DISTINCT (convention « une assertion
-    // par test »). Retiré une première fois en jugeant qu'il « n'apportait
-    // rien que le statut et le motif ne disaient déjà » : FAUX, mesuré — en
-    // déplaçant la garde APRÈS `identifiantDe`, le 401 et le motif restent
-    // IDENTIQUES et pourtant 3 comptes se créent dans `user` depuis un
-    // pair non déclaré, un par courriel choisi par l'attaquant. C'est le
-    // vecteur que `CLAUDE.md` nomme au § legs `auth-pomerium` : « crée une
-    // ligne `user` par courriel distinct, sans borne ».
+    // 🔴 CORRECTION ROUND 1 — THE GUARD AGAINST AN UNAUTHENTICATED ACCOUNT
+    // CREATION, RESTORED AS A DISTINCT TEST ("one assertion
+    // per test" convention). Removed once on the judgement that it "brought
+    // nothing the status and the reason did not already say": FALSE, measured — by
+    // moving the guard AFTER `identifiantDe`, the 401 and the reason stay
+    // IDENTICAL and yet 3 accounts are created in `user` from an
+    // undeclared peer, one per email chosen by the attacker. It is the
+    // vector `CLAUDE.md` names in the `auth-pomerium` legacy §: "creates one
+    // `user` row per distinct email, without bound".
     it("REFUSES the identity header coming from an undeclared peer, WITHOUT CREATING AN ACCOUNT", async () => {
         base = await baseNeuve('moi-pair-etranger-compte');
         service = await startServer({ ...CONFIG, proxyDeConfiance: new Set(['10.9.9.9']) }, base);
@@ -159,22 +159,22 @@ describe('GET /auth/moi', () => {
         expect(await combienDeComptes(base)).toBe(0);
     });
 
-    // 🔴 ROUND DE CORRECTION 1 — LA PROPRIÉTÉ QUE CETTE TÂCHE EXISTE POUR
-    // ÉTABLIR, FIGÉE PAR UN TEST. Sans lui, remplacer
-    // `req.socket.remoteAddress` par le premier saut de `X-Forwarded-For`
-    // dans `routes-identite.ts` laisse LA SUITE ENTIÈRE VERTE (mesuré :
-    // 62 fichiers / 645 tests) et rouvre le contournement complet : un pair
-    // NON déclaré forge l'en-tête pour se faire passer pour un pair déclaré,
-    // et reçoit un jeton interne valide. `pairDeConfiance` ne lit QUE
-    // `remoteAddress` par construction (`adresse-source.ts`) ; ce test
-    // éprouve que la ROUTE, à son tour, ne se laisse pas convaincre par
-    // l'en-tête.
+    // 🔴 CORRECTION ROUND 1 — THE PROPERTY THIS TASK EXISTS TO
+    // ESTABLISH, PINNED BY A TEST. Without it, replacing
+    // `req.socket.remoteAddress` with the first hop of `X-Forwarded-For`
+    // in `routes-identite.ts` leaves THE WHOLE SUITE GREEN (measured:
+    // 62 files / 645 tests) and reopens the full bypass: an
+    // UNDECLARED peer forges the header to pass itself off as a declared peer,
+    // and receives a valid internal token. `pairDeConfiance` reads ONLY
+    // `remoteAddress` by construction (`adresse-source.ts`); this test
+    // tests that the ROUTE, in turn, is not convinced by
+    // the header.
     it("IGNORES X-Forwarded-For: an undeclared peer forging the address of a declared peer stays REFUSED", async () => {
         base = await baseNeuve('moi-xff-forge');
-        // Le pair RÉEL de ce test est `127.0.0.1` (boucle locale) ; la
-        // confiance ne déclare QUE `10.9.9.9`, l'adresse que l'en-tête va
-        // prétendre porter. Si la garde lisait l'en-tête, `10.9.9.9` serait
-        // reconnue de confiance et la requête réussirait.
+        // The REAL peer of this test is `127.0.0.1` (loopback); the
+        // trust declares ONLY `10.9.9.9`, the address the header will
+        // claim to carry. If the guard read the header, `10.9.9.9` would be
+        // recognised as trusted and the request would succeed.
         service = await startServer({ ...CONFIG, proxyDeConfiance: new Set(['10.9.9.9']) }, base);
         const r = await fetch(`http://127.0.0.1:${service.port}/auth/moi`, {
             headers: { [ENTETE_IDENTITE]: 'a@b.c', 'x-forwarded-for': '10.9.9.9' },
@@ -182,9 +182,9 @@ describe('GET /auth/moi', () => {
         expect(r.status).toBe(401);
     });
 
-    // 🔴 LES ROUGES DES CRITÈRES ② ET ③ EN UN SEUL TEST, ET L'EN-TÊTE EST
-    // PRÉSENT À DESSEIN : c'est ce qui prouve qu'un en-tête FORGÉ est ignoré
-    // en mode `motdepasse`, et pas seulement que la route est absente.
+    // 🔴 THE REDS OF CRITERIA ② AND ③ IN A SINGLE TEST, AND THE HEADER IS
+    // PRESENT ON PURPOSE: it is what proves a FORGED header is ignored
+    // in `motdepasse` mode, and not only that the route is absent.
     it('④ motdepasse mode ⇒ 404, forged header IGNORED', async () => {
         base = await baseNeuve('moi-motdepasse');
         service = await startServer({ ...CONFIG, auth: 'motdepasse' }, base);

@@ -1,4 +1,4 @@
-//! Tests du module [`crate::plateforme`] — la GESTION D'APPLICATIONS.
+//! Tests of the [`crate::plateforme`] module — APPLICATION MANAGEMENT.
 //!
 //! Extracted from `proto/src/plateforme/tests.rs` VERBATIM (sub-block G2, task 1):
 //! this file was at 561 lines and appeared in the debt table of
@@ -242,7 +242,7 @@ fn serialises_an_application_without_icon() {
     assert_eq!(relu, app_sans_icone());
 }
 
-/// 🔴 AUCUN `#[serde(default)]` SUR LES DEUX CHAMPS NEUFS.
+/// 🔴 NO `#[serde(default)]` ON THE TWO NEW FIELDS.
 ///
 /// A `default` would silently accept the catalogue of a v2 agent — and
 /// that is precisely the disguise the version bump exists to

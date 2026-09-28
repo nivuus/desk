@@ -1,12 +1,12 @@
-// ⚠️ CE FICHIER NE TOUCHE PAS LA BASE, et il court pourtant sous `test:sqlite`
-// ET sous `test:postgres` : il vit dans la même suite. Il n'ouvre aucun pilote,
-// donc `baseNeuve` et son nom de schéma obligatoire ne le concernent pas.
+// ⚠️ THIS FILE DOES NOT TOUCH THE DATABASE, and yet it runs under `test:sqlite`
+// AND under `test:postgres`: it lives in the same suite. It opens no driver,
+// so `baseNeuve` and its mandatory schema name do not concern it.
 //
-// ⚠️ LES DEUX TESTS DE CONFIGURATION EN FIN DE FICHIER SONT ICI PLUTÔT QUE DANS
-// `config.test.ts`, ET C'EST DÉCLARÉ : l'arbre est partagé avec d'autres
-// chantiers, et la tâche s'interdit d'écrire ailleurs. `config.test.ts` a reçu
-// la seule ligne qu'il ne pouvait PAS ne pas recevoir — son `toEqual` compare
-// l'objet ENTIER, donc un champ de plus le rend rouge.
+// ⚠️ THE TWO CONFIGURATION TESTS AT THE END OF THE FILE ARE HERE RATHER THAN IN
+// `config.test.ts`, AND IT IS DECLARED: the tree is shared with other
+// workstreams, and the task forbids itself from writing elsewhere. `config.test.ts` received
+// the only line it could NOT not receive — its `toEqual` compares
+// the WHOLE object, so one more field turns it red.
 
 import { randomUUID } from 'node:crypto';
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
@@ -35,15 +35,15 @@ afterEach(() => {
     racines = [];
 });
 
-/// Un flux d'octets, en morceaux, pour éprouver le chemin RÉEL — celui qui
-/// n'accumule pas en mémoire — plutôt qu'un `Buffer` déguisé.
+/// A byte stream, in chunks, to test the REAL path — the one that
+/// does not accumulate in memory — rather than a disguised `Buffer`.
 function flux(...morceaux: (string | Uint8Array)[]): AsyncIterable<Uint8Array> {
     return Readable.from(morceaux.map((m) => (typeof m === 'string' ? Buffer.from(m) : m)));
 }
 
-// ⚠️ CET IDENTIFIANT PORTE DES LETTRES HEXADÉCIMALES, ET C'EST DÉLIBÉRÉ : sur
-// un UUID de chiffres seuls, `toUpperCase()` serait un NO-OP et le cas
-// « majuscules refusées » du test des identifiants ne pourrait PAS échouer.
+// ⚠️ THIS IDENTIFIER CARRIES HEXADECIMAL LETTERS, AND IT IS DELIBERATE: on
+// a digits-only UUID, `toUpperCase()` would be a NO-OP and the
+// "upper case refused" case of the identifier test could NOT fail.
 const ID = '0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d';
 const PLAFOND = 1024;
 
@@ -62,13 +62,13 @@ describe('the chunk store on disk', () => {
     });
 
     it('🔴 THERE IS NO ASSEMBLED FILE — one file per chunk, and nothing else', async () => {
-        // 🔴 Un installeur de 800 Mo doublerait l'espace disque au scellement,
-        // et l'assemblé serait une SECONDE source de vérité que rien ne
-        // départagerait de ses tranches le jour où elles divergeraient.
+        // 🔴 An 800 MB installer would double the disk space at sealing,
+        // and the assembled file would be a SECOND source of truth that nothing
+        // would arbitrate against its chunks the day they diverged.
         const m = magasinNeuf();
         await m.write(ID, 0, flux('abc'), PLAFOND);
         await m.write(ID, 1, flux('de'), PLAFOND);
-        // La concaténation est un FLUX : la consommer n'écrit rien.
+        // The concatenation is a STREAM: consuming it writes nothing.
         expect((await lire(m.concatener(ID, [0, 1]))).toString()).toBe('abcde');
         expect(readdirSync(join(m.racine, ID)).sort()).toEqual(['0', '1']);
     });
@@ -77,9 +77,9 @@ describe('the chunk store on disk', () => {
         const m = magasinNeuf();
         const r = await m.write(ID, 0, flux('a'.repeat(600), 'b'.repeat(600)), PLAFOND);
         expect(r).toEqual({ ok: false, motif: 'plafond-depasse', plafond: PLAFOND });
-        // 🔴 NI LA TRANCHE, NI LE `.part` : un fichier de 600 octets laissé là
-        // serait vu PRÉSENT par la reprise, `verdict` le dirait `incoherentes`,
-        // et une incohérence ne se répare pas en redemandant.
+        // 🔴 NEITHER THE CHUNK NOR THE `.part`: a 600-byte file left there
+        // would be seen PRESENT by the resume, `verdict` would call it `incoherentes`,
+        // and an inconsistency is not repaired by asking again.
         expect(existsSync(join(m.racine, ID))).toBe(true);
         expect(readdirSync(join(m.racine, ID))).toEqual([]);
         expect(m.lister(ID)).toEqual([]);
@@ -93,10 +93,10 @@ describe('the chunk store on disk', () => {
     });
 
     it('⚠️ the ceiling BOUNDS the disk, it does not JUDGE the split', async () => {
-        // Une tranche plus COURTE que le contrat passe ici sans un mot : c'est
-        // `verdict` qui la déclarera `incoherentes` au scellement. Ce module ne
-        // connaît pas le contrat, et le lui faire connaître serait la seconde
-        // arithmétique que `proto/ts/tranches.ts` existe pour empêcher.
+        // A chunk SHORTER than the contract passes here without a word: it is
+        // `verdict` that will declare it `incoherentes` at sealing. This module does not
+        // know the contract, and making it know it would be the second
+        // arithmetic that `proto/ts/tranches.ts` exists to prevent.
         const m = magasinNeuf();
         await m.write(ID, 0, flux('court'), PLAFOND);
         expect(m.lister(ID)).toEqual([{ n: 0, octets: 5 }]);
@@ -109,10 +109,10 @@ describe('the chunk store on disk', () => {
         await m.write(ID, 1, flux('fg'), PLAFOND);
         expect(m.lister(ID)).toEqual([{ n: 0, octets: 5 }, { n: 1, octets: 2 }]);
 
-        // 🔴 LE FICHIER EST SUPPRIMÉ SOUS LES PIEDS DU MAGASIN. Une table
-        // divergerait du disque le jour où un fichier serait perdu — et c'est
-        // PRÉCISÉMENT le jour où l'on a besoin de le savoir. La reprise
-        // redemande, et le déposant recomplète.
+        // 🔴 THE FILE IS DELETED FROM UNDER THE STORE. A table
+        // would diverge from the disk the day a file was lost — and that is
+        // PRECISELY the day one needs to know. The resume
+        // asks again, and the depositor completes it.
         rmSync(join(m.racine, ID, '0'));
         expect(m.lister(ID)).toEqual([{ n: 1, octets: 2 }]);
         expect(verdict(7, 5, m.lister(ID))).toEqual({ etat: 'manquantes', n: [0] });
@@ -125,8 +125,8 @@ describe('the chunk store on disk', () => {
     });
 
     it('⚠️ an abandoned `.part` is NOT a chunk', async () => {
-        // Le compter ferait paraître complète une tranche qui n'a jamais fini
-        // de s'écrire — et `verdict` scellerait un fichier tronqué.
+        // Counting it would make a chunk that never finished being written look
+        // complete — and `verdict` would seal a truncated file.
         const m = magasinNeuf();
         await m.write(ID, 0, flux('ab'), PLAFOND);
         writeFileSync(join(m.racine, ID, '1.12345.abc.part'), 'moitie');
@@ -140,11 +140,11 @@ describe('the chunk store on disk', () => {
     });
 
     it('🔴 a VANISHED chunk gives a stream ERROR, never a truncated stream', async () => {
-        // 🔴 Un flux court produirait chez l'agent une empreinte fausse dont
-        // personne ne saurait dire la cause. C'est pourquoi `concatener` sert
-        // le plan VÉRIFIÉ par l'appelant et non un listage : un listage
-        // n'aurait tout simplement pas vu la tranche, et se serait terminé
-        // proprement.
+        // 🔴 A short stream would produce on the agent side a wrong hash whose
+        // cause nobody could tell. That is why `concatener` serves
+        // the plan VERIFIED by the caller and not a listing: a listing
+        // would simply not have seen the chunk, and would have ended
+        // cleanly.
         const m = magasinNeuf();
         await m.write(ID, 0, flux('aaa'), PLAFOND);
         await m.write(ID, 1, flux('bbb'), PLAFOND);
@@ -153,10 +153,10 @@ describe('the chunk store on disk', () => {
     });
 
     it('🔴 a chunk deleted WHILE being read errors too', async () => {
-        // La variante du dessus, mais la suppression tombe pendant que le flux
-        // coule : c'est le cas réel d'une purge concurrente. La première
-        // tranche est assez grosse pour que la contre-pression suspende le
-        // générateur bien avant qu'il n'ouvre la seconde.
+        // The variant above, but the deletion happens while the stream
+        // flows: it is the real case of a concurrent purge. The first
+        // chunk is big enough for back-pressure to suspend the
+        // generator well before it opens the second.
         const m = magasinNeuf();
         await m.write(ID, 0, flux(Buffer.alloc(1 << 20, 0x61)), 1 << 21);
         await m.write(ID, 1, flux('bbb'), PLAFOND);
@@ -174,9 +174,9 @@ describe('the chunk store on disk', () => {
     });
 
     it('🔴 REFUSES an identifier that could escape the store', async () => {
-        // 🔴 `/televersement/..%2f..%2fetc/tranche/0` ne doit pouvoir écrire
-        // NULLE PART, et le refus est explicite : on n'assainit pas en silence,
-        // sans quoi personne ne saurait où l'on a écrit.
+        // 🔴 `/televersement/..%2f..%2fetc/tranche/0` must be able to write
+        // NOWHERE, and the refusal is explicit: we do not sanitise silently,
+        // otherwise nobody would know where we wrote.
         const m = magasinNeuf();
         for (const mauvais of [
             '../../../etc/passwd',
@@ -186,7 +186,7 @@ describe('the chunk store on disk', () => {
             '',
             'x',
             `${ID}/..`,
-            ID.toUpperCase(), // majuscules : refusées, voir le commentaire
+            ID.toUpperCase(), // upper case: refused, see the comment
             `${ID} `,
         ]) {
             expect(identifiantValide(mauvais)).toBe(false);
@@ -201,9 +201,9 @@ describe('the chunk store on disk', () => {
     });
 
     it('🔴 REFUSES a rank that is not a positive safe integer', async () => {
-        // 🔴 LE NOM DE FICHIER EST LE NOMBRE VALIDÉ, jamais un segment d'URL
-        // recopié. Sous cette garde, `String(n)` est TOUJOURS une suite de
-        // chiffres — au-delà de l'entier sûr, `String(1e21)` vaudrait `1e+21`.
+        // 🔴 THE FILE NAME IS THE VALIDATED NUMBER, never a copied URL
+        // segment. Under this guard, `String(n)` is ALWAYS a run of
+        // digits — beyond the safe integer, `String(1e21)` would be `1e+21`.
         const m = magasinNeuf();
         for (const mauvais of [-1, 1.5, NaN, Infinity, 1e21, Number.MAX_SAFE_INTEGER + 2]) {
             expect(rangValide(mauvais)).toBe(false);
@@ -217,27 +217,27 @@ describe('the chunk store on disk', () => {
     });
 
     it('🔴 a rank that is a copied URL SEGMENT can write NOWHERE', async () => {
-        // 🔴 LA GARDE EST UNE DÉFENSE EN PROFONDEUR, et ce test la met à
-        // l'épreuve du cas qu'elle existe pour arrêter : une route qui
-        // passerait le segment d'URL BRUT au lieu du nombre. Le typage
-        // l'interdit, un `as` le contourne — comme le ferait un `any` ou un
-        // corps JSON mal parsé, et le refus doit tenir sans lui.
+        // 🔴 THE GUARD IS DEFENCE IN DEPTH, and this test puts it to
+        // the test of the case it exists to stop: a route that
+        // passed the RAW URL segment instead of the number. Typing
+        // forbids it, an `as` bypasses it — as an `any` or a
+        // badly parsed JSON body would, and the refusal must hold without it.
         const m = magasinNeuf();
         const evil = '../../evil' as unknown as number;
         expect(rangValide(evil)).toBe(false);
         await expect(m.write(ID, evil, flux('poison'), PLAFOND))
             .rejects.toThrow(/invalid chunk rank/);
         expect(() => m.concatener(ID, [evil])).toThrow(/invalid chunk rank/);
-        // 🔴 ET RIEN N'A ÉTÉ ÉCRIT AILLEURS : ni dans la racine, ni au-dessus
-        // d'elle. Un refus qui laisserait le fichier n'en serait pas un.
+        // 🔴 AND NOTHING WAS WRITTEN ELSEWHERE: neither in the root, nor above
+        // it. A refusal that left the file would not be one.
         expect(readdirSync(m.racine)).toEqual([]);
         expect(existsSync(join(m.racine, '..', 'evil'))).toBe(false);
         expect(existsSync(join(m.racine, ID, '..', '..', 'evil'))).toBe(false);
     });
 
     it('🔴 the rank is validated BEFORE the stream exists', async () => {
-        // Un rang fautif lève à l'APPEL, où l'appelant peut encore répondre,
-        // plutôt qu'au milieu d'une réponse déjà commencée.
+        // A faulty rank throws at the CALL, where the caller can still answer,
+        // rather than in the middle of an answer already started.
         const m = magasinNeuf();
         await m.write(ID, 0, flux('a'), PLAFOND);
         expect(() => m.concatener(ID, [0, -1])).toThrow(/rank/);
@@ -264,7 +264,7 @@ describe('the chunk store on disk', () => {
         m.remove(ID);
         expect(existsSync(join(m.racine, ID))).toBe(false);
         expect(m.lister(ID)).toEqual([]);
-        // Une purge qui passe après un dépôt abandonné avant sa première trame.
+        // A purge that runs after a drop abandoned before its first frame.
         expect(() => m.remove(ID)).not.toThrow();
     });
 
@@ -287,23 +287,23 @@ describe('the chunk store on disk', () => {
         expect(existsSync(cible)).toBe(false);
         ouvrirMagasinTranches(cible, (c) => vu.push(c));
         expect(existsSync(cible)).toBe(true);
-        // ⚠️ La variable étant facultative, un opérateur peut se tromper de
-        // répertoire sans que rien ne casse — et ici la perte ne se répare PAS
-        // toute seule : il faut qu'un humain redépose son fichier.
+        // ⚠️ The variable being optional, an operator can get the
+        // directory wrong without anything breaking — and here the loss does NOT
+        // repair itself: a human has to drop their file again.
         expect(vu).toEqual([cible]);
     });
 });
 
 describe('eviction by age, with a floor', () => {
-    // Le temps est INJECTÉ, jamais lu de l'horloge : un test qui attendrait
-    // réellement l'âge d'éviction serait un test qu'on désactive au premier
-    // ralentissement de la machine.
+    // Time is INJECTED, never read from the clock: a test that really waited
+    // for the eviction age would be a test disabled at the first
+    // slowdown of the machine.
     const JOUR_MS = 24 * 60 * 60_000;
 
-    /// Dépose une tranche unique pour `id`, puis FORCE la date de dernière
-    /// modification du RÉPERTOIRE du téléversement — c'est lui, et non une
-    /// tranche isolée, que `evincer` mesure. Équivalent, sur le magasin RÉEL,
-    /// du `deposer(cle, octets, quand)` de la tâche.
+    /// Drops a single chunk for `id`, then FORCES the last-modified date
+    /// of the upload's DIRECTORY — it is that, and not an isolated
+    /// chunk, that `evincer` measures. Equivalent, on the REAL store,
+    /// of the task's `deposer(cle, octets, quand)`.
     async function deposerA(m: ReturnType<typeof magasinNeuf>, id: string, quandMs: number): Promise<void> {
         await m.write(id, 0, flux('x'), PLAFOND);
         utimesSync(join(m.racine, id), new Date(quandMs), new Date(quandMs));
@@ -317,8 +317,8 @@ describe('eviction by age, with a floor', () => {
         expect(existsSync(join(m.racine, orphelin))).toBe(false);
     });
 
-    // 🔴 LE SEUL TEST QUI DISTINGUE UNE ÉVICTION D'UNE CORRUPTION. Sans lui,
-    // une éviction qui emporte TOUT passerait le test précédent.
+    // 🔴 THE ONLY TEST THAT TELLS AN EVICTION FROM A CORRUPTION. Without it,
+    // an eviction that takes EVERYTHING would pass the previous test.
     it('CANNOT evict an old upload still REFERENCED by a live entry', async () => {
         const m = magasinNeuf();
         const enService = randomUUID();
@@ -337,10 +337,10 @@ describe('eviction by age, with a floor', () => {
     });
 
     it('🔴 the constant N is NOT calibrated: the floor holds at any value', () => {
-        // Contrôle de cohérence du montage lui-même : si
-        // `AGE_EVICTION_TRANCHES_MS` dérivait un jour hors de l'intervalle
-        // [1 jour, 400 jours], les trois tests ci-dessus perdraient leur sens
-        // sans qu'aucune rouge ne le dise.
+        // Consistency check of the setup itself: if
+        // `AGE_EVICTION_TRANCHES_MS` ever drifted outside the interval
+        // [1 day, 400 days], the three tests above would lose their meaning
+        // without any red saying so.
         expect(AGE_EVICTION_TRANCHES_MS).toBeGreaterThan(1 * JOUR_MS);
         expect(AGE_EVICTION_TRANCHES_MS).toBeLessThan(400 * JOUR_MS);
     });
@@ -356,26 +356,26 @@ describe('eviction by age, with a floor', () => {
 });
 
 describe('PLATEFORME_TELEVERSEMENTS', () => {
-    // 🔴 LE SECRET PASSE PAR UNE CONSTANTE PARTAGÉE, ET CE N'EST PAS DU STYLE.
-    // Le scanner de `securite/secrets.test.ts` cherche une affectation
-    // LITTÉRALE à une variable de secret NOMMÉE : écrit en ligne, ce montage
-    // faisait rougir « des secrets sont affectés en clair dans des fichiers
-    // versionnés » — sur un secret de test parfaitement inoffensif, mais le
-    // scanner ne peut pas le savoir, et c'est précisément pourquoi il ne
-    // regarde pas la valeur. Réemployer la constante du harnais retire du même
-    // coup une copie du littéral.
+    // 🔴 THE SECRET GOES THROUGH A SHARED CONSTANT, AND IT IS NOT STYLE.
+    // The scanner of `securite/secrets.test.ts` looks for a LITERAL
+    // assignment to a NAMED secret variable: written inline, this setup
+    // turned "secrets are assigned in clear in versioned
+    // files" red — on a perfectly harmless test secret, but the
+    // scanner cannot know that, and it is precisely why it does not
+    // look at the value. Reusing the harness constant also removes
+    // a copy of the literal.
     const BASE = {
         PLATEFORME_HOTE: '127.0.0.1',
         PLATEFORME_SECRET_JETON: SECRET_PLATEFORME,
     };
 
     it('keeps the directory it is GIVEN', () => {
-        // 🔴 LA ROUGE : la variable posée et IGNORÉE. Les tranches
-        // s'écriraient ailleurs, en silence.
+        // 🔴 THE RED: the variable set and IGNORED. The chunks
+        // would be written elsewhere, silently.
         //
-        // `PLATEFORME_PROXY_DE_CONFIANCE` est posée pour satisfaire la garde
-        // du refus de démarrer en mode `pomerium` (tâche 6, `config.ts`) —
-        // ce n'est pas le sujet de ce test.
+        // `PLATEFORME_PROXY_DE_CONFIANCE` is set to satisfy the guard
+        // of the refusal to start in `pomerium` mode (task 6, `config.ts`) —
+        // it is not the subject of this test.
         expect(
             lireConfig({
                 ...BASE,
@@ -386,11 +386,11 @@ describe('PLATEFORME_TELEVERSEMENTS', () => {
     });
 
     it('🔴 an EMPTY value falls back to the default, not to the current directory', () => {
-        // `env.X ?? 'defaut'` ne rattrape PAS `''` — le sous-bloc P1 de la
-        // plateforme a payé cette erreur exacte.
+        // `env.X ?? 'defaut'` does NOT catch `''` — the platform's sub-block P1
+        // paid for this exact mistake.
         //
-        // `PLATEFORME_PROXY_DE_CONFIANCE` est posée pour la même raison que
-        // ci-dessus.
+        // `PLATEFORME_PROXY_DE_CONFIANCE` is set for the same reason as
+        // above.
         expect(
             lireConfig({
                 ...BASE,

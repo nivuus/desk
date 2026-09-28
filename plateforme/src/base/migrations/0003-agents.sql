@@ -1,43 +1,43 @@
--- L'identite des agents : la table que le canal /agent lit et ecrit, et la
--- table `application` qui nait avec ses contraintes et reste vide.
+-- The identity of agents: the table the /agent channel reads and writes, and the
+-- `application` table that is born with its constraints and stays empty.
 --
--- MISE A JOUR (sous-bloc G1, 20 aout 2026) : elle NE RESTE PLUS VIDE. La
--- migration 0004 lui ajoute ses colonnes et son index d'unicite, et
--- `agents/canal.ts` l'ecrit a chaque `catalogue` recu. Voir l'encadre pose
--- sur la table elle-meme, plus bas.
+-- UPDATE (sub-block G1, 20 August 2026): it NO LONGER STAYS EMPTY. The
+-- migration 0004 adds its columns and its uniqueness index, and
+-- `agents/canal.ts` writes it at each `catalogue` received. See the box placed
+-- on the table itself, further down.
 --
--- Les horodatages sont BIGINT et non INTEGER, et c'est MESURE par P1 :
--- INTEGER vaut jusqu'a 8 octets sur SQLite et exactement 4 sur Postgres, ou
--- le 19 aout 2026, sur PostgreSQL 16.15, un Date.now() rendait
+-- The timestamps are BIGINT and not INTEGER, and it is MEASURED by P1:
+-- INTEGER is up to 8 bytes on SQLite and exactly 4 on Postgres, where
+-- on 19 August 2026, on PostgreSQL 16.15, a Date.now() returned
 --     value "1787136773742" is out of range for type integer
--- et le service ne pouvait pas appliquer ses PROPRES migrations. Ils portent
--- tous la convention de nommage `_a`, sans laquelle le lint statique de
--- `sous-ensemble.test.ts` ne pourrait pas les voir -- sa portee est bornee
--- par cette convention, et par rien d'autre (leg n°8 de P1).
+-- and the service could not apply its OWN migrations. They all carry
+-- the `_a` naming convention, without which the static lint of
+-- `sous-ensemble.test.ts` could not see them -- its reach is bounded
+-- by this convention, and by nothing else (P1's legacy item no. 8).
 --
--- Aucune valeur litterale, pas meme un DEFAUT : `rendreMarqueurs` refuse tout
--- SQL portant une apostrophe ou un guillemet.
+-- No literal value, not even a DEFAULT: `rendreMarqueurs` refuses any
+-- SQL carrying an apostrophe or a double quote.
 
--- L'agent enrole d'une VM.
+-- The enrolled agent of a VM.
 --
--- `vm_id` est la CLE PRIMAIRE et non un identifiant propre : une VM porte au
--- plus un agent, et deux lignes pour la meme VM n'auraient aucun sens --
--- laquelle serait la bonne ?
+-- `vm_id` is the PRIMARY KEY and not an identifier of its own: a VM carries at
+-- most one agent, and two rows for the same VM would make no sense --
+-- which one would be the right one?
 --
--- `empreinte_secret` porte le format `scrypt$N$r$p$sel$empreinte` de
--- `identite/mot-de-passe.ts`, le MEME que les comptes humains. Une seconde
--- derivation dans le meme service divergerait de la premiere le jour ou l'une
--- des deux serait durcie.
+-- `empreinte_secret` carries the `scrypt$N$r$p$sel$empreinte` format of
+-- `identite/mot-de-passe.ts`, the SAME as the human accounts. A second
+-- derivation in the same service would diverge from the first the day one
+-- of the two was hardened.
 --
--- 🔴 `prefixe_session` est UNIQUE, et cet index n'est pas decoratif : c'est
--- lui qui rend `lireParPrefixe` DECIDABLE. Deux VMs de meme prefixe rendraient
--- la resolution d'un nom de session ambigue, et le choix de la VM arbitraire
--- -- c'est-a-dire exactement le probleme que le prefixe existe pour fermer.
+-- 🔴 `prefixe_session` is UNIQUE, and this index is not decorative: it is
+-- what makes `lireParPrefixe` DECIDABLE. Two VMs with the same prefix would make
+-- the resolution of a session name ambiguous, and the choice of VM arbitrary
+-- -- that is, exactly the problem the prefix exists to close.
 --
--- `vu_a` nait NULL : une VM enrolee qui n'a jamais battu n'a rien d'honnete a
--- y inscrire, et `0` se lirait comme une epoque de 1970 donc comme un agent
--- injoignable depuis cinquante-six ans. `agents/fraicheur.ts` distingue les
--- deux cas.
+-- `vu_a` is born NULL: an enrolled VM that has never beaten has nothing honest to
+-- record there, and `0` would read as an epoch of 1970 hence as an agent
+-- unreachable for fifty-six years. `agents/fraicheur.ts` distinguishes the
+-- two cases.
 CREATE TABLE agent_enrole (
     vm_id            TEXT PRIMARY KEY REFERENCES vm(id),
     empreinte_secret TEXT NOT NULL,
@@ -45,36 +45,36 @@ CREATE TABLE agent_enrole (
     vu_a             BIGINT NULL
 );
 
--- ❌ « RESTE VIDE » EST FAUX DEPUIS LE SOUS-BLOC G1, qui lui a donne son
--- chemin d ecriture (`agents/canal.ts`, par `apps/catalogue.ts::fusionner`), et
--- G2 lui a ajoute ses colonnes d icone. La phrase ci-dessous reste le releve
--- EXACT de P3 a sa date, et c est pour cela qu elle n est pas effacee.
--- ⚠️ Releve par le sous-bloc G3, qui creait ses propres tables a cote.
--- `application` est creee par P3 et RESTE VIDE : son chemin d'ecriture est le
--- sous-projet ④, qui empruntera le canal /agent pour la remplir.
+-- ❌ "STAYS EMPTY" IS FALSE SINCE SUB-BLOCK G1, which gave it its
+-- write path (`agents/canal.ts`, through `apps/catalogue.ts::fusionner`), and
+-- G2 added its icon columns. The sentence below remains the EXACT
+-- record of P3 at its date, and that is why it is not erased.
+-- ⚠️ Found by sub-block G3, which created its own tables next to it.
+-- `application` is created by P3 and STAYS EMPTY: its write path is
+-- sub-project ④, which will borrow the /agent channel to fill it.
 --
--- ❌ CES DEUX PHRASES SONT DEVENUES FAUSSES LE 20 AOUT 2026, sous-bloc G1 --
--- c'est-a-dire par le sous-projet ④ lui-meme, qui les a prises au mot. Elles
--- sont conservees comme relevé daté de P3 plutot que reecrites, et corrigees
--- ici : `application` a desormais un ecrivain, `agents/canal.ts`, qui applique
--- la fusion de `apps/catalogue.ts` a chaque message `catalogue` de l'agent, et
--- des colonnes que lui ajoute la migration 0004 (cle, cible, arguments,
--- repertoire, apparue_a, disparue_a, masquee_a). Mesure en recette :
--- 154 lignes pour la VM de developpement.
+-- ❌ THESE TWO SENTENCES BECAME FALSE ON 20 AUGUST 2026, sub-block G1 --
+-- that is, through sub-project ④ itself, which took them at their word. They
+-- are kept as a dated record of P3 rather than rewritten, and corrected
+-- here: `application` now has a writer, `agents/canal.ts`, which applies
+-- the merge of `apps/catalogue.ts` at each `catalogue` message from the agent, and
+-- columns that migration 0004 adds to it (cle, cible, arguments,
+-- repertoire, apparue_a, disparue_a, masquee_a). Measured at acceptance:
+-- 154 rows for the development VM.
 --
--- Elle nait ici, et pas plus tard, POUR SA CLE ETRANGERE : SQLite ne sait pas
--- ajouter une contrainte par ALTER TABLE -- mesure par P1 le 19 aout 2026 sur
--- SQLite 3.50.4 : near "CONSTRAINT": syntax error. Une cle etrangere nait
--- avec sa table ou n'existe jamais (leg n°2 de P1). Ce n'est donc PAS un
--- oubli si aucun code ne l'ecrit : c'est le prix, connu et paye d'avance, de
--- la contrainte qu'elle porte.
+-- It is born here, and not later, FOR ITS FOREIGN KEY: SQLite cannot
+-- add a constraint through ALTER TABLE -- measured by P1 on 19 August 2026 on
+-- SQLite 3.50.4: near "CONSTRAINT": syntax error. A foreign key is born
+-- with its table or never exists (P1's legacy item no. 2). It is therefore NOT an
+-- oversight if no code writes it: it is the price, known and paid in advance, of
+-- the constraint it carries.
 --
--- ⚠️ LA CLAUSE FINALE NE DECRIT PLUS LE DEPOT depuis G1 : du code l'ecrit. Le
--- RAISONNEMENT, lui, reste entier et c'est pourquoi il n'est pas supprime --
--- c'est parce que la cle etrangere ne pouvait naitre qu'ici que la table a du
--- naitre vide en P3, et la migration 0004 n'a eu qu'a lui ajouter des
--- colonnes. La mesure de G1 confirme le prix paye d'avance : `ADD COLUMN ...
--- NOT NULL` sans DEFAUT ne passe QUE sur une table vide (divergence E8).
+-- ⚠️ THE FINAL CLAUSE NO LONGER DESCRIBES THE REPOSITORY since G1: code writes it. The
+-- REASONING, for its part, stays whole and that is why it is not removed --
+-- it is because the foreign key could only be born here that the table had to
+-- be born empty in P3, and migration 0004 only had to add
+-- columns to it. G1's measurement confirms the price paid in advance: `ADD COLUMN ...
+-- NOT NULL` without a DEFAULT passes ONLY on an empty table (divergence E8).
 CREATE TABLE application (
     id     TEXT PRIMARY KEY,
     vm_id  TEXT NOT NULL REFERENCES vm(id),

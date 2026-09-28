@@ -46,7 +46,7 @@ export const MOTIFS = [
     'utilisateur-servi',
     /// The user has no VM assigned.
     'aucune-vm',
-    /// `vu_a` trop vieux, ou nul (`agents/fraicheur.ts`).
+    /// `vu_a` too old, or null (`agents/fraicheur.ts`).
     'agent-injoignable',
 ] as const;
 export type Motif = (typeof MOTIFS)[number];

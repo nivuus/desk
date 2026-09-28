@@ -1,9 +1,9 @@
-// Les sept propriétés du hachage de mot de passe.
+// The seven properties of password hashing.
 //
-// 🔴 Les valeurs employées ici sont RÉALISTES, jamais commodes : un mot de
-// passe de longueur ordinaire, un sel de 16 octets, une empreinte de
-// 32 octets. C'est la leçon la plus chère de P1 — une suite qui n'écrit que
-// des `1_000` déclare portable un schéma qui refuse toute écriture réelle.
+// 🔴 The values used here are REALISTIC, never convenient: a password
+// of ordinary length, a 16-byte salt, a 32-byte
+// hash. It is the most expensive lesson of P1 — a suite that only writes
+// `1_000`s declares portable a schema that refuses every real write.
 
 import { describe, expect, it } from 'vitest';
 import {
@@ -23,14 +23,14 @@ describe('hacher', () => {
         const { algo, params, sel, empreinte } = analyser(encode);
         expect(algo).toBe('scrypt');
         expect(params).toEqual(CURRENT_PARAMS);
-        // Tailles RÉELLES : 16 octets de sel, 32 d'empreinte.
+        // REAL sizes: 16 bytes of salt, 32 of hash.
         expect(sel).toHaveLength(16);
         expect(empreinte).toHaveLength(32);
     });
 
     it('draws a fresh salt: two hashes of the same password differ', async () => {
-        // Un sel figé rendrait les deux encodages identiques, et deux comptes
-        // au même mot de passe seraient reconnaissables en base.
+        // A frozen salt would make both encodings identical, and two accounts
+        // with the same password would be recognisable in the database.
         const a = await hacher(MOT_DE_PASSE);
         const b = await hacher(MOT_DE_PASSE);
         expect(a).not.toBe(b);
@@ -49,18 +49,18 @@ describe('verifier', () => {
     });
 
     it('returns false WITHOUT THROWING on a truncated fingerprint', async () => {
-        // 🔴 MESURÉ le 19 août 2026 sur Node v24.9.0 :
+        // 🔴 MEASURED on 19 August 2026 on Node v24.9.0:
         //     timingSafeEqual(Buffer.from('aa'), Buffer.from('aaa'))
-        //     -> LÈVE `Input buffers must have the same byte length`
-        // Une empreinte raccourcie en base — colonne trop courte, écriture
-        // partielle, format d'une version antérieure — ferait donc LEVER la
-        // vérification. L'appelant HTTP répondrait 500 là où il doit répondre
-        // 401, et l'écart de comportement serait à lui seul un oracle.
+        //     -> THROWS `Input buffers must have the same byte length`
+        // A shortened hash in the database — column too short, partial
+        // write, format of an earlier version — would therefore make the
+        // verification THROW. The HTTP caller would answer 500 where it must answer
+        // 401, and the difference in behaviour would on its own be an oracle.
         //
-        // ⚠️ L'empreinte est réellement PLUS COURTE, jamais vide : une chaîne
-        // vide pourrait être attrapée par un contrôle de forme en amont et ne
-        // jamais atteindre `timingSafeEqual`. Le test ne mesurerait alors pas
-        // ce qu'il annonce.
+        // ⚠️ The hash is really SHORTER, never empty: an empty
+        // string could be caught by an upstream shape check and never
+        // reach `timingSafeEqual`. The test would then not measure
+        // what it announces.
         const encode = await hacher(MOT_DE_PASSE);
         const morceaux = encode.split('$');
         morceaux[5] = morceaux[5].slice(0, 20);
@@ -70,9 +70,9 @@ describe('verifier', () => {
     });
 
     it('THROWS on an unknown algorithm, rather than returning false', async () => {
-        // Un `false` silencieux serait indiscernable d'un mauvais mot de
-        // passe : personne ne saurait diagnostiquer une base écrite par une
-        // version future.
+        // A silent `false` would be indistinguishable from a wrong
+        // password: nobody could diagnose a database written by a
+        // future version.
         const encode = (await hacher(MOT_DE_PASSE)).replace(/^scrypt/, 'argon2id');
         await expect(verify(MOT_DE_PASSE, encode)).rejects.toThrow(/argon2id/);
     });

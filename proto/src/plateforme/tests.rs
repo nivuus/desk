@@ -1,4 +1,4 @@
-//! Tests du module [`crate::plateforme`].
+//! Tests of the [`crate::plateforme`] module.
 //!
 //! Extracted from `proto/src/plateforme.rs` VERBATIM (sub-block G1, task 1): the
 //! parent file was at 410 lines, 244 of them tests, and the 500-line

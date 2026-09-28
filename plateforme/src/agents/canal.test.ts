@@ -1,14 +1,14 @@
-// La boucle du canal `/agent`, sur de VRAIS `WebSocket`, port 0 attribué par
-// le système et horloge INJECTÉE — même montage que `garde-fil.test.ts`, et
-// pour la même raison : deux des sept critères ci-dessous exigent que le temps
-// AVANCE entre deux messages, et une horloge figée les rendrait inertes.
+// The loop of the `/agent` channel, on REAL `WebSocket`s, port 0 assigned by
+// the system and an INJECTED clock — same setup as `garde-fil.test.ts`, and
+// for the same reason: two of the seven criteria below require time to
+// MOVE between two messages, and a frozen clock would make them inert.
 //
-// 🔴 CE FICHIER TRAVERSE DEUX MODULES À DESSEIN. Le second test prend le jeton
-// que le canal délivre et le présente à la GARDE du relais. C'est le seul
-// endroit du dépôt où la chaîne complète — enrôlement, signature, claim de
-// type, préfixe de session — est éprouvée bout en bout ; chacun de ses maillons
-// est juste tout seul, et c'est précisément la classe de défaut qui franchit
-// une frontière de tâche que ce dépôt paie à chaque branche.
+// 🔴 THIS FILE CROSSES TWO MODULES ON PURPOSE. The second test takes the token
+// the channel delivers and presents it to the relay's GUARD. It is the only
+// place in the repository where the full chain — enrolment, signature, type
+// claim, session prefix — is tested end to end; each of its links
+// is right on its own, and it is precisely the class of defect that crosses
+// a task boundary that this repository pays for on every branch.
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { WebSocket, WebSocketServer } from 'ws';
@@ -59,9 +59,9 @@ afterEach(async () => {
     vi.restoreAllMocks();
 });
 
-/// Monte le canal sur un port attribué par le système, avec l'horloge du
-/// fichier. On attend `listening` : lire `address()` avant que le socket ne
-/// soit lié rendrait `null`, et le test se connecterait à un port inexistant.
+/// Mounts the channel on a system-assigned port, with the file's
+/// clock. We wait for `listening`: reading `address()` before the socket is
+/// bound would return `null`, and the test would connect to a nonexistent port.
 async function start(p: Pilote, frein: Frein = new Frein()): Promise<number> {
     maintenant = T0;
     wss = new WebSocketServer({ port: 0, host: '127.0.0.1' });
@@ -72,8 +72,8 @@ async function start(p: Pilote, frein: Frein = new Frein()): Promise<number> {
         maintenant: () => maintenant,
         registre: new RegistreAgents(),
         frein,
-        // Aucun proxy declare : `adresseSource` ignorera donc tout
-        // `X-Forwarded-For`, et la cle d'adresse sera celle du pair reel.
+        // No proxy declared: `adresseSource` will therefore ignore any
+        // `X-Forwarded-For`, and the address key will be that of the real peer.
         proxyDeConfiance: new Set(),
     });
     const adresse = wss.address();
@@ -91,51 +91,51 @@ describe('the loop of the /agent channel', () => {
         expect(rep.v).toBe(PLATEFORME_VERSION);
         expect(rep.prefixe).toBe(P);
         expect(typeof rep.jeton).toBe('string');
-        // L'expiration est EXACTE, pas « supérieure à zéro » : c'est
-        // l'assertion qui interdit un `Date.now()` caché dans le canal.
+        // The expiry is EXACT, not "greater than zero": it is
+        // the assertion that forbids a `Date.now()` hidden in the channel.
         expect(rep.expire_a).toBe(T0 + DUREE_JETON_ACCES_MS);
         pair.socket.terminate();
     });
 
     it('🔴 the returned token is VERIFIABLE BY THE GUARD, and of type `agent`', async () => {
-        // 🔴 CE TEST TRAVERSE DEUX MODULES À DESSEIN. La rouge est de signer
-        // sans le claim de type : le jeton resterait un JWT parfaitement
-        // valide, et la garde le refuserait pour le rôle `agent` — un canal
-        // qui délivre des jetons que rien n'accepte. Chacun des deux modules
-        // est juste tout seul ; c'est leur JONCTION qui n'est éprouvée qu'ici.
+        // 🔴 THIS TEST CROSSES TWO MODULES ON PURPOSE. The red is signing
+        // without the type claim: the token would remain a perfectly
+        // valid JWT, and the guard would refuse it for the `agent` role — a channel
+        // that delivers tokens nothing accepts. Each of the two modules
+        // is right on its own; it is their JUNCTION that is tested only here.
         base = await baseNeuve('canal-jeton-garde');
         await enrolerUneVm(base, 'v-1');
         const pair = await ouvrir(await start(base));
         const rep = await pair.dire(encodeEnroler('v-1', SECRET_VM));
 
-        // Le SUJET du jeton est le PRÉFIXE, et son type est `agent`.
+        // The token's SUBJECT is the PREFIX, and its type is `agent`.
         expect(verifyToken(rep.jeton, SECRET, T0)).toEqual({
             ok: true,
             sujet: P,
             type: 'agent',
         });
 
-        // Et la garde du relais l'accepte pour une session que ce préfixe
-        // porte — c'est-à-dire pour l'usage RÉEL du jeton.
+        // And the relay's guard accepts it for a session this prefix
+        // carries — that is, for the REAL use of the token.
         const g = fabriquerGarde(SECRET, () => T0, new ProprieteDeSession());
         expect(g.verify({ role: 'agent', session: `${P}:bureau`, jeton: rep.jeton })).toEqual({
             ok: true,
         });
-        // TÉMOIN, dans la même exécution : la garde refuse ce même jeton pour
-        // une session que le préfixe ne porte PAS. Sans lui, l'acceptation
-        // ci-dessus serait vraie d'une garde qui ne regarderait rien.
+        // WITNESS, in the same run: the guard refuses this same token for
+        // a session the prefix does NOT carry. Without it, the acceptance
+        // above would hold for a guard that looked at nothing.
         expect(g.verify({ role: 'agent', session: 'bureau', jeton: rep.jeton }).ok).toBe(false);
         pair.socket.terminate();
     });
 
     it('🔴 `enroler` with the WRONG secret returns `refus` and CLOSES the socket, without writing the secret to the log', async () => {
-        // 🔴 LA FERMETURE EST LA MOITIÉ GRATUITE. Un pair refusé qui
-        // garderait son socket ouvert pourrait réessayer sans limite sur la
-        // même connexion. ✅ L'AUTRE MOITIÉ EXISTE DEPUIS P5 — le frein du
-        // canal, éprouvé par `describe('le frein du canal /agent')` plus bas
-        // dans ce fichier. Cette ligne disait « le déni de service que P5 doit
-        // freiner » : c'est fait, et les deux moitiés vivent désormais côte à
-        // côte ici.
+        // 🔴 CLOSING IS THE FREE HALF. A refused peer that
+        // kept its socket open could retry without limit on the
+        // same connection. ✅ THE OTHER HALF HAS EXISTED SINCE P5 — the channel's
+        // brake, tested by `describe('the brake of the /agent channel')` further down
+        // in this file. This line used to say "the denial of service P5 must
+        // brake": it is done, and both halves now live side by
+        // side here.
         base = await baseNeuve('canal-mauvais-secret');
         await enrolerUneVm(base, 'v-1');
         const journal = vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -145,24 +145,24 @@ describe('the loop of the /agent channel', () => {
         expect(rep).toEqual({ type: 'refus', v: PLATEFORME_VERSION, motif: 'enrolement' });
 
         await pair.ferme;
-        // ENVOYER PUIS FERMER, jamais l'inverse : un pair qui verrait une
-        // fermeture sans motif ne saurait pas s'il doit se corriger ou
-        // réessayer.
+        // SEND THEN CLOSE, never the reverse: a peer that saw a
+        // close with no reason would not know whether to correct itself or
+        // retry.
         expect(pair.ordre).toEqual(['message', 'close']);
         expect(pair.socket.readyState).toBe(WebSocket.CLOSED);
 
-        // ⚠️ LE JOURNAL NOMME LA VM, JAMAIS LE SECRET. On balaie sur le NOM du
-        // champ et non sur sa valeur : chercher la valeur ferait passer un
-        // journal qui écrirait « secret= » suivi d'autre chose.
+        // ⚠️ THE LOG NAMES THE VM, NEVER THE SECRET. We sweep on the NAME of the
+        // field and not on its value: searching for the value would pass a
+        // log that wrote "secret=" followed by something else.
         const lignes = journal.mock.calls.map((c) => String(c[0])).join('\n');
         expect(lignes).toContain('v-1');
         expect(lignes).not.toContain('secret');
     });
 
     it('🔴 a message of version PLATEFORME_VERSION + 1 is refused, reason `version`', async () => {
-        // 🔴 C'est la moitié TypeScript du critère ③. L'omettre ferait
-        // interpréter les champs d'un message d'une version future avec le
-        // sens de la nôtre.
+        // 🔴 It is the TypeScript half of criterion ③. Omitting it would make
+        // the fields of a message from a future version be interpreted with the
+        // meaning of ours.
         base = await baseNeuve('canal-version');
         await enrolerUneVm(base, 'v-1');
         const pair = await ouvrir(await start(base));
@@ -171,20 +171,20 @@ describe('the loop of the /agent channel', () => {
             JSON.stringify({ type: 'battement', v: PLATEFORME_VERSION + 1 }),
         );
         expect(rep).toEqual({ type: 'refus', v: PLATEFORME_VERSION, motif: 'version' });
-        // ⚠️ ET LE SOCKET SE FERME, décision de ce module et non du plan : un
-        // pair qui ne parle pas notre version ne réussira JAMAIS sur cette
-        // connexion, et le laisser ouvert le ferait boucler à la place de sa
-        // reprise à repli exponentiel.
+        // ⚠️ AND THE SOCKET CLOSES, a decision of this module and not of the plan: a
+        // peer that does not speak our version will NEVER succeed on this
+        // connection, and leaving it open would make it loop instead of its
+        // exponential-backoff reconnection.
         await pair.ferme;
         expect(pair.ordre).toEqual(['message', 'close']);
     });
 
     it('🔴 `battement` BEFORE `enroler` is refused, reason `sequence`, and issues NO token', async () => {
-        // 🔴 LES DEUX MOITIÉS COMPTENT, et la seconde est la vraie. Un
-        // `battement-recu` rendu à un anonyme porterait un JETON — c'est-à-dire
-        // que le canal signerait une identité d'agent pour un pair qui n'a
-        // présenté aucun secret. C'est exactement la fuite d'E12 sous une autre
-        // forme.
+        // 🔴 BOTH HALVES COUNT, and the second is the real one. A
+        // `battement-recu` returned to an anonymous peer would carry a TOKEN — that is,
+        // the channel would sign an agent identity for a peer that
+        // presented no secret. It is exactly E12's leak in another
+        // form.
         base = await baseNeuve('canal-sequence');
         await enrolerUneVm(base, 'v-1');
         const pair = await ouvrir(await start(base));
@@ -192,19 +192,19 @@ describe('the loop of the /agent channel', () => {
         const rep = await pair.dire(encodeBattement());
         expect(rep).toEqual({ type: 'refus', v: PLATEFORME_VERSION, motif: 'sequence' });
         expect(rep.jeton).toBeUndefined();
-        // Le socket reste OUVERT : contrairement au mauvais secret, une erreur
-        // de séquence se corrige — le pair peut s'enrôler puis reprendre. Même
-        // partage que le relais entre le message malformé et la poignée de
-        // main refusée.
+        // The socket stays OPEN: unlike the wrong secret, a sequence
+        // error can be corrected — the peer can enrol then resume. Same
+        // split as the relay between the malformed message and the refused
+        // handshake.
         expect(pair.socket.readyState).toBe(WebSocket.OPEN);
         pair.socket.terminate();
     });
 
     it('🔴 `battement` after `enroler` ADVANCES `vu_a` in the database', async () => {
-        // 🔴 Ne rien écrire laisserait `vu_a` figé, et la VM serait
-        // éternellement `injoignable` (`agents/fraicheur.ts`) alors qu'elle
-        // bat. L'horloge AVANCE entre les deux messages : sans cela, un
-        // `vu_a` simplement recopié de l'enrôlement passerait le test.
+        // 🔴 Writing nothing would leave `vu_a` frozen, and the VM would be
+        // forever `injoignable` (`agents/fraicheur.ts`) while it
+        // beats. The clock MOVES between the two messages: without that, a
+        // `vu_a` simply copied from the enrolment would pass the test.
         base = await baseNeuve('canal-vu-a');
         await enrolerUneVm(base, 'v-1');
         const pair = await ouvrir(await start(base));
@@ -221,10 +221,10 @@ describe('the loop of the /agent channel', () => {
     });
 
     it('🔴 `battement` returns a FRESH token, valid at an instant when the previous one has EXPIRED', async () => {
-        // 🔴 Rendre le même jeton ferait tomber l'agent à l'expiration du
-        // premier — dix minutes après l'enrôlement —, sans qu'il le voie venir.
-        // Comparer les deux `expire_a` ne suffit pas à le dire : ce qui le dit
-        // est qu'à l'instant où l'ANCIEN est refusé, le NOUVEAU passe.
+        // 🔴 Returning the same token would make the agent drop at the expiry of the
+        // first one — ten minutes after enrolment —, without seeing it coming.
+        // Comparing the two `expire_a` is not enough to say so: what says so
+        // is that at the instant the OLD one is refused, the NEW one passes.
         base = await baseNeuve('canal-jeton-frais');
         await enrolerUneVm(base, 'v-1');
         const pair = await ouvrir(await start(base));
@@ -237,8 +237,8 @@ describe('the loop of the /agent channel', () => {
         expect(second.expire_a).toBe(T0 + 30_000 + DUREE_JETON_ACCES_MS);
         expect(Number(second.expire_a)).toBeGreaterThan(Number(premier.expire_a));
 
-        // L'instant EXACT où le premier meurt : la borne est franche
-        // (`maintenant >= exp`), donc le premier est refusé et le second passe.
+        // The EXACT instant the first one dies: the bound is strict
+        // (`maintenant >= exp`), so the first is refused and the second passes.
         const instantCritique = T0 + DUREE_JETON_ACCES_MS;
         expect(verifyToken(premier.jeton, SECRET, instantCritique)).toEqual({
             ok: false,
@@ -251,23 +251,23 @@ describe('the loop of the /agent channel', () => {
 
 describe('the channel, WIRED into the whole service', () => {
     it('🔴 the `/agent` path of the service really serves the channel', async () => {
-        // 🔴 SANS CE TEST, OUBLIER L'APPEL DANS `http/serveur.ts` NE ROUGIRAIT
-        // NULLE PART. La tâche 13 n'éprouve que la MONTÉE du chemin `/agent` —
-        // un `WebSocketServer` qui accepte la connexion et n'écoute rien la
-        // passerait. C'est la panne muette exacte que `serveur.ts` invoque déjà
-        // pour rendre `base` et `garde` REQUISES.
+        // 🔴 WITHOUT THIS TEST, FORGETTING THE CALL IN `http/serveur.ts` WOULD TURN
+        // RED NOWHERE. Task 13 only tests the MOUNTING of the `/agent` path —
+        // a `WebSocketServer` that accepts the connection and listens to nothing would
+        // pass it. It is the exact silent failure `serveur.ts` already invokes
+        // to make `base` and `garde` REQUIRED.
         //
-        // L'horloge n'est pas injectable ici (`startServer` lit `Date.now`),
-        // donc l'expiration n'est pas assertée sur une valeur exacte : ce test
-        // mesure le CÂBLAGE, les sept ci-dessus mesurent la boucle.
+        // The clock is not injectable here (`startServer` reads `Date.now`),
+        // so the expiry is not asserted on an exact value: this test
+        // measures the WIRING, the seven above measure the loop.
         const config: Config = {
             hote: '127.0.0.1',
             port: 0,
             base: 'sqlite',
             urlBase: ':memory:',
             secretJeton: SECRET,
-            // Aucun proxy declare : voir `config.ts`, l'ensemble vide est le
-            // defaut et signifie « ne croire l'adresse annoncee par personne ».
+            // No proxy declared: see `config.ts`, the empty set is the
+            // default and means "trust nobody's announced address".
             proxyDeConfiance: new Set(),
             repertoireIcones: join(mkdtempSync(join(tmpdir(), 'g2-icones-')), 'icones'),
             repertoireTeleversements: join(mkdtempSync(join(tmpdir(), 'g3-tranches-')), 'televersements'),
@@ -286,11 +286,11 @@ describe('the channel, WIRED into the whole service', () => {
 });
 
 describe('the brake of the /agent channel', () => {
-    /// Une tentative d'enrôlement complète : ouvrir, dire, lire le refus.
+    /// A complete enrolment attempt: open, say, read the refusal.
     ///
-    /// ⚠️ UN SOCKET NEUF À CHAQUE FOIS, et ce n'est pas du zèle : le motif
-    /// `enrolement` FERME le socket (`MOTIFS_FERMANTS`), et réutiliser le pair
-    /// mesurerait un socket mort.
+    /// ⚠️ A NEW SOCKET EACH TIME, and it is not zeal: the reason
+    /// `enrolement` CLOSES the socket (`MOTIFS_FERMANTS`), and reusing the peer
+    /// would measure a dead socket.
     async function tenter(port: number, vm: string, secret: string): Promise<Record<string, unknown>> {
         const pair = await ouvrir(port);
         const rep = await pair.dire(encodeEnroler(vm, secret));
@@ -305,8 +305,8 @@ describe('the brake of the /agent channel', () => {
         for (let i = 0; i < ECHECS_MAX_COMPTE; i++) {
             expect((await tenter(port, 'v-1', 'ce-n-est-pas-le-bon-secret')).type).toBe('refus');
         }
-        // Le refus est le MÊME (voir (c)) ; ce qui a changé est son COÛT,
-        // que (e) mesure.
+        // The refusal is the SAME (see (c)); what changed is its COST,
+        // which (e) measures.
         expect((await tenter(port, 'v-1', 'ce-n-est-pas-le-bon-secret')).type).toBe('refus');
     }, 30000);
 
@@ -315,22 +315,22 @@ describe('the brake of the /agent channel', () => {
         base = reel;
         const compteur = piloteCompteur(reel);
         const port = await start(compteur.pilote);
-        // Aucun budget de VM ne peut mordre : chaque nom est essayé UNE fois.
+        // No VM budget can bite: each name is tried ONCE.
         for (let i = 0; i < ECHECS_MAX_ADRESSE; i++) {
             await tenter(port, `inconnue-${i}`, 'peu-importe');
         }
         compteur.remettre();
         expect((await tenter(port, 'yet-another-one', 'peu-importe')).type).toBe('refus');
-        // 🔴 Le discriminant : la tentative freinée n'a RIEN lu en base.
+        // 🔴 The discriminant: the braked attempt read NOTHING from the database.
         expect(compteur.acces()).toBe(0);
     }, 60000);
 
     it('(c) 🔴 the braked refusal is the SAME MESSAGE as the enrolment refusal', async () => {
-        // 🔴 UN MOTIF `frein` DISTINCT RENDRAIT À L'ATTAQUANT L'INFORMATION
-        // « cette VM existe et je l'ai fait déclencher » : c'est exactement
-        // l'ORACLE D'ÉNUMÉRATION que `agents/enrolement.ts` ferme sur trois
-        // paragraphes, rouvert par la porte du frein. Les deux refus sont
-        // produits DANS LE MÊME TEST et comparés objet pour objet.
+        // 🔴 A DISTINCT `frein` REASON WOULD GIVE THE ATTACKER THE INFORMATION
+        // "this VM exists and I made it trigger": it is exactly the
+        // ENUMERATION ORACLE that `agents/enrolement.ts` closes over three
+        // paragraphs, reopened through the brake's door. The two refusals are
+        // produced IN THE SAME TEST and compared object for object.
         base = await baseNeuve('canal-frein-oracle');
         await enrolerUneVm(base, 'v-1');
         const port = await start(base);
@@ -344,8 +344,8 @@ describe('the brake of the /agent channel', () => {
     }, 30000);
 
     it('(d) the LOG, however, tells the two apart', async () => {
-        // Même partage que `identite/garde.ts` : `message` sur le fil,
-        // `journal` chez nous. Le demandeur n'apprend rien ; l'exploitant, si.
+        // Same split as `identite/garde.ts`: `message` on the wire,
+        // `journal` on our side. The requester learns nothing; the operator does.
         const avertir = vi.spyOn(console, 'warn').mockImplementation(() => {});
         base = await baseNeuve('canal-frein-journal');
         await enrolerUneVm(base, 'v-1');
@@ -355,9 +355,9 @@ describe('the brake of the /agent channel', () => {
         }
         await tenter(port, 'v-1', 'ce-n-est-pas-le-bon-secret');
         const lignes = avertir.mock.calls.map((c) => String(c[0]));
-        // Le refus d'enrôlement ordinaire, écrit par `enrolement.ts`.
+        // The ordinary enrolment refusal, written by `enrolement.ts`.
         expect(lignes.some((l) => l.includes('enrolment refused for VM v-1'))).toBe(true);
-        // Et la ligne du frein, qui n'existe QUE côté exploitant.
+        // And the brake's line, which exists ONLY on the operator's side.
         const freinees = lignes.filter((l) => l.startsWith('frein '));
         expect(freinees.length).toBeGreaterThanOrEqual(1);
         expect(freinees[0]).toContain('route=/agent');
@@ -365,11 +365,11 @@ describe('the brake of the /agent channel', () => {
     }, 30000);
 
     it('(e) 🔴 the braked refusal reads NOTHING from the database — so derives no `scrypt`', async () => {
-        // 🔴 C'EST LE POINT DE TOUTE LA TÂCHE. `verifyEnrolment` lit
-        // `agent_enrole` PUIS dérive une empreinte `scrypt`, à mémoire dure et
-        // délibérément chère (68 ms mesurés le 20 août 2026). Un frein posté
-        // APRÈS ne protège rien : il compte des tentatives qu'il a déjà payées,
-        // et un attaquant épuise le service sans jamais deviner un secret.
+        // 🔴 IT IS THE POINT OF THE WHOLE TASK. `verifyEnrolment` reads
+        // `agent_enrole` THEN derives a `scrypt` hash, memory-hard and
+        // deliberately expensive (68 ms measured on 20 August 2026). A brake placed
+        // AFTER protects nothing: it counts attempts it has already paid for,
+        // and an attacker exhausts the service without ever guessing a secret.
         const reel = await baseNeuve('canal-frein-sans-scrypt');
         base = reel;
         await enrolerUneVm(reel, 'v-1');
@@ -384,9 +384,9 @@ describe('the brake of the /agent channel', () => {
     }, 30000);
 
     it('(f) a SUCCESSFUL enrolment resets the VM counter to zero', async () => {
-        // Même règle que `/auth/connexion` : le succès efface la clé de la VM,
-        // JAMAIS celle de l'adresse — sinon un attaquant qui possède une VM
-        // valide se blanchirait entre deux rafales.
+        // Same rule as `/auth/connexion`: success clears the VM's key,
+        // NEVER the address's — otherwise an attacker who owns a valid VM
+        // would launder themselves between two bursts.
         base = await baseNeuve('canal-frein-succes');
         await enrolerUneVm(base, 'v-1');
         const port = await start(base);
@@ -394,15 +394,15 @@ describe('the brake of the /agent channel', () => {
             await tenter(port, 'v-1', 'ce-n-est-pas-le-bon-secret');
         }
         expect((await tenter(port, 'v-1', SECRET_VM)).type).toBe('enrole');
-        // Sans la remise à zéro, la dernière de cette seconde série serait
-        // freinée, donc n'atteindrait jamais la base.
+        // Without the reset, the last one of this second series would be
+        // braked, hence would never reach the database.
         const reel2 = base;
         const compteur = piloteCompteur(reel2);
         void compteur;
         for (let i = 0; i < ECHECS_MAX_COMPTE - 1; i++) {
             expect((await tenter(port, 'v-1', 'ce-n-est-pas-le-bon-secret')).type).toBe('refus');
         }
-        // Et le succès reste possible : la VM n'est pas verrouillée.
+        // And success remains possible: the VM is not locked.
         expect((await tenter(port, 'v-1', SECRET_VM)).type).toBe('enrole');
     }, 30000);
 });

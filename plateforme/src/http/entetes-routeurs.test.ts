@@ -1,21 +1,21 @@
-// Les en-têtes de sécurité, éprouvés SUR CHAQUE ROUTEUR séparément.
+// The security headers, tested ON EACH ROUTER separately.
 //
-// 🔴 UN `it()` PAR ROUTEUR, ET JAMAIS UN TEST GLOBAL. Un test unique qui
-// balaierait « au moins une route les porte » passerait dès qu'UN SEUL routeur
-// les pose — et c'est exactement la leçon que la rouge ①A de P2 a payée :
-// `expect` interrompt le test à la première assertion qui tombe, si bien
-// qu'une assertion groupée n'éprouve que sa première ligne. La rouge de cette
-// tâche consiste à retirer l'étalement d'UN SEUL routeur, et à vérifier que
-// SON test tombe pendant que les quatre autres restent verts.
+// 🔴 ONE `it()` PER ROUTER, AND NEVER A GLOBAL TEST. A single test that
+// swept "at least one route carries them" would pass as soon as ONE SINGLE router
+// sets them — and it is exactly the lesson P2's red ①A paid for:
+// `expect` interrupts the test at the first assertion that fails, so
+// that a grouped assertion only tests its first line. The red of this
+// task consists in removing the spread of ONE SINGLE router, and checking that
+// ITS test fails while the other four stay green.
 //
-// ⚠️ CE FICHIER EXISTE PLUTÔT QUE CINQ BLOCS ÉPARPILLÉS DANS LES CINQ FICHIERS
-// DE TEST DE ROUTE, et c'est une divergence assumée avec le plan de P5 (qui
-// prévoyait « quelques assertions » dans `routes-vm.test.ts` et
-// `routes-session.test.ts`). La propriété éprouvée est TRANSVERSE — « toute
-// réponse JSON du service » —, et une propriété transverse dispersée en cinq
-// endroits est celle qu'un sixième routeur n'ira jamais rejoindre. G1 vient
-// d'ajouter un routeur sans que personne ne s'en aperçoive côté P5 : c'est
-// précisément le mode de défaillance que ce fichier rend visible.
+// ⚠️ THIS FILE EXISTS RATHER THAN FIVE BLOCKS SCATTERED ACROSS THE FIVE
+// ROUTE TEST FILES, and it is an acknowledged divergence from P5's plan (which
+// planned "a few assertions" in `routes-vm.test.ts` and
+// `routes-session.test.ts`). The property tested is CROSS-CUTTING — "every
+// JSON response of the service" —, and a cross-cutting property scattered across five
+// places is one a sixth router will never join. G1 has just
+// added a router without anyone noticing on P5's side: it is
+// precisely the failure mode this file makes visible.
 
 import { afterEach, describe, expect, it } from 'vitest';
 import { baseNeuve } from '../base/harnais';
@@ -42,68 +42,68 @@ const CONFIG: Config = {
     proxyDeConfiance: new Set(),
     repertoireIcones: join(mkdtempSync(join(tmpdir(), 'g2-icones-')), 'icones'),
     repertoireTeleversements: join(mkdtempSync(join(tmpdir(), 'g3-tranches-')), 'televersements'),
-    // 🔴 TÂCHE 3 : `servirAuth` se RETIRE désormais en mode `pomerium` — voir
-    // son garde. TROIS cas de ce fichier traversent `/auth/connexion`
-    // ((1) GET→405, (6) POST→200, (8) OPTIONS→204) et exigent donc
-    // `auth: 'motdepasse'`, sinon ils rencontreraient un 404 au lieu de la
-    // réponse de `routes-auth`.
+    // 🔴 TASK 3: `servirAuth` now WITHDRAWS itself in `pomerium` mode — see
+    // its guard. THREE cases of this file go through `/auth/connexion`
+    // ((1) GET→405, (6) POST→200, (8) OPTIONS→204) and therefore require
+    // `auth: 'motdepasse'`, otherwise they would meet a 404 instead of the
+    // response of `routes-auth`.
     //
-    // ⚠️ « LE 404 GÉNÉRIQUE » ÉTAIT LE MOT JUSQU'AU 22 AOÛT 2026, ET IL NE
-    // L'EST PLUS : la garde de mode rend désormais ce 404 ELLE-MÊME
-    // (`http/introuvable.ts`), parce que le repli SPA du servant de page
-    // l'avalait. Le corps et les en-têtes sont les mêmes à l'octet près — ce
-    // qui change est QUI répond, et ces trois cas-ci ne s'en aperçoivent pas.
+    // ⚠️ "THE GENERIC 404" WAS THE WORD UNTIL 22 AUGUST 2026, AND IT NO LONGER
+    // IS: the mode guard now returns this 404 ITSELF
+    // (`http/introuvable.ts`), because the page server's SPA fallback
+    // swallowed it. The body and headers are the same to the byte — what
+    // changes is WHO answers, and these three cases do not notice it.
     //
-    // ⚠️ CE COMMENTAIRE A ÉCRIT « LES CINQ AUTRES », ET LE COMPTE ÉTAIT FAUX
-    // (revue transverse, 21 août 2026) — dans un commentaire dont tout l'objet
-    // est la complétude. Ce fichier porte **ONZE** `it()`, non huit : les trois
-    // numérotés HORS SÉQUENCE — `(6bis)`, `(6ter)`, `(6quater)`, ajoutés par G2
-    // et G3 — n'avaient pas été comptés. **Trois** cas prennent `motdepasse`,
-    // donc **HUIT AUTRES** sont indifférents à cette valeur. Recompté par
-    // `grep -c '^\s*it(' <ce file>` -> `11`, et par
-    // `grep -c "^\s*const url = await servir(.*motdepasse" <ce file>` ->
-    // `3`. 🔴 **Ces
-    // deux commandes se relancent ; ce compte ne se recopie pas** — c'est le
-    // « naufrage du 487 » de `CLAUDE.md`, et la numérotation hors séquence en
-    // est ici la cause mécanique.
+    // ⚠️ THIS COMMENT WROTE "THE FIVE OTHERS", AND THE COUNT WAS WRONG
+    // (cross-cutting review, 21 August 2026) — in a comment whose whole purpose
+    // is completeness. This file carries **ELEVEN** `it()`, not eight: the three
+    // numbered OUT OF SEQUENCE — `(6bis)`, `(6ter)`, `(6quater)`, added by G2
+    // and G3 — had not been counted. **Three** cases take `motdepasse`,
+    // so **EIGHT OTHERS** are indifferent to this value. Recounted by
+    // `grep -c '^\s*it(' <this file>` -> `11`, and by
+    // `grep -c "^\s*const url = await servir(.*motdepasse" <this file>` ->
+    // `3`. 🔴 **These
+    // two commands are rerun; this count is not copied** — it is the
+    // "487 wreck" of `CLAUDE.md`, and the out-of-sequence numbering is
+    // its mechanical cause here.
     //
-    // 🔴 LA SECONDE COMMANDE EST ANCRÉE EN DÉBUT DE LIGNE SUR `const url =
-    // await servir(`, ET C'EST LA TROISIÈME RÉDACTION : LES DEUX PREMIÈRES SE
-    // SONT POLLUÉES ELLES-MÊMES, ET LA MESURE L'A DIT À CHAQUE FOIS.
-    //   ① `grep -c "motdepasse' }"` -> **5** au lieu de 3 : il comptait les
-    //      lignes de CE commentaire, qui cite le motif.
-    //   ② `grep -c "servir(.*auth: 'motdepasse'"` -> **4** au lieu de 3 : il
-    //      comptait **sa propre citation**, deux lignes plus haut.
-    // L'ancre `^\s*const` est la seule forme qui ne puisse pas se compter,
-    // une ligne de commentaire commençant toujours par `//`. Un fichier qui
-    // documente ses invariants CONTIENT les motifs qu'il décrit — piège maison
-    // de `CLAUDE.md`, payé DEUX fois de plus ici même.
+    // 🔴 THE SECOND COMMAND IS ANCHORED AT LINE START ON `const url =
+    // await servir(`, AND IT IS THE THIRD DRAFT: THE FIRST TWO
+    // POLLUTED THEMSELVES, AND THE MEASUREMENT SAID SO EACH TIME.
+    //   ① `grep -c "motdepasse' }"` -> **5** instead of 3: it counted the
+    //      lines of THIS comment, which quotes the pattern.
+    //   ② `grep -c "servir(.*auth: 'motdepasse'"` -> **4** instead of 3: it
+    //      counted **its own quotation**, two lines above.
+    // The anchor `^\s*const` is the only form that cannot count itself,
+    // a comment line always starting with `//`. A file that
+    // documents its invariants CONTAINS the patterns it describes — a home-grown trap
+    // of `CLAUDE.md`, paid TWICE more right here.
     //
-    // ⚠️ AUCUN `it()` NE VISE `/auth/moi`, et le contrôle qui l'établissait
-    // avait EXACTEMENT le même défaut : « `grep -n 'auth/moi'` ne rend rien »
-    // était vrai à l'écriture, et faux dès que la phrase le citant est entrée
-    // dans le fichier. Le contrôle qui vaut ÉCARTE les commentaires —
-    // `grep -n 'auth/moi' <ce file> | grep -vc '^\s*[0-9]*:\s*//'` doit
-    // rendre **0**.
+    // ⚠️ NO `it()` TARGETS `/auth/moi`, and the check that established it
+    // had EXACTLY the same defect: "`grep -n 'auth/moi'` returns nothing"
+    // was true when written, and false as soon as the sentence quoting it entered
+    // the file. The check that matters DISCARDS comments —
+    // `grep -n 'auth/moi' <this file> | grep -vc '^\s*[0-9]*:\s*//'` must
+    // return **0**.
     //
-    // **Décision, tranchée cas par cas et non en bloc** : le `CONFIG`
-    // PARTAGÉ reste à `pomerium` (le défaut du produit, `config.ts`), et LES
-    // TROIS SEULS cas qui en ont besoin reçoivent `{ ...CONFIG, auth:
-    // 'motdepasse' }` localement — jamais l'inverse, qui aurait changé le
-    // mode des HUIT autres pour une raison qui ne les concerne pas.
+    // **Decision, made case by case and not in bulk**: the SHARED `CONFIG`
+    // stays at `pomerium` (the product default, `config.ts`), and THE ONLY
+    // THREE cases that need it receive `{ ...CONFIG, auth:
+    // 'motdepasse' }` locally — never the reverse, which would have changed the
+    // mode of the EIGHT others for a reason that does not concern them.
     //
-    // ⚠️ CETTE PHRASE DISAIT « ... y compris pour un futur test de /auth/moi
-    // qui rejoindrait ce fichier sans le relire », ET C'EST DEVENU FAUX
-    // (tâche 6, revue « round de correction 1 », 22 août 2026) : ce fichier
-    // reçoit maintenant SANS LE DIRE UN SECOND PIÈGE. `CONFIG.proxyDeConfiance`
-    // vaut `new Set()` — personne n'est déclaré de confiance —, et la garde
-    // de `routes-identite.ts` refuse alors TOUT pair, y compris la boucle
-    // locale d'où ces tests se connectent. Un futur test de `/auth/moi`
-    // ajouté ici SANS RELIRE CE COMMENTAIRE recevrait `401
-    // pair-non-de-confiance` quel que soit l'en-tête d'identité posé, et
-    // devrait poser `proxyDeConfiance: new Set(['127.0.0.1'])` localement
-    // pour observer autre chose que cette garde. Code non touché : ce
-    // fichier ne construit toujours aucune requête vers `/auth/moi`.
+    // ⚠️ THIS SENTENCE SAID "... including for a future /auth/moi test
+    // that would join this file without rereading it", AND IT HAS BECOME FALSE
+    // (task 6, review "correction round 1", 22 August 2026): this file
+    // now receives WITHOUT SAYING SO A SECOND TRAP. `CONFIG.proxyDeConfiance`
+    // is `new Set()` — nobody is declared trusted —, and the guard
+    // of `routes-identite.ts` then refuses EVERY peer, including the loopback
+    // from which these tests connect. A future `/auth/moi` test
+    // added here WITHOUT REREADING THIS COMMENT would receive `401
+    // pair-non-de-confiance` whatever the identity header set, and
+    // would have to set `proxyDeConfiance: new Set(['127.0.0.1'])` locally
+    // to observe anything other than this guard. Code untouched: this
+    // file still builds no request to `/auth/moi`.
     auth: 'pomerium',
 };
 
@@ -124,7 +124,7 @@ async function servir(nom: string, config: Config = CONFIG): Promise<string> {
     return `http://127.0.0.1:${service.port}`;
 }
 
-/// Vérifie les DEUX en-têtes, nommément, sur une réponse.
+/// Checks BOTH headers, by name, on a response.
 function porteLesEntetes(r: Response, quoi: string): void {
     for (const [cle, value] of Object.entries(ENTETES_SECURITE)) {
         expect(r.headers.get(cle.toLowerCase()), `${quoi}: header ${cle}`).toBe(value);
@@ -133,13 +133,13 @@ function porteLesEntetes(r: Response, quoi: string): void {
 
 describe('the security headers, one router at a time', () => {
     it('(1) `routes-auth` sets them — including on an ERROR response', async () => {
-        // ⚠️ `auth: 'motdepasse'` LOCAL : sans lui, `servirAuth` se RETIRE
-        // (tâche 3) et cette requête rencontrerait le 404 générique, jamais
-        // le 405 de `routes-auth`.
+        // ⚠️ `auth: 'motdepasse'` LOCAL: without it, `servirAuth` WITHDRAWS
+        // (task 3) and this request would meet the generic 404, never
+        // the 405 of `routes-auth`.
         const url = await servir('entetes-auth', { ...CONFIG, auth: 'motdepasse' });
-        // ⚠️ SUR UNE ERREUR, et c'est délibéré : une réponse d'erreur porte
-        // souvent PLUS d'information qu'une réponse normale, et c'est celle
-        // qu'un correctif hâtif oublierait.
+        // ⚠️ ON AN ERROR, and it is deliberate: an error response often carries
+        // MORE information than a normal response, and it is the one
+        // a hasty fix would forget.
         const r = await fetch(`${url}/auth/connexion`, { method: 'GET' });
         expect(r.status).toBe(405);
         porteLesEntetes(r, '405 of /auth/connexion');
@@ -148,7 +148,7 @@ describe('the security headers, one router at a time', () => {
     it('(2) `routes-vm` sets them', async () => {
         const url = await servir('entetes-vm');
         const r = await fetch(`${url}/vm`);
-        // 401 : aucun porteur présenté. La réponse d'erreur porte les en-têtes.
+        // 401: no bearer presented. The error response carries the headers.
         expect(r.status).toBe(401);
         porteLesEntetes(r, '401 of /vm');
     });
@@ -161,10 +161,10 @@ describe('the security headers, one router at a time', () => {
     });
 
     it('(4) `routes-applications` sets them — the FIFTH router, added by G1', async () => {
-        // ⚠️ CE ROUTEUR N'EST PAS DANS LE PLAN DE P5, qui compte « les quatre
-        // routeurs ». G1 l'a livré entre la rédaction du plan et son
-        // exécution. Sans cet `it()`, la propriété « toute réponse JSON du
-        // service » serait FAUSSE le jour même de sa livraison.
+        // ⚠️ THIS ROUTER IS NOT IN P5'S PLAN, which counts "the four
+        // routers". G1 shipped it between the writing of the plan and its
+        // execution. Without this `it()`, the property "every JSON response of the
+        // service" would be FALSE on the very day it shipped.
         const url = await servir('entetes-applications');
         const r = await fetch(`${url}/applications`);
         expect(r.status).toBe(401);
@@ -179,14 +179,14 @@ describe('the security headers, one router at a time', () => {
     });
 
     it('(6) 🔴 the 200 response of `/auth/connexion` carries `Cache-Control: no-store`', async () => {
-        // 🔴 C'EST LA SEULE RÉPONSE DU SERVICE QUI PORTE DES JETONS — l'accès
-        // ET le rafraîchissement, en clair dans son corps JSON. Un cache
-        // intermédiaire, ou simplement le disque du navigateur, les
-        // retiendrait. Un test générique qui n'éprouverait que les réponses
-        // d'erreur passerait à côté de celle-ci, qui est la seule qui compte
-        // vraiment.
-        // ⚠️ `auth: 'motdepasse'` LOCAL — voir le cas (1) : sans lui, cette
-        // route n'existe pas et la requête rendrait 404, pas 200.
+        // 🔴 IT IS THE ONLY RESPONSE OF THE SERVICE THAT CARRIES TOKENS — the access
+        // AND refresh tokens, in clear in its JSON body. An intermediate
+        // cache, or simply the browser's disk, would
+        // keep them. A generic test that only tested the error
+        // responses would miss this one, which is the only one that really
+        // matters.
+        // ⚠️ `auth: 'motdepasse'` LOCAL — see case (1): without it, this
+        // route does not exist and the request would return 404, not 200.
         const url = await servir('entetes-jetons', { ...CONFIG, auth: 'motdepasse' });
         const r = await fetch(`${url}/auth/connexion`, {
             method: 'POST',
@@ -199,50 +199,50 @@ describe('the security headers, one router at a time', () => {
     });
 
     it('(6bis) `routes-icone` sets them — THE SIXTH ROUTER', async () => {
-        // 🔴 G2 AJOUTE LE SIXIÈME ROUTEUR, et l'en-tête de ce fichier nomme le
-        // précédent : « G1 vient d'ajouter un routeur sans que personne ne
-        // s'en aperçoive côté P5 ». Ne pas rejouer le défaut que ce fichier
-        // existe pour empêcher.
+        // 🔴 G2 ADDS THE SIXTH ROUTER, and the header of this file names the
+        // precedent: "G1 has just added a router without anyone
+        // noticing on P5's side". Do not replay the defect this file
+        // exists to prevent.
         const url = await servir('entetes-icone');
-        // Sans jeton : un 401, donc une réponse d'ERREUR — celle qu'un
-        // correctif hâtif oublierait.
+        // Without a token: a 401, hence an ERROR response — the one a
+        // hasty fix would forget.
         const r = await fetch(`${url}/icone/${'a'.repeat(64)}`, { method: 'PUT' });
         expect(r.status).toBe(401);
         porteLesEntetes(r, '401 of /icone/:sha256');
 
-        // Et sur l'autre chemin de ce même routeur.
+        // And on the other path of this same router.
         //
-        // ⚠️ CE CHEMIN NE REND PLUS 401 MAIS 400 DEPUIS LE 30 AOÛT 2026, et
-        // ce n'est pas une régression : le `GET` n'exige plus `Authorization`
-        // — il exige une URL SIGNÉE (décision du propriétaire du dépôt, voir
-        // `routes-icone.ts`). Sans les paramètres de signature, la requête est
-        // INCOMPLÈTE, pas non authentifiée. **Ce que ce test éprouve est
-        // inchangé** : que les en-têtes de sécurité soient posés sur une
-        // réponse d'ERREUR de ce routeur.
+        // ⚠️ THIS PATH NO LONGER RETURNS 401 BUT 400 SINCE 30 AUGUST 2026, and
+        // it is not a regression: the `GET` no longer requires `Authorization`
+        // — it requires a SIGNED URL (decision of the repository owner, see
+        // `routes-icone.ts`). Without the signature parameters, the request is
+        // INCOMPLETE, not unauthenticated. **What this test tests is
+        // unchanged**: that the security headers are set on an
+        // ERROR response of this router.
         const g = await fetch(`${url}/application/x/icone?e=${'a'.repeat(64)}`);
         expect(g.status).toBe(400);
         porteLesEntetes(g, '400 of /application/:id/icone');
     });
 
     it('(6ter) `routes-televersement` sets them — THE SEVENTH ROUTER', async () => {
-        // 🔴 G3 AJOUTE LE SEPTIÈME, et l'en-tête de ce fichier nomme les deux
-        // précédents : G1 a livré le cinquième « sans que personne ne s'en
-        // aperçoive côté P5 », G2 le sixième. C'est la troisième fois, et le
-        // fichier n'existe que pour que ce soit la dernière.
+        // 🔴 G3 ADDS THE SEVENTH, and the header of this file names the two
+        // previous ones: G1 shipped the fifth "without anyone
+        // noticing on P5's side", G2 the sixth. It is the third time, and the
+        // file only exists so that it is the last.
         const url = await servir('entetes-televersement');
-        // Sans jeton : une réponse d'ERREUR, celle qu'un correctif hâtif
-        // oublierait — et sur la route d'ÉTAT, qui est la seule des quatre
-        // qu'un `GET` sans corps atteigne.
+        // Without a token: an ERROR response, the one a hasty fix
+        // would forget — and on the STATE route, which is the only one of the four
+        // a bodiless `GET` reaches.
         const r = await fetch(`${url}/televersement/inexistant`);
         expect(r.status).toBe(401);
         porteLesEntetes(r, '401 of /televersement/:id');
     });
 
     it('(6quater) `routes-installation` sets them — THE EIGHTH ROUTER', async () => {
-        // ⚠️ CELUI-CI NE SERT QUE L'AGENT, et son refus emprunte donc le
-        // porteur d'AGENT et non celui de l'utilisateur. Deux gardes
-        // différentes, une seule propriété transverse : c'est précisément le
-        // genre d'écart par lequel un routeur échappe à un balayage.
+        // ⚠️ THIS ONE ONLY SERVES THE AGENT, and its refusal therefore goes through the
+        // AGENT bearer and not the user's. Two different
+        // guards, one cross-cutting property: it is precisely the
+        // kind of gap through which a router escapes a sweep.
         const url = await servir('entetes-installation');
         const r = await fetch(`${url}/televersement/inexistant/contenu`);
         expect(r.status).toBe(401);
@@ -250,9 +250,9 @@ describe('the security headers, one router at a time', () => {
     });
 
     it('(7) the generic 404 and the 500 carry them too', async () => {
-        // Le 404 ne vient d'aucun routeur : il est écrit dans `serveur.ts`.
-        // Sans lui, un chemin inconnu serait la seule réponse du service à ne
-        // pas porter `nosniff`.
+        // The 404 comes from no router: it is written in `serveur.ts`.
+        // Without it, an unknown path would be the only response of the service not
+        // carrying `nosniff`.
         const url = await servir('entetes-404');
         const r = await fetch(`${url}/path-that-does-not-exist`);
         expect(r.status).toBe(404);
@@ -260,10 +260,10 @@ describe('the security headers, one router at a time', () => {
     });
 
     it('(8) the OPTIONS preflight response carries them too', async () => {
-        // ⚠️ `auth: 'motdepasse'` LOCAL — voir le cas (1) : en mode `pomerium`,
-        // `servirAuth` se retire AVANT même sa branche OPTIONS (le garde
-        // précède tout le reste de la fonction), et ce OPTIONS rencontrerait
-        // le 404 générique au lieu du 204 préalable.
+        // ⚠️ `auth: 'motdepasse'` LOCAL — see case (1): in `pomerium` mode,
+        // `servirAuth` withdraws BEFORE even its OPTIONS branch (the guard
+        // precedes the whole rest of the function), and this OPTIONS would meet
+        // the generic 404 instead of the preflight 204.
         const url = await servir('entetes-options', { ...CONFIG, auth: 'motdepasse' });
         const r = await fetch(`${url}/auth/connexion`, { method: 'OPTIONS' });
         expect(r.status).toBe(204);

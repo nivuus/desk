@@ -1,10 +1,10 @@
-// Les traces d'exploitation du démarrage — UN TEST PAR TRACE.
+// The startup operating traces — ONE TEST PER TRACE.
 //
-// 🔴 CE QUE CES TESTS EXISTENT POUR EMPÊCHER : une racine de page mal posée
-// qui rend `404` sur tout, sans une ligne de journal — donc strictement
-// indiscernable de la variable absente —, et un ensemble de confiance qui
-// refuse tout le monde en silence. Les deux pannes sont MUETTES, et une panne
-// muette ne se rattrape pas à la lecture du code.
+// 🔴 WHAT THESE TESTS EXIST TO PREVENT: a badly set page root
+// that returns `404` on everything, without a log line — hence strictly
+// indistinguishable from the absent variable —, and a trust set that
+// refuses everyone silently. Both failures are SILENT, and a silent failure
+// cannot be caught by reading the code.
 
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -37,8 +37,8 @@ const CONFIG: Config = {
 };
 
 describe('the announced page root', () => {
-    // 🔴 « AUCUNE PAGE SERVIE » EST UNE INFORMATION, PAS UN SILENCE : c'est
-    // elle qui distingue le montage nginx nominal d'une racine fausse.
+    // 🔴 "NO PAGE SERVED" IS INFORMATION, NOT SILENCE: it is
+    // what distinguishes the nominal nginx setup from a wrong root.
     it("announces the ABSENCE of a served page, rather than staying silent", () => {
         expect(annonceRacinePage({ arme: false }).texte).toContain('root=none');
     });
@@ -52,9 +52,9 @@ describe('the announced page root', () => {
         expect(annonce.texte).toContain('root=/srv/page');
     });
 
-    // 🔴 BRUYANTE, JAMAIS `info` : c'est le cas exact que la revue finale a
-    // classé Critique — une racine posée mais inexistante, qui répondait `404`
-    // à chaque requête sans rien dire nulle part.
+    // 🔴 LOUD, NEVER `info`: it is the exact case the final review
+    // classified Critical — a root set but nonexistent, which answered `404`
+    // to every request without saying anything anywhere.
     it('an UNREADABLE root is announced at ERROR level', () => {
         const annonce = annonceRacinePage({
             arme: true,
@@ -81,16 +81,16 @@ describe("the state of the page root", () => {
         expect(await etatRacinePage('')).toEqual({ arme: false });
     });
 
-    // 🔴 LE CHEMIN RÉSOLU, JAMAIS LA VALEUR BRUTE. Un chemin relatif au
-    // journal serait ambigu : son ancrage dépend du répertoire courant du
-    // processus, que l'exploitant ne lit nulle part.
+    // 🔴 THE RESOLVED PATH, NEVER THE RAW VALUE. A relative path in the
+    // log would be ambiguous: its anchoring depends on the current directory of the
+    // process, which the operator reads nowhere.
     it('resolves the root to an ABSOLUTE path', async () => {
         const etat = await etatRacinePage('client/dist', async () => {});
         expect(etat).toEqual({ arme: true, chemin: join(process.cwd(), 'client/dist'), lisible: true });
     });
 
-    // 🔴 LE TÉMOIN NÉGATIF DU SONDAGE : sans lui, le `lisible: true` ci-dessus
-    // serait rendu par un état qui ne sonde RIEN.
+    // 🔴 THE NEGATIVE WITNESS OF THE PROBE: without it, the `lisible: true` above
+    // would be returned by a state that probes NOTHING.
     it("a root the probe refuses is returned UNREADABLE, with its cause", async () => {
         const etat = await etatRacinePage('/srv/page', async () => {
             throw new Error('ENOENT: nothing here');
@@ -110,9 +110,9 @@ describe('the real disk probe', () => {
         await expect(sonderRepertoire(absent)).rejects.toThrow();
     });
 
-    // ⚠️ UN FICHIER ORDINAIRE POSÉ COMME RACINE REND LE MÊME `404` MUET qu'une
-    // racine absente : c'est une faute de configuration plausible (pointer
-    // `index.html` au lieu de `client/dist`), et elle doit être nommée.
+    // ⚠️ AN ORDINARY FILE SET AS ROOT GIVES THE SAME SILENT `404` as an
+    // absent root: it is a plausible configuration mistake (pointing to
+    // `index.html` instead of `client/dist`), and it must be named.
     it("refuses a path that is not a directory", async () => {
         const file = join(mkdtempSync(join(tmpdir(), 'announce-file-')), 'page.html');
         writeFileSync(file, 'x');
@@ -121,10 +121,10 @@ describe('the real disk probe', () => {
 });
 
 describe("the announced trust set", () => {
-    // 🔴 CE QUE LE SERVICE A RETENU, JAMAIS CE QU'ON LUI A DONNÉ — et c'est ce
-    // qui rend un nom d'hôte VISIBLE. Un nom d'hôte ne correspond à aucune
-    // `remoteAddress`, donc `pairDeConfiance` refuse tout le monde, et le
-    // service répond quand même : la seule chose qui le dise est cette ligne.
+    // 🔴 WHAT THE SERVICE RETAINED, NEVER WHAT IT WAS GIVEN — and it is what
+    // makes a host name VISIBLE. A host name matches no
+    // `remoteAddress`, so `pairDeConfiance` refuses everyone, and the
+    // service still answers: the only thing that says so is this line.
     it('names each retained entry', () => {
         const annonce = annonceProxyDeConfiance(new Set(['172.18.0.5', 'pomerium.interne']));
         expect(annonce.texte).toContain('pomerium.interne');
@@ -134,30 +134,30 @@ describe("the announced trust set", () => {
         expect(annonceProxyDeConfiance(new Set()).texte).toContain('retained=none');
     });
 
-    // ⚠️ CE N'EST PAS PARCE QUE L'ENSEMBLE VIDE SERAIT LE « DÉFAUT SÛR » —
-    // cette justification a été FALSIFIÉE (revue, round de correction 3 de
-    // `frein(pont)`) : dans LE MONTAGE que ce dépôt livre
-    // (`docker-compose.plateforme.yml`, nginx devant la plateforme même en
-    // mode `motdepasse`), un ensemble vide fait dégénérer le frein en un
-    // budget PARTAGÉ par tout le trafic, sans qu'aucun attaquant n'ait à
-    // forger quoi que ce soit — voir la doc de `annonceProxyDeConfiance`,
-    // corrigée à sa place. `info` reste le niveau attendu parce que cette
-    // fonction PURE n'a aucun moyen de savoir si l'appelant tourne derrière
-    // un proxy — un `error` inconditionnel alarmerait à tort le montage où
-    // l'ensemble vide est légitimement sûr (exposition directe). `config.ts`
-    // refuse déjà de démarrer sans lui en mode `pomerium`.
+    // ⚠️ IT IS NOT BECAUSE THE EMPTY SET WOULD BE THE "SAFE DEFAULT" —
+    // that justification was FALSIFIED (review, correction round 3 of
+    // `frein(pont)`): in THE SETUP this repository ships
+    // (`docker-compose.plateforme.yml`, nginx in front of the platform even in
+    // `motdepasse` mode), an empty set makes the brake degenerate into a
+    // budget SHARED by all traffic, without any attacker having to
+    // forge anything — see the doc of `annonceProxyDeConfiance`,
+    // corrected in its place. `info` remains the expected level because this
+    // PURE function has no way of knowing whether the caller runs behind
+    // a proxy — an unconditional `error` would wrongly alarm the setup where
+    // the empty set is legitimately safe (direct exposure). `config.ts`
+    // already refuses to start without it in `pomerium` mode.
     it("an empty set is NOT an error", () => {
         expect(annonceProxyDeConfiance(new Set()).niveau).toBe('info');
     });
 });
 
-// 🔴 LES QUATRE TESTS CI-DESSUS SONT PURS : ILS NE PROUVENT PAS QUE
-// `startServer` LES APPELLE. C'est le piège que `CLAUDE.md` nomme pour
-// `scripts/run-agent.sh` — « le contrôle qui vaut est de lire la ligne dans le
-// script GÉNÉRÉ, jamais de tracer le code » —, et il se rejoue ici : un module
-// d'annonces entièrement testé et JAMAIS BRANCHÉ rendrait exactement le
-// silence qu'il existe pour supprimer. Ces tests-ci montent le VRAI service et
-// lisent la console.
+// 🔴 THE FOUR TESTS ABOVE ARE PURE: THEY DO NOT PROVE THAT
+// `startServer` CALLS THEM. It is the trap `CLAUDE.md` names for
+// `scripts/run-agent.sh` — "the check that matters is reading the line in the
+// GENERATED script, never tracing the code" —, and it replays here: a fully
+// tested announcements module NEVER WIRED would give exactly the
+// silence it exists to remove. These tests mount the REAL service and
+// read the console.
 describe('the service announces at startup', () => {
     let base: Pilote | undefined;
     let service: ServicePlateforme | undefined;
@@ -202,8 +202,8 @@ describe('the service announces at startup', () => {
         );
     });
 
-    // 🔴 LE CRITIQUE C1, MESURÉ SUR LE VRAI SERVICE : une racine posée mais
-    // inexistante rendait `404` sur toute page, sans une ligne nulle part.
+    // 🔴 THE CRITICAL C1, MEASURED ON THE REAL SERVICE: a root set but
+    // nonexistent returned `404` on every page, without a line anywhere.
     it('a root set but NON-EXISTENT is announced on console.error', async () => {
         const absente = join(mkdtempSync(join(tmpdir(), 'annonce-absente-')), 'jamais-batie');
         const { errors } = await startAndCapture({ racinePage: absente }, 'annonce-page-morte');

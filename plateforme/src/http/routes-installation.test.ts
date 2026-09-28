@@ -1,17 +1,17 @@
-// Les trois routes de l'INSTALLATION, éprouvées À TRAVERS un serveur HTTP réel
-// et un magasin de tranches RÉEL — dans le style de `routes-applications.test.ts`
-// et de `routes-icone.test.ts`.
+// The three INSTALLATION routes, tested THROUGH a real HTTP server
+// and a REAL chunk store — in the style of `routes-applications.test.ts`
+// and `routes-icone.test.ts`.
 //
-// 🔴 LE MAGASIN N'EST PAS UN DOUBLE, ET C'EST LE POINT. Les octets sont
-// réellement découpés en tranches sur un disque temporaire, et le test compare
-// le corps de la réponse au fichier d'origine, OCTET POUR OCTET : c'est ce qui
-// éprouve la concaténation en flux plutôt que la promesse qu'elle a lieu.
+// 🔴 THE STORE IS NOT A DOUBLE, AND THAT IS THE POINT. The bytes are
+// really split into chunks on a temporary disk, and the test compares
+// the response body with the original file, BYTE FOR BYTE: it is what
+// tests the streamed concatenation rather than the promise that it happens.
 //
-// 🔴 CE FICHIER PORTE LES QUATRE MUTATIONS QUE LE PLAN PRESCRIT, et la première
-// est la plus importante du sous-bloc : **un jeton d'agent de la VM `B` ne doit
-// pas obtenir l'installeur destiné à `A`**. Elle a son `it()` nommé, et il porte
-// son TÉMOIN — l'agent de `A`, lui, obtient les octets —, sans quoi l'assertion
-// serait vraie d'une route qui ne sert jamais rien.
+// 🔴 THIS FILE CARRIES THE FOUR MUTATIONS THE PLAN PRESCRIBES, and the first
+// is the most important of the sub-block: **an agent token of VM `B` must
+// not obtain the installer meant for `A`**. It has its named `it()`, and it carries
+// its WITNESS — `A`'s agent, for its part, gets the bytes —, otherwise the assertion
+// would hold for a route that never serves anything.
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createHash, randomBytes } from 'node:crypto';
@@ -33,10 +33,10 @@ import { servirInstallation } from './routes-installation';
 
 let m: Montage | undefined;
 let racine: string | undefined;
-/// ⚠️ IL S'APPELLE `tranches` DANS LES DÉPENDANCES, PAS `magasin`, ET LE NOM EST
-/// PORTEUR : `serveur.ts` porte DÉJÀ un `magasin` — celui des ICÔNES de G2 —
-/// dans le même objet. Le harnais suit ce nom pour que le câblage éprouvé ici
-/// soit celui du service.
+/// ⚠️ IT IS CALLED `tranches` IN THE DEPENDENCIES, NOT `magasin`, AND THE NAME
+/// MATTERS: `serveur.ts` ALREADY carries a `magasin` — G2's ICON one —
+/// in the same object. The harness follows that name so that the wiring tested here
+/// is the service's.
 let tranches: MagasinTranches | undefined;
 let maintenant = MS;
 
@@ -49,9 +49,9 @@ afterEach(async () => {
     vi.restoreAllMocks();
 });
 
-/// Monte le serveur qui ne porte QUE cette route, plus le 404 générique de
-/// `serveur.ts` reproduit mot pour mot par `monterRoute` : c'est lui qui rend
-/// observable un `false` rendu par `servirInstallation`.
+/// Mounts the server that carries ONLY this route, plus the generic 404 of
+/// `serveur.ts` reproduced word for word by `monterRoute`: it is what makes
+/// a `false` returned by `servirInstallation` observable.
 async function servir(nom: string, origineClient?: string): Promise<string> {
     maintenant = MS;
     racine = mkdtempSync(join(tmpdir(), `g3-${nom}-`));
@@ -62,23 +62,23 @@ async function servir(nom: string, origineClient?: string): Promise<string> {
             secretJeton: 'un-secret-de-plateforme-de-quarante-octets',
             origineClient,
             tranches: tranches!,
-            // ⚠️ UN REGISTRE VIDE, ET C'EST LE CAS QUI COMPTE ICI : aucun socket
-            // n'est inscrit, donc `pousser` rend `false` et l'ordre reste
-            // `en_attente` en base — exactement le filet que
-            // `reemettreLesInstallations` livrera au prochain enrôlement. Ces
-            // tests éprouvent la ROUTE, jamais la livraison, qui demande un
-            // socket vivant (recette, §5quater).
+            // ⚠️ AN EMPTY REGISTRY, AND IT IS THE CASE THAT COUNTS HERE: no socket
+            // is registered, so `pousser` returns `false` and the order stays
+            // `en_attente` in the database — exactly the net that
+            // `reemettreLesInstallations` will deliver at the next enrolment. These
+            // tests test the ROUTE, never the delivery, which requires a
+            // live socket (acceptance, §5quater).
             registre: new RegistreAgents(),
             maintenant: () => maintenant,
         }));
     return m.url;
 }
 
-/// Un téléversement RÉEL : la ligne en base, et ses tranches sur le disque.
+/// A REAL upload: the row in the database, and its chunks on disk.
 ///
-/// ⚠️ LE DÉCOUPAGE PASSE PAR `proto/ts/tranches.ts::plan`, jamais par une
-/// arithmétique locale : c'est la règle que la route emploie pour reconstruire
-/// le flux, et deux arithmétiques indépendantes divergeraient un jour.
+/// ⚠️ THE CHUNKING GOES THROUGH `proto/ts/tranches.ts::plan`, never through a local
+/// arithmetic: it is the rule the route uses to rebuild
+/// the stream, and two independent arithmetics would one day diverge.
 async function poserTeleversement(
     base: Pilote,
     userId: string,
@@ -105,8 +105,8 @@ async function poserTeleversement(
     return { id: ligne.id, octets };
 }
 
-/// Une VM enrôlée, vivante, attribuée à un utilisateur — et son préfixe, qui est
-/// le SUJET du jeton d'agent.
+/// An enrolled VM, alive, assigned to a user — and its prefix, which is
+/// the SUBJECT of the agent token.
 async function poserVmVivante(base: Pilote, vmId: string, email: string, prefixe: string): Promise<string> {
     await poserVm(base, vmId);
     const u = await attribuer(base, vmId, email);
@@ -115,10 +115,10 @@ async function poserVmVivante(base: Pilote, vmId: string, email: string, prefixe
     return u;
 }
 
-/// ⚠️ LE JETON PORTE L'IDENTIFIANT RÉEL de l'utilisateur, jamais un nom commode :
-/// c'est lui que la route compare à `vm.utilisateur_id`, et un sujet inventé
-/// ferait rendre `404 vm-inconnue` à des cas qui n'ont rien à voir — c'est ce
-/// qu'une première rédaction de ce fichier a mesuré.
+/// ⚠️ THE TOKEN CARRIES THE REAL IDENTIFIER of the user, never a convenient name:
+/// it is what the route compares with `vm.utilisateur_id`, and an invented subject
+/// would make cases that have nothing to do with it return `404 vm-inconnue` — that is
+/// what a first draft of this file measured.
 const CORPS = (u: string, vm: string, televersement: string) => ({
     method: 'POST',
     headers: withIt(jetonDe(u)),
@@ -133,11 +133,11 @@ describe(`routes /installation, engine=${MOTEUR}`, () => {
     });
 
     it('🔴 BOTH patterns are ANCHORED AT BOTH ENDS, and the BODY discriminates', async () => {
-        // 🔴 UN `startsWith` OUVRIRAIT UNE FAMILLE ENTIÈRE DE CHEMINS QUE
-        // PERSONNE N'A DÉCIDÉS. Et c'est le CORPS qui juge, jamais le code :
-        // G1 a mesuré qu'un `startsWith('/application')` laissait DIX-SEPT
-        // tests verts, la route rendant SON PROPRE 404 typé, indiscernable du
-        // 404 générique tant qu'on ne lit que le statut.
+        // 🔴 A `startsWith` WOULD OPEN A WHOLE FAMILY OF PATHS THAT
+        // NOBODY DECIDED. And it is the BODY that judges, never the code:
+        // G1 measured that a `startsWith('/application')` left SEVENTEEN
+        // tests green, the route returning ITS OWN typed 404, indistinguishable from the
+        // generic 404 as long as one only reads the status.
         const url = await servir('inst-ancre');
         const declines = [
             `${url}/installation/x/y`,
@@ -151,18 +151,18 @@ describe(`routes /installation, engine=${MOTEUR}`, () => {
             const r = await fetch(cible);
             expect([cible, r.status, await r.text()]).toEqual([cible, 404, 'not found\n']);
         }
-        // Les trois chemins JUSTES sont bien servis — sans ce témoin, les
-        // assertions ci-dessus seraient vraies d'une route qui ne sert RIEN.
+        // The three RIGHT paths are served — without this witness, the
+        // assertions above would hold for a route that serves NOTHING.
         expect((await fetch(`${url}/installation/x`)).status).not.toBe(404);
         expect((await fetch(`${url}/televersement/x/contenu`)).status).not.toBe(404);
         expect((await fetch(`${url}/installation`, { method: 'POST' })).status).not.toBe(404);
     });
 
     it('serves the `OPTIONS` preflight request, without which nothing is reachable', async () => {
-        // ⚠️ Les trois routes exigent `Authorization`, ce qui rend la requête NON
-        // SIMPLE : un 404 sur l'`OPTIONS` ferait abandonner le navigateur avant
-        // la vraie requête. AUCUN test Node ne voit la politique d'origine —
-        // c'est cette assertion, et rien d'autre, qui tient l'en-tête.
+        // ⚠️ The three routes require `Authorization`, which makes the request NON-
+        // SIMPLE: a 404 on the `OPTIONS` would make the browser give up before
+        // the real request. NO Node test sees the origin policy —
+        // it is this assertion, and nothing else, that holds the header.
         const url = await servir('inst-options', ORIGINE);
         for (const c of ['/installation', '/installation/x', '/televersement/x/contenu']) {
             const r = await fetch(`${url}${c}`, { method: 'OPTIONS', headers: { origin: ORIGINE } });
@@ -187,9 +187,9 @@ describe(`routes /installation, engine=${MOTEUR}`, () => {
     });
 
     it("🔴 `POST /installation` refuses an AGENT token — MUTATION no. 2, first direction", async () => {
-        // 🔴 Agent et humain sont signés par le MÊME secret : accepter tout jeton
-        // valide rouvrirait E5 de P3, et un agent compromis ordonnerait
-        // l'installation d'un logiciel sur la machine de son propriétaire.
+        // 🔴 Agent and human are signed by the SAME secret: accepting any valid
+        // token would reopen P3's E5, and a compromised agent would order
+        // the installation of software on its owner's machine.
         const url = await servir('inst-ordre-jeton-agent');
         const r = await fetch(`${url}/installation`, {
             method: 'POST',
@@ -200,9 +200,9 @@ describe(`routes /installation, engine=${MOTEUR}`, () => {
     });
 
     it("🔴 `GET …/contenu` refuses a BEARER token — MUTATION no. 2, second direction", async () => {
-        // 🔴 La moitié symétrique de la garde : un humain n'emprunte jamais le
-        // chemin de l'agent. Si l'une des deux se relâche, les deux identités
-        // redeviennent interchangeables.
+        // 🔴 The symmetrical half of the guard: a human never takes the
+        // agent's path. If either one is relaxed, the two identities
+        // become interchangeable again.
         const url = await servir('inst-contenu-jeton-humain');
         const r = await fetch(`${url}/televersement/t-1/contenu`, { headers: withIt(jetonDe('u-1')) });
         expect([r.status, await r.json()]).toEqual([403, { refus: 'jeton-utilisateur' }]);
@@ -218,9 +218,9 @@ describe(`routes /installation, engine=${MOTEUR}`, () => {
     });
 
     it("🔴 a FOREIGN VM answers EXACTLY like an UNKNOWN VM", async () => {
-        // 🔴 Les deux corps sont comparés CARACTÈRE POUR CARACTÈRE : un test qui
-        // ne lirait que `404` serait satisfait par le 404 GÉNÉRIQUE de
-        // `serveur.ts`, qui n'est pas celui-ci.
+        // 🔴 Both bodies are compared CHARACTER FOR CHARACTER: a test that
+        // only read `404` would be satisfied by the GENERIC 404 of
+        // `serveur.ts`, which is not this one.
         const url = await servir('inst-vm-etrangere');
         await poserVmVivante(m!.base, 'v-1', 'proprietaire@exemple.test', 'PREFIXE-A');
         const autre = await createUser(m!.base, 'autre@exemple.test', 'x', MS);
@@ -254,8 +254,8 @@ describe(`routes /installation, engine=${MOTEUR}`, () => {
         const inconnu = await fetch(`${url}/installation`, opts('jamais-vu'));
         expect([etranger.status, corpsEtranger]).toEqual([inconnu.status, await inconnu.text()]);
         expect(corpsEtranger).toBe(JSON.stringify({ refus: 'televersement-inconnu' }));
-        // 🔴 LA CONTREPARTIE : la ligne de journal, elle, DISTINGUE — sans quoi
-        // uniformiser coûterait à l'exploitant tout son diagnostic.
+        // 🔴 THE COUNTERPART: the log line, for its part, DISTINGUISHES — otherwise
+        // uniformising would cost the operator all their diagnosis.
         const tout = traces.join(' | ');
         expect(tout).toContain('cas=etrangere');
         expect(tout).toContain('cas=inconnue');
@@ -263,12 +263,12 @@ describe(`routes /installation, engine=${MOTEUR}`, () => {
     });
 
     it('🔴 an UNSEALED upload is refused UPSTREAM, and NO row is written — MUTATION no. 3', async () => {
-        // 🔴 UN REFUS AU BON ENDROIT VAUT MIEUX QU'UN REFUS AU BON MOMENT :
-        // sans lui, l'ordre partirait, l'agent tirerait un fichier PARTIEL et
-        // n'apprendrait son empreinte fausse qu'après l'avoir écrit en entier.
-        // ⚠️ Le test n'assère pas seulement le code : il vérifie qu'AUCUNE
-        // installation n'a été créée, ce qu'un `409` rendu APRÈS l'écriture
-        // laisserait passer.
+        // 🔴 A REFUSAL IN THE RIGHT PLACE IS WORTH MORE THAN A REFUSAL AT THE RIGHT TIME:
+        // without it, the order would leave, the agent would pull a PARTIAL file and
+        // would only learn of its wrong hash after writing it in full.
+        // ⚠️ The test does not only assert the code: it checks that NO
+        // installation was created, which a `409` returned AFTER the write
+        // would let through.
         const url = await servir('inst-non-scelle');
         const u = await poserVmVivante(m!.base, 'v-1', 'moi@exemple.test', 'PREFIXE-A');
         const tel = await poserTeleversement(m!.base, u, 'setup.exe', Buffer.from('abcdefghij'), { scelle: false });
@@ -294,9 +294,9 @@ describe(`routes /installation, engine=${MOTEUR}`, () => {
             });
             expect([nom, r.status, await r.json()]).toEqual([nom, 400, { refus: 'extension' }]);
         }
-        // ⚠️ ET LE TÉMOIN, sans lequel ce test serait vrai d'une route qui refuse
-        // TOUT : `.MSI` en majuscules passe, parce que Windows est insensible à
-        // la casse.
+        // ⚠️ AND THE WITNESS, without which this test would hold for a route that refuses
+        // EVERYTHING: `.MSI` in upper case passes, because Windows is case
+        // insensitive.
         const bon = await poserTeleversement(m!.base, u, 'SETUP.MSI', Buffer.from('abc'));
         const r = await fetch(`${url}/installation`, {
             method: 'POST',
@@ -307,10 +307,10 @@ describe(`routes /installation, engine=${MOTEUR}`, () => {
     });
 
     it('🔴 an UNREACHABLE VM returns 503, never 201 on a row nobody will receive', async () => {
-        // 🔴 Écrire la ligne en silence ferait afficher au hub une installation
-        // « demandée » que personne ne recevra — rien nulle part ne la
-        // contredirait. ⚠️ La transition est ASSIÉGÉE : le même montage rend 201
-        // à `vu_a + SEUIL` et 503 une milliseconde plus tard.
+        // 🔴 Writing the row silently would make the hub display an installation
+        // "requested" that nobody will receive — nothing anywhere would
+        // contradict it. ⚠️ The transition is BESIEGED: the same setup returns 201
+        // at `vu_a + SEUIL` and 503 one millisecond later.
         const url = await servir('inst-injoignable');
         const u = await poserVmVivante(m!.base, 'v-1', 'moi@exemple.test', 'PREFIXE-A');
         const tel = await poserTeleversement(m!.base, u, 'setup.exe', Buffer.from('abc'));
@@ -323,8 +323,8 @@ describe(`routes /installation, engine=${MOTEUR}`, () => {
     });
 
     it("an accepted order returns 201 and its identifier, and the row is born `en_attente`", async () => {
-        // ⚠️ `en_attente` N'EST PAS DÉCORATIF : c'est cet état, et lui seul, que
-        // la réémission à l'enrôlement repousse à l'agent.
+        // ⚠️ `en_attente` IS NOT DECORATIVE: it is this state, and it alone, that
+        // re-emission at enrolment pushes back to the agent.
         const url = await servir('inst-ordre-ok');
         const u = await poserVmVivante(m!.base, 'v-1', 'moi@exemple.test', 'PREFIXE-A');
         const tel = await poserTeleversement(m!.base, u, 'setup.exe', Buffer.from('abc'));
@@ -353,14 +353,14 @@ describe(`routes /installation, engine=${MOTEUR}`, () => {
             id: inst.id, vm: 'v-1', televersement: tel.id, etat: 'terminee',
             issue: 'refusee', motif: 'elevation-requise', code_sortie: 740, journal: 'the tail',
         });
-        // ⚠️ UN BOOLÉEN SUR LE FIL, jamais le `0`/`1` de SQLite : le hub n'a pas
-        // à connaître une convention de stockage.
+        // ⚠️ A BOOLEAN ON THE WIRE, never SQLite's `0`/`1`: the hub does not have
+        // to know a storage convention.
         expect(vue.journal_tronque).toBe(true);
     });
 
     it("🔴 a FOREIGN installation answers EXACTLY like an UNKNOWN one", async () => {
-        // 🔴 Et le motif est `installation-inconnue`, JAMAIS `vm-inconnue` :
-        // rendre le motif de la VM DIRAIT que l'installation, elle, existe.
+        // 🔴 And the reason is `installation-inconnue`, NEVER `vm-inconnue`:
+        // returning the VM's reason WOULD SAY that the installation, for its part, exists.
         const url = await servir('inst-etat-etranger');
         const u = await poserVmVivante(m!.base, 'v-1', 'moi@exemple.test', 'PREFIXE-A');
         const autre = await createUser(m!.base, 'autre@exemple.test', 'x', MS);
@@ -375,14 +375,14 @@ describe(`routes /installation, engine=${MOTEUR}`, () => {
     });
 
     it('🔴 AN AGENT OF VM `B` DOES NOT GET THE INSTALLER MEANT FOR `A` — MUTATION no. 1', async () => {
-        // 🔴 C'EST LA MUTATION LA PLUS IMPORTANTE DU SOUS-BLOC. Sans la
-        // comparaison de VM, n'importe quelle VM enrôlée téléchargerait
-        // l'installeur de n'importe quelle autre — le contenu qu'un utilisateur
-        // a déposé pour SA machine et pour elle seule. L'autorisation n'est pas
-        // « un agent valide », c'est « CET agent-LÀ ».
+        // 🔴 IT IS THE MOST IMPORTANT MUTATION OF THE SUB-BLOCK. Without the
+        // VM comparison, any enrolled VM would download
+        // the installer of any other — the content a user
+        // dropped for THEIR machine and for it alone. The authorisation is not
+        // "a valid agent", it is "THAT agent".
         //
-        // 🔴 LE TÉMOIN EST DANS LE MÊME `it()`, ET IL EST OBLIGATOIRE : sans lui,
-        // l'assertion de refus serait vraie d'une route qui ne sert JAMAIS rien.
+        // 🔴 THE WITNESS IS IN THE SAME `it()`, AND IT IS MANDATORY: without it,
+        // the refusal assertion would hold for a route that NEVER serves anything.
         const url = await servir('inst-contenu-vm-etrangere');
         const a = await poserVmVivante(m!.base, 'v-a', 'a@exemple.test', 'PREFIXE-A');
         await poserVmVivante(m!.base, 'v-b', 'b@exemple.test', 'PREFIXE-B');
@@ -392,8 +392,8 @@ describe(`routes /installation, engine=${MOTEUR}`, () => {
         const deB = await fetch(`${url}/televersement/${tel.id}/contenu`, {
             headers: withIt(jetonDe('PREFIXE-B', 'agent')),
         });
-        // ⚠️ COMPARÉ AU REFUS D'UN TÉLÉVERSEMENT VRAIMENT INCONNU : le refus doit
-        // être INDISTINGUABLE, sans quoi `B` apprend que ce contenu existe.
+        // ⚠️ COMPARED WITH THE REFUSAL OF A TRULY UNKNOWN UPLOAD: the refusal must
+        // be INDISTINGUISHABLE, otherwise `B` learns that this content exists.
         const inconnu = await fetch(`${url}/televersement/jamais-vu/contenu`, {
             headers: withIt(jetonDe('PREFIXE-B', 'agent')),
         });
@@ -408,10 +408,10 @@ describe(`routes /installation, engine=${MOTEUR}`, () => {
     });
 
     it("serves the bytes AS A STREAM, identical, with its length and without a file name", async () => {
-        // 🔴 LES TRANCHES NE SONT JAMAIS ASSEMBLÉES : le corps est la
-        // CONCATÉNATION de cinq fichiers de disque, et l'égalité octet pour
-        // octet est ce qui l'éprouve. ⚠️ AUCUN `Content-Disposition` : l'agent
-        // connaît le nom, il l'a reçu dans l'ordre.
+        // 🔴 THE CHUNKS ARE NEVER ASSEMBLED: the body is the
+        // CONCATENATION of five disk files, and byte-for-byte equality
+        // is what tests it. ⚠️ NO `Content-Disposition`: the agent
+        // knows the name, it received it in the order.
         const url = await servir('inst-contenu-flux');
         const a = await poserVmVivante(m!.base, 'v-a', 'a@exemple.test', 'PREFIXE-A');
         const octets = randomBytes(31);
@@ -431,9 +431,9 @@ describe(`routes /installation, engine=${MOTEUR}`, () => {
     });
 
     it("🔴 an UNSEALED content is refused 409 — and the FOREIGN agent reads 404", async () => {
-        // 🔴 L'ORDRE DES DEUX GARDES EST PORTANT : répondre `409` à un agent sans
-        // droit lui APPRENDRAIT que ce téléversement existe. L'autorisation passe
-        // donc AVANT l'état, et ce test l'assère en opposant les deux réponses.
+        // 🔴 THE ORDER OF THE TWO GUARDS MATTERS: answering `409` to an agent without
+        // rights WOULD TELL IT that this upload exists. The authorisation therefore goes
+        // BEFORE the state, and this test asserts it by contrasting the two responses.
         const url = await servir('inst-contenu-non-scelle');
         const a = await poserVmVivante(m!.base, 'v-a', 'a@exemple.test', 'PREFIXE-A');
         await poserVmVivante(m!.base, 'v-b', 'b@exemple.test', 'PREFIXE-B');
@@ -450,9 +450,9 @@ describe(`routes /installation, engine=${MOTEUR}`, () => {
     });
 
     it("🔴 `en_cours` stays served — it is the RESUMPTION —, `terminee` no longer is", async () => {
-        // 🔴 N'accepter qu'`en_attente` rendrait toute reprise de transfert
-        // impossible sans qu'aucune trace ne le dise : l'agent qui a rapporté une
-        // progression puis perdu sa connexion ne pourrait plus rien tirer.
+        // 🔴 Accepting only `en_attente` would make any transfer resume
+        // impossible without any trace saying so: the agent that reported a
+        // progress then lost its connection could no longer pull anything.
         const url = await servir('inst-contenu-etats');
         const a = await poserVmVivante(m!.base, 'v-a', 'a@exemple.test', 'PREFIXE-A');
         const tel = await poserTeleversement(m!.base, a, 'setup.exe', Buffer.from('abc'));
@@ -468,8 +468,8 @@ describe(`routes /installation, engine=${MOTEUR}`, () => {
     });
 
     it("a prefix WITHOUT enrolment is refused like everything else, and the trace names it", async () => {
-        // ⚠️ Le jeton est parfaitement valide : c'est la VM qu'il désigne qui
-        // n'existe plus. La réponse ne le dit pas ; le journal, si.
+        // ⚠️ The token is perfectly valid: it is the VM it designates that
+        // no longer exists. The response does not say so; the log does.
         const traces: string[] = [];
         vi.spyOn(console, 'warn').mockImplementation((l: string) => void traces.push(l));
         const url = await servir('inst-contenu-sans-enrolement');

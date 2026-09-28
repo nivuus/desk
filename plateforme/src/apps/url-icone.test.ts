@@ -1,11 +1,11 @@
-// La règle de l'URL signée d'icône, éprouvée SANS serveur ni base : le module
-// est pur, son horloge est un paramètre, et c'est ce qui permet de l'assiéger
-// des deux côtés de sa borne d'expiration.
+// The rule of the signed icon URL, tested WITHOUT a server or database: the module
+// is pure, its clock is a parameter, and that is what lets it be besieged
+// on both sides of its expiry bound.
 //
-// 🔴 LES TROIS ROUGES DE SÉCURITÉ DE CE LOT SONT ICI, ET ELLES ONT ÉTÉ VUES
-// ROUGES : une signature falsifiée est refusée, une URL expirée est refusée,
-// une URL signée pour une application ne vaut pas pour une autre. Un contrôle
-// qu'on n'a jamais vu rouge n'est pas un contrôle.
+// 🔴 THE THREE SECURITY REDS OF THIS BATCH ARE HERE, AND THEY WERE SEEN
+// RED: a forged signature is refused, an expired URL is refused,
+// a URL signed for one application is not valid for another. A check
+// never seen red is not a check.
 
 import { createHmac } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
@@ -19,9 +19,9 @@ import {
     verifyIconUrl,
 } from './url-icone';
 
-/// La MÊME fixture publique que `http/routes-harnais.ts`, et pour la même
-/// raison : elle ne protège rien, elle satisfait seulement la longueur
-/// minimale d'un secret de plateforme.
+/// The SAME public fixture as `http/routes-harnais.ts`, and for the same
+/// reason: it protects nothing, it only satisfies the minimal
+/// length of a platform secret.
 const SECRET = 'un-secret-de-plateforme-de-quarante-octets';
 const MS = 1_787_136_773_742;
 const APP = '11111111-2222-3333-4444-555555555555';
@@ -39,7 +39,7 @@ describe("the signed icon URL", () => {
         const p = paramsOf(url);
         expect(p.get('e')).toBe(EMPREINTE);
         expect(p.get('v')).toBe(VM);
-        // L'expiration est ARRONDIE au pas supérieur — voir `PAS_URL_ICONE_MS`.
+        // The expiry is ROUNDED up to the next step — see `PAS_URL_ICONE_MS`.
         const x = Number(p.get('x'));
         expect(x % PAS_URL_ICONE_MS).toBe(0);
         expect(x).toBeGreaterThanOrEqual(MS + DUREE_URL_ICONE_MS);
@@ -52,12 +52,12 @@ describe("the signed icon URL", () => {
         expect(v).toEqual({ ok: true, vm: VM });
     });
 
-    /* ── ROUGE ① : LA SIGNATURE FALSIFIÉE ─────────────────────────────── */
+    /* ── RED ①: THE FORGED SIGNATURE ─────────────────────────────── */
 
     it('🔴 REFUSES a forged signature — one byte is enough', () => {
         const p = paramsOf(signerUrlIcone(APP, VM, EMPREINTE, SECRET, MS));
         const vraie = p.get('s')!;
-        // Un SEUL caractère change, et il change vraiment : `a` -> `b`.
+        // A SINGLE character changes, and it really changes: `a` -> `b`.
         const faux = (vraie[0] === 'a' ? 'b' : 'a') + vraie.slice(1);
         expect(faux).not.toBe(vraie);
         p.set('s', faux);
@@ -68,10 +68,10 @@ describe("the signed icon URL", () => {
     });
 
     it('🔴 REFUSES a signature from ANOTHER key — the subkey is not the secret', () => {
-        // 🔴 C'EST LE CONTRÔLE QUI DIT QUE LA DÉRIVATION SERT À QUELQUE CHOSE.
-        // Une signature calculée avec le secret de jeton BRUT — c'est-à-dire
-        // ce qu'on aurait écrit sans dériver — doit être REFUSÉE. Sans lui,
-        // remplacer `iconSubkey(secret)` par `secret` laisserait tout vert.
+        // 🔴 IT IS THE CHECK THAT SAYS THE DERIVATION IS GOOD FOR SOMETHING.
+        // A signature computed with the RAW token secret — that is,
+        // what one would have written without deriving — must be REFUSED. Without it,
+        // replacing `iconSubkey(secret)` with `secret` would leave everything green.
         const expiration = String(MS + DUREE_URL_ICONE_MS);
         const message = ['v1', `${String(APP.length)}:${APP}`, `${String(VM.length)}:${VM}`,
             `${String(expiration.length)}:${expiration}`].join('\n');
@@ -81,8 +81,8 @@ describe("the signed icon URL", () => {
             ok: false,
             motif: 'signature-invalide',
         });
-        // Et le témoin POSITIF, sans lequel le refus ci-dessus ne prouverait
-        // rien : la MÊME URL, signée par la sous-clé, est acceptée.
+        // And the POSITIVE witness, without which the refusal above would prove
+        // nothing: the SAME URL, signed by the subkey, is accepted.
         p.set('s', signature({ application: APP, vm: VM, expiration }, SECRET));
         expect(verifyIconUrl(APP, p, SECRET, MS).ok).toBe(true);
     });
@@ -95,16 +95,16 @@ describe("the signed icon URL", () => {
         expect(a.equals(iconSubkey(`${SECRET}-autre`))).toBe(false);
     });
 
-    /* ── ROUGE ② : L'URL EXPIRÉE ──────────────────────────────────────── */
+    /* ── RED ②: THE EXPIRED URL ──────────────────────────────────────── */
 
     it('🔴 REFUSES an EXPIRED URL, and the bound is besieged from BOTH sides', () => {
         const p = paramsOf(signerUrlIcone(APP, VM, EMPREINTE, SECRET, MS));
         const x = Number(p.get('x'));
-        // Une milliseconde avant : encore bonne.
+        // One millisecond before: still good.
         expect(verifyIconUrl(APP, p, SECRET, x - 1).ok).toBe(true);
-        // À l'instant EXACT : la borne est franche, l'URL est morte.
+        // At the EXACT instant: the bound is strict, the URL is dead.
         expect(verifyIconUrl(APP, p, SECRET, x)).toEqual({ ok: false, motif: 'url-expiree' });
-        // Bien après : idem.
+        // Well after: same.
         expect(verifyIconUrl(APP, p, SECRET, x + 3_600_000)).toEqual({
             ok: false,
             motif: 'url-expiree',
@@ -112,9 +112,9 @@ describe("the signed icon URL", () => {
     });
 
     it('🔴 a forged AND stale URL is told « signature », never « expired »', () => {
-        // 🔴 L'ORDRE DES CONTRÔLES EST UNE PROPRIÉTÉ DE SÉCURITÉ : dire
-        // « expirée » à un faussaire lui apprendrait que sa signature était
-        // bonne. Le contrôle de signature vient donc AVANT celui du temps.
+        // 🔴 THE ORDER OF THE CHECKS IS A SECURITY PROPERTY: saying
+        // "expired" to a forger would tell them their signature was
+        // good. The signature check therefore comes BEFORE the time check.
         const p = paramsOf(signerUrlIcone(APP, VM, EMPREINTE, SECRET, MS));
         p.set('s', 'z'.repeat(43));
         expect(verifyIconUrl(APP, p, SECRET, MS + 10_000_000)).toEqual({
@@ -124,10 +124,10 @@ describe("the signed icon URL", () => {
     });
 
     it('🔴 a NON-INTEGER expiry, although signed, is refused', () => {
-        // 🔴 `Number('x')` rend `NaN`, et `maintenant >= NaN` est FAUX : sans
-        // ce garde, une expiration illisible serait ÉTERNELLE. Le seul chemin
-        // qui l'atteigne est une signature calculée avec la VRAIE clé — donc
-        // ce test la calcule, plutôt que de laisser le garde vert par
+        // 🔴 `Number('x')` returns `NaN`, and `maintenant >= NaN` is FALSE: without
+        // this guard, an unreadable expiry would be ETERNAL. The only path
+        // that reaches it is a signature computed with the REAL key — so
+        // this test computes it, rather than leaving the guard green by
         // construction.
         for (const x of ['not-a-number', '1.5', 'Infinity']) {
             const p = new URLSearchParams({
@@ -143,7 +143,7 @@ describe("the signed icon URL", () => {
         }
     });
 
-    /* ── ROUGE ③ : UNE URL NE VAUT QUE POUR SA PORTÉE ─────────────────── */
+    /* ── RED ③: A URL IS ONLY VALID FOR ITS SCOPE ─────────────────── */
 
     it('🔴 a URL signed for one application IS NOT VALID for another', () => {
         const p = paramsOf(signerUrlIcone(APP, VM, EMPREINTE, SECRET, MS));
@@ -152,7 +152,7 @@ describe("the signed icon URL", () => {
             ok: false,
             motif: 'signature-invalide',
         });
-        // Témoin : la MÊME URL, sur SON application, est acceptée.
+        // Witness: the SAME URL, on ITS application, is accepted.
         expect(verifyIconUrl(APP, p, SECRET, MS).ok).toBe(true);
     });
 
@@ -166,10 +166,10 @@ describe("the signed icon URL", () => {
     });
 
     it('🔴 the fields do not SLIDE into one another', () => {
-        // 🔴 LE PRÉFIXE DE LONGUEUR EXISTE POUR CELA : sans lui, un simple
-        // `join('\n')` ferait qu'une application nommée `x\n3:vm` et une VM
-        // `abc` produiraient le même message qu'une autre paire. On éprouve
-        // que les deux paires rendent des signatures DIFFÉRENTES.
+        // 🔴 THE LENGTH PREFIX EXISTS FOR THIS: without it, a simple
+        // `join('\n')` would make an application named `x\n3:vm` and a VM
+        // `abc` produce the same message as another pair. We test
+        // that the two pairs yield DIFFERENT signatures.
         const a = signature({ application: 'x', vm: 'y|z', expiration: '1' }, SECRET);
         const b = signature({ application: 'x|y', vm: 'z', expiration: '1' }, SECRET);
         expect(a).not.toBe(b);
@@ -198,23 +198,23 @@ describe("the signed icon URL", () => {
         }
     });
 
-    /* ── LA DURÉE ─────────────────────────────────────────────────────── */
+    /* ── THE DURATION ─────────────────────────────────────────────────────── */
 
     it('🔴 two strikes in the SAME minute give the SAME URL — otherwise the cache is dead', () => {
-        // 🔴 C'EST LA PROPRIÉTÉ QUI SAUVE `Cache-Control: immutable`. Sans
-        // l'arrondi, `x` et `s` changeraient à chaque frappe, la clé de cache
-        // aussi, et aucune entrée ne serait jamais relue.
+        // 🔴 IT IS THE PROPERTY THAT SAVES `Cache-Control: immutable`. Without
+        // the rounding, `x` and `s` would change at every keystroke, the cache key
+        // too, and no entry would ever be read again.
         const a = signerUrlIcone(APP, VM, EMPREINTE, SECRET, MS);
         const b = signerUrlIcone(APP, VM, EMPREINTE, SECRET, MS + 1_000);
         expect(b).toBe(a);
-        // Et le témoin NÉGATIF, sans lequel l'égalité ci-dessus pourrait
-        // venir d'une horloge ignorée : un pas plus loin, l'URL DIFFÈRE.
+        // And the NEGATIVE witness, without which the equality above could
+        // come from an ignored clock: one step further, the URL DIFFERS.
         expect(signerUrlIcone(APP, VM, EMPREINTE, SECRET, MS + PAS_URL_ICONE_MS)).not.toBe(a);
     });
 
     it('🔴 the duration FLOOR is guaranteed, over a whole step', () => {
-        // L'arrondi est vers le HAUT : à aucun instant du pas la durée de vie
-        // ne descend sous `DUREE_URL_ICONE_MS`.
+        // The rounding is UPWARDS: at no instant of the step does the lifetime
+        // drop below `DUREE_URL_ICONE_MS`.
         for (let d = 0; d < PAS_URL_ICONE_MS; d += 997) {
             const t = MS + d;
             const x = Number(paramsOf(signerUrlIcone(APP, VM, EMPREINTE, SECRET, t)).get('x'));
@@ -226,10 +226,10 @@ describe("the signed icon URL", () => {
     });
 
     it('🔴 NEVER outlives the bearer token that gave birth to it', () => {
-        // 🔴 C'EST LA RAISON ÉCRITE DE LA VALEUR, ÉPINGLÉE PLUTÔT QUE LAISSÉE
-        // DANS UN COMMENTAIRE. Les deux constantes se recalibrent ENSEMBLE :
-        // baisser le jeton d'accès sous cinq minutes rendrait la borne fausse,
-        // et sans ce test personne ne le verrait.
+        // 🔴 IT IS THE WRITTEN REASON FOR THE VALUE, PINNED RATHER THAN LEFT
+        // IN A COMMENT. The two constants are recalibrated TOGETHER:
+        // lowering the access token below five minutes would make the bound wrong,
+        // and without this test nobody would see it.
         expect(DUREE_URL_ICONE_MS).toBeLessThanOrEqual(DUREE_JETON_ACCES_MS);
         expect(DUREE_URL_ICONE_MS).toBe(300_000);
     });
