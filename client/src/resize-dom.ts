@@ -138,22 +138,22 @@ export function attacherResizeAuDOM(
         }, 200);
     });
     observer.observe(video);
-    // Le rejeu : à l'ouverture du canal, la taille retenue repart.
+    // The replay: when the channel opens, the retained size goes out again.
     //
-    // ⚠️ INVARIANT NON ÉVIDENT (leg n°12 de D9) : ce `.then()` doit
-    // s'exécuter INTÉGRALEMENT DE FAÇON SYNCHRONE, sans `await` intercalé
-    // entre la construction de `rejeu` / du `ResizeObserver` ci-dessus et
-    // cet `addEventListener`. Un `await` glissé là rendrait la main à la
-    // boucle d'événements : si le canal s'ouvrait pendant l'attente,
-    // l'écouteur serait posé APRÈS l'événement `open`, il ne serait jamais
-    // appelé, et le rejeu serait rompu EN SILENCE — aucune erreur, aucun
-    // log, juste une taille perdue. C'est exactement le mode de
-    // défaillance que le rejeu existe pour réparer.
+    // ⚠️ NON-OBVIOUS INVARIANT (D9's legacy no. 12): this `.then()` must
+    // run ENTIRELY SYNCHRONOUSLY, without an interposed `await`
+    // between the construction of `rejeu` / of the `ResizeObserver` above and
+    // this `addEventListener`. An `await` slipped there would yield to the
+    // event loop: if the channel opened during the wait,
+    // the listener would be set AFTER the `open` event, it would never be
+    // called, and the replay would be broken SILENTLY — no error, no
+    // log, just a lost size. It is exactly the failure
+    // mode the replay exists to repair.
     //
-    // Aucun test ne garde cet invariant, et c'est une décision, pas un
-    // oubli : le voir rouge exigerait de simuler `RTCDataChannel` et tout
-    // le cycle de `createSession`, c'est-à-dire de mocker la session
-    // entière. Un test qu'on ne peut pas voir rouge à coût raisonnable
-    // n'ajouterait rien à ce que ce commentaire dit déjà.
+    // No test guards this invariant, and it is a decision, not an
+    // oversight: seeing it red would require simulating `RTCDataChannel` and the whole
+    // cycle of `createSession`, that is, mocking the entire
+    // session. A test that cannot be seen red at a reasonable cost
+    // would add nothing to what this comment already says.
     session.controlChannel.addEventListener('open', emettreSiPossible);
 }

@@ -1,14 +1,14 @@
 /**
- * Arrondit un viewport à des dimensions paires, plancher à 2.
+ * Rounds a viewport to even dimensions, floor at 2.
  *
- * C'est cette taille qui décide de la résolution de la sortie virtuelle créée
- * côté agent. Or l'agent aligne ses régions de capture sur des valeurs paires
- * — l'encodeur NV12 l'exige — et apparie la sortie créée à la taille demandée.
- * Une hauteur impaire rendait donc l'appariement impossible, et la fenêtre ne
- * s'ouvrait jamais (recette D1 §3.1, 1280×713 mesuré sur un pop-up Chrome).
+ * It is this size that decides the resolution of the virtual output created
+ * on the agent side. Yet the agent aligns its capture regions on even values
+ * — the NV12 encoder requires it — and pairs the created output with the requested size.
+ * An odd height therefore made pairing impossible, and the window never
+ * opened (acceptance run D1 §3.1, 1280×713 measured on a Chrome pop-up).
  *
- * Arrondi vers le BAS : agrandir demanderait une sortie plus grande que la
- * zone où l'image sera affichée, donc une image rognée.
+ * Rounded DOWN: enlarging would request an output larger than the
+ * area where the image will be displayed, hence a cropped image.
  */
 export function viewportPair(
     largeur: number,

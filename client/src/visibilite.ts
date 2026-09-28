@@ -1,14 +1,14 @@
 import { encodeVisibility } from '../../proto/ts/control';
 
 /**
- * Ce dont ce module a besoin du document. Réduit à sa plus simple expression
- * pour être simulable : `document` réel en production, objet nu en test.
+ * What this module needs from the document. Reduced to its simplest expression
+ * to be simulable: the real `document` in production, a bare object in tests.
  */
 export interface CibleVisibilite {
-    // Non `readonly` : le double-emploi comme type de retour de la fabrique
-    // de test (`cibleFactice`, qui mute ces champs entre deux déclenchements
-    // d'événement) l'interdirait sinon — `document`, lui, ne satisfait
-    // l'interface qu'au travers d'accesseurs `get`, jamais en écriture.
+    // Not `readonly`: the double use as the return type of the test
+    // factory (`cibleFactice`, which mutates these fields between two event
+    // firings) would otherwise forbid it — `document`, for its part, only satisfies
+    // the interface through `get` accessors, never in writing.
     hidden: boolean;
     focalisee: boolean;
     addEventListener(nom: string, rappel: () => void): void;
@@ -16,24 +16,24 @@ export interface CibleVisibilite {
 }
 
 /**
- * Annonce visibilité et focus à l'agent, et rend de quoi se détacher.
+ * Announces visibility and focus to the agent, and returns a way to detach.
  *
- * **Pourquoi le focus en plus de la visibilité.** Le vivier d'encodeurs de
- * l'agent arbitre par récence ; entre dix fenêtres toutes visibles, la
- * visibilité seule ne les ordonnerait pas et l'éviction serait arbitraire.
+ * **Why focus on top of visibility.** The agent's encoder pool
+ * arbitrates by recency; among ten windows all visible,
+ * visibility alone would not order them and eviction would be arbitrary.
  *
- * **Ce que `visibilityState` ne rapporte PAS** : sur Chrome/Linux, une fenêtre
- * entièrement recouverte par une autre reste `visible`. Le sommeil s'y déclenche
- * donc à la minimisation et à l'onglet caché, pas au recouvrement.
+ * **What `visibilityState` does NOT report**: on Chrome/Linux, a window
+ * entirely covered by another stays `visible`. Sleep is therefore triggered
+ * on minimisation and on a hidden tab, not on covering.
  *
- * **`envoyer` rend un booléen** : `true` si l'envoi a réellement eu lieu,
- * `false` s'il a été abandonné (canal de contrôle pas encore ouvert, le plus
- * souvent au tout premier appel, fait AVANT toute connexion WebRTC). `dernier`
- * n'est mémorisé que sur un envoi réussi — sans cette garde, un premier envoi
- * perdu marquerait l'état courant comme déjà annoncé, et tant que la
- * visibilité ne changerait pas ensuite, elle ne serait plus JAMAIS réémise :
- * la fenêtre resterait endormie côté agent pour toujours, sans aucun `WARN`
- * pour le signaler.
+ * **`envoyer` returns a boolean**: `true` if the send really took place,
+ * `false` if it was abandoned (control channel not open yet, most
+ * often at the very first call, made BEFORE any WebRTC connection). `dernier`
+ * is only remembered on a successful send — without this guard, a lost first
+ * send would mark the current state as already announced, and as long as
+ * visibility did not change afterwards, it would NEVER be re-emitted:
+ * the window would stay asleep on the agent side forever, without any `WARN`
+ * to signal it.
  */
 export function attachVisibilite(
     cible: CibleVisibilite,

@@ -1,32 +1,32 @@
-// LE BUREAU : la règle de la surface qui ouvre une fenêtre navigateur par
-// fenêtre Windows, et elle seule — aucune page d'application n'a ce pouvoir.
+// THE DESKTOP: the rule of the surface that opens one browser window per
+// Windows window, and it alone — no application page has that power.
 //
-// ⚠️ CETTE SURFACE S'APPELAIT « LA PAGE-SHELL » JUSQU'AU 31 AOÛT 2026, et
-// ce fichier ouvrait sur ce nom. **C'est le HUB depuis** (`hub.html`, servi
-// à la racine, câblé par `bureau/porteur-dom.ts`) : `shell.html` n'est plus
-// qu'une redirection. Le mot « page-shell » subsiste plus bas dans ce
-// fichier et chez ses voisins comme NOM DE RÔLE — la surface qui tient la
-// session de contrôle —, jamais comme nom de page.
+// ⚠️ THIS SURFACE WAS CALLED "THE SHELL PAGE" UNTIL AUGUST 31ST, 2026, and
+// this file opened with that name. **It has been the HUB since** (`hub.html`, served
+// at the root, wired by `bureau/porteur-dom.ts`): `shell.html` is now only
+// a redirect. The word "shell page" remains further down in this
+// file and in its neighbours as a ROLE NAME — the surface holding the
+// control session —, never as a page name.
 //
-// Pourquoi une page dédiée plutôt que la première page d'application : sans
-// elle, fermer cette première page couperait la capacité d'ouvrir toutes les
-// suivantes. Ici, aucune fenêtre d'application n'est spéciale.
+// Why a dedicated page rather than the first application page: without
+// it, closing that first page would cut the ability to open all the
+// following ones. Here, no application window is special.
 //
-// Toute la logique est ici, séparée du DOM et du WebSocket, pour être
-// testable : `creerBureau` reçoit ses effets par injection.
+// All the logic is here, separated from the DOM and the WebSocket, to be
+// testable: `creerBureau` receives its effects by injection.
 
 /**
- * Le TON d'un bandeau — l'un des quatre de la famille `message` des primitives
- * (sous-bloc S2). C'est une RÈGLE, et elle vit ici plutôt que dans le câblage :
- * `bureau/porteur-dom.ts` (`shell-page.ts` avant que le hub ne devienne la
- * seule surface, 31 août 2026) ne fait que poser la classe correspondante, et
- * une condition qui apparaîtrait là-bas serait au mauvais endroit.
+ * The TONE of a banner — one of the four of the primitives' `message` family
+ * (sub-block S2). It is a RULE, and it lives here rather than in the wiring:
+ * `bureau/porteur-dom.ts` (`shell-page.ts` before the hub became the
+ * only surface, August 31st, 2026) only sets the corresponding class, and
+ * a condition appearing there would be in the wrong place.
  *
- * ⚠️ `alerte` N'A AUCUN APPELANT DANS CE FICHIER, et c'est délibéré : la page-
- * shell n'a aujourd'hui aucun état qui soit un avertissement sans être un
- * refus. Le ton existe dans la famille de primitives, et le type le nomme pour
- * que le jour où un tel état apparaît, il ne soit pas dit en `danger` faute
- * d'avoir le mot sous la main.
+ * ⚠️ `alerte` HAS NO CALLER IN THIS FILE, and it is deliberate: the shell
+ * page has today no state that is a warning without being a
+ * refusal. The tone exists in the primitives' family, and the type names it so
+ * that the day such a state appears, it is not voiced as `danger` for lack
+ * of having the word at hand.
  */
 export type Ton = 'neutre' | 'succes' | 'alerte' | 'danger';
 
@@ -36,37 +36,37 @@ export interface FenetreConnue {
     ouverte: boolean;
 }
 
-/** Une écriture DUE : des octets qui vivent sur la VM et pas encore ici. */
+/** An OWED write: bytes that live on the VM and not here yet. */
 export interface EcritureDue {
     chemin: string;
     octets: number;
 }
 
 export interface OptionsBureau {
-    /// Rend `null` si le navigateur a bloqué l'ouverture.
+    /// Returns `null` if the browser blocked the opening.
     ouvrirFenetre(session: string, titre: string): Window | null;
     envoyer(message: unknown): void;
     afficher(message: string, ton: Ton): void;
-    /// L'état du lecteur de fichiers, séparé du bandeau général : les deux
-    /// messages ne se chassent pas l'un l'autre.
+    /// The state of the file drive, separate from the general banner: the two
+    /// messages do not chase each other away.
     afficherEtatFichiers(texte: string, ton: Ton): void;
-    /// Le compteur d'écritures dues.
+    /// The counter of owed writes.
     ///
-    /// 🔴 **`dues` ET `vues` SONT DEUX NOMBRES, ET LE SECOND EST CUMULATIF.**
-    /// `dues` redescend, `vues` jamais. Un `dues = 0` **seul** ne dit RIEN :
-    /// c'est aussi ce que rend une machine où rien n'a encore eu lieu. *Un
-    /// verdict négatif exige que la chose mesurée soit ABSENTE, pas seulement
-    /// nulle* — la sonde P0 du presse-papier a rendu un faux verdict
-    /// éliminatoire pour avoir lu trois zéros sur une VM saine.
+    /// 🔴 **`dues` AND `vues` ARE TWO NUMBERS, AND THE SECOND IS CUMULATIVE.**
+    /// `dues` goes down, `vues` never. A `dues = 0` **alone** says NOTHING:
+    /// it is also what a machine where nothing has happened yet returns. *A
+    /// negative verdict requires the measured thing to be ABSENT, not merely
+    /// zero* — the clipboard's P0 probe returned a false eliminating
+    /// verdict for having read three zeros on a healthy VM.
     afficherEcrituresDues(dues: number, vues: number, texte: string, ton: Ton): void;
     /**
-     * **F5** — le pont RETIENT ses écritures dues : le répertoire annoncé n'est
-     * pas celui qui a été enregistré (spec §6.4 cas 2).
+     * **F5** — the bridge HOLDS BACK its owed writes: the announced directory is
+     * not the one that was registered (spec §6.4 case 2).
      *
-     * 🔴 **Le bouton « Reprendre l'enregistrement » n'apparaît QUE si c'est
-     * vrai**, et disparaît sinon. *Un bouton toujours présent qui ne fait rien
-     * la plupart du temps est un piège à clic* : l'utilisateur qui l'a vu inerte
-     * dix fois ne le verra plus le jour où il compte.
+     * 🔴 **The "Resume saving" button ONLY appears if it is
+     * true**, and disappears otherwise. *An always-present button that does nothing
+     * most of the time is a click trap*: the user who has seen it inert
+     * ten times will no longer see it the day it counts.
      */
     afficherRetenues(retenues: boolean): void;
 }
@@ -78,56 +78,56 @@ export interface Bureau {
     viewportRecu(session: string, largeur: number, hauteur: number): void;
     liste(): FenetreConnue[];
     rouvrir(session: string): void;
-    /// Le lecteur `Mes Fichiers` est monté sur le dossier `nom`.
+    /// The `Mes Fichiers` drive is mounted on the folder `nom`.
     lecteurMonte(nom: string): void;
-    /// Le lecteur n'est plus monté : l'état est EFFACÉ, pas laissé en place.
+    /// The drive is no longer mounted: the state is ERASED, not left in place.
     lecteurDemonte(): void;
-    /// Le montage a échoué. DISTINCT de `lecteurDemonte` : « rien n'est
-    /// partagé » et « le partage a raté, voici pourquoi » n'appellent pas le
-    /// même geste de l'utilisateur.
+    /// Mounting failed. DISTINCT from `lecteurDemonte`: "nothing is
+    /// shared" and "sharing failed, here is why" do not call for the
+    /// same user gesture.
     lecteurEchoue(motif: string): void;
-    /// Le pont annonce ce qui n'est PAS encore arrivé sur le poste local.
+    /// The bridge announces what has NOT yet arrived on the local machine.
     ecrituresDues(dues: EcritureDue[], retenues: boolean): void;
-    /// Une écriture a échoué. Elle reste due, et elle est NOMMÉE.
+    /// A write failed. It stays owed, and it is NAMED.
     ecritureEchouee(chemin: string, motif: string): void;
-    /// **F3** — une MUTATION a échoué : renommage ou suppression.
+    /// **F3** — a MUTATION failed: renaming or deletion.
     ///
-    /// 🔴 **DISTINCTE d'`ecritureEchouee`, et ce n'est pas une subtilité.** Une
-    /// écriture en échec reste DUE : le pont la repoussera, et le compteur
-    /// redescendra. Une mutation en échec, elle, **ne sera jamais rejouée** —
-    /// ProjFS ne renvoie pas de notification pour un geste déjà accompli dans
-    /// la VM. Les deux côtés ont donc DIVERGÉ, définitivement, et le seul
-    /// remède est humain.
+    /// 🔴 **DISTINCT from `ecritureEchouee`, and it is not a subtlety.** A
+    /// failed write stays OWED: the bridge will push it again, and the counter
+    /// will go down. A failed mutation, for its part, **will never be replayed** —
+    /// ProjFS sends no notification for a gesture already accomplished in
+    /// the VM. The two sides have therefore DIVERGED, for good, and the only
+    /// remedy is human.
     ///
-    /// ⚠️ **Elles ne se cumulent pas non plus** : les mutations en échec
-    /// s'accumulent jusqu'au remontage du lecteur, alors que les écritures en
-    /// échec disparaissent dès que leur chemin cesse d'être dû.
+    /// ⚠️ **They do not accumulate the same way either**: failed mutations
+    /// pile up until the drive is remounted, whereas failed writes
+    /// disappear as soon as their path stops being owed.
     mutationEchouee(quoi: string, motif: string): void;
-    /// Faut-il prévenir l'utilisateur avant qu'il ne referme l'onglet ?
+    /// Should the user be warned before closing the tab?
     ///
-    /// ⚠️ **PRÉDICAT PUR, testé ici** ; le câblage de `beforeunload` vit dans
-    /// `bureau/porteur-dom.ts` (`shell-page.ts` avant que le hub ne devienne
-    /// la seule surface, 31 août 2026), qui n'est pas testé. Prévenir
-    /// TOUJOURS apprendrait à l'utilisateur à ignorer l'avertissement, ce qui
-    /// le rendrait inutile exactement le jour où il compte.
+    /// ⚠️ **PURE PREDICATE, tested here**; the `beforeunload` wiring lives in
+    /// `bureau/porteur-dom.ts` (`shell-page.ts` before the hub became
+    /// the only surface, August 31st, 2026), which is not tested. Warning
+    /// ALWAYS would teach the user to ignore the warning, which would
+    /// make it useless exactly the day it counts.
     doitPrevenir(): boolean;
-    /// 🔴 **NEUF — CORRECTIF DU LEGS DES FREINS MANQUANTS (round de
-    /// correction 1, critique ④), 25 août 2026.** Le socket de la session de
-    /// contrôle (`bureau/porteur-dom.ts`, `shell-page.ts` à l'époque) peut désormais recevoir un message
-    /// `{type:'error'}` qu'AUCUNE branche de son aiguillage ne reconnaissait —
-    /// notamment le refus de volume `trop-de-requetes` que ce même lot vient
-    /// d'ouvrir sur `/signal` (`signaling/relais.ts`). Sans cette méthode, la
-    /// page restait affichée « bureau connecté » et mourait en silence : la
-    /// panne muette exacte que ce dépôt combat, ouverte par ce lot lui-même.
+    /// 🔴 **NEW — FIX OF THE MISSING-BRAKES LEGACY (correction round 1,
+    /// critical ④), August 25th, 2026.** The control session's socket
+    /// (`bureau/porteur-dom.ts`, `shell-page.ts` at the time) can now receive a
+    /// `{type:'error'}` message that NO branch of its switch recognised —
+    /// notably the `trop-de-requetes` volume refusal this same batch has just
+    /// opened on `/signal` (`signaling/relais.ts`). Without this method, the
+    /// page kept displaying "desktop connected" and died silently: the
+    /// exact silent failure this repository fights, opened by this very batch.
     ///
-    /// `motif` prime sur `reason` quand les deux sont absents de sens pour
-    /// l'utilisateur — VOIR L'IMPLÉMENTATION, qui documente l'arbitrage.
+    /// `motif` prevails over `reason` when both are meaningless to
+    /// the user — SEE THE IMPLEMENTATION, which documents the arbitration.
     canalDeControleRefuse(reason: string | undefined, motif: string | undefined, retryApresS: number | undefined): void;
-    /// Le socket de la session de contrôle s'est fermé alors qu'il était
-    /// ouvert — perte réseau, redémarrage du service, ou fin d'un refus. Le
-    /// même défaut de silence que ci-dessus, sur l'événement `close` plutôt
-    /// que sur un message `error` : `shell-page.ts` n'installait AUCUN
-    /// écouteur `close` ni `error` sur ce socket avant ce correctif.
+    /// The control session's socket closed while it was
+    /// open — network loss, service restart, or the end of a refusal. The
+    /// same silence defect as above, on the `close` event rather
+    /// than on an `error` message: `shell-page.ts` installed NO
+    /// `close` or `error` listener on this socket before this fix.
     canalDeControlePerdu(): void;
 }
 
@@ -138,32 +138,32 @@ interface Entree {
 
 export function creerBureau(options: OptionsBureau): Bureau {
     const connues = new Map<string, Entree>();
-    /** Les écritures dues à l'instant. Redescend à zéro. */
+    /** The writes owed right now. Goes back down to zero. */
     let dues: EcritureDue[] = [];
     /**
-     * Le nombre CUMULÉ de dues jamais vues. **Monotone, jamais remis à zéro.**
+     * The CUMULATIVE number of owed writes ever seen. **Monotonic, never reset.**
      *
-     * 🔴 C'est ce qui distingue « rien n'est dû » de « rien n'a eu lieu ». Sans
-     * lui, `data-dues="0"` sur une machine saine serait indiscernable d'une
-     * MESURE NON PRISE, et un verdict négatif se lirait comme un succès.
+     * 🔴 It is what distinguishes "nothing is owed" from "nothing happened". Without
+     * it, `data-dues="0"` on a healthy machine would be indistinguishable from a
+     * MEASUREMENT NOT TAKEN, and a negative verdict would read as a success.
      */
     let vues = 0;
-    /** Les échecs, par chemin. Ils survivent au compteur : l'entrée reste due. */
+    /** Failures, per path. They outlive the counter: the entry stays owed. */
     const echecs = new Map<string, string>();
     /**
-     * Les MUTATIONS en échec, dans leur ordre d'arrivée.
+     * The failed MUTATIONS, in their order of arrival.
      *
-     * 🔴 **ELLES NE DISPARAISSENT JAMAIS TOUTES SEULES**, à l'inverse des
-     * écritures en échec : rien ne les rejouera. Elles sont effacées au
-     * remontage du lecteur, et là seulement — c'est-à-dire par un geste de
-     * l'utilisateur, qui est le seul remède.
+     * 🔴 **THEY NEVER DISAPPEAR ON THEIR OWN**, unlike
+     * failed writes: nothing will replay them. They are erased when the
+     * drive is remounted, and only then — that is, by a gesture of
+     * the user, which is the only remedy.
      */
     let mutations: string[] = [];
     /**
-     * **F5** — le pont retient ses dues faute de reconnaître le répertoire.
+     * **F5** — the bridge holds back its owed writes for lack of recognising the directory.
      *
-     * ⚠️ **C'est un état du PONT, pas de l'interface** : il n'est pas remis à
-     * zéro par un geste local, mais par la prochaine annonce.
+     * ⚠️ **It is a state of the BRIDGE, not of the interface**: it is not reset
+     * by a local gesture, but by the next announcement.
      */
     let retenu = false;
 
@@ -171,22 +171,22 @@ export function creerBureau(options: OptionsBureau): Bureau {
         const texte = [phraseDesDues(dues, echecs), phraseDesMutations(mutations)]
             .filter((p) => p.length > 0)
             .join(' ');
-        // DANGER dès qu'un échec est nommé — l'utilisateur doit AGIR. Sinon
-        // ALERTE tant qu'il reste des dues : ce n'est pas un refus, c'est une
-        // attente, mais une attente qu'il ne faut pas refermer par accident.
+        // DANGER as soon as a failure is named — the user must ACT. Otherwise
+        // ALERT as long as owed writes remain: it is not a refusal, it is a
+        // wait, but a wait one must not close by accident.
         //
-        // ⚠️ **Une MUTATION en échec est un DANGER même sans aucune due**, et
-        // c'est ce qui la distingue : les deux côtés ont divergé, et rien ne
-        // les réconciliera tout seul.
+        // ⚠️ **A failed MUTATION is a DANGER even without any owed write**, and
+        // that is what distinguishes it: the two sides have diverged, and nothing will
+        // reconcile them on its own.
         const ton: Ton =
             echecs.size > 0 || mutations.length > 0
                 ? 'danger'
                 : dues.length > 0
                   ? 'alerte'
                   : 'neutre';
-        // ⚠️ **RETENIR EST UNE ALERTE, jamais un `neutre`** : rien ne repartira
-        // sans un geste, et un ton neutre laisserait croire que le pont
-        // travaille encore.
+        // ⚠️ **HOLDING BACK IS AN ALERT, never a `neutre`**: nothing will go out again
+        // without a gesture, and a neutral tone would suggest the bridge
+        // is still working.
         const tonFinal: Ton = retenu ? 'alerte' : ton;
         options.afficherEcrituresDues(dues.length, vues, texte, tonFinal);
     }
@@ -194,8 +194,8 @@ export function creerBureau(options: OptionsBureau): Bureau {
     function ouvrir(session: string, titre: string): void {
         const fenetre = options.ouvrirFenetre(session, titre);
         if (!fenetre) {
-            // DANGER : l'utilisateur doit AGIR — autoriser les pop-ups. Un
-            // ton neutre laisserait croire que la fenêtre est en route.
+            // DANGER: the user must ACT — allow pop-ups. A
+            // neutral tone would suggest the window is on its way.
             options.afficher(
                 `« ${titre} » n'a pas pu s'ouvrir : le navigateur a bloqué la pop-up. ` +
                 `Autorisez les pop-ups pour ce site, puis rouvrez la fenêtre.`,
@@ -213,20 +213,20 @@ export function creerBureau(options: OptionsBureau): Bureau {
         fenetreFermee(session) {
             const entree = connues.get(session);
             if (!entree) return;
-            // La fenêtre Windows a disparu : sa page n'a plus rien à montrer.
+            // The Windows window disappeared: its page has nothing left to show.
             entree.fenetre?.close();
             connues.delete(session);
         },
 
         refus(titre, motif) {
-            // DANGER : la fenêtre n'existera pas.
+            // DANGER: the window will not exist.
             options.afficher(`« ${titre} » n'a pas pu s'ouvrir : ${motif}.`, 'danger');
         },
 
         viewportRecu(session, largeur, hauteur) {
-            // Le message vient de `postMessage` : n'importe quelle page de
-            // même origine peut en émettre un. On ne relaie que ce qu'on a
-            // soi-même ouvert.
+            // The message comes from `postMessage`: any page of the
+            // same origin can emit one. We only relay what we
+            // opened ourselves.
             if (!connues.has(session)) return;
             options.envoyer({ type: 'viewport', session, largeur, hauteur });
         },
@@ -235,8 +235,8 @@ export function creerBureau(options: OptionsBureau): Bureau {
             return [...connues.entries()].map(([session, e]) => ({
                 session,
                 titre: e.titre,
-                // `closed` est la seule source de vérité : l'utilisateur peut
-                // avoir fermé la page sans que personne ne nous prévienne.
+                // `closed` is the only source of truth: the user may
+                // have closed the page without anyone warning us.
                 ouverte: e.fenetre !== null && !e.fenetre.closed,
             }));
         },
@@ -248,64 +248,64 @@ export function creerBureau(options: OptionsBureau): Bureau {
         },
 
         lecteurMonte(nom) {
-            // SUCCÈS — et c'est le seul état positif du produit.
+            // SUCCESS — and it is the only positive state of the product.
             options.afficherEtatFichiers(`Lecteur « Mes Fichiers » monté sur « ${nom} ».`, 'succes');
         },
 
         lecteurDemonte() {
-            // Le remontage est le SEUL remède à une mutation en échec : rien ne
-            // la rejouera. Les effacer ici, et là seulement.
+            // Remounting is the ONLY remedy for a failed mutation: nothing
+            // will replay it. Erase them here, and only here.
             mutations = [];
             redessinerLesDues();
-            // 🔴 LA CHAÎNE VIDE, ET NON UN MESSAGE « démonté ». C'est le défaut
-            // relevé en D5 : le bandeau `#status` gardait son `textContent`
-            // après `expirer()`, si bien que lire le texte prouvait qu'un
-            // message était ARRIVÉ, jamais qu'il était AFFICHÉ — une recette
-            // entière a lu un bandeau périmé en croyant lire l'état courant.
-            // Un état de lecteur qui ne s'efface pas ferait croire à un dossier
-            // toujours partagé alors qu'il ne l'est plus, ce qui est pire qu'un
-            // texte périmé : c'est une affirmation fausse sur une permission.
+            // 🔴 THE EMPTY STRING, AND NOT AN "unmounted" MESSAGE. It is the defect
+            // found in D5: the `#status` banner kept its `textContent`
+            // after `expirer()`, so that reading the text proved a
+            // message had ARRIVED, never that it was DISPLAYED — a whole acceptance run
+            // read a stale banner believing it read the current state.
+            // A drive state that does not clear would suggest a folder
+            // still shared when it no longer is, which is worse than a
+            // stale text: it is a false statement about a permission.
             //
-            // 🔴 ET LE TON RESTE `neutre` : un bandeau VIDE ne doit pas porter
-            // de couleur. Une pastille colorée sans texte serait une alarme
-            // sans énoncé — le pire des deux mondes, et l'exact symétrique du
-            // défaut ci-dessus. Le texte vide et le ton neutre sont DEUX
-            // propriétés, et `shell.test.ts` les éprouve séparément.
+            // 🔴 AND THE TONE STAYS `neutre`: an EMPTY banner must not carry
+            // a colour. A coloured badge without text would be an alarm
+            // without a statement — the worst of both worlds, and the exact mirror of the
+            // defect above. Empty text and neutral tone are TWO
+            // properties, and `shell.test.ts` tests them separately.
             options.afficherEtatFichiers('', 'neutre');
         },
 
         ecrituresDues(neuves, retenues) {
-            // ⚠️ **L'ANNONCE ÉCRASE, elle ne s'ajoute pas.** Le pont envoie
-            // l'ÉTAT complet de son journal à chaque changement : cumuler ferait
-            // qu'un chemin acquitté resterait affiché pour toujours.
+            // ⚠️ **THE ANNOUNCEMENT OVERWRITES, it does not add up.** The bridge sends
+            // the complete STATE of its journal at each change: accumulating would make
+            // an acknowledged path stay displayed forever.
             dues = neuves;
             vues += neuves.length;
-            // Un chemin qui n'est plus dû n'a plus d'échec à montrer : il est
-            // arrivé.
+            // A path that is no longer owed has no failure left to show: it has
+            // arrived.
             for (const chemin of [...echecs.keys()]) {
                 if (!neuves.some((d) => d.chemin === chemin)) echecs.delete(chemin);
             }
-            // ⚠️ **RETENUES SANS AUCUNE DUE N'A PAS DE SENS**, et l'afficher
-            // proposerait de reprendre ce qu'il n'y a pas à reprendre. Le pont
-            // ne l'émet pas, mais s'en remettre à lui ferait dépendre l'interface
-            // d'une propriété qu'aucun type ne garantit.
+            // ⚠️ **HELD BACK WITHOUT ANY OWED WRITE MAKES NO SENSE**, and displaying it
+            // would offer to resume what there is nothing to resume. The bridge
+            // does not emit it, but relying on it would make the interface depend
+            // on a property no type guarantees.
             retenu = retenues && neuves.length > 0;
             options.afficherRetenues(retenu);
             redessinerLesDues();
         },
 
         ecritureEchouee(chemin, motif) {
-            // 🔴 **LE FICHIER EST NOMMÉ, ET LA CAUSE AUSSI.** « Une écriture a
-            // échoué » ne dit pas à l'utilisateur quel document rouvrir.
+            // 🔴 **THE FILE IS NAMED, AND SO IS THE CAUSE.** "A write
+            // failed" does not tell the user which document to reopen.
             echecs.set(chemin, motif);
             redessinerLesDues();
         },
 
         mutationEchouee(quoi, motif) {
-            // 🔴 **`quoi` PORTE LES DEUX CHEMINS D'UN RENOMMAGE** (`de → vers`),
-            // parce que « impossible de renommer X » ne dit pas vers quoi — et
-            // c'est précisément ce que l'utilisateur doit vérifier : la
-            // destination existe peut-être déjà.
+            // 🔴 **`quoi` CARRIES BOTH PATHS OF A RENAME** (`de → vers`),
+            // because "cannot rename X" does not say to what — and
+            // that is precisely what the user must check: the
+            // destination may already exist.
             mutations.push(`« ${quoi} » (${motif})`);
             redessinerLesDues();
         },
@@ -315,8 +315,8 @@ export function creerBureau(options: OptionsBureau): Bureau {
         },
 
         lecteurEchoue(motif) {
-            // DANGER : le partage a raté, et « rien n'est partagé » n'appelle
-            // pas le même geste que « le partage a raté, voici pourquoi ».
+            // DANGER: sharing failed, and "nothing is shared" does not call for
+            // the same gesture as "sharing failed, here is why".
             options.afficherEtatFichiers(
                 `Le lecteur « Mes Fichiers » n’a pas pu être monté : ${motif}.`,
                 'danger',
@@ -324,26 +324,26 @@ export function creerBureau(options: OptionsBureau): Bureau {
         },
 
         canalDeControleRefuse(reason, motif, retryApresS) {
-            // 🔴 `reason` D'ABORD : c'est la phrase destinée à un humain
-            // (`identite/garde.ts::Verdict.message`, ou le texte fixe de
-            // `relais.ts` pour `trop-de-requetes`) ; `motif` est un MOT-CLÉ
-            // stable pour le code, pas une phrase — voir `bureau.refus`
-            // ci-dessus, qui suit la même hiérarchie pour la même raison.
+            // 🔴 `reason` FIRST: it is the sentence meant for a human
+            // (`identite/garde.ts::Verdict.message`, or the fixed text of
+            // `relais.ts` for `trop-de-requetes`); `motif` is a stable
+            // KEYWORD for code, not a sentence — see `bureau.refus`
+            // above, which follows the same hierarchy for the same reason.
             const cause = reason ?? motif ?? 'raison inconnue';
-            // ⚠️ `retryApresS` n'accompagne QUE le refus de volume
-            // (`signaling/relais.ts`) : un refus de poignée de main (jeton
-            // absent ou invalide) n'a rien à retenter, se reconnecter ne
-            // changera rien. Absent, la phrase ne promet donc rien qui ne
-            // tiendrait pas.
+            // ⚠️ `retryApresS` ONLY accompanies the volume refusal
+            // (`signaling/relais.ts`): a handshake refusal (token
+            // absent or invalid) has nothing to retry, reconnecting will
+            // change nothing. Absent, the sentence therefore promises nothing that would
+            // not hold.
             const attente =
                 typeof retryApresS === 'number' ? ` Nouvelle tentative possible dans ${retryApresS} s.` : '';
             options.afficher(`Bureau refusé : ${cause}.${attente}`, 'danger');
         },
 
         canalDeControlePerdu() {
-            // DANGER, jamais NEUTRE : plus aucune fenêtre ne peut s'ouvrir ni
-            // se refermer tant que la page n'est pas rechargée, et le dire en
-            // neutre laisserait croire à un bureau qui fonctionne encore.
+            // DANGER, never NEUTRAL: no window can open or
+            // close any more until the page is reloaded, and saying it
+            // neutrally would suggest a desktop that still works.
             options.afficher(
                 'Connexion au bureau perdue. Rechargez la page pour vous reconnecter.',
                 'danger',
@@ -353,15 +353,15 @@ export function creerBureau(options: OptionsBureau): Bureau {
 }
 
 /**
- * La phrase du compteur. **Elle NOMME les fichiers**, parce que le dialogue de
- * `beforeunload` ne le peut pas.
+ * The counter's sentence. **It NAMES the files**, because the
+ * `beforeunload` dialog cannot.
  *
- * ⛔ **Le message personnalisé de `beforeunload` est IGNORÉ par tous les
- * navigateurs modernes** : ils n'affichent qu'un libellé générique de leur
- * choix. La spec §6.2 demande « un `beforeunload` avec un texte qui nomme les
- * fichiers » — **ce texte n'existe pas**. Les nommer DANS LA PAGE, à côté du
- * compteur, est ce qui reste. *(Fait de plateforme, non mesuré ici, déclaré
- * comme tel.)*
+ * ⛔ **The custom message of `beforeunload` is IGNORED by all
+ * modern browsers**: they only display a generic label of their
+ * choice. Spec §6.2 asks for "a `beforeunload` with a text that names the
+ * files" — **that text does not exist**. Naming them IN THE PAGE, next to the
+ * counter, is what remains. *(A platform fact, not measured here, declared
+ * as such.)*
  */
 function phraseDesMutations(mutations: string[]): string {
     if (mutations.length === 0) return '';
