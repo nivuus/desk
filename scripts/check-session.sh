@@ -1,25 +1,25 @@
 #!/usr/bin/env bash
-# Vérifie que l'agent, lancé via une tâche planifiée interactive (/it), tourne
-# bien en session 1 (session graphique de l'utilisateur connecté) et non en
-# session 0 (session des services). C'est le point le plus important de la
-# chaîne de compilation : un agent en session 0 ne peut ni capturer une
-# fenêtre (Windows.Graphics.Capture) ni injecter des entrées (SendInput).
+# Checks that the agent, launched through an interactive scheduled task (/it), really runs
+# in session 1 (graphical session of the logged-in user) and not in
+# session 0 (services session). It is the most important point of the
+# build chain: an agent in session 0 can neither capture a
+# window (Windows.Graphics.Capture) nor inject input (SendInput).
 #
-# L'agent actuel se contente de logger un message puis quitte (quelques
-# millisecondes d'exécution) : un `Get-Process` distant lancé après un
-# `sleep` arrive presque toujours trop tard pour l'observer, ce qui rendrait
-# la vérification non reproductible. Ce script capture donc le SessionId de
-# façon synchrone côté Windows, au moment même du lancement, via le même
-# mécanisme que run-agent.sh (schtasks /it) — plutôt que de deviner depuis
-# l'extérieur si l'agent a eu le temps de démarrer.
+# The current agent merely logs a message then quits (a few
+# milliseconds of execution): a remote `Get-Process` launched after a
+# `sleep` almost always arrives too late to observe it, which would make
+# the check non-reproducible. This script thus captures the SessionId
+# synchronously on the Windows side, at the very moment of launch, through the same
+# mechanism as run-agent.sh (schtasks /it) — rather than guessing from
+# outside whether the agent had time to start.
 
-# ── VOIE MORTE, 29 août 2026 — voir scripts/voie-morte.sh ───────────────────
+# ── DEAD PATH, 29 August 2026 — see scripts/voie-morte.sh ───────────────────
 . "$(dirname "$0")/voie-morte.sh"
 voie_morte "vérifiait que l'agent tourne en session 1, en lisant /media/vm" \
 "     L'appliance atteste sa session elle-même : C:\nivuus\state\agent-session.txt,
      écrit par run-agent.ps1 juste avant de lancer l'agent, donc seulement si le
      lancement a réellement eu lieu."
-# ─── Ci-dessous, le corps d'origine, conservé comme relevé historique. ──────
+# ─── Below, the original body, kept as a historical record. ──────
 
 set -euo pipefail
 
@@ -36,8 +36,8 @@ fi
 RESULT_FILE="/media/vm/dev/check-session-result.txt"
 rm -f "$RESULT_FILE"
 
-# Script d'amorçage : démarre l'agent et écrit son SessionId dans un fichier
-# avant de lui laisser le temps de se terminer.
+# Bootstrap script: starts the agent and writes its SessionId to a file
+# before giving it time to finish.
 cat > /media/vm/dev/check-session.ps1 <<PS1
 \$p = Start-Process -FilePath 'C:\dev\target\debug\agent.exe' -PassThru -RedirectStandardOutput 'C:\dev\agent.log'
 "\$(\$p.SessionId)" | Out-File -FilePath 'C:\dev\check-session-result.txt' -Encoding ascii -NoNewline
@@ -51,9 +51,9 @@ node "$ROOT/scripts/winrm.js" \
        /tr 'powershell -NoProfile -ExecutionPolicy Bypass -File C:\\dev\\check-session.ps1'; \
      schtasks /run /tn $TASK_NAME" >/dev/null
 
-# schtasks /run rend la main avant que la tâche ne se soit réellement
-# exécutée : on attend l'apparition du fichier de résultat plutôt qu'un délai
-# fixe arbitraire.
+# schtasks /run returns before the task has really
+# run: we wait for the result file to appear rather than an arbitrary fixed
+# delay.
 FOUND=0
 for _ in $(seq 1 20); do
     if [ -f "$RESULT_FILE" ]; then

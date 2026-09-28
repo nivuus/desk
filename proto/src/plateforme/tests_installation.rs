@@ -23,20 +23,20 @@ fn lit_un_termine_complet() {
     );
 }
 
-/// 🔴 LA GARDE QUI COMPTE, ET SANS ELLE LE CHAMP SERAIT SILENCIEUSEMENT
-/// FACULTATIF.
+/// 🔴 THE GUARD THAT MATTERS, AND WITHOUT IT THE FIELD WOULD SILENTLY BE
+/// OPTIONAL.
 ///
-/// `serde_derive` traite tout champ de type `Option<T>` comme portant un
-/// `#[serde(default)]` IMPLICITE : un champ absent devient `None` sans qu'aucun
-/// `default` n'ait été écrit, et `deny_unknown_fields` n'y change rien — il
-/// regarde les champs EN TROP, jamais ceux qui manquent. C'est exactement ce
-/// que le sous-bloc G2 a mesuré pour son champ `icone`, et `champs::
-/// option_obligatoire` est la forme générique de son remède.
+/// `serde_derive` treats any field of type `Option<T>` as carrying an
+/// IMPLICIT `#[serde(default)]`: a missing field becomes `None` without any
+/// `default` having been written, and `deny_unknown_fields` changes nothing — it
+/// looks at EXTRA fields, never at missing ones. That is exactly
+/// what sub-block G2 measured for its `icone` field, and `champs::
+/// option_obligatoire` is the generic form of its remedy.
 ///
-/// **Ce qui serait perdu sans elle** : le `termine` d'un agent d'une version
-/// antérieure — qui n'a ni `motif` ni `code_sortie` — serait accepté par une
-/// plateforme v4, avec un motif et un code silencieusement absents. C'est le
-/// déguisement précis que le bump de version existe pour empêcher.
+/// **What would be lost without it**: the `termine` of an agent from an
+/// older version — which has neither `motif` nor `code_sortie` — would be accepted by a
+/// v4 platform, with a reason and a code silently missing. That is the
+/// exact disguise the version bump exists to prevent.
 #[test]
 fn refuse_un_termine_dont_une_cle_facultative_manque() {
     for cle in ["motif", "code_sortie"] {
@@ -67,9 +67,9 @@ fn accepte_null_sur_les_deux_cles_et_le_distingue_de_l_absence() {
     assert_eq!(code_sortie, None);
 }
 
-/// 🔴 UN CODE DE SORTIE NÉGATIF EST LÉGITIME sous Windows : les `HRESULT`
-/// d'échec ont le bit de poids fort à 1 et se lisent en `i32` signé. Le refuser
-/// confondrait « code hors norme » avec « échec ordinaire ».
+/// 🔴 A NEGATIVE EXIT CODE IS LEGITIMATE on Windows: failure `HRESULT`s
+/// have the high bit set and read as a signed `i32`. Refusing it
+/// would confuse "abnormal code" with "ordinary failure".
 #[test]
 fn accepte_un_code_de_sortie_negatif() {
     let negatif = termine_complet().replace(r#""code_sortie":0"#, r#""code_sortie":-1073741510"#);
@@ -80,20 +80,20 @@ fn accepte_un_code_de_sortie_negatif() {
     assert_eq!(code_sortie, Some(-1_073_741_510));
 }
 
-/// 🔴 C'EST LA ROUGE DU LEG N°9 DE G1, ET ELLE EST ENFIN JOUABLE.
+/// 🔴 THIS IS THE RED OF G1 LEGACY ITEM No. 9, AND IT IS PLAYABLE AT LAST.
 ///
-/// G1 a MESURÉ qu'un `rename_all` est **inobservable** sur un enum dont toutes
-/// les variantes tiennent en un mot : passer `kebab-case` à `snake_case` sur
-/// `IssueLancement` — `raccourci`, `cible`, `inconnue`, `echec` — laisse
-/// `cargo test -p proto` entièrement vert. [`Issue`] a **deux** variantes de
-/// deux mots, et c'est délibéré : `SansEffet` et `IssueInconnue` rendent la
+/// G1 MEASURED that a `rename_all` is **unobservable** on an enum whose variants
+/// all fit in one word: switching `kebab-case` to `snake_case` on
+/// `IssueLancement` — `raccourci`, `cible`, `inconnue`, `echec` — leaves
+/// `cargo test -p proto` entirely green. [`Issue`] has **two** two-word
+/// variants, and that is deliberate: `SansEffet` and `IssueInconnue` make the
 /// mutation visible.
 ///
-/// ⚠️ **LE PLAN DE G3 PRESCRIVAIT CETTE ROUGE SUR `Phase`, EN CITANT
-/// `sans-effet`** — une contradiction de son propre texte : `sans-effet`
-/// appartient à `Issue`, et `Phase` n'a aucune variante de deux mots. Elle est
-/// jouée ici, sur l'enum qui peut la porter, et **on n'a PAS inventé une
-/// quatrième phase** pour rendre une mutation observable.
+/// ⚠️ **THE G3 PLAN PRESCRIBED THIS RED ON `Phase`, QUOTING
+/// `sans-effet`** — a contradiction in its own text: `sans-effet`
+/// belongs to `Issue`, and `Phase` has no two-word variant. It is
+/// played here, on the enum that can carry it, and **we did NOT invent a
+/// fourth phase** to make a mutation observable.
 #[test]
 fn les_deux_variantes_de_deux_mots_d_issue_voyagent_en_kebab_case() {
     let paires = [
@@ -111,9 +111,9 @@ fn les_deux_variantes_de_deux_mots_d_issue_voyagent_en_kebab_case() {
         let relu: Issue = serde_json::from_str(&format!("\"{mot}\"")).expect("désér.");
         assert_eq!(relu, variante);
     }
-    // ⚠️ ET LA FORME `snake_case` EST REFUSÉE, ce qui est la moitié qui fait
-    // rougir la mutation : sans cette ligne, un `rename_all` changé rendrait
-    // le test faux dans un seul sens.
+    // ⚠️ AND THE `snake_case` FORM IS REFUSED, which is the half that makes
+    // the mutation go red: without this line, a changed `rename_all` would make
+    // the test wrong in one direction only.
     assert!(serde_json::from_str::<Issue>("\"sans_effet\"").is_err());
     assert!(serde_json::from_str::<Issue>("\"issue_inconnue\"").is_err());
 }
@@ -130,13 +130,13 @@ fn les_trois_phases_voyagent_par_leur_mot() {
             format!("\"{mot}\"")
         );
     }
-    // ⚠️ `empreinte` N'EST PAS UNE PHASE DE CE CANAL : elle se déroule dans le
-    // NAVIGATEUR, avant que la plateforme n'ait la moindre ligne à écrire.
+    // ⚠️ `empreinte` IS NOT A PHASE OF THIS CHANNEL: it takes place in the
+    // BROWSER, before the platform has a single row to write.
     assert!(serde_json::from_str::<Phase>("\"empreinte\"").is_err());
 }
 
-/// La forme du `Installer` descendant, et le fait que l'URL y voyage — jamais
-/// les octets.
+/// The shape of the downstream `Installer`, and the fact that the URL travels in it — never
+/// the bytes.
 #[test]
 fn l_ordre_d_installation_porte_une_url_et_pas_des_octets() {
     let ordre = DepuisLaPlateforme::installer("i-1", "http://h:8080/t/c", "setup.exe", 42, "ab");

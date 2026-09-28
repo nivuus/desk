@@ -1,71 +1,71 @@
-// Trame binaire du pont fichiers. Doit rester strictement alignée sur
-// proto/src/fichiers.rs — le vecteur épinglé de fichiers.test.ts, écrit en dur
-// des deux côtés, est ce qui le vérifie.
+// Binary frame of the file bridge. Must stay strictly aligned with
+// proto/src/fichiers.rs — the pinned vector of fichiers.test.ts, hardcoded
+// on both sides, is what checks it.
 //
-// Format : version u8 | type u8 | correlation u32 | longueur_entete u32 |
-// entete | charge, entiers en PETIT-BOUTISTE (`setUint32(…, true)`).
+// Format: version u8 | type u8 | correlation u32 | longueur_entete u32 |
+// header | payload, integers in LITTLE-ENDIAN (`setUint32(…, true)`).
 //
-// La charge n'est JAMAIS encodée : c'est tout l'objet du format binaire. Le
-// pont d'origine sérialisait les octets par `Array.from(buffer.slice(…))`,
-// soit ~4 octets transmis par octet utile, sur chaque octet de chaque lecture.
+// The payload is NEVER encoded: that is the whole point of the binary format. The
+// original bridge serialised the bytes through `Array.from(buffer.slice(…))`,
+// about 4 bytes sent per useful byte, on every byte of every read.
 
 export const FICHIERS_VERSION = 1;
 
 /**
- * Taille maximale de la CHARGE d'une trame, en octets.
+ * Maximum size of a frame's PAYLOAD, in bytes.
  *
- * ⚠️ NON CALIBRÉE — posée, pas mesurée. Et son nom dit « trame » là où la
- * valeur borne la charge : divergence relevée dans le plan, tranchée du côté
- * qui rend le module cohérent avec `pont::decoupe`. Voir la doc du jumeau Rust.
+ * ⚠️ NOT CALIBRATED — set, not measured. And its name says "frame" where the
+ * value bounds the payload: a divergence noted in the plan, settled on the side
+ * that makes the module consistent with `pont::decoupe`. See the Rust twin's doc.
  */
 export const TAILLE_TRAME_MAX = 64 * 1024;
 
-/** Version, type, corrélation, longueur d'en-tête. */
+/** Version, type, correlation, header length. */
 export const TAILLE_ENTETE_FIXE = 1 + 1 + 4 + 4;
 
-// Requêtes pont → navigateur — elles ATTENDENT une réponse.
+// Bridge → browser requests — they EXPECT an answer.
 export const TYPE_LISTER = 1;
 export const TYPE_ATTRIBUTS = 2;
 export const TYPE_LIRE = 3;
-export const TYPE_ECRIRE = 4; // F2 — en-tête `Ecrire`, la charge porte les octets
-export const TYPE_CREER = 5; // F2 — en-tête `Creer`, charge vide
-export const TYPE_RENOMMER = 7; // F3 — en-tête `Renommer`, charge vide
-export const TYPE_SUPPRIMER = 8; // F3 — en-tête `Supprimer`, charge vide
+export const TYPE_ECRIRE = 4; // F2 — `Ecrire` header, the payload carries the bytes
+export const TYPE_CREER = 5; // F2 — `Creer` header, empty payload
+export const TYPE_RENOMMER = 7; // F3 — `Renommer` header, empty payload
+export const TYPE_SUPPRIMER = 8; // F3 — `Supprimer` header, empty payload
 
-// Annonces pont → navigateur — elles n'attendent RIEN.
+// Bridge → browser announcements — they expect NOTHING.
 //
-// 🔴 TROISIÈME FAMILLE. Une ANNONCE ne reçoit aucune réponse : aucune entrée de
-// table ne lui correspond côté pont, et n'y pas répondre ne laisse donc rien en
-// vol. LA LISTE DES ANNONCES EST CLOSE — c'est ce qui empêche cette famille de
-// devenir le bras fourre-tout silencieux payé quatre fois sur
+// 🔴 THIRD FAMILY. An ANNOUNCEMENT receives no answer: no table
+// entry matches it on the bridge side, and not answering it thus leaves nothing in
+// flight. THE LIST OF ANNOUNCEMENTS IS CLOSED — that is what prevents this family from
+// becoming the silent catch-all arm paid for four times on
 // `capteur/pont_media.rs`.
-export const TYPE_DUES = 6; // F2 — en-tête `Dues`, charge vide
+export const TYPE_DUES = 6; // F2 — `Dues` header, empty payload
 
-// Annonces NAVIGATEUR → PONT — elles n'attendent RIEN.
+// BROWSER → BRIDGE announcements — they expect NOTHING.
 //
-// 🔴 QUATRIÈME FAMILLE, et c'est la première qui REMONTE. Sa corrélation est
-// IGNORÉE, et c'est ce qui la rend dangereuse : le pont décode toute trame
-// entrante puis cherche sa corrélation dans sa table ; une corrélation inconnue
-// est JETÉE dans un `tracing::debug!`, invisible sous `RUST_LOG=info`. Une
-// annonce remontante qui traverserait ce chemin NE FERAIT RIEN, ET RIEN NE LE
-// DIRAIT. F5 les aiguille AVANT toute résolution de corrélation, et c'est la
-// seule raison pour laquelle elles marchent. LA LISTE EST CLOSE.
-export const TYPE_BONJOUR = 68; // F5 — en-tête `Bonjour`, charge vide
-export const TYPE_RAFRAICHIR = 69; // F5 — en-tête VIDE `{}`, charge vide
+// 🔴 FOURTH FAMILY, and it is the first one that goes UP. Its correlation is
+// IGNORED, and that is what makes it dangerous: the bridge decodes every incoming
+// frame then looks up its correlation in its table; an unknown correlation
+// is DROPPED into a `tracing::debug!`, invisible under `RUST_LOG=info`. An
+// upstream announcement that went through this path WOULD DO NOTHING, AND NOTHING WOULD
+// SAY SO. F5 routes them BEFORE any correlation lookup, and that is the
+// only reason they work. THE LIST IS CLOSED.
+export const TYPE_BONJOUR = 68; // F5 — `Bonjour` header, empty payload
+export const TYPE_RAFRAICHIR = 69; // F5 — EMPTY header `{}`, empty payload
 
-// Réponses navigateur → pont.
+// Browser → bridge answers.
 export const TYPE_ENTREES = 64;
 export const TYPE_META = 65;
 export const TYPE_DONNEES = 66;
-export const TYPE_FAIT = 67; // F2 — en-tête VIDE `{}`, charge vide
+export const TYPE_FAIT = 67; // F2 — EMPTY header `{}`, empty payload
 export const TYPE_ECHEC = 127;
 
-// ✅ 7 ET 8 SONT PRIS, ET PAR CELUI POUR QUI ILS ÉTAIENT RÉSERVÉS. *(Cette
-// ligne disait « RÉSERVÉS à F3 ».)* La numérotation n'est donc PAS contiguë par
-// famille : 6 est une ANNONCE, 7 et 8 des REQUÊTES. C'est l'aiguillage nommé de
-// `client/src/fichiers/protocole.ts` qui dit la famille, jamais la valeur.
+// ✅ 7 AND 8 ARE TAKEN, AND BY THE ONE THEY WERE RESERVED FOR. *(This
+// line said "RESERVED for F3".)* Numbering is thus NOT contiguous per
+// family: 6 is an ANNOUNCEMENT, 7 and 8 are REQUESTS. It is the named routing of
+// `client/src/fichiers/protocole.ts` that tells the family, never the value.
 
-/** L'union des types de message. */
+/** The union of message types. */
 export type TypeMessage =
     | typeof TYPE_LISTER
     | typeof TYPE_ATTRIBUTS
@@ -84,17 +84,17 @@ export type TypeMessage =
     | typeof TYPE_ECHEC;
 
 /**
- * ⚠️ Table DÉRIVÉE de l'union `TypeMessage`, et c'est délibéré.
+ * ⚠️ Table DERIVED from the `TypeMessage` union, and that is deliberate.
  *
- * `TYPES_AGENT` (`proto/ts/control.ts:106`) est le contre-exemple : une liste
- * écrite à la main, que RIEN ne confronte à l'union `AgentControl` qu'elle est
- * censée refléter. Un type ajouté à l'union et oublié dans la liste y passe
- * inaperçu, et le message est rejeté à l'exécution.
+ * `TYPES_AGENT` (`proto/ts/control.ts:106`) is the counter-example: a list
+ * written by hand, that NOTHING confronts with the `AgentControl` union it is
+ * supposed to mirror. A type added to the union and forgotten in the list goes
+ * unnoticed there, and the message is rejected at runtime.
  *
- * Ici, `Record<TypeMessage, true>` force le compilateur à exiger une entrée par
- * membre de l'union — un oubli casse `tsc --noEmit`, pas seulement un test.
- * L'inverse est vrai aussi : une entrée qui ne correspond à aucun membre est
- * refusée comme propriété en trop.
+ * Here, `Record<TypeMessage, true>` forces the compiler to demand one entry per
+ * member of the union — an omission breaks `tsc --noEmit`, not only a test.
+ * The reverse holds too: an entry matching no member is
+ * refused as an excess property.
  */
 const TYPES_CONNUS: Readonly<Record<TypeMessage, true>> = {
     [TYPE_LISTER]: true,
@@ -119,20 +119,20 @@ export const TOUS_LES_TYPES: readonly TypeMessage[] = Object.keys(TYPES_CONNUS).
 ) as TypeMessage[];
 
 /**
- * Les ONZE causes d'échec, dans leur forme EXACTE sur le fil.
+ * The ELEVEN failure causes, in their EXACT form on the wire.
  *
- * ⚠️ Doit correspondre caractère pour caractère au `#[serde(rename_all =
- * "kebab-case")]` de `CodeEchec` côté Rust. Les variantes à deux mots sont
- * celles qui se cassent en silence — les TROIS neuves de F2 en sont, et la
- * seule de F3, `repertoire-non-vide`, est à TROIS mots.
+ * ⚠️ Must match character for character the `#[serde(rename_all =
+ * "kebab-case")]` of `CodeEchec` on the Rust side. The two-word variants are
+ * the ones that break silently — the THREE new ones from F2 are among them, and the
+ * only one from F3, `repertoire-non-vide`, has THREE words.
  *
- * 🔵 `repertoire-non-vide` EST DIAGNOSTIQUE, et c'est ce qui le distingue :
- * le recevoir signifie que le poste local porte des entrées que la VM ne
- * connaît pas — F3 supprime SANS `recursive`, à dessein.
+ * 🔵 `repertoire-non-vide` IS DIAGNOSTIC, and that is what sets it apart:
+ * receiving it means the local machine holds entries the VM does not
+ * know about — F3 deletes WITHOUT `recursive`, on purpose.
  *
- * 🔴 `disque-plein` N'ATTEINT AUCUNE APPLICATION WINDOWS : il naît d'une
- * poussée d'écriture, donc APRÈS que l'application a refermé son handle. Il
- * sert au journal et au compteur d'écritures dues, jamais à un `HRESULT`.
+ * 🔴 `disque-plein` REACHES NO WINDOWS APPLICATION: it is born from a
+ * write push, hence AFTER the application has closed its handle. It
+ * serves the log and the pending write counter, never an `HRESULT`.
  */
 export const CODES_ECHEC = [
     'introuvable',
@@ -154,22 +154,22 @@ export interface Trame {
     version: number;
     type: number;
     correlation: number;
-    /** L'en-tête JSON déjà analysé, ou `undefined` s'il est vide. */
+    /** The JSON header already parsed, or `undefined` if it is empty. */
     entete: unknown;
-    /** Octets bruts, jamais encodés. */
+    /** Raw bytes, never encoded. */
     charge: Uint8Array;
 }
 
 /**
- * Encode une trame dont l'en-tête est DÉJÀ sérialisé.
+ * Encodes a frame whose header is ALREADY serialised.
  *
- * ⚠️ C'est le jumeau EXACT de `proto::fichiers::encoder`, dont la signature
- * Rust prend `entete: &str`. La variante qui suit, `encoder`, prend un objet et
- * le sérialise : commode pour les tests, mais elle laisse `JSON.stringify`
- * décider de l'ordre des clés. Le produit passe donc par ici, avec les
- * fonctions de `fichiers-entetes.ts` dont l'ordre est épinglé par
- * `fichiers-vectors.json` — autrement, ces fonctions seraient épinglées sans
- * appelant, et le vecteur ne garantirait rien de ce qui part réellement.
+ * ⚠️ It is the EXACT twin of `proto::fichiers::encoder`, whose Rust
+ * signature takes `entete: &str`. The variant that follows, `encoder`, takes an object and
+ * serialises it: handy for tests, but it lets `JSON.stringify`
+ * decide the key order. The product thus goes through here, with the
+ * functions of `fichiers-entetes.ts` whose order is pinned by
+ * `fichiers-vectors.json` — otherwise, those functions would be pinned with no
+ * caller, and the vector would guarantee nothing about what actually goes out.
  */
 export function encoderTexte(
     type: number,
@@ -191,8 +191,8 @@ export function encoderTexte(
 }
 
 /**
- * Encode une trame en sérialisant `entete` en JSON. `undefined` produit un
- * en-tête de longueur nulle, qui est licite.
+ * Encodes a frame by serialising `entete` to JSON. `undefined` produces a
+ * zero-length header, which is legal.
  */
 export function encoder(
     type: number,
@@ -208,7 +208,7 @@ export function encoder(
     );
 }
 
-/** Décode une trame, ou lève en disant précisément pourquoi elle est refusée. */
+/** Decodes a frame, or throws saying precisely why it is refused. */
 export function decoder(octets: ArrayBuffer): Trame {
     const brut = new Uint8Array(octets);
     if (brut.length < TAILLE_ENTETE_FIXE) {

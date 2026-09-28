@@ -1,34 +1,34 @@
 /**
- * Les gardes de FORME du canal plateforme <-> agent : ce qui décide qu'une
- * valeur venue du fil est bien ce qu'elle prétend être.
+ * The SHAPE guards of the platform <-> agent channel: what decides that a
+ * value coming off the wire really is what it claims to be.
  *
- * 🔴 EXTRAITES DE `plateforme.ts` VERBATIM (sous-bloc G2), PARCE QUE LE
- * PLAFOND DE 500 LIGNES A ÉTÉ FRANCHI — 528 — ET QUE LA DOCTRINE DU DÉPÔT EST
- * DE RATTRAPER PAR UNE EXTRACTION, JAMAIS PAR UNE COMPRESSION.
+ * 🔴 EXTRACTED FROM `plateforme.ts` VERBATIM (sub-block G2), BECAUSE THE
+ * 500-LINE CEILING WAS CROSSED — 528 — AND THE REPOSITORY DOCTRINE IS
+ * TO CATCH UP THROUGH AN EXTRACTION, NEVER THROUGH COMPRESSION.
  *
- * ⚠️ **L'EXTRACTION AURAIT DÛ PRÉCÉDER L'ADDITION, ET ELLE NE L'A PAS FAIT.**
- * Le plan de G2 avait nommé trois extractions à jouer d'avance ; les trois ont
- * été jouées, et celle-ci n'était pas prévue — le fichier était annoncé à 429
- * lignes pour « le miroir ». Le franchissement est DÉCLARÉ plutôt que
- * dissimulé.
+ * ⚠️ **THE EXTRACTION SHOULD HAVE PRECEDED THE ADDITION, AND IT DID NOT.**
+ * The G2 plan had named three extractions to play ahead; all three were
+ * played, and this one was not planned — the file was announced at 429
+ * lines for "the mirror". The crossing is DECLARED rather than
+ * hidden.
  *
- * ⚠️ AUCUNE LIGNE DE COMPORTEMENT N'A ÉTÉ AJOUTÉE, RETIRÉE NI REFORMULÉE.
+ * ⚠️ NO LINE OF BEHAVIOUR WAS ADDED, REMOVED OR REWORDED.
  */
 import type { Application, IssueLancement, SourceMax } from './plateforme';
 
-/** Les quatre issues, énumérées — voir `estIssue`. */
+/** The four outcomes, enumerated — see `estIssue`. */
 const ISSUES: ReadonlyArray<IssueLancement> = ['raccourci', 'cible', 'inconnue', 'echec'];
 
 /**
- * Le CHAMP `string` de `Application` à valider, un par un — voir
+ * The `string` FIELDS of `Application` to validate, one by one — see
  * `estApplication`.
  *
- * 🔴 `icone` ET `source_max` N'Y SONT PAS, ET LES Y METTRE SERAIT UN DÉFAUT
- * SILENCIEUX. Cette liste est parcourue par `estChaine` : y ajouter `icone`
- * ferait REFUSER TOUT CATALOGUE dont une seule application n'a pas d'icône —
- * `null` n'est pas une chaîne —, avec le motif `forme`, c'est-à-dire un
- * catalogue entier perdu sans qu'aucune trace ne dise pourquoi. Les deux
- * champs neufs ont donc leurs propres gardes.
+ * 🔴 `icone` AND `source_max` ARE NOT IN IT, AND PUTTING THEM THERE WOULD BE A SILENT
+ * DEFECT. This list is walked by `estChaine`: adding `icone` to it
+ * would REFUSE ANY CATALOGUE in which a single application has no icon —
+ * `null` is not a string —, with the `forme` reason, that is a whole
+ * catalogue lost without any trace saying why. The two
+ * new fields therefore have their own guards.
  */
 const CHAMPS_APPLICATION: ReadonlyArray<keyof Application> = [
     'cle', 'nom', 'chemin', 'cible', 'arguments', 'repertoire',
@@ -42,18 +42,18 @@ export function chaineNonVide(valeur: unknown): valeur is string {
     return typeof valeur === 'string' && valeur.length > 0;
 }
 
-/** ⚠️ `arguments` est LÉGITIMEMENT VIDE : la garde est `string`, pas `chaineNonVide`. */
+/** ⚠️ `arguments` is LEGITIMATELY EMPTY: the guard is `string`, not `chaineNonVide`. */
 export function estChaine(valeur: unknown): valeur is string {
     return typeof valeur === 'string';
 }
 
 /**
- * ⚠️ `null` EST UNE VALEUR ATTENDUE, PAS UNE ABSENCE. La garde exige que la
- * clé soit PRÉSENTE — `'icone' in valeur` — puis que sa valeur soit `null` ou
- * une chaîne. Se contenter de `=== null || typeof === 'string'` accepterait
- * un objet SANS le champ, `valeur.icone` valant alors `undefined`… qui n'est
- * ni `null` ni une chaîne, donc le cas serait refusé par accident. Écrire la
- * présence explicitement rend la propriété lisible plutôt qu'heureuse.
+ * ⚠️ `null` IS AN EXPECTED VALUE, NOT AN ABSENCE. The guard requires the
+ * key to be PRESENT — `'icone' in valeur` — then its value to be `null` or
+ * a string. Settling for `=== null || typeof === 'string'` would accept
+ * an object WITHOUT the field, `valeur.icone` then being `undefined`… which is
+ * neither `null` nor a string, so the case would be refused by accident. Writing the
+ * presence explicitly makes the property readable rather than lucky.
  */
 export function estIcone(valeur: Record<string, unknown>): boolean {
     if (!('icone' in valeur)) return false;
@@ -61,9 +61,9 @@ export function estIcone(valeur: Record<string, unknown>): boolean {
 }
 
 /**
- * 🔴 UN OBJET QUELCONQUE NE PASSE PAS. `{"pixels":"gros"}` est refusé, et
- * `{"pixels":256,"bonus":1}` aussi : la forme est exactement l'une des deux
- * que le Rust sait émettre, et rien d'autre.
+ * 🔴 AN ARBITRARY OBJECT DOES NOT PASS. `{"pixels":"gros"}` is refused, and
+ * so is `{"pixels":256,"bonus":1}`: the shape is exactly one of the two
+ * the Rust side knows how to emit, and nothing else.
  */
 export function estSourceMax(valeur: unknown): valeur is SourceMax {
     if (valeur === 'non-mesuree') return true;
@@ -85,10 +85,10 @@ export function estApplication(valeur: unknown): valeur is Application {
 }
 
 /**
- * ⚠️ MÊME FORME QUE `estIcone`, ET POUR LA MÊME RAISON : `null` est une valeur
- * LÉGITIME — « pas de dominante » —, mais le champ doit être PRÉSENT. Un champ
- * absent serait un catalogue d'une autre version, et l'accepter en silence est
- * exactement ce que le versionnement de ce protocole existe pour empêcher.
+ * ⚠️ SAME SHAPE AS `estIcone`, AND FOR THE SAME REASON: `null` is a
+ * LEGITIMATE value — "no dominant colour" —, but the field must be PRESENT. A missing
+ * field would be a catalogue from another version, and accepting it silently is
+ * exactly what the versioning of this protocol exists to prevent.
  */
 export function estAccent(valeur: Record<string, unknown>): boolean {
     if (!('accent' in valeur)) return false;
@@ -96,9 +96,9 @@ export function estAccent(valeur: Record<string, unknown>): boolean {
 }
 
 /**
- * 🔴 UN TABLEAU DE CHAÎNES, ET VIDE EST VALIDE. Refuser le vide ferait rejeter
- * la très grande majorité des applications, qui n'ouvrent aucun type de
- * fichier.
+ * 🔴 AN ARRAY OF STRINGS, AND EMPTY IS VALID. Refusing empty would reject
+ * the vast majority of applications, which open no
+ * file type.
  */
 export function estAssociations(valeur: unknown): valeur is string[] {
     return Array.isArray(valeur) && valeur.every((e) => estChaine(e));

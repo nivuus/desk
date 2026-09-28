@@ -1,57 +1,57 @@
-// SHA-256 (FIPS 180-4 §6.2) **INCRÉMENTAL**, en JavaScript pur — le jumeau de
-// `agent/src/apps/sha256.rs`, avec une raison d'exister de plus.
+// **INCREMENTAL** SHA-256 (FIPS 180-4 §6.2), in pure JavaScript — the twin of
+// `agent/src/apps/sha256.rs`, with one more reason to exist.
 //
-// 🔴 POURQUOI CE MODULE EXISTE ALORS QUE LE NAVIGATEUR SAIT DÉJÀ CONDENSER :
-// l'API Web Crypto n'expose que `crypto.subtle.digest(algo, tampon)`, qui prend
-// le message **COMPLET** en une fois. Elle n'a ni `update`, ni `digest`
-// incrémental, ni rien qui s'en approche — c'est une lacune de l'API, pas un
-// oubli de notre part. Empreindre un installeur de 800 Mo par cette voie
-// exigerait donc de tenir 800 Mo dans un onglet, en plus de ce que la lecture
-// du fichier consomme déjà.
+// 🔴 WHY THIS MODULE EXISTS WHEN THE BROWSER ALREADY KNOWS HOW TO HASH:
+// the Web Crypto API only exposes `crypto.subtle.digest(algo, buffer)`, which takes
+// the **WHOLE** message at once. It has no `update`, no incremental
+// `digest`, nothing close to it — that is a gap in the API, not an
+// oversight on our part. Fingerprinting an 800 MB installer that way
+// would thus require holding 800 MB in a tab, on top of what reading
+// the file already consumes.
 //
-// 🔵 LE PRIX DU REMÈDE EST MESURÉ, PAS SUPPOSÉ (Node 24.9.0) :
+// 🔵 THE PRICE OF THE REMEDY IS MEASURED, NOT ASSUMED (Node 24.9.0):
 //
-//   | voie                                  | débit         |
+//   | path                                  | throughput    |
 //   | ------------------------------------- | ------------- |
-//   | ce module, JS pur                     |   74,7 Mo/s   |
-//   | `crypto.subtle.digest`, natif         | 1160,6 Mo/s   |
+//   | this module, pure JS                  |   74.7 MB/s   |
+//   | `crypto.subtle.digest`, native        | 1160.6 MB/s   |
 //
-// Soit **≈ 11 s pour 800 Mo**. C'est l'arbitrage, écrit plutôt que subi :
-// **11 s d'attente sont payables, 800 Mo en mémoire ne le sont pas.** Le jour
-// où un navigateur exposerait un condensat incrémental, ce module devrait
-// céder la place — et cette phrase est là pour qu'on le sache.
+// That is **≈ 11 s for 800 MB**. It is the trade-off, written rather than suffered:
+// **11 s of waiting is affordable, 800 MB in memory is not.** The day
+// a browser exposes an incremental digest, this module should
+// give way — and this sentence is here so that we know it.
 //
-// ⚠️ CE TABLEAU EST LE RELEVÉ DU PLAN, ET UNE SECONDE MESURE N'EN CONFIRME
-// QU'UNE LIGNE. Rejoué sur ce module une fois, à sa rédaction : **73,9 Mo/s**
-// ici (donc 10,8 s pour 800 Mo — la ligne qui porte la décision tient), mais
-// **462,4 Mo/s** seulement pour `crypto.subtle`, contre 1160,6 annoncés. Une
-// exécution chacun, sans échauffement : aucun taux, et l'écart n'est PAS
-// expliqué. **Il ne change rien à l'arbitrage** — c'est la mémoire qui décide,
-// pas le rapport des débits —, mais il est déclaré plutôt que lissé.
+// ⚠️ THIS TABLE IS THE PLAN'S READING, AND A SECOND MEASUREMENT CONFIRMS
+// ONLY ONE LINE OF IT. Replayed on this module once, when it was written: **73.9 MB/s**
+// here (so 10.8 s for 800 MB — the line that carries the decision holds), but
+// only **462.4 MB/s** for `crypto.subtle`, against 1160.6 announced. One
+// run each, without warm-up: no rate, and the gap is NOT
+// explained. **It changes nothing in the trade-off** — memory decides,
+// not the throughput ratio —, but it is declared rather than smoothed over.
 //
-// 🔴 AUCUNE DÉPENDANCE, AUCUN `node:`, AUCUN DOM : c'est un invariant que les
-// sous-blocs G1 et G2 tiennent tous deux, et ce module ne l'entame pas. Il
-// charge à l'identique dans un navigateur et sous Node — ce qui est aussi la
-// condition pour que la comparaison à `crypto.subtle` du fichier de test soit
-// un oracle INDÉPENDANT, et non notre propre code relu deux fois.
+// 🔴 NO DEPENDENCY, NO `node:`, NO DOM: it is an invariant that
+// sub-blocks G1 and G2 both hold, and this module does not dent it. It
+// loads identically in a browser and under Node — which is also the
+// condition for the comparison to `crypto.subtle` in the test file to be
+// an INDEPENDENT oracle, and not our own code reread twice.
 //
-// ⚠️ CE N'EST PAS UNE PRIMITIVE DE SÉCURITÉ ICI : l'empreinte sert d'identité
-// stable pour un contenu téléversé, jamais à authentifier quoi que ce soit. Le
-// jour où quelque chose d'authentifiant en dépendrait, ce module doit céder la
-// place à une implémentation auditée.
+// ⚠️ IT IS NOT A SECURITY PRIMITIVE HERE: the fingerprint serves as a stable
+// identity for uploaded content, never to authenticate anything. The
+// day something authenticating depends on it, this module must give
+// way to an audited implementation.
 //
-// La preuve tient aux vecteurs de réponse connue de FIPS 180-4 ET à la
-// confrontation à `crypto.subtle` sur des découpages IRRÉGULIERS : un
-// algorithme faux rate les premiers, un tampon résiduel faux rate la seconde.
+// The proof rests on the FIPS 180-4 known-answer vectors AND on the
+// comparison with `crypto.subtle` over IRREGULAR splits: a
+// wrong algorithm fails the former, a wrong residual buffer fails the latter.
 
 /**
- * Les 64 constantes de ronde, §4.2.3.
+ * The 64 round constants, §4.2.3.
  *
- * ⚠️ `Int32Array` et non un tableau ordinaire, et ce n'est pas une coquetterie :
- * il force chaque constante en entier signé 32 bits, ce qui rend l'arithmétique
- * du reste du fichier homogène. Un tableau ordinaire garderait `0x428a2f98`
- * comme un flottant positif, et le mélange des deux représentations est
- * exactement là où naissent les fautes d'un SHA-256 écrit à la main.
+ * ⚠️ `Int32Array` and not a plain array, and it is not an affectation:
+ * it forces each constant into a signed 32-bit integer, which makes the arithmetic
+ * of the rest of the file homogeneous. A plain array would keep `0x428a2f98`
+ * as a positive float, and mixing the two representations is
+ * exactly where the bugs of a hand-written SHA-256 are born.
  */
 const K = new Int32Array([
     0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
@@ -64,34 +64,34 @@ const K = new Int32Array([
     0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
 ]);
 
-/** L'état initial, §5.3.3. */
+/** The initial state, §5.3.3. */
 const ETAT_INITIAL = new Int32Array([
     0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19,
 ]);
 
 /**
- * La plus grande taille de message que ce module accepte.
+ * The largest message size this module accepts.
  *
- * ⚠️ La longueur voyage dans le bourrage **en BITS**, donc `octets * 8`. Au-delà
- * de `MAX_SAFE_INTEGER / 8` (2^50, soit 1 Pio) cette multiplication cesse
- * d'être exacte en virgule flottante et le bourrage porterait une longueur
- * FAUSSE — sans que rien ne le dise. La borne est donc GARDÉE, pas seulement
- * nommée : `absorber` lève. Aucun téléversement de navigateur n'en approche.
+ * ⚠️ The length travels in the padding **in BITS**, hence `octets * 8`. Beyond
+ * `MAX_SAFE_INTEGER / 8` (2^50, i.e. 1 PiB) this multiplication stops
+ * being exact in floating point and the padding would carry a WRONG
+ * length — without anything saying so. The bound is thus GUARDED, not only
+ * named: `absorber` throws. No browser upload comes near it.
  */
 const OCTETS_MAX = Math.floor(Number.MAX_SAFE_INTEGER / 8);
 
-/** La rotation vers la droite de §3.2, sur 32 bits. */
+/** The right rotation of §3.2, on 32 bits. */
 function rotr(x: number, n: number): number {
     return (x >>> n) | (x << (32 - n));
 }
 
 /**
- * Une passe de compression sur les 64 octets à `decalage` dans `octets`.
+ * One compression pass over the 64 bytes at `decalage` in `octets`.
  *
- * ⚠️ Le bloc est lu **en place**, par décalage, plutôt que découpé en
- * `subarray` : à 74,7 Mo/s ce sont plus d'un million d'objets par seconde
- * évités sur un gros fichier. `w` est fourni par l'appelant pour la même
- * raison — le réallouer par bloc dominerait le coût.
+ * ⚠️ The block is read **in place**, by offset, rather than sliced with
+ * `subarray`: at 74.7 MB/s that is over a million objects per second
+ * avoided on a large file. `w` is supplied by the caller for the same
+ * reason — reallocating it per block would dominate the cost.
  */
 function comprimer(etat: Int32Array, w: Int32Array, octets: Uint8Array, decalage: number): void {
     for (let i = 0; i < 16; i += 1) {
@@ -117,9 +117,9 @@ function comprimer(etat: Int32Array, w: Int32Array, octets: Uint8Array, decalage
     for (let i = 0; i < 64; i += 1) {
         const s1 = rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25);
         const ch = (e & f) ^ (~e & g);
-        // Cinq entiers signés 32 bits : leur somme reste sous 2^34, donc exacte
-        // en virgule flottante, et le `| 0` la ramène modulo 2^32 — c'est
-        // l'équivalent du `wrapping_add` du jumeau Rust.
+        // Five signed 32-bit integers: their sum stays below 2^34, hence exact
+        // in floating point, and the `| 0` brings it back modulo 2^32 — it is
+        // the equivalent of the Rust twin's `wrapping_add`.
         const t1 = (h + s1 + ch + K[i] + w[i]) | 0;
         const s0 = rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22);
         const maj = (a & b) ^ (a & c) ^ (b & c);
@@ -145,7 +145,7 @@ function comprimer(etat: Int32Array, w: Int32Array, octets: Uint8Array, decalage
 }
 
 /**
- * Un condensat SHA-256 que l'on alimente morceau par morceau.
+ * A SHA-256 digest fed chunk by chunk.
  *
  * ```ts
  * const empreinte = new Sha256();
@@ -153,31 +153,31 @@ function comprimer(etat: Int32Array, w: Int32Array, octets: Uint8Array, decalage
  * const hex = empreinte.terminer();
  * ```
  *
- * 🔴 LES MORCEAUX N'ONT AUCUNE TAILLE IMPOSÉE, et c'est tout l'intérêt : un
- * `ReadableStream` de fichier rend ce qu'il veut, jamais des multiples de 64.
- * Ce qui l'absorbe est le tampon résiduel ci-dessous, et c'est la seule partie
- * de ce module que les vecteurs de FIPS n'éprouvent PAS — d'où la confrontation
- * à `crypto.subtle` sur des découpages irréguliers, côté test.
+ * 🔴 THE CHUNKS HAVE NO IMPOSED SIZE, and that is the whole point: a file
+ * `ReadableStream` yields what it wants, never multiples of 64.
+ * What absorbs this is the residual buffer below, and it is the only part
+ * of this module the FIPS vectors do NOT exercise — hence the comparison
+ * with `crypto.subtle` over irregular splits, on the test side.
  */
 export class Sha256 {
     private readonly etat = Int32Array.from(ETAT_INITIAL);
-    /** Le message d'expansion, alloué une fois pour toute la vie de l'objet. */
+    /** The message schedule, allocated once for the whole life of the object. */
     private readonly w = new Int32Array(64);
-    /** Les octets reçus qui n'ont pas encore complété un bloc de 64. */
+    /** The bytes received that have not yet completed a 64-byte block. */
     private readonly residu = new Uint8Array(64);
     private residuLongueur = 0;
-    /** Le nombre TOTAL d'octets absorbés — c'est lui que le bourrage inscrit. */
+    /** The TOTAL number of bytes absorbed — this is what the padding records. */
     private octets = 0;
-    /** L'empreinte, une fois `terminer` appelée. `null` tant qu'elle ne l'est pas. */
+    /** The fingerprint, once `terminer` has been called. `null` until then. */
     private empreinte: string | null = null;
 
     /**
-     * Absorbe un morceau, de n'importe quelle taille, y compris vide.
+     * Absorbs a chunk, of any size, including empty.
      *
-     * ⚠️ **Lève si `terminer` a déjà été appelée.** L'état interne a été détruit
-     * par le bourrage : continuer rendrait une empreinte silencieusement fausse,
-     * et une empreinte fausse qui ne se signale pas est le pire des deux maux
-     * pour une identité de contenu.
+     * ⚠️ **Throws if `terminer` has already been called.** The internal state was destroyed
+     * by the padding: continuing would yield a silently wrong fingerprint,
+     * and a wrong fingerprint that does not flag itself is the worse of the two evils
+     * for a content identity.
      */
     absorber(bloc: Uint8Array): void {
         if (this.empreinte !== null) {
@@ -189,8 +189,8 @@ export class Sha256 {
         this.octets += bloc.length;
 
         let i = 0;
-        // D'abord compléter le résidu, s'il y en a un : tant qu'il n'est pas
-        // plein, aucun bloc de l'entrée n'est aligné sur une frontière de 64.
+        // First complete the residue, if there is one: as long as it is not
+        // full, no block of the input is aligned on a 64-byte boundary.
         if (this.residuLongueur > 0) {
             const pris = Math.min(64 - this.residuLongueur, bloc.length);
             this.residu.set(bloc.subarray(0, pris), this.residuLongueur);
@@ -200,11 +200,11 @@ export class Sha256 {
             comprimer(this.etat, this.w, this.residu, 0);
             this.residuLongueur = 0;
         }
-        // Puis les blocs pleins, lus directement dans l'entrée : aucune copie.
+        // Then the full blocks, read straight from the input: no copy.
         for (; i + 64 <= bloc.length; i += 64) {
             comprimer(this.etat, this.w, bloc, i);
         }
-        // Ce qui reste attend le morceau suivant, ou le bourrage.
+        // What remains waits for the next chunk, or the padding.
         if (i < bloc.length) {
             this.residu.set(bloc.subarray(i), 0);
             this.residuLongueur = bloc.length - i;
@@ -212,22 +212,22 @@ export class Sha256 {
     }
 
     /**
-     * Clôt le condensat et rend les 64 caractères hexadécimaux **minuscules**.
+     * Closes the digest and returns the 64 **lowercase** hexadecimal characters.
      *
-     * ⚠️ **Idempotente** : l'empreinte est retenue, et un second appel rend la
-     * même valeur plutôt que de lever. C'est l'asymétrie voulue avec `absorber`
-     * — relire un résultat est inoffensif, poursuivre un calcul clos ne l'est
-     * pas.
+     * ⚠️ **Idempotent**: the fingerprint is kept, and a second call returns the
+     * same value rather than throwing. That is the intended asymmetry with `absorber`
+     * — rereading a result is harmless, continuing a closed computation is
+     * not.
      */
     terminer(): string {
         if (this.empreinte !== null) return this.empreinte;
 
-        // Bourrage FIPS 180-4 §5.1.1 : l'octet 0x80, des zéros, puis la
-        // longueur en BITS sur 64 bits gros-boutiens. Si le résidu atteint
-        // 56 octets, la longueur ne tient plus dans ce bloc et il en faut un
-        // SECOND — c'est le cas que le troisième vecteur de FIPS exerce, et le
-        // seul endroit de ce fichier où une erreur de borne (`<` contre `<=`)
-        // resterait invisible sur des messages courts.
+        // FIPS 180-4 §5.1.1 padding: the byte 0x80, zeros, then the
+        // length in BITS on 64 big-endian bits. If the residue reaches
+        // 56 bytes, the length no longer fits in this block and a
+        // SECOND one is needed — that is the case the third FIPS vector exercises, and the
+        // only place in this file where a bound error (`<` versus `<=`)
+        // would stay invisible on short messages.
         const queue = new Uint8Array(128);
         queue.set(this.residu.subarray(0, this.residuLongueur), 0);
         queue[this.residuLongueur] = 0x80;
@@ -255,11 +255,11 @@ export class Sha256 {
 }
 
 /**
- * L'empreinte d'un message tenu en entier, en 64 caractères hexadécimaux
- * minuscules — la commodité qui correspond à `hex` du jumeau Rust.
+ * The fingerprint of a message held whole, as 64 lowercase hexadecimal
+ * characters — the convenience matching `hex` of the Rust twin.
  *
- * ⚠️ À n'employer que sur ce qui tient déjà en mémoire. Pour un fichier, c'est
- * `Sha256` morceau par morceau, faute de quoi ce module perd sa raison d'être.
+ * ⚠️ Only to be used on what already fits in memory. For a file, it is
+ * `Sha256` chunk by chunk, otherwise this module loses its reason to exist.
  */
 export function condenserHex(message: Uint8Array): string {
     const empreinte = new Sha256();

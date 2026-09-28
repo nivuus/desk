@@ -1,43 +1,43 @@
 /**
- * Miroir TypeScript de `proto/src/plateforme.rs` — le canal plateforme <->
- * agent (`/agent`).
+ * TypeScript mirror of `proto/src/plateforme.rs` — the platform <->
+ * agent channel (`/agent`).
  *
- * ⚠️ TOUTE MODIFICATION SE RÉPERCUTE DES DEUX CÔTÉS, et
- * `plateforme-vectors.json` est là pour que l'oubli se voie : il porte les
- * chaînes exactes, et les deux langages les vérifient.
+ * ⚠️ ANY CHANGE IS MIRRORED ON BOTH SIDES, and
+ * `plateforme-vectors.json` is there so that an omission shows: it carries the
+ * exact strings, and both languages check them.
  *
- * ⚠️ CE PARSEUR VALIDE À LA FRONTIÈRE PUIS CASTE — il ne vérifie PAS chaque
- * champ. C'est le précédent exact de `parseAgentControl` (`control.ts`), et il
- * est écrit ici pour qu'un lecteur ne croie pas à une validation plus forte
- * qu'elle n'est : `v` et `type` sont contrôlés, le reste est tenu pour conforme
- * parce que l'émetteur est le service lui-même, jamais un tiers.
+ * ⚠️ THIS PARSER VALIDATES AT THE BOUNDARY THEN CASTS — it does NOT check each
+ * field. It is the exact precedent of `parseAgentControl` (`control.ts`), and it
+ * is written here so that a reader does not believe in a stronger validation
+ * than it is: `v` and `type` are checked, the rest is taken as conforming
+ * because the sender is the service itself, never a third party.
  */
 
-// La constante vit dans un module à part, pour rompre le cycle de VALEURS que
-// l'extraction de `plateforme-installation.ts` aurait créé. Elle est
-// réexportée : aucun consommateur n'a bougé.
+// The constant lives in a separate module, to break the cycle of VALUES that
+// the extraction of `plateforme-installation.ts` would have created. It is
+// re-exported: no consumer moved.
 import { PLATEFORME_VERSION } from './plateforme-version';
 export { PLATEFORME_VERSION } from './plateforme-version';
 
-/** Pourquoi la plateforme refuse. `enrolement` est INDISTINCT par
- * construction : distinguer « VM inconnue » de « secret faux » serait un
- * oracle d'énumération. */
+/** Why the platform refuses. `enrolement` is INDISTINCT by
+ * construction: telling "unknown VM" apart from "wrong secret" would be an
+ * enumeration oracle. */
 export type MotifCanal = 'version' | 'forme' | 'enrolement' | 'sequence';
 
-// Les types de charge utile de ④ vivent dans un module frère, extrait AVANT
-// l'addition du sous-bloc G3 pour que ce fichier ne franchisse pas 500
-// lignes. Ils sont RÉEXPORTÉS ici : aucun des dix importateurs relevés n'a eu
-// à bouger, et c'est ce qui fait de l'extraction une transposition pure.
-// ⚠️ IMPORT **ET** RÉEXPORT, ET LES DEUX SONT NÉCESSAIRES : un
-// `export … from` réexporte sans rien mettre dans la portée locale, et les
-// quatre emplois de `Application` et `IssueLancement` ci-dessous ne
-// compileraient plus. Le typecheck l'a dit, et il vaut mieux qu'il le dise ici
-// que dans un paquet consommateur.
+// The payload types of ④ live in a sibling module, extracted BEFORE
+// the addition of sub-block G3 so that this file does not cross 500
+// lines. They are RE-EXPORTED here: none of the ten importers found had
+// to move, and that is what makes the extraction a pure transposition.
+// ⚠️ IMPORT **AND** RE-EXPORT, AND BOTH ARE NEEDED: an
+// `export … from` re-exports without putting anything in local scope, and the
+// four uses of `Application` and `IssueLancement` below would no longer
+// compile. The typecheck said so, and it is better that it says so here
+// than in a consuming package.
 import type { Application, IssueLancement } from './plateforme-apps';
 export type { Application, SourceMax, IssueLancement } from './plateforme-apps';
 
-// Les types de l'INSTALLATION vivent dans un module frère, extrait pour la même
-// raison. Import ET réexport, pour la même raison qu'au-dessus.
+// The INSTALLATION types live in a sibling module, extracted for the same
+// reason. Import AND re-export, for the same reason as above.
 import type {
     InstallerMessage,
     ProgressionMessage,
@@ -48,32 +48,32 @@ export { estPhase, estIssueInstallation } from './plateforme-installation';
 export { encodeProgression, encodeTermine, encodeInstaller } from './plateforme-installation';
 import { lireProgression, lireTermine } from './plateforme-installation';
 
-// ⚠️ CES CINQ GARDES ÉTAIENT IMPORTÉES ICI, ET NE LE SONT PLUS : elles sont
-// parties avec les deux lectures, dans `plateforme-installation.ts`. L'import
-// orphelin qui restait n'était vu par AUCUN typecheck de `proto/` — c'est celui
-// de `client/`, dont le `tsconfig` est plus strict, qui l'a rendu (`TS6192`).
-// **Deux paquets typechèquent le même fichier avec deux sévérités**, et seul le
-// plus sévère dit la vérité.
+// ⚠️ THESE FIVE GUARDS WERE IMPORTED HERE, AND NO LONGER ARE: they
+// left with the two readers, into `plateforme-installation.ts`. The orphan
+// import that remained was seen by NO typecheck of `proto/` — it is the one
+// of `client/`, whose `tsconfig` is stricter, that reported it (`TS6192`).
+// **Two packages typecheck the same file with two severities**, and only the
+// stricter one tells the truth.
 
 
 export interface EnrolerMessage { v: number; type: 'enroler'; vm: string; secret: string }
 export interface BattementMessage { v: number; type: 'battement' }
 /**
- * Le catalogue de la VM, en DIFF.
+ * The VM catalogue, as a DIFF.
  *
- * 🔴 `complet` A UNE SÉMANTIQUE NOMMÉE : à `true`, la plateforme marque
- * disparue TOUTE ligne de cette VM absente d'`applications` et ignore
- * `disparues` ; à `false`, elle applique le delta. L'agent émet `true` à
- * chaque (ré)enrôlement, ce qui rend la perte d'un message montant sans
- * conséquence — ce canal est un `push` sans garantie de livraison, et sans ce
- * renvoi complet une perte laisserait la plateforme divergente SANS TERME.
+ * 🔴 `complet` HAS A NAMED SEMANTICS: at `true`, the platform marks as
+ * gone EVERY row of this VM missing from `applications` and ignores
+ * `disparues`; at `false`, it applies the delta. The agent emits `true` at
+ * every (re)enrolment, which makes the loss of an upstream message without
+ * consequence — this channel is a `push` with no delivery guarantee, and without this
+ * full resend a loss would leave the platform divergent WITH NO END.
  */
 export interface CatalogueMessage {
     v: number;
     type: 'catalogue';
     complet: boolean;
     applications: Application[];
-    /** Des CLÉS, jamais des objets. */
+    /** KEYS, never objects. */
     disparues: string[];
 }
 export interface LanceeMessage {
@@ -96,7 +96,7 @@ export interface EnroleMessage {
     type: 'enrole';
     prefixe: string;
     jeton: string;
-    /** En MILLISECONDES, comme tout horodatage de ce service. */
+    /** In MILLISECONDS, like every timestamp of this service. */
     expire_a: number;
 }
 export interface BattementRecuMessage {
@@ -106,45 +106,45 @@ export interface BattementRecuMessage {
     expire_a: number;
 }
 /**
- * Le refus, et LA SEULE ENVELOPPE HORS VERSIONNEMENT de ce protocole.
+ * The refusal, and THE ONLY ENVELOPE OUTSIDE VERSIONING in this protocol.
  *
- * 🔴 `motif` EST UNE `string`, PAS UN `MotifCanal`, ET C'EST DÉLIBÉRÉ
- * (correction du 20 août 2026, miroir de `proto/src/plateforme.rs`). Un
- * lecteur doit pouvoir lire un refus émis par une version qu'il ne connaît
- * pas — sans quoi un agent périmé ne peut jamais apprendre POURQUOI il est
- * refusé et boucle sans terme, ce que la recette G1 a mesuré : 0 ligne de
- * refus, 10 reprises. Un motif ajouté par une version future doit donc rester
- * lisible et journalisable tel quel.
+ * 🔴 `motif` IS A `string`, NOT A `MotifCanal`, AND THAT IS DELIBERATE
+ * (fix of 20 August 2026, mirror of `proto/src/plateforme.rs`). A
+ * reader must be able to read a refusal emitted by a version it does not
+ * know — otherwise an outdated agent can never learn WHY it is
+ * refused and loops with no end, which the G1 acceptance measured: 0 refusal
+ * line, 10 retries. A reason added by a future version must therefore stay
+ * readable and loggable as is.
  *
- * ⚠️ EN ÉCRITURE, RIEN N'EST LIBRE : `encodeRefus` prend un `MotifCanal`. La
- * tolérance est une tolérance de LECTURE.
+ * ⚠️ WHEN WRITING, NOTHING IS FREE: `encodeRefus` takes a `MotifCanal`. The
+ * tolerance is a READING tolerance.
  *
- * 🔴 SA FORME EST GELÉE — `type`, `v`, `motif`, et rien d'autre, jamais. Un
- * champ ajouté ici serait rejeté par les lecteurs Rust antérieurs
- * (`deny_unknown_fields`) et annulerait à lui seul toute la tolérance.
+ * 🔴 ITS SHAPE IS FROZEN — `type`, `v`, `motif`, and nothing else, ever. A
+ * field added here would be rejected by older Rust readers
+ * (`deny_unknown_fields`) and would on its own cancel all the tolerance.
  */
 export interface RefusMessage { v: number; type: 'refus'; motif: string }
 /**
- * Lancer une application de la VM.
+ * Launch an application of the VM.
  *
- * ⚠️ L'ORDRE NE PORTE PAS LE CHEMIN DU RACCOURCI, il porte la clé, et l'agent
- * la résout dans SON PROPRE catalogue — celui qu'il vient de lire sur le
- * disque. La copie de la plateforme peut être vieille d'une réconciliation ;
- * celle de l'agent ne l'est jamais. `demande` apparie l'ordre à sa `lancee`.
+ * ⚠️ THE ORDER DOES NOT CARRY THE SHORTCUT PATH, it carries the key, and the agent
+ * resolves it in ITS OWN catalogue — the one it has just read from the
+ * disk. The platform's copy may be one reconciliation old;
+ * the agent's never is. `demande` pairs the order with its `lancee`.
  */
 export interface LancerMessage { v: number; type: 'lancer'; demande: string; cle: string }
 
 /**
- * Les empreintes que la plateforme n'a PAS, parmi celles que le dernier
- * `catalogue` a annoncées.
+ * The fingerprints the platform does NOT have, among those the last
+ * `catalogue` announced.
  *
- * 🔴 ELLE N'EST PAS ÉMISE QUAND L'ENSEMBLE EST VIDE : une liste vide coûterait
- * un message par réconciliation sur un disque au repos, ce que le diff de G1
- * existe précisément pour éviter. La règle vit chez l'appelant
- * (`plateforme/src/agents/canal.ts`), qui seul connaît l'ensemble.
+ * 🔴 IT IS NOT EMITTED WHEN THE SET IS EMPTY: an empty list would cost
+ * one message per reconciliation on an idle disk, which the G1 diff
+ * exists precisely to avoid. The rule lives in the caller
+ * (`plateforme/src/agents/canal.ts`), which alone knows the set.
  *
- * ⚠️ LES OCTETS NE L'EMPRUNTENT JAMAIS : ce message ne porte qu'un inventaire.
- * Les images passent par `PUT /icone/:sha256`.
+ * ⚠️ THE BYTES NEVER TRAVEL THROUGH IT: this message carries only an inventory.
+ * The images go through `PUT /icone/:sha256`.
  */
 export interface IconesManquantesMessage {
     v: number;
@@ -161,22 +161,22 @@ export type DepuisLaPlateforme =
     | InstallerMessage;
 
 /**
- * Les seuls `type` que ce parseur accepte — le sens PLATEFORME -> AGENT.
+ * The only `type`s this parser accepts — the PLATFORM -> AGENT direction.
  *
- * 🔴 `enroler` et `battement` en sont ABSENTS À DESSEIN : les accepter ferait
- * qu'un pair traiterait son propre message comme une réponse, confusion de
- * sens qu'aucun contrôle de version ne verrait.
+ * 🔴 `enroler` and `battement` are ABSENT ON PURPOSE: accepting them would let
+ * a peer treat its own message as an answer, a confusion of
+ * direction no version check would see.
  *
- * 🔴 LA LISTE EST DÉRIVÉE DE L'UNION, ET C'EST UN REMÈDE STRUCTUREL, PAS UN
- * TEST DE PLUS. Écrite à la main, elle est le jumeau exact de `TYPES_AGENT`
- * (`control.ts`), que rien ne confronte à son union et dont l'oubli ne casse
- * « ni compilation ni test ». Ici, `Record<DepuisLaPlateforme['type'], true>`
- * fait REFUSER PAR `tsc` toute variante ajoutée à l'union sans sa clé — la
- * rouge est le typecheck lui-même, et elle a été jouée.
+ * 🔴 THE LIST IS DERIVED FROM THE UNION, AND IT IS A STRUCTURAL REMEDY, NOT ONE
+ * MORE TEST. Written by hand, it is the exact twin of `TYPES_AGENT`
+ * (`control.ts`), which nothing confronts with its union and whose omission breaks
+ * "neither build nor test". Here, `Record<DepuisLaPlateforme['type'], true>`
+ * makes `tsc` REFUSE any variant added to the union without its key — the
+ * red is the typecheck itself, and it was played.
  *
- * ⚠️ L'exhaustivité seule est vérifiée par le type ; l'ABSENCE des types du
- * sens inverse ne l'est pas — un `enroler: true` de trop serait une erreur
- * `tsc` (clé hors de l'union), donc les deux sens sont bien couverts.
+ * ⚠️ Only exhaustiveness is checked by the type; the ABSENCE of the types of the
+ * reverse direction is not — an extra `enroler: true` would be a
+ * `tsc` error (key outside the union), so both directions are indeed covered.
  */
 const TOUS_DEPUIS: Record<DepuisLaPlateforme['type'], true> = {
     enrole: true,
@@ -188,20 +188,20 @@ const TOUS_DEPUIS: Record<DepuisLaPlateforme['type'], true> = {
 };
 const TYPES_DEPUIS = Object.keys(TOUS_DEPUIS) as DepuisLaPlateforme['type'][];
 
-/** Exposée pour que le test puisse comparer la liste dérivée à son union. */
+/** Exposed so the test can compare the derived list to its union. */
 export function typesDepuis(): readonly DepuisLaPlateforme['type'][] {
     return TYPES_DEPUIS;
 }
 
 /**
- * ⚠️ L'ORDRE DES CHAMPS EST `type` PUIS `v`, ET IL EST DÉLIBÉRÉ : serde émet le
- * tag interne EN PREMIER (`plateforme.rs`), et `JSON.stringify` respecte
- * l'ordre d'insertion. Écrire `v` d'abord — ce que fait `control.ts` — produit
- * une chaîne DIFFÉRENTE de celle du Rust. Rien ne casserait pour autant (les
- * deux bouts parsent du JSON, ils ne comparent pas des chaînes), mais
- * `plateforme-vectors.json` fige la chaîne EXACTE et la vérifie des deux
- * côtés : la parité octet pour octet est ce qui rend ce vecteur décidable.
- * Cette divergence a été trouvée par le test, pas par la relecture.
+ * ⚠️ THE FIELD ORDER IS `type` THEN `v`, AND IT IS DELIBERATE: serde emits the
+ * internal tag FIRST (`plateforme.rs`), and `JSON.stringify` respects
+ * insertion order. Writing `v` first — which `control.ts` does — produces
+ * a string DIFFERENT from the Rust one. Nothing would break for all that (the
+ * two ends parse JSON, they do not compare strings), but
+ * `plateforme-vectors.json` freezes the EXACT string and checks it on both
+ * sides: byte-for-byte parity is what makes this vector decidable.
+ * This divergence was found by the test, not by review.
  */
 export function encodeEnroler(vm: string, secret: string): string {
     const message: EnrolerMessage = { type: 'enroler', v: PLATEFORME_VERSION, vm, secret };
@@ -234,12 +234,12 @@ export function encodeLancee(demande: string, issue: IssueLancement): string {
 }
 
 /**
- * Les seuls `type` que le parseur de la PLATEFORME accepte — le sens
- * AGENT -> PLATEFORME.
+ * The only `type`s the PLATFORM's parser accepts — the
+ * AGENT -> PLATFORM direction.
  *
- * 🔴 Symétrique de `TYPES_DEPUIS`, et DÉRIVÉE DE L'UNION pour la même raison
- * exactement : les types de réponse en sont ABSENTS À DESSEIN. Les accepter
- * ferait que la plateforme traiterait sa propre réponse comme une demande.
+ * 🔴 Symmetric to `TYPES_DEPUIS`, and DERIVED FROM THE UNION for exactly the same
+ * reason: the answer types are ABSENT ON PURPOSE. Accepting them
+ * would let the platform treat its own answer as a request.
  */
 const TOUS_VERS: Record<VersLaPlateforme['type'], true> = {
     enroler: true,
@@ -251,27 +251,27 @@ const TOUS_VERS: Record<VersLaPlateforme['type'], true> = {
 };
 const TYPES_VERS = Object.keys(TOUS_VERS) as VersLaPlateforme['type'][];
 
-/** Exposée pour que le test puisse comparer la liste dérivée à son union. */
+/** Exposed so the test can compare the derived list to its union. */
 export function typesVers(): readonly VersLaPlateforme['type'][] {
     return TYPES_VERS;
 }
 
 /**
- * Ce que rend `parseVersLaPlateforme`.
+ * What `parseVersLaPlateforme` returns.
  *
- * 🔴 UN VERDICT, JAMAIS UNE EXCEPTION, et c'est ce qui le distingue de son
- * jumeau `parseDepuisLaPlateforme`. La plateforme doit RÉPONDRE un motif typé
- * au pair — `{"type":"refus","motif":…}` — avant de décider quoi faire du
- * socket ; une exception l'obligerait à deviner le motif depuis un message
- * d'erreur, ou à répondre le même motif pour toutes les causes.
+ * 🔴 A VERDICT, NEVER AN EXCEPTION, and that is what sets it apart from its
+ * twin `parseDepuisLaPlateforme`. The platform must ANSWER a typed reason
+ * to the peer — `{"type":"refus","motif":…}` — before deciding what to do with the
+ * socket; an exception would force it to guess the reason from an error
+ * message, or to answer the same reason for all causes.
  */
 export type LectureVersLaPlateforme =
     | { ok: true; message: VersLaPlateforme }
     | { ok: false; motif: MotifCanal };
 
-// 🔴 LES GARDES DE FORME VIVENT DANS UN MODULE VOISIN, extraites parce que ce
-// fichier a FRANCHI 500 lignes (528). Voir l'en-tête de `plateforme-gardes.ts`
-// pour la déclaration du franchissement.
+// 🔴 THE SHAPE GUARDS LIVE IN A NEIGHBOURING MODULE, extracted because this
+// file CROSSED 500 lines (528). See the header of `plateforme-gardes.ts`
+// for the declaration of the crossing.
 import {
     chaineNonVide,
     estApplication,
@@ -281,20 +281,20 @@ import {
 } from './plateforme-gardes';
 
 /**
- * Lit un message venant de l'agent.
+ * Reads a message coming from the agent.
  *
- * ⚠️ CELUI-CI VALIDE CHAQUE CHAMP, LÀ OÙ SON JUMEAU CASTE, et l'asymétrie est
- * délibérée : l'émetteur d'un `DepuisLaPlateforme` est le service lui-même,
- * l'émetteur d'un `VersLaPlateforme` est un pair du réseau. C'est le SEUL
- * endroit de ce fichier où les octets viennent d'un tiers qui n'a aucune
- * raison d'être bien élevé — un `vm` absent traverserait sinon jusqu'à la
- * requête SQL, et le refus qui en sortirait dirait `enrolement`, c'est-à-dire
- * « secret faux », pour un message qui n'a jamais porté de VM.
+ * ⚠️ THIS ONE VALIDATES EACH FIELD, WHERE ITS TWIN CASTS, and the asymmetry is
+ * deliberate: the sender of a `DepuisLaPlateforme` is the service itself,
+ * the sender of a `VersLaPlateforme` is a network peer. It is the ONLY
+ * place in this file where the bytes come from a third party that has no
+ * reason to be well behaved — a missing `vm` would otherwise travel all the way to the
+ * SQL query, and the refusal coming out of it would say `enrolement`, that is
+ * "wrong secret", for a message that never carried a VM.
  *
- * 🔴 LA VERSION EST CONTRÔLÉE AVANT LE TYPE. Elle est l'enveloppe : un message
- * d'une version future peut donner à un `type` connu un sens que nous
- * ignorons, et le refuser pour `forme` désignerait la mauvaise cause au pair
- * qui lit le motif pour décider s'il doit se mettre à jour ou se corriger.
+ * 🔴 THE VERSION IS CHECKED BEFORE THE TYPE. It is the envelope: a message
+ * from a future version may give a known `type` a meaning we
+ * do not know, and refusing it as `forme` would point the wrong cause to the peer
+ * that reads the reason to decide whether it must update or fix itself.
  */
 export function parseVersLaPlateforme(raw: string): LectureVersLaPlateforme {
     let parsed: unknown;
@@ -303,12 +303,12 @@ export function parseVersLaPlateforme(raw: string): LectureVersLaPlateforme {
     } catch {
         return { ok: false, motif: 'forme' };
     }
-    // `null` est le cas dangereux : `null.type` LÈVE, quand un nombre ou une
-    // chaîne rendraient `undefined` par auto-boxing. Même garde que le relais.
+    // `null` is the dangerous case: `null.type` THROWS, whereas a number or a
+    // string would yield `undefined` through auto-boxing. Same guard as the relay.
     if (!estObjetJson(parsed)) return { ok: false, motif: 'forme' };
 
-    // 🔴 STRICTE, ET SANS DÉFAUT : un `parsed.v ?? PLATEFORME_VERSION`
-    // accepterait un message SANS champ `v`, et un `v: null` avec lui.
+    // 🔴 STRICT, AND WITH NO DEFAULT: a `parsed.v ?? PLATEFORME_VERSION`
+    // would accept a message WITHOUT a `v` field, and a `v: null` with it.
     if (parsed.v !== PLATEFORME_VERSION) return { ok: false, motif: 'version' };
 
     if (!TYPES_VERS.includes(parsed.type as (typeof TYPES_VERS)[number])) {
@@ -326,9 +326,9 @@ export function parseVersLaPlateforme(raw: string): LectureVersLaPlateforme {
     }
 
     if (parsed.type === 'catalogue') {
-        // ⚠️ CHAQUE CHAMP EST VALIDÉ, et pas seulement le type : c'est le seul
-        // parseur du fichier dont les octets viennent d'un tiers. Un
-        // `applications` absent traverserait sinon jusqu'à la requête SQL.
+        // ⚠️ EACH FIELD IS VALIDATED, and not only the type: it is the only
+        // parser in the file whose bytes come from a third party. A missing
+        // `applications` would otherwise travel all the way to the SQL query.
         if (typeof parsed.complet !== 'boolean') return { ok: false, motif: 'forme' };
         if (!Array.isArray(parsed.applications)) return { ok: false, motif: 'forme' };
         if (!Array.isArray(parsed.disparues) || !parsed.disparues.every(estChaine)) {
@@ -361,9 +361,9 @@ export function parseVersLaPlateforme(raw: string): LectureVersLaPlateforme {
         };
     }
 
-    // Les deux lectures de ④-installation vivent dans le module frère, avec les
-    // types et les gardes qu'elles emploient : ce fichier serait sinon au-dessus
-    // de 500 lignes. Elles rendent `null` pour « forme », jamais une exception.
+    // The two readers of ④-installation live in the sibling module, with the
+    // types and guards they use: this file would otherwise be above
+    // 500 lines. They return `null` for "shape", never an exception.
     if (parsed.type === 'progression') {
         const message = lireProgression(parsed);
         return message ? { ok: true, message } : { ok: false, motif: 'forme' };
@@ -378,14 +378,14 @@ export function parseVersLaPlateforme(raw: string): LectureVersLaPlateforme {
 }
 
 /**
- * Les trois réponses de la plateforme, encodées ICI et nulle part ailleurs.
+ * The three answers of the platform, encoded HERE and nowhere else.
  *
- * 🔴 L'ORDRE DES CHAMPS EST `type` PUIS `v`, comme pour le sens inverse et
- * pour la même raison : serde émet le tag interne en premier, et
- * `plateforme-vectors.json` fige la chaîne EXACTE que les DEUX langages
- * doivent produire. Ces trois fonctions existent précisément pour que la
- * plateforme n'ait pas à recopier la forme du message dans son propre code —
- * une copie divergerait en silence, et rien ne comparerait plus rien.
+ * 🔴 THE FIELD ORDER IS `type` THEN `v`, as for the reverse direction and
+ * for the same reason: serde emits the internal tag first, and
+ * `plateforme-vectors.json` freezes the EXACT string BOTH languages
+ * must produce. These three functions exist precisely so that the
+ * platform does not have to copy the message shape into its own code —
+ * a copy would diverge silently, and nothing would compare anything any more.
  */
 export function encodeEnrole(prefixe: string, jeton: string, expireA: number): string {
     const message: EnroleMessage = {
@@ -419,9 +419,9 @@ export function encodeLancer(demande: string, cle: string): string {
 }
 
 /**
- * ⚠️ L'APPELANT DOIT VÉRIFIER QUE `empreintes` N'EST PAS VIDE avant d'appeler :
- * cet encodeur ne le fait pas pour lui, parce qu'il ne saurait pas quoi rendre
- * à la place.
+ * ⚠️ THE CALLER MUST CHECK THAT `empreintes` IS NOT EMPTY before calling:
+ * this encoder does not do it for them, because it would not know what to return
+ * instead.
  */
 export function encodeIconesManquantes(empreintes: string[]): string {
     const message: IconesManquantesMessage = {
@@ -433,25 +433,25 @@ export function encodeIconesManquantes(empreintes: string[]): string {
 }
 
 /**
- * Lit un message venant de la plateforme.
+ * Reads a message coming from the platform.
  *
- * 🔴 LA COMPARAISON DE VERSION EST STRICTE (`!==`), ET LE CHAMP N'A AUCUN
- * DÉFAUT. Un `parsed.v ?? PLATEFORME_VERSION` accepterait un message SANS
- * champ `v`, et un message `v: null` avec lui — c'est exactement le trou que
- * `verifie_version` refuse côté Rust, et que son commentaire nomme.
+ * 🔴 THE VERSION COMPARISON IS STRICT (`!==`), AND THE FIELD HAS NO
+ * DEFAULT. A `parsed.v ?? PLATEFORME_VERSION` would accept a message WITHOUT
+ * a `v` field, and a `v: null` message with it — that is exactly the hole that
+ * `verifie_version` refuses on the Rust side, and that its comment names.
  *
- * 🔴 LE `refus` EN EST EXEMPTÉ, ET LE TYPE EST DONC CONTRÔLÉ AVANT LA VERSION
- * ICI — à l'inverse exact de `parseVersLaPlateforme`, qui contrôle la version
- * d'abord. L'asymétrie est le remède du 20 août 2026 : un refus dit « je ne te
- * servirai pas », ce qui se comprend sans négociation de version, et c'est le
- * SEUL message qu'un pair périmé doive pouvoir lire. Le champ `v` y reste
- * obligatoire et reste un nombre — seule sa VALEUR est tolérée —, sans quoi on
- * rouvrirait le trou du `v` absent que le paragraphe ci-dessus ferme.
+ * 🔴 THE `refus` IS EXEMPT FROM IT, AND THE TYPE IS THUS CHECKED BEFORE THE VERSION
+ * HERE — the exact opposite of `parseVersLaPlateforme`, which checks the version
+ * first. The asymmetry is the remedy of 20 August 2026: a refusal says "I will not
+ * serve you", which is understood without version negotiation, and it is the
+ * ONLY message an outdated peer must be able to read. The `v` field stays
+ * mandatory there and stays a number — only its VALUE is tolerated —, otherwise we
+ * would reopen the hole of the missing `v` that the paragraph above closes.
  *
- * ⚠️ CETTE FONCTION N'EST APPELÉE PAR AUCUN CODE DE LA PLATEFORME, qui ÉMET
- * les `DepuisLaPlateforme` sans jamais en lire. Elle est le miroir exécutable
- * du lecteur Rust, et c'est `plateforme-vectors.json` (clé `refus_lisibles`)
- * qui force les deux à s'accorder.
+ * ⚠️ THIS FUNCTION IS CALLED BY NO PLATFORM CODE, which EMITS
+ * `DepuisLaPlateforme` messages without ever reading any. It is the executable mirror
+ * of the Rust reader, and it is `plateforme-vectors.json` (key `refus_lisibles`)
+ * that forces the two to agree.
  */
 export function parseDepuisLaPlateforme(raw: string): DepuisLaPlateforme {
     const parsed = JSON.parse(raw) as Partial<DepuisLaPlateforme>;

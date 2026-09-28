@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Synchronise puis compile l'agent sur la VM Windows.
 
-# ── VOIE MORTE, 29 août 2026 — voir scripts/voie-morte.sh ───────────────────
+# ── DEAD PATH, 29 August 2026 — see scripts/voie-morte.sh ───────────────────
 . "$(dirname "$0")/voie-morte.sh"
 voie_morte "synchronisait les sources Rust vers C:\\dev via /media/vm, puis les compilait SUR la VM" \
 "     scripts/build-agent-croise.sh <destination>
@@ -9,22 +9,22 @@ voie_morte "synchronisait les sources Rust vers C:\\dev via /media/vm, puis les 
        sans la VM. Le déposer ensuite sur l'invité par un serveur HTTP local
        et Invoke-WebRequest, en COMPARANT LES DEUX sha256 — l'idiome est dans
        docs/superpowers/plans/journaux-lot32t/instrument/fenetre-e1.sh."
-# ─── Ci-dessous, le corps d'origine, conservé comme relevé historique. ──────
+# ─── Below, the original body, kept as a historical record. ──────
 
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 "$ROOT/scripts/sync-agent.sh"
 
-# Le quota WinRM par shell (MaxMemoryPerShellMB) vaut 1024 Mo par défaut sur
-# Windows Server. C'est trop juste pour le codegen LLVM parallèle de rustc
-# lors de la compilation des crates proc-macro (proc-macro2, parking_lot_core
-# notamment) : le build échoue alors avec une erreur qui ne mentionne jamais
-# la mémoire — `STATUS_STACK_BUFFER_OVERRUN (0xc0000409)`, qui ressemble à
-# une corruption de pile mais vient en réalité du Job Object WinRM trop
-# contraint. On relève le quota une fois pour toutes, de façon idempotente :
-# on lit la valeur courante et on ne la modifie que si elle est insuffisante,
-# jamais à la baisse.
+# The WinRM per-shell quota (MaxMemoryPerShellMB) defaults to 1024 MB on
+# Windows Server. That is too tight for rustc's parallel LLVM codegen
+# when compiling the proc-macro crates (proc-macro2, parking_lot_core
+# in particular): the build then fails with an error that never mentions
+# memory — `STATUS_STACK_BUFFER_OVERRUN (0xc0000409)`, which looks like
+# stack corruption but actually comes from the overly
+# constrained WinRM Job Object. We raise the quota once and for all, idempotently:
+# we read the current value and only change it if it is insufficient,
+# never downwards.
 MIN_SHELL_MB=4096
 CURRENT_SHELL_MB="$(node "$ROOT/scripts/winrm.js" \
     '(Get-Item WSMan:\localhost\Shell\MaxMemoryPerShellMB).Value' 2>/dev/null | tr -dc '0-9')"
@@ -36,36 +36,36 @@ else
     echo "quota WinRM MaxMemoryPerShellMB déjà suffisant (${CURRENT_SHELL_MB} Mo)" >&2
 fi
 
-# `release` par défaut : les mesures du jalon 1 (débit ~30 i/s, latence
-# médiane 276 ms) ont toutes été prises sur un binaire `debug`, sans que ce
-# soit un choix — c'était simplement la valeur par défaut de ce script, et
-# `run-agent.sh` lançait le chemin `target\debug` en dur. Passer `debug` en
-# premier argument reste possible pour déboguer.
+# `release` by default: the milestone 1 measurements (throughput ~30 fps, median
+# latency 276 ms) were all taken on a `debug` binary, without that
+# being a choice — it was simply this script's default value, and
+# `run-agent.sh` launched the `target\debug` path hardcoded. Passing `debug` as
+# first argument remains possible for debugging.
 PROFILE="${1:-release}"
 FLAG=""
 [ "$PROFILE" = "release" ] && FLAG="--release"
 
-# cmake est requis par `audiopus_sys`, qui bâtit libopus depuis la source C
-# vendorée dans le crate. Il n'est pas dans le PATH par défaut de la session
-# WinRM après une installation winget.
+# cmake is required by `audiopus_sys`, which builds libopus from the C source
+# vendored in the crate. It is not in the default PATH of the
+# WinRM session after a winget install.
 #
-# CMAKE_POLICY_VERSION_MINIMUM=3.5 : le cmake installé par winget (4.0.2) a
-# retiré la compatibilité avec les `cmake_minimum_required` antérieurs à 3.5
-# et refuse net de configurer sans ce filet de sécurité — exactement le
-# CMakeLists.txt vendoré par `audiopus_sys` (`cmake_minimum_required(VERSION
-# 3.1)`). Sans cette variable, la configuration échoue avec « Compatibility
-# with CMake < 3.5 has been removed from CMake », alors même que cmake est
-# bien trouvé et sur le PATH.
+# CMAKE_POLICY_VERSION_MINIMUM=3.5: the cmake installed by winget (4.0.2) has
+# removed compatibility with `cmake_minimum_required` older than 3.5
+# and flatly refuses to configure without this safety net — exactly the
+# CMakeLists.txt vendored by `audiopus_sys` (`cmake_minimum_required(VERSION
+# 3.1)`). Without this variable, configuration fails with "Compatibility
+# with CMake < 3.5 has been removed from CMake", even though cmake is
+# indeed found and on the PATH.
 #
-# Portée : cette variable d'environnement s'applique à TOUT l'appel `cargo
-# build` qui suit, donc à chaque crate `-sys` du graphe qui invoque cmake —
-# pas seulement `audiopus_sys`. Aujourd'hui, `aws-lc-sys` (dépendance de
-# `str0m`, sans rapport avec l'audio) est le seul autre crate du graphe à
-# invoquer cmake ; il déclare `cmake_minimum_required(VERSION 3.5..3.31)`
-# (syntaxe intervalle) dans son CMakeLists.txt vendoré, qui n'est pas
-# concerné par le filet de compatibilité et ignore donc cette variable sans
-# effet de bord. Si une future dépendance ajoute un CMakeLists.txt vendoré
-# avec un plancher de version différent, vérifier qu'il tolère aussi
-# CMAKE_POLICY_VERSION_MINIMUM=3.5 avant de le supposer inoffensif.
+# Scope: this environment variable applies to the WHOLE `cargo
+# build` call that follows, hence to every `-sys` crate in the graph that invokes cmake —
+# not only `audiopus_sys`. Today, `aws-lc-sys` (a dependency of
+# `str0m`, unrelated to audio) is the only other crate in the graph to
+# invoke cmake; it declares `cmake_minimum_required(VERSION 3.5..3.31)`
+# (range syntax) in its vendored CMakeLists.txt, which is not
+# affected by the compatibility net and thus ignores this variable with no
+# side effect. If a future dependency adds a vendored CMakeLists.txt
+# with a different version floor, check that it also tolerates
+# CMAKE_POLICY_VERSION_MINIMUM=3.5 before assuming it harmless.
 node "$ROOT/scripts/winrm.js" \
     "\$env:Path += ';C:\\Users\\Administrateur\\.cargo\\bin;C:\\Program Files\\CMake\\bin'; \$env:CMAKE_POLICY_VERSION_MINIMUM = '3.5'; Set-Location C:\\dev; cargo build $FLAG 2>&1 | Out-String"

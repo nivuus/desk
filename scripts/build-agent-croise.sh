@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# Produit agent.exe SANS la VM, et le dépose à la destination donnée.
+# Produces agent.exe WITHOUT the VM, and drops it at the given destination.
 #
-# 🔴 POURQUOI CE SCRIPT EXISTE. `console/guest/payload.py` déclare l'agent
-# « extracted before the wipe » et `fetch_payload.py` écrit « Not fetched, and
-# never fetchable » : l'appliance se reconstruit aujourd'hui autour d'un
-# binaire que personne ne sait refabriquer. Celui-ci le refabrique.
+# 🔴 WHY THIS SCRIPT EXISTS. `console/guest/payload.py` declares the agent
+# "extracted before the wipe" and `fetch_payload.py` writes "Not fetched, and
+# never fetchable": the appliance is rebuilt today around a
+# binary nobody knows how to rebuild. This one rebuilds it.
 #
-# ⚠️ CE QU'IL N'ÉTABLIT PAS : que le binaire FONCTIONNE. Il se lie ; c'est un
-# produit mingw là où l'ancien était bâti sur la VM en MSVC, et il n'a jamais
-# tourné. Voir la spec § 4.3 : le juge est une exécution sur la VM.
+# ⚠️ WHAT IT DOES NOT ESTABLISH: that the binary WORKS. It links; it is a
+# mingw product where the old one was built on the VM with MSVC, and it has never
+# run. See the spec § 4.3: the judge is a run on the VM.
 set -euo pipefail
 unset -f chpwd 2>/dev/null || true
 

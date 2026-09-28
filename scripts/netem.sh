@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Banc de dégradation réseau pour la recette du chantier C.
+# Network degradation bench for the work item C acceptance.
 #
-# Pose un profil sur l'interface du pont de la VM, DANS LES DEUX SENS :
-#   - sortant (hôte → VM)      : qdisc netem directement sur $IFACE
-#   - entrant (VM → hôte)      : redirigé vers $IFB, car tc ne façonne qu'en
-#                                sortie. C'est ce sens qui porte la vidéo.
+# Sets a profile on the VM bridge interface, IN BOTH DIRECTIONS:
+#   - outgoing (host → VM)     : netem qdisc directly on $IFACE
+#   - incoming (VM → host)     : redirected to $IFB, since tc only shapes on
+#                                egress. This is the direction carrying the video.
 #
-# Usage : scripts/netem.sh <lan|adsl|4g|congestionné|effondrement|off>
+# Usage: scripts/netem.sh <lan|adsl|4g|congestionné|effondrement|off>
 set -euo pipefail
 
 IFACE="${IFACE:-internalBridge}"
@@ -39,31 +39,31 @@ nettoyer_sur_erreur() {
     exit 1
 }
 
-nettoyer_sans_trap  # Nettoyage initial, avant toute pose
+nettoyer_sans_trap  # Initial cleanup, before any setup
 
-# `lan` et `off` sont le même état du réseau — aucune qdisc — mais deux
-# intentions différentes : `lan` est le profil TÉMOIN de la recette, `off`
-# est le retrait du banc. Les distinguer évite d'écrire « recette passée
-# sous lan » alors qu'on avait simplement tout retiré.
+# `lan` and `off` are the same network state — no qdisc — but two
+# different intents: `lan` is the CONTROL profile of the acceptance, `off`
+# is the removal of the bench. Telling them apart avoids writing "acceptance passed
+# under lan" when we had simply removed everything.
 if [ "$profil" = "lan" ] || [ "$profil" = "off" ]; then
     echo "profil ${profil} : aucune dégradation posée sur ${IFACE}"
     exit 0
 fi
 
-# Installer le trap pour toute erreur durant la pose : garantir l'atomicité
-# en cas d'échec partiel.
+# Install the trap for any error during setup: guarantee atomicity
+# in case of partial failure.
 trap nettoyer_sur_erreur ERR
 
 modprobe ifb numifbs=1
 ip link set dev "$IFB" up
 
-# Sens sortant (hôte → VM).
+# Outgoing direction (host → VM).
 tc qdisc add dev "$IFACE" root netem \
     delay "$latence" "$gigue" distribution normal \
     loss "$perte" \
     rate "$debit"
 
-# Sens entrant (VM → hôte) : c'est celui qui porte la vidéo.
+# Incoming direction (VM → host): the one carrying the video.
 tc qdisc add dev "$IFACE" handle ffff: ingress
 tc filter add dev "$IFACE" parent ffff: protocol all u32 match u32 0 0 \
     action mirred egress redirect dev "$IFB"
@@ -72,7 +72,7 @@ tc qdisc add dev "$IFB" root netem \
     loss "$perte" \
     rate "$debit"
 
-# Pose réussie — désarmer le trap.
+# Setup succeeded — disarm the trap.
 trap - ERR
 
 echo "profil ${profil} posé sur ${IFACE} et ${IFB} : ${debit}, ${latence} ±${gigue}, perte ${perte}"

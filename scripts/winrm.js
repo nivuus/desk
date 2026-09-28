@@ -1,19 +1,19 @@
-// Exécute une commande PowerShell sur la VM Windows via WinRM.
-// Usage : node scripts/winrm.js "Get-ChildItem C:\\"
-// ── VOIE MORTE, 29 août 2026 — voir scripts/voie-morte.sh ──────────────────
+// Runs a PowerShell command on the Windows VM through WinRM.
+// Usage: node scripts/winrm.js "Get-ChildItem C:\\"
+// ── DEAD PATH, 29 August 2026 — see scripts/voie-morte.sh ──────────────────
 //
-// 🔴 CE SCRIPT NE FONCTIONNE PLUS, ET IL AVAIT L'AIR DE FONCTIONNER.
-// Il parle à la VM en transport **Basic**, que l'invité n'offre plus depuis
-// `Enable-PSRemoting` (401 mesuré le 22 août 2026 ; « Failed to process the
-// request, status Code: » mesuré le 5 septembre 2026).
+// 🔴 THIS SCRIPT NO LONGER WORKS, AND IT LOOKED LIKE IT WORKED.
+// It talks to the VM over **Basic** transport, which the guest no longer offers since
+// `Enable-PSRemoting` (401 measured on 22 August 2026; "Failed to process the
+// request, status Code:" measured on 5 September 2026).
 //
-// ⚠️ SON ÉCHEC ÉTAIT TRAÎTRE : il imprimait la pile de l'erreur sur STDOUT et
-// sortait avec le code 0. Un appelant qui faisait `| tr -dc '0-9'` y ramassait
-// les numéros de ligne de la pile et rendait un compte absurde — vu réellement
-// sur la VM le 28 août 2026 : « 🔴 22246232650828772271221761422508285591251033905
-// agent(s) survivant(s) ». C'est exactement le patron que ce garde supprime.
+// ⚠️ ITS FAILURE WAS TREACHEROUS: it printed the error stack on STDOUT and
+// exited with code 0. A caller doing `| tr -dc '0-9'` picked up
+// the stack line numbers and reported an absurd count — actually seen
+// on the VM on 28 August 2026: "🔴 22246232650828772271221761422508285591251033905
+// surviving agent(s)". That is exactly the pattern this guard removes.
 //
-// Le corps d'origine reste dessous, lisible, comme relevé historique.
+// The original body stays below, readable, as a historical record.
 {
     const successeur = [
         '🔴 VOIE MORTE : scripts/winrm.js',
@@ -44,8 +44,8 @@
 const winrm = require('nodejs-winrm');
 
 const HOST = process.env.WINDOWS_HOSTNAME || '192.168.3.2';
-// Windows en français : le compte est « Administrateur ». « Administrator »
-// échoue à l'authentification sur cette machine.
+// French-language Windows: the account is "Administrateur". "Administrator"
+// fails authentication on this machine. policy: allow-fr
 const USER = process.env.WINDOWS_ADMIN_USERNAME || 'Administrateur';
 const PASS = process.env.WINDOWS_ADMIN_PASSWORD;
 

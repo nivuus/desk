@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Lance l'agent dans la session interactive (session 1) de la VM Windows.
+# Launches the agent in the interactive session (session 1) of the Windows VM.
 #
-# WinRM s'exécute en session 0 : un agent lancé directement par WinRM ne peut
-# ni capturer une fenêtre (Windows.Graphics.Capture) ni injecter des entrées
-# (SendInput), ces API ne franchissant pas la frontière de session. La tâche
-# planifiée avec /IT s'exécute dans la session de l'utilisateur connecté.
+# WinRM runs in session 0: an agent launched directly by WinRM can
+# neither capture a window (Windows.Graphics.Capture) nor inject input
+# (SendInput), these APIs not crossing the session boundary. The scheduled
+# task with /IT runs in the logged-in user's session.
 
-# ── VOIE MORTE, 29 août 2026 — voir scripts/voie-morte.sh ───────────────────
+# ── DEAD PATH, 29 August 2026 — see scripts/voie-morte.sh ───────────────────
 . "$(dirname "$0")/voie-morte.sh"
 voie_morte "écrivait /media/vm/dev/run-agent.ps1 puis lançait C:\\dev\\target\\...\\agent.exe" \
 "     L'agent de l'appliance est lancé par la tâche planifiée « guacamole-agent »,
@@ -15,7 +15,7 @@ voie_morte "écrivait /media/vm/dev/run-agent.ps1 puis lançait C:\\dev\\target\
      env:SUPERVISEUR (donc AVANT l'invocation de l'agent) :
        docs/superpowers/plans/journaux-lot3/instrument/harnais-appliance.sh
        (fonctions variable_de_banc, agent_arreter, agent_relancer)."
-# ─── Ci-dessous, le corps d'origine, conservé comme relevé historique. ──────
+# ─── Below, the original body, kept as a historical record. ──────
 
 set -euo pipefail
 
@@ -24,16 +24,16 @@ TASK_NAME="guacamole-agent"
 USER_NAME="${WINDOWS_ADMIN_USERNAME:-Administrateur}"
 : "${WINDOWS_ADMIN_PASSWORD:?WINDOWS_ADMIN_PASSWORD non défini}"
 
-# Chemin de l'exécutable, assemblé ICI plutôt que dans le heredoc ci-dessous :
-# celui-ci n'est pas entre quotes (il doit interpoler les variables), et un
-# `\$` y est une échappée — écrire `target\${AGENT_PROFILE}` y produisait
-# `target${AGENT_PROFILE}` littéral, séparateur avalé et variable non
-# substituée. Une variable unique, sans antislash devant, n'a pas ce piège :
-# son contenu n'est plus réinterprété une fois substitué.
+# Path of the executable, assembled HERE rather than in the heredoc below:
+# the latter is not quoted (it must interpolate variables), and a
+# `\$` in it is an escape — writing `target\${AGENT_PROFILE}` there produced
+# a literal `target${AGENT_PROFILE}`, separator swallowed and variable not
+# substituted. A single variable, with no backslash in front, has no such trap:
+# its content is no longer reinterpreted once substituted.
 AGENT_EXE="C:\\dev\\target\\${AGENT_PROFILE:-release}\\agent.exe"
 
-# Les variables d'environnement passent par un script d'amorçage : schtasks ne
-# permet pas de les transmettre directement.
+# Environment variables go through a bootstrap script: schtasks does not
+# allow passing them directly.
 cat > /media/vm/dev/run-agent.ps1 <<PS1
 \$env:SIGNALING_URL = '${SIGNALING_URL:-ws://192.168.3.1:8080}'
 \$env:SESSION_ID    = '${SESSION_ID:-demo}'
@@ -161,14 +161,14 @@ try {
 }
 PS1
 
-# -WindowStyle Hidden : sans ce drapeau, la console PowerShell qui héberge
-# agent.exe s'ouvre au premier plan de la session interactive et peut
-# recouvrir entièrement la fenêtre que l'agent est censé capturer (constaté
-# en tâche 9 : un essai de recadrage lisait la couleur de fond de CETTE
-# console — bleu PowerShell #012456 — au lieu du contenu de la fenêtre
-# ciblée, sur la totalité de la zone échantillonnée). Masquer la console
-# n'affecte ni la session (toujours 1, toujours interactive) ni la sortie
-# (toujours redirigée vers agent.log par le StreamWriter UTF-8 ci-dessus).
+# -WindowStyle Hidden: without this flag, the PowerShell console hosting
+# agent.exe opens in the foreground of the interactive session and may
+# entirely cover the window the agent is supposed to capture (observed
+# in task 9: a cropping trial read the background colour of THIS
+# console — PowerShell blue #012456 — instead of the content of the targeted
+# window, over the whole sampled area). Hiding the console
+# affects neither the session (still 1, still interactive) nor the output
+# (still redirected to agent.log by the UTF-8 StreamWriter above).
 node "$ROOT/scripts/winrm.js" \
     "schtasks /delete /tn $TASK_NAME /f 2>\$null; \
      schtasks /create /tn $TASK_NAME /f /it /ru '$USER_NAME' /rp '$WINDOWS_ADMIN_PASSWORD' \

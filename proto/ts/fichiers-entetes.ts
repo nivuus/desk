@@ -1,64 +1,64 @@
-// Les en-têtes JSON des trames du pont fichiers — le jumeau TypeScript de
+// The JSON headers of the file bridge frames — the TypeScript twin of
 // `proto/src/fichiers/entetes.rs`.
 //
-// ⚠️ LE DÉCOUPAGE EST LE MÊME DES DEUX CÔTÉS : la trame dans `fichiers.{rs,ts}`,
-// les en-têtes ici et dans `fichiers/entetes.rs`. Une asymétrie de découpage
-// rendrait le jumelage plus difficile à relire qu'à écrire. Ce fichier est
-// séparé de `fichiers.ts` pour la même raison que son jumeau Rust l'est de
-// `fichiers.rs` — et parce que les deux réunis passeraient la porte de 250
-// lignes que le plan arme sur `fichiers.ts`.
+// ⚠️ THE SPLIT IS THE SAME ON BOTH SIDES: the frame in `fichiers.{rs,ts}`,
+// the headers here and in `fichiers/entetes.rs`. An asymmetric split
+// would make the pairing harder to read than to write. This file is
+// separate from `fichiers.ts` for the same reason its Rust twin is separate from
+// `fichiers.rs` — and because the two together would cross the 250-line
+// gate the plan arms on `fichiers.ts`.
 //
-// 🔴 CE QUI RATTRAPE UN RENOMMAGE : `proto/fichiers-vectors.json`, lu par
-// `fichiers-entetes.test.ts` ICI et par `fichiers/entetes/tests.rs` LÀ-BAS.
-// Tant que ces formes vivaient dans l'agent seul, ce fichier aurait dû les
-// reproduire à la main, et un champ renommé d'un côté aurait cassé le pont sans
-// casser un seul test — le patron exact de `TYPES_AGENT` (`control.ts`) et de
-// la variante `battement-recu` restée verte sur cinquante tests.
+// 🔴 WHAT CATCHES A RENAME: `proto/fichiers-vectors.json`, read by
+// `fichiers-entetes.test.ts` HERE and by `fichiers/entetes/tests.rs` OVER THERE.
+// As long as these shapes lived in the agent alone, this file would have had to
+// reproduce them by hand, and a field renamed on one side would have broken the bridge without
+// breaking a single test — the exact pattern of `TYPES_AGENT` (`control.ts`) and of
+// the `battement-recu` variant that stayed green over fifty tests.
 //
-// ⚠️ `position`, `taille` et `longueur` sont des entiers 64 bits côté Rust et
-// des `number` ici : au-delà de 2^53 les deux implémentations divergeraient en
-// silence. Le pont sert un répertoire local ouvert par la File System Access
-// API, où un fichier de 9 pétaoctets n'existe pas ; la borne est nommée, pas
-// gardée.
+// ⚠️ `position`, `taille` and `longueur` are 64-bit integers on the Rust side and
+// `number` here: beyond 2^53 the two implementations would diverge
+// silently. The bridge serves a local directory opened through the File System Access
+// API, where a 9-petabyte file does not exist; the bound is named, not
+// guarded.
 //
-// ⚠️ *Cette phrase disait « F1 est en lecture seule » : F2 a ouvert l'écriture,
-// et la borne vaut désormais aussi pour la `position` d'un morceau écrit et
-// pour les `octets` d'une écriture due. Elle n'est pas davantage gardée.*
+// ⚠️ *This sentence said "F1 is read-only": F2 opened writing,
+// and the bound now also applies to the `position` of a written chunk and
+// to the `octets` of a pending write. It is no more guarded than before.*
 
 import { CODES_ECHEC, type CodeEchec } from './fichiers';
 
-/** L'en-tête de `TYPE_LISTER` et de `TYPE_ATTRIBUTS`. */
+/** The header of `TYPE_LISTER` and of `TYPE_ATTRIBUTS`. */
 export interface EnteteChemin {
-    /** Chemin logique, composants séparés par `/`. Vide = la racine. */
+    /** Logical path, components separated by `/`. Empty = the root. */
     chemin: string;
 }
 
-/** L'en-tête de `TYPE_LIRE`. La plage est **un morceau**, jamais le fichier. */
+/** The header of `TYPE_LIRE`. The range is **one chunk**, never the file. */
 export interface EnteteLire {
     chemin: string;
     position: number;
     longueur: number;
 }
 
-/** Une entrée de répertoire, dans la réponse `TYPE_ENTREES`. */
+/** A directory entry, in the `TYPE_ENTREES` answer. */
 export interface EntreeJson {
     nom: string;
     repertoire: boolean;
     taille: number;
-    /** `File.lastModified` : millisecondes depuis l'époque Unix, **signé**. */
+    /** `File.lastModified`: milliseconds since the Unix epoch, **signed**. */
     modifie: number;
 }
 
-/** L'en-tête de `TYPE_ENTREES`. Charge binaire **vide**. */
+/** The header of `TYPE_ENTREES`. **Empty** binary payload. */
 export interface EnteteEntrees {
     entrees: EntreeJson[];
 }
 
 /**
- * L'en-tête de `TYPE_META`. Charge binaire **vide**.
+ * The header of `TYPE_META`. **Empty** binary payload.
  *
- * 🔴 `nom` EST LE NOM CANONIQUE — CELUI QUI EST STOCKÉ, jamais celui que
- * l'application a tapé (F3). Vide pour la RACINE, qui n'a pas de nom.
+ * 🔴 `nom` IS THE CANONICAL NAME — THE ONE THAT IS STORED, never the one
+ * the application typed (F3). Empty for the ROOT, which has no name.
  */
 export interface EnteteMeta {
     nom: string;
@@ -67,19 +67,19 @@ export interface EnteteMeta {
     modifie: number;
 }
 
-/** L'en-tête de `TYPE_DONNEES`. **La charge porte les octets.** */
+/** The header of `TYPE_DONNEES`. **The payload carries the bytes.** */
 export interface EnteteDonnees {
     position: number;
     longueur: number;
 }
 
 /**
- * L'en-tête de `TYPE_ECRIRE`. **La charge porte les octets.**
+ * The header of `TYPE_ECRIRE`. **The payload carries the bytes.**
  *
- * ⚠️ `premier` et `dernier` NE SONT PAS DÉDUCTIBLES de `position` et
- * `longueur` : c'est `premier` qui commande l'ouverture du flux SANS
- * `keepExistingData`, et `dernier` qui déclenche le `close()`, donc la
- * COMMITTAISON.
+ * ⚠️ `premier` and `dernier` CANNOT BE DEDUCED from `position` and
+ * `longueur`: it is `premier` that commands opening the stream WITHOUT
+ * `keepExistingData`, and `dernier` that triggers the `close()`, hence the
+ * COMMIT.
  */
 export interface EnteteEcrire {
     chemin: string;
@@ -89,22 +89,22 @@ export interface EnteteEcrire {
     dernier: boolean;
 }
 
-/** L'en-tête de `TYPE_CREER`. Charge binaire **vide**. */
+/** The header of `TYPE_CREER`. **Empty** binary payload. */
 export interface EnteteCreer {
     chemin: string;
     repertoire: boolean;
 }
 
 /**
- * L'en-tête de `TYPE_RENOMMER`. Charge binaire **vide**.
+ * The header of `TYPE_RENOMMER`. **Empty** binary payload.
  *
- * 🔴 L'ORDRE DES DEUX CHAMPS EST LE SENS DE L'OPÉRATION, ET S'Y TROMPER
- * DÉTRUIT. `de` est la source, `vers` la destination. Inverser les deux ne
- * produirait aucune erreur : le renommage aurait lieu, à l'envers.
+ * 🔴 THE ORDER OF THE TWO FIELDS IS THE DIRECTION OF THE OPERATION, AND GETTING IT WRONG
+ * DESTROYS. `de` is the source, `vers` the destination. Swapping the two would
+ * produce no error: the rename would take place, backwards.
  *
- * ⚠️ `repertoire` est TRANSPORTÉ, jamais redécouvert : c'est l'`isdirectory`
- * que le rappel ProjFS reçoit du système. Le navigateur le redemanderait au
- * prix d'un aller-retour, et se tromperait sur une entrée disparue entre-temps.
+ * ⚠️ `repertoire` is CARRIED, never rediscovered: it is the `isdirectory`
+ * the ProjFS callback receives from the system. The browser would ask for it again at
+ * the cost of a round trip, and would get it wrong for an entry that vanished in between.
  */
 export interface EnteteRenommer {
     de: string;
@@ -113,74 +113,74 @@ export interface EnteteRenommer {
 }
 
 /**
- * L'en-tête de `TYPE_SUPPRIMER`. Charge binaire **vide**.
+ * The header of `TYPE_SUPPRIMER`. **Empty** binary payload.
  *
- * ⚠️ La suppression n'est PAS récursive côté navigateur, contre la lettre de la
- * spec §3.5. Un geste dans la VM ne doit pas déclencher une destruction
- * récursive du disque du poste local, sur la foi d'un miroir qu'aucune preuve
- * ne dit à jour.
+ * ⚠️ Deletion is NOT recursive on the browser side, against the letter of
+ * spec §3.5. A gesture in the VM must not trigger a recursive
+ * destruction of the local machine's disk, on the strength of a mirror no proof
+ * says is up to date.
  */
 export interface EnteteSupprimer {
     chemin: string;
     repertoire: boolean;
 }
 
-/** Une écriture DUE : des octets qui vivent sur la VM et pas encore ici. */
+/** A PENDING write: bytes that live on the VM and not yet here. */
 export interface Due {
     chemin: string;
     octets: number;
 }
 
 /**
- * L'en-tête de `TYPE_DUES`. Charge binaire **vide**.
+ * The header of `TYPE_DUES`. **Empty** binary payload.
  *
- * ⚠️ C'est une ANNONCE : elle n'attend AUCUNE réponse.
+ * ⚠️ It is an ANNOUNCEMENT: it expects NO answer.
  */
 export interface EnteteDues {
     dues: Due[];
     /**
-     * **F5** — vrai quand le pont a des écritures dues et **refuse de les
-     * pousser**, le navigateur ayant annoncé une racine dont le nom diffère de
-     * celui mémorisé (`Bonjour`, spec §6.4 cas 2).
+     * **F5** — true when the bridge has pending writes and **refuses to
+     * push them**, the browser having announced a root whose name differs from
+     * the remembered one (`Bonjour`, spec §6.4 case 2).
      *
-     * 🔴 **CHAMP REQUIS**, comme tout champ de ce module. Un défaut à `false`
-     * vaudrait « le pont pousse », c'est-à-dire l'inverse de ce que `Bonjour`
-     * existe pour empêcher. **Un défaut doit tomber du côté sûr, ou ne pas
-     * exister.**
+     * 🔴 **REQUIRED FIELD**, like every field of this module. A default of `false`
+     * would mean "the bridge pushes", that is the opposite of what `Bonjour`
+     * exists to prevent. **A default must fall on the safe side, or not
+     * exist.**
      */
     retenues: boolean;
 }
 
 /**
- * L'en-tête de `TYPE_BONJOUR`. Charge binaire **vide**.
+ * The header of `TYPE_BONJOUR`. **Empty** binary payload.
  *
- * ⚠️ C'est une ANNONCE, et elle REMONTE : du navigateur vers le pont, sans que
- * celui-ci l'ait demandée, et sa corrélation est IGNORÉE.
+ * ⚠️ It is an ANNOUNCEMENT, and it goes UP: from the browser to the bridge, without
+ * the latter having asked for it, and its correlation is IGNORED.
  *
- * ⚠️ `racine` est un INDICE, jamais une preuve : `isSameEntry()` compare deux
- * poignées VIVANTES, jamais une poignée à un souvenir (spec §6.4 cas 2). Deux
- * répertoires homonymes sur deux disques différents passeraient pour un seul.
- * La v1 compare le nom faute de mieux.
+ * ⚠️ `racine` is a HINT, never a proof: `isSameEntry()` compares two
+ * LIVE handles, never a handle to a memory (spec §6.4 case 2). Two
+ * same-named directories on two different disks would pass for one.
+ * v1 compares the name for lack of anything better.
  */
 export interface EnteteBonjour {
     racine: string;
     forcer: boolean;
 }
 
-/* ⚠️ `TYPE_RAFRAICHIR` n'a PAS d'en-tête propre : sa trame porte `{}`, comme
-   `TYPE_FAIT`. Lui donner une interface vide ferait une forme à épingler qui
-   n'épingle rien, et un vecteur partagé qui ne peut pas casser. */
+/* ⚠️ `TYPE_RAFRAICHIR` has NO header of its own: its frame carries `{}`, like
+   `TYPE_FAIT`. Giving it an empty interface would make a shape to pin that
+   pins nothing, and a shared vector that cannot break. */
 
-/** L'en-tête de `TYPE_ECHEC`. */
+/** The header of `TYPE_ECHEC`. */
 export interface EnteteEchec {
     code: CodeEchec;
 }
 
-/* ── ENCODAGE ─────────────────────────────────────────────────────────────
-   ⚠️ L'ORDRE DES CLÉS EST CELUI DE LA DÉCLARATION RUST, et il compte : les
-   vecteurs figent la chaîne exacte, `JSON.stringify` suit l'ordre d'insertion,
-   `serde_json` celui de la déclaration. Réordonner un littéral ici rend le
-   vecteur rouge — c'est voulu. */
+/* ── ENCODING ─────────────────────────────────────────────────────────────
+   ⚠️ THE KEY ORDER IS THAT OF THE RUST DECLARATION, and it matters: the
+   vectors freeze the exact string, `JSON.stringify` follows insertion order,
+   `serde_json` that of the declaration. Reordering a literal here turns the
+   vector red — that is intended. */
 
 export function encodeChemin(chemin: string): string {
     return JSON.stringify({ chemin } satisfies EnteteChemin);
@@ -191,8 +191,8 @@ export function encodeLire(chemin: string, position: number, longueur: number): 
 }
 
 export function encodeEntrees(entrees: EntreeJson[]): string {
-    // Chaque entrée est reconstruite champ par champ : un objet venu de
-    // l'appelant pourrait porter des clés en trop, ou dans un autre ordre.
+    // Each entry is rebuilt field by field: an object coming from
+    // the caller could carry extra keys, or keys in another order.
     return JSON.stringify({
         entrees: entrees.map((e) => ({
             nom: e.nom,
@@ -209,8 +209,8 @@ export function encodeMeta(
     taille: number,
     modifie: number,
 ): string {
-    // ⚠️ L'ORDRE DES CLÉS EST CELUI DE LA DÉCLARATION RUST, et le vecteur le
-    // fige : `nom` vient EN PREMIER.
+    // ⚠️ THE KEY ORDER IS THAT OF THE RUST DECLARATION, and the vector
+    // freezes it: `nom` comes FIRST.
     return JSON.stringify({ nom, repertoire, taille, modifie } satisfies EnteteMeta);
 }
 
@@ -255,22 +255,22 @@ export function encodeBonjour(racine: string, forcer: boolean): string {
 }
 
 export function encodeDues(dues: Due[], retenues: boolean): string {
-    // Chaque due est reconstruite champ par champ, comme `encodeEntrees` : un
-    // objet venu de l'appelant pourrait porter des clés en trop, ou dans un
-    // autre ordre — et l'ordre est ce que le vecteur fige.
+    // Each pending write is rebuilt field by field, like `encodeEntrees`: an
+    // object coming from the caller could carry extra keys, or keys in another
+    // order — and the order is what the vector freezes.
     return JSON.stringify({
         dues: dues.map((d) => ({ chemin: d.chemin, octets: d.octets })),
         retenues,
     } satisfies EnteteDues);
 }
 
-/* ── ANALYSE ──────────────────────────────────────────────────────────────
-   Aucun champ n'est complété par défaut : un en-tête incomplet est REJETÉ. La
-   doctrine de version de `control`, appliquée aux en-têtes — et le jumeau Rust
-   n'a aucun `#[serde(default)]` pour la même raison.
+/* ── PARSING ──────────────────────────────────────────────────────────────
+   No field is filled in by default: an incomplete header is REJECTED. The
+   version doctrine of `control`, applied to headers — and the Rust twin
+   has no `#[serde(default)]` for the same reason.
 
-   Le TYPE est vérifié autant que la PRÉSENCE : un `taille` en chaîne passerait
-   un contrôle de présence et donnerait à ProjFS une taille de fichier absurde. */
+   The TYPE is checked as much as the PRESENCE: a `taille` given as a string would pass
+   a presence check and would give ProjFS an absurd file size. */
 
 function objet(valeur: unknown, forme: string): Record<string, unknown> {
     if (typeof valeur !== 'object' || valeur === null || Array.isArray(valeur)) {
@@ -360,10 +360,10 @@ export function parseEcrire(brut: unknown): EnteteEcrire {
         chemin: chaine(o, 'chemin', 'Ecrire'),
         position: entier(o, 'position', 'Ecrire'),
         longueur: entier(o, 'longueur', 'Ecrire'),
-        // 🔴 Les DEUX drapeaux sont exigés. Sans `premier`, le flux s'ouvrirait
-        // avec `keepExistingData` et un fichier réécrit plus court garderait sa
-        // queue d'octets — le défaut EXACT de l'ancien pont. Sans `dernier`, le
-        // `close()` ne viendrait jamais et rien ne serait jamais commis.
+        // 🔴 BOTH flags are required. Without `premier`, the stream would open
+        // with `keepExistingData` and a file rewritten shorter would keep its
+        // tail of bytes — the EXACT defect of the old bridge. Without `dernier`, the
+        // `close()` would never come and nothing would ever be committed.
         premier: booleen(o, 'premier', 'Ecrire'),
         dernier: booleen(o, 'dernier', 'Ecrire'),
     };
@@ -423,8 +423,8 @@ export function parseBonjour(brut: unknown): EnteteBonjour {
 export function parseEchec(brut: unknown): EnteteEchec {
     const o = objet(brut, 'Echec');
     const code = chaine(o, 'code', 'Echec');
-    // 🔴 La liste est celle de `CODES_ECHEC`, donc de l'énumération Rust : un
-    // code inconnu est refusé plutôt que propagé comme une chaîne libre.
+    // 🔴 The list is that of `CODES_ECHEC`, hence of the Rust enum: an
+    // unknown code is refused rather than propagated as a free string.
     if (!(CODES_ECHEC as readonly string[]).includes(code)) {
         throw new Error(`en-tête Echec : code inconnu « ${code} »`);
     }
