@@ -85,7 +85,15 @@ async fn honorer(
         Err(_) => {
             // ⚠️ ON REFUSE PLUTÔT QUE DE RETOMBER SUR `%TEMP%` : Windows le
             // purge, y compris PENDANT une installation.
-            return terminer(emettre, ordre, Issue::Refusee, Some(Motif::Disque), None, "", false);
+            return terminer(
+                emettre,
+                ordre,
+                Issue::Refusee,
+                Some(Motif::Disque),
+                None,
+                "",
+                false,
+            );
         }
     };
     let racine = Path::new(&racine)
@@ -106,7 +114,15 @@ async fn honorer(
     };
     let repertoire = Path::new(&chemin).parent().map(Path::to_path_buf);
     let Some(repertoire) = repertoire else {
-        return terminer(emettre, ordre, Issue::Refusee, Some(Motif::Disque), None, "", false);
+        return terminer(
+            emettre,
+            ordre,
+            Issue::Refusee,
+            Some(Motif::Disque),
+            None,
+            "",
+            false,
+        );
     };
 
     // 🔴 LA MÉMOIRE EST SUR LE DISQUE, ET C'EST LE RÉPERTOIRE LUI-MÊME. La
@@ -132,7 +148,15 @@ async fn honorer(
 
     if let Err(erreur) = std::fs::create_dir_all(&repertoire) {
         tracing::error!(%erreur, "répertoire d'installation non créé");
-        return terminer(emettre, ordre, Issue::Refusee, Some(Motif::Disque), None, "", false);
+        return terminer(
+            emettre,
+            ordre,
+            Issue::Refusee,
+            Some(Motif::Disque),
+            None,
+            "",
+            false,
+        );
     }
 
     // --- la fenêtre s'ouvre AVANT le lancement, pas après ---
@@ -199,7 +223,13 @@ async fn honorer(
             }
             fermer(partage, &ordre.id);
             return terminer(
-                emettre, ordre, Issue::Refusee, Some(Motif::Empreinte), None, "", false,
+                emettre,
+                ordre,
+                Issue::Refusee,
+                Some(Motif::Empreinte),
+                None,
+                "",
+                false,
             );
         }
     }
@@ -224,7 +254,15 @@ async fn honorer(
              l'état inconnu"
         );
         fermer(partage, &ordre.id);
-        return terminer(emettre, ordre, Issue::Refusee, Some(Motif::Disque), None, "", false);
+        return terminer(
+            emettre,
+            ordre,
+            Issue::Refusee,
+            Some(Motif::Disque),
+            None,
+            "",
+            false,
+        );
     }
     peripherique_audio::tracer(&ordre.id, Moment::Avant);
     emettre(VersLaPlateforme::progression(
@@ -363,7 +401,10 @@ fn maintenant_ms() -> u64 {
 
 fn alterer_un_octet(chemin: &Path) -> std::io::Result<()> {
     use std::io::{Read, Seek, SeekFrom, Write};
-    let mut f = std::fs::OpenOptions::new().read(true).write(true).open(chemin)?;
+    let mut f = std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(chemin)?;
     let mut octet = [0u8; 1];
     f.read_exact(&mut octet)?;
     f.seek(SeekFrom::Start(0))?;

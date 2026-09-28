@@ -218,12 +218,18 @@ mod tests {
         assert_eq!(lire(""), Ok(Etat::Incomplet));
         // Et la seconde lecture, elle, conclut — sans quoi « incomplet »
         // serait rendu par un analyseur entièrement mort.
-        assert_eq!(prete("HTTP/1.1 200 OK\r\nContent-Length: 42\r\n\r\n").longueur, 42);
+        assert_eq!(
+            prete("HTTP/1.1 200 OK\r\nContent-Length: 42\r\n\r\n").longueur,
+            42
+        );
     }
 
     #[test]
     fn le_206_est_retenu_et_son_statut_voyage_pour_que_l_appelant_le_distingue() {
-        assert_eq!(prete("HTTP/1.1 206 Partial Content\r\nContent-Length: 7\r\n\r\n").statut, 206);
+        assert_eq!(
+            prete("HTTP/1.1 206 Partial Content\r\nContent-Length: 7\r\n\r\n").statut,
+            206
+        );
     }
 
     #[test]
@@ -254,27 +260,44 @@ mod tests {
 
     #[test]
     fn l_absence_de_longueur_est_un_refus_nomme_et_non_une_longueur_nulle() {
-        assert_eq!(lire("HTTP/1.1 200 OK\r\nServer: x\r\n\r\n"), Err(Refus::LongueurAbsente));
+        assert_eq!(
+            lire("HTTP/1.1 200 OK\r\nServer: x\r\n\r\n"),
+            Err(Refus::LongueurAbsente)
+        );
         // Une longueur nulle est une réponse retenue, une longueur illisible
         // porte ce qu'on a lu : trois motifs, jamais confondus.
-        assert_eq!(prete("HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n").longueur, 0);
+        assert_eq!(
+            prete("HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n").longueur,
+            0
+        );
         let flou = "HTTP/1.1 200 OK\r\nContent-Length: beaucoup\r\n\r\n";
         assert_eq!(lire(flou), Err(Refus::LongueurIllisible("beaucoup".into())));
     }
 
     #[test]
     fn les_noms_sont_insensibles_a_la_casse_et_les_valeurs_rognees() {
-        for champ in ["CONTENT-LENGTH:   42  ", "content-length:42", "Content-Length:\t42"] {
-            assert_eq!(prete(&format!("HTTP/1.1 200 OK\r\n{champ}\r\n\r\n")).longueur, 42);
+        for champ in [
+            "CONTENT-LENGTH:   42  ",
+            "content-length:42",
+            "Content-Length:\t42",
+        ] {
+            assert_eq!(
+                prete(&format!("HTTP/1.1 200 OK\r\n{champ}\r\n\r\n")).longueur,
+                42
+            );
         }
     }
 
     #[test]
     fn deux_longueurs_contradictoires_sont_refusees_et_deux_identiques_passent() {
-        let deux = |a, b| format!("HTTP/1.1 200 OK\r\nContent-Length: {a}\r\nContent-Length: {b}\r\n\r\n");
+        let deux =
+            |a, b| format!("HTTP/1.1 200 OK\r\nContent-Length: {a}\r\nContent-Length: {b}\r\n\r\n");
         assert_eq!(
             lire(&deux(42, 9)),
-            Err(Refus::LongueurContradictoire { premiere: 42, seconde: 9 })
+            Err(Refus::LongueurContradictoire {
+                premiere: 42,
+                seconde: 9
+            })
         );
         assert_eq!(prete(&deux(42, 42)).longueur, 42);
     }

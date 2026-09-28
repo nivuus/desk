@@ -41,7 +41,10 @@ pub struct Morceau {
 /// C'est une erreur de programmation de l'appelant, pas un cas d'exécution :
 /// `max` est une constante du pont, jamais une valeur reçue du réseau.
 pub fn decouper(position: u64, longueur: u64, max: usize) -> Vec<Morceau> {
-    assert!(max > 0, "une découpe en morceaux de zéro octet ne se termine pas");
+    assert!(
+        max > 0,
+        "une découpe en morceaux de zéro octet ne se termine pas"
+    );
     // `max` est borné à `u32::MAX` avant toute conversion : c'est ici que le
     // débordement se produirait sur une cible 64 bits, où `usize` est plus
     // large que `u32`.

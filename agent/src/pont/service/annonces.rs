@@ -97,8 +97,10 @@ pub(super) fn bonjour(etat: &Etat, entete: &[u8]) {
         forcer = annonce.forcer,
         "bonjour du navigateur"
     );
-    let _ = etat.vers_ecriture.send(crate::pont::ecriture::fil::Ordre::Bonjour {
-        racine: annonce.racine,
-        forcer: annonce.forcer,
-    });
+    let _ = etat
+        .vers_ecriture
+        .send(crate::pont::ecriture::fil::Ordre::Bonjour {
+            racine: annonce.racine,
+            forcer: annonce.forcer,
+        });
 }

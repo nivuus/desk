@@ -48,7 +48,8 @@ fn une_faute_injectee_fait_refuser_la_reconstruction() {
     use std::sync::atomic::Ordering;
 
     let _verrou = verrou_injection();
-    crate::transport::piste_audio::injection::budget_faute_reconstruction().store(1, Ordering::Relaxed);
+    crate::transport::piste_audio::injection::budget_faute_reconstruction()
+        .store(1, Ordering::Relaxed);
 
     let mut session = session_d_essai();
     session.set_audio_source(Box::new(SourceMorte::new()));
@@ -61,7 +62,10 @@ fn une_faute_injectee_fait_refuser_la_reconstruction() {
 
     let signale = session.reconstruire_ou_signaler(std::time::Instant::now());
 
-    assert!(!signale, "un refus n'est pas encore un AudioMort : il reste du budget");
+    assert!(
+        !signale,
+        "un refus n'est pas encore un AudioMort : il reste du budget"
+    );
     assert!(
         session.capture_audio_morte(),
         "la reconstruction a REUSSI alors qu'une faute etait armee"
@@ -72,7 +76,8 @@ fn une_faute_injectee_fait_refuser_la_reconstruction() {
         "le reconstructeur ne doit pas avoir ete invoque"
     );
     assert_eq!(
-        crate::transport::piste_audio::injection::budget_faute_reconstruction().load(Ordering::Relaxed),
+        crate::transport::piste_audio::injection::budget_faute_reconstruction()
+            .load(Ordering::Relaxed),
         0,
         "la faute doit avoir ete CONSOMMEE, pas seulement lue"
     );
@@ -85,7 +90,8 @@ fn le_budget_epuise_laisse_la_reconstruction_reussir() {
     use std::sync::atomic::Ordering;
 
     let _verrou = verrou_injection();
-    crate::transport::piste_audio::injection::budget_faute_reconstruction().store(0, Ordering::Relaxed);
+    crate::transport::piste_audio::injection::budget_faute_reconstruction()
+        .store(0, Ordering::Relaxed);
 
     let mut session = session_d_essai();
     session.set_audio_source(Box::new(SourceMorte::new()));
@@ -99,7 +105,10 @@ fn le_budget_epuise_laisse_la_reconstruction_reussir() {
     let signale = session.reconstruire_ou_signaler(std::time::Instant::now());
 
     assert!(!signale);
-    assert!(!session.capture_audio_morte(), "la reconstruction devait REUSSIR");
+    assert!(
+        !session.capture_audio_morte(),
+        "la reconstruction devait REUSSIR"
+    );
     assert_eq!(*actif_recu.lock().unwrap(), Some(false));
 }
 
@@ -137,5 +146,8 @@ fn un_budget_superieur_a_RECONSTRUCTIONS_MAX_mene_a_AudioMort() {
         session.reconstruire_ou_signaler(maintenant),
         "budget de reconstruction epuise : AudioMort doit etre signale"
     );
-    assert!(session.capture_audio_morte(), "la source doit etre restee morte");
+    assert!(
+        session.capture_audio_morte(),
+        "la source doit etre restee morte"
+    );
 }

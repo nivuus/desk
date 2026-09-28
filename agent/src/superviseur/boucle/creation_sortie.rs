@@ -40,7 +40,12 @@ pub(super) fn creer_sortie(
     envoyer: &impl Fn(&VersLaShell),
     demande: Demande,
 ) -> Vec<Effet> {
-    let Demande { session, titre, largeur, hauteur } = demande;
+    let Demande {
+        session,
+        titre,
+        largeur,
+        hauteur,
+    } = demande;
 
     // LEG 5 de D9. `borner_a_la_taille_max` attendait son appelant depuis que
     // le changement de mode de sortie a été retiré : c'est ici.
@@ -99,7 +104,10 @@ pub(super) fn creer_sortie(
         Ok(id) => id,
         Err(erreur) => {
             tracing::error!(session = %session.0, %erreur, "création de sortie refusée");
-            envoyer(&VersLaShell::Refus { titre, motif: format!("{erreur}") });
+            envoyer(&VersLaShell::Refus {
+                titre,
+                motif: format!("{erreur}"),
+            });
             return table.enfant_mort(&session);
         }
     };
@@ -110,13 +118,8 @@ pub(super) fn creer_sortie(
     let (designee, candidates) =
         attendre_notre_sortie(pilote, id_pilote, &avant, LIMITE_RATTACHEMENT);
 
-    let Some(cible) = placement::sortie_pour_viewport(
-        &candidates,
-        largeur,
-        hauteur,
-        prises,
-        designee.as_deref(),
-    )
+    let Some(cible) =
+        placement::sortie_pour_viewport(&candidates, largeur, hauteur, prises, designee.as_deref())
     else {
         // Ce refus ne peut plus venir d'une sortie née TROP GRANDE — c'est le
         // leg 4 de D9, qui plafonnait le produit à trois fenêtres sur une VM
@@ -185,7 +188,10 @@ pub(super) fn creer_sortie(
     // taille (31 août 2026). Sans ce champ, une fenêtre servie ne dit pas
     // lequel l'a servie, et l'exemption serait invérifiable en production.
     let exemptee = designee.as_deref() == Some(cible.nom_sortie.as_str())
-        && !placement::sortie_assez_grande((cible.rect.width, cible.rect.height), (largeur, hauteur));
+        && !placement::sortie_assez_grande(
+            (cible.rect.width, cible.rect.height),
+            (largeur, hauteur),
+        );
     tracing::info!(
         session = %session.0,
         sortie = %cible.nom_sortie,
@@ -250,8 +256,12 @@ pub(super) fn creer_sortie(
     // à la taille de la sortie couvrirait plus que ce que la capture recadre.
     if let Some(Effet::LancerEnfant { fenetre, .. }) = suite.first() {
         let hwnd = windows::Win32::Foundation::HWND(fenetre.0 as *mut core::ffi::c_void);
-        let rect =
-            Rect { x: cible.rect.x, y: cible.rect.y, width: retenue.0, height: retenue.1 };
+        let rect = Rect {
+            x: cible.rect.x,
+            y: cible.rect.y,
+            width: retenue.0,
+            height: retenue.1,
+        };
         if let Err(erreur) = placement::poser(hwnd, &rect) {
             tracing::warn!(session = %session.0, %erreur, "placement de la fenêtre échoué");
         }
@@ -336,11 +346,13 @@ fn attendre_notre_sortie(
         // autour. `chemins_actifs` est SILENCIEUSE, et il le faut : on est
         // dans une boucle à 10 Hz, et ce dépôt a payé deux fois une trace
         // émise à la cadence d'une boucle.
-        let designee = adaptateur.filter(|_| designation::armee()).and_then(|adaptateur| {
-            let chemins = config_affichage::chemins_actifs().ok()?;
-            config_affichage::nom_gdi_de_la_cible(&chemins, adaptateur, id_pilote)
-                .map(str::to_owned)
-        });
+        let designee = adaptateur
+            .filter(|_| designation::armee())
+            .and_then(|adaptateur| {
+                let chemins = config_affichage::chemins_actifs().ok()?;
+                config_affichage::nom_gdi_de_la_cible(&chemins, adaptateur, id_pilote)
+                    .map(str::to_owned)
+            });
 
         // ② Le REPLI vit dans `designation::candidates`, avec ses tests
         // d'hôte — la boucle ne fait que lui passer ce qu'elle a relevé. C'est
@@ -360,7 +372,9 @@ fn attendre_notre_sortie(
             // non à la cadence de la scrutation.
             match designee.as_deref() {
                 Some(nom) => tracing::info!(
-                    id_pilote, ?adaptateur, nom_designe = nom,
+                    id_pilote,
+                    ?adaptateur,
+                    nom_designe = nom,
                     "sortie DESIGNEE par son identifiant de cible (chemin ① — \
                      la correspondance CCD a rendu son nom GDI)"
                 ),
@@ -375,13 +389,17 @@ fn attendre_notre_sortie(
         if std::time::Instant::now() >= echeance {
             // Le tour est écoulé. La règle — bornée, testée sur l'hôte — dit
             // s'il en reste un.
-            if let reprise::Suite::Reessayer { tour_suivant, apres } =
-                reprise::apres_un_tour(tour, reprise::TOURS, reprise::REPIT)
+            if let reprise::Suite::Reessayer {
+                tour_suivant,
+                apres,
+            } = reprise::apres_un_tour(tour, reprise::TOURS, reprise::REPIT)
             {
                 // ⚠️ `warn!` et non `error!` : ce n'est pas encore un refus.
                 // Un tour perdu et un abandon ne doivent pas se lire pareil.
                 tracing::warn!(
-                    id_pilote, tour, tours = reprise::TOURS,
+                    id_pilote,
+                    tour,
+                    tours = reprise::TOURS,
                     limite_ms = limite.as_millis() as u64,
                     repit_ms = apres.as_millis() as u64,
                     "la sortie ne s'est pas attachée dans ce tour — on RÉESSAIE \

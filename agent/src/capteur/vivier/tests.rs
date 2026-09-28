@@ -14,7 +14,10 @@ fn petit() -> Vivier {
 fn une_fenetre_inscrite_est_endormie_tant_qu_elle_n_est_pas_visible() {
     let mut v = petit();
     let ordres = v.inscrire("a", t0());
-    assert!(ordres.is_empty(), "une inscription seule n'ordonne rien : {ordres:?}");
+    assert!(
+        ordres.is_empty(),
+        "une inscription seule n'ordonne rien : {ordres:?}"
+    );
     assert_eq!(v.eveillee("a"), Some(false));
 }
 
@@ -35,7 +38,10 @@ fn une_fenetre_masquee_s_endort_avec_la_raison_masquee() {
     v.inscrire("a", t);
     v.signaler("a", true, true, t);
     let ordres = v.signaler("a", false, false, t + Duration::from_secs(1));
-    assert_eq!(ordres, vec![("a".to_string(), Ordre::Dormir(Raison::Masquee))]);
+    assert_eq!(
+        ordres,
+        vec![("a".to_string(), Ordre::Dormir(Raison::Masquee))]
+    );
     assert_eq!(v.eveillee("a"), Some(false));
 }
 
@@ -85,7 +91,11 @@ fn un_focus_rafraichit_la_recence_et_protege_de_l_eviction() {
     v.inscrire("c", t + Duration::from_millis(600));
     v.signaler("c", true, true, t + Duration::from_millis(600));
     assert_eq!(v.eveillee("a"), Some(true), "a venait d'être focalisée");
-    assert_eq!(v.eveillee("b"), Some(false), "b est la plus anciennement vue");
+    assert_eq!(
+        v.eveillee("b"),
+        Some(false),
+        "b est la plus anciennement vue"
+    );
 }
 
 #[test]
@@ -99,7 +109,10 @@ fn l_hysteresis_empeche_d_evincer_une_fenetre_tout_juste_reveillee() {
     // « b » demande à veiller 500 ms plus tard : « a » est protégée.
     v.inscrire("b", t + Duration::from_millis(500));
     let ordres = v.signaler("b", true, true, t + Duration::from_millis(500));
-    assert!(ordres.is_empty(), "rien ne doit bouger sous l'hystérésis : {ordres:?}");
+    assert!(
+        ordres.is_empty(),
+        "rien ne doit bouger sous l'hystérésis : {ordres:?}"
+    );
     assert_eq!(v.eveillee("a"), Some(true));
     assert_eq!(v.eveillee("b"), Some(false));
 }
@@ -129,7 +142,10 @@ fn une_fenetre_masquee_s_endort_meme_sous_l_hysteresis() {
     v.inscrire("a", t);
     v.signaler("a", true, true, t);
     let ordres = v.signaler("a", false, false, t + Duration::from_millis(10));
-    assert_eq!(ordres, vec![("a".to_string(), Ordre::Dormir(Raison::Masquee))]);
+    assert_eq!(
+        ordres,
+        vec![("a".to_string(), Ordre::Dormir(Raison::Masquee))]
+    );
 }
 
 #[test]
@@ -163,7 +179,10 @@ fn un_ordre_n_est_jamais_emis_deux_fois_pour_le_meme_etat() {
     v.signaler("a", true, true, t);
     // Second signal identique : la fenêtre est déjà éveillée.
     let ordres = v.signaler("a", true, true, t + Duration::from_millis(50));
-    assert!(ordres.is_empty(), "un état inchangé n'ordonne rien : {ordres:?}");
+    assert!(
+        ordres.is_empty(),
+        "un état inchangé n'ordonne rien : {ordres:?}"
+    );
 }
 
 #[test]
@@ -176,9 +195,16 @@ fn un_reveil_qui_echoue_rend_l_entree_endormie_et_ne_la_réélit_pas_au_tour_sui
 
     // L'encodeur échoue à se construire : enregistrer l'échec.
     let ordres = v.echec_de_reveil("a", t + Duration::from_millis(100));
-    assert_eq!(v.eveillee("a"), Some(false), "a doit s'endormir après l'échec");
+    assert_eq!(
+        v.eveillee("a"),
+        Some(false),
+        "a doit s'endormir après l'échec"
+    );
     // Aucun nouvel ordre ne doit être émis : a était déjà le seul éveillé.
-    assert!(ordres.is_empty(), "pas de réélection au tour même de l'échec : {ordres:?}");
+    assert!(
+        ordres.is_empty(),
+        "pas de réélection au tour même de l'échec : {ordres:?}"
+    );
 }
 
 #[test]
@@ -230,9 +256,12 @@ fn les_ordres_rendus_placent_tous_les_dormir_avant_tout_reveiller() {
 
     // Ordres attendus : b s'endort (Dormir), d s'éveille (Reveiller).
     // Ou plus largement, les Dormir avant les Reveiller.
-    let premiers_dormir = ordres.iter().position(|(_, o)| matches!(o, Ordre::Dormir(_)));
-    let premier_reveiller =
-        ordres.iter().position(|(_, o)| matches!(o, Ordre::Reveiller));
+    let premiers_dormir = ordres
+        .iter()
+        .position(|(_, o)| matches!(o, Ordre::Dormir(_)));
+    let premier_reveiller = ordres
+        .iter()
+        .position(|(_, o)| matches!(o, Ordre::Reveiller));
     assert!(
         premiers_dormir.is_some(),
         "ce scenario doit produire au moins un Dormir : {ordres:?}"
@@ -308,13 +337,25 @@ fn annuler_un_ordre_non_livre_ne_touche_qu_eveillee_et_ignore_une_session_dispar
     let mut v = Vivier::nouveau(PLAFOND_EVEIL, HYSTERESIS);
     v.inscrire("a", t);
     v.signaler("a", true, true, t);
-    assert_eq!(v.eveillee("a"), Some(true), "précondition : elle est éveillée");
+    assert_eq!(
+        v.eveillee("a"),
+        Some(true),
+        "précondition : elle est éveillée"
+    );
 
     // Un `Dormir` non livré la ramène à son état d'avant l'ordre.
     v.annuler_ordre_non_livre("a", Ordre::Dormir(Raison::Masquee));
-    assert_eq!(v.eveillee("a"), Some(true), "un Dormir non livré la laisse éveillée");
+    assert_eq!(
+        v.eveillee("a"),
+        Some(true),
+        "un Dormir non livré la laisse éveillée"
+    );
     v.annuler_ordre_non_livre("a", Ordre::Reveiller);
-    assert_eq!(v.eveillee("a"), Some(false), "un Reveiller non livré la laisse endormie");
+    assert_eq!(
+        v.eveillee("a"),
+        Some(false),
+        "un Reveiller non livré la laisse endormie"
+    );
 
     // Le garde : une session disparue est ignorée, jamais une panique. C'est
     // la clause qu'aucun appelant ne peut atteindre.

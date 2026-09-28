@@ -80,7 +80,9 @@ pub struct SuiviBordure {
 
 impl SuiviBordure {
     pub fn nouveau(style_initial: u32) -> Self {
-        Self { sans_bordure: est_sans_bordure(style_initial) }
+        Self {
+            sans_bordure: est_sans_bordure(style_initial),
+        }
     }
 
     /// Rend `Some(actif)` au changement, `None` sinon.

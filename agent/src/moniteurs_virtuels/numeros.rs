@@ -112,8 +112,13 @@ mod tests {
     fn cent_ouvertures_fermetures_ne_font_pas_sortir_du_plafond() {
         let mut numeros = Numeros::default();
         for _ in 0..100 {
-            let numero = numeros.attribuer().expect("le recyclage doit rendre la place");
-            assert!(numero <= PLAFOND_NUMEROS, "numéro {numero} hors de portée de la purge");
+            let numero = numeros
+                .attribuer()
+                .expect("le recyclage doit rendre la place");
+            assert!(
+                numero <= PLAFOND_NUMEROS,
+                "numéro {numero} hors de portée de la purge"
+            );
             numeros.rendre(numero);
         }
         assert_eq!(numeros.en_vol(), 0);
@@ -129,7 +134,10 @@ mod tests {
             let rendue = vivantes.remove(0);
             numeros.rendre(rendue);
             let neuve = numeros.attribuer().unwrap();
-            assert!(neuve <= PLAFOND_NUMEROS, "numéro {neuve} hors de portée de la purge");
+            assert!(
+                neuve <= PLAFOND_NUMEROS,
+                "numéro {neuve} hors de portée de la purge"
+            );
             vivantes.push(neuve);
         }
         assert_eq!(numeros.en_vol(), 8);
@@ -161,6 +169,10 @@ mod tests {
         numeros.rendre(999);
         numeros.rendre(0);
         assert_eq!(numeros.attribuer().unwrap(), a);
-        assert_eq!(numeros.attribuer().unwrap(), a + 1, "aucun doublon n'a été mis en réserve");
+        assert_eq!(
+            numeros.attribuer().unwrap(),
+            a + 1,
+            "aucun doublon n'a été mis en réserve"
+        );
     }
 }

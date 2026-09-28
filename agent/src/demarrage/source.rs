@@ -12,8 +12,8 @@ use anyhow::Result;
 use windows::Win32::Foundation::HWND;
 
 use crate::source::VideoSource;
-use crate::{window, windows_source};
 use crate::Config;
+use crate::{window, windows_source};
 
 /// Ce que `demarrage` a besoin de savoir de la source construite.
 ///
@@ -77,60 +77,70 @@ pub(super) fn construire(
 
     let (source, reference_entrees): (Box<dyn VideoSource + Send>, crate::entrees::Reference) =
         match &config.sortie_dxgi {
-        Some(nom_sortie) => {
-            // Mode multi-fenêtres : la capture et l'encodage vivent dans le
-            // CAPTEUR, un seul processus pour toutes les fenêtres. C'est ce
-            // qui lève le plafond de quatre processus tenant une duplication
-            // DXGI (sous-bloc D3). L'enfant ne touche plus ni DXGI ni Media
-            // Foundation.
-            tracing::info!(
-                nom_sortie = %nom_sortie,
-                bitrate,
-                fps,
-                "source distante servie par le capteur (mode multi-fenêtres)"
-            );
-            let distante = crate::capteur::tube::connecter(
-                &config.session_id,
-                hwnd.0 as u64,
-                nom_sortie,
-                fps,
-                bitrate,
-                // Posée par le superviseur (`TAILLE_FENETRE`, lu dans
-                // `Config`) ; absente — cas qui ne devrait pas se produire
-                // en pratique pour ce chemin, `sortie_dxgi` n'étant lui-même
-                // posé que par le superviseur —, `(u32::MAX, u32::MAX)`
-                // reproduit le comportement d'avant ce sous-bloc :
-                // `taille_retenue` la ramène à la taille de la sortie
-                // (tâche 8).
-                config.taille_fenetre.unwrap_or((u32::MAX, u32::MAX)),
-                clock_origin,
-            )?;
-            // 🔴 **LA TAILLE DE L'IMAGE EST PRISE ICI, ET C'EST UN CLONE
-            // D'`Arc`.** C'est le capteur qui a fait le recadrage
-            // (`taille_retenue`, `capteur/fenetre/ouverture.rs`) et qui l'a
-            // annoncé par `DepuisCapteur::Attachee` ; `SourceDistante` en est
-            // le seul stockage. La recalculer ici — même avec la même
-            // fonction pure et les mêmes entrées — rétablirait DEUX
-            // descriptions du même rectangle, ce qui est le mécanisme du
-            // défaut du lot 32M.
-            let reference = crate::entrees::Reference::SortieCapturee {
-                nom: nom_sortie.clone(),
-                image: distante.taille_partagee(),
-            };
-            (Box::new(distante), reference)
-        }
-        None => {
-            // Mode mono-fenêtre, inchangé : agent lancé à la main, aucun
-            // capteur. Ce chemin ne doit RIEN perdre au passage.
-            tracing::info!(bitrate, fps, "capture de la fenêtre Windows (recadrage)");
-            // La capture recadre la fenêtre : la zone client EST l'image, il
-            // n'y a pas de seconde taille à porter.
-            (
-                Box::new(windows_source::WindowsSource::new(hwnd, fps, bitrate, clock_origin)?),
-                crate::entrees::Reference::ZoneClientDeLaFenetre,
-            )
-        }
-    };
+            Some(nom_sortie) => {
+                // Mode multi-fenêtres : la capture et l'encodage vivent dans le
+                // CAPTEUR, un seul processus pour toutes les fenêtres. C'est ce
+                // qui lève le plafond de quatre processus tenant une duplication
+                // DXGI (sous-bloc D3). L'enfant ne touche plus ni DXGI ni Media
+                // Foundation.
+                tracing::info!(
+                    nom_sortie = %nom_sortie,
+                    bitrate,
+                    fps,
+                    "source distante servie par le capteur (mode multi-fenêtres)"
+                );
+                let distante = crate::capteur::tube::connecter(
+                    &config.session_id,
+                    hwnd.0 as u64,
+                    nom_sortie,
+                    fps,
+                    bitrate,
+                    // Posée par le superviseur (`TAILLE_FENETRE`, lu dans
+                    // `Config`) ; absente — cas qui ne devrait pas se produire
+                    // en pratique pour ce chemin, `sortie_dxgi` n'étant lui-même
+                    // posé que par le superviseur —, `(u32::MAX, u32::MAX)`
+                    // reproduit le comportement d'avant ce sous-bloc :
+                    // `taille_retenue` la ramène à la taille de la sortie
+                    // (tâche 8).
+                    config.taille_fenetre.unwrap_or((u32::MAX, u32::MAX)),
+                    clock_origin,
+                )?;
+                // 🔴 **LA TAILLE DE L'IMAGE EST PRISE ICI, ET C'EST UN CLONE
+                // D'`Arc`.** C'est le capteur qui a fait le recadrage
+                // (`taille_retenue`, `capteur/fenetre/ouverture.rs`) et qui l'a
+                // annoncé par `DepuisCapteur::Attachee` ; `SourceDistante` en est
+                // le seul stockage. La recalculer ici — même avec la même
+                // fonction pure et les mêmes entrées — rétablirait DEUX
+                // descriptions du même rectangle, ce qui est le mécanisme du
+                // défaut du lot 32M.
+                let reference = crate::entrees::Reference::SortieCapturee {
+                    nom: nom_sortie.clone(),
+                    image: distante.taille_partagee(),
+                };
+                (Box::new(distante), reference)
+            }
+            None => {
+                // Mode mono-fenêtre, inchangé : agent lancé à la main, aucun
+                // capteur. Ce chemin ne doit RIEN perdre au passage.
+                tracing::info!(bitrate, fps, "capture de la fenêtre Windows (recadrage)");
+                // La capture recadre la fenêtre : la zone client EST l'image, il
+                // n'y a pas de seconde taille à porter.
+                (
+                    Box::new(windows_source::WindowsSource::new(
+                        hwnd,
+                        fps,
+                        bitrate,
+                        clock_origin,
+                    )?),
+                    crate::entrees::Reference::ZoneClientDeLaFenetre,
+                )
+            }
+        };
 
-    Ok(SourceWindows { source, hwnd_addr: hwnd.0 as isize, bitrate, reference_entrees })
+    Ok(SourceWindows {
+        source,
+        hwnd_addr: hwnd.0 as isize,
+        bitrate,
+        reference_entrees,
+    })
 }

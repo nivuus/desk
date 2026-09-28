@@ -132,7 +132,12 @@ pub(super) fn sonder(
             }
         };
         let (largeur, hauteur) = capture.desktop_size();
-        let region = Rect { x: 0, y: 0, width: largeur, height: hauteur };
+        let region = Rect {
+            x: 0,
+            y: 0,
+            width: largeur,
+            height: hauteur,
+        };
 
         // Les mires peignent pendant la sollicitation : sans changement du
         // bureau, une duplication vivante ne rendrait rien et la sonde

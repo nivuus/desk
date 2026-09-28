@@ -29,7 +29,12 @@ fn sortie(a: u32, s: u32, x: i32, l: u32, h: u32, attachee: bool) -> SortieDxgi 
         adaptateur: "NVIDIA".into(),
         nom_sortie: format!("\\\\.\\DISPLAY{s}"),
         attachee_au_bureau: attachee,
-        rect: Rect { x, y: 0, width: l, height: h },
+        rect: Rect {
+            x,
+            y: 0,
+            width: l,
+            height: h,
+        },
     }
 }
 
@@ -108,7 +113,10 @@ fn n_apparie_pas_une_sortie_aux_mauvaises_dimensions() {
 fn un_ecart_dans_la_tolerance_apparie_quand_meme() {
     let sorties = vec![sortie_nommee("\\\\.\\DISPLAY7", 1280, 717)];
     let trouvee = sortie_pour_viewport(&sorties, 1280, 720, &[], None);
-    assert_eq!(trouvee.map(|s| s.nom_sortie), Some("\\\\.\\DISPLAY7".into()));
+    assert_eq!(
+        trouvee.map(|s| s.nom_sortie),
+        Some("\\\\.\\DISPLAY7".into())
+    );
 }
 
 /// Le facteur DPI de 1,5 (5120×1440 annoncé par WMI, 3413×960 mesuré par
@@ -129,9 +137,11 @@ fn une_sortie_deja_prise_est_ignoree() {
         sortie_nommee("\\\\.\\DISPLAY7", 1280, 720),
         sortie_nommee("\\\\.\\DISPLAY8", 1280, 720),
     ];
-    let trouvee =
-        sortie_pour_viewport(&sorties, 1280, 720, &["\\\\.\\DISPLAY7".to_string()], None);
-    assert_eq!(trouvee.map(|s| s.nom_sortie), Some("\\\\.\\DISPLAY8".into()));
+    let trouvee = sortie_pour_viewport(&sorties, 1280, 720, &["\\\\.\\DISPLAY7".to_string()], None);
+    assert_eq!(
+        trouvee.map(|s| s.nom_sortie),
+        Some("\\\\.\\DISPLAY8".into())
+    );
 }
 
 /// Le cas produit de D9 : la sortie naît à 3840×2160 pour un viewport de
@@ -140,7 +150,10 @@ fn une_sortie_deja_prise_est_ignoree() {
 fn apparie_une_sortie_nee_beaucoup_plus_grande() {
     let sorties = vec![sortie_nommee("\\\\.\\DISPLAY8", 3840, 2160)];
     let trouvee = sortie_pour_viewport(&sorties, 1280, 720, &[], None);
-    assert_eq!(trouvee.map(|s| s.nom_sortie), Some("\\\\.\\DISPLAY8".into()));
+    assert_eq!(
+        trouvee.map(|s| s.nom_sortie),
+        Some("\\\\.\\DISPLAY8".into())
+    );
 }
 
 #[test]
@@ -158,9 +171,11 @@ fn une_grande_sortie_deja_prise_n_est_pas_reattribuee() {
         sortie_nommee("\\\\.\\DISPLAY8", 3840, 2160),
         sortie_nommee("\\\\.\\DISPLAY9", 3840, 2160),
     ];
-    let trouvee =
-        sortie_pour_viewport(&sorties, 1280, 720, &["\\\\.\\DISPLAY8".to_string()], None);
-    assert_eq!(trouvee.map(|s| s.nom_sortie), Some("\\\\.\\DISPLAY9".into()));
+    let trouvee = sortie_pour_viewport(&sorties, 1280, 720, &["\\\\.\\DISPLAY8".to_string()], None);
+    assert_eq!(
+        trouvee.map(|s| s.nom_sortie),
+        Some("\\\\.\\DISPLAY9".into())
+    );
 }
 
 #[test]
@@ -185,27 +200,57 @@ fn sortie_nommee(nom: &str, largeur: u32, hauteur: u32) -> SortieDxgi {
         adaptateur: "essai".into(),
         nom_sortie: nom.into(),
         attachee_au_bureau: true,
-        rect: Rect { x: 0, y: 0, width: largeur, height: hauteur },
+        rect: Rect {
+            x: 0,
+            y: 0,
+            width: largeur,
+            height: hauteur,
+        },
     }
 }
 
 #[test]
 fn une_fenetre_a_sa_place_n_est_pas_replacee() {
-    let cible = Rect { x: 2400, y: 0, width: 1600, height: 900 };
+    let cible = Rect {
+        x: 2400,
+        y: 0,
+        width: 1600,
+        height: 900,
+    };
     assert!(!doit_etre_replacee(&cible, &cible));
 }
 
 #[test]
 fn une_fenetre_deplacee_hors_de_sa_sortie_est_replacee() {
-    let cible = Rect { x: 2400, y: 0, width: 1600, height: 900 };
-    let ailleurs = Rect { x: 100, y: 50, width: 1600, height: 900 };
+    let cible = Rect {
+        x: 2400,
+        y: 0,
+        width: 1600,
+        height: 900,
+    };
+    let ailleurs = Rect {
+        x: 100,
+        y: 50,
+        width: 1600,
+        height: 900,
+    };
     assert!(doit_etre_replacee(&ailleurs, &cible));
 }
 
 #[test]
 fn une_fenetre_retaillee_par_l_application_est_replacee() {
-    let cible = Rect { x: 2400, y: 0, width: 1600, height: 900 };
-    let retaillee = Rect { x: 2400, y: 0, width: 800, height: 600 };
+    let cible = Rect {
+        x: 2400,
+        y: 0,
+        width: 1600,
+        height: 900,
+    };
+    let retaillee = Rect {
+        x: 2400,
+        y: 0,
+        width: 800,
+        height: 600,
+    };
     assert!(doit_etre_replacee(&retaillee, &cible));
 }
 
@@ -215,8 +260,18 @@ fn un_ecart_d_un_pixel_ne_declenche_pas_de_replacement() {
     // rendu par `GetWindowRect` de un ou deux pixels. Sans tolérance, le
     // superviseur replacerait la fenêtre à chaque tour de boucle, en
     // boucle, et volerait le focus indéfiniment.
-    let cible = Rect { x: 2400, y: 0, width: 1600, height: 900 };
-    let presque = Rect { x: 2401, y: 1, width: 1599, height: 899 };
+    let cible = Rect {
+        x: 2400,
+        y: 0,
+        width: 1600,
+        height: 900,
+    };
+    let presque = Rect {
+        x: 2401,
+        y: 1,
+        width: 1599,
+        height: 899,
+    };
     assert!(!doit_etre_replacee(&presque, &cible));
 }
 

@@ -68,7 +68,8 @@ impl Sursis {
         if self.attentes.iter().any(|(f, _, _)| *f == fenetre) {
             return;
         }
-        self.attentes.push((fenetre, titre, maintenant + DUREE_SURSIS));
+        self.attentes
+            .push((fenetre, titre, maintenant + DUREE_SURSIS));
     }
 
     /// Retire une fenêtre disparue avant son échéance.
@@ -88,8 +89,10 @@ impl Sursis {
     /// Une fenêtre peut survivre au sursis et avoir entre-temps perdu son
     /// titre, été masquée par DWM, ou reçu un propriétaire.
     pub fn murs(&mut self, maintenant: Instant) -> Vec<(IdFenetre, String)> {
-        let (murs, encore): (Vec<_>, Vec<_>) =
-            self.attentes.drain(..).partition(|(_, _, echeance)| *echeance <= maintenant);
+        let (murs, encore): (Vec<_>, Vec<_>) = self
+            .attentes
+            .drain(..)
+            .partition(|(_, _, echeance)| *echeance <= maintenant);
         self.attentes = encore;
         murs.into_iter().map(|(f, t, _)| (f, t)).collect()
     }
@@ -138,7 +141,9 @@ mod tests {
         let t0 = Instant::now();
         let mut s = Sursis::new();
         s.deposer(f(1), "Steam".into(), t0);
-        assert!(s.murs(t0 + DUREE_SURSIS - Duration::from_millis(1)).is_empty());
+        assert!(s
+            .murs(t0 + DUREE_SURSIS - Duration::from_millis(1))
+            .is_empty());
         assert_eq!(s.en_attente(), 1);
         assert_eq!(s.murs(t0 + DUREE_SURSIS).len(), 1);
     }
@@ -154,7 +159,11 @@ mod tests {
         s.deposer(f(1), "Steam".into(), t0);
         s.deposer(f(1), "Steam".into(), t0 + Duration::from_millis(400));
         assert_eq!(s.en_attente(), 1, "aucun doublon");
-        assert_eq!(s.murs(t0 + DUREE_SURSIS).len(), 1, "l'échéance est celle du PREMIER dépôt");
+        assert_eq!(
+            s.murs(t0 + DUREE_SURSIS).len(),
+            1,
+            "l'échéance est celle du PREMIER dépôt"
+        );
     }
 
     /// Retirer une fenêtre qu'on n'attendait pas ne ment pas : c'est le cas

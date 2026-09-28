@@ -3,18 +3,27 @@ use super::*;
 #[test]
 fn le_premier_montage_pousse_et_memorise() {
     assert_eq!(decider(None, "Documents", false), Decision::Pousser);
-    assert_eq!(a_memoriser(Decision::Pousser, "Documents"), Some("Documents"));
+    assert_eq!(
+        a_memoriser(Decision::Pousser, "Documents"),
+        Some("Documents")
+    );
 }
 
 #[test]
 fn le_meme_repertoire_pousse() {
-    assert_eq!(decider(Some("Documents"), "Documents", false), Decision::Pousser);
+    assert_eq!(
+        decider(Some("Documents"), "Documents", false),
+        Decision::Pousser
+    );
 }
 
 /// 🔴 Le cas pour lequel tout ce module existe.
 #[test]
 fn un_repertoire_different_sans_confirmation_RETIENT() {
-    assert_eq!(decider(Some("Documents"), "Téléchargements", false), Decision::Retenir);
+    assert_eq!(
+        decider(Some("Documents"), "Téléchargements", false),
+        Decision::Retenir
+    );
 }
 
 #[test]
@@ -40,8 +49,14 @@ fn retenir_ne_memorise_rien() {
 /// pas « documents » sur tous les systèmes.
 #[test]
 fn la_comparaison_de_nom_est_exacte() {
-    assert_eq!(decider(Some("Documents"), "documents", false), Decision::Retenir);
-    assert_eq!(decider(Some("Documents"), "Documents ", false), Decision::Retenir);
+    assert_eq!(
+        decider(Some("Documents"), "documents", false),
+        Decision::Retenir
+    );
+    assert_eq!(
+        decider(Some("Documents"), "Documents ", false),
+        Decision::Retenir
+    );
 }
 
 /// Un nom VIDE est un nom comme un autre : il ne vaut pas « absent ». Les
@@ -57,5 +72,8 @@ fn un_nom_memorise_vide_n_est_pas_un_nom_absent() {
 #[test]
 fn forcer_ne_change_rien_quand_on_poussait_deja() {
     assert_eq!(decider(None, "Documents", true), Decision::Pousser);
-    assert_eq!(decider(Some("Documents"), "Documents", true), Decision::Pousser);
+    assert_eq!(
+        decider(Some("Documents"), "Documents", true),
+        Decision::Pousser
+    );
 }

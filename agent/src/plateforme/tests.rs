@@ -44,13 +44,17 @@ enum Scenario {
 /// d'enrôlement reçus — un par connexion, ce qui rend le NOMBRE de
 /// connexions observable, et donc la reprise assertable.
 async fn faux_canal(mut scenarios: Vec<Scenario>) -> (String, mpsc::UnboundedReceiver<String>) {
-    let ecoute = TcpListener::bind("127.0.0.1:0").await.expect("écoute locale");
+    let ecoute = TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("écoute locale");
     let port = ecoute.local_addr().expect("adresse locale").port();
     let (tx, rx) = mpsc::unbounded_channel();
     scenarios.reverse();
     tokio::spawn(async move {
         loop {
-            let Ok((flux, _)) = ecoute.accept().await else { return };
+            let Ok((flux, _)) = ecoute.accept().await else {
+                return;
+            };
             let scenario = scenarios.pop();
             let tx = tx.clone();
             tokio::spawn(async move {
@@ -100,9 +104,15 @@ async fn envoyer_enrole<S>(ws: &mut tokio_tungstenite::WebSocketStream<S>, prefi
 where
     S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin,
 {
-    let texte = serde_json::to_string(&DepuisLaPlateforme::enrole(prefixe, "jeton-jwt", 1_787_136_774_000))
-        .expect("sérialisation de l'enrôlement");
-    ws.send(Message::Text(texte)).await.expect("envoi de l'enrôlement");
+    let texte = serde_json::to_string(&DepuisLaPlateforme::enrole(
+        prefixe,
+        "jeton-jwt",
+        1_787_136_774_000,
+    ))
+    .expect("sérialisation de l'enrôlement");
+    ws.send(Message::Text(texte))
+        .await
+        .expect("envoi de l'enrôlement");
 }
 
 /// Attend que l'identité prenne une valeur différente de celle déjà lue.
@@ -155,8 +165,14 @@ async fn une_coupure_reelle_du_socket_fait_reprendre_le_canal() {
     // reprise se re-présente, elle ne se contente pas de battre.
     let premier = connexions.recv().await.expect("premier enrôlement");
     let second = connexions.recv().await.expect("second enrôlement");
-    assert!(premier.contains(r#""vm":"vm-1""#), "enrôlement reçu : {premier}");
-    assert_eq!(premier, second, "la reprise doit re-présenter le MÊME enrôlement");
+    assert!(
+        premier.contains(r#""vm":"vm-1""#),
+        "enrôlement reçu : {premier}"
+    );
+    assert_eq!(
+        premier, second,
+        "la reprise doit re-présenter le MÊME enrôlement"
+    );
 }
 
 /// 🔴 L'EXCEPTION DE D4, sens 1. Mutation qui le rougit : rendre
@@ -177,7 +193,10 @@ async fn un_refus_de_version_rend_l_attente_vaine() {
     let verdict = tokio::time::timeout(Duration::from_secs(3), canal.attendre_identite())
         .await
         .expect("la boucle doit RENONCER, pas attendre indéfiniment");
-    assert!(verdict.is_none(), "un refus de version doit rendre l'attente vaine");
+    assert!(
+        verdict.is_none(),
+        "un refus de version doit rendre l'attente vaine"
+    );
 }
 
 /// L'autre moitié : le canal ne se rouvre pas.
@@ -227,14 +246,24 @@ async fn un_refus_d_enrolement_se_reessaie() {
 /// Celui-ci ouvre en plus un canal d'ordres que le test alimente.
 pub(super) async fn faux_canal_bidirectionnel(
     prefixe: &'static str,
-) -> (String, mpsc::UnboundedReceiver<String>, mpsc::UnboundedSender<String>) {
-    let ecoute = TcpListener::bind("127.0.0.1:0").await.expect("écoute locale");
+) -> (
+    String,
+    mpsc::UnboundedReceiver<String>,
+    mpsc::UnboundedSender<String>,
+) {
+    let ecoute = TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("écoute locale");
     let port = ecoute.local_addr().expect("adresse locale").port();
     let (recus_tx, recus_rx) = mpsc::unbounded_channel();
     let (ordres_tx, mut ordres_rx) = mpsc::unbounded_channel::<String>();
     tokio::spawn(async move {
-        let Ok((flux, _)) = ecoute.accept().await else { return };
-        let mut ws = tokio_tungstenite::accept_async(flux).await.expect("montée WebSocket");
+        let Ok((flux, _)) = ecoute.accept().await else {
+            return;
+        };
+        let mut ws = tokio_tungstenite::accept_async(flux)
+            .await
+            .expect("montée WebSocket");
         if let Some(Ok(Message::Text(texte))) = ws.next().await {
             let _ = recus_tx.send(texte);
         }
@@ -280,7 +309,9 @@ async fn un_message_pousse_dans_la_file_arrive_au_serveur() {
     let mut canal = ouvrir(&url, "w1".into(), "chut".into());
     canal.attendre_identite().await.expect("enrôlement");
 
-    canal.emetteur().emettre(VersLaPlateforme::catalogue(true, Vec::new(), Vec::new()));
+    canal
+        .emetteur()
+        .emettre(VersLaPlateforme::catalogue(true, Vec::new(), Vec::new()));
     let texte = attendre_message(&mut recus, |t| t.contains("catalogue")).await;
     assert_eq!(
         texte,
@@ -298,7 +329,9 @@ async fn un_ordre_de_lancement_arrive_au_consommateur_et_ne_ferme_pas_la_session
     let (url, mut recus, ordres) = faux_canal_bidirectionnel("PPP").await;
     let mut canal = ouvrir(&url, "w1".into(), "chut".into());
     canal.attendre_identite().await.expect("enrôlement");
-    let mut recu_ordres = canal.ordres().expect("la file d'ordres n'est prise qu'une fois");
+    let mut recu_ordres = canal
+        .ordres()
+        .expect("la file d'ordres n'est prise qu'une fois");
 
     ordres
         .send(r#"{"type":"lancer","v":5,"demande":"d-7","cle":"a1b2"}"#.into())
@@ -308,10 +341,18 @@ async fn un_ordre_de_lancement_arrive_au_consommateur_et_ne_ferme_pas_la_session
         .await
         .expect("aucun ordre reçu en 5 s")
         .expect("la file d'ordres est fermée");
-    assert_eq!(ordre, Ordre::Lancer { demande: "d-7".into(), cle: "a1b2".into() });
+    assert_eq!(
+        ordre,
+        Ordre::Lancer {
+            demande: "d-7".into(),
+            cle: "a1b2".into()
+        }
+    );
 
     // La session vit toujours : l'émission suivante arrive.
-    canal.emetteur().emettre(VersLaPlateforme::lancee("d-7", IssueLancement::Raccourci));
+    canal
+        .emetteur()
+        .emettre(VersLaPlateforme::lancee("d-7", IssueLancement::Raccourci));
     let texte = attendre_message(&mut recus, |t| t.contains("lancee")).await;
     assert_eq!(
         texte,
@@ -333,11 +374,20 @@ async fn un_message_mis_en_file_alors_que_le_socket_est_tombe_est_perdu_sans_tue
     ])
     .await;
     let mut canal = ouvrir(&url, "w1".into(), "chut".into());
-    assert_eq!(canal.attendre_identite().await.expect("1er enrôlement").prefixe, "AAA");
+    assert_eq!(
+        canal
+            .attendre_identite()
+            .await
+            .expect("1er enrôlement")
+            .prefixe,
+        "AAA"
+    );
 
     // La coupure survient ; on pousse pendant qu'il n'y a plus de socket.
     for _ in 0..64 {
-        canal.emetteur().emettre(VersLaPlateforme::catalogue(false, Vec::new(), Vec::new()));
+        canal
+            .emetteur()
+            .emettre(VersLaPlateforme::catalogue(false, Vec::new(), Vec::new()));
     }
 
     // Le canal reprend malgré tout : c'est la preuve qu'aucune émission n'a
@@ -385,8 +435,10 @@ async fn la_file_d_ordres_ne_se_prend_qu_une_fois() {
 /// la nôtre — et exige que la boucle RENONCE.
 #[tokio::test]
 async fn un_refus_de_version_emis_dans_une_autre_version_rend_l_attente_vaine() {
-    let (url, _connexions) =
-        faux_canal(vec![Scenario::RefuseBrut(r#"{"type":"refus","v":97,"motif":"version"}"#)]).await;
+    let (url, _connexions) = faux_canal(vec![Scenario::RefuseBrut(
+        r#"{"type":"refus","v":97,"motif":"version"}"#,
+    )])
+    .await;
     let mut canal = ouvrir(&url, "vm-1".into(), "chut".into());
 
     let verdict = tokio::time::timeout(Duration::from_secs(3), canal.attendre_identite())
@@ -402,8 +454,10 @@ async fn un_refus_de_version_emis_dans_une_autre_version_rend_l_attente_vaine() 
 /// (`expect` interrompt au premier échec) : aucune seconde connexion.
 #[tokio::test]
 async fn un_refus_de_version_emis_dans_une_autre_version_n_ouvre_aucune_seconde_connexion() {
-    let (url, mut connexions) =
-        faux_canal(vec![Scenario::RefuseBrut(r#"{"type":"refus","v":97,"motif":"version"}"#)]).await;
+    let (url, mut connexions) = faux_canal(vec![Scenario::RefuseBrut(
+        r#"{"type":"refus","v":97,"motif":"version"}"#,
+    )])
+    .await;
     let _canal = ouvrir(&url, "vm-1".into(), "chut".into());
 
     connexions.recv().await.expect("premier enrôlement");

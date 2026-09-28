@@ -124,7 +124,7 @@ use std::collections::HashSet;
 use anyhow::{Context, Result};
 use windows::core::PCWSTR;
 use windows::Win32::Graphics::Gdi::{
-    DEVMODEW, ENUM_DISPLAY_SETTINGS_FLAGS, ENUM_DISPLAY_SETTINGS_MODE, EnumDisplaySettingsExW,
+    EnumDisplaySettingsExW, DEVMODEW, ENUM_DISPLAY_SETTINGS_FLAGS, ENUM_DISPLAY_SETTINGS_MODE,
 };
 
 use combinaisons::combo_pour_temoin;
@@ -148,12 +148,17 @@ use crate::moniteurs_virtuels::Sorties;
 /// même défaut F1 que `choisir_cible` corrige ici pour l'éliminatoire — voir
 /// son commentaire de tête.
 pub(super) fn modes_annonces(nom_sortie: &str) -> Vec<(u32, u32)> {
-    let nom: Vec<u16> = nom_sortie.encode_utf16().chain(std::iter::once(0)).collect();
+    let nom: Vec<u16> = nom_sortie
+        .encode_utf16()
+        .chain(std::iter::once(0))
+        .collect();
     let mut modes = Vec::new();
     let mut index = 0u32;
     loop {
-        let mut dm =
-            DEVMODEW { dmSize: std::mem::size_of::<DEVMODEW>() as u16, ..Default::default() };
+        let mut dm = DEVMODEW {
+            dmSize: std::mem::size_of::<DEVMODEW>() as u16,
+            ..Default::default()
+        };
         let ok = unsafe {
             EnumDisplaySettingsExW(
                 PCWSTR(nom.as_ptr()),
@@ -188,7 +193,11 @@ pub(super) fn modes_annonces(nom_sortie: &str) -> Vec<(u32, u32)> {
 /// `pub(super)` : `temoin::rejouer_temoin` réemploie cette MÊME fonction
 /// plutôt que d'en récrire une variante, pour la même raison qu'elle existe
 /// ici -- voir Critique 2 de la revue de la tâche 1.
-pub(super) fn choisir_cible(avant: (u32, u32), demande: (u32, u32), annonces: &[(u32, u32)]) -> Option<(u32, u32)> {
+pub(super) fn choisir_cible(
+    avant: (u32, u32),
+    demande: (u32, u32),
+    annonces: &[(u32, u32)],
+) -> Option<(u32, u32)> {
     if demande != avant && annonces.contains(&demande) {
         return Some(demande);
     }
@@ -208,16 +217,22 @@ pub(super) fn executer(consigne: &str) -> Result<()> {
     // connaît déjà la taille courante de viser directement une cible utile,
     // sans rien changer au format d'appel documenté.
     let demande: (u32, u32) = (
-        l.trim().parse().context("largeur invalide dans MULTIFENETRE_MODE_SORTIE")?,
-        h.trim().parse().context("hauteur invalide dans MULTIFENETRE_MODE_SORTIE")?,
+        l.trim()
+            .parse()
+            .context("largeur invalide dans MULTIFENETRE_MODE_SORTIE")?,
+        h.trim()
+            .parse()
+            .context("hauteur invalide dans MULTIFENETRE_MODE_SORTIE")?,
     );
 
     // Relevé AVANT toute création, comme les sondes voisines : sans lui, une
     // restauration manuelle après plantage se ferait à l'aveugle.
     let avant = relever_topologie("avant création")?;
     let noms_avant = noms_attaches(&avant);
-    let connues_avant_tout: HashSet<String> =
-        avant.iter().map(|sortie| sortie.nom_sortie.clone()).collect();
+    let connues_avant_tout: HashSet<String> = avant
+        .iter()
+        .map(|sortie| sortie.nom_sortie.clone())
+        .collect();
 
     let pilote = ouvrir_pilote()?;
     let (largeur_creation, hauteur_creation, hertz) = RESOLUTION;
@@ -281,8 +296,13 @@ pub(super) fn executer(consigne: &str) -> Result<()> {
         let mut voisines = vec![voisine1, voisine2];
 
         // --- L'ÉLIMINATOIRE ---
-        let resultat =
-            essayer_les_modes(&pilote, &nom_sortie, taille_avant_tentative, demande, &mut voisines)?;
+        let resultat = essayer_les_modes(
+            &pilote,
+            &nom_sortie,
+            taille_avant_tentative,
+            demande,
+            &mut voisines,
+        )?;
 
         // --- Les deux inconnues annexes (étape 5), relevées au même moment
         // que l'éliminatoire -- avant de relâcher quoi que ce soit.

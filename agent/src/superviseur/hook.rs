@@ -23,9 +23,8 @@ use windows::Win32::UI::Accessibility::{SetWinEventHook, UnhookWinEvent, HWINEVE
 use windows::Win32::UI::WindowsAndMessaging::{
     DispatchMessageW, EnumWindows, GetMessageW, GetWindow, GetWindowLongPtrW, GetWindowTextLengthW,
     GetWindowTextW, GetWindowThreadProcessId, IsWindow, IsWindowVisible, PostThreadMessageW,
-    TranslateMessage, EVENT_OBJECT_DESTROY,
-    EVENT_OBJECT_HIDE, EVENT_OBJECT_SHOW, GWL_EXSTYLE, GW_OWNER, MSG, OBJID_WINDOW, WINEVENT_OUTOFCONTEXT,
-    WM_QUIT, WS_EX_APPWINDOW, WS_EX_TOOLWINDOW,
+    TranslateMessage, EVENT_OBJECT_DESTROY, EVENT_OBJECT_HIDE, EVENT_OBJECT_SHOW, GWL_EXSTYLE,
+    GW_OWNER, MSG, OBJID_WINDOW, WINEVENT_OUTOFCONTEXT, WM_QUIT, WS_EX_APPWINDOW, WS_EX_TOOLWINDOW,
 };
 
 use super::fenetres::{ecartee_pour_non_appartenance, merite_une_fenetre, DescriptionFenetre};
@@ -58,7 +57,8 @@ impl Drop for Hook {
             // Réveiller la pompe pour qu'elle sorte de `GetMessageW`, sans
             // quoi le fil ne se termine jamais et la jointure ci-dessous
             // bloquerait indéfiniment.
-            let _ = PostThreadMessageW(self.fil_id, WM_QUIT, Default::default(), Default::default());
+            let _ =
+                PostThreadMessageW(self.fil_id, WM_QUIT, Default::default(), Default::default());
         }
         if let Some(fil) = self.fil.take() {
             let _ = fil.join();
@@ -161,9 +161,9 @@ unsafe extern "system" fn rappel(
         // application qui masque sa fenêtre principale au lieu de la détruire
         // (barre de notification) laisserait sinon un flux vivant sur une
         // fenêtre invisible.
-        EVENT_OBJECT_HIDE | EVENT_OBJECT_DESTROY => {
-            EvenementFenetre::Disparue { fenetre: IdFenetre(hwnd.0 as u64) }
-        }
+        EVENT_OBJECT_HIDE | EVENT_OBJECT_DESTROY => EvenementFenetre::Disparue {
+            fenetre: IdFenetre(hwnd.0 as u64),
+        },
         _ => return,
     };
     if let Some(tx) = EMETTEUR.lock().unwrap_or_else(|e| e.into_inner()).as_ref() {
@@ -245,8 +245,7 @@ fn nom_du_processus(pid: u32) -> Option<String> {
         OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_WIN32,
         PROCESS_QUERY_LIMITED_INFORMATION,
     };
-    let processus =
-        unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid) }.ok()?;
+    let processus = unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid) }.ok()?;
     let mut tampon = [0u16; 260];
     let mut taille = tampon.len() as u32;
     let issue = unsafe {
@@ -260,7 +259,13 @@ fn nom_du_processus(pid: u32) -> Option<String> {
     let _ = unsafe { windows::Win32::Foundation::CloseHandle(processus) };
     issue.ok()?;
     let chemin = String::from_utf16_lossy(&tampon[..taille as usize]);
-    Some(chemin.rsplit(['\\', '/']).next().unwrap_or(&chemin).to_string())
+    Some(
+        chemin
+            .rsplit(['\\', '/'])
+            .next()
+            .unwrap_or(&chemin)
+            .to_string(),
+    )
 }
 
 /// Pose le hook global et lance sa pompe de messages sur un fil dédié.
@@ -311,6 +316,8 @@ pub fn poser(tx: Sender<EvenementFenetre>) -> Result<Hook> {
             fil_id,
         }),
         Ok(Err(e)) => Err(anyhow!(e)),
-        Err(_) => Err(anyhow!("le fil du hook s'est terminé avant de rendre son état")),
+        Err(_) => Err(anyhow!(
+            "le fil du hook s'est terminé avant de rendre son état"
+        )),
     }
 }

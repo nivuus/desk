@@ -137,7 +137,10 @@ fn un_canal_rompu_detecte_par_le_presse_papier_est_retire_du_vivier() {
 /// le premier tour, et le seul dans lequel les gardes se jugent.
 fn sondeur_amorce() -> Sondeur {
     let mut sondeur = Sondeur::nouveau();
-    assert_eq!(sondeur.observer(1, || Some(String::from("etat-initial"))), None);
+    assert_eq!(
+        sondeur.observer(1, || Some(String::from("etat-initial"))),
+        None
+    );
     sondeur
 }
 
@@ -168,7 +171,9 @@ fn armer_les_gardes_empeche_de_relire_notre_ecriture() {
     super::armer_les_gardes(&mut sondeur);
 
     assert_eq!(
-        sondeur.observer(42, || panic!("le garde n°1 a laissé rouvrir le presse-papier")),
+        sondeur.observer(42, || panic!(
+            "le garde n°1 a laissé rouvrir le presse-papier"
+        )),
         None
     );
     // Consommée : un second armement ne trouve plus rien.
@@ -319,7 +324,10 @@ fn une_session_qui_s_inscrit_apres_une_copie_recoit_le_contenu_courant() {
     let _verrou = verrouiller_pour_le_test();
     etat().dernier_presse_papier = None;
     let (canal_present, generation_present) = inscrire("t11-present", 7300);
-    super::distribuer(&mut etat(), crate::presse_papier::Annonce::Texte("deja-copie".into()));
+    super::distribuer(
+        &mut etat(),
+        crate::presse_papier::Annonce::Texte("deja-copie".into()),
+    );
     let _ = dernier_presse_papier(&canal_present);
 
     // La fenêtre s'attache APRÈS la copie.
@@ -346,7 +354,10 @@ fn l_emission_a_l_inscription_ne_part_que_sur_le_canal_neuf() {
     let _verrou = verrouiller_pour_le_test();
     etat().dernier_presse_papier = None;
     let (canal_present, generation_present) = inscrire("t12-present", 7310);
-    super::distribuer(&mut etat(), crate::presse_papier::Annonce::Texte("copie".into()));
+    super::distribuer(
+        &mut etat(),
+        crate::presse_papier::Annonce::Texte("copie".into()),
+    );
     // On vide ce que la voisine a légitimement reçu de `distribuer`.
     let _ = dernier_presse_papier(&canal_present);
 
@@ -376,7 +387,10 @@ fn l_emission_a_l_inscription_ne_part_que_sur_le_canal_neuf() {
 fn une_session_qui_s_inscrit_apres_un_refus_recoit_le_refus() {
     let _verrou = verrouiller_pour_le_test();
     etat().dernier_presse_papier = None;
-    super::distribuer(&mut etat(), crate::presse_papier::Annonce::Refus { octets: 123_456 });
+    super::distribuer(
+        &mut etat(),
+        crate::presse_papier::Annonce::Refus { octets: 123_456 },
+    );
 
     let (canal, generation) = inscrire("t13-refus", 7320);
 
@@ -419,7 +433,10 @@ fn un_rattachement_recoit_lui_aussi_le_contenu_courant() {
     let _verrou = verrouiller_pour_le_test();
     etat().dernier_presse_papier = None;
     let (premier_canal, premiere_generation) = inscrire("t15-rattache", 7340);
-    super::distribuer(&mut etat(), crate::presse_papier::Annonce::Texte("avant-rupture".into()));
+    super::distribuer(
+        &mut etat(),
+        crate::presse_papier::Annonce::Texte("avant-rupture".into()),
+    );
     let _ = dernier_presse_papier(&premier_canal);
 
     // Le rattachement, sous le MÊME nom.

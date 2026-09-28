@@ -112,7 +112,10 @@ impl Compteurs {
     /// rien n'a été exercé. Le test `manquants_rend_exactement_les_causes_a_zero`
     /// l'attrape.
     pub fn manquants(&self) -> Vec<Erreur> {
-        Erreur::TOUTES.into_iter().filter(|e| self.compte(*e) == 0).collect()
+        Erreur::TOUTES
+            .into_iter()
+            .filter(|e| self.compte(*e) == 0)
+            .collect()
     }
 
     /// La ligne de recensement, **dans l'ordre d'`Erreur::TOUTES`**.

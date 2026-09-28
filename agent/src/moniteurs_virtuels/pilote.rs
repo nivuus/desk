@@ -44,13 +44,13 @@ use windows::Win32::Storage::FileSystem::{
 };
 use windows::Win32::System::IO::DeviceIoControl;
 
+use super::{Adaptateur, IdSortie, PiloteAffichageVirtuel};
 use crate::moniteurs_virtuels::guid::{guid_pour, numero_de};
 use crate::moniteurs_virtuels::peripherique::chemin_du_peripherique;
 use crate::moniteurs_virtuels::sudovda::{
     en_champ_14, DemandeAjout, DemandeRetrait, SortieAjoutee, IOCTL_AJOUTER_SORTIE,
     IOCTL_RETIRER_SORTIE,
 };
-use super::{Adaptateur, IdSortie, PiloteAffichageVirtuel};
 
 /// Les trois IOCTL sans effet de bord (version, ping, veille), extraites pour
 /// tenir sous le plafond de 500 lignes — voir son commentaire de tête. Module
@@ -112,7 +112,10 @@ pub(crate) fn ouvrir_pilote() -> Result<PiloteParIoctl> {
         )
     }
     .context("ouverture du périphérique du pilote d'affichage virtuel (SudoVDA)")?;
-    Ok(PiloteParIoctl { peripherique, etat: Mutex::new(EtatSorties::default()) })
+    Ok(PiloteParIoctl {
+        peripherique,
+        etat: Mutex::new(EtatSorties::default()),
+    })
 }
 
 impl PiloteParIoctl {
@@ -127,7 +130,9 @@ impl PiloteParIoctl {
     /// aggraver. `into_inner` rend la table telle quelle : au pire, une
     /// insertion interrompue par la panique y manque.
     fn etat(&self) -> std::sync::MutexGuard<'_, EtatSorties> {
-        self.etat.lock().unwrap_or_else(|empoisonne| empoisonne.into_inner())
+        self.etat
+            .lock()
+            .unwrap_or_else(|empoisonne| empoisonne.into_inner())
     }
 
     /// Efface toute trace de ce GUID : la sortie n'existe plus, ni retrait dû
@@ -146,7 +151,8 @@ impl PiloteParIoctl {
     pub(super) fn oublier(&self, guid_moniteur: GUID) {
         let mut etat = self.etat();
         etat.a_purger.retain(|connu| *connu != guid_moniteur);
-        etat.apparies.retain(|(_, connu, _)| *connu != guid_moniteur);
+        etat.apparies
+            .retain(|(_, connu, _)| *connu != guid_moniteur);
         // `None` seulement pour un GUID qui ne vient pas de notre gabarit :
         // rien à rendre, et surtout rien à deviner (voir `guid::numero_de`).
         if let Some(numero) = numero_de(guid_moniteur) {
@@ -406,7 +412,8 @@ impl PiloteAffichageVirtuel for PiloteParIoctl {
                 // serait jamais détruite. Le retrait reste dû, il n'est
                 // simplement plus adressable par identifiant.
                 let mut etat = self.etat();
-                etat.apparies.retain(|(_, connu, _)| *connu != guid_moniteur);
+                etat.apparies
+                    .retain(|(_, connu, _)| *connu != guid_moniteur);
                 etat.a_purger.push(guid_moniteur);
                 drop(etat);
                 tracing::error!(

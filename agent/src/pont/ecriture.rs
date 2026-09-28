@@ -54,7 +54,11 @@ pub enum Evenement {
     /// 🔴 **`de` EST LA SOURCE, `vers` LA DESTINATION**, et s'y tromper
     /// détruit. Le rappel refuse de construire cette variante si `vers` est
     /// vide ou égal à `de`.
-    Renomme { de: String, vers: String, repertoire: bool },
+    Renomme {
+        de: String,
+        vers: String,
+        repertoire: bool,
+    },
     /// **F3** — une entrée a été supprimée dans la VM.
     Supprime { chemin: String, repertoire: bool },
 }
@@ -83,7 +87,13 @@ impl Evenement {
     /// répertoire a une conséquence — et l'élargir aux mutations ferait qu'un
     /// renommage suivi d'une écriture ne pousserait jamais les octets.
     pub fn est_repertoire(&self) -> bool {
-        matches!(self, Evenement::Cree { repertoire: true, .. })
+        matches!(
+            self,
+            Evenement::Cree {
+                repertoire: true,
+                ..
+            }
+        )
     }
 
     /// Cet événement est-il une **mutation** — un renommage ou une suppression ?
@@ -145,7 +155,11 @@ impl File {
             self.a_rejouer = Some(fusionner(base, evenement));
             return None;
         }
-        match self.attente.iter().position(|e| e.chemin() == evenement.chemin()) {
+        match self
+            .attente
+            .iter()
+            .position(|e| e.chemin() == evenement.chemin())
+        {
             // Coalescence **en place** : le chemin garde son rang. Le faire
             // remonter en queue ferait passer devant lui des entrées plus
             // jeunes, alors qu'il attend depuis plus longtemps.

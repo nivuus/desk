@@ -45,7 +45,11 @@ const PAS_OBSERVATION: std::time::Duration = std::time::Duration::from_millis(25
 fn empreinte(texte: &str) -> String {
     use sha1::{Digest, Sha1};
     let condense = Sha1::digest(texte.as_bytes());
-    condense.iter().take(6).map(|octet| format!("{octet:02x}")).collect()
+    condense
+        .iter()
+        .take(6)
+        .map(|octet| format!("{octet:02x}"))
+        .collect()
 }
 
 /// Ce que la sonde a lu du presse-papier à un instant donné.
@@ -124,7 +128,12 @@ pub fn executer(secondes_texte: &str) -> Result<()> {
     } else {
         "INSTABLE-au-repos"
     };
-    tracing::info!(q1, seq_min = repos.iter().min(), seq_max = repos.iter().max(), "P0 A bilan");
+    tracing::info!(
+        q1,
+        seq_min = repos.iter().min(),
+        seq_max = repos.iter().max(),
+        "P0 A bilan"
+    );
 
     if compteur_absent {
         tracing::warn!(
@@ -183,7 +192,11 @@ pub fn executer(secondes_texte: &str) -> Result<()> {
                 );
             }
             Ok(None) => {
-                tracing::info!(seq, precedent = reference, "P0 B mouvement, aucun CF_UNICODETEXT");
+                tracing::info!(
+                    seq,
+                    precedent = reference,
+                    "P0 B mouvement, aucun CF_UNICODETEXT"
+                );
             }
             Err(erreur) => {
                 echecs_open += 1;
@@ -192,7 +205,11 @@ pub fn executer(secondes_texte: &str) -> Result<()> {
         }
         reference = seq;
     }
-    let q1bis = if mouvements == 0 { "AUCUN-MOUVEMENT" } else { "bouge" };
+    let q1bis = if mouvements == 0 {
+        "AUCUN-MOUVEMENT"
+    } else {
+        "bouge"
+    };
     tracing::info!(q1bis, mouvements, lectures, echecs_open, "P0 B bilan");
 
     // ---- Phase C : notre PROPRE écriture fait-elle bouger le compteur ? ----
@@ -203,7 +220,11 @@ pub fn executer(secondes_texte: &str) -> Result<()> {
     std::thread::sleep(PAS_REPOS);
     let apres_c = win::numero_de_sequence();
     // On juge sur le MOUVEMENT relu, jamais sur `ecrit_c`.
-    let q3 = if apres_c != avant_c { "bouge" } else { "PAS-DE-MOUVEMENT" };
+    let q3 = if apres_c != avant_c {
+        "bouge"
+    } else {
+        "PAS-DE-MOUVEMENT"
+    };
     tracing::info!(
         q3,
         avant = avant_c,
@@ -219,7 +240,11 @@ pub fn executer(secondes_texte: &str) -> Result<()> {
     let ecrit_d = win::ecrire_texte(&notre_texte);
     std::thread::sleep(PAS_REPOS);
     let apres_d = win::numero_de_sequence();
-    let q2 = if apres_d != avant_d { "bouge" } else { "PAS-DE-MOUVEMENT" };
+    let q2 = if apres_d != avant_d {
+        "bouge"
+    } else {
+        "PAS-DE-MOUVEMENT"
+    };
     tracing::info!(
         q2,
         avant = avant_d,

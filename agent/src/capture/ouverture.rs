@@ -245,8 +245,7 @@ pub(super) fn dupliquer_avec_reprise(
                 let code = erreur
                     .downcast_ref::<windows::core::Error>()
                     .map(|e| e.code().0);
-                let retentable =
-                    code.is_some_and(crate::capture_reprise::est_ouverture_retentable);
+                let retentable = code.is_some_and(crate::capture_reprise::est_ouverture_retentable);
                 if !retentable || debut.elapsed() >= fenetre {
                     // Bruyant à dessein : c'est ici que se lit un plafond
                     // de duplications concurrentes, indiscernable d'une

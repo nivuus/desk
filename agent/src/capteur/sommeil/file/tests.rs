@@ -30,8 +30,14 @@ use std::collections::VecDeque;
 #[test]
 fn deux_parts_se_coalescent_en_une_seule() {
     let mut f = VecDeque::new();
-    assert!(matches!(deposer(&mut f, Message::Part { bps: 1 }), Depot::Empilee));
-    assert!(matches!(deposer(&mut f, Message::Part { bps: 2 }), Depot::Coalescee));
+    assert!(matches!(
+        deposer(&mut f, Message::Part { bps: 1 }),
+        Depot::Empilee
+    ));
+    assert!(matches!(
+        deposer(&mut f, Message::Part { bps: 2 }),
+        Depot::Coalescee
+    ));
     assert_eq!(f.len(), 1);
     assert!(matches!(f[0], Message::Part { bps: 2 }));
 }
@@ -47,7 +53,10 @@ fn la_coalescence_conserve_la_position() {
     let _ = deposer(&mut f, Message::Sommeil(Ordre::Reveiller));
     let _ = deposer(&mut f, Message::Part { bps: 2 });
     assert_eq!(f.len(), 2);
-    assert!(matches!(f[0], Message::Part { bps: 2 }), "la part garde sa PLACE");
+    assert!(
+        matches!(f[0], Message::Part { bps: 2 }),
+        "la part garde sa PLACE"
+    );
     assert!(matches!(f[1], Message::Sommeil(Ordre::Reveiller)));
 }
 
@@ -56,7 +65,10 @@ fn la_coalescence_conserve_la_position() {
 fn un_ordre_de_sommeil_n_est_jamais_coalesce() {
     let mut f = VecDeque::new();
     let _ = deposer(&mut f, Message::Sommeil(Ordre::Reveiller));
-    assert!(matches!(deposer(&mut f, Message::Sommeil(Ordre::Reveiller)), Depot::Empilee));
+    assert!(matches!(
+        deposer(&mut f, Message::Sommeil(Ordre::Reveiller)),
+        Depot::Empilee
+    ));
     assert_eq!(f.len(), 2);
 }
 
@@ -64,8 +76,20 @@ fn un_ordre_de_sommeil_n_est_jamais_coalesce() {
 #[test]
 fn un_presse_papier_n_est_jamais_coalesce() {
     let mut f = VecDeque::new();
-    let _ = deposer(&mut f, Message::PressePapier { texte: Some("a".into()), octets: 1 });
-    let d = deposer(&mut f, Message::PressePapier { texte: Some("b".into()), octets: 1 });
+    let _ = deposer(
+        &mut f,
+        Message::PressePapier {
+            texte: Some("a".into()),
+            octets: 1,
+        },
+    );
+    let d = deposer(
+        &mut f,
+        Message::PressePapier {
+            texte: Some("b".into()),
+            octets: 1,
+        },
+    );
     assert!(matches!(d, Depot::Empilee));
     assert_eq!(f.len(), 2);
 }
@@ -77,7 +101,10 @@ fn au_dela_de_la_borne_le_depot_est_refuse() {
     for _ in 0..PROFONDEUR_MAX {
         let _ = deposer(&mut f, Message::Sommeil(Ordre::Reveiller));
     }
-    assert!(matches!(deposer(&mut f, Message::Sommeil(Ordre::Reveiller)), Depot::Refusee));
+    assert!(matches!(
+        deposer(&mut f, Message::Sommeil(Ordre::Reveiller)),
+        Depot::Refusee
+    ));
     assert_eq!(f.len(), PROFONDEUR_MAX, "la file n'a pas grossi");
 }
 
@@ -117,7 +144,10 @@ fn un_premier_depot_coalescable_bute_bien_sur_la_borne() {
     for _ in 0..PROFONDEUR_MAX {
         let _ = deposer(&mut f, Message::Sommeil(Ordre::Reveiller));
     }
-    assert!(matches!(deposer(&mut f, Message::Part { bps: 1 }), Depot::Refusee));
+    assert!(matches!(
+        deposer(&mut f, Message::Part { bps: 1 }),
+        Depot::Refusee
+    ));
     assert_eq!(f.len(), PROFONDEUR_MAX, "la file n'a pas grossi");
 }
 
@@ -126,13 +156,22 @@ fn un_premier_depot_coalescable_bute_bien_sur_la_borne() {
 #[test]
 fn ce_qui_est_depose_se_recoit_dans_l_ordre() {
     let (e, r) = canal_de_session("test");
-    assert!(matches!(e.envoyer(Message::Sommeil(Ordre::Reveiller)), Envoi::Depose(_)));
     assert!(matches!(
-        e.envoyer(Message::PressePapier { texte: Some("a".into()), octets: 1 }),
+        e.envoyer(Message::Sommeil(Ordre::Reveiller)),
+        Envoi::Depose(_)
+    ));
+    assert!(matches!(
+        e.envoyer(Message::PressePapier {
+            texte: Some("a".into()),
+            octets: 1
+        }),
         Envoi::Depose(_)
     ));
     assert!(matches!(r.essayer_recevoir(), Ok(Message::Sommeil(_))));
-    assert!(matches!(r.essayer_recevoir(), Ok(Message::PressePapier { .. })));
+    assert!(matches!(
+        r.essayer_recevoir(),
+        Ok(Message::PressePapier { .. })
+    ));
     assert_eq!(r.essayer_recevoir(), Err(VideOuFerme::Vide));
 }
 
@@ -142,9 +181,16 @@ fn ce_qui_est_depose_se_recoit_dans_l_ordre() {
 fn les_refus_se_comptent() {
     let (e, _r) = canal_de_session("test");
     for _ in 0..PROFONDEUR_MAX {
-        assert!(matches!(e.envoyer(Message::Sommeil(Ordre::Reveiller)), Envoi::Depose(_)));
+        assert!(matches!(
+            e.envoyer(Message::Sommeil(Ordre::Reveiller)),
+            Envoi::Depose(_)
+        ));
     }
-    assert_eq!(e.refuses(), 0, "aucun refus tant que la borne n'est pas atteinte");
+    assert_eq!(
+        e.refuses(),
+        0,
+        "aucun refus tant que la borne n'est pas atteinte"
+    );
     // 🔴 ET L'ISSUE EST `Refuse`, PAS `Depose` : c'est la distinction qu'aucun
     // appelant ne faisait avant le round de correction 1, et que le type
     // impose désormais à chacun d'eux.
@@ -176,7 +222,10 @@ fn un_receveur_tombe_ferme_l_emetteur() {
 fn le_refus_ne_se_confond_ni_avec_la_livraison_ni_avec_la_rupture() {
     let (e, r) = canal_de_session("test");
     for _ in 0..PROFONDEUR_MAX {
-        assert!(matches!(e.envoyer(Message::Sommeil(Ordre::Reveiller)), Envoi::Depose(_)));
+        assert!(matches!(
+            e.envoyer(Message::Sommeil(Ordre::Reveiller)),
+            Envoi::Depose(_)
+        ));
     }
     // File pleine, receveur VIVANT.
     assert_eq!(e.envoyer(Message::Sommeil(Ordre::Reveiller)), Envoi::Refuse);
@@ -191,7 +240,10 @@ fn le_refus_ne_se_confond_ni_avec_la_livraison_ni_avec_la_rupture() {
 fn un_emetteur_tombe_se_distingue_d_une_file_vide() {
     let (e, r) = canal_de_session("test");
     assert_eq!(r.essayer_recevoir(), Err(VideOuFerme::Vide));
-    assert!(matches!(e.envoyer(Message::Sommeil(Ordre::Reveiller)), Envoi::Depose(_)));
+    assert!(matches!(
+        e.envoyer(Message::Sommeil(Ordre::Reveiller)),
+        Envoi::Depose(_)
+    ));
     drop(e);
     // Ce qui reste en file se lit ENCORE : la fermeture ne jette rien.
     assert!(matches!(r.essayer_recevoir(), Ok(Message::Sommeil(_))));
@@ -202,8 +254,14 @@ fn un_emetteur_tombe_se_distingue_d_une_file_vide() {
 #[test]
 fn vider_rend_tout_ce_qui_attend_dans_l_ordre() {
     let (e, r) = canal_de_session("test");
-    assert!(matches!(e.envoyer(Message::Part { bps: 7 }), Envoi::Depose(_)));
-    assert!(matches!(e.envoyer(Message::Sommeil(Ordre::Reveiller)), Envoi::Depose(_)));
+    assert!(matches!(
+        e.envoyer(Message::Part { bps: 7 }),
+        Envoi::Depose(_)
+    ));
+    assert!(matches!(
+        e.envoyer(Message::Sommeil(Ordre::Reveiller)),
+        Envoi::Depose(_)
+    ));
     let recus = r.vider();
     assert_eq!(recus.len(), 2);
     assert!(matches!(recus[0], Message::Part { bps: 7 }));

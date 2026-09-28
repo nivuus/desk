@@ -138,11 +138,18 @@ pub fn table(couples: Vec<(String, String)>) -> std::collections::BTreeMap<Strin
     let mut brute: std::collections::BTreeMap<String, Vec<String>> =
         std::collections::BTreeMap::new();
     for (extension, commande) in couples {
-        let Some(exe) = executable_de_commande(&commande) else { continue };
-        let Some(ext) = normaliser_extension(&extension) else { continue };
+        let Some(exe) = executable_de_commande(&commande) else {
+            continue;
+        };
+        let Some(ext) = normaliser_extension(&extension) else {
+            continue;
+        };
         brute.entry(normaliser_chemin(&exe)).or_default().push(ext);
     }
-    brute.into_iter().map(|(exe, exts)| (exe, ranger(exts))).collect()
+    brute
+        .into_iter()
+        .map(|(exe, exts)| (exe, ranger(exts)))
+        .collect()
 }
 
 /// Ce que la table retient pour une cible — la liste VIDE si elle n'y est pas.
@@ -155,7 +162,10 @@ pub fn pour_cible(
     table: &std::collections::BTreeMap<String, Vec<String>>,
     cible: &str,
 ) -> Vec<String> {
-    table.get(&normaliser_chemin(cible)).cloned().unwrap_or_default()
+    table
+        .get(&normaliser_chemin(cible))
+        .cloned()
+        .unwrap_or_default()
 }
 
 /// Trie et déduplique les extensions d'une application.

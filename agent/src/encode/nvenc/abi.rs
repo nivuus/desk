@@ -255,7 +255,10 @@ mod tests {
             assert_ne!(v & (1 << 31), 0, "{nom} doit porter le bit 31");
         }
         for (nom, v) in [
-            ("OPEN_ENCODE_SESSION_EX_PARAMS", OPEN_ENCODE_SESSION_EX_PARAMS_VER),
+            (
+                "OPEN_ENCODE_SESSION_EX_PARAMS",
+                OPEN_ENCODE_SESSION_EX_PARAMS_VER,
+            ),
             ("RC_PARAMS", RC_PARAMS_VER),
             ("REGISTER_RESOURCE", REGISTER_RESOURCE_VER),
             ("MAP_INPUT_RESOURCE", MAP_INPUT_RESOURCE_VER),

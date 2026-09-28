@@ -27,19 +27,28 @@ fn un_chemin_vide_renvoie_a_la_cible() {
     );
     // 🔴 LA ROUGE : traiter un chemin vide comme `Aucune`. Cet état ferait
     // perdre son icône à plus d'une application sur deux, EN SILENCE.
-    assert_ne!(provenance(",0", r"c:\windows\system32\notepad.exe"), Provenance::Aucune);
+    assert_ne!(
+        provenance(",0", r"c:\windows\system32\notepad.exe"),
+        Provenance::Aucune
+    );
 }
 
 /// Un `.ico` autonome — la ligne verbatim de M1.
 #[test]
 fn un_ico_autonome_est_lu_comme_un_ico() {
     assert_eq!(
-        provenance(r"C:\Program Files\GSmartControl\gsmartcontrol.ico,0", r"c:\x\y.exe"),
+        provenance(
+            r"C:\Program Files\GSmartControl\gsmartcontrol.ico,0",
+            r"c:\x\y.exe"
+        ),
         Provenance::Ico(r"C:\Program Files\GSmartControl\gsmartcontrol.ico".into())
     );
     // Sans index : le format l'autorise.
     assert_eq!(
-        provenance(r"C:\Program Files\GSmartControl\gsmartcontrol.ico", r"c:\x\y.exe"),
+        provenance(
+            r"C:\Program Files\GSmartControl\gsmartcontrol.ico",
+            r"c:\x\y.exe"
+        ),
         Provenance::Ico(r"C:\Program Files\GSmartControl\gsmartcontrol.ico".into())
     );
 }
@@ -62,7 +71,10 @@ fn un_module_pe_est_lu_comme_un_module() {
 #[test]
 fn un_chemin_sans_extension_ne_se_lit_pas() {
     assert_eq!(
-        provenance(r"C:\Windows\Installer\{1BEA6F9E-0000-0000-0000-000000000000}\ProductIcon,0", ""),
+        provenance(
+            r"C:\Windows\Installer\{1BEA6F9E-0000-0000-0000-000000000000}\ProductIcon,0",
+            ""
+        ),
         Provenance::Aucune
     );
     // Une extension inconnue non plus.
@@ -102,7 +114,10 @@ fn l_index_vaut_zero_a_defaut_et_accepte_le_negatif() {
 /// Une extension de RÉPERTOIRE ne doit pas être prise pour celle du fichier.
 #[test]
 fn l_extension_est_celle_du_dernier_segment() {
-    assert_eq!(provenance(r"C:\dossier.exe\fichier,0", ""), Provenance::Aucune);
+    assert_eq!(
+        provenance(r"C:\dossier.exe\fichier,0", ""),
+        Provenance::Aucune
+    );
     assert_eq!(
         provenance(r"C:\dossier.ico\fichier.exe,0", ""),
         Provenance::Module(r"C:\dossier.ico\fichier.exe".into())
@@ -114,6 +129,12 @@ fn l_extension_est_celle_du_dernier_segment() {
 /// La casse de l'extension ne décide de rien.
 #[test]
 fn la_casse_de_l_extension_est_indifferente() {
-    assert!(matches!(provenance(r"C:\X\Y.EXE,0", ""), Provenance::Module(_)));
-    assert!(matches!(provenance(r"C:\X\Y.Ico,0", ""), Provenance::Ico(_)));
+    assert!(matches!(
+        provenance(r"C:\X\Y.EXE,0", ""),
+        Provenance::Module(_)
+    ));
+    assert!(matches!(
+        provenance(r"C:\X\Y.Ico,0", ""),
+        Provenance::Ico(_)
+    ));
 }

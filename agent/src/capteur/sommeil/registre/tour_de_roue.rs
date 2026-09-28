@@ -21,7 +21,9 @@
 
 use std::time::Instant;
 
-use super::{distribuer, etat, parts, porteurs, presse_papier, purger_les_inaptitudes, PERIODE_REARBITRAGE};
+use super::{
+    distribuer, etat, parts, porteurs, presse_papier, purger_les_inaptitudes, PERIODE_REARBITRAGE,
+};
 
 /// **Un seul fil pour tout le processus**, démarré à la première inscription.
 ///

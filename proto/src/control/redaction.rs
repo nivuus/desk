@@ -46,13 +46,21 @@ use super::{AgentControl, ClientControl};
 impl std::fmt::Debug for ClientControl {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ClientControl::Resize { version, width, height } => f
+            ClientControl::Resize {
+                version,
+                width,
+                height,
+            } => f
                 .debug_struct("Resize")
                 .field("v", version)
                 .field("width", width)
                 .field("height", height)
                 .finish(),
-            ClientControl::Visibility { version, visible, focused } => f
+            ClientControl::Visibility {
+                version,
+                visible,
+                focused,
+            } => f
                 .debug_struct("Visibility")
                 .field("v", version)
                 .field("visible", visible)
@@ -73,7 +81,11 @@ impl std::fmt::Debug for AgentControl {
         match self {
             // 🔴 LA TAILLE ET LE REFUS, JAMAIS LE TEXTE. `bytes` porte déjà la
             // taille dans le protocole : on ne la recalcule pas, on la montre.
-            AgentControl::Clipboard { version, text, bytes } => f
+            AgentControl::Clipboard {
+                version,
+                text,
+                bytes,
+            } => f
                 .debug_struct("Clipboard")
                 .field("v", version)
                 .field("refus", &text.is_none())
@@ -82,25 +94,68 @@ impl std::fmt::Debug for AgentControl {
             // Les autres variantes ne portent aucun contenu privé : leur forme
             // dérivée est reproduite telle quelle, par le seul moyen qui reste
             // une fois `derive` retiré.
-            AgentControl::Ready { version, width, height, mic } => f
-                .debug_struct("Ready").field("v", version).field("width", width)
-                .field("height", height).field("mic", mic).finish(),
+            AgentControl::Ready {
+                version,
+                width,
+                height,
+                mic,
+            } => f
+                .debug_struct("Ready")
+                .field("v", version)
+                .field("width", width)
+                .field("height", height)
+                .field("mic", mic)
+                .finish(),
             AgentControl::SessionEnd { version, reason } => f
-                .debug_struct("SessionEnd").field("v", version).field("reason", reason).finish(),
-            AgentControl::Pointer { version, visible, shape } => f
-                .debug_struct("Pointer").field("v", version).field("visible", visible)
-                .field("shape", shape).finish(),
-            AgentControl::Asleep { version, asleep, reason } => f
-                .debug_struct("Asleep").field("v", version).field("asleep", asleep)
-                .field("reason", reason).finish(),
-            AgentControl::Rumble { version, left, right } => f
-                .debug_struct("Rumble").field("v", version).field("left", left)
-                .field("right", right).finish(),
-            AgentControl::Capabilities { version, gamepad, clipboard } => f
-                .debug_struct("Capabilities").field("v", version).field("gamepad", gamepad)
-                .field("clipboard", clipboard).finish(),
+                .debug_struct("SessionEnd")
+                .field("v", version)
+                .field("reason", reason)
+                .finish(),
+            AgentControl::Pointer {
+                version,
+                visible,
+                shape,
+            } => f
+                .debug_struct("Pointer")
+                .field("v", version)
+                .field("visible", visible)
+                .field("shape", shape)
+                .finish(),
+            AgentControl::Asleep {
+                version,
+                asleep,
+                reason,
+            } => f
+                .debug_struct("Asleep")
+                .field("v", version)
+                .field("asleep", asleep)
+                .field("reason", reason)
+                .finish(),
+            AgentControl::Rumble {
+                version,
+                left,
+                right,
+            } => f
+                .debug_struct("Rumble")
+                .field("v", version)
+                .field("left", left)
+                .field("right", right)
+                .finish(),
+            AgentControl::Capabilities {
+                version,
+                gamepad,
+                clipboard,
+            } => f
+                .debug_struct("Capabilities")
+                .field("v", version)
+                .field("gamepad", gamepad)
+                .field("clipboard", clipboard)
+                .finish(),
             AgentControl::Fullscreen { version, active } => f
-                .debug_struct("Fullscreen").field("v", version).field("active", active).finish(),
+                .debug_struct("Fullscreen")
+                .field("v", version)
+                .field("active", active)
+                .finish(),
             // Sous-bloc A1. 🔴 **CE `match` EST CE QUI M'A FORCÉ À DÉCIDER**, et
             // c'est exactement ce que son en-tête promet : « ajouter une
             // variante oblige à décider ce qu'elle montre ». La décision est
@@ -115,18 +170,36 @@ impl std::fmt::Debug for AgentControl {
             // venait d'une trace ANTÉRIEURE et inoffensive rendue dangereuse
             // par une variante neuve.
             AgentControl::Accent { version, couleur } => f
-                .debug_struct("Accent").field("v", version).field("couleur", couleur).finish(),
-            AgentControl::Link { version, bitrate, width, height, quality, adaptation } => f
-                .debug_struct("Link").field("v", version).field("bitrate", bitrate)
-                .field("width", width).field("height", height).field("quality", quality)
-                .field("adaptation", adaptation).finish(),
+                .debug_struct("Accent")
+                .field("v", version)
+                .field("couleur", couleur)
+                .finish(),
+            AgentControl::Link {
+                version,
+                bitrate,
+                width,
+                height,
+                quality,
+                adaptation,
+            } => f
+                .debug_struct("Link")
+                .field("v", version)
+                .field("bitrate", bitrate)
+                .field("width", width)
+                .field("height", height)
+                .field("quality", quality)
+                .field("adaptation", adaptation)
+                .finish(),
             // Bloc E3. Ce `match` a fait son travail une seconde fois : il a
             // FORCÉ la décision, comme son en-tête le promet. Elle est de
             // montrer `granted`, et la raison est qu'un booléen n'a rien à
             // divulguer — ni identité de fenêtre, ni titre, ni PID. C'est
             // aussi le seul champ que porte la variante.
             AgentControl::MicState { version, granted } => f
-                .debug_struct("MicState").field("v", version).field("granted", granted).finish(),
+                .debug_struct("MicState")
+                .field("v", version)
+                .field("granted", granted)
+                .finish(),
         }
     }
 }

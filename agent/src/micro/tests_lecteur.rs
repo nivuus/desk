@@ -113,7 +113,11 @@ fn le_residu_survit_d_un_remplissage_a_l_autre() {
 
     // Et le régime est bien nominal : aucune correction n'a maquillé l'égalité.
     let c = par_tranches.compteurs();
-    assert_eq!((c.sauts, c.insertions, c.plc, c.famines), (0, 0, 0, 0), "{c:?}");
+    assert_eq!(
+        (c.sauts, c.insertions, c.plc, c.famines),
+        (0, 0, 0, 0),
+        "{c:?}"
+    );
 }
 
 /// Spec §8 « Silence » : le câble doit être alimenté EN CONTINU. Une
@@ -234,7 +238,10 @@ fn un_ton_encode_traverse_le_tampon_et_ressort_a_sa_frequence() {
 
     let g = gauche(&recolte);
     let f = frequence_par_passages_a_zero(&g, 48_000).expect("ton mesurable");
-    eprintln!("bout en bout pur : {} échantillons, {f} Hz mesurés", g.len());
+    eprintln!(
+        "bout en bout pur : {} échantillons, {f} Hz mesurés",
+        g.len()
+    );
     assert!(
         (f - 440.0).abs() / 440.0 < 0.02,
         "le ton n'a pas traversé : mesuré {f} Hz au lieu de 440"

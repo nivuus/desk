@@ -95,7 +95,13 @@ mod tests {
     use super::*;
 
     fn fenetre(session: &str, pid: u32, arrivee: u64, dernier_focus: u64) -> FenetreAudio {
-        FenetreAudio { session: session.into(), pid, arrivee, dernier_focus, inapte: false }
+        FenetreAudio {
+            session: session.into(),
+            pid,
+            arrivee,
+            dernier_focus,
+            inapte: false,
+        }
     }
 
     fn porteurs(fenetres: &[FenetreAudio]) -> Vec<String> {
@@ -180,8 +186,20 @@ mod tests {
         // consécutifs. Elle ne doit plus être élue, sans quoi le groupe entier
         // reste muet — c'est l'état d'avant D9.
         let fenetres = vec![
-            FenetreAudio { session: "w-1".into(), pid: 42, arrivee: 1, dernier_focus: 9, inapte: true },
-            FenetreAudio { session: "w-2".into(), pid: 42, arrivee: 2, dernier_focus: 0, inapte: false },
+            FenetreAudio {
+                session: "w-1".into(),
+                pid: 42,
+                arrivee: 1,
+                dernier_focus: 9,
+                inapte: true,
+            },
+            FenetreAudio {
+                session: "w-2".into(),
+                pid: 42,
+                arrivee: 2,
+                dernier_focus: 0,
+                inapte: false,
+            },
         ];
         let verdict = arbitrer(&fenetres);
         assert_eq!(verdict, vec![("w-1".into(), false), ("w-2".into(), true)]);
@@ -192,7 +210,11 @@ mod tests {
         // Le registre a besoin de ce `false` pour ordonner de se taire à celle
         // qui portait le son l'instant d'avant.
         let fenetres = vec![FenetreAudio {
-            session: "w-1".into(), pid: 42, arrivee: 1, dernier_focus: 1, inapte: true,
+            session: "w-1".into(),
+            pid: 42,
+            arrivee: 1,
+            dernier_focus: 1,
+            inapte: true,
         }];
         assert_eq!(arbitrer(&fenetres), vec![("w-1".into(), false)]);
     }
@@ -254,18 +276,48 @@ mod tests {
         // cas majoritaire) : le répit expire, elle redevient candidate, et sa
         // propre reconstruction retente.
         let fenetres = vec![
-            FenetreAudio { session: "w-1".into(), pid: 42, arrivee: 1, dernier_focus: 0, inapte: true },
-            FenetreAudio { session: "w-2".into(), pid: 42, arrivee: 2, dernier_focus: 0, inapte: true },
+            FenetreAudio {
+                session: "w-1".into(),
+                pid: 42,
+                arrivee: 1,
+                dernier_focus: 0,
+                inapte: true,
+            },
+            FenetreAudio {
+                session: "w-2".into(),
+                pid: 42,
+                arrivee: 2,
+                dernier_focus: 0,
+                inapte: true,
+            },
         ];
-        assert_eq!(arbitrer(&fenetres), vec![("w-1".into(), false), ("w-2".into(), false)]);
+        assert_eq!(
+            arbitrer(&fenetres),
+            vec![("w-1".into(), false), ("w-2".into(), false)]
+        );
     }
 
     #[test]
     fn l_inaptitude_d_un_groupe_ne_touche_pas_un_autre_pid() {
         let fenetres = vec![
-            FenetreAudio { session: "w-1".into(), pid: 42, arrivee: 1, dernier_focus: 0, inapte: true },
-            FenetreAudio { session: "w-2".into(), pid: 77, arrivee: 2, dernier_focus: 0, inapte: false },
+            FenetreAudio {
+                session: "w-1".into(),
+                pid: 42,
+                arrivee: 1,
+                dernier_focus: 0,
+                inapte: true,
+            },
+            FenetreAudio {
+                session: "w-2".into(),
+                pid: 77,
+                arrivee: 2,
+                dernier_focus: 0,
+                inapte: false,
+            },
         ];
-        assert_eq!(arbitrer(&fenetres), vec![("w-1".into(), false), ("w-2".into(), true)]);
+        assert_eq!(
+            arbitrer(&fenetres),
+            vec![("w-1".into(), false), ("w-2".into(), true)]
+        );
     }
 }

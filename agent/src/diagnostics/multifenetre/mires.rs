@@ -16,9 +16,7 @@ use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM};
 use windows::Win32::Graphics::Direct3D11::{
     ID3D11Device, ID3D11DeviceContext, ID3D11RenderTargetView, ID3D11Texture2D,
 };
-use windows::Win32::Graphics::Dxgi::Common::{
-    DXGI_FORMAT_B8G8R8A8_UNORM, DXGI_SAMPLE_DESC,
-};
+use windows::Win32::Graphics::Dxgi::Common::{DXGI_FORMAT_B8G8R8A8_UNORM, DXGI_SAMPLE_DESC};
 use windows::Win32::Graphics::Dxgi::{
     IDXGIDevice, IDXGIFactory2, IDXGISwapChain1, DXGI_SWAP_CHAIN_DESC1,
     DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL, DXGI_USAGE_RENDER_TARGET_OUTPUT,
@@ -61,7 +59,9 @@ impl Mires {
         );
         enregistrer_classe()?;
 
-        let dxgi: IDXGIDevice = device.cast().context("IDXGIDevice depuis le périphérique D3D11")?;
+        let dxgi: IDXGIDevice = device
+            .cast()
+            .context("IDXGIDevice depuis le périphérique D3D11")?;
         let adaptateur = unsafe { dxgi.GetAdapter() }.context("adaptateur DXGI")?;
         let fabrique: IDXGIFactory2 =
             unsafe { adaptateur.GetParent() }.context("fabrique DXGI depuis l'adaptateur")?;
@@ -87,7 +87,11 @@ impl Mires {
             }
         }
 
-        Ok(Self { fenetres, contexte, trame: 0 })
+        Ok(Self {
+            fenetres,
+            contexte,
+            trame: 0,
+        })
     }
 
     /// Peint une trame sur toutes les mires et la présente.
@@ -99,7 +103,10 @@ impl Mires {
             // lecture. Un format `_SRGB` imposerait une conversion et la
             // vérification par pixels échouerait sur une mire pourtant juste.
             let couleur = [r as f32 / 255.0, g as f32 / 255.0, b as f32 / 255.0, 1.0];
-            unsafe { self.contexte.ClearRenderTargetView(&fenetre.cible, &couleur) };
+            unsafe {
+                self.contexte
+                    .ClearRenderTargetView(&fenetre.cible, &couleur)
+            };
             unsafe { fenetre.swapchain.Present(0, Default::default()) }
                 .ok()
                 .context("présentation d'une mire")?;
@@ -254,7 +261,13 @@ fn creer_fenetre(
     match creer_swapchain_et_cible(device, fabrique, hwnd, place) {
         Ok((swapchain, cible)) => {
             let _ = unsafe { ShowWindow(hwnd, SW_SHOWNOACTIVATE) };
-            Ok(Fenetre { id, hwnd, place, swapchain, cible })
+            Ok(Fenetre {
+                id,
+                hwnd,
+                place,
+                swapchain,
+                cible,
+            })
         }
         Err(e) => {
             let _ = unsafe { DestroyWindow(hwnd) };
@@ -273,7 +286,10 @@ fn creer_swapchain_et_cible(
         Width: place.width,
         Height: place.height,
         Format: DXGI_FORMAT_B8G8R8A8_UNORM,
-        SampleDesc: DXGI_SAMPLE_DESC { Count: 1, Quality: 0 },
+        SampleDesc: DXGI_SAMPLE_DESC {
+            Count: 1,
+            Quality: 0,
+        },
         BufferUsage: DXGI_USAGE_RENDER_TARGET_OUTPUT,
         BufferCount: 2,
         SwapEffect: DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL,

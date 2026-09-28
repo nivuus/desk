@@ -74,9 +74,16 @@ pub enum Requete {
     /// normale du protocole.
     AllocateNu,
     AllocateSigne,
-    Refresh { duree_s: u32 },
-    CreatePermission { pair: SocketAddr },
-    ChannelBind { canal: u16, pair: SocketAddr },
+    Refresh {
+        duree_s: u32,
+    },
+    CreatePermission {
+        pair: SocketAddr,
+    },
+    ChannelBind {
+        canal: u16,
+        pair: SocketAddr,
+    },
 }
 
 /// HMAC-SHA1, dans la forme que réclament `is::stun::verify` et `to_bytes`.
@@ -280,7 +287,11 @@ mod tests {
 
         // La longueur annoncée doit correspondre à ce qui suit l'en-tête.
         let longueur = u16::from_be_bytes([paquet[2], paquet[3]]) as usize;
-        assert_eq!(longueur, paquet.len() - 20, "longueur d'en-tête incohérente");
+        assert_eq!(
+            longueur,
+            paquet.len() - 20,
+            "longueur d'en-tête incohérente"
+        );
 
         // REQUESTED-TRANSPORT = UDP (17), l'attribut que is::stun ne sait pas
         // écrire et sans lequel coturn répond 400.
@@ -351,7 +362,10 @@ mod tests {
         let cle = cle_longue_duree(&ids.username, &ids.realm, "p");
         let pair: std::net::SocketAddr = "198.51.100.9:1234".parse().unwrap();
         let paquet = encoder_requete(
-            &Requete::ChannelBind { canal: 0x4000, pair },
+            &Requete::ChannelBind {
+                canal: 0x4000,
+                pair,
+            },
             [2u8; 12],
             Some((&ids, &cle)),
         );

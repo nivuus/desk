@@ -19,9 +19,9 @@
 
 use std::time::Instant;
 
-use super::{actif, gardes_armes, normaliser, Annonce, PERIODE_PRESSE_PAPIER, PRESSE_PAPIER_MAX};
 #[cfg(windows)]
 use super::win32;
+use super::{actif, gardes_armes, normaliser, Annonce, PERIODE_PRESSE_PAPIER, PRESSE_PAPIER_MAX};
 
 /// Observe le presse-papier et décide ce qu'il faut annoncer.
 ///
@@ -72,11 +72,7 @@ impl Sondeur {
     /// quand le presse-papier ne porte pas de texte. **La référence n'avance
     /// alors PAS** : sans cela le contenu correspondant serait perdu à jamais,
     /// le tour suivant voyant un compteur « inchangé » et ne retentant rien.
-    pub fn observer(
-        &mut self,
-        seq: u32,
-        lire: impl FnOnce() -> Option<String>,
-    ) -> Option<Annonce> {
+    pub fn observer(&mut self, seq: u32, lire: impl FnOnce() -> Option<String>) -> Option<Annonce> {
         if self.reference == Some(seq) {
             return None;
         }
@@ -242,7 +238,9 @@ impl Sondeur {
         notre: Option<(u32, String)>,
         annonce: Option<Annonce>,
     ) -> Option<Annonce> {
-        let Some((seq, texte)) = notre else { return annonce };
+        let Some((seq, texte)) = notre else {
+            return annonce;
+        };
         if !armes {
             return annonce;
         }

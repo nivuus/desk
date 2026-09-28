@@ -35,17 +35,26 @@ fn une_fenetre_dont_l_enfant_meurt_est_reproposee() {
 
     let effets = t.enfant_mort(&session);
     assert!(
-        !effets.iter().any(|e| matches!(e, Effet::DetruireSortie { .. })),
+        !effets
+            .iter()
+            .any(|e| matches!(e, Effet::DetruireSortie { .. })),
         "depuis D3 §7.1 la sortie est retenue pour la relance, reçu {effets:?}"
     );
 
     // La fenêtre, elle, n'est pas oubliée : le contrôle périodique la
     // repropose sous une session NEUVE.
     let effets = t.relancer_les_orphelines(std::time::Instant::now());
-    let Some(Effet::AnnoncerOuverture { session: neuve, titre }) = effets.first() else {
+    let Some(Effet::AnnoncerOuverture {
+        session: neuve,
+        titre,
+    }) = effets.first()
+    else {
         panic!("réouverture attendue, reçu {effets:?}");
     };
-    assert_ne!(*neuve, session, "un identifiant réutilisé apparierait un message tardif");
+    assert_ne!(
+        *neuve, session,
+        "un identifiant réutilisé apparierait un message tardif"
+    );
     assert_eq!(titre, "Bloc-notes");
 }
 
@@ -98,7 +107,9 @@ fn une_fenetre_orpheline_qui_se_ferme_quitte_la_table() {
     };
     t.enfant_mort(&session.clone());
     t.fenetre_disparue(IdFenetre(1));
-    assert!(t.relancer_les_orphelines(std::time::Instant::now()).is_empty());
+    assert!(t
+        .relancer_les_orphelines(std::time::Instant::now())
+        .is_empty());
 }
 
 /// Deuxième moitié d'`enfant_mort`, jusqu'ici non affirmée. Avant le
@@ -120,13 +131,17 @@ fn un_second_enfant_mort_ne_fait_pas_fuir_la_sortie_retenue() {
 
     let premier = t.enfant_mort(&session);
     assert!(
-        !premier.iter().any(|e| matches!(e, Effet::DetruireSortie { .. })),
+        !premier
+            .iter()
+            .any(|e| matches!(e, Effet::DetruireSortie { .. })),
         "depuis D3 §7.1 la première mort ne rend déjà plus la sortie, reçu {premier:?}"
     );
 
     let second = t.enfant_mort(&session);
     assert!(
-        !second.iter().any(|e| matches!(e, Effet::DetruireSortie { .. })),
+        !second
+            .iter()
+            .any(|e| matches!(e, Effet::DetruireSortie { .. })),
         "une seconde mort ne doit pas non plus la rendre, reçu {second:?}"
     );
     assert_eq!(
@@ -155,7 +170,10 @@ fn une_relance_qui_stagne_sans_viewport_finit_abandonnee() {
 
     // La relance a lieu à instant(base, 0) : l'entrée neuve porte cet instant.
     let effets = t.relancer_les_orphelines(instant(base, 0));
-    let Some(Effet::AnnoncerOuverture { session: relancee, .. }) = effets.first() else {
+    let Some(Effet::AnnoncerOuverture {
+        session: relancee, ..
+    }) = effets.first()
+    else {
         panic!("réouverture attendue, reçu {effets:?}");
     };
     let relancee = relancee.clone();
@@ -174,7 +192,11 @@ fn une_relance_qui_stagne_sans_viewport_finit_abandonnee() {
         matches!(effets.first(), Some(Effet::AnnoncerRefus { titre, .. }) if titre == "Bloc-notes"),
         "au-delà du délai, un refus plutôt qu'un silence indéfini, reçu {effets:?}"
     );
-    assert_eq!(t.etat(&relancee), None, "l'entrée figée doit avoir quitté la table");
+    assert_eq!(
+        t.etat(&relancee),
+        None,
+        "l'entrée figée doit avoir quitté la table"
+    );
 }
 
 /// Le pendant du test précédent : une entrée relancée qui reçoit son viewport
@@ -190,21 +212,28 @@ fn une_relance_qui_repond_a_temps_n_est_pas_abandonnee() {
     t.enfant_mort(&session.clone());
 
     let effets = t.relancer_les_orphelines(instant(base, 0));
-    let Some(Effet::AnnoncerOuverture { session: relancee, .. }) = effets.first() else {
+    let Some(Effet::AnnoncerOuverture {
+        session: relancee, ..
+    }) = effets.first()
+    else {
         panic!("réouverture attendue, reçu {effets:?}");
     };
     let relancee = relancee.clone();
 
     // Le viewport arrive avant le délai.
     let effets = t.viewport_recu(&relancee, 1280, 720);
-    assert!(!effets.is_empty(), "le viewport doit déclencher la création de sortie");
+    assert!(
+        !effets.is_empty(),
+        "le viewport doit déclencher la création de sortie"
+    );
     assert_eq!(t.etat(&relancee), Some(&Etat::AttendLaSortie));
 
     // Longtemps après, largement au-delà du délai : l'entrée n'est plus
     // `AttendLeViewport`, le garde-fou ne la concerne plus.
     let bien_plus_tard = DELAI_ATTENTE_VIEWPORT_MAX.as_millis() as u64 * 10;
     assert!(
-        t.relancer_les_orphelines(instant(base, bien_plus_tard)).is_empty(),
+        t.relancer_les_orphelines(instant(base, bien_plus_tard))
+            .is_empty(),
         "une entrée qui a répondu à temps ne doit jamais être abandonnée"
     );
     assert_eq!(t.etat(&relancee), Some(&Etat::AttendLaSortie));
@@ -227,7 +256,9 @@ fn une_fenetre_neuve_dont_la_shell_ne_repond_jamais_finit_par_etre_abandonnee() 
     let effets = t.relancer_les_orphelines(instant(base, 30_001));
 
     assert!(
-        effets.iter().any(|e| matches!(e, Effet::AnnoncerRefus { .. })),
+        effets
+            .iter()
+            .any(|e| matches!(e, Effet::AnnoncerRefus { .. })),
         "la place doit être libérée, reçu {effets:?}"
     );
     assert_eq!(t.fenetre_apparue(IdFenetre(2), "Autre".into()).len(), 1);
@@ -277,12 +308,23 @@ fn une_page_shell_qui_arrive_apres_coup_reçoit_les_fenetres_en_attente() {
 
     // La shell arrive 20 s plus tard, avant l'abandon.
     let effets = t.reannoncer_les_attentes(instant(base, 20_000));
-    let Some(Effet::AnnoncerOuverture { session: redite, titre }) = effets.first() else {
+    let Some(Effet::AnnoncerOuverture {
+        session: redite,
+        titre,
+    }) = effets.first()
+    else {
         panic!("réannonce attendue, reçu {effets:?}");
     };
-    assert_eq!(*redite, session, "la session ne change pas : la fenêtre non plus");
+    assert_eq!(
+        *redite, session,
+        "la session ne change pas : la fenêtre non plus"
+    );
     assert_eq!(titre, "Bloc-notes");
-    assert_eq!(effets.len(), 1, "une seule fenêtre, une seule annonce : {effets:?}");
+    assert_eq!(
+        effets.len(),
+        1,
+        "une seule fenêtre, une seule annonce : {effets:?}"
+    );
 }
 
 /// 🔴 L'HORLOGE REPART DE L'ARRIVÉE DE LA SHELL, ET NON DU DÉMARRAGE — c'est
@@ -305,7 +347,9 @@ fn la_reannonce_remet_le_compte_a_rebours_a_zero() {
     // abandonné depuis longtemps.
     let effets = t.relancer_les_orphelines(instant(base, 45_000));
     assert!(
-        !effets.iter().any(|e| matches!(e, Effet::AnnoncerRefus { .. })),
+        !effets
+            .iter()
+            .any(|e| matches!(e, Effet::AnnoncerRefus { .. })),
         "la fenêtre a 25 s d'attente depuis l'arrivée de la shell, reçu {effets:?}"
     );
 }
@@ -327,7 +371,9 @@ fn une_shell_presente_mais_muette_perd_toujours_sa_fenetre() {
 
     let effets = t.relancer_les_orphelines(instant(base, 50_001));
     assert!(
-        effets.iter().any(|e| matches!(e, Effet::AnnoncerRefus { .. })),
+        effets
+            .iter()
+            .any(|e| matches!(e, Effet::AnnoncerRefus { .. })),
         "30 s après l'arrivée de la shell, l'abandon doit avoir lieu : {effets:?}"
     );
     // La place est réellement rendue : la table n'en offrait qu'UNE.
@@ -356,9 +402,13 @@ fn la_sortie_retenue_est_toujours_rendue_a_l_abandon_apres_une_reannonce() {
 
     let effets = t.relancer_les_orphelines(instant(base, 35_001));
     assert!(
-        effets
-            .iter()
-            .any(|e| matches!(e, Effet::DetruireSortie { sortie_pilote: 42, .. })),
+        effets.iter().any(|e| matches!(
+            e,
+            Effet::DetruireSortie {
+                sortie_pilote: 42,
+                ..
+            }
+        )),
         "la sortie retenue doit repartir au pilote, reçu {effets:?}"
     );
 }
@@ -387,7 +437,10 @@ fn une_fenetre_vivante_n_est_pas_redite() {
     assert_eq!(t.etat(&session), Some(&Etat::Vivante));
 
     let effets = t.reannoncer_les_attentes(instant(base, 1_000));
-    assert!(effets.is_empty(), "une session vivante ne se redit pas, reçu {effets:?}");
+    assert!(
+        effets.is_empty(),
+        "une session vivante ne se redit pas, reçu {effets:?}"
+    );
 }
 
 /// La réannonce n'invente rien : sur une table vide elle ne rend rien.
@@ -396,5 +449,7 @@ fn une_fenetre_vivante_n_est_pas_redite() {
 #[test]
 fn la_reannonce_sur_une_table_vide_ne_rend_rien() {
     let mut t = Table::nouvelle(4);
-    assert!(t.reannoncer_les_attentes(std::time::Instant::now()).is_empty());
+    assert!(t
+        .reannoncer_les_attentes(std::time::Instant::now())
+        .is_empty());
 }

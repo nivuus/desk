@@ -180,7 +180,8 @@ pub(super) fn reconcilier(
                             }
                         }
                         _ => {
-                            let (e, s, a) = mesurer(&chemin_lnk, &icone_location, &app.cible, &mut icones);
+                            let (e, s, a) =
+                                mesurer(&chemin_lnk, &icone_location, &app.cible, &mut icones);
                             // 🔴 UN DÉSARMEMENT N'EST PAS UN ÉCHEC, et les
                             // compter ensemble ferait lire 156 pannes sur un
                             // agent parfaitement sain qu'on vient de couper
@@ -209,7 +210,12 @@ pub(super) fn reconcilier(
                         crate::apps::associations::pour_cible(&associations, &app.cible);
                     vues.insert(
                         app.cle.clone(),
-                        (chemin_lnk, app.icone.clone(), app.source_max, app.accent.clone()),
+                        (
+                            chemin_lnk,
+                            app.icone.clone(),
+                            app.source_max,
+                            app.accent.clone(),
+                        ),
                     );
                     catalogue.push(app);
                 }
@@ -312,7 +318,11 @@ fn mesurer(
             // ⚠️ L'ACCENT SUIT L'ICÔNE, ET `None` N'EST PAS UNE PANNE : une
             // icône trop pâle, trop sombre ou trop transparente n'a AUCUNE
             // dominante. Le manifeste OMET alors `theme_color`.
-            (Some(empreinte), icone::provenance_de(icone_location, cible), accent)
+            (
+                Some(empreinte),
+                icone::provenance_de(icone_location, cible),
+                accent,
+            )
         }
         Err(erreur) => {
             tracing::warn!(lnk, %erreur, "extraction d'icone echouee : l'application reste au catalogue, sans icone");

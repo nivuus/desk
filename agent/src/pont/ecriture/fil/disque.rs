@@ -78,8 +78,10 @@ pub(super) fn lire(racine: &Path, chemin: &str, morceau: Morceau) -> std::io::Re
 /// du système ne survit pas à un arrêt brutal, et c'est exactement le cas que
 /// ce journal existe pour couvrir.
 pub(super) fn ajouter(chemin_journal: &Path, ligne: &str) -> std::io::Result<()> {
-    let mut fichier =
-        std::fs::OpenOptions::new().create(true).append(true).open(chemin_journal)?;
+    let mut fichier = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(chemin_journal)?;
     fichier.write_all(ligne.as_bytes())?;
     fichier.sync_all()
 }
@@ -91,13 +93,18 @@ pub(super) fn ajouter(chemin_journal: &Path, ligne: &str) -> std::io::Result<()>
 /// **exactement quand elle sert** : un journal gros est un journal où beaucoup
 /// d'écritures ont échoué.
 pub(super) fn compacter_si_possible(chemin_journal: &Path, journal: &Journal) {
-    let Ok(meta) = std::fs::metadata(chemin_journal) else { return };
+    let Ok(meta) = std::fs::metadata(chemin_journal) else {
+        return;
+    };
     if !journal.compactable(meta.len()) {
         return;
     }
     if let Err(erreur) = std::fs::write(chemin_journal, b"") {
         tracing::warn!(%erreur, "compactage du journal des ecritures echoue");
     } else {
-        tracing::info!(octets = meta.len(), "journal des ecritures compacte (aucune due)");
+        tracing::info!(
+            octets = meta.len(),
+            "journal des ecritures compacte (aucune due)"
+        );
     }
 }

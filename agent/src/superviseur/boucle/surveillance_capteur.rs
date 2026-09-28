@@ -65,7 +65,9 @@ impl EtatCapteur {
     /// titre qu'un pilote ou qu'un hook qui ne s'ouvre pas — il n'y a rien
     /// d'autre à nettoyer.
     pub(super) fn demarrer(lanceur: &LanceurDeProcessus) -> Result<Self> {
-        let pid = lanceur.lancer_capteur().context("lancement initial du capteur")?;
+        let pid = lanceur
+            .lancer_capteur()
+            .context("lancement initial du capteur")?;
         Ok(Self {
             pid,
             derniere_tentative: std::time::Instant::now(),

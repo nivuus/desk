@@ -97,7 +97,9 @@ fn boucler(racines: &mut [Racine], veille: &Veille) {
         // Les racines VIVANTES seulement : une racine en échec n'a plus de
         // handle valide, et l'inclure ferait rendre `WAIT_FAILED` à l'attente
         // entière — une racine morte emporterait les trois autres.
-        let vivantes: Vec<usize> = (0..racines.len()).filter(|i| !racines[*i].en_echec()).collect();
+        let vivantes: Vec<usize> = (0..racines.len())
+            .filter(|i| !racines[*i].en_echec())
+            .collect();
         if vivantes.is_empty() {
             // Toutes en échec : il n'y a rien à attendre, mais il y a des
             // replis à faire échoir. Dormir le pas de l'attente est
@@ -132,7 +134,10 @@ fn boucler(racines: &mut [Racine], veille: &Veille) {
         }
         let rang = (issue.0 - WAIT_OBJECT_0.0) as usize;
         let Some(&indice) = vivantes.get(rang) else {
-            tracing::error!(?issue, "attente de surveillance : rang hors des racines, fil arrêté");
+            tracing::error!(
+                ?issue,
+                "attente de surveillance : rang hors des racines, fil arrêté"
+            );
             return;
         };
         servir(&mut racines[indice], veille);

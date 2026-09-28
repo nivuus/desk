@@ -4,7 +4,10 @@ use super::*;
 
 fn morceaux(n: usize) -> VecDeque<Morceau> {
     (0..n)
-        .map(|i| Morceau { position: (i as u64) * 4096, longueur: 4096 })
+        .map(|i| Morceau {
+            position: (i as u64) * 4096,
+            longueur: 4096,
+        })
         .collect()
 }
 
@@ -21,7 +24,10 @@ fn la_fenetre_ne_demande_jamais_plus_de_MORCEAUX_EN_VOL() {
     assert_eq!(f.en_vol(), MORCEAUX_EN_VOL);
     // Un second appel SANS réception ne doit RIEN ajouter : borner le lot au
     // lieu du total ferait ici seize en vol.
-    assert!(f.a_demander().is_empty(), "aucun morceau de plus tant que rien n'est reçu");
+    assert!(
+        f.a_demander().is_empty(),
+        "aucun morceau de plus tant que rien n'est reçu"
+    );
     assert_eq!(f.en_vol(), MORCEAUX_EN_VOL);
 }
 
@@ -38,7 +44,10 @@ fn la_fenetre_ne_demande_jamais_plus_de_MORCEAUX_EN_VOL() {
 #[test]
 #[allow(non_snake_case)]
 fn la_fenetre_atteint_reellement_MORCEAUX_EN_VOL_sur_une_lecture_longue() {
-    assert!(MORCEAUX_EN_VOL > 1, "une fenêtre de 1 est INERTE : voir la doc du module");
+    assert!(
+        MORCEAUX_EN_VOL > 1,
+        "une fenêtre de 1 est INERTE : voir la doc du module"
+    );
     let mut f = Fenetre::nouvelle(morceaux(50));
     for _ in 0..20 {
         for m in f.a_demander() {
@@ -63,8 +72,16 @@ fn la_fenetre_atteint_reellement_MORCEAUX_EN_VOL_sur_une_lecture_longue() {
 fn une_reponse_hors_ordre_est_denoncee_et_pas_appliquee() {
     let mut f = Fenetre::nouvelle(morceaux(10));
     f.a_demander();
-    let erreur = f.recu(4096).expect_err("la position 4096 n'est pas la plus ancienne");
-    assert_eq!(erreur, HorsOrdre { recue: 4096, attendue: Some(0) });
+    let erreur = f
+        .recu(4096)
+        .expect_err("la position 4096 n'est pas la plus ancienne");
+    assert_eq!(
+        erreur,
+        HorsOrdre {
+            recue: 4096,
+            attendue: Some(0)
+        }
+    );
     // Rien n'a bougé : la réponse n'a pas été consommée.
     assert_eq!(f.en_vol(), MORCEAUX_EN_VOL);
     // Et la bonne réponse passe toujours.
@@ -80,7 +97,10 @@ fn une_position_inconnue_est_denoncee() {
     f.a_demander();
     assert_eq!(
         f.recu(999_999).expect_err("position jamais demandée"),
-        HorsOrdre { recue: 999_999, attendue: Some(0) }
+        HorsOrdre {
+            recue: 999_999,
+            attendue: Some(0)
+        }
     );
 }
 
@@ -92,7 +112,13 @@ fn une_reponse_sans_rien_en_vol_est_denoncee_avec_attendue_none() {
     let mut f = Fenetre::nouvelle(morceaux(1));
     f.a_demander();
     f.recu(0).expect("la seule");
-    assert_eq!(f.recu(0).expect_err("plus rien en vol"), HorsOrdre { recue: 0, attendue: None });
+    assert_eq!(
+        f.recu(0).expect_err("plus rien en vol"),
+        HorsOrdre {
+            recue: 0,
+            attendue: None
+        }
+    );
 }
 
 /// La fenêtre se vide et se remplit : après une réception, un morceau de plus

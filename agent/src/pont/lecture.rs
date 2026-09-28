@@ -99,7 +99,11 @@ pub struct Fenetre {
 
 impl Fenetre {
     pub fn nouvelle(restants: VecDeque<Morceau>) -> Self {
-        Self { restants, en_vol: VecDeque::new(), en_vol_max: 0 }
+        Self {
+            restants,
+            en_vol: VecDeque::new(),
+            en_vol_max: 0,
+        }
     }
 
     /// Les morceaux à demander MAINTENANT — **au plus [`MORCEAUX_EN_VOL`] en
@@ -111,7 +115,9 @@ impl Fenetre {
     pub fn a_demander(&mut self) -> Vec<Morceau> {
         let mut lot = Vec::new();
         while self.en_vol.len() < MORCEAUX_EN_VOL {
-            let Some(morceau) = self.restants.pop_front() else { break };
+            let Some(morceau) = self.restants.pop_front() else {
+                break;
+            };
             self.en_vol.push_back(morceau.position);
             lot.push(morceau);
         }
@@ -133,7 +139,10 @@ impl Fenetre {
     pub fn recu(&mut self, position: u64) -> Result<(), HorsOrdre> {
         let attendue = self.en_vol.front().copied();
         if attendue != Some(position) {
-            return Err(HorsOrdre { recue: position, attendue });
+            return Err(HorsOrdre {
+                recue: position,
+                attendue,
+            });
         }
         self.en_vol.pop_front();
         Ok(())

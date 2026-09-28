@@ -27,7 +27,7 @@ pub(crate) fn read_pixel(
     y: u32,
 ) -> Result<(u8, u8, u8, u8)> {
     use windows::Win32::Graphics::Direct3D11::{
-        D3D11_CPU_ACCESS_READ, D3D11_MAP_READ, D3D11_MAPPED_SUBRESOURCE, D3D11_TEXTURE2D_DESC,
+        D3D11_CPU_ACCESS_READ, D3D11_MAPPED_SUBRESOURCE, D3D11_MAP_READ, D3D11_TEXTURE2D_DESC,
         D3D11_USAGE_STAGING,
     };
     use windows::Win32::Graphics::Dxgi::Common::{DXGI_FORMAT_B8G8R8A8_UNORM, DXGI_SAMPLE_DESC};
@@ -38,7 +38,10 @@ pub(crate) fn read_pixel(
         MipLevels: 1,
         ArraySize: 1,
         Format: DXGI_FORMAT_B8G8R8A8_UNORM,
-        SampleDesc: DXGI_SAMPLE_DESC { Count: 1, Quality: 0 },
+        SampleDesc: DXGI_SAMPLE_DESC {
+            Count: 1,
+            Quality: 0,
+        },
         Usage: D3D11_USAGE_STAGING,
         BindFlags: 0,
         CPUAccessFlags: D3D11_CPU_ACCESS_READ.0 as u32,
@@ -83,7 +86,10 @@ pub(super) fn capture_center_pixel(
 ) -> Result<(u32, u32, u8, u8, u8, u8)> {
     let deadline = std::time::Instant::now() + timeout;
     while std::time::Instant::now() < deadline {
-        if let Some(frame) = capture.next_frame(region).map_err(|e| anyhow::anyhow!("{e}"))? {
+        if let Some(frame) = capture
+            .next_frame(region)
+            .map_err(|e| anyhow::anyhow!("{e}"))?
+        {
             let (r, g, b, a) = read_pixel(
                 capture.device(),
                 &frame.texture,

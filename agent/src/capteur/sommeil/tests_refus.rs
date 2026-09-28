@@ -89,7 +89,11 @@ fn un_reveil_non_depose_laisse_le_vivier_intact_et_repart_au_tour_suivant() {
     // La fenêtre reprend sa lecture, et le tour de roue suivant doit réémettre
     // l'ordre de lui-même — c'est tout l'intérêt de ne pas avoir menti.
     let recus = canal.vider();
-    assert_eq!(recus.len(), PROFONDEUR_MAX, "précondition : la file était bien pleine");
+    assert_eq!(
+        recus.len(),
+        PROFONDEUR_MAX,
+        "précondition : la file était bien pleine"
+    );
     un_tour_de_roue();
     let ordres: Vec<Ordre> = canal
         .vider()
@@ -152,7 +156,11 @@ fn un_sommeil_non_depose_laisse_le_vivier_intact_et_repart_au_tour_suivant() {
     );
 
     let recus = canal.vider();
-    assert_eq!(recus.len(), PROFONDEUR_MAX, "précondition : la file était bien pleine");
+    assert_eq!(
+        recus.len(),
+        PROFONDEUR_MAX,
+        "précondition : la file était bien pleine"
+    );
     un_tour_de_roue();
     let ordres: Vec<Ordre> = canal
         .vider()
@@ -191,7 +199,11 @@ impl<S: tracing::Subscriber> Layer<S> for CompteurDeTraces {
 
 /// Le compte CUMULÉ de dépôts refusés d'une session.
 fn refus_de(session: &str) -> u64 {
-    etat().canaux.get(session).expect("la session est inscrite").refuses()
+    etat()
+        .canaux
+        .get(session)
+        .expect("la session est inscrite")
+        .refuses()
 }
 
 /// 🔴 LE DÉFAUT QUE LE REMÈDE DU ROUND 2 A LUI-MÊME CRÉÉ, ET SA CADENCE.
@@ -314,7 +326,11 @@ fn une_sur_souscription_par_un_dormir_non_depose_est_resorbee_au_tour_suivant() 
     // Une candidate de plus, qui attend qu'une place se libère.
     let (attente, generation_attente) = inscrire("r3-attente", 6799);
     signaler("r3-attente", true, true);
-    assert_eq!(etat().vivier.eveillees().len(), plafond, "précondition : elle attend");
+    assert_eq!(
+        etat().vivier.eveillees().len(),
+        plafond,
+        "précondition : elle attend"
+    );
 
     // La file de la PREMIÈRE occupante se bouche, puis elle est masquée : son
     // `Dormir` est refusé, et annulé — mais `arbitrer` a déjà élu la neuvième

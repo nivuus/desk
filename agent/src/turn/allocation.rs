@@ -37,9 +37,13 @@ enum Etat {
     /// Rien n'est encore parti.
     Repos,
     /// Allocation nue émise, on attend le 401.
-    AttenteRefus { trans_id: [u8; 12] },
+    AttenteRefus {
+        trans_id: [u8; 12],
+    },
     /// Allocation signée émise, on attend le succès.
-    AttenteAllocation { trans_id: [u8; 12] },
+    AttenteAllocation {
+        trans_id: [u8; 12],
+    },
     Allouee {
         echeance_refresh: Instant,
     },

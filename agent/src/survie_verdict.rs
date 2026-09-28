@@ -54,12 +54,18 @@ mod tests {
 
     #[test]
     fn deux_mesures_egales_rendent_true() {
-        assert_eq!(verdict_persistance(Some((1920, 1080)), Some((1920, 1080))), "true");
+        assert_eq!(
+            verdict_persistance(Some((1920, 1080)), Some((1920, 1080))),
+            "true"
+        );
     }
 
     #[test]
     fn deux_mesures_differentes_rendent_false() {
-        assert_eq!(verdict_persistance(Some((1920, 1080)), Some((1280, 720))), "false");
+        assert_eq!(
+            verdict_persistance(Some((1920, 1080)), Some((1280, 720))),
+            "false"
+        );
     }
 
     /// Le cas que l'ancienne version confondait avec `"true"` : les DEUX
@@ -67,8 +73,17 @@ mod tests {
     /// se lire comme une survie -- ni comme une comparaison sur `(0, 0)`.
     #[test]
     fn une_mesure_absente_de_chaque_cote_rend_indetermine() {
-        assert_eq!(verdict_persistance(None, Some((1280, 720))), "indetermine (sortie disparue)");
-        assert_eq!(verdict_persistance(Some((1280, 720)), None), "indetermine (sortie disparue)");
-        assert_eq!(verdict_persistance(None, None), "indetermine (sortie disparue)");
+        assert_eq!(
+            verdict_persistance(None, Some((1280, 720))),
+            "indetermine (sortie disparue)"
+        );
+        assert_eq!(
+            verdict_persistance(Some((1280, 720)), None),
+            "indetermine (sortie disparue)"
+        );
+        assert_eq!(
+            verdict_persistance(None, None),
+            "indetermine (sortie disparue)"
+        );
     }
 }

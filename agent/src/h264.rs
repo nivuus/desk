@@ -95,7 +95,11 @@ pub fn is_keyframe(nals: &[Vec<u8>]) -> bool {
 /// qui précèdent la première tranche sont rattachées à l'unité qui les suit.
 pub fn group_access_units(stream: &[u8], fps: u32) -> Vec<AccessUnit> {
     let nals = split_annex_b(stream);
-    let tick = if fps == 0 { 0 } else { CLOCK_RATE_HZ / fps as u64 };
+    let tick = if fps == 0 {
+        0
+    } else {
+        CLOCK_RATE_HZ / fps as u64
+    };
 
     let mut units: Vec<AccessUnit> = Vec::new();
     let mut current: Vec<Vec<u8>> = Vec::new();
@@ -205,7 +209,7 @@ mod tests {
         assert!(!units[1].is_keyframe);
         assert_eq!(units[0].pts_90k, 0);
         assert_eq!(units[1].pts_90k, 1500); // 90000 / 60
-        // La première unité contient les trois NAL avec leurs start codes.
+                                            // La première unité contient les trois NAL avec leurs start codes.
         assert_eq!(units[0].data.len(), 3 * 4 + 2 + 2 + 2);
     }
 
@@ -248,7 +252,8 @@ mod tests {
         // huit tranches par libx264 (contrainte de niveau 3.1 à 1280x720/60).
         // Une règle de découpage naïve (une unité par tranche) produirait 2400
         // unités au lieu de 300.
-        let path = std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/testdata/testsrc.264"));
+        let path =
+            std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/testdata/testsrc.264"));
         let data = std::fs::read(path).expect("lecture du flux de test");
         let units = group_access_units(&data, 60);
         assert_eq!(units.len(), 300);

@@ -8,13 +8,13 @@
 
 use anyhow::Result;
 
+use super::designation;
 use super::enfants::{Consigne, Enfants};
 use super::hook;
 use super::lanceur::LanceurDeProcessus;
-use super::designation;
 use super::placement;
-use super::reprise;
 use super::protocole::{DepuisLaShell, VersLaShell};
+use super::reprise;
 use super::table::{Effet, IdSession, Table};
 use crate::capture::{enumerer_sorties_silencieux, SortieDxgi};
 // `relever_topologie` plutôt qu'`enumerer_sorties` sur le chemin de création :
@@ -134,22 +134,40 @@ pub fn tourner(
         for effet in a_faire {
             match effet {
                 Effet::AnnoncerOuverture { session, titre } => {
-                    envoyer(&VersLaShell::FenetreOuverte { session: session.0.clone(), titre });
+                    envoyer(&VersLaShell::FenetreOuverte {
+                        session: session.0.clone(),
+                        titre,
+                    });
                 }
-                Effet::CreerSortie { session, titre, largeur, hauteur } => {
+                Effet::CreerSortie {
+                    session,
+                    titre,
+                    largeur,
+                    hauteur,
+                } => {
                     effets.extend(creer_sortie(
                         pilote,
                         &mut sorties,
                         &mut table,
                         &mut prises,
                         &envoyer,
-                        Demande { session, titre, largeur, hauteur },
+                        Demande {
+                            session,
+                            titre,
+                            largeur,
+                            hauteur,
+                        },
                     ));
                     // `creer_sortie` a battu le chien de garde pendant son
                     // attente de rattachement : ne pas le recompter en retard.
                     dernier_ping = std::time::Instant::now();
                 }
-                Effet::LancerEnfant { session, fenetre, nom_sortie, taille } => {
+                Effet::LancerEnfant {
+                    session,
+                    fenetre,
+                    nom_sortie,
+                    taille,
+                } => {
                     // Le chemin de réutilisation d'une sortie retenue ne passe
                     // pas par `creer_sortie`, donc la fenêtre n'a pas été
                     // reposée. Une seule énumération, sur ce seul bras.
@@ -170,14 +188,21 @@ pub fn tourner(
                     }
                 }
                 Effet::TuerEnfant { session } => enfants.tuer(&session),
-                Effet::DetruireSortie { sortie_pilote, nom_sortie } => {
+                Effet::DetruireSortie {
+                    sortie_pilote,
+                    nom_sortie,
+                } => {
                     // Rendue MAINTENANT, pas à l'arrêt du superviseur : le
                     // vivier du pilote se consomme à chaque ouverture de
                     // fenêtre, et une dizaine d'ouvertures-fermetures
                     // suffirait sinon à bloquer toute nouvelle fenêtre.
                     rendre_la_sortie(&mut sorties, &mut prises, sortie_pilote, nom_sortie);
                 }
-                Effet::SuivreLeViewport { session, largeur, hauteur } => {
+                Effet::SuivreLeViewport {
+                    session,
+                    largeur,
+                    hauteur,
+                } => {
                     suivre_le_viewport(&mut table, &session, largeur, hauteur);
                 }
                 Effet::AnnoncerFermeture { session } => {
@@ -258,7 +283,11 @@ pub fn tourner(
         // une session inconnue, et une session qui n'attend plus son viewport.
         while let Ok(message) = rx_shell.try_recv() {
             match message {
-                DepuisLaShell::Viewport { session, largeur, hauteur } => {
+                DepuisLaShell::Viewport {
+                    session,
+                    largeur,
+                    hauteur,
+                } => {
                     // 🔴 **LE POINT LE PLUS EN AMONT, ET IL EST INCONDITIONNEL.**
                     // Il distingue « le message n'arrive JAMAIS » (rien ici) de
                     // « il arrive et la table n'en fait rien » (ligne ici,

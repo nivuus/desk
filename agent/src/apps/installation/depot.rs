@@ -126,7 +126,10 @@ pub fn valider_identifiant(id: &str) -> Result<(), RefusNom> {
     if id.len() > IDENTIFIANT_MAX_OCTETS {
         return Err(RefusNom::TropLong(id.len()));
     }
-    match id.chars().find(|c| !c.is_ascii_alphanumeric() && *c != '-' && *c != '_') {
+    match id
+        .chars()
+        .find(|c| !c.is_ascii_alphanumeric() && *c != '-' && *c != '_')
+    {
         Some(c @ ('\\' | '/')) => Err(RefusNom::Separateur(c)),
         Some(c) => Err(RefusNom::CaractereInterdit(c)),
         None => Ok(()),
@@ -150,7 +153,10 @@ pub fn valider_nom(nom: &str) -> Result<(), RefusNom> {
     if let Some(c) = nom.chars().find(|c| *c == '\\' || *c == '/') {
         return Err(RefusNom::Separateur(c));
     }
-    if let Some(c) = nom.chars().find(|c| CARACTERES_INTERDITS.contains(c) || c.is_control()) {
+    if let Some(c) = nom
+        .chars()
+        .find(|c| CARACTERES_INTERDITS.contains(c) || c.is_control())
+    {
         return Err(RefusNom::CaractereInterdit(c));
     }
     let tronc = nom.split('.').next().unwrap_or_default().to_lowercase();
@@ -181,7 +187,10 @@ pub fn extension_de(nom: &str) -> Result<Extension, Refus> {
 /// Le répertoire d'une installation, sous la racine donnée.
 pub fn repertoire(racine: &str, id: &str) -> Result<String, Refus> {
     valider_identifiant(id).map_err(Refus::Identifiant)?;
-    Ok(format!("{}\\{RACINE_RELATIVE}\\{id}", racine.trim_end_matches('\\')))
+    Ok(format!(
+        "{}\\{RACINE_RELATIVE}\\{id}",
+        racine.trim_end_matches('\\')
+    ))
 }
 
 /// Le chemin d'atterrissage, et ce qu'on fera du fichier.
@@ -246,11 +255,20 @@ mod tests {
     #[test]
     fn une_remontee_de_chemin_est_refusee_et_le_motif_la_nomme() {
         let mechant = r"..\..\Windows\System32\evil.exe";
-        assert_eq!(chemin(RACINE, "i-1", mechant), Err(Refus::Nom(RefusNom::Remontee)));
+        assert_eq!(
+            chemin(RACINE, "i-1", mechant),
+            Err(Refus::Nom(RefusNom::Remontee))
+        );
         // Un séparateur sans remontée a son propre motif : le nom prétend
         // désigner un chemin, ce qui n'est pas la même faute.
-        assert_eq!(valider_nom(r"sous\setup.exe"), Err(RefusNom::Separateur('\\')));
-        assert_eq!(valider_nom("sous/setup.exe"), Err(RefusNom::Separateur('/')));
+        assert_eq!(
+            valider_nom(r"sous\setup.exe"),
+            Err(RefusNom::Separateur('\\'))
+        );
+        assert_eq!(
+            valider_nom("sous/setup.exe"),
+            Err(RefusNom::Separateur('/'))
+        );
     }
 
     /// 🔴 LA ROUGE, SECONDE MOITIÉ : deux motifs distincts, deux assertions —
@@ -258,17 +276,32 @@ mod tests {
     /// confusion.
     #[test]
     fn un_script_est_refuse_par_son_extension_et_non_par_son_nom() {
-        assert_eq!(chemin(RACINE, "i", "setup.bat"), Err(Refus::Script("bat".into())));
+        assert_eq!(
+            chemin(RACINE, "i", "setup.bat"),
+            Err(Refus::Script("bat".into()))
+        );
         assert_eq!(valider_nom("setup.bat"), Ok(()));
-        assert_eq!(chemin(RACINE, "i", "s.zip"), Err(Refus::Extension("zip".into())));
-        assert_eq!(chemin(RACINE, "i", "s"), Err(Refus::Extension(String::new())));
+        assert_eq!(
+            chemin(RACINE, "i", "s.zip"),
+            Err(Refus::Extension("zip".into()))
+        );
+        assert_eq!(
+            chemin(RACINE, "i", "s"),
+            Err(Refus::Extension(String::new()))
+        );
     }
 
     #[test]
     fn le_chemin_nominal_se_compose_et_dit_ce_qu_on_fera_du_fichier() {
         let attendu = r"C:\ProgramData\Guacamole\installeurs\a1-b2_c3\VB_Setup.exe";
-        assert_eq!(chemin(RACINE, "a1-b2_c3", "VB_Setup.exe"), Ok((attendu.into(), Extension::Exe)));
-        assert_eq!(chemin(RACINE, "i", "Truc.MSI").map(|(_, e)| e), Ok(Extension::Msi));
+        assert_eq!(
+            chemin(RACINE, "a1-b2_c3", "VB_Setup.exe"),
+            Ok((attendu.into(), Extension::Exe))
+        );
+        assert_eq!(
+            chemin(RACINE, "i", "Truc.MSI").map(|(_, e)| e),
+            Ok(Extension::Msi)
+        );
         // Un nom d'humain passe : accents, espaces, points internes.
         assert!(chemin(RACINE, "i", "Éditeur Pro 3.1 (x64).exe").is_ok());
         // Le chemin le plus long que les deux bornes autorisent tient sous
@@ -288,10 +321,17 @@ mod tests {
             ("", RefusNom::Vide),
             ("é", RefusNom::CaractereInterdit('é')),
         ] {
-            assert_eq!(chemin(RACINE, id, "s.exe"), Err(Refus::Identifiant(motif)), "sur {id:?}");
+            assert_eq!(
+                chemin(RACINE, id, "s.exe"),
+                Err(Refus::Identifiant(motif)),
+                "sur {id:?}"
+            );
         }
         let trop = "a".repeat(IDENTIFIANT_MAX_OCTETS + 1);
-        assert_eq!(valider_identifiant(&trop), Err(RefusNom::TropLong(trop.len())));
+        assert_eq!(
+            valider_identifiant(&trop),
+            Err(RefusNom::TropLong(trop.len()))
+        );
     }
 
     #[test]

@@ -142,7 +142,11 @@ fn une_trame_absente_sans_suivante_donne_manquante() {
     t.deposer(trame(0, 20));
     assert!(matches!(t.retirer(), Retrait::Trame(tr) if tr.rtp_48k == 0));
     assert!(matches!(t.retirer(), Retrait::Manquante));
-    assert_eq!(t.compteurs().fec, 0, "aucune suivante : rien à reconstruire");
+    assert_eq!(
+        t.compteurs().fec,
+        0,
+        "aucune suivante : rien à reconstruire"
+    );
     assert_eq!(t.compteurs().famines, 1);
 }
 
@@ -192,7 +196,11 @@ fn au_dela_du_seuil_haut_une_trame_est_sautee_et_comptee() {
     for i in 0..7u64 {
         t.deposer(trame(i * 960, 20));
     }
-    assert_eq!(t.compteurs().jetees_saturation, 0, "c'est la dérive, pas la saturation");
+    assert_eq!(
+        t.compteurs().jetees_saturation,
+        0,
+        "c'est la dérive, pas la saturation"
+    );
 
     match t.retirer() {
         // La trame 0 a été sautée : c'est la 960 qui sort.
@@ -234,7 +242,11 @@ fn entre_les_deux_seuils_aucune_correction_n_est_appliquee() {
     }
     assert!(matches!(t.retirer(), Retrait::Trame(tr) if tr.rtp_48k == 0));
     assert_eq!(t.compteurs().sauts, 0, "un saut dans la bande morte");
-    assert_eq!(t.compteurs().insertions, 0, "une insertion dans la bande morte");
+    assert_eq!(
+        t.compteurs().insertions,
+        0,
+        "une insertion dans la bande morte"
+    );
 }
 
 /// « Aucun n'est silencieux » (spec §8). Chaque correction incrémente son
@@ -261,7 +273,11 @@ fn chaque_correction_a_son_compteur() {
     assert!(t.occupation() < SEUIL_INSERTION);
     assert!(matches!(t.retirer(), Retrait::Manquante));
 
-    assert_eq!(t.compteurs().insertions, 1, "l'insertion n'a pas son compteur");
+    assert_eq!(
+        t.compteurs().insertions,
+        1,
+        "l'insertion n'a pas son compteur"
+    );
     assert_eq!(
         t.compteurs().sauts,
         sauts_avant,

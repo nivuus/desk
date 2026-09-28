@@ -20,8 +20,8 @@ use windows::Win32::Graphics::Gdi::{
 };
 use windows::Win32::UI::WindowsAndMessaging::{
     EnumWindows, GetClientRect, GetSystemMetrics, GetWindowRect, GetWindowTextLengthW,
-    GetWindowTextW, IsWindow, SM_CXBORDER, SM_CYBORDER,
-    IsWindowVisible, SetWindowPos, SWP_NOMOVE, SWP_NOZORDER,
+    GetWindowTextW, IsWindow, IsWindowVisible, SetWindowPos, SM_CXBORDER, SM_CYBORDER, SWP_NOMOVE,
+    SWP_NOZORDER,
 };
 
 use crate::geometry::Rect;
@@ -114,7 +114,12 @@ pub fn client_rect_on_screen(hwnd: HWND) -> Result<Rect> {
         .ok()
         .context("ClientToScreen")?;
 
-    Ok(Rect { x: origin.x, y: origin.y, width, height })
+    Ok(Rect {
+        x: origin.x,
+        y: origin.y,
+        width,
+        height,
+    })
 }
 
 /// Le rectangle de la fenêtre tel que `GetWindowRect` le rend — **bordures
@@ -214,9 +219,7 @@ pub fn zones_du_moniteur_au_point(x: i32, y: i32) -> Result<(Rect, Rect)> {
     // `MONITOR_DEFAULTTONULL`, et l'appelant retomberait sur le rectangle de
     // la sortie. Le plus proche est une réponse, pas une devinette : le point
     // vient de l'origine d'une sortie que DXGI énumère encore.
-    let moniteur = unsafe {
-        MonitorFromPoint(POINT { x, y }, MONITOR_DEFAULTTONEAREST)
-    };
+    let moniteur = unsafe { MonitorFromPoint(POINT { x, y }, MONITOR_DEFAULTTONEAREST) };
     zones_de_l_hmoniteur(moniteur)
 }
 

@@ -97,7 +97,10 @@ mod tests {
     fn une_rupture_n_epuise_pas_immediatement() {
         let mut fenetre = FenetreCanal::nouvelle();
         let t0 = Instant::now();
-        assert!(!fenetre.rupture(t0), "la première rupture ouvre la fenêtre, elle ne conclut pas");
+        assert!(
+            !fenetre.rupture(t0),
+            "la première rupture ouvre la fenêtre, elle ne conclut pas"
+        );
         assert!(!fenetre.rupture(t0 + Duration::from_secs(1)));
     }
 
@@ -132,7 +135,10 @@ mod tests {
         let t0 = Instant::now();
         assert!(!fenetre.rupture(t0));
         assert!(fenetre.peut_reessayer(t0), "le premier essai est immédiat");
-        assert!(!fenetre.peut_reessayer(t0), "deux essais dans le même instant");
+        assert!(
+            !fenetre.peut_reessayer(t0),
+            "deux essais dans le même instant"
+        );
         assert!(!fenetre.peut_reessayer(t0 + PAS_RATTACHEMENT / 2));
         assert!(fenetre.peut_reessayer(t0 + PAS_RATTACHEMENT + Duration::from_millis(1)));
     }
@@ -149,6 +155,9 @@ mod tests {
         fenetre.succes();
         let t1 = t0 + Duration::from_millis(1);
         assert!(!fenetre.rupture(t1));
-        assert!(fenetre.peut_reessayer(t1), "après un succès, le premier essai est immédiat");
+        assert!(
+            fenetre.peut_reessayer(t1),
+            "après un succès, le premier essai est immédiat"
+        );
     }
 }

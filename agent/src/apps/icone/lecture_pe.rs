@@ -62,7 +62,12 @@ pub fn grpicondir(module: &Path, index: i32) -> Result<Vec<u8>> {
             LOAD_LIBRARY_AS_DATAFILE | LOAD_LIBRARY_AS_IMAGE_RESOURCE,
         )
     }
-    .with_context(|| format!("chargement du module {} en fichier de donnees", module.display()))?;
+    .with_context(|| {
+        format!(
+            "chargement du module {} en fichier de donnees",
+            module.display()
+        )
+    })?;
 
     let resultat = lire_groupe(handle, index);
 

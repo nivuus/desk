@@ -114,7 +114,8 @@ impl TailleImage {
 
     pub fn poser(&self, largeur: u32, hauteur: u32) {
         let empaquetee = ((largeur as u64) << 32) | hauteur as u64;
-        self.0.store(empaquetee, std::sync::atomic::Ordering::Relaxed);
+        self.0
+            .store(empaquetee, std::sync::atomic::Ordering::Relaxed);
     }
 
     pub fn lire(&self) -> (u32, u32) {
@@ -144,7 +145,10 @@ pub enum Reference {
     /// ⚠️ Le nom de la variante dit « sortie » et ce n'est **pas** la sortie
     /// entière : c'est la sortie qui donne l'ORIGINE, et `image` qui donne la
     /// TAILLE. Les confondre est le défaut du lot 32Q, corrigé ici.
-    SortieCapturee { nom: String, image: std::sync::Arc<TailleImage> },
+    SortieCapturee {
+        nom: String,
+        image: std::sync::Arc<TailleImage>,
+    },
 }
 
 /// Le rectangle de la région capturée : **l'origine de la sortie, la taille
@@ -168,7 +172,12 @@ pub fn rectangle_capture(
     if largeur == 0 || hauteur == 0 {
         return None;
     }
-    Some(crate::geometry::Rect { x: sortie.x, y: sortie.y, width: largeur, height: hauteur })
+    Some(crate::geometry::Rect {
+        x: sortie.x,
+        y: sortie.y,
+        width: largeur,
+        height: hauteur,
+    })
 }
 
 #[cfg(test)]
@@ -193,7 +202,12 @@ mod tests {
     /// c'est ce refus qui empêche un repli silencieux sur la sortie entière.
     #[test]
     fn sans_taille_d_image_il_n_y_a_pas_de_rectangle() {
-        let sortie = Rect { x: 3140, y: 0, width: 1860, height: 1080 };
+        let sortie = Rect {
+            x: 3140,
+            y: 0,
+            width: 1860,
+            height: 1080,
+        };
         assert_eq!(rectangle_capture(sortie, (0, 1080)), None);
         assert_eq!(rectangle_capture(sortie, (1428, 0)), None);
     }
@@ -209,9 +223,24 @@ mod tests {
     /// **+1288 en x et +51 en y**, exactement le décalage dérivé du journal.
     #[test]
     fn la_formule_d_avant_rend_le_decalage_releve_de_1288_et_51() {
-        let bureau = Rect { x: 0, y: 0, width: 8192, height: 2160 };
-        let fenetre = Rect { x: 4428, y: 51, width: 1428, height: 1080 };
-        let sortie = Rect { x: 3140, y: 0, width: 1920, height: 1200 };
+        let bureau = Rect {
+            x: 0,
+            y: 0,
+            width: 8192,
+            height: 2160,
+        };
+        let fenetre = Rect {
+            x: 4428,
+            y: 51,
+            width: 1428,
+            height: 1080,
+        };
+        let sortie = Rect {
+            x: 3140,
+            y: 0,
+            width: 1920,
+            height: 1200,
+        };
 
         let vise = |r: Rect| {
             let (nx, ny) = to_virtual_desktop(0, 0, r, bureau);
@@ -222,9 +251,21 @@ mod tests {
         };
         let (juste_x, juste_y) = vise(sortie);
         let (faux_x, faux_y) = vise(fenetre);
-        assert_eq!((juste_x, juste_y), (3140, 0), "la référence JUSTE vise l'origine de la sortie");
-        assert_eq!(faux_x - juste_x, 1288, "le terme d'ORIGINE en x, relevé sur la VM");
-        assert_eq!(faux_y - juste_y, 51, "le terme d'ORIGINE en y, relevé sur la VM");
+        assert_eq!(
+            (juste_x, juste_y),
+            (3140, 0),
+            "la référence JUSTE vise l'origine de la sortie"
+        );
+        assert_eq!(
+            faux_x - juste_x,
+            1288,
+            "le terme d'ORIGINE en x, relevé sur la VM"
+        );
+        assert_eq!(
+            faux_y - juste_y,
+            51,
+            "le terme d'ORIGINE en y, relevé sur la VM"
+        );
     }
 
     /// 🔴 **Le second terme, celui que le décalage constant ne corrigerait
@@ -233,9 +274,24 @@ mod tests {
     /// se répare pas en soustrayant 1288.
     #[test]
     fn l_erreur_n_est_pas_un_simple_decalage_elle_croit_avec_la_distance() {
-        let bureau = Rect { x: 0, y: 0, width: 8192, height: 2160 };
-        let fenetre = Rect { x: 4428, y: 51, width: 1428, height: 1080 };
-        let sortie = Rect { x: 3140, y: 0, width: 1920, height: 1200 };
+        let bureau = Rect {
+            x: 0,
+            y: 0,
+            width: 8192,
+            height: 2160,
+        };
+        let fenetre = Rect {
+            x: 4428,
+            y: 51,
+            width: 1428,
+            height: 1080,
+        };
+        let sortie = Rect {
+            x: 3140,
+            y: 0,
+            width: 1920,
+            height: 1200,
+        };
         let ecart = |f: u16| {
             let en_px = |r: Rect| {
                 let (nx, _) = to_virtual_desktop(f, 0, r, bureau);
@@ -246,7 +302,10 @@ mod tests {
         let au_coin = ecart(0);
         let au_bout = ecart(65535);
         assert_eq!(au_coin, 1288);
-        assert_ne!(au_bout, au_coin, "l'écart CHANGE : ce n'est pas un décalage constant");
+        assert_ne!(
+            au_bout, au_coin,
+            "l'écart CHANGE : ce n'est pas un décalage constant"
+        );
         // Ow − Ww = 1920 − 1428 = 492 : l'écart se réduit d'autant au bout.
         assert_eq!(au_coin - au_bout, 492);
     }
@@ -257,10 +316,23 @@ mod tests {
     /// vient bien de l'écart des rectangles.
     #[test]
     fn quand_la_fenetre_occupe_sa_sortie_les_deux_references_coincident() {
-        let bureau = Rect { x: 0, y: 0, width: 8192, height: 2160 };
-        let meme = Rect { x: 3140, y: 0, width: 1920, height: 1200 };
+        let bureau = Rect {
+            x: 0,
+            y: 0,
+            width: 8192,
+            height: 2160,
+        };
+        let meme = Rect {
+            x: 3140,
+            y: 0,
+            width: 1920,
+            height: 1200,
+        };
         for f in [0u16, 12345, 65535] {
-            assert_eq!(to_virtual_desktop(f, f, meme, bureau), to_virtual_desktop(f, f, meme, bureau));
+            assert_eq!(
+                to_virtual_desktop(f, f, meme, bureau),
+                to_virtual_desktop(f, f, meme, bureau)
+            );
         }
         let (nx, ny) = to_virtual_desktop(0, 0, meme, bureau);
         assert_eq!(
@@ -291,8 +363,18 @@ mod tests {
     /// contre 1080 : **zéro**.
     #[test]
     fn le_recadrage_annule_les_432_px_de_derive_en_x_et_ne_touche_pas_l_y() {
-        let bureau = Rect { x: 0, y: 0, width: 8192, height: 2160 };
-        let sortie = Rect { x: 3140, y: 0, width: 1860, height: 1080 };
+        let bureau = Rect {
+            x: 0,
+            y: 0,
+            width: 8192,
+            height: 2160,
+        };
+        let sortie = Rect {
+            x: 3140,
+            y: 0,
+            width: 1860,
+            height: 1080,
+        };
         let image = (1428u32, 1080u32);
 
         // Ce que le produit calcule aujourd'hui.
@@ -309,7 +391,11 @@ mod tests {
         };
 
         // Le bord DROIT de l'image : 3140 + 1428.
-        assert_eq!(en_px(juste, 65535).0, 3140 + 1428, "le bord droit de l'IMAGE");
+        assert_eq!(
+            en_px(juste, 65535).0,
+            3140 + 1428,
+            "le bord droit de l'IMAGE"
+        );
         assert_eq!(
             en_px(formule_32q, 65535).0 - en_px(juste, 65535).0,
             432,
@@ -321,7 +407,11 @@ mod tests {
         assert_eq!(en_px(formule_32q, 0).0 - en_px(juste, 0).0, 0);
         // En y, rien nulle part : la sortie et l'image font 1080 toutes deux.
         for f in [0u16, 32767, 65535] {
-            assert_eq!(en_px(formule_32q, f).1, en_px(juste, f).1, "aucune dérive en y");
+            assert_eq!(
+                en_px(formule_32q, f).1,
+                en_px(juste, f).1,
+                "aucune dérive en y"
+            );
         }
     }
 
@@ -330,8 +420,12 @@ mod tests {
     /// qui rendrait n'importe quoi de plus petit passerait la rouge.
     #[test]
     fn quand_l_image_occupe_toute_la_sortie_les_deux_formules_coincident() {
-        let sortie = Rect { x: 3140, y: 0, width: 1860, height: 1080 };
+        let sortie = Rect {
+            x: 3140,
+            y: 0,
+            width: 1860,
+            height: 1080,
+        };
         assert_eq!(rectangle_capture(sortie, (1860, 1080)), Some(sortie));
     }
-
 }

@@ -20,8 +20,8 @@ use crate::capture::CapturedFrame;
 use crate::mire;
 
 use super::mires::Mires;
-use crate::moniteurs_virtuels::pilote::PiloteParIoctl;
 use super::voies::VoieDeCapture;
+use crate::moniteurs_virtuels::pilote::PiloteParIoctl;
 
 /// Durée de chaque passe.
 pub(super) const DUREE_PASSE: Duration = Duration::from_secs(10);
@@ -64,7 +64,11 @@ impl<'p> Garde<'p> {
     /// relevé du chantier des duplications parallèles). Compter cette couture
     /// exigerait qu'`attendre_en_pinguant` rende l'instant de son dernier ping.
     pub(super) fn nouvelle(pilote: &'p PiloteParIoctl) -> Self {
-        Self { pilote, dernier: Instant::now(), intervalle_max: Duration::ZERO }
+        Self {
+            pilote,
+            dernier: Instant::now(),
+            intervalle_max: Duration::ZERO,
+        }
     }
 
     /// Bat sans condition, et retient l'écart depuis le battement précédent.
@@ -182,7 +186,11 @@ pub(super) fn passe_temoin(mires: &mut Mires, mut garde: Option<&mut Garde<'_>>)
 
 pub(super) fn journaliser(passe: &str, voie: &str, nombre: u8, compteurs: &Compteurs) {
     let secondes = DUREE_PASSE.as_secs_f64();
-    let cadences: Vec<f64> = compteurs.images.iter().map(|n| *n as f64 / secondes).collect();
+    let cadences: Vec<f64> = compteurs
+        .images
+        .iter()
+        .map(|n| *n as f64 / secondes)
+        .collect();
     tracing::info!(
         passe,
         voie,

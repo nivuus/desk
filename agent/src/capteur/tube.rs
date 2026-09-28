@@ -20,7 +20,9 @@ use anyhow::{bail, Context, Result};
 use crate::capteur::distante::{Canal, Rattachee, Recu, SourceDistante};
 use crate::capteur::horloge::lire_qpc;
 use crate::capteur::pont_media::lire_le_media;
-use crate::capteur::protocole::{ecrire_json, lire_trame, DepuisCapteur, Trame, VersCapteur, NOM_TUBE};
+use crate::capteur::protocole::{
+    ecrire_json, lire_trame, DepuisCapteur, Trame, VersCapteur, NOM_TUBE,
+};
 use crate::capteur::reprise::DUREE_FENETRE_CANAL;
 
 /// Profondeur de la file d'images entre le fil lecteur et `next_frame`.
@@ -142,8 +144,14 @@ fn attacher_sur(mut commandes: std::fs::File, signalement: &Signalement) -> Resu
     // que ce bout y écrira jamais — puis on la confie au fil répartiteur, qui
     // ne fait que lire. C'est ce qui rend impossible qu'une lecture et une
     // écriture s'y croisent.
-    let mut media = ouvrir_dans(DUREE_OUVERTURE_MEDIA).context("ouverture de la connexion média")?;
-    ecrire_json(&mut media, &VersCapteur::Identite { session: signalement.session.clone() })?;
+    let mut media =
+        ouvrir_dans(DUREE_OUVERTURE_MEDIA).context("ouverture de la connexion média")?;
+    ecrire_json(
+        &mut media,
+        &VersCapteur::Identite {
+            session: signalement.session.clone(),
+        },
+    )?;
     media.flush()?;
 
     tracing::info!(
@@ -156,12 +164,20 @@ fn attacher_sur(mut commandes: std::fs::File, signalement: &Signalement) -> Resu
     let (tx_images, rx_images) = sync_channel::<Recu>(CAPACITE_FILE);
     std::thread::spawn(move || lire_le_media(BufReader::new(media), tx_images));
 
-    Ok(Attachee { commandes, images: rx_images, largeur, hauteur })
+    Ok(Attachee {
+        commandes,
+        images: rx_images,
+        largeur,
+        hauteur,
+    })
 }
 
 /// Une seule tentative d'ouverture d'une instance du tube.
 fn ouvrir_une_instance() -> std::io::Result<std::fs::File> {
-    std::fs::OpenOptions::new().read(true).write(true).open(NOM_TUBE)
+    std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(NOM_TUBE)
 }
 
 /// Réessaie l'ouverture dans une fenêtre bornée : l'enfant peut démarrer avant
@@ -180,8 +196,10 @@ fn ouvrir_dans(fenetre: Duration) -> Result<std::fs::File> {
             }
         }
     }
-    Err(anyhow::Error::from(derniere.expect("au moins une tentative"))
-        .context(format!("aucun capteur sur {NOM_TUBE} après {fenetre:?}")))
+    Err(
+        anyhow::Error::from(derniere.expect("au moins une tentative"))
+            .context(format!("aucun capteur sur {NOM_TUBE} après {fenetre:?}")),
+    )
 }
 
 struct CanalTube {

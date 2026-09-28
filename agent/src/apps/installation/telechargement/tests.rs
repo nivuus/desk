@@ -359,7 +359,10 @@ async fn une_empreinte_fausse_est_refusee_et_le_fichier_partiel_disparait() {
     .await
     .expect_err("doit refuser");
     match refus {
-        Refus::Empreinte { attendue: a, obtenue } => {
+        Refus::Empreinte {
+            attendue: a,
+            obtenue,
+        } => {
             assert_eq!(a, attendue);
             assert_eq!(obtenue, empreinte(&corps));
         }

@@ -101,7 +101,11 @@ impl Hysteresis {
 
         // Indices croissants = résolutions décroissantes : viser plus grand
         // que le courant, c'est descendre.
-        let delai = if vise > self.courant { DELAI_DESCENTE } else { DELAI_REMONTEE };
+        let delai = if vise > self.courant {
+            DELAI_DESCENTE
+        } else {
+            DELAI_REMONTEE
+        };
         if now.duration_since(depuis) < delai {
             return None;
         }

@@ -75,7 +75,10 @@ impl Table {
                     attente_depuis: Some(maintenant),
                 },
             );
-            effets.push(Effet::AnnoncerOuverture { session, titre: entree.titre });
+            effets.push(Effet::AnnoncerOuverture {
+                session,
+                titre: entree.titre,
+            });
         }
 
         // Tampon PARESSEUX (§7.3 du sous-bloc D2, corrigé en D3). Une entrée
@@ -110,8 +113,9 @@ impl Table {
             .iter()
             .filter(|(_, e)| {
                 e.etat == Etat::AttendLeViewport
-                    && e.attente_depuis
-                        .is_some_and(|depuis| maintenant.duration_since(depuis) > DELAI_ATTENTE_VIEWPORT_MAX)
+                    && e.attente_depuis.is_some_and(|depuis| {
+                        maintenant.duration_since(depuis) > DELAI_ATTENTE_VIEWPORT_MAX
+                    })
             })
             .map(|(s, _)| s.clone())
             .collect();

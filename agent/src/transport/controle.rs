@@ -130,7 +130,8 @@ impl Session {
             return;
         }
         self.ending = true;
-        self.pending_control.push_back(AgentControl::session_end(reason));
+        self.pending_control
+            .push_back(AgentControl::session_end(reason));
         tracing::info!(reason, "clôture de session amorcée");
     }
 }
@@ -146,15 +147,16 @@ mod tests {
 
     #[test]
     fn relaie_au_pair_un_controle_pousse_depuis_l_exterieur_de_la_boucle() {
+        use proto::control::CursorShape;
         use std::sync::mpsc;
         use std::thread;
         use str0m::change::SdpAnswer;
         use str0m::media::{Direction, MediaKind};
-        use proto::control::CursorShape;
 
         let local_ip = fixtures::local_ip();
         let source = Box::new(fixtures::video_test_source());
-        let mut session = Session::new(source, local_ip, Instant::now(), 12_000_000).expect("session");
+        let mut session =
+            Session::new(source, local_ip, Instant::now(), 12_000_000).expect("session");
 
         let (peer_socket, peer_addr, mut peer_rtc) = fixtures::local_peer(local_ip, false);
 
@@ -163,9 +165,14 @@ mod tests {
         api.add_channel("control".to_string());
         api.add_channel("input".to_string());
         let (offer, pending) = api.apply().expect("offre non vide");
-        let answer_sdp = session.accept_offer(&offer.to_sdp_string()).expect("offre acceptée");
+        let answer_sdp = session
+            .accept_offer(&offer.to_sdp_string())
+            .expect("offre acceptée");
         let answer = SdpAnswer::from_sdp_string(&answer_sdp).expect("réponse SDP valide");
-        peer_rtc.sdp_api().accept_answer(pending, answer).expect("réponse acceptée");
+        peer_rtc
+            .sdp_api()
+            .accept_answer(pending, answer)
+            .expect("réponse acceptée");
 
         // C'est le point du test : le message n'est produit NI par la boucle,
         // NI par un événement str0m — il vient d'un tiers, comme le fera le

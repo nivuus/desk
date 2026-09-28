@@ -42,9 +42,7 @@ pub fn probe(secondes: u64) -> anyhow::Result<String> {
     target
         .plugin()
         .context("branchement de la manette virtuelle")?;
-    target
-        .wait_ready()
-        .context("attente de disponibilité")?;
+    target.wait_ready().context("attente de disponibilité")?;
 
     // Un état non neutre : si un outil Windows (joy.cpl) est ouvert sur la
     // VM, il doit le montrer.
@@ -99,9 +97,9 @@ pub fn probe(secondes: u64) -> anyhow::Result<String> {
     // module ci-dessus pour pourquoi ce détour est nécessaire plutôt qu'un
     // hypothétique `wait_timeout`.
     let (tx, rx) = mpsc::channel::<vigem_client::XNotification>();
-    let requete = target
-        .request_notification()
-        .context("requête de notification (nécessite la fonctionnalité unstable_xtarget_notification)")?;
+    let requete = target.request_notification().context(
+        "requête de notification (nécessite la fonctionnalité unstable_xtarget_notification)",
+    )?;
     let fil = requete.spawn_thread(move |_requete, notification| {
         let _ = tx.send(notification);
     });

@@ -1,11 +1,19 @@
 use super::*;
 
 fn f(session: &str, eveillee: bool, focalisee: bool) -> Fenetre {
-    Fenetre { session: session.to_string(), eveillee, focalisee }
+    Fenetre {
+        session: session.to_string(),
+        eveillee,
+        focalisee,
+    }
 }
 
 fn part_de(parts: &[(String, u32)], session: &str) -> u32 {
-    parts.iter().find(|(s, _)| s == session).map(|(_, bps)| *bps).expect("session absente")
+    parts
+        .iter()
+        .find(|(s, _)| s == session)
+        .map(|(_, bps)| *bps)
+        .expect("session absente")
 }
 
 #[test]
@@ -32,7 +40,10 @@ fn la_focalisee_recoit_le_facteur_de_majoration() {
     let parts = repartir(12_000_000, &[f("a", true, true), f("b", true, false)]);
     assert_eq!(part_de(&parts, "b"), 4_000_000);
     assert_eq!(part_de(&parts, "a"), 8_000_000);
-    assert!(part_de(&parts, "a") > part_de(&parts, "b"), "la focalisée doit recevoir plus");
+    assert!(
+        part_de(&parts, "a") > part_de(&parts, "b"),
+        "la focalisée doit recevoir plus"
+    );
 }
 
 #[test]
@@ -58,8 +69,14 @@ fn toutes_endormies_recoivent_le_plancher_et_le_reste_n_est_donne_a_personne() {
 /// plancher, et la majoration ne revient à personne.
 #[test]
 fn une_focalisee_endormie_reste_au_plancher_et_les_eveillees_se_partagent_egalement() {
-    let parts =
-        repartir(12_000_000, &[f("dormeuse", false, true), f("a", true, false), f("b", true, false)]);
+    let parts = repartir(
+        12_000_000,
+        &[
+            f("dormeuse", false, true),
+            f("a", true, false),
+            f("b", true, false),
+        ],
+    );
     assert_eq!(part_de(&parts, "dormeuse"), PART_DORMANTE_BPS);
     let reste = 12_000_000 - PART_DORMANTE_BPS;
     assert_eq!(part_de(&parts, "a"), reste / 2);
@@ -95,8 +112,15 @@ fn la_somme_des_parts_ne_depasse_jamais_le_budget() {
                 somme <= 12_000_000,
                 "{eveillees} éveillées et {endormies} endormies : somme {somme}"
             );
-            assert_eq!(parts.len(), fenetres.len(), "chaque fenêtre doit recevoir une part");
-            assert!(parts.iter().all(|(_, bps)| *bps > 0), "aucune part ne doit être nulle");
+            assert_eq!(
+                parts.len(),
+                fenetres.len(),
+                "chaque fenêtre doit recevoir une part"
+            );
+            assert!(
+                parts.iter().all(|(_, bps)| *bps > 0),
+                "aucune part ne doit être nulle"
+            );
         }
     }
 }
@@ -126,13 +150,22 @@ fn les_trois_regimes_sont_bornes_ou_jamais_paniquent() {
         (f("e0", true, true), true),
         (f("e1", true, false), true),
     ];
-    let mut fenetres: Vec<Fenetre> = regime_1.iter().map(|(fenetre, _)| fenetre.clone()).collect();
+    let mut fenetres: Vec<Fenetre> = regime_1
+        .iter()
+        .map(|(fenetre, _)| fenetre.clone())
+        .collect();
     let parts = repartir(1_000_000, &fenetres);
     let somme: u32 = parts.iter().map(|(_, bps)| bps).sum();
-    assert!(somme <= 1_000_000, "Régime 1 : somme {somme} dépasse budget 1 000 000");
+    assert!(
+        somme <= 1_000_000,
+        "Régime 1 : somme {somme} dépasse budget 1 000 000"
+    );
     let e0_part = part_de(&parts, "e0");
     let e1_part = part_de(&parts, "e1");
-    assert!(e0_part > e1_part, "Régime 1 : majoration de focus doit exister");
+    assert!(
+        e0_part > e1_part,
+        "Régime 1 : majoration de focus doit exister"
+    );
 
     // **Régime 2a : frontière avec focalisée, reste = diviseur - 1**
     // 2 endormies = 512 000 bps, 1 focalisée + 1 non-focalisée
@@ -144,14 +177,23 @@ fn les_trois_regimes_sont_bornes_ou_jamais_paniquent() {
         (f("e0", true, true), true),
         (f("e1", true, false), true),
     ];
-    let fenetres: Vec<Fenetre> = regime_2_focus.iter().map(|(fenetre, _)| fenetre.clone()).collect();
+    let fenetres: Vec<Fenetre> = regime_2_focus
+        .iter()
+        .map(|(fenetre, _)| fenetre.clone())
+        .collect();
     let parts = repartir(512_002, &fenetres);
     let somme: u32 = parts.iter().map(|(_, bps)| bps).sum();
     let depassement = somme.saturating_sub(512_002);
-    assert!(depassement <= 3, "Régime 2 (focalisée) : dépassement {depassement} > diviseur 3");
+    assert!(
+        depassement <= 3,
+        "Régime 2 (focalisée) : dépassement {depassement} > diviseur 3"
+    );
     let e0_part = part_de(&parts, "e0");
     let e1_part = part_de(&parts, "e1");
-    assert_eq!(e0_part, e1_part, "Régime 2 (focalisée) : majoration doit disparaître, {e0_part} != {e1_part}");
+    assert_eq!(
+        e0_part, e1_part,
+        "Régime 2 (focalisée) : majoration doit disparaître, {e0_part} != {e1_part}"
+    );
 
     // **Régime 2b : sans focalisée, reste = diviseur - 1**
     // 2 endormies = 512 000 bps, 2 non-focalisées
@@ -163,11 +205,17 @@ fn les_trois_regimes_sont_bornes_ou_jamais_paniquent() {
         (f("e0", true, false), true),
         (f("e1", true, false), true),
     ];
-    let fenetres: Vec<Fenetre> = regime_2_no_focus.iter().map(|(fenetre, _)| fenetre.clone()).collect();
+    let fenetres: Vec<Fenetre> = regime_2_no_focus
+        .iter()
+        .map(|(fenetre, _)| fenetre.clone())
+        .collect();
     let parts = repartir(512_001, &fenetres);
     let somme: u32 = parts.iter().map(|(_, bps)| bps).sum();
     let depassement = somme.saturating_sub(512_001);
-    assert!(depassement <= 2, "Régime 2 (sans focalisée) : dépassement {depassement} > diviseur 2");
+    assert!(
+        depassement <= 2,
+        "Régime 2 (sans focalisée) : dépassement {depassement} > diviseur 2"
+    );
 
     // **Régime 3 : budget trop petit, ne couvre pas les planchers**
     // 2 endormies = 512 000 bps, budget = 100 000 < planchers
@@ -178,7 +226,10 @@ fn les_trois_regimes_sont_bornes_ou_jamais_paniquent() {
         (f("e0", true, false), true),
         (f("e1", true, false), true),
     ];
-    let fenetres: Vec<Fenetre> = regime_3.iter().map(|(fenetre, _)| fenetre.clone()).collect();
+    let fenetres: Vec<Fenetre> = regime_3
+        .iter()
+        .map(|(fenetre, _)| fenetre.clone())
+        .collect();
     let parts = repartir(100_000, &fenetres);
     let somme: u32 = parts.iter().map(|(_, bps)| bps).sum();
     let depassement = somme.saturating_sub(100_000);
@@ -187,5 +238,8 @@ fn les_trois_regimes_sont_bornes_ou_jamais_paniquent() {
         depassement, expected_depassement,
         "Régime 3 : dépassement {depassement} != {expected_depassement}"
     );
-    assert!(parts.iter().all(|(_, bps)| *bps > 0), "Régime 3 : aucune part ne doit être nulle");
+    assert!(
+        parts.iter().all(|(_, bps)| *bps > 0),
+        "Régime 3 : aucune part ne doit être nulle"
+    );
 }

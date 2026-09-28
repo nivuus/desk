@@ -18,7 +18,10 @@ fn une_attache_fait_l_aller_retour() {
     let mut lecteur = Cursor::new(tampon);
     match lire_trame(&mut lecteur).unwrap() {
         Trame::Json(octets) => {
-            assert_eq!(serde_json::from_slice::<VersCapteur>(&octets).unwrap(), message)
+            assert_eq!(
+                serde_json::from_slice::<VersCapteur>(&octets).unwrap(),
+                message
+            )
         }
         autre => panic!("attendu du JSON, reçu {autre:?}"),
     }
@@ -29,13 +32,18 @@ fn une_attache_fait_l_aller_retour() {
 /// dériverait ferait échouer l'appariement en session réelle seulement.
 #[test]
 fn une_identite_fait_l_aller_retour() {
-    let message = VersCapteur::Identite { session: "w-1".into() };
+    let message = VersCapteur::Identite {
+        session: "w-1".into(),
+    };
     let mut tampon = Vec::new();
     ecrire_json(&mut tampon, &message).unwrap();
     let mut lecteur = Cursor::new(tampon);
     match lire_trame(&mut lecteur).unwrap() {
         Trame::Json(octets) => {
-            assert_eq!(serde_json::from_slice::<VersCapteur>(&octets).unwrap(), message)
+            assert_eq!(
+                serde_json::from_slice::<VersCapteur>(&octets).unwrap(),
+                message
+            )
         }
         autre => panic!("attendu du JSON, reçu {autre:?}"),
     }
@@ -44,12 +52,27 @@ fn une_identite_fait_l_aller_retour() {
 #[test]
 fn chaque_reponse_fait_l_aller_retour() {
     for message in [
-        DepuisCapteur::Attachee { largeur: 1280, hauteur: 720 },
-        DepuisCapteur::Refus { motif: "sortie inconnue".into() },
-        DepuisCapteur::Taille { largeur: 1280, hauteur: 720 },
+        DepuisCapteur::Attachee {
+            largeur: 1280,
+            hauteur: 720,
+        },
+        DepuisCapteur::Refus {
+            motif: "sortie inconnue".into(),
+        },
+        DepuisCapteur::Taille {
+            largeur: 1280,
+            hauteur: 720,
+        },
         DepuisCapteur::Fait,
-        DepuisCapteur::Erreur { motif: "encodeur perdu".into() },
-        DepuisCapteur::Etat { vivante: true, epuisee: false, largeur: 1280, hauteur: 720 },
+        DepuisCapteur::Erreur {
+            motif: "encodeur perdu".into(),
+        },
+        DepuisCapteur::Etat {
+            vivante: true,
+            epuisee: false,
+            largeur: 1280,
+            hauteur: 720,
+        },
     ] {
         let mut tampon = Vec::new();
         ecrire_json(&mut tampon, &message).unwrap();
@@ -57,7 +80,10 @@ fn chaque_reponse_fait_l_aller_retour() {
         let Trame::Json(octets) = lire_trame(&mut lecteur).unwrap() else {
             panic!("attendu du JSON")
         };
-        assert_eq!(serde_json::from_slice::<DepuisCapteur>(&octets).unwrap(), message);
+        assert_eq!(
+            serde_json::from_slice::<DepuisCapteur>(&octets).unwrap(),
+            message
+        );
     }
 }
 
@@ -87,7 +113,11 @@ fn deux_trames_a_la_suite_se_lisent_dans_l_ordre() {
     ecrire_json(&mut tampon, &DepuisCapteur::Fait).unwrap();
     ecrire_image(
         &mut tampon,
-        &AccessUnit { data: vec![9, 9], is_keyframe: false, pts_90k: 7 },
+        &AccessUnit {
+            data: vec![9, 9],
+            is_keyframe: false,
+            pts_90k: 7,
+        },
     )
     .unwrap();
     let mut lecteur = Cursor::new(tampon);
@@ -126,7 +156,10 @@ fn une_longueur_aberrante_est_refusee_avant_toute_allocation() {
 
 #[test]
 fn une_visibilite_traverse_le_canal_du_capteur() {
-    let message = VersCapteur::Visibilite { visible: true, focalisee: false };
+    let message = VersCapteur::Visibilite {
+        visible: true,
+        focalisee: false,
+    };
     let json = serde_json::to_string(&message).expect("sérialisation");
     let relu: VersCapteur = serde_json::from_str(&json).expect("désérialisation");
     assert_eq!(relu, message);
@@ -134,7 +167,10 @@ fn une_visibilite_traverse_le_canal_du_capteur() {
 
 #[test]
 fn un_sommeil_traverse_le_canal_du_capteur() {
-    let message = DepuisCapteur::Sommeil { endormie: true, raison: "masquee".into() };
+    let message = DepuisCapteur::Sommeil {
+        endormie: true,
+        raison: "masquee".into(),
+    };
     let json = serde_json::to_string(&message).expect("sérialisation");
     let relu: DepuisCapteur = serde_json::from_str(&json).expect("désérialisation");
     assert_eq!(relu, message);
@@ -167,12 +203,17 @@ fn une_image_sans_en_tete_complet_est_refusee() {
 /// aller-retour voisins de ce fichier.
 #[test]
 fn aller_retour_de_l_ecriture_du_presse_papier() {
-    let message = VersCapteur::PressePapierEcrire { texte: String::from("une\r\ndeux") };
+    let message = VersCapteur::PressePapierEcrire {
+        texte: String::from("une\r\ndeux"),
+    };
     let mut tampon = Vec::new();
     ecrire_json(&mut tampon, &message).unwrap();
     match lire_trame(&mut Cursor::new(tampon)).unwrap() {
         Trame::Json(octets) => {
-            assert_eq!(serde_json::from_slice::<VersCapteur>(&octets).unwrap(), message)
+            assert_eq!(
+                serde_json::from_slice::<VersCapteur>(&octets).unwrap(),
+                message
+            )
         }
         autre => panic!("attendu du JSON, reçu {autre:?}"),
     }
@@ -202,7 +243,10 @@ fn un_texte_de_la_taille_maximale_du_produit_traverse_le_tube() {
     );
     match lire_trame(&mut Cursor::new(tampon)).unwrap() {
         Trame::Json(octets) => {
-            assert_eq!(serde_json::from_slice::<VersCapteur>(&octets).unwrap(), message)
+            assert_eq!(
+                serde_json::from_slice::<VersCapteur>(&octets).unwrap(),
+                message
+            )
         }
         autre => panic!("attendu du JSON, reçu {autre:?}"),
     }

@@ -307,13 +307,18 @@ fn tenir_la_fenetre(
         Err(erreur) => {
             // Le refus est ANNONCÉ à l'enfant, jamais silencieux : sans ce
             // message il attendrait une image qui ne viendra pas.
-            let _ = reponses.send(DepuisCapteur::Refus { motif: format!("{erreur:#}") });
+            let _ = reponses.send(DepuisCapteur::Refus {
+                motif: format!("{erreur:#}"),
+            });
             oublier(&session, generation);
             return Err(erreur);
         }
     };
     let (largeur, hauteur) = fenetre.dimensions();
-    if reponses.send(DepuisCapteur::Attachee { largeur, hauteur }).is_err() {
+    if reponses
+        .send(DepuisCapteur::Attachee { largeur, hauteur })
+        .is_err()
+    {
         oublier(&session, generation);
         bail!("le fil de commandes de {session} est parti avant la réponse à l'attache");
     }
@@ -388,7 +393,8 @@ fn boucler_les_commandes(
                     delai = ?DELAI_REPONSE_FENETRE,
                     "le fil de fenêtre n'a pas répondu, canal clos"
                 );
-                let motif = format!("le fil de fenêtre n'a pas répondu en {DELAI_REPONSE_FENETRE:?}");
+                let motif =
+                    format!("le fil de fenêtre n'a pas répondu en {DELAI_REPONSE_FENETRE:?}");
                 let _ = ecrire_json(&mut ecrivain, &DepuisCapteur::Erreur { motif });
                 let _ = ecrivain.flush();
                 return;

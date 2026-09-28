@@ -63,7 +63,9 @@ pub(super) fn chemin_verdict_rang_invalide() -> std::path::PathBuf {
 // `multifenetre` n'en a besoin.
 pub(in super::super) fn sonder(sorties: &[String]) -> Result<()> {
     let rang_brute = std::env::var("MULTIFENETRE_PLAFOND_RANG").unwrap_or_else(|_| "0".to_string());
-    let rang: u8 = match rang_brute.parse().context("MULTIFENETRE_PLAFOND_RANG doit être un entier")
+    let rang: u8 = match rang_brute
+        .parse()
+        .context("MULTIFENETRE_PLAFOND_RANG doit être un entier")
     {
         Ok(rang) => rang,
         Err(erreur) => {

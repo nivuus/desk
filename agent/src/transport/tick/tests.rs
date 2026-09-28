@@ -135,7 +135,8 @@ impl VideoSource for SourceAvecAudioMort {
         *self.signalements.lock().unwrap() += 1;
     }
     fn signaler_audio_vivant(&mut self) {
-        self.annonces_audio_vivant.store(true, std::sync::atomic::Ordering::Relaxed);
+        self.annonces_audio_vivant
+            .store(true, std::sync::atomic::Ordering::Relaxed);
     }
     fn rattachement_survenu(&mut self) -> bool {
         // `swap`, pas une simple lecture : CONSOMMÉ, sur le même régime que
@@ -143,7 +144,8 @@ impl VideoSource for SourceAvecAudioMort {
         // quoi ce drapeau resterait vrai indéfiniment et masquerait le
         // défaut que ce test existe pour attraper (un verrou qui ne se
         // remettrait jamais à zéro serait, à l'identique, invisible).
-        self.rattachement_prepare.swap(false, std::sync::atomic::Ordering::Relaxed)
+        self.rattachement_prepare
+            .swap(false, std::sync::atomic::Ordering::Relaxed)
     }
 }
 

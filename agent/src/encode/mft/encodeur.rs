@@ -132,7 +132,9 @@ impl EncodeurMft {
         // débit qu'on vient de gagner.
         while self.pending_nv12.len() > MAX_PENDING_NV12 {
             self.pending_nv12.pop_front();
-            self.telemetry.dropped_stale_nv12.fetch_add(1, Ordering::Relaxed);
+            self.telemetry
+                .dropped_stale_nv12
+                .fetch_add(1, Ordering::Relaxed);
             DROPPED_STALE.fetch_add(1, Ordering::Relaxed);
         }
 
@@ -277,7 +279,9 @@ impl EncodeurMft {
             let fed = unsafe { self.transform.ProcessInput(0, &nv12_sample, 0) };
             ENC_IN_NS.fetch_add(t.elapsed().as_nanos() as u64, Ordering::Relaxed);
             fed.context("soumission différée de l'image NV12 à l'encodeur")?;
-            self.telemetry.encoder_inputs.fetch_add(1, Ordering::Relaxed);
+            self.telemetry
+                .encoder_inputs
+                .fetch_add(1, Ordering::Relaxed);
             ENCODER_INPUTS.fetch_add(1, Ordering::Relaxed);
             self.pending_input_requests -= 1;
         }

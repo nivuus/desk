@@ -28,10 +28,7 @@ impl Session {
     /// (I2 de la revue du jalon 1).
     pub(super) fn envoyer(&mut self, transmit: &str0m::net::Transmit) {
         let (donnees, destination) = match self.route_relayee(transmit) {
-            Some(trame) => (
-                trame,
-                self.turn.as_ref().expect("relais présent").serveur(),
-            ),
+            Some(trame) => (trame, self.turn.as_ref().expect("relais présent").serveur()),
             None => (transmit.contents.to_vec(), transmit.destination),
         };
         if let Err(e) = self.socket.send_to(&donnees, destination) {

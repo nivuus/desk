@@ -90,7 +90,10 @@ pub struct Sorties<'p> {
 
 impl<'p> Sorties<'p> {
     pub fn nouvelles(pilote: &'p dyn PiloteAffichageVirtuel) -> Self {
-        Self { pilote, creees: Vec::new() }
+        Self {
+            pilote,
+            creees: Vec::new(),
+        }
     }
 
     /// Un refus du pilote ressort tel quel et ne compte pas comme création :
@@ -198,10 +201,7 @@ pub fn vers_texture(region: Rect, sortie: Rect, facteur: (f64, f64)) -> Rect {
 /// `sorties` porte les rectangles annoncés par DXGI
 /// (`DXGI_OUTPUT_DESC::DesktopCoordinates`), `textures` les dimensions
 /// réellement rendues par l'acquisition de chacune, dans le même ordre.
-pub fn places_texture_par_sortie(
-    sorties: &[Rect],
-    textures: &[(u32, u32)],
-) -> Result<Vec<Rect>> {
+pub fn places_texture_par_sortie(sorties: &[Rect], textures: &[(u32, u32)]) -> Result<Vec<Rect>> {
     anyhow::ensure!(
         sorties.len() == textures.len(),
         "{} sorties pour {} textures : l'appariement serait arbitraire",
@@ -213,8 +213,8 @@ pub fn places_texture_par_sortie(
         .zip(textures)
         .enumerate()
         .map(|(index, (sortie, texture))| {
-            let facteur = facteur_echelle((sortie.width, sortie.height), *texture)
-                .with_context(|| {
+            let facteur =
+                facteur_echelle((sortie.width, sortie.height), *texture).with_context(|| {
                     format!(
                         "sortie {index} annoncée {}x{} : dimension nulle, aucun facteur \
                          d'échelle n'a de sens",
@@ -362,7 +362,11 @@ mod tests {
         *pilote.refuse_les_destructions.borrow_mut() = true;
 
         assert!(sorties.detruire(a).is_err());
-        assert_eq!(sorties.nombre(), 1, "la sortie reste due tant qu'elle n'est pas rendue");
+        assert_eq!(
+            sorties.nombre(),
+            1,
+            "la sortie reste due tant qu'elle n'est pas rendue"
+        );
     }
 
     #[test]
@@ -372,15 +376,25 @@ mod tests {
             let mut sorties = Sorties::nouvelles(&pilote);
             sorties.creer(1920, 1080, 60).unwrap();
             sorties.creer(1920, 1080, 60).unwrap();
-            assert!(sorties.creer(1920, 1080, 60).is_err(), "le plafond aurait dû refuser");
-            assert_eq!(sorties.nombre(), 2, "un refus ne doit pas compter comme une création");
+            assert!(
+                sorties.creer(1920, 1080, 60).is_err(),
+                "le plafond aurait dû refuser"
+            );
+            assert_eq!(
+                sorties.nombre(),
+                2,
+                "un refus ne doit pas compter comme une création"
+            );
         }
         assert!(pilote.vivantes.borrow().is_empty());
     }
 
     #[test]
     fn des_dimensions_identiques_donnent_un_facteur_unite() {
-        assert_eq!(facteur_echelle((2400, 1080), (2400, 1080)), Some((1.0, 1.0)));
+        assert_eq!(
+            facteur_echelle((2400, 1080), (2400, 1080)),
+            Some((1.0, 1.0))
+        );
     }
 
     /// Le piège relevé par la sonde : sortie annoncée 3413×960 par DXGI,
@@ -388,7 +402,10 @@ mod tests {
     #[test]
     fn le_piege_dpi_de_la_sonde_donne_un_facteur_de_un_et_demi() {
         let (horizontal, vertical) = facteur_echelle((3413, 960), (5120, 1440)).unwrap();
-        assert!((horizontal - 1.5).abs() < 0.001, "horizontal = {horizontal}");
+        assert!(
+            (horizontal - 1.5).abs() < 0.001,
+            "horizontal = {horizontal}"
+        );
         assert!((vertical - 1.5).abs() < 0.001, "vertical = {vertical}");
     }
 
@@ -400,18 +417,43 @@ mod tests {
 
     #[test]
     fn sans_echelle_ni_decalage_la_region_ne_bouge_pas() {
-        let sortie = Rect { x: 0, y: 0, width: 2400, height: 1080 };
-        let region = Rect { x: 100, y: 200, width: 300, height: 400 };
+        let sortie = Rect {
+            x: 0,
+            y: 0,
+            width: 2400,
+            height: 1080,
+        };
+        let region = Rect {
+            x: 100,
+            y: 200,
+            width: 300,
+            height: 400,
+        };
         assert_eq!(vers_texture(region, sortie, (1.0, 1.0)), region);
     }
 
     #[test]
     fn une_sortie_decalee_ramene_la_region_a_l_origine_de_sa_texture() {
-        let sortie = Rect { x: 2400, y: 0, width: 3413, height: 960 };
-        let region = Rect { x: 2500, y: 100, width: 200, height: 200 };
+        let sortie = Rect {
+            x: 2400,
+            y: 0,
+            width: 3413,
+            height: 960,
+        };
+        let region = Rect {
+            x: 2500,
+            y: 100,
+            width: 200,
+            height: 200,
+        };
         assert_eq!(
             vers_texture(region, sortie, (1.0, 1.0)),
-            Rect { x: 100, y: 100, width: 200, height: 200 }
+            Rect {
+                x: 100,
+                y: 100,
+                width: 200,
+                height: 200
+            }
         );
     }
 
@@ -419,11 +461,26 @@ mod tests {
     /// texture est aux dimensions physiques décalerait tout d'un facteur 1,5.
     #[test]
     fn le_facteur_dpi_agrandit_la_region_et_son_origine() {
-        let sortie = Rect { x: 0, y: 0, width: 3413, height: 960 };
-        let region = Rect { x: 100, y: 100, width: 200, height: 200 };
+        let sortie = Rect {
+            x: 0,
+            y: 0,
+            width: 3413,
+            height: 960,
+        };
+        let region = Rect {
+            x: 100,
+            y: 100,
+            width: 200,
+            height: 200,
+        };
         assert_eq!(
             vers_texture(region, sortie, (1.5, 1.5)),
-            Rect { x: 150, y: 150, width: 300, height: 300 }
+            Rect {
+                x: 150,
+                y: 150,
+                width: 300,
+                height: 300
+            }
         );
     }
 
@@ -434,30 +491,74 @@ mod tests {
     #[test]
     fn chaque_sortie_est_convertie_avec_son_propre_facteur() {
         let sorties = vec![
-            Rect { x: 0, y: 0, width: 1280, height: 720 },
-            Rect { x: 1280, y: 0, width: 853, height: 480 },
+            Rect {
+                x: 0,
+                y: 0,
+                width: 1280,
+                height: 720,
+            },
+            Rect {
+                x: 1280,
+                y: 0,
+                width: 853,
+                height: 480,
+            },
         ];
         let textures = vec![(1280, 720), (1280, 720)];
         let places = places_texture_par_sortie(&sorties, &textures).unwrap();
-        assert_eq!(places[0], Rect { x: 0, y: 0, width: 1280, height: 720 });
+        assert_eq!(
+            places[0],
+            Rect {
+                x: 0,
+                y: 0,
+                width: 1280,
+                height: 720
+            }
+        );
         // Facteur 1280/853 ≈ 1,5 : la seconde sortie couvre TOUTE sa texture.
         // C'est le test qui compte : avec le facteur de la sortie 0 (l'unité),
         // on obtiendrait 853×480 dans un coin d'une texture 1280×720.
-        assert_eq!(places[1], Rect { x: 0, y: 0, width: 1280, height: 720 });
+        assert_eq!(
+            places[1],
+            Rect {
+                x: 0,
+                y: 0,
+                width: 1280,
+                height: 720
+            }
+        );
     }
 
     /// Chaque place est ramenée à l'origine de SA texture : c'est ce qui
     /// distingue N sorties de N tuiles sur une sortie.
     #[test]
     fn une_sortie_decalee_dans_le_bureau_virtuel_part_de_l_origine_de_sa_texture() {
-        let sorties = vec![Rect { x: 3840, y: 200, width: 1280, height: 720 }];
+        let sorties = vec![Rect {
+            x: 3840,
+            y: 200,
+            width: 1280,
+            height: 720,
+        }];
         let places = places_texture_par_sortie(&sorties, &[(1280, 720)]).unwrap();
-        assert_eq!(places[0], Rect { x: 0, y: 0, width: 1280, height: 720 });
+        assert_eq!(
+            places[0],
+            Rect {
+                x: 0,
+                y: 0,
+                width: 1280,
+                height: 720
+            }
+        );
     }
 
     #[test]
     fn un_desaccord_de_longueur_est_refuse() {
-        let sorties = vec![Rect { x: 0, y: 0, width: 1280, height: 720 }];
+        let sorties = vec![Rect {
+            x: 0,
+            y: 0,
+            width: 1280,
+            height: 720,
+        }];
         assert!(places_texture_par_sortie(&sorties, &[]).is_err());
         assert!(places_texture_par_sortie(&[], &[(1280, 720)]).is_err());
     }
@@ -467,7 +568,12 @@ mod tests {
     /// décalerait tous les recadrages de cette sortie.
     #[test]
     fn une_sortie_degeneree_est_refusee_plutot_que_supposee_a_l_unite() {
-        let sorties = vec![Rect { x: 0, y: 0, width: 0, height: 720 }];
+        let sorties = vec![Rect {
+            x: 0,
+            y: 0,
+            width: 0,
+            height: 720,
+        }];
         assert!(places_texture_par_sortie(&sorties, &[(1280, 720)]).is_err());
     }
 }

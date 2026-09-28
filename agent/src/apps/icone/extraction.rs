@@ -26,8 +26,7 @@ use anyhow::{bail, Context, Result};
 use proto::plateforme::SourceMax;
 use windows::Win32::Foundation::SIZE;
 use windows::Win32::Graphics::Gdi::{
-    DeleteObject, GetDC, GetDIBits, ReleaseDC, BITMAPINFO, BITMAPINFOHEADER, BI_RGB,
-    DIB_RGB_COLORS,
+    DeleteObject, GetDC, GetDIBits, ReleaseDC, BITMAPINFO, BITMAPINFOHEADER, BI_RGB, DIB_RGB_COLORS,
 };
 use windows::Win32::Graphics::Imaging::{
     CLSID_WICImagingFactory, GUID_ContainerFormatPng, IWICImagingFactory, WICBitmapUseAlpha,
@@ -90,10 +89,9 @@ pub fn extraire(lnk: &Path) -> Result<(Vec<u8>, Option<String>)> {
     let large = vers_utf16(&lnk.to_string_lossy());
     // SÉCURITÉ : appel FFI. Le chemin est un tampon UTF-16 terminé par un nul
     // que nous possédons pour toute la durée de l'appel.
-    let fabrique: IShellItemImageFactory = unsafe {
-        SHCreateItemFromParsingName(windows::core::PCWSTR(large.as_ptr()), None)
-    }
-    .with_context(|| format!("SHCreateItemFromParsingName sur {}", lnk.display()))?;
+    let fabrique: IShellItemImageFactory =
+        unsafe { SHCreateItemFromParsingName(windows::core::PCWSTR(large.as_ptr()), None) }
+            .with_context(|| format!("SHCreateItemFromParsingName sur {}", lnk.display()))?;
 
     // SÉCURITÉ : appel FFI. `SIIGBF_ICONONLY` seul — voir l'en-tête du module.
     let hbm = unsafe { fabrique.GetImage(SIZE { cx: COTE, cy: COTE }, SIIGBF_ICONONLY) }
@@ -197,20 +195,28 @@ fn encoder_png(hbm: windows::Win32::Graphics::Gdi::HBITMAP) -> Result<Vec<u8>> {
             WICBitmapUseAlpha,
         )
     }
-        .context("CreateBitmapFromHBITMAP")?;
+    .context("CreateBitmapFromHBITMAP")?;
 
     // SÉCURITÉ : appel FFI. Un flux sur HGLOBAL, dont WIC prend la charge.
     let flux: IStream = unsafe {
-        CreateStreamOnHGlobal(windows::Win32::Foundation::HGLOBAL(std::ptr::null_mut()), true)
+        CreateStreamOnHGlobal(
+            windows::Win32::Foundation::HGLOBAL(std::ptr::null_mut()),
+            true,
+        )
     }
-        .context("CreateStreamOnHGlobal")?;
+    .context("CreateStreamOnHGlobal")?;
 
     // SÉCURITÉ : appel FFI.
     let encodeur = unsafe { fabrique.CreateEncoder(&GUID_ContainerFormatPng, std::ptr::null()) }
         .context("CreateEncoder(PNG)")?;
     // SÉCURITÉ : appel FFI.
-    unsafe { encodeur.Initialize(&flux, windows::Win32::Graphics::Imaging::WICBitmapEncoderNoCache) }
-        .context("Initialize de l'encodeur PNG")?;
+    unsafe {
+        encodeur.Initialize(
+            &flux,
+            windows::Win32::Graphics::Imaging::WICBitmapEncoderNoCache,
+        )
+    }
+    .context("Initialize de l'encodeur PNG")?;
 
     let mut cadre = None;
     // SÉCURITÉ : appel FFI. `cadre` est rempli par l'appel.
@@ -274,9 +280,9 @@ pub fn provenance_de(icon_location: &str, cible: &str) -> SourceMax {
             // ⚠️ SEULS LES PREMIERS OCTETS SONT NÉCESSAIRES, mais un `.ico`
             // pèse quelques dizaines de kilooctets : le lire en entier coûte
             // moins qu'une ouverture partielle, et c'est plus simple à relire.
-            Ok(octets) => ressource::maximum(
-                &ressource::tailles_icondir(&octets).unwrap_or_default(),
-            ),
+            Ok(octets) => {
+                ressource::maximum(&ressource::tailles_icondir(&octets).unwrap_or_default())
+            }
             Err(erreur) => {
                 tracing::debug!(chemin, %erreur, "ico illisible, provenance non mesuree");
                 SourceMax::NonMesuree
@@ -285,9 +291,9 @@ pub fn provenance_de(icon_location: &str, cible: &str) -> SourceMax {
         source::Provenance::Module(chemin) => {
             let index = source::index(icon_location);
             match lecture_pe_grpicondir(&chemin, index) {
-                Ok(octets) => ressource::maximum(
-                    &ressource::tailles_grpicondir(&octets).unwrap_or_default(),
-                ),
+                Ok(octets) => {
+                    ressource::maximum(&ressource::tailles_grpicondir(&octets).unwrap_or_default())
+                }
                 Err(erreur) => {
                     tracing::debug!(chemin, %erreur, "ressource illisible, provenance non mesuree");
                     SourceMax::NonMesuree

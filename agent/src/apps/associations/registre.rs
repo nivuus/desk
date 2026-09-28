@@ -10,12 +10,12 @@
 //! `cargo check --target x86_64-pc-windows-gnu` en vérifie **types, emprunts et
 //! durées de vie** — jamais le comportement.
 
+use windows::core::{HSTRING, PCWSTR};
 use windows::Win32::Foundation::{ERROR_SUCCESS, MAX_PATH};
 use windows::Win32::System::Registry::{
     RegCloseKey, RegEnumKeyExW, RegGetValueW, RegOpenKeyExW, HKEY, HKEY_CLASSES_ROOT,
     HKEY_CURRENT_USER, KEY_READ, RRF_RT_REG_SZ,
 };
-use windows::core::{PCWSTR, HSTRING};
 
 /// 🔴 LE PLAFOND EXISTE POUR QUE LE PIRE CAS SOIT BORNÉ, et il est déclaré.
 /// `FileExts` porte typiquement quelques dizaines d'entrées ; un registre
@@ -25,8 +25,7 @@ use windows::core::{PCWSTR, HSTRING};
 const EXTENSIONS_MAX: usize = 512;
 
 /// La clé où Windows range LE CHOIX RÉEL DE L'UTILISATEUR.
-const FILE_EXTS: &str =
-    r"Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts";
+const FILE_EXTS: &str = r"Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts";
 
 fn en_pcwstr(s: &str) -> HSTRING {
     HSTRING::from(s)
@@ -47,7 +46,9 @@ fn valeur(racine: HKEY, sous_cle: &str, nom: Option<&str>) -> Option<String> {
         RegGetValueW(
             racine,
             PCWSTR(cle.as_ptr()),
-            nom_h.as_ref().map_or(PCWSTR::null(), |h| PCWSTR(h.as_ptr())),
+            nom_h
+                .as_ref()
+                .map_or(PCWSTR::null(), |h| PCWSTR(h.as_ptr())),
             RRF_RT_REG_SZ,
             None,
             Some(tampon.as_mut_ptr().cast()),
@@ -118,7 +119,9 @@ fn extensions_connues() -> Vec<String> {
         noms.push(String::from_utf16_lossy(&tampon[..taille as usize]));
         index += 1;
     }
-    unsafe { let _ = RegCloseKey(cle); };
+    unsafe {
+        let _ = RegCloseKey(cle);
+    };
     noms
 }
 

@@ -100,7 +100,13 @@ impl CacheEnumeration {
 
     /// Mémorise ce qu'un répertoire contient. Écrase toute mémoire antérieure.
     pub fn poser(&mut self, chemin: String, entrees: Vec<Entree>, maintenant: Instant) {
-        self.par_chemin.insert(chemin, Memoire { entrees, pose_a: maintenant });
+        self.par_chemin.insert(
+            chemin,
+            Memoire {
+                entrees,
+                pose_a: maintenant,
+            },
+        );
     }
 
     /// Oublie ce que contenait le répertoire **PARENT** du chemin muté.

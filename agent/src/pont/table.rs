@@ -205,7 +205,10 @@ impl Table {
     /// n'existe pas. C'est le patron que D10 a attrapé quatre fois.
     #[cfg(test)]
     pub fn nouvelle_depuis(prochaine: u32) -> Self {
-        Self { prochaine, ..Self::default() }
+        Self {
+            prochaine,
+            ..Self::default()
+        }
     }
 
     /// Inscrit une commande ProjFS et rend sa corrélation.
@@ -242,7 +245,15 @@ impl Table {
         // troisième argument que tous les appelants poseraient à la même
         // valeur.
         let inscrite_a = Instant::now();
-        self.en_vol.insert(correlation, EnVol { command_id, quoi, echeance, inscrite_a });
+        self.en_vol.insert(
+            correlation,
+            EnVol {
+                command_id,
+                quoi,
+                echeance,
+                inscrite_a,
+            },
+        );
         correlation
     }
 
@@ -285,9 +296,13 @@ impl Table {
         correlation: u32,
         maintenant: Instant,
     ) -> Option<(Option<i32>, Attendue, Duration)> {
-        self.en_vol
-            .remove(&correlation)
-            .map(|e| (e.command_id, e.quoi, maintenant.saturating_duration_since(e.inscrite_a)))
+        self.en_vol.remove(&correlation).map(|e| {
+            (
+                e.command_id,
+                e.quoi,
+                maintenant.saturating_duration_since(e.inscrite_a),
+            )
+        })
     }
 
     /// Annule la commande ProjFS `command_id`, et rend **TOUTES** ses
@@ -337,7 +352,15 @@ impl Table {
             .collect();
         echues
             .into_iter()
-            .map(|c| (self.en_vol.remove(&c).expect("relevée à l'instant").command_id, c))
+            .map(|c| {
+                (
+                    self.en_vol
+                        .remove(&c)
+                        .expect("relevée à l'instant")
+                        .command_id,
+                    c,
+                )
+            })
             .collect()
     }
 
@@ -345,8 +368,11 @@ impl Table {
     /// commande laissée en vol y attendrait une réponse que plus rien ne peut
     /// délivrer, et ProjFS attendrait sa complétion indéfiniment.
     pub fn vider(&mut self) -> Vec<(Option<i32>, u32)> {
-        let mut tout: Vec<(Option<i32>, u32)> =
-            self.en_vol.drain().map(|(c, e)| (e.command_id, c)).collect();
+        let mut tout: Vec<(Option<i32>, u32)> = self
+            .en_vol
+            .drain()
+            .map(|(c, e)| (e.command_id, c))
+            .collect();
         // Ordre déterministe : un `HashMap` n'en a aucun, et un appelant qui
         // journaliserait cette liste produirait un ordre différent à chaque
         // exécution.
@@ -385,7 +411,10 @@ impl Table {
     /// application figée avec `en vol=3` et `sans_commande=3` n'attend RIEN du
     /// pont — les trois sont des poussées, et son blocage est ailleurs.
     pub fn sans_commande(&self) -> usize {
-        self.en_vol.values().filter(|e| e.command_id.is_none()).count()
+        self.en_vol
+            .values()
+            .filter(|e| e.command_id.is_none())
+            .count()
     }
 }
 

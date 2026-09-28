@@ -23,7 +23,8 @@ use windows::core::GUID;
 /// dans le `SudoVDA.dll` installé sur cette VM (canal-de-controle.md §5.3).
 /// À ne pas confondre avec le GUID de classe `{4D36E968-…}`, qui est la classe
 /// `Display` standard de Windows et ne sert qu'à l'installation.
-pub(super) const INTERFACE_PILOTE: GUID = GUID::from_u128(0xe5bc_c234_1e0c_418a_a0d4_ef8b_7501_414d);
+pub(super) const INTERFACE_PILOTE: GUID =
+    GUID::from_u128(0xe5bc_c234_1e0c_418a_a0d4_ef8b_7501_414d);
 
 // `CTL_CODE(FILE_DEVICE_UNKNOWN = 0x22, fonction, METHOD_BUFFERED = 0,
 // FILE_ANY_ACCESS = 0)` = `(0x22 << 16) | (fonction << 2)`. Les deux codes

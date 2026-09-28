@@ -82,7 +82,11 @@ pub struct Vivier {
 
 impl Vivier {
     pub fn nouveau(plafond: usize, hysteresis: Duration) -> Vivier {
-        Vivier { plafond, hysteresis, entrees: HashMap::new() }
+        Vivier {
+            plafond,
+            hysteresis,
+            entrees: HashMap::new(),
+        }
     }
 
     pub fn inscrire(&mut self, session: &str, maintenant: Instant) -> Vec<(String, Ordre)> {
@@ -319,7 +323,9 @@ impl Vivier {
         let noms: Vec<String> = self.entrees.keys().cloned().collect();
         for nom in noms {
             let doit_veiller = cible.contains(&nom);
-            let Some(e) = self.entrees.get_mut(&nom) else { continue };
+            let Some(e) = self.entrees.get_mut(&nom) else {
+                continue;
+            };
             if doit_veiller && !e.eveillee {
                 e.eveillee = true;
                 e.eveillee_depuis = maintenant;

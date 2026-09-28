@@ -85,7 +85,9 @@ impl Bac {
 }
 
 fn modifie(chemin: &str) -> Ordre {
-    Ordre::Survenu(Evenement::Modifie { chemin: chemin.to_string() })
+    Ordre::Survenu(Evenement::Modifie {
+        chemin: chemin.to_string(),
+    })
 }
 
 /// 🔴 **LE JOURNAL EST ÉCRIT AVANT LA PREMIÈRE TRAME.**
@@ -112,7 +114,10 @@ fn le_journal_est_ecrit_avant_la_premiere_trame() {
     // navigateur doit savoir ce qui est dû avant de recevoir les octets.
     assert_eq!(trames[0].0, proto::fichiers::TYPE_DUES);
     assert_eq!(trames[1].0, proto::fichiers::TYPE_ECRIRE);
-    assert_eq!(trames[1].3, b"bonjour", "la charge porte les octets, jamais encodés");
+    assert_eq!(
+        trames[1].3, b"bonjour",
+        "la charge porte les octets, jamais encodés"
+    );
 }
 
 /// 🔴 **L'ENTRÉE SORT DU JOURNAL APRÈS LE DERNIER `Fait`, ET PAS AVANT.**
@@ -165,7 +170,10 @@ fn un_echec_laisse_l_entree_au_journal() {
     let mut fil = Fil::demarrer(bac.config(true));
     fil.traiter(modifie("note.txt"));
     let (_, c, _, _) = *bac.trames().last().expect("un morceau parti");
-    fil.traiter(Ordre::Echec { correlation: c, code: CodeEchec::DisquePlein });
+    fil.traiter(Ordre::Echec {
+        correlation: c,
+        code: CodeEchec::DisquePlein,
+    });
     assert_eq!(Journal::relire(&bac.journal_brut()).0.compte(), 1);
     assert_eq!(
         Journal::relire(&bac.journal_brut()).0.dues()[0].0,
@@ -195,7 +203,11 @@ fn un_fichier_de_taille_nulle_produit_un_morceau_vide_et_sort_du_journal() {
     fil.traiter(modifie("vide.txt"));
     let trames = bac.trames();
     let (type_message, c, entete, charge) = trames.last().expect("une trame").clone();
-    assert_eq!(type_message, proto::fichiers::TYPE_ECRIRE, "un morceau, PAS une création");
+    assert_eq!(
+        type_message,
+        proto::fichiers::TYPE_ECRIRE,
+        "un morceau, PAS une création"
+    );
     let e: entetes::Ecrire = serde_json::from_slice(&entete).expect("en-tête Ecrire");
     assert_eq!((e.premier, e.dernier, e.longueur), (true, true, 0));
     assert!(charge.is_empty());
@@ -234,9 +246,16 @@ fn un_fichier_absent_au_redemarrage_sort_du_journal_en_le_nommant() {
     let mut fil = Fil::demarrer(bac.config(true));
     // La moitié qui rend ce test capable de voir le déplacement de F5.
     let (avant, _) = Journal::relire(&bac.journal_brut());
-    assert_eq!(avant.compte(), 2, "demarrer ne reprend RIEN : il attend Bonjour");
+    assert_eq!(
+        avant.compte(),
+        2,
+        "demarrer ne reprend RIEN : il attend Bonjour"
+    );
 
-    fil.traiter(Ordre::Bonjour { racine: "Documents".into(), forcer: false });
+    fil.traiter(Ordre::Bonjour {
+        racine: "Documents".into(),
+        forcer: false,
+    });
     let (relu, _) = Journal::relire(&bac.journal_brut());
     let restants: Vec<&str> = relu.dues().iter().map(|(c, _)| c.as_str()).collect();
     assert_eq!(restants, ["survivant.txt"], "seul le disparu devait partir");
@@ -259,11 +278,16 @@ fn les_dues_sont_annoncees_avant_toute_poussee_a_la_reprise() {
     // n'annonce son montage, puis une expiration 30,2 s plus tard.
     assert!(bac.trames().is_empty(), "aucune trame avant Bonjour");
 
-    fil.traiter(Ordre::Bonjour { racine: "Documents".into(), forcer: false });
+    fil.traiter(Ordre::Bonjour {
+        racine: "Documents".into(),
+        forcer: false,
+    });
     let trames = bac.trames();
     assert_eq!(trames[0].0, proto::fichiers::TYPE_DUES, "l'annonce d'abord");
     assert!(
-        trames.iter().any(|(t, ..)| *t == proto::fichiers::TYPE_ECRIRE),
+        trames
+            .iter()
+            .any(|(t, ..)| *t == proto::fichiers::TYPE_ECRIRE),
         "puis la reprise"
     );
 }
@@ -281,21 +305,31 @@ fn un_repertoire_different_retient_et_le_dit() {
     std::fs::write(&bac.journal, j.inscrire("repris.txt", 3)).expect("journal de test");
 
     let mut fil = Fil::demarrer(bac.config(true));
-    fil.traiter(Ordre::Bonjour { racine: "Documents".into(), forcer: false });
+    fil.traiter(Ordre::Bonjour {
+        racine: "Documents".into(),
+        forcer: false,
+    });
     assert!(
-        bac.trames().iter().any(|(t, ..)| *t == proto::fichiers::TYPE_ECRIRE),
+        bac.trames()
+            .iter()
+            .any(|(t, ..)| *t == proto::fichiers::TYPE_ECRIRE),
         "le premier montage pousse : rien ne peut y etre mal place"
     );
 
     // Un second pont, sur un AUTRE répertoire, avec le même dossier d'état.
     let avant = bac.trames().len();
     let mut fil2 = Fil::demarrer(bac.config(true));
-    fil2.traiter(Ordre::Bonjour { racine: "Telechargements".into(), forcer: false });
+    fil2.traiter(Ordre::Bonjour {
+        racine: "Telechargements".into(),
+        forcer: false,
+    });
 
     let neuves: Vec<_> = bac.trames().into_iter().skip(avant).collect();
     // ① AUCUNE écriture ne part.
     assert!(
-        !neuves.iter().any(|(t, ..)| *t == proto::fichiers::TYPE_ECRIRE),
+        !neuves
+            .iter()
+            .any(|(t, ..)| *t == proto::fichiers::TYPE_ECRIRE),
         "un repertoire different ne doit RIEN pousser"
     );
     // ② L'annonce sort, et elle porte `retenues: true` — sans quoi le
@@ -306,11 +340,18 @@ fn un_repertoire_different_retient_et_le_dit() {
         .expect("une annonce de dues doit sortir");
     let dues: proto::fichiers::entetes::Dues =
         serde_json::from_slice(entete).expect("en-tete Dues lisible");
-    assert!(dues.retenues, "l'annonce doit DIRE que les dues sont retenues");
+    assert!(
+        dues.retenues,
+        "l'annonce doit DIRE que les dues sont retenues"
+    );
     assert_eq!(dues.dues.len(), 1, "et porter la due qu'elle retient");
     // ③ Le journal survit : ni poussé, ni jeté.
     let (relu, _) = Journal::relire(&bac.journal_brut());
-    assert_eq!(relu.compte(), 1, "le journal n'est NI vide NI pousse : il est NOMME");
+    assert_eq!(
+        relu.compte(),
+        1,
+        "le journal n'est NI vide NI pousse : il est NOMME"
+    );
 }
 
 /// 🔴 **DÉSARMÉ, LE FIL JOURNALISE ET ANNONCE, MAIS NE POUSSE RIEN.**
@@ -353,15 +394,25 @@ fn desarme_le_fil_journalise_mais_ne_pousse_rien() {
 #[test]
 fn un_morceau_en_vol_a_la_fois() {
     let bac = Bac::neuf();
-    bac.poser("gros.bin", &vec![1u8; 3 * proto::fichiers::TAILLE_TRAME_MAX]);
+    bac.poser(
+        "gros.bin",
+        &vec![1u8; 3 * proto::fichiers::TAILLE_TRAME_MAX],
+    );
     let mut fil = Fil::demarrer(bac.config(true));
     fil.traiter(modifie("gros.bin"));
     let ecritures = |b: &Bac| -> Vec<(u8, u32, Vec<u8>, Vec<u8>)> {
-        b.trames().into_iter().filter(|(t, ..)| *t == proto::fichiers::TYPE_ECRIRE).collect()
+        b.trames()
+            .into_iter()
+            .filter(|(t, ..)| *t == proto::fichiers::TYPE_ECRIRE)
+            .collect()
     };
     let mut correlation = {
         let lot = ecritures(&bac);
-        assert_eq!(lot.len(), 1, "UN SEUL morceau part avant le premier acquittement");
+        assert_eq!(
+            lot.len(),
+            1,
+            "UN SEUL morceau part avant le premier acquittement"
+        );
         lot[0].1
     };
     for tour in 0..2 {
@@ -418,7 +469,9 @@ fn un_repertoire_cree_ne_produit_aucun_morceau() {
     let creer: entetes::Creer = serde_json::from_slice(&entete).expect("en-tête Creer");
     assert!(creer.repertoire);
     assert!(
-        !trames.iter().any(|(t, ..)| *t == proto::fichiers::TYPE_ECRIRE),
+        !trames
+            .iter()
+            .any(|(t, ..)| *t == proto::fichiers::TYPE_ECRIRE),
         "aucun morceau : un répertoire n'a rien à lire"
     );
     fil.traiter(Ordre::Fait { correlation: c });
@@ -435,7 +488,9 @@ fn un_acquittement_tardif_est_jete() {
     fil.traiter(modifie("a.txt"));
     let (_, c, _, _) = *bac.trames().last().expect("morceau");
     // Une corrélation qui n'est pas celle en vol.
-    fil.traiter(Ordre::Fait { correlation: c.wrapping_add(1) });
+    fil.traiter(Ordre::Fait {
+        correlation: c.wrapping_add(1),
+    });
     assert_eq!(
         Journal::compte_du_brut(&bac.journal_brut()),
         1,
@@ -459,9 +514,16 @@ fn les_ecritures_prennent_leurs_correlations_dans_la_table_partagee() {
         "l'écriture doit être INSCRITE dans la table du pont"
     );
     let (_, c, _, _) = *bac.trames().last().expect("morceau");
-    let (commande, _, _) =
-        bac.table.lock().expect("verrou").resoudre(c, Instant::now()).expect("inscrite");
-    assert_eq!(commande, None, "une écriture ne complète AUCUN rappel ProjFS");
+    let (commande, _, _) = bac
+        .table
+        .lock()
+        .expect("verrou")
+        .resoudre(c, Instant::now())
+        .expect("inscrite");
+    assert_eq!(
+        commande, None,
+        "une écriture ne complète AUCUN rappel ProjFS"
+    );
 }
 
 impl Journal {

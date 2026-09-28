@@ -390,28 +390,47 @@ mod redaction;
 impl ClientControl {
     /// Construit un message de redimensionnement à la version courante du protocole.
     pub fn resize(width: u32, height: u32) -> Self {
-        ClientControl::Resize { version: CONTROL_VERSION, width, height }
+        ClientControl::Resize {
+            version: CONTROL_VERSION,
+            width,
+            height,
+        }
     }
 
     /// Construit un message de collage à la version courante du protocole.
     pub fn clipboard(text: impl Into<String>) -> Self {
-        ClientControl::Clipboard { version: CONTROL_VERSION, text: text.into() }
+        ClientControl::Clipboard {
+            version: CONTROL_VERSION,
+            text: text.into(),
+        }
     }
 }
 
 impl AgentControl {
     /// Construit un message "agent prêt" à la version courante du protocole.
     pub fn ready(width: u32, height: u32, mic: bool) -> Self {
-        AgentControl::Ready { version: CONTROL_VERSION, width, height, mic }
+        AgentControl::Ready {
+            version: CONTROL_VERSION,
+            width,
+            height,
+            mic,
+        }
     }
 
     /// Construit un message de fin de session à la version courante du protocole.
     pub fn session_end(reason: impl Into<String>) -> Self {
-        AgentControl::SessionEnd { version: CONTROL_VERSION, reason: reason.into() }
+        AgentControl::SessionEnd {
+            version: CONTROL_VERSION,
+            reason: reason.into(),
+        }
     }
 
     pub fn pointer(visible: bool, shape: CursorShape) -> Self {
-        AgentControl::Pointer { version: CONTROL_VERSION, visible, shape }
+        AgentControl::Pointer {
+            version: CONTROL_VERSION,
+            visible,
+            shape,
+        }
     }
 
     pub fn asleep(asleep: bool, reason: &str) -> AgentControl {
@@ -423,14 +442,20 @@ impl AgentControl {
     }
 
     pub fn fullscreen(active: bool) -> AgentControl {
-        AgentControl::Fullscreen { version: CONTROL_VERSION, active }
+        AgentControl::Fullscreen {
+            version: CONTROL_VERSION,
+            active,
+        }
     }
 
     /// Le micro de cette fenêtre est-il entendu par la VM ?
     ///
     /// ⚠️ **Ne monte PAS `CONTROL_VERSION`** — voir la doc de la variante.
     pub fn mic_state(granted: bool) -> AgentControl {
-        AgentControl::MicState { version: CONTROL_VERSION, granted }
+        AgentControl::MicState {
+            version: CONTROL_VERSION,
+            granted,
+        }
     }
 
     /// Le presse-papier de la VM a changé.
@@ -449,20 +474,35 @@ impl AgentControl {
     /// déictique de distance vieillit à la première insertion** ; nommer la
     /// chose, jamais compter les lignes qui l'en séparent.
     pub fn clipboard(text: Option<String>, bytes: u32) -> AgentControl {
-        AgentControl::Clipboard { version: CONTROL_VERSION, text, bytes }
+        AgentControl::Clipboard {
+            version: CONTROL_VERSION,
+            text,
+            bytes,
+        }
     }
 
     /// ⚠️ **Ne monte PAS `CONTROL_VERSION`** — voir la doc de la variante.
     pub fn accent(couleur: impl Into<String>) -> AgentControl {
-        AgentControl::Accent { version: CONTROL_VERSION, couleur: couleur.into() }
+        AgentControl::Accent {
+            version: CONTROL_VERSION,
+            couleur: couleur.into(),
+        }
     }
 
     pub fn rumble(left: u8, right: u8) -> Self {
-        AgentControl::Rumble { version: CONTROL_VERSION, left, right }
+        AgentControl::Rumble {
+            version: CONTROL_VERSION,
+            left,
+            right,
+        }
     }
 
     pub fn capabilities(gamepad: bool, clipboard: bool) -> Self {
-        AgentControl::Capabilities { version: CONTROL_VERSION, gamepad, clipboard }
+        AgentControl::Capabilities {
+            version: CONTROL_VERSION,
+            gamepad,
+            clipboard,
+        }
     }
 
     pub fn link(

@@ -14,8 +14,8 @@
 //! ⚠️ TRANSPOSITION VERBATIM. Le contrôle est le COMPTE, annoncé avant d'être
 //! mesuré : `cargo test -p agent` rendait 861 avant, il doit rendre 861 après.
 
-use crate::plateforme::tests::{attendre_message, faux_canal_bidirectionnel};
 use super::*;
+use crate::plateforme::tests::{attendre_message, faux_canal_bidirectionnel};
 use proto::plateforme::IssueLancement;
 use std::time::Duration;
 
@@ -36,7 +36,9 @@ async fn un_ordre_d_installation_arrive_dans_SA_file_et_ne_ferme_pas_la_session(
     let (url, mut recus, ordres) = faux_canal_bidirectionnel("PPP").await;
     let mut canal = ouvrir(&url, "w1".into(), "chut".into());
     canal.attendre_identite().await.expect("enrôlement");
-    let mut recu_ordres = canal.ordres().expect("la file d'ordres n'est prise qu'une fois");
+    let mut recu_ordres = canal
+        .ordres()
+        .expect("la file d'ordres n'est prise qu'une fois");
     let mut recu_install = canal
         .installations()
         .expect("la file d'installations n'est prise qu'une fois");
@@ -64,10 +66,15 @@ async fn un_ordre_d_installation_arrive_dans_SA_file_et_ne_ferme_pas_la_session(
     );
     // 🔴 ET LA FILE DES ORDRES N'A RIEN REÇU. C'est l'assertion qui distingue
     // « routé correctement » de « routé n'importe où ».
-    assert!(recu_ordres.try_recv().is_err(), "l'installation ne doit PAS aller aux ordres");
+    assert!(
+        recu_ordres.try_recv().is_err(),
+        "l'installation ne doit PAS aller aux ordres"
+    );
 
     // La session vit toujours : l'émission suivante arrive.
-    canal.emetteur().emettre(VersLaPlateforme::lancee("d-7", IssueLancement::Raccourci));
+    canal
+        .emetteur()
+        .emettre(VersLaPlateforme::lancee("d-7", IssueLancement::Raccourci));
     let texte = attendre_message(&mut recus, |t| t.contains("lancee")).await;
     assert!(texte.contains(r#""demande":"d-7""#));
 }

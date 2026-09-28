@@ -10,7 +10,9 @@ fn ms(n: u64) -> Duration {
 }
 
 fn attributs(chemin: &str) -> Attendue {
-    Attendue::Attributs { chemin: chemin.to_string() }
+    Attendue::Attributs {
+        chemin: chemin.to_string(),
+    }
 }
 
 /// ⚠️ **CE TEST N'ÉPROUVE QU'UN `Default`, ET IL N'EST GARDÉ QUE PARCE QU'IL EST
@@ -46,7 +48,11 @@ fn une_traversee_tombe_dans_le_seau_qui_la_contient() {
     assert_eq!(seau_de(Duration::ZERO), 0);
     // Juste au-dessus d'une borne : le seau SUIVANT.
     assert_eq!(seau_de(Duration::from_micros(1_001)), 1, "1,001 ms");
-    assert_eq!(seau_de(Duration::from_micros(20_001)), 5, "20,001 ms -> seau 50");
+    assert_eq!(
+        seau_de(Duration::from_micros(20_001)),
+        5,
+        "20,001 ms -> seau 50"
+    );
     // Au-delà de la dernière borne : `inf`, le treizième.
     assert_eq!(seau_de(ms(5_001)), SEAUX_MS.len());
     assert_eq!(seau_de(ms(30_000)), SEAUX_MS.len());
@@ -55,7 +61,11 @@ fn une_traversee_tombe_dans_le_seau_qui_la_contient() {
     let h = Histogramme::nouveau();
     h.observer(Famille::Lire, ms(5));
     assert_eq!(h.seau(Famille::Lire, 2), 1, "5 ms est dans le seau '5'");
-    assert_eq!(h.seau(Famille::Lire, 3), 0, "et surtout PAS dans le seau '10'");
+    assert_eq!(
+        h.seau(Famille::Lire, 3),
+        0,
+        "et surtout PAS dans le seau '10'"
+    );
 }
 
 /// Le jumeau du garde de `pont::compteurs` : un `rang()` faux ferait compter
@@ -115,14 +125,31 @@ fn l_ordre_du_recensement_est_epingle() {
     // Les CINQ familles portent leurs seaux, et `lire` porte le sien au bon rang.
     assert!(seaux.starts_with("seaux_ms attributs="), "{seaux}");
     for f in Famille::TOUTES {
-        assert!(seaux.contains(&format!(" {}=1:", nom(f))), "{} absent : {seaux}", nom(f));
+        assert!(
+            seaux.contains(&format!(" {}=1:", nom(f))),
+            "{} absent : {seaux}",
+            nom(f)
+        );
     }
-    assert!(seaux.contains("lire=1:0,2:0,5:1,10:0,"), "3 ms est dans le seau '5' : {seaux}");
+    assert!(
+        seaux.contains("lire=1:0,2:0,5:1,10:0,"),
+        "3 ms est dans le seau '5' : {seaux}"
+    );
     assert!(seaux.ends_with("inf:0"), "{seaux}");
     // Une seule occurrence de chaque nom de famille dans chaque moitié.
     for f in Famille::TOUTES {
-        assert_eq!(tetes.matches(&format!(" {}=", nom(f))).count(), 1, "{}", nom(f));
-        assert_eq!(seaux.matches(&format!(" {}=", nom(f))).count(), 1, "{}", nom(f));
+        assert_eq!(
+            tetes.matches(&format!(" {}=", nom(f))).count(),
+            1,
+            "{}",
+            nom(f)
+        );
+        assert_eq!(
+            seaux.matches(&format!(" {}=", nom(f))).count(),
+            1,
+            "{}",
+            nom(f)
+        );
     }
 }
 
@@ -135,7 +162,11 @@ fn une_famille_neuve_ne_peut_pas_heriter_du_nom_d_une_autre() {
     let avant = noms.len();
     noms.sort_unstable();
     noms.dedup();
-    assert_eq!(noms.len(), avant, "deux familles partagent un nom : {noms:?}");
+    assert_eq!(
+        noms.len(),
+        avant,
+        "deux familles partagent un nom : {noms:?}"
+    );
     assert_eq!(avant, NOMBRE, "TOUTES doit porter les NOMBRE familles");
     // ⚠️ Aucun nom n'est le PRÉFIXE d'un autre : deux messages qui partagent une
     // sous-chaîne font un instrument faux (piège maison, payé par F1).
@@ -154,15 +185,25 @@ fn une_famille_neuve_ne_peut_pas_heriter_du_nom_d_une_autre() {
 fn la_famille_suit_le_budget_et_creer_est_de_la_famille_ecrire() {
     assert_eq!(Famille::de(&attributs("a")), Famille::Attributs);
     assert_eq!(
-        Famille::de(&Attendue::Lister { chemin: "d".into(), enumeration: [0; 16] }),
+        Famille::de(&Attendue::Lister {
+            chemin: "d".into(),
+            enumeration: [0; 16]
+        }),
         Famille::Lister
     );
     assert_eq!(
-        Famille::de(&Attendue::Lire { chemin: "f".into(), position: 0, longueur: 1 }),
+        Famille::de(&Attendue::Lire {
+            chemin: "f".into(),
+            position: 0,
+            longueur: 1
+        }),
         Famille::Lire
     );
     assert_eq!(
-        Famille::de(&Attendue::Ecrire { chemin: "f".into(), dernier: true }),
+        Famille::de(&Attendue::Ecrire {
+            chemin: "f".into(),
+            dernier: true
+        }),
         Famille::Ecrire
     );
     assert_eq!(
@@ -171,7 +212,11 @@ fn la_famille_suit_le_budget_et_creer_est_de_la_famille_ecrire() {
         "Creer est inscrite par ecriture::fil sous DELAI_ECRIRE"
     );
     assert_eq!(
-        Famille::de(&Attendue::Muter { chemin: "f".into(), renommage: true, destination: Some("g".into()) }),
+        Famille::de(&Attendue::Muter {
+            chemin: "f".into(),
+            renommage: true,
+            destination: Some("g".into())
+        }),
         Famille::Mutation
     );
 }

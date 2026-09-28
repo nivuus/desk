@@ -24,8 +24,8 @@
 //! ici ni dans `agent/` ou `plateforme/`, n'a eu à bouger d'un caractère.
 
 use super::{
-    Application, DepuisLaPlateforme, Issue, IssueLancement, MotifCanal, Phase,
-    VersLaPlateforme, PLATEFORME_VERSION,
+    Application, DepuisLaPlateforme, Issue, IssueLancement, MotifCanal, Phase, VersLaPlateforme,
+    PLATEFORME_VERSION,
 };
 
 impl VersLaPlateforme {
@@ -43,7 +43,11 @@ impl VersLaPlateforme {
         }
     }
 
-    pub fn catalogue(complet: bool, applications: Vec<Application>, disparues: Vec<String>) -> Self {
+    pub fn catalogue(
+        complet: bool,
+        applications: Vec<Application>,
+        disparues: Vec<String>,
+    ) -> Self {
         Self::Catalogue {
             version: PLATEFORME_VERSION,
             complet,

@@ -62,7 +62,9 @@ pub(super) fn distribuer_l_audio(garde: &mut MutexGuard<'static, Etat>) {
 
     let vivantes: std::collections::HashSet<&String> =
         decisions.iter().map(|(session, _)| session).collect();
-    garde.derniers_audio.retain(|session, _| vivantes.contains(session));
+    garde
+        .derniers_audio
+        .retain(|session, _| vivantes.contains(session));
 
     // Les ordres de SE TAIRE partent d'abord, les ordres de PORTER ensuite.
     // Cet ordre RÉDUIT la fenêtre de recouvrement, il ne la ferme pas : les
@@ -172,19 +174,31 @@ mod tests {
         let (b, generation_b) = inscrire("t9-b", 4242);
 
         // Aucune focalisée : la première arrivée porte le son.
-        assert_eq!(dernier_audio(&a), Some(true), "la premiere arrivee porte le son");
+        assert_eq!(
+            dernier_audio(&a),
+            Some(true),
+            "la premiere arrivee porte le son"
+        );
         assert_eq!(dernier_audio(&b), Some(false), "la seconde se tait");
 
         // "b" prend le focus : le son bascule, et "a" reçoit l'ordre de se
         // taire — sans quoi les deux seraient audibles en même temps.
         signaler("t9-b", true, true);
         assert_eq!(dernier_audio(&b), Some(true), "la focalisee prend le son");
-        assert_eq!(dernier_audio(&a), Some(false), "la precedente porteuse se tait");
+        assert_eq!(
+            dernier_audio(&a),
+            Some(false),
+            "la precedente porteuse se tait"
+        );
 
         // "b" disparaît : "a" doit reprendre le son, sinon le groupe devient
         // definitivement muet.
         retirer("t9-b", generation_b);
-        assert_eq!(dernier_audio(&a), Some(true), "le son revient a la survivante");
+        assert_eq!(
+            dernier_audio(&a),
+            Some(true),
+            "le son revient a la survivante"
+        );
 
         retirer("t9-a", generation_a);
     }
@@ -214,7 +228,10 @@ mod tests {
             .into_iter()
             .filter(|m| matches!(m, Message::Audio { .. }))
             .collect();
-        assert!(ordres.is_empty(), "ordre audio inchange reemis : {ordres:?}");
+        assert!(
+            ordres.is_empty(),
+            "ordre audio inchange reemis : {ordres:?}"
+        );
         retirer("t9-e", generation);
     }
     /// 🔴 LA ROUGE DU CRITIQUE DU ROUND 1, CÔTÉ AUDIO — LE MÊME PATRON QUE
@@ -239,12 +256,19 @@ mod tests {
         let (a, generation_a) = inscrire("t9-refus-a", 4300);
         // "a" est seule de son PID : elle porte le son, et `derniers_audio`
         // retient `true`.
-        assert_eq!(dernier_audio(&a), Some(true), "précondition : la seule du PID porte le son");
+        assert_eq!(
+            dernier_audio(&a),
+            Some(true),
+            "précondition : la seule du PID porte le son"
+        );
 
         // Sature la file de "a" par des messages INCOALESCABLES.
         {
             let garde = etat();
-            let emetteur = garde.canaux.get("t9-refus-a").expect("la session est inscrite");
+            let emetteur = garde
+                .canaux
+                .get("t9-refus-a")
+                .expect("la session est inscrite");
             for _ in 0..PROFONDEUR_MAX {
                 let _ = emetteur.envoyer(Message::Sommeil(Ordre::Reveiller));
             }
@@ -279,4 +303,3 @@ mod tests {
         drop(b);
     }
 }
-

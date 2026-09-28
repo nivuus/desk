@@ -151,7 +151,12 @@ pub struct WindowsSource {
 unsafe impl Send for WindowsSource {}
 
 impl WindowsSource {
-    pub fn new(hwnd: HWND, fps: u32, bitrate: u32, clock_origin: std::time::Instant) -> Result<Self> {
+    pub fn new(
+        hwnd: HWND,
+        fps: u32,
+        bitrate: u32,
+        clock_origin: std::time::Instant,
+    ) -> Result<Self> {
         let window_rect = window::client_rect_on_screen(hwnd)?;
 
         let capture = DesktopCapture::new()?;
@@ -162,8 +167,13 @@ impl WindowsSource {
             .ok_or_else(|| anyhow::anyhow!("la fenêtre est hors de l'écran"))?;
         let (width, height) = (region.width, region.height);
 
-        let mut encoder =
-            H264Encoder::new(capture.device(), (width, height), (width, height), fps, bitrate)?;
+        let mut encoder = H264Encoder::new(
+            capture.device(),
+            (width, height),
+            (width, height),
+            fps,
+            bitrate,
+        )?;
         encoder.request_keyframe()?;
 
         Ok(Self::depuis_pieces(
@@ -247,7 +257,9 @@ impl WindowsSource {
     /// commentaire du champ). Panique donc seulement sur un bug réel de cet
     /// invariant, jamais en usage normal.
     fn capture_mut(&mut self) -> &mut DesktopCapture {
-        self.capture.as_mut().expect("capture toujours présente quand fatal est faux")
+        self.capture
+            .as_mut()
+            .expect("capture toujours présente quand fatal est faux")
     }
 
     /// Encodeur courant, mutable — ou une **erreur**, jamais une panique.
@@ -333,7 +345,10 @@ impl WindowsSource {
         }
         // Les emplacements d'entrée libérés par le drainage ci-dessus sont
         // réutilisables dès maintenant : ne pas attendre le tour suivant.
-        if let Err(e) = self.encoder_mut().and_then(H264Encoder::flush_pending_inputs) {
+        if let Err(e) = self
+            .encoder_mut()
+            .and_then(H264Encoder::flush_pending_inputs)
+        {
             tracing::warn!(erreur = %crate::cause::chaine(&e), "réalimentation de l'encodeur échouée");
         }
         self.ready.pop_front()
@@ -539,7 +554,9 @@ impl VideoSource for WindowsSource {
                 // où l'encodeur voudra bien l'accepter (voir `next_pts_90k`).
                 let pts = self.next_pts_90k();
                 let t_submit = std::time::Instant::now();
-                let fed = self.encoder_mut().and_then(|encoder| encoder.submit(&frame, pts));
+                let fed = self
+                    .encoder_mut()
+                    .and_then(|encoder| encoder.submit(&frame, pts));
                 SUBMIT_NS.fetch_add(
                     t_submit.elapsed().as_nanos() as u64,
                     std::sync::atomic::Ordering::Relaxed,

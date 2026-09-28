@@ -29,16 +29,20 @@
 use core::ffi::c_void;
 
 use super::structures::{
-    Config, Guid, InitializeParams, OpenEncodeSessionExParams, PresetConfig,
-    ReconfigureParams,
+    Config, Guid, InitializeParams, OpenEncodeSessionExParams, PresetConfig, ReconfigureParams,
 };
-use super::tampons::{CreateBitstreamBuffer, LockBitstream, MapInputResource, PicParams, RegisterResource};
+use super::tampons::{
+    CreateBitstreamBuffer, LockBitstream, MapInputResource, PicParams, RegisterResource,
+};
 
 macro_rules! deport {
     ($champ:ident, $valeur:expr) => {
         const _: () = assert!(
             core::mem::offset_of!(ListeDeFonctions, $champ) == $valeur,
-            concat!("déport ABI faux pour NV_ENCODE_API_FUNCTION_LIST.", stringify!($champ))
+            concat!(
+                "déport ABI faux pour NV_ENCODE_API_FUNCTION_LIST.",
+                stringify!($champ)
+            )
         );
     };
 }
@@ -56,13 +60,8 @@ pub type Statut = u32;
 /// juste coûte le même prix et reste correct si la cible change.
 pub type OuvrirSessionEx =
     unsafe extern "system" fn(*mut OpenEncodeSessionExParams, *mut *mut c_void) -> Statut;
-pub type PreregleageConfigEx = unsafe extern "system" fn(
-    *mut c_void,
-    Guid,
-    Guid,
-    u32,
-    *mut PresetConfig,
-) -> Statut;
+pub type PreregleageConfigEx =
+    unsafe extern "system" fn(*mut c_void, Guid, Guid, u32, *mut PresetConfig) -> Statut;
 pub type InitialiserEncodeur =
     unsafe extern "system" fn(*mut c_void, *mut InitializeParams) -> Statut;
 pub type CreerTamponDeFlux =

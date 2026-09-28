@@ -183,7 +183,11 @@ mod tests {
             &mut |_| {},
             &mut |_| {},
         );
-        session.handle_event(Event::MediaEgressStats(stats_video(mid)), &mut |_| {}, &mut |_| {});
+        session.handle_event(
+            Event::MediaEgressStats(stats_video(mid)),
+            &mut |_| {},
+            &mut |_| {},
+        );
         assert_eq!(
             session.congestion.courant().adaptation,
             congestion::Adaptation::Active,
@@ -237,7 +241,8 @@ mod tests {
         // EXACTEMENT au plafond — une borne large (`<=`) laisserait passer
         // 0 ou 1 tout aussi bien qu'une vraie borne.
         assert_eq!(
-            session.congestion.courant().video_bitrate_bps, 3_000_000,
+            session.congestion.courant().video_bitrate_bps,
+            3_000_000,
             "la décision du contrôleur doit être bornée par la part"
         );
         assert!(
@@ -280,7 +285,11 @@ mod tests {
             &mut |_| {},
             &mut |_| {},
         );
-        session.handle_event(Event::MediaEgressStats(stats_video(mid)), &mut |_| {}, &mut |_| {});
+        session.handle_event(
+            Event::MediaEgressStats(stats_video(mid)),
+            &mut |_| {},
+            &mut |_| {},
+        );
         assert_eq!(
             session.congestion.courant().adaptation,
             congestion::Adaptation::Active,
@@ -289,7 +298,10 @@ mod tests {
 
         session.appliquer_part(2_000_000);
         let apres_baisse = session.congestion.courant().video_bitrate_bps;
-        assert!(apres_baisse <= 2_000_000, "précondition : la baisse a bien été appliquée");
+        assert!(
+            apres_baisse <= 2_000_000,
+            "précondition : la baisse a bien été appliquée"
+        );
 
         session.appliquer_part(50_000_000);
 

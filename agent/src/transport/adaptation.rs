@@ -122,7 +122,10 @@ impl Session {
         // elle, et le refus précédent ne préjuge plus de rien.
         let deja_refusee = self.taille_refus_signalee == Some(decision.encode_size);
         if decision.encode_size != self.encode_size_appliquee && !deja_refusee {
-            match self.source.set_encode_size(decision.encode_size.0, decision.encode_size.1) {
+            match self
+                .source
+                .set_encode_size(decision.encode_size.0, decision.encode_size.1)
+            {
                 Ok(()) => {
                     // `session` : sans ce champ la trace n'est PAS
                     // attribuable. Tous les enfants partagent le même
@@ -240,8 +243,15 @@ mod tests {
             session.estimation_fraiche(Instant::now()).is_some(),
             "une estimation qui vient d'arriver est fraîche"
         );
-        session.handle_event(Event::MediaEgressStats(stats_video(mid)), &mut |_| {}, &mut |_| {});
-        assert_eq!(session.congestion.courant().adaptation, congestion::Adaptation::Active);
+        session.handle_event(
+            Event::MediaEgressStats(stats_video(mid)),
+            &mut |_| {},
+            &mut |_| {},
+        );
+        assert_eq!(
+            session.congestion.courant().adaptation,
+            congestion::Adaptation::Active
+        );
         assert!(!session.absence_bwe_signalee);
         assert!(!session.indisponibilite_annoncee);
 
@@ -260,14 +270,21 @@ mod tests {
         );
 
         session.pending_decision = None;
-        session.handle_event(Event::MediaEgressStats(stats_video(mid)), &mut |_| {}, &mut |_| {});
+        session.handle_event(
+            Event::MediaEgressStats(stats_video(mid)),
+            &mut |_| {},
+            &mut |_| {},
+        );
 
         assert_eq!(
             session.congestion.courant().adaptation,
             congestion::Adaptation::Indisponible,
             "l'expiration de l'estimation doit faire basculer l'adaptation, pas la laisser à Active"
         );
-        assert!(session.absence_bwe_signalee, "l'absence doit être journalisée une fois");
+        assert!(
+            session.absence_bwe_signalee,
+            "l'absence doit être journalisée une fois"
+        );
         assert!(session.indisponibilite_annoncee);
         let decision = session.pending_decision.expect(
             "l'indisponibilité doit être RELAYÉE au navigateur (I2), pas seulement journalisée : \
@@ -300,8 +317,15 @@ mod tests {
             &mut |_| {},
             &mut |_| {},
         );
-        session.handle_event(Event::MediaEgressStats(stats_video(mid)), &mut |_| {}, &mut |_| {});
-        assert_eq!(session.congestion.courant().adaptation, congestion::Adaptation::Active);
+        session.handle_event(
+            Event::MediaEgressStats(stats_video(mid)),
+            &mut |_| {},
+            &mut |_| {},
+        );
+        assert_eq!(
+            session.congestion.courant().adaptation,
+            congestion::Adaptation::Active
+        );
         assert!(
             !session.indisponibilite_annoncee,
             "une coupure ultérieure de TWCC doit être annoncée de nouveau"
@@ -345,8 +369,7 @@ mod tests {
                 .expect("chargement du flux de test"),
             soumises: soumises.clone(),
         });
-        let session =
-            Session::new(source, local_ip, Instant::now(), 12_000_000).expect("session");
+        let session = Session::new(source, local_ip, Instant::now(), 12_000_000).expect("session");
         (session, soumises)
     }
 

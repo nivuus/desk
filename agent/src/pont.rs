@@ -81,13 +81,18 @@ pub async fn executer(config: crate::Config) -> anyhow::Result<()> {
     // Le socket et le `Rtc` **données seules** : ni piste, ni codec, ni BWE.
     let (socket, mut rtc) = transport::construire_rtc_donnees(config.local_ip)?;
 
-    let crate::signaling::SignalingHandle { mut offers, answers, closed, retry_apres_s, .. } =
-        crate::signaling::run_signaling(
-            &crate::signaling::url_du_relais(&config.signaling_url),
-            &config.session_id,
-            config.jeton.as_deref(),
-        )
-        .await?;
+    let crate::signaling::SignalingHandle {
+        mut offers,
+        answers,
+        closed,
+        retry_apres_s,
+        ..
+    } = crate::signaling::run_signaling(
+        &crate::signaling::url_du_relais(&config.signaling_url),
+        &config.session_id,
+        config.jeton.as_deref(),
+    )
+    .await?;
 
     // 🔴 CORRECTIF DU LEGS DES FREINS MANQUANTS (round de correction 1,
     // critique ②) — LA MOITIÉ QUI HONORE `retryApresS`. Un refus de volume
@@ -108,7 +113,10 @@ pub async fn executer(config: crate::Config) -> anyhow::Result<()> {
         .sdp_api()
         .accept_offer(offre)
         .map_err(|e| anyhow::anyhow!("le pont refuse l'offre : {e}"))?;
-    answers.send(reponse.to_sdp_string()).await.context("envoi de la réponse SDP du pont")?;
+    answers
+        .send(reponse.to_sdp_string())
+        .await
+        .context("envoi de la réponse SDP du pont")?;
     tracing::info!("réponse SDP du pont envoyée");
 
     // ⚠️ **Aucun relais TURN pour le pont, et c'est une DIVERGENCE assumée

@@ -61,7 +61,10 @@ pub(super) fn combos() -> [Combo; 4] {
         // un remède employé par le produit.
         Combo::Simple("aucun drapeau (dynamique, non persisté)", CDS_TYPE(0)),
         Combo::Simple("CDS_UPDATEREGISTRY seul", CDS_UPDATEREGISTRY),
-        Combo::Simple("CDS_UPDATEREGISTRY | CDS_RESET", CDS_UPDATEREGISTRY | CDS_RESET),
+        Combo::Simple(
+            "CDS_UPDATEREGISTRY | CDS_RESET",
+            CDS_UPDATEREGISTRY | CDS_RESET,
+        ),
         Combo::NoresetPuisReset(
             "CDS_UPDATEREGISTRY|CDS_NORESET puis CDS_RESET seul (idiome multi-ecran)",
         ),
@@ -83,8 +86,10 @@ pub(super) fn combos_du_tour(imposee: Option<&str>) -> Vec<Combo> {
     let Some(etiquette) = imposee else {
         return toutes.into_iter().collect();
     };
-    let filtrees: Vec<Combo> =
-        toutes.into_iter().filter(|combo| combo.etiquette() == etiquette).collect();
+    let filtrees: Vec<Combo> = toutes
+        .into_iter()
+        .filter(|combo| combo.etiquette() == etiquette)
+        .collect();
     if filtrees.is_empty() {
         tracing::warn!(
             etiquette_demandee = etiquette,
@@ -120,7 +125,10 @@ pub(super) fn combo_pour_temoin(gagnante: Option<&'static str>) -> Combo {
 /// `ChangeDisplaySettingsExW` — un `DISP_CHANGE_SUCCESSFUL` ici ne prouve
 /// rien par lui-même, voir le commentaire de tête de `mode_sortie.rs`.
 fn changer_mode(nom_sortie: &str, largeur: u32, hauteur: u32, drapeaux: CDS_TYPE) -> i32 {
-    let nom: Vec<u16> = nom_sortie.encode_utf16().chain(std::iter::once(0)).collect();
+    let nom: Vec<u16> = nom_sortie
+        .encode_utf16()
+        .chain(std::iter::once(0))
+        .collect();
     let dm = DEVMODEW {
         dmSize: std::mem::size_of::<DEVMODEW>() as u16,
         dmFields: DM_PELSWIDTH | DM_PELSHEIGHT,
@@ -129,8 +137,14 @@ fn changer_mode(nom_sortie: &str, largeur: u32, hauteur: u32, drapeaux: CDS_TYPE
         ..Default::default()
     };
     unsafe {
-        ChangeDisplaySettingsExW(PCWSTR(nom.as_ptr()), Some(&dm as *const DEVMODEW), None, drapeaux, None)
-            .0
+        ChangeDisplaySettingsExW(
+            PCWSTR(nom.as_ptr()),
+            Some(&dm as *const DEVMODEW),
+            None,
+            drapeaux,
+            None,
+        )
+        .0
     }
 }
 
@@ -141,11 +155,20 @@ pub(super) fn appliquer_combo(nom_sortie: &str, largeur: u32, hauteur: u32, comb
     match combo {
         Combo::Simple(etiquette, drapeaux) => {
             let code = changer_mode(nom_sortie, largeur, hauteur, *drapeaux);
-            tracing::info!(etiquette, code, "combinaison de drapeaux tentee (appel unique)");
+            tracing::info!(
+                etiquette,
+                code,
+                "combinaison de drapeaux tentee (appel unique)"
+            );
             code
         }
         Combo::NoresetPuisReset(etiquette) => {
-            let premier = changer_mode(nom_sortie, largeur, hauteur, CDS_UPDATEREGISTRY | CDS_NORESET);
+            let premier = changer_mode(
+                nom_sortie,
+                largeur,
+                hauteur,
+                CDS_UPDATEREGISTRY | CDS_NORESET,
+            );
             // Second appel : NUL nom de périphérique, NUL DEVMODE — c'est
             // ainsi que Win32 documente l'application groupée des
             // changements différés par CDS_NORESET.

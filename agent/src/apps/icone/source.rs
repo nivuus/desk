@@ -46,7 +46,11 @@ pub fn provenance(icon_location: &str, cible: &str) -> Provenance {
     let (chemin, _) = couper(icon_location);
     // 🔴 LES 92 SUR 153 : chemin vide — y compris la chaîne entièrement vide,
     // et le `,0` seul — renvoie à la CIBLE.
-    let chemin = if chemin.trim().is_empty() { cible } else { chemin };
+    let chemin = if chemin.trim().is_empty() {
+        cible
+    } else {
+        chemin
+    };
     let chemin = chemin.trim();
     if chemin.is_empty() {
         return Provenance::Aucune;
@@ -55,7 +59,9 @@ pub fn provenance(icon_location: &str, cible: &str) -> Provenance {
         Some("ico") => Provenance::Ico(chemin.to_string()),
         // `.mun` est le conteneur de ressources que Windows 10+ emploie pour
         // les icônes du système (`imageres.dll` y renvoie).
-        Some("exe" | "dll" | "mun" | "cpl" | "scr" | "ocx") => Provenance::Module(chemin.to_string()),
+        Some("exe" | "dll" | "mun" | "cpl" | "scr" | "ocx") => {
+            Provenance::Module(chemin.to_string())
+        }
         // ⚠️ SANS EXTENSION, ON NE SAIT PAS LIRE — et le dire vaut mieux que
         // de deviner. `C:\Windows\Installer\{1BEA…}\ProductIcon` en est le cas
         // le plus fréquent de ce corpus.

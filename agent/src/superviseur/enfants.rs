@@ -60,7 +60,10 @@ pub struct Enfants<'l> {
 
 impl<'l> Enfants<'l> {
     pub fn nouveaux(lanceur: &'l dyn Lanceur) -> Self {
-        Self { lanceur, vivants: HashMap::new() }
+        Self {
+            lanceur,
+            vivants: HashMap::new(),
+        }
     }
 
     pub fn lancer(&mut self, consigne: Consigne) -> Result<()> {

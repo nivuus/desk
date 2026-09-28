@@ -39,10 +39,10 @@ use windows::Win32::Storage::ProjectedFileSystem::{
 };
 
 use crate::pont::chemins;
-use proto::fichiers::entetes;
 use crate::pont::erreurs::{Erreur, EN_COURS};
 use crate::pont::projfs::{ContexteProjFs, Etat, FluxDonnees};
 use crate::pont::table::{Attendue, DELAI_ATTRIBUTS};
+use proto::fichiers::entetes;
 
 // ────────────────────────────────────────────────────────────────────────────
 // 🔵 LE SEUL GARDE D'ABI QUE CE DÉPÔT POSSÈDE, et il ne couvre QUE ces huit
@@ -69,7 +69,10 @@ const _: PRJ_CANCEL_COMMAND_CB = Some(annulation);
 /// serait un `E_UNEXPECTED` rendu à une application, c'est-à-dire une erreur
 /// d'E/S sans cause lisible — le défaut que `pont::erreurs` existe pour ne pas
 /// rejouer.
-pub(super) fn garde(rappel: &'static str, corps: impl FnOnce() -> HRESULT + std::panic::UnwindSafe) -> HRESULT {
+pub(super) fn garde(
+    rappel: &'static str,
+    corps: impl FnOnce() -> HRESULT + std::panic::UnwindSafe,
+) -> HRESULT {
     match std::panic::catch_unwind(corps) {
         Ok(resultat) => resultat,
         Err(_) => {
@@ -149,11 +152,15 @@ pub(super) unsafe fn identifiant(guid: *const GUID) -> Option<[u8; 16]> {
 /// ❌ *Annonçait `ERROR_FILE_NOT_FOUND` : état de la tâche 13, réfuté par 14.*
 unsafe extern "system" fn info_marqueur(donnees: *const PRJ_CALLBACK_DATA) -> HRESULT {
     garde("GetPlaceholderInfo", || {
-        let Some(etat) = (unsafe { etat(donnees) }) else { return E_UNEXPECTED };
+        let Some(etat) = (unsafe { etat(donnees) }) else {
+            return E_UNEXPECTED;
+        };
         let Some((chemin, chemin_projfs)) = (unsafe { chemins_de(donnees) }) else {
             return HRESULT(etat.compteurs.rendre(Erreur::CheminIntrouvable));
         };
-        let entete = match serde_json::to_string(&entetes::Chemin { chemin: chemin.clone() }) {
+        let entete = match serde_json::to_string(&entetes::Chemin {
+            chemin: chemin.clone(),
+        }) {
             Ok(entete) => entete,
             Err(_) => return E_UNEXPECTED,
         };
@@ -182,7 +189,9 @@ unsafe extern "system" fn donnees_fichier(
     longueur: u32,
 ) -> HRESULT {
     garde("GetFileData", || {
-        let Some(etat) = (unsafe { etat(donnees) }) else { return E_UNEXPECTED };
+        let Some(etat) = (unsafe { etat(donnees) }) else {
+            return E_UNEXPECTED;
+        };
         let Some((chemin, _)) = (unsafe { chemins_de(donnees) }) else {
             return HRESULT(etat.compteurs.rendre(Erreur::CheminIntrouvable));
         };
@@ -266,11 +275,15 @@ unsafe extern "system" fn donnees_fichier(
 /// ❌ *Annonçait `ERROR_FILE_NOT_FOUND` : état de la tâche 13, réfuté par 14.*
 unsafe extern "system" fn nom_fichier(donnees: *const PRJ_CALLBACK_DATA) -> HRESULT {
     garde("QueryFileName", || {
-        let Some(etat) = (unsafe { etat(donnees) }) else { return E_UNEXPECTED };
+        let Some(etat) = (unsafe { etat(donnees) }) else {
+            return E_UNEXPECTED;
+        };
         let Some((chemin, _)) = (unsafe { chemins_de(donnees) }) else {
             return HRESULT(etat.compteurs.rendre(Erreur::CheminIntrouvable));
         };
-        let entete = match serde_json::to_string(&entetes::Chemin { chemin: chemin.clone() }) {
+        let entete = match serde_json::to_string(&entetes::Chemin {
+            chemin: chemin.clone(),
+        }) {
             Ok(entete) => entete,
             Err(_) => return E_UNEXPECTED,
         };
@@ -310,7 +323,9 @@ unsafe extern "system" fn annulation(donnees: *const PRJ_CALLBACK_DATA) {
     // la main : c'est la même exigence, et l'oublier ici serait exactement
     // aussi fatal.
     let issue = std::panic::catch_unwind(|| {
-        let Some(etat) = (unsafe { etat(donnees) }) else { return };
+        let Some(etat) = (unsafe { etat(donnees) }) else {
+            return;
+        };
         let commande = unsafe { (*donnees).CommandId };
         // 🔴 **TOUTES LES CORRÉLATIONS, et c'est la fenêtre de lecture de F3
         // qui l'exige** : une lecture peut en avoir jusqu'à
@@ -318,7 +333,11 @@ unsafe extern "system" fn annulation(donnees: *const PRJ_CALLBACK_DATA) {
         // ferait appeler `PrjCompleteCommand` sur une commande DÉJÀ complétée,
         // à l'expiration de son budget — un appel au système sur un
         // identifiant qui appartient à quelqu'un d'autre.
-        let correlations = etat.table.lock().expect("verrou de la table").annuler(commande);
+        let correlations = etat
+            .table
+            .lock()
+            .expect("verrou de la table")
+            .annuler(commande);
         for correlation in &correlations {
             // ⚠️ **Le contexte ProjFS part AVEC l'entrée de table, sinon il
             // fuit.** `Table::annuler` ne connaît que la table — elle est PURE

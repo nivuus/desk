@@ -302,7 +302,12 @@ pub struct Config {
 }
 forme!(Config, 3584, 8, "NV_ENC_CONFIG");
 deport!(Config, rc_params, 40, "NV_ENC_CONFIG.rcParams");
-deport!(Config, encode_codec_config, 168, "NV_ENC_CONFIG.encodeCodecConfig");
+deport!(
+    Config,
+    encode_codec_config,
+    168,
+    "NV_ENC_CONFIG.encodeCodecConfig"
+);
 deport!(Config, reserved, 1960, "NV_ENC_CONFIG.reserved");
 deport!(Config, reserved2, 3072, "NV_ENC_CONFIG.reserved2");
 
@@ -352,12 +357,42 @@ pub struct InitializeParams {
     pub reserved2: [*mut c_void; 64],
 }
 forme!(InitializeParams, 1800, 8, "NV_ENC_INITIALIZE_PARAMS");
-deport!(InitializeParams, encode_guid, 4, "NV_ENC_INITIALIZE_PARAMS.encodeGUID");
-deport!(InitializeParams, encode_config, 88, "NV_ENC_INITIALIZE_PARAMS.encodeConfig");
-deport!(InitializeParams, tuning_info, 136, "NV_ENC_INITIALIZE_PARAMS.tuningInfo");
-deport!(InitializeParams, buffer_format, 140, "NV_ENC_INITIALIZE_PARAMS.bufferFormat");
-deport!(InitializeParams, reserved1, 152, "NV_ENC_INITIALIZE_PARAMS.reserved1");
-deport!(InitializeParams, reserved2, 1288, "NV_ENC_INITIALIZE_PARAMS.reserved2");
+deport!(
+    InitializeParams,
+    encode_guid,
+    4,
+    "NV_ENC_INITIALIZE_PARAMS.encodeGUID"
+);
+deport!(
+    InitializeParams,
+    encode_config,
+    88,
+    "NV_ENC_INITIALIZE_PARAMS.encodeConfig"
+);
+deport!(
+    InitializeParams,
+    tuning_info,
+    136,
+    "NV_ENC_INITIALIZE_PARAMS.tuningInfo"
+);
+deport!(
+    InitializeParams,
+    buffer_format,
+    140,
+    "NV_ENC_INITIALIZE_PARAMS.bufferFormat"
+);
+deport!(
+    InitializeParams,
+    reserved1,
+    152,
+    "NV_ENC_INITIALIZE_PARAMS.reserved1"
+);
+deport!(
+    InitializeParams,
+    reserved2,
+    1288,
+    "NV_ENC_INITIALIZE_PARAMS.reserved2"
+);
 
 /// `NV_ENC_OPEN_ENCODE_SESSION_EX_PARAMS`.
 #[repr(C)]
@@ -378,8 +413,18 @@ forme!(
     8,
     "NV_ENC_OPEN_ENCODE_SESSION_EX_PARAMS"
 );
-deport!(OpenEncodeSessionExParams, reserved1, 28, "NV_ENC_OPEN_ENCODE_SESSION_EX_PARAMS.reserved1");
-deport!(OpenEncodeSessionExParams, reserved2, 1040, "NV_ENC_OPEN_ENCODE_SESSION_EX_PARAMS.reserved2");
+deport!(
+    OpenEncodeSessionExParams,
+    reserved1,
+    28,
+    "NV_ENC_OPEN_ENCODE_SESSION_EX_PARAMS.reserved1"
+);
+deport!(
+    OpenEncodeSessionExParams,
+    reserved2,
+    1040,
+    "NV_ENC_OPEN_ENCODE_SESSION_EX_PARAMS.reserved2"
+);
 
 /// `NV_ENC_PRESET_CONFIG`.
 ///
@@ -396,8 +441,18 @@ pub struct PresetConfig {
     pub reserved2: [*mut c_void; 64],
 }
 forme!(PresetConfig, 5128, 8, "NV_ENC_PRESET_CONFIG");
-deport!(PresetConfig, reserved1, 3592, "NV_ENC_PRESET_CONFIG.reserved1");
-deport!(PresetConfig, reserved2, 4616, "NV_ENC_PRESET_CONFIG.reserved2");
+deport!(
+    PresetConfig,
+    reserved1,
+    3592,
+    "NV_ENC_PRESET_CONFIG.reserved1"
+);
+deport!(
+    PresetConfig,
+    reserved2,
+    4616,
+    "NV_ENC_PRESET_CONFIG.reserved2"
+);
 
 /// `NV_ENC_RECONFIGURE_PARAMS` — change le débit d'un encodeur VIVANT.
 ///
@@ -421,7 +476,12 @@ pub struct ReconfigureParams {
     pub reserved2: u32,
 }
 forme!(ReconfigureParams, 1816, 8, "NV_ENC_RECONFIGURE_PARAMS");
-deport!(ReconfigureParams, re_init_encode_params, 8, "NV_ENC_RECONFIGURE_PARAMS.reInitEncodeParams");
+deport!(
+    ReconfigureParams,
+    re_init_encode_params,
+    8,
+    "NV_ENC_RECONFIGURE_PARAMS.reInitEncodeParams"
+);
 
 /// `resetEncoder`, 1ᵉʳ bit.
 pub const RECONFIGURE_RESET: u32 = 1 << 0;

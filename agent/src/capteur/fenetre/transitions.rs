@@ -131,7 +131,10 @@ impl Fenetre {
                 Ok(Message::Sommeil(Ordre::Dormir(raison))) => {
                     self.dormir();
                     let raison = crate::capteur::sommeil::raison_en_texte(raison);
-                    let etat = DepuisCapteur::Sommeil { endormie: true, raison: raison.into() };
+                    let etat = DepuisCapteur::Sommeil {
+                        endormie: true,
+                        raison: raison.into(),
+                    };
                     // `deposer` et non un `send` bloquant : la file peut être
                     // pleine, et attendre dessus sans servir les commandes
                     // recréerait l'interblocage à six maillons de la tâche 10
@@ -168,7 +171,10 @@ impl Fenetre {
                         crate::capteur::sommeil::echec_de_reveil(ctx.session);
                         continue;
                     }
-                    let etat = DepuisCapteur::Sommeil { endormie: false, raison: String::new() };
+                    let etat = DepuisCapteur::Sommeil {
+                        endormie: false,
+                        raison: String::new(),
+                    };
                     if let Fin::Terminer(motif) =
                         deposer(AEcrire::Etat(etat), ecritures, self.source.as_mut(), ctx)
                     {

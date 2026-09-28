@@ -48,7 +48,11 @@ impl Session {
         on_control: &mut impl FnMut(ClientControl),
     ) -> Result<()> {
         loop {
-            match self.rtc.poll_output().map_err(|e| anyhow!("poll_output : {e}"))? {
+            match self
+                .rtc
+                .poll_output()
+                .map_err(|e| anyhow!("poll_output : {e}"))?
+            {
                 Output::Timeout(deadline) => {
                     if let Tick::Disconnected = self.act_on_timeout(deadline)? {
                         return Ok(());
@@ -88,7 +92,11 @@ impl Session {
     /// encore produire de données applicatives à ce stade.
     pub(super) fn drain_quietly(&mut self) -> Result<()> {
         loop {
-            match self.rtc.poll_output().map_err(|e| anyhow!("poll_output : {e}"))? {
+            match self
+                .rtc
+                .poll_output()
+                .map_err(|e| anyhow!("poll_output : {e}"))?
+            {
                 Output::Timeout(_) => return Ok(()),
                 Output::Transmit(transmit) => {
                     // Même point d'émission unique que `run` : un paquet émis

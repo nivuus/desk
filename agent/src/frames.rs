@@ -157,9 +157,7 @@ impl FrameAssembler {
 
     /// Durée correspondant à `echantillons` échantillons par canal.
     fn duree_de(echantillons: u64) -> Duration {
-        Duration::from_nanos(
-            (echantillons as u128 * 1_000_000_000 / SAMPLE_RATE_HZ as u128) as u64,
-        )
+        Duration::from_nanos((echantillons as u128 * 1_000_000_000 / SAMPLE_RATE_HZ as u128) as u64)
     }
 }
 
@@ -187,7 +185,9 @@ mod tests {
         a.push(&bloc(100, FRAME_SAMPLES));
         // Ancrage au premier appel, puis 5 ms plus tard : une demi-trame.
         assert!(a.drain_due(origine + trames(1)).is_empty());
-        assert!(a.drain_due(origine + trames(1) + Duration::from_millis(5)).is_empty());
+        assert!(a
+            .drain_due(origine + trames(1) + Duration::from_millis(5))
+            .is_empty());
     }
 
     #[test]
@@ -329,22 +329,30 @@ mod tests {
         a.push(&bloc(100, 2000));
         // Tampon : 4000, plafond : 2880, excédent : 1120
         // Jetés : 1120
-        assert_eq!(a.echantillons_jetes(), 1120,
-            "première poussée jette 1120 échantillons (4000 - 2880)");
+        assert_eq!(
+            a.echantillons_jetes(),
+            1120,
+            "première poussée jette 1120 échantillons (4000 - 2880)"
+        );
 
         // Deuxième poussée : de nouveau au-delà, avec valeur différente
         a.push(&bloc(-100, 1600));
         // Tampon avant: 2880 (100s), après extend: 6080
         // Excédent: 3200, jetés cumulativement: 1120 + 3200 = 4320
         // Tampon reste: 2880 (les -100s les plus récents)
-        assert_eq!(a.echantillons_jetes(), 4320,
-            "deuxième poussée jette les 3200 anciens (100s) du tampon");
+        assert_eq!(
+            a.echantillons_jetes(),
+            4320,
+            "deuxième poussée jette les 3200 anciens (100s) du tampon"
+        );
 
         // La trame émise doit contenir les -100s (les plus récents conservés),
         // pas les 100s (les plus anciens, maintenant jetés).
         let sorties = a.drain_due(origine + trames(1));
         assert_eq!(sorties.len(), 1, "une seule trame est due après 10 ms");
-        assert!(sorties[0].pcm.iter().all(|&v| v == -100),
-            "la trame doit contenir les données les plus récentes (-100), pas les anciennes (100)");
+        assert!(
+            sorties[0].pcm.iter().all(|&v| v == -100),
+            "la trame doit contenir les données les plus récentes (-100), pas les anciennes (100)"
+        );
     }
 }

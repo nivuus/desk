@@ -142,7 +142,10 @@ pub(super) fn create_color_converter(
     }
 
     unsafe {
-        converter.ProcessMessage(MFT_MESSAGE_SET_D3D_MANAGER, device_manager.as_raw() as usize)
+        converter.ProcessMessage(
+            MFT_MESSAGE_SET_D3D_MANAGER,
+            device_manager.as_raw() as usize,
+        )
     }
     .context("partage du périphérique D3D avec le convertisseur")?;
 
@@ -166,8 +169,7 @@ pub(super) fn create_color_converter(
         .context("attributs du flux de sortie du convertisseur")?;
     unsafe {
         output_stream_attributes.SetUINT32(&MF_SA_MINIMUM_OUTPUT_SAMPLE_COUNT, 16)?;
-        output_stream_attributes
-            .SetUINT32(&MF_SA_MINIMUM_OUTPUT_SAMPLE_COUNT_PROGRESSIVE, 16)?;
+        output_stream_attributes.SetUINT32(&MF_SA_MINIMUM_OUTPUT_SAMPLE_COUNT_PROGRESSIVE, 16)?;
     }
 
     let input_type = unsafe { MFCreateMediaType() }?;
@@ -179,9 +181,9 @@ pub(super) fn create_color_converter(
         input_type.SetUINT64(&MF_MT_FRAME_SIZE, reglages::pack_u64(capture.0, capture.1))?;
         input_type.SetUINT64(&MF_MT_FRAME_RATE, reglages::pack_u64(fps, 1))?;
         input_type.SetUINT32(&MF_MT_INTERLACE_MODE, MFVideoInterlace_Progressive.0 as u32)?;
-        converter
-            .SetInputType(0, &input_type, 0)
-            .context("configuration du type d'entrée du convertisseur de couleur (Video Processor MFT)")?;
+        converter.SetInputType(0, &input_type, 0).context(
+            "configuration du type d'entrée du convertisseur de couleur (Video Processor MFT)",
+        )?;
     }
 
     let output_type = unsafe { MFCreateMediaType() }?;
@@ -245,8 +247,10 @@ fn find_hardware_video_processor() -> Result<IMFTransform> {
 
     let mut name_ptr = PWSTR::null();
     let mut name_len = 0u32;
-    if unsafe { first.GetAllocatedString(&MFT_FRIENDLY_NAME_Attribute, &mut name_ptr, &mut name_len) }
-        .is_ok()
+    if unsafe {
+        first.GetAllocatedString(&MFT_FRIENDLY_NAME_Attribute, &mut name_ptr, &mut name_len)
+    }
+    .is_ok()
     {
         let name = unsafe { name_ptr.to_string() }.unwrap_or_default();
         tracing::info!(convertisseur = %name, "convertisseur vidéo matériel retenu");
@@ -263,14 +267,21 @@ fn find_hardware_video_processor() -> Result<IMFTransform> {
 /// Foundation réutilisable, pour les cas où le convertisseur ne s'auto-alloue
 /// pas (`MFT_OUTPUT_STREAM_PROVIDES_SAMPLES` absent — voir
 /// `super::H264Encoder::new`).
-pub(super) fn create_nv12_sample(device: &ID3D11Device, width: u32, height: u32) -> Result<IMFSample> {
+pub(super) fn create_nv12_sample(
+    device: &ID3D11Device,
+    width: u32,
+    height: u32,
+) -> Result<IMFSample> {
     let desc = D3D11_TEXTURE2D_DESC {
         Width: width,
         Height: height,
         MipLevels: 1,
         ArraySize: 1,
         Format: DXGI_FORMAT_NV12,
-        SampleDesc: DXGI_SAMPLE_DESC { Count: 1, Quality: 0 },
+        SampleDesc: DXGI_SAMPLE_DESC {
+            Count: 1,
+            Quality: 0,
+        },
         Usage: D3D11_USAGE_DEFAULT,
         BindFlags: D3D11_BIND_RENDER_TARGET.0 as u32,
         CPUAccessFlags: 0,
@@ -352,8 +363,10 @@ pub(super) fn find_hardware_encoder() -> Result<IMFTransform> {
     // `IMFAttributes` dans cette version ; la méthode s'appelle
     // `GetAllocatedString` (mémoire allouée par `CoTaskMemAlloc`, à libérer
     // explicitement après usage).
-    if unsafe { first.GetAllocatedString(&MFT_FRIENDLY_NAME_Attribute, &mut name_ptr, &mut name_len) }
-        .is_ok()
+    if unsafe {
+        first.GetAllocatedString(&MFT_FRIENDLY_NAME_Attribute, &mut name_ptr, &mut name_len)
+    }
+    .is_ok()
     {
         let name = unsafe { name_ptr.to_string() }.unwrap_or_default();
         tracing::info!(encodeur = %name, "encodeur matériel retenu");
@@ -369,7 +382,11 @@ pub(super) fn find_hardware_encoder() -> Result<IMFTransform> {
             // La COMPOSITION du message est pure et vit chez
             // `encode_nvenc`, où elle est testée sur l'hôte : ici on ne
             // fait que lui donner le code et ce que la machine porte.
-            encode_nvenc::diagnostic_activation(erreur.code().0, &erreur.to_string(), &adaptateurs_dxgi())
+            encode_nvenc::diagnostic_activation(
+                erreur.code().0,
+                &erreur.to_string(),
+                &adaptateurs_dxgi()
+            )
         )),
     }
 }

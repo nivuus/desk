@@ -213,7 +213,13 @@ pub fn ouvrir(signaling_url: &str, vm: String, secret: String) -> Canal {
                 tentative = 0;
             }
             match une_session(
-                &url, &vm, &secret, &tx, &mut a_emettre, &ordres_tx, &installations_tx,
+                &url,
+                &vm,
+                &secret,
+                &tx,
+                &mut a_emettre,
+                &ordres_tx,
+                &installations_tx,
             )
             .await
             {
@@ -289,7 +295,9 @@ impl Canal {
     /// garderait indéfiniment : c'est la file, et elle seule, qui doit
     /// traverser. Un `Sender` de tokio est `Send` et `Clone`.
     pub fn emetteur(&self) -> Emetteur {
-        Emetteur { file: self.emission.clone() }
+        Emetteur {
+            file: self.emission.clone(),
+        }
     }
 
     /// Observe les changements d'identité — un réenrôlement en est un.

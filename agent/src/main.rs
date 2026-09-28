@@ -28,11 +28,11 @@ mod frames;
 // `anyhow::Context` propres à la sonde.
 mod gamepad;
 mod geometry;
-mod mire;
-mod moniteurs_virtuels;
 mod h264;
 mod input;
 mod micro;
+mod mire;
+mod moniteurs_virtuels;
 mod opus;
 #[cfg(windows)]
 mod pointer_settings;
@@ -56,8 +56,8 @@ mod pont;
 // la convention de nommage. Extrait de `superviseur::boucle::
 // surveillance_pont` (round de correction 2) pour compiler et se tester sur
 // l'hôte : ce dernier vit derrière `superviseur::boucle::#![cfg(windows)]`.
-mod relance_pont;
 mod rebuild;
+mod relance_pont;
 mod signaling;
 // Pas de `#[cfg(windows)]` ici : c'est la part portable de `capture.rs`
 // (lui-même `#![cfg(windows)]` dans son ensemble) — voir le commentaire de
@@ -77,8 +77,8 @@ mod survie_verdict;
 // Pas de `#[cfg(windows)]` ici : la logique pure de `superviseur` (tâche 2)
 // décide quelles fenêtres méritent d'exister côté navigateur, et doit se
 // compiler et se tester sur Linux sans dépendance à l'API Windows.
-mod superviseur;
 mod source;
+mod superviseur;
 mod transport;
 mod turn;
 // Le calcul de région est pur et doit être testable sur l'hôte : il est donc
@@ -136,15 +136,15 @@ mod wasapi_format;
 mod encode_nvenc;
 
 #[cfg(windows)]
+mod appartenance;
+#[cfg(windows)]
 mod capture;
 #[cfg(windows)]
 mod encode;
-#[cfg(windows)]
-mod appartenance;
 mod entrees;
-mod window;
 #[cfg(windows)]
 mod wasapi;
+mod window;
 #[cfg(windows)]
 mod windows_audio;
 /// L'ecriture du micro sur le cable virtuel (bloc E2).
@@ -168,8 +168,7 @@ use anyhow::Result;
 async fn main() -> Result<()> {
     tracing_subscriber::fmt()
         .with_env_filter(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "info".into()),
+            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into()),
         )
         .init();
 
@@ -201,7 +200,9 @@ async fn main() -> Result<()> {
     if std::env::var("INPUT_LINEARITY_NEUTRALISER").as_deref() != Ok("0") {
         match pointer_settings::neutraliser() {
             Ok(rapport) => tracing::info!(rapport, "accélération pointeur neutralisée"),
-            Err(e) => tracing::warn!(erreur = %e, "neutralisation de l'accélération pointeur échouée"),
+            Err(e) => {
+                tracing::warn!(erreur = %e, "neutralisation de l'accélération pointeur échouée")
+            }
         }
     } else {
         tracing::warn!(
@@ -336,7 +337,9 @@ async fn main() -> Result<()> {
         // recevrait un jeton mort, que la garde de la plateforme refuserait —
         // et aucune session ne s'établirait, sans qu'aucune trace ne rattache
         // la panne à l'âge d'une variable.
-        let veille = _canal_plateforme.as_ref().map(plateforme::Canal::veille_identite);
+        let veille = _canal_plateforme
+            .as_ref()
+            .map(plateforme::Canal::veille_identite);
         return superviseur::executer(config, veille).await;
     }
 

@@ -193,8 +193,14 @@ mod tests {
             "Allocate est du STUN"
         );
         assert!(!est_channel_data(&[0x01, 0x01, 0, 0]), "réponse STUN");
-        assert!(est_channel_data(&[0x40, 0x00, 0, 0]), "premier canal valide");
-        assert!(est_channel_data(&[0x7F, 0xFF, 0, 0]), "dernier canal valide");
+        assert!(
+            est_channel_data(&[0x40, 0x00, 0, 0]),
+            "premier canal valide"
+        );
+        assert!(
+            est_channel_data(&[0x7F, 0xFF, 0, 0]),
+            "dernier canal valide"
+        );
         assert!(!est_channel_data(&[]), "un paquet vide n'est rien");
     }
 
@@ -282,9 +288,15 @@ mod tests {
         assert_eq!(message.xor_peer_address(), Some(pair));
 
         // Et pas de rafale : rien de plus avant l'échéance suivante.
-        assert!(c.poll_transmit().is_none(), "un seul rafraîchissement par échéance");
+        assert!(
+            c.poll_transmit().is_none(),
+            "un seul rafraîchissement par échéance"
+        );
         c.avancer(t0() + Duration::from_secs(151));
-        assert!(c.poll_transmit().is_none(), "pas de réémission à chaque tour");
+        assert!(
+            c.poll_transmit().is_none(),
+            "pas de réémission à chaque tour"
+        );
     }
 
     #[test]

@@ -2,7 +2,12 @@ use super::*;
 use std::cmp::Ordering;
 
 fn e(nom: &str) -> Entree {
-    Entree { nom: nom.to_string(), repertoire: false, taille: 0, modifie_ms: 0 }
+    Entree {
+        nom: nom.to_string(),
+        repertoire: false,
+        taille: 0,
+        modifie_ms: 0,
+    }
 }
 
 /// Un comparateur qui trie **à l'envers** de l'ordre lexicographique.
@@ -58,7 +63,10 @@ fn sans_expression_l_apparieur_n_est_pas_consulte() {
         |a, b| a.cmp(b),
     );
     assert_eq!(prepare.len(), 2);
-    assert!(!consulte, "l'apparieur a été consulté alors qu'aucune expression n'est fournie");
+    assert!(
+        !consulte,
+        "l'apparieur a été consulté alors qu'aucune expression n'est fournie"
+    );
 }
 
 #[test]
@@ -77,7 +85,10 @@ fn une_session_chargee_rend_ses_entrees_dans_l_ordre_puis_s_epuise() {
     session.avancer();
     assert_eq!(session.prochaine().map(|e| e.nom.as_str()), Some("deux"));
     session.avancer();
-    assert!(session.prochaine().is_none(), "la session doit être épuisée");
+    assert!(
+        session.prochaine().is_none(),
+        "la session doit être épuisée"
+    );
 }
 
 /// 🔴 `PRJ_CB_DATA_FLAG_ENUM_RESTART_SCAN` (mod.rs:177) **doit être honoré** :
@@ -91,7 +102,10 @@ fn un_redemarrage_ramene_le_curseur_au_debut_sans_perdre_les_entrees() {
     session.avancer();
     assert!(session.prochaine().is_none());
     session.redemarrer();
-    assert!(session.chargee(), "un redémarrage ne doit PAS jeter les entrées déjà obtenues");
+    assert!(
+        session.chargee(),
+        "un redémarrage ne doit PAS jeter les entrées déjà obtenues"
+    );
     assert_eq!(session.prochaine().map(|e| e.nom.as_str()), Some("un"));
 }
 

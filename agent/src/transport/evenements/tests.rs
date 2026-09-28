@@ -99,7 +99,9 @@ fn relaie_une_demande_d_image_cle_du_pair_vers_la_source() {
     api.add_channel("input".to_string());
     let (offer, pending) = api.apply().expect("offre non vide");
 
-    let answer_sdp = session.accept_offer(&offer.to_sdp_string()).expect("offre acceptée");
+    let answer_sdp = session
+        .accept_offer(&offer.to_sdp_string())
+        .expect("offre acceptée");
     let answer = SdpAnswer::from_sdp_string(&answer_sdp).expect("réponse SDP valide");
     peer_rtc
         .sdp_api()
@@ -175,8 +177,8 @@ fn relaie_une_demande_d_image_cle_du_pair_vers_la_source() {
 /// récepteur annoncer `RecvOnly` pour une piste offerte en `SendOnly`.
 fn session_avec_pistes(pistes: &[(MediaKind, Direction)]) -> Session {
     let source = Box::new(fixtures::video_test_source());
-    let mut session = Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000)
-        .expect("session");
+    let mut session =
+        Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000).expect("session");
     for (i, &(kind, direction)) in pistes.iter().enumerate() {
         let mid: Mid = format!("m{i}").as_str().into();
         session.handle_event(
@@ -256,29 +258,29 @@ fn une_piste_audio_inactive_n_est_retenue_nulle_part() {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   L'AIGUILLAGE DES CANAUX DE DONNÉES — sous-bloc F1, tâche 17.
+L'AIGUILLAGE DES CANAUX DE DONNÉES — sous-bloc F1, tâche 17.
 
-   🔴 LE DÉFAUT CORRIGÉ, ET POURQUOI IL N'EST PAS LÉGUÉ. `dispatch_channel_data`
-   aiguillait sur le SEUL drapeau `data.binary` : toute trame binaire, quel que
-   soit son canal, partait dans `InputMessage::decode`. Le label était pourtant
-   disponible dans `Event::ChannelOpen(id, label)` et simplement inutilisé —
-   seul `"control"` y était reconnu, pour mémoriser son `ChannelId`.
+🔴 LE DÉFAUT CORRIGÉ, ET POURQUOI IL N'EST PAS LÉGUÉ. `dispatch_channel_data`
+aiguillait sur le SEUL drapeau `data.binary` : toute trame binaire, quel que
+soit son canal, partait dans `InputMessage::decode`. Le label était pourtant
+disponible dans `Event::ChannelOpen(id, label)` et simplement inutilisé —
+seul `"control"` y était reconnu, pour mémoriser son `ChannelId`.
 
-   La `PeerConnection` dédiée du pont fichiers (décision D4) rend ce défaut sans
-   objet POUR F1 : le canal `fichiers` vit dans une autre `PeerConnection`, dans
-   un autre processus. Mais elle ne le REFERME pas — il reste entier dans la
-   `PeerConnection` de chaque enfant, dormant parce qu'aujourd'hui seul `input`
-   y est binaire, et c'est le piège exact où tombera la première personne qui
-   jugera la voie du « troisième canal » assez bon marché. Son seul symptôme
-   serait un `WARN "message d'entrée invalide"` par trame.
+La `PeerConnection` dédiée du pont fichiers (décision D4) rend ce défaut sans
+objet POUR F1 : le canal `fichiers` vit dans une autre `PeerConnection`, dans
+un autre processus. Mais elle ne le REFERME pas — il reste entier dans la
+`PeerConnection` de chaque enfant, dormant parce qu'aujourd'hui seul `input`
+y est binaire, et c'est le piège exact où tombera la première personne qui
+jugera la voie du « troisième canal » assez bon marché. Son seul symptôme
+serait un `WARN "message d'entrée invalide"` par trame.
 
-   Il est donc corrigé, pour trois raisons dont la troisième décide : il est
-   TESTABLE SUR L'HÔTE, donc le contrôle peut être vu rouge ; il coûte une
-   dizaine de lignes ; et ce dépôt a payé QUATRE fois le bras catch-all de
-   `capteur/pont_media.rs` (D5 `Sommeil`, D6 `Part`, D7 `Audio`, D8
-   `PleinEcran`) pour apprendre qu'un aiguillage qui ne nomme pas ses cas se
-   paie à chaque message neuf.
-   ═══════════════════════════════════════════════════════════════════════════ */
+Il est donc corrigé, pour trois raisons dont la troisième décide : il est
+TESTABLE SUR L'HÔTE, donc le contrôle peut être vu rouge ; il coûte une
+dizaine de lignes ; et ce dépôt a payé QUATRE fois le bras catch-all de
+`capteur/pont_media.rs` (D5 `Sommeil`, D6 `Part`, D7 `Audio`, D8
+`PleinEcran`) pour apprendre qu'un aiguillage qui ne nomme pas ses cas se
+paie à chaque message neuf.
+═══════════════════════════════════════════════════════════════════════════ */
 
 /// La décision d'aiguillage, éprouvée avec un identifiant de STAND-IN.
 ///
@@ -343,7 +345,9 @@ fn une_trame_binaire_du_canal_input_atteint_on_input_et_un_canal_inconnu_est_ref
     let canal_parasite = api.add_channel("parasite".to_string());
     let (offer, pending) = api.apply().expect("offre non vide");
 
-    let answer_sdp = session.accept_offer(&offer.to_sdp_string()).expect("offre acceptée");
+    let answer_sdp = session
+        .accept_offer(&offer.to_sdp_string())
+        .expect("offre acceptée");
     let answer = SdpAnswer::from_sdp_string(&answer_sdp).expect("réponse SDP valide");
     peer_rtc
         .sdp_api()
@@ -400,8 +404,13 @@ fn une_trame_binaire_du_canal_input_atteint_on_input_et_un_canal_inconnu_est_ref
                 let attente = t
                     .saturating_duration_since(maintenant)
                     .min(Duration::from_millis(50));
-                if fixtures::poll_peer_socket(&mut peer_rtc, &peer_socket, peer_addr, maintenant, attente)
-                {
+                if fixtures::poll_peer_socket(
+                    &mut peer_rtc,
+                    &peer_socket,
+                    peer_addr,
+                    maintenant,
+                    attente,
+                ) {
                     continue;
                 }
             }
@@ -441,5 +450,9 @@ fn une_trame_binaire_du_canal_input_atteint_on_input_et_un_canal_inconnu_est_ref
         !recus.contains(&parasite),
         "🔴 une trame binaire d'un canal INCONNU a été décodée comme une entrée : {recus:?}"
     );
-    assert_eq!(recus.len(), 1, "une seule entrée attendue, reçues : {recus:?}");
+    assert_eq!(
+        recus.len(),
+        1,
+        "une seule entrée attendue, reçues : {recus:?}"
+    );
 }

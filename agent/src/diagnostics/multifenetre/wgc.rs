@@ -13,7 +13,9 @@ use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result};
 use windows::core::Interface;
-use windows::Graphics::Capture::{Direct3D11CaptureFramePool, GraphicsCaptureItem, GraphicsCaptureSession};
+use windows::Graphics::Capture::{
+    Direct3D11CaptureFramePool, GraphicsCaptureItem, GraphicsCaptureSession,
+};
 use windows::Graphics::DirectX::Direct3D11::IDirect3DDevice;
 use windows::Graphics::DirectX::DirectXPixelFormat;
 use windows::Win32::Graphics::Direct3D11::ID3D11Texture2D;
@@ -59,7 +61,12 @@ pub(super) fn eprouver() -> Result<()> {
     let capture = crate::capture::DesktopCapture::new()?;
     let (largeur, hauteur) = capture.desktop_size();
     let places = disposition::tuiles(
-        Rect { x: 0, y: 0, width: largeur, height: hauteur },
+        Rect {
+            x: 0,
+            y: 0,
+            width: largeur,
+            height: hauteur,
+        },
         2,
     )
     .context("deux places sur ce bureau")?;
@@ -115,7 +122,11 @@ pub(super) fn eprouver() -> Result<()> {
         std::thread::sleep(Duration::from_millis(8));
     }
 
-    tracing::info!(recues, ?dernier_verdict, "trames WGC reçues sous recouvrement");
+    tracing::info!(
+        recues,
+        ?dernier_verdict,
+        "trames WGC reçues sous recouvrement"
+    );
     match (recues > 0, dernier_verdict) {
         (true, mire::Verdict::Juste) => tracing::info!(
             "verdict WGC : VIABLE — la fenêtre recouverte reste capturée correctement"
@@ -164,7 +175,9 @@ fn preparer_session(
         item.Size()?,
     )
     .context("création du pool de trames")?;
-    let session = pool.CreateCaptureSession(&item).context("session de capture")?;
+    let session = pool
+        .CreateCaptureSession(&item)
+        .context("session de capture")?;
     session.StartCapture().context("démarrage de la capture")?;
 
     Ok((pool, session))

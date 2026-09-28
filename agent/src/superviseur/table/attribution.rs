@@ -34,7 +34,11 @@ impl Table {
         if entree.etat == Etat::Vivante && entree.nom_sortie.is_some() {
             let (largeur, hauteur) =
                 crate::windows_source_sortie::borner_a_la_taille_max((largeur, hauteur));
-            return vec![Effet::SuivreLeViewport { session: session.clone(), largeur, hauteur }];
+            return vec![Effet::SuivreLeViewport {
+                session: session.clone(),
+                largeur,
+                hauteur,
+            }];
         }
         if entree.etat != Etat::AttendLeViewport {
             return Vec::new();

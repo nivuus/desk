@@ -225,14 +225,20 @@ pub(crate) fn variable_non_vide(nom: &str) -> Option<String> {
 /// recherche par titre) ; une variable PRÉSENTE doit être honorée ou refusée.
 fn analyser_hwnd(brut: &str) -> Result<u64> {
     let texte = brut.trim();
-    let valeur = match texte.strip_prefix("0x").or_else(|| texte.strip_prefix("0X")) {
+    let valeur = match texte
+        .strip_prefix("0x")
+        .or_else(|| texte.strip_prefix("0X"))
+    {
         Some(hexa) => u64::from_str_radix(hexa, 16)
             .with_context(|| format!("FENETRE_HWND « {texte} » : hexadécimal illisible"))?,
         None => texte
             .parse()
             .with_context(|| format!("FENETRE_HWND « {texte} » : décimal illisible"))?,
     };
-    anyhow::ensure!(valeur != 0, "FENETRE_HWND vaut 0 : aucune fenêtre ne porte ce handle");
+    anyhow::ensure!(
+        valeur != 0,
+        "FENETRE_HWND vaut 0 : aucune fenêtre ne porte ce handle"
+    );
     Ok(valeur)
 }
 

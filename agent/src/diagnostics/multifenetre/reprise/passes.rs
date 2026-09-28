@@ -85,7 +85,12 @@ pub(super) fn eprouver(
 
     let (mut voies, places_texture) = ouvrir_duplications(garde, virtuelles, &mires)?;
     let nombre = voies.len();
-    tracing::info!(nombre, ?places_bureau, ?places_texture, "les k duplications sont ouvertes");
+    tracing::info!(
+        nombre,
+        ?places_bureau,
+        ?places_texture,
+        "les k duplications sont ouvertes"
+    );
 
     // --- Passe A : le témoin. Elle mesure ce que rendent des duplications que
     // rien ne dérange, et c'est la seule référence à laquelle la passe B
@@ -121,7 +126,13 @@ pub(super) fn eprouver(
     tracing::info!(id = id_perturbatrice, "sortie perturbatrice créée");
 
     // --- Passe B : identique à la passe A, sur un bureau qui vient de changer.
-    let passe_b = passe(garde, &mut mires, &mut voies, virtuelles, Some(instant_perturbation))?;
+    let passe_b = passe(
+        garde,
+        &mut mires,
+        &mut voies,
+        virtuelles,
+        Some(instant_perturbation),
+    )?;
     compteurs::journaliser(
         "après perturbation",
         "duplication-reprise",
@@ -258,13 +269,14 @@ fn ouvrir_duplications(
     let mut textures = Vec::new();
     for (rang, sortie) in virtuelles.iter().enumerate() {
         garde.battre()?;
-        let source = VoieDuplication::partagee_sur(Some(&sortie.nom_sortie)).with_context(|| {
-            format!(
-                "ouverture de la duplication n°{} (sortie {}) — avant toute perturbation",
-                rang + 1,
-                sortie.nom_sortie
-            )
-        })?;
+        let source =
+            VoieDuplication::partagee_sur(Some(&sortie.nom_sortie)).with_context(|| {
+                format!(
+                    "ouverture de la duplication n°{} (sortie {}) — avant toute perturbation",
+                    rang + 1,
+                    sortie.nom_sortie
+                )
+            })?;
         let dimensions = source.borrow().dimensions_bureau();
         tracing::info!(
             rang = rang + 1,
@@ -461,5 +473,9 @@ fn passe(
         .filter(|(_, vivante)| !**vivante)
         .map(|(id, _)| id)
         .collect();
-    Ok(Passe { compteurs, perdues, degradee: peinture_signalee || lecture_signalee })
+    Ok(Passe {
+        compteurs,
+        perdues,
+        degradee: peinture_signalee || lecture_signalee,
+    })
 }

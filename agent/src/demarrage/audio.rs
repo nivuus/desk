@@ -75,12 +75,10 @@ pub(super) fn brancher(config: &Config, session: &mut Session, clock_origin: Ins
                 let hwnd = config.fenetre_hwnd;
                 session.set_audio_reconstructeur(Box::new(move || {
                     let source = match hwnd {
-                        Some(hwnd) => {
-                            windows_audio::WindowsAudioSource::pour_processus(
-                                pid_de_fenetre(hwnd)?,
-                                clock_origin,
-                            )?
-                        }
+                        Some(hwnd) => windows_audio::WindowsAudioSource::pour_processus(
+                            pid_de_fenetre(hwnd)?,
+                            clock_origin,
+                        )?,
                         None => windows_audio::WindowsAudioSource::new(clock_origin)?,
                     };
                     Ok(Box::new(source) as Box<dyn crate::audio::AudioSource + Send>)

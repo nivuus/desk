@@ -70,13 +70,31 @@ impl MouseButton {
 /// correspond directement au mode absolu de `SendInput`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InputMessage {
-    MouseMove { x: u16, y: u16 },
-    MouseButton { button: MouseButton, pressed: bool, x: u16, y: u16 },
-    Wheel { delta_x: i16, delta_y: i16 },
-    Key { scancode: u16, pressed: bool, extended: bool },
+    MouseMove {
+        x: u16,
+        y: u16,
+    },
+    MouseButton {
+        button: MouseButton,
+        pressed: bool,
+        x: u16,
+        y: u16,
+    },
+    Wheel {
+        delta_x: i16,
+        delta_y: i16,
+    },
+    Key {
+        scancode: u16,
+        pressed: bool,
+        extended: bool,
+    },
     /// Déplacement relatif, en pixels bruts. Émis sous Pointer Lock, quand
     /// l'agent a annoncé un curseur masqué.
-    MouseMoveRelative { dx: i16, dy: i16 },
+    MouseMoveRelative {
+        dx: i16,
+        dy: i16,
+    },
     Gamepad(GamepadState),
 }
 
@@ -102,7 +120,12 @@ impl InputMessage {
                 out.extend_from_slice(&x.to_le_bytes());
                 out.extend_from_slice(&y.to_le_bytes());
             }
-            InputMessage::MouseButton { button, pressed, x, y } => {
+            InputMessage::MouseButton {
+                button,
+                pressed,
+                x,
+                y,
+            } => {
                 out.push(TYPE_MOUSE_BUTTON);
                 out.push(button.to_u8());
                 out.push(pressed as u8);
@@ -114,7 +137,11 @@ impl InputMessage {
                 out.extend_from_slice(&delta_x.to_le_bytes());
                 out.extend_from_slice(&delta_y.to_le_bytes());
             }
-            InputMessage::Key { scancode, pressed, extended } => {
+            InputMessage::Key {
+                scancode,
+                pressed,
+                extended,
+            } => {
                 out.push(TYPE_KEY);
                 out.extend_from_slice(&scancode.to_le_bytes());
                 out.push(pressed as u8);
@@ -148,7 +175,10 @@ impl InputMessage {
         match header[1] {
             TYPE_MOUSE_MOVE => {
                 let p = take(bytes, 2, 4)?;
-                Ok(InputMessage::MouseMove { x: le_u16(p, 0), y: le_u16(p, 2) })
+                Ok(InputMessage::MouseMove {
+                    x: le_u16(p, 0),
+                    y: le_u16(p, 2),
+                })
             }
             TYPE_MOUSE_BUTTON => {
                 let p = take(bytes, 2, 6)?;
@@ -202,7 +232,10 @@ impl InputMessage {
 fn take(bytes: &[u8], offset: usize, len: usize) -> Result<&[u8], DecodeError> {
     bytes
         .get(offset..offset + len)
-        .ok_or(DecodeError::Truncated { expected: offset + len, actual: bytes.len() })
+        .ok_or(DecodeError::Truncated {
+            expected: offset + len,
+            actual: bytes.len(),
+        })
 }
 
 fn le_u16(bytes: &[u8], offset: usize) -> u16 {
@@ -243,20 +276,38 @@ mod tests {
 
     #[test]
     fn round_trip_wheel() {
-        round_trip(InputMessage::Wheel { delta_x: 0, delta_y: 120 });
-        round_trip(InputMessage::Wheel { delta_x: -240, delta_y: -120 });
+        round_trip(InputMessage::Wheel {
+            delta_x: 0,
+            delta_y: 120,
+        });
+        round_trip(InputMessage::Wheel {
+            delta_x: -240,
+            delta_y: -120,
+        });
     }
 
     #[test]
     fn round_trip_key() {
-        round_trip(InputMessage::Key { scancode: 0x1E, pressed: true, extended: false });
-        round_trip(InputMessage::Key { scancode: 0x48, pressed: false, extended: true });
+        round_trip(InputMessage::Key {
+            scancode: 0x1E,
+            pressed: true,
+            extended: false,
+        });
+        round_trip(InputMessage::Key {
+            scancode: 0x48,
+            pressed: false,
+            extended: true,
+        });
     }
 
     #[test]
     fn encodage_petit_boutiste() {
         // MouseMove x=0x0201, y=0x0403 : version, type, puis octets faibles en tête.
-        let encoded = InputMessage::MouseMove { x: 0x0201, y: 0x0403 }.encode();
+        let encoded = InputMessage::MouseMove {
+            x: 0x0201,
+            y: 0x0403,
+        }
+        .encode();
         assert_eq!(encoded, vec![PROTOCOL_VERSION, 1, 0x01, 0x02, 0x03, 0x04]);
     }
 
@@ -295,7 +346,10 @@ mod tests {
     #[test]
     fn round_trip_mouvement_relatif() {
         round_trip(InputMessage::MouseMoveRelative { dx: 0, dy: 0 });
-        round_trip(InputMessage::MouseMoveRelative { dx: -32768, dy: 32767 });
+        round_trip(InputMessage::MouseMoveRelative {
+            dx: -32768,
+            dy: 32767,
+        });
     }
 
     #[test]

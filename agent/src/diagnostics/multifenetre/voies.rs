@@ -6,6 +6,8 @@
 //! capture substituable.
 
 use anyhow::{anyhow, Context, Result};
+use std::cell::RefCell;
+use std::rc::Rc;
 use windows::Win32::Foundation::HWND;
 use windows::Win32::Graphics::Direct3D::{D3D_DRIVER_TYPE_HARDWARE, D3D_FEATURE_LEVEL_11_0};
 use windows::Win32::Graphics::Direct3D11::{
@@ -19,8 +21,6 @@ use windows::Win32::Graphics::Gdi::{
     ReleaseDC, SelectObject, BITMAPINFO, BITMAPINFOHEADER, BI_RGB, DIB_RGB_COLORS,
 };
 use windows::Win32::Storage::Xps::PrintWindow;
-use std::cell::RefCell;
-use std::rc::Rc;
 
 use crate::capture::{CapturedFrame, DesktopCapture};
 use crate::geometry::Rect;
@@ -82,7 +82,10 @@ fn creer_texture_recadrage(device: &ID3D11Device, region: Rect) -> Result<ID3D11
         MipLevels: 1,
         ArraySize: 1,
         Format: DXGI_FORMAT_B8G8R8A8_UNORM,
-        SampleDesc: DXGI_SAMPLE_DESC { Count: 1, Quality: 0 },
+        SampleDesc: DXGI_SAMPLE_DESC {
+            Count: 1,
+            Quality: 0,
+        },
         Usage: D3D11_USAGE_DEFAULT,
         BindFlags: D3D11_BIND_RENDER_TARGET.0 as u32,
         CPUAccessFlags: 0,
@@ -193,7 +196,12 @@ impl VoieDuplication {
             .context("contexte immédiat pour les sous-recadrages partagés")?;
         Ok(Rc::new(RefCell::new(SourceDuplication {
             capture,
-            bureau: Rect { x: 0, y: 0, width: largeur, height: hauteur },
+            bureau: Rect {
+                x: 0,
+                y: 0,
+                width: largeur,
+                height: hauteur,
+            },
             contexte,
             dernier_tour: None,
             dernier_bureau: None,
@@ -201,7 +209,16 @@ impl VoieDuplication {
     }
 
     pub(super) fn nouvelle(source: Rc<RefCell<SourceDuplication>>) -> Self {
-        Self { source, region: Rect { x: 0, y: 0, width: 0, height: 0 }, texture: None }
+        Self {
+            source,
+            region: Rect {
+                x: 0,
+                y: 0,
+                width: 0,
+                height: 0,
+            },
+            texture: None,
+        }
     }
 }
 
@@ -240,7 +257,16 @@ impl VoieDeCapture for VoieDuplication {
             back: 1,
         };
         unsafe {
-            source.contexte.CopySubresourceRegion(texture, 0, 0, 0, 0, &bureau.texture, 0, Some(&box_));
+            source.contexte.CopySubresourceRegion(
+                texture,
+                0,
+                0,
+                0,
+                0,
+                &bureau.texture,
+                0,
+                Some(&box_),
+            );
         }
 
         Ok(Some(CapturedFrame {
@@ -333,7 +359,12 @@ impl VoiePrintWindow {
             device,
             context,
             hwnd: HWND::default(),
-            region: Rect { x: 0, y: 0, width: 0, height: 0 },
+            region: Rect {
+                x: 0,
+                y: 0,
+                width: 0,
+                height: 0,
+            },
             texture: None,
         }
     }
@@ -362,9 +393,8 @@ impl VoieDeCapture for VoiePrintWindow {
         let bitmap = unsafe { CreateCompatibleBitmap(ecran, largeur as i32, hauteur as i32) };
         let ancien = unsafe { SelectObject(memoire, bitmap.into()) };
 
-        let rendu =
-            unsafe { PrintWindow(self.hwnd, memoire, super::replis::PW_RENDERFULLCONTENT) }
-                .as_bool();
+        let rendu = unsafe { PrintWindow(self.hwnd, memoire, super::replis::PW_RENDERFULLCONTENT) }
+            .as_bool();
 
         let mut tampon = vec![0u8; (largeur as usize) * (hauteur as usize) * 4];
         let mut entete = BITMAPINFO {
@@ -425,7 +455,11 @@ impl VoieDeCapture for VoiePrintWindow {
             );
         }
 
-        Ok(Some(CapturedFrame { texture: texture.clone(), width: largeur, height: hauteur }))
+        Ok(Some(CapturedFrame {
+            texture: texture.clone(),
+            width: largeur,
+            height: hauteur,
+        }))
     }
 
     fn device(&self) -> ID3D11Device {

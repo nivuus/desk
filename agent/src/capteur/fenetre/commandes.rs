@@ -134,7 +134,9 @@ fn executer_commande(
         VersCapteur::PressePapierEcrire { texte } => {
             return match crate::capteur::sommeil::ecrire_le_presse_papier(&texte) {
                 Ok(()) => DepuisCapteur::Fait,
-                Err(erreur) => DepuisCapteur::Erreur { motif: format!("{erreur:#}") },
+                Err(erreur) => DepuisCapteur::Erreur {
+                    motif: format!("{erreur:#}"),
+                },
             };
         }
         VersCapteur::Attache { .. } => {
@@ -227,9 +229,10 @@ fn executer_commande(
             // Ce qui reste vrai, et pourquoi ce bras existe : rendre une
             // `Taille` plutôt qu'un `Fait`, parce que `SourceDistante::resize`
             // attend une `Taille`.
-            VersCapteur::Redimensionner { .. } => {
-                DepuisCapteur::Taille { largeur: ctx.taille.0, hauteur: ctx.taille.1 }
-            }
+            VersCapteur::Redimensionner { .. } => DepuisCapteur::Taille {
+                largeur: ctx.taille.0,
+                hauteur: ctx.taille.1,
+            },
             _ => DepuisCapteur::Fait,
         };
     };
@@ -241,10 +244,14 @@ fn executer_commande(
                     let (largeur, hauteur) = source.dimensions();
                     DepuisCapteur::Taille { largeur, hauteur }
                 }
-                Err(erreur) => DepuisCapteur::Erreur { motif: format!("{erreur:#}") },
+                Err(erreur) => DepuisCapteur::Erreur {
+                    motif: format!("{erreur:#}"),
+                },
             }
         }
-        VersCapteur::TailleEncodage { largeur, hauteur } => source.set_encode_size(largeur, hauteur),
+        VersCapteur::TailleEncodage { largeur, hauteur } => {
+            source.set_encode_size(largeur, hauteur)
+        }
         VersCapteur::Debit { bps } => source.set_bitrate(bps),
         VersCapteur::ImageCle => source.request_keyframe(),
         // Traités plus haut, avant la source, donc jamais atteints ici. Une
@@ -263,6 +270,8 @@ fn executer_commande(
     };
     match resultat {
         Ok(()) => DepuisCapteur::Fait,
-        Err(erreur) => DepuisCapteur::Erreur { motif: format!("{erreur:#}") },
+        Err(erreur) => DepuisCapteur::Erreur {
+            motif: format!("{erreur:#}"),
+        },
     }
 }

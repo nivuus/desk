@@ -6,20 +6,20 @@
 //! navigateur) et `table` (où en est chacune), tous deux en logique pure et
 //! testés sur l'hôte.
 
-pub mod enfants;
 pub mod designation;
+pub mod enfants;
 pub mod fenetres;
 #[cfg(windows)]
 pub mod hook;
 pub mod placement;
-pub mod sursis;
 pub mod reprise;
+pub mod sursis;
 // La décision PURE de reconnexion de la session de contrôle. Enfant
 // ORDINAIRE — pas de `#[path]` : ce fichier-ci n'est pas `#[cfg(windows)]`,
 // donc `cargo test --workspace` compile et exécute ses tests sur l'hôte,
 // là où `signalisation.rs` (son seul appelant) reste hors de portée.
-pub mod reprise_controle;
 pub mod protocole;
+pub mod reprise_controle;
 pub mod table;
 
 #[cfg(windows)]

@@ -61,8 +61,9 @@ pub(super) unsafe extern "system" fn debut_enumeration(
     enumeration: *const GUID,
 ) -> HRESULT {
     garde("StartDirectoryEnumeration", || {
-        let (Some(etat), Some(id)) = (unsafe { etat(donnees) }, unsafe { identifiant(enumeration) })
-        else {
+        let (Some(etat), Some(id)) = (unsafe { etat(donnees) }, unsafe {
+            identifiant(enumeration)
+        }) else {
             return E_UNEXPECTED;
         };
         // ⚠️ La session est indexée par le GUID d'ÉNUMÉRATION, jamais par le
@@ -70,7 +71,11 @@ pub(super) unsafe extern "system" fn debut_enumeration(
         // temps ouvrent deux sessions distinctes, et indexer par chemin ferait
         // que la seconde écraserait la première — l'une des deux recevrait un
         // répertoire vide (spec §7.2).
-        etat.sessions.lock().expect("verrou des sessions").entry(id).or_default();
+        etat.sessions
+            .lock()
+            .expect("verrou des sessions")
+            .entry(id)
+            .or_default();
         S_OK
     })
 }
@@ -81,14 +86,18 @@ pub(super) unsafe extern "system" fn fin_enumeration(
     enumeration: *const GUID,
 ) -> HRESULT {
     garde("EndDirectoryEnumeration", || {
-        let (Some(etat), Some(id)) = (unsafe { etat(donnees) }, unsafe { identifiant(enumeration) })
-        else {
+        let (Some(etat), Some(id)) = (unsafe { etat(donnees) }, unsafe {
+            identifiant(enumeration)
+        }) else {
             return E_UNEXPECTED;
         };
         // La session meurt ici : ses entrées ne survivent PAS à l'énumération.
         // C'est ce qui distingue une session d'un cache d'énumération, qui n'est
         // PAS livré en F1 (voir `pont::enumeration`).
-        etat.sessions.lock().expect("verrou des sessions").remove(&id);
+        etat.sessions
+            .lock()
+            .expect("verrou des sessions")
+            .remove(&id);
         S_OK
     })
 }
@@ -104,8 +113,9 @@ pub(super) unsafe extern "system" fn suite_enumeration(
     tampon: PRJ_DIR_ENTRY_BUFFER_HANDLE,
 ) -> HRESULT {
     garde("GetDirectoryEnumeration", || {
-        let (Some(etat), Some(id)) = (unsafe { etat(donnees) }, unsafe { identifiant(enumeration) })
-        else {
+        let (Some(etat), Some(id)) = (unsafe { etat(donnees) }, unsafe {
+            identifiant(enumeration)
+        }) else {
             return E_UNEXPECTED;
         };
         let Some((chemin, _)) = (unsafe { chemins_de(donnees) }) else {
@@ -163,11 +173,10 @@ pub(super) unsafe extern "system" fn suite_enumeration(
         // `dir` suivant si l'on mémorisait le résultat préparé.
         // ────────────────────────────────────────────────────────────────────
         if etat.cache_arme {
-            let memorisees = etat
-                .cache
-                .lock()
-                .ok()
-                .and_then(|mut c| c.lire(&chemin, std::time::Instant::now()).map(<[_]>::to_vec));
+            let memorisees = etat.cache.lock().ok().and_then(|mut c| {
+                c.lire(&chemin, std::time::Instant::now())
+                    .map(<[_]>::to_vec)
+            });
             if let Some(brutes) = memorisees {
                 let preparees = crate::pont::enumeration::preparer(
                     brutes,
@@ -185,13 +194,18 @@ pub(super) unsafe extern "system" fn suite_enumeration(
             }
         }
 
-        let entete = match serde_json::to_string(&entetes::Chemin { chemin: chemin.clone() }) {
+        let entete = match serde_json::to_string(&entetes::Chemin {
+            chemin: chemin.clone(),
+        }) {
             Ok(entete) => entete,
             Err(_) => return E_UNEXPECTED,
         };
         let demandee = etat.demander(
             unsafe { (*donnees).CommandId },
-            Attendue::Lister { chemin, enumeration: id },
+            Attendue::Lister {
+                chemin,
+                enumeration: id,
+            },
             std::time::Instant::now() + DELAI_LISTER,
             ContexteProjFs::Enumeration {
                 tampon: TamponEntrees(tampon),

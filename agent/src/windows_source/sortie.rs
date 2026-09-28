@@ -272,7 +272,10 @@ pub fn taille_pour_viewport(demande: (u32, u32), borne: (u32, u32)) -> (u32, u32
     // borne (`round` monte). Le `min` final est un filet : `region_de_sortie`
     // doit rester DANS la texture, et une région qui déborde ferait échouer
     // le recadrage.
-    (mets(dl).min(borne.0 & !1).max(2), mets(dh).min(borne.1 & !1).max(2))
+    (
+        mets(dl).min(borne.0 & !1).max(2),
+        mets(dh).min(borne.1 & !1).max(2),
+    )
 }
 
 /// Taille maximale qu'une sortie virtuelle prendra sur demande de viewport.
@@ -351,7 +354,12 @@ pub fn region_de_sortie(largeur: u32, hauteur: u32) -> Option<Rect> {
     if largeur < 2 || hauteur < 2 {
         return None;
     }
-    Some(Rect { x: 0, y: 0, width: largeur, height: hauteur })
+    Some(Rect {
+        x: 0,
+        y: 0,
+        width: largeur,
+        height: hauteur,
+    })
 }
 
 // Les tests d'hôte de ce module vivent dans `sortie/tests.rs`, extrait là
@@ -452,8 +460,13 @@ impl WindowsSource {
         })?;
         let (width, height) = (region.width, region.height);
 
-        let mut encoder =
-            H264Encoder::new(capture.device(), (width, height), (width, height), fps, bitrate)?;
+        let mut encoder = H264Encoder::new(
+            capture.device(),
+            (width, height),
+            (width, height),
+            fps,
+            bitrate,
+        )?;
         encoder.request_keyframe()?;
 
         Ok(Self::depuis_pieces(

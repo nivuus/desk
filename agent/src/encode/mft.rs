@@ -172,9 +172,8 @@ impl EncodeurMft {
         let converter = fabrique::create_color_converter(&device_manager, capture, encode, fps)?;
         let converter_stream_info = unsafe { converter.GetOutputStreamInfo(0) }
             .context("interrogation du flux de sortie du convertisseur")?;
-        let converter_provides_samples = converter_stream_info.dwFlags
-            & MFT_OUTPUT_STREAM_PROVIDES_SAMPLES.0 as u32
-            != 0;
+        let converter_provides_samples =
+            converter_stream_info.dwFlags & MFT_OUTPUT_STREAM_PROVIDES_SAMPLES.0 as u32 != 0;
         tracing::info!(
             converter_provides_samples,
             "convertisseur BGRA→NV12 (Video Processor MFT) configuré"
@@ -230,10 +229,9 @@ impl EncodeurMft {
         self.telemetry
             .skipped_busy
             .store(self.skipped_busy, Ordering::Relaxed);
-        self.telemetry.awaiting_drain.store(
-            self.converter_output_pending as u64,
-            Ordering::Relaxed,
-        );
+        self.telemetry
+            .awaiting_drain
+            .store(self.converter_output_pending as u64, Ordering::Relaxed);
     }
 
     /// Occupe la file de travail imposée à la MFT encodeur pendant `duree`.

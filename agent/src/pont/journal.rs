@@ -185,7 +185,9 @@ fn analyser(ligne: &str) -> Option<Entree> {
                 octets: octets.parse().ok()?,
             })
         }
-        "-" => Some(Entree::Retrait { chemin: decoder(reste)? }),
+        "-" => Some(Entree::Retrait {
+            chemin: decoder(reste)?,
+        }),
         _ => None,
     }
 }

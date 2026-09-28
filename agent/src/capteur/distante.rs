@@ -34,22 +34,36 @@ pub struct Rattachee {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Recu {
     Image(AccessUnit),
-    Etat { vivante: bool, epuisee: bool, largeur: u32, hauteur: u32 },
+    Etat {
+        vivante: bool,
+        epuisee: bool,
+        largeur: u32,
+        hauteur: u32,
+    },
     /// Changement de sommeil poussé par le capteur, non sollicité. Retenu par
     /// `SourceDistante::sommeil` jusqu'à ce que `sommeil_a_annoncer` le
     /// consomme.
-    Sommeil { endormie: bool, raison: String },
+    Sommeil {
+        endormie: bool,
+        raison: String,
+    },
     /// Part du budget de débit accordée par le capteur, poussée non
     /// sollicitée. Retenue par `SourceDistante::part` jusqu'à ce que
     /// `part_a_appliquer` la consomme.
-    Part { bps: u32 },
+    Part {
+        bps: u32,
+    },
     /// Ordre audio poussé par le capteur, non sollicité. Retenu par
     /// `SourceDistante::audio` jusqu'à ce que `audio_a_appliquer` le consomme.
-    Audio { actif: bool },
+    Audio {
+        actif: bool,
+    },
     /// Changement de plein écran poussé par le capteur, non sollicité. Retenu
     /// par `SourceDistante::plein_ecran` jusqu'à ce que
     /// `plein_ecran_a_annoncer` le consomme.
-    PleinEcran { actif: bool },
+    PleinEcran {
+        actif: bool,
+    },
     /// Le presse-papier de la VM a changé (sous-bloc P1). Poussé non
     /// sollicité, **au changement seulement** : c'est le capteur qui détient
     /// le presse-papier et qui sonde son numéro de séquence.
@@ -60,11 +74,16 @@ pub enum Recu {
     /// bandeau du navigateur puisse la dire. Retenu par
     /// `SourceDistante::presse_papier` jusqu'à ce que
     /// `presse_papier_a_annoncer` le consomme.
-    PressePapier { texte: Option<String>, octets: u32 },
+    PressePapier {
+        texte: Option<String>,
+        octets: u32,
+    },
     /// La couleur d'accent de la fenêtre Windows, poussée par le capteur au
     /// changement — **première lecture comprise**. Retenue dans
     /// `SourceDistante::accent` jusqu'à ce que `accent_a_annoncer` la consomme.
-    Accent { couleur: String },
+    Accent {
+        couleur: String,
+    },
 }
 
 pub struct SourceDistante {

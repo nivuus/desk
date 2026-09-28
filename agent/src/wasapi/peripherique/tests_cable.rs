@@ -9,7 +9,10 @@
 use super::{choisir, demande_cable, Choix, Critere, Peripherique, DESIGNATION_CABLE};
 
 fn p(nom: &str, id: &str) -> Peripherique {
-    Peripherique { nom: nom.to_string(), identifiant: id.to_string() }
+    Peripherique {
+        nom: nom.to_string(),
+        identifiant: id.to_string(),
+    }
 }
 
 /// L'inventaire **relevé sur la VM le 20 août 2026** par `micro-format-e1.ps1`
@@ -44,7 +47,10 @@ fn inventaire_de_la_vm() -> Vec<Peripherique> {
 fn la_designation_integree_elit_le_cable_de_la_VM() {
     let inv = inventaire_de_la_vm();
     match choisir(&inv, Some(DESIGNATION_CABLE)) {
-        Choix::Elu { peripherique, critere } => {
+        Choix::Elu {
+            peripherique,
+            critere,
+        } => {
             assert_eq!(peripherique.nom, "Haut-parleurs (VB-Audio Virtual Cable)");
             assert_eq!(critere, Critere::NomPartiel);
         }
@@ -53,7 +59,10 @@ fn la_designation_integree_elit_le_cable_de_la_VM() {
 
     // Et la preuve que le contrôle peut échouer : la désignation de la spec.
     assert!(
-        matches!(choisir(&inv, Some("CABLE Input")), Choix::Introuvable { .. }),
+        matches!(
+            choisir(&inv, Some("CABLE Input")),
+            Choix::Introuvable { .. }
+        ),
         "« CABLE Input » n'est le nom d'aucun rendu de cette VM"
     );
 }

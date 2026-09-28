@@ -88,7 +88,10 @@ pub(super) fn completer(etat: &Etat, commande: Option<i32>, resultat: HRESULT) {
         return;
     };
     let Some(Contexte(contexte)) = etat.contexte() else {
-        tracing::warn!(commande, "complétion impossible : aucun contexte de virtualisation");
+        tracing::warn!(
+            commande,
+            "complétion impossible : aucun contexte de virtualisation"
+        );
         return;
     };
     // SÛRETÉ : contexte valide tant que la virtualisation tourne — le fil du
@@ -113,7 +116,10 @@ pub(super) fn completer_enumeration(
     resultat: HRESULT,
 ) {
     let Some(Contexte(contexte)) = etat.contexte() else {
-        tracing::warn!(commande, "complétion d'énumération impossible : aucun contexte");
+        tracing::warn!(
+            commande,
+            "complétion d'énumération impossible : aucun contexte"
+        );
         return;
     };
     let parametres = PRJ_COMPLETE_COMMAND_EXTENDED_PARAMETERS {
@@ -126,9 +132,8 @@ pub(super) fn completer_enumeration(
     };
     // SÛRETÉ : `parametres` vit jusqu'à la fin de l'expression, donc au-delà
     // de l'appel.
-    let issue = unsafe {
-        (etat.projfs.completer_commande)(contexte, commande, resultat, &parametres)
-    };
+    let issue =
+        unsafe { (etat.projfs.completer_commande)(contexte, commande, resultat, &parametres) };
     if issue.is_err() {
         tracing::warn!(commande, %issue, "PrjCompleteCommand (énumération) refusée");
     }
@@ -151,7 +156,11 @@ fn info_de_base(repertoire: bool, taille: u64, modifie_ms: i64) -> PRJ_FILE_BASI
         LastAccessTime: horodatage,
         LastWriteTime: horodatage,
         ChangeTime: horodatage,
-        FileAttributes: if repertoire { ATTRIBUT_REPERTOIRE } else { ATTRIBUT_NORMAL },
+        FileAttributes: if repertoire {
+            ATTRIBUT_REPERTOIRE
+        } else {
+            ATTRIBUT_NORMAL
+        },
     }
 }
 
@@ -164,7 +173,10 @@ pub(super) fn ecrire_marqueur(
     modifie_ms: i64,
 ) -> HRESULT {
     let Some(Contexte(contexte)) = etat.contexte() else {
-        return HRESULT(etat.compteurs.rendre(crate::pont::erreurs::Erreur::Inattendue));
+        return HRESULT(
+            etat.compteurs
+                .rendre(crate::pont::erreurs::Erreur::Inattendue),
+        );
     };
     let info = PRJ_PLACEHOLDER_INFO {
         FileBasicInfo: info_de_base(repertoire, taille, modifie_ms),
@@ -203,11 +215,20 @@ pub(super) fn ecrire_marqueur(
 /// charger `PrjGetVirtualizationInstanceInfo` et arrondir. Legs déclaré.
 pub(super) fn ecrire_donnees(etat: &Etat, flux: GUID, position: u64, charge: &[u8]) -> HRESULT {
     let Some(Contexte(contexte)) = etat.contexte() else {
-        return HRESULT(etat.compteurs.rendre(crate::pont::erreurs::Erreur::Inattendue));
+        return HRESULT(
+            etat.compteurs
+                .rendre(crate::pont::erreurs::Erreur::Inattendue),
+        );
     };
     let Some(tampon) = TamponAligne::allouer(&etat.projfs, contexte, charge.len()) else {
-        tracing::warn!(octets = charge.len(), "PrjAllocateAlignedBuffer a rendu NULL");
-        return HRESULT(etat.compteurs.rendre(crate::pont::erreurs::Erreur::Inattendue));
+        tracing::warn!(
+            octets = charge.len(),
+            "PrjAllocateAlignedBuffer a rendu NULL"
+        );
+        return HRESULT(
+            etat.compteurs
+                .rendre(crate::pont::erreurs::Erreur::Inattendue),
+        );
     };
     // SÛRETÉ : `tampon.pointeur` est non nul et fait au moins `charge.len()`
     // octets ; les deux régions ne se recouvrent pas.
@@ -233,15 +254,22 @@ pub(super) fn ecrire_donnees(etat: &Etat, flux: GUID, position: u64, charge: &[u
 /// Rend le `HRESULT` de complétion : `S_OK` dans les deux cas. **Un tampon
 /// plein n'est pas une erreur** — la suite part au prochain
 /// `GetDirectoryEnumeration`, sur la même session.
-pub(super) fn remplir(etat: &Etat, session: &mut Session, tampon: PRJ_DIR_ENTRY_BUFFER_HANDLE) -> HRESULT {
+pub(super) fn remplir(
+    etat: &Etat,
+    session: &mut Session,
+    tampon: PRJ_DIR_ENTRY_BUFFER_HANDLE,
+) -> HRESULT {
     while let Some(entree) = session.prochaine() {
-        let nom: Vec<u16> = entree.nom.encode_utf16().chain(std::iter::once(0)).collect();
+        let nom: Vec<u16> = entree
+            .nom
+            .encode_utf16()
+            .chain(std::iter::once(0))
+            .collect();
         let info = info_de_base(entree.repertoire, entree.taille, entree.modifie_ms);
         // SÛRETÉ : `nom` est terminé par un nul et vit jusqu'à la fin du tour ;
         // `info` de même. Transcription du `link!` de `mod.rs:55`.
-        let issue = unsafe {
-            (etat.projfs.remplir_tampon_entrees)(PCWSTR(nom.as_ptr()), &info, tampon)
-        };
+        let issue =
+            unsafe { (etat.projfs.remplir_tampon_entrees)(PCWSTR(nom.as_ptr()), &info, tampon) };
         if issue == TAMPON_PLEIN {
             // ⚠️ **Ne PAS avancer** : l'entrée n'a pas été écrite, et avancer
             // la perdrait pour toujours — silencieusement, puisque

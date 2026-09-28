@@ -236,7 +236,11 @@ pub fn tourner(
             // canal comme dans le journal des écarts.
             let mut applications = diff.apparues;
             applications.extend(diff.modifiees);
-            canal_emission(VersLaPlateforme::catalogue(false, applications, diff.disparues));
+            canal_emission(VersLaPlateforme::catalogue(
+                false,
+                applications,
+                diff.disparues,
+            ));
         }
 
         // Attendre la période, en restant réactif aux ordres, aux
@@ -263,7 +267,10 @@ pub fn tourner(
             // cela, le verdict d'une installation de dix secondes arriverait
             // jusqu'à trente secondes plus tard, et l'utilisateur verrait une
             // barre finie devant un état « en cours ».
-            if partage.reconcilier.load(std::sync::atomic::Ordering::SeqCst) {
+            if partage
+                .reconcilier
+                .load(std::sync::atomic::Ordering::SeqCst)
+            {
                 declencheur = Declencheur::Installation;
                 break;
             }

@@ -127,7 +127,10 @@ fn meme_variante(a: &Message, b: &Message) -> bool {
 /// Dépose un message, en appliquant la politique de sa variante.
 pub(crate) fn deposer(file: &mut VecDeque<Message>, message: Message) -> Depot {
     if coalescable(&message) {
-        if let Some(place) = file.iter().position(|en_attente| meme_variante(en_attente, &message)) {
+        if let Some(place) = file
+            .iter()
+            .position(|en_attente| meme_variante(en_attente, &message))
+        {
             file[place] = message;
             return Depot::Coalescee;
         }
@@ -236,7 +239,9 @@ pub(crate) fn canal_de_session(session: &str) -> (EmetteurSession, ReceveurSessi
         session: session.to_string(),
     });
     (
-        EmetteurSession { partage: Arc::clone(&partage) },
+        EmetteurSession {
+            partage: Arc::clone(&partage),
+        },
         ReceveurSession { partage },
     )
 }
@@ -264,7 +269,9 @@ fn sous_verrou<T>(
     verrou: &Mutex<VecDeque<Message>>,
     action: impl FnOnce(&mut VecDeque<Message>) -> T,
 ) -> T {
-    let mut file = verrou.lock().unwrap_or_else(|empoisonne| empoisonne.into_inner());
+    let mut file = verrou
+        .lock()
+        .unwrap_or_else(|empoisonne| empoisonne.into_inner());
     action(&mut file)
 }
 

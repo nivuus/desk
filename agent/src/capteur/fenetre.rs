@@ -329,8 +329,12 @@ impl Fenetre {
             // Refait à chaque tour : la taille retenue peut changer au réveil.
             // Ne contient que des copies et des emprunts extérieurs à `self`,
             // donc n'entrave aucun `&mut self`.
-            let ctx =
-                Contexte { session, taille: (self.largeur, self.hauteur), commandes, reponses };
+            let ctx = Contexte {
+                session,
+                taille: (self.largeur, self.hauteur),
+                commandes,
+                reponses,
+            };
 
             // 0. Les ordres du vivier. Avant tout le reste : dormir libère des
             //    ressources, et il n'y a aucune raison d'encoder une image de
@@ -404,9 +408,12 @@ impl Fenetre {
                         largeur: etat.2,
                         hauteur: etat.3,
                     };
-                    if let Fin::Terminer(motif) =
-                        deposer(AEcrire::Etat(message), ecritures, self.source.as_mut(), &ctx)
-                    {
+                    if let Fin::Terminer(motif) = deposer(
+                        AEcrire::Etat(message),
+                        ecritures,
+                        self.source.as_mut(),
+                        &ctx,
+                    ) {
                         break motif;
                     }
                     if !etat.0 || etat.1 {
@@ -432,9 +439,12 @@ impl Fenetre {
                     if let Some(actif) = suivi_bordure.observer(style) {
                         tracing::info!(%session, actif, "plein ecran de la fenetre Windows");
                         let message = DepuisCapteur::PleinEcran { actif };
-                        if let Fin::Terminer(motif) =
-                            deposer(AEcrire::Etat(message), ecritures, self.source.as_mut(), &ctx)
-                        {
+                        if let Fin::Terminer(motif) = deposer(
+                            AEcrire::Etat(message),
+                            ecritures,
+                            self.source.as_mut(),
+                            &ctx,
+                        ) {
                             break motif;
                         }
                     }

@@ -167,17 +167,15 @@ pub async fn run_signaling(
                         }
                     }
                 }
-                Some("ice-config") => {
-                    match analyser_config_ice(&parsed) {
-                        Some(config) => {
-                            tracing::info!(serveur = %config.serveur, "configuration TURN reçue");
-                            let _ = ice_tx.send(Some(config));
-                        }
-                        None => tracing::warn!(
-                            "configuration ICE reçue mais inexploitable : session sans relais"
-                        ),
+                Some("ice-config") => match analyser_config_ice(&parsed) {
+                    Some(config) => {
+                        tracing::info!(serveur = %config.serveur, "configuration TURN reçue");
+                        let _ = ice_tx.send(Some(config));
                     }
-                }
+                    None => tracing::warn!(
+                        "configuration ICE reçue mais inexploitable : session sans relais"
+                    ),
+                },
                 Some("peer-gone") => tracing::info!("le client s'est déconnecté"),
                 Some("error") => {
                     // 🔴 `retryApresS` N'EST PORTÉ QUE SUR LE REFUS DE VOLUME
@@ -270,7 +268,9 @@ pub async fn run_signaling(
 /// `plateforme::repli` pour le canal `/agent`) continue de croître par
 /// ailleurs, donc cela ne dégénère jamais en martèlement.
 pub async fn honorer_retry_suggere(retry_apres_s: &watch::Receiver<Option<u64>>) {
-    let Some(secondes) = *retry_apres_s.borrow() else { return };
+    let Some(secondes) = *retry_apres_s.borrow() else {
+        return;
+    };
     let bornees = secondes.min(crate::plateforme::repli::REPLI_MAX_MS / 1000);
     tracing::info!(
         secondes = bornees,
@@ -316,7 +316,9 @@ mod tests {
 
     /// Rend l'URL d'un faux signaling et le premier message reçu.
     async fn premiere_poignee_de_main(jeton: Option<&str>) -> String {
-        let ecoute = TcpListener::bind("127.0.0.1:0").await.expect("écoute locale");
+        let ecoute = TcpListener::bind("127.0.0.1:0")
+            .await
+            .expect("écoute locale");
         let port = ecoute.local_addr().expect("adresse locale").port();
         let (tx, rx) = tokio::sync::oneshot::channel();
         tokio::spawn(async move {
@@ -358,7 +360,10 @@ mod tests {
     #[tokio::test]
     async fn sans_jeton_la_poignee_de_main_le_dit_au_lieu_de_l_inventer() {
         let poignee = premiere_poignee_de_main(None).await;
-        assert_eq!(poignee, r#"{"jeton":null,"role":"agent","session":"P:w-1"}"#);
+        assert_eq!(
+            poignee,
+            r#"{"jeton":null,"role":"agent","session":"P:w-1"}"#
+        );
     }
 
     #[test]
@@ -390,7 +395,10 @@ mod tests {
     /// `url_du_relais` n'a pas contaminé `url_du_canal`.
     #[test]
     fn le_canal_agent_n_est_pas_affecte() {
-        assert_eq!(crate::plateforme::url_du_canal("ws://h:8080"), "ws://h:8080/agent");
+        assert_eq!(
+            crate::plateforme::url_du_canal("ws://h:8080"),
+            "ws://h:8080/agent"
+        );
     }
 
     /// 🔴 `SIGNALING_URL` EST LA BASE DU SERVICE, JAMAIS L'URL DU RELAIS.
@@ -414,7 +422,10 @@ mod tests {
     #[test]
     fn une_base_portant_deja_signal_casse_le_canal_agent() {
         // La base JUSTE : `url_du_canal` y ajoute `/agent`.
-        assert_eq!(crate::plateforme::url_du_canal("ws://h:8080"), "ws://h:8080/agent");
+        assert_eq!(
+            crate::plateforme::url_du_canal("ws://h:8080"),
+            "ws://h:8080/agent"
+        );
         // 🔴 LA BASE FAUSSE, celle qu'aucun test n'éprouvait : elle porte déjà
         // le suffixe du relais, et l'enrôlement part alors vers un chemin qui
         // n'existe pas côté plateforme. C'est CE cas que le contrat fixe ici.
@@ -448,7 +459,10 @@ mod tests {
         let (_tx, rx) = watch::channel(Some(5u64));
         let debut = tokio::time::Instant::now();
         honorer_retry_suggere(&rx).await;
-        assert_eq!(tokio::time::Instant::now() - debut, std::time::Duration::from_secs(5));
+        assert_eq!(
+            tokio::time::Instant::now() - debut,
+            std::time::Duration::from_secs(5)
+        );
     }
 
     /// 🔴 Le test qui compte : sans ce plafond, un relais qui enverrait une

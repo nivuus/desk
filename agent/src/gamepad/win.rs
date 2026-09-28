@@ -63,18 +63,13 @@ impl VirtualPad {
     /// session (voir `spawn_connect` plus bas), jamais directement
     /// depuis la boucle de `Session::run`.
     pub fn connect() -> Result<Self> {
-        let client =
-            vigem_client::Client::connect().context("connexion au pilote ViGEmBus")?;
-        let mut target = vigem_client::Xbox360Wired::new(
-            client,
-            vigem_client::TargetId::XBOX360_WIRED,
-        );
+        let client = vigem_client::Client::connect().context("connexion au pilote ViGEmBus")?;
+        let mut target =
+            vigem_client::Xbox360Wired::new(client, vigem_client::TargetId::XBOX360_WIRED);
         target
             .plugin()
             .context("branchement de la manette virtuelle")?;
-        target
-            .wait_ready()
-            .context("attente de disponibilité")?;
+        target.wait_ready().context("attente de disponibilité")?;
 
         // État neutre : cette première écriture ne sert qu'à confirmer
         // que la cible accepte réellement un `update()`, pas à refléter
@@ -91,8 +86,7 @@ impl VirtualPad {
                 // etc.) est définitive, retenter ne changerait rien et
                 // ferait perdre jusqu'à 5 s pour rien.
                 Err(
-                    e @ (vigem_client::Error::WinError(259)
-                    | vigem_client::Error::TargetNotReady),
+                    e @ (vigem_client::Error::WinError(259) | vigem_client::Error::TargetNotReady),
                 ) if tentatives < TENTATIVES_MAX => {
                     tentatives += 1;
                     tracing::warn!(
@@ -113,7 +107,10 @@ impl VirtualPad {
             tracing::info!(tentatives, "update() a fini par réussir après attente");
         }
         tracing::info!("manette virtuelle branchée");
-        Ok(Self { target, derniere_seq: None })
+        Ok(Self {
+            target,
+            derniere_seq: None,
+        })
     }
 
     /// Applique un état reçu du client à la manette virtuelle.

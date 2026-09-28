@@ -63,9 +63,24 @@ pub struct RegisterResource {
     pub reserved2: [*mut c_void; 61],
 }
 forme!(RegisterResource, 1536, 8, "NV_ENC_REGISTER_RESOURCE");
-deport!(RegisterResource, resource_to_register, 24, "NV_ENC_REGISTER_RESOURCE.resourceToRegister");
-deport!(RegisterResource, chroma_offset, 56, "NV_ENC_REGISTER_RESOURCE.chromaOffset");
-deport!(RegisterResource, reserved2, 1048, "NV_ENC_REGISTER_RESOURCE.reserved2");
+deport!(
+    RegisterResource,
+    resource_to_register,
+    24,
+    "NV_ENC_REGISTER_RESOURCE.resourceToRegister"
+);
+deport!(
+    RegisterResource,
+    chroma_offset,
+    56,
+    "NV_ENC_REGISTER_RESOURCE.chromaOffset"
+);
+deport!(
+    RegisterResource,
+    reserved2,
+    1048,
+    "NV_ENC_REGISTER_RESOURCE.reserved2"
+);
 
 /// `NV_ENC_MAP_INPUT_RESOURCE` — projette une ressource enregistrée pour une
 /// image, et rend le pointeur d'entrée que `PicParams` attend.
@@ -86,9 +101,24 @@ pub struct MapInputResource {
     pub reserved2: [*mut c_void; 63],
 }
 forme!(MapInputResource, 1544, 8, "NV_ENC_MAP_INPUT_RESOURCE");
-deport!(MapInputResource, registered_resource, 16, "NV_ENC_MAP_INPUT_RESOURCE.registeredResource");
-deport!(MapInputResource, mapped_resource, 24, "NV_ENC_MAP_INPUT_RESOURCE.mappedResource");
-deport!(MapInputResource, reserved2, 1040, "NV_ENC_MAP_INPUT_RESOURCE.reserved2");
+deport!(
+    MapInputResource,
+    registered_resource,
+    16,
+    "NV_ENC_MAP_INPUT_RESOURCE.registeredResource"
+);
+deport!(
+    MapInputResource,
+    mapped_resource,
+    24,
+    "NV_ENC_MAP_INPUT_RESOURCE.mappedResource"
+);
+deport!(
+    MapInputResource,
+    reserved2,
+    1040,
+    "NV_ENC_MAP_INPUT_RESOURCE.reserved2"
+);
 
 /// `NV_ENC_CREATE_BITSTREAM_BUFFER` — le tampon où l'encodeur dépose le flux.
 #[repr(C)]
@@ -107,9 +137,24 @@ pub struct CreateBitstreamBuffer {
     pub reserved1: [u32; 58],
     pub reserved2: [*mut c_void; 64],
 }
-forme!(CreateBitstreamBuffer, 776, 8, "NV_ENC_CREATE_BITSTREAM_BUFFER");
-deport!(CreateBitstreamBuffer, bitstream_buffer, 16, "NV_ENC_CREATE_BITSTREAM_BUFFER.bitstreamBuffer");
-deport!(CreateBitstreamBuffer, reserved2, 264, "NV_ENC_CREATE_BITSTREAM_BUFFER.reserved2");
+forme!(
+    CreateBitstreamBuffer,
+    776,
+    8,
+    "NV_ENC_CREATE_BITSTREAM_BUFFER"
+);
+deport!(
+    CreateBitstreamBuffer,
+    bitstream_buffer,
+    16,
+    "NV_ENC_CREATE_BITSTREAM_BUFFER.bitstreamBuffer"
+);
+deport!(
+    CreateBitstreamBuffer,
+    reserved2,
+    264,
+    "NV_ENC_CREATE_BITSTREAM_BUFFER.reserved2"
+);
 
 /// `NV_ENC_CODEC_PIC_PARAMS`, réduite à son encombrement.
 ///
@@ -136,7 +181,12 @@ pub struct MeHintCounts {
     pub drapeaux: u32,
     pub reserved1: [u32; 3],
 }
-forme!(MeHintCounts, 16, 4, "NVENC_EXTERNAL_ME_HINT_COUNTS_PER_BLOCKTYPE (tampons)");
+forme!(
+    MeHintCounts,
+    16,
+    4,
+    "NVENC_EXTERNAL_ME_HINT_COUNTS_PER_BLOCKTYPE (tampons)"
+);
 
 /// `NV_ENC_PIC_PARAMS` — une image à encoder.
 #[repr(C)]
@@ -179,8 +229,18 @@ pub struct PicParams {
 }
 forme!(PicParams, 3360, 8, "NV_ENC_PIC_PARAMS");
 deport!(PicParams, input_buffer, 40, "NV_ENC_PIC_PARAMS.inputBuffer");
-deport!(PicParams, codec_pic_params, 80, "NV_ENC_PIC_PARAMS.codecPicParams");
-deport!(PicParams, qp_delta_map, 1712, "NV_ENC_PIC_PARAMS.qpDeltaMap");
+deport!(
+    PicParams,
+    codec_pic_params,
+    80,
+    "NV_ENC_PIC_PARAMS.codecPicParams"
+);
+deport!(
+    PicParams,
+    qp_delta_map,
+    1712,
+    "NV_ENC_PIC_PARAMS.qpDeltaMap"
+);
 deport!(PicParams, reserved3, 1768, "NV_ENC_PIC_PARAMS.reserved3");
 deport!(PicParams, reserved6, 2904, "NV_ENC_PIC_PARAMS.reserved6");
 
@@ -234,8 +294,33 @@ pub struct LockBitstream {
     pub reserved_internal: [u32; 8],
 }
 forme!(LockBitstream, 1544, 8, "NV_ENC_LOCK_BITSTREAM");
-deport!(LockBitstream, bitstream_size_in_bytes, 36, "NV_ENC_LOCK_BITSTREAM.bitstreamSizeInBytes");
-deport!(LockBitstream, bitstream_buffer_ptr, 56, "NV_ENC_LOCK_BITSTREAM.bitstreamBufferPtr");
-deport!(LockBitstream, picture_type, 64, "NV_ENC_LOCK_BITSTREAM.pictureType");
-deport!(LockBitstream, reserved2, 1008, "NV_ENC_LOCK_BITSTREAM.reserved2");
-deport!(LockBitstream, reserved_internal, 1512, "NV_ENC_LOCK_BITSTREAM.reservedInternal");
+deport!(
+    LockBitstream,
+    bitstream_size_in_bytes,
+    36,
+    "NV_ENC_LOCK_BITSTREAM.bitstreamSizeInBytes"
+);
+deport!(
+    LockBitstream,
+    bitstream_buffer_ptr,
+    56,
+    "NV_ENC_LOCK_BITSTREAM.bitstreamBufferPtr"
+);
+deport!(
+    LockBitstream,
+    picture_type,
+    64,
+    "NV_ENC_LOCK_BITSTREAM.pictureType"
+);
+deport!(
+    LockBitstream,
+    reserved2,
+    1008,
+    "NV_ENC_LOCK_BITSTREAM.reserved2"
+);
+deport!(
+    LockBitstream,
+    reserved_internal,
+    1512,
+    "NV_ENC_LOCK_BITSTREAM.reservedInternal"
+);

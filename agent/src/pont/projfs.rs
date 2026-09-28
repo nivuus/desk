@@ -252,11 +252,18 @@ impl Virtualisation {
             // SÛRETÉ : `confie` vient d'`Arc::into_raw` juste au-dessus et n'a
             // été rendu à personne d'autre.
             drop(unsafe { Arc::from_raw(confie) });
-            bail!("PrjStartVirtualizing sur « {} » : {issue}", racine.display());
+            bail!(
+                "PrjStartVirtualizing sur « {} » : {issue}",
+                racine.display()
+            );
         }
         *etat.contexte.lock().expect("verrou du contexte") = Some(Contexte(contexte));
         tracing::info!(racine = %racine.display(), "racine de virtualisation ProjFS démarrée");
-        Ok(Self { etat, confie, racine })
+        Ok(Self {
+            etat,
+            confie,
+            racine,
+        })
     }
 
     /// L'état partagé, pour le fil du pont.
@@ -302,7 +309,9 @@ impl Drop for Virtualisation {
         let restantes = match self.etat.table.lock() {
             Ok(mut table) => table.vider(),
             Err(empoisonne) => {
-                tracing::error!("verrou de la table empoisonné à l'arrêt : la table est vidée quand même");
+                tracing::error!(
+                    "verrou de la table empoisonné à l'arrêt : la table est vidée quand même"
+                );
                 empoisonne.into_inner().vider()
             }
         };
@@ -327,12 +336,7 @@ impl Drop for Virtualisation {
             // étendus, ce que l'enveloppe de windows-rs exprime par un
             // `Option::None` transformé en pointeur nul (`mod.rs:14`).
             let issue = unsafe {
-                (self.etat.projfs.completer_commande)(
-                    contexte,
-                    *commande,
-                    echec,
-                    std::ptr::null(),
-                )
+                (self.etat.projfs.completer_commande)(contexte, *commande, echec, std::ptr::null())
             };
             if issue.is_err() {
                 tracing::warn!(commande, correlation, %issue, "complétion d'arrêt refusée");
@@ -358,5 +362,3 @@ impl Drop for Virtualisation {
         drop(unsafe { Arc::from_raw(self.confie) });
     }
 }
-
-

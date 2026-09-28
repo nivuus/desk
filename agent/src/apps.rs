@@ -295,7 +295,14 @@ mod tests {
         // L'ACTIVER la couperait. Les deux erreurs se compensent au point que
         // personne ne les verrait sans ce test.
         assert!(desarme(Some("0")));
-        for valeur in [None, Some(""), Some("1"), Some("00"), Some("0 "), Some("false")] {
+        for valeur in [
+            None,
+            Some(""),
+            Some("1"),
+            Some("00"),
+            Some("0 "),
+            Some("false"),
+        ] {
             assert!(!desarme(valeur), "{valeur:?} ne doit PAS désarmer");
         }
     }

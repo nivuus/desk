@@ -21,7 +21,9 @@
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-use crate::micro::{frequence_par_passages_a_zero, CompteursMicro, LecteurMicro, PuitsMicro, TrameMicro};
+use crate::micro::{
+    frequence_par_passages_a_zero, CompteursMicro, LecteurMicro, PuitsMicro, TrameMicro,
+};
 use crate::opus::SAMPLE_RATE_HZ;
 
 /// Période de réveil du consommateur. 10 ms est la granularité usuelle d'un
@@ -116,7 +118,11 @@ pub(super) struct Fenetre {
 
 impl Fenetre {
     pub(super) fn new(hz: u32) -> Self {
-        Self { hz, mono: Vec::with_capacity(hz as usize), crete: 0.0 }
+        Self {
+            hz,
+            mono: Vec::with_capacity(hz as usize),
+            crete: 0.0,
+        }
     }
 
     /// Absorbe un tampon stéréo entrelacé. Rend un relevé — et repart à zéro —

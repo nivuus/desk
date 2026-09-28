@@ -148,7 +148,10 @@ mod tests {
         let t0 = Instant::now();
         let mut limiteur = LimiteurVibration::new();
         limiteur.observer(t0, (10, 0));
-        assert_eq!(limiteur.observer(t0 + Duration::from_millis(5), (20, 0)), None);
+        assert_eq!(
+            limiteur.observer(t0 + Duration::from_millis(5), (20, 0)),
+            None
+        );
         assert_eq!(limiteur.echu(t0 + Duration::from_millis(10)), None);
         assert_eq!(limiteur.echu(t0 + PERIODE_MIN), Some((20, 0)));
     }

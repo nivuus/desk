@@ -12,8 +12,8 @@ use windows::Win32::Foundation::E_NOTIMPL;
 use windows::Win32::Media::MediaFoundation::{
     IMFAsyncCallback, IMFAsyncCallback_Impl, IMFAsyncResult, IMFRealTimeClientEx, IMFShutdown,
     IMFTransform, MFAllocateSerialWorkQueue, MFPutWorkItem, MFUnlockWorkQueue,
-    MFASYNC_CALLBACK_QUEUE_MULTITHREADED, MFSHUTDOWN_COMPLETED,
-    MFT_MESSAGE_NOTIFY_END_OF_STREAM, MFT_MESSAGE_NOTIFY_END_STREAMING, MFT_MESSAGE_TYPE,
+    MFASYNC_CALLBACK_QUEUE_MULTITHREADED, MFSHUTDOWN_COMPLETED, MFT_MESSAGE_NOTIFY_END_OF_STREAM,
+    MFT_MESSAGE_NOTIFY_END_STREAMING, MFT_MESSAGE_TYPE,
 };
 
 /// Met au repos les deux MFT d'un encodeur, dans l'ordre, avant que leurs
@@ -74,10 +74,30 @@ pub(super) fn mettre_au_repos(
     file_encodeur: &FileMft,
 ) {
     // Fin de flux : inchangé, c'est ce que faisait déjà `Drop`.
-    message(convertisseur, "convertisseur", "END_OF_STREAM", MFT_MESSAGE_NOTIFY_END_OF_STREAM);
-    message(convertisseur, "convertisseur", "END_STREAMING", MFT_MESSAGE_NOTIFY_END_STREAMING);
-    message(encodeur, "encodeur", "END_OF_STREAM", MFT_MESSAGE_NOTIFY_END_OF_STREAM);
-    message(encodeur, "encodeur", "END_STREAMING", MFT_MESSAGE_NOTIFY_END_STREAMING);
+    message(
+        convertisseur,
+        "convertisseur",
+        "END_OF_STREAM",
+        MFT_MESSAGE_NOTIFY_END_OF_STREAM,
+    );
+    message(
+        convertisseur,
+        "convertisseur",
+        "END_STREAMING",
+        MFT_MESSAGE_NOTIFY_END_STREAMING,
+    );
+    message(
+        encodeur,
+        "encodeur",
+        "END_OF_STREAM",
+        MFT_MESSAGE_NOTIFY_END_OF_STREAM,
+    );
+    message(
+        encodeur,
+        "encodeur",
+        "END_STREAMING",
+        MFT_MESSAGE_NOTIFY_END_STREAMING,
+    );
 
     // DEUX MESSAGES DÉLIBÉRÉMENT ABSENTS, et ce n'est pas un oubli.
     //
@@ -249,7 +269,12 @@ fn arreter(mft: &IMFTransform, quoi: &'static str) {
 fn message(mft: &IMFTransform, quoi: &'static str, nom: &'static str, message: MFT_MESSAGE_TYPE) {
     tracing::debug!(mft = quoi, message = nom, "mise au repos : avant");
     let issue = unsafe { mft.ProcessMessage(message, 0) };
-    tracing::debug!(mft = quoi, message = nom, refuse = issue.is_err(), "mise au repos : après");
+    tracing::debug!(
+        mft = quoi,
+        message = nom,
+        refuse = issue.is_err(),
+        "mise au repos : après"
+    );
 }
 
 /// Garde-fou de l'attente d'une barrière de file de travail.
@@ -338,10 +363,16 @@ impl FileMft {
     /// Exige que Media Foundation soit démarré.
     pub(super) fn allouer() -> Self {
         match unsafe { MFAllocateSerialWorkQueue(MFASYNC_CALLBACK_QUEUE_MULTITHREADED) } {
-            Ok(id) => Self { id: Some(id), compromise: AtomicBool::new(false) },
+            Ok(id) => Self {
+                id: Some(id),
+                compromise: AtomicBool::new(false),
+            },
             Err(err) => {
                 tracing::warn!(erreur = %err, "allocation de file sérialisée refusée");
-                Self { id: None, compromise: AtomicBool::new(false) }
+                Self {
+                    id: None,
+                    compromise: AtomicBool::new(false),
+                }
             }
         }
     }
@@ -429,7 +460,11 @@ impl FileMft {
         };
         let rappel: IMFAsyncCallback = Bouchon { duree }.into();
         match unsafe { MFPutWorkItem(id, &rappel, None) } {
-            Ok(()) => tracing::info!(file = id, duree_ms = duree.as_millis() as u64, "épreuve : file bouchée"),
+            Ok(()) => tracing::info!(
+                file = id,
+                duree_ms = duree.as_millis() as u64,
+                "épreuve : file bouchée"
+            ),
             Err(err) => tracing::warn!(erreur = %err, "épreuve : dépôt du bouchon refusé"),
         }
     }
@@ -449,7 +484,10 @@ impl Drop for FileMft {
             // en fuite une définitivement, et rien ne les compte ni ne les
             // plafonne : arbitrage à rouvrir si ces `error!` cessaient d'être
             // exceptionnels — aucune expiration observée à ce jour.
-            tracing::error!(file = id, "file compromise : NON rendue, délibérément fuitée");
+            tracing::error!(
+                file = id,
+                "file compromise : NON rendue, délibérément fuitée"
+            );
             return;
         }
         // Champ déclaré en dernier dans `H264Encoder`, et locale déclarée en

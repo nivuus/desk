@@ -125,7 +125,11 @@ mod tests {
         let mut session = Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000)
             .expect("session");
 
-        assert_eq!(session.encode_size_appliquee, (1280, 720), "précondition du test");
+        assert_eq!(
+            session.encode_size_appliquee,
+            (1280, 720),
+            "précondition du test"
+        );
         assert_eq!(
             session.congestion.courant().encode_size,
             (1280, 720),
@@ -173,7 +177,11 @@ mod tests {
         assert!(
             session.pending_control.iter().any(|message| matches!(
                 message,
-                AgentControl::Ready { width: 640, height: 480, .. }
+                AgentControl::Ready {
+                    width: 640,
+                    height: 480,
+                    ..
+                }
             )),
             "le navigateur doit être informé des dimensions réellement obtenues : file = {:?}",
             session.pending_control

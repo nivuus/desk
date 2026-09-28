@@ -312,7 +312,10 @@ impl Session {
         if self.reconstructions_restantes == 0 {
             return true;
         }
-        if self.prochaine_reconstruction.is_some_and(|t| maintenant < t) {
+        if self
+            .prochaine_reconstruction
+            .is_some_and(|t| maintenant < t)
+        {
             return false;
         }
         self.reconstructions_restantes -= 1;
@@ -391,7 +394,9 @@ impl Session {
     /// Sans source (pas de piste audio pour cette session, ou `AUDIO=0`),
     /// jamais morte : il n'y a rien à signaler.
     pub(super) fn capture_audio_morte(&self) -> bool {
-        self.audio_source.as_deref().is_some_and(|source| source.capture_morte())
+        self.audio_source
+            .as_deref()
+            .is_some_and(|source| source.capture_morte())
     }
 
     fn warn_audio_negotiation_once(&mut self) {
@@ -420,7 +425,10 @@ mod tests {
     // silencieux. Ce test échoue si elles divergent.
     #[test]
     fn la_frequence_rtp_audio_correspond_au_taux_d_echantillonnage_opus() {
-        assert_eq!(Frequency::FORTY_EIGHT_KHZ.get(), crate::opus::SAMPLE_RATE_HZ);
+        assert_eq!(
+            Frequency::FORTY_EIGHT_KHZ.get(),
+            crate::opus::SAMPLE_RATE_HZ
+        );
     }
 
     #[test]
@@ -444,12 +452,7 @@ mod tests {
 
         // Le plafond ne doit jamais ALLONGER une attente déjà plus courte.
         let echeance_proche = maintenant + Duration::from_micros(200);
-        let court = bounded_wait(
-            maintenant,
-            echeance_proche,
-            None,
-            Some(AUDIO_POLL_INTERVAL),
-        );
+        let court = bounded_wait(maintenant, echeance_proche, None, Some(AUDIO_POLL_INTERVAL));
         assert_eq!(court, Duration::from_micros(200));
     }
 
@@ -465,7 +468,13 @@ mod tests {
         let e = Err::<(), _>(cause)
             .context("ouverture du process loopback du PID 42")
             .unwrap_err();
-        assert!(!format!("{e}").contains("0x88890004"), "le Display simple perd la cause");
-        assert!(format!("{e:#}").contains("0x88890004"), "{{:#}} doit la rendre");
+        assert!(
+            !format!("{e}").contains("0x88890004"),
+            "le Display simple perd la cause"
+        );
+        assert!(
+            format!("{e:#}").contains("0x88890004"),
+            "{{:#}} doit la rendre"
+        );
     }
 }

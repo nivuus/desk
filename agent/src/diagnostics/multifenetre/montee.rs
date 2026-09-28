@@ -60,8 +60,8 @@ use std::time::{Duration, Instant};
 
 use anyhow::Result;
 
-use crate::moniteurs_virtuels::pilote::{ouvrir_pilote, PiloteParIoctl};
 use crate::capture::SortieDxgi;
+use crate::moniteurs_virtuels::pilote::{ouvrir_pilote, PiloteParIoctl};
 use crate::moniteurs_virtuels::Sorties;
 
 /// Au-delà, on cesse de chercher : le chantier D vise 8 fenêtres, et la sonde
@@ -127,7 +127,12 @@ const DUREE_EPREUVE_PAR_DEFAUT: Duration = Duration::from_secs(30);
 pub(crate) fn relever_topologie(moment: &str) -> Result<Vec<SortieDxgi>> {
     let sorties = crate::capture::enumerer_sorties()?;
     let attachees = sorties.iter().filter(|s| s.attachee_au_bureau).count();
-    tracing::info!(moment, nombre = sorties.len(), attachees, "topologie relevée");
+    tracing::info!(
+        moment,
+        nombre = sorties.len(),
+        attachees,
+        "topologie relevée"
+    );
     for sortie in &sorties {
         tracing::info!(
             moment,
@@ -165,7 +170,11 @@ pub(crate) fn noms_attaches(sorties: &[SortieDxgi]) -> Vec<String> {
 
 /// Noms présents dans `reference` et absents de `observes`.
 fn manquants(reference: &[String], observes: &[String]) -> Vec<String> {
-    reference.iter().filter(|nom| !observes.contains(nom)).cloned().collect()
+    reference
+        .iter()
+        .filter(|nom| !observes.contains(nom))
+        .cloned()
+        .collect()
 }
 
 /// Attend `duree` en battant le chien de garde du pilote.

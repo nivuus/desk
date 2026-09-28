@@ -41,8 +41,8 @@ use windows::Win32::Storage::FileSystem::{
     FILE_NOTIFY_CHANGE_FILE_NAME, FILE_NOTIFY_CHANGE_LAST_WRITE, FILE_SHARE_DELETE,
     FILE_SHARE_READ, FILE_SHARE_WRITE, OPEN_EXISTING,
 };
-use windows::Win32::System::IO::{CancelIoEx, GetOverlappedResult, OVERLAPPED};
 use windows::Win32::System::Threading::CreateEventW;
+use windows::Win32::System::IO::{CancelIoEx, GetOverlappedResult, OVERLAPPED};
 
 use super::faute::{self, Famille};
 use super::TAMPON_NOTIFICATIONS;
@@ -197,9 +197,8 @@ impl Racine {
         // SÉCURITÉ : appel FFI. `bWait = false` : l'événement est déjà signalé
         // quand on arrive ici, et attendre bloquerait le fil qui sert les trois
         // autres racines.
-        let issue = unsafe {
-            GetOverlappedResult(self.repertoire, &*self.overlapped, &mut octets, false)
-        };
+        let issue =
+            unsafe { GetOverlappedResult(self.repertoire, &*self.overlapped, &mut octets, false) };
         match issue {
             // 🔴 ZÉRO OCTET EST UN DÉBORDEMENT, PAS UNE COMPLÉTION VIDE. C'est
             // la façon dont le noyau dit « le tampon n'a pas suffi, je l'ai
@@ -213,10 +212,10 @@ impl Racine {
             // classer en perte ferait journaliser une panne à chaque
             // extinction propre.
             Err(erreur) if erreur.code() == ERROR_OPERATION_ABORTED.to_hresult() => Issue::Annulee,
-            Err(erreur) => Issue::Perte(anyhow::Error::new(erreur).context(format!(
-                "GetOverlappedResult sur {}",
-                self.chemin.display()
-            ))),
+            Err(erreur) => Issue::Perte(
+                anyhow::Error::new(erreur)
+                    .context(format!("GetOverlappedResult sur {}", self.chemin.display())),
+            ),
         }
     }
 

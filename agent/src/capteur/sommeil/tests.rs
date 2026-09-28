@@ -26,7 +26,9 @@ static VERROU_TESTS: Mutex<()> = Mutex::new(());
 /// et `parts::tests` sont deux descendants distincts de `sommeil`, pas
 /// l'un de l'autre — d'où la visibilité explicite).
 pub(super) fn verrouiller_pour_le_test() -> MutexGuard<'static, ()> {
-    VERROU_TESTS.lock().unwrap_or_else(|empoisonne| empoisonne.into_inner())
+    VERROU_TESTS
+        .lock()
+        .unwrap_or_else(|empoisonne| empoisonne.into_inner())
 }
 
 /// Le premier ORDRE de sommeil reçu, en ignorant les parts qui peuvent le
@@ -172,7 +174,11 @@ fn un_retrait_qui_libere_une_place_reveille_bien_la_session_qui_l_attendait() {
     // reste endormie, faute de place.
     let (ordres_attend, generation_attend) = inscrire("t5-attend", 5200);
     signaler("t5-attend", true, true);
-    assert_eq!(premier_ordre(&ordres_attend), None, "t5-attend devrait rester endormie");
+    assert_eq!(
+        premier_ordre(&ordres_attend),
+        None,
+        "t5-attend devrait rester endormie"
+    );
 
     // "t5-tardif" arrive ensuite : plus recente que "t5-attend", donc elle
     // la devancerait si une place se liberait. Son recepteur est jete
@@ -460,7 +466,10 @@ fn distribuer_purge_a_lui_seul_une_session_dont_le_canal_est_rompu() {
         // du bloc : `etat()` n'est pas réentrant, et le reprendre sans l'avoir
         // rendu interbloquerait ce fil.
         let mut garde = etat();
-        distribuer(&mut garde, vec![("t16-ordres".to_string(), Ordre::Reveiller)]);
+        distribuer(
+            &mut garde,
+            vec![("t16-ordres".to_string(), Ordre::Reveiller)],
+        );
         assert!(
             !garde.canaux.contains_key("t16-ordres"),
             "`distribuer` doit purger de lui-même la session dont l'envoi a rendu Err"

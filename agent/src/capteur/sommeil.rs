@@ -194,7 +194,9 @@ pub const REARMEMENTS_MAX: u32 = 5;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Message {
     Sommeil(Ordre),
-    Part { bps: u32 },
+    Part {
+        bps: u32,
+    },
     /// Ordre de porter le son, ou de se taire. Poussé **au changement
     /// seulement**, comme `Part`.
     ///
@@ -207,7 +209,9 @@ pub enum Message {
     /// ce qui RÉDUIT la fenêtre où les deux fenêtres d'un même processus
     /// seraient audibles ensemble — sans la fermer : la borne réelle est
     /// l'ordonnancement des deux fils, pas ce canal.
-    Audio { actif: bool },
+    Audio {
+        actif: bool,
+    },
     /// Le presse-papier de la VM a changé (sous-bloc P1). Poussé **au
     /// changement seulement**, comme `Part` et `Audio` — c'est
     /// `crate::presse_papier::Sondeur` qui porte les gardes, pas ce registre.
@@ -239,7 +243,10 @@ pub enum Message {
     /// coalescable** (elle porte la donnée de l'utilisateur), donc c'est la
     /// variante par laquelle la borne se heurte réellement : 64 messages ×
     /// 64 Kio, soit 4 Mio au pire pour une fenêtre bloquée.
-    PressePapier { texte: Option<String>, octets: u32 },
+    PressePapier {
+        texte: Option<String>,
+        octets: u32,
+    },
 }
 
 pub fn signaler(session: &str, visible: bool, focalisee: bool) {
@@ -255,7 +262,9 @@ pub fn signaler(session: &str, visible: bool, focalisee: bool) {
     } else if garde.focalisee.as_deref() == Some(session) {
         garde.focalisee = None;
     }
-    let ordres = garde.vivier.signaler(session, visible, focalisee, Instant::now());
+    let ordres = garde
+        .vivier
+        .signaler(session, visible, focalisee, Instant::now());
     distribuer(&mut garde, ordres);
     parts::distribuer_les_parts(&mut garde);
     porteurs::distribuer_l_audio(&mut garde);
@@ -326,7 +335,10 @@ pub fn audio_mort(session: &str) {
             rearmements = *tours - 1,
             "capture audio morte et abandon définitif : le groupe de PID restera muet"
         );
-        garde.inaptes.insert(session.to_string(), Instant::now() + Duration::from_secs(86_400));
+        garde.inaptes.insert(
+            session.to_string(),
+            Instant::now() + Duration::from_secs(86_400),
+        );
     } else {
         tracing::info!(
             %session,
@@ -334,7 +346,9 @@ pub fn audio_mort(session: &str) {
             repit = ?REPIT_REARMEMENT_AUDIO,
             "capture audio morte, réarmement programmé"
         );
-        garde.inaptes.insert(session.to_string(), Instant::now() + REPIT_REARMEMENT_AUDIO);
+        garde
+            .inaptes
+            .insert(session.to_string(), Instant::now() + REPIT_REARMEMENT_AUDIO);
     }
     porteurs::distribuer_l_audio(&mut garde);
 }

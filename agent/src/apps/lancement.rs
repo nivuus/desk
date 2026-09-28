@@ -85,7 +85,11 @@ pub fn lancer(chemin_lnk: &str, cible: &str, montrer: i32) -> IssueLancement {
     }
     match executer(cible, montrer) {
         Ok(()) => {
-            tracing::warn!(chemin = chemin_lnk, cible, "lancé par la CIBLE, pas par le raccourci");
+            tracing::warn!(
+                chemin = chemin_lnk,
+                cible,
+                "lancé par la CIBLE, pas par le raccourci"
+            );
             IssueLancement::Cible
         }
         Err(erreur) => {

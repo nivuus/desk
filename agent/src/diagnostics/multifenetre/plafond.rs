@@ -55,7 +55,10 @@ pub(super) fn analyser(valeur: &str) -> Result<(u8, u8)> {
         .parse()
         .with_context(|| format!("nombre de duplications illisible dans « {valeur} »"))?;
     anyhow::ensure!(processus >= 1, "au moins un processus sonde est nécessaire");
-    anyhow::ensure!(duplications >= 1, "au moins une duplication par sonde est nécessaire");
+    anyhow::ensure!(
+        duplications >= 1,
+        "au moins une duplication par sonde est nécessaire"
+    );
     let total = u16::from(processus) * u16::from(duplications);
     anyhow::ensure!(
         total <= SORTIES_MAX,
@@ -73,7 +76,12 @@ pub(super) fn analyser(valeur: &str) -> Result<(u8, u8)> {
 /// « plafond sur les duplications ».
 pub(super) fn mesurer(processus: u8, duplications: u8) -> Result<()> {
     let total = u16::from(processus) * u16::from(duplications);
-    tracing::info!(processus, duplications, total, "campagne du plafond — début");
+    tracing::info!(
+        processus,
+        duplications,
+        total,
+        "campagne du plafond — début"
+    );
 
     // Aucun résidu d'un tirage précédent : un verdict périmé ferait lire un
     // succès là où la sonde n'a jamais démarré.
@@ -228,7 +236,9 @@ struct SondesEnCours {
 
 impl SondesEnCours {
     fn nouvelle() -> Self {
-        Self { enfants: Vec::new() }
+        Self {
+            enfants: Vec::new(),
+        }
     }
 
     fn ajouter(&mut self, rang: u8, enfant: std::process::Child) {
@@ -281,8 +291,10 @@ fn conduire_les_sondes(
 
     for rang in 0..processus {
         let debut = usize::from(rang) * usize::from(duplications);
-        let lot: Vec<&str> =
-            noms[debut..debut + usize::from(duplications)].iter().map(|s| s.as_str()).collect();
+        let lot: Vec<&str> = noms[debut..debut + usize::from(duplications)]
+            .iter()
+            .map(|s| s.as_str())
+            .collect();
         tracing::info!(sonde = rang, sorties = ?lot, "lancement de la sonde");
 
         let enfant = std::process::Command::new(&executable)
@@ -385,9 +397,13 @@ mod tests {
 
     #[test]
     fn les_cinq_rangs_de_la_matrice_sont_acceptes() {
-        for (valeur, attendu) in
-            [("1x8", (1, 8)), ("2x4", (2, 4)), ("4x2", (4, 2)), ("8x1", (8, 1)), ("4x1", (4, 1))]
-        {
+        for (valeur, attendu) in [
+            ("1x8", (1, 8)),
+            ("2x4", (2, 4)),
+            ("4x2", (4, 2)),
+            ("8x1", (8, 1)),
+            ("4x1", (4, 1)),
+        ] {
             assert_eq!(analyser(valeur).unwrap(), attendu, "rang {valeur}");
         }
     }

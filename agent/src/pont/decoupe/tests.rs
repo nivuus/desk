@@ -7,12 +7,24 @@ fn une_plage_de_taille_exactement_taille_trame_max_fait_un_seul_morceau() {
     // classique d'une boucle qui teste `>=` là où il faut `>`.
     let m = decouper(0, TAILLE_TRAME_MAX as u64, TAILLE_TRAME_MAX);
     assert_eq!(m.len(), 1);
-    assert_eq!(m[0], Morceau { position: 0, longueur: TAILLE_TRAME_MAX as u32 });
+    assert_eq!(
+        m[0],
+        Morceau {
+            position: 0,
+            longueur: TAILLE_TRAME_MAX as u32
+        }
+    );
 
     // …et un octet de plus en fait exactement deux, dont le second d'un octet.
     let m = decouper(0, TAILLE_TRAME_MAX as u64 + 1, TAILLE_TRAME_MAX);
     assert_eq!(m.len(), 2);
-    assert_eq!(m[1], Morceau { position: TAILLE_TRAME_MAX as u64, longueur: 1 });
+    assert_eq!(
+        m[1],
+        Morceau {
+            position: TAILLE_TRAME_MAX as u64,
+            longueur: 1
+        }
+    );
 }
 
 #[test]
@@ -30,7 +42,10 @@ fn la_somme_des_longueurs_egale_la_longueur_demandee() {
     let max = 1000usize;
     for n in 1..=100u64 {
         let longueur = n * 3 * max as u64 / 100 + 1;
-        let somme: u64 = decouper(7, longueur, max).iter().map(|m| u64::from(m.longueur)).sum();
+        let somme: u64 = decouper(7, longueur, max)
+            .iter()
+            .map(|m| u64::from(m.longueur))
+            .sum();
         assert_eq!(somme, longueur, "longueur demandée {longueur}");
     }
 }

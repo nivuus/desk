@@ -86,7 +86,11 @@ mod tests {
         t.tick();
         t.capturee();
         t.produite();
-        assert_eq!(t.lire(), (1, 1, 1), "précondition : les TROIS compteurs ont compté");
+        assert_eq!(
+            t.lire(),
+            (1, 1, 1),
+            "précondition : les TROIS compteurs ont compté"
+        );
         t = Telemetrie::default();
         assert_eq!(t.lire(), (0, 0, 0));
     }

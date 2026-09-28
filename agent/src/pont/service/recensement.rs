@@ -35,7 +35,9 @@ use crate::pont::projfs::Etat;
 pub(super) fn mesure_armee() -> bool {
     static ARMEE: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
     *ARMEE.get_or_init(|| {
-        let armee = std::env::var("PONT_MESURE").map(|v| v == "1").unwrap_or(false);
+        let armee = std::env::var("PONT_MESURE")
+            .map(|v| v == "1")
+            .unwrap_or(false);
         if armee {
             // ⚠️ **`warn!`, comme `PART_SONDAGE` et `AUDIO_FAUTE_*`** : c'est ce
             // qui la rend visible sous `RUST_LOG=info` et ce qui empêche de la
@@ -89,7 +91,10 @@ pub(super) fn recenser(etat: &Etat) {
         Ok(table) => (
             table.en_vol(),
             table.sans_commande(),
-            table.plus_ancienne(maintenant).map(|d| d.as_millis()).unwrap_or(0),
+            table
+                .plus_ancienne(maintenant)
+                .map(|d| d.as_millis())
+                .unwrap_or(0),
         ),
         // ⚠️ **Un verrou empoisonné est DIT, pas tu.** Rendre des zéros ferait
         // lire « rien en vol » là où la table est inaccessible — c'est-à-dire
@@ -125,7 +130,11 @@ pub(super) fn recenser(etat: &Etat) {
         // par des espaces, et il se lit tel quel sans `sed`.
         "codes rendus {} | jamais rendus : {}",
         etat.compteurs.recensement(),
-        if manquants.is_empty() { "aucun".to_string() } else { manquants.join(",") }
+        if manquants.is_empty() {
+            "aucun".to_string()
+        } else {
+            manquants.join(",")
+        }
     );
 
     // ── LE BANC DE LATENCE (F4) — émis SEULEMENT si `PONT_MESURE=1` ────────

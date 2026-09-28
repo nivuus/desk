@@ -53,7 +53,11 @@ const ENTREE_ICO: usize = 16;
 /// sous un 16×16. La plus grande icône du corpus deviendrait la plus petite,
 /// silencieusement.
 fn largeur(octet: u8) -> u16 {
-    if octet == 0 { 256 } else { u16::from(octet) }
+    if octet == 0 {
+        256
+    } else {
+        u16::from(octet)
+    }
 }
 
 /// Le corps commun aux deux lecteurs — l'en-tête, puis un pas d'entrée.

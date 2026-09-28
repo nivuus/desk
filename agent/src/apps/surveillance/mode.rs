@@ -166,7 +166,10 @@ mod tests {
     fn chaque_predicat_ne_coupe_que_ce_qui_le_concerne() {
         assert!(Mode::Armee.surveille() && Mode::Armee.rebond() && Mode::Armee.periodique());
         assert!(!Mode::Desarmee.surveille());
-        assert!(Mode::Desarmee.periodique(), "`0` ne coupe PAS la source de vérité");
+        assert!(
+            Mode::Desarmee.periodique(),
+            "`0` ne coupe PAS la source de vérité"
+        );
         assert!(Mode::SansRebond.surveille() && !Mode::SansRebond.rebond());
         assert!(Mode::SansRebond.periodique());
         assert!(Mode::Seule.surveille() && Mode::Seule.rebond());

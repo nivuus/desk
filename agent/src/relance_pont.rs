@@ -287,7 +287,10 @@ pub struct EtatRelance {
 
 impl EtatRelance {
     pub fn neuve() -> Self {
-        Self { tentative: 0, cycle_signale: false }
+        Self {
+            tentative: 0,
+            cycle_signale: false,
+        }
     }
 
     /// Le nombre de tentatives consécutives — pour l'annexer aux traces de

@@ -347,7 +347,11 @@ mod tests {
     fn flux_de_test(frames: usize) -> Vec<u8> {
         let mut stream = Vec::new();
         for i in 0..frames {
-            let nal: Vec<u8> = if i == 0 { vec![0x65, 0x88] } else { vec![0x41, 0x9A] };
+            let nal: Vec<u8> = if i == 0 {
+                vec![0x65, 0x88]
+            } else {
+                vec![0x41, 0x9A]
+            };
             stream.extend_from_slice(&[0, 0, 0, 1]);
             stream.extend_from_slice(&nal);
         }
@@ -400,13 +404,20 @@ mod tests {
 
     #[test]
     fn charge_le_flux_de_test_reel() {
-        let path = std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/testdata/testsrc.264"));
+        let path =
+            std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/testdata/testsrc.264"));
         let mut source = FileSource::from_path(path, 1280, 720, 60).expect("chargement du flux");
         assert_eq!(source.dimensions(), (1280, 720));
 
         let first = source.next_frame().unwrap();
-        assert!(first.is_keyframe, "la première unité doit être une image clé");
-        assert!(first.data.len() > 100, "une image clé réelle n'est pas minuscule");
+        assert!(
+            first.is_keyframe,
+            "la première unité doit être une image clé"
+        );
+        assert!(
+            first.data.len() > 100,
+            "une image clé réelle n'est pas minuscule"
+        );
     }
 
     #[test]
@@ -414,7 +425,8 @@ mod tests {
         // Vérification de non-régression sur le bug de sur-découpage : le
         // fichier réel contient 300 images malgré ses 2400 tranches, donc le
         // compteur de boucles doit incrémenter après 300 appels, pas 2400.
-        let path = std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/testdata/testsrc.264"));
+        let path =
+            std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/testdata/testsrc.264"));
         let mut source = FileSource::from_path(path, 1280, 720, 60).expect("chargement du flux");
 
         // Une boucle complète (300 images), plus la première image du tour suivant.
@@ -446,8 +458,14 @@ mod tests {
         // trait doit être un no-op qui réussit, sans jamais toucher aux
         // dimensions de la source fichier (tâche 13, source.rs).
         let mut source = FileSource::from_annex_b(flux_de_test(2), 640, 480, 60).unwrap();
-        source.resize(1920, 1080).expect("le no-op par défaut ne doit jamais échouer");
-        assert_eq!(source.dimensions(), (640, 480), "les dimensions ne doivent pas bouger");
+        source
+            .resize(1920, 1080)
+            .expect("le no-op par défaut ne doit jamais échouer");
+        assert_eq!(
+            source.dimensions(),
+            (640, 480),
+            "les dimensions ne doivent pas bouger"
+        );
     }
 
     #[test]

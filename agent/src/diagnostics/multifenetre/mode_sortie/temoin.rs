@@ -12,8 +12,8 @@ use std::collections::HashSet;
 use anyhow::Result;
 use windows::Win32::Graphics::Gdi::DISP_CHANGE_SUCCESSFUL;
 
-use super::combinaisons::{appliquer_combo, Combo};
 use super::super::montee::{attendre_en_pinguant, relever_topologie, DELAI_TOPOLOGIE};
+use super::combinaisons::{appliquer_combo, Combo};
 use super::{choisir_cible, modes_annonces};
 use crate::moniteurs_virtuels::pilote::PiloteParIoctl;
 
@@ -95,7 +95,11 @@ pub(super) fn rejouer_temoin(
         largeur_cible = cible.0,
         hauteur_cible = cible.1,
         mouvement,
-        verdict = if mouvement { "TEMOIN RECU" } else { "TEMOIN REFUSE" },
+        verdict = if mouvement {
+            "TEMOIN RECU"
+        } else {
+            "TEMOIN REFUSE"
+        },
         "verdict TEMOIN : le meme geste, SANS duplication ouverte, sur une sortie neuve -- \
          departage si un refus de l'eliminatoire vient de la duplication tenue ou du mode choisi"
     );
@@ -176,7 +180,10 @@ pub(super) fn nom_apres_tour(
 ) -> Result<(String, Option<(u32, u32)>)> {
     let releve = relever_topologie("après le tour (inconnues annexes)")?;
     if let Some(sortie) = releve.iter().find(|sortie| sortie.nom_sortie == nom_sortie) {
-        return Ok((nom_sortie.to_string(), Some((sortie.rect.width, sortie.rect.height))));
+        return Ok((
+            nom_sortie.to_string(),
+            Some((sortie.rect.width, sortie.rect.height)),
+        ));
     }
     let candidats: Vec<&str> = releve
         .iter()

@@ -318,9 +318,12 @@ mod tests {
                 "taille {taille}, un octet à la fois"
             );
         }
-        let toutes: std::collections::HashSet<String> = (0..130)
-            .map(|n| hex(&vec![b'a'; n]))
-            .collect();
-        assert_eq!(toutes.len(), 130, "130 longueurs, 130 empreintes distinctes");
+        let toutes: std::collections::HashSet<String> =
+            (0..130).map(|n| hex(&vec![b'a'; n])).collect();
+        assert_eq!(
+            toutes.len(),
+            130,
+            "130 longueurs, 130 empreintes distinctes"
+        );
     }
 }

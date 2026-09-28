@@ -34,13 +34,13 @@ use std::time::{Duration, Instant};
 
 use windows::core::HRESULT;
 
-use proto::fichiers::entetes;
 use crate::pont::ecriture::fil::Ordre;
 use crate::pont::enumeration::Session;
 use crate::pont::erreurs::Erreur;
 use crate::pont::latence::Famille;
 use crate::pont::projfs::{ContexteProjFs, Etat, PERIODE_HYDRATATION};
 use crate::pont::transport::DuNavigateur;
+use proto::fichiers::entetes;
 use recensement::{mesure_armee, recenser, tout_completer};
 
 /// Période du balayage des expirations.
@@ -156,7 +156,12 @@ pub fn tourner(etat: Arc<Etat>, entrant: Receiver<DuNavigateur>) {
 /// **Rien n'est fait pour une commande ProjFS** : le fil d'écriture ne connaît
 /// que les siennes, et lui en signaler une autre lui ferait clore une poussée
 /// qui n'est pas la sienne.
-pub(super) fn prevenir_l_ecriture(etat: &Etat, commande: Option<i32>, correlation: u32, cause: Erreur) {
+pub(super) fn prevenir_l_ecriture(
+    etat: &Etat,
+    commande: Option<i32>,
+    correlation: u32,
+    cause: Erreur,
+) {
     if commande.is_some() {
         return;
     }
@@ -179,10 +184,18 @@ fn balayer(etat: &Etat) {
         Err(_) => return,
     };
     for (commande, correlation) in echues {
-        tracing::warn!(?commande, correlation, "commande expirée : le navigateur n'a pas répondu");
+        tracing::warn!(
+            ?commande,
+            correlation,
+            "commande expirée : le navigateur n'a pas répondu"
+        );
         oublier_contexte(etat, correlation);
         prevenir_l_ecriture(etat, commande, correlation, Erreur::DelaiDepasse);
-        verbes::completer(etat, commande, HRESULT(etat.compteurs.rendre(Erreur::DelaiDepasse)));
+        verbes::completer(
+            etat,
+            commande,
+            HRESULT(etat.compteurs.rendre(Erreur::DelaiDepasse)),
+        );
     }
 }
 
@@ -242,8 +255,11 @@ fn traiter(etat: &Etat, correlation: u32, octets: &[u8]) {
     // inconnue, et la réponse est alors JETÉE.** Appliquer une réponse dont la
     // commande ProjFS a déjà été complétée écrirait dans un tampon que le
     // système a repris.
-    let Some((commande, attendue, traversee)) =
-        etat.table.lock().ok().and_then(|mut t| t.resoudre(correlation, Instant::now()))
+    let Some((commande, attendue, traversee)) = etat
+        .table
+        .lock()
+        .ok()
+        .and_then(|mut t| t.resoudre(correlation, Instant::now()))
     else {
         tracing::debug!(correlation, "réponse tardive ou inconnue : jetée");
         return;
@@ -285,7 +301,10 @@ fn traiter(etat: &Etat, correlation: u32, octets: &[u8]) {
         //    respectée dans son intention (l'ancien pont rendait `EPERM` à neuf
         //    sites) sans l'être dans sa lettre.
         tracing::warn!(
-            ?commande, correlation, ?code, ?cause,
+            ?commande,
+            correlation,
+            ?code,
+            ?cause,
             "le navigateur refuse"
         );
         // Une écriture refusée : le code du protocole voyage TEL QUEL vers le
@@ -299,12 +318,26 @@ fn traiter(etat: &Etat, correlation: u32, octets: &[u8]) {
                 code: code.unwrap_or(proto::fichiers::CodeEchec::Interne),
             });
         }
-        return reponses::terminer(etat, commande, contexte, HRESULT(etat.compteurs.rendre(cause)));
+        return reponses::terminer(
+            etat,
+            commande,
+            contexte,
+            HRESULT(etat.compteurs.rendre(cause)),
+        );
     }
 
-    let issue = reponses::appliquer(etat, correlation, commande, attendue, &trame, contexte.as_ref());
+    let issue = reponses::appliquer(
+        etat,
+        correlation,
+        commande,
+        attendue,
+        &trame,
+        contexte.as_ref(),
+    );
     match issue {
-        reponses::Suite::Termine(resultat) => reponses::terminer(etat, commande, contexte, resultat),
+        reponses::Suite::Termine(resultat) => {
+            reponses::terminer(etat, commande, contexte, resultat)
+        }
         // La lecture continue : la commande est déjà réinscrite, et son
         // contexte est resté en place — surtout ne pas la compléter.
         reponses::Suite::Poursuit => {}

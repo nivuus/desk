@@ -44,7 +44,9 @@ use super::porte::{verifier, Porte};
 use super::structures::{
     Config, InitializeParams, OpenEncodeSessionExParams, PresetConfig, ReconfigureParams,
 };
-use super::tampons::{CreateBitstreamBuffer, LockBitstream, MapInputResource, PicParams, RegisterResource};
+use super::tampons::{
+    CreateBitstreamBuffer, LockBitstream, MapInputResource, PicParams, RegisterResource,
+};
 
 /// Une session d'encodage : un encodeur, son tampon de flux, et le cache des
 /// textures déjà enregistrées.
@@ -324,7 +326,11 @@ impl SessionNvenc {
     ///
     /// ⚠️ **Rend `Ok(None)` si l'encodeur a demandé plus d'entrée** — cas
     /// normal de cette API, et non une erreur.
-    pub fn encoder(&mut self, texture: &ID3D11Texture2D, pts_100ns: u64) -> Result<Option<Vec<u8>>> {
+    pub fn encoder(
+        &mut self,
+        texture: &ID3D11Texture2D,
+        pts_100ns: u64,
+    ) -> Result<Option<Vec<u8>>> {
         let ressource = self.ressource(texture)?;
 
         let mut projection: MapInputResource = unsafe { std::mem::zeroed() };

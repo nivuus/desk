@@ -158,7 +158,10 @@ impl Fil {
             // Une ligne partielle est le seul dommage qu'un arrêt brutal puisse
             // causer à un fichier en ajout. La compter la rend visible ; la
             // taire ferait croire à un journal intact.
-            tracing::warn!(ignorees, "lignes illisibles jetees au rechargement du journal");
+            tracing::warn!(
+                ignorees,
+                "lignes illisibles jetees au rechargement du journal"
+            );
         }
         let fil = Self {
             config,
@@ -273,7 +276,10 @@ impl Fil {
             // une corruption silencieuse. Le morceau vide, lui, ouvre le flux
             // sans `keepExistingData` et le referme : le fichier local devient
             // vide, ce qu'il doit être.
-            morceaux.push_back(Morceau { position: 0, longueur: 0 });
+            morceaux.push_back(Morceau {
+                position: 0,
+                longueur: 0,
+            });
         }
         self.en_cours = Some(EnCours {
             chemin,
@@ -292,7 +298,9 @@ impl Fil {
             repertoire,
         })
         .expect("un en-tete Creer se serialise toujours");
-        let correlation = self.inscrire(Attendue::Creer { chemin: chemin.to_string() });
+        let correlation = self.inscrire(Attendue::Creer {
+            chemin: chemin.to_string(),
+        });
         self.en_cours = Some(EnCours {
             chemin: chemin.to_string(),
             restants: VecDeque::new(),
@@ -307,8 +315,12 @@ impl Fil {
 
     /// Pousse le morceau suivant. `premier` n'est vrai qu'au tout premier.
     fn pousser_morceau(&mut self, premier: bool) {
-        let Some(en_cours) = self.en_cours.as_mut() else { return };
-        let Some(morceau) = en_cours.restants.pop_front() else { return };
+        let Some(en_cours) = self.en_cours.as_mut() else {
+            return;
+        };
+        let Some(morceau) = en_cours.restants.pop_front() else {
+            return;
+        };
         let dernier = en_cours.restants.is_empty();
         let chemin = en_cours.chemin.clone();
         let entete = serde_json::to_string(&entetes::Ecrire {
@@ -328,15 +340,22 @@ impl Fil {
                 return;
             }
         };
-        let correlation = self.inscrire(Attendue::Ecrire { chemin: chemin.clone(), dernier });
+        let correlation = self.inscrire(Attendue::Ecrire {
+            chemin: chemin.clone(),
+            dernier,
+        });
         if let Some(en_cours) = self.en_cours.as_mut() {
             en_cours.correlation = correlation;
             en_cours.dernier_envoye = dernier;
         }
         self.emettre(proto::fichiers::TYPE_ECRIRE, correlation, &entete, &octets);
         tracing::debug!(
-            chemin, correlation,
-            position = morceau.position, longueur = morceau.longueur, premier, dernier,
+            chemin,
+            correlation,
+            position = morceau.position,
+            longueur = morceau.longueur,
+            premier,
+            dernier,
             "ecriture poussee"
         );
     }
@@ -347,7 +366,9 @@ impl Fil {
             self.terminer_mutation(true);
             return;
         }
-        let Some(en_cours) = self.en_cours.as_ref() else { return };
+        let Some(en_cours) = self.en_cours.as_ref() else {
+            return;
+        };
         if en_cours.correlation != correlation {
             // Un `Fait` tardif, arrivé après une expiration. Le jeter est
             // l'invariant de `Table::resoudre`, transposé.
@@ -363,7 +384,9 @@ impl Fil {
         let duree_ms = en_cours.debut.elapsed().as_millis();
         // ÉTAPE 6 : le journal, PUIS l'annonce.
         tracing::info!(
-            chemin, octets, duree_ms,
+            chemin,
+            octets,
+            duree_ms,
             "ecriture acquittee : les octets sont sur le poste local"
         );
         self.terminer(&chemin, true);
@@ -377,13 +400,16 @@ impl Fil {
             // côtés ont DIVERGÉ, définitivement, et le seul remède est humain —
             // d'où le `warn!` et la ligne de la page-shell.
             tracing::warn!(
-                correlation, ?code,
+                correlation,
+                ?code,
                 "MUTATION REFUSEE : le poste local n'a PAS suivi, et rien ne le rejouera"
             );
             self.terminer_mutation(false);
             return;
         }
-        let Some(en_cours) = self.en_cours.as_ref() else { return };
+        let Some(en_cours) = self.en_cours.as_ref() else {
+            return;
+        };
         if en_cours.correlation != correlation {
             return;
         }
@@ -391,7 +417,8 @@ impl Fil {
         // 🔴 **L'ENTRÉE RESTE AU JOURNAL.** La retirer serait la perte de
         // données que ce module existe pour empêcher.
         tracing::warn!(
-            chemin, ?code,
+            chemin,
+            ?code,
             "ecriture due retenue : le navigateur a refuse, l'entree reste au journal"
         );
         self.terminer(&chemin, false);
@@ -415,11 +442,22 @@ impl Fil {
             .journal
             .dues()
             .iter()
-            .map(|(chemin, octets)| entetes::Due { chemin: chemin.clone(), octets: *octets })
+            .map(|(chemin, octets)| entetes::Due {
+                chemin: chemin.clone(),
+                octets: *octets,
+            })
             .collect();
-        let entete = serde_json::to_string(&entetes::Dues { dues, retenues: self.retenues })
-            .expect("un en-tete Dues se serialise toujours");
-        self.emettre(proto::fichiers::TYPE_DUES, CORRELATION_ANNONCE, &entete, &[]);
+        let entete = serde_json::to_string(&entetes::Dues {
+            dues,
+            retenues: self.retenues,
+        })
+        .expect("un en-tete Dues se serialise toujours");
+        self.emettre(
+            proto::fichiers::TYPE_DUES,
+            CORRELATION_ANNONCE,
+            &entete,
+            &[],
+        );
     }
 
     pub(super) fn emettre(&self, type_message: u8, correlation: u32, entete: &str, charge: &[u8]) {
@@ -430,7 +468,10 @@ impl Fil {
             .send(VersNavigateur::Requete { correlation, trame })
             .is_err()
         {
-            tracing::warn!(correlation, "transport du pont parti : trame d'ecriture non emise");
+            tracing::warn!(
+                correlation,
+                "transport du pont parti : trame d'ecriture non emise"
+            );
         }
     }
 
@@ -438,7 +479,9 @@ impl Fil {
         let echeance = Instant::now() + DELAI_ECRIRE;
         match self.config.table.lock() {
             Ok(mut table) => table.inscrire_sans_commande(quoi, echeance),
-            Err(empoisonne) => empoisonne.into_inner().inscrire_sans_commande(quoi, echeance),
+            Err(empoisonne) => empoisonne
+                .into_inner()
+                .inscrire_sans_commande(quoi, echeance),
         }
     }
 

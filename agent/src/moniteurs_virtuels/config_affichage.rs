@@ -209,7 +209,11 @@ mod tests {
     use super::*;
 
     fn chemin(adaptateur: Adaptateur, id: u32, nom: &str) -> CheminActif {
-        CheminActif { adaptateur_cible: adaptateur, id_cible: id, nom_gdi: nom.to_string() }
+        CheminActif {
+            adaptateur_cible: adaptateur,
+            id_cible: id,
+            nom_gdi: nom.to_string(),
+        }
     }
 
     #[test]
@@ -218,7 +222,10 @@ mod tests {
             chemin((7, 0), 4096, "\\\\.\\DISPLAY1"),
             chemin((9, 0), 256, "\\\\.\\DISPLAY5"),
         ];
-        assert_eq!(nom_gdi_de_la_cible(&chemins, (9, 0), 256), Some("\\\\.\\DISPLAY5"));
+        assert_eq!(
+            nom_gdi_de_la_cible(&chemins, (9, 0), 256),
+            Some("\\\\.\\DISPLAY5")
+        );
     }
 
     #[test]
@@ -230,8 +237,14 @@ mod tests {
             chemin((7, 0), 256, "\\\\.\\DISPLAY1"),
             chemin((9, 0), 256, "\\\\.\\DISPLAY5"),
         ];
-        assert_eq!(nom_gdi_de_la_cible(&chemins, (7, 0), 256), Some("\\\\.\\DISPLAY1"));
-        assert_eq!(nom_gdi_de_la_cible(&chemins, (9, 0), 256), Some("\\\\.\\DISPLAY5"));
+        assert_eq!(
+            nom_gdi_de_la_cible(&chemins, (7, 0), 256),
+            Some("\\\\.\\DISPLAY1")
+        );
+        assert_eq!(
+            nom_gdi_de_la_cible(&chemins, (9, 0), 256),
+            Some("\\\\.\\DISPLAY5")
+        );
     }
 
     #[test]

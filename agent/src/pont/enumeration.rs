@@ -73,7 +73,10 @@ pub fn preparer(
     mut comparer: impl FnMut(&str, &str) -> Ordering,
 ) -> Vec<Entree> {
     let mut retenues: Vec<Entree> = match expression {
-        Some(motif) => entrees.into_iter().filter(|e| apparier(&e.nom, motif)).collect(),
+        Some(motif) => entrees
+            .into_iter()
+            .filter(|e| apparier(&e.nom, motif))
+            .collect(),
         None => entrees,
     };
     // `sort_by` et non `sort_unstable_by` : le comparateur vient de ProjFS et

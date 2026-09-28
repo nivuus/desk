@@ -80,7 +80,12 @@ pub(super) fn tour(
     // le critère ④ se compte.
     tracing::info!(session = %ctx.session, couleur = %couleur, "accent de la fenetre Windows");
 
-    match deposer(AEcrire::Etat(DepuisCapteur::Accent { couleur }), ecritures, source, ctx) {
+    match deposer(
+        AEcrire::Etat(DepuisCapteur::Accent { couleur }),
+        ecritures,
+        source,
+        ctx,
+    ) {
         Fin::Terminer(motif) => Some(Fin::Terminer(motif)),
         Fin::Continuer => None,
     }

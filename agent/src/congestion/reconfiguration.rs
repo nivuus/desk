@@ -152,7 +152,10 @@ mod tests {
             nouvelle_echelle.barreaux()[2].taille,
             "le barreau 2 doit être conservé, à la taille de la NOUVELLE échelle"
         );
-        assert_eq!(c.config.source, nouvelle_source, "la source mémorisée doit suivre");
+        assert_eq!(
+            c.config.source, nouvelle_source,
+            "la source mémorisée doit suivre"
+        );
     }
 
     #[test]
@@ -163,7 +166,11 @@ mod tests {
         // appliqué.
         c.hysteresis = Hysteresis::new(3, base);
         c.courant.encode_size = c.echelle.barreaux()[3].taille;
-        assert_eq!(c.echelle.barreaux().len(), 4, "précondition : 4 barreaux sur la source nominale");
+        assert_eq!(
+            c.echelle.barreaux().len(),
+            4,
+            "précondition : 4 barreaux sur la source nominale"
+        );
 
         // Rétrécissement vers une source minuscule dont l'échelle ne compte
         // qu'un seul barreau (voir `echelle_minuscule_sans_doublons`) :
@@ -190,7 +197,10 @@ mod tests {
         let echelle_1080p = Echelle::depuis((1920, 1080), config().fps);
         // Précondition : les deux échelles ont bien des seuils différents,
         // sans quoi ce test ne prouverait rien.
-        assert_ne!(echelle_attendue.barreaux()[0].min_bps, echelle_1080p.barreaux()[0].min_bps);
+        assert_ne!(
+            echelle_attendue.barreaux()[0].min_bps,
+            echelle_1080p.barreaux()[0].min_bps
+        );
 
         assert_eq!(
             c.echelle.barreaux()[0].min_bps,
@@ -211,7 +221,10 @@ mod tests {
         let ptr_avant = c.echelle.barreaux().as_ptr();
 
         let decision = c.changer_plafond(3_000_000);
-        assert_eq!(decision.video_bitrate_bps, 3_000_000, "le débit suit le nouveau plafond");
+        assert_eq!(
+            decision.video_bitrate_bps, 3_000_000,
+            "le débit suit le nouveau plafond"
+        );
         assert_eq!(
             c.echelle.barreaux().as_ptr(),
             ptr_avant,
@@ -273,7 +286,11 @@ mod tests {
                 at: base + Duration::from_secs(1),
             })
             .expect("la première estimation doit produire une décision");
-        assert_eq!(d.adaptation, Adaptation::Active, "précondition : l'estimation est active");
+        assert_eq!(
+            d.adaptation,
+            Adaptation::Active,
+            "précondition : l'estimation est active"
+        );
 
         // Le lien se tait : plus aucune estimation n'arrive (c'est ainsi que
         // la péremption, gérée au niveau transport par `EXPIRATION_ESTIMATION`
@@ -295,7 +312,10 @@ mod tests {
         // Le débit courant, hérité de la dernière estimation réelle — PAS la
         // valeur de repli du plafond, contrairement au cas « jamais reçue ».
         let debit_avant = c.courant().video_bitrate_bps;
-        assert!(debit_avant < 50_000_000, "précondition : bien en dessous du plafond visé");
+        assert!(
+            debit_avant < 50_000_000,
+            "précondition : bien en dessous du plafond visé"
+        );
 
         let decision = c.changer_plafond(50_000_000);
         assert_eq!(

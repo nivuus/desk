@@ -71,8 +71,8 @@ use anyhow::Result;
 
 use crate::moniteurs_virtuels::guid::guid_pour;
 use crate::moniteurs_virtuels::numeros::PLAFOND_NUMEROS;
-use crate::moniteurs_virtuels::verdict_purge::{verdict, Verdict};
 use crate::moniteurs_virtuels::pilote::{ouvrir_pilote, PiloteParIoctl};
+use crate::moniteurs_virtuels::verdict_purge::{verdict, Verdict};
 // Ce module reste consommateur de `diagnostics::multifenetre::montee` pour
 // deux items de mesure — le relevé de topologie DXGI avant/après et son délai
 // d'établissement. Le plafond, lui, ne vient PLUS de là : il vit désormais
@@ -123,7 +123,12 @@ pub(crate) fn purger() -> Result<()> {
     let attendu = avant.len().saturating_sub(retirees);
     match verdict(avant.len(), apres.len(), retirees) {
         Verdict::Conforme => {
-            tracing::info!(retirees, avant = avant.len(), apres = apres.len(), "purge terminée")
+            tracing::info!(
+                retirees,
+                avant = avant.len(),
+                apres = apres.len(),
+                "purge terminée"
+            )
         }
         Verdict::UnTiersAAussiRetire => tracing::info!(
             retirees,

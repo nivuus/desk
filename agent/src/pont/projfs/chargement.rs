@@ -290,7 +290,10 @@ const BIBLIOTHEQUE: &str = "ProjectedFSLib.dll";
 /// nomme** — voir [`crate::pont::resolution`], où cette règle vit et est testée
 /// sur l'hôte. Ici ne reste que ce qu'aucun test d'hôte ne peut atteindre.
 pub fn charger() -> Result<ProjFs> {
-    let nom: Vec<u16> = BIBLIOTHEQUE.encode_utf16().chain(std::iter::once(0)).collect();
+    let nom: Vec<u16> = BIBLIOTHEQUE
+        .encode_utf16()
+        .chain(std::iter::once(0))
+        .collect();
     // `LoadLibraryW` et non `LoadLibraryA` : le nom est du texte, et rien ne
     // garantit la page de code ANSI de la session Windows.
     let module = unsafe { LoadLibraryW(PCWSTR(nom.as_ptr())) }
@@ -334,18 +337,18 @@ pub fn charger() -> Result<ProjFs> {
         };
     }
     Ok(transcrire!(
-            allouer_tampon_aligne,
-            vider_cache_negatif,
-            completer_commande,
-            supprimer_fichier,
-            comparer_noms,
-            apparier_nom,
-            remplir_tampon_entrees,
-            rendre_tampon_aligne,
-            marquer_racine,
-            demarrer_virtualisation,
-            arreter_virtualisation,
-            ecrire_donnees,
-            ecrire_info_marqueur,
+        allouer_tampon_aligne,
+        vider_cache_negatif,
+        completer_commande,
+        supprimer_fichier,
+        comparer_noms,
+        apparier_nom,
+        remplir_tampon_entrees,
+        rendre_tampon_aligne,
+        marquer_racine,
+        demarrer_virtualisation,
+        arreter_virtualisation,
+        ecrire_donnees,
+        ecrire_info_marqueur,
     ))
 }

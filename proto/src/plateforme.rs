@@ -135,7 +135,6 @@ use champs::{icone_obligatoire, option_obligatoire, verifie_version, version_tol
 mod motifs;
 pub use motifs::MotifCanal;
 
-
 /// Les types de la GESTION D'APPLICATIONS vivent dans un module enfant.
 ///
 /// 🔴 EXTRAITS PARCE QUE CE FICHIER A FRANCHI 500 LIGNES — 588 —, et la
@@ -256,7 +255,6 @@ pub enum VersLaPlateforme {
     },
 }
 
-
 /// Message de la plateforme vers l'agent.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "kebab-case", deny_unknown_fields)]
@@ -372,7 +370,6 @@ pub enum DepuisLaPlateforme {
         sha256: String,
     },
 }
-
 
 #[cfg(test)]
 #[path = "plateforme/tests.rs"]

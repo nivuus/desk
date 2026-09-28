@@ -38,8 +38,7 @@ impl MotifCanal {
     /// 🔴 ANTI-OUBLI : une variante ajoutée sans sa ligne ici serait absente
     /// du test de correspondance, qui compare cette liste à un `match`
     /// EXHAUSTIF — le compilateur exige la branche, et le test exige l'entrée.
-    pub const TOUS: [Self; 4] =
-        [Self::Version, Self::Forme, Self::Enrolement, Self::Sequence];
+    pub const TOUS: [Self; 4] = [Self::Version, Self::Forme, Self::Enrolement, Self::Sequence];
 
     /// Le mot exact qui voyage sur le fil.
     pub fn mot(self) -> &'static str {
@@ -57,6 +56,8 @@ impl MotifCanal {
     /// dépasse, et l'appelant doit le journaliser tel quel plutôt que de le
     /// perdre. C'est la clause 2 de l'en-tête de ce module.
     pub fn depuis_mot(mot: &str) -> Option<Self> {
-        Self::TOUS.into_iter().find(|candidat| candidat.mot() == mot)
+        Self::TOUS
+            .into_iter()
+            .find(|candidat| candidat.mot() == mot)
     }
 }

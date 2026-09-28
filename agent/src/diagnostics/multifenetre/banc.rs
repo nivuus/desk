@@ -54,7 +54,12 @@ pub(super) fn executer(nom_voie: &str, nombre: u8, sortie: Option<&str>) -> Resu
             .find(|s| s.nom_sortie == nom)
             .map(|s| s.rect)
             .with_context(|| format!("sortie {nom} absente de l'énumération"))?,
-        None => Rect { x: 0, y: 0, width: texture_largeur, height: texture_hauteur },
+        None => Rect {
+            x: 0,
+            y: 0,
+            width: texture_largeur,
+            height: texture_hauteur,
+        },
     };
     let facteur = crate::moniteurs_virtuels::facteur_echelle(
         (bureau.width, bureau.height),
@@ -74,7 +79,10 @@ pub(super) fn executer(nom_voie: &str, nombre: u8, sortie: Option<&str>) -> Resu
     );
 
     let places = disposition::tuiles(bureau, nombre as u32).with_context(|| {
-        format!("{nombre} places sur un bureau {}x{}", bureau.width, bureau.height)
+        format!(
+            "{nombre} places sur un bureau {}x{}",
+            bureau.width, bureau.height
+        )
     })?;
     let places_texture: Vec<Rect> = places
         .iter()
@@ -261,7 +269,10 @@ fn passe_capture(
         if !recouvert && Instant::now() >= mi_parcours && nombre >= 2 {
             mires.recouvrir(nombre as u8 - 1, 0)?;
             recouvert = true;
-            tracing::info!("recouvrement posé : la mire 0 est sous la mire {}", nombre - 1);
+            tracing::info!(
+                "recouvrement posé : la mire 0 est sous la mire {}",
+                nombre - 1
+            );
         }
 
         for (id, voie) in voies.iter_mut().enumerate() {

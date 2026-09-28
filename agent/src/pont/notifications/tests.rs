@@ -1,15 +1,28 @@
 use super::*;
 
 /// L'état nominal : racine inscriptible, canal ouvert, mutations armées.
-const OUVERT: Etat = Etat { inscriptible: true, canal_ouvert: true, mutations_armees: true };
+const OUVERT: Etat = Etat {
+    inscriptible: true,
+    canal_ouvert: true,
+    mutations_armees: true,
+};
 /// L'état de F1, que `PONT_ECRITURE` ne pose plus mais que le code sait tenir.
-const LECTURE_SEULE: Etat =
-    Etat { inscriptible: false, canal_ouvert: true, mutations_armees: true };
-const CANAL_FERME: Etat =
-    Etat { inscriptible: true, canal_ouvert: false, mutations_armees: true };
+const LECTURE_SEULE: Etat = Etat {
+    inscriptible: false,
+    canal_ouvert: true,
+    mutations_armees: true,
+};
+const CANAL_FERME: Etat = Etat {
+    inscriptible: true,
+    canal_ouvert: false,
+    mutations_armees: true,
+};
 /// **F3** — `PONT_MUTATION=0`. Tout le reste est nominal.
-const MUTATIONS_DESARMEES: Etat =
-    Etat { inscriptible: true, canal_ouvert: true, mutations_armees: false };
+const MUTATIONS_DESARMEES: Etat = Etat {
+    inscriptible: true,
+    canal_ouvert: true,
+    mutations_armees: false,
+};
 
 /// Les trois états que F1 et F2 balayaient, plus celui de F3.
 const TOUS_LES_ETATS: [Etat; 4] = [OUVERT, LECTURE_SEULE, CANAL_FERME, MUTATIONS_DESARMEES];
@@ -51,7 +64,10 @@ fn une_ecriture_sur_canal_ferme_est_refusee_en_erreur_d_e_s() {
 /// qui change ce qu'une application obtient.
 #[test]
 fn une_ecriture_est_autorisee_quand_la_racine_est_inscriptible_et_le_canal_ouvert() {
-    assert_eq!(decider(PRE_CONVERT_TO_FULL, OUVERT, Cible::SansObjet), Reponse::Autoriser);
+    assert_eq!(
+        decider(PRE_CONVERT_TO_FULL, OUVERT, Cible::SansObjet),
+        Reponse::Autoriser
+    );
 }
 
 /// ❌ **`un_renommage_et_une_suppression_restent_refuses_en_f2` A ÉTÉ SUPPRIMÉ,
@@ -118,8 +134,14 @@ fn un_renommage_hors_racine_est_NonSupporte_et_pas_ProtegeEnEcriture() {
 /// ligne de F3 qui change ce qu'une application obtient.
 #[test]
 fn une_mutation_est_autorisee_dans_l_etat_nominal() {
-    assert_eq!(decider(PRE_RENAME, OUVERT, Cible::DansLaRacine), Reponse::Autoriser);
-    assert_eq!(decider(PRE_DELETE, OUVERT, Cible::SansObjet), Reponse::Autoriser);
+    assert_eq!(
+        decider(PRE_RENAME, OUVERT, Cible::DansLaRacine),
+        Reponse::Autoriser
+    );
+    assert_eq!(
+        decider(PRE_DELETE, OUVERT, Cible::SansObjet),
+        Reponse::Autoriser
+    );
 }
 
 /// 🔴 **LES DEUX POST DE F3 DÉCLENCHENT UNE POUSSÉE, ET DEUX POUSSÉES
@@ -158,7 +180,10 @@ fn une_post_de_f3_part_quel_que_soit_l_etat() {
     for etat in TOUS_LES_ETATS {
         for code in [FILE_RENAMED, FILE_HANDLE_CLOSED_FILE_DELETED] {
             assert!(
-                matches!(decider(code, etat, Cible::DansLaRacine), Reponse::Pousser(_)),
+                matches!(
+                    decider(code, etat, Cible::DansLaRacine),
+                    Reponse::Pousser(_)
+                ),
                 "code {code} dans l'état {etat:?}"
             );
         }
@@ -174,7 +199,11 @@ fn une_post_de_f3_part_quel_que_soit_l_etat() {
 #[test]
 fn les_liens_durs_sont_refuses_en_non_supporte() {
     for code in [PRE_SET_HARDLINK, HARDLINK_CREATED] {
-        assert_eq!(decider(code, OUVERT, Cible::SansObjet), Reponse::Refuser(Erreur::NonSupporte), "code {code}");
+        assert_eq!(
+            decider(code, OUVERT, Cible::SansObjet),
+            Reponse::Refuser(Erreur::NonSupporte),
+            "code {code}"
+        );
     }
 }
 
@@ -199,7 +228,10 @@ fn les_deux_post_de_contenu_declenchent_une_poussee() {
 /// un répertoire n'a aucun octet à lire.
 #[test]
 fn un_fichier_neuf_est_pousse_comme_une_creation() {
-    assert_eq!(decider(NEW_FILE_CREATED, OUVERT, Cible::SansObjet), Reponse::Pousser(Poussee::Creation));
+    assert_eq!(
+        decider(NEW_FILE_CREATED, OUVERT, Cible::SansObjet),
+        Reponse::Pousser(Poussee::Creation)
+    );
     assert_ne!(
         decider(NEW_FILE_CREATED, OUVERT, Cible::SansObjet),
         Reponse::Pousser(Poussee::Contenu),
@@ -216,7 +248,10 @@ fn un_fichier_neuf_est_pousse_comme_une_creation() {
 fn une_poussee_part_meme_canal_ferme_car_une_post_ne_se_refuse_pas() {
     for etat in TOUS_LES_ETATS {
         assert!(
-            matches!(decider(FILE_HANDLE_CLOSED_FILE_MODIFIED, etat, Cible::SansObjet), Reponse::Pousser(_)),
+            matches!(
+                decider(FILE_HANDLE_CLOSED_FILE_MODIFIED, etat, Cible::SansObjet),
+                Reponse::Pousser(_)
+            ),
             "état {etat:?}"
         );
     }
@@ -235,21 +270,21 @@ fn une_poussee_part_meme_canal_ferme_car_une_post_ne_se_refuse_pas() {
 #[test]
 fn chaque_bit_du_masque_a_une_decision_nommee() {
     for etat in TOUS_LES_ETATS {
-      for cible in [Cible::SansObjet, Cible::DansLaRacine, Cible::HorsRacine] {
-        for bit in 0..32u32 {
-            let drapeau = 1u32 << bit;
-            if MASQUE & drapeau == 0 {
-                continue;
-            }
-            assert_ne!(
-                decider(drapeau as i32, etat, cible),
-                Reponse::AccepterSansAttendre,
-                "le bit 0x{drapeau:X} est DEMANDÉ par le masque et retombe dans le bras \
+        for cible in [Cible::SansObjet, Cible::DansLaRacine, Cible::HorsRacine] {
+            for bit in 0..32u32 {
+                let drapeau = 1u32 << bit;
+                if MASQUE & drapeau == 0 {
+                    continue;
+                }
+                assert_ne!(
+                    decider(drapeau as i32, etat, cible),
+                    Reponse::AccepterSansAttendre,
+                    "le bit 0x{drapeau:X} est DEMANDÉ par le masque et retombe dans le bras \
                  fourre-tout dans l'état {etat:?} / cible {cible:?} : il serait accepté \
                  en silence"
-            );
+                );
+            }
         }
-      }
     }
 }
 
@@ -296,7 +331,10 @@ fn le_masque_demande_exactement_les_neuf_notifications_de_f3() {
 #[test]
 fn les_deux_familles_de_constantes_de_f3_s_accordent() {
     assert_eq!(FILE_RENAMED as u32, NOTIFY_FILE_RENAMED);
-    assert_eq!(FILE_HANDLE_CLOSED_FILE_DELETED as u32, NOTIFY_FILE_HANDLE_CLOSED_FILE_DELETED);
+    assert_eq!(
+        FILE_HANDLE_CLOSED_FILE_DELETED as u32,
+        NOTIFY_FILE_HANDLE_CLOSED_FILE_DELETED
+    );
 }
 
 /// ⚠️ **`FILE_HANDLE_CLOSED_NO_MODIFICATION` N'EST PAS DEMANDÉE, et c'est une
@@ -310,7 +348,10 @@ fn la_fermeture_sans_modification_n_est_pas_demandee() {
     assert_eq!(MASQUE & 512, 0, "masque 0x{MASQUE:X}");
     // Et si elle arrivait quand même, elle retomberait dans le fourre-tout,
     // qui la journalise.
-    assert_eq!(decider(512, OUVERT, Cible::SansObjet), Reponse::AccepterSansAttendre);
+    assert_eq!(
+        decider(512, OUVERT, Cible::SansObjet),
+        Reponse::AccepterSansAttendre
+    );
 }
 
 /// Une notification que le masque n'a pas demandée ne peut pas arriver — mais
@@ -319,5 +360,8 @@ fn la_fermeture_sans_modification_n_est_pas_demandee() {
 #[test]
 fn une_notification_hors_masque_est_acceptee_sans_attendre() {
     // `FILE_OPENED` (mod.rs:338) : jamais demandée.
-    assert_eq!(decider(2, OUVERT, Cible::SansObjet), Reponse::AccepterSansAttendre);
+    assert_eq!(
+        decider(2, OUVERT, Cible::SansObjet),
+        Reponse::AccepterSansAttendre
+    );
 }

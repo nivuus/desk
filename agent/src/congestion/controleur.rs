@@ -99,9 +99,10 @@ impl Controleur {
         // Fenêtre d'amorçage : le sous-système BWE part bas et sonde à la
         // hausse (voir `DELAI_AMORCAGE`) — pendant cette rampe, un débit
         // disponible bas ne signifie pas un lien dégradé.
-        let en_amorcage = o.at.duration_since(self.premiere_estimation_a.expect(
-            "vient d'être posé si absent",
-        )) < DELAI_AMORCAGE;
+        let en_amorcage = o.at.duration_since(
+            self.premiere_estimation_a
+                .expect("vient d'être posé si absent"),
+        ) < DELAI_AMORCAGE;
 
         // Part vidéo : marge de sécurité, moins le budget audio, borné au
         // plafond. `saturating_sub` : une estimation plus basse que le seul
@@ -123,7 +124,11 @@ impl Controleur {
         // qu'avec la cible calculée, pour qu'aucune descente ne s'accumule
         // sur la rampe du BWE (voir `DELAI_AMORCAGE`). Une cible MEILLEURE
         // (remontée) reste autorisée sans restriction.
-        let vise = if en_amorcage && vise > barreau_courant { barreau_courant } else { vise };
+        let vise = if en_amorcage && vise > barreau_courant {
+            barreau_courant
+        } else {
+            vise
+        };
         if let Some(nouveau) = self.hysteresis.observer(vise, o.at) {
             self.courant.encode_size = self.echelle.barreaux()[nouveau].taille;
         }
@@ -180,8 +185,8 @@ impl Controleur {
             .map(|l| ((l * 100.0).round() as i32).clamp(0, PERTE_MAX_OPUS))
             .unwrap_or(self.courant.opus_loss_perc);
 
-        let debit_change = ecart_relatif(self.courant.video_bitrate_bps, disponible)
-            >= ECART_MINIMAL_DEBIT;
+        let debit_change =
+            ecart_relatif(self.courant.video_bitrate_bps, disponible) >= ECART_MINIMAL_DEBIT;
         let change = debit_change
             || resolution_changee
             || qualite != self.courant.qualite
@@ -219,7 +224,12 @@ mod tests {
     use std::time::Duration;
 
     fn obs(estimate_bps: Option<u32>, loss: Option<f32>, at: Instant) -> Observation {
-        Observation { estimate_bps, rtt: None, loss, at }
+        Observation {
+            estimate_bps,
+            rtt: None,
+            loss,
+            at,
+        }
     }
 
     #[test]
@@ -311,7 +321,10 @@ mod tests {
         let d = c
             .observer(obs(Some(80_000_000), None, base + Duration::from_secs(1)))
             .expect("décision");
-        assert_eq!(d.video_bitrate_bps, 12_000_000, "le plafond BITRATE doit borner");
+        assert_eq!(
+            d.video_bitrate_bps, 12_000_000,
+            "le plafond BITRATE doit borner"
+        );
     }
 
     #[test]
@@ -336,7 +349,11 @@ mod tests {
             }
         }
         let d = derniere.expect("une décision devait tomber");
-        assert_ne!(d.encode_size, (1920, 1080), "la résolution devait descendre");
+        assert_ne!(
+            d.encode_size,
+            (1920, 1080),
+            "la résolution devait descendre"
+        );
         assert_eq!(d.qualite, Qualite::Degradee);
     }
 
@@ -367,14 +384,22 @@ mod tests {
         let mut c = Controleur::new(config(), base);
 
         let d = c
-            .observer(obs(Some(9_000_000), Some(0.03), base + Duration::from_secs(1)))
+            .observer(obs(
+                Some(9_000_000),
+                Some(0.03),
+                base + Duration::from_secs(1),
+            ))
             .expect("décision");
         assert_eq!(d.opus_loss_perc, 3);
 
         // 60 % de perte : plafonné à 25, au-delà duquel la redondance coûte
         // plus qu'elle ne sauve.
         let d = c
-            .observer(obs(Some(9_000_000), Some(0.60), base + Duration::from_secs(3)))
+            .observer(obs(
+                Some(9_000_000),
+                Some(0.60),
+                base + Duration::from_secs(3),
+            ))
             .expect("décision");
         assert_eq!(d.opus_loss_perc, 25);
     }
@@ -398,7 +423,11 @@ mod tests {
         // source. Le débit vidéo, lui, bascule immédiatement (aucune
         // hystérésis ne le protège).
         let d = c
-            .observer(obs(Some(5_000_000), None, base + Duration::from_millis(7500)))
+            .observer(obs(
+                Some(5_000_000),
+                None,
+                base + Duration::from_millis(7500),
+            ))
             .expect("le débit a assez bougé pour produire une décision");
 
         assert_eq!(
@@ -467,6 +496,10 @@ mod tests {
             Qualite::Degradee,
             "un débit durablement insuffisant hors amorçage doit dégrader normalement"
         );
-        assert_ne!(d.encode_size, (1920, 1080), "la résolution devait finir par descendre");
+        assert_ne!(
+            d.encode_size,
+            (1920, 1080),
+            "la résolution devait finir par descendre"
+        );
     }
 }

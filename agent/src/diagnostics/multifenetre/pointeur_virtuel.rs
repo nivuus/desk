@@ -17,8 +17,8 @@ use windows::Win32::UI::WindowsAndMessaging::{
     SM_YVIRTUALSCREEN,
 };
 
-use crate::moniteurs_virtuels::pilote::ouvrir_pilote;
 use crate::capture::enumerer_sorties;
+use crate::moniteurs_virtuels::pilote::ouvrir_pilote;
 use crate::moniteurs_virtuels::Sorties;
 
 /// Rectangle du bureau virtuel, tel que Windows le déclare.
@@ -36,13 +36,18 @@ fn bureau_virtuel() -> (i32, i32, i32, i32) {
 pub(super) fn sonder() -> Result<()> {
     let avant = bureau_virtuel();
     tracing::info!(
-        x = avant.0, y = avant.1, largeur = avant.2, hauteur = avant.3,
+        x = avant.0,
+        y = avant.1,
+        largeur = avant.2,
+        hauteur = avant.3,
         "bureau virtuel AVANT création de la sortie"
     );
 
     let pilote = ouvrir_pilote()?;
     let mut sorties = Sorties::nouvelles(&pilote);
-    let id = sorties.creer(1280, 720, 60).context("création de la sortie virtuelle")?;
+    let id = sorties
+        .creer(1280, 720, 60)
+        .context("création de la sortie virtuelle")?;
 
     // Le pilote crée la sortie de façon asynchrone du point de vue de
     // l'espace de bureau : Windows doit encore la rattacher. On laisse
@@ -52,7 +57,11 @@ pub(super) fn sonder() -> Result<()> {
 
     let apres = bureau_virtuel();
     tracing::info!(
-        id, x = apres.0, y = apres.1, largeur = apres.2, hauteur = apres.3,
+        id,
+        x = apres.0,
+        y = apres.1,
+        largeur = apres.2,
+        hauteur = apres.3,
         elargi = (apres != avant),
         "bureau virtuel APRÈS création de la sortie"
     );
@@ -107,11 +116,19 @@ pub(super) fn sonder() -> Result<()> {
     let ecart = ((ou.x - vise_x).abs(), (ou.y - vise_y).abs());
     tracing::info!(
         envoyes,
-        vise_x, vise_y, obtenu_x = ou.x, obtenu_y = ou.y,
-        ecart_x = ecart.0, ecart_y = ecart.1,
+        vise_x,
+        vise_y,
+        obtenu_x = ou.x,
+        obtenu_y = ou.y,
+        ecart_x = ecart.0,
+        ecart_y = ecart.1,
         // Deux pixels de tolérance : la conversion normalisée n'est pas
         // exactement réversible, et ce n'est pas ce qu'on mesure ici.
-        verdict = if ecart.0 <= 2 && ecart.1 <= 2 { "ATTEINTE" } else { "NON ATTEINTE" },
+        verdict = if ecart.0 <= 2 && ecart.1 <= 2 {
+            "ATTEINTE"
+        } else {
+            "NON ATTEINTE"
+        },
         "injection absolue vers le centre de la sortie virtuelle"
     );
 

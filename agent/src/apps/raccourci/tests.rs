@@ -23,7 +23,10 @@ fn tout_existe(_: &str) -> bool {
 fn ecarte_une_cible_vide() {
     // 7 des 218 raccourcis de la VM sont dans ce cas : des cibles de l'espace
     // de noms Shell, sans chemin de fichier. Ce n'est pas une erreur.
-    assert_eq!(retenir(&brut("", "", ""), &tout_existe), Err(Ecart::CibleVide));
+    assert_eq!(
+        retenir(&brut("", "", ""), &tout_existe),
+        Err(Ecart::CibleVide)
+    );
     assert_eq!(
         retenir(&brut("   ", "", ""), &tout_existe),
         Err(Ecart::CibleVide)
@@ -101,7 +104,10 @@ fn n_ecarte_rien_par_le_chemin() {
         r"C:\Windows\system32\mspaint.exe",
         r"C:\Windows\SysWOW64\x.exe",
     ] {
-        assert!(retenir(&brut(cible, "", ""), &tout_existe).is_ok(), "{cible}");
+        assert!(
+            retenir(&brut(cible, "", ""), &tout_existe).is_ok(),
+            "{cible}"
+        );
     }
 }
 
@@ -112,7 +118,10 @@ fn la_cle_replie_la_casse_de_la_cible_et_du_repertoire_mais_pas_des_arguments() 
         cle(r"C:\A\B.EXE", "-x", r"C:\A"),
         cle(r"c:\a\b.exe", "-x", r"c:\a")
     );
-    assert_ne!(cle(r"C:\a\b.exe", "-X", r"C:\a"), cle(r"C:\a\b.exe", "-x", r"C:\a"));
+    assert_ne!(
+        cle(r"C:\a\b.exe", "-X", r"C:\a"),
+        cle(r"C:\a\b.exe", "-x", r"C:\a")
+    );
 }
 
 #[test]
@@ -179,7 +188,11 @@ fn corpus() -> Vec<EntreeCorpus> {
 #[test]
 fn le_corpus_reel_rend_218_lus_167_retenus_154_cles_et_104_par_la_cible_seule() {
     let entrees = corpus();
-    assert_eq!(entrees.len(), 218, "218 raccourcis lus sur les quatre racines");
+    assert_eq!(
+        entrees.len(),
+        218,
+        "218 raccourcis lus sur les quatre racines"
+    );
 
     // Le prédicat injecté relit le booléen MESURÉ sur la VM. C'est très
     // exactement ce que D7 achète : sur l'hôte, aucune de ces cibles n'existe.
@@ -212,7 +225,11 @@ fn le_corpus_reel_rend_218_lus_167_retenus_154_cles_et_104_par_la_cible_seule() 
 
     assert_eq!(vides, 7, "cibles de l'espace de noms Shell");
     assert_eq!(absentes, 3, "cibles .exe nommées mais absentes du disque");
-    assert_eq!(retenus.len(), 167, "raccourcis retenus par les trois règles");
+    assert_eq!(
+        retenus.len(),
+        167,
+        "raccourcis retenus par les trois règles"
+    );
     // Contrôle croisé de la spec §3.1, le seul de ce paragraphe :
     // 170 cibles .exe moins 3 absentes font 167.
     assert_eq!(retenus.len() + absentes, 170, "cibles .exe non vides");
@@ -222,15 +239,21 @@ fn le_corpus_reel_rend_218_lus_167_retenus_154_cles_et_104_par_la_cible_seule() 
         .iter()
         .map(|b| cle(&b.cible, &b.arguments, &b.repertoire))
         .collect();
-    assert_eq!(par_triplet.len(), 154, "applications distinctes sur cette VM");
+    assert_eq!(
+        par_triplet.len(),
+        154,
+        "applications distinctes sur cette VM"
+    );
 
     // 🔴 C'EST LA ROUGE GRATUITE, ET ELLE EST ICI, SUR L'HÔTE, SANS VM. Un
     // `cle()` qui ignorerait les arguments ferait tomber l'assertion
     // précédente en rendant 104 : les 26 raccourcis de `smartmontools` visent
     // tous `runcmdu.exe` avec des arguments différents, et l'écart total entre
     // les deux comptes est de 50 applications.
-    let par_cible_seule: HashSet<String> =
-        retenus.iter().map(|b| normaliser_chemin(&b.cible)).collect();
+    let par_cible_seule: HashSet<String> = retenus
+        .iter()
+        .map(|b| normaliser_chemin(&b.cible))
+        .collect();
     assert_eq!(par_cible_seule.len(), 104, "clés par la cible seule");
     assert_eq!(par_triplet.len() - par_cible_seule.len(), 50);
 }

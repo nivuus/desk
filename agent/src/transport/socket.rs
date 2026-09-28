@@ -422,7 +422,11 @@ mod tests {
             std::io::ErrorKind::Unsupported,
             std::io::ErrorKind::Other,
         ] {
-            assert_eq!(classify_recv_error(kind), RecvErrorAction::Fatal, "{kind:?}");
+            assert_eq!(
+                classify_recv_error(kind),
+                RecvErrorAction::Fatal,
+                "{kind:?}"
+            );
         }
     }
 
@@ -476,6 +480,9 @@ mod tests {
     fn attente_dictee_par_rtc_seul_sans_piste_video() {
         let now = Instant::now();
         let rtc_deadline = now + Duration::from_millis(10);
-        assert_eq!(bounded_wait(now, rtc_deadline, None, None), Duration::from_millis(10));
+        assert_eq!(
+            bounded_wait(now, rtc_deadline, None, None),
+            Duration::from_millis(10)
+        );
     }
 }

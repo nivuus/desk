@@ -1,7 +1,12 @@
 use super::*;
 
 fn e(nom: &str) -> Entree {
-    Entree { nom: nom.to_string(), repertoire: false, taille: 1, modifie_ms: 0 }
+    Entree {
+        nom: nom.to_string(),
+        repertoire: false,
+        taille: 1,
+        modifie_ms: 0,
+    }
 }
 
 fn t0() -> Instant {
@@ -34,7 +39,9 @@ fn une_memoire_expire_au_terme_exact_et_pas_avant() {
     let mut c = CacheEnumeration::nouveau();
     let t = t0();
     c.poser("dossier".into(), vec![e("a.txt")], t);
-    assert!(c.lire("dossier", t + TTL_ENUMERATION - Duration::from_millis(1)).is_some());
+    assert!(c
+        .lire("dossier", t + TTL_ENUMERATION - Duration::from_millis(1))
+        .is_some());
     assert!(c.lire("dossier", t + TTL_ENUMERATION).is_none());
 }
 
@@ -48,7 +55,11 @@ fn une_memoire_expiree_est_retiree_et_pas_seulement_ignoree() {
     c.poser("dossier".into(), vec![e("a.txt")], t);
     assert_eq!(c.taille(), 1);
     let _ = c.lire("dossier", t + TTL_ENUMERATION);
-    assert_eq!(c.taille(), 0, "l'entrée expirée doit être retirée, pas gardée");
+    assert_eq!(
+        c.taille(),
+        0,
+        "l'entrée expirée doit être retirée, pas gardée"
+    );
 }
 
 #[test]
@@ -59,7 +70,9 @@ fn poser_deux_fois_ecrase_et_rearme_l_horloge() {
     let tard = t + TTL_ENUMERATION - Duration::from_millis(1);
     c.poser("dossier".into(), vec![e("neuf.txt")], tard);
     assert_eq!(c.taille(), 1, "la seconde pose écrase, elle n'ajoute pas");
-    let lues = c.lire("dossier", tard + Duration::from_millis(1)).expect("réarmée");
+    let lues = c
+        .lire("dossier", tard + Duration::from_millis(1))
+        .expect("réarmée");
     assert_eq!(lues[0].nom, "neuf.txt");
 }
 
@@ -93,7 +106,10 @@ fn le_parent_d_un_chemin_de_premier_niveau_est_la_racine() {
     let t = t0();
     c.poser(String::new(), vec![e("a.txt")], t);
     c.invalider("neuf.txt");
-    assert!(c.lire("", t).is_none(), "la racine doit être oubliée sur une création de premier niveau");
+    assert!(
+        c.lire("", t).is_none(),
+        "la racine doit être oubliée sur une création de premier niveau"
+    );
 }
 
 /// Invalider un répertoire n'en touche **aucun autre** : un cache qui se

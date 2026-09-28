@@ -131,8 +131,14 @@ mod tests {
     #[allow(non_snake_case)]
     fn une_frequence_autre_est_refusee_EN_LA_NOMMANT() {
         let e = verifier(44_100, 2, 32, true).unwrap_err().to_string();
-        assert!(e.contains("44100"), "la fréquence rencontrée doit être nommée : {e}");
-        assert!(e.contains("48000"), "la fréquence attendue doit être nommée : {e}");
+        assert!(
+            e.contains("44100"),
+            "la fréquence rencontrée doit être nommée : {e}"
+        );
+        assert!(
+            e.contains("48000"),
+            "la fréquence attendue doit être nommée : {e}"
+        );
         // ⚠️ La mutation M4 (« le motif ne nomme plus la fréquence
         // rencontrée ») a d'abord SURVÉCU : `[{description}]` la portait quand
         // même, et les deux `contains` ci-dessus passaient par elle. Le
@@ -157,7 +163,10 @@ mod tests {
     #[test]
     fn un_format_entier_32_bits_est_refuse_par_la_SEULE_garde_du_flottant() {
         let e = verifier(48_000, 2, 32, false).unwrap_err().to_string();
-        assert!(e.contains("entier"), "le motif doit nommer le format entier : {e}");
+        assert!(
+            e.contains("entier"),
+            "le motif doit nommer le format entier : {e}"
+        );
         assert!(
             !e.contains("flottant 32"),
             "ce n'est pas la garde des bits qui doit refuser ce cas : {e}"
@@ -181,7 +190,10 @@ mod tests {
     #[test]
     fn le_mono_est_refuse_plutot_que_converti() {
         let e = verifier(48_000, 1, 32, true).unwrap_err().to_string();
-        assert!(e.contains('1'), "le nombre de canaux rencontré doit être nommé : {e}");
+        assert!(
+            e.contains('1'),
+            "le nombre de canaux rencontré doit être nommé : {e}"
+        );
     }
 
     #[test]
@@ -230,7 +242,13 @@ mod tests {
 
     #[test]
     fn la_description_se_lit_comme_celle_du_loopback() {
-        assert_eq!(decrire(48_000, 2, 32, true), "48000 Hz, 2 canaux, 32 bits, flottant");
-        assert_eq!(decrire(44_100, 2, 16, false), "44100 Hz, 2 canaux, 16 bits, entier");
+        assert_eq!(
+            decrire(48_000, 2, 32, true),
+            "48000 Hz, 2 canaux, 32 bits, flottant"
+        );
+        assert_eq!(
+            decrire(44_100, 2, 16, false),
+            "44100 Hz, 2 canaux, 16 bits, entier"
+        );
     }
 }

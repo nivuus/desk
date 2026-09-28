@@ -67,11 +67,15 @@ fn un_contour_noir_majoritaire_ne_gagne_pas() {
          n'éprouve pas la luminance"
     );
     let (o, l, h) = image(&[
-        (px(5, 5, 60, 255), 40),      // contour sombre, majoritaire
-        (px(250, 160, 40, 255), 20),  // orange, minoritaire
+        (px(5, 5, 60, 255), 40),     // contour sombre, majoritaire
+        (px(250, 160, 40, 255), 20), // orange, minoritaire
     ]);
     let d = dominante(&o, l, h).expect("l'orange survit");
-    assert_eq!(d, [250, 160, 40], "le contour sombre ne décide pas de la teinte");
+    assert_eq!(
+        d,
+        [250, 160, 40],
+        "le contour sombre ne décide pas de la teinte"
+    );
 }
 
 #[test]
@@ -80,7 +84,11 @@ fn une_icone_entierement_grise_rend_None() {
     // n'est pas un ornement.
     // ROUGE : retirer le filtre de saturation ⟹ `Some([128,128,128])`.
     let (o, l, h) = image(&[(px(128, 128, 128, 255), 64)]);
-    assert_eq!(dominante(&o, l, h), None, "aucun pixel chromatique ne survit");
+    assert_eq!(
+        dominante(&o, l, h),
+        None,
+        "aucun pixel chromatique ne survit"
+    );
 }
 
 #[test]
@@ -88,7 +96,11 @@ fn la_moyenne_du_seau_n_est_pas_le_centre_du_seau() {
     // ROUGE : rendre le centre du seau quantifié au lieu de la moyenne.
     let (o, l, h) = image(&[(px(200, 40, 40, 255), 16)]);
     let d = dominante(&o, l, h).expect("le rouge survit");
-    assert_eq!(d, [200, 40, 40], "la moyenne rend une teinte RÉELLE de l'image");
+    assert_eq!(
+        d,
+        [200, 40, 40],
+        "la moyenne rend une teinte RÉELLE de l'image"
+    );
     // Le centre du seau vaudrait (6·32+16, 1·32+16, 1·32+16) = (208, 48, 48).
     assert_ne!(d, [208, 48, 48], "et surtout PAS une teinte de la grille");
 }
@@ -99,13 +111,21 @@ fn une_geometrie_incoherente_rend_None() {
     // géométrie annoncée ne décrit pas le contenu.
     let o = vec![60u8, 110, 240, 255];
     assert_eq!(dominante(&o, 4, 4), None, "1 pixel pour 4×4 annoncés");
-    assert_eq!(dominante(&[], 0, 0), None, "une image vide n'a pas de dominante");
+    assert_eq!(
+        dominante(&[], 0, 0),
+        None,
+        "une image vide n'a pas de dominante"
+    );
 }
 
 #[test]
 fn en_hexa_rend_six_chiffres_minuscules() {
     // ROUGE : `{:X}` au lieu de `{:x}`, ou trois chiffres au lieu de six.
-    assert_eq!(en_hexa([0x0a, 0xbc, 0xde]), "#0abcde", "zéro de tête conservé");
+    assert_eq!(
+        en_hexa([0x0a, 0xbc, 0xde]),
+        "#0abcde",
+        "zéro de tête conservé"
+    );
     assert_eq!(en_hexa([0xAB, 0xCD, 0xEF]), "#abcdef", "MINUSCULES");
     assert_eq!(en_hexa([0, 0, 0]), "#000000");
     assert_eq!(en_hexa([255, 255, 255]), "#ffffff");
@@ -125,10 +145,22 @@ fn un_suivi_n_annonce_pas_deux_fois_la_meme_couleur() {
     // ROUGE : retirer la comparaison ⟹ une annonce par tour, soit douze par
     // minute et par fenêtre à `PERIODE_ACCENT = 5 s`.
     let mut s = SuiviAccent::neuf();
-    assert_eq!(s.observer("#7aa2f7"), Some("#7aa2f7".to_string()), "la première");
+    assert_eq!(
+        s.observer("#7aa2f7"),
+        Some("#7aa2f7".to_string()),
+        "la première"
+    );
     assert_eq!(s.observer("#7aa2f7"), None, "la même : rien");
-    assert_eq!(s.observer("#7aa2f7"), None, "encore la même : toujours rien");
-    assert_eq!(s.observer("#fa8c16"), Some("#fa8c16".to_string()), "un changement");
+    assert_eq!(
+        s.observer("#7aa2f7"),
+        None,
+        "encore la même : toujours rien"
+    );
+    assert_eq!(
+        s.observer("#fa8c16"),
+        Some("#fa8c16".to_string()),
+        "un changement"
+    );
     assert_eq!(s.observer("#fa8c16"), None, "puis plus rien");
 }
 
@@ -209,7 +241,18 @@ fn bgra_en_rgba_puis_dominante_rendent_la_couleur_REELLE_du_bgra() {
     super::bgra_en_rgba(&mut sans);
     let lu_avec = super::dominante(&sans, 8, 8).expect("idem apres conversion");
 
-    assert_eq!(lu_avec, [0xd0, 0x80, 0x40], "converti : la teinte CHAUDE, celle de l'image");
-    assert_eq!(lu_sans, [0x40, 0x80, 0xd0], "sans conversion : la teinte FROIDE, le rouge et le bleu echanges");
-    assert_ne!(lu_sans, lu_avec, "les deux lectures DIFFERENT : le sens compte");
+    assert_eq!(
+        lu_avec,
+        [0xd0, 0x80, 0x40],
+        "converti : la teinte CHAUDE, celle de l'image"
+    );
+    assert_eq!(
+        lu_sans,
+        [0x40, 0x80, 0xd0],
+        "sans conversion : la teinte FROIDE, le rouge et le bleu echanges"
+    );
+    assert_ne!(
+        lu_sans, lu_avec,
+        "les deux lectures DIFFERENT : le sens compte"
+    );
 }

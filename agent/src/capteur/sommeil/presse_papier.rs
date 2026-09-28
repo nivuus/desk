@@ -91,7 +91,10 @@ pub(super) fn distribuer(garde: &mut MutexGuard<'static, Etat>, annonce: Annonce
         // fabriquer une rupture ferait purger une session sur un fait qui n'a
         // pas eu lieu si cette invariance venait à tomber.
         let issue = match garde.canaux.get(&session) {
-            Some(canal) => Some(canal.envoyer(Message::PressePapier { texte: texte.clone(), octets })),
+            Some(canal) => Some(canal.envoyer(Message::PressePapier {
+                texte: texte.clone(),
+                octets,
+            })),
             None => None,
         };
         match issue {
@@ -144,10 +147,7 @@ pub(super) fn ecrire(texte: &str) -> Result<()> {
 /// qui n'a jamais atteint le presse-papier, et ce contenu deviendrait alors
 /// invisible **à jamais** — le tour suivant ne le verrait pas comme un
 /// changement.
-pub(super) fn ecrire_avec(
-    texte: &str,
-    ecrivain: impl FnOnce(&str) -> Result<u32>,
-) -> Result<()> {
+pub(super) fn ecrire_avec(texte: &str, ecrivain: impl FnOnce(&str) -> Result<u32>) -> Result<()> {
     if !crate::presse_papier::actif() {
         anyhow::bail!("presse-papier desarme (PRESSE_PAPIER=0)");
     }

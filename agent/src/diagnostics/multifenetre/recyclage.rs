@@ -59,12 +59,22 @@ fn construire() -> Result<Instance> {
         FPS,
         DEBIT,
     )?;
-    Ok(Instance { _peripherique: peripherique, _contexte: contexte, _encodeur: encodeur })
+    Ok(Instance {
+        _peripherique: peripherique,
+        _contexte: contexte,
+        _encodeur: encodeur,
+    })
 }
 
 pub(super) fn mesurer(cycles: usize) -> Result<()> {
-    tracing::info!(cycles, largeur = LARGEUR, hauteur = HAUTEUR, fps = FPS, debit = DEBIT,
-        "mesure pivot D5 : recyclage d'encodeurs, un périphérique D3D11 par encodeur");
+    tracing::info!(
+        cycles,
+        largeur = LARGEUR,
+        hauteur = HAUTEUR,
+        fps = FPS,
+        debit = DEBIT,
+        "mesure pivot D5 : recyclage d'encodeurs, un périphérique D3D11 par encodeur"
+    );
 
     // ── Phase 1 : monter jusqu'au refus, et le NOMMER.
     //
@@ -111,15 +121,27 @@ pub(super) fn mesurer(cycles: usize) -> Result<()> {
     let mut premier_echec: Option<usize> = None;
     for cycle in 1..=cycles {
         let retiree = vivants.pop().expect("le vivier ne peut pas être vide ici");
-        tracing::info!(cycle, restants = vivants.len(), "cycle : relâchement d'un encodeur");
+        tracing::info!(
+            cycle,
+            restants = vivants.len(),
+            "cycle : relâchement d'un encodeur"
+        );
         drop(retiree);
-        tracing::info!(cycle, restants = vivants.len(), "cycle : relâchement terminé");
+        tracing::info!(
+            cycle,
+            restants = vivants.len(),
+            "cycle : relâchement terminé"
+        );
 
         match construire() {
             Ok(instance) => {
                 vivants.push(instance);
                 reussis += 1;
-                tracing::info!(cycle, vivants = vivants.len(), "cycle : reconstruction RÉUSSIE");
+                tracing::info!(
+                    cycle,
+                    vivants = vivants.len(),
+                    "cycle : reconstruction RÉUSSIE"
+                );
             }
             Err(erreur) => {
                 premier_echec = Some(cycle);

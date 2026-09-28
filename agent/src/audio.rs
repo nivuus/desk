@@ -275,8 +275,9 @@ mod tests {
         // La borne qui compte n'est pas le nombre d'essais mais le temps
         // qu'ils prennent : trop court, un redémarrage du service audio tue
         // la fenêtre ; trop long, une capture morte reste annoncée vivante.
-        let totale: std::time::Duration =
-            (1..=LECTURES_ECHOUEES_MAX).map(temporisation_de_reprise).sum();
+        let totale: std::time::Duration = (1..=LECTURES_ECHOUEES_MAX)
+            .map(temporisation_de_reprise)
+            .sum();
         assert!(
             totale >= std::time::Duration::from_millis(500)
                 && totale <= std::time::Duration::from_secs(3),

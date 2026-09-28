@@ -49,7 +49,11 @@ pub struct Exclusivite<V: Verrou> {
 
 impl<V: Verrou> Exclusivite<V> {
     pub fn new(verrou: V) -> Self {
-        Self { verrou, tenue: false, refus_dit: false }
+        Self {
+            verrou,
+            tenue: false,
+            refus_dit: false,
+        }
     }
 
     /// ⚠️ **TENTE À CHAQUE APPEL — Décision 2 du plan E2.** Seul le JOURNAL
@@ -104,7 +108,10 @@ mod tests {
 
     impl VerrouFactice {
         fn nouveau(reponses: &[bool]) -> Self {
-            Self { reponses: reponses.to_vec(), appels: 0 }
+            Self {
+                reponses: reponses.to_vec(),
+                appels: 0,
+            }
         }
     }
 

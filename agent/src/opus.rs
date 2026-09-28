@@ -71,7 +71,9 @@ impl OpusEncoder {
         // FEC in-band : le décodeur peut reconstruire une trame perdue à
         // partir de la suivante. Sur un lien quelconque, c'est ce qui évite
         // les micro-coupures audibles.
-        inner.set_inband_fec(true).context("activation du FEC in-band")?;
+        inner
+            .set_inband_fec(true)
+            .context("activation du FEC in-band")?;
         // DTX : le silence numérique retombe à 1 octet par trame en régime
         // établi (mesuré). Sans lui, il coûterait 3 octets — l'encodage à
         // débit variable dépense déjà peu. Le gain est modeste, le coût nul.
@@ -147,8 +149,8 @@ pub struct OpusDecoder {
 
 impl OpusDecoder {
     pub fn new() -> Result<Self> {
-        let inner = Decoder::new(SAMPLE_RATE_HZ, Channels::Stereo)
-            .context("création du décodeur Opus")?;
+        let inner =
+            Decoder::new(SAMPLE_RATE_HZ, Channels::Stereo).context("création du décodeur Opus")?;
         Ok(Self { inner })
     }
 

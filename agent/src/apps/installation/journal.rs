@@ -101,7 +101,11 @@ mod tests {
         // « é » fait deux octets ; en répéter assez place la coupe au milieu
         // d'un caractère une fois sur deux, quel que soit le rembourrage.
         for rembourrage in 0..4 {
-            let texte = format!("{}{}", "x".repeat(rembourrage), "é".repeat(JOURNAL_MAX_OCTETS));
+            let texte = format!(
+                "{}{}",
+                "x".repeat(rembourrage),
+                "é".repeat(JOURNAL_MAX_OCTETS)
+            );
             let (q, tronque) = queue(&texte);
             assert!(tronque);
             assert!(q.len() <= JOURNAL_MAX_OCTETS);

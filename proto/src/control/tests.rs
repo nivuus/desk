@@ -42,9 +42,8 @@ fn rejette_une_version_absente() {
 
 #[test]
 fn rejette_une_version_inconnue() {
-    let err = serde_json::from_str::<ClientControl>(
-        r#"{"v":9,"type":"resize","width":1,"height":1}"#,
-    );
+    let err =
+        serde_json::from_str::<ClientControl>(r#"{"v":9,"type":"resize","width":1,"height":1}"#);
     assert!(err.is_err());
 }
 
@@ -52,7 +51,10 @@ fn rejette_une_version_inconnue() {
 fn serialise_le_message_de_pointeur_en_kebab_case() {
     let json = serde_json::to_string(&AgentControl::pointer(false, CursorShape::NsResize))
         .expect("sérialisation");
-    assert_eq!(json, r#"{"type":"pointer","v":3,"visible":false,"shape":"ns-resize"}"#);
+    assert_eq!(
+        json,
+        r#"{"type":"pointer","v":3,"visible":false,"shape":"ns-resize"}"#
+    );
 }
 
 #[test]
@@ -105,7 +107,8 @@ fn deserialise_l_etat_du_lien() {
 
 #[test]
 fn rejette_la_version_de_controle_1_devenue_obsolete() {
-    let err = serde_json::from_str::<AgentControl>(r#"{"type":"ready","v":1,"width":1,"height":1}"#);
+    let err =
+        serde_json::from_str::<AgentControl>(r#"{"type":"ready","v":1,"width":1,"height":1}"#);
     assert!(err.is_err());
 }
 
@@ -115,7 +118,11 @@ fn une_visibilite_se_relit_telle_qu_ecrite() {
     let message: ClientControl = serde_json::from_str(json).expect("visibilité valide");
     assert_eq!(
         message,
-        ClientControl::Visibility { version: 3, visible: false, focused: false }
+        ClientControl::Visibility {
+            version: 3,
+            visible: false,
+            focused: false
+        }
     );
 }
 
@@ -127,8 +134,8 @@ fn une_visibilite_de_mauvaise_version_est_rejetee() {
 
 #[test]
 fn un_sommeil_s_ecrit_avec_son_type_en_tete_et_sa_raison() {
-    let json = serde_json::to_string(&AgentControl::asleep(true, "evincee"))
-        .expect("sérialisation");
+    let json =
+        serde_json::to_string(&AgentControl::asleep(true, "evincee")).expect("sérialisation");
     assert!(json.starts_with(r#"{"type":"asleep""#), "obtenu : {json}");
     assert!(json.contains(r#""asleep":true"#), "obtenu : {json}");
     assert!(json.contains(r#""reason":"evincee""#), "obtenu : {json}");
@@ -199,7 +206,10 @@ fn un_ready_sans_micro_se_lit_avec_micro_faux() {
 fn serialise_le_presse_papier_avec_son_texte() {
     let json = serde_json::to_string(&AgentControl::clipboard(Some("bonjour".into()), 7))
         .expect("sérialisation");
-    assert_eq!(json, r#"{"type":"clipboard","v":3,"text":"bonjour","bytes":7}"#);
+    assert_eq!(
+        json,
+        r#"{"type":"clipboard","v":3,"text":"bonjour","bytes":7}"#
+    );
 }
 
 /// 🔴 Un REFUS sérialise `"text":null`, champ PRÉSENT.
@@ -211,8 +221,14 @@ fn serialise_le_presse_papier_avec_son_texte() {
 fn un_refus_de_presse_papier_serialise_un_text_null_present() {
     let json =
         serde_json::to_string(&AgentControl::clipboard(None, 102_400)).expect("sérialisation");
-    assert_eq!(json, r#"{"type":"clipboard","v":3,"text":null,"bytes":102400}"#);
-    assert!(json.contains("\"text\":null"), "le champ text doit rester présent");
+    assert_eq!(
+        json,
+        r#"{"type":"clipboard","v":3,"text":null,"bytes":102400}"#
+    );
+    assert!(
+        json.contains("\"text\":null"),
+        "le champ text doit rester présent"
+    );
 }
 
 /// 🔴 Ce qui prouve que `verifie_version` est bien branché sur la variante
@@ -223,7 +239,9 @@ fn un_presse_papier_en_version_2_est_rejete() {
     let brut = r#"{"type":"clipboard","v":2,"text":"bonjour","bytes":7}"#;
     let erreur = serde_json::from_str::<AgentControl>(brut).expect_err("v:2 doit être rejeté");
     assert!(
-        erreur.to_string().contains("version de contrôle non supportée"),
+        erreur
+            .to_string()
+            .contains("version de contrôle non supportée"),
         "message inattendu : {erreur}"
     );
 }
@@ -243,9 +261,8 @@ fn un_presse_papier_portant_un_champ_inconnu_est_rejete() {
 /// ROUGE si la variante `ClientControl::Clipboard` est absente.
 #[test]
 fn deserialise_le_collage_venu_du_client() {
-    let msg: ClientControl =
-        serde_json::from_str(r#"{"v":3,"type":"clipboard","text":"bonjour"}"#)
-            .expect("désérialisation");
+    let msg: ClientControl = serde_json::from_str(r#"{"v":3,"type":"clipboard","text":"bonjour"}"#)
+        .expect("désérialisation");
     assert_eq!(msg, ClientControl::clipboard("bonjour"));
 }
 
@@ -271,9 +288,8 @@ fn un_collage_client_a_la_mauvaise_version_est_rejete() {
 /// un client mal conduit pourrait alors faire passer n'importe quoi.
 #[test]
 fn un_collage_client_avec_un_champ_en_trop_est_rejete() {
-    let erreur = serde_json::from_str::<ClientControl>(
-        r#"{"v":3,"type":"clipboard","text":"x","bytes":1}"#,
-    );
+    let erreur =
+        serde_json::from_str::<ClientControl>(r#"{"v":3,"type":"clipboard","text":"x","bytes":1}"#);
     assert!(erreur.is_err(), "un champ inconnu doit être refusé");
 }
 
@@ -288,9 +304,8 @@ fn un_collage_client_avec_un_champ_en_trop_est_rejete() {
 /// le tolérer et lire `false`.
 #[test]
 fn capabilities_sans_clipboard_se_deserialise_a_false() {
-    let msg: AgentControl =
-        serde_json::from_str(r#"{"v":3,"type":"capabilities","gamepad":true}"#)
-            .expect("désérialisation");
+    let msg: AgentControl = serde_json::from_str(r#"{"v":3,"type":"capabilities","gamepad":true}"#)
+        .expect("désérialisation");
     assert_eq!(msg, AgentControl::capabilities(true, false));
 }
 
@@ -322,16 +337,37 @@ fn capabilities_serialise_les_deux_champs() {
 #[test]
 fn le_debug_du_presse_papier_montre_la_taille_et_jamais_le_texte() {
     let rendu = format!("{:?}", ClientControl::clipboard("mot-de-passe-tres-secret"));
-    assert!(!rendu.contains("secret"), "le texte a fui au Debug : {rendu}");
-    assert!(rendu.contains("octets: 24"), "la taille doit rester lisible : {rendu}");
+    assert!(
+        !rendu.contains("secret"),
+        "le texte a fui au Debug : {rendu}"
+    );
+    assert!(
+        rendu.contains("octets: 24"),
+        "la taille doit rester lisible : {rendu}"
+    );
 
-    let descendant = format!("{:?}", AgentControl::clipboard(Some("mot-de-passe".into()), 12));
-    assert!(!descendant.contains("mot-de-passe"), "le texte a fui au Debug : {descendant}");
-    assert!(descendant.contains("octets: 12"), "la taille doit rester lisible : {descendant}");
-    assert!(descendant.contains("refus: false"), "le refus doit rester lisible : {descendant}");
+    let descendant = format!(
+        "{:?}",
+        AgentControl::clipboard(Some("mot-de-passe".into()), 12)
+    );
+    assert!(
+        !descendant.contains("mot-de-passe"),
+        "le texte a fui au Debug : {descendant}"
+    );
+    assert!(
+        descendant.contains("octets: 12"),
+        "la taille doit rester lisible : {descendant}"
+    );
+    assert!(
+        descendant.contains("refus: false"),
+        "le refus doit rester lisible : {descendant}"
+    );
 
     let refus = format!("{:?}", AgentControl::clipboard(None, 100_000));
-    assert!(refus.contains("refus: true"), "un refus doit se lire : {refus}");
+    assert!(
+        refus.contains("refus: true"),
+        "un refus doit se lire : {refus}"
+    );
 }
 
 /// Le `Debug` écrit à la main ne doit pas AVALER les autres variantes en
@@ -342,16 +378,30 @@ fn le_debug_du_presse_papier_montre_la_taille_et_jamais_le_texte() {
 #[test]
 fn le_debug_manuel_conserve_les_champs_des_autres_variantes() {
     let r = format!("{:?}", ClientControl::resize(1280, 720));
-    assert!(r.contains("Resize") && r.contains("1280") && r.contains("720"), "{r}");
+    assert!(
+        r.contains("Resize") && r.contains("1280") && r.contains("720"),
+        "{r}"
+    );
 
     let l = format!(
         "{:?}",
-        AgentControl::link(4_000_000, (800, 600), LinkQuality::Degradee, LinkAdaptation::Active)
+        AgentControl::link(
+            4_000_000,
+            (800, 600),
+            LinkQuality::Degradee,
+            LinkAdaptation::Active
+        )
     );
-    assert!(l.contains("Link") && l.contains("4000000") && l.contains("Degradee"), "{l}");
+    assert!(
+        l.contains("Link") && l.contains("4000000") && l.contains("Degradee"),
+        "{l}"
+    );
 
     let c = format!("{:?}", AgentControl::capabilities(true, false));
-    assert!(c.contains("gamepad: true") && c.contains("clipboard: false"), "{c}");
+    assert!(
+        c.contains("gamepad: true") && c.contains("clipboard: false"),
+        "{c}"
+    );
 }
 
 // ── Bloc E3 : la variante `MicState` ────────────────────────────────────────
@@ -393,10 +443,13 @@ fn un_etat_de_micro_a_la_mauvaise_version_est_rejete() {
     // `deserialize_with` de la seule variante `MicState` établit que la
     // vérification est branchée variante par variante, et non une fois pour
     // toutes (patron mesuré en P3 : 1 échec sur 18).
-    let erreur = serde_json::from_str::<AgentControl>(r#"{"type":"mic-state","v":2,"granted":true}"#)
-        .expect_err("une version 2 doit être rejetée");
+    let erreur =
+        serde_json::from_str::<AgentControl>(r#"{"type":"mic-state","v":2,"granted":true}"#)
+            .expect_err("une version 2 doit être rejetée");
     assert!(
-        erreur.to_string().contains("version de contrôle non supportée"),
+        erreur
+            .to_string()
+            .contains("version de contrôle non supportée"),
         "obtenu : {erreur}"
     );
 }
@@ -415,5 +468,8 @@ fn l_etat_du_micro_ne_divulgue_rien_au_journal() {
     // P2 a trouvé le presse-papier en clair dans `agent.log` sur une trace
     // antérieure et inoffensive, rendue dangereuse par une variante neuve.
     let rendu = format!("{:?}", AgentControl::mic_state(true));
-    assert_eq!(rendu, "MicState { v: 3, granted: true }", "obtenu : {rendu}");
+    assert_eq!(
+        rendu, "MicState { v: 3, granted: true }",
+        "obtenu : {rendu}"
+    );
 }

@@ -37,9 +37,7 @@ pub fn origine_depuis_qpc(
 #[cfg(windows)]
 mod systeme {
     use anyhow::{Context, Result};
-    use windows::Win32::System::Performance::{
-        QueryPerformanceCounter, QueryPerformanceFrequency,
-    };
+    use windows::Win32::System::Performance::{QueryPerformanceCounter, QueryPerformanceFrequency};
 
     pub fn lire_qpc() -> Result<i64> {
         let mut valeur = 0i64;
@@ -77,7 +75,10 @@ mod tests {
     #[test]
     fn une_origine_egale_a_maintenant_ne_recule_pas() {
         let maintenant = Instant::now();
-        assert_eq!(origine_depuis_qpc(42, 42, 10_000_000, maintenant), maintenant);
+        assert_eq!(
+            origine_depuis_qpc(42, 42, 10_000_000, maintenant),
+            maintenant
+        );
     }
 
     /// Une origine POSTÉRIEURE ne peut pas exister, mais une horloge lue de
@@ -86,7 +87,10 @@ mod tests {
     #[test]
     fn une_origine_posterieure_retombe_sur_maintenant() {
         let maintenant = Instant::now();
-        assert_eq!(origine_depuis_qpc(100, 50, 10_000_000, maintenant), maintenant);
+        assert_eq!(
+            origine_depuis_qpc(100, 50, 10_000_000, maintenant),
+            maintenant
+        );
     }
 
     #[test]

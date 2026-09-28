@@ -94,7 +94,11 @@ pub(super) fn attendre_le_media(session: &str, media: Sender<std::fs::File>) -> 
     // Un remplacement se journalise : il signale un enfant qui se rattache
     // sans que la précédente attente ait été soldée. Laisser tomber l'ancien
     // émetteur réveille aussitôt le fil de fenêtre correspondant.
-    if garde.attentes.insert(session.to_string(), (media, generation)).is_some() {
+    if garde
+        .attentes
+        .insert(session.to_string(), (media, generation))
+        .is_some()
+    {
         tracing::warn!(%session, "attente de connexion média remplacée pour cette session");
     }
     generation
@@ -117,7 +121,11 @@ pub(super) fn attendre_le_media(session: &str, media: Sender<std::fs::File>) -> 
 /// rattacher attendrait alors un média que plus personne ne lui délivrerait.
 pub(super) fn oublier(session: &str, generation: u64) {
     let mut garde = etat();
-    if garde.attentes.get(session).is_some_and(|(_, g)| *g != generation) {
+    if garde
+        .attentes
+        .get(session)
+        .is_some_and(|(_, g)| *g != generation)
+    {
         tracing::info!(%session, generation, "oubli périmé ignoré");
         return;
     }
@@ -135,7 +143,10 @@ pub(super) fn oublier(session: &str, generation: u64) {
 /// n'est de toute façon plus attendue par personne : son `Receiver` a été
 /// abandonné avec l'entrée remplacée par la réattache.
 pub(super) fn retirer_pour_identite(session: &str) -> Option<Sender<std::fs::File>> {
-    etat().attentes.remove(session).map(|(media, _generation)| media)
+    etat()
+        .attentes
+        .remove(session)
+        .map(|(media, _generation)| media)
 }
 
 #[cfg(test)]

@@ -68,7 +68,10 @@ impl Echelle {
                 let h = (((sh as f32) / d) as u32 & !1).max(2);
                 let pixels = w as u64 * h as u64;
                 let min_bps = (pixels * fps as u64) as f32 * BPP_MIN;
-                Barreau { taille: (w, h), min_bps: min_bps as u32 }
+                Barreau {
+                    taille: (w, h),
+                    min_bps: min_bps as u32,
+                }
             })
             .collect();
 
@@ -113,7 +116,11 @@ mod tests {
 
         // Pour 1920×1080, on attend exactement 4 barreaux (cas nominal).
         assert_eq!(tailles.len(), 4, "quatre barreaux attendus pour 1920×1080");
-        assert_eq!(tailles[0], (1920, 1080), "le premier barreau est la taille source");
+        assert_eq!(
+            tailles[0],
+            (1920, 1080),
+            "le premier barreau est la taille source"
+        );
         for (i, (w, h)) in tailles.iter().enumerate() {
             assert_eq!(w % 2, 0, "barreau {i} : largeur impaire, refusée par H.264");
             assert_eq!(h % 2, 0, "barreau {i} : hauteur impaire, refusée par H.264");
@@ -163,7 +170,11 @@ mod tests {
         let tailles_2x2: Vec<(u32, u32)> =
             echelle_2x2.barreaux().iter().map(|b| b.taille).collect();
 
-        assert_eq!(tailles_2x2.len(), 1, "source 2×2 : un seul barreau (plancher)");
+        assert_eq!(
+            tailles_2x2.len(),
+            1,
+            "source 2×2 : un seul barreau (plancher)"
+        );
         assert_eq!(tailles_2x2[0], (2, 2), "le barreau est le plancher (2, 2)");
     }
 

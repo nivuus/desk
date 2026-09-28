@@ -83,8 +83,10 @@ use crate::capture::SortieDxgi;
 pub(super) fn capturer_sur_virtuelle(nombre: u8) -> Result<()> {
     let avant = relever_topologie("avant création")?;
     let noms_avant = noms_attaches(&avant);
-    let connues: std::collections::HashSet<String> =
-        avant.iter().map(|sortie| sortie.nom_sortie.clone()).collect();
+    let connues: std::collections::HashSet<String> = avant
+        .iter()
+        .map(|sortie| sortie.nom_sortie.clone())
+        .collect();
 
     let pilote = crate::moniteurs_virtuels::pilote::ouvrir_pilote()?;
     let (largeur, hauteur, hertz) = RESOLUTION;
@@ -169,8 +171,10 @@ pub(super) fn designer_sortie_neuve<'s>(
     connues: &std::collections::HashSet<String>,
     id: crate::moniteurs_virtuels::IdSortie,
 ) -> Result<&'s SortieDxgi> {
-    let neuves: Vec<&SortieDxgi> =
-        apres.iter().filter(|sortie| !connues.contains(&sortie.nom_sortie)).collect();
+    let neuves: Vec<&SortieDxgi> = apres
+        .iter()
+        .filter(|sortie| !connues.contains(&sortie.nom_sortie))
+        .collect();
     let virtuelle = match neuves.as_slice() {
         [] => {
             return Err(anyhow!(
@@ -212,7 +216,9 @@ pub(super) fn designer_sortie_neuve<'s>(
 fn constater_survie(nom_virtuelle: &str) {
     match crate::capture::enumerer_sorties() {
         Ok(sorties) => {
-            let presente = sorties.iter().any(|sortie| sortie.nom_sortie == nom_virtuelle);
+            let presente = sorties
+                .iter()
+                .any(|sortie| sortie.nom_sortie == nom_virtuelle);
             if presente {
                 tracing::info!(
                     nom = %nom_virtuelle,

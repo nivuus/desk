@@ -120,7 +120,10 @@ pub fn candidates(
     // configuration d'affichage de cette VM) ne peut plus être prise pour la
     // nôtre, ce que la différence d'ensembles ne garantit pas.
     if let Some(nom) = notre_nom {
-        if let Some(notre) = toutes.iter().find(|s| s.attachee_au_bureau && s.nom_sortie == nom) {
+        if let Some(notre) = toutes
+            .iter()
+            .find(|s| s.attachee_au_bureau && s.nom_sortie == nom)
+        {
             return vec![notre.clone()];
         }
     }
@@ -148,7 +151,12 @@ mod tests {
             adaptateur: "SudoVDA".into(),
             nom_sortie: nom.to_string(),
             attachee_au_bureau: true,
-            rect: Rect { x: 0, y: 0, width: largeur, height: hauteur },
+            rect: Rect {
+                x: 0,
+                y: 0,
+                width: largeur,
+                height: hauteur,
+            },
         }
     }
 
@@ -231,7 +239,10 @@ mod tests {
     fn seul_le_zero_desarme_la_designation() {
         assert!(crate::apps::desarme(Some("0")));
         for valeur in [None, Some(""), Some("1"), Some("0 "), Some("oui")] {
-            assert!(!crate::apps::desarme(valeur), "{valeur:?} ne doit PAS désarmer");
+            assert!(
+                !crate::apps::desarme(valeur),
+                "{valeur:?} ne doit PAS désarmer"
+            );
         }
     }
 

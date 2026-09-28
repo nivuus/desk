@@ -46,7 +46,10 @@ pub enum VersNavigateur {
 /// Ce que le pont reçoit du navigateur, ou apprend de l'état du canal.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DuNavigateur {
-    Reponse { correlation: u32, trame: Vec<u8> },
+    Reponse {
+        correlation: u32,
+        trame: Vec<u8>,
+    },
     CanalOuvert,
     /// Le canal est parti : onglet fermé, page rechargée, WebRTC tombé.
     /// L'appelant traduit en [`crate::pont::erreurs::Erreur::CanalFerme`],
@@ -100,7 +103,9 @@ pub fn tourner(
     sortant: Receiver<VersNavigateur>,
     entrant: Sender<DuNavigateur>,
 ) -> Result<()> {
-    let adresse = socket.local_addr().context("adresse locale du socket du pont")?;
+    let adresse = socket
+        .local_addr()
+        .context("adresse locale du socket du pont")?;
     let mut canal: Option<ChannelId> = None;
     let mut tampon = vec![0u8; TAMPON_UDP];
 
@@ -116,7 +121,10 @@ pub fn tourner(
         // la boucle vidéo (`transport.rs`), et pour la même raison — toute
         // mutation de `Rtc` doit être suivie d'un drainage complet.
         let echeance = loop {
-            match rtc.poll_output().map_err(|e| anyhow!("poll_output du pont : {e}"))? {
+            match rtc
+                .poll_output()
+                .map_err(|e| anyhow!("poll_output du pont : {e}"))?
+            {
                 Output::Timeout(t) => break t,
                 Output::Transmit(t) => {
                     // Une écriture qui échoue n'est pas fatale : str0m
@@ -246,7 +254,10 @@ fn traiter(
                 Ok(trame) => {
                     let correlation = trame.correlation;
                     if entrant
-                        .send(DuNavigateur::Reponse { correlation, trame: data.data.to_vec() })
+                        .send(DuNavigateur::Reponse {
+                            correlation,
+                            trame: data.data.to_vec(),
+                        })
                         .is_err()
                     {
                         tracing::info!("plus personne ne lit les réponses : arrêt du transport");
@@ -271,11 +282,18 @@ fn emettre(rtc: &mut Rtc, canal: Option<ChannelId>, correlation: u32, trame: &[u
         // entre l'inscription d'une commande et son émission. L'appelant
         // l'apprendra par l'expiration de sa table — c'est ce que la table
         // existe pour couvrir.
-        tracing::warn!(correlation, "requête non émise : aucun canal du pont ouvert");
+        tracing::warn!(
+            correlation,
+            "requête non émise : aucun canal du pont ouvert"
+        );
         return;
     };
     let Some(mut sortie) = rtc.channel(id) else {
-        tracing::warn!(correlation, ?id, "requête non émise : canal introuvable côté str0m");
+        tracing::warn!(
+            correlation,
+            ?id,
+            "requête non émise : canal introuvable côté str0m"
+        );
         return;
     };
     // ⚠️ `binary = true`, **à l'inverse du canal `control`** qui écrit `false` :

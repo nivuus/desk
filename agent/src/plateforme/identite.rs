@@ -114,7 +114,10 @@ mod tests {
     fn sans_jeton_le_couple_complet_fait_s_enroler() {
         assert_eq!(
             source(None, Some("vm-1"), Some("chut")),
-            SourceIdentite::Enrolement { vm: "vm-1".into(), secret: "chut".into() }
+            SourceIdentite::Enrolement {
+                vm: "vm-1".into(),
+                secret: "chut".into()
+            }
         );
     }
 

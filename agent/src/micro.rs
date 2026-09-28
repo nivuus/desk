@@ -435,8 +435,7 @@ impl LecteurMicro {
     }
 
     fn pousser(&mut self, pcm: &[i16]) {
-        self.residu
-            .extend(pcm.iter().map(|&e| e as f32 / 32_768.0));
+        self.residu.extend(pcm.iter().map(|&e| e as f32 / 32_768.0));
     }
 }
 

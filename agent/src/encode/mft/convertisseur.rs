@@ -66,7 +66,12 @@ impl EncodeurMft {
     /// modèle mais la fuite de références corrigée dans `take_output_sample` —
     /// pool épuisé, donc convertisseur incapable d'accepter une entrée de
     /// plus.
-    pub(super) fn feed_converter(&mut self, frame: &CapturedFrame, sample_time: i64, duration: i64) -> Result<()> {
+    pub(super) fn feed_converter(
+        &mut self,
+        frame: &CapturedFrame,
+        sample_time: i64,
+        duration: i64,
+    ) -> Result<()> {
         // 1. Retirer les sorties en attente jusqu'à ce que le convertisseur se
         //    déclare preneur d'une entrée.
         //
@@ -101,10 +106,9 @@ impl EncodeurMft {
         }
 
         let bgra_sample = unsafe { MFCreateSample() }?;
-        let bgra_buffer = unsafe {
-            MFCreateDXGISurfaceBuffer(&ID3D11Texture2D::IID, &frame.texture, 0, false)
-        }
-        .context("enveloppement de la texture BGRA pour le convertisseur")?;
+        let bgra_buffer =
+            unsafe { MFCreateDXGISurfaceBuffer(&ID3D11Texture2D::IID, &frame.texture, 0, false) }
+                .context("enveloppement de la texture BGRA pour le convertisseur")?;
         let t = std::time::Instant::now();
         self.telemetry
             .phase
@@ -139,7 +143,8 @@ impl EncodeurMft {
         if elapsed > SLOW_CALL {
             tracing::warn!(?elapsed, "ProcessInput du convertisseur lent");
         }
-        self.pending_conversion_timestamps.push_back((sample_time, duration));
+        self.pending_conversion_timestamps
+            .push_back((sample_time, duration));
 
         self.collect_converter_output()?;
         Ok(())
@@ -165,10 +170,9 @@ impl EncodeurMft {
         self.telemetry
             .converter_input_status
             .store(input, Ordering::Relaxed);
-        self.telemetry.converter_output_status.store(
-            converter_status(&self.converter, false),
-            Ordering::Relaxed,
-        );
+        self.telemetry
+            .converter_output_status
+            .store(converter_status(&self.converter, false), Ordering::Relaxed);
         input == u64::MAX || input & MFT_INPUT_STATUS_ACCEPT_DATA.0 as u64 != 0
     }
 
@@ -198,8 +202,10 @@ impl EncodeurMft {
                     .converter_outputs
                     .fetch_add(1, Ordering::Relaxed);
                 CONVERTER_OUTPUTS.fetch_add(1, Ordering::Relaxed);
-                let (time, duration) =
-                    self.pending_conversion_timestamps.pop_front().unwrap_or((0, 0));
+                let (time, duration) = self
+                    .pending_conversion_timestamps
+                    .pop_front()
+                    .unwrap_or((0, 0));
                 unsafe {
                     let _ = sample.SetSampleTime(time);
                     let _ = sample.SetSampleDuration(duration);
@@ -251,7 +257,11 @@ impl EncodeurMft {
             pSample: std::mem::ManuallyDrop::new(if self.converter_provides_samples {
                 None
             } else {
-                Some(fabrique::create_nv12_sample(&self.device, self.encode.0, self.encode.1)?)
+                Some(fabrique::create_nv12_sample(
+                    &self.device,
+                    self.encode.0,
+                    self.encode.1,
+                )?)
             }),
             dwStatus: 0,
             pEvents: std::mem::ManuallyDrop::new(None),
@@ -269,7 +279,9 @@ impl EncodeurMft {
             Ok(()) => Ok(sample
                 .map(ConverterPoll::Sample)
                 .unwrap_or(ConverterPoll::NeedMoreInput)),
-            Err(e) if e.code() == MF_E_TRANSFORM_NEED_MORE_INPUT => Ok(ConverterPoll::NeedMoreInput),
+            Err(e) if e.code() == MF_E_TRANSFORM_NEED_MORE_INPUT => {
+                Ok(ConverterPoll::NeedMoreInput)
+            }
             Err(e) if e.code() == MF_E_SAMPLEALLOCATOR_EMPTY => Ok(ConverterPoll::Busy),
             Err(e) => Err(e).context("récupération de l'image convertie en NV12"),
         }

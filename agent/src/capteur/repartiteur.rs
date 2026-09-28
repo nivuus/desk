@@ -114,8 +114,7 @@ pub fn repartir(budget_bps: u32, fenetres: &[Fenetre]) -> Vec<(String, u32)> {
     // Une seule majoration, à la PREMIÈRE focalisée éveillée rencontrée :
     // plusieurs focalisées ne durent pas (le client émet `blur`), mais en
     // accorder deux ferait sauter l'invariant de budget.
-    let indice_focalisee =
-        fenetres.iter().position(|f| f.eveillee && f.focalisee);
+    let indice_focalisee = fenetres.iter().position(|f| f.eveillee && f.focalisee);
 
     let diviseur = match indice_focalisee {
         Some(_) => eveillees.saturating_sub(1) + FACTEUR_FOCUS,

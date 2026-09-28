@@ -202,7 +202,12 @@ impl Session {
             self.warn_negotiation_once("piste vidéo plus accessible en écriture : images jetées");
             return false;
         };
-        match writer.write(pt, capture_at, MediaTime::from_90khz(unit.pts_90k), unit.data) {
+        match writer.write(
+            pt,
+            capture_at,
+            MediaTime::from_90khz(unit.pts_90k),
+            unit.data,
+        ) {
             Ok(()) => {
                 // C'est ICI, et seulement ici, que l'écriture a réellement
                 // eu lieu — voir `compter_la_cadence_video`, qui journalise
@@ -227,7 +232,10 @@ impl Session {
     fn warn_negotiation_once(&mut self, message: &str) {
         if !self.warned_negotiation {
             self.warned_negotiation = true;
-            tracing::warn!(message, "négociation vidéo incomplète (avertissement unique)");
+            tracing::warn!(
+                message,
+                "négociation vidéo incomplète (avertissement unique)"
+            );
         }
     }
 }
@@ -248,9 +256,21 @@ mod tests {
     #[test]
     fn selectionne_le_mode_de_paquetisation_1() {
         let candidates = vec![
-            CandidatePt { codec: Codec::H264, packetization_mode: Some(0), pt: pt(96) },
-            CandidatePt { codec: Codec::H264, packetization_mode: Some(1), pt: pt(98) },
-            CandidatePt { codec: Codec::Opus, packetization_mode: None, pt: pt(111) },
+            CandidatePt {
+                codec: Codec::H264,
+                packetization_mode: Some(0),
+                pt: pt(96),
+            },
+            CandidatePt {
+                codec: Codec::H264,
+                packetization_mode: Some(1),
+                pt: pt(98),
+            },
+            CandidatePt {
+                codec: Codec::Opus,
+                packetization_mode: None,
+                pt: pt(111),
+            },
         ];
         assert_eq!(select_h264_pt(candidates.into_iter()), Some(pt(98)));
     }
@@ -258,9 +278,21 @@ mod tests {
     #[test]
     fn ignore_les_profils_sans_mode_1() {
         let candidates = vec![
-            CandidatePt { codec: Codec::H264, packetization_mode: Some(0), pt: pt(96) },
-            CandidatePt { codec: Codec::H264, packetization_mode: None, pt: pt(97) },
-            CandidatePt { codec: Codec::Opus, packetization_mode: None, pt: pt(111) },
+            CandidatePt {
+                codec: Codec::H264,
+                packetization_mode: Some(0),
+                pt: pt(96),
+            },
+            CandidatePt {
+                codec: Codec::H264,
+                packetization_mode: None,
+                pt: pt(97),
+            },
+            CandidatePt {
+                codec: Codec::Opus,
+                packetization_mode: None,
+                pt: pt(111),
+            },
         ];
         assert_eq!(select_h264_pt(candidates.into_iter()), None);
     }
@@ -319,7 +351,10 @@ mod tests {
         let session = Session::new(source, local_ip, origine, 12_000_000).expect("session");
 
         // Une image capturée 2 s après l'origine porte le PTS 180 000.
-        assert_eq!(session.capture_instant(180_000), origine + Duration::from_secs(2));
+        assert_eq!(
+            session.capture_instant(180_000),
+            origine + Duration::from_secs(2)
+        );
         assert!(
             session.capture_instant(180_000) < avant,
             "l'instant doit être ancré sur l'origine (dans le passé), pas sur l'horloge courante"
@@ -389,7 +424,9 @@ mod tests {
         api.add_channel("input".to_string());
         let (offer, pending) = api.apply().expect("offre non vide");
 
-        let answer_sdp = session.accept_offer(&offer.to_sdp_string()).expect("offre acceptée");
+        let answer_sdp = session
+            .accept_offer(&offer.to_sdp_string())
+            .expect("offre acceptée");
         let answer = SdpAnswer::from_sdp_string(&answer_sdp).expect("réponse SDP valide");
         peer_rtc
             .sdp_api()
@@ -423,8 +460,11 @@ mod tests {
 
             match peer_rtc.poll_output().expect("poll_output du pair") {
                 Output::Timeout(t) => {
-                    let wait = t.saturating_duration_since(now).min(hard_deadline.saturating_duration_since(now));
-                    if fixtures::poll_peer_socket(&mut peer_rtc, &peer_socket, peer_addr, now, wait) {
+                    let wait = t
+                        .saturating_duration_since(now)
+                        .min(hard_deadline.saturating_duration_since(now));
+                    if fixtures::poll_peer_socket(&mut peer_rtc, &peer_socket, peer_addr, now, wait)
+                    {
                         continue;
                     }
                 }
@@ -450,8 +490,9 @@ mod tests {
                                     // `instant_du_SR - avant`, qui ne peut que
                                     // RÉDUIRE l'écart mesuré ci-dessous, jamais
                                     // le gonfler artificiellement.
-                                    let ecoule_depuis_avant =
-                                        Instant::now().saturating_duration_since(avant).as_secs_f64();
+                                    let ecoule_depuis_avant = Instant::now()
+                                        .saturating_duration_since(avant)
+                                        .as_secs_f64();
                                     mesure = Some((rtp_time_secondes, ecoule_depuis_avant));
                                 }
                             }

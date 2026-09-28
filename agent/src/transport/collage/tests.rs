@@ -50,7 +50,11 @@ fn session_qui_ecrit(accepte: bool) -> (Session, Trace) {
         std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/testdata/testsrc.264"));
     let inner = crate::source::FileSource::from_path(source_path, 1280, 720, 60)
         .expect("chargement du flux de test");
-    let source = Box::new(SourceQuiEcrit { inner, trace: trace.clone(), accepte });
+    let source = Box::new(SourceQuiEcrit {
+        inner,
+        trace: trace.clone(),
+        accepte,
+    });
     let session = Session::new(
         source,
         crate::transport::fixtures::local_ip(),
@@ -85,8 +89,14 @@ fn l_ecriture_precede_l_injection_et_le_texte_part_denormalise() {
 
     let vue = trace.lock().unwrap().clone();
     assert_eq!(vue.len(), 5, "une écriture puis quatre touches : {vue:?}");
-    assert_eq!(vue[0], "ecrire:une\r\ndeux", "le texte doit partir en \\r\\n");
-    assert!(vue[1].starts_with("Key"), "les touches suivent l'écriture : {vue:?}");
+    assert_eq!(
+        vue[0], "ecrire:une\r\ndeux",
+        "le texte doit partir en \\r\\n"
+    );
+    assert!(
+        vue[1].starts_with("Key"),
+        "les touches suivent l'écriture : {vue:?}"
+    );
 }
 
 /// 🔴 **EXACTEMENT QUATRE TOUCHES, DANS L'ORDRE Ctrl↓ V↓ V↑ Ctrl↑.**
@@ -105,10 +115,38 @@ fn un_collage_injecte_exactement_les_quatre_touches_dans_l_ordre() {
     assert_eq!(
         vue,
         vec![
-            format!("{:?}", InputMessage::Key { scancode: 0x1d, pressed: true, extended: false }),
-            format!("{:?}", InputMessage::Key { scancode: 0x2f, pressed: true, extended: false }),
-            format!("{:?}", InputMessage::Key { scancode: 0x2f, pressed: false, extended: false }),
-            format!("{:?}", InputMessage::Key { scancode: 0x1d, pressed: false, extended: false }),
+            format!(
+                "{:?}",
+                InputMessage::Key {
+                    scancode: 0x1d,
+                    pressed: true,
+                    extended: false
+                }
+            ),
+            format!(
+                "{:?}",
+                InputMessage::Key {
+                    scancode: 0x2f,
+                    pressed: true,
+                    extended: false
+                }
+            ),
+            format!(
+                "{:?}",
+                InputMessage::Key {
+                    scancode: 0x2f,
+                    pressed: false,
+                    extended: false
+                }
+            ),
+            format!(
+                "{:?}",
+                InputMessage::Key {
+                    scancode: 0x1d,
+                    pressed: false,
+                    extended: false
+                }
+            ),
         ]
     );
 }
@@ -126,7 +164,11 @@ fn un_collage_injecte_exactement_les_quatre_touches_dans_l_ordre() {
 fn une_ecriture_refusee_n_injecte_aucune_touche() {
     let (mut session, trace) = session_qui_ecrit(false);
     session.traiter_le_collage("x");
-    assert_eq!(trace.lock().unwrap().len(), 1, "l'écriture a bien été tentée");
+    assert_eq!(
+        trace.lock().unwrap().len(),
+        1,
+        "l'écriture a bien été tentée"
+    );
     trace.lock().unwrap().clear();
 
     injecter(&mut session, &trace);
@@ -148,7 +190,10 @@ fn le_drapeau_se_consomme() {
     trace.lock().unwrap().clear();
 
     injecter(&mut session, &trace);
-    assert!(trace.lock().unwrap().is_empty(), "un second tour n'injecte rien");
+    assert!(
+        trace.lock().unwrap().is_empty(),
+        "un second tour n'injecte rien"
+    );
 }
 
 /// Sans collage, aucun tour de boucle n'injecte quoi que ce soit.

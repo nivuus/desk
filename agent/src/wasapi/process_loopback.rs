@@ -98,11 +98,7 @@ impl IActivateAudioInterfaceCompletionHandler_Impl for GestionnaireCompletion_Im
                 .context("l'interface activée n'est pas un IAudioClient")
         })();
 
-        let mut verrou = self
-            .etat
-            .resultat
-            .lock()
-            .unwrap_or_else(|e| e.into_inner());
+        let mut verrou = self.etat.resultat.lock().unwrap_or_else(|e| e.into_inner());
         *verrou = Some(ResultatActivation(resultat));
         self.etat.signal.notify_one();
         Ok(())
@@ -188,10 +184,8 @@ fn activer_pour_processus(pid: u32) -> Result<IAudioClient> {
             resultat: Mutex::new(None),
             signal: Condvar::new(),
         });
-        let gestionnaire: IActivateAudioInterfaceCompletionHandler = GestionnaireCompletion {
-            etat: etat.clone(),
-        }
-        .into();
+        let gestionnaire: IActivateAudioInterfaceCompletionHandler =
+            GestionnaireCompletion { etat: etat.clone() }.into();
 
         // L'opération rendue doit rester en vie jusqu'à la fin de l'attente :
         // la laisser tomber prématurément peut annuler l'activation en cours.
@@ -203,10 +197,7 @@ fn activer_pour_processus(pid: u32) -> Result<IAudioClient> {
         )
         .context("appel à ActivateAudioInterfaceAsync")?;
 
-        let verrou = etat
-            .resultat
-            .lock()
-            .unwrap_or_else(|e| e.into_inner());
+        let verrou = etat.resultat.lock().unwrap_or_else(|e| e.into_inner());
         let (mut verrou, _attente) = etat
             .signal
             .wait_timeout_while(verrou, DELAI_RAPPEL_ACTIVATION, |r| r.is_none())

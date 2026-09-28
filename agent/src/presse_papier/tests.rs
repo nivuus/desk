@@ -5,7 +5,10 @@ use std::cell::Cell;
 /// le premier tour, et celui dans lequel toutes les propriétés ci-dessous
 /// se jugent.
 fn amorce(sondeur: &mut Sondeur) {
-    assert_eq!(sondeur.observer(1, || Some(String::from("etat-initial"))), None);
+    assert_eq!(
+        sondeur.observer(1, || Some(String::from("etat-initial"))),
+        None
+    );
 }
 
 /// ROUGE si `normaliser` laisse passer `\r\n` : l'aller-retour de P2
@@ -45,7 +48,10 @@ fn un_numero_inchange_n_ouvre_pas_le_presse_papier() {
         Some(String::from("bonjour"))
     });
     assert_eq!(annonce, None);
-    assert!(!appele.get(), "lire() ne doit pas être appelée à numéro inchangé");
+    assert!(
+        !appele.get(),
+        "lire() ne doit pas être appelée à numéro inchangé"
+    );
 }
 
 #[test]
@@ -86,7 +92,12 @@ fn un_texte_trop_grand_est_refuse_jamais_tronque() {
     amorce(&mut sondeur);
     let gros = "a".repeat(PRESSE_PAPIER_MAX + 1);
     let annonce = sondeur.observer(2, || Some(gros));
-    assert_eq!(annonce, Some(Annonce::Refus { octets: (PRESSE_PAPIER_MAX + 1) as u32 }));
+    assert_eq!(
+        annonce,
+        Some(Annonce::Refus {
+            octets: (PRESSE_PAPIER_MAX + 1) as u32
+        })
+    );
 }
 
 /// ROUGE si la borne est écrite `>=` au lieu de `>`.
@@ -95,7 +106,10 @@ fn un_texte_de_la_taille_exacte_de_la_borne_passe() {
     let mut sondeur = Sondeur::nouveau();
     amorce(&mut sondeur);
     let pile = "a".repeat(PRESSE_PAPIER_MAX);
-    assert_eq!(sondeur.observer(2, || Some(pile.clone())), Some(Annonce::Texte(pile)));
+    assert_eq!(
+        sondeur.observer(2, || Some(pile.clone())),
+        Some(Annonce::Texte(pile))
+    );
 }
 
 /// 🔴 D-P1-2 : on normalise D'ABORD, on borne ENSUITE.
@@ -112,7 +126,10 @@ fn on_normalise_avant_de_borner() {
     assert_eq!(brut.len(), PRESSE_PAPIER_MAX + 8);
     let attendu = normaliser(&brut);
     assert_eq!(attendu.len(), PRESSE_PAPIER_MAX - 4);
-    assert_eq!(sondeur.observer(2, || Some(brut)), Some(Annonce::Texte(attendu)));
+    assert_eq!(
+        sondeur.observer(2, || Some(brut)),
+        Some(Annonce::Texte(attendu))
+    );
 }
 
 /// 🔴 Le bornage compte des OCTETS d'UTF-8, pas des `char`.
@@ -150,7 +167,10 @@ fn une_lecture_echouee_n_avance_pas_la_reference() {
         rappelee.set(true);
         Some(String::from("rattrape"))
     });
-    assert!(rappelee.get(), "le même numéro doit être retenté après un échec");
+    assert!(
+        rappelee.get(),
+        "le même numéro doit être retenté après un échec"
+    );
     assert_eq!(annonce, Some(Annonce::Texte(String::from("rattrape"))));
 }
 
@@ -209,7 +229,9 @@ fn apres_notre_ecriture_le_tour_suivant_n_ouvre_pas_le_presse_papier() {
     amorce(&mut sondeur);
     sondeur.apres_notre_ecriture(7, "colle");
     assert_eq!(
-        sondeur.observer(7, || panic!("le garde n°1 a laissé rouvrir le presse-papier")),
+        sondeur.observer(7, || panic!(
+            "le garde n°1 a laissé rouvrir le presse-papier"
+        )),
         None
     );
 }
@@ -259,7 +281,10 @@ fn apres_notre_ecriture_memorise_le_texte_normalise() {
     // Ce que l'on a REMIS à Windows porte des `\r\n` (c'est `denormaliser` qui
     // les y met) ; ce que l'on relira en portera donc aussi.
     sondeur.apres_notre_ecriture(7, "une\r\ndeux");
-    assert_eq!(sondeur.observer(8, || Some(String::from("une\r\ndeux"))), None);
+    assert_eq!(
+        sondeur.observer(8, || Some(String::from("une\r\ndeux"))),
+        None
+    );
 }
 
 /// 🔴 **La première chose qu'un test doit voir rouge** (spec §7.1) :
@@ -349,7 +374,10 @@ fn desarme_les_gardes_laisse_relire_et_annoncer_notre_propre_ecriture() {
         Some(String::from("colle"))
     });
 
-    assert!(lu.get(), "désarmé, le presse-papier DOIT être rouvert (garde n°1)");
+    assert!(
+        lu.get(),
+        "désarmé, le presse-papier DOIT être rouvert (garde n°1)"
+    );
     assert_eq!(
         annonce,
         Some(Annonce::Texte(String::from("colle"))),
@@ -414,7 +442,10 @@ fn une_ecriture_notre_survenue_apres_l_armement_n_est_pas_annoncee() {
     let annonce = s.observer(11, || Some(String::from("textB")));
     assert_eq!(annonce, Some(Annonce::Texte(String::from("textB"))));
     // La seconde prise consomme le couple de B et écarte SON PROPRE texte.
-    assert_eq!(s.ecarter(true, Some((11, String::from("textB"))), annonce), None);
+    assert_eq!(
+        s.ecarter(true, Some((11, String::from("textB"))), annonce),
+        None
+    );
 }
 
 /// 🔴 LE GARDE-FOU DU CORRECTIF : filtrer trop large ferait taire une VRAIE

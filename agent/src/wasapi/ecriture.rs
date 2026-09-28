@@ -252,10 +252,10 @@ impl RenduWasapi {
                          boucle a echeance (spec §6 le predisait supporte, ce n'etait qu'une \
                          prediction)"
                     );
-                    let neuf: IAudioClient = peripherique
-                        .Activate(CLSCTX_ALL, None)
-                        .context("re-activation du client audio de rendu apres refus de \
-                                  l'evenement")?;
+                    let neuf: IAudioClient = peripherique.Activate(CLSCTX_ALL, None).context(
+                        "re-activation du client audio de rendu apres refus de \
+                                  l'evenement",
+                    )?;
                     neuf.Initialize(
                         AUDCLNT_SHAREMODE_SHARED,
                         0,

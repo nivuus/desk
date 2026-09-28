@@ -271,7 +271,9 @@ mod tests {
     /// ce test le fige.
     #[test]
     fn le_compteur_ne_deborde_jamais() {
-        let mut reprise = Reprise { tentative: u32::MAX - 1 };
+        let mut reprise = Reprise {
+            tentative: u32::MAX - 1,
+        };
         reprise.tentative_lancee();
         reprise.tentative_lancee();
         assert_eq!(reprise.tentative(), u32::MAX);

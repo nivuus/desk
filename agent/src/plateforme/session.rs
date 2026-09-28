@@ -14,7 +14,6 @@
 //! 🔴 AUCUNE LIGNE DE COMPORTEMENT N'A CHANGÉ à l'extraction. Les visibilités
 //! sont passées à `pub(super)` là où il le fallait, **et nulle part ailleurs**.
 
-
 use anyhow::{Context, Result};
 use futures_util::{SinkExt, StreamExt};
 use proto::plateforme::{DepuisLaPlateforme, MotifCanal, VersLaPlateforme};
@@ -22,7 +21,6 @@ use tokio::sync::{mpsc, watch};
 use tokio_tungstenite::tungstenite::Message;
 
 use super::{Fin, Identite, Installation, Ordre, PERIODE_BATTEMENT};
-
 
 /// Une session du canal, de la connexion à sa chute.
 pub(super) async fn une_session(
@@ -250,7 +248,12 @@ pub(super) fn sur_refus(url: &str, version_recue: u8, motif: &str) -> Fin {
             Fin::Definitive
         }
         Some(autre) => {
-            tracing::warn!(url, ?autre, version_recue, "canal /agent refusé par la plateforme");
+            tracing::warn!(
+                url,
+                ?autre,
+                version_recue,
+                "canal /agent refusé par la plateforme"
+            );
             Fin::Reprenable
         }
         // 🔴 UN MOTIF QUE NOUS NE CONNAISSONS PAS SE JOURNALISE **VERBATIM** ET
@@ -276,8 +279,9 @@ pub(super) fn sur_refus(url: &str, version_recue: u8, motif: &str) -> Fin {
 
 async fn connecter(
     url: &str,
-) -> Result<tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>>
-{
+) -> Result<
+    tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>,
+> {
     let (flux, _) = tokio_tungstenite::connect_async(url)
         .await
         .with_context(|| format!("connexion au canal {url}"))?;

@@ -88,7 +88,9 @@ fn la_mort_de_l_enfant_ne_rend_plus_la_sortie_au_pilote() {
             .any(|e| matches!(e, Effet::DetruireSortie { .. })),
         "la sortie est retenue pour la relance, reçu {effets:?}"
     );
-    assert!(effets.contains(&Effet::AnnoncerFermeture { session: session.clone() }));
+    assert!(effets.contains(&Effet::AnnoncerFermeture {
+        session: session.clone()
+    }));
 }
 
 #[test]
@@ -103,7 +105,10 @@ fn l_entree_relancee_porte_encore_sa_sortie() {
     };
     let neuve = neuve.clone();
 
-    assert_ne!(neuve, session, "un identifiant réutilisé apparierait un message tardif");
+    assert_ne!(
+        neuve, session,
+        "un identifiant réutilisé apparierait un message tardif"
+    );
     assert_eq!(
         t.nom_sortie_de(&neuve),
         Some("\\\\.\\DISPLAY7"),
@@ -170,9 +175,8 @@ fn une_sortie_retenue_compatible_est_reutilisee_sans_rien_creer() {
 #[test]
 fn une_sortie_retenue_plus_grande_est_reutilisee() {
     let mut t = Table::nouvelle(4);
-    let session = session_vivante_de_taille(
-        &mut t, 1, "Bloc-notes", 42, "\\\\.\\DISPLAY8", (3840, 2160),
-    );
+    let session =
+        session_vivante_de_taille(&mut t, 1, "Bloc-notes", 42, "\\\\.\\DISPLAY8", (3840, 2160));
     t.enfant_mort(&session);
     let effets = t.relancer_les_orphelines(std::time::Instant::now());
     let Some(Effet::AnnoncerOuverture { session: neuve, .. }) = effets.first() else {
@@ -208,7 +212,10 @@ fn une_sortie_retenue_a_quatre_pixels_pres_est_reutilisee() {
 
     let effets = t.viewport_recu(&neuve, 1278, 718);
 
-    assert!(matches!(effets.first(), Some(Effet::LancerEnfant { .. })), "reçu {effets:?}");
+    assert!(
+        matches!(effets.first(), Some(Effet::LancerEnfant { .. })),
+        "reçu {effets:?}"
+    );
 }
 
 /// Le navigateur a redimensionné sa fenêtre entre-temps : la sortie retenue
@@ -243,7 +250,11 @@ fn une_sortie_retenue_incompatible_est_rendue_puis_remplacee() {
         ],
         "la destruction précède la demande, et dans cet ordre"
     );
-    assert_eq!(t.nom_sortie_de(&neuve), None, "l'entrée ne retient plus rien");
+    assert_eq!(
+        t.nom_sortie_de(&neuve),
+        None,
+        "l'entrée ne retient plus rien"
+    );
     assert_eq!(t.etat(&neuve), Some(&Etat::AttendLaSortie));
 }
 
@@ -266,7 +277,11 @@ fn un_viewport_sur_une_session_vivante_demande_de_suivre() {
     let effets = t.viewport_recu(&session, 1600, 900);
 
     match effets.as_slice() {
-        [Effet::SuivreLeViewport { session: s, largeur, hauteur }] => {
+        [Effet::SuivreLeViewport {
+            session: s,
+            largeur,
+            hauteur,
+        }] => {
             assert_eq!(s, &session);
             assert_eq!((*largeur, *hauteur), (1600, 900));
         }
@@ -287,7 +302,10 @@ fn un_viewport_hidpi_sur_une_session_vivante_est_borne_avant_de_partir() {
 
     let effets = t.viewport_recu(&session, 3840, 2160);
 
-    let [Effet::SuivreLeViewport { largeur, hauteur, .. }] = effets.as_slice() else {
+    let [Effet::SuivreLeViewport {
+        largeur, hauteur, ..
+    }] = effets.as_slice()
+    else {
         panic!("un suivi de viewport attendu, reçu {effets:?}");
     };
     assert_eq!(
@@ -334,10 +352,16 @@ fn un_viewport_rejoue_ne_fait_avancer_aucune_machine() {
     // Le SEUL effet toléré, et rien d'autre : pas de `CreerSortie`, pas de
     // `DetruireSortie`, pas de `LancerEnfant`.
     assert!(
-        rejeu.iter().all(|e| matches!(e, Effet::SuivreLeViewport { .. })),
+        rejeu
+            .iter()
+            .all(|e| matches!(e, Effet::SuivreLeViewport { .. })),
         "un rejeu ne doit produire qu'un suivi de viewport, reçu {rejeu:?}"
     );
-    assert_eq!(t.etat(&neuve), Some(&Etat::Vivante), "l'état ne doit pas avancer");
+    assert_eq!(
+        t.etat(&neuve),
+        Some(&Etat::Vivante),
+        "l'état ne doit pas avancer"
+    );
     assert_eq!(
         t.taille_sortie_de(&neuve),
         avant,
@@ -396,7 +420,9 @@ fn l_abandon_d_une_entree_figee_rend_la_sortie() {
     t.relancer_les_orphelines(base);
 
     // La page-shell ne répond jamais : au-delà du délai, abandon.
-    let effets = t.relancer_les_orphelines(base + DELAI_ATTENTE_VIEWPORT_MAX + std::time::Duration::from_secs(1));
+    let effets = t.relancer_les_orphelines(
+        base + DELAI_ATTENTE_VIEWPORT_MAX + std::time::Duration::from_secs(1),
+    );
 
     assert!(
         effets.contains(&Effet::DetruireSortie {
@@ -451,7 +477,11 @@ fn rafraichir_la_taille_n_invente_rien_sans_sortie_retenue() {
     assert_eq!(t.taille_sortie_de(&session), None);
 
     t.rafraichir_taille_sortie(&session, (1920, 1080));
-    assert_eq!(t.taille_sortie_de(&session), None, "rien à rafraîchir, rien n'a dû apparaître");
+    assert_eq!(
+        t.taille_sortie_de(&session),
+        None,
+        "rien à rafraîchir, rien n'a dû apparaître"
+    );
 
     // Une session totalement inconnue ne doit pas non plus paniquer ni créer
     // d'entrée fantôme.

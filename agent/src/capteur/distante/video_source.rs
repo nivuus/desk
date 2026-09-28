@@ -37,7 +37,12 @@ impl VideoSource for SourceDistante {
                     self.fenetre.succes();
                     return Some(unite);
                 }
-                Ok(Recu::Etat { vivante, epuisee, largeur, hauteur }) => {
+                Ok(Recu::Etat {
+                    vivante,
+                    epuisee,
+                    largeur,
+                    hauteur,
+                }) => {
                     self.vivante = vivante;
                     self.epuisee = epuisee;
                     self.taille.poser(largeur, hauteur);
@@ -97,7 +102,11 @@ impl VideoSource for SourceDistante {
                     }
                     if self.fenetre.peut_reessayer(maintenant) {
                         match self.canal.rattacher() {
-                            Ok(Rattachee { images, largeur, hauteur }) => {
+                            Ok(Rattachee {
+                                images,
+                                largeur,
+                                hauteur,
+                            }) => {
                                 tracing::info!(largeur, hauteur, "canal rattaché au capteur");
                                 self.images = images;
                                 self.taille.poser(largeur, hauteur);
@@ -198,10 +207,10 @@ impl VideoSource for SourceDistante {
     }
 
     fn resize(&mut self, width: u32, height: u32) -> Result<()> {
-        match self
-            .canal
-            .commander(VersCapteur::Redimensionner { largeur: width, hauteur: height })?
-        {
+        match self.canal.commander(VersCapteur::Redimensionner {
+            largeur: width,
+            hauteur: height,
+        })? {
             // La taille RETENUE est celle obtenue, jamais celle demandée : le
             // pilote quantifie, et une fenêtre Windows impose des dimensions
             // paires. Même règle qu'en mono-fenêtre.
@@ -219,7 +228,10 @@ impl VideoSource for SourceDistante {
     }
 
     fn set_encode_size(&mut self, width: u32, height: u32) -> Result<()> {
-        self.commander_simple(VersCapteur::TailleEncodage { largeur: width, hauteur: height })
+        self.commander_simple(VersCapteur::TailleEncodage {
+            largeur: width,
+            hauteur: height,
+        })
     }
 
     fn request_keyframe(&mut self) -> Result<()> {
@@ -253,7 +265,9 @@ impl VideoSource for SourceDistante {
     /// par une autre application (cas NORMAL sous Windows) doit empêcher
     /// l'injection, pas la laisser passer.
     fn ecrire_le_presse_papier(&mut self, texte: &str) -> Result<()> {
-        self.commander_simple(VersCapteur::PressePapierEcrire { texte: texte.to_owned() })
+        self.commander_simple(VersCapteur::PressePapierEcrire {
+            texte: texte.to_owned(),
+        })
     }
 
     /// Rend le changement de sommeil en attente, et le consomme.

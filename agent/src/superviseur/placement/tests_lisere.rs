@@ -33,13 +33,23 @@ mod lisere {
     ///
     /// Les deux fenêtres servies ont rendu **le même lisère**, sur deux
     /// sorties différentes.
-    const MESURE: Lisere = Lisere { gauche: 7, haut: 0, droite: 7, bas: 7 };
+    const MESURE: Lisere = Lisere {
+        gauche: 7,
+        haut: 0,
+        droite: 7,
+        bas: 7,
+    };
 
     /// La cible telle que le superviseur la calcule : origine de la sortie
     /// `\\.\DISPLAY6` (+1280+0), taille retenue `1732x1032` — les deux lues au
     /// journal du produit.
     fn cible_mesuree() -> Rect {
-        Rect { x: 1280, y: 0, width: 1732, height: 1032 }
+        Rect {
+            x: 1280,
+            y: 0,
+            width: 1732,
+            height: 1032,
+        }
     }
 
     /// Ce que `SetWindowPos` doit recevoir pour que l'œil voie exactement la
@@ -47,7 +57,15 @@ mod lisere {
     #[test]
     fn le_rectangle_pose_est_la_cible_gonflee_du_lisere() {
         let pose = rect_a_poser(&cible_mesuree(), MESURE);
-        assert_eq!(pose, Rect { x: 1273, y: 0, width: 1746, height: 1039 });
+        assert_eq!(
+            pose,
+            Rect {
+                x: 1273,
+                y: 0,
+                width: 1746,
+                height: 1039
+            }
+        );
     }
 
     /// 🔴 **LA PROPRIÉTÉ QUI COMPTE, ET ELLE EST UN ALLER-RETOUR** : ce que
@@ -86,7 +104,10 @@ mod lisere {
             width: (pose.width as i32 - MESURE.gauche - MESURE.droite) as u32,
             height: (pose.height as i32 - MESURE.haut - MESURE.bas) as u32,
         };
-        assert!(!doit_etre_replacee(&visible, &cible), "replacement en boucle");
+        assert!(
+            !doit_etre_replacee(&visible, &cible),
+            "replacement en boucle"
+        );
         // …et le contre-exemple : si l'on comparait le rectangle BRUT à la
         // cible — ce que faisait `rectangle_de` avant ce correctif —, le
         // contrôle replacerait indéfiniment.
@@ -104,9 +125,30 @@ mod lisere {
     /// valent 7.
     #[test]
     fn chaque_cote_du_lisere_est_honore_separement() {
-        let l = Lisere { gauche: 3, haut: 5, droite: 11, bas: 17 };
-        let pose = rect_a_poser(&Rect { x: 100, y: 200, width: 1000, height: 500 }, l);
-        assert_eq!(pose, Rect { x: 97, y: 195, width: 1014, height: 522 });
+        let l = Lisere {
+            gauche: 3,
+            haut: 5,
+            droite: 11,
+            bas: 17,
+        };
+        let pose = rect_a_poser(
+            &Rect {
+                x: 100,
+                y: 200,
+                width: 1000,
+                height: 500,
+            },
+            l,
+        );
+        assert_eq!(
+            pose,
+            Rect {
+                x: 97,
+                y: 195,
+                width: 1014,
+                height: 522
+            }
+        );
     }
 
     /// Le repli : DWM refuse, le lisère est nul, et l'on retrouve **exactement
@@ -131,9 +173,25 @@ mod lisere {
     /// faire déborder l'arithmétique et produire une fenêtre minuscule.
     #[test]
     fn un_lisere_aberrant_ne_fait_pas_deborder() {
-        let fou = Lisere { gauche: -100_000, haut: 0, droite: -100_000, bas: 0 };
-        let pose = rect_a_poser(&Rect { x: 0, y: 0, width: 100, height: 100 }, fou);
-        assert_eq!(pose.width, 0, "saturation vers le bas, jamais un repli par le haut");
+        let fou = Lisere {
+            gauche: -100_000,
+            haut: 0,
+            droite: -100_000,
+            bas: 0,
+        };
+        let pose = rect_a_poser(
+            &Rect {
+                x: 0,
+                y: 0,
+                width: 100,
+                height: 100,
+            },
+            fou,
+        );
+        assert_eq!(
+            pose.width, 0,
+            "saturation vers le bas, jamais un repli par le haut"
+        );
     }
 }
 
@@ -157,13 +215,23 @@ mod bordure_peinte {
     /// **la mesure de l'image et la métrique du système concordent**, ce qui
     /// est ce qui autorise à se fier à la seconde plutôt qu'à écrire `1`.
     const BORDURE: (i32, i32) = (1, 1);
-    const DWM: Lisere = Lisere { gauche: 7, haut: 0, droite: 7, bas: 7 };
+    const DWM: Lisere = Lisere {
+        gauche: 7,
+        haut: 0,
+        droite: 7,
+        bas: 7,
+    };
 
     #[test]
     fn l_enveloppe_ajoute_la_bordure_peinte_au_lisere_invisible() {
         assert_eq!(
             enveloppe(DWM, BORDURE),
-            Lisere { gauche: 8, haut: 1, droite: 8, bas: 8 }
+            Lisere {
+                gauche: 8,
+                haut: 1,
+                droite: 8,
+                bas: 8
+            }
         );
     }
 
@@ -173,7 +241,12 @@ mod bordure_peinte {
     /// périodique voit un écart permanent.
     #[test]
     fn poser_puis_relire_redonne_exactement_le_recadrage() {
-        let crop = Rect { x: 1280, y: 0, width: 1548, height: 1032 };
+        let crop = Rect {
+            x: 1280,
+            y: 0,
+            width: 1548,
+            height: 1032,
+        };
         let pose = rect_a_poser(&crop, enveloppe(DWM, BORDURE));
         // Ce que DWM rendra du rectangle posé : le posé, rétréci du lisère
         // INVISIBLE seul — la bordure peinte, elle, fait partie du cadre vu.
@@ -184,7 +257,10 @@ mod bordure_peinte {
             height: (pose.height as i32 - DWM.haut - DWM.bas) as u32,
         };
         assert_eq!(sans_la_bordure(&cadre_vu, BORDURE), crop);
-        assert!(!doit_etre_replacee(&sans_la_bordure(&cadre_vu, BORDURE), &crop));
+        assert!(!doit_etre_replacee(
+            &sans_la_bordure(&cadre_vu, BORDURE),
+            &crop
+        ));
     }
 
     /// La bordure peinte tombe bien **HORS** du recadrage : le cadre visible
@@ -192,10 +268,19 @@ mod bordure_peinte {
     /// peint sa ligne sombre.
     #[test]
     fn la_ligne_sombre_tombe_hors_du_recadrage() {
-        let crop = Rect { x: 1280, y: 0, width: 1548, height: 1032 };
+        let crop = Rect {
+            x: 1280,
+            y: 0,
+            width: 1548,
+            height: 1032,
+        };
         let pose = rect_a_poser(&crop, enveloppe(DWM, BORDURE));
         let cadre_vu_gauche = pose.x + DWM.gauche;
-        assert_eq!(crop.x - cadre_vu_gauche, BORDURE.0, "le bord peint doit etre EN DEHORS");
+        assert_eq!(
+            crop.x - cadre_vu_gauche,
+            BORDURE.0,
+            "le bord peint doit etre EN DEHORS"
+        );
         let cadre_vu_droite = pose.x + pose.width as i32 - DWM.droite;
         assert_eq!(cadre_vu_droite - (crop.x + crop.width as i32), BORDURE.0);
     }
@@ -205,7 +290,12 @@ mod bordure_peinte {
     #[test]
     fn sans_bordure_peinte_on_retrouve_le_comportement_precedent() {
         assert_eq!(enveloppe(DWM, (0, 0)), DWM);
-        let r = Rect { x: 10, y: 20, width: 100, height: 50 };
+        let r = Rect {
+            x: 10,
+            y: 20,
+            width: 100,
+            height: 50,
+        };
         assert_eq!(sans_la_bordure(&r, (0, 0)), r);
     }
 
@@ -213,7 +303,12 @@ mod bordure_peinte {
     /// rendre un recadrage géant par repli entier.
     #[test]
     fn une_bordure_aberrante_ne_fait_pas_deborder() {
-        let r = Rect { x: 0, y: 0, width: 10, height: 10 };
+        let r = Rect {
+            x: 0,
+            y: 0,
+            width: 10,
+            height: 10,
+        };
         assert_eq!(sans_la_bordure(&r, (100, 100)).width, 0);
     }
 }

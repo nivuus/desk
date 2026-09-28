@@ -230,7 +230,6 @@ pub fn borner_entrant(texte: &str) -> Option<String> {
     (texte.len() <= PRESSE_PAPIER_MAX).then(|| texte.to_owned())
 }
 
-
 /// Écrit le presse-papier de la VM, et rend le numéro de séquence relu APRÈS
 /// la fermeture — celui qu'il faut passer à `Sondeur::apres_notre_ecriture`.
 ///

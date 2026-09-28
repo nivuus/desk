@@ -101,7 +101,8 @@ impl Rebond {
     /// échoirait sans notification déclencherait des réconciliations fantômes,
     /// c'est-à-dire précisément le coût que ce module existe pour éviter.
     pub fn du(&self, maintenant: Instant) -> bool {
-        self.echeance().is_some_and(|echeance| maintenant >= echeance)
+        self.echeance()
+            .is_some_and(|echeance| maintenant >= echeance)
     }
 
     /// Le train est consommé : la réconciliation part.
@@ -205,7 +206,8 @@ mod tests {
         let granularite_sondage = Duration::from_millis(200);
         let cout_reconciliation = Duration::from_millis(70);
         let une_icone_neuve = Duration::from_millis(10);
-        let pire = DELAI_ANTI_REBOND_MAX + granularite_sondage + cout_reconciliation + une_icone_neuve;
+        let pire =
+            DELAI_ANTI_REBOND_MAX + granularite_sondage + cout_reconciliation + une_icone_neuve;
         assert!(
             pire < Duration::from_secs(5),
             "pire cas {pire:?} : le critère ① exige moins de cinq secondes"

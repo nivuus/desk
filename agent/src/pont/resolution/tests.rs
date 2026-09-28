@@ -32,7 +32,10 @@ fn les_treize_noms_sont_distincts() {
 fn chaque_champ_recoit_l_adresse_de_son_entree() {
     let a = resoudre(resolveur_complet).expect("les treize sont là");
     let attendue = |nom: &str| resolveur_complet(nom).expect("nom connu");
-    assert_eq!(a.allouer_tampon_aligne, attendue("PrjAllocateAlignedBuffer"));
+    assert_eq!(
+        a.allouer_tampon_aligne,
+        attendue("PrjAllocateAlignedBuffer")
+    );
     assert_eq!(a.vider_cache_negatif, attendue("PrjClearNegativePathCache"));
     assert_eq!(a.completer_commande, attendue("PrjCompleteCommand"));
     assert_eq!(a.supprimer_fichier, attendue("PrjDeleteFile"));
@@ -54,8 +57,14 @@ fn chaque_champ_recoit_l_adresse_de_son_entree() {
 #[test]
 fn chaque_entree_absente_est_nommee_par_l_erreur() {
     for manquante in NOMS {
-        let erreur = resoudre(|nom| if nom == manquante { None } else { resolveur_complet(nom) })
-            .expect_err("une entrée manque : la résolution doit échouer");
+        let erreur = resoudre(|nom| {
+            if nom == manquante {
+                None
+            } else {
+                resolveur_complet(nom)
+            }
+        })
+        .expect_err("une entrée manque : la résolution doit échouer");
         assert_eq!(erreur.nom, manquante);
         assert!(
             erreur.to_string().contains(manquante),
@@ -71,9 +80,14 @@ fn chaque_entree_absente_est_nommee_par_l_erreur() {
 #[test]
 fn une_adresse_nulle_vaut_une_entree_absente() {
     for manquante in NOMS {
-        let erreur =
-            resoudre(|nom| if nom == manquante { Some(0) } else { resolveur_complet(nom) })
-                .expect_err("une adresse nulle doit être refusée");
+        let erreur = resoudre(|nom| {
+            if nom == manquante {
+                Some(0)
+            } else {
+                resolveur_complet(nom)
+            }
+        })
+        .expect_err("une adresse nulle doit être refusée");
         assert_eq!(erreur.nom, manquante);
     }
 }
@@ -88,11 +102,18 @@ fn la_resolution_s_arrete_a_la_premiere_entree_manquante() {
     let mut interroges = Vec::new();
     let erreur = resoudre(|nom| {
         interroges.push(nom.to_string());
-        if nom == "PrjCompleteCommand" { None } else { resolveur_complet(nom) }
+        if nom == "PrjCompleteCommand" {
+            None
+        } else {
+            resolveur_complet(nom)
+        }
     })
     .expect_err("PrjCompleteCommand manque");
     assert_eq!(erreur.nom, "PrjCompleteCommand");
-    let rang = NOMS.iter().position(|n| *n == "PrjCompleteCommand").expect("nom connu");
+    let rang = NOMS
+        .iter()
+        .position(|n| *n == "PrjCompleteCommand")
+        .expect("nom connu");
     assert_eq!(
         interroges.len(),
         rang + 1,

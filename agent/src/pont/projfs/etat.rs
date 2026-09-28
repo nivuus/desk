@@ -33,7 +33,9 @@ use crate::pont::transport::VersNavigateur;
 /// fil. Nous ne le déréférençons jamais ; nous ne faisons que le rendre à
 /// `PrjFillDirEntryBuffer` et à `PrjCompleteCommand`.
 #[derive(Clone, Copy)]
-pub struct TamponEntrees(pub windows::Win32::Storage::ProjectedFileSystem::PRJ_DIR_ENTRY_BUFFER_HANDLE);
+pub struct TamponEntrees(
+    pub windows::Win32::Storage::ProjectedFileSystem::PRJ_DIR_ENTRY_BUFFER_HANDLE,
+);
 // SÛRETÉ : voir ci-dessus.
 unsafe impl Send for TamponEntrees {}
 unsafe impl Sync for TamponEntrees {}
@@ -257,14 +259,20 @@ impl Etat {
         type_message: u8,
         entete: &str,
     ) -> bool {
-        let Ok(mut table) = self.table.lock() else { return false };
+        let Ok(mut table) = self.table.lock() else {
+            return false;
+        };
         let correlation = table.inscrire(commande, quoi, echeance);
         drop(table);
         if let Ok(mut attente) = self.en_attente.lock() {
             attente.insert(correlation, contexte);
         }
         let trame = proto::fichiers::encoder(type_message, correlation, entete, &[]);
-        if self.sortant.send(VersNavigateur::Requete { correlation, trame }).is_err() {
+        if self
+            .sortant
+            .send(VersNavigateur::Requete { correlation, trame })
+            .is_err()
+        {
             // Le transport est parti : retirer ce qu'on vient d'inscrire,
             // sinon la commande attendrait son budget entier pour rien.
             if let Ok(mut table) = self.table.lock() {
@@ -319,12 +327,19 @@ impl Etat {
                 longueur: morceau.longueur,
             },
             std::time::Instant::now() + crate::pont::table::DELAI_LIRE,
-            ContexteProjFs::Lecture { flux: FluxDonnees(flux), fenetre },
+            ContexteProjFs::Lecture {
+                flux: FluxDonnees(flux),
+                fenetre,
+            },
             proto::fichiers::TYPE_LIRE,
             &entete,
         );
         if !poursuivie {
-            tracing::warn!(chemin, commande, "lecture interrompue : le canal du pont est parti");
+            tracing::warn!(
+                chemin,
+                commande,
+                "lecture interrompue : le canal du pont est parti"
+            );
             let contexte = self.contexte();
             if let Some(Contexte(contexte)) = contexte {
                 // SÛRETÉ : contexte valide, aucun paramètre étendu.
@@ -375,7 +390,6 @@ impl Etat {
         );
     }
 }
-
 
 /// Une chaîne UTF-16 terminée par un nul, pour un `PCWSTR`.
 fn utf16_nul(texte: &str) -> Vec<u16> {

@@ -45,7 +45,11 @@ pub enum Verdict {
 pub fn couleur_mire(id: u8, trame: u64) -> (u8, u8, u8) {
     debug_assert!(id < MIRES_MAX);
     let rouge = BASE_IDENTITE + id * PAS_IDENTITE;
-    let vert = if trame % 2 == 0 { VERT_PAIR } else { VERT_IMPAIR };
+    let vert = if trame % 2 == 0 {
+        VERT_PAIR
+    } else {
+        VERT_IMPAIR
+    };
     (rouge, vert, BLEU_MIRE)
 }
 
@@ -125,7 +129,10 @@ mod tests {
     fn l_alternance_de_trame_change_le_vert_sans_toucher_a_l_identite() {
         let paire = couleur_mire(3, 10);
         let impaire = couleur_mire(3, 11);
-        assert_ne!(paire.1, impaire.1, "sans alternance visible, Desktop Duplication n'émet rien");
+        assert_ne!(
+            paire.1, impaire.1,
+            "sans alternance visible, Desktop Duplication n'émet rien"
+        );
         assert_eq!(paire.0, impaire.0);
         assert_eq!(identifier(impaire), Some(3));
     }

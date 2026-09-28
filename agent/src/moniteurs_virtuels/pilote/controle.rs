@@ -52,7 +52,12 @@ impl PiloteParIoctl {
     /// n'ont besoin que de ponctuer leurs attentes. On expose le battement,
     /// l'appelant tient la cadence.
     pub(crate) fn pinguer(&self) -> Result<()> {
-        self.commander(IOCTL_PINGUER, None, None, "ping du chien de garde du pilote")?;
+        self.commander(
+            IOCTL_PINGUER,
+            None,
+            None,
+            "ping du chien de garde du pilote",
+        )?;
         Ok(())
     }
 
@@ -62,8 +67,12 @@ impl PiloteParIoctl {
         let rendus = self.commander(
             IOCTL_LIRE_VEILLE,
             None,
-            Some((&mut veille as *mut _ as *mut _, std::mem::size_of::<Veille>() as u32)),
+            Some((
+                &mut veille as *mut _ as *mut _,
+                std::mem::size_of::<Veille>() as u32,
+            )),
             "lecture du watchdog du pilote",
         )?;
         Ok((veille, rendus))
-    }}
+    }
+}

@@ -35,7 +35,10 @@ use std::time::Instant;
 use crate::capteur::vivier::{Ordre, Vivier, HYSTERESIS, PLAFOND_EVEIL};
 
 use super::file::{canal_de_session, Envoi, ReceveurSession};
-use super::{parts, porteurs, presse_papier, purger_les_inaptitudes, retirer_est_perime, Message, PERIODE_REARBITRAGE};
+use super::{
+    parts, porteurs, presse_papier, purger_les_inaptitudes, retirer_est_perime, Message,
+    PERIODE_REARBITRAGE,
+};
 
 // Les TABLES du registre vivent chez le voisin : `Etat` est un agrégat de
 // tables presque entièrement fait de documentation, ce fichier-ci porte ce qui
@@ -44,7 +47,6 @@ use super::{parts, porteurs, presse_papier, purger_les_inaptitudes, retirer_est_
 // non `etat` parce qu'une fonction `etat()` vit juste en dessous.
 mod tables;
 pub(super) use tables::Etat;
-
 
 // Le FIL du tour de roue vit chez le voisin : il porte une horloge et une E/S
 // Win32, ce fichier-ci porte le registre. Extrait au round de correction 1,
@@ -79,7 +81,9 @@ pub(super) fn etat() -> MutexGuard<'static, Etat> {
     // Un empoisonnement ne doit pas tuer le capteur : l'état du vivier reste
     // cohérent (un `Vec` d'ordres perdu au pire), et refuser de servir serait
     // pire que de continuer.
-    mutex.lock().unwrap_or_else(|empoisonne| empoisonne.into_inner())
+    mutex
+        .lock()
+        .unwrap_or_else(|empoisonne| empoisonne.into_inner())
 }
 
 /// Envoie chaque ordre à la fenêtre concernée. Un canal rompu signale une
@@ -111,7 +115,10 @@ pub(super) fn distribuer(garde: &mut MutexGuard<'static, Etat>, ordres: Vec<(Str
             // `EmetteurSession::journaliser_le_refus` vient de décider, ce qui
             // fait sortir les deux lignes ensemble.
             let (issue, refuses) = match garde.canaux.get(&session) {
-                Some(canal) => (Some(canal.envoyer(Message::Sommeil(ordre))), canal.refuses()),
+                Some(canal) => (
+                    Some(canal.envoyer(Message::Sommeil(ordre))),
+                    canal.refuses(),
+                ),
                 // 🔴 `None` N'EST PAS UNE LIVRAISON, ET LE ROUND 2 A CORRIGÉ
                 // CETTE RÉDACTION. Le comportement est celui d'avant (l'ancien
                 // `None => false` : ne rien purger, la session n'est déjà plus
@@ -267,7 +274,10 @@ pub(super) fn distribuer(garde: &mut MutexGuard<'static, Etat>, ordres: Vec<(Str
 /// un rattachement réinscrit la MÊME session (voir `inscrire` et le chemin de
 /// reprise de D4), qui héritait alors du focus sans que le client l'ait jamais
 /// réémis — deux parts au lieu d'une, prises sur ses voisines.
-pub(super) fn oublier(garde: &mut MutexGuard<'static, Etat>, session: &str) -> Vec<(String, Ordre)> {
+pub(super) fn oublier(
+    garde: &mut MutexGuard<'static, Etat>,
+    session: &str,
+) -> Vec<(String, Ordre)> {
     garde.canaux.remove(session);
     garde.dernieres_parts.remove(session);
     // Les quatre tables de D7 s'oublient ICI et nulle part ailleurs. Le

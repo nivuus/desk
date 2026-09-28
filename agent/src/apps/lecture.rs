@@ -22,8 +22,8 @@ use windows::Win32::System::Com::{
 };
 use windows::Win32::System::Environment::ExpandEnvironmentStringsW;
 use windows::Win32::UI::Shell::{
-    IShellLinkW, SHGetKnownFolderPath, ShellLink, FOLDERID_CommonStartMenu, FOLDERID_Desktop,
-    FOLDERID_PublicDesktop, FOLDERID_StartMenu, KF_FLAG_DEFAULT, SLGP_RAWPATH, SLGP_UNCPRIORITY,
+    FOLDERID_CommonStartMenu, FOLDERID_Desktop, FOLDERID_PublicDesktop, FOLDERID_StartMenu,
+    IShellLinkW, SHGetKnownFolderPath, ShellLink, KF_FLAG_DEFAULT, SLGP_RAWPATH, SLGP_UNCPRIORITY,
 };
 
 use super::raccourci::Brut;

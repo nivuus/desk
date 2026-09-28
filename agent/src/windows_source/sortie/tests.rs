@@ -35,7 +35,10 @@ fn une_taille_4k_est_ramenee_au_plafond() {
 fn le_bornage_preserve_le_rapport_d_aspect() {
     // Un 21:9 borné indépendamment sur chaque axe déformerait l'image.
     let (l, h) = borner_a_la_taille_max((3440, 1440));
-    assert!(l <= TAILLE_MAX_SORTIE.0 && h <= TAILLE_MAX_SORTIE.1, "{l}x{h}");
+    assert!(
+        l <= TAILLE_MAX_SORTIE.0 && h <= TAILLE_MAX_SORTIE.1,
+        "{l}x{h}"
+    );
     let ecart = (l as f64 / h as f64) - (3440.0 / 1440.0);
     assert!(ecart.abs() < 0.01, "rapport {l}/{h} contre 3440/1440");
 }
@@ -82,7 +85,12 @@ fn le_bornage_ne_rend_jamais_une_dimension_nulle() {
 fn la_region_part_de_l_origine_de_la_sortie() {
     assert_eq!(
         region_de_sortie(1600, 900),
-        Some(Rect { x: 0, y: 0, width: 1600, height: 900 })
+        Some(Rect {
+            x: 0,
+            y: 0,
+            width: 1600,
+            height: 900
+        })
     );
 }
 
@@ -90,7 +98,12 @@ fn la_region_part_de_l_origine_de_la_sortie() {
 fn les_dimensions_impaires_sont_alignees_vers_le_bas() {
     assert_eq!(
         region_de_sortie(1601, 901),
-        Some(Rect { x: 0, y: 0, width: 1600, height: 900 })
+        Some(Rect {
+            x: 0,
+            y: 0,
+            width: 1600,
+            height: 900
+        })
     );
 }
 
@@ -176,9 +189,15 @@ fn la_demande_la_plus_frequente_est_desormais_honoree_a_l_aspect_pres() {
 fn un_viewport_plus_large_que_la_borne_est_reduit_sans_etre_deforme() {
     let borne = (1428, 1032);
     let (l, h) = taille_pour_viewport((5118, 1438), borne);
-    assert!(l <= borne.0 && h <= borne.1, "{l}x{h} doit tenir dans {borne:?}");
+    assert!(
+        l <= borne.0 && h <= borne.1,
+        "{l}x{h} doit tenir dans {borne:?}"
+    );
     let ecart = ((l as f64 / h as f64) - (5118.0 / 1438.0)).abs() / (5118.0 / 1438.0);
-    assert!(ecart < 0.005, "rapport {l}/{h} contre 5118/1438 : ecart {ecart}");
+    assert!(
+        ecart < 0.005,
+        "rapport {l}/{h} contre 5118/1438 : ecart {ecart}"
+    );
 }
 
 /// La borne est la ZONE DE TRAVAIL, et c'est ce qui sort la barre des tâches
@@ -186,14 +205,20 @@ fn un_viewport_plus_large_que_la_borne_est_reduit_sans_etre_deforme() {
 /// `Shell_SecondaryTrayWnd rect=(1280,1032)-(2708,1080)` — 48 rangées.
 #[test]
 fn la_zone_de_travail_retire_les_quarante_huit_rangees_de_la_barre() {
-    assert_eq!(borne_de_la_sortie((1428, 1080), Some((1428, 1032))), (1428, 1032));
+    assert_eq!(
+        borne_de_la_sortie((1428, 1080), Some((1428, 1032))),
+        (1428, 1032)
+    );
     // Et le recadrage d'une fenêtre plein cadre les perd donc aussi : c'est le
     // même 1032, et non 1080, qui part à `region_de_sortie`.
     //
     // ⚠️ La LARGEUR descend avec, à 1364 : c'est le fit à aspect préservé, et
     // c'est voulu. Rendre `(1428, 1032)` — l'ancien `min` axe par axe —
     // servirait un 1,384 pour un 1,322 demandé, donc les bandes.
-    assert_eq!(taille_pour_viewport((1428, 1080), (1428, 1032)), (1364, 1032));
+    assert_eq!(
+        taille_pour_viewport((1428, 1080), (1428, 1032)),
+        (1364, 1032)
+    );
 }
 
 /// 🔴 **LE REPLI EST LE COMPORTEMENT D'AVANT LE LOT, ET IL DOIT L'ÊTRE
@@ -206,7 +231,10 @@ fn la_zone_de_travail_retire_les_quarante_huit_rangees_de_la_barre() {
 fn une_zone_de_travail_absente_ou_degeneree_rend_le_rectangle_du_moniteur() {
     assert_eq!(borne_de_la_sortie((1428, 1080), None), (1428, 1080));
     assert_eq!(borne_de_la_sortie((1428, 1080), Some((0, 0))), (1428, 1080));
-    assert_eq!(borne_de_la_sortie((1428, 1080), Some((1428, 1))), (1428, 1080));
+    assert_eq!(
+        borne_de_la_sortie((1428, 1080), Some((1428, 1))),
+        (1428, 1080)
+    );
 }
 
 /// Une zone de travail que Windows annoncerait PLUS GRANDE que son moniteur
@@ -214,7 +242,10 @@ fn une_zone_de_travail_absente_ou_degeneree_rend_le_rectangle_du_moniteur() {
 /// et rien d'autre ne le tient.
 #[test]
 fn une_zone_de_travail_plus_grande_que_le_moniteur_est_ramenee_a_lui() {
-    assert_eq!(borne_de_la_sortie((1428, 1080), Some((4096, 4096))), (1428, 1080));
+    assert_eq!(
+        borne_de_la_sortie((1428, 1080), Some((4096, 4096))),
+        (1428, 1080)
+    );
 }
 
 /// Le court-circuit du capteur compare la valeur rendue à la taille
@@ -234,7 +265,6 @@ fn la_regle_est_stable_sur_son_propre_resultat() {
 fn une_boite_video_repliee_ne_rend_jamais_une_dimension_nulle() {
     assert_eq!(taille_pour_viewport((0, 0), (1860, 1080)), (2, 2));
 }
-
 
 /// Les HUIT tailles que le navigateur du propriétaire a RÉELLEMENT demandées,
 /// relevées le 31 août 2026 dans une capture réseau des trames `viewport`
@@ -269,7 +299,10 @@ const VIEWPORTS_MESURES: [(u32, u32); 8] = [
 const ECART_D_ARRONDI_MAX: f64 = 0.005;
 
 fn ecart_de_rapport(servi: (u32, u32), demande: (u32, u32)) -> f64 {
-    let (rs, rd) = (servi.0 as f64 / servi.1 as f64, demande.0 as f64 / demande.1 as f64);
+    let (rs, rd) = (
+        servi.0 as f64 / servi.1 as f64,
+        demande.0 as f64 / demande.1 as f64,
+    );
     (rs - rd).abs() / rd
 }
 
@@ -302,7 +335,13 @@ fn les_huit_viewports_mesures_sont_servis_a_leur_propre_rapport() {
 /// part. Ce dépôt a payé neuf fois le naufrage du 487.
 #[test]
 fn la_regle_honore_la_borne_qu_on_lui_donne_quelle_qu_elle_soit() {
-    for borne in [(1428, 1032), (1860, 1032), (1280, 752), (3840, 2160), (800, 600)] {
+    for borne in [
+        (1428, 1032),
+        (1860, 1032),
+        (1280, 752),
+        (3840, 2160),
+        (800, 600),
+    ] {
         for demande in VIEWPORTS_MESURES {
             let servi = taille_pour_viewport(demande, borne);
             assert!(

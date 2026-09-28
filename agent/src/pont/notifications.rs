@@ -74,12 +74,12 @@ pub const HARDLINK_CREATED: i32 = 256; // mod.rs:342
 pub const NEW_FILE_CREATED: i32 = 4; // mod.rs:349
 pub const FILE_OVERWRITTEN: i32 = 8; // mod.rs:339
 pub const FILE_HANDLE_CLOSED_FILE_MODIFIED: i32 = 1024; // mod.rs:336
-// ── LES DEUX DE F3 ────────────────────────────────────────────────────────
-// ⚠️ **La VALEUR fait foi, jamais le numéro de ligne.** `windows` et
-// `windows-sys` exposent DEUX modules `Win32/Storage/ProjectedFileSystem` aux
-// symboles identiques et aux lignes différentes ; l'auteur du plan de F2 a
-// déclaré fausses trois citations exactes pour l'avoir oublié. Le crate qui
-// fait foi est celui qu'`agent/Cargo.toml` déclare — `windows` (0.62.2).
+                                                        // ── LES DEUX DE F3 ────────────────────────────────────────────────────────
+                                                        // ⚠️ **La VALEUR fait foi, jamais le numéro de ligne.** `windows` et
+                                                        // `windows-sys` exposent DEUX modules `Win32/Storage/ProjectedFileSystem` aux
+                                                        // symboles identiques et aux lignes différentes ; l'auteur du plan de F2 a
+                                                        // déclaré fausses trois citations exactes pour l'avoir oublié. Le crate qui
+                                                        // fait foi est celui qu'`agent/Cargo.toml` déclare — `windows` (0.62.2).
 pub const FILE_RENAMED: i32 = 128; // mod.rs:341
 pub const FILE_HANDLE_CLOSED_FILE_DELETED: i32 = 2048; // mod.rs:335
 
@@ -319,9 +319,7 @@ pub fn decider(code: i32, etat: Etat, cible: Cible) -> Reponse {
         // avec la fermeture de handle** : elle signale une troncature à
         // l'ouverture (`CREATE_ALWAYS`, `TRUNCATE_EXISTING`), qu'un
         // enregistrement « en place » produit couramment.
-        FILE_OVERWRITTEN | FILE_HANDLE_CLOSED_FILE_MODIFIED => {
-            Reponse::Pousser(Poussee::Contenu)
-        }
+        FILE_OVERWRITTEN | FILE_HANDLE_CLOSED_FILE_MODIFIED => Reponse::Pousser(Poussee::Contenu),
         // ── LES DEUX POST DE F3 ───────────────────────────────────────────
         // ⚠️ **Elles ne se refusent PAS**, comme toutes les POST : le geste a
         // déjà eu lieu dans la VM. Ce qui les a autorisées est le `PRE_`

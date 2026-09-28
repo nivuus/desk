@@ -36,7 +36,11 @@ impl Fil {
             racine,
             forcer,
             memorise = memorise.as_deref().unwrap_or("<aucun>"),
-            decision = if decision == Decision::Pousser { "pousser" } else { "retenir" },
+            decision = if decision == Decision::Pousser {
+                "pousser"
+            } else {
+                "retenir"
+            },
             dues = self.journal.dues().len(),
             "bonjour du navigateur : decision de reprise"
         );
@@ -109,12 +113,14 @@ impl Fil {
             "des ecritures etaient dues au demarrage du pont : elles sont repoussees"
         );
         self.annoncer_les_dues();
-        let a_reprendre: Vec<String> =
-            self.journal.dues().iter().map(|(c, _)| c.clone()).collect();
+        let a_reprendre: Vec<String> = self.journal.dues().iter().map(|(c, _)| c.clone()).collect();
         for chemin in a_reprendre {
             let local = disque::local(&self.config.racine, &chemin);
             let evenement = match std::fs::metadata(&local) {
-                Ok(m) if m.is_dir() => Evenement::Cree { chemin, repertoire: true },
+                Ok(m) if m.is_dir() => Evenement::Cree {
+                    chemin,
+                    repertoire: true,
+                },
                 Ok(_) => Evenement::Modifie { chemin },
                 Err(erreur) => {
                     // 🔴 **La racine a été recréée, et le fichier est parti avec
@@ -136,4 +142,5 @@ impl Fil {
             }
         }
         self.annoncer_les_dues();
-    }}
+    }
+}

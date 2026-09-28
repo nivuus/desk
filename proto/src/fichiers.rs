@@ -274,7 +274,13 @@ pub fn decoder(octets: &[u8]) -> Result<Trame<'_>, ErreurTrame> {
             max: TAILLE_TRAME_MAX,
         });
     }
-    Ok(Trame { version, type_message: octets[1], correlation, entete, charge })
+    Ok(Trame {
+        version,
+        type_message: octets[1],
+        correlation,
+        entete,
+        charge,
+    })
 }
 
 pub mod entetes;

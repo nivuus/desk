@@ -13,8 +13,8 @@
 //! pas hériter d'un chemin de banc.
 
 use anyhow::{Context, Result};
-use windows::Win32::Foundation::HGLOBAL;
 use windows::Win32::Foundation::HANDLE;
+use windows::Win32::Foundation::HGLOBAL;
 use windows::Win32::System::DataExchange::{
     CloseClipboard, EmptyClipboard, GetClipboardData, GetClipboardSequenceNumber, OpenClipboard,
     SetClipboardData,

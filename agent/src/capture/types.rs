@@ -74,5 +74,7 @@ pub(super) fn lire(
     duplication: &Option<IDXGIOutputDuplication>,
     dernier_code_perdu: i32,
 ) -> std::result::Result<&IDXGIOutputDuplication, EchecAcquisition> {
-    duplication.as_ref().ok_or(EchecAcquisition::AccesPerdu(dernier_code_perdu))
+    duplication
+        .as_ref()
+        .ok_or(EchecAcquisition::AccesPerdu(dernier_code_perdu))
 }

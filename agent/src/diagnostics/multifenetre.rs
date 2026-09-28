@@ -197,8 +197,9 @@ pub(super) fn aiguiller() -> Result<bool> {
     // par la sonde — la voie 2 n'y était garantie que « par construction ».
     // Elle crée une sortie, donc elle passe après `MULTIFENETRE_VDD_PURGE`.
     if let Ok(texte) = std::env::var("MULTIFENETRE_VDD_CAPTURE") {
-        let nombre: u8 =
-            texte.parse().context("MULTIFENETRE_VDD_CAPTURE doit être un entier (nombre de mires)")?;
+        let nombre: u8 = texte
+            .parse()
+            .context("MULTIFENETRE_VDD_CAPTURE doit être un entier (nombre de mires)")?;
         capture_virtuelle::capturer_sur_virtuelle(nombre)?;
         return Ok(true);
     }

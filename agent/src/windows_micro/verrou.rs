@@ -44,9 +44,7 @@
 
 use anyhow::{Context, Result};
 use windows::core::PCWSTR;
-use windows::Win32::Foundation::{
-    ERROR_ACCESS_DENIED, HANDLE, WAIT_ABANDONED, WAIT_OBJECT_0,
-};
+use windows::Win32::Foundation::{ERROR_ACCESS_DENIED, HANDLE, WAIT_ABANDONED, WAIT_OBJECT_0};
 use windows::Win32::System::Threading::{CreateMutexW, WaitForSingleObject};
 
 use crate::micro::exclusivite::Verrou;
@@ -114,7 +112,11 @@ impl MutexNomme {
     /// paresseuse, au premier dépôt.
     pub fn creer() -> Result<Self> {
         match Self::creer_dans("Global\\") {
-            Ok((handle, espace)) => Ok(Self { handle, espace, tenu: false }),
+            Ok((handle, espace)) => Ok(Self {
+                handle,
+                espace,
+                tenu: false,
+            }),
             Err(e) if e == ERROR_ACCESS_DENIED.into() => {
                 tracing::warn!(
                     erreur = %e,
@@ -124,7 +126,11 @@ impl MutexNomme {
                 );
                 let (handle, espace) = Self::creer_dans("Local\\")
                     .context("creation du mutex du cable, y compris dans l'espace Local")?;
-                Ok(Self { handle, espace, tenu: false })
+                Ok(Self {
+                    handle,
+                    espace,
+                    tenu: false,
+                })
             }
             Err(e) => Err(anyhow::Error::from(e).context("creation du mutex du cable micro")),
         }
@@ -141,7 +147,11 @@ impl MutexNomme {
         // propriétaire à la création tiendrait le câble dès le démarrage même
         // si aucun paquet ne montait jamais.
         let handle = unsafe { CreateMutexW(None, false, PCWSTR(nom.as_ptr())) }?;
-        let espace = if prefixe.starts_with("Global") { "Global" } else { "Local" };
+        let espace = if prefixe.starts_with("Global") {
+            "Global"
+        } else {
+            "Local"
+        };
         Ok((handle, espace))
     }
 

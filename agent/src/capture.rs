@@ -83,7 +83,10 @@ impl DesktopCapture {
     /// reconstruction d'une capture en cours de session, c'est
     /// `new_sans_attente` qu'il faut.
     pub fn new() -> Result<Self> {
-        Self::ouvrir(CibleCapture::Bureau, crate::capture_reprise::DUREE_FENETRE_OUVERTURE)
+        Self::ouvrir(
+            CibleCapture::Bureau,
+            crate::capture_reprise::DUREE_FENETRE_OUVERTURE,
+        )
     }
 
     /// Ouvre SANS attendre : un refus est rendu au premier essai.
@@ -139,7 +142,11 @@ impl DesktopCapture {
 
         let (duplication, desktop_width, desktop_height) =
             dupliquer_avec_reprise(&device, &output, &cible, fenetre_ouverture)?;
-        tracing::info!(desktop_width, desktop_height, "duplication de sortie établie");
+        tracing::info!(
+            desktop_width,
+            desktop_height,
+            "duplication de sortie établie"
+        );
 
         Ok(Self {
             device,
@@ -189,10 +196,10 @@ impl DesktopCapture {
         // `None` la fait relâcher ici, pas à l'affectation d'après.
         self.duplication = None;
 
-        let factory: IDXGIFactory1 =
-            unsafe { CreateDXGIFactory1() }.context("création de la fabrique DXGI (réouverture)")?;
-        let (_adapter, output) = ouvrir_sortie(&factory, &self.cible)
-            .context("résolution de la sortie à rouvrir")?;
+        let factory: IDXGIFactory1 = unsafe { CreateDXGIFactory1() }
+            .context("création de la fabrique DXGI (réouverture)")?;
+        let (_adapter, output) =
+            ouvrir_sortie(&factory, &self.cible).context("résolution de la sortie à rouvrir")?;
         let (duplication, largeur, hauteur) = dupliquer(&self.device, &output)?;
 
         // Les dimensions peuvent avoir changé : la texture de destination est
@@ -340,7 +347,9 @@ impl DesktopCapture {
                 self.dernier_code_perdu = e.code().0;
                 return Err(EchecAcquisition::AccesPerdu(e.code().0));
             }
-            return Err(EchecAcquisition::Panne(anyhow!("acquisition d'image : {e}")));
+            return Err(EchecAcquisition::Panne(anyhow!(
+                "acquisition d'image : {e}"
+            )));
         }
         self.frame_held = true;
 
@@ -401,7 +410,10 @@ impl DesktopCapture {
                 MipLevels: 1,
                 ArraySize: 1,
                 Format: DXGI_FORMAT_B8G8R8A8_UNORM,
-                SampleDesc: DXGI_SAMPLE_DESC { Count: 1, Quality: 0 },
+                SampleDesc: DXGI_SAMPLE_DESC {
+                    Count: 1,
+                    Quality: 0,
+                },
                 Usage: D3D11_USAGE_DEFAULT,
                 BindFlags: D3D11_BIND_RENDER_TARGET.0 as u32,
                 CPUAccessFlags: 0,
@@ -433,7 +445,11 @@ impl DesktopCapture {
         }
         self.set_phase(crate::encode::PHASE_CAPTURE);
 
-        Ok(CapturedFrame { texture: texture.clone(), width, height })
+        Ok(CapturedFrame {
+            texture: texture.clone(),
+            width,
+            height,
+        })
     }
 
     fn release_frame(&mut self) {

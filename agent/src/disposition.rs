@@ -57,7 +57,12 @@ mod tests {
     use crate::geometry::rects_overlap;
 
     /// Le bureau relevé sur la VM le 30/07/2026.
-    const BUREAU: Rect = Rect { x: 0, y: 0, width: 2400, height: 1080 };
+    const BUREAU: Rect = Rect {
+        x: 0,
+        y: 0,
+        width: 2400,
+        height: 1080,
+    };
 
     #[test]
     fn huit_places_ne_se_recouvrent_pas_et_tiennent_dans_le_bureau() {
@@ -95,7 +100,12 @@ mod tests {
     fn un_bureau_trop_petit_fait_refuser_la_disposition() {
         // Refuser franchement plutôt que rendre des places minuscules : une
         // mesure sur des fenêtres de 80x60 ne dirait rien du produit.
-        let etroit = Rect { x: 0, y: 0, width: 640, height: 480 };
+        let etroit = Rect {
+            x: 0,
+            y: 0,
+            width: 640,
+            height: 480,
+        };
         assert_eq!(tuiles(etroit, 8), None);
     }
 

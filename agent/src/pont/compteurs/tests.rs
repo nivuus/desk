@@ -12,8 +12,15 @@ use super::*;
 #[test]
 fn chaque_variante_a_son_compteur_et_un_nom_distinct() {
     let mut noms: Vec<&str> = Erreur::TOUTES.iter().map(|e| nom(*e)).collect();
-    assert_eq!(noms.len(), NOMBRE, "TOUTES doit porter les {NOMBRE} variantes");
-    assert!(noms.iter().all(|n| !n.is_empty()), "un nom vide ne se grep pas");
+    assert_eq!(
+        noms.len(),
+        NOMBRE,
+        "TOUTES doit porter les {NOMBRE} variantes"
+    );
+    assert!(
+        noms.iter().all(|n| !n.is_empty()),
+        "un nom vide ne se grep pas"
+    );
     noms.sort_unstable();
     let avant = noms.len();
     noms.dedup();
@@ -69,7 +76,11 @@ fn rendre_incremente_la_bonne_case_et_elle_seule() {
     for cible in Erreur::TOUTES {
         let c = Compteurs::nouveaux();
         let code = c.rendre(cible);
-        assert_eq!(code, crate::pont::erreurs::hresult(cible), "le code rendu doit être celui de la table");
+        assert_eq!(
+            code,
+            crate::pont::erreurs::hresult(cible),
+            "le code rendu doit être celui de la table"
+        );
         for e in Erreur::TOUTES {
             let attendu = u64::from(e == cible);
             assert_eq!(
@@ -107,7 +118,11 @@ fn rendre_cumule() {
 #[test]
 fn manquants_rend_exactement_les_causes_a_zero() {
     let c = Compteurs::nouveaux();
-    assert_eq!(c.manquants().len(), NOMBRE, "tout manque sur un compteur neuf");
+    assert_eq!(
+        c.manquants().len(),
+        NOMBRE,
+        "tout manque sur un compteur neuf"
+    );
 
     c.rendre(Erreur::Introuvable);
     c.rendre(Erreur::DisquePlein);
@@ -150,7 +165,11 @@ fn le_recensement_porte_un_champ_par_variante() {
     let ligne = Compteurs::nouveaux().recensement();
     assert_eq!(ligne.split(' ').count(), NOMBRE + 1);
     for e in Erreur::TOUTES {
-        assert!(ligne.contains(&format!(" {}=", nom(e))), "« {} » absent", nom(e));
+        assert!(
+            ligne.contains(&format!(" {}=", nom(e))),
+            "« {} » absent",
+            nom(e)
+        );
     }
 }
 

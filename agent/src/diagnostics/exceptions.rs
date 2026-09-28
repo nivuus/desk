@@ -124,7 +124,9 @@ pub(crate) fn installer() {
 /// Ne s'exécute que sur `AGENT_TRACE_EXCEPTIONS_AUTOTEST` posée à autre chose
 /// que `0`, en plus de `AGENT_TRACE_EXCEPTIONS`.
 fn autotest() {
-    tracing::warn!("AUTOTEST du filtre d'exception : violation d'accès délibérée, le processus va mourir");
+    tracing::warn!(
+        "AUTOTEST du filtre d'exception : violation d'accès délibérée, le processus va mourir"
+    );
     // Écriture à une adresse non mappée volontairement basse et reconnaissable
     // dans le rapport (« adresse fautive »).
     let adresse = 0x24usize as *mut u32;
@@ -207,7 +209,11 @@ fn situer(tampon: &mut Tampon, adresse: usize) {
 }
 
 /// Écrit un rapport complet dans le journal dédié. Aucune allocation.
-unsafe fn consigner(etiquette: &str, enregistrement: *const EXCEPTION_RECORD, contexte: *const CONTEXT) {
+unsafe fn consigner(
+    etiquette: &str,
+    enregistrement: *const EXCEPTION_RECORD,
+    contexte: *const CONTEXT,
+) {
     let Some(journal) = JOURNAL.get() else {
         return;
     };

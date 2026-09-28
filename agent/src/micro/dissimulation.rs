@@ -133,7 +133,10 @@ pub struct BudgetDissimulation {
 
 impl BudgetDissimulation {
     pub fn new(plafond: Duration) -> Self {
-        Self { plafond, consecutif: Duration::ZERO }
+        Self {
+            plafond,
+            consecutif: Duration::ZERO,
+        }
     }
 
     /// Peut-on encore dissimuler `duree` ? Rend `false` quand le plafond est
@@ -177,7 +180,11 @@ mod tests {
     fn une_perte_courte_est_dissimulee_sans_reserve() {
         let mut b = BudgetDissimulation::new(PLAFOND_DISSIMULATION);
         for i in 0..3 {
-            assert!(b.consommer(TRAME), "la {}ᵉ trame perdue a été refusée", i + 1);
+            assert!(
+                b.consommer(TRAME),
+                "la {}ᵉ trame perdue a été refusée",
+                i + 1
+            );
         }
         assert_eq!(b.consecutif(), Duration::from_millis(60));
     }
@@ -188,10 +195,17 @@ mod tests {
     fn au_dela_du_plafond_la_dissimulation_est_refusee() {
         let mut b = BudgetDissimulation::new(PLAFOND_DISSIMULATION);
         for i in 0..10 {
-            assert!(b.consommer(TRAME), "la {}ᵉ trame a été refusée trop tôt", i + 1);
+            assert!(
+                b.consommer(TRAME),
+                "la {}ᵉ trame a été refusée trop tôt",
+                i + 1
+            );
         }
         assert_eq!(b.consecutif(), PLAFOND_DISSIMULATION);
-        assert!(!b.consommer(TRAME), "la 11ᵉ trame a été dissimulée : le plafond ne mord pas");
+        assert!(
+            !b.consommer(TRAME),
+            "la 11ᵉ trame a été dissimulée : le plafond ne mord pas"
+        );
         // Et le refus est DURABLE : il ne se lève pas de lui-même au tour
         // suivant. Sans cette ligne, un plafond qui n'interdirait qu'une trame
         // sur deux passerait l'assertion ci-dessus.
@@ -233,8 +247,14 @@ mod tests {
             }
             (n, b.consecutif())
         };
-        assert_eq!(compte(Duration::from_millis(20)), (10, PLAFOND_DISSIMULATION));
-        assert_eq!(compte(Duration::from_millis(10)), (20, PLAFOND_DISSIMULATION));
+        assert_eq!(
+            compte(Duration::from_millis(20)),
+            (10, PLAFOND_DISSIMULATION)
+        );
+        assert_eq!(
+            compte(Duration::from_millis(10)),
+            (20, PLAFOND_DISSIMULATION)
+        );
     }
 
     /// Une durée nulle ne peut pas faire tourner le budget sans fin — ce

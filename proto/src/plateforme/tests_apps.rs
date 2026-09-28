@@ -73,7 +73,10 @@ fn serialise_le_catalogue() {
 #[test]
 fn serialise_le_lancer() {
     let json = serde_json::to_string(&DepuisLaPlateforme::lancer("d-7", "a1b2")).expect("sér.");
-    assert_eq!(json, r#"{"type":"lancer","v":5,"demande":"d-7","cle":"a1b2"}"#);
+    assert_eq!(
+        json,
+        r#"{"type":"lancer","v":5,"demande":"d-7","cle":"a1b2"}"#
+    );
 }
 
 #[test]
@@ -119,10 +122,12 @@ fn rejette_une_version_absente_sur_catalogue() {
 
 #[test]
 fn rejette_la_version_suivante_sur_catalogue() {
-    assert!(serde_json::from_str::<VersLaPlateforme>(
-        &super::tests::etrangere(r#"{"type":"catalogue","v":0,"complet":true,"applications":[],"disparues":[]}"#)
-    )
-    .is_err());
+    assert!(
+        serde_json::from_str::<VersLaPlateforme>(&super::tests::etrangere(
+            r#"{"type":"catalogue","v":0,"complet":true,"applications":[],"disparues":[]}"#
+        ))
+        .is_err()
+    );
 }
 
 #[test]
@@ -135,10 +140,12 @@ fn rejette_une_version_absente_sur_lancee() {
 
 #[test]
 fn rejette_la_version_suivante_sur_lancee() {
-    assert!(serde_json::from_str::<VersLaPlateforme>(
-        &super::tests::etrangere(r#"{"type":"lancee","v":0,"demande":"d","issue":"echec"}"#)
-    )
-    .is_err());
+    assert!(
+        serde_json::from_str::<VersLaPlateforme>(&super::tests::etrangere(
+            r#"{"type":"lancee","v":0,"demande":"d","issue":"echec"}"#
+        ))
+        .is_err()
+    );
 }
 
 #[test]
@@ -151,10 +158,12 @@ fn rejette_une_version_absente_sur_lancer() {
 
 #[test]
 fn rejette_la_version_suivante_sur_lancer() {
-    assert!(serde_json::from_str::<DepuisLaPlateforme>(
-        &super::tests::etrangere(r#"{"type":"lancer","v":0,"demande":"d","cle":"c"}"#)
-    )
-    .is_err());
+    assert!(
+        serde_json::from_str::<DepuisLaPlateforme>(&super::tests::etrangere(
+            r#"{"type":"lancer","v":0,"demande":"d","cle":"c"}"#
+        ))
+        .is_err()
+    );
 }
 
 #[test]
@@ -187,7 +196,11 @@ fn serialise_les_deux_formes_de_source_max() {
         r#""non-mesuree""#
     );
     // Et l'aller-retour, dans les deux sens.
-    for valeur in [SourceMax::Pixels(48), SourceMax::Pixels(256), SourceMax::NonMesuree] {
+    for valeur in [
+        SourceMax::Pixels(48),
+        SourceMax::Pixels(256),
+        SourceMax::NonMesuree,
+    ] {
         let json = serde_json::to_string(&valeur).expect("sér.");
         let relu: SourceMax = serde_json::from_str(&json).expect("désér.");
         assert_eq!(valeur, relu);
@@ -271,10 +284,12 @@ fn rejette_une_version_absente_sur_icones_manquantes() {
 
 #[test]
 fn rejette_la_version_suivante_sur_icones_manquantes() {
-    assert!(serde_json::from_str::<DepuisLaPlateforme>(
-        &super::tests::etrangere(r#"{"type":"icones-manquantes","v":0,"empreintes":[]}"#)
-    )
-    .is_err());
+    assert!(
+        serde_json::from_str::<DepuisLaPlateforme>(&super::tests::etrangere(
+            r#"{"type":"icones-manquantes","v":0,"empreintes":[]}"#
+        ))
+        .is_err()
+    );
 }
 
 /// 🔴 LA ROUGE DU BUMP DE G2. Un agent v2 émet un catalogue sans les deux

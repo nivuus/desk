@@ -75,9 +75,14 @@ pub enum Suite {
 /// aussi — un nombre de tours nul ne doit pas se lire comme « à l'infini ».
 pub fn apres_un_tour(tour_acheve: u32, tours: u32, repit: Duration) -> Suite {
     if tours == 0 || tour_acheve >= tours {
-        return Suite::Renoncer { tours_epuises: tour_acheve.max(1) };
+        return Suite::Renoncer {
+            tours_epuises: tour_acheve.max(1),
+        };
     }
-    Suite::Reessayer { tour_suivant: tour_acheve + 1, apres: repit }
+    Suite::Reessayer {
+        tour_suivant: tour_acheve + 1,
+        apres: repit,
+    }
 }
 
 #[cfg(test)]
@@ -88,11 +93,17 @@ mod tests {
     fn les_tours_intermediaires_reessaient_sur_la_meme_sortie() {
         assert_eq!(
             apres_un_tour(1, 3, REPIT),
-            Suite::Reessayer { tour_suivant: 2, apres: REPIT }
+            Suite::Reessayer {
+                tour_suivant: 2,
+                apres: REPIT
+            }
         );
         assert_eq!(
             apres_un_tour(2, 3, REPIT),
-            Suite::Reessayer { tour_suivant: 3, apres: REPIT }
+            Suite::Reessayer {
+                tour_suivant: 3,
+                apres: REPIT
+            }
         );
     }
 
@@ -100,21 +111,33 @@ mod tests {
     /// relance non bornée de ce dépôt.
     #[test]
     fn le_dernier_tour_renonce_et_dit_combien_il_en_a_faits() {
-        assert_eq!(apres_un_tour(3, 3, REPIT), Suite::Renoncer { tours_epuises: 3 });
+        assert_eq!(
+            apres_un_tour(3, 3, REPIT),
+            Suite::Renoncer { tours_epuises: 3 }
+        );
     }
 
     /// Un tour au-delà de la borne renonce aussi : aucune arithmétique ne peut
     /// faire repartir la boucle.
     #[test]
     fn au_dela_de_la_borne_on_renonce_encore() {
-        assert_eq!(apres_un_tour(9, 3, REPIT), Suite::Renoncer { tours_epuises: 9 });
+        assert_eq!(
+            apres_un_tour(9, 3, REPIT),
+            Suite::Renoncer { tours_epuises: 9 }
+        );
     }
 
     /// ⚠️ Le cas dégénéré : `tours = 0` ne doit pas se lire « sans borne ».
     #[test]
     fn zero_tour_renonce_immediatement_et_jamais_a_l_infini() {
-        assert_eq!(apres_un_tour(1, 0, REPIT), Suite::Renoncer { tours_epuises: 1 });
-        assert_eq!(apres_un_tour(0, 0, REPIT), Suite::Renoncer { tours_epuises: 1 });
+        assert_eq!(
+            apres_un_tour(1, 0, REPIT),
+            Suite::Renoncer { tours_epuises: 1 }
+        );
+        assert_eq!(
+            apres_un_tour(0, 0, REPIT),
+            Suite::Renoncer { tours_epuises: 1 }
+        );
     }
 
     /// Le produit d'AVANT ce remède, exprimé dans la même règle : un seul
@@ -122,7 +145,10 @@ mod tests {
     /// que la règle sait aussi ne rien réessayer.
     #[test]
     fn un_seul_tour_est_le_produit_d_avant_la_reprise() {
-        assert_eq!(apres_un_tour(1, 1, REPIT), Suite::Renoncer { tours_epuises: 1 });
+        assert_eq!(
+            apres_un_tour(1, 1, REPIT),
+            Suite::Renoncer { tours_epuises: 1 }
+        );
     }
 
     /// Le pire cas est BORNÉ et calculable : c'est ce que la boucle du
@@ -137,7 +163,10 @@ mod tests {
             tours += 1;
             attente += limite;
             match apres_un_tour(tour, TOURS, REPIT) {
-                Suite::Reessayer { tour_suivant, apres } => {
+                Suite::Reessayer {
+                    tour_suivant,
+                    apres,
+                } => {
                     attente += apres;
                     tour = tour_suivant;
                 }

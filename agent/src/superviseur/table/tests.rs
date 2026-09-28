@@ -104,13 +104,24 @@ fn une_fenetre_qui_disparait_tue_l_enfant_detruit_la_sortie_et_l_annonce() {
     assert_eq!(
         effets,
         vec![
-            Effet::TuerEnfant { session: session.clone() },
+            Effet::TuerEnfant {
+                session: session.clone()
+            },
             // L'identifiant du PILOTE, seul avec lequel il sait retirer.
-            Effet::DetruireSortie { sortie_pilote: 7, nom_sortie: "\\\\.\\DISPLAY4".into() },
-            Effet::AnnoncerFermeture { session: session.clone() },
+            Effet::DetruireSortie {
+                sortie_pilote: 7,
+                nom_sortie: "\\\\.\\DISPLAY4".into()
+            },
+            Effet::AnnoncerFermeture {
+                session: session.clone()
+            },
         ]
     );
-    assert_eq!(t.etat(&session), None, "la fenêtre doit avoir quitté la table");
+    assert_eq!(
+        t.etat(&session),
+        None,
+        "la fenêtre doit avoir quitté la table"
+    );
 }
 
 #[test]
@@ -127,12 +138,21 @@ fn un_enfant_qui_meurt_seul_retient_la_sortie_et_l_annonce_sans_le_tuer() {
     t.sortie_creee(&session, 7, "\\\\.\\DISPLAY4".into(), (1280, 720));
 
     let effets = t.enfant_mort(&session);
-    assert_eq!(effets, vec![Effet::AnnoncerFermeture { session: session.clone() }]);
+    assert_eq!(
+        effets,
+        vec![Effet::AnnoncerFermeture {
+            session: session.clone()
+        }]
+    );
     // La fenêtre reste dans la table, orpheline : c'est le contrôle
     // périodique (`relancer_les_orphelines`) qui la reproposera, plutôt
     // qu'un `SHOW` fortuit de Windows — voir la tâche 10.
     assert_eq!(t.etat(&session), Some(&Etat::SansSession));
-    assert_eq!(t.taille_sortie_de(&session), Some((1280, 720)), "la sortie est retenue, pas rendue");
+    assert_eq!(
+        t.taille_sortie_de(&session),
+        Some((1280, 720)),
+        "la sortie est retenue, pas rendue"
+    );
 }
 
 #[test]
@@ -145,7 +165,9 @@ fn une_fenetre_qui_disparait_avant_sa_sortie_ne_demande_aucune_destruction() {
     assert_eq!(
         effets,
         vec![
-            Effet::TuerEnfant { session: session.clone() },
+            Effet::TuerEnfant {
+                session: session.clone()
+            },
             Effet::AnnoncerFermeture { session },
         ]
     );
@@ -182,7 +204,10 @@ fn une_sortie_liberee_rouvre_la_place() {
 
     t.fenetre_disparue(IdFenetre(1));
     let effets = t.fenetre_apparue(IdFenetre(3), "C".into());
-    assert!(matches!(effets.as_slice(), [Effet::AnnoncerOuverture { .. }]));
+    assert!(matches!(
+        effets.as_slice(),
+        [Effet::AnnoncerOuverture { .. }]
+    ));
 }
 
 #[test]
@@ -200,7 +225,10 @@ fn un_second_viewport_pour_la_meme_session_est_ignore() {
     let session = session_annoncee(&t.fenetre_apparue(IdFenetre(1), "A".into()));
     t.viewport_recu(&session, 1600, 900);
     let effets = t.viewport_recu(&session, 800, 600);
-    assert!(effets.is_empty(), "la sortie est déjà demandée à la première taille");
+    assert!(
+        effets.is_empty(),
+        "la sortie est déjà demandée à la première taille"
+    );
 }
 
 #[test]
@@ -244,10 +272,15 @@ fn une_fenetre_reannoncee_ne_cree_pas_de_seconde_entree() {
     assert_eq!(
         effets,
         vec![
-            Effet::TuerEnfant { session: session.clone() },
+            Effet::TuerEnfant {
+                session: session.clone()
+            },
             // Une seule DetruireSortie : la fuite serait une seconde
             // sortie jamais détruite parce que jamais retrouvée.
-            Effet::DetruireSortie { sortie_pilote: 7, nom_sortie: "\\\\.\\DISPLAY4".into() },
+            Effet::DetruireSortie {
+                sortie_pilote: 7,
+                nom_sortie: "\\\\.\\DISPLAY4".into()
+            },
             Effet::AnnoncerFermeture { session },
         ],
         "une seule sortie à détruire, pas deux"
@@ -264,7 +297,10 @@ fn une_reannonce_ne_declenche_pas_le_refus_meme_table_pleine() {
     let mut t = Table::nouvelle(1);
     let session = session_annoncee(&t.fenetre_apparue(IdFenetre(1), "A".into()));
     let effets = t.fenetre_apparue(IdFenetre(1), "A".into());
-    assert!(effets.is_empty(), "pas de refus pour une fenêtre déjà ouverte");
+    assert!(
+        effets.is_empty(),
+        "pas de refus pour une fenêtre déjà ouverte"
+    );
     assert_eq!(t.etat(&session), Some(&Etat::AttendLeViewport));
 }
 

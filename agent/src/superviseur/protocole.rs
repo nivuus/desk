@@ -98,7 +98,11 @@ pub enum VersLaShell {
 #[serde(tag = "type")]
 pub enum DepuisLaShell {
     #[serde(rename = "viewport")]
-    Viewport { session: String, largeur: u32, hauteur: u32 },
+    Viewport {
+        session: String,
+        largeur: u32,
+        hauteur: u32,
+    },
     /// **Un pair `client` vient de rejoindre la session de contrôle** —
     /// émis par le RELAIS, jamais par la page
     /// (`plateforme/src/signaling/pair-present.ts`). Ce n'est donc pas un
@@ -145,7 +149,10 @@ mod tests {
         // `message.titre`/`message.motif` sur un refus : ces noms-là sont le
         // contrat, pas une commodité de nommage côté Rust.
         assert_eq!(
-            serde_json::to_string(&VersLaShell::FenetreFermee { session: "w-2".into() }).unwrap(),
+            serde_json::to_string(&VersLaShell::FenetreFermee {
+                session: "w-2".into()
+            })
+            .unwrap(),
             r#"{"type":"fenetre-fermee","session":"w-2"}"#
         );
         assert_eq!(
@@ -164,7 +171,12 @@ mod tests {
             r#"{"type":"viewport","session":"w-1","largeur":1600,"hauteur":900}"#,
         )
         .unwrap();
-        let DepuisLaShell::Viewport { session, largeur, hauteur } = message else {
+        let DepuisLaShell::Viewport {
+            session,
+            largeur,
+            hauteur,
+        } = message
+        else {
             panic!("un viewport doit se lire comme un viewport")
         };
         assert_eq!((session.as_str(), largeur, hauteur), ("w-1", 1600, 900));
@@ -172,8 +184,7 @@ mod tests {
 
     #[test]
     fn un_message_inconnu_de_la_shell_est_refuse_plutot_qu_ignore() {
-        let resultat: Result<DepuisLaShell, _> =
-            serde_json::from_str(r#"{"type":"autre-chose"}"#);
+        let resultat: Result<DepuisLaShell, _> = serde_json::from_str(r#"{"type":"autre-chose"}"#);
         assert!(resultat.is_err());
     }
 
@@ -241,8 +252,7 @@ mod tests {
     /// aucune erreur, des deux côtés.
     #[test]
     fn l_arrivee_d_un_pair_se_lit_sur_la_session_de_controle() {
-        let message: DepuisLaShell =
-            serde_json::from_str(r#"{"type":"pair-present"}"#).unwrap();
+        let message: DepuisLaShell = serde_json::from_str(r#"{"type":"pair-present"}"#).unwrap();
         assert!(matches!(message, DepuisLaShell::PairPresent));
         // …et un champ superflu ne le casse pas : le relais peut en ajouter
         // un demain sans rendre l'agent sourd.

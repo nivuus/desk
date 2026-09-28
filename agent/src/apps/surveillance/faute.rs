@@ -160,7 +160,11 @@ mod tests {
     #[test]
     fn lire_desarme_sur_tout_ce_qui_n_est_pas_une_famille_suivie_d_un_compte() {
         assert_eq!(lire(None), None, "absente = DÉSARMÉE");
-        assert_eq!(lire(Some("debordement")), None, "sans compte : rien à tirer");
+        assert_eq!(
+            lire(Some("debordement")),
+            None,
+            "sans compte : rien à tirer"
+        );
         assert_eq!(lire(Some("debordement:")), None);
         assert_eq!(lire(Some("debordement:x")), None);
         // ⚠️ TRANCHÉ : un budget de zéro vaut l'absence, et ne se déclare pas
@@ -188,7 +192,10 @@ mod tests {
         let (armee, reste) = etat();
         armee.store(Famille::Perte.code(), Ordering::Relaxed);
         reste.store(1, Ordering::Relaxed);
-        assert!(consommer(Famille::Perte), "le budget de 1 doit tirer une fois");
+        assert!(
+            consommer(Famille::Perte),
+            "le budget de 1 doit tirer une fois"
+        );
         assert!(
             !consommer(Famille::Perte),
             "et une seule : un budget global s'épuise pour tout le processus"

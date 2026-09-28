@@ -173,7 +173,9 @@ fn brancher_mesure(config: &Config, session: &mut Session) {
         }
     };
 
-    session.set_puits_micro(Box::new(PuitsDeMesure { lecteur: Arc::clone(&lecteur) }));
+    session.set_puits_micro(Box::new(PuitsDeMesure {
+        lecteur: Arc::clone(&lecteur),
+    }));
 
     // ⚠️ ÉMISE AU BRANCHEMENT, PAS AU PREMIER PAQUET, et c'est délibéré. D6 a
     // écrit un contrôle « la variable est-elle arrivée ? » qui rendait vide aux

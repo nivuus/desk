@@ -9,11 +9,11 @@
 use anyhow::Result;
 use windows::Win32::Graphics::Gdi::DISP_CHANGE_SUCCESSFUL;
 
+use super::super::montee::{attendre_en_pinguant, relever_topologie, DELAI_TOPOLOGIE};
 use super::combinaisons::{appliquer_combo, combos_du_tour};
 use super::persistance::combinaison_imposee;
 use super::voisines::DuplicationVoisine;
 use super::{choisir_cible, modes_annonces};
-use super::super::montee::{attendre_en_pinguant, relever_topologie, DELAI_TOPOLOGIE};
 use crate::moniteurs_virtuels::pilote::PiloteParIoctl;
 
 /// Ce qu'un tour de combinaisons a établi.
@@ -303,5 +303,10 @@ pub(super) fn essayer_les_modes(
         pertes_acces_voisines_pendant_le_tour = pertes_voisines,
         "verdict P1 : une sortie virtuelle accepte-t-elle un autre mode que celui de sa creation"
     );
-    Ok(ResultatTour { cible: Some(cible), gagnante, pertes_voisines, combinaison_imposee: imposee })
+    Ok(ResultatTour {
+        cible: Some(cible),
+        gagnante,
+        pertes_voisines,
+        combinaison_imposee: imposee,
+    })
 }

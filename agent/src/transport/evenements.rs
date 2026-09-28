@@ -328,7 +328,6 @@ impl Session {
         }
     }
 
-
     /// Mémorise un `ClientControl` reçu, sans jamais l'appliquer sur-le-champ.
     ///
     /// Ce code s'exécute pendant le drainage de `poll_output` : reconstruire
@@ -342,7 +341,9 @@ impl Session {
             ClientControl::Resize { width, height, .. } => {
                 self.pending_resize = Some((*width, *height));
             }
-            ClientControl::Visibility { visible, focused, .. } => {
+            ClientControl::Visibility {
+                visible, focused, ..
+            } => {
                 self.pending_visibility = Some((*visible, *focused));
             }
             // Écrasement du dernier, comme les deux au-dessus — et pour ce

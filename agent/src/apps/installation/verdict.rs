@@ -113,7 +113,9 @@ impl Motif {
     /// dépasse, et l'appelant doit le journaliser **verbatim** plutôt que de
     /// le perdre ou de le remplacer par un défaut.
     pub fn depuis_mot(mot: &str) -> Option<Self> {
-        Self::TOUS.into_iter().find(|candidat| candidat.mot() == mot)
+        Self::TOUS
+            .into_iter()
+            .find(|candidat| candidat.mot() == mot)
     }
 }
 

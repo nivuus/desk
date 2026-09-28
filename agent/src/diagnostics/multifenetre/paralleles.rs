@@ -68,8 +68,10 @@ pub(super) fn mesurer(nombre: u8) -> Result<()> {
 
     let avant = relever_topologie("avant création")?;
     let noms_avant = noms_attaches(&avant);
-    let connues: HashSet<String> =
-        avant.iter().map(|sortie| sortie.nom_sortie.clone()).collect();
+    let connues: HashSet<String> = avant
+        .iter()
+        .map(|sortie| sortie.nom_sortie.clone())
+        .collect();
 
     let pilote = crate::moniteurs_virtuels::pilote::ouvrir_pilote()?;
     let (largeur, hauteur, hertz) = RESOLUTION;
@@ -236,8 +238,10 @@ fn constater_survie(passe: &str, virtuelles: &[SortieDxgi]) {
             return;
         }
     };
-    let enumerees: HashSet<&str> =
-        vivantes.iter().map(|sortie| sortie.nom_sortie.as_str()).collect();
+    let enumerees: HashSet<&str> = vivantes
+        .iter()
+        .map(|sortie| sortie.nom_sortie.as_str())
+        .collect();
     let attachees: HashSet<&str> = vivantes
         .iter()
         .filter(|sortie| sortie.attachee_au_bureau)

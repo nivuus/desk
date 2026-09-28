@@ -28,11 +28,13 @@ fn une_capture_audio_morte_est_signalee_une_fois_puis_de_nouveau_apres_un_rattac
         rattachement_prepare: rattachement.clone(),
         annonces_audio_vivant: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
     });
-    let mut session = Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000)
-        .expect("session");
+    let mut session =
+        Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000).expect("session");
 
     let morte = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
-    session.set_audio_source(Box::new(AudioSourceMortelle { morte: morte.clone() }));
+    session.set_audio_source(Box::new(AudioSourceMortelle {
+        morte: morte.clone(),
+    }));
 
     // Capture vivante : rien à signaler.
     session
@@ -118,10 +120,16 @@ impl SourceVivante {
         Self::avec_un_paquet()
     }
     fn sans_paquet() -> Self {
-        Self { paquets: 0, actif: std::sync::Arc::new(std::sync::Mutex::new(None)) }
+        Self {
+            paquets: 0,
+            actif: std::sync::Arc::new(std::sync::Mutex::new(None)),
+        }
     }
     fn avec_un_paquet() -> Self {
-        Self { paquets: 1, actif: std::sync::Arc::new(std::sync::Mutex::new(None)) }
+        Self {
+            paquets: 1,
+            actif: std::sync::Arc::new(std::sync::Mutex::new(None)),
+        }
     }
     /// `paquets = 0` : ce constructeur n'observe QUE l'appel `set_actif`,
     /// indépendamment de tout paquet — c'est un appel synchrone, fait avant
@@ -162,9 +170,15 @@ fn une_capture_morte_est_reconstruite_avant_tout_signalement() {
     }));
 
     let t0 = std::time::Instant::now();
-    assert!(!session.reconstruire_ou_signaler(t0), "rien à signaler : on reconstruit");
+    assert!(
+        !session.reconstruire_ou_signaler(t0),
+        "rien à signaler : on reconstruit"
+    );
     assert_eq!(essais.load(std::sync::atomic::Ordering::Relaxed), 1);
-    assert!(!session.capture_audio_morte(), "la source neuve est vivante");
+    assert!(
+        !session.capture_audio_morte(),
+        "la source neuve est vivante"
+    );
 }
 
 /// Le budget épuisé fait retomber sur le signalement : c'est là que la
@@ -179,10 +193,16 @@ fn un_reconstructeur_qui_echoue_toujours_finit_par_signaler() {
 
     let mut t = std::time::Instant::now();
     for essai in 0..crate::audio::RECONSTRUCTIONS_MAX {
-        assert!(!session.reconstruire_ou_signaler(t), "essai {essai} : budget restant");
+        assert!(
+            !session.reconstruire_ou_signaler(t),
+            "essai {essai} : budget restant"
+        );
         t += crate::audio::REPIT_RECONSTRUCTION;
     }
-    assert!(session.reconstruire_ou_signaler(t), "budget épuisé : il faut signaler");
+    assert!(
+        session.reconstruire_ou_signaler(t),
+        "budget épuisé : il faut signaler"
+    );
 }
 
 /// Le répit est respecté : sans lui, la boucle de tick tenterait une
@@ -253,8 +273,8 @@ fn audio_vivant_n_est_annonce_qu_apres_un_paquet_reel() {
         rattachement_prepare: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
         annonces_audio_vivant: annonces.clone(),
     });
-    let mut session = Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000)
-        .expect("session");
+    let mut session =
+        Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000).expect("session");
 
     session.set_audio_source(Box::new(SourceMorte::new()));
     session.set_audio_reconstructeur(Box::new(|| {
@@ -318,10 +338,16 @@ fn une_reelection_reapprovisionne_le_budget_et_leve_le_verrou() {
     // `un_reconstructeur_qui_echoue_toujours_finit_par_signaler`).
     let mut t = std::time::Instant::now();
     for essai in 0..crate::audio::RECONSTRUCTIONS_MAX {
-        assert!(!session.reconstruire_ou_signaler(t), "premier cycle, essai {essai}");
+        assert!(
+            !session.reconstruire_ou_signaler(t),
+            "premier cycle, essai {essai}"
+        );
         t += crate::audio::REPIT_RECONSTRUCTION;
     }
-    assert!(session.reconstruire_ou_signaler(t), "premier épuisement : il faut signaler");
+    assert!(
+        session.reconstruire_ou_signaler(t),
+        "premier épuisement : il faut signaler"
+    );
     // C'est ce que fait `act_on_timeout` (branche a1sexies) au moment de
     // signaler `AudioMort` — reproduit ici pour ne pas dépendre du reste de
     // la liste de priorités, non pertinente pour ce test.
@@ -409,7 +435,10 @@ fn une_session_non_porteuse_reconstruite_reste_muette() {
             as Box<dyn AudioSource + Send>)
     }));
     // `audio_porteuse` reste à son défaut de construction : `false`.
-    assert!(!session.audio_porteuse, "précondition : cette session ne porte pas le son");
+    assert!(
+        !session.audio_porteuse,
+        "précondition : cette session ne porte pas le son"
+    );
 
     session.reconstruire_ou_signaler(std::time::Instant::now());
 

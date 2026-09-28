@@ -97,7 +97,10 @@ mod tests_appartenance {
     #[test]
     fn desarmee_la_regle_n_ecarte_plus_rien() {
         for a in [Some(true), Some(false), None] {
-            assert!(!ecartee_pour_non_appartenance(a, false), "{a:?} ne doit plus être écartée");
+            assert!(
+                !ecartee_pour_non_appartenance(a, false),
+                "{a:?} ne doit plus être écartée"
+            );
         }
     }
 }
@@ -126,7 +129,10 @@ mod tests {
 
     #[test]
     fn une_fenetre_invisible_est_ecartee() {
-        let d = DescriptionFenetre { visible: false, ..ordinaire() };
+        let d = DescriptionFenetre {
+            visible: false,
+            ..ordinaire()
+        };
         assert!(!merite_une_fenetre(&d));
     }
 
@@ -134,13 +140,19 @@ mod tests {
     fn une_fenetre_possedee_est_ecartee() {
         // Dialogues modaux, palettes : elles restent composées dans leur
         // parente, qui a déjà sa fenêtre navigateur.
-        let d = DescriptionFenetre { a_un_proprietaire: true, ..ordinaire() };
+        let d = DescriptionFenetre {
+            a_un_proprietaire: true,
+            ..ordinaire()
+        };
         assert!(!merite_une_fenetre(&d));
     }
 
     #[test]
     fn une_tool_window_est_ecartee() {
-        let d = DescriptionFenetre { tool_window: true, ..ordinaire() };
+        let d = DescriptionFenetre {
+            tool_window: true,
+            ..ordinaire()
+        };
         assert!(!merite_une_fenetre(&d));
     }
 
@@ -148,7 +160,11 @@ mod tests {
     fn une_tool_window_qui_est_aussi_app_window_est_gardee() {
         // WS_EX_APPWINDOW force la présence dans Alt-Tab : c'est la
         // dérogation exacte que le critère du cadrage prévoit.
-        let d = DescriptionFenetre { tool_window: true, app_window: true, ..ordinaire() };
+        let d = DescriptionFenetre {
+            tool_window: true,
+            app_window: true,
+            ..ordinaire()
+        };
         assert!(merite_une_fenetre(&d));
     }
 
@@ -156,13 +172,19 @@ mod tests {
     fn une_fenetre_masquee_par_dwm_est_ecartee() {
         // Sans ce filtre on capte les fenêtres UWP fantômes, qui existent
         // sans jamais s'afficher.
-        let d = DescriptionFenetre { masquee_dwm: true, ..ordinaire() };
+        let d = DescriptionFenetre {
+            masquee_dwm: true,
+            ..ordinaire()
+        };
         assert!(!merite_une_fenetre(&d));
     }
 
     #[test]
     fn une_fenetre_sans_titre_est_ecartee() {
-        let d = DescriptionFenetre { titre: String::new(), ..ordinaire() };
+        let d = DescriptionFenetre {
+            titre: String::new(),
+            ..ordinaire()
+        };
         assert!(!merite_une_fenetre(&d));
     }
 

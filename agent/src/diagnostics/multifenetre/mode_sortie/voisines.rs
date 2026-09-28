@@ -85,11 +85,15 @@ impl DuplicationVoisine {
     /// son coût est nul (un drapeau sur le contexte immédiat), et la doctrine
     /// déjà consignée, prise à la lettre, l'exige.
     fn ouvrir(sortie: &SortieDxgi) -> Result<Self> {
-        let factory: IDXGIFactory1 = unsafe { CreateDXGIFactory1() }
-            .context("fabrique DXGI (duplication d'une voisine)")?;
-        let adapter = unsafe { factory.EnumAdapters1(sortie.index_adaptateur) }.with_context(
-            || format!("adaptateur introuvable pour la voisine {}", sortie.nom_sortie),
-        )?;
+        let factory: IDXGIFactory1 =
+            unsafe { CreateDXGIFactory1() }.context("fabrique DXGI (duplication d'une voisine)")?;
+        let adapter =
+            unsafe { factory.EnumAdapters1(sortie.index_adaptateur) }.with_context(|| {
+                format!(
+                    "adaptateur introuvable pour la voisine {}",
+                    sortie.nom_sortie
+                )
+            })?;
         let output: IDXGIOutput1 = unsafe { adapter.EnumOutputs(sortie.index_sortie) }
             .with_context(|| format!("sortie introuvable pour la voisine {}", sortie.nom_sortie))?
             .cast()
@@ -141,7 +145,13 @@ impl DuplicationVoisine {
             .with_context(|| format!("duplication de la voisine {}", sortie.nom_sortie))?;
         tracing::info!(voisine = %sortie.nom_sortie, "duplication brute ouverte sur une voisine");
 
-        Ok(Self { nom: sortie.nom_sortie.clone(), device, output, duplication, morte: false })
+        Ok(Self {
+            nom: sortie.nom_sortie.clone(),
+            device,
+            output,
+            duplication,
+            morte: false,
+        })
     }
 
     /// Sonde une fois, sans bloquer (`AcquireNextFrame(0, ..)`, même
@@ -166,7 +176,10 @@ impl DuplicationVoisine {
         }
         let mut info = DXGI_OUTDUPL_FRAME_INFO::default();
         let mut resource: Option<IDXGIResource> = None;
-        match unsafe { self.duplication.AcquireNextFrame(0, &mut info, &mut resource) } {
+        match unsafe {
+            self.duplication
+                .AcquireNextFrame(0, &mut info, &mut resource)
+        } {
             Ok(()) => {
                 let _ = unsafe { self.duplication.ReleaseFrame() };
                 false
@@ -236,5 +249,10 @@ pub(super) fn creer_deux(
     connues_a_ce_point.insert(sortie_v2.nom_sortie.clone());
     let voisine2 = DuplicationVoisine::ouvrir(&sortie_v2)?;
 
-    Ok((voisine1, voisine2, sortie_v1.nom_sortie, sortie_v2.nom_sortie))
+    Ok((
+        voisine1,
+        voisine2,
+        sortie_v1.nom_sortie,
+        sortie_v2.nom_sortie,
+    ))
 }

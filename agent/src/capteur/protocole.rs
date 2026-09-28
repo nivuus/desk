@@ -60,10 +60,20 @@ pub enum VersCapteur {
     /// second tube à la session déjà attachée sur la connexion de commandes.
     /// Après elle, l'enfant n'écrit plus jamais sur cette connexion — c'est
     /// ce qui garantit qu'aucune lecture et écriture n'y sont concurrentes.
-    Identite { session: String },
-    Redimensionner { largeur: u32, hauteur: u32 },
-    TailleEncodage { largeur: u32, hauteur: u32 },
-    Debit { bps: u32 },
+    Identite {
+        session: String,
+    },
+    Redimensionner {
+        largeur: u32,
+        hauteur: u32,
+    },
+    TailleEncodage {
+        largeur: u32,
+        hauteur: u32,
+    },
+    Debit {
+        bps: u32,
+    },
     ImageCle,
     /// Visibilité annoncée par le client, relayée par l'enfant.
     ///
@@ -71,7 +81,10 @@ pub enum VersCapteur {
     /// décision peut concerner une AUTRE fenêtre que celle qui a signalé.
     /// L'effet revient par `DepuisCapteur::Sommeil`, poussé sur la connexion
     /// média de chaque fenêtre concernée.
-    Visibilite { visible: bool, focalisee: bool },
+    Visibilite {
+        visible: bool,
+        focalisee: bool,
+    },
     /// La capture audio de cette fenêtre a cessé de produire du son, et
     /// l'enfant a **épuisé ses moyens de la rétablir**.
     ///
@@ -131,28 +144,48 @@ pub enum VersCapteur {
     /// donc **pas** le facteur contraignant — `PRESSE_PAPIER_MAX` (64 Kio)
     /// mord cent-vingt-huit fois plus tôt —, et un test le vérifie plutôt que
     /// de le supposer.
-    PressePapierEcrire { texte: String },
+    PressePapierEcrire {
+        texte: String,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum DepuisCapteur {
-    Attachee { largeur: u32, hauteur: u32 },
-    Refus { motif: String },
-    Taille { largeur: u32, hauteur: u32 },
+    Attachee {
+        largeur: u32,
+        hauteur: u32,
+    },
+    Refus {
+        motif: String,
+    },
+    Taille {
+        largeur: u32,
+        hauteur: u32,
+    },
     Fait,
-    Erreur { motif: String },
+    Erreur {
+        motif: String,
+    },
     /// Émis **au changement seulement**, jamais périodiquement : il alimente
     /// le cache que lisent `is_alive`, `is_exhausted` et `dimensions`, qui
     /// sont interrogées à chaque tour de la boucle de transport.
-    Etat { vivante: bool, epuisee: bool, largeur: u32, hauteur: u32 },
+    Etat {
+        vivante: bool,
+        epuisee: bool,
+        largeur: u32,
+        hauteur: u32,
+    },
     /// Poussé, non sollicité, quand une fenêtre change d'état de sommeil.
     ///
     /// Distinct d'`Etat` à dessein : `Etat` alimente un cache lu à chaque tour
     /// de la boucle de transport (`is_alive`, `is_exhausted`, `dimensions`),
     /// et y mêler le sommeil ferait passer une annonce ponctuelle par un
     /// chemin conçu pour un état permanent.
-    Sommeil { endormie: bool, raison: String },
+    Sommeil {
+        endormie: bool,
+        raison: String,
+    },
     /// Part du budget de débit de session accordée à cette fenêtre, poussée
     /// non sollicitée quand elle CHANGE.
     ///
@@ -175,7 +208,9 @@ pub enum DepuisCapteur {
     ///
     /// **Une part d'ENDORMIE ne va qu'au second** — voir
     /// `capteur::repartiteur::PART_DORMANTE_BPS` et `Session::appliquer_part`.
-    Part { bps: u32 },
+    Part {
+        bps: u32,
+    },
     /// Ordre de porter le son, ou de se taire. Poussé non sollicité, **au
     /// changement seulement**.
     ///
@@ -189,7 +224,9 @@ pub enum DepuisCapteur {
     /// ce que l'enfant ignore. La capture, elle, vit dans l'enfant — le *process
     /// loopback* n'a aucune des propriétés qui avaient forcé la mutualisation de
     /// la vidéo en D4.
-    Audio { actif: bool },
+    Audio {
+        actif: bool,
+    },
     /// La fenêtre Windows est passée en plein écran, ou en est sortie. Poussé
     /// non sollicité, **au changement seulement**.
     ///
@@ -197,7 +234,9 @@ pub enum DepuisCapteur {
     /// `Etat` alimente un cache lu à chaque tour de la boucle de transport, et
     /// y mêler une annonce ponctuelle passerait par un chemin conçu pour un
     /// état permanent.
-    PleinEcran { actif: bool },
+    PleinEcran {
+        actif: bool,
+    },
     /// Le presse-papier de la VM a changé. Poussé non sollicité, **au
     /// changement seulement**.
     ///
@@ -242,7 +281,10 @@ pub enum DepuisCapteur {
     /// fois** avant celle-ci — `Sommeil` (D5), `Part` (D6), `Audio` (D7),
     /// `PleinEcran` (D8) —, et toute variante NEUVE de cette énumération
     /// poussée sur la connexion média devra refaire le même chemin.
-    PressePapier { texte: Option<String>, octets: u32 },
+    PressePapier {
+        texte: Option<String>,
+        octets: u32,
+    },
     /// La couleur d'accent de la fenêtre Windows — la teinte dominante de son
     /// icône. Poussée non sollicitée, **au changement seulement**, et **sa
     /// PREMIÈRE lecture comprise** (sous-bloc A1).
@@ -286,7 +328,9 @@ pub enum DepuisCapteur {
     /// `grep -n 'DepuisCapteur::Accent' agent/src/capteur/pont_media.rs` doit
     /// rendre **quatre** lignes — une pour le bras, trois pour le test qui le
     /// garde — et **surtout pas ZÉRO**.
-    Accent { couleur: String },
+    Accent {
+        couleur: String,
+    },
 }
 
 #[derive(Debug)]

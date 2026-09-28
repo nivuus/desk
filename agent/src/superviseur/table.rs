@@ -186,14 +186,16 @@ pub struct Table {
 /// consommerait le vivier de dix du pilote jusqu'à l'arrêt du superviseur,
 /// sans qu'aucune trace ne le dise.
 fn rendre_la_sortie_de(entree: &Entree) -> Option<Effet> {
-    entree.sortie_pilote.map(|sortie_pilote| Effet::DetruireSortie {
-        sortie_pilote,
-        // `nom_sortie` est toujours renseigné quand `sortie_pilote` l'est :
-        // `sortie_creee` pose les trois champs ensemble, jamais l'un sans les
-        // autres, et `viewport_recu` les vide ensemble. Le repli n'est donc
-        // pas atteignable — s'il l'était, il produirait un `nom_sortie: ""`.
-        nom_sortie: entree.nom_sortie.clone().unwrap_or_default(),
-    })
+    entree
+        .sortie_pilote
+        .map(|sortie_pilote| Effet::DetruireSortie {
+            sortie_pilote,
+            // `nom_sortie` est toujours renseigné quand `sortie_pilote` l'est :
+            // `sortie_creee` pose les trois champs ensemble, jamais l'un sans les
+            // autres, et `viewport_recu` les vide ensemble. Le repli n'est donc
+            // pas atteignable — s'il l'était, il produirait un `nom_sortie: ""`.
+            nom_sortie: entree.nom_sortie.clone().unwrap_or_default(),
+        })
 }
 
 impl Table {
@@ -294,7 +296,9 @@ impl Table {
     /// Nom de la sortie d'une session, pour le contrôle périodique de
     /// placement.
     pub fn nom_sortie_de(&self, session: &IdSession) -> Option<&str> {
-        self.entrees.get(session).and_then(|e| e.nom_sortie.as_deref())
+        self.entrees
+            .get(session)
+            .and_then(|e| e.nom_sortie.as_deref())
     }
 
     /// Dimensions de la sortie retenue par une session, s'il y en a une.
@@ -352,7 +356,9 @@ impl Table {
             return Vec::new();
         };
         let entree = self.entrees.remove(&session).expect("trouvée à l'instant");
-        let mut effets = vec![Effet::TuerEnfant { session: session.clone() }];
+        let mut effets = vec![Effet::TuerEnfant {
+            session: session.clone(),
+        }];
         // Rien à détruire si la fenêtre s'est fermée avant que sa sortie
         // n'existe : `rendre_la_sortie_de` ne rend `None` que dans ce cas, et
         // demander au pilote de retirer une sortie qu'il n'a jamais créée ne
@@ -391,7 +397,9 @@ impl Table {
         // rendre la sortie : `fenetre_disparue`, et les deux abandons de
         // `relancer_les_orphelines`. Une sortie oubliée sur l'un d'eux
         // consommerait le vivier de dix jusqu'à l'arrêt du superviseur.
-        vec![Effet::AnnoncerFermeture { session: session.clone() }]
+        vec![Effet::AnnoncerFermeture {
+            session: session.clone(),
+        }]
     }
 }
 

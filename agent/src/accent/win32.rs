@@ -151,7 +151,9 @@ fn decoder(bitmap: HBITMAP) -> Option<(Vec<u8>, u32, u32)> {
         return None;
     }
     let (largeur, hauteur) = (brut.bmWidth as u32, brut.bmHeight as u32);
-    let octets = (largeur as usize).checked_mul(hauteur as usize)?.checked_mul(4)?;
+    let octets = (largeur as usize)
+        .checked_mul(hauteur as usize)?
+        .checked_mul(4)?;
     let mut tampon = vec![0u8; octets];
 
     let mut entete = BITMAPINFO {

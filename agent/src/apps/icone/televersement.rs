@@ -142,8 +142,8 @@ fn base_http(signaling_url: &str) -> Result<String> {
 }
 
 fn envoyer(autorite: &str, jeton: &str, empreinte: &str, octets: &[u8]) -> Result<()> {
-    let mut flux = TcpStream::connect(autorite)
-        .with_context(|| format!("connexion a {autorite}"))?;
+    let mut flux =
+        TcpStream::connect(autorite).with_context(|| format!("connexion a {autorite}"))?;
     flux.set_read_timeout(Some(DELAI))?;
     flux.set_write_timeout(Some(DELAI))?;
 
@@ -156,7 +156,8 @@ fn envoyer(autorite: &str, jeton: &str, empreinte: &str, octets: &[u8]) -> Resul
          Connection: close\r\n\r\n",
         octets.len()
     );
-    flux.write_all(entete.as_bytes()).context("envoi de l'en-tete")?;
+    flux.write_all(entete.as_bytes())
+        .context("envoi de l'en-tete")?;
     flux.write_all(octets).context("envoi du corps")?;
     flux.flush().context("vidage")?;
 
@@ -164,7 +165,8 @@ fn envoyer(autorite: &str, jeton: &str, empreinte: &str, octets: &[u8]) -> Resul
     // ou un `400 {refus:'empreinte'}` passerait pour un succès, et l'agent
     // retéléverserait la même icône indéfiniment sans jamais savoir pourquoi.
     let mut reponse = Vec::new();
-    flux.read_to_end(&mut reponse).context("lecture de la reponse")?;
+    flux.read_to_end(&mut reponse)
+        .context("lecture de la reponse")?;
     let statut = statut_http(&reponse)
         .context("reponse HTTP illisible : la plateforme n'a pas repondu ce qu'on attend")?;
     if statut != 204 {

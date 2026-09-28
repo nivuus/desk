@@ -59,8 +59,14 @@ fn doit_relancer_devient_vrai_a_l_espacement_exact() {
 #[test]
 fn seul_le_premier_lancement_du_cycle_est_signale() {
     let mut etat = EtatRelance::neuve();
-    assert!(etat.tentative_lancee(), "le premier lancement doit être signalé");
-    assert!(!etat.tentative_lancee(), "le second, du MÊME cycle, ne doit plus l'être");
+    assert!(
+        etat.tentative_lancee(),
+        "le premier lancement doit être signalé"
+    );
+    assert!(
+        !etat.tentative_lancee(),
+        "le second, du MÊME cycle, ne doit plus l'être"
+    );
     assert!(!etat.tentative_lancee(), "ni le troisième");
     assert_eq!(etat.tentative(), 3, "le COMPTE, lui, continue de croître");
 }
@@ -85,9 +91,18 @@ fn etat_observe_distingue_mort_de_vivant_et_d_absent_par_son_issue() {
 /// qui ne court PAS sur la cible (voir la doc de `depuis_le_code`).
 #[test]
 fn le_code_de_sortie_se_traduit_dans_les_trois_sens() {
-    assert_eq!(IssueDeSortie::depuis_le_code(Some(0)), IssueDeSortie::Propre);
-    assert_eq!(IssueDeSortie::depuis_le_code(Some(1)), IssueDeSortie::Erreur);
-    assert_eq!(IssueDeSortie::depuis_le_code(Some(101)), IssueDeSortie::Erreur);
+    assert_eq!(
+        IssueDeSortie::depuis_le_code(Some(0)),
+        IssueDeSortie::Propre
+    );
+    assert_eq!(
+        IssueDeSortie::depuis_le_code(Some(1)),
+        IssueDeSortie::Erreur
+    );
+    assert_eq!(
+        IssueDeSortie::depuis_le_code(Some(101)),
+        IssueDeSortie::Erreur
+    );
     assert_eq!(IssueDeSortie::depuis_le_code(None), IssueDeSortie::Inconnue);
 }
 
@@ -107,7 +122,10 @@ fn une_sortie_propre_rearme_le_repli_sans_qu_aucune_duree_n_intervienne() {
     for _ in 0..5 {
         etat.tentative_lancee();
     }
-    assert!(etat.espacement_ms() > ESPACEMENT_PLANCHER_MS, "le repli a bien grandi avant le test");
+    assert!(
+        etat.espacement_ms() > ESPACEMENT_PLANCHER_MS,
+        "le repli a bien grandi avant le test"
+    );
     etat.reinitialiser_le_repli(IssueDeSortie::Propre);
     assert_eq!(
         etat.espacement_ms(),
@@ -134,7 +152,10 @@ fn ni_un_refus_ni_une_issue_inconnue_ne_rearment_le_repli() {
             etat.tentative_lancee();
         }
         let avant = etat.espacement_ms();
-        assert!(avant > ESPACEMENT_PLANCHER_MS, "le repli a bien grandi avant le test");
+        assert!(
+            avant > ESPACEMENT_PLANCHER_MS,
+            "le repli a bien grandi avant le test"
+        );
         // Une vie TRÈS longue — plus longue que le sommeil de refus le plus
         // long possible — et pourtant aucun réarmement : la durée n'entre
         // pas dans la décision, c'est tout le round 4.
@@ -288,8 +309,14 @@ fn sur_plusieurs_cycles_de_refus_une_seule_ligne_lancee_et_aucune_ligne_stable()
 #[test]
 fn apres_une_vraie_stabilite_le_cycle_suivant_redevient_bruyant() {
     let mut etat = EtatRelance::neuve();
-    assert!(etat.tentative_lancee(), "premier lancement de l'épisode : bruyant");
-    assert!(etat.stable(SEUIL_STABILITE_MS), "vraiment resté vivant assez longtemps");
+    assert!(
+        etat.tentative_lancee(),
+        "premier lancement de l'épisode : bruyant"
+    );
+    assert!(
+        etat.stable(SEUIL_STABILITE_MS),
+        "vraiment resté vivant assez longtemps"
+    );
     assert!(
         etat.tentative_lancee(),
         "un cycle NEUF, après une vraie stabilité, redevient bruyant"
@@ -386,11 +413,18 @@ fn une_longue_vie_stable_puis_une_mort_en_erreur_reprend_au_plancher() {
     for _ in 0..6 {
         etat.tentative_lancee();
     }
-    assert_eq!(etat.espacement_ms(), REPLI_MAX_MS, "six refus : le repli est au PLAFOND");
+    assert_eq!(
+        etat.espacement_ms(),
+        REPLI_MAX_MS,
+        "six refus : le repli est au PLAFOND"
+    );
 
     // Septième lancement — celui-là tient, et longtemps.
     etat.tentative_lancee();
-    assert!(etat.stable(TROIS_JOURS_MS), "trois jours de vie, c'est stable");
+    assert!(
+        etat.stable(TROIS_JOURS_MS),
+        "trois jours de vie, c'est stable"
+    );
 
     // Puis la coupure réseau : `pont::executer` rend une `Err`, donc un code
     // de sortie non nul, donc `IssueDeSortie::Erreur` — que

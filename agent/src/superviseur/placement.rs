@@ -156,8 +156,7 @@ pub fn sortie_pour_viewport(
         .find(|s| {
             let notre = designee == Some(s.nom_sortie.as_str());
             s.attachee_au_bureau
-                && (notre
-                    || sortie_assez_grande((s.rect.width, s.rect.height), (largeur, hauteur)))
+                && (notre || sortie_assez_grande((s.rect.width, s.rect.height), (largeur, hauteur)))
                 && !deja_prises.contains(&s.nom_sortie)
         })
         .cloned()
@@ -199,7 +198,12 @@ pub struct Lisere {
 impl Lisere {
     /// Le lisère nul — le repli quand DWM refuse de répondre, et donc
     /// **exactement le comportement d'avant ce correctif**.
-    pub const NUL: Lisere = Lisere { gauche: 0, haut: 0, droite: 0, bas: 0 };
+    pub const NUL: Lisere = Lisere {
+        gauche: 0,
+        haut: 0,
+        droite: 0,
+        bas: 0,
+    };
 
     /// Vrai s'il n'y a rien à compenser : évite un second `SetWindowPos` et,
     /// surtout, rend la correction inerte là où elle n'a pas lieu d'être.
@@ -286,7 +290,9 @@ pub fn rect_a_poser(cible: &Rect, lisere: Lisere) -> Rect {
         y: cible.y - lisere.haut,
         // `saturating_add_signed` : un lisère aberrant ne doit pas faire
         // déborder la largeur, ce qui donnerait une fenêtre minuscule.
-        width: cible.width.saturating_add_signed(lisere.gauche + lisere.droite),
+        width: cible
+            .width
+            .saturating_add_signed(lisere.gauche + lisere.droite),
         height: cible.height.saturating_add_signed(lisere.haut + lisere.bas),
     }
 }
@@ -297,7 +303,9 @@ pub fn rect_a_poser(cible: &Rect, lisere: Lisere) -> Rect {
 /// la pose du superviseur, seule la taille reste à corriger.
 pub fn taille_a_poser(taille: (u32, u32), lisere: Lisere) -> (u32, u32) {
     (
-        taille.0.saturating_add_signed(lisere.gauche + lisere.droite),
+        taille
+            .0
+            .saturating_add_signed(lisere.gauche + lisere.droite),
         taille.1.saturating_add_signed(lisere.haut + lisere.bas),
     )
 }
@@ -448,4 +456,3 @@ mod tests;
 #[cfg(test)]
 #[path = "placement/tests_lisere.rs"]
 mod tests_lisere;
-

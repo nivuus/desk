@@ -55,11 +55,20 @@ impl Porte {
             .context("chargement de nvEncodeAPI64.dll (la DLL vient du pilote NVIDIA)")?;
 
         // ① La version du pilote AVANT tout, pour que le refus soit lisible.
-        let version_max = unsafe { GetProcAddress(module, windows::core::s!("NvEncodeAPIGetMaxSupportedVersion")) }
-            .ok_or_else(|| anyhow!("NvEncodeAPIGetMaxSupportedVersion absente de la DLL"))?;
-        let version_max: fonctions::VersionMaxSupportee = unsafe { std::mem::transmute(version_max) };
+        let version_max = unsafe {
+            GetProcAddress(
+                module,
+                windows::core::s!("NvEncodeAPIGetMaxSupportedVersion"),
+            )
+        }
+        .ok_or_else(|| anyhow!("NvEncodeAPIGetMaxSupportedVersion absente de la DLL"))?;
+        let version_max: fonctions::VersionMaxSupportee =
+            unsafe { std::mem::transmute(version_max) };
         let mut rendue = 0u32;
-        verifier(unsafe { version_max(&mut rendue) }, "NvEncodeAPIGetMaxSupportedVersion")?;
+        verifier(
+            unsafe { version_max(&mut rendue) },
+            "NvEncodeAPIGetMaxSupportedVersion",
+        )?;
         if !abi::pilote_compatible(rendue) {
             bail!(
                 "pilote NVIDIA trop ancien pour l'API transcrite : il annonce \
@@ -78,8 +87,9 @@ impl Porte {
         );
 
         // ② La table de fonctions.
-        let creer = unsafe { GetProcAddress(module, windows::core::s!("NvEncodeAPICreateInstance")) }
-            .ok_or_else(|| anyhow!("NvEncodeAPICreateInstance absente de la DLL"))?;
+        let creer =
+            unsafe { GetProcAddress(module, windows::core::s!("NvEncodeAPICreateInstance")) }
+                .ok_or_else(|| anyhow!("NvEncodeAPICreateInstance absente de la DLL"))?;
         let creer: fonctions::CreerInstance = unsafe { std::mem::transmute(creer) };
         let mut table: ListeDeFonctions = unsafe { std::mem::zeroed() };
         table.version = abi::FUNCTION_LIST_VER;

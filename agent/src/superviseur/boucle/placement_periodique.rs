@@ -84,8 +84,8 @@ pub(super) fn suivre_le_viewport(
         .as_deref()
         .and_then(|n| toutes.iter().find(|s| s.nom_sortie == n).cloned());
     let borne = sortie.as_ref().map(borne_de);
-    let retenue = borne
-        .map(|b| crate::windows_source_sortie::taille_pour_viewport((largeur, hauteur), b));
+    let retenue =
+        borne.map(|b| crate::windows_source_sortie::taille_pour_viewport((largeur, hauteur), b));
 
     let decision = match (&nom, &sortie, retenue) {
         (None, _, _) => "AUCUNE sortie retenue pour cette session",
@@ -106,7 +106,9 @@ pub(super) fn suivre_le_viewport(
         "viewport recu par le superviseur"
     );
 
-    let (Some(_), Some(retenue)) = (sortie, retenue) else { return };
+    let (Some(_), Some(retenue)) = (sortie, retenue) else {
+        return;
+    };
     if Some(retenue) == precedente {
         return;
     }
@@ -189,10 +191,19 @@ pub(super) fn replacer_si_besoin(table: &Table, session: &IdSession, toutes: &[S
     let Some((largeur, hauteur)) = table.taille_sortie_de(session) else {
         return;
     };
-    let cible = Rect { x: sortie.rect.x, y: sortie.rect.y, width: largeur, height: hauteur };
-    let Some(fenetre) = table.fenetre_de(session) else { return };
+    let cible = Rect {
+        x: sortie.rect.x,
+        y: sortie.rect.y,
+        width: largeur,
+        height: hauteur,
+    };
+    let Some(fenetre) = table.fenetre_de(session) else {
+        return;
+    };
     let hwnd = windows::Win32::Foundation::HWND(fenetre.0 as *mut core::ffi::c_void);
-    let Ok(actuel) = placement::rectangle_de(hwnd) else { return };
+    let Ok(actuel) = placement::rectangle_de(hwnd) else {
+        return;
+    };
     if placement::doit_etre_replacee(&actuel, &cible) {
         // 🔴 `hwnd` ET `fenetre_vivante` : sans eux, l'hypothèse « le
         // handle de la table est PÉRIMÉ » est INDÉCIDABLE, et le lot 32O l'a

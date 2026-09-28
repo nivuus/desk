@@ -115,13 +115,14 @@ impl LanceurDeProcessus {
         prefixe: String,
         identite: Option<tokio::sync::watch::Receiver<Option<crate::plateforme::Identite>>>,
     ) -> Result<Self> {
-        let job =
-            unsafe { CreateJobObjectW(None, None) }.context("création du job object des enfants")?;
+        let job = unsafe { CreateJobObjectW(None, None) }
+            .context("création du job object des enfants")?;
         let limites = JOBOBJECT_EXTENDED_LIMIT_INFORMATION {
-            BasicLimitInformation: windows::Win32::System::JobObjects::JOBOBJECT_BASIC_LIMIT_INFORMATION {
-                LimitFlags: JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE,
-                ..Default::default()
-            },
+            BasicLimitInformation:
+                windows::Win32::System::JobObjects::JOBOBJECT_BASIC_LIMIT_INFORMATION {
+                    LimitFlags: JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE,
+                    ..Default::default()
+                },
             ..Default::default()
         };
         unsafe {
@@ -159,7 +160,9 @@ impl LanceurDeProcessus {
     ///
     /// (`Drop` ne passe PAS par ici : il ne touche que le handle de job.)
     fn enfants(&self) -> std::sync::MutexGuard<'_, HashMap<u32, Enfant>> {
-        self.enfants.lock().unwrap_or_else(|empoisonne| empoisonne.into_inner())
+        self.enfants
+            .lock()
+            .unwrap_or_else(|empoisonne| empoisonne.into_inner())
     }
 
     /// Même raison que `enfants` ci-dessus : ne pas paniquer sur un verrou
@@ -167,12 +170,16 @@ impl LanceurDeProcessus {
     /// `capteur_vivant` inutilisable pour toujours, et le superviseur ne
     /// pourrait plus jamais constater ni relancer le capteur.
     fn capteur(&self) -> std::sync::MutexGuard<'_, Option<Enfant>> {
-        self.capteur.lock().unwrap_or_else(|empoisonne| empoisonne.into_inner())
+        self.capteur
+            .lock()
+            .unwrap_or_else(|empoisonne| empoisonne.into_inner())
     }
 
     /// Même raison que `capteur` ci-dessus, pour le pont fichiers.
     fn pont(&self) -> std::sync::MutexGuard<'_, Option<Enfant>> {
-        self.pont.lock().unwrap_or_else(|empoisonne| empoisonne.into_inner())
+        self.pont
+            .lock()
+            .unwrap_or_else(|empoisonne| empoisonne.into_inner())
     }
 
     /// Le jeton d'agent COURANT, relu à chaque lancement.
@@ -286,7 +293,10 @@ impl LanceurDeProcessus {
                 .context(format!("rattachement du capteur {pid} au job object")));
         }
         tracing::info!(pid, "capteur lancé");
-        *self.capteur() = Some(Enfant { processus: capteur, etat_illisible_signale: false });
+        *self.capteur() = Some(Enfant {
+            processus: capteur,
+            etat_illisible_signale: false,
+        });
         Ok(pid)
     }
 
@@ -300,7 +310,9 @@ impl LanceurDeProcessus {
     /// et n'est journalisé qu'une fois tant qu'il persiste.
     pub fn capteur_vivant(&self) -> bool {
         let mut capteur = self.capteur();
-        let Some(en_cours) = capteur.as_mut() else { return false };
+        let Some(en_cours) = capteur.as_mut() else {
+            return false;
+        };
         match en_cours.processus.try_wait() {
             Ok(None) => {
                 en_cours.etat_illisible_signale = false;
@@ -338,7 +350,10 @@ impl Lanceur for LanceurDeProcessus {
             // La taille RETENUE (`Consigne::taille`), pas celle de la
             // sortie — voir sa doc. Lue par `demarrage`, redite au capteur à
             // l'attache (tâche 9 du sous-bloc D10).
-            .env("TAILLE_FENETRE", format!("{}x{}", consigne.taille.0, consigne.taille.1))
+            .env(
+                "TAILLE_FENETRE",
+                format!("{}x{}", consigne.taille.0, consigne.taille.1),
+            )
             // Surtout PAS `SUPERVISEUR` : un enfant qui hériterait de la
             // variable se prendrait pour un superviseur et lancerait ses
             // propres enfants, indéfiniment.
@@ -421,8 +436,13 @@ impl Lanceur for LanceurDeProcessus {
                 .context(format!("rattachement de l'enfant {pid} au job object")));
         }
 
-        self.enfants()
-            .insert(pid, Enfant { processus: enfant, etat_illisible_signale: false });
+        self.enfants().insert(
+            pid,
+            Enfant {
+                processus: enfant,
+                etat_illisible_signale: false,
+            },
+        );
         Ok(pid)
     }
 

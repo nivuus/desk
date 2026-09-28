@@ -63,8 +63,13 @@ pub enum Famille {
 pub const NOMBRE: usize = 5;
 
 impl Famille {
-    pub const TOUTES: [Famille; NOMBRE] =
-        [Famille::Attributs, Famille::Lister, Famille::Lire, Famille::Ecrire, Famille::Mutation];
+    pub const TOUTES: [Famille; NOMBRE] = [
+        Famille::Attributs,
+        Famille::Lister,
+        Famille::Lire,
+        Famille::Ecrire,
+        Famille::Mutation,
+    ];
 
     /// La famille d'une commande en vol. `match` **exhaustif** : une variante
     /// neuve d'[`Attendue`] ne compile pas tant qu'elle n'est pas classée.
@@ -115,7 +120,10 @@ pub const SEAUX: usize = SEAUX_MS.len() + 1;
 /// décalerait toute la distribution d'un seau, en silence.
 fn seau_de(duree: Duration) -> usize {
     let us = duree.as_micros();
-    SEAUX_MS.iter().position(|ms| us <= u128::from(*ms) * 1_000).unwrap_or(SEAUX_MS.len())
+    SEAUX_MS
+        .iter()
+        .position(|ms| us <= u128::from(*ms) * 1_000)
+        .unwrap_or(SEAUX_MS.len())
 }
 
 /// Compte, somme, maximum et distribution, par famille.

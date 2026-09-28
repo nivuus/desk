@@ -25,8 +25,8 @@ use windows::core::s;
 // pour cette tâche. Suivi en source : `windows-0.62.2/src/Windows/Win32/
 // Storage/Xps/mod.rs`.
 use windows::Win32::Graphics::Gdi::{
-    CreateCompatibleBitmap, CreateCompatibleDC, DeleteDC, DeleteObject, GetDC, GetPixel,
-    ReleaseDC, SelectObject,
+    CreateCompatibleBitmap, CreateCompatibleDC, DeleteDC, DeleteObject, GetDC, GetPixel, ReleaseDC,
+    SelectObject,
 };
 use windows::Win32::Storage::Xps::{PrintWindow, PRINT_WINDOW_FLAGS};
 use windows::Win32::System::LibraryLoader::{GetProcAddress, LoadLibraryA};
@@ -51,9 +51,16 @@ pub(super) fn eprouver() -> Result<()> {
     // restent donc propagés par `?`.
     let capture = crate::capture::DesktopCapture::new()?;
     let (largeur, hauteur) = capture.desktop_size();
-    let places =
-        disposition::tuiles(Rect { x: 0, y: 0, width: largeur, height: hauteur }, 2)
-            .context("deux places sur ce bureau")?;
+    let places = disposition::tuiles(
+        Rect {
+            x: 0,
+            y: 0,
+            width: largeur,
+            height: hauteur,
+        },
+        2,
+    )
+    .context("deux places sur ce bureau")?;
     let mut mires = Mires::ouvrir(capture.device(), &places)?;
     mires.peindre()?;
     mires.pomper();
@@ -84,7 +91,11 @@ fn eprouver_printwindow(mires: &Mires) -> Result<()> {
     // `GetPixel` rend un COLORREF 0x00BBGGRR.
     let couleur = unsafe { GetPixel(memoire, place.width as i32 / 2, place.height as i32 / 2) };
     let brut = couleur.0;
-    let pixel = ((brut & 0xFF) as u8, ((brut >> 8) & 0xFF) as u8, ((brut >> 16) & 0xFF) as u8);
+    let pixel = (
+        (brut & 0xFF) as u8,
+        ((brut >> 8) & 0xFF) as u8,
+        ((brut >> 16) & 0xFF) as u8,
+    );
 
     unsafe {
         SelectObject(memoire, ancien);
@@ -94,7 +105,12 @@ fn eprouver_printwindow(mires: &Mires) -> Result<()> {
     }
 
     let verdict = mire::verdict(0, pixel);
-    tracing::info!(rendu, ?pixel, ?verdict, "PrintWindow(PW_RENDERFULLCONTENT) sur une mire D3D");
+    tracing::info!(
+        rendu,
+        ?pixel,
+        ?verdict,
+        "PrintWindow(PW_RENDERFULLCONTENT) sur une mire D3D"
+    );
     match verdict {
         mire::Verdict::Juste => tracing::info!(
             "verdict PrintWindow : CONDITIONNELLE — image correcte, mais chemin CPU \

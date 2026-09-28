@@ -77,7 +77,11 @@ fn un_puits_qui_refuse_ne_fait_journaliser_qu_une_fois_et_ne_tue_rien() {
         });
     }
 
-    assert_eq!(recues.lock().unwrap().len(), 50, "les trames n'ont pas atteint le puits");
+    assert_eq!(
+        recues.lock().unwrap().len(),
+        50,
+        "les trames n'ont pas atteint le puits"
+    );
     assert_eq!(
         s.journaux_micro, 1,
         "le refus a été journalisé {} fois au lieu d'une",
@@ -109,7 +113,11 @@ fn un_micro_refusant_ne_compromet_pas_la_video() {
             echantillons: 960,
         });
     }
-    assert_eq!(s.video_mid, Some("v0".into()), "la piste vidéo a été perdue");
+    assert_eq!(
+        s.video_mid,
+        Some("v0".into()),
+        "la piste vidéo a été perdue"
+    );
     assert!(!s.ending, "la session s'est terminée à cause du micro");
 }
 
@@ -191,7 +199,13 @@ fn un_paquet_opus_montant_atteint_le_puits_de_la_session() {
                 let attente = t
                     .saturating_duration_since(maintenant)
                     .min(Duration::from_millis(5));
-                fixtures::poll_peer_socket(&mut peer_rtc, &peer_socket, peer_addr, maintenant, attente);
+                fixtures::poll_peer_socket(
+                    &mut peer_rtc,
+                    &peer_socket,
+                    peer_addr,
+                    maintenant,
+                    attente,
+                );
             }
             Output::Transmit(t) => {
                 let _ = peer_socket.send_to(&t.contents, t.destination);
@@ -208,7 +222,10 @@ fn un_paquet_opus_montant_atteint_le_puits_de_la_session() {
         trame.rtp_48k,
         trame.echantillons
     );
-    assert_eq!(trame.opus, charge, "la charge utile n'a pas traversé octet pour octet");
+    assert_eq!(
+        trame.opus, charge,
+        "la charge utile n'a pas traversé octet pour octet"
+    );
     assert_eq!(
         trame.echantillons,
         crate::opus::FRAME_SAMPLES,
@@ -235,7 +252,11 @@ fn verdicts_annonces(s: &Session) -> Vec<bool> {
 }
 
 fn trame_muette() -> TrameMicro {
-    TrameMicro { opus: vec![0xF8, 0x00], rtp_48k: 0, echantillons: 960 }
+    TrameMicro {
+        opus: vec![0xF8, 0x00],
+        rtp_48k: 0,
+        echantillons: 960,
+    }
 }
 
 /// Puits dont la réponse se pilote de l'extérieur, pour jouer une REPRISE.
@@ -261,7 +282,10 @@ fn le_tout_premier_depot_annonce_son_verdict_au_navigateur() {
             recues: Arc::new(Mutex::new(Vec::new())),
             accepte,
         }));
-        assert!(verdicts_annonces(&s).is_empty(), "rien avant le premier dépôt");
+        assert!(
+            verdicts_annonces(&s).is_empty(),
+            "rien avant le premier dépôt"
+        );
         s.deposer_trame_micro_de_test(trame_muette());
         assert_eq!(verdicts_annonces(&s), vec![accepte]);
     }
@@ -310,12 +334,18 @@ fn cinquante_depots_de_meme_verdict_ne_font_qu_une_annonce() {
 fn un_refus_leve_est_reannonce_au_navigateur() {
     let accepte = Arc::new(Mutex::new(false));
     let mut s = session_nue();
-    s.set_puits_micro(Box::new(PuitsPilotable { accepte: accepte.clone() }));
+    s.set_puits_micro(Box::new(PuitsPilotable {
+        accepte: accepte.clone(),
+    }));
 
     for _ in 0..5 {
         s.deposer_trame_micro_de_test(trame_muette());
     }
-    assert_eq!(verdicts_annonces(&s), vec![false], "le refus initial, une fois");
+    assert_eq!(
+        verdicts_annonces(&s),
+        vec![false],
+        "le refus initial, une fois"
+    );
 
     // L'autre fenêtre meurt, le câble est rendu.
     *accepte.lock().unwrap() = true;
@@ -345,7 +375,9 @@ fn un_refus_leve_est_reannonce_au_navigateur() {
 fn la_reprise_ne_produit_pas_une_seconde_ligne_de_journal() {
     let accepte = Arc::new(Mutex::new(false));
     let mut s = session_nue();
-    s.set_puits_micro(Box::new(PuitsPilotable { accepte: accepte.clone() }));
+    s.set_puits_micro(Box::new(PuitsPilotable {
+        accepte: accepte.clone(),
+    }));
 
     s.deposer_trame_micro_de_test(trame_muette());
     let apres_refus = s.journaux_micro;

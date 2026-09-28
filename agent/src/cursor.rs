@@ -27,7 +27,10 @@ pub struct Hysteresis {
 
 impl Hysteresis {
     pub fn new(initial: bool) -> Self {
-        Self { courant: initial, compte_contraire: 0 }
+        Self {
+            courant: initial,
+            compte_contraire: 0,
+        }
     }
 
     pub fn observer(&mut self, observe: bool) -> Option<bool> {
@@ -161,7 +164,10 @@ mod win {
                             mode_relatif.store(!visible_retenu, Ordering::Relaxed);
                             // Le récepteur est tombé : la session est finie,
                             // ce fil n'a plus de raison d'être.
-                            if tx.send(AgentControl::pointer(visible_retenu, forme)).is_err() {
+                            if tx
+                                .send(AgentControl::pointer(visible_retenu, forme))
+                                .is_err()
+                            {
                                 return;
                             }
                         }

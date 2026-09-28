@@ -13,8 +13,8 @@
 //! ⚠️ TRANSPOSITION VERBATIM. Le contrôle est le COMPTE, annoncé avant d'être
 //! mesuré : `cargo test -p proto` rendait 106 avant, il doit rendre 106 après.
 
-use crate::plateforme::*;
 use crate::plateforme::tests::etrangere;
+use crate::plateforme::*;
 
 /// Conformité aux vecteurs partagés.
 ///
@@ -60,10 +60,8 @@ fn conformite_aux_vecteurs_partages() {
                     "battement" => VersLaPlateforme::battement(),
                     "catalogue" => VersLaPlateforme::catalogue(
                         case["complet"].as_bool().unwrap(),
-                        serde_json::from_value(case["applications"].clone())
-                            .expect("applications"),
-                        serde_json::from_value(case["disparues"].clone())
-                            .expect("disparues"),
+                        serde_json::from_value(case["applications"].clone()).expect("applications"),
+                        serde_json::from_value(case["disparues"].clone()).expect("disparues"),
                     ),
                     "lancee" => VersLaPlateforme::lancee(
                         case["demande"].as_str().unwrap(),
@@ -85,8 +83,7 @@ fn conformite_aux_vecteurs_partages() {
                         case["installation"].as_str().unwrap(),
                         serde_json::from_value(case["issue"].clone()).expect("issue"),
                         serde_json::from_value(case["motif"].clone()).expect("motif"),
-                        serde_json::from_value(case["code_sortie"].clone())
-                            .expect("code_sortie"),
+                        serde_json::from_value(case["code_sortie"].clone()).expect("code_sortie"),
                         case["journal"].as_str().unwrap(),
                         case["journal_tronque"].as_bool().unwrap(),
                     ),
@@ -97,8 +94,7 @@ fn conformite_aux_vecteurs_partages() {
                     attendu,
                     "sérialisation du vecteur « {name} »"
                 );
-                let relu: VersLaPlateforme =
-                    serde_json::from_str(attendu).expect("désér.");
+                let relu: VersLaPlateforme = serde_json::from_str(attendu).expect("désér.");
                 assert_eq!(relu, msg, "désérialisation du vecteur « {name} »");
             }
             "depuis" => {
@@ -127,8 +123,7 @@ fn conformite_aux_vecteurs_partages() {
                         case["cle"].as_str().unwrap(),
                     ),
                     "icones-manquantes" => DepuisLaPlateforme::icones_manquantes(
-                        serde_json::from_value(case["empreintes"].clone())
-                            .expect("empreintes"),
+                        serde_json::from_value(case["empreintes"].clone()).expect("empreintes"),
                     ),
                     "installer" => DepuisLaPlateforme::installer(
                         case["installation"].as_str().unwrap(),
@@ -144,8 +139,7 @@ fn conformite_aux_vecteurs_partages() {
                     attendu,
                     "sérialisation du vecteur « {name} »"
                 );
-                let relu: DepuisLaPlateforme =
-                    serde_json::from_str(attendu).expect("désér.");
+                let relu: DepuisLaPlateforme = serde_json::from_str(attendu).expect("désér.");
                 assert_eq!(relu, msg, "désérialisation du vecteur « {name} »");
             }
             autre => panic!("sens inconnu : {autre}"),
@@ -169,7 +163,9 @@ fn conformite_aux_vecteurs_partages() {
 fn conformite_aux_refus_lisibles_partages() {
     let raw = include_str!("../../plateforme-vectors.json");
     let doc: serde_json::Value = serde_json::from_str(raw).expect("vecteurs valides");
-    let refus = doc["refus_lisibles"].as_array().expect("tableau refus_lisibles");
+    let refus = doc["refus_lisibles"]
+        .as_array()
+        .expect("tableau refus_lisibles");
     // 🔴 ANTI-TAUTOLOGIE, et le compte est ÉCRIT EN DUR : un tableau vide, ou
     // amputé d'un cas, ferait passer la boucle sans rien éprouver.
     assert_eq!(refus.len(), 4, "quatre refus lisibles attendus");
@@ -182,7 +178,11 @@ fn conformite_aux_refus_lisibles_partages() {
         let DepuisLaPlateforme::Refus { version, motif } = lu else {
             panic!("le vecteur « {name} » n'a pas été lu comme un refus");
         };
-        assert_eq!(u64::from(version), cas["v"].as_u64().expect("v"), "version de « {name} »");
+        assert_eq!(
+            u64::from(version),
+            cas["v"].as_u64().expect("v"),
+            "version de « {name} »"
+        );
         // 🔴 CE CAS EST LE SEUL DONT LE NOM AFFIRME QUELQUE CHOSE SUR LA
         // VERSION COURANTE, ET IL AVAIT DÉJÀ VIEILLI : le sous-bloc G2 a monté
         // `PLATEFORME_VERSION` de 2 à 3 sans reprendre ce vecteur, qui portait
@@ -196,6 +196,10 @@ fn conformite_aux_refus_lisibles_partages() {
                 "« refus_de_notre_version » ne porte PLUS la version courante : son nom est devenu faux"
             );
         }
-        assert_eq!(motif, cas["motif"].as_str().expect("motif"), "motif de « {name} »");
+        assert_eq!(
+            motif,
+            cas["motif"].as_str().expect("motif"),
+            "motif de « {name} »"
+        );
     }
 }

@@ -136,8 +136,22 @@ mod tests {
     /// ci-dessus si la borne valait 440.
     #[test]
     fn deux_tonalites_differentes_rendent_deux_dominantes_differentes() {
-        let grave = dominante(&mono(&sinus(440.0, 48_000.0, 24_000, 0.5), 2), 48_000.0, 100.0, 2_000.0, 1.0).unwrap();
-        let aigu = dominante(&mono(&sinus(1_000.0, 48_000.0, 24_000, 0.5), 2), 48_000.0, 100.0, 2_000.0, 1.0).unwrap();
+        let grave = dominante(
+            &mono(&sinus(440.0, 48_000.0, 24_000, 0.5), 2),
+            48_000.0,
+            100.0,
+            2_000.0,
+            1.0,
+        )
+        .unwrap();
+        let aigu = dominante(
+            &mono(&sinus(1_000.0, 48_000.0, 24_000, 0.5), 2),
+            48_000.0,
+            100.0,
+            2_000.0,
+            1.0,
+        )
+        .unwrap();
         assert!((grave.frequence_hz - 440.0).abs() <= 1.0);
         assert!((aigu.frequence_hz - 1_000.0).abs() <= 1.0);
         assert_ne!(grave.frequence_hz, aigu.frequence_hz);
@@ -147,7 +161,10 @@ mod tests {
     /// « A-bis » doit pouvoir distinguer : un périphérique qu'on ne joue pas.
     #[test]
     fn un_silence_n_a_aucune_dominante() {
-        assert_eq!(dominante(&vec![0.0; 4_800], 48_000.0, 100.0, 2_000.0, 1.0), None);
+        assert_eq!(
+            dominante(&vec![0.0; 4_800], 48_000.0, 100.0, 2_000.0, 1.0),
+            None
+        );
         assert_eq!(dominante(&[], 48_000.0, 100.0, 2_000.0, 1.0), None);
     }
 

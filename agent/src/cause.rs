@@ -59,7 +59,10 @@ mod tests {
             .unwrap_err();
 
         let rendue = super::chaine(&erreur);
-        assert!(rendue.contains("0x88890004"), "la cause profonde manque : {rendue}");
+        assert!(
+            rendue.contains("0x88890004"),
+            "la cause profonde manque : {rendue}"
+        );
         assert!(
             rendue.contains("ActivateObject"),
             "la couche intermédiaire manque : {rendue}"
@@ -73,13 +76,19 @@ mod tests {
         // que `%erreur` employait, ne rend QUE la couche externe.
         let simple = format!("{erreur}");
         assert_eq!(simple, "réveil de la session prefixe:w-24");
-        assert!(!simple.contains("0x88890004"), "le témoin négatif est faux : {simple}");
+        assert!(
+            !simple.contains("0x88890004"),
+            "le témoin négatif est faux : {simple}"
+        );
     }
 
     /// Une erreur SANS contexte doit rester lisible telle quelle : la
     /// correction ne doit pas dégrader le cas simple, qui est le plus fréquent.
     #[test]
     fn une_erreur_sans_contexte_est_rendue_telle_quelle() {
-        assert_eq!(super::chaine(&anyhow!("aucune sortie DXGI nommée 0:1")), "aucune sortie DXGI nommée 0:1");
+        assert_eq!(
+            super::chaine(&anyhow!("aucune sortie DXGI nommée 0:1")),
+            "aucune sortie DXGI nommée 0:1"
+        );
     }
 }

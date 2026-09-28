@@ -145,7 +145,11 @@ mod tests {
         );
         v.signaler();
         assert_eq!(v.notifications(), 2);
-        assert_eq!(v.debordements(), 1, "une notification simple n'est pas un débordement");
+        assert_eq!(
+            v.debordements(),
+            1,
+            "une notification simple n'est pas un débordement"
+        );
     }
 
     #[test]
@@ -154,7 +158,10 @@ mod tests {
         let jumelle = v.clone();
         assert!(!jumelle.arretee());
         v.arreter();
-        assert!(jumelle.arretee(), "les clones partagent l'Arc, pas une copie");
+        assert!(
+            jumelle.arretee(),
+            "les clones partagent l'Arc, pas une copie"
+        );
         // Et les compteurs aussi : c'est ce qui permet au fil d'écrire et à la
         // boucle de lire sans qu'aucun canal ne les relie.
         jumelle.signaler();

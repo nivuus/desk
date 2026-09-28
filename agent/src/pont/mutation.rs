@@ -46,8 +46,15 @@ pub enum Mutation {
     /// 🔴 **`de` EST LA SOURCE, `vers` LA DESTINATION.** S'y tromper de sens ne
     /// produirait aucune erreur : le renommage aurait lieu, à l'envers, et la
     /// destination écraserait la source. C'est le risque R-F3-1 du plan.
-    Renommer { de: String, vers: String, repertoire: bool },
-    Supprimer { chemin: String, repertoire: bool },
+    Renommer {
+        de: String,
+        vers: String,
+        repertoire: bool,
+    },
+    Supprimer {
+        chemin: String,
+        repertoire: bool,
+    },
 }
 
 impl Mutation {

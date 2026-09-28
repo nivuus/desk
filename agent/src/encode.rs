@@ -242,8 +242,6 @@ pub static CONVERTER_INPUTS: AtomicU64 = AtomicU64::new(0);
 pub static CONVERTER_OUTPUTS: AtomicU64 = AtomicU64::new(0);
 pub static CONVERTER_SKIPPED: AtomicU64 = AtomicU64::new(0);
 
-
-
 /// Démarre Media Foundation, UNE SEULE FOIS pour la vie du processus, et ne
 /// l'arrête JAMAIS.
 ///
@@ -284,10 +282,6 @@ fn demarrer_media_foundation() -> Result<()> {
         Err(message) => bail!("démarrage de Media Foundation : {message}"),
     }
 }
-
-
-
-
 
 /// **La façade.** Un encodeur H.264, quel que soit le dos qui l'exécute.
 ///

@@ -96,7 +96,10 @@ impl LanceurDeProcessus {
                 .context(format!("rattachement du pont fichiers {pid} au job object")));
         }
         tracing::info!(pid, session, "pont fichiers lancé");
-        *self.pont() = Some(Enfant { processus: pont, etat_illisible_signale: false });
+        *self.pont() = Some(Enfant {
+            processus: pont,
+            etat_illisible_signale: false,
+        });
         Ok(pid)
     }
 
@@ -127,7 +130,9 @@ impl LanceurDeProcessus {
     /// de virtualisation — et n'est journalisé qu'une fois tant qu'il persiste.
     pub fn etat_du_pont(&self) -> EtatObserve {
         let mut pont = self.pont();
-        let Some(en_cours) = pont.as_mut() else { return EtatObserve::Absent };
+        let Some(en_cours) = pont.as_mut() else {
+            return EtatObserve::Absent;
+        };
         match en_cours.processus.try_wait() {
             Ok(None) => {
                 en_cours.etat_illisible_signale = false;

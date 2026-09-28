@@ -45,7 +45,9 @@ fn conformite_aux_vecteurs_partages() {
         // JSON attendu : les DEUX sens, sur le MÊME vecteur.
         match c["forme"].as_str().expect("forme") {
             "chemin" => {
-                let v = Chemin { chemin: c["chemin"].as_str().unwrap().to_string() };
+                let v = Chemin {
+                    chemin: c["chemin"].as_str().unwrap().to_string(),
+                };
                 verifier(nom, attendu, &v);
             }
             "lire" => {

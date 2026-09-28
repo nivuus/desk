@@ -120,7 +120,9 @@ pub(super) fn distribuer_les_parts(garde: &mut MutexGuard<'static, Etat>) {
     // Les sessions disparues ne doivent pas laisser leur part en mémoire.
     let vivantes: std::collections::HashSet<&String> =
         parts.iter().map(|(session, _)| session).collect();
-    garde.dernieres_parts.retain(|session, _| vivantes.contains(session));
+    garde
+        .dernieres_parts
+        .retain(|session, _| vivantes.contains(session));
 
     let mut rompus = Vec::new();
     for (session, bps) in parts {

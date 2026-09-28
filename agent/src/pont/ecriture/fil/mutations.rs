@@ -46,16 +46,25 @@ impl Fil {
     /// compteur de la page-shell pour un geste qui n'a rien à transférer.
     pub(super) fn mutation(&mut self, evenement: Evenement) {
         let quoi = match evenement {
-            Evenement::Renomme { de, vers, repertoire } => {
-                Mutation::Renommer { de, vers, repertoire }
-            }
+            Evenement::Renomme {
+                de,
+                vers,
+                repertoire,
+            } => Mutation::Renommer {
+                de,
+                vers,
+                repertoire,
+            },
             Evenement::Supprime { chemin, repertoire } => {
                 Mutation::Supprimer { chemin, repertoire }
             }
             // Le bras appelant garantit `est_mutation()` ; ce cas est
             // inatteignable, et le DIRE vaut mieux que de le supposer.
             autre => {
-                tracing::warn!(?autre, "evenement non-mutation route vers le fil de mutation");
+                tracing::warn!(
+                    ?autre,
+                    "evenement non-mutation route vers le fil de mutation"
+                );
                 return;
             }
         };
@@ -99,10 +108,7 @@ impl Fil {
             Ordonnancement::AbandonnerEcrituresDues { chemins } => {
                 // 🔴 **POUSSER RECRÉERAIT CE QUE L'UTILISATEUR EFFACE.**
                 for chemin in &chemins {
-                    tracing::warn!(
-                        chemin,
-                        "ecriture due abandonnee : le chemin a ete supprime"
-                    );
+                    tracing::warn!(chemin, "ecriture due abandonnee : le chemin a ete supprime");
                     self.file.oublier(chemin);
                     let ligne = self.journal.retirer(chemin);
                     self.ecrire_journal(&ligne);
@@ -111,7 +117,11 @@ impl Fil {
             }
         }
         let (type_message, entete, chemin, renommage, destination) = match &quoi {
-            Mutation::Renommer { de, vers, repertoire } => (
+            Mutation::Renommer {
+                de,
+                vers,
+                repertoire,
+            } => (
                 proto::fichiers::TYPE_RENOMMER,
                 serde_json::to_string(&entetes::Renommer {
                     de: de.clone(),
@@ -135,8 +145,11 @@ impl Fil {
                 None,
             ),
         };
-        let correlation =
-            self.inscrire_mutation(Attendue::Muter { chemin, renommage, destination });
+        let correlation = self.inscrire_mutation(Attendue::Muter {
+            chemin,
+            renommage,
+            destination,
+        });
         self.mutation_en_vol = Some(correlation);
         self.emettre(type_message, correlation, &entete, &[]);
         tracing::debug!(?quoi, correlation, "mutation poussee");
@@ -156,6 +169,9 @@ impl Fil {
         let echeance = Instant::now() + crate::pont::table::DELAI_MUTATION;
         match self.config.table.lock() {
             Ok(mut table) => table.inscrire_sans_commande(quoi, echeance),
-            Err(empoisonne) => empoisonne.into_inner().inscrire_sans_commande(quoi, echeance),
+            Err(empoisonne) => empoisonne
+                .into_inner()
+                .inscrire_sans_commande(quoi, echeance),
         }
-    }}
+    }
+}

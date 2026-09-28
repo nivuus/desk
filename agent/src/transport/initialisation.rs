@@ -33,7 +33,9 @@ pub(super) fn construire_rtc(local_ip: IpAddr, plafond_bps: u32) -> Result<(UdpS
     // demandé de 617 µs — voir `poll_recv_or_timeout`). Le rythme d'attente
     // est désormais entièrement piloté par notre propre boucle de sondage,
     // indépendante de la précision du minuteur du socket.
-    socket.set_nonblocking(true).context("passage du socket UDP en non bloquant")?;
+    socket
+        .set_nonblocking(true)
+        .context("passage du socket UDP en non bloquant")?;
     let addr = socket.local_addr()?;
     tracing::info!(%addr, "socket UDP de l'agent");
 
@@ -91,7 +93,8 @@ pub(super) fn construire_rtc(local_ip: IpAddr, plafond_bps: u32) -> Result<(UdpS
         .build(Instant::now());
 
     // Cible que le sondage cherche à atteindre : le plafond configuré.
-    rtc.bwe().set_desired_bitrate(Bitrate::bps(plafond_bps as u64));
+    rtc.bwe()
+        .set_desired_bitrate(Bitrate::bps(plafond_bps as u64));
 
     // `add_local_candidate` ne renvoie pas de `Result` : elle retourne
     // `Option<&Candidate>` (le candidat précédent s'il était déjà connu).

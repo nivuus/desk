@@ -3,16 +3,30 @@
 use super::*;
 
 fn renommer(de: &str, vers: &str) -> Mutation {
-    Mutation::Renommer { de: de.into(), vers: vers.into(), repertoire: false }
+    Mutation::Renommer {
+        de: de.into(),
+        vers: vers.into(),
+        repertoire: false,
+    }
 }
 fn renommer_dossier(de: &str, vers: &str) -> Mutation {
-    Mutation::Renommer { de: de.into(), vers: vers.into(), repertoire: true }
+    Mutation::Renommer {
+        de: de.into(),
+        vers: vers.into(),
+        repertoire: true,
+    }
 }
 fn supprimer(chemin: &str) -> Mutation {
-    Mutation::Supprimer { chemin: chemin.into(), repertoire: false }
+    Mutation::Supprimer {
+        chemin: chemin.into(),
+        repertoire: false,
+    }
 }
 fn supprimer_dossier(chemin: &str) -> Mutation {
-    Mutation::Supprimer { chemin: chemin.into(), repertoire: true }
+    Mutation::Supprimer {
+        chemin: chemin.into(),
+        repertoire: true,
+    }
 }
 fn dues(v: &[&str]) -> Vec<String> {
     v.iter().map(|s| (*s).to_string()).collect()
@@ -28,7 +42,9 @@ fn dues(v: &[&str]) -> Vec<String> {
 fn un_renommage_attend_les_ecritures_dues_sur_la_source() {
     assert_eq!(
         ordonnancer(&dues(&["doc.tmp"]), &renommer("doc.tmp", "doc.odt")),
-        Ordonnancement::AttendreEcrituresDues { chemins: dues(&["doc.tmp"]) }
+        Ordonnancement::AttendreEcrituresDues {
+            chemins: dues(&["doc.tmp"])
+        }
     );
 }
 
@@ -40,7 +56,9 @@ fn un_renommage_attend_les_ecritures_dues_sur_la_source() {
 fn une_suppression_abandonne_les_ecritures_dues_sur_le_chemin() {
     assert_eq!(
         ordonnancer(&dues(&["vieux.odt"]), &supprimer("vieux.odt")),
-        Ordonnancement::AbandonnerEcrituresDues { chemins: dues(&["vieux.odt"]) }
+        Ordonnancement::AbandonnerEcrituresDues {
+            chemins: dues(&["vieux.odt"])
+        }
     );
 }
 
@@ -63,7 +81,10 @@ fn un_renommage_attend_la_ou_une_suppression_abandonne() {
 #[test]
 fn une_ecriture_due_sur_un_AUTRE_chemin_ne_retarde_rien() {
     assert_eq!(
-        ordonnancer(&dues(&["autre.txt", "dossier/x.bin"]), &renommer("doc.tmp", "doc.odt")),
+        ordonnancer(
+            &dues(&["autre.txt", "dossier/x.bin"]),
+            &renommer("doc.tmp", "doc.odt")
+        ),
         Ordonnancement::Pousser
     );
 }
@@ -78,8 +99,13 @@ fn une_ecriture_due_sur_un_AUTRE_chemin_ne_retarde_rien() {
 #[test]
 fn une_ecriture_due_sur_un_ENFANT_du_repertoire_renomme_retarde() {
     assert_eq!(
-        ordonnancer(&dues(&["projet/note.txt"]), &renommer_dossier("projet", "archives/projet")),
-        Ordonnancement::AttendreEcrituresDues { chemins: dues(&["projet/note.txt"]) }
+        ordonnancer(
+            &dues(&["projet/note.txt"]),
+            &renommer_dossier("projet", "archives/projet")
+        ),
+        Ordonnancement::AttendreEcrituresDues {
+            chemins: dues(&["projet/note.txt"])
+        }
     );
     // …et le même chemin ne retarde PAS le renommage d'un FICHIER homonyme.
     assert_eq!(
@@ -102,7 +128,9 @@ fn un_prefixe_qui_n_est_pas_un_composant_ne_retarde_rien() {
     );
     assert_eq!(
         ordonnancer(&dues(&["a/x.txt"]), &renommer_dossier("a", "z")),
-        Ordonnancement::AttendreEcrituresDues { chemins: dues(&["a/x.txt"]) }
+        Ordonnancement::AttendreEcrituresDues {
+            chemins: dues(&["a/x.txt"])
+        }
     );
 }
 
@@ -110,8 +138,13 @@ fn un_prefixe_qui_n_est_pas_un_composant_ne_retarde_rien() {
 #[test]
 fn une_suppression_de_repertoire_abandonne_les_ecritures_de_ses_enfants() {
     assert_eq!(
-        ordonnancer(&dues(&["d/a.txt", "d/sous/b.txt", "hors.txt"]), &supprimer_dossier("d")),
-        Ordonnancement::AbandonnerEcrituresDues { chemins: dues(&["d/a.txt", "d/sous/b.txt"]) }
+        ordonnancer(
+            &dues(&["d/a.txt", "d/sous/b.txt", "hors.txt"]),
+            &supprimer_dossier("d")
+        ),
+        Ordonnancement::AbandonnerEcrituresDues {
+            chemins: dues(&["d/a.txt", "d/sous/b.txt"])
+        }
     );
 }
 
@@ -129,7 +162,10 @@ fn une_cible_vide_ne_retient_rien() {
 /// Sans aucune écriture due, il n'y a rien à ordonnancer.
 #[test]
 fn sans_ecriture_due_on_pousse() {
-    assert_eq!(ordonnancer(&[], &renommer("a", "b")), Ordonnancement::Pousser);
+    assert_eq!(
+        ordonnancer(&[], &renommer("a", "b")),
+        Ordonnancement::Pousser
+    );
     assert_eq!(ordonnancer(&[], &supprimer("a")), Ordonnancement::Pousser);
 }
 
@@ -176,7 +212,11 @@ fn une_mutation_differee_repasse_devant() {
     f.signaler(renommer("x", "y"));
     f.differer();
     assert!(f.en_vol().is_none(), "différer libère le vol");
-    assert_eq!(f.terminee(), Some(renommer("a", "b")), "la différée repasse la PREMIÈRE");
+    assert_eq!(
+        f.terminee(),
+        Some(renommer("a", "b")),
+        "la différée repasse la PREMIÈRE"
+    );
 }
 
 /// `source()` rend la SOURCE d'un renommage, jamais la destination : c'est sur

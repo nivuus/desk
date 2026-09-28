@@ -18,9 +18,8 @@
 //! **Le chemin de module reste `parts::tests`** : seul l'emplacement physique
 //! du fichier change, aucune visibilité n'est touchée.
 
-
-use crate::capteur::sommeil::tests::{premier_ordre, verrouiller_pour_le_test};
 use crate::capteur::sommeil::file::{ReceveurSession, PROFONDEUR_MAX};
+use crate::capteur::sommeil::tests::{premier_ordre, verrouiller_pour_le_test};
 use crate::capteur::sommeil::{etat, inscrire, retirer, signaler, Message};
 use crate::capteur::vivier::Ordre;
 
@@ -95,7 +94,9 @@ fn une_session_qui_s_eveille_recoit_la_part_d_une_eveillee_et_une_seule() {
 
     let recus: Vec<Message> = messages.vider();
     assert!(
-        recus.iter().any(|m| matches!(m, Message::Sommeil(Ordre::Reveiller))),
+        recus
+            .iter()
+            .any(|m| matches!(m, Message::Sommeil(Ordre::Reveiller))),
         "l'ordre de réveil doit être présent : {recus:?}"
     );
     let parts: Vec<u32> = recus
@@ -108,7 +109,11 @@ fn une_session_qui_s_eveille_recoit_la_part_d_une_eveillee_et_une_seule() {
     // **UNE seule**, et c'est la preuve directe de la coalescence : sans
     // elle il y en aurait deux, le plancher endormi de `inscrire` puis
     // celle d'éveillée.
-    assert_eq!(parts.len(), 1, "les deux parts doivent s'être coalescées : {recus:?}");
+    assert_eq!(
+        parts.len(),
+        1,
+        "les deux parts doivent s'être coalescées : {recus:?}"
+    );
     // **La valeur qui survit est la DERNIÈRE calculée**, celle d'une
     // éveillée — pas le plancher qu'elle a remplacé. C'est ce qui rend le
     // désordre d'un message inoffensif, et sans cette assertion le test
@@ -134,7 +139,10 @@ fn une_part_inchangee_n_est_pas_reemise() {
         .into_iter()
         .filter(|m| matches!(m, Message::Part { .. }))
         .collect();
-    assert!(parts.is_empty(), "une part inchangée ne se réémet pas : {parts:?}");
+    assert!(
+        parts.is_empty(),
+        "une part inchangée ne se réémet pas : {parts:?}"
+    );
     retirer("t6-b", generation);
 }
 
@@ -152,7 +160,10 @@ fn l_arrivee_d_une_seconde_fenetre_reduit_la_part_de_la_premiere() {
         apres < premiere,
         "part de la première : {premiere} puis {apres} — elle doit baisser"
     );
-    assert!(derniere_part(&b).is_some(), "la seconde doit recevoir une part");
+    assert!(
+        derniere_part(&b).is_some(),
+        "la seconde doit recevoir une part"
+    );
 
     retirer("t6-c", generation_a);
     retirer("t6-d", generation_b);
@@ -300,7 +311,10 @@ fn une_part_refusee_n_est_pas_memorisee_et_repart_au_tour_suivant() {
     // coalesce jamais, c'est ce qui permet d'atteindre la borne.
     {
         let garde = etat();
-        let emetteur = garde.canaux.get("t17-refus").expect("la session est inscrite");
+        let emetteur = garde
+            .canaux
+            .get("t17-refus")
+            .expect("la session est inscrite");
         for _ in 0..PROFONDEUR_MAX {
             let _ = emetteur.envoyer(Message::Sommeil(Ordre::Reveiller));
         }
@@ -314,7 +328,11 @@ fn une_part_refusee_n_est_pas_memorisee_et_repart_au_tour_suivant() {
     // La fenêtre reprend sa lecture. Aucune part ne s'y trouve : elle n'a
     // jamais été déposée.
     let recus = canal.vider();
-    assert_eq!(recus.len(), PROFONDEUR_MAX, "précondition : la file était bien pleine");
+    assert_eq!(
+        recus.len(),
+        PROFONDEUR_MAX,
+        "précondition : la file était bien pleine"
+    );
     assert!(
         !recus.iter().any(|m| matches!(m, Message::Part { .. })),
         "précondition : la part refusée n'a PAS été livrée : {recus:?}"

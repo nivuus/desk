@@ -35,7 +35,13 @@ fn point_depart_lineaire(
         "écran {largeur}x{hauteur} trop petit pour une amplitude de {amplitude} px \
          (pas={pas}, répétitions={repetitions}) : le clampage fausserait la mesure"
     );
-    let coord = |dimension: i32| if amplitude >= 0 { marge } else { (dimension - 1 - marge).max(0) };
+    let coord = |dimension: i32| {
+        if amplitude >= 0 {
+            marge
+        } else {
+            (dimension - 1 - marge).max(0)
+        }
+    };
     Ok((coord(largeur), coord(hauteur), amplitude))
 }
 
@@ -87,7 +93,14 @@ pub(super) fn executer_linearite() -> Result<()> {
     let hauteur = unsafe { GetSystemMetrics(SM_CYSCREEN) };
     let (centre_x, centre_y, amplitude) =
         point_depart_lineaire(largeur, hauteur, pas, repetitions, MARGE)?;
-    tracing::info!(largeur, hauteur, centre_x, centre_y, amplitude, "point de départ de la sonde");
+    tracing::info!(
+        largeur,
+        hauteur,
+        centre_x,
+        centre_y,
+        amplitude,
+        "point de départ de la sonde"
+    );
     unsafe { SetCursorPos(centre_x, centre_y) }?;
     std::thread::sleep(std::time::Duration::from_millis(200));
 
@@ -146,8 +159,7 @@ mod tests {
     fn pas_positif_part_pres_du_bord_haut_gauche() {
         // pas=10, répétitions=100 : amplitude 1000, comme la mesure 2 du
         // brief.
-        let (x, y, amplitude) =
-            point_depart_lineaire(LARGEUR_VM, HAUTEUR_VM, 10, 100, 20).unwrap();
+        let (x, y, amplitude) = point_depart_lineaire(LARGEUR_VM, HAUTEUR_VM, 10, 100, 20).unwrap();
         assert_eq!(amplitude, 1000);
         assert_eq!(x, 20);
         assert_eq!(y, 20);
@@ -170,8 +182,7 @@ mod tests {
         // pas=200, répétitions=5 : amplitude 1000, comme la mesure 3 du
         // brief — c'est là que l'accélération se verrait si la
         // neutralisation n'avait pas pris.
-        let (x, y, amplitude) =
-            point_depart_lineaire(LARGEUR_VM, HAUTEUR_VM, 200, 5, 20).unwrap();
+        let (x, y, amplitude) = point_depart_lineaire(LARGEUR_VM, HAUTEUR_VM, 200, 5, 20).unwrap();
         assert_eq!(amplitude, 1000);
         assert_eq!(x, 20);
         assert_eq!(y, 20);

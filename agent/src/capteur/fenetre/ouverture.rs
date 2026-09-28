@@ -108,7 +108,20 @@ impl Fenetre {
         // déterministes sur les mêmes entrées, jamais deux règles.
         let (largeur, hauteur) =
             crate::superviseur::placement::taille_retenue(taille_demandee, sortie_taille);
-        let parametres = Parametres { hwnd, sortie, fps, debit, clock_origin };
-        Ok(Fenetre { source: None, parametres, session, largeur, hauteur, pid })
+        let parametres = Parametres {
+            hwnd,
+            sortie,
+            fps,
+            debit,
+            clock_origin,
+        };
+        Ok(Fenetre {
+            source: None,
+            parametres,
+            session,
+            largeur,
+            hauteur,
+            pid,
+        })
     }
 }

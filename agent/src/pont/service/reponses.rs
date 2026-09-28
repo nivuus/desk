@@ -35,12 +35,12 @@ use std::sync::atomic::Ordering;
 use windows::core::HRESULT;
 use windows::Win32::Foundation::S_OK;
 
-use proto::fichiers::entetes;
 use crate::pont::ecriture::fil::Ordre;
 use crate::pont::enumeration::Session;
 use crate::pont::erreurs::Erreur;
 use crate::pont::projfs::{ContexteProjFs, Etat};
 use crate::pont::table::Attendue;
+use proto::fichiers::entetes;
 
 use super::verbes;
 
@@ -149,7 +149,11 @@ pub(super) fn appliquer(
         // `ERROR_FILE_NOT_FOUND`, ce qui alimente le cache négatif.
         (Attendue::Attributs { .. }, Some(ContexteProjFs::Existence)) => Suite::Termine(S_OK),
         (
-            Attendue::Lire { chemin, position, longueur },
+            Attendue::Lire {
+                chemin,
+                position,
+                longueur,
+            },
             Some(ContexteProjFs::Lecture { flux, fenetre }),
         ) => {
             let Ok(entete) = serde_json::from_slice::<entetes::Donnees>(trame.entete) else {
@@ -166,8 +170,11 @@ pub(super) fn appliquer(
                 || entete.longueur != longueur
             {
                 tracing::warn!(
-                    chemin, position, longueur,
-                    recu_position = entete.position, recu_longueur = entete.longueur,
+                    chemin,
+                    position,
+                    longueur,
+                    recu_position = entete.position,
+                    recu_longueur = entete.longueur,
                     octets = trame.charge.len(),
                     "réponse Donnees incohérente avec la plage demandée : jetée"
                 );
@@ -193,7 +200,8 @@ pub(super) fn appliquer(
             if issue.is_err() {
                 return Suite::Termine(issue);
             }
-            etat.octets_hydrates.fetch_add(trame.charge.len() as u64, Ordering::Relaxed);
+            etat.octets_hydrates
+                .fetch_add(trame.charge.len() as u64, Ordering::Relaxed);
 
             // ✅ **LA FENÊTRE DE F3 REMPLACE « UN MORCEAU EN VOL À LA
             // FOIS ».** *(Ces lignes disaient : « UN morceau en vol à la fois
@@ -242,8 +250,13 @@ pub(super) fn appliquer(
             Suite::Poursuit
         }
         (
-            Attendue::Lister { chemin, enumeration },
-            Some(ContexteProjFs::Enumeration { tampon, expression, .. }),
+            Attendue::Lister {
+                chemin,
+                enumeration,
+            },
+            Some(ContexteProjFs::Enumeration {
+                tampon, expression, ..
+            }),
         ) => {
             let Ok(entete) = serde_json::from_slice::<entetes::Entrees>(trame.entete) else {
                 tracing::warn!(chemin, "en-tête Entrees illisible");
@@ -267,9 +280,13 @@ pub(super) fn appliquer(
             );
             let mut sessions = match etat.sessions.lock() {
                 Ok(sessions) => sessions,
-                Err(_) => return Suite::Termine(HRESULT(etat.compteurs.rendre(Erreur::Inattendue))),
+                Err(_) => {
+                    return Suite::Termine(HRESULT(etat.compteurs.rendre(Erreur::Inattendue)))
+                }
             };
-            let session = sessions.entry(enumeration).or_insert_with(Session::nouvelle);
+            let session = sessions
+                .entry(enumeration)
+                .or_insert_with(Session::nouvelle);
             session.poser(entrees);
             Suite::Termine(verbes::remplir(etat, session, tampon.0))
         }
@@ -283,7 +300,9 @@ pub(super) fn appliquer(
         (Attendue::Ecrire { chemin, dernier }, None) => {
             if trame.type_message != proto::fichiers::TYPE_FAIT {
                 tracing::warn!(
-                    chemin, correlation, type_message = trame.type_message,
+                    chemin,
+                    correlation,
+                    type_message = trame.type_message,
                     "réponse d'un type inattendu à une écriture : jetée"
                 );
                 return Suite::Termine(HRESULT(etat.compteurs.rendre(Erreur::Inattendue)));
@@ -300,10 +319,20 @@ pub(super) fn appliquer(
         // : une mutation n'a ni tampon d'énumération, ni flux de données. Elle
         // naît d'une notification POST, qui a déjà rendu la main à
         // l'application.
-        (Attendue::Muter { chemin, renommage, destination }, None) => {
+        (
+            Attendue::Muter {
+                chemin,
+                renommage,
+                destination,
+            },
+            None,
+        ) => {
             if trame.type_message != proto::fichiers::TYPE_FAIT {
                 tracing::warn!(
-                    chemin, correlation, renommage, type_message = trame.type_message,
+                    chemin,
+                    correlation,
+                    renommage,
+                    type_message = trame.type_message,
                     "reponse d'un type inattendu a une mutation : jetee"
                 );
                 return Suite::Termine(HRESULT(etat.compteurs.rendre(Erreur::Inattendue)));
@@ -321,7 +350,9 @@ pub(super) fn appliquer(
         (Attendue::Creer { chemin }, None) => {
             if trame.type_message != proto::fichiers::TYPE_FAIT {
                 tracing::warn!(
-                    chemin, correlation, type_message = trame.type_message,
+                    chemin,
+                    correlation,
+                    type_message = trame.type_message,
                     "réponse d'un type inattendu à une création : jetée"
                 );
                 return Suite::Termine(HRESULT(etat.compteurs.rendre(Erreur::Inattendue)));

@@ -13,15 +13,27 @@ use super::identifiant_capte;
 use crate::wasapi_peripherique::Peripherique;
 
 fn p(nom: &str, id: &str) -> Peripherique {
-    Peripherique { nom: nom.to_string(), identifiant: id.to_string() }
+    Peripherique {
+        nom: nom.to_string(),
+        identifiant: id.to_string(),
+    }
 }
 
 /// L'inventaire relevé sur la VM le 20 août 2026, nom pour nom.
 fn vm() -> Vec<Peripherique> {
     vec![
-        p("Haut-parleurs (Steam Streaming Speakers)", "{0.0.0.00000000}.{8695a111}"),
-        p("HDP-V104 (NVIDIA High Definition Audio)", "{0.0.0.00000000}.{8bf867bf}"),
-        p("Haut-parleurs (VB-Audio Virtual Cable)", "{0.0.0.00000000}.{deec1914}"),
+        p(
+            "Haut-parleurs (Steam Streaming Speakers)",
+            "{0.0.0.00000000}.{8695a111}",
+        ),
+        p(
+            "HDP-V104 (NVIDIA High Definition Audio)",
+            "{0.0.0.00000000}.{8bf867bf}",
+        ),
+        p(
+            "Haut-parleurs (VB-Audio Virtual Cable)",
+            "{0.0.0.00000000}.{deec1914}",
+        ),
     ]
 }
 

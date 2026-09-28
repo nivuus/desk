@@ -88,10 +88,7 @@ pub fn evaluer(capte: Option<&str>, cable: &str) -> Boucle {
 /// tout » — process loopback, `AUDIO=0` — ne passe pas par ici : il se décide
 /// avant, chez l'appelant, et arrive à [`evaluer`] sous la forme d'un `None`
 /// de son propre paramètre `capte`.
-pub fn identifiant_capte(
-    disponibles: &[Peripherique],
-    demande: Option<&str>,
-) -> Option<String> {
+pub fn identifiant_capte(disponibles: &[Peripherique], demande: Option<&str>) -> Option<String> {
     match choisir(disponibles, demande) {
         Choix::Elu { peripherique, .. } => Some(peripherique.identifiant.clone()),
         // Les trois replis de `resoudre`, réunis : dans les trois cas c'est le

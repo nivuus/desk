@@ -307,7 +307,10 @@ mod tests {
     #[test]
     fn le_nom_complet_est_reconnu_comme_exact_et_non_comme_partiel() {
         let disponibles = vm();
-        match choisir(&disponibles, Some("Haut-parleurs (Steam Streaming Speakers)")) {
+        match choisir(
+            &disponibles,
+            Some("Haut-parleurs (Steam Streaming Speakers)"),
+        ) {
             Choix::Elu { critere, .. } => assert_eq!(critere, Critere::NomExact),
             autre => panic!("attendu un élu, obtenu {autre:?}"),
         }
@@ -404,10 +407,7 @@ mod tests {
     fn une_sous_chaine_ambigue_refuse_de_trancher_et_nomme_les_candidats() {
         let disponibles = vm();
         match choisir(&disponibles, Some("Haut-parleurs")) {
-            Choix::Ambigu {
-                demande,
-                candidats,
-            } => {
+            Choix::Ambigu { demande, candidats } => {
                 assert_eq!(demande, "Haut-parleurs");
                 assert_eq!(
                     candidats,

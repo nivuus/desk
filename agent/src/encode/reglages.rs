@@ -88,7 +88,12 @@ pub(super) fn configure_output(
     Ok(())
 }
 
-pub(super) fn configure_input(transform: &IMFTransform, width: u32, height: u32, fps: u32) -> Result<()> {
+pub(super) fn configure_input(
+    transform: &IMFTransform,
+    width: u32,
+    height: u32,
+    fps: u32,
+) -> Result<()> {
     let media_type = unsafe { MFCreateMediaType() }?;
     unsafe {
         media_type.SetGUID(&MF_MT_MAJOR_TYPE, &MFMediaType_Video)?;

@@ -44,7 +44,10 @@ fn un_nom_reserve_est_refuse() {
     // Avec extension, et à n'importe quelle profondeur : Windows résout ces
     // noms AVANT de regarder le système de fichiers.
     assert_eq!(normaliser("CON.txt"), Err(CheminRefuse::NomReserve));
-    assert_eq!(normaliser(r"dossier\NUL.log"), Err(CheminRefuse::NomReserve));
+    assert_eq!(
+        normaliser(r"dossier\NUL.log"),
+        Err(CheminRefuse::NomReserve)
+    );
     // Points et espaces de fin : Win32 les retire avant de résoudre.
     assert_eq!(normaliser("con. "), Err(CheminRefuse::NomReserve));
 
@@ -105,7 +108,10 @@ fn la_casse_est_conservee_mais_la_comparaison_ne_l_est_pas() {
 fn des_unites_utf16_invalides_sont_refusees_avant_toute_normalisation() {
     // 0xD800 est une demi-paire de substitution isolée : ProjFS livre des
     // `PCWSTR`, et rien ne garantit qu'ils forment du texte valide.
-    assert_eq!(normaliser_utf16(&[0xD800]), Err(CheminRefuse::NonUtf16Valide));
+    assert_eq!(
+        normaliser_utf16(&[0xD800]),
+        Err(CheminRefuse::NonUtf16Valide)
+    );
     // …et une chaîne UTF-16 valide traverse bien jusqu'à la normalisation,
     // refus compris. Sans cette moitié, le test passerait sur une fonction qui
     // refuse tout.
@@ -126,7 +132,10 @@ fn avec_dernier_composant_ne_touche_que_le_dernier() {
         super::avec_dernier_composant("A\\B\\C\\NOTE.TXT", "note.txt"),
         Some("A\\B\\C\\note.txt".to_string())
     );
-    assert_eq!(super::avec_dernier_composant("GROS.BIN", "gros.bin"), Some("gros.bin".to_string()));
+    assert_eq!(
+        super::avec_dernier_composant("GROS.BIN", "gros.bin"),
+        Some("gros.bin".to_string())
+    );
 }
 
 /// 🔴 **RIEN À CHANGER ⇒ `None`, ET L'APPELANT GARDE LES OCTETS D'ORIGINE.**
@@ -136,7 +145,10 @@ fn avec_dernier_composant_ne_touche_que_le_dernier() {
 /// la casse QUE lorsqu'il y a quelque chose à gagner.
 #[test]
 fn avec_dernier_composant_rend_none_quand_il_n_y_a_rien_a_changer() {
-    assert_eq!(super::avec_dernier_composant("Dossier\\note.txt", "note.txt"), None);
+    assert_eq!(
+        super::avec_dernier_composant("Dossier\\note.txt", "note.txt"),
+        None
+    );
     assert_eq!(super::avec_dernier_composant("note.txt", "note.txt"), None);
     assert_eq!(super::avec_dernier_composant("", "note.txt"), None);
     assert_eq!(super::avec_dernier_composant("note.txt", ""), None);

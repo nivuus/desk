@@ -29,8 +29,8 @@
 use std::collections::HashMap;
 use std::time::Instant;
 
-use crate::capteur::vivier::Vivier;
 use crate::capteur::sommeil::file::EmetteurSession;
+use crate::capteur::vivier::Vivier;
 
 pub(in crate::capteur::sommeil) struct Etat {
     pub(in crate::capteur::sommeil) vivier: Vivier,

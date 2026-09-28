@@ -17,8 +17,8 @@ use std::time::Instant;
 use anyhow::{Context, Result};
 
 use super::super::compteurs::{self, Compteurs, Garde, DUREE_PASSE, PERIODE_JOURNAL};
-use super::super::voies::{creer_device, VoieDeCapture, VoieDuplication};
 use super::super::mires::Mires;
+use super::super::voies::{creer_device, VoieDeCapture, VoieDuplication};
 use super::constater_survie;
 use crate::capture::SortieDxgi;
 use crate::geometry::Rect;

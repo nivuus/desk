@@ -75,7 +75,11 @@ fn le_mauvais_pas_d_entree_se_voit_a_partir_de_la_SECONDE_entree() {
     grp.extend_from_slice(&[0, 0, 0, 0, 1, 0, 32, 0, 0, 0, 0, 0, 8, 0]);
     assert_eq!(grp.len(), 6 + 2 * 14);
     assert_eq!(tailles_grpicondir(&grp), Some(vec![32, 256]));
-    assert_eq!(tailles_icondir(&grp), None, "le pas de 16 ne tient pas dans 34 octets");
+    assert_eq!(
+        tailles_icondir(&grp),
+        None,
+        "le pas de 16 ne tient pas dans 34 octets"
+    );
 
     // Et dans l'autre sens, sur un tampon assez grand pour les deux : les
     // SECONDES entrées sont lues à des offsets différents, donc les listes
@@ -122,7 +126,10 @@ fn une_liste_vide_n_est_pas_une_taille_nulle() {
 fn un_repertoire_a_zero_entree_se_lit_et_ne_mesure_rien() {
     let o = [0u8, 0, 1, 0, 0, 0];
     assert_eq!(tailles_icondir(&o), Some(vec![]));
-    assert_eq!(maximum(&tailles_icondir(&o).expect("valide")), SourceMax::NonMesuree);
+    assert_eq!(
+        maximum(&tailles_icondir(&o).expect("valide")),
+        SourceMax::NonMesuree
+    );
 }
 
 /// 🔴 UN EN-TÊTE NON VÉRIFIÉ LAISSERAIT QUATRE OCTETS ARBITRAIRES PASSER POUR
@@ -144,7 +151,7 @@ fn refuse_un_en_tete_qui_n_en_est_pas_un() {
 fn un_tampon_tronque_rend_none() {
     assert_eq!(tailles_icondir(&[]), None);
     assert_eq!(tailles_icondir(&[0, 0, 1, 0, 1]), None); // en-tête incomplet
-    // Annonce trois entrées, n'en porte qu'une.
+                                                         // Annonce trois entrées, n'en porte qu'une.
     let mut o = vec![0u8, 0, 1, 0, 3, 0];
     o.extend_from_slice(&[48; ENTREE_ICO]);
     assert_eq!(tailles_icondir(&o), None);

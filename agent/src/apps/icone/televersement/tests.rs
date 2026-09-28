@@ -20,8 +20,14 @@ fn tls_est_refuse_explicitement() {
 
 #[test]
 fn l_autorite_se_derive_de_l_url_du_canal() {
-    assert_eq!(base_http("ws://192.168.3.1:8080").unwrap(), "192.168.3.1:8080");
-    assert_eq!(base_http("http://127.0.0.1:8080/").unwrap(), "127.0.0.1:8080");
+    assert_eq!(
+        base_http("ws://192.168.3.1:8080").unwrap(),
+        "192.168.3.1:8080"
+    );
+    assert_eq!(
+        base_http("http://127.0.0.1:8080/").unwrap(),
+        "127.0.0.1:8080"
+    );
     // Un chemin éventuel est retiré : on ne garde que l'autorité.
     assert_eq!(base_http("ws://hote:9/base/x").unwrap(), "hote:9");
     assert_eq!(base_http("  ws://hote:9  ").unwrap(), "hote:9");
@@ -40,7 +46,10 @@ fn l_autorite_se_derive_de_l_url_du_canal() {
 #[test]
 fn le_statut_se_lit_dans_la_premiere_ligne() {
     assert_eq!(statut_http(b"HTTP/1.1 204 No Content\r\n\r\n"), Some(204));
-    assert_eq!(statut_http(b"HTTP/1.1 413 Payload Too Large\r\n\r\n{}"), Some(413));
+    assert_eq!(
+        statut_http(b"HTTP/1.1 413 Payload Too Large\r\n\r\n{}"),
+        Some(413)
+    );
     assert_eq!(statut_http(b"HTTP/1.1 400 Bad Request\r\n"), Some(400));
     // Une réponse qui n'en est pas une ne rend PAS un statut de complaisance.
     assert_eq!(statut_http(b""), None);

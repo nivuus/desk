@@ -50,8 +50,8 @@ use windows::Win32::System::JobObjects::{
     JOBOBJECT_EXTENDED_LIMIT_INFORMATION, JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE,
 };
 use windows::Win32::System::Threading::{
-    CreateProcessW, GetCurrentProcess, GetExitCodeProcess, WaitForSingleObject,
-    CREATE_NO_WINDOW, PROCESS_INFORMATION, STARTUPINFOW,
+    CreateProcessW, GetCurrentProcess, GetExitCodeProcess, WaitForSingleObject, CREATE_NO_WINDOW,
+    PROCESS_INFORMATION, STARTUPINFOW,
 };
 
 use super::depot::Extension;

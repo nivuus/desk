@@ -50,7 +50,10 @@ fn monter(labels: &[&str]) -> (Pair, Sender<VersNavigateur>, Receiver<DuNavigate
 
     // C'est le NAVIGATEUR qui crée les canaux : le pont est répondant.
     let mut api = rtc.sdp_api();
-    let canaux: Vec<ChannelId> = labels.iter().map(|l| api.add_channel((*l).to_string())).collect();
+    let canaux: Vec<ChannelId> = labels
+        .iter()
+        .map(|l| api.add_channel((*l).to_string()))
+        .collect();
     let (offre, en_attente) = api.apply().expect("offre non vide");
 
     let reponse = rtc_pont
@@ -58,7 +61,9 @@ fn monter(labels: &[&str]) -> (Pair, Sender<VersNavigateur>, Receiver<DuNavigate
         .accept_offer(offre)
         .expect("le pont accepte une offre de données seules");
     let reponse = SdpAnswer::from_sdp_string(&reponse.to_sdp_string()).expect("réponse SDP valide");
-    rtc.sdp_api().accept_answer(en_attente, reponse).expect("réponse acceptée");
+    rtc.sdp_api()
+        .accept_answer(en_attente, reponse)
+        .expect("réponse acceptée");
 
     let (tx_sortant, rx_sortant) = channel();
     let (tx_entrant, rx_entrant) = channel();
@@ -66,7 +71,16 @@ fn monter(labels: &[&str]) -> (Pair, Sender<VersNavigateur>, Receiver<DuNavigate
         let _ = tourner(rtc_pont, socket_pont, rx_sortant, tx_entrant);
     });
 
-    (Pair { socket, adresse, rtc, canaux }, tx_sortant, rx_entrant)
+    (
+        Pair {
+            socket,
+            adresse,
+            rtc,
+            canaux,
+        },
+        tx_sortant,
+        rx_entrant,
+    )
 }
 
 /// **LE** pilote de ces tests : il pompe le pair ET récolte ce que le pont
@@ -198,8 +212,12 @@ fn une_trame_emise_par_le_pont_arrive_au_pair_en_binaire() {
 #[test]
 fn une_trame_du_pair_remonte_avec_sa_correlation() {
     let (mut pair, _sortant, entrant) = monter(&[LABEL_FICHIERS]);
-    let reponse =
-        proto::fichiers::encoder(proto::fichiers::TYPE_DONNEES, 0x0BAD_F00D, "{}", &[1, 2, 3, 4]);
+    let reponse = proto::fichiers::encoder(
+        proto::fichiers::TYPE_DONNEES,
+        0x0BAD_F00D,
+        "{}",
+        &[1, 2, 3, 4],
+    );
 
     let canal = pair.canaux[0];
     let a_envoyer = reponse.clone();
@@ -214,7 +232,11 @@ fn une_trame_du_pair_remonte_avec_sa_correlation() {
                 }
             }
         },
-        |remontees, _| remontees.iter().any(|m| matches!(m, DuNavigateur::Reponse { .. })),
+        |remontees, _| {
+            remontees
+                .iter()
+                .any(|m| matches!(m, DuNavigateur::Reponse { .. }))
+        },
         "que la réponse du pair ne remonte",
     );
 
@@ -225,8 +247,14 @@ fn une_trame_du_pair_remonte_avec_sa_correlation() {
             _ => None,
         })
         .expect("une réponse remontée");
-    assert_eq!(reponse_recue.0, 0x0BAD_F00D, "la corrélation doit traverser intacte");
-    assert_eq!(reponse_recue.1, reponse, "la trame doit remonter octet pour octet");
+    assert_eq!(
+        reponse_recue.0, 0x0BAD_F00D,
+        "la corrélation doit traverser intacte"
+    );
+    assert_eq!(
+        reponse_recue.1, reponse,
+        "la trame doit remonter octet pour octet"
+    );
 }
 
 #[test]
@@ -267,7 +295,11 @@ fn un_channeldata_venu_d_un_autre_canal_est_refuse_et_journalise() {
                 }
             }
         },
-        |remontees, _| remontees.iter().any(|m| matches!(m, DuNavigateur::Reponse { .. })),
+        |remontees, _| {
+            remontees
+                .iter()
+                .any(|m| matches!(m, DuNavigateur::Reponse { .. }))
+        },
         "que la trame légitime ne remonte",
     );
 
@@ -329,7 +361,9 @@ fn un_seul_canal_est_retenu_parmi_deux_et_c_est_celui_du_label() {
             Output::Event(Event::ChannelOpen(..)) => ouverts += 1,
             Output::Event(_) => {}
             Output::Timeout(_) => {
-                pair.socket.set_read_timeout(Some(Duration::from_millis(5))).unwrap();
+                pair.socket
+                    .set_read_timeout(Some(Duration::from_millis(5)))
+                    .unwrap();
                 let mut tampon = vec![0u8; 2000];
                 match pair.socket.recv_from(&mut tampon) {
                     Ok((n, source)) => {
@@ -361,7 +395,10 @@ fn un_seul_canal_est_retenu_parmi_deux_et_c_est_celui_du_label() {
         std::thread::sleep(Duration::from_millis(10));
     }
 
-    let ouvertures = remontees.iter().filter(|m| **m == DuNavigateur::CanalOuvert).count();
+    let ouvertures = remontees
+        .iter()
+        .filter(|m| **m == DuNavigateur::CanalOuvert)
+        .count();
     assert_eq!(
         ouvertures, 1,
         "deux canaux négociés, UNE seule ouverture annoncée : \
@@ -400,7 +437,12 @@ fn la_fermeture_du_canal_seul_remonte_canal_ferme_et_seulement_pour_le_bon_id() 
     let (tx, rx) = channel();
     let mut canal: Option<ChannelId> = None;
 
-    assert!(traiter(Event::ChannelOpen(bon, LABEL_FICHIERS.to_string()), &mut canal, &tx).is_none());
+    assert!(traiter(
+        Event::ChannelOpen(bon, LABEL_FICHIERS.to_string()),
+        &mut canal,
+        &tx
+    )
+    .is_none());
     assert_eq!(rx.try_recv(), Ok(DuNavigateur::CanalOuvert));
     assert_eq!(canal, Some(bon));
 
@@ -409,7 +451,10 @@ fn la_fermeture_du_canal_seul_remonte_canal_ferme_et_seulement_pour_le_bon_id() 
     // `CanalFerme` à chaque fermeture, quelle qu'elle soit — et le pont
     // déclarerait mort un canal bien vivant.
     assert!(traiter(Event::ChannelClose(autre), &mut canal, &tx).is_none());
-    assert!(rx.try_recv().is_err(), "la fermeture d'un autre canal ne remonte rien");
+    assert!(
+        rx.try_recv().is_err(),
+        "la fermeture d'un autre canal ne remonte rien"
+    );
     assert_eq!(canal, Some(bon), "et elle ne doit pas oublier le nôtre");
 
     assert!(traiter(Event::ChannelClose(bon), &mut canal, &tx).is_none());
@@ -430,12 +475,27 @@ fn un_canal_dont_le_label_n_est_pas_le_notre_n_est_jamais_retenu() {
 
     let (tx, rx) = channel();
     let mut canal: Option<ChannelId> = None;
-    traiter(Event::ChannelOpen(bon, LABEL_FICHIERS.to_string()), &mut canal, &tx);
+    traiter(
+        Event::ChannelOpen(bon, LABEL_FICHIERS.to_string()),
+        &mut canal,
+        &tx,
+    );
     let _ = rx.try_recv();
-    traiter(Event::ChannelOpen(autre, "autre-canal".to_string()), &mut canal, &tx);
+    traiter(
+        Event::ChannelOpen(autre, "autre-canal".to_string()),
+        &mut canal,
+        &tx,
+    );
 
-    assert_eq!(canal, Some(bon), "un canal étranger ne doit jamais écraser le nôtre");
-    assert!(rx.try_recv().is_err(), "et il ne doit annoncer aucune ouverture");
+    assert_eq!(
+        canal,
+        Some(bon),
+        "un canal étranger ne doit jamais écraser le nôtre"
+    );
+    assert!(
+        rx.try_recv().is_err(),
+        "et il ne doit annoncer aucune ouverture"
+    );
 }
 
 #[test]

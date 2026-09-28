@@ -96,9 +96,7 @@ mod win {
     use windows::Win32::System::JobObjects::{
         AssignProcessToJobObject, CreateJobObjectW, IsProcessInJob,
     };
-    use windows::Win32::System::Threading::{
-        OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION,
-    };
+    use windows::Win32::System::Threading::{OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION};
 
     /// Le job d'appartenance du processus. **Aucune limite n'y est posée**, et
     /// c'est tout le point : il ne sert qu'à répondre « ce processus est-il des
@@ -157,7 +155,8 @@ mod win {
     /// pour éviter.
     pub fn est_des_notres(pid: u32) -> Option<bool> {
         let job = job()?;
-        let processus = unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid) }.ok()?;
+        let processus =
+            unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid) }.ok()?;
         let mut dedans = windows::core::BOOL(0);
         let issue = unsafe { IsProcessInJob(processus, Some(job), &mut dedans) };
         let _ = unsafe { CloseHandle(processus) };

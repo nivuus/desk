@@ -114,8 +114,10 @@ impl WindowsSource {
         // Sans capture vivante ou sans position lisible, on laisse passer la
         // taille demandée : `crop_region` reste le filet, et un
         // redimensionnement imparfait vaut mieux qu'un échec.
-        let (width, height) = match (self.capture.as_ref(), window::client_rect_on_screen(self.hwnd))
-        {
+        let (width, height) = match (
+            self.capture.as_ref(),
+            window::client_rect_on_screen(self.hwnd),
+        ) {
             (Some(capture), Ok(actuel)) => {
                 let (dw, dh) = capture.desktop_size();
                 let (w, h) = borner_au_bureau(actuel.x, actuel.y, width, height, dw, dh);

@@ -52,7 +52,12 @@ pub fn crop_region(window: Rect, desktop_width: u32, desktop_height: u32) -> Opt
     // `left`/`top` sont bornés par `desktop_width`/`desktop_height` (via le
     // `.min()` ci-dessus) : pour toute résolution d'écran réaliste (très en
     // deçà de `i32::MAX`), ils tiennent sans troncature dans `i32`.
-    Some(Rect { x: left as i32, y: top as i32, width, height })
+    Some(Rect {
+        x: left as i32,
+        y: top as i32,
+        width,
+        height,
+    })
 }
 
 /// Convertit une coordonnée normalisée sur la fenêtre en coordonnée normalisée
@@ -87,7 +92,10 @@ pub fn to_virtual_desktop(x: u16, y: u16, window: Rect, desktop: Rect) -> (i32, 
     let normalized_x = ((screen_x - desktop.x as f64) / width * 65535.0).round();
     let normalized_y = ((screen_y - desktop.y as f64) / height * 65535.0).round();
 
-    (clamp_normalized(normalized_x), clamp_normalized(normalized_y))
+    (
+        clamp_normalized(normalized_x),
+        clamp_normalized(normalized_y),
+    )
 }
 
 /// Borne une coordonnée normalisée dans `0..=65535`, y compris pour un
@@ -175,48 +183,88 @@ mod tests {
 
     #[test]
     fn fenetre_entierement_visible() {
-        let w = Rect { x: 100, y: 50, width: 800, height: 600 };
+        let w = Rect {
+            x: 100,
+            y: 50,
+            width: 800,
+            height: 600,
+        };
         assert_eq!(crop_region(w, 1920, 1080), Some(w));
     }
 
     #[test]
     fn aligne_les_dimensions_impaires() {
-        let w = Rect { x: 0, y: 0, width: 801, height: 601 };
+        let w = Rect {
+            x: 0,
+            y: 0,
+            width: 801,
+            height: 601,
+        };
         let r = crop_region(w, 1920, 1080).unwrap();
         assert_eq!((r.width, r.height), (800, 600));
     }
 
     #[test]
     fn borne_une_fenetre_qui_deborde_a_droite() {
-        let w = Rect { x: 1800, y: 0, width: 400, height: 400 };
+        let w = Rect {
+            x: 1800,
+            y: 0,
+            width: 400,
+            height: 400,
+        };
         let r = crop_region(w, 1920, 1080).unwrap();
         assert_eq!((r.x, r.width), (1800, 120));
     }
 
     #[test]
     fn borne_une_fenetre_a_coordonnees_negatives() {
-        let w = Rect { x: -100, y: -50, width: 400, height: 300 };
+        let w = Rect {
+            x: -100,
+            y: -50,
+            width: 400,
+            height: 300,
+        };
         let r = crop_region(w, 1920, 1080).unwrap();
         assert_eq!((r.x, r.y, r.width, r.height), (0, 0, 300, 250));
     }
 
     #[test]
     fn rejette_une_fenetre_hors_ecran() {
-        let w = Rect { x: 5000, y: 0, width: 400, height: 300 };
+        let w = Rect {
+            x: 5000,
+            y: 0,
+            width: 400,
+            height: 300,
+        };
         assert_eq!(crop_region(w, 1920, 1080), None);
-        let w = Rect { x: 0, y: -5000, width: 400, height: 300 };
+        let w = Rect {
+            x: 0,
+            y: -5000,
+            width: 400,
+            height: 300,
+        };
         assert_eq!(crop_region(w, 1920, 1080), None);
     }
 
     #[test]
     fn rejette_une_intersection_trop_petite() {
-        let w = Rect { x: 1919, y: 0, width: 400, height: 300 };
+        let w = Rect {
+            x: 1919,
+            y: 0,
+            width: 400,
+            height: 300,
+        };
         assert_eq!(crop_region(w, 1920, 1080), None);
     }
 
     #[test]
     fn fenetre_plus_grande_que_l_ecran_dans_les_deux_dimensions() {
-        let w = Rect { x: -500, y: -300, width: 5000, height: 4000 };
+        let w = Rect {
+            x: -500,
+            y: -300,
+            width: 5000,
+            height: 4000,
+        };
         let r = crop_region(w, 1920, 1080).unwrap();
         assert_eq!((r.x, r.y, r.width, r.height), (0, 0, 1920, 1080));
     }
@@ -225,20 +273,40 @@ mod tests {
     fn fenetre_exactement_a_la_limite_de_l_ecran() {
         // Le coin inférieur droit de la fenêtre touche exactement le bord de
         // l'écran (1920, 1080) : intersection non vide, rien à borner.
-        let w = Rect { x: 1520, y: 780, width: 400, height: 300 };
+        let w = Rect {
+            x: 1520,
+            y: 780,
+            width: 400,
+            height: 300,
+        };
         assert_eq!(crop_region(w, 1920, 1080), Some(w));
 
         // Un pixel plus loin : la fenêtre commence exactement là où l'écran
         // s'arrête, intersection vide.
-        let w = Rect { x: 1920, y: 0, width: 400, height: 300 };
+        let w = Rect {
+            x: 1920,
+            y: 0,
+            width: 400,
+            height: 300,
+        };
         assert_eq!(crop_region(w, 1920, 1080), None);
     }
 
     #[test]
     fn rejette_une_largeur_ou_une_hauteur_nulle() {
-        let w = Rect { x: 100, y: 100, width: 0, height: 300 };
+        let w = Rect {
+            x: 100,
+            y: 100,
+            width: 0,
+            height: 300,
+        };
         assert_eq!(crop_region(w, 1920, 1080), None);
-        let w = Rect { x: 100, y: 100, width: 300, height: 0 };
+        let w = Rect {
+            x: 100,
+            y: 100,
+            width: 300,
+            height: 0,
+        };
         assert_eq!(crop_region(w, 1920, 1080), None);
     }
 
@@ -247,18 +315,33 @@ mod tests {
         // Reproduction exacte du panique signalé en revue : l'addition
         // `window.x + window.width` en i32 débordait pour x proche de
         // i32::MAX. Doit désormais être rejeté proprement, pas paniquer.
-        let w = Rect { x: i32::MAX - 10, y: 0, width: 1000, height: 300 };
+        let w = Rect {
+            x: i32::MAX - 10,
+            y: 0,
+            width: 1000,
+            height: 300,
+        };
         assert_eq!(crop_region(w, 1920, 1080), None);
 
         // Symétrique côté bas/droite pour y.
-        let w = Rect { x: 0, y: i32::MAX - 10, width: 300, height: 1000 };
+        let w = Rect {
+            x: 0,
+            y: i32::MAX - 10,
+            width: 300,
+            height: 1000,
+        };
         assert_eq!(crop_region(w, 1920, 1080), None);
 
         // Coordonnées minimales : x très négatif, ne doit pas non plus
         // déborder. La fenêtre reste entièrement hors écran (son bord droit,
         // x + width, est toujours très négatif), donc rejetée — mais
         // proprement, sans panique.
-        let w = Rect { x: i32::MIN + 10, y: i32::MIN + 10, width: 1000, height: 300 };
+        let w = Rect {
+            x: i32::MIN + 10,
+            y: i32::MIN + 10,
+            width: 1000,
+            height: 300,
+        };
         assert_eq!(crop_region(w, 1920, 1080), None);
     }
 
@@ -267,33 +350,73 @@ mod tests {
         // Signalé en revue comme déjà correct — vérifié explicitement plutôt
         // que supposé : une largeur au-delà de i32::MAX ne doit ni paniquer,
         // ni se retrouver tronquée en une valeur négative par un `as i32`.
-        let w = Rect { x: 0, y: 0, width: u32::MAX, height: 300 };
+        let w = Rect {
+            x: 0,
+            y: 0,
+            width: u32::MAX,
+            height: 300,
+        };
         let r = crop_region(w, 1920, 1080).unwrap();
         assert_eq!((r.x, r.y, r.width, r.height), (0, 0, 1920, 300));
     }
 
     #[test]
     fn rects_overlap_detecte_une_intersection() {
-        let a = Rect { x: 0, y: 0, width: 100, height: 100 };
-        let b = Rect { x: 50, y: 50, width: 100, height: 100 };
+        let a = Rect {
+            x: 0,
+            y: 0,
+            width: 100,
+            height: 100,
+        };
+        let b = Rect {
+            x: 50,
+            y: 50,
+            width: 100,
+            height: 100,
+        };
         assert!(rects_overlap(a, b));
     }
 
     #[test]
     fn rects_overlap_rejette_des_rectangles_disjoints() {
-        let a = Rect { x: 0, y: 0, width: 100, height: 100 };
-        let b = Rect { x: 200, y: 200, width: 100, height: 100 };
+        let a = Rect {
+            x: 0,
+            y: 0,
+            width: 100,
+            height: 100,
+        };
+        let b = Rect {
+            x: 200,
+            y: 200,
+            width: 100,
+            height: 100,
+        };
         assert!(!rects_overlap(a, b));
     }
 
     #[test]
     fn rects_overlap_rejette_des_rectangles_qui_se_touchent_sans_se_recouvrir() {
-        let a = Rect { x: 0, y: 0, width: 100, height: 100 };
-        let b = Rect { x: 100, y: 0, width: 100, height: 100 };
+        let a = Rect {
+            x: 0,
+            y: 0,
+            width: 100,
+            height: 100,
+        };
+        let b = Rect {
+            x: 100,
+            y: 0,
+            width: 100,
+            height: 100,
+        };
         assert!(!rects_overlap(a, b));
     }
 
-    const DESKTOP: Rect = Rect { x: 0, y: 0, width: 1920, height: 1080 };
+    const DESKTOP: Rect = Rect {
+        x: 0,
+        y: 0,
+        width: 1920,
+        height: 1080,
+    };
 
     // --- Cohérence entre la région capturée et la région d'injection ---
     //
@@ -306,8 +429,18 @@ mod tests {
     #[test]
     fn le_milieu_de_l_image_vise_le_milieu_de_ce_qui_est_montre() {
         // Fenêtre débordant de 98 px sous un bureau de 1080.
-        let window = Rect { x: 62, y: 0, width: 1550, height: 1178 };
-        let desktop = Rect { x: 0, y: 0, width: 2400, height: 1080 };
+        let window = Rect {
+            x: 62,
+            y: 0,
+            width: 1550,
+            height: 1178,
+        };
+        let desktop = Rect {
+            x: 0,
+            y: 0,
+            width: 2400,
+            height: 1080,
+        };
 
         let (_, y) = to_virtual_desktop_visible(32768, 32768, window, desktop)
             .expect("la fenêtre est visible");
@@ -320,11 +453,21 @@ mod tests {
 
     #[test]
     fn le_bas_de_l_image_vise_le_bas_de_ce_qui_est_montre() {
-        let window = Rect { x: 62, y: 0, width: 1550, height: 1178 };
-        let desktop = Rect { x: 0, y: 0, width: 2400, height: 1080 };
+        let window = Rect {
+            x: 62,
+            y: 0,
+            width: 1550,
+            height: 1178,
+        };
+        let desktop = Rect {
+            x: 0,
+            y: 0,
+            width: 2400,
+            height: 1080,
+        };
 
-        let (_, y) = to_virtual_desktop_visible(0, 65535, window, desktop)
-            .expect("la fenêtre est visible");
+        let (_, y) =
+            to_virtual_desktop_visible(0, 65535, window, desktop).expect("la fenêtre est visible");
 
         assert_eq!(y, 65535, "le bas de l'image doit viser le bas du bureau");
     }
@@ -332,8 +475,18 @@ mod tests {
     #[test]
     fn l_axe_horizontal_reste_intact_quand_seul_le_bas_deborde() {
         // La largeur ne déborde pas : le mapping horizontal ne doit pas bouger.
-        let window = Rect { x: 62, y: 0, width: 1550, height: 1178 };
-        let desktop = Rect { x: 0, y: 0, width: 2400, height: 1080 };
+        let window = Rect {
+            x: 62,
+            y: 0,
+            width: 1550,
+            height: 1178,
+        };
+        let desktop = Rect {
+            x: 0,
+            y: 0,
+            width: 2400,
+            height: 1080,
+        };
 
         let (avec, _) = to_virtual_desktop_visible(32768, 0, window, desktop).unwrap();
         let (sans, _) = to_virtual_desktop(32768, 0, window, desktop);
@@ -344,7 +497,12 @@ mod tests {
     fn une_fenetre_entierement_visible_est_mappee_a_l_identique() {
         // Sans débordement, la correction ne doit rien changer : c'est ce qui
         // rendait le défaut invisible jusqu'ici.
-        let window = Rect { x: 100, y: 50, width: 800, height: 600 };
+        let window = Rect {
+            x: 100,
+            y: 50,
+            width: 800,
+            height: 600,
+        };
         assert_eq!(
             to_virtual_desktop_visible(12345, 54321, window, DESKTOP),
             Some(to_virtual_desktop(12345, 54321, window, DESKTOP))
@@ -353,7 +511,12 @@ mod tests {
 
     #[test]
     fn une_fenetre_hors_ecran_ne_produit_aucune_coordonnee() {
-        let window = Rect { x: 5000, y: 0, width: 400, height: 300 };
+        let window = Rect {
+            x: 5000,
+            y: 0,
+            width: 400,
+            height: 300,
+        };
         assert_eq!(to_virtual_desktop_visible(0, 0, window, DESKTOP), None);
     }
 
@@ -363,7 +526,10 @@ mod tests {
     fn borne_une_hauteur_qui_depasserait_le_bas_du_bureau() {
         // Le cas réel : 1187 demandés depuis un viewport plus haut que le
         // bureau de la VM.
-        assert_eq!(borner_au_bureau(62, 0, 1550, 1187, 2400, 1080), (1550, 1080));
+        assert_eq!(
+            borner_au_bureau(62, 0, 1550, 1187, 2400, 1080),
+            (1550, 1080)
+        );
     }
 
     #[test]
@@ -393,20 +559,38 @@ mod tests {
 
     #[test]
     fn coin_superieur_gauche_d_une_fenetre_a_l_origine() {
-        let window = Rect { x: 0, y: 0, width: 1920, height: 1080 };
+        let window = Rect {
+            x: 0,
+            y: 0,
+            width: 1920,
+            height: 1080,
+        };
         assert_eq!(to_virtual_desktop(0, 0, window, DESKTOP), (0, 0));
     }
 
     #[test]
     fn coin_inferieur_droit_d_une_fenetre_plein_ecran() {
-        let window = Rect { x: 0, y: 0, width: 1920, height: 1080 };
-        assert_eq!(to_virtual_desktop(65535, 65535, window, DESKTOP), (65535, 65535));
+        let window = Rect {
+            x: 0,
+            y: 0,
+            width: 1920,
+            height: 1080,
+        };
+        assert_eq!(
+            to_virtual_desktop(65535, 65535, window, DESKTOP),
+            (65535, 65535)
+        );
     }
 
     #[test]
     fn centre_d_une_fenetre_decalee() {
         // Fenêtre de 960×540 placée au centre : son centre est celui de l'écran.
-        let window = Rect { x: 480, y: 270, width: 960, height: 540 };
+        let window = Rect {
+            x: 480,
+            y: 270,
+            width: 960,
+            height: 540,
+        };
         let (x, y) = to_virtual_desktop(32768, 32768, window, DESKTOP);
         assert!((x - 32768).abs() <= 40, "x = {x}");
         assert!((y - 32768).abs() <= 40, "y = {y}");
@@ -414,7 +598,12 @@ mod tests {
 
     #[test]
     fn origine_d_une_fenetre_decalee() {
-        let window = Rect { x: 960, y: 540, width: 960, height: 540 };
+        let window = Rect {
+            x: 960,
+            y: 540,
+            width: 960,
+            height: 540,
+        };
         let (x, y) = to_virtual_desktop(0, 0, window, DESKTOP);
         assert_eq!((x, y), (32768, 32768));
     }
@@ -422,8 +611,18 @@ mod tests {
     #[test]
     fn borne_les_debordements_sur_un_bureau_multi_ecrans() {
         // Bureau virtuel commençant en coordonnées négatives (écran à gauche).
-        let desktop = Rect { x: -1920, y: 0, width: 3840, height: 1080 };
-        let window = Rect { x: -1920, y: 0, width: 1920, height: 1080 };
+        let desktop = Rect {
+            x: -1920,
+            y: 0,
+            width: 3840,
+            height: 1080,
+        };
+        let window = Rect {
+            x: -1920,
+            y: 0,
+            width: 1920,
+            height: 1080,
+        };
         assert_eq!(to_virtual_desktop(0, 0, window, desktop), (0, 0));
         let (x, _) = to_virtual_desktop(65535, 0, window, desktop);
         assert!((x - 32768).abs() <= 40, "x = {x}");
@@ -431,7 +630,12 @@ mod tests {
 
     #[test]
     fn ne_divise_jamais_par_zero() {
-        let degenerate = Rect { x: 0, y: 0, width: 0, height: 0 };
+        let degenerate = Rect {
+            x: 0,
+            y: 0,
+            width: 0,
+            height: 0,
+        };
         let (x, y) = to_virtual_desktop(32768, 32768, degenerate, degenerate);
         assert!((0..=65535).contains(&x) && (0..=65535).contains(&y));
     }
@@ -443,15 +647,35 @@ mod tests {
         // (jamais produites par `client_rect_on_screen` en pratique, mais pas
         // structurellement impossibles) ne doit ni paniquer, ni sortir de
         // `0..=65535`.
-        let window = Rect { x: i32::MAX - 10, y: i32::MIN + 10, width: u32::MAX, height: u32::MAX };
-        let desktop = Rect { x: 0, y: 0, width: 1, height: 1 };
+        let window = Rect {
+            x: i32::MAX - 10,
+            y: i32::MIN + 10,
+            width: u32::MAX,
+            height: u32::MAX,
+        };
+        let desktop = Rect {
+            x: 0,
+            y: 0,
+            width: 1,
+            height: 1,
+        };
         let (x, y) = to_virtual_desktop(65535, 0, window, desktop);
         assert!((0..=65535).contains(&x), "x = {x}");
         assert!((0..=65535).contains(&y), "y = {y}");
 
         // Bureau lui-même dégénéré à l'extrême, combiné à une fenêtre normale.
-        let window = Rect { x: 0, y: 0, width: 1920, height: 1080 };
-        let desktop = Rect { x: i32::MIN + 10, y: i32::MAX - 10, width: u32::MAX, height: 0 };
+        let window = Rect {
+            x: 0,
+            y: 0,
+            width: 1920,
+            height: 1080,
+        };
+        let desktop = Rect {
+            x: i32::MIN + 10,
+            y: i32::MAX - 10,
+            width: u32::MAX,
+            height: 0,
+        };
         let (x, y) = to_virtual_desktop(0, 65535, window, desktop);
         assert!((0..=65535).contains(&x), "x = {x}");
         assert!((0..=65535).contains(&y), "y = {y}");

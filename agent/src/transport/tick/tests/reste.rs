@@ -19,8 +19,8 @@ fn une_visibilite_en_attente_est_appliquee_a_la_source_puis_relachee() {
         awake_recus: awake_recus.clone(),
         sommeil_prepare: None,
     });
-    let mut session = Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000)
-        .expect("session");
+    let mut session =
+        Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000).expect("session");
 
     session.pending_visibility = Some((false, true));
     session
@@ -50,8 +50,8 @@ fn un_changement_de_sommeil_de_la_source_est_traduit_en_message_asleep() {
         awake_recus: std::sync::Arc::new(std::sync::Mutex::new(Vec::new())),
         sommeil_prepare: Some((true, "masquee".to_string())),
     });
-    let mut session = Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000)
-        .expect("session");
+    let mut session =
+        Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000).expect("session");
 
     session
         .act_on_timeout(Instant::now())
@@ -89,9 +89,12 @@ fn un_changement_de_sommeil_de_la_source_est_traduit_en_message_asleep() {
 #[test]
 fn une_part_en_attente_est_appliquee_par_act_on_timeout() {
     let inner = fixtures::video_test_source();
-    let source = Box::new(SourceAvecPart { inner, part_preparee: Some(3_000_000) });
-    let mut session = Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000)
-        .expect("session");
+    let source = Box::new(SourceAvecPart {
+        inner,
+        part_preparee: Some(3_000_000),
+    });
+    let mut session =
+        Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000).expect("session");
 
     session
         .act_on_timeout(Instant::now())
@@ -186,7 +189,9 @@ fn atteint_la_cadence_video_visee_avec_un_pair_local() {
     api.add_channel("input".to_string());
     let (offer, pending) = api.apply().expect("offre non vide");
 
-    let answer_sdp = session.accept_offer(&offer.to_sdp_string()).expect("offre acceptée");
+    let answer_sdp = session
+        .accept_offer(&offer.to_sdp_string())
+        .expect("offre acceptée");
     let answer = SdpAnswer::from_sdp_string(&answer_sdp).expect("réponse SDP valide");
     peer_rtc
         .sdp_api()
@@ -259,7 +264,9 @@ fn atteint_la_cadence_video_visee_avec_un_pair_local() {
                     Some(c) => hard_deadline.min(c + measure_window),
                     None => hard_deadline,
                 };
-                let wait = t.saturating_duration_since(now).min(cap.saturating_duration_since(now));
+                let wait = t
+                    .saturating_duration_since(now)
+                    .min(cap.saturating_duration_since(now));
                 if fixtures::poll_peer_socket(&mut peer_rtc, &peer_socket, peer_addr, now, wait) {
                     continue;
                 }
@@ -325,8 +332,8 @@ fn un_presse_papier_de_la_source_est_traduit_en_message_clipboard() {
         inner,
         presse_papier_prepare: Some((Some("bonjour".to_string()), 7)),
     });
-    let mut session = Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000)
-        .expect("session");
+    let mut session =
+        Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000).expect("session");
 
     session
         .act_on_timeout(Instant::now())
@@ -350,10 +357,12 @@ fn un_presse_papier_de_la_source_est_traduit_en_message_clipboard() {
 #[test]
 fn un_refus_de_taille_est_traduit_en_message_clipboard_sans_texte() {
     let inner = fixtures::video_test_source();
-    let source =
-        Box::new(SourceAvecPressePapier { inner, presse_papier_prepare: Some((None, 100_000)) });
-    let mut session = Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000)
-        .expect("session");
+    let source = Box::new(SourceAvecPressePapier {
+        inner,
+        presse_papier_prepare: Some((None, 100_000)),
+    });
+    let mut session =
+        Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000).expect("session");
 
     session
         .act_on_timeout(Instant::now())
@@ -362,7 +371,11 @@ fn un_refus_de_taille_est_traduit_en_message_clipboard_sans_texte() {
     assert!(
         session.pending_control.iter().any(|message| matches!(
             message,
-            proto::control::AgentControl::Clipboard { text: None, bytes: 100_000, .. }
+            proto::control::AgentControl::Clipboard {
+                text: None,
+                bytes: 100_000,
+                ..
+            }
         )),
         "le refus attendu n'est pas en file : {:?}",
         session.pending_control
@@ -378,10 +391,12 @@ fn un_refus_de_taille_est_traduit_en_message_clipboard_sans_texte() {
 #[test]
 fn un_accent_de_la_source_est_traduit_en_message_accent() {
     let inner = fixtures::video_test_source();
-    let source =
-        Box::new(SourceAvecAccent { inner, accent_prepare: Some("#7aa2f7".to_string()) });
-    let mut session = Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000)
-        .expect("session");
+    let source = Box::new(SourceAvecAccent {
+        inner,
+        accent_prepare: Some("#7aa2f7".to_string()),
+    });
+    let mut session =
+        Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000).expect("session");
 
     session
         .act_on_timeout(Instant::now())
@@ -407,22 +422,31 @@ fn un_accent_de_la_source_est_traduit_en_message_accent() {
 #[test]
 fn l_accent_annonce_est_consomme_et_ne_repart_pas_au_tour_suivant() {
     let inner = fixtures::video_test_source();
-    let source =
-        Box::new(SourceAvecAccent { inner, accent_prepare: Some("#fa8c16".to_string()) });
-    let mut session = Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000)
-        .expect("session");
+    let source = Box::new(SourceAvecAccent {
+        inner,
+        accent_prepare: Some("#fa8c16".to_string()),
+    });
+    let mut session =
+        Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000).expect("session");
 
-    session.act_on_timeout(Instant::now()).expect("premier tour");
+    session
+        .act_on_timeout(Instant::now())
+        .expect("premier tour");
     let apres_le_premier = session
         .pending_control
         .iter()
         .filter(|message| matches!(message, proto::control::AgentControl::Accent { .. }))
         .count();
-    assert_eq!(apres_le_premier, 1, "le premier tour doit mettre EXACTEMENT une annonce en file");
+    assert_eq!(
+        apres_le_premier, 1,
+        "le premier tour doit mettre EXACTEMENT une annonce en file"
+    );
 
     // Dix tours de plus : la source n'a plus rien à annoncer.
     for _ in 0..10 {
-        session.act_on_timeout(Instant::now()).expect("tour suivant");
+        session
+            .act_on_timeout(Instant::now())
+            .expect("tour suivant");
     }
     let total = session
         .pending_control

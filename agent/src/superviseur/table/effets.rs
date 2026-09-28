@@ -14,12 +14,20 @@ use super::{IdFenetre, IdSession};
 /// exécute dans l'ordre rendu.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Effet {
-    AnnoncerOuverture { session: IdSession, titre: String },
+    AnnoncerOuverture {
+        session: IdSession,
+        titre: String,
+    },
     /// `titre` accompagne la demande parce que le refus qui peut en découler
     /// s'affiche à un humain. Sans lui, l'appelant n'a que l'identifiant de
     /// session sous la main et la page-shell annonce « *« w-3 » n'a pas pu
     /// s'ouvrir* » — un message qui ne désigne rien pour l'utilisateur.
-    CreerSortie { session: IdSession, titre: String, largeur: u32, hauteur: u32 },
+    CreerSortie {
+        session: IdSession,
+        titre: String,
+        largeur: u32,
+        hauteur: u32,
+    },
     LancerEnfant {
         session: IdSession,
         fenetre: IdFenetre,
@@ -36,7 +44,9 @@ pub enum Effet {
         /// capteur en a besoin pour recadrer (tâche 8).
         taille: (u32, u32),
     },
-    TuerEnfant { session: IdSession },
+    TuerEnfant {
+        session: IdSession,
+    },
     /// `sortie_pilote` est **l'identifiant du PILOTE**, pas le nom DXGI : le
     /// pilote ne sait retirer une sortie que par ce qu'il a lui-même rendu à
     /// la création ; lui présenter un nom DXGI ne détruirait rien, ou
@@ -46,7 +56,10 @@ pub enum Effet {
     /// `nom_sortie` accompagne la destruction parce que l'entrée a déjà
     /// quitté la table quand cet effet est rendu : sans lui, l'appelant ne
     /// pourrait plus savoir quelle place DXGI redevient libre.
-    DetruireSortie { sortie_pilote: u32, nom_sortie: String },
+    DetruireSortie {
+        sortie_pilote: u32,
+        nom_sortie: String,
+    },
     /// Le navigateur a retaillé sa fenêtre, et la session est DÉJÀ vivante :
     /// il n'y a ni sortie à créer ni enfant à lancer, seulement une taille
     /// retenue à corriger et une fenêtre à reposer.
@@ -61,7 +74,16 @@ pub enum Effet {
     ///
     /// `largeur`/`hauteur` sont déjà bornées par `borner_a_la_taille_max`,
     /// comme sur les deux autres chemins d'entrée du viewport.
-    SuivreLeViewport { session: IdSession, largeur: u32, hauteur: u32 },
-    AnnoncerFermeture { session: IdSession },
-    AnnoncerRefus { titre: String, motif: String },
+    SuivreLeViewport {
+        session: IdSession,
+        largeur: u32,
+        hauteur: u32,
+    },
+    AnnoncerFermeture {
+        session: IdSession,
+    },
+    AnnoncerRefus {
+        titre: String,
+        motif: String,
+    },
 }

@@ -27,7 +27,10 @@ fn une_derniere_ligne_tronquee_ne_fait_pas_perdre_les_precedentes() {
     assert_eq!(ignorees, 1, "la ligne tronquée doit être COMPTÉE, pas tue");
     assert_eq!(
         relu.dues(),
-        [("note.txt".to_string(), 42), ("dossier/gros.bin".to_string(), 12_582_912)],
+        [
+            ("note.txt".to_string(), 42),
+            ("dossier/gros.bin".to_string(), 12_582_912)
+        ],
         "les deux entrées ANTÉRIEURES doivent survivre"
     );
 }
@@ -51,7 +54,10 @@ fn un_retrait_efface_l_inscription_et_pas_une_autre() {
     for etat in [j.clone(), rejouer(&f).0] {
         assert_eq!(
             etat.dues(),
-            [("note.txt.bak".to_string(), 2), ("dossier/enfant.txt".to_string(), 4)],
+            [
+                ("note.txt.bak".to_string(), 2),
+                ("dossier/enfant.txt".to_string(), 4)
+            ],
             "seuls les chemins EXACTS devaient partir"
         );
     }
@@ -68,7 +74,12 @@ fn l_ordre_d_inscription_est_conserve() {
         f.push_str(&j.inscrire(&format!("f{i:02}.txt"), i));
     }
     let attendus: Vec<String> = (0..16).map(|i| format!("f{i:02}.txt")).collect();
-    let vus: Vec<String> = rejouer(&f).0.dues().iter().map(|(c, _)| c.clone()).collect();
+    let vus: Vec<String> = rejouer(&f)
+        .0
+        .dues()
+        .iter()
+        .map(|(c, _)| c.clone())
+        .collect();
     assert_eq!(vus, attendus);
 }
 
@@ -85,7 +96,10 @@ fn un_rejeu_met_a_jour_les_octets_sans_changer_de_place() {
     f.push_str(&j.inscrire("a.txt", 999));
 
     for etat in [j.clone(), rejouer(&f).0] {
-        assert_eq!(etat.dues(), [("a.txt".to_string(), 999), ("b.txt".to_string(), 2)]);
+        assert_eq!(
+            etat.dues(),
+            [("a.txt".to_string(), 999), ("b.txt".to_string(), 2)]
+        );
     }
 }
 
@@ -127,7 +141,10 @@ fn un_chemin_a_saut_de_ligne_survit_a_un_aller_retour() {
 #[test]
 fn un_journal_vide_se_compacte_et_un_journal_non_vide_jamais() {
     let mut j = Journal::nouveau();
-    assert!(!j.compactable(TAILLE_JOURNAL_COMPACTAGE), "au seuil exact : pas encore");
+    assert!(
+        !j.compactable(TAILLE_JOURNAL_COMPACTAGE),
+        "au seuil exact : pas encore"
+    );
     assert!(j.compactable(TAILLE_JOURNAL_COMPACTAGE + 1));
 
     j.inscrire("une seule due.txt", 1);
@@ -137,7 +154,10 @@ fn un_journal_vide_se_compacte_et_un_journal_non_vide_jamais() {
     );
 
     j.retirer("une seule due.txt");
-    assert!(j.compactable(TAILLE_JOURNAL_COMPACTAGE + 1), "vidé, il redevient compactable");
+    assert!(
+        j.compactable(TAILLE_JOURNAL_COMPACTAGE + 1),
+        "vidé, il redevient compactable"
+    );
 }
 
 /// Une ligne d'un genre inconnu est comptée et jetée, jamais fatale.
@@ -154,7 +174,10 @@ fn un_journal_vide_ou_de_retraits_seuls_se_relit_sans_rien_inventer() {
     assert_eq!(rejouer("").0.compte(), 0);
     assert_eq!(rejouer("\n\n").0.compte(), 0);
     let (relu, ignorees) = rejouer("-\"jamais inscrit.txt\"\n");
-    assert_eq!(ignorees, 0, "un retrait d'un chemin absent est LICITE, pas illisible");
+    assert_eq!(
+        ignorees, 0,
+        "un retrait d'un chemin absent est LICITE, pas illisible"
+    );
     assert_eq!(relu.compte(), 0);
 }
 

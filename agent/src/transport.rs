@@ -56,10 +56,6 @@ use crate::audio::{AudioSource, Reconstructeur};
 use crate::congestion;
 use crate::source::VideoSource;
 
-#[cfg(test)]
-mod fixtures;
-#[cfg(test)]
-mod sonde_montante;
 mod adaptation;
 /// La boucle de transport et les deux points de drainage antérieurs à `run`.
 ///
@@ -79,6 +75,8 @@ mod cadence_video;
 mod collage;
 mod controle;
 mod evenements;
+#[cfg(test)]
+mod fixtures;
 mod initialisation;
 mod part;
 mod piste_audio;
@@ -87,6 +85,8 @@ mod piste_video;
 mod redimensionnement;
 mod relais;
 mod socket;
+#[cfg(test)]
+mod sonde_montante;
 mod tick;
 
 use piste_video::FRAME_INTERVAL;
@@ -484,5 +484,4 @@ impl Session {
 
         Ok(session)
     }
-
 }

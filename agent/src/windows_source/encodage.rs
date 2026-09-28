@@ -94,8 +94,9 @@ impl WindowsSource {
             Ok(encoder) => encoder,
             Err(erreur) => {
                 self.fatal = true;
-                return Err(erreur)
-                    .context("encodeur neuf refusé après destruction de l'ancien : source épuisée");
+                return Err(erreur).context(
+                    "encodeur neuf refusé après destruction de l'ancien : source épuisée",
+                );
             }
         };
         // Un encodeur neuf doit commencer par une image clé : sans elle, le
@@ -105,15 +106,18 @@ impl WindowsSource {
         // que ci-dessus, et pour la même raison.
         if let Err(erreur) = encoder.request_keyframe() {
             self.fatal = true;
-            return Err(erreur)
-                .context("image clé refusée par l'encodeur neuf : source épuisée");
+            return Err(erreur).context("image clé refusée par l'encodeur neuf : source épuisée");
         }
 
         self.encoder = Some(encoder);
         // L'encodeur neuf n'a rien produit : le budget de sondage de
         // démarrage doit repartir, comme après `resize`.
         self.encoder_warmed_up = false;
-        tracing::info!(width, height, "taille d'encodage changée sans toucher à la fenêtre");
+        tracing::info!(
+            width,
+            height,
+            "taille d'encodage changée sans toucher à la fenêtre"
+        );
         Ok(())
     }
 }

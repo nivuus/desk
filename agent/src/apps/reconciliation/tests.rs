@@ -41,7 +41,10 @@ fn deux_catalogues_identiques_rendent_un_diff_entierement_vide() {
 
 #[test]
 fn une_application_neuve_est_apparue_et_pas_modifiee() {
-    let d = diff(&[app("a", "A", "/a")], &[app("a", "A", "/a"), app("b", "B", "/b")]);
+    let d = diff(
+        &[app("a", "A", "/a")],
+        &[app("a", "A", "/a"), app("b", "B", "/b")],
+    );
     assert_eq!(d.apparues, vec![app("b", "B", "/b")]);
     assert!(d.modifiees.is_empty());
     assert!(d.disparues.is_empty());
@@ -61,7 +64,10 @@ fn un_nom_qui_change_a_cle_egale_est_une_modification() {
 fn un_chemin_de_lnk_qui_change_est_une_modification() {
     // Et c'est ce chemin que le lancement emploie : le laisser dériver ferait
     // lancer un raccourci qui n'est plus là.
-    let d = diff(&[app("a", "A", "/bureau/a.lnk")], &[app("a", "A", "/menu/a.lnk")]);
+    let d = diff(
+        &[app("a", "A", "/bureau/a.lnk")],
+        &[app("a", "A", "/menu/a.lnk")],
+    );
     assert_eq!(d.modifiees, vec![app("a", "A", "/menu/a.lnk")]);
 }
 
@@ -69,7 +75,10 @@ fn un_chemin_de_lnk_qui_change_est_une_modification() {
 fn une_application_absente_d_aujourdhui_disparait_PAR_SA_CLE() {
     // La plateforme n'a besoin que de l'identité : rendre l'objet entier ferait
     // grossir le message pour rien.
-    let d = diff(&[app("a", "A", "/a"), app("b", "B", "/b")], &[app("a", "A", "/a")]);
+    let d = diff(
+        &[app("a", "A", "/a"), app("b", "B", "/b")],
+        &[app("a", "A", "/a")],
+    );
     assert_eq!(d.disparues, vec!["b".to_string()]);
     assert!(d.apparues.is_empty());
     assert!(d.modifiees.is_empty());
@@ -101,19 +110,37 @@ fn le_diff_est_deterministe_et_trie_quel_que_soit_l_ordre_d_entree() {
     // DIFFÉRENTS pour un état IDENTIQUE, et rien ne le dirait — le journal
     // montrerait un catalogue qui bouge sans que le disque ait changé.
     let hier = vec![app("x", "X", "/x")];
-    let a = vec![app("c", "C", "/c"), app("a", "A", "/a"), app("b", "B", "/b")];
-    let b = vec![app("b", "B", "/b"), app("c", "C", "/c"), app("a", "A", "/a")];
+    let a = vec![
+        app("c", "C", "/c"),
+        app("a", "A", "/a"),
+        app("b", "B", "/b"),
+    ];
+    let b = vec![
+        app("b", "B", "/b"),
+        app("c", "C", "/c"),
+        app("a", "A", "/a"),
+    ];
     let da = diff(&hier, &a);
     let db = diff(&hier, &b);
     assert_eq!(da, db);
     assert_eq!(
-        da.apparues.iter().map(|x| x.cle.as_str()).collect::<Vec<_>>(),
+        da.apparues
+            .iter()
+            .map(|x| x.cle.as_str())
+            .collect::<Vec<_>>(),
         ["a", "b", "c"]
     );
 
-    let hier2 = vec![app("z", "Z", "/z"), app("y", "Y", "/y"), app("x", "X", "/x")];
+    let hier2 = vec![
+        app("z", "Z", "/z"),
+        app("y", "Y", "/y"),
+        app("x", "X", "/x"),
+    ];
     let d = diff(&hier2, &[]);
-    assert_eq!(d.disparues, vec!["x".to_string(), "y".to_string(), "z".to_string()]);
+    assert_eq!(
+        d.disparues,
+        vec!["x".to_string(), "y".to_string(), "z".to_string()]
+    );
 }
 
 #[test]
@@ -121,7 +148,13 @@ fn un_doublon_de_cle_dans_la_lecture_du_jour_ne_produit_qu_une_application() {
     // Deux `.lnk` au même triplet — le cas mesuré : sur la VM, 167 raccourcis
     // retenus rendent 154 clés. Le diff ne doit pas les compter deux fois, ni
     // rendre une `modifiee` pour une application qui vient d'apparaître.
-    let d = diff(&[], &[app("a", "Bureau", "/bureau/a.lnk"), app("a", "Menu", "/menu/a.lnk")]);
+    let d = diff(
+        &[],
+        &[
+            app("a", "Bureau", "/bureau/a.lnk"),
+            app("a", "Menu", "/menu/a.lnk"),
+        ],
+    );
     assert_eq!(d.apparues.len(), 1);
     assert!(d.modifiees.is_empty());
 }

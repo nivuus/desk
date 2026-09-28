@@ -85,7 +85,9 @@ pub(super) unsafe extern "system" fn notification(
     _parametres: *mut PRJ_NOTIFICATION_PARAMETERS,
 ) -> HRESULT {
     garde("Notification", || {
-        let Some(etat) = (unsafe { etat(donnees) }) else { return E_UNEXPECTED };
+        let Some(etat) = (unsafe { etat(donnees) }) else {
+            return E_UNEXPECTED;
+        };
         // SÛRETÉ : `destination` est un `PCWSTR` que ProjFS a fourni ; il est
         // ou bien nul, ou bien terminé par un nul.
         let vers = unsafe { destination_de(destination) };
@@ -145,9 +147,10 @@ pub(super) unsafe extern "system" fn notification(
                     return S_OK;
                 };
                 let evenement = match quoi {
-                    notifications::Poussee::Creation => {
-                        Evenement::Cree { chemin, repertoire: est_repertoire }
-                    }
+                    notifications::Poussee::Creation => Evenement::Cree {
+                        chemin,
+                        repertoire: est_repertoire,
+                    },
                     notifications::Poussee::Contenu => Evenement::Modifie { chemin },
                     // ── LES DEUX POUSSÉES DE F3 ───────────────────────────
                     notifications::Poussee::Renommage => {
@@ -178,11 +181,16 @@ pub(super) unsafe extern "system" fn notification(
                             );
                             return S_OK;
                         }
-                        Evenement::Renomme { de: chemin, vers, repertoire: est_repertoire }
+                        Evenement::Renomme {
+                            de: chemin,
+                            vers,
+                            repertoire: est_repertoire,
+                        }
                     }
-                    notifications::Poussee::Suppression => {
-                        Evenement::Supprime { chemin, repertoire: est_repertoire }
-                    }
+                    notifications::Poussee::Suppression => Evenement::Supprime {
+                        chemin,
+                        repertoire: est_repertoire,
+                    },
                 };
                 // ────────────────────────────────────────────────────────
                 // 🔴 **F5 — PREMIÈRE MOITIÉ DE L'INVALIDATION : ce que la VM a
@@ -288,7 +296,10 @@ unsafe fn destination_de(brut: windows::core::PCWSTR) -> Option<Result<String, (
     match crate::pont::chemins::normaliser_utf16(unites) {
         Ok(logique) => Some(Ok(logique)),
         Err(refus) => {
-            tracing::warn!(?refus, "destination de renommage refusee par la normalisation");
+            tracing::warn!(
+                ?refus,
+                "destination de renommage refusee par la normalisation"
+            );
             Some(Err(()))
         }
     }
@@ -306,7 +317,9 @@ unsafe fn destination_de(brut: windows::core::PCWSTR) -> Option<Result<String, (
 /// L'appelant garantit que `donnees` est le `PRJ_CALLBACK_DATA` que ProjFS
 /// vient de fournir.
 unsafe fn chemin_brut(donnees: *const PRJ_CALLBACK_DATA) -> String {
-    let Some(brut) = (unsafe { donnees.as_ref() }) else { return String::new() };
+    let Some(brut) = (unsafe { donnees.as_ref() }) else {
+        return String::new();
+    };
     if brut.FilePathName.is_null() {
         return String::new();
     }

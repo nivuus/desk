@@ -57,7 +57,11 @@ const PERIODE_MS: u64 = PERIODE_PROGRESSION.as_millis() as u64;
 /// que ce module protège est une file bornée, et le prix du refus — une barre
 /// qui se fige un instant — est lui-même borné par la clause de fin de phase,
 /// qui passe quoi qu'il arrive.
-pub fn doit_emettre(dernier_ms: Option<u64>, maintenant_ms: u64, derniere_de_la_phase: bool) -> bool {
+pub fn doit_emettre(
+    dernier_ms: Option<u64>,
+    maintenant_ms: u64,
+    derniere_de_la_phase: bool,
+) -> bool {
     if derniere_de_la_phase {
         return true;
     }
@@ -94,7 +98,10 @@ mod tests {
     /// temps écoulé.
     #[test]
     fn la_derniere_progression_d_une_phase_passe_meme_a_zero_milliseconde() {
-        assert!(!doit_emettre(Some(1_000), 1_000, false), "le témoin doit refuser");
+        assert!(
+            !doit_emettre(Some(1_000), 1_000, false),
+            "le témoin doit refuser"
+        );
         assert!(doit_emettre(Some(1_000), 1_000, true));
         // Et même une horloge qui recule ne la retient pas : une phase achevée
         // doit être annoncée quoi qu'il arrive.

@@ -3,13 +3,21 @@
 use super::*;
 
 fn modifie(chemin: &str) -> Evenement {
-    Evenement::Modifie { chemin: chemin.to_string() }
+    Evenement::Modifie {
+        chemin: chemin.to_string(),
+    }
 }
 fn cree(chemin: &str) -> Evenement {
-    Evenement::Cree { chemin: chemin.to_string(), repertoire: false }
+    Evenement::Cree {
+        chemin: chemin.to_string(),
+        repertoire: false,
+    }
 }
 fn cree_dossier(chemin: &str) -> Evenement {
-    Evenement::Cree { chemin: chemin.to_string(), repertoire: true }
+    Evenement::Cree {
+        chemin: chemin.to_string(),
+        repertoire: true,
+    }
 }
 
 /// 🔴 **DEUX NOTIFICATIONS DU MÊME CHEMIN NE FONT QU'UNE POUSSÉE EN VOL.**
@@ -20,7 +28,11 @@ fn cree_dossier(chemin: &str) -> Evenement {
 fn deux_notifications_du_meme_chemin_ne_font_qu_une_poussee_en_vol() {
     let mut f = File::nouvelle();
     assert_eq!(f.signaler(modifie("a.txt")), Some(modifie("a.txt")));
-    assert_eq!(f.signaler(modifie("a.txt")), None, "la seconde ne démarre RIEN");
+    assert_eq!(
+        f.signaler(modifie("a.txt")),
+        None,
+        "la seconde ne démarre RIEN"
+    );
     assert_eq!(f.en_vol(), Some("a.txt"));
     assert_eq!(f.en_attente(), 0);
 }
@@ -84,7 +96,10 @@ fn un_chemin_deja_en_attente_garde_son_rang() {
     f.signaler(modifie("b.txt"));
     assert_eq!(f.signaler(modifie("a.txt")), None, "a.txt attendait déjà");
     assert_eq!(f.en_attente(), 2, "aucun doublon n'entre dans la file");
-    assert_eq!(f.terminee("en-vol.txt").as_ref().map(Evenement::chemin), Some("a.txt"));
+    assert_eq!(
+        f.terminee("en-vol.txt").as_ref().map(Evenement::chemin),
+        Some("a.txt")
+    );
 }
 
 /// 🔴 **UNE CRÉATION DE RÉPERTOIRE N'EST JAMAIS REMPLACÉE PAR UNE
@@ -174,5 +189,9 @@ fn oublier_retire_de_la_file_et_du_rejeu_mais_pas_du_vol() {
 
     f.oublier("en-vol.txt");
     assert_eq!(f.en_vol(), Some("en-vol.txt"), "le vol en cours reste");
-    assert_eq!(f.terminee("en-vol.txt"), None, "mais son rejeu a bien été oublié");
+    assert_eq!(
+        f.terminee("en-vol.txt"),
+        None,
+        "mais son rejeu a bien été oublié"
+    );
 }

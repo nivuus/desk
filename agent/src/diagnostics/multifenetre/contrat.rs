@@ -26,8 +26,12 @@ use crate::moniteurs_virtuels::sudovda::{Veille, VersionProtocole};
 /// cette comparaison, `conforme` ne porterait que des TAILLES, et une taille ne
 /// dit rien du contenu. C'est le seul élément du relevé qui corrobore autre
 /// chose qu'un dimensionnement.
-const VERSION_AMONT: VersionProtocole =
-    VersionProtocole { majeure: 0, mineure: 2, increment: 1, version_de_test: 1 };
+const VERSION_AMONT: VersionProtocole = VersionProtocole {
+    majeure: 0,
+    mineure: 2,
+    increment: 1,
+    version_de_test: 1,
+};
 
 /// Ce qu'un succès établit : que le GUID d'interface ouvre bien un périphérique
 /// vivant, que la formule `CTL_CODE` employée pour les quatre codes NON

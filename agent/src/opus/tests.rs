@@ -39,8 +39,8 @@ fn energie_a(pcm: &[i16], freq: f64) -> f64 {
 fn ton(freq: f64, depuis: usize, n: usize) -> Vec<i16> {
     (0..n)
         .flat_map(|i| {
-            let phase = (depuis + i) as f64 * 2.0 * std::f64::consts::PI * freq
-                / SAMPLE_RATE_HZ as f64;
+            let phase =
+                (depuis + i) as f64 * 2.0 * std::f64::consts::PI * freq / SAMPLE_RATE_HZ as f64;
             let v = (phase.sin() * 12_000.0) as i16;
             [v, v]
         })
@@ -72,8 +72,7 @@ fn un_ton_encode_puis_decode_reste_le_meme_ton() {
     // Contrairement aux `use`, les expressions résolvent le chemin `opus::` en parcourant
     // d'abord l'arbre des modules du crate courant. N'y trouvant rien nommé `opus`,
     // elles remontent au prélude (crates externes), d'où le crate `opus`. Pas de `::` requis.
-    let mut decodeur =
-        opus::Decoder::new(SAMPLE_RATE_HZ, opus::Channels::Stereo).unwrap();
+    let mut decodeur = opus::Decoder::new(SAMPLE_RATE_HZ, opus::Channels::Stereo).unwrap();
 
     let mut sortie: Vec<i16> = Vec::new();
     for t in 0..20 {
@@ -128,8 +127,10 @@ fn le_pourcentage_de_perte_est_borne() {
     // Hors bornes : borné plutôt que refusé. Le contrôleur borne déjà,
     // mais cette fonction est publique et ne doit pas laisser passer une
     // valeur que libopus rejetterait avec une erreur opaque.
-    enc.set_packet_loss_perc(-5).expect("valeur négative bornée");
-    enc.set_packet_loss_perc(300).expect("valeur excessive bornée");
+    enc.set_packet_loss_perc(-5)
+        .expect("valeur négative bornée");
+    enc.set_packet_loss_perc(300)
+        .expect("valeur excessive bornée");
 }
 
 #[test]
@@ -194,9 +195,7 @@ fn lbrr_est_reellement_decodable() {
 
     let mut enc_sans = OpusEncoder::new().expect("encodeur");
     let mut enc_avec = OpusEncoder::new().expect("encodeur");
-    enc_avec
-        .set_packet_loss_perc(20)
-        .expect("perte déclarée");
+    enc_avec.set_packet_loss_perc(20).expect("perte déclarée");
 
     // Encoder 100 trames pour atteindre le régime établi.
     let mut paquets_sans = Vec::new();
@@ -214,11 +213,9 @@ fn lbrr_est_reellement_decodable() {
     // trame FEC (le décodeur reconstruit à partir de la redondance du
     // paquet SUIVANT, ou simplement tente de masquer la perte).
     let mut dec_pour_sans =
-        ::opus::Decoder::new(SAMPLE_RATE_HZ, ::opus::Channels::Stereo)
-            .expect("décodeur");
+        ::opus::Decoder::new(SAMPLE_RATE_HZ, ::opus::Channels::Stereo).expect("décodeur");
     let mut dec_pour_avec =
-        ::opus::Decoder::new(SAMPLE_RATE_HZ, ::opus::Channels::Stereo)
-            .expect("décodeur");
+        ::opus::Decoder::new(SAMPLE_RATE_HZ, ::opus::Channels::Stereo).expect("décodeur");
 
     let mut sortie_sans = vec![0i16; FRAME_INTERLEAVED];
     let mut sortie_avec = vec![0i16; FRAME_INTERLEAVED];
@@ -255,7 +252,8 @@ fn lbrr_est_reellement_decodable() {
         "pas de redondance LBRR décodable : \
          énergie sans FEC = {:.2}, énergie avec FEC = {:.2} — \
          le FEC n'a rien apporté à la reconstruction",
-        energie_sans, energie_avec
+        energie_sans,
+        energie_avec
     );
 }
 
@@ -292,10 +290,7 @@ fn un_flux_mono_ressort_stereo_par_duplication() {
     }
     // …et le signal n'est pas nul : un décodeur qui rendrait du silence
     // passerait l'égalité ci-dessus sans rien décoder.
-    assert!(
-        sortie.iter().any(|&e| e.abs() > 500),
-        "signal décodé nul"
-    );
+    assert!(sortie.iter().any(|&e| e.abs() > 500), "signal décodé nul");
 }
 
 /// « Aucune durée de trame n'est supposée » (spec §7). Chrome émet du

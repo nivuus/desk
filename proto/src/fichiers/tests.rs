@@ -21,11 +21,17 @@ pub(super) const VECTEUR_EPINGLE: &[u8] = &[
 fn une_trame_sans_version_est_refusee() {
     // Une trame de zéro octet ne porte pas sa version : elle est rejetée, jamais
     // complétée par la version courante. C'est la doctrine de `control.rs:37-40`.
-    assert!(matches!(decoder(&[]), Err(ErreurTrame::TropCourte { recu: 0, .. })));
+    assert!(matches!(
+        decoder(&[]),
+        Err(ErreurTrame::TropCourte { recu: 0, .. })
+    ));
     // Et tout ce qui est plus court que l'en-tête fixe l'est aussi, y compris à
     // un octet près.
     let presque = vec![0u8; TAILLE_ENTETE_FIXE - 1];
-    assert!(matches!(decoder(&presque), Err(ErreurTrame::TropCourte { .. })));
+    assert!(matches!(
+        decoder(&presque),
+        Err(ErreurTrame::TropCourte { .. })
+    ));
 }
 
 #[test]
@@ -44,7 +50,10 @@ fn un_entete_dont_la_longueur_deborde_la_trame_est_refuse() {
     // Longueur d'en-tête annoncée à `u32::MAX` : sans borne, la tranche
     // `split_at` paniquerait hors limites.
     octets[6..10].copy_from_slice(&u32::MAX.to_le_bytes());
-    assert!(matches!(decoder(&octets), Err(ErreurTrame::EnteteDeborde { .. })));
+    assert!(matches!(
+        decoder(&octets),
+        Err(ErreurTrame::EnteteDeborde { .. })
+    ));
 
     // Et le débordement d'UN SEUL octet est refusé aussi : c'est là que vit
     // l'erreur d'inégalité stricte.
@@ -52,7 +61,10 @@ fn un_entete_dont_la_longueur_deborde_la_trame_est_refuse() {
     juste_un_de_trop[6..10].copy_from_slice(&3u32.to_le_bytes());
     assert!(matches!(
         decoder(&juste_un_de_trop),
-        Err(ErreurTrame::EnteteDeborde { longueur: 3, disponible: 2 })
+        Err(ErreurTrame::EnteteDeborde {
+            longueur: 3,
+            disponible: 2
+        })
     ));
 }
 
@@ -66,7 +78,11 @@ fn un_aller_retour_conserve_les_octets_bruts() {
     assert_eq!(trame.type_message, TYPE_DONNEES);
     assert_eq!(trame.correlation, 0xDEAD_BEEF);
     assert_eq!(trame.entete, br#"{"position":0}"#);
-    assert_eq!(trame.charge, &charge[..], "la charge doit sortir octet pour octet");
+    assert_eq!(
+        trame.charge,
+        &charge[..],
+        "la charge doit sortir octet pour octet"
+    );
 }
 
 #[test]
@@ -93,7 +109,10 @@ fn la_charge_maximale_de_taille_trame_max_passe() {
     let octets = encoder(TYPE_DONNEES, 1, "{}", &trop);
     assert!(matches!(
         decoder(&octets),
-        Err(ErreurTrame::ChargeTropGrande { max: TAILLE_TRAME_MAX, .. })
+        Err(ErreurTrame::ChargeTropGrande {
+            max: TAILLE_TRAME_MAX,
+            ..
+        })
     ));
 }
 
@@ -139,7 +158,11 @@ fn un_code_d_echec_a_une_forme_epinglee_sur_le_fil() {
         (CodeEchec::RepertoireNonVide, "\"repertoire-non-vide\""),
     ];
     for (code, texte) in attendu {
-        assert_eq!(serde_json::to_string(&code).unwrap(), texte, "sérialisation de {code:?}");
+        assert_eq!(
+            serde_json::to_string(&code).unwrap(),
+            texte,
+            "sérialisation de {code:?}"
+        );
         assert_eq!(
             serde_json::from_str::<CodeEchec>(texte).unwrap(),
             code,
@@ -154,10 +177,19 @@ fn les_types_de_message_ne_se_chevauchent_pas() {
     // serait traitée comme une requête. Le balayage l'interdit, et il couvre
     // toute addition future — une énumération à la main ne l'aurait pas fait.
     let tous = [
-        TYPE_LISTER, TYPE_ATTRIBUTS, TYPE_LIRE, TYPE_ECRIRE, TYPE_CREER,
-        TYPE_RENOMMER, TYPE_SUPPRIMER,
+        TYPE_LISTER,
+        TYPE_ATTRIBUTS,
+        TYPE_LIRE,
+        TYPE_ECRIRE,
+        TYPE_CREER,
+        TYPE_RENOMMER,
+        TYPE_SUPPRIMER,
         TYPE_DUES,
-        TYPE_ENTREES, TYPE_META, TYPE_DONNEES, TYPE_FAIT, TYPE_ECHEC,
+        TYPE_ENTREES,
+        TYPE_META,
+        TYPE_DONNEES,
+        TYPE_FAIT,
+        TYPE_ECHEC,
     ];
     for (i, a) in tous.iter().enumerate() {
         for b in &tous[i + 1..] {
@@ -188,7 +220,10 @@ fn une_trame_ecrire_pleine_passe_entete_compris() {
     .expect("un en-tête Ecrire se sérialise toujours");
     let charge = vec![0xCDu8; TAILLE_TRAME_MAX];
     let octets = encoder(TYPE_ECRIRE, 42, &entete, &charge);
-    assert!(octets.len() > TAILLE_TRAME_MAX, "la trame pèse PLUS que sa charge");
+    assert!(
+        octets.len() > TAILLE_TRAME_MAX,
+        "la trame pèse PLUS que sa charge"
+    );
 
     let trame = decoder(&octets).expect("une trame d'écriture pleine doit passer");
     assert_eq!(trame.type_message, TYPE_ECRIRE);

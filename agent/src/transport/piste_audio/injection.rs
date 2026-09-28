@@ -29,8 +29,7 @@ use crate::audio::AudioSource;
 /// plutôt que l'environnement — un `OnceLock` déjà initialisé ne relirait de
 /// toute façon plus `std::env`.
 pub(in crate::transport) fn budget_faute_reconstruction() -> &'static std::sync::atomic::AtomicU32 {
-    static BUDGET: std::sync::OnceLock<std::sync::atomic::AtomicU32> =
-        std::sync::OnceLock::new();
+    static BUDGET: std::sync::OnceLock<std::sync::atomic::AtomicU32> = std::sync::OnceLock::new();
     BUDGET.get_or_init(|| {
         let n: u32 = std::env::var("AUDIO_FAUTE_RECONSTRUCTION")
             .ok()
@@ -64,7 +63,9 @@ where
         )
         .is_ok()
     {
-        Err(anyhow::anyhow!("faute injectée (AUDIO_FAUTE_RECONSTRUCTION)"))
+        Err(anyhow::anyhow!(
+            "faute injectée (AUDIO_FAUTE_RECONSTRUCTION)"
+        ))
     } else {
         reconstruire()
     }

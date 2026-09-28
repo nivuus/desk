@@ -117,7 +117,12 @@ pub(super) fn executer(fragment: &str) -> Result<()> {
         let (rw, rh, rr, rg, rb, ra) =
             capture_center_pixel(&mut capture, region, Duration::from_secs(5))?;
         tracing::info!(
-            width = rw, height = rh, r = rr, g = rg, b = rb, a = ra,
+            width = rw,
+            height = rh,
+            r = rr,
+            g = rg,
+            b = rb,
+            a = ra,
             "pixel lu au centre de la région réelle (recadrage sur la fenêtre)"
         );
 
@@ -135,7 +140,13 @@ pub(super) fn executer(fragment: &str) -> Result<()> {
         let (cw, ch, cr, cg, cb, ca) =
             capture_center_pixel(&mut capture, control_region, Duration::from_secs(5))?;
         tracing::info!(
-            ?control_region, width = cw, height = ch, r = cr, g = cg, b = cb, a = ca,
+            ?control_region,
+            width = cw,
+            height = ch,
+            r = cr,
+            g = cg,
+            b = cb,
+            a = ca,
             "pixel lu au centre de la région de contrôle (coin opposé du bureau, même taille)"
         );
         anyhow::ensure!(
@@ -150,7 +161,10 @@ pub(super) fn executer(fragment: &str) -> Result<()> {
         let mut captured = 0;
         let deadline = std::time::Instant::now() + std::time::Duration::from_secs(3);
         while std::time::Instant::now() < deadline {
-            if let Some(frame) = capture.next_frame(region).map_err(|e| anyhow::anyhow!("{e}"))? {
+            if let Some(frame) = capture
+                .next_frame(region)
+                .map_err(|e| anyhow::anyhow!("{e}"))?
+            {
                 captured += 1;
                 if captured == 1 {
                     tracing::info!(frame.width, frame.height, "première image capturée");
@@ -172,14 +186,13 @@ pub(super) fn executer(fragment: &str) -> Result<()> {
         // réellement soumises aurait pu faire échouer `SetInputType`/
         // `ProcessInput` de façon confuse.
         if std::env::var("ENCODE_TEST").is_ok() {
-            let mut encoder =
-                encode::H264Encoder::new(
-                    capture.device(),
-                    (region.width, region.height),
-                    (region.width, region.height),
-                    60,
-                    8_000_000,
-                )?;
+            let mut encoder = encode::H264Encoder::new(
+                capture.device(),
+                (region.width, region.height),
+                (region.width, region.height),
+                60,
+                8_000_000,
+            )?;
             encoder.request_keyframe()?;
             // Même surveillance que la mesure de débit : elle sert ici à
             // vérifier que des images RÉELLEMENT DISTINCTES traversent le
@@ -227,7 +240,9 @@ pub(super) fn executer(fragment: &str) -> Result<()> {
                 phase
                     .phase
                     .store(encode::PHASE_CAPTURE, std::sync::atomic::Ordering::Relaxed);
-                let acquired = capture.next_frame(region).map_err(|e| anyhow::anyhow!("{e}"))?;
+                let acquired = capture
+                    .next_frame(region)
+                    .map_err(|e| anyhow::anyhow!("{e}"))?;
                 phase
                     .phase
                     .store(encode::PHASE_IDLE, std::sync::atomic::Ordering::Relaxed);
@@ -245,8 +260,10 @@ pub(super) fn executer(fragment: &str) -> Result<()> {
                         // ici plutôt que de supposer que `group_access_units`
                         // les a bien rattachées.
                         let nals = h264::split_annex_b(&unit.data);
-                        let types: Vec<u8> =
-                            nals.iter().map(|n| n.first().map_or(0, |b| b & 0x1F)).collect();
+                        let types: Vec<u8> = nals
+                            .iter()
+                            .map(|n| n.first().map_or(0, |b| b & 0x1F))
+                            .collect();
                         const NAL_SPS: u8 = 7;
                         const NAL_PPS: u8 = 8;
                         const NAL_IDR: u8 = 5;
@@ -308,14 +325,13 @@ pub(super) fn executer(fragment: &str) -> Result<()> {
         // Conservée telle quelle pour la tâche 14, qui en aura besoin
         // pour ses propres mesures de débit.
         if std::env::var("ENCODER_THROUGHPUT_TEST").is_ok() {
-            let mut encoder =
-                encode::H264Encoder::new(
-                    capture.device(),
-                    (region.width, region.height),
-                    (region.width, region.height),
-                    60,
-                    8_000_000,
-                )?;
+            let mut encoder = encode::H264Encoder::new(
+                capture.device(),
+                (region.width, region.height),
+                (region.width, region.height),
+                60,
+                8_000_000,
+            )?;
             encoder.request_keyframe()?;
 
             // Une seule image réelle, capturée une fois puis réinjectée
@@ -325,7 +341,10 @@ pub(super) fn executer(fragment: &str) -> Result<()> {
             // ferait attendre indéfiniment sans la moindre trace.
             let frame_deadline = std::time::Instant::now() + Duration::from_secs(10);
             let frame = loop {
-                if let Some(frame) = capture.next_frame(region).map_err(|e| anyhow::anyhow!("{e}"))? {
+                if let Some(frame) = capture
+                    .next_frame(region)
+                    .map_err(|e| anyhow::anyhow!("{e}"))?
+                {
                     break frame;
                 }
                 anyhow::ensure!(

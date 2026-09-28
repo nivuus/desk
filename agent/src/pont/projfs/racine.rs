@@ -36,7 +36,6 @@ const NOM_RACINE: &str = "Mes Fichiers";
 const SOUS_DOSSIER_ETAT: &str = r"Guacamole\pont";
 const FICHIER_GUID: &str = "instance.guid";
 
-
 /// `%USERPROFILE%\Mes Fichiers`.
 pub(super) fn racine() -> Result<PathBuf> {
     let profil = std::env::var("USERPROFILE")
@@ -113,7 +112,12 @@ pub(super) fn preparer(projfs: &chargement::ProjFs, racine: &Path) -> Result<()>
     // version) ; `guid` vit jusqu'à la fin de la fonction. Signature :
     // transcription du `link!` de `mod.rs:93`.
     let issue = unsafe {
-        (projfs.marquer_racine)(PCWSTR(chemin.as_ptr()), PCWSTR::null(), std::ptr::null(), &guid)
+        (projfs.marquer_racine)(
+            PCWSTR(chemin.as_ptr()),
+            PCWSTR::null(),
+            std::ptr::null(),
+            &guid,
+        )
     };
     if issue.is_err() {
         // ⚠️ **On ne teste PAS un `HRESULT` particulier, et c'est délibéré** :
@@ -154,7 +158,10 @@ pub(super) fn preparer(projfs: &chargement::ProjFs, racine: &Path) -> Result<()>
                  mesuré sur aucune machine de ce dépôt, donc il n'est pas testé)"
             );
         } else {
-            bail!("PrjMarkDirectoryAsPlaceholder sur « {} » : {issue}", racine.display());
+            bail!(
+                "PrjMarkDirectoryAsPlaceholder sur « {} » : {issue}",
+                racine.display()
+            );
         }
     } else {
         std::fs::create_dir_all(&etat)
@@ -186,5 +193,9 @@ fn lire_guid(texte: &str) -> Result<GUID> {
 /// Une chaîne UTF-16 terminée par un nul, pour un `PCWSTR`.
 pub(super) fn utf16(chemin: &Path) -> Vec<u16> {
     use std::os::windows::ffi::OsStrExt;
-    chemin.as_os_str().encode_wide().chain(std::iter::once(0)).collect()
+    chemin
+        .as_os_str()
+        .encode_wide()
+        .chain(std::iter::once(0))
+        .collect()
 }

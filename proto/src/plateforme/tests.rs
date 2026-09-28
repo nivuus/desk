@@ -35,15 +35,23 @@ use super::*;
 /// un gabarit qu'on aurait oublié de faire passer ici échouerait, au lieu de
 /// passer en éprouvant autre chose que ce qu'il annonce.
 pub(super) fn etrangere(gabarit: &str) -> String {
-    assert!(gabarit.contains("\"v\":0"), "le gabarit doit porter le repère \"v\":0");
-    gabarit.replace("\"v\":0", &format!("\"v\":{}", PLATEFORME_VERSION.wrapping_add(1)))
+    assert!(
+        gabarit.contains("\"v\":0"),
+        "le gabarit doit porter le repère \"v\":0"
+    );
+    gabarit.replace(
+        "\"v\":0",
+        &format!("\"v\":{}", PLATEFORME_VERSION.wrapping_add(1)),
+    )
 }
-
 
 #[test]
 fn serialise_l_enrolement_en_kebab_case() {
     let json = serde_json::to_string(&VersLaPlateforme::enroler("w1", "chut")).expect("sér.");
-    assert_eq!(json, r#"{"type":"enroler","v":5,"vm":"w1","secret":"chut"}"#);
+    assert_eq!(
+        json,
+        r#"{"type":"enroler","v":5,"vm":"w1","secret":"chut"}"#
+    );
 }
 
 #[test]
@@ -61,8 +69,11 @@ fn serialise_le_battement_recu_en_kebab_case() {
     // `battement_recu` là où le miroir TypeScript lit `battement-recu`, et
     // les deux bouts divergeraient EN SILENCE sur le message que l'agent
     // reçoit le plus souvent.
-    let json = serde_json::to_string(&DepuisLaPlateforme::battement_recu("kkk", 1_787_136_774_000))
-        .expect("sér.");
+    let json = serde_json::to_string(&DepuisLaPlateforme::battement_recu(
+        "kkk",
+        1_787_136_774_000,
+    ))
+    .expect("sér.");
     assert_eq!(
         json,
         r#"{"type":"battement-recu","v":5,"jeton":"kkk","expire_a":1787136774000}"#
@@ -77,8 +88,8 @@ fn serialise_l_enrole_et_le_refus() {
         json,
         r#"{"type":"enrole","v":5,"prefixe":"PPP","jeton":"jjj","expire_a":1787136773742}"#
     );
-    let json = serde_json::to_string(&DepuisLaPlateforme::refus(MotifCanal::Enrolement))
-        .expect("sér.");
+    let json =
+        serde_json::to_string(&DepuisLaPlateforme::refus(MotifCanal::Enrolement)).expect("sér.");
     assert_eq!(json, r#"{"type":"refus","v":5,"motif":"enrolement"}"#);
 }
 
@@ -88,10 +99,10 @@ fn serialise_l_enrole_et_le_refus() {
 
 #[test]
 fn rejette_une_version_absente_sur_enroler() {
-    assert!(
-        serde_json::from_str::<VersLaPlateforme>(r#"{"type":"enroler","vm":"w","secret":"s"}"#)
-            .is_err()
-    );
+    assert!(serde_json::from_str::<VersLaPlateforme>(
+        r#"{"type":"enroler","vm":"w","secret":"s"}"#
+    )
+    .is_err());
 }
 
 #[test]
@@ -185,8 +196,10 @@ fn le_refus_tolere_toute_version_mais_exige_le_champ() {
     // sans version n'est pas un message d'une version que nous ignorons. Et
     // `v: null` non plus — c'est le trou exact que `verifie_version` ferme
     // pour les autres variantes, et que `version_toleree` ne rouvre pas.
-    assert!(serde_json::from_str::<DepuisLaPlateforme>(r#"{"type":"refus","motif":"version"}"#)
-        .is_err());
+    assert!(
+        serde_json::from_str::<DepuisLaPlateforme>(r#"{"type":"refus","motif":"version"}"#)
+            .is_err()
+    );
     assert!(serde_json::from_str::<DepuisLaPlateforme>(
         r#"{"type":"refus","v":null,"motif":"version"}"#
     )
@@ -194,9 +207,9 @@ fn le_refus_tolere_toute_version_mais_exige_le_champ() {
     // Et la forme reste GELÉE : un champ de plus est refusé
     // (`deny_unknown_fields`), ce qui est la clause 3 de l'en-tête du module —
     // écrite comme une contrainte sur les versions FUTURES, éprouvée ici.
-    assert!(serde_json::from_str::<DepuisLaPlateforme>(
-        &etrangere(r#"{"type":"refus","v":0,"motif":"version","detail":"x"}"#)
-    )
+    assert!(serde_json::from_str::<DepuisLaPlateforme>(&etrangere(
+        r#"{"type":"refus","v":0,"motif":"version","detail":"x"}"#
+    ))
     .is_err());
 }
 
@@ -210,12 +223,11 @@ fn rejette_un_type_inconnu() {
 fn rejette_un_champ_inconnu() {
     // `deny_unknown_fields` : un champ de trop est une divergence de
     // format, pas une extension tolérable — le canal n'a qu'une version.
-    assert!(serde_json::from_str::<VersLaPlateforme>(
-        r#"{"type":"battement","v":5,"bonus":1}"#
-    )
-    .is_err());
+    assert!(
+        serde_json::from_str::<VersLaPlateforme>(r#"{"type":"battement","v":5,"bonus":1}"#)
+            .is_err()
+    );
 }
-
 
 #[test]
 fn round_trip_des_trois_reponses() {

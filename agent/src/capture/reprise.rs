@@ -113,7 +113,11 @@ pub struct FenetreDeReprise {
 
 impl FenetreDeReprise {
     pub fn nouvelle() -> Self {
-        Self { ouverte_a: None, derniere_tentative: None, tentatives: 0 }
+        Self {
+            ouverte_a: None,
+            derniere_tentative: None,
+            tentatives: 0,
+        }
     }
 
     pub fn tenter(&mut self, maintenant: std::time::Instant) -> Tentative {
@@ -151,8 +155,14 @@ mod tests {
     #[test]
     fn seule_la_perte_d_acces_est_recuperable() {
         assert!(est_acces_perdu(ACCES_PERDU));
-        assert!(!est_acces_perdu(DEVICE_REMOVED), "périphérique perdu : rouvrir ne sert à rien");
-        assert!(!est_acces_perdu(ATTENTE_EXPIREE), "attente expirée n'est même pas un échec");
+        assert!(
+            !est_acces_perdu(DEVICE_REMOVED),
+            "périphérique perdu : rouvrir ne sert à rien"
+        );
+        assert!(
+            !est_acces_perdu(ATTENTE_EXPIREE),
+            "attente expirée n'est même pas un échec"
+        );
         assert!(!est_acces_perdu(0), "S_OK");
         assert!(!est_acces_perdu(0x80070057u32 as i32), "E_INVALIDARG");
     }
@@ -173,7 +183,10 @@ mod tests {
     #[test]
     fn une_ouverture_n_est_pas_retentable_sur_une_panne_franche() {
         assert!(!est_ouverture_retentable(DEVICE_REMOVED));
-        assert!(!est_ouverture_retentable(0x80070057u32 as i32), "E_INVALIDARG");
+        assert!(
+            !est_ouverture_retentable(0x80070057u32 as i32),
+            "E_INVALIDARG"
+        );
         assert!(!est_ouverture_retentable(0), "S_OK");
     }
 
@@ -211,11 +224,7 @@ mod tests {
         fenetre.tenter(t(base, 0));
         assert_eq!(fenetre.tenter(t(base, 5)), Tentative::Patienter);
         assert_eq!(fenetre.tenter(t(base, 20)), Tentative::Patienter);
-        assert_eq!(
-            fenetre.tentatives(),
-            1,
-            "patienter n'est pas une tentative"
-        );
+        assert_eq!(fenetre.tentatives(), 1, "patienter n'est pas une tentative");
     }
 
     #[test]

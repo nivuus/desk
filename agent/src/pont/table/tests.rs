@@ -5,7 +5,9 @@ fn maintenant() -> Instant {
 }
 
 fn attributs(chemin: &str) -> Attendue {
-    Attendue::Attributs { chemin: chemin.to_string() }
+    Attendue::Attributs {
+        chemin: chemin.to_string(),
+    }
 }
 
 #[test]
@@ -19,7 +21,11 @@ fn une_reponse_arrivee_apres_annulation_est_jetee() {
 
     assert_eq!(t.annuler(42), vec![c]);
     assert_eq!(t.en_vol(), 0, "l'annulation doit retirer l'entrée");
-    assert_eq!(t.resoudre(c, Instant::now()), None, "la réponse tardive doit être JETÉE");
+    assert_eq!(
+        t.resoudre(c, Instant::now()),
+        None,
+        "la réponse tardive doit être JETÉE"
+    );
 }
 
 #[test]
@@ -105,24 +111,46 @@ fn deux_enumerations_du_meme_chemin_coexistent() {
     let g2 = [2u8; 16];
     let c1 = t.inscrire(
         100,
-        Attendue::Lister { chemin: "dossier".into(), enumeration: g1 },
+        Attendue::Lister {
+            chemin: "dossier".into(),
+            enumeration: g1,
+        },
         e,
     );
     let c2 = t.inscrire(
         200,
-        Attendue::Lister { chemin: "dossier".into(), enumeration: g2 },
+        Attendue::Lister {
+            chemin: "dossier".into(),
+            enumeration: g2,
+        },
         e,
     );
 
     assert_ne!(c1, c2);
     assert_eq!(t.en_vol(), 2, "les deux sessions doivent COEXISTER");
     // …et chacune se résout sur SA session, pas sur celle de l'autre.
-    let (id1, quoi1, _) = t.resoudre(c1, Instant::now()).expect("la première session existe");
+    let (id1, quoi1, _) = t
+        .resoudre(c1, Instant::now())
+        .expect("la première session existe");
     assert_eq!(id1, Some(100));
-    assert_eq!(quoi1, Attendue::Lister { chemin: "dossier".into(), enumeration: g1 });
-    let (id2, quoi2, _) = t.resoudre(c2, Instant::now()).expect("la seconde session existe");
+    assert_eq!(
+        quoi1,
+        Attendue::Lister {
+            chemin: "dossier".into(),
+            enumeration: g1
+        }
+    );
+    let (id2, quoi2, _) = t
+        .resoudre(c2, Instant::now())
+        .expect("la seconde session existe");
     assert_eq!(id2, Some(200));
-    assert_eq!(quoi2, Attendue::Lister { chemin: "dossier".into(), enumeration: g2 });
+    assert_eq!(
+        quoi2,
+        Attendue::Lister {
+            chemin: "dossier".into(),
+            enumeration: g2
+        }
+    );
 }
 
 #[test]
@@ -142,7 +170,11 @@ fn un_debordement_du_compteur_de_correlation_ne_reutilise_pas_une_correlation_en
     assert_eq!(b, u32::MAX);
     assert_eq!(c, 0, "le compteur doit reboucler, pas paniquer");
     assert_eq!(d, 1);
-    assert_eq!(t.en_vol(), 4, "aucune des quatre ne doit en écraser une autre");
+    assert_eq!(
+        t.en_vol(),
+        4,
+        "aucune des quatre ne doit en écraser une autre"
+    );
 
     // …et le cas qui mord vraiment : une corrélation ENCORE EN VOL est
     // enjambée, pas écrasée. On repart de 0 alors que 0 et 1 sont pris.
@@ -159,7 +191,10 @@ fn un_debordement_du_compteur_de_correlation_ne_reutilise_pas_une_correlation_en
     );
     assert_eq!(t.en_vol(), 3);
     // La commande d'origine répond toujours pour ELLE.
-    assert_eq!(t.resoudre(zero, Instant::now()).map(|(id, _, _)| id), Some(Some(10)));
+    assert_eq!(
+        t.resoudre(zero, Instant::now()).map(|(id, _, _)| id),
+        Some(Some(10))
+    );
 }
 
 /// 🔴 **UNE ÉCRITURE ET UNE LECTURE NE PARTAGENT JAMAIS UNE CORRÉLATION.**
@@ -178,11 +213,20 @@ fn une_ecriture_et_une_lecture_ne_partagent_jamais_une_correlation() {
         // d'écriture pousse pendant qu'une application lit.
         let lecture = t.inscrire(i, attributs(&format!("l{i}")), e);
         let ecriture = t.inscrire_sans_commande(
-            Attendue::Ecrire { chemin: format!("e{i}"), dernier: false },
+            Attendue::Ecrire {
+                chemin: format!("e{i}"),
+                dernier: false,
+            },
             e,
         );
-        assert!(vues.insert(lecture), "corrélation {lecture} distribuée deux fois");
-        assert!(vues.insert(ecriture), "corrélation {ecriture} distribuée deux fois");
+        assert!(
+            vues.insert(lecture),
+            "corrélation {lecture} distribuée deux fois"
+        );
+        assert!(
+            vues.insert(ecriture),
+            "corrélation {ecriture} distribuée deux fois"
+        );
     }
     assert_eq!(t.en_vol(), 128);
 }
@@ -193,10 +237,23 @@ fn une_ecriture_et_une_lecture_ne_partagent_jamais_une_correlation() {
 fn une_inscription_sans_commande_n_a_pas_de_command_id() {
     let e = maintenant() + DELAI_ECRIRE;
     let mut t = Table::nouvelle();
-    let c = t.inscrire_sans_commande(Attendue::Creer { chemin: "neuf.txt".into() }, e);
+    let c = t.inscrire_sans_commande(
+        Attendue::Creer {
+            chemin: "neuf.txt".into(),
+        },
+        e,
+    );
     let (commande, quoi, _) = t.resoudre(c, Instant::now()).expect("inscrite à l'instant");
-    assert_eq!(commande, None, "une écriture ne complète AUCUN rappel ProjFS");
-    assert_eq!(quoi, Attendue::Creer { chemin: "neuf.txt".into() });
+    assert_eq!(
+        commande, None,
+        "une écriture ne complète AUCUN rappel ProjFS"
+    );
+    assert_eq!(
+        quoi,
+        Attendue::Creer {
+            chemin: "neuf.txt".into()
+        }
+    );
 }
 
 /// 🔴 **L'ÂGE RENDU PAR `resoudre` EST UNE VRAIE SOUSTRACTION, PAS UN ZÉRO.**
@@ -210,7 +267,13 @@ fn une_inscription_sans_commande_n_a_pas_de_command_id() {
 fn resoudre_rend_l_age_de_la_commande_et_non_zero() {
     let depart = maintenant();
     let mut t = Table::nouvelle();
-    let c = t.inscrire(7, Attendue::Attributs { chemin: "a.txt".into() }, depart + DELAI_ATTRIBUTS);
+    let c = t.inscrire(
+        7,
+        Attendue::Attributs {
+            chemin: "a.txt".into(),
+        },
+        depart + DELAI_ATTRIBUTS,
+    );
 
     // `inscrire` lit `Instant::now()` pour l'inscription ; on mesure donc un
     // âge PLANCHER en prenant un « maintenant » décalé de 250 ms.
@@ -218,7 +281,10 @@ fn resoudre_rend_l_age_de_la_commande_et_non_zero() {
         .resoudre(c, Instant::now() + Duration::from_millis(250))
         .expect("inscrite à l'instant");
     assert!(age >= Duration::from_millis(250), "âge rendu : {age:?}");
-    assert!(age < Duration::from_millis(2_000), "l'âge n'est pas le budget : {age:?}");
+    assert!(
+        age < Duration::from_millis(2_000),
+        "l'âge n'est pas le budget : {age:?}"
+    );
 }
 
 /// 🔴 **`vider` REND LES ÉCRITURES AVEC UN `command_id` ABSENT.**
@@ -230,12 +296,20 @@ fn vider_rend_les_ecritures_avec_un_command_id_absent() {
     let e = maintenant() + DELAI_ECRIRE;
     let mut t = Table::nouvelle();
     let lecture = t.inscrire(42, attributs("a"), e);
-    let ecriture =
-        t.inscrire_sans_commande(Attendue::Ecrire { chemin: "b".into(), dernier: true }, e);
+    let ecriture = t.inscrire_sans_commande(
+        Attendue::Ecrire {
+            chemin: "b".into(),
+            dernier: true,
+        },
+        e,
+    );
     let tout = t.vider();
     assert_eq!(tout.len(), 2);
     assert!(tout.contains(&(Some(42), lecture)));
-    assert!(tout.contains(&(None, ecriture)), "l'écriture doit sortir SANS command_id");
+    assert!(
+        tout.contains(&(None, ecriture)),
+        "l'écriture doit sortir SANS command_id"
+    );
 }
 
 /// Une écriture expirée est retirée comme les autres.
@@ -248,7 +322,10 @@ fn une_ecriture_expiree_est_retiree_comme_les_autres() {
     let debut = maintenant();
     let mut t = Table::nouvelle();
     let c = t.inscrire_sans_commande(
-        Attendue::Ecrire { chemin: "gros.bin".into(), dernier: false },
+        Attendue::Ecrire {
+            chemin: "gros.bin".into(),
+            dernier: false,
+        },
         debut + DELAI_ECRIRE,
     );
     assert!(t.expirees(debut).is_empty());
@@ -266,8 +343,13 @@ fn une_ecriture_expiree_est_retiree_comme_les_autres() {
 fn annuler_ne_vise_jamais_une_ecriture() {
     let e = maintenant() + DELAI_ECRIRE;
     let mut t = Table::nouvelle();
-    let ecriture =
-        t.inscrire_sans_commande(Attendue::Ecrire { chemin: "a".into(), dernier: true }, e);
+    let ecriture = t.inscrire_sans_commande(
+        Attendue::Ecrire {
+            chemin: "a".into(),
+            dernier: true,
+        },
+        e,
+    );
     assert!(t.annuler(0).is_empty(), "aucune commande ProjFS 0 n'existe");
     assert_eq!(t.en_vol(), 1, "l'écriture est toujours là");
     assert!(t.resoudre(ecriture, Instant::now()).is_some());
@@ -290,12 +372,23 @@ fn plus_ancienne_rend_la_duree_de_la_plus_vieille_commande_en_vol() {
     // « rien n'a jamais été inscrit, le blocage est dans le rappel ».
     assert_eq!(t.plus_ancienne(depart), None);
 
-    t.inscrire(1, Attendue::Attributs { chemin: "a".into() }, depart + Duration::from_secs(2));
+    t.inscrire(
+        1,
+        Attendue::Attributs { chemin: "a".into() },
+        depart + Duration::from_secs(2),
+    );
     std::thread::sleep(Duration::from_millis(20));
-    t.inscrire(2, Attendue::Attributs { chemin: "b".into() }, depart + Duration::from_secs(2));
+    t.inscrire(
+        2,
+        Attendue::Attributs { chemin: "b".into() },
+        depart + Duration::from_secs(2),
+    );
 
     let vue = t.plus_ancienne(Instant::now()).expect("deux en vol");
-    assert!(vue >= Duration::from_millis(20), "la PLUS ANCIENNE, pas la plus jeune : {vue:?}");
+    assert!(
+        vue >= Duration::from_millis(20),
+        "la PLUS ANCIENNE, pas la plus jeune : {vue:?}"
+    );
 }
 
 /// Les commandes **sans rappel ProjFS** sont comptées à part.
@@ -309,9 +402,19 @@ fn sans_commande_ne_compte_que_ce_qui_ne_complete_aucun_rappel() {
     let mut t = Table::nouvelle();
     let echeance = Instant::now() + Duration::from_secs(5);
     t.inscrire(1, Attendue::Attributs { chemin: "a".into() }, echeance);
-    t.inscrire_sans_commande(Attendue::Ecrire { chemin: "b".into(), dernier: true }, echeance);
     t.inscrire_sans_commande(
-        Attendue::Muter { chemin: "c".into(), renommage: true, destination: Some("d".into()) },
+        Attendue::Ecrire {
+            chemin: "b".into(),
+            dernier: true,
+        },
+        echeance,
+    );
+    t.inscrire_sans_commande(
+        Attendue::Muter {
+            chemin: "c".into(),
+            renommage: true,
+            destination: Some("d".into()),
+        },
         echeance,
     );
     assert_eq!(t.en_vol(), 3);
@@ -326,8 +429,13 @@ fn sans_commande_ne_compte_que_ce_qui_ne_complete_aucun_rappel() {
 /// sur un chemin inexistant.
 #[test]
 fn les_cinq_budgets_sont_distincts() {
-    let tous =
-        [DELAI_ATTRIBUTS, DELAI_LIRE, DELAI_LISTER, DELAI_ECRIRE, DELAI_MUTATION];
+    let tous = [
+        DELAI_ATTRIBUTS,
+        DELAI_LIRE,
+        DELAI_LISTER,
+        DELAI_ECRIRE,
+        DELAI_MUTATION,
+    ];
     for (i, a) in tous.iter().enumerate() {
         for b in &tous[i + 1..] {
             assert_ne!(a, b, "deux budgets partagent la valeur {a:?}");
@@ -352,15 +460,43 @@ fn les_cinq_budgets_sont_distincts() {
 fn annuler_retire_les_N_correlations_d_une_lecture_a_fenetre() {
     let mut t = Table::nouvelle();
     let e = maintenant() + DELAI_LIRE;
-    let a = t.inscrire(7, Attendue::Lire { chemin: "g".into(), position: 0, longueur: 4 }, e);
-    let b = t.inscrire(7, Attendue::Lire { chemin: "g".into(), position: 4, longueur: 4 }, e);
-    let c = t.inscrire(7, Attendue::Lire { chemin: "g".into(), position: 8, longueur: 4 }, e);
+    let a = t.inscrire(
+        7,
+        Attendue::Lire {
+            chemin: "g".into(),
+            position: 0,
+            longueur: 4,
+        },
+        e,
+    );
+    let b = t.inscrire(
+        7,
+        Attendue::Lire {
+            chemin: "g".into(),
+            position: 4,
+            longueur: 4,
+        },
+        e,
+    );
+    let c = t.inscrire(
+        7,
+        Attendue::Lire {
+            chemin: "g".into(),
+            position: 8,
+            longueur: 4,
+        },
+        e,
+    );
     // Une commande VOISINE ne doit pas être emportée.
     let autre = t.inscrire(8, attributs("x"), e);
     assert_eq!(t.en_vol(), 4);
 
     let annulees = t.annuler(7);
-    assert_eq!(annulees, vec![a, b, c], "les TROIS, dans un ordre déterministe");
+    assert_eq!(
+        annulees,
+        vec![a, b, c],
+        "les TROIS, dans un ordre déterministe"
+    );
     assert_eq!(t.en_vol(), 1, "seule la commande 8 survit");
     assert!(t.resoudre(autre, Instant::now()).is_some());
 }

@@ -120,7 +120,9 @@ pub fn bgra_en_rgba(tampon: &mut [u8]) {
 /// En cas d'égalité de population, le seau de plus petite clé l'emporte : le
 /// résultat est **déterministe**, ce qu'un test exige.
 pub fn dominante(rgba: &[u8], largeur: u32, hauteur: u32) -> Option<[u8; 3]> {
-    let attendu = (largeur as usize).checked_mul(hauteur as usize)?.checked_mul(4)?;
+    let attendu = (largeur as usize)
+        .checked_mul(hauteur as usize)?
+        .checked_mul(4)?;
     if attendu == 0 || rgba.len() != attendu {
         return None;
     }

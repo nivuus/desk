@@ -138,10 +138,7 @@ pub enum Voie {
 /// Intel ou AMD : voir le commentaire de module, la MFT est le repli
 /// générique et non un pis-aller.
 pub fn choisir_voie(adaptateurs: &[Adaptateur]) -> Voie {
-    match adaptateurs
-        .iter()
-        .position(|a| a.vendeur == VENDEUR_NVIDIA)
-    {
+    match adaptateurs.iter().position(|a| a.vendeur == VENDEUR_NVIDIA) {
         Some(index) => Voie::Nvenc(index),
         None => Voie::Mft,
     }
@@ -274,7 +271,10 @@ mod tests_diagnostic {
             adaptateur("NVIDIA GeForce RTX 4070", VENDEUR_NVIDIA),
         ];
         let m = diagnostic_activation(ECHEC_CATASTROPHIQUE, "Catastrophic failure", &vus);
-        assert!(m.contains("Microsoft Basic Render Driver | NVIDIA GeForce RTX 4070"), "{m}");
+        assert!(
+            m.contains("Microsoft Basic Render Driver | NVIDIA GeForce RTX 4070"),
+            "{m}"
+        );
     }
 
     #[test]
@@ -282,7 +282,10 @@ mod tests_diagnostic {
         let vus = vec![adaptateur("NVIDIA GeForce RTX 4070", VENDEUR_NVIDIA)];
         let m = diagnostic_activation(ECHEC_CATASTROPHIQUE, "Catastrophic failure", &vus);
         assert!(m.contains("CAUSE CONNUE"), "{m}");
-        assert!(m.contains("2026-08-30-encodeur-porte-apollo-resultats.md"), "{m}");
+        assert!(
+            m.contains("2026-08-30-encodeur-porte-apollo-resultats.md"),
+            "{m}"
+        );
     }
 
     /// 🔴 Le bras qui empêche d'affirmer notre diagnostic là où il ne

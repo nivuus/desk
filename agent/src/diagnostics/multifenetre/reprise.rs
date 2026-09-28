@@ -74,8 +74,10 @@ pub(super) fn mesurer(nombre: u8) -> Result<()> {
 
     let avant = relever_topologie("avant création")?;
     let noms_avant = noms_attaches(&avant);
-    let connues: HashSet<String> =
-        avant.iter().map(|sortie| sortie.nom_sortie.clone()).collect();
+    let connues: HashSet<String> = avant
+        .iter()
+        .map(|sortie| sortie.nom_sortie.clone())
+        .collect();
 
     let pilote = crate::moniteurs_virtuels::pilote::ouvrir_pilote()?;
     let (largeur, hauteur, hertz) = RESOLUTION;
@@ -203,7 +205,10 @@ fn constater_places(moment: &str, virtuelles: &[SortieDxgi], connues: &HashSet<S
     let mut deplacees: Vec<String> = Vec::new();
     for attendue in virtuelles {
         let nom = attendue.nom_sortie.as_str();
-        match vivantes.iter().find(|sortie| sortie.nom_sortie == attendue.nom_sortie) {
+        match vivantes
+            .iter()
+            .find(|sortie| sortie.nom_sortie == attendue.nom_sortie)
+        {
             None => disparues.push(nom),
             Some(sortie) if !sortie.attachee_au_bureau => detachees.push(nom),
             Some(sortie) if sortie.rect != attendue.rect => {
@@ -257,8 +262,10 @@ fn constater_tierces(
     connues: &HashSet<String>,
     vivantes: &[SortieDxgi],
 ) {
-    let notres: HashSet<&str> =
-        virtuelles.iter().map(|sortie| sortie.nom_sortie.as_str()).collect();
+    let notres: HashSet<&str> = virtuelles
+        .iter()
+        .map(|sortie| sortie.nom_sortie.as_str())
+        .collect();
     let tierces: Vec<&SortieDxgi> = vivantes
         .iter()
         .filter(|sortie| {

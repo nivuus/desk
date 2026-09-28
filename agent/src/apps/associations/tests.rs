@@ -81,8 +81,14 @@ fn une_commande_ne_vise_PAS_une_autre_version_du_meme_produit() {
     // ROUGE : comparer par `contains` sur le nom ⟹ les deux assertions
     // suivantes tombent ENSEMBLE.
     let commande = "\"C:\\Nsight 2020.3\\nsight.exe\" \"%1\"";
-    assert!(commande_vise(commande, "C:\\Nsight 2020.3\\nsight.exe"), "la bonne");
-    assert!(!commande_vise(commande, "C:\\Nsight 2024.6\\nsight.exe"), "l'autre version");
+    assert!(
+        commande_vise(commande, "C:\\Nsight 2020.3\\nsight.exe"),
+        "la bonne"
+    );
+    assert!(
+        !commande_vise(commande, "C:\\Nsight 2024.6\\nsight.exe"),
+        "l'autre version"
+    );
 }
 
 #[test]
@@ -96,7 +102,10 @@ fn un_meme_executable_sous_deux_ecritures_est_le_meme() {
     // Une barre oblique finale et une casse différente ne font pas deux
     // applications — c'est ce que `normaliser_chemin` garantit, et le
     // réemployer nous le donne gratuitement.
-    assert!(commande_vise("C:\\WINDOWS\\Notepad.exe %1", "c:\\windows\\notepad.exe"));
+    assert!(commande_vise(
+        "C:\\WINDOWS\\Notepad.exe %1",
+        "c:\\windows\\notepad.exe"
+    ));
 }
 
 // ── `normaliser_extension` ──────────────────────────────────────────────────
@@ -132,7 +141,13 @@ fn ranger_trie_ET_dedoublonne() {
     // qui n'a pas eu lieu.
     // ROUGE : retirer le `sort()` ⟹ cette assertion tombe.
     assert_eq!(
-        ranger(vec![".TXT".into(), "md".into(), ".txt".into(), ".MD".into(), ".c".into()]),
+        ranger(vec![
+            ".TXT".into(),
+            "md".into(),
+            ".txt".into(),
+            ".MD".into(),
+            ".c".into()
+        ]),
         vec![".c".to_string(), ".md".to_string(), ".txt".to_string()],
     );
 }
@@ -161,7 +176,10 @@ fn la_table_groupe_les_extensions_par_executable() {
     let t = table(vec![
         (".txt".into(), "C:\\Windows\\notepad.exe %1".into()),
         (".log".into(), "\"C:\\Windows\\notepad.exe\" \"%1\"".into()),
-        (".png".into(), "\"C:\\Program Files\\Vue\\vue.exe\" \"%1\"".into()),
+        (
+            ".png".into(),
+            "\"C:\\Program Files\\Vue\\vue.exe\" \"%1\"".into(),
+        ),
     ]);
     assert_eq!(
         t.get("c:\\windows\\notepad.exe"),
@@ -198,8 +216,14 @@ fn pour_cible_normalise_LA_CIBLE_AUSSI() {
     // ROUGE : `table.get(cible)` au lieu de `table.get(&normaliser_chemin(cible))`
     // ⟹ cette assertion tombe, la suivante reste verte.
     let t = table(vec![(".txt".into(), "C:\\Windows\\Notepad.exe %1".into())]);
-    assert_eq!(pour_cible(&t, "C:\\WINDOWS\\NOTEPAD.EXE"), vec![".txt".to_string()]);
-    assert_eq!(pour_cible(&t, "c:\\windows\\notepad.exe"), vec![".txt".to_string()]);
+    assert_eq!(
+        pour_cible(&t, "C:\\WINDOWS\\NOTEPAD.EXE"),
+        vec![".txt".to_string()]
+    );
+    assert_eq!(
+        pour_cible(&t, "c:\\windows\\notepad.exe"),
+        vec![".txt".to_string()]
+    );
 }
 
 #[test]

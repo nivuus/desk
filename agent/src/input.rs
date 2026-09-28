@@ -38,10 +38,26 @@
 /// **Deux collages simultanés depuis deux fenêtres restent hors de ce qui est
 /// établi** ; P3 est le sous-bloc qui les rencontrera.
 pub const TOUCHES_COLLAGE: [proto::input::InputMessage; 4] = [
-    proto::input::InputMessage::Key { scancode: 0x1d, pressed: true, extended: false },
-    proto::input::InputMessage::Key { scancode: 0x2f, pressed: true, extended: false },
-    proto::input::InputMessage::Key { scancode: 0x2f, pressed: false, extended: false },
-    proto::input::InputMessage::Key { scancode: 0x1d, pressed: false, extended: false },
+    proto::input::InputMessage::Key {
+        scancode: 0x1d,
+        pressed: true,
+        extended: false,
+    },
+    proto::input::InputMessage::Key {
+        scancode: 0x2f,
+        pressed: true,
+        extended: false,
+    },
+    proto::input::InputMessage::Key {
+        scancode: 0x2f,
+        pressed: false,
+        extended: false,
+    },
+    proto::input::InputMessage::Key {
+        scancode: 0x1d,
+        pressed: false,
+        extended: false,
+    },
 ];
 
 #[cfg(windows)]
@@ -134,13 +150,24 @@ mod win {
                  le mode de capture ; la taille de l'image y est PARTAGEE avec \
                  la source, jamais recalculee)"
             );
-            Self { hwnd, reference, sortie: None, mode_relatif, premier_plan_obtenu: None }
+            Self {
+                hwnd,
+                reference,
+                sortie: None,
+                mode_relatif,
+                premier_plan_obtenu: None,
+            }
         }
 
         pub fn inject(&mut self, message: InputMessage) -> Result<()> {
             match message {
                 InputMessage::MouseMove { x, y } => self.move_mouse(x, y),
-                InputMessage::MouseButton { button, pressed, x, y } => {
+                InputMessage::MouseButton {
+                    button,
+                    pressed,
+                    x,
+                    y,
+                } => {
                     // En absolu : toujours positionner avant de cliquer, le
                     // canal n'étant pas ordonné, le déplacement correspondant
                     // a pu se perdre.
@@ -162,7 +189,10 @@ mod win {
                         (MouseButton::Middle, true) => MOUSEEVENTF_MIDDLEDOWN,
                         (MouseButton::Middle, false) => MOUSEEVENTF_MIDDLEUP,
                     };
-                    send_mouse(MOUSEINPUT { dwFlags: flags, ..Default::default() })
+                    send_mouse(MOUSEINPUT {
+                        dwFlags: flags,
+                        ..Default::default()
+                    })
                 }
                 InputMessage::MouseMoveRelative { dx, dy } => send_mouse(MOUSEINPUT {
                     dx: dx as i32,
@@ -196,7 +226,11 @@ mod win {
                     }
                     Ok(())
                 }
-                InputMessage::Key { scancode, pressed, extended } => {
+                InputMessage::Key {
+                    scancode,
+                    pressed,
+                    extended,
+                } => {
                     self.au_premier_plan();
                     let mut flags = KEYEVENTF_SCANCODE;
                     if !pressed {
@@ -372,7 +406,10 @@ mod win {
         fn client_rect_on_screen(&self) -> Result<Rect> {
             let mut rect = RECT::default();
             unsafe { GetClientRect(self.hwnd, &mut rect)? };
-            let mut origin = POINT { x: rect.left, y: rect.top };
+            let mut origin = POINT {
+                x: rect.left,
+                y: rect.top,
+            };
             unsafe { ClientToScreen(self.hwnd, &mut origin) }
                 .ok()
                 .context("ClientToScreen")?;
@@ -415,7 +452,9 @@ mod win {
     fn dispatch(inputs: &[INPUT]) -> Result<()> {
         let sent = unsafe { SendInput(inputs, std::mem::size_of::<INPUT>() as i32) };
         if sent as usize != inputs.len() {
-            return Err(anyhow!("SendInput a refusé l'entrée (session verrouillée ?)"));
+            return Err(anyhow!(
+                "SendInput a refusé l'entrée (session verrouillée ?)"
+            ));
         }
         Ok(())
     }

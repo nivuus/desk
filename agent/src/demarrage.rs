@@ -270,15 +270,17 @@ pub(crate) async fn executer(config: Config) -> Result<()> {
     let session_id = config.session_id.clone();
     let transport = tokio::task::spawn_blocking(move || {
         #[cfg(windows)]
-        let mut injector = window_hwnd_addr.zip(reference_entrees).map(|(addr, reference)| {
-            let hwnd = windows::Win32::Foundation::HWND(addr as *mut core::ffi::c_void);
-            // La référence des entrées vient TELLE QUELLE de
-            // `demarrage::source` : deux descriptions indépendantes du même
-            // rectangle sont ce qui a produit le défaut du lot 32M, et une
-            // taille recalculée à côté de celle de la source est ce qui a
-            // produit celui du lot 32Q.
-            input::InputInjector::new(hwnd, reference, mode_relatif.clone())
-        });
+        let mut injector = window_hwnd_addr
+            .zip(reference_entrees)
+            .map(|(addr, reference)| {
+                let hwnd = windows::Win32::Foundation::HWND(addr as *mut core::ffi::c_void);
+                // La référence des entrées vient TELLE QUELLE de
+                // `demarrage::source` : deux descriptions indépendantes du même
+                // rectangle sont ce qui a produit le défaut du lot 32M, et une
+                // taille recalculée à côté de celle de la source est ce qui a
+                // produit celui du lot 32Q.
+                input::InputInjector::new(hwnd, reference, mode_relatif.clone())
+            });
 
         // Branchement paresseux : à la PREMIÈRE réception d'un état de
         // manette, pas au démarrage — voir le commentaire de
@@ -296,8 +298,9 @@ pub(crate) async fn executer(config: Config) -> Result<()> {
         // (voir le commentaire sur `spawn_blocking` plus haut). `spawn_connect`
         // le fait sur un fil séparé ; ce récepteur est sondé sans bloquer.
         #[cfg(windows)]
-        let mut connexion_manette: Option<std::sync::mpsc::Receiver<anyhow::Result<gamepad::VirtualPad>>> =
-            None;
+        let mut connexion_manette: Option<
+            std::sync::mpsc::Receiver<anyhow::Result<gamepad::VirtualPad>>,
+        > = None;
 
         let mut on_input = |message: proto::input::InputMessage| {
             #[cfg(windows)]
@@ -324,12 +327,10 @@ pub(crate) async fn executer(config: Config) -> Result<()> {
                             pad_indisponible = true;
                             connexion_manette = None;
                             tracing::warn!(erreur = %e, "manette virtuelle indisponible");
-                            let _ = control_tx.send(
-                                proto::control::AgentControl::capabilities(
-                                    false,
-                                    crate::presse_papier::actif(),
-                                ),
-                            );
+                            let _ = control_tx.send(proto::control::AgentControl::capabilities(
+                                false,
+                                crate::presse_papier::actif(),
+                            ));
                         }
                         Err(std::sync::mpsc::TryRecvError::Empty) => {
                             // Connexion encore en cours (jusqu'à 5 s
@@ -348,12 +349,10 @@ pub(crate) async fn executer(config: Config) -> Result<()> {
                             tracing::warn!(
                                 "fil de connexion à la manette virtuelle interrompu de façon inattendue"
                             );
-                            let _ = control_tx.send(
-                                proto::control::AgentControl::capabilities(
-                                    false,
-                                    crate::presse_papier::actif(),
-                                ),
-                            );
+                            let _ = control_tx.send(proto::control::AgentControl::capabilities(
+                                false,
+                                crate::presse_papier::actif(),
+                            ));
                         }
                     }
                 }
@@ -385,7 +384,8 @@ pub(crate) async fn executer(config: Config) -> Result<()> {
         // indécidable « 2 `Resize` pour 5 sessions » (leg 10 de D8, correction I8) :
         // les deux lignes ne portaient aucune session, donc rien n'établissait
         // qu'elles vinssent de deux sessions distinctes.
-        let mut on_control = |message| tracing::info!(session = %session_id, ?message, "contrôle reçu");
+        let mut on_control =
+            |message| tracing::info!(session = %session_id, ?message, "contrôle reçu");
         session.run(&mut on_input, &mut on_control)
     });
 
