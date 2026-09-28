@@ -56,6 +56,10 @@ check("vb_audio est DÉSARMÉ par défaut", par_cle["vb_audio"].default, False)
 check("aucune question ne demande le secret de jeton",
       [q.key for q in questions if "jeton" in q.key or "token" in q.key], [])
 
+# The release source `nivuus update` follows: removing or misspelling it
+# would silently stop the package from ever being updated.
+check("release source", m.source.github if m.source else None, "nivuus/desk")
+
 if failures:
     print(f"FAIL ({len(failures)})")
     for f in failures:
