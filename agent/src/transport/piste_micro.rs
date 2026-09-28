@@ -1,23 +1,23 @@
-//! La piste MONTANTE : le micro du navigateur vers l'agent (chantier E).
+//! The UPSTREAM track: the browser's microphone to the agent (workstream E).
 //!
-//! **Ce module DÉPOSE, et rien d'autre.** C'est l'invariant du chantier A pris
-//! en miroir (spec §7) : la boucle de transport dépose, un fil dédié travaille.
-//! `handle_event` s'exécute PENDANT le drainage de `poll_output` et ne doit
-//! muter aucun `Rtc` — un dépôt dans un puits n'en mute aucun, et
-//! `TamponGigue::deposer` ne rend rien, donc ne peut structurellement pas faire
-//! attendre la boucle.
+//! **This module DEPOSITS, and nothing else.** It is workstream A's invariant taken
+//! as a mirror (spec §7): the transport loop deposits, a dedicated thread works.
+//! `handle_event` runs DURING the drain of `poll_output` and must
+//! mutate no `Rtc` — a deposit into a sink mutates none, and
+//! `TamponGigue::deposer` returns nothing, so it structurally cannot make
+//! the loop wait.
 //!
-//! **Aucun mutex ici, et c'est délibéré.** L'exclusivité — « il n'y a qu'un
-//! câble » (spec §9) — vit dans le PUITS, au bloc E2, sous la forme d'un mutex
-//! nommé à l'échelle de la machine : depuis D1, N fenêtres sont N PROCESSUS, et
-//! un drapeau atomique ne garde rien entre eux. Ce module ne connaît de cette
-//! exclusivité que sa couture : `PuitsMicro::deposer` rend `false` quand le
-//! puits refuse, on le journalise UNE fois, et on n'insiste pas.
+//! **No mutex here, and it is deliberate.** Exclusivity — "there is only one
+//! cable" (spec §9) — lives in the SINK, in block E2, as a machine-wide
+//! named mutex: since D1, N windows are N PROCESSES, and
+//! an atomic flag guards nothing between them. This module only knows the
+//! seam of that exclusivity: `PuitsMicro::deposer` returns `false` when the
+//! sink refuses, we log it ONCE, and we do not insist.
 //!
-//! ⚠️ **« On n'insiste pas » vaut du JOURNAL, plus du navigateur.** Depuis le
-//! bloc E3, chaque CHANGEMENT du verdict du puits met en file un
-//! `AgentControl::MicState` : le journal reste unique, l'annonce au client
-//! suit les transitions. Voir `deposer_trame_micro`.
+//! ⚠️ **"We do not insist" holds for the LOG, no longer for the browser.** Since
+//! block E3, each CHANGE of the sink's verdict queues an
+//! `AgentControl::MicState`: the log stays single, the announcement to the client
+//! follows the transitions. See `deposer_trame_micro`.
 
 use str0m::media::MediaData;
 
@@ -26,81 +26,81 @@ use crate::opus::{echantillons_de, SAMPLE_RATE_HZ};
 
 use super::Session;
 
-// Les CINQ champs que ce module ajoute à `Session` (`transport.rs`) n'y
-// portent qu'une ligne de doc chacun ; leur raisonnement est ici.
+// The FIVE fields this module adds to `Session` (`transport.rs`) only
+// carry one doc line each there; their reasoning is here.
 //
-// ❌ **DEUX comptes de ce même commentaire étaient faux, et la revue transverse
-// du bloc E3 les corrige ensemble** — ils vivaient à deux endroits, ici et en
-// tête du bloc de champs de `transport.rs` :
+// ❌ **TWO counts in this same comment were wrong, and block E3's cross-cutting
+// review fixes them together** — they lived in two places, here and at the
+// head of the field block of `transport.rs`:
 //
-//  - « les QUATRE champs » : rendu faux par le bloc E3 lui-même, qui ajoute
-//    `exclusivite_annoncee`. C'est le patron habituel — la tâche qui écrit le
-//    compte et celle qui l'invalide ne se relisent jamais l'une l'autre ;
-//  - « ce fichier est à TROIS lignes de son plafond » : **jamais trouvé vrai**.
-//    Au commit qui l'a écrit (`784f1fc`, E1), `transport.rs` faisait **491**
-//    lignes, soit une marge de **9** — le chiffre que la section E1 de
-//    `CLAUDE.md` porte également. ⚠️ *Rien n'établit qu'il ait été faux à
-//    l'INSTANT de l'écriture ; il l'était au commit, seul état vérifiable.*
+//  - "the FOUR fields": made wrong by block E3 itself, which adds
+//    `exclusivite_annoncee`. It is the usual pattern — the task that writes the
+//    count and the one that invalidates it never reread each other;
+//  - "this file is THREE lines from its ceiling": **never found true**.
+//    At the commit that wrote it (`784f1fc`, E1), `transport.rs` had **491**
+//    lines, that is a margin of **9** — the figure that the E1 section of
+//    `CLAUDE.md` also carries. ⚠️ *Nothing establishes that it was wrong at the
+//    INSTANT of writing; it was at the commit, the only verifiable state.*
 //
-// ⚠️ **Et le nombre n'est PAS remplacé par un autre nombre.** Un compte de
-// lignes recopié dans un commentaire vieillit à la première insertion — ce
-// dépôt l'a payé neuf fois. La règle qui vaut est celle de `CLAUDE.md` :
-// relancer la commande, jamais recopier une table.
+// ⚠️ **And the number is NOT replaced by another number.** A line
+// count copied into a comment ages at the first insertion — this
+// repository has paid for it nine times. The rule that holds is `CLAUDE.md`'s:
+// rerun the command, never copy a table.
 //
-// - `puits_micro` — absent tant qu'aucun puits n'a été installé : une session
-//   sans micro reste une session vidéo parfaitement normale, et c'est ce qui
-//   permet au chantier E de ne rien coûter aux sessions qui l'ignorent.
-// - `warned_micro_negotiation` — une piste négociée sans puits, ou une horloge
-//   RTP qui n'est pas 48 kHz, sont des conditions PERMANENTES : elles se disent
-//   une fois, pas à chaque paquet. Calqué sur `warned_audio_negotiation`.
-// - `refus_micro_signale` — même raison, pour le refus d'exclusivité.
-//   ❌ **Ce commentaire disait « une autre fenêtre tient le câble POUR LA VIE
-//   DE SON PROCESSUS », et c'était FAUX depuis la Décision 2 du bloc E2** :
-//   la tentative d'acquisition y est devenue NON COLLANTE, refaite à chaque
-//   dépôt, de sorte qu'un câble libéré est repris. Seul le JOURNAL est unique,
-//   et c'est tout ce que ce drapeau garde. L'énoncé faux a survécu à E2 —
-//   `git log` ne rend qu'un seul commit sur ce fichier, `784f1fc` (E1), et la
-//   revue transverse de E2 ne le liste pas. Corrigé par E3.
-// - `exclusivite_annoncee` — le dernier verdict DIT au navigateur. Distinct de
-//   `refus_micro_signale`, et il faut les deux : l'un borne le journal à une
-//   ligne, l'autre suit les transitions dans les DEUX sens.
-// - `journaux_micro` — le compte des lignes RÉELLEMENT émises, incrémenté au
-//   point d'émission et jamais à l'appel. C'est lui qui rend « l'avertissement
-//   ne sort qu'une fois » assertable, donc capable de tomber : un compteur
-//   d'appels aurait rendu le test vacueux.
+// - `puits_micro` — absent as long as no sink has been installed: a session
+//   without a microphone stays a perfectly normal video session, and that is what
+//   lets workstream E cost nothing to sessions that ignore it.
+// - `warned_micro_negotiation` — a track negotiated without a sink, or an RTP
+//   clock that is not 48 kHz, are PERMANENT conditions: they are told
+//   once, not at each packet. Modelled on `warned_audio_negotiation`.
+// - `refus_micro_signale` — same reason, for the exclusivity refusal.
+//   ❌ **This comment said "another window holds the cable FOR THE LIFE
+//   OF ITS PROCESS", and that has been WRONG since Decision 2 of block E2**:
+//   the acquisition attempt became NON-STICKY there, redone at each
+//   deposit, so that a released cable is taken back. Only the LOG is single,
+//   and that is all this flag guards. The false statement survived E2 —
+//   `git log` returns a single commit on this file, `784f1fc` (E1), and
+//   E2's cross-cutting review does not list it. Fixed by E3.
+// - `exclusivite_annoncee` — the last verdict TOLD to the browser. Distinct from
+//   `refus_micro_signale`, and both are needed: one bounds the log to one
+//   line, the other follows transitions in BOTH directions.
+// - `journaux_micro` — the count of lines ACTUALLY emitted, incremented at the
+//   emission point and never at the call. It is what makes "the warning
+//   only goes out once" assertable, hence able to fail: a counter
+//   of calls would have made the test vacuous.
 
 impl Session {
-    /// Installe le puits qui recevra les trames montantes.
+    /// Installs the sink that will receive upstream frames.
     ///
-    /// À poser AVANT `run()`, qui prend la session par valeur.
+    /// To be set BEFORE `run()`, which takes the session by value.
     pub fn set_puits_micro(&mut self, puits: Box<dyn PuitsMicro + Send>) {
         self.puits_micro = Some(puits);
     }
 
-    /// Vrai quand une piste micro a été négociée ET qu'un puits est là pour la
-    /// recevoir. Les deux conditions sont nécessaires : une piste sans puits ne
-    /// mène nulle part, un puits sans piste ne recevra jamais rien.
+    /// True when a microphone track has been negotiated AND a sink is there to
+    /// receive it. Both conditions are necessary: a track without a sink
+    /// leads nowhere, a sink without a track will never receive anything.
     pub fn micro_disponible(&self) -> bool {
         self.mic_mid.is_some() && self.puits_micro.is_some()
     }
 
-    /// Dépose un paquet Opus montant. **Ne rend rien, n'échoue jamais, et ne
-    /// tue jamais la session** : un défaut du micro ne doit pas compromettre
-    /// une session vidéo qui fonctionne (spec §10) — même règle que
-    /// `write_audio`, pour la même raison.
+    /// Deposits an upstream Opus packet. **Returns nothing, never fails, and never
+    /// kills the session**: a microphone defect must not compromise
+    /// a working video session (spec §10) — same rule as
+    /// `write_audio`, for the same reason.
     pub(super) fn deposer_micro(&mut self, data: &MediaData) {
         if self.puits_micro.is_none() {
-            // Spec §10 : « piste montante non négociée → aucun paquet attendu,
-            // avertissement UNIQUE ». Calqué sur `warn_audio_negotiation_once`.
+            // Spec §10: "upstream track not negotiated → no packet expected,
+            // SINGLE warning". Modelled on `warn_audio_negotiation_once`.
             self.avertir_micro_une_fois(
                 "piste micro négociée mais aucun puits installé, paquet abandonné",
             );
             return;
         }
 
-        // ⚠️ L'horloge RTP est VÉRIFIÉE, pas supposée. Tout `micro.rs` raisonne
-        // en échantillons à 48 kHz : un pair qui négocierait une autre horloge
-        // ferait dériver la ligne de temps sans qu'aucune erreur ne le dise.
+        // ⚠️ The RTP clock is CHECKED, not assumed. All of `micro.rs` reasons
+        // in samples at 48 kHz: a peer that negotiated another clock
+        // would make the timeline drift without any error saying so.
         if data.time.denom() != SAMPLE_RATE_HZ {
             self.avertir_micro_une_fois(
                 "horloge RTP de la piste micro différente de 48 kHz, paquets abandonnés",
@@ -108,7 +108,7 @@ impl Session {
             return;
         }
 
-        // La durée est LUE du paquet, jamais supposée (spec §7).
+        // The duration is READ from the packet, never assumed (spec §7).
         let echantillons = match echantillons_de(&data.data) {
             Ok(n) if n > 0 => n,
             _ => {
@@ -126,19 +126,19 @@ impl Session {
         });
     }
 
-    /// Le dépôt lui-même, séparé de l'extraction depuis `MediaData`.
+    /// The deposit itself, separated from the extraction from `MediaData`.
     ///
-    /// ⚠️ **La séparation n'est pas cosmétique.** str0m interdit délibérément
-    /// la construction d'un `MediaData` hors de son crate : sans cette
-    /// fonction, les tests unitaires devaient passer par un point d'entrée
-    /// `#[cfg(test)]` qui RECOPIAIT la logique — et ils exerçaient alors une
-    /// copie, pas le chemin de production. La mutation « la session se termine
-    /// quand le micro refuse » passait au vert sous ce montage, parce qu'elle
-    /// frappait un code que les tests n'empruntaient pas (tâche 8, step 3).
+    /// ⚠️ **The separation is not cosmetic.** str0m deliberately forbids
+    /// building a `MediaData` outside its crate: without this
+    /// function, the unit tests had to go through a `#[cfg(test)]`
+    /// entry point that COPIED the logic — and they then exercised a
+    /// copy, not the production path. The mutation "the session ends
+    /// when the microphone refuses" went green under that setup, because it
+    /// hit code the tests did not take (task 8, step 3).
     pub(super) fn deposer_trame_micro(&mut self, trame: TrameMicro) {
-        // L'emprunt du puits se termine AVANT toute autre lecture de `self` :
-        // sans cette liaison, l'emprunteur refuserait le `self.refus_micro_signale`
-        // qui suit — même précaution que `select_negotiated_opus_pt`.
+        // The sink's borrow ends BEFORE any other read of `self`:
+        // without this binding, the borrow checker would refuse the `self.refus_micro_signale`
+        // that follows — same precaution as `select_negotiated_opus_pt`.
         let accepte = match self.puits_micro.as_mut() {
             Some(puits) => puits.deposer(trame),
             None => {
@@ -152,70 +152,70 @@ impl Session {
         if !accepte && !self.refus_micro_signale {
             self.refus_micro_signale = true;
             self.journaux_micro += 1;
-            // UNE fois — mais **pas parce que le refus serait permanent**.
+            // ONCE — but **not because the refusal would be permanent**.
             //
-            // ❌ Cette phrase disait « le refus est une condition PERMANENTE,
-            // une autre fenêtre tient le câble pour la vie de son processus
-            // (spec §9) ». **Faux depuis la Décision 2 du bloc E2** : la
-            // tentative d'acquisition y est devenue NON COLLANTE, refaite à
-            // chaque dépôt, si bien qu'une fenêtre qui meurt rend le câble et
-            // que la suivante l'acquiert. Ce qui reste vrai de la spec §9 est
-            // « journalisée UNE fois » ; « refusée » comme ÉTAT DÉFINITIF, non.
+            // ❌ This sentence said "the refusal is a PERMANENT condition,
+            // another window holds the cable for the life of its process
+            // (spec §9)". **Wrong since Decision 2 of block E2**: the
+            // acquisition attempt became NON-STICKY there, redone at
+            // each deposit, so that a window that dies gives the cable back and
+            // the next one acquires it. What stays true of spec §9 is
+            // "logged ONCE"; "refused" as a FINAL STATE, no.
             //
-            // Ce qui justifie l'unicité est donc plus étroit, et suffit : une
-            // ligne par paquet ferait cinquante lignes par seconde, et la
-            // reprise, elle, a sa propre ligne côté puits
-            // (`micro : cable acquis apres un refus`).
+            // What justifies the uniqueness is therefore narrower, and is enough: one
+            // line per packet would make fifty lines per second, and the
+            // resumption, for its part, has its own line on the sink side
+            // (mic: cable acquired after a refusal).
             tracing::warn!(
                 "le puits micro refuse les trames (exclusivité non acquise) : \
                  une autre fenêtre porte déjà le micro"
             );
         }
 
-        // ✅ **Le refus EST dit au client depuis le bloc E3**, et cette moitié
-        // du commentaire d'origine est devenue fausse à son tour — les deux
-        // sont corrigées, pas l'une des deux.
+        // ✅ **The refusal IS told to the client since block E3**, and this half
+        // of the original comment became wrong in turn — both
+        // are fixed, not just one of the two.
         //
-        // 🔴 **SUR TRANSITION, jamais à chaque dépôt.** Le micro dépose une
-        // trame toutes les 20 ms ; annoncer à chaque dépôt mettrait cinquante
-        // messages par seconde dans une file bornée à 32
-        // (`PLAFOND_CONTROLE_EN_FILE`), qui déborderait en moins d'une seconde
-        // et **noierait le curseur, la vibration et le presse-papier**.
+        // 🔴 **ON TRANSITION, never at each deposit.** The microphone deposits a
+        // frame every 20 ms; announcing at each deposit would put fifty
+        // messages per second into a queue bounded at 32
+        // (`PLAFOND_CONTROLE_EN_FILE`), which would overflow in less than a second
+        // and **drown the cursor, rumble and clipboard**.
         //
-        // ⚠️ **`None` compte comme une transition, et c'est voulu** : le tout
-        // premier dépôt annonce son verdict. Sans cela, une fenêtre qui perd
-        // le câble dès son premier paquet n'apprendrait jamais rien —
-        // `Ready.mic` a déjà été émis, et il dit `true`. C'est le patron
-        // d'`Accent` : « au changement seulement, et sa PREMIÈRE lecture
-        // comprise ».
+        // ⚠️ **`None` counts as a transition, and it is intended**: the very
+        // first deposit announces its verdict. Without that, a window that loses
+        // the cable from its first packet would never learn anything —
+        // `Ready.mic` has already been emitted, and it says `true`. It is the pattern
+        // of `Accent`: "on change only, its FIRST reading
+        // included".
         //
-        // ⚠️ **La transition se dérive du BOOLÉEN, pas d'une `Issue` du puits.**
-        // `PuitsCable::deposer` connaît ses quatre `Issue` mais ignore le canal
-        // de contrôle ; ce module connaît le canal et ne voit qu'un booléen.
-        // Enrichir le trait `PuitsMicro` pour transporter l'`Issue` jusqu'ici
-        // aurait fait traverser la frontière à un vocabulaire dont ce module
-        // n'a aucun usage : **la transition d'un booléen EST une transition**,
-        // et les deux `Issue` de transition d'E2 (`AccepteApresRefus`,
-        // `RefusePremierement`) sont exactement les deux changements de ce
-        // booléen. Le trait ne bouge pas.
+        // ⚠️ **The transition is derived from the BOOLEAN, not from an `Issue` of the sink.**
+        // `PuitsCable::deposer` knows its four `Issue`s but ignores the control
+        // channel; this module knows the channel and only sees a boolean.
+        // Enriching the `PuitsMicro` trait to carry the `Issue` up to here
+        // would have made a vocabulary cross the boundary that this module
+        // has no use for: **a boolean's transition IS a transition**,
+        // and E2's two transition `Issue`s (`AccepteApresRefus`,
+        // `RefusePremierement`) are exactly the two changes of this
+        // boolean. The trait does not move.
         if self.exclusivite_annoncee != Some(accepte) {
             self.exclusivite_annoncee = Some(accepte);
             self.queue_control(proto::control::AgentControl::mic_state(accepte));
         }
     }
 
-    /// Point d'entrée `#[cfg(test)]` qui court-circuite `MediaData` — str0m
-    /// interdit délibérément sa construction hors du crate.
+    /// `#[cfg(test)]` entry point that short-circuits `MediaData` — str0m
+    /// deliberately forbids building it outside the crate.
     ///
-    /// **Il DÉLÈGUE, il ne recopie pas** : c'est ce qui garantit que les tests
-    /// unitaires exercent le chemin de production et non un jumeau. Même parti
-    /// que `dispatch_controle_de_test` pour `ChannelData`.
+    /// **It DELEGATES, it does not copy**: that is what guarantees the unit
+    /// tests exercise the production path and not a twin. Same approach
+    /// as `dispatch_controle_de_test` for `ChannelData`.
     #[cfg(test)]
     pub(super) fn deposer_trame_micro_de_test(&mut self, trame: TrameMicro) {
         self.deposer_trame_micro(trame);
     }
 
-    /// Journalise une fois, pas à chaque paquet.
+    /// Logs once, not at each packet.
     fn avertir_micro_une_fois(&mut self, message: &'static str) {
         if self.warned_micro_negotiation {
             return;

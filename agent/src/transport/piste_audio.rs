@@ -433,10 +433,10 @@ mod tests {
 
     #[test]
     fn borne_l_attente_quand_l_audio_est_negocie() {
-        // Sans ce plafond, la branche d'attente dormirait jusqu'à l'échéance
-        // que réclame `Rtc` — jusqu'à la seconde entière — et traverserait
-        // ainsi une centaine de paquets audio dus. C'est le même défaut que
-        // C1 côté vidéo, transposé.
+        // Without this ceiling, the waiting branch would sleep until the deadline
+        // `Rtc` asks for — up to a whole second — and would thus
+        // go through a hundred or so due audio packets. It is the same defect as
+        // C1 on the video side, transposed.
         use std::time::Instant;
 
         use crate::transport::socket::bounded_wait;
@@ -450,16 +450,16 @@ mod tests {
         let avec_audio = bounded_wait(maintenant, echeance_rtc, None, Some(AUDIO_POLL_INTERVAL));
         assert_eq!(avec_audio, AUDIO_POLL_INTERVAL);
 
-        // Le plafond ne doit jamais ALLONGER une attente déjà plus courte.
+        // The ceiling must never LENGTHEN an already shorter wait.
         let echeance_proche = maintenant + Duration::from_micros(200);
         let court = bounded_wait(maintenant, echeance_proche, None, Some(AUDIO_POLL_INTERVAL));
         assert_eq!(court, Duration::from_micros(200));
     }
 
-    /// Éprouve le FORMAT, pas le site d'appel : `{erreur:#}` rend la chaîne de
-    /// causes là où `{erreur}` ne rend que le contexte le plus externe. Le site
-    /// lui-même n'est pas observable sur l'hôte (c'est un `warn!` de
-    /// `tracing`) ; sa preuve est le journal de recette, pas ce test.
+    /// Exercises the FORMAT, not the call site: `{erreur:#}` renders the chain of
+    /// causes where `{erreur}` only renders the outermost context. The site
+    /// itself is not observable on the host (it is a `tracing`
+    /// `warn!`); its proof is the acceptance log, not this test.
     #[test]
     fn le_format_diese_rend_la_chaine_de_causes() {
         use anyhow::Context;

@@ -1,6 +1,6 @@
-//! La piste vidéo : négociation du payload type H.264, ancrage de l'instant
-//! de capture sur l'origine d'horloge de la session, et écriture des unités
-//! d'accès vers str0m.
+//! The video track: negotiation of the H.264 payload type, anchoring of the capture
+//! instant on the session's clock origin, and writing access units
+//! to str0m.
 
 use std::time::{Duration, Instant};
 
@@ -12,37 +12,37 @@ use super::Session;
 use crate::clock::instant_from_pts;
 use crate::h264::{AccessUnit, CLOCK_RATE_HZ};
 
-/// Cadence d'interrogation de la source vidéo : une toutes les 10 ms (100 Hz).
+/// Video source polling cadence: once every 10 ms (100 Hz).
 ///
-/// Ce n'est PAS la cadence d'émission : `VideoSource::next_frame` ne rend une
-/// unité d'accès que s'il y en a une de prête, et rend `None` sinon (cas
-/// courant et normal, voir `windows_source`). La cadence d'émission réelle est
-/// donc celle de la source, bornée par celle-ci.
+/// It is NOT the emission cadence: `VideoSource::next_frame` only returns an
+/// access unit if one is ready, and returns `None` otherwise (the common
+/// and normal case, see `windows_source`). The real emission cadence is
+/// therefore the source's, bounded by this one.
 ///
-/// **Pourquoi 100 Hz et non 60 (28/07).** À 60 Hz, la capture ne récupérait
-/// que 46 images/s d'un bureau qui, lui, se met à jour à 68,5 Hz — mesuré
-/// directement par `DXGI_OUTDUPL_FRAME_INFO::AccumulatedFrames`
-/// (`desktop_updates_hz` dans la trace `SOURCE_TRACE`). Chaque tour ne peut
-/// remonter qu'une image, quel que soit le nombre de mises à jour que DXGI a
-/// fusionnées entre-temps : interroger une source à 68,5 Hz seulement 60 fois
-/// par seconde en perd mécaniquement une partie. Interroger plus souvent que
-/// la source ne produit lève cette borne sans rien coûter quand il n'y a rien
-/// à prendre — `AcquireNextFrame` est appelée avec un délai NUL, donc un tour
-/// à vide se résume à un aller-retour DXGI immédiat.
+/// **Why 100 Hz and not 60 (07/28).** At 60 Hz, capture only retrieved
+/// 46 frames/s from a desktop that, for its part, updates at 68.5 Hz — measured
+/// directly through `DXGI_OUTDUPL_FRAME_INFO::AccumulatedFrames`
+/// (`desktop_updates_hz` in the `SOURCE_TRACE` trace). Each round can only
+/// bring back one frame, whatever the number of updates DXGI has
+/// merged meanwhile: polling a 68.5 Hz source only 60 times
+/// per second mechanically loses part of it. Polling more often than
+/// the source produces lifts this bound at no cost when there is nothing
+/// to take — `AcquireNextFrame` is called with a ZERO timeout, so an empty
+/// round comes down to an immediate DXGI round trip.
 ///
-/// Le plafond de 60 im/s visé par le jalon reste, lui, celui du contenu : rien
-/// ici ne fabrique d'images qui n'existent pas.
+/// The 60 fps ceiling the milestone aims at stays, for its part, the content's: nothing
+/// here fabricates frames that do not exist.
 ///
-/// **Vérifié le 28/07** : sonder 5× plus vite (2 ms) ne change rien au débit
-/// — `produced_hz` reste à 47,5 pour un bureau à 68,5 Hz. La cadence de
-/// sondage n'était donc pas le facteur limitant ; c'était le
-/// `MF_MT_FRAME_RATE` annoncé aux MFT (voir `demarrage.rs`).
+/// **Checked on 07/28**: polling 5× faster (2 ms) changes nothing in throughput
+/// — `produced_hz` stays at 47.5 for a desktop at 68.5 Hz. The polling
+/// cadence was therefore not the limiting factor; it was the
+/// `MF_MT_FRAME_RATE` announced to the MFTs (see `demarrage.rs`).
 pub(super) const FRAME_INTERVAL: Duration = Duration::from_millis(10);
 
-/// Vue minimale d'un profil de charge utile négocié, indépendante de str0m
-/// pour rester testable sans session RTC réelle : les champs de
-/// `str0m::format::PayloadParams` (dont `pt`) sont `pub(crate)` côté str0m,
-/// donc impossibles à construire depuis ce crate pour un test.
+/// Minimal view of a negotiated payload profile, independent of str0m
+/// to stay testable without a real RTC session: the fields of
+/// `str0m::format::PayloadParams` (including `pt`) are `pub(crate)` on str0m's side,
+/// hence impossible to build from this crate for a test.
 #[derive(Debug, Clone, Copy)]
 struct CandidatePt {
     codec: Codec,
@@ -50,16 +50,16 @@ struct CandidatePt {
     pt: Pt,
 }
 
-/// Sélectionne le type de charge utile à utiliser pour envoyer du H.264.
+/// Selects the payload type to use to send H.264.
 ///
-/// `enable_h264(true)` négocie sept profils (modes de paquetisation 0 et 1,
-/// quatre profils de compatibilité) : prendre le premier de la liste, comme
-/// le faisait la version initiale, ne garantit rien sur ce que produira
-/// l'encodeur. On filtre explicitement sur le mode de paquetisation 1
-/// (non-interleaved, RFC 6184 §6.2) — le seul que les tâches suivantes
-/// produiront. Le profil exact (constrained-baseline, etc.) n'est pas
-/// discriminé plus finement ici : ce n'est vérifiable qu'avec un navigateur
-/// réel et un encodeur réel, pas avant les tâches 8/11.
+/// `enable_h264(true)` negotiates seven profiles (packetization modes 0 and 1,
+/// four compatibility profiles): taking the first one in the list, as
+/// the initial version did, guarantees nothing about what the
+/// encoder will produce. We explicitly filter on packetization mode 1
+/// (non-interleaved, RFC 6184 §6.2) — the only one the following tasks
+/// will produce. The exact profile (constrained-baseline, etc.) is not
+/// discriminated more finely here: that is only checkable with a real
+/// browser and a real encoder, not before tasks 8/11.
 fn select_h264_pt(candidates: impl Iterator<Item = CandidatePt>) -> Option<Pt> {
     candidates
         .filter(|p| p.codec == Codec::H264 && p.packetization_mode == Some(1))
@@ -67,13 +67,13 @@ fn select_h264_pt(candidates: impl Iterator<Item = CandidatePt>) -> Option<Pt> {
         .next()
 }
 
-/// Échéance de la prochaine image, calculée à partir de l'échéance
-/// *précédente* plutôt que de l'instant courant, pour ne pas accumuler de
-/// dérive : un léger retard sur une image ne retarde pas systématiquement
-/// toutes les suivantes. Borné à un intervalle de rattrapage : au-delà, on
-/// abandonne le calcul fondé sur `previous` (qui produirait une rafale
-/// d'images pour rattraper tout le retard d'un coup) et on repart d'un
-/// intervalle après `now`.
+/// Deadline of the next frame, computed from the *previous*
+/// deadline rather than from the current instant, so as not to accumulate
+/// drift: a slight delay on one frame does not systematically delay
+/// all the following ones. Bounded to a catch-up interval: beyond it, we
+/// abandon the computation based on `previous` (which would produce a burst
+/// of frames to catch up all the delay at once) and restart one
+/// interval after `now`.
 pub(super) fn next_frame_deadline(previous: Instant, now: Instant, interval: Duration) -> Instant {
     let candidate = previous + interval;
     if now.saturating_duration_since(candidate) > interval {
@@ -84,15 +84,15 @@ pub(super) fn next_frame_deadline(previous: Instant, now: Instant, interval: Dur
 }
 
 impl Session {
-    /// Branche `b` de la liste de priorités (voir `tick`) : émet une image
-    /// vidéo si son échéance est atteinte et la piste négociée.
+    /// Branch `b` of the priority list (see `tick`): emits a video
+    /// frame if its deadline is reached and the track negotiated.
     ///
-    /// Rend `Some(Tick::Continue)` quand l'échéance était atteinte — le tour
-    /// est alors conclu, qu'une image ait été écrite ou non : la tentative
-    /// elle-même est l'action du tour, et une écriture réussie est une
-    /// mutation de `Rtc` qui doit être suivie du drainage différé de la
-    /// branche `a0`. Rend `None` quand l'échéance n'est pas atteinte ou que
-    /// la piste n'est pas négociée, sans avoir rien muté.
+    /// Returns `Some(Tick::Continue)` when the deadline was reached — the round
+    /// is then concluded, whether a frame was written or not: the attempt
+    /// itself is the round's action, and a successful write is a
+    /// mutation of `Rtc` that must be followed by the deferred drain of
+    /// branch `a0`. Returns `None` when the deadline is not reached or
+    /// the track is not negotiated, without having mutated anything.
     pub(super) fn brancher_video(&mut self) -> Option<Tick> {
         let mid = self.video_mid?;
         let now = Instant::now();
@@ -102,47 +102,47 @@ impl Session {
         self.next_frame_at = next_frame_deadline(self.next_frame_at, now, FRAME_INTERVAL);
         match self.source.next_frame() {
             Some(unit) => {
-                // `writer.write()` ne fait qu'empiler l'image dans la file
-                // interne `to_payload` de str0m — c'est
-                // `Rtc::handle_input(Input::Timeout(..))` qui la dépile
-                // réellement en paquets RTP (`do_payload`), jamais
-                // `poll_output()` seul (voir `session.rs` de str0m).
-                // L'appeler ICI serait une seconde mutation dans le même
-                // appel à `act_on_timeout`, sans `poll_output` entre les
-                // deux — exactement la violation que ce mécanisme doit
-                // éviter (ronde de correction 1). On pose donc un drapeau :
-                // la PROCHAINE invocation d'`act_on_timeout` le traite en
-                // priorité absolue (branche `a0`). La file de charge non vide
-                // fait renvoyer une échéance immédiate par `poll_output()`,
-                // donc `run()` rappelle aussitôt.
+                // `writer.write()` only pushes the frame onto str0m's internal
+                // `to_payload` queue — it is
+                // `Rtc::handle_input(Input::Timeout(..))` that actually pops it
+                // into RTP packets (`do_payload`), never
+                // `poll_output()` alone (see str0m's `session.rs`).
+                // Calling it HERE would be a second mutation in the same
+                // call to `act_on_timeout`, without `poll_output` between the
+                // two — exactly the violation this mechanism must
+                // avoid (fix round 1). So we set a flag:
+                // the NEXT invocation of `act_on_timeout` handles it with
+                // absolute priority (branch `a0`). The non-empty payload queue
+                // makes `poll_output()` return an immediate deadline,
+                // so `run()` calls again at once.
                 if self.write_frame(mid, unit) {
                     self.video_write_pending_drain = true;
                 }
             }
             None => {
-                // Ronde de correction 1 : l'absence de nouvelle image est le
-                // cas courant et normal d'une capture en direct (bureau
-                // immobile) — pas une fin de session. Seule une source
-                // réellement épuisée (fenêtre fermée, erreur non
-                // récupérable) le justifie, via `VideoSource::is_exhausted`.
-                // `FileSource` ne renvoie jamais `None` et n'atteint donc
-                // jamais ce chemin.
+                // Fix round 1: the absence of a new frame is the
+                // common and normal case of live capture (still
+                // desktop) — not a session end. Only a really
+                // exhausted source (window closed, unrecoverable
+                // error) justifies it, through `VideoSource::is_exhausted`.
+                // `FileSource` never returns `None` and therefore never reaches
+                // this path.
                 if self.source.is_exhausted() {
                     self.begin_ending("source vidéo épuisée");
                 }
             }
         }
-        // Compteur de cadence côté enfant, le pendant de celui du capteur —
-        // voir `cadence_video.rs` (extrait de ce fichier, tâche 8 : l'ajout
-        // dépassait le plafond de 500 lignes de ce fichier).
+        // Child-side cadence counter, the counterpart of the sensor's —
+        // see `cadence_video.rs` (extracted from this file, task 8: the addition
+        // exceeded this file's 500-line ceiling).
         self.compter_la_cadence_video();
         Some(Tick::Continue)
     }
 
-    /// Sélectionne le type de charge utile H.264 négocié pour `mid`, s'il y
-    /// en a un. Appel séparé de `write_frame` pour que l'emprunt sur `self`
-    /// via `Rtc::writer` se termine avant tout appel `&mut self` ultérieur
-    /// (le journal d'avertissement, notamment).
+    /// Selects the H.264 payload type negotiated for `mid`, if there is
+    /// one. A call separate from `write_frame` so that the borrow on `self`
+    /// through `Rtc::writer` ends before any later `&mut self` call
+    /// (the warning log, notably).
     fn select_negotiated_h264_pt(&mut self, mid: Mid) -> Option<Pt> {
         let writer = self.rtc.writer(mid)?;
         select_h264_pt(writer.payload_params().map(|p| CandidatePt {
@@ -152,51 +152,51 @@ impl Session {
         }))
     }
 
-    /// Instant réel auquel l'image d'horodatage `pts_90k` a été capturée.
+    /// Real instant at which the frame with timestamp `pts_90k` was captured.
     ///
-    /// C'est cette valeur que `write_frame` annonce à str0m comme `wallclock`.
-    /// Extraite en méthode pour être vérifiable directement : l'écriture
-    /// elle-même exige une session négociée, la conversion non.
+    /// It is this value that `write_frame` announces to str0m as `wallclock`.
+    /// Extracted into a method to be checkable directly: the write
+    /// itself requires a negotiated session, the conversion does not.
     fn capture_instant(&self, pts_90k: u64) -> Instant {
         instant_from_pts(self.clock_origin, pts_90k, CLOCK_RATE_HZ as u32)
     }
 
-    /// Écrit une unité d'accès sur la piste vidéo. Mutation émise depuis
-    /// l'intérieur de la boucle de `run()` (voir `act_on_timeout`), donc
-    /// suivie d'un retour immédiat à `poll_output` — conforme à la règle de
-    /// drainage de str0m.
+    /// Writes an access unit on the video track. Mutation issued from
+    /// inside `run()`'s loop (see `act_on_timeout`), hence
+    /// followed by an immediate return to `poll_output` — compliant with str0m's
+    /// drain rule.
     ///
-    /// Renvoie `true` si `writer.write()` a réellement été appelée et a
-    /// réussi (donc qu'une entrée a bien été empilée dans `to_payload` et
-    /// nécessite le drainage différé — voir `video_write_pending_drain`),
-    /// `false` si l'écriture n'a pas eu lieu (négociation incomplète,
-    /// piste indisponible) ou a échoué : dans ces deux cas, aucune entrée
-    /// n'a été ajoutée à `to_payload`, poser le drapeau de drainage serait
-    /// à tort et provoquerait un `handle_input(Timeout)` inutile.
+    /// Returns `true` if `writer.write()` was actually called and
+    /// succeeded (hence an entry was indeed pushed onto `to_payload` and
+    /// requires the deferred drain — see `video_write_pending_drain`),
+    /// `false` if the write did not happen (incomplete negotiation,
+    /// track unavailable) or failed: in both cases, no entry
+    /// was added to `to_payload`, setting the drain flag would be
+    /// wrong and would cause a useless `handle_input(Timeout)`.
     pub(super) fn write_frame(&mut self, mid: Mid, unit: AccessUnit) -> bool {
         let Some(pt) = self.select_negotiated_h264_pt(mid) else {
-            // I4 : négociation incomplète (aucun profil H.264 en mode de
-            // paquetisation 1) — sans ce journal, l'image est jetée
-            // silencieusement, produisant un écran noir muet indéfiniment
-            // sans le moindre indice dans les journaux.
+            // I4: incomplete negotiation (no H.264 profile in packetization
+            // mode 1) — without this log, the frame is dropped
+            // silently, producing a silent black screen indefinitely
+            // without the slightest hint in the logs.
             self.warn_negotiation_once(
                 "aucun type de charge utile H.264 négocié (mode de paquetisation 1) : images jetées",
             );
             return false;
         };
-        // Le `wallclock` de str0m est « the real world time that corresponds
-        // to the MediaTime » — l'instant de CAPTURE, pas celui de l'écriture.
-        // Passer `Instant::now()` ici encapsulait tout le délai de capture et
-        // d'encodage matériel dans la correspondance annoncée, ce qui restait
-        // invisible tant que la vidéo était seule. Avec une piste audio, dont
-        // le chemin est bien plus court, l'audio devancerait la vidéo de tout
-        // ce délai et la synchro labiale serait fausse par construction.
+        // str0m's `wallclock` is "the real world time that corresponds
+        // to the MediaTime" — the CAPTURE instant, not the write one.
+        // Passing `Instant::now()` here folded the whole capture and hardware
+        // encoding delay into the announced correspondence, which stayed
+        // invisible as long as video was alone. With an audio track, whose
+        // path is much shorter, audio would run ahead of video by all
+        // that delay and lip sync would be wrong by construction.
         //
-        // L'horodatage fait l'aller-retour par Media Foundation sans perte
-        // (`encode.rs`), donc l'instant de capture se reconstruit exactement
-        // depuis l'origine partagée. Calculé avant l'emprunt de `writer` :
-        // celui-ci retient `&mut self.rtc`, incompatible avec l'emprunt
-        // immuable de `self.clock_origin` qu'exige `capture_instant`.
+        // The timestamp makes the round trip through Media Foundation without loss
+        // (`encode.rs`), so the capture instant is rebuilt exactly
+        // from the shared origin. Computed before borrowing `writer`:
+        // that one holds `&mut self.rtc`, incompatible with the immutable
+        // borrow of `self.clock_origin` that `capture_instant` requires.
         let capture_at = self.capture_instant(unit.pts_90k);
         let Some(writer) = self.rtc.writer(mid) else {
             self.warn_negotiation_once("piste vidéo plus accessible en écriture : images jetées");
@@ -209,19 +209,19 @@ impl Session {
             unit.data,
         ) {
             Ok(()) => {
-                // C'est ICI, et seulement ici, que l'écriture a réellement
-                // eu lieu — voir `compter_la_cadence_video`, qui journalise
-                // ce compte, jamais un tour de boucle ni un `next_frame` à
-                // vide.
+                // It is HERE, and only here, that the write really
+                // happened — see `compter_la_cadence_video`, which logs
+                // this count, never a loop round nor an empty
+                // `next_frame`.
                 self.unites_video_ecrites += 1;
                 true
             }
             Err(e) => {
-                // Échec d'écriture applicatif (ex. RID inconnu) : on clôt la
-                // session plutôt que de faire remonter l'erreur jusqu'au
-                // processus. Seules `Session::new` et `accept_offer` — avant
-                // qu'une session n'existe vraiment — justifient de tuer le
-                // processus entier.
+                // Application write failure (e.g. unknown RID): we close the
+                // session rather than propagate the error up to the
+                // process. Only `Session::new` and `accept_offer` — before
+                // a session really exists — justify killing the
+                // whole process.
                 tracing::warn!(erreur = %e, "échec d'écriture de l'image, fin de session");
                 self.begin_ending("échec d'écriture vidéo");
                 false

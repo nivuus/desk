@@ -1,13 +1,13 @@
-//! Les tests de `piste_micro.rs`.
+//! The tests of `piste_micro.rs`.
 //!
-//! Deux familles, et elles répondent à des questions différentes :
-//! les tests unitaires exercent la garde d'exclusivité et les avertissements
-//! uniques sur une `Session` nue ; le test d'intégration fait traverser un
-//! vrai paquet Opus à travers un vrai `Rtc` str0m jusqu'au puits.
+//! Two families, and they answer different questions:
+//! the unit tests exercise the exclusivity guard and the single
+//! warnings on a bare `Session`; the integration test sends a
+//! real Opus packet through a real str0m `Rtc` down to the sink.
 //!
-//! ⚠️ La sonde 1 (`transport::sonde_montante`) répondait sur str0m NU. Le test
-//! d'intégration d'ici répond sur NOTRE chemin. Les deux coexistent : le
-//! premier dit ce que fait la bibliothèque, le second ce que fait l'agent.
+//! ⚠️ Probe 1 (`transport::sonde_montante`) answered on BARE str0m. The
+//! integration test here answers on OUR path. Both coexist: the
+//! first says what the library does, the second what the agent does.
 
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -19,7 +19,7 @@ use super::*;
 use crate::micro::{PuitsMicro, TrameMicro};
 use crate::transport::fixtures;
 
-/// Puits qui enregistre ce qu'on lui donne, et accepte ou refuse à volonté.
+/// A sink that records what it is given, and accepts or refuses at will.
 struct PuitsEspion {
     recues: Arc<Mutex<Vec<TrameMicro>>>,
     accepte: bool,
@@ -37,12 +37,12 @@ fn session_nue() -> Session {
     Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000).expect("session")
 }
 
-/// Spec §10 : « piste montante non négociée → aucun paquet attendu,
-/// avertissement UNIQUE » — calqué sur `warn_audio_negotiation_once`.
+/// Spec §10: "upstream track not negotiated → no packet expected,
+/// SINGLE warning" — modelled on `warn_audio_negotiation_once`.
 ///
-/// Le compte porte sur les lignes RÉELLEMENT émises (`journaux_micro` n'est
-/// incrémenté qu'au moment du `tracing::warn!`), pas sur le nombre d'appels :
-/// c'est ce qui rend l'assertion capable de tomber.
+/// The count is of lines ACTUALLY emitted (`journaux_micro` is only
+/// incremented at the moment of `tracing::warn!`), not of the number of calls:
+/// that is what makes the assertion able to fail.
 #[test]
 fn sans_piste_micro_negociee_l_avertissement_ne_sort_qu_une_fois() {
     let mut s = session_nue();
@@ -57,9 +57,9 @@ fn sans_piste_micro_negociee_l_avertissement_ne_sort_qu_une_fois() {
     );
 }
 
-/// Spec §9 : un second flux montant est refusé, journalisé UNE fois, et sa
-/// piste ignorée. **Le refus vient du PUITS** (`deposer` rend `false`) : le
-/// transport ne connaît aucun mutex, et c'est la couture que E2 remplira.
+/// Spec §9: a second upstream stream is refused, logged ONCE, and its
+/// track ignored. **The refusal comes from the SINK** (`deposer` returns `false`): the
+/// transport knows no mutex, and that is the seam E2 will fill.
 #[test]
 fn un_puits_qui_refuse_ne_fait_journaliser_qu_une_fois_et_ne_tue_rien() {
     let recues = Arc::new(Mutex::new(Vec::new()));
@@ -87,17 +87,17 @@ fn un_puits_qui_refuse_ne_fait_journaliser_qu_une_fois_et_ne_tue_rien() {
         "le refus a été journalisé {} fois au lieu d'une",
         s.journaux_micro
     );
-    // …et la session n'est pas en train de se terminer : un micro refusé ne
-    // compromet rien.
+    // …and the session is not ending: a refused microphone
+    // compromises nothing.
     assert!(!s.ending);
 }
 
-/// Le micro ne tue JAMAIS une session qui fonctionne (spec §10).
+/// The microphone NEVER kills a working session (spec §10).
 ///
-/// La propriété est en partie STRUCTURELLE — `deposer_micro` rend `()`, donc
-/// ne peut rien propager — et ce test vérifie la partie qui, elle, pourrait
-/// changer : l'état de la session est intact après un puits qui refuse tout,
-/// y compris la piste vidéo, qui est ce qu'on protège.
+/// The property is partly STRUCTURAL — `deposer_micro` returns `()`, so
+/// cannot propagate anything — and this test checks the part that
+/// could change: the session's state is intact after a sink that refuses everything,
+/// including the video track, which is what we protect.
 #[test]
 fn un_micro_refusant_ne_compromet_pas_la_video() {
     let mut s = session_nue();
@@ -121,15 +121,15 @@ fn un_micro_refusant_ne_compromet_pas_la_video() {
     assert!(!s.ending, "la session s'est terminée à cause du micro");
 }
 
-/// La sonde 1 répondait sur str0m nu. Celui-ci répond sur NOTRE chemin : un
-/// paquet Opus écrit par le pair est retrouvé dans le puits de la session,
-/// avec la durée LUE du paquet et l'horodatage RTP du pair (spec §11).
+/// Probe 1 answered on bare str0m. This one answers on OUR path: an
+/// Opus packet written by the peer is found in the session's sink,
+/// with the duration READ from the packet and the peer's RTP timestamp (spec §11).
 #[test]
 fn un_paquet_opus_montant_atteint_le_puits_de_la_session() {
     use crate::opus::OpusEncoder;
 
-    // Une vraie trame Opus de 10 ms : c'est elle qui donne son sens à
-    // `echantillons`, qu'une charge utile arbitraire rendrait illisible.
+    // A real 10 ms Opus frame: it is what gives meaning to
+    // `echantillons`, which an arbitrary payload would make unreadable.
     let mut enc = OpusEncoder::new().expect("encodeur");
     let pcm: Vec<i16> = (0..crate::opus::FRAME_INTERLEAVED)
         .map(|i| ((i as f32 * 0.05).sin() * 8000.0) as i16)
@@ -147,7 +147,7 @@ fn un_paquet_opus_montant_atteint_le_puits_de_la_session() {
     let (peer_socket, peer_addr, mut peer_rtc) = fixtures::local_peer(local_ip, true);
     let mut api = peer_rtc.sdp_api();
     api.add_media(MediaKind::Video, Direction::RecvOnly, None, None, None);
-    // Le micro : le NAVIGATEUR émet, donc l'agent reçoit.
+    // The microphone: the BROWSER emits, so the agent receives.
     let mid_micro = api.add_media(MediaKind::Audio, Direction::SendOnly, None, None, None);
     let (offer, pending) = api.apply().expect("offre non vide");
 
@@ -176,9 +176,9 @@ fn un_paquet_opus_montant_atteint_le_puits_de_la_session() {
         );
         match peer_rtc.poll_output().expect("poll_output du pair") {
             Output::Timeout(t) => {
-                // Écrire à CHAQUE échéance : la première écriture peut précéder
-                // l'établissement SRTP, et un unique paquet perdu ferait échouer
-                // un test dont la réponse est « oui ».
+                // Write at EACH deadline: the first write may precede
+                // SRTP establishment, and a single lost packet would make
+                // a test whose answer is "yes" fail.
                 if let Some(writer) = peer_rtc.writer(mid_micro) {
                     let pt = writer
                         .payload_params()
@@ -233,14 +233,14 @@ fn un_paquet_opus_montant_atteint_le_puits_de_la_session() {
     );
 }
 
-// ── Bloc E3 : le refus d'exclusivité est DIT au navigateur ──────────────────
+// ── Block E3: the exclusivity refusal is TOLD to the browser ───────────────
 //
-// 🔴 Tous ces tests passent par `deposer_trame_micro_de_test`, qui **DÉLÈGUE**
-// au chemin de production. L'en-tête de `piste_micro.rs` documente pourquoi :
-// un point d'entrée `#[cfg(test)]` qui RECOPIERAIT la logique ferait passer au
-// vert des mutations qui doivent rougir — c'est arrivé en E1, tâche 8.
+// 🔴 All these tests go through `deposer_trame_micro_de_test`, which **DELEGATES**
+// to the production path. The header of `piste_micro.rs` documents why:
+// a `#[cfg(test)]` entry point that COPIED the logic would turn
+// green mutations that must turn red — it happened in E1, task 8.
 
-/// Les verdicts d'exclusivité réellement mis en file, dans l'ordre.
+/// The exclusivity verdicts actually queued, in order.
 fn verdicts_annonces(s: &Session) -> Vec<bool> {
     s.pending_control
         .iter()
@@ -259,7 +259,7 @@ fn trame_muette() -> TrameMicro {
     }
 }
 
-/// Puits dont la réponse se pilote de l'extérieur, pour jouer une REPRISE.
+/// A sink whose answer is driven from outside, to play a RESUMPTION.
 struct PuitsPilotable {
     accepte: Arc<Mutex<bool>>,
 }
@@ -270,10 +270,10 @@ impl PuitsMicro for PuitsPilotable {
     }
 }
 
-/// Le premier dépôt annonce son verdict — `None` compte comme une transition.
+/// The first deposit announces its verdict — `None` counts as a transition.
 ///
-/// Sans cela, une fenêtre qui perd le câble dès son premier paquet
-/// n'apprendrait JAMAIS rien : `Ready.mic` a déjà été émis, et il dit `true`.
+/// Without that, a window that loses the cable from its first packet
+/// would NEVER learn anything: `Ready.mic` has already been emitted, and it says `true`.
 #[test]
 fn le_tout_premier_depot_annonce_son_verdict_au_navigateur() {
     for accepte in [true, false] {
@@ -291,16 +291,16 @@ fn le_tout_premier_depot_annonce_son_verdict_au_navigateur() {
     }
 }
 
-/// 🔴 SUR TRANSITION, jamais à chaque dépôt. C'est la rouge R3.
+/// 🔴 ON TRANSITION, never at each deposit. It is red R3.
 ///
-/// Le micro dépose une trame toutes les 20 ms. Annoncer à chaque dépôt
-/// mettrait cinquante messages par seconde dans une file bornée à 32
-/// (`PLAFOND_CONTROLE_EN_FILE`), qui déborderait en moins d'une seconde et
-/// noierait le curseur, la vibration et le presse-papier.
+/// The microphone deposits a frame every 20 ms. Announcing at each deposit
+/// would put fifty messages per second into a queue bounded at 32
+/// (`PLAFOND_CONTROLE_EN_FILE`), which would overflow in less than a second and
+/// drown the cursor, rumble and clipboard.
 ///
-/// **Cinquante dépôts, UN message** — et le compte est sur les messages
-/// RÉELLEMENT en file, pas sur un compteur d'appels : c'est ce qui le rend
-/// capable de tomber.
+/// **Fifty deposits, ONE message** — and the count is of messages
+/// ACTUALLY queued, not of a call counter: that is what makes it
+/// able to fail.
 #[test]
 fn cinquante_depots_de_meme_verdict_ne_font_qu_une_annonce() {
     for accepte in [true, false] {
@@ -321,15 +321,15 @@ fn cinquante_depots_de_meme_verdict_ne_font_qu_une_annonce() {
     }
 }
 
-/// 🔴 Après un refus LEVÉ, le client est RÉINFORMÉ. C'est la rouge R4.
+/// 🔴 After a refusal is LIFTED, the client is INFORMED AGAIN. It is red R4.
 ///
-/// ❌ Ce test n'existerait pas si le commentaire d'origine de ce module avait
-/// dit vrai : il affirmait que le refus est « une condition PERMANENTE — une
-/// autre fenêtre tient le câble pour la vie de son processus ». **La Décision 2
-/// du bloc E2 l'a réfuté** en rendant la tentative d'acquisition NON COLLANTE :
-/// un câble libéré est repris au dépôt suivant. Une annonce qui ne suivrait que
-/// la première transition laisserait alors le bandeau d'exclusivité affiché à
-/// jamais sur une fenêtre qui a repris le micro.
+/// ❌ This test would not exist if this module's original comment had
+/// told the truth: it asserted that the refusal is "a PERMANENT condition — another
+/// window holds the cable for the life of its process". **Decision 2
+/// of block E2 refuted it** by making the acquisition attempt NON-STICKY:
+/// a released cable is taken back at the next deposit. An announcement that only followed
+/// the first transition would then leave the exclusivity banner displayed
+/// forever on a window that has taken the microphone back.
 #[test]
 fn un_refus_leve_est_reannonce_au_navigateur() {
     let accepte = Arc::new(Mutex::new(false));
@@ -347,7 +347,7 @@ fn un_refus_leve_est_reannonce_au_navigateur() {
         "le refus initial, une fois"
     );
 
-    // L'autre fenêtre meurt, le câble est rendu.
+    // The other window dies, the cable is given back.
     *accepte.lock().unwrap() = true;
     for _ in 0..5 {
         s.deposer_trame_micro_de_test(trame_muette());
@@ -358,19 +358,19 @@ fn un_refus_leve_est_reannonce_au_navigateur() {
         "la reprise doit être annoncée, et une seule fois"
     );
 
-    // Et le sens inverse aussi : le verdict suit les transitions dans les DEUX
-    // sens, ce qu'un drapeau « déjà annoncé » ne ferait pas.
+    // And the reverse direction too: the verdict follows transitions in BOTH
+    // directions, which an "already announced" flag would not do.
     *accepte.lock().unwrap() = false;
     s.deposer_trame_micro_de_test(trame_muette());
     assert_eq!(verdicts_annonces(&s), vec![false, true, false]);
 }
 
-/// Le JOURNAL reste unique, lui, et c'est une propriété distincte.
+/// The LOG, for its part, stays single, and it is a distinct property.
 ///
-/// Deux drapeaux, deux rôles : `refus_micro_signale` borne le journal à une
-/// ligne pour toute la session ; `exclusivite_annoncee` suit les transitions.
-/// Les confondre ferait ou bien cinquante lignes de journal par seconde, ou
-/// bien un bandeau client qui ne se lève jamais.
+/// Two flags, two roles: `refus_micro_signale` bounds the log to one
+/// line for the whole session; `exclusivite_annoncee` follows transitions.
+/// Confusing them would give either fifty log lines per second, or
+/// a client banner that is never lifted.
 #[test]
 fn la_reprise_ne_produit_pas_une_seconde_ligne_de_journal() {
     let accepte = Arc::new(Mutex::new(false));
