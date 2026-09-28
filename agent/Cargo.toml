@@ -40,7 +40,7 @@ md-5 = "0.10"
 # crate (which only RE-EXPORTS `windows_core` under the name `core`)
 # is declared as a dependency. Version aligned on the one Cargo.lock
 # already locks as a transitive dependency of `windows`.
-windows-core = "0.62"
+windows-core = "0.100"
 windows = { version = "0.62", features = [
     "Win32_Devices_DeviceAndDriverInstallation",
     # `QueryDisplayConfig` / `DisplayConfigGetDeviceInfo`: the only
