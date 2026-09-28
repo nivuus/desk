@@ -1,29 +1,29 @@
-//! Les tests d'hôte de `placement` qui portent sur les DEUX cadres invisibles
-//! d'une fenêtre Windows : le lisère de DWM, et la bordure que Windows peint.
+//! The host tests of `placement` bearing on the TWO invisible frames
+//! of a Windows window: DWM's fringe, and the border Windows paints.
 //!
-//! **Extrait de `placement/tests.rs` VERBATIM**, le 31 août 2026, par une
-//! tâche DÉDIÉE et AVANT l'addition qu'elle préparait — le fichier d'origine
-//! était à **485 lignes**, donc à quinze du plafond, et le correctif « une
-//! sortie DÉSIGNÉE est servie quelle que soit sa taille » devait y poser ses
-//! propres cas.
+//! **Extracted from `placement/tests.rs` VERBATIM**, on August 31st, 2026, by a
+//! DEDICATED task and BEFORE the addition it prepared — the original file
+//! was at **485 lines**, hence fifteen from the ceiling, and the fix "a
+//! DESIGNATED output is served whatever its size" had to put its
+//! own cases there.
 //!
-//! ⚠️ **Ici l'extraction est rigoureusement verbatim, et ce n'est pas une
-//! chance** : les deux modules restent NESTED d'un cran (`mod lisere` dans ce
-//! fichier-module), exactement comme ils l'étaient dans `mod tests`. Leur
-//! `use super::super::*;` désigne donc toujours `placement`, sans qu'une seule
-//! ligne d'import ait à bouger. Les aplatir en modules de premier niveau aurait
-//! obligé à réécrire ces deux lignes — le dépôt écrit qu'une extraction n'est
-//! jamais verbatim ; celle-ci l'est, parce que la forme a été choisie pour.
+//! ⚠️ **Here the extraction is strictly verbatim, and it is not
+//! luck**: the two modules stay NESTED one notch (`mod lisere` in this
+//! file-module), exactly as they were in `mod tests`. Their
+//! `use super::super::*;` therefore still designates `placement`, without a single
+//! import line having to move. Flattening them into top-level modules would have
+//! required rewriting those two lines — the repository writes that an extraction is
+//! never verbatim; this one is, because the form was chosen for it.
 //!
-//! Aucune assertion, aucun commentaire n'a été réécrit au déplacement.
+//! No assertion, no comment was rewritten in the move.
 
 mod lisere {
     use super::super::*;
     use crate::geometry::Rect;
 
-    /// 🔴 **LES NOMBRES VIENNENT DE LA SONDE, PAS D'UN CALCUL SUR CE QU'ILS
-    /// JUGENT.** Relevés en SESSION 1 le 31 août 2026, par tâche planifiée
-    /// `/it`, sur la session VIVANTE du propriétaire pendant qu'il testait :
+    /// 🔴 **THE NUMBERS COME FROM THE PROBE, NOT FROM A CALCULATION ON WHAT THEY
+    /// JUDGE.** Recorded in SESSION 1 on August 31st, 2026, through an `/it`
+    /// scheduled task, on the owner's LIVE session while they were testing:
     ///
     /// ```text
     /// GetWindowRect = 1732x1032+1280+0   <- exactement la `retenue` du journal
@@ -31,8 +31,8 @@ mod lisere {
     /// lisere : gauche=7 haut=0 droite=7 bas=7
     /// ```
     ///
-    /// Les deux fenêtres servies ont rendu **le même lisère**, sur deux
-    /// sorties différentes.
+    /// Both served windows returned **the same fringe**, on two
+    /// different outputs.
     const MESURE: Lisere = Lisere {
         gauche: 7,
         haut: 0,
@@ -40,9 +40,9 @@ mod lisere {
         bas: 7,
     };
 
-    /// La cible telle que le superviseur la calcule : origine de la sortie
-    /// `\\.\DISPLAY6` (+1280+0), taille retenue `1732x1032` — les deux lues au
-    /// journal du produit.
+    /// The target as the supervisor computes it: origin of the output
+    /// `\\.\DISPLAY6` (+1280+0), retained size `1732x1032` — both read in
+    /// the product's log.
     fn cible_mesuree() -> Rect {
         Rect {
             x: 1280,
@@ -52,8 +52,8 @@ mod lisere {
         }
     }
 
-    /// Ce que `SetWindowPos` doit recevoir pour que l'œil voie exactement la
-    /// cible : la cible gonflée du lisère, décalée de son coin haut-gauche.
+    /// What `SetWindowPos` must receive for the eye to see exactly the
+    /// target: the target inflated by the fringe, shifted by its top-left corner.
     #[test]
     fn le_rectangle_pose_est_la_cible_gonflee_du_lisere() {
         let pose = rect_a_poser(&cible_mesuree(), MESURE);
@@ -68,13 +68,13 @@ mod lisere {
         );
     }
 
-    /// 🔴 **LA PROPRIÉTÉ QUI COMPTE, ET ELLE EST UN ALLER-RETOUR** : ce que
-    /// DWM rendra du rectangle posé doit être **exactement** la cible. C'est
-    /// elle qui garantit qu'il ne reste aucun pixel de bureau dans l'image.
+    /// 🔴 **THE PROPERTY THAT MATTERS, AND IT IS A ROUND TRIP**: what
+    /// DWM will return of the placed rectangle must be **exactly** the target. It is
+    /// what guarantees that no desktop pixel remains in the image.
     ///
-    /// La « simulation de DWM » n'est pas une pétition de principe : elle
-    /// applique la DÉFINITION du lisère (cadre visible = brut rétréci de
-    /// chaque côté), telle que la sonde l'a mesurée, et non une inversion de
+    /// The "DWM simulation" is not begging the question: it
+    /// applies the DEFINITION of the fringe (visible frame = raw shrunk on
+    /// each side), as the probe measured it, and not an inversion of
     /// `rect_a_poser`.
     #[test]
     fn le_cadre_visible_du_rectangle_pose_redonne_exactement_la_cible() {
@@ -89,11 +89,11 @@ mod lisere {
         assert_eq!(visible, cible);
     }
 
-    /// 🔴 **LE GARDE CONTRE L'OSCILLATION À 1 Hz.** `rectangle_de` rend
-    /// désormais le cadre VISIBLE, et le contrôle périodique le compare à la
-    /// cible : si les deux moitiés du correctif n'allaient pas ensemble,
-    /// l'écart serait permanent et la fenêtre serait reposée **chaque
-    /// seconde**. Ce test est la version pure de cette boucle.
+    /// 🔴 **THE GUARD AGAINST 1 Hz OSCILLATION.** `rectangle_de` now returns
+    /// the VISIBLE frame, and the periodic check compares it to the
+    /// target: if the two halves of the fix did not go together,
+    /// the gap would be permanent and the window would be placed again **every
+    /// second**. This test is the pure version of that loop.
     #[test]
     fn apres_compensation_le_controle_periodique_ne_replace_plus() {
         let cible = cible_mesuree();
@@ -108,21 +108,21 @@ mod lisere {
             !doit_etre_replacee(&visible, &cible),
             "replacement en boucle"
         );
-        // …et le contre-exemple : si l'on comparait le rectangle BRUT à la
-        // cible — ce que faisait `rectangle_de` avant ce correctif —, le
-        // contrôle replacerait indéfiniment.
+        // …and the counter-example: if we compared the RAW rectangle to the
+        // target — what `rectangle_de` did before this fix —, the
+        // check would replace indefinitely.
         assert!(
             doit_etre_replacee(&pose, &cible),
             "le brut DOIT differer de la cible, sinon ce test ne prouve rien"
         );
     }
 
-    /// ⚠️ **LE LISÈRE N'EST PAS SYMÉTRIQUE, ET LE SUPPOSER DÉCALERAIT
-    /// L'IMAGE.** `haut = 0` parce que la barre de titre est peinte. Ce test
-    /// emploie quatre valeurs DIFFÉRENTES pour que toute confusion entre deux
-    /// côtés le fasse rougir — un `gauche` employé à la place du `haut`
-    /// passerait inaperçu avec le lisère mesuré, où trois côtés sur quatre
-    /// valent 7.
+    /// ⚠️ **THE FRINGE IS NOT SYMMETRIC, AND ASSUMING IT WOULD SHIFT
+    /// THE IMAGE.** `top = 0` because the title bar is painted. This test
+    /// uses four DIFFERENT values so that any confusion between two
+    /// sides turns it red — a `left` used in place of the `top`
+    /// would go unnoticed with the measured fringe, where three sides out of four
+    /// are 7.
     #[test]
     fn chaque_cote_du_lisere_est_honore_separement() {
         let l = Lisere {
@@ -151,9 +151,9 @@ mod lisere {
         );
     }
 
-    /// Le repli : DWM refuse, le lisère est nul, et l'on retrouve **exactement
-    /// le comportement d'avant ce correctif**. Une correction qui ne saurait
-    /// pas se désarmer serait pire que le défaut.
+    /// The fallback: DWM refuses, the fringe is zero, and we get **exactly
+    /// the behaviour from before this fix**. A correction that could
+    /// not disarm itself would be worse than the defect.
     #[test]
     fn un_lisere_nul_rend_la_cible_telle_quelle() {
         let cible = cible_mesuree();
@@ -163,14 +163,14 @@ mod lisere {
         assert!(!MESURE.est_nul());
     }
 
-    /// Le pendant pour le chemin du CAPTEUR, qui retaille sans déplacer.
+    /// The counterpart for the CAPTURER path, which resizes without moving.
     #[test]
     fn la_taille_posee_est_la_taille_visible_gonflee_du_lisere() {
         assert_eq!(taille_a_poser((1732, 1032), MESURE), (1746, 1039));
     }
 
-    /// Un lisère aberrant — DWM qui rendrait n'importe quoi — ne doit pas
-    /// faire déborder l'arithmétique et produire une fenêtre minuscule.
+    /// An aberrant fringe — DWM returning anything — must not
+    /// overflow the arithmetic and produce a tiny window.
     #[test]
     fn un_lisere_aberrant_ne_fait_pas_deborder() {
         let fou = Lisere {
@@ -199,21 +199,21 @@ mod bordure_peinte {
     use super::super::*;
     use crate::geometry::Rect;
 
-    /// 🔴 **LES NOMBRES VIENNENT DES PIXELS DE L'IMAGE, PAS D'UN CALCUL.**
-    /// Capture de la sortie virtuelle en session 1, 31 août 2026, recadrage
-    /// 1548×1032 — couleurs relevées sur les bords et sur leurs voisines :
+    /// 🔴 **THE NUMBERS COME FROM THE IMAGE'S PIXELS, NOT FROM A CALCULATION.**
+    /// Capture of the virtual output in session 1, August 31st, 2026, crop
+    /// 1548×1032 — colours read on the edges and on their neighbours:
     ///
     /// ```text
-    /// rangee 0    (HAUT)   #494949 | rangee 1     #F3F3F3
-    /// rangee 1031 (BAS)    #2F2F2F | rangee 1030  #F0F0F0
-    /// colonne 0   (GAUCHE) #2F2F2F | colonne 1    #FFFFFF
-    /// colonne 1547(DROIT)  #2F2F2F | colonne 1546 #F0F0F0
+    /// row 0       (TOP)    #494949 | row 1        #F3F3F3
+    /// row 1031    (BOTTOM) #2F2F2F | row 1030     #F0F0F0
+    /// column 0    (LEFT)   #2F2F2F | column 1     #FFFFFF
+    /// column 1547 (RIGHT)  #2F2F2F | column 1546  #F0F0F0
     /// ```
     ///
-    /// Un pixel sombre sur les quatre bords, clair juste en dedans. Et
-    /// `GetSystemMetrics(SM_CXBORDER/SM_CYBORDER)` rend `(1, 1)` à 96 DPI :
-    /// **la mesure de l'image et la métrique du système concordent**, ce qui
-    /// est ce qui autorise à se fier à la seconde plutôt qu'à écrire `1`.
+    /// One dark pixel on all four edges, light just inside. And
+    /// `GetSystemMetrics(SM_CXBORDER/SM_CYBORDER)` returns `(1, 1)` at 96 DPI:
+    /// **the image measurement and the system metric agree**, which
+    /// is what allows trusting the latter rather than writing `1`.
     const BORDURE: (i32, i32) = (1, 1);
     const DWM: Lisere = Lisere {
         gauche: 7,
@@ -235,10 +235,10 @@ mod bordure_peinte {
         );
     }
 
-    /// 🔴 **L'ALLER-RETOUR QUI TIENT LES DEUX MOITIÉS ENSEMBLE.** `poser` pose
-    /// à `crop + enveloppe` ; `rectangle_de` rend `cadre visible − bordure`.
-    /// Le résultat doit être **exactement** le recadrage, sinon le contrôle
-    /// périodique voit un écart permanent.
+    /// 🔴 **THE ROUND TRIP THAT HOLDS BOTH HALVES TOGETHER.** `poser` places
+    /// at `crop + enveloppe`; `rectangle_de` returns `visible frame − border`.
+    /// The result must be **exactly** the crop, otherwise the periodic check
+    /// sees a permanent gap.
     #[test]
     fn poser_puis_relire_redonne_exactement_le_recadrage() {
         let crop = Rect {
@@ -248,8 +248,8 @@ mod bordure_peinte {
             height: 1032,
         };
         let pose = rect_a_poser(&crop, enveloppe(DWM, BORDURE));
-        // Ce que DWM rendra du rectangle posé : le posé, rétréci du lisère
-        // INVISIBLE seul — la bordure peinte, elle, fait partie du cadre vu.
+        // What DWM will return of the placed rectangle: the placed one, shrunk by the
+        // INVISIBLE fringe alone — the painted border, for its part, is part of the seen frame.
         let cadre_vu = Rect {
             x: pose.x + DWM.gauche,
             y: pose.y + DWM.haut,
@@ -263,9 +263,9 @@ mod bordure_peinte {
         ));
     }
 
-    /// La bordure peinte tombe bien **HORS** du recadrage : le cadre visible
-    /// déborde d'exactement un pixel de chaque côté, et c'est là que Windows
-    /// peint sa ligne sombre.
+    /// The painted border indeed falls **OUTSIDE** the crop: the visible frame
+    /// overflows by exactly one pixel on each side, and that is where Windows
+    /// paints its dark line.
     #[test]
     fn la_ligne_sombre_tombe_hors_du_recadrage() {
         let crop = Rect {
@@ -285,8 +285,8 @@ mod bordure_peinte {
         assert_eq!(cadre_vu_droite - (crop.x + crop.width as i32), BORDURE.0);
     }
 
-    /// Le repli : pas de bordure peinte → l'enveloppe est le lisère seul, et
-    /// `sans_la_bordure` est l'identité. Le comportement d'avant, exactement.
+    /// The fallback: no painted border → the envelope is the fringe alone, and
+    /// `sans_la_bordure` is the identity. The previous behaviour, exactly.
     #[test]
     fn sans_bordure_peinte_on_retrouve_le_comportement_precedent() {
         assert_eq!(enveloppe(DWM, (0, 0)), DWM);
@@ -299,8 +299,8 @@ mod bordure_peinte {
         assert_eq!(sans_la_bordure(&r, (0, 0)), r);
     }
 
-    /// Une bordure aberrante ne doit pas faire déborder l'arithmétique et
-    /// rendre un recadrage géant par repli entier.
+    /// An aberrant border must not overflow the arithmetic and
+    /// return a giant crop through integer wraparound.
     #[test]
     fn une_bordure_aberrante_ne_fait_pas_deborder() {
         let r = Rect {

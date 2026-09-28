@@ -1,55 +1,55 @@
-//! Connexion du superviseur à la session de contrôle du signaling, **et sa
-//! REPRISE**.
+//! The supervisor's connection to the signaling control session, **and its
+//! RESUMPTION**.
 //!
-//! Distincte de `crate::signaling`, qui ne connaît que les offres et réponses
-//! SDP d'une session média. Ici on envoie et reçoit des messages de contrôle,
-//! et il n'y a jamais de négociation WebRTC.
+//! Distinct from `crate::signaling`, which only knows the SDP offers and answers
+//! of a media session. Here we send and receive control messages,
+//! and there is never any WebRTC negotiation.
 //!
-//! Le récepteur rendu est un `std::sync::mpsc::Receiver` et non un canal
-//! tokio : la boucle du superviseur est synchrone (elle appelle des API
-//! Windows bloquantes) et le sonde par `try_recv`.
+//! The returned receiver is a `std::sync::mpsc::Receiver` and not a tokio
+//! channel: the supervisor loop is synchronous (it calls blocking
+//! Windows APIs) and polls it with `try_recv`.
 //!
-//! 🔴 **CE SOCKET NE SE ROUVRAIT JAMAIS, ET C'ÉTAIT UNE PANNE MUETTE
-//! D'EXPLOITATION** (legs n°1 du lot 17, fermé ici). Après un redémarrage du
-//! service `desk-plateforme`, les deux tâches de fond sortaient de leur
-//! boucle, journalisaient `émission vers la shell échouée` puis `connexion de
-//! contrôle au signaling perdue`, et **plus rien** : `rx_shell` était fermé,
-//! `envoyer` écrivait dans un canal sans consommateur (`let _ = …`), et la
-//! boucle du superviseur continuait de tourner en croyant parler à quelqu'un.
-//! Aucune fenêtre ne pouvait plus être annoncée **ni réannoncée**, ce qui
-//! rend inopérante la correction du lot 17 (`pair-present`) — elle a besoin
-//! de ce socket pour être délivrée. Le seul remède était de relancer l'agent,
-//! geste qui depuis le lot 32I **orpheline toutes les fenêtres**.
+//! 🔴 **THIS SOCKET NEVER REOPENED, AND IT WAS A MUTE OPERATIONS
+//! FAILURE** (legacy no. 1 of batch 17, closed here). After a restart of the
+//! `desk-plateforme` service, the two background tasks left their
+//! loop, logged "send to the shell failed" then "control
+//! connection to signaling lost", and **then nothing**: `rx_shell` was closed,
+//! `envoyer` wrote into a channel without a consumer (`let _ = …`), and the
+//! supervisor loop kept running believing it talked to someone.
+//! No window could be announced **nor re-announced** any more, which
+//! makes batch 17's fix (`pair-present`) inoperative — it needs
+//! this socket to be delivered. The only remedy was to restart the agent,
+//! a gesture that since batch 32I **orphans all windows**.
 //!
-//! **Ce que les deux tâches deviennent : UNE SEULE**, qui possède la
-//! connexion, la sert par un `select!`, et la ROUVRE quand elle tombe. Les
-//! deux extrémités que l'appelant tient — `rx_shell` et `envoyer` — sont
-//! créées une fois et **survivent aux reconnexions** : `superviseur.rs` et
-//! `boucle.rs` sont inchangés, et n'ont jamais à savoir qu'une reprise a eu
-//! lieu. La décision (quand retenter, quand réarmer le repli) est PURE et
-//! vit dans [`super::reprise_controle`], qui se teste sur l'hôte Linux —
-//! ce fichier-ci est `#![cfg(windows)]` et ne l'est pas.
+//! **What the two tasks become: A SINGLE ONE**, which owns the
+//! connection, serves it through a `select!`, and REOPENS it when it drops. The
+//! two ends the caller holds — `rx_shell` and `envoyer` — are
+//! created once and **survive reconnections**: `superviseur.rs` and
+//! `boucle.rs` are unchanged, and never have to know a resumption took
+//! place. The decision (when to retry, when to re-arm the fallback) is PURE and
+//! lives in [`super::reprise_controle`], which is tested on the Linux host —
+//! this file is `#![cfg(windows)]` and is not.
 //!
-//! 🔴 **CE QUI EST ÉMIS PENDANT LA COUPURE EST JETÉ, PAS REJOUÉ**, et c'est
-//! délibéré : une annonce de fenêtre vieille de trente secondes est une
-//! COPIE d'une vérité qui vit dans la table du superviseur, et rien ici ne
-//! saurait l'expirer — l'argument mot pour mot de
-//! `plateforme/src/signaling/pair-present.ts`. Ce qui répare l'état après une
-//! reprise n'est pas une file, c'est la RÉANNONCE déclenchée par
-//! `pair-present` : on ne rejoue pas la vérité d'hier, on prévient celui qui
-//! la détient qu'on la lui redemande maintenant.
+//! 🔴 **WHAT IS EMITTED DURING THE OUTAGE IS DROPPED, NOT REPLAYED**, and it is
+//! deliberate: a thirty-second-old window announcement is a
+//! COPY of a truth that lives in the supervisor's table, and nothing here
+//! could expire it — the argument word for word of
+//! `plateforme/src/signaling/pair-present.ts`. What repairs the state after a
+//! resumption is not a queue, it is the RE-ANNOUNCEMENT triggered by
+//! `pair-present`: we do not replay yesterday's truth, we tell whoever
+//! holds it that we are asking for it again now.
 //!
-//! 🔴 **LE JETON EST RELU À CHAQUE TENTATIVE, JAMAIS CELUI DU DÉMARRAGE.**
-//! `main.rs` l'écrit déjà en toutes lettres pour le LANCEUR : « un
-//! superviseur vit des heures ; le jeton d'agent, lui, dure dix minutes et se
-//! renouvelle à chaque battement ». Une reconnexion qui présenterait
-//! `config.jeton` — l'instantané du démarrage — serait refusée par la garde
-//! (`poignée de main refusée : jeton refusé (expire)`, ligne réellement
-//! observée dans le journal de production), **à chaque tentative, pour
-//! toujours** : un remède qui aurait l'air de fonctionner sur une coupure
-//! d'une minute et ne fonctionnerait plus jamais après dix. La veille
-//! d'identité (`plateforme::Canal::veille_identite`) est donc lue à CHAQUE
-//! ouverture.
+//! 🔴 **THE TOKEN IS REREAD AT EACH ATTEMPT, NEVER THE STARTUP ONE.**
+//! `main.rs` already spells it out for the LAUNCHER: "a
+//! supervisor lives for hours; the agent token, for its part, lasts ten minutes and
+//! renews at each heartbeat". A reconnection presenting
+//! `config.jeton` — the startup snapshot — would be refused by the guard
+//! ("handshake refused: token refused (expired)", a line really
+//! observed in the production log), **at each attempt, forever**:
+//! a remedy that would seem to work on a
+//! one-minute outage and would never work again after ten. The identity
+//! watch (`plateforme::Canal::veille_identite`) is therefore read at EACH
+//! opening.
 
 #![cfg(windows)]
 

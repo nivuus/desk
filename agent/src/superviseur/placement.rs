@@ -184,9 +184,9 @@ pub fn sortie_pour_viewport(
 /// Two superposed defects, two different signatures; it is the contrast
 /// "varies with the shape" / "constant" that told them apart.
 ///
-/// ⚠️ **`haut = 0` et ce n'est pas une erreur** : la barre de titre est peinte,
-/// donc le bord supérieur de `GetWindowRect` coïncide avec le cadre visible.
-/// Le lisère n'est pas symétrique, et le supposer l'être décalerait l'image.
+/// ⚠️ **`top = 0` and it is not an error**: the title bar is painted,
+/// so the top edge of `GetWindowRect` coincides with the visible frame.
+/// The fringe is not symmetric, and assuming it is would shift the image.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct Lisere {
     pub gauche: i32,
@@ -196,8 +196,8 @@ pub struct Lisere {
 }
 
 impl Lisere {
-    /// Le lisère nul — le repli quand DWM refuse de répondre, et donc
-    /// **exactement le comportement d'avant ce correctif**.
+    /// The zero fringe — the fallback when DWM refuses to answer, and therefore
+    /// **exactly the behaviour from before this fix**.
     #[cfg(test)]
     pub const NUL: Lisere = Lisere {
         gauche: 0,
@@ -206,44 +206,44 @@ impl Lisere {
         bas: 0,
     };
 
-    /// Vrai s'il n'y a rien à compenser : évite un second `SetWindowPos` et,
-    /// surtout, rend la correction inerte là où elle n'a pas lieu d'être.
+    /// True if there is nothing to compensate: avoids a second `SetWindowPos` and,
+    /// above all, makes the correction inert where it has no reason to be.
     #[cfg(test)]
     pub fn est_nul(self) -> bool {
         self == Lisere::NUL
     }
 }
 
-/// L'enveloppe totale à ajouter autour du recadrage : le lisère **invisible**
-/// de DWM, **plus** la bordure que Windows **PEINT** autour de la fenêtre.
+/// The total envelope to add around the crop: DWM's **invisible** fringe,
+/// **plus** the border Windows **PAINTS** around the window.
 ///
-/// 🔴 **LA SECONDE MOITIÉ A ÉTÉ TROUVÉE EN REGARDANT L'IMAGE, ce que ce lot
-/// n'avait jamais fait.** Capture de la sortie virtuelle en session 1, le
-/// 31 août 2026, et relevé des couleurs sur les bords du recadrage
-/// (1548×1032) :
+/// 🔴 **THE SECOND HALF WAS FOUND BY LOOKING AT THE IMAGE, which this batch
+/// had never done.** Capture of the virtual output in session 1, on
+/// August 31st, 2026, and colour survey on the edges of the crop
+/// (1548×1032):
 ///
 /// ```text
-/// rangee 0    (bord HAUT)   : #494949    | rangee 1    (voisine) : #F3F3F3
-/// rangee 1031 (bord BAS)    : #2F2F2F    | rangee 1030 (voisine) : #F0F0F0
-/// colonne 0   (bord GAUCHE) : #2F2F2F    | colonne 1   (voisine) : #FFFFFF
-/// colonne 1547(bord DROIT)  : #2F2F2F    | colonne 1546(voisine) : #F0F0F0
+/// row 0       (TOP edge)    : #494949    | row 1       (neighbour) : #F3F3F3
+/// row 1031    (BOTTOM edge) : #2F2F2F    | row 1030    (neighbour) : #F0F0F0
+/// column 0    (LEFT edge)   : #2F2F2F    | column 1    (neighbour) : #FFFFFF
+/// column 1547 (RIGHT edge)  : #2F2F2F    | column 1546 (neighbour) : #F0F0F0
 /// ```
 ///
-/// **Exactement UN pixel sombre sur les quatre bords, et la voisine immédiate
-/// est claire.** `#2F2F2F` est la bordure de fenêtre de Windows en thème
-/// sombre. En faisant coïncider le recadrage avec
-/// `DWMWA_EXTENDED_FRAME_BOUNDS` **au pixel près**, le correctif précédent a
-/// cadré pile dessus : ce n'est pas une erreur de calcul, c'est **la
-/// définition du rectangle qu'on avait choisi pour cible**.
+/// **Exactly ONE dark pixel on all four edges, and the immediate neighbour
+/// is light.** `#2F2F2F` is Windows's window border in the dark
+/// theme. By making the crop coincide with
+/// `DWMWA_EXTENDED_FRAME_BOUNDS` **to the pixel**, the previous fix
+/// framed right on it: it is not a calculation error, it is **the
+/// definition of the rectangle we had chosen as target**.
 ///
-/// 🔴 **ET CETTE MESURE ÉLIMINE AUSSI LA PISTE DU CACHE NAVIGATEUR** : les
-/// pixels sont lus **dans la VM**, sans navigateur d'aucune sorte. La bordure
-/// est DANS l'image, quel que soit ce que la page affiche.
+/// 🔴 **AND THIS MEASUREMENT ALSO ELIMINATES THE BROWSER CACHE LEAD**: the
+/// pixels are read **in the VM**, without any browser. The border
+/// is IN the image, whatever the page displays.
 ///
-/// ⚠️ **`bordure` N'EST PAS UN NOMBRE ÉCRIT ICI** : elle vient de
-/// `GetSystemMetrics(SM_CXBORDER/SM_CYBORDER)`, une métrique documentée qui
-/// **suit le DPI** — relevée à `1` pour un DPI système de `96` sur cette
-/// machine. Écrire `1` en dur serait le naufrage du 487.
+/// ⚠️ **`bordure` IS NOT A NUMBER WRITTEN HERE**: it comes from
+/// `GetSystemMetrics(SM_CXBORDER/SM_CYBORDER)`, a documented metric that
+/// **follows the DPI** — read as `1` for a system DPI of `96` on this
+/// machine. Hard-coding `1` would be the #487 wreck all over again.
 pub fn enveloppe(dwm: Lisere, bordure: (i32, i32)) -> Lisere {
     Lisere {
         gauche: dwm.gauche + bordure.0,
@@ -253,16 +253,16 @@ pub fn enveloppe(dwm: Lisere, bordure: (i32, i32)) -> Lisere {
     }
 }
 
-/// Le rectangle **du recadrage** correspondant à un cadre visible donné :
-/// le cadre, **débarrassé de la bordure peinte**.
+/// The **crop** rectangle corresponding to a given visible frame:
+/// the frame, **stripped of the painted border**.
 ///
-/// 🔴 **LE PENDANT EXACT DE `enveloppe`, ET IL DOIT LE RESTER.** `poser` pose
-/// la fenêtre 1 px plus au large que le recadrage ; si `rectangle_de` rendait
-/// le cadre visible **brut**, le contrôle périodique comparerait `crop + 1` à
-/// `crop` et verrait un écart permanent. Il tomberait sous `TOLERANCE_PX`
-/// aujourd'hui — mais s'appuyer là-dessus serait faire reposer une propriété
-/// sur une tolérance faite pour autre chose (les arrondis de DWM). Les deux
-/// fonctions se répondent, et le test d'aller-retour les tient ensemble.
+/// 🔴 **THE EXACT COUNTERPART OF `enveloppe`, AND IT MUST STAY SO.** `poser` puts
+/// the window 1 px wider than the crop; if `rectangle_de` returned
+/// the **raw** visible frame, the periodic check would compare `crop + 1` to
+/// `crop` and see a permanent gap. It would fall under `TOLERANCE_PX`
+/// today — but relying on that would rest a property
+/// on a tolerance made for something else (DWM's roundings). The two
+/// functions answer each other, and the round-trip test holds them together.
 pub fn sans_la_bordure(cadre: &Rect, bordure: (i32, i32)) -> Rect {
     Rect {
         x: cadre.x + bordure.0,
@@ -272,26 +272,26 @@ pub fn sans_la_bordure(cadre: &Rect, bordure: (i32, i32)) -> Rect {
     }
 }
 
-/// Le rectangle à passer à `SetWindowPos` pour que le cadre **VISIBLE** occupe
-/// exactement `cible`.
+/// The rectangle to pass to `SetWindowPos` so that the **VISIBLE** frame occupies
+/// exactly `cible`.
 ///
-/// 🔴 **TOUT LE CORRECTIF TIENT DANS CES QUATRE ADDITIONS**, et sa difficulté
-/// n'est pas l'arithmétique : c'est que le dépôt raisonnait de bout en bout
-/// dans l'espace de `GetWindowRect` — `poser` y écrivait, `rectangle_de` y
-/// relisait, `doit_etre_replacee` y comparait — sans que rien ne dise que cet
-/// espace **n'est pas celui qu'on voit**.
+/// 🔴 **THE WHOLE FIX FITS IN THESE FOUR ADDITIONS**, and its difficulty
+/// is not arithmetic: it is that the repository reasoned end to end
+/// in the space of `GetWindowRect` — `poser` wrote there, `rectangle_de`
+/// reread there, `doit_etre_replacee` compared there — without anything saying that this
+/// space **is not the one we see**.
 ///
-/// ⚠️ **`rectangle_de` rend désormais le cadre VISIBLE**, précisément pour que
-/// la comparaison périodique se fasse dans le même espace que la cible. Les
-/// changer séparément ferait replacer la fenêtre **chaque seconde** : le
-/// contrôle verrait un écart permanent de 7 px et n'arriverait jamais à le
-/// résorber. Les deux moitiés vont ensemble ou pas du tout.
+/// ⚠️ **`rectangle_de` now returns the VISIBLE frame**, precisely so that
+/// the periodic comparison happens in the same space as the target. Changing
+/// them separately would replace the window **every second**: the
+/// check would see a permanent 7 px gap and never manage to
+/// absorb it. The two halves go together or not at all.
 pub fn rect_a_poser(cible: &Rect, lisere: Lisere) -> Rect {
     Rect {
         x: cible.x - lisere.gauche,
         y: cible.y - lisere.haut,
-        // `saturating_add_signed` : un lisère aberrant ne doit pas faire
-        // déborder la largeur, ce qui donnerait une fenêtre minuscule.
+        // `saturating_add_signed`: an aberrant fringe must not make
+        // the width overflow, which would give a tiny window.
         width: cible
             .width
             .saturating_add_signed(lisere.gauche + lisere.droite),
@@ -299,10 +299,10 @@ pub fn rect_a_poser(cible: &Rect, lisere: Lisere) -> Rect {
     }
 }
 
-/// La taille à passer à `SetWindowPos` pour que le cadre **VISIBLE** mesure
-/// `taille`. Le pendant de [`rect_a_poser`] pour le chemin du CAPTEUR, qui
-/// retaille sans déplacer (`SWP_NOMOVE`) — l'origine étant déjà compensée par
-/// la pose du superviseur, seule la taille reste à corriger.
+/// The size to pass to `SetWindowPos` so that the **VISIBLE** frame measures
+/// `taille`. The counterpart of [`rect_a_poser`] for the CAPTURER path, which
+/// resizes without moving (`SWP_NOMOVE`) — the origin being already compensated by
+/// the supervisor's placement, only the size remains to correct.
 pub fn taille_a_poser(taille: (u32, u32), lisere: Lisere) -> (u32, u32) {
     (
         taille
@@ -312,12 +312,12 @@ pub fn taille_a_poser(taille: (u32, u32), lisere: Lisere) -> (u32, u32) {
     )
 }
 
-/// Vrai si la fenêtre a quitté sa sortie ou changé de taille au point qu'il
-/// faille la remettre en place.
+/// True if the window left its output or changed size to the point that
+/// it must be put back in place.
 ///
-/// C'est le cas que la spec §6 prévoit : une application peut se déplacer ou
-/// se retailler d'elle-même, et une fenêtre qui déborde de sa sortie donne une
-/// capture tronquée sans que rien ne le signale.
+/// It is the case spec §6 foresees: an application can move or
+/// resize itself, and a window overflowing its output gives a
+/// truncated capture without anything signalling it.
 pub fn doit_etre_replacee(actuel: &Rect, cible: &Rect) -> bool {
     let ecart = |a: i64, b: i64| (a - b).abs() > TOLERANCE_PX;
     ecart(actuel.x as i64, cible.x as i64)
@@ -336,57 +336,57 @@ mod win {
         SetWindowPos, ShowWindow, HWND_TOP, SWP_NOACTIVATE, SW_SHOWNORMAL,
     };
 
-    /// Pose la fenêtre sur la sortie et lui donne exactement sa taille.
+    /// Puts the window on the output and gives it exactly its size.
     ///
-    /// **Pas de maximisation** — mais ❌ **LA RAISON ÉCRITE ICI EST DEVENUE
-    /// FAUSSE, ET LE LOT 33 LA CORRIGE.** Elle disait : « `SW_MAXIMIZE` ferait
-    /// adopter à la fenêtre la zone de travail du moniteur, barre des tâches
-    /// déduite : l'image capturée ne remplirait alors pas la sortie, et le bas
-    /// du flux serait une bande de bureau vide. On pose la taille exacte de la
-    /// sortie. »
+    /// **No maximising** — but ❌ **THE REASON WRITTEN HERE BECAME
+    /// WRONG, AND BATCH 33 CORRECTS IT.** It said: "`SW_MAXIMIZE` would make
+    /// the window adopt the monitor's work area, taskbar
+    /// deducted: the captured image would then not fill the output, and the bottom
+    /// of the stream would be a band of empty desktop. We set the exact size of the
+    /// output."
     ///
-    /// **Cet argument ne vaut QUE si le recadrage reste à la taille de la
-    /// sortie**, ce qui n'est plus le cas : depuis le lot 33, l'appelant borne
-    /// la cible par la ZONE DE TRAVAIL (`placement_periodique::borne_de`) et
-    /// le capteur recadre sur cette même borne
-    /// (`windows_source_sortie::borne_de_la_sortie`). Il n'y a donc plus de
-    /// « bande de bureau vide » à craindre : la bande de 48 px que la
-    /// maximisation aurait laissée est précisément celle qu'on RETIRE
-    /// désormais du recadrage, parce qu'elle contenait la barre des tâches.
+    /// **That argument only holds if the crop stays at the output's
+    /// size**, which is no longer the case: since batch 33, the caller bounds
+    /// the target by the WORK AREA (`placement_periodique::borne_de`) and
+    /// the capturer crops on that same bound
+    /// (`windows_source_sortie::borne_de_la_sortie`). There is therefore no more
+    /// "band of empty desktop" to fear: the 48 px band that
+    /// maximising would have left is precisely the one now REMOVED
+    /// from the crop, because it contained the taskbar.
     ///
-    /// **Ce qui reste vrai, et pourquoi il n'y a toujours pas de
-    /// `SW_MAXIMIZE`** : une fenêtre maximisée ignore silencieusement
-    /// `SetWindowPos` (voir le paragraphe suivant), donc le suivi de viewport
-    /// — qui retaille la fenêtre à chaque `Resize` — ne pourrait plus rien
-    /// poser. On pose la taille exacte, et c'est ce qui rend le suivi
+    /// **What stays true, and why there is still no
+    /// `SW_MAXIMIZE`**: a maximised window silently ignores
+    /// `SetWindowPos` (see the next paragraph), so viewport tracking
+    /// — which resizes the window at each `Resize` — could no longer set
+    /// anything. We set the exact size, and that is what makes tracking
     /// possible.
     ///
-    /// **Les commandes qui établissent la mesure**, pour que le prochain
-    /// lecteur ne croie personne — elles doivent être jouées EN SESSION 1, par
-    /// une tâche planifiée `/it` (un relevé WinRM est en session 0, où
-    /// `EnumWindows` ne rend rien) :
+    /// **The commands establishing the measurement**, so that the next
+    /// reader believes no one — they must be played IN SESSION 1, through
+    /// an `/it` scheduled task (a WinRM survey is in session 0, where
+    /// `EnumWindows` returns nothing):
     ///
     /// ```text
     /// GetMonitorInfo(\\.\DISPLAY8) -> mon=1428x1080  work=1428x1032
     /// EnumWindows: Shell_SecondaryTrayWnd rect=(1280,1032)-(2708,1080) 1428x48
     /// ```
     ///
-    /// Relevé du 31 août 2026 :
+    /// Survey of August 31st, 2026:
     /// `docs/superpowers/plans/2026-08-31-barre-des-taches-diagnostic.md`.
     ///
-    /// La fenêtre est d'abord restaurée : une fenêtre minimisée ou déjà
-    /// maximisée ignore silencieusement `SetWindowPos`.
+    /// The window is first restored: a minimised or already
+    /// maximised window silently ignores `SetWindowPos`.
     pub fn poser(hwnd: HWND, cible: &Rect) -> Result<()> {
         unsafe {
             let _ = ShowWindow(hwnd, SW_SHOWNORMAL);
-            // Le lisère est relu APRÈS `ShowWindow` : sur une fenêtre
-            // minimisée, DWM rend un cadre qui ne veut rien dire. Un échec de
-            // DWM rend `Lisere::NUL`, donc le comportement d'avant.
-            // L'enveloppe TOTALE : le lisère invisible de DWM, plus la
-            // bordure que Windows peint (mesurée à 1 px sur les quatre bords
-            // du recadrage — voir `enveloppe`). La fenêtre est donc posée
-            // légèrement PLUS AU LARGE que le recadrage, et sa bordure tombe
-            // hors de l'image.
+            // The fringe is reread AFTER `ShowWindow`: on a minimised
+            // window, DWM returns a meaningless frame. A DWM
+            // failure returns `Lisere::NUL`, hence the previous behaviour.
+            // The TOTAL envelope: DWM's invisible fringe, plus the
+            // border Windows paints (measured at 1 px on all four edges
+            // of the crop — see `enveloppe`). The window is therefore put
+            // slightly WIDER than the crop, and its border falls
+            // outside the image.
             let enveloppe_totale = enveloppe(
                 crate::window::lisere_dwm(hwnd).unwrap_or_default(),
                 crate::window::bordure_peinte(),
@@ -399,8 +399,8 @@ mod win {
                 pose.y,
                 pose.width as i32,
                 pose.height as i32,
-                // `SWP_NOACTIVATE` : poser une fenêtre ne doit pas voler le
-                // premier plan à celle que l'utilisateur manipule.
+                // `SWP_NOACTIVATE`: putting a window must not steal the
+                // foreground from the one the user is handling.
                 SWP_NOACTIVATE,
             )
             .context("SetWindowPos vers la sortie virtuelle")?;
@@ -408,31 +408,31 @@ mod win {
         Ok(())
     }
 
-    /// Rectangle **VISIBLE** de la fenêtre, en coordonnées du bureau virtuel.
+    /// The window's **VISIBLE** rectangle, in virtual desktop coordinates.
     ///
-    /// ❌ **CETTE FONCTION RENDAIT `GetWindowRect`, ET C'ÉTAIT LA MOITIÉ
-    /// LECTURE DU DÉFAUT DU LISÈRE.** Son commentaire disait « `GetWindowRect`
-    /// et non `GetClientRect` : c'est la position dans l'espace du bureau
-    /// qu'on compare à celle de la sortie » — vrai, mais incomplet : depuis
-    /// Windows 10, `GetWindowRect` inclut des bordures **transparentes** de
-    /// ~7 px, si bien que l'espace où l'on comparait n'était **pas celui qu'on
-    /// voit** (mesure en session 1, voir [`Lisere`]).
+    /// ❌ **THIS FUNCTION RETURNED `GetWindowRect`, AND IT WAS THE READ HALF
+    /// OF THE FRINGE DEFECT.** Its comment said "`GetWindowRect`
+    /// and not `GetClientRect`: it is the position in desktop space
+    /// that we compare with the output's" — true, but incomplete: since
+    /// Windows 10, `GetWindowRect` includes **transparent** borders of
+    /// ~7 px, so that the space where we compared was **not the one we
+    /// see** (measurement in session 1, see [`Lisere`]).
     ///
-    /// 🔴 **ELLE DOIT CHANGER EN MÊME TEMPS QUE `poser`, JAMAIS SÉPARÉMENT.**
-    /// `poser` écrit désormais un rectangle gonflé du lisère ; si la relecture
-    /// rendait encore `GetWindowRect`, `doit_etre_replacee` verrait un écart
-    /// permanent de 7 px et replacerait la fenêtre **chaque seconde**, sans
-    /// jamais converger.
+    /// 🔴 **IT MUST CHANGE AT THE SAME TIME AS `poser`, NEVER SEPARATELY.**
+    /// `poser` now writes a rectangle inflated by the fringe; if the reread
+    /// still returned `GetWindowRect`, `doit_etre_replacee` would see a
+    /// permanent 7 px gap and would replace the window **every second**, without
+    /// ever converging.
     ///
-    /// Le repli sur `GetWindowRect` quand DWM refuse est **exactement le
-    /// comportement d'avant**, et il est cohérent avec celui de `poser`, qui
-    /// retombe alors sur un lisère nul : les deux moitiés dégradent ensemble.
+    /// The fallback to `GetWindowRect` when DWM refuses is **exactly the
+    /// previous behaviour**, and it is consistent with `poser`'s, which
+    /// then falls back on a zero fringe: both halves degrade together.
     pub fn rectangle_de(hwnd: HWND) -> Result<Rect> {
         let brut = crate::window::rectangle_brut(hwnd)?;
         Ok(match crate::window::cadre_visible(hwnd) {
-            // Le cadre visible INCLUT la bordure peinte ; le recadrage, lui,
-            // s'arrête juste en dedans. On rend donc ce à quoi la cible est
-            // comparable — voir `sans_la_bordure`.
+            // The visible frame INCLUDES the painted border; the crop, for its part,
+            // stops just inside it. We therefore return what the target is
+            // comparable to — see `sans_la_bordure`.
             Ok(visible) => sans_la_bordure(&visible, crate::window::bordure_peinte()),
             Err(_) => brut,
         })
@@ -442,19 +442,19 @@ mod win {
 #[cfg(windows)]
 pub use win::{poser, rectangle_de};
 
-// Les tests d'hôte de ce module vivent dans `placement/tests.rs` — extraction
-// du lot 33, qui a ramené ce fichier de 500 lignes EXACTEMENT (sa porte) à sa
-// marge. `#[path]` plutôt qu'un sous-répertoire de module : précédent de
-// `superviseur/table.rs`. L'en-tête du fichier extrait dit ce qu'il doit dire.
+// This module's host tests live in `placement/tests.rs` — batch 33's
+// extraction, which brought this file from EXACTLY 500 lines (its gate) back to its
+// margin. `#[path]` rather than a module subdirectory: precedent of
+// `superviseur/table.rs`. The extracted file's header says what it must say.
 #[cfg(test)]
 #[path = "placement/tests.rs"]
 mod tests;
 
-// Le lisère de DWM et la bordure peinte ont leurs propres cas, sortis de
-// `placement/tests.rs` le 31 août 2026 : ce fichier-là était à 485 lignes,
-// donc à sa porte, et le correctif de la sortie DÉSIGNÉE devait y écrire.
-// Extraction JOUÉE AVANT l'addition qu'elle préparait, et dans sa propre
-// tâche — la forme forte que ce dépôt s'impose après l'avoir manquée six fois.
+// DWM's fringe and the painted border have their own cases, moved out of
+// `placement/tests.rs` on August 31st, 2026: that file was at 485 lines,
+// hence at its gate, and the DESIGNATED output fix had to write in it.
+// Extraction PLAYED BEFORE the addition it prepared, and in its own
+// task — the strong form this repository imposes on itself after missing it six times.
 #[cfg(test)]
 #[path = "placement/tests_lisere.rs"]
 mod tests_lisere;
