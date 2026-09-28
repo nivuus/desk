@@ -67,13 +67,13 @@ pub fn armee() -> bool {
     static ARMEE: OnceLock<bool> = OnceLock::new();
     *ARMEE.get_or_init(|| {
         let armee = !crate::apps::desarme(std::env::var("SORTIE_DESIGNEE").ok().as_deref());
-        // Émise SEULEMENT si désarmé : une trace inconditionnelle ferait lire
-        // un armement à qui n'en a aucun.
+        // Emitted ONLY when disarmed: an unconditional trace would suggest
+        // an arming to someone who has none.
         //
-        // 🔴 **ELLE PROUVE QUE LA VARIABLE A ATTEINT LE PROCESSUS, JAMAIS QUE
-        // LE MÉCANISME EST COUPÉ** — leçon de P1 sur `PRESSE_PAPIER=0`. Ce qui
-        // discrimine est le champ `designee` VIDE du refus, et la fenêtre non
-        // servie.
+        // 🔴 **IT PROVES THE VARIABLE REACHED THE PROCESS, NEVER THAT
+        // THE MECHANISM IS OFF** — P1's lesson on `PRESSE_PAPIER=0`. What
+        // discriminates is the EMPTY `designee` field of the refusal, and the window
+        // not served.
         if !armee {
             tracing::warn!(
                 "designation de sortie DESARMEE (SORTIE_DESIGNEE=0) : bras de banc, jamais une configuration livree"
@@ -83,42 +83,42 @@ pub fn armee() -> bool {
     })
 }
 
-/// Les sorties parmi lesquelles `placement::sortie_pour_viewport` a le droit
-/// de choisir.
+/// The outputs among which `placement::sortie_pour_viewport` is allowed
+/// to choose.
 ///
-/// `notre_nom` est ce que la désignation a rendu, `None` si elle n'a rien
-/// rendu — et **`None` EST le produit d'avant le lot 32, ligne pour ligne**.
-/// C'est cette propriété qui rend la rouge du premier test jouable sans avoir
-/// à conserver l'ancien binaire.
+/// `notre_nom` is what designation returned, `None` if it returned
+/// nothing — and **`None` IS the product from before batch 32, line for line**.
+/// It is this property that makes the first test's red playable without having
+/// to keep the old binary.
 ///
-/// ⚠️ **Ce que cette fonction NE fait PAS, à dessein : filtrer sur la taille
-/// ou sur `deja_prises`.** Ces deux filtres restent chez
+/// ⚠️ **What this function does NOT do, on purpose: filter on size
+/// or on `deja_prises`.** Those two filters stay in
 /// `placement::sortie_pour_viewport`.
 ///
-/// ❌ **CETTE DOC A DIT « la désignation resserre l'ensemble des candidates,
-/// elle ne desserre aucun garde — c'est toute la différence avec un
-/// relâchement de la règle d'appariement » JUSQU'AU 31 AOÛT 2026, ET C'EST
-/// DEVENU FAUX.** Le nom désigné est désormais passé à
-/// `placement::sortie_pour_viewport`, qui **exempte cette sortie-là du critère
-/// de TAILLE** : le pilote ne fait pas naître la sortie à la taille demandée
-/// (mesuré en production, 1614×1080 demandé, 1428×1080 rendu, huit refus en
-/// boucle et plus aucune fenêtre servie). La désignation resserre toujours
-/// l'ensemble ; elle desserre désormais **un** garde, nommément.
+/// ❌ **THIS DOC SAID "designation narrows the set of candidates,
+/// it loosens no guard — that is the whole difference with a
+/// relaxation of the pairing rule" UNTIL AUGUST 31ST, 2026, AND IT
+/// BECAME WRONG.** The designated name is now passed to
+/// `placement::sortie_pour_viewport`, which **exempts that output from the SIZE
+/// criterion**: the driver does not create the output at the requested size
+/// (measured in production, 1614×1080 requested, 1428×1080 returned, eight refusals in
+/// a loop and no window served any more). Designation still narrows
+/// the set; it now loosens **one** guard, by name.
 ///
-/// **`attachee_au_bureau` et `deja_prises` continuent de courir sur la sortie
-/// désignée**, et le second est ce qui empêche deux fenêtres de montrer la
-/// même image — voir la doc de `placement::sortie_pour_viewport`, qui porte
-/// la mesure et le raisonnement.
+/// **`attachee_au_bureau` and `deja_prises` still run on the designated
+/// output**, and the latter is what prevents two windows from showing the
+/// same image — see the doc of `placement::sortie_pour_viewport`, which carries
+/// the measurement and the reasoning.
 pub fn candidates(
     toutes: &[SortieDxgi],
     notre_nom: Option<&str>,
     avant: &[String],
 ) -> Vec<SortieDxgi> {
-    // ① DÉSIGNER — par ce qu'on a DONNÉ au pilote, jamais par ce qui a changé
-    // autour. Insensible au remplacement d'une cible forcée, et accessoirement
-    // à toute course : une sortie créée par un tiers (Apollo pilote aussi la
-    // configuration d'affichage de cette VM) ne peut plus être prise pour la
-    // nôtre, ce que la différence d'ensembles ne garantit pas.
+    // ① DESIGNATE — by what we GAVE the driver, never by what changed
+    // around. Insensitive to the replacement of a forced target, and incidentally
+    // to any race: an output created by a third party (Apollo also drives the
+    // display configuration of this VM) can no longer be taken for
+    // ours, which the set difference does not guarantee.
     if let Some(nom) = notre_nom {
         if let Some(notre) = toutes
             .iter()
@@ -128,8 +128,8 @@ pub fn candidates(
         }
     }
 
-    // ② REPLI — le produit d'hier, mot pour mot. Voir l'en-tête du module :
-    // il n'est pas mort, il est ce qui rend une hypothèse fausse inoffensive.
+    // ② FALLBACK — yesterday's product, word for word. See the module header:
+    // it is not dead, it is what makes a wrong hypothesis harmless.
     toutes
         .iter()
         .filter(|s| s.attachee_au_bureau && !avant.contains(&s.nom_sortie))
@@ -160,9 +160,9 @@ mod tests {
         }
     }
 
-    /// Le montage du lot 30, à la lettre : la cible FORCÉE portait déjà
-    /// `\\.\DISPLAY5`, et notre sortie neuve l'a remplacée sur la même source,
-    /// donc sous le MÊME nom.
+    /// Batch 30's setup, to the letter: the FORCED target already carried
+    /// `\\.\DISPLAY5`, and our new output replaced it on the same source,
+    /// hence under the SAME name.
     fn montage_du_lot_30() -> (Vec<SortieDxgi>, Vec<String>) {
         (vec![sortie(NOTRE, 1860, 1080)], vec![NOTRE.to_string()])
     }
@@ -173,16 +173,16 @@ mod tests {
         assert_eq!(candidates(&toutes, Some(NOTRE), &avant).len(), 1);
     }
 
-    /// 🔴 **LA ROUGE, et elle vit dans SON PROPRE test.** Deux assertions dans
-    /// un même test ne prouvent que la première — `assert` s'arrête au premier
-    /// échec, et ce dépôt a payé qu'une assertion en seconde position n'était
-    /// éprouvée par rien.
+    /// 🔴 **THE RED, and it lives in ITS OWN test.** Two assertions in
+    /// one test only prove the first — `assert` stops at the first
+    /// failure, and this repository paid for an assertion in second position
+    /// being exercised by nothing.
     ///
-    /// Passer `None` **EST** le produit d'avant le lot 32 : il n'avait pas de
-    /// paramètre `notre_nom` et courait toujours le repli. Ce test est donc le
-    /// TÉMOIN NÉGATIF qui rend le précédent interprétable — il montre, dans le
-    /// même relevé, que le montage est bien celui qui échouait, et non un
-    /// montage où tout aurait passé de toute façon.
+    /// Passing `None` **IS** the product from before batch 32: it had no
+    /// `notre_nom` parameter and always ran the fallback. This test is therefore the
+    /// NEGATIVE WITNESS that makes the previous one interpretable — it shows, in the
+    /// same survey, that the setup is indeed the one that failed, and not a
+    /// setup where everything would have passed anyway.
     #[test]
     fn le_produit_d_avant_le_lot_32_rend_un_ensemble_vide_sur_ce_meme_montage() {
         let (toutes, avant) = montage_du_lot_30();
@@ -193,11 +193,11 @@ mod tests {
         );
     }
 
-    /// La désignation ne court-circuite pas le garde des PRISES — et c'est
-    /// celui qui compte, depuis que le critère de taille, lui, est exempté
-    /// pour la sortie désignée (31 août 2026). Sans ce test, l'exemption
-    /// aurait pu s'étendre en silence à `deja_prises`, et deux fenêtres
-    /// auraient montré la même image.
+    /// Designation does not short-circuit the TAKEN guard — and it is
+    /// the one that matters, since the size criterion is exempted
+    /// for the designated output (August 31st, 2026). Without this test, the exemption
+    /// could have silently extended to `deja_prises`, and two windows
+    /// would have shown the same image.
     #[test]
     fn la_designation_ne_court_circuite_pas_le_filtre_des_prises() {
         let (toutes, avant) = montage_du_lot_30();
@@ -215,10 +215,10 @@ mod tests {
         );
     }
 
-    /// Ce que le REPLI protège encore, et que la voie « assouplir la règle »
-    /// aurait relâché : un écran PHYSIQUE préexistant ne doit jamais être
-    /// choisi. L'inégalité de `sortie_assez_grande` (D10) rend ce risque plus
-    /// grand, pas moins — un moniteur 4K convient à n'importe quel viewport.
+    /// What the FALLBACK still protects, and what the "relax the rule" path
+    /// would have loosened: a pre-existing PHYSICAL screen must never be
+    /// chosen. The inequality of `sortie_assez_grande` (D10) makes this risk larger,
+    /// not smaller — a 4K monitor fits any viewport.
     #[test]
     fn sans_designation_un_ecran_preexistant_reste_refuse() {
         let physique = "\\\\.\\DISPLAY1";
@@ -227,14 +227,14 @@ mod tests {
         assert!(candidates(&toutes, None, &avant).is_empty());
     }
 
-    /// Une sortie DÉTACHÉE ne peut pas être désignée : le nom peut être exact
-    /// et la sortie inutilisable. Sans ce garde, la scrutation rendrait la
-    /// main sur une sortie que Windows n'a pas encore attachée, et
-    /// `sortie_pour_viewport` refuserait — en consommant l'attente.
-    /// Le prédicat de `SORTIE_DESIGNEE`, éprouvé sur le PRÉDICAT et non sur la
-    /// variable : `armee()` porte un `OnceLock` que deux tests du même
-    /// processus ne pourraient pas réinitialiser, et un test qui pose une
-    /// variable d'environnement empoisonnerait ses voisins.
+    /// A DETACHED output cannot be designated: the name can be exact
+    /// and the output unusable. Without this guard, the polling would return
+    /// control on an output Windows has not attached yet, and
+    /// `sortie_pour_viewport` would refuse — while consuming the wait.
+    /// The `SORTIE_DESIGNEE` predicate, exercised on the PREDICATE and not on the
+    /// variable: `armee()` carries a `OnceLock` that two tests of the same
+    /// process could not reset, and a test setting an
+    /// environment variable would poison its neighbours.
     #[test]
     fn seul_le_zero_desarme_la_designation() {
         assert!(crate::apps::desarme(Some("0")));

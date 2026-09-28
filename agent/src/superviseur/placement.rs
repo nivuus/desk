@@ -1,26 +1,26 @@
-//! Apparier une sortie virtuelle fraîchement créée à une sortie DXGI, puis y
-//! poser la fenêtre.
+//! Pair a freshly created virtual output with a DXGI output, then put
+//! the window on it.
 //!
-//! 🔴 **« AUCUNE CORRESPONDANCE N'EST EXPOSÉE » ÉTAIT FAUX, ET CETTE PHRASE A
-//! GOUVERNÉ LA CONCEPTION DE L'APPARIEMENT DEPUIS D1.** Elle disait : « Le
-//! pilote rend un identifiant de cible qui lui appartient, DXGI énumère par
-//! `(index_adaptateur, index_sortie)`. Aucune correspondance n'est exposée :
-//! l'appariement se fait donc par dimensions et par élimination. » Le premier
-//! fait est exact, le second aussi, **la conclusion ne l'est pas** — et c'est
-//! d'elle que sortait l'appariement par différence d'ensembles, dont le lot 30
-//! a mesuré qu'il refuse toute fenêtre quand la première sortie virtuelle
-//! remplace une cible forcée.
+//! 🔴 **"NO MAPPING IS EXPOSED" WAS WRONG, AND THIS SENTENCE
+//! GOVERNED THE DESIGN OF PAIRING SINCE D1.** It said: "The
+//! driver returns a target identifier of its own, DXGI enumerates by
+//! `(adapter_index, output_index)`. No mapping is exposed:
+//! pairing is therefore done by dimensions and by elimination." The first
+//! fact is exact, so is the second, **the conclusion is not** — and it is
+//! from it that pairing by set difference came, which batch 30
+//! measured refuses any window when the first virtual output
+//! replaces a forced target.
 //!
-//! **Ce qui est vrai** : l'API CCD de Win32 expose la correspondance. Le
-//! pilote rend `(adapterId, id de cible)` — `sudovda::SortieAjoutee`, trois
-//! nombres dont le produit n'en gardait qu'un —, et ce couple se change en nom
-//! GDI par `QueryDisplayConfig` puis `DisplayConfigGetDeviceInfo`. Voir
-//! `moniteurs_virtuels::config_affichage`, qui le fait, et
-//! `superviseur::designation`, qui s'en sert.
+//! **What is true**: Win32's CCD API exposes the mapping. The
+//! driver returns `(adapterId, target id)` — `sudovda::SortieAjoutee`, three
+//! numbers of which the product kept only one —, and this pair turns into a GDI
+//! name through `QueryDisplayConfig` then `DisplayConfigGetDeviceInfo`. See
+//! `moniteurs_virtuels::config_affichage`, which does it, and
+//! `superviseur::designation`, which uses it.
 //!
-//! **Les commandes qui l'établissent, pour que le prochain lecteur refasse le
-//! contrôle sans croire personne** — la première montre les trois nombres que
-//! le pilote rend, la seconde que l'API existe dans le crate épinglé :
+//! **The commands establishing it, so that the next reader redoes the
+//! check without believing anyone** — the first shows the three numbers
+//! the driver returns, the second that the API exists in the pinned crate:
 //!
 //! ```text
 //! grep -n 'identifiant_cible\|adaptateur_bas' agent/src/moniteurs_virtuels/sudovda.rs
@@ -28,122 +28,122 @@
 //!   ~/.cargo/registry/src/*/windows-0.62.2/src/Windows/Win32/Devices/Display/mod.rs
 //! ```
 //!
-//! ⚠️ **Ce que la correction ne prétend PAS** : que le couple rendu par
-//! SudoVDA soit celui qu'emploie CCD. C'est une hypothèse, elle est dite comme
-//! telle dans `config_affichage`, et son échec fait retomber le produit sur
-//! l'appariement par élimination décrit ci-dessous — qui reste donc vivant, et
-//! reste la raison d'être de tout ce module.
+//! ⚠️ **What the fix does NOT claim**: that the pair returned by
+//! SudoVDA is the one CCD uses. It is a hypothesis, stated as
+//! such in `config_affichage`, and its failure makes the product fall back on
+//! the pairing by elimination described below — which therefore stays alive, and
+//! stays the raison d'être of this whole module.
 //!
-//! **`GetDesc`/`DesktopCoordinates` est la source de vérité, jamais WMI** —
-//! le champ WMI a été vu périmé de 68 s sur ce terrain, et la sortie virtuelle
-//! y était annoncée 5120×1440 quand DXGI la mesurait 3413×960 (facteur DPI de
-//! 1,5). Un placement calculé sur la valeur WMI serait décalé d'autant.
+//! **`GetDesc`/`DesktopCoordinates` is the source of truth, never WMI** —
+//! the WMI field was seen 68 s stale on this ground, and the virtual output
+//! was announced there as 5120×1440 while DXGI measured 3413×960 (DPI factor of
+//! 1.5). A placement computed on the WMI value would be off by as much.
 
 use crate::geometry::Rect;
-// `crate::sortie_dxgi`, pas `crate::capture` : `capture` est `#![cfg(windows)]`
-// dans son ensemble et n'existe pas du tout à la compilation sur l'hôte Linux
-// — voir le commentaire de tête de `sortie_dxgi.rs`. `capture.rs` réexporte ce
-// même type sous `crate::capture::SortieDxgi` pour le code Windows.
+// `crate::sortie_dxgi`, not `crate::capture`: `capture` is `#![cfg(windows)]`
+// as a whole and does not exist at all when compiling on the Linux host
+// — see the header comment of `sortie_dxgi.rs`. `capture.rs` re-exports this
+// same type as `crate::capture::SortieDxgi` for Windows code.
 use crate::sortie_dxgi::SortieDxgi;
 
-/// Tolérance de position et de taille, en pixels, avant de replacer.
+/// Position and size tolerance, in pixels, before replacing.
 ///
-/// Les bordures invisibles de DWM décalent couramment `GetWindowRect` de
-/// quelques pixels par rapport à ce que `SetWindowPos` a demandé. Sans
-/// tolérance, le superviseur replacerait la fenêtre à chaque tour de boucle.
+/// DWM's invisible borders commonly shift `GetWindowRect` by
+/// a few pixels relative to what `SetWindowPos` requested. Without
+/// tolerance, the supervisor would replace the window at each loop turn.
 ///
-/// **Quatre, et non deux** : la valeur retenue prend une marge délibérée
-/// au-delà du décalage habituel — un écart de quatre pixels sur une fenêtre
-/// plein cadre est invisible, là où un replacement en boucle ne l'est pas. (Le
-/// commentaire disait « un ou deux pixels » face à une constante à 4 ; c'est le
-/// texte qui était en retard, la constante est celle qu'on veut.)
+/// **Four, and not two**: the retained value takes a deliberate margin
+/// beyond the usual shift — a four-pixel gap on a full-frame
+/// window is invisible, whereas a replacement loop is not. (The
+/// comment said "one or two pixels" facing a constant of 4; it is the
+/// text that lagged behind, the constant is the one we want.)
 ///
-/// Cette même tolérance sert désormais aussi à l'appariement d'une sortie
-/// fraîchement créée (`sortie_assez_grande`) : elle doit être déclarée avant
-/// cette fonction dans le fichier.
+/// This same tolerance now also serves the pairing of a freshly
+/// created output (`sortie_assez_grande`): it must be declared before
+/// that function in the file.
 const TOLERANCE_PX: i64 = 4;
 
-/// Vrai si une sortie peut servir un viewport donné.
+/// True if an output can serve a given viewport.
 ///
-/// **Une inégalité, plus une égalité, et c'est tout le sous-bloc D10.** Une
-/// sortie virtuelle ne naît PAS à la taille demandée : elle naît à la dernière
-/// taille laissée au registre par un `CDS_UPDATEREGISTRY` antérieur (D8,
-/// tâche 3bis — confirmé, reproduit, jamais expliqué). Sur cette VM le registre
-/// est resté à 3840×2160, et l'égalité à quatre pixels près refusait donc
-/// TOUTE sortie : le produit plafonnait à trois fenêtres, aux six exécutions
-/// de la recette ③ de D9, sans exception.
+/// **One inequality, plus one equality, and that is the whole of sub-block D10.** A
+/// virtual output is NOT born at the requested size: it is born at the last
+/// size left in the registry by an earlier `CDS_UPDATEREGISTRY` (D8,
+/// task 3bis — confirmed, reproduced, never explained). On this VM the registry
+/// stayed at 3840×2160, and equality within four pixels therefore refused
+/// EVERY output: the product capped at three windows, in all six runs
+/// of D9's acceptance run ③, without exception.
 ///
-/// Le produit n'écrit plus au registre depuis D9, mais **rien ne nettoie ce qui
-/// y est déjà écrit** — et la portée du blocage (par GUID ou globale) reste
-/// inconnue. D'où le choix de tolérer plutôt que de nettoyer : ainsi la
-/// question devient **sans objet**, et non résolue.
+/// The product no longer writes to the registry since D9, but **nothing cleans what
+/// is already written there** — and the scope of the blockage (per GUID or global) stays
+/// unknown. Hence the choice to tolerate rather than clean: that way the
+/// question becomes **moot**, not resolved.
 ///
-/// La tolérance de `TOLERANCE_PX` est conservée dans le sens du MANQUE, pour la
-/// course de rattachement relevée par la recette D1 (sortie créée à 1280×713,
-/// rendue à 1280×720 un essai sur deux).
+/// The `TOLERANCE_PX` tolerance is kept in the SHORTFALL direction, for the
+/// attach race recorded by acceptance run D1 (output created at 1280×713,
+/// returned at 1280×720 one try out of two).
 pub fn sortie_assez_grande(sortie: (u32, u32), demandee: (u32, u32)) -> bool {
     let assez = |s: u32, d: u32| s as i64 + TOLERANCE_PX >= d as i64;
     assez(sortie.0, demandee.0) && assez(sortie.1, demandee.1)
 }
 
-/// La taille à laquelle la fenêtre est posée, et que la capture recadre.
+/// The size at which the window is put, and which the capture crops.
 ///
-/// `min` axe par axe, **sans préserver le rapport d'aspect** : on recadre une
-/// texture, on ne la met pas à l'échelle. C'est l'inverse de
-/// `windows_source_sortie::borner_a_la_taille_max`, qui redimensionne et doit
-/// donc, lui, préserver ce rapport.
+/// `min` axis by axis, **without preserving the aspect ratio**: we crop a
+/// texture, we do not scale it. It is the opposite of
+/// `windows_source_sortie::borner_a_la_taille_max`, which resizes and must
+/// therefore preserve that ratio.
 ///
-/// Dimensions paires (l'encodeur NV12 les exige) et jamais nulles (une boîte
-/// vidéo repliée émet `(0, 0)`, cas réel relevé en D8).
+/// Even dimensions (the NV12 encoder requires them) and never zero (a collapsed
+/// video box emits `(0, 0)`, a real case recorded in D8).
 pub fn taille_retenue(demandee: (u32, u32), sortie: (u32, u32)) -> (u32, u32) {
     let retenir = |d: u32, s: u32| (d.min(s).max(2)) & !1;
     (retenir(demandee.0, sortie.0), retenir(demandee.1, sortie.1))
 }
 
-/// Sortie DXGI capable de servir un viewport, parmi celles qui ne sont pas
-/// déjà attribuées.
+/// DXGI output able to serve a viewport, among those not
+/// already assigned.
 ///
-/// **`deja_prises` est ce qui empêche l'inégalité de tout casser.** Avec
-/// l'égalité d'avant D10, deux fenêtres au même viewport se disputaient déjà
-/// une sortie ; avec « au moins aussi grande », une seule grande sortie
-/// conviendrait à TOUTES les fenêtres, et toutes montreraient la même image.
-/// Le filtre désigne par NOM DXGI (`\\.\DISPLAYn`), stable, et non par un
-/// couple d'index d'énumération, positionnel.
+/// **`deja_prises` is what prevents the inequality from breaking everything.** With
+/// the equality from before D10, two windows with the same viewport already contended for
+/// one output; with "at least as large", a single large output
+/// would suit ALL windows, and all would show the same image.
+/// The filter designates by DXGI NAME (`\\.\DISPLAYn`), stable, and not by a
+/// positional pair of enumeration indexes.
 ///
-/// ⚠️ **L'appelant ne doit chercher QUE parmi les sorties APPARUES** (voir le
-/// commentaire de `creation_sortie::creer_sortie`) : le viewport annoncé par le
-/// navigateur peut égaler la résolution d'un moniteur PHYSIQUE, et l'inégalité
-/// rend ce risque plus grand, pas moins — un moniteur 4K conviendrait
-/// désormais à n'importe quel viewport.
+/// ⚠️ **The caller must look ONLY among the outputs that APPEARED** (see the
+/// comment of `creation_sortie::creer_sortie`): the viewport announced by the
+/// browser can equal the resolution of a PHYSICAL monitor, and the inequality
+/// makes this risk larger, not smaller — a 4K monitor would now suit
+/// any viewport.
 ///
-/// 🔴 **`designee` EXEMPTE DU SEUL CRITÈRE DE TAILLE, ET C'EST BIEN UN GARDE
-/// QU'ON DESSERRE — dit plutôt que maquillé.** L'en-tête de
-/// `superviseur::designation` écrit que « la désignation resserre l'ensemble
-/// des candidates, elle ne desserre aucun garde » : cette phrase cesse d'être
-/// vraie ici, et voici ce qui l'a réfutée.
+/// 🔴 **`designee` EXEMPTS FROM THE SIZE CRITERION ALONE, AND IT IS INDEED A GUARD
+/// BEING LOOSENED — said rather than disguised.** The header of
+/// `superviseur::designation` writes that "designation narrows the set
+/// of candidates, it loosens no guard": that sentence stops being
+/// true here, and here is what refuted it.
 ///
-/// **Mesuré sur l'agent de production le 31 août 2026**, huit fois en boucle,
-/// sur la même exécution : `demande="1614x1080" designee="\\.\DISPLAY6"
-/// candidates=["\\.\DISPLAY6 1428x1080"]`. La sortie refusée était **la
-/// nôtre, nommée par CCD** — le pilote SudoVDA ne la fait pas naître à la
-/// taille demandée, et la même demande a rendu 1860×1080 à 12:14Z (servie)
-/// puis 1428×1080 à 20:46Z (refusée). Créer → refuser → détruire, et **plus
-/// aucune fenêtre ne s'affichait, quelle que soit l'application**.
+/// **Measured on the production agent on August 31st, 2026**, eight times in a loop,
+/// in the same run: `demande="1614x1080" designee="\\.\DISPLAY6"
+/// candidates=["\\.\DISPLAY6 1428x1080"]`. The refused output was
+/// **ours, named by CCD** — the SudoVDA driver does not create it at the
+/// requested size, and the same request returned 1860×1080 at 12:14Z (served)
+/// then 1428×1080 at 20:46Z (refused). Create → refuse → destroy, and **no
+/// window showed any more, whatever the application**.
 ///
-/// Sur une sortie **désignée**, la taille n'est donc plus un critère de refus
-/// mais une CONTRAINTE : `windows_source_sortie::taille_pour_viewport` y ajuste
-/// déjà la fenêtre à rapport d'aspect préservé (lot 33). Refuser, c'était
-/// refuser la seule sortie qu'on pouvait servir.
+/// On a **designated** output, size is therefore no longer a refusal criterion
+/// but a CONSTRAINT: `windows_source_sortie::taille_pour_viewport` already
+/// fits the window there with the aspect ratio preserved (batch 33). Refusing meant
+/// refusing the only output we could serve.
 ///
-/// ⚠️ **CE QUI N'EST PAS DESSERRÉ, et sans quoi ce serait une régression** :
-/// `attachee_au_bureau` (une sortie non rattachée n'a rien à dupliquer) et
-/// `deja_prises` — c'est LUI, et non la taille, qui empêche deux fenêtres de
-/// montrer la même image. L'exemption est **nominative** : elle ne vaut que
-/// pour la sortie que la désignation a nommée, jamais pour ses voisines.
+/// ⚠️ **WHAT IS NOT LOOSENED, and without which it would be a regression**:
+/// `attachee_au_bureau` (an unattached output has nothing to duplicate) and
+/// `deja_prises` — it is THAT, and not size, which prevents two windows from
+/// showing the same image. The exemption is **by name**: it only applies
+/// to the output designation named, never to its neighbours.
 ///
-/// ⚠️ **`None` reste le produit d'hier, ligne pour ligne** — donc le repli par
-/// différence d'ensembles continue de refuser un écran PHYSIQUE trop petit, et
-/// c'est le témoin négatif de l'exemption.
+/// ⚠️ **`None` stays yesterday's product, line for line** — so the fallback by
+/// set difference keeps refusing a too-small PHYSICAL screen, and
+/// it is the exemption's negative witness.
 pub fn sortie_pour_viewport(
     sorties: &[SortieDxgi],
     largeur: u32,
@@ -162,27 +162,27 @@ pub fn sortie_pour_viewport(
         .cloned()
 }
 
-/// Le **lisère invisible de DWM** : ce dont `GetWindowRect` est plus grand que
-/// la fenêtre réellement peinte.
+/// DWM's **invisible fringe**: how much larger `GetWindowRect` is than
+/// the window actually painted.
 ///
-/// 🔴 **MESURÉ SUR LE PRODUIT, EN SESSION 1, LE 31 AOÛT 2026** — c'est le
-/// résidu que le propriétaire voyait encore après le correctif d'aspect
-/// (« il y a moins de bordure, mais y en a toujours ») :
+/// 🔴 **MEASURED ON THE PRODUCT, IN SESSION 1, ON AUGUST 31ST, 2026** — it is the
+/// residue the owner still saw after the aspect fix
+/// ("there is less border, but there still is some"):
 ///
 /// ```text
-/// GetWindowRect = 1732x1032+1280+0   <- exactement la taille RETENUE
+/// GetWindowRect = 1732x1032+1280+0   <- exactly the RETAINED size
 /// DWM frame     = 1718x1025+1287+0
-/// lisere : gauche=7 haut=0 droite=7 bas=7
+/// fringe: left=7 top=0 right=7 bottom=7
 /// ```
 ///
-/// Depuis Windows 10, les bordures de redimensionnement d'une fenêtre sont
-/// **transparentes** : `GetWindowRect` les inclut, l'œil ne les voit pas.
-/// Comme `poser` posait dans cet espace-là et que le recadrage suit la taille
-/// posée, l'image contenait **7 px de bureau à gauche, 7 à droite, 7 en bas**
-/// — constants, **insensibles au rapport d'aspect**, et donc parfaitement
-/// distincts des bandes de letterbox que le correctif d'aspect a supprimées.
-/// Deux défauts superposés, deux signatures différentes ; c'est le contraste
-/// « varie avec la forme » / « constant » qui les a départagés.
+/// Since Windows 10, a window's resize borders are
+/// **transparent**: `GetWindowRect` includes them, the eye does not see them.
+/// Since `poser` placed in that space and the crop follows the placed
+/// size, the image contained **7 px of desktop on the left, 7 on the right, 7 at the bottom**
+/// — constant, **insensitive to the aspect ratio**, and therefore perfectly
+/// distinct from the letterbox bands the aspect fix removed.
+/// Two superposed defects, two different signatures; it is the contrast
+/// "varies with the shape" / "constant" that told them apart.
 ///
 /// ⚠️ **`haut = 0` et ce n'est pas une erreur** : la barre de titre est peinte,
 /// donc le bord supérieur de `GetWindowRect` coïncide avec le cadre visible.

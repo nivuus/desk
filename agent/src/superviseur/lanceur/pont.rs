@@ -1,43 +1,43 @@
-//! Lancement et contrôle de vie du processus **pont fichiers**.
+//! Launching and life control of the **files bridge** process.
 //!
-//! Écrit dans un module enfant plutôt qu'en ligne dans `lanceur.rs`
-//! (367 lignes, marge 133) : les jumeaux de `lancer_capteur` et
-//! `capteur_vivant`, dans le style documentaire de ce fichier, y auraient pesé
-//! 80 à 100 lignes et ramené la marge sous 45. Ce dépôt a payé quatre fois la
-//! leçon « la marge regagnée par une extraction se reperd à la ronde suivante
-//! si on la traite comme acquise » — ici la marge n'est pas prise du tout.
-//! L'extraction est placée **avant** l'addition qui la rendrait nécessaire,
-//! seul geste qui ait fonctionné dans ce dépôt (D9, `capteur/serveur/instances.rs`,
-//! marge rendue de 10 à 65 ; les deux fichiers traités après coup en D9 ont été
-//! **compressés**, geste que `CLAUDE.md` interdit nommément, puis extraits
-//! quand même).
+//! Written in a child module rather than inline in `lanceur.rs`
+//! (367 lines, margin 133): the twins of `lancer_capteur` and
+//! `capteur_vivant`, in this file's documentary style, would have weighed
+//! 80 to 100 lines there and brought the margin under 45. This repository paid four times for the
+//! lesson "the margin regained by an extraction is lost again the next round
+//! if treated as acquired" — here the margin is not taken at all.
+//! The extraction is placed **before** the addition that would make it necessary,
+//! the only gesture that has worked in this repository (D9, `capteur/serveur/instances.rs`,
+//! margin returned from 10 to 65; the two files handled after the fact in D9 were
+//! **compressed**, a gesture `CLAUDE.md` forbids by name, then extracted
+//! anyway).
 //!
-//! **Même contrat ATOMIQUE que `lancer_capteur`** : `Err` signifie qu'aucun
-//! processus ne tourne. Le rattachement au job est le seul post-traitement
-//! faillible, et il tue donc lui-même le pont avant de rendre `Err`.
+//! **Same ATOMIC contract as `lancer_capteur`**: `Err` means no
+//! process is running. Attaching to the job is the only fallible
+//! post-processing, and it therefore kills the bridge itself before returning `Err`.
 //!
-//! `#![cfg(windows)]` hérité de `lanceur.rs` (son `#![cfg(windows)]` porte sur
-//! le module entier, enfants compris) : aucun `#[path]` n'est écrit ici, et la
-//! « convention de module enfant » de `CLAUDE.md` ne s'applique pas — elle ne
-//! vise que les modules qu'on extrait d'un parent gaté pour les faire compiler
-//! sur l'hôte, ce que celui-ci n'a aucune raison d'être.
+//! `#![cfg(windows)]` inherited from `lanceur.rs` (its `#![cfg(windows)]` covers
+//! the whole module, children included): no `#[path]` is written here, and
+//! `CLAUDE.md`'s "child module convention" does not apply — it only
+//! targets modules extracted from a gated parent to make them compile
+//! on the host, which this one has no reason to be.
 
 use super::*;
 use crate::relance_pont::EtatObserve;
 
 impl LanceurDeProcessus {
-    /// Lance le pont fichiers unique (`agent/src/pont.rs`) : même exécutable,
-    /// `PONT=1`, **rattaché au même job object** que les enfants et le capteur.
+    /// Launches the single files bridge (`agent/src/pont.rs`): same executable,
+    /// `PONT=1`, **attached to the same job object** as the children and the capturer.
     ///
-    /// **Pourquoi il porte `SESSION_ID`, `SIGNALING_URL` et `LOCAL_IP` là où
-    /// `lancer_capteur` n'en pose aucun** : le capteur ne parle à aucun
-    /// signaling — il sert le média par tube nommé —, alors que le pont ouvre
-    /// sa propre `PeerConnection` vers la page-shell.
+    /// **Why it carries `SESSION_ID`, `SIGNALING_URL` and `LOCAL_IP` where
+    /// `lancer_capteur` sets none**: the capturer talks to no
+    /// signaling — it serves the media through a named pipe —, whereas the bridge opens
+    /// its own `PeerConnection` to the shell page.
     pub fn lancer_pont(&self) -> Result<u32> {
-        // Composée ICI et non côté enfant, exactement comme la `Consigne`
-        // d'un enfant l'est par `Table` : c'est le superviseur qui connaît le
-        // préfixe de la VM. Le pont, lui, s'enrôlera pour son propre JETON —
-        // le préfixe qu'il en tirera n'a pas à recomposer ce nom.
+        // Composed HERE and not on the child side, exactly as a child's
+        // `Consigne` is by `Table`: it is the supervisor that knows the
+        // VM's prefix. The bridge, for its part, will enrol for its own TOKEN —
+        // the prefix it will get from it does not have to recompose this name.
         let session = crate::superviseur::protocole::session_du_pont(&self.prefixe);
         let mut commande = std::process::Command::new(&self.executable);
         commande
@@ -45,48 +45,48 @@ impl LanceurDeProcessus {
             .env("SESSION_ID", &session)
             .env("SIGNALING_URL", &self.signaling_url)
             .env("LOCAL_IP", &self.local_ip)
-            // Un pont qui hériterait de `SUPERVISEUR` se prendrait pour un
-            // superviseur et lancerait ses propres enfants, indéfiniment.
+            // A bridge inheriting `SUPERVISEUR` would take itself for a
+            // supervisor and launch its own children, indefinitely.
             .env_remove("SUPERVISEUR")
-            // Un pont qui hériterait de `CAPTEUR` se prendrait pour un
-            // CAPTEUR, et non pour un pont : `main.rs` teste `CAPTEUR` AVANT
-            // tout le reste et rendrait la main à `capteur::executer`. Le pont
-            // ne démarrerait jamais, **sans qu'une seule ligne ne le dise** —
-            // et le lecteur `Mes Fichiers` resterait absent sans cause
-            // lisible.
+            // A bridge inheriting `CAPTEUR` would take itself for a
+            // CAPTURER, and not for a bridge: `main.rs` tests `CAPTEUR` BEFORE
+            // everything else and would hand control to `capteur::executer`. The bridge
+            // would never start, **without a single line saying so** —
+            // and the `Mes Fichiers` drive would stay absent with no readable
+            // cause.
             .env_remove("CAPTEUR")
-            // Même motif que pour un enfant et pour le capteur : ces deux
-            // variables changent le SENS d'une source. Le pont n'a pas de
-            // source du tout, et `scripts/run-agent.sh` pose `TEST_FILE` dès
-            // qu'elle est définie dans l'environnement d'appel.
+            // Same reason as for a child and for the capturer: these two
+            // variables change the MEANING of a source. The bridge has no
+            // source at all, and `scripts/run-agent.sh` sets `TEST_FILE` as soon as
+            // it is defined in the calling environment.
             .env_remove("TEST_FILE")
             .env_remove("WINDOW_TITLE");
-        // 🔴 **ET L'IDENTITÉ — C'EST LE DÉFAUT MESURÉ LE 20 AOÛT 2026, ET IL
-        // ÉTAIT DANS CETTE LISTE-CI.** `AGENT_VM` et `AGENT_SECRET` n'y
-        // figuraient pas : le pont s'enrôlait sous la MÊME identité que son
-        // père, la plateforme n'admet qu'un socket par VM, et les deux
-        // s'évinçaient sans terme — **95 enrôlements, 94 évictions en 64 s**,
-        // à ~1,5 Hz, avec pour prix des messages incrémentaux perdus, des
-        // réponses de lancement perdues, et deux boucles de découverte
-        // d'applications au lieu d'une.
+        // 🔴 **AND THE IDENTITY — IT IS THE DEFECT MEASURED ON AUGUST 20TH, 2026, AND IT
+        // WAS IN THIS VERY LIST.** `AGENT_VM` and `AGENT_SECRET` were not
+        // in it: the bridge enrolled under the SAME identity as its
+        // parent, the platform only admits one socket per VM, and the two
+        // evicted each other endlessly — **95 enrolments, 94 evictions in 64 s**,
+        // at ~1.5 Hz, at the price of lost incremental messages, lost
+        // launch responses, and two application discovery loops
+        // instead of one.
         //
-        // ⚠️ **LE PONT A BIEN BESOIN D'UNE IDENTITÉ — mais d'un JETON, PAS
-        // D'UN CANAL.** Il ouvre sa propre `PeerConnection` vers la page-shell
-        // (c'est ce que dit `main.rs`, et c'est pourquoi il est placé APRÈS
-        // l'enrôlement), donc il présente un jeton comme un enfant. Ce qu'il
-        // ne fait JAMAIS du canal, en revanche : il ne bat pas le cœur de la
-        // VM, ne pousse aucun catalogue, ne reçoit aucun ordre de lancement.
-        // La question « identité propre, ou pas d'enrôlement du tout ? » se
-        // tranche donc sur cet usage réel : **pas d'enrôlement**, et le jeton
-        // du père par `AGENT_JETON`.
+        // ⚠️ **THE BRIDGE DOES NEED AN IDENTITY — but a TOKEN, NOT
+        // A CHANNEL.** It opens its own `PeerConnection` to the shell page
+        // (that is what `main.rs` says, and why it is placed AFTER
+        // enrolment), so it presents a token like a child. What it
+        // NEVER does with the channel, on the other hand: it does not beat the VM's
+        // heart, pushes no catalogue, receives no launch order.
+        // The question "own identity, or no enrolment at all?" is therefore
+        // decided on this real use: **no enrolment**, and the parent's
+        // token through `AGENT_JETON`.
         self.identite_heritee(&mut commande);
         let mut pont = commande.spawn().context("lancement du pont fichiers")?;
         let pid = pont.id();
         let handle = HANDLE(pont.as_raw_handle());
         if let Err(erreur) = unsafe { AssignProcessToJobObject(self.job, handle) } {
-            // Même contrat atomique que `lancer` et `lancer_capteur` : un pont
-            // non rattaché au job survivrait au superviseur EN TENANT une
-            // racine de virtualisation ProjFS, que rien ne démonterait.
+            // Same atomic contract as `lancer` and `lancer_capteur`: a bridge
+            // not attached to the job would outlive the supervisor WHILE HOLDING a
+            // ProjFS virtualisation root, which nothing would unmount.
             if let Err(mise_a_mort) = pont.kill() {
                 tracing::error!(pid, %mise_a_mort,
                     "pont fichiers NON rattaché au job ET NON tué — il survivra au superviseur");
@@ -103,31 +103,31 @@ impl LanceurDeProcessus {
         Ok(pid)
     }
 
-    /// Ce que le superviseur observe du pont lancé par le dernier
-    /// `lancer_pont` réussi : vivant, mort avec une ISSUE, ou absent.
+    /// What the supervisor observes of the bridge launched by the last successful
+    /// `lancer_pont`: alive, dead with an OUTCOME, or absent.
     ///
-    /// 🔴 **C'EST L'ISSUE, ET NON PLUS UN SEUL BOOLÉEN, QUI FRANCHIT CETTE
-    /// FRONTIÈRE DEPUIS LE ROUND DE CORRECTION 4.** L'ex-`pont_vivant`
-    /// recevait déjà le code de sortie dans `Ok(Some(code))` — **pour le
-    /// journaliser et le laisser tomber** —, et `surveillance_pont.rs`
-    /// devait alors DEVINER, à partir de la seule durée de vie, si une panne
-    /// passée était résolue. Il ne le pouvait pas : une session saine qui se
-    /// termine occupe le même intervalle qu'un pont refusé qui a dormi
-    /// jusqu'à `REPLI_MAX_MS` avant de mourir. Voir la doc de tête de
-    /// `crate::relance_pont` pour la mesure qui l'a établi.
+    /// 🔴 **IT IS THE OUTCOME, AND NO LONGER A SINGLE BOOLEAN, THAT CROSSES THIS
+    /// BOUNDARY SINCE FIX ROUND 4.** The former `pont_vivant`
+    /// already received the exit code in `Ok(Some(code))` — **to
+    /// log it and drop it** —, and `surveillance_pont.rs`
+    /// then had to GUESS, from the lifetime alone, whether a past failure
+    /// was resolved. It could not: a healthy session that
+    /// ends occupies the same interval as a refused bridge that slept
+    /// up to `REPLI_MAX_MS` before dying. See the header doc of
+    /// `crate::relance_pont` for the measurement that established it.
     ///
-    /// 🔴 **`Mort` N'EST RENDU QU'UNE FOIS PAR MORT, ET TOUT `relance_pont`
-    /// EN DÉPEND** : `*pont = None` juste après la lecture du code fait que
-    /// le tour suivant rend `Absent`. Rendre `Mort(Propre)` à chaque tour
-    /// réarmerait le repli en boucle sur une sortie propre ANCIENNE, ce qui
-    /// est exactement le défaut que ce round ferme. **Cette propriété-ci vit
-    /// derrière `#[cfg(windows)]` et n'est éprouvée par aucun test** — elle
-    /// est nommée dans les deux fichiers plutôt que supposée.
+    /// 🔴 **`Mort` IS RETURNED ONLY ONCE PER DEATH, AND ALL OF `relance_pont`
+    /// DEPENDS ON IT**: `*pont = None` right after reading the code makes
+    /// the next turn return `Absent`. Returning `Mort(Propre)` at each turn
+    /// would re-arm the fallback in a loop on an OLD clean exit, which
+    /// is exactly the defect this round closes. **This property lives
+    /// behind `#[cfg(windows)]` and is exercised by no test** — it
+    /// is named in both files rather than assumed.
     ///
-    /// Même logique que `capteur_vivant` : un état illisible n'est **PAS**
-    /// traité comme une mort — le déclarer mort ferait relancer un pont qui
-    /// tourne peut-être encore, et deux ponts se disputeraient la même racine
-    /// de virtualisation — et n'est journalisé qu'une fois tant qu'il persiste.
+    /// Same logic as `capteur_vivant`: an unreadable state is **NOT**
+    /// treated as a death — declaring it dead would restart a bridge that
+    /// may still be running, and two bridges would contend for the same virtualisation
+    /// root — and is only logged once as long as it persists.
     pub fn etat_du_pont(&self) -> EtatObserve {
         let mut pont = self.pont();
         let Some(en_cours) = pont.as_mut() else {
@@ -139,11 +139,11 @@ impl LanceurDeProcessus {
                 EtatObserve::Vivant
             }
             Ok(Some(code)) => {
-                // ⚠️ `code.code()` et non `code.success()` : le module pur
-                // distingue TROIS issues, pas deux — voir `IssueDeSortie`,
-                // dont la variante `Inconnue` couvre le `None` que POSIX rend
-                // sur une mort par signal. Sur Windows le `None` ne court
-                // jamais, et `IssueDeSortie::depuis_le_code` le dit.
+                // ⚠️ `code.code()` and not `code.success()`: the pure module
+                // distinguishes THREE outcomes, not two — see `IssueDeSortie`,
+                // whose `Inconnue` variant covers the `None` POSIX returns
+                // on a death by signal. On Windows the `None` never
+                // runs, and `IssueDeSortie::depuis_le_code` says so.
                 let issue = crate::relance_pont::IssueDeSortie::depuis_le_code(code.code());
                 tracing::info!(
                     pid = en_cours.processus.id(),
