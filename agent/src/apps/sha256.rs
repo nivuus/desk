@@ -125,7 +125,7 @@ impl Condensateur {
         // D'abord compléter le résidu, s'il y en a un. S'il ne suffit pas à
         // remplir un bloc, `bloc` est épuisé PAR CONSTRUCTION et il faut
         // sortir ici : la suite écraserait sinon `en_residu` avec le reste
-        // vide d'un `chunks_exact` sur une tranche vide, et le résidu déjà
+        // vide d'un `as_chunks` sur une tranche vide, et le résidu déjà
         // reçu serait perdu sans un mot.
         if self.en_residu > 0 {
             let manque = (64 - self.en_residu).min(bloc.len());
@@ -139,11 +139,10 @@ impl Condensateur {
             self.en_residu = 0;
         }
 
-        let mut entiers = bloc.chunks_exact(64);
-        for entier in entiers.by_ref() {
-            comprimer(&mut self.etat, entier.try_into().expect("64 octets"));
+        let (entiers, reste) = bloc.as_chunks::<64>();
+        for entier in entiers {
+            comprimer(&mut self.etat, entier);
         }
-        let reste = entiers.remainder();
         self.residu[..reste.len()].copy_from_slice(reste);
         self.en_residu = reste.len();
     }

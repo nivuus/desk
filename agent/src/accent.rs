@@ -89,11 +89,12 @@ fn luma(r: u8, g: u8, b: u8) -> u8 {
 /// filtre absurde sans qu'aucun test ne le dise.
 ///
 /// Une tranche dont la longueur n'est pas un multiple de 4 voit son reste
-/// **laissé tel quel** — `chunks_exact_mut` l'ignore. Ce n'est pas un silence
+/// **laissé tel quel** — `as_chunks_mut` le rend à part, et il est ignoré. Ce n'est pas un silence
 /// commode : un tampon mal dimensionné est refusé plus loin par [`dominante`],
 /// qui compare la longueur au produit `largeur × hauteur × 4`.
 pub fn bgra_en_rgba(tampon: &mut [u8]) {
-    for pixel in tampon.chunks_exact_mut(4) {
+    let (pixels, _reste) = tampon.as_chunks_mut::<4>();
+    for pixel in pixels {
         pixel.swap(0, 2);
     }
 }
@@ -132,7 +133,8 @@ pub fn dominante(rgba: &[u8], largeur: u32, hauteur: u32) -> Option<[u8; 3]> {
     type Sommes = (u64, u64, u64, u64);
     let mut seaux: std::collections::BTreeMap<Cle, Sommes> = std::collections::BTreeMap::new();
 
-    for pixel in rgba.chunks_exact(4) {
+    let (pixels, _) = rgba.as_chunks::<4>();
+    for pixel in pixels {
         let (r, g, b, a) = (pixel[0], pixel[1], pixel[2], pixel[3]);
         if a < ALPHA_MIN {
             continue;

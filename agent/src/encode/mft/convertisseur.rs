@@ -14,7 +14,6 @@ use std::sync::atomic::Ordering;
 
 use anyhow::{Context, Result};
 use windows::core::Interface;
-use windows::Win32::Media::MediaFoundation::*;
 
 // ⚠️ **Importation globale, et c'est un choix motivé.** Ce fichier est la
 // CONTINUATION d'`encode.rs` : phases, compteurs publics et constantes de

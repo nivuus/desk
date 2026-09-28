@@ -24,7 +24,6 @@ use std::sync::Arc;
 use anyhow::{bail, Context, Result};
 use windows::core::Interface;
 use windows::Win32::Graphics::Direct3D11::ID3D11Device;
-use windows::Win32::Media::MediaFoundation::*;
 
 // Même raison que chez ses enfants : ce fichier est la continuation
 // d'`encode.rs`, pas un module indépendant qui en consommerait l'interface.

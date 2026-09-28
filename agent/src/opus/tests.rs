@@ -285,7 +285,8 @@ fn un_flux_mono_ressort_stereo_par_duplication() {
     let mut sortie = vec![0i16; 960 * CHANNELS];
     assert_eq!(dec.decoder(&paquet, &mut sortie).unwrap(), 960);
     // Entrelacé : les deux canaux sont IDENTIQUES échantillon par échantillon.
-    for paire in sortie.chunks_exact(2) {
+    let (paires, _) = sortie.as_chunks::<2>();
+    for paire in paires {
         assert_eq!(paire[0], paire[1], "canaux gauche et droit dissemblables");
     }
     // …et le signal n'est pas nul : un décodeur qui rendrait du silence
