@@ -1,42 +1,42 @@
-//! Injection des entrées du navigateur dans la session Windows.
+//! Injection of the browser's inputs into the Windows session.
 //!
-//! Le mapping de coordonnées (fenêtre → bureau virtuel) est indépendant de
-//! toute API Windows et vit dans `crate::geometry::to_virtual_desktop`,
-//! testé sur Linux (tâche 12 : le brief l'attendait ici, mais `Rect` a été
-//! introduit à la tâche 9 dans `geometry.rs`, aux côtés de `crop_region` —
-//! le mapping l'y rejoint plutôt que de dupliquer `Rect`). Ce module ne
-//! porte donc que l'appel système `SendInput`, propre à Windows.
+//! The coordinate mapping (window → virtual desktop) is independent of
+//! any Windows API and lives in `crate::geometry::to_virtual_desktop`,
+//! tested on Linux (task 12: the brief expected it here, but `Rect` was
+//! introduced at task 9 in `geometry.rs`, next to `crop_region` —
+//! the mapping joins it there rather than duplicating `Rect`). This module therefore
+//! only carries the `SendInput` system call, specific to Windows.
 
-/// Les quatre événements clavier d'un collage : `Ctrl`↓, `V`↓, `V`↑, `Ctrl`↑.
+/// The four keyboard events of a paste: `Ctrl`↓, `V`↓, `V`↑, `Ctrl`↑.
 ///
-/// **Hors du `#[cfg(windows)]`, à dessein** : c'est une table, pas un appel
-/// système, et l'appelant (`transport/boucle.rs`) n'est pas gaté.
+/// **Outside the `#[cfg(windows)]`, on purpose**: it is a table, not a system
+/// call, and the caller (`transport/boucle.rs`) is not gated.
 ///
-/// 🔴 **AUTO-SUFFISANTE EN MODIFICATEURS, et ce n'est pas de la prudence.**
-/// Le canal d'entrées du client est `ordered: false, maxRetransmits: 0`
-/// (`client/src/webrtc.ts`) : l'état des modificateurs côté VM au moment de
-/// l'injection **n'est pas connaissable** — le `Ctrl`↓ que le client a envoyé
-/// peut être arrivé, avoir été perdu, ou arriver après. Poser soi-même les
-/// quatre événements rend le geste indépendant de tout cela ; un `Ctrl`↑ de
-/// trop est inoffensif, un `Ctrl`↓ manquant ne collerait rien.
+/// 🔴 **SELF-SUFFICIENT IN MODIFIERS, and it is not over-caution.**
+/// The client's input channel is `ordered: false, maxRetransmits: 0`
+/// (`client/src/webrtc.ts`): the state of modifiers on the VM side at the moment of
+/// injection **cannot be known** — the `Ctrl`↓ the client sent
+/// may have arrived, been lost, or arrive afterwards. Setting the
+/// four events ourselves makes the gesture independent of all that; one `Ctrl`↑ too
+/// many is harmless, a missing `Ctrl`↓ would paste nothing.
 ///
-/// 🔴 **LES QUATRE, ET DANS CET ORDRE.** Omettre le `Ctrl`↑ final laisserait
-/// l'application avec un modificateur ENFONCÉ, et **toute frappe suivante
-/// deviendrait un raccourci** — le défaut le plus insidieux de ce chemin, et
-/// celui qu'un test garde rouge.
+/// 🔴 **ALL FOUR, AND IN THIS ORDER.** Omitting the final `Ctrl`↑ would leave
+/// the application with a modifier PRESSED, and **any following keystroke
+/// would become a shortcut** — the most insidious defect of this path, and
+/// the one a test keeps red.
 ///
-/// Scancodes relevés sur `client/src/scancodes.ts`, la table que le client
-/// emploie déjà : `ControlLeft` = `0x1d`, `KeyV` = `0x2f`, `extended: false`
-/// aux deux. Les reprendre de là plutôt que de les redécouvrir garantit que
-/// la VM reçoit exactement ce qu'elle reçoit d'une frappe humaine.
+/// Scancodes taken from `client/src/scancodes.ts`, the table the client
+/// already uses: `ControlLeft` = `0x1d`, `KeyV` = `0x2f`, `extended: false`
+/// for both. Taking them from there rather than rediscovering them guarantees that
+/// the VM receives exactly what it receives from a human keystroke.
 ///
-/// ⚠️ **La portée du dépôt sur `SetForegroundWindow` n'est PAS élargie par
-/// cette table.** Le bras `InputMessage::Key` de `InputInjector` appelle déjà
-/// `au_premier_plan()`, ce dont ce chemin hérite gratuitement — mais ce qui
-/// est MESURÉ (D2) est « une frappe par fenêtre, sonde séquentielle, aucune
-/// frappe concurrente », et `SendInput` reste GLOBAL à la session Windows.
-/// **Deux collages simultanés depuis deux fenêtres restent hors de ce qui est
-/// établi** ; P3 est le sous-bloc qui les rencontrera.
+/// ⚠️ **The repository's scope on `SetForegroundWindow` is NOT widened by
+/// this table.** The `InputMessage::Key` arm of `InputInjector` already calls
+/// `au_premier_plan()`, which this path inherits for free — but what
+/// is MEASURED (D2) is "one keystroke per window, sequential probe, no
+/// concurrent keystroke", and `SendInput` remains GLOBAL to the Windows session.
+/// **Two simultaneous pastes from two windows remain outside what is
+/// established**; P3 is the sub-block that will meet them.
 pub const TOUCHES_COLLAGE: [proto::input::InputMessage; 4] = [
     proto::input::InputMessage::Key {
         scancode: 0x1d,
@@ -68,10 +68,10 @@ mod win {
     use std::sync::atomic::{AtomicBool, Ordering};
     use std::sync::Arc;
     use windows::Win32::Foundation::{HWND, POINT, RECT};
-    // écart d'API windows-rs 0.62, déjà rencontré dans `window.rs` :
-    // `ClientToScreen` vit dans `Win32::Graphics::Gdi` (module gdi32), pas
-    // dans `WindowsAndMessaging` (user32) où on l'attendrait par analogie
-    // avec `GetClientRect`.
+    // windows-rs 0.62 API gap, already met in `window.rs`:
+    // `ClientToScreen` lives in `Win32::Graphics::Gdi` (gdi32 module), not
+    // in `WindowsAndMessaging` (user32) where one would expect it by analogy
+    // with `GetClientRect`.
     use windows::Win32::Graphics::Gdi::ClientToScreen;
     use windows::Win32::UI::Input::KeyboardAndMouse::{
         SendInput, INPUT, INPUT_KEYBOARD, INPUT_MOUSE, KEYBDINPUT, KEYEVENTF_EXTENDEDKEY,
@@ -85,60 +85,60 @@ mod win {
         SM_CXVIRTUALSCREEN, SM_CYVIRTUALSCREEN, SM_XVIRTUALSCREEN, SM_YVIRTUALSCREEN,
     };
 
-    /// Injecte les messages d'entrée reçus du navigateur dans la session
-    /// Windows courante, via `SendInput`.
+    /// Injects the input messages received from the browser into the current Windows
+    /// session, through `SendInput`.
     pub struct InputInjector {
         hwnd: HWND,
-        /// 🔴 SUR QUOI LES COORDONNÉES SE DÉMAPPENT — voir `crate::entrees`.
-        /// Dérivée de `config.sortie_dxgi`, **le même discriminant que le mode
-        /// de capture** : il n'y a pas deux descriptions à tenir d'accord.
+        /// 🔴 WHAT THE COORDINATES ARE UNMAPPED ONTO — see `crate::entrees`.
+        /// Derived from `config.sortie_dxgi`, **the same discriminant as the capture
+        /// mode**: there are not two descriptions to keep in agreement.
         reference: crate::entrees::Reference,
-        /// Le rectangle de la sortie capturée, et l'instant de son relevé.
+        /// The rectangle of the captured output, and the instant it was surveyed.
         ///
-        /// ⚠️ **Mis en cache, et il le faut** : `move_mouse` court à la cadence
-        /// des mouvements de souris, et énumérer DXGI à chaque événement
-        /// coûterait des appels COM par dizaines par seconde. ⚠️ **Mais pas
-        /// figé non plus** : la disposition du bureau virtuel change quand une
-        /// sortie naît ou meurt, et une origine périmée redonnerait exactement
-        /// le défaut qu'on corrige. D'où la péremption ci-dessous.
+        /// ⚠️ **Cached, and it must be**: `move_mouse` runs at the cadence
+        /// of mouse movements, and enumerating DXGI at each event
+        /// would cost COM calls by the dozen per second. ⚠️ **But not
+        /// frozen either**: the layout of the virtual desktop changes when an
+        /// output is born or dies, and a stale origin would give back exactly
+        /// the defect being fixed. Hence the expiry below.
         sortie: Option<(Rect, std::time::Instant)>,
-        /// Renseigné par le fil de sondage du curseur (`cursor.rs`).
-        /// L'agent est SEUL décideur du mode : le client n'a rien à savoir,
-        /// et il n'existe qu'une source de vérité — la seule construction
-        /// correcte sur un canal non ordonné.
+        /// Filled by the cursor polling thread (`cursor.rs`).
+        /// The agent is the SOLE decider of the mode: the client has nothing to know,
+        /// and there is only one source of truth — the only correct
+        /// construction on an unordered channel.
         mode_relatif: Arc<AtomicBool>,
-        /// Dernier résultat connu de `SetForegroundWindow`, pour ne journaliser
-        /// qu'au basculement et non à chaque frappe. `None` à la construction
-        /// — un sentinelle à DEUX états (`bool` initialisé à `false`) rendrait
-        /// muet le tout premier échec, car `false == false` ne bascule rien :
-        /// exactement le cas que cette trace existe pour révéler. `None` ne
-        /// collisionne avec aucun résultat réel de `SetForegroundWindow`, donc
-        /// le premier appel trace toujours, qu'il réussisse ou échoue.
+        /// Last known result of `SetForegroundWindow`, to log only
+        /// on a toggle and not at each keystroke. `None` at construction
+        /// — a TWO-state sentinel (`bool` initialised to `false`) would silence
+        /// the very first failure, since `false == false` toggles nothing:
+        /// exactly the case this trace exists to reveal. `None` does not
+        /// collide with any real result of `SetForegroundWindow`, so
+        /// the first call always traces, whether it succeeds or fails.
         premier_plan_obtenu: Option<bool>,
     }
 
     impl InputInjector {
-        /// Durée de validité du rectangle de la sortie.
+        /// Validity duration of the output's rectangle.
         ///
-        /// ⚠️ **Non calibrée** : une seconde est courte devant la fréquence à
-        /// laquelle une sortie naît ou meurt (de l'ordre de l'ouverture d'une
-        /// fenêtre) et longue devant la cadence des mouvements de souris. Ce
-        /// n'est pas une constante mesurée, et elle est déclarée telle.
+        /// ⚠️ **Not calibrated**: one second is short compared with the frequency at
+        /// which an output is born or dies (of the order of opening a
+        /// window) and long compared with the cadence of mouse movements. It
+        /// is not a measured constant, and it is declared as such.
         ///
-        /// ⚠️ **CE QU'ELLE COÛTE, écrit ici pour que personne n'ait à le
-        /// redériver** : si la sortie capturée change d'origine ou de taille,
-        /// le démappage reste faux **au pire une seconde**, puis se corrige
-        /// tout seul au prochain relevé. Le décalage est alors borné par le
-        /// déplacement qu'a subi la sortie pendant cette seconde — jamais
-        /// cumulatif, jamais permanent.
+        /// ⚠️ **WHAT IT COSTS, written here so that no one has to
+        /// re-derive it**: if the captured output changes origin or size,
+        /// the unmapping stays wrong **for at most one second**, then corrects
+        /// itself at the next survey. The offset is then bounded by the
+        /// displacement the output underwent during that second — never
+        /// cumulative, never permanent.
         const PEREMPTION_SORTIE: std::time::Duration = std::time::Duration::from_secs(1);
 
-        /// 🔴 **LA RÉFÉRENCE ARRIVE CONSTRUITE, ELLE N'EST PLUS DÉDUITE ICI.**
-        /// Elle est bâtie par le `match` de `demarrage::source::construire`
-        /// — le MÊME `match` qui choisit le mode de capture et qui, dans le
-        /// bras multi-fenêtres, tient la cellule de taille de la source. Un
-        /// second calcul ici, même correct le jour où il est écrit, est
-        /// exactement ce qui a produit les défauts des lots 32M et 32Q.
+        /// 🔴 **THE REFERENCE ARRIVES BUILT, IT IS NO LONGER DEDUCED HERE.**
+        /// It is built by the `match` of `demarrage::source::construire`
+        /// — the SAME `match` that chooses the capture mode and which, in the
+        /// multi-window arm, holds the source's size cell. A
+        /// second computation here, even correct the day it is written, is
+        /// exactly what produced the defects of batches 32M and 32Q.
         pub fn new(
             hwnd: HWND,
             reference: crate::entrees::Reference,
@@ -146,9 +146,9 @@ mod win {
         ) -> Self {
             tracing::info!(
                 ?reference,
-                "reference des entrees retenue (batie par le match qui choisit \
-                 le mode de capture ; la taille de l'image y est PARTAGEE avec \
-                 la source, jamais recalculee)"
+                "input reference retained (built by the match that chooses \
+                 the capture mode; the image size is SHARED there with \
+                 the source, never recomputed)"
             );
             Self {
                 hwnd,
@@ -168,16 +168,16 @@ mod win {
                     x,
                     y,
                 } => {
-                    // En absolu : toujours positionner avant de cliquer, le
-                    // canal n'étant pas ordonné, le déplacement correspondant
-                    // a pu se perdre.
+                    // In absolute: always position before clicking, the
+                    // channel not being ordered, the corresponding movement
+                    // may have been lost.
                     //
-                    // En RELATIF : surtout pas. Les coordonnées portées par
-                    // le message n'ont plus de sens sous Pointer Lock, et un
-                    // repositionnement absolu téléporterait le curseur à
-                    // chaque tir. Relu à CHAQUE appel (pas capturé une fois à
-                    // la construction) : le mode peut basculer en cours de
-                    // session, au gré du fil de sondage du curseur.
+                    // In RELATIVE: absolutely not. The coordinates carried by
+                    // the message no longer mean anything under Pointer Lock, and an
+                    // absolute repositioning would teleport the cursor at
+                    // each shot. Reread at EACH call (not captured once at
+                    // construction): the mode can toggle during the
+                    // session, at the whim of the cursor polling thread.
                     if !self.mode_relatif.load(Ordering::Relaxed) {
                         self.move_mouse(x, y)?;
                     }
@@ -201,12 +201,12 @@ mod win {
                     ..Default::default()
                 }),
                 InputMessage::Gamepad(_) => {
-                    // Ignoré ici, volontairement : `demarrage.rs` intercepte cette
-                    // variante AVANT d'appeler l'injecteur (tâche 10, manette
-                    // virtuelle ViGEmBus) — l'injecteur clavier/souris n'a
-                    // rien à en faire. Un bras muet, sans ce commentaire,
-                    // serait un piège pour la suite : on croirait le message
-                    // traité alors qu'il ne l'a jamais été par ce module.
+                    // Ignored here, on purpose: `demarrage.rs` intercepts this
+                    // variant BEFORE calling the injector (task 10, ViGEmBus
+                    // virtual gamepad) — the keyboard/mouse injector has
+                    // nothing to do with it. A silent arm, without this comment,
+                    // would be a trap for later: one would believe the message
+                    // handled while it never was by this module.
                     Ok(())
                 }
                 InputMessage::Wheel { delta_x, delta_y } => {
@@ -250,23 +250,23 @@ mod win {
             }
         }
 
-        /// Porte la fenêtre de cette session au premier plan avant d'injecter
-        /// du clavier.
+        /// Brings this session's window to the foreground before injecting
+        /// keyboard input.
         ///
-        /// **Nécessaire et probablement pas suffisant.** `SendInput` est global
-        /// à la session Windows : il n'adresse personne, il alimente la file
-        /// d'entrée de la fenêtre active. Sans cet appel, toutes les sessions
-        /// tapent dans la même fenêtre — celle qui se trouve au premier plan.
-        /// Avec, deux sessions qui tapent en même temps se le disputent. La
-        /// réponse structurelle est ailleurs (injection ciblée par messages, ou
-        /// un pilote) et reste hors périmètre du sous-bloc D2.
+        /// **Necessary and probably not sufficient.** `SendInput` is global
+        /// to the Windows session: it addresses no one, it feeds the input queue
+        /// of the active window. Without this call, all sessions
+        /// type into the same window — the one in the foreground.
+        /// With it, two sessions typing at the same time fight over it. The
+        /// structural answer lies elsewhere (targeted injection through messages, or
+        /// a driver) and remains out of scope of sub-block D2.
         ///
-        /// **Le retour est vérifié.** `SetForegroundWindow` échoue
-        /// silencieusement quand le processus appelant n'a pas le droit de
-        /// voler le focus : sans cette trace, on ne saurait pas distinguer « le
-        /// premier plan n'a pas suffi » de « le premier plan n'a jamais été
-        /// donné ». Journalisé une fois par basculement et non par frappe — un
-        /// journal par touche noierait le canal.
+        /// **The return is checked.** `SetForegroundWindow` fails
+        /// silently when the calling process is not allowed to
+        /// steal focus: without this trace, one could not distinguish "the
+        /// foreground was not enough" from "the foreground was never
+        /// given". Logged once per toggle and not per keystroke — one
+        /// log per key would drown the channel.
         fn au_premier_plan(&mut self) {
             if unsafe { GetForegroundWindow() } == self.hwnd {
                 return;
@@ -274,11 +274,11 @@ mod win {
             let obtenu = unsafe { SetForegroundWindow(self.hwnd) }.as_bool();
             if self.premier_plan_obtenu != Some(obtenu) {
                 if obtenu {
-                    tracing::info!(hwnd = ?self.hwnd, "premier plan obtenu avant injection clavier");
+                    tracing::info!(hwnd = ?self.hwnd, "foreground obtained before keyboard injection");
                 } else {
                     tracing::warn!(
                         hwnd = ?self.hwnd,
-                        "SetForegroundWindow refusé — le clavier ira à la fenêtre active"
+                        "SetForegroundWindow refused — the keyboard will go to the active window"
                     );
                 }
                 self.premier_plan_obtenu = Some(obtenu);
@@ -288,48 +288,48 @@ mod win {
         fn move_mouse(&mut self, x: u16, y: u16) -> Result<()> {
             let window = self.rectangle_de_reference()?;
             let desktop = virtual_desktop();
-            // Sur la région RÉELLEMENT capturée : le navigateur normalise ses
-            // coordonnées sur l'image qu'il reçoit.
+            // On the region ACTUALLY captured: the browser normalises its
+            // coordinates on the image it receives.
             //
-            // 🔴 **CE COMMENTAIRE A ÉTÉ FAUX, AU PRÉSENT, DU SOUS-BLOC D10 AU
-            // LOT 32M.** Il affirmait : « cette image est l'intersection de la
-            // fenêtre avec l'écran ». **C'était vrai avant D10** — la capture
-            // recadrait alors la fenêtre. Depuis, le chemin multi-fenêtres
-            // capture la SORTIE ENTIÈRE (`ModeCapture::SortieEntiere`), fond
-            // d'écran et barre des tâches compris, et cette phrase a cessé
-            // d'être vraie sous elle sans que personne ne la relise. Le
-            // démappage sur la zone client de la fenêtre produisait alors une
-            // erreur à deux termes — origine + échelle —, mesurée à +1288 px
-            // en x et +51 px en y sur la machine du propriétaire.
+            // 🔴 **THIS COMMENT WAS WRONG, IN THE PRESENT TENSE, FROM SUB-BLOCK D10 TO
+            // BATCH 32M.** It asserted: "this image is the intersection of the
+            // window with the screen". **That was true before D10** — the capture
+            // then cropped the window. Since then, the multi-window path
+            // captures the WHOLE OUTPUT (`ModeCapture::SortieEntiere`), wallpaper
+            // and taskbar included, and this sentence stopped
+            // being true underneath it without anyone rereading it. The
+            // unmapping on the window's client area then produced an
+            // error with two terms — origin + scale —, measured at +1288 px
+            // in x and +51 px in y on the owner's machine.
             //
-            // **Ce qui est vrai aujourd'hui** : la référence est
-            // `rectangle_de_reference()` — l'ORIGINE de la sortie capturée et
-            // la TAILLE DE L'IMAGE, cette dernière PARTAGÉE avec la source et
-            // non recalculée. Voir `crate::entrees`.
+            // **What is true today**: the reference is
+            // `rectangle_de_reference()` — the ORIGIN of the captured output and
+            // the SIZE OF THE IMAGE, the latter SHARED with the source and
+            // not recomputed. See `crate::entrees`.
             //
-            // ⚠️ **Le lot 32Q a corrigé l'origine et laissé la taille**, d'où
-            // une dérive résiduelle purement proportionnelle : +432 px au bord
-            // droit sur la machine du propriétaire (sortie 1860, image 1428),
-            // nulle à gauche, nulle en y. C'est ce que E1 ferme.
+            // ⚠️ **Batch 32Q fixed the origin and left the size**, hence
+            // a purely proportional residual drift: +432 px at the right
+            // edge on the owner's machine (output 1860, image 1428),
+            // nil on the left, nil in y. That is what E1 closes.
             //
-            // **Les commandes qui l'établissent**, pour que le prochain
-            // lecteur refasse le contrôle sans croire personne :
+            // **The commands that establish it**, so that the next
+            // reader redoes the check without believing anyone:
             //
             // ```text
-            // grep -n 'normalisées sur 0..65535' client/src/input.ts
+            // grep -n 'normalised on 0..65535' client/src/input.ts
             // grep -rn 'ModeCapture::SortieEntiere' agent/src/windows_source/
-            // grep -rn 'TailleImage' agent/src/
+            // grep -rn 'FrameSize' agent/src/
             // cargo test --workspace entrees::
             // ```
             //
-            // ⚠️ C'est le second commentaire de ce dépôt à mentir au présent
-            // après `superviseur/placement.rs`, et pour la même raison : exact
-            // à l'écriture, jamais relu après le changement qui l'a défait.
+            // ⚠️ It is the second comment of this repository to lie in the present tense
+            // after `superviseur/placement.rs`, and for the same reason: accurate
+            // when written, never reread after the change that undid it.
             let Some((absolute_x, absolute_y)) = to_virtual_desktop_visible(x, y, window, desktop)
             else {
-                // Fenêtre entièrement hors écran : aucune image n'est envoyée,
-                // il n'y a donc aucun point à viser. Ignorer plutôt que
-                // d'injecter au hasard.
+                // Window entirely off screen: no image is sent,
+                // there is therefore no point to aim at. Ignore rather than
+                // inject at random.
                 return Ok(());
             };
             send_mouse(MOUSEINPUT {
@@ -340,43 +340,43 @@ mod win {
             })
         }
 
-        /// 🔴 LE RECTANGLE SUR LEQUEL LE NAVIGATEUR A NORMALISÉ SES
-        /// COORDONNÉES — c'est-à-dire **ce qui a été capturé**, jamais autre
-        /// chose. Voir `crate::entrees` pour le défaut que cette indirection
-        /// ferme et pour l'erreur qu'elle annule, terme par terme.
+        /// 🔴 THE RECTANGLE ON WHICH THE BROWSER NORMALISED ITS
+        /// COORDINATES — that is **what was captured**, never anything
+        /// else. See `crate::entrees` for the defect this indirection
+        /// closes and for the error it cancels, term by term.
         fn rectangle_de_reference(&mut self) -> Result<Rect> {
             let (nom, image) = match &self.reference {
                 crate::entrees::Reference::ZoneClientDeLaFenetre => {
                     return self.client_rect_on_screen()
                 }
                 crate::entrees::Reference::SortieCapturee { nom, image } => {
-                    // Relue à CHAQUE appel, jamais mise en cache avec le
-                    // rectangle de la sortie : c'est la seule moitié des deux
-                    // qui change sans qu'aucune sortie ne naisse ni ne meure
-                    // (un `resize` du navigateur), et sa lecture ne coûte
-                    // qu'un chargement atomique — rien à économiser.
+                    // Reread at EACH call, never cached with the
+                    // output's rectangle: it is the only half of the two
+                    // that changes without any output being born or dying
+                    // (a browser `resize`), and reading it only costs
+                    // one atomic load — nothing to save.
                     (nom.clone(), image.lire())
                 }
             };
-            // L'ORIGINE vient de la sortie DXGI (mise en cache, voir
-            // `PEREMPTION_SORTIE`) ; la TAILLE vient de l'image. Les deux
-            // moitiés ont des sources différentes parce qu'elles ont des
-            // durées de vie différentes — et c'est `crate::entrees` qui les
-            // assemble, en un seul endroit.
+            // The ORIGIN comes from the DXGI output (cached, see
+            // `PEREMPTION_SORTIE`); the SIZE comes from the image. The two
+            // halves have different sources because they have different
+            // lifetimes — and it is `crate::entrees` that
+            // assembles them, in a single place.
             let sortie = self.rectangle_de_la_sortie(&nom)?;
             crate::entrees::rectangle_capture(sortie, image).ok_or_else(|| {
                 anyhow!(
-                    "taille de l'image capturée encore inconnue ({}x{}) : aucune \
-                     référence fiable pour démapper les entrées",
+                    "captured image size still unknown ({}x{}): no \
+                     reliable reference to unmap the inputs",
                     image.0,
                     image.1
                 )
             })
         }
 
-        /// Le rectangle de la sortie DXGI nommée — **son ORIGINE seule est
-        /// employée** (`crate::entrees::rectangle_capture`) ; sa taille est
-        /// celle de la SORTIE, qui n'est pas celle de l'image.
+        /// The rectangle of the named DXGI output — **only its ORIGIN is
+        /// used** (`crate::entrees::rectangle_capture`); its size is
+        /// that of the OUTPUT, which is not that of the image.
         fn rectangle_de_la_sortie(&mut self, nom: &str) -> Result<Rect> {
             if let Some((rect, releve)) = self.sortie {
                 if releve.elapsed() < Self::PEREMPTION_SORTIE {
@@ -384,25 +384,25 @@ mod win {
                 }
             }
             let sorties = crate::capture::enumerer_sorties_silencieux()
-                .context("énumération DXGI pour la référence des entrées")?;
+                .context("DXGI enumeration for the input reference")?;
             let trouvee = sorties.iter().find(|s| s.nom_sortie == nom).map(|s| s.rect);
             match trouvee {
                 Some(rect) => {
                     self.sortie = Some((rect, std::time::Instant::now()));
                     Ok(rect)
                 }
-                // ⚠️ **On NE retombe PAS sur la fenêtre.** Ce serait réintroduire
-                // en silence le décalage que ce chemin existe pour supprimer, et
-                // le symptôme redeviendrait « la souris clique à côté » sans
-                // qu'aucune trace ne le dise. Mieux vaut une erreur nommée.
+                // ⚠️ **We do NOT fall back on the window.** That would silently
+                // reintroduce the offset this path exists to remove, and
+                // the symptom would again become "the mouse clicks beside" without
+                // any trace saying so. Better a named error.
                 None => Err(anyhow!(
-                    "sortie capturée {nom} introuvable dans la topologie DXGI : \
-                     aucune référence fiable pour démapper les entrées"
+                    "captured output {nom} not found in the DXGI topology: \
+                     no reliable reference to unmap the inputs"
                 )),
             }
         }
 
-        /// Zone client de la fenêtre, exprimée en coordonnées écran.
+        /// Client area of the window, expressed in screen coordinates.
         fn client_rect_on_screen(&self) -> Result<Rect> {
             let mut rect = RECT::default();
             unsafe { GetClientRect(self.hwnd, &mut rect)? };
@@ -452,9 +452,7 @@ mod win {
     fn dispatch(inputs: &[INPUT]) -> Result<()> {
         let sent = unsafe { SendInput(inputs, std::mem::size_of::<INPUT>() as i32) };
         if sent as usize != inputs.len() {
-            return Err(anyhow!(
-                "SendInput a refusé l'entrée (session verrouillée ?)"
-            ));
+            return Err(anyhow!("SendInput refused the input (session locked?)"));
         }
         Ok(())
     }

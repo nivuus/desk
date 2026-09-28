@@ -1,88 +1,88 @@
-// L'ÉCRAN PLEIN CADRE DES ÉTATS TERMINAUX — sous-projet ⑥, sous-bloc S4,
-// tâche 9. C'est la famille 1 du §5.2 de la spec : « un état terminal cesse
-// d'occuper six lignes dans un bandeau de 12 px de marge ».
+// THE FULL-FRAME SCREEN OF TERMINAL STATES — sub-project ⑥, sub-block S4,
+// task 9. It is family 1 of §5.2 of the spec: "a terminal state stops
+// taking up six lines in a banner with a 12 px margin".
 //
 // ═══════════════════════════════════════════════════════════════════════════
-// 🔴 CE MODULE NE DÉPLACE AUCUNE FRONTIÈRE, IL REND VISIBLE CELLE QUE LE CODE
-// PORTE DÉJÀ. « Terminal » n'est pas un mot inventé ici : `status.ts` distingue
-// depuis le chantier E un message TERMINAL d'un message PERSISTANT et d'un
-// message ordinaire, et EXACTEMENT DEUX appels du produit passent
-// `terminal: true` — la fin de session et l'échec de connexion, tous deux dans
-// `main.ts`. Les onze autres appels de ce fichier restent au bandeau, y compris
-// les messages persistants du lien dégradé et du sommeil.
+// 🔴 THIS MODULE MOVES NO BOUNDARY, IT MAKES VISIBLE THE ONE THE CODE
+// ALREADY CARRIES. "Terminal" is not a word invented here: `status.ts` has
+// distinguished since workstream E a TERMINAL message from a PERSISTENT one and from an
+// ordinary one, and EXACTLY TWO calls of the product pass
+// `terminal: true` — the end of session and the connection failure, both in
+// `main.ts`. The eleven other calls of that file stay on the banner, including
+// the persistent messages of the degraded link and of sleep.
 //
-// 🔴 L'ÉCRAN SE BRANCHE DANS `creerStatut`, PAS DANS UN APPELANT DE PLUS.
-// `status.ts` existe précisément pour qu'« aucun appelant ne puisse oublier la
-// garde » : lui ajouter une cible OPTIONNELLE garde ce point d'écriture unique,
-// là où un `ecran.montrer(...)` écrit à côté de `statut.afficher(...)` dans
-// `main.ts` serait deux écritures que rien n'oblige à rester d'accord.
+// 🔴 THE SCREEN PLUGS INTO `createStatus`, NOT INTO ONE MORE CALLER.
+// `status.ts` exists precisely so that "no caller can forget the
+// guard": adding an OPTIONAL target to it keeps this single write point,
+// whereas an `ecran.montrer(...)` written next to `statut.show(...)` in
+// `main.ts` would be two writes nothing forces to stay in agreement.
 //
-// ⚠️ PUR, DÉPENDANCES INJECTÉES, TESTABLE SANS DOM — la convention de
-// `status.ts`, `audio.ts` et `fullscreen.ts`. Le seul point qui touche le DOM
-// est `creerEcranTerminalAuDOM`, l'adaptateur d'une ligne appelé par `main.ts`,
-// exactement comme `armerPleinEcranAuDOM` de `fullscreen.ts`.
+// ⚠️ PURE, INJECTED DEPENDENCIES, TESTABLE WITHOUT A DOM — the convention of
+// `status.ts`, `audio.ts` and `fullscreen.ts`. The only point touching the DOM
+// is `createTerminalScreenInDOM`, the one-line adapter called by `main.ts`,
+// exactly like `armerPleinEcranAuDOM` in `fullscreen.ts`.
 //
-// ⚠️ CET ÉCRAN NE PORTE AUCUNE ACTION — ni « réessayer », ni « fermer ». Une
-// action est un comportement de PRODUIT, qui appartient au sous-projet ②, et
-// l'inventer ici la ferait naître sans recette. QUE CE SOIT LA BONNE FORME EST
-// UN JUGEMENT HUMAIN (spec §8) : aucune commande ne le dira, et aucun œil n'est
-// passé sur ⑥ d'un bout à l'autre.
+// ⚠️ THIS SCREEN CARRIES NO ACTION — neither "retry" nor "close". An
+// action is a PRODUCT behaviour, which belongs to sub-project ②, and
+// inventing it here would give it birth without an acceptance run. WHETHER IT IS THE RIGHT SHAPE IS
+// A HUMAN JUDGEMENT (spec §8): no command will say so, and no eye has
+// gone over ⑥ from one end to the other.
 //
-// ⚠️ DUPLICATION DÉCLARÉE, NON RÉSORBÉE. `client/src/shell.ts` déclare déjà un
-// type `Ton` et `client/src/connexion.ts` une table `CLASSE_DE_TON`. S4 ne les
-// unifie pas : cela toucherait deux surfaces closes, sans critère capable
-// d'attraper une régression et sans œil pour la voir. C'est le legs n°8 de la
-// liste que ⑥ laisse ouverte.
+// ⚠️ DECLARED DUPLICATION, NOT RESOLVED. `client/src/shell.ts` already declares a
+// `Ton` type and `client/src/connexion.ts` a `CLASSE_DE_TON` table. S4 does not
+// unify them: that would touch two closed surfaces, with no criterion able
+// to catch a regression and no eye to see it. It is legacy item no. 8 of the
+// list ⑥ leaves open.
 // ═══════════════════════════════════════════════════════════════════════════
 
-/// Le ton d'un état terminal. Une fin NORMALE (l'utilisateur a fermé
-/// l'application distante) n'est pas une erreur ; un échec de connexion en est
-/// une. Les deux sites terminaux de `main.ts` ne changent QUE pour porter ce
-/// mot.
+/// The tone of a terminal state. A NORMAL end (the user closed
+/// the remote application) is not an error; a connection failure is
+/// one. The two terminal sites of `main.ts` change ONLY to carry this
+/// word.
 export type TonTerminal = 'neutre' | 'danger';
 
-/// Ce dont ce module a besoin de l'écran, et rien de plus.
+/// What this module needs from the screen, and nothing more.
 export interface CibleEcranTerminal {
-    /// Le conteneur plein cadre. `hidden` tant qu'aucun état terminal n'est
-    /// survenu — et la feuille doit poser `.ecran[hidden] { display: none }`
-    /// EXPLICITEMENT, un sélecteur de classe l'emportant en spécificité sur le
-    /// `[hidden]` de la feuille de l'agent utilisateur. Sans cette règle,
-    /// l'écran serait visible dès le chargement, sur toutes les sessions ;
-    /// `client/src/style.test.ts` en fait une commande.
+    /// The full-frame container. `hidden` as long as no terminal state has
+    /// occurred — and the stylesheet must set `.ecran[hidden] { display: none }`
+    /// EXPLICITLY, a class selector winning in specificity over the
+    /// `[hidden]` of the user agent's stylesheet. Without this rule,
+    /// the screen would be visible from load time, on every session;
+    /// `client/src/style.test.ts` makes it a command.
     racine: { hidden: boolean };
-    /// Le titre, écrit depuis le TON et jamais depuis l'appelant.
+    /// The title, written from the TONE and never from the caller.
     titre: { textContent: string };
-    /// La raison, écrite depuis le message, et qui porte la classe de ton.
+    /// The reason, written from the message, and which carries the tone class.
     raison: { textContent: string; className: string };
 }
 
 export interface EcranTerminal {
-    /// Lève l'écran, y écrit le message, et pose le ton. Un second appel
-    /// REMPLACE le premier — c'est la dernière information définitive qui
-    /// gagne, la même règle que `status.ts` applique au bandeau.
+    /// Raises the screen, writes the message into it, and sets the tone. A second call
+    /// REPLACES the first — the last definitive information
+    /// wins, the same rule `status.ts` applies to the banner.
     montrer(message: string, ton: TonTerminal): void;
 }
 
-/// ⚠️ LE TITRE EST DÉRIVÉ DU TON, ET NON RECOPIÉ DANS LE HTML. Un titre
-/// statique serait FAUX de l'un des deux cas : « Session terminée » ment sur un
-/// échec où aucune session n'a jamais commencé. Le déduire du ton coûte cette
-/// table et le rend juste des deux côtés.
-/// ⚠️ QUE CES DEUX LIBELLÉS SOIENT LES BONS MOTS EST UN JUGEMENT HUMAIN, et
-/// c'est un de plus que les sept que le plan de S4 prévoyait — il est déclaré
-/// plutôt que passé sous silence.
+/// ⚠️ THE TITLE IS DERIVED FROM THE TONE, AND NOT COPIED INTO THE HTML. A
+/// static title would be WRONG in one of the two cases: "Session ended" lies about a
+/// failure where no session ever started. Deriving it from the tone costs this
+/// table and makes it right on both sides.
+/// ⚠️ WHETHER THESE TWO LABELS ARE THE RIGHT WORDS IS A HUMAN JUDGEMENT, and
+/// it is one more than the seven S4's plan provided for — it is declared
+/// rather than passed over in silence.
 const TITRE: Record<TonTerminal, string> = {
-    neutre: 'Session terminée',
-    danger: 'Échec de la session',
+    neutre: 'Session ended',
+    danger: 'Session failed',
 };
 
-/// La classe entière est RÉÉCRITE à chaque appel, jamais ajoutée : c'est ce qui
-/// fait qu'un second état terminal neutre efface le `--danger` du premier.
+/// The whole class is REWRITTEN at each call, never added to: that is what
+/// makes a second, neutral terminal state erase the first one's `--danger`.
 const CLASSE: Record<TonTerminal, string> = {
     neutre: 'message',
     danger: 'message message--danger',
 };
 
-export function creerEcranTerminal(cible: CibleEcranTerminal): EcranTerminal {
+export function createTerminalScreen(cible: CibleEcranTerminal): EcranTerminal {
     return {
         montrer(message, ton) {
             cible.titre.textContent = TITRE[ton];
@@ -93,11 +93,11 @@ export function creerEcranTerminal(cible: CibleEcranTerminal): EcranTerminal {
     };
 }
 
-/// L'adaptateur DOM, appelé par `main.ts` — la convention
-/// `armerPleinEcranAuDOM` de `fullscreen.ts`. Il ne porte AUCUNE règle : tout
-/// ce qui se teste vit dans `creerEcranTerminal` ci-dessus.
-export function creerEcranTerminalAuDOM(): EcranTerminal {
-    return creerEcranTerminal({
+/// The DOM adapter, called by `main.ts` — the
+/// `armerPleinEcranAuDOM` convention of `fullscreen.ts`. It carries NO rule: everything
+/// that is tested lives in `createTerminalScreen` above.
+export function createTerminalScreenInDOM(): EcranTerminal {
+    return createTerminalScreen({
         racine: document.querySelector<HTMLDivElement>('#fin')!,
         titre: document.querySelector<HTMLHeadingElement>('#fin .ecran__titre')!,
         raison: document.querySelector<HTMLParagraphElement>('#fin-raison')!,

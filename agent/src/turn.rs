@@ -1,26 +1,26 @@
-//! Client TURN : machine à états et encapsulation, sans entrées-sorties.
+//! TURN client: state machine and encapsulation, without I/O.
 //!
-//! Ce module consomme des octets et rend des octets. Il ne possède aucun
-//! socket, ne connaît pas `Rtc`, et ne dépend d'aucune API Windows — c'est ce
-//! qui rend toute la machine à états testable sur Linux, sans coturn.
+//! This module consumes bytes and returns bytes. It owns no
+//! socket, does not know `Rtc`, and depends on no Windows API — that is
+//! what makes the whole state machine testable on Linux, without coturn.
 //!
-//! Partage du travail avec `is::stun` : on LIT les réponses avec son parseur
-//! (qui couvre tout le vocabulaire TURN dont on a besoin), on ÉCRIT les
-//! requêtes soi-même. Son builder ne connaît pas `REQUESTED-TRANSPORT`
-//! (0x0019), sans lequel un serveur conforme refuse toute allocation en 400.
+//! Division of labour with `is::stun`: we READ responses with its parser
+//! (which covers all the TURN vocabulary we need), we WRITE the
+//! requests ourselves. Its builder does not know `REQUESTED-TRANSPORT`
+//! (0x0019), without which a compliant server refuses any allocation with 400.
 //!
-//! Découpé en sous-modules suivant les frontières du protocole : `messages`
-//! (sérialisation des requêtes et dérivation des clés), `allocation` (la machine
-//! à états, du refus 401 au rafraîchissement du bail), `canaux` (démultiplexage
-//! STUN/données et encapsulation ChannelData), `fixtures` (les échafaudages que
-//! les tests des deux précédents partagent). Même raison d'être que le découpage
-//! de `congestion` et de `transport` : la limite de 500 lignes par fichier de
-//! `CLAUDE.md`, qu'un module d'un seul tenant aurait doublée.
+//! Split into submodules following the protocol's boundaries: `messages`
+//! (request serialisation and key derivation), `allocation` (the state
+//! machine, from the 401 refusal to lease refresh), `canaux` (STUN/data
+//! demultiplexing and ChannelData encapsulation), `fixtures` (the scaffolding
+//! the tests of the previous two share). Same reason for being as the split
+//! of `congestion` and of `transport`: `CLAUDE.md`'s 500-lines-per-file
+//! limit, which a single-piece module would have doubled.
 //!
-//! Visibilité : `messages` est un module privé, donc ce qu'il déclare `pub`
-//! reste borné au sous-arbre de `turn` — accessible à ses frères
-//! (`allocation`, `canaux`) par `super::messages`, invisible à l'extérieur. Le
-//! transport ne voit que les deux réexports ci-dessous.
+//! Visibility: `messages` is a private module, so what it declares `pub`
+//! stays bounded to the `turn` subtree — reachable by its siblings
+//! (`allocation`, `canaux`) through `super::messages`, invisible outside. The
+//! transport only sees the two re-exports below.
 
 mod allocation;
 mod canaux;

@@ -1,42 +1,42 @@
 /**
- * Parseur de `tokens.css` — PUR : ni DOM, ni `fs`, ni chemin.
+ * Parser of `tokens.css` — PURE: no DOM, no `fs`, no path.
  *
- * Trois contrôles le partagent (§7.1 contraste, §7.4 égalité des blocs, §7.6
- * orphelins) plutôt que d'avoir chacun sa copie des valeurs : « un contrôle
- * qui a sa propre copie des valeurs valide sa copie » (spec §7.1). La lecture
- * du disque appartient aux `.mjs` de `client/outils/`.
+ * Three checks share it (§7.1 contrast, §7.4 block equality, §7.6
+ * orphans) rather than each having its own copy of the values: "a check
+ * that has its own copy of the values validates its copy" (spec §7.1). Reading
+ * the disk belongs to the `.mjs` files of `client/outils/`.
  *
- * ⚠️ CE MODULE EST IMPORTÉ PAR DU `.mjs` NON TYPECHECKÉ, via le retrait de
- * types natif de Node (mesuré sur v24.9.0). Il doit donc rester du TypeScript
- * « EFFAÇABLE » : aucun `enum`, aucun `namespace`, aucune propriété de
- * constructeur, aucun décorateur. Le coût est mesuré, pas supposé — un
- * `export enum T { A, B }` importé de la même façon fait planter Node :
+ * ⚠️ THIS MODULE IS IMPORTED BY UNTYPECHECKED `.mjs`, through Node's native
+ * type stripping (measured on v24.9.0). It must therefore stay
+ * "ERASABLE" TypeScript: no `enum`, no `namespace`, no constructor
+ * property, no decorator. The cost is measured, not assumed — an
+ * `export enum T { A, B }` imported the same way makes Node crash:
  *
  *     $ node runenum.mjs
  *     .../enum.ts:1
  *     export enum T { A, B }
  *
- * ⚠️ Il travaille sur du TEXTE. Un `import { readFileSync } from 'node:fs'`
- * ici serait rejeté par `npm run typecheck` : `client/node_modules/@types/` ne
- * porte que `estree`, ni `@types/node` ni `jsdom` (P2 l'a mesuré sur `Buffer`,
+ * ⚠️ It works on TEXT. An `import { readFileSync } from 'node:fs'`
+ * here would be rejected by `npm run typecheck`: `client/node_modules/@types/` only
+ * carries `estree`, neither `@types/node` nor `jsdom` (P2 measured it on `Buffer`,
  * TS2580).
  */
 
 export interface BlocDeTheme {
     /** `'racine'` | `'media-clair'` | `'attribut-clair'`. */
     nom: string;
-    /** Nom de token (tirets compris) → valeur littérale, telle qu'écrite. */
+    /** Token name (dashes included) → literal value, as written. */
     tokens: Map<string, string>;
-    /** Le corps brut du bloc, pour les propriétés qui ne sont pas des `--*`. */
+    /** The block's raw body, for properties that are not `--*`. */
     corps: string;
 }
 
-/** Blanchit les commentaires en gardant les sauts de ligne. */
+/** Blanks out comments while keeping line breaks. */
 function sansCommentaires(css: string): string {
     return css.replace(/\/\*[\s\S]*?\*\//g, (bloc) => bloc.replace(/[^\n]/g, ' '));
 }
 
-/** Index du `}` qui ferme le `{` situé à `ouvrante`. -1 si le CSS est tronqué. */
+/** Index of the `}` closing the `{` located at `ouvrante`. -1 if the CSS is truncated. */
 function fermetureDe(css: string, ouvrante: number): number {
     let profondeur = 0;
     for (let i = ouvrante; i < css.length; i += 1) {
@@ -58,23 +58,23 @@ function tokensDuCorps(corps: string): Map<string, string> {
 }
 
 /**
- * Découpe le texte en UN BLOC PAR OCCURRENCE PHYSIQUE de `:root[…]{…}`, SANS
- * FUSION — le compte qu'elle rend est donc CAPABLE de dépasser trois, et
- * c'est précisément pourquoi elle existe séparément de `lireBlocsDeTheme`
- * ci-dessous.
+ * Splits the text into ONE BLOCK PER PHYSICAL OCCURRENCE of `:root[…]{…}`, WITHOUT
+ * MERGING — the count it returns is therefore ABLE to exceed three, and
+ * that is precisely why it exists separately from `lireBlocsDeTheme`
+ * below.
  *
- * 🔴 CORRECTIF DE LA REVUE DE LA TÂCHE 6 (25 août 2026, round 1) : la fusion
- * de `lireBlocsDeTheme` avait été ajoutée à l'intérieur de la seule boucle de
- * découpage, sans qu'aucun compte PRÉ-fusion ne reste accessible. Résultat
- * mesuré : un `:root { --e-4: 999rem; }` ajouté en trop dans
- * `tokens/echelles.css` (une régression réelle, tout `--e-4` passant de 1rem
- * à 999rem) se fondait dans le bloc `racine` existant SANS FAIRE VARIER LE
- * COMPTE DE BLOCS LOGIQUES, qui reste borné à 3 par construction — le seul
- * garde capable de le voir (`expect(blocs).toHaveLength(3)`, sur le compte
- * fusionné) ne POUVAIT PLUS rougir. Cette fonction restaure un compte que la
- * fusion ne peut pas masquer : voir `tokensDeclares`… non, voir le test
- * dédié dans `tokens.test.ts`, qui l'exerce sur le VRAI contenu concaténé et
- * rejoue la régression exacte ci-dessus.
+ * 🔴 FIX FROM THE REVIEW OF TASK 6 (August 25th, 2026, round 1): the merging
+ * of `lireBlocsDeTheme` had been added inside the only splitting
+ * loop, without any PRE-merge count remaining accessible. Measured
+ * result: a surplus `:root { --e-4: 999rem; }` added to
+ * `tokens/echelles.css` (a real regression, every `--e-4` going from 1rem
+ * to 999rem) melted into the existing `racine` block WITHOUT CHANGING THE
+ * LOGICAL BLOCK COUNT, which stays bounded at 3 by construction — the only
+ * guard able to see it (`expect(blocs).toHaveLength(3)`, on the merged
+ * count) COULD NO LONGER turn red. This function restores a count the
+ * merging cannot mask: see `tokensDeclares`… no, see the dedicated
+ * test in `tokens.test.ts`, which exercises it on the REAL concatenated content and
+ * replays the exact regression above.
  */
 export function lireBlocsBruts(css: string): BlocDeTheme[] {
     const propre = sansCommentaires(css);
@@ -84,7 +84,7 @@ export function lireBlocsBruts(css: string): BlocDeTheme[] {
         const fin = fermetureDe(propre, m.index + m[0].length - 1);
         if (fin !== -1) plagesMedia.push([m.index, fin]);
     }
-    const dansMedia = (i: number) => plagesMedia.some(([d, f]) => i > d && i < f);
+    const inMedia = (i: number) => plagesMedia.some(([d, f]) => i > d && i < f);
 
     const blocs: BlocDeTheme[] = [];
     for (const m of propre.matchAll(/(:root[^{}]*)\{/g)) {
@@ -96,7 +96,7 @@ export function lireBlocsBruts(css: string): BlocDeTheme[] {
 
         let nom = 'racine';
         if (/\[data-theme\s*=\s*["']clair["']\]/.test(selecteur)) nom = 'attribut-clair';
-        else if (dansMedia(m.index)) nom = 'media-clair';
+        else if (inMedia(m.index)) nom = 'media-clair';
 
         blocs.push({ nom, tokens: tokensDuCorps(corps), corps });
     }
@@ -104,30 +104,30 @@ export function lireBlocsBruts(css: string): BlocDeTheme[] {
 }
 
 /**
- * Découpe le texte de `tokens.css` en ses trois blocs LOGIQUES de thème, en
- * ordre de document. Le bloc `racine` est celui SANS condition — c'est lui
- * qui porte la palette sombre, les tokens hors thème et les échelles
+ * Splits the text of `tokens.css` into its three LOGICAL theme blocks, in
+ * document order. The `racine` block is the one WITHOUT a condition — it is the one
+ * carrying the dark palette, the out-of-theme tokens and the scales
  * (spec §4.2, §4.4).
  *
- * 🔴 FUSIONNE LES OCCURRENCES DE MÊME NOM, DEPUIS L'EXTRACTION DE LA TÂCHE 6
- * (25 août 2026) : `tokens/couleurs.css` et `tokens/echelles.css` déclarent
- * chacun leur propre `:root {}` SANS CONDITION, et le texte qu'on passe ici
- * est leur CONCATÉNATION — deux occurrences physiques du même bloc logique
- * `racine`. Le navigateur les unit déjà par le cascade ; sans cette fusion,
- * ce parseur rendrait DEUX blocs nommés `racine`, et tout appelant qui en
- * cherche UN SEUL (`Array.find`, ou une `Map` clé par nom, qui ne garde que
- * le DERNIER) perdrait silencieusement les tokens de l'autre — exactement le
- * défaut que `tokens.test.ts` et `reprise.test.ts` existent pour ne jamais
- * laisser passer. Avant l'extraction, un seul fichier ne pouvait produire
- * qu'UNE occurrence par nom : cette fusion ne change donc RIEN à la lecture
- * d'un texte qui n'en a qu'une — elle rend seulement le cas à deux correct.
+ * 🔴 MERGES OCCURRENCES OF THE SAME NAME, SINCE THE EXTRACTION OF TASK 6
+ * (August 25th, 2026): `tokens/couleurs.css` and `tokens/echelles.css` each
+ * declare their own UNCONDITIONAL `:root {}`, and the text passed here
+ * is their CONCATENATION — two physical occurrences of the same logical block
+ * `racine`. The browser already unites them through the cascade; without this merge,
+ * this parser would return TWO blocks named `racine`, and any caller that
+ * looks for ONE (`Array.find`, or a `Map` keyed by name, which only keeps
+ * the LAST) would silently lose the other's tokens — exactly the
+ * defect `tokens.test.ts` and `reprise.test.ts` exist never to
+ * let through. Before the extraction, a single file could only produce
+ * ONE occurrence per name: this merge therefore changes NOTHING to the reading
+ * of a text that has only one — it only makes the two-occurrence case correct.
  *
- * 🔴 RÉTROCOMPATIBLE SUR LES VALEURS, RÉGRESSIF SUR LE GARDE — et c'est pour
- * cela que `lireBlocsBruts` existe : la fusion, en bornant le compte de
- * blocs LOGIQUES à 3 par construction, retire au SEUL garde qui comparait ce
- * compte (`tokens.test.ts`) la capacité de dénoncer un `:root` de trop. Tout
- * appelant qui veut détecter une duplication doit comparer le compte de
- * `lireBlocsBruts` (variable, capable de dépasser 3), jamais celui-ci.
+ * 🔴 BACKWARD COMPATIBLE ON VALUES, REGRESSIVE ON THE GUARD — and that is
+ * why `lireBlocsBruts` exists: the merge, by bounding the count of
+ * LOGICAL blocks at 3 by construction, takes away from the ONLY guard that compared this
+ * count (`tokens.test.ts`) the ability to denounce a surplus `:root`. Any
+ * caller wanting to detect a duplication must compare the count of
+ * `lireBlocsBruts` (variable, able to exceed 3), never this one.
  */
 export function lireBlocsDeTheme(css: string): BlocDeTheme[] {
     const fusionnes = new Map<string, BlocDeTheme>();
@@ -137,23 +137,23 @@ export function lireBlocsDeTheme(css: string): BlocDeTheme[] {
             fusionnes.set(bloc.nom, bloc);
             continue;
         }
-        for (const [cle, valeur] of bloc.tokens) existant.tokens.set(cle, valeur);
+        for (const [cle, value] of bloc.tokens) existant.tokens.set(cle, value);
         existant.corps += `\n${bloc.corps}`;
     }
     return [...fusionnes.values()];
 }
 
 /**
- * La valeur d'une propriété qui n'est PAS un token — `color-scheme` en
- * particulier (divergence D9). Elle ne compte ni dans l'égalité de §7.4 ni
- * dans les orphelins de §7.6, donc rien ne la garderait sans cet accès.
+ * The value of a property that is NOT a token — `color-scheme` in
+ * particular (divergence D9). It counts neither in the equality of §7.4 nor
+ * in the orphans of §7.6, so nothing would guard it without this accessor.
  */
-export function valeurDePropriete(bloc: BlocDeTheme, propriete: string): string | null {
+export function propertyValue(bloc: BlocDeTheme, propriete: string): string | null {
     const m = bloc.corps.match(new RegExp(`(?:^|[;{\\s])${propriete}\\s*:\\s*([^;]+);`));
     return m ? m[1].trim() : null;
 }
 
-/** Tous les tokens déclarés, quel que soit le bloc. */
+/** All declared tokens, whatever the block. */
 export function tokensDeclares(css: string): Set<string> {
     const noms = new Set<string>();
     for (const bloc of lireBlocsDeTheme(css)) {
@@ -162,7 +162,7 @@ export function tokensDeclares(css: string): Set<string> {
     return noms;
 }
 
-/** Tous les `var(--…)` référencés par un texte CSS. Les commentaires sont exclus. */
+/** All `var(--…)` referenced by a CSS text. Comments are excluded. */
 export function tokensReferences(css: string): Set<string> {
     const references = new Set<string>();
     for (const m of sansCommentaires(css).matchAll(/var\(\s*(--[\w-]+)/g)) {
@@ -172,83 +172,83 @@ export function tokensReferences(css: string): Set<string> {
 }
 
 /**
- * Les écarts d'ensembles entre blocs. Vide = conforme.
+ * The set differences between blocks. Empty = compliant.
  *
- * 🔴 DIVERGENCE ASSUMÉE AVEC LA LETTRE DU §7.4, et elle est de fond. La spec
- * écrit « les TROIS blocs déclarent le même ensemble de noms […] égalité
- * d'ensembles, dans les deux sens ». Pris à la lettre, ce contrôle est
- * ROUGE POUR TOUJOURS sur un `tokens.css` correct : le §4.5 exige que les six
- * tokens hors thème soient « déclarés une seule fois et jamais redéfinis »
- * — donc dans `:root` seul — et le §4.4 y met aussi les sept crans
- * typographiques, les huit d'espacement, les rayons, les durées et les piles
- * de polices, qu'aucun bloc clair ne redéclare. Un contrôle rouge sur du code
- * juste est un contrôle qu'on assouplit : c'est nommément le risque §11.
+ * 🔴 DELIBERATE DIVERGENCE FROM THE LETTER OF §7.4, and it is substantive. The spec
+ * writes "the THREE blocks declare the same set of names […] set
+ * equality, both ways". Taken literally, this check is
+ * RED FOREVER on a correct `tokens.css`: §4.5 requires the six
+ * out-of-theme tokens to be "declared only once and never redefined"
+ * — hence in `:root` alone — and §4.4 also puts there the seven typographic
+ * steps, the eight spacing ones, the radii, the durations and the font
+ * stacks, which no light block redeclares. A check red on correct
+ * code is a check that gets loosened: it is by name the risk of §11.
  *
- * ⚠️ La règle retenue est celle que le §7.4 NOMME LUI-MÊME comme son mode de
- * défaillance réel — « la palette claire y est écrite DEUX fois, et rien
- * d'autre que ce contrôle n'empêche les deux copies de diverger » :
+ * ⚠️ The rule retained is the one §7.4 ITSELF NAMES as its real failure
+ * mode — "the light palette is written TWICE there, and nothing
+ * other than this check prevents the two copies from diverging":
  *
- *   ① `media-clair` ≡ `attribut-clair`, égalité stricte DANS LES DEUX SENS —
- *      c'est la duplication que le §4.2 crée et que rien d'autre ne garde ;
- *   ② (`media-clair` ∪ `attribut-clair`) ⊆ `racine` — un thème clair qui
- *      surcharge un token sans contrepartie sombre est une faute de frappe,
- *      pas une intention.
+ *   ① `media-clair` ≡ `attribut-clair`, strict equality BOTH WAYS —
+ *      it is the duplication §4.2 creates and nothing else guards;
+ *   ② (`media-clair` ∪ `attribut-clair`) ⊆ `racine` — a light theme that
+ *      overrides a token without a dark counterpart is a typo,
+ *      not an intention.
  *
- *   ③ toute COULEUR de `racine`, hors les six hors-thème NOMMÉS ci-dessous,
- *      est redéclarée dans les blocs clairs — l'inclusion `racine` ⊆ clair,
- *      restreinte aux couleurs (sous-bloc S3).
+ *   ③ every COLOUR of `racine`, except the six out-of-theme ones NAMED below,
+ *      is redeclared in the light blocks — the inclusion `racine` ⊆ light,
+ *      restricted to colours (sub-block S3).
  *
- * 🔴 ③ EST L'ANGLE MORT QUE S3 A FERMÉ, ET LE TROU ÉTAIT MESURÉ. Le sous-bloc
- * S2 l'a versé (`docs/superpowers/plans/journaux-design-s2/trou-7-4.log`) :
- * `--accent-survol` retiré des DEUX blocs clairs et laissé à la racine seule
- * rendait `bloc racine : 48 / media-clair : 13 / attribut-clair : 13`,
- * `écarts : 0`, `exit=0`. Une couleur oubliée dans le thème clair ne se
- * découvrait donc que par l'œil, sur une page claire.
+ * 🔴 ③ IS THE BLIND SPOT S3 CLOSED, AND THE HOLE WAS MEASURED. Sub-block
+ * S2 filed it (`docs/superpowers/plans/journaux-design-s2/trou-7-4.log`):
+ * `--accent-survol` removed from BOTH light blocks and left at the root alone
+ * returned `bloc racine : 48 / media-clair : 13 / attribut-clair : 13`,
+ * `écarts : 0`, `exit=0`. A colour forgotten in the light theme was thus only (policy: allow-fr, verbatim log output)
+ * discovered by eye, on a light page.
  *
- * ⚠️ LA PORTÉE DU CONTRÔLE §7.4 A CHANGÉ AVEC ③, et ce n'est plus « les trois
- * blocs déclarent le même ensemble de noms » : c'est « les deux blocs clairs
- * sont identiques, et toute couleur de la racine y est redéclarée sauf les
- * hors-thème nommés ».
+ * ⚠️ THE SCOPE OF CHECK §7.4 CHANGED WITH ③, and it is no longer "the three
+ * blocks declare the same set of names": it is "the two light blocks
+ * are identical, and every colour of the root is redeclared there except the
+ * named out-of-theme ones".
  *
- * ⚠️ ③ NE MORD QUE SUR L'ABSENCE DES DEUX BLOCS À LA FOIS. Une couleur
- * présente dans un seul est déjà attrapée par ①, et la compter deux fois ne
- * dirait rien de plus.
+ * ⚠️ ③ ONLY BITES ON THE ABSENCE FROM BOTH BLOCKS AT ONCE. A colour
+ * present in only one is already caught by ①, and counting it twice would
+ * say nothing more.
  *
- * 🔵 LA FERMETURE EST ARITHMÉTIQUEMENT PROPRE, et c'est mesuré le 20 août 2026
- * par `lireBlocsDeTheme` sur `tokens.css` : racine **48** tokens dont **20**
- * couleurs ; blocs clairs **14** ; les **6** couleurs de la racine absentes du
- * bloc clair sont EXACTEMENT les six hors-thème listés ci-dessous. 20 − 6 = 14,
- * donc ZÉRO écart dès le jour où ③ est né — il n'y avait aucun cas douteux à
- * arbitrer.
+ * 🔵 THE CLOSURE IS ARITHMETICALLY CLEAN, and it was measured on August 20th, 2026
+ * by `lireBlocsDeTheme` on `tokens.css`: root **48** tokens of which **20**
+ * colours; light blocks **14**; the **6** colours of the root absent from the
+ * light block are EXACTLY the six out-of-theme ones listed below. 20 − 6 = 14,
+ * hence ZERO differences from the day ③ was born — there was no doubtful case to
+ * arbitrate.
  *
- * ⚠️ « EST UNE COULEUR » SE DÉCIDE SUR LA VALEUR, JAMAIS SUR LE NOM. Un
- * préfixe (`--voile-*`) est une convention qu'une faute de frappe contourne ;
- * une valeur qui commence par `#`, `rgb(`/`rgba(` ou `hsl(`/`hsla(` ne se
- * contourne pas.
+ * ⚠️ "IS A COLOUR" IS DECIDED ON THE VALUE, NEVER ON THE NAME. A
+ * prefix (`--voile-*`) is a convention a typo gets around;
+ * a value starting with `#`, `rgb(`/`rgba(` or `hsl(`/`hsla(` cannot be
+ * got around.
  */
 
 /**
- * Les sept tokens de COULEUR que ③ n'exige PAS dans les blocs clairs — NOMMÉS
- * un par un, jamais dérivés d'un préfixe.
+ * The seven COLOUR tokens that ③ does NOT require in the light blocks — NAMED
+ * one by one, never derived from a prefix.
  *
- * Ce sont les six voiles hors thème de `tokens.css` (« déclarés une fois,
- * jamais redéfinis ») : ils sont posés SUR LA VIDÉO, dont le contenu ne suit
- * aucun thème, et un encadrement clair autour d'une image vidéo se lit comme
- * un défaut d'affichage.
+ * They are the six out-of-theme veils of `tokens.css` ("declared once,
+ * never redefined"): they are laid OVER THE VIDEO, whose content follows
+ * no theme, and a light frame around a video image reads as
+ * a display defect.
  *
- * ⚠️ LE SEPTIÈME EST UNE ENCRE, PAS UN VOILE, et il est ici pour une raison
- * SYMÉTRIQUE, pas identique : `--sur-voile` se pose SUR ces voiles, qui ne
- * suivent aucun thème. Une encre qui suivrait le thème sur un fond qui ne le
- * suit pas est exactement le défaut que la tâche 4 de S4 répare — en thème
- * clair, du quasi-noir sur un voile quasi-noir. ⚠️ Il est, LUI, dans les paires
- * de contraste (la 53ᵉ) : c'est ce qui le distingue des six autres, et la
- * raison est écrite auprès de la paire (`contraste.ts`).
+ * ⚠️ THE SEVENTH IS AN INK, NOT A VEIL, and it is here for a SYMMETRIC
+ * reason, not an identical one: `--sur-voile` is laid OVER these veils, which follow
+ * no theme. An ink that followed the theme on a background that does not
+ * follow it is exactly the defect task 4 of S4 fixes — in light
+ * theme, near-black on a near-black veil. ⚠️ IT, for its part, is in the contrast
+ * pairs (the 53rd): that is what distinguishes it from the six others, and the
+ * reason is written next to the pair (`contraste.ts`).
  *
- * ⚠️ C'est une SECONDE COPIE d'un fait déjà écrit dans le commentaire de
- * `tokens.css`, et le coût est assumé. Ce qu'elle achète : une couleur hors
- * thème ajoutée sans être listée ici fait ROUGIR le contrôle, ce qui force la
- * question « hors thème, ou blocs clairs oubliés ? » au lieu de la laisser
- * passer. C'est la forme de la liste d'attente de §7.6, en plus petit.
+ * ⚠️ It is a SECOND COPY of a fact already written in the comment of
+ * `tokens.css`, and the cost is accepted. What it buys: an out-of-theme
+ * colour added without being listed here turns the check RED, which forces the
+ * question "out of theme, or forgotten light blocks?" instead of letting it
+ * through. It is the shape of the waiting list of §7.6, smaller.
  */
 export const COULEURS_HORS_THEME: readonly string[] = [
     '--video-letterbox',
@@ -260,9 +260,9 @@ export const COULEURS_HORS_THEME: readonly string[] = [
     '--sur-voile',
 ];
 
-/** Une valeur de token est-elle une couleur ? Décidé sur la VALEUR seule. */
-function estUneCouleur(valeur: string): boolean {
-    return /^(#|rgba?\(|hsla?\()/.test(valeur.trim());
+/** Is a token value a colour? Decided on the VALUE alone. */
+function estUneCouleur(value: string): boolean {
+    return /^(#|rgba?\(|hsla?\()/.test(value.trim());
 }
 export function ecartsEntreBlocs(blocs: BlocDeTheme[]): string[] {
     const parNom = new Map(blocs.map((b) => [b.nom, b]));
@@ -277,30 +277,30 @@ export function ecartsEntreBlocs(blocs: BlocDeTheme[]): string[] {
     }
     if (!media || !attribut || !racine) return ecarts;
 
-    // ① égalité des deux copies de la palette claire, dans les deux sens.
+    // ① equality of the two copies of the light palette, both ways.
     for (const token of attribut.tokens.keys()) {
-        if (!media.tokens.has(token)) ecarts.push(`media-clair : ${token} manquant`);
+        if (!media.tokens.has(token)) ecarts.push(`media-clair: ${token} missing`);
     }
     for (const token of media.tokens.keys()) {
-        if (!attribut.tokens.has(token)) ecarts.push(`attribut-clair : ${token} manquant`);
+        if (!attribut.tokens.has(token)) ecarts.push(`attribut-clair: ${token} missing`);
     }
-    // ② tout token clair a sa contrepartie dans le bloc sans condition.
+    // ② every light token has its counterpart in the unconditional block.
     for (const bloc of [media, attribut]) {
         for (const token of bloc.tokens.keys()) {
             if (!racine.tokens.has(token)) {
-                ecarts.push(`racine : ${token} surchargé par ${bloc.nom} sans y être déclaré`);
+                ecarts.push(`root: ${token} overridden by ${bloc.nom} without being declared there`);
             }
         }
     }
-    // ③ toute couleur de la racine, hors les hors-thème nommés, a une
-    //   contrepartie claire. Absente des DEUX blocs seulement : ① tient déjà
-    //   le cas où elle ne manque qu'à l'un.
-    for (const [token, valeur] of racine.tokens) {
-        if (!estUneCouleur(valeur)) continue;
+    // ③ every colour of the root, except the named out-of-theme ones, has a
+    //   light counterpart. Absent from BOTH blocks only: ① already holds
+    //   the case where it is missing from just one.
+    for (const [token, value] of racine.tokens) {
+        if (!estUneCouleur(value)) continue;
         if (COULEURS_HORS_THEME.includes(token)) continue;
         if (media.tokens.has(token) || attribut.tokens.has(token)) continue;
         ecarts.push(
-            `blocs clairs : ${token} est une couleur de la racine sans contrepartie claire`,
+            `light blocks: ${token} is a root colour without a light counterpart`,
         );
     }
     return [...new Set(ecarts)].sort();

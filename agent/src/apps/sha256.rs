@@ -1,33 +1,33 @@
-//! SHA-256 (FIPS 180-4 §6.2), écrit ici plutôt qu'emprunté.
+//! SHA-256 (FIPS 180-4 §6.2), written here rather than borrowed.
 //!
-//! 🔴 POURQUOI CE MODULE EXISTE ALORS QUE `sha2` EST À UN `cargo add` : le
-//! sous-bloc G1 déclare n'ajouter AUCUNE dépendance de production, ni en
-//! TypeScript ni en Rust — sa seule addition à `agent/Cargo.toml` est une
-//! `feature` d'un crate déjà présent. Relevé avant d'écrire une ligne :
-//! `sha2` n'apparaît NULLE PART dans `Cargo.lock`, ni en direct ni en
-//! transitif ; `sha1`, `md-5` et `hmac` y sont, mais aucun ne rend SHA-256, et
-//! la spec nomme SHA-256. Le choix est donc entre rompre l'invariant du
-//! sous-bloc et écrire quatre-vingts lignes d'un algorithme entièrement
-//! spécifié. C'est le second, et il se déclare.
+//! 🔴 WHY THIS MODULE EXISTS WHEN `sha2` IS ONE `cargo add` AWAY: sub-block
+//! G1 declares it adds NO production dependency, neither in
+//! TypeScript nor in Rust — its only addition to `agent/Cargo.toml` is a
+//! `feature` of a crate already present. Checked before writing a line:
+//! `sha2` appears NOWHERE in `Cargo.lock`, neither directly nor
+//! transitively; `sha1`, `md-5` and `hmac` are there, but none yields SHA-256, and
+//! the spec names SHA-256. The choice is therefore between breaking the sub-block's
+//! invariant and writing eighty lines of an entirely
+//! specified algorithm. It is the second, and it is declared.
 //!
-//! ⚠️ CE N'EST PAS UNE PRIMITIVE DE SÉCURITÉ ICI : l'empreinte sert
-//! d'identité stable pour un triplet, sous un index unique `(vm_id, cle)` qui
-//! borne toute collision à une seule VM. Le jour où quelque chose
-//! d'authentifiant en dépendrait, ce module doit céder la place à une
-//! implémentation auditée — et cette phrase est là pour qu'on le sache.
+//! ⚠️ IT IS NOT A SECURITY PRIMITIVE HERE: the fingerprint serves
+//! as a stable identity for a triple, under a unique index `(vm_id, cle)` that
+//! bounds any collision to a single VM. The day something
+//! authenticating depended on it, this module must give way to an
+//! audited implementation — and this sentence is here so that people know it.
 //!
-//! La preuve tient aux vecteurs de réponse connue de FIPS 180-4 : la chaîne
-//! vide, `abc`, et le message de 448 bits qui force un second bloc. Un
-//! algorithme de condensation faux les rate tous les trois.
+//! The proof rests on the FIPS 180-4 known-answer vectors: the empty
+//! string, `abc`, and the 448-bit message that forces a second block. A
+//! wrong digest algorithm misses all three.
 //!
-//! ⚙️ DEUX VOIES, UNE SEULE IMPLÉMENTATION (sous-bloc G3) : `Condensateur`
-//! absorbe le message par morceaux — un installeur de plusieurs centaines de
-//! mégaoctets s'empreint PENDANT qu'on l'écrit sur le disque, sans jamais le
-//! tenir en mémoire —, et `condenser` n'est plus que l'appel de commodité qui
-//! absorbe tout d'un coup. Le bourrage n'est donc écrit qu'UNE fois, dans
-//! `terminer`, et les vecteurs de réponse connue traversent les deux voies :
-//! deux implémentations qui divergeraient en silence sont exactement ce que
-//! cette économie interdit.
+//! ⚙️ TWO PATHS, A SINGLE IMPLEMENTATION (sub-block G3): `Condensateur`
+//! absorbs the message in pieces — an installer of several hundred
+//! megabytes is fingerprinted WHILE it is being written to disk, without ever
+//! holding it in memory —, and `condenser` is now only the convenience call that
+//! absorbs everything at once. The padding is therefore written only ONCE, in
+//! `terminer`, and the known-answer vectors go through both paths:
+//! two implementations that diverged silently are exactly what
+//! this economy forbids.
 
 const K: [u32; 64] = [
     0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
@@ -84,29 +84,29 @@ fn comprimer(etat: &mut [u32; 8], bloc: &[u8; 64]) {
     }
 }
 
-/// L'état d'une condensation EN COURS, pour empreindre un message qu'on ne
-/// tient pas — et qu'on ne peut pas tenir — en mémoire.
+/// The state of a digest IN PROGRESS, to fingerprint a message we do not
+/// hold — and cannot hold — in memory.
 ///
-/// 🔴 C'EST CETTE VOIE QUI PORTE L'ALGORITHME ; `condenser` n'en est qu'un
-/// appel de commodité. Deux invariants la gouvernent, et les rater rendrait
-/// une empreinte fausse qu'aucun compilateur n'attraperait :
-/// - le résidu porte TOUJOURS moins de 64 octets — dès qu'il en atteint 64 il
-///   est comprimé et vidé —, et les octets qui arrivent se recopient à la
-///   SUITE de ceux qui l'occupent déjà, jamais à son début ;
-/// - le compte de bits est celui du message ENTIER, pas du dernier morceau :
-///   c'est lui que le bourrage inscrit.
+/// 🔴 IT IS THIS PATH THAT CARRIES THE ALGORITHM; `condenser` is only a
+/// convenience call to it. Two invariants govern it, and missing them would yield
+/// a wrong fingerprint no compiler would catch:
+/// - the residue ALWAYS holds fewer than 64 bytes — as soon as it reaches 64 it
+///   is compressed and emptied —, and incoming bytes are copied AFTER
+///   those already occupying it, never at its start;
+/// - the bit count is that of the WHOLE message, not of the last piece:
+///   it is what the padding writes.
 pub struct Condensateur {
     etat: [u32; 8],
-    /// Les octets reçus qui n'ont pas encore rempli un bloc. Seuls les
-    /// `en_residu` premiers sont valides ; le reste est du remplissage mort.
+    /// The received bytes that have not yet filled a block. Only the first
+    /// `en_residu` are valid; the rest is dead filler.
     residu: [u8; 64],
     en_residu: usize,
-    /// La longueur de tout ce qui a été absorbé, en BITS.
+    /// The length of everything absorbed so far, in BITS.
     bits: u64,
 }
 
 impl Condensateur {
-    /// Un condensateur vierge, sur l'état initial de la norme.
+    /// A blank digester, on the standard's initial state.
     pub fn neuf() -> Self {
         Self {
             etat: ETAT_INITIAL,
@@ -116,9 +116,9 @@ impl Condensateur {
         }
     }
 
-    /// Absorbe un morceau du message. La DÉCOUPE ne doit rien changer au
-    /// résultat, quelle que soit la taille des morceaux — c'est précisément ce
-    /// que le test des tailles irrégulières exerce.
+    /// Absorbs a piece of the message. The SPLITTING must change nothing in the
+    /// result, whatever the size of the pieces — that is precisely what
+    /// the irregular sizes test exercises.
     pub fn absorber(&mut self, mut bloc: &[u8]) {
         self.bits = self.bits.wrapping_add((bloc.len() as u64) * 8);
 
@@ -147,24 +147,24 @@ impl Condensateur {
         self.en_residu = reste.len();
     }
 
-    /// Clôt le message et rend son empreinte, en 32 octets.
+    /// Closes the message and returns its fingerprint, in 32 bytes.
     pub fn terminer(self) -> [u8; 32] {
         let mut etat = self.etat;
 
-        // Bourrage FIPS 180-4 §5.1.1 : l'octet 0x80, des zéros, puis la
-        // longueur en BITS sur 64 bits gros-boutiens. Si le reste dépasse
-        // 55 octets, la longueur ne tient plus dans ce bloc et il en faut un
-        // second — c'est le cas que le troisième vecteur de réponse connue
-        // exerce. ⚠️ La longueur inscrite est celle du message ENTIER, que
-        // `self.bits` accumule depuis le premier `absorber`, et jamais celle
-        // du résidu qu'on borde ici.
+        // FIPS 180-4 §5.1.1 padding: the byte 0x80, zeros, then the
+        // length in BITS on 64 big-endian bits. If the remainder exceeds
+        // 55 bytes, the length no longer fits in this block and a
+        // second is needed — that is the case the third known-answer vector
+        // exercises. ⚠️ The length written is that of the WHOLE message, which
+        // `self.bits` accumulates since the first `absorber`, and never that
+        // of the residue being padded here.
         let reste = &self.residu[..self.en_residu];
         let mut queue = [0u8; 128];
         queue[..reste.len()].copy_from_slice(reste);
         queue[reste.len()] = 0x80;
-        let taille = if reste.len() < 56 { 64 } else { 128 };
-        queue[taille - 8..taille].copy_from_slice(&self.bits.to_be_bytes());
-        for debut in (0..taille).step_by(64) {
+        let size = if reste.len() < 56 { 64 } else { 128 };
+        queue[size - 8..size].copy_from_slice(&self.bits.to_be_bytes());
+        for debut in (0..size).step_by(64) {
             comprimer(
                 &mut etat,
                 queue[debut..debut + 64].try_into().expect("64 octets"),
@@ -179,24 +179,24 @@ impl Condensateur {
     }
 }
 
-/// L'empreinte SHA-256 d'un message tenu en mémoire, en 32 octets.
+/// The SHA-256 fingerprint of a message held in memory, in 32 bytes.
 ///
-/// Pure commodité : un `Condensateur` absorbé d'un seul coup. Rien d'autre ne
-/// vit ici, pour que les deux voies ne PUISSENT pas diverger.
+/// Pure convenience: a `Condensateur` absorbed in one go. Nothing else
+/// lives here, so that the two paths CANNOT diverge.
 pub fn condenser(message: &[u8]) -> [u8; 32] {
     let mut condensateur = Condensateur::neuf();
     condensateur.absorber(message);
     condensateur.terminer()
 }
 
-/// Les 32 octets d'un condensat, en 64 caractères hexadécimaux minuscules.
+/// The 32 bytes of a digest, as 64 lowercase hexadecimal characters.
 ///
-/// ⚠️ ELLE EXISTE PARCE QUE `hex` PREND UN MESSAGE, PAS UN CONDENSAT : un
-/// appelant qui a absorbé son fichier par morceaux n'a plus le message. Sans
-/// elle, `installation::telechargement` en avait sa propre copie — et deux
-/// formatages hexadécimaux divergeraient le jour où l'un des deux changerait
-/// de casse, ce qui ferait échouer une comparaison d'empreinte sans que rien
-/// ne dise pourquoi.
+/// ⚠️ IT EXISTS BECAUSE `hex` TAKES A MESSAGE, NOT A DIGEST: a
+/// caller that absorbed its file in pieces no longer has the message. Without
+/// it, `installation::telechargement` had its own copy — and two
+/// hexadecimal formattings would diverge the day one of them changed
+/// case, which would make a fingerprint comparison fail without anything
+/// saying why.
 pub fn hex_de(condensat: [u8; 32]) -> String {
     let mut sortie = String::with_capacity(64);
     for octet in condensat {
@@ -206,15 +206,15 @@ pub fn hex_de(condensat: [u8; 32]) -> String {
     sortie
 }
 
-/// L'empreinte, en 64 caractères hexadécimaux minuscules.
+/// The fingerprint, as 64 lowercase hexadecimal characters.
 pub fn hex(message: &[u8]) -> String {
     hexa(condenser(message))
 }
 
-/// Trente-deux octets rendus en 64 caractères hexadécimaux minuscules.
+/// Thirty-two bytes rendered as 64 lowercase hexadecimal characters.
 ///
-/// Séparé de `hex` pour que la voie INCRÉMENTALE, qui rend déjà une empreinte,
-/// se compare aux vecteurs sans qu'on recopie ce formatage une seconde fois.
+/// Separated from `hex` so that the INCREMENTAL path, which already returns a fingerprint,
+/// is compared to the vectors without copying this formatting a second time.
 fn hexa(empreinte: [u8; 32]) -> String {
     let mut sortie = String::with_capacity(64);
     for octet in empreinte {
@@ -228,17 +228,17 @@ fn hexa(empreinte: [u8; 32]) -> String {
 mod tests {
     use super::*;
 
-    /// Les vecteurs de réponse connue de FIPS 180-4, recopiés de la norme.
+    /// The FIPS 180-4 known-answer vectors, copied from the standard.
     ///
-    /// 🔴 CE SONT EUX QUI FONT DE CE MODULE AUTRE CHOSE QU'UNE PROMESSE. Une
-    /// implémentation fausse — une constante mal recopiée, un décalage à
-    /// l'envers, un bourrage qui oublie son second bloc, un résidu recopié au
-    /// mauvais offset — les rate.
+    /// 🔴 THEY ARE WHAT MAKES THIS MODULE SOMETHING OTHER THAN A PROMISE. A
+    /// wrong implementation — a badly copied constant, a shift in the
+    /// wrong direction, padding that forgets its second block, a residue copied at the
+    /// wrong offset — misses them.
     ///
-    /// Ils sont posés en TABLE plutôt qu'en assertions, parce que les DEUX
-    /// voies doivent les traverser : la commodité et l'incrémental. Les
-    /// dupliquer laisserait vivre une voie éprouvée sur des vecteurs plus
-    /// faibles que l'autre.
+    /// They are laid out as a TABLE rather than as assertions, because BOTH
+    /// paths must go through them: the convenience one and the incremental one.
+    /// Duplicating them would let one path live tested on weaker vectors
+    /// than the other.
     const VECTEURS: [(&[u8], &str); 3] = [
         // §D.1 : le message vide.
         (
@@ -250,9 +250,9 @@ mod tests {
             b"abc",
             "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
         ),
-        // §B.2 : 448 bits — 56 octets, donc la longueur ne tient PAS dans le
-        // bloc de bourrage et il en faut un second. C'est le seul vecteur qui
-        // exerce cette branche.
+        // §B.2: 448 bits — 56 bytes, so the length does NOT fit in the
+        // padding block and a second one is needed. It is the only vector that
+        // exercises this branch.
         (
             b"abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq",
             "248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1",
@@ -266,26 +266,26 @@ mod tests {
         }
     }
 
-    /// Les MÊMES vecteurs, absorbés par morceaux, en tailles IRRÉGULIÈRES.
+    /// The SAME vectors, absorbed in pieces, in IRREGULAR sizes.
     ///
-    /// 🔴 ABSORBER PAR BLOCS DE 64 NE PROUVERAIT PRESQUE RIEN : le résidu ne
-    /// serait jamais partiel et une faute de recopie à l'offset ne se verrait
-    /// pas. Ce sont le 1, le 63 et le 65 qui font vivre le résidu à travers
-    /// plusieurs appels et le font franchir la frontière d'un bloc au milieu
-    /// d'un morceau ; le 1000, plus long que le plus long des vecteurs,
-    /// vérifie qu'un morceau qui déborde le message ne change rien.
+    /// 🔴 ABSORBING IN BLOCKS OF 64 WOULD PROVE ALMOST NOTHING: the residue would
+    /// never be partial and a copy mistake at the offset would not show.
+    /// It is 1, 63 and 65 that keep the residue alive across
+    /// several calls and make it cross a block boundary in the middle
+    /// of a piece; 1000, longer than the longest vector,
+    /// checks that a piece overflowing the message changes nothing.
     #[test]
-    fn le_condensateur_absorbe_en_tailles_irregulieres_sans_changer_l_empreinte() {
+    fn the_hasher_absorbs_irregular_sizes_without_changing_the_digest() {
         for (message, attendu) in VECTEURS {
-            for taille in [1usize, 63, 64, 65, 1000] {
+            for size in [1usize, 63, 64, 65, 1000] {
                 let mut condensateur = Condensateur::neuf();
-                for morceau in message.chunks(taille) {
+                for morceau in message.chunks(size) {
                     condensateur.absorber(morceau);
                 }
                 assert_eq!(
                     hexa(condensateur.terminer()),
                     attendu,
-                    "vecteur de {} octets, morceaux de {taille}",
+                    "vector of {} bytes, chunks of {size}",
                     message.len()
                 );
             }
@@ -293,20 +293,20 @@ mod tests {
     }
 
     #[test]
-    fn une_longueur_de_message_pile_sur_la_frontiere_du_bourrage() {
-        // 55 octets : le dernier où la longueur tient encore dans le bloc.
-        // 56 : le premier qui en exige un second. 64 : un bloc plein, dont le
-        // bourrage occupe tout un bloc de plus.
-        for taille in [55usize, 56, 63, 64, 65, 119, 120] {
-            let message = vec![b'a'; taille];
-            // On ne vérifie pas la valeur — elle n'est pas dans la norme —
-            // mais que rien ne panique et que l'empreinte change avec la
-            // taille, ce qu'un bourrage cassé ne garantirait pas.
-            assert_eq!(hex(&message).len(), 64, "taille {taille}");
+    fn a_message_length_right_on_the_padding_boundary() {
+        // 55 bytes: the last one where the length still fits in the block.
+        // 56: the first that requires a second. 64: a full block, whose
+        // padding takes a whole extra block.
+        for size in [55usize, 56, 63, 64, 65, 119, 120] {
+            let message = vec![b'a'; size];
+            // We do not check the value — it is not in the standard —
+            // but that nothing panics and that the fingerprint changes with the
+            // size, which broken padding would not guarantee.
+            assert_eq!(hex(&message).len(), 64, "size {size}");
 
-            // Et la voie INCRÉMENTALE, un octet à la fois, doit rendre la
-            // même chose : ce sont ces longueurs-là qui promènent le résidu
-            // de part et d'autre de la frontière du bourrage.
+            // And the INCREMENTAL path, one byte at a time, must return the
+            // same thing: these lengths are the ones that move the residue
+            // on either side of the padding boundary.
             let mut condensateur = Condensateur::neuf();
             for octet in &message {
                 condensateur.absorber(std::slice::from_ref(octet));
@@ -314,15 +314,11 @@ mod tests {
             assert_eq!(
                 hexa(condensateur.terminer()),
                 hex(&message),
-                "taille {taille}, un octet à la fois"
+                "size {size}, one byte at a time"
             );
         }
-        let toutes: std::collections::HashSet<String> =
+        let all: std::collections::HashSet<String> =
             (0..130).map(|n| hex(&vec![b'a'; n])).collect();
-        assert_eq!(
-            toutes.len(),
-            130,
-            "130 longueurs, 130 empreintes distinctes"
-        );
+        assert_eq!(all.len(), 130, "130 lengths, 130 distinct hashes");
     }
 }

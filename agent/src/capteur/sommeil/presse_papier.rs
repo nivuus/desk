@@ -1,23 +1,23 @@
-//! Distribution du presse-papier de la VM — la branche de
-//! `crate::presse_papier::Sondeur` sur le registre de `capteur::sommeil`.
+//! Distribution of the VM's clipboard — the branch of
+//! `crate::presse_papier::Sondeur` on the registry of `capteur::sommeil`.
 //!
-//! **Extrait de `sommeil.rs` et non ajouté dedans**, exactement comme
-//! `parts.rs` et `porteurs.rs` : ce fichier-là est proche de son plafond, et
-//! la règle du dépôt veut qu'une addition substantielle s'accompagne d'une
+//! **Extracted from `sommeil.rs` and not added into it**, exactly like
+//! `parts.rs` and `porteurs.rs`: that file is close to its cap, and
+//! the repository's rule requires a substantial addition to come with an
 //! extraction.
 //!
-//! Il ne s'appelle pas comme le module racine `crate::presse_papier` par
-//! hasard, mais il n'en porte pas la même chose : celui-là porte la RÈGLE
-//! pure (normaliser, dénormaliser, borner, comparer au dernier émis, armer les
-//! gardes) ; celui-ci ne porte que sa BRANCHE sur ce registre. Même distinction
-//! que `repartiteur` / `parts` et que `audio` / `porteurs`.
+//! It is not named like the root module `crate::presse_papier` by
+//! chance, but it does not carry the same thing: that one carries the pure
+//! RULE (normalise, denormalise, bound, compare with the last emitted, arm the
+//! guards); this one only carries its BRANCH on this registry. Same distinction
+//! as `repartiteur` / `parts` and `audio` / `porteurs`.
 //!
-//! **Les DEUX sens y passent depuis le sous-bloc P2** : `distribuer` pousse aux
-//! fenêtres ce que la VM a copié, `ecrire` écrit dans la VM ce qu'une fenêtre a
-//! collé. Le second est ici et pas ailleurs parce que **le propriétaire du
-//! presse-papier est le capteur, et lui seul** (D1) : un enfant qui écrirait
-//! lui-même mettrait N processus en concurrence sur une ressource dont Windows
-//! ne donne l'accès qu'à un seul à la fois.
+//! **BOTH directions go through it since sub-block P2**: `distribuer` pushes to the
+//! windows what the VM copied, `write` writes into the VM what a window
+//! pasted. The second is here and not elsewhere because **the owner of the
+//! clipboard is the sensor, and it alone** (D1): a child writing
+//! by itself would put N processes in competition over a resource Windows
+//! only gives access to one at a time.
 
 use std::sync::MutexGuard;
 
@@ -28,30 +28,30 @@ use crate::presse_papier::{Annonce, Sondeur};
 use super::file::Envoi;
 use super::{distribuer as distribuer_les_ordres, etat, oublier, Etat, Message};
 
-/// Pousse une annonce de presse-papier à **toutes** les fenêtres inscrites.
+/// Pushes a clipboard announcement to **all** registered windows.
 ///
-/// **Toutes, et non la seule focalisée** : le presse-papier est une ressource
-/// GLOBALE à la session Windows, chaque fenêtre navigateur a son propre
-/// presse-papier local à alimenter, et c'est le client qui décide s'il écrit
-/// (`PressePapierLocal::aEcrire`, qui prend le focus en argument). Décider ici
-/// priverait une fenêtre non focalisée d'un contenu qu'elle devra écrire dès
-/// qu'elle reprendra le focus — le dépôt différé de D3.
+/// **All, and not only the focused one**: the clipboard is a resource
+/// GLOBAL to the Windows session, each browser window has its own
+/// local clipboard to feed, and it is the client that decides whether it writes
+/// (`PressePapierLocal::toWrite`, which takes the focus as an argument). Deciding here
+/// would deprive an unfocused window of content it will have to write as soon as
+/// it gets the focus back — D3's deferred drop.
 ///
-/// **Aucun filtre d'écrasement ici**, à la différence de
-/// `parts::distribuer_les_parts` : le `Sondeur` n'appelle cette fonction qu'au
-/// CHANGEMENT — c'est lui qui porte le garde d'égalité de contenu (garde n°2
-/// de D5) et le garde de refus répété. **Depuis P2, c'est AUSSI lui qui porte
-/// le garde n°1** (`apres_notre_ecriture`, armé par `armer_les_gardes` juste
-/// en dessous) : un texte que nous venons d'écrire nous-mêmes n'arrive donc
-/// jamais jusqu'ici. Refiltrer ici doublerait une décision
-/// déjà prise, et la doublerait *mal* : le registre ne connaît pas le texte
-/// précédemment émis, et un second garde par session divergerait du premier
-/// dès qu'une fenêtre s'inscrit ou se retire.
+/// **No overwrite filter here**, unlike
+/// `parts::distribuer_les_parts`: the `Sondeur` only calls this function on
+/// CHANGE — it is the one carrying the content-equality guard (guard no. 2
+/// of D5) and the repeated-refusal guard. **Since P2, it ALSO carries
+/// guard no. 1** (`apres_notre_ecriture`, armed by `armer_les_gardes` just
+/// below): a text we have just written ourselves therefore never
+/// arrives here. Re-filtering here would duplicate a decision
+/// already taken, and duplicate it *badly*: the registry does not know the text
+/// previously emitted, and a second per-session guard would diverge from the first
+/// as soon as a window registers or withdraws.
 ///
-/// Un canal rompu passe par `oublier` — **le point de passage unique du
-/// registre**, jamais un `remove` direct : c'est la leçon de M1 (revue finale
-/// de branche de D6), où `focalisee` avait été oublié par deux chemins qui
-/// retiraient à la main.
+/// A broken channel goes through `oublier` — **the registry's single passage
+/// point**, never a direct `remove`: that is the lesson of M1 (final branch
+/// review of D6), where `focalisee` had been forgotten by two paths that
+/// removed by hand.
 pub(super) fn distribuer(garde: &mut MutexGuard<'static, Etat>, annonce: Annonce) {
     let (texte, octets) = match annonce {
         Annonce::Texte(texte) => {
@@ -61,20 +61,20 @@ pub(super) fn distribuer(garde: &mut MutexGuard<'static, Etat>, annonce: Annonce
         Annonce::Refus { octets } => (None, octets),
     };
 
-    // ⚠️ **UNE SEULE TRACE, ET JAMAIS LE TEXTE** (D-P1-7). Le contenu du
-    // presse-papier est une ressource privée, et un journal versé dans git est
-    // public au dépôt : on ne journalise que sa TAILLE et le fait qu'il
-    // s'agisse d'un refus. Une seule, parce que deux traces au même instant se
-    // comptent comme deux événements — piège maison de D6, où chaque
-    // changement de barreau produisait deux lignes au même horodatage et
-    // faisait valoir le double à tous les compteurs de recette.
-    tracing::info!(octets, refus = texte.is_none(), "presse-papier de la VM");
+    // ⚠️ **A SINGLE TRACE, AND NEVER THE TEXT** (D-P1-7). The clipboard's
+    // content is a private resource, and a log committed to git is
+    // public to the repository: we only log its SIZE and whether it
+    // is a refusal. A single one, because two traces at the same instant are
+    // counted as two events — a home-grown trap of D6, where each
+    // rung change produced two lines with the same timestamp and
+    // counted double in all acceptance counters.
+    tracing::info!(octets, refus = texte.is_none(), "VM clipboard");
 
-    // La mémoire de l'état courant, pour les fenêtres qui s'attacheront
-    // ENSUITE (D-P3-2, moitié agent). Posée à CHAQUE annonce, refus compris —
-    // voir le champ `Etat::dernier_presse_papier`, qui porte la raison et dit
-    // pourquoi la symétrie avec `dernieres_parts` est trompeuse.
-    garde.dernier_presse_papier = Some(match &texte {
+    // The memory of the current state, for windows that will attach
+    // LATER (D-P3-2, agent half). Set at EVERY announcement, refusals included —
+    // see the `Etat::last_clipboard` field, which carries the reason and says
+    // why the symmetry with `dernieres_parts` is misleading.
+    garde.last_clipboard = Some(match &texte {
         Some(t) => Annonce::Texte(t.clone()),
         None => Annonce::Refus { octets },
     });
@@ -82,14 +82,14 @@ pub(super) fn distribuer(garde: &mut MutexGuard<'static, Etat>, annonce: Annonce
     let sessions: Vec<String> = garde.canaux.keys().cloned().collect();
     let mut rompus = Vec::new();
     for session in sessions {
-        // ⚠️ **`None` N'EST PAS UNE RUPTURE** — troisième site du même patron,
-        // et **celui-ci n'avait été montré par personne** : le round 3 nommait
-        // `parts.rs` et `porteurs.rs`, et la règle du dépôt est de CHERCHER
-        // les occurrences plutôt que de corriger là où on nous les montre.
-        // Inatteignable ici (les noms sortent de `canaux.keys()` sous le même
-        // verrou, deux lignes plus haut), donc sans conséquence — mais
-        // fabriquer une rupture ferait purger une session sur un fait qui n'a
-        // pas eu lieu si cette invariance venait à tomber.
+        // ⚠️ **`None` IS NOT A BREAK** — third site of the same pattern,
+        // and **this one had been shown by nobody**: round 3 named
+        // `parts.rs` and `porteurs.rs`, and the repository's rule is to SEARCH for
+        // the occurrences rather than fix where they are shown to us.
+        // Unreachable here (the names come out of `canaux.keys()` under the same
+        // lock, two lines above), hence without consequence — but
+        // fabricating a break would purge a session on a fact that did not
+        // happen if that invariance were to fall.
         let issue = garde.canaux.get(&session).map(|canal| {
             canal.envoyer(Message::PressePapier {
                 texte: texte.clone(),
@@ -97,17 +97,17 @@ pub(super) fn distribuer(garde: &mut MutexGuard<'static, Etat>, annonce: Annonce
             })
         });
         match issue {
-            // Aucun canal : rien n'est parti, et il n'y a rien à purger.
+            // No channel: nothing went out, and there is nothing to purge.
             None => {}
             Some(Envoi::Depose(_)) => {}
-            // ⚠️ **REFUSÉ N'EST PAS ROMPU** (correctif du round 1) : la file
-            // de cette fenêtre est pleine, la session est VIVANTE, et la
-            // purger tuerait son arbitrage. Rien n'est mémorisé sur ce
-            // chemin — l'émission est inconditionnelle —, donc le prochain
-            // changement de presse-papier repartira de lui-même. Le contenu
-            // refusé, lui, est PERDU pour cette fenêtre : le journaliser une
-            // seconde fois doublerait la trace de `journaliser_le_refus`, qui
-            // nomme déjà la session.
+            // ⚠️ **REFUSED IS NOT BROKEN** (round 1 fix): this window's
+            // queue is full, the session is ALIVE, and
+            // purging it would kill its arbitration. Nothing is memorised on this
+            // path — the emission is unconditional —, so the next
+            // clipboard change will go out by itself. The refused
+            // content, on the other hand, is LOST for this window: logging it a
+            // second time would duplicate the trace of `journaliser_le_refus`, which
+            // already names the session.
             Some(Envoi::Refuse) => {}
             Some(Envoi::Rompu) => rompus.push(session),
         }
@@ -122,105 +122,105 @@ pub(super) fn distribuer(garde: &mut MutexGuard<'static, Etat>, annonce: Annonce
     }
 }
 
-/// Écrit `texte` dans le presse-papier de la VM, et **arme les gardes dans le
-/// même geste**.
+/// Writes `texte` into the VM's clipboard, and **arms the guards in the
+/// same gesture**.
 ///
-/// Appelée depuis le fil de FENÊTRE qui sert `VersCapteur::PressePapierEcrire`.
-/// Le texte arrive déjà normalisé, borné et dénormalisé par l'enfant.
+/// Called from the WINDOW thread serving `VersCapteur::ClipboardWrite`.
+/// The text arrives already normalised, bounded and denormalised by the child.
 ///
-/// 🔴 **`PRESSE_PAPIER=0` interdit AUSSI l'écriture**, et pas seulement la
-/// lecture. Le garde est ici et non dans `crate::presse_papier` parce que la
-/// symétrie qui compte est celle du PROPRIÉTAIRE : `Sondeur::tour` teste
-/// `actif()` avant toute lecture, ce chemin le teste avant toute écriture, et
-/// « le mécanisme entier est désarmé » cesse d'être une demi-vérité.
-pub(super) fn ecrire(texte: &str) -> Result<()> {
-    ecrire_avec(texte, crate::presse_papier::ecrire_la_plateforme)
+/// 🔴 **`PRESSE_PAPIER=0` ALSO forbids writing**, and not only
+/// reading. The guard is here and not in `crate::presse_papier` because the
+/// symmetry that matters is that of the OWNER: `Sondeur::tour` tests
+/// `actif()` before any read, this path tests it before any write, and
+/// "the whole mechanism is disarmed" stops being a half-truth.
+pub(super) fn write(texte: &str) -> Result<()> {
+    write_with(texte, crate::presse_papier::write_platform)
 }
 
-/// Le cœur de `ecrire`, avec son écrivain **injecté** — c'est ce qui le rend
-/// éprouvable sur l'hôte, exactement comme `Sondeur::observer` reçoit sa
-/// fermeture de lecture.
+/// The heart of `write`, with its **injected** writer — that is what makes it
+/// testable on the host, exactly as `Sondeur::observer` receives its
+/// read closure.
 ///
-/// 🔴 **Rien n'est posé quand l'écriture ÉCHOUE**, et c'est ce qui compte le
-/// plus ici : armer avant de savoir ferait sortir de l'observation un contenu
-/// qui n'a jamais atteint le presse-papier, et ce contenu deviendrait alors
-/// invisible **à jamais** — le tour suivant ne le verrait pas comme un
-/// changement.
-pub(super) fn ecrire_avec(texte: &str, ecrivain: impl FnOnce(&str) -> Result<u32>) -> Result<()> {
+/// 🔴 **Nothing is set when the write FAILS**, and that is what matters
+/// most here: arming before knowing would take out of observation a content
+/// that never reached the clipboard, and that content would then become
+/// invisible **forever** — the next round would not see it as a
+/// change.
+pub(super) fn write_with(texte: &str, ecrivain: impl FnOnce(&str) -> Result<u32>) -> Result<()> {
     if !crate::presse_papier::actif() {
-        anyhow::bail!("presse-papier desarme (PRESSE_PAPIER=0)");
+        anyhow::bail!("clipboard disarmed (PRESSE_PAPIER=0)");
     }
     let seq = ecrivain(texte)?;
-    // ⚠️ Le verrou n'est pris QU'APRÈS l'E/S Win32, jamais autour d'elle :
-    // `OpenClipboard` est une ressource contendue de la station de fenêtres,
-    // et la tenir sous le verrou global du registre bloquerait l'attache et le
-    // retrait de TOUTES les fenêtres pendant ce temps. Même raison, et même
-    // discipline, que le sondage `hors du verrou` du tour de roue.
+    // ⚠️ The lock is taken ONLY AFTER the Win32 I/O, never around it:
+    // `OpenClipboard` is a contended resource of the window station,
+    // and holding it under the registry's global lock would block the attach and
+    // removal of ALL windows meanwhile. Same reason, and same
+    // discipline, as the `outside the lock` polling of the wheel round.
     etat().notre_ecriture = Some((seq, texte.to_owned()));
     Ok(())
 }
 
-/// Consomme NOTRE écriture en attente et arme les gardes du `Sondeur`.
+/// Consumes OUR pending write and arms the `Sondeur`'s guards.
 ///
-/// 🔴 **À appeler AVANT `sondeur.tour()`, et l'ordre EST le mécanisme.**
-/// Après, le tour aurait déjà lu le presse-papier, y aurait trouvé notre
-/// propre texte, et l'aurait renvoyé aux fenêtres : un aller-retour par
-/// collage, exactement ce que les gardes de D5 existent pour supprimer.
+/// 🔴 **To be called BEFORE `sondeur.tour()`, and the order IS the mechanism.**
+/// After, the round would already have read the clipboard, found our
+/// own text there, and sent it back to the windows: a round trip per
+/// paste, exactly what D5's guards exist to suppress.
 pub(super) fn armer_les_gardes(sondeur: &mut Sondeur) {
-    // Le verrou est pris et rendu ici, avant l'E/S de `tour()` : il ne couvre
-    // que la lecture d'un champ.
+    // The lock is taken and released here, before the I/O of `tour()`: it only covers
+    // reading a field.
     let notre = etat().notre_ecriture.take();
     if let Some((seq, texte)) = notre {
         sondeur.apres_notre_ecriture(seq, &texte);
     }
 }
 
-/// Émet l'état courant du presse-papier **sur le SEUL canal de la session qui
-/// vient de s'inscrire**.
+/// Emits the current clipboard state **on the SINGLE channel of the session that
+/// has just registered**.
 ///
-/// 🔴 **C'est la moitié AGENT du legs n°3 de P1**, et elle ne suffit PAS à
-/// elle seule : `client/src/main.ts` mémorise le dernier `clipboard` reçu
-/// avant l'attache, parce que ce message-ci tombe précisément dans l'intervalle
-/// où `pressePapier` n'est pas encore assigné. **Livrer une moitié sans
-/// l'autre ferait PARAÎTRE le défaut corrigé alors qu'il resterait
-/// intermittent — et c'est pire qu'un défaut connu.**
+/// 🔴 **It is the AGENT half of P1's hand-over no. 3**, and it is NOT enough
+/// on its own: `client/src/main.ts` memorises the last `clipboard` received
+/// before the attach, because this very message falls precisely in the interval
+/// where `pressePapier` is not yet assigned. **Delivering one half without
+/// the other would make the defect SEEM fixed while it would stay
+/// intermittent — and that is worse than a known defect.**
 ///
-/// ⚠️ **JAMAIS UN FAN-OUT.** `distribuer` pousse à toutes les fenêtres ; celle-ci
-/// n'écrit que sur le canal neuf. Rejouer le contenu à toutes les fenêtres à
-/// chaque attache serait un aller-retour par attache, et le garde n°3 côté
-/// page n'y pourrait rien : il ne ferme que le renvoi vers l'agent.
+/// ⚠️ **NEVER A FAN-OUT.** `distribuer` pushes to all windows; this one
+/// only writes on the new channel. Replaying the content to all windows at
+/// every attach would be a round trip per attach, and guard no. 3 on the
+/// page side could do nothing about it: it only closes the send-back to the agent.
 ///
-/// ⚠️ **Un canal rompu n'est PAS traité ici**, à la différence de `distribuer`.
-/// Il ne peut pas l'être : ~~ce canal vient d'être inséré dans la même
-/// fonction~~ — **FAUX, MÊME PRÉMISSE QUE CELLE BARRÉE DIX LIGNES PLUS BAS,
-/// SURVIVANTE ICI SOUS UN AUTRE VERBE** : le canal est créé par
-/// `registre::inscrire`, PAS par cette fonction (`emettre_l_etat_courant`
-/// est appelée DEPUIS `inscrire`, après que le canal existe déjà — voir la
-/// correction ❌ ci-dessous). Ce qui reste vrai, et qui porte réellement la
-/// conclusion : son receveur est encore sur la pile de `inscrire`, et
-/// `envoyer` ne rend `Err` que si le receveur a été lâché — ce qui n'a pas
-/// encore pu arriver. Appeler `oublier` ici retirerait une session qui
-/// vient de naître.
+/// ⚠️ **A broken channel is NOT handled here**, unlike `distribuer`.
+/// It cannot be: ~~this channel has just been inserted in the same
+/// function~~ — **FALSE, SAME PREMISE AS THE ONE STRUCK OUT TEN LINES BELOW,
+/// SURVIVING HERE UNDER ANOTHER VERB**: the channel is created by
+/// `registre::inscrire`, NOT by this function (`emit_current_state`
+/// is called FROM `inscrire`, after the channel already exists — see the
+/// ❌ correction below). What remains true, and actually carries the
+/// conclusion: its receiver is still on `inscrire`'s stack, and
+/// `envoyer` only returns `Err` if the receiver was dropped — which cannot
+/// have happened yet. Calling `oublier` here would remove a session that
+/// has just been born.
 ///
-/// ⚠️ **Le REFUS de file pleine ne peut pas s'y produire non plus** — mais
-/// **par un COMPTAGE, pas par la prémisse fausse qu'on avait d'abord écrite.**
+/// ⚠️ **The queue-full REFUSAL cannot happen there either** — but
+/// **through a COUNT, not through the false premise first written.**
 ///
-/// ❌ ~~La file de ce canal vient d'être créée, elle est vide.~~ **FAUX**, et
-/// le round de correction 2 l'a mesuré par une sonde : cette fonction est
-/// appelée **en dernier** dans `inscrire`, donc APRÈS `distribuer`,
-/// `distribuer_les_parts` et `distribuer_l_audio`, qui ont déjà déposé dans ce
-/// même canal — la file contient au moins une `Part`.
+/// ❌ ~~This channel's queue has just been created, it is empty.~~ **FALSE**, and
+/// fix round 2 measured it with a probe: this function is
+/// called **last** in `inscrire`, hence AFTER `distribuer`,
+/// `distribuer_les_parts` and `distribuer_l_audio`, which have already dropped into this
+/// same channel — the queue contains at least one `Part`.
 ///
-/// 🔵 **LE COMPTAGE, qui lui tient.** Entre la création du canal et cet appel,
-/// `inscrire` ne peut déposer que trois messages pour CETTE session : au plus
-/// un `Sommeil` (le `Reveiller` que son inscription engendre, s'il y a une
-/// place), au plus une `Part` (`distribuer_les_parts` n'émet que si la valeur
-/// a changé), au plus un `Audio` (même filtre). **Trois au plus, contre
-/// `PROFONDEUR_MAX` = 64.** Le refus est donc inatteignable avec une marge de
-/// 61 messages — et si un jour un quatrième émetteur s'intercalait ici, le
-/// `match` ci-dessous resterait juste, il ne ferait que perdre une annonce.
-pub(super) fn emettre_l_etat_courant(garde: &mut MutexGuard<'static, Etat>, session: &str) {
-    let Some(annonce) = garde.dernier_presse_papier.clone() else {
+/// 🔵 **THE COUNT, which does hold.** Between the creation of the channel and this call,
+/// `inscrire` can only drop three messages for THIS session: at most
+/// one `Sommeil` (the `Reveiller` its registration generates, if there is a
+/// place), at most one `Part` (`distribuer_les_parts` only emits if the value
+/// changed), at most one `Audio` (same filter). **Three at most, against
+/// `PROFONDEUR_MAX` = 64.** The refusal is therefore unreachable with a margin of
+/// 61 messages — and if one day a fourth emitter slipped in here, the
+/// `match` below would stay right, it would only lose an announcement.
+pub(super) fn emit_current_state(garde: &mut MutexGuard<'static, Etat>, session: &str) {
+    let Some(annonce) = garde.last_clipboard.clone() else {
         return;
     };
     let (texte, octets) = match annonce {
@@ -230,56 +230,56 @@ pub(super) fn emettre_l_etat_courant(garde: &mut MutexGuard<'static, Etat>, sess
         }
         Annonce::Refus { octets } => (None, octets),
     };
-    // ⚠️ **JAMAIS LE TEXTE AU JOURNAL** (D-P1-7) : le contenu du presse-papier
-    // est une ressource privée, et un journal versé dans git est public au
-    // dépôt. On ne journalise que sa TAILLE, et le fait qu'il s'agisse d'un
-    // refus — exactement comme `distribuer`.
+    // ⚠️ **NEVER THE TEXT IN THE LOG** (D-P1-7): the clipboard's content
+    // is a private resource, and a log committed to git is public to the
+    // repository. We only log its SIZE, and whether it is a
+    // refusal — exactly like `distribuer`.
     tracing::info!(%session, octets, refus = texte.is_none(),
-        "etat courant du presse-papier emis a l'inscription");
+        "current clipboard state emitted at registration");
     if let Some(canal) = garde.canaux.get(session) {
-        // 🔴 LE CINQUIÈME SITE, ET LE SEUL QUE LE COMPILATEUR N'A PAS POINTÉ :
-        // `let _ =` absorbe même un `#[must_use]`. Il est traité à la main, et
-        // le `match` exhaustif remplace le `let _` pour que la prochaine
-        // variante d'`Envoi`, elle, soit signalée ici comme ailleurs.
+        // 🔴 THE FIFTH SITE, AND THE ONLY ONE THE COMPILER DID NOT POINT AT:
+        // `let _ =` absorbs even a `#[must_use]`. It is handled by hand, and
+        // the exhaustive `match` replaces the `let _` so that the next
+        // variant of `Envoi` is reported here as elsewhere.
         match canal.envoyer(Message::PressePapier { texte, octets }) {
-            // Les trois issues sont sans conséquence ICI, et la doc de cette
-            // fonction dit pourquoi — PAR UN COMPTAGE, pas par la prémisse
-            // fausse qu'on lisait ici.
+            // The three outcomes are without consequence HERE, and the doc of this
+            // function says why — THROUGH A COUNT, not through the false
+            // premise that used to be read here.
             //
-            // ❌ ~~Ce canal vient d'être créé dans la même fonction, sa file
-            // est vide.~~ **DEUX FOIS FAUX, et le round 3 l'a relevé TRENTE-
-            // HUIT LIGNES SOUS SA PROPRE RÉFUTATION** : le canal est créé par
-            // `registre::inscrire`, pas ici, et sa file n'est pas vide —
-            // `distribuer`, `distribuer_les_parts` et `distribuer_l_audio` y
-            // ont déjà déposé (mesuré : `[Part, Audio]`, et `[Part, Audio]`
-            // encore avec douze voisines éveillées). **C'est le naufrage du
-            // 487 dans sa forme pure : corrigé là où on nous l'avait montré,
-            // pas cherché.**
+            // ❌ ~~This channel has just been created in the same function, its queue
+            // is empty.~~ **TWICE FALSE, and round 3 caught it THIRTY-
+            // EIGHT LINES BELOW ITS OWN REFUTATION**: the channel is created by
+            // `registre::inscrire`, not here, and its queue is not empty —
+            // `distribuer`, `distribuer_les_parts` and `distribuer_l_audio` have
+            // already dropped there (measured: `[Part, Audio]`, and `[Part, Audio]`
+            // again with twelve awake neighbours). **It is the 487 shipwreck
+            // in its pure form: fixed where it was shown to us,
+            // not searched for.**
             //
-            // Ce qui tient, et que la doc établit : **au plus 3 messages
-            // contre `PROFONDEUR_MAX` = 64**, et le receveur est encore sur la
-            // pile de `inscrire`. `Refuse` et `Rompu` sont donc bien
-            // inatteignables.
+            // What holds, and what the doc establishes: **at most 3 messages
+            // against `PROFONDEUR_MAX` = 64**, and the receiver is still on the
+            // stack of `inscrire`. `Refuse` and `Rompu` are therefore indeed
+            // unreachable.
             Envoi::Depose(_) | Envoi::Refuse | Envoi::Rompu => {}
         }
     }
 }
 
-/// La SECONDE PRISE de D-P3-6 : consomme l'écriture arrivée APRÈS
-/// `armer_les_gardes`, arme les gardes sur elle, et écarte l'annonce si c'est
-/// la nôtre.
+/// The SECOND TAKE of D-P3-6: consumes the write that arrived AFTER
+/// `armer_les_gardes`, arms the guards on it, and discards the announcement if it is
+/// ours.
 ///
-/// 🔴 **À appeler ENTRE `sondeur.tour()` et `presse_papier::distribuer`, et
-/// l'ordre EST le mécanisme** — exactement comme `armer_les_gardes` doit
-/// précéder `tour()`. La démonstration de la course, sa portée exacte et le
-/// résidu qui subsiste vivent auprès de `Sondeur::ecarter_notre_ecriture`, qui
-/// porte la règle ; ce qui est ici est sa BRANCHE sur ce registre, et rien
-/// d'autre — même distinction que `distribuer` face au `Sondeur`, et que
-/// `parts` face à `repartiteur`.
+/// 🔴 **To be called BETWEEN `sondeur.tour()` and `presse_papier::distribuer`, and
+/// the order IS the mechanism** — exactly as `armer_les_gardes` must
+/// precede `tour()`. The demonstration of the race, its exact scope and the
+/// residue that remains live next to `Sondeur::ecarter_notre_ecriture`, which
+/// carries the rule; what is here is its BRANCH on this registry, and nothing
+/// else — same distinction as `distribuer` versus the `Sondeur`, and as
+/// `parts` versus `repartiteur`.
 ///
-/// ⚠️ **Le verrou est pris et rendu ici, et il ne couvre aucune E/S** : même
-/// discipline qu'`armer_les_gardes` juste au-dessus. Il ne couvre que la
-/// lecture d'un champ.
+/// ⚠️ **The lock is taken and released here, and it covers no I/O**: same
+/// discipline as `armer_les_gardes` just above. It only covers
+/// reading a field.
 pub(super) fn filtrer_nos_ecritures_tardives(
     sondeur: &mut Sondeur,
     annonce: Option<Annonce>,
@@ -288,20 +288,20 @@ pub(super) fn filtrer_nos_ecritures_tardives(
     sondeur.ecarter_notre_ecriture(notre, annonce)
 }
 
-// Les tests de ce module vivent à part depuis le sous-bloc P3 du chantier
-// presse-papier : le fichier était à 379 lignes pour un plafond de 500, et P3 y
-// ajoute la mémoire `dernier_presse_papier` (D-P3-2), la seconde prise
-// `filtrer_nos_ecritures_tardives` (D-P3-6) et leurs tests. L'extraction
-// précède l'addition, comme la règle du dépôt l'exige.
+// This module's tests have lived apart since sub-block P3 of the clipboard
+// work stream: the file was at 379 lines for a cap of 500, and P3
+// adds the `last_clipboard` memory (D-P3-2), the second take
+// `filtrer_nos_ecritures_tardives` (D-P3-6) and their tests. The extraction
+// precedes the addition, as the repository's rule requires.
 //
-// ⚠️ La déclaration est posée EN FIN DE FICHIER, jamais à la place qu'occupait
-// le bloc — qui était AU MILIEU, le code de production reprenant juste après.
-// C'est la place de tous les autres `#[path]` de tests du dépôt, et un lecteur
-// qui cherche le code de production ne doit pas buter dessus.
+// ⚠️ The declaration is placed AT THE END OF THE FILE, never where the
+// block used to be — which was IN THE MIDDLE, the production code resuming right after.
+// It is the place of all the repository's other test `#[path]`s, and a reader
+// looking for the production code must not stumble on it.
 //
-// ⚠️ Cet emploi de `#[path]` est HORS de la portée de la « Convention de module
-// enfant » de `CLAUDE.md` : même mécanisme Rust, autre raison — la règle des
-// 500 lignes. Ce module ne se hisse PAS à la racine du crate.
+// ⚠️ This use of `#[path]` is OUTSIDE the scope of the "Child module
+// convention" of `CLAUDE.md`: same Rust mechanism, different reason — the
+// 500-line rule. This module is NOT hoisted to the crate root.
 #[cfg(test)]
 #[path = "presse_papier/tests.rs"]
 mod tests;

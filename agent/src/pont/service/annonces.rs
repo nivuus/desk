@@ -1,101 +1,101 @@
-//! **La QUATRIÈME famille du protocole** : les annonces qui REMONTENT, du
-//! navigateur vers le pont — `Bonjour` et `Rafraichir`.
+//! **The protocol's FOURTH family**: the announcements going UP, from the
+//! browser to the bridge — `Bonjour` and `Rafraichir`.
 //!
-//! # Pourquoi cette extraction, et pourquoi MAINTENANT
+//! # Why this extraction, and why NOW
 //!
-//! `service.rs` était à **463** lignes, marge **37**, après que F5 y a posé son
-//! aiguillage et ces deux fonctions (+122). La revue transverse qui clôt toute
-//! branche de ce dépôt **ajoute du commentaire** — S3 y a mis 48 lignes réparties
-//! sur neuf fichiers, et S2 a vu la marge d'un fichier tomber de 30 à 17 par ce
-//! seul geste. **L'extraction se fait AVANT l'addition, jamais après**, et
-//! `CLAUDE.md` interdit nommément de compresser pour repasser sous la ligne.
+//! `service.rs` was at **463** lines, margin **37**, after F5 put its
+//! routing and these two functions there (+122). The cross-cutting review closing every
+//! branch of this repository **adds comments** — S3 put 48 lines spread
+//! over nine files, and S2 saw a file's margin drop from 30 to 17 through that
+//! gesture alone. **The extraction happens BEFORE the addition, never after**, and
+//! `CLAUDE.md` forbids by name compressing to get back under the line.
 //!
-//! ⚠️ **L'AIGUILLAGE, LUI, RESTE DANS [`super`]**, et ce n'est pas un oubli :
-//! il doit courir **avant `table.resoudre`**, et le déplacer ici ferait de ce
-//! module l'endroit où l'on croit qu'il vit. *Ce module porte ce que les
-//! annonces FONT ; le fait qu'elles soient aiguillées tôt est une propriété de
-//! `traiter`, et elle se lit là.*
+//! ⚠️ **THE ROUTING, FOR ITS PART, STAYS IN [`super`]**, and it is not an oversight:
+//! it must run **before `table.resoudre`**, and moving it here would make this
+//! module the place where one believes it lives. *This module carries what the
+//! announcements DO; the fact that they are routed early is a property of
+//! `traiter`, and it is read there.*
 
 use super::Etat;
-use proto::fichiers::entetes;
+use proto::files::entetes;
 
 /// L'annonce `Rafraichir` : le pont oublie ce qu'il croyait savoir.
 ///
-/// **Deux caches, et ils ne sont pas à nous tous les deux.** Le premier est le
-/// nôtre ([`crate::pont::cache`]) ; le second appartient à ProjFS — le **cache
-/// négatif**, qui mémorise les chemins dont le fournisseur a dit qu'ils
-/// n'existaient pas. Vider l'un sans l'autre laisserait un fichier créé sur le
-/// poste local rester introuvable, **par ProjFS et non par nous**.
+/// **Two caches, and they are not both ours.** The first is
+/// ours ([`crate::pont::cache`]); the second belongs to ProjFS — the **negative
+/// cache**, which memorises the paths the provider said did
+/// not exist. Emptying one without the other would leave a file created on the
+/// local workstation not found, **by ProjFS and not by us**.
 ///
-/// 🔵 **`PrjClearNegativePathCache` GAGNE ICI SON PREMIER APPELANT DE
-/// PRODUCTION.** Elle est chargée depuis F1, et
-/// `grep -rn vider_cache_negatif agent/src/` ne rendait jusqu'ici que sa
-/// déclaration. **R7 se referme d'UNE entrée sur cinq** — pas « R7 est fermé » :
-/// `PrjDeleteFile` et trois autres restent sans jumeau `PRJ_*_CB`.
+/// 🔵 **`PrjClearNegativePathCache` GAINS ITS FIRST PRODUCTION CALLER
+/// HERE.** It has been loaded since F1, and
+/// `grep -rn clear_negative_path_cache agent/src/` returned until now only its
+/// declaration. **R7 closes by ONE entry point out of five** — not "R7 is closed":
+/// `PrjDeleteFile` and three others stay without a `PRJ_*_CB` twin.
 ///
-/// 🔵 **Et son résultat est TRACÉ, ce qui rend le cache négatif observable pour
-/// la première fois.** F4 n'a pu en mesurer que le différentiel, **nul**, parce
-/// qu'aucun sondage de l'Explorateur n'atteignait le fournisseur. *Si ce nombre
-/// est toujours zéro, c'est un FAIT et non une panne* — et il faudra le
-/// rapporter comme F4 a rapporté son différentiel nul.
+/// 🔵 **And its result is TRACED, which makes the negative cache observable for
+/// the first time.** F4 could only measure its differential, **zero**, because
+/// no Explorer probe reached the provider. *If this number
+/// is always zero, it is a FACT and not a failure* — and it will have to be
+/// reported as F4 reported its zero differential.
 pub(super) fn rafraichir(etat: &Etat) {
     let memorises = match etat.cache.lock() {
         Ok(mut cache) => {
-            let n = cache.taille();
-            cache.vider();
+            let n = cache.size();
+            cache.drain();
             n
         }
         Err(_) => 0,
     };
-    let purgees = vider_le_cache_negatif(etat);
+    let purgees = clear_negative_cache(etat);
     tracing::info!(
         repertoires_oublies = memorises,
         cache_negatif_purge = purgees,
         cache_arme = etat.cache_arme,
-        "rafraichissement demande par le navigateur"
+        "refresh requested by the browser"
     );
 }
 
-/// Vide le cache négatif de ProjFS et rend le nombre d'entrées purgées.
+/// Empties ProjFS's negative cache and returns the number of purged entries.
 ///
-/// ⚠️ **`None` se distingue de `Some(0)` dans la trace** : le premier dit que
-/// le contexte de virtualisation n'était pas là, le second que le cache était
-/// vide. *Les confondre ferait lire une absence de mesure comme une mesure
-/// nulle* — c'est le piège que ce dépôt a payé sur `grep` sans `-a`.
-fn vider_le_cache_negatif(etat: &Etat) -> i64 {
+/// ⚠️ **`None` is distinguished from `Some(0)` in the trace**: the first says
+/// the virtualisation context was not there, the second that the cache was
+/// empty. *Confusing them would read an absence of measurement as a zero
+/// measurement* — it is the trap this repository paid for on `grep` without `-a`.
+fn clear_negative_cache(etat: &Etat) -> i64 {
     let Some(contexte) = etat.contexte() else {
         return -1;
     };
     let mut total: u32 = 0;
-    // SÛRETÉ : le contexte vient de `PrjStartVirtualizing` et vit tant que la
-    // virtualisation tourne ; `total` est une pile locale valide pour l'appel.
-    let hr = unsafe { (etat.projfs.vider_cache_negatif)(contexte.0, &mut total) };
+    // SAFETY: the context comes from `PrjStartVirtualizing` and lives as long as
+    // virtualisation runs; `total` is a local stack slot valid for the call.
+    let hr = unsafe { (etat.projfs.clear_negative_path_cache)(contexte.0, &mut total) };
     if hr.is_err() {
-        tracing::warn!(code = hr.0, "PrjClearNegativePathCache a echoue");
+        tracing::warn!(code = hr.0, "PrjClearNegativePathCache failed");
         return -1;
     }
     i64::from(total)
 }
 
-/// L'annonce `Bonjour` : le navigateur dit sur quelle racine il est monté.
+/// The `Bonjour` announcement: the browser says on which root it is mounted.
 ///
-/// **Le pont n'a rien poussé jusqu'ici**, et c'est tout le point : la reprise
-/// des écritures dues a quitté `Fil::demarrer` pour attendre cette annonce.
+/// **The bridge has pushed nothing so far**, and that is the whole point: the resumption
+/// of due writes left `Fil::start` to wait for this announcement.
 pub(super) fn bonjour(etat: &Etat, entete: &[u8]) {
     let annonce = match serde_json::from_slice::<entetes::Bonjour>(entete) {
         Ok(annonce) => annonce,
-        Err(erreur) => {
-            // 🔴 **Un `warn!`, jamais un `debug!`.** Une annonce illisible veut
-            // dire qu'aucune écriture due ne partira jamais — un silence, donc
-            // pire que les trente secondes que F2 a mesurées.
-            tracing::warn!(%erreur, "annonce Bonjour illisible : aucune ecriture due ne partira");
+        Err(error) => {
+            // 🔴 **A `warn!`, never a `debug!`.** An unreadable announcement means
+            // that no due write will ever go out — a silence, hence
+            // worse than the thirty seconds F2 measured.
+            tracing::warn!(%error, "unreadable Bonjour announcement: no due write will go out");
             return;
         }
     };
     tracing::info!(
         racine = %annonce.racine,
         forcer = annonce.forcer,
-        "bonjour du navigateur"
+        "browser hello"
     );
     let _ = etat
         .vers_ecriture

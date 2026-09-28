@@ -15,93 +15,93 @@ impl Lanceur for LanceurDeProcessus {
             .env("LOCAL_IP", &self.local_ip)
             .env("FENETRE_HWND", format!("{:#x}", consigne.fenetre))
             .env("SORTIE_DXGI", &consigne.nom_sortie)
-            // La taille RETENUE (`Consigne::taille`), pas celle de la
-            // sortie — voir sa doc. Lue par `demarrage`, redite au capteur à
-            // l'attache (tâche 9 du sous-bloc D10).
+            // The RETAINED size (`Consigne::size`), not the output's
+            // — see its doc. Read by `demarrage`, repeated to the capturer at
+            // attach time (task 9 of sub-block D10).
             .env(
                 "TAILLE_FENETRE",
-                format!("{}x{}", consigne.taille.0, consigne.taille.1),
+                format!("{}x{}", consigne.size.0, consigne.size.1),
             )
-            // Surtout PAS `SUPERVISEUR` : un enfant qui hériterait de la
-            // variable se prendrait pour un superviseur et lancerait ses
-            // propres enfants, indéfiniment.
+            // Above all NOT `SUPERVISEUR`: a child inheriting the
+            // variable would take itself for a supervisor and launch its
+            // own children, indefinitely.
             .env_remove("SUPERVISEUR")
-            // **Correctif I6 de la revue finale.** `SUPERVISEUR` n'était pas
-            // la seule variable héritable qui change le SENS d'un enfant.
-            // `scripts/run-agent.sh:32` pose `$env:TEST_FILE` dès que la
-            // variable est définie dans l'environnement d'appel : un
-            // superviseur lancé ainsi ferait que CHAQUE enfant diffuse le
-            // fichier de test et ne capture rien (`Config::test_file`, lu par
-            // `demarrage`), sans le moindre avertissement.
+            // **Fix I6 of the final review.** `SUPERVISEUR` was not
+            // the only inheritable variable changing a child's MEANING.
+            // `scripts/run-agent.sh:32` sets `$env:TEST_FILE` as soon as the
+            // variable is defined in the calling environment: a
+            // supervisor launched that way would make EACH child broadcast the
+            // test file and capture nothing (`Config::test_file`, read by
+            // `demarrage`), without the slightest warning.
             //
-            // `WINDOW_TITLE` par la même règle : la consigne impose la fenêtre
-            // par `FENETRE_HWND`, et `demarrage::source` ne retombe sur la
-            // recherche par titre que si celui-là manque. Inoffensive tant que
-            // `FENETRE_HWND` est posé — ce que fait la ligne ci-dessus — mais
-            // la laisser entretiendrait l'idée qu'un enfant peut chercher sa
-            // fenêtre par titre, ce qui est faux par construction.
+            // `WINDOW_TITLE` by the same rule: the instruction imposes the window
+            // through `FENETRE_HWND`, and `demarrage::source` only falls back on
+            // lookup by title if that one is missing. Harmless as long as
+            // `FENETRE_HWND` is set — which the line above does — but
+            // leaving it would maintain the idea that a child can look up its
+            // window by title, which is false by construction.
             //
-            // Les modes diagnostic (`CAPTURE_TEST`, `AUDIO_PROBE`,
-            // `MULTIFENETRE_*`…) ne sont volontairement PAS retirés : ils sont
-            // aiguillés par `diagnostics::aiguiller()`, qui court AVANT la
-            // branche superviseur de `main` — un superviseur qui en porterait
-            // un ne serait jamais devenu superviseur, et n'aurait donc jamais
-            // lancé d'enfant. `BITRATE`, `ENCODER_FPS` et `SOURCE_TRACE`
-            // restent hérités à dessein : ce sont des réglages, pas des
-            // changements de mode.
+            // The diagnostic modes (`CAPTURE_TEST`, `AUDIO_PROBE`,
+            // `MULTIFENETRE_*`…) are deliberately NOT removed: they are
+            // routed by `diagnostics::aiguiller()`, which runs BEFORE the
+            // supervisor branch of `main` — a supervisor carrying
+            // one would never have become a supervisor, and would therefore never have
+            // launched a child. `BITRATE`, `ENCODER_FPS` and `SOURCE_TRACE`
+            // stay inherited on purpose: they are settings, not
+            // mode changes.
             .env_remove("TEST_FILE")
             .env_remove("WINDOW_TITLE")
-            // **I7 de la revue finale de branche du sous-bloc D4**, par la
-            // même règle de symétrie que le bloc I6 ci-dessus : `CAPTEUR` est
-            // une variable héritable qui change le SENS d'un processus — un
-            // enfant qui la porterait deviendrait un second capteur, ne
-            // diffuserait rien, et se disputerait le tube nommé avec le vrai.
+            // **I7 of the branch's final review of sub-block D4**, by the
+            // same symmetry rule as block I6 above: `CAPTEUR` is
+            // an inheritable variable changing a process's MEANING — a
+            // child carrying it would become a second capturer, would
+            // broadcast nothing, and would contend for the named pipe with the real one.
             //
-            // Le cas est INATTEIGNABLE aujourd'hui : `main.rs` prend la
-            // branche capteur AVANT la branche superviseur, donc un
-            // superviseur portant `CAPTEUR` ne serait jamais devenu
-            // superviseur et n'aurait jamais lancé d'enfant. On la retire
-            // quand même, exactement comme `lancer_capteur` retire
-            // `SUPERVISEUR` par ce même raisonnement : ce qui protège l'enfant
-            // ne doit pas dépendre de l'ordre de deux `if` dans un autre
-            // fichier.
+            // The case is UNREACHABLE today: `main.rs` takes the
+            // capturer branch BEFORE the supervisor branch, so a
+            // supervisor carrying `CAPTEUR` would never have become a
+            // supervisor and would never have launched a child. We remove it
+            // anyway, exactly as `lancer_capteur` removes
+            // `SUPERVISEUR` by this same reasoning: what protects the child
+            // must not depend on the order of two `if`s in another
+            // file.
             .env_remove("CAPTEUR")
-            // 🔴 **Et `PONT` — le seul des trois oublis qui casserait le
-            // produit.** La branche `PONT` de `main.rs` est placée APRÈS
-            // `CAPTEUR`, mais AVANT `config.superviseur` : un enfant qui
-            // hériterait de `PONT` se prendrait donc pour un pont, tiendrait
-            // une racine de virtualisation ProjFS, et ne capturerait JAMAIS
-            // rien. Contrairement aux deux autres, ce cas-là est atteignable
-            // dès aujourd'hui — il suffit qu'un superviseur soit lancé avec
-            // `PONT` dans son environnement, ce que `scripts/run-agent.sh`
-            // rend possible d'une variable.
+            // 🔴 **And `PONT` — the only one of the three omissions that would break the
+            // product.** The `PONT` branch of `main.rs` is placed AFTER
+            // `CAPTEUR`, but BEFORE `config.superviseur`: a child
+            // inheriting `PONT` would therefore take itself for a bridge, would hold
+            // a ProjFS virtualisation root, and would NEVER capture
+            // anything. Unlike the two others, this case is reachable
+            // today — it is enough for a supervisor to be launched with
+            // `PONT` in its environment, which `scripts/run-agent.sh`
+            // makes possible with one variable.
             .env_remove("PONT");
-        // 🔴 ET L'IDENTITÉ, dont l'oubli est le défaut du 20 août 2026. Un
-        // enfant traverse l'enrôlement de `main.rs` exactement comme le pont :
-        // la recette G1 ne l'a pas vu parce qu'aucune fenêtre n'était ouverte,
-        // donc aucun enfant lancé — le défaut y était invisible sur cette
-        // moitié-là, et il aurait mordu à la première fenêtre.
+        // 🔴 AND THE IDENTITY, whose omission is the defect of August 20th, 2026. A
+        // child goes through `main.rs`'s enrolment exactly like the bridge:
+        // acceptance run G1 did not see it because no window was open,
+        // hence no child launched — the defect was invisible there on that
+        // half, and it would have bitten at the first window.
         self.identite_heritee(&mut commande);
         let mut enfant = commande
             .spawn()
-            .with_context(|| format!("lancement de l'enfant {}", consigne.session.0))?;
+            .with_context(|| format!("launching child {}", consigne.session.0))?;
         let pid = enfant.id();
 
-        // Le seul post-traitement faillible de cette fonction. Le contrat
-        // atomique du trait exige donc qu'il tue lui-même l'enfant avant de
-        // rendre `Err` — sans quoi celui-ci tournerait sans être suivi et sa
-        // sortie virtuelle resterait captive du vivier de dix.
+        // This function's only fallible post-processing. The trait's atomic
+        // contract therefore requires it to kill the child itself before
+        // returning `Err` — otherwise the child would run untracked and its
+        // virtual output would stay captive from the pool of ten.
         let handle = HANDLE(enfant.as_raw_handle());
-        if let Err(erreur) = unsafe { AssignProcessToJobObject(self.job, handle) } {
+        if let Err(error) = unsafe { AssignProcessToJobObject(self.job, handle) } {
             if let Err(mise_a_mort) = enfant.kill() {
                 tracing::error!(
                     pid, %mise_a_mort,
-                    "enfant NON rattaché au job ET NON tué — il survivra au superviseur"
+                    "child NOT attached to the job AND NOT killed — it will outlive the supervisor"
                 );
             }
             let _ = enfant.wait();
-            return Err(anyhow::Error::new(erreur)
-                .context(format!("rattachement de l'enfant {pid} au job object")));
+            return Err(anyhow::Error::new(error)
+                .context(format!("attaching child {pid} to the job object")));
         }
 
         self.enfants().insert(
@@ -117,9 +117,9 @@ impl Lanceur for LanceurDeProcessus {
     fn est_vivant(&self, pid: u32) -> bool {
         let mut enfants = self.enfants();
         let Some(enfant) = enfants.get_mut(&pid) else {
-            // Inconnu de ce lanceur : jamais lancé par nous, ou mort déjà
-            // constatée. Dans les deux cas il n'est pas vivant *pour nous*, et
-            // c'est la seule question posée.
+            // Unknown to this launcher: never launched by us, or death already
+            // observed. In both cases it is not alive *for us*, and
+            // that is the only question asked.
             return false;
         };
         match enfant.processus.try_wait() {
@@ -128,24 +128,24 @@ impl Lanceur for LanceurDeProcessus {
                 true
             }
             Ok(Some(code)) => {
-                tracing::info!(pid, ?code, "enfant terminé");
-                // Le `Child` part avec son handle : le PID redevient
-                // recyclable, mais plus personne ne s'en sert.
+                tracing::info!(pid, ?code, "child finished");
+                // The `Child` goes with its handle: the PID becomes
+                // recyclable again, but no one uses it any more.
                 enfants.remove(&pid);
                 false
             }
-            Err(erreur) => {
-                // Un état illisible n'est PAS une mort : le déclarer mort ferait
-                // détruire la sortie d'un enfant qui capture encore.
+            Err(error) => {
+                // An unreadable state is NOT a death: declaring it dead would
+                // destroy the output of a child still capturing.
                 //
-                // Signalé UNE fois par enfant, et pas à chaque tour de boucle :
-                // voir `Enfant::etat_illisible_signale`.
+                // Signalled ONCE per child, and not at each loop turn:
+                // see `Enfant::etat_illisible_signale`.
                 if !enfant.etat_illisible_signale {
                     enfant.etat_illisible_signale = true;
                     tracing::warn!(
-                        pid, %erreur,
-                        "état de l'enfant illisible, tenu pour vivant \
-                         (signalé une seule fois tant que l'état reste illisible)"
+                        pid, %error,
+                        "child state unreadable, taken as alive \
+                         (reported only once as long as the state stays unreadable)"
                     );
                 }
                 true
@@ -157,9 +157,9 @@ impl Lanceur for LanceurDeProcessus {
         let mut enfant = self
             .enfants()
             .remove(&pid)
-            .with_context(|| format!("processus {pid} inconnu de ce lanceur — rien à tuer"))?;
-        // `Child::kill` passe par le HANDLE retenu, jamais par le numéro : même
-        // si Windows avait recyclé ce PID, aucun tiers ne peut être visé.
+            .with_context(|| format!("process {pid} unknown to this launcher — nothing to kill"))?;
+        // `Child::kill` goes through the retained HANDLE, never through the number: even
+        // if Windows had recycled this PID, no third party can be targeted.
         let issue = enfant.processus.kill();
         let _ = enfant.processus.wait();
         issue.with_context(|| format!("terminaison du processus {pid}"))

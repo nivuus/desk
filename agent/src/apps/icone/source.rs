@@ -1,39 +1,39 @@
-//! D'où vient l'icône d'un raccourci : de son `IconLocation`, ou de sa cible.
+//! Where the icon of a shortcut comes from: its `IconLocation`, or its target.
 //!
-//! **PUR, sans aucun `cfg`.** Il découpe une chaîne et regarde une extension ;
-//! il n'ouvre rien.
+//! **PURE, with no `cfg`.** It splits a string and looks at an extension;
+//! it opens nothing.
 //!
-//! 🔴 LA RÈGLE « CHEMIN VIDE ⇒ C'EST LA CIBLE QUI PORTE L'ICÔNE » N'EST PAS UN
-//! DÉTAIL. Mesuré le 20 août 2026 : **92 des 153 raccourcis retenus de la VM
-//! de développement** portent un `IconLocation` SANS chemin — la spécification
-//! en relève 135 sur 218 avant filtrage. Les traiter comme « pas d'icône »
-//! ferait perdre son icône à **plus d'une application sur deux, en silence**.
+//! 🔴 THE RULE "EMPTY PATH ⇒ THE TARGET CARRIES THE ICON" IS NOT A
+//! DETAIL. Measured on 20 August 2026: **92 of the 153 retained shortcuts of the
+//! development VM** carry an `IconLocation` WITHOUT a path — the specification
+//! notes 135 of 218 before filtering. Treating them as "no icon"
+//! would lose the icon of **more than one application in two, silently**.
 //!
-//! C'est exactement là que les icônes du produit historique se perdaient :
-//! `convertToLinuxPath('')` rend la chaîne vide (`src/lnkParser.js:172`, cité
-//! par la spécification).
+//! That is exactly where the icons of the legacy product got lost:
+//! `convertToLinuxPath('')` returns the empty string (`src/lnkParser.js:172`, cited
+//! by the specification).
 
-/// D'où lire le répertoire d'icônes.
+/// Where to read the icon directory from.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Provenance {
     /// Un module PE — `.exe`, `.dll`, `.mun` : sa ressource `RT_GROUP_ICON`.
     Module(String),
-    /// Un `.ico` autonome : son `ICONDIR`, c'est-à-dire ses premiers octets.
+    /// A standalone `.ico`: its `ICONDIR`, that is its first bytes.
     Ico(String),
-    /// 🔴 RIEN DE LISIBLE, ET CE N'EST PAS UNE ERREUR. Une association de
-    /// type, un espace de noms Shell, un `ProductIcon` d'installeur MSI sans
-    /// extension. L'image sera extraite quand même — le Shell sait la rendre —
-    /// mais sa PROVENANCE restera `SourceMax::NonMesuree`. **Mesuré : 37 des
-    /// 153 applications de cette VM.**
-    Aucune,
+    /// 🔴 NOTHING READABLE, AND IT IS NOT AN ERROR. A type
+    /// association, a Shell namespace, an MSI installer `ProductIcon` without
+    /// extension. The image will be extracted anyway — the Shell can render it —
+    /// but its PROVENANCE will stay `SourceMax::NonMesuree`. **Measured: 37 of the
+    /// 153 applications of this VM.**
+    Absent,
 }
 
-/// ⚠️ LA DERNIÈRE VIRGULE, JAMAIS LA PREMIÈRE.
+/// ⚠️ THE LAST COMMA, NEVER THE FIRST.
 ///
-/// Un chemin Windows peut en contenir une — `C:\Program Files\Machin, Inc\a.exe`
-/// est parfaitement légal — et découper sur la première rendrait
-/// `C:\Program Files\Machin` comme chemin et ` Inc\a.exe,0` comme index. Le
-/// format est `<chemin>,<index>` : c'est la DERNIÈRE virgule qui sépare.
+/// A Windows path may contain one — `C:\Program Files\Machin, Inc\a.exe`
+/// is perfectly legal — and splitting on the first would return
+/// `C:\Program Files\Machin` as the path and ` Inc\a.exe,0` as the index. The
+/// format is `<path>,<index>`: it is the LAST comma that separates.
 fn couper(icon_location: &str) -> (&str, Option<&str>) {
     match icon_location.rfind(',') {
         Some(i) => (&icon_location[..i], Some(&icon_location[i + 1..])),
@@ -41,11 +41,11 @@ fn couper(icon_location: &str) -> (&str, Option<&str>) {
     }
 }
 
-/// D'où vient l'icône, `IconLocation` du `.lnk` et cible à l'appui.
+/// Where the icon comes from, given the `IconLocation` of the `.lnk` and the target.
 pub fn provenance(icon_location: &str, cible: &str) -> Provenance {
     let (chemin, _) = couper(icon_location);
-    // 🔴 LES 92 SUR 153 : chemin vide — y compris la chaîne entièrement vide,
-    // et le `,0` seul — renvoie à la CIBLE.
+    // 🔴 THE 92 OUT OF 153: an empty path — including the entirely empty string,
+    // and a lone `,0` — points back to the TARGET.
     let chemin = if chemin.trim().is_empty() {
         cible
     } else {
@@ -53,37 +53,37 @@ pub fn provenance(icon_location: &str, cible: &str) -> Provenance {
     };
     let chemin = chemin.trim();
     if chemin.is_empty() {
-        return Provenance::Aucune;
+        return Provenance::Absent;
     }
     match extension(chemin).as_deref() {
         Some("ico") => Provenance::Ico(chemin.to_string()),
-        // `.mun` est le conteneur de ressources que Windows 10+ emploie pour
-        // les icônes du système (`imageres.dll` y renvoie).
+        // `.mun` is the resource container Windows 10+ uses for
+        // system icons (`imageres.dll` points to it).
         Some("exe" | "dll" | "mun" | "cpl" | "scr" | "ocx") => {
             Provenance::Module(chemin.to_string())
         }
-        // ⚠️ SANS EXTENSION, ON NE SAIT PAS LIRE — et le dire vaut mieux que
-        // de deviner. `C:\Windows\Installer\{1BEA…}\ProductIcon` en est le cas
-        // le plus fréquent de ce corpus.
-        _ => Provenance::Aucune,
+        // ⚠️ WITHOUT AN EXTENSION, WE CANNOT READ — and saying so is better than
+        // guessing. `C:\Windows\Installer\{1BEA…}\ProductIcon` is the most
+        // frequent case of this corpus.
+        _ => Provenance::Absent,
     }
 }
 
-/// L'extension en minuscules, ou `None` — jamais celle d'un répertoire parent.
+/// The extension in lowercase, or `None` — never that of a parent directory.
 fn extension(chemin: &str) -> Option<String> {
-    let dernier = chemin.rsplit(['\\', '/']).next()?;
-    let point = dernier.rfind('.')?;
-    if point + 1 >= dernier.len() {
+    let last = chemin.rsplit(['\\', '/']).next()?;
+    let point = last.rfind('.')?;
+    if point + 1 >= last.len() {
         return None;
     }
-    Some(dernier[point + 1..].to_ascii_lowercase())
+    Some(last[point + 1..].to_ascii_lowercase())
 }
 
-/// L'index de l'icône dans le module, `0` à défaut.
+/// The index of the icon in the module, `0` by default.
 ///
-/// ⚠️ IL PEUT ÊTRE NÉGATIF : un index négatif désigne une ressource par son
-/// IDENTIFIANT et non par son rang, et c'est un usage courant de
-/// `imageres.dll`. D'où l'`i32`, jamais un `u32`.
+/// ⚠️ IT MAY BE NEGATIVE: a negative index designates a resource by its
+/// IDENTIFIER and not by its rank, and it is a common usage of
+/// `imageres.dll`. Hence the `i32`, never a `u32`.
 pub fn index(icon_location: &str) -> i32 {
     match couper(icon_location) {
         (_, Some(i)) => i.trim().parse().unwrap_or(0),

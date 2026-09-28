@@ -1,60 +1,60 @@
-// Les types de charge utile de l'INSTALLATION d'un logiciel téléversé, et les
-// gardes de forme qui les jugent.
+// The payload types of the INSTALLATION of an uploaded program, and the
+// shape guards that judge them.
 //
-// 🔴 EXTRAIT AVANT L'ADDITION, comme `plateforme-apps.ts` — même raison, même
-// mécanisme : `plateforme.ts` était à 426 lignes après la première extraction,
-// et le sous-bloc G3 y ajoute trois messages, deux énumérations, trois
-// encodeurs et leurs branches de parseur. La doctrine de `CLAUDE.md` est de
-// rendre la marge par une extraction jouée D'AVANCE, jamais par une
+// 🔴 EXTRACTED BEFORE THE ADDITION, like `plateforme-apps.ts` — same reason, same
+// mechanism: `plateforme.ts` was at 426 lines after the first extraction,
+// and sub-block G3 adds three messages, two enums, three
+// encoders and their parser branches. The doctrine of `CLAUDE.md` is to
+// restore the margin through an extraction played AHEAD, never through
 // compression.
 //
-// ⚠️ CE FICHIER NE DOIT IMPORTER NI `node:` NI AUCUN DOM : il est chargé par le
-// service ET par le navigateur.
+// ⚠️ THIS FILE MUST IMPORT NEITHER `node:` NOR ANY DOM: it is loaded by the
+// service AND by the browser.
 //
-// 🔴 IL IMPORTE `PLATEFORME_VERSION` DE `plateforme-version.ts`, ET NON DE
-// `plateforme.ts` : ce dernier importe CE module, et le cycle qui en résulterait
-// serait un cycle de VALEURS — pas de types, que TypeScript efface —, donc un
-// vrai cycle à l'exécution, du genre qui rend une constante `undefined` selon
-// l'ordre d'évaluation des modules.
+// 🔴 IT IMPORTS `PLATEFORME_VERSION` FROM `plateforme-version.ts`, AND NOT FROM
+// `plateforme.ts`: the latter imports THIS module, and the resulting cycle
+// would be a cycle of VALUES — not of types, which TypeScript erases —, hence a
+// real runtime cycle, the kind that makes a constant `undefined` depending on
+// the module evaluation order.
 
 import { PLATEFORME_VERSION } from './plateforme-version';
-import { chaineNonVide, estChaine } from './plateforme-gardes';
+import { nonEmptyString, isString } from './plateforme-gardes';
 
 /**
- * Où en est une installation.
+ * Where an installation stands.
  *
- * ⚠️ LA PHASE `empreinte` N'EST PAS ICI, et ce n'est pas un oubli : elle se
- * déroule dans le NAVIGATEUR, avant que la plateforme n'ait la moindre ligne à
- * écrire. Elle ne traverse jamais le canal `/agent`.
+ * ⚠️ THE `empreinte` PHASE IS NOT HERE, and it is not an oversight: it takes
+ * place in the BROWSER, before the platform has a single row to
+ * write. It never crosses the `/agent` channel.
  *
- * 🔴 `execution` NE PORTE AUCUN POURCENTAGE : un installeur Windows n'en publie
- * pas, et en inventer un serait mentir sur une progression que personne ne
- * mesure. Elle porte le temps écoulé, et l'interface affiche un état
- * indéterminé.
+ * 🔴 `execution` CARRIES NO PERCENTAGE: a Windows installer publishes
+ * none, and inventing one would lie about a progress nobody
+ * measures. It carries the elapsed time, and the interface shows an
+ * indeterminate state.
  */
 export type Phase = 'transfert' | 'execution' | 'reconciliation';
 
 /**
- * Ce qu'une installation a produit.
+ * What an installation produced.
  *
- * 🔴 LE CODE DE SORTIE N'ENTRE PAS DANS CETTE DÉCISION. `msiexec` rend 3010
- * pour un succès qui demande un redémarrage, et beaucoup d'installeurs rendent
- * 0 après une annulation : un produit qui jugerait sur le code se tromperait
- * dans les deux sens. Il est RAPPORTÉ à côté de l'issue, jamais interprété.
+ * 🔴 THE EXIT CODE DOES NOT ENTER THIS DECISION. `msiexec` returns 3010
+ * for a success that requires a reboot, and many installers return
+ * 0 after a cancellation: a product judging on the code would be wrong
+ * in both directions. It is REPORTED next to the outcome, never interpreted.
  *
- * ⚠️ `refusee` est une ADDITION à la spécification, qui n'en nomme que trois.
- * Empreinte fausse, élévation requise, extension refusée, processus assigné à
- * un job object : ce ne sont ni des succès, ni des « sans effet », ni des
- * ignorances — ce sont des refus, et ils portent leur motif. Les fondre dans
- * `issue-inconnue` ferait lire « on ne sait pas » là où l'on sait très bien.
+ * ⚠️ `refusee` is an ADDITION to the specification, which only names three.
+ * Wrong fingerprint, elevation required, extension refused, process assigned to
+ * a job object: these are neither successes, nor "no effect", nor
+ * unknowns — they are refusals, and they carry their reason. Merging them into
+ * `issue-inconnue` would read "we do not know" where we know very well.
  */
 export type Issue = 'reussie' | 'sans-effet' | 'issue-inconnue' | 'refusee';
 
 /**
- * L'ordre d'installation. **Les octets ne l'empruntent jamais** : il porte une
- * URL, et l'agent va tirer le fichier en HTTP avec son jeton d'agent. Le canal
- * est en JSON et porte le battement de cœur ; une tranche de 8 Mio y coûterait
- * +33 % en base64 tout en bloquant ce battement.
+ * The installation order. **The bytes never travel through it**: it carries a
+ * URL, and the agent pulls the file over HTTP with its agent token. The channel
+ * is JSON and carries the heartbeat; an 8 MiB slice would cost
+ * +33 % in base64 there while blocking that heartbeat.
  */
 export interface InstallerMessage {
     v: number;
@@ -62,11 +62,11 @@ export interface InstallerMessage {
     installation: string;
     url: string;
     nom: string;
-    taille: number;
+    taille: number; // policy: allow-fr - frozen wire key or SQLite column
     sha256: string;
 }
 
-/** Où en est une installation. ÉCHANTILLONNÉE — voir `cadence.rs` côté agent. */
+/** Where an installation stands. SAMPLED — see `cadence.rs` on the agent side. */
 export interface ProgressionMessage {
     v: number;
     type: 'progression';
@@ -78,13 +78,13 @@ export interface ProgressionMessage {
 }
 
 /**
- * L'issue, et ce qui s'est réellement passé.
+ * The outcome, and what really happened.
  *
- * 🔴 `code_sortie` EST `number | null`, JAMAIS UN `-1` SENTINELLE : « pas de
- * code » et « code −1 » sont deux faits différents.
+ * 🔴 `code_sortie` IS `number | null`, NEVER A SENTINEL `-1`: "no
+ * code" and "code −1" are two different facts.
  *
- * ⚠️ UN `journal` VIDE EST LE CAS NORMAL, pas un échec : la plupart des
- * installeurs Windows sont graphiques et n'écrivent rien sur les flux standard.
+ * ⚠️ AN EMPTY `journal` IS THE NORMAL CASE, not a failure: most
+ * Windows installers are graphical and write nothing on the standard streams.
  */
 export interface TermineMessage {
     v: number;
@@ -100,60 +100,60 @@ export interface TermineMessage {
 const PHASES: readonly Phase[] = ['transfert', 'execution', 'reconciliation'];
 const ISSUES: readonly Issue[] = ['reussie', 'sans-effet', 'issue-inconnue', 'refusee'];
 
-export function estPhase(valeur: unknown): valeur is Phase {
-    return typeof valeur === 'string' && (PHASES as readonly string[]).includes(valeur);
+export function estPhase(value: unknown): value is Phase {
+    return typeof value === 'string' && (PHASES as readonly string[]).includes(value);
 }
 
-export function estIssueInstallation(valeur: unknown): valeur is Issue {
-    return typeof valeur === 'string' && (ISSUES as readonly string[]).includes(valeur);
+export function estIssueInstallation(value: unknown): value is Issue {
+    return typeof value === 'string' && (ISSUES as readonly string[]).includes(value);
 }
 
 /**
- * Un compte d'octets ou de millisecondes : entier, fini, non négatif, et sous
+ * A count of bytes or milliseconds: integer, finite, non-negative, and below
  * `Number.MAX_SAFE_INTEGER`.
  *
- * ⚠️ `typeof x === 'number'` NE SUFFIT PAS : il laisse passer `NaN`, `Infinity`
- * et `1.5`. Un `NaN` traverserait jusqu'à la base, où il deviendrait un `NULL`
- * sur une colonne `NOT NULL` — c'est-à-dire une erreur SQL très loin de sa
+ * ⚠️ `typeof x === 'number'` IS NOT ENOUGH: it lets `NaN`, `Infinity`
+ * and `1.5` through. A `NaN` would travel all the way to the database, where it would become a `NULL`
+ * on a `NOT NULL` column — that is an SQL error very far from its
  * cause.
  */
-export function estCompte(valeur: unknown): valeur is number {
+export function estCompte(value: unknown): value is number {
     return (
-        typeof valeur === 'number' &&
-        Number.isSafeInteger(valeur) &&
-        valeur >= 0
+        typeof value === 'number' &&
+        Number.isSafeInteger(value) &&
+        value >= 0
     );
 }
 
 /**
- * Un champ facultatif **OBLIGATOIRE SUR LE FIL** : la clé doit être présente,
- * sa valeur peut être `null`.
+ * An optional field **MANDATORY ON THE WIRE**: the key must be present,
+ * its value may be `null`.
  *
- * 🔴 C'EST LE JUMEAU EXACT DE `champs::option_obligatoire` CÔTÉ RUST, et sans
- * lui les deux bouts ne diraient pas la même chose. `parsed.motif` vaut
- * `undefined` aussi bien pour « clé absente » que pour « clé à `undefined` » :
- * seul `'motif' in parsed` distingue le champ manquant, et c'est cette
- * distinction que le bump de version existe pour rendre visible. Un `termine`
- * d'une version antérieure, sans `motif`, doit être REFUSÉ — pas complété avec
- * un motif absent.
+ * 🔴 IT IS THE EXACT TWIN OF `champs::option_obligatoire` ON THE RUST SIDE, and without
+ * it the two ends would not say the same thing. `parsed.motif` is
+ * `undefined` both for "key missing" and for "key set to `undefined`":
+ * only `'motif' in parsed` tells the missing field apart, and it is that
+ * distinction the version bump exists to make visible. A `termine`
+ * from an older version, without `motif`, must be REFUSED — not filled in with
+ * a missing reason.
  */
 export function presentEtNulOu<T>(
     objet: Record<string, unknown>,
     cle: string,
-    garde: (valeur: unknown) => valeur is T,
-): { present: true; valeur: T | null } | { present: false } {
+    garde: (value: unknown) => value is T,
+): { present: true; value: T | null } | { present: false } {
     if (!(cle in objet)) return { present: false };
-    const valeur = objet[cle];
-    if (valeur === null) return { present: true, valeur: null };
-    if (garde(valeur)) return { present: true, valeur };
+    const value = objet[cle];
+    if (value === null) return { present: true, value: null };
+    if (garde(value)) return { present: true, value };
     return { present: false };
 }
 
-export function estEntierSigne(valeur: unknown): valeur is number {
-    return typeof valeur === 'number' && Number.isSafeInteger(valeur);
+export function estEntierSigne(value: unknown): value is number {
+    return typeof value === 'number' && Number.isSafeInteger(value);
 }
 
-// --- Les encodeurs et les lectures, déplacés ici depuis `plateforme.ts` ---
+// --- The encoders and the readers, moved here from `plateforme.ts` ---
 export function encodeProgression(
     installation: string,
     phase: Phase,
@@ -174,11 +174,11 @@ export function encodeProgression(
 }
 
 /**
- * ⚠️ `motif` ET `code_sortie` SONT ÉCRITS MÊME À `null`, et c'est ce que
- * `JSON.stringify` fait d'un `null` — mais PAS d'un `undefined`, qu'il OMET.
- * Passer `undefined` produirait une chaîne sans la clé, que le jumeau Rust
- * refuserait par `option_obligatoire`. La signature exige donc `| null`, pas
- * `?`, et c'est la seule chose qui empêche l'omission d'être écrivable.
+ * ⚠️ `motif` AND `code_sortie` ARE WRITTEN EVEN AS `null`, and that is what
+ * `JSON.stringify` does with a `null` — but NOT with an `undefined`, which it OMITS.
+ * Passing `undefined` would produce a string without the key, which the Rust twin
+ * would refuse through `option_obligatoire`. The signature thus demands `| null`, not
+ * `?`, and that is the only thing that keeps the omission from being writable.
  */
 export function encodeTermine(
     installation: string,
@@ -202,7 +202,7 @@ export function encodeTermine(
 }
 
 export function lireProgression(parsed: Record<string, unknown>): ProgressionMessage | null {
-    if (!chaineNonVide(parsed.installation)) return null;
+    if (!nonEmptyString(parsed.installation)) return null;
     if (!estPhase(parsed.phase)) return null;
     if (
         !estCompte(parsed.octets_faits) ||
@@ -223,45 +223,45 @@ export function lireProgression(parsed: Record<string, unknown>): ProgressionMes
 }
 
 export function lireTermine(parsed: Record<string, unknown>): TermineMessage | null {
-    if (!chaineNonVide(parsed.installation)) return null;
+    if (!nonEmptyString(parsed.installation)) return null;
     if (!estIssueInstallation(parsed.issue)) return null;
-    // 🔴 `presentEtNulOu` PLUTÔT QU'UN TEST DE VALEUR : la clé doit être
-    // PRÉSENTE, sa valeur peut être `null`. C'est le jumeau exact de
-    // `champs::option_obligatoire` côté Rust, et sans lui un `termine`
-    // d'une version antérieure — sans `motif` — serait accepté avec un
-    // motif silencieusement absent. C'est le déguisement précis que le
-    // bump de version existe pour empêcher.
-    const motif = presentEtNulOu(parsed, 'motif', estChaine);
+    // 🔴 `presentEtNulOu` RATHER THAN A VALUE TEST: the key must be
+    // PRESENT, its value may be `null`. It is the exact twin of
+    // `champs::option_obligatoire` on the Rust side, and without it a `termine`
+    // from an older version — without `motif` — would be accepted with a
+    // silently missing reason. That is the exact disguise the
+    // version bump exists to prevent.
+    const motif = presentEtNulOu(parsed, 'motif', isString);
     if (!motif.present) return null;
     const code = presentEtNulOu(parsed, 'code_sortie', estEntierSigne);
     if (!code.present) return null;
-    if (!estChaine(parsed.journal)) return null;
+    if (!isString(parsed.journal)) return null;
     if (typeof parsed.journal_tronque !== 'boolean') return null;
     return {
         type: 'termine',
         v: PLATEFORME_VERSION,
         installation: parsed.installation,
         issue: parsed.issue,
-        motif: motif.valeur,
-        code_sortie: code.valeur,
+        motif: motif.value,
+        code_sortie: code.value,
         journal: parsed.journal,
         journal_tronque: parsed.journal_tronque,
     };
 }
 
 /**
- * L'ordre d'installation, encodé ICI et nulle part ailleurs.
+ * The installation order, encoded HERE and nowhere else.
  *
- * ⚠️ L'ORDRE DES CHAMPS EST `type` PUIS `v`, comme partout dans ce protocole :
- * serde émet le tag interne en premier, `JSON.stringify` respecte l'ordre
- * d'insertion, et `plateforme-vectors.json` fige la chaîne EXACTE que les DEUX
- * langages doivent produire.
+ * ⚠️ THE FIELD ORDER IS `type` THEN `v`, as everywhere in this protocol:
+ * serde emits the internal tag first, `JSON.stringify` respects insertion
+ * order, and `plateforme-vectors.json` freezes the EXACT string BOTH
+ * languages must produce.
  */
 export function encodeInstaller(
     installation: string,
     url: string,
     nom: string,
-    taille: number,
+    size: number,
     sha256: string,
 ): string {
     const message: InstallerMessage = {
@@ -270,7 +270,7 @@ export function encodeInstaller(
         installation,
         url,
         nom,
-        taille,
+        taille: size, // policy: allow-fr - frozen wire key or SQLite column
         sha256,
     };
     return JSON.stringify(message);

@@ -1,80 +1,80 @@
-// LE POINT DE CONVERGENCE DES DEUX CHEMINS DE DÉPÔT D'UN INSTALLEUR.
+// THE CONVERGENCE POINT OF THE TWO PATHS FOR DROPPING AN INSTALLER.
 //
-// 🔴 C'EST CE MODULE QUI REND LE CRITÈRE ② DÉCIDABLE, et son existence est
-// une décision, pas un rangement. L'amendement du 28/07/2026 au cadrage
-// produit dit : « **tenter l'enregistrement, avec repli silencieux sur le
-// glisser-déposer** », et **aucune fonctionnalité ne doit dépendre** de
-// `file_handlers`. Deux chemins mènent donc un fichier ici :
+// 🔴 IT IS THIS MODULE THAT MAKES CRITERION ② DECIDABLE, and its existence is
+// a decision, not tidying. The amendment of 28/07/2026 to the product framing
+// says: "**attempt registration, with a silent fallback to
+// drag-and-drop**", and **no feature may depend** on
+// `file_handlers`. Two paths therefore lead a file here:
 //
-//   ① le GLISSER-DÉPOSER (`drop`, `DataTransfer.files`) et le sélecteur de
-//      fichiers — le chemin NOMINAL, qui doit fonctionner SEUL ;
-//   ② la FILE DE LANCEMENT (`launchQueue.setConsumer`), qui n'existe que si
-//      le navigateur a honoré `file_handlers` — donc seulement dans une PWA
-//      installée, et pas du tout ailleurs.
+//   ① DRAG-AND-DROP (`drop`, `DataTransfer.files`) and the file
+//      picker — the NOMINAL path, which must work ALONE;
+//   ② the LAUNCH QUEUE (`launchQueue.setConsumer`), which only exists if
+//      the browser honoured `file_handlers` — hence only in an installed
+//      PWA, and not at all elsewhere.
 //
-// **Les deux appellent `deposer`, et rien d'autre.** C'est ce qui donne son
-// sens à la ROUGE du critère ② : retirer ② doit laisser ① VERT. S'ils avaient
-// chacun leur propre séquence, la rouge ne mesurerait que la moitié qu'elle
-// retire, et un dépôt cassé au chemin ① passerait inaperçu.
+// **Both call `deposer`, and nothing else.** That is what gives its
+// meaning to criterion ②'s RED run: removing ② must leave ① GREEN. Had they
+// each their own sequence, the red run would only measure the half it
+// removes, and a drop broken on path ① would go unnoticed.
 //
-// 🔴 AUCUN DOM ICI. `televerser` fait déjà tout le travail — empreindre,
-// créer, déposer les tranches manquantes, sceller — et il est PUR, ses
-// dépendances injectées. Ce module ne fait que **converger** et **traduire le
-// résultat en une phrase**, ce qui est la seule chose que les deux chemins
-// avaient en commun et qu'aucun des deux ne devait porter deux fois.
+// 🔴 NO DOM HERE. `televerser` already does all the work — fingerprint,
+// create, upload the missing slices, seal — and it is PURE, its
+// dependencies injected. This module only **converges** and **translates the
+// result into a sentence**, which is the only thing the two paths
+// had in common and that neither should carry twice.
 
 import { televerser, type DepsTeleversement, type Issue } from './televersement';
 
-/// Ce que le hub montre après un dépôt : un ton et une phrase.
+/// What the hub shows after a drop: a tone and a sentence.
 ///
-/// ⚠️ `Ton` EST RECOPIÉ PLUTÔT QU'IMPORTÉ, et c'est une dette CONNUE du dépôt,
-/// pas une négligence : `Ton` et `CLASSE_DE_TON` sont déjà dupliqués entre
-/// `shell.ts`, `connexion.ts` et `ecran-terminal.ts` — c'est le legs n°8 de ⑥,
-/// dont le point de chute nommé est la couche `design/`. G5 ne l'unifie pas
-/// (⑥ est clos, et ④ n'a pas juridiction sur ses modules) et **ne l'aggrave
-/// pas non plus** : il réemploie le vocabulaire au lieu d'en inventer un
-/// quatrième.
+/// ⚠️ `Ton` IS COPIED RATHER THAN IMPORTED, and it is a KNOWN debt of the repository,
+/// not negligence: `Ton` and `CLASSE_DE_TON` are already duplicated between
+/// `shell.ts`, `connexion.ts` and `ecran-terminal.ts` — it is legacy item no. 8 of ⑥,
+/// whose named landing place is the `design/` layer. G5 does not unify it
+/// (⑥ is closed, and ④ has no jurisdiction over its modules) and **does not make it worse
+/// either**: it reuses the vocabulary instead of inventing a
+/// fourth one.
 export type Ton = 'neutre' | 'succes' | 'danger';
 
 export interface Resume {
     ton: Ton;
     texte: string;
-    /// L'identifiant du téléversement, quand il en existe un — c'est ce qui
-    /// permettrait de REPRENDRE. Présent même sur un refus, `televerser` le
-    /// capturant plutôt que de le passer à chaque issue.
+    /// The upload identifier, when there is one — it is what
+    /// would allow RESUMING. Present even on a refusal, `televerser`
+    /// capturing it rather than passing it at each outcome.
     id?: string;
 }
 
-/// Dépose un fichier, et rend ce qu'il faut en dire.
+/// Drops a file, and returns what should be said about it.
 ///
-/// ⚠️ CETTE FONCTION NE LÈVE PAS SUR UN REFUS — elle en rend un `Resume`.
-/// Une panne d'ENVIRONNEMENT (le `fetch` qui rejette hors interruption)
-/// remonte, elle, telle quelle : c'est l'arbitrage de
-/// `plateforme/src/orchestration/refus.ts`, que `televersement.ts` tient déjà,
-/// et le déguiser ici ferait passer une panne pour une décision de protocole.
-export async function deposer(fichier: File, deps: DepsTeleversement): Promise<Resume> {
-    return resumer(fichier, await televerser(fichier, deps));
+/// ⚠️ THIS FUNCTION DOES NOT THROW ON A REFUSAL — it returns a `Resume` for it.
+/// An ENVIRONMENT failure (the `fetch` that rejects outside an interruption)
+/// propagates as is: it is the arbitration of
+/// `plateforme/src/orchestration/refus.ts`, which `televersement.ts` already holds,
+/// and disguising it here would pass a failure off as a protocol decision.
+export async function deposer(file: File, deps: DepsTeleversement): Promise<Resume> {
+    return resumer(file, await televerser(file, deps));
 }
 
-/// La traduction d'une issue en une phrase. SÉPARÉE de `deposer` pour être
-/// éprouvable sans monter un `fetch` factice complet.
-export function resumer(fichier: File, issue: Issue): Resume {
+/// Translating an outcome into a sentence. SEPARATED from `deposer` to be
+/// testable without setting up a complete fake `fetch`.
+export function resumer(file: File, issue: Issue): Resume {
     if (issue.etat === 'scelle') {
         return {
             ton: 'succes',
-            texte: `${fichier.name} a été téléversé et scellé (${issue.deposees.length} tranche(s) déposée(s)).`,
+            texte: `${file.name} was uploaded and sealed (${issue.deposees.length} chunk(s) deposited).`,
             id: issue.id,
         };
     }
     const r = issue.refus;
-    // ⚠️ LE MOTIF DU SERVICE EST RENDU TEL QUEL, JAMAIS RÉÉCRIT. Le vocabulaire
-    // des refus appartient à `plateforme/`, que `client/` ne peut pas importer ;
-    // le traduire ici en ferait une copie qu'aucun type ne confronte à sa
-    // source, silencieusement fausse au renommage — le défaut que
-    // `connexion.ts` déclare sur `aucune-vm` et que P4 a légué sans le fermer.
+    // ⚠️ THE SERVICE'S REASON IS RETURNED AS IS, NEVER REWRITTEN. The vocabulary
+    // of refusals belongs to `plateforme/`, which `client/` cannot import;
+    // translating it here would make a copy no type confronts with its
+    // source, silently wrong on renaming — the defect
+    // `connexion.ts` declares about `aucune-vm` and which P4 bequeathed without closing it. (policy: allow-fr, wire refusal code)
     const texte =
         r.source === 'client'
-            ? `${fichier.name} n'a pas été téléversé : ${r.motif} (${r.detail}).`
-            : `${fichier.name} a été refusé par le service à l'étape « ${r.etape} » : ${r.motif}.`;
+            ? `${file.name} was not uploaded: ${r.motif} (${r.detail}).`
+            : `${file.name} was refused by the service at step « ${r.etape} »: ${r.motif}.`;
     return { ton: 'danger', texte, id: issue.id };
 }

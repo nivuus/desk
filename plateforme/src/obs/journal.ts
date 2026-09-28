@@ -1,85 +1,85 @@
-// La ligne de journal des évènements NEUFS de P5. Fonction PURE : elle REND la
-// ligne, elle ne l'ÉCRIT pas.
+// The log line for the NEW events of P5. PURE function: it RETURNS the
+// line, it does not WRITE it.
 //
-// 🔴 POURQUOI LA MIGRATION GÉNÉRALE N'A PAS LIEU, et voici le compte qui l'a
-// tranchée plutôt qu'une opinion. Relevé le 20 août 2026 :
-//   - `console.<methode>` hors tests et hors harnais rend DIX-NEUF
-//     occurrences dans ONZE fichiers, dont une est une CHAÎNE DE CODE dans
-//     `base/pilote-sqlite.ts:29` et non un appel — donc DIX-HUIT sites réels.
-//     Les plus chargés : `agents/canal.ts` (5), `signaling/trace.ts` (3),
-//     `signaling/relais.ts` (2), `http/routes-applications.ts` (2) ;
+// 🔴 WHY THE GENERAL MIGRATION DOES NOT HAPPEN, and here is the count that
+// settled it rather than an opinion. Taken on 20 August 2026:
+//   - `console.<methode>` outside tests and outside harnesses gives NINETEEN
+//     occurrences in ELEVEN files, one of which is a CODE STRING in
+//     `base/pilote-sqlite.ts:29` and not a call — hence EIGHTEEN real sites.
+//     The busiest: `agents/canal.ts` (5), `signaling/trace.ts` (3),
+//     `signaling/relais.ts` (2), `http/routes-applications.ts` (2);
 //
-//     ⚠️ **CE COMPTE A ÉTÉ PÉRIMÉ PAR P5 LUI-MÊME, DEUX TÂCHES APRÈS SA
-//     RÉDACTION** (revue transverse, 20 août 2026, remesuré par la commande) :
-//     **VINGT-ET-UNE** occurrences, toujours dans **ONZE** fichiers, et
-//     `agents/canal.ts` en porte **SIX**. Les deux sites neufs sont
-//     `http/routes-auth.ts:262` et `agents/canal.ts:399` — les lignes de frein
-//     que les tâches 7 et 8 ont posées, **et toutes deux passent par ce
-//     module-ci**. **LA DETTE, ELLE, N'A PAS BOUGÉ : elle vaut toujours
-//     DIX-HUIT sites de forme libre**, puisque les deux additions sont
-//     structurées. C'est le nombre à reprendre, pas celui des occurrences ;
-//   - `grep -rln 'spyOn(console' --include='*.test.ts'` rend HUIT fichiers de
-//     test qui capturent la console ET ASSERTENT SUR LE CONTENU du message :
+//     ⚠️ **THIS COUNT WAS MADE STALE BY P5 ITSELF, TWO TASKS AFTER IT WAS
+//     WRITTEN** (cross-cutting review, 20 August 2026, remeasured by the command):
+//     **TWENTY-ONE** occurrences, still in **ELEVEN** files, and
+//     `agents/canal.ts` carries **SIX** of them. The two new sites are
+//     `http/routes-auth.ts:262` and `agents/canal.ts:399` — the brake lines
+//     that tasks 7 and 8 added, **and both go through this
+//     module**. **THE DEBT, ON THE OTHER HAND, HAS NOT MOVED: it is still
+//     EIGHTEEN free-form sites**, since the two additions are
+//     structured. That is the number to pick up, not the occurrence count;
+//   - `grep -rln 'spyOn(console' --include='*.test.ts'` gives EIGHT test
+//     files that capture the console AND ASSERT ON THE CONTENT of the message:
 //     `agents/canal.test.ts`, `agents/canal-apps.test.ts`,
 //     `agents/registre.test.ts`, `http/routes-applications.test.ts`,
 //     `http/routes-auth.test.ts`, `orchestration/inventaire-statique.test.ts`,
-//     `signaling/garde-fil.test.ts`, `signaling/trace.test.ts` ;
+//     `signaling/garde-fil.test.ts`, `signaling/trace.test.ts`;
 //
-//   ⚠️ CES NOMBRES SONT CEUX DU 20 AOÛT 2026, RELEVÉS PAR LA COMMANDE, ET ILS
-//   NE SONT PAS CEUX DU PLAN DE P5 — qui annonce 15 occurrences, 9 fichiers et
-//   5 fichiers de test. L'écart n'est pas une erreur du plan : le sous-bloc G1
-//   a été exécuté ENTIÈREMENT entre sa rédaction et celle-ci, et il a ajouté
-//   `agents/registre.ts`, `http/routes-applications.ts` et leurs tests. Le
-//   coût de la migration a donc AUGMENTÉ de trois fichiers de test depuis que
-//   la décision de ne pas la faire a été prise — ce qui la renforce plutôt
-//   qu'il ne l'affaiblit. Les recompter avant de s'y fier : ils dériveront
-//   encore.
-//   - `index.ts` porte un COUPLAGE NOMMÉ : sa ligne d'annonce doit contenir
-//     `le port <n>`, sans quoi `signaling/resilience.test.ts` expire au bout
-//     de 10 s SANS QUE RIEN NE DÉSIGNE LA CAUSE.
-// Dix-huit sites, huit fichiers de test qui assertent sur des messages, un
-// couplage nommé, et AUCUN critère pour juger le résultat : c'est exactement
-// le churn non mesuré que ce dépôt punit, au dernier sous-bloc d'une branche.
+//   ⚠️ THESE NUMBERS ARE THOSE OF 20 AUGUST 2026, TAKEN BY THE COMMAND, AND THEY
+//   ARE NOT THOSE OF THE P5 PLAN — which announces 15 occurrences, 9 files and
+//   5 test files. The gap is not a mistake of the plan: sub-block G1
+//   was executed ENTIRELY between its writing and this one, and it added
+//   `agents/registre.ts`, `http/routes-applications.ts` and their tests. The
+//   cost of the migration has therefore GROWN by three test files since
+//   the decision not to do it was taken — which strengthens it rather
+//   than weakening it. Recount them before relying on them: they will drift
+//   again.
+//   - `index.ts` carries a NAMED COUPLING: its announcement line must contain
+//     `le port <n>`, otherwise `signaling/resilience.test.ts` times out after
+//     10 s WITHOUT ANYTHING POINTING AT THE CAUSE.
+// Eighteen sites, eight test files asserting on messages, a
+// named coupling, and NO criterion to judge the result: that is exactly
+// the unmeasured churn this repository punishes, at the last sub-block of a branch.
 //
-// CE QUE CE MODULE SERT DONC : les évènements NEUFS de P5 — `frein`, `sante`,
-// `enrolement freine` — et EUX SEULS. Les quatorze sites existants gardent
-// leur forme libre.
+// WHAT THIS MODULE THEREFORE SERVES: the NEW events of P5 — `frein`, `sante`,
+// `enrolement freine` — and THOSE ALONE. The fourteen existing sites keep
+// their free form.
 //
-// ⚠️ LE COÛT DE LA MIGRATION EST CHIFFRÉ CI-DESSUS POUR QUE LE CHANTIER QUI LA
-// FERA N'AIT PAS À LE RECOMPTER. Ce qu'elle demande, dans l'ordre : reprendre
-// les huit fichiers de test qui assertent sur des messages (ce sont eux le
-// coût, pas les dix-huit `console.`), puis le couplage d'`index.ts`, qui est
-// le seul dont la rupture est SILENCIEUSE.
+// ⚠️ THE COST OF THE MIGRATION IS COUNTED ABOVE SO THAT THE WORK THAT
+// DOES IT DOES NOT HAVE TO RECOUNT IT. What it requires, in order: rework
+// the eight test files that assert on messages (they are the
+// cost, not the eighteen `console.` calls), then the `index.ts` coupling, which is
+// the only one whose breakage is SILENT.
 //
-// ⚠️ ET IL N'ÉCRIT PAS. Rendre la ligne plutôt que l'écrire est ce qui le rend
-// testable sans `spyOn(console)` — donc ce qui évite d'ajouter un SIXIÈME
-// fichier à la liste ci-dessus.
+// ⚠️ AND IT DOES NOT WRITE. Returning the line rather than writing it is what makes it
+// testable without `spyOn(console)` — hence what avoids adding a SIXTH
+// file to the list above.
 
-/// Vrai si la valeur doit être citée. Une espace ou un `=` non cités rendent
-/// la ligne ambiguë : on ne saurait pas où finit la valeur et où commence le
-/// champ suivant.
-function doitEtreCitee(valeur: string): boolean {
-    return valeur === '' || /[\s="]/.test(valeur);
+/// True if the value must be quoted. An unquoted space or `=` makes
+/// the line ambiguous: one could not tell where the value ends and where the
+/// next field begins.
+function doitEtreCitee(value: string): boolean {
+    return value === '' || /[\s="]/.test(value);
 }
 
-/// Rend `evenement k=v k=v`.
+/// Returns `evenement k=v k=v`.
 ///
-/// 🔴 AUCUNE VALEUR N'EST TRONQUÉE, et ce n'est pas un détail : une adresse
-/// tronquée est AMBIGUË — `203.0.113.7` et `203.0.113.70` se liraient pareil
-/// —, et l'exploitant ne pourrait plus reconnaître l'adresse de son proxy.
-/// Or c'est le SEUL remède au mode de défaillance nommé dans
-/// `http/adresse-source.ts` : un proxy dont la confiance n'a pas été déclarée
-/// fait dégénérer le frein par adresse en frein GLOBAL, et la seule chose qui
-/// le rende visible est cette ligne.
+/// 🔴 NO VALUE IS TRUNCATED, and it is not a detail: a truncated
+/// address is AMBIGUOUS — `203.0.113.7` and `203.0.113.70` would read the same
+/// —, and the operator could no longer recognise the address of their proxy.
+/// Yet that is the ONLY remedy for the failure mode named in
+/// `http/adresse-source.ts`: a proxy whose trust was not declared
+/// makes the per-address brake degenerate into a GLOBAL brake, and the only thing that
+/// makes it visible is this line.
 ///
-/// ⚠️ L'ORDRE DES CHAMPS SUIT CELUI DE L'OBJET, jamais un tri : deux lignes du
-/// même évènement doivent se comparer à l'œil.
+/// ⚠️ THE FIELD ORDER FOLLOWS THE OBJECT'S, never a sort: two lines of the
+/// same event must be comparable by eye.
 export function ligne(evenement: string, champs: Record<string, string | number>): string {
     const morceaux = [evenement];
     for (const [cle, brut] of Object.entries(champs)) {
-        const valeur = String(brut);
+        const value = String(brut);
         morceaux.push(
-            `${cle}=${doitEtreCitee(valeur) ? `"${valeur.replace(/"/g, '\\"')}"` : valeur}`,
+            `${cle}=${doitEtreCitee(value) ? `"${value.replace(/"/g, '\\"')}"` : value}`,
         );
     }
     return morceaux.join(' ');

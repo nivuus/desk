@@ -1,31 +1,31 @@
-//! UNE racine surveillée : l'ouvrir, armer une lecture, compléter, rouvrir.
+//! ONE watched root: open it, arm a read, complete, reopen.
 //!
-//! 🔴 `#[cfg(windows)]`, ET **AUCUN TEST D'HÔTE N'EST POSSIBLE** — comme
-//! `apps/lecture.rs`, qui le dit de lui-même. La seule vérification disponible
-//! est `cargo check --target x86_64-pc-windows-gnu`, qui couvre **types,
-//! emprunts, visibilités et durées de vie**, et **PAS** l'édition de liens ni le
-//! comportement. Tout ce qui DÉCIDE quelque chose vit donc ailleurs, dans les
-//! quatre modules purs de ce répertoire.
+//! 🔴 `#[cfg(windows)]`, AND **NO HOST TEST IS POSSIBLE** — like
+//! `apps/lecture.rs`, which says so of itself. The only available check
+//! is `cargo check --target x86_64-pc-windows-gnu`, which covers **types,
+//! borrows, visibility and lifetimes**, and **NOT** linking nor
+//! behaviour. Everything that DECIDES something therefore lives elsewhere, in the
+//! four pure modules of this directory.
 //!
-//! 🔴 **LE CONTENU DU TAMPON N'EST JAMAIS LU, ET C'EST LA SIMPLIFICATION
-//! CENTRALE DU SOUS-BLOC.** Une réconciliation relit le disque ENTIER : il n'y a
-//! donc rien à tirer du nom du fichier qui a bougé. Ce que cela retire du
-//! produit :
+//! 🔴 **THE BUFFER'S CONTENT IS NEVER READ, AND IT IS THE CENTRAL
+//! SIMPLIFICATION OF THE SUB-BLOCK.** A reconciliation re-reads the WHOLE disk: there is
+//! therefore nothing to draw from the name of the file that moved. What this removes from the
+//! product:
 //!
-//! - aucune chaîne UTF-16 à décoder, aucune chaîne de `NextEntryOffset` à
-//!   suivre, **aucun aliasing de tampon** — trois familles de défaut qui
-//!   n'existeront pas ;
-//! - **aucune tentation de filtrer sur `.lnk`**, laquelle serait de toute façon
-//!   IMPOSSIBLE À TENIR : un débordement **jette le tampon entier**, donc le
-//!   chemin « je ne sais pas ce qui a changé » doit exister quoi qu'il arrive.
-//!   Écrire un filtre qui ne couvre pas ce cas serait écrire deux chemins pour
-//!   en servir un.
+//! - no UTF-16 string to decode, no `NextEntryOffset` chain to
+//!   follow, **no buffer aliasing** — three families of defect that
+//!   will not exist;
+//! - **no temptation to filter on `.lnk`**, which would in any case be
+//!   IMPOSSIBLE TO HOLD: an overflow **throws away the whole buffer**, so the
+//!   "I do not know what changed" path must exist no matter what.
+//!   Writing a filter that does not cover that case would mean writing two paths to
+//!   serve one.
 //!
-//! ⚠️ **LE COÛT, NOMMÉ** : n'importe quelle écriture sous les quatre
-//! arborescences déclenche une réconciliation, y compris un fichier temporaire
-//! qui n'a rien à voir avec un raccourci. C'est exactement ce que l'anti-rebond
-//! borne, et c'est aussi ce qui rend mesurable — au lieu de théorique — la
-//! question « une racine est-elle bruyante au repos ? ».
+//! ⚠️ **THE COST, NAMED**: any write under the four
+//! trees triggers a reconciliation, including a temporary file
+//! that has nothing to do with a shortcut. That is exactly what the debounce
+//! bounds, and it is also what makes measurable — instead of theoretical — the
+//! question "is a root noisy at rest?".
 
 use std::os::windows::ffi::OsStrExt;
 use std::path::{Path, PathBuf};
@@ -47,63 +47,63 @@ use windows::Win32::System::IO::{CancelIoEx, GetOverlappedResult, OVERLAPPED};
 use super::faute::{self, Famille};
 use super::TAMPON_NOTIFICATIONS;
 
-/// Ce qu'une complétion nous apprend.
+/// What a completion tells us.
 #[derive(Debug)]
 pub(super) enum Issue {
-    /// Quelque chose a bougé. **On ne sait pas quoi, et on ne veut pas le
-    /// savoir** (voir l'en-tête).
+    /// Something moved. **We do not know what, and we do not want to
+    /// know** (see the header).
     Notification,
-    /// Le tampon a débordé : son contenu est perdu.
+    /// The buffer overflowed: its content is lost.
     ///
-    /// ⚠️ **L'ÉVÉNEMENT, LUI, NE L'EST PAS** — la complétion s'est produite, et
-    /// c'est elle qui déclenchera la réconciliation qui rattrape tout.
+    /// ⚠️ **THE EVENT ITSELF IS NOT** — the completion happened, and
+    /// it is what will trigger the reconciliation that catches up on everything.
     Debordement,
-    /// L'attente a été annulée : c'est l'arrêt, pas une panne.
+    /// The wait was cancelled: it is the stop, not a failure.
     Annulee,
-    /// La racine n'est plus surveillable en l'état.
+    /// The root can no longer be watched as it is.
     Perte(anyhow::Error),
-    /// 🔵 **INJECTÉE, ET INJECTABLE UNIQUEMENT** : la complétion est AVALÉE —
-    /// ni comptée, ni journalisée, ni déclenchante. Aucun chemin réel ne la
-    /// produit, et c'est tout son objet : elle fabrique la seule panne que la
-    /// réconciliation périodique achète réellement, celle d'une surveillance
-    /// qui **cesse de délivrer SANS ERREUR**.
+    /// 🔵 **INJECTED, AND ONLY INJECTABLE**: the completion is SWALLOWED —
+    /// neither counted, nor logged, nor triggering. No real path
+    /// produces it, and that is its whole purpose: it fabricates the only failure the
+    /// periodic reconciliation really buys, that of a watch
+    /// that **stops delivering WITHOUT AN ERROR**.
     ///
-    /// ✅ **MESURÉE, ET C'EST LE SEUL MONTAGE DISCRIMINANT DU CRITÈRE ③**
-    /// (deux exécutions par bras) : `notifications=0` des deux côtés — les
-    /// complétions sont bien avalées —, et le catalogue passe à `cles=157` par
-    /// `declencheur="periode"` quand la période est armée, contre `cles=156`
-    /// **indéfiniment** sous `APPS_SURVEILLANCE=seule`.
+    /// ✅ **MEASURED, AND IT IS THE ONLY DISCRIMINATING SET-UP FOR CRITERION ③**
+    /// (two runs per arm): `notifications=0` on both sides — the
+    /// completions are indeed swallowed —, and the catalogue moves to `cles=157` through
+    /// `declencheur="period"` when the period is armed, against `cles=156`
+    /// **indefinitely** under `APPS_SURVEILLANCE=seule`.
     ///
-    /// ⚠️ **ELLE ÉTABLIT QUE LE REMÈDE FONCTIONNE, JAMAIS QU'UNE CAUSE EXISTE.**
+    /// ⚠️ **IT ESTABLISHES THAT THE REMEDY WORKS, NEVER THAT A CAUSE EXISTS.**
     Avalee,
 }
 
-/// Une racine ouverte, avec sa lecture en vol.
+/// An open root, with its read in flight.
 ///
-/// ⚠️ `OVERLAPPED` ET LE TAMPON SONT DES `Box` : le noyau écrit dedans pendant
-/// que l'appel est en vol, et leurs adresses doivent donc rester stables. Un
-/// champ par valeur bougerait avec la structure.
+/// ⚠️ `OVERLAPPED` AND THE BUFFER ARE `Box`es: the kernel writes into them while
+/// the call is in flight, and their addresses must therefore stay stable. A
+/// by-value field would move with the struct.
 pub(super) struct Racine {
     chemin: PathBuf,
     repertoire: HANDLE,
     evenement: HANDLE,
     overlapped: Box<OVERLAPPED>,
-    /// 🔴 UN `Vec<u32>` ET NON UN `Vec<u8>` : `FILE_NOTIFY_INFORMATION` doit
-    /// être aligné sur une frontière de `DWORD`, et c'est un **contrat de
-    /// l'appel**, pas une précaution. Un `Vec<u8>` n'est aligné que sur 1.
+    /// 🔴 A `Vec<u32>` AND NOT A `Vec<u8>`: `FILE_NOTIFY_INFORMATION` must
+    /// be aligned on a `DWORD` boundary, and it is a **contract of the
+    /// call**, not a precaution. A `Vec<u8>` is only aligned on 1.
     ///
-    /// ⚠️ Nous ne lisons jamais ce tampon (voir l'en-tête) — l'alignement est
-    /// donc exigé pour ce que le NOYAU y écrit, pas pour ce que nous en
-    /// ferions.
+    /// ⚠️ We never read this buffer (see the header) — the alignment is
+    /// therefore required for what the KERNEL writes into it, not for what we would
+    /// do with it.
     tampon: Box<[u32]>,
-    /// Le nombre d'échecs consécutifs, pour le repli exponentiel.
+    /// The number of consecutive failures, for the exponential backoff.
     echecs: u32,
-    /// `Some` si la racine est en échec : l'instant de la prochaine tentative.
+    /// `Some` if the root is failed: the instant of the next attempt.
     reprise: Option<std::time::Instant>,
 }
 
 impl Racine {
-    /// Ouvre une racine et arme sa première lecture.
+    /// Opens a root and arms its first read.
     pub(super) fn ouvrir(chemin: PathBuf) -> Result<Self> {
         let (repertoire, evenement) = ouvrir_les_deux_handles(&chemin)?;
         let mut racine = Self {
@@ -114,7 +114,7 @@ impl Racine {
                 hEvent: evenement,
                 ..Default::default()
             }),
-            // `TAMPON_NOTIFICATIONS` est en OCTETS ; le `Vec` est en `u32`.
+            // `TAMPON_NOTIFICATIONS` is in BYTES; the `Vec` is in `u32`.
             tampon: vec![0u32; TAMPON_NOTIFICATIONS / 4].into_boxed_slice(),
             echecs: 0,
             reprise: None,
@@ -127,43 +127,43 @@ impl Racine {
         &self.chemin
     }
 
-    /// L'événement à passer à `WaitForMultipleObjects`.
+    /// The event to pass to `WaitForMultipleObjects`.
     pub(super) fn evenement(&self) -> HANDLE {
         self.evenement
     }
 
-    /// Cette racine est-elle en échec ?
+    /// Is this root failed?
     pub(super) fn en_echec(&self) -> bool {
         self.reprise.is_some()
     }
 
-    /// Le repli est-il échu ?
+    /// Is the backoff due?
     pub(super) fn reprise_due(&self, maintenant: std::time::Instant) -> bool {
         self.reprise.is_some_and(|due| maintenant >= due)
     }
 
-    /// Arme — ou réarme — une lecture.
+    /// Arms — or re-arms — a read.
     ///
-    /// ⚠️ **`lpBytesReturned` EST `None` ICI, ET C'EST OBLIGATOIRE** : sur un
-    /// handle chevauchant, ce paramètre est *undefined* et le lire serait une
-    /// course. Le compte réel se prend à la complétion, par
+    /// ⚠️ **`lpBytesReturned` IS `None` HERE, AND IT IS MANDATORY**: on an
+    /// overlapped handle, this parameter is *undefined* and reading it would be a
+    /// race. The real count is taken at completion, through
     /// `GetOverlappedResult`.
     pub(super) fn armer(&mut self) -> Result<()> {
         let octets = std::mem::size_of_val(&*self.tampon) as u32;
-        // SÉCURITÉ : appel FFI. `repertoire` vient d'un `CreateFileW` réussi ;
-        // `tampon` et `overlapped` sont des `Box`, donc d'adresse stable pour
-        // toute la durée de vie de `self`, ce que le noyau exige d'une lecture
-        // en vol.
+        // SAFETY: FFI call. `repertoire` comes from a successful `CreateFileW`;
+        // `tampon` and `overlapped` are `Box`es, hence at a stable address for
+        // the whole lifetime of `self`, which the kernel requires of a read
+        // in flight.
         unsafe {
             ReadDirectoryChangesW(
                 self.repertoire,
                 self.tampon.as_mut_ptr().cast(),
                 octets,
-                // `bWatchSubtree` : le menu Démarrer porte l'immense majorité
-                // des raccourcis de cette VM, presque tous dans des
-                // sous-dossiers par éditeur. Un guet à plat n'en verrait
-                // quasiment aucun — même raison que le parcours récursif de
-                // `lecture::lnk_sous`.
+                // `bWatchSubtree`: the Start menu carries the vast majority
+                // of this VM's shortcuts, almost all in
+                // per-publisher subfolders. A flat watch would see
+                // almost none of them — same reason as the recursive walk of
+                // `lecture::lnk_under`.
                 true,
                 FILE_NOTIFY_CHANGE_FILE_NAME
                     | FILE_NOTIFY_CHANGE_DIR_NAME
@@ -173,16 +173,16 @@ impl Racine {
                 None,
             )
         }
-        .with_context(|| format!("ReadDirectoryChangesW sur {}", self.chemin.display()))
+        .with_context(|| format!("ReadDirectoryChangesW on {}", self.chemin.display()))
     }
 
-    /// Relève ce que la complétion dit, **sans jamais lire le tampon**.
+    /// Reads what the completion says, **without ever reading the buffer**.
     ///
-    /// 🔴 L'INJECTION EST CONSULTÉE **AVANT** LE CLASSEMENT RÉEL, et dans cet
-    /// ordre : `Muette` d'abord, puisqu'elle doit court-circuiter jusqu'au
-    /// comptage. Le budget est **global au processus** (voir `faute.rs`), donc
-    /// une racine qui se rouvre ne le réarme pas — c'est la panne de mesure que
-    /// le sous-bloc D10 a payée sur `AUDIO_FAUTE_LECTURE`.
+    /// 🔴 THE INJECTION IS CONSULTED **BEFORE** THE REAL CLASSIFICATION, and in this
+    /// order: `Muette` first, since it must short-circuit up to the
+    /// counting. The budget is **process-global** (see `faute.rs`), so
+    /// a root that reopens does not re-arm it — that is the measurement failure
+    /// sub-block D10 paid for on `AUDIO_FAUTE_LECTURE`.
     pub(super) fn completer(&mut self) -> Issue {
         if faute::consommer(Famille::Muette) {
             return Issue::Avalee;
@@ -191,50 +191,48 @@ impl Racine {
             return Issue::Debordement;
         }
         if faute::consommer(Famille::Perte) {
-            return Issue::Perte(anyhow::anyhow!("faute injectée (APPS_FAUTE=perte)"));
+            return Issue::Perte(anyhow::anyhow!("injected fault (APPS_FAUTE=perte)"));
         }
         let mut octets: u32 = 0;
-        // SÉCURITÉ : appel FFI. `bWait = false` : l'événement est déjà signalé
-        // quand on arrive ici, et attendre bloquerait le fil qui sert les trois
-        // autres racines.
+        // SAFETY: FFI call. `bWait = false`: the event is already signalled
+        // when we get here, and waiting would block the thread serving the three
+        // other roots.
         let issue =
             unsafe { GetOverlappedResult(self.repertoire, &*self.overlapped, &mut octets, false) };
         match issue {
-            // 🔴 ZÉRO OCTET EST UN DÉBORDEMENT, PAS UNE COMPLÉTION VIDE. C'est
-            // la façon dont le noyau dit « le tampon n'a pas suffi, je l'ai
-            // jeté » quand il ne rend pas `ERROR_NOTIFY_ENUM_DIR`.
+            // 🔴 ZERO BYTES IS AN OVERFLOW, NOT AN EMPTY COMPLETION. It is
+            // how the kernel says "the buffer was not enough, I threw it
+            // away" when it does not return `ERROR_NOTIFY_ENUM_DIR`.
             Ok(()) if octets == 0 => Issue::Debordement,
             Ok(()) => Issue::Notification,
-            Err(erreur) if erreur.code() == ERROR_NOTIFY_ENUM_DIR.to_hresult() => {
-                Issue::Debordement
-            }
-            // L'annulation est ce que `CancelIoEx` provoque à l'arrêt : la
-            // classer en perte ferait journaliser une panne à chaque
-            // extinction propre.
-            Err(erreur) if erreur.code() == ERROR_OPERATION_ABORTED.to_hresult() => Issue::Annulee,
-            Err(erreur) => Issue::Perte(
-                anyhow::Error::new(erreur)
-                    .context(format!("GetOverlappedResult sur {}", self.chemin.display())),
+            Err(error) if error.code() == ERROR_NOTIFY_ENUM_DIR.to_hresult() => Issue::Debordement,
+            // Cancellation is what `CancelIoEx` causes at stop: classifying
+            // it as a loss would log a failure at every
+            // clean shutdown.
+            Err(error) if error.code() == ERROR_OPERATION_ABORTED.to_hresult() => Issue::Annulee,
+            Err(error) => Issue::Perte(
+                anyhow::Error::new(error)
+                    .context(format!("GetOverlappedResult on {}", self.chemin.display())),
             ),
         }
     }
 
-    /// Marque la racine en échec et programme sa reprise.
+    /// Marks the root as failed and schedules its recovery.
     ///
-    /// ⚠️ `delai_de_repli` est **RÉUTILISÉ, PAS RECOPIÉ** : il est déjà testé,
-    /// et déjà protégé contre le débordement de décalage (`checked_shl`, sans
-    /// quoi la treizième heure d'attente devient un `panic` en `debug`).
+    /// ⚠️ `delai_de_repli` is **REUSED, NOT COPIED**: it is already tested,
+    /// and already protected against shift overflow (`checked_shl`, without
+    /// which the thirteenth hour of waiting becomes a `panic` in `debug`).
     pub(super) fn programmer_la_reprise(&mut self, maintenant: std::time::Instant) {
         let delai = crate::plateforme::repli::delai_de_repli(self.echecs);
         self.echecs = self.echecs.saturating_add(1);
         self.reprise = Some(maintenant + std::time::Duration::from_millis(delai));
     }
 
-    /// Ferme, **re-résout le chemin**, rouvre et réarme.
+    /// Closes, **re-resolves the path**, reopens and re-arms.
     ///
-    /// ⚠️ LES HANDLES SONT REFERMÉS AVANT, sans quoi chaque tentative en
-    /// fuirait deux — et une racine qui échoue est précisément celle qui
-    /// réessaiera longtemps.
+    /// ⚠️ THE HANDLES ARE CLOSED FIRST, otherwise each attempt would
+    /// leak two — and a failing root is precisely the one that
+    /// will retry for a long time.
     pub(super) fn rouvrir(&mut self) -> Result<()> {
         self.fermer();
         let (repertoire, evenement) = ouvrir_les_deux_handles(&self.chemin)?;
@@ -250,17 +248,17 @@ impl Racine {
         Ok(())
     }
 
-    /// Annule la lecture en vol et ferme les deux handles.
+    /// Cancels the read in flight and closes both handles.
     ///
-    /// 🔴 `CancelIoEx` **AVANT** `CloseHandle`, et l'ordre n'est pas
-    /// indifférent : fermer un handle dont une lecture est en vol laisse le
-    /// noyau écrire dans un tampon que nous allons libérer.
+    /// 🔴 `CancelIoEx` **BEFORE** `CloseHandle`, and the order is not
+    /// indifferent: closing a handle with a read in flight lets the
+    /// kernel write into a buffer we are about to free.
     pub(super) fn fermer(&mut self) {
         if !self.repertoire.is_invalid() {
-            // SÉCURITÉ : appels FFI. Les erreurs sont ignorées à dessein — il
-            // n'y a rien à faire d'un échec d'annulation pendant une
-            // extinction, et `ERROR_NOT_FOUND` est le cas nominal quand aucune
-            // lecture n'est en vol.
+            // SAFETY: FFI calls. Errors are ignored on purpose — there
+            // is nothing to do with a cancellation failure during a
+            // shutdown, and `ERROR_NOT_FOUND` is the nominal case when no
+            // read is in flight.
             unsafe {
                 let _ = CancelIoEx(self.repertoire, Some(&*self.overlapped));
                 let _ = CloseHandle(self.repertoire);
@@ -282,21 +280,21 @@ impl Drop for Racine {
     }
 }
 
-/// Ouvre le répertoire et son événement, ou n'en laisse AUCUN des deux ouvert.
+/// Opens the directory and its event, or leaves NEITHER of the two open.
 ///
-/// 🔴 SI LE SECOND ÉCHOUE, LE PREMIER EST REFERMÉ. Sans cela, une racine dont
-/// l'événement ne se crée pas fuirait un handle de répertoire **à chaque
-/// tentative de reprise**, c'est-à-dire indéfiniment.
+/// 🔴 IF THE SECOND FAILS, THE FIRST IS CLOSED. Without it, a root whose
+/// event cannot be created would leak a directory handle **at every
+/// recovery attempt**, that is indefinitely.
 fn ouvrir_les_deux_handles(chemin: &Path) -> Result<(HANDLE, HANDLE)> {
     let large: Vec<u16> = chemin
         .as_os_str()
         .encode_wide()
         .chain(std::iter::once(0))
         .collect();
-    // SÉCURITÉ : appel FFI. `FILE_FLAG_BACKUP_SEMANTICS` est OBLIGATOIRE pour
-    // ouvrir un RÉPERTOIRE ; `FILE_SHARE_DELETE` l'est en pratique, sans quoi
-    // notre handle empêcherait quiconque de renommer ou supprimer la racine —
-    // une surveillance qui gêne ce qu'elle observe.
+    // SAFETY: FFI call. `FILE_FLAG_BACKUP_SEMANTICS` is MANDATORY to
+    // open a DIRECTORY; `FILE_SHARE_DELETE` is in practice, otherwise
+    // our handle would prevent anyone from renaming or deleting the root —
+    // a watch that gets in the way of what it observes.
     let repertoire = unsafe {
         CreateFileW(
             PCWSTR(large.as_ptr()),
@@ -308,23 +306,23 @@ fn ouvrir_les_deux_handles(chemin: &Path) -> Result<(HANDLE, HANDLE)> {
             None,
         )
     }
-    .with_context(|| format!("ouverture de la racine surveillée {}", chemin.display()))?;
+    .with_context(|| format!("opening the watched root {}", chemin.display()))?;
 
-    // `bManualReset = true` : l'événement est remis à l'état non signalé par
-    // `ReadDirectoryChangesW` lui-même au moment où il met la lecture en file.
-    // Un événement à réarmement automatique serait consommé par l'attente, ce
-    // qui est correct aussi — mais le manuel rend l'état observable entre les
-    // deux, et c'est ce qu'on veut d'un fil qui sert quatre racines.
-    // SÉCURITÉ : appel FFI.
+    // `bManualReset = true`: the event is reset to non-signalled by
+    // `ReadDirectoryChangesW` itself at the moment it queues the read.
+    // An auto-reset event would be consumed by the wait, which
+    // is correct too — but manual makes the state observable in
+    // between, and that is what we want from a thread serving four roots.
+    // SAFETY: FFI call.
     match unsafe { CreateEventW(None, true, false, PCWSTR::null()) } {
         Ok(evenement) => Ok((repertoire, evenement)),
-        Err(erreur) => {
-            // SÉCURITÉ : appel FFI, sur un handle que nous venons d'ouvrir.
+        Err(error) => {
+            // SAFETY: FFI call, on a handle we have just opened.
             unsafe {
                 let _ = CloseHandle(repertoire);
             }
-            Err(anyhow::Error::new(erreur).context(format!(
-                "CreateEventW pour la racine surveillée {}",
+            Err(anyhow::Error::new(error).context(format!(
+                "CreateEventW for the watched root {}",
                 chemin.display()
             )))
         }

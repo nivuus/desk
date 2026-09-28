@@ -1,79 +1,79 @@
-//! La correspondance entre l'identifiant de cible que rend le pilote et le
-//! nom GDI (`\\.\DISPLAYn`) que DXGI énumère.
+//! The correspondence between the target identifier the driver returns and the
+//! GDI name (`\\.\DISPLAYn`) that DXGI enumerates.
 //!
-//! 🔴 **CE MODULE EXISTE PARCE QU'UNE AFFIRMATION DE CE DÉPÔT ÉTAIT FAUSSE.**
-//! `superviseur/placement.rs` écrivait depuis D1 : « Le premier rend un
-//! identifiant de cible qui lui appartient, le second énumère par
-//! `(index_adaptateur, index_sortie)`. **Aucune correspondance n'est
-//! exposée** : l'appariement se fait donc par dimensions et par élimination. »
-//! Une correspondance est exposée, par l'API CCD de Win32 (*Connecting and
-//! Configuring Displays*), et c'est la conception entière de l'appariement
-//! qui reposait sur cette phrase.
+//! 🔴 **THIS MODULE EXISTS BECAUSE AN ASSERTION OF THIS REPOSITORY WAS FALSE.**
+//! `superviseur/placement.rs` wrote since D1: "The first returns a
+//! target identifier of its own, the second enumerates by
+//! `(index_adaptateur, index_sortie)`. **No correspondence is
+//! exposed**: pairing is therefore done by dimensions and by elimination."
+//! A correspondence is exposed, through Win32's CCD API (*Connecting and
+//! Configuring Displays*), and it is the whole design of the pairing
+//! that rested on that sentence.
 //!
-//! **Le chaînage, en trois pas :**
+//! **The chaining, in three steps:**
 //!
-//! 1. `QueryDisplayConfig(QDC_ONLY_ACTIVE_PATHS)` rend les chemins actifs,
-//!    chacun reliant une SOURCE (à qui appartient le nom GDI) à une CIBLE (le
-//!    moniteur) ;
-//! 2. la cible qui nous intéresse est celle dont `(adapterId, id)` est le
-//!    couple que `SortieAjoutee` nous a rendu à la création ;
-//! 3. `DisplayConfigGetDeviceInfo(GET_SOURCE_NAME)` sur la source de ce
-//!    chemin rend `viewGdiDeviceName`, qui est littéralement `\\.\DISPLAYn` —
-//!    le même nom que `DXGI_OUTPUT_DESC.DeviceName`, d'où
-//!    `SortieDxgi::nom_sortie` est peuplé (`capture/enumeration.rs`).
+//! 1. `QueryDisplayConfig(QDC_ONLY_ACTIVE_PATHS)` returns the active paths,
+//!    each linking a SOURCE (which the GDI name belongs to) to a TARGET (the
+//!    monitor);
+//! 2. the target of interest is the one whose `(adapterId, id)` is the
+//!    pair `SortieAjoutee` returned to us at creation;
+//! 3. `DisplayConfigGetDeviceInfo(GET_SOURCE_NAME)` on the source of this
+//!    path returns `viewGdiDeviceName`, which is literally `\\.\DISPLAYn` —
+//!    the same name as `DXGI_OUTPUT_DESC.DeviceName`, from which
+//!    `SortieDxgi::nom_sortie` is populated (`capture/enumeration.rs`).
 //!
-//! 🔴 **CE QUE CE MODULE SUPPOSE, ET QUI N'EST PAS CONFIRMÉ.** Que
-//! `identifiant_cible` soit l'`id` de cible CCD sur l'adaptateur rendu.
-//! `sudovda.rs` dit lui-même que la disposition de `VIRTUAL_DISPLAY_ADD_OUT`
-//! est « non confirmée ». **Une pièce versionnée rend l'hypothèse crédible
-//! sans l'établir** : le lot 22 a compté dix moniteurs fantômes
-//! `DISPLAY\SMKD1CE\…UID256` à `UID265` en notant que « les identifiants du
-//! pilote (256…265) tournent en rond », et le suffixe `UIDnnnn` d'un chemin
-//! d'instance de moniteur EST l'`id` de cible CCD
-//! (`docs/superpowers/plans/2026-08-30-lot22-hub-session-resultats.md`).
-//! Les nombres coïncident ; que le LUID rendu soit celui qu'emploie CCD n'est
-//! pas mesuré.
+//! 🔴 **WHAT THIS MODULE ASSUMES, AND WHICH IS NOT CONFIRMED.** That
+//! `identifiant_cible` is the CCD target `id` on the returned adapter.
+//! `sudovda.rs` itself says that the layout of `VIRTUAL_DISPLAY_ADD_OUT`
+//! is "unconfirmed". **A versioned piece of evidence makes the hypothesis credible
+//! without establishing it**: batch 22 counted ten ghost monitors
+//! `DISPLAY\SMKD1CE\…UID256` to `UID265` noting that "the driver's
+//! identifiers (256…265) go round in circles", and the `UIDnnnn` suffix of a
+//! monitor instance path IS the CCD target `id`
+//! (`docs/superpowers/plans/2026-08-30-lot22-hub-session-resultats.md`). (policy: allow-fr, real file path)
+//! The numbers coincide; that the returned LUID is the one CCD uses is not
+//! measured.
 //!
-//! 🔵 **Et si l'hypothèse est fausse, le coût est nul** : la recherche ne
-//! trouve aucun chemin, `nom_gdi_de_la_cible` rend `None`, et l'appelant
-//! retombe sur le repli qui est le produit d'avant le lot 32. C'est cette
-//! propriété — et elle seule — qui a rendu ce module livrable avant d'être
-//! mesuré sur la VM.
+//! 🔵 **And if the hypothesis is false, the cost is nil**: the search
+//! finds no path, `nom_gdi_de_la_cible` returns `None`, and the caller
+//! falls back on the fallback that is the product from before batch 32. It is this
+//! property — and it alone — that made this module deliverable before being
+//! measured on the VM.
 //!
-//! Hors `#[cfg(windows)]`, comme le module parent et pour la même raison : la
-//! RÈGLE doit avoir des tests, et ils ne tourneraient pas sous
-//! `#[cfg(windows)]`. La moitié Win32 vit dans `mod win`, plus bas — même
-//! patron que `superviseur/placement.rs`.
+//! Outside `#[cfg(windows)]`, like the parent module and for the same reason: the
+//! RULE must have tests, and they would not run under
+//! `#[cfg(windows)]`. The Win32 half lives in `mod win`, below — same
+//! pattern as `superviseur/placement.rs`.
 
 use crate::moniteurs_virtuels::Adaptateur;
 
-/// Un chemin d'affichage actif, réduit à ce dont l'appariement a besoin.
+/// An active display path, reduced to what pairing needs.
 ///
-/// Un type À NOUS, et non `DISPLAYCONFIG_PATH_INFO` : c'est ce qui permet à la
-/// règle ci-dessous d'être pure, éprouvée sur l'hôte Linux, et de ne pas faire
-/// entrer un type Win32 dans un module que le parent compile partout.
+/// A type OF OUR OWN, and not `DISPLAYCONFIG_PATH_INFO`: it is what lets the
+/// rule below be pure, tested on the Linux host, and not bring
+/// a Win32 type into a module the parent compiles everywhere.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CheminActif {
-    /// L'adaptateur de la CIBLE, jamais celui de la source : c'est celui que
-    /// le pilote nous a rendu.
+    /// The TARGET's adapter, never the source's: it is the one
+    /// the driver returned to us.
     pub adaptateur_cible: Adaptateur,
-    /// L'identifiant de cible, tel que le système d'affichage le connaît.
+    /// The target identifier, as the display system knows it.
     pub id_cible: u32,
-    /// Le nom GDI de la SOURCE de ce chemin — `\\.\DISPLAYn`.
+    /// The GDI name of this path's SOURCE — `\\.\DISPLAYn`.
     pub nom_gdi: String,
 }
 
-/// Le nom GDI de la sortie que le pilote vient de créer, désignée par ce qu'on
-/// lui a DONNÉ plutôt que par une différence d'ensembles.
+/// The GDI name of the output the driver has just created, designated by what we
+/// GAVE it rather than by a difference of sets.
 ///
-/// 🔴 **UNE AMBIGUÏTÉ REFUSE DE TRANCHER, elle ne prend pas le premier.**
-/// C'est le précédent d'`AUDIO_PERIPHERIQUE` (`wasapi/peripherique.rs`, où
-/// `Choix::Ambigu` refuse plutôt que de retomber sur un rang d'énumération par
-/// la porte de derrière) et la leçon des index DXGI de D1, payée une fois.
-/// Deux chemins actifs portant la même paire `(adaptateur, id)` est un état
-/// que Windows ne devrait pas produire ; s'il le produit, l'appelant retombe
-/// sur son repli — c'est-à-dire sur le produit d'avant le lot 32 — plutôt que
-/// de désigner une sortie au hasard.
+/// 🔴 **AN AMBIGUITY REFUSES TO DECIDE, it does not take the first one.**
+/// It is the precedent of `AUDIO_PERIPHERIQUE` (`wasapi/peripherique.rs`, where
+/// `Choix::Ambigu` refuses rather than falling back on an enumeration rank through
+/// the back door) and the lesson of D1's DXGI indices, paid for once.
+/// Two active paths carrying the same `(adapter, id)` pair is a state
+/// Windows should not produce; if it does, the caller falls back
+/// on its fallback — that is on the product from before batch 32 — rather than
+/// designating an output at random.
 pub fn nom_gdi_de_la_cible(
     chemins: &[CheminActif],
     adaptateur: Adaptateur,
@@ -101,30 +101,30 @@ mod win {
 
     use super::CheminActif;
 
-    /// Les chemins d'affichage ACTIFS, tels que le système les voit.
+    /// The ACTIVE display paths, as the system sees them.
     ///
-    /// `QDC_ONLY_ACTIVE_PATHS` et non tous les chemins : une cible inactive
-    /// n'a aucune source, donc aucun nom GDI, donc rien à apparier. Une sortie
-    /// virtuelle qui vient d'être créée mais que Windows n'a pas encore
-    /// attachée n'y figure simplement pas — l'appelant scrute, il n'échoue
-    /// pas.
+    /// `QDC_ONLY_ACTIVE_PATHS` and not all paths: an inactive target
+    /// has no source, hence no GDI name, hence nothing to pair. A virtual
+    /// output that has just been created but that Windows has not yet
+    /// attached simply does not appear in it — the caller polls, it does not
+    /// fail.
     ///
-    /// ⚠️ **SILENCIEUSE, et c'est une contrainte, pas un oubli.** Elle est
-    /// appelée dans une boucle de scrutation à 10 Hz
-    /// (`creation_sortie::attendre_notre_sortie`), et ce dépôt a payé deux
-    /// fois pour une trace émise à la cadence d'une boucle (chantier TURN,
-    /// correctif I2 de D1 ; 18 619 lignes en quelques secondes sur un partage
-    /// CIFS). L'appelant journalise une fois, sur son chemin d'échec.
+    /// ⚠️ **SILENT, and it is a constraint, not an oversight.** It is
+    /// called in a polling loop at 10 Hz
+    /// (`creation_sortie::attendre_notre_sortie`), and this repository has paid twice
+    /// for a trace emitted at a loop's cadence (TURN work stream,
+    /// fix I2 of D1; 18,619 lines in a few seconds on a CIFS
+    /// share). The caller logs once, on its failure path.
     ///
-    /// ⚠️ **La boucle `ERROR_INSUFFICIENT_BUFFER` est délibérée** : la
-    /// configuration d'affichage peut changer ENTRE le dimensionnement et la
-    /// lecture — c'est justement ce que fait une sortie virtuelle qui
-    /// s'attache pendant qu'on scrute. Un seul essai rendrait une erreur
-    /// transitoire indiscernable d'une panne.
+    /// ⚠️ **The `ERROR_INSUFFICIENT_BUFFER` loop is deliberate**: the
+    /// display configuration can change BETWEEN sizing and
+    /// reading — it is precisely what a virtual output does that
+    /// attaches while we poll. A single attempt would make a transient
+    /// error indistinguishable from a failure.
     pub fn chemins_actifs() -> Result<Vec<CheminActif>> {
-        const ESSAIS: u32 = 4;
+        const ATTEMPTS: u32 = 4;
         let mut derniere: Option<WIN32_ERROR> = None;
-        for _ in 0..ESSAIS {
+        for _ in 0..ATTEMPTS {
             let (mut n_chemins, mut n_modes) = (0u32, 0u32);
             let statut = unsafe {
                 GetDisplayConfigBufferSizes(QDC_ONLY_ACTIVE_PATHS, &mut n_chemins, &mut n_modes)
@@ -154,17 +154,17 @@ mod win {
             derniere = Some(statut);
         }
         Err(anyhow::anyhow!(
-            "QueryDisplayConfig a rendu {:#010x} après {ESSAIS} essais — la \
-             configuration d'affichage change plus vite qu'on ne la lit",
+            "QueryDisplayConfig returned {:#010x} after {ATTEMPTS} attempts — the \
+             display configuration changes faster than we can read it",
             derniere.map(|e| e.0).unwrap_or(0)
         ))
     }
 
-    /// Un chemin Win32 vers notre type, ou `None` si sa source n'a pas de nom.
+    /// A Win32 path to our type, or `None` if its source has no name.
     ///
-    /// Un chemin sans nom de source n'est pas une erreur : il n'y a
-    /// simplement rien à apparier avec, et le faire remonter en `Err`
-    /// condamnerait tous les autres chemins du même relevé.
+    /// A path without a source name is not an error: there is
+    /// simply nothing to pair with it, and raising it as an `Err`
+    /// would condemn all the other paths of the same survey.
     fn traduire(chemin: &DISPLAYCONFIG_PATH_INFO) -> Option<CheminActif> {
         let mut nom = DISPLAYCONFIG_SOURCE_DEVICE_NAME {
             header: windows::Win32::Devices::Display::DISPLAYCONFIG_DEVICE_INFO_HEADER {
@@ -175,9 +175,9 @@ mod win {
             },
             ..Default::default()
         };
-        // Rend un `i32` brut (`ERROR_SUCCESS` vaut 0), et non un `WIN32_ERROR`
-        // — la signature de `DisplayConfigGetDeviceInfo` diffère de celle de
-        // ses deux voisines. Vérifié dans windows-0.62.2, pas supposé.
+        // Returns a raw `i32` (`ERROR_SUCCESS` is 0), and not a `WIN32_ERROR`
+        // — the signature of `DisplayConfigGetDeviceInfo` differs from that of
+        // its two neighbours. Checked in windows-0.62.2, not assumed.
         if unsafe { DisplayConfigGetDeviceInfo(&mut nom.header) } != 0 {
             return None;
         }
@@ -217,7 +217,7 @@ mod tests {
     }
 
     #[test]
-    fn la_cible_creee_donne_le_nom_gdi_de_sa_source() {
+    fn the_created_target_gives_the_gdi_name_of_its_source() {
         let chemins = vec![
             chemin((7, 0), 4096, "\\\\.\\DISPLAY1"),
             chemin((9, 0), 256, "\\\\.\\DISPLAY5"),
@@ -229,10 +229,10 @@ mod tests {
     }
 
     #[test]
-    fn un_identifiant_de_cible_ne_suffit_pas_sans_son_adaptateur() {
-        // Le MÊME identifiant de cible sur DEUX adaptateurs : c'est le cas que
-        // le couple existe pour trancher, et la raison pour laquelle le lot 32
-        // a cessé de jeter le LUID.
+    fn a_target_identifier_is_not_enough_without_its_adapter() {
+        // The SAME target identifier on TWO adapters: it is the case
+        // the pair exists to decide, and the reason why batch 32
+        // stopped throwing away the LUID.
         let chemins = vec![
             chemin((7, 0), 256, "\\\\.\\DISPLAY1"),
             chemin((9, 0), 256, "\\\\.\\DISPLAY5"),
@@ -248,16 +248,16 @@ mod tests {
     }
 
     #[test]
-    fn une_cible_absente_rend_none_et_non_un_choix_au_hasard() {
+    fn a_missing_target_returns_none_not_a_random_choice() {
         let chemins = vec![chemin((7, 0), 4096, "\\\\.\\DISPLAY1")];
         assert_eq!(nom_gdi_de_la_cible(&chemins, (9, 0), 256), None);
     }
 
     #[test]
-    fn une_paire_ambigue_refuse_de_trancher() {
-        // Deux chemins pour la même paire : Windows ne devrait pas produire
-        // cet état. On rend `None` — donc le repli de l'appelant — plutôt que
-        // de désigner le premier, qui serait un rang d'énumération déguisé.
+    fn an_ambiguous_pair_refuses_to_decide() {
+        // Two paths for the same pair: Windows should not produce
+        // this state. We return `None` — hence the caller's fallback — rather than
+        // designating the first, which would be a disguised enumeration rank.
         let chemins = vec![
             chemin((9, 0), 256, "\\\\.\\DISPLAY5"),
             chemin((9, 0), 256, "\\\\.\\DISPLAY6"),

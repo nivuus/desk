@@ -181,17 +181,17 @@ try {
 
     // ---- Établissement : QUIET_S secondes sans aucun changement de barreau.
     log(`>>> ÉTABLISSEMENT : ${QUIET_S} s consécutives sans changement de barreau (max ${ETABLISSEMENT_MAX_S} s)`);
-    let dernier = changementsBarreau();
+    let last = changementsBarreau();
     let calme = 0;
     const t0 = Date.now();
     while (calme < QUIET_S && (Date.now() - t0) / 1000 < ETABLISSEMENT_MAX_S) {
         await dodo(3000);
         const c = changementsBarreau();
-        if (c === dernier) { calme += 3; } else { calme = 0; dernier = c; }
+        if (c === last) { calme += 3; } else { calme = 0; last = c; }
     }
     releve.etablissement = {
         calme_s: calme, attente_s: Math.round((Date.now() - t0) / 1000),
-        changements_barreau_cumules: dernier,
+        changements_barreau_cumules: last,
         atteint: calme >= QUIET_S,
     };
     log('établissement :', JSON.stringify(releve.etablissement));

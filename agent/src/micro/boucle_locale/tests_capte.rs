@@ -1,13 +1,13 @@
-//! Les tests d'[`super::identifiant_capte`] : **la règle qui doit rendre le
-//! même verdict que `wasapi::rendu::resoudre`**.
+//! The tests of [`super::identifiant_capte`]: **the rule that must return the
+//! same verdict as `wasapi::rendu::resoudre`**.
 //!
-//! ⚠️ Extraits ici plutôt qu'ajoutés au `mod tests` du parent, au titre de la
-//! règle des 500 lignes et sur le patron de `peripherique/tests_cable.rs`.
+//! ⚠️ Extracted here rather than added to the parent's `mod tests`, under the
+//! 500-line rule and on the pattern of `peripherique/tests_cable.rs`.
 //!
-//! ⚠️ **Les quatre branches sont éprouvées, et c'est le fond de ce fichier.**
-//! Une seule d'entre elles qui divergerait de `resoudre` ferait comparer à la
-//! garde de boucle un périphérique qui n'est pas celui qu'on capte — donc
-//! laisser passer une boucle réelle, ou couper un micro sain.
+//! ⚠️ **All four branches are tested, and it is the substance of this file.**
+//! A single one of them diverging from `resoudre` would make the
+//! loop guard compare a device that is not the one captured — hence
+//! letting a real loop through, or cutting a healthy microphone.
 
 use super::identifiant_capte;
 use crate::wasapi_peripherique::Peripherique;
@@ -19,7 +19,7 @@ fn p(nom: &str, id: &str) -> Peripherique {
     }
 }
 
-/// L'inventaire relevé sur la VM le 20 août 2026, nom pour nom.
+/// The inventory surveyed on the VM on 20 August 2026, name for name.
 fn vm() -> Vec<Peripherique> {
     vec![
         p(
@@ -37,17 +37,17 @@ fn vm() -> Vec<Peripherique> {
     ]
 }
 
-/// Aucune demande : c'est le défaut de Windows qui sera capté, et seul un
-/// appel COM peut le nommer.
+/// No request: it is Windows' default that will be captured, and only a
+/// COM call can name it.
 #[test]
-fn sans_demande_le_capte_est_le_defaut_de_windows() {
+fn without_a_request_the_captured_one_is_the_windows_default() {
     assert_eq!(identifiant_capte(&vm(), None), None);
     assert_eq!(identifiant_capte(&vm(), Some("   ")), None);
 }
 
-/// Une demande qui élit : c'est l'identifiant de l'élu.
+/// A request that elects: it is the elected one's identifier.
 #[test]
-fn une_demande_qui_elit_rend_son_identifiant() {
+fn an_electing_request_returns_its_identifier() {
     assert_eq!(
         identifiant_capte(&vm(), Some("Steam")),
         Some("{0.0.0.00000000}.{8695a111}".to_string())
@@ -58,17 +58,17 @@ fn une_demande_qui_elit_rend_son_identifiant() {
     );
 }
 
-/// 🔴 Une demande INTROUVABLE : `resoudre` se replie sur le défaut de Windows
-/// en `warn!`. Rendre ici l'identifiant demandé — ou rien du tout au sens
-/// « aucune capture » — ferait diverger la garde de la réalité.
+/// 🔴 A request NOT FOUND: `resoudre` falls back on Windows' default
+/// with a `warn!`. Returning here the requested identifier — or nothing at all in the sense of
+/// "no capture" — would make the guard diverge from reality.
 #[test]
-fn une_demande_introuvable_retombe_sur_le_defaut_comme_resoudre() {
+fn a_request_not_found_falls_back_to_the_default_like_resolve() {
     assert_eq!(identifiant_capte(&vm(), Some("Realtek")), None);
 }
 
-/// 🔴 Même chose pour l'AMBIGUÏTÉ : « Haut-parleurs » désigne deux des trois
-/// rendus de cette VM, `resoudre` refuse de trancher et se replie.
+/// 🔴 Same thing for AMBIGUITY: "Haut-parleurs" designates two of the three
+/// render devices of this VM, `resoudre` refuses to decide and falls back.
 #[test]
-fn une_demande_ambigue_retombe_sur_le_defaut_comme_resoudre() {
+fn an_ambiguous_request_falls_back_to_the_default_like_resolve() {
     assert_eq!(identifiant_capte(&vm(), Some("Haut-parleurs")), None);
 }

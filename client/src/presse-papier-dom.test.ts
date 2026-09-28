@@ -4,9 +4,9 @@ import { attacherPressePapierAuDOM, type EvenementCollage } from './presse-papie
 import { CONTROL_VERSION } from '../../proto/ts/control';
 import { MESSAGE_ECHEC, PRESSE_PAPIER_MAX, messageDeRefus } from './presse-papier';
 
-/// Une cible d'événements minimale, sans DOM : le module n'a besoin que de
-/// `focus` et de `paste`, et l'injecter est ce qui rend ce fichier éprouvable
-/// sans jsdom.
+/// A minimal event target, without a DOM: the module only needs
+/// `focus` and `paste`, and injecting it is what makes this file testable
+/// without jsdom.
 function cibleFactice() {
     const rappels = new Map<string, Set<(event: EvenementCollage) => void>>();
     return {
@@ -34,11 +34,11 @@ function collage(texte: string | null) {
 }
 
 describe('attacherPressePapierAuDOM', () => {
-    it('écrit le texte reçu quand la fenêtre a le focus', async () => {
-        const ecrire = vi.fn().mockResolvedValue(undefined);
+    it('writes the received text when the window has the focus', async () => {
+        const write = vi.fn().mockResolvedValue(undefined);
         const cible = cibleFactice();
         const attache = attacherPressePapierAuDOM({
-            ecrire,
+            write,
             focalise: () => true,
             cible,
             surMessage: vi.fn(),
@@ -48,19 +48,19 @@ describe('attacherPressePapierAuDOM', () => {
         attache.recevoir({ texte: 'bonjour', octets: 7 });
         await Promise.resolve();
 
-        expect(ecrire).toHaveBeenCalledWith('bonjour');
+        expect(write).toHaveBeenCalledWith('bonjour');
         attache.detacher();
     });
 
-    /// Le dépôt différé de D3, et la seule ligne de DOM de ce module : sans
-    /// focus on ne tente rien (`writeText` échouerait), et le retour du focus
-    /// est ce qui sort le texte.
-    it("n'écrit rien sans focus, puis écrit au retour du focus", async () => {
-        const ecrire = vi.fn().mockResolvedValue(undefined);
+    /// D3's deferred deposit, and the only DOM line of this module: without
+    /// focus nothing is attempted (`writeText` would fail), and the return of focus
+    /// is what lets the text out.
+    it("writes nothing without focus, then writes when focus comes back", async () => {
+        const write = vi.fn().mockResolvedValue(undefined);
         const cible = cibleFactice();
         let focalise = false;
         const attache = attacherPressePapierAuDOM({
-            ecrire,
+            write,
             focalise: () => focalise,
             cible,
             surMessage: vi.fn(),
@@ -69,22 +69,22 @@ describe('attacherPressePapierAuDOM', () => {
 
         attache.recevoir({ texte: 'differe', octets: 7 });
         await Promise.resolve();
-        expect(ecrire).not.toHaveBeenCalled();
+        expect(write).not.toHaveBeenCalled();
 
         focalise = true;
         cible.declencher('focus');
         await Promise.resolve();
 
-        expect(ecrire).toHaveBeenCalledWith('differe');
+        expect(write).toHaveBeenCalledWith('differe');
         attache.detacher();
     });
 
-    /// Un refus est DIT, jamais tu — et il ne déclenche aucune écriture.
-    it('dit le refus et n’écrit rien', async () => {
-        const ecrire = vi.fn().mockResolvedValue(undefined);
+    /// A refusal is SAID, never kept quiet — and it triggers no write.
+    it('says the refusal and writes nothing', async () => {
+        const write = vi.fn().mockResolvedValue(undefined);
         const surMessage = vi.fn();
         const attache = attacherPressePapierAuDOM({
-            ecrire,
+            write,
             focalise: () => true,
             cible: cibleFactice(),
             surMessage,
@@ -94,20 +94,20 @@ describe('attacherPressePapierAuDOM', () => {
         attache.recevoir({ texte: null, octets: 100_000 });
         await Promise.resolve();
 
-        expect(ecrire).not.toHaveBeenCalled();
+        expect(write).not.toHaveBeenCalled();
         expect(surMessage).toHaveBeenCalledWith(messageDeRefus(100_000));
         attache.detacher();
     });
 
-    /// `ECHECS_AVANT_MESSAGE` vaut 2 : le premier échec est le cas ordinaire
-    /// d'une fenêtre qui perd le focus pendant l'écriture, et crier dessus
-    /// ferait un bandeau permanent sur un produit qui marche.
-    it('ne crie qu’au deuxième échec consécutif', async () => {
-        const ecrire = vi.fn().mockRejectedValue(new Error('refusé'));
+    /// `FAILURES_BEFORE_MESSAGE` is 2: the first failure is the ordinary case
+    /// of a window losing focus during the write, and shouting about it
+    /// would make a permanent banner on a product that works.
+    it('only shouts on the second consecutive failure', async () => {
+        const write = vi.fn().mockRejectedValue(new Error('refused'));
         const surMessage = vi.fn();
         const cible = cibleFactice();
         const attache = attacherPressePapierAuDOM({
-            ecrire,
+            write,
             focalise: () => true,
             cible,
             surMessage,
@@ -126,13 +126,13 @@ describe('attacherPressePapierAuDOM', () => {
         attache.detacher();
     });
 
-    /// Sans ce détachement, l'écouteur `focus` survivrait à la fin de session
-    /// et écrirait le presse-papier local d'une session morte — le même défaut
-    /// que les trois détachements voisins de `main.ts` existent pour éviter.
-    it('détache son écouteur de focus', () => {
+    /// Without this detach, the `focus` listener would survive the end of the session
+    /// and would write the local clipboard of a dead session — the same defect
+    /// the three neighbouring detaches of `main.ts` exist to avoid.
+    it('detaches its focus listener', () => {
         const cible = cibleFactice();
         const attache = attacherPressePapierAuDOM({
-            ecrire: vi.fn().mockResolvedValue(undefined),
+            write: vi.fn().mockResolvedValue(undefined),
             focalise: () => true,
             cible,
             surMessage: vi.fn(),
@@ -144,24 +144,24 @@ describe('attacherPressePapierAuDOM', () => {
         expect(cible.compte('focus')).toBe(0);
     });
 
-    /// 🔴 `readText()` n'est appelée NULLE PART, ni au focus ni jamais : c'est
-    /// le geste de l'ancien produit (`web/index.js`), il exige une permission,
-    /// et il lit une ressource privée EN DEHORS de toute intention de collage.
-    /// Ce test garde cette propriété contre une régression future — le module
-    /// ne reçoit aucune fonction de lecture, et son interface ne peut donc pas
-    /// en acquérir une sans que ce fichier ne cesse de compiler.
+    /// 🔴 `readText()` is called NOWHERE, neither on focus nor ever: it is
+    /// the gesture of the old product (`web/index.js`), it requires a permission,
+    /// and it reads a private resource OUTSIDE any intention to paste.
+    /// This test guards this property against a future regression — the module
+    /// receives no read function, and its interface therefore cannot
+    /// acquire one without this file ceasing to compile.
     ///
-    /// ✅ **CE GARDE A MORDU AU SOUS-BLOC P2, ET C'EST EXACTEMENT SON OFFICE.**
-    /// L'ajout d'`emettre` l'a fait rougir, forçant à regarder la clé neuve et
-    /// à trancher : `emettre` écrit sur le canal de contrôle **vers l'agent**,
-    /// elle ne lit rien du presse-papier de l'utilisateur. Le seul endroit du
-    /// produit où celui-ci est lu reste l'événement `paste` DE CONFIANCE, qui
-    /// n'est pas une capacité reçue mais un geste de l'utilisateur — et il ne
-    /// passe par aucune de ces clés. La liste est donc étendue **sciemment**,
-    /// et non par accommodement.
-    it('ne reçoit aucune capacité de LECTURE du presse-papier', () => {
+    /// ✅ **THIS GUARD BIT IN SUB-BLOCK P2, AND THAT IS EXACTLY ITS JOB.**
+    /// Adding `emettre` turned it red, forcing a look at the new key and
+    /// a decision: `emettre` writes on the control channel **towards the agent**,
+    /// it reads nothing from the user's clipboard. The only place in the
+    /// product where the latter is read remains the TRUSTED `paste` event, which
+    /// is not a received capability but a user gesture — and it goes
+    /// through none of these keys. The list is therefore extended **knowingly**,
+    /// and not as an accommodation.
+    it('receives no clipboard READ capability', () => {
         const options = {
-            ecrire: vi.fn().mockResolvedValue(undefined),
+            write: vi.fn().mockResolvedValue(undefined),
             focalise: () => true,
             cible: cibleFactice(),
             surMessage: vi.fn(),
@@ -169,25 +169,25 @@ describe('attacherPressePapierAuDOM', () => {
         };
         expect(Object.keys(options).sort()).toEqual([
             'cible',
-            'ecrire',
             'emettre',
             'focalise',
             'surMessage',
+            'write',
         ]);
         attacherPressePapierAuDOM(options).detacher();
     });
 });
 
 // ---------------------------------------------------------------------------
-// Sous-bloc P2 — l'écouteur `paste`, le sens navigateur → VM.
+// Sub-block P2 — the `paste` listener, the browser → VM direction.
 // ---------------------------------------------------------------------------
 
-describe("l'écouteur de collage", () => {
+describe("the paste listener", () => {
     function monter(surMessage = vi.fn()) {
         const cible = cibleFactice();
         const emettre = vi.fn();
         const attache = attacherPressePapierAuDOM({
-            ecrire: vi.fn().mockResolvedValue(undefined),
+            write: vi.fn().mockResolvedValue(undefined),
             focalise: () => true,
             cible,
             surMessage,
@@ -196,10 +196,10 @@ describe("l'écouteur de collage", () => {
         return { cible, emettre, surMessage, attache };
     }
 
-    // 🔴 ROUGE si l'écouteur est absent : rien ne remonterait jamais à l'agent.
-    // La forme émise est celle que `proto/src/control.rs` désérialise, avec
-    // `deny_unknown_fields` — un encodeur maison serait refusé par serde.
-    it('émet le texte collé sur le canal de contrôle', () => {
+    // 🔴 RED if the listener is absent: nothing would ever go up to the agent.
+    // The emitted shape is the one `proto/src/control.rs` deserialises, with
+    // `deny_unknown_fields` — a home-made encoder would be refused by serde.
+    it('emits the pasted text on the control channel', () => {
         const { cible, emettre } = monter();
         cible.declencher('paste', collage('bonjour'));
         expect(emettre).toHaveBeenCalledOnce();
@@ -210,26 +210,26 @@ describe("l'écouteur de collage", () => {
         });
     });
 
-    // 🔴 ROUGE si l'on émettait une chaîne vide : elle VIDERAIT le
-    // presse-papier de la VM sans que l'utilisateur l'ait demandé.
-    it("un collage vide n'émet rien", () => {
+    // 🔴 RED if an empty string were emitted: it would EMPTY the
+    // VM clipboard without the user having asked for it.
+    it("an empty paste emits nothing", () => {
         const { cible, emettre } = monter();
         cible.declencher('paste', collage(''));
         expect(emettre).not.toHaveBeenCalled();
     });
 
-    // Un `paste` sans `clipboardData` (une image, un format inconnu) est le
-    // même cas : rien à émettre, et rien à dire.
-    it("un collage sans clipboardData n'émet rien", () => {
+    // A `paste` without `clipboardData` (an image, an unknown format) is the
+    // same case: nothing to emit, and nothing to say.
+    it("a paste without clipboardData emits nothing", () => {
         const { cible, emettre } = monter();
         cible.declencher('paste', collage(null));
         expect(emettre).not.toHaveBeenCalled();
     });
 
-    // 🔴 **LA BORNE CÔTÉ CLIENT EST OBLIGATOIRE.** Sans elle, l'agent la ferait
-    // respecter — mais le canal aurait DÉJÀ porté la charge, et le bandeau ne
-    // paraîtrait jamais : l'agent refuse en journalisant, sans rien renvoyer.
-    it('au-delà de la borne : rien n émis, et le refus est DIT', () => {
+    // 🔴 **THE CLIENT-SIDE BOUND IS MANDATORY.** Without it, the agent would
+    // enforce it — but the channel would ALREADY have carried the load, and the banner would
+    // never appear: the agent refuses by logging, without sending anything back.
+    it('beyond the bound: nothing emitted, and the refusal is SAID', () => {
         const surMessage = vi.fn();
         const { cible, emettre } = monter(surMessage);
         const trop = 'a'.repeat(PRESSE_PAPIER_MAX + 1);
@@ -238,19 +238,19 @@ describe("l'écouteur de collage", () => {
         expect(surMessage).toHaveBeenCalledWith(messageDeRefus(PRESSE_PAPIER_MAX + 1));
     });
 
-    // Le cas limite exact passe : rouge si la comparaison est un `>=`.
-    it('exactement la borne passe', () => {
+    // The exact limit case passes: red if the comparison is a `>=`.
+    it('exactly the bound passes', () => {
         const { cible, emettre } = monter();
         cible.declencher('paste', collage('a'.repeat(PRESSE_PAPIER_MAX)));
         expect(emettre).toHaveBeenCalledOnce();
     });
 
-    // 🔴 **LA BORNE COMPTE DES OCTETS D'UTF-8, PAS DES UNITÉS UTF-16.**
-    // ROUGE si l'implémentation est `texte.length` : ce texte compte
-    // `PRESSE_PAPIER_MAX / 2` unités UTF-16 — donc passerait — pour
-    // `PRESSE_PAPIER_MAX * 2` octets, soit le DOUBLE de ce que l'agent accepte.
-    // Le client émettrait alors une charge que l'agent refuserait en silence.
-    it('la borne compte des octets UTF-8, pas des unités UTF-16', () => {
+    // 🔴 **THE BOUND COUNTS UTF-8 BYTES, NOT UTF-16 UNITS.**
+    // RED if the implementation is `texte.length`: this text counts
+    // `PRESSE_PAPIER_MAX / 2` UTF-16 units — so it would pass — for
+    // `PRESSE_PAPIER_MAX * 2` bytes, that is TWICE what the agent accepts.
+    // The client would then emit a payload the agent would silently refuse.
+    it('the bound counts UTF-8 bytes, not UTF-16 units', () => {
         const { cible, emettre, surMessage } = monter();
         const emojis = '😀'.repeat(PRESSE_PAPIER_MAX / 4);
         expect(emojis.length).toBe(PRESSE_PAPIER_MAX / 2);
@@ -259,28 +259,28 @@ describe("l'écouteur de collage", () => {
         expect(surMessage).toHaveBeenCalled();
     });
 
-    // 🔴 **LE GARDE N°3 CÂBLÉ** : un texte qu'on vient de recevoir de l'agent
-    // n'est pas réémis vers lui. Sans cet appel, chaque collage d'un contenu
-    // venu de la VM produirait un aller-retour complet.
-    it("ne réémet pas un texte qu'on vient de recevoir", () => {
+    // 🔴 **GUARD NO. 3 WIRED**: a text just received from the agent
+    // is not re-emitted towards it. Without this call, every paste of a content
+    // coming from the VM would produce a full round trip.
+    it("does not re-emit a text that was just received", () => {
         const { cible, emettre, attache } = monter();
         attache.recevoir({ texte: 'venu-de-la-vm', octets: 13 });
         cible.declencher('paste', collage('venu-de-la-vm'));
         expect(emettre).not.toHaveBeenCalled();
     });
 
-    // Le jumeau du précédent : sans lui, un `aEmettre` qui rendrait toujours
-    // `undefined` passerait le test ci-dessus et le collage serait mort.
-    it('réémet bien un texte DIFFÉRENT après une réception', () => {
+    // The twin of the previous one: without it, an `aEmettre` that always returned
+    // `undefined` would pass the test above and pasting would be dead.
+    it('does re-emit a DIFFERENT text after a reception', () => {
         const { cible, emettre, attache } = monter();
         attache.recevoir({ texte: 'venu-de-la-vm', octets: 13 });
-        cible.declencher('paste', collage('autre chose'));
+        cible.declencher('paste', collage('something else'));
         expect(emettre).toHaveBeenCalledOnce();
     });
 
-    // ROUGE si `detacher` oubliait le `paste` : l'écouteur survivrait à la fin
-    // de session et émettrait pour une session morte.
-    it('detacher retire AUSSI l écouteur de collage', () => {
+    // RED if `detacher` forgot the `paste`: the listener would survive the end
+    // of the session and would emit for a dead session.
+    it('detacher ALSO removes the paste listener', () => {
         const { cible, attache } = monter();
         expect(cible.compte('paste')).toBe(1);
         attache.detacher();
@@ -290,20 +290,20 @@ describe("l'écouteur de collage", () => {
 
 });
 
-describe("l'état reçu AVANT l'attache", () => {
-    // ── L'ÉTAT REÇU AVANT L'ATTACHE (moitié CLIENT du legs n°3 de P1) ────
+describe("the state received BEFORE attaching", () => {
+    // ── THE STATE RECEIVED BEFORE ATTACHING (CLIENT half of P1's legacy item no. 3) ──
     //
-    // 🔴 `client/src/main.ts` N'A AUCUN TEST et ne peut pas en avoir : module
-    // d'entrée, effets de bord au premier niveau, non importable. La RÈGLE vit
-    // donc ici, et ces quatre tests SONT sa seule couverture ; les deux lignes
-    // de câblage de `main.ts`, elles, n'en ont aucune, et leur seul contrôle de
-    // bout en bout est le critère ① de la recette.
+    // 🔴 `client/src/main.ts` HAS NO TEST and cannot have any: entry
+    // module, top-level side effects, not importable. The RULE therefore lives
+    // here, and these four tests ARE its only coverage; the two wiring
+    // lines of `main.ts`, for their part, have none, and their only end-to-end
+    // check is criterion ① of the acceptance run.
 
-    it('un `initial` fourni est écrit au montage si la fenêtre a le focus', async () => {
-        const ecrire = vi.fn().mockResolvedValue(undefined);
-        // ROUGE avant le paramètre `initial` : rien n'est écrit au montage.
+    it('a supplied `initial` is written on mount if the window has the focus', async () => {
+        const write = vi.fn().mockResolvedValue(undefined);
+        // RED before the `initial` parameter: nothing is written at mount.
         attacherPressePapierAuDOM({
-            ecrire,
+            write,
             focalise: () => true,
             cible: cibleFactice(),
             surMessage: vi.fn(),
@@ -311,18 +311,18 @@ describe("l'état reçu AVANT l'attache", () => {
             initial: { texte: 'copie-avant-attache', octets: 19 },
         });
         await Promise.resolve();
-        expect(ecrire).toHaveBeenCalledWith('copie-avant-attache');
+        expect(write).toHaveBeenCalledWith('copie-avant-attache');
     });
 
-    it("un `initial` fourni SANS focus n'est pas écrit au montage, et l'est au retour du focus", async () => {
-        const ecrire = vi.fn().mockResolvedValue(undefined);
+    it("an `initial` supplied WITHOUT focus is not written on mount, and is when focus comes back", async () => {
+        const write = vi.fn().mockResolvedValue(undefined);
         const cible = cibleFactice();
         let focalise = false;
-        // ROUGE = appeler `ecrire` directement au montage au lieu de passer par
-        // `ecrireSiPossible` : le DÉPÔT DIFFÉRÉ de D3 doit rester le seul
-        // chemin d'écriture, y compris ici.
+        // RED = calling `write` directly at mount instead of going through
+        // `writeIfPossible`: D3's DEFERRED DEPOSIT must stay the only
+        // write path, including here.
         attacherPressePapierAuDOM({
-            ecrire,
+            write,
             focalise: () => focalise,
             cible,
             surMessage: vi.fn(),
@@ -330,20 +330,20 @@ describe("l'état reçu AVANT l'attache", () => {
             initial: { texte: 'differe', octets: 7 },
         });
         await Promise.resolve();
-        expect(ecrire).not.toHaveBeenCalled();
+        expect(write).not.toHaveBeenCalled();
 
         focalise = true;
         cible.declencher('focus');
         await Promise.resolve();
-        expect(ecrire).toHaveBeenCalledWith('differe');
+        expect(write).toHaveBeenCalledWith('differe');
     });
 
-    it('un `initial` portant un REFUS dit le bandeau au montage', async () => {
+    it('an `initial` carrying a REFUSAL says the banner on mount', async () => {
         const surMessage = vi.fn();
-        // ROUGE = ne rejouer que les textes : la fenêtre attendrait un contenu
-        // qui n'arrivera jamais, sans rien pour lui dire pourquoi.
+        // RED = only replaying texts: the window would wait for a content
+        // that will never arrive, with nothing to tell it why.
         attacherPressePapierAuDOM({
-            ecrire: vi.fn().mockResolvedValue(undefined),
+            write: vi.fn().mockResolvedValue(undefined),
             focalise: () => true,
             cible: cibleFactice(),
             surMessage,
@@ -354,22 +354,22 @@ describe("l'état reçu AVANT l'attache", () => {
         expect(surMessage).toHaveBeenCalledWith(messageDeRefus(123456));
     });
 
-    it("sans `initial`, le montage n'écrit rien et ne dit rien", async () => {
-        const ecrire = vi.fn().mockResolvedValue(undefined);
+    it("without `initial`, mounting writes nothing and says nothing", async () => {
+        const write = vi.fn().mockResolvedValue(undefined);
         const surMessage = vi.fn();
-        // ROUGE = rejouer un `Recu` vide quand le paramètre est absent : le
-        // client écrirait une chaîne vide dans son presse-papier local à chaque
-        // attache. C'est le paramètre FACULTATIF qui garantit que le
-        // comportement d'avant P3 est préservé mot pour mot.
+        // RED = replaying an empty `Recu` when the parameter is absent: the
+        // client would write an empty string to its local clipboard on every
+        // attach. It is the OPTIONAL parameter that guarantees the
+        // behaviour from before P3 is preserved word for word.
         attacherPressePapierAuDOM({
-            ecrire,
+            write,
             focalise: () => true,
             cible: cibleFactice(),
             surMessage,
             emettre: vi.fn(),
         });
         await Promise.resolve();
-        expect(ecrire).not.toHaveBeenCalled();
+        expect(write).not.toHaveBeenCalled();
         expect(surMessage).not.toHaveBeenCalled();
     });
 });

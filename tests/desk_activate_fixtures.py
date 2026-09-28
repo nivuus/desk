@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
-"""Fixtures partagées par `tests/test_desk_activate.py`.
+"""Fixtures shared by `tests/test_desk_activate.py`.
 
-Extrait de ce dernier à la ronde de correction 1 sur la tâche 6 : la revue
-a relevé que la restauration des lignes vides et de la prose qu'un premier
-tassement stylistique avait coûtées faisait franchir 500 lignes au fichier
-de tests — et ce dépôt interdit de comprimer pour éviter une extraction
-(« ce dépôt l'a payé douze fois »). Ce module porte les FIXTURES (faux
-npm, faux systemctl, faux winrm_exec.py, racine installée, l'appel du
-hook) ; `test_desk_activate.py` porte les SCÉNARIOS et les assertions.
-Aucune fixture d'ici n'a de valeur seule : elle ne s'exerce que par les
-scénarios qui l'importent.
+Extracted from the latter in correction round 1 on task 6: the review
+noted that restoring the blank lines and the prose that a first
+stylistic squeeze had cost took the test file over 500 lines —
+and this repository forbids compressing code to avoid an extraction
+("this repository paid for it twelve times"). This module carries the FIXTURES (fake
+npm, fake systemctl, fake winrm_exec.py, installed root, calling the
+hook); `test_desk_activate.py` carries the SCENARIOS and the assertions.
+No fixture here has any value on its own: it is only exercised through the
+scenarios that import it.
 
-⚠️ Ce fichier ne s'appelle PAS `test_*.py` : il n'est pas une suite de
-tests à lui seul, `python3 tests/desk_activate_fixtures.py` ne fait rien
-d'utile — c'est un module importé, jamais exécuté directement.
+⚠️ This file is NOT named `test_*.py`: it is not a test suite
+on its own, `python3 tests/desk_activate_fixtures.py` does nothing
+useful — it is an imported module, never run directly.
 """
 import configparser
 import json
@@ -29,27 +29,27 @@ HOOK = RACINE / "hooks" / "activate.py"
 REPONSES = {"admin_email": "ada@exemple.test", "admin_password": "hunter2hunter2",
             "auth_mode": "motdepasse", "vb_audio": False}
 
-# Les facts de resolve, telles qu'elles arrivent RÉELLEMENT : fusionnées
-# dans hw (installer/packages/runner.py::run_activate, ligne 337), jamais
-# sous une clé "facts" séparée.
-# ⚠️ LES SIX CLÉS, PAS CINQ (revue finale de branche, 30 août 2026) :
-# `hote` et `proxy_confiance` sont entrées dans le contrat de `facts` au lot
-# 10A et cette fixture ne les avait pas suivies. Sans conséquence — `activate`
-# ne lit que `port` — mais une fixture qui décrit un contrat périmé finit par
-# faire passer un test pour une forme que le moteur n'envoie jamais.
-# 🔴 `vm_repond` A DISPARU DU CONTRAT (même revue) : ce n'était pas un fait
-# mesuré mais un littéral (`True` en dur dans `hooks/resolve.py`), à une
-# phase qui ne peut rien savoir de la VM — voir `hooks/activate.py` (tête)
-# et `tests/test_desk_contrat_hw.py` (garde ⑤, qui refuse tout retour de
-# ce défaut).
-HW_AVEC_FACTS = {"node_version": "24.9.0",
+# The facts of resolve, as they REALLY arrive: merged
+# into hw (installer/packages/runner.py::run_activate, line 337), never
+# under a separate "facts" key.
+# ⚠️ THE SIX KEYS, NOT FIVE (final branch review, 30 August 2026):
+# `hote` and `proxy_confiance` entered the `facts` contract in batch
+# 10A and this fixture had not followed them. No consequence — `activate`
+# only reads `port` — but a fixture that describes an outdated contract ends up
+# making a test pass for a shape the engine never sends.
+# 🔴 `vm_repond` HAS DISAPPEARED FROM THE CONTRACT (same review): it was not a
+# measured fact but a literal (`True` hardcoded in `hooks/resolve.py`), at a
+# phase that can know nothing about the VM — see `hooks/activate.py` (head)
+# and `tests/test_desk_contrat_hw.py` (guard ⑤, which refuses any return of
+# this defect).
+HW_WITH_FACTS = {"node_version": "24.9.0",
                   "turn_ecoute": "203.0.113.9", "turn_relais": "203.0.113.9",
                   "hote": "198.51.100.1", "proxy_confiance": "198.51.100.1",
                   "port": 9999}
 
 
-# --- Le faux npm : enregistre chaque invocation, ne touche jamais un vrai
-# Node ni une vraie base ---------------------------------------------------
+# --- The fake npm: records each invocation, never touches a real
+# Node nor a real database ---------------------------------------------------
 
 FAUX_NPM = """#!/usr/bin/env python3
 import json, os, sys
@@ -70,11 +70,11 @@ if "admin:agent" in argv:
                       "AGENT_SECRET=secret-de-test-0123456789abcdef\\n")
     sys.exit(0)
 if "admin:attribuer" in argv:
-    # Bras d'echec (tache 13) : simule le refus reel d'attribuer-vm.ts
-    # ('vm-deja-attribuee'), sans jamais toucher a une vraie base.
+    # Failure arm (task 13): simulates the real refusal of attribuer-vm.ts
+    # ('vm-deja-attribuee'), without ever touching a real database.
     if os.environ.get("FAUX_NPM_ATTRIBUER_ECHEC"):
-        sys.stderr.write("la VM vm-test-uuid (windows) appartient deja a "
-                          "quelqu'un d'autre - la detacher d'abord\\n")
+        sys.stderr.write("the VM vm-test-uuid (windows) already belongs to "
+                          "someone else - detach it first\\n")
         sys.exit(2)
     sys.stdout.write("vm=vm-test-uuid\\nnom=windows\\n"
                       "utilisateur=u-test-0001\\nemail=ada@exemple.test\\n")
@@ -89,12 +89,12 @@ def poser_faux_npm(bin_dir: pathlib.Path, log: pathlib.Path) -> None:
     script.chmod(0o755)
 
 
-# --- Le faux winrm_exec.py (tâche 6) : enregistre chaque invocation,
-# n'atteint jamais la VM ni le réseau. Contrat exact du vrai
-# `console/guest/winrm_exec.py` (lu intégralement, tâche 6) : appelé
-# `<script> {mode} <commande>`, il imprime sa réponse sur stdout. Ici,
-# aucune réponse : la sortie vide suffit à ce que ProjFS déclare qu'aucun
-# redémarrage n'est requis, ce qui est déjà éprouvé en détail par
+# --- The fake winrm_exec.py (task 6): records each invocation,
+# never reaches the VM nor the network. Exact contract of the real
+# `console/guest/winrm_exec.py` (read in full, task 6): called
+# `<script> {mode} <command>`, it prints its answer on stdout. Here,
+# no answer: the empty output is enough for ProjFS to declare that no
+# reboot is required, which is already exercised in detail by
 # tests/test_desk_vm.py.
 FAUX_WINRM_EXEC = """#!/usr/bin/env python3
 import json, sys
@@ -112,26 +112,26 @@ def poser_faux_winrm_exec(packages_dir: pathlib.Path, log: pathlib.Path) -> None
     script.chmod(0o755)
 
 
-# --- Le faux fetch_payload.py (tâche 7) : simple MARQUEUR de présence.
-# `activate.py::chemin_agent_console()` ne fait que tester son existence
-# (`is_file()`) — jamais l'exécuter — donc un contenu vide suffit à prouver
-# que « console est installé » sans rien exécuter du vrai fichier.
+# --- The fake fetch_payload.py (task 7): a mere presence MARKER.
+# `activate.py::chemin_agent_console()` only tests its existence
+# (`is_file()`) — never runs it — so an empty content is enough to prove
+# that "console is installed" without running anything of the real file.
 def poser_faux_fetch_payload(packages_dir: pathlib.Path) -> None:
     guest_dir = packages_dir / "console" / "guest"
     guest_dir.mkdir(parents=True, exist_ok=True)
     (guest_dir / "fetch_payload.py").write_text("", encoding="utf-8")
 
 
-# --- Le faux scripts/build-agent-croise.sh (tâche 7) : jamais le vrai (il
-# compilerait l'agent réel, ~40 s, boîte à outils croisée). Contrat exact du
-# vrai script (lu intégralement) : appelé `<script> <destination_dir>`, il y
-# dépose lui-même `agent.exe`. Ici, un contenu FACTICE fixe suffit : aucune
-# recette de ce lot ne juge le binaire produit, seulement son EMPLACEMENT.
+# --- The fake scripts/build-agent-croise.sh (task 7): never the real one (it
+# would build the real agent, ~40 s, cross toolchain). Exact contract of the
+# real script (read in full): called `<script> <destination_dir>`, it
+# drops `agent.exe` there itself. Here, a fixed FAKE content is enough: no
+# acceptance of this batch judges the binary produced, only its LOCATION.
 FAUX_BUILD_AGENT = """#!/usr/bin/env python3
 import pathlib, sys
 d = pathlib.Path(sys.argv[1])
 d.mkdir(parents=True, exist_ok=True)
-(d / "agent.exe").write_bytes(b"faux-agent-exe-de-test")
+(d / "agent.exe").write_bytes(b"fake-test-agent-exe")
 """
 
 
@@ -141,8 +141,8 @@ def poser_faux_build_agent(chemin: pathlib.Path) -> None:
 
 
 def poser_faux_systemctl(bin_dir: pathlib.Path, log: pathlib.Path) -> None:
-    """Un systemctl qui n'agit sur RIEN : juste une trace de ses arguments,
-    pour prouver qu'il n'est jamais invoqué sous un --root de test."""
+    """A systemctl that acts on NOTHING: just a trace of its arguments,
+    to prove it is never invoked under a test --root."""
     script = bin_dir / "systemctl"
     script.write_text(
         "#!/bin/sh\n"
@@ -163,13 +163,13 @@ def lire_commandes(log: pathlib.Path):
     return commandes
 
 
-# --- Fabrique une racine où `install` aurait déjà tourné -------------------
+# --- Builds a root where `install` would already have run -------------------
 
 def poser_racine_installee(root: pathlib.Path, contenu_env: dict = None) -> None:
     unite_dir = root / "etc" / "systemd" / "system"
     unite_dir.mkdir(parents=True, exist_ok=True)
-    # Copie l'unité RÉELLE de la tâche 4 — c'est elle dont le WantedBy=
-    # décide sous quel .wants/ le lien doit vivre.
+    # Copies the REAL unit of task 4 — it is its WantedBy= that
+    # decides under which .wants/ the link must live.
     (unite_dir / "desk-plateforme.service").write_text(
         (RACINE / "hooks" / "assets" / "desk-plateforme.service").read_text(encoding="utf-8"),
         encoding="utf-8",
@@ -180,55 +180,55 @@ def poser_racine_installee(root: pathlib.Path, contenu_env: dict = None) -> None
 
     env_dir = root / "etc" / "nivuus"
     env_dir.mkdir(parents=True, exist_ok=True)
-    valeurs = contenu_env if contenu_env is not None else {
+    values = contenu_env if contenu_env is not None else {
         "PLATEFORME_BASE": "sqlite",
         "PLATEFORME_BASE_URL": "/var/lib/nivuus-desk/plateforme.sqlite",
         "PLATEFORME_SECRET_JETON": "x" * 64,
     }
-    corps = "\n".join(f"{k}={v}" for k, v in valeurs.items()) + "\n"
+    corps = "\n".join(f"{k}={v}" for k, v in values.items()) + "\n"
     chemin_env = env_dir / "desk.env"
     chemin_env.write_text(corps, encoding="utf-8")
     os.chmod(chemin_env, stat.S_IRUSR | stat.S_IWUSR)
 
 
 def appeler(root, bin_dir, hw=None, answers=None, root_arg=None, packages_dir=None):
-    """Appelle le hook comme le moteur (--phase, --root), PATH réécrit vers
-    bin_dir en tête, pour que npm/systemctl résolus soient les factices.
+    """Calls the hook like the engine (--phase, --root), PATH rewritten with
+    bin_dir at its head, so that the npm/systemctl resolved are the fakes.
 
-    `packages_dir` (tâche 6) : où pointer `NIVUUS_PACKAGES_DIR` pour la
-    résolution de `winrm_exec.py` ET, depuis la tâche 7, de
-    `fetch_payload.py`. Par défaut (`None`), un faux
-    `console/guest/winrm_exec.py` FONCTIONNEL et un faux
-    `console/guest/fetch_payload.py` (simple marqueur) sont fabriqués sous
-    `root` lui-même — sans quoi tout scénario qui n'a rien à voir avec
-    ProjFS/VB-Audio/le dépôt d'agent.exe échouerait sur « console absent »
-    avant d'atteindre la raison qu'il veut réellement éprouver.
-    `packages_dir=False` simule `console` ABSENT (aucun fichier n'est créé,
-    pour les scénarios dédiés).
+    `packages_dir` (task 6): where to point `NIVUUS_PACKAGES_DIR` for the
+    resolution of `winrm_exec.py` AND, since task 7, of
+    `fetch_payload.py`. By default (`None`), a WORKING fake
+    `console/guest/winrm_exec.py` and a fake
+    `console/guest/fetch_payload.py` (a mere marker) are built under
+    `root` itself — otherwise every scenario that has nothing to do with
+    ProjFS/VB-Audio/the agent.exe drop would fail on "console absent"
+    before reaching the reason it really wants to exercise.
+    `packages_dir=False` simulates `console` ABSENT (no file is created,
+    for the dedicated scenarios).
 
-    🔴 TÂCHE 7 — `DESK_BUILD_AGENT_SCRIPT` est TOUJOURS posée (peu importe
-    `packages_dir`) vers un script FACTICE qui ne compile rien : sans elle,
-    `deposer_agent_console()`, appelé sans condition par `main()`,
-    invoquerait le VRAI `scripts/build-agent-croise.sh` à CHAQUE scénario
-    de ce fichier — la compilation réelle que la tâche interdit dans les
+    🔴 TASK 7 — `DESK_BUILD_AGENT_SCRIPT` is ALWAYS set (whatever
+    `packages_dir` is) to a FAKE script that builds nothing: without it,
+    `deposer_agent_console()`, called unconditionally by `main()`,
+    would invoke the REAL `scripts/build-agent-croise.sh` in EVERY scenario
+    of this file — the real build the task forbids in the
     tests.
     """
-    contexte = {"hw": hw if hw is not None else HW_AVEC_FACTS,
+    contexte = {"hw": hw if hw is not None else HW_WITH_FACTS,
                 "answers": answers if answers is not None else REPONSES}
     env = dict(os.environ)
     env["PATH"] = str(bin_dir) + os.pathsep + env.get("PATH", "")
-    # Le contrôle ② veut prouver que PLATEFORME_BASE_URL atteint npm PAR LA
-    # FUSION que le hook fait depuis desk.env — jamais parce que le shell qui
-    # fait tourner ces tests l'exportait déjà par accident.
+    # Check ② wants to prove that PLATEFORME_BASE_URL reaches npm THROUGH THE
+    # MERGE the hook performs from desk.env — never because the shell
+    # running these tests happened to export it already.
     env.pop("PLATEFORME_BASE_URL", None)
     if packages_dir is None:
-        packages_dir = root / "faux-packages-dir"
+        packages_dir = root / "fake-packages-dir"
         poser_faux_winrm_exec(packages_dir, root / "winrm.log")
         poser_faux_fetch_payload(packages_dir)
     elif packages_dir is False:
-        packages_dir = root / "console-absent-ici"
+        packages_dir = root / "console-absent-here"
     env["NIVUUS_PACKAGES_DIR"] = str(packages_dir)
-    faux_build = root / "faux-build-agent.py"
+    faux_build = root / "fake-build-agent.py"
     if not faux_build.is_file():
         poser_faux_build_agent(faux_build)
     env["DESK_BUILD_AGENT_SCRIPT"] = str(faux_build)
@@ -246,11 +246,11 @@ def load_unit(path):
 
 
 def lire_env(chemin):
-    valeurs = {}
+    values = {}
     for ligne in chemin.read_text(encoding="utf-8").splitlines():
         ligne = ligne.strip()
         if not ligne or ligne.startswith("#") or "=" not in ligne:
             continue
-        cle, _, valeur = ligne.partition("=")
-        valeurs[cle] = valeur
-    return valeurs
+        cle, _, value = ligne.partition("=")
+        values[cle] = value
+    return values

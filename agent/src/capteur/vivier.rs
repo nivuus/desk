@@ -1,54 +1,54 @@
-//! Le vivier d'encodeurs : qui dort, qui veille.
+//! The encoder pool: who sleeps, who wakes.
 //!
-//! **Pas de `#[cfg(windows)]`, aucun objet COM, aucun canal.** Ce module ne
-//! fait que décider ; l'application des décisions vit dans `capteur/sommeil.rs`
-//! et `capteur/fenetre.rs`. C'est le patron établi par D4 pour
-//! `capteur/protocole.rs` et `capteur/distante.rs` : ce qui décide se teste sur
-//! l'hôte, et c'est ici la pièce la plus coûteuse à se tromper.
+//! **No `#[cfg(windows)]`, no COM object, no channel.** This module only
+//! decides; applying the decisions lives in `capteur/sommeil.rs`
+//! and `capteur/fenetre.rs`. It is the pattern set by D4 for
+//! `capteur/protocole.rs` and `capteur/distante.rs`: what decides is tested on
+//! the host, and here it is the piece that costs most to get wrong.
 //!
-//! **Pourquoi un LRU et pas un « premier arrivé, premier servi ».** La fenêtre
-//! au premier plan doit toujours gagner : c'est la main de l'utilisateur qui
-//! arbitre, sans qu'il ait rien à régler.
+//! **Why an LRU and not "first come, first served".** The window
+//! in the foreground must always win: it is the user's hand that
+//! arbitrates, without them having anything to configure.
 
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
-/// Nombre d'encodeurs simultanément vivants que le capteur s'autorise.
+/// Number of simultaneously live encoders the sensor allows itself.
 ///
-/// **Relevé sur cette VM, pas une borne du système** : mesuré les 30 et
-/// 31 juillet 2026 (la 9ᵉ création refusée au `SetOutputType` de la MFT NVIDIA,
-/// `MF_E_UNSUPPORTED_D3D_TYPE`), inchangé que les encodeurs partagent un
-/// périphérique D3D11 ou qu'ils en aient chacun un neuf. **La couche qui
-/// l'impose n'est pas identifiée.**
+/// **Read on this VM, not a system bound**: measured on 30 and
+/// 31 July 2026 (the 9th creation refused at the NVIDIA MFT's `SetOutputType`,
+/// `MF_E_UNSUPPORTED_D3D_TYPE`), unchanged whether the encoders share a
+/// D3D11 device or each have a new one. **The layer that
+/// imposes it is not identified.**
 pub const PLAFOND_EVEIL: usize = 8;
 
-/// Temps minimal d'éveil avant qu'une fenêtre puisse être ÉVINCÉE.
+/// Minimum wake time before a window can be EVICTED.
 ///
-/// ⚠️ **Valeur NON CALIBRÉE.** Elle borne le battement — dix fenêtres visibles
-/// et un utilisateur qui passe de l'une à l'autre reconstruiraient sinon une
-/// duplication DXGI et un encodeur par changement de focus. Le nombre
-/// d'endormissements relevé à la recette est ce qui la jugera, pas une
+/// ⚠️ **NOT CALIBRATED value.** It bounds flapping — ten visible windows
+/// and a user going from one to another would otherwise rebuild a
+/// DXGI duplication and an encoder per focus change. The number
+/// of fall-asleeps recorded in the acceptance run is what will judge it, not an
 /// intuition.
 ///
-/// Elle ne protège PAS contre une mise en veille voulue : se masquer est un
-/// geste explicite de l'utilisateur.
+/// It does NOT protect against a deliberate standby: hiding is an
+/// explicit gesture of the user.
 pub const HYSTERESIS: Duration = Duration::from_secs(2);
 
-/// Temps d'attente après l'échec de reveil d'une fenêtre avant de la reproposer.
+/// Wait time after a window's wake-up failure before proposing it again.
 ///
-/// ⚠️ **Valeur NON CALIBRÉE.** Elle borne la fréquence de rejeu d'un réveil
-/// refusé : sans elle, une fenêtre dont la construction d'encodeur échoue
-/// serait relancée à chaque arbitrage dans la boucle serrée. Le nombre de
-/// tentatives de reveil observé à la recette est ce qui la jugera.
+/// ⚠️ **NOT CALIBRATED value.** It bounds the replay frequency of a refused
+/// wake-up: without it, a window whose encoder construction fails
+/// would be relaunched at every arbitration in a tight loop. The number of
+/// wake-up attempts observed in the acceptance run is what will judge it.
 pub const REPIT_APRES_ECHEC: Duration = Duration::from_millis(500);
 
-/// Pourquoi une fenêtre s'endort. Les deux cas ne se valent pas pour
-/// l'utilisateur, et le client les affiche différemment.
+/// Why a window falls asleep. The two cases are not equivalent for
+/// the user, and the client shows them differently.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Raison {
-    /// Il l'a voulu : la fenêtre est minimisée ou son onglet est caché.
+    /// They wanted it: the window is minimised or its tab is hidden.
     Masquee,
-    /// Le vivier la lui a prise alors qu'il la regardait.
+    /// The pool took it from them while they were looking at it.
     Evincee,
 }
 
@@ -60,18 +60,18 @@ pub enum Ordre {
 
 struct Entree {
     visible: bool,
-    /// Instant du dernier focus ou de la dernière remise en visibilité.
+    /// Instant of the last focus or of the last return to visibility.
     ///
-    /// **La visibilité seule ne suffirait pas à ordonner un LRU** : dix
-    /// fenêtres toutes visibles ont exactement la même visibilité, et
-    /// l'éviction serait alors arbitraire.
-    dernier_vu: Instant,
+    /// **Visibility alone would not be enough to order an LRU**: ten
+    /// windows all visible have exactly the same visibility, and
+    /// eviction would then be arbitrary.
+    last_seen: Instant,
     eveillee: bool,
     eveillee_depuis: Instant,
-    /// Instant du dernier échec de reveil, ou `None` si jamais échoué ou depuis
-    /// longtemps. Exclut la fenêtre des candidates tant que le répit n'est pas
-    /// écoulé.
-    dernier_echec: Option<Instant>,
+    /// Instant of the last wake-up failure, or `None` if it never failed or not for
+    /// a long time. Excludes the window from the candidates as long as the respite has not
+    /// elapsed.
+    last_failure: Option<Instant>,
 }
 
 pub struct Vivier {
@@ -81,7 +81,7 @@ pub struct Vivier {
 }
 
 impl Vivier {
-    pub fn nouveau(plafond: usize, hysteresis: Duration) -> Vivier {
+    pub fn new(plafond: usize, hysteresis: Duration) -> Vivier {
         Vivier {
             plafond,
             hysteresis,
@@ -90,17 +90,17 @@ impl Vivier {
     }
 
     pub fn inscrire(&mut self, session: &str, maintenant: Instant) -> Vec<(String, Ordre)> {
-        // Une fenêtre naît ENDORMIE : le client annoncera sa visibilité, et
-        // c'est elle qui la réveillera. Naître éveillée ferait dépasser le
-        // plafond entre l'attache et le premier signal.
+        // A window is born ASLEEP: the client will announce its visibility, and
+        // it is that which will wake it up. Being born awake would exceed the
+        // cap between the attach and the first signal.
         self.entrees.insert(
             session.to_string(),
             Entree {
                 visible: false,
-                dernier_vu: maintenant,
+                last_seen: maintenant,
                 eveillee: false,
                 eveillee_depuis: maintenant,
-                dernier_echec: None,
+                last_failure: None,
             },
         );
         self.arbitrer(maintenant)
@@ -119,98 +119,98 @@ impl Vivier {
         maintenant: Instant,
     ) -> Vec<(String, Ordre)> {
         let Some(entree) = self.entrees.get_mut(session) else {
-            // Un signal peut arriver d'un enfant dont la fenêtre vient d'être
-            // retirée. Ignorer, jamais paniquer.
+            // A signal may arrive from a child whose window has just been
+            // removed. Ignore, never panic.
             return Vec::new();
         };
-        // La récence se rafraîchit au focus ET au retour de visibilité : ce
-        // sont les deux façons dont l'utilisateur dit « je regarde celle-ci ».
+        // Recency is refreshed on focus AND on return to visibility: these
+        // are the two ways the user says "I am looking at this one".
         if focalisee || (visible && !entree.visible) {
-            entree.dernier_vu = maintenant;
+            entree.last_seen = maintenant;
         }
         entree.visible = visible;
         self.arbitrer(maintenant)
     }
 
-    /// Enregistrer l'échec du reveil d'une fenêtre et mettre à jour l'état.
+    /// Records a window's wake-up failure and updates the state.
     ///
-    /// Appelée par le capteur quand la construction de l'encodeur échoue.
-    /// Repasse l'entrée à `eveillee = false` et pose un répit, puis
-    /// ré-arbitre pour tenter de remplir la place ainsi libérée.
+    /// Called by the sensor when the encoder construction fails.
+    /// Puts the entry back to `eveillee = false` and sets a respite, then
+    /// re-arbitrates to try to fill the place thus freed.
     pub fn echec_de_reveil(&mut self, session: &str, maintenant: Instant) -> Vec<(String, Ordre)> {
         let Some(entree) = self.entrees.get_mut(session) else {
-            // Un signal peut arriver d'un enfant dont la fenêtre vient d'être
-            // retirée. Ignorer, jamais paniquer.
+            // A signal may arrive from a child whose window has just been
+            // removed. Ignore, never panic.
             return Vec::new();
         };
         entree.eveillee = false;
-        entree.dernier_echec = Some(maintenant);
+        entree.last_failure = Some(maintenant);
         self.arbitrer(maintenant)
     }
 
-    /// Annule la mutation d'état qu'un ordre a produite, quand cet ordre
-    /// **n'a pas pu être déposé** dans la file de sa fenêtre.
+    /// Cancels the state mutation an order produced, when that order
+    /// **could not be dropped** into its window's queue.
     ///
-    /// 🔴 POURQUOI CETTE MÉTHODE EXISTE — LE SIXIÈME SITE DE MÉMORISATION,
-    /// TROUVÉ AU ROUND DE CORRECTION 2 (25 août 2026). `arbitrer` écrit
-    /// `eveillee` **AVANT que l'ordre parte** (étapes 1 et 5). C'est
-    /// exactement le patron de `dernieres_parts` et `derniers_audio` que le
-    /// round 1 a corrigé dans `sommeil/` — mais sur la seule variante que la
-    /// fenêtre APPLIQUE au lieu de la relayer, et avec un coût dans les DEUX
-    /// sens :
+    /// 🔴 WHY THIS METHOD EXISTS — THE SIXTH MEMORISATION SITE,
+    /// FOUND IN FIX ROUND 2 (25 August 2026). `arbitrer` writes
+    /// `eveillee` **BEFORE the order goes out** (steps 1 and 5). It is
+    /// exactly the pattern of `dernieres_parts` and `derniers_audio` that
+    /// round 1 fixed in `sommeil/` — but on the only variant the
+    /// window APPLIES instead of relaying it, and with a cost in BOTH
+    /// directions:
     ///
-    /// - **`Reveiller` refusé** : `eveillee` reste `true`, la place du vivier
-    ///   est occupée sans qu'aucun encodeur réel ne l'occupe, et `arbitrer`
-    ///   étant idempotent, **aucun ré-arbitrage futur ne réémet l'ordre** —
-    ///   mesuré : dix `rearbitrer` de suite ne rendent rien. C'est une fenêtre
-    ///   qui ne se réveille plus, pour la vie du processus.
-    /// - **`Dormir` refusé** : `eveillee` passe à `false` **définitivement**
-    ///   alors que la fenêtre tient toujours son encodeur — et **plus aucun
-    ///   arbitrage ne la réordonnera**, puisque le vivier la croit déjà
-    ///   endormie. ⚠️ **C'est la moitié la plus coûteuse, et c'est celle qu'on
-    ///   avait manquée** : il existe un `echec_de_reveil` pour le premier
-    ///   sens, il n'existe **aucun** `echec_de_sommeil`.
+    /// - **Refused `Reveiller`**: `eveillee` stays `true`, the pool's place
+    ///   is occupied without any real encoder occupying it, and `arbitrer`
+    ///   being idempotent, **no future re-arbitration re-emits the order** —
+    ///   measured: ten `rearbitrer` in a row return nothing. It is a window
+    ///   that no longer wakes up, for the life of the process.
+    /// - **Refused `Dormir`**: `eveillee` goes to `false` **for good**
+    ///   while the window still holds its encoder — and **no
+    ///   arbitration will ever order it again**, since the pool believes it already
+    ///   asleep. ⚠️ **It is the costlier half, and it is the one we
+    ///   had missed**: there is an `echec_de_reveil` for the first
+    ///   direction, there is **no** `echec_de_sommeil`.
     ///
-    /// 🔴 **CE QUE CETTE MÉTHODE N'EMPÊCHE PAS, ET QUI A ÉTÉ SUR-AFFIRMÉ**
-    /// (round de correction 3) : elle n'empêche **pas** la sur-souscription du
-    /// plafond d'encodeurs. `arbitrer` libère le créneau à l'étape 1, élit la
-    /// remplaçante à l'étape 4 et émet son `Reveiller` à l'étape 5 — **tout
-    /// dans la même passe, avant que le dépôt ne soit seulement tenté** ;
-    /// l'annulation ne court qu'après. Mesuré : `eveillees()` monte bien à 9
-    /// pour un plafond de 8. **Ce qu'elle obtient est que cette
-    /// sur-souscription soit TRANSITOIRE au lieu de permanente** — au
-    /// ré-arbitrage suivant, le vivier voit 9 > 8 et rendort quelqu'un, là où
-    /// sans elle il ne verrait jamais 9 et laisserait la dérive s'installer.
-    /// Le test
-    /// `sommeil::tests_refus::une_sur_souscription_par_un_dormir_non_depose_est_resorbee_au_tour_suivant`
-    /// la mesure dans les deux temps.
+    /// 🔴 **WHAT THIS METHOD DOES NOT PREVENT, AND WHICH WAS OVER-CLAIMED**
+    /// (fix round 3): it does **not** prevent over-subscription of the
+    /// encoder cap. `arbitrer` frees the slot at step 1, elects the
+    /// replacement at step 4 and emits its `Reveiller` at step 5 — **all
+    /// in the same pass, before the drop is even attempted**;
+    /// the cancellation only runs afterwards. Measured: `eveillees()` does rise to 9
+    /// for a cap of 8. **What it achieves is that this
+    /// over-subscription is TRANSIENT instead of permanent** — at the
+    /// next re-arbitration, the pool sees 9 > 8 and puts someone back to sleep, whereas
+    /// without it it would never see 9 and would let the drift settle in.
+    /// The test
+    /// `sommeil::tests_refus::an_oversubscription_from_an_undelivered_sleep_is_absorbed_next_round`
+    /// measures it at both times.
     ///
-    /// 🔴 LE REMÈDE EST « NE PAS MENTIR », PAS « RETENTER ». L'état
-    /// redevient celui d'AVANT l'ordre, donc le vivier décrit à nouveau la
-    /// réalité ; le prochain arbitrage voit la fenêtre dans son ancien état et
-    /// **réémet l'ordre de lui-même**. Rien n'est retenté à l'intérieur de
-    /// `distribuer`, donc **la terminaison de sa boucle n'est pas touchée** —
-    /// c'est le tour de roue suivant qui reprend.
+    /// 🔴 THE REMEDY IS "DO NOT LIE", NOT "RETRY". The state
+    /// becomes again that from BEFORE the order, so the pool describes
+    /// reality again; the next arbitration sees the window in its old state and
+    /// **re-emits the order by itself**. Nothing is retried inside
+    /// `distribuer`, so **the termination of its loop is not touched** —
+    /// it is the next wheel round that takes over.
     ///
-    /// ⚠️ **CE QUE L'ANNULATION NE RESTAURE PAS, et il faut le dire** : sur un
-    /// `Reveiller`, `arbitrer` a posé `dernier_echec = None`, et la valeur
-    /// d'avant n'est pas mémorisée. Elle n'est donc pas rendue. La
-    /// conséquence est **voulue** : la session redevient candidate sans
-    /// répit, ce qui est précisément ce qu'on cherche — que le prochain
-    /// arbitrage la réélise et réémette son ordre. `eveillee_depuis`, lui,
-    /// n'est lu que sur une entrée éveillée : le remettre serait sans effet.
-    /// Sur un `Dormir`, l'annulation est exacte — `arbitrer` n'y touche
-    /// qu'`eveillee`.
+    /// ⚠️ **WHAT THE CANCELLATION DOES NOT RESTORE, and it must be said**: on a
+    /// `Reveiller`, `arbitrer` set `last_failure = None`, and the previous value
+    /// is not memorised. It is therefore not given back. The
+    /// consequence is **intended**: the session becomes a candidate again without
+    /// respite, which is precisely what we want — that the next
+    /// arbitration re-elects it and re-emits its order. `eveillee_depuis`, for its part,
+    /// is only read on an awake entry: resetting it would have no effect.
+    /// On a `Dormir`, the cancellation is exact — `arbitrer` only touches
+    /// `eveillee` there.
     ///
-    /// **Sans effet si la session a disparu entre-temps**, jamais une panique :
-    /// c'est le régime de `echec_de_reveil` juste au-dessus, et pour la même
-    /// raison.
+    /// **No effect if the session has disappeared in the meantime**, never a panic:
+    /// it is the regime of `echec_de_reveil` just above, and for the same
+    /// reason.
     ///
-    /// **Ne ré-arbitre PAS et ne rend aucun ordre**, à la différence de
-    /// `echec_de_reveil` : elle est appelée DEPUIS la boucle de
-    /// `sommeil::registre::distribuer`, qui est en train de distribuer un lot.
-    /// Y engendrer un lot de plus ferait dépendre sa terminaison d'un chemin
-    /// que sa preuve ne couvre pas.
+    /// **Does NOT re-arbitrate and returns no order**, unlike
+    /// `echec_de_reveil`: it is called FROM the loop of
+    /// `sommeil::registre::distribuer`, which is in the middle of distributing a batch.
+    /// Generating one more batch there would make its termination depend on a path
+    /// its proof does not cover.
     pub fn annuler_ordre_non_livre(&mut self, session: &str, ordre: Ordre) {
         let Some(entree) = self.entrees.get_mut(session) else {
             return;
@@ -221,12 +221,12 @@ impl Vivier {
         }
     }
 
-    /// Ré-arbitrage périodique, appelé par le fil de `sommeil.rs`.
+    /// Periodic re-arbitration, called by the thread of `sommeil.rs`.
     ///
-    /// **Indispensable, et pas un luxe** : sous hystérésis, une fenêtre qui
-    /// demande à veiller peut être refusée. Elle est alors déjà visible et
-    /// déjà focalisée — aucun signal ne viendra plus la débloquer, et elle
-    /// dormirait pour toujours sans ce tour de roue.
+    /// **Indispensable, not a luxury**: under hysteresis, a window that
+    /// asks to wake may be refused. It is then already visible and
+    /// already focused — no signal will ever come to unblock it, and it
+    /// would sleep forever without this wheel round.
     pub fn rearbitrer(&mut self, maintenant: Instant) -> Vec<(String, Ordre)> {
         self.arbitrer(maintenant)
     }
@@ -236,12 +236,12 @@ impl Vivier {
         self.entrees.get(session).map(|e| e.eveillee)
     }
 
-    /// Les sessions actuellement éveillées, dans un ordre non spécifié.
+    /// The currently awake sessions, in an unspecified order.
     ///
-    /// Lu par `sommeil/parts.rs` pour alimenter le répartiteur de débit (D6) :
-    /// la part d'une fenêtre dépend de son éveil, et le vivier est la seule
-    /// source de vérité sur ce point. Le présent est bien le temps juste — ce
-    /// lecteur existe depuis la tâche 4 du sous-bloc.
+    /// Read by `sommeil/parts.rs` to feed the bitrate distributor (D6):
+    /// a window's share depends on its wakefulness, and the pool is the only
+    /// source of truth on that point. The present tense is indeed right — this
+    /// reader has existed since task 4 of the sub-block.
     pub fn eveillees(&self) -> Vec<String> {
         self.entrees
             .iter()
@@ -250,20 +250,20 @@ impl Vivier {
             .collect()
     }
 
-    /// Le cœur : calcule l'ensemble cible des éveillées, et en déduit les
-    /// transitions. **Idempotent** — appelé deux fois de suite sans changement
-    /// d'état ni de temps, il ne rend rien la seconde fois.
+    /// The heart: computes the target set of awake windows, and derives the
+    /// transitions from it. **Idempotent** — called twice in a row without a change
+    /// of state or time, it returns nothing the second time.
     ///
-    /// **Ordre du vecteur rendu** : tous les `Dormir` précèdent tout
-    /// `Reveiller`, chaque groupe étant trié par nom de session. Un réveil
-    /// appliqué avant le sommeil qu'il finance demanderait transitoirement un
-    /// encodeur de plus que le plafond.
+    /// **Order of the returned vector**: all `Dormir` precede any
+    /// `Reveiller`, each group being sorted by session name. A wake-up
+    /// applied before the sleep that finances it would transiently require one
+    /// encoder more than the cap.
     fn arbitrer(&mut self, maintenant: Instant) -> Vec<(String, Ordre)> {
         let mut ordres_dormir = Vec::new();
         let mut ordres_reveiller = Vec::new();
 
-        // 1. Toute éveillée devenue invisible s'endort. Sans hystérésis : le
-        //    masquage est explicite.
+        // 1. Any awake window that became invisible falls asleep. Without hysteresis: the
+        //    hiding is explicit.
         let masquees: Vec<String> = self
             .entrees
             .iter()
@@ -277,9 +277,9 @@ impl Vivier {
             ordres_dormir.push((nom, Ordre::Dormir(Raison::Masquee)));
         }
 
-        // 2. Les épinglées : éveillées, encore visibles, et réveillées depuis
-        //    moins que l'hystérésis. Elles occupent leur place quoi qu'il
-        //    arrive.
+        // 2. The pinned ones: awake, still visible, and woken up less
+        //    than the hysteresis ago. They keep their place no matter
+        //    what.
         let epinglees: Vec<String> = self
             .entrees
             .iter()
@@ -291,25 +291,25 @@ impl Vivier {
             .map(|(nom, _)| nom.clone())
             .collect();
 
-        // 3. Les candidates : toutes les visibles, sauf celles en répit après
-        //    échec, de la plus récemment vue à la plus ancienne. Un ordre total
-        //    est nécessaire pour que le résultat ne dépende pas du parcours
-        //    d'une table de hachage : à récence égale, le nom départage.
+        // 3. The candidates: all visible ones, except those in respite after
+        //    a failure, from the most recently seen to the oldest. A total order
+        //    is necessary so that the result does not depend on the traversal
+        //    of a hash table: at equal recency, the name breaks the tie.
         let mut candidates: Vec<(String, Instant)> = self
             .entrees
             .iter()
             .filter(|(_, e)| {
                 e.visible
-                    && e.dernier_echec.is_none_or(|t| {
+                    && e.last_failure.is_none_or(|t| {
                         maintenant.saturating_duration_since(t) >= REPIT_APRES_ECHEC
                     })
             })
-            .map(|(nom, e)| (nom.clone(), e.dernier_vu))
+            .map(|(nom, e)| (nom.clone(), e.last_seen))
             .collect();
         candidates.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
 
-        // 4. L'ensemble cible : les épinglées d'abord, puis les candidates les
-        //    plus récentes jusqu'à remplir le plafond.
+        // 4. The target set: the pinned ones first, then the most recent
+        //    candidates until the cap is filled.
         let mut cible: Vec<String> = epinglees.clone();
         for (nom, _) in candidates {
             if cible.len() >= self.plafond {
@@ -330,7 +330,7 @@ impl Vivier {
             if doit_veiller && !e.eveillee {
                 e.eveillee = true;
                 e.eveillee_depuis = maintenant;
-                e.dernier_echec = None;
+                e.last_failure = None;
                 ordres_reveiller.push((nom, Ordre::Reveiller));
             } else if !doit_veiller && e.eveillee {
                 e.eveillee = false;
@@ -338,18 +338,18 @@ impl Vivier {
             }
         }
 
-        // Trier chaque groupe pour déterminisme total.
+        // Sort each group for total determinism.
         ordres_dormir.sort_by(|a, b| a.0.cmp(&b.0));
         ordres_reveiller.sort_by(|a, b| a.0.cmp(&b.0));
 
-        // Rendus dans l'ordre : tous les dormir avant tous les reveiller.
+        // Returned in order: all sleeps before all wake-ups.
         ordres_dormir.extend(ordres_reveiller);
         ordres_dormir
     }
 }
 
-/// Les tests vivent dans un fichier voisin : ce fichier-ci approche le plafond
-/// de 500 lignes du projet, que cette extraction prévient de franchir. Le module
-/// de tests demeure entièrement compilé et exécuté.
+/// The tests live in a sibling file: this file is approaching the project's
+/// 500-line cap, which this extraction prevents it from crossing. The test
+/// module remains entirely compiled and run.
 #[cfg(test)]
 mod tests;

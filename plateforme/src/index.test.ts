@@ -1,14 +1,14 @@
-// L'ordre de démarrage, et le refus de démarrer dégradé.
+// The startup order, and the refusal to start degraded.
 //
-// Spec §6, premier cas : le service REFUSE de démarrer, avec la cause. Il ne
-// démarre pas dégradé — « un signaling qui apparie sans rien enregistrer
-// serait indiscernable du bon fonctionnement ». C'est la classe de défaut
-// contre laquelle tout ce dépôt est écrit.
+// Spec §6, first case: the service REFUSES to start, with the cause. It does not
+// start degraded — "a signaling that pairs without recording anything
+// would be indistinguishable from correct operation". It is the class of defect
+// this whole repository is written against.
 
 import net from 'node:net';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { Config } from './config';
-import { demarrer, type Service } from './demarrage';
+import { start, type Service } from './demarrage';
 import { baseNeuve } from './base/harnais';
 import { ouvrirSession } from './depot/session';
 import { mkdtempSync } from 'node:fs';
@@ -22,7 +22,7 @@ afterEach(async () => {
     service = undefined;
 });
 
-/// Tente une connexion TCP nue, et dit si quelque chose écoute.
+/// Attempts a bare TCP connection, and says whether something listens.
 function connecterA(port: number): Promise<void> {
     return new Promise((resolve, reject) => {
         const s = net.connect({ host: '127.0.0.1', port });
@@ -39,37 +39,37 @@ function connecterA(port: number): Promise<void> {
 
 const PORT_MORT = 45_137;
 
-// Un secret de test EXPLICITE, jamais `''` : `lireConfig` refuse la chaîne
-// vide, et un littéral `Config` construit à la main doit porter une valeur
-// qu'un service accepterait réellement.
+// An EXPLICIT test secret, never `''`: `lireConfig` refuses the empty
+// string, and a `Config` literal built by hand must carry a value
+// a service would really accept.
 const SECRET = 'un-secret-de-plateforme-de-quarante-octets';
 
-describe('démarrage du service', () => {
-    it("refuse de démarrer quand la base est injoignable, et n'ouvre aucun port", async () => {
+describe('service startup', () => {
+    it("refuses to start when the database is unreachable, and opens no port", async () => {
         const config: Config = {
             hote: '127.0.0.1',
             port: PORT_MORT,
             base: 'postgres',
-            // Un port sur lequel rien n'écoute : la connexion est refusée.
+            // A port on which nothing listens: the connection is refused.
             urlBase: 'postgres://x:y@127.0.0.1:1/x',
             secretJeton: SECRET,
-            // Aucun proxy declare : voir `config.ts`, l'ensemble vide est le
-            // defaut et signifie « ne croire l'adresse annoncee par personne ».
+            // No proxy declared: see `config.ts`, the empty set is the
+            // default and means "trust nobody's announced address".
             proxyDeConfiance: new Set(),
             repertoireIcones: join(mkdtempSync(join(tmpdir(), 'g2-icones-')), 'icones'),
             repertoireTeleversements: join(mkdtempSync(join(tmpdir(), 'g3-tranches-')), 'televersements'),
             auth: 'pomerium',
         };
-        // Deux assertions DISTINCTES, et la seconde est le point de ce test.
-        await expect(demarrer(config)).rejects.toThrow(/base/i);
-        // 🔴 Sans celle-ci, un service qui ouvre son port PUIS meurt passerait
-        // pour correct. C'est elle qui exerce l'ordre de démarrage.
+        // Two DISTINCT assertions, and the second is the point of this test.
+        await expect(start(config)).rejects.toThrow(/base/i);
+        // 🔴 Without this one, a service that opens its port THEN dies would pass
+        // for correct. It is what exercises the startup order.
         await expect(connecterA(PORT_MORT)).rejects.toThrow(/ECONNREFUSED/);
     });
 
-    it('clôt au démarrage les sessions restées ouvertes, et dit combien', async () => {
-        // Une base qui porte deux sessions ouvertes, comme après un arrêt
-        // brutal du service.
+    it('closes at startup the sessions left open, and says how many', async () => {
+        // A database carrying two open sessions, as after an abrupt
+        // stop of the service.
         const base = await baseNeuve('demarrage-balai');
         await ouvrirSession(base, 'survivante-1', 1_000);
         await ouvrirSession(base, 'survivante-2', 2_000);
@@ -81,16 +81,16 @@ describe('démarrage du service', () => {
         await base.fermer();
     });
 
-    it('ouvre le port et sert le relais quand la base est prête', async () => {
-        service = await demarrer({
+    it('opens the port and serves the relay when the database is ready', async () => {
+        service = await start({
             hote: '127.0.0.1',
             port: 0,
             base: 'sqlite',
             urlBase: ':memory:',
             secretJeton: SECRET,
-            // Aucun proxy déclaré : le service ne croira l'en-tête
-            // `X-Forwarded-For` de personne, ce qui est le défaut de
-            // `lireConfig` et l'état d'un déploiement sans proxy inverse.
+            // No proxy declared: the service will trust nobody's
+            // `X-Forwarded-For` header, which is the default of
+            // `lireConfig` and the state of a deployment without a reverse proxy.
             proxyDeConfiance: new Set(),
             repertoireIcones: join(mkdtempSync(join(tmpdir(), 'g2-icones-')), 'icones'),
             repertoireTeleversements: join(mkdtempSync(join(tmpdir(), 'g3-tranches-')), 'televersements'),
@@ -98,16 +98,16 @@ describe('démarrage du service', () => {
         });
         expect(service.port).toBeGreaterThan(0);
         await expect(connecterA(service.port)).resolves.toBeUndefined();
-        // Les migrations sont appliquées : la table existe et se lit. Le
-        // compte est écrit en dur pour la raison donnée dans
-        // `base/pilotes.test.ts` — P2 l'a porté de 1 à 2 en ajoutant
-        // `0002-identite.sql`, P3 de 2 à 3 en ajoutant `0003-agents.sql`, et
-        // G1 de 3 à 4 en ajoutant `0004-applications.sql`.
+        // The migrations are applied: the table exists and is readable. The
+        // count is hardcoded for the reason given in
+        // `base/pilotes.test.ts` — P2 brought it from 1 to 2 by adding
+        // `0002-identite.sql`, P3 from 2 to 3 by adding `0003-agents.sql`, and
+        // G1 from 3 to 4 by adding `0004-applications.sql`.
         //
-        // ⚠️ C'est la SECONDE place du dépôt qui fige ce compte, et la seule
-        // que `pilotes.test.ts` ne nomme pas : mettre l'une à jour sans
-        // l'autre laisse une rouge dont la cause est ailleurs que là où on la
-        // cherche. Les deux se trouvent par
+        // ⚠️ It is the SECOND place in the repository that pins this count, and the only one
+        // `pilotes.test.ts` does not name: updating one without
+        // the other leaves a red whose cause is elsewhere than where one
+        // looks for it. Both are found by
         // `grep -rn "schema_migration" src/ | grep -i test`.
         expect(await service.base.interroger('SELECT version FROM schema_migration', []))
             .toHaveLength(7);

@@ -119,7 +119,7 @@ if (!sortie) {
 }
 mkdirSync(sortie, { recursive: true });
 
-const fichiers = [
+const files = [
     ['ton-440.wav', ton(440, 12)],
     ['ton-440-hache.wav', tonHache(440, 12)],
     ['ton-660.wav', ton(660, 12)],
@@ -129,7 +129,7 @@ const fichiers = [
     ['silence.wav', new Float64Array(TAUX * 12)],
 ];
 
-for (const [nom, ech] of fichiers) {
+for (const [nom, ech] of files) {
     const octets = ecrireWav(join(sortie, nom), ech);
     console.log(`${nom} : ${ech.length} échantillons, ${(ech.length / TAUX).toFixed(4)} s, ${octets} octets`);
 }

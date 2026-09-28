@@ -8,14 +8,14 @@ import messageCss from './primitives/message.css?raw';
 import baseCss from './base.css?raw';
 
 /**
- * 🔴 LES GARDES LISENT LES FAMILLES, PAS `primitives.css`, qui n'est plus
- * qu'une liste d'`@import` depuis l'extraction de T4. Le lire seul ferait
- * mesurer ZÉRO règle aux quatre gardes d'absence — c'est G5 qui l'a attrapé,
- * ROUGE, à l'extraction même.
+ * 🔴 THE GUARDS READ THE FAMILIES, NOT `primitives.css`, which is now only
+ * a list of `@import` since the extraction of T4. Reading it alone would make
+ * the four absence guards measure ZERO rules — it is G5 that caught it,
+ * RED, at the extraction itself.
  *
- * ⚠️ TOUTE FAMILLE NEUVE S'AJOUTE ICI **ET** DANS `primitives.css` : G5 compare
- * les deux listes, si bien qu'une cinquième famille importée sans être lue ici
- * — donc hors de portée de G1 à G4 — fait tomber le garde.
+ * ⚠️ ANY NEW FAMILY IS ADDED HERE **AND** IN `primitives.css`: G5 compares
+ * the two lists, so that a fifth family imported without being read here
+ * — hence out of reach of G1 to G4 — brings the guard down.
  */
 const FAMILLES = new Map([
     ['./primitives/bouton.css', boutonCss],
@@ -25,163 +25,163 @@ const FAMILLES = new Map([
 ]);
 
 /**
- * LES GARDES DE FORME DES PRIMITIVES — sous-projet ⑥, sous-bloc S2.
+ * THE SHAPE GUARDS OF THE PRIMITIVES — sub-project ⑥, sub-block S2.
  *
- * 🔴 CE FICHIER NE LIT UN TEXTE NON VIDE QUE GRÂCE À `test: { css: true }` de
- * `client/vite.config.ts`. Sans cette ligne, Vitest court-circuite les fichiers
- * CSS — la requête `?raw` comprise — et `primitivesCss` vaut la chaîne VIDE :
- * les gardes ① à ④ ci-dessous, qui sont des tests d'ABSENCE, passeraient tous
- * au vert EN NE MESURANT RIEN. C'est aussi pourquoi il n'y a délibérément pas
- * de `client/vitest.config.ts` : il prendrait le pas sur la configuration Vite
- * sans rien dire.
+ * 🔴 THIS FILE ONLY READS A NON-EMPTY TEXT THANKS TO `test: { css: true }` of
+ * `client/vite.config.ts`. Without that line, Vitest short-circuits CSS
+ * files — the `?raw` query included — and `primitivesCss` is the EMPTY string:
+ * guards ① to ④ below, which are ABSENCE tests, would all turn
+ * green WHILE MEASURING NOTHING. That is also why there is deliberately no
+ * `client/vitest.config.ts`: it would take precedence over the Vite configuration
+ * without a word.
  *
- * 🔴 ET C'EST EXACTEMENT POURQUOI G5 EXISTE. G1 à G4 cherchent l'absence de
- * quelque chose ; un `primitives.css` réduit à son en-tête les satisferait tous
- * les quatre. G5 est le garde d'ATTEIGNABILITÉ : il exige qu'il y ait quelque
- * chose à mesurer.
+ * 🔴 AND THAT IS EXACTLY WHY G5 EXISTS. G1 to G4 look for the absence of
+ * something; a `primitives.css` reduced to its header would satisfy all
+ * four. G5 is the REACHABILITY guard: it requires that there be something
+ * to measure.
  *
- * 🔴 LE BLANCHIMENT DES COMMENTAIRES N'EST PAS UN DÉTAIL. L'en-tête de
- * `primitives.css` explique POURQUOI `outline: none`, `opacity` et les
- * longueurs littérales y sont interdits — il ÉCRIT donc ces chaînes. Un garde
- * qui les chercherait dans le texte brut serait satisfait par sa propre
- * justification, et resterait vert sur un fichier dont la règle a été retirée.
- * C'est mot pour mot ce qui est arrivé au garde de l'amorce en S1.
+ * 🔴 BLANKING THE COMMENTS IS NOT A DETAIL. The header of
+ * `primitives.css` explains WHY `outline: none`, `opacity` and literal
+ * lengths are forbidden there — so it WRITES those strings. A guard
+ * that looked for them in the raw text would be satisfied by its own
+ * justification, and would stay green on a file whose rule was removed.
+ * That is word for word what happened to the bootstrap guard in S1.
  *
- * ⚠️ MAIS SA PORTÉE RÉELLE EST PLUS ÉTROITE QUE CELA, ET ELLE EST MESURÉE —
- * l'écrire large serait affirmer au-delà du relevé. Neutraliser le blanchiment
- * fait tomber G1 (et donc G5, qui lit les mêmes préludes) : le balayage
- * `preludes` prend le texte d'un commentaire précédant un `{` pour une liste de
- * sélecteurs, et G1 remonte alors 889 compounds parasites dont `/*` (⚠️ 672 à
- * la tâche 2, quand `bouton.css` était seul : le nombre a grossi avec les trois
- * familles suivantes, et il a été REMESURÉ le 20 août 2026 plutôt que recopié).
- * G2, G3 et
- * G4 restent VERTS sans lui, y compris avec un `outline: none;` écrit dans un
- * commentaire posé À L'INTÉRIEUR d'un bloc (essayé) : ces trois-là ne cherchent
- * pas une sous-chaîne, ils lisent une POSITION DE PROPRIÉTÉ dans une
- * déclaration, et un `/* … outline` n'en est pas une. Le blanchiment reste
- * requis — il est le seul rempart de G1 et de G5 —, et c'est la façon dont G2 à
- * G4 sont écrits qui les met hors d'atteinte du piège, pas lui.
+ * ⚠️ BUT ITS REAL SCOPE IS NARROWER THAN THAT, AND IT IS MEASURED —
+ * writing it wide would be claiming beyond the measurement. Neutralising the blanking
+ * brings down G1 (and hence G5, which reads the same preludes): the
+ * `preludes` scan takes the text of a comment preceding a `{` for a list of
+ * selectors, and G1 then reports 889 parasitic compounds including `/*` (⚠️ 672 at
+ * task 2, when `bouton.css` was alone: the number grew with the next three
+ * families, and it was MEASURED AGAIN on August 20th, 2026 rather than copied).
+ * G2, G3 and
+ * G4 stay GREEN without it, including with an `outline: none;` written in a
+ * comment placed INSIDE a block (tried): those three do not look for
+ * a substring, they read a PROPERTY POSITION in a
+ * declaration, and a `/* … outline` is not one. Blanking remains
+ * required — it is the only safeguard of G1 and G5 —, and it is the way G2 to
+ * G4 are written that puts them out of reach of the trap, not it.
  */
 
-/* 🔴 LE LECTEUR DE FEUILLE VIT DANS `./css`, EXTRAIT PAR LA TÂCHE 1 DE S4 —
-   blanchiment, préludes, déclarations, bloc apparié, compounds. Il était ici en
-   propre ; les gardes neufs de S4 (§7.10, `style.test.ts`) le réemploient au
-   lieu de le recopier, et une machinerie recopiée diverge d'un garde à l'autre
-   sans qu'aucune commande ne le dise. Ce fichier rend EXACTEMENT les mêmes
-   verdicts qu'avant l'extraction : G1 à G7, neuf tests, aucun message changé.
-   ⚠️ `Declaration` n'est plus déclarée ici : `declarationsDe` en rend le type,
-   et les gardes ci-dessous n'en nomment jamais un. */
+/* 🔴 THE STYLESHEET READER LIVES IN `./css`, EXTRACTED BY TASK 1 OF S4 —
+   blanking, preludes, declarations, matched block, compounds. It was here
+   privately; the new guards of S4 (§7.10, `style.test.ts`) reuse it instead
+   of copying it, and copied machinery drifts from one guard to the other
+   without any command saying so. This file returns EXACTLY the same
+   verdicts as before the extraction: G1 to G7, nine tests, no message changed.
+   ⚠️ `Declaration` is no longer declared here: `declarationsDe` returns its type,
+   and the guards below never name one. */
 
 const CSS = sansCommentaires([...FAMILLES.values()].join('\n'));
 const SELECTEURS = preludes(CSS).filter((p) => !p.startsWith('@'));
 const DECLARATIONS = declarationsDe(CSS);
 
-/** Les listes de sélecteurs qui citent une famille — l'outil de G5 et de G6. */
+/** The selector lists that cite a family — the tool of G5 and G6. */
 const famille = (nom: string) => SELECTEURS.filter((s) => s.includes(`.${nom}`));
 
 /**
- * G6 — les états et les parties qu'une famille doit déclarer.
+ * G6 — the states and parts a family must declare.
  *
- * 🔴 IL LIT DES SÉLECTEURS, PAS DE LA PROSE. Une règle retirée fait tomber ce
- * garde ; le COMMENTAIRE qui la mentionne, blanchi d'entrée, ne le retient pas.
- * C'est la seule façon de savoir qu'il mesure du code — S1 a payé deux fois un
- * garde satisfait par sa propre justification.
+ * 🔴 IT READS SELECTORS, NOT PROSE. A removed rule brings down this
+ * guard; the COMMENT mentioning it, blanked from the start, does not hold it back.
+ * That is the only way to know it measures code — S1 paid twice for a
+ * guard satisfied by its own justification.
  *
- * ⚠️ CE QU'IL NE DIT PAS : que l'état soit BIEN DIT. Qu'un champ en erreur se
- * distingue, qu'un désactivé se lise comme inerte — ce sont des jugements
- * humains du §8, et aucun ne deviendra une mesure.
+ * ⚠️ WHAT IT DOES NOT SAY: that the state is WELL expressed. That a field in error
+ * stands out, that a disabled one reads as inert — those are human
+ * judgements of §8, and none will become a measurement.
  */
 function etatsManquants(nom: string, attendus: string[]): string[] {
-    // 🔴 `:not(…)` EST RETIRÉ AVANT LA RECHERCHE, ET CE N'EST PAS UNE FINESSE :
-    // sans cela, `.champ__saisie:hover:not(:disabled)` contient la sous-chaîne
-    // `:disabled`, et le garde ne peut plus échouer quand la RÈGLE
-    // `.champ__saisie:disabled` disparaît. Mesuré : la rouge de T3 n'a d'abord
-    // rien fait tomber, sur une règle réellement retirée. C'est le patron du
-    // contrôle vacueux, attrapé ici sur le garde lui-même.
+    // 🔴 `:not(…)` IS REMOVED BEFORE THE SEARCH, AND IT IS NOT A NICETY:
+    // without it, `.champ__saisie:hover:not(:disabled)` contains the substring
+    // `:disabled`, and the guard can no longer fail when the RULE
+    // `.champ__saisie:disabled` disappears. Measured: the T3 red at first brought
+    // nothing down, on a rule really removed. It is the pattern of the
+    // vacuous check, caught here on the guard itself.
     const selecteurs = famille(nom)
         .map((s) => s.replace(/:not\([^)]*\)/g, ''))
         .join('  ');
     return attendus.filter((etat) => !selecteurs.includes(etat));
 }
 
-describe('primitives.css — les gardes de forme', () => {
-    it('G1 — aucun sélecteur d’élément nu : tout compound porte une classe', () => {
-        // 🔴 C'EST CE GARDE QUI TIENT LA NEUTRALITÉ D'`index.html`. La fenêtre
-        // de session porte cinq éléments sans aucune classe de primitive, dont
-        // DEUX `<button>` : un `button { … }` écrit ici changerait son
-        // apparence sans qu'aucun des neuf contrôles ne le dise.
+describe('primitives.css — the shape guards', () => {
+    it('G1 — no bare element selector: every compound carries a class', () => {
+        // 🔴 IT IS THIS GUARD THAT KEEPS `index.html` NEUTRAL. The session
+        // window carries five elements without any primitive class, including
+        // TWO `<button>`: a `button { … }` written here would change its
+        // appearance without any of the nine checks saying so.
         const nus: string[] = [];
-        for (const liste of SELECTEURS) {
-            for (const selecteur of liste.split(',')) {
+        for (const list of SELECTEURS) {
+            for (const selecteur of list.split(',')) {
                 for (const compound of compounds(selecteur.trim())) {
                     if (!compound.includes('.')) nus.push(compound);
                 }
             }
         }
-        expect(nus, 'sélecteurs d’élément nus dans primitives.css').toEqual([]);
+        expect(nus, 'bare element selectors in primitives.css').toEqual([]);
     });
 
-    it('G2 — l’anneau de focus n’est jamais effacé', () => {
-        // `base.css` pose `:focus-visible` GLOBALEMENT : aucune primitive n'a
-        // à le déclarer, et le seul risque est qu'une d'elles l'efface « pour
-        // faire propre ». Aucun des neuf contrôles ne le verrait.
+    it('G2 — the focus ring is never removed', () => {
+        // `base.css` sets `:focus-visible` GLOBALLY: no primitive has
+        // to declare it, and the only risk is that one of them erases it "to
+        // look tidy". None of the nine checks would see it.
         const effacements = DECLARATIONS.filter(
             (d) =>
                 /^outline(-(width|style))?$/i.test(d.propriete) &&
-                /^(none|0|0px|0rem|0em)$/i.test(d.valeur),
-        ).map((d) => `${d.propriete}: ${d.valeur}`);
-        expect(effacements, 'effacements de l’anneau de focus').toEqual([]);
+                /^(none|0|0px|0rem|0em)$/i.test(d.value),
+        ).map((d) => `${d.propriete}: ${d.value}`);
+        expect(effacements, 'removals of the focus ring').toEqual([]);
     });
 
-    it('G3 — aucun état ne se dit par une composition d’exécution', () => {
-        // `opacity` et `filter` composent la couleur AU RENDU : la teinte
-        // effective échappe alors aux 52 paires du contrôle §7.1. Un état
-        // désactivé exprimé par une opacité serait le seul état du produit
-        // dont le contraste ne serait mesuré par rien.
+    it('G3 — no state is expressed through a runtime composition', () => {
+        // `opacity` and `filter` compose the colour AT RENDERING: the effective
+        // tint then escapes the 52 pairs of check §7.1. A disabled
+        // state expressed by an opacity would be the only state of the product
+        // whose contrast nothing measured.
         const compositions = DECLARATIONS.filter((d) =>
             ['opacity', 'filter', 'backdrop-filter'].includes(d.propriete.toLowerCase()),
-        ).map((d) => `${d.propriete}: ${d.valeur}`);
-        expect(compositions, 'compositions d’exécution dans primitives.css').toEqual([]);
+        ).map((d) => `${d.propriete}: ${d.value}`);
+        expect(compositions, 'runtime compositions in primitives.css').toEqual([]);
     });
 
-    it('G4 — aucune longueur hors échelle : toute unité passe par un token', () => {
-        // ⚠️ CE GARDE NE DIT PAS QUE LE BON TOKEN A ÉTÉ CHOISI. Il dit
-        // qu'aucune longueur ne s'écrit hors des échelles du §4.4 — ce
-        // qu'aucun des neuf contrôles ne mesure ICI.
-        // ❌ « puisque aucun ne mesure une longueur » : plus vrai depuis le
-        // sous-bloc S4. §7.10 en mesure une, mais sur les feuilles de
-        // SURFACE seulement — `client/src/design/` est hors de sa portée, et
-        // c'est précisément la frontière que les deux gardes écrivent chacun
-        // de son côté. G4 reste donc le seul garde de ces quatre familles.
+    it('G4 — no length off the scale: every unit goes through a token', () => {
+        // ⚠️ THIS GUARD DOES NOT SAY THE RIGHT TOKEN WAS CHOSEN. It says
+        // that no length is written outside the scales of §4.4 — which
+        // none of the nine checks measures HERE.
+        // ❌ "since none measures a length": no longer true since
+        // sub-block S4. §7.10 measures one, but on the SURFACE sheets
+        // only — `client/src/design/` is outside its scope, and
+        // that is precisely the boundary the two guards each write
+        // from their side. G4 therefore remains the only guard of these four families.
         const hors: string[] = [];
         for (const d of DECLARATIONS) {
-            const reste = d.valeur.replace(/var\(\s*--[a-z0-9-]+\s*\)/gi, ' ');
+            const reste = d.value.replace(/var\(\s*--[a-z0-9-]+\s*\)/gi, ' ');
             const trouve = reste.match(/(\d+(?:\.\d+)?)(px|rem|em|ms|s|pt|ch|vw|vh)\b/);
-            if (trouve) hors.push(`${d.propriete}: ${d.valeur} → « ${trouve[0]} » hors token`);
+            if (trouve) hors.push(`${d.propriete}: ${d.value} → « ${trouve[0]} » outside tokens`);
         }
-        expect(hors, 'longueurs littérales dans primitives.css').toEqual([]);
+        expect(hors, 'literal lengths in primitives.css').toEqual([]);
     });
 
-    it('G5 — atteignabilité : le fichier déclare des règles, dont la famille bouton', () => {
-        // 🔴 SANS CE GARDE, LES QUATRE PRÉCÉDENTS NE PROUVENT RIEN : ce sont
-        // des tests d'absence, et un fichier vide les satisfait tous.
+    it('G5 — reachability: the file declares rules, including the button family', () => {
+        // 🔴 WITHOUT THIS GUARD, THE FOUR PREVIOUS ONES PROVE NOTHING: they are
+        // absence tests, and an empty file satisfies them all.
         expect(
             SELECTEURS.length,
-            'primitives.css ne déclare AUCUNE règle : G1 à G4 sont alors verts en ne mesurant rien',
+            'primitives.css declares NO rule: G1 to G4 are then green while measuring nothing',
         ).toBeGreaterThan(0);
-        expect(famille('bouton'), 'la famille .bouton est absente de primitives.css').not.toEqual(
+        expect(famille('bouton'), 'the .bouton family is missing from primitives.css').not.toEqual(
             [],
         );
-        // 🔴 ET QUE CE FICHIER LISE BIEN TOUT CE QUE `primitives.css` IMPORTE :
-        // une famille importée mais absente de `FAMILLES` échapperait à G1, G2,
-        // G3 et G4 sans qu'aucune commande ne le dise.
+        // 🔴 AND THAT THIS FILE DOES READ EVERYTHING `primitives.css` IMPORTS:
+        // a family imported but absent from `FAMILLES` would escape G1, G2,
+        // G3 and G4 without any command saying so.
         const importees = [...primitivesCss.matchAll(/@import\s+'([^']+)'/g)].map((m) => m[1]);
-        expect(importees.sort(), 'les familles importées et celles que ce test lit divergent').toEqual(
+        expect(importees.sort(), 'the imported families and those this test reads diverge').toEqual(
             [...FAMILLES.keys()].sort(),
         );
     });
 
-    it('G6 — la famille CHAMP déclare ses états et ses parties', () => {
+    it('G6 — the FIELD family declares its states and its parts', () => {
         expect(
             etatsManquants('champ', [
                 '.champ__etiquette',
@@ -192,54 +192,54 @@ describe('primitives.css — les gardes de forme', () => {
                 ':disabled',
                 '.champ--erreur',
             ]),
-            'états ou parties absents de la famille champ',
+            'states or parts missing from the field family',
         ).toEqual([]);
     });
 
-    it('G6 — la famille SURFACE déclare ses parties, et le séparateur', () => {
+    it('G6 — the SURFACE family declares its parts, and the separator', () => {
         expect(
             etatsManquants('carte', ['.carte__titre', '.carte__corps']),
-            'parties absentes de la famille carte',
+            'parts missing from the card family',
         ).toEqual([]);
-        expect(famille('separateur'), 'le séparateur est absent de primitives').not.toEqual([]);
+        expect(famille('separateur'), 'the separator is missing from primitives').not.toEqual([]);
     });
 
-    it('G6 — la famille MESSAGE déclare ses quatre tons', () => {
-        // Le ton NEUTRE est `.message` elle-même : les trois autres ne
-        // changent que l'encre et le trait.
+    it('G6 — the MESSAGE family declares its four tones', () => {
+        // The NEUTRAL tone is `.message` itself: the other three only
+        // change the ink and the stroke.
         expect(
             etatsManquants('message', ['.message--succes', '.message--alerte', '.message--danger']),
-            'tons absents de la famille message',
+            'tones missing from the message family',
         ).toEqual([]);
     });
 
-    it('G7 — base.css neutralise les transitions sous prefers-reduced-motion', () => {
-        // 🔴 LE BLANCHIMENT EST ICI STRICTEMENT NÉCESSAIRE : l'en-tête de la
-        // règle RECOPIE la commande de mesure qui l'a imposée, donc la chaîne
-        // `@media (prefers-reduced-motion: reduce)` en toutes lettres, ET le
-        // bloc `{ :root { --duree-1: 0.01ms; } }` qui la suit dans le relevé.
+    it('G7 — base.css neutralises the transitions under prefers-reduced-motion', () => {
+        // 🔴 BLANKING IS STRICTLY NECESSARY HERE: the header of the
+        // rule COPIES the measurement command that imposed it, hence the string
+        // `@media (prefers-reduced-motion: reduce)` spelled out, AND the
+        // block `{ :root { --duree-1: 0.01ms; } }` that follows it in the report.
         //
-        // ❌ « Un garde qui la chercherait dans le texte brut resterait VERT sur
-        // un `base.css` dont la règle a été retirée » — écrit ici par la tâche 6
-        // et RÉFUTÉ PAR MESURE le 20 août 2026 (revue transverse, journal
-        // `journaux-design-s2/rouges-rejouees.log`). Il ne reste pas vert : sa
-        // PREMIÈRE assertion est bien satisfaite par le commentaire, mais la
-        // SECONDE lit alors le bloc du relevé et tombe —
+        // ❌ "A guard that looked for it in the raw text would stay GREEN on
+        // a `base.css` whose rule was removed" — written here by task 6
+        // and REFUTED BY MEASUREMENT on August 20th, 2026 (cross review, log
+        // `journaux-design-s2/rouges-rejouees.log`). It does not stay green: its
+        // FIRST assertion is indeed satisfied by the comment, but the
+        // SECOND then reads the block of the report and falls —
         //   `expected [ '--duree-1' ] to include 'transition-duration'`.
-        // ⚠️ ET C'EST PIRE QUE CE QUE L'ÉNONCÉ FAUX DÉCRIVAIT : sans blanchiment,
-        // ce garde rend CE MÊME ROUGE que la règle soit PRÉSENTE ou ABSENTE —
-        // il cesse de discriminer, et devient un faux positif sur un `base.css`
-        // parfaitement correct. Le blanchiment n'est pas ce qui l'empêche d'être
-        // vert à tort : c'est ce qui le rend capable de dire quoi que ce soit.
+        // ⚠️ AND IT IS WORSE THAN WHAT THE FALSE STATEMENT DESCRIBED: without blanking,
+        // this guard returns THIS SAME RED whether the rule is PRESENT or ABSENT —
+        // it stops discriminating, and becomes a false positive on a perfectly
+        // correct `base.css`. Blanking is not what keeps it from being
+        // wrongly green: it is what makes it able to say anything at all.
         const base = sansCommentaires(baseCss);
         const debut = base.search(/@media\s*\(\s*prefers-reduced-motion\s*:\s*reduce\s*\)/);
         expect(
             debut,
-            'aucune requête @media (prefers-reduced-motion: reduce) dans base.css, commentaires blanchis',
+            'no @media (prefers-reduced-motion: reduce) query in base.css, comments blanked',
         ).toBeGreaterThan(-1);
         expect(
             declarationsDe(blocApres(base, debut)).map((d) => d.propriete),
-            'la requête de mouvement réduit ne porte aucune déclaration',
+            'the reduced-motion query carries no declaration',
         ).toContain('transition-duration');
     });
 });

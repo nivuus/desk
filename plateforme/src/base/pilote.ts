@@ -1,11 +1,11 @@
-// L'interface que les deux moteurs présentent au reste du service, et la seule
-// fonction PURE de la couche : la conversion des marqueurs `?` en `$1..$n`.
+// The interface that the two engines present to the rest of the service, and the only
+// PURE function of the layer: the conversion of `?` markers into `$1..$n`.
 //
-// Ce que cette couche échange (spec §3.2, §7.1) : une bibliothèque contre une
-// discipline. Aucun compilateur ne vérifie une chaîne SQL écrite à la main.
-// Les deux gardes qui remplacent le compilateur sont le lint statique des
-// `.sql` et la double passe d'exécution contre les deux pilotes ; il est
-// MESURÉ que ni l'un ni l'autre ne suffit seul.
+// What this layer trades (spec §3.2, §7.1): a library for a
+// discipline. No compiler checks a hand-written SQL string.
+// The two guards that replace the compiler are the static lint of the
+// `.sql` files and the double execution pass against the two drivers; it is
+// MEASURED that neither one is enough on its own.
 
 export interface Pilote {
     executer(sql: string, params: unknown[]): Promise<{ lignes: number }>;
@@ -14,26 +14,26 @@ export interface Pilote {
     fermer(): Promise<void>;
 }
 
-/// Convertit les marqueurs `?` en `$1..$n`. LÈVE si le SQL porte une chaîne
-/// littérale : la conversion n'est sûre QUE sous la règle « toute valeur passe
-/// en paramètre ».
+/// Converts `?` markers into `$1..$n`. THROWS if the SQL carries a string
+/// literal: the conversion is safe ONLY under the rule "every value goes
+/// in as a parameter".
 ///
-/// 🔴 Ce refus n'est pas décoratif, et il n'est pas garanti par le moteur.
-/// Mesuré le 19 août 2026 sur SQLite 3.50.4 : `SELECT '?' AS x` est du SQL
-/// parfaitement VALIDE. Une conversion naïve le rendrait `SELECT '$1' AS x` et
-/// changerait silencieusement le sens de la requête. Le refus est ce qui rend
-/// la discipline MÉCANIQUE au lieu de documentaire.
+/// 🔴 This refusal is not decorative, and it is not guaranteed by the engine.
+/// Measured on 19 August 2026 on SQLite 3.50.4: `SELECT '?' AS x` is perfectly
+/// VALID SQL. A naive conversion would turn it into `SELECT '$1' AS x` and
+/// would silently change the meaning of the query. The refusal is what makes
+/// the discipline MECHANICAL instead of documentary.
 ///
-/// Le coût est nommé : aucune migration, aucune requête de dépôt ne peut
-/// porter de chaîne littérale — pas même une valeur par défaut. Le schéma v1
-/// n'en contient aucune. Le jour où l'une devient nécessaire, c'est cette
-/// décision qu'il faudra rouvrir, et non la contourner.
+/// The cost is named: no migration, no repository query can
+/// carry a string literal — not even a default value. The v1 schema
+/// contains none. The day one becomes necessary, it is this
+/// decision that will have to be reopened, not worked around.
 export function rendreMarqueurs(sql: string): string {
     if (/['"]/.test(sql)) {
         throw new Error(
-            "SQL refusé : il porte une chaîne littérale (apostrophe ou guillemet). " +
-                'Toute valeur passe en paramètre, sans exception — sans quoi la ' +
-                "conversion des marqueurs changerait le sens de la requête. SQL : " +
+            "SQL refused: it carries a string literal (apostrophe or quote). " +
+                'Every value goes through a parameter, without exception — otherwise the ' +
+                "conversion of the placeholders would change the meaning of the query. SQL: " +
                 sql,
         );
     }

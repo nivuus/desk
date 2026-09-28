@@ -1,98 +1,98 @@
-// ⚠️ `defineConfig` VIENT DE `vitest/config`, PAS DE `vite` — voir le bloc
-// `test` en bas de ce fichier. C'est la même fonction, avec le typage de la
-// clé `test` en plus, et Vite l'ignore au build. Aucune dépendance neuve :
-// Vitest est déjà en dépendance de développement.
+// ⚠️ `defineConfig` COMES FROM `vitest/config`, NOT FROM `vite` — see the `test`
+// block at the bottom of this file. It is the same function, with the typing of the
+// `test` key on top, and Vite ignores it at build time. No new dependency:
+// Vitest is already a development dependency.
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
-// 🔴 LE GREFFON DU MANIFESTE DU HUB LIT LES TOKENS PAR LEUR PARSEUR, jamais par
-// une expression régulière de son cru : un contrôle qui a sa propre copie des
-// valeurs valide sa copie (spec §7.1 de ⑥). Node v24 importe un `.ts`
-// nativement, ce que trois outils du socle exploitent déjà — et c'est pourquoi
-// tout module de `client/src/design/` importé par un outil doit rester
-// « effaçable » : ni `enum`, ni `namespace`, ni décorateur.
-// ⚠️ L'EXTENSION `.ts` EST OBLIGATOIRE ICI, ET SON ABSENCE CASSE DEUX
-// CONTRÔLES DE ⑥ — pas ce fichier. `outils/tokens-orphelins.mjs` et
-// `outils/classes-employees.mjs` importent CE fichier pour en dériver leur
-// périmètre, et ils sont chargés par NODE, dont le résolveur exige
-// l'extension là où Vite s'en passe. Écrite sans elle, la ligne laissait le
-// build VERT et faisait tomber §7.6 et §7.9 en `ERR_MODULE_NOT_FOUND`.
-import { lireBlocsDeTheme, valeurDePropriete } from './src/design/tokens.ts';
-// 🔴 `NOM_FICHIER_AMORCE` ET `baliseAmorce` VIVENT SOUS `src/`, PAS ICI —
-// extraits le 29 août 2026 (lot `csp-amorce`) précisément pour rester
-// TYPECHECKÉS, ce que ce fichier n'est jamais (voir plus bas). `AMORCE`, elle,
-// RESTE lue ici, par `node:fs` — voir le commentaire de
-// `amorce-theme-greffon.ts` sur pourquoi un import `?raw` ne résout PAS
-// quand Vite bundle sa PROPRE configuration. Lire ce fichier pour le
-// raisonnement complet : pourquoi l'amorce est un fichier externe `'self'`
-// (jamais `children:` en ligne) et pourquoi un hash `sha256-…` dans la CSP a
-// été écarté.
-import { NOM_FICHIER_AMORCE, baliseAmorce } from './src/design/amorce-theme-greffon.ts';
-// 🔴 `baliseManifesteHub` VIT SOUS `src/hub/`, PAS ICI — extraite le 29 août
-// 2026 (lot `manifeste-hub-crossorigin`) pour la MÊME raison que
-// `baliseAmorce` ci-dessus : rester TYPECHECKÉE. Voir son commentaire pour le
-// défaut mesuré (`default-src 'self'` bloquant la redirection Pomerium) et
-// pourquoi `crossorigin="use-credentials"` est le remède retenu.
+// 🔴 THE HUB MANIFEST PLUGIN READS THE TOKENS THROUGH THEIR PARSER, never through
+// a home-made regular expression: a check that has its own copy of the
+// values validates its copy (⑥'s spec §7.1). Node v24 imports a `.ts`
+// natively, which three tools of the base already exploit — and that is why
+// any module of `client/src/design/` imported by a tool must stay
+// "erasable": no `enum`, no `namespace`, no decorator.
+// ⚠️ THE `.ts` EXTENSION IS MANDATORY HERE, AND ITS ABSENCE BREAKS TWO
+// OF ⑥'S CHECKS — not this file. `outils/tokens-orphelins.mjs` and
+// `outils/classes-employees.mjs` import THIS file to derive their
+// scope from it, and they are loaded by NODE, whose resolver requires
+// the extension where Vite does without. Written without it, the line left the
+// build GREEN and brought §7.6 and §7.9 down with `ERR_MODULE_NOT_FOUND`.
+import { lireBlocsDeTheme, propertyValue } from './src/design/tokens.ts';
+// 🔴 `BOOTSTRAP_FILE_NAME` AND `baliseAmorce` LIVE UNDER `src/`, NOT HERE —
+// extracted on August 29th, 2026 (batch `csp-amorce`) precisely to stay
+// TYPECHECKED, which this file never is (see below). `AMORCE`, for its part,
+// STAYS read here, through `node:fs` — see the comment of
+// `amorce-theme-greffon.ts` on why a `?raw` import does NOT resolve
+// when Vite bundles its OWN configuration. Read that file for the
+// complete reasoning: why the bootstrap is an external `'self'` file
+// (never inline `children:`) and why a `sha256-…` hash in the CSP was
+// ruled out.
+import { BOOTSTRAP_FILE_NAME, baliseAmorce } from './src/design/amorce-theme-greffon.ts';
+// 🔴 `baliseManifesteHub` LIVES UNDER `src/hub/`, NOT HERE — extracted on August 29th,
+// 2026 (batch `manifeste-hub-crossorigin`) for the SAME reason as
+// `baliseAmorce` above: staying TYPECHECKED. See its comment for the
+// measured defect (`default-src 'self'` blocking the Pomerium redirect) and
+// why `crossorigin="use-credentials"` is the retained remedy.
 import { baliseManifesteHub } from './src/hub/manifeste-hub-greffon.ts';
 
-/// Le CONTENU de l'amorce, lu UNE FOIS par `node:fs` — jamais `?raw`, voir le
-/// commentaire de `amorce-theme-greffon.ts` : un tel import ne résout pas
-/// quand Vite bundle sa PROPRE configuration (mesuré : « No matching export …
-/// for import "default" »). `amorce-theme.csp.test.ts`, lui, lit ce même
-/// fichier par `?raw` — qui résout très bien sous Vitest — pour comparer,
-/// octet pour octet, la source à ce que `dist/amorce-theme.js` porte
-/// réellement.
+/// The CONTENT of the bootstrap, read ONCE through `node:fs` — never `?raw`, see the
+/// comment of `amorce-theme-greffon.ts`: such an import does not resolve
+/// when Vite bundles its OWN configuration (measured: « No matching export …
+/// for import "default" »). `amorce-theme.csp.test.ts`, for its part, reads this same
+/// file through `?raw` — which resolves perfectly under Vitest — to compare,
+/// byte for byte, the source with what `dist/amorce-theme.js` actually
+/// carries.
 const AMORCE = readFileSync(
     fileURLToPath(new URL('./src/design/amorce-theme.js', import.meta.url)),
     'utf8',
 );
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   LE MANIFESTE DU HUB — engendré AU BUILD, jamais écrit en dur (sous-bloc G5).
+   THE HUB MANIFEST — generated AT BUILD TIME, never hard-written (sub-block G5).
 
-   🔴 POURQUOI IL EST ENGENDRÉ. `client/public/` n'existe pas, et un fichier
-   `.webmanifest` posé n'importe où ÉCHAPPERAIT à §7.2, dont le périmètre est
-   `client/src/**` en `.css`/`.ts` plus les entrées Vite : une couleur
-   littérale y passerait sans qu'aucun contrôle ne la voie, et le dépôt aurait
-   **deux sources de vérité pour une couleur**. Le greffon lit donc `--fond-0`
-   et `--accent` par `client/src/design/tokens.ts`, exactement comme les
-   contrôles §7.1, §7.4 et §7.6 le font — Node importe un `.ts` nativement, ce
-   que trois outils de ⑥ exploitent déjà.
+   🔴 WHY IT IS GENERATED. `client/public/` does not exist, and a
+   `.webmanifest` file placed anywhere would ESCAPE §7.2, whose scope is
+   `client/src/**` in `.css`/`.ts` plus the Vite entries: a literal colour
+   would pass there without any check seeing it, and the repository would have
+   **two sources of truth for a colour**. The plugin therefore reads `--fond-0`
+   and `--accent` through `client/src/design/tokens.ts`, exactly as the
+   checks §7.1, §7.4 and §7.6 do — Node imports a `.ts` natively, which
+   three of ⑥'s tools already exploit.
 
-   🔴 CE QUE LE HUB DÉCLARE ET QUE LES MANIFESTES PAR APPLICATION NE PEUVENT
-   PAS DÉCLARER : les `file_handlers` des types installeur, conformément à
-   l'amendement du 28/07/2026 au cadrage produit. **Aucune fonctionnalité n'en
-   dépend** — c'est la clause de l'amendement, et le critère ② de G5 existe
-   pour la garder : le glisser-déposer fonctionne SEUL.
+   🔴 WHAT THE HUB DECLARES AND THE PER-APPLICATION MANIFESTS CANNOT
+   DECLARE: the `file_handlers` of the installer types, in line with
+   the amendment of 28/07/2026 to the product framing. **No feature
+   depends on them** — it is the amendment's clause, and G5's criterion ② exists
+   to guard it: drag-and-drop works ALONE.
 
-   ⚠️ LES TYPES MIME SONT UN CHOIX, PAS UN STANDARD — ni `.msi` ni `.bat`
-   n'ont d'enregistrement IANA univoque. Ce qui compte pour le critère ③ n'est
-   pas leur justesse mais CE QUE CHROMIUM EN RÉPOND, et c'est ce qui est relevé.
+   ⚠️ THE MIME TYPES ARE A CHOICE, NOT A STANDARD — neither `.msi` nor `.bat`
+   have an unambiguous IANA registration. What counts for criterion ③ is
+   not their correctness but WHAT CHROMIUM ANSWERS ABOUT THEM, and that is what is recorded.
 
-   ⚠️ CE FICHIER N'EST PAS TYPECHECKÉ (voir plus haut) : une erreur ici est un
-   ÉCHEC DE BUILD, jamais une erreur `tsc`.
+   ⚠️ THIS FILE IS NOT TYPECHECKED (see above): an error here is a
+   BUILD FAILURE, never a `tsc` error.
    ═══════════════════════════════════════════════════════════════════════════ */
-// 🔴 `tokens/couleurs.css` SEUL, JAMAIS `tokens.css` : depuis l'extraction de
-// la tâche 6 (25 août 2026), `tokenRacine` ci-dessous n'est appelée qu'avec
-// des noms de COULEUR (`--fond-0`, `--accent`, pour le manifeste web) —
-// `tokens/echelles.css`, son voisin, n'en a aucune à offrir.
+// 🔴 `tokens/couleurs.css` ALONE, NEVER `tokens.css`: since the extraction of
+// task 6 (August 25th, 2026), `tokenRacine` below is only called with
+// COLOUR names (`--fond-0`, `--accent`, for the web manifest) —
+// `tokens/echelles.css`, its neighbour, has none to offer.
 const TOKENS_CSS = readFileSync(
     fileURLToPath(new URL('./src/design/tokens/couleurs.css', import.meta.url)),
     'utf8',
 );
 
-/** La valeur d'un token du bloc RACINE (thème sombre), ou une erreur de build. */
+/** The value of a token of the ROOT block (dark theme), or a build error. */
 function tokenRacine(nom: string): string {
     const blocs = lireBlocsDeTheme(TOKENS_CSS);
     const racine = blocs.find((b) => b.nom === 'racine');
-    if (racine === undefined) throw new Error('tokens/couleurs.css ne porte plus de bloc racine');
-    const valeur = valeurDePropriete(racine, nom);
-    // 🔴 ON LÈVE PLUTÔT QUE DE REPLIER SUR UNE COULEUR PAR DÉFAUT : un repli
-    //    poserait une couleur qui n'est celle d'aucun token, c'est-à-dire la
-    //    seconde source de vérité que ce greffon existe pour éviter — et il le
-    //    ferait EN SILENCE.
-    if (valeur === null) throw new Error(`tokens/couleurs.css ne déclare plus ${nom}`);
-    return valeur;
+    if (racine === undefined) throw new Error('tokens/couleurs.css no longer carries a root block');
+    const value = propertyValue(racine, nom);
+    // 🔴 WE THROW RATHER THAN FALL BACK TO A DEFAULT COLOUR: a fallback
+    //    would set a colour that belongs to no token, that is, the
+    //    second source of truth this plugin exists to avoid — and it would
+    //    do so SILENTLY.
+    if (value === null) throw new Error(`tokens/couleurs.css no longer declares ${nom}`);
+    return value;
 }
 
 const MANIFESTE_HUB = {
@@ -120,8 +120,8 @@ const MANIFESTE_HUB = {
 const greffonManifesteHub = {
     name: 'guac-manifeste-hub',
     generateBundle(_options: unknown, _bundle: unknown) {
-        // @ts-expect-error — `this.emitFile` est l'API de Rollup, et ce
-        // fichier n'est pas typechecké : l'annotation dit l'intention.
+        // @ts-expect-error — `this.emitFile` is Rollup's API, and this
+        // file is not typechecked: the annotation states the intent.
         this.emitFile({
             type: 'asset',
             fileName: 'hub.webmanifest',
@@ -131,16 +131,16 @@ const greffonManifesteHub = {
     transformIndexHtml: {
         order: 'post' as const,
         handler(_html: string, ctx: { path: string }) {
-            // 🔴 LE FILTRE EST ICI DÉLIBÉRÉ, À L'INVERSE DU GREFFON D'AMORCE :
-            //    le manifeste du hub ne concerne QUE le hub. Le poser sur les
-            //    cinq autres pages en ferait des PWA qu'on n'a pas voulues, et
-            //    §7.3 ne le dirait pas — il ne juge que les feuilles de style.
+            // 🔴 THE FILTER IS DELIBERATE HERE, UNLIKE THE BOOTSTRAP PLUGIN:
+            //    the hub's manifest only concerns the hub. Setting it on the
+            //    five other pages would make them PWAs nobody wanted, and
+            //    §7.3 would not say so — it only judges stylesheets.
             if (!ctx.path.endsWith('/hub.html')) return [];
-            // 🔴 `baliseManifesteHub()`, JAMAIS RÉÉCRITE ICI : c'est la MÊME
-            //    fonction que `manifeste-hub-greffon.test.ts` éprouve pour
-            //    `crossorigin="use-credentials"` — un greffon qui aurait sa
-            //    propre copie des attributs validerait sa copie, pas le
-            //    produit. Voir son commentaire pour le défaut mesuré.
+            // 🔴 `baliseManifesteHub()`, NEVER REWRITTEN HERE: it is the SAME
+            //    function `manifeste-hub-greffon.test.ts` tests for
+            //    `crossorigin="use-credentials"` — a plugin with its
+            //    own copy of the attributes would validate its copy, not the
+            //    product. See its comment for the measured defect.
             return [baliseManifesteHub()];
         },
     },
@@ -148,23 +148,23 @@ const greffonManifesteHub = {
 
 export const greffonAmorce = {
     name: 'guac-amorce-theme',
-    // Émet le texte de l'amorce comme un ACTIF du build, au même titre que
-    // `hub.webmanifest` plus haut — jamais recopié, toujours la même lecture.
+    // Emits the bootstrap's text as a build ASSET, just like
+    // `hub.webmanifest` above — never copied, always the same read.
     generateBundle(_options: unknown, _bundle: unknown) {
-        // @ts-expect-error — `this.emitFile` est l'API de Rollup, et ce
-        // fichier n'est pas typechecké : l'annotation dit l'intention.
+        // @ts-expect-error — `this.emitFile` is Rollup's API, and this
+        // file is not typechecked: the annotation states the intent.
         this.emitFile({
             type: 'asset',
-            fileName: NOM_FICHIER_AMORCE,
+            fileName: BOOTSTRAP_FILE_NAME,
             source: AMORCE,
         });
     },
     transformIndexHtml: {
         order: 'pre' as const,
-        // 🔴 `baliseAmorce()` VIENT DE `src/design/amorce-theme-greffon.ts`,
-        // JAMAIS RECOPIÉE ICI : c'est la MÊME fonction que
-        // `amorce-theme.csp.test.ts` appelle pour vérifier la forme de la
-        // balise — un greffon qui aurait sa propre copie validerait sa copie.
+        // 🔴 `baliseAmorce()` COMES FROM `src/design/amorce-theme-greffon.ts`,
+        // NEVER COPIED HERE: it is the SAME function
+        // `amorce-theme.csp.test.ts` calls to check the shape of the
+        // tag — a plugin with its own copy would validate its copy.
         handler: () => [baliseAmorce()],
     },
 };
@@ -176,58 +176,58 @@ export default defineConfig({
         port: 5173,
     },
     build: {
-        // ⚠️ UNE PAGE ABSENTE DE CETTE LISTE NE SORT PAS DU BUILD, ET RIEN NE
-        // LE DIT : `npm run build` rend 0 et la page manque simplement de
-        // `dist/`. Relevé le 19 août 2026 en jouant le cas — `connexion.html`
-        // existait déjà à la racine, le build a réussi, et `dist/` ne portait
-        // que `index.html` et `shell.html`. Toute page neuve s'ajoute ici.
+        // ⚠️ A PAGE ABSENT FROM THIS LIST DOES NOT COME OUT OF THE BUILD, AND NOTHING
+        // SAYS SO: `npm run build` returns 0 and the page is simply missing from
+        // `dist/`. Noted on August 19th, 2026 by playing the case — `connexion.html`
+        // already existed at the root, the build succeeded, and `dist/` only carried
+        // `index.html` and `shell.html`. Every new page is added here.
         rollupOptions: {
             input: {
                 main: 'index.html',
                 shell: 'shell.html',
                 connexion: 'connexion.html',
-                // La galerie de tokens : une surface bâtie comme les autres,
-                // donc soumise aux contrôles §7.2 et §7.3 — mais EXCLUE de la
-                // moitié « employé » du §7.6, qu'elle rendrait incapable
-                // d'échouer. Voir `client/outils/tokens-orphelins.mjs`.
+                // The token gallery: a surface built like the others,
+                // hence subject to checks §7.2 and §7.3 — but EXCLUDED from the
+                // "used" half of §7.6, which it would make unable
+                // to fail. See `client/outils/tokens-orphelins.mjs`.
                 design: 'design.html',
-                // La galerie des PRIMITIVES (S2). Elle naît à part plutôt que
-                // dans `design.html`, qui était à 231 lignes pour une porte de
-                // 300 : la scission est décidée AVANT l'addition, jamais après.
-                // Elle aussi est EXCLUE de la moitié « employé » du §7.6, et
-                // pour la même raison — voir `client/outils/tokens-orphelins.mjs`.
+                // The PRIMITIVES gallery (S2). It is born separately rather than
+                // in `design.html`, which was at 231 lines for a gate of
+                // 300: the split is decided BEFORE the addition, never after.
+                // It too is EXCLUDED from the "used" half of §7.6, and
+                // for the same reason — see `client/outils/tokens-orphelins.mjs`.
                 primitives: 'primitives.html',
-                // Le HUB (sous-bloc G5 de ④). Il entre AUTOMATIQUEMENT dans
-                // §7.2, §7.3, §7.6 et §7.9 ① du seul fait d'être ici — leurs
-                // périmètres sont DÉRIVÉS de cette liste, jamais recopiés.
-                // ⚠️ Il n'entre PAS dans `SURFACES_PRODUIT` de §7.9 ② A, qui
-                // est la SEULE liste en dur du socle
-                // (`client/outils/classes-employees.mjs`). L'y ajouter ne
-                // changerait aucun verdict — ② A est un PLANCHER, déjà
-                // satisfait par trois surfaces — et ferait franchir à ④ la
-                // frontière d'un outil de ⑥, qui est clos. Legs, plutôt
-                // qu'une modification cosmétique à risque (décision D6).
+                // The HUB (sub-block G5 of ④). It enters AUTOMATICALLY into
+                // §7.2, §7.3, §7.6 and §7.9 ① merely by being here — their
+                // scopes are DERIVED from this list, never copied.
+                // ⚠️ It does NOT enter `SURFACES_PRODUIT` of §7.9 ② A, which
+                // is the ONLY hard-coded list of the base
+                // (`client/outils/classes-employees.mjs`). Adding it there would
+                // change no verdict — ② A is a FLOOR, already
+                // satisfied by three surfaces — and would make ④ cross the
+                // boundary of a tool of ⑥, which is closed. A legacy item, rather
+                // than a risky cosmetic change (decision D6).
                 hub: 'hub.html',
             },
         },
     },
     test: {
-        // ⚠️ SANS CECI, UN `import css from './x.css?raw'` REND LA CHAÎNE VIDE
-        // SOUS VITEST, silencieusement. Vitest court-circuite les fichiers CSS
-        // par défaut (`css: false`), et le court-circuit attrape aussi la
-        // requête `?raw`. Mesuré le 19 août 2026 : `typeof` rend bien
-        // `string`, mais `longueur` rend `0` — donc un test qui parserait ce
-        // texte ne verrait AUCUN token et passerait au vert en ne mesurant
-        // rien, ce qui est le pire des deux mondes.
+        // ⚠️ WITHOUT THIS, AN `import css from './x.css?raw'` RETURNS THE EMPTY STRING
+        // UNDER VITEST, silently. Vitest short-circuits CSS files
+        // by default (`css: false`), and the short-circuit also catches the
+        // `?raw` query. Measured on August 19th, 2026: `typeof` does return
+        // `string`, but the length returns `0` — so a test parsing this
+        // text would see NO token and would go green while measuring
+        // nothing, which is the worst of both worlds.
         //
-        // `client/src/design/reprise.test.ts` en dépend : c'est lui qui prouve
-        // que `tokens.css` reprend caractère pour caractère les valeurs
-        // d'avant le socle, et il doit lire le VRAI fichier — un miroir des
-        // valeurs en TypeScript validerait sa propre copie.
+        // `client/src/design/reprise.test.ts` depends on it: it is what proves
+        // that `tokens.css` takes over character for character the values
+        // from before the base, and it must read the REAL file — a mirror of the
+        // values in TypeScript would validate its own copy.
         //
-        // ⚠️ Il n'y a délibérément PAS de `client/vitest.config.ts` : un tel
-        // fichier prendrait le pas sur celui-ci et Vitest cesserait de lire la
-        // configuration Vite, sans rien dire.
+        // ⚠️ There is deliberately NO `client/vitest.config.ts`: such a
+        // file would take precedence over this one and Vitest would stop reading the
+        // Vite configuration, without saying anything.
         css: true,
     },
 });

@@ -1,32 +1,32 @@
-//! Contrôle de placement : remet une fenêtre sur sa sortie DXGI si elle en
-//! est partie.
+//! Placement check: puts a window back on its DXGI output if it has
+//! left it.
 //!
-//! Extrait de `boucle.rs` (tâche 7 du sous-bloc D3) pour rester sous le
-//! plafond de 500 lignes du projet — pas pour une raison de conception : ces
-//! deux fonctions font partie de la boucle comme les autres, dans le même
-//! module logique, juste dans un fichier voisin. Même schéma que
+//! Extracted from `boucle.rs` (task 7 of sub-block D3) to stay under the
+//! project's 500-line ceiling — not for a design reason: these
+//! two functions are part of the loop like the others, in the same
+//! logical module, just in a neighbouring file. Same scheme as
 //! `superviseur/table/attribution.rs`.
 
 use super::*;
 use crate::geometry::Rect;
 
-/// La borne d'une sortie : sa ZONE DE TRAVAIL quand Windows la donne, son
-/// rectangle sinon.
+/// An output's bound: its WORK AREA when Windows gives it, its
+/// rectangle otherwise.
 ///
-/// 🔴 **C'EST LA MOITIÉ SUPERVISEUR DE L'ACCORD ENTRE LES DEUX PROCESSUS.** Le
-/// capteur interroge le même moniteur par SA FENÊTRE
-/// (`window::zones_du_moniteur_de`), le superviseur par l'ORIGINE de la sortie
-/// — il connaît le rectangle DXGI avant même d'avoir posé la fenêtre. Même
-/// `HMONITOR`, donc même borne, donc même `taille_pour_viewport` des deux
-/// côtés : aucun message à échanger, et aucune bataille à 1 Hz.
+/// 🔴 **IT IS THE SUPERVISOR HALF OF THE AGREEMENT BETWEEN THE TWO PROCESSES.** The
+/// capturer queries the same monitor through ITS WINDOW
+/// (`window::zones_du_moniteur_de`), the supervisor through the output's ORIGIN
+/// — it knows the DXGI rectangle even before having put the window. Same
+/// `HMONITOR`, hence same bound, hence same `size_for_viewport` on both
+/// sides: no message to exchange, and no battle at 1 Hz.
 ///
-/// ⚠️ **Le superviseur ne borne PAS par la texture de la duplication**, à la
-/// différence du capteur : il n'ouvre aucune duplication, et `SortieDxgi.rect`
-/// est déjà en coordonnées de bureau comme `rcWork`. Sur cette machine la
-/// texture est PLUS grande que le rectangle (1860 contre 1428, lot 32T) : le
-/// `min` du capteur est donc inerte ici, et les deux bornes coïncident. **Si
-/// elles divergeaient**, le superviseur l'emporterait au tour suivant — un
-/// désaccord borné à une seconde, jamais une oscillation.
+/// ⚠️ **The supervisor does NOT bound by the duplication's texture**, unlike
+/// the capturer: it opens no duplication, and `SortieDxgi.rect`
+/// is already in desktop coordinates like `rcWork`. On this machine the
+/// texture is LARGER than the rectangle (1860 versus 1428, batch 32T): the
+/// capturer's `min` is therefore inert here, and the two bounds coincide. **If
+/// they diverged**, the supervisor would win at the next turn — a
+/// disagreement bounded to one second, never an oscillation.
 pub(super) fn borne_de(sortie: &SortieDxgi) -> (u32, u32) {
     let moniteur = (sortie.rect.width, sortie.rect.height);
     match crate::window::zones_du_moniteur_au_point(sortie.rect.x, sortie.rect.y) {
@@ -34,66 +34,66 @@ pub(super) fn borne_de(sortie: &SortieDxgi) -> (u32, u32) {
             moniteur,
             Some((travail.width, travail.height)),
         ),
-        Err(erreur) => {
-            tracing::warn!(%erreur, nom = %sortie.nom_sortie, "zone de travail illisible : la sortie entière sert de borne");
+        Err(error) => {
+            tracing::warn!(%error, nom = %sortie.nom_sortie, "unreadable work area: the whole output serves as the bound");
             moniteur
         }
     }
 }
 
-/// Fait suivre au placement le viewport que le navigateur vient d'annoncer,
-/// sur une session DÉJÀ vivante.
+/// Makes placement follow the viewport the browser has just announced,
+/// on an ALREADY live session.
 ///
-/// 🔴 **CE QUE CETTE FONCTION FAIT, ET CE QU'ELLE NE FAIT PAS.** Elle corrige
-/// la taille RETENUE dans la table et repose la fenêtre — donc la moitié
-/// SUPERVISEUR du remède. Elle ne touche ni au recadrage ni à l'encodeur, qui
-/// vivent dans le capteur : c'est le `Resize` du canal de contrôle qui les
-/// fait suivre (`WindowsSource::suivre_le_viewport`), depuis la même mesure du
-/// même `ResizeObserver`, par la même règle pure.
+/// 🔴 **WHAT THIS FUNCTION DOES, AND WHAT IT DOES NOT.** It corrects
+/// the RETAINED size in the table and puts the window back — hence the
+/// SUPERVISOR half of the remedy. It touches neither the crop nor the encoder, which
+/// live in the capturer: it is the control channel's `Resize` that makes them
+/// follow (`WindowsSource::suivre_le_viewport`), from the same measurement of the
+/// same `ResizeObserver`, by the same pure rule.
 ///
-/// ⚠️ **Si le `Resize` se perdait et que seul le `viewport` arrivait**, la
-/// fenêtre changerait de taille sans que le recadrage suive : l'image
-/// montrerait du bureau, jusqu'au `Resize` suivant. Ce n'est pas rattrapé ici,
-/// et c'est dit plutôt que supposé impossible.
+/// ⚠️ **If the `Resize` were lost and only the `viewport` arrived**, the
+/// window would change size without the crop following: the image
+/// would show desktop, until the next `Resize`. It is not caught up here,
+/// and it is said rather than assumed impossible.
 pub(super) fn suivre_le_viewport(
     table: &mut Table,
     session: &IdSession,
     largeur: u32,
     hauteur: u32,
 ) {
-    // 🔴 **TRACE INCONDITIONNELLE, ET C'EST LE POINT DE CE SECOND ENVOI.**
+    // 🔴 **UNCONDITIONAL TRACE, AND IT IS THE POINT OF THIS SECOND SEND.**
     //
-    // La première rédaction ne journalisait QUE le cas où la taille change :
-    // les quatre autres chemins — pas de sortie retenue, sortie disparue de la
-    // topologie, taille inchangée — sortaient en silence. Un `0` au journal
-    // était donc indiscernable entre « aucun viewport n'arrive » et « il
-    // arrive et ne change rien », c'est-à-dire entre un défaut et la LIMITE
-    // DÉCLARÉE du lot. **Une trace qui ne peut sortir qu'en cas de succès ne
-    // peut pas diagnostiquer un échec** — et celle-ci remplaçait
-    // `redimensionnement ignoré`, qui, elle, sortait à CHAQUE demande et est
-    // ce qui a rendu le diagnostic du lot 33 possible.
+    // The first draft only logged the case where the size changes:
+    // the four other paths — no retained output, output gone from the
+    // topology, unchanged size — exited silently. A `0` in the log
+    // was therefore indistinguishable between "no viewport arrives" and "it
+    // arrives and changes nothing", that is, between a defect and the batch's
+    // DECLARED LIMIT. **A trace that can only come out on success cannot
+    // diagnose a failure** — and this one replaced the
+    // "resize ignored" line, which came out at EACH request and is
+    // what made batch 33's diagnosis possible.
     //
-    // Le champ `decision` nomme la branche prise. Volume : le
-    // `ResizeObserver` du client est lissé à 200 ms et ne bat que pendant un
-    // geste, donc quelques lignes par redimensionnement — jamais une trace par
-    // paquet dans une boucle, ce que `CLAUDE.md` interdit.
-    let precedente = table.taille_sortie_de(session);
+    // The `decision` field names the branch taken. Volume: the client's
+    // `ResizeObserver` is smoothed to 200 ms and only beats during a
+    // gesture, hence a few lines per resize — never a per-packet
+    // trace in a loop, which `CLAUDE.md` forbids.
+    let precedente = table.output_size_of(session);
     let nom = table.nom_sortie_de(session).map(str::to_owned);
-    let toutes = enumerer_sorties_silencieux().unwrap_or_default();
+    let all = enumerer_sorties_silencieux().unwrap_or_default();
     let sortie = nom
         .as_deref()
-        .and_then(|n| toutes.iter().find(|s| s.nom_sortie == n).cloned());
+        .and_then(|n| all.iter().find(|s| s.nom_sortie == n).cloned());
     let borne = sortie.as_ref().map(borne_de);
     let retenue =
-        borne.map(|b| crate::windows_source_sortie::taille_pour_viewport((largeur, hauteur), b));
+        borne.map(|b| crate::windows_source_sortie::size_for_viewport((largeur, hauteur), b));
 
     let decision = match (&nom, &sortie, retenue) {
-        (None, _, _) => "AUCUNE sortie retenue pour cette session",
-        (Some(_), None, _) => "sortie ABSENTE de la topologie DXGI",
+        (None, _, _) => "NO output retained for this session",
+        (Some(_), None, _) => "output ABSENT from the DXGI topology",
         (Some(_), Some(_), Some(r)) if Some(r) == precedente => {
-            "taille INCHANGEE : rien a reposer (viewport sature la borne, ou geste sans effet)"
+            "size UNCHANGED: nothing to place again (viewport saturates the bound, or gesture without effect)"
         }
-        _ => "taille CHANGEE : la table est corrigee et la fenetre reposee",
+        _ => "size CHANGED: the table is corrected and the window placed again",
     };
     tracing::info!(
         session = %session.0,
@@ -103,7 +103,7 @@ pub(super) fn suivre_le_viewport(
         retenue = retenue.map(|r| format!("{}x{}", r.0, r.1)).unwrap_or_default(),
         precedente = precedente.map(|p| format!("{}x{}", p.0, p.1)).unwrap_or_default(),
         decision,
-        "viewport recu par le superviseur"
+        "viewport received by the supervisor"
     );
 
     let (Some(_), Some(retenue)) = (sortie, retenue) else {
@@ -112,83 +112,83 @@ pub(super) fn suivre_le_viewport(
     if Some(retenue) == precedente {
         return;
     }
-    table.rafraichir_taille_sortie(session, retenue);
-    replacer_si_besoin(table, session, &toutes);
+    table.refresh_output_size(session, retenue);
+    replacer_si_besoin(table, session, &all);
 }
 
-/// Remet sur sa sortie toute fenêtre qui en est partie.
+/// Puts back on its output any window that has left it.
 ///
-/// **`&Table`, et non `&mut Table`.** Jusqu'au sous-bloc D10, cette fonction
-/// rafraîchissait aussi `taille_sortie` depuis la taille DXGI brute de la
-/// sortie (héritage d'IMPORTANT 5, revue de la tâche 9 de D8, qui tenait ce
-/// champ à jour d'un changement de mode fait hors de cette table par
-/// `WindowsSource::changer_mode_de_sortie`). Ce chemin a été retiré au
-/// sous-bloc D9 ; le rafraîchissement, lui, avait survécu par précaution,
-/// alors qu'il ne pouvait déjà plus rien faire dériver.
+/// **`&Table`, and not `&mut Table`.** Until sub-block D10, this function
+/// also refreshed `output_size` from the output's raw DXGI size
+/// (legacy of IMPORTANT 5, review of D8's task 9, which kept this
+/// field up to date with a mode change made outside this table by
+/// `WindowsSource::changer_mode_de_sortie`). That path was removed in
+/// sub-block D9; the refresh, for its part, had survived as a precaution,
+/// although it could already no longer cause any drift.
 ///
-/// **D10 le rend carrément FAUX, et c'est pourquoi il a disparu plutôt que
-/// d'être conservé.** Depuis `sortie_pour_viewport` (une sortie peut être
-/// bien plus grande que le viewport, registre pollué oblige),
-/// `Table::taille_sortie_de` porte la taille RETENUE — celle à laquelle la
-/// fenêtre est posée et que la capture recadre —, qui n'a plus aucune raison
-/// d'égaler `GetDesc`/`DesktopCoordinates` de la sortie DXGI. Rafraîchir
-/// depuis cette dernière aurait donc écrasé la taille retenue par la taille
-/// PLEINE de la sortie à chaque tour — reposant la fenêtre en grand une
-/// seconde après que `creer_sortie` l'a posée à sa taille recadrée. La table
-/// est désormais la seule source de vérité de cette taille, posée une fois à
-/// la création (tâche 6) et à la réutilisation (tâche 7) : ce contrôle
-/// périodique la relit, il ne la recalcule plus.
+/// **D10 makes it downright WRONG, and that is why it disappeared rather than
+/// being kept.** Since `sortie_pour_viewport` (an output can be
+/// much larger than the viewport, polluted registry oblige),
+/// `Table::output_size_of` carries the RETAINED size — the one at which the
+/// window is put and which the capture crops —, which no longer has any reason
+/// to equal the DXGI output's `GetDesc`/`DesktopCoordinates`. Refreshing
+/// from the latter would therefore have overwritten the retained size with the output's
+/// FULL size at each turn — putting the window back large a
+/// second after `create_output` put it at its cropped size. The table
+/// is now the only source of truth for this size, set once at
+/// creation (task 6) and at reuse (task 7): this periodic check
+/// rereads it, it no longer recomputes it.
 pub(super) fn controler_le_placement(table: &Table) {
-    let toutes = enumerer_sorties_silencieux().unwrap_or_default();
+    let all = enumerer_sorties_silencieux().unwrap_or_default();
     for session in table.sessions_vivantes() {
-        replacer_si_besoin(table, &session, &toutes);
+        replacer_si_besoin(table, &session, &all);
     }
 }
 
-/// Remet une fenêtre sur sa sortie si elle en est partie.
+/// Puts a window back on its output if it has left it.
 ///
-/// Appelée par le contrôle périodique, **et par le bras `LancerEnfant`** : sur
-/// le chemin de réutilisation d'une sortie retenue (§7.1 du sous-bloc D3),
-/// `creer_sortie` n'est pas appelée, donc `placement::poser` non plus. Entre
-/// la mort de l'enfant et sa relance, l'application a pu déplacer ou retailler
-/// sa fenêtre ; sans cet appel, l'enfant capturerait une fenêtre mal posée
-/// jusqu'au prochain contrôle périodique — jusqu'à `PERIODE_PLACEMENT` plus
-/// tard.
+/// Called by the periodic check, **and by the `LancerEnfant` arm**: on
+/// the path reusing a retained output (§7.1 of sub-block D3),
+/// `create_output` is not called, hence neither is `placement::poser`. Between
+/// the child's death and its restart, the application may have moved or resized
+/// its window; without this call, the child would capture a badly placed window
+/// until the next periodic check — up to `PERIODE_PLACEMENT`
+/// later.
 ///
-/// Idempotente : `doit_etre_replacee` garde l'appel, donc le chemin de
-/// création — où la fenêtre vient d'être posée — n'émet **normalement** aucun
-/// second `SetWindowPos`. « Normalement » et non « jamais » : si Windows a
-/// clampé la taille demandée (taille minimale de la fenêtre, contrainte du DPI),
-/// le rectangle obtenu diffère de la cible, `doit_etre_replacee` est vrai, et un
-/// second `SetWindowPos` **est** émis — sans plus d'effet que le premier.
+/// Idempotent: `doit_etre_replacee` guards the call, so the creation
+/// path — where the window has just been put — **normally** emits no
+/// second `SetWindowPos`. "Normally" and not "never": if Windows
+/// clamped the requested size (the window's minimum size, DPI constraint),
+/// the obtained rectangle differs from the target, `doit_etre_replacee` is true, and a
+/// second `SetWindowPos` **is** emitted — with no more effect than the first.
 ///
-/// **La position vient de la sortie DXGI, la taille de la table** (sous-bloc
-/// D10) : `sortie.rect` donne l'origine dans le bureau virtuel, mais
-/// `Table::taille_sortie_de` donne la taille RETENUE — celle, éventuellement
-/// bien plus petite que la sortie, à laquelle la fenêtre a été posée et que la
-/// capture recadre. Le **TROISIÈME** `let Some` — celui de
-/// `Table::taille_sortie_de` — ne peut, en pratique, jamais échouer une fois
-/// le PREMIER passé (`nom_sortie_de`) : `sortie_creee` pose `nom_sortie` et
-/// `taille_sortie` ensemble, jamais l'un sans l'autre (`table.rs`) — ce n'est
-/// donc pas `Etat::Vivante` qui gouverne ici, mais cet invariant-là. Gardé
-/// tel quel plutôt que supposé, pour ne rien devoir à un fichier voisin.
+/// **The position comes from the DXGI output, the size from the table** (sub-block
+/// D10): `sortie.rect` gives the origin in the virtual desktop, but
+/// `Table::output_size_of` gives the RETAINED size — the one, possibly
+/// much smaller than the output, at which the window was put and which the
+/// capture crops. The **THIRD** `let Some` — the one of
+/// `Table::output_size_of` — can, in practice, never fail once
+/// the FIRST has passed (`nom_sortie_de`): `sortie_creee` sets `nom_sortie` and
+/// `output_size` together, never one without the other (`table.rs`) — it is
+/// therefore not `Etat::Vivante` that governs here, but that invariant. Kept
+/// as is rather than assumed, so as to owe nothing to a neighbouring file.
 ///
-/// ❌ **Cette phrase disait « le second `let Some` », et elle désignait le
-/// TROISIÈME** (constat de la revue de la tâche 6, différé puis repris à la
-/// revue finale de branche). ⚠️ **L'erreur n'était pas seulement de comptage** :
-/// le vrai second — la recherche DXGI par nom, `toutes.iter().find(...)` —
-/// **PEUT** échouer après le premier, une sortie pouvant avoir disparu de la
-/// topologie entre deux tours. Un lecteur qui comptait les `let Some`
-/// attribuait donc la clause « ne peut jamais échouer » au **mauvais garde**,
-/// celui pour lequel elle est fausse.
-pub(super) fn replacer_si_besoin(table: &Table, session: &IdSession, toutes: &[SortieDxgi]) {
+/// ❌ **This sentence said "the second `let Some`", and it designated the
+/// THIRD** (finding of the review of task 6, deferred then taken up at the
+/// branch's final review). ⚠️ **The error was not only one of counting**:
+/// the real second — the DXGI search by name, `all.iter().find(...)` —
+/// **CAN** fail after the first, an output possibly having disappeared from the
+/// topology between two turns. A reader counting the `let Some`s
+/// therefore attributed the "can never fail" clause to the **wrong guard**,
+/// the one for which it is false.
+pub(super) fn replacer_si_besoin(table: &Table, session: &IdSession, all: &[SortieDxgi]) {
     let Some(nom) = table.nom_sortie_de(session) else {
         return;
     };
-    let Some(sortie) = toutes.iter().find(|s| s.nom_sortie == nom) else {
+    let Some(sortie) = all.iter().find(|s| s.nom_sortie == nom) else {
         return;
     };
-    let Some((largeur, hauteur)) = table.taille_sortie_de(session) else {
+    let Some((largeur, hauteur)) = table.output_size_of(session) else {
         return;
     };
     let cible = Rect {
@@ -205,21 +205,21 @@ pub(super) fn replacer_si_besoin(table: &Table, session: &IdSession, toutes: &[S
         return;
     };
     if placement::doit_etre_replacee(&actuel, &cible) {
-        // 🔴 `hwnd` ET `fenetre_vivante` : sans eux, l'hypothèse « le
-        // handle de la table est PÉRIMÉ » est INDÉCIDABLE, et le lot 32O l'a
-        // payé — vingt minutes après la rafale, deux `hwnd` relevés dans le
-        // journal rendaient `IsWindow=false`, ce qui ne prouvait RIEN : ces
-        // fenêtres avaient simplement fermé depuis.
+        // 🔴 `hwnd` AND `fenetre_vivante`: without them, the hypothesis "the
+        // table's handle is STALE" is UNDECIDABLE, and batch 32O
+        // paid for it — twenty minutes after the burst, two `hwnd`s read from the
+        // log returned `IsWindow=false`, which proved NOTHING: those
+        // windows had simply closed since.
         //
-        // Le phénomène est **intermittent et lié à une session** : sans une
-        // trace qui porte la réponse À L'INSTANT du replacement, il faudrait
-        // épier le journal en direct pour espérer le mesurer. **Une panne
-        // qu'on ne peut pas diagnostiquer coûte plus qu'une trace de plus.**
+        // The phenomenon is **intermittent and tied to a session**: without a
+        // trace carrying the answer AT THE INSTANT of the replacement, one would have
+        // to watch the log live to hope to measure it. **A failure
+        // that cannot be diagnosed costs more than one more trace.**
         //
-        // ⚠️ `fenetre_vivante = false` **expliquerait D'UN COUP** les deux
-        // faits ouverts : un `SetWindowPos` qui « réussit » sans rien
-        // déplacer, et un rectangle de fenêtre minimisée lu sur un objet qui
-        // n'existe plus. `true` les laisserait tous deux entiers.
+        // ⚠️ `fenetre_vivante = false` **would explain IN ONE GO** the two
+        // open facts: a `SetWindowPos` that "succeeds" without moving
+        // anything, and a minimised window rectangle read on an object that
+        // no longer exists. `true` would leave them both whole.
         let fenetre_vivante =
             unsafe { windows::Win32::UI::WindowsAndMessaging::IsWindow(Some(hwnd)) }.as_bool();
         tracing::info!(
@@ -228,10 +228,10 @@ pub(super) fn replacer_si_besoin(table: &Table, session: &IdSession, toutes: &[S
             fenetre_vivante,
             de = format!("{}x{}+{}+{}", actuel.width, actuel.height, actuel.x, actuel.y),
             vers = format!("{}x{}+{}+{}", cible.width, cible.height, cible.x, cible.y),
-            "fenêtre sortie de sa sortie, replacement"
+            "window left its output, placing it again"
         );
-        if let Err(erreur) = placement::poser(hwnd, &cible) {
-            tracing::warn!(session = %session.0, %erreur, "replacement échoué");
+        if let Err(error) = placement::poser(hwnd, &cible) {
+            tracing::warn!(session = %session.0, %error, "placing again failed");
         }
     }
 }

@@ -1,54 +1,54 @@
-// Les QUATRE routes du téléversement d'un installeur : `POST /televersement`
-// (déclarer), `PUT /televersement/:id/tranche/:n` (déposer),
-// `GET /televersement/:id` (relire pour reprendre) et
-// `POST /televersement/:id/sceller` (arrêter le contenu).
+// The FOUR routes of the upload of an installer: `POST /televersement`
+// (declare), `PUT /televersement/:id/tranche/:n` (upload),
+// `GET /televersement/:id` (read again to resume) and
+// `POST /televersement/:id/sceller` (freeze the content).
 //
-// 🔴 LE CONTRAT EST CELUI DES NEUF ROUTEURS EXISTANTS : `Promise<boolean>`,
-// `true` = servie, `false` = pas mon chemin. Le 404 générique de
-// `http/serveur.ts` est alors SEUL à répondre, et il n'est pas dupliqué ici.
+// 🔴 THE CONTRACT IS THAT OF THE NINE EXISTING ROUTERS: `Promise<boolean>`,
+// `true` = served, `false` = not my path. The generic 404 of
+// `http/serveur.ts` then answers ALONE, and it is not duplicated here.
 //
-// ⚠️ « ALORS SEUL » N'EST PLUS VRAI SANS CONDITION DEPUIS LE 22 AOÛT 2026, et
-// la phrase est laissée telle quelle parce qu'elle reste juste dans le montage
-// nginx : quand `PLATEFORME_PAGE` est armée, un DIXIÈME routeur — le servant
-// de page — est chaîné APRÈS tous les autres, et il résout n'importe quel
-// chemin. Sur un `GET`/`HEAD`, c'est LUI qui répond `200 text/html` au `false`
-// rendu ici ; hors `GET`/`HEAD` il se retire, et le 404 générique reprend la
-// main. Voir `http/chaine.ts`, qui porte le compte et la règle.
+// ⚠️ « THEN ANSWERS ALONE » IS NO LONGER UNCONDITIONALLY TRUE SINCE 22 AUGUST 2026, and
+// the sentence is left as is because it stays right in the nginx
+// deployment: when `PLATEFORME_PAGE` is armed, a TENTH router — the page
+// server — is chained AFTER all the others, and it resolves any
+// path. On a `GET`/`HEAD`, it is IT that answers `200 text/html` to the `false`
+// returned here; outside `GET`/`HEAD` it steps aside, and the generic 404 takes
+// over. See `http/chaine.ts`, which carries the count and the rule. (policy: allow-fr - file name)
 //
-// 🔴 CE MODULE NE DÉCIDE NI DU DÉCOUPAGE, NI DE L'ÉCRITURE, NI DU PORTEUR :
-// `proto/ts/tranches.ts` (PUR, et importé AUSSI par le navigateur),
-// `apps/magasin-tranches.ts`, `http/porteur.ts`. En recopier un ici en ferait
-// une seconde source de vérité — « un scellement qui refuse sans qu'on sache
-// lequel des deux bouts a tort ».
+// 🔴 THIS MODULE DECIDES NEITHER THE SPLITTING, NOR THE WRITING, NOR THE BEARER:
+// `proto/ts/tranches.ts` (PURE, and ALSO imported by the browser),
+// `apps/magasin-tranches.ts`, `http/porteur.ts`. Copying one of them here would make it
+// a second source of truth — « a sealing that refuses without anyone knowing
+// which of the two ends is wrong ».
 //
-// 🔴 LE VOCABULAIRE DE REFUS EST LOCAL, ET NE REJOINT PAS
-// `orchestration/refus.ts`, qui est celui de l'ORCHESTRATION DES VMs — ses six
-// motifs parlent tous de VM, d'agent ou d'attribution. `routes-icone.ts` a
-// tranché pareil.
+// 🔴 THE REFUSAL VOCABULARY IS LOCAL, AND DOES NOT JOIN
+// `orchestration/refus.ts`, which belongs to VM ORCHESTRATION — its six
+// reasons all talk about a VM, an agent or an assignment. `routes-icone.ts`
+// settled it the same way.
 //
-// ✅ LE `PUT` EST ATTEIGNABLE DEPUIS UN NAVIGATEUR EN ORIGINE CROISÉE, ET IL NE
-// L'ÉTAIT PAS QUAND CE FICHIER A ÉTÉ ÉCRIT. `http/cors.ts` n'annonçait alors que
-// `Access-Control-Allow-Methods: 'GET, POST, OPTIONS'` : le déposant ÉTANT le
-// navigateur, et un `PUT` portant `Authorization` étant NON SIMPLE, il demandait
-// la préalable, n'y trouvait pas `PUT`, et ABANDONNAIT SANS ENVOYER LA VRAIE
-// REQUÊTE. La valeur porte désormais `PUT`, et `cors.test.ts` l'assère
-// nommément — rouge vue, `2 failed | 6 passed`.
+// ✅ THE `PUT` IS REACHABLE FROM A CROSS-ORIGIN BROWSER, AND IT WAS NOT
+// WHEN THIS FILE WAS WRITTEN. `http/cors.ts` then only announced
+// `Access-Control-Allow-Methods: 'GET, POST, OPTIONS'`: the uploader BEING the
+// browser, and a `PUT` carrying `Authorization` being NON SIMPLE, it asked for
+// the preflight, did not find `PUT` there, and GAVE UP WITHOUT SENDING THE REAL
+// REQUEST. The value now carries `PUT`, and `cors.test.ts` asserts it
+// by name — red seen, `2 failed | 6 passed`.
 //
-// ⚠️ CE QUI RESTE ENTIÈREMENT VRAI, ET QU'IL NE FAUT PAS LIRE COMME FERMÉ :
-// **aucun test de Node ne peut voir cette classe de défaut**, `fetch` Node
-// n'appliquant pas la politique d'origine. C'est la classe que la corroboration
-// navigateur de P4 a trouvée et qu'elle a déclarée SANS GARDE AUTOMATIQUE ; elle
-// a mordu deux fois chez P4 et une troisième fois ici, sur la MÉTHODE. Le seul
-// garde est une assertion sur la VALEUR, dans `cors.test.ts`. Sans effet en
-// origine unique (profil `deploiement` de P5) ; mordait en développement, `vite`
-// servant sur 5173 et le service sur 8080 — donc là où on le met au point.
+// ⚠️ WHAT REMAINS ENTIRELY TRUE, AND MUST NOT BE READ AS CLOSED:
+// **no Node test can see this class of defect**, since Node `fetch`
+// does not apply the origin policy. It is the class that the browser
+// corroboration of P4 found and declared WITHOUT AN AUTOMATIC GUARD; it
+// bit twice in P4 and a third time here, on the METHOD. The only
+// guard is an assertion on the VALUE, in `cors.test.ts`. No effect with a
+// single origin (`deploiement` profile of P5); it bit in development, `vite`
+// serving on 5173 and the service on 8080 — so exactly where it gets tuned.
 //
-// ⚠️ `routes-auth.ts::lireCorps` N'EST NI RELEVÉ NI RÉEMPLOYÉ, ET LES DEUX
-// MOITIÉS COMPTENT. Il accumule dans une CHAÎNE UTF-8 : un corps BINAIRE y
-// serait corrompu (tout octet invalide devient U+FFFD, et l'empreinte du
-// fichier recomposé ne serait plus la sienne), et relever son plafond rendrait
-// à un pair anonyme le mégaoctet que ce plafond lui retire. Ici la déclaration
-// a son lecteur borné, et la tranche passe EN FLUX, jamais par la mémoire.
+// ⚠️ `routes-auth.ts::lireCorps` IS NEITHER RAISED NOR REUSED, AND BOTH
+// HALVES MATTER. It accumulates into a UTF-8 STRING: a BINARY body would be
+// corrupted there (any invalid byte becomes U+FFFD, and the hash of the
+// reassembled file would no longer be its own), and raising its cap would give
+// an anonymous peer back the megabyte that this cap takes away. Here the declaration
+// has its bounded reader, and the slice goes through AS A STREAM, never through memory.
 
 import { createHash } from 'node:crypto';
 import type { IncomingMessage, ServerResponse } from 'node:http';
@@ -57,7 +57,7 @@ import { identifiantValide, rangValide } from '../apps/magasin-tranches';
 import type { Pilote } from '../base/pilote';
 import {
     compterEnCours,
-    creer,
+    create,
     lireParId,
     sceller,
     type LigneTeleversement,
@@ -72,55 +72,55 @@ export interface DependancesTeleversement {
     base: Pilote;
     secretJeton: string;
     origineClient?: string;
-    /// ⚠️ SEUL CE ROUTEUR LE LIT — même statut que `magasin` pour `servirIcone`.
+    /// ⚠️ ONLY THIS ROUTER READS IT — same status as `magasin` for `servirIcone`.
     tranches: MagasinTranches;
     maintenant: () => number;
 }
 
-/// Le pas de découpage. ⚠️ **NON CALIBRÉE**, et AUCUN rapport avec
-/// `OCTETS_LECTURE` du navigateur (4 Mio) — même valeur laisserait croire à une
-/// dérivation. 🔴 ELLE EST ÉCRITE EN BASE À LA CRÉATION, ET C'EST CETTE
-/// COPIE-LÀ QUI FAIT FOI ENSUITE : la changer re-découperait les téléversements
-/// DÉJÀ déclarés, dont `verdict` dirait toutes les tranches `incoherentes` —
-/// un état qui NE SE RÉPARE PAS en redéposant.
-export const TAILLE_TRANCHE = 8 * 1024 * 1024;
+/// The slicing step. ⚠️ **NOT CALIBRATED**, and NO relation to
+/// the browser's `OCTETS_LECTURE` (4 MiB) — an equal value would suggest a
+/// derivation. 🔴 IT IS WRITTEN TO THE DATABASE AT CREATION, AND THAT
+/// COPY IS THE ONE THAT HOLDS AFTERWARDS: changing it would re-slice the uploads
+/// ALREADY declared, for which `verdict` would call every slice `incoherentes` —
+/// a state that is NOT REPAIRED by uploading again.
+export const CHUNK_SIZE = 8 * 1024 * 1024;
 
-/// ⚠️ **NON CALIBRÉE**, MAJORANTE À VUE : aucune taille d'installeur réelle n'a
-/// été relevée pour la poser. Rejoint la liste tenue depuis `BPP_MIN`.
+/// ⚠️ **NOT CALIBRATED**, AN UPPER BOUND BY EYE: no real installer size was
+/// measured to set it. Joins the list kept since `BPP_MIN`.
 export const TELEVERSEMENT_MAX_OCTETS = 4 * 1024 * 1024 * 1024;
 
-/// Combien de téléversements NON SCELLÉS un utilisateur peut avoir de front.
-/// 🔴 C'EST UN QUOTA, PAS UN FREIN — la distinction qu'écrit déjà
-/// `depot/televersement.ts::compterEnCours` : le frein garde les portes
-/// PRÉ-AUTHENTIFIÉES et compte des TENTATIVES ; les quatre routes d'ici exigent
-/// un jeton valide, et ce qui les protège est une borne sur le DISQUE.
-/// ⚠️ **NON CALIBRÉE.**
+/// How many UNSEALED uploads a user may have at once.
+/// 🔴 IT IS A QUOTA, NOT A BRAKE — the distinction already written by
+/// `depot/televersement.ts::compterEnCours`: the brake guards the
+/// PRE-AUTHENTICATED doors and counts ATTEMPTS; the four routes here require
+/// a valid token, and what protects them is a bound on the DISK.
+/// ⚠️ **NOT CALIBRATED.**
 export const TELEVERSEMENTS_EN_COURS_MAX = 3;
 
-/// ⚠️ Même nombre que le plafond de `routes-auth.ts` par COÏNCIDENCE de
-/// grandeur, jamais par dérivation : les deux se recalibreraient séparément.
+/// ⚠️ Same number as the cap in `routes-auth.ts` by COINCIDENCE of
+/// magnitude, never by derivation: the two would be recalibrated separately.
 const CORPS_DECLARATION_MAX_OCTETS = 4 * 1024;
 
-/// Ce que les quatre traitements partagent. ⚠️ `cors` est CALCULÉ UNE FOIS, en
-/// tête : par branche, un chemin oublié répondrait sans en-tête d'origine.
+/// What the four handlers share. ⚠️ `cors` is COMPUTED ONCE, at
+/// the top: per branch, a forgotten path would answer without an origin header.
 interface Contexte {
     rep: ServerResponse;
     deps: DependancesTeleversement;
     cors: Record<string, string> | undefined;
 }
 
-/// Répond, et rend `true` — LE CONTRAT DU ROUTEUR. 🔴 LE RETOUR N'EST PAS UNE
-/// COMMODITÉ D'ÉCRITURE : il rend impossible d'oublier un `return` après avoir
-/// écrit la réponse. Sans lui, une branche qui répondrait puis retomberait sur
-/// la suite écrirait une SECONDE réponse — au mieux `ERR_HTTP_HEADERS_SENT`, au
-/// pire le 404 générique concaténé à un refus déjà parti.
+/// Answers, and returns `true` — THE ROUTER CONTRACT. 🔴 THE RETURN IS NOT A
+/// WRITING CONVENIENCE: it makes it impossible to forget a `return` after having
+/// written the response. Without it, a branch that answered then fell through to
+/// the rest would write a SECOND response — at best `ERR_HTTP_HEADERS_SENT`, at
+/// worst the generic 404 concatenated to a refusal already sent.
 function repondre(ctx: Contexte, code: number, corps?: unknown): true {
     ctx.rep.writeHead(code, {
         'content-type': 'application/json; charset=utf-8',
-        // ⚠️ INCONDITIONNELS, sur TOUTE réponse — refus compris. Étalés AVANT
-        // `cors`, FACULTATIF, qui ne doit jamais pouvoir les écraser. Et le
-        // CORS va AUSSI sur les 401 : une réponse illisible par le navigateur
-        // s'affiche en panne réseau, pas en invitation à se reconnecter.
+        // ⚠️ UNCONDITIONAL, on EVERY response — refusals included. Spread BEFORE
+        // `cors`, OPTIONAL, which must never be able to overwrite them. And the
+        // CORS goes ON 401s TOO: a response the browser cannot read
+        // shows up as a network failure, not as an invitation to sign in again.
         ...ENTETES_SECURITE,
         ...(ctx.cors ?? {}),
     });
@@ -128,47 +128,47 @@ function repondre(ctx: Contexte, code: number, corps?: unknown): true {
     return true;
 }
 
-/* ── LA PROPRIÉTÉ ─────────────────────────────────────────────────────── */
+/* ── OWNERSHIP ─────────────────────────────────────────────────────── */
 
-/// Le refus, tel qu'il part sur le fil — LE MÊME dans les deux cas.
+/// The refusal, as it goes out on the wire — THE SAME in both cases.
 const REFUS_INCONNU = { refus: 'televersement-inconnu' } as const;
 
-/// Lit la ligne, et n'en rend une QUE si elle appartient au demandeur.
+/// Reads the row, and returns one ONLY if it belongs to the requester.
 ///
-/// 🔴 UN TÉLÉVERSEMENT D'AUTRUI EST INDISTINGUABLE D'UN TÉLÉVERSEMENT INCONNU,
-/// ET C'EST UNE DÉCISION DÉJÀ PRISE, PAS UN ARBITRAGE ROUVERT ICI : les
-/// distinguer serait un ORACLE D'ÉNUMÉRATION. Le propriétaire du dépôt a
-/// tranché pour G1 (le `403 vm-etrangere` a cédé devant le `404 vm-inconnue`) ;
-/// G3 APPLIQUE — quatrième fois, après `routes-auth.ts`, `agents/enrolement.ts`
-/// et `routes-applications.ts`.
+/// 🔴 SOMEONE ELSE'S UPLOAD IS INDISTINGUISHABLE FROM AN UNKNOWN UPLOAD,
+/// AND IT IS A DECISION ALREADY TAKEN, NOT A TRADE-OFF REOPENED HERE: telling
+/// them apart would be an ENUMERATION ORACLE. The repository owner
+/// settled it for G1 (the `403 vm-etrangere` gave way to the `404 vm-inconnue`);
+/// G3 APPLIES it — fourth time, after `routes-auth.ts`, `agents/enrolement.ts`
+/// and `routes-applications.ts`.
 ///
-/// 🔴 LES DEUX BRANCHES RENDENT `undefined`, et le refus a UN SEUL site
-/// d'émission : deux expressions, même rendant la même valeur, laisseraient la
-/// porte ouverte à ce qu'une des deux change un jour. ⚠️ LA LIGNE DE JOURNAL
-/// EST LA CONTREPARTIE, et elle N'ATTEINT JAMAIS LA RÉPONSE ; 🔴 posée ICI et
-/// non aux trois points d'appel, où elle serait OUBLIABLE — et l'oublier ne
-/// casserait rien de visible.
+/// 🔴 BOTH BRANCHES RETURN `undefined`, and the refusal has ONE SINGLE emission
+/// site: two expressions, even returning the same value, would leave the
+/// door open for one of them to change some day. ⚠️ THE LOG LINE
+/// IS THE COUNTERPART, and it NEVER REACHES THE RESPONSE; 🔴 placed HERE and
+/// not at the three call sites, where it would be FORGETTABLE — and forgetting it
+/// would break nothing visible.
 async function lireSienne(
     ctx: Contexte,
     id: string,
-    utilisateurId: string,
+    userId: string,
 ): Promise<LigneTeleversement | undefined> {
     const ligne = await lireParId(ctx.deps.base, id);
-    if (ligne === undefined) return journaliserLeRefus('inconnu', id, utilisateurId);
-    if (ligne.utilisateur_id !== utilisateurId) {
-        return journaliserLeRefus('etranger', id, utilisateurId);
+    if (ligne === undefined) return journaliserLeRefus('inconnu', id, userId);
+    if (ligne.utilisateur_id !== userId) { // policy: allow-fr - frozen wire key or SQLite column
+        return journaliserLeRefus('etranger', id, userId);
     }
     return ligne;
 }
 
-/// ⚠️ `cas=` EST UN CHAMP, PAS UNE PHRASE : c'est lui que l'exploitant `grep`e.
-/// Un test l'épingle, et épingle AUSSI que les deux cas diffèrent. ⚠️ Elle rend
-/// `undefined` pour que tracer et refuser soient le MÊME geste.
+/// ⚠️ `cas=` IS A FIELD, NOT A SENTENCE: it is what the operator `grep`s.
+/// A test pins it, and ALSO pins that the two cases differ. ⚠️ It returns
+/// `undefined` so that tracing and refusing are the SAME gesture.
 function journaliserLeRefus(cas: 'inconnu' | 'etranger', id: string, u: string): undefined {
     console.warn(
-        `refus d'accès au téléversement ${id} pour l'utilisateur ${u} : cas=${cas} — `
-            + `la réponse HTTP, elle, est le même 404 « televersement-inconnu » dans les `
-            + `deux cas (décision du propriétaire du dépôt : pas d'oracle d'énumération).`,
+        `access to upload ${id} refused for user ${u}: cas=${cas} — `
+            + `the HTTP response itself is the same 404 « televersement-inconnu » in both `
+            + `cases (decision of the repository owner: no enumeration oracle).`,
     );
     return undefined;
 }
@@ -185,31 +185,31 @@ export async function servirTeleversement(
 
     const ctx: Contexte = { rep, deps, cors: entetesCors(req.headers.origin, deps.origineClient) };
 
-    // 🔴 LA PRÉALABLE EST SERVIE, ET SANS ELLE RIEN N'EST ATTEIGNABLE depuis un
-    // navigateur : les quatre routes exigent `Authorization: Bearer`, donc la
-    // requête est NON SIMPLE, et un 404 sur l'`OPTIONS` ferait abandonner le
-    // navigateur AVANT la vraie requête. ⚠️ Voir l'en-tête pour `PUT`.
+    // 🔴 THE PREFLIGHT IS SERVED, AND WITHOUT IT NOTHING IS REACHABLE from a
+    // browser: the four routes require `Authorization: Bearer`, so the
+    // request is NON SIMPLE, and a 404 on the `OPTIONS` would make the
+    // browser give up BEFORE the real request. ⚠️ See the header for `PUT`.
     if (req.method === 'OPTIONS') return repondre(ctx, 204);
 
-    // Le chemin EXISTE, c'est la méthode qui ne convient pas : un 404 ferait
-    // chercher une route absente.
+    // The path EXISTS, it is the method that does not fit: a 404 would send
+    // people looking for a missing route.
     if (req.method !== METHODE[cible.quoi]) return repondre(ctx, 405, { refus: 'methode' });
 
-    // 🔴 L'AUTHENTIFICATION VIENT AVANT TOUTE LECTURE DE BASE, DE DISQUE OU DE
-    // CORPS : refuser après offrirait du travail gratuit à un pair anonyme —
-    // et, sur le `PUT`, la possibilité d'écrire des mégaoctets avant le refus.
+    // 🔴 AUTHENTICATION COMES BEFORE ANY DATABASE, DISK OR
+    // BODY READ: refusing afterwards would offer free work to an anonymous peer —
+    // and, on the `PUT`, the chance to write megabytes before the refusal.
     const porteur = lirePorteur(req.headers, deps.secretJeton, deps.maintenant());
     if (!porteur.ok) return repondre(ctx, porteur.code, { refus: porteur.motif });
-    const utilisateur = porteur.utilisateurId;
+    const user = porteur.userId;
 
-    if (cible.quoi === 'creer') return declarer(req, ctx, utilisateur);
+    if (cible.quoi === 'create') return declarer(req, ctx, user);
 
-    // 🔴 LA GARDE DE FORME PASSE AVANT TOUTE LECTURE. `:id` vient du RÉSEAU et
-    // devient un NOM DE RÉPERTOIRE, où `..` est significatif ; le magasin LÈVE
-    // sur un identifiant mal formé, donc sans elle une URL tordue rendrait 500.
+    // 🔴 THE SHAPE GUARD COMES BEFORE ANY READ. `:id` comes from the NETWORK and
+    // becomes a DIRECTORY NAME, where `..` is meaningful; the store THROWS
+    // on a malformed identifier, so without it a twisted URL would return 500.
     if (!identifiantValide(cible.id)) return repondre(ctx, 400, { refus: 'identifiant-invalide' });
 
-    const ligne = await lireSienne(ctx, cible.id, utilisateur);
+    const ligne = await lireSienne(ctx, cible.id, user);
     if (ligne === undefined) return repondre(ctx, 404, REFUS_INCONNU);
 
     if (cible.quoi === 'etat') return repondre(ctx, 200, etatDe(ctx, ligne));
@@ -217,46 +217,46 @@ export async function servirTeleversement(
     return arreter(ctx, ligne);
 }
 
-/* ── ① DÉCLARER ───────────────────────────────────────────────────────── */
+/* ── ① DECLARE ───────────────────────────────────────────────────────── */
 
-/// 🔴 LE PLAFOND EST VÉRIFIÉ PENDANT LA LECTURE, PAS APRÈS : accumuler d'abord
-/// laisserait un pair remplir la mémoire avant le refus. ⚠️ LES OCTETS SONT
-/// COMPTÉS, PAS LES CARACTÈRES — `routes-auth.ts` mesure une chaîne DÉJÀ
-/// DÉCODÉE, ce qui sous-compte tout ce qui n'est pas ASCII.
+/// 🔴 THE CAP IS CHECKED DURING THE READ, NOT AFTER: accumulating first
+/// would let a peer fill memory before the refusal. ⚠️ BYTES ARE
+/// COUNTED, NOT CHARACTERS — `routes-auth.ts` measures an ALREADY
+/// DECODED string, which undercounts everything that is not ASCII.
 async function lireDeclaration(req: IncomingMessage): Promise<string | 'trop-gros'> {
     const morceaux: Buffer[] = [];
     let total = 0;
     for await (const morceau of req) {
         const b = morceau as Buffer;
         total += b.length;
-        // 🔴 ON SORT DE LA BOUCLE, ET ON N'APPELLE PAS `req.destroy()`. Sortir
-        // suffit à cesser de lire — l'itérateur asynchrone détruit la partie
-        // LISIBLE en se refermant —, tandis que `destroy()` abat le SOCKET, et
-        // MESURÉ : le client reçoit alors `UND_ERR_SOCKET` au lieu du 413 que
-        // l'on vient de décider. C'est le comportement de `routes-icone.ts` ;
-        // `routes-auth.ts`, lui, appelle `destroy()`, et son propre test admet
-        // en toutes lettres que « la connexion peut être coupée avant la
-        // réponse ». Un refus qu'on ne peut pas lire n'est pas un refus.
+        // 🔴 WE LEAVE THE LOOP, AND WE DO NOT CALL `req.destroy()`. Leaving
+        // is enough to stop reading — the async iterator destroys the READABLE
+        // side as it closes —, whereas `destroy()` kills the SOCKET, and
+        // MEASURED: the client then gets `UND_ERR_SOCKET` instead of the 413 that
+        // was just decided. That is the behaviour of `routes-icone.ts`;
+        // `routes-auth.ts`, for its part, calls `destroy()`, and its own test admits
+        // in so many words that "the connection may be cut before the
+        // response". A refusal that cannot be read is not a refusal.
         if (total > CORPS_DECLARATION_MAX_OCTETS) return 'trop-gros';
         morceaux.push(b);
     }
     return Buffer.concat(morceaux).toString('utf8');
 }
 
-/// Le motif du refus, ou rien. ⚠️ TROIS MOTIFS DISTINCTS PLUTÔT QU'UN `forme`
-/// UNIQUE, et aucun oracle n'y est ouvert : ils parlent du contenu que le
-/// demandeur VIENT D'ENVOYER. 🔴 `isSafeInteger` ET NON `isInteger` : au-delà de
-/// 2^53 l'arithmétique du plan cesse d'être exacte et les deux bouts
-/// divergeraient EN SILENCE — `proto/ts/tranches.ts` déclare cette borne
-/// « nommée, pas gardée », elle est gardée ICI, seul endroit venu du FIL.
+/// The refusal reason, or nothing. ⚠️ THREE DISTINCT REASONS RATHER THAN A SINGLE
+/// `forme`, and no oracle is opened there: they talk about the content the
+/// requester HAS JUST SENT. 🔴 `isSafeInteger` AND NOT `isInteger`: beyond
+/// 2^53 the plan arithmetic stops being exact and the two ends
+/// would diverge SILENTLY — `proto/ts/tranches.ts` declares that bound
+/// "named, not guarded", it is guarded HERE, the only place fed by the WIRE.
 function motifDeDeclaration(c: Record<string, unknown>): string | undefined {
     if (typeof c.nom !== 'string' || c.nom === '') return 'nom-invalide';
-    if (!Number.isSafeInteger(c.taille) || (c.taille as number) < 0) return 'taille-invalide';
+    if (!Number.isSafeInteger(c.taille) || (c.taille as number) < 0) return 'taille-invalide'; // policy: allow-fr - frozen wire key or SQLite column
     if (typeof c.sha256 !== 'string' || !empreinteValide(c.sha256)) return 'empreinte-invalide';
     return undefined;
 }
 
-async function declarer(req: IncomingMessage, ctx: Contexte, utilisateur: string): Promise<boolean> {
+async function declarer(req: IncomingMessage, ctx: Contexte, user: string): Promise<boolean> {
     const brut = await lireDeclaration(req);
     if (brut === 'trop-gros') return repondre(ctx, 413, { refus: 'corps-trop-grand' });
 
@@ -274,63 +274,63 @@ async function declarer(req: IncomingMessage, ctx: Contexte, utilisateur: string
     const motif = motifDeDeclaration(champs);
     if (motif !== undefined) return repondre(ctx, 400, { refus: motif });
 
-    const taille = champs.taille as number;
-    if (taille > TELEVERSEMENT_MAX_OCTETS) {
+    const size = champs.taille as number; // policy: allow-fr - frozen wire key or SQLite column
+    if (size > TELEVERSEMENT_MAX_OCTETS) {
         return repondre(ctx, 413, { refus: 'trop-grand', maximum: TELEVERSEMENT_MAX_OCTETS });
     }
 
-    // 🔴 LE QUOTA EST COMPTÉ AVANT LA CRÉATION : vérifier ensuite créerait la
-    // ligne puis la retirerait, et une panne entre les deux laisserait
-    // précisément le téléversement de trop.
-    if ((await compterEnCours(ctx.deps.base, utilisateur)) >= TELEVERSEMENTS_EN_COURS_MAX) {
+    // 🔴 THE QUOTA IS COUNTED BEFORE CREATION: checking afterwards would create the
+    // row then remove it, and a failure between the two would leave
+    // precisely the one upload too many.
+    if ((await compterEnCours(ctx.deps.base, user)) >= TELEVERSEMENTS_EN_COURS_MAX) {
         const refus = { refus: 'trop-de-televersements', maximum: TELEVERSEMENTS_EN_COURS_MAX };
         return repondre(ctx, 429, refus);
     }
 
     const entree = {
-        utilisateurId: utilisateur,
+        userId: user,
         nom: champs.nom as string,
-        taille,
+        taille: size, // policy: allow-fr - frozen wire key or SQLite column
         sha256: champs.sha256 as string,
-        tailleTranche: TAILLE_TRANCHE,
+        chunkSize: CHUNK_SIZE,
     };
-    const ligne = await creer(ctx.deps.base, entree, ctx.deps.maintenant());
+    const ligne = await create(ctx.deps.base, entree, ctx.deps.maintenant());
 
-    // 201 : la ressource EST créée, son identifiant est dans le corps. Le
-    // navigateur ne regarde que `r.ok`, que 200 et 201 satisfont tous deux.
+    // 201: the resource IS created, its identifier is in the body. The
+    // browser only looks at `r.ok`, which 200 and 201 both satisfy.
     return repondre(ctx, 201, etatDe(ctx, ligne));
 }
 
 /* ── ② RELIRE ─────────────────────────────────────────────────────────── */
 
-/// L'état d'un téléversement, tel que le navigateur le lit pour reprendre.
+/// The state of an upload, as the browser reads it to resume.
 ///
-/// 🔴 `tranches_presentes` EST DÉRIVÉ DU DISQUE, JAMAIS D'UNE COLONNE —
-/// décision D7 (`depot/televersement.ts`). ⚠️ Dérivé MÊME à la création, où il
-/// vaut nécessairement `[]` : un `[]` en dur ferait de la réponse de création
-/// une SECONDE expression de la même chose.
+/// 🔴 `tranches_presentes` IS DERIVED FROM THE DISK, NEVER FROM A COLUMN —
+/// decision D7 (`depot/televersement.ts`). ⚠️ Derived EVEN at creation, where it
+/// is necessarily `[]`: a hardcoded `[]` would make the creation response
+/// a SECOND expression of the same thing.
 ///
-/// ⚠️ LA FORME EST `{n, octets}[]`, ET NON `number[]` : le navigateur accepte
-/// les deux (`normaliserPresentes`), mais seule la première lui permet de VOIR
-/// une tranche à la mauvaise taille AVANT de redéposer — avec des rangs nus il
-/// déduirait les tailles du plan, donc supposerait justes celles qu'il devrait
-/// vérifier, et l'incohérence n'apparaîtrait qu'au scellement.
+/// ⚠️ THE SHAPE IS `{n, octets}[]`, AND NOT `number[]`: the browser accepts
+/// both (`normaliserPresentes`), but only the first lets it SEE
+/// a slice of the wrong size BEFORE uploading again — with bare ranks it
+/// would deduce the sizes from the plan, hence assume correct the ones it should
+/// check, and the inconsistency would only show up at sealing.
 ///
-/// ⚠️ `scelle_a` est une DATE ou `null` — jamais `0`, qui se lirait comme une
-/// époque de 1970 (même raisonnement qu'`application.disparue_a`).
+/// ⚠️ `scelle_a` is a DATE or `null` — never `0`, which would read as an
+/// epoch of 1970 (same reasoning as `application.disparue_a`).
 function etatDe(ctx: Contexte, ligne: LigneTeleversement): unknown {
     return {
         id: ligne.id,
         nom: ligne.nom,
-        taille: ligne.taille,
+        taille: ligne.taille, // policy: allow-fr - frozen wire key or SQLite column
         sha256: ligne.sha256,
-        taille_tranche: ligne.taille_tranche,
+        taille_tranche: ligne.taille_tranche, // policy: allow-fr - frozen wire key or SQLite column
         scelle_a: ligne.scelle_a,
         tranches_presentes: ctx.deps.tranches.lister(ligne.id),
     };
 }
 
-/* ── ③ DÉPOSER ───────────────────────────────────────────────────────── */
+/* ── ③ UPLOAD ───────────────────────────────────────────────────────── */
 
 async function deposer(
     req: IncomingMessage,
@@ -338,77 +338,77 @@ async function deposer(
     ligne: LigneTeleversement,
     rangBrut: string,
 ): Promise<boolean> {
-    // 🔴 LE RANG EST COMPARÉ À UNE SUITE DE CHIFFRES AVANT D'ÊTRE CONVERTI :
-    // `Number` seul accepte `+1`, ` 1`, `0x10`, `1e3` et `Infinity`, qui
-    // donneraient un `n` que `String(n)` ne réécrirait pas à l'identique — deux
-    // URL distinctes désigneraient alors la même tranche.
+    // 🔴 THE RANK IS COMPARED TO A RUN OF DIGITS BEFORE BEING CONVERTED:
+    // `Number` alone accepts `+1`, ` 1`, `0x10`, `1e3` and `Infinity`, which
+    // would give an `n` that `String(n)` would not rewrite identically — two
+    // distinct URLs would then designate the same slice.
     const n = Number(rangBrut);
     if (!/^\d+$/.test(rangBrut) || !rangValide(n)) {
         return repondre(ctx, 400, { refus: 'rang-invalide' });
     }
 
-    // 🔴 ÉCRIRE DANS UN TÉLÉVERSEMENT SCELLÉ EST REFUSÉ, ET LE BRIEF NE LE
-    // DEMANDAIT PAS : l'omettre ANNULERAIT LE SCELLEMENT SANS LE DIRE — un
-    // dépôt postérieur remplacerait les octets vérifiés, et l'agent
-    // installerait un contenu que personne n'a vu, sous une ligne qui affirme
-    // le contraire.
+    // 🔴 WRITING INTO A SEALED UPLOAD IS REFUSED, AND THE BRIEF DID NOT
+    // ASK FOR IT: leaving it out would CANCEL THE SEAL WITHOUT SAYING SO — a
+    // later upload would replace the verified bytes, and the agent
+    // would install content nobody has seen, under a row that claims
+    // the opposite.
     if (ligne.scelle_a !== null) return repondre(ctx, 409, { refus: 'deja-scelle' });
 
-    // 🔴 UN RANG HORS DU PLAN EST REFUSÉ AU DÉPÔT, PAS AU SCELLEMENT : il ne
-    // deviendra JAMAIS cohérent (`verdict` le dirait `incoherentes`, le verdict
-    // qui ne se répare pas). Le refuser tout de suite évite d'écrire des octets
-    // dont le seul avenir est de faire échouer le téléversement entier.
-    const attendu = plan(ligne.taille, ligne.taille_tranche);
+    // 🔴 A RANK OUTSIDE THE PLAN IS REFUSED AT UPLOAD, NOT AT SEALING: it will
+    // NEVER become consistent (`verdict` would call it `incoherentes`, the verdict
+    // that cannot be repaired). Refusing it at once avoids writing bytes
+    // whose only future is to make the whole upload fail.
+    const attendu = plan(ligne.taille, ligne.taille_tranche); // policy: allow-fr - frozen wire key or SQLite column
     if (n >= attendu.length) {
         return repondre(ctx, 409, { refus: 'rang-hors-plan', tranches: attendu.length });
     }
 
-    // 🔴 LA BORNE EST DURE, RELUE EN BASE, ET C'EST `taille_tranche` — jamais la
-    // taille ATTENDUE de cette tranche-ci : la dernière est plus courte que le
-    // pas, et borner à sa taille exacte ferait de ce plafond un juge du
-    // DÉCOUPAGE, rôle de `proto/ts/tranches.ts::verdict` et de lui seul. Ici on
-    // borne le DISQUE ; une tranche trop courte passe et sera `incoherentes`.
+    // 🔴 THE BOUND IS HARD, READ BACK FROM THE DATABASE, AND IT IS `taille_tranche` — never the (policy: allow-fr - frozen wire key or SQLite column)
+    // EXPECTED size of this particular slice: the last one is shorter than the
+    // step, and bounding to its exact size would make this cap a judge of the
+    // SLICING, the role of `proto/ts/tranches.ts::verdict` and of it alone. Here we
+    // bound the DISK; a slice that is too short goes through and will be `incoherentes`.
     //
-    // 🔴 LE CORPS N'EST JAMAIS TENU EN MÉMOIRE : `req` est un
-    // `AsyncIterable<Uint8Array>` passé TEL QUEL au magasin. Un `Buffer.concat`
-    // ferait du service une bombe mémoire pilotée par ses clients.
-    const issue = await ctx.deps.tranches.ecrire(ligne.id, n, req, ligne.taille_tranche);
+    // 🔴 THE BODY IS NEVER HELD IN MEMORY: `req` is an
+    // `AsyncIterable<Uint8Array>` handed AS IS to the store. A `Buffer.concat`
+    // would turn the service into a memory bomb driven by its clients.
+    const issue = await ctx.deps.tranches.write(ligne.id, n, req, ligne.taille_tranche); // policy: allow-fr - frozen wire key or SQLite column
     if (!issue.ok) {
-        // ⚠️ LE FICHIER PARTIEL EST DÉJÀ SUPPRIMÉ PAR LE MAGASIN — relu dans
-        // `magasin-tranches.ts` : `rmSync(provisoire)` au `catch`, et le
-        // `renameSync` n'a jamais eu lieu. Rien à SUPPOSER : un test relit
-        // l'état après le refus.
+        // ⚠️ THE PARTIAL FILE IS ALREADY DELETED BY THE STORE — reread in
+        // `magasin-tranches.ts`: `rmSync(provisoire)` in the `catch`, and the
+        // `renameSync` never happened. Nothing to ASSUME: a test reads back
+        // the state after the refusal.
         return repondre(ctx, 413, { refus: 'tranche-trop-grande', maximum: issue.plafond });
     }
 
-    // ⚠️ LE DÉPÔT EST IDEMPOTENT, ET C'EST LE `renameSync` DU MAGASIN QUI LE
-    // REND TEL : renommer sur un fichier existant le remplace — une tranche
-    // déposée à moitié puis re-déposée en entier doit gagner.
+    // ⚠️ THE UPLOAD IS IDEMPOTENT, AND IT IS THE STORE'S `renameSync` THAT
+    // MAKES IT SO: renaming onto an existing file replaces it — a slice
+    // uploaded halfway then uploaded again in full must win.
     return repondre(ctx, 200, { n, octets: issue.octets });
 }
 
 /* ── ④ SCELLER ───────────────────────────────────────────────────────── */
 
 async function arreter(ctx: Contexte, ligne: LigneTeleversement): Promise<boolean> {
-    // ⚠️ SCELLER DEUX FOIS EST UN SUCCÈS, PAS UN CONFLIT, et sans recalculer :
-    // l'empreinte a DÉJÀ été vérifiée et les dépôts sont refusés depuis. Un 409
-    // ferait échouer le cas le plus banal — une réponse perdue, un client qui
-    // réessaie.
+    // ⚠️ SEALING TWICE IS A SUCCESS, NOT A CONFLICT, and without recomputing:
+    // the hash HAS ALREADY been verified and uploads have been refused since. A 409
+    // would make the most ordinary case fail — a lost response, a client that
+    // retries.
     if (ligne.scelle_a !== null) return repondre(ctx, 200, scellement(ligne, ligne.scelle_a));
 
-    // ⚠️ `plan` et `verdict` LÈVENT sur un contrat absurde, et c'est voulu : le
-    // contrat vient de NOTRE base, pas du fil, et `declarer` l'a validé avant de
-    // l'écrire. Une ligne au pas nul serait un défaut de PROGRAMME — frontière
-    // posée par `proto/ts/tranches.ts` —, et le 500 est la réponse juste : le
-    // déguiser en refus ferait recompléter des tranches qui n'existent pas.
-    const attendu = plan(ligne.taille, ligne.taille_tranche);
-    const v = verdict(ligne.taille, ligne.taille_tranche, ctx.deps.tranches.lister(ligne.id));
+    // ⚠️ `plan` and `verdict` THROW on an absurd contract, and that is intended: the
+    // contract comes from OUR database, not from the wire, and `declarer` validated it before
+    // writing it. A row with a zero step would be a PROGRAM defect — a boundary
+    // set by `proto/ts/tranches.ts` —, and the 500 is the right answer:
+    // disguising it as a refusal would make the client refill slices that do not exist.
+    const attendu = plan(ligne.taille, ligne.taille_tranche); // policy: allow-fr - frozen wire key or SQLite column
+    const v = verdict(ligne.taille, ligne.taille_tranche, ctx.deps.tranches.lister(ligne.id)); // policy: allow-fr - frozen wire key or SQLite column
 
-    // 🔴 DEUX VERDICTS, DEUX REFUS DISTINCTS, ET LES CONFONDRE SERAIT UNE BOUCLE
-    // SANS FIN : un trou se comble en le redemandant, une tranche à la mauvaise
-    // taille jamais — le déposant renverrait la même chose, indéfiniment. Tout
-    // l'argument est dans `proto/ts/tranches.ts` ; ici on se contente de ne pas
-    // aplatir ce qu'il a distingué.
+    // 🔴 TWO VERDICTS, TWO DISTINCT REFUSALS, AND MERGING THEM WOULD BE AN ENDLESS
+    // LOOP: a hole is filled by asking for it again, a slice of the wrong
+    // size never is — the uploader would send the same thing back, forever. The whole
+    // argument is in `proto/ts/tranches.ts`; here we merely refrain from
+    // flattening what it distinguished.
     if (v.etat === 'incoherentes') {
         return repondre(ctx, 409, { refus: 'tranches-incoherentes', n: v.n });
     }
@@ -416,30 +416,30 @@ async function arreter(ctx: Contexte, ligne: LigneTeleversement): Promise<boolea
         return repondre(ctx, 409, { refus: 'tranches-manquantes', n: v.n });
     }
 
-    // 🔴 LA PLATEFORME RECALCULE, ELLE NE FAIT PAS CONFIANCE. Le `sha256` de la
-    // ligne est ce que le DÉPOSANT a ANNONCÉ ; sceller sans le vérifier ferait
-    // de la colonne une affirmation que rien n'a confrontée aux octets, et
-    // l'agent installerait un fichier en croyant l'avoir vérifié. C'est le seul
-    // contrôle de la chaîne qui ne puisse pas être satisfait par accident.
+    // 🔴 THE PLATFORM RECOMPUTES, IT DOES NOT TRUST. The row's `sha256`
+    // is what the UPLOADER ANNOUNCED; sealing without checking it would make
+    // the column a claim that nothing has confronted with the bytes, and
+    // the agent would install a file believing it had verified it. It is the only
+    // check in the chain that cannot be satisfied by accident.
     //
-    // 🔴 LES RANGS VIENNENT DU PLAN, PAS DU LISTAGE, et l'ordre EST le contrat :
-    // une tranche disparue entre le verdict et la lecture devient une ERREUR de
-    // flux, là où un listage frais se terminerait PROPREMENT en plus court — et
-    // l'empreinte serait fausse sans qu'on sache pourquoi. ⚠️ EN FLUX : la
-    // mémoire ne dépend pas de la taille du fichier.
+    // 🔴 THE RANKS COME FROM THE PLAN, NOT FROM THE LISTING, and the order IS the contract:
+    // a slice that vanished between the verdict and the read becomes a stream
+    // ERROR, whereas a fresh listing would end CLEANLY but shorter — and
+    // the hash would be wrong without anyone knowing why. ⚠️ AS A STREAM: the
+    // memory does not depend on the file size.
     const condensat = createHash('sha256');
     const flux = ctx.deps.tranches.concatener(ligne.id, attendu.map((t) => t.n));
     for await (const morceau of flux) condensat.update(morceau as Uint8Array);
     const relu = condensat.digest('hex');
 
     if (relu !== ligne.sha256) {
-        // ⚠️ NI L'EMPREINTE ANNONCÉE NI LA RELUE NE TRAVERSENT : la relue
-        // décrirait le contenu réellement stocké à un pair qui pourrait n'en
-        // avoir déposé qu'une partie. Le journal, lui, porte les deux.
+        // ⚠️ NEITHER THE ANNOUNCED HASH NOR THE REREAD ONE GOES OUT: the reread one
+        // would describe the content actually stored to a peer that might have
+        // uploaded only part of it. The log, for its part, carries both.
         console.warn(
-            `scellement refusé pour le téléversement ${ligne.id} : empreinte annoncée `
-                + `${ligne.sha256}, empreinte relue ${relu} — les octets stockés ne sont `
-                + `pas ceux que le déposant a annoncés.`,
+            `sealing refused for upload ${ligne.id}: announced fingerprint `
+                + `${ligne.sha256}, re-read fingerprint ${relu} — the stored bytes are `
+                + `not the ones the depositor announced.`,
         );
         return repondre(ctx, 409, { refus: 'empreinte' });
     }
@@ -449,9 +449,9 @@ async function arreter(ctx: Contexte, ligne: LigneTeleversement): Promise<boolea
     return repondre(ctx, 200, scellement(ligne, instant));
 }
 
-/// ⚠️ LA MÊME EXPRESSION pour le scellement qui vient d'avoir lieu et pour celui
-/// qui avait déjà eu lieu : sinon un client qui réessaie lirait deux formes du
-/// même fait.
+/// ⚠️ THE SAME EXPRESSION for the sealing that just happened and for the one
+/// that had already happened: otherwise a client that retries would read two shapes of the
+/// same fact.
 function scellement(ligne: LigneTeleversement, scelleA: number): unknown {
-    return { id: ligne.id, taille: ligne.taille, sha256: ligne.sha256, scelle_a: scelleA };
+    return { id: ligne.id, taille: ligne.taille, sha256: ligne.sha256, scelle_a: scelleA }; // policy: allow-fr - frozen wire key or SQLite column
 }

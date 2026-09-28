@@ -1,9 +1,9 @@
-//! La boucle de réconciliation : lire, filtrer, comparer, émettre.
+//! The reconciliation loop: read, filter, compare, emit.
 //!
-//! 🔴 `#[cfg(windows)]` : elle ouvre COM et parcourt quatre arborescences
-//! réelles. Tout ce qu'elle DÉCIDE vit pourtant dans `apps::raccourci` et
-//! `apps::reconciliation`, qui sont purs et testés sur l'hôte — ce module ne
-//! fait qu'orchestrer.
+//! 🔴 `#[cfg(windows)]`: it opens COM and walks four real
+//! trees. Yet everything it DECIDES lives in `apps::raccourci` and
+//! `apps::reconciliation`, which are pure and tested on the host — this module
+//! only orchestrates.
 
 use std::time::Instant;
 
@@ -14,12 +14,12 @@ use super::icone;
 use super::{lancement, lecture};
 use crate::plateforme::{Identite, Ordre};
 
-/// Ce que la boucle retient d'un tour à l'autre, et la réconciliation qui le
-/// produit — **EXTRAIT VERBATIM de ce fichier, AVANT l'addition qui l'exigeait.**
+/// What the loop keeps from one tick to the next, and the reconciliation that
+/// produces it — **EXTRACTED VERBATIM from this file, BEFORE the addition that required it.**
 ///
-/// `mod` ORDINAIRE, sans `#[path]` : les deux sont `#[cfg(windows)]`, et la
-/// « Convention de module enfant » de `CLAUDE.md` réserve le `#[path]` aux
-/// modules qui doivent franchir une frontière `#[cfg]` pour exister sur l'hôte.
+/// ORDINARY `mod`, without `#[path]`: both are `#[cfg(windows)]`, and the
+/// "Child module convention" of `CLAUDE.md` reserves `#[path]` for
+/// modules that must cross a `#[cfg]` boundary to exist on the host.
 mod memoire;
 
 use memoire::{reconcilier, Memoire};
@@ -28,59 +28,59 @@ use super::surveillance::mode::Mode;
 use super::surveillance::partage::Veille;
 use super::surveillance::rebond::Rebond;
 
-/// Ce qui a fait partir CETTE réconciliation.
+/// What triggered THIS reconciliation.
 ///
-/// 🔴 IL EST PORTÉ SUR LA LIGNE `catalogue reconcilie`, ET C'EST CE QUI REND LE
-/// CRITÈRE ① LISIBLE : sans lui, une réconciliation arrivée dans la seconde qui
-/// suit la création d'un raccourci est indiscernable d'une réconciliation
-/// périodique qui serait tombée là par hasard. **Un chiffre-juge doit dire d'où
-/// il vient.**
+/// 🔴 IT IS CARRIED ON THE `catalogue reconcilie` LINE, AND THAT IS WHAT MAKES
+/// CRITERION ① READABLE: without it, a reconciliation arriving within the second that
+/// follows the creation of a shortcut is indistinguishable from a periodic
+/// reconciliation that happened to fall there by chance. **A judging figure must say where
+/// it comes from.**
 ///
-/// ✅ Aucun instrument versé de ce dépôt ne lit cette trace — vérifié par
-/// `grep -rn "catalogue reconcilie"` sur les `.mjs`, `.js`, `.ts`, `.sh` et
-/// `.ps1`, qui rend AUCUNE ligne. Lui ajouter des champs ne casse donc rien.
+/// ✅ No instrument shipped in this repository reads this trace — checked with
+/// `grep -rn "catalogue reconcilie"` over the `.mjs`, `.js`, `.ts`, `.sh` and
+/// `.ps1` files, which returns NO line. Adding fields to it therefore breaks nothing.
 #[derive(Debug, Clone, Copy)]
 pub(super) enum Declencheur {
-    /// Le tout premier tour. Il est `complet` par construction, et c'est lui
-    /// qui rattrape tout ce qui a changé **agent arrêté**.
+    /// The very first tick. It is `complet` by construction, and it is the one
+    /// that catches up on everything that changed **while the agent was stopped**.
     Demarrage,
-    /// L'échéance de `PERIODE_RECONCILIATION`. **La source de vérité.**
+    /// The `PERIODE_RECONCILIATION` deadline. **The source of truth.**
     Periode,
-    /// La surveillance a vu bouger quelque chose. **Un ACCÉLÉRATEUR, et rien
-    /// d'autre** : ce tour ne fait pas moins de travail qu'un tour périodique,
-    /// il arrive plus tôt.
+    /// The watcher saw something move. **An ACCELERATOR, and nothing
+    /// else**: this tick does no less work than a periodic tick,
+    /// it just arrives earlier.
     Notification,
-    /// La sortie d'un installeur a levé `partage.reconcilier` (sous-bloc G3).
+    /// An installer exiting raised `partage.reconcilier` (sub-block G3).
     Installation,
 }
 
 impl Declencheur {
     fn mot(self) -> &'static str {
         match self {
-            Declencheur::Demarrage => "demarrage",
-            Declencheur::Periode => "periode",
+            Declencheur::Demarrage => "startup",
+            Declencheur::Periode => "period",
             Declencheur::Notification => "notification",
             Declencheur::Installation => "installation",
         }
     }
 }
 
-/// Ce que la ligne `catalogue reconcilie` porte en plus du catalogue lui-même.
+/// What the `catalogue reconcilie` line carries on top of the catalogue itself.
 pub(super) struct Contexte {
     pub(super) declencheur: Declencheur,
-    /// Cumulé depuis le démarrage du fil de surveillance, jamais un delta :
-    /// deux lignes successives se soustraient, un delta déjà pris ne se
-    /// recompose pas.
+    /// Cumulative since the watcher thread started, never a delta:
+    /// two successive lines can be subtracted, a delta already taken cannot be
+    /// recomposed.
     pub(super) notifications: u64,
     pub(super) debordements: u64,
 }
 
-/// Honore un ordre de lancement, et rend son issue.
+/// Honours a launch order, and returns its outcome.
 fn honorer(memoire: &Memoire, demande: &str, cle: &str) -> IssueLancement {
     let Some((chemin, montrer)) = memoire.lancables.get(cle) else {
-        // ⚠️ `Inconnue` EST RENDUE ICI ET NULLE PART AILLEURS : seul cet étage
-        // connaît le catalogue. `apps::lancement` ne sait rien des clés.
-        tracing::warn!(demande, cle, "clé absente du catalogue de l'agent");
+        // ⚠️ `Inconnue` IS RETURNED HERE AND NOWHERE ELSE: only this stage
+        // knows the catalogue. `apps::lancement` knows nothing about keys.
+        tracing::warn!(demande, cle, "key absent from the agent's catalogue");
         return IssueLancement::Inconnue;
     };
     let cible = memoire
@@ -90,7 +90,7 @@ fn honorer(memoire: &Memoire, demande: &str, cle: &str) -> IssueLancement {
         .map(|a| a.cible.as_str())
         .unwrap_or_default();
     let issue = lancement::lancer(chemin, cible, *montrer);
-    tracing::info!(demande, cle, ?issue, "lancement");
+    tracing::info!(demande, cle, ?issue, "launch");
     issue
 }
 
@@ -104,12 +104,12 @@ pub struct Reglages {
     pub mode: Mode,
 }
 
-/// Le corps de la boucle, sur son fil dédié.
+/// The body of the loop, on its dedicated thread.
 ///
-/// 🔴 UN FIL BLOQUANT DÉDIÉ, ET COM INITIALISÉ UNE SEULE FOIS DESSUS.
-/// `IShellLinkW` et `ShellExecuteExW` exigent tous deux un appartement, et un
-/// appartement appartient à SON fil : les deux doivent donc courir ici, pas
-/// sur un fil de pool que tokio pourrait changer entre deux tours.
+/// 🔴 A DEDICATED BLOCKING THREAD, AND COM INITIALISED ONLY ONCE ON IT.
+/// `IShellLinkW` and `ShellExecuteExW` both require an apartment, and an
+/// apartment belongs to ITS thread: both must therefore run here, not
+/// on a pool thread that tokio could change between two ticks.
 pub fn tourner(
     canal_emission: impl Fn(VersLaPlateforme) + Send + 'static,
     mut ordres: mpsc::UnboundedReceiver<Ordre>,
@@ -123,93 +123,93 @@ pub fn tourner(
         veille,
         mode,
     } = reglages;
-    if let Err(erreur) = lecture::initialiser_com() {
-        tracing::error!(%erreur, "decouverte d'applications abandonnee : COM indisponible");
+    if let Err(error) = lecture::initialize_com() {
+        tracing::error!(%error, "application discovery given up: COM unavailable");
         return;
     }
 
     let mut memoire = Memoire::default();
-    // 🔴 LE PREMIER TOUR EST COMPLET, ET CHAQUE CHANGEMENT D'IDENTITÉ AUSSI. Un
-    // `Catalogue` perdu pendant une coupure laisserait sinon la plateforme
-    // divergente SANS TERME — le canal est un `push` sans garantie de
-    // livraison, et sa file abandonne ce qu'elle ne peut pas remettre.
+    // 🔴 THE FIRST TICK IS COMPLETE, AND SO IS EVERY IDENTITY CHANGE. A
+    // `Catalogue` lost during an outage would otherwise leave the platform
+    // diverging WITH NO END — the channel is a `push` with no delivery
+    // guarantee, and its queue drops what it cannot deliver.
     //
-    // ⚠️ **EN PRATIQUE, L'ENVOI COMPLET EST PÉRIODIQUE — MESURÉ, ET CE N'ÉTAIT
-    // ÉCRIT NULLE PART.** Sur le journal d'un agent au repos, le 21 août 2026 :
-    // ONZE lignes « le prochain catalogue sera COMPLET » pour DOUZE
-    // réconciliations, et **aucun réenrôlement n'a eu lieu**. C'est le
-    // rafraîchissement de jeton du battement qui fait bouger la `watch`, et
-    // `PERIODE_BATTEMENT` vaut exactement `PERIODE_RECONCILIATION`. **Le
-    // catalogue complet part donc sur le fil toutes les trente secondes, pour
-    // toujours, sur un disque qui ne bouge pas.**
+    // ⚠️ **IN PRACTICE, THE COMPLETE SEND IS PERIODIC — MEASURED, AND IT WAS
+    // WRITTEN NOWHERE.** On the log of an idle agent, on 21 August 2026:
+    // ELEVEN "le prochain catalogue sera COMPLET" lines for TWELVE
+    // reconciliations, and **no re-enrolment took place**. It is the
+    // heartbeat's token refresh that makes the `watch` move, and
+    // `PERIODE_BATTEMENT` is exactly `PERIODE_RECONCILIATION`. **The
+    // complete catalogue therefore goes on the wire every thirty seconds,
+    // forever, over a disk that does not move.**
     //
-    // 🔴 ET CE N'EST PAS CORRIGÉ, POUR UNE RAISON QUI EST L'INVERSE DE CE QU'ON
-    // CROIRAIT. Cette boucle POURRAIT distinguer les deux — un réenrôlement
-    // change le `prefixe`, un battement ne change que le `jeton` — et ne lever
-    // `complet` que sur le premier. Mais ce serait **retirer une réparation
-    // réelle** : la promesse écrite trois lignes plus haut, « un `Catalogue`
-    // perdu ne laisse pas la plateforme divergente sans terme », n'a AUCUNE
-    // autre implémentation que cet envoi complet périodique. Ce qui a l'air
-    // d'un défaut est la seule chose qui tienne la garantie que ce commentaire
-    // annonce.
+    // 🔴 AND IT IS NOT FIXED, FOR A REASON THAT IS THE OPPOSITE OF WHAT ONE
+    // WOULD THINK. This loop COULD tell the two apart — a re-enrolment
+    // changes the `prefixe`, a heartbeat only changes the `jeton` — and only raise
+    // `complet` on the former. But that would **remove a real
+    // repair**: the promise written three lines above, "a lost `Catalogue`
+    // does not leave the platform diverging with no end", has NO
+    // other implementation than this periodic complete send. What looks
+    // like a defect is the only thing that holds the guarantee this comment
+    // announces.
     //
-    // ⛔ **LEGS, ET IL EST NOMMÉ** : arbitrer entre ce filet et son coût demande
-    // de MESURER LA TRAME SUR LE FIL, ce que G4 ne fait pas. Le seul chiffre
-    // disponible est celui de G1 — **56 145 octets** pour **154** applications,
-    // et **SANS** les champs `icone` et `source_max` que G2 a ajoutés. Celui
-    // d'aujourd'hui porte **156** applications **avec** les deux : il est plus
-    // gros, et **il n'est mesuré par rien**.
+    // ⛔ **LEGACY, AND IT IS NAMED**: arbitrating between this safety net and its cost requires
+    // MEASURING THE FRAME ON THE WIRE, which G4 does not do. The only figure
+    // available is G1's — **56,145 bytes** for **154** applications,
+    // and **WITHOUT** the `icone` and `source_max` fields G2 added. Today's
+    // carries **156** applications **with** both: it is bigger,
+    // and **it is measured by nothing**.
     let mut complet = true;
-    // L'identité courante est marquée lue : ce qui suit ne réagit qu'aux
-    // CHANGEMENTS, et le premier envoi est déjà complet par la ligne ci-dessus.
+    // The current identity is marked as read: what follows only reacts to
+    // CHANGES, and the first send is already complete through the line above.
     identite.borrow_and_update();
 
     let mut rebond = Rebond::default();
-    // 🔴 LA VALEUR RETENUE, ET NON UN DRAPEAU. `Veille::notifications` est
-    // MONOTONE : la boucle compare au compte qu'elle avait la dernière fois.
-    // Une notification survenue PENDANT une réconciliation est donc vue au
-    // sondage suivant — ce qu'un booléen échangé perdrait, et c'est exactement
-    // la notification qui compte, celle qui arrive quand on lit déjà le disque.
+    // 🔴 THE REMEMBERED VALUE, NOT A FLAG. `Veille::notifications` is
+    // MONOTONIC: the loop compares with the count it had last time.
+    // A notification arriving DURING a reconciliation is therefore seen at the
+    // next poll — which a swapped boolean would lose, and it is exactly
+    // the notification that matters, the one that arrives while the disk is already being read.
     let mut notifications_vues = veille.notifications();
     let mut declencheur = Declencheur::Demarrage;
 
     loop {
-        // 🔴 E5 — LE DRAPEAU SE LIT ET SE BAISSE **AVANT** LA RÉCONCILIATION.
+        // 🔴 E5 — THE FLAG IS READ AND LOWERED **BEFORE** THE RECONCILIATION.
         //
-        // ⚠️ CE COMMENTAIRE EN REMPLACE UN QUI NOMMAIT EXACTEMENT LE DÉFAUT QUE
-        // SON PROPRE CODE PRODUISAIT. Il disait : « le drapeau se baisse APRÈS
-        // la réconciliation, pas avant : le fil d'installation attend
-        // `reconciliee`, et le lever trop tôt lui ferait lire un compte pris
-        // avant que l'installeur n'ait fini d'écrire. » Le chemin NOMINAL était
-        // correct — le drapeau se lève à la sortie de l'installeur, l'attente
-        // est rompue, et la réconciliation qui suit a bien commencé APRÈS.
+        // ⚠️ THIS COMMENT REPLACES ONE THAT NAMED EXACTLY THE DEFECT THAT
+        // ITS OWN CODE PRODUCED. It said: "the flag is lowered AFTER
+        // the reconciliation, not before: the installation thread waits for
+        // `reconciliee`, and raising it too early would make it read a count taken
+        // before the installer had finished writing." The NOMINAL path was
+        // correct — the flag is raised when the installer exits, the wait
+        // is broken, and the reconciliation that follows did start AFTER.
         //
-        // 🔴 LE CHEMIN DE COURSE NE L'ÉTAIT PAS. Si une réconciliation
-        // périodique était DÉJÀ EN COURS quand l'installeur sortait et levait
-        // le drapeau, le `swap` posé après la voyait vrai et déclarait
-        // `reconciliee` — **pour une réconciliation commencée AVANT que
-        // l'installeur n'ait fini d'écrire**. `forcer_une_reconciliation`
-        // rendait alors la main immédiatement, et le verdict se lisait sur une
-        // fenêtre qui n'avait pas vu les derniers fichiers : un `sans-effet`
-        // FAUX, c'est-à-dire précisément ce que l'ancien commentaire disait
-        // vouloir empêcher.
+        // 🔴 THE RACE PATH WAS NOT. If a periodic
+        // reconciliation was ALREADY RUNNING when the installer exited and raised
+        // the flag, the `swap` placed after it saw it true and declared
+        // `reconciliee` — **for a reconciliation started BEFORE the
+        // installer had finished writing**. `forcer_une_reconciliation`
+        // then returned immediately, and the verdict was read on a
+        // window that had not seen the last files: a FALSE `sans-effet`,
+        // that is precisely what the old comment claimed it
+        // wanted to prevent.
         //
-        // 🔴 POURQUOI C'EST DE G4 : la fenêtre de course valait « durée de la
-        // réconciliation / période », soit ≈ 0,2 % des sorties d'installeur.
-        // G4 rend les réconciliations bien plus fréquentes pendant une
-        // installation — c'est tout son objet — et ÉLARGIT donc cette fenêtre
-        // d'un ordre de grandeur.
+        // 🔴 WHY IT BELONGS TO G4: the race window was "duration of the
+        // reconciliation / period", i.e. ≈ 0.2 % of installer exits.
+        // G4 makes reconciliations far more frequent during an
+        // installation — that is its whole purpose — and therefore WIDENS this window
+        // by an order of magnitude.
         //
-        // Lu avant, la demande SURVIT au tour en cours : la réconciliation
-        // SUIVANTE l'honore, une période plus tard mais JUSTE. Aucun des trois
-        // chemins ne perd la demande.
+        // Read beforehand, the request SURVIVES the current tick: the NEXT
+        // reconciliation honours it, one period later but CORRECTLY. None of the three
+        // paths loses the request.
         //
-        // ⚠️ SA SEULE PREUVE EST UN ARGUMENT DE FLOT DE CONTRÔLE. Ce fichier est
-        // `#[cfg(windows)]`, aucun test d'hôte ne peut l'atteindre, et la
-        // recette de G4 ne lance aucune installation. C'est la situation exacte
-        // que le défaut F1 du sous-bloc D7 a payée. Le correctif est appliqué
-        // parce qu'il est STRICTEMENT PLUS SÛR ; **la mesure est LÉGUÉE, et
-        // déclarée manquante.**
+        // ⚠️ ITS ONLY PROOF IS A CONTROL-FLOW ARGUMENT. This file is
+        // `#[cfg(windows)]`, no host test can reach it, and the
+        // G4 acceptance run launches no installation. It is the exact situation
+        // that defect F1 of sub-block D7 paid for. The fix is applied
+        // because it is STRICTLY SAFER; **the measurement is BEQUEATHED, and
+        // declared missing.**
         let demandee = partage
             .reconcilier
             .swap(false, std::sync::atomic::Ordering::SeqCst);
@@ -219,22 +219,22 @@ pub fn tourner(
             debordements: veille.debordements(),
         };
         let (diff, catalogue) = reconcilier(&mut memoire, contexte);
-        // 🔴 LE COMPTE VA À TOUTES LES FENÊTRES OUVERTES, ET IL SE PREND ICI —
-        // avant que `diff.apparues` ne soit consommé par la branche du delta.
+        // 🔴 THE COUNT GOES TO ALL OPEN WINDOWS, AND IT IS TAKEN HERE —
+        // before `diff.apparues` is consumed by the delta branch.
         //
-        // ⚠️ IL EST VERSÉ MÊME QUAND LE CATALOGUE PART COMPLET : `complet` ne
-        // change que ce qui est ÉMIS, jamais ce que le diff contient. La
-        // mémoire n'est pas remise à zéro à un réenrôlement, donc
-        // `diff.apparues` reste la vraie nouveauté — le compter deux fois
-        // serait le défaut, ne pas le compter en serait un autre.
+        // ⚠️ IT IS ADDED EVEN WHEN THE CATALOGUE GOES OUT COMPLETE: `complet` only
+        // changes what is EMITTED, never what the diff contains. The
+        // memory is not reset at a re-enrolment, so
+        // `diff.apparues` remains the real novelty — counting it twice
+        // would be the defect, not counting it would be another one.
         if !diff.apparues.is_empty() {
             if let Ok(mut f) = partage.fenetres.lock() {
-                f.ajouter(diff.apparues.len());
+                f.add(diff.apparues.len());
             }
         }
-        // La demande lue AVANT le tour est honorée APRÈS lui : c'est bien
-        // cette réconciliation-ci, commencée après la sortie de l'installeur,
-        // que `reconciliee` annonce.
+        // The request read BEFORE the tick is honoured AFTER it: it really is
+        // this reconciliation, started after the installer exited,
+        // that `reconciliee` announces.
         if demandee {
             partage
                 .reconciliee
@@ -244,9 +244,9 @@ pub fn tourner(
             canal_emission(VersLaPlateforme::catalogue(true, catalogue, Vec::new()));
             complet = false;
         } else if !diff.est_vide() {
-            // ⚠️ RIEN N'EST ÉMIS QUAND RIEN N'A BOUGÉ, et c'est tout l'intérêt
-            // du diff : sur un disque au repos, la boucle est muette sur le
-            // canal comme dans le journal des écarts.
+            // ⚠️ NOTHING IS EMITTED WHEN NOTHING MOVED, and that is the whole point
+            // of the diff: on an idle disk, the loop is silent on the
+            // channel as well as in the log of discarded entries.
             let mut applications = diff.apparues;
             applications.extend(diff.modifiees);
             canal_emission(VersLaPlateforme::catalogue(
@@ -256,17 +256,17 @@ pub fn tourner(
             ));
         }
 
-        // Attendre la période, en restant réactif aux ordres, aux
-        // réenrôlements ET à la surveillance : dormir bêtement trente secondes
-        // ferait attendre un clic d'utilisateur jusqu'à une demi-minute.
+        // Wait for the period, while staying responsive to orders,
+        // re-enrolments AND the watcher: sleeping blindly for thirty seconds
+        // would make a user's click wait up to half a minute.
         //
-        // 🔴 EN `Mode::Seule`, L'ÉCHÉANCE DE PÉRIODE N'EXISTE PAS. C'est un
-        // `Option`, et non une période démesurément longue : une période de
-        // mille ans serait un mensonge que le code porterait, et le jour où
-        // quelqu'un la lirait il croirait à un réglage. **Variable de BANC, et
-        // le seul montage qui rende le critère ③ discriminant** — un agent
-        // purement événementiel perd tout ce qu'une notification manquée
-        // emporte.
+        // 🔴 IN `Mode::Seule`, THE PERIOD DEADLINE DOES NOT EXIST. It is an
+        // `Option`, not an absurdly long period: a period of
+        // a thousand years would be a lie carried by the code, and the day
+        // someone read it they would believe it was a setting. **BENCH variable, and
+        // the only setup that makes criterion ③ discriminating** — a
+        // purely event-driven agent loses everything a missed notification
+        // carries away.
         let echeance = mode.periodique().then(|| Instant::now() + periode);
         loop {
             let maintenant = Instant::now();
@@ -276,10 +276,10 @@ pub fn tourner(
                     break;
                 }
             }
-            // 🔴 « RÉCONCILIE MAINTENANT » COURT-CIRCUITE L'ATTENTE. Sans
-            // cela, le verdict d'une installation de dix secondes arriverait
-            // jusqu'à trente secondes plus tard, et l'utilisateur verrait une
-            // barre finie devant un état « en cours ».
+            // 🔴 "RECONCILE NOW" SHORT-CIRCUITS THE WAIT. Without
+            // it, the verdict of a ten-second installation would arrive
+            // up to thirty seconds later, and the user would see a
+            // finished bar next to an "in progress" state.
             if partage
                 .reconcilier
                 .load(std::sync::atomic::Ordering::SeqCst)
@@ -287,21 +287,21 @@ pub fn tourner(
                 declencheur = Declencheur::Installation;
                 break;
             }
-            // 🔴 LE SONDAGE DE LA SURVEILLANCE, DANS L'ATTENTE QUI EXISTAIT
-            // DÉJÀ : la boucle ne gagne AUCUN fil. C'est ce qui fait de G4 une
-            // accélération et non une architecture de plus.
+            // 🔴 POLLING THE WATCHER, INSIDE THE WAIT THAT ALREADY
+            // EXISTED: the loop gains NO thread. That is what makes G4 an
+            // acceleration and not one more architecture.
             let notifications = veille.notifications();
             if notifications != notifications_vues {
                 notifications_vues = notifications;
                 if mode.rebond() {
                     rebond.notifier(maintenant);
                 } else {
-                    // `sans-rebond` : toute notification rompt l'attente.
-                    // ⚠️ CE N'EST PAS « L'ANTI-REBOND CONTRE RIEN » : le
-                    // sondage a une granularité de 200 ms, qui est déjà un
-                    // anti-rebond faible. Le ROUGE du critère ④ mesure donc
-                    // « anti-rebond contre 200 ms », et son énoncé doit le
-                    // dire.
+                    // `sans-rebond`: any notification breaks the wait.
+                    // ⚠️ IT IS NOT "DEBOUNCE VERSUS NOTHING": the
+                    // polling has a 200 ms granularity, which is already a
+                    // weak debounce. The RED of criterion ④ therefore measures
+                    // "debounce versus 200 ms", and its statement must
+                    // say so.
                     declencheur = Declencheur::Notification;
                     break;
                 }
@@ -327,42 +327,42 @@ pub fn tourner(
                     continue;
                 }
                 Err(mpsc::error::TryRecvError::Disconnected) => {
-                    tracing::warn!("canal /agent fermé : découverte d'applications arrêtée");
+                    tracing::warn!("/agent channel closed: application discovery stopped");
                     return;
                 }
                 Err(mpsc::error::TryRecvError::Empty) => {}
             }
             if identite.has_changed().unwrap_or(false) {
                 identite.borrow_and_update();
-                // 🔴 D7 — CETTE TRACE MENTAIT SUR SON NOM, ET C'EST LA
-                // TROISIÈME FOIS DANS CE SOUS-PROJET. Elle disait
-                // « reenrolement observe » ; **aucun réenrôlement n'a lieu**.
-                // MESURÉ le 21 août 2026 sur le journal d'un agent au repos :
-                // ONZE lignes pour DOUZE réconciliations. Ce qui fait bouger la
-                // `watch`, c'est le RAFRAÎCHISSEMENT DE JETON du battement — et
-                // `PERIODE_BATTEMENT` vaut exactement `PERIODE_RECONCILIATION`,
-                // **par coïncidence et non par dérivation** : ce sont deux
-                // constantes indépendantes, qui se recalibreraient séparément.
+                // 🔴 D7 — THIS TRACE LIED ABOUT ITS NAME, AND IT IS THE
+                // THIRD TIME IN THIS SUB-PROJECT. It said
+                // "reenrolement observe"; **no re-enrolment takes place**.
+                // MEASURED on 21 August 2026 on the log of an idle agent:
+                // ELEVEN lines for TWELVE reconciliations. What makes the
+                // `watch` move is the heartbeat's TOKEN REFRESH — and
+                // `PERIODE_BATTEMENT` is exactly `PERIODE_RECONCILIATION`,
+                // **by coincidence and not by derivation**: they are two
+                // independent constants, which would be recalibrated separately.
                 //
-                // Après `retenus` (leg n°7 de G1) et `icones_echouees` (défaut
-                // ② de G2), c'est le troisième compteur de ④ à mentir sur son
-                // nom. Elle dit désormais ce qu'elle OBSERVE, et déclare ce
-                // qu'elle ne sait pas distinguer.
+                // After `retenus` (G1 legacy no. 7) and `icones_echouees` (G2
+                // defect ②), it is the third counter of ④ to lie about its
+                // name. It now says what it OBSERVES, and declares what
+                // it cannot tell apart.
                 tracing::info!(
-                    "identité changée : le prochain catalogue sera COMPLET \
-                     (rafraîchissement de jeton OU réenrôlement — cette boucle ne les distingue pas)"
+                    "identity changed: the next catalogue will be COMPLETE \
+                     (token refresh OR re-enrolment — this loop does not tell them apart)"
                 );
                 complet = true;
             }
-            // 🔴 LA GRANULARITÉ DU SONDAGE EST DE 200 ms, ET C'EST ELLE QUI
-            // BORNE PAR LE BAS TOUT ANTI-REBOND — un délai plus court ne serait
-            // pas observable, il serait absorbé ici. Elle est aussi le deuxième
-            // terme du pire cas dérivé de `DELAI_ANTI_REBOND_MAX`.
+            // 🔴 THE POLLING GRANULARITY IS 200 ms, AND IT IS WHAT
+            // BOUNDS ANY DEBOUNCE FROM BELOW — a shorter delay would not
+            // be observable, it would be absorbed here. It is also the second
+            // term of the worst case derived from `DELAI_ANTI_REBOND_MAX`.
             //
-            // L'attente s'écourte sur l'échéance la plus proche des trois :
-            // la période, le rebond, et ce pas. Sans le rebond dans ce `min`,
-            // une échéance d'anti-rebond tombant juste après un réveil
-            // attendrait 200 ms de plus — mesurable, et gratuit à éviter.
+            // The wait is shortened to the nearest of the three deadlines:
+            // the period, the debounce, and this step. Without the debounce in this `min`,
+            // a debounce deadline falling just after a wake-up
+            // would wait 200 ms more — measurable, and free to avoid.
             let mut attente = std::time::Duration::from_millis(200);
             if let Some(echeance) = echeance {
                 attente = attente.min(echeance.saturating_duration_since(maintenant));
@@ -370,10 +370,10 @@ pub fn tourner(
             if let Some(du) = rebond.echeance() {
                 attente = attente.min(du.saturating_duration_since(maintenant));
             }
-            // ⚠️ JAMAIS ZÉRO : une attente nulle ferait tourner ce fil à vide
-            // sur un cœur entier. Les deux échéances ci-dessus sont testées en
-            // tête de boucle, donc une attente nulle signifie « échue à l'instant
-            // même », et une milliseconde suffit à rendre la main.
+            // ⚠️ NEVER ZERO: a zero wait would make this thread spin
+            // on a whole core. Both deadlines above are tested at
+            // the top of the loop, so a zero wait means "due this very
+            // instant", and one millisecond is enough to hand control back.
             std::thread::sleep(attente.max(std::time::Duration::from_millis(1)));
         }
     }

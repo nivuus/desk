@@ -1,91 +1,91 @@
-//! Le cache d'énumération : ce qu'un répertoire contenait, et depuis quand.
-//! **PUR** — aucun `cfg`, aucune dépendance à `windows`, entièrement testé sur
-//! l'hôte, **horloge injectée**.
+//! The enumeration cache: what a directory contained, and since when.
+//! **PURE** — no `cfg`, no dependency on `windows`, fully tested on
+//! the host, **clock injected**.
 //!
-//! # Ce qu'il est, et ce qu'il n'est PAS
+//! # What it is, and what it is NOT
 //!
-//! Une [`crate::pont::enumeration::Session`] retient les entrées d'**une**
-//! énumération, entre les appels successifs de `GetDirectoryEnumeration` qui la
-//! servent, et meurt avec `EndDirectoryEnumeration`. **Ce cache-ci lui
-//! survit** : il est indexé par **CHEMIN**, il expire par `TTL_ENUMERATION`, et
-//! il ne peut être vidé de force que par l'annonce `Rafraichir`.
+//! A [`crate::pont::enumeration::Session`] keeps the entries of **one**
+//! enumeration, between the successive `GetDirectoryEnumeration` calls that
+//! serve it, and dies with `EndDirectoryEnumeration`. **This cache
+//! outlives it**: it is indexed by **PATH**, it expires by `TTL_ENUMERATION`, and
+//! it can only be forcibly emptied by the `Rafraichir` announcement.
 //!
-//! # 🔴 LE DÉFAUT DE L'ANCIEN PONT, ET POURQUOI CE MODULE EST LE RISQUE N°1
+//! # 🔴 THE OLD BRIDGE'S DEFECT, AND WHY THIS MODULE IS RISK NO. 1
 //!
-//! `src/file.js` servait des octets depuis un cache **sans aucun TTL**, invalidé
-//! seulement par une écriture passant par ce même pont. La spec §7.4 en tire la
-//! phrase qui gouverne ce fichier : *« Une modification faite sur le poste local
-//! n'était donc jamais vue, pour toujours. »*
+//! `src/file.js` served bytes from a cache **without any TTL**, invalidated
+//! only by a write going through this same bridge. Spec §7.4 draws from it the
+//! sentence that governs this file: *"A modification made on the local workstation
+//! was therefore never seen, forever."*
 //!
-//! **C'est la seule addition de tout le sous-projet ③ qui puisse rendre FAUX un
-//! comportement déjà recetté par F2 et F3** : un fichier créé, renommé ou
-//! supprimé qui cesserait d'être vu. D'où [`CacheEnumeration::invalider`], et
-//! d'où le critère ④ de la recette, dont la rouge retire l'invalidation.
+//! **It is the only addition of the whole sub-project ③ that can make WRONG a
+//! behaviour already accepted by F2 and F3**: a file created, renamed or
+//! deleted that would stop being seen. Hence [`CacheEnumeration::invalider`], and
+//! hence criterion ④ of the acceptance run, whose red removes the invalidation.
 //!
-//! # Pourquoi les entrées sont stockées BRUTES
+//! # Why entries are stored RAW
 //!
-//! Le filtrage par `searchExpression` et le tri par `PrjFileNameCompare`
-//! dépendent de la **requête** (`dir *.txt` et `dir` n'ont pas le même
-//! résultat) et de comparateurs que ProjFS seul fournit. Stocker le résultat
-//! *préparé* ferait qu'un `dir *.txt` **empoisonnerait** le cache pour le `dir`
-//! suivant. Le cache vit donc **en amont** de
-//! [`crate::pont::enumeration::preparer`], qui court à chaque chargement de
-//! session.
+//! Filtering by `searchExpression` and sorting by `PrjFileNameCompare`
+//! depend on the **request** (`dir *.txt` and `dir` do not have the same
+//! result) and on comparators only ProjFS provides. Storing the *prepared*
+//! result would mean a `dir *.txt` **would poison** the cache for the next
+//! `dir`. The cache therefore lives **upstream** of
+//! [`crate::pont::enumeration::preparer`], which runs at each session
+//! load.
 //!
-//! # L'horloge est un PARAMÈTRE
+//! # The clock is a PARAMETER
 //!
-//! Jamais `Instant::now()` à l'intérieur : c'est ce qui rend l'expiration
-//! testable **sans dormir**, exactement comme `pont::table` se l'est donné pour
-//! ses délais.
+//! Never `Instant::now()` inside: it is what makes expiry
+//! testable **without sleeping**, exactly as `pont::table` gave itself for
+//! its delays.
 
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
 use crate::pont::enumeration::Entree;
 
-/// Combien de temps une énumération mémorisée reste servie.
+/// How long a memorised enumeration keeps being served.
 ///
-/// ⚠️ **NON CALIBRÉE.** Elle rejoint `BPP_MIN`, `FACTEUR_FOCUS`,
-/// `PART_DORMANTE_BPS`, `HYSTERESIS`, `REPIT_APRES_ECHEC`, `TAILLE_MAX_SORTIE`,
-/// `REPIT_REARMEMENT_AUDIO`, `REARMEMENTS_MAX`, `TAILLE_TRAME_MAX`,
-/// `DELAI_LISTER`, `ATTENTE_MAX` et les treize seaux de `pont::latence` dans la
-/// liste des constantes de ce dépôt qu'**aucune mesure n'a jugées**.
+/// ⚠️ **NOT CALIBRATED.** It joins `BPP_MIN`, `FACTEUR_FOCUS`,
+/// `PART_DORMANTE_BPS`, `HYSTERESIS`, `REPIT_APRES_ECHEC`, `MAX_OUTPUT_SIZE`,
+/// `REPIT_REARMEMENT_AUDIO`, `REARMEMENTS_MAX`, `MAX_FRAME_SIZE`,
+/// `DELAI_LISTER`, `ATTENTE_MAX` and the thirteen buckets of `pont::latence` in the
+/// list of this repository's constants that **no measurement has judged**.
 ///
-/// Ce qui a présidé au choix, et qui n'est PAS une calibration :
+/// What governed the choice, and which is NOT a calibration:
 ///
-/// - elle doit être **plus longue** qu'un geste de recette complet — F4 mesure
-///   un listage de mille entrées à ~6 s, et le protocole du critère ① enchaîne
-///   deux listages plus une addition de fichier ;
-/// - elle doit être **plus courte** que le temps qu'un utilisateur accepte de
-///   voir un contenu périmé sans que rien ne le lui dise ;
-/// - ⚠️ **elle ne doit PAS valoir 60 s**, qui est `PERIODE_HYDRATATION`
-///   (`service.rs`). *Deux constantes qui se recalibreraient séparément et qui
-///   portent le même nombre finissent par se croire liées* — ce dépôt l'écrit
-///   déjà de `PLAFOND_DISSIMULATION` et `micro::PLAFOND`.
+/// - it must be **longer** than a complete acceptance gesture — F4 measures
+///   a listing of a thousand entries at ~6 s, and the protocol of criterion ① chains
+///   two listings plus a file addition;
+/// - it must be **shorter** than the time a user accepts to
+///   see stale content without anything telling them;
+/// - ⚠️ **it must NOT be 60 s**, which is `PERIODE_HYDRATATION`
+///   (`service.rs`). *Two constants that would be recalibrated separately and that
+///   carry the same number end up believing they are linked* — this repository already
+///   writes this about `PLAFOND_DISSIMULATION` and `micro::PLAFOND`.
 pub const TTL_ENUMERATION: Duration = Duration::from_secs(30);
 
-/// Ce qu'un répertoire contenait, et quand on l'a appris.
+/// What a directory contained, and when it was learnt.
 struct Memoire {
     entrees: Vec<Entree>,
     pose_a: Instant,
 }
 
-/// Le cache d'énumération, indexé par chemin de répertoire.
+/// The enumeration cache, indexed by directory path.
 #[derive(Default)]
 pub struct CacheEnumeration {
     par_chemin: HashMap<String, Memoire>,
 }
 
 impl CacheEnumeration {
-    pub fn nouveau() -> Self {
+    pub fn new() -> Self {
         Self::default()
     }
 
-    /// Les entrées mémorisées pour ce répertoire, si elles n'ont pas expiré.
+    /// The entries memorised for this directory, if they have not expired.
     ///
-    /// **L'entrée expirée est RETIRÉE, pas seulement ignorée.** La laisser
-    /// ferait croître le cache sans terme sur une arborescence qu'on parcourt
-    /// une fois — et ce module n'a **aucune** politique d'éviction (spec §10 R4).
+    /// **The expired entry is REMOVED, not merely ignored.** Leaving it
+    /// would make the cache grow endlessly on a tree traversed
+    /// once — and this module has **no** eviction policy (spec §10 R4).
     pub fn lire(&mut self, chemin: &str, maintenant: Instant) -> Option<&[Entree]> {
         let perime = {
             let m = self.par_chemin.get(chemin)?;
@@ -98,7 +98,7 @@ impl CacheEnumeration {
         self.par_chemin.get(chemin).map(|m| m.entrees.as_slice())
     }
 
-    /// Mémorise ce qu'un répertoire contient. Écrase toute mémoire antérieure.
+    /// Memorises what a directory contains. Overwrites any earlier memory.
     pub fn poser(&mut self, chemin: String, entrees: Vec<Entree>, maintenant: Instant) {
         self.par_chemin.insert(
             chemin,
@@ -109,41 +109,41 @@ impl CacheEnumeration {
         );
     }
 
-    /// Oublie ce que contenait le répertoire **PARENT** du chemin muté.
+    /// Forgets what the **PARENT** directory of the mutated path contained.
     ///
-    /// 🔴 **LE PARENT, JAMAIS LE CHEMIN LUI-MÊME, et se tromper là est
-    /// SILENCIEUX.** Un cache d'énumération est indexé par **répertoire** :
-    /// invalider `dossier/note.txt` ne toucherait aucune clé, le listage de
-    /// `dossier` continuerait d'être servi depuis la mémoire, et **le fichier
-    /// créé n'apparaîtrait jamais**. Rien ne le dirait. Un test d'hôte le
-    /// verrouille, et sa rouge est de faire prendre à cette fonction le chemin
-    /// lui-même.
+    /// 🔴 **THE PARENT, NEVER THE PATH ITSELF, and getting it wrong there is
+    /// SILENT.** An enumeration cache is indexed by **directory**:
+    /// invalidating `dossier/note.txt` would touch no key, the listing of
+    /// `dossier` would keep being served from memory, and **the created
+    /// file would never appear**. Nothing would say so. A host test
+    /// locks it, and its red is to make this function take the path
+    /// itself.
     ///
-    /// ⚠️ **Le parent de `"note.txt"` est la RACINE, `""`** — et la racine est
-    /// une clé comme une autre, celle qu'un `Get-ChildItem` sur le lecteur
-    /// monté sollicite. L'oublier ferait que toute création à la racine serait
-    /// invisible, ce qui est exactement le geste du critère ① de la recette.
+    /// ⚠️ **The parent of `"note.txt"` is the ROOT, `""`** — and the root is
+    /// a key like any other, the one a `Get-ChildItem` on the mounted
+    /// drive solicits. Forgetting it would make any creation at the root
+    /// invisible, which is exactly the gesture of criterion ① of the acceptance run.
     pub fn invalider(&mut self, chemin: &str) {
         self.par_chemin.remove(parent_de(chemin));
     }
 
-    /// Oublie tout. C'est ce que fait l'annonce `Rafraichir`.
-    pub fn vider(&mut self) {
+    /// Forgets everything. It is what the `Rafraichir` announcement does.
+    pub fn drain(&mut self) {
         self.par_chemin.clear();
     }
 
-    /// Combien de répertoires sont mémorisés. **Pour la trace et les tests.**
-    pub fn taille(&self) -> usize {
+    /// How many directories are memorised. **For the trace and the tests.**
+    pub fn size(&self) -> usize {
         self.par_chemin.len()
     }
 }
 
-/// Le répertoire qui contient `chemin`, dans la convention du pont : des
-/// séparateurs `/`, et la **racine est la chaîne vide**.
+/// The directory that contains `chemin`, in the bridge's convention:
+/// `/` separators, and the **root is the empty string**.
 ///
-/// ⚠️ **Cette convention est celle de `pont::chemins`**, et elle vient de la
-/// File System Access API, qui ne connaît pas `\`. Un chemin ProjFS arrive avec
-/// des `\` et il est converti **avant** d'atteindre ce module.
+/// ⚠️ **This convention is that of `pont::chemins`**, and it comes from the
+/// File System Access API, which does not know `\`. A ProjFS path arrives with
+/// `\`s and it is converted **before** reaching this module.
 fn parent_de(chemin: &str) -> &str {
     match chemin.rfind('/') {
         Some(i) => &chemin[..i],

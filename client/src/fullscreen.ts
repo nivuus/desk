@@ -1,25 +1,25 @@
-// Plein écran et Keyboard Lock.
+// Fullscreen and Keyboard Lock.
 //
-// Le §4.1 du cadrage jeux fait de Windows le maître du plein écran, dans un
-// sens UNIQUE : c'est Windows qui décide, le navigateur qui suit, jamais
-// l'inverse. Ce module porte les deux entrées vers le plein écran — le
-// bouton de bascule (`attachFullscreen`, geste local de l'utilisateur) et
-// l'armement déclenché par le message `fullscreen` que l'agent relaie pour
-// suivre l'état de la fenêtre Windows (`armerPleinEcran` /
-// `armerPleinEcranAuDOM`, câblés dans `main.ts` sur `AgentControl.fullscreen`)
-// — mais ni l'une ni l'autre ne remonte quoi que ce soit vers Windows : le
-// navigateur ne force jamais l'état de la fenêtre distante. C'est ce qui rend
-// toute oscillation impossible.
+// §4.1 of the games framing makes Windows the master of fullscreen, in a
+// SINGLE direction: Windows decides, the browser follows, never
+// the reverse. This module carries both entries into fullscreen — the
+// toggle button (`attachFullscreen`, a local user gesture) and
+// the arming triggered by the `fullscreen` message the agent relays to
+// follow the state of the Windows window (`armerPleinEcran` /
+// `armerPleinEcranAuDOM`, wired in `main.ts` on `AgentControl.fullscreen`)
+// — but neither of them sends anything back up to Windows: the
+// browser never forces the state of the remote window. That is what makes
+// any oscillation impossible.
 //
-// Keyboard Lock n'est pas un confort : Échap est à la fois la touche de
-// sortie du plein écran navigateur et la touche de menu pause de presque tous
-// les jeux. Sans elle, chaque pause quitte le plein écran.
+// Keyboard Lock is not a comfort: Escape is both the key that
+// exits browser fullscreen and the pause menu key of almost all
+// games. Without it, every pause leaves fullscreen.
 //
-// Comme pointer.ts, les dépendances sont INJECTÉES plutôt que lues dans les
-// objets globaux (`document`, `navigator`), ce qui rend le module testable
-// sans DOM.
+// Like pointer.ts, dependencies are INJECTED rather than read from the
+// global objects (`document`, `navigator`), which makes the module testable
+// without a DOM.
 
-/** Ce dont ce module a besoin de `navigator` : seulement l'API Keyboard Lock. */
+/** What this module needs from `navigator`: only the Keyboard Lock API. */
 export interface NavigateurClavier {
     keyboard?: {
         lock(codes?: string[]): Promise<void>;
@@ -28,35 +28,35 @@ export interface NavigateurClavier {
 }
 
 /**
- * Verrouille toutes les touches vers la page. Sans argument : c'est le mode
- * jeu. L'utilisateur sort par appui long sur Échap, comportement prévu par
- * l'API.
+ * Locks all keys to the page. Without an argument: that is game
+ * mode. The user exits by long-pressing Escape, a behaviour provided by
+ * the API.
  *
- * Ne lève jamais : sur Firefox et Safari `navigator.keyboard` est absent, et
- * un rejet ne doit pas remonter dans le gestionnaire d'événement.
+ * Never throws: on Firefox and Safari `navigator.keyboard` is absent, and
+ * a rejection must not propagate into the event handler.
  */
 export async function verrouillerClavier(navigateur: NavigateurClavier): Promise<void> {
     if (!navigateur.keyboard) return;
     try {
         await navigateur.keyboard.lock();
     } catch (error) {
-        console.warn('Keyboard Lock refusé', error);
+        console.warn('Keyboard Lock refused', error);
     }
 }
 
-/** Ce dont ce module a besoin de l'élément dont le plein écran est demandé. */
+/** What this module needs from the element whose fullscreen is requested. */
 export interface CibleEcran {
     requestFullscreen(): Promise<void>;
 }
 
-/** Ce dont ce module a besoin du bouton de bascule. */
+/** What this module needs from the toggle button. */
 export interface BoutonPleinEcran {
     dataset: { actif?: string };
     addEventListener(type: string, ecouteur: EventListener): void;
     removeEventListener(type: string, ecouteur: EventListener): void;
 }
 
-/** Ce dont ce module a besoin du document : l'état plein écran courant. */
+/** What this module needs from the document: the current fullscreen state. */
 export interface DocumentPleinEcran {
     readonly fullscreenElement: CibleEcran | null;
     exitFullscreen(): Promise<void>;
@@ -72,12 +72,12 @@ export interface FullscreenOptions {
 }
 
 /**
- * Câble le bouton de bascule sur `cible`. Le clic demande ou quitte le plein
- * écran ; `fullscreenchange` est la seule source de vérité pour l'état affiché
- * et pour le (dé)verrouillage clavier — y compris quand la sortie vient
- * d'ailleurs que du bouton (Échap après appui long, F11, etc.).
+ * Wires the toggle button onto `cible`. The click requests or leaves
+ * fullscreen; `fullscreenchange` is the only source of truth for the displayed state
+ * and for keyboard (un)locking — including when the exit comes
+ * from somewhere other than the button (Escape after a long press, F11, etc.).
  *
- * Renvoie une fonction de détachement qui retire les deux écouteurs posés.
+ * Returns a detach function that removes the two listeners set.
  */
 export function attachFullscreen({ bouton, cible, doc, navigateur = {} }: FullscreenOptions): () => void {
     const onClick = (): void => {
@@ -107,7 +107,7 @@ export function attachFullscreen({ bouton, cible, doc, navigateur = {} }: Fullsc
     };
 }
 
-// Valeurs par défaut pour utilisation dans le navigateur réel (voir tâche 15 : câblage).
+// Default values for use in the real browser (see task 15: wiring).
 export function attachFullscreenAuDOM(
     options: Omit<FullscreenOptions, 'doc' | 'navigateur'> & { navigateur?: NavigateurClavier },
 ): () => void {
@@ -118,7 +118,7 @@ export function attachFullscreenAuDOM(
     });
 }
 
-/** Ce dont l'armement a besoin d'une cible d'événements (le document). */
+/** What arming needs from an event target (the document). */
 export interface CibleEvenement {
     addEventListener(type: string, ecouteur: EventListener): void;
     removeEventListener(type: string, ecouteur: EventListener): void;
@@ -130,25 +130,25 @@ export interface ArmementOptions {
     ecouteurs: CibleEvenement;
 }
 
-/** Les gestes qui portent une activation utilisateur transitoire. */
+/** The gestures carrying a transient user activation. */
 const GESTES = ['pointerdown', 'keydown'] as const;
 
 /**
- * Arme l'entrée en plein écran sur le prochain geste utilisateur.
+ * Arms the fullscreen entry on the next user gesture.
  *
- * **On arme, on n'agit pas.** `requestFullscreen()` exige une activation
- * utilisateur transitoire ; un message reçu sur canal de données n'en est pas
- * une, et l'appel serait rejeté. C'est le mécanisme retenu au §4.1 du cadrage
- * jeux, et le même que le spike multi-fenêtres a validé pour `window.open()` :
- * un seul mécanisme pour les deux besoins.
+ * **We arm, we do not act.** `requestFullscreen()` requires a transient user
+ * activation; a message received on a data channel is not
+ * one, and the call would be rejected. It is the mechanism retained in §4.1 of the games
+ * framing, and the same one the multi-window spike validated for `window.open()`:
+ * a single mechanism for both needs.
  *
- * Le clavier compte autant que le pointeur : un joueur à la manette ou au
- * clavier n'a aucune raison de cliquer.
+ * The keyboard counts as much as the pointer: a player with a gamepad or
+ * keyboard has no reason to click.
  *
- * **Keyboard Lock n'est pas à demander ici** : `attachFullscreen` verrouille
- * déjà sur `fullscreenchange`, quelle que soit l'origine de l'entrée.
+ * **Keyboard Lock is not to be requested here**: `attachFullscreen` already locks
+ * on `fullscreenchange`, whatever the origin of the entry.
  *
- * Renvoie une fonction de détachement, à appeler en fin de session.
+ * Returns a detach function, to call at the end of the session.
  */
 export function armerPleinEcran({ cible, doc, ecouteurs }: ArmementOptions): () => void {
     if (doc.fullscreenElement) return () => {};
@@ -164,7 +164,7 @@ export function armerPleinEcran({ cible, doc, ecouteurs }: ArmementOptions): () 
     return detacher;
 }
 
-/** Valeurs par défaut pour utilisation dans le navigateur réel. */
+/** Default values for use in the real browser. */
 export function armerPleinEcranAuDOM(cible: CibleEcran): () => void {
     return armerPleinEcran({
         cible,

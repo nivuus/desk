@@ -1,44 +1,44 @@
 <!doctype html>
-<html lang="fr">
+<html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>Spike — fenêtre ouverte</title>
+    <title>Spike — window opened</title>
     <style>
         body { font: 16px/1.5 system-ui, sans-serif; padding: 2rem; }
         .echec { color: #b91c1c; font-weight: 600; }
     </style>
 </head>
 <body>
-    <h1>Fenêtre ouverte ✓</h1>
-    <p>Variante <strong id="variante"></strong>. <span id="signal">Signal de vie en cours d'envoi…</span></p>
-    <p>Cette fenêtre peut être fermée.</p>
+    <h1>Window opened ✓</h1>
+    <p>Variant <strong id="variante"></strong>. <span id="signal">Sending the life signal…</span></p>
+    <p>This window can be closed.</p>
     <script type="module">
-        // Le signal de vie passe par un fetch et non par window.opener.postMessage :
-        // clients.openWindow() (variante 4) n'établit aucun opener. Un seul canal
-        // pour les quatre variantes évite d'avoir à interpréter deux mécanismes
-        // différents dans le même tableau de résultats.
+        // The life signal goes through a fetch and not through window.opener.postMessage:
+        // clients.openWindow() (variant 4) establishes no opener. A single channel
+        // for the four variants avoids having to interpret two different
+        // mechanisms in the same results table.
         const parametres = new URLSearchParams(location.search);
         const variante = parametres.get('variant') ?? '0';
-        // Le nonce identifie le passage : c'est lui qui permet à la page de
-        // distinguer le signal de CETTE fenêtre de celui d'une fenêtre laissée
-        // ouverte, d'un autre poste, ou d'une page tierce.
+        // The nonce identifies the run: it is what lets the page
+        // tell the signal of THIS window from that of a window left
+        // open, of another host, or of a third-party page.
         const nonce = parametres.get('nonce') ?? '';
         document.getElementById('variante').textContent = variante;
 
         const signal = document.getElementById('signal');
         const url = `/alive?variant=${encodeURIComponent(variante)}&nonce=${encodeURIComponent(nonce)}`;
         try {
-            // `fetch` ne rejette pas sur un statut d'erreur : sans ce contrôle, un
-            // 400 laisserait la fenêtre affirmer qu'elle a signalé sa vie alors
-            // que la page en face n'a rien reçu — l'opérateur lirait un
-            // « ouverte-mais-perdue » comme un fait du navigateur.
+            // `fetch` does not reject on an error status: without this check, a
+            // 400 would let the window claim it signalled its life while
+            // the page on the other side received nothing — the operator would read an
+            // "ouverte-mais-perdue" as a browser fact.
             const reponse = await fetch(url);
             if (!reponse.ok) throw new Error(`HTTP ${reponse.status}`);
-            signal.textContent = 'Signal de vie envoyé au serveur.';
+            signal.textContent = 'Life signal sent to the server.';
         } catch (erreur) {
-            signal.textContent = `Signal de vie NON transmis (${erreur}) — le verdict de cette variante est à ignorer.`;
+            signal.textContent = `Life signal NOT transmitted (${erreur}) — the verdict of this variant must be ignored.`;
             signal.className = 'echec';
-            console.error('[spike] signal de vie non transmis', erreur);
+            console.error('[spike] life signal not transmitted', erreur);
         }
     </script>
 </body>

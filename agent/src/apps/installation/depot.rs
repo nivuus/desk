@@ -1,124 +1,124 @@
-//! Où l'installeur atterrit, comment son nom est jugé, et ce dont le disque se
-//! souvient quand l'agent, lui, ne se souvient de rien.
+//! Where the installer lands, how its name is judged, and what the disk
+//! remembers when the agent itself remembers nothing.
 //!
-//! 🔴 CE MODULE EST PUR : aucun `#[cfg]`, aucun accès au système de fichiers.
-//! Il **compose et valide** des chemins, il n'en crée aucun ; il **juge** deux
-//! booléens de présence, il ne lit aucun répertoire. La racine
-//! (`%ProgramData%`) est un **paramètre**, sans quoi rien ne serait jugeable
-//! sur l'hôte Linux.
+//! 🔴 THIS MODULE IS PURE: no `#[cfg]`, no file system access.
+//! It **composes and validates** paths, it creates none; it **judges** two
+//! presence booleans, it reads no directory. The root
+//! (`%ProgramData%`) is a **parameter**, otherwise nothing would be judgeable
+//! on the Linux host.
 //!
-//! ⚠️ POURQUOI `%ProgramData%` (spec D7) : **pas `%TEMP%`**, que Windows purge
-//! y compris **pendant** une installation — une archive auto-extractible qui
-//! relit son propre fichier échouerait au milieu, sur un code de sortie
-//! opaque ; **pas le profil utilisateur**, qu'un installeur élevé, sous un
-//! autre jeton, peut ne pas voir. `%ProgramData%` est lisible par tous les
-//! comptes et survit aux redémarrages — ce dont `Etat` a besoin.
+//! ⚠️ WHY `%ProgramData%` (spec D7): **not `%TEMP%`**, which Windows purges
+//! even **during** an installation — a self-extracting archive that
+//! re-reads its own file would fail midway, with an opaque
+//! exit code; **not the user profile**, which an elevated installer, under
+//! another token, may not see. `%ProgramData%` is readable by all
+//! accounts and survives reboots — which `Etat` needs.
 //!
-//! 🔴 REJETER, JAMAIS ASSAINIR EN SILENCE. Le `nom` vient du navigateur ; un
-//! assainissement muet transformerait `..\..\evil.exe` en un nom acceptable
-//! **et écrirait quand même un fichier**, sous un nom que personne n'a
-//! demandé — le produit ferait quelque chose de raisonnable au lieu de dire
-//! non. Chaque refus porte donc **son** motif, et celui d'un nom dangereux
-//! n'est pas celui d'une extension refusée.
+//! 🔴 REJECT, NEVER SANITISE SILENTLY. The `nom` comes from the browser; a
+//! silent sanitisation would turn `..\..\evil.exe` into an acceptable name
+//! **and would still write a file**, under a name nobody
+//! asked for — the product would do something reasonable instead of saying
+//! no. Every refusal therefore carries **its own** reason, and that of a dangerous name
+//! is not that of a refused extension.
 
-/// Le suffixe de la racine, sous `%ProgramData%` ; puis les deux marqueurs,
-/// écrits l'un **avant** `CreateProcessW`, l'autre **après** la sortie.
+/// The suffix of the root, under `%ProgramData%`; then the two markers,
+/// one written **before** `CreateProcessW`, the other **after** the exit.
 pub const RACINE_RELATIVE: &str = r"Guacamole\installeurs";
 pub const MARQUEUR_COMMENCE: &str = ".commence";
 pub const MARQUEUR_TERMINE: &str = ".termine";
 
-/// Au-delà, un répertoire d'installeur oublié est à supprimer.
+/// Beyond this, a forgotten installer directory is to be deleted.
 ///
-/// ⚠️ **NON CALIBRÉE** — 24 h est la valeur que la spec propose, et elle
-/// rejoint la liste que ce dépôt tient depuis `BPP_MIN`.
+/// ⚠️ **NOT CALIBRATED** — 24 h is the value the spec proposes, and it
+/// joins the list this repository has kept since `BPP_MIN`.
 ///
-/// 🔴 CONSÉQUENCE À NE PAS PERDRE : **les marqueurs partent avec le
-/// répertoire**, donc la mémoire d'`Etat` est **bornée à 24 h** — passé quoi un
-/// ordre réémis pour une installation déjà jouée serait rejoué. La seconde
-/// ceinture est côté plateforme, qui cesse de réémettre dès que la ligne n'est
-/// plus `en_attente`.
+/// 🔴 CONSEQUENCE NOT TO LOSE: **the markers go away with the
+/// directory**, so the memory of `Etat` is **bounded to 24 h** — beyond which an
+/// order re-sent for an installation already played would be replayed. The second
+/// belt is on the platform side, which stops re-sending as soon as the row is no
+/// longer `en_attente`.
 #[cfg(test)]
 pub const EXPIRATION_INSTALLEUR_MS: u64 = 24 * 60 * 60 * 1000;
 
-/// Les deux bornes de longueur, en octets.
+/// The two length bounds, in bytes.
 ///
-/// ⚠️ C'EST LEUR SOMME QUI COMPTE : `C:\ProgramData\Guacamole\installeurs\`
-/// fait 36 caractères, et `36 + 64 + 1 + 128 = 229`, sous les 260 de
-/// `MAX_PATH`. Les relever sans refaire cette addition produirait un chemin que
-/// `CreateProcessW` refuse, très loin d'ici.
+/// ⚠️ IT IS THEIR SUM THAT MATTERS: `C:\ProgramData\Guacamole\installeurs\`
+/// is 36 characters, and `36 + 64 + 1 + 128 = 229`, below the 260 of
+/// `MAX_PATH`. Raising them without redoing this addition would produce a path that
+/// `CreateProcessW` refuses, very far from here.
 pub const IDENTIFIANT_MAX_OCTETS: usize = 64;
 pub const NOM_MAX_OCTETS: usize = 128;
 
-/// Les extensions retenues, et ce qu'on en fait.
+/// The accepted extensions, and what is done with them.
 const EXTENSIONS_RETENUES: &[(&str, Extension)] =
     &[("exe", Extension::Exe), ("msi", Extension::Msi)];
 
-/// Reconnus comme scripts, pour être refusés **à part** — voir `Refus::Script`.
+/// Recognised as scripts, to be refused **separately** — see `Refus::Script`.
 const SCRIPTS: &[&str] = &["bat", "cmd", "com", "ps1", "vbs", "js", "wsf"];
 
-/// Ce que Windows interdit dans un nom, hors les séparateurs, qui ont leur
-/// propre motif.
+/// What Windows forbids in a name, apart from the separators, which have their
+/// own reason.
 const CARACTERES_INTERDITS: &[char] = &['<', '>', ':', '"', '|', '?', '*'];
 
-/// Les périphériques hérités de MS-DOS. Windows les réserve **quelle que soit
-/// l'extension** : `CON.exe` désigne toujours la console.
+/// The devices inherited from MS-DOS. Windows reserves them **whatever the
+/// extension**: `CON.exe` always designates the console.
 const NOMS_RESERVES: &[&str] = &[
     "con", "prn", "aux", "nul", "com1", "com2", "com3", "com4", "com5", "com6", "com7", "com8",
     "com9", "lpt1", "lpt2", "lpt3", "lpt4", "lpt5", "lpt6", "lpt7", "lpt8", "lpt9",
 ];
 
-/// Pourquoi un composant de chemin est refusé.
+/// Why a path component is refused.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RefusNom {
     Vide,
     TropLong(usize),
-    /// Une barre oblique : le nom prétend désigner un chemin, quand il ne doit
-    /// désigner qu'un fichier.
+    /// A slash: the name claims to designate a path, when it must only
+    /// designate a file.
     Separateur(char),
-    /// Un `..`, où qu'il soit. ⚠️ **`..` EST SIGNIFICATIF SOUS WINDOWS** — le
-    /// sous-bloc D3 l'avait introduit dans un composant de chemin puis rattrapé
-    /// à la ronde suivante.
+    /// A `..`, wherever it is. ⚠️ **`..` IS SIGNIFICANT UNDER WINDOWS** — the
+    /// sub-block D3 had introduced it into a path component and then caught it
+    /// in the next round.
     Remontee,
     CaractereInterdit(char),
-    /// Un périphérique réservé, replié en minuscules.
+    /// A reserved device, folded to lowercase.
     Reserve(String),
-    /// Un point ou une espace final : Windows les rogne en silence, donc le
-    /// fichier ouvert n'est pas celui qu'on a nommé.
+    /// A trailing dot or space: Windows trims them silently, so the
+    /// file opened is not the one that was named.
     FinInterdite(char),
 }
 
-/// Ce que l'agent fera du fichier une fois posé : `.exe` est exécuté tel quel,
-/// `.msi` passe par `msiexec /i` — aucun mode silencieux n'est imposé (spec D8).
+/// What the agent will do with the file once in place: `.exe` is run as is,
+/// `.msi` goes through `msiexec /i` — no silent mode is imposed (spec D8).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Extension {
     Exe,
     Msi,
 }
 
-/// Pourquoi un dépôt est refusé.
+/// Why a drop is refused.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Refus {
-    /// L'identifiant d'installation, qui est lui aussi un composant de chemin.
+    /// The installation identifier, which is also a path component.
     Identifiant(RefusNom),
     Nom(RefusNom),
-    /// 🔴 UN SCRIPT A SON PROPRE MOTIF : un `.bat` n'a pas d'interprète
-    /// implicite comme un `.exe`, et le lancer exigerait de choisir un shell,
-    /// un répertoire de travail et une politique d'exécution — trois décisions
-    /// que personne n'a prises. Le confondre avec « extension inconnue » ferait
-    /// chercher un fichier exotique là où il y a une décision à prendre.
+    /// 🔴 A SCRIPT HAS ITS OWN REASON: a `.bat` has no implicit
+    /// interpreter like an `.exe`, and launching it would require choosing a shell,
+    /// a working directory and an execution policy — three decisions
+    /// nobody has made. Confusing it with "unknown extension" would make one
+    /// look for an exotic file where there is a decision to make.
     Script(String),
-    /// Toute autre extension, repliée en minuscules — vide si le nom n'en
-    /// porte aucune.
+    /// Any other extension, folded to lowercase — empty if the name carries
+    /// none.
     Extension(String),
 }
 
-/// L'identifiant d'installation, jugé sur une **liste d'autorisation**.
+/// The installation identifier, judged against an **allow list**.
 ///
-/// ⚠️ L'ASYMÉTRIE AVEC `valider_nom` EST DÉLIBÉRÉE. Un identifiant est fabriqué
-/// par la plateforme : on peut lui imposer un alphabet, et une liste
-/// d'autorisation est la seule qui dise quelque chose des caractères qu'on n'a
-/// pas vus. Un nom de fichier est écrit par un humain — accents, espaces et
-/// parenthèses y sont légitimes —, et une liste d'autorisation refuserait
+/// ⚠️ THE ASYMMETRY WITH `valider_nom` IS DELIBERATE. An identifier is made
+/// by the platform: an alphabet can be imposed on it, and an allow
+/// list is the only one that says something about the characters one has not
+/// seen. A file name is written by a human — accents, spaces and
+/// parentheses are legitimate there —, and an allow list would refuse
 /// `Firefox Setup 130.0.exe`.
 pub fn valider_identifiant(id: &str) -> Result<(), RefusNom> {
     if id.is_empty() {
@@ -137,10 +137,10 @@ pub fn valider_identifiant(id: &str) -> Result<(), RefusNom> {
     }
 }
 
-/// Le nom du fichier, jugé sur une liste de refus.
+/// The file name, judged against a deny list.
 ///
-/// La remontée est cherchée **avant** le séparateur : c'est le fait le plus
-/// dangereux des deux, donc celui qu'un journal doit nommer.
+/// Path traversal is looked for **before** the separator: it is the more
+/// dangerous of the two facts, hence the one a log must name.
 pub fn valider_nom(nom: &str) -> Result<(), RefusNom> {
     if nom.is_empty() {
         return Err(RefusNom::Vide);
@@ -170,7 +170,7 @@ pub fn valider_nom(nom: &str) -> Result<(), RefusNom> {
     }
 }
 
-/// La règle d'extension, une fois le nom jugé sûr.
+/// The extension rule, once the name is judged safe.
 pub fn extension_de(nom: &str) -> Result<Extension, Refus> {
     let ext = match nom.rsplit_once('.') {
         Some((_, ext)) => ext.to_lowercase(),
@@ -185,7 +185,7 @@ pub fn extension_de(nom: &str) -> Result<Extension, Refus> {
     }
 }
 
-/// Le répertoire d'une installation, sous la racine donnée.
+/// The directory of an installation, under the given root.
 pub fn repertoire(racine: &str, id: &str) -> Result<String, Refus> {
     valider_identifiant(id).map_err(Refus::Identifiant)?;
     Ok(format!(
@@ -194,36 +194,36 @@ pub fn repertoire(racine: &str, id: &str) -> Result<String, Refus> {
     ))
 }
 
-/// Le chemin d'atterrissage, et ce qu'on fera du fichier.
+/// The landing path, and what will be done with the file.
 ///
-/// 🔴 LES DEUX COMPOSANTS SONT JUGÉS, PAS SEULEMENT LE NOM : l'identifiant est
-/// lui aussi interpolé dans un chemin, et *ne jamais interpoler une valeur
-/// brute dans un composant de chemin* est une règle que ce dépôt a déjà payée.
+/// 🔴 BOTH COMPONENTS ARE JUDGED, NOT ONLY THE NAME: the identifier is
+/// also interpolated into a path, and *never interpolate a raw value
+/// into a path component* is a rule this repository has already paid for.
 pub fn chemin(racine: &str, id: &str, nom: &str) -> Result<(String, Extension), Refus> {
     let dossier = repertoire(racine, id)?;
     valider_nom(nom).map_err(Refus::Nom)?;
     Ok((format!("{dossier}\\{nom}"), extension_de(nom)?))
 }
 
-/// Ce que les deux marqueurs disent d'une installation déjà vue. `Neuf` : on
-/// télécharge et on exécute. `Termine` : on ne fait rien, et l'on réémet le
-/// verdict conservé.
+/// What the two markers say about an installation already seen. `Neuf`: we
+/// download and run. `Termine`: we do nothing, and re-send the
+/// stored verdict.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Etat {
     Neuf,
-    /// 🔴 `.commence` SEUL : ON N'EXÉCUTE PAS, et l'on rapporte une issue
-    /// inconnue. L'installeur a tourné, son code de sortie est perdu ; rejouer
-    /// serait rejouer un installeur sur une machine à l'état **inconnu**,
-    /// c'est-à-dire la seule chose dont on ne sache pas sortir.
+    /// 🔴 `.commence` ALONE: WE DO NOT RUN, and report an unknown
+    /// outcome. The installer ran, its exit code is lost; replaying
+    /// would mean replaying an installer on a machine in an **unknown** state,
+    /// that is the only thing one cannot get out of.
     Commence,
     Termine,
 }
 
-/// La règle, depuis la seule présence des deux marqueurs.
+/// The rule, from the mere presence of the two markers.
 ///
-/// `.termine` l'emporte : écrit **après** `.commence`, les deux coexistent au
-/// repos, et lire `Commence` sur une installation finie la rapporterait
-/// inconnue alors que son verdict est là.
+/// `.termine` wins: written **after** `.commence`, both coexist at
+/// rest, and reading `Commence` on a finished installation would report it
+/// unknown while its verdict is there.
 pub fn etat(commence: bool, termine: bool) -> Etat {
     match (commence, termine) {
         (_, true) => Etat::Termine,
@@ -232,11 +232,11 @@ pub fn etat(commence: bool, termine: bool) -> Etat {
     }
 }
 
-/// Les répertoires à supprimer, depuis leur âge.
+/// The directories to delete, given their age.
 ///
-/// ⚠️ LE BALAYAGE EST OPPORTUNISTE, JAMAIS UN MINUTEUR : il court à chaque
-/// réconciliation. Un minuteur d'entretien est une décision d'exploitation —
-/// qui l'observe, que fait-il si le disque est plein — hors de ce sous-bloc.
+/// ⚠️ THE SWEEP IS OPPORTUNISTIC, NEVER A TIMER: it runs at every
+/// reconciliation. A maintenance timer is an operations decision —
+/// who observes it, what it does if the disk is full — outside this sub-block.
 #[cfg(test)]
 pub fn a_purger(entrees: &[(String, u64)]) -> Vec<&str> {
     entrees
@@ -252,8 +252,8 @@ mod tests {
 
     const RACINE: &str = r"C:\ProgramData";
 
-    /// 🔴 LA ROUGE, PREMIÈRE MOITIÉ : le nom est **refusé**, pas assaini en
-    /// silence, et l'on compare le refus **et son motif**.
+    /// 🔴 THE RED, FIRST HALF: the name is **refused**, not silently
+    /// sanitised, and both the refusal **and its reason** are compared.
     #[test]
     fn une_remontee_de_chemin_est_refusee_et_le_motif_la_nomme() {
         let mechant = r"..\..\Windows\System32\evil.exe";
@@ -261,8 +261,8 @@ mod tests {
             chemin(RACINE, "i-1", mechant),
             Err(Refus::Nom(RefusNom::Remontee))
         );
-        // Un séparateur sans remontée a son propre motif : le nom prétend
-        // désigner un chemin, ce qui n'est pas la même faute.
+        // A separator without traversal has its own reason: the name claims
+        // to designate a path, which is not the same fault.
         assert_eq!(
             valider_nom(r"sous\setup.exe"),
             Err(RefusNom::Separateur('\\'))
@@ -273,9 +273,9 @@ mod tests {
         );
     }
 
-    /// 🔴 LA ROUGE, SECONDE MOITIÉ : deux motifs distincts, deux assertions —
-    /// un test qui ne regarderait que « refusé » laisserait passer leur
-    /// confusion.
+    /// 🔴 THE RED, SECOND HALF: two distinct reasons, two assertions —
+    /// a test that only looked at "refused" would let them be
+    /// confused.
     #[test]
     fn un_script_est_refuse_par_son_extension_et_non_par_son_nom() {
         assert_eq!(
@@ -294,7 +294,7 @@ mod tests {
     }
 
     #[test]
-    fn le_chemin_nominal_se_compose_et_dit_ce_qu_on_fera_du_fichier() {
+    fn the_nominal_path_is_composed_and_says_what_will_be_done_with_the_file() {
         let attendu = r"C:\ProgramData\Guacamole\installeurs\a1-b2_c3\VB_Setup.exe";
         assert_eq!(
             chemin(RACINE, "a1-b2_c3", "VB_Setup.exe"),
@@ -306,17 +306,17 @@ mod tests {
         );
         // Un nom d'humain passe : accents, espaces, points internes.
         assert!(chemin(RACINE, "i", "Éditeur Pro 3.1 (x64).exe").is_ok());
-        // Le chemin le plus long que les deux bornes autorisent tient sous
-        // MAX_PATH : c'est ce que leur somme achète.
+        // The longest path the two bounds allow fits under
+        // MAX_PATH: that is what their sum buys.
         let nom = format!("{}.exe", "b".repeat(NOM_MAX_OCTETS - 4));
         let long = chemin(RACINE, &"a".repeat(IDENTIFIANT_MAX_OCTETS), &nom).unwrap();
-        assert!(long.0.len() < 260, "{} caractères", long.0.len());
+        assert!(long.0.len() < 260, "{} characters", long.0.len());
     }
 
     #[test]
-    fn l_identifiant_est_juge_lui_aussi_sur_une_liste_d_autorisation() {
-        // Un accent est légitime dans un NOM et refusé dans un IDENTIFIANT :
-        // c'est l'asymétrie des deux listes, et elle est voulue.
+    fn the_identifier_is_also_judged_against_an_allow_list() {
+        // An accent is legitimate in a NAME and refused in an IDENTIFIER:
+        // it is the asymmetry of the two lists, and it is intended.
         for (id, motif) in [
             ("..", RefusNom::CaractereInterdit('.')),
             (r"a\b", RefusNom::Separateur('\\')),
@@ -326,7 +326,7 @@ mod tests {
             assert_eq!(
                 chemin(RACINE, id, "s.exe"),
                 Err(Refus::Identifiant(motif)),
-                "sur {id:?}"
+                "on {id:?}"
             );
         }
         let trop = "a".repeat(IDENTIFIANT_MAX_OCTETS + 1);
@@ -337,7 +337,7 @@ mod tests {
     }
 
     #[test]
-    fn les_autres_refus_de_nom_portent_chacun_le_leur() {
+    fn the_other_name_refusals_each_carry_their_own() {
         let trop = "a".repeat(NOM_MAX_OCTETS + 1);
         for (nom, motif) in [
             ("CON.exe", RefusNom::Reserve("con".into())),
@@ -349,7 +349,7 @@ mod tests {
             ("", RefusNom::Vide),
             (trop.as_str(), RefusNom::TropLong(trop.len())),
         ] {
-            assert_eq!(valider_nom(nom), Err(motif), "sur {nom:?}");
+            assert_eq!(valider_nom(nom), Err(motif), "on {nom:?}");
         }
     }
 
@@ -357,13 +357,13 @@ mod tests {
     fn les_marqueurs_disent_les_trois_etats_et_termine_l_emporte() {
         assert_eq!(etat(false, false), Etat::Neuf);
         assert_eq!(etat(true, false), Etat::Commence);
-        // `.termine` est écrit APRÈS `.commence` : les deux coexistent au repos.
+        // `.termine` is written AFTER `.commence`: both coexist at rest.
         assert_eq!(etat(true, true), Etat::Termine);
         assert_eq!(etat(false, true), Etat::Termine);
     }
 
-    /// La borne est assiégée des deux côtés : un âge égal à l'expiration est
-    /// conservé, une milliseconde de plus part.
+    /// The bound is besieged from both sides: an age equal to the expiry is
+    /// kept, one more millisecond goes.
     #[test]
     fn la_purge_prend_ce_qui_a_depasse_l_expiration_et_rien_d_autre() {
         let entrees = vec![

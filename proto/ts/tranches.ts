@@ -1,36 +1,36 @@
 /**
- * La règle de DÉCOUPAGE EN TRANCHES d'un téléversement — PURE, et partagée
- * entre les deux bouts qui en dépendent.
+ * The SLICING rule of an upload — PURE, and shared
+ * between the two ends that depend on it.
  *
- * 🔴 POURQUOI ELLE VIT DANS `proto/ts/` ET NON DANS LE CLIENT : deux
- * arithmétiques indépendantes — l'une qui découpe et dépose (le navigateur),
- * l'autre qui vérifie que le découpage est complet avant de sceller (la
- * plateforme) — divergeraient un jour, et le symptôme serait un SCELLEMENT QUI
- * REFUSE SANS QU'ON SACHE LEQUEL DES DEUX BOUTS A TORT. C'est exactement le
- * patron que ce dépôt a payé sur `TYPES_AGENT` et sur la variante
- * `battement-recu` restée verte sur cinquante tests : une forme reproduite à la
- * main de chaque côté casse le pont sans casser un seul test. Ici il n'y a
- * qu'une arithmétique, et les deux bouts l'importent.
+ * 🔴 WHY IT LIVES IN `proto/ts/` AND NOT IN THE CLIENT: two
+ * independent arithmetics — one that slices and uploads (the browser),
+ * the other that checks the slicing is complete before sealing (the
+ * platform) — would diverge one day, and the symptom would be a SEALING THAT
+ * REFUSES WITHOUT KNOWING WHICH OF THE TWO ENDS IS WRONG. That is exactly the
+ * pattern this repository paid for on `TYPES_AGENT` and on the
+ * `battement-recu` variant that stayed green over fifty tests: a shape reproduced by
+ * hand on each side breaks the bridge without breaking a single test. Here there is
+ * only one arithmetic, and both ends import it.
  *
- * ⚠️ AUCUN `node:`, AUCUN DOM, AUCUNE DÉPENDANCE — ce module doit charger dans
- * un navigateur comme dans le service. C'est la condition pour qu'il soit
- * réellement partagé plutôt que recopié.
+ * ⚠️ NO `node:`, NO DOM, NO DEPENDENCY — this module must load in
+ * a browser as in the service. That is the condition for it to be
+ * truly shared rather than copied.
  *
- * ⚠️ `taille`, `tailleTranche` et `octets` sont des `number` : au-delà de 2^53
- * l'arithmétique cesserait d'être exacte, et les deux bouts divergeraient en
- * silence. Un téléversement de 9 pétaoctets n'existe pas ; la borne est nommée,
- * pas gardée — même arbitrage, et pour la même raison, que celui de
+ * ⚠️ `size`, `chunkSize` and `octets` are `number`: beyond 2^53
+ * the arithmetic would stop being exact, and the two ends would diverge
+ * silently. A 9-petabyte upload does not exist; the bound is named,
+ * not guarded — same trade-off, and for the same reason, as that of
  * `fichiers-entetes.ts`.
  */
 
 /**
- * Une tranche : son RANG et le nombre d'octets qu'elle porte.
+ * A slice: its RANK and the number of bytes it carries.
  *
- * ⚠️ `n` EST UN RANG À BASE ZÉRO, et ce choix est portant : il rend la position
- * de la tranche dans le fichier calculable sans table — c'est exactement
- * `n * tailleTranche`. Une base 1 obligerait chaque appelant à retrancher un,
- * et le jour où l'un des deux oublierait, tout le fichier serait décalé d'une
- * tranche sans qu'aucune taille ne bouge.
+ * ⚠️ `n` IS A ZERO-BASED RANK, and this choice is load-bearing: it makes the position
+ * of the slice in the file computable without a table — it is exactly
+ * `n * chunkSize`. A base of 1 would force every caller to subtract one,
+ * and the day one of the two forgot, the whole file would be shifted by one
+ * slice without any size moving.
  */
 export interface Tranche {
     n: number;
@@ -38,15 +38,15 @@ export interface Tranche {
 }
 
 /**
- * Le verdict d'un découpage reçu.
+ * The verdict on a received slicing.
  *
- * 🔴 `incoherentes` N'EST PAS `manquantes`, ET LES CONFONDRE SERAIT UNE BOUCLE
- * SANS FIN. Une tranche ABSENTE est un trou : la redemander la comble. Une
- * tranche PRÉSENTE À LA MAUVAISE TAILLE est une ERREUR DE PROTOCOLE — les deux
- * bouts ne s'accordent plus sur le découpage —, et la redemander ne la
- * réparerait JAMAIS : le déposant renverrait la même chose, indéfiniment. Le
- * premier cas se rattrape, le second doit faire échouer le téléversement et le
- * dire.
+ * 🔴 `incoherentes` IS NOT `manquantes`, AND CONFUSING THEM WOULD BE AN ENDLESS
+ * LOOP. An ABSENT slice is a hole: asking for it again fills it. A
+ * slice PRESENT AT THE WRONG SIZE is a PROTOCOL ERROR — the two
+ * ends no longer agree on the slicing —, and asking for it again would
+ * NEVER repair it: the uploader would send the same thing again, forever. The
+ * first case is recoverable, the second must fail the upload and
+ * say so.
  */
 export type Verdict =
     | { etat: 'complet' }
@@ -54,112 +54,112 @@ export type Verdict =
     | { etat: 'incoherentes'; n: number[] };
 
 /**
- * Vérifie le CONTRAT du téléversement — sa taille et son pas de découpage.
+ * Checks the CONTRACT of the upload — its size and its slicing step.
  *
- * 🔴 CE QUI EST GARDÉ ICI LÈVE ; CE QUI VIENT DU FIL NE LÈVE JAMAIS. La
- * frontière est délibérée, et c'est la seule de ce module :
+ * 🔴 WHAT IS GUARDED HERE THROWS; WHAT COMES FROM THE WIRE NEVER THROWS. The
+ * boundary is deliberate, and it is the only one in this module:
  *
- * - `taille` et `tailleTranche` sont le CONTRAT, arrêté à la déclaration du
- *   téléversement et détenu par l'appelant. Un contrat absurde — un pas nul,
- *   une taille négative — est un défaut de PROGRAMME, pas une donnée reçue :
- *   le rendre sous forme de verdict le déguiserait en anomalie de transfert, et
- *   le déposant passerait sa vie à recompléter des tranches qui n'existent pas.
- *   Il lève, et il nomme la valeur fautive.
- * - `presentes`, en revanche, est ce que le fil a apporté. Rien n'y lève :
- *   tout y devient un verdict, parce qu'un pair malveillant ou déréglé ne doit
- *   pas pouvoir faire tomber le vérificateur en lui envoyant n'importe quoi.
+ * - `size` and `chunkSize` are the CONTRACT, fixed when the upload is
+ *   declared and held by the caller. An absurd contract — a zero step,
+ *   a negative size — is a PROGRAM defect, not received data:
+ *   returning it as a verdict would disguise it as a transfer anomaly, and
+ *   the uploader would spend its life refilling slices that do not exist.
+ *   It throws, and it names the faulty value.
+ * - `presentes`, on the other hand, is what the wire brought. Nothing throws there:
+ *   everything becomes a verdict, because a malicious or broken peer must
+ *   not be able to bring the checker down by sending it anything at all.
  *
- * ⚠️ Un pas de découpage NUL ne se contente pas d'être absurde : il rendrait
- * `Math.ceil(taille / 0)` égal à `Infinity`, et la boucle du plan ne
- * s'arrêterait pas. La garde est donc aussi ce qui empêche ce module de figer
- * son appelant.
+ * ⚠️ A ZERO slicing step is not merely absurd: it would make
+ * `Math.ceil(size / 0)` equal to `Infinity`, and the plan loop would not
+ * stop. The guard is thus also what keeps this module from freezing
+ * its caller.
  */
-function verifierContrat(taille: number, tailleTranche: number): void {
-    if (!Number.isInteger(taille) || taille < 0) {
+function checkContract(size: number, chunkSize: number): void {
+    if (!Number.isInteger(size) || size < 0) {
         throw new Error(
-            `tranches : taille invalide (${taille}) — un entier positif ou nul est attendu`,
+            `chunks: invalid size (${size}) — a positive or zero integer is expected`,
         );
     }
-    if (!Number.isInteger(tailleTranche) || tailleTranche <= 0) {
+    if (!Number.isInteger(chunkSize) || chunkSize <= 0) {
         throw new Error(
-            `tranches : tailleTranche invalide (${tailleTranche}) — un entier strictement positif est attendu`,
+            `chunks: invalid tailleTranche (${chunkSize}) — a strictly positive integer is expected`,
         );
     }
 }
 
 /**
- * Le découpage ATTENDU d'un fichier de `taille` octets par pas de
- * `tailleTranche`.
+ * The EXPECTED slicing of a file of `size` bytes with a step of
+ * `chunkSize`.
  *
- * Les rangs sont contigus de `0` à `n - 1`, et la somme des `octets` vaut
- * EXACTEMENT `taille` — c'est l'invariant que les tests épinglent, et c'est le
- * seul qui distingue un plan juste d'un plan tronqué.
+ * Ranks are contiguous from `0` to `n - 1`, and the sum of the `octets` is
+ * EXACTLY `size` — it is the invariant the tests pin, and it is the
+ * only one that tells a right plan apart from a truncated plan.
  *
- * 🔴 `Math.ceil` ET NON `Math.floor`, ET LA DIFFÉRENCE EST LA QUEUE DU FICHIER.
- * Avec `floor`, un fichier de 10 octets découpé par 4 rendrait DEUX tranches de
- * 4 — huit octets — et `verdict` déclarerait alors `complet` un fichier
- * TRONQUÉ de deux octets, sans qu'aucune trace ne le dise. C'est la mutation
- * qui juge ce module : elle ne casse aucun cas multiple exact, et elle abîme
- * silencieusement tous les autres.
+ * 🔴 `Math.ceil` AND NOT `Math.floor`, AND THE DIFFERENCE IS THE TAIL OF THE FILE.
+ * With `floor`, a 10-byte file sliced by 4 would yield TWO slices of
+ * 4 — eight bytes — and `verdict` would then declare `complet` a file
+ * TRUNCATED by two bytes, without any trace saying so. It is the mutation
+ * that judges this module: it breaks no exact-multiple case, and it silently
+ * damages all the others.
  *
- * ⚠️ `taille === 0` REND ZÉRO TRANCHE, jamais une tranche vide. Un fichier vide
- * est un fichier légitime : il n'a rien à déposer, et son verdict est `complet`
- * sur une liste vide. Fabriquer une tranche de zéro octet obligerait le
- * déposant à envoyer une trame sans contenu pour sceller un fichier sans
- * contenu, et `ceil(0 / pas)` vaut déjà 0 — la propriété est celle de
- * l'arithmétique, pas d'un cas particulier ajouté à la main.
+ * ⚠️ `size === 0` YIELDS ZERO SLICES, never one empty slice. An empty file
+ * is a legitimate file: it has nothing to upload, and its verdict is `complet`
+ * on an empty list. Crafting a zero-byte slice would force the
+ * uploader to send a frame with no content to seal a file with no
+ * content, and `ceil(0 / step)` is already 0 — the property belongs to
+ * the arithmetic, not to a special case added by hand.
  *
- * ⚠️ UNE TAILLE MULTIPLE EXACTE DU PAS NE PRODUIT PAS DE TRANCHE FINALE VIDE,
- * pour la même raison : `ceil(8 / 4)` vaut 2, pas 3. La dernière tranche vaut
- * `taille - n * tailleTranche`, qui n'est nul que si aucune tranche n'existe.
+ * ⚠️ A SIZE THAT IS AN EXACT MULTIPLE OF THE STEP DOES NOT PRODUCE AN EMPTY FINAL SLICE,
+ * for the same reason: `ceil(8 / 4)` is 2, not 3. The last slice is
+ * `size - n * chunkSize`, which is zero only if no slice exists.
  */
-export function plan(taille: number, tailleTranche: number): Tranche[] {
-    verifierContrat(taille, tailleTranche);
+export function plan(size: number, chunkSize: number): Tranche[] {
+    checkContract(size, chunkSize);
 
     const tranches: Tranche[] = [];
-    const combien = Math.ceil(taille / tailleTranche);
+    const combien = Math.ceil(size / chunkSize);
     for (let n = 0; n < combien; n += 1) {
-        // La dernière tranche est la seule qui puisse être plus courte que le
-        // pas : `min` la borne sans qu'il faille traiter son cas à part.
-        const octets = Math.min(tailleTranche, taille - n * tailleTranche);
+        // The last slice is the only one that may be shorter than the
+        // step: `min` bounds it without having to treat its case separately.
+        const octets = Math.min(chunkSize, size - n * chunkSize);
         tranches.push({ n, octets });
     }
     return tranches;
 }
 
 /**
- * Confronte les tranches REÇUES au découpage ATTENDU, et rend l'un des trois
+ * Confronts the RECEIVED slices with the EXPECTED slicing, and returns one of the three
  * verdicts.
  *
- * 🔴 `incoherentes` PRIME SUR `manquantes`, ET L'ORDRE EST LA MOITIÉ DE LA
- * RÈGLE. Un dépôt qui porterait à la fois un trou et une tranche mal taillée
- * doit être signalé INCOHÉRENT : annoncer d'abord le trou ferait recompléter la
- * tranche absente, puis re-vérifier, puis retomber sur la même incohérence — la
- * boucle exacte que la distinction existe pour empêcher. On nomme d'abord ce
- * qui ne se répare pas.
+ * 🔴 `incoherentes` TAKES PRECEDENCE OVER `manquantes`, AND THE ORDER IS HALF THE
+ * RULE. An upload that carried both a hole and a wrongly sized slice
+ * must be reported INCONSISTENT: announcing the hole first would refill the
+ * absent slice, then check again, then fall back onto the same inconsistency — the
+ * exact loop the distinction exists to prevent. We first name what
+ * cannot be repaired.
  *
- * ⚠️ LES LISTES SONT TRIÉES ET SANS DOUBLON, toujours. Un verdict qui dépendrait
- * de l'ordre d'arrivée des tranches ne serait ni comparable d'une exécution à
- * l'autre, ni lisible dans un journal — et deux relevés du même défaut
- * paraîtraient différents.
+ * ⚠️ THE LISTS ARE SORTED AND FREE OF DUPLICATES, always. A verdict that depended
+ * on the arrival order of the slices would be neither comparable from one run to
+ * the next, nor readable in a log — and two readings of the same defect
+ * would look different.
  *
- * ⚠️ `presentes` EST DE LA DONNÉE DE FIL, ET SA FORME EST CELLE DE L'APPELANT.
- * Ce module ne parse pas : il suppose que les entrées ont déjà passé la garde
- * de forme, comme `parse*` de `fichiers-entetes.ts` la fait passer avant que
- * la règle ne s'applique. Une entrée dont le `n` ne serait pas un rang valide
- * n'est pour autant PAS silencieusement écartée — elle tombe dans
- * `incoherentes`, et la liste rend le `n` REÇU tel quel, pour qu'un journal
- * montre ce qui a réellement été envoyé plutôt qu'une valeur nettoyée.
+ * ⚠️ `presentes` IS WIRE DATA, AND ITS SHAPE IS THE CALLER'S.
+ * This module does not parse: it assumes the entries have already passed the
+ * shape guard, as the `parse*` of `fichiers-entetes.ts` makes them pass before
+ * the rule applies. An entry whose `n` is not a valid rank
+ * is NOT silently discarded for all that — it falls into
+ * `incoherentes`, and the list returns the RECEIVED `n` as is, so that a log
+ * shows what was really sent rather than a cleaned-up value.
  */
 export function verdict(
-    taille: number,
-    tailleTranche: number,
+    size: number,
+    chunkSize: number,
     presentes: Tranche[],
 ): Verdict {
-    verifierContrat(taille, tailleTranche);
+    checkContract(size, chunkSize);
 
     const attendu = new Map<number, number>();
-    for (const t of plan(taille, tailleTranche)) attendu.set(t.n, t.octets);
+    for (const t of plan(size, chunkSize)) attendu.set(t.n, t.octets);
 
     const incoherentes = new Set<number>();
     const vues = new Set<number>();
@@ -167,33 +167,33 @@ export function verdict(
     for (const recue of presentes) {
         const { n, octets } = recue;
 
-        // 🔴 UN DOUBLON EST UNE INCOHÉRENCE, MÊME SI LES DEUX OCCURRENCES
-        // S'ACCORDENT SUR LA TAILLE. Deux dépôts qui revendiquent le même rang
-        // veulent dire que l'un a écrasé l'autre, et RIEN ICI NE PEUT SAVOIR
-        // LEQUEL A GAGNÉ : les octets réellement écrits peuvent venir de la
-        // seconde trame comme de la première, et deux trames de même longueur
-        // ne portent pas forcément le même contenu. Traiter le cas comme
-        // anodin scellerait un fichier dont une tranche est indéterminée. On
-        // le refuse, et on le nomme.
+        // 🔴 A DUPLICATE IS AN INCONSISTENCY, EVEN IF THE TWO OCCURRENCES
+        // AGREE ON THE SIZE. Two uploads claiming the same rank
+        // mean that one overwrote the other, and NOTHING HERE CAN KNOW
+        // WHICH ONE WON: the bytes actually written may come from the
+        // second frame as well as from the first, and two frames of the same length
+        // do not necessarily carry the same content. Treating the case as
+        // harmless would seal a file with an undetermined slice. We
+        // refuse it, and we name it.
         if (vues.has(n)) {
             incoherentes.add(n);
             continue;
         }
         vues.add(n);
 
-        // Un rang hors du plan — négatif, au-delà de la dernière tranche, ou
-        // simplement pas un rang — n'a pas de taille attendue à laquelle le
-        // comparer : il est incohérent par lui-même.
+        // A rank outside the plan — negative, beyond the last slice, or
+        // simply not a rank — has no expected size to
+        // compare it with: it is inconsistent by itself.
         const prevu = attendu.get(n);
         if (prevu === undefined) {
             incoherentes.add(n);
             continue;
         }
 
-        // La comparaison est stricte DANS LES DEUX SENS : une tranche plus
-        // COURTE que prévue est un transfert amputé, une tranche plus LONGUE
-        // déborderait sur sa voisine. Ni l'une ni l'autre ne se répare en la
-        // redemandant.
+        // The comparison is strict IN BOTH DIRECTIONS: a slice
+        // SHORTER than planned is a truncated transfer, a LONGER slice
+        // would overflow onto its neighbour. Neither is repaired by
+        // asking for it again.
         if (!Number.isInteger(octets) || octets !== prevu) {
             incoherentes.add(n);
         }
@@ -215,12 +215,12 @@ export function verdict(
 }
 
 /**
- * Trie une liste de rangs par valeur croissante.
+ * Sorts a list of ranks by increasing value.
  *
- * ⚠️ LE COMPARATEUR EST EXPLICITE, et ce n'est pas de la coquetterie : le tri
- * par défaut de JavaScript compare des CHAÎNES, si bien que `[2, 10]` en
- * ressortirait `[10, 2]`. Un plan de plus de dix tranches suffit à rencontrer
- * le cas.
+ * ⚠️ THE COMPARATOR IS EXPLICIT, and it is not an affectation: the default
+ * JavaScript sort compares STRINGS, so that `[2, 10]` would
+ * come out as `[10, 2]`. A plan of more than ten slices is enough to hit
+ * the case.
  */
 function trier(rangs: Set<number>): number[] {
     return [...rangs].sort((a, b) => a - b);

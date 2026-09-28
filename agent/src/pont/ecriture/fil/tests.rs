@@ -1,19 +1,19 @@
-//! Tests du fil d'écriture, **sur un répertoire temporaire RÉEL**.
+//! Tests of the write thread, **on a REAL temporary directory**.
 //!
-//! 🔵 **Ils tournent sur l'hôte Linux, et c'est tout l'intérêt du module.**
-//! Après `FILE_HANDLE_CLOSED_FILE_MODIFIED`, le fichier est complet dans la
-//! racine : le lire est un `File::open` ordinaire. Le fil est donc éprouvé ici
-//! pour de vrai — pas simulé — sans qu'aucune ligne de ProjFS n'entre en jeu.
+//! 🔵 **They run on the Linux host, and that is the whole point of the module.**
+//! After `FILE_HANDLE_CLOSED_FILE_MODIFIED`, the file is complete in the
+//! root: reading it is an ordinary `File::open`. The thread is therefore exercised here
+//! for real — not simulated — without a single line of ProjFS coming into play.
 //!
-//! ⚠️ **AUCUNE DÉPENDANCE NEUVE** : `std::env::temp_dir()` et un nom unique,
-//! plutôt que `tempfile`. F2 s'est donné pour règle de n'ajouter aucune
-//! dépendance, et `agent/Cargo.toml` n'a aucune section `dev-dependencies`.
+//! ⚠️ **NO NEW DEPENDENCY**: `std::env::temp_dir()` and a unique name,
+//! rather than `tempfile`. F2 made it a rule to add no
+//! dependency, and `agent/Cargo.toml` has no `dev-dependencies` section.
 //!
-//! 🔵 **Les tests pilotent [`Fil`] DIRECTEMENT, pas [`super::tourner`].** La
-//! boucle publique bloque sur un `Receiver` ; l'éprouver exigerait un fil et un
-//! `sleep`, donc un test au verdict dépendant du minutage. Ici chaque `traiter`
-//! est un pas déterministe — la propriété que `pont::table` s'est donnée en
-//! prenant le temps en paramètre.
+//! 🔵 **The tests drive [`Fil`] DIRECTLY, not [`super::tourner`].** The
+//! public loop blocks on a `Receiver`; exercising it would require a thread and a
+//! `sleep`, hence a test whose verdict depends on timing. Here each `traiter`
+//! is a deterministic step — the property `pont::table` gave itself by
+//! taking time as a parameter.
 
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU32, Ordering};
@@ -25,7 +25,7 @@ use crate::pont::table::Table;
 
 static COMPTEUR: AtomicU32 = AtomicU32::new(0);
 
-/// Un bac à sable : une racine, un chemin de journal, et un canal capté.
+/// A sandbox: a root, a journal path, and a captured channel.
 pub(super) struct Bac {
     pub(super) racine: PathBuf,
     journal: PathBuf,
@@ -39,14 +39,14 @@ impl Bac {
         let n = COMPTEUR.fetch_add(1, Ordering::Relaxed);
         let base = std::env::temp_dir().join(format!("f2-fil-{}-{n}", std::process::id()));
         let racine = base.join("racine");
-        std::fs::create_dir_all(&racine).expect("racine de test");
+        std::fs::create_dir_all(&racine).expect("test root");
         let (envoi, recu) = std::sync::mpsc::channel();
         Self {
             racine,
             journal: base.join("ecritures.journal"),
             recu,
             _envoi: envoi.clone(),
-            table: Arc::new(Mutex::new(Table::nouvelle())),
+            table: Arc::new(Mutex::new(Table::new())),
         }
     }
 
@@ -61,18 +61,18 @@ impl Bac {
     }
 
     pub(super) fn poser(&self, nom: &str, octets: &[u8]) {
-        std::fs::write(self.racine.join(nom), octets).expect("fichier de test");
+        std::fs::write(self.racine.join(nom), octets).expect("test file");
     }
 
     pub(super) fn journal_brut(&self) -> String {
         std::fs::read_to_string(&self.journal).unwrap_or_default()
     }
 
-    /// Les trames émises depuis le dernier appel, décodées en (type, corrélation).
+    /// The frames emitted since the last call, decoded as (type, correlation).
     pub(super) fn trames(&self) -> Vec<(u8, u32, Vec<u8>, Vec<u8>)> {
         let mut sorties = Vec::new();
         while let Ok(VersNavigateur::Requete { trame, .. }) = self.recu.try_recv() {
-            let t = proto::fichiers::decoder(&trame).expect("trame licite");
+            let t = proto::files::decoder(&trame).expect("valid frame");
             sorties.push((
                 t.type_message,
                 t.correlation,
@@ -84,91 +84,91 @@ impl Bac {
     }
 }
 
-pub(super) fn modifie(chemin: &str) -> Ordre {
-    Ordre::Survenu(Evenement::Modifie {
+pub(super) fn modified(chemin: &str) -> Ordre {
+    Ordre::Survenu(Evenement::Modified {
         chemin: chemin.to_string(),
     })
 }
 
-/// 🔴 **LE JOURNAL EST ÉCRIT AVANT LA PREMIÈRE TRAME.**
+/// 🔴 **THE JOURNAL IS WRITTEN BEFORE THE FIRST FRAME.**
 ///
-/// Une entrée poussée avant d'être journalisée est une entrée qu'un arrêt
-/// brutal perd : le pont relancé ne saurait même pas qu'elle a existé.
+/// An entry pushed before being journalled is an entry an abrupt
+/// stop loses: the restarted bridge would not even know it existed.
 #[test]
-fn le_journal_est_ecrit_avant_la_premiere_trame() {
+fn the_journal_is_written_before_the_first_frame() {
     let bac = Bac::neuf();
     bac.poser("note.txt", b"bonjour");
-    let mut fil = Fil::demarrer(bac.config(true));
-    // Aucune trame n'a encore été LUE : on vérifie l'état du DISQUE au moment
-    // où la première trame est déjà partie. Si l'ordre était inverse, le
-    // journal serait vide ici.
-    let avant = bac.journal_brut();
-    assert!(avant.is_empty(), "rien n'est encore arrivé");
-    fil.traiter(modifie("note.txt"));
+    let mut fil = Fil::start(bac.config(true));
+    // No frame has been READ yet: we check the state of the DISK at the moment
+    // the first frame has already gone. If the order were reversed, the
+    // journal would be empty here.
+    let before = bac.journal_brut();
+    assert!(before.is_empty(), "nothing has arrived yet");
+    fil.traiter(modified("note.txt"));
     assert!(
         bac.journal_brut().contains("note.txt"),
-        "le journal doit porter l'entrée DÈS que la trame est partie"
+        "the journal must carry the entry AS SOON AS the frame has left"
     );
     let trames = bac.trames();
-    // ⚠️ La PREMIÈRE trame est l'annonce des dues, la seconde l'écriture : le
-    // navigateur doit savoir ce qui est dû avant de recevoir les octets.
-    assert_eq!(trames[0].0, proto::fichiers::TYPE_DUES);
-    assert_eq!(trames[1].0, proto::fichiers::TYPE_ECRIRE);
+    // ⚠️ The FIRST frame is the dues announcement, the second the write: the
+    // browser must know what is due before receiving the bytes.
+    assert_eq!(trames[0].0, proto::files::TYPE_DUES);
+    assert_eq!(trames[1].0, proto::files::TYPE_WRITE);
     assert_eq!(
         trames[1].3, b"bonjour",
-        "la charge porte les octets, jamais encodés"
+        "the payload carries the bytes, never encoded"
     );
 }
 
-/// 🔴 **L'ENTRÉE SORT DU JOURNAL APRÈS LE DERNIER `Fait`, ET PAS AVANT.**
+/// 🔴 **THE ENTRY LEAVES THE JOURNAL AFTER THE LAST `Fait`, AND NOT BEFORE.**
 ///
-/// La retirer au premier `Fait` ferait qu'un fichier de deux morceaux dont le
-/// second échoue sortirait du journal **en ayant perdu ses octets**.
+/// Removing it at the first `Fait` would mean that a two-chunk file whose
+/// second fails would leave the journal **having lost its bytes**.
 #[test]
-fn l_entree_sort_du_journal_apres_le_dernier_fait_et_pas_avant() {
+fn the_entry_leaves_the_journal_after_the_last_fact_and_not_before() {
     let bac = Bac::neuf();
-    let gros = vec![7u8; proto::fichiers::TAILLE_TRAME_MAX + 1];
+    let gros = vec![7u8; proto::files::MAX_FRAME_SIZE + 1];
     bac.poser("gros.bin", &gros);
-    let mut fil = Fil::demarrer(bac.config(true));
-    fil.traiter(modifie("gros.bin"));
+    let mut fil = Fil::start(bac.config(true));
+    fil.traiter(modified("gros.bin"));
 
     let premier = bac.trames();
     let (_, c1, entete, charge) = premier.last().expect("un morceau parti").clone();
-    let e: entetes::Ecrire = serde_json::from_slice(&entete).expect("en-tête Ecrire");
-    assert!(e.premier && !e.dernier, "le premier de DEUX morceaux");
-    assert_eq!(charge.len(), proto::fichiers::TAILLE_TRAME_MAX);
+    let e: entetes::Write = serde_json::from_slice(&entete).expect("Write header");
+    assert!(e.premier && !e.last, "the first of TWO chunks");
+    assert_eq!(charge.len(), proto::files::MAX_FRAME_SIZE);
 
     fil.traiter(Ordre::Fait { correlation: c1 });
     assert_eq!(
         Journal::relire(&bac.journal_brut()).0.compte(),
         1,
-        "au PREMIER Fait, l'entrée est ENCORE due"
+        "at the FIRST Fait, the entry is STILL due"
     );
 
     let second = bac.trames();
-    let (_, c2, entete, charge) = second.last().expect("le second morceau").clone();
-    let e: entetes::Ecrire = serde_json::from_slice(&entete).expect("en-tête Ecrire");
-    assert!(!e.premier && e.dernier, "le second est le DERNIER");
+    let (_, c2, entete, charge) = second.last().expect("the second chunk").clone();
+    let e: entetes::Write = serde_json::from_slice(&entete).expect("Write header");
+    assert!(!e.premier && e.last, "the second is the LAST");
     assert_eq!(charge.len(), 1);
 
     fil.traiter(Ordre::Fait { correlation: c2 });
     assert_eq!(
         Journal::relire(&bac.journal_brut()).0.compte(),
         0,
-        "au DERNIER Fait seulement, l'entrée sort"
+        "only at the LAST Fait does the entry leave"
     );
 }
 
-/// 🔴 **UN ÉCHEC LAISSE L'ENTRÉE AU JOURNAL.**
+/// 🔴 **A FAILURE LEAVES THE ENTRY IN THE JOURNAL.**
 ///
-/// La retirer serait **la perte de données que ce module existe pour
-/// empêcher** : l'application a déjà cru avoir enregistré.
+/// Removing it would be **the data loss this module exists to
+/// prevent**: the application already believed it had saved.
 #[test]
-fn un_echec_laisse_l_entree_au_journal() {
+fn a_failure_leaves_the_entry_in_the_journal() {
     let bac = Bac::neuf();
     bac.poser("note.txt", b"a");
-    let mut fil = Fil::demarrer(bac.config(true));
-    fil.traiter(modifie("note.txt"));
+    let mut fil = Fil::start(bac.config(true));
+    fil.traiter(modified("note.txt"));
     let (_, c, _, _) = *bac.trames().last().expect("un morceau parti");
     fil.traiter(Ordre::Echec {
         correlation: c,
@@ -178,78 +178,78 @@ fn un_echec_laisse_l_entree_au_journal() {
     assert_eq!(
         Journal::relire(&bac.journal_brut()).0.dues()[0].0,
         "note.txt",
-        "et l'entrée est NOMMÉE"
+        "and the entry is NAMED"
     );
 }
 
-/// 🔴 **UN FICHIER DE TAILLE NULLE PRODUIT UN MORCEAU VIDE, ET L'ENTRÉE SORT.**
+/// 🔴 **A ZERO-SIZE FILE PRODUCES AN EMPTY CHUNK, AND THE ENTRY LEAVES.**
 ///
-/// C'est le contrôle le plus important de ce module. Un fichier vide est le cas
-/// nominal d'un « nouveau document » enregistré aussitôt, et `decouper` rend
-/// délibérément **zéro** morceau pour une longueur nulle. Sans le cas
-/// particulier, aucun `dernier` ne serait jamais émis, l'entrée ne sortirait
-/// **jamais** du journal, et l'utilisateur verrait une alerte permanente pour
-/// un fichier correctement transmis.
+/// It is the most important check of this module. An empty file is the
+/// nominal case of a "new document" saved straight away, and `decouper` deliberately
+/// returns **zero** chunks for a zero length. Without the special
+/// case, no `last` would ever be emitted, the entry would **never** leave
+/// the journal, and the user would see a permanent alert for
+/// a correctly transmitted file.
 ///
-/// ⚠️ **Et le morceau vide n'est PAS une création**, contre la lettre du plan :
-/// une création n'aurait aucun effet sur un fichier local existant, si bien
-/// qu'un fichier TRONQUÉ À ZÉRO sur la VM garderait son ancien contenu sur le
-/// poste local. Le test le vérifie sur les DEUX drapeaux.
+/// ⚠️ **And the empty chunk is NOT a creation**, against the letter of the plan:
+/// a creation would have no effect on an existing local file, so
+/// that a file TRUNCATED TO ZERO on the VM would keep its old content on the
+/// local workstation. The test checks it on BOTH flags.
 #[test]
-fn un_fichier_de_taille_nulle_produit_un_morceau_vide_et_sort_du_journal() {
+fn a_zero_size_file_produces_an_empty_piece_and_leaves_the_journal() {
     let bac = Bac::neuf();
     bac.poser("vide.txt", b"");
-    let mut fil = Fil::demarrer(bac.config(true));
-    fil.traiter(modifie("vide.txt"));
+    let mut fil = Fil::start(bac.config(true));
+    fil.traiter(modified("vide.txt"));
     let trames = bac.trames();
-    let (type_message, c, entete, charge) = trames.last().expect("une trame").clone();
+    let (type_message, c, entete, charge) = trames.last().expect("one frame").clone();
     assert_eq!(
         type_message,
-        proto::fichiers::TYPE_ECRIRE,
-        "un morceau, PAS une création"
+        proto::files::TYPE_WRITE,
+        "a chunk, NOT a creation"
     );
-    let e: entetes::Ecrire = serde_json::from_slice(&entete).expect("en-tête Ecrire");
-    assert_eq!((e.premier, e.dernier, e.longueur), (true, true, 0));
+    let e: entetes::Write = serde_json::from_slice(&entete).expect("Write header");
+    assert_eq!((e.premier, e.last, e.length), (true, true, 0));
     assert!(charge.is_empty());
     fil.traiter(Ordre::Fait { correlation: c });
     assert_eq!(
         Journal::relire(&bac.journal_brut()).0.compte(),
         0,
-        "sans le cas particulier, l'entrée resterait due POUR TOUJOURS"
+        "without the special case, the entry would stay due FOREVER"
     );
 }
 
-/// 🔴 **UN FICHIER ABSENT AU REDÉMARRAGE SORT DU JOURNAL EN LE NOMMANT.**
+/// 🔴 **A FILE ABSENT AT RESTART LEAVES THE JOURNAL WHILE BEING NAMED.**
 ///
-/// La racine a été recréée, et le fichier est parti avec elle (spec §6.4
-/// cas 3). Boucler sur le réessai ferait repousser indéfiniment un fichier qui
-/// n'existe plus.
+/// The root was recreated, and the file went away with it (spec §6.4
+/// case 3). Looping on retry would push indefinitely a file that
+/// no longer exists.
 ///
-/// ⚠️ **F5 A DÉPLACÉ LE MOMENT, PAS LA RÈGLE.** *Ce test appelait
-/// `Fil::demarrer` et n'attendait rien d'autre : la reprise courait au démarrage
-/// du fil.* Elle attend désormais `Ordre::Bonjour` — sans quoi le pont
-/// pousserait avant de savoir sur quel répertoire (§6.4 cas 2). **Le journal
-/// n'est donc plus touché par le seul `demarrer`, et c'est vérifié ici avant
-/// l'annonce** : sans cette moitié, le test passerait aussi sur un produit qui
-/// aurait gardé l'ancien moment.
+/// ⚠️ **F5 MOVED THE MOMENT, NOT THE RULE.** *This test called
+/// `Fil::start` and expected nothing else: resumption ran at the thread's
+/// start.* It now waits for `Ordre::Bonjour` — without which the bridge
+/// would push before knowing on which directory (§6.4 case 2). **The journal
+/// is therefore no longer touched by `start` alone, and it is checked here before
+/// the announcement**: without this half, the test would also pass on a product that
+/// had kept the old moment.
 #[test]
-fn un_fichier_absent_au_redemarrage_sort_du_journal_en_le_nommant() {
+fn a_file_missing_at_restart_leaves_the_journal_naming_it() {
     let bac = Bac::neuf();
     bac.poser("survivant.txt", b"ok");
-    // Un pont antérieur a laissé deux dues, dont une dont le fichier a disparu.
-    let mut j = Journal::nouveau();
+    // An earlier bridge left two dues, one of whose files has disappeared.
+    let mut j = Journal::new();
     let mut brut = String::new();
     brut.push_str(&j.inscrire("disparu.txt", 42));
     brut.push_str(&j.inscrire("survivant.txt", 2));
     std::fs::write(&bac.journal, &brut).expect("journal de test");
 
-    let mut fil = Fil::demarrer(bac.config(true));
-    // La moitié qui rend ce test capable de voir le déplacement de F5.
-    let (avant, _) = Journal::relire(&bac.journal_brut());
+    let mut fil = Fil::start(bac.config(true));
+    // The half that makes this test able to see F5's move.
+    let (before, _) = Journal::relire(&bac.journal_brut());
     assert_eq!(
-        avant.compte(),
+        before.compte(),
         2,
-        "demarrer ne reprend RIEN : il attend Bonjour"
+        "start resumes NOTHING: it waits for Bonjour"
     );
 
     fil.traiter(Ordre::Bonjour {
@@ -258,53 +258,55 @@ fn un_fichier_absent_au_redemarrage_sort_du_journal_en_le_nommant() {
     });
     let (relu, _) = Journal::relire(&bac.journal_brut());
     let restants: Vec<&str> = relu.dues().iter().map(|(c, _)| c.as_str()).collect();
-    assert_eq!(restants, ["survivant.txt"], "seul le disparu devait partir");
+    assert_eq!(
+        restants,
+        ["survivant.txt"],
+        "only the vanished one was supposed to go out"
+    );
 }
 
-/// À la reprise, les dues sont **annoncées avant** toute poussée.
+/// On resumption, the dues are **announced before** any push.
 ///
-/// ⚠️ *Ce test s'appelait `…_au_demarrage`, et il appelait `Fil::demarrer` sans
-/// rien d'autre.* **F5 a déplacé le moment** : la reprise attend `Bonjour`.
+/// ⚠️ *This test was called `…_au_demarrage`, and it called `Fil::start` with
+/// nothing else.* **F5 moved the moment**: resumption waits for `Bonjour`.
 #[test]
-fn les_dues_sont_annoncees_avant_toute_poussee_a_la_reprise() {
+fn pending_ones_are_announced_before_any_push_on_resume() {
     let bac = Bac::neuf();
     bac.poser("repris.txt", b"abc");
-    let mut j = Journal::nouveau();
+    let mut j = Journal::new();
     std::fs::write(&bac.journal, j.inscrire("repris.txt", 3)).expect("journal de test");
 
-    let mut fil = Fil::demarrer(bac.config(true));
-    // 🔴 **RIEN N'EST ÉMIS AVANT `Bonjour`**, et c'est la moitié qui mesure le
-    // remède : F2 a relevé la poussée du rejeu 0,8 s AVANT que le navigateur
-    // n'annonce son montage, puis une expiration 30,2 s plus tard.
-    assert!(bac.trames().is_empty(), "aucune trame avant Bonjour");
+    let mut fil = Fil::start(bac.config(true));
+    // 🔴 **NOTHING IS EMITTED BEFORE `Bonjour`**, and it is the half that measures the
+    // remedy: F2 recorded the replay's push 0.8 s BEFORE the browser
+    // announced its mount, then an expiry 30.2 s later.
+    assert!(bac.trames().is_empty(), "no frame before Bonjour");
 
     fil.traiter(Ordre::Bonjour {
         racine: "Documents".into(),
         forcer: false,
     });
     let trames = bac.trames();
-    assert_eq!(trames[0].0, proto::fichiers::TYPE_DUES, "l'annonce d'abord");
+    assert_eq!(trames[0].0, proto::files::TYPE_DUES, "l'annonce d'abord");
     assert!(
-        trames
-            .iter()
-            .any(|(t, ..)| *t == proto::fichiers::TYPE_ECRIRE),
-        "puis la reprise"
+        trames.iter().any(|(t, ..)| *t == proto::files::TYPE_WRITE),
+        "then the resume"
     );
 }
 
-/// 🔴 **LE CAS POUR LEQUEL `Bonjour` EXISTE : un AUTRE répertoire RETIENT.**
+/// 🔴 **THE CASE `Bonjour` EXISTS FOR: ANOTHER directory HOLDS BACK.**
 ///
-/// Le journal n'est **ni vidé ni poussé**, l'annonce porte `retenues: true`, et
-/// **aucun `TYPE_ECRIRE` ne part**. Sans cela, les fichiers d'une session
-/// atterriraient dans le dossier d'une autre (spec §6.4 cas 2).
+/// The journal is **neither emptied nor pushed**, the announcement carries `retenues: true`, and
+/// **no `TYPE_WRITE` goes out**. Without this, the files of one session
+/// would land in the folder of another (spec §6.4 case 2).
 #[test]
-fn un_repertoire_different_retient_et_le_dit() {
+fn a_different_directory_holds_and_says_so() {
     let bac = Bac::neuf();
     bac.poser("repris.txt", b"abc");
-    let mut j = Journal::nouveau();
+    let mut j = Journal::new();
     std::fs::write(&bac.journal, j.inscrire("repris.txt", 3)).expect("journal de test");
 
-    let mut fil = Fil::demarrer(bac.config(true));
+    let mut fil = Fil::start(bac.config(true));
     fil.traiter(Ordre::Bonjour {
         racine: "Documents".into(),
         forcer: false,
@@ -312,77 +314,75 @@ fn un_repertoire_different_retient_et_le_dit() {
     assert!(
         bac.trames()
             .iter()
-            .any(|(t, ..)| *t == proto::fichiers::TYPE_ECRIRE),
-        "le premier montage pousse : rien ne peut y etre mal place"
+            .any(|(t, ..)| *t == proto::files::TYPE_WRITE),
+        "the first mount pushes: nothing can be misplaced there"
     );
 
-    // Un second pont, sur un AUTRE répertoire, avec le même dossier d'état.
-    let avant = bac.trames().len();
-    let mut fil2 = Fil::demarrer(bac.config(true));
+    // A second bridge, on ANOTHER directory, with the same state folder.
+    let before = bac.trames().len();
+    let mut fil2 = Fil::start(bac.config(true));
     fil2.traiter(Ordre::Bonjour {
         racine: "Telechargements".into(),
         forcer: false,
     });
 
-    let neuves: Vec<_> = bac.trames().into_iter().skip(avant).collect();
-    // ① AUCUNE écriture ne part.
+    let neuves: Vec<_> = bac.trames().into_iter().skip(before).collect();
+    // ① NO write goes out.
     assert!(
-        !neuves
-            .iter()
-            .any(|(t, ..)| *t == proto::fichiers::TYPE_ECRIRE),
-        "un repertoire different ne doit RIEN pousser"
+        !neuves.iter().any(|(t, ..)| *t == proto::files::TYPE_WRITE),
+        "a different directory must push NOTHING"
     );
-    // ② L'annonce sort, et elle porte `retenues: true` — sans quoi le
-    //    navigateur verrait un compteur fige sans savoir pourquoi.
+    // ② The announcement goes out, and it carries `retenues: true` — otherwise the
+    //    browser would see a frozen counter without knowing why.
     let (_, _, entete, _) = neuves
         .iter()
-        .find(|(t, ..)| *t == proto::fichiers::TYPE_DUES)
-        .expect("une annonce de dues doit sortir");
-    let dues: proto::fichiers::entetes::Dues =
+        .find(|(t, ..)| *t == proto::files::TYPE_DUES)
+        .expect("a due announcement must go out");
+    let dues: proto::files::entetes::Dues =
         serde_json::from_slice(entete).expect("en-tete Dues lisible");
     assert!(
         dues.retenues,
-        "l'annonce doit DIRE que les dues sont retenues"
+        "the announcement must SAY that the dues are held"
     );
-    assert_eq!(dues.dues.len(), 1, "et porter la due qu'elle retient");
-    // ③ Le journal survit : ni poussé, ni jeté.
+    assert_eq!(dues.dues.len(), 1, "and carry the due it holds");
+    // ③ The journal survives: neither pushed nor thrown away.
     let (relu, _) = Journal::relire(&bac.journal_brut());
     assert_eq!(
         relu.compte(),
         1,
-        "le journal n'est NI vide NI pousse : il est NOMME"
+        "the journal is NEITHER empty NOR pushed: it is NAMED"
     );
 }
 
-/// 🔴 **DÉSARMÉ, LE FIL JOURNALISE ET ANNONCE, MAIS NE POUSSE RIEN.**
+/// 🔴 **DISARMED, THE THREAD JOURNALS AND ANNOUNCES, BUT PUSHES NOTHING.**
 ///
-/// C'est le bras désarmé de l'A/B, et **c'est lui qui rend le compteur
-/// d'écritures dues ROUGE**. Ignorer la variable rendrait ce rouge impossible à
-/// provoquer, donc le critère ④ de la recette non mesurable.
+/// It is the disarmed arm of the A/B, and **it is what makes the due
+/// writes counter RED**. Ignoring the variable would make this red impossible to
+/// provoke, hence criterion ④ of the acceptance run unmeasurable.
 #[test]
-fn desarme_le_fil_journalise_mais_ne_pousse_rien() {
+fn disarmed_the_thread_logs_but_pushes_nothing() {
     let bac = Bac::neuf();
     bac.poser("note.txt", b"bonjour");
-    let mut fil = Fil::demarrer(bac.config(false));
-    fil.traiter(modifie("note.txt"));
+    let mut fil = Fil::start(bac.config(false));
+    fil.traiter(modified("note.txt"));
     assert_eq!(
         Journal::relire(&bac.journal_brut()).0.compte(),
         1,
-        "l'entrée est due — c'est ce que le compteur montrera"
+        "the entry is due — that is what the counter will show"
     );
     let types: Vec<u8> = bac.trames().iter().map(|(t, ..)| *t).collect();
     assert!(
-        types.iter().all(|t| *t == proto::fichiers::TYPE_DUES),
-        "SEULES des annonces ; aucune écriture ne part : {types:?}"
+        types.iter().all(|t| *t == proto::files::TYPE_DUES),
+        "ONLY announcements; no write goes out: {types:?}"
     );
-    // …et la file avance quand même : un second chemin est journalisé lui aussi.
+    // …and the queue advances anyway: a second path is journalled too.
     bac.poser("autre.txt", b"x");
-    fil.traiter(modifie("autre.txt"));
+    fil.traiter(modified("autre.txt"));
     assert_eq!(Journal::relire(&bac.journal_brut()).0.compte(), 2);
 }
 
 impl Journal {
-    /// Raccourci de lecture pour les tests : le nombre de dues d'un journal brut.
+    /// Reading shortcut for tests: the number of dues in a raw journal.
     pub(super) fn compte_du_brut(brut: &str) -> usize {
         Journal::relire(brut).0.compte()
     }

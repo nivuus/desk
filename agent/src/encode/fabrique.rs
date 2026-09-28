@@ -1,51 +1,51 @@
-//! Ce qui TROUVE et ACTIVE les MFT : l'encodeur H.264 matériel, le
-//! convertisseur de couleur, le gestionnaire de périphérique DXGI qu'on leur
-//! partage, et l'échantillon NV12 de repli.
+//! What FINDS and ACTIVATES the MFTs: the hardware H.264 encoder, the
+//! colour converter, the DXGI device manager shared with them,
+//! and the fallback NV12 sample.
 //!
-//! Extrait d'`encode.rs` le 30 août 2026 (lot 31), **avant** d'y ajouter quoi
-//! que ce soit : le fichier pesait 1536 lignes, trois fois le plafond de 500,
-//! et la doctrine du dépôt est d'extraire dans une tâche DÉDIÉE avant celle
-//! qui ajoute — jamais de comprimer. Le pendant de ce module est
-//! `encode::reglages`, qui POSE les réglages sur une MFT une fois obtenue.
+//! Extracted from `encode.rs` on 30 August 2026 (batch 31), **before** adding anything
+//! to it: the file weighed 1536 lines, three times the ceiling of 500,
+//! and the repository's doctrine is to extract in a DEDICATED task before the one
+//! that adds — never to compress. The counterpart of this module is
+//! `encode::reglages`, which SETS the settings on an MFT once obtained.
 //!
-//! ⚠️ **CECI N'EST PLUS LE CHEMIN PAR DÉFAUT SUR LA VM CIBLE, DEPUIS LE
-//! 30 AOÛT 2026 (lot 31)** — la phrase qui ouvrait ce paragraphe disait
-//! « c'est ici que le produit échoue aujourd'hui », et elle est devenue
-//! FAUSSE le jour où NVENC natif est passé devant : `H264Encoder::new`
-//! essaie d'abord la porte native quand un adaptateur NVIDIA est présent, et
-//! **elle réussit** (1195 unités d'accès mesurées). Cette MFT reste le dos
-//! **générique** — Intel Quick Sync, AMD VCE, et la session 0 où elle
-//! fonctionne — et ce qui suit décrit ce qu'elle fait *quand on y arrive*.
+//! ⚠️ **THIS IS NO LONGER THE DEFAULT PATH ON THE TARGET VM, SINCE
+//! 30 AUGUST 2026 (batch 31)** — the sentence that opened this paragraph said
+//! "this is where the product fails today", and it became
+//! FALSE the day native NVENC moved ahead: `H264Encoder::new`
+//! first tries the native door when an NVIDIA adapter is present, and
+//! **it succeeds** (1195 access units measured). This MFT remains the
+//! **generic** back end — Intel Quick Sync, AMD VCE, and session 0 where it
+//! works — and what follows describes what it does *when we get to it*.
 //!
-//! 🔴 **CE QUI RESTE VRAI, ET QUI EXPLIQUE POURQUOI ELLE N'EST PLUS
-//! PREMIÈRE.** `find_hardware_encoder` énumère une seule MFT — `NVIDIA H.264 Encoder
-//! MFT` — et son `ActivateObject` rend `0x8000FFFF` (« Catastrophic
-//! failure ») en **session 1**, alors que le même appel réussit en
-//! **session 0**, dans le même binaire et à la même minute. Mesuré le
-//! 30 août 2026, avec deux témoins verts posés à côté (l'encodeur H.264
-//! LOGICIEL et le processeur vidéo LOGICIEL s'activent, eux, dans les deux
-//! sessions) : la machinerie Media Foundation fonctionne, seule la MFT
-//! matérielle NVIDIA refuse. Trois remèdes bon marché sont **réfutés par la
-//! mesure** — poser `MFT_ENUM_ADAPTER_LUID`, tenir un périphérique D3D11
-//! NVIDIA vivant avant l'activation, et lier l'affichage virtuel au GPU
-//! NVIDIA (déjà vrai chez nous). Voir
-//! `docs/superpowers/plans/2026-08-30-encodeur-porte-apollo-resultats.md`.
+//! 🔴 **WHAT REMAINS TRUE, AND EXPLAINS WHY IT IS NO LONGER
+//! FIRST.** `find_hardware_encoder` enumerates a single MFT — `NVIDIA H.264 Encoder
+//! MFT` — and its `ActivateObject` returns `0x8000FFFF` ("Catastrophic
+//! failure") in **session 1**, whereas the same call succeeds in
+//! **session 0**, in the same binary and in the same minute. Measured on
+//! 30 August 2026, with two green controls set up alongside (the
+//! SOFTWARE H.264 encoder and the SOFTWARE video processor do activate in both
+//! sessions): the Media Foundation machinery works, only the NVIDIA hardware
+//! MFT refuses. Three cheap remedies are **refuted by
+//! measurement** — setting `MFT_ENUM_ADAPTER_LUID`, holding a live NVIDIA D3D11
+//! device before activation, and binding the virtual display to the NVIDIA
+//! GPU (already true here). See
+//! `docs/superpowers/plans/2026-08-30-encodeur-porte-apollo-resultats.md`. (policy: allow-fr, real file path)
 //!
-//! ⚠️ **ET `find_hardware_video_processor` NE TROUVE RIEN SUR CETTE
-//! MACHINE, DANS LES DEUX SESSIONS** (même mesure) : `create_color_converter`
-//! retombe donc **toujours** sur son `CoCreateInstance`, c'est-à-dire sur le
-//! `Microsoft Video Processor MFT` **logiciel**. La conversion BGRA → NV12
-//! passe par le CPU en production, et le commentaire d'en-tête d'`encode.rs`
-//! qui la dit « sans quitter le GPU » est faux ici. Le repli le journalise,
-//! mais en `debug!`, un niveau que la production n'émet pas.
+//! ⚠️ **AND `find_hardware_video_processor` FINDS NOTHING ON THIS
+//! MACHINE, IN BOTH SESSIONS** (same measurement): `create_color_converter`
+//! therefore **always** falls back on its `CoCreateInstance`, that is on the
+//! **software** `Microsoft Video Processor MFT`. The BGRA → NV12 conversion
+//! goes through the CPU in production, and the header comment of `encode.rs`
+//! that says it happens "without leaving the GPU" is wrong here. The fallback logs it,
+//! but at `debug!`, a level production does not emit.
 //!
-//! **Déplacement pur : aucun appel, aucun ordre, aucune valeur n'a changé.**
-//! Les seules différences avec le texte d'origine sont les visibilités
-//! (`pub(super)` pour les cinq fonctions ayant un appelant hors de ce
-//! fichier ; `format_subtype` et `find_hardware_video_processor` restent
-//! privées, personne d'autre ne les appelle), la qualification de
-//! `pack_u64` — qui vit chez le frère `reglages` — et les imports, qui ne
-//! suivent jamais tout seuls.
+//! **Pure move: no call, no order, no value has changed.**
+//! The only differences from the original text are the visibilities
+//! (`pub(super)` for the five functions having a caller outside this
+//! file; `format_subtype` and `find_hardware_video_processor` stay
+//! private, no one else calls them), the qualification of
+//! `pack_u64` — which lives in the sibling `reglages` — and the imports, which never
+//! follow on their own.
 
 use anyhow::{anyhow, bail, Context, Result};
 use windows::core::{Interface, GUID, PWSTR};
@@ -61,32 +61,32 @@ use windows::Win32::System::Com::{CoCreateInstance, CoTaskMemFree, CLSCTX_INPROC
 use super::reglages;
 use crate::encode_nvenc;
 
-/// Journalise les types d'entrée réellement annoncés par l'encodeur, avant
-/// toute configuration. Sert de preuve empirique à la question BGRA/NV12
-/// (voir le commentaire de module d'`encode.rs`, PAS celui de ce
-/// fichier-ci) : sur la VM cible, seul NV12 apparaît.
+/// Logs the input types actually advertised by the encoder, before
+/// any configuration. Serves as empirical proof on the BGRA/NV12 question
+/// (see the module comment of `encode.rs`, NOT that of this
+/// file): on the target VM, only NV12 appears.
 pub(super) fn log_supported_input_types(transform: &IMFTransform) {
     let mut index = 0u32;
     loop {
         let media_type = match unsafe { transform.GetInputAvailableType(0, index) } {
             Ok(t) => t,
-            Err(_) => break, // MF_E_NO_MORE_TYPES : fin de l'énumération.
+            Err(_) => break, // MF_E_NO_MORE_TYPES: end of the enumeration.
         };
         let subtype = unsafe { media_type.GetGUID(&MF_MT_SUBTYPE) };
         match subtype {
             Ok(guid) => tracing::info!(
                 index,
                 subtype = %format_subtype(guid),
-                "type d'entrée annoncé par l'encodeur"
+                "input type announced by the encoder"
             ),
-            Err(_) => tracing::info!(index, "type d'entrée annoncé (sous-type illisible)"),
+            Err(_) => tracing::info!(index, "input type announced (unreadable subtype)"),
         }
         index += 1;
     }
 }
 
-/// Traduit les GUID de sous-type vidéo les plus courants en texte lisible,
-/// pour les journaux. Sans rapport avec la logique de conversion elle-même.
+/// Translates the most common video subtype GUIDs into readable text,
+/// for the logs. Unrelated to the conversion logic itself.
 fn format_subtype(guid: GUID) -> String {
     if guid == MFVideoFormat_NV12 {
         "NV12".to_string()
@@ -105,38 +105,38 @@ fn format_subtype(guid: GUID) -> String {
     }
 }
 
-/// Crée le convertisseur GPU BGRA→NV12 (Video Processor MFT de Media
-/// Foundation, `CLSID_VideoProcessorMFT`). Contrairement à l'encodeur, cette
-/// MFT est synchrone : pas d'événements à suivre, `ProcessInput` suivi de
-/// `ProcessOutput` suffit.
+/// Creates the BGRA→NV12 GPU converter (Media Foundation's Video Processor MFT,
+/// `CLSID_VideoProcessorMFT`). Unlike the encoder, this
+/// MFT is synchronous: no events to follow, `ProcessInput` followed by
+/// `ProcessOutput` is enough.
 pub(super) fn create_color_converter(
     device_manager: &IMFDXGIDeviceManager,
     capture: (u32, u32),
     encode: (u32, u32),
     fps: u32,
 ) -> Result<IMFTransform> {
-    // Essai (ronde de correction 1/5, investigation du débit) :
-    // `CoCreateInstance(CLSID_VideoProcessorMFT)` instancie l'implémentation
-    // par défaut de ce CLSID, qui pourrait être un chemin logiciel/mixte
-    // plutôt qu'une implémentation matérielle. On tente d'abord de trouver
-    // un convertisseur explicitement enregistré comme matériel via
-    // `MFTEnumEx`, comme pour l'encodeur — repli sur `CoCreateInstance` si
-    // rien n'est trouvé.
+    // Attempt (fix round 1/5, throughput investigation):
+    // `CoCreateInstance(CLSID_VideoProcessorMFT)` instantiates the default
+    // implementation of this CLSID, which could be a software/mixed path
+    // rather than a hardware implementation. We first try to find
+    // a converter explicitly registered as hardware through
+    // `MFTEnumEx`, as for the encoder — falling back on `CoCreateInstance` if
+    // nothing is found.
     let converter: IMFTransform = match find_hardware_video_processor() {
         Ok(t) => t,
         Err(e) => {
-            tracing::debug!(erreur = %e, "aucun convertisseur vidéo matériel énuméré, repli sur CLSID_VideoProcessorMFT");
+            tracing::debug!(error = %e, "no hardware video converter enumerated, falling back to CLSID_VideoProcessorMFT");
             unsafe { CoCreateInstance(&CLSID_VideoProcessorMFT, None, CLSCTX_INPROC_SERVER) }
-                .context("création du convertisseur vidéo (Video Processor MFT)")?
+                .context("creating the video converter (Video Processor MFT)")?
         }
     };
 
-    // Essai : le mode faible latence n'était appliqué qu'à l'encodeur, pas au
-    // convertisseur — potentiellement lié à l'attente d'~1 s observée dans
-    // `mft::convertisseur::drain_converter_output` (voir son commentaire).
-    // `GetAttributes` peut
-    // échouer si le convertisseur n'expose pas d'attributs modifiables ; dans
-    // ce cas on continue sans bloquer la construction.
+    // Attempt: low-latency mode was only applied to the encoder, not to the
+    // converter — potentially linked to the ~1 s wait observed in
+    // `mft::convertisseur::drain_converter_output` (see its comment).
+    // `GetAttributes` may
+    // fail if the converter does not expose modifiable attributes; in
+    // that case we continue without blocking the construction.
     if let Ok(converter_attributes) = unsafe { converter.GetAttributes() } {
         let _ = unsafe { converter_attributes.SetUINT32(&MF_LOW_LATENCY, 1) };
     }
@@ -147,26 +147,26 @@ pub(super) fn create_color_converter(
             device_manager.as_raw() as usize,
         )
     }
-    .context("partage du périphérique D3D avec le convertisseur")?;
+    .context("sharing the D3D device with the converter")?;
 
-    // Piège rencontré à l'essai : avec le pool par défaut, la séquence
-    // documentée « ProcessOutput jusqu'à MF_E_TRANSFORM_NEED_MORE_INPUT »
-    // échoue avec `MF_E_SAMPLEALLOCATOR_EMPTY` (0xC00D4A3E) après exactement 5
-    // images — l'encodeur matériel en garde plusieurs « en vol » avant d'en
-    // libérer, et le pool par défaut n'a pas cette marge.
+    // Trap met during the attempt: with the default pool, the documented
+    // sequence "ProcessOutput until MF_E_TRANSFORM_NEED_MORE_INPUT"
+    // fails with `MF_E_SAMPLEALLOCATOR_EMPTY` (0xC00D4A3E) after exactly 5
+    // images — the hardware encoder keeps several "in flight" before
+    // releasing any, and the default pool does not have that margin.
     //
-    // Premier correctif tenté, insuffisant : `MF_SA_MINIMUM_OUTPUT_SAMPLE_COUNT`
-    // seul, avec les valeurs 4 puis 16 — dans les deux cas, échec au exactement
-    // le même 5e appel, preuve que cet attribut seul n'a aucun effet ici.
-    // Cause : notre flux est **progressif**
-    // (`MF_MT_INTERLACE_MODE` = `MFVideoInterlace_Progressive`), et ce MFT
-    // distingue apparemment deux attributs de taille de pool — un pour le
-    // contenu entrelacé, un pour le progressif
-    // (`MF_SA_MINIMUM_OUTPUT_SAMPLE_COUNT_PROGRESSIVE`) — seul ce second
-    // attribut est honoré pour du contenu progressif. On positionne les deux
-    // par prudence (documentation MF ambiguë sur ce point).
+    // First fix attempted, insufficient: `MF_SA_MINIMUM_OUTPUT_SAMPLE_COUNT`
+    // alone, with the values 4 then 16 — in both cases, failure at exactly
+    // the same 5th call, proof that this attribute alone has no effect here.
+    // Cause: our stream is **progressive**
+    // (`MF_MT_INTERLACE_MODE` = `MFVideoInterlace_Progressive`), and this MFT
+    // apparently distinguishes two pool size attributes — one for
+    // interlaced content, one for progressive
+    // (`MF_SA_MINIMUM_OUTPUT_SAMPLE_COUNT_PROGRESSIVE`) — only this second
+    // attribute is honoured for progressive content. We set both
+    // out of caution (MF documentation ambiguous on this point).
     let output_stream_attributes = unsafe { converter.GetOutputStreamAttributes(0) }
-        .context("attributs du flux de sortie du convertisseur")?;
+        .context("converter output stream attributes")?;
     unsafe {
         output_stream_attributes.SetUINT32(&MF_SA_MINIMUM_OUTPUT_SAMPLE_COUNT, 16)?;
         output_stream_attributes.SetUINT32(&MF_SA_MINIMUM_OUTPUT_SAMPLE_COUNT_PROGRESSIVE, 16)?;
@@ -175,15 +175,15 @@ pub(super) fn create_color_converter(
     let input_type = unsafe { MFCreateMediaType() }?;
     unsafe {
         input_type.SetGUID(&MF_MT_MAJOR_TYPE, &MFMediaType_Video)?;
-        // Format d'entrée = ce que produit la capture (BGRA, avec alpha) ;
-        // `MFVideoFormat_ARGB32` correspond à `DXGI_FORMAT_B8G8R8A8_UNORM`.
+        // Input format = what the capture produces (BGRA, with alpha);
+        // `MFVideoFormat_ARGB32` corresponds to `DXGI_FORMAT_B8G8R8A8_UNORM`.
         input_type.SetGUID(&MF_MT_SUBTYPE, &MFVideoFormat_ARGB32)?;
         input_type.SetUINT64(&MF_MT_FRAME_SIZE, reglages::pack_u64(capture.0, capture.1))?;
         input_type.SetUINT64(&MF_MT_FRAME_RATE, reglages::pack_u64(fps, 1))?;
         input_type.SetUINT32(&MF_MT_INTERLACE_MODE, MFVideoInterlace_Progressive.0 as u32)?;
-        converter.SetInputType(0, &input_type, 0).context(
-            "configuration du type d'entrée du convertisseur de couleur (Video Processor MFT)",
-        )?;
+        converter
+            .SetInputType(0, &input_type, 0)
+            .context("configuring the colour converter input type (Video Processor MFT)")?;
     }
 
     let output_type = unsafe { MFCreateMediaType() }?;
@@ -193,18 +193,18 @@ pub(super) fn create_color_converter(
         output_type.SetUINT64(&MF_MT_FRAME_SIZE, reglages::pack_u64(encode.0, encode.1))?;
         output_type.SetUINT64(&MF_MT_FRAME_RATE, reglages::pack_u64(fps, 1))?;
         output_type.SetUINT32(&MF_MT_INTERLACE_MODE, MFVideoInterlace_Progressive.0 as u32)?;
-        converter.SetOutputType(0, &output_type, 0).context(
-            "configuration du type de sortie du convertisseur de couleur (Video Processor MFT)",
-        )?;
+        converter
+            .SetOutputType(0, &output_type, 0)
+            .context("configuring the colour converter output type (Video Processor MFT)")?;
     }
 
     Ok(converter)
 }
 
-/// Énumère les convertisseurs vidéo (BGRA→NV12) explicitement enregistrés
-/// comme matériels, et active le premier — même logique que
-/// `find_hardware_encoder`, avec les mêmes précautions de libération
-/// mémoire (voir son commentaire).
+/// Enumerates the video converters (BGRA→NV12) explicitly registered
+/// as hardware, and activates the first — same logic as
+/// `find_hardware_encoder`, with the same memory release
+/// precautions (see its comment).
 fn find_hardware_video_processor() -> Result<IMFTransform> {
     let input_info = MFT_REGISTER_TYPE_INFO {
         guidMajorType: MFMediaType_Video,
@@ -227,12 +227,12 @@ fn find_hardware_video_processor() -> Result<IMFTransform> {
             &mut activates,
             &mut count,
         )
-        .context("énumération des convertisseurs vidéo matériels")?;
+        .context("enumerating the hardware video converters")?;
     }
 
     if count == 0 {
         unsafe { CoTaskMemFree(Some(activates as *const _)) };
-        bail!("aucun convertisseur vidéo matériel enregistré");
+        bail!("no hardware video converter registered");
     }
 
     let slice = unsafe { std::slice::from_raw_parts_mut(activates, count as usize) };
@@ -243,7 +243,7 @@ fn find_hardware_video_processor() -> Result<IMFTransform> {
             first = activate;
         }
     }
-    let first = first.ok_or_else(|| anyhow!("activateur de convertisseur absent"))?;
+    let first = first.ok_or_else(|| anyhow!("converter activator missing"))?;
 
     let mut name_ptr = PWSTR::null();
     let mut name_len = 0u32;
@@ -253,19 +253,19 @@ fn find_hardware_video_processor() -> Result<IMFTransform> {
     .is_ok()
     {
         let name = unsafe { name_ptr.to_string() }.unwrap_or_default();
-        tracing::info!(convertisseur = %name, "convertisseur vidéo matériel retenu");
+        tracing::info!(convertisseur = %name, "hardware video converter retained");
         unsafe { CoTaskMemFree(Some(name_ptr.0 as *const _)) };
     }
 
     let transform: IMFTransform = unsafe { first.ActivateObject() }
-        .context("activation du convertisseur vidéo matériel (ActivateObject)")?;
+        .context("activating the hardware video converter (ActivateObject)")?;
     unsafe { CoTaskMemFree(Some(activates as *const _)) };
     Ok(transform)
 }
 
-/// Alloue une texture NV12 GPU et l'enveloppe dans un échantillon Media
-/// Foundation réutilisable, pour les cas où le convertisseur ne s'auto-alloue
-/// pas (`MFT_OUTPUT_STREAM_PROVIDES_SAMPLES` absent — voir
+/// Allocates a GPU NV12 texture and wraps it in a reusable Media
+/// Foundation sample, for the cases where the converter does not self-allocate
+/// (`MFT_OUTPUT_STREAM_PROVIDES_SAMPLES` absent — see
 /// `super::H264Encoder::new`).
 pub(super) fn create_nv12_sample(
     device: &ID3D11Device,
@@ -289,17 +289,17 @@ pub(super) fn create_nv12_sample(
     };
     let mut texture: Option<ID3D11Texture2D> = None;
     unsafe { device.CreateTexture2D(&desc, None, Some(&mut texture)) }
-        .context("allocation de la texture NV12 intermédiaire")?;
+        .context("allocating the intermediate NV12 texture")?;
     let texture = texture.ok_or_else(|| anyhow!("texture NV12 absente"))?;
 
     let sample = unsafe { MFCreateSample() }?;
     let buffer = unsafe { MFCreateDXGISurfaceBuffer(&ID3D11Texture2D::IID, &texture, 0, false) }
-        .context("enveloppement de la texture NV12")?;
+        .context("wrapping the NV12 texture")?;
     unsafe { sample.AddBuffer(&buffer) }?;
     Ok(sample)
 }
 
-/// Énumère les encodeurs H.264 matériels et active le premier.
+/// Enumerates the hardware H.264 encoders and activates the first.
 pub(super) fn find_hardware_encoder() -> Result<IMFTransform> {
     let input_info = MFT_REGISTER_TYPE_INFO {
         guidMajorType: MFMediaType_Video,
@@ -322,30 +322,30 @@ pub(super) fn find_hardware_encoder() -> Result<IMFTransform> {
             &mut activates,
             &mut count,
         )
-        .context("énumération des encodeurs H.264 matériels")?;
+        .context("enumerating the hardware H.264 encoders")?;
     }
 
     if count == 0 {
         unsafe { CoTaskMemFree(Some(activates as *const _)) };
         bail!(
-            "aucun encodeur H.264 matériel trouvé sur cette machine. \
-             Vérifier le pilote GPU ; le jalon 1 n'a pas de repli logiciel."
+            "no hardware H.264 encoder found on this machine. \
+             Check the GPU driver; milestone 1 has no software fallback."
         );
     }
 
-    // Récupérer les objets AVANT de libérer le tableau alloué par CoTaskMemAlloc.
+    // Retrieve the objects BEFORE freeing the array allocated by CoTaskMemAlloc.
     //
-    // Ronde de correction 1/5 — fuite corrigée ici : la version précédente
-    // ne relâchait que le premier `IMFActivate` (par `.clone()`, qui ajoute
-    // une référence sans jamais libérer celle que `MFTEnumEx` a placée dans
-    // la case du tableau). `CoTaskMemFree` ne libère que la mémoire brute du
-    // tableau, pas les références COM qu'il contient : chaque entrée, y
-    // compris la première, fuyait donc une référence. `slot.take()` déplace
-    // chaque entrée hors du tableau (remplacée par `None`) ; les entrées
-    // qu'on ne garde pas sont droppées immédiatement (donc relâchées), la
-    // première est conservée dans `first` sans référence supplémentaire.
-    // Latent tant qu'un seul encodeur est présent, mais réel dès qu'il y en
-    // aurait plusieurs.
+    // Fix round 1/5 — leak fixed here: the previous version
+    // only released the first `IMFActivate` (through `.clone()`, which adds
+    // a reference without ever releasing the one `MFTEnumEx` placed in
+    // the array slot). `CoTaskMemFree` only frees the raw memory of the
+    // array, not the COM references it contains: each entry,
+    // including the first, therefore leaked a reference. `slot.take()` moves
+    // each entry out of the array (replaced by `None`); the entries
+    // we do not keep are dropped immediately (hence released), the
+    // first is kept in `first` without an extra reference.
+    // Latent as long as a single encoder is present, but real as soon as there
+    // would be several.
     let slice = unsafe { std::slice::from_raw_parts_mut(activates, count as usize) };
     let mut first: Option<IMFActivate> = None;
     for (index, slot) in slice.iter_mut().enumerate() {
@@ -353,23 +353,23 @@ pub(super) fn find_hardware_encoder() -> Result<IMFTransform> {
         if index == 0 {
             first = activate;
         }
-        // Sinon : `activate` est droppé ici, relâchant sa référence COM.
+        // Otherwise: `activate` is dropped here, releasing its COM reference.
     }
     let first = first.ok_or_else(|| anyhow!("activateur d'encodeur absent"))?;
 
     let mut name_ptr = PWSTR::null();
     let mut name_len = 0u32;
-    // écart d'API windows-rs 0.62 : `GetStringAlloc` n'existe pas sur
-    // `IMFAttributes` dans cette version ; la méthode s'appelle
-    // `GetAllocatedString` (mémoire allouée par `CoTaskMemAlloc`, à libérer
-    // explicitement après usage).
+    // windows-rs 0.62 API gap: `GetStringAlloc` does not exist on
+    // `IMFAttributes` in this version; the method is called
+    // `GetAllocatedString` (memory allocated by `CoTaskMemAlloc`, to be freed
+    // explicitly after use).
     if unsafe {
         first.GetAllocatedString(&MFT_FRIENDLY_NAME_Attribute, &mut name_ptr, &mut name_len)
     }
     .is_ok()
     {
         let name = unsafe { name_ptr.to_string() }.unwrap_or_default();
-        tracing::info!(encodeur = %name, "encodeur matériel retenu");
+        tracing::info!(encodeur = %name, "hardware encoder retained");
         unsafe { CoTaskMemFree(Some(name_ptr.0 as *const _)) };
     }
 
@@ -377,27 +377,27 @@ pub(super) fn find_hardware_encoder() -> Result<IMFTransform> {
     unsafe { CoTaskMemFree(Some(activates as *const _)) };
     match active {
         Ok(transform) => Ok(transform),
-        Err(erreur) => Err(anyhow!(
+        Err(error) => Err(anyhow!(
             "{}",
-            // La COMPOSITION du message est pure et vit chez
-            // `encode_nvenc`, où elle est testée sur l'hôte : ici on ne
-            // fait que lui donner le code et ce que la machine porte.
+            // The COMPOSITION of the message is pure and lives in
+            // `encode_nvenc`, where it is tested on the host: here we only
+            // give it the code and what the machine carries.
             encode_nvenc::diagnostic_activation(
-                erreur.code().0,
-                &erreur.to_string(),
+                error.code().0,
+                &error.to_string(),
                 &adaptateurs_dxgi()
             )
         )),
     }
 }
 
-/// Les adaptateurs DXGI, réduits à ce que la règle PURE de
-/// `crate::encode_nvenc` sait lire.
+/// The DXGI adapters, reduced to what the PURE rule of
+/// `crate::encode_nvenc` can read.
 ///
-/// ⚠️ **Rend une liste VIDE plutôt qu'une erreur** : cette fonction ne sert
-/// qu'à enrichir un diagnostic et à choisir une voie. La faire échouer
-/// remplacerait un message utile par un autre message d'erreur, et masquerait
-/// la panne qu'on essaie justement de décrire.
+/// ⚠️ **Returns an EMPTY list rather than an error**: this function only serves
+/// to enrich a diagnostic and to choose a path. Making it fail
+/// would replace a useful message with another error message, and would mask
+/// the very failure we are trying to describe.
 pub(super) fn adaptateurs_dxgi() -> Vec<encode_nvenc::Adaptateur> {
     let Ok(fabrique) = (unsafe { CreateDXGIFactory1::<IDXGIFactory1>() }) else {
         return Vec::new();
@@ -427,6 +427,6 @@ pub(super) fn share_device(device: &ID3D11Device) -> Result<IMFDXGIDeviceManager
     }
     let manager = manager.ok_or_else(|| anyhow!("gestionnaire DXGI absent"))?;
     unsafe { manager.ResetDevice(device, token) }
-        .context("liaison du périphérique D3D11 au gestionnaire DXGI")?;
+        .context("binding the D3D11 device to the DXGI manager")?;
     Ok(manager)
 }

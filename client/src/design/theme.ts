@@ -1,48 +1,48 @@
 /**
- * Les trois états du thème — PUR : dépendances INJECTÉES, aucun DOM.
+ * The three theme states — PURE: INJECTED dependencies, no DOM.
  *
- * ⚠️ NI `window`, NI `localStorage`, NI `document` NE SONT DISPONIBLES ICI
- * sous Vitest : `client/` n'a aucun `vitest.config.*` et aucun `jsdom`
- * (`ls client/node_modules/@types/` rend `estree` seul). `Coffre` et `Racine`
- * sont donc des PARAMÈTRES, sur le patron exact de `client/src/jeton.ts:4-10`.
- * Un `const racine = document.documentElement` en tête de module suffirait à
- * rendre ce fichier impossible à charger sous Node, donc impossible à tester.
+ * ⚠️ NEITHER `window`, NOR `localStorage`, NOR `document` IS AVAILABLE HERE
+ * under Vitest: `client/` has no `vitest.config.*` and no `jsdom`
+ * (`ls client/node_modules/@types/` returns `estree` alone). `Coffre` and `Racine`
+ * are therefore PARAMETERS, on the exact pattern of `client/src/jeton.ts:4-10`.
+ * A `const racine = document.documentElement` at the top of the module would be enough to
+ * make this file impossible to load under Node, hence impossible to test.
  *
- * ⚠️ TypeScript EFFAÇABLE (aucun `enum`, aucun `namespace`) : ce module est
- * dans le même répertoire que ceux qu'un `.mjs` importe, et la contrainte s'y
- * applique par cohérence. Voir l'en-tête de `tokens.ts` pour la mesure.
+ * ⚠️ ERASABLE TypeScript (no `enum`, no `namespace`): this module is
+ * in the same directory as those a `.mjs` imports, and the constraint
+ * applies there for consistency. See the header of `tokens.ts` for the measurement.
  *
  * ────────────────────────────────────────────────────────────────────────────
- * CE QUE CES FONCTIONS NE PROUVENT PAS, mot pour mot d'après la spec §7.5 :
- * « il n'établit pas que le navigateur déclenche bien `storage` entre deux
- * fenêtres réelles. Il éprouve NOTRE gestionnaire, pas la plateforme. »
+ * WHAT THESE FUNCTIONS DO NOT PROVE, word for word from spec §7.5:
+ * "it does not establish that the browser does fire `storage` between two
+ * real windows. It exercises OUR handler, not the platform."
  *
- * ✅ La confirmation à deux fenêtres réelles A ÉTÉ FAITE le 19 août 2026, au
- * commit `604f91c`, et elle reste HORS CRITÈRE — même statut que les
- * confirmations sur VM réelle du sous-projet ⑤. Deux onglets de
- * `client/design.html` : la voisine suit la bascule ET se re-rend, et le
- * retour à `systeme` lui RETIRE l'attribut. Pièce :
+ * ✅ The confirmation with two real windows WAS DONE on August 19th, 2026, at
+ * commit `604f91c`, and it stays OUTSIDE THE CRITERIA — same status as the
+ * real-VM confirmations of sub-project ⑤. Two tabs of
+ * `client/design.html`: the neighbour follows the switch AND re-renders, and
+ * going back to `systeme` REMOVES the attribute from it. Evidence:
  * `docs/superpowers/plans/journaux-design-s1/corroboration-deux-fenetres.md`.
- * ⚠️ UNE exécution, UN navigateur (Chromium de bureau), et DEUX FENÊTRES DE LA
- * GALERIE — pas une page-shell qui ouvre N sessions par `window.open`. Que le
- * thème atteigne les N fenêtres du PRODUIT reste non mesuré.
+ * ⚠️ ONE run, ONE browser (desktop Chromium), and TWO WINDOWS OF THE
+ * GALLERY — not a shell page opening N sessions through `window.open`. Whether the
+ * theme reaches the PRODUCT's N windows stays unmeasured.
  *
- * ⚠️ « `surStockageModifie` n'écrit rien dans le coffre » est garanti par la
- * SIGNATURE, pas par un test : la fonction ne reçoit aucun `Coffre`, donc elle
- * n'a rien à écrire. Un test de cette propriété ne pourrait jamais tomber, et
- * ce dépôt ne garde pas de contrôle incapable d'échouer. C'est ce qui ferme la
- * boucle entre fenêtres : une voisine qui réécrirait en réagissant
- * déclencherait un `storage` chez ses propres voisines, sans terme.
+ * ⚠️ "`onStorageChanged` writes nothing into the vault" is guaranteed by the
+ * SIGNATURE, not by a test: the function receives no `Coffre`, so it
+ * has nothing to write. A test of this property could never fail, and
+ * this repository keeps no check unable to fail. It is what closes the
+ * loop between windows: a neighbour that rewrote while reacting
+ * would trigger a `storage` in its own neighbours, without end.
  */
 
 export type Theme = 'systeme' | 'clair' | 'sombre';
 
 /**
- * ⚠️ La clé est PRÉFIXÉE, là où la spec §4.2 écrivait `theme` nu. Le dépôt a
- * déjà la convention : `client/src/jeton.ts:37-38` déclare
- * `guac.jeton.acces` et `guac.jeton.rafraichissement`. Une clé nue sur la même
- * origine que le hub, la page-shell et N fenêtres de session est une collision
- * qui attend ; le préfixe ne coûte rien.
+ * ⚠️ The key is PREFIXED, where spec §4.2 wrote a bare `theme`. The repository
+ * already has the convention: `client/src/jeton.ts:37-38` declares
+ * `guac.jeton.acces` and `guac.jeton.rafraichissement`. A bare key on the same
+ * origin as the hub, the shell page and N session windows is a collision
+ * waiting to happen; the prefix costs nothing.
  */
 export const CLE_THEME = 'guac.theme';
 
@@ -50,28 +50,28 @@ const ATTRIBUT = 'data-theme';
 
 export interface Coffre {
     getItem(cle: string): string | null;
-    setItem(cle: string, valeur: string): void;
+    setItem(cle: string, value: string): void;
 }
 
 export interface Racine {
-    setAttribute(nom: string, valeur: string): void;
+    setAttribute(nom: string, value: string): void;
     removeAttribute(nom: string): void;
 }
 
-function estTheme(valeur: string | null): valeur is Theme {
-    return valeur === 'systeme' || valeur === 'clair' || valeur === 'sombre';
+function estTheme(value: string | null): value is Theme {
+    return value === 'systeme' || value === 'clair' || value === 'sombre';
 }
 
-/** Lit le coffre. Toute valeur inconnue — `null` compris — rend `'systeme'`. */
+/** Reads the vault. Any unknown value — `null` included — returns `'systeme'`. */
 export function themeStocke(coffre: Coffre): Theme {
-    const valeur = coffre.getItem(CLE_THEME);
-    return estTheme(valeur) ? valeur : 'systeme';
+    const value = coffre.getItem(CLE_THEME);
+    return estTheme(value) ? value : 'systeme';
 }
 
 /**
- * Pose `data-theme`, ou le RETIRE pour `'systeme'` : son ABSENCE signifie
- * « systeme ». Voir le test correspondant pour ce qu'un `data-theme="systeme"`
- * casserait — et surtout pour ce qu'il ne casserait pas, visiblement.
+ * Sets `data-theme`, or REMOVES it for `'systeme'`: its ABSENCE means
+ * "systeme". See the matching test for what a `data-theme="systeme"`
+ * would break — and above all for what it would not break, visibly.
  */
 export function appliquer(racine: Racine, theme: Theme): void {
     if (theme === 'systeme') racine.removeAttribute(ATTRIBUT);
@@ -79,13 +79,13 @@ export function appliquer(racine: Racine, theme: Theme): void {
 }
 
 /**
- * Écrit ET applique localement.
+ * Writes AND applies locally.
  *
- * 🔴 LES DEUX MOITIÉS SONT NÉCESSAIRES, et c'est le piège que la spec §4.2
- * nomme : l'événement `storage` NE SE DÉCLENCHE PAS dans le document qui a
- * écrit. La fenêtre qui change le thème est précisément la seule que
- * l'utilisateur regarde ; si elle se contentait d'écrire, elle serait la seule
- * à ne pas changer d'apparence.
+ * 🔴 BOTH HALVES ARE NECESSARY, and it is the trap spec §4.2
+ * names: the `storage` event DOES NOT FIRE in the document that
+ * wrote. The window changing the theme is precisely the only one
+ * the user is looking at; if it merely wrote, it would be the only one
+ * not to change appearance.
  */
 export function choisir(coffre: Coffre, racine: Racine, theme: Theme): void {
     coffre.setItem(CLE_THEME, theme);
@@ -93,15 +93,15 @@ export function choisir(coffre: Coffre, racine: Racine, theme: Theme): void {
 }
 
 /**
- * Réagit à un événement `storage` venu d'une AUTRE fenêtre. N'écrit RIEN —
- * voir l'en-tête.
+ * Reacts to a `storage` event coming from ANOTHER window. Writes NOTHING —
+ * see the header.
  *
- * ⚠️ Le filtre de clé n'est pas une précaution théorique :
- * `client/src/connexion.ts:57` écrit réellement `guac.jeton.acces`, donc toute
- * fenêtre voisine reçoit cet événement-là. Sans le filtre, `data-theme`
- * vaudrait un JWT.
+ * ⚠️ The key filter is not a theoretical precaution:
+ * `client/src/connexion.ts:57` really writes `guac.jeton.acces`, so every
+ * neighbouring window receives that event. Without the filter, `data-theme`
+ * would be a JWT.
  */
-export function surStockageModifie(racine: Racine, cle: string | null, valeur: string | null): void {
+export function onStorageChanged(racine: Racine, cle: string | null, value: string | null): void {
     if (cle !== CLE_THEME) return;
-    appliquer(racine, estTheme(valeur) ? valeur : 'systeme');
+    appliquer(racine, estTheme(value) ? value : 'systeme');
 }

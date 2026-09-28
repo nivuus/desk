@@ -1,49 +1,49 @@
-//! Ce que la comparaison des deux relevés de topologie permet RÉELLEMENT
-//! d'établir après une purge.
+//! What comparing the two topology surveys ACTUALLY allows
+//! to establish after a purge.
 //!
-//! Hors `#[cfg(windows)]`, comme le module parent et pour la même raison que
-//! `superviseur::designation` et `superviseur::reprise` : **la règle doit
-//! avoir des tests, et ils ne tourneraient pas sous `#[cfg(windows)]`.**
-//! `purge.rs`, lui, est gaté — la première rédaction de ce verdict y vivait,
-//! et `cargo test --workspace` filtrait ses quatre tests sans rien dire.
+//! Outside `#[cfg(windows)]`, like the parent module and for the same reason as
+//! `superviseur::designation` and `superviseur::reprise`: **the rule must
+//! have tests, and they would not run under `#[cfg(windows)]`.**
+//! `purge.rs`, for its part, is gated — the first draft of this verdict lived there,
+//! and `cargo test --workspace` filtered out its four tests without saying anything.
 
-/// Ce que la comparaison des deux relevés permet RÉELLEMENT d'établir.
+/// What comparing the two surveys ACTUALLY allows to establish.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Verdict {
-    /// Autant de sorties en moins que de retraits réussis.
+    /// As many fewer outputs as successful removals.
     Conforme,
-    /// **MOINS** de sorties qu'attendu : quelqu'un d'autre en a retiré une.
-    /// Ce n'est **pas** notre échec, et le dénoncer noie les vrais.
+    /// **FEWER** outputs than expected: someone else removed one.
+    /// It is **not** our failure, and denouncing it drowns the real ones.
     UnTiersAAussiRetire,
-    /// **PLUS** de sorties qu'attendu : des retraits que le pilote a déclarés
-    /// réussis n'ont rien retiré. C'est la seule anomalie que cette
-    /// comparaison puisse imputer à la purge.
+    /// **MORE** outputs than expected: removals the driver declared
+    /// successful removed nothing. It is the only anomaly this
+    /// comparison can attribute to the purge.
     RetraitsSansEffet,
 }
 
-/// 🔴 **CE VERDICT A CRIÉ À TORT À CHAQUE DÉMARRAGE, ET C'EST CE QU'ON CORRIGE.**
-/// L'ancienne forme comparait `apres == avant - retirees` et rendait une
-/// `ERROR` sur **toute** différence. Mesuré deux fois le 30 août 2026 :
-/// `retirees=5 avant=7 apres=1 attendu=2` puis `retirees=7 avant=9 apres=1
-/// attendu=2` — `apres` **INFÉRIEUR** à `attendu` dans les deux cas, c'est-à-dire
-/// qu'il avait disparu PLUS de sorties que nous n'en avions retirées. La purge
-/// avait pourtant parfaitement fonctionné (moniteurs SudoVDA : 8 → 0).
+/// 🔴 **THIS VERDICT CRIED WRONGLY AT EACH START-UP, AND THAT IS WHAT WE FIX.**
+/// The old form compared `after == before - removed` and returned an
+/// `ERROR` on **any** difference. Measured twice on 30 August 2026:
+/// `removed=5 before=7 after=1 expected=2` then `removed=7 before=9 after=1
+/// expected=2` (field names as they read today) — `after` **LOWER** than `expected` in both cases, that is
+/// MORE outputs had disappeared than we had removed. The purge
+/// had nevertheless worked perfectly (SudoVDA monitors: 8 → 0).
 ///
-/// **L'égalité supposée est fausse dès qu'un tiers touche la topologie**, et
-/// c'est le cas nominal sur cette VM : Apollo crée puis détruit une sortie
-/// virtuelle temporaire pour sonder ses encodeurs.
+/// **The assumed equality is false as soon as a third party touches the topology**, and
+/// it is the nominal case on this VM: Apollo creates then destroys a temporary
+/// virtual output to probe its encoders.
 ///
-/// ⚠️ **Un `ERROR` qui crie sans raison à chaque démarrage est un `ERROR` que
-/// plus personne ne lit.** Ce dépôt a perdu plusieurs manches parce que la
-/// trace qui disait la vérité était noyée.
+/// ⚠️ **An `ERROR` that cries for no reason at each start-up is an `ERROR`
+/// no one reads anymore.** This repository lost several rounds because the
+/// trace that told the truth was drowned.
 ///
-/// **Ce que la comparaison peut encore établir, et qu'on garde** : s'il reste
-/// PLUS de sorties qu'attendu, alors des retraits déclarés réussis n'ont rien
-/// retiré — un handle ou un IOCTL cassé, c'est-à-dire le défaut que ce verdict
-/// existait pour attraper.
-pub fn verdict(avant: usize, apres: usize, retirees: usize) -> Verdict {
-    let attendu = avant.saturating_sub(retirees);
-    match apres.cmp(&attendu) {
+/// **What the comparison can still establish, and which we keep**: if there remain
+/// MORE outputs than expected, then removals declared successful removed
+/// nothing — a broken handle or IOCTL, that is the defect this verdict
+/// existed to catch.
+pub fn verdict(before: usize, after: usize, removed: usize) -> Verdict {
+    let expected = before.saturating_sub(removed);
+    match after.cmp(&expected) {
         std::cmp::Ordering::Equal => Verdict::Conforme,
         std::cmp::Ordering::Less => Verdict::UnTiersAAussiRetire,
         std::cmp::Ordering::Greater => Verdict::RetraitsSansEffet,
@@ -55,32 +55,32 @@ mod tests_verdict {
     use super::*;
 
     #[test]
-    fn autant_de_moins_que_de_retraits_est_conforme() {
+    fn as_many_fewer_as_removals_is_compliant() {
         assert_eq!(verdict(9, 2, 7), Verdict::Conforme);
         assert_eq!(verdict(0, 0, 0), Verdict::Conforme);
     }
 
-    /// 🔴 LES DEUX RELEVÉS RÉELS DU 30 AOÛT 2026, qui rendaient une `ERROR`.
-    /// Ils ne doivent plus en rendre : la purge avait fonctionné.
+    /// 🔴 THE TWO REAL SURVEYS OF 30 AUGUST 2026, which returned an `ERROR`.
+    /// They must no longer return one: the purge had worked.
     #[test]
-    fn les_deux_releves_qui_criaient_a_tort_ne_crient_plus() {
+    fn the_two_readings_that_cried_wrongly_no_longer_cry() {
         assert_eq!(verdict(7, 1, 5), Verdict::UnTiersAAussiRetire);
         assert_eq!(verdict(9, 1, 7), Verdict::UnTiersAAussiRetire);
     }
 
-    /// 🔴 LA ROUGE QUI RESTE, et c'est le défaut que le verdict existait pour
-    /// attraper : le pilote déclare des retraits réussis, la topologie ne
-    /// bouge pas.
+    /// 🔴 THE RED THAT REMAINS, and it is the defect the verdict existed to
+    /// catch: the driver declares successful removals, the topology does not
+    /// move.
     #[test]
-    fn des_retraits_sans_effet_restent_denonces() {
+    fn ineffective_removals_stay_denounced() {
         assert_eq!(verdict(9, 9, 7), Verdict::RetraitsSansEffet);
         assert_eq!(verdict(3, 3, 1), Verdict::RetraitsSansEffet);
     }
 
-    /// Le cas que l'ancienne forme traitait déjà : aucun retrait, rien ne
-    /// bouge, tout va bien.
+    /// The case the old form already handled: no removal, nothing
+    /// moves, all is well.
     #[test]
-    fn aucun_retrait_et_rien_ne_bouge_est_conforme() {
+    fn no_removal_and_nothing_moving_is_compliant() {
         assert_eq!(verdict(4, 4, 0), Verdict::Conforme);
     }
 }

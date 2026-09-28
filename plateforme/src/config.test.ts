@@ -1,52 +1,52 @@
 import { describe, expect, it } from 'vitest';
 import { lireConfig } from './config';
 
-/// 42 caractères : au-dessus de `LONGUEUR_SECRET_MIN`, et jamais `''` — un
-/// secret de test explicite, comme l'exige la tâche 3.
+/// 42 characters: above `MIN_SECRET_LENGTH`, and never `''` — an
+/// explicit test secret, as task 3 requires.
 const SECRET = 'un-secret-de-plateforme-de-quarante-octets';
 
-/// Le montage minimal — réutilisé dans plusieurs `describe`.
-/// ⚠️ Le positionnement ici, avant tous les tests, rend `BASE` disponible
-/// partout sans redondance. AUCUN DE CES TESTS NE LIT `process.env` : `lireConfig`
-/// reçoit son environnement en PARAMÈTRE (voir `config.ts`), donc rien à poser ni
-/// restaurer. Ajouter une variable à `Config` n'a rendu aucun test dépendant du
-/// shell qui le lance.
+/// The minimal setup — reused in several `describe`s.
+/// ⚠️ Placing it here, before all the tests, makes `BASE` available
+/// everywhere without redundancy. NONE OF THESE TESTS READS `process.env`: `lireConfig`
+/// receives its environment as a PARAMETER (see `config.ts`), so nothing to set or
+/// restore. Adding a variable to `Config` made no test depend on the
+/// shell that runs it.
 const BASE = { PLATEFORME_HOTE: '127.0.0.1', PLATEFORME_SECRET_JETON: SECRET };
 
 describe('lireConfig', () => {
-    it("refuse de démarrer sans PLATEFORME_HOTE — il n'y a pas de défaut", () => {
-        // Le défaut DOIT être l'absence de défaut (spec §4, critère ④).
-        // Poser '0.0.0.0' par défaut ferait passer un test d'écoute sans rien
-        // garantir : c'est exactement la panne muette que ce dépôt combat.
+    it("refuses to start without PLATEFORME_HOTE — there is no default", () => {
+        // The default MUST be the absence of a default (spec §4, criterion ④).
+        // Setting '0.0.0.0' by default would pass a listen test without
+        // guaranteeing anything: it is exactly the silent failure this repository fights.
         expect(() => lireConfig({})).toThrow(/PLATEFORME_HOTE/);
     });
 
-    it("n'invente pas d'adresse quand la variable est vide", () => {
+    it("does not invent an address when the variable is empty", () => {
         expect(() => lireConfig({ PLATEFORME_HOTE: '' })).toThrow(/PLATEFORME_HOTE/);
     });
 
-    it('lit les champs, avec leurs défauts non permissifs', () => {
-        // `PLATEFORME_SECRET_JETON` est fourni parce qu'il n'a AUCUN défaut :
-        // c'est le sujet des trois tests suivants.
+    it('reads the fields, with their non-permissive defaults', () => {
+        // `PLATEFORME_SECRET_JETON` is supplied because it has NO default:
+        // it is the subject of the next three tests.
         //
-        // 🔴 `PLATEFORME_PROXY_DE_CONFIANCE` EST FOURNIE, ET C'EST DEVENU
-        // OBLIGATOIRE (tâche 6, garde du refus de démarrer) : sans elle, le
-        // mode `pomerium` par défaut de ce test lèverait avant même
-        // d'atteindre l'assertion. Le sujet de CE test n'est pas cette garde
-        // — elle a son propre `describe` plus bas —, donc on la satisfait
-        // sans la questionner.
+        // 🔴 `PLATEFORME_PROXY_DE_CONFIANCE` IS SUPPLIED, AND IT HAS BECOME
+        // MANDATORY (task 6, guard of the refusal to start): without it, this
+        // test's default `pomerium` mode would throw before even
+        // reaching the assertion. The subject of THIS test is not that guard
+        // — it has its own `describe` further down —, so we satisfy it
+        // without questioning it.
         const c = lireConfig({
             PLATEFORME_HOTE: '127.0.0.1',
             PLATEFORME_SECRET_JETON: SECRET,
             PLATEFORME_PROXY_DE_CONFIANCE: '172.18.0.5',
         });
-        // 🔴 PASSER À toStrictEqual, PAS toEqual : `toEqual` ignore les
-        // propriétés `undefined`, donc un champ facultatif ajouté à `Config`
-        // et retourné comme `undefined` ne causerait PAS de rouge. `toStrictEqual`
-        // exige que les deux objets aient exactement les mêmes clés — c'est le
-        // seul garde qui tienne contre la divergence. Preuve :
-        // `expect({a:1, u: undefined}).toEqual({a:1})` PASSE,
-        // `toStrictEqual` échoue.
+        // 🔴 SWITCH TO toStrictEqual, NOT toEqual: `toEqual` ignores
+        // `undefined` properties, so an optional field added to `Config`
+        // and returned as `undefined` would NOT cause a red. `toStrictEqual`
+        // requires both objects to have exactly the same keys — it is the
+        // only guard that holds against divergence. Proof:
+        // `expect({a:1, u: undefined}).toEqual({a:1})` PASSES,
+        // `toStrictEqual` fails.
         expect(c).toStrictEqual({
             hote: '127.0.0.1',
             port: 8080,
@@ -62,12 +62,12 @@ describe('lireConfig', () => {
         });
     });
 
-    it('retient le répertoire d’icônes qu’on lui NOMME', () => {
-        // 🔴 LA ROUGE : la variable posée et IGNORÉE. Le magasin se
-        // reconstruirait ailleurs, en silence, en retéléversant tout.
+    it('keeps the icon directory it is GIVEN', () => {
+        // 🔴 THE RED: the variable set and IGNORED. The store would
+        // rebuild elsewhere, silently, re-uploading everything.
         //
-        // `PLATEFORME_PROXY_DE_CONFIANCE` est posée pour satisfaire la garde
-        // du refus de démarrer (tâche 6) — ce n'est pas le sujet de ce test.
+        // `PLATEFORME_PROXY_DE_CONFIANCE` is set to satisfy the guard
+        // of the refusal to start (task 6) — it is not the subject of this test.
         expect(
             lireConfig({
                 ...BASE,
@@ -77,12 +77,12 @@ describe('lireConfig', () => {
         ).toBe('/var/lib/guac/ic');
     });
 
-    it('🔴 un PLATEFORME_ICONES VIDE retombe sur le défaut, pas sur le répertoire courant', () => {
-        // `env.X ?? 'defaut'` ne rattrape PAS la chaîne vide — P1 a payé cette
-        // erreur exacte, où un des deux rouges annoncés était en réalité vert.
+    it('🔴 an EMPTY PLATEFORME_ICONES falls back to the default, not to the current directory', () => {
+        // `env.X ?? 'defaut'` does NOT catch the empty string — P1 paid for this
+        // exact mistake, where one of the two announced reds was actually green.
         //
-        // `PLATEFORME_PROXY_DE_CONFIANCE` est posée pour satisfaire la garde
-        // du refus de démarrer (tâche 6) — ce n'est pas le sujet de ce test.
+        // `PLATEFORME_PROXY_DE_CONFIANCE` is set to satisfy the guard
+        // of the refusal to start (task 6) — it is not the subject of this test.
         expect(
             lireConfig({
                 ...BASE,
@@ -92,61 +92,61 @@ describe('lireConfig', () => {
         ).toBe('donnees/icones');
     });
 
-    it('refuse un PLATEFORME_BASE inconnu, plutôt que de retomber sur sqlite', () => {
+    it('refuses an unknown PLATEFORME_BASE, rather than falling back to sqlite', () => {
         expect(() => lireConfig({ PLATEFORME_HOTE: '::1', PLATEFORME_SECRET_JETON: SECRET, PLATEFORME_BASE: 'mysql' }))
             .toThrow(/PLATEFORME_BASE/);
     });
 
-    it('refuse un port qui n’est pas un entier', () => {
+    it('refuses a port that is not an integer', () => {
         expect(() => lireConfig({ PLATEFORME_HOTE: '::1', PLATEFORME_SECRET_JETON: SECRET, PLATEFORME_PORT: 'huit-mille' }))
             .toThrow(/PLATEFORME_PORT/);
     });
 
-    it("refuse de démarrer sans PLATEFORME_SECRET_JETON — il n'y a pas de défaut", () => {
-        // 🔴 Le défaut DOIT être l'absence de défaut. Un secret tiré au hasard
-        // au démarrage passerait ce test ET invaliderait tous les jetons à
-        // chaque redémarrage, sans que rien ne le dise.
+    it("refuses to start without PLATEFORME_SECRET_JETON — there is no default", () => {
+        // 🔴 The default MUST be the absence of a default. A secret drawn at random
+        // at startup would pass this test AND invalidate all tokens at
+        // every restart, without anything saying so.
         expect(() => lireConfig({ PLATEFORME_HOTE: '127.0.0.1' })).toThrow(/PLATEFORME_SECRET_JETON/);
     });
 
-    it("n'invente pas de secret quand la variable est vide", () => {
-        // ⚠️ P1 a payé exactement cette erreur : `env.X ?? 'defaut'` ne
-        // rattrape pas la chaîne vide, et le test annoncé rouge était vert.
+    it("does not invent a secret when the variable is empty", () => {
+        // ⚠️ P1 paid for exactly this mistake: `env.X ?? 'defaut'` does not
+        // catch the empty string, and the test announced red was green.
         expect(() => lireConfig({ PLATEFORME_HOTE: '127.0.0.1', PLATEFORME_SECRET_JETON: '' }))
             .toThrow(/PLATEFORME_SECRET_JETON/);
     });
 
-    it('refuse un secret trop court, plutôt que de signer avec', () => {
+    it('refuses a secret that is too short, rather than signing with it', () => {
         expect(() => lireConfig({ PLATEFORME_HOTE: '127.0.0.1', PLATEFORME_SECRET_JETON: 'trop-court' }))
             .toThrow(/32/);
     });
 
-    it("lit PLATEFORME_ORIGINE_CLIENT, qui est FACULTATIVE et ne lève jamais", () => {
-        // Elle est facultative là où PLATEFORME_HOTE ne l'est pas, et
-        // l'asymétrie tient aux conséquences : une origine absente produit un
-        // refus BRUYANT du navigateur, qu'un opérateur voit ; une adresse
-        // d'écoute absente produirait une écoute universelle SILENCIEUSE.
-        // Refuser de démarrer pour elle casserait le déploiement de P5, où le
-        // proxy inverse met les deux sur la même origine.
+    it("reads PLATEFORME_ORIGINE_CLIENT, which is OPTIONAL and never throws", () => {
+        // It is optional where PLATEFORME_HOTE is not, and
+        // the asymmetry comes from the consequences: an absent origin produces a
+        // LOUD refusal from the browser, which an operator sees; an absent listen
+        // address would produce a SILENT universal listen.
+        // Refusing to start for it would break P5's deployment, where the
+        // reverse proxy puts both on the same origin.
         //
-        // `PLATEFORME_PROXY_DE_CONFIANCE` est posée sur les trois appels pour
-        // satisfaire la garde du refus de démarrer (tâche 6) — ce n'est pas
-        // le sujet de ce test.
+        // `PLATEFORME_PROXY_DE_CONFIANCE` is set on the three calls to
+        // satisfy the guard of the refusal to start (task 6) — it is not
+        // the subject of this test.
         const sans = lireConfig({
             PLATEFORME_HOTE: '127.0.0.1',
             PLATEFORME_SECRET_JETON: SECRET,
             PLATEFORME_PROXY_DE_CONFIANCE: '172.18.0.5',
         });
         expect(sans.origineClient).toBeUndefined();
-        const avec = lireConfig({
+        const withIt = lireConfig({
             PLATEFORME_HOTE: '127.0.0.1',
             PLATEFORME_SECRET_JETON: SECRET,
             PLATEFORME_ORIGINE_CLIENT: 'http://127.0.0.1:5173',
             PLATEFORME_PROXY_DE_CONFIANCE: '172.18.0.5',
         });
-        expect(avec.origineClient).toBe('http://127.0.0.1:5173');
-        // Vide vaut absente, jamais la chaîne vide : un `Origin: ` vide ne
-        // correspondrait à aucune origine réelle.
+        expect(withIt.origineClient).toBe('http://127.0.0.1:5173');
+        // Empty means absent, never the empty string: an empty `Origin: ` would
+        // match no real origin.
         const vide = lireConfig({
             PLATEFORME_HOTE: '127.0.0.1',
             PLATEFORME_SECRET_JETON: SECRET,
@@ -156,28 +156,28 @@ describe('lireConfig', () => {
         expect(vide.origineClient).toBeUndefined();
     });
 
-    it("(a) PLATEFORME_PROXY_DE_CONFIANCE absente ⇒ on ne croit PERSONNE", () => {
-        // 🔴 Le défaut est de ne rien croire, jamais de tout croire. Un défaut
-        // permissif ici rendrait l'adresse du client FORGEABLE par le client
-        // lui-même, donc le frein par adresse contournable en une ligne
-        // d'en-tête.
+    it("(a) PLATEFORME_PROXY_DE_CONFIANCE absent ⇒ we trust NOBODY", () => {
+        // 🔴 The default is to trust nothing, never to trust everything. A permissive
+        // default here would make the client's address FORGEABLE by the client
+        // itself, hence the per-address brake bypassable with one header
+        // line.
         //
-        // 🔴 `PLATEFORME_AUTH: 'motdepasse'` EST POSÉE, ET C'EST LE POINT :
-        // depuis la garde du refus de démarrer (tâche 6), l'ensemble VIDE
-        // n'est atteignable qu'en mode `motdepasse` — en `pomerium`, ce même
-        // montage LÈVE désormais (voir le describe dédié). C'est précisément
-        // ce que la garde signifie : un ensemble de confiance vide n'est plus
-        // un état qu'on documente en `pomerium`, il est refusé au démarrage.
+        // 🔴 `PLATEFORME_AUTH: 'motdepasse'` IS SET, AND THAT IS THE POINT:
+        // since the guard of the refusal to start (task 6), the EMPTY set
+        // is only reachable in `motdepasse` mode — in `pomerium`, this same
+        // setup now THROWS (see the dedicated describe). It is precisely
+        // what the guard means: an empty trust set is no longer
+        // a state one documents in `pomerium`, it is refused at startup.
         expect(lireConfig({ ...BASE, PLATEFORME_AUTH: 'motdepasse' }).proxyDeConfiance.size).toBe(0);
     });
 
-    it("(b) chaîne VIDE ⇒ ensemble vide, et non une entrée vide", () => {
-        // ⚠️ `env.X ?? 'defaut'` ne rattrape pas `''` — P1 a payé cette erreur
-        // exacte à sa tâche 1, où un des deux rouges annoncés était vert.
+    it("(b) EMPTY string ⇒ empty set, and not an empty entry", () => {
+        // ⚠️ `env.X ?? 'defaut'` does not catch `''` — P1 paid for this exact
+        // mistake in its task 1, where one of the two announced reds was green.
         //
-        // 🔴 `PLATEFORME_AUTH: 'motdepasse'` EST POSÉE — même raison que (a) :
-        // depuis la garde du refus de démarrer (tâche 6), l'ensemble VIDE
-        // n'est atteignable qu'en mode `motdepasse`.
+        // 🔴 `PLATEFORME_AUTH: 'motdepasse'` IS SET — same reason as (a):
+        // since the guard of the refusal to start (task 6), the EMPTY set
+        // is only reachable in `motdepasse` mode.
         expect(
             lireConfig({
                 ...BASE,
@@ -187,62 +187,62 @@ describe('lireConfig', () => {
         ).toBe(0);
     });
 
-    it("(c) une liste séparée par des virgules, espaces RETIRÉES", () => {
+    it("(c) a comma-separated list, spaces REMOVED", () => {
         const c = lireConfig({ ...BASE, PLATEFORME_PROXY_DE_CONFIANCE: '172.18.0.5, 10.0.0.1' });
         expect(c.proxyDeConfiance.size).toBe(2);
-        // Sans le `trim`, la seconde entrée serait ` 10.0.0.1` et ne
-        // correspondrait JAMAIS à une adresse de pair — la confiance
-        // échouerait en silence, et le frein par adresse dégénérerait en
-        // frein global sans qu'aucune ligne ne le dise.
+        // Without the `trim`, the second entry would be ` 10.0.0.1` and would
+        // NEVER match a peer address — trust would
+        // fail silently, and the per-address brake would degenerate into a
+        // global brake without any line saying so.
         expect(c.proxyDeConfiance.has('172.18.0.5')).toBe(true);
         expect(c.proxyDeConfiance.has('10.0.0.1')).toBe(true);
     });
 
-    it("(d) une entrée vide entre deux virgules est IGNORÉE", () => {
+    it("(d) an empty entry between two commas is IGNORED", () => {
         const c = lireConfig({ ...BASE, PLATEFORME_PROXY_DE_CONFIANCE: '172.18.0.5,,10.0.0.1' });
         expect(c.proxyDeConfiance.size).toBe(2);
-        // Une entrée vide dans l'ensemble de confiance rendrait de confiance
-        // tout pair dont l'adresse est vide — c'est-à-dire `ADRESSE_INCONNUE`
-        // s'il venait à valoir `''`.
+        // An empty entry in the trust set would make trusted
+        // any peer whose address is empty — that is, `ADRESSE_INCONNUE`
+        // if it ever became `''`.
         expect(c.proxyDeConfiance.has('')).toBe(false);
     });
 });
 
-describe('le refus de démarrer en mode pomerium sans proxy de confiance', () => {
-    // 🔴 UN REFUS DE DÉMARRER SE LIT AVANT D'AGIR. Un 401 silencieux pour
-    // tout le monde se lirait APRÈS, sur un service qui répond, écoute et
-    // sert les dix autres routeurs — la panne la plus discrète possible.
-    it('LÈVE en mode pomerium sans PLATEFORME_PROXY_DE_CONFIANCE', () => {
+describe('the refusal to start in pomerium mode without a trusted proxy', () => {
+    // 🔴 A REFUSAL TO START IS READ BEFORE ACTING. A silent 401 for
+    // everyone would be read AFTER, on a service that answers, listens and
+    // serves the ten other routers — the most discreet failure possible.
+    it('THROWS in pomerium mode without PLATEFORME_PROXY_DE_CONFIANCE', () => {
         expect(() => lireConfig({ ...BASE, PLATEFORME_AUTH: 'pomerium' })).toThrow(
             /PLATEFORME_PROXY_DE_CONFIANCE/,
         );
     });
 
-    // ⚠️ LA GARDE EST LIÉE AU MODE, comme celle de PLATEFORME_HOTE : en
-    // `motdepasse`, le service s'authentifie lui-même et l'en-tête n'est lu
-    // par personne.
-    it('ne lève PAS en mode motdepasse', () => {
+    // ⚠️ THE GUARD IS TIED TO THE MODE, like that of PLATEFORME_HOTE: in
+    // `motdepasse`, the service authenticates by itself and the header is read
+    // by nobody.
+    it('does NOT throw in motdepasse mode', () => {
         expect(() => lireConfig({ ...BASE, PLATEFORME_AUTH: 'motdepasse' })).not.toThrow();
     });
 });
 
 describe('PLATEFORME_PAGE', () => {
-    // 🔴 AUCUN DÉFAUT, à la différence de PLATEFORME_ICONES : un défaut comme
-    // `client/dist` ferait servir un répertoire au hasard du répertoire
-    // courant, et ferait passer le montage nginx — où la plateforme ne doit
-    // RIEN servir — d'un 404 franc à un 200 sur des fichiers non voulus.
-    // `PLATEFORME_PROXY_DE_CONFIANCE` est posée sur les quatre tests de ce
-    // bloc pour satisfaire la garde du refus de démarrer (tâche 6) — ce
-    // n'est pas leur sujet, qui reste `racinePage`.
-    it("est ABSENTE par défaut, et le service ne sert alors aucun fichier", () => {
+    // 🔴 NO DEFAULT, unlike PLATEFORME_ICONES: a default like
+    // `client/dist` would serve a random directory relative to the current
+    // directory, and would turn the nginx setup — where the platform must serve
+    // NOTHING — from a plain 404 into a 200 on unwanted files.
+    // `PLATEFORME_PROXY_DE_CONFIANCE` is set on the four tests of this
+    // block to satisfy the guard of the refusal to start (task 6) — it
+    // is not their subject, which remains `racinePage`.
+    it("is ABSENT by default, and the service then serves no file", () => {
         expect(
             lireConfig({ ...BASE, PLATEFORME_PROXY_DE_CONFIANCE: '172.18.0.5' }).racinePage,
         ).toBeUndefined();
     });
 
-    // ⚠️ Le test de la chaîne VIDE est DISTINCT de celui de l'absence :
-    // `env.X ?? 'defaut'` ne rattrape pas `''`. P1 a payé cette erreur exacte.
-    it('traite la chaîne VIDE comme une absence', () => {
+    // ⚠️ The EMPTY string test is DISTINCT from the absence one:
+    // `env.X ?? 'defaut'` does not catch `''`. P1 paid for this exact mistake.
+    it('treats the EMPTY string as an absence', () => {
         expect(
             lireConfig({
                 ...BASE,
@@ -252,7 +252,7 @@ describe('PLATEFORME_PAGE', () => {
         ).toBeUndefined();
     });
 
-    it('retient le chemin posé', () => {
+    it('keeps the path that was set', () => {
         expect(
             lireConfig({
                 ...BASE,
@@ -262,11 +262,11 @@ describe('PLATEFORME_PAGE', () => {
         ).toBe('/srv/page');
     });
 
-    it('inclut le champ racinePage dans l\'objet, même absent', () => {
-        // 🔴 CE TEST FERME LE TROU : retirer `racinePage,` de l'objet que
-        // lireConfig rend fait échouer ce test, alors que les trois tests
-        // ci-dessus passent (puisqu'on peut lire `.racinePage` sur undefined).
-        // C'est le seul qui détecte la perte pure et simple du champ.
+    it('includes the racinePage field in the object, even when absent', () => {
+        // 🔴 THIS TEST CLOSES THE HOLE: removing `racinePage,` from the object
+        // lireConfig returns makes this test fail, while the three tests
+        // above pass (since `.racinePage` can be read on undefined).
+        // It is the only one that detects the plain loss of the field.
         expect(
             Object.hasOwn(
                 lireConfig({ ...BASE, PLATEFORME_PROXY_DE_CONFIANCE: '172.18.0.5' }),
@@ -277,37 +277,37 @@ describe('PLATEFORME_PAGE', () => {
 });
 
 describe('PLATEFORME_AUTH', () => {
-    /// Le montage minimal — copié du haut de ce fichier, jamais réinventé.
+    /// The minimal setup — copied from the top of this file, never reinvented.
     ///
-    /// ⚠️ ÉCART ASSUMÉ AVEC LE BRIEF : celui-ci portait `'x'.repeat(32)` en
-    /// littéral, ce que `securite/secrets.test.ts` dénonce — il balaie toute
-    /// AFFECTATION LITTÉRALE de `PLATEFORME_SECRET_JETON` dans un fichier
-    /// versionné, et une chaîne citée en est une, peu importe qu'elle soit
-    /// triviale. `SECRET`, la constante déjà déclarée en tête de ce fichier,
-    /// est un IDENTIFIANT — la même convention que `BASE` juste plus bas,
-    /// exemptée nommément par `inoffensive()`.
+    /// ⚠️ ACKNOWLEDGED DEPARTURE FROM THE BRIEF: it carried `'x'.repeat(32)` as a
+    /// literal, which `securite/secrets.test.ts` flags — it sweeps every
+    /// LITERAL ASSIGNMENT of `PLATEFORME_SECRET_JETON` in a versioned
+    /// file, and a quoted string is one, however trivial it
+    /// is. `SECRET`, the constant already declared at the top of this file,
+    /// is an IDENTIFIER — the same convention as `BASE` just below,
+    /// exempted by name by `inoffensive()`.
     const base = {
         PLATEFORME_HOTE: '127.0.0.1',
         PLATEFORME_SECRET_JETON: SECRET,
     };
 
-    it('vaut pomerium par défaut', () => {
-        // `PLATEFORME_PROXY_DE_CONFIANCE` est posée pour satisfaire la garde
-        // du refus de démarrer (tâche 6) — le sujet de ce test est le mode
-        // `pomerium` lui-même, pas cette garde.
+    it('defaults to pomerium', () => {
+        // `PLATEFORME_PROXY_DE_CONFIANCE` is set to satisfy the guard
+        // of the refusal to start (task 6) — the subject of this test is the
+        // `pomerium` mode itself, not that guard.
         expect(lireConfig({ ...base, PLATEFORME_PROXY_DE_CONFIANCE: '172.18.0.5' }).auth).toBe(
             'pomerium',
         );
     });
 
-    it('accepte motdepasse', () => {
+    it('accepts motdepasse', () => {
         expect(lireConfig({ ...base, PLATEFORME_AUTH: 'motdepasse' }).auth).toBe('motdepasse');
     });
 
-    it('retombe sur le défaut quand la valeur est VIDE', () => {
-        // `PLATEFORME_PROXY_DE_CONFIANCE` est posée pour satisfaire la garde
-        // du refus de démarrer (tâche 6) : une valeur VIDE retombe sur
-        // `pomerium`, qui exige la variable.
+    it('falls back to the default when the value is EMPTY', () => {
+        // `PLATEFORME_PROXY_DE_CONFIANCE` is set to satisfy the guard
+        // of the refusal to start (task 6): an EMPTY value falls back to
+        // `pomerium`, which requires the variable.
         expect(
             lireConfig({
                 ...base,
@@ -317,66 +317,66 @@ describe('PLATEFORME_AUTH', () => {
         ).toBe('pomerium');
     });
 
-    // 🔴 LA ROUGE DU CRITÈRE ④ : une coquille de casse ne doit PAS retomber
-    // sur le défaut, sinon le mode mot de passe tournerait sous le nom du
-    // mode Pomerium — et le second sens est une OUVERTURE.
-    it('LÈVE sur une valeur inconnue, jamais un repli', () => {
+    // 🔴 THE RED OF CRITERION ④: a case typo must NOT fall back
+    // to the default, otherwise the password mode would run under the name of the
+    // Pomerium mode — and the other direction is an OPENING.
+    it('THROWS on an unknown value, never a fallback', () => {
         expect(() => lireConfig({ ...base, PLATEFORME_AUTH: 'Pomerium' })).toThrow(
             /PLATEFORME_AUTH/,
         );
     });
 });
 
-describe("la garde d'écoute du mode pomerium", () => {
-    // Même écart assumé que ci-dessus : `SECRET` plutôt que le littéral du
-    // brief, pour ne pas déclencher `securite/secrets.test.ts`.
+describe("the listen guard of pomerium mode", () => {
+    // Same acknowledged departure as above: `SECRET` rather than the brief's
+    // literal, so as not to trigger `securite/secrets.test.ts`.
     const base = { PLATEFORME_SECRET_JETON: SECRET };
 
-    // 🔴 LA ROUGE DU CRITÈRE ⑤, et elle décrit le montage RÉEL du
-    // 21 août 2026 : le service tourne aujourd'hui sur 0.0.0.0:8080.
-    it('REFUSE 0.0.0.0 en mode pomerium', () => {
+    // 🔴 THE RED OF CRITERION ⑤, and it describes the REAL setup of
+    // 21 August 2026: the service runs today on 0.0.0.0:8080.
+    it('REFUSES 0.0.0.0 in pomerium mode', () => {
         expect(() => lireConfig({ ...base, PLATEFORME_HOTE: '0.0.0.0' })).toThrow(
-            /écoute universelle/,
+            /universal listen/,
         );
     });
 
-    it('REFUSE :: en mode pomerium', () => {
+    it('REFUSES :: in pomerium mode', () => {
         expect(() => lireConfig({ ...base, PLATEFORME_HOTE: '::' })).toThrow(
-            /écoute universelle/,
+            /universal listen/,
         );
     });
 
-    // ⚠️ ARBITRAGE : le brief propose `ECOUTES_UNIVERSELLES` avec QUATRE
-    // membres (`0.0.0.0`, `::`, `[::]`, `*`) mais ne fait tester que les deux
-    // ci-dessus. Un membre non éprouvé est exactement « un contrôle qu'on n'a
-    // jamais vu rouge » (§ méthode de mesure, CLAUDE.md) : les deux tests
-    // suivants ferment ce trou plutôt que de retirer les membres du set.
-    it('REFUSE [::] en mode pomerium', () => {
+    // ⚠️ ARBITRATION: the brief proposes `ECOUTES_UNIVERSELLES` with FOUR
+    // members (`0.0.0.0`, `::`, `[::]`, `*`) but only has the two
+    // above tested. An untested member is exactly "a check never
+    // seen red" (§ measurement method, CLAUDE.md): the next two
+    // tests close that hole rather than removing members from the set.
+    it('REFUSES [::] in pomerium mode', () => {
         expect(() => lireConfig({ ...base, PLATEFORME_HOTE: '[::]' })).toThrow(
-            /écoute universelle/,
+            /universal listen/,
         );
     });
 
-    it('REFUSE * en mode pomerium', () => {
+    it('REFUSES * in pomerium mode', () => {
         expect(() => lireConfig({ ...base, PLATEFORME_HOTE: '*' })).toThrow(
-            /écoute universelle/,
+            /universal listen/,
         );
     });
 
-    // La garde est liée au MODE, pas universelle : sans ce test, on ne saurait
-    // pas si elle refuse 0.0.0.0 ou si elle refuse toujours.
-    it('LAISSE PASSER 0.0.0.0 en mode motdepasse', () => {
+    // The guard is tied to the MODE, not universal: without this test, one would not know
+    // whether it refuses 0.0.0.0 or refuses always.
+    it('LETS THROUGH 0.0.0.0 in motdepasse mode', () => {
         const c = lireConfig({ ...base, PLATEFORME_HOTE: '0.0.0.0', PLATEFORME_AUTH: 'motdepasse' });
         expect(c.hote).toBe('0.0.0.0');
     });
 
-    // Le déploiement Docker pose un NOM DE SERVICE, pas une adresse : la garde
-    // doit le laisser passer, sinon elle casse le montage le plus sûr des trois.
+    // The Docker deployment sets a SERVICE NAME, not an address: the guard
+    // must let it through, otherwise it breaks the safest setup of the three.
     //
-    // `PLATEFORME_PROXY_DE_CONFIANCE` est posée sur ces deux tests pour
-    // satisfaire la garde du refus de démarrer (tâche 6) — le mode reste
-    // `pomerium` par défaut, c'est le sujet de ce describe.
-    it('LAISSE PASSER un nom de service de réseau interne', () => {
+    // `PLATEFORME_PROXY_DE_CONFIANCE` is set on these two tests to
+    // satisfy the guard of the refusal to start (task 6) — the mode stays
+    // `pomerium` by default, it is the subject of this describe.
+    it('LETS THROUGH an internal network service name', () => {
         const c = lireConfig({
             ...base,
             PLATEFORME_HOTE: 'plateforme',
@@ -385,8 +385,8 @@ describe("la garde d'écoute du mode pomerium", () => {
         expect(c.hote).toBe('plateforme');
     });
 
-    // Le montage retenu par la spec § 7.1.
-    it("LAISSE PASSER l'adresse du pont libvirt", () => {
+    // The setup retained by spec § 7.1.
+    it("LETS THROUGH the address of the libvirt bridge", () => {
         expect(
             lireConfig({
                 ...base,

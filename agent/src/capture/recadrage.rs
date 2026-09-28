@@ -6,15 +6,15 @@
 use super::*;
 
 impl DesktopCapture {
-    /// Copie la région demandée dans une texture dédiée, sur le GPU.
+    /// Copies the requested region into a dedicated texture, on the GPU.
     pub(super) fn crop(&mut self, source: &ID3D11Texture2D, region: Rect) -> Result<CapturedFrame> {
         let (width, height) = (region.width, region.height);
         if width == 0 || height == 0 {
-            bail!("région de recadrage vide");
+            bail!("empty crop region");
         }
 
-        // Réallouer seulement si la taille a changé : un redimensionnement est
-        // rare, une image ne l'est pas.
+        // Reallocate only if the size changed: a resize is
+        // rare, a frame is not.
         let need_alloc = !matches!(self.target, Some((_, w, h)) if w == width && h == height);
         if need_alloc {
             let desc = D3D11_TEXTURE2D_DESC {
@@ -34,15 +34,15 @@ impl DesktopCapture {
             };
             let mut texture: Option<ID3D11Texture2D> = None;
             unsafe { self.device.CreateTexture2D(&desc, None, Some(&mut texture)) }
-                .context("allocation de la texture de recadrage")?;
+                .context("allocating the crop texture")?;
             self.target = Some((
-                texture.ok_or_else(|| anyhow!("texture de recadrage absente"))?,
+                texture.ok_or_else(|| anyhow!("crop texture absent"))?,
                 width,
                 height,
             ));
         }
 
-        let (texture, _, _) = self.target.as_ref().expect("texture allouée");
+        let (texture, _, _) = self.target.as_ref().expect("texture allocated");
         let box_ = D3D11_BOX {
             left: region.x.max(0) as u32,
             top: region.y.max(0) as u32,

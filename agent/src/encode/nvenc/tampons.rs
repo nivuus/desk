@@ -1,44 +1,44 @@
-//! Les dispositions de structures NVENC qui s'échangent **par image** :
-//! enregistrer une texture, la projeter, obtenir un tampon de flux, encoder,
-//! relire le flux.
+//! The NVENC structure layouts exchanged **per image**:
+//! registering a texture, mapping it, obtaining a stream buffer, encoding,
+//! reading the stream back.
 //!
-//! 🔴 **NOTICE DE LICENCE, PROVENANCE ET COMMANDE DE RELECTURE : voir
-//! `super::abi`.** Ce fichier prolonge la même transcription et relève de la
-//! même notice. Son pendant est `super::structures`, qui porte ce qu'on
-//! configure **une fois** par session ; la scission suit cette frontière-là,
-//! et pas le plafond de 500 lignes (qu'elle sert accessoirement).
+//! 🔴 **LICENCE NOTICE, PROVENANCE AND REREAD COMMAND: see
+//! `super::abi`.** This file extends the same transcription and falls under the
+//! same notice. Its counterpart is `super::structures`, which carries what is
+//! configured **once** per session; the split follows that boundary,
+//! and not the 500-line ceiling (which it incidentally serves).
 //!
-//! Mêmes conventions de transcription et mêmes assertions que
-//! `super::structures` — **y compris ce que ces assertions n'ont pas à
-//! attraper**, cas mesuré et expliqué là-bas.
+//! Same transcription conventions and same assertions as
+//! `super::structures` — **including what these assertions do not have to
+//! catch**, a case measured and explained there.
 
 #![allow(dead_code)]
 
 use core::ffi::c_void;
 
 macro_rules! forme {
-    ($t:ty, $taille:expr, $alignement:expr, $nom:literal) => {
+    ($t:ty, $size:expr, $alignment:expr, $name:literal) => {
         const _: () = assert!(
-            core::mem::size_of::<$t>() == $taille,
-            concat!("taille ABI fausse pour ", $nom)
+            core::mem::size_of::<$t>() == $size,
+            concat!("wrong ABI size for ", $name)
         );
         const _: () = assert!(
-            core::mem::align_of::<$t>() == $alignement,
-            concat!("alignement ABI faux pour ", $nom)
+            core::mem::align_of::<$t>() == $alignment,
+            concat!("wrong ABI alignment for ", $name)
         );
     };
 }
 
 macro_rules! deport {
-    ($t:ty, $champ:ident, $valeur:expr, $nom:literal) => {
+    ($t:ty, $field:ident, $value:expr, $name:literal) => {
         const _: () = assert!(
-            core::mem::offset_of!($t, $champ) == $valeur,
-            concat!("déport ABI faux pour ", $nom)
+            core::mem::offset_of!($t, $field) == $value,
+            concat!("wrong ABI offset for ", $name)
         );
     };
 }
 
-/// `NV_ENC_REGISTER_RESOURCE` — déclare une texture D3D11 à l'encodeur.
+/// `NV_ENC_REGISTER_RESOURCE` — declares a D3D11 texture to the encoder.
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct RegisterResource {
@@ -46,17 +46,17 @@ pub struct RegisterResource {
     pub resource_type: u32,
     pub width: u32,
     pub height: u32,
-    /// ⚠️ **`0` pour une texture D3D11** : le pas est celui de la texture, et
-    /// c'est le pilote qui le connaît.
+    /// ⚠️ **`0` for a D3D11 texture**: the pitch is the texture's, and
+    /// it is the driver that knows it.
     pub pitch: u32,
     pub sub_resource_index: u32,
     /// L'`ID3D11Texture2D*`.
     pub resource_to_register: *mut c_void,
-    /// **[sortie]** la ressource enregistrée.
+    /// **[out]** the registered resource.
     pub registered_resource: *mut c_void,
     pub buffer_format: u32,
     pub buffer_usage: u32,
-    /// ⚠️ **`null` en D3D11** — ce point de synchronisation est un objet D3D12.
+    /// ⚠️ **`null` in D3D11** — this synchronisation point is a D3D12 object.
     pub p_input_fence_point: *mut c_void,
     pub chroma_offset: [u32; 2],
     pub reserved1: [u32; 246],
@@ -82,18 +82,18 @@ deport!(
     "NV_ENC_REGISTER_RESOURCE.reserved2"
 );
 
-/// `NV_ENC_MAP_INPUT_RESOURCE` — projette une ressource enregistrée pour une
-/// image, et rend le pointeur d'entrée que `PicParams` attend.
+/// `NV_ENC_MAP_INPUT_RESOURCE` — maps a registered resource for an
+/// image, and returns the input pointer `PicParams` expects.
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct MapInputResource {
     pub version: u32,
-    /// ⚠️ **Déprécié** par l'en-tête ; laissé à zéro.
+    /// ⚠️ **Deprecated** by the header; left at zero.
     pub sub_resource_index: u32,
-    /// ⚠️ **Déprécié** par l'en-tête ; laissé nul.
+    /// ⚠️ **Deprecated** by the header; left null.
     pub input_resource: *mut c_void,
     pub registered_resource: *mut c_void,
-    /// **[sortie]** ce qu'on passe à `PicParams::input_buffer`.
+    /// **[out]** what is passed to `PicParams::input_buffer`.
     pub mapped_resource: *mut c_void,
     /// **[sortie]** le format que l'encodeur a retenu.
     pub mapped_buffer_fmt: u32,
@@ -120,19 +120,19 @@ deport!(
     "NV_ENC_MAP_INPUT_RESOURCE.reserved2"
 );
 
-/// `NV_ENC_CREATE_BITSTREAM_BUFFER` — le tampon où l'encodeur dépose le flux.
+/// `NV_ENC_CREATE_BITSTREAM_BUFFER` — the buffer where the encoder drops the stream.
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct CreateBitstreamBuffer {
     pub version: u32,
-    /// ⚠️ **Déprécié** — « Do not use », dit l'en-tête.
+    /// ⚠️ **Deprecated** — "Do not use", says the header.
     pub size: u32,
-    /// ⚠️ **Déprécié** — idem.
+    /// ⚠️ **Deprecated** — ditto.
     pub memory_heap: u32,
     pub reserved: u32,
-    /// **[sortie]** le tampon, à passer à `PicParams::output_bitstream`.
+    /// **[out]** the buffer, to be passed to `PicParams::output_bitstream`.
     pub bitstream_buffer: *mut c_void,
-    /// **[sortie]** réservé — l'en-tête dit de ne pas s'en servir.
+    /// **[out]** reserved — the header says not to use it.
     pub bitstream_buffer_ptr: *mut c_void,
     pub reserved1: [u32; 58],
     pub reserved2: [*mut c_void; 64],
@@ -156,25 +156,25 @@ deport!(
     "NV_ENC_CREATE_BITSTREAM_BUFFER.reserved2"
 );
 
-/// `NV_ENC_CODEC_PIC_PARAMS`, réduite à son encombrement.
+/// `NV_ENC_CODEC_PIC_PARAMS`, reduced to its footprint.
 ///
-/// ⚠️ **Aucun membre n'est transcrit, et c'est délibéré** : sur le chemin
-/// courant, **rien** n'est écrit dans cette union — ni tranches explicites,
-/// ni SEI, ni références long terme. Transcrire `NV_ENC_PIC_PARAMS_H264` et
-/// ses cinquante champs pour n'en écrire aucun serait cinquante occasions de
-/// se tromper sans contrepartie. Le jour où l'un d'eux sert, il se transcrit
-/// **avec sa mesure**, pas avant.
+/// ⚠️ **No member is transcribed, and it is deliberate**: on the current
+/// path, **nothing** is written into this union — neither explicit slices,
+/// nor SEI, nor long-term references. Transcribing `NV_ENC_PIC_PARAMS_H264` and
+/// its fifty fields to write none of them would be fifty opportunities to
+/// get it wrong for nothing in return. The day one of them is needed, it gets transcribed
+/// **with its measurement**, not before.
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct CodecPicParams {
-    /// 193 × 8 = 1544 octets. L'alignement de 8 est celui des pointeurs que
-    /// portent les variantes réelles.
+    /// 193 × 8 = 1544 bytes. The alignment of 8 is that of the pointers the
+    /// real variants carry.
     pub _encombrement: [u64; 193],
 }
 forme!(CodecPicParams, 1544, 8, "NV_ENC_CODEC_PIC_PARAMS");
 
-/// `NVENC_EXTERNAL_ME_HINT_COUNTS_PER_BLOCKTYPE`, redéclarée ici pour que ce
-/// fichier ne dépende pas de l'ordre de compilation de son frère.
+/// `NVENC_EXTERNAL_ME_HINT_COUNTS_PER_BLOCKTYPE`, redeclared here so that this
+/// file does not depend on the compilation order of its sibling.
 #[repr(C)]
 #[derive(Clone, Copy, Default)]
 pub struct MeHintCounts {
@@ -188,7 +188,7 @@ forme!(
     "NVENC_EXTERNAL_ME_HINT_COUNTS_PER_BLOCKTYPE (tampons)"
 );
 
-/// `NV_ENC_PIC_PARAMS` — une image à encoder.
+/// `NV_ENC_PIC_PARAMS` — an image to encode.
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct PicParams {
@@ -205,8 +205,8 @@ pub struct PicParams {
     pub output_bitstream: *mut c_void,
     pub completion_event: *mut c_void,
     pub buffer_fmt: u32,
-    /// ⚠️ **`PIC_STRUCT_FRAME` vaut 1, pas 0** : mettre la structure à zéro
-    /// et oublier ce champ est une erreur, pas un défaut inoffensif.
+    /// ⚠️ **`PIC_STRUCT_FRAME` is 1, not 0**: zeroing the structure
+    /// and forgetting this field is an error, not a harmless default.
     pub picture_struct: u32,
     pub picture_type: u32,
     pub codec_pic_params: CodecPicParams,
@@ -244,12 +244,12 @@ deport!(
 deport!(PicParams, reserved3, 1768, "NV_ENC_PIC_PARAMS.reserved3");
 deport!(PicParams, reserved6, 2904, "NV_ENC_PIC_PARAMS.reserved6");
 
-/// `NV_ENC_LOCK_BITSTREAM` — relit le flux encodé.
+/// `NV_ENC_LOCK_BITSTREAM` — reads the encoded stream back.
 ///
-/// 🔴 **`reserved_internal` est le DERNIER membre, après `reserved2`.** Le
-/// laisser tomber raccourcirait la structure de 32 octets, et NVENC écrirait
-/// **au-delà de notre allocation**. C'est le déport asserté plus bas qui
-/// l'empêche de partir sans qu'on le voie.
+/// 🔴 **`reserved_internal` is the LAST member, after `reserved2`.**
+/// Dropping it would shorten the structure by 32 bytes, and NVENC would write
+/// **beyond our allocation**. It is the offset asserted below that
+/// prevents it from going away unnoticed.
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct LockBitstream {
@@ -262,13 +262,13 @@ pub struct LockBitstream {
     pub frame_idx: u32,
     pub hw_encode_status: u32,
     pub num_slices: u32,
-    /// **[sortie]** la longueur utile de `bitstream_buffer_ptr`.
+    /// **[out]** the useful length of `bitstream_buffer_ptr`.
     pub bitstream_size_in_bytes: u32,
     pub output_time_stamp: u64,
     pub output_duration: u64,
-    /// **[sortie]** les octets du flux. ⚠️ **Valides seulement entre
-    /// `nvEncLockBitstream` et `nvEncUnlockBitstream`** : ce qu'on en garde
-    /// doit être copié avant de rendre le verrou.
+    /// **[out]** the stream's bytes. ⚠️ **Only valid between
+    /// `nvEncLockBitstream` and `nvEncUnlockBitstream`**: whatever we keep of them
+    /// must be copied before giving back the lock.
     pub bitstream_buffer_ptr: *mut c_void,
     pub picture_type: u32,
     pub picture_struct: u32,
@@ -279,9 +279,9 @@ pub struct LockBitstream {
     pub temporal_id: u32,
     pub intra_mb_count: u32,
     pub inter_mb_count: u32,
-    /// ⚠️ **Signé**.
+    /// ⚠️ **Signed**.
     pub average_mvx: i32,
-    /// ⚠️ **Signé**.
+    /// ⚠️ **Signed**.
     pub average_mvy: i32,
     pub alpha_layer_size_in_bytes: u32,
     pub output_stats_ptr_size: u32,
@@ -290,7 +290,7 @@ pub struct LockBitstream {
     pub frame_idx_display: u32,
     pub reserved1: [u32; 219],
     pub reserved2: [*mut c_void; 63],
-    /// 🔴 **Le dernier membre, et le plus facile à oublier.**
+    /// 🔴 **The last member, and the easiest to forget.**
     pub reserved_internal: [u32; 8],
 }
 forme!(LockBitstream, 1544, 8, "NV_ENC_LOCK_BITSTREAM");

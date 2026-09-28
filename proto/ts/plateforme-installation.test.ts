@@ -1,10 +1,10 @@
-// Les messages de l'INSTALLATION, côté TypeScript.
+// The INSTALLATION messages, on the TypeScript side.
 //
-// 🔴 CE FICHIER EXISTE POUR UNE GARDE QUE LES VECTEURS NE PEUVENT PAS
-// ÉPROUVER. `plateforme-vectors.json` est un jeu de ROUND-TRIPS : il fige les
-// chaînes que les deux langages doivent produire et relire. Il ne dit rien de
-// ce qui doit être REFUSÉ — et la garde la plus fragile de v4 est précisément
-// un refus : un `termine` dont la clé `motif` MANQUE.
+// 🔴 THIS FILE EXISTS FOR A GUARD THE VECTORS CANNOT
+// TEST. `plateforme-vectors.json` is a set of ROUND TRIPS: it pins the
+// strings both languages must produce and read back. It says nothing of
+// what must be REFUSED — and the most fragile guard of v4 is precisely
+// a refusal: a `termine` whose `motif` key is MISSING.
 
 import { describe, expect, it } from 'vitest';
 import {
@@ -14,7 +14,7 @@ import {
     type Issue,
 } from './plateforme';
 
-/** Le `termine` de référence, dont chaque cas ci-dessous retire une chose. */
+/** The reference `termine`, from which each case below removes one thing. */
 function termineComplet(): Record<string, unknown> {
     return {
         type: 'termine',
@@ -28,22 +28,22 @@ function termineComplet(): Record<string, unknown> {
     };
 }
 
-describe('`termine` : les champs facultatifs sont OBLIGATOIRES SUR LE FIL', () => {
-    it('lit un `termine` complet, motif et code à null', () => {
+describe('`termine`: the optional fields are REQUIRED ON THE WIRE', () => {
+    it('reads a complete `termine`, reason and code at null', () => {
         const lu = parseVersLaPlateforme(JSON.stringify(termineComplet()));
         expect(lu).toEqual({ ok: true, message: termineComplet() });
     });
 
-    // 🔴 LA GARDE QUI COMPTE, ET ELLE EST LE JUMEAU EXACT DE
-    // `champs::option_obligatoire` CÔTÉ RUST. `serde_derive` traite tout champ
-    // `Option<T>` comme portant un `#[serde(default)]` IMPLICITE, et
-    // `JSON.parse` rend `undefined` aussi bien pour « clé absente » que pour
-    // « clé à undefined ». Sans garde, un `termine` d'une version ANTÉRIEURE —
-    // qui n'a pas ces champs — serait accepté avec un motif silencieusement
-    // absent : c'est le déguisement précis que le bump de version existe pour
-    // empêcher, et `deny_unknown_fields` n'y peut rien, lui qui regarde les
-    // champs EN TROP.
-    it.each(['motif', 'code_sortie'])('🔴 REFUSE un `termine` sans la clé `%s`', (cle) => {
+    // 🔴 THE GUARD THAT COUNTS, AND IT IS THE EXACT TWIN OF
+    // `champs::option_obligatoire` ON THE RUST SIDE. `serde_derive` treats every
+    // `Option<T>` field as carrying an IMPLICIT `#[serde(default)]`, and
+    // `JSON.parse` returns `undefined` for "absent key" as well as for
+    // "key set to undefined". Without a guard, a `termine` from an EARLIER version —
+    // which does not have these fields — would be accepted with a silently
+    // absent reason: it is the precise disguise the version bump exists to
+    // prevent, and `deny_unknown_fields` can do nothing about it, looking as it does at
+    // EXTRA fields.
+    it.each(['motif', 'code_sortie'])('🔴 REFUSES a `termine` without the key `%s`', (cle) => {
         const ampute = termineComplet();
         delete ampute[cle];
         expect(parseVersLaPlateforme(JSON.stringify(ampute))).toEqual({
@@ -52,25 +52,25 @@ describe('`termine` : les champs facultatifs sont OBLIGATOIRES SUR LE FIL', () =
         });
     });
 
-    it('accepte `null` sur ces deux clés, et les distingue de l’absence', () => {
-        const avecNull = { ...termineComplet(), motif: null, code_sortie: null };
-        const lu = parseVersLaPlateforme(JSON.stringify(avecNull));
-        expect(lu).toEqual({ ok: true, message: avecNull });
+    it('accepts `null` on these two keys, and tells them apart from absence', () => {
+        const withNull = { ...termineComplet(), motif: null, code_sortie: null };
+        const lu = parseVersLaPlateforme(JSON.stringify(withNull));
+        expect(lu).toEqual({ ok: true, message: withNull });
     });
 
-    // ⚠️ `encodeTermine` EXIGE `| null`, PAS `?`, et c'est la seule chose qui
-    // empêche l'omission d'être écrivable : `JSON.stringify` OMET un
-    // `undefined` et ÉCRIT un `null`. Un encodeur à paramètre facultatif
-    // produirait donc une chaîne que le jumeau Rust refuserait — et le seul
-    // symptôme serait un refus `forme` très loin de sa cause.
-    it('🔴 encode `motif: null` en écrivant la clé, jamais en l’omettant', () => {
-        const chaine = encodeTermine('i-1', 'reussie', null, null, '', false);
-        expect(chaine).toContain('"motif":null');
-        expect(chaine).toContain('"code_sortie":null');
-        expect(parseVersLaPlateforme(chaine).ok).toBe(true);
+    // ⚠️ `encodeTermine` REQUIRES `| null`, NOT `?`, and it is the only thing that
+    // prevents the omission from being writable: `JSON.stringify` OMITS an
+    // `undefined` and WRITES a `null`. An encoder with an optional parameter
+    // would therefore produce a string the Rust twin would refuse — and the only
+    // symptom would be a `forme` refusal very far from its cause.
+    it('🔴 encodes `motif: null` by writing the key, never by omitting it', () => {
+        const chain = encodeTermine('i-1', 'reussie', null, null, '', false);
+        expect(chain).toContain('"motif":null');
+        expect(chain).toContain('"code_sortie":null');
+        expect(parseVersLaPlateforme(chain).ok).toBe(true);
     });
 
-    it('refuse un code de sortie non entier', () => {
+    it('refuses a non-integer exit code', () => {
         expect(
             parseVersLaPlateforme(
                 JSON.stringify({ ...termineComplet(), code_sortie: 1.5 }),
@@ -78,10 +78,10 @@ describe('`termine` : les champs facultatifs sont OBLIGATOIRES SUR LE FIL', () =
         ).toEqual({ ok: false, motif: 'forme' });
     });
 
-    // 🔴 UN CODE DE SORTIE NÉGATIF EST LÉGITIME sous Windows : les `HRESULT`
-    // d'échec ont le bit de poids fort à 1, et se lisent en `i32` signé. Le
-    // refuser confondrait « code hors norme » avec « échec ordinaire ».
-    it('accepte un code de sortie NÉGATIF', () => {
+    // 🔴 A NEGATIVE EXIT CODE IS LEGITIMATE on Windows: failure `HRESULT`s
+    // have the high bit set, and read as a signed `i32`. Refusing
+    // it would confuse "non-standard code" with "ordinary failure".
+    it('accepts a NEGATIVE exit code', () => {
         const negatif = { ...termineComplet(), code_sortie: -1073741510 };
         expect(parseVersLaPlateforme(JSON.stringify(negatif))).toEqual({
             ok: true,
@@ -90,7 +90,7 @@ describe('`termine` : les champs facultatifs sont OBLIGATOIRES SUR LE FIL', () =
     });
 });
 
-describe('`progression` : les comptes sont des entiers naturels', () => {
+describe('`progression`: the counts are natural integers', () => {
     function progression(sur: Record<string, unknown> = {}): Record<string, unknown> {
         return {
             type: 'progression',
@@ -104,34 +104,34 @@ describe('`progression` : les comptes sont des entiers naturels', () => {
         };
     }
 
-    it('lit une progression bien formée', () => {
+    it('reads a well-formed progress', () => {
         expect(parseVersLaPlateforme(JSON.stringify(progression()))).toEqual({
             ok: true,
             message: progression(),
         });
     });
 
-    // ⚠️ `typeof x === 'number'` NE SUFFIT PAS : il laisse passer `NaN`,
-    // `Infinity` et `1.5`. Un `NaN` traverserait jusqu'à la base, où il
-    // deviendrait un `NULL` sur une colonne `NOT NULL` — c'est-à-dire une
-    // erreur SQL très loin de sa cause.
+    // ⚠️ `typeof x === 'number'` IS NOT ENOUGH: it lets `NaN`,
+    // `Infinity` and `1.5` through. A `NaN` would go through to the database, where it
+    // would become a `NULL` in a `NOT NULL` column — that is, an
+    // SQL error very far from its cause.
     it.each([
-        ['un compte négatif', { octets_faits: -1 }],
-        ['un compte fractionnaire', { octets_total: 1.5 }],
-        ['une phase inconnue', { phase: 'empreinte' }],
-        ['une installation vide', { installation: '' }],
-    ])('🔴 REFUSE %s', (_nom, sur) => {
+        ['a negative count', { octets_faits: -1 }],
+        ['a fractional count', { octets_total: 1.5 }],
+        ['an unknown phase', { phase: 'empreinte' }],
+        ['an empty installation', { installation: '' }],
+    ])('🔴 REFUSES %s', (_nom, sur) => {
         expect(parseVersLaPlateforme(JSON.stringify(progression(sur)))).toEqual({
             ok: false,
             motif: 'forme',
         });
     });
 
-    // 🔴 `empreinte` N'EST PAS UNE PHASE DE CE CANAL, et le cas ci-dessus le
-    // fige : elle se déroule dans le NAVIGATEUR, avant que la plateforme n'ait
-    // la moindre ligne à écrire. L'y accepter laisserait croire que l'agent
-    // peut la rapporter.
-    it('accepte une phase `execution` sans total', () => {
+    // 🔴 `empreinte` IS NOT A PHASE OF THIS CHANNEL, and the case above
+    // pins it: it takes place in the BROWSER, before the platform has
+    // the slightest row to write. Accepting it there would suggest the agent
+    // can report it.
+    it('accepts an `execution` phase without a total', () => {
         const sansTotal = progression({ phase: 'execution', octets_faits: 0, octets_total: 0 });
         expect(parseVersLaPlateforme(JSON.stringify(sansTotal))).toEqual({
             ok: true,

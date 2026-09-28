@@ -1,42 +1,42 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   REMISE À ZÉRO ET DÉFAUTS D'ÉLÉMENT — exprimés en tokens, jamais en valeurs.
+   RESET AND ELEMENT DEFAULTS — expressed as tokens, never as values.
 
-   Ce fichier reprend `client/src/style.css:7-19` d'avant le socle. Il ne
-   déclare AUCUNE valeur : tout vient de `tokens.css`.
+   This file takes over `client/src/style.css:7-19` from before the base layer. It
+   declares NO value: everything comes from `tokens.css`.
 
    ═══════════════════════════════════════════════════════════════════════════
-   🔴 LA RACINE NE PORTE PLUS DE TAILLE DE POLICE, ET C'EST PORTEUR.
+   🔴 THE ROOT NO LONGER CARRIES A FONT SIZE, AND IT MATTERS.
 
-   Avant ce socle, `style.css:11-18` posait `font: 14px/1.5 …` sur le
-   sélecteur `html, body` : la RACINE valait donc 14 px. Or `rem` se mesure sur
-   la racine, et toute l'échelle du §4.4 est en `rem`. Avec `html` à 14 px :
+   Before this base layer, `style.css:11-18` set `font: 14px/1.5 …` on the
+   `html, body` selector: the ROOT was therefore 14 px. Yet `rem` is measured on
+   the root, and the whole scale of §4.4 is in `rem`. With `html` at 14 px:
 
-       --e-3 = 0.75rem = 0.75 × 14 = 10,5 px
+       --e-3 = 0.75rem = 0.75 × 14 = 10.5 px
 
-   au lieu des 12 px que les décalages des bandeaux valent depuis toujours
-   (`style.css:31` et suivantes). Avec la racine laissée au défaut du
-   navigateur, 16 px :
+   instead of the 12 px the banner offsets have always been
+   (`style.css:31` and following). With the root left at the browser default,
+   16 px:
 
-       --e-3 = 0.75rem = 0.75 × 16 = 12 px    ← la reprise exacte
+       --e-3 = 0.75rem = 0.75 × 16 = 12 px    ← the exact carry-over
 
-   ⚠️ UN SUCCESSEUR QUI « RÉTABLIRAIT » LA TAILLE SUR `html` POUR LA SYMÉTRIE
-   RENDRAIT TOUS LES DÉCALAGES À 10,5 px SANS QU'AUCUN CONTRÔLE NE LE DISE.
-   Les neuf contrôles du sous-projet ⑥ portent sur les couleurs, les
-   contrastes, les ensembles de noms, la bascule, le poids — et, depuis le
-   sous-bloc S4, les LONGUEURS des feuilles de surface (§7.10).
-   ❌ « AUCUN ne mesure une longueur » n'est plus vrai ; ce qui l'est encore,
-   c'est qu'aucun ne mesure CELLE-CI : §7.10 exclut `client/src/design/`, où
-   vit ce fichier. Le seul garde est ce commentaire, et le test de
-   `reprise.test.ts` qui refuse tout `font-size` sur un sélecteur contenant
+   ⚠️ A SUCCESSOR WHO "RESTORED" THE SIZE ON `html` FOR SYMMETRY
+   WOULD SET ALL THE OFFSETS TO 10.5 px WITHOUT ANY CHECK SAYING SO.
+   The nine checks of sub-project ⑥ are about colours,
+   contrasts, name sets, the switch, the weight — and, since
+   sub-block S4, the LENGTHS of the surface sheets (§7.10).
+   ❌ "NONE measures a length" is no longer true; what still is,
+   is that none measures THIS ONE: §7.10 excludes `client/src/design/`, where
+   this file lives. The only guard is this comment, and the test of
+   `reprise.test.ts` that refuses any `font-size` on a selector containing
    `html`.
 
-   ⚠️ ET « À L'IDENTIQUE » A UNE PORTÉE, qu'il faut écrire : la reprise vaut à
-   racine 16 px, c'est-à-dire au réglage PAR DÉFAUT du navigateur, et là
-   seulement. Pour un utilisateur qui a agrandi sa police, les décalages
-   d'avant (`12px` absolus) NE BOUGEAIENT PAS, tandis que ceux d'aujourd'hui
-   (`0.75rem`) GRANDISSENT avec son réglage. C'est le changement de
-   comportement VOULU — c'est l'argument d'accessibilité du §4.4 — mais c'en
-   est un, et le dire « à l'identique » sans réserve serait faux.
+   ⚠️ AND "IDENTICALLY" HAS A SCOPE, which must be written: the carry-over holds at a
+   16 px root, that is, at the browser's DEFAULT setting, and there
+   only. For a user who enlarged their font, the offsets
+   from before (absolute `12px`) DID NOT MOVE, whereas today's
+   (`0.75rem`) GROW with their setting. It is the INTENDED behaviour
+   change — it is the accessibility argument of §4.4 — but it is
+   one, and calling it "identical" without reservation would be wrong.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 * {
@@ -49,11 +49,11 @@ body {
     height: 100%;
 }
 
-/* ⚠️ `overflow: hidden` NE MONTE PAS ICI, et c'est délibéré. C'est une
-   propriété de la FENÊTRE DE SESSION — la vidéo y occupe 100vw/100vh — et
-   l'appliquer à la page-shell ou à l'écran de connexion couperait leur contenu
-   dès qu'il dépasserait la fenêtre, sans aucun message. Il reste dans
-   `style.css`, qui est la feuille de cette seule surface. */
+/* ⚠️ `overflow: hidden` DOES NOT MOVE UP HERE, and it is deliberate. It is a
+   property of the SESSION WINDOW — the video there takes 100vw/100vh — and
+   applying it to the shell page or to the sign-in screen would cut their content
+   as soon as it exceeded the window, without any message. It stays in
+   `style.css`, which is the sheet of that surface alone. */
 
 body {
     background: var(--fond-0);
@@ -63,70 +63,70 @@ body {
     line-height: var(--lh-normal);
 }
 
-/* Le SEUL ajout d'apparence DU SOUS-BLOC S1, et il est nommé : le point 1 du
-   §3 réserve l'accent à trois usages dont le focus, et `client/connexion.html`
-   en a besoin dès aujourd'hui — il porte deux `<input>` et un `<button>` qui
-   n'avaient aucun anneau de focus visible.
-   ⚠️ `outline-offset` réemploie `--trait-focus` plutôt que d'introduire un
-   littéral de plus : les deux valent 2 px et appartiennent au même anneau. Le
-   jour où ils doivent diverger, un token naît — pas un littéral.
-   ⚠️ « de ce sous-bloc » a été précisé en « du sous-bloc S1 » par la revue
-   transverse de S2 (20 août 2026) : S2 a ajouté À CE FICHIER un second bloc qui
-   change bien l'apparence — la règle de mouvement réduit ci-dessous, qui arrête
-   la transition de `#status`. La phrase était vraie de S1 et le reste ; elle
-   était devenue trompeuse faute de dire de quel sous-bloc elle parlait. */
+/* The ONLY appearance addition OF SUB-BLOCK S1, and it is named: point 1 of
+   §3 reserves the accent for three uses including focus, and `client/connexion.html`
+   needs it as of today — it carries two `<input>` and a `<button>` that
+   had no visible focus ring.
+   ⚠️ `outline-offset` reuses `--trait-focus` rather than introducing one more
+   literal: both are 2 px and belong to the same ring. The
+   day they must diverge, a token is born — not a literal.
+   ⚠️ "of this sub-block" was made precise as "of sub-block S1" by the cross
+   review of S2 (August 20th, 2026): S2 added TO THIS FILE a second block that
+   does change the appearance — the reduced motion rule below, which stops
+   the transition of `#status`. The sentence was true of S1 and remains so; it
+   had become misleading for lack of saying which sub-block it was about. */
 :focus-visible {
     outline: var(--trait-focus) solid var(--accent);
     outline-offset: var(--trait-focus);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   MOUVEMENT RÉDUIT — le legs n°4 du sous-bloc S1, pris par S2 parce que c'est
-   S2 qui introduit les transitions (`--duree-1` sur le survol des primitives).
+   REDUCED MOTION — legacy item no. 4 of sub-block S1, taken by S2 because it is
+   S2 that introduces the transitions (`--duree-1` on the hover of the primitives).
 
-   🔴 ELLE NE PEUT PAS VIVRE DANS `tokens.css`, ET C'EST MESURÉ, PAS SUPPOSÉ.
-   La voie évidente — neutraliser les DURÉES à la source — y ajoute un second
-   `@media`. Or `lireBlocsDeTheme` (`design/tokens.ts`) nomme `media-clair` TOUT
-   bloc `:root` sous un `@media` qui ne porte pas `[data-theme="clair"]` : il
-   n'a pas de troisième nom. Relevé le 19 août 2026 sur une COPIE JETABLE de
-   `tokens.css` (`/tmp/s2-rm.css`, aucun fichier du dépôt touché), après y avoir
-   ajouté `@media (prefers-reduced-motion: reduce) { :root { --duree-1: 0.01ms; } }` :
+   🔴 IT CANNOT LIVE IN `tokens.css`, AND IT IS MEASURED, NOT ASSUMED.
+   The obvious route — neutralising the DURATIONS at the source — adds a second
+   `@media` there. Yet `lireBlocsDeTheme` (`design/tokens.ts`) names `media-clair` ANY
+   `:root` block under an `@media` that does not carry `[data-theme="clair"]`: it
+   has no third name. Observed on August 19th, 2026 on a THROWAWAY COPY of
+   `tokens.css` (`/tmp/s2-rm.css`, no file of the repository touched), after
+   adding `@media (prefers-reduced-motion: reduce) { :root { --duree-1: 0.01ms; } }` to it:
 
        $ node client/outils/blocs-de-theme.mjs --fichier /tmp/s2-rm.css
          bloc racine : 48 token(s)
          bloc media-clair : 14 token(s)
          bloc attribut-clair : 14 token(s)
-         bloc media-clair : 1 token(s)          ← le QUATRIÈME bloc
-       écarts : 15
-         ÉCART  attribut-clair : --duree-1 manquant
-         ÉCART  media-clair : --accent manquant
-         … (treize autres)
+         bloc media-clair : 1 token(s)          ← the FOURTH block
+       gaps: 15
+         GAP  attribut-clair: --duree-1 missing
+         GAP  media-clair: --accent missing
+         … (thirteen others)
        exit=1
 
-   Le contrôle §7.4 compare ce quatrième bloc à la racine et tombe. ⚠️ LEGS,
-   nommé et NON pris : le jour où un sous-bloc voudra vraiment surcharger un
-   token sous une autre condition, c'est `lireBlocsDeTheme` qui doit apprendre à
-   nommer ses blocs — pas la règle qui doit se contorsionner.
+   Check §7.4 compares this fourth block to the root and falls. ⚠️ LEGACY ITEM,
+   named and NOT taken: the day a sub-block really wants to override a
+   token under another condition, it is `lireBlocsDeTheme` that must learn to
+   name its blocks — not the rule that must contort itself.
 
-   ⚠️ CE QUE S2 PREND ICI EST LA SUPPRESSION DES TRANSITIONS, PAS LA GESTION DU
-   MOUVEMENT. Il n'y a aucune animation dans le produit aujourd'hui —
-   `grep -rn '@keyframes\|animation:' client/src` rend VIDE, lancé le 19 août
-   2026 — et LE JOUR OÙ IL Y EN AURA UNE, CETTE RÈGLE NE LA COUVRIRA PAS d'elle
-   même : il faudra y ajouter `animation-duration` et `animation-iteration-count`.
+   ⚠️ WHAT S2 TAKES HERE IS REMOVING THE TRANSITIONS, NOT HANDLING
+   MOTION. There is no animation in the product today —
+   `grep -rn '@keyframes\|animation:' client/src` returns EMPTY, run on August 19th,
+   2026 — and THE DAY THERE IS ONE, THIS RULE WILL NOT COVER IT by
+   itself: `animation-duration` and `animation-iteration-count` will have to be added.
 
-   ⚠️ `!important` EST ICI L'USAGE PRÉVU DE LA PROPRIÉTÉ, et non un contournement
-   de spécificité : la règle doit l'emporter sur toute transition déclarée
-   ailleurs, y compris dans une feuille qui n'existe pas encore.
+   ⚠️ `!important` IS HERE THE INTENDED USE OF THE PROPERTY, and not a specificity
+   workaround: the rule must win over any transition declared
+   elsewhere, including in a sheet that does not exist yet.
 
-   ⚠️ `0.01ms` ET NON `0` : une durée nulle empêche l'événement `transitionend`
-   d'être émis, ce que du code futur pourrait attendre. C'est un raisonnement
-   repris de l'usage courant, PAS une mesure faite ici.
+   ⚠️ `0.01ms` AND NOT `0`: a zero duration keeps the `transitionend` event
+   from being emitted, which future code might wait for. It is a reasoning
+   taken from common usage, NOT a measurement made here.
 
-   ⚠️ CE QUE CELA CHANGE DANS LE PRODUIT, dit sans le maquiller : la seule
-   transition existante est celle de `#status` (`style.css:79`,
-   `transition: opacity var(--duree-2)`), et elle cesse — POUR LES SEULS
-   utilisateurs qui ont demandé du mouvement réduit. La neutralité que S1
-   promettait portait sur `index.html` à réglages système INCHANGÉS.
+   ⚠️ WHAT IT CHANGES IN THE PRODUCT, said without dressing it up: the only
+   existing transition is that of `#status` (`style.css:79`,
+   `transition: opacity var(--duree-2)`), and it stops — FOR THE SOLE
+   users who asked for reduced motion. The neutrality S1
+   promised was about `index.html` with UNCHANGED system settings.
    ═══════════════════════════════════════════════════════════════════════════ */
 @media (prefers-reduced-motion: reduce) {
     *,

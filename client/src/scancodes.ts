@@ -1,8 +1,8 @@
-/** Correspondance `KeyboardEvent.code` → scancode PS/2 (jeu 1).
+/** Mapping `KeyboardEvent.code` → PS/2 scancode (set 1).
  *
- * On passe par les scancodes plutôt que par les codes de touches virtuelles :
- * c'est la position physique de la touche qui est transmise, donc la
- * disposition configurée côté Windows s'applique correctement.
+ * We go through scancodes rather than virtual key codes:
+ * it is the physical position of the key that is transmitted, so the
+ * layout configured on the Windows side applies correctly.
  */
 export interface Scancode {
     scancode: number;
@@ -80,7 +80,7 @@ export const SCANCODES: Record<string, Scancode> = {
     F11: { scancode: 0x57, extended: false },
     F12: { scancode: 0x58, extended: false },
     IntlBackslash: { scancode: 0x56, extended: false },
-    // Touches étendues : préfixe 0xE0 côté matériel, indicateur `extended` ici.
+    // Extended keys: 0xE0 prefix on the hardware side, `extended` flag here.
     ControlRight: { scancode: 0x1d, extended: true },
     AltRight: { scancode: 0x38, extended: true },
     NumpadEnter: { scancode: 0x1c, extended: true },
@@ -97,8 +97,8 @@ export const SCANCODES: Record<string, Scancode> = {
     Delete: { scancode: 0x53, extended: true },
     MetaLeft: { scancode: 0x5b, extended: true },
     MetaRight: { scancode: 0x5c, extended: true },
-    // Pavé numérique — entièrement absent jusqu'ici, ce qui pénalisait déjà
-    // la bureautique autant que le jeu.
+    // Numeric keypad — entirely absent until now, which already penalised
+    // office work as much as gaming.
     NumpadMultiply: { scancode: 0x37, extended: false },
     Numpad7: { scancode: 0x47, extended: false },
     Numpad8: { scancode: 0x48, extended: false },
@@ -115,7 +115,7 @@ export const SCANCODES: Record<string, Scancode> = {
     NumpadDecimal: { scancode: 0x53, extended: false },
     NumLock: { scancode: 0x45, extended: false },
     ScrollLock: { scancode: 0x46, extended: false },
-    // `Pause` reste absente : elle émet la séquence E1 1D 45, préfixée E1 et
-    // non E0, que le drapeau booléen `extended` ne sait pas représenter.
+    // `Pause` stays absent: it emits the sequence E1 1D 45, prefixed E1 and
+    // not E0, which the boolean `extended` flag cannot represent.
     PrintScreen: { scancode: 0x37, extended: true },
 };

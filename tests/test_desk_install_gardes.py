@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
-"""Les GARDES du hook install : ce qu'il REFUSE, et ce qu'il n'écrit pas.
+"""The GUARDS of the install hook: what it REFUSES, and what it does not write.
 
-Scindé de `tests/test_desk_install.py` le 30 août 2026, dans un commit DÉDIÉ
-et AVANT que la revue finale de branche n'y ajoute ses scénarios (le pré-vol
-qui refuse avant tout secret, le runtime Node introuvable, les `facts`
-malformés) : le fichier des scénarios était à 392 lignes sur 500 et les
-additions le portaient à 523. EXTRAIRE, JAMAIS COMPRIMER.
+Split from `tests/test_desk_install.py` on 30 August 2026, in a DEDICATED commit
+and BEFORE the final branch review added its scenarios (the pre-flight
+that refuses before any secret, the Node runtime not found, the malformed
+`facts`): the scenarios file was at 392 lines out of 500 and the
+additions took it to 523. EXTRACT, NEVER COMPRESS.
 
-🔴 LA RÈGLE DE SÉLECTION, ÉNONCÉE PLUTÔT QUE SUBIE : ce fichier porte les
-scénarios dont l'issue attendue est un REFUS (code de sortie non nul, une
-phrase sur stderr, aucune trace Python) ; `test_desk_install.py` porte ceux
-dont l'issue attendue est une installation qui ABOUTIT. Un scénario de refus
-neuf va ici, un scénario d'aboutissement va là-bas.
+🔴 THE SELECTION RULE, STATED RATHER THAN SUFFERED: this file carries the
+scenarios whose expected outcome is a REFUSAL (non-zero exit code, a
+sentence on stderr, no Python traceback); `test_desk_install.py` carries those
+whose expected outcome is an installation that SUCCEEDS. A new refusal
+scenario goes here, a success scenario goes there.
 
-Les fixtures sont partagées : `tests/desk_install_fixtures.py`.
+The fixtures are shared: `tests/desk_install_fixtures.py`.
 
 Run: python3 tests/test_desk_install_gardes.py
 """
@@ -39,31 +39,31 @@ def check(label, got, want):
         failures.append(f"{label}: got {got!r}, want {want!r}")
 
 
-# --- Installation 4 : node_modules absent cote SOURCE -> refus -------------
-# 🔴 PROBLEME B DU LOT 10A : `npm start` exige `node_modules/.bin/tsx`, et
-# rien ne le garantissait avant ce lot — un depot fraichement clone (ou
-# empaquete par une pipeline qui n'a jamais lance `npm install`) aurait vu
-# `install` "reussir" (code 0) tout en posant un service structurellement
-# incapable de demarrer. Ce scenario fabrique une racine SOURCE factice
-# (DESK_SOURCE_RACINE) portant un `plateforme/` SANS node_modules, et
-# verifie que `install` REFUSE plutot que de laisser passer.
+# --- Installation 4: node_modules absent on the SOURCE side -> refusal -------------
+# 🔴 PROBLEM B OF BATCH 10A: `npm start` requires `node_modules/.bin/tsx`, and
+# nothing guaranteed it before this batch — a freshly cloned repository (or
+# one packaged by a pipeline that never ran `npm install`) would have seen
+# `install` "succeed" (code 0) while laying down a service structurally
+# unable to start. This scenario builds a fake SOURCE root
+# (DESK_SOURCE_RACINE) carrying a `plateforme/` WITHOUT node_modules, and
+# checks that `install` REFUSES rather than letting it through.
 with tempfile.TemporaryDirectory() as tmp4src, tempfile.TemporaryDirectory() as tmp4dst:
     source4 = pathlib.Path(tmp4src)
     poser_source_minimale(source4)
-    # Delibrement AUCUN node_modules sous source4/plateforme.
+    # Deliberately NO node_modules under source4/plateforme.
 
     root4 = pathlib.Path(tmp4dst)
     env_source = dict(os.environ)
     env_source["DESK_SOURCE_RACINE"] = str(source4)
     r4 = appeler(root4, facts=FACTS, env=env_source)
-    check("installation 4 (node_modules absent) : code de sortie NON NUL",
+    check("installation 4 (node_modules absent): NON-ZERO exit code",
           r4.returncode != 0, True)
-    check("installation 4 : le refus nomme node_modules/.bin/tsx",
+    check("installation 4: the refusal names node_modules/.bin/tsx",
           "node_modules" in (r4.stderr or "") and "tsx" in (r4.stderr or ""),
           True)
 
-    # --- Temoin negatif : la MEME racine source, AVEC node_modules/.bin/tsx,
-    # doit reussir --------------------------------------------------------
+    # --- Negative control: the SAME source root, WITH node_modules/.bin/tsx,
+    # must succeed --------------------------------------------------------
     bin_dir4 = source4 / "plateforme" / "node_modules" / ".bin"
     bin_dir4.mkdir(parents=True)
     (bin_dir4 / "tsx").write_text("#!/usr/bin/env node\n", encoding="utf-8")
@@ -71,54 +71,54 @@ with tempfile.TemporaryDirectory() as tmp4src, tempfile.TemporaryDirectory() as 
     root4b = pathlib.Path(tempfile.mkdtemp())
     try:
         r4b = appeler(root4b, facts=FACTS, env=env_source)
-        check("temoin negatif : node_modules/.bin/tsx present -> code 0",
+        check("negative control: node_modules/.bin/tsx present -> code 0",
               r4b.returncode, 0)
     finally:
         import shutil as _shutil
         _shutil.rmtree(root4b, ignore_errors=True)
 
-# --- Installation 6 : facts["hote"] universel DOIT ETRE REFUSE -------------
-# 🔴 RONDE DE CORRECTION 1 (29 août 2026) : la revue a démontré que
-# `facts.get("hote")`, quand il est VRAI, court-circuitait `lire_hote()` —
-# la SEULE fonction qui vérifiait `ECOUTES_UNIVERSELLES` — et traversait
-# donc SANS AUCUN CONTRÔLE. `facts = {..., "hote": "0.0.0.0", ...}` rendait
-# code 0 et écrivait PLATEFORME_HOTE=0.0.0.0 dans desk.env : exactement le
-# défaut que ce lot existe pour fermer, revenu par un second chemin.
-# Inatteignable par le moteur réel AUJOURD'HUI (il ne passe aucun `facts` à
-# `install`), mais le docstring de tête d'install.py dit lui-même que ce
-# canal existe pour « un futur moteur, ou ce fichier de tests » — et le
-# contrat de `facts` a gagné des clés PENDANT ce lot même. Ce scénario fige
-# le contrat : une écoute universelle dans facts["hote"] DOIT refuser,
-# exactement comme DESK_HOTE=0.0.0.0 le fait déjà pour la valeur dérivée.
+# --- Installation 6: a universal facts["hote"] MUST BE REFUSED -------------
+# 🔴 CORRECTION ROUND 1 (29 August 2026): the review showed that
+# `facts.get("hote")`, when truthy, short-circuited `lire_hote()` —
+# the ONLY function that checked `ECOUTES_UNIVERSELLES` — and therefore went
+# through WITHOUT ANY CHECK. `facts = {..., "hote": "0.0.0.0", ...}` returned
+# code 0 and wrote PLATEFORME_HOTE=0.0.0.0 into desk.env: exactly the
+# defect this batch exists to close, back through a second path.
+# Unreachable by the real engine TODAY (it passes no `facts` to
+# `install`), but the head docstring of install.py itself says this
+# channel exists for "a future engine, or this test file" — and the
+# `facts` contract gained keys DURING this very batch. This scenario freezes
+# the contract: a universal listen address in facts["hote"] MUST refuse,
+# exactly as DESK_HOTE=0.0.0.0 already does for the derived value.
 with tempfile.TemporaryDirectory() as tmp6:
     root6 = pathlib.Path(tmp6)
     facts_hote_universel = dict(FACTS)
     facts_hote_universel["hote"] = "0.0.0.0"
     r6 = appeler(root6, facts=facts_hote_universel)
-    check("facts['hote']='0.0.0.0' : code de sortie NON NUL (refus)",
+    check("facts['hote']='0.0.0.0': NON-ZERO exit code (refusal)",
           r6.returncode != 0, True)
-    check("facts['hote']='0.0.0.0' : le refus nomme l'ecoute universelle",
-          "universelle" in (r6.stderr or "").lower(), True)
-    check("facts['hote']='0.0.0.0' : le refus nomme facts[\"hote\"] (pas DESK_HOTE)",
+    check("facts['hote']='0.0.0.0': the refusal names the universal listen address",
+          "universal listen" in (r6.stderr or "").lower(), True)
+    check("facts['hote']='0.0.0.0': the refusal names facts[\"hote\"] (not DESK_HOTE)",
           'facts["hote"]' in (r6.stderr or ""), True)
-    check("facts['hote']='0.0.0.0' : desk.env n'est PAS ecrit avec cette valeur",
+    check("facts['hote']='0.0.0.0': desk.env is NOT written with this value",
           (root6 / "etc" / "nivuus" / "desk.env").is_file(), False)
 
 
-# --- Installation 8 : LE PRÉ-VOL REFUSE AVANT LE PREMIER SECRET -----------
-# 🔴 IMPORTANTE DE LA REVUE FINALE DE BRANCHE, DÉMONTRÉE PAR EXÉCUTION.
-# `client/dist/` est gitignoré : un dépôt fraîchement cloné n'en porte pas.
-# `install.py` copiait `client/dist` AVANT d'atteindre son garde `tsx`, si
-# bien qu'il rendait une TRACE PYTHON — et qu'il la rendait APRÈS avoir déjà
-# écrit `desk.env` AVEC SES DEUX SECRETS. Ce scénario fige les trois
-# propriétés du remède : une phrase, pas une trace ; la liste ENTIÈRE de ce
-# qui manque, pas le premier manque ; et `desk.env` JAMAIS créé.
+# --- Installation 8: THE PRE-FLIGHT REFUSES BEFORE THE FIRST SECRET -----------
+# 🔴 IMPORTANT FINDING OF THE FINAL BRANCH REVIEW, DEMONSTRATED BY RUNNING IT.
+# `client/dist/` is gitignored: a freshly cloned repository carries none.
+# `install.py` copied `client/dist` BEFORE reaching its `tsx` guard, so
+# that it returned a PYTHON TRACEBACK — and returned it AFTER having already
+# written `desk.env` WITH ITS TWO SECRETS. This scenario freezes the three
+# properties of the remedy: a sentence, not a traceback; the WHOLE list of what
+# is missing, not the first missing item; and `desk.env` NEVER created.
 with tempfile.TemporaryDirectory() as tmp8src, tempfile.TemporaryDirectory() as tmp8:
     source8 = pathlib.Path(tmp8src)
     poser_source_minimale(source8)
-    # `poser_source_minimale` pose client/dist et proto/ts ; on retire
-    # client/dist pour reproduire le depot frais, et node_modules/.bin/tsx
-    # n'a jamais ete pose.
+    # `poser_source_minimale` lays down client/dist and proto/ts; we remove
+    # client/dist to reproduce the fresh repository, and node_modules/.bin/tsx
+    # was never laid down.
     import shutil as _sh
     _sh.rmtree(source8 / "client" / "dist")
 
@@ -126,81 +126,81 @@ with tempfile.TemporaryDirectory() as tmp8src, tempfile.TemporaryDirectory() as 
     env8 = dict(os.environ)
     env8["DESK_SOURCE_RACINE"] = str(source8)
     r8 = appeler(root8, facts=FACTS, env=env8)
-    check("installation 8 (depot frais) : code de sortie NON NUL",
+    check("installation 8 (fresh repository): NON-ZERO exit code",
           r8.returncode != 0, True)
-    check("installation 8 : aucune trace Python",
+    check("installation 8: no Python traceback",
           "Traceback" in (r8.stderr or ""), False)
-    check("installation 8 : le refus nomme client/dist",
+    check("installation 8: the refusal names client/dist",
           "client/dist" in (r8.stderr or ""), True)
-    check("installation 8 : le refus nomme AUSSI node_modules/.bin/tsx "
-          "(la liste entiere, jamais le premier manque)",
+    check("installation 8: the refusal ALSO names node_modules/.bin/tsx "
+          "(the whole list, never the first missing item)",
           "node_modules/.bin/tsx" in (r8.stderr or ""), True)
-    check("installation 8 : le refus invite a lancer npm run build",
+    check("installation 8: the refusal suggests running npm run build",
           "npm run build" in (r8.stderr or ""), True)
-    # 🔴 LE CONTROLE QUI VAUT : aucun secret n'a ete tire.
-    check("installation 8 : desk.env n'est PAS cree (aucun secret orphelin)",
+    # 🔴 THE CHECK THAT COUNTS: no secret has been drawn.
+    check("installation 8: desk.env is NOT created (no orphan secret)",
           (root8 / "etc" / "nivuus" / "desk.env").exists(), False)
-    check("installation 8 : turnserver.conf non plus",
+    check("installation 8: nor is turnserver.conf",
           (root8 / "etc" / "turnserver.conf").exists(), False)
 
-# --- Installation 9 : LE RUNTIME NODE INTROUVABLE EST UN REFUS NOMMÉ ------
-# Le pendant du scénario 7 : quand le préfixe Node ne porte pas ce qu'il
-# faut, le hook le DIT (comme il le dit déjà pour `tsx` et pour `proto/ts`),
-# il ne pose pas un service muet. Le garde était posé sur deux des trois
-# conditions de démarrage ; c'est la troisième.
+# --- Installation 9: THE NODE RUNTIME NOT FOUND IS A NAMED REFUSAL ------
+# The counterpart of scenario 7: when the Node prefix does not carry what
+# it should, the hook SAYS so (as it already does for `tsx` and for `proto/ts`),
+# it does not lay down a silent service. The guard covered two of the three
+# start conditions; this is the third.
 with tempfile.TemporaryDirectory() as tmp9:
     root9 = pathlib.Path(tmp9)
-    prefixe_vide = root9 / "node-incomplet"
+    prefixe_vide = root9 / "node-incomplete"
     (prefixe_vide / "bin").mkdir(parents=True)
     r9 = appeler(root9, facts=FACTS, node_source=str(prefixe_vide))
-    check("installation 9 (runtime Node incomplet) : code de sortie NON NUL",
+    check("installation 9 (incomplete Node runtime): NON-ZERO exit code",
           r9.returncode != 0, True)
-    check("installation 9 : aucune trace Python",
+    check("installation 9: no Python traceback",
           "Traceback" in (r9.stderr or ""), False)
-    check("installation 9 : le refus nomme le runtime incomplet",
-          "incomplet" in (r9.stderr or ""), True)
-    check("installation 9 : le refus nomme bin/node",
+    check("installation 9: the refusal names the incomplete runtime",
+          "incomplete" in (r9.stderr or ""), True)
+    check("installation 9: the refusal names bin/node",
           "bin/node" in (r9.stderr or ""), True)
-    check("installation 9 : desk.env n'est PAS cree",
+    check("installation 9: desk.env is NOT created",
           (root9 / "etc" / "nivuus" / "desk.env").exists(), False)
 
-# --- Installation 10 : les facts NE SONT PLUS CRUS SUR PAROLE -------------
-# 🔴 MINEURE #7 DE LA TÂCHE 4, RENVERSÉE PAR LA REVUE FINALE DE BRANCHE : sa
-# raison (« `facts` vient de nous, on ne s'en défend pas ») a été RÉFUTÉE
-# dans cette branche même, sur `facts["hote"]` — voir l'installation 6. Les
-# clés voisines gardaient pourtant la même raison écrite.
-for etiquette, cle, valeur, attendu in [
-    ("turn_ecoute universelle", "turn_ecoute", "0.0.0.0", "universelle"),
-    ("turn_relais universelle", "turn_relais", "::", "universelle"),
-    ("proxy_confiance universelle", "proxy_confiance", "*", "universelle"),
-    ("port non entier", "port", "trois-mille", "n'est pas un entier"),
-    ("port hors plage", "port", 70000, "hors de la plage"),
-    ("port booleen", "port", True, "booleen"),
+# --- Installation 10: the facts ARE NO LONGER TAKEN AT THEIR WORD -------------
+# 🔴 MINOR #7 OF TASK 4, OVERTURNED BY THE FINAL BRANCH REVIEW: its
+# reason ("`facts` comes from us, we do not defend against it") was REFUTED
+# in this very branch, on `facts["hote"]` — see installation 6. The
+# neighbouring keys nevertheless kept the same written reason.
+for etiquette, cle, value, attendu in [
+    ("universal turn_ecoute", "turn_ecoute", "0.0.0.0", "universal listen"),
+    ("universal turn_relais", "turn_relais", "::", "universal listen"),
+    ("universal proxy_confiance", "proxy_confiance", "*", "universal listen"),
+    ("non-integer port", "port", "three-thousand", "is not an integer"),
+    ("port out of range", "port", 70000, "outside the range"),
+    ("boolean port", "port", True, "is a boolean"),
 ]:
     with tempfile.TemporaryDirectory() as tmp10:
         root10 = pathlib.Path(tmp10)
         facts10 = dict(FACTS)
-        facts10[cle] = valeur
+        facts10[cle] = value
         r10 = appeler(root10, facts=facts10)
-        check(f"facts {etiquette} : code de sortie NON NUL", r10.returncode != 0, True)
-        check(f"facts {etiquette} : aucune trace Python",
+        check(f"facts {etiquette}: NON-ZERO exit code", r10.returncode != 0, True)
+        check(f"facts {etiquette}: no Python traceback",
               "Traceback" in (r10.stderr or ""), False)
-        check(f"facts {etiquette} : le refus nomme la cause",
-              attendu in (r10.stderr or "").lower().replace("é", "e"), True)
-        check(f"facts {etiquette} : desk.env n'est PAS ecrit",
+        check(f"facts {etiquette}: the refusal names the cause",
+              attendu in (r10.stderr or "").lower(), True)
+        check(f"facts {etiquette}: desk.env is NOT written",
               (root10 / "etc" / "nivuus" / "desk.env").exists(), False)
 
-# Témoin négatif de l'installation 10 : les MÊMES clés, avec des valeurs
-# saines, passent — sans quoi les six refus ci-dessus seraient rendus par un
-# hook qui refuse tout.
+# Negative control of installation 10: the SAME keys, with sound values,
+# pass — otherwise the six refusals above could come from a
+# hook that refuses everything.
 with tempfile.TemporaryDirectory() as tmp10b:
     root10b = pathlib.Path(tmp10b)
     r10b = appeler(root10b, facts=FACTS)
-    check("temoin negatif : des facts sains passent toujours", r10b.returncode, 0)
+    check("negative control: sound facts still pass", r10b.returncode, 0)
 
 if failures:
     print(f"FAIL ({len(failures)})")
     for f in failures:
         print("  -", f)
     sys.exit(1)
-print("OK - gardes du hook install passés")
+print("OK - install hook guards passed")

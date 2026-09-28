@@ -1,100 +1,100 @@
-//! La sonde minimale : D duplications DXGI, tenues, et le moins possible
-//! autour — **« rien d'autre » a une portée précise, pas absolue.**
+//! The minimal probe: D DXGI duplications, held, and as little as possible
+//! around them — **"nothing else" has a precise scope, not an absolute one.**
 //!
-//! **Ce qui EST exclu** : encodeur (NVENC/Media Foundation), convertisseur de
-//! couleur, fenêtre, WebRTC. Si le refus de la 5ᵉ duplication observé au
-//! sous-bloc D2 ne se reproduit pas ici, c'est que le plafond ne porte pas sur
-//! la duplication mais sur l'un de CES éléments-là (hypothèse H3 de la spec)
-//! — et c'est un résultat, pas une panne de la sonde.
+//! **What IS excluded**: encoder (NVENC/Media Foundation), colour
+//! converter, window, WebRTC. If the refusal of the 5th duplication observed in
+//! sub-block D2 does not reproduce here, the ceiling does not bear on
+//! duplication but on one of THOSE elements (hypothesis H3 of the spec)
+//! — and that is a result, not a failure of the probe.
 //!
-//! **Ce qui N'EST PAS exclu, et ne peut pas l'être avec l'interface
-//! imposée** : `DesktopCapture::sur_sortie` appelle `ouvrir`, qui appelle
-//! `creer_peripherique` (`agent/src/capture/ouverture.rs:83-139`) — et cette
-//! fonction construit INÉVITABLEMENT un `ID3D11Device` + `ID3D11DeviceContext`
-//! réels par duplication (`D3D11CreateDevice` avec
-//! `D3D11_CREATE_DEVICE_BGRA_SUPPORT`), puis leur pose
-//! `SetMultithreadProtected(true)` — précisément la préparation documentée
-//! comme nécessaire au partage Media Foundation qu'utiliserait un encodeur.
-//! La sonde suit cette interface sans la modifier (la modifier était hors
-//! périmètre) ; elle ne PEUT pas ouvrir une duplication sans ce périphérique.
-//! **Conséquence pour la lecture de la campagne** : l'étage « ajouter un
-//! périphérique D3D11 » de l'escalade H3 est déjà franchi PAR CONSTRUCTION à
-//! ce rang de sonde — si H3 doit être approfondie par une sonde plus épaisse,
-//! le premier étage à y ajouter est l'encodeur, pas le périphérique, déjà
-//! présent ici.
+//! **What is NOT excluded, and cannot be with the imposed
+//! interface**: `DesktopCapture::sur_sortie` calls `ouvrir`, which calls
+//! `create_device_and_context` (`agent/src/capture/ouverture.rs:83-139`) — and this
+//! function INEVITABLY builds a real `ID3D11Device` + `ID3D11DeviceContext`
+//! per duplication (`D3D11CreateDevice` with
+//! `D3D11_CREATE_DEVICE_BGRA_SUPPORT`), then sets on them
+//! `SetMultithreadProtected(true)` — precisely the preparation documented
+//! as necessary for the Media Foundation sharing an encoder would use.
+//! The probe follows this interface without modifying it (modifying it was out of
+//! scope); it CANNOT open a duplication without this device.
+//! **Consequence for reading the campaign**: the "add a
+//! D3D11 device" stage of the H3 escalation is already crossed BY CONSTRUCTION at
+//! this probe rank — if H3 must be deepened by a thicker probe,
+//! the first stage to add there is the encoder, not the device, already
+//! present here.
 //!
-//! Le rang de la sonde vient de `MULTIFENETRE_PLAFOND_RANG` ; chaque ligne le
-//! porte, car `agent.log` mêle le porteur et toutes ses sondes par héritage de
-//! `stdout` et rien d'autre ne distinguerait l'émetteur (piège relevé en D1).
+//! The probe's rank comes from `MULTIFENETRE_PLAFOND_RANG`; each line
+//! carries it, because `agent.log` mixes the bearer and all its probes through inheritance of
+//! `stdout` and nothing else would distinguish the emitter (trap noted in D1).
 //!
-//! `DesktopCapture::sur_sortie` retente une ouverture refusée pour
-//! indisponibilité passagère pendant `capture_reprise::DUREE_FENETRE_OUVERTURE`
-//! (3 s). Un refus rapporté ici est donc **déjà un refus durable**, pas un
-//! transitoire — ce n'est pas plus fort que cela.
+//! `DesktopCapture::sur_sortie` retries an opening refused for
+//! transient unavailability during `capture_reprise::DUREE_FENETRE_OUVERTURE`
+//! (3 s). A refusal reported here is therefore **already a lasting refusal**, not a
+//! transient — it is no stronger than that.
 
 use anyhow::{Context, Result};
 
-/// Fichier témoin du porteur : sa présence ordonne la sortie.
+/// The bearer's marker file: its presence orders the exit.
 pub(super) fn chemin_arret() -> std::path::PathBuf {
     std::env::temp_dir().join("plafond-arret")
 }
 
-/// Fichier de verdict d'une sonde.
+/// Verdict file of a probe.
 pub(super) fn chemin_verdict(rang: u8) -> std::path::PathBuf {
     std::env::temp_dir().join(format!("plafond-sonde-{rang}.verdict"))
 }
 
-/// Verdict de secours d'un rang illisible (nom FIXE, voir `sonder` ci-dessous
-/// pour pourquoi). Jamais lu par le porteur — ce n'est qu'un diagnostic pour
-/// qui fouille `%TEMP%` — mais nommée ici pour que le porteur puisse la
-/// nettoyer avant un tirage sans dupliquer le nom du fichier.
+/// Fallback verdict of an unreadable rank (FIXED name, see `sonder` below
+/// for why). Never read by the bearer — it is only a diagnostic for
+/// whoever digs through `%TEMP%` — but named here so that the bearer can
+/// clean it up before a draw without duplicating the file name.
 pub(super) fn chemin_verdict_rang_invalide() -> std::path::PathBuf {
     std::env::temp_dir().join("plafond-sonde-rang-invalide.verdict")
 }
 
-// `pub(in super::super)` et non `pub(crate)` : c'est la visibilité la plus
-// étroite qui satisfait encore le réexport `pub(super) use sonde::sonder;` de
-// `plafond.rs` — `super::super` désigne `multifenetre` depuis `sonde`, ce qui
-// correspond exactement à la portée `pub(in multifenetre)` que ce réexport
-// déclare. Un `pub(super)` ici (portée `plafond` seul) serait trop étroit et
-// ferait échouer ce réexport en E0364 (« sonder is private, and cannot be
-// re-exported ») — vérifié à la Task 8. `pub(crate)` compilerait aussi mais
-// ouvrirait `sonder` à tout le crate sans raison : rien en dehors de
-// `multifenetre` n'en a besoin.
+// `pub(in super::super)` and not `pub(crate)`: it is the narrowest
+// visibility that still satisfies the `pub(super) use sonde::sonder;` re-export of
+// `plafond.rs` — `super::super` designates `multifenetre` from `sonde`, which
+// corresponds exactly to the `pub(in multifenetre)` scope this re-export
+// declares. A `pub(super)` here (scope `plafond` only) would be too narrow and
+// would make this re-export fail with E0364 ("sonder is private, and cannot be
+// re-exported") — checked at Task 8. `pub(crate)` would compile too but
+// would open `sonder` to the whole crate for no reason: nothing outside
+// `multifenetre` needs it.
 pub(in super::super) fn sonder(sorties: &[String]) -> Result<()> {
     let rang_brute = std::env::var("MULTIFENETRE_PLAFOND_RANG").unwrap_or_else(|_| "0".to_string());
     let rang: u8 = match rang_brute
         .parse()
-        .context("MULTIFENETRE_PLAFOND_RANG doit être un entier")
+        .context("MULTIFENETRE_PLAFOND_RANG must be an integer")
     {
         Ok(rang) => rang,
-        Err(erreur) => {
-            // Sans ce bloc, le `?` d'origine sortait AVANT toute écriture de
-            // verdict : le porteur (Task 10) borne son attente (voir
-            // `attendre_le_verdict`, `plafond.rs`) et rend MORTE si rien
-            // n'arrive, mais un rang malformé se lirait alors comme un
-            // plantage de sonde (0xc0000005 et consorts) plutôt que comme ce
-            // qu'il est. Un `u8` n'existe pas ici pour nommer le
-            // fichier que `chemin_verdict` produirait normalement : on dépose
-            // donc un verdict de secours, sous un nom FIXE plutôt que dérivé
-            // de la valeur brute — l'interpoler dans un composant de chemin
-            // laisserait passer des séquences `..` significatives pour la
-            // résolution Windows (`Path` y traite `\` et `/` comme
-            // séparateurs) et pourrait écrire hors de `%TEMP%`. La valeur
-            // brute reste dans la trace ci-dessous, où l'interpoler ne pose
-            // aucun risque. Best-effort (l'échec d'écriture n'aggrave rien :
-            // cette trace reste le diagnostic de référence).
-            tracing::error!(rang_brute = %rang_brute, %erreur, "MULTIFENETRE_PLAFOND_RANG illisible");
+        Err(error) => {
+            // Without this block, the original `?` exited BEFORE any verdict
+            // was written: the bearer (Task 10) bounds its wait (see
+            // `attendre_le_verdict`, `plafond.rs`) and returns MORTE if nothing
+            // arrives, but a malformed rank would then read as a
+            // probe crash (0xc0000005 and the like) rather than as what
+            // it is. No `u8` exists here to name the
+            // file `chemin_verdict` would normally produce: we therefore drop
+            // a fallback verdict, under a FIXED name rather than one derived
+            // from the raw value — interpolating it into a path component
+            // would let through `..` sequences meaningful for
+            // Windows resolution (`Path` treats `\` and `/` there as
+            // separators) and could write outside `%TEMP%`. The raw
+            // value stays in the trace below, where interpolating it poses
+            // no risk. Best-effort (a write failure makes nothing worse:
+            // this trace remains the reference diagnostic).
+            tracing::error!(rang_brute = %rang_brute, %error, "MULTIFENETRE_PLAFOND_RANG unreadable");
             let secours = chemin_verdict_rang_invalide();
             let _ = std::fs::write(&secours, format!("KO RANG_INVALIDE {rang_brute}"));
-            return Err(erreur);
+            return Err(error);
         }
     };
 
-    tracing::info!(sonde = rang, sorties = ?sorties, "sonde démarrée");
+    tracing::info!(sonde = rang, sorties = ?sorties, "probe started");
 
-    // Les duplications sont TENUES dans ce vecteur : les relâcher libérerait
-    // la place et la mesure ne mesurerait plus rien.
+    // The duplications are HELD in this vector: releasing them would free
+    // the slot and the measurement would no longer measure anything.
     let mut tenues = Vec::new();
     let mut verdict = String::from("OK");
     for (rang_local, nom) in sorties.iter().enumerate() {
@@ -104,28 +104,28 @@ pub(in super::super) fn sonder(sorties: &[String]) -> Result<()> {
                     sonde = rang,
                     duplication = rang_local + 1,
                     %nom,
-                    "duplication ouverte"
+                    "duplication opened"
                 );
                 tenues.push(duplication);
             }
-            Err(erreur) => {
-                // `{erreur:#}` et non `{erreur}` : le Display simple d'`anyhow`
-                // ne rend que le contexte le PLUS EXTERNE (« duplication de la
-                // sortie écran »), et le HRESULT — la seule donnée que la
-                // matrice exploite — resterait dans les causes, invisible ici.
-                // Il ne survivait dans les journaux de la campagne D3 que
-                // parce qu'`agent::capture::ouverture` le journalise pour son
-                // propre compte, une ligne plus haut : dépendance fortuite à
-                // une trace d'un AUTRE module, que rien ne garantissait. Le
-                // format alternatif rend la chaîne complète des causes, donc
-                // le HRESULT, dans la trace comme dans le verdict.
-                let causes = format!("{erreur:#}");
+            Err(error) => {
+                // `{error:#}` and not `{error}`: `anyhow`'s simple Display
+                // only renders the OUTERMOST context ("screen output
+                // duplication"), and the HRESULT — the only data the
+                // matrix uses — would stay in the causes, invisible here.
+                // It only survived in the logs of the D3 campaign
+                // because `agent::capture::ouverture` logs it on its
+                // own account, one line above: a fortuitous dependency on
+                // a trace from ANOTHER module, which nothing guaranteed. The
+                // alternate format renders the full chain of causes, hence
+                // the HRESULT, in the trace as in the verdict.
+                let causes = format!("{error:#}");
                 tracing::error!(
                     sonde = rang,
                     duplication = rang_local + 1,
                     %nom,
-                    erreur = %causes,
-                    "duplication REFUSÉE"
+                    error = %causes,
+                    "duplication REFUSED"
                 );
                 verdict = format!("KO {causes} {nom}");
                 break;
@@ -133,17 +133,17 @@ pub(in super::super) fn sonder(sorties: &[String]) -> Result<()> {
         }
     }
 
-    // Préexistant, hors périmètre de cette correction : un échec d'écriture
-    // ICI (rang valide, verdict légitime) sort par `?` sans verdict déposé.
+    // Pre-existing, out of scope of this fix: a write failure
+    // HERE (valid rank, legitimate verdict) exits through `?` with no verdict dropped.
     std::fs::write(chemin_verdict(rang), &verdict)
-        .with_context(|| format!("écriture du verdict de la sonde {rang}"))?;
-    tracing::info!(sonde = rang, ouvertes = tenues.len(), %verdict, "verdict déposé");
+        .with_context(|| format!("writing the verdict of probe {rang}"))?;
+    tracing::info!(sonde = rang, ouvertes = tenues.len(), %verdict, "verdict written");
 
-    // Tenir jusqu'au signal du porteur. Les duplications restent ouvertes tant
-    // que `tenues` est vivant.
+    // Hold until the bearer's signal. The duplications stay open as long
+    // as `tenues` is alive.
     while !chemin_arret().exists() {
         std::thread::sleep(std::time::Duration::from_millis(100));
     }
-    tracing::info!(sonde = rang, "arrêt demandé, relâchement des duplications");
+    tracing::info!(sonde = rang, "stop requested, releasing the duplications");
     Ok(())
 }

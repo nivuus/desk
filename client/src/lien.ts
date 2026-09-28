@@ -1,39 +1,39 @@
-// Traduction de l'état du lien annoncé par l'agent en texte affichable.
+// Translating the link state announced by the agent into displayable text.
 //
-// Séparé de tout DOM pour être testable, comme `status.ts` et `audio.ts`.
-// L'agent décide ; ce module ne fait que dire, en français, ce qu'il a décidé.
+// Separated from any DOM to be testable, like `status.ts` and `audio.ts`.
+// The agent decides; this module only says, in plain words, what it decided.
 
 import type { LinkMessage } from '../../proto/ts/control';
 
 export interface TexteLien {
     resume: string;
-    /// Vrai quand l'utilisateur doit être averti : image dégradée ou lien
-    /// insuffisant. Une adaptation indisponible n'est PAS une alerte — le
-    /// lien peut être excellent, seul l'asservissement manque.
+    /// True when the user must be warned: degraded image or insufficient
+    /// link. An unavailable adaptation is NOT an alert — the
+    /// link can be excellent, only the control loop is missing.
     alerte: boolean;
 }
 
 export function texteLien(message: LinkMessage): TexteLien {
     const mbps = (message.bitrate / 1_000_000).toFixed(1);
-    const taille = `${message.width}×${message.height}`;
+    const size = `${message.width}×${message.height}`;
 
     if (message.quality === 'insuffisante') {
         return {
-            resume: `Réseau insuffisant pour le jeu nerveux — ${taille}, ${mbps} Mb/s`,
+            resume: `Network insufficient for twitchy gaming — ${size}, ${mbps} Mb/s`,
             alerte: true,
         };
     }
     if (message.quality === 'degradee') {
         return {
-            resume: `Image réduite par le réseau — ${taille}, ${mbps} Mb/s`,
+            resume: `Image reduced by the network — ${size}, ${mbps} Mb/s`,
             alerte: true,
         };
     }
     if (message.adaptation === 'indisponible') {
         return {
-            resume: `${taille}, ${mbps} Mb/s — adaptation indisponible`,
+            resume: `${size}, ${mbps} Mb/s — adaptation unavailable`,
             alerte: false,
         };
     }
-    return { resume: `${taille}, ${mbps} Mb/s`, alerte: false };
+    return { resume: `${size}, ${mbps} Mb/s`, alerte: false };
 }

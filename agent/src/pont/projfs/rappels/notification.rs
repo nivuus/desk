@@ -1,26 +1,26 @@
-//! Le rappel de NOTIFICATION, extrait de [`super`] **avant** que F2 ne le
-//! fasse grossir, et non après.
+//! The NOTIFICATION callback, extracted from [`super`] **before** F2
+//! made it grow, and not after.
 //!
-//! `rappels.rs` était à **488** lignes pour une marge de **12**, et ce rappel
-//! est exactement ce que F2 alourdit : il doit lire `isdirectory`, aiguiller
-//! **cinq** notifications de plus, et pousser un événement vers le fil
-//! d'écriture. L'extraction vient donc d'abord — geste inventé par D9
-//! (`capteur/serveur/instances.rs`) et rejoué trois fois par D10 —, **jamais
-//! une compression**, que `CLAUDE.md` interdit nommément.
+//! `rappels.rs` was at **488** lines for a margin of **12**, and this callback
+//! is exactly what F2 weighs down: it must read `isdirectory`, route
+//! **five** more notifications, and push an event towards the write
+//! thread. The extraction therefore comes first — a gesture invented by D9
+//! (`capteur/serveur/instances.rs`) and replayed three times by D10 —, **never
+//! a compression**, which `CLAUDE.md` forbids by name.
 //!
-//! # Ce que cette extraction N'EST PAS
+//! # What this extraction is NOT
 //!
-//! **Elle n'ajoute aucun comportement.** La transposition est VERBATIM. Ce qui
-//! l'a fait grossir vient de la tâche 12, dans un commit séparé, pour que la
-//! revue puisse comparer l'un et l'autre.
+//! **It adds no behaviour.** The transposition is VERBATIM. What
+//! made it grow comes from task 12, in a separate commit, so that the
+//! review can compare one with the other.
 //!
-//! # ✅ F3 EST ARRIVÉ, ET IL LIT LES DEUX PARAMÈTRES QUE F2 IGNORAIT
+//! # ✅ F3 HAS ARRIVED, AND IT READS THE TWO PARAMETERS F2 IGNORED
 //!
-//! `_est_repertoire` et `_destination` étaient préfixés d'un souligné parce que
-//! F2 refusait renommage et suppression. **Les deux sont désormais lus** —
-//! l'un est transporté tel quel dans l'en-tête, l'autre normalisé par
-//! `pont::chemins`. `_parametres`, en revanche, **reste `_parametres`** : voir
-//! ci-dessous, c'est toujours une union.
+//! `_est_repertoire` and `_destination` were prefixed with an underscore because
+//! F2 refused renaming and deletion. **Both are now read** —
+//! one is carried as is in the header, the other normalised by
+//! `pont::chemins`. `_params`, on the other hand, **stays `_params`**: see
+//! below, it is still a union.
 
 use windows::core::HRESULT;
 use windows::Win32::Foundation::{E_UNEXPECTED, S_OK};
@@ -33,117 +33,117 @@ use crate::pont::ecriture::{fil::Ordre, Evenement};
 use crate::pont::notifications;
 
 // ────────────────────────────────────────────────────────────────────────────
-// 🔵 LE `const _` PART AVEC SA FONCTION — le seul garde d'ABI de ce dépôt,
-// vérifié par la compilation croisée ORDINAIRE et non par un `#[test]` (voir
-// l'en-tête de [`super`], qui explique pourquoi un `#[cfg(test)]` sur une cible
-// qu'on ne teste jamais n'est compilé par RIEN).
+// 🔵 THE `const _` LEAVES WITH ITS FUNCTION — this repository's only ABI guard,
+// checked by ORDINARY cross compilation and not by a `#[test]` (see
+// the header of [`super`], which explains why a `#[cfg(test)]` on a target
+// never tested is compiled by NOTHING).
 // ────────────────────────────────────────────────────────────────────────────
 const _: PRJ_NOTIFICATION_CB = Some(notification);
 
-/// **La décision d'écriture, et le seul rappel de F2 qui change ce qu'une
-/// application obtient.**
+/// **The write decision, and the only F2 callback that changes what an
+/// application gets.**
 ///
-/// ⚠️ **Il ne DÉCIDE de rien lui-même** : la décision vit dans
-/// [`crate::pont::notifications`], qui est **PUR** et éprouvé sur l'hôte. Ce
-/// rappel traduit, il n'arbitre pas.
+/// ⚠️ **It DECIDES nothing itself**: the decision lives in
+/// [`crate::pont::notifications`], which is **PURE** and exercised on the host. This
+/// callback translates, it does not arbitrate.
 ///
-/// # 🔴 Ce qu'il ne fait JAMAIS, et pourquoi
+/// # 🔴 What it NEVER does, and why
 ///
-/// **Aucune lecture de fichier, aucun verrou tenu, aucune attente.** Il court
-/// sur un fil que le SYSTÈME possède : y ouvrir le fichier hydraté ferait une
-/// E/S sur ce fil, et la lecture traverserait la racine — donc nos propres
-/// rappels. Tout ce qu'il fait est **pousser un événement sur un `mpsc` et
-/// rendre `S_OK` immédiatement** ; c'est le fil d'écriture, dédié, qui lit.
+/// **No file read, no lock held, no waiting.** It runs
+/// on a thread the SYSTEM owns: opening the hydrated file there would do an
+/// I/O on that thread, and the read would cross the root — hence our own
+/// callbacks. All it does is **push an event on an `mpsc` and
+/// return `S_OK` immediately**; it is the dedicated write thread that reads.
 ///
-/// # ⚠️ `PRJ_NOTIFICATION_PARAMETERS` N'EST PAS DÉRÉFÉRENCÉ, ET C'EST DÉLIBÉRÉ
+/// # ⚠️ `PRJ_NOTIFICATION_PARAMETERS` IS NOT DEREFERENCED, AND IT IS DELIBERATE
 ///
-/// C'est une **UNION** (`mod.rs:352-356`, membres décrits en `mod.rs:364-376`),
-/// et **lire le mauvais membre est un comportement indéfini**. F2 n'a besoin
-/// d'aucun des trois : `PostCreate.NotificationMask` et
-/// `FileRenamed.NotificationMask` servent à **changer le masque** pour ce
-/// fichier, ce que F2 ne fait pas, et `FileDeletedOnHandleClose.IsFileModified`
-/// concerne la suppression, qui est **F3**. Le paramètre reste donc
-/// `_parametres` — **ne pas la lire du tout est le seul moyen sûr**, et le dire
-/// évite qu'un successeur y voie un oubli.
+/// It is a **UNION** (`mod.rs:352-356`, members described at `mod.rs:364-376`),
+/// and **reading the wrong member is undefined behaviour**. F2 needs
+/// none of the three: `PostCreate.NotificationMask` and
+/// `FileRenamed.NotificationMask` serve to **change the mask** for that
+/// file, which F2 does not do, and `FileDeletedOnHandleClose.IsFileModified`
+/// concerns deletion, which is **F3**. The parameter therefore stays
+/// `_params` — **not reading it at all is the only safe way**, and saying so
+/// prevents a successor from seeing an oversight in it.
 ///
-/// ✅ **`destination` EST LUE DEPUIS F3, et ce n'est PAS un membre de l'union.**
-/// C'est un **paramètre DIRECT** du rappel (`mod.rs:334`,
-/// `destinationfilename: PCWSTR`). Le dire évite qu'un successeur aille la
-/// chercher dans `PRJ_NOTIFICATION_PARAMETERS.FileRenamed`, qui ne porte qu'un
-/// masque de notification.
+/// ✅ **`destination` IS READ SINCE F3, and it is NOT a member of the union.**
+/// It is a **DIRECT parameter** of the callback (`mod.rs:334`,
+/// `destinationfilename: PCWSTR`). Saying so prevents a successor from looking
+/// for it in `PRJ_NOTIFICATION_PARAMETERS.FileRenamed`, which only carries a
+/// notification mask.
 ///
-/// ⚠️ **Elle ne porte un nom que pour `PRE_RENAME` et `FILE_RENAMED`.** Pour
-/// les sept autres notifications du masque, elle est vide ou nulle — et c'est
-/// pourquoi [`destination_de`] rend une [`notifications::Cible`] plutôt qu'un
-/// chemin : « il n'y a pas de destination » est un état légitime, distinct de
-/// « la destination est irrecevable ».
+/// ⚠️ **It only carries a name for `PRE_RENAME` and `FILE_RENAMED`.** For
+/// the mask's seven other notifications, it is empty or null — and that is
+/// why [`destination_de`] returns a [`notifications::Cible`] rather than a
+/// path: "there is no destination" is a legitimate state, distinct from
+/// "the destination is unacceptable".
 pub(super) unsafe extern "system" fn notification(
-    donnees: *const PRJ_CALLBACK_DATA,
+    data: *const PRJ_CALLBACK_DATA,
     est_repertoire: bool,
     notification: PRJ_NOTIFICATION,
     destination: windows::core::PCWSTR,
-    _parametres: *mut PRJ_NOTIFICATION_PARAMETERS,
+    _params: *mut PRJ_NOTIFICATION_PARAMETERS,
 ) -> HRESULT {
     garde("Notification", || {
-        let Some(etat) = (unsafe { etat(donnees) }) else {
+        let Some(etat) = (unsafe { etat(data) }) else {
             return E_UNEXPECTED;
         };
-        // SÛRETÉ : `destination` est un `PCWSTR` que ProjFS a fourni ; il est
-        // ou bien nul, ou bien terminé par un nul.
+        // SAFETY: `destination` is a `PCWSTR` ProjFS provided; it is
+        // either null, or null-terminated.
         let vers = unsafe { destination_de(destination) };
         let cible = match &vers {
             None => notifications::Cible::SansObjet,
-            Some(Ok(_)) => notifications::Cible::DansLaRacine,
+            Some(Ok(_)) => notifications::Cible::InRoot,
             Some(Err(())) => notifications::Cible::HorsRacine,
         };
-        // 🔵 **LA TRACE QUE LA SONDE S1 LIT, ET C'EST UN `debug!` À DESSEIN.**
+        // 🔵 **THE TRACE PROBE S1 READS, AND IT IS A `debug!` ON PURPOSE.**
         //
-        // Elle porte les QUATRE champs bruts du rappel — le code, `isdirectory`,
-        // le chemin, la destination —, c'est-à-dire exactement ce dont S1 a
-        // besoin pour répondre à ses trois questions **sans qu'aucun octet ne
-        // parte vers le poste local**.
+        // It carries the callback's FOUR raw fields — the code, `isdirectory`,
+        // the path, the destination —, that is, exactly what S1
+        // needs to answer its three questions **without a single byte
+        // going to the local workstation**.
         //
-        // ⚠️ **`debug!` et non `info!`, contrairement au recensement des codes**
-        // : ce rappel court sur un fil que le système possède, à chaque
-        // notification. Ce n'est PAS le chemin le plus chaud du pont — les
-        // lectures n'en produisent aucune, `FILE_HANDLE_CLOSED_NO_MODIFICATION`
-        // n'étant délibérément pas demandée —, mais une ligne `info!` par
-        // création de fichier inonderait un journal d'exploitation pour un
-        // besoin de banc.
+        // ⚠️ **`debug!` and not `info!`, unlike the census of codes**
+        // : this callback runs on a thread the system owns, at each
+        // notification. It is NOT the bridge's hottest path — reads
+        // produce none, `FILE_HANDLE_CLOSED_NO_MODIFICATION`
+        // being deliberately not requested —, but one `info!` line per
+        // file creation would flood an operations log for a
+        // bench need.
         //
-        // ⚠️ **Elle se lit avec un filtre CIBLÉ**, jamais `RUST_LOG=debug`
-        // global : celui-ci ferait une ligne par morceau lu, ce qui est le
-        // piège « ne jamais tracer par paquet » du chantier TURN. Le filtre
-        // le plus étroit qui la rende est
-        // `agent::pont::projfs::rappels::notification=debug`. ⚠️ **La recette
-        // de F3 a employé `RUST_LOG=info,agent::pont=debug`**, plus large :
-        // mesuré sur les huit exécutions versées, il ne produit **aucune** ligne
-        // par morceau lu — le chemin de lecture n'appelle pas `debug!`. Le
-        // relevé le plus volumineux fait 3 100 lignes pour une session de 90 s.
+        // ⚠️ **It is read with a TARGETED filter**, never a global
+        // `RUST_LOG=debug`: that would make one line per chunk read, which is the
+        // "never trace per packet" trap of the TURN work item. The narrowest filter
+        // that yields it is
+        // `agent::pont::projfs::rappels::notification=debug`. ⚠️ **F3's acceptance
+        // run used `RUST_LOG=info,agent::pont=debug`**, which is wider:
+        // measured over the eight recorded runs, it produces **no** line
+        // per chunk read — the read path does not call `debug!`. The
+        // largest record is 3,100 lines for a 90 s session.
         tracing::debug!(
             code = notification.0,
             est_repertoire,
-            chemin = %chemin_brut(donnees),
+            chemin = %chemin_brut(data),
             destination = ?vers,
             ?cible,
             "notification ProjFS"
         );
         match notifications::decider(notification.0, etat.etat_de_notification(), cible) {
             notifications::Reponse::Refuser(cause) => HRESULT(etat.compteurs.rendre(cause)),
-            // 🔵 L'écriture est autorisée. **Il n'y a rien de plus à faire
-            // ici** : les octets ne nous concernent qu'à la fermeture du
-            // handle, par une POST.
+            // 🔵 Writing is allowed. **There is nothing more to do
+            // here**: the bytes only concern us when the
+            // handle closes, through a POST.
             notifications::Reponse::Autoriser => S_OK,
             notifications::Reponse::Pousser(quoi) => {
-                // ⚠️ **La normalisation de `pont::chemins` reste la SEULE
-                // barrière** contre les remontées `..`, les flux alternatifs
-                // NTFS (`:`) et les noms de périphérique réservés. Elle est
-                // PURE, donc éprouvée sur l'hôte.
-                let Some((chemin, _)) = (unsafe { chemins_de(donnees) }) else {
-                    // Un chemin refusé par la normalisation : on ne pousse
-                    // RIEN, et `chemins_de` a déjà journalisé le refus. Rendre
-                    // S_OK est le seul choix — la notification est une POST,
-                    // et refuser n'empêcherait rien.
+                // ⚠️ **`pont::chemins`' normalisation stays the ONLY
+                // barrier** against `..` climbs, NTFS alternate
+                // streams (`:`) and reserved device names. It is
+                // PURE, hence exercised on the host.
+                let Some((chemin, _)) = (unsafe { chemins_de(data) }) else {
+                    // A path refused by normalisation: we push
+                    // NOTHING, and `chemins_de` has already logged the refusal. Returning
+                    // S_OK is the only choice — the notification is a POST,
+                    // and refusing would prevent nothing.
                     return S_OK;
                 };
                 let evenement = match quoi {
@@ -151,24 +151,24 @@ pub(super) unsafe extern "system" fn notification(
                         chemin,
                         repertoire: est_repertoire,
                     },
-                    notifications::Poussee::Contenu => Evenement::Modifie { chemin },
-                    // ── LES DEUX POUSSÉES DE F3 ───────────────────────────
+                    notifications::Poussee::Contenu => Evenement::Modified { chemin },
+                    // ── F3'S TWO PUSHES ───────────────────────────────────
                     notifications::Poussee::Renommage => {
-                        // 🔴 **DEUX INVARIANTS QUI REFUSENT PLUTÔT QUE DE
-                        // DEVINER, et c'est la parade au risque le plus grave
-                        // de F3 (R-F3-1).** Se tromper de SENS ne produirait
-                        // aucune erreur : le renommage aurait lieu, à l'envers,
-                        // et la destination écraserait la source.
+                        // 🔴 **TWO INVARIANTS THAT REFUSE RATHER THAN
+                        // GUESS, and it is the safeguard against F3's most serious
+                        // risk (R-F3-1).** Getting the DIRECTION wrong would produce
+                        // no error: the renaming would happen, backwards,
+                        // and the destination would overwrite the source.
                         //
-                        // ⚠️ **Cette parade NE DÉPEND D'AUCUNE MESURE.** La
-                        // sonde S1 relève sur pièces quel champ ProjFS porte
-                        // quoi ; celle-ci tient même si la sonde n'a jamais été
-                        // jouée.
+                        // ⚠️ **This safeguard DEPENDS ON NO MEASUREMENT.** Probe
+                        // S1 records from evidence which ProjFS field carries
+                        // what; this one holds even if the probe has never been
+                        // played.
                         let Some(Ok(vers)) = vers else {
                             tracing::warn!(
                                 de = %chemin,
                                 destination_lisible = vers.is_some(),
-                                "renommage sans destination utilisable : RIEN n'est pousse"
+                                "rename without a usable destination: NOTHING is pushed"
                             );
                             return S_OK;
                         };
@@ -176,8 +176,8 @@ pub(super) unsafe extern "system" fn notification(
                             tracing::warn!(
                                 de = %chemin,
                                 vers = %vers,
-                                "renommage dont la destination est vide ou egale a la source : \
-                                 RIEN n'est pousse"
+                                "rename whose destination is empty or equal to the source: \
+                                 NOTHING is pushed"
                             );
                             return S_OK;
                         }
@@ -187,46 +187,46 @@ pub(super) unsafe extern "system" fn notification(
                             repertoire: est_repertoire,
                         }
                     }
-                    notifications::Poussee::Suppression => Evenement::Supprime {
+                    notifications::Poussee::Suppression => Evenement::Deleted {
                         chemin,
                         repertoire: est_repertoire,
                     },
                 };
                 // ────────────────────────────────────────────────────────
-                // 🔴 **F5 — PREMIÈRE MOITIÉ DE L'INVALIDATION : ce que la VM a
-                // changé.** Le répertoire qui contient l'entrée mutée cesse
-                // d'être servi depuis la mémoire, sans quoi une création faite
-                // DANS la VM resterait invisible au listage suivant — le défaut
-                // exact que la spec §7.4 reproche à l'ancien pont.
+                // 🔴 **F5 — FIRST HALF OF INVALIDATION: what the VM
+                // changed.** The directory containing the mutated entry stops
+                // being served from memory, otherwise a creation made
+                // IN the VM would stay invisible at the next listing — the exact
+                // defect spec §7.4 reproaches the old bridge for.
                 //
-                // ⚠️ **UN RENOMMAGE INVALIDE LES DEUX PARENTS**, source et
-                // destination : `a/x` → `b/y` retire une entrée de `a` et en
-                // ajoute une à `b`. N'en invalider qu'un laisserait l'autre
-                // mentir, et le sens de l'erreur dépendrait du lequel — donc
-                // serait irrégulier, donc plus dur à voir.
+                // ⚠️ **A RENAMING INVALIDATES BOTH PARENTS**, source and
+                // destination: `a/x` → `b/y` removes an entry from `a` and
+                // adds one to `b`. Invalidating only one would let the other
+                // lie, and the direction of the error would depend on which — hence
+                // would be irregular, hence harder to see.
                 //
-                // ⚠️ **CE QUE JE NE SAIS PAS, ET QUE JE NE PRÉTENDS PAS
-                // SAVOIR** : le filtre ProjFS fusionne-t-il lui-même les
-                // entrées locales avec ce que le fournisseur énumère, ou nous
-                // rappelle-t-il ?
+                // ⚠️ **WHAT I DO NOT KNOW, AND DO NOT CLAIM
+                // TO KNOW**: does the ProjFS filter merge local entries
+                // itself with what the provider enumerates, or does it
+                // call us back?
                 //
-                // ✅ **LA PORTE P3 A ÉTÉ JOUÉE (2 exécutions), ET CE BRAS-CI
-                // EST ATTEINT.** *Ces lignes disaient « elle n'a pas été jouée,
-                // la VM était éteinte » : c'était vrai à l'heure où je les ai
-                // écrites, et la VM a été rendue une heure plus tard.* Le
-                // journal porte `notification ProjFS code=4
-                // chemin=ne-vient-pas-du-navigateur.txt`, et **le relistage qui
-                // suit coûte 49 ms — un aller-retour, pas les 7-8 ms d'un
-                // succès de cache**. La mémoire du répertoire avait donc bien
-                // été oubliée ICI.
+                // ✅ **GATE P3 WAS PLAYED (2 runs), AND THIS ARM
+                // IS REACHED.** *These lines said "it was not played,
+                // the VM was off": it was true at the time I wrote
+                // them, and the VM was handed back an hour later.* The
+                // log carries a `code=4` ProjFS notification for the file
+                // created outside the browser, and **the relisting that
+                // follows costs 49 ms — a round trip, not the 7-8 ms of a
+                // cache hit**. The directory's memory had therefore indeed
+                // been forgotten HERE.
                 //
-                // ⚠️ **CE QUE CELA NE SÉPARE PAS** : que le filtre fusionne
-                // *aussi* de lui-même. Notre invalidation le précède, et rien
-                // dans ce montage ne dit ce qui se serait passé sans elle. Les
-                // deux moitiés restent posées, parce que l'une est
-                // **indispensable** si le filtre nous rappelle — ce qu'il fait —
-                // et **inoffensive** s'il fusionne : le coût de se tromper
-                // n'est pas symétrique.
+                // ⚠️ **WHAT THIS DOES NOT SEPARATE**: whether the filter *also*
+                // merges by itself. Our invalidation precedes it, and nothing
+                // in this setup says what would have happened without it. The
+                // two halves stay in place, because one is
+                // **indispensable** if the filter calls us back — which it does —
+                // and **harmless** if it merges: the cost of being wrong
+                // is not symmetric.
                 // ────────────────────────────────────────────────────────
                 if etat.cache_arme {
                     if let Ok(mut cache) = etat.cache.lock() {
@@ -240,24 +240,22 @@ pub(super) unsafe extern "system" fn notification(
                     }
                 }
                 if etat.vers_ecriture.send(Ordre::Survenu(evenement)).is_err() {
-                    // 🔴 **Le fil d'écriture est parti, et l'application a DÉJÀ
-                    // enregistré.** Rien ne peut plus lui être dit : c'est
-                    // l'absence de contre-pression que l'en-tête de
-                    // `pont::notifications` décrit. Le `warn!` est tout ce qui
-                    // reste.
-                    tracing::warn!(
-                        "fil d'ecriture du pont parti : une ecriture ne sera JAMAIS poussee"
-                    );
+                    // 🔴 **The write thread is gone, and the application has ALREADY
+                    // saved.** Nothing more can be said to it: it is
+                    // the absence of back-pressure the header of
+                    // `pont::notifications` describes. The `warn!` is all that
+                    // remains.
+                    tracing::warn!("bridge write thread gone: a write will NEVER be pushed");
                 }
                 S_OK
             }
-            // Une notification que le masque n'aurait pas dû livrer. Accepter
-            // EN SILENCE ferait qu'un masque élargi par erreur passerait
-            // inaperçu.
+            // A notification the mask should not have delivered. Accepting
+            // SILENTLY would let a mask widened by mistake go
+            // unnoticed.
             notifications::Reponse::AccepterSansAttendre => {
                 tracing::warn!(
                     code = notification.0,
-                    "notification ProjFS non attendue par le masque de F2 : acceptee sans effet"
+                    "ProjFS notification not expected by the F2 mask: accepted without effect"
                 );
                 S_OK
             }
@@ -265,30 +263,30 @@ pub(super) unsafe extern "system" fn notification(
     })
 }
 
-/// La destination d'une notification, normalisée.
+/// The destination of a notification, normalised.
 ///
-/// Trois issues, et **la distinction entre les deux dernières est ce qui rend
-/// [`notifications::Cible`] plus honnête qu'un `bool`** :
+/// Three outcomes, and **the distinction between the last two is what makes
+/// [`notifications::Cible`] more honest than a `bool`**:
 ///
-/// - `None` — le paramètre est nul ou vide : **il n'y a pas de destination**,
-///   ce qui est le cas des sept notifications du masque autres que
-///   `PRE_RENAME` et `FILE_RENAMED` ;
-/// - `Some(Ok(chemin))` — une destination recevable, normalisée en chemin
-///   logique ;
-/// - `Some(Err(()))` — une destination que `pont::chemins` refuse : remontée
-///   `..`, flux alternatif NTFS, nom de périphérique réservé, chemin absolu.
-///   **C'est aussi ce qu'on obtient d'une cible hors de la racine**, ProjFS ne
-///   livrant que des chemins relatifs à celle-ci.
+/// - `None` — the parameter is null or empty: **there is no destination**,
+///   which is the case of the mask's seven notifications other than
+///   `PRE_RENAME` and `FILE_RENAMED`;
+/// - `Some(Ok(chemin))` — an acceptable destination, normalised into a logical
+///   path;
+/// - `Some(Err(()))` — a destination `pont::chemins` refuses: `..`
+///   climb, NTFS alternate stream, reserved device name, absolute path.
+///   **It is also what we get from a target outside the root**, ProjFS only
+///   delivering paths relative to it.
 ///
-/// # Sûreté
+/// # Safety
 ///
-/// L'appelant garantit que `brut` est le `destinationfilename` que ProjFS vient
-/// de fournir : nul, ou terminé par un nul.
+/// The caller guarantees that `brut` is the `destinationfilename` ProjFS has just
+/// provided: null, or null-terminated.
 unsafe fn destination_de(brut: windows::core::PCWSTR) -> Option<Result<String, ()>> {
     if brut.is_null() {
         return None;
     }
-    // SÛRETÉ : garantie de l'appelant.
+    // SAFETY: the caller's guarantee.
     let unites = unsafe { brut.as_wide() };
     if unites.is_empty() {
         return None;
@@ -296,33 +294,30 @@ unsafe fn destination_de(brut: windows::core::PCWSTR) -> Option<Result<String, (
     match crate::pont::chemins::normaliser_utf16(unites) {
         Ok(logique) => Some(Ok(logique)),
         Err(refus) => {
-            tracing::warn!(
-                ?refus,
-                "destination de renommage refusee par la normalisation"
-            );
+            tracing::warn!(?refus, "rename destination refused by normalisation");
             Some(Err(()))
         }
     }
 }
 
-/// Le `FilePathName` du rappel, **tel quel**, pour la trace de la sonde S1.
+/// The callback's `FilePathName`, **as is**, for probe S1's trace.
 ///
-/// ⚠️ **Ce n'est PAS le chemin normalisé** : la sonde a besoin de voir ce que
-/// ProjFS a livré, y compris ce que `pont::chemins` refuserait. Un chemin
-/// refusé par la normalisation ne produit aucune trace ailleurs, et S1 doit
-/// pouvoir constater qu'il est arrivé.
+/// ⚠️ **It is NOT the normalised path**: the probe needs to see what
+/// ProjFS delivered, including what `pont::chemins` would refuse. A path
+/// refused by normalisation produces no trace elsewhere, and S1 must
+/// be able to observe that it arrived.
 ///
-/// # Sûreté
+/// # Safety
 ///
-/// L'appelant garantit que `donnees` est le `PRJ_CALLBACK_DATA` que ProjFS
-/// vient de fournir.
-unsafe fn chemin_brut(donnees: *const PRJ_CALLBACK_DATA) -> String {
-    let Some(brut) = (unsafe { donnees.as_ref() }) else {
+/// The caller guarantees that `data` is the `PRJ_CALLBACK_DATA` ProjFS
+/// has just provided.
+unsafe fn chemin_brut(data: *const PRJ_CALLBACK_DATA) -> String {
+    let Some(brut) = (unsafe { data.as_ref() }) else {
         return String::new();
     };
     if brut.FilePathName.is_null() {
         return String::new();
     }
-    // SÛRETÉ : ProjFS garantit un `PCWSTR` terminé par un nul.
+    // SAFETY: ProjFS guarantees a null-terminated `PCWSTR`.
     String::from_utf16_lossy(unsafe { brut.FilePathName.as_wide() })
 }

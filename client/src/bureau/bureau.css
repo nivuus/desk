@@ -1,130 +1,130 @@
-/* La peinture des sections du bureau — « Mes fenêtres » et « Mes fichiers ».
-   🔴 RENOMMÉE DEPUIS `shell.css` LE 31 AOÛT 2026 : la page-shell est devenue
-   une redirection, et le nom `shell` mentait dès lors sur ce qu'elle peint.
-   Elle est liée par `hub.html`, la seule surface du produit.
+/* The painting of the desktop sections — "My windows" and "My files".
+   🔴 RENAMED FROM `shell.css` ON AUGUST 31ST, 2026: the shell page became
+   a redirect, and the name `shell` then lied about what it paints.
+   It is linked by `hub.html`, the only surface of the product.
 
-   🔴 QUATRE RÈGLES EN SONT SORTIES LE MÊME JOUR, DEVENUES ORPHELINES QUAND
-   `shell.html` A CESSÉ DE PORTER SON BALISAGE : `.bureau__titre`,
-   `.bureau__section` et `.bureau__section-titre`. Le hub n'emploie pas ces
-   noms — il a ses propres `hub__section`/`hub__section-titre` (`hub.css`),
-   déclarés à dessein depuis la tâche 5 pour ne PAS dépendre d'une évolution
-   future de cette feuille (voir le commentaire de `hub.css` à leur sujet,
-   écrit avant même que cette tâche n'existe). Retirées ici plutôt que
-   redoublées côté hub : c'est `hub.css` qui porte la décision, cette feuille
-   ne fait que la respecter.
-   ⚠️ `.bureau`, LUI, RESTE — ET CE N'EST PAS UN OUBLI. Aucune classe ne
-   l'emploie plus non plus (le hub porte son propre conteneur, `.hub`), mais
-   sa seule déclaration, `margin-block: var(--e-7)`, est l'UNIQUE emploi de
-   `--e-7` dans tout le dépôt (`grep -rn -- '--e-7\b' client/src` le confirme,
-   hors la déclaration du token lui-même et l'énumération de
-   `galerie.test.ts`). Le retirer ferait tomber `--e-7` en orphelin pour le
-   contrôle §7.6 (`tokens-orphelins.mjs`), qui n'admet aucune exception
-   déclarée (`EN_ATTENTE_D_APPELANT` est VIDE depuis S4) — un échec RÉEL et
-   automatisé, contrairement au risque purement théorique sur les classes
-   elles-mêmes (§7.9 ne vérifie que « employé ⊆ déclaré », jamais le sens
-   inverse — voir son propre commentaire « CE QUE CE CONTRÔLE NE DIT PAS »).
-   Les trois autres retirées ci-dessus n'ont, elles, AUCUN token exclusif :
-   `--e-6`, `--t-2xl`, `--t-xl`, `--texte-fort` et `--lh-serre` ont tous un
-   employeur ailleurs (`hub.css` en tête), vérifié avant de trancher.
+   🔴 FOUR RULES LEFT IT THE SAME DAY, ORPHANED WHEN
+   `shell.html` STOPPED CARRYING ITS MARKUP: `.bureau__titre`,
+   `.bureau__section` and `.bureau__section-titre`. The hub does not use these
+   names — it has its own `hub__section`/`hub__section-titre` (`hub.css`),
+   declared on purpose since task 5 so as NOT to depend on a future
+   evolution of this sheet (see the comment of `hub.css` about them,
+   written even before this task existed). Removed here rather than
+   doubled on the hub side: it is `hub.css` that carries the decision, this sheet
+   only respects it.
+   ⚠️ `.bureau`, ON THE OTHER HAND, STAYS — AND IT IS NOT AN OVERSIGHT. No class
+   uses it any more either (the hub carries its own container, `.hub`), but
+   its only declaration, `margin-block: var(--e-7)`, is the ONLY use of
+   `--e-7` in the whole repository (`grep -rn -- '--e-7\b' client/src` confirms it,
+   apart from the declaration of the token itself and the enumeration of
+   `galerie.test.ts`). Removing it would make `--e-7` an orphan for
+   check §7.6 (`tokens-orphelins.mjs`), which admits no declared
+   exception (`EN_ATTENTE_D_APPELANT` has been EMPTY since S4) — a REAL and
+   automated failure, unlike the purely theoretical risk on the classes
+   themselves (§7.9 only checks "used ⊆ declared", never the reverse
+   direction — see its own comment "WHAT THIS CHECK DOES NOT SAY").
+   The other three removed above have NO exclusive token:
+   `--e-6`, `--t-2xl`, `--t-xl`, `--texte-fort` and `--lh-serre` all have a
+   user elsewhere (`hub.css` first of all), checked before deciding.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   LA FEUILLE DE LA PAGE-SHELL, ET D'ELLE SEULE — sous-projet ⑥, sous-bloc S3.
+   THE SHEET OF THE SHELL PAGE, AND OF IT ALONE — sub-project ⑥, sub-block S3.
 
-   Trois surfaces, trois feuilles, une convention : `style.css` est celle de la
-   fenêtre de session, `connexion.css` celle de l'écran de connexion, celle-ci
-   celle du bureau. Aucune ne connaît les deux autres.
+   Three surfaces, three sheets, one convention: `style.css` is that of the
+   session window, `connexion.css` that of the sign-in screen, this one
+   that of the desktop. None knows the other two.
 
-   🔴 ELLE SE LIE DEPUIS `hub.html`, ELLE NE S'IMPORTE JAMAIS. ⚠️ CETTE
-   LIGNE DISAIT `shell.html` jusqu'à la revue finale du 31 août 2026 : la
-   tâche 9 a vidé cette page de tout balisage ET de tout `<link>`, et c'est
-   `client/hub.html:19` qui porte désormais le lien — mesuré par
+   🔴 IT IS LINKED FROM `hub.html`, IT IS NEVER IMPORTED. ⚠️ THIS
+   LINE SAID `shell.html` until the final review of August 31st, 2026:
+   task 9 emptied that page of all markup AND of every `<link>`, and it is
+   `client/hub.html:19` that now carries the link — measured by
    `grep -n '<link rel="stylesheet" href="/src/bureau/bureau.css"' client/*.html`,
-   qui rend CETTE SEULE ligne. ⚠️ La commande citée ici visait d'abord le
-   seul nom `bureau.css`, qui frappe AUSSI un commentaire de `hub.html` :
-   un relevé doit s'ancrer sur la SYNTAXE de ce qu'il prétend compter. C'est
-   l'arrangement B, mesuré par S1 et reconfirmé par le plan S3 : un `@import`
-   fait RÉ-INLINER la feuille dans chaque entrée qui la traverse, un `<link>`
-   laisse Vite la PARTAGER. C'est ce qui permet à `primitives.css` d'être servie
-   une seule fois pour les trois pages qui la lient, au même hachage.
+   which returns THIS SINGLE line. ⚠️ The command quoted here first targeted
+   the name `bureau.css` alone, which ALSO hits a comment of `hub.html`:
+   a report must anchor itself on the SYNTAX of what it claims to count. It is
+   arrangement B, measured by S1 and reconfirmed by the S3 plan: an `@import`
+   makes the sheet be RE-INLINED in every entry that goes through it, a `<link>`
+   lets Vite SHARE it. It is what lets `primitives.css` be served
+   only once for the three pages that link it, with the same hash.
 
-   ── AUCUN SÉLECTEUR D'ÉLÉMENT NU ─────────────────────────────────────────
-   Tout passe par une classe, comme dans `primitives.css` et pour la même
-   raison : c'est ce qui garantit que cette feuille ne peut RIEN changer à
-   `index.html` le jour où quelqu'un lierait la mauvaise feuille. La fenêtre de
-   session appartient à S4, et S3 n'a pas le droit d'y toucher.
+   ── NO BARE ELEMENT SELECTOR ─────────────────────────────────────────────
+   Everything goes through a class, as in `primitives.css` and for the same
+   reason: it is what guarantees this sheet can change NOTHING in
+   `index.html` the day someone links the wrong sheet. The session
+   window belongs to S4, and S3 has no right to touch it.
 
-   ── DEUX MESURES DE CONTENANT, DEVENUES DES TOKENS ───────────────────────
-   ✅ ELLES PASSENT DÉSORMAIS PAR UN TOKEN — `--contenant-page` et
-   `--contenant-colonne`, sous-bloc S4, tâche 8, à valeur strictement égale.
-   ❌ « Les deux mesures de CONTENANT de cette feuille NE PASSENT PAR AUCUN
-   CRAN D'ÉCHELLE » — écrit ici par S3, et vrai à sa date — est donc FAUX au
-   présent. Le constat qui le fondait reste juste, et c'est lui qui a justifié
-   les tokens : les échelles du §4.4 couvrent l'ESPACEMENT (`--e-*`) et la
-   TYPOGRAPHIE (`--t-*`), et AUCUNE ne porte de mesure de contenant — la plus
-   grande, `--e-8`, vaut 4rem, soit une carte de 64 px. S4 n'a pas étendu une
-   échelle : il a nommé une FAMILLE à trois membres, et la raison vit auprès
-   de la déclaration, dans `tokens.css`.
-   ❌ « Les inventer en tokens changerait le compte de 48 que §7.4, §7.6 et
-   trois documents publient » — c'était un ARGUMENT DE COMPTE, et il ne pouvait
-   pas tenir : un compte n'est pas une raison de ne pas nommer une valeur. Le
-   compte a changé, les contrôles l'impriment, et c'est tout ce qu'on attend
-   d'eux.
+   ── TWO CONTAINER MEASURES, TURNED INTO TOKENS ───────────────────────────
+   ✅ THEY NOW GO THROUGH A TOKEN — `--contenant-page` and
+   `--contenant-colonne`, sub-block S4, task 8, with a strictly equal value.
+   ❌ "The two CONTAINER measures of this sheet GO THROUGH NO
+   SCALE STEP" — written here by S3, and true at its date — is therefore WRONG in the
+   present. The finding that founded it remains right, and it is what justified
+   the tokens: the scales of §4.4 cover SPACING (`--e-*`) and
+   TYPOGRAPHY (`--t-*`), and NONE carries a container measure — the
+   largest, `--e-8`, is 4rem, that is, a 64 px card. S4 did not extend a
+   scale: it named a FAMILY with three members, and the reason lives next to
+   the declaration, in `tokens.css`.
+   ❌ "Inventing them as tokens would change the count of 48 that §7.4, §7.6 and
+   three documents publish" — it was a COUNT ARGUMENT, and it could
+   not hold: a count is not a reason not to name a value. The
+   count changed, the checks print it, and that is all one expects
+   of them.
 
-   🔴 ELLES SONT ÉCRITES EN LITTÉRAL, ET NON EN PROPRIÉTÉ PERSONNALISÉE LOCALE.
-   Une première rédaction les posait en `--largeur-page` / `--largeur-carte-min`
-   sur `.bureau`, en affirmant en toutes lettres qu'elles échappaient au §7.6
-   « qui exige qu'un `var(--…)` soit déclaré : ces deux-là le sont, juste
-   au-dessous ». LE CONTRÔLE A RÉFUTÉ CETTE PHRASE À LA PREMIÈRE EXÉCUTION :
-   son inclusion ① exige qu'un `var(--…)` soit déclaré par `tokens.css`, la
-   source UNIQUE des valeurs, et pas seulement quelque part —
+   🔴 THEY ARE WRITTEN AS LITERALS, AND NOT AS A LOCAL CUSTOM PROPERTY.
+   A first draft set them as `--largeur-page` / `--largeur-carte-min`
+   on `.bureau`, stating in so many words that they escaped §7.6
+   "which requires a `var(--…)` to be declared: these two are, just
+   below". THE CHECK REFUTED THAT SENTENCE ON THE FIRST RUN:
+   its inclusion ① requires a `var(--…)` to be declared by `tokens.css`, the
+   SINGLE source of values, and not merely somewhere —
 
-       NON DÉCLARÉ  --largeur-carte-min  employé par client/src/shell.css
-       NON DÉCLARÉ  --largeur-page       employé par client/src/shell.css
+       UNDECLARED  --largeur-carte-min  used by client/src/shell.css
+       UNDECLARED  --largeur-page       used by client/src/shell.css
 
-   C'est le contrôle qui a raison : une feuille de surface qui se déclare ses
-   propres tokens rouvrirait par la fenêtre la dispersion des valeurs que
-   `tokens.css` existe pour fermer.
+   It is the check that is right: a surface sheet that declares its
+   own tokens would reopen through the window the scattering of values that
+   `tokens.css` exists to close.
 
-   ❌ « AUCUN CONTRÔLE NE MESURE UNE LONGUEUR — ni celles-ci, ni les trois de
-   `style.css` que S4 doit reprendre. La clause “aucune longueur hors échelle”
-   du §8 de la spec reste FAUSSE à la fin de S3, et de SIX valeurs. » VRAI À SA
-   DATE, ET RÉFUTÉ PAR S4 : le contrôle **§7.10**
-   (`client/src/design/longueurs.test.ts`, tâche 2) mesure les longueurs des
-   feuilles de surface, il est NÉ ROUGE de HUIT OCCURRENCES pour SIX VALEURS —
-   les deux nombres sont vrais de choses différentes, un contrôle comptant des
-   occurrences là où S3 comptait des valeurs —, et les tâches 5 à 8 les ont
-   toutes fait tomber. La clause du §8 cesse d'être une dette d'ÉNONCÉ.
-   ⚠️ La règle de compte ci-dessous est celle que §7.10 applique, à une
-   exception près qu'il ajoute et que S3 n'avait pas à poser : le ZÉRO.
-   ❌ CETTE PHRASE DISAIT « CINQ », ET ELLE ÉTAIT JUSTE À SA DATE : à la tâche 4,
-   `connexion.css` n'existait pas. La tâche 5 en a ajouté une (`26rem`) sans
-   reprendre cette ligne — c'est la revue transverse qui l'a relevée.
-   ⚠️ LA RÈGLE DE COMPTE EST CELLE DE `style.css`, ÉNONCÉE AVANT DE COMPTER :
-   un remplissage de fenêtre n'est pas une valeur hors échelle — `style.css`
-   ne compte NI son `100vw` NI son `100vh` dans ses trois, et `100dvh` de
-   `connexion.css` est exclu de la même façon. Les six sont donc `6px`, `18px`,
-   `0.02em` (`style.css`), `72rem`, `18rem` (ici), `26rem` (`connexion.css`).
-   Si l'on comptait aussi les trois remplissages de fenêtre, ce serait NEUF.
+   ❌ "NO CHECK MEASURES A LENGTH — neither these, nor the three of
+   `style.css` that S4 must take over. The clause "no length outside the scale"
+   of §8 of the spec remains WRONG at the end of S3, by SIX values." TRUE AT ITS
+   DATE, AND REFUTED BY S4: check **§7.10**
+   (`client/src/design/lengths.test.ts`, task 2) measures the lengths of the
+   surface sheets, it was BORN RED with EIGHT OCCURRENCES for SIX VALUES —
+   the two numbers are true of different things, a check counting
+   occurrences where S3 counted values —, and tasks 5 to 8 brought them
+   all down. The clause of §8 stops being a STATEMENT debt.
+   ⚠️ The counting rule below is the one §7.10 applies, with one
+   exception it adds and that S3 did not have to set: ZERO.
+   ❌ THIS SENTENCE SAID "FIVE", AND IT WAS RIGHT AT ITS DATE: at task 4,
+   `connexion.css` did not exist. Task 5 added one (`26rem`) without
+   taking up this line again — it is the cross review that found it.
+   ⚠️ THE COUNTING RULE IS THAT OF `style.css`, STATED BEFORE COUNTING:
+   a window fill is not an out-of-scale value — `style.css`
+   counts NEITHER its `100vw` NOR its `100vh` among its three, and the `100dvh` of
+   `connexion.css` is excluded the same way. The six are therefore `6px`, `18px`,
+   `0.02em` (`style.css`), `72rem`, `18rem` (here), `26rem` (`connexion.css`).
+   If one also counted the three window fills, it would be NINE.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .bureau {
     box-sizing: border-box;
     max-inline-size: var(--contenant-page);
-    /* `--e-7` : la marge de tête des surfaces. */
+    /* `--e-7`: the top margin of the surfaces. */
     margin-block: var(--e-7);
     margin-inline: auto;
     padding-inline: var(--e-5);
 }
 
-/* `.bureau__titre`, `.bureau__section` et `.bureau__section-titre` vivaient
-   ici — retirées le 31 août 2026, orphelines dès que `shell.html` a cessé de
-   porter son balisage (le hub emploie `hub__section`/`hub__section-titre`,
-   voir l'en-tête de ce fichier et celui de `hub.css`). */
+/* `.bureau__titre`, `.bureau__section` and `.bureau__section-titre` lived
+   here — removed on August 31st, 2026, orphaned as soon as `shell.html` stopped
+   carrying its markup (the hub uses `hub__section`/`hub__section-titre`,
+   see the header of this file and that of `hub.css`). */
 
-/* Le bandeau VIDE disparaît, et cette règle-là vit dans
-   `design/primitives/message.css` : l'écran de connexion en a besoin à
-   l'identique, et le §6.3 interdit de l'écrire deux fois. */
+/* The EMPTY banner disappears, and that rule lives in
+   `design/primitives/message.css`: the sign-in screen needs it
+   identically, and §6.3 forbids writing it twice. */
 .bureau__bandeau {
     margin-block-start: var(--e-4);
 }
@@ -136,18 +136,18 @@
     align-items: center;
 }
 
-/* ── LA GRILLE DE CARTES ──────────────────────────────────────────────────
-   ⚠️ QUE LA GRILLE SOIT LA BONNE FORME pour une liste de fenêtres — plutôt
-   qu'une liste dense ou un tableau — EST UN JUGEMENT HUMAIN, et aucune
-   commande ne le dira. Il s'ajoute aux onze du dépôt à l'entrée de S3.
+/* ── THE GRID OF CARDS ────────────────────────────────────────────────────
+   ⚠️ THAT THE GRID IS THE RIGHT SHAPE for a list of windows — rather
+   than a dense list or a table — IS A HUMAN JUDGEMENT, and no
+   command will say so. It adds to the eleven of the repository at the start of S3.
 
-   `min()` borne la piste à la largeur disponible : sans lui, une carte à
-   `--contenant-colonne` déborderait sur un téléphone étroit, et la page
-   défilerait horizontalement. */
+   `min()` bounds the track to the available width: without it, a card at
+   `--contenant-colonne` would overflow on a narrow phone, and the page
+   would scroll horizontally. */
 .bureau__fenetres {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--contenant-colonne)), 1fr));
-    /* `--e-5` : la gouttière entre cartes. */
+    /* `--e-5`: the gutter between cards. */
     gap: var(--e-5);
     margin: 0;
     padding: 0;
@@ -164,31 +164,31 @@
     align-content: start;
 }
 
-/* ── LA PASTILLE D'ÉTAT ───────────────────────────────────────────────────
-   🔴 ELLE SE DIT PAR L'ENCRE, JAMAIS PAR UN FOND COLORÉ, et c'est une décision
-   MESURÉE. Le contrôle §7.1 mesure `--succes` et `--texte-faible` comme des
-   ENCRES sur les trois fonds — jamais comme des fonds. Un
-   `background: var(--succes)` poserait le texte de la pastille sur une couleur
-   dont AUCUNE des 52 paires ne dit rien, et l'état d'une fenêtre serait le seul
-   du produit dont le contraste ne serait mesuré par personne. C'est la décision
-   que S2 a prise pour ses quatre tons de message, et la reprendre coûte ZÉRO
-   paire neuve et ZÉRO token neuf.
+/* ── THE STATE PILL ───────────────────────────────────────────────────────
+   🔴 IT IS EXPRESSED BY THE INK, NEVER BY A COLOURED BACKGROUND, and it is a
+   MEASURED decision. Check §7.1 measures `--succes` and `--texte-faible` as
+   INKS on the three backgrounds — never as backgrounds. A
+   `background: var(--succes)` would set the pill's text on a colour
+   about which NONE of the 52 pairs says anything, and the state of a window would be the only
+   one in the product whose contrast nobody measured. It is the decision
+   S2 took for its four message tones, and taking it up costs ZERO
+   new pairs and ZERO new tokens.
 
-   ⚠️ QUE DEUX ÉTATS AINSI DISTINGUÉS SE LISENT ASSEZ EST UN JUGEMENT HUMAIN.
-   Ce qui EST mesuré, c'est leur contraste sur le fond ; distinguer deux états
-   n'est pas la même chose que lire un texte, et WCAG ne le mesure pas ici.
+   ⚠️ THAT TWO STATES DISTINGUISHED THIS WAY READ WELL ENOUGH IS A HUMAN JUDGEMENT.
+   What IS measured is their contrast on the background; telling two states apart
+   is not the same thing as reading a text, and WCAG does not measure it here.
 
-   ⚠️ ET LA COULEUR SEULE NE PORTE PAS L'INFORMATION : la pastille écrit
-   « ouverte » ou « fermée » en toutes lettres. Le §3 de la spec l'exige, et une
-   pastille muette de couleur serait précisément ce qu'il interdit. */
+   ⚠️ AND COLOUR ALONE DOES NOT CARRY THE INFORMATION: the pill writes
+   "open" or "closed" in full. §3 of the spec requires it, and a
+   mute colour pill would be precisely what it forbids. */
 .bureau__pastille {
     display: inline-block;
     border: var(--trait) solid currentColor;
-    /* `--r-plein` : la forme de pastille. */
+    /* `--r-plein`: the pill shape. */
     border-radius: var(--r-plein);
-    /* `--e-1` : l'écart interne d'une étiquette. */
+    /* `--e-1`: the inner spacing of a label. */
     padding: var(--e-1) var(--e-2);
-    /* `--t-xs` : les étiquettes. */
+    /* `--t-xs`: the labels. */
     font-size: var(--t-xs);
     line-height: var(--lh-normal);
 }

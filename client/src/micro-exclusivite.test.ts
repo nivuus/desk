@@ -1,19 +1,19 @@
-// Le bloc E3 : le refus d'exclusivité du câble de la VM, côté bouton.
+// Block E3: the VM cable's exclusivity refusal, on the button side.
 //
-// ⚠️ **Fichier NÉ D'UNE EXTRACTION**, pas d'un découpage thématique : ces
-// tests vivaient dans `micro.test.ts`, qu'ils ont porté de 411 à 515 lignes —
-// au-delà de la porte des 500. Voir l'en-tête de `micro.fixtures.ts`.
+// ⚠️ **File BORN FROM AN EXTRACTION**, not from a thematic split: these
+// tests lived in `micro.test.ts`, which they took from 411 to 515 lines —
+// past the 500 gate. See the header of `micro.fixtures.ts`.
 
 import { describe, expect, it } from 'vitest';
 
 import { attacherBoutonMicro } from './micro';
 import { faussePiste, fauxBouton, fauxFlux, fauxSender } from './micro.fixtures';
 
-describe("attacherBoutonMicro — l'exclusivité du câble (bloc E3)", () => {
+describe("attacherBoutonMicro — the cable exclusivity (block E3)", () => {
 
-    // ── Bloc E3 : le refus d'exclusivité du câble de la VM ──────────────────
+    // ── Block E3: the VM cable's exclusivity refusal ────────────────────────
 
-    /// Le montage commun : bouton allumé, messages capturés.
+    /// The common setup: button on, messages captured.
     async function boutonAllume() {
         const bouton = fauxBouton();
         const messages: string[] = [];
@@ -30,15 +30,15 @@ describe("attacherBoutonMicro — l'exclusivité du câble (bloc E3)", () => {
         return { bouton, controle, messages };
     }
 
-    /// 🔴 C'est la rouge R5, et sa moitié la plus importante est la SECONDE
-    /// assertion : l'état ne bouge pas.
+    /// 🔴 It is red R5, and its most important half is the SECOND
+    /// assertion: the state does not move.
     ///
-    /// Ranger ce refus dans `'refuse'` confondrait deux causes qui appellent
-    /// deux gestes OPPOSÉS — l'une se répare dans les réglages du navigateur,
-    /// l'autre en fermant l'autre fenêtre. Et éteindre le bouton d'une fenêtre
-    /// dont le navigateur émet réellement, indicateur de capture allumé, est
-    /// le mensonge visuel que la spec §9 « Vie privée » écarte.
-    it("un refus d'exclusivité change le LIBELLÉ et le bandeau, jamais l'état", async () => {
+    /// Filing this refusal under `'refuse'` would confuse two causes that call for
+    /// two OPPOSITE gestures — one is fixed in the browser settings,
+    /// the other by closing the other window. And turning off the button of a window
+    /// whose browser really emits, capture indicator on, is
+    /// the visual lie spec §9 "Privacy" rules out.
+    it("an exclusivity refusal changes the LABEL and the banner, never the state", async () => {
         const { bouton, controle, messages } = await boutonAllume();
         const titreNominal = bouton.title;
 
@@ -47,11 +47,11 @@ describe("attacherBoutonMicro — l'exclusivité du câble (bloc E3)", () => {
         expect(bouton.dataset.etat).toBe('actif');
         expect(bouton.disabled).toBe(false);
         expect(bouton.title).not.toBe(titreNominal);
-        expect(bouton.title).toMatch(/autre fenêtre/);
-        expect(messages.at(-1)).toMatch(/autre fenêtre/);
+        expect(bouton.title).toMatch(/another window/);
+        expect(messages.at(-1)).toMatch(/another window/);
     });
 
-    it("la reprise repose le libellé nominal et le DIT", async () => {
+    it("resuming sets the nominal label back and SAYS so", async () => {
         const { bouton, controle, messages } = await boutonAllume();
         const titreNominal = bouton.title;
 
@@ -59,23 +59,23 @@ describe("attacherBoutonMicro — l'exclusivité du câble (bloc E3)", () => {
         controle.annoncerExclusivite(true);
 
         expect(bouton.title).toBe(titreNominal);
-        expect(messages.at(-1)).toMatch(/de nouveau entendu/);
+        expect(messages.at(-1)).toMatch(/heard by the VM again/);
     });
 
-    /// Sans ce garde, chaque `mic-state { granted: true }` — le cas COURANT,
-    /// celui d'une fenêtre seule — pousserait un bandeau « de nouveau entendu »
-    /// à une fenêtre qui n'a jamais cessé de l'être.
-    it("un accord qui ne suit aucun refus ne pousse aucun bandeau", async () => {
+    /// Without this guard, every `mic-state { granted: true }` — the COMMON case,
+    /// that of a lone window — would push a "heard again" banner
+    /// to a window that never stopped being heard.
+    it("a grant that follows no refusal pushes no banner", async () => {
         const { controle, messages } = await boutonAllume();
-        const avant = messages.length;
+        const before = messages.length;
         controle.annoncerExclusivite(true);
         controle.annoncerExclusivite(true);
-        expect(messages.length).toBe(avant);
+        expect(messages.length).toBe(before);
     });
 
-    /// ⚠️ Un `mic-state` en vol qui arriverait après une extinction écraserait
-    /// le titre d'un bouton FERMÉ avec un libellé qui parle d'un micro ouvert.
-    it("un mic-state reçu micro fermé ne touche à rien", async () => {
+    /// ⚠️ A `mic-state` in flight arriving after a switch-off would overwrite
+    /// the title of a CLOSED button with a label that talks about an open microphone.
+    it("a mic-state received with the mic closed touches nothing", async () => {
         const bouton = fauxBouton();
         const messages: string[] = [];
         const controle = attacherBoutonMicro({
@@ -94,13 +94,13 @@ describe("attacherBoutonMicro — l'exclusivité du câble (bloc E3)", () => {
         expect(messages).toEqual([]);
     });
 
-    /// Éteindre puis rallumer alors que l'autre fenêtre tient TOUJOURS le câble
-    /// doit refaire monter le bandeau. Sans la remise à neuf du drapeau sur
-    /// transition d'état, le second refus serait vu comme « pas un changement ».
-    it("un refus qui dure remonte après une extinction et un rallumage", async () => {
+    /// Switching off then on again while the other window STILL holds the cable
+    /// must raise the banner again. Without resetting the flag on
+    /// a state transition, the second refusal would be seen as "not a change".
+    it("a lasting refusal comes back after switching off and on again", async () => {
         const { bouton, controle, messages } = await boutonAllume();
         controle.annoncerExclusivite(false);
-        expect(messages.at(-1)).toMatch(/autre fenêtre/);
+        expect(messages.at(-1)).toMatch(/another window/);
 
         bouton.cliquer();
         await controle.enCours();
@@ -109,9 +109,9 @@ describe("attacherBoutonMicro — l'exclusivité du câble (bloc E3)", () => {
         await controle.enCours();
         expect(bouton.dataset.etat).toBe('actif');
 
-        const avant = messages.length;
+        const before = messages.length;
         controle.annoncerExclusivite(false);
-        expect(messages.length).toBe(avant + 1);
-        expect(bouton.title).toMatch(/autre fenêtre/);
+        expect(messages.length).toBe(before + 1);
+        expect(bouton.title).toMatch(/another window/);
     });
 });

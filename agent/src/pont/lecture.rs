@@ -1,104 +1,104 @@
-//! **La fenêtre de lecture** : combien de morceaux on demande d'avance, et
-//! l'invariant d'ordre qui rend cette avance sûre. **PUR** — aucun `cfg`,
-//! aucune E/S, aucune horloge.
+//! **The read window**: how many chunks we request in advance, and
+//! the ordering invariant that makes this advance safe. **PURE** — no `cfg`,
+//! no I/O, no clock.
 //!
-//! # 🔴 POURQUOI CE MODULE EXISTE, ET POURQUOI IL NE POUVAIT PAS ÊTRE LIVRÉ
-//! SEUL
+//! # 🔴 WHY THIS MODULE EXISTS, AND WHY IT COULD NOT BE DELIVERED
+//! ALONE
 //!
-//! La spec §7.3 pose : « le pont ne demande pas le morceau *n+1* tant que le
-//! canal a plus de `SEUIL_TAMPON` octets en attente ». **Relevé dans le code de
-//! F1 et de F2 : il n'y a qu'UN morceau en vol à la fois** — le suivant n'est
-//! demandé qu'à réception du précédent, et trois commentaires du dépôt
-//! annonçaient la fenêtre comme un livrable de F3.
+//! Spec §7.3 states: "the bridge does not request chunk *n+1* as long as the
+//! channel has more than `SEUIL_TAMPON` bytes pending". **Read in the code of
+//! F1 and F2: there is only ONE chunk in flight at a time** — the next one is
+//! requested only on receipt of the previous one, and three comments in the repository
+//! announced the window as a deliverable of F3.
 //!
-//! **Avec un seul morceau en vol, la règle de la spec ne peut JAMAIS mordre :
-//! le pont n'est jamais en avance.** Livrer `SEUIL_TAMPON` sans la fenêtre
-//! serait livrer un mécanisme incapable de se déclencher — c'est-à-dire un
-//! contrôle qu'on ne verra jamais rouge, appliqué cette fois à un mécanisme de
-//! PRODUIT. F3 livre donc **les deux, ou aucun**.
+//! **With a single chunk in flight, the spec's rule can NEVER bite:
+//! the bridge is never ahead.** Delivering `SEUIL_TAMPON` without the window
+//! would be delivering a mechanism unable to trigger — that is, a
+//! check we will never see red, applied this time to a
+//! PRODUCT mechanism. F3 therefore delivers **both, or neither**.
 //!
-//! ⚠️ **La contre-pression, elle, est CÔTÉ NAVIGATEUR** (`client/src/fichiers/
-//! flux.ts`), parce que c'est lui qui émet les gros messages et que
-//! `bufferedAmount` est une propriété de SON canal. Le pont ne la voit pas et
-//! ne peut pas la voir. Les deux moitiés sont indissociables : la fenêtre sans
-//! la contre-pression remplirait la file SCTP, la contre-pression sans la
-//! fenêtre n'aurait rien à retenir.
+//! ⚠️ **Back-pressure, for its part, is on the BROWSER SIDE**
+//! (`client/src/files/flux.ts`), because it is the browser that emits the large messages and
+//! `bufferedAmount` is a property of ITS channel. The bridge does not see it and
+//! cannot see it. The two halves are inseparable: the window without
+//! back-pressure would fill the SCTP queue, back-pressure without the
+//! window would have nothing to hold back.
 //!
-//! # L'INVARIANT QUI REND LA FENÊTRE SÛRE, ET IL EST VÉRIFIÉ PLUTÔT QUE CRU
+//! # THE INVARIANT THAT MAKES THE WINDOW SAFE, AND IT IS CHECKED RATHER THAN BELIEVED
 //!
-//! Le canal est `ordered` (`client/src/fichiers/canal.ts`), les morceaux sont
-//! demandés dans l'ordre croissant des positions, donc les réponses arrivent
-//! dans cet ordre, donc `PrjWriteFileData` est appelé dans cet ordre.
+//! The channel is `ordered` (`client/src/files/canal.ts`), chunks are
+//! requested in increasing position order, so responses arrive
+//! in that order, so `PrjWriteFileData` is called in that order.
 //!
-//! 🔴 **Ce module ne fait PAS confiance à SCTP pour autant.** Il vérifie que la
-//! réponse reçue est bien celle attendue, et **dénonce** sinon au lieu de
-//! l'appliquer. Écrire une plage au mauvais endroit produirait un fichier dont
-//! **seul un condensat SHA-256 dirait qu'il est faux** — et le condensat de
-//! bout en bout est précisément ce que F1 n'a JAMAIS établi (son legs n°6).
+//! 🔴 **This module does NOT trust SCTP for all that.** It checks that the
+//! received response is indeed the expected one, and **denounces** otherwise instead of
+//! applying it. Writing a range at the wrong place would produce a file that
+//! **only a SHA-256 digest would show to be wrong** — and the end-to-end
+//! digest is precisely what F1 NEVER established (its legacy no. 6).
 //!
-//! ⚠️ **F3 NE REVENDIQUE AUCUN GAIN DE DÉBIT.** La seule mesure de débit du
-//! dépôt est incohérente d'un facteur ~120 (6,5 Mio/s contre 52–55 Kio/s, F1
-//! §11), sans explication.
+//! ⚠️ **F3 CLAIMS NO THROUGHPUT GAIN.** The repository's only throughput
+//! measurement is inconsistent by a factor of ~120 (6.5 MiB/s versus 52–55 KiB/s, F1
+//! §11), without explanation.
 //!
-//! ✅ **F4 A JUGÉ, ET IL A FAIT PLUS QUE JUGER : IL EXPLIQUE.** Le canal du pont
-//! soutient **~30 à 33 Kio/s**, et c'est LINÉAIRE — 4 Kio en 190 ms, 64 Kio en
-//! 2 012 ms, 128 Kio en 4 044 ms, deux exécutions chacun. Le facteur ~120 se
-//! dissout en deux faits mesurés : **une RELECTURE ne traverse pas le pont**
-//! (0,6 ms, zéro traversée — l'hydratation ProjFS *est* le cache de données),
-//! et le plafond vient de la boucle de `pont::transport`, qui lit **un
-//! datagramme par tour** en bloquant jusqu'à `ATTENTE_MAX` avant chaque
-//! lecture. Mutée à 1 ms, elle DOUBLE le débit. La borne haute de F1
-//! (6,5 Mio/s) est donc **inatteignable à travers le pont** sur ce montage.
+//! ✅ **F4 JUDGED, AND DID MORE THAN JUDGE: IT EXPLAINS.** The bridge's channel
+//! sustains **~30 to 33 KiB/s**, and it is LINEAR — 4 KiB in 190 ms, 64 KiB in
+//! 2,012 ms, 128 KiB in 4,044 ms, two runs each. The ~120 factor
+//! dissolves into two measured facts: **a REREAD does not cross the bridge**
+//! (0.6 ms, zero traversal — ProjFS hydration *is* the data cache),
+//! and the ceiling comes from `pont::transport`'s loop, which reads **one
+//! datagram per turn** while blocking up to `ATTENTE_MAX` before each
+//! read. Mutated to 1 ms, it DOUBLES the throughput. F1's upper bound
+//! (6.5 MiB/s) is therefore **unreachable through the bridge** on this setup.
 //!
-//! 🔴 **ET `MORCEAUX_EN_VOL = 4` N'EST JAMAIS ATTEINT SUR LE BINAIRE LIVRÉ.**
-//! `en_vol_max` monte bien à 2 sur une lecture de deux morceaux — la fenêtre
-//! s'ouvre —, mais la seule lecture qui en aurait quatre (256 Kio) **ÉCHOUE** :
-//! quatre morceaux concurrents se partagent 33 Kio/s, chacun dépasse alors
-//! `DELAI_LIRE`, et ils expirent. **Le contrôle de flux que F3 livre n'a donc
-//! jamais eu l'occasion de servir en exploitation** ; il sert sur le binaire de
-//! diagnostic, à `ATTENTE_MAX = 1 ms`, où le rang 256 Kio aboutit avec
-//! `lire=n:4`. Voir `docs/…/2026-08-21-pont-fichiers-f4-resultats.md`.
+//! 🔴 **AND `MORCEAUX_EN_VOL = 4` IS NEVER REACHED ON THE SHIPPED BINARY.**
+//! `en_vol_max` does rise to 2 on a two-chunk read — the window
+//! opens —, but the only read that would have four (256 KiB) **FAILS**:
+//! four concurrent chunks share 33 KiB/s, each then exceeds
+//! `DELAI_LIRE`, and they expire. **The flow control F3 delivers has therefore
+//! never had the chance to serve in operation**; it serves on the
+//! diagnostic binary, at `ATTENTE_MAX = 1 ms`, where the 256 KiB rank completes with
+//! `lire=n:4`. See `docs/…/2026-08-21-pont-fichiers-f4-resultats.md`. (policy: allow-fr, real file path)
 
 use std::collections::VecDeque;
 
 use crate::pont::decoupe::Morceau;
 
-/// Combien de morceaux au plus sont demandés d'avance.
+/// How many chunks at most are requested in advance.
 ///
-/// ⚠️ **NON CALIBRÉE.** Elle rejoint `SEUIL_TAMPON`, `DELAI_MUTATION`,
-/// `PERIODE_RECENSEMENT`, les quatre de F1, celles de F2 et les huit du
-/// chantier D dans la liste des constantes qu'aucune mesure n'a jugées.
+/// ⚠️ **NOT CALIBRATED.** It joins `SEUIL_TAMPON`, `DELAI_MUTATION`,
+/// `PERIODE_RECENSEMENT`, F1's four, F2's and the eight of
+/// work item D in the list of constants no measurement has judged.
 ///
-/// 🔴 **UNE VALEUR DE 1 RENDRAIT LA FENÊTRE INERTE**, c'est-à-dire livrerait un
-/// contrôle de flux incapable de mordre. C'est ce que
-/// `la_fenetre_atteint_reellement_MORCEAUX_EN_VOL_sur_une_lecture_longue`
-/// dénonce, et c'est **le rouge du livrable lui-même**.
+/// 🔴 **A VALUE OF 1 WOULD MAKE THE WINDOW INERT**, that is, would deliver a
+/// flow control unable to bite. It is what
+/// `the_window_really_reaches_MORCEAUX_EN_VOL_on_a_long_read`
+/// denounces, and it is **the red of the deliverable itself**.
 pub const MORCEAUX_EN_VOL: usize = 4;
 
-/// Une réponse qui n'est pas celle qu'on attendait.
+/// A response that is not the one we expected.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct HorsOrdre {
-    /// La position dont on a reçu la réponse.
+    /// The position whose response we received.
     pub recue: u64,
-    /// Celle qu'on attendait, s'il y en avait une.
+    /// The one we expected, if there was one.
     pub attendue: Option<u64>,
 }
 
-/// Les morceaux d'une lecture : ce qui reste à demander, ce qui est en vol.
+/// The chunks of a read: what remains to request, what is in flight.
 #[derive(Debug)]
 pub struct Fenetre {
-    /// Ce qui n'a pas encore été demandé.
+    /// What has not been requested yet.
     restants: VecDeque<Morceau>,
-    /// Les positions demandées et pas encore reçues, **dans l'ordre
-    /// d'émission**.
+    /// The positions requested and not yet received, **in emission
+    /// order**.
     en_vol: VecDeque<u64>,
-    /// Le maximum de `en_vol.len()` atteint. **Relevé au recensement** : c'est
-    /// lui qui dit si la fenêtre a servi à quelque chose.
+    /// The maximum of `en_vol.len()` reached. **Read at the census**: it is
+    /// what says whether the window served any purpose.
     en_vol_max: usize,
 }
 
 impl Fenetre {
-    pub fn nouvelle(restants: VecDeque<Morceau>) -> Self {
+    pub fn new(restants: VecDeque<Morceau>) -> Self {
         Self {
             restants,
             en_vol: VecDeque::new(),
@@ -106,12 +106,12 @@ impl Fenetre {
         }
     }
 
-    /// Les morceaux à demander MAINTENANT — **au plus [`MORCEAUX_EN_VOL`] en
-    /// vol au total**, jamais par appel.
+    /// The chunks to request NOW — **at most [`MORCEAUX_EN_VOL`] in
+    /// flight in total**, never per call.
     ///
-    /// ⚠️ **La borne porte sur le TOTAL en vol, pas sur le lot rendu.** Borner
-    /// le lot laisserait la file croître sans terme : quatre par appel, appelé
-    /// quatre fois, feraient seize en vol.
+    /// ⚠️ **The bound applies to the TOTAL in flight, not to the returned batch.** Bounding
+    /// the batch would let the queue grow without end: four per call, called
+    /// four times, would make sixteen in flight.
     pub fn a_demander(&mut self) -> Vec<Morceau> {
         let mut lot = Vec::new();
         while self.en_vol.len() < MORCEAUX_EN_VOL {
@@ -125,17 +125,17 @@ impl Fenetre {
         lot
     }
 
-    /// Une réponse est arrivée pour `position`.
+    /// A response arrived for `position`.
     ///
-    /// 🔴 **ELLE DOIT ÊTRE LA PLUS ANCIENNE EN VOL**, et le reste est dénoncé.
-    /// Appliquer une réponse hors d'ordre écrirait une plage au mauvais rang du
-    /// fichier, et **seul un condensat SHA-256 l'attraperait**.
+    /// 🔴 **IT MUST BE THE OLDEST IN FLIGHT**, and the rest is denounced.
+    /// Applying an out-of-order response would write a range at the wrong rank of the
+    /// file, and **only a SHA-256 digest would catch it**.
     ///
-    /// ⚠️ **Une position INCONNUE est dénoncée aussi** — pas seulement une
-    /// position en vol arrivée trop tôt. Une réponse tardive à une corrélation
-    /// déjà résolue est jetée en amont par `pont::table` ; en recevoir une ici
-    /// signifierait que les deux bouts ont divergé, et deviner ferait écrire
-    /// n'importe quoi dans le tampon de ProjFS.
+    /// ⚠️ **An UNKNOWN position is denounced too** — not only an in-flight
+    /// position arriving too early. A late response to an already resolved
+    /// correlation is thrown away upstream by `pont::table`; receiving one here
+    /// would mean the two ends have diverged, and guessing would write
+    /// anything into ProjFS's buffer.
     pub fn recu(&mut self, position: u64) -> Result<(), HorsOrdre> {
         let attendue = self.en_vol.front().copied();
         if attendue != Some(position) {
@@ -148,18 +148,18 @@ impl Fenetre {
         Ok(())
     }
 
-    /// Le maximum de morceaux en vol atteint depuis le début de la lecture.
+    /// The maximum of chunks in flight reached since the start of the read.
     pub fn en_vol_max(&self) -> usize {
         self.en_vol_max
     }
 
-    /// Combien sont en vol à cet instant.
+    /// How many are in flight at this instant.
     #[cfg(test)]
     pub fn en_vol(&self) -> usize {
         self.en_vol.len()
     }
 
-    /// Plus rien à demander, plus rien en vol.
+    /// Nothing left to request, nothing in flight.
     pub fn terminee(&self) -> bool {
         self.restants.is_empty() && self.en_vol.is_empty()
     }

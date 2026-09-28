@@ -1,38 +1,38 @@
-//! Mesure ① : le pilote d'affichage virtuel, commandé depuis NOTRE code.
+//! Measurement ①: the virtual display driver, commanded from OUR code.
 //!
-//! La spec §2 tranche : on ne relance pas Apollo pour obtenir cette mesure.
-//! D'abord parce qu'elle dépendrait d'un second appareil client apparié que le
-//! propriétaire du poste n'a pas — c'est ce qui a bloqué la sonde précédente.
-//! Ensuite parce que le produit devra de toute façon se passer d'Apollo.
+//! Spec §2 decides: we do not relaunch Apollo to obtain this measurement.
+//! First because it would depend on a second paired client device the
+//! workstation's owner does not have — that is what blocked the previous probe.
+//! Then because the product will have to do without Apollo anyway.
 //!
-//! Canal de contrôle relevé à la tâche 3 :
+//! Control channel surveyed at task 3:
 //! `docs/superpowers/plans/journaux-mesures-prealables/canal-de-controle.md`.
-//! Son verdict est la **forme B** : le pilote SudoVDA n'exporte que
-//! `FxDriverEntryUm` (le point d'entrée générique UMDF), donc aucune fonction
-//! de contrôle appelable — l'hypothèse « charger la DLL et appeler
-//! `AddVirtualDisplay` » est morte, et n'a pas été implémentée. On parle au
-//! pilote comme le fait son client réel (`sunshine.exe`) : énumération de son
-//! interface de périphérique par SetupAPI, `CreateFile`, `DeviceIoControl`.
+//! Its verdict is **form B**: the SudoVDA driver only exports
+//! `FxDriverEntryUm` (the generic UMDF entry point), hence no callable
+//! control function — the hypothesis "load the DLL and call
+//! `AddVirtualDisplay`" is dead, and was not implemented. We talk to the
+//! driver as its real client (`sunshine.exe`) does: enumerating its
+//! device interface through SetupAPI, `CreateFile`, `DeviceIoControl`.
 //!
-//! **Ce qui est établi et ce qui ne l'est pas.** Le GUID d'interface et deux
-//! des six codes IOCTL ont été retrouvés octet pour octet dans le
-//! `SudoVDA.dll` installé sur CETTE VM. Les quatre autres codes et la
-//! disposition de TOUTES les structures ci-dessous viennent d'un en-tête amont
-//! (`Apollo/third-party/sudovda`) dont la dernière modification connue précède
-//! de onze mois le pilote installé (`DriverVer 07/14/2025, 1.10.9.289`). Rien
-//! n'exclut qu'un champ ait été ajouté ou réordonné depuis. C'est la raison
-//! d'être du module voisin `contrat.rs` : éprouver le contrat sur les deux
-//! tampons les plus simples AVANT que la tâche suivante n'engage
-//! `IOCTL_ADD_VIRTUAL_DISPLAY` et ses 56 octets d'entrée. Sans cela, un
-//! contrat faux et une mesure ratée seraient indiscernables.
+//! **What is established and what is not.** The interface GUID and two
+//! of the six IOCTL codes were found byte for byte in the
+//! `SudoVDA.dll` installed on THIS VM. The four other codes and the
+//! layout of ALL the structures below come from an upstream header
+//! (`Apollo/third-party/sudovda`) whose last known modification precedes
+//! by eleven months the installed driver (`DriverVer 07/14/2025, 1.10.9.289`). Nothing
+//! excludes that a field was added or reordered since. It is the purpose
+//! of the neighbouring module `contrat.rs`: testing the contract on the two
+//! simplest buffers BEFORE the next task commits
+//! `IOCTL_ADD_VIRTUAL_DISPLAY` and its 56 input bytes. Without it, a
+//! wrong contract and a failed measurement would be indistinguishable.
 //!
-//! **Le chien de garde est ici COMMANDABLE, pas armé.** Le pilote expose
-//! `IOCTL_DRIVER_PING` et `IOCTL_GET_WATCHDOG` : un client qui cesse de
-//! pinguer voit ses sorties retirées. Ce module rend les deux disponibles
-//! (`pinguer`, `veille`) mais ne lance aucune cadence de lui-même — c'est
-//! l'appelant qui tient des sorties vivantes, donc c'est à lui de battre. Voir
-//! `montee.rs`, qui pingue et qui a mesuré ce que ce chien de garde fait
-//! réellement.
+//! **The watchdog is COMMANDABLE here, not armed.** The driver exposes
+//! `IOCTL_DRIVER_PING` and `IOCTL_GET_WATCHDOG`: a client that stops
+//! pinging sees its outputs removed. This module makes both available
+//! (`pinguer`, `veille`) but launches no cadence by itself — it is
+//! the caller that holds live outputs, so it is up to it to beat. See
+//! `montee.rs`, which pings and which measured what this watchdog really
+//! does.
 
 use std::sync::Mutex;
 
@@ -48,58 +48,58 @@ use super::{Adaptateur, IdSortie, PiloteAffichageVirtuel};
 use crate::moniteurs_virtuels::guid::{guid_pour, numero_de};
 use crate::moniteurs_virtuels::peripherique::chemin_du_peripherique;
 use crate::moniteurs_virtuels::sudovda::{
-    en_champ_14, DemandeAjout, DemandeRetrait, SortieAjoutee, IOCTL_AJOUTER_SORTIE,
+    en_champ_14, DemandeAjout, DemandeRetrait, SortieAjoutee, IOCTL_ADD_OUTPUT,
     IOCTL_RETIRER_SORTIE,
 };
 
-/// Les trois IOCTL sans effet de bord (version, ping, veille), extraites pour
-/// tenir sous le plafond de 500 lignes — voir son commentaire de tête. Module
-/// ENFANT : c'est ce qui lui laisse l'accès à `commander`, restée privée.
+/// The three side-effect-free IOCTLs (version, ping, watchdog), extracted to
+/// fit under the 500-line ceiling — see its header comment. CHILD
+/// module: it is what leaves it access to `commander`, which stays private.
 mod controle;
 
-/// L'état retenu entre deux appels, extrait pour la même raison que
-/// `controle` juste au-dessus — voir son commentaire de tête. Module ENFANT :
-/// c'est ce qui laisse ses champs `pub(super)` lisibles ici, et nulle part
-/// ailleurs.
+/// The state kept between two calls, extracted for the same reason as
+/// `controle` just above — see its header comment. CHILD module:
+/// it is what leaves its `pub(super)` fields readable here, and nowhere
+/// else.
 ///
-/// ⚠️ Le module `etat` et la méthode `etat()` plus bas portent le même nom
-/// dans deux espaces de noms différents : c'est légal, et c'est délibéré.
+/// ⚠️ The `etat` module and the `etat()` method below carry the same name
+/// in two different namespaces: it is legal, and it is deliberate.
 mod etat;
 use etat::EtatSorties;
 
 pub(crate) struct PiloteParIoctl {
     peripherique: HANDLE,
-    /// Un `Mutex` et non un `RefCell` parce que `creer(&self, …)` doit rester
-    /// utilisable depuis un contexte partagé. Voir `etat()` pour la seule
-    /// subtilité qu'il introduit.
+    /// A `Mutex` and not a `RefCell` because `create(&self, …)` must stay
+    /// usable from a shared context. See `etat()` for the only
+    /// subtlety it introduces.
     etat: Mutex<EtatSorties>,
 }
 
-/// Ouvre le périphérique du pilote d'affichage virtuel.
+/// Opens the virtual display driver's device.
 ///
-/// Type concret et non `impl Trait` : les tâches suivantes en prennent une
-/// référence, que Rust coerce vers `&dyn PiloteAffichageVirtuel`.
+/// Concrete type and not `impl Trait`: the following tasks take a
+/// reference to it, which Rust coerces to `&dyn PiloteAffichageVirtuel`.
 pub(crate) fn ouvrir_pilote() -> Result<PiloteParIoctl> {
     let chemin = chemin_du_peripherique()?;
     // POURQUOI PAS `FILE_FLAG_OVERLAPPED`, contrairement au client amont.
     //
-    // `sunshine.exe` ouvre ce périphérique avec `FILE_FLAG_NO_BUFFERING |
-    // FILE_FLAG_OVERLAPPED | FILE_FLAG_WRITE_THROUGH`, puis appelle
-    // `DeviceIoControl` avec un `lpOverlapped` nul. La documentation Win32 est
-    // pourtant explicite : sur un handle chevauchant, ce paramètre ne peut pas
-    // être `NULL` — l'appel peut alors rendre la main avant que le tampon de
-    // sortie soit rempli, et lire ce tampon est une course. Que cela « marche »
-    // chez le client amont ne prouve rien : ce serait vrai de tout pilote qui
-    // termine ses requêtes synchronement, jusqu'au jour où il n'en termine plus
-    // une. On ouvre donc en mode synchrone (ni `OVERLAPPED`, ni les deux autres
-    // drapeaux, qui ne concernent que le cache de fichier et n'ont aucun sens
-    // pour des IOCTL `METHOD_BUFFERED`) : c'est le seul mode où un
-    // `lpOverlapped` nul est correct, et tous nos appels sont synchrones.
+    // `sunshine.exe` opens this device with `FILE_FLAG_NO_BUFFERING |
+    // FILE_FLAG_OVERLAPPED | FILE_FLAG_WRITE_THROUGH`, then calls
+    // `DeviceIoControl` with a null `lpOverlapped`. The Win32 documentation is
+    // nevertheless explicit: on an overlapped handle, this parameter cannot
+    // be `NULL` — the call may then return before the output buffer
+    // is filled, and reading that buffer is a race. That it "works"
+    // for the upstream client proves nothing: it would be true of any driver that
+    // completes its requests synchronously, until the day it no longer completes
+    // one. We therefore open in synchronous mode (neither `OVERLAPPED`, nor the two other
+    // flags, which only concern the file cache and make no sense
+    // for `METHOD_BUFFERED` IOCTLs): it is the only mode where a
+    // null `lpOverlapped` is correct, and all our calls are synchronous.
     //
-    // `GENERIC_READ | GENERIC_WRITE` et non `FILE_GENERIC_*` : le descripteur
-    // de sécurité posé par l'INF n'accorde au monde que `GRGW`
-    // (`(A;;GRGW;;;WD)`) — ce sont exactement ces droits génériques-là qu'il
-    // faut demander.
+    // `GENERIC_READ | GENERIC_WRITE` and not `FILE_GENERIC_*`: the security
+    // descriptor set by the INF only grants the world `GRGW`
+    // (`(A;;GRGW;;;WD)`) — it is exactly these generic rights that
+    // must be requested.
     let peripherique = unsafe {
         CreateFileW(
             PCWSTR(chemin.as_ptr()),
@@ -111,7 +111,7 @@ pub(crate) fn ouvrir_pilote() -> Result<PiloteParIoctl> {
             None,
         )
     }
-    .context("ouverture du périphérique du pilote d'affichage virtuel (SudoVDA)")?;
+    .context("opening the virtual display driver device (SudoVDA)")?;
     Ok(PiloteParIoctl {
         peripherique,
         etat: Mutex::new(EtatSorties::default()),
@@ -119,55 +119,55 @@ pub(crate) fn ouvrir_pilote() -> Result<PiloteParIoctl> {
 }
 
 impl PiloteParIoctl {
-    /// Accès à l'état, **sans paniquer sur un verrou empoisonné**.
+    /// Access to the state, **without panicking on a poisoned lock**.
     ///
-    /// `Sorties::drop` appelle `detruire` pendant le déroulement d'une panique
-    /// et rattrape les `Err` — mais pas les paniques. Si la panique s'est
-    /// produite alors que `creer` tenait ce verrou, celui-ci est empoisonné :
-    /// un `.expect(…)` paniquerait ici, dans un `Drop`, ce qui abrège le
-    /// processus (`abort`) et laisserait les sorties restantes non détruites.
-    /// C'est précisément le scénario que ce module doit couvrir, pas
-    /// aggraver. `into_inner` rend la table telle quelle : au pire, une
-    /// insertion interrompue par la panique y manque.
+    /// `Sorties::drop` calls `detruire` during the unwinding of a panic
+    /// and catches the `Err`s — but not the panics. If the panic occurred
+    /// while `create` held this lock, the latter is poisoned:
+    /// an `.expect(…)` would panic here, in a `Drop`, which cuts the
+    /// process short (`abort`) and would leave the remaining outputs undestroyed.
+    /// It is precisely the scenario this module must cover, not
+    /// aggravate. `into_inner` returns the table as is: at worst, an
+    /// insertion interrupted by the panic is missing from it.
     fn etat(&self) -> std::sync::MutexGuard<'_, EtatSorties> {
         self.etat
             .lock()
             .unwrap_or_else(|empoisonne| empoisonne.into_inner())
     }
 
-    /// Efface toute trace de ce GUID : la sortie n'existe plus, ni retrait dû
-    /// ni appariement ne doivent lui survivre.
+    /// Erases any trace of this GUID: the output no longer exists, neither a due
+    /// removal nor a pairing must survive it.
     ///
-    /// Indexer par GUID suppose leur UNICITÉ, et c'est le distributeur de
-    /// `numeros` qui la porte : deux sorties vivantes ne peuvent pas partager
-    /// un numéro, puisqu'un numéro n'est rendu qu'après un retrait RÉUSSI.
+    /// Indexing by GUID assumes their UNIQUENESS, and it is the allocator of
+    /// `numeros` that carries it: two live outputs cannot share
+    /// a number, since a number is only returned after a SUCCESSFUL removal.
     ///
-    /// **N'appeler que sur une sortie réellement retirée.** C'est ici que le
-    /// numéro repart au distributeur (correctif I1) : l'appeler sur un retrait
-    /// en échec ferait réattribuer le GUID d'un moniteur encore vivant.
+    /// **Only call on an output actually removed.** It is here that the
+    /// number goes back to the allocator (fix I1): calling it on a failed
+    /// removal would reassign the GUID of a monitor still alive.
     ///
-    /// `pub(super)` : `purge::rejouer_purge_due` l'appelle après un retrait
-    /// réussi, pour la même raison que `detruire` l'appelle ici.
+    /// `pub(super)`: `purge::rejouer_purge_due` calls it after a successful
+    /// removal, for the same reason `detruire` calls it here.
     pub(super) fn oublier(&self, guid_moniteur: GUID) {
         let mut etat = self.etat();
         etat.a_purger.retain(|connu| *connu != guid_moniteur);
         etat.apparies
             .retain(|(_, connu, _)| *connu != guid_moniteur);
-        // `None` seulement pour un GUID qui ne vient pas de notre gabarit :
-        // rien à rendre, et surtout rien à deviner (voir `guid::numero_de`).
+        // `None` only for a GUID that does not come from our template:
+        // nothing to return, and above all nothing to guess (see `guid::numero_de`).
         if let Some(numero) = numero_de(guid_moniteur) {
             etat.numeros.rendre(numero);
         }
     }
 
-    /// Retire du pilote la sortie portant ce GUID.
+    /// Removes from the driver the output carrying this GUID.
     ///
-    /// Extrait de `detruire` parce que `creer` doit pouvoir l'appeler aussi,
-    /// sur son chemin d'échec — là où aucun `IdSortie` fiable n'existe.
+    /// Extracted from `detruire` because `create` must be able to call it too,
+    /// on its failure path — where no reliable `IdSortie` exists.
     ///
-    /// `pub(super)` : c'est aussi la porte par laquelle `purge.rs` retire des
-    /// sorties que ce processus n'a jamais créées — un GUID régénéré par
-    /// `guid_pour`, hors de `apparies` et `a_purger`.
+    /// `pub(super)`: it is also the door through which `purge.rs` removes
+    /// outputs this process never created — a GUID regenerated by
+    /// `guid_pour`, outside `apparies` and `a_purger`.
     pub(super) fn retirer_par_guid(&self, guid_moniteur: GUID, quoi: &str) -> Result<()> {
         let demande = DemandeRetrait { guid_moniteur };
         self.commander(
@@ -182,14 +182,14 @@ impl PiloteParIoctl {
         Ok(())
     }
 
-    /// Un appel `DeviceIoControl` synchrone, avec vérification du nombre
-    /// d'octets rendus.
+    /// A synchronous `DeviceIoControl` call, with a check of the number
+    /// of bytes returned.
     ///
-    /// Cette vérification n'est pas de la ceinture-et-bretelles : c'est le seul
-    /// signal disponible qu'une structure de sortie a bien la taille qu'on lui
-    /// suppose. Un pilote qui aurait gagné un champ depuis l'en-tête amont
-    /// rendrait un compte différent, et on veut le voir plutôt que lire un
-    /// tampon partiellement rempli.
+    /// This check is not belt-and-braces: it is the only
+    /// available signal that an output structure does have the size assumed
+    /// for it. A driver that gained a field since the upstream header
+    /// would return a different count, and we want to see it rather than read a
+    /// partially filled buffer.
     fn commander(
         &self,
         code: u32,
@@ -197,20 +197,20 @@ impl PiloteParIoctl {
         sortie: Option<(*mut std::ffi::c_void, u32)>,
         quoi: &str,
     ) -> Result<u32> {
-        let (ptr_entree, taille_entree) = entree.map_or((None, 0), |(p, t)| (Some(p), t));
-        let (ptr_sortie, taille_sortie) = sortie.map_or((None, 0), |(p, t)| (Some(p), t));
+        let (ptr_entree, input_size) = entree.map_or((None, 0), |(p, t)| (Some(p), t));
+        let (ptr_sortie, output_size) = sortie.map_or((None, 0), |(p, t)| (Some(p), t));
         let mut rendus = 0u32;
         unsafe {
             DeviceIoControl(
                 self.peripherique,
                 code,
                 ptr_entree,
-                taille_entree,
+                input_size,
                 ptr_sortie,
-                taille_sortie,
+                output_size,
                 Some(&mut rendus),
-                // Nul, et légitimement : le handle est ouvert en mode
-                // synchrone (voir `ouvrir_pilote`).
+                // Null, and legitimately: the handle is opened in
+                // synchronous mode (see `ouvrir_pilote`).
                 None,
             )
         }
@@ -218,24 +218,24 @@ impl PiloteParIoctl {
         Ok(rendus)
     }
 
-    /// Instantané des GUID dont un retrait précédent a échoué et reste dû.
+    /// Snapshot of the GUIDs whose previous removal failed and remains due.
     ///
-    /// `pub(super)` pour `purge::rejouer_purge_due`, qui referme la dette
-    /// laissée par la tâche 5 : sans lecteur, `a_purger` ne servait qu'à
-    /// journaliser un retrait raté, jamais à le retenter.
+    /// `pub(super)` for `purge::rejouer_purge_due`, which closes the debt
+    /// left by task 5: without a reader, `a_purger` only served to
+    /// log a failed removal, never to retry it.
     pub(super) fn a_purger(&self) -> Vec<GUID> {
         self.etat().a_purger.clone()
     }
 
-    /// L'adaptateur sur lequel une sortie appariée a été créée.
+    /// The adapter on which a paired output was created.
     ///
-    /// `None` pour un identifiant que ce pilote n'a pas créé, ou dont le
-    /// retrait a échoué : l'entrée a alors quitté `apparies`, à dessein (voir
-    /// la doc d'`EtatSorties`). Un `None` fait retomber l'appelant sur son
-    /// repli, jamais sur une devinette.
+    /// `None` for an identifier this driver did not create, or whose
+    /// removal failed: the entry has then left `apparies`, on purpose (see
+    /// the doc of `EtatSorties`). A `None` makes the caller fall back on its
+    /// fallback, never on a guess.
     ///
-    /// ⚠️ **Le couple rendu ne sert QU'À DÉSIGNER une cible d'affichage,
-    /// jamais à détruire** : le pilote ne retire que par GUID.
+    /// ⚠️ **The returned pair ONLY serves to DESIGNATE a display target,
+    /// never to destroy**: the driver only removes through a GUID.
     pub(crate) fn adaptateur_de(&self, id: IdSortie) -> Option<Adaptateur> {
         self.etat()
             .apparies
@@ -246,17 +246,17 @@ impl PiloteParIoctl {
 }
 
 impl PiloteAffichageVirtuel for PiloteParIoctl {
-    fn creer(&self, largeur: u32, hauteur: u32, hertz: u32) -> Result<IdSortie> {
-        // Ce verrou est tenu pendant le `DeviceIoControl` d'ajout, un appel
-        // noyau bloquant : sans conséquence tant que la montée en N reste
-        // séquentielle, à revoir si elle cesse de l'être.
+    fn create(&self, largeur: u32, hauteur: u32, hertz: u32) -> Result<IdSortie> {
+        // This lock is held during the add `DeviceIoControl`, a blocking kernel
+        // call: without consequence as long as the scale-up in N stays
+        // sequential, to be revisited if it stops being so.
         let mut etat = self.etat();
-        // Un refus ici est un refus de créer, et c'est voulu : au-delà du
-        // plafond, le GUID attribué sortirait de la plage que la purge
-        // inter-processus balaye, et la sortie deviendrait irrécupérable sans
-        // redémarrage de la VM (voir `numeros`). Mieux vaut une fenêtre
-        // refusée bruyamment — la table du superviseur sait déjà quoi faire
-        // d'un refus de création — qu'un moniteur fantôme irrétirable.
+        // A refusal here is a refusal to create, and it is intended: beyond the
+        // ceiling, the assigned GUID would go out of the range the
+        // inter-process purge sweeps, and the output would become unrecoverable without
+        // rebooting the VM (see `numeros`). Better a window
+        // refused noisily — the supervisor's table already knows what to do
+        // with a creation refusal — than an unremovable ghost monitor.
         let numero = etat.numeros.attribuer()?;
         let guid_moniteur = guid_pour(numero);
 
@@ -270,7 +270,7 @@ impl PiloteAffichageVirtuel for PiloteParIoctl {
         };
         let mut ajoutee = SortieAjoutee::default();
         let rendus = match self.commander(
-            IOCTL_AJOUTER_SORTIE,
+            IOCTL_ADD_OUTPUT,
             Some((
                 &demande as *const _ as *const _,
                 std::mem::size_of::<DemandeAjout>() as u32,
@@ -279,88 +279,88 @@ impl PiloteAffichageVirtuel for PiloteParIoctl {
                 &mut ajoutee as *mut _ as *mut _,
                 std::mem::size_of::<SortieAjoutee>() as u32,
             )),
-            &format!("création d'une sortie {largeur}x{hauteur}@{hertz}"),
+            &format!("creating a {largeur}x{hauteur}@{hertz} output"),
         ) {
             Ok(rendus) => rendus,
-            Err(erreur) => {
-                // AUCUNE sortie n'existe : le numéro n'est dû à personne et
-                // repart au distributeur. Sans cela, une série de refus du
-                // pilote — dont le vivier de dix est PLUS BAS que notre
-                // plafond de seize, donc atteint le premier — consommerait des
-                // numéros pour rien et finirait par faire refuser toute
-                // création alors que le pilote, lui, aurait de la place.
+            Err(error) => {
+                // NO output exists: the number is owed to no one and
+                // goes back to the allocator. Without it, a series of driver
+                // refusals — whose pool of ten is LOWER than our
+                // ceiling of sixteen, hence reached first — would consume
+                // numbers for nothing and would end up making any
+                // creation be refused while the driver, for its part, would have room.
                 etat.numeros.rendre(numero);
-                return Err(erreur);
+                return Err(error);
             }
         };
 
-        // À PARTIR D'ICI LA SORTIE EXISTE. Tout chemin d'échec sous cette ligne
-        // doit donc défaire ce qui vient d'être fait, ou au minimum laisser le
-        // GUID connu — sans quoi le moniteur survit au processus sans qu'aucun
-        // code du projet ne puisse le retirer.
+        // FROM HERE ON THE OUTPUT EXISTS. Any failure path below this line
+        // must therefore undo what has just been done, or at the very least leave the
+        // GUID known — otherwise the monitor outlives the process without any
+        // code of the project being able to remove it.
         //
-        // Le GUID est retenu AVANT toute vérification, et dans `a_purger` et
-        // non `apparies` : à cet instant on sait qu'une sortie existe, mais on
-        // ne sait pas encore la DÉSIGNER — `identifiant_cible` ne vaut quelque
-        // chose que si le tampon de sortie fait la taille attendue. Toute
-        // sortie créée entre donc d'abord par la liste des retraits dus, et
-        // n'en sort que pour être appariée à un identifiant fiable, ou parce
-        // qu'elle a été retirée.
+        // The GUID is kept BEFORE any check, and in `a_purger` and
+        // not `apparies`: at this instant we know an output exists, but we
+        // do not yet know how to DESIGNATE it — `identifiant_cible` is only worth
+        // something if the output buffer has the expected size. Any
+        // created output therefore first enters the list of due removals, and
+        // only leaves it to be paired with a reliable identifier, or because
+        // it was removed.
         etat.a_purger.push(guid_moniteur);
         drop(etat);
 
-        // Le chemin d'échec le plus probable de ce module : `VIRTUAL_DISPLAY_ADD_OUT`
-        // est justement la structure que la reconnaissance déclare non
-        // confirmée. Si son compte d'octets diffère, `identifiant_cible` peut
-        // valoir n'importe quoi — l'appelant ne pourra donc jamais nous
-        // redemander cette sortie par son identifiant, et la garde `Sorties`
-        // ne l'enregistrera pas non plus puisque nous rendons `Err`. On la
-        // retire donc NOUS-MÊMES, tant que le GUID est connu.
+        // The most probable failure path of this module: `VIRTUAL_DISPLAY_ADD_OUT`
+        // is precisely the structure the reconnaissance declares
+        // unconfirmed. If its byte count differs, `identifiant_cible` can
+        // be anything — the caller will therefore never be able to ask us
+        // for this output again by its identifier, and the `Sorties` guard
+        // will not record it either since we return `Err`. We therefore
+        // remove it OURSELVES, while the GUID is known.
         let attendus = std::mem::size_of::<SortieAjoutee>();
         if rendus as usize != attendus {
             let retrait = self.retirer_par_guid(
                 guid_moniteur,
-                "retrait de la sortie créée avec un tampon de sortie illisible",
+                "removing the output created with an unreadable output buffer",
             );
             match retrait {
                 Ok(()) => {
                     self.oublier(guid_moniteur);
                     anyhow::bail!(
-                        "le pilote a rendu {rendus} octets pour une sortie créée, \
-                         {attendus} attendus — la disposition supposée de \
-                         VIRTUAL_DISPLAY_ADD_OUT est fausse ; la sortie a été retirée"
+                        "the driver returned {rendus} bytes for a created output, \
+                         {attendus} expected — the assumed layout of \
+                         VIRTUAL_DISPLAY_ADD_OUT is wrong; the output was removed"
                     );
                 }
-                Err(erreur) => {
-                    // Le GUID reste dans `a_purger` à dessein : c'est la seule
-                    // trace de ce qu'il faut retirer. Il n'entre PAS dans
-                    // `apparies` — un identifiant douteux qui y figurerait
-                    // pourrait apparier un `detruire` ultérieur et lui faire
-                    // retirer la mauvaise sortie.
+                Err(error) => {
+                    // The GUID stays in `a_purger` on purpose: it is the only
+                    // trace of what must be removed. It does NOT enter
+                    // `apparies` — a dubious identifier appearing there
+                    // could pair a later `detruire` and make it
+                    // remove the wrong output.
                     tracing::error!(
                         guid = ?guid_moniteur,
-                        %erreur,
-                        "sortie virtuelle NON retirée après un tampon illisible — \
-                         purge manuelle requise"
+                        %error,
+                        "virtual output NOT removed after an unreadable buffer — \
+                         manual purge required"
                     );
                     anyhow::bail!(
-                        "le pilote a rendu {rendus} octets pour une sortie créée, \
-                         {attendus} attendus — la disposition supposée de \
-                         VIRTUAL_DISPLAY_ADD_OUT est fausse, ET son retrait a \
-                         échoué : {erreur}"
+                        "the driver returned {rendus} bytes for a created output, \
+                         {attendus} expected — the assumed layout of \
+                         VIRTUAL_DISPLAY_ADD_OUT is wrong, AND its removal \
+                         failed: {error}"
                     );
                 }
             }
         }
 
-        // Le compte d'octets est bon : l'identifiant est fiable. La sortie
-        // passe de « retrait dû » à « appariée ».
+        // The byte count is right: the identifier is reliable. The output
+        // goes from "removal due" to "paired".
         let id = ajoutee.identifiant_cible;
-        // 🔴 LES TROIS NOMBRES SONT RETENUS, PLUS SEULEMENT LE TROISIÈME.
-        // L'adaptateur n'était que journalisé douze lignes plus bas, puis
-        // jeté — et sans lui, `identifiant_cible` ne désigne rien : un
-        // identifiant de cible n'est unique que PAR adaptateur. C'est ce
-        // couple que `config_affichage` échange contre un nom GDI.
+        // 🔴 THE THREE NUMBERS ARE KEPT, NO LONGER ONLY THE THIRD.
+        // The adapter was only logged twelve lines below, then
+        // thrown away — and without it, `identifiant_cible` designates nothing: a
+        // target identifier is only unique PER adapter. It is this
+        // pair that `config_affichage` exchanges for a GDI name.
         let adaptateur: Adaptateur = (ajoutee.adaptateur_bas, ajoutee.adaptateur_haut);
         let mut etat = self.etat();
         etat.a_purger.retain(|connu| *connu != guid_moniteur);
@@ -375,42 +375,42 @@ impl PiloteAffichageVirtuel for PiloteParIoctl {
             largeur,
             hauteur,
             hertz,
-            "sortie virtuelle créée"
+            "virtual output created"
         );
         Ok(id)
     }
 
     fn detruire(&self, id: IdSortie) -> Result<()> {
         let etat = self.etat();
-        // Refuser plutôt que deviner : le pilote retire par GUID, et fabriquer
-        // un GUID au jugé détruirait au mieux rien, au pire la sortie d'un
-        // autre client (Apollo en attribue aussi).
+        // Refuse rather than guess: the driver removes through a GUID, and making up
+        // a GUID by guesswork would at best destroy nothing, at worst another
+        // client's output (Apollo assigns some too).
         let rang = etat
             .apparies
             .iter()
             .position(|(connu, _, _)| *connu == id)
-            .with_context(|| format!("sortie {id} inconnue de ce pilote — rien à détruire"))?;
+            .with_context(|| format!("output {id} unknown to this driver — nothing to destroy"))?;
         let (_, guid_moniteur, _) = etat.apparies[rang];
         drop(etat);
 
-        // L'appariement n'est retiré qu'APRÈS l'appel, jamais avant : sur
-        // échec, le GUID est la seule prise que le projet ait sur ce moniteur,
-        // et l'oublier le rendrait irrécupérable.
-        match self.retirer_par_guid(guid_moniteur, &format!("destruction de la sortie {id}")) {
+        // The pairing is only removed AFTER the call, never before: on
+        // failure, the GUID is the only handle the project has on this monitor,
+        // and forgetting it would make it unrecoverable.
+        match self.retirer_par_guid(guid_moniteur, &format!("destroying output {id}")) {
             Ok(()) => {
                 self.oublier(guid_moniteur);
-                tracing::info!(id, "sortie virtuelle détruite");
+                tracing::info!(id, "virtual output destroyed");
                 Ok(())
             }
-            Err(erreur) => {
-                // Le GUID change de liste plutôt que d'être oublié ou laissé
-                // en place. Le laisser dans `apparies` serait le vrai danger :
-                // un pilote d'affichage réattribue couramment ses identifiants
-                // de cible, et cette entrée périmée apparierait alors un
-                // `detruire` ultérieur portant le même identifiant — le
-                // mauvais GUID partirait au pilote, et la sortie vivante ne
-                // serait jamais détruite. Le retrait reste dû, il n'est
-                // simplement plus adressable par identifiant.
+            Err(error) => {
+                // The GUID changes list rather than being forgotten or left
+                // in place. Leaving it in `apparies` would be the real danger:
+                // a display driver commonly reassigns its target
+                // identifiers, and this stale entry would then pair a
+                // later `detruire` carrying the same identifier — the
+                // wrong GUID would go to the driver, and the live output would
+                // never be destroyed. The removal stays due, it is
+                // simply no longer addressable by identifier.
                 let mut etat = self.etat();
                 etat.apparies
                     .retain(|(_, connu, _)| *connu != guid_moniteur);
@@ -419,10 +419,10 @@ impl PiloteAffichageVirtuel for PiloteParIoctl {
                 tracing::error!(
                     id,
                     guid = ?guid_moniteur,
-                    %erreur,
-                    "sortie virtuelle NON détruite — purge manuelle requise"
+                    %error,
+                    "virtual output NOT destroyed — manual purge required"
                 );
-                Err(erreur)
+                Err(error)
             }
         }
     }
@@ -430,39 +430,39 @@ impl PiloteAffichageVirtuel for PiloteParIoctl {
 
 impl Drop for PiloteParIoctl {
     fn drop(&mut self) {
-        // Dernière occasion de dire ce qui reste dû. Fermer le périphérique ne
-        // retire rien : une sortie virtuelle survit au processus. Ces GUID sont
-        // ce qu'une purge — celle de la tâche 7, ou un humain — devra viser.
+        // Last opportunity to say what remains due. Closing the device
+        // removes nothing: a virtual output outlives the process. These GUIDs are
+        // what a purge — that of task 7, or a human — will have to aim at.
         //
-        // LES DEUX listes sont dues ici, pas seulement `a_purger`. La
-        // distinction qui les sépare — « une entrée d'`apparies` reste
-        // redemandable par identifiant » — cesse d'avoir un sens au moment
-        // précis où le processus se termine : plus personne ne redemandera
-        // rien. Un appelant qui emploie `creer` sans passer par la garde
-        // `Sorties`, ou dont la garde a été neutralisée, laisserait sinon N
-        // moniteurs derrière lui dans le silence total.
+        // BOTH lists are due here, not only `a_purger`. The
+        // distinction that separates them — "an entry of `apparies` can still be
+        // requested again by identifier" — stops making sense at the
+        // precise moment the process ends: no one will request
+        // anything again. A caller that uses `create` without going through the
+        // `Sorties` guard, or whose guard was neutralised, would otherwise leave N
+        // monitors behind it in total silence.
         //
-        // Les deux origines sont distinguées parce qu'elles ne diagnostiquent
-        // pas la même chose : un GUID d'`apparies` accuse un appelant qui n'a
-        // pas utilisé la garde, un GUID d'`a_purger` accuse un retrait que le
-        // pilote a refusé.
+        // The two origins are distinguished because they do not diagnose
+        // the same thing: a GUID from `apparies` accuses a caller that did not
+        // use the guard, a GUID from `a_purger` accuses a removal the
+        // driver refused.
         let etat = self.etat();
         let apparies: Vec<GUID> = etat.apparies.iter().map(|(_, guid, _)| *guid).collect();
         let a_purger = etat.a_purger.clone();
-        // Numéros attribués et non rendus : normalement égal au nombre de GUID
-        // ci-dessous. Un écart signalerait une fuite du distributeur (un numéro
-        // consommé par une création qui n'a rien créé), c'est-à-dire une place
-        // perdue dans une plage volontairement étroite.
+        // Numbers assigned and not returned: normally equal to the number of GUIDs
+        // below. A gap would signal a leak of the allocator (a number
+        // consumed by a creation that created nothing), that is a slot
+        // lost in a deliberately narrow range.
         let numeros_en_vol = etat.numeros.en_vol();
         drop(etat);
         if !apparies.is_empty() || !a_purger.is_empty() {
             tracing::error!(
-                nombre = apparies.len() + a_purger.len(),
+                count = apparies.len() + a_purger.len(),
                 numeros_en_vol,
                 guids_jamais_detruits = ?apparies,
                 guids_dont_le_retrait_a_echoue = ?a_purger,
-                "sorties virtuelles créées et NON retirées — elles survivent à ce \
-                 processus, purge requise"
+                "virtual outputs created and NOT removed — they outlive this \
+                 process, purge required"
             );
         }
         let _ = unsafe { CloseHandle(self.peripherique) };

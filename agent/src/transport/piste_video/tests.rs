@@ -10,7 +10,7 @@ fn pt(v: u8) -> Pt {
 }
 
 #[test]
-fn selectionne_le_mode_de_paquetisation_1() {
+fn selects_packetization_mode_1() {
     let candidates = vec![
         CandidatePt {
             codec: Codec::H264,
@@ -32,7 +32,7 @@ fn selectionne_le_mode_de_paquetisation_1() {
 }
 
 #[test]
-fn ignore_les_profils_sans_mode_1() {
+fn ignores_profiles_without_mode_1() {
     let candidates = vec![
         CandidatePt {
             codec: Codec::H264,
@@ -54,7 +54,7 @@ fn ignore_les_profils_sans_mode_1() {
 }
 
 #[test]
-fn ignore_les_codecs_non_h264_meme_en_mode_1() {
+fn ignores_non_h264_codecs_even_in_mode_1() {
     let candidates = vec![CandidatePt {
         codec: Codec::Vp8,
         packetization_mode: Some(1),
@@ -64,104 +64,104 @@ fn ignore_les_codecs_non_h264_meme_en_mode_1() {
 }
 
 #[test]
-fn cadence_normale_basee_sur_l_echeance_precedente_sans_derive() {
+fn normal_cadence_based_on_the_previous_deadline_without_drift() {
     let start = Instant::now();
     let interval = Duration::from_micros(16_667);
     let previous = start;
-    let now = start + Duration::from_micros(100); // léger retard d'envoi
+    let now = start + Duration::from_micros(100); // slight send delay
     let next = next_frame_deadline(previous, now, interval);
-    // Basé sur `previous`, pas sur `now` : le retard ne s'accumule pas.
+    // Based on `previous`, not on `now`: the delay does not accumulate.
     assert_eq!(next, previous + interval);
 }
 
 #[test]
-fn rattrapage_borne_apres_un_long_blocage() {
+fn bounded_catch_up_after_a_long_block() {
     let start = Instant::now();
     let interval = Duration::from_micros(16_667);
     let previous = start;
-    let now = start + Duration::from_millis(500); // bloqué bien plus d'un intervalle
+    let now = start + Duration::from_millis(500); // blocked well over one interval
     let next = next_frame_deadline(previous, now, interval);
-    // Pas de rafale de rattrapage : on repart d'un intervalle après
-    // maintenant plutôt que de tenter de renvoyer toutes les images
-    // manquées d'un coup.
+    // No catch-up burst: we restart one interval after
+    // now rather than trying to resend all the missed
+    // frames at once.
     assert_eq!(next, now + interval);
 }
 
-/// Non-régression sur la correction de la synchro A/V : `write_frame`
-/// doit annoncer l'instant de CAPTURE, pas celui de l'écriture. Une
-/// origine placée dans le PASSÉ rend les deux impossibles à confondre :
-/// si la méthode lisait l'horloge courante, le résultat serait
-/// postérieur à `avant`, pas antérieur.
+/// Non-regression on the A/V sync fix: `write_frame`
+/// must announce the CAPTURE instant, not the write one. An
+/// origin placed in the PAST makes the two impossible to confuse:
+/// if the method read the current clock, the result would be
+/// later than `before`, not earlier.
 #[test]
-fn la_session_ancre_l_instant_de_capture_sur_son_origine() {
+fn the_session_anchors_the_capture_instant_on_its_origin() {
     let local_ip: IpAddr = "127.0.0.1".parse().unwrap();
     let source_path =
         std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/testdata/testsrc.264"));
     let source = Box::new(
         crate::source::FileSource::from_path(source_path, 1280, 720, 60)
-            .expect("chargement du flux de test"),
+            .expect("loading the test stream"),
     );
 
-    let avant = Instant::now();
-    let origine = avant - Duration::from_secs(10);
+    let before = Instant::now();
+    let origine = before - Duration::from_secs(10);
     let session = Session::new(source, local_ip, origine, 12_000_000).expect("session");
 
-    // Une image capturée 2 s après l'origine porte le PTS 180 000.
+    // A frame captured 2 s after the origin carries PTS 180,000.
     assert_eq!(
         session.capture_instant(180_000),
         origine + Duration::from_secs(2)
     );
     assert!(
-        session.capture_instant(180_000) < avant,
-        "l'instant doit être ancré sur l'origine (dans le passé), pas sur l'horloge courante"
+        session.capture_instant(180_000) < before,
+        "the instant must be anchored on the origin (in the past), not on the current clock"
     );
     assert_eq!(session.capture_instant(0), origine);
 }
 
-/// Filet de non-régression sur LA correction de ce chantier (dans `write_frame`) :
-/// si `write_frame` redevenait `Instant::now()` au lieu de
-/// `self.capture_instant(unit.pts_90k)`, aucun test existant ne le
-/// détecterait — `la_session_ancre_l_instant_de_capture_sur_son_origine`
-/// n'exerce que `capture_instant` isolément, jamais son usage au point
-/// d'appel, qui exige une session négociée.
+/// Non-regression net on THE fix of this workstream (in `write_frame`):
+/// if `write_frame` went back to `Instant::now()` instead of
+/// `self.capture_instant(unit.pts_90k)`, no existing test would
+/// detect it — `the_session_anchors_the_capture_instant_on_its_origin`
+/// only exercises `capture_instant` in isolation, never its use at the call
+/// site, which requires a negotiated session.
 ///
-/// Le `wallclock` passé à `writer.write()` n'est PAS observable côté pair
-/// via `Event::MediaData::network_time` : ce champ est documenté (str0m
-/// 0.21, `media/event.rs`) comme l'instant de RÉCEPTION locale du premier
-/// paquet — sans aucun rapport avec le `wallclock` émis par l'agent. Le
-/// champ qui reflète réellement le `wallclock` est
-/// `MediaData::last_sender_info`, alimenté par le Sender Report RTCP
-/// (SR) le plus récent reçu pour ce flux
+/// The `wallclock` passed to `writer.write()` is NOT observable on the peer side
+/// through `Event::MediaData::network_time`: that field is documented (str0m
+/// 0.21, `media/event.rs`) as the instant of local RECEPTION of the first
+/// packet — unrelated to the `wallclock` emitted by the agent. The
+/// field that really reflects the `wallclock` is
+/// `MediaData::last_sender_info`, fed by the most recent RTCP Sender Report
+/// (SR) received for this stream
 /// (`str0m::streams::receive::ReceiverStream::set_sender_info`).
 ///
-/// `str0m::streams::send::SendStream::sender_info` construit la paire
-/// (ntp_time, rtp_time) du SR par extrapolation à partir du DERNIER
-/// `write()` :
-/// `rtp_time = pts_de_la_derniere_ecriture + (instant_du_SR -
-/// wallclock_de_la_derniere_ecriture)`.
-/// En choisissant une `clock_origin` décalée de 10 s dans le passé, les
-/// deux comportements deviennent numériquement inconfondables une fois
-/// convertis en secondes :
-///   - correct (`capture_instant`) : `wallclock = clock_origin +
-///     pts/90000`, donc le terme `pts` s'annule algébriquement et
-///     `rtp_time_secondes == instant_du_SR - clock_origin` — un écart
-///     d'environ 10 s avec le temps écoulé depuis le début du test ;
-///   - régression (`Instant::now()` à l'écriture) : `wallclock` est
-///     proche de l'instant réel d'écriture (pas de l'origine décalée),
-///     donc `rtp_time_secondes ≈ instant_du_SR - instant_de_test_avant`
-///     — aucun décalage de 10 s.
+/// `str0m::streams::send::SendStream::sender_info` builds the SR's
+/// (ntp_time, rtp_time) pair by extrapolation from the LAST
+/// `write()`:
+/// `rtp_time = pts_of_last_write + (sr_instant -
+/// wallclock_of_last_write)`.
+/// By choosing a `clock_origin` shifted 10 s into the past, the
+/// two behaviours become numerically unmistakable once
+/// converted to seconds:
+///   - correct (`capture_instant`): `wallclock = clock_origin +
+///     pts/90000`, so the `pts` term cancels algebraically and
+///     `rtp_time_secondes == sr_instant - clock_origin` — a gap
+///     of about 10 s from the time elapsed since the start of the test;
+///   - regression (`Instant::now()` at write time): `wallclock` is
+///     close to the real write instant (not the shifted origin),
+///     so `rtp_time_secondes ≈ sr_instant - test_instant_before`
+///     — no 10 s shift.
 ///
-/// Le seuil de l'assertion (3 s) est loin des deux valeurs réelles (~10 s
-/// vs ~0 s) : large marge pour le bruit de test (latence loopback,
-/// granularité de la boucle de sondage), sans jamais pouvoir confondre
-/// les deux comportements.
+/// The assertion's threshold (3 s) is far from both real values (~10 s
+/// vs ~0 s): a wide margin for test noise (loopback latency,
+/// granularity of the polling loop), without ever being able to confuse
+/// the two behaviours.
 ///
-/// Démonstration de l'efficacité du filet (revue finale, voir le rapport
-/// de tâche pour la sortie complète) : en remplaçant temporairement
-/// `self.capture_instant(unit.pts_90k)` par `Instant::now()` dans `write_frame`,
-/// ce test échoue avec un écart mesuré proche de 0 s au lieu de ~10 s.
+/// Demonstration of the net's effectiveness (final review, see the task
+/// report for the full output): by temporarily replacing
+/// `self.capture_instant(unit.pts_90k)` with `Instant::now()` in `write_frame`,
+/// this test fails with a measured gap close to 0 s instead of ~10 s.
 #[test]
-fn write_frame_annonce_l_instant_de_capture_au_pair_via_le_sender_report_rtcp() {
+fn write_frame_announces_the_capture_instant_to_the_peer_via_the_rtcp_sender_report() {
     use std::thread;
     use str0m::change::SdpAnswer;
     use str0m::media::{Direction, MediaKind};
@@ -169,8 +169,8 @@ fn write_frame_annonce_l_instant_de_capture_au_pair_via_le_sender_report_rtcp() 
     let local_ip = fixtures::local_ip();
     let source = Box::new(fixtures::video_test_source());
 
-    let avant = Instant::now();
-    let origine = avant - Duration::from_secs(10);
+    let before = Instant::now();
+    let origine = before - Duration::from_secs(10);
     let mut session = Session::new(source, local_ip, origine, 12_000_000).expect("session");
 
     let (peer_socket, peer_addr, mut peer_rtc) = fixtures::local_peer(local_ip, false);
@@ -179,16 +179,16 @@ fn write_frame_annonce_l_instant_de_capture_au_pair_via_le_sender_report_rtcp() 
     api.add_media(MediaKind::Video, Direction::RecvOnly, None, None, None);
     api.add_channel("control".to_string());
     api.add_channel("input".to_string());
-    let (offer, pending) = api.apply().expect("offre non vide");
+    let (offer, pending) = api.apply().expect("non-empty offer");
 
     let answer_sdp = session
         .accept_offer(&offer.to_sdp_string())
-        .expect("offre acceptée");
-    let answer = SdpAnswer::from_sdp_string(&answer_sdp).expect("réponse SDP valide");
+        .expect("offer accepted");
+    let answer = SdpAnswer::from_sdp_string(&answer_sdp).expect("valid SDP answer");
     peer_rtc
         .sdp_api()
         .accept_answer(pending, answer)
-        .expect("réponse acceptée par le pair");
+        .expect("answer accepted by the peer");
 
     thread::spawn(move || {
         let mut on_input = |_| {};
@@ -196,19 +196,19 @@ fn write_frame_annonce_l_instant_de_capture_au_pair_via_le_sender_report_rtcp() 
         let _ = session.run(&mut on_input, &mut on_control);
     });
 
-    // RR_INTERVAL_VIDEO (str0m) vaut 1 s et le premier SR est éligible
-    // dès la première image écrite : 15 s de marge est largement
-    // suffisant même sur une CI chargée.
+    // RR_INTERVAL_VIDEO (str0m) is 1 s and the first SR is eligible
+    // from the first frame written: 15 s of margin is largely
+    // enough even on a loaded CI.
     let hard_deadline = Instant::now() + Duration::from_secs(15);
     let mut connected_at: Option<Instant> = None;
-    let mut mesure: Option<(f64, f64)> = None; // (rtp_time_secondes, ecoule_depuis_avant)
+    let mut mesure: Option<(f64, f64)> = None; // (rtp_time_secondes, elapsed_since_before)
 
     loop {
         let now = Instant::now();
         if now >= hard_deadline {
             panic!(
-                "le pair local ne s'est jamais connecté, ou aucun Sender Report RTCP \
-                 exploitable n'a été reçu dans le délai imparti"
+                "the local peer never connected, or no usable RTCP Sender Report \
+                 was received within the allotted delay"
             );
         }
         if mesure.is_some() {
@@ -235,21 +235,21 @@ fn write_frame_annonce_l_instant_de_capture_au_pair_via_le_sender_report_rtcp() 
                     if let Codec::H264 = data.params.spec().codec {
                         if let Some(info) = data.last_sender_info {
                             let rtp_time_secondes = info.rtp_time.as_seconds();
-                            // > 0 exclut le SR dégénéré (`MediaTime::ZERO`)
-                            // que `sender_info` peut émettre avant toute
-                            // écriture — n'arrive jamais en pratique ici,
-                            // gardé par prudence.
+                            // > 0 excludes the degenerate SR (`MediaTime::ZERO`)
+                            // that `sender_info` can emit before any
+                            // write — never happens in practice here,
+                            // kept out of caution.
                             if rtp_time_secondes > 0.0 {
-                                // `Instant::now()` ici est postérieur ou
-                                // égal à l'instant réel de construction du
-                                // SR : une borne supérieure sûre de
-                                // `instant_du_SR - avant`, qui ne peut que
-                                // RÉDUIRE l'écart mesuré ci-dessous, jamais
-                                // le gonfler artificiellement.
-                                let ecoule_depuis_avant = Instant::now()
-                                    .saturating_duration_since(avant)
+                                // `Instant::now()` here is later than or
+                                // equal to the real instant the SR was
+                                // built: a safe upper bound on
+                                // `sr_instant - before`, which can only
+                                // REDUCE the gap measured below, never
+                                // inflate it artificially.
+                                let elapsed_since_before = Instant::now()
+                                    .saturating_duration_since(before)
                                     .as_secs_f64();
-                                mesure = Some((rtp_time_secondes, ecoule_depuis_avant));
+                                mesure = Some((rtp_time_secondes, elapsed_since_before));
                             }
                         }
                     }
@@ -259,15 +259,15 @@ fn write_frame_annonce_l_instant_de_capture_au_pair_via_le_sender_report_rtcp() 
         }
     }
 
-    let (rtp_time_secondes, ecoule_depuis_avant) = mesure.expect("mesure du SR");
-    let ecart = rtp_time_secondes - ecoule_depuis_avant;
+    let (rtp_time_secondes, elapsed_since_before) = mesure.expect("SR measurement");
+    let ecart = rtp_time_secondes - elapsed_since_before;
     eprintln!(
-        "wallclock RTCP : rtp_time={rtp_time_secondes:.3}s, écoulé depuis le début du test={ecoule_depuis_avant:.3}s, écart={ecart:.3}s (attendu ≈ 10 s si write_frame annonce bien l'instant de capture)"
+        "RTCP wallclock: rtp_time={rtp_time_secondes:.3}s, elapsed since the start of the test={elapsed_since_before:.3}s, gap={ecart:.3}s (expected ≈ 10 s if write_frame does announce the capture instant)"
     );
     assert!(
         ecart > 3.0,
-        "écart de {ecart:.3} s trop faible (attendu ≈ 10 s) : write_frame semble annoncer \
-         l'instant d'ÉCRITURE plutôt que l'instant de CAPTURE comme wallclock RTCP — \
-         régression sur la correction centrale du chantier (dans `write_frame`)"
+        "gap of {ecart:.3} s too small (expected ≈ 10 s): write_frame seems to announce \
+         the WRITE instant rather than the CAPTURE instant as the RTCP wallclock — \
+         regression on the work item's central fix (in `write_frame`)"
     );
 }

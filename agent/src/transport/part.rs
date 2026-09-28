@@ -1,23 +1,23 @@
-//! L'application, côté enfant, d'une part de budget de session accordée par
-//! le capteur (sous-bloc D6) : voir `capteur/repartiteur.rs` pour la règle qui
-//! calcule cette part, et `capteur/distante.rs` pour son transport jusqu'ici.
+//! Child-side application of a session budget share granted by
+//! the sensor (sub-block D6): see `capteur/repartiteur.rs` for the rule that
+//! computes this share, and `capteur/distante.rs` for its transport to here.
 //!
-//! Extrait d'`adaptation`, qui a franchi 500 lignes en accueillant ce câblage
-//! (tâche 8) : les deux fichiers reconfigurent l'encodage, mais pour des
-//! raisons différentes — `adaptation` réagit à ce que le RÉSEAU observe,
-//! celui-ci à ce que le CAPTEUR arbitre entre plusieurs fenêtres.
+//! Extracted from `adaptation`, which crossed 500 lines by taking in this wiring
+//! (task 8): both files reconfigure encoding, but for
+//! different reasons — `adaptation` reacts to what the NETWORK observes,
+//! this one to what the SENSOR arbitrates between several windows.
 //!
-//! **Contrairement à la branche a0ter, celle-ci MUTE bien un champ interne de
-//! `Rtc`** : `rtc.bwe().set_desired_bitrate` écrit l'objectif de sondage du
-//! sous-système BWE et, si une estimation existe déjà, reconfigure le pacer
-//! de str0m (`configure_pacer`, appelé en interne). Elle ne met en revanche
-//! AUCUN paquet en file d'attente : l'effet différé qu'elle programme côté
-//! contrôleur de sondage (`ProbeControl` de str0m — qui peut avancer
-//! l'échéance de la prochaine sonde et faire émettre du bourrage) n'est
-//! évalué qu'au PROCHAIN traitement de `Input::Timeout`, jamais pendant cet
-//! appel. C'est cette absence de mise en file — et non une absence de
-//! mutation de `Rtc`, qui serait fausse — qui préserve l'invariant de
-//! drainage documenté en tête de `tick.rs`.
+//! **Unlike branch a0ter, this one DOES mutate an internal field of
+//! `Rtc`**: `rtc.bwe().set_desired_bitrate` writes the BWE subsystem's probing
+//! target and, if an estimate already exists, reconfigures str0m's
+//! pacer (`configure_pacer`, called internally). It does, however, queue
+//! NO packet: the deferred effect it schedules on the probing
+//! controller side (str0m's `ProbeControl` — which can bring forward
+//! the next probe's deadline and cause padding to be emitted) is only
+//! evaluated at the NEXT handling of `Input::Timeout`, never during this
+//! call. It is this absence of queueing — and not an absence of
+//! mutation of `Rtc`, which would be false — that preserves the drain
+//! invariant documented at the head of `tick.rs`.
 
 use std::sync::OnceLock;
 
@@ -25,69 +25,69 @@ use str0m::bwe::Bitrate;
 
 use super::Session;
 
-/// L'objectif de sondage est-il armé ?
+/// Is the probing target armed?
 ///
-/// **Variable de BANC, pas de produit** : elle n'existe que pour l'A/B
-/// différentiel de la consignation n°4 du sous-bloc D6, jamais joué à ce jour.
-/// `PART_SONDAGE=0` neutralise `set_desired_bitrate` ; toute autre valeur, et
-/// l'absence de variable, l'arment. Même convention que `AUDIO` et
-/// `PLEIN_ECRAN` : on désarme sur `=0` ce qui est livré.
+/// **BENCH variable, not a product one**: it only exists for the differential
+/// A/B of sub-block D6's recorded item no. 4, never played to date.
+/// `PART_SONDAGE=0` neutralises `set_desired_bitrate`; any other value, and
+/// the variable's absence, arm it. Same convention as `AUDIO` and
+/// `PLEIN_ECRAN`: what is shipped is disarmed with `=0`.
 ///
-/// ⚠️ **Ce que l'A/B établira, et rien de plus** : que l'appel a un effet
-/// observable sur le trafic émis. Il n'établira PAS qu'il est nécessaire — la
-/// prémisse qui le disait « le plus important » a été réfutée par D6 elle-même,
-/// le pont portant ≥ 1,44 Gb/s pour `packetsLost = 0`.
+/// ⚠️ **What the A/B will establish, and nothing more**: that the call has an
+/// observable effect on emitted traffic. It will NOT establish that it is necessary — the
+/// premise that called it "the most important" was refuted by D6 itself,
+/// the bridge carrying ≥ 1.44 Gb/s for `packetsLost = 0`.
 fn sondage_arme() -> bool {
     static ARME: OnceLock<bool> = OnceLock::new();
     *ARME.get_or_init(|| {
         let arme = std::env::var("PART_SONDAGE").as_deref() != Ok("0");
         if !arme {
-            tracing::warn!("objectif de sondage DESARME (PART_SONDAGE=0) : bras A/B, jamais une configuration livrée");
+            tracing::warn!("probing objective DISARMED (PART_SONDAGE=0): A/B arm, never a shipped configuration");
         }
         arme
     })
 }
 
 impl Session {
-    /// Applique une part du budget de session accordée par le capteur
-    /// (sous-bloc D6).
+    /// Applies a share of the session budget granted by the sensor
+    /// (sub-block D6).
     ///
-    /// **Deux applications, et elles n'ont pas la même portée.**
-    /// `changer_plafond` borne ce que le contrôleur décidera d'encoder — c'est
-    /// par lui que la part agit réellement, en faisant descendre l'échelle
-    /// d'un barreau, donc la RÉSOLUTION. `set_desired_bitrate` borne ce que le
-    /// sous-système BWE **sonde** : sans elle, N fenêtres viseraient chacune le
-    /// lien entier en injectant du trafic de sondage, ce qui est excessif en
-    /// principe même si aucune n'encodait au-delà de sa part.
+    /// **Two applications, and they do not have the same scope.**
+    /// `changer_plafond` bounds what the controller will decide to encode — it is
+    /// through it that the share really acts, by moving the ladder down
+    /// one rung, hence the RESOLUTION. `set_desired_bitrate` bounds what the
+    /// BWE subsystem **probes**: without it, N windows would each aim at the
+    /// whole link by injecting probing traffic, which is excessive in
+    /// principle even if none encoded beyond its share.
     ///
-    /// ⚠️ **Ne pas relire cette seconde application comme le remède au défaut
-    /// que D6 corrige.** La recette de la branche a RÉFUTÉ la prémisse dont
-    /// elle était tirée : le pont porte ≥ 1,44 Gb/s et `packetsLost` vaut 0 aux
-    /// onze exécutions — **le lien n'a jamais été le goulot**, donc le sondage
-    /// cumulé ne saturait rien et n'était lu comme de la congestion par
-    /// personne. Ce qui sature est le **décodeur du navigateur**, et le seul
-    /// levier mesuré efficace contre lui est le nombre de pixels
-    /// (`docs/superpowers/plans/2026-08-03-multifenetres-partage-capacite-resultats.md`,
-    /// §1 et §3.6). Le mécanisme reste juste, sa justification a changé.
+    /// ⚠️ **Do not reread this second application as the remedy for the defect
+    /// D6 fixes.** The branch's acceptance run REFUTED the premise it
+    /// was drawn from: the bridge carries ≥ 1.44 Gb/s and `packetsLost` is 0 in the
+    /// eleven runs — **the link was never the bottleneck**, so the cumulative
+    /// probing saturated nothing and was read as congestion by
+    /// no one. What saturates is the **browser's decoder**, and the only
+    /// lever measured effective against it is the number of pixels
+    /// (`docs/superpowers/plans/2026-08-03-multifenetres-partage-capacite-resultats.md`, (policy: allow-fr, real file path)
+    /// §1 and §3.6). The mechanism stays right, its justification has changed.
     ///
-    /// **Une part d'ENDORMIE ne va pas au contrôleur**, et c'est la seule
-    /// asymétrie de cette fonction. Le plancher `PART_DORMANTE_BPS`
-    /// (256 kb/s) est très en dessous du barreau le plus bas de l'échelle
-    /// (691 200 bps à 1280×720/60) : le passer à `changer_plafond` poserait
-    /// `video_bitrate_bps = 256_000` par son `min`, et **rien ne le
-    /// remonterait au réveil** — le plafond remonterait, pas le débit, car la
-    /// seule réparation est `Controleur::observer`, appelé depuis le bras
-    /// `MediaEgressStats`, que str0m n'émet jamais pour un flux qui n'a rien
-    /// envoyé (`send_stats.rs`, `if self.bytes == 0 { return; }`). Une endormie
-    /// n'envoie rien, par définition. Et le remède serait de toute façon sans
-    /// objet : une endormie a déjà relâché son encodeur (D5), lui imposer un
-    /// plafond d'ENCODAGE ne borne rien qui existe. Seul le sondage, lui, a
-    /// encore un sens — sa `PeerConnection` vit.
+    /// **A SLEEPING window's share does not go to the controller**, and it is the only
+    /// asymmetry of this function. The `PART_DORMANTE_BPS` floor
+    /// (256 kb/s) is far below the ladder's lowest rung
+    /// (691,200 bps at 1280×720/60): passing it to `changer_plafond` would set
+    /// `video_bitrate_bps = 256_000` through its `min`, and **nothing would bring it
+    /// back up on wake-up** — the ceiling would come back up, not the bitrate, because the
+    /// only repair is `Controleur::observer`, called from the
+    /// `MediaEgressStats` arm, which str0m never emits for a stream that has sent
+    /// nothing (`send_stats.rs`, `if self.bytes == 0 { return; }`). A sleeping window
+    /// sends nothing, by definition. And the remedy would be moot anyway:
+    /// a sleeping window has already released its encoder (D5), imposing an
+    /// ENCODING ceiling on it bounds nothing that exists. Only probing, for its part,
+    /// still makes sense — its `PeerConnection` lives.
     ///
-    /// L'état de sommeil est LU (`VideoSource::est_endormie`), jamais deviné :
-    /// le déduire d'une comparaison de la part à `PART_DORMANTE_BPS`
-    /// couplerait deux processus par une valeur — un couplage qui se romprait
-    /// en silence le jour où l'un des deux changerait de constante.
+    /// The sleep state is READ (`VideoSource::est_endormie`), never guessed:
+    /// deducing it from comparing the share with `PART_DORMANTE_BPS`
+    /// would couple two processes through a value — a coupling that would break
+    /// silently the day one of the two changed its constant.
     pub(super) fn appliquer_part(&mut self, bps: u32) {
         let endormie = self.source.est_endormie();
         if !endormie {
@@ -96,18 +96,18 @@ impl Session {
         if sondage_arme() {
             self.rtc.bwe().set_desired_bitrate(Bitrate::bps(bps as u64));
         }
-        // `session` : sans ce champ la trace n'est PAS attribuable. Tous les
-        // enfants héritent le même `agent.log` (stdout partagé depuis D4), et
-        // la somme des parts accordées — le critère ③ de la recette — se
-        // calculerait alors sur un multiensemble de nombres anonymes. Même
-        // motif et même champ que `cadence de la piste vidéo (côté enfant)`.
-        // `endormie` : sans lui, une part appliquée au seul sondage se lit
-        // dans le journal exactement comme une part appliquée aux deux.
+        // `session`: without this field the trace is NOT attributable. All
+        // children inherit the same `agent.log` (stdout shared since D4), and
+        // the sum of granted shares — criterion ③ of the acceptance run — would
+        // then be computed over a multiset of anonymous numbers. Same
+        // reason and same field as the video-track-cadence (child side) line.
+        // `endormie`: without it, a share applied to probing alone reads
+        // in the log exactly like a share applied to both.
         tracing::info!(
             session = %self.session_id,
             part_bps = bps,
             endormie,
-            "part de budget appliquee"
+            "budget share applied"
         );
     }
 }
@@ -130,9 +130,9 @@ mod tests {
     use std::sync::atomic::{AtomicBool, Ordering};
     use std::sync::Arc;
 
-    /// Source factice dont l'état de sommeil se pilote depuis le test —
-    /// exactement ce que `SourceDistante` expose au vu des `Sommeil` poussés
-    /// par le capteur, sans dépendre du capteur.
+    /// Fake source whose sleep state is driven from the test —
+    /// exactly what `SourceDistante` exposes in view of the `Sommeil` messages pushed
+    /// by the sensor, without depending on the sensor.
     struct SourceEndormable {
         inner: crate::source::FileSource,
         endormie: Arc<AtomicBool>,
@@ -150,24 +150,24 @@ mod tests {
         }
     }
 
-    /// Le défaut de fond relevé par la revue finale de branche (I1), et le
-    /// seul test qui le voie : **le plafond remonte au réveil, pas le débit.**
+    /// The underlying defect found by the final branch review (I1), and the
+    /// only test that sees it: **the ceiling comes back up on wake-up, not the bitrate.**
     ///
-    /// La chaîne, entièrement dans le code : `PART_DORMANTE_BPS` vaut 256 kb/s,
-    /// `changer_plafond` fait `video_bitrate_bps.min(plafond)` dès qu'une
-    /// estimation a existé, et rien ne défait ce `min` — la seule réparation
-    /// serait `Controleur::observer`, appelé depuis le bras `MediaEgressStats`
-    /// que str0m n'émet pas pour un flux qui n'a rien envoyé. Une endormie
-    /// n'envoie rien. Ce n'est pas un cas limite : c'est l'état de CHAQUE
-    /// réveil.
+    /// The chain, entirely in the code: `PART_DORMANTE_BPS` is 256 kb/s,
+    /// `changer_plafond` does `video_bitrate_bps.min(plafond)` as soon as an
+    /// estimate has existed, and nothing undoes that `min` — the only repair
+    /// would be `Controleur::observer`, called from the `MediaEgressStats` arm
+    /// that str0m does not emit for a stream that has sent nothing. A sleeping window
+    /// sends nothing. It is not an edge case: it is the state of EVERY
+    /// wake-up.
     ///
-    /// Le régime importe : il faut une estimation RÉELLE avant la part
-    /// dormante, sinon `changer_plafond` fait suivre le débit au plafond dans
-    /// les deux sens (régime « jamais aucune estimation ») et le défaut ne se
-    /// manifeste pas — le test serait vert par construction. Même précaution
-    /// que `une_part_qui_remonte_ne_releve_pas_le_debit_au_dela_de_l_estimation`.
+    /// The regime matters: a REAL estimate is needed before the sleeping
+    /// share, otherwise `changer_plafond` makes the bitrate follow the ceiling in
+    /// both directions ("never any estimate" regime) and the defect does not
+    /// show — the test would be green by construction. Same precaution
+    /// as `a_rising_share_does_not_raise_the_bitrate_beyond_the_estimate`.
     #[test]
-    fn une_part_dormante_ne_borne_pas_le_controleur_et_le_reveil_est_suivi() {
+    fn a_dormant_share_does_not_bound_the_controller_and_the_wake_is_followed() {
         let mid = Mid::from("0");
         let endormie = Arc::new(AtomicBool::new(false));
         let source = Box::new(SourceEndormable {
@@ -189,97 +189,97 @@ mod tests {
             &mut |_| {},
         );
         assert_eq!(
-            session.congestion.courant().adaptation,
+            session.congestion.current().adaptation,
             congestion::Adaptation::Active,
-            "précondition : une estimation réelle a bien été observée, donc `changer_plafond` BORNE"
+            "precondition: a real estimate was indeed observed, so `changer_plafond` BOUNDS"
         );
-        let part_eveillee = 1_333_333; // 12 Mb/s partagés à huit fenêtres.
+        let part_eveillee = 1_333_333; // 12 Mb/s shared between eight windows.
         assert!(
-            session.congestion.courant().video_bitrate_bps > part_eveillee,
-            "précondition : l'estimation laisse de la place au-dessus de la part d'éveillée, \
-             sans quoi l'assertion finale ne prouverait rien"
+            session.congestion.current().video_bitrate_bps > part_eveillee,
+            "precondition: the estimate leaves room above the awake share, \
+             otherwise the final assertion would prove nothing"
         );
 
-        // L'observation ci-dessus a elle-même posé une décision en attente :
-        // la vider ici est ce qui rend l'assertion suivante lisible — sans
-        // cela, elle constaterait un `Some` hérité et non celui qu'on cherche.
+        // The observation above itself set a pending decision:
+        // emptying it here is what makes the next assertion readable — without
+        // that, it would find an inherited `Some` and not the one we are looking for.
         session.pending_decision = None;
 
-        // La fenêtre s'endort : le capteur pousse le plancher, très en dessous
-        // du barreau le plus bas de l'échelle.
+        // The window falls asleep: the sensor pushes the floor, far below
+        // the ladder's lowest rung.
         endormie.store(true, Ordering::SeqCst);
         session.appliquer_part(PART_DORMANTE_BPS);
         assert!(
             session.pending_decision.is_none(),
-            "une part d'endormie ne pose aucune décision : il n'y a plus d'encodeur à régler"
+            "an asleep share sets no decision: there is no encoder to tune any more"
         );
 
-        // Elle se réveille, et reçoit sa part d'éveillée.
+        // It wakes up, and receives its awake share.
         endormie.store(false, Ordering::SeqCst);
         session.appliquer_part(part_eveillee);
 
         assert_eq!(
-            session.congestion.courant().video_bitrate_bps,
+            session.congestion.current().video_bitrate_bps,
             part_eveillee,
-            "le débit doit suivre la part de l'ÉVEILLÉE : avant le remède, le `min` du plancher \
-             dormant le figeait à {PART_DORMANTE_BPS} bps pour toute la vie de la session"
+            "the bitrate must follow the AWAKE share: before the remedy, the `min` of the dormant \
+             floor froze it at {PART_DORMANTE_BPS} bps for the whole life of the session"
         );
     }
 
     #[test]
-    fn une_part_recue_borne_le_plafond_du_controleur() {
+    fn a_received_share_bounds_the_controller_ceiling() {
         let source = Box::new(fixtures::video_test_source());
         let mut session = Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000)
             .expect("session");
-        // Avant la part, le plafond est celui de `Session::new`.
+        // Before the share, the ceiling is `Session::new`'s.
         assert_eq!(session.decision_courante().video_bitrate_bps, 12_000_000);
 
         session.appliquer_part(3_000_000);
 
-        // `assert_eq!`, pas `<=` : dans le régime « jamais aucune estimation »
-        // (voir le test suivant), `changer_plafond` fait suivre le débit
-        // EXACTEMENT au plafond — une borne large (`<=`) laisserait passer
-        // 0 ou 1 tout aussi bien qu'une vraie borne.
+        // `assert_eq!`, not `<=`: in the "never any estimate" regime
+        // (see the next test), `changer_plafond` makes the bitrate follow
+        // EXACTLY the ceiling — a loose bound (`<=`) would let through
+        // 0 or 1 just as well as a real bound.
         assert_eq!(
-            session.congestion.courant().video_bitrate_bps,
+            session.congestion.current().video_bitrate_bps,
             3_000_000,
-            "la décision du contrôleur doit être bornée par la part"
+            "the controller's decision must be bounded by the share"
         );
         assert!(
             session.pending_decision.is_some(),
-            "la part doit poser une décision que la branche a0ter appliquera"
+            "the share must set a decision that the a0ter branch will apply"
         );
     }
 
-    /// Une part qui remonte ne doit pas faire dépasser ce que le lien porte :
-    /// elle lève une borne, elle n'en crée pas une nouvelle vers le haut.
+    /// A share going back up must not exceed what the link carries:
+    /// it lifts a bound, it does not create a new upward one.
     ///
-    /// ⚠️ **Écart signalé au brief** : sa version de ce test appelait
-    /// `appliquer_part` sans qu'aucune estimation n'ait jamais été observée.
-    /// Or `Session::new` ne fait jamais elle-même d'observation
-    /// (`premiere_estimation_a` reste `None`), et `changer_plafond` documente
-    /// justement que dans ce régime précis (« jamais aucune estimation ») le
-    /// débit est une pure valeur de repli qui SUIT le plafond, à la hausse
-    /// comme à la baisse (voir `congestion/reconfiguration.rs`, régime 1, et
-    /// son test `un_plafond_qui_monte_est_suivi_tant_qu_aucune_estimation_n_est_jamais_arrivee`).
-    /// Tel quel, l'appel `appliquer_part(50_000_000)` remonte bien à
-    /// 50 000 000 — ce n'est pas un bug de l'implémentation, c'est le test qui
-    /// n'exerçait pas le régime qu'il prétend couvrir. Corrigé en injectant
-    /// une véritable observation avant la baisse, comme le fait déjà
-    /// `une_estimation_perimee_bascule_l_adaptation_en_indisponible_et_l_annonce`
-    /// (`transport/adaptation.rs`).
+    /// ⚠️ **Deviation from the brief, reported**: its version of this test called
+    /// `appliquer_part` without any estimate ever having been observed.
+    /// Yet `Session::new` never makes an observation itself
+    /// (`premiere_estimation_a` stays `None`), and `changer_plafond` documents
+    /// precisely that in this exact regime ("never any estimate") the
+    /// bitrate is a pure fallback value that FOLLOWS the ceiling, upwards
+    /// as well as downwards (see `congestion/reconfiguration.rs`, regime 1, and
+    /// its test `a_rising_ceiling_is_followed_while_no_estimate_has_ever_arrived`).
+    /// As is, the call `appliquer_part(50_000_000)` does go back up to
+    /// 50,000,000 — it is not an implementation bug, it is the test that
+    /// did not exercise the regime it claims to cover. Fixed by injecting
+    /// a real observation before the decrease, as
+    /// `a_stale_estimate_switches_the_adaptation_to_unavailable_and_announces_it`
+    /// (`transport/adaptation.rs`) already does.
     #[test]
-    fn une_part_qui_remonte_ne_releve_pas_le_debit_au_dela_de_l_estimation() {
+    fn a_rising_share_does_not_raise_the_bitrate_beyond_the_estimate() {
         let mid = Mid::from("0");
         let source = Box::new(fixtures::video_test_source());
         let mut session = Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000)
             .expect("session");
         session.video_mid = Some(mid);
-        // Une observation réelle : sans elle, `premiere_estimation_a` reste
-        // `None` et `changer_plafond` fait suivre le débit au plafond dans
-        // les deux sens (régime « jamais aucune estimation »), ce qui rend
-        // l'assertion ci-dessous vraie par construction plutôt que par la
-        // borne qu'elle prétend vérifier.
+        // A real observation: without it, `premiere_estimation_a` stays
+        // `None` and `changer_plafond` makes the bitrate follow the ceiling in
+        // both directions ("never any estimate" regime), which makes
+        // the assertion below true by construction rather than by the
+        // bound it claims to check.
         session.handle_event(
             Event::EgressBitrateEstimate(BweKind::Twcc(Bitrate::bps(8_000_000))),
             &mut |_| {},
@@ -291,23 +291,23 @@ mod tests {
             &mut |_| {},
         );
         assert_eq!(
-            session.congestion.courant().adaptation,
+            session.congestion.current().adaptation,
             congestion::Adaptation::Active,
-            "précondition : une estimation réelle a bien été observée"
+            "precondition: a real estimate was indeed observed"
         );
 
         session.appliquer_part(2_000_000);
-        let apres_baisse = session.congestion.courant().video_bitrate_bps;
+        let apres_baisse = session.congestion.current().video_bitrate_bps;
         assert!(
             apres_baisse <= 2_000_000,
-            "précondition : la baisse a bien été appliquée"
+            "precondition: the decrease was indeed applied"
         );
 
         session.appliquer_part(50_000_000);
 
         assert!(
-            session.congestion.courant().video_bitrate_bps <= apres_baisse,
-            "sans observation neuve, une part plus large ne remonte pas le débit d'elle-même"
+            session.congestion.current().video_bitrate_bps <= apres_baisse,
+            "without a new observation, a wider share does not raise the bitrate by itself"
         );
     }
 }

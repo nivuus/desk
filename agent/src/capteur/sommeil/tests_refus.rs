@@ -1,33 +1,33 @@
-//! Le SIXIÈME site de mémorisation : le vivier écrivait `eveillee` avant que
-//! l'ordre parte.
+//! The SIXTH memorisation site: the pool wrote `eveillee` before
+//! the order went out.
 //!
-//! **Fichier voisin dédié plutôt que des tests ajoutés à `sommeil/tests.rs`**
-//! (round de correction 2, 25 août 2026) : cette suite-là est à 473 lignes
-//! pour un plafond de projet à 500, et ces deux tests l'auraient fait
-//! franchir. Extraire, jamais comprimer — et ici, ne pas faire grossir plutôt
-//! que d'avoir à extraire ensuite. Même idiome et même précédent que
-//! `superviseur/table.rs`, qui range de la même façon ses tests de relance
-//! dans un second fichier.
+//! **Dedicated sibling file rather than tests added to `sommeil/tests.rs`**
+//! (fix round 2, 25 August 2026): that suite is at 473 lines
+//! for a project cap of 500, and these two tests would have pushed it
+//! over. Extract, never compress — and here, avoid growing rather
+//! than having to extract afterwards. Same idiom and same precedent as
+//! `superviseur/table.rs`, which likewise keeps its restart tests
+//! in a second file.
 //!
-//! 🔴 CE QUE CES DEUX TESTS TIENNENT, ET QUE RIEN D'AUTRE NE TIENT.
-//! `Vivier::arbitrer` écrit `eveillee` AUX ÉTAPES 1 ET 5, c'est-à-dire **avant
-//! que l'ordre correspondant ait été déposé** dans la file de sa fenêtre. Si
-//! ce dépôt est REFUSÉ (file pleine), le vivier ment sur l'état réel — et
-//! `arbitrer` étant idempotent, **aucun ré-arbitrage futur ne réémet
-//! l'ordre**. Le remède est `Vivier::annuler_ordre_non_livre`, appelé par
-//! `registre::distribuer` : voir sa doc pour ce que chacun des deux sens
-//! coûte.
+//! 🔴 WHAT THESE TWO TESTS HOLD, AND NOTHING ELSE HOLDS.
+//! `Vivier::arbitrer` writes `eveillee` AT STEPS 1 AND 5, that is **before
+//! the corresponding order has been dropped** into its window's queue. If
+//! that drop is REFUSED (queue full), the pool lies about the real state — and
+//! `arbitrer` being idempotent, **no future re-arbitration re-emits the
+//! order**. The remedy is `Vivier::annuler_ordre_non_livre`, called by
+//! `registre::distribuer`: see its doc for what each of the two directions
+//! costs.
 //!
-//! ⚠️ **LES DEUX SENS SONT ÉPROUVÉS, ET C'EST LE POINT** : le premier jet du
-//! diagnostic ne nommait que `Reveiller` (« une fenêtre qui ne s'endort
-//! plus »). `Dormir` est l'autre moitié, et c'est **la plus coûteuse** — le
-//! vivier libère la place alors que la fenêtre encode encore, donc
-//! ~~le plafond de huit encodeurs se sur-souscrit~~. **SUR-AFFIRMÉ ICI
-//! AUSSI, ET LAISSÉ NON BARRÉ ALORS QUE LE MÊME FICHIER LE CORRIGE PLUS BAS**
-//! (vers la ligne 112, et `vivier.rs` le réécrit à son tour) : la
-//! sur-souscription a bien lieu, mais ce n'est pas ce que le remède empêche
-//! — il la rend TRANSITOIRE au lieu de permanente. Il existe un
-//! `echec_de_reveil` pour le premier sens ; il n'existe **aucun**
+//! ⚠️ **BOTH DIRECTIONS ARE TESTED, AND THAT IS THE POINT**: the first draft of the
+//! diagnosis only named `Reveiller` ("a window that no longer falls
+//! asleep"). `Dormir` is the other half, and it is **the costlier** — the
+//! pool frees the place while the window is still encoding, so
+//! ~~the cap of eight encoders is over-subscribed~~. **OVER-CLAIMED HERE
+//! TOO, AND LEFT UNSTRUCK WHILE THE SAME FILE CORRECTS IT FURTHER DOWN**
+//! (around line 112, and `vivier.rs` rewrites it in turn): the
+//! over-subscription does happen, but that is not what the remedy prevents
+//! — it makes it TRANSIENT instead of permanent. There is an
+//! `echec_de_reveil` for the first direction; there is **no**
 //! `echec_de_sommeil`.
 
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -41,62 +41,65 @@ use super::tests::verrouiller_pour_le_test;
 use super::{distribuer, etat, inscrire, retirer, signaler, Message};
 use crate::capteur::vivier::Ordre;
 
-/// Bouche la file d'une session par des messages INCOALESCABLES — `Sommeil`
-/// ne se coalesce jamais, c'est ce qui permet d'atteindre la borne.
+/// Clogs a session's queue with NON-COALESCABLE messages — `Sommeil`
+/// never coalesces, that is what makes it possible to reach the bound.
 fn boucher_la_file(session: &str) {
     let garde = etat();
-    let emetteur = garde.canaux.get(session).expect("la session est inscrite");
+    let emetteur = garde
+        .canaux
+        .get(session)
+        .expect("the session is registered");
     for _ in 0..PROFONDEUR_MAX {
         let _ = emetteur.envoyer(Message::Sommeil(Ordre::Reveiller));
     }
 }
 
-/// Un tour de roue, sans attendre les 250 ms qu'il prend en production.
+/// One wheel round, without waiting the 250 ms it takes in production.
 fn un_tour_de_roue() {
     let mut garde = etat();
     let ordres = garde.vivier.rearbitrer(Instant::now());
     distribuer(&mut garde, ordres);
 }
 
-/// 🔴 SENS 1 — UN `Reveiller` REFUSÉ NE DOIT PAS LAISSER LE VIVIER CROIRE LA
-/// FENÊTRE ÉVEILLÉE.
+/// 🔴 DIRECTION 1 — A REFUSED `Reveiller` MUST NOT LEAVE THE POOL BELIEVING THE
+/// WINDOW AWAKE.
 ///
-/// Sans le remède, `eveillee` reste `true` pour une fenêtre qui n'a jamais
-/// reçu l'ordre : sa place au vivier est occupée sans qu'aucun encodeur réel
-/// ne l'occupe, et dix `rearbitrer` de suite ne réémettent rien.
+/// Without the remedy, `eveillee` stays `true` for a window that never
+/// received the order: its place in the pool is occupied without any real encoder
+/// occupying it, and ten `rearbitrer` in a row re-emit nothing.
 ///
-/// **Rougit sur sa PREMIÈRE assertion** — `un Reveiller non déposé ne doit pas
-/// laisser le vivier croire la fenêtre éveillée` —, `eveillee` valant alors
+/// **Turns red on its FIRST assertion** — `an undeposited Reveiller must not
+/// let the pool believe the window is awake` —, `eveillee` then being
 /// `Some(true)`.
 #[test]
-fn un_reveil_non_depose_laisse_le_vivier_intact_et_repart_au_tour_suivant() {
+fn an_undelivered_wake_leaves_the_pool_intact_and_goes_again_next_round() {
     let _verrou = verrouiller_pour_le_test();
     let (canal, generation) = inscrire("r2-reveil", 6500);
-    // Précondition : endormie, et le vivier le sait.
+    // Precondition: asleep, and the pool knows it.
     assert_eq!(etat().vivier.eveillee("r2-reveil"), Some(false));
     boucher_la_file("r2-reveil");
 
-    // La fenêtre devient visible et focalisée : le vivier l'élit et émet
-    // `Reveiller` — qui est REFUSÉ, sa file étant pleine.
+    // The window becomes visible and focused: the pool elects it and emits
+    // `Reveiller` — which is REFUSED, its queue being full.
     signaler("r2-reveil", true, true);
 
     assert_eq!(
         etat().vivier.eveillee("r2-reveil"),
         Some(false),
-        "un Reveiller non déposé ne doit pas laisser le vivier croire la fenêtre éveillée"
+        "an undeposited Reveiller must not let the pool believe the window is awake"
     );
 
-    // La fenêtre reprend sa lecture, et le tour de roue suivant doit réémettre
-    // l'ordre de lui-même — c'est tout l'intérêt de ne pas avoir menti.
-    let recus = canal.vider();
+    // The window resumes reading, and the next wheel round must re-emit
+    // the order by itself — that is the whole point of not having lied.
+    let recus = canal.drain();
     assert_eq!(
         recus.len(),
         PROFONDEUR_MAX,
-        "précondition : la file était bien pleine"
+        "precondition: the queue was indeed full"
     );
     un_tour_de_roue();
     let ordres: Vec<Ordre> = canal
-        .vider()
+        .drain()
         .into_iter()
         .filter_map(|m| match m {
             Message::Sommeil(o) => Some(o),
@@ -105,65 +108,65 @@ fn un_reveil_non_depose_laisse_le_vivier_intact_et_repart_au_tour_suivant() {
         .collect();
     assert!(
         ordres.contains(&Ordre::Reveiller),
-        "le Reveiller non déposé doit repartir au tour suivant : {ordres:?}"
+        "the undeposited Reveiller must go out again on the next round: {ordres:?}"
     );
 
     retirer("r2-reveil", generation);
 }
 
-/// 🔴 SENS 2 — UN `Dormir` REFUSÉ NE DOIT PAS LAISSER LE VIVIER COMPTER
-/// ENDORMIE UNE FENÊTRE QUI ENCODE ENCORE. **C'est la moitié la plus
-/// coûteuse**, et celle que le premier diagnostic avait manquée : sans le
-/// remède, `eveillee` passe à `false` définitivement — la fenêtre n'a jamais
-/// reçu l'ordre, tient toujours son encodeur, et **plus aucun arbitrage ne la
-/// réordonnera**, puisque le vivier la croit déjà endormie.
+/// 🔴 DIRECTION 2 — A REFUSED `Dormir` MUST NOT LEAVE THE POOL COUNTING
+/// AS ASLEEP A WINDOW THAT IS STILL ENCODING. **It is the costlier
+/// half**, and the one the first diagnosis had missed: without the
+/// remedy, `eveillee` goes to `false` for good — the window never
+/// received the order, still holds its encoder, and **no arbitration will
+/// ever order it again**, since the pool believes it already asleep.
 ///
-/// ⚠️ ~~Le plafond de huit encodeurs se sur-souscrit.~~ **CE N'EST PAS CE QUE
-/// LE REMÈDE EMPÊCHE, et l'écrire ainsi était sur-affirmé** (round 3) :
-/// `arbitrer` libère le créneau et élit la remplaçante DANS LA MÊME PASSE,
-/// étapes 1, 4 et 5, **avant que le dépôt ne soit seulement tenté** —
-/// l'annulation ne court qu'après. La sur-souscription a donc bien lieu ; ce
-/// que le remède obtient est qu'elle soit **TRANSITOIRE** au lieu de
-/// permanente. Voir
-/// `une_sur_souscription_par_un_dormir_non_depose_est_resorbee_au_tour_suivant`,
-/// juste en dessous, qui la mesure dans les deux temps.
+/// ⚠️ ~~The cap of eight encoders is over-subscribed.~~ **THAT IS NOT WHAT
+/// THE REMEDY PREVENTS, and writing it that way was over-claimed** (round 3):
+/// `arbitrer` frees the slot and elects the replacement IN THE SAME PASS,
+/// steps 1, 4 and 5, **before the drop is even attempted** —
+/// the cancellation only runs afterwards. The over-subscription does happen; what
+/// the remedy achieves is that it is **TRANSIENT** instead of
+/// permanent. See
+/// `an_oversubscription_from_an_undelivered_sleep_is_absorbed_next_round`,
+/// just below, which measures it at both times.
 ///
-/// **Rougit sur sa PREMIÈRE assertion** — `un Dormir non déposé ne doit pas
-/// laisser le vivier compter endormie une fenêtre qui encode encore` —,
-/// `eveillee` valant alors `Some(false)`.
+/// **Turns red on its FIRST assertion** — `an undeposited Dormir must not let
+/// the pool count as asleep a window that is still encoding` —,
+/// `eveillee` then being `Some(false)`.
 #[test]
-fn un_sommeil_non_depose_laisse_le_vivier_intact_et_repart_au_tour_suivant() {
+fn an_undelivered_sleep_leaves_the_pool_intact_and_goes_again_next_round() {
     let _verrou = verrouiller_pour_le_test();
     let (canal, generation) = inscrire("r2-sommeil", 6501);
-    // Elle s'éveille pour de bon, file libre : l'ordre est livré.
+    // It wakes up for good, queue free: the order is delivered.
     signaler("r2-sommeil", true, true);
     assert_eq!(
         etat().vivier.eveillee("r2-sommeil"),
         Some(true),
-        "précondition : la fenêtre est bien éveillée"
+        "precondition: the window is indeed awake"
     );
-    let _ = canal.vider();
+    let _ = canal.drain();
     boucher_la_file("r2-sommeil");
 
-    // Elle devient invisible : le vivier émet `Dormir(Masquee)` — REFUSÉ.
+    // It becomes invisible: the pool emits `Dormir(Masquee)` — REFUSED.
     signaler("r2-sommeil", false, false);
 
     assert_eq!(
         etat().vivier.eveillee("r2-sommeil"),
         Some(true),
-        "un Dormir non déposé ne doit pas laisser le vivier compter endormie une \
-         fenêtre qui encode encore"
+        "an undeposited Dormir must not let the pool count as asleep a \
+         window that is still encoding"
     );
 
-    let recus = canal.vider();
+    let recus = canal.drain();
     assert_eq!(
         recus.len(),
         PROFONDEUR_MAX,
-        "précondition : la file était bien pleine"
+        "precondition: the queue was indeed full"
     );
     un_tour_de_roue();
     let ordres: Vec<Ordre> = canal
-        .vider()
+        .drain()
         .into_iter()
         .filter_map(|m| match m {
             Message::Sommeil(o) => Some(o),
@@ -172,21 +175,21 @@ fn un_sommeil_non_depose_laisse_le_vivier_intact_et_repart_au_tour_suivant() {
         .collect();
     assert!(
         ordres.iter().any(|o| matches!(o, Ordre::Dormir(_))),
-        "le Dormir non déposé doit repartir au tour suivant : {ordres:?}"
+        "the undeposited Dormir must go out again on the next round: {ordres:?}"
     );
 
     retirer("r2-sommeil", generation);
 }
 
-/// Compte les événements `tracing` émis par `sommeil::registre` sur ce fil.
+/// Counts the `tracing` events emitted by `sommeil::registre` on this thread.
 ///
-/// 🔴 **C'EST CE QUI REND LA CADENCE MESURABLE PLUTÔT QU'AFFIRMÉE.** Sans lui,
-/// on ne pourrait éprouver que le prédicat arithmétique — vrai quel que soit
-/// le code qui l'emploie, donc un contrôle incapable d'échouer.
+/// 🔴 **IT IS WHAT MAKES THE PACING MEASURABLE RATHER THAN ASSERTED.** Without it,
+/// we could only test the arithmetic predicate — true whatever
+/// the code using it, hence a check unable to fail.
 ///
-/// Le filtre est le `target`, que `tracing` remplit avec le chemin du module
-/// d'émission : seules les lignes de `registre.rs` sont comptées, jamais
-/// celles de `file.rs` qui sortent au même palier.
+/// The filter is the `target`, which `tracing` fills with the path of the emitting
+/// module: only the lines of `registre.rs` are counted, never
+/// those of `file.rs` that come out at the same step.
 struct CompteurDeTraces(Arc<AtomicUsize>);
 
 impl<S: tracing::Subscriber> Layer<S> for CompteurDeTraces {
@@ -197,48 +200,48 @@ impl<S: tracing::Subscriber> Layer<S> for CompteurDeTraces {
     }
 }
 
-/// Le compte CUMULÉ de dépôts refusés d'une session.
+/// The CUMULATIVE count of a session's refused drops.
 fn refus_de(session: &str) -> u64 {
     etat()
         .canaux
         .get(session)
-        .expect("la session est inscrite")
+        .expect("the session is registered")
         .refuses()
 }
 
-/// 🔴 LE DÉFAUT QUE LE REMÈDE DU ROUND 2 A LUI-MÊME CRÉÉ, ET SA CADENCE.
+/// 🔴 THE DEFECT THE ROUND 2 REMEDY CREATED ITSELF, AND ITS PACING.
 ///
-/// Tant que l'ordre était PERDU, `distribuer` n'émettait un ordre que sur un
-/// CHANGEMENT d'arbitrage — jamais à chaque tour. C'était le motif écrit pour
-/// ne pas cadencer sa trace, et **il était vrai**.
+/// As long as the order was LOST, `distribuer` only emitted an order on an
+/// arbitration CHANGE — never at every round. That was the reason written for
+/// not pacing its trace, and **it was true**.
 ///
-/// 🔴 **L'ANNULATION L'A RENVERSÉ.** L'état étant désormais RENDU, le
-/// ré-arbitrage suivant revoit la même divergence, réémet le même ordre, et il
-/// est refusé à nouveau : **+1 par tour, strictement, sans borne**. À
-/// `PERIODE_REARBITRAGE` (250 ms), cela ferait **quatre lignes par seconde et
-/// par fenêtre bloquée, indéfiniment** — le piège que `file.rs` évite dix
-/// lignes plus loin, et que `CLAUDE.md` nomme (18 619 lignes en quelques
-/// secondes ont déjà empêché une session de s'établir).
+/// 🔴 **THE CANCELLATION REVERSED IT.** The state now being GIVEN BACK, the
+/// next re-arbitration sees the same divergence again, re-emits the same order, and it
+/// is refused again: **+1 per round, strictly, without bound**. At
+/// `PERIODE_REARBITRAGE` (250 ms), that would make **four lines per second and
+/// per blocked window, indefinitely** — the trap `file.rs` avoids ten
+/// lines further on, and which `CLAUDE.md` names (18,619 lines in a few
+/// seconds have already prevented a session from establishing).
 ///
-/// 🔴 **CE TEST COMPTE LES TRACES RÉELLEMENT ÉMISES**, par un abonné `tracing`
-/// posé sur ce fil — et non le prédicat arithmétique de la cadence. Un premier
-/// jet le faisait, et cette assertion-là était **structurellement incapable
-/// d'échouer** : elle aurait été vraie quel que soit le code de `distribuer`.
+/// 🔴 **THIS TEST COUNTS THE TRACES ACTUALLY EMITTED**, through a `tracing` subscriber
+/// set on this thread — and not the arithmetic predicate of the pacing. A first
+/// draft did that, and that assertion was **structurally unable
+/// to fail**: it would have been true whatever the code of `distribuer`.
 ///
-/// **Rougit sur sa SECONDE assertion, DES DEUX CÔTÉS** — et c'est une
-/// égalité (`assert_eq!`), pas une borne haute : une borne `<= 4` ne
-/// dénonce pas une trace SUPPRIMÉE (`0 <= 4` est vrai). Sans la trace
-/// (`if refuses.is_power_of_two()` → `if false` dans `registre.rs`) :
-/// `0` au lieu de `3`. Sans la cadence (→ `if true`) : `10` traces pour dix
-/// tours, au lieu des `3` paliers réellement franchis (2, 4, 8).
+/// **Turns red on its SECOND assertion, ON BOTH SIDES** — and it is an
+/// equality (`assert_eq!`), not an upper bound: a `<= 4` bound does not
+/// denounce a REMOVED trace (`0 <= 4` is true). Without the trace
+/// (`if refuses.is_power_of_two()` → `if false` in `registre.rs`):
+/// `0` instead of `3`. Without the pacing (→ `if true`): `10` traces for ten
+/// rounds, instead of the `3` steps actually crossed (2, 4, 8).
 #[test]
-fn un_ordre_refuse_a_chaque_tour_est_trace_a_cadence_logarithmique() {
+fn an_order_refused_every_round_is_traced_at_logarithmic_cadence() {
     let _verrou = verrouiller_pour_le_test();
     let (canal, generation) = inscrire("r3-cadence", 6600);
     signaler("r3-cadence", true, true);
-    let _ = canal.vider();
+    let _ = canal.drain();
     boucher_la_file("r3-cadence");
-    // Le masquage engendre un `Dormir` — refusé, et annulé.
+    // Hiding generates a `Dormir` — refused, and cancelled.
     signaler("r3-cadence", false, false);
     let depart = refus_de("r3-cadence");
 
@@ -254,62 +257,65 @@ fn un_ordre_refuse_a_chaque_tour_est_trace_a_cadence_logarithmique() {
             .collect()
     });
 
-    // 🔴 LE PHÉNOMÈNE : chaque tour de roue réémet l'ordre, et chaque
-    // réémission est refusée. C'est ce que l'annulation du round 2 obtient —
-    // et c'est ce qui rend une trace non cadencée non bornée.
+    // 🔴 THE PHENOMENON: every wheel round re-emits the order, and every
+    // re-emission is refused. That is what round 2's cancellation achieves —
+    // and it is what makes an unpaced trace unbounded.
     let attendus: Vec<u64> = (1..=TOURS).map(|i| depart + i).collect();
-    assert_eq!(comptes, attendus, "l'ordre doit être réémis à CHAQUE tour");
+    assert_eq!(
+        comptes, attendus,
+        "the order must be re-emitted on EACH round"
+    );
 
-    // 🔴 LA CADENCE, MESURÉE SUR LES LIGNES ÉMISES ET ÉGALÉE, PAS SEULEMENT
-    // BORNÉE PAR LE HAUT.
+    // 🔴 THE PACING, MEASURED ON THE LINES EMITTED AND MATCHED EXACTLY, NOT MERELY
+    // BOUNDED FROM ABOVE.
     //
-    // ⚠️ **UNE BORNE `<= 4` NE ROUGIT PAS SI LA TRACE DISPARAÎT ENTIÈREMENT**
-    // — mesuré : `if refuses.is_power_of_two()` remplacé par `if false` dans
-    // `registre.rs` (la trace supprimée) laisse `cargo test --workspace`
-    // entièrement VERT, `0 <= 4` étant vrai. Ce que ce test doit tenir n'est
-    // pas seulement « pas trop de lignes », mais « exactement les lignes
-    // attendues ».
+    // ⚠️ **A `<= 4` BOUND DOES NOT TURN RED IF THE TRACE DISAPPEARS ENTIRELY**
+    // — measured: `if refuses.is_power_of_two()` replaced by `if false` in
+    // `registre.rs` (the trace removed) leaves `cargo test --workspace`
+    // entirely GREEN, `0 <= 4` being true. What this test must hold is
+    // not only "not too many lines", but "exactly the expected
+    // lines".
     //
-    // Sur les dix tours de cette boucle, partant d'un compte de refus
-    // CUMULÉ non nul (`depart`), les paliers de puissance de deux réellement
-    // franchis sont **2, 4 et 8** — trois lignes, ni plus ni moins.
-    // `assert_eq!` rougit donc des DEUX côtés : la trace supprimée (`0`,
-    // au lieu de `3`) ET la trace non cadencée (`10`, au lieu de `3`).
+    // Over the ten rounds of this loop, starting from a non-zero CUMULATIVE
+    // refusal count (`depart`), the power-of-two steps actually
+    // crossed are **2, 4 and 8** — three lines, no more, no less.
+    // `assert_eq!` therefore turns red on BOTH sides: the removed trace (`0`,
+    // instead of `3`) AND the unpaced trace (`10`, instead of `3`).
     let traces = compte.load(Ordering::Relaxed);
     assert_eq!(
         traces, 3,
-        "la trace de l'ordre non déposé doit être CADENCÉE aux puissances de \
-         deux, ni supprimée ni émise à chaque refus : {traces} lignes pour \
-         {TOURS} tours, 3 attendues (paliers 2, 4, 8)"
+        "the trace of the undeposited order must be PACED at powers of \
+         two, neither removed nor emitted at each refusal: {traces} lines for \
+         {TOURS} rounds, 3 expected (steps 2, 4, 8)"
     );
 
     retirer("r3-cadence", generation);
 }
 
-/// 🔴 CE QUE LE REMÈDE OBTIENT RÉELLEMENT, MESURÉ DANS LES DEUX TEMPS — et ce
-/// qu'il n'obtient PAS.
+/// 🔴 WHAT THE REMEDY REALLY ACHIEVES, MEASURED AT BOTH TIMES — and what
+/// it does NOT achieve.
 ///
-/// ⚠️ **Les deux tests ci-dessus ne peuvent pas voir ce défaut** : ils n'ont
-/// qu'UNE session, donc ils mesurent `eveillee(s)` et jamais
-/// `eveillees().len()`. C'est ce trou qui a laissé passer l'affirmation
-/// « la place n'est pas libérée », mesurée fausse au round 3.
+/// ⚠️ **The two tests above cannot see this defect**: they only have
+/// ONE session, so they measure `eveillee(s)` and never
+/// `eveillees().len()`. It is this gap that let through the claim
+/// "the place is not freed", measured false in round 3.
 ///
-/// **Le mécanisme** : `arbitrer` pose `eveillee = false` à l'étape 1, exclut
-/// donc la session des épinglées à l'étape 2, remplit le créneau libéré à
-/// l'étape 4, et émet le `Reveiller` de la neuvième à l'étape 5 — **tout dans
-/// la même passe, avant que le dépôt du `Dormir` ne soit seulement tenté**.
-/// L'annulation ne court qu'après : elle ne peut pas l'empêcher.
+/// **The mechanism**: `arbitrer` sets `eveillee = false` at step 1, hence
+/// excludes the session from the pinned ones at step 2, fills the freed slot at
+/// step 4, and emits the ninth's `Reveiller` at step 5 — **all in
+/// the same pass, before the drop of the `Dormir` is even attempted**.
+/// The cancellation only runs afterwards: it cannot prevent it.
 ///
-/// **Ce qui est vrai, et que ce test tient** : la sur-souscription est
-/// TRANSITOIRE. Au ré-arbitrage suivant, le vivier voit 9 > 8 et rendort
-/// quelqu'un. Sans le remède, il ne verrait jamais 9 — il compterait 8 en
-/// croyant la fenêtre bloquée endormie, et la dérive serait PERMANENTE.
+/// **What is true, and what this test holds**: the over-subscription is
+/// TRANSIENT. At the next re-arbitration, the pool sees 9 > 8 and puts
+/// someone back to sleep. Without the remedy, it would never see 9 — it would count 8 while
+/// believing the blocked window asleep, and the drift would be PERMANENT.
 #[test]
-fn une_sur_souscription_par_un_dormir_non_depose_est_resorbee_au_tour_suivant() {
+fn an_oversubscription_from_an_undelivered_sleep_is_absorbed_next_round() {
     let _verrou = verrouiller_pour_le_test();
     let plafond = crate::capteur::vivier::PLAFOND_EVEIL;
 
-    // Sature les places, en gardant les receveurs vivants.
+    // Saturates the places, keeping the receivers alive.
     let mut occupantes = Vec::new();
     for i in 0..plafond {
         let nom = format!("r3-plein-{i}");
@@ -320,39 +326,39 @@ fn une_sur_souscription_par_un_dormir_non_depose_est_resorbee_au_tour_suivant() 
     assert_eq!(
         etat().vivier.eveillees().len(),
         plafond,
-        "précondition : les places sont toutes prises"
+        "precondition: the places are all taken"
     );
 
-    // Une candidate de plus, qui attend qu'une place se libère.
+    // One more candidate, waiting for a place to be freed.
     let (attente, generation_attente) = inscrire("r3-attente", 6799);
     signaler("r3-attente", true, true);
     assert_eq!(
         etat().vivier.eveillees().len(),
         plafond,
-        "précondition : elle attend"
+        "precondition: it is waiting"
     );
 
-    // La file de la PREMIÈRE occupante se bouche, puis elle est masquée : son
-    // `Dormir` est refusé, et annulé — mais `arbitrer` a déjà élu la neuvième
-    // dans la même passe.
+    // The FIRST occupant's queue gets clogged, then it is hidden: its
+    // `Dormir` is refused, and cancelled — but `arbitrer` has already elected the ninth
+    // in the same pass.
     let (ref nom_bloquee, ref canal_bloquee, _) = occupantes[0];
-    let _ = canal_bloquee.vider();
+    let _ = canal_bloquee.drain();
     boucher_la_file(nom_bloquee);
     signaler(nom_bloquee, false, false);
 
     assert_eq!(
         etat().vivier.eveillees().len(),
         plafond + 1,
-        "la sur-souscription a bien lieu : l'annulation ne court qu'APRÈS l'élection"
+        "the over-subscription does happen: the cancellation only runs AFTER the election"
     );
 
-    // La fenêtre bloquée reprend sa lecture ; le tour suivant résorbe.
-    let _ = canal_bloquee.vider();
+    // The blocked window resumes reading; the next round absorbs.
+    let _ = canal_bloquee.drain();
     un_tour_de_roue();
     assert_eq!(
         etat().vivier.eveillees().len(),
         plafond,
-        "la sur-souscription doit être TRANSITOIRE : résorbée au ré-arbitrage suivant"
+        "the over-subscription must be TRANSIENT: absorbed at the next re-arbitration"
     );
 
     retirer("r3-attente", generation_attente);

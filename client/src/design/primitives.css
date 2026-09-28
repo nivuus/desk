@@ -1,118 +1,118 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   LES PRIMITIVES D'INTERFACE — bouton, champ, surface, message (spec ⑥, §6).
+   THE INTERFACE PRIMITIVES — button, field, surface, message (spec ⑥, §6).
 
-   Ce fichier NE DÉCLARE AUCUNE VALEUR : tout vient de `var(--…)`, donc de
-   `design/tokens.css`, qui en est la source unique. Le contrôle §7.2 le balaie
-   comme les autres feuilles de `client/src/`.
+   This file DECLARES NO VALUE: everything comes from `var(--…)`, hence from
+   `design/tokens.css`, which is its single source. Check §7.2 scans it
+   like the other sheets of `client/src/`.
 
-   ── QUATRE RÈGLES DE FORME, ET ELLES SONT OUTILLÉES ───────────────────────
-   `client/src/design/primitives.test.ts` les vérifie, commentaires blanchis
-   d'abord — ce paragraphe-ci écrit les chaînes que ces gardes cherchent, et
-   sans le blanchiment ils seraient satisfaits par leur propre justification.
+   ── FOUR SHAPE RULES, AND THEY ARE TOOLED ─────────────────────────────────
+   `client/src/design/primitives.test.ts` checks them, comments blanked
+   first — this very paragraph writes the strings those guards look for, and
+   without the blanking they would be satisfied by their own justification.
 
-   ① AUCUN SÉLECTEUR D'ÉLÉMENT NU — ni `button`, ni `input`, ni `a`, ni `*`,
-      ni `:root`. C'est ce qui garantit que ce fichier ne change RIEN à
-      `client/index.html`, dont les cinq éléments ne portent aucune classe de
-      primitive et dont DEUX sont des `<button>`. Un `button { … }` ici
-      changerait la fenêtre de session sans qu'aucun des neuf contrôles ne le
-      dise.
-   ② L'ANNEAU DE FOCUS NE S'EFFACE JAMAIS. `design/base.css` le pose
-      globalement sur `:focus-visible` : les primitives l'ont toutes, y compris
-      celles qui n'existent pas encore. Le risque n'est pas son absence, c'est
-      qu'une règle écrive `outline: none` « pour faire propre ».
-   ③ AUCUN ÉTAT NE SE DIT PAR UNE COMPOSITION D'EXÉCUTION — ni `opacity`, ni
-      `filter`. La couleur qui en sortirait échapperait aux 52 paires du
-      contrôle §7.1, et l'état désactivé serait le seul du produit dont le
-      contraste ne serait mesuré par rien. Le désactivé se dit donc par des
-      TOKENS : `--texte-faible` sur `--fond-1`/`--fond-2`.
-   ④ AUCUNE LONGUEUR HORS ÉCHELLE. Un `4px` écrit ici ne serait vu par AUCUN
-      des neuf contrôles, et la RAISON A CHANGÉ avec le sous-bloc S4.
-      ❌ « aucun ne mesure une longueur » était vrai jusque-là ; §7.10
-      (`design/longueurs.test.ts`) en mesure une. Ce qui laisse CE fichier
-      découvert est désormais une PORTÉE, pas une absence : §7.10 exclut
-      `client/src/design/`, et G4 de `primitives.test.ts` ne lit que les
-      QUATRE familles, jamais cet agrégateur d'`@import`. Les seuls littéraux
-      autorisés sont `0`, `100%`, `1` et les mots-clés (`auto`, `inherit`,
+   ① NO BARE ELEMENT SELECTOR — neither `button`, nor `input`, nor `a`, nor `*`,
+      nor `:root`. It is what guarantees this file changes NOTHING in
+      `client/index.html`, whose five elements carry no primitive
+      class and TWO of which are `<button>`. A `button { … }` here
+      would change the session window without any of the nine checks saying
+      so.
+   ② THE FOCUS RING IS NEVER ERASED. `design/base.css` sets it
+      globally on `:focus-visible`: the primitives all have it, including
+      those that do not exist yet. The risk is not its absence, it is
+      that a rule writes `outline: none` "to look tidy".
+   ③ NO STATE IS EXPRESSED BY A RUN-TIME COMPOSITION — neither `opacity`, nor
+      `filter`. The resulting colour would escape the 52 pairs of
+      check §7.1, and the disabled state would be the only one in the product whose
+      contrast nothing measured. Disabled is therefore expressed by
+      TOKENS: `--texte-faible` on `--fond-1`/`--fond-2`.
+   ④ NO LENGTH OUTSIDE THE SCALE. A `4px` written here would be seen by NONE
+      of the nine checks, and the REASON CHANGED with sub-block S4.
+      ❌ "none measures a length" was true until then; §7.10
+      (`design/lengths.test.ts`) measures one. What leaves THIS file
+      uncovered is now a SCOPE, not an absence: §7.10 excludes
+      `client/src/design/`, and G4 of `primitives.test.ts` only reads the
+      FOUR families, never this `@import` aggregator. The only literals
+      allowed are `0`, `100%`, `1` and keywords (`auto`, `inherit`,
       `transparent`, `1fr`).
 
-   ⚠️ `transparent` EST LA SEULE VALEUR DE COULEUR NON-`var()` autorisée ici :
-   le contrôle §7.2 ne connaît que `black`, `white` et `red` parmi les
-   mots-clés, et `transparent` n'est pas une couleur, c'est une absence.
+   ⚠️ `transparent` IS THE ONLY NON-`var()` COLOUR VALUE allowed here:
+   check §7.2 only knows `black`, `white` and `red` among the
+   keywords, and `transparent` is not a colour, it is an absence.
 
-   ── CE QUE CE FICHIER FAIT, DEPUIS LE SOUS-BLOC S3 ────────────────────────
-   ✅ DEUX SURFACES DU PRODUIT LA LIENT — `client/hub.html` et
-   `client/connexion.html`. **MESURÉ** par
-   `grep -ln "primitives.css" client/*.html`, qui rend TROIS fichiers :
-   ces deux-là, plus `client/primitives.html` — la GALERIE, qui n'est pas
-   une surface du produit.
+   ── WHAT THIS FILE DOES, SINCE SUB-BLOCK S3 ───────────────────────────────
+   ✅ TWO SURFACES OF THE PRODUCT LINK IT — `client/hub.html` and
+   `client/connexion.html`. **MEASURED** by
+   `grep -ln "primitives.css" client/*.html`, which returns THREE files:
+   those two, plus `client/primitives.html` — the GALLERY, which is not
+   a surface of the product.
 
-   ⚠️ CET ENCADRÉ A ÉTÉ FAUX DEUX FOIS, ET LA SECONDE EST PIRE QUE LA
-   PREMIÈRE. ① Il nommait `client/shell.html`, devenue une redirection qui
-   ne lie AUCUNE feuille (tâche 9, 31 août 2026). ② La vague de correction
-   du 31 août 2026 a « corrigé » cela en écrivant « TROIS SURFACES …
-   `client/index.html` » — **et `index.html` NE LIE PAS cette feuille**
-   (elle ne lie que `socle.css` et `style.css`), ce que le ⛔ vingt lignes
-   plus bas disait déjà, texte intact. 🔴 **C'est le patron que ce dépôt
-   punit : corriger une affirmation fausse peut en produire une autre** —
-   aggravé ici par une phrase qui se VANTAIT d'avoir été relancée alors que
-   seul le relevé qui la suit l'avait été. **Ce qu'il fallait corriger
-   était le NOM, `shell.html` → `hub.html` ; le compte juste restait DEUX.**
+   ⚠️ THIS BOX WAS WRONG TWICE, AND THE SECOND TIME IS WORSE THAN THE
+   FIRST. ① It named `client/shell.html`, which became a redirect that
+   links NO sheet (task 9, August 31st, 2026). ② The correction wave
+   of August 31st, 2026 "fixed" that by writing "THREE SURFACES …
+   `client/index.html`" — **and `index.html` DOES NOT LINK this sheet**
+   (it only links `socle.css` and `style.css`), which the ⛔ twenty lines
+   further down already said, text intact. 🔴 **It is the pattern this repository
+   punishes: correcting a false statement can produce another one** —
+   made worse here by a sentence that BOASTED of having been rerun whereas
+   only the report following it had been. **What had to be corrected
+   was the NAME, `shell.html` → `hub.html`; the right count remained TWO.**
 
-   🔴 **LA CAUSE, NOMMÉE POUR QUE PERSONNE NE LA REFASSE : DEUX MESURES
-   DIFFÉRENTES ONT ÉTÉ CONFONDUES.** Le relevé §7.9 ② A reproduit
-   ci-dessous mesure quelles surfaces **EMPLOIENT** une famille de
-   primitives (`classes-employees.mjs` lit les classes du HTML) ; il ne
-   mesure PAS lesquelles **LIENT** la feuille. `client/index.html` y
-   figure à bon droit — il emploie `.message` et `.surface` — **et ne la
-   lie pourtant pas** : ses règles lui viennent de `style.css`. Les deux
-   chiffres, DEUX et TROIS, sont vrais de choses différentes, et chacun
-   dit désormais de quoi.
+   🔴 **THE CAUSE, NAMED SO THAT NOBODY REPEATS IT: TWO DIFFERENT
+   MEASUREMENTS WERE CONFUSED.** The §7.9 ② A report reproduced
+   below measures which surfaces **USE** a family of
+   primitives (`classes-employees.mjs` reads the classes of the HTML); it does
+   NOT measure which ones **LINK** the sheet. `client/index.html`
+   rightly appears in it — it uses `.message` and `.surface` — **and yet does not
+   link it**: its rules come from `style.css`. The two
+   figures, TWO and THREE, are true of different things, and each one
+   now says of what.
 
-   À la fin de S2, cet encadré disait l'inverse :
-   « AUCUNE SURFACE DU PRODUIT NE LE LIE […] les tokens qu'il fait sortir de la
-   liste d'attente ont UN APPELANT ÉCRIT, pas UN PIXEL RENDU […] C'est S3 qui
-   referme cet écart. » S3 l'a refermé, et ce n'est pas une intention mais un
-   RELEVÉ : le contrôle §7.9, né avec S3, rend à chaque exécution — ⚠️ et il
-   mesure l'EMPLOI des classes, JAMAIS le `<link>` (voir ci-dessus) :
+   At the end of S2, this box said the opposite:
+   "NO SURFACE OF THE PRODUCT LINKS IT […] the tokens it takes out of the
+   waiting list have A WRITTEN CALLER, not A RENDERED PIXEL […] It is S3 that
+   closes this gap." S3 closed it, and it is not an intention but a
+   REPORT: check §7.9, born with S3, returns on every run — ⚠️ and it
+   measures the USE of the classes, NEVER the `<link>` (see above):
 
-       ② A — les primitives atteignent le PRODUIT, CHACUNE des trois surfaces :
+       ② A — the primitives reach the PRODUCT, EACH of the three surfaces:
          client/index.html : message, surface
          client/hub.html : bouton, message, surface
          client/connexion.html : bouton, champ, message, surface
 
-   et son assertion ② A a été ROUGE sur l'arbre intact, entre les tâches 2 et 4,
-   ce qui est sa preuve d'atteignabilité.
+   and its assertion ② A was RED on the untouched tree, between tasks 2 and 4,
+   which is its proof of reachability.
 
-   ⛔ `client/index.html` — la fenêtre de session — N'EN LIE AUCUNE, et c'est la
-   règle ① ci-dessus, mesurée par le critère ③ de la recette S3 : ses deux
-   actifs bâtis sont octet pour octet ceux d'avant la branche.
+   ⛔ `client/index.html` — the session window — LINKS NONE OF THEM, and it is
+   rule ① above, measured by criterion ③ of the S3 acceptance run: its two
+   built assets are byte for byte those from before the branch.
 
-   ⚠️ PORTE ARMÉE À 240 LIGNES, et non à 300 comme les autres fichiers de ⑥ :
-   une famille coûte de 40 à 80 lignes, si bien qu'une porte à 300 laisserait
-   la dernière la franchir PENDANT son écriture. Au-delà de 240, scinder en
-   `design/primitives/{bouton,champ,surface,message}.css` et faire de ce
-   fichier quatre `@import` — la forme exacte de `design/socle.css`. EXTRAIRE,
-   jamais compresser.
+   ⚠️ GATE ARMED AT 240 LINES, and not at 300 like the other files of ⑥:
+   a family costs 40 to 80 lines, so that a gate at 300 would let
+   the last one cross it WHILE it is being written. Beyond 240, split into
+   `design/primitives/{bouton,champ,surface,message}.css` and make this
+   file four `@import` — the exact shape of `design/socle.css`. EXTRACT,
+   never compress.
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/* ── LES FAMILLES, UNE PAR FICHIER ────────────────────────────────────────
-   🔴 EXTRACTION FAITE AVANT L'ADDITION QUI L'EXIGEAIT, PAS APRÈS. Ce fichier
-   valait 230 lignes pour une porte armée à 240, et la famille surface en coûte
-   une quarantaine : l'écrire d'abord aurait franchi le plafond PENDANT la
-   tâche, ce que ce dépôt a payé cinq fois — et deux fois de plus en le
-   rattrapant par une COMPRESSION que `CLAUDE.md` interdit nommément.
+/* ── THE FAMILIES, ONE PER FILE ───────────────────────────────────────────
+   🔴 EXTRACTION DONE BEFORE THE ADDITION THAT REQUIRED IT, NOT AFTER. This file
+   was 230 lines for a gate armed at 240, and the surface family costs
+   about forty: writing it first would have crossed the ceiling DURING the
+   task, which this repository has paid for five times — and twice more by
+   catching it up through a COMPRESSION that `CLAUDE.md` explicitly forbids.
 
-   ⚠️ L'`@import` fait ré-inliner chaque feuille dans toute entrée qui la
-   traverse. Ce fichier n'est lié que par `client/primitives.html` : rien n'est
-   donc dupliqué. Voir l'encadré mesuré de `client/src/style.css` (arrangements
-   A et B), qui est la raison pour laquelle `style.css`, lui, N'importe PAS le
-   socle.
+   ⚠️ The `@import` makes each sheet be re-inlined in every entry that goes
+   through it. This file is only linked by `client/primitives.html`: nothing is
+   therefore duplicated. See the measured box of `client/src/style.css` (arrangements
+   A and B), which is the reason why `style.css`, for its part, does NOT import the
+   base layer.
 
-   🔴 ET LES GARDES DE FORME LISENT CES QUATRE FICHIERS, PAS CELUI-CI. Après
-   l'extraction, `primitives.css?raw` ne rend plus que les `@import` :
-   `primitives.test.ts` y aurait mesuré ZÉRO règle. Il lit donc chaque famille,
-   et G5 vérifie que la liste qu'il lit est EXACTEMENT celle importée ici — sans
-   quoi une cinquième famille naîtrait hors de portée des quatre gardes. */
+   🔴 AND THE SHAPE GUARDS READ THESE FOUR FILES, NOT THIS ONE. After
+   the extraction, `primitives.css?raw` only returns the `@import`:
+   `primitives.test.ts` would have measured ZERO rules in it. It therefore reads each family,
+   and G5 checks that the list it reads is EXACTLY the one imported here — otherwise
+   a fifth family would be born out of reach of the four guards. */
 @import './primitives/bouton.css';
 @import './primitives/champ.css';
 @import './primitives/surface.css';

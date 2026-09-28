@@ -1,39 +1,39 @@
-// La version du protocole du canal `/agent`, et rien d'autre.
+// The protocol version of the `/agent` channel, and nothing else.
 //
-// 🔴 CE MODULE EXISTE POUR ROMPRE UN CYCLE, PAS PAR GOÛT DU DÉCOUPAGE. Le
-// sous-bloc G3 a extrait les types et les encodeurs de l'installation vers
-// `plateforme-installation.ts` pour tenir la règle des 500 lignes ; ces
-// encodeurs ont besoin de la constante, et la constante vivait dans
-// `plateforme.ts`, qui importe déjà ce module-là. Le cycle aurait été un cycle
-// de VALEURS — pas de types, que TypeScript efface —, donc un vrai cycle à
-// l'exécution, du genre qui rend `undefined` une constante selon l'ordre
-// d'évaluation des modules. La sortir ici le supprime, au lieu de parier sur
-// cet ordre.
+// 🔴 THIS MODULE EXISTS TO BREAK A CYCLE, NOT OUT OF A TASTE FOR SPLITTING. The
+// sub-block G3 extracted the installation types and encoders to
+// `plateforme-installation.ts` to hold the 500-line rule; those
+// encoders need the constant, and the constant lived in
+// `plateforme.ts`, which already imports that module. The cycle would have been a cycle
+// of VALUES — not of types, which TypeScript erases —, hence a real runtime
+// cycle, the kind that makes a constant `undefined` depending on the
+// module evaluation order. Moving it out here removes it, instead of betting on
+// that order.
 //
-// ⚠️ ELLE RESTE RÉEXPORTÉE PAR `plateforme.ts` : aucun des consommateurs, dans
-// aucun paquet, n'a eu à bouger.
+// ⚠️ IT REMAINS RE-EXPORTED BY `plateforme.ts`: none of the consumers, in
+// any package, had to move.
 
 /**
- * La version du protocole.
+ * The protocol version.
  *
- * 🔴 UN BUMP EST UNE RUPTURE, ET IL SE DÉPLOIE AUX DEUX BOUTS AU MÊME COMMIT.
- * Un agent d'une version antérieure LIT le refus qui le lui apprend — le refus
- * est la seule variante hors versionnement — et RENONCE ; il ne boucle plus.
- * La rupture reste une rupture, elle est seulement devenue diagnosticable.
+ * 🔴 A BUMP IS A BREAK, AND IT IS DEPLOYED AT BOTH ENDS IN THE SAME COMMIT.
+ * An agent from an older version READS the refusal that tells it so — the refusal
+ * is the only variant outside versioning — and GIVES UP; it no longer loops.
+ * The break remains a break, it has only become diagnosable.
  *
- * v4 est celle du sous-bloc G3 : elle ajoute `installer` (descendante),
- * `progression` et `termine` (montantes), et les deux énumérations `Phase` et
- * `Issue` qu'elles portent.
+ * v4 is that of sub-block G3: it adds `installer` (downstream),
+ * `progression` and `termine` (upstream), and the two enums `Phase` and
+ * `Issue` they carry.
  *
- * v5 est celle du sous-bloc G5 (tranche F) : `Application` gagne `accent` — la
- * couleur dominante de son icône, `null` quand elle n'en a pas — et
- * `associations`, les extensions qu'elle ouvre. Les deux servent le manifeste
- * PWA par application : `theme_color` et `file_handlers`.
+ * v5 is that of sub-block G5 (slice F): `Application` gains `accent` — the
+ * dominant colour of its icon, `null` when it has none — and
+ * `associations`, the extensions it opens. Both serve the per-application PWA
+ * manifest: `theme_color` and `file_handlers`.
  *
- * ⚠️ `Application` porte `#[serde(deny_unknown_fields)]` côté Rust, et les
- * deux champs neufs sont OBLIGATOIRES des deux côtés : **tout champ ajouté à
- * cette structure est cassant**, et c'est délibéré — un catalogue incomplet
- * accepté en silence est le mode de panne que ce versionnement existe pour
- * empêcher.
+ * ⚠️ `Application` carries `#[serde(deny_unknown_fields)]` on the Rust side, and the
+ * two new fields are MANDATORY on both sides: **any field added to
+ * this structure is breaking**, and that is deliberate — an incomplete catalogue
+ * accepted silently is the failure mode this versioning exists to
+ * prevent.
  */
 export const PLATEFORME_VERSION = 5;

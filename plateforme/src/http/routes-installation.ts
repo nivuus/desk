@@ -1,46 +1,46 @@
-// Les trois routes de l'INSTALLATION : l'ordre, l'état, et les octets servis à
-// l'AGENT.
+// The three INSTALLATION routes: the order, the state, and the bytes served to
+// the AGENT.
 //
-//   `POST /installation`               jeton PORTEUR (humain)  -> { id }
-//   `GET  /installation/:id`           jeton PORTEUR (humain)  -> l'état
-//   `GET  /televersement/:id/contenu`  jeton d'AGENT, LUI SEUL -> les octets
+//   `POST /installation`               BEARER token (human)    -> { id }
+//   `GET  /installation/:id`           BEARER token (human)    -> the state
+//   `GET  /televersement/:id/contenu`  AGENT token, IT ALONE   -> the bytes
 //
-// 🔴 CONTRAT DE `routes-auth.ts`, `routes-vm.ts`, `routes-applications.ts` et
-// `routes-icone.ts` : `Promise<boolean>`, `true` = servie, `false` = pas mon
-// chemin. Le 404 générique de `http/serveur.ts` répond alors seul.
+// 🔴 CONTRACT OF `routes-auth.ts`, `routes-vm.ts`, `routes-applications.ts` and
+// `routes-icone.ts`: `Promise<boolean>`, `true` = served, `false` = not my
+// path. The generic 404 of `http/serveur.ts` then answers alone.
 //
-// ⚠️ « ALORS SEUL » N'EST PLUS VRAI SANS CONDITION DEPUIS LE 22 AOÛT 2026, et
-// la phrase est laissée telle quelle parce qu'elle reste juste dans le montage
-// nginx : quand `PLATEFORME_PAGE` est armée, un DIXIÈME routeur — le servant
-// de page — est chaîné APRÈS tous les autres, et il résout n'importe quel
-// chemin. Sur un `GET`/`HEAD`, c'est LUI qui répond `200 text/html` au `false`
-// rendu ici ; hors `GET`/`HEAD` il se retire, et le 404 générique reprend la
-// main. Voir `http/chaine.ts`, qui porte le compte et la règle.
+// ⚠️ « THEN ANSWERS ALONE » IS NO LONGER UNCONDITIONALLY TRUE SINCE 22 AUGUST 2026, and
+// the sentence is left as is because it stays right in the nginx
+// deployment: when `PLATEFORME_PAGE` is armed, a TENTH router — the page
+// server — is chained AFTER all the others, and it resolves any
+// path. On a `GET`/`HEAD`, it is IT that answers `200 text/html` to the `false`
+// returned here; outside `GET`/`HEAD` it steps aside, and the generic 404 takes
+// over. See `http/chaine.ts`, which carries the count and the rule. (policy: allow-fr - file name)
 //
-// 🔴 LA GARDE LA PLUS IMPORTANTE DU SOUS-BLOC VIT DANS CE FICHIER :
-// `GET …/contenu` COMPARE LA VM DU JETON À CELLE DE L'INSTALLATION. Sans elle,
-// n'importe quelle VM enrôlée téléchargerait l'installeur de n'importe quelle
-// autre — le contenu qu'un utilisateur a déposé pour SA machine et pour elle
-// seule. **L'autorisation n'est pas « un agent valide », c'est « CET agent-LÀ ».**
-// Le détail est à `autorisePourVm` et à `contenu`.
+// 🔴 THE MOST IMPORTANT GUARD OF THE SUB-BLOCK LIVES IN THIS FILE:
+// `GET …/contenu` COMPARES THE VM OF THE TOKEN WITH THAT OF THE INSTALLATION. Without it,
+// any enrolled VM would download the installer of any
+// other — the content a user uploaded for THEIR machine and for it
+// alone. **The authorisation is not « a valid agent », it is « THIS PARTICULAR agent ».**
+// The detail is at `autorisePourVm` and at `contenu`.
 //
-// 🔴 LES DEUX MOITIÉS DE L'IDENTITÉ SONT EMPLOYÉES, JAMAIS L'UNE POUR L'AUTRE :
-// `porteur.ts` refuse un jeton d'agent, `porteur-agent.ts` un jeton humain — les
-// deux sont signés par le MÊME secret, si bien qu'un seul relâchement les rend
-// INTERCHANGEABLES (E5 de P3). Ce fichier consomme les deux sans en recopier une.
+// 🔴 BOTH HALVES OF THE IDENTITY ARE USED, NEVER ONE FOR THE OTHER:
+// `porteur.ts` refuses an agent token, `porteur-agent.ts` a human token — the
+// two are signed by the SAME secret, so that a single loosening makes them
+// INTERCHANGEABLE (E5 of P3). This file consumes both without copying either.
 //
-// 🔴 TOUT REFUS D'AUTORISATION EST INDISTINGUABLE D'UNE RESSOURCE INCONNUE —
-// `404`, jamais `403` : distinguer serait un ORACLE D'ÉNUMÉRATION. Décision du
-// propriétaire du dépôt, prise pour G1 (en-tête de `routes-applications.ts`),
-// que G3 APPLIQUE sans la rouvrir. La contrepartie est une ligne de JOURNAL qui
-// nomme le cas réel et **n'atteint jamais la réponse**.
+// 🔴 ANY AUTHORISATION REFUSAL IS INDISTINGUISHABLE FROM AN UNKNOWN RESOURCE —
+// `404`, never `403`: telling them apart would be an ENUMERATION ORACLE. Decision of the
+// repository owner, taken for G1 (header of `routes-applications.ts`),
+// which G3 APPLIES without reopening it. The trade-off is a LOG line that
+// names the real case and **never reaches the response**.
 //
-// ⚠️ CE FICHIER NE POUSSE AUCUN ORDRE À L'AGENT : `POST /installation` ÉCRIT une
-// ligne `en_attente`, que `canal-apps.ts::reemettreLesInstallations` met sur le
-// fil à l'enrôlement suivant. **Une installation demandée pendant qu'un agent
-// est déjà connecté attend donc sa prochaine connexion.** La refermer exigerait
-// du `RegistreAgents` une méthode d'envoi qu'il n'a pas — il n'expose que
-// `lancer`, qui attend une issue —, addition à un fichier que G3 n'ouvre pas.
+// ⚠️ THIS FILE PUSHES NO ORDER TO THE AGENT: `POST /installation` WRITES an
+// `en_attente` row, which `canal-apps.ts::reemettreLesInstallations` puts on the
+// wire at the next enrolment. **An installation requested while an agent
+// is already connected therefore waits for its next connection.** Closing that would require
+// from `RegistreAgents` a send method it does not have — it only exposes
+// `lancer`, which waits for an outcome —, an addition to a file G3 does not open.
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { CHEMIN_ORDRE, contenuDe, installationDe } from './installation-chemins';
@@ -51,10 +51,10 @@ import { reemettreLesInstallations } from '../agents/canal-apps';
 import type { RegistreAgents } from '../agents/registre';
 import type { Pilote } from '../base/pilote';
 import { lireParPrefixe } from '../depot/agent';
-import { creer, lireParId as lireInstallation, type LigneInstallation } from '../depot/installation';
+import { create, lireParId as lireInstallation, type LigneInstallation } from '../depot/installation';
 import { lireParId as lireTeleversement, type LigneTeleversement } from '../depot/televersement';
 import { lireParId as lireVm } from '../depot/vm';
-import { chaineNonVide, estObjetJson } from '../../../proto/ts/plateforme-gardes';
+import { nonEmptyString, estObjetJson } from '../../../proto/ts/plateforme-gardes';
 import { plan } from '../../../proto/ts/tranches';
 import { entetesCors } from './cors';
 import { ENTETES_SECURITE } from './entetes';
@@ -65,39 +65,39 @@ export interface DependancesInstallation {
     base: Pilote;
     secretJeton: string;
     origineClient?: string;
-    /// 🔴 IL S'APPELLE `tranches`, PAS `magasin`, ET LE NOM EST PORTEUR.
-    /// `serveur.ts` porte DÉJÀ un `magasin` — celui des ICÔNES du sous-bloc G2 —
-    /// dans le même objet de dépendances. Deux routeurs qui emploieraient la
-    /// même clé pour deux objets différents seraient un mauvais câblage que
-    /// `tsc` n'attraperait que par chance : ici il l'a attrapé, les deux types
-    /// différant, mais **le jour où deux magasins auraient la même forme, le
-    /// service servirait des icônes à la place des tranches en silence.**
+    /// 🔴 IT IS CALLED `tranches`, NOT `magasin`, AND THE NAME MATTERS.
+    /// `serveur.ts` ALREADY carries a `magasin` — the ICON one of sub-block G2 —
+    /// in the same dependency object. Two routers that used the
+    /// same key for two different objects would be a miswiring that
+    /// `tsc` would only catch by luck: here it caught it, the two types
+    /// differing, but **the day two stores had the same shape, the
+    /// service would silently serve icons instead of the slices.**
     tranches: MagasinTranches;
-    /// 🔴 LE REGISTRE DES AGENTS, ET SANS LUI L'ORDRE N'EST JAMAIS LIVRÉ À UNE
-    /// VM DÉJÀ EN LIGNE. Voir le commentaire de la poussée, plus bas.
+    /// 🔴 THE AGENT REGISTRY, AND WITHOUT IT THE ORDER IS NEVER DELIVERED TO A
+    /// VM ALREADY ONLINE. See the comment on the push, further down.
     registre: RegistreAgents;
     maintenant: () => number;
 }
 
-/// Les en-têtes CORS d'une requête, ou `undefined` — origine non autorisée, donc
-/// AUCUN en-tête, jamais `*` (`cors.ts`).
+/// The CORS headers of a request, or `undefined` — origin not allowed, hence
+/// NO header, never `*` (`cors.ts`).
 type Cors = Record<string, string> | undefined;
 
-/// 4 Kio, pour un corps qui porte DEUX identifiants. 🔴 PLAFOND DE CETTE ROUTE
-/// ET D'ELLE SEULE (D8) : celui de `routes-auth.ts` ne s'applique pas ici et
-/// **ne doit surtout pas être relevé** pour arranger une route qui accepte des
-/// octets. ⚠️ NON CALIBRÉ.
+/// 4 KiB, for a body that carries TWO ids. 🔴 CEILING OF THIS ROUTE
+/// AND OF IT ALONE (D8): the one of `routes-auth.ts` does not apply here and
+/// **must above all not be raised** to suit a route that accepts
+/// bytes. ⚠️ NOT CALIBRATED.
 const CORPS_MAX_OCTETS = 4 * 1024;
 
-/// 🔴 LA RÈGLE FAIT AUTORITÉ CÔTÉ AGENT (D15) ; CECI N'EST QU'UN REFUS PRÉCOCE,
-/// qui achète un aller-retour de plusieurs centaines de mégaoctets. L'agent la
-/// rejoue sur le nom reçu dans l'ordre : c'est lui qui exécute, et rien ne se
-/// fie au maillon précédent. ⚠️ `.bat` est refusé — un script, dont l'interprète
-/// et la politique d'exécution appellent leurs propres décisions.
+/// 🔴 THE RULE IS AUTHORITATIVE ON THE AGENT SIDE (D15); THIS IS ONLY AN EARLY REFUSAL,
+/// which saves a round trip of several hundred megabytes. The agent
+/// replays it on the name received in the order: it is the one running things, and nothing
+/// trusts the previous link. ⚠️ `.bat` is refused — a script, whose interpreter
+/// and execution policy call for their own decisions.
 export const EXTENSIONS_ACCEPTEES: readonly string[] = ['.exe', '.msi'];
 
-/// ⚠️ INSENSIBLE À LA CASSE (Windows l'est), et le nom doit avoir un RADICAL :
-/// `.exe` tout court se termine bien par `.exe`, mais c'est un nom sans corps.
+/// ⚠️ CASE-INSENSITIVE (Windows is), and the name must have a STEM:
+/// `.exe` on its own does end with `.exe`, but it is a name with no body.
 export function extensionAcceptee(nom: string): boolean {
     const bas = nom.toLowerCase();
     return EXTENSIONS_ACCEPTEES.some((e) => bas.length > e.length && bas.endsWith(e));
@@ -106,18 +106,18 @@ export function extensionAcceptee(nom: string): boolean {
 function repondre(rep: ServerResponse, code: number, corps: unknown, cors: Cors): void {
     rep.writeHead(code, {
         'content-type': 'application/json; charset=utf-8',
-        // ⚠️ INCONDITIONNELS, sur TOUTE réponse — refus compris —, et étalés
-        // AVANT `cors`, dont la politique est FACULTATIVE et ne doit jamais
-        // pouvoir les écraser par mégarde.
+        // ⚠️ UNCONDITIONAL, on EVERY response — refusals included —, and spread
+        // BEFORE `cors`, whose policy is OPTIONAL and must never
+        // be able to overwrite them by mistake.
         ...ENTETES_SECURITE,
         ...(cors ?? {}),
     });
     rep.end(corps === undefined ? undefined : JSON.stringify(corps));
 }
 
-/// Lit le corps, ou rend `undefined` si la borne est franchie — la requête est
-/// alors ABANDONNÉE sans lire la suite : accumuler pour répondre poliment serait
-/// le déni de service que la borne existe pour empêcher.
+/// Reads the body, or yields `undefined` if the bound is crossed — the request is
+/// then ABANDONED without reading the rest: piling up to answer politely would be
+/// the denial of service the bound exists to prevent.
 function lireCorps(req: IncomingMessage): Promise<string | undefined> {
     return new Promise((resoudre, rejeter) => {
         let recu = '';
@@ -133,66 +133,66 @@ function lireCorps(req: IncomingMessage): Promise<string | undefined> {
     });
 }
 
-/// La contrepartie du refus indistinguable : la seule chose, dans tout le
-/// service, qui dise LEQUEL des cas s'est produit. ⚠️ `cas=` EST UN CHAMP, PAS UNE
-/// PHRASE — c'est lui que l'exploitant `grep`e. Convention de G1.
+/// The trade-off of the indistinguishable refusal: the only thing, in the whole
+/// service, that says WHICH of the cases happened. ⚠️ `cas=` IS A FIELD, NOT A
+/// SENTENCE — it is what the operator `grep`s for. Convention of G1.
 function journaliser(cas: string, ressource: string, demandeur: string): void {
     console.warn(
-        `refus d'acces a ${ressource} pour ${demandeur} : cas=${cas} — la reponse `
-            + `HTTP, elle, est INDISTINGUABLE d'une ressource inconnue.`,
+        `access to ${ressource} refused for ${demandeur}: cas=${cas} — the HTTP `
+            + `response itself is INDISTINGUISHABLE from an unknown resource.`,
     );
 }
 
-/// Décide si cet utilisateur a le droit de voir cette VM.
+/// Decides whether this user has the right to see this VM.
 ///
-/// ⚠️ TROISIÈME EXEMPLAIRE DE LA MÊME RÈGLE, et le dire vaut mieux que de le
-/// taire : `routes-applications.ts::acces`, `routes-icone.ts::service`, et la
-/// voici. Le facteur commun vivra dans un module tiers le jour où l'on rouvrira
-/// ces fichiers — G3 n'en ouvre aucun, et une extraction à moitié coûterait une
-/// indirection sans rien fermer. **Déclaré plutôt que subi, comme
-/// `porteur-agent.ts` l'a fait pour son découpage d'en-tête : toute correction
-/// se fait DANS LES TROIS FICHIERS.** ⚠️ La branche « non attribuée » JOURNALISE :
-/// `vm.utilisateur_id` naît NULL, et tant qu'aucune VM n'est attribuée TOUT
-/// UTILISATEUR AUTHENTIFIÉ VOIT TOUTES LES VMS.
+/// ⚠️ THIRD COPY OF THE SAME RULE, and saying so beats keeping it
+/// quiet: `routes-applications.ts::acces`, `routes-icone.ts::service`, and
+/// here it is. The common factor will live in a third module the day these
+/// files are reopened — G3 opens none of them, and a half extraction would cost an
+/// indirection without closing anything. **Declared rather than endured, as
+/// `porteur-agent.ts` did for its header splitting: any fix
+/// is made IN THE THREE FILES.** ⚠️ The « not assigned » branch LOGS:
+/// `vm.utilisateur_id` is born NULL, and as long as no VM is assigned EVERY (policy: allow-fr - frozen wire key or SQLite column)
+/// AUTHENTICATED USER SEES ALL THE VMS.
 async function acces(
-    deps: DependancesInstallation, vmId: string, utilisateurId: string,
+    deps: DependancesInstallation, vmId: string, userId: string,
 ): Promise<'ok' | 'inconnue' | 'etrangere'> {
     const vm = await lireVm(deps.base, vmId);
     if (vm === undefined) {
-        journaliser('inconnue', `la VM ${vmId}`, `l'utilisateur ${utilisateurId}`);
+        journaliser('inconnue', `the VM ${vmId}`, `user ${userId}`);
         return 'inconnue';
     }
-    if (vm.utilisateur_id === null) {
-        console.warn(`vm non attribuee, acces accorde sans isolation a la VM ${vmId}`);
+    if (vm.utilisateur_id === null) { // policy: allow-fr - frozen wire key or SQLite column
+        console.warn(`unassigned vm, access granted without isolation to VM ${vmId}`);
         return 'ok';
     }
-    if (vm.utilisateur_id !== utilisateurId) {
-        journaliser('etrangere', `la VM ${vmId}`, `l'utilisateur ${utilisateurId}`);
+    if (vm.utilisateur_id !== userId) { // policy: allow-fr - frozen wire key or SQLite column
+        journaliser('etrangere', `the VM ${vmId}`, `user ${userId}`);
         return 'etrangere';
     }
     return 'ok';
 }
 
-/// Existe-t-il, POUR CETTE VM, une installation NON TERMINÉE qui réclame ce
-/// téléversement ?
+/// Is there, FOR THIS VM, an UNFINISHED installation that calls for this
+/// upload?
 ///
-/// 🔴 C'EST LA GARDE QUE L'EN-TÊTE ANNONCE. Le jeton dit « je suis l'agent du
-/// préfixe P » ; la VM s'en déduit par `lireParPrefixe` ; et c'est CETTE VM que
-/// l'on compare à `installation.vm_id`. Un agent parfaitement authentifié dont
-/// aucune installation ne réclame ce téléversement n'a rien à faire des octets.
+/// 🔴 THIS IS THE GUARD THE HEADER ANNOUNCES. The token says « I am the agent of
+/// prefix P »; the VM follows from it through `lireParPrefixe`; and it is THIS VM that
+/// is compared with `installation.vm_id`. A perfectly authenticated agent that
+/// no installation calls this upload for has no business with the bytes.
 ///
-/// ⚠️ `etat <> 'terminee'` PLUTÔT QU'UNE LISTE — l'idiome des deux écritures de
-/// `depot/installation.ts`. Les DEUX états passent : `en_attente` est le premier
-/// téléchargement, `en_cours` sa REPRISE (progression rapportée, transfert
-/// coupé, l'agent recommence) ; n'accepter qu'`en_attente` rendrait toute reprise
-/// impossible sans qu'aucune trace ne le dise. Une installation TERMINÉE, elle,
-/// n'a plus rien à télécharger.
+/// ⚠️ `etat <> 'terminee'` RATHER THAN A LIST — the idiom of the two writes of
+/// `depot/installation.ts`. BOTH states pass: `en_attente` is the first
+/// download, `en_cours` its RESUMPTION (progress reported, transfer
+/// cut, the agent starts over); accepting only `en_attente` would make any resumption
+/// impossible without any trace saying so. A FINISHED installation, for its part,
+/// has nothing left to download.
 ///
-/// ⚠️ CETTE REQUÊTE APPARTIENT À `depot/installation.ts`, qui ne sait lire que
-/// par identifiant ou par (VM, `en_attente`) ; cette tâche n'ouvre aucun fichier
-/// existant. **Le jour où il sera rouvert, elle descend d'un étage.** Aucune
-/// valeur littérale — tout passe en paramètre, sans quoi `rendreMarqueurs`
-/// lèverait côté Postgres.
+/// ⚠️ THIS QUERY BELONGS TO `depot/installation.ts`, which can only read
+/// by id or by (VM, `en_attente`); this task opens no existing
+/// file. **The day it is reopened, it goes down one floor.** No
+/// literal value — everything goes as a parameter, otherwise `rendreMarqueurs`
+/// would throw on the Postgres side.
 async function autorisePourVm(base: Pilote, televersementId: string, vmId: string): Promise<boolean> {
     const lignes = await base.interroger<{ id: string }>(
         'SELECT id FROM installation WHERE televersement_id = ? AND vm_id = ? AND etat <> ?',
@@ -201,11 +201,11 @@ async function autorisePourVm(base: Pilote, televersementId: string, vmId: strin
     return lignes.length > 0;
 }
 
-/// Ce qu'un humain lit d'une installation. ⚠️ `journal_tronque` DEVIENT UN BOOLÉEN
-/// SUR LE FIL : la colonne est un entier parce que SQLite n'a pas de type
-/// booléen, et rendre `0`/`1` obligerait le hub à connaître une convention de
-/// stockage qui ne le regarde pas. ⚠️ Rien n'est omis : ce que
-/// `routes-applications.ts` tait sont des CHEMINS DU DISQUE DE LA VM.
+/// What a human reads of an installation. ⚠️ `journal_tronque` BECOMES A BOOLEAN
+/// ON THE WIRE: the column is an integer because SQLite has no boolean
+/// type, and returning `0`/`1` would force the hub to know a storage
+/// convention that is none of its concern. ⚠️ Nothing is left out: what
+/// `routes-applications.ts` keeps quiet is PATHS ON THE VM DISK.
 function vueDe(l: LigneInstallation): Record<string, unknown> {
     return {
         id: l.id, vm: l.vm_id, televersement: l.televersement_id,
@@ -226,17 +226,17 @@ export async function servirInstallation(
     const estOrdre = chemin === CHEMIN_ORDRE;
     if (!estOrdre && idInstallation === undefined && idTeleversement === undefined) return false;
     const cors = entetesCors(req.headers.origin, deps.origineClient);
-    // 🔴 LA REQUÊTE PRÉALABLE EST SERVIE, ET SANS ELLE RIEN N'EST ATTEIGNABLE
-    // depuis un navigateur : les trois routes exigent `Authorization: Bearer`,
-    // ce qui rend la requête NON SIMPLE, et un 404 sur l'`OPTIONS` ferait
-    // abandonner le navigateur AVANT la vraie requête — le défaut exact que la
-    // corroboration navigateur de P4 a trouvé, invisible à tout test de Node.
+    // 🔴 THE PREFLIGHT REQUEST IS SERVED, AND WITHOUT IT NOTHING IS REACHABLE
+    // from a browser: the three routes require `Authorization: Bearer`,
+    // which makes the request NOT SIMPLE, and a 404 on the `OPTIONS` would make
+    // the browser give up BEFORE the real request — the exact defect that the
+    // browser corroboration of P4 found, invisible to any Node test.
     if (req.method === 'OPTIONS') {
         repondre(rep, 204, undefined, cors);
         return true;
     }
-    // Le chemin EXISTE, c'est la méthode qui ne convient pas : un 404 ferait
-    // chercher une route absente.
+    // The path EXISTS, it is the method that does not fit: a 404 would send people
+    // looking for a missing route.
     if (req.method !== (estOrdre ? 'POST' : 'GET')) {
         repondre(rep, 405, { refus: 'methode' }, cors);
         return true;
@@ -246,14 +246,14 @@ export async function servirInstallation(
     return contenu(req, rep, deps, cors, idTeleversement!);
 }
 
-/// `POST /installation` — l'humain demande.
+/// `POST /installation` — the human asks.
 async function ordre(
     req: IncomingMessage, rep: ServerResponse, deps: DependancesInstallation, cors: Cors,
 ): Promise<boolean> {
-    // 🔴 L'AUTHENTIFICATION VIENT AVANT TOUTE LECTURE DE CORPS ET DE BASE : une
-    // route qui lirait d'abord offrirait du travail gratuit à un pair anonyme.
-    // ⚠️ Les en-têtes CORS sont posés sur le refus aussi — une 401 illisible par
-    // le navigateur s'affiche comme une panne réseau.
+    // 🔴 AUTHENTICATION COMES BEFORE ANY BODY OR DATABASE READ: a
+    // route that read first would offer free work to an anonymous peer.
+    // ⚠️ The CORS headers are set on the refusal too — a 401 unreadable by
+    // the browser shows up as a network failure.
     const porteur = lirePorteur(req.headers, deps.secretJeton, deps.maintenant());
     if (!porteur.ok) {
         repondre(rep, porteur.code, { refus: porteur.motif }, cors);
@@ -271,35 +271,35 @@ async function ordre(
         repondre(rep, 400, { refus: 'forme' }, cors);
         return true;
     }
-    if (!estObjetJson(parse) || !chaineNonVide(parse.vm) || !chaineNonVide(parse.televersement)) {
+    if (!estObjetJson(parse) || !nonEmptyString(parse.vm) || !nonEmptyString(parse.televersement)) {
         repondre(rep, 400, { refus: 'forme' }, cors);
         return true;
     }
     const vmId = parse.vm;
     const televersementId = parse.televersement;
-    // 🔴 LES REFUS PERMANENTS PASSENT AVANT LE TRANSITOIRE (`503`) : à qui l'on
-    // répond « la VM ne répond pas », on fait réessayer indéfiniment un ordre que
-    // l'extension ou le scellement condamnent. 🔴 ET LE VERDICT N'EST PAS RELU :
-    // les deux cas passent par la MÊME expression, donc les corps ne PEUVENT pas
-    // différer.
-    if ((await acces(deps, vmId, porteur.utilisateurId)) !== 'ok') {
+    // 🔴 PERMANENT REFUSALS COME BEFORE THE TRANSIENT ONE (`503`): whoever is
+    // told « the VM does not answer » will retry indefinitely an order that
+    // the extension or the sealing dooms. 🔴 AND THE VERDICT IS NOT REREAD:
+    // both cases go through the SAME expression, so the bodies CANNOT
+    // differ.
+    if ((await acces(deps, vmId, porteur.userId)) !== 'ok') {
         repondre(rep, 404, { refus: 'vm-inconnue' }, cors);
         return true;
     }
-    // 🔴 INCONNU ET ÉTRANGER RENDENT LE MÊME REFUS, par la même expression : sans
-    // quoi on apprendrait quels téléversements existent chez les autres.
+    // 🔴 UNKNOWN AND FOREIGN RETURN THE SAME REFUSAL, through the same expression: otherwise
+    // one would learn which uploads exist at other people's.
     const tel = await lireTeleversement(deps.base, televersementId);
-    if (tel === undefined || tel.utilisateur_id !== porteur.utilisateurId) {
+    if (tel === undefined || tel.utilisateur_id !== porteur.userId) { // policy: allow-fr - frozen wire key or SQLite column
         journaliser(
             tel === undefined ? 'inconnue' : 'etrangere',
-            `le televersement ${televersementId}`, `l'utilisateur ${porteur.utilisateurId}`,
+            `upload ${televersementId}`, `user ${porteur.userId}`,
         );
         repondre(rep, 404, { refus: 'televersement-inconnu' }, cors);
         return true;
     }
-    // 🔴 UN TÉLÉVERSEMENT NON SCELLÉ N'EST JAMAIS ORDONNÉ : l'agent recevrait un
-    // fichier PARTIEL dont l'empreinte échouerait très loin d'ici — **un refus au
-    // bon endroit vaut mieux qu'un refus au bon moment**.
+    // 🔴 AN UNSEALED UPLOAD IS NEVER ORDERED: the agent would receive a
+    // PARTIAL file whose fingerprint would fail very far from here — **a refusal in the
+    // right place beats a refusal at the right time**.
     if (tel.scelle_a === null) {
         repondre(rep, 409, { refus: 'non-scelle' }, cors);
         return true;
@@ -308,66 +308,66 @@ async function ordre(
         repondre(rep, 400, { refus: 'extension' }, cors);
         return true;
     }
-    // 🔴 UNE VM INJOIGNABLE REND 503, JAMAIS 201 : écrire la ligne sans le dire
-    // ferait afficher au hub une installation « demandée » que personne ne
-    // recevra — la panne la plus difficile à diagnostiquer qui soit, rien nulle
-    // part ne la contredisant. Même code que `routes-applications.ts` sur le
-    // lancement. ⚠️ La fraîcheur est celle d'`agents/fraicheur.ts`, PURE, et son
-    // horloge celle de `deps` : la transition en devient assiégeable à la
-    // milliseconde par un test.
+    // 🔴 AN UNREACHABLE VM RETURNS 503, NEVER 201: writing the row without saying so
+    // would make the hub display a « requested » installation that nobody will
+    // receive — the hardest failure to diagnose there is, nothing anywhere
+    // contradicting it. Same code as `routes-applications.ts` on the
+    // launch. ⚠️ The freshness is that of `agents/fraicheur.ts`, PURE, and its
+    // clock that of `deps`: the transition thereby becomes pinnable to the
+    // millisecond by a test.
     const vm = await lireVm(deps.base, vmId);
     if (vm === undefined || etatDe(vm.vu_a, deps.maintenant()) !== 'prete') {
         repondre(rep, 503, { refus: 'agent-injoignable' }, cors);
         return true;
     }
-    const ligne = await creer(deps.base, { vmId, televersementId }, deps.maintenant());
+    const ligne = await create(deps.base, { vmId, televersementId }, deps.maintenant());
 
-    // 🔴 L'ORDRE EST POUSSÉ ICI, ET CETTE POUSSÉE MANQUAIT — LA RECETTE L'A
-    // TROUVÉ, PAS LA RELECTURE. Ce fichier documentait que la ligne
-    // `en_attente` était « mise sur le canal par
-    // `canal-apps.ts::reemettreLesInstallations` », et c'est vrai : mais cette
-    // fonction n'est appelée QU'À L'ENRÔLEMENT. Un agent DÉJÀ connecté ne se
-    // réenrôle jamais, si bien qu'une installation demandée pendant que la VM
-    // est en ligne — c'est-à-dire LE CAS NOMINAL, le seul que 503 laisse
-    // passer — n'était livrée qu'au prochain redémarrage de l'agent.
+    // 🔴 THE ORDER IS PUSHED HERE, AND THAT PUSH WAS MISSING — ACCEPTANCE TESTING
+    // FOUND IT, NOT REREADING. This file documented that the
+    // `en_attente` row was « put on the channel by
+    // `canal-apps.ts::reemettreLesInstallations` », and that is true: but that
+    // function is only called AT ENROLMENT. An agent ALREADY connected never
+    // enrols again, so that an installation requested while the VM
+    // is online — that is, THE NOMINAL CASE, the only one 503 lets
+    // through — was only delivered at the next restart of the agent.
     //
-    // Mesuré sur la chaîne réelle : `POST /installation` rendait bien 201,
-    // `GET /installation/:id` restait `en_attente` avec `phase: ""` et
-    // `octets_faits: 0`, et le journal de l'agent ne portait **aucune ligne**
-    // d'installation. Rien, nulle part, ne contredisait le 201.
+    // Measured on the real chain: `POST /installation` did return 201,
+    // `GET /installation/:id` stayed `en_attente` with `phase: ""` and
+    // `octets_faits: 0`, and the agent log carried **no installation
+    // line**. Nothing, anywhere, contradicted the 201.
     //
-    // ⚠️ ON RÉEMPLOIE `reemettreLesInstallations`, ON NE RECONSTRUIT PAS LE
-    // MESSAGE. Elle relit les `en_attente` de cette VM et les encode ; une
-    // seconde construction d'`Installer` ici aurait divergé de celle du canal
-    // le jour où l'une des deux aurait changé — et c'est la duplication que le
-    // champ mort `socket` de ses dépendances rendait jusqu'ici obligatoire.
+    // ⚠️ WE REUSE `reemettreLesInstallations`, WE DO NOT REBUILD THE
+    // MESSAGE. It rereads the `en_attente` rows of this VM and encodes them; a
+    // second construction of `Installer` here would have drifted from the channel one
+    // the day one of the two changed — and that is the duplication that the
+    // dead `socket` field of its dependencies made mandatory until now.
     //
-    // ⚠️ `void … .catch(…)`, JAMAIS `await` : la ligne EST en base, le 201 est
-    // dû, et une base momentanément lente ne doit pas le retarder. Si la
-    // poussée échoue ou n'aboutit pas, le filet d'enrôlement reste — c'est
-    // exactement ce qu'il est là pour faire.
+    // ⚠️ `void … .catch(…)`, NEVER `await`: the row IS in the database, the 201 is
+    // due, and a momentarily slow database must not delay it. If the
+    // push fails or does not complete, the enrolment safety net remains — that is
+    // exactly what it is there for.
     void reemettreLesInstallations({
         base: deps.base,
         vmId,
         envoyer: (brut) => {
             if (!deps.registre.pousser(vmId, brut)) {
                 console.info(
-                    `installation ${ligne.id} : aucun socket ouvert pour la VM ${vmId}, `
-                    + "l'ordre attend le prochain enrôlement",
+                    `installation ${ligne.id}: no socket open for VM ${vmId}, `
+                    + "the order waits for the next enrolment",
                 );
             }
         },
     }).catch((cause) => {
-        console.error(`installation ${ligne.id} : poussée impossible — ${String(cause)}`);
+        console.error(`installation ${ligne.id}: push impossible — ${String(cause)}`);
     });
 
-    // 201 : une ressource est NÉE, et son identifiant est ce que le hub ira
-    // relire par `GET /installation/:id`.
+    // 201: a resource was BORN, and its id is what the hub will
+    // read again through `GET /installation/:id`.
     repondre(rep, 201, { id: ligne.id }, cors);
     return true;
 }
 
-/// `GET /installation/:id` — l'humain suit.
+/// `GET /installation/:id` — the human follows.
 async function etat(
     req: IncomingMessage, rep: ServerResponse, deps: DependancesInstallation, cors: Cors, id: string,
 ): Promise<boolean> {
@@ -377,12 +377,12 @@ async function etat(
         return true;
     }
     const ligne = await lireInstallation(deps.base, id);
-    // 🔴 LE REFUS D'UNE INSTALLATION ÉTRANGÈRE EST CELUI D'UNE INSTALLATION
-    // INCONNUE, ET NON `vm-inconnue` : rendre ici le motif de la VM DIRAIT que
-    // l'installation existe, et rouvrirait l'oracle par la porte de derrière, sur
-    // la ressource même que l'URL nomme. MÊME expression pour les deux cas ; la
-    // ligne de journal, elle, les distingue.
-    if (ligne === undefined || (await acces(deps, ligne.vm_id, porteur.utilisateurId)) !== 'ok') {
+    // 🔴 THE REFUSAL OF A FOREIGN INSTALLATION IS THAT OF AN UNKNOWN
+    // INSTALLATION, AND NOT `vm-inconnue`: returning here the VM reason WOULD SAY that
+    // the installation exists, and would reopen the oracle through the back door, on
+    // the very resource the URL names. SAME expression for both cases; the
+    // log line, for its part, tells them apart.
+    if (ligne === undefined || (await acces(deps, ligne.vm_id, porteur.userId)) !== 'ok') {
         repondre(rep, 404, { refus: 'installation-inconnue' }, cors);
         return true;
     }
@@ -390,44 +390,44 @@ async function etat(
     return true;
 }
 
-/// `GET /televersement/:id/contenu` — l'AGENT tire les octets.
+/// `GET /televersement/:id/contenu` — the AGENT pulls the bytes.
 async function contenu(
     req: IncomingMessage, rep: ServerResponse, deps: DependancesInstallation, cors: Cors, id: string,
 ): Promise<boolean> {
-    // 🔴 UN JETON D'AGENT, ET LUI SEUL. `lirePorteur` refuserait cet appel par
-    // `403 jeton-agent` : c'est la moitié SYMÉTRIQUE qu'il faut ici, celle qui
-    // exige `type === 'agent'`. Accepter un jeton humain rendrait les deux
-    // identités interchangeables sur cette route.
+    // 🔴 AN AGENT TOKEN, AND IT ALONE. `lirePorteur` would refuse this call with
+    // `403 jeton-agent`: it is the MIRROR half that is needed here, the one that
+    // requires `type === 'agent'`. Accepting a human token would make the two
+    // identities interchangeable on this route.
     const porteur = lirePorteurAgent(req.headers, deps.secretJeton, deps.maintenant());
     if (!porteur.ok) {
         repondre(rep, porteur.code, { refus: porteur.motif }, cors);
         return true;
     }
-    // Le SUJET d'un jeton d'agent est le PRÉFIXE DE SESSION, jamais l'identifiant
-    // de VM : `agents/canal.ts` signe le préfixe, et la VM se résout ici.
+    // The SUBJECT of an agent token is the SESSION PREFIX, never the VM
+    // id: `agents/canal.ts` signs the prefix, and the VM is resolved here.
     const enrole = await lireParPrefixe(deps.base, porteur.prefixe);
     const tel = await lireTeleversement(deps.base, id);
-    // 🔴 C'EST ICI QUE LA VM DU JETON EST COMPARÉE À CELLE DE L'INSTALLATION : un
-    // agent valide n'est pas un agent autorisé. Les trois cas — préfixe sans
-    // enrôlement, téléversement inconnu, aucune installation vivante pour CETTE
-    // VM — rendent le MÊME refus par la MÊME expression.
-    // 🔴 ET L'AUTORISATION PASSE AVANT TOUT ÉTAT, L'ORDRE EST PORTANT : répondre
-    // `409 non-scelle` à un agent sans droit APPRENDRAIT que ce téléversement
-    // existe, et le refus d'état deviendrait l'oracle que le refus d'accès existe
-    // pour fermer.
+    // 🔴 IT IS HERE THAT THE VM OF THE TOKEN IS COMPARED WITH THAT OF THE INSTALLATION: a
+    // valid agent is not an authorised agent. The three cases — prefix without
+    // enrolment, unknown upload, no live installation for THIS
+    // VM — return the SAME refusal through the SAME expression.
+    // 🔴 AND AUTHORISATION COMES BEFORE ANY STATE, THE ORDER IS LOAD-BEARING: answering
+    // `409 non-scelle` to an agent without rights WOULD TEACH it that this upload
+    // exists, and the state refusal would become the oracle that the access refusal exists
+    // to close.
     const autorise = enrole !== undefined && tel !== undefined
         && (await autorisePourVm(deps.base, tel.id, enrole.vm_id));
     if (!autorise) {
         const cas = enrole === undefined ? 'prefixe-sans-enrolement'
             : tel === undefined ? 'inconnue' : 'etrangere';
-        journaliser(cas, `le contenu du televersement ${id}`, `l'agent ${porteur.prefixe}`);
+        journaliser(cas, `the content of upload ${id}`, `agent ${porteur.prefixe}`);
         repondre(rep, 404, { refus: 'televersement-inconnu' }, cors);
         return true;
     }
-    // 🔴 UN TÉLÉVERSEMENT NON SCELLÉ N'EST JAMAIS SERVI : les tranches sont sur le
-    // disque, mais rien n'a vérifié qu'elles y sont TOUTES ni que leur
-    // concaténation a la bonne empreinte. L'agent recevrait un fichier partiel et
-    // ne l'apprendrait qu'après l'avoir écrit en entier.
+    // 🔴 AN UNSEALED UPLOAD IS NEVER SERVED: the slices are on the
+    // disk, but nothing has checked that ALL of them are there nor that their
+    // concatenation has the right fingerprint. The agent would receive a partial file and
+    // would only learn it after having written it in full.
     if (tel!.scelle_a === null) {
         repondre(rep, 409, { refus: 'non-scelle' }, cors);
         return true;
@@ -435,48 +435,48 @@ async function contenu(
     return servirLesOctets(rep, deps, tel!, cors);
 }
 
-/// La concaténation des tranches, EN FLUX.
+/// The concatenation of the slices, AS A STREAM.
 ///
-/// 🔴 RIEN N'EST ASSEMBLÉ NI ACCUMULÉ (D7) : un installeur de 800 Mo tiendrait
-/// 1,6 Go sur le disque le temps d'un assemblage, et toute la mémoire du service
-/// s'il passait par un tampon. ⚠️ LE PLAN DES RANGS EST CALCULÉ, PAS LISTÉ, et
-/// c'est ce qui donne son sens au flux : `concatener` sert le plan qu'on lui
-/// donne, si bien qu'une tranche disparue devient une ERREUR de flux au lieu d'un
-/// flux plus court terminé proprement — que l'agent empreindrait sans savoir
-/// pourquoi c'est faux. ⚠️ L'IDENTIFIANT PASSÉ AU MAGASIN VIENT DE LA BASE
-/// (`tel.id`), JAMAIS DE L'URL : il devient un nom de RÉPERTOIRE, où `..` est
-/// significatif.
+/// 🔴 NOTHING IS ASSEMBLED OR PILED UP (D7): an 800 MB installer would take
+/// 1.6 GB on the disk for the time of an assembly, and all the memory of the service
+/// if it went through a buffer. ⚠️ THE PLAN OF THE RANKS IS COMPUTED, NOT LISTED, and
+/// that is what gives the stream its meaning: `concatener` serves the plan it is
+/// given, so that a vanished slice becomes a stream ERROR instead of a
+/// shorter stream cleanly finished — which the agent would fingerprint without knowing
+/// why it is wrong. ⚠️ THE ID PASSED TO THE STORE COMES FROM THE DATABASE
+/// (`tel.id`), NEVER FROM THE URL: it becomes a DIRECTORY name, where `..` is
+/// meaningful.
 async function servirLesOctets(
     rep: ServerResponse, deps: DependancesInstallation, tel: LigneTeleversement, cors: Cors,
 ): Promise<boolean> {
-    const rangs = plan(tel.taille, tel.taille_tranche).map((t) => t.n);
+    const rangs = plan(tel.taille, tel.taille_tranche).map((t) => t.n); // policy: allow-fr - frozen wire key or SQLite column
     const flux = deps.tranches.concatener(tel.id, rangs);
     rep.writeHead(200, {
         ...ENTETES_SECURITE,
         ...(cors ?? {}),
-        // ⚠️ `application/octet-stream` ET RIEN D'AUTRE : ces octets sont un
-        // exécutable, et laisser un intermédiaire deviner leur type est
-        // exactement ce que le `nosniff` d'`ENTETES_SECURITE` interdit.
+        // ⚠️ `application/octet-stream` AND NOTHING ELSE: these bytes are an
+        // executable, and letting an intermediary guess their type is
+        // exactly what the `nosniff` of `ENTETES_SECURITE` forbids.
         'content-type': 'application/octet-stream',
-        // 🔴 LA LONGUEUR EST CELLE DU CONTRAT, vérifiée au scellement contre la
-        // somme des tranches : c'est elle qui rend une réponse TRONQUÉE
-        // détectable au lieu de la laisser passer pour un fichier complet.
-        'content-length': String(tel.taille),
-        // ⚠️ AUCUN `Content-Disposition`, AUCUN NOM DE FICHIER : l'agent connaît
-        // le nom, reçu dans l'ordre `installer` à côté de l'empreinte ; le
-        // répéter en ferait une seconde source que rien ne comparerait.
+        // 🔴 THE LENGTH IS THAT OF THE CONTRACT, checked at sealing against the
+        // sum of the slices: it is what makes a TRUNCATED response
+        // detectable instead of letting it pass for a complete file.
+        'content-length': String(tel.taille), // policy: allow-fr - frozen wire key or SQLite column
+        // ⚠️ NO `Content-Disposition`, NO FILE NAME: the agent knows
+        // the name, received in the `installer` order next to the fingerprint;
+        // repeating it would make a second source that nothing would compare.
     });
     try {
         await pipeline(flux, rep);
     } catch (cause) {
-        // 🔴 ON DÉTRUIT LA RÉPONSE, ON NE LA TERMINE PAS : les en-têtes sont déjà
-        // partis, et `rep.end()` rendrait un corps plus court que le
-        // `Content-Length` annoncé — ce qu'un client verrait comme une réponse
-        // close. La détruire coupe la connexion, et l'agent le lit comme le
-        // transfert manqué que c'est.
+        // 🔴 WE DESTROY THE RESPONSE, WE DO NOT END IT: the headers have already
+        // gone, and `rep.end()` would yield a body shorter than the
+        // announced `Content-Length` — which a client would see as a closed
+        // response. Destroying it cuts the connection, and the agent reads it as the
+        // failed transfer it is.
         console.error(
-            `contenu du televersement ${tel.id} interrompu : ${String(cause)} — une `
-                + `tranche manque, ou le client a raccroche`,
+            `content of upload ${tel.id} interrupted: ${String(cause)} — a `
+                + `chunk is missing, or the client hung up`,
         );
         rep.destroy();
     }

@@ -1,25 +1,25 @@
 #!/usr/bin/env node
-// Contrôle §7.1 de la spec ⑥ — LES CONTRASTES TIENNENT LES SEUILS WCAG.
+// Check §7.1 of spec ⑥ — THE CONTRASTS MEET THE WCAG THRESHOLDS.
 //
-// Il ne connaît AUCUNE couleur : il lit `tokens/couleurs.css`, le fait parser
-// par `client/src/design/tokens.ts` et évaluer par
-// `client/src/design/contraste.ts`, tous deux typecheckés et testés. C'est LE
-// point de conception du §7.1 : une table jumelle est exactement ce que le
-// §4.1 refuse ailleurs, et un contrôle qui a sa propre copie des valeurs
-// valide sa copie.
+// It knows NO colour: it reads `tokens/couleurs.css`, has it parsed
+// by `client/src/design/tokens.ts` and evaluated by
+// `client/src/design/contraste.ts`, both typechecked and tested. It is THE
+// design point of §7.1: a twin table is exactly what
+// §4.1 refuses elsewhere, and a check that has its own copy of the values
+// validates its copy.
 //
-// 🔴 `tokens/couleurs.css` SEUL, JAMAIS `tokens.css` : depuis l'extraction de
-// la tâche 6 (25 août 2026), c'est le seul fichier où vivent des couleurs —
-// `tokens/echelles.css`, son voisin, n'en porte aucune, et les paires de
-// contraste que ce contrôle évalue n'en ont donc rien à lire là-bas.
+// 🔴 `tokens/couleurs.css` ALONE, NEVER `tokens.css`: since the extraction of
+// task 6 (August 25th, 2026), it is the only file where colours live —
+// `tokens/echelles.css`, its neighbour, carries none, and the contrast
+// pairs this check evaluates therefore have nothing to read there.
 //
-// ⚠️ CE QU'IL NE VÉRIFIE PAS, d'après la spec §7.1 : que le BON token ait été
-// employé au bon endroit (c'est une règle de revue, §8), ni les couleurs
-// composées à l'exécution, ni ce qui est posé au-dessus de la vidéo — dont le
-// fond n'est pas connaissable. Les six tokens hors thème (`--voile-*`,
-// `--video-letterbox`) sont HORS des 52 paires pour cette raison : leur
-// lisibilité sur une vidéo quelconque n'est garantie par rien, et la spec §11
-// le déclare déjà.
+// ⚠️ WHAT IT DOES NOT CHECK, according to spec §7.1: that the RIGHT token was
+// used in the right place (it is a review rule, §8), nor colours
+// composed at run time, nor what is laid over the video — whose
+// background cannot be known. The six out-of-theme tokens (`--voile-*`,
+// `--video-letterbox`) are OUTSIDE the 52 pairs for this reason: their
+// readability on an arbitrary video is guaranteed by nothing, and spec §11
+// already declares it.
 
 import { readFileSync, existsSync } from 'node:fs';
 import { lireBlocsDeTheme } from '../src/design/tokens.ts';
@@ -27,24 +27,24 @@ import { evaluer } from '../src/design/contraste.ts';
 
 const args = process.argv.slice(2);
 const iFichier = args.indexOf('--fichier');
-const fichier = iFichier === -1 ? 'client/src/design/tokens/couleurs.css' : args[iFichier + 1];
+const file = iFichier === -1 ? 'client/src/design/tokens/couleurs.css' : args[iFichier + 1];
 
-if (!existsSync(fichier)) {
-    console.error(`${fichier} est absent : rien n'a été mesuré, ce n'est pas un succès.`);
+if (!existsSync(file)) {
+    console.error(`${file} is missing: nothing was measured, this is not a success.`);
     process.exit(2);
 }
 
-const blocs = lireBlocsDeTheme(readFileSync(fichier, 'utf8'));
+const blocs = lireBlocsDeTheme(readFileSync(file, 'utf8'));
 const { verifiees, echecs, minimum } = evaluer(blocs);
 
 for (const { paire, rapport } of echecs) {
     const nom = (t) => t.replace(/^--/, '');
     console.log(
-        `ÉCHEC ${paire.theme} ${nom(paire.encre)}/${nom(paire.fond)} = ` +
+        `FAILURE ${paire.theme} ${nom(paire.encre)}/${nom(paire.fond)} = ` +
             `${rapport.toFixed(2)} < ${paire.seuil}`,
     );
 }
-console.log(`paires vérifiées : ${verifiees}`);
-console.log(`échecs : ${echecs.length}`);
+console.log(`pairs checked: ${verifiees}`);
+console.log(`failures: ${echecs.length}`);
 console.log(`minimum global : ${minimum.toFixed(2)}`);
 process.exit(echecs.length > 0 ? 1 : 0);

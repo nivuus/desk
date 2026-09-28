@@ -1,33 +1,33 @@
 import { describe, expect, it } from 'vitest';
 import {
-    creerAdaptateur,
-    EchecFichiers,
-    type FichierLu,
-    type PoigneeFichier,
+    createAdapter,
+    FilesError,
+    type ReadableFile,
+    type FileHandle,
     type PoigneeRepertoire,
     type TrancheLisible,
 } from './adaptateur';
 
-/* ── UN FAUX SYSTÈME DE FICHIERS EN MÉMOIRE ───────────────────────────────
-   La File System Access API n'existe pas sous Node : sans l'injection de la
-   racine (spec §4.4), AUCUN de ces tests n'existerait.
+/* ── A FAKE IN-MEMORY FILE SYSTEM ─────────────────────────────────────────
+   The File System Access API does not exist under Node: without injecting the
+   root (spec §4.4), NONE of these tests would exist.
 
-   🔴 LE FAUX `File` COMPTE SES APPELS, et c'est ce qui donne sa valeur au test
-   de plage. Un faux qui rendrait simplement les bons octets passerait aussi
-   bien avec `slice(o, o+n).arrayBuffer()` qu'avec `arrayBuffer()` suivi d'une
-   découpe côté appelant — c'est-à-dire serait VACUEUX. Le défaut visé est
-   relevé, pas imaginé : `web/index.js:562-564` lisait le fichier ENTIER pour en
-   rendre une plage. */
+   🔴 THE FAKE `File` COUNTS ITS CALLS, and that is what gives the range test
+   its value. A fake that simply returned the right bytes would pass just as
+   well with `slice(o, o+n).arrayBuffer()` as with `arrayBuffer()` followed by a
+   cut on the caller's side — that is, it would be VACUOUS. The targeted defect is
+   observed, not imagined: `web/index.js:562-564` read the WHOLE file to
+   return a range of it. */
 
 interface Compteurs {
     arrayBufferEntier: number;
     slice: number;
 }
 
-function fauxFichier(octets: Uint8Array, modifie: number, compteurs: Compteurs): FichierLu {
+function fakeFile(octets: Uint8Array, modified: number, compteurs: Compteurs): ReadableFile {
     return {
         size: octets.length,
-        lastModified: modifie,
+        lastModified: modified,
         slice(debut: number, fin: number): TrancheLisible {
             compteurs.slice += 1;
             const tranche = octets.slice(debut, fin);
@@ -42,17 +42,17 @@ function fauxFichier(octets: Uint8Array, modifie: number, compteurs: Compteurs):
 
 type Arbre = { [nom: string]: Arbre | { octets: Uint8Array; modifie: number } };
 
-function estFichier(n: Arbre[string]): n is { octets: Uint8Array; modifie: number } {
+function isFile(n: Arbre[string]): n is { octets: Uint8Array; modifie: number } {
     return 'octets' in n && n.octets instanceof Uint8Array;
 }
 
-/** `DOMException` est disponible sous Node ≥ 17 ; on s'en sert telle quelle. */
+/** `DOMException` is available under Node ≥ 17; we use it as is. */
 function absent(nom: string): never {
-    throw new DOMException(`« ${nom} » est introuvable`, 'NotFoundError');
+    throw new DOMException(`« ${nom} » cannot be found`, 'NotFoundError');
 }
 
 function mauvaisType(nom: string): never {
-    throw new DOMException(`« ${nom} » n'est pas du type demandé`, 'TypeMismatchError');
+    throw new DOMException(`« ${nom} » is not of the requested type`, 'TypeMismatchError');
 }
 
 function repertoire(nom: string, arbre: Arbre, compteurs: Compteurs): PoigneeRepertoire {
@@ -62,26 +62,26 @@ function repertoire(nom: string, arbre: Arbre, compteurs: Compteurs): PoigneeRep
         async getDirectoryHandle(enfant: string): Promise<PoigneeRepertoire> {
             const n = arbre[enfant];
             if (n === undefined) absent(enfant);
-            if (estFichier(n)) mauvaisType(enfant);
+            if (isFile(n)) mauvaisType(enfant);
             return repertoire(enfant, n, compteurs);
         },
-        async getFileHandle(enfant: string): Promise<PoigneeFichier> {
+        async getFileHandle(enfant: string): Promise<FileHandle> {
             const n = arbre[enfant];
             if (n === undefined) absent(enfant);
-            if (!estFichier(n)) mauvaisType(enfant);
+            if (!isFile(n)) mauvaisType(enfant);
             return {
                 kind: 'file',
                 name: enfant,
-                getFile: async () => fauxFichier(n.octets, n.modifie, compteurs),
+                getFile: async () => fakeFile(n.octets, n.modifie, compteurs),
             };
         },
         async *values() {
             for (const [enfant, n] of Object.entries(arbre)) {
-                yield estFichier(n)
+                yield isFile(n)
                     ? {
                           kind: 'file' as const,
                           name: enfant,
-                          getFile: async () => fauxFichier(n.octets, n.modifie, compteurs),
+                          getFile: async () => fakeFile(n.octets, n.modifie, compteurs),
                       }
                     : repertoire(enfant, n, compteurs);
             }
@@ -100,18 +100,18 @@ function monter() {
             'dedans.txt': { octets: new Uint8Array([88]), modifie: -86_400_000 },
         },
     };
-    return { compteurs, adaptateur: creerAdaptateur(repertoire('', arbre, compteurs)) };
+    return { compteurs, adaptateur: createAdapter(repertoire('', arbre, compteurs)) };
 }
 
-/** Le même arbre, avec l'injection de fautes ARMÉE. */
+/** The same tree, with fault injection ARMED. */
 function monterArme() {
     const compteurs: Compteurs = { arrayBufferEntier: 0, slice: 0 };
     const arbre: Arbre = { 'note.txt': { octets: new Uint8Array([1]), modifie: 0 } };
-    return creerAdaptateur(repertoire('', arbre, compteurs), true);
+    return createAdapter(repertoire('', arbre, compteurs), true);
 }
 
-describe('adaptateur de la File System Access API', () => {
-    it('lister rend les entrées avec leur nature', async () => {
+describe('File System Access API adapter', () => {
+    it('listing returns the entries with their kind', async () => {
         const { adaptateur } = monter();
         const entrees = await adaptateur.lister('');
         const parNom = new Map(entrees.map((e) => [e.nom, e]));
@@ -121,15 +121,15 @@ describe('adaptateur de la File System Access API', () => {
         expect(parNom.get('note.txt')?.modifie).toBe(1_690_000_000_000);
     });
 
-    it('lister la racine prend le chemin vide', async () => {
+    it('listing the root takes the empty path', async () => {
         const { adaptateur } = monter();
-        // La racine n'a pas de nom : le chemin logique vide la désigne, et
-        // c'est ce que `pont::chemins` normalise côté agent.
+        // The root has no name: the empty logical path designates it, and
+        // that is what `pont::chemins` normalises on the agent side.
         expect((await adaptateur.lister('')).length).toBe(3);
         expect((await adaptateur.lister('dossier')).map((e) => e.nom)).toEqual(['dedans.txt']);
     });
 
-    it('attributs rend la taille, l’horodatage et le NOM CANONIQUE', async () => {
+    it('attributs returns the size, the timestamp and the CANONICAL NAME', async () => {
         const { adaptateur } = monter();
         expect(await adaptateur.attributs('note.txt')).toEqual({
             nom: 'note.txt',
@@ -143,7 +143,7 @@ describe('adaptateur de la File System Access API', () => {
             taille: 0,
             modifie: 0,
         });
-        // ⚠️ La RACINE n'a pas de nom.
+        // ⚠️ The ROOT has no name.
         expect(await adaptateur.attributs('')).toEqual({
             nom: '',
             repertoire: true,
@@ -152,26 +152,26 @@ describe('adaptateur de la File System Access API', () => {
         });
     });
 
-    it('🔴 lire une plage ne lit QUE cette plage', async () => {
+    it('🔴 reading a range reads ONLY that range', async () => {
         const { adaptateur, compteurs } = monter();
         const octets = await adaptateur.lire('gros.bin', 4, 3);
         expect([...octets]).toEqual([4, 5, 6]);
-        // 🔴 LE CŒUR DU TEST : le fichier entier n'est JAMAIS matérialisé.
+        // 🔴 THE HEART OF THE TEST: the whole file is NEVER materialised.
         expect(compteurs.arrayBufferEntier).toBe(0);
         expect(compteurs.slice).toBe(1);
     });
 
-    it('lire au-delà de la fin rend moins d’octets, sans lever', async () => {
+    it('reading past the end returns fewer bytes, without throwing', async () => {
         const { adaptateur } = monter();
         const octets = await adaptateur.lire('gros.bin', 8, 100);
         expect([...octets]).toEqual([8, 9]);
-        // Entièrement au-delà : zéro octet, toujours sans lever.
+        // Entirely beyond: zero bytes, still without throwing.
         expect((await adaptateur.lire('gros.bin', 50, 10)).length).toBe(0);
     });
 
-    it('🔴 un chemin inexistant rend le code Introuvable', async () => {
+    it('🔴 a non-existent path returns the Introuvable code', async () => {
         const { adaptateur } = monter();
-        await expect(adaptateur.attributs('absent.txt')).rejects.toBeInstanceOf(EchecFichiers);
+        await expect(adaptateur.attributs('absent.txt')).rejects.toBeInstanceOf(FilesError);
         await expect(adaptateur.attributs('absent.txt')).rejects.toMatchObject({
             code: 'introuvable',
         });
@@ -180,10 +180,10 @@ describe('adaptateur de la File System Access API', () => {
         });
     });
 
-    it('distingue le composant final absent d’un PARENT absent', async () => {
+    it('tells a missing final component from a missing PARENT', async () => {
         const { adaptateur } = monter();
-        // ProjFS distingue ERROR_FILE_NOT_FOUND d'ERROR_PATH_NOT_FOUND, et
-        // l'Explorateur ne dit pas la même chose des deux.
+        // ProjFS tells ERROR_FILE_NOT_FOUND from ERROR_PATH_NOT_FOUND, and
+        // Explorer does not say the same thing about the two.
         await expect(adaptateur.attributs('nulle-part/note.txt')).rejects.toMatchObject({
             code: 'chemin-introuvable',
         });
@@ -192,111 +192,111 @@ describe('adaptateur de la File System Access API', () => {
         });
     });
 
-    it('🔴 une erreur de la FSA devient un CODE, jamais une chaîne', async () => {
+    it('🔴 an FSA error becomes a CODE, never a string', async () => {
         const { adaptateur } = monter();
-        // 🔴 LE DÉFAUT EXACT DE L'ANCIEN PONT, éprouvé ici même :
-        // `web/index.js:669` faisait `JSON.stringify(e)` d'une `Error`, ce qui
-        // rend `"{}"`, et `src/file.js:127` le reconstruisait en
-        // `new Error("{}")`. Toute la cause était détruite À L'ÉMISSION.
-        expect(JSON.stringify(new Error('permission refusée'))).toBe('{}');
+        // 🔴 THE EXACT DEFECT OF THE OLD BRIDGE, exercised right here:
+        // `web/index.js:669` did `JSON.stringify(e)` of an `Error`, which
+        // returns `"{}"`, and `src/file.js:127` rebuilt it as
+        // `new Error("{}")`. The whole cause was destroyed AT EMISSION.
+        expect(JSON.stringify(new Error('permission refused'))).toBe('{}');
 
         const echec = await adaptateur.attributs('absent.txt').catch((e: unknown) => e);
-        expect(echec).toBeInstanceOf(EchecFichiers);
-        // Ce que l'adaptateur produit à la place : un membre de l'énumération
-        // PARTAGÉE, qui traverse le fil sans rien perdre.
-        expect((echec as EchecFichiers).code).toBe('introuvable');
-        // Et le message reste lisible pour un humain, côté navigateur — il ne
-        // traverse pas le fil, mais il est ce qu'on lit dans la console.
-        expect((echec as EchecFichiers).message).toMatch(/absent\.txt/);
+        expect(echec).toBeInstanceOf(FilesError);
+        // What the adapter produces instead: a member of the SHARED
+        // enumeration, which crosses the wire without losing anything.
+        expect((echec as FilesError).code).toBe('introuvable');
+        // And the message stays readable for a human, on the browser side — it does
+        // not cross the wire, but it is what one reads in the console.
+        expect((echec as FilesError).message).toMatch(/absent\.txt/);
     });
 
-    it('un refus de permission devient acces-refuse, pas interne', async () => {
+    it('a permission refusal becomes acces-refuse, not internal', async () => {
         const refusante: PoigneeRepertoire = {
             kind: 'directory',
             name: '',
             async getDirectoryHandle() {
-                throw new DOMException('permission révoquée', 'NotAllowedError');
+                throw new DOMException('permission revoked', 'NotAllowedError');
             },
             async getFileHandle() {
-                throw new DOMException('permission révoquée', 'NotAllowedError');
+                throw new DOMException('permission revoked', 'NotAllowedError');
             },
-            async *values(): AsyncGenerator<PoigneeFichier | PoigneeRepertoire> {
-                throw new DOMException('permission révoquée', 'NotAllowedError');
+            async *values(): AsyncGenerator<FileHandle | PoigneeRepertoire> {
+                throw new DOMException('permission revoked', 'NotAllowedError');
             },
         };
-        const adaptateur = creerAdaptateur(refusante);
+        const adaptateur = createAdapter(refusante);
         await expect(adaptateur.lister('')).rejects.toMatchObject({ code: 'acces-refuse' });
         await expect(adaptateur.attributs('x')).rejects.toMatchObject({ code: 'acces-refuse' });
     });
 
-    it('une panne imprévue devient interne, jamais un code inventé', async () => {
+    it('an unexpected failure becomes internal, never an invented code', async () => {
         const cassee: PoigneeRepertoire = {
             kind: 'directory',
             name: '',
             async getDirectoryHandle() {
-                throw new Error('quelque chose a explosé');
+                throw new Error('something blew up');
             },
             async getFileHandle() {
-                throw new Error('quelque chose a explosé');
+                throw new Error('something blew up');
             },
-            async *values(): AsyncGenerator<PoigneeFichier | PoigneeRepertoire> {
-                throw new Error('quelque chose a explosé');
+            async *values(): AsyncGenerator<FileHandle | PoigneeRepertoire> {
+                throw new Error('something blew up');
             },
         };
-        await expect(creerAdaptateur(cassee).lister('')).rejects.toMatchObject({
+        await expect(createAdapter(cassee).lister('')).rejects.toMatchObject({
             code: 'interne',
         });
     });
 });
 
-describe('la casse en LECTURE, corrigée par F3', () => {
-    // 🔴 CE FAUX EST SENSIBLE À LA CASSE — comme OPFS, donc comme l'INSTRUMENT
-    // de recette. C'est précisément là que F1 a mesuré son incohérence :
-    // `casse.txt` passait (résolu par NTFS sans nous) et `GROS.BIN` échouait
-    // (il atteignait le pont et butait sur OPFS), DANS LA MÊME EXÉCUTION.
+describe('case on READ, fixed by F3', () => {
+    // 🔴 THIS FAKE IS CASE-SENSITIVE — like OPFS, hence like the acceptance
+    // INSTRUMENT. That is precisely where F1 measured its inconsistency:
+    // `casse.txt` passed (resolved by NTFS without us) and `GROS.BIN` failed
+    // (it reached the bridge and hit OPFS), IN THE SAME RUN.
 
-    it('🔴 `GROS.BIN` rend `gros.bin`, et l’incohérence de F1 DISPARAÎT', async () => {
-        // Rouge : garder la résolution directe (`getFileHandle(dernier)`).
-        // `GROS.BIN` rendrait `introuvable`, ce qui est exactement l'état que
-        // F1 relève.
+    it('🔴 `GROS.BIN` returns `gros.bin`, and the F1 inconsistency DISAPPEARS', async () => {
+        // Red: keeping direct resolution (`getFileHandle(last)`).
+        // `GROS.BIN` would return `introuvable`, which is exactly the state
+        // F1 reports.
         const { adaptateur } = monter();
         const meta = await adaptateur.attributs('GROS.BIN');
         expect(meta.repertoire).toBe(false);
-        // 🔴 ET LE NOM RENDU EST LE NOM STOCKÉ, jamais celui qu'on a demandé.
+        // 🔴 AND THE NAME RETURNED IS THE STORED NAME, never the one requested.
         expect(meta.nom).toBe('gros.bin');
     });
 
-    it('lit le contenu par une casse différente', async () => {
+    it('reads the content through a different case', async () => {
         const { adaptateur } = monter();
         const octets = await adaptateur.lire('NOTE.TXT', 0, 3);
         expect([...octets]).toEqual([65, 66, 67]);
     });
 
-    it('résout un composant INTERMÉDIAIRE par la casse, et le distingue', async () => {
+    it('resolves an INTERMEDIATE component by case, and tells it apart', async () => {
         const { adaptateur } = monter();
         expect(await adaptateur.lister('DOSSIER')).toHaveLength(1);
-        // Un composant intermédiaire absent rend `chemin-introuvable`, jamais
-        // `introuvable` : ProjFS distingue les deux, et l'Explorateur n'en dit
-        // pas la même chose.
+        // An absent intermediate component returns `chemin-introuvable`, never
+        // `introuvable`: ProjFS tells the two apart, and Explorer does not say
+        // the same thing about them.
         await expect(adaptateur.lire('ABSENT/x.txt', 0, 1)).rejects.toMatchObject({
             code: 'chemin-introuvable',
         });
     });
 });
 
-describe('l’injection de fautes, DÉSARMÉE par défaut', () => {
-    it('🔴 est INERTE quand elle n’est pas armée', async () => {
-        // Rouge : la lire depuis le module au lieu de la recevoir en argument.
-        // Un utilisateur qui créerait un dossier `.faute-disque-plein`
-        // casserait son propre pont.
+describe('fault injection, DISARMED by default', () => {
+    it('🔴 is INERT when it is not armed', async () => {
+        // Red: reading it from the module instead of receiving it as an argument.
+        // A user who created a `.faute-disque-plein` folder
+        // would break their own bridge.
         const { adaptateur } = monter();
         await expect(adaptateur.lister('.faute-disque-plein')).rejects.toMatchObject({
-            // Pas de faute : c'est un chemin ordinaire, donc absent.
+            // No fault: it is an ordinary path, hence absent.
             code: 'introuvable',
         });
     });
 
-    it('lève le code demandé quand elle est armée', async () => {
+    it('throws the requested code when it is armed', async () => {
         const a = monterArme();
         await expect(a.lister('.faute-disque-plein')).rejects.toMatchObject({
             code: 'disque-plein',

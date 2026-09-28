@@ -1,35 +1,35 @@
-// Le magasin des TRANCHES d'un téléversement : des octets sur DISQUE, **un
-// fichier par tranche**, sous un répertoire par téléversement —
-// `<racine>/<id-du-televersement>/<n>`.
+// The store of the CHUNKS of an upload: bytes on DISK, **one
+// file per chunk**, under one directory per upload —
+// `<root>/<upload-id>/<n>`.
 //
-// 🔴 LES TRANCHES NE SONT JAMAIS ASSEMBLÉES : IL N'EXISTE AUCUN FICHIER
-// RECONSTITUÉ, ni au scellement ni ailleurs. Trois raisons, dans l'ordre de
-// leur poids :
+// 🔴 CHUNKS ARE NEVER ASSEMBLED: THERE IS NO REBUILT
+// FILE, neither at sealing nor anywhere else. Three reasons, in order of
+// their weight:
 //
-//   1. LE DISQUE DOUBLERAIT. Un installeur de 800 Mo tiendrait 1,6 Go le temps
-//      de l'assemblage, et une file de dépôts simultanés ferait de ce doublement
-//      la NORME plutôt que la pointe. Le service serait plein pour une copie
-//      dont personne n'a besoin — l'agent lit un flux, il ne cherche pas un
-//      fichier.
-//   2. UN ASSEMBLÉ SERAIT UNE SECONDE SOURCE DE VÉRITÉ. Le jour où il
-//      divergerait de ses tranches — écriture interrompue, tranche réécrite
-//      après coup — rien ici ne saurait dire lequel des deux croire, et le
-//      `sha256` du contrat n'accuserait que le dernier maillon. Le magasin n'a
-//      qu'un état, et c'est ce qu'il y a sur le disque.
-//   3. LE SCELLEMENT DOIT RESTER UNE DÉCISION, PAS UNE RECOPIE. Assembler en
-//      ferait une opération en O(taille), qui peut échouer à mi-course et
-//      laisser un demi-fichier ; sceller, c'est écrire une date.
+//   1. THE DISK WOULD DOUBLE. An 800 MB installer would hold 1.6 GB for the time
+//      of the assembly, and a queue of simultaneous deposits would make that doubling
+//      the NORM rather than the peak. The service would be full for a copy
+//      nobody needs — the agent reads a stream, it does not look for a
+//      file.
+//   2. AN ASSEMBLED FILE WOULD BE A SECOND SOURCE OF TRUTH. The day it
+//      diverged from its chunks — interrupted write, chunk rewritten
+//      afterwards — nothing here could tell which of the two to believe, and the
+//      `sha256` of the contract would only blame the last link. The store has
+//      only one state, and that is what is on the disk.
+//   3. SEALING MUST STAY A DECISION, NOT A COPY. Assembling would make it
+//      an O(size) operation, which can fail halfway and
+//      leave a half file; sealing is writing a date.
 //
-// 🔴 POURQUOI LE DISQUE ET NON LA BASE : le raisonnement entier vit en tête de
-// `icones.ts` et n'est pas recopié ici — un blob ne traverse pas la double
-// passe sans mentir, `SERIAL` à l'envers. Les deux répertoires sont frères, et
-// leurs deux variables d'environnement le sont aussi.
+// 🔴 WHY THE DISK AND NOT THE DATABASE: the whole reasoning lives at the top of
+// `icones.ts` and is not copied here — a blob does not cross the double
+// pass without lying, `SERIAL` in reverse. The two directories are siblings, and
+// so are their two environment variables.
 //
-// ⚠️ **CE MAGASIN NE JUGE DE RIEN.** Il ne dit pas si un découpage est complet,
-// ni si une tranche a la bonne taille. Cette règle-là est PURE et PARTAGÉE avec
-// le navigateur (`proto/ts/tranches.ts`) : deux arithmétiques indépendantes
-// divergeraient un jour, et le symptôme serait un scellement qui refuse sans
-// qu'on sache lequel des deux bouts a tort. Ici on écrit, on liste, on relit.
+// ⚠️ **THIS STORE JUDGES NOTHING.** It does not say whether a split is complete,
+// nor whether a chunk has the right size. That rule is PURE and SHARED with
+// the browser (`proto/ts/tranches.ts`): two independent arithmetics
+// would diverge one day, and the symptom would be a sealing that refuses without
+// anyone knowing which of the two ends is wrong. Here we write, list, read back.
 
 import { createReadStream, createWriteStream, mkdirSync, openSync, readdirSync, rmSync, renameSync, statSync } from 'node:fs';
 import { readdir, rm, stat } from 'node:fs/promises';
@@ -38,115 +38,115 @@ import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import type { Tranche } from '../../../proto/ts/tranches';
 
-/// Même remède, même raison, que `icones.ts::PAS_DE_REPRISE` — MESURÉ par la
-/// revue (round de correction 2), sur un banc de 3 200 téléversements : 272 ms
-/// d'un seul tenant, ZÉRO battement de 10 ms servi pendant, port ouvert.
-/// ⚠️ NON CALIBRÉ, même raisonnement que côté icônes.
+/// Same remedy, same reason, as `icones.ts::PAS_DE_REPRISE` — MEASURED by the
+/// review (correction round 2), on a bench of 3,200 uploads: 272 ms
+/// in one block, ZERO 10 ms beat served during it, port open.
+/// ⚠️ NOT CALIBRATED, same reasoning as on the icon side.
 const PAS_DE_REPRISE = 50;
 
 async function rendreLaMain(): Promise<void> {
     await new Promise<void>((resolve) => setImmediate(resolve));
 }
 
-/// ⚠️ **NON CALIBRÉE.** Aucune constante de ce dépôt ne l'est.
+/// ⚠️ **NOT CALIBRATED.** No constant of this repository is.
 ///
-/// 🔴 LE PLANCHER DE RÉFÉRENCE (voir `evincer`, plus bas) EST CE QUI DISTINGUE
-/// UNE ÉVICTION D'UNE CORRUPTION : évincer un téléversement encore nommé par
-/// une installation en cours ferait disparaître ses tranches sans que rien ne
-/// le dise — la reprise redemanderait des octets qu'un utilisateur croit
-/// avoir déjà envoyés.
+/// 🔴 THE REFERENCE FLOOR (see `evincer`, below) IS WHAT TELLS
+/// AN EVICTION FROM A CORRUPTION: evicting an upload still named by
+/// an ongoing installation would make its chunks vanish without anything
+/// saying so — the resumption would request again bytes a user believes
+/// they already sent.
 ///
-/// ⚠️ CE QUE CETTE RÈGLE NE FAIT PAS : elle ne borne PAS le disque. Un
-/// répertoire de téléversements qui grossit sans cesse grossit sans cesse. Le
-/// plafond de taille a été ÉCARTÉ par décision, parce qu'il peut évincer un
-/// objet encore référencé — c'est-à-dire échanger une croissance visible
-/// contre une panne silencieuse.
+/// ⚠️ WHAT THIS RULE DOES NOT DO: it does NOT bound the disk. An
+/// upload directory that keeps growing keeps growing. The
+/// size cap was DISMISSED by decision, because it can evict an
+/// object still referenced — that is, trade a visible growth
+/// for a silent failure.
 export const AGE_EVICTION_TRANCHES_MS = 30 * 24 * 60 * 60_000;
 
-/// 🔴 L'IDENTIFIANT D'UN TÉLÉVERSEMENT DEVIENT UN NOM DE RÉPERTOIRE, ET IL
-/// VIENT DU RÉSEAU. `/televersement/..%2f..%2fetc/tranche/0` doit être refusé,
-/// jamais assaini : assainir en silence ferait écrire quelque part, et
-/// personne ne saurait où.
+/// 🔴 THE IDENTIFIER OF AN UPLOAD BECOMES A DIRECTORY NAME, AND IT
+/// COMES FROM THE NETWORK. `/televersement/..%2f..%2fetc/tranche/0` must be refused,
+/// never sanitised: sanitising silently would write somewhere, and
+/// nobody would know where.
 ///
-/// La forme exigée est celle que `depot/televersement.ts::creer` produit —
-/// `randomUUID()`, donc un UUID EN MINUSCULES. Le couplage est délibéré et
-/// nommé : si ce format changeait un jour, la garde refuserait BRUYAMMENT tous
-/// les téléversements plutôt que d'ouvrir un chemin.
+/// The required shape is the one `depot/televersement.ts::create` produces —
+/// `randomUUID()`, hence a LOWERCASE UUID. The coupling is deliberate and
+/// named: if that format changed one day, the guard would LOUDLY refuse every
+/// upload rather than open a path.
 ///
-/// ⚠️ MINUSCULES SEULEMENT, comme `empreinteValide` et pour la même raison :
-/// sur un système de fichiers insensible à la casse, deux identifiants
-/// distincts désigneraient le même répertoire.
+/// ⚠️ LOWERCASE ONLY, like `empreinteValide` and for the same reason:
+/// on a case-insensitive file system, two distinct
+/// identifiers would designate the same directory.
 export function identifiantValide(s: string): boolean {
     return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(s);
 }
 
-/// 🔴 LE NOM DE FICHIER D'UNE TRANCHE EST LE NOMBRE `n` VALIDÉ, JAMAIS UN
-/// SEGMENT D'URL RECOPIÉ. Un rang est un entier SÛR positif ou nul — la base
-/// zéro est celle de `proto/ts/tranches.ts`, où elle rend la position dans le
-/// fichier calculable sans table.
+/// 🔴 THE FILE NAME OF A CHUNK IS THE VALIDATED NUMBER `n`, NEVER A
+/// COPIED URL SEGMENT. A rank is a SAFE non-negative integer — the zero
+/// base is that of `proto/ts/tranches.ts`, where it makes the position in the
+/// file computable without a table.
 ///
-/// ⚠️ `Number.isSafeInteger` N'EST PAS DE LA COQUETTERIE, et il fait DEUX
-/// choses ici. Au-delà de 2^53 l'arithmétique du plan cesserait d'être exacte
-/// — c'est déjà écrit dans `proto/ts/tranches.ts` — ET `String(n)` cesserait
-/// d'être une suite de chiffres : `String(1e21)` vaut `'1e+21'`. Sous cette
-/// garde, le nom produit est TOUJOURS `/^\d+$/`, ce qui est exactement ce que
-/// `lister` reconnaît.
+/// ⚠️ `Number.isSafeInteger` IS NOT VANITY, and it does TWO
+/// things here. Beyond 2^53 the arithmetic of the plan would stop being exact
+/// — that is already written in `proto/ts/tranches.ts` — AND `String(n)` would stop
+/// being a sequence of digits: `String(1e21)` is `'1e+21'`. Under this
+/// guard, the produced name is ALWAYS `/^\d+$/`, which is exactly what
+/// `lister` recognises.
 export function rangValide(n: number): boolean {
     return Number.isSafeInteger(n) && n >= 0;
 }
 
-/// Le résultat d'un dépôt de tranche.
+/// The result of a chunk deposit.
 ///
-/// 🔴 LA FRONTIÈRE EST CELLE DE `proto/ts/tranches.ts` : ce qui est un DÉFAUT
-/// DE PROGRAMME lève, ce qui est une DONNÉE DE FIL devient un résultat. Un
-/// identifiant ou un rang mal formés lèvent — la route les a déjà refusés avec
-/// `identifiantValide`/`rangValide`, et un appel qui arrive ici avec une
-/// mauvaise valeur est un câblage fautif, pas un déposant maladroit. Le
-/// dépassement de plafond, lui, est le comportement NORMAL d'un pair qui envoie
-/// trop : il doit se traduire en refus HTTP sans qu'un `catch` ait à deviner le
-/// code d'après un message d'erreur.
-export type ResultatEcriture =
+/// 🔴 THE BOUNDARY IS THAT OF `proto/ts/tranches.ts`: what is a PROGRAM
+/// DEFECT raises, what is WIRE DATA becomes a result. A malformed
+/// identifier or rank raises — the route already refused them with
+/// `identifiantValide`/`rangValide`, and a call that arrives here with a
+/// bad value is faulty wiring, not a clumsy depositor. Exceeding
+/// the cap, on the other hand, is the NORMAL behaviour of a peer that sends
+/// too much: it must translate into an HTTP refusal without a `catch` having to guess the
+/// code from an error message.
+export type WriteResult =
     | { ok: true; octets: number }
     | { ok: false; motif: 'plafond-depasse'; plafond: number };
 
 export interface MagasinTranches {
     racine: string;
-    /// Dépose une tranche EN FLUX, sous un plafond dur d'octets.
-    ecrire(id: string, n: number, flux: AsyncIterable<Uint8Array>, plafondOctets: number): Promise<ResultatEcriture>;
-    /// Les tranches réellement présentes sur le disque, avec leurs tailles.
+    /// Deposits a chunk AS A STREAM, under a hard byte cap.
+    write(id: string, n: number, flux: AsyncIterable<Uint8Array>, plafondOctets: number): Promise<WriteResult>;
+    /// The chunks actually present on the disk, with their sizes.
     lister(id: string): Tranche[];
-    /// Un flux qui concatène les rangs demandés, dans l'ordre donné.
+    /// A stream that concatenates the requested ranks, in the given order.
     concatener(id: string, rangs: readonly number[]): Readable;
-    /// Retire tout un téléversement.
-    supprimer(id: string): void;
-    /// Évince PAR ÂGE, avec un PLANCHER DE RÉFÉRENCE — voir `AGE_EVICTION_TRANCHES_MS`.
-    /// `maintenant` est un PARAMÈTRE, jamais lu de l'horloge : même règle que
-    /// partout ailleurs dans ce dépôt.
+    /// Removes a whole upload.
+    remove(id: string): void;
+    /// Evicts BY AGE, with a REFERENCE FLOOR — see `AGE_EVICTION_TRANCHES_MS`.
+    /// `maintenant` is a PARAMETER, never read from the clock: same rule as
+    /// everywhere else in this repository.
     evincer(options: { maintenant: number; referencees: ReadonlySet<string> }): Promise<void>;
-    /// 🔴 AJOUTÉE AU ROUND DE CORRECTION 2 — la date de DERNIÈRE ACTIVITÉ
-    /// (mtime) du répertoire d'un téléversement, ou `undefined` s'il n'existe
-    /// pas sur le disque. C'est elle qui permet à `apps/nettoyage.ts` de faire
-    /// mesurer LE MÊME ÂGE à la purge de la LIGNE (`cree_a`, en base) et à
-    /// l'éviction du DISQUE (`mtime`) : sans elle, un téléversement CRÉÉ
-    /// vieux mais dont une tranche vient d'arriver voyait sa ligne supprimée
-    /// pendant que ses octets restaient — déterministe, mesuré par la revue,
-    /// voir `nettoyage.ts::nettoyerTranches`.
+    /// 🔴 ADDED IN CORRECTION ROUND 2 — the LAST ACTIVITY date
+    /// (mtime) of the directory of an upload, or `undefined` if it does not exist
+    /// on the disk. It is what lets `apps/nettoyage.ts` make the
+    /// purge of the ROW (`cree_a`, in the database) and the eviction of the DISK (`mtime`)
+    /// measure THE SAME AGE: without it, an upload CREATED
+    /// long ago but where a chunk just arrived saw its row deleted
+    /// while its bytes stayed — deterministic, measured by the review,
+    /// see `nettoyage.ts::nettoyerTranches`.
     ///
-    /// ⚠️ LÈVE SUR UN IDENTIFIANT INVALIDE, comme `lister`/`concatener`/
-    /// `supprimer` : ce magasin n'écrit jamais un tel nom lui-même, et un
-    /// appelant qui lui en tend un a un défaut de câblage, pas une donnée de
-    /// fil à encaisser en silence.
+    /// ⚠️ RAISES ON AN INVALID IDENTIFIER, like `lister`/`concatener`/
+    /// `remove`: this store never writes such a name itself, and a
+    /// caller that hands it one has a wiring defect, not wire data
+    /// to absorb silently.
     derniereActivite(id: string): Promise<number | undefined>;
 }
 
-/// Ouvre — ou crée — la racine des téléversements, et JOURNALISE le chemin.
+/// Opens — or creates — the upload root, and LOGS the path.
 ///
-/// ⚠️ LA LIGNE DE JOURNAL N'EST PAS DÉCORATIVE, et c'est le même argument que
-/// pour le magasin d'icônes : `PLATEFORME_TELEVERSEMENTS` est facultative, donc
-/// un opérateur peut se tromper de répertoire sans que rien ne casse. Ici, la
-/// conséquence est même MOINS réparable que pour les icônes — un téléversement
-/// perdu ne se reconstruit pas tout seul, il faut que l'utilisateur redépose.
-/// Le chemin retenu doit se lire.
+/// ⚠️ THE LOG LINE IS NOT DECORATIVE, and it is the same argument as
+/// for the icon store: `PLATEFORME_TELEVERSEMENTS` is optional, so
+/// an operator can get the directory wrong without anything breaking. Here, the
+/// consequence is even LESS repairable than for the icons — a lost
+/// upload does not rebuild itself, the user has to deposit it again.
+/// The retained path must be readable.
 export function ouvrirMagasinTranches(
     racine: string,
     journaliser: (chemin: string) => void,
@@ -156,7 +156,7 @@ export function ouvrirMagasinTranches(
 
     const repertoireDe = (id: string): string => {
         if (!identifiantValide(id)) {
-            throw new Error(`identifiant de téléversement invalide : ${JSON.stringify(id)}`);
+            throw new Error(`invalid upload identifier: ${JSON.stringify(id)}`);
         }
         return join(racine, id);
     };
@@ -164,7 +164,7 @@ export function ouvrirMagasinTranches(
     const cheminDe = (id: string, n: number): string => {
         const rep = repertoireDe(id);
         if (!rangValide(n)) {
-            throw new Error(`rang de tranche invalide : ${JSON.stringify(n)}`);
+            throw new Error(`invalid chunk rank: ${JSON.stringify(n)}`);
         }
         return join(rep, String(n));
     };
@@ -172,46 +172,46 @@ export function ouvrirMagasinTranches(
     return {
         racine,
 
-        /// 🔴 EN FLUX, JAMAIS EN ACCUMULANT EN MÉMOIRE. Une tranche est de
-        /// l'ordre de plusieurs mégaoctets et N dépôts peuvent courir de front :
-        /// un `Buffer.concat` ferait du service une bombe mémoire pilotée par
-        /// ses clients.
+        /// 🔴 AS A STREAM, NEVER BY ACCUMULATING IN MEMORY. A chunk is in
+        /// the order of several megabytes and N deposits can run side by side:
+        /// a `Buffer.concat` would make the service a memory bomb driven by
+        /// its clients.
         ///
-        /// 🔴 LE PLAFOND EST DUR, ET IL COUPE LA SOURCE. Au franchissement on
-        /// LÈVE dans le milieu du `pipeline`, ce qui détruit le flux entrant :
-        /// on cesse de LIRE le corps de la requête plutôt que de le drainer
-        /// pour le jeter. Un plafond qui laisserait couler 800 Mo avant de
-        /// refuser n'en serait pas un.
+        /// 🔴 THE CAP IS HARD, AND IT CUTS THE SOURCE. On crossing it we
+        /// RAISE in the middle of the `pipeline`, which destroys the incoming stream:
+        /// we stop READING the request body rather than draining it
+        /// to throw it away. A cap that let 800 MB flow before
+        /// refusing would not be one.
         ///
-        /// ⚠️ LE PLAFOND BORNE LE DISQUE, IL NE JUGE PAS LE DÉCOUPAGE. Une
-        /// tranche plus COURTE que prévue passe ici sans un mot : c'est
-        /// `proto/ts/tranches.ts::verdict` qui la déclarera `incoherentes` au
-        /// scellement, et ce module ne connaît pas le contrat.
+        /// ⚠️ THE CAP BOUNDS THE DISK, IT DOES NOT JUDGE THE SPLIT. A
+        /// chunk SHORTER than expected goes through here without a word: it is
+        /// `proto/ts/tranches.ts::verdict` that will declare it `incoherentes` at
+        /// sealing, and this module does not know the contract.
         ///
-        /// 🔴 L'ÉCRITURE EST ATOMIQUE — fichier temporaire, puis `rename` —, et
-        /// l'enjeu est PLUS LOURD ICI QUE POUR LES ICÔNES. Un dépôt interrompu
-        /// laisserait sinon une tranche TRONQUÉE sous son nom définitif ; la
-        /// reprise la verrait présente, `verdict` la dirait `incoherentes`, et
-        /// une incohérence ne se répare PAS en redemandant — elle fait échouer
-        /// le téléversement entier. Une coupure réseau empoisonnerait donc un
-        /// dépôt de 800 Mo sans qu'aucune trace ne le dise.
-        async ecrire(
+        /// 🔴 THE WRITE IS ATOMIC — temporary file, then `rename` —, and
+        /// the stake is HEAVIER HERE THAN FOR THE ICONS. An interrupted deposit
+        /// would otherwise leave a TRUNCATED chunk under its final name; the
+        /// resumption would see it present, `verdict` would call it `incoherentes`, and
+        /// an inconsistency is NOT repaired by requesting again — it makes
+        /// the whole upload fail. A network cut would therefore poison an
+        /// 800 MB deposit without any trace saying so.
+        async write(
             id: string,
             n: number,
             flux: AsyncIterable<Uint8Array>,
             plafondOctets: number,
-        ): Promise<ResultatEcriture> {
+        ): Promise<WriteResult> {
             const cible = cheminDe(id, n);
             mkdirSync(join(racine, id), { recursive: true });
 
-            // Le suffixe aléatoire évite que deux dépôts concurrents du même
-            // rang n'écrivent le même temporaire — même parade qu'`icones.ts`.
+            // The random suffix keeps two concurrent deposits of the same
+            // rank from writing the same temporary file — same defence as `icones.ts`.
             const provisoire = `${cible}.${process.pid}.${Math.random().toString(36).slice(2)}.part`;
-            // ⚠️ OUVERT SYNCHRONEMENT, ET C'EST LE CORRECTIF DE LA COURSE
-            // décrite dans le `catch` ci-dessous : à partir d'ici le fichier
-            // EXISTE, donc le `rmSync` du chemin d'erreur ne peut plus le
-            // manquer. `createWriteStream` reçoit le descripteur et non le
-            // chemin ; il le fermera lui-même (`autoClose`).
+            // ⚠️ OPENED SYNCHRONOUSLY, AND THAT IS THE FIX FOR THE RACE
+            // described in the `catch` below: from here on the file
+            // EXISTS, so the `rmSync` of the error path can no longer
+            // miss it. `createWriteStream` receives the descriptor and not the
+            // path; it will close it itself (`autoClose`).
             const fd = openSync(provisoire, 'w');
             let octets = 0;
             let depasse = false;
@@ -224,7 +224,7 @@ export function ouvrirMagasinTranches(
                             if (octets > plafondOctets) {
                                 depasse = true;
                                 throw new Error(
-                                    `tranche ${n} au-delà du plafond de ${plafondOctets} octets`,
+                                    `chunk ${n} beyond the ceiling of ${plafondOctets} bytes`,
                                 );
                             }
                             yield morceau;
@@ -232,70 +232,70 @@ export function ouvrirMagasinTranches(
                     },
                     createWriteStream('', { fd, autoClose: true }),
                 );
-            } catch (erreur) {
-                // 🔴 LE FICHIER PARTIEL EST SUPPRIMÉ, quelle que soit la cause :
-                // dépassement, coupure, disque plein. Un `.part` abandonné
-                // n'est jamais compté comme une tranche (voir `lister`), mais
-                // il occuperait le disque jusqu'à la purge.
+            } catch (error) {
+                // 🔴 THE PARTIAL FILE IS DELETED, whatever the cause:
+                // overflow, cut-off, full disk. An abandoned `.part`
+                // is never counted as a slice (see `lister`), but
+                // it would occupy the disk until the purge.
                 //
-                // 🔴 ET CE `rmSync` A ÉTÉ INEFFICACE — MESURÉ, PAS SUPPOSÉ.
-                // Une sonde directe sur `ecrire`, hors HTTP, a relevé des
-                // répertoires non vides portant chacun un `.part` :
-                // **42 sur 400 dépassements** à une première mesure, puis
-                // **100 sur 400** à une seconde, sous une autre charge.
-                // ⚠️ AUCUN TAUX N'EST REVENDIQUÉ : les deux chiffres diffèrent
-                // d'un facteur deux et demi selon la charge de la machine, ce
-                // qui est le propre d'une course. Ce qui est établi est
-                // l'existence du défaut, jamais sa fréquence.
-                // ✅ APRÈS LE CORRECTIF, LA MÊME SONDE REND **0 SUR 400** —
-                // une exécution par bras, différentiel joué sur ce fichier
-                // seul, l'état d'avant repris du dépôt et non reconstruit.
-                // La cause était une COURSE, et non
-                // un chemin d'erreur oublié : `createWriteStream(chemin)` ouvre
-                // le fichier de façon ASYNCHRONE. Sur un dépassement, notre
-                // générateur lève AVANT que l'`open(2)` n'ait abouti ;
-                // `rmSync` courait alors sur un fichier qui n'existait pas
-                // encore — `{ force: true }` avalant le `ENOENT` en silence —
-                // et l'ouverture le créait juste après.
+                // 🔴 AND THIS `rmSync` WAS INEFFECTIVE — MEASURED, NOT ASSUMED.
+                // A direct probe on `write`, outside HTTP, found
+                // non-empty directories each carrying a `.part`:
+                // **42 out of 400 overflows** on a first measurement, then
+                // **100 out of 400** on a second one, under another load.
+                // ⚠️ NO RATE IS CLAIMED: the two figures differ
+                // by a factor of two and a half depending on the machine load, which
+                // is the hallmark of a race. What is established is
+                // the existence of the defect, never its frequency.
+                // ✅ AFTER THE FIX, THE SAME PROBE GIVES **0 OUT OF 400** —
+                // one run per arm, differential played on this file
+                // alone, the before state taken back from the repository and not rebuilt.
+                // The cause was a RACE, and not
+                // a forgotten error path: `createWriteStream(chemin)` opens
+                // the file ASYNCHRONOUSLY. On an overflow, our
+                // generator throws BEFORE the `open(2)` has completed;
+                // `rmSync` then ran on a file that did not exist
+                // yet — `{ force: true }` silently swallowing the `ENOENT` —
+                // and the open created it right after.
                 //
-                // ✅ LE REMÈDE N'EST PAS UN RÉESSAI MAIS UNE SUPPRESSION DE LA
-                // COURSE : le descripteur est ouvert par `openSync` AVANT le
-                // `pipeline`, si bien que l'inode existe déjà quand le
-                // `pipeline` démarre. Il n'y a donc plus d'instant où le
-                // fichier soit à la fois « en cours de création » et
-                // supprimable. Un réessai temporisé aurait réduit la fenêtre
-                // sans la fermer, et aurait rendu le défaut intermittent au
-                // lieu de le supprimer.
+                // ✅ THE REMEDY IS NOT A RETRY BUT A REMOVAL OF THE
+                // RACE: the descriptor is opened by `openSync` BEFORE the
+                // `pipeline`, so that the inode already exists when the
+                // `pipeline` starts. There is therefore no longer an instant where the
+                // file is at once "being created" and
+                // deletable. A timed retry would have narrowed the window
+                // without closing it, and would have made the defect intermittent instead
+                // of removing it.
                 //
-                // ⚠️ Ce n'était PAS un trou de protocole — `lister` ignore les
-                // noms non numériques, donc aucune fausse tranche n'a jamais
-                // été comptée et le scellement n'en voyait rien. C'était une
-                // FUITE DE DISQUE, sur un service qui accepte 4 Gio.
+                // ⚠️ This was NOT a protocol hole — `lister` ignores
+                // non-numeric names, so no false slice was ever
+                // counted and the sealing saw nothing of it. It was a
+                // DISK LEAK, on a service that accepts 4 GiB.
                 rmSync(provisoire, { force: true });
                 if (depasse) return { ok: false, motif: 'plafond-depasse', plafond: plafondOctets };
-                throw erreur;
+                throw error;
             }
             renameSync(provisoire, cible);
             return { ok: true, octets };
         },
 
-        /// 🔴 LA REPRISE EST UN LISTAGE DE RÉPERTOIRE, JAMAIS UNE COMPTABILITÉ.
-        /// Une table `tranches_presentes` divergerait du disque le jour où un
-        /// fichier serait perdu — et c'est PRÉCISÉMENT le jour où l'on a besoin
-        /// de le savoir. C'est ce qui rend le magasin auto-reconstructible :
-        /// tout ce qui manque est redemandé, et le déposant recomplète.
+        /// 🔴 RESUMPTION IS A DIRECTORY LISTING, NEVER BOOKKEEPING.
+        /// A `tranches_presentes` table would drift from the disk on the day a
+        /// file got lost — and that is PRECISELY the day one needs
+        /// to know it. This is what makes the store self-rebuilding:
+        /// whatever is missing is asked for again, and the uploader fills it back in.
         ///
-        /// ⚠️ SEULS LES NOMS PUREMENT NUMÉRIQUES SONT DES TRANCHES. Un `.part`
-        /// laissé par un dépôt mort n'en est pas une, et le compter ferait
-        /// paraître complète une tranche qui n'a jamais fini de s'écrire.
+        /// ⚠️ ONLY PURELY NUMERIC NAMES ARE SLICES. A `.part`
+        /// left by a dead upload is not one, and counting it would make
+        /// a slice that never finished being written look complete.
         ///
-        /// ⚠️ LA LISTE EST TRIÉE, pour la raison de `proto/ts/tranches.ts` : un
-        /// relevé qui dépendrait de l'ordre de `readdir` ne serait comparable
-        /// ni d'une exécution à l'autre, ni d'un système de fichiers à l'autre.
+        /// ⚠️ THE LIST IS SORTED, for the reason given in `proto/ts/tranches.ts`: a
+        /// reading that depended on the `readdir` order would be comparable
+        /// neither from one run to the next, nor from one file system to another.
         ///
-        /// ⚠️ UN RÉPERTOIRE ABSENT REND UNE LISTE VIDE, jamais une erreur : un
-        /// téléversement déclaré dont aucune tranche n'est encore arrivée est
-        /// l'état NORMAL du premier dépôt, et `verdict` en dira `manquantes`.
+        /// ⚠️ A MISSING DIRECTORY GIVES AN EMPTY LIST, never an error: a
+        /// declared upload for which no slice has arrived yet is
+        /// the NORMAL state of the first upload, and `verdict` will report it as `manquantes`.
         lister(id: string): Tranche[] {
             const rep = repertoireDe(id);
             let noms: string[];
@@ -311,9 +311,9 @@ export function ouvrirMagasinTranches(
                 if (!rangValide(n)) continue;
                 try {
                     const etat = statSync(join(rep, nom));
-                    // Une tranche disparue entre le `readdir` et le `stat` est
-                    // simplement absente : le listage est un instantané, et
-                    // `verdict` la dira `manquantes` — ce qui se répare.
+                    // A slice that vanished between the `readdir` and the `stat` is
+                    // simply absent: the listing is a snapshot, and
+                    // `verdict` will report it as `manquantes` — which can be repaired.
                     if (etat.isFile()) tranches.push({ n, octets: etat.size });
                 } catch {
                     continue;
@@ -322,25 +322,25 @@ export function ouvrirMagasinTranches(
             return tranches.sort((a, b) => a.n - b.n);
         },
 
-        /// Concatène les rangs DEMANDÉS, dans l'ordre donné.
+        /// Concatenates the REQUESTED ranks, in the given order.
         ///
-        /// 🔴 LES RANGS SONT UN PARAMÈTRE, PAS UN LISTAGE, ET C'EST CE QUI
-        /// DONNE SON SENS À LA GARDE CI-DESSOUS. Si ce flux listait lui-même le
-        /// répertoire, une tranche disparue depuis le verdict serait simplement
-        /// absente de la liste : le flux se terminerait PROPREMENT, plus court,
-        /// et l'agent calculerait une empreinte fausse sans que personne ne
-        /// sache pourquoi. En servant le plan que l'appelant a fait vérifier, un
-        /// fichier manquant devient une ERREUR de flux.
+        /// 🔴 THE RANKS ARE A PARAMETER, NOT A LISTING, AND THAT IS WHAT
+        /// GIVES THE GUARD BELOW ITS MEANING. If this stream listed the
+        /// directory itself, a slice gone since the verdict would simply be
+        /// absent from the list: the stream would end CLEANLY, shorter,
+        /// and the agent would compute a wrong hash without anybody
+        /// knowing why. By serving the plan the caller had checked, a
+        /// missing file becomes a stream ERROR.
         ///
-        /// 🔴 UNE TRANCHE SUPPRIMÉE SOUS LES PIEDS DU FLUX DONNE UNE ERREUR,
-        /// JAMAIS UN FLUX TRONQUÉ SILENCIEUX. `createReadStream` sur un fichier
-        /// absent émet `error` ; l'itération le relance, le générateur meurt, et
-        /// `Readable.from` détruit le lisible avec cette erreur — le
-        /// consommateur reçoit `error`, pas `end`.
+        /// 🔴 A SLICE DELETED FROM UNDER THE STREAM GIVES AN ERROR,
+        /// NEVER A SILENTLY TRUNCATED STREAM. `createReadStream` on a missing
+        /// file emits `error`; the iteration rethrows it, the generator dies, and
+        /// `Readable.from` destroys the readable with that error — the
+        /// consumer receives `error`, not `end`.
         ///
-        /// ⚠️ TOUS LES CHEMINS SONT VALIDÉS D'AVANCE, avant que le flux n'existe :
-        /// un rang fautif lève à l'appel, où l'appelant peut encore répondre,
-        /// plutôt qu'au milieu d'une réponse déjà commencée.
+        /// ⚠️ ALL PATHS ARE VALIDATED UP FRONT, before the stream exists:
+        /// a faulty rank throws at the call, where the caller can still respond,
+        /// rather than in the middle of a response already started.
         concatener(id: string, rangs: readonly number[]): Readable {
             const chemins = rangs.map((n) => cheminDe(id, n));
             return Readable.from(
@@ -351,44 +351,44 @@ export function ouvrirMagasinTranches(
                         }
                     }
                 })(),
-                // ⚠️ `objectMode: false` EST EXIGÉ : `Readable.from` est en mode
-                // objet par défaut, et un consommateur qui attend des octets
-                // recevrait un flux dont la contre-pression se compte en
-                // morceaux plutôt qu'en octets.
+                // ⚠️ `objectMode: false` IS REQUIRED: `Readable.from` is in object
+                // mode by default, and a consumer expecting bytes
+                // would receive a stream whose backpressure is counted in
+                // chunks rather than in bytes.
                 { objectMode: false },
             );
         },
 
-        /// ⚠️ `force` : supprimer un téléversement qui n'a jamais reçu de
-        /// tranche est un succès, pas une erreur — c'est l'état d'une purge qui
-        /// passe après un dépôt abandonné avant sa première trame.
-        supprimer(id: string): void {
+        /// ⚠️ `force`: deleting an upload that never received a
+        /// slice is a success, not an error — it is the state of a purge that
+        /// runs after an upload abandoned before its first frame.
+        remove(id: string): void {
             rmSync(repertoireDe(id), { recursive: true, force: true });
         },
 
-        /// 🔴 LE PLANCHER D'ABORD : un identifiant RÉFÉRENCÉ n'est jamais
-        /// examiné pour son âge, quelle que soit sa vétusté — voir le
-        /// commentaire de `AGE_EVICTION_TRANCHES_MS`.
+        /// 🔴 THE FLOOR FIRST: a REFERENCED identifier is never
+        /// examined for its age, however stale it is — see the
+        /// comment of `AGE_EVICTION_TRANCHES_MS`.
         ///
-        /// 🔴 L'ÂGE EST CELUI DU RÉPERTOIRE, PAS D'UNE TRANCHE : chaque dépôt
-        /// (`ecrire`, via son `renameSync` final) touche le répertoire parent,
-        /// donc son horodatage suit la dernière activité du téléversement
-        /// entier, tranche par tranche, sans qu'il faille les lister toutes.
+        /// 🔴 THE AGE IS THAT OF THE DIRECTORY, NOT OF A SLICE: each upload
+        /// (`write`, through its final `renameSync`) touches the parent directory,
+        /// so its timestamp follows the last activity of the whole
+        /// upload, slice by slice, without having to list them all.
         ///
-        /// ⚠️ UN NOM QUI N'EST PAS UN IDENTIFIANT VALIDE N'EST JAMAIS TOUCHÉ,
-        /// même s'il est vieux : ce magasin n'écrit jamais un tel nom
-        /// lui-même, et un répertoire étranger n'est pas sa responsabilité.
+        /// ⚠️ A NAME THAT IS NOT A VALID IDENTIFIER IS NEVER TOUCHED,
+        /// even if it is old: this store never writes such a name
+        /// itself, and a foreign directory is not its responsibility.
         ///
-        /// 🔴 LEG DÉCLARÉ (round de correction 3) : LA MÊME CÉSURE `stat` →
-        /// `rm` QUE `icones.ts::evincer` — même forme de code, même fenêtre.
-        /// Une tranche déposée entre la lecture de l'âge et la suppression
-        /// peut se faire faucher. ⚠️ **SANS LE FILET DES ICÔNES** : côté
-        /// icônes, `manquantes` fait redemander toute empreinte absente à la
-        /// PROCHAINE réconciliation (auto-réparant, mesuré par la revue) ;
-        /// côté tranches, RIEN de comparable n'existe — un téléversement
-        /// fauché ici perd des octets qu'AUCUN mécanisme ne redemande de
-        /// lui-même. Non mesuré séparément pour ce magasin ; déclaré par
-        /// analogie de code, pas par une mesure dédiée.
+        /// 🔴 DECLARED LEGACY (correction round 3): THE SAME `stat` →
+        /// `rm` GAP AS `icones.ts::evincer` — same code shape, same window.
+        /// A slice uploaded between the age read and the deletion
+        /// can get mowed down. ⚠️ **WITHOUT THE SAFETY NET OF THE ICONS**: on the
+        /// icon side, `manquantes` makes every missing hash be asked for again at the
+        /// NEXT reconciliation (self-repairing, measured by the review);
+        /// on the slice side, NOTHING comparable exists — an upload
+        /// mowed down here loses bytes that NO mechanism asks for again
+        /// by itself. Not measured separately for this store; declared by
+        /// code analogy, not by a dedicated measurement.
         async evincer({ maintenant, referencees }: { maintenant: number; referencees: ReadonlySet<string> }): Promise<void> {
             let noms: string[];
             try {

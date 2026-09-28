@@ -1,7 +1,7 @@
 {
-  "name": "Spike multi-fenêtres",
+  "name": "Multi-window spike",
   "short_name": "Spike",
-  "description": "Test d'ouverture de fenêtre sans geste utilisateur",
+  "description": "Test of opening a window without a user gesture",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

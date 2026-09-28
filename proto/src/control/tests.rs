@@ -1,56 +1,56 @@
 use super::*;
 
 #[test]
-fn serialise_le_redimensionnement() {
-    let json = serde_json::to_string(&ClientControl::resize(1280, 720)).expect("sérialisation");
-    // `type` est le tag interne de l'enum : serde l'émet avant les autres
-    // champs, y compris `v`, quel que soit leur ordre de déclaration.
+fn serialises_the_resize() {
+    let json = serde_json::to_string(&ClientControl::resize(1280, 720)).expect("serialisation");
+    // `type` is the internal tag of the enum: serde emits it before the other
+    // fields, `v` included, whatever their declaration order.
     assert_eq!(json, r#"{"type":"resize","v":3,"width":1280,"height":720}"#);
 }
 
 #[test]
-fn deserialise_le_redimensionnement() {
+fn deserialises_the_resize() {
     let msg: ClientControl =
         serde_json::from_str(r#"{"v":3,"type":"resize","width":800,"height":600}"#)
-            .expect("désérialisation");
+            .expect("deserialisation");
     assert_eq!(msg, ClientControl::resize(800, 600));
 }
 
 #[test]
-fn serialise_ready_et_session_end() {
+fn serialises_ready_and_session_end() {
     assert_eq!(
         serde_json::to_string(&AgentControl::ready(1920, 1080, false)).unwrap(),
         r#"{"type":"ready","v":3,"width":1920,"height":1080,"mic":false}"#
     );
     assert_eq!(
-        serde_json::to_string(&AgentControl::session_end("fenêtre fermée")).unwrap(),
-        r#"{"type":"session-end","v":3,"reason":"fenêtre fermée"}"#
+        serde_json::to_string(&AgentControl::session_end("window closed")).unwrap(),
+        r#"{"type":"session-end","v":3,"reason":"window closed"}"#
     );
 }
 
 #[test]
-fn rejette_un_type_inconnu() {
+fn rejects_an_unknown_type() {
     let err = serde_json::from_str::<ClientControl>(r#"{"v":1,"type":"vol","x":1}"#);
     assert!(err.is_err());
 }
 
 #[test]
-fn rejette_une_version_absente() {
+fn rejects_an_absent_version() {
     let err = serde_json::from_str::<ClientControl>(r#"{"type":"resize","width":1,"height":1}"#);
     assert!(err.is_err());
 }
 
 #[test]
-fn rejette_une_version_inconnue() {
+fn rejects_an_unknown_version() {
     let err =
         serde_json::from_str::<ClientControl>(r#"{"v":9,"type":"resize","width":1,"height":1}"#);
     assert!(err.is_err());
 }
 
 #[test]
-fn serialise_le_message_de_pointeur_en_kebab_case() {
+fn serialises_the_pointer_message_in_kebab_case() {
     let json = serde_json::to_string(&AgentControl::pointer(false, CursorShape::NsResize))
-        .expect("sérialisation");
+        .expect("serialisation");
     assert_eq!(
         json,
         r#"{"type":"pointer","v":3,"visible":false,"shape":"ns-resize"}"#
@@ -58,30 +58,30 @@ fn serialise_le_message_de_pointeur_en_kebab_case() {
 }
 
 #[test]
-fn round_trip_du_message_de_vibration() {
+fn round_trip_of_the_rumble_message() {
     let message = AgentControl::rumble(255, 0);
-    let json = serde_json::to_string(&message).expect("sérialisation");
-    let relu: AgentControl = serde_json::from_str(&json).expect("désérialisation");
+    let json = serde_json::to_string(&message).expect("serialisation");
+    let relu: AgentControl = serde_json::from_str(&json).expect("deserialisation");
     assert_eq!(message, relu);
 }
 
 #[test]
-fn round_trip_des_capacites() {
+fn round_trip_of_the_capabilities() {
     let message = AgentControl::capabilities(true, true);
-    let json = serde_json::to_string(&message).expect("sérialisation");
-    let relu: AgentControl = serde_json::from_str(&json).expect("désérialisation");
+    let json = serde_json::to_string(&message).expect("serialisation");
+    let relu: AgentControl = serde_json::from_str(&json).expect("deserialisation");
     assert_eq!(message, relu);
 }
 
 #[test]
-fn serialise_l_etat_du_lien() {
+fn serialises_the_link_state() {
     let json = serde_json::to_string(&AgentControl::link(
         4_000_000,
         (1280, 720),
         LinkQuality::Degradee,
         LinkAdaptation::Active,
     ))
-    .expect("sérialisation");
+    .expect("serialisation");
     assert_eq!(
         json,
         r#"{"type":"link","v":3,"bitrate":4000000,"width":1280,"height":720,"quality":"degradee","adaptation":"active"}"#
@@ -89,11 +89,11 @@ fn serialise_l_etat_du_lien() {
 }
 
 #[test]
-fn deserialise_l_etat_du_lien() {
+fn deserialises_the_link_state() {
     let msg: AgentControl = serde_json::from_str(
         r#"{"type":"link","v":3,"bitrate":1500000,"width":960,"height":540,"quality":"insuffisante","adaptation":"indisponible"}"#,
     )
-    .expect("désérialisation");
+    .expect("deserialisation");
     assert_eq!(
         msg,
         AgentControl::link(
@@ -106,16 +106,16 @@ fn deserialise_l_etat_du_lien() {
 }
 
 #[test]
-fn rejette_la_version_de_controle_1_devenue_obsolete() {
+fn rejects_control_version_1_now_obsolete() {
     let err =
         serde_json::from_str::<AgentControl>(r#"{"type":"ready","v":1,"width":1,"height":1}"#);
     assert!(err.is_err());
 }
 
 #[test]
-fn une_visibilite_se_relit_telle_qu_ecrite() {
+fn a_visibility_reads_back_as_written() {
     let json = r#"{"type":"visibility","v":3,"visible":false,"focused":false}"#;
-    let message: ClientControl = serde_json::from_str(json).expect("visibilité valide");
+    let message: ClientControl = serde_json::from_str(json).expect("valid visibility");
     assert_eq!(
         message,
         ClientControl::Visibility {
@@ -127,22 +127,22 @@ fn une_visibilite_se_relit_telle_qu_ecrite() {
 }
 
 #[test]
-fn une_visibilite_de_mauvaise_version_est_rejetee() {
+fn a_visibility_of_the_wrong_version_is_rejected() {
     let json = r#"{"type":"visibility","v":1,"visible":true,"focused":true}"#;
     assert!(serde_json::from_str::<ClientControl>(json).is_err());
 }
 
 #[test]
-fn un_sommeil_s_ecrit_avec_son_type_en_tete_et_sa_raison() {
+fn a_sleep_is_written_with_its_type_first_and_its_reason() {
     let json =
-        serde_json::to_string(&AgentControl::asleep(true, "evincee")).expect("sérialisation");
-    assert!(json.starts_with(r#"{"type":"asleep""#), "obtenu : {json}");
-    assert!(json.contains(r#""asleep":true"#), "obtenu : {json}");
-    assert!(json.contains(r#""reason":"evincee""#), "obtenu : {json}");
+        serde_json::to_string(&AgentControl::asleep(true, "evincee")).expect("serialisation");
+    assert!(json.starts_with(r#"{"type":"asleep""#), "got: {json}");
+    assert!(json.contains(r#""asleep":true"#), "got: {json}");
+    assert!(json.contains(r#""reason":"evincee""#), "got: {json}");
 }
 
 #[test]
-fn le_plein_ecran_se_serialise_en_kebab_case_avec_sa_version() {
+fn fullscreen_serialises_in_kebab_case_with_its_version() {
     let json = serde_json::to_string(&AgentControl::fullscreen(true)).unwrap();
     assert!(json.contains(r#""type":"fullscreen""#), "{json}");
     assert!(json.contains(r#""active":true"#), "{json}");
@@ -150,7 +150,7 @@ fn le_plein_ecran_se_serialise_en_kebab_case_avec_sa_version() {
 }
 
 #[test]
-fn le_plein_ecran_fait_l_aller_retour() {
+fn fullscreen_makes_the_round_trip() {
     let origine = AgentControl::fullscreen(false);
     let json = serde_json::to_string(&origine).unwrap();
     let relu: AgentControl = serde_json::from_str(&json).unwrap();
@@ -158,192 +158,190 @@ fn le_plein_ecran_fait_l_aller_retour() {
 }
 
 #[test]
-fn toutes_les_formes_de_curseur_sont_des_valeurs_css() {
-    // Le client pose cette chaîne telle quelle dans `style.cursor` : une
-    // valeur non reconnue serait silencieusement ignorée par le
-    // navigateur, donc invisible en test.
+fn all_cursor_shapes_are_css_values() {
+    // The client sets this string as is into `style.cursor`: an
+    // unrecognised value would be silently ignored by the
+    // browser, hence invisible in tests.
     for (forme, attendu) in [
         (CursorShape::Default, "default"),
         (CursorShape::Text, "text"),
         (CursorShape::NotAllowed, "not-allowed"),
         (CursorShape::NwseResize, "nwse-resize"),
     ] {
-        let json = serde_json::to_string(&forme).expect("sérialisation");
+        let json = serde_json::to_string(&forme).expect("serialisation");
         assert_eq!(json, format!("\"{attendu}\""));
     }
 }
 
-/// Chantier E : `Ready` porte la disponibilité du micro, **sans bump de
+/// Workstream E: `Ready` carries the microphone availability, **without a bump of
 /// `CONTROL_VERSION`**.
 ///
-/// Le parseur TypeScript vérifie `v`, puis `type`, puis CASTE : un champ
-/// supplémentaire est simplement ignoré par un client ancien. Et un client
-/// RÉCENT parlant à un agent ANCIEN lit `mic === undefined`, donc falsy,
-/// donc pas de bouton — exactement la règle de la spec §10, gratuitement.
+/// The TypeScript parser checks `v`, then `type`, then CASTS: an extra
+/// field is simply ignored by an old client. And a RECENT client
+/// talking to an OLD agent reads `mic === undefined`, hence falsy,
+/// hence no button — exactly the rule of spec §10, for free.
 #[test]
-fn ready_porte_la_disponibilite_du_micro() {
+fn ready_carries_the_microphone_availability() {
     assert_eq!(
         serde_json::to_string(&AgentControl::ready(1920, 1080, true)).unwrap(),
         r#"{"type":"ready","v":3,"width":1920,"height":1080,"mic":true}"#
     );
 }
 
-/// « Le champ est optionnel à la lecture et SON ABSENCE VAUT `false` »
-/// (spec §10) : un client récent face à un agent ancien n'affiche pas un
-/// bouton qui ne mènerait nulle part.
+/// "The field is optional on read and ITS ABSENCE MEANS `false`"
+/// (spec §10): a recent client facing an old agent does not show a
+/// button that would lead nowhere.
 ///
-/// ⚠️ `AgentControl` porte `deny_unknown_fields` : cela ne gêne pas
-/// l'AJOUT d'un champ, mais un champ MANQUANT est une erreur de
-/// désérialisation en Rust. `#[serde(default)]` est donc OBLIGATOIRE.
+/// ⚠️ `AgentControl` carries `deny_unknown_fields`: that does not hinder
+/// ADDING a field, but a MISSING field is a
+/// deserialization error in Rust. `#[serde(default)]` is therefore MANDATORY.
 #[test]
-fn un_ready_sans_micro_se_lit_avec_micro_faux() {
+fn a_ready_without_mic_reads_with_mic_false() {
     let m: AgentControl =
         serde_json::from_str(r#"{"type":"ready","v":3,"width":1,"height":1}"#).unwrap();
     assert_eq!(m, AgentControl::ready(1, 1, false));
 }
 
 #[test]
-fn serialise_le_presse_papier_avec_son_texte() {
+fn serialises_the_clipboard_with_its_text() {
     let json = serde_json::to_string(&AgentControl::clipboard(Some("bonjour".into()), 7))
-        .expect("sérialisation");
+        .expect("serialisation");
     assert_eq!(
         json,
         r#"{"type":"clipboard","v":3,"text":"bonjour","bytes":7}"#
     );
 }
 
-/// 🔴 Un REFUS sérialise `"text":null`, champ PRÉSENT.
+/// 🔴 A REFUSAL serializes `"text":null`, field PRESENT.
 ///
-/// ROUGE si l'on pose `#[serde(skip_serializing_if = "Option::is_none")]` :
-/// le champ disparaîtrait, et le client ne pourrait plus distinguer un refus
-/// d'un message tronqué en route.
+/// RED if one sets `#[serde(skip_serializing_if = "Option::is_none")]`:
+/// the field would vanish, and the client could no longer tell a refusal
+/// from a message truncated on the way.
 #[test]
-fn un_refus_de_presse_papier_serialise_un_text_null_present() {
+fn a_clipboard_refusal_serialises_a_present_null_text() {
     let json =
-        serde_json::to_string(&AgentControl::clipboard(None, 102_400)).expect("sérialisation");
+        serde_json::to_string(&AgentControl::clipboard(None, 102_400)).expect("serialisation");
     assert_eq!(
         json,
         r#"{"type":"clipboard","v":3,"text":null,"bytes":102400}"#
     );
     assert!(
         json.contains("\"text\":null"),
-        "le champ text doit rester présent"
+        "the text field must stay present"
     );
 }
 
-/// 🔴 Ce qui prouve que `verifie_version` est bien branché sur la variante
-/// NEUVE — l'oublier est une erreur silencieuse, `version` n'étant vérifié
-/// que par son attribut.
+/// 🔴 What proves that `check_version` is indeed wired onto the NEW
+/// variant — forgetting it is a silent error, `version` being checked
+/// only through its attribute.
 #[test]
-fn un_presse_papier_en_version_2_est_rejete() {
+fn a_clipboard_at_version_2_is_rejected() {
     let brut = r#"{"type":"clipboard","v":2,"text":"bonjour","bytes":7}"#;
-    let erreur = serde_json::from_str::<AgentControl>(brut).expect_err("v:2 doit être rejeté");
+    let error = serde_json::from_str::<AgentControl>(brut).expect_err("v:2 must be rejected");
     assert!(
-        erreur
-            .to_string()
-            .contains("version de contrôle non supportée"),
-        "message inattendu : {erreur}"
+        error.to_string().contains("unsupported control version"),
+        "unexpected message: {error}"
     );
 }
 
-/// ROUGE si l'on retire `deny_unknown_fields` de l'enum : ce test le fige
-/// pour la variante neuve.
+/// RED if one removes `deny_unknown_fields` from the enum: this test pins it
+/// for the new variant.
 #[test]
-fn un_presse_papier_portant_un_champ_inconnu_est_rejete() {
+fn a_clipboard_carrying_an_unknown_field_is_rejected() {
     let brut = r#"{"type":"clipboard","v":3,"text":"bonjour","bytes":7,"surprise":1}"#;
     assert!(serde_json::from_str::<AgentControl>(brut).is_err());
 }
 
 // ---------------------------------------------------------------------------
-// Sous-bloc P2 du chantier presse-papier — le sens navigateur → VM.
+// Sub-block P2 of the clipboard workstream — the browser → VM direction.
 // ---------------------------------------------------------------------------
 
-/// ROUGE si la variante `ClientControl::Clipboard` est absente.
+/// RED if the `ClientControl::Clipboard` variant is absent.
 #[test]
-fn deserialise_le_collage_venu_du_client() {
+fn deserialises_the_paste_from_the_client() {
     let msg: ClientControl = serde_json::from_str(r#"{"v":3,"type":"clipboard","text":"bonjour"}"#)
-        .expect("désérialisation");
+        .expect("deserialisation");
     assert_eq!(msg, ClientControl::clipboard("bonjour"));
 }
 
 #[test]
-fn serialise_le_collage_venu_du_client() {
+fn serialises_the_paste_from_the_client() {
     assert_eq!(
         serde_json::to_string(&ClientControl::clipboard("bonjour")).unwrap(),
         r#"{"type":"clipboard","v":3,"text":"bonjour"}"#
     );
 }
 
-/// 🔴 ROUGE si l'on oublie `deserialize_with = "verifie_version"` sur le champ
-/// `version` — **c'est la ligne qu'on omet en recopiant une variante
-/// voisine**, et rien d'autre dans ce dépôt ne le verrait : la variante
-/// fonctionnerait, simplement elle accepterait n'importe quelle version.
+/// 🔴 RED if one forgets `deserialize_with = "check_version"` on the
+/// `version` field — **it is the line one omits when copying a neighbouring
+/// variant**, and nothing else in this repository would see it: the variant
+/// would work, it would simply accept any version at all.
 #[test]
-fn un_collage_client_a_la_mauvaise_version_est_rejete() {
-    let erreur = serde_json::from_str::<ClientControl>(r#"{"v":2,"type":"clipboard","text":"x"}"#);
-    assert!(erreur.is_err(), "une version 2 doit être refusée");
+fn a_client_paste_at_the_wrong_version_is_rejected() {
+    let error = serde_json::from_str::<ClientControl>(r#"{"v":2,"type":"clipboard","text":"x"}"#);
+    assert!(error.is_err(), "a version 2 must be refused");
 }
 
-/// 🔴 ROUGE si l'on posait la variante sur un enum sans `deny_unknown_fields` :
-/// un client mal conduit pourrait alors faire passer n'importe quoi.
+/// 🔴 RED if the variant were placed on an enum without `deny_unknown_fields`:
+/// a badly behaved client could then push anything through.
 #[test]
-fn un_collage_client_avec_un_champ_en_trop_est_rejete() {
-    let erreur =
+fn a_client_paste_with_an_extra_field_is_rejected() {
+    let error =
         serde_json::from_str::<ClientControl>(r#"{"v":3,"type":"clipboard","text":"x","bytes":1}"#);
-    assert!(erreur.is_err(), "un champ inconnu doit être refusé");
+    assert!(error.is_err(), "an unknown field must be refused");
 }
 
-/// 🔴 ROUGE si l'on oublie `#[serde(default)]` sur `Capabilities::clipboard`.
+/// 🔴 RED if `#[serde(default)]` is forgotten on `Capabilities::clipboard`.
 ///
-/// ⚠️ **La raison n'est PAS `deny_unknown_fields`**, contrairement à ce que la
-/// spec avance : `deny_unknown_fields` refuse un champ INCONNU ; c'est le
-/// défaut de serde qui refuse un champ MANQUANT. Les deux mécanismes n'ont
-/// rien à voir, et c'est le commentaire de `mic` qui dit la chose juste.
+/// ⚠️ **The reason is NOT `deny_unknown_fields`**, contrary to what the
+/// spec claims: `deny_unknown_fields` refuses an UNKNOWN field; it is
+/// serde's default that refuses a MISSING field. The two mechanisms have
+/// nothing to do with each other, and it is the comment on `mic` that says the right thing.
 ///
-/// Un agent d'avant P2 n'émet pas ce champ ; un désérialiseur récent doit donc
-/// le tolérer et lire `false`.
+/// An agent from before P2 does not emit this field; a recent deserializer must therefore
+/// tolerate it and read `false`.
 #[test]
-fn capabilities_sans_clipboard_se_deserialise_a_false() {
+fn capabilities_without_clipboard_deserialises_to_false() {
     let msg: AgentControl = serde_json::from_str(r#"{"v":3,"type":"capabilities","gamepad":true}"#)
-        .expect("désérialisation");
+        .expect("deserialisation");
     assert_eq!(msg, AgentControl::capabilities(true, false));
 }
 
-/// ROUGE si l'on posait un `skip_serializing_if` : le champ disparaîtrait
-/// quand il vaut `false`, et le client ne pourrait plus distinguer « l'agent
-/// dit non » de « l'agent est trop ancien pour le dire ». Les deux se traitent
-/// de la même façon aujourd'hui, mais la distinction est ce qui permettra un
-/// jour de le journaliser.
+/// RED if one set a `skip_serializing_if`: the field would vanish
+/// when it is `false`, and the client could no longer tell "the agent
+/// says no" from "the agent is too old to say". Both are handled
+/// the same way today, but the distinction is what will one
+/// day allow logging it.
 #[test]
-fn capabilities_serialise_les_deux_champs() {
+fn capabilities_serialises_both_fields() {
     assert_eq!(
         serde_json::to_string(&AgentControl::capabilities(false, true)).unwrap(),
         r#"{"type":"capabilities","v":3,"gamepad":false,"clipboard":true}"#
     );
 }
 
-/// 🔴 **LE PRESSE-PAPIER NE DOIT JAMAIS ATTEINDRE UN JOURNAL, ET CE TEST EST
-/// LE SEUL REMPART.**
+/// 🔴 **THE CLIPBOARD MUST NEVER REACH A LOG, AND THIS TEST IS
+/// THE ONLY RAMPART.**
 ///
-/// Il est né d'une MESURE, pas d'une précaution : la recette de P2 a relevé
-/// dans `agent.log` quatre lignes portant le contenu du presse-papier **en
-/// clair** — `Clipboard { version: 3, text: "alpha-arme-1-crwor9" }` —, parce
-/// que `demarrage.rs` imprime le message reçu par `?message` et que
-/// `ClientControl` DÉRIVAIT `Debug`. La décision D-P1-7 l'interdit nommément.
+/// It was born from a MEASUREMENT, not a precaution: the P2 acceptance run found
+/// in `agent.log` four lines carrying the clipboard content **in
+/// clear** — `Clipboard { version: 3, text: "alpha-arme-1-crwor9" }` —, because
+/// `demarrage.rs` prints the received message through `?message` and
+/// `ClientControl` DERIVED `Debug`. Decision D-P1-7 forbids it by name.
 ///
-/// ROUGE si l'on remet `#[derive(Debug)]` sur l'un des deux enums. Le remède
-/// est au TYPE et non au site de journalisation, précisément pour que le
-/// PROCHAIN site n'ait pas à y penser.
+/// RED if one puts `#[derive(Debug)]` back on either enum. The remedy
+/// is at the TYPE and not at the logging site, precisely so that the
+/// NEXT site does not have to think about it.
 #[test]
-fn le_debug_du_presse_papier_montre_la_taille_et_jamais_le_texte() {
+fn the_clipboard_debug_shows_the_size_and_never_the_text() {
     let rendu = format!("{:?}", ClientControl::clipboard("mot-de-passe-tres-secret"));
     assert!(
         !rendu.contains("secret"),
-        "le texte a fui au Debug : {rendu}"
+        "the text leaked into Debug: {rendu}"
     );
     assert!(
         rendu.contains("octets: 24"),
-        "la taille doit rester lisible : {rendu}"
+        "the size must stay readable: {rendu}"
     );
 
     let descendant = format!(
@@ -352,31 +350,31 @@ fn le_debug_du_presse_papier_montre_la_taille_et_jamais_le_texte() {
     );
     assert!(
         !descendant.contains("mot-de-passe"),
-        "le texte a fui au Debug : {descendant}"
+        "the text leaked into Debug: {descendant}"
     );
     assert!(
         descendant.contains("octets: 12"),
-        "la taille doit rester lisible : {descendant}"
+        "the size must stay readable: {descendant}"
     );
     assert!(
         descendant.contains("refus: false"),
-        "le refus doit rester lisible : {descendant}"
+        "the refusal must stay readable: {descendant}"
     );
 
     let refus = format!("{:?}", AgentControl::clipboard(None, 100_000));
     assert!(
         refus.contains("refus: true"),
-        "un refus doit se lire : {refus}"
+        "a refusal must be readable: {refus}"
     );
 }
 
-/// Le `Debug` écrit à la main ne doit pas AVALER les autres variantes en
-/// chemin : sans ce test, une variante rendue vide passerait inaperçue, et le
-/// journal perdrait tout pouvoir de diagnostic sans que rien ne le dise.
+/// The hand-written `Debug` must not SWALLOW the other variants on
+/// the way: without this test, a variant rendered empty would go unnoticed, and the
+/// log would lose all diagnostic power without anything saying so.
 ///
-/// ROUGE si une variante rend une forme vide ou omet ses champs.
+/// RED if a variant renders an empty shape or omits its fields.
 #[test]
-fn le_debug_manuel_conserve_les_champs_des_autres_variantes() {
+fn the_manual_debug_keeps_the_fields_of_the_other_variants() {
     let r = format!("{:?}", ClientControl::resize(1280, 720));
     assert!(
         r.contains("Resize") && r.contains("1280") && r.contains("720"),
@@ -406,70 +404,65 @@ fn le_debug_manuel_conserve_les_champs_des_autres_variantes() {
 
 // ── Bloc E3 : la variante `MicState` ────────────────────────────────────────
 //
-// ⚠️ **Divergence V1, relevée le 21 août 2026 et LÉGUÉE, pas fermée :** il
-// n'existe AUCUN fichier de vecteurs partagé pour `AgentControl`. Les trois
-// `*-vectors.json` du dépôt servent `input`, `plateforme` et `fichiers`,
-// jamais `control`. Les tests ci-dessous épinglent la forme de fil **côté
-// Rust** ; `proto/ts/control.test.ts` épingle **la sienne**. Les deux
-// s'accordent parce que deux mains ont écrit la même chaîne, et **rien ne le
-// vérifie** : un renommage de clé appliqué d'un seul côté resterait vert des
-// deux côtés. La lacune est PRÉEXISTANTE et GÉNÉRALE à `AgentControl` — E3
-// est le premier à la nommer, il ne la crée pas.
+// ⚠️ **Divergence V1, noted on 21 August 2026 and HANDED DOWN, not closed:**
+// there is NO shared vector file for `AgentControl`. The three
+// `*-vectors.json` of the repository serve `input`, `plateforme` and `files`,
+// never `control`. The tests below pin the wire shape **on the
+// Rust side**; `proto/ts/control.test.ts` pins **its own**. The two
+// agree because two hands wrote the same string, and **nothing
+// checks it**: a key rename applied on one side only would stay green on
+// both sides. The gap is PRE-EXISTING and GENERAL to `AgentControl` — E3
+// is the first to name it, it does not create it.
 
 #[test]
-fn l_etat_du_micro_se_serialise_en_kebab_case_avec_sa_version() {
+fn the_mic_state_serialises_in_kebab_case_with_its_version() {
     let json = serde_json::to_string(&AgentControl::mic_state(false)).unwrap();
-    // Le nom en DEUX mots est ce qui rend `rename_all` observable : sur un enum
-    // dont toutes les variantes tiennent en un mot, la mutation
-    // `kebab-case` → `snake_case` est invisible (mesuré par le sous-bloc G1).
+    // The TWO-word name is what makes `rename_all` observable: on an enum
+    // whose variants all fit in one word, the mutation
+    // `kebab-case` → `snake_case` is invisible (measured by sub-block G1).
     assert!(json.contains(r#""type":"mic-state""#), "{json}");
     assert!(json.contains(r#""granted":false"#), "{json}");
     assert!(json.contains(r#""v":3"#), "{json}");
 }
 
 #[test]
-fn l_etat_du_micro_fait_l_aller_retour_dans_les_deux_sens() {
+fn the_mic_state_round_trips_both_ways() {
     for accorde in [true, false] {
         let origine = AgentControl::mic_state(accorde);
         let json = serde_json::to_string(&origine).unwrap();
         let relu: AgentControl = serde_json::from_str(&json).unwrap();
-        assert_eq!(relu, origine, "aller-retour de granted={accorde}");
+        assert_eq!(relu, origine, "round trip of granted={accorde}");
     }
 }
 
 #[test]
-fn un_etat_de_micro_a_la_mauvaise_version_est_rejete() {
-    // C'est le test que la rouge R1 doit faire tomber, ET LUI SEUL : retirer
-    // `deserialize_with` de la seule variante `MicState` établit que la
-    // vérification est branchée variante par variante, et non une fois pour
-    // toutes (patron mesuré en P3 : 1 échec sur 18).
-    let erreur =
+fn a_mic_state_at_the_wrong_version_is_rejected() {
+    // It is the test that the red R1 must bring down, AND IT ALONE: removing
+    // `deserialize_with` from the `MicState` variant alone establishes that the
+    // check is wired variant by variant, and not once and for
+    // all (pattern measured in P3: 1 failure out of 18).
+    let error =
         serde_json::from_str::<AgentControl>(r#"{"type":"mic-state","v":2,"granted":true}"#)
-            .expect_err("une version 2 doit être rejetée");
+            .expect_err("a version 2 must be rejected");
     assert!(
-        erreur
-            .to_string()
-            .contains("version de contrôle non supportée"),
-        "obtenu : {erreur}"
+        error.to_string().contains("unsupported control version"),
+        "got: {error}"
     );
 }
 
 #[test]
-fn un_etat_de_micro_sans_version_est_rejete() {
+fn a_mic_state_without_version_is_rejected() {
     assert!(
         serde_json::from_str::<AgentControl>(r#"{"type":"mic-state","granted":true}"#).is_err(),
-        "un message sans `v` doit être rejeté, jamais complété en silence"
+        "a message without `v` must be rejected, never completed silently"
     );
 }
 
 #[test]
-fn l_etat_du_micro_ne_divulgue_rien_au_journal() {
-    // La règle de `control/redaction.rs`, appliquée au TYPE et non au site :
-    // P2 a trouvé le presse-papier en clair dans `agent.log` sur une trace
-    // antérieure et inoffensive, rendue dangereuse par une variante neuve.
+fn the_mic_state_discloses_nothing_to_the_log() {
+    // The rule of `control/redaction.rs`, applied to the TYPE and not to the site:
+    // P2 found the clipboard in clear in `agent.log` on an earlier,
+    // harmless trace, made dangerous by a new variant.
     let rendu = format!("{:?}", AgentControl::mic_state(true));
-    assert_eq!(
-        rendu, "MicState { v: 3, granted: true }",
-        "obtenu : {rendu}"
-    );
+    assert_eq!(rendu, "MicState { v: 3, granted: true }", "got: {rendu}");
 }

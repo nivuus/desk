@@ -277,9 +277,9 @@ try {
     log(`TEMOIN ice=${b?.ice} bytesVideo_delta=${releve.bytesVideo_delta}`);
     log(`VERDICT ${releve.verdict}`);
 } catch (e) {
-    releve.erreur = String(e && e.message ? e.message : e);
+    releve.error = String(e && e.message ? e.message : e);
     releve.verdict = 'ROUGE';
-    log('ERREUR ' + releve.erreur);
+    log('ERREUR ' + releve.error);
 } finally {
     chrome.kill('SIGKILL');
     await writeFile(SORTIE, JSON.stringify(releve, null, 1));

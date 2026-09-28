@@ -2,46 +2,46 @@ import { describe, expect, it } from 'vitest';
 import { RejeuResize } from './resize';
 
 describe('RejeuResize', () => {
-    it("rend la taille observée quand rien n'a encore été émis", () => {
+    it("returns the observed size when nothing was emitted yet", () => {
         const r = new RejeuResize();
         r.observer({ largeur: 1280, hauteur: 720 });
         expect(r.aEmettre()).toEqual({ largeur: 1280, hauteur: 720 });
     });
 
-    it('ne rend rien quand la taille émise est déjà la bonne', () => {
+    it('returns nothing when the emitted size is already the right one', () => {
         const r = new RejeuResize();
         r.observer({ largeur: 1280, hauteur: 720 });
         r.confirmer({ largeur: 1280, hauteur: 720 });
         expect(r.aEmettre()).toBeUndefined();
     });
 
-    it("rend la taille observée tant qu'aucune émission n'a été confirmée", () => {
-        // ⚠️ Ce test n'exerce AUCUN état de canal : `RejeuResize` est pur et
-        // n'en connaît aucun (leg n°11 de D9 — son titre annonçait « quand le
-        // canal était fermé au moment du geste », état qu'il ne pouvait pas
-        // atteindre, et il rendait le même verdict pour n'importe quelle autre
-        // raison de non-confirmation). L'état de canal vit dans `main.ts`,
-        // chez `emettreSiPossible`, et c'est là qu'il se teste — pas ici.
+    it("returns the observed size as long as no emission was confirmed", () => {
+        // ⚠️ This test exercises NO channel state: `RejeuResize` is pure and
+        // knows none (D9's legacy item no. 11 — its title announced "when the
+        // channel was closed at the moment of the gesture", a state it could not
+        // reach, and it returned the same verdict for any other
+        // reason of non-confirmation). The channel state lives in `main.ts`,
+        // in `emettreSiPossible`, and that is where it is tested — not here.
         //
-        // MOTIVATION du mécanisme, et non ce que ce test éprouve : le cas du
-        // leg 10 est celui où le ResizeObserver a vu la taille mais
-        // `readyState !== 'open'` a fait abandonner l'envoi. À l'ouverture du
-        // canal, la taille doit repartir — sans quoi elle est perdue à jamais,
-        // l'observateur ne se redéclenchant que sur un NOUVEAU changement.
+        // MOTIVATION of the mechanism, and not what this test exercises: the case of
+        // legacy item 10 is the one where the ResizeObserver saw the size but
+        // `readyState !== 'open'` made the send give up. When the channel
+        // opens, the size must go out again — otherwise it is lost forever,
+        // the observer only firing again on a NEW change.
         const r = new RejeuResize();
         r.observer({ largeur: 1920, hauteur: 1080 });
-        // aucun `confirmer` : l'envoi n'a pas eu lieu
+        // no `confirmer`: the send has not happened
         expect(r.aEmettre()).toEqual({ largeur: 1920, hauteur: 1080 });
     });
 
-    it('rend la DERNIÈRE taille observée, pas la première', () => {
+    it('returns the LAST observed size, not the first', () => {
         const r = new RejeuResize();
         r.observer({ largeur: 1280, hauteur: 720 });
         r.observer({ largeur: 1920, hauteur: 1080 });
         expect(r.aEmettre()).toEqual({ largeur: 1920, hauteur: 1080 });
     });
 
-    it("ne rend rien tant que rien n'a été observé", () => {
+    it("returns nothing as long as nothing was observed", () => {
         expect(new RejeuResize().aEmettre()).toBeUndefined();
     });
 });

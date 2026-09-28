@@ -1,30 +1,30 @@
-// Le harnais commun des tests de routes HTTP : une base neuve, un serveur qui
-// ne porte QUE la route sous test, des jetons, et les fixtures d'application.
+// The common harness of the HTTP route tests: a fresh database, a server that
+// carries ONLY the route under test, tokens, and the application fixtures.
 //
-// 🔴 EXTRAIT AVANT L'ADDITION, ET C'EST LA RÈGLE DU DÉPÔT, PAS UN GOÛT.
-// `routes-applications.test.ts` était à 480 lignes pour un plafond de 500 :
-// la famille de tests de la route d'icône l'aurait fait FRANCHIR. Le dépôt a
-// franchi ce plafond trois fois au sous-bloc D10 et deux fois en D9, et l'a
-// rattrapé DEUX FOIS PAR UNE COMPRESSION qu'il interdit nommément. L'extraction
-// se joue donc AVANT, jamais après.
+// 🔴 EXTRACTED BEFORE THE ADDITION, AND THAT IS THE REPOSITORY RULE, NOT A TASTE.
+// `routes-applications.test.ts` was at 480 lines for a ceiling of 500:
+// the family of tests of the icon route would have made it CROSS it. The repository
+// crossed that ceiling three times in sub-block D10 and twice in D9, and
+// caught up with it TWICE THROUGH A COMPRESSION it forbids by name. The extraction
+// therefore happens BEFORE, never after.
 //
-// Modèle : `base/harnais.ts` et `agents/canal-harnais.ts`, tous deux existants.
+// Model: `base/harnais.ts` and `agents/canal-harnais.ts`, both existing.
 //
-// ⚠️ AUCUNE LIGNE DE COMPORTEMENT N'A ÉTÉ AJOUTÉE, RETIRÉE NI REFORMULÉE par
-// cette extraction. Le compte de tests a été ANNONCÉ avant d'être mesuré :
-// 19 avant, 19 après.
+// ⚠️ NO LINE OF BEHAVIOUR WAS ADDED, REMOVED OR REWORDED by
+// this extraction. The test count was ANNOUNCED before being measured:
+// 19 before, 19 after.
 //
-// ⚠️ **DIVERGENCE RELEVÉE AVEC LE PLAN DE G2 (E10), QUI ANNONCE « DIX-SEPT
-// tests, chiffre que G1 a annoncé puis mesuré ».** Mesuré le 20 août 2026 :
-// il y en a **DIX-NEUF**. Le nombre a dérivé depuis la clôture de G1 sans que
-// personne ne le reprenne — c'est le naufrage du « 487 » sous sa forme la plus
-// ordinaire. Le compte qui fait foi est celui de la commande.
+// ⚠️ **DIVERGENCE NOTED FROM THE G2 PLAN (E10), WHICH ANNOUNCES « SEVENTEEN
+// tests, a figure G1 announced and then measured ».** Measured on 20 August 2026:
+// there are **NINETEEN**. The number drifted since G1 was closed without
+// anybody picking it up — it is the « 487 » shipwreck in its most
+// ordinary form. The count that counts is the one of the command.
 
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { baseNeuve } from '../base/harnais';
 import type { Pilote } from '../base/pilote';
 import { appliquer, lireParVm } from '../depot/application';
-import { creerUtilisateur } from '../depot/utilisateur';
+import { createUser } from '../depot/utilisateur';
 import { signer } from '../identite/jeton';
 import type { Application } from '../../../proto/ts/plateforme';
 
@@ -32,22 +32,22 @@ export const SECRET = 'un-secret-de-plateforme-de-quarante-octets';
 export const ORIGINE = 'http://127.0.0.1:5173';
 export const MS = 1_787_136_773_742;
 
-/// Ce qu'un test doit fermer quand il a fini.
+/// What a test must close when it is done.
 export interface Montage {
     base: Pilote;
     http: Server;
     url: string;
 }
 
-/// Monte un serveur qui ne porte QUE la route donnée, plus le 404 générique de
-/// `serveur.ts` REPRODUIT MOT POUR MOT.
+/// Stands up a server that carries ONLY the given route, plus the generic 404 of
+/// `serveur.ts` REPRODUCED WORD FOR WORD.
 ///
-/// 🔴 CE 404 N'EST PAS DÉCORATIF : c'est lui qui rend observable un `false`
-/// rendu par le routeur. Sans lui, une route qui mangerait toute une famille de
-/// chemins et rendrait SON PROPRE 404 typé serait indiscernable du 404
-/// générique — G1 a mesuré qu'un `startsWith('/application')` laissait ses
-/// tests VERTS pour cette raison exacte. **Le contrôle compare donc le CORPS,
-/// jamais le seul statut.**
+/// 🔴 THIS 404 IS NOT DECORATIVE: it is what makes a `false`
+/// returned by the router observable. Without it, a route that swallowed a whole family of
+/// paths and returned ITS OWN typed 404 would be indistinguishable from the generic
+/// 404 — G1 measured that a `startsWith('/application')` left its
+/// tests GREEN for this exact reason. **The check therefore compares the BODY,
+/// never the status alone.**
 export async function monterRoute(
     nom: string,
     routeur: (req: IncomingMessage, rep: ServerResponse, base: Pilote) => Promise<boolean>,
@@ -58,7 +58,7 @@ export async function monterRoute(
             .then((servie) => {
                 if (servie) return;
                 rep.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' });
-                rep.end('introuvable\n');
+                rep.end('not found\n');
             })
             .catch((cause) => {
                 rep.writeHead(500, { 'content-type': 'application/json; charset=utf-8' });
@@ -85,13 +85,13 @@ export async function poserVm(p: Pilote, id: string): Promise<void> {
 }
 
 export async function attribuer(p: Pilote, vmId: string, email: string): Promise<string> {
-    const u = await creerUtilisateur(p, email, 'empreinte-opaque-de-test', MS);
+    const u = await createUser(p, email, 'empreinte-opaque-de-test', MS);
     await p.executer('UPDATE vm SET utilisateur_id = ? WHERE id = ?', [u, vmId]);
     return u;
 }
 
-/// Une application témoin. `icone`/`source_max` prennent l'état SANS ICÔNE par
-/// défaut — celui d'une extraction qui a échoué, qui n'est pas une erreur.
+/// A sample application. `icone`/`source_max` take the NO ICON state by
+/// default — that of an extraction that failed, which is not an error.
 export function app(nom: string, cle: string, icone: string | null = null,
                     source: Application['source_max'] = 'non-mesuree'): Application {
     return {
@@ -121,7 +121,7 @@ export async function poserApp(
         vmId,
         {
             aInserer: [app(nom, cle, icone, source)],
-            aMettreAJour: [],
+            toUpdate: [],
             aMarquerDisparues: [],
             aRessusciter: [],
         },
@@ -134,7 +134,7 @@ export function jetonDe(sujet: string, type: 'utilisateur' | 'agent' = 'utilisat
     return signer(sujet, SECRET, MS, undefined, type);
 }
 
-export function avec(
+export function withIt(
     jeton?: string,
     autres: Record<string, string> = {},
 ): Record<string, string> {

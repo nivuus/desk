@@ -1,43 +1,43 @@
-//! Tests du module [`crate::plateforme`].
+//! Tests of the [`crate::plateforme`] module.
 //!
-//! Extrait de `proto/src/plateforme.rs` VERBATIM (sous-bloc G1, tâche 1) : le
-//! fichier parent était à 410 lignes dont 244 de tests, et la règle des 500
-//! lignes exige que l'extraction précède l'addition. Aucun test n'a été
-//! ajouté, retiré ni réécrit par ce déplacement.
+//! Extracted from `proto/src/plateforme.rs` VERBATIM (sub-block G1, task 1): the
+//! parent file was at 410 lines, 244 of them tests, and the 500-line
+//! rule requires the extraction to precede the addition. No test was
+//! added, removed or rewritten by this move.
 //!
-//! ⚠️ `include_str!` résout RELATIVEMENT AU FICHIER QUI LE CONTIENT : le
-//! chemin des vecteurs partagés a donc gagné un `../` en descendant d'un
-//! niveau. C'est la seule ligne dont le TEXTE diffère de l'original ; tout le
-//! reste n'a perdu que ses quatre espaces d'indentation d'enveloppe.
+//! ⚠️ `include_str!` resolves RELATIVE TO THE FILE THAT CONTAINS IT: the
+//! path of the shared vectors thus gained a `../` by going down one
+//! level. It is the only line whose TEXT differs from the original; all the
+//! rest only lost its four spaces of wrapper indentation.
 //!
-//! ⚠️ **CE FICHIER A ÉTÉ DÉCOUPÉ UNE SECONDE FOIS (sous-bloc G2, tâche 1)** :
-//! il était monté à 561 lignes et figurait au tableau de dette de `CLAUDE.md`.
-//! Ce qui reste ici est le **cycle de vie** — version, refus, enrôlement,
-//! battement, et la conformité aux vecteurs partagés, qui porte l'assertion
-//! sur `doc["version"]` et se lit donc comme un test de version. La **gestion
-//! d'apps** vit désormais dans `plateforme/tests_apps.rs`. Aucun test n'a été
-//! ajouté, retiré ni réécrit par ce second déplacement.
+//! ⚠️ **THIS FILE WAS SPLIT A SECOND TIME (sub-block G2, task 1)**:
+//! it had grown to 561 lines and appeared in the debt table of `CLAUDE.md`.
+//! What remains here is the **lifecycle** — version, refusal, enrolment,
+//! heartbeat, and conformance to the shared vectors, which carries the assertion
+//! on `doc["version"]` and thus reads as a version test. **App
+//! management** now lives in `plateforme/tests_apps.rs`. No test was
+//! added, removed or rewritten by this second move.
 
 use super::*;
 
-/// Rend le gabarit avec une version qui **n'est PAS la nôtre**.
+/// Renders the template with a version that **is NOT ours**.
 ///
-/// 🔴 POURQUOI UN GABARIT PLUTÔT QU'UN LITTÉRAL, ET C'EST UNE LEÇON PAYÉE AU
-/// BUMP DE G3. Les six tests ci-dessous portaient `"v":5` en dur — « la version
-/// suivante » telle qu'elle se lisait au temps de G2. Le sous-bloc G3 a monté
-/// `PLATEFORME_VERSION` à 4, et **les six ont alors affirmé que NOTRE PROPRE
-/// version est rejetée**. Ils ont échoué bruyamment, ce qui est le bon
-/// comportement — mais il a fallu les rouvrir un par un, et le prochain bump
-/// aurait recommencé. **Dérivée de la constante, la version étrangère ne peut
-/// plus vieillir.**
+/// 🔴 WHY A TEMPLATE RATHER THAN A LITERAL, AND IT IS A LESSON PAID FOR AT THE
+/// G3 BUMP. The six tests below carried a hard-coded `"v":5` — "the next
+/// version" as it read in the time of G2. Sub-block G3 raised
+/// `PLATEFORME_VERSION` to 4, and **the six then asserted that OUR OWN
+/// version is rejected**. They failed loudly, which is the right
+/// behaviour — but they had to be reopened one by one, and the next bump
+/// would have started again. **Derived from the constant, the foreign version can
+/// no longer age.**
 ///
-/// Le gabarit porte le repère `"v":0` : zéro n'est la version de personne, donc
-/// un gabarit qu'on aurait oublié de faire passer ici échouerait, au lieu de
-/// passer en éprouvant autre chose que ce qu'il annonce.
+/// The template carries the marker `"v":0`: zero is nobody's version, so
+/// a template one forgot to pass through here would fail, instead of
+/// passing while testing something other than what it announces.
 pub(super) fn etrangere(gabarit: &str) -> String {
     assert!(
         gabarit.contains("\"v\":0"),
-        "le gabarit doit porter le repère \"v\":0"
+        "the template must carry the marker \"v\":0"
     );
     gabarit.replace(
         "\"v\":0",
@@ -46,8 +46,8 @@ pub(super) fn etrangere(gabarit: &str) -> String {
 }
 
 #[test]
-fn serialise_l_enrolement_en_kebab_case() {
-    let json = serde_json::to_string(&VersLaPlateforme::enroler("w1", "chut")).expect("sér.");
+fn serialises_the_enrolment_in_kebab_case() {
+    let json = serde_json::to_string(&VersLaPlateforme::enroler("w1", "chut")).expect("ser.");
     assert_eq!(
         json,
         r#"{"type":"enroler","v":5,"vm":"w1","secret":"chut"}"#
@@ -55,25 +55,25 @@ fn serialise_l_enrolement_en_kebab_case() {
 }
 
 #[test]
-fn serialise_le_battement() {
-    let json = serde_json::to_string(&VersLaPlateforme::battement()).expect("sér.");
+fn serialises_the_heartbeat() {
+    let json = serde_json::to_string(&VersLaPlateforme::battement()).expect("ser.");
     assert_eq!(json, r#"{"type":"battement","v":5}"#);
 }
 
 #[test]
-fn serialise_le_battement_recu_en_kebab_case() {
-    // 🔴 `battement-recu` EST LA SEULE VARIANTE A DEUX MOTS DU MODULE, donc
-    // la seule dont `kebab-case` et `snake_case` diffèrent. Sans ce test,
-    // passer `rename_all` en `snake_case` ne rougissait RIEN — MESURE : la
-    // mutation restait verte sur les 50 tests. Rust émettrait alors
-    // `battement_recu` là où le miroir TypeScript lit `battement-recu`, et
-    // les deux bouts divergeraient EN SILENCE sur le message que l'agent
-    // reçoit le plus souvent.
+fn serialises_the_received_heartbeat_in_kebab_case() {
+    // 🔴 `battement-recu` IS THE ONLY TWO-WORD VARIANT OF THE MODULE, hence
+    // the only one where `kebab-case` and `snake_case` differ. Without this test,
+    // switching `rename_all` to `snake_case` turned NOTHING red — MEASURED: the
+    // mutation stayed green on the 50 tests. Rust would then emit
+    // `battement_recu` where the TypeScript mirror reads `battement-recu`, and
+    // the two ends would diverge SILENTLY on the message the agent
+    // receives most often.
     let json = serde_json::to_string(&DepuisLaPlateforme::battement_recu(
         "kkk",
         1_787_136_774_000,
     ))
-    .expect("sér.");
+    .expect("ser.");
     assert_eq!(
         json,
         r#"{"type":"battement-recu","v":5,"jeton":"kkk","expire_a":1787136774000}"#
@@ -81,24 +81,24 @@ fn serialise_le_battement_recu_en_kebab_case() {
 }
 
 #[test]
-fn serialise_l_enrole_et_le_refus() {
+fn serialises_the_enrolled_and_the_refusal() {
     let json = serde_json::to_string(&DepuisLaPlateforme::enrole("PPP", "jjj", 1_787_136_773_742))
-        .expect("sér.");
+        .expect("ser.");
     assert_eq!(
         json,
         r#"{"type":"enrole","v":5,"prefixe":"PPP","jeton":"jjj","expire_a":1787136773742}"#
     );
     let json =
-        serde_json::to_string(&DepuisLaPlateforme::refus(MotifCanal::Enrolement)).expect("sér.");
+        serde_json::to_string(&DepuisLaPlateforme::refus(MotifCanal::Enrolement)).expect("ser.");
     assert_eq!(json, r#"{"type":"refus","v":5,"motif":"enrolement"}"#);
 }
 
-// 🔴 UN TEST DE VERSION PAR VARIANTE ENTRANTE, jamais un seul pour toutes.
-// `verifie_version` est branchée variante par variante : l'omettre sur UNE
-// seule laisserait ce trou-là ouvert, et un test unique ne le verrait pas.
+// 🔴 ONE VERSION TEST PER INCOMING VARIANT, never a single one for all.
+// `check_version` is wired variant by variant: omitting it on ONE
+// alone would leave that hole open, and a single test would not see it.
 
 #[test]
-fn rejette_une_version_absente_sur_enroler() {
+fn rejects_an_absent_version_on_enroler() {
     assert!(serde_json::from_str::<VersLaPlateforme>(
         r#"{"type":"enroler","vm":"w","secret":"s"}"#
     )
@@ -106,12 +106,12 @@ fn rejette_une_version_absente_sur_enroler() {
 }
 
 #[test]
-fn rejette_une_version_absente_sur_battement() {
+fn rejects_an_absent_version_on_battement() {
     assert!(serde_json::from_str::<VersLaPlateforme>(r#"{"type":"battement"}"#).is_err());
 }
 
 #[test]
-fn rejette_une_version_absente_sur_enrole() {
+fn rejects_an_absent_version_on_enrole() {
     assert!(serde_json::from_str::<DepuisLaPlateforme>(
         r#"{"type":"enrole","prefixe":"P","jeton":"j","expire_a":1}"#
     )
@@ -119,7 +119,7 @@ fn rejette_une_version_absente_sur_enrole() {
 }
 
 #[test]
-fn rejette_une_version_absente_sur_battement_recu() {
+fn rejects_an_absent_version_on_battement_recu() {
     assert!(serde_json::from_str::<DepuisLaPlateforme>(
         r#"{"type":"battement-recu","jeton":"j","expire_a":1}"#
     )
@@ -127,7 +127,7 @@ fn rejette_une_version_absente_sur_battement_recu() {
 }
 
 #[test]
-fn rejette_une_version_absente_sur_refus() {
+fn rejects_an_absent_version_on_refus() {
     assert!(
         serde_json::from_str::<DepuisLaPlateforme>(r#"{"type":"refus","motif":"version"}"#)
             .is_err()
@@ -135,7 +135,7 @@ fn rejette_une_version_absente_sur_refus() {
 }
 
 #[test]
-fn rejette_la_version_suivante_sur_enroler() {
+fn rejects_the_next_version_on_enroler() {
     assert!(serde_json::from_str::<VersLaPlateforme>(&etrangere(
         r#"{"type":"enroler","v":0,"vm":"w","secret":"s"}"#
     ))
@@ -143,7 +143,7 @@ fn rejette_la_version_suivante_sur_enroler() {
 }
 
 #[test]
-fn rejette_la_version_suivante_sur_battement() {
+fn rejects_the_next_version_on_battement() {
     assert!(
         serde_json::from_str::<VersLaPlateforme>(&etrangere(r#"{"type":"battement","v":0}"#))
             .is_err()
@@ -151,7 +151,7 @@ fn rejette_la_version_suivante_sur_battement() {
 }
 
 #[test]
-fn rejette_la_version_suivante_sur_enrole() {
+fn rejects_the_next_version_on_enrole() {
     assert!(serde_json::from_str::<DepuisLaPlateforme>(&etrangere(
         r#"{"type":"enrole","v":0,"prefixe":"P","jeton":"j","expire_a":1}"#
     ))
@@ -159,32 +159,32 @@ fn rejette_la_version_suivante_sur_enrole() {
 }
 
 #[test]
-fn rejette_la_version_suivante_sur_battement_recu() {
+fn rejects_the_next_version_on_battement_recu() {
     assert!(serde_json::from_str::<DepuisLaPlateforme>(&etrangere(
         r#"{"type":"battement-recu","v":0,"jeton":"j","expire_a":1}"#
     ))
     .is_err());
 }
 
-/// ❌ **CE TEST ÉPINGLAIT LE DÉFAUT 2, ET IL EST RETOURNÉ LE 20 AOÛT 2026.**
-/// Il exigeait qu'un refus d'une version voisine soit REJETÉ — c'est-à-dire
-/// exactement ce qui empêchait un agent périmé de lire pourquoi il l'était.
-/// La propriété qu'il gardait (« chaque variante entrante contrôle sa
-/// version ») reste gardée par ses quatre jumeaux ci-dessus et par
-/// `les_messages_autres_que_le_refus_restent_refuses_sur_une_version_divergente` ;
-/// **le refus, lui, en est retiré à dessein**, et c'est ce que ce test dit
-/// désormais. Le champ `v` reste OBLIGATOIRE : la tolérance porte sur sa
-/// VALEUR, jamais sur sa présence.
+/// ❌ **THIS TEST PINNED DEFECT 2, AND IT WAS REVERSED ON 20 AUGUST 2026.**
+/// It required a refusal of a neighbouring version to be REJECTED — that is
+/// exactly what kept an obsolete agent from reading why it was.
+/// The property it guarded ("each incoming variant checks its
+/// version") stays guarded by its four twins above and by
+/// `messages_other_than_the_refusal_stay_refused_on_a_diverging_version`;
+/// **the refusal, however, is removed from it on purpose**, and that is what this test
+/// now says. The `v` field stays MANDATORY: the tolerance bears on its
+/// VALUE, never on its presence.
 #[test]
-fn le_refus_tolere_toute_version_mais_exige_le_champ() {
+fn the_refusal_tolerates_any_version_but_requires_the_field() {
     let lu: DepuisLaPlateforme =
         serde_json::from_str(&etrangere(r#"{"type":"refus","v":0,"motif":"version"}"#))
             .expect("lisible");
-    // ⚠️ LA VERSION ATTENDUE SE DÉRIVE ELLE AUSSI. Elle valait `4` en dur, ce
-    // qui était juste tant que 4 n'était la version de personne ; le bump de G3
-    // l'a rendue nôtre, et l'assertion a échoué. C'est le même piège que
-    // `etrangere` referme au-dessus, et il vaut aussi pour ce qu'on ATTEND, pas
-    // seulement pour ce qu'on ENVOIE.
+    // ⚠️ THE EXPECTED VERSION IS DERIVED TOO. It was a hard-coded `4`, which
+    // was right as long as 4 was nobody's version; the G3 bump
+    // made it ours, and the assertion failed. It is the same trap that
+    // `etrangere` closes above, and it holds also for what we EXPECT, not
+    // only for what we SEND.
     assert_eq!(
         lu,
         DepuisLaPlateforme::Refus {
@@ -192,10 +192,10 @@ fn le_refus_tolere_toute_version_mais_exige_le_champ() {
             motif: "version".into()
         }
     );
-    // Sans `v`, en revanche, c'est toujours une forme invalide : un message
-    // sans version n'est pas un message d'une version que nous ignorons. Et
-    // `v: null` non plus — c'est le trou exact que `verifie_version` ferme
-    // pour les autres variantes, et que `version_toleree` ne rouvre pas.
+    // Without `v`, on the other hand, it is still an invalid shape: a message
+    // without a version is not a message of a version we do not know. And
+    // `v: null` neither — it is the exact hole that `check_version` closes
+    // for the other variants, and that `version_toleree` does not reopen.
     assert!(
         serde_json::from_str::<DepuisLaPlateforme>(r#"{"type":"refus","motif":"version"}"#)
             .is_err()
@@ -204,9 +204,9 @@ fn le_refus_tolere_toute_version_mais_exige_le_champ() {
         r#"{"type":"refus","v":null,"motif":"version"}"#
     )
     .is_err());
-    // Et la forme reste GELÉE : un champ de plus est refusé
-    // (`deny_unknown_fields`), ce qui est la clause 3 de l'en-tête du module —
-    // écrite comme une contrainte sur les versions FUTURES, éprouvée ici.
+    // And the shape stays FROZEN: one more field is refused
+    // (`deny_unknown_fields`), which is clause 3 of the module header —
+    // written as a constraint on FUTURE versions, tested here.
     assert!(serde_json::from_str::<DepuisLaPlateforme>(&etrangere(
         r#"{"type":"refus","v":0,"motif":"version","detail":"x"}"#
     ))
@@ -214,15 +214,15 @@ fn le_refus_tolere_toute_version_mais_exige_le_champ() {
 }
 
 #[test]
-fn rejette_un_type_inconnu() {
+fn rejects_an_unknown_type() {
     assert!(serde_json::from_str::<VersLaPlateforme>(r#"{"type":"vol","v":5}"#).is_err());
     assert!(serde_json::from_str::<DepuisLaPlateforme>(r#"{"type":"vol","v":5}"#).is_err());
 }
 
 #[test]
-fn rejette_un_champ_inconnu() {
-    // `deny_unknown_fields` : un champ de trop est une divergence de
-    // format, pas une extension tolérable — le canal n'a qu'une version.
+fn rejects_an_unknown_field() {
+    // `deny_unknown_fields`: an extra field is a format divergence,
+    // not a tolerable extension — the channel has only one version.
     assert!(
         serde_json::from_str::<VersLaPlateforme>(r#"{"type":"battement","v":5,"bonus":1}"#)
             .is_err()
@@ -230,25 +230,25 @@ fn rejette_un_champ_inconnu() {
 }
 
 #[test]
-fn round_trip_des_trois_reponses() {
+fn round_trip_of_the_three_answers() {
     for message in [
         DepuisLaPlateforme::enrole("PPP", "jjj", 1_787_136_773_742),
         DepuisLaPlateforme::battement_recu("kkk", 1_787_136_774_000),
         DepuisLaPlateforme::refus(MotifCanal::Sequence),
     ] {
-        let json = serde_json::to_string(&message).expect("sér.");
-        let relu: DepuisLaPlateforme = serde_json::from_str(&json).expect("désér.");
+        let json = serde_json::to_string(&message).expect("ser.");
+        let relu: DepuisLaPlateforme = serde_json::from_str(&json).expect("deser.");
         assert_eq!(message, relu);
     }
 }
 
-/// 🔴 LA ROUGE DU BUMP LUI-MÊME. Si `PLATEFORME_VERSION` restait à 1, ce
-/// test resterait vert sur les seules variantes neuves et la rupture ne
-/// serait pas jouée : c'est ici qu'on assène qu'un agent déployé au format
-/// v1 N'EST PLUS COMPRIS, et que le refus `version` NE SE RÉESSAIE PAS
-/// (en-tête du module). Agent et plateforme se déploient au même commit.
+/// 🔴 THE RED OF THE BUMP ITSELF. If `PLATEFORME_VERSION` stayed at 1, this
+/// test would stay green on the new variants alone and the break would
+/// not be played: it is here that we assert that an agent deployed in the
+/// v1 format IS NO LONGER UNDERSTOOD, and that the `version` refusal IS NOT RETRIED
+/// (module header). Agent and platform are deployed at the same commit.
 #[test]
-fn les_variantes_de_p3_rejettent_desormais_la_version_1() {
+fn the_p3_variants_now_reject_version_1() {
     assert!(serde_json::from_str::<VersLaPlateforme>(
         r#"{"type":"enroler","v":1,"vm":"w","secret":"s"}"#
     )
@@ -262,10 +262,10 @@ fn les_variantes_de_p3_rejettent_desormais_la_version_1() {
         r#"{"type":"battement-recu","v":1,"jeton":"j","expire_a":1}"#
     )
     .is_err());
-    // ⚠️ LE REFUS EST DÉLIBÉRÉMENT ABSENT DE CETTE LISTE depuis la correction
-    // du 20 août 2026 : il est la SEULE variante hors versionnement, et un
-    // agent v1 doit précisément pouvoir lire le refus qui lui apprend qu'il
-    // est périmé. Voir `le_refus_tolere_toute_version_mais_exige_le_champ`.
+    // ⚠️ THE REFUSAL IS DELIBERATELY ABSENT FROM THIS SET since the fix
+    // of 20 August 2026: it is the ONLY variant outside versioning, and a
+    // v1 agent must precisely be able to read the refusal that tells it it
+    // is obsolete. See `the_refusal_tolerates_any_version_but_requires_the_field`.
     assert!(serde_json::from_str::<DepuisLaPlateforme>(
         r#"{"type":"refus","v":1,"motif":"version"}"#
     )
@@ -273,21 +273,21 @@ fn les_variantes_de_p3_rejettent_desormais_la_version_1() {
 }
 
 // ---------------------------------------------------------------------------
-// Correction du 20 août 2026 — UN REFUS DOIT ÊTRE LISIBLE PAR SON DESTINATAIRE.
+// Fix of 20 August 2026 — A REFUSAL MUST BE READABLE BY ITS RECIPIENT.
 // ---------------------------------------------------------------------------
 
-/// 🔴 LA ROUGE DU DÉFAUT 2, ET C'EST EXACTEMENT LE CAS MESURÉ EN RECETTE G1 :
-/// un agent v1 face à une plateforme v2 reçoit `{"type":"refus","v":2,
-/// "motif":"version"}` et ne peut pas le lire, parce que `verifie_version`
-/// s'applique AUSSI au refus. Il tombe dans la branche « illisible », qui est
-/// reprenable, et boucle sans terme — 0 ligne de refus, 10 reprises relevées.
+/// 🔴 THE RED OF DEFECT 2, AND IT IS EXACTLY THE CASE MEASURED IN THE G1 ACCEPTANCE RUN:
+/// a v1 agent facing a v2 platform receives `{"type":"refus","v":2,
+/// "motif":"version"}` and cannot read it, because `check_version`
+/// ALSO applies to the refusal. It falls into the "unreadable" branch, which is
+/// resumable, and loops with no end — 0 refusal line, 10 resumptions recorded.
 ///
-/// Le cas est écrit dans le sens SYMÉTRIQUE (nous v2, l'émetteur v97) parce
-/// que c'est celui que ce dépôt peut jouer sans figer une version morte : la
-/// propriété exigée est « quelle que soit la version de l'émetteur », et elle
-/// ne connaît pas de sens.
+/// The case is written in the SYMMETRIC direction (us v2, the sender v97) because
+/// it is the one this repository can play without freezing a dead version: the
+/// required property is "whatever the sender's version", and it
+/// knows no direction.
 #[test]
-fn un_refus_reste_lisible_quelle_que_soit_la_version_de_son_emetteur() {
+fn a_refusal_stays_readable_whatever_the_version_of_its_sender() {
     for brut in [
         r#"{"type":"refus","v":97,"motif":"version"}"#,
         r#"{"type":"refus","v":1,"motif":"enrolement"}"#,
@@ -295,18 +295,18 @@ fn un_refus_reste_lisible_quelle_que_soit_la_version_de_son_emetteur() {
         let lu = serde_json::from_str::<DepuisLaPlateforme>(brut);
         assert!(
             lu.is_ok(),
-            "refus illisible alors qu'il DOIT l'être : {brut} -> {:?}",
+            "refusal unreadable although it MUST be readable: {brut} -> {:?}",
             lu.err()
         );
     }
 }
 
-/// L'autre moitié, sans laquelle la tolérance ci-dessus pourrait s'obtenir en
-/// ne vérifiant plus RIEN : tout message qui n'est pas un refus reste refusé
-/// sur une version divergente. Un `enrole` d'une version inconnue peut porter
-/// un sens que nous ignorons, et l'accepter serait pire que de le rejeter.
+/// The other half, without which the tolerance above could be obtained by
+/// no longer checking ANYTHING: every message that is not a refusal stays refused
+/// on a diverging version. An `enrole` of an unknown version may carry
+/// a meaning we do not know, and accepting it would be worse than rejecting it.
 #[test]
-fn les_messages_autres_que_le_refus_restent_refuses_sur_une_version_divergente() {
+fn messages_other_than_the_refusal_stay_refused_on_a_diverging_version() {
     for brut in [
         r#"{"type":"enrole","v":97,"prefixe":"P","jeton":"j","expire_a":1}"#,
         r#"{"type":"battement-recu","v":97,"jeton":"j","expire_a":1}"#,
@@ -314,38 +314,38 @@ fn les_messages_autres_que_le_refus_restent_refuses_sur_une_version_divergente()
     ] {
         assert!(
             serde_json::from_str::<DepuisLaPlateforme>(brut).is_err(),
-            "message d'une version inconnue accepté : {brut}"
+            "message of an unknown version accepted: {brut}"
         );
     }
 }
 
-/// La table des motifs, parcourue dans les DEUX SENS sur les quatre variantes.
+/// The table of reasons, walked in BOTH DIRECTIONS over the four variants.
 ///
-/// 🔴 C'EST CE QUI REMPLACE LE `rename_all` RETIRÉ, ET C'EST STRICTEMENT PLUS
-/// FORT QUE LUI. La lacune que ce fichier documente pour `IssueLancement` —
-/// « aucune variante n'a deux mots, donc `kebab-case` et `snake_case`
-/// produisent les mêmes chaînes, et aucun test ne peut rougir sur un
-/// changement de convention » — vaut à l'identique pour `MotifCanal`, dont les
-/// quatre variantes sont d'un seul mot. Une table explicite, elle, rougit sur
-/// n'importe quel changement de mot, à un mot comme à deux.
+/// 🔴 IT IS WHAT REPLACES THE REMOVED `rename_all`, AND IT IS STRICTLY STRONGER
+/// THAN IT. The gap this file documents for `IssueLancement` —
+/// "no variant has two words, so `kebab-case` and `snake_case`
+/// produce the same strings, and no test can turn red on a
+/// change of convention" — holds identically for `MotifCanal`, whose
+/// four variants are single-word. An explicit table, on the other hand, turns red on
+/// any change of word, with one word as with two.
 #[test]
-fn la_table_des_motifs_fait_l_aller_retour_sur_les_quatre() {
+fn the_reason_table_makes_the_round_trip_on_all_four() {
     let attendus = [
         (MotifCanal::Version, "version"),
         (MotifCanal::Forme, "forme"),
         (MotifCanal::Enrolement, "enrolement"),
         (MotifCanal::Sequence, "sequence"),
     ];
-    // 🔴 ANTI-OUBLI : `TOUS` doit couvrir exactement l'énumération ci-dessus.
-    // Une variante ajoutée sans sa ligne ici rendrait ce compte faux.
-    assert_eq!(MotifCanal::TOUS.len(), attendus.len());
+    // 🔴 ANTI-OMISSION: `ALL` must cover exactly the enumeration above.
+    // A variant added without its line here would make this count wrong.
+    assert_eq!(MotifCanal::ALL.len(), attendus.len());
     for (motif, mot) in attendus {
-        assert!(MotifCanal::TOUS.contains(&motif), "{mot} absent de TOUS");
+        assert!(MotifCanal::ALL.contains(&motif), "{mot} absent from TOUS");
         assert_eq!(motif.mot(), mot);
         assert_eq!(MotifCanal::depuis_mot(mot), Some(motif));
     }
-    // Un mot que nous ne connaissons pas ne devient JAMAIS un motif par
-    // défaut : il se rend `None`, et l'appelant le journalise tel quel.
+    // A word we do not know NEVER becomes a default reason: it
+    // returns `None`, and the caller logs it as is.
     assert_eq!(MotifCanal::depuis_mot("quota-depasse"), None);
     assert_eq!(MotifCanal::depuis_mot(""), None);
     assert_eq!(MotifCanal::depuis_mot("Version"), None);

@@ -61,7 +61,7 @@ if (mode === 'tcp') {
         octets += m.length; paquets += 1;
     });
     srv.bind(port, '0.0.0.0');
-    let dernier = 0;
+    let last = 0;
     const fin = () => {
         const ms = t0 === null ? 0 : Number(process.hrtime.bigint() - t0) / 1e6;
         bilan('fin', octets, ms || 1, { paquets });
@@ -70,8 +70,8 @@ if (mode === 'tcp') {
     // On s'arrête sur le SILENCE (1,5 s sans rien), pas sur une durée : la
     // durée réelle de l'émission est ce qu'on veut mesurer.
     const veille = setInterval(() => {
-        if (t0 !== null && octets === dernier) { clearInterval(veille); fin(); }
-        dernier = octets;
+        if (t0 !== null && octets === last) { clearInterval(veille); fin(); }
+        last = octets;
     }, 1500);
     setTimeout(fin, limiteS * 1000);
 }

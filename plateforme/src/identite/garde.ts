@@ -1,80 +1,80 @@
-// La règle de la poignée de main : qui passe, qui est refusé, avec quel motif.
+// The handshake rule: who passes, who is refused, with which reason.
 //
-// 🔴 CE MODULE EST PUR ET SYNCHRONE, et ce n'est pas un détail de confort. Le
-// gestionnaire `message` de `ws` est synchrone (`signaling/relais.ts`), et
-// `signaling/trace.ts` explique pourquoi une promesse rejetée y abat tout le
-// process Node. Une signature qui rendrait une promesse INVITERAIT un appelant
-// à l'attendre — exactement ce que P1 a interdit pour la trace. La garde ne
-// touche donc ni la base, ni une horloge réelle : les deux lui sont injectées.
+// 🔴 THIS MODULE IS PURE AND SYNCHRONOUS, and it is not a convenience detail. The
+// `ws` `message` handler is synchronous (`signaling/relais.ts`), and
+// `signaling/trace.ts` explains why a promise rejected there takes down the whole
+// Node process. A signature returning a promise would INVITE a caller
+// to await it — exactly what P1 forbade for the trace. The guard therefore
+// touches neither the database nor a real clock: both are injected into it.
 //
-// 🔴 `verifier` ET `revendiquer` SONT DEUX APPELS DISTINCTS, et la distinction
-// n'est pas cosmétique : la revendication ne doit avoir lieu qu'APRÈS que
-// `Appariement::declarer` a accepté. Sinon un pair refusé pour cause de rôle
-// déjà occupé laisserait derrière lui une appartenance FANTÔME, et le pair
-// légitime se verrait refuser sa propre session. Les deux appels sont dans le
-// même bloc synchrone du relais : il n'y a pas de course entre eux, et c'est
-// ce qui autorise à les séparer.
+// 🔴 `verify` AND `revendiquer` ARE TWO DISTINCT CALLS, and the distinction
+// is not cosmetic: the claim must only happen AFTER
+// `Appariement::declarer` has accepted. Otherwise a peer refused because the role
+// was already taken would leave behind a GHOST ownership, and the legitimate
+// peer would be refused its own session. The two calls are in the
+// same synchronous block of the relay: there is no race between them, and that is
+// what allows separating them.
 //
-// ✅ CE QUE P2 NE FERMAIT PAS EST FERMÉ (sous-bloc P3). P2 acceptait ici tout
-// pair déclarant `{"role":"agent"}` SANS jeton, qui recevait donc des
-// identifiants TURN valables 86 400 s (`signaling/ice.ts`) sans présenter la
-// moindre identité — la moitié `agent` du trou, que le libellé du critère ① de
-// P2 déclarait explicitement. Le rôle `agent` exige désormais son jeton,
-// exactement comme le rôle `client`, et deux choses de plus :
+// ✅ WHAT P2 DID NOT CLOSE IS CLOSED (sub-block P3). P2 accepted here any
+// peer declaring `{"role":"agent"}` WITHOUT a token, which therefore received
+// TURN credentials valid for 86 400 s (`signaling/ice.ts`) without presenting the
+// slightest identity — the `agent` half of the hole, which the wording of P2's criterion ①
+// explicitly declared. The `agent` role now requires its token,
+// exactly like the `client` role, plus two more things:
 //
-//   1. le jeton doit être DE TYPE `agent` (`identite/jeton.ts`, claim `sty`) —
-//      sans quoi un jeton humain volé ouvrirait un rôle `agent` ; et
-//      réciproquement un jeton d'agent ne peut PAS ouvrir un rôle `client`,
-//      ce qui contournerait l'appartenance de session posée par P2 ;
-//   2. le SUJET du jeton doit PRÉFIXER le nom de session demandé — sans quoi
-//      un agent enrôlé occuperait la session de toute autre VM, et
-//      l'enrôlement n'authentifierait que l'existence d'une VM, jamais
-//      LAQUELLE.
+//   1. the token must be OF TYPE `agent` (`identite/jeton.ts`, claim `sty`) —
+//      otherwise a stolen human token would open an `agent` role; and
+//      conversely an agent token can NOT open a `client` role,
+//      which would bypass the session ownership set by P2;
+//   2. the token SUBJECT must PREFIX the requested session name — otherwise
+//      an enrolled agent would occupy the session of any other VM, and
+//      enrolment would only authenticate the existence of a VM, never
+//      WHICH ONE.
 //
-// 🔴 LA GARDE NE LIT PAS `agent_enrole`, ET C'EST STRUCTUREL, pas une
-// économie. Elle est PURE ET SYNCHRONE (voir l'avertissement ci-dessus), et
-// une lecture de base y demanderait un `await` sur le chemin de la poignée de
-// main. L'identité a été établie AILLEURS — sur le canal `/agent`, qui est
-// asynchrone sans gêner personne et qui délivre le jeton ; la garde ne fait
-// que la relire dans ce jeton.
+// 🔴 THE GUARD DOES NOT READ `agent_enrole`, AND THAT IS STRUCTURAL, not a
+// saving. It is PURE AND SYNCHRONOUS (see the warning above), and
+// a database read would require an `await` on the handshake
+// path. The identity was established ELSEWHERE — on the `/agent` channel, which is
+// asynchronous without bothering anyone and which issues the token; the guard only
+// reads it back from that token.
 
-import { verifierJeton, type TypeSujet } from './jeton';
+import { verifyToken, type TypeSujet } from './jeton';
 import { SEPARATEUR } from '../agents/prefixe';
 import type { ProprieteDeSession } from '../signaling/propriete';
 import type { Role } from '../signaling/appariement';
 
 export type MotifRefus = 'jeton-absent' | 'jeton-invalide' | 'jeton-expire' | 'session-refusee';
 
-/// ⚠️ Le refus porte DEUX textes, et c'est délibéré : `message` part SUR LE
-/// FIL, `journal` reste chez nous.
+/// ⚠️ The refusal carries TWO texts, and that is deliberate: `message` goes ON THE
+/// WIRE, `journal` stays with us.
 ///
-/// La spec exige un « refus typé, journalisé, avec l'identifiant demandé »
-/// (critère ③) — mais dire au demandeur que la session appartient à un autre,
-/// ou même qu'elle existe, serait un ORACLE : il apprendrait par tâtonnement
-/// quels noms de session sont pris. Le champ `journal` porte donc le nom de
-/// session et l'identifiant du demandeur ; `message` ne porte ni l'un ni
-/// l'autre. C'est ce qui sépare un diagnostic d'un oracle.
+/// The spec requires a "typed refusal, logged, with the requested identifier"
+/// (criterion ③) — but telling the requester that the session belongs to someone else,
+/// or even that it exists, would be an ORACLE: they would learn by trial and error
+/// which session names are taken. The `journal` field therefore carries the session
+/// name and the requester's identifier; `message` carries neither the one nor
+/// the other. That is what separates a diagnosis from an oracle.
 ///
-/// ⚠️ `journal` est une EXTENSION de l'interface fixée par le plan (§
-/// « Interfaces partagées »), assumée ici : l'alternative aurait été de
-/// journaliser DANS la garde, ce qui lui donnerait un effet de bord d'entrée /
-/// sortie et contredirait le mot « pure » de sa propre spécification. Le
-/// relais écrit la ligne (`signaling/relais.ts`).
+/// ⚠️ `journal` is an EXTENSION of the interface fixed by the plan (§
+/// "Shared interfaces"), owned here: the alternative would have been to
+/// log INSIDE the guard, which would give it an input / output side effect
+/// and contradict the word "pure" of its own specification. The
+/// relay writes the line (`signaling/relais.ts`).
 export type Verdict =
-    | { ok: true; utilisateurId?: string }
+    | { ok: true; userId?: string }
     | { ok: false; motif: MotifRefus; message: string; journal: string };
 
 export interface Garde {
-    /// SANS EFFET DE BORD : elle décide, elle n'inscrit rien.
-    verifier(poignee: { role: Role; session: string; jeton?: unknown }): Verdict;
-    /// Appelée APRÈS que `Appariement::declarer` a accepté, et seulement alors.
-    revendiquer(session: string, utilisateurId: string | undefined): void;
+    /// WITHOUT SIDE EFFECTS: it decides, it records nothing.
+    verify(poignee: { role: Role; session: string; jeton?: unknown }): Verdict;
+    /// Called AFTER `Appariement::declarer` has accepted, and only then.
+    revendiquer(session: string, userId: string | undefined): void;
     liberer(session: string): void;
 }
 
-/// Le seul texte qu'un pair refusé pour cause d'appartenance reçoit. Il ne dit
-/// ni à qui la session appartient, ni si elle existe.
-const MESSAGE_SESSION_REFUSEE = 'accès refusé à la session demandée';
+/// The only text a peer refused on ownership grounds receives. It says
+/// neither whom the session belongs to, nor whether it exists.
+const MESSAGE_SESSION_REFUSEE = 'access refused to the requested session';
 
 export function garde(
     secret: string,
@@ -82,33 +82,33 @@ export function garde(
     proprietes: ProprieteDeSession,
 ): Garde {
     return {
-        verifier({ role, session, jeton }): Verdict {
+        verify({ role, session, jeton }): Verdict {
             if (jeton === undefined || jeton === null || jeton === '') {
                 return {
                     ok: false,
                     motif: 'jeton-absent',
-                    message: 'authentification requise',
-                    journal: `poignée de main sans jeton sur la session ${session}`,
+                    message: 'authentication required',
+                    journal: `handshake without a token on session ${session}`,
                 };
             }
 
-            const verdict = verifierJeton(jeton, secret, maintenant());
+            const verdict = verifyToken(jeton, secret, maintenant());
             if (!verdict.ok) {
                 const expire = verdict.motif === 'expire';
                 return {
                     ok: false,
                     motif: expire ? 'jeton-expire' : 'jeton-invalide',
-                    // Le pair a besoin de savoir s'il doit RAFRAÎCHIR ou se
-                    // reconnecter : la distinction expiré / invalide n'est pas
-                    // un oracle, elle porte sur SON propre jeton.
-                    message: expire ? 'jeton expiré' : 'jeton invalide',
-                    journal: `jeton refusé (${verdict.motif}) sur la session ${session}`,
+                    // The peer needs to know whether to REFRESH or to
+                    // reconnect: the expired / invalid distinction is not
+                    // an oracle, it is about ITS OWN token.
+                    message: expire ? 'token expired' : 'invalid token',
+                    journal: `token refused (${verdict.motif}) on session ${session}`,
                 };
             }
 
-            // 🔴 LE TYPE ATTENDU DÉPEND DU RÔLE, ET LES DEUX SENS SONT
-            // GARDÉS. Ne garder qu'un sens laisserait l'autre confusion
-            // ouverte, et chacune est grave à sa façon — voir l'en-tête.
+            // 🔴 THE EXPECTED TYPE DEPENDS ON THE ROLE, AND BOTH DIRECTIONS ARE
+            // GUARDED. Guarding one direction only would leave the other confusion
+            // open, and each is serious in its own way — see the header.
             const attendu: TypeSujet = role === 'agent' ? 'agent' : 'utilisateur';
             if (verdict.type !== attendu) {
                 return {
@@ -116,34 +116,34 @@ export function garde(
                     motif: 'session-refusee',
                     message: MESSAGE_SESSION_REFUSEE,
                     journal:
-                        `session ${session} refusée à ${verdict.sujet} : ` +
-                        `jeton de type ${verdict.type} présenté pour le rôle ${role}`,
+                        `session ${session} refused to ${verdict.sujet}: ` +
+                        `token of type ${verdict.type} presented for the role ${role}`,
                 };
             }
 
             if (role === 'agent') {
-                // Le sujet d'un jeton d'agent EST le préfixe de sa VM. La
-                // comparaison porte le SÉPARATEUR, et ce n'est pas cosmétique :
-                // un `startsWith(sujet)` nu ferait qu'un agent de préfixe `AB`
-                // occupe les sessions de la VM `ABC`, dont le préfixe le
-                // prolonge — une collision qui ne se produirait qu'entre deux
-                // VMs précises, donc jamais en essai et toujours en production.
+                // The subject of an agent token IS the prefix of its VM. The
+                // comparison includes the SEPARATOR, and that is not cosmetic:
+                // a bare `startsWith(sujet)` would let an agent with prefix `AB`
+                // occupy the sessions of VM `ABC`, whose prefix
+                // extends it — a collision that would only happen between two
+                // specific VMs, hence never in testing and always in production.
                 if (!session.startsWith(verdict.sujet + SEPARATEUR)) {
                     return {
                         ok: false,
                         motif: 'session-refusee',
                         message: MESSAGE_SESSION_REFUSEE,
                         journal:
-                            `session ${session} refusée à l'agent ${verdict.sujet} : ` +
-                            `elle ne porte pas son préfixe`,
+                            `session ${session} refused to agent ${verdict.sujet}: ` +
+                            `it does not carry its prefix`,
                     };
                 }
-                // ⚠️ L'AGENT NE REVENDIQUE TOUJOURS RIEN, et `verifier` ne rend
-                // donc PAS d'`utilisateurId` ici. Sa session doit rester
-                // revendicable par le client humain qui la rejoindra — c'est
-                // ce que `revendiquer` documente juste en dessous, et le rendre
-                // ferait de l'agent le propriétaire de sa propre session, donc
-                // interdirait à quiconque de s'y connecter.
+                // ⚠️ THE AGENT STILL CLAIMS NOTHING, and `verify` therefore does
+                // NOT return a `userId` here. Its session must remain
+                // claimable by the human client that will join it — that is
+                // what `revendiquer` documents just below, and returning it
+                // would make the agent the owner of its own session, hence
+                // forbid anyone from connecting to it.
                 return { ok: true };
             }
 
@@ -153,20 +153,20 @@ export function garde(
                     ok: false,
                     motif: 'session-refusee',
                     message: MESSAGE_SESSION_REFUSEE,
-                    journal: `session ${session} refusée à ${verdict.sujet} : elle appartient à un autre utilisateur`,
+                    journal: `session ${session} refused to ${verdict.sujet}: it belongs to another user`,
                 };
             }
 
-            return { ok: true, utilisateurId: verdict.sujet };
+            return { ok: true, userId: verdict.sujet };
         },
 
-        revendiquer(session, utilisateurId): void {
-            // Un `agent` a désormais une identité (P3), mais il ne revendique
-            // TOUJOURS rien : sa session doit rester revendicable par le client
-            // humain qui la rejoindra. `verifier` ne rend aucun `utilisateurId`
-            // pour le rôle `agent`, et c'est ce qui fait passer ce chemin-ci.
-            if (utilisateurId === undefined) return;
-            proprietes.revendiquer(session, utilisateurId);
+        revendiquer(session, userId): void {
+            // An `agent` now has an identity (P3), but it STILL claims
+            // nothing: its session must remain claimable by the human
+            // client that will join it. `verify` returns no `userId`
+            // for the `agent` role, and that is what lets this path through.
+            if (userId === undefined) return;
+            proprietes.revendiquer(session, userId);
         },
 
         liberer(session): void {

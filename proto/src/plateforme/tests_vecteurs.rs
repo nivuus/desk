@@ -1,53 +1,53 @@
-//! Les deux tests pilotés par `plateforme-vectors.json`.
+//! The two tests driven by `plateforme-vectors.json`.
 //!
-//! 🔴 EXTRAITS PARCE QUE `tests.rs` A FRANCHI 500 LIGNES — 523 —, et la
-//! doctrine de `CLAUDE.md` est de rattraper par une EXTRACTION, jamais par une
-//! compression. Le sous-bloc G2 avait déjà découpé ce fichier (561 → 449) ; les
-//! branches et les gardes de G3 l'ont ramené au-dessus du plafond.
+//! 🔴 EXTRACTED BECAUSE `tests.rs` CROSSED 500 LINES — 523 —, and the
+//! doctrine of `CLAUDE.md` is to catch up by an EXTRACTION, never by
+//! compression. Sub-block G2 had already split this file (561 → 449); the
+//! branches and guards of G3 brought it back above the ceiling.
 //!
-//! 🔴 LA FRONTIÈRE EST CELLE DE LA SOURCE DE VÉRITÉ, pas un découpage de
-//! commodité : **ces deux tests-là sont les seuls que le FICHIER DE VECTEURS
-//! pilote**, et les seuls qui échouent quand un vecteur dérive. Les autres
-//! éprouvent la forme depuis des littéraux écrits sur place.
+//! 🔴 THE BOUNDARY IS THAT OF THE SOURCE OF TRUTH, not a split of
+//! convenience: **these two tests are the only ones the VECTOR FILE
+//! drives**, and the only ones that fail when a vector drifts. The others
+//! exercise the shape from literals written in place.
 //!
-//! ⚠️ TRANSPOSITION VERBATIM. Le contrôle est le COMPTE, annoncé avant d'être
-//! mesuré : `cargo test -p proto` rendait 106 avant, il doit rendre 106 après.
+//! ⚠️ VERBATIM TRANSPOSITION. The check is the COUNT, announced before being
+//! measured: `cargo test -p proto` reported 106 before, it must report 106 after.
 
 use crate::plateforme::*;
 
-/// Conformité aux vecteurs partagés.
+/// Conformance to the shared vectors.
 ///
-/// 🔴 IL VÉRIFIE `doc["version"]`, ET C'EST LA LACUNE D'`input.rs` CORRIGÉE
-/// POUR CE FICHIER-CI : `input.rs::conformite_aux_vecteurs_partages` lit
-/// `vectors.json` sans jamais contrôler sa clé `version`, et le SEUL
-/// endroit du dépôt qui la contrôle est `ts/input.test.ts`. Un vecteur dont
-/// la version aurait dérivé passerait donc le Rust en silence — MESURÉ :
-/// en retirant l'assertion ci-dessous et en portant le fichier à
-/// `"version": 2`, les 52 tests restaient VERTS. Ici, les DEUX côtés la
-/// vérifient.
+/// 🔴 IT CHECKS `doc["version"]`, AND THIS IS THE `input.rs` GAP FIXED
+/// FOR THIS FILE: `input.rs::conformance_to_the_shared_vectors` reads
+/// `vectors.json` without ever checking its `version` key, and the ONLY
+/// place in the repository that checks it is `ts/input.test.ts`. A vector whose
+/// version had drifted would therefore pass the Rust side silently — MEASURED:
+/// by removing the assertion below and setting the file to
+/// `"version": 2`, the 52 tests stayed GREEN. Here, BOTH sides
+/// check it.
 #[test]
-fn conformite_aux_vecteurs_partages() {
+fn conformance_to_the_shared_vectors() {
     let raw = include_str!("../../plateforme-vectors.json");
-    let doc: serde_json::Value = serde_json::from_str(raw).expect("vecteurs valides");
+    let doc: serde_json::Value = serde_json::from_str(raw).expect("valid vectors");
 
-    // 🔴 La version du fichier EST celle du protocole. Sans cette
-    // assertion, un bump d'un seul côté ne se verrait nulle part.
+    // 🔴 The version of the file IS that of the protocol. Without this
+    // assertion, a bump on one side only would show up nowhere.
     assert_eq!(
-        doc["version"].as_u64().expect("clé version"),
+        doc["version"].as_u64().expect("version key"),
         u64::from(PLATEFORME_VERSION),
-        "la version des vecteurs a dérivé de PLATEFORME_VERSION"
+        "the vectors version drifted from PLATEFORME_VERSION"
     );
 
-    let cases = doc["cases"].as_array().expect("tableau de cas");
-    // 🔴 ANTI-TAUTOLOGIE : un fichier de vecteurs VIDE ferait passer toute
-    // la boucle sans rien éprouver. Même garde qu'`input.rs:326` et que
-    // `sous-ensemble.test.ts`.
-    assert!(!cases.is_empty(), "au moins un vecteur attendu");
+    let cases = doc["cases"].as_array().expect("array of cases");
+    // 🔴 ANTI-TAUTOLOGY: an EMPTY vector file would let the whole
+    // loop pass without exercising anything. Same guard as `input.rs:326` and
+    // `sous-ensemble.test.ts`. (policy: allow-fr - file name)
+    assert!(!cases.is_empty(), "at least one vector expected");
 
     let mut vus = 0;
     for case in cases {
         let name = case["name"].as_str().expect("nom");
-        let attendu = case["json"].as_str().expect("json attendu");
+        let attendu = case["json"].as_str().expect("json expected");
 
         match case["sens"].as_str().expect("sens") {
             "vers" => {
@@ -73,11 +73,11 @@ fn conformite_aux_vecteurs_partages() {
                         case["octets_total"].as_u64().unwrap(),
                         case["ecoule_ms"].as_u64().unwrap(),
                     ),
-                    // ⚠️ `motif` et `code_sortie` SE LISENT PAR `from_value`, ce
-                    // qui distingue le champ ABSENT du champ à `null` — et
-                    // c'est exactement la distinction que `option_obligatoire`
-                    // rétablit sur le fil. Un `as_str().map(...)` les
-                    // confondrait, et le vecteur cesserait d'éprouver la garde.
+                    // ⚠️ `motif` and `code_sortie` ARE READ THROUGH `from_value`, which
+                    // tells the ABSENT field apart from the `null` field — and
+                    // that is exactly the distinction `option_obligatoire`
+                    // restores on the wire. An `as_str().map(...)` would
+                    // confuse them, and the vector would stop exercising the guard.
                     "termine" => VersLaPlateforme::termine(
                         case["installation"].as_str().unwrap(),
                         serde_json::from_value(case["issue"].clone()).expect("issue"),
@@ -86,15 +86,15 @@ fn conformite_aux_vecteurs_partages() {
                         case["journal"].as_str().unwrap(),
                         case["journal_tronque"].as_bool().unwrap(),
                     ),
-                    autre => panic!("kind inconnu dans le sens vers : {autre}"),
+                    autre => panic!("unknown kind in the vers direction: {autre}"),
                 };
                 assert_eq!(
-                    serde_json::to_string(&msg).expect("sér."),
+                    serde_json::to_string(&msg).expect("ser."),
                     attendu,
-                    "sérialisation du vecteur « {name} »"
+                    "serialisation of vector « {name} »"
                 );
-                let relu: VersLaPlateforme = serde_json::from_str(attendu).expect("désér.");
-                assert_eq!(relu, msg, "désérialisation du vecteur « {name} »");
+                let relu: VersLaPlateforme = serde_json::from_str(attendu).expect("deser.");
+                assert_eq!(relu, msg, "deserialisation of vector « {name} »");
             }
             "depuis" => {
                 let msg = match case["kind"].as_str().expect("kind") {
@@ -107,15 +107,15 @@ fn conformite_aux_vecteurs_partages() {
                         case["jeton"].as_str().unwrap(),
                         case["expire_a"].as_i64().unwrap(),
                     ),
-                    // ⚠️ `depuis_mot` ET NON `serde_json::from_value` : le
-                    // motif n'est plus une forme serde depuis la correction du
-                    // 20 août 2026, c'est un mot. Un vecteur portant un mot
-                    // inconnu échoue donc ICI, ce qui est le comportement
-                    // voulu — un vecteur de round-trip ne peut porter qu'un
-                    // motif que la plateforme sait ÉMETTRE.
+                    // ⚠️ `depuis_mot` AND NOT `serde_json::from_value`: the
+                    // reason is no longer a serde shape since the fix of
+                    // 20 August 2026, it is a word. A vector carrying an unknown
+                    // word therefore fails HERE, which is the intended
+                    // behaviour — a round-trip vector can only carry a
+                    // reason the platform knows how to EMIT.
                     "refus" => DepuisLaPlateforme::refus(
                         MotifCanal::depuis_mot(case["motif"].as_str().expect("motif"))
-                            .expect("motif connu"),
+                            .expect("known reason"),
                     ),
                     "lancer" => DepuisLaPlateforme::lancer(
                         case["demande"].as_str().unwrap(),
@@ -131,74 +131,74 @@ fn conformite_aux_vecteurs_partages() {
                         case["taille"].as_u64().unwrap(),
                         case["sha256"].as_str().unwrap(),
                     ),
-                    autre => panic!("kind inconnu dans le sens depuis : {autre}"),
+                    autre => panic!("unknown kind in the depuis direction: {autre}"),
                 };
                 assert_eq!(
-                    serde_json::to_string(&msg).expect("sér."),
+                    serde_json::to_string(&msg).expect("ser."),
                     attendu,
-                    "sérialisation du vecteur « {name} »"
+                    "serialisation of vector « {name} »"
                 );
-                let relu: DepuisLaPlateforme = serde_json::from_str(attendu).expect("désér.");
-                assert_eq!(relu, msg, "désérialisation du vecteur « {name} »");
+                let relu: DepuisLaPlateforme = serde_json::from_str(attendu).expect("deser.");
+                assert_eq!(relu, msg, "deserialisation of vector « {name} »");
             }
-            autre => panic!("sens inconnu : {autre}"),
+            autre => panic!("unknown direction: {autre}"),
         }
         vus += 1;
     }
-    // 🔴 Le compte est ÉCRIT EN DUR : sans lui, un `sens` mal orthographié
-    // ferait sauter des cas en silence — le `panic!` ne les verrait pas,
-    // puisqu'il n'est atteint que par une valeur PRÉSENTE et inconnue, pas
-    // par un cas qu'une future refonte de la boucle sauterait.
-    assert_eq!(vus, cases.len(), "tous les cas doivent être exercés");
+    // 🔴 The count is HARDCODED: without it, a misspelled `sens`
+    // would silently skip cases — the `panic!` would not see them,
+    // since it is only reached by a PRESENT and unknown value, not
+    // by a case a future rework of the loop would skip.
+    assert_eq!(vus, cases.len(), "every case must be exercised");
 }
 
-/// Les refus que les DEUX bouts doivent savoir lire, figés dans le fichier de
-/// vecteurs partagés — `ts/plateforme.test.ts` lit exactement les mêmes.
+/// The refusals BOTH ends must know how to read, frozen in the shared
+/// vector file — `ts/plateforme.test.ts` reads exactly the same ones.
 ///
-/// 🔴 SANS CE VECTEUR PARTAGÉ, LE REMÈDE POURRAIT NE VIVRE QUE D'UN CÔTÉ, et
-/// c'est précisément le mode de divergence que `plateforme-vectors.json`
-/// existe pour fermer.
+/// 🔴 WITHOUT THIS SHARED VECTOR, THE REMEDY COULD LIVE ON ONE SIDE ONLY, and
+/// that is precisely the divergence mode `plateforme-vectors.json`
+/// exists to close.
 #[test]
-fn conformite_aux_refus_lisibles_partages() {
+fn conformance_to_the_shared_readable_refusals() {
     let raw = include_str!("../../plateforme-vectors.json");
-    let doc: serde_json::Value = serde_json::from_str(raw).expect("vecteurs valides");
+    let doc: serde_json::Value = serde_json::from_str(raw).expect("valid vectors");
     let refus = doc["refus_lisibles"]
         .as_array()
         .expect("tableau refus_lisibles");
-    // 🔴 ANTI-TAUTOLOGIE, et le compte est ÉCRIT EN DUR : un tableau vide, ou
-    // amputé d'un cas, ferait passer la boucle sans rien éprouver.
-    assert_eq!(refus.len(), 4, "quatre refus lisibles attendus");
+    // 🔴 ANTI-TAUTOLOGY, and the count is HARDCODED: an empty array, or
+    // one missing a case, would let the loop pass without exercising anything.
+    assert_eq!(refus.len(), 4, "four readable refusals expected");
 
     for cas in refus {
         let name = cas["name"].as_str().expect("nom");
         let brut = cas["json"].as_str().expect("json");
         let lu: DepuisLaPlateforme = serde_json::from_str(brut)
-            .unwrap_or_else(|erreur| panic!("refus « {name} » illisible : {erreur}"));
+            .unwrap_or_else(|error| panic!("refusal « {name} » unreadable: {error}"));
         let DepuisLaPlateforme::Refus { version, motif } = lu else {
-            panic!("le vecteur « {name} » n'a pas été lu comme un refus");
+            panic!("vector « {name} » was not read as a refusal");
         };
         assert_eq!(
             u64::from(version),
             cas["v"].as_u64().expect("v"),
-            "version de « {name} »"
+            "version of « {name} »"
         );
-        // 🔴 CE CAS EST LE SEUL DONT LE NOM AFFIRME QUELQUE CHOSE SUR LA
-        // VERSION COURANTE, ET IL AVAIT DÉJÀ VIEILLI : le sous-bloc G2 a monté
-        // `PLATEFORME_VERSION` de 2 à 3 sans reprendre ce vecteur, qui portait
-        // donc `"v":2` sous un nom disant « notre version ». Trouvé par G3, qui
-        // montait à son tour. **La rattacher à la constante est ce qui empêche
-        // le nom de re-vieillir en silence au bump suivant** — un test, plutôt
-        // qu'une vigilance.
+        // 🔴 THIS CASE IS THE ONLY ONE WHOSE NAME CLAIMS SOMETHING ABOUT THE
+        // CURRENT VERSION, AND IT HAD ALREADY AGED: sub-block G2 raised
+        // `PLATEFORME_VERSION` from 2 to 3 without updating this vector, which
+        // thus carried `"v":2` under a name saying "our version". Found by G3, which
+        // was raising it in turn. **Tying it to the constant is what prevents
+        // the name from aging again silently at the next bump** — a test, rather
+        // than vigilance.
         if name == "refus_de_notre_version" {
             assert_eq!(
                 version, PLATEFORME_VERSION,
-                "« refus_de_notre_version » ne porte PLUS la version courante : son nom est devenu faux"
+                "« refus_de_notre_version » NO LONGER carries the current version: its name has become wrong"
             );
         }
         assert_eq!(
             motif,
             cas["motif"].as_str().expect("motif"),
-            "motif de « {name} »"
+            "reason of « {name} »"
         );
     }
 }

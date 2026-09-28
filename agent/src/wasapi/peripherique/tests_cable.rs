@@ -1,10 +1,10 @@
-//! Les tests de la désignation du câble (tâche 5 du plan E2).
+//! The tests of the cable designation (task 5 of plan E2).
 //!
-//! ⚠️ **Extraits ici plutôt qu'ajoutés au `mod tests` de `peripherique.rs`, au
-//! titre de la règle des 500 lignes et AVANT l'addition**, pas après : le
-//! fichier parent valait 422 et ces tests l'auraient porté au-delà du plafond.
-//! Le patron est `superviseur/table.rs`, qui déclare de la même façon ses
-//! `#[path = "table/tests.rs"] mod tests;`.
+//! ⚠️ **Extracted here rather than added to the `mod tests` of `peripherique.rs`, under
+//! the 500-line rule and BEFORE the addition**, not after: the
+//! parent file was at 422 and these tests would have taken it beyond the ceiling.
+//! The pattern is `superviseur/table.rs`, which declares its
+//! `#[path = "table/tests.rs"] mod tests;` the same way.
 
 use super::{choisir, demande_cable, Choix, Critere, Peripherique, DESIGNATION_CABLE};
 
@@ -15,12 +15,12 @@ fn p(nom: &str, id: &str) -> Peripherique {
     }
 }
 
-/// L'inventaire **relevé sur la VM le 20 août 2026** par `micro-format-e1.ps1`
-/// — les trois points de terminaison de rendu ACTIFS, nom pour nom.
+/// The inventory **noted on the VM on August 20th, 2026** by `micro-format-e1.ps1`
+/// — the three ACTIVE render endpoints, name for name.
 ///
-/// ⚠️ **Embarquer les noms exacts est délibéré, et ce n'est pas une
-/// fragilité** : le jour où le nom changera, un test tombera **avant** la
-/// recette, et non pendant.
+/// ⚠️ **Embedding the exact names is deliberate, and it is not a
+/// fragility**: the day the name changes, a test will fail **before** the
+/// acceptance run, and not during it.
 fn inventaire_de_la_vm() -> Vec<Peripherique> {
     vec![
         p(
@@ -38,13 +38,13 @@ fn inventaire_de_la_vm() -> Vec<Peripherique> {
     ]
 }
 
-/// 🔴 **La désignation que la spec prescrivait ne correspond à RIEN.**
-/// Son §3 et son §6 disent « l'endpoint visé est *CABLE Input* » ; le
-/// `PKEY_Device_FriendlyName` du rendu du câble vaut
+/// 🔴 **The designation the spec prescribed matches NOTHING.**
+/// Its §3 and §6 say "the targeted endpoint is *CABLE Input*"; the
+/// `PKEY_Device_FriendlyName` of the cable's render endpoint is
 /// `Haut-parleurs (VB-Audio Virtual Cable)`.
 #[test]
 #[allow(non_snake_case)]
-fn la_designation_integree_elit_le_cable_de_la_VM() {
+fn the_built_in_designation_elects_the_VM_cable() {
     let inv = inventaire_de_la_vm();
     match choisir(&inv, Some(DESIGNATION_CABLE)) {
         Choix::Elu {
@@ -54,25 +54,25 @@ fn la_designation_integree_elit_le_cable_de_la_VM() {
             assert_eq!(peripherique.nom, "Haut-parleurs (VB-Audio Virtual Cable)");
             assert_eq!(critere, Critere::NomPartiel);
         }
-        autre => panic!("le câble de la VM doit être élu, obtenu {autre:?}"),
+        autre => panic!("the VM's cable must be elected, got {autre:?}"),
     }
 
-    // Et la preuve que le contrôle peut échouer : la désignation de la spec.
+    // And the proof that the check can fail: the spec's designation.
     assert!(
         matches!(
             choisir(&inv, Some("CABLE Input")),
             Choix::Introuvable { .. }
         ),
-        "« CABLE Input » n'est le nom d'aucun rendu de cette VM"
+        "« CABLE Input » is the name of no render device of this VM"
     );
 }
 
-/// 🔴 Sur une machine portant deux câbles VB-Audio, la règle **refuse** et
-/// nomme les candidats. Trancher au premier serait le rang d'énumération par
-/// la porte de derrière — payé en D1.
+/// 🔴 On a machine carrying two VB-Audio cables, the rule **refuses** and
+/// names the candidates. Deciding on the first would be the enumeration rank through
+/// the back door — paid for in D1.
 #[test]
 #[allow(non_snake_case)]
-fn deux_cables_VB_rendent_la_designation_AMBIGUE() {
+fn two_VB_cables_make_the_designation_AMBIGUOUS() {
     let mut inv = inventaire_de_la_vm();
     inv.push(p(
         "Haut-parleurs (VB-Audio Virtual Cable B)",
@@ -81,38 +81,38 @@ fn deux_cables_VB_rendent_la_designation_AMBIGUE() {
     match choisir(&inv, Some(DESIGNATION_CABLE)) {
         Choix::Ambigu { demande, candidats } => {
             assert_eq!(demande, DESIGNATION_CABLE);
-            assert_eq!(candidats.len(), 2, "les deux câbles doivent être nommés");
+            assert_eq!(candidats.len(), 2, "both cables must be named");
             assert!(candidats.iter().any(|c| c.contains("Virtual Cable B")));
         }
-        autre => panic!("deux câbles doivent rendre Ambigu, obtenu {autre:?}"),
+        autre => panic!("two cables must return Ambigu, got {autre:?}"),
     }
 }
 
 #[test]
-fn une_demande_explicite_prime_sur_la_designation_integree() {
+fn an_explicit_request_takes_precedence_over_the_built_in_designation() {
     let inv = inventaire_de_la_vm();
     assert_eq!(demande_cable(Some("Steam")), "Steam");
     match choisir(&inv, Some(demande_cable(Some("Steam")))) {
         Choix::Elu { peripherique, .. } => {
             assert_eq!(peripherique.nom, "Haut-parleurs (Steam Streaming Speakers)");
         }
-        autre => panic!("la demande explicite doit primer, obtenu {autre:?}"),
+        autre => panic!("the explicit request must take precedence, got {autre:?}"),
     }
 }
 
-/// 🔴 **`Choix::Defaut` doit être INATTEIGNABLE par ce chemin.** Retomber sur
-/// `GetDefaultAudioEndpoint` ferait sortir la voix de l'utilisateur par les
-/// haut-parleurs de la machine le jour où le défaut n'est pas le câble.
+/// 🔴 **`Choix::Defaut` must be UNREACHABLE through this path.** Falling back to
+/// `GetDefaultAudioEndpoint` would send the user's voice out through the machine's
+/// speakers the day the default is not the cable.
 #[test]
 #[allow(non_snake_case)]
-fn la_demande_du_cable_n_est_JAMAIS_None() {
+fn the_cable_request_is_NEVER_None() {
     let inv = inventaire_de_la_vm();
     for variable in [None, Some(""), Some("   ")] {
         let demande = demande_cable(variable);
         assert_eq!(demande, DESIGNATION_CABLE, "variable {variable:?}");
         assert!(
             !matches!(choisir(&inv, Some(demande)), Choix::Defaut),
-            "Choix::Defaut est inatteignable par le chemin du câble (variable {variable:?})"
+            "Choix::Defaut is unreachable through the cable path (variable {variable:?})"
         );
     }
 }

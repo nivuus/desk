@@ -1,100 +1,100 @@
 //! Transcription de l'ABI du pilote d'affichage virtuel SudoVDA.
 //!
-//! Séparé de `moniteurs.rs` — qui est le CLIENT — parce que c'est une autre
-//! responsabilité : ici on ne fait que traduire en Rust ce que dit l'en-tête
-//! amont, avec la provenance de chaque constante. Le jour où le pilote change
-//! de version, c'est ce fichier seul qu'on rouvre.
+//! Separated from `moniteurs.rs` — which is the CLIENT — because it is another
+//! responsibility: here we only translate into Rust what the upstream header
+//! says, with the provenance of each constant. The day the driver changes
+//! version, it is this file alone that gets reopened.
 //!
-//! Provenance et degré de confiance de chaque élément :
+//! Provenance and degree of confidence of each element:
 //! `docs/superpowers/plans/journaux-mesures-prealables/canal-de-controle.md`.
-//! En deux mots : le GUID d'interface et 2 des 6 codes IOCTL sont confirmés
-//! octet pour octet dans la DLL installée sur cette VM ; les 4 autres codes et
-//! TOUTES les dispositions de structures sont une lecture amont non confirmée
-//! localement, d'un en-tête antérieur de onze mois au pilote installé.
+//! In short: the interface GUID and 2 of the 6 IOCTL codes are confirmed
+//! byte for byte in the DLL installed on this VM; the other 4 codes and
+//! ALL the structure layouts are an upstream reading not confirmed
+//! locally, from a header eleven months older than the installed driver.
 //!
-//! Ce que la sonde de `contrat.rs` a éprouvé sur la VM, et qui n'est donc plus
-//! une simple lecture : les tailles de `VersionProtocole` (4 o.) et de
-//! `Veille` (8 o.), ainsi que les quatre octets de version eux-mêmes. L'ORDRE
-//! des champs, lui, n'est éprouvé nulle part.
+//! What the probe of `contrat.rs` tested on the VM, and which is therefore no longer
+//! a mere reading: the sizes of `VersionProtocole` (4 bytes) and of
+//! `Veille` (8 bytes), as well as the four version bytes themselves. The ORDER
+//! of the fields, for its part, is tested nowhere.
 
 use windows::core::GUID;
 
-/// Interface de périphérique de SudoVDA — **confirmée par présence d'octets**
-/// dans le `SudoVDA.dll` installé sur cette VM (canal-de-controle.md §5.3).
-/// À ne pas confondre avec le GUID de classe `{4D36E968-…}`, qui est la classe
-/// `Display` standard de Windows et ne sert qu'à l'installation.
+/// SudoVDA device interface — **confirmed by presence of bytes**
+/// in the `SudoVDA.dll` installed on this VM (canal-de-controle.md §5.3).
+/// Not to be confused with the class GUID `{4D36E968-…}`, which is Windows'
+/// standard `Display` class and only serves installation.
 pub(super) const INTERFACE_PILOTE: GUID =
     GUID::from_u128(0xe5bc_c234_1e0c_418a_a0d4_ef8b_7501_414d);
 
-// `CTL_CODE(FILE_DEVICE_UNKNOWN = 0x22, fonction, METHOD_BUFFERED = 0,
-// FILE_ANY_ACCESS = 0)` = `(0x22 << 16) | (fonction << 2)`. Les deux codes
-// marqués « confirmé » ont été retrouvés en octets dans la DLL installée ; les
-// autres proviennent de la même macro appliquée au même en-tête amont.
+// `CTL_CODE(FILE_DEVICE_UNKNOWN = 0x22, function, METHOD_BUFFERED = 0,
+// FILE_ANY_ACCESS = 0)` = `(0x22 << 16) | (function << 2)`. The two codes
+// marked "confirmed" were found as bytes in the installed DLL; the
+// others come from the same macro applied to the same upstream header.
 //
-// Le seul code que ce module n'emploie pas (`IOCTL_SET_RENDER_ADAPTER`
-// `0x0022_2008`) n'est volontairement pas déclaré : une constante inutilisée
-// est un avertissement de compilation, et une constante non employée n'est de
-// toute façon éprouvée par rien.
+// The only code this module does not use (`IOCTL_SET_RENDER_ADAPTER`
+// `0x0022_2008`) is deliberately not declared: an unused constant
+// is a compilation warning, and an unused constant is
+// tested by nothing anyway.
 
-/// Confirmé par octets (offset 16316 de la DLL locale).
-pub(super) const IOCTL_AJOUTER_SORTIE: u32 = 0x0022_2000;
-/// Non confirmé par octets — même macro, même en-tête amont.
+/// Confirmed by bytes (offset 16316 of the local DLL).
+pub(super) const IOCTL_ADD_OUTPUT: u32 = 0x0022_2000;
+/// Not confirmed by bytes — same macro, same upstream header.
 pub(super) const IOCTL_RETIRER_SORTIE: u32 = 0x0022_2004;
-/// Confirmé par octets (offset 16284 de la DLL locale).
+/// Confirmed by bytes (offset 16284 of the local DLL).
 pub(super) const IOCTL_LIRE_VEILLE: u32 = 0x0022_200C;
-/// Non confirmé par octets — c'est le tampon le plus simple des six, donc le
-/// premier que `valider_contrat()` éprouve.
+/// Not confirmed by bytes — it is the simplest buffer of the six, hence the
+/// first that `valider_contrat()` tests.
 pub(super) const IOCTL_LIRE_VERSION_PROTOCOLE: u32 = 0x0022_23FC;
-/// Non confirmé par octets. Ni entrée ni sortie : le seul des six dont les deux
-/// tampons soient vides, donc le seul dont la disposition ne puisse pas être
-/// fausse. Il réarme le chien de garde du pilote, qui retire les sorties d'un
-/// client devenu muet — voir `Veille` ci-dessous et `montee.rs`.
+/// Not confirmed by bytes. Neither input nor output: the only one of the six whose two
+/// buffers are empty, hence the only one whose layout cannot be
+/// wrong. It rearms the driver's watchdog, which removes the outputs of a
+/// client that went silent — see `Veille` below and `montee.rs`.
 pub(super) const IOCTL_PINGUER: u32 = 0x0022_2220;
 
-/// Tampon d'entrée de `IOCTL_AJOUTER_SORTIE` (`VIRTUAL_DISPLAY_ADD_PARAMS`).
+/// Input buffer of `IOCTL_ADD_OUTPUT` (`VIRTUAL_DISPLAY_ADD_PARAMS`).
 ///
-/// Aucun `#pragma pack` en amont : alignement naturel MSVC/x64, soit 4 ici.
-/// Offsets attendus : 0, 4, 8, 12, 28, 42 — total 56 octets, vérifié par
-/// l'assertion de compilation plus bas.
+/// No `#pragma pack` upstream: MSVC/x64 natural alignment, that is 4 here.
+/// Expected offsets: 0, 4, 8, 12, 28, 42 — total 56 bytes, checked by
+/// the compile-time assertion below.
 ///
-/// Aucun de ces champs n'est jamais relu depuis Rust —
-/// le seul lecteur est le pilote, à l'autre bout du `DeviceIoControl`. Les
-/// retirer pour faire taire le lint reviendrait à changer la disposition du
-/// tampon, c'est-à-dire à casser exactement ce que cette structure décrit.
-/// D'où l'`allow` ci-dessous, qui est PERMANENT et non un provisoire daté :
-/// aucun consommateur futur ne relira jamais ces champs.
+/// None of these fields is ever read back from Rust —
+/// the only reader is the driver, at the other end of the `DeviceIoControl`. Removing
+/// them to silence the lint would amount to changing the layout of the
+/// buffer, that is breaking exactly what this structure describes.
+/// Hence the `allow` below, which is PERMANENT and not a dated temporary:
+/// no future consumer will ever read these fields back.
 #[allow(dead_code)]
 #[repr(C)]
 pub(super) struct DemandeAjout {
     pub(super) largeur: u32,
     pub(super) hauteur: u32,
     pub(super) hertz: u32,
-    /// Choisi par NOUS, pas rendu par le pilote : c'est la clé de retrait.
+    /// Chosen by US, not returned by the driver: it is the removal key.
     pub(super) guid_moniteur: GUID,
     pub(super) nom_peripherique: [u8; 14],
     pub(super) numero_serie: [u8; 14],
 }
 
-/// Tampon de sortie de `IOCTL_AJOUTER_SORTIE` (`VIRTUAL_DISPLAY_ADD_OUT`).
+/// Output buffer of `IOCTL_ADD_OUTPUT` (`VIRTUAL_DISPLAY_ADD_OUT`).
 ///
-/// `LUID` Win32 = `{ DWORD LowPart; LONG HighPart; }`, 8 octets alignés sur 4 —
-/// écrit en deux champs plutôt qu'en `windows::Win32::Foundation::LUID` pour
-/// que la disposition qu'on suppose soit lisible ici, là où elle est en jeu.
+/// Win32 `LUID` = `{ DWORD LowPart; LONG HighPart; }`, 8 bytes aligned on 4 —
+/// written as two fields rather than as `windows::Win32::Foundation::LUID` so
+/// that the assumed layout is readable here, where it is at stake.
 #[repr(C)]
 #[derive(Default)]
 pub(super) struct SortieAjoutee {
     pub(super) adaptateur_bas: u32,
     pub(super) adaptateur_haut: i32,
-    /// C'est lui qui devient l'`IdSortie` du trait.
+    /// It is the one that becomes the trait's `IdSortie`.
     pub(super) identifiant_cible: u32,
 }
 
-/// Tampon d'entrée de `IOCTL_RETIRER_SORTIE`
-/// (`VIRTUAL_DISPLAY_REMOVE_PARAMS`) : le pilote retire par le GUID que le
-/// client a choisi à l'ajout, pas par l'identifiant qu'il a rendu.
+/// Input buffer of `IOCTL_RETIRER_SORTIE`
+/// (`VIRTUAL_DISPLAY_REMOVE_PARAMS`): the driver removes through the GUID the
+/// client chose at addition, not through the identifier it returned.
 ///
-/// Ses champs ne sont pas davantage relus depuis Rust — même raison que
-/// `DemandeAjout`, `allow` permanent compris.
+/// Its fields are not read back from Rust either — same reason as
+/// `DemandeAjout`, permanent `allow` included.
 #[allow(dead_code)]
 #[repr(C)]
 pub(super) struct DemandeRetrait {
@@ -104,21 +104,21 @@ pub(super) struct DemandeRetrait {
 /// Tampon de sortie de `IOCTL_LIRE_VEILLE`
 /// (`VIRTUAL_DISPLAY_GET_WATCHDOG_OUT`).
 ///
-/// L'en-tête amont ne documente AUCUNE unité pour ces deux `UINT` — ni le nom
-/// des champs (`Timeout`, `Countdown`) ni un commentaire ne la donnent. On ne
-/// la suppose donc pas ici : la sonde relève les nombres bruts.
+/// The upstream header documents NO unit for these two `UINT`s — neither the names
+/// of the fields (`Timeout`, `Countdown`) nor a comment give it. We therefore do not
+/// assume it here: the probe surveys the raw numbers.
 ///
-/// **Ce que l'épreuve de `montee.rs` a relevé — et pourquoi elle ne conclut
-/// rien sur l'unité.** Lu une fois par seconde pendant 180 s pendant lesquelles
-/// nous n'avons jamais pingué, `decompte` oscille entre 2 et 3 par paliers de
-/// plusieurs dizaines de secondes, et aucune sortie n'a été retirée.
+/// **What the test of `montee.rs` noted — and why it concludes
+/// nothing about the unit.** Read once per second for 180 s during which
+/// we never pinged, `decompte` oscillates between 2 and 3 in steps of
+/// several tens of seconds, and no output was removed.
 ///
-/// **Cela n'exclut aucune unité, pas même la seconde.** Apollo tourne sur cette
-/// VM et pingue le même pilote à une cadence de l'ordre de la seconde : un
-/// `Timeout` de trois SECONDES réarmé par autrui se lirait exactement ainsi,
-/// 2 ou 3 sans jamais approcher de zéro. L'unité de ces deux `UINT` reste donc
-/// entièrement inconnue, et rien n'est établi sur le sort d'un client seul et
-/// muet.
+/// **That excludes no unit, not even the second.** Apollo runs on this
+/// VM and pings the same driver at a cadence of the order of a second: a
+/// `Timeout` of three SECONDS rearmed by someone else would read exactly like this,
+/// 2 or 3 without ever approaching zero. The unit of these two `UINT`s therefore remains
+/// entirely unknown, and nothing is established about the fate of a lone and
+/// silent client.
 #[repr(C)]
 #[derive(Default)]
 pub(crate) struct Veille {
@@ -126,9 +126,9 @@ pub(crate) struct Veille {
     pub(crate) decompte: u32,
 }
 
-/// Tampon de sortie de `IOCTL_LIRE_VERSION_PROTOCOLE`
-/// (`SUVDA_PROTOCAL_VERSION`, orthographe d'origine). Quatre octets : le
-/// `bool` MSVC en occupe un seul.
+/// Output buffer of `IOCTL_LIRE_VERSION_PROTOCOLE`
+/// (`SUVDA_PROTOCAL_VERSION`, original spelling). Four bytes: the
+/// MSVC `bool` occupies only one.
 #[repr(C)]
 #[derive(Default, PartialEq, Eq)]
 pub(crate) struct VersionProtocole {
@@ -138,9 +138,9 @@ pub(crate) struct VersionProtocole {
     pub(crate) version_de_test: u8,
 }
 
-// Les tailles sont la seule partie du contrat amont qu'on puisse vérifier sans
-// la VM. Un champ oublié ou un type mal traduit ferait échouer la compilation
-// ici plutôt que de partir en tampon mal formé vers un pilote noyau.
+// Sizes are the only part of the upstream contract that can be checked without
+// the VM. A forgotten field or a mistranslated type would make compilation fail
+// here rather than going off as a malformed buffer to a kernel driver.
 const _: () = {
     assert!(std::mem::size_of::<DemandeAjout>() == 56);
     assert!(std::mem::size_of::<SortieAjoutee>() == 12);
@@ -149,11 +149,11 @@ const _: () = {
     assert!(std::mem::size_of::<VersionProtocole>() == 4);
 };
 
-/// Copie une désignation ASCII dans un champ `CHAR[14]`, terminée par un NUL.
+/// Copies an ASCII designation into a `CHAR[14]` field, NUL-terminated.
 ///
-/// Tronque à 13 caractères utiles plutôt que de refuser : ces deux champs sont
-/// cosmétiques (Apollo y met le nom et l'identifiant du client), et faire
-/// échouer une création de moniteur pour un nom trop long serait absurde.
+/// Truncates to 13 useful characters rather than refusing: these two fields are
+/// cosmetic (Apollo puts the client's name and identifier there), and making
+/// a monitor creation fail for a name too long would be absurd.
 pub(super) fn en_champ_14(texte: &str) -> [u8; 14] {
     let mut champ = [0u8; 14];
     for (place, octet) in champ.iter_mut().zip(texte.bytes()).take(13) {

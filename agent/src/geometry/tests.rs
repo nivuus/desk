@@ -1,7 +1,7 @@
 use super::*;
 
 #[test]
-fn fenetre_entierement_visible() {
+fn fully_visible_window() {
     let w = Rect {
         x: 100,
         y: 50,
@@ -12,7 +12,7 @@ fn fenetre_entierement_visible() {
 }
 
 #[test]
-fn aligne_les_dimensions_impaires() {
+fn aligns_odd_dimensions() {
     let w = Rect {
         x: 0,
         y: 0,
@@ -24,7 +24,7 @@ fn aligne_les_dimensions_impaires() {
 }
 
 #[test]
-fn borne_une_fenetre_qui_deborde_a_droite() {
+fn bounds_a_window_overflowing_on_the_right() {
     let w = Rect {
         x: 1800,
         y: 0,
@@ -36,7 +36,7 @@ fn borne_une_fenetre_qui_deborde_a_droite() {
 }
 
 #[test]
-fn borne_une_fenetre_a_coordonnees_negatives() {
+fn bounds_a_window_with_negative_coordinates() {
     let w = Rect {
         x: -100,
         y: -50,
@@ -48,7 +48,7 @@ fn borne_une_fenetre_a_coordonnees_negatives() {
 }
 
 #[test]
-fn rejette_une_fenetre_hors_ecran() {
+fn rejects_an_off_screen_window() {
     let w = Rect {
         x: 5000,
         y: 0,
@@ -66,7 +66,7 @@ fn rejette_une_fenetre_hors_ecran() {
 }
 
 #[test]
-fn rejette_une_intersection_trop_petite() {
+fn rejects_a_too_small_intersection() {
     let w = Rect {
         x: 1919,
         y: 0,
@@ -77,7 +77,7 @@ fn rejette_une_intersection_trop_petite() {
 }
 
 #[test]
-fn fenetre_plus_grande_que_l_ecran_dans_les_deux_dimensions() {
+fn window_larger_than_the_screen_in_both_dimensions() {
     let w = Rect {
         x: -500,
         y: -300,
@@ -89,9 +89,9 @@ fn fenetre_plus_grande_que_l_ecran_dans_les_deux_dimensions() {
 }
 
 #[test]
-fn fenetre_exactement_a_la_limite_de_l_ecran() {
-    // Le coin inférieur droit de la fenêtre touche exactement le bord de
-    // l'écran (1920, 1080) : intersection non vide, rien à borner.
+fn window_exactly_at_the_screen_edge() {
+    // The window's bottom-right corner touches exactly the edge of the
+    // screen (1920, 1080): non-empty intersection, nothing to clamp.
     let w = Rect {
         x: 1520,
         y: 780,
@@ -100,8 +100,8 @@ fn fenetre_exactement_a_la_limite_de_l_ecran() {
     };
     assert_eq!(crop_region(w, 1920, 1080), Some(w));
 
-    // Un pixel plus loin : la fenêtre commence exactement là où l'écran
-    // s'arrête, intersection vide.
+    // One pixel further: the window starts exactly where the screen
+    // stops, empty intersection.
     let w = Rect {
         x: 1920,
         y: 0,
@@ -112,7 +112,7 @@ fn fenetre_exactement_a_la_limite_de_l_ecran() {
 }
 
 #[test]
-fn rejette_une_largeur_ou_une_hauteur_nulle() {
+fn rejects_a_zero_width_or_height() {
     let w = Rect {
         x: 100,
         y: 100,
@@ -130,10 +130,10 @@ fn rejette_une_largeur_ou_une_hauteur_nulle() {
 }
 
 #[test]
-fn ne_deborde_pas_sur_des_coordonnees_extremes() {
-    // Reproduction exacte du panique signalé en revue : l'addition
-    // `window.x + window.width` en i32 débordait pour x proche de
-    // i32::MAX. Doit désormais être rejeté proprement, pas paniquer.
+fn does_not_overflow_on_extreme_coordinates() {
+    // Exact reproduction of the panic reported in review: the addition
+    // `window.x + window.width` in i32 overflowed for x close to
+    // i32::MAX. Must now be rejected cleanly, not panic.
     let w = Rect {
         x: i32::MAX - 10,
         y: 0,
@@ -142,7 +142,7 @@ fn ne_deborde_pas_sur_des_coordonnees_extremes() {
     };
     assert_eq!(crop_region(w, 1920, 1080), None);
 
-    // Symétrique côté bas/droite pour y.
+    // Symmetric on the bottom/right side for y.
     let w = Rect {
         x: 0,
         y: i32::MAX - 10,
@@ -151,10 +151,10 @@ fn ne_deborde_pas_sur_des_coordonnees_extremes() {
     };
     assert_eq!(crop_region(w, 1920, 1080), None);
 
-    // Coordonnées minimales : x très négatif, ne doit pas non plus
-    // déborder. La fenêtre reste entièrement hors écran (son bord droit,
-    // x + width, est toujours très négatif), donc rejetée — mais
-    // proprement, sans panique.
+    // Minimal coordinates: very negative x, must not overflow
+    // either. The window stays entirely off screen (its right edge,
+    // x + width, is still very negative), hence rejected — but
+    // cleanly, without panic.
     let w = Rect {
         x: i32::MIN + 10,
         y: i32::MIN + 10,
@@ -165,10 +165,10 @@ fn ne_deborde_pas_sur_des_coordonnees_extremes() {
 }
 
 #[test]
-fn gere_une_largeur_superieure_a_i32_max() {
-    // Signalé en revue comme déjà correct — vérifié explicitement plutôt
-    // que supposé : une largeur au-delà de i32::MAX ne doit ni paniquer,
-    // ni se retrouver tronquée en une valeur négative par un `as i32`.
+fn handles_a_width_above_i32_max() {
+    // Reported in review as already correct — checked explicitly rather
+    // than assumed: a width beyond i32::MAX must neither panic,
+    // nor end up truncated into a negative value by an `as i32`.
     let w = Rect {
         x: 0,
         y: 0,
@@ -180,7 +180,7 @@ fn gere_une_largeur_superieure_a_i32_max() {
 }
 
 #[test]
-fn rects_overlap_detecte_une_intersection() {
+fn rects_overlap_detects_an_intersection() {
     let a = Rect {
         x: 0,
         y: 0,
@@ -197,7 +197,7 @@ fn rects_overlap_detecte_une_intersection() {
 }
 
 #[test]
-fn rects_overlap_rejette_des_rectangles_disjoints() {
+fn rects_overlap_rejects_disjoint_rectangles() {
     let a = Rect {
         x: 0,
         y: 0,
@@ -214,7 +214,7 @@ fn rects_overlap_rejette_des_rectangles_disjoints() {
 }
 
 #[test]
-fn rects_overlap_rejette_des_rectangles_qui_se_touchent_sans_se_recouvrir() {
+fn rects_overlap_rejects_rectangles_that_touch_without_overlapping() {
     let a = Rect {
         x: 0,
         y: 0,

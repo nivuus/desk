@@ -1,23 +1,23 @@
-// Déblocage du son au premier geste utilisateur.
+// Unlocking sound at the first user gesture.
 //
-// Chrome bloque la lecture audio sans activation utilisateur, et l'activation
-// obtenue sur la page d'accueil NE FRANCHIT PAS l'ouverture d'une nouvelle
-// fenêtre — mesuré par le spike multi-fenêtres du 28/07/2026. La session
-// démarre donc muette et se démute au premier geste, quel qu'il soit.
+// Chrome blocks audio playback without user activation, and the activation
+// obtained on the home page DOES NOT CROSS the opening of a new
+// window — measured by the multi-window spike of 07/28/2026. The session
+// therefore starts muted and unmutes at the first gesture, whatever it is.
 //
-// C'est le troisième usage du même ressort d'armement, après l'ouverture de
-// fenêtre (variante 3 du spike) et la bascule plein écran (cadrage jeu §4.1).
-// Aucun clic n'est imposé : celui qui sert à jouer suffit.
+// It is the third use of the same arming spring, after window
+// opening (spike variant 3) and the fullscreen toggle (game framing §4.1).
+// No click is imposed: the one used to play is enough.
 //
-// Les dépendances sont INJECTÉES plutôt que lues dans les objets globaux, ce
-// qui rend le module testable sans DOM.
+// Dependencies are INJECTED rather than read from global objects, which
+// makes the module testable without DOM.
 
-/// Ce dont ce module a besoin d'un élément média : rien d'autre que `muted`.
+/// What this module needs from a media element: nothing but `muted`.
 export interface CibleMedia {
     muted: boolean;
 }
 
-/// Ce dont il a besoin d'une cible d'écoute.
+/// What it needs from a listening target.
 export interface CibleGeste {
     addEventListener(type: string, ecouteur: EventListener): void;
     removeEventListener(type: string, ecouteur: EventListener): void;
@@ -26,38 +26,38 @@ export interface CibleGeste {
 export interface OptionsSon {
     media: CibleMedia;
     cible: CibleGeste;
-    /// Appelé avec `false` à l'armement, puis `true` au démutage. De quoi
-    /// afficher — et retirer — un bandeau « cliquez pour activer le son ».
+    /// Called with `false` at arming, then `true` at unmuting. Enough to
+    /// display — and remove — a "click to enable sound" banner.
     surEtat?: (actif: boolean) => void;
 }
 
-/// Gestes qui valent activation utilisateur pour Chrome.
+/// Gestures that count as user activation for Chrome.
 const GESTES = ['pointerdown', 'keydown'] as const;
 
-/// Touches qui ne valent PAS activation utilisateur au sens HTML, bien
-/// qu'elles déclenchent un `keydown` — `input.ts` les transmet toutes les
-/// deux au serveur distant, donc un joueur qui presse Maj ou Échap avant
-/// toute autre touche est un cas réel, pas théorique. Un modificateur seul
-/// (`Shift`, `Control`, `Alt`, `Meta`) ou `Escape` ne doit pas consommer
-/// l'armement à coup unique : sans ce filtre, ce geste l'épuiserait sans
-/// obtenir d'activation, et plus aucun geste ultérieur ne retenterait le
-/// démutage.
+/// Keys that do NOT count as user activation in the HTML sense, although
+/// they trigger a `keydown` — `input.ts` forwards both
+/// to the remote server, so a player pressing Shift or Esc before
+/// any other key is a real case, not a theoretical one. A modifier alone
+/// (`Shift`, `Control`, `Alt`, `Meta`) or `Escape` must not consume
+/// the one-shot arming: without this filter, that gesture would exhaust it without
+/// obtaining activation, and no later gesture would ever retry
+/// unmuting.
 const TOUCHES_SANS_ACTIVATION = new Set(['Shift', 'Control', 'Alt', 'Meta', 'Escape']);
 
-/// Le geste vaut-il activation utilisateur ? Vrai pour tout geste non
-/// clavier (`pointerdown`) ; pour un `keydown`, faux si la touche est un
-/// modificateur seul ou `Escape`. Travaille uniquement sur l'événement reçu,
-/// sans `instanceof KeyboardEvent` ni accès à `document`/`window` : ces
-/// globales ne sont pas garanties par l'injection de dépendances du module
-/// (voir l'en-tête de fichier), et ne le sont pas non plus sous Vitest.
+/// Does the gesture count as user activation? True for any non-keyboard
+/// gesture (`pointerdown`); for a `keydown`, false if the key is a
+/// modifier alone or `Escape`. Works only on the received event,
+/// without `instanceof KeyboardEvent` or access to `document`/`window`: these
+/// globals are not guaranteed by the module's dependency injection
+/// (see the file header), nor are they under Vitest.
 function vautActivation(event: Event): boolean {
     if (event.type !== 'keydown') return true;
     const touche = (event as KeyboardEvent).key;
     return !TOUCHES_SANS_ACTIVATION.has(touche);
 }
 
-/// Arme le démutage. Renvoie une fonction d'annulation qui retire les
-/// écouteurs sans démuter.
+/// Arms unmuting. Returns a cancel function that removes the
+/// listeners without unmuting.
 export function armerLeSon(options: OptionsSon): () => void {
     const { media, cible, surEtat } = options;
     let fait = false;
@@ -68,20 +68,20 @@ export function armerLeSon(options: OptionsSon): () => void {
         }
     };
 
-    // Nommée pour pouvoir être retirée. Les écouteurs sont retirés dès le
-    // premier geste qui démute effectivement : sans cela, chaque geste
-    // ultérieur reforcerait `muted = false` et écraserait le choix d'un
-    // utilisateur qui aurait coupé le son lui-même.
+    // Named so it can be removed. The listeners are removed at the
+    // first gesture that actually unmutes: otherwise, every later gesture
+    // would force `muted = false` again and would overwrite the choice of a
+    // user who had muted the sound themselves.
     function activer(event: Event): void {
         if (fait) return;
         if (!vautActivation(event)) return;
 
         media.muted = false;
         if (media.muted) {
-            // Le navigateur a refusé le démutage (ce geste ne comptait
-            // finalement pas comme activation à ses yeux) : l'armement
-            // reste disponible, les écouteurs restent en place pour que le
-            // prochain geste retente.
+            // The browser refused unmuting (this gesture did not count
+            // as activation in its eyes after all): the arming
+            // stays available, the listeners stay in place so that the
+            // next gesture retries.
             return;
         }
 

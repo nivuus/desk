@@ -1,108 +1,108 @@
-/* La feuille de la FENÊTRE DE SESSION, et d'elle seule.
-   Le socle de tokens est lié à part, depuis `index.html` — voir l'encadré
-   « POURQUOI CE FICHIER N'IMPORTE PAS LE SOCLE » plus bas.
+/* The sheet of the SESSION WINDOW, and of it alone.
+   The token base layer is linked separately, from `index.html` — see the box
+   "WHY THIS FILE DOES NOT IMPORT THE BASE LAYER" further down.
 
-   ⚠️ CE FICHIER NE DÉCLARE PLUS AUCUNE COULEUR. Les quatorze couleurs par thème,
-   les six voiles hors thème et toutes les échelles vivent dans
-   `design/tokens.css`, qui en est la source unique. Le contrôle
-   `client/outils/couleurs-litterales.mjs` (§7.2) refuse toute valeur littérale
-   ici, et il rendait ONZE avant ce passage.
-
-   ═══════════════════════════════════════════════════════════════════════════
-   ✅ IL NE RESTE PLUS AUCUNE LONGUEUR LITTÉRALE ICI — sous-bloc S4.
-
-   ❌ « TROIS LONGUEURS RESTENT LITTÉRALES, ET C'EST DÉLIBÉRÉ » — écrit ici par
-   S1, reconduit par S2, et RÉFUTÉ PAR S4, le sous-bloc qui a le droit de
-   toucher ces éléments. Les trois sont tombées, chacune pour une raison de
-   fond et non de comptage :
-
-     `padding: 6px …` (deux bandeaux)  → parti avec la reprise sur `.message`,
-        dont le remplissage est `var(--e-2) var(--e-3)`            (tâche 5)
-     `letter-spacing: 0.02em` (#stats) → parti avec le câblage de
-        `--police-mono` : le crénage et la pile monospace servent la MÊME fin,
-        et la spec §4.3 désigne la pile comme le moyen              (tâche 6)
-     `font-size: 18px` (deux boutons)  → devient `var(--t-xl)`, 20 px à racine
-        16, la propriété que la spec §5.2 protège étant désormais gardée par un
-        test (`client/src/style.test.ts`)                           (tâche 7)
-
-   ⚠️ ET LA CLAUSE « AUCUNE LONGUEUR HORS ÉCHELLE » DU §8 CESSE D'ÊTRE UNE
-   DETTE D'ÉNONCÉ. Elle était fausse depuis S1, nommée comme telle, et
-   INVÉRIFIABLE : « aucun des huit contrôles ne mesure une longueur » était
-   écrit à cinq endroits du dépôt. S4 livre **§7.10**
-   (`client/src/design/longueurs.test.ts`), le premier contrôle de ⑥ qui en
-   mesure une, et il est NÉ ROUGE de huit occurrences sur l'arbre intact.
+   ⚠️ THIS FILE NO LONGER DECLARES ANY COLOUR. The fourteen colours per theme,
+   the six out-of-theme veils and all the scales live in
+   `design/tokens.css`, which is their single source. The
+   `client/outils/couleurs-litterales.mjs` check (§7.2) refuses any literal value
+   here, and it returned ELEVEN before this pass.
 
    ═══════════════════════════════════════════════════════════════════════════
-   POURQUOI CE FICHIER N'IMPORTE PAS LE SOCLE — une mesure, pas un goût.
+   ✅ NO LITERAL LENGTH REMAINS HERE — sub-block S4.
 
-   Deux arrangements ont été bâtis en prototype le 19 août 2026 :
+   ❌ "THREE LENGTHS STAY LITERAL, AND IT IS DELIBERATE" — written here by
+   S1, carried over by S2, and REFUTED BY S4, the sub-block that has the right to
+   touch these elements. All three fell, each for a substantive
+   reason and not a counting one:
 
-     A — `style.css` fait `@import './design/socle.css'`, et `index.html` ne
-         lie que `style.css`                     → 2 146 octets, DEUX actifs
-         CSS dont une COPIE du socle inlinée dans celui de `main`
-     B — `index.html` lie `socle.css` PUIS `style.css`, et `style.css`
-         n'importe rien                          → 1 788 octets, deux actifs
-         SANS duplication
+     `padding: 6px …` (two banners)    → gone with the rework onto `.message`,
+        whose padding is `var(--e-2) var(--e-3)`                   (task 5)
+     `letter-spacing: 0.02em` (#stats) → gone with the wiring of
+        `--police-mono`: kerning and the monospace stack serve the SAME end,
+        and spec §4.3 designates the stack as the means             (task 6)
+     `font-size: 18px` (two buttons)   → becomes `var(--t-xl)`, 20 px at a
+        16 root, the property spec §5.2 protects now being guarded by a
+        test (`client/src/style.test.ts`)                           (task 7)
 
-   L'`@import` fait ré-inliner le socle dans chaque entrée qui le traverse ;
-   le lier depuis le HTML laisse Vite le partager. C'est l'arrangement B.
-   ⚠️ Ce que le prototype établit est le RAPPORT entre les deux arrangements,
-   qui ne dépend pas du contenu — il tournait sur un `tokens.css` de cinq
-   tokens. Les deux sommes ci-dessus ne préjugent pas du chiffre final.
+   ⚠️ AND THE CLAUSE "NO LENGTH OUTSIDE THE SCALE" OF §8 STOPS BEING A
+   STATEMENT DEBT. It had been wrong since S1, named as such, and
+   UNVERIFIABLE: "none of the eight checks measures a length" was
+   written in five places of the repository. S4 delivers **§7.10**
+   (`client/src/design/lengths.test.ts`), the first check of ⑥ that
+   measures one, and it was BORN RED with eight occurrences on the untouched tree.
+
+   ═══════════════════════════════════════════════════════════════════════════
+   WHY THIS FILE DOES NOT IMPORT THE BASE LAYER — a measurement, not a taste.
+
+   Two arrangements were built as prototypes on August 19th, 2026:
+
+     A — `style.css` does `@import './design/socle.css'`, and `index.html`
+         only links `style.css`                  → 2,146 bytes, TWO CSS
+         assets, one of which has a COPY of the base layer inlined into that of `main`
+     B — `index.html` links `socle.css` THEN `style.css`, and `style.css`
+         imports nothing                         → 1,788 bytes, two assets
+         WITHOUT duplication
+
+   The `@import` makes the base layer be re-inlined in each entry that goes through it;
+   linking it from the HTML lets Vite share it. It is arrangement B.
+   ⚠️ What the prototype establishes is the RATIO between the two arrangements,
+   which does not depend on content — it ran on a `tokens.css` of five
+   tokens. The two sums above do not prejudge the final figure.
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/* L'écran plein cadre des états terminaux vit à part (sous-bloc S4, tâche 9),
-   et il est IMPORTÉ plutôt que lié depuis `index.html` : contrairement au
-   socle, il n'a qu'un seul consommateur, donc la copie que l'`@import` fait
-   dans chaque entrée qui le traverse ne se paie qu'une fois. Voir son en-tête,
-   et l'encadré « POURQUOI CE FICHIER N'IMPORTE PAS LE SOCLE » ci-dessus, qui
-   mesure le cas INVERSE — celui d'une feuille partagée par cinq pages. */
+/* The full-frame screen of terminal states lives separately (sub-block S4, task 9),
+   and it is IMPORTED rather than linked from `index.html`: unlike the
+   base layer, it has only one consumer, so the copy the `@import` makes
+   in each entry that goes through it is only paid once. See its header,
+   and the box "WHY THIS FILE DOES NOT IMPORT THE BASE LAYER" above, which
+   measures the REVERSE case — that of a sheet shared by five pages. */
 @import './session/etat-terminal.css';
-/* Les deux boutons de coin, extraits par la revue transverse de S4 : ce fichier
-   avait franchi la porte de 300 lignes, et ce dépôt rattrape un franchissement
-   par une EXTRACTION, jamais par une compression. Voir son en-tête. */
+/* The two corner buttons, extracted by the S4 cross review: this file
+   had crossed the 300-line gate, and this repository catches up a crossing
+   with an EXTRACTION, never with a compression. See its header. */
 @import './session/boutons-de-coin.css';
 
-/* `overflow: hidden` reste ICI, et n'est pas monté dans `base.css` : la vidéo
-   occupe 100vw/100vh, mais l'appliquer au hub ou à l'écran de connexion
-   couperait leur contenu sans aucun message. Tout le reste de l'ancien bloc
-   `html, body` — marges, hauteur, fond, encre, police, interligne — vit
-   désormais dans `design/base.css`, où la police se pose sur `body` SEUL pour
-   que la racine reste libre (voir l'encadré de ce fichier : `--e-3` en
-   dépend). */
+/* `overflow: hidden` stays HERE, and was not moved up into `base.css`: the video
+   takes 100vw/100vh, but applying it to the hub or the sign-in screen
+   would cut their content without any message. All the rest of the old
+   `html, body` block — margins, height, background, ink, font, line height — now lives
+   in `design/base.css`, where the font is set on `body` ALONE so
+   that the root stays free (see the box of that file: `--e-3`
+   depends on it). */
 html,
 body {
     overflow: hidden;
 }
-/* 🔴 `--accent-fenetre` N'EST PLUS PEINTE NULLE PART, ET C'EST UNE RÉGRESSION
-   ASSUMÉE — décision du propriétaire du dépôt, 31 août 2026 (lot 33).
+/* 🔴 `--accent-fenetre` IS NO LONGER PAINTED ANYWHERE, AND IT IS AN ACCEPTED
+   REGRESSION — decision of the repository owner, August 31st, 2026 (batch 33).
 
-   ❌ CE BLOC DISAIT « `--accent-fenetre` EST PEINTE ICI, ET NULLE PART
-   AILLEURS (sous-bloc A1, tâche 7 du chantier `legs-sans-vm`) », et il
-   expliquait pourquoi `#remote` était la seule surface où « la couleur de
-   CETTE fenêtre » ait un sens. **C'est devenu faux à l'instant du retrait**,
-   et le commentaire est corrigé plutôt qu'effacé : ce dépôt a payé neuf fois
-   une affirmation devenue fausse laissée en place.
+   ❌ THIS BLOCK SAID "`--accent-fenetre` IS PAINTED HERE, AND NOWHERE
+   ELSE (sub-block A1, task 7 of the `legs-sans-vm` project)", and it
+   explained why `#remote` was the only surface where "the colour of
+   THIS window" made sense. **It became wrong the moment it was removed**,
+   and the comment is corrected rather than erased: this repository has paid nine times
+   for a statement turned wrong and left in place.
 
-   POURQUOI LA BORDURE EST PARTIE : elle était l'unique lecteur du token, et
-   elle se voyait — 1 px CSS peint HORS de la boîte de contenu
-   (`box-sizing: border-box`, donc `clientWidth` l'exclut), sur les QUATRE
-   côtés, soit 1 à 2 px écran selon `devicePixelRatio`. Après que le lot 33 a
-   fait coïncider le recadrage et le cadre visible de la fenêtre à 0x0 près,
-   c'était la SEULE marge qui restait autour de l'image, et le propriétaire a
-   choisi de la retirer en connaissance de cause.
+   WHY THE BORDER WENT: it was the only reader of the token, and
+   it showed — 1 CSS px painted OUTSIDE the content box
+   (`box-sizing: border-box`, so `clientWidth` excludes it), on all FOUR
+   sides, that is 1 to 2 screen px depending on `devicePixelRatio`. After batch 33
+   made the crop and the visible frame of the window coincide down to 0x0,
+   it was the ONLY margin left around the image, and the owner
+   chose to remove it knowingly.
 
-   🔴 CE QUE LE RETRAIT ROUVRE, NOMMÉMENT : le legs que `legs-sans-vm` avait
-   fermé. La couleur d'accent est désormais LUE par le capteur (Win32),
-   ANNONCÉE au navigateur, POSÉE en token par `accent-dom.ts`
-   (`setProperty` sur `document.documentElement`) — et LUE PAR AUCUNE FEUILLE.
-   C'est du travail qui n'aboutit à rien de visible.
+   🔴 WHAT THE REMOVAL REOPENS, BY NAME: the legacy item `legs-sans-vm` had
+   closed. The accent colour is now READ by the sensor (Win32),
+   ANNOUNCED to the browser, SET as a token by `accent-dom.ts`
+   (`setProperty` on `document.documentElement`) — and READ BY NO SHEET.
+   It is work that leads to nothing visible.
 
-   ⚠️ NE PAS « NETTOYER » CE QUI RESTE. Le token, `accent-dom.ts`, l'annonce
-   et le chemin agent sont CONSERVÉS À DESSEIN : repeindre cette couleur
-   ailleurs (un bandeau, un contour de la page-shell, un état de connexion)
-   doit rester bon marché. Détruire le mécanisme rendrait ce retour coûteux,
-   et le propriétaire n'a demandé QUE le retrait de la bordure. */
+   ⚠️ DO NOT "CLEAN UP" WHAT REMAINS. The token, `accent-dom.ts`, the announcement
+   and the agent path are KEPT ON PURPOSE: repainting this colour
+   elsewhere (a banner, an outline of the shell page, a connection state)
+   must stay cheap. Destroying the mechanism would make that return costly,
+   and the owner ONLY asked for the border to be removed. */
 #remote {
     display: block;
     width: 100vw;
@@ -112,77 +112,77 @@ body {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   🔴 `--sur-voile` SUR LES QUATRE ÉLÉMENTS QUI PORTENT DE L'ENCRE, ET C'EST LA
-   RÉPARATION D'UN DÉFAUT RÉEL DU THÈME CLAIR (sous-bloc S4, tâche 4).
+   🔴 `--sur-voile` ON THE FOUR ELEMENTS THAT CARRY INK, AND IT IS THE
+   REPAIR OF A REAL DEFECT OF THE LIGHT THEME (sub-block S4, task 4).
 
-   `base.css` pose `color: var(--texte-fort)` sur `body` ; en thème clair
-   `--texte-fort` vaut `#10131a`, une encre quasi noire ; et les voiles sont
-   HORS THÈME, donc noirs dans les deux. `#status` et `#stats` héritaient donc
-   du quasi-noir sur un voile quasi-noir, et `#fullscreen` et `#micro` le
-   déclaraient explicitement. AUCUN des neuf contrôles ne pouvait le voir — le
-   « huit » d'origine était faux à la date même où la tâche 4 l'a écrit, §7.10
-   étant né deux commits plus tôt (relevé dans `design/contraste.ts`).
+   `base.css` sets `color: var(--texte-fort)` on `body`; in light theme
+   `--texte-fort` is `#10131a`, a near-black ink; and the veils are
+   OUT OF THE THEME, hence black in both. `#status` and `#stats` therefore inherited
+   near-black on a near-black veil, and `#fullscreen` and `#micro`
+   declared it explicitly. NONE of the nine checks could see it — the
+   original "eight" was wrong on the very date task 4 wrote it, §7.10
+   having been born two commits earlier (recorded in `design/contraste.ts`).
 
-   ⚠️ AUCUN CHANGEMENT D'APPARENCE EN SOMBRE : `--sur-voile` vaut `#e6e8eb`,
-   exactement `--texte-fort` de la racine, et exactement l'encre que cette
-   feuille portait avant S1.
+   ⚠️ NO APPEARANCE CHANGE IN DARK: `--sur-voile` is `#e6e8eb`,
+   exactly `--texte-fort` of the root, and exactly the ink this
+   sheet carried before S1.
 
-   ⚠️ QUATRE APPELANTS, PAS CINQ, et la divergence est déclarée : le §4 du plan
-   dit « les cinq éléments », mais le cinquième est `#remote`, un `<video>` qui
-   ne rend AUCUN texte. Lui poser une encre serait écrire une règle morte, et
-   « une règle morte est pire qu'une règle absente : elle se lit comme une
-   protection existante » — cette feuille le dit déjà d'une autre.
+   ⚠️ FOUR CALLERS, NOT FIVE, and the divergence is declared: §4 of the plan
+   says "the five elements", but the fifth is `#remote`, a `<video>` that
+   renders NO text. Setting an ink on it would be writing a dead rule, and
+   "a dead rule is worse than an absent rule: it reads as an existing
+   protection" — this sheet already says so about another one.
    ═══════════════════════════════════════════════════════════════════════════ */
-/* ── LES DEUX BANDEAUX SONT DES `.message message--flottant` (S4, tâche 5) ──
-   Le remplissage, le rayon, la bordure, le fond, l'encre, l'interligne et la
-   règle `:empty` viennent de la PRIMITIVE ; il ne reste ici que ce qui est
-   propre à cette surface — le placement fixe, les nombres tabulaires, la
-   transition d'apparition, et le cran de taille de `#stats`.
+/* ── THE TWO BANNERS ARE `.message message--flottant` (S4, task 5) ─────────
+   The padding, the radius, the border, the background, the ink, the line height and the
+   `:empty` rule come from the PRIMITIVE; all that remains here is what is
+   specific to this surface — the fixed placement, the tabular numbers, the
+   appearance transition, and the size step of `#stats`.
 
-   🔴 CES DÉCLARATIONS ONT ÉTÉ RETIRÉES, PAS ÉCRASÉES. Un sélecteur d'`ID`
-   l'emporte sur une classe : les laisser ici aurait rendu la primitive INERTE
-   tout en la donnant à lire comme appliquée — c'est-à-dire la divergence même
-   que le design system existe pour empêcher.
+   🔴 THESE DECLARATIONS WERE REMOVED, NOT OVERRIDDEN. An `ID` selector
+   wins over a class: leaving them here would have made the primitive INERT
+   while presenting it as applied — that is, the very divergence
+   the design system exists to prevent.
 
-   ⚠️ TROIS CHANGEMENTS D'APPARENCE, TOUS AU CONTRAT DU §5 DU PLAN : le
-   remplissage vertical passe de 6 à 8 px (`--e-2`), le rayon de `--r-2` à
-   `--r-1` (6 → 4 px), et la bordure de `.message` est désormais présente mais
-   TRANSPARENTE. ⚠️ Le rayon n'est PAS compensé, et c'est délibéré : le
-   compenser par une règle d'`ID` qui écrase la primitive recréerait la
-   divergence ci-dessus. Le déclarer coûte une ligne ; le compenser coûterait
-   la règle. Qu'il soit acceptable est un JUGEMENT HUMAIN (§8). */
-/* ── LE WINDOW CONTROLS OVERLAY (S4, tâche 10) ─────────────────────────────
-   Sous WCO, la fenêtre de l'application n'a plus de barre de titre : les
-   commandes de fenêtre se superposent au HAUT de la zone client, et un bandeau
-   posé à `var(--e-3)` du bord passerait DESSOUS. `env(titlebar-area-height)`
-   donne la hauteur de cette bande — et vaut son repli partout ailleurs.
+   ⚠️ THREE APPEARANCE CHANGES, ALL PER THE CONTRACT OF §5 OF THE PLAN: the
+   vertical padding goes from 6 to 8 px (`--e-2`), the radius from `--r-2` to
+   `--r-1` (6 → 4 px), and the border of `.message` is now present but
+   TRANSPARENT. ⚠️ The radius is NOT compensated, and it is deliberate:
+   compensating it with an `ID` rule that overrides the primitive would recreate the
+   divergence above. Declaring it costs one line; compensating it would cost
+   the rule. That it is acceptable is a HUMAN JUDGEMENT (§8). */
+/* ── THE WINDOW CONTROLS OVERLAY (S4, task 10) ─────────────────────────────
+   Under WCO, the application window no longer has a title bar: the
+   window controls overlay the TOP of the client area, and a banner
+   set at `var(--e-3)` from the edge would go UNDER them. `env(titlebar-area-height)`
+   gives the height of that band — and is its fallback everywhere else.
 
-   🔴 LE REPLI EST `0px`, ET C'EST CE QUI REND CETTE RÈGLE INERTE AUJOURD'HUI.
-   Les variables `titlebar-area-*` ne sont définies QUE si le manifeste porte
-   `display_override: ["window-controls-overlay"]`. IL N'EXISTE AUCUN MANIFESTE
-   DANS CE DÉPÔT — mesuré, pas supposé —, donc aucun état atteignable où cette
-   règle agisse : `calc(0px + var(--e-3))` vaut exactement `var(--e-3)`, la
-   valeur d'avant. `client/src/style.test.ts` en fait une commande, et sa rouge
-   a une conséquence RÉELLE sur le produit d'aujourd'hui : écrire un repli non
-   nul descend le bandeau maintenant, sur toutes les sessions.
+   🔴 THE FALLBACK IS `0px`, AND THAT IS WHAT MAKES THIS RULE INERT TODAY.
+   The `titlebar-area-*` variables are ONLY defined if the manifest carries
+   `display_override: ["window-controls-overlay"]`. THERE IS NO MANIFEST
+   IN THIS REPOSITORY — measured, not assumed —, so no reachable state where this
+   rule acts: `calc(0px + var(--e-3))` is exactly `var(--e-3)`, the
+   value from before. `client/src/style.test.ts` turns it into a command, and its red
+   has a REAL consequence on today's product: writing a non-zero fallback
+   moves the banner down now, on every session.
 
-   ⚠️ CE GARDE PROUVE L'INERTIE, JAMAIS LE COMPORTEMENT. La règle n'a JAMAIS
-   été rendue dans une fenêtre à barre de titre superposée.
-   ❌ « ELLE NE LE SERA PAS AVANT QUE G5 NE POSE LE MANIFESTE » LAISSAIT CROIRE
-   QUE LE MANIFESTE SUFFIRAIT : G5 l'a posé le 21 août 2026 — le hub ET chaque
-   application déclarent `display_override: ["window-controls-overlay"]`, et
-   Chromium le RETIENT —, ET LA RÈGLE N'A TOUJOURS PAS ÉTÉ RENDUE. Le WCO
-   n'existe que dans une fenêtre de PWA **installée**, et un Chromium sans
-   interface n'en installe aucune : `matchMedia('(display-mode:
-   window-controls-overlay)').matches` vaut **false**. **Le manifeste était
-   nécessaire, pas suffisant**, et la recette de G5 rend
-   `NON MESURABLE PAR CE MONTAGE`. Aucun critère de recette de S4 ne la couvre, délibérément : un
-   critère qu'aucun état ne peut rendre rouge se lit comme une preuve.
+   ⚠️ THIS GUARD PROVES INERTNESS, NEVER BEHAVIOUR. The rule has NEVER
+   been rendered in a window with an overlaid title bar.
+   ❌ "IT WILL NOT BE BEFORE G5 SETS THE MANIFEST" SUGGESTED
+   THAT THE MANIFEST WOULD BE ENOUGH: G5 set it on August 21st, 2026 — the hub AND each
+   application declare `display_override: ["window-controls-overlay"]`, and
+   Chromium KEEPS it —, AND THE RULE HAS STILL NOT BEEN RENDERED. WCO
+   only exists in an **installed** PWA window, and a headless
+   Chromium installs none: `matchMedia('(display-mode:
+   window-controls-overlay)').matches` is **false**. **The manifest was
+   necessary, not sufficient**, and the G5 acceptance run returns
+   `NOT MEASURABLE BY THIS SETUP`. No acceptance criterion of S4 covers it, deliberately: a
+   criterion no state can turn red reads as a proof.
 
-   ⚠️ CE QUE S4 NE LIVRE PAS DU WCO : aucune zone de glissement
-   (`-webkit-app-region: drag`), aucun emploi de `navigator.windowControlsOverlay`,
-   aucun repositionnement des trois éléments du BAS — le WCO n'occupe que le
-   haut de la zone client. */
+   ⚠️ WHAT S4 DOES NOT DELIVER OF WCO: no drag area
+   (`-webkit-app-region: drag`), no use of `navigator.windowControlsOverlay`,
+   no repositioning of the three BOTTOM elements — WCO only takes the
+   top of the client area. */
 #status {
     position: fixed;
     inset-block-start: calc(env(titlebar-area-height, 0px) + var(--e-3));
@@ -200,29 +200,29 @@ body {
     position: fixed;
     inset-block-end: var(--e-3);
     inset-inline-start: var(--e-3);
-    /* ── LA PILE MONOSPACE (S4, tâche 6) ──────────────────────────────────
-       `--police-mono` avait UN SEUL appelant prévu depuis S1 — celui-ci — et
-       trois sous-blocs se sont passé la décision « le câbler ou le retirer »
-       faute d'avoir le droit de changer l'apparence de cette surface. S4 l'a,
-       et il câble : la spec §4.3 le DÉSIGNE pour ce bandeau, qui « affiche des
-       nombres qui changent » et porte déjà `font-variant-numeric` pour la même
-       raison. Le retirer aurait emporté ses deux appelants de galerie et fait
-       perdre au design system sa pile monospace ENTIÈRE, pour vider une ligne.
+    /* ── THE MONOSPACE STACK (S4, task 6) ─────────────────────────────────
+       `--police-mono` had ONE SINGLE caller planned since S1 — this one — and
+       three sub-blocks passed on the decision "wire it or remove it"
+       for lack of the right to change the appearance of this surface. S4 has it,
+       and it wires: spec §4.3 DESIGNATES it for this banner, which "displays
+       changing numbers" and already carries `font-variant-numeric` for the same
+       reason. Removing it would have taken away its two gallery callers and made
+       the design system lose its ENTIRE monospace stack, to empty a line.
 
-       ⚠️ LE CRÉNAGE DE 0,02em EST PARTI AVEC, ET CE N'EST PAS UN TOUR DE
-       PASSE-PASSE. Le crénage et la pile monospace servent la MÊME FIN — lire
-       des nombres qui changent —, et la spec §4.3 désigne la pile comme le
-       moyen. Le crénage est en outre ANTÉRIEUR au design system : il vient de
-       `bd78d75` (« overlay de mesure et recette du jalon 1 »), relevé par
-       `git log -S 'letter-spacing' -- client/src/style.css`. Il n'avait aucun
-       cran d'échelle, et aucune famille de crénage n'est déclarée.
-       ⚠️ QUE LE RÉSULTAT SOIT PLUS LISIBLE EST UN JUGEMENT HUMAIN (spec §8) :
-       aucune commande ne le dira, et aucun œil n'est passé.
+       ⚠️ THE 0.02em KERNING LEFT WITH IT, AND IT IS NOT SLEIGHT OF
+       HAND. Kerning and the monospace stack serve the SAME END — reading
+       changing numbers —, and spec §4.3 designates the stack as the
+       means. The kerning moreover PREDATES the design system: it comes from
+       `bd78d75` ("measurement overlay and milestone 1 acceptance"), found with
+       `git log -S 'letter-spacing' -- client/src/style.css`. It had no
+       scale step, and no kerning family is declared.
+       ⚠️ THAT THE RESULT IS MORE READABLE IS A HUMAN JUDGEMENT (spec §8):
+       no command will say so, and no eye has looked.
 
-       L'`ID` l'emporte sur la classe : `#stats` garde son cran, `--t-s`, là où
-       `.message` pose `--t-m`, et sa pile là où `base.css` pose `--police-ui`.
-       Deux écrasements volontaires, tous deux sur une VALEUR TYPOGRAPHIQUE et
-       jamais sur la forme de la primitive. */
+       The `ID` wins over the class: `#stats` keeps its step, `--t-s`, where
+       `.message` sets `--t-m`, and its stack where `base.css` sets `--police-ui`.
+       Two deliberate overrides, both on a TYPOGRAPHIC VALUE and
+       never on the shape of the primitive. */
     font-family: var(--police-mono);
     font-variant-numeric: tabular-nums;
     font-size: var(--t-s);

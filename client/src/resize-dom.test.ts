@@ -2,27 +2,27 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 
 import { attacherResizeAuDOM } from './resize-dom';
 
-// 🔴 **CE QUE CE FICHIER GARDE, ET POURQUOI IL EXISTE (lot 33).**
+// 🔴 **WHAT THIS FILE GUARDS, AND WHY IT EXISTS (batch 33).**
 //
-// Le remède du lot 33 vit dans DEUX processus de l'agent : le CAPTEUR fait
-// suivre le recadrage et l'encodeur au `Resize` du canal de contrôle, le
-// SUPERVISEUR fait suivre la fenêtre Windows au `viewport` du `postMessage`.
-// Les deux appliquent la MÊME règle pure sur la MÊME borne — donc ils ne se
-// battent que si on leur donne deux NOMBRES différents.
+// The remedy of batch 33 lives in TWO processes of the agent: the SENSOR makes
+// the crop and the encoder follow the `Resize` of the control channel, the
+// SUPERVISOR makes the Windows window follow the `viewport` of the `postMessage`.
+// Both apply the SAME pure rule on the SAME bound — so they only
+// fight if they are given two different NUMBERS.
 //
-// **C'est ce fichier-ci qui tient l'invariant « un seul nombre, deux
-// destinataires ».** Aucun test Rust ne peut le voir : la divergence naîtrait
-// dans le navigateur, et les deux moitiés seraient correctes prises
-// séparément — exactement la classe de défaut que `CLAUDE.md` décrit sous
-// « une revue par tâche ne peut pas voir un défaut qui franchit une frontière
-// de tâche ».
+// **It is this file that holds the invariant "a single number, two
+// recipients".** No Rust test can see it: the divergence would arise
+// in the browser, and the two halves would be correct taken
+// separately — exactly the class of defect `CLAUDE.md` describes under
+// "a per-task review cannot see a defect that crosses a task
+// boundary".
 
-// ⚠️ **`client/` n'a NI jsdom NI happy-dom**, et c'est une propriété du dépôt,
-// pas un manque : ses tests DOM injectent leurs dépendances
-// (`accent-dom.test.ts` le dit en toutes lettres). `resize-dom.ts`, lui,
-// atteint `window` directement — pour ses minuteurs et son
-// `devicePixelRatio` —, il faut donc lui en poser un. Minimal, et délégant à
-// `globalThis` pour que les faux minuteurs de Vitest le patchent quand même.
+// ⚠️ **`client/` has NEITHER jsdom NOR happy-dom**, and it is a property of the repository,
+// not a gap: its DOM tests inject their dependencies
+// (`accent-dom.test.ts` says so in so many words). `resize-dom.ts`, for its part,
+// reaches `window` directly — for its timers and its
+// `devicePixelRatio` —, so one has to be set for it. Minimal, and delegating to
+// `globalThis` so that Vitest's fake timers still patch it.
 function poserUnWindow(dpr: number): void {
     (globalThis as unknown as { window: unknown }).window = {
         devicePixelRatio: dpr,
@@ -60,7 +60,7 @@ function monter(largeurCss: number, hauteurCss: number, dpr: number) {
     return { envoyes, annonces };
 }
 
-describe('attacherResizeAuDOM — le viewport et le Resize sortent de la MÊME mesure', () => {
+describe('attacherResizeAuDOM — the viewport and the Resize come from the SAME measurement', () => {
     beforeEach(() => {
         vi.useFakeTimers();
         (globalThis as unknown as { ResizeObserver: unknown }).ResizeObserver =
@@ -68,32 +68,32 @@ describe('attacherResizeAuDOM — le viewport et le Resize sortent de la MÊME m
     });
     afterEach(() => vi.useRealTimers());
 
-    it('émet un viewport pour chaque Resize, avec exactement les mêmes nombres', () => {
+    it('emits a viewport for each Resize, with exactly the same numbers', () => {
         const { envoyes, annonces } = monter(778, 491, 1);
         ResizeObserverFactice.dernier!.declencher();
         vi.advanceTimersByTime(250);
 
         expect(envoyes).toHaveLength(1);
-        // `encodeResize` rend du JSON : on relit le message RÉELLEMENT émis
-        // plutôt que de refaire le calcul, sans quoi le test comparerait sa
-        // propre arithmétique à elle-même.
+        // `encodeResize` returns JSON: we re-read the message ACTUALLY emitted
+        // rather than redoing the computation, otherwise the test would compare its
+        // own arithmetic to itself.
         const decode = JSON.parse(envoyes[0]!) as {
             type: string;
             width: number;
             height: number;
         };
         expect(decode.type).toBe('resize');
-        // 🔴 L'ASSERTION QUI COMPTE : le viewport annoncé au superviseur doit
-        // porter LES MÊMES NOMBRES que le `Resize` envoyé au capteur. Les
-        // comparer l'un à l'autre ne serait PAS circulaire ici — ce sont deux
-        // chemins de code distincts (`encodeResize` et le rappel), et c'est
-        // précisément leur ÉGALITÉ qui est la propriété, pas leur valeur.
+        // 🔴 THE ASSERTION THAT COUNTS: the viewport announced to the supervisor must
+        // carry THE SAME NUMBERS as the `Resize` sent to the sensor. Comparing
+        // them to each other would NOT be circular here — they are two distinct
+        // code paths (`encodeResize` and the callback), and it is
+        // precisely their EQUALITY that is the property, not their value.
         expect(annonces).toEqual([[decode.width, decode.height]]);
     });
 
-    it("n'annonce rien quand la page n'a pas d'ouvreur (rappel absent)", () => {
-        // Le cas « page ouverte à la main » : `main.ts` ne passe alors aucun
-        // annonceur. Le `Resize` doit partir quand même — la session vit.
+    it("announces nothing when the page has no opener (callback absent)", () => {
+        // The "page opened by hand" case: `main.ts` then passes no
+        // announcer. The `Resize` must go out anyway — the session is alive.
         const envoyes: string[] = [];
         const canal = {
             readyState: 'open',
@@ -108,11 +108,11 @@ describe('attacherResizeAuDOM — le viewport et le Resize sortent de la MÊME m
         expect(envoyes).toHaveLength(1);
     });
 
-    it('multiplie par devicePixelRatio UNE seule fois', () => {
-        // ⚠️ L'annonceur de `main.ts` ne remultiplie pas : si ce module et lui
-        // appliquaient tous deux le facteur, un client HiDPI demanderait
-        // QUATRE fois les pixels. Le nombre annoncé doit être celui, déjà
-        // périphérique, que le `Resize` porte.
+    it('multiplies by devicePixelRatio only ONCE', () => {
+        // ⚠️ The announcer of `main.ts` does not multiply again: if this module and it
+        // both applied the factor, a HiDPI client would request
+        // FOUR times the pixels. The announced number must be the one, already
+        // in device pixels, that the `Resize` carries.
         const { annonces } = monter(800, 600, 2);
         ResizeObserverFactice.dernier!.declencher();
         vi.advanceTimersByTime(250);

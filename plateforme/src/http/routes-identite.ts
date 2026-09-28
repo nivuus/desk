@@ -1,35 +1,35 @@
-// `GET /auth/moi` : l'identité posée par Pomerium, échangée contre le jeton
-// interne — le MÊME jeton que celui du mot de passe, à l'octet près.
+// `GET /auth/moi`: the identity set by Pomerium, exchanged for the internal
+// token — the SAME token as the password one, byte for byte.
 //
-// 🔴 POURQUOI CE FICHIER EXISTE PLUTÔT QU'UNE ROUTE DE PLUS DANS
-// `routes-auth.ts` : ce dernier pesait 397 lignes au 21 août 2026, et la règle
-// des 500 lignes veut qu'une addition substantielle s'accompagne d'une
-// extraction. Ce sont par ailleurs deux DÉLIVRANCES différentes du même jeton,
-// et elles ne partagent aucune règle : l'une hache un mot de passe, l'autre
-// lit un en-tête.
+// 🔴 WHY THIS FILE EXISTS RATHER THAN ONE MORE ROUTE IN
+// `routes-auth.ts`: the latter weighed 397 lines on 21 August 2026, and the
+// 500-line rule wants a substantial addition to come with an
+// extraction. These are moreover two different ISSUANCES of the same token,
+// and they share no rule: one hashes a password, the other
+// reads a header.
 //
-// 🔴 LE JETON INTERNE N'EST PAS REMPLACÉ, ET C'EST LE CŒUR DE TOUT LE
-// CHANTIER. Il authentifie la poignée de main du relais, que Pomerium ne peut
-// pas garder — l'agent Windows n'a ni navigateur, ni cookie, ni session
-// Google. Le retirer couperait l'agent.
+// 🔴 THE INTERNAL TOKEN IS NOT REPLACED, AND THAT IS THE HEART OF THE WHOLE
+// WORK. It authenticates the relay handshake, which Pomerium cannot
+// guard — the Windows agent has no browser, no cookie, no Google
+// session. Removing it would cut the agent off.
 //
-// ⚠️ AUCUN JETON DE RAFRAÎCHISSEMENT N'EST DÉLIVRÉ, et ce n'est pas un oubli :
-// le cookie Pomerium vit 8640 h, et tenir une chaîne rotative anti-rejeu dont
-// plus personne n'a besoin serait du code vivant que rien n'exerce.
+// ⚠️ NO REFRESH TOKEN IS ISSUED, and that is not an oversight:
+// the Pomerium cookie lives 8640 h, and keeping an anti-replay rotating chain that
+// nobody needs any more would be living code that nothing exercises.
 //
-// 🔴 MAIS « À L'EXPIRATION, LE CLIENT RAPPELLE CETTE ROUTE » ÉTAIT FAUX, ET LA
-// PHRASE EST CORRIGÉE PLUTÔT QUE SUPPRIMÉE (revue transverse du chantier,
-// 21 août 2026). **Aucun code du client ne rappelle cette route à
-// l'expiration** : `client/src/jeton.ts::rafraichirSiNecessaire` n'a aucun
-// appelant de production, et `connexion.ts::tenterPomerium` ne court qu'au
-// CHARGEMENT de la page de connexion. Ce qui rappelle réellement `/auth/moi`
-// est donc un rechargement de page — un geste de l'utilisateur, que le cookie
-// de 8640 h rend silencieux pour lui, mais qui reste un geste. Le raisonnement
-// sur le rafraîchissement ne change pas ; la description du produit, si.
+// 🔴 BUT « ON EXPIRY, THE CLIENT CALLS THIS ROUTE AGAIN » WAS FALSE, AND THE
+// SENTENCE IS FIXED RATHER THAN DELETED (cross-cutting review of the work,
+// 21 August 2026). **No client code calls this route again on
+// expiry**: `client/src/jeton.ts::rafraichirSiNecessaire` has no
+// production caller, and `connexion.ts::tenterPomerium` only runs at
+// LOAD of the login page. What really calls `/auth/moi` again
+// is therefore a page reload — a user gesture, which the 8640 h
+// cookie makes silent for them, but which remains a gesture. The reasoning
+// on refreshing does not change; the description of the product does.
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Pilote } from '../base/pilote';
-import { creerUtilisateur, lireParEmail } from '../depot/utilisateur';
+import { createUser, lireParEmail } from '../depot/utilisateur';
 import { signer } from '../identite/jeton';
 import { pairDeConfiance } from './adresse-source';
 import { entetesCors } from './cors';
@@ -38,17 +38,17 @@ import { ENTETES_SECURITE } from './entetes';
 
 export const CHEMIN_MOI = '/auth/moi';
 
-/// L'en-tête que Pomerium pose quand la route déclare
-/// `pass_identity_headers: true`. **En minuscules** : Node normalise les noms
-/// d'en-tête entrants, et une comparaison sur la casse d'origine ne
-/// correspondrait jamais.
+/// The header Pomerium sets when the route declares
+/// `pass_identity_headers: true`. **In lower case**: Node normalises the names
+/// of incoming headers, and a comparison on the original case would
+/// never match.
 export const ENTETE_IDENTITE = 'x-pomerium-claim-email';
 
-/// Ce qu'on écrit dans `empreinte_mdp`, qui est `NOT NULL` (`0001-socle.sql`).
+/// What we write in `empreinte_mdp`, which is `NOT NULL` (`0001-socle.sql`).
 ///
-/// ⚠️ JAMAIS UNE CHAÎNE VIDE : elle pourrait un jour croiser un vérificateur
-/// permissif. Ce marqueur ne peut correspondre à aucun format que
-/// `identite/mot-de-passe.ts` sait lire (`scrypt$N$r$p$sel$empreinte`).
+/// ⚠️ NEVER AN EMPTY STRING: it could one day meet a permissive
+/// checker. This marker cannot match any format that
+/// `identite/mot-de-passe.ts` can read (`scrypt$N$r$p$sel$empreinte`).
 export const MARQUEUR_SANS_MOT_DE_PASSE = 'pomerium$aucun-mot-de-passe';
 
 export type VerdictIdentite =
@@ -61,33 +61,33 @@ export interface DependancesIdentite {
     origineClient?: string;
     maintenant: () => number;
     auth: 'pomerium' | 'motdepasse';
-    /// L'ensemble des adresses dont on croit l'en-tête `X-Pomerium-Claim-Email`.
-    /// Voir la garde ci-dessous, et `http/adresse-source.ts::pairDeConfiance`.
+    /// The set of addresses whose `X-Pomerium-Claim-Email` header is trusted.
+    /// See the guard below, and `http/adresse-source.ts::pairDeConfiance`.
     proxyDeConfiance: ReadonlySet<string>;
 }
 
-/// 🔴 PURE : ni base, ni socket, ni horloge. C'est ce qui la rend éprouvable
-/// sans monter de serveur, et c'est la convention de tout ce répertoire.
+/// 🔴 PURE: no database, no socket, no clock. That is what makes it testable
+/// without standing up a server, and it is the convention of this whole directory.
 export function lireIdentitePomerium(
     entetes: Record<string, string | string[] | undefined>,
 ): VerdictIdentite {
     const brut = entetes[ENTETE_IDENTITE];
-    // ⚠️ CE COMMENTAIRE DISAIT « un en-tête RÉPÉTÉ est refusé », ET C'EST FAUX
-    // POUR CE CHEMIN PRÉCIS (mesuré, tâche 6, revue « round de correction 1 »,
-    // 22 août 2026) : Node ne rend PAS un tableau pour deux occurrences de
-    // `x-pomerium-claim-email` — ce nom n'est pas dans la petite liste
-    // d'en-têtes que Node expose en tableau (`set-cookie` en est ; celui-ci
-    // n'en est pas). Node les JOINT en UNE SEULE chaîne séparée par `, ` avant
-    // même que ce code ne s'exécute. Le garde `Array.isArray` ci-dessous est
-    // donc MORT pour ce chemin : mesuré, deux en-têtes distincts depuis un
-    // pair de confiance rendent aujourd'hui `200` et créent un compte au
-    // courriel joint (`"a@b.c, evil@x.y"`). **C'est un défaut PRÉEXISTANT,
-    // reporté à la revue finale — non corrigé ici, seul ce commentaire l'est.**
-    // Ce que ce garde referme réellement : le cas, différent, où un APPELANT
-    // interne construit lui-même `entetes` avec un tableau (les tests de ce
-    // fichier le font), et le précédent littéral de `porteur.ts` qui refuse
-    // ainsi de désambiguïser une valeur ambiguë quand elle SE PRÉSENTE sous
-    // cette forme.
+    // ⚠️ THIS COMMENT SAID « a REPEATED header is refused », AND THAT IS FALSE
+    // FOR THIS PRECISE PATH (measured, task 6, review « fix round 1 »,
+    // 22 August 2026): Node does NOT yield an array for two occurrences of
+    // `x-pomerium-claim-email` — that name is not in the short list
+    // of headers Node exposes as an array (`set-cookie` is in it; this one
+    // is not). Node JOINS them into ONE SINGLE string separated by `, ` before
+    // this code even runs. The `Array.isArray` guard below is
+    // therefore DEAD for this path: measured, two distinct headers from a
+    // trusted peer today return `200` and create an account with the
+    // joined email (`"a@b.c, evil@x.y"`). **It is a PRE-EXISTING defect,
+    // deferred to the final review — not fixed here, only this comment is.**
+    // What this guard really closes: the different case where an internal
+    // CALLER builds `entetes` itself with an array (the tests of this
+    // file do so), and the literal precedent of `porteur.ts`, which thus refuses
+    // to disambiguate an ambiguous value when it DOES SHOW UP in
+    // that shape.
     if (Array.isArray(brut) || brut === undefined) {
         return { ok: false, motif: 'identite-absente' };
     }
@@ -110,48 +110,48 @@ function repondre(
     rep.end(JSON.stringify(corps));
 }
 
-/// Rend `true` si la requête a été servie.
+/// Yields `true` if the request was served.
 ///
-/// 🔴 EN MODE `motdepasse`, ELLE REND LE `404` ELLE-MÊME — et c'est ce qui
-/// porte le mode jusqu'au client : la page est bâtie statiquement par Vite et
-/// ne peut lire aucune variable du serveur, alors elle DEMANDE. Un `403`
-/// dirait « la route existe, tu n'y as pas droit », ce qui inviterait à
-/// réessayer ; `404` dit la vérité.
+/// 🔴 IN `motdepasse` MODE, IT RETURNS THE `404` ITSELF — and that is what
+/// carries the mode all the way to the client: the page is built statically by Vite and
+/// cannot read any server variable, so it ASKS. A `403`
+/// would say « the route exists, you have no right to it », which would invite
+/// trying again; `404` tells the truth.
 ///
-/// 🔴 ELLE RENDAIT `false` JUSQU'AU 22 AOÛT 2026, POUR LAISSER RÉPONDRE LE 404
-/// GÉNÉRIQUE DU SERVEUR — ET CE MÉCANISME EST MORT SANS BRUIT dans le lot
-/// « page derrière Pomerium ». Le servant de fichiers, chaîné EN DERNIER,
-/// replie tout chemin sans extension sur la page (`hub.html` depuis le
-/// 30 août 2026, `index.html` avant — voir `page/resolution.ts::PAGE`) :
-/// `GET /auth/moi` en mode `motdepasse` avec `PLATEFORME_PAGE` armée rendait
-/// `200 text/html` (mesuré). Le client ne cassait que par accident — son
-/// `.catch(() => undefined)` faisait tomber le formulaire au bon endroit.
+/// 🔴 IT RETURNED `false` UNTIL 22 AUGUST 2026, TO LET THE GENERIC 404
+/// OF THE SERVER ANSWER — AND THAT MECHANISM DIED SILENTLY in the
+/// « page behind Pomerium » batch. The file server, chained LAST,
+/// folds every path without an extension onto the page (`hub.html` since
+/// 30 August 2026, `index.html` before — see `page/resolution.ts::PAGE`):
+/// `GET /auth/moi` in `motdepasse` mode with `PLATEFORME_PAGE` armed returned
+/// `200 text/html` (measured). The client only broke by accident — its
+/// `.catch(() => undefined)` made the form fall in the right place.
 ///
-/// ⚠️ CE N'EST PAS UN SECOND 404 : c'est LE MÊME, `http/introuvable.ts`, celui
-/// que `serveur.ts` rend aussi. Un texte écrit à la main ici dériverait de
-/// celui du serveur sans que rien ne le dise.
+/// ⚠️ IT IS NOT A SECOND 404: it is THE SAME ONE, `http/introuvable.ts`, the one
+/// `serveur.ts` returns too. A text written by hand here would drift from
+/// the server one without anything saying so.
 export async function servirIdentite(
     req: IncomingMessage,
     rep: ServerResponse,
     deps: DependancesIdentite,
 ): Promise<boolean> {
     const chemin = new URL(req.url ?? '/', 'http://placeholder').pathname;
-    // Comparaison EXACTE, jamais un `startsWith`.
+    // EXACT comparison, never a `startsWith`.
     if (chemin !== CHEMIN_MOI) return false;
-    // 🔴 L'INVARIANT DES DEUX GARDES DE MODE, ÉCRIT ICI ET DANS `routes-auth.ts`
-    // PARCE QU'IL N'APPARTIENT NI À L'UN NI À L'AUTRE : **les deux gardes ont
-    // des POLARITÉS OPPOSÉES** — celui-ci se retire si le mode n'est PAS
-    // `pomerium`, celui de `routes-auth.ts` s'il n'est PAS `motdepasse` —, et
-    // c'est ce qui les fait PARTITIONNER les modes : à DEUX modes, tout mode
-    // ouvre exactement une des deux portes.
+    // 🔴 THE INVARIANT OF THE TWO MODE GUARDS, WRITTEN HERE AND IN `routes-auth.ts`
+    // BECAUSE IT BELONGS TO NEITHER ONE NOR THE OTHER: **the two guards have
+    // OPPOSITE POLARITIES** — this one steps aside if the mode is NOT
+    // `pomerium`, the one of `routes-auth.ts` if it is NOT `motdepasse` —, and
+    // that is what makes them PARTITION the modes: with TWO modes, every mode
+    // opens exactly one of the two doors.
     //
-    // 🔴 À TROIS MODES, LES DEUX RÉPONDENT `404` ENSEMBLE et le service n'a
-    // plus AUCUNE route d'authentification, **en silence** : deux `404` justes
-    // chacun pris seul, et rien qui dise qu'aucune porte n'est ouverte.
-    // **Ajouter une valeur à `AUTHS` (`config.ts`) OBLIGE à revenir ici** et à
-    // décider laquelle des deux portes le mode neuf ouvre — TypeScript ne le
-    // demandera pas, ces gardes comparant des chaînes plutôt qu'un `switch`
-    // exhaustif.
+    // 🔴 WITH THREE MODES, BOTH ANSWER `404` TOGETHER and the service has
+    // NO authentication route left, **silently**: two `404`s, each right
+    // taken alone, and nothing saying that no door is open.
+    // **Adding a value to `AUTHS` (`config.ts`) FORCES coming back here** to
+    // decide which of the two doors the new mode opens — TypeScript will not
+    // ask, as these guards compare strings rather than an exhaustive
+    // `switch`.
     if (deps.auth !== 'pomerium') {
         repondreIntrouvable(rep);
         return true;
@@ -169,20 +169,20 @@ export async function servirIdentite(
         return true;
     }
 
-    // 🔴 LA GARDE QUI FERME LE CONTOURNEMENT. Sans elle, `/auth/moi` rend un
-    // jeton interne valide pour N'IMPORTE QUEL courriel posé dans un en-tête
-    // qu'AUCUNE SIGNATURE NE VÉRIFIE : quiconque atteint le port — donc la VM
-    // Windows, que le § 7.1 de la spec `auth-pomerium` place nommément dans ce
-    // périmètre — s'authentifie sous l'identité de son choix.
+    // 🔴 THE GUARD THAT CLOSES THE BYPASS. Without it, `/auth/moi` returns a
+    // valid internal token for ANY email set in a header
+    // that NO SIGNATURE CHECKS: anyone who reaches the port — hence the Windows
+    // VM, which § 7.1 of the `auth-pomerium` spec places by name within this
+    // perimeter — authenticates under the identity of their choosing.
     //
-    // ⚠️ ELLE EST PLACÉE AVANT LA LECTURE DE L'EN-TÊTE, PAS APRÈS. Après, elle
-    // serait correcte aussi — mais le service aurait déjà lu une identité qu'il
-    // refuse, et un successeur pourrait déplacer la lecture sans voir que la
-    // garde en dépendait.
+    // ⚠️ IT IS PLACED BEFORE THE HEADER IS READ, NOT AFTER. After, it
+    // would be right too — but the service would already have read an identity it
+    // refuses, and a successor could move the read without seeing that the
+    // guard depended on it.
     //
-    // ⚠️ CE QU'ELLE NE PROMET PAS : que seul Pomerium porte cette adresse. Cela
-    // reste à la charge de l'exploitant, comme la garde d'écoute de
-    // `PLATEFORME_HOTE` le dit déjà d'elle-même.
+    // ⚠️ WHAT IT DOES NOT PROMISE: that only Pomerium carries that address. That
+    // stays the operator's responsibility, as the listen guard of
+    // `PLATEFORME_HOTE` already says of itself.
     if (!pairDeConfiance(req.socket.remoteAddress, deps.proxyDeConfiance)) {
         repondre(rep, 401, { refus: 'pair-non-de-confiance' }, cors);
         return true;
@@ -200,19 +200,19 @@ export async function servirIdentite(
     return true;
 }
 
-/// L'identifiant du compte, créé s'il n'existe pas.
+/// The id of the account, created if it does not exist.
 ///
-/// ⚠️ LA SECONDE LECTURE N'EST PAS DÉFENSIVE, ELLE FERME UNE COURSE RÉELLE :
-/// deux requêtes simultanées d'un même utilisateur inconnu passeraient toutes
-/// deux la première lecture, et la seconde insertion violerait l'index UNIQUE
-/// du courriel (`0001-socle.sql`) — un `500` sur la toute première ouverture
-/// de page. On relit alors, et on ne relève l'erreur que si le compte est
-/// toujours introuvable, auquel cas elle dit autre chose qu'une course.
+/// ⚠️ THE SECOND READ IS NOT DEFENSIVE, IT CLOSES A REAL RACE:
+/// two simultaneous requests from the same unknown user would both
+/// pass the first read, and the second insert would violate the UNIQUE index
+/// on the email (`0001-socle.sql`) — a `500` on the very first page
+/// opening. We then read again, and only rethrow the error if the account is
+/// still missing, in which case it says something other than a race.
 async function identifiantDe(base: Pilote, email: string, maintenant: number): Promise<string> {
     const existant = await lireParEmail(base, email);
     if (existant !== undefined) return existant.id;
     try {
-        return await creerUtilisateur(base, email, MARQUEUR_SANS_MOT_DE_PASSE, maintenant);
+        return await createUser(base, email, MARQUEUR_SANS_MOT_DE_PASSE, maintenant);
     } catch (cause) {
         const rattrape = await lireParEmail(base, email);
         if (rattrape !== undefined) return rattrape.id;

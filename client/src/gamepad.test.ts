@@ -1,10 +1,10 @@
-// Tests de la manette côté client.
+// Tests of the gamepad on the client side.
 //
-// Comme pointer.ts et fullscreen.ts, `attachGamepad` reçoit ses dépendances
-// par injection : la source de manettes, le minuteur (pose/annulation) et
-// l'horloge sont tous des doublures ici, ce qui rend la boucle de sondage
-// testable sans `navigator.getGamepads`, `window.setInterval` ni
-// `performance.now` réels.
+// Like pointer.ts and fullscreen.ts, `attachGamepad` receives its dependencies
+// by injection: the gamepad source, the timer (set/cancel) and
+// the clock are all stand-ins here, which makes the polling loop
+// testable without the real `navigator.getGamepads`, `window.setInterval` or
+// `performance.now`.
 
 import { describe, expect, it, vi } from 'vitest';
 import { encodeGamepadState } from '../../proto/ts/input';
@@ -26,11 +26,11 @@ function pad(overrides: Partial<GamepadLike> = {}): GamepadLike {
 }
 
 describe('conversion Gamepad API → XInput', () => {
-    it('rend un état neutre pour une manette au repos', () => {
+    it('returns a neutral state for an idle gamepad', () => {
         expect(versEtatXInput(pad(), 7)).toEqual({ ...ETAT_NEUTRE, seq: 7 });
     });
 
-    it('mappe les boutons sur les masques XInput', () => {
+    it('maps the buttons onto the XInput masks', () => {
         const boutons = pad().buttons.map((b) => ({ ...b }));
         boutons[0] = { pressed: true, value: 1 }; // A
         boutons[12] = { pressed: true, value: 1 }; // croix haut
@@ -38,7 +38,7 @@ describe('conversion Gamepad API → XInput', () => {
         expect(etat.buttons).toBe(0x1000 | 0x0001);
     });
 
-    it('mappe les gâchettes sur 0..255', () => {
+    it('maps the triggers onto 0..255', () => {
         const boutons = pad().buttons.map((b) => ({ ...b }));
         boutons[6] = { pressed: true, value: 1 };
         boutons[7] = { pressed: true, value: 0.5 };
@@ -48,39 +48,39 @@ describe('conversion Gamepad API → XInput', () => {
     });
 
     it("inverse l'axe vertical", () => {
-        // La Gamepad API compte Y vers le BAS, XInput vers le HAUT : sans
-        // inversion, la visée verticale est à l'envers dans tous les jeux.
+        // The Gamepad API counts Y DOWNWARDS, XInput UPWARDS: without
+        // inversion, vertical aim is upside down in every game.
         const etat = versEtatXInput(pad({ axes: [0, -1, 0, 1] }), 0);
         expect(etat.thumbLY).toBe(32767);
         expect(etat.thumbRY).toBe(-32767);
     });
 
-    it('borne les axes à la plage i16', () => {
+    it('clamps the axes to the i16 range', () => {
         const etat = versEtatXInput(pad({ axes: [-1, 0, 1, 0] }), 0);
         expect(etat.thumbLX).toBe(-32767);
         expect(etat.thumbRX).toBe(32767);
     });
 
-    it('tolère une manette sans les 16 boutons standard', () => {
+    it('tolerates a gamepad without the 16 standard buttons', () => {
         const etat = versEtatXInput(pad({ buttons: [{ pressed: true, value: 1 }] }), 0);
         expect(etat.buttons).toBe(0x1000);
     });
 });
 
-describe('détection de changement', () => {
-    it('ignore le numéro de séquence', () => {
-        // `seq` change à chaque message par construction : le comparer
-        // rendrait la détection toujours vraie et annulerait l'économie.
+describe('change detection', () => {
+    it('ignores the sequence number', () => {
+        // `seq` changes on every message by construction: comparing it
+        // would make detection always true and cancel the saving.
         expect(aChange({ ...ETAT_NEUTRE, seq: 1 }, { ...ETAT_NEUTRE, seq: 2 })).toBe(false);
     });
 
-    it('détecte un changement de bouton', () => {
+    it('detects a button change', () => {
         expect(
             aChange({ ...ETAT_NEUTRE, seq: 1 }, { ...ETAT_NEUTRE, seq: 1, buttons: 0x1000 }),
         ).toBe(true);
     });
 
-    it("détecte un changement d'axe", () => {
+    it("detects an axis change", () => {
         expect(
             aChange({ ...ETAT_NEUTRE, seq: 1 }, { ...ETAT_NEUTRE, seq: 1, thumbLX: 1 }),
         ).toBe(true);
@@ -88,14 +88,14 @@ describe('détection de changement', () => {
 });
 
 /**
- * Doublure de `navigator.getGamepads()` : une seule manette, branchable et
- * débranchable à la demande, avec un actionneur de vibration observable.
+ * Stand-in for `navigator.getGamepads()`: a single gamepad, pluggable and
+ * unpluggable on demand, with an observable vibration actuator.
  */
 function faireSourceManettes() {
     let manette: GamepadConnectee | null = null;
-    const effets: Array<{ type: string; parametres: unknown }> = [];
+    const effets: Array<{ type: string; params: unknown }> = [];
     return {
-        obtenir(): ReadonlyArray<GamepadConnectee | null> {
+        get(): ReadonlyArray<GamepadConnectee | null> {
             return [manette];
         },
         brancher(overrides: Partial<GamepadConnectee> = {}): GamepadConnectee {
@@ -104,8 +104,8 @@ function faireSourceManettes() {
                 buttons: Array.from({ length: 16 }, () => ({ pressed: false, value: 0 })),
                 axes: [0, 0, 0, 0],
                 vibrationActuator: {
-                    playEffect: (type, parametres) => {
-                        effets.push({ type, parametres });
+                    playEffect: (type, params) => {
+                        effets.push({ type, params });
                         return Promise.resolve();
                     },
                 },
@@ -120,34 +120,34 @@ function faireSourceManettes() {
     };
 }
 
-/** Doublure de `window.setInterval`/`clearInterval` : pilotée à la main. */
+/** Stand-in for `window.setInterval`/`clearInterval`: driven by hand. */
 function faireMinuteur() {
     let prochainId = 1;
     const fonctions = new Map<number, () => void>();
     const annules: number[] = [];
     return {
-        poser(fonction: () => void): number {
+        poser(callback: () => void): number {
             const id = prochainId;
             prochainId += 1;
-            fonctions.set(id, fonction);
+            fonctions.set(id, callback);
             return id;
         },
         annuler(id: number): void {
             annules.push(id);
             fonctions.delete(id);
         },
-        /** Déclenche le (seul) tour posé — `attachGamepad` n'en pose qu'un. */
+        /** Fires the (only) round set — `attachGamepad` only sets one. */
         declencher(): void {
-            for (const fonction of fonctions.values()) fonction();
+            for (const callback of fonctions.values()) callback();
         },
         annules,
-        get nombrePoses(): number {
+        get scheduledCount(): number {
             return fonctions.size + annules.length;
         },
     };
 }
 
-/** Doublure de `performance.now()` : avance uniquement sur commande. */
+/** Test double of `performance.now()`: advances only on command. */
 function faireHorloge(depart = 0) {
     let t = depart;
     return {
@@ -159,7 +159,7 @@ function faireHorloge(depart = 0) {
 }
 
 describe('attachGamepad', () => {
-    it('ne fait rien tant qu\'aucune manette n\'a jamais été branchée', () => {
+    it('does nothing as long as no gamepad has ever been plugged in', () => {
         const manettes = faireSourceManettes();
         const minuteur = faireMinuteur();
         const horloge = faireHorloge();
@@ -172,11 +172,11 @@ describe('attachGamepad', () => {
         expect(envoyer).not.toHaveBeenCalled();
     });
 
-    it("émet un état seulement quand quelque chose change, pas à chaque tour", () => {
-        // Contre-preuve : si la garde `aChange(...) || expire` du code testé
-        // était remplacée par un envoi inconditionnel, ce test échouerait
-        // (envoyer serait appelé dès le premier tour, alors qu'il ne doit
-        // l'être qu'au second, une fois le bouton pressé).
+    it("emits a state only when something changes, not on every tick", () => {
+        // Counter-proof: if the `aChange(...) || expire` guard of the tested code
+        // were replaced by an unconditional send, this test would fail
+        // (send would be called from the first round, whereas it must
+        // only be called on the second, once the button is pressed).
         const manettes = faireSourceManettes();
         const minuteur = faireMinuteur();
         const horloge = faireHorloge(1000);
@@ -184,13 +184,13 @@ describe('attachGamepad', () => {
         const pad = manettes.brancher();
         attachGamepad({ manettes, minuteur, horloge: horloge.maintenant, envoyer });
 
-        // Premier tour : rien n'a changé depuis l'état initial, et le
-        // rafraîchissement (100 ms) n'est pas encore échu.
+        // First round: nothing has changed since the initial state, and the
+        // refresh (100 ms) is not due yet.
         minuteur.declencher();
         expect(envoyer).not.toHaveBeenCalled();
 
-        // Un bouton se presse, sans que le temps avance : seul le changement
-        // doit déclencher l'émission.
+        // A button is pressed, without time moving forward: only the change
+        // must trigger the emission.
         (pad.buttons as Array<{ pressed: boolean; value: number }>)[0] = { pressed: true, value: 1 };
         minuteur.declencher();
 
@@ -199,11 +199,11 @@ describe('attachGamepad', () => {
         expect(envoyer).toHaveBeenCalledWith(attendu);
     });
 
-    it('rafraîchit périodiquement même sans aucun changement', () => {
-        // Contre-preuve : sans la clause `expire`, ce test échouerait — c'est
-        // justement ce qui distingue le rafraîchissement de la détection de
-        // changement, et c'est lui qui porte la garantie d'auto-réparation
-        // sur un canal non fiable.
+    it('refreshes periodically even without any change', () => {
+        // Counter-proof: without the `expire` clause, this test would fail — it is
+        // precisely what tells the refresh from change detection, and
+        // it is what carries the self-healing guarantee
+        // on an unreliable channel.
         const manettes = faireSourceManettes();
         const minuteur = faireMinuteur();
         const horloge = faireHorloge(1000);
@@ -214,20 +214,20 @@ describe('attachGamepad', () => {
         minuteur.declencher();
         expect(envoyer).not.toHaveBeenCalled();
 
-        // Moins de 100 ms : toujours rien.
+        // Less than 100 ms: still nothing.
         horloge.avancer(50);
         minuteur.declencher();
         expect(envoyer).not.toHaveBeenCalled();
 
-        // 100 ms franchies depuis le dernier envoi (qui n'a jamais eu lieu,
-        // donc depuis l'attache) : le rafraîchissement doit émettre l'état
-        // neutre inchangé.
+        // 100 ms passed since the last send (which never happened,
+        // so since attaching): the refresh must emit the unchanged neutral
+        // state.
         horloge.avancer(50);
         minuteur.declencher();
         expect(envoyer).toHaveBeenCalledTimes(1);
     });
 
-    it('émet un état neutre immédiat au débranchement, sans attendre le rafraîchissement', () => {
+    it('emits an immediate neutral state on unplug, without waiting for the refresh', () => {
         const manettes = faireSourceManettes();
         const minuteur = faireMinuteur();
         const horloge = faireHorloge(1000);
@@ -236,15 +236,15 @@ describe('attachGamepad', () => {
         const pad = manettes.brancher();
         attachGamepad({ manettes, minuteur, horloge: horloge.maintenant, envoyer, surPresence });
 
-        // Établit la présence.
+        // Establishes presence.
         minuteur.declencher();
         expect(surPresence).toHaveBeenCalledWith(true);
         envoyer.mockClear();
 
-        // Une touche reste enfoncée au moment du débranchement...
+        // A key stays pressed at the moment of unplugging...
         (pad.buttons as Array<{ pressed: boolean; value: number }>)[0] = { pressed: true, value: 1 };
         manettes.debrancher();
-        // ...et le temps n'avance PAS : la garantie ne doit rien à
+        // ...and time does NOT move forward: the guarantee owes nothing to
         // `RAFRAICHISSEMENT_MS`.
         minuteur.declencher();
 
@@ -254,9 +254,9 @@ describe('attachGamepad', () => {
         expect(envoyer).toHaveBeenCalledWith(attendu);
     });
 
-    it('arrête le minuteur au détachement', () => {
-        // Contre-preuve : si `detacher` oubliait d'appeler `minuteur.annuler`,
-        // `annules` resterait vide et l'assertion échouerait.
+    it('stops the timer on detach', () => {
+        // Counter-proof: if `detacher` forgot to call `minuteur.annuler`,
+        // `annules` would stay empty and the assertion would fail.
         const manettes = faireSourceManettes();
         const minuteur = faireMinuteur();
         const horloge = faireHorloge();
@@ -268,7 +268,7 @@ describe('attachGamepad', () => {
         expect(minuteur.annules).toEqual([1]);
     });
 
-    it('surVibration relaie les magnitudes normalisées à la manette branchée', () => {
+    it('surVibration relays the normalised magnitudes to the plugged gamepad', () => {
         const manettes = faireSourceManettes();
         const minuteur = faireMinuteur();
         const horloge = faireHorloge();
@@ -281,12 +281,12 @@ describe('attachGamepad', () => {
         expect(manettes.effets).toEqual([
             {
                 type: 'dual-rumble',
-                parametres: { duration: 200, strongMagnitude: 1, weakMagnitude: 128 / 255 },
+                params: { duration: 200, strongMagnitude: 1, weakMagnitude: 128 / 255 },
             },
         ]);
     });
 
-    it("surVibration ne lève pas quand aucune manette n'est branchée", () => {
+    it("surVibration does not throw when no gamepad is plugged in", () => {
         const manettes = faireSourceManettes();
         const minuteur = faireMinuteur();
         const horloge = faireHorloge();

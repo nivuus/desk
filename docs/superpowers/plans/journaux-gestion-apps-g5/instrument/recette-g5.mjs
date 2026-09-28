@@ -249,7 +249,7 @@ async function jouer() {
             20_000,
             'le hub repeuple',
         );
-        const avant = await cdp.eval("document.getElementById('message').textContent");
+        const before = await cdp.eval("document.getElementById('message').textContent");
         await cdp.eval(`(() => {
             const dt = new DataTransfer();
             dt.items.add(new File([new Uint8Array([71, 53, 33, 33])], 'temoin-g5.msi', { type: 'application/x-msi' }));
@@ -257,14 +257,14 @@ async function jouer() {
             return true;
         })()`);
         await jusqua(
-            async () => (await cdp.eval("document.getElementById('message').textContent")) !== avant,
+            async () => (await cdp.eval("document.getElementById('message').textContent")) !== before,
             20_000,
             'le bandeau change après le dépôt',
         ).catch(() => {});
         // On laisse la séquence complète se dérouler : créer, déposer, sceller.
         await new Promise((r) => setTimeout(r, 4000));
         releve.depot = {
-            avant,
+            before,
             apres: await cdp.eval("document.getElementById('message').textContent"),
             classeDuBandeau: await cdp.eval("document.getElementById('message').className"),
         };

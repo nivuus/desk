@@ -165,8 +165,8 @@ try {
     }
     await dormir(3000);
 } catch (e) {
-    releve.erreur = String(e && e.message ? e.message : e);
-    log('ERREUR ' + releve.erreur);
+    releve.error = String(e && e.message ? e.message : e);
+    log('ERREUR ' + releve.error);
 } finally {
     chrome.kill('SIGKILL');
     await writeFile(SORTIE, JSON.stringify(releve, null, 1));

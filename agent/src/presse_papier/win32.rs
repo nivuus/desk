@@ -1,16 +1,16 @@
-//! Les appels Win32 du presse-papier, et **rien d'autre**.
+//! The clipboard's Win32 calls, and **nothing else**.
 //!
-//! Ce module ne décide rien : il lit le numéro de séquence, il lit le texte,
-//! il écrit le texte. Toute la décision — normaliser, dénormaliser, borner,
-//! refuser, comparer au dernier émis, armer les gardes — vit dans le parent,
-//! qui est pur et se teste sur l'hôte.
+//! This module decides nothing: it reads the sequence number, it reads the text,
+//! it writes the text. The whole decision — normalise, denormalise, bound,
+//! refuse, compare to the last emitted, arm the guards — lives in the parent,
+//! which is pure and tested on the host.
 //!
-//! ❌ **Ce module disait « il n'ÉCRIT jamais le presse-papier ; le sens
-//! navigateur → VM est le sous-bloc P2 ». Ce sous-bloc a eu lieu**, et
-//! `ecrire_texte` vit désormais ici. La sonde `diagnostics/presse_papier.rs`
-//! garde son propre `mod win` privé, à dessein : elle mesure, ses phases C et
-//! D écrivent le presse-papier de la VM pour l'éprouver, et le produit ne doit
-//! pas hériter d'un chemin de banc.
+//! ❌ **This module said "it NEVER WRITES the clipboard; the
+//! browser → VM direction is sub-block P2". That sub-block took place**, and
+//! `write_text` now lives here. The `diagnostics/presse_papier.rs` probe
+//! keeps its own private `mod win`, on purpose: it measures, its phases C and
+//! D write the VM's clipboard to exercise it, and the product must not
+//! inherit a bench path.
 
 use anyhow::{Context, Result};
 use windows::Win32::Foundation::HANDLE;
@@ -22,91 +22,91 @@ use windows::Win32::System::DataExchange::{
 use windows::Win32::System::Memory::{GlobalAlloc, GlobalLock, GlobalUnlock, GMEM_MOVEABLE};
 use windows::Win32::System::Ole::CF_UNICODETEXT;
 
-/// Le compteur de séquence du presse-papier de la station de fenêtres.
+/// The clipboard sequence counter of the window station.
 ///
-/// ⚠️ **Zéro a DEUX causes**, et le sondeur n'a pas à les départager : ou bien
-/// l'appel a échoué (pas d'accès `WINSTA_ACCESSCLIPBOARD`), ou bien rien n'a
-/// jamais été copié depuis le démarrage de la station. Mesuré : une VM
-/// fraîchement démarrée rend `0, 0, 0`, puis **53** cinq copies plus tard
-/// (sonde P0, exécution n°1 du 20 août 2026, journal versé). Dans les deux
-/// cas la conduite du `Sondeur` est la bonne — il prend `0` pour référence au
-/// premier tour et n'annonce rien tant que le compteur ne bouge pas.
+/// ⚠️ **Zero has TWO causes**, and the poller need not tell them apart: either
+/// the call failed (no `WINSTA_ACCESSCLIPBOARD` access), or nothing has
+/// ever been copied since the station started. Measured: a freshly
+/// started VM returns `0, 0, 0`, then **53** five copies later
+/// (probe P0, run no. 1 of August 20th, 2026, log recorded). In both
+/// cases the `Sondeur`'s conduct is the right one — it takes `0` as reference at the
+/// first turn and announces nothing as long as the counter does not move.
 pub fn numero_de_sequence() -> u32 {
     unsafe { GetClipboardSequenceNumber() }
 }
 
 /// Ouvre le presse-papier, lit `CF_UNICODETEXT`, referme.
 ///
-/// - `Ok(None)` : le presse-papier ne porte pas de texte Unicode (une image,
-///   par exemple). Ce n'est pas une erreur.
-/// - `Err` : l'ouverture a été refusée — **cas NORMAL sous Windows**, une
-///   autre application tient le presse-papier, et non une panne. L'appelant
-///   n'avance alors pas sa référence et retentera au tour suivant.
+/// - `Ok(None)`: the clipboard carries no Unicode text (an image,
+///   for example). It is not an error.
+/// - `Err`: opening was refused — **a NORMAL case under Windows**, another
+///   application holds the clipboard, and not a failure. The caller
+///   then does not advance its reference and will retry at the next turn.
 ///
-/// `String::from_utf16_lossy` et non une conversion faillible : un substitut
-/// isolé est possible (`CF_UNICODETEXT` n'est pas validé par Windows) et ne
-/// doit ni faire échouer la lecture ni tuer un fil.
+/// `String::from_utf16_lossy` and not a fallible conversion: a lone
+/// surrogate is possible (`CF_UNICODETEXT` is not validated by Windows) and must
+/// neither make the read fail nor kill a thread.
 pub fn lire_texte() -> Result<Option<String>> {
     unsafe { OpenClipboard(None) }.context("OpenClipboard")?;
-    // 🔴 LE GARDE EST CONSTRUIT IMMÉDIATEMENT APRÈS L'OUVERTURE, et rien ne
-    // s'intercale : à partir d'ici, TOUS les chemins de sortie referment.
+    // 🔴 THE GUARD IS BUILT IMMEDIATELY AFTER OPENING, and nothing
+    // slips in between: from here on, ALL exit paths close.
     let _garde = PressePapierOuvert;
     unsafe {
         let poignee = match GetClipboardData(CF_UNICODETEXT.0 as u32) {
             Ok(poignee) if !poignee.is_invalid() => poignee,
-            // Pas de texte Unicode : une image, des fichiers. `Ok(None)`, pas
-            // une erreur — le sondeur n'a rien à annoncer et n'avance pas sa
-            // référence.
+            // No Unicode text: an image, files. `Ok(None)`, not
+            // an error — the poller has nothing to announce and does not advance its
+            // reference.
             _ => return Ok(None),
         };
         let global = HGLOBAL(poignee.0);
         let pointeur = GlobalLock(global) as *const u16;
         if pointeur.is_null() {
-            anyhow::bail!("GlobalLock a rendu un pointeur nul");
+            anyhow::bail!("GlobalLock returned a null pointer");
         }
-        let mut longueur = 0usize;
-        while *pointeur.add(longueur) != 0 {
-            longueur += 1;
+        let mut length = 0usize;
+        while *pointeur.add(length) != 0 {
+            length += 1;
         }
-        // 🔴 LA DONNÉE EST COPIÉE AVANT TOUTE FERMETURE : le handle appartient
-        // au presse-papier et n'est plus valide après `CloseClipboard`.
-        let texte = String::from_utf16_lossy(std::slice::from_raw_parts(pointeur, longueur));
+        // 🔴 THE DATA IS COPIED BEFORE ANY CLOSING: the handle belongs
+        // to the clipboard and is no longer valid after `CloseClipboard`.
+        let texte = String::from_utf16_lossy(std::slice::from_raw_parts(pointeur, length));
         let _ = GlobalUnlock(global);
         Ok(Some(texte))
     }
 }
 
-/// Écrit `texte` dans le presse-papier de la VM, et rend le numéro de séquence
-/// relu **APRÈS** la fermeture.
+/// Writes `texte` into the VM's clipboard, and returns the sequence number
+/// reread **AFTER** closing.
 ///
-/// **Aucune décision ici.** Le texte arrive déjà normalisé, borné et
-/// dénormalisé (`\r\n`) par le parent : ce module se contente de l'écrire.
+/// **No decision here.** The text arrives already normalised, bounded and
+/// denormalised (`\r\n`) by the parent: this module merely writes it.
 ///
-/// 🔴 **Le numéro est relu APRÈS `CloseClipboard`, et cet ordre est
-/// PORTANT.** Le relire avant la fermeture rendrait un compteur que la
-/// fermeture peut encore faire bouger — le garde n°1 de D5 serait alors faux
-/// d'un cran, c'est-à-dire **silencieusement inopérant** : aucune panne,
-/// seulement un aller-retour parasite par collage, que rien ne signalerait.
+/// 🔴 **The number is reread AFTER `CloseClipboard`, and this order is
+/// LOAD-BEARING.** Rereading it before closing would return a counter that
+/// closing can still move — D5's guard no. 1 would then be off
+/// by one, that is, **silently inoperative**: no failure,
+/// only a spurious round trip per paste, which nothing would signal.
 ///
-/// - `Err` sur refus d'ouverture : **cas NORMAL sous Windows** (une autre
-///   application tient le presse-papier — risque R7 de la spec), et non une
-///   panne. **On ne boucle JAMAIS en attente** : l'appelant journalise et
-///   n'injecte pas, la touche `V` étant perdue plutôt que reportée (D6).
-/// - `EmptyClipboard` **précède** `SetClipboardData`, faute de quoi les
-///   formats de l'application précédente survivraient dans d'autres
-///   `CF_*` et le collage deviendrait imprévisible : une application qui
-///   préfère `CF_RTF` ou `CF_HTML` collerait l'ancien contenu.
-pub fn ecrire_texte(texte: &str) -> Result<u32> {
-    // UTF-16 terminé par un `\0` : `CF_UNICODETEXT` l'exige, et un bloc non
-    // terminé ferait lire au-delà par toute application qui colle.
+/// - `Err` on an opening refusal: **a NORMAL case under Windows** (another
+///   application holds the clipboard — the spec's risk R7), and not a
+///   failure. **We NEVER loop waiting**: the caller logs and
+///   does not inject, the `V` key being lost rather than postponed (D6).
+/// - `EmptyClipboard` **precedes** `SetClipboardData`, otherwise the
+///   formats of the previous application would survive in other
+///   `CF_*`s and the paste would become unpredictable: an application that
+///   prefers `CF_RTF` or `CF_HTML` would paste the old content.
+pub fn write_text(texte: &str) -> Result<u32> {
+    // UTF-16 terminated by a `\0`: `CF_UNICODETEXT` requires it, and a
+    // non-terminated block would make any pasting application read beyond it.
     let mut unites: Vec<u16> = texte.encode_utf16().collect();
     unites.push(0);
 
     unsafe { OpenClipboard(None) }.context("OpenClipboard")?;
-    // 🔴 LE GARDE EST CONSTRUIT IMMÉDIATEMENT APRÈS L'OUVERTURE, comme dans
-    // `lire_texte` : à partir d'ici tous les chemins de sortie referment, la
-    // panique comprise. Un presse-papier laissé ouvert bloque TOUTE la window
-    // station, pas seulement l'agent.
+    // 🔴 THE GUARD IS BUILT IMMEDIATELY AFTER OPENING, as in
+    // `lire_texte`: from here on all exit paths close, a
+    // panic included. A clipboard left open blocks the WHOLE window
+    // station, not just the agent.
     let ecriture = (|| unsafe {
         let _garde = PressePapierOuvert;
         EmptyClipboard().context("EmptyClipboard")?;
@@ -114,44 +114,44 @@ pub fn ecrire_texte(texte: &str) -> Result<u32> {
         let global = GlobalAlloc(GMEM_MOVEABLE, octets).context("GlobalAlloc")?;
         let pointeur = GlobalLock(global) as *mut u16;
         if pointeur.is_null() {
-            anyhow::bail!("GlobalLock a rendu un pointeur nul");
+            anyhow::bail!("GlobalLock returned a null pointer");
         }
         std::ptr::copy_nonoverlapping(unites.as_ptr(), pointeur, unites.len());
         let _ = GlobalUnlock(global);
-        // 🔴 Le presse-papier PREND POSSESSION du bloc : ne pas le libérer.
-        // `GlobalFree` ici rendrait le presse-papier de la station pointant sur
-        // de la mémoire rendue au tas — un défaut à effet différé, et global à
-        // la session Windows.
+        // 🔴 The clipboard TAKES OWNERSHIP of the block: do not free it.
+        // `GlobalFree` here would leave the station's clipboard pointing at
+        // memory returned to the heap — a defect with deferred effect, and global to
+        // the Windows session.
         SetClipboardData(CF_UNICODETEXT.0 as u32, Some(HANDLE(global.0)))
             .context("SetClipboardData")?;
         Ok(())
     })();
-    // Le garde a couru à la sortie de la fermeture ci-dessus : le
-    // presse-papier est refermé, et c'est seulement maintenant que le compteur
-    // est stable.
+    // The guard ran on leaving the closure above: the
+    // clipboard is closed, and only now is the counter
+    // stable.
     ecriture?;
     Ok(numero_de_sequence())
 }
 
-/// Le garde RAII qui referme le presse-papier — **sur TOUS les chemins de
-/// sortie**, y compris un `?`, un `return` anticipé et une PANIQUE en cours de
-/// déroulement de pile.
+/// The RAII guard that closes the clipboard — **on ALL exit
+/// paths**, including a `?`, an early `return` and a PANIC during
+/// stack unwinding.
 ///
-/// **Ce n'est pas une élégance, c'est la seule forme correcte ici.** Un
-/// presse-papier laissé ouvert bloque **toute la window station**, pas
-/// seulement l'agent : plus aucune application de la session Windows ne peut
-/// copier ni coller tant que ce processus vit. La forme précédente — une
-/// fermeture unique placée après un bloc de travail — couvrait bien le `?` et
-/// le `return`, parce que le bloc rendait un `Result` au lieu de sortir de la
-/// fonction ; elle ne couvrait **pas** la panique, qui déroule la pile sans
-/// jamais atteindre la ligne de fermeture. Le plan (tâche 12, étape 2)
-/// exigeait explicitement les trois, et le garde est ce qui les donne d'un
-/// seul coup.
+/// **It is not elegance, it is the only correct form here.** A
+/// clipboard left open blocks **the whole window station**, not
+/// just the agent: no application of the Windows session can
+/// copy or paste any more as long as this process lives. The previous form — a
+/// single close placed after a work block — did cover the `?` and
+/// the `return`, because the block returned a `Result` instead of leaving the
+/// function; it did **not** cover the panic, which unwinds the stack without
+/// ever reaching the close line. The plan (task 12, step 2)
+/// explicitly required all three, and the guard is what gives them in
+/// one go.
 ///
-/// Le retour de `CloseClipboard` est délibérément ignoré : il n'existe aucune
-/// conduite de rattrapage — ou le presse-papier était ouvert et il est fermé,
-/// ou il ne l'était pas et il n'y avait rien à faire — et un `Drop` ne peut de
-/// toute façon rien remonter à l'appelant.
+/// The return of `CloseClipboard` is deliberately ignored: there is no
+/// recovery conduct — either the clipboard was open and it is closed,
+/// or it was not and there was nothing to do — and a `Drop` cannot
+/// report anything to the caller anyway.
 struct PressePapierOuvert;
 
 impl Drop for PressePapierOuvert {

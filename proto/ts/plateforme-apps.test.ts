@@ -1,22 +1,22 @@
 /**
- * Tests du miroir TypeScript du canal plateforme — la GESTION D'APPLICATIONS.
+ * Tests of the TypeScript mirror of the platform channel — APPLICATION MANAGEMENT.
  *
- * Extrait de `proto/ts/plateforme.test.ts` VERBATIM (sous-bloc G2, tâche 2) :
- * ce fichier était à 512 lignes et figurait au tableau de dette de `CLAUDE.md`
- * SANS POINT DE CHUTE. Le sous-bloc G2 travaille dedans, donc il l'a découpé —
- * la règle du dépôt est que le découpage rétroactif se fait au moment où l'on
- * travaille dans le fichier, pas en chantier séparé.
+ * Extracted from `proto/ts/plateforme.test.ts` VERBATIM (sub-block G2, task 2):
+ * that file was at 512 lines and appeared in the debt table of `CLAUDE.md`
+ * WITH NO LANDING POINT. Sub-block G2 works in it, so it split it —
+ * the rule of the repository is that retroactive splitting happens when one
+ * works in the file, not as a separate workstream.
  *
- * **Aucun test n'a été ajouté, retiré ni réécrit par ce déplacement.** Le
- * compte de `npx vitest run` a été annoncé AVANT d'être mesuré : 142 tests,
- * 5 fichiers avant, 142 tests et 6 fichiers après. ⚠️ Le compte de FICHIERS
- * change, celui de TESTS non — dire lequel on annonce (piège de P3).
+ * **No test was added, removed or rewritten by this move.** The
+ * count of `npx vitest run` was announced BEFORE being measured: 142 tests,
+ * 5 files before, 142 tests and 6 files after. ⚠️ The FILE count
+ * changes, the TEST count does not — say which one is announced (P3's trap).
  *
- * La frontière est le miroir exacte de celle du Rust : le cycle de vie reste
- * chez `plateforme.test.ts`, la gestion d'apps vient ici. ⚠️ Le `describe`
- * « la version 2, et les listes blanches DÉRIVÉES de l'union » est RESTÉ chez
- * `plateforme.test.ts` : il éprouve la constante de version et les deux listes
- * blanches de l'union entière, pas le catalogue.
+ * The boundary is the exact mirror of the Rust one: the lifecycle stays
+ * in `plateforme.test.ts`, application management comes here. ⚠️ The `describe`
+ * "the protocol version, and the allow-lists DERIVED from the union" STAYED in
+ * `plateforme.test.ts`: it tests the version constant and the two allow-lists
+ * of the whole union, not the catalogue.
  */
 import { describe, expect, it } from 'vitest';
 import {
@@ -31,7 +31,7 @@ import {
 } from './plateforme';
 
 // ---------------------------------------------------------------------------
-// Sous-bloc G1 — catalogue d'applications et lancement (v2).
+// Sub-block G1 — application catalogue and launch (v2).
 // ---------------------------------------------------------------------------
 
 const APP_TEMOIN: Application = {
@@ -43,25 +43,25 @@ const APP_TEMOIN: Application = {
     repertoire: 'c:\\windows\\system32',
     icone: 'a1b2'.repeat(16),
     source_max: { pixels: 256 },
-    // ⚠️ LES DEUX SONT RENSEIGNÉS DANS LE TÉMOIN, ET NON LAISSÉS À LEUR VALEUR
-    // NEUTRE : un encodeur qui OMETTRAIT l'un des deux rendrait le même JSON
-    // qu'un témoin où ils vaudraient `null` et `[]`, et le round-trip ne
-    // pourrait pas le voir. Le cas neutre est éprouvé à part.
+    // ⚠️ BOTH ARE FILLED IN THE WITNESS, AND NOT LEFT AT THEIR NEUTRAL
+    // VALUE: an encoder that OMITTED one of the two would return the same JSON
+    // as a witness where they were `null` and `[]`, and the round trip
+    // could not see it. The neutral case is tested separately.
     accent: '#3f2a7a',
     associations: ['.txt', '.log'],
 };
 
 /**
- * 🔴 LE CAS QUI PIÈGE `CHAMPS_APPLICATION`. Une application dont l'extraction
- * d'icône a échoué porte `icone: null` — et `null` n'est pas une chaîne. Y
- * ajouter `'icone'` ferait donc refuser TOUT catalogue qui en contient une,
- * avec le motif `forme`, en silence.
+ * 🔴 THE CASE THAT TRAPS `CHAMPS_APPLICATION`. An application whose icon
+ * extraction failed carries `icone: null` — and `null` is not a string.
+ * Adding `'icone'` to it would therefore make EVERY catalogue containing one
+ * refused, with the `forme` reason, silently.
  */
 const APP_SANS_ICONE: Application = {
     ...APP_TEMOIN,
     icone: null,
     source_max: 'non-mesuree',
-    // Sans icône, il n'y a aucune dominante à calculer : `accent` suit.
+    // Without an icon, there is no dominant colour to compute: `accent` follows.
     accent: null,
     associations: [],
 };
@@ -75,23 +75,23 @@ const CATALOGUE_TEMOIN =
     + '"source_max":{"pixels":256},"accent":"#3f2a7a",'
     + '"associations":[".txt",".log"]}],"disparues":["disparue-1"]}';
 
-describe('le catalogue et le lancement, sens AGENT -> PLATEFORME', () => {
-    it('encode `catalogue` exactement comme Rust', () => {
-        // 🔴 L'ordre des champs est `type` PUIS `v` : serde émet le tag interne
-        // en premier, `JSON.stringify` respecte l'ordre d'insertion, et le
-        // vecteur fige la chaîne octet pour octet. Écrire `v` d'abord — ce que
-        // fait `control.ts` — produirait une chaîne différente, et la
-        // divergence a été trouvée par ce test en P3, pas par la relecture.
+describe('the catalogue and the launch, AGENT -> PLATFORM direction', () => {
+    it('encodes `catalogue` exactly like Rust', () => {
+        // 🔴 The field order is `type` THEN `v`: serde emits the internal tag
+        // first, `JSON.stringify` respects insertion order, and the
+        // vector pins the string byte for byte. Writing `v` first — which
+        // `control.ts` does — would produce a different string, and the
+        // divergence was found by this test in P3, not by rereading.
         expect(encodeCatalogue(true, [APP_TEMOIN], ['disparue-1'])).toBe(CATALOGUE_TEMOIN);
     });
 
-    it('encode `lancee` exactement comme Rust', () => {
+    it('encodes `lancee` exactly like Rust', () => {
         expect(encodeLancee('d-7', 'raccourci')).toBe(
             '{"type":"lancee","v":5,"demande":"d-7","issue":"raccourci"}',
         );
     });
 
-    it('lit un `catalogue` bien formé, et retrouve chacun de ses champs', () => {
+    it('reads a well-formed `catalogue`, and finds each of its fields', () => {
         const lu = parseVersLaPlateforme(CATALOGUE_TEMOIN);
         expect(lu.ok).toBe(true);
         if (!lu.ok) return;
@@ -102,12 +102,12 @@ describe('le catalogue et le lancement, sens AGENT -> PLATEFORME', () => {
         expect(lu.message.applications).toEqual([APP_TEMOIN]);
     });
 
-    it('🔴 REJETTE un `catalogue` dont `applications` n’est pas un tableau, motif `forme`', () => {
-        // 🔴 C'est le SEUL parseur du fichier dont les octets viennent d'un
-        // tiers. Sans cette garde, un `applications` absent ou scalaire
-        // traverserait jusqu'à la requête SQL. Et rendre `enrolement` ferait
-        // lire « secret faux » au pair pour un message parfaitement
-        // authentifié : le motif désigne la cause, il ne la déguise pas.
+    it('🔴 REJECTS a `catalogue` whose `applications` is not an array, reason `forme`', () => {
+        // 🔴 It is the ONLY parser of the file whose bytes come from a
+        // third party. Without this guard, an absent or scalar `applications`
+        // would go through to the SQL query. And returning `enrolement` would make
+        // the peer read "wrong secret" for a perfectly
+        // authenticated message: the reason designates the cause, it does not disguise it.
         expect(
             parseVersLaPlateforme('{"type":"catalogue","v":5,"complet":true,"applications":3,"disparues":[]}'),
         ).toEqual({ ok: false, motif: 'forme' });
@@ -116,7 +116,7 @@ describe('le catalogue et le lancement, sens AGENT -> PLATEFORME', () => {
         ).toEqual({ ok: false, motif: 'forme' });
     });
 
-    it('🔴 REJETTE un `catalogue` dont une application est incomplète, motif `forme`', () => {
+    it('🔴 REJECTS a `catalogue` with an incomplete application, reason `forme`', () => {
         expect(
             parseVersLaPlateforme(
                 '{"type":"catalogue","v":5,"complet":true,"applications":[{"cle":"a"}],"disparues":[]}',
@@ -124,13 +124,13 @@ describe('le catalogue et le lancement, sens AGENT -> PLATEFORME', () => {
         ).toEqual({ ok: false, motif: 'forme' });
     });
 
-    it('🔴 REJETTE une `lancee` dont l’issue est inconnue, motif `forme`', () => {
+    it('🔴 REJECTS a `lancee` whose outcome is unknown, reason `forme`', () => {
         expect(
             parseVersLaPlateforme('{"type":"lancee","v":5,"demande":"d","issue":"peut-etre"}'),
         ).toEqual({ ok: false, motif: 'forme' });
     });
 
-    it('lit une `lancee` bien formée', () => {
+    it('reads a well-formed `lancee`', () => {
         const lu = parseVersLaPlateforme('{"type":"lancee","v":5,"demande":"d-7","issue":"echec"}');
         expect(lu).toEqual({
             ok: true,
@@ -139,16 +139,16 @@ describe('le catalogue et le lancement, sens AGENT -> PLATEFORME', () => {
     });
 });
 
-describe('le lancement, sens PLATEFORME -> AGENT', () => {
-    it('encode `lancer` exactement comme Rust', () => {
+describe('the launch, PLATFORM -> AGENT direction', () => {
+    it('encodes `lancer` exactly like Rust', () => {
         expect(encodeLancer('d-7', 'a1b2')).toBe(
             '{"type":"lancer","v":5,"demande":"d-7","cle":"a1b2"}',
         );
     });
 
-    it('relit un `lancer`', () => {
-        // 🔴 La rouge : l'omettre de `TYPES_DEPUIS`. Le parseur lèverait
-        // « type de message de plateforme inconnu » sur un ordre valide.
+    it('re-reads a `lancer`', () => {
+        // 🔴 The red: omitting it from `TYPES_DEPUIS`. The parser would throw
+        // "unknown platform message type" on a valid order.
         const lu = parseDepuisLaPlateforme(
             '{"type":"lancer","v":5,"demande":"d-7","cle":"a1b2"}',
         ) as unknown as Record<string, unknown>;
@@ -159,15 +159,15 @@ describe('le lancement, sens PLATEFORME -> AGENT', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Sous-bloc G2 — les icônes, leur provenance, et l'inventaire des manquantes.
+// Sub-block G2 — the icons, their provenance, and the inventory of missing ones.
 // ---------------------------------------------------------------------------
 
-describe('les deux champs d’icône traversent le parseur', () => {
-    it('🔴 ACCEPTE un catalogue dont une application n’a PAS d’icône', () => {
-        // 🔴 C'EST LA ROUGE QUI COMPTE, ET SON ÉTAT EST SILENCIEUX EN
-        // PRODUCTION. Ajouter `'icone'` à `CHAMPS_APPLICATION` — le geste
-        // naïf — ferait refuser ce catalogue pour `forme`, c'est-à-dire un
-        // catalogue ENTIER perdu sans qu'aucune trace n'en dise la raison.
+describe('both icon fields go through the parser', () => {
+    it('🔴 ACCEPTS a catalogue in which an application has NO icon', () => {
+        // 🔴 IT IS THE RED THAT COUNTS, AND ITS STATE IS SILENT IN
+        // PRODUCTION. Adding `'icone'` to `CHAMPS_APPLICATION` — the naive
+        // gesture — would make this catalogue refused for `forme`, that is a
+        // WHOLE catalogue lost without any trace stating the reason.
         const brut = encodeCatalogue(true, [APP_SANS_ICONE], []);
         const lu = parseVersLaPlateforme(brut);
         expect(lu.ok).toBe(true);
@@ -176,15 +176,15 @@ describe('les deux champs d’icône traversent le parseur', () => {
         expect(lu.message.applications[0].source_max).toBe('non-mesuree');
     });
 
-    it('accepte une application AVEC icône, et rend `source_max` en objet', () => {
+    it('accepts an application WITH an icon, and returns `source_max` as an object', () => {
         const lu = parseVersLaPlateforme(encodeCatalogue(true, [APP_TEMOIN], []));
         if (!lu.ok || lu.message.type !== 'catalogue') throw new Error('forme');
         expect(lu.message.applications[0].source_max).toEqual({ pixels: 256 });
     });
 
-    it('🔴 REFUSE une application à qui il MANQUE un des deux champs neufs', () => {
-        // Le champ ABSENT est la forme sous laquelle un agent v2 se
-        // présenterait. Il doit être refusé, pas complété.
+    it('🔴 REFUSES an application that LACKS one of the two new fields', () => {
+        // The ABSENT field is the form in which a v2 agent would
+        // present itself. It must be refused, not completed.
         const sansIcone = JSON.stringify({ ...APP_TEMOIN, icone: undefined });
         const sansSource = JSON.stringify({ ...APP_TEMOIN, source_max: undefined });
         for (const app of [sansIcone, sansSource]) {
@@ -193,8 +193,8 @@ describe('les deux champs d’icône traversent le parseur', () => {
         }
     });
 
-    it('🔴 REFUSE une `source_max` qui n’est ni la chaîne ni la forme exacte', () => {
-        for (const valeur of [
+    it('🔴 REFUSES a `source_max` that is neither the string nor the exact shape', () => {
+        for (const value of [
             '"gros"',
             '{"pixels":"gros"}',
             '{"pixels":256,"bonus":1}',
@@ -203,17 +203,17 @@ describe('les deux champs d’icône traversent le parseur', () => {
             'null',
             '"non_mesuree"',
         ]) {
-            const app = JSON.stringify(APP_TEMOIN).replace('{"pixels":256}', valeur);
+            const app = JSON.stringify(APP_TEMOIN).replace('{"pixels":256}', value);
             const brut = `{"type":"catalogue","v":5,"complet":true,"applications":[${app}],"disparues":[]}`;
             expect(parseVersLaPlateforme(brut)).toEqual({ ok: false, motif: 'forme' });
         }
     });
 
-    it('🔴 REFUSE une `icone` qui n’est ni `null` ni une chaîne', () => {
-        for (const valeur of ['42', 'true', '{}', '[]']) {
+    it('🔴 REFUSES an `icone` that is neither `null` nor a string', () => {
+        for (const value of ['42', 'true', '{}', '[]']) {
             const app = JSON.stringify(APP_TEMOIN).replace(
                 '"a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2"',
-                valeur,
+                value,
             );
             const brut = `{"type":"catalogue","v":5,"complet":true,"applications":[${app}],"disparues":[]}`;
             expect(parseVersLaPlateforme(brut)).toEqual({ ok: false, motif: 'forme' });
@@ -221,28 +221,28 @@ describe('les deux champs d’icône traversent le parseur', () => {
     });
 });
 
-describe('`icones-manquantes`, sens PLATEFORME -> AGENT', () => {
-    it('encode exactement comme Rust', () => {
+describe('`icones-manquantes`, PLATFORM -> AGENT direction', () => {
+    it('encodes exactly like Rust', () => {
         expect(encodeIconesManquantes(['a1b2', 'c3d4'])).toBe(
             '{"type":"icones-manquantes","v":5,"empreintes":["a1b2","c3d4"]}',
         );
     });
 
-    it('se relit, et REFUSE une version divergente', () => {
+    it('re-reads itself, and REFUSES a diverging version', () => {
         const lu = parseDepuisLaPlateforme(
             '{"type":"icones-manquantes","v":5,"empreintes":["a1b2"]}',
         );
         if (lu.type !== 'icones-manquantes') throw new Error('type');
         expect(lu.empreintes).toEqual(['a1b2']);
-        // 🔴 LA VERSION DIVERGENTE SE DÉRIVE. Elle valait `4` en dur — « la
-        // suivante » telle qu'elle se lisait au temps de G2 —, et le bump de G3
-        // l'a rendue nôtre : ce test affirmait alors que NOTRE version est
-        // refusée. Il a échoué bruyamment, ce qui est le bon comportement, mais
-        // il aurait recommencé au bump d'après.
+        // 🔴 THE DIVERGING VERSION IS DERIVED. It was `4` hardcoded — "the
+        // next one" as it read at G2's time —, and G3's bump
+        // made it ours: this test then claimed that OUR version is
+        // refused. It failed loudly, which is the right behaviour, but
+        // it would have done it again at the next bump.
         expect(() =>
             parseDepuisLaPlateforme(
                 `{"type":"icones-manquantes","v":${PLATEFORME_VERSION + 1},"empreintes":[]}`,
             ),
-        ).toThrow(/version de plateforme non supportée/);
+        ).toThrow(/unsupported platform version/);
     });
 });

@@ -1,31 +1,31 @@
 mod accent;
 mod apps;
 mod audio;
-// Pas de `#[cfg(windows)]` ici : le protocole du canal média et la
-// `SourceDistante` sont de la logique pure, et doivent se compiler et se
-// tester sur Linux. Les sous-modules qui touchent DXGI et les tubes sont
-// gatés à l'intérieur de `capteur.rs`.
+// No `#[cfg(windows)]` here: the media channel protocol and the
+// `SourceDistante` are pure logic, and must compile and be
+// tested on Linux. The submodules that touch DXGI and the pipes are
+// gated inside `capteur.rs`.
 mod capteur;
-// Le rendu LISIBLE de la chaine de causes d'une `anyhow::Error` dans une
-// trace. Racine nue : son nom ne prefixe aucun module de premier niveau.
+// The READABLE rendering of an `anyhow::Error`'s chain of causes in a
+// trace. Bare root: its name prefixes no top-level module.
 mod cause;
 mod clock;
 mod congestion;
-// La lecture et la validation de l'environnement, extraites de ce fichier le
-// 20 août 2026 : voir le commentaire de module de `configuration.rs`. `Config`
-// est réexporté ci-dessous, de sorte qu'aucun site d'appel n'ait bougé.
+// Reading and validating the environment, extracted from this file on
+// 20 August 2026: see the module comment of `configuration.rs`. `Config`
+// is re-exported below, so that no call site has moved.
 mod configuration;
 mod cursor;
 mod demarrage;
 mod diagnostics;
 mod disposition;
 mod frames;
-// Pas de `#[cfg(windows)]` ici : les logiques pures de `gamepad` (tâche 9,
-// ordonnancement des états et limitation des vibrations) n'ont rien de
-// spécifique à Windows et doivent compiler et se tester sur Linux. La sonde
-// `probe`, elle, reste gated à l'intérieur même du fichier
-// (`agent/src/gamepad/probe.rs`), avec ses dépendances `vigem-client` /
-// `anyhow::Context` propres à la sonde.
+// No `#[cfg(windows)]` here: the pure logic of `gamepad` (task 9,
+// ordering of states and limiting of vibrations) has nothing
+// specific to Windows and must compile and be tested on Linux. The
+// `probe` probe, for its part, stays gated inside the file itself
+// (`agent/src/gamepad/probe.rs`), with its `vigem-client` /
+// `anyhow::Context` dependencies specific to the probe.
 mod gamepad;
 mod geometry;
 mod h264;
@@ -36,102 +36,102 @@ mod moniteurs_virtuels;
 mod opus;
 #[cfg(windows)]
 mod pointer_settings;
-// Le presse-papier de la VM, sens VM -> navigateur. Pas de `#[cfg(windows)]` :
-// toute la décision (normalisation, bornage, gardes) est PURE et doit se
-// compiler et se tester sur l'hôte Linux ; les deux appels Win32 vivent dans
-// `presse_papier/win32.rs`, gaté à l'intérieur du module. À la racine nue et
-// non sous `capteur/` : le propriétaire est le capteur aujourd'hui, l'enfant
-// le jour où le mode mono-fenêtre en aura un — un nom sous `capteur/` serait
-// faux ce jour-là.
+// The VM's clipboard, VM -> browser direction. No `#[cfg(windows)]`:
+// the whole decision (normalisation, clamping, guards) is PURE and must
+// compile and be tested on the Linux host; the two Win32 calls live in
+// `presse_papier/win32.rs`, gated inside the module. At the bare root and
+// not under `capteur/`: the owner is the sensor today, the child
+// the day the single-window mode gets one — a name under `capteur/` would be
+// wrong that day.
 mod presse_papier;
-// Le client du canal `/agent` de la plateforme. Pas de `#[cfg(windows)]` :
-// le calcul du délai de reprise (`plateforme::repli`) est pur et doit se
-// compiler et se tester sur l'hôte Linux, et le socket lui-même n'a rien de
-// spécifique à Windows.
+// The client of the platform's `/agent` channel. No `#[cfg(windows)]`:
+// the computation of the retry delay (`plateforme::repli`) is pure and must
+// compile and be tested on the Linux host, and the socket itself has nothing
+// specific to Windows.
 mod plateforme;
 mod pont;
-// Racine nue, pas `pont/relance.rs` : le nom ne décrit rien du PONT
-// lui-même, seulement une politique de supervision (relance espacée, seuil
-// de stabilité) — voir l'en-tête du fichier pour l'application complète de
-// la convention de nommage. Extrait de `superviseur::boucle::
-// surveillance_pont` (round de correction 2) pour compiler et se tester sur
-// l'hôte : ce dernier vit derrière `superviseur::boucle::#![cfg(windows)]`.
+// Bare root, not `pont/relance.rs`: the name describes nothing of the BRIDGE
+// itself, only a supervision policy (spaced restart, stability
+// threshold) — see the file's header for the full application of
+// the naming convention. Extracted from `superviseur::boucle::
+// surveillance_pont` (fix round 2) to compile and be tested on
+// the host: the latter lives behind `superviseur::boucle::#![cfg(windows)]`.
 mod rebuild;
 mod relance_pont;
 mod signaling;
-// Pas de `#[cfg(windows)]` ici : c'est la part portable de `capture.rs`
-// (lui-même `#![cfg(windows)]` dans son ensemble) — voir le commentaire de
-// module de `sortie_dxgi.rs`. `superviseur::placement` (tâche 7) en a besoin
-// pour se compiler et se tester sur Linux.
+// No `#[cfg(windows)]` here: it is the portable part of `capture.rs`
+// (itself `#![cfg(windows)]` as a whole) — see the module comment
+// of `sortie_dxgi.rs`. `superviseur::placement` (task 7) needs it
+// to compile and be tested on Linux.
 mod sortie_dxgi;
-// Fréquence dominante d'un bloc d'échantillons (correction « A-bis »). Pur,
-// nom autonome : racine nue, comme `geometry` et `sortie_dxgi` — voir la
-// convention de module enfant de `CLAUDE.md`.
+// Dominant frequency of a block of samples ("A-bis" fix). Pure,
+// standalone name: bare root, like `geometry` and `sortie_dxgi` — see the
+// child module convention of `CLAUDE.md`.
 mod spectre;
-// Pas de `#[cfg(windows)]` ici : le prédicat de PERSISTANCE (tâche 2bis, D9,
-// correction n°14 de la revue) est pur -- `Option<(u32, u32)> ×
-// Option<(u32, u32)> -> &str` -- et doit se compiler et se tester sur Linux,
-// même s'il n'est appelé que depuis `diagnostics::multifenetre`, gated
-// derrière `#[cfg(windows)]` dans `diagnostics.rs`.
+// No `#[cfg(windows)]` here: the PERSISTENCE predicate (task 2bis, D9,
+// fix no. 14 of the review) is pure -- `Option<(u32, u32)> ×
+// Option<(u32, u32)> -> &str` -- and must compile and be tested on Linux,
+// even though it is only called from `diagnostics::multifenetre`, gated
+// behind `#[cfg(windows)]` in `diagnostics.rs`.
 mod survie_verdict;
-// Pas de `#[cfg(windows)]` ici : la logique pure de `superviseur` (tâche 2)
-// décide quelles fenêtres méritent d'exister côté navigateur, et doit se
-// compiler et se tester sur Linux sans dépendance à l'API Windows.
+// No `#[cfg(windows)]` here: the pure logic of `superviseur` (task 2)
+// decides which windows deserve to exist on the browser side, and must
+// compile and be tested on Linux without depending on the Windows API.
 mod source;
 mod superviseur;
 mod transport;
 mod turn;
-// Le calcul de région est pur et doit être testable sur l'hôte : il est donc
-// déclaré indépendamment du reste de `windows_source`, qui ne compile que sur
+// The region computation is pure and must be testable on the host: it is therefore
+// declared independently of the rest of `windows_source`, which only compiles on
 // Windows.
 #[path = "windows_source/sortie.rs"]
 mod windows_source_sortie;
 
-// Même montage, et pour la même raison : la classification des échecs
-// d'acquisition et le budget de reprises sont purs et doivent se tester sur
-// l'hôte, alors que `capture.rs` est `#![cfg(windows)]` dans son ensemble.
+// Same set-up, and for the same reason: the classification of acquisition
+// failures and the retry budget are pure and must be tested on the
+// host, whereas `capture.rs` is `#![cfg(windows)]` as a whole.
 #[path = "capture/reprise.rs"]
 mod capture_reprise;
 
-// Même montage encore (D9, tâche 11) : `Telemetrie` est pure — trois
-// compteurs atomiques par SESSION, remplaçant les statiques de PROCESSUS
-// `TICKS`/`CAPTURED`/`PRODUCED` de `windows_source.rs`, mortes des deux côtés
-// depuis D4 (consignation n°1 de D6). `mod telemetrie;` DANS `windows_source`
-// ne suffirait pas : ce fichier est lui-même `#![cfg(windows)]`, et
-// `mod windows_source;` ci-dessous l'est aussi — sur Linux, tout son
-// sous-arbre serait absent de la compilation, y compris ce module, qui ne
-// serait donc plus « éprouvable sur l'hôte ».
+// Same set-up again (D9, task 11): `Telemetrie` is pure — three
+// atomic counters per SESSION, replacing the PROCESS statics
+// `TICKS`/`CAPTURED`/`PRODUCED` of `windows_source.rs`, dead on both sides
+// since D4 (record no. 1 of D6). `mod telemetrie;` INSIDE `windows_source`
+// would not be enough: that file is itself `#![cfg(windows)]`, and
+// `mod windows_source;` below is too — on Linux, its whole
+// subtree would be absent from compilation, including this module, which
+// would therefore no longer be "testable on the host".
 #[path = "windows_source/telemetrie.rs"]
 mod windows_source_telemetrie;
 
-// Même montage encore (correction « A-bis », 19 août 2026) : la règle qui
-// élit le point de terminaison audio de rendu à capter est pure — elle prend
-// une liste de noms et d'identifiants et rend un élu ou une raison de refus —
-// alors que `wasapi.rs` est `#![cfg(windows)]` dans son ensemble. Un
-// `mod peripherique;` DANS `wasapi` la rendrait absente de la compilation
-// hôte, donc inéprouvable, exactement comme pour `telemetrie` ci-dessus.
+// Same set-up again ("A-bis" fix, 19 August 2026): the rule that
+// elects the render audio endpoint to capture is pure — it takes
+// a list of names and identifiers and returns an elected one or a refusal reason —
+// whereas `wasapi.rs` is `#![cfg(windows)]` as a whole. A
+// `mod peripherique;` INSIDE `wasapi` would make it absent from the host
+// compilation, hence untestable, exactly as for `telemetrie` above.
 #[path = "wasapi/peripherique.rs"]
 mod wasapi_peripherique;
 
-// Même montage, une troisième fois (bloc E2, 20 août 2026) : le format de
-// mixage que l'écriture du micro sur le câble accepte — et surtout ceux
-// qu'elle REFUSE en les nommant — est une règle sans un octet de COM. Elle
-// vit chez `wasapi` parce que c'est de WASAPI qu'elle parle, et elle est
-// hissée ici parce que `wasapi.rs` est `#![cfg(windows)]` : le plan E2
-// demande cette règle « PURE et testée sur l'hôte » et loge par ailleurs
-// `wasapi/ecriture.rs` sous ce même `cfg`. Les deux ne peuvent pas tenir dans
-// le même fichier ; elles tiennent dans le même répertoire.
+// Same set-up, a third time (block E2, 20 August 2026): the mix
+// format that writing the microphone to the cable accepts — and above all those
+// it REFUSES while naming them — is a rule without a single byte of COM. It
+// lives with `wasapi` because it is WASAPI it talks about, and it is
+// hoisted here because `wasapi.rs` is `#![cfg(windows)]`: plan E2
+// asks for this rule "PURE and tested on the host" and elsewhere houses
+// `wasapi/ecriture.rs` under that same `cfg`. The two cannot fit in
+// the same file; they fit in the same directory.
 #[path = "wasapi/format.rs"]
 mod wasapi_format;
 
-/// La part PURE du chemin NVENC (lot 31) : choix de la voie, traduction des
-/// réglages, arithmétique de version des structures.
+/// The PURE part of the NVENC path (batch 31): choice of path, translation of
+/// settings, version arithmetic of structures.
 ///
-/// ⚠️ **Hissée ici pour la même raison que `wasapi_format` juste au-dessus** :
-/// `encode.rs` est `#![cfg(windows)]`, et cette logique-ci doit se tester sur
-/// l'hôte. Le nom porte le préfixe `encode_` d'un module de premier niveau
-/// existant, donc la convention la range CHEZ son parent, par `#[path]` —
-/// et non à la racine nue. Voir l'en-tête du fichier.
+/// ⚠️ **Hoisted here for the same reason as `wasapi_format` just above**:
+/// `encode.rs` is `#![cfg(windows)]`, and this logic must be tested on
+/// the host. The name carries the `encode_` prefix of an existing top-level
+/// module, so the convention places it IN its parent, through `#[path]` —
+/// and not at the bare root. See the file's header.
 #[path = "encode/nvenc.rs"]
 mod encode_nvenc;
 
@@ -147,13 +147,13 @@ mod wasapi;
 mod window;
 #[cfg(windows)]
 mod windows_audio;
-/// L'ecriture du micro sur le cable virtuel (bloc E2).
+/// Writing the microphone to the virtual cable (block E2).
 ///
-/// ⚠️ **Racine nue, et c'est vérifié contre la convention** (§ « Convention de
-/// module enfant », tête de `CLAUDE.md`) : `windows_micro` ne porte le préfixe
-/// `<parent>_` d'aucun module de premier niveau existant — `window` exigerait
-/// `window_`, et il n'existe aucun `mod windows;`. Il rejoint `windows_audio`
-/// et `windows_source`, à la racine nue pour la même raison. **Aucun `#[path]`.**
+/// ⚠️ **Bare root, and it is checked against the convention** (§ "Child
+/// module convention", head of `CLAUDE.md`): `windows_micro` carries the
+/// `<parent>_` prefix of no existing top-level module — `window` would require
+/// `window_`, and there is no `mod windows;`. It joins `windows_audio`
+/// and `windows_source`, at the bare root for the same reason. **No `#[path]`.**
 #[cfg(windows)]
 mod windows_micro;
 #[cfg(windows)]
@@ -172,171 +172,169 @@ async fn main() -> Result<()> {
         )
         .init();
 
-    // Diagnostic (chantier duplications-parallèles, tâche 2bis) : posé AVANT
-    // tout le reste, pour qu'aucune faute ne puisse survenir avant lui.
-    // Inerte sans `AGENT_TRACE_EXCEPTIONS`, et le gestionnaire ne s'exécute
-    // qu'au moment d'une violation d'accès — jamais sur le chemin nominal.
+    // Diagnostic (parallel duplications work stream, task 2bis): set BEFORE
+    // everything else, so that no fault can occur before it.
+    // Inert without `AGENT_TRACE_EXCEPTIONS`, and the handler only runs
+    // at the moment of an access violation — never on the nominal path.
     #[cfg(windows)]
     diagnostics::exceptions::installer();
 
-    // Au tout début, avant toute possibilité d'injection d'entrée (les modes
-    // diagnostic de `diagnostics::aiguiller` n'en injectent pas, mais la
-    // session normale plus bas le fait) : neutraliser l'accélération et la
-    // sensibilité pointeur de la session Windows. Ne fait jamais échouer le
-    // démarrage — une visée dégradée vaut mieux que pas de session.
+    // At the very beginning, before any possibility of input injection (the
+    // diagnostic modes of `diagnostics::aiguiller` inject none, but the
+    // normal session further down does): neutralise the pointer acceleration and
+    // sensitivity of the Windows session. Never makes start-up
+    // fail — degraded aiming is better than no session.
     //
-    // `INPUT_LINEARITY_NEUTRALISER=0` saute AUSSI cet appel-ci, et pas
-    // seulement celui, propre à la sonde de linéarité, que porte
+    // `INPUT_LINEARITY_NEUTRALISER=0` ALSO skips this call, and not
+    // only the one specific to the linearity probe, carried by
     // `diagnostics::entree`.
-    // Correction de la ronde de revue 1 : le réglage SPI que pose
-    // `neutraliser()` vaut pour la SESSION Windows entière, pas pour le
-    // processus qui l'a posé (voir `pointer_settings.rs`) — sauter
-    // uniquement l'appel de la sonde ne suffisait donc pas, puisque cet
-    // appel-ci, plus haut et inconditionnel, avait déjà neutralisé
-    // l'accélération avant même que la sonde ne lise sa propre variable.
-    // La mesure de référence obtenait un écart nul quel que soit l'état
-    // réel de la VM : un artefact garanti par construction, pas une mesure.
+    // Fix of review round 1: the SPI setting that
+    // `neutraliser()` sets applies to the whole Windows SESSION, not to the
+    // process that set it (see `pointer_settings.rs`) — skipping
+    // only the probe's call was therefore not enough, since this
+    // call, higher up and unconditional, had already neutralised
+    // acceleration before the probe even read its own variable.
+    // The reference measurement got a zero gap whatever the real
+    // state of the VM: an artefact guaranteed by construction, not a measurement.
     #[cfg(windows)]
     if std::env::var("INPUT_LINEARITY_NEUTRALISER").as_deref() != Ok("0") {
         match pointer_settings::neutraliser() {
-            Ok(rapport) => tracing::info!(rapport, "accélération pointeur neutralisée"),
+            Ok(rapport) => tracing::info!(rapport, "pointer acceleration neutralised"),
             Err(e) => {
-                tracing::warn!(erreur = %e, "neutralisation de l'accélération pointeur échouée")
+                tracing::warn!(error = %e, "pointer acceleration neutralisation failed")
             }
         }
     } else {
         tracing::warn!(
-            "neutralisation SAUTÉE au démarrage (INPUT_LINEARITY_NEUTRALISER=0, mesure de référence)"
+            "neutralisation SKIPPED at startup (INPUT_LINEARITY_NEUTRALISER=0, reference measurement)"
         );
     }
 
     let mut config = config()?;
 
-    // Après la neutralisation ci-dessus, et avant tout assemblage de session :
-    // c'est cet ordre que la sonde de linéarité suppose (voir `diagnostics`).
+    // After the neutralisation above, and before any session assembly:
+    // it is this order that the linearity probe assumes (see `diagnostics`).
     if diagnostics::aiguiller()? {
         return Ok(());
     }
 
-    // Le mode capteur ne détecte rien et ne lance personne : il tient les N
-    // duplications DXGI et les N encodeurs, et sert le média aux enfants du
-    // superviseur par tube nommé. `CAPTEUR=0` DÉSACTIVE le mode, comme
-    // `SUPERVISEUR=0` et `AUDIO=0` — même piège d'exploitation, même parade.
+    // The sensor mode detects nothing and launches no one: it holds the N
+    // DXGI duplications and the N encoders, and serves the media to the
+    // supervisor's children through a named pipe. `CAPTEUR=0` DISABLES the mode, like
+    // `SUPERVISEUR=0` and `AUDIO=0` — same operational trap, same safeguard.
     if matches!(std::env::var("CAPTEUR").as_deref(), Ok(v) if v != "0") {
         return capteur::executer();
     }
 
-    // L'ENRÔLEMENT PRÉCÈDE TOUT SIGNALING (sous-bloc P3). Les deux poignées
-    // de main qui suivent — celle du superviseur sur sa session de contrôle,
-    // celle de l'enfant sur sa session média — présentent le jeton que ce
-    // canal délivre, et le préfixe qu'il rend nomme les sessions.
+    // ENROLMENT PRECEDES ANY SIGNALING (sub-block P3). The two handshakes
+    // that follow — the supervisor's on its control session,
+    // the child's on its media session — present the token this
+    // channel delivers, and the prefix it returns names the sessions.
     //
-    // Le canal reste ouvert pour toute la vie du processus : il porte le
-    // battement de cœur, donc `vu_a`, donc l'état `prête`/`injoignable` que
-    // la plateforme lit. Le lier à une variable et non à `_` n'est pas une
-    // coquetterie de lint — c'est ce qui le garde vivant.
+    // The channel stays open for the whole life of the process: it carries the
+    // heartbeat, hence `vu_a`, hence the ready/unreachable state
+    // the platform reads. Binding it to a variable and not to `_` is not a
+    // lint nicety — it is what keeps it alive.
     //
-    // Le mode capteur, lui, est déjà reparti plus haut : il ne parle à aucun
-    // signaling et n'a donc aucune identité à présenter.
+    // The sensor mode, for its part, has already gone off above: it talks to no
+    // signaling and therefore has no identity to present.
     //
-    // 🔴 **UN SEUL PROCESSUS PAR VM OUVRE CE CANAL, ET C'EST LE CORRECTIF DU
-    // 20 août 2026.** Le pont fichiers et les enfants de fenêtre héritaient de
-    // `AGENT_VM`/`AGENT_SECRET` et s'enrôlaient sous la MÊME identité que le
-    // superviseur ; le registre de la plateforme n'admettant qu'un socket par
-    // VM, ils s'évinçaient l'un l'autre sans terme — 95 enrôlements et
-    // 94 évictions en 64 s, mesurés. Ils reçoivent désormais `AGENT_JETON` du
-    // superviseur (`superviseur/lanceur.rs`) et n'ouvrent aucun canal. La
-    // règle qui tranche est PURE et testée sur l'hôte : `plateforme::identite`.
+    // 🔴 **A SINGLE PROCESS PER VM OPENS THIS CHANNEL, AND IT IS THE FIX OF
+    // 20 August 2026.** The file bridge and the window children inherited
+    // `AGENT_VM`/`AGENT_SECRET` and enrolled under the SAME identity as the
+    // supervisor; the platform's registry admitting only one socket per
+    // VM, they evicted one another endlessly — 95 enrolments and
+    // 94 evictions in 64 s, measured. They now receive `AGENT_JETON` from the
+    // supervisor (`superviseur/lanceur.rs`) and open no channel. The
+    // rule that decides is PURE and tested on the host: `plateforme::identite`.
     let mut _canal_plateforme = match plateforme::identite::source(
         variable_non_vide("AGENT_JETON").as_deref(),
         config.agent_vm.as_deref(),
         config.agent_secret.as_deref(),
     ) {
         plateforme::identite::SourceIdentite::Heritee(jeton) => {
-            // ⚠️ AUCUN PRÉFIXE N'EST HÉRITÉ, et ce n'est pas un oubli :
-            // `config.prefixe` n'est lu que par le mode superviseur, qui
-            // compose sa session de contrôle avec. Un enfant reçoit sa session
-            // toute faite dans `SESSION_ID`, et le pont la sienne — toutes deux
-            // composées par le superviseur, qui connaît le préfixe. Hériter
-            // d'un préfixe inutilisé ne ferait qu'inviter à s'en servir.
+            // ⚠️ NO PREFIX IS INHERITED, and it is not an oversight:
+            // `config.prefixe` is only read by the supervisor mode, which
+            // composes its control session with it. A child receives its session
+            // ready-made in `SESSION_ID`, and the bridge its own — both
+            // composed by the supervisor, which knows the prefix. Inheriting
+            // an unused prefix would only invite using it.
             tracing::info!(
-                "identité héritée du superviseur (AGENT_JETON) : ce processus n'ouvre \
-                 aucun canal /agent, un seul socket par VM"
+                "identity inherited from the supervisor (AGENT_JETON): this process opens \
+                 no /agent channel, a single socket per VM"
             );
             config.jeton = Some(jeton);
             None
         }
         plateforme::identite::SourceIdentite::Enrolement { vm, secret } => {
             let mut canal = plateforme::ouvrir(&config.signaling_url, vm, secret);
-            // Attente NON bornée, et c'est délibéré : sans identité, aucune
-            // session ne peut s'établir, et la boucle de reprise journalise
-            // chacune de ses tentatives. Elle ne rend `None` que si elle a
-            // RENONCÉ — un refus de version —, et il n'y a alors rien à
-            // attendre.
+            // UNBOUNDED wait, and it is deliberate: without an identity, no
+            // session can be established, and the retry loop logs
+            // each of its attempts. It only returns `None` if it has
+            // GIVEN UP — a version refusal —, and there is then nothing to
+            // wait for.
             let Some(identite) = canal.attendre_identite().await else {
-                anyhow::bail!(
-                    "enrôlement abandonné par la plateforme : voir le journal du canal /agent"
-                );
+                anyhow::bail!("enrolment abandoned by the platform: see the /agent channel log");
             };
             config.prefixe = identite.prefixe;
             config.jeton = Some(identite.jeton);
             Some(canal)
         }
-        plateforme::identite::SourceIdentite::Aucune => {
+        plateforme::identite::SourceIdentite::Absent => {
             tracing::warn!(
-                "AGENT_VM ou AGENT_SECRET absent, et aucun AGENT_JETON hérité : aucun \
-                 jeton d'agent. La plateforme REFUSERA la poignée de main et aucune \
-                 session ne s'établira (sous-bloc P3, sans interrupteur permissif)."
+                "AGENT_VM or AGENT_SECRET missing, and no inherited AGENT_JETON: no \
+                 agent token. The platform WILL REFUSE the handshake and no \
+                 session will be established (sub-block P3, without a permissive switch)."
             );
             None
         }
     };
 
-    // La découverte d'applications vit ICI, entre l'enrôlement et les
-    // aiguillages : elle a besoin du canal, et doit courir dans les DEUX modes
-    // qui en ont un — superviseur et mono-fenêtre. Le capteur, lui, est déjà
-    // reparti bien plus haut, AVANT l'enrôlement. Lié comme `_canal_plateforme`
-    // et POUR LA MÊME RAISON : le lâcher terminerait le fil de découverte.
+    // Application discovery lives HERE, between enrolment and the
+    // routings: it needs the channel, and must run in BOTH modes
+    // that have one — supervisor and single-window. The sensor, for its part, has already
+    // gone off much higher, BEFORE enrolment. Bound like `_canal_plateforme`
+    // and FOR THE SAME REASON: dropping it would end the discovery thread.
     let _apps = apps::brancher(_canal_plateforme.as_mut());
 
-    // Le mode pont ne capture rien et ne lance personne : il tient la racine
-    // de virtualisation ProjFS et la sert depuis le répertoire que la
-    // page-shell a ouvert. `PONT=0` DÉSACTIVE le mode, comme `CAPTEUR=0` et
-    // `SUPERVISEUR=0` — même piège d'exploitation, même parade : tester
-    // `is_ok()` ferait qu'écrire `PONT=0` pour COUPER le pont l'allumerait.
+    // The bridge mode captures nothing and launches no one: it holds the ProjFS
+    // virtualisation root and serves it from the directory the
+    // shell page opened. `PONT=0` DISABLES the mode, like `CAPTEUR=0` and
+    // `SUPERVISEUR=0` — same operational trap, same safeguard: testing
+    // `is_ok()` would mean that writing `PONT=0` to TURN OFF the bridge would turn it on.
     //
-    // Placée APRÈS `CAPTEUR` — un pont qui hériterait de `CAPTEUR` deviendrait
-    // un capteur, d'où l'`env_remove("CAPTEUR")` de `lancer_pont` — et AVANT
-    // la branche superviseur, d'où l'`env_remove("PONT")` de `lancer`.
+    // Placed AFTER `CAPTEUR` — a bridge that inherited `CAPTEUR` would become
+    // a sensor, hence the `env_remove("CAPTEUR")` of `lancer_pont` — and BEFORE
+    // the supervisor branch, hence the `env_remove("PONT")` of `lancer`.
     //
-    // ⚠️ **Mais APRÈS L'ENRÔLEMENT ci-dessus, et c'est une DIVERGENCE assumée
-    // d'avec le plan de F1**, qui écrivait « après `CAPTEUR`, avant
-    // `superviseur` » à une date où ces deux branches se touchaient. Le
-    // sous-bloc P3 a intercalé l'enrôlement entre elles, et le pont en a
-    // besoin : il ouvre sa PROPRE `PeerConnection` vers la page-shell, donc il
-    // présente un jeton, exactement comme un enfant. Le placer avant
-    // l'enrôlement lui aurait laissé `config.jeton = None`, la plateforme
-    // aurait refusé la poignée de main, et **aucune session ne se serait
-    // établie** — sans que rien ne rattache la panne au placement d'un `if`.
+    // ⚠️ **But AFTER THE ENROLMENT above, and it is an assumed DIVERGENCE
+    // from F1's plan**, which wrote "after `CAPTEUR`, before
+    // `superviseur`" at a time when these two branches were adjacent. Sub-block
+    // P3 inserted enrolment between them, and the bridge needs
+    // it: it opens its OWN `PeerConnection` to the shell page, so it
+    // presents a token, exactly like a child. Placing it before
+    // enrolment would have left it `config.jeton = None`, the platform
+    // would have refused the handshake, and **no session would have been
+    // established** — without anything linking the failure to the placement of an `if`.
     //
-    // Le capteur, lui, est bien reparti AVANT l'enrôlement, et c'est cohérent :
-    // il ne parle à aucun signaling.
+    // The sensor, for its part, does go off BEFORE enrolment, and it is consistent:
+    // it talks to no signaling.
     if matches!(std::env::var("PONT").as_deref(), Ok(v) if v != "0") {
         return pont::executer(config).await;
     }
 
-    // Le mode superviseur ne capture rien : il détecte les fenêtres et lance
-    // un enfant par fenêtre. Ses enfants n'héritent JAMAIS de `SUPERVISEUR`
-    // (voir `superviseur::lanceur`), sans quoi chacun se prendrait pour un
-    // superviseur et lancerait les siens, indéfiniment.
+    // The supervisor mode captures nothing: it detects windows and launches
+    // one child per window. Its children NEVER inherit `SUPERVISEUR`
+    // (see `superviseur::lanceur`), otherwise each would take itself for a
+    // supervisor and launch its own, indefinitely.
     if config.superviseur {
-        // 🔴 LA VEILLE D'IDENTITÉ, ET NON `config.jeton`, EST CE QUI PART AU
-        // LANCEUR. Un superviseur vit des heures ; le jeton d'agent, lui, dure
-        // dix minutes et se renouvelle à chaque battement. Passer l'instantané
-        // du démarrage ferait qu'une fenêtre ouverte une heure plus tard
-        // recevrait un jeton mort, que la garde de la plateforme refuserait —
-        // et aucune session ne s'établirait, sans qu'aucune trace ne rattache
-        // la panne à l'âge d'une variable.
+        // 🔴 THE IDENTITY WATCH, AND NOT `config.jeton`, IS WHAT GOES TO THE
+        // LAUNCHER. A supervisor lives for hours; the agent token, for its part, lasts
+        // ten minutes and is renewed at each heartbeat. Passing the start-up
+        // snapshot would mean that a window opened an hour later
+        // would receive a dead token, which the platform's guard would refuse —
+        // and no session would be established, without any trace linking
+        // the failure to the age of a variable.
         let veille = _canal_plateforme
             .as_ref()
             .map(plateforme::Canal::veille_identite);

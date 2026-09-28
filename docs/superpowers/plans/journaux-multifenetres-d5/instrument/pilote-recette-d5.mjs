@@ -153,7 +153,7 @@ async function marqueurs(etiquette) {
         mutex_abandonne: compte('0x887a0026'),
         enfant_lance: compte('enfant lancé'),
         enfant_termine: compte('enfant terminé'),
-        erreurs: compte('ERROR'),
+        errors: compte('ERROR'),
     };
     log(`MARQUEURS (${etiquette}) ` + JSON.stringify(m));
     return m;
@@ -503,7 +503,7 @@ async function main() {
             const s = await cdp.evalBorne(sidShell, `document.querySelector('#statut').textContent`, 5000, false);
             log(`ÉTAT SHELL (${etiquette}) liste=[${l}] statut="${s}"`);
             log(`  pages d'application ouvertes (${appPages().length}) : ${appPages().map(([, p]) => p.url).join(' , ')}`);
-            return { liste: l, statut: s };
+            return { list: l, statut: s };
         };
 
         // ---- Le superviseur, APRÈS la shell.
@@ -521,8 +521,8 @@ async function main() {
         /// Ouvre la fenêtre `n` et attend qu'une page d'application de plus se
         /// soit ouverte. Attendre le FAIT, jamais une durée.
         const ouvrirFenetre = async (n, attente = 40) => {
-            const avant = appPages().length;
-            log(`>>> OUVERTURE fenêtre ${n} (attendu : ${avant + 1} pages)`);
+            const before = appPages().length;
+            log(`>>> OUVERTURE fenêtre ${n} (attendu : ${before + 1} pages)`);
             vmIt(`ouvrird5-${n}`, [
                 `$a = @(`,
                 `  "--app=file:///C:/dev/anim-d4.html?n=${n}",`,
@@ -537,7 +537,7 @@ async function main() {
             ].join('\n'));
             for (let i = 0; i < attente; i += 1) {
                 await dodo(2000);
-                if (appPages().length > avant) {
+                if (appPages().length > before) {
                     log(`   fenêtre ${n} : page ouverte en ${(i + 1) * 2}s (total ${appPages().length})`);
                     return { ouverte: true, secondes: (i + 1) * 2 };
                 }

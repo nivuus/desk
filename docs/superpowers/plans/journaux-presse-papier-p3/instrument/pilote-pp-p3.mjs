@@ -293,7 +293,7 @@ async function obtenirPaire(id) {
 /// EXPIRENT. La première rédaction lisait les trois fenêtres d'un coup : deux
 /// sur trois rendaient `null`, ce qui se lit EXACTEMENT comme « le Bloc-notes
 /// est introuvable », c'est-à-dire comme un défaut du produit. Le pré-semage,
-/// lui, réussissait sur les trois (`ecrit longueur=13` × 3) — c'est ce qui a
+/// lui, réussissait sur les trois (`written length=13` × 3) — c'est ce qui a
 /// permis de trancher.
 async function lireLesFenetres(attributions) {
     const sortie = [];
@@ -392,8 +392,8 @@ try {
     // qui se lit exactement comme une panne du produit.
     log(`ouverture de ${N_DEMANDE} Bloc-notes`);
     releve.notepads_ouverts = 0;
-    for (let essai = 1; essai <= 3 && releve.notepads_ouverts < N_DEMANDE; essai += 1) {
-        vmIt(`pp3-notepads${essai}`,
+    for (let attempt = 1; attempt <= 3 && releve.notepads_ouverts < N_DEMANDE; attempt += 1) {
+        vmIt(`pp3-notepads${attempt}`,
             `1..${N_DEMANDE} | ForEach-Object { Start-Process notepad; Start-Sleep -Seconds 2 }; Start-Sleep -Seconds 3`);
         for (let i = 0; i < 12; i += 1) {
             await dodo(2000);
@@ -402,7 +402,7 @@ try {
             releve.notepads_ouverts = Number(n) || 0;
             if (releve.notepads_ouverts >= N_DEMANDE) break;
         }
-        log(`  Bloc-notes ouverts (essai ${essai}) : ${releve.notepads_ouverts}`);
+        log(`  Bloc-notes ouverts (essai ${attempt}) : ${releve.notepads_ouverts}`);
     }
     if (releve.notepads_ouverts < 2) {
         throw new Error(`seulement ${releve.notepads_ouverts} Bloc-notes : à une fenêtre, P3 n'est pas livrable (RP3-1)`);
@@ -666,7 +666,7 @@ try {
     //
     // ⚠️ MESURÉ, PAS SUPPOSÉ : à l'exécution 2, `① bis` a rendu `false` alors
     // que l'agent avait bel et bien émis — sa trace
-    // `etat courant du presse-papier emis a l'inscription` porte la session
+    // `etat current du presse-papier emis a l'inscription` porte la session
     // tardive, une fois, avec ses onze octets. C'est l'instrument qui était en
     // retard, pas le produit.
     //
@@ -782,8 +782,8 @@ try {
         const t1 = `trois-T1-${NONCE}`;
         const t2 = `trois-T2-${NONCE}`;
         log('③ deux collages à moins de 250 ms');
-        const avant = await phase('3-avant-simultane');
-        releve.criteres.trois = { t1, t2, messages_avant: avant.fenetres.map((f) => f.messages?.length ?? 0) };
+        const before = await phase('3-avant-simultane');
+        releve.criteres.trois = { t1, t2, messages_avant: before.fenetres.map((f) => f.messages?.length ?? 0) };
         await copierSurHote(t1);
         await collerDans(appsParSession.get(sessions[0]).sid);
         // Le second collage part AVANT que le premier n'ait pu être servi : la
@@ -845,7 +845,7 @@ try {
             // vide ou mal lu.
             releve.criteres.trois.annonces_dans_le_journal =
                 (plat.match(/presse-papier de la VM/g) ?? []).length;
-        } catch (e) { releve.criteres.trois.echecs = { erreur: String(e).slice(0, 120) }; }
+        } catch (e) { releve.criteres.trois.echecs = { error: String(e).slice(0, 120) }; }
     }
 
     // ── CRITÈRE ④ — une fenêtre sans focus n'écrit pas localement ──────────
@@ -906,13 +906,13 @@ try {
                         : (ecrit_avant
                             ? 'NON TENU — elle a écrit SANS focus'
                             : 'NON TENU — elle n\'a pas écrit même après la reprise du focus'))),
-            avant: p4a.fenetres, apres: p4b.fenetres,
+            before: p4a.fenetres, apres: p4b.fenetres,
         };
         log('④ verdict :', releve.criteres.quatre.verdict);
     }
 } catch (e) {
-    releve.erreur = String(e).slice(0, 500);
-    log('!! erreur', releve.erreur);
+    releve.error = String(e).slice(0, 500);
+    log('!! erreur', releve.error);
 } finally {
     try { writeFileSync('/media/vm/dev/pp3-ordre.txt', '999|stop', 'utf8'); } catch { /* VM partie */ }
     try { releve.lecteur_journal = readFileSync('/media/vm/dev/pp3-lecteur.log', 'utf8').slice(0, 8000); }
@@ -932,5 +932,5 @@ try {
         { encoding: 'utf8' });
     log('journal copié : agent-' + ETIQUETTE + '.log (+ -plat)');
     log('virsh domstate :', (spawnSync('virsh', ['domstate', 'Windows'], { encoding: 'utf8' }).stdout ?? '?').trim());
-    process.exit(releve.erreur ? 1 : 0);
+    process.exit(releve.error ? 1 : 0);
 }

@@ -1,101 +1,101 @@
-//! La décision PURE de reconnexion de la **session de contrôle** du
-//! superviseur : quand retenter, et quand le repli exponentiel a le droit de
-//! repartir du plancher.
+//! The PURE reconnection decision of the supervisor's **control session**:
+//! when to retry, and when the exponential fallback is allowed to
+//! start again from the floor.
 //!
-//! 🔴 **LE DÉFAUT QU'ELLE CORRIGE, MESURÉ EN PRODUCTION.** Avant ce lot,
-//! `superviseur/signalisation.rs` ouvrait son socket UNE FOIS et ne le
-//! rouvrait JAMAIS. Après un redémarrage du service `desk-plateforme`, le
-//! superviseur journalisait `émission vers la shell échouée
-//! erreur=Trying to work with closed connection`, puis `connexion de contrôle
-//! au signaling perdue`, et **restait ainsi jusqu'à sa propre mort** : aucune
-//! fenêtre ne pouvait plus être annoncée ni RÉANNONCÉE, ce qui rendait
-//! inopérante la correction du lot 17 (`pair-present`), qui a besoin de ce
-//! socket pour être délivrée. Le seul remède connu était de relancer
-//! l'agent — geste qui, depuis la règle d'appartenance du lot 32I,
-//! **orpheline toutes les fenêtres du propriétaire**. Legs n°1 du lot 17,
-//! fermé ici.
+//! 🔴 **THE DEFECT IT FIXES, MEASURED IN PRODUCTION.** Before this batch,
+//! `superviseur/signalisation.rs` opened its socket ONCE and NEVER
+//! reopened it. After a restart of the `desk-plateforme` service, the
+//! supervisor logged "send to the shell failed
+//! error=Trying to work with closed connection", then "control connection
+//! to signaling lost", and **stayed that way until its own death**: no
+//! window could be announced nor RE-ANNOUNCED any more, which made
+//! batch 17's fix (`pair-present`) inoperative, since it needs this
+//! socket to be delivered. The only known remedy was to restart
+//! the agent — a gesture that, since batch 32I's ownership rule,
+//! **orphans all of the owner's windows**. Legacy no. 1 of batch 17,
+//! closed here.
 //!
-//! 🔴 **CE N'EST PAS LE CAS DU PONT, ET LES CONFONDRE MÈNERAIT À RECOPIER LE
-//! MAUVAIS REMÈDE.** `boucle/surveillance_pont.rs` relance un **PROCESSUS**
-//! qu'un tiers (la boucle du superviseur) OBSERVE de l'extérieur : le
-//! processus meurt, `LanceurDeProcessus::etat_du_pont` le constate au tour
-//! suivant, et l'issue de sortie (`IssueDeSortie`) dit si la panne est
-//! résolue. Ici il s'agit d'un **SOCKET dans un processus vivant** : personne
-//! ne l'observe de l'extérieur, il n'y a **aucun code de sortie à lire**, et
-//! la boucle de reprise doit donc vivre **dans la tâche qui possède le
-//! socket**. C'est pourquoi ce module n'est PAS [`crate::relance_pont::
-//! EtatRelance`] et n'en dérive pas :
+//! 🔴 **IT IS NOT THE BRIDGE'S CASE, AND CONFUSING THEM WOULD LEAD TO COPYING THE
+//! WRONG REMEDY.** `boucle/surveillance_pont.rs` restarts a **PROCESS**
+//! that a third party (the supervisor loop) OBSERVES from outside: the
+//! process dies, `LanceurDeProcessus::etat_du_pont` observes it at the next
+//! turn, and the exit outcome (`IssueDeSortie`) says whether the failure is
+//! resolved. Here it is a **SOCKET in a live process**: no one
+//! observes it from outside, there is **no exit code to read**, and
+//! the resumption loop must therefore live **in the task owning the
+//! socket**. That is why this module is NOT [`crate::relance_pont::
+//! EtatRelance`] and does not derive from it:
 //!
-//! ① `EtatRelance::reinitialiser_le_repli` prend une [`crate::relance_pont::
-//!    IssueDeSortie`] — un code de sortie de processus, qui n'existe pas ici ;
-//! ② `EtatRelance::doit_relancer(ecoule_ms)` suppose un appelant qui SONDE à
-//!    chaque tour d'horloge ; cette boucle-ci **dort** le délai voulu, elle ne
-//!    sonde rien ;
-//! ③ `EtatRelance::stable` est gardée par `cycle_signale`, un booléen de
-//!    TRACE dont ce module n'a pas besoin — il journalise **chaque**
-//!    tentative, voir plus bas.
+//! ① `EtatRelance::reset_the_backoff` takes a [`crate::relance_pont::
+//!    IssueDeSortie`] — a process exit code, which does not exist here;
+//! ② `EtatRelance::doit_relancer(ecoule_ms)` assumes a caller that POLLS at
+//!    each clock turn; this loop **sleeps** the wanted delay, it
+//!    polls nothing;
+//! ③ `EtatRelance::stable` is guarded by `cycle_signale`, a TRACE
+//!    boolean this module does not need — it logs **each**
+//!    attempt, see below.
 //!
-//! **Ce qui est RÉUTILISÉ, et non recopié**, c'est la primitive que les deux
-//! partagent déjà avec le canal `/agent` : [`crate::plateforme::repli::
-//! delai_de_repli`] et son plafond `REPLI_MAX_MS`. Le précédent le plus
-//! proche du mécanisme entier n'est d'ailleurs pas le pont mais
-//! **`plateforme.rs::ouvrir`** : ce même agent sait DÉJÀ rouvrir un socket
-//! perdu — le canal `/agent` — avec ce même repli. La session de contrôle
-//! était le seul de ses trois sockets à ne pas savoir le faire.
+//! **What is REUSED, and not copied**, is the primitive both
+//! already share with the `/agent` channel: [`crate::plateforme::repli::
+//! delai_de_repli`] and its ceiling `REPLI_MAX_MS`. The closest precedent
+//! for the whole mechanism is actually not the bridge but
+//! **`plateforme.rs::ouvrir`**: this same agent ALREADY knows how to reopen a lost
+//! socket — the `/agent` channel — with this same fallback. The control session
+//! was the only one of its three sockets not knowing how.
 //!
-//! 🔴 **CONVENTION DE MODULE (`CLAUDE.md`), APPLIQUÉE PLUTÔT QUE DEVINÉE.**
-//! Ce fichier est un enfant ORDINAIRE de `superviseur.rs`, déclaré par un
-//! `pub mod reprise_controle;` sans `#[path]`, et il n'a pas à se poser la
-//! question du préfixe : cette question ne se pose QUE pour un module qu'on
-//! extrait d'un parent `#[cfg(windows)]` et qui doit de ce fait devenir un
-//! frère de premier niveau. `superviseur.rs`, lui, n'est PAS gaté (seuls
-//! certains de ses enfants le sont), si bien qu'un enfant ordinaire compile
-//! et se teste déjà sur l'hôte Linux — exactement comme ses voisins
-//! `table.rs`, `fenetres.rs` et `reprise.rs`.
+//! 🔴 **MODULE CONVENTION (`CLAUDE.md`), APPLIED RATHER THAN GUESSED.**
+//! This file is an ORDINARY child of `superviseur.rs`, declared by a
+//! `pub mod reprise_controle;` without `#[path]`, and it does not have to ask the
+//! prefix question: that question ONLY arises for a module
+//! extracted from a `#[cfg(windows)]` parent that must therefore become a
+//! top-level sibling. `superviseur.rs`, for its part, is NOT gated (only
+//! some of its children are), so that an ordinary child already compiles
+//! and is tested on the Linux host — exactly like its neighbours
+//! `table.rs`, `fenetres.rs` and `reprise.rs`.
 //!
-//! ⚠️ **`reprise_controle` ET NON `reprise`** : `superviseur::reprise` existe
-//! déjà (lot 32E) et désigne AUTRE CHOSE — le nombre de chances données à une
-//! sortie virtuelle de s'attacher. Deux `reprise` dans le même graphe de
-//! modules n'attendraient qu'un lecteur pressé pour se confondre, exactement
-//! l'argument qui a fait nommer `surveillance_pont` et `relance_pont`.
+//! ⚠️ **`reprise_controle` AND NOT `reprise`**: `superviseur::reprise` already
+//! exists (batch 32E) and designates SOMETHING ELSE — the number of chances given to a
+//! virtual output to attach. Two `reprise`s in the same module
+//! graph would only wait for a hurried reader to be confused, exactly
+//! the argument that got `surveillance_pont` and `relance_pont` named.
 
 use crate::plateforme::repli::{delai_de_repli, REPLI_MAX_MS};
 
-/// Durée de vie au-delà de laquelle une connexion est réputée avoir
-/// **SERVI**, et où le repli exponentiel repart donc du plancher.
+/// Lifetime beyond which a connection is deemed to have
+/// **SERVED**, and where the exponential fallback therefore starts again from the floor.
 ///
-/// 🔴 **STRICTEMENT SUPÉRIEUR À `REPLI_MAX_MS`, ET C'EST CE QUI REND LE
-/// RÉARMEMENT INATTEIGNABLE PAR UN REFUS.** Un refus de poignée de main de la
-/// plateforme (`signaling/relais.ts` : jeton absent, expiré, rôle déjà
-/// occupé, budget de volume épuisé) arrive en **millisecondes** — le relais
-/// envoie `{"type":"error",…}` puis `close(1008)` dans le même geste. Une
-/// connexion refusée ne peut donc structurellement pas atteindre ce seuil, et
-/// le repli continue de croître jusqu'à son plafond au lieu de marteler un
-/// service qui vient de dire non. C'est la leçon que `relance_pont.rs` a
-/// payée en cinq rounds de correction : un seuil COURT (500 ms) rendait le
-/// réarmement systématique et le repli **structurellement incapable de
-/// croître**.
+/// 🔴 **STRICTLY GREATER THAN `REPLI_MAX_MS`, AND IT IS WHAT MAKES
+/// RE-ARMING UNREACHABLE BY A REFUSAL.** A handshake refusal from the
+/// platform (`signaling/relais.ts`: token absent, expired, role already
+/// taken, volume budget exhausted) arrives in **milliseconds** — the relay
+/// sends `{"type":"error",…}` then `close(1008)` in the same gesture. A
+/// refused connection therefore structurally cannot reach this threshold, and
+/// the fallback keeps growing up to its ceiling instead of hammering a
+/// service that has just said no. It is the lesson `relance_pont.rs`
+/// paid for in five fix rounds: a SHORT threshold (500 ms) made
+/// re-arming systematic and the fallback **structurally unable to
+/// grow**.
 ///
-/// ⚠️ **NON CALIBRÉ** — même réserve que `REPLI_MIN_MS` et `REPLI_MAX_MS` :
-/// aucune mesure de ce dépôt ne dit combien de temps dure une coupure réelle.
-/// La marge de 5 s au-dessus du plafond couvre le temps qu'il faut à un refus
-/// pour ARRIVER (poignée de main WebSocket, aller-retour, lecture du
-/// message), non mesuré, choisi large plutôt que juste. La valeur suit celle
-/// de `relance_pont::SEUIL_STABILITE_MS` par la même arithmétique — sans
-/// l'importer : ce seuil-là parle d'un PROCESSUS qui dort avant de mourir,
-/// celui-ci d'un SOCKET refusé, et les souder ferait qu'un recalibrage de
-/// l'un déplacerait l'autre sans qu'aucune mesure ne le demande.
+/// ⚠️ **NOT CALIBRATED** — same caveat as `REPLI_MIN_MS` and `REPLI_MAX_MS`:
+/// no measurement of this repository says how long a real outage lasts.
+/// The 5 s margin above the ceiling covers the time a refusal needs
+/// to ARRIVE (WebSocket handshake, round trip, reading the
+/// message), not measured, chosen wide rather than tight. The value follows that
+/// of `relance_pont::SEUIL_STABILITE_MS` by the same arithmetic — without
+/// importing it: that threshold speaks of a PROCESS sleeping before dying,
+/// this one of a refused SOCKET, and welding them would make a recalibration of
+/// one move the other without any measurement asking for it.
 pub const SEUIL_CONNEXION_UTILE_MS: u64 = REPLI_MAX_MS + 5_000;
 
-/// L'état, PUR, de la reprise de la session de contrôle.
+/// The PURE state of the control session's resumption.
 ///
-/// Ne connaît ni socket, ni horloge murale, ni tokio : elle reçoit des
-/// millisecondes ÉCOULÉES et rend des millisecondes À ATTENDRE. C'est ce qui
-/// la rend éprouvable sur l'hôte Linux, là où `signalisation.rs` vit derrière
-/// un `#![cfg(windows)]` que `cargo test --workspace` ne compile jamais.
+/// Knows neither socket, nor wall clock, nor tokio: it receives ELAPSED
+/// milliseconds and returns milliseconds TO WAIT. It is what
+/// makes it exercisable on the Linux host, whereas `signalisation.rs` lives behind
+/// a `#![cfg(windows)]` that `cargo test --workspace` never compiles.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct Reprise {
-    /// Tentatives de reconnexion CONSÉCUTIVES depuis le dernier réarmement.
+    /// CONSECUTIVE reconnection attempts since the last re-arming.
     tentative: u32,
 }
 
@@ -104,37 +104,37 @@ impl Reprise {
         Self { tentative: 0 }
     }
 
-    /// Le nombre de tentatives consécutives — pour l'annexer aux traces de
-    /// l'appelant, jamais pour décider quoi que ce soit ici.
+    /// The number of consecutive attempts — to attach it to the
+    /// caller's traces, never to decide anything here.
     pub fn tentative(&self) -> u32 {
         self.tentative
     }
 
-    /// Combien de millisecondes dormir AVANT la prochaine tentative — pur
-    /// ré-emballage de `delai_de_repli(self.tentative)`.
+    /// How many milliseconds to sleep BEFORE the next attempt — a mere
+    /// rewrapping of `delai_de_repli(self.tentative)`.
     pub fn delai_ms(&self) -> u64 {
         delai_de_repli(self.tentative)
     }
 
-    /// Enregistre une tentative RÉELLEMENT lancée (une connexion WebSocket
-    /// effectivement tentée, qu'elle aboutisse ou non).
+    /// Records an attempt REALLY launched (a WebSocket connection
+    /// actually attempted, whether it succeeds or not).
     ///
-    /// ⚠️ Compter ici et non sur l'échec : une poignée de main ACCEPTÉE puis
-    /// refusée trois millisecondes plus tard par la garde est un `Ok` côté
-    /// TCP, et un compteur incrémenté seulement sur `Err` resterait bloqué à
-    /// zéro — donc à un espacement de 500 ms — dans EXACTEMENT le cas qui
-    /// martèle. C'est le défaut que `surveillance_pont.rs` a payé sur son
-    /// `lancer_pont()` réussi.
+    /// ⚠️ Counting here and not on failure: a handshake ACCEPTED then
+    /// refused three milliseconds later by the guard is an `Ok` on the
+    /// TCP side, and a counter incremented only on `Err` would stay stuck at
+    /// zero — hence at a 500 ms spacing — in EXACTLY the case that
+    /// hammers. It is the defect `surveillance_pont.rs` paid for on its
+    /// successful `lancer_pont()`.
     pub fn tentative_lancee(&mut self) {
         self.tentative = self.tentative.saturating_add(1);
     }
 
-    /// Une connexion vient de se terminer après avoir vécu `vecu_ms`.
+    /// A connection has just ended after living `vecu_ms`.
     ///
-    /// Réarme le repli — remet le compteur à zéro — **si et seulement si**
-    /// cette connexion a vécu au moins [`SEUIL_CONNEXION_UTILE_MS`], c'est-à-
-    /// dire si elle a réellement servi. Rend `true` dans ce cas, pour que
-    /// l'appelant puisse le dire dans sa trace.
+    /// Re-arms the fallback — resets the counter — **if and only if**
+    /// this connection lived at least [`SEUIL_CONNEXION_UTILE_MS`], that
+    /// is, if it really served. Returns `true` in that case, so that
+    /// the caller can say so in its trace.
     pub fn connexion_terminee(&mut self, vecu_ms: u64) -> bool {
         if vecu_ms < SEUIL_CONNEXION_UTILE_MS {
             return false;
@@ -150,22 +150,22 @@ mod tests {
     use crate::plateforme::repli::REPLI_MIN_MS;
 
     #[test]
-    fn la_premiere_reconnexion_attend_le_plancher() {
-        // Une coupure d'une seconde ne doit pas coûter trente secondes de
-        // bureau muet : la toute première reprise part du plancher partagé
-        // avec le canal `/agent`.
+    fn the_first_reconnection_waits_for_the_floor() {
+        // A one-second outage must not cost thirty seconds of
+        // mute desktop: the very first resumption starts from the floor shared
+        // with the `/agent` channel.
         assert_eq!(Reprise::neuve().delai_ms(), REPLI_MIN_MS);
         assert_eq!(Reprise::neuve().tentative(), 0);
     }
 
     #[test]
-    fn le_delai_croit_puis_plafonne() {
+    fn the_delay_grows_then_caps() {
         let mut reprise = Reprise::neuve();
         let mut precedent = reprise.delai_ms();
         reprise.tentative_lancee();
         assert!(
             reprise.delai_ms() > precedent,
-            "le délai doit croître : {} n'est pas > {precedent}",
+            "the delay must grow: {} is not > {precedent}",
             reprise.delai_ms()
         );
         for _ in 0..40 {
@@ -173,74 +173,74 @@ mod tests {
             reprise.tentative_lancee();
             assert!(
                 reprise.delai_ms() >= precedent,
-                "le délai ne doit jamais reculer sans réarmement"
+                "the delay must never go back without re-arming"
             );
             assert!(
                 reprise.delai_ms() <= REPLI_MAX_MS,
-                "le délai {} dépasse le plafond {REPLI_MAX_MS}",
+                "the delay {} exceeds the ceiling {REPLI_MAX_MS}",
                 reprise.delai_ms()
             );
         }
         assert_eq!(
             reprise.delai_ms(),
             REPLI_MAX_MS,
-            "le plafond doit être ATTEINT, pas seulement respecté"
+            "the ceiling must be REACHED, not merely respected"
         );
     }
 
-    /// 🔴 **LE TEST QUI REND LE PRÉCÉDENT STRUCTUREL.** Sans cette inégalité,
-    /// un refus pourrait atteindre le seuil de réarmement et le repli
-    /// deviendrait incapable de croître — le défaut exact que
-    /// `relance_pont.rs` a payé à son round de correction 3.
+    /// 🔴 **THE TEST THAT MAKES THE PREVIOUS ONE STRUCTURAL.** Without this inequality,
+    /// a refusal could reach the re-arming threshold and the fallback
+    /// would become unable to grow — the exact defect
+    /// `relance_pont.rs` paid for in its fix round 3.
     #[test]
-    fn le_seuil_de_connexion_utile_reste_strictement_au_dessus_du_plafond_de_repli() {
+    fn the_useful_connection_threshold_stays_strictly_above_the_backoff_ceiling() {
         const {
             assert!(
                 SEUIL_CONNEXION_UTILE_MS > REPLI_MAX_MS,
-                "SEUIL_CONNEXION_UTILE_MS doit être > REPLI_MAX_MS"
+                "SEUIL_CONNEXION_UTILE_MS must be > REPLI_MAX_MS"
             )
         };
     }
 
-    /// Le scénario du refus en boucle : la plateforme accepte le TCP puis
-    /// ferme aussitôt (jeton expiré, rôle déjà occupé, budget épuisé). Le
-    /// repli doit croître jusqu'à son plafond, jamais repartir du plancher.
+    /// The looping refusal scenario: the platform accepts TCP then
+    /// closes at once (expired token, role already taken, budget exhausted). The
+    /// fallback must grow up to its ceiling, never start again from the floor.
     #[test]
-    fn une_connexion_refusee_ne_rearme_jamais_le_repli() {
-        // 🔴 **LA DURÉE ÉPROUVÉE EST `REPLI_MAX_MS`, PAS LES 3 ms D'UN REFUS
-        // RÉEL, ET C'EST UNE CORRECTION DE CE TEST LUI-MÊME.** Écrit d'abord
-        // avec `3` — l'ordre de grandeur mesuré d'un `{"type":"error"}` suivi
-        // d'un `close(1008)` —, il restait **VERT** sous la mutation qui fait
-        // retomber `SEUIL_CONNEXION_UTILE_MS` à 500 ms, c'est-à-dire sous le
-        // défaut exact que `relance_pont.rs` a payé à son round 3 : la seule
-        // rouge venait alors du test d'invariant voisin. Une rouge restée
-        // verte se DIAGNOSTIQUE, elle ne se classe pas.
+    fn a_refused_connection_never_re_arms_the_backoff() {
+        // 🔴 **THE DURATION EXERCISED IS `REPLI_MAX_MS`, NOT THE 3 ms OF A REAL
+        // REFUSAL, AND IT IS A FIX OF THIS VERY TEST.** Written first
+        // with `3` — the measured order of magnitude of a `{"type":"error"}` followed
+        // by a `close(1008)` —, it stayed **GREEN** under the mutation that makes
+        // `SEUIL_CONNEXION_UTILE_MS` fall back to 500 ms, that is, under the
+        // exact defect `relance_pont.rs` paid for in its round 3: the only
+        // red then came from the neighbouring invariant test. A red that stayed
+        // green gets DIAGNOSED, it does not get filed away.
         //
-        // La durée retenue vient du PRODUIT — `REPLI_MAX_MS`, le plafond du
-        // repli — et jamais d'un calcul sur ce qu'on juge : c'est le pire cas
-        // qu'un épisode de refus puisse occuper, puisque rien dans cette
-        // boucle n'attend plus longtemps que ce plafond avant de retenter.
-        // Aucune vie de cette longueur ou moindre ne doit réarmer.
+        // The retained duration comes from the PRODUCT — `REPLI_MAX_MS`, the
+        // fallback's ceiling — and never from a calculation on what is judged: it is the worst case
+        // a refusal episode can occupy, since nothing in this
+        // loop waits longer than that ceiling before retrying.
+        // No life of this length or less must re-arm.
         let mut reprise = Reprise::neuve();
         for tour in 0..20 {
             reprise.tentative_lancee();
             assert!(
                 !reprise.connexion_terminee(REPLI_MAX_MS),
-                "un refus au tour {tour}, même long de REPLI_MAX_MS, ne doit JAMAIS réarmer le repli"
+                "a refusal at round {tour}, even REPLI_MAX_MS long, must NEVER re-arm the backoff"
             );
         }
         assert_eq!(reprise.delai_ms(), REPLI_MAX_MS);
         assert_eq!(reprise.tentative(), 20);
-        // …et le cas réellement mesuré reste couvert, lui aussi.
+        // …and the really measured case stays covered too.
         assert!(!reprise.connexion_terminee(3));
     }
 
-    /// Le symétrique : une connexion qui a réellement servi (le cas nominal —
-    /// une session de contrôle vit des heures) rend son plancher au repli,
-    /// pour que la coupure SUIVANTE ne reprenne pas au plafond d'une panne
-    /// déjà résolue.
+    /// The symmetric one: a connection that really served (the nominal case —
+    /// a control session lives for hours) gives its floor back to the fallback,
+    /// so that the NEXT outage does not resume at the ceiling of an
+    /// already resolved failure.
     #[test]
-    fn une_connexion_qui_a_servi_rearme_le_repli() {
+    fn a_connection_that_served_re_arms_the_backoff() {
         let mut reprise = Reprise::neuve();
         for _ in 0..10 {
             reprise.tentative_lancee();
@@ -251,11 +251,11 @@ mod tests {
         assert_eq!(reprise.delai_ms(), REPLI_MIN_MS);
     }
 
-    /// La frontière, des deux côtés : une milliseconde de moins ne réarme
-    /// pas, le seuil exact réarme. Sans ce test, une comparaison `>` au lieu
-    /// de `>=` passerait inaperçue.
+    /// The boundary, on both sides: one millisecond less does not re-arm,
+    /// the exact threshold re-arms. Without this test, a `>` comparison instead
+    /// of `>=` would go unnoticed.
     #[test]
-    fn la_frontiere_du_seuil_est_eprouvee_des_deux_cotes() {
+    fn the_threshold_boundary_is_tested_on_both_sides() {
         let mut juste_en_dessous = Reprise::neuve();
         juste_en_dessous.tentative_lancee();
         assert!(!juste_en_dessous.connexion_terminee(SEUIL_CONNEXION_UTILE_MS - 1));
@@ -267,12 +267,12 @@ mod tests {
         assert_eq!(au_seuil.tentative(), 0);
     }
 
-    /// Un agent qui vit des semaines derrière une plateforme morte ne doit ni
-    /// paniquer sur un débordement, ni voir son délai retomber par
-    /// enroulement. `saturating_add` et `delai_de_repli` couvrent les deux ;
-    /// ce test le fige.
+    /// An agent living for weeks behind a dead platform must neither
+    /// panic on an overflow, nor see its delay fall back through
+    /// wraparound. `saturating_add` and `delai_de_repli` cover both;
+    /// this test freezes it.
     #[test]
-    fn le_compteur_ne_deborde_jamais() {
+    fn the_counter_never_overflows() {
         let mut reprise = Reprise {
             tentative: u32::MAX - 1,
         };

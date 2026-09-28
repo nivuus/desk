@@ -1,13 +1,13 @@
 <!doctype html>
 <meta charset="utf-8">
-<title>Sonde — movementX des événements coalescés</title>
+<title>Probe — movementX of coalesced events</title>
 <style>
   body { font: 14px system-ui; padding: 2rem; }
   #zone { width: 480px; height: 300px; background: #222; color: #eee; display: grid; place-items: center; cursor: crosshair; }
   pre { background: #f4f4f4; padding: 1rem; }
 </style>
-<div id="zone">cliquez pour verrouiller le pointeur, puis bougez la souris</div>
-<pre id="sortie">en attente…</pre>
+<div id="zone">click to lock the pointer, then move the mouse</div>
+<pre id="sortie">waiting…</pre>
 <script>
   const zone = document.querySelector('#zone');
   const sortie = document.querySelector('#sortie');
@@ -26,10 +26,10 @@
     coalescesVus += liste.length;
     for (const e of liste) sommeCoalesces += Math.abs(e.movementX);
     sortie.textContent =
-      `événements : ${evenements}\n` +
-      `coalescés vus : ${coalescesVus}\n` +
-      `somme |movementX| des principaux : ${sommePrincipaux}\n` +
-      `somme |movementX| des coalescés  : ${sommeCoalesces}\n` +
-      `verdict : ${sommeCoalesces === 0 && coalescesVus > 0 ? 'COALESCÉS INUTILISABLES' : 'coalescés exploitables'}`;
+      `events: ${evenements}\n` +
+      `coalesced seen: ${coalescesVus}\n` +
+      `sum |movementX| of the main events: ${sommePrincipaux}\n` +
+      `sum |movementX| of the coalesced  : ${sommeCoalesces}\n` +
+      `verdict: ${sommeCoalesces === 0 && coalescesVus > 0 ? 'COALESCED UNUSABLE' : 'coalesced usable'}`;
   });
 </script>

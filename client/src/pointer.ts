@@ -1,13 +1,13 @@
-// Souris relative sous Pointer Lock.
+// Relative mouse under Pointer Lock.
 //
-// L'agent est SEUL décideur du mode : ce module obéit au message `pointer`
-// qu'il reçoit, il ne décide de rien. Il ne fait que deux choses non
-// triviales — armer le verrouillage sur le prochain clic, faute d'activation
-// utilisateur transitoire sur un message reçu par data channel, et sommer les
-// deltas sans jamais en perdre.
+// The agent is the SOLE decider of the mode: this module obeys the `pointer` message
+// it receives, it decides nothing. It only does two non-trivial
+// things — arm the lock on the next click, for lack of a transient user
+// activation on a message received over a data channel, and sum the
+// deltas without ever losing any.
 //
-// Les dépendances sont INJECTÉES plutôt que lues dans les objets globaux, ce
-// qui rend le module testable sans DOM.
+// Dependencies are INJECTED rather than read from the global objects, which
+// makes the module testable without a DOM.
 
 import { encodeMouseMoveRelative } from '../../proto/ts/input';
 import type { CursorShape } from '../../proto/ts/control';
@@ -15,20 +15,20 @@ import type { CursorShape } from '../../proto/ts/control';
 const MIN_I16 = -32768;
 const MAX_I16 = 32767;
 
-/** Ce dont ce module a besoin d'un élément vidéo. */
+/** What this module needs from a video element. */
 export interface CibleVideo {
     addEventListener(type: string, ecouteur: EventListener | ((event: PointerEvent) => void)): void;
     removeEventListener(type: string, ecouteur: EventListener | ((event: PointerEvent) => void)): void;
-    // Depuis Chrome 111, `requestPointerLock()` renvoie une Promise. Le
-    // typage la déclare `void` à dessein : `verrouiller()` ci-dessous avale
-    // le rejet lui-même (voir son commentaire), pour que ce module reste
-    // utilisable même sur un navigateur antérieur qui renvoie réellement
+    // Since Chrome 111, `requestPointerLock()` returns a Promise. The
+    // typing declares it `void` on purpose: `verrouiller()` below swallows
+    // the rejection itself (see its comment), so that this module stays
+    // usable even on an older browser that really returns
     // `void`.
     requestPointerLock(): void | Promise<void>;
     style: { cursor: string };
 }
 
-/** Ce dont ce module a besoin d'un objet document. */
+/** What this module needs from a document object. */
 export interface CibleDocument {
     pointerLockElement: CibleVideo | null;
     exitPointerLock(): void;
@@ -36,7 +36,7 @@ export interface CibleDocument {
     removeEventListener(type: string, ecouteur: EventListener): void;
 }
 
-/** Somme des déplacements d'une rafale d'événements coalescés. */
+/** Sum of the moves of a burst of coalesced events. */
 export function sommerDeltas(
     evenements: ReadonlyArray<{ movementX: number; movementY: number }>,
 ): { dx: number; dy: number } {
@@ -50,13 +50,13 @@ export function sommerDeltas(
 }
 
 /**
- * Borne les deltas à la plage d'un i16 et REPORTE le reste sur l'appel
- * suivant : la somme finalement transmise reste exacte. Un mouvement de plus
- * de 32767 px en un seul événement ne se produit pas en pratique — mais s'il
- * se produisait, écrêter en silence ferait dériver la visée sans que rien ne
- * le signale.
+ * Bounds the deltas to the range of an i16 and CARRIES the rest over to the next
+ * call: the sum finally transmitted stays exact. A move of more
+ * than 32767 px in a single event does not happen in practice — but if it
+ * did, silently clipping would make aiming drift without anything
+ * signalling it.
  */
-export function creerClampReport(): (dx: number, dy: number) => { dx: number; dy: number } {
+export function createClampReport(): (dx: number, dy: number) => { dx: number; dy: number } {
     let restX = 0;
     let restY = 0;
     return (dx, dy) => {
@@ -74,12 +74,12 @@ export interface PointerOptions {
     video: CibleVideo;
     doc: CibleDocument;
     envoyer: (payload: Uint8Array) => void;
-    /** Prévient l'appelant qu'un verrouillage a échoué deux fois de suite. */
+    /** Warns the caller that a lock failed twice in a row. */
     surEchec?: () => void;
 }
 
 export interface PointerHandle {
-    /** À appeler à réception d'un message de contrôle `pointer`. */
+    /** To call on receiving a `pointer` control message. */
     surMessagePointeur(visible: boolean, shape: CursorShape): void;
     detacher(): void;
 }
@@ -87,21 +87,21 @@ export interface PointerHandle {
 export function attachPointer(options: PointerOptions): PointerHandle {
     const { video, doc, envoyer, surEchec } = options;
 
-    const clamp = creerClampReport();
+    const clamp = createClampReport();
     let arme = false;
     let echecs = 0;
 
     const verrouiller = (): void => {
-        // `requestPointerLock` exige une activation utilisateur transitoire :
-        // un message reçu sur data channel n'en est pas une. D'où l'armement.
+        // `requestPointerLock` requires a transient user activation:
+        // a message received over a data channel is not one. Hence the arming.
         //
-        // Depuis Chrome 111, l'appel renvoie une Promise qui se rejette
-        // précisément dans ce cas — l'échec est ATTENDU, `onPointerLockError`
-        // et le réarmement prennent déjà le relais. Sans ce `catch`, chaque
-        // bascule en mode relatif produirait une rejection non gérée dans la
-        // console, alors même que le mécanisme fonctionne comme prévu.
-        // `Promise.resolve` enrobe aussi bien un `void` qu'une Promise réelle :
-        // le `catch` reste sans effet sur un navigateur qui ne renvoie rien.
+        // Since Chrome 111, the call returns a Promise that rejects
+        // precisely in this case — the failure is EXPECTED, `onPointerLockError`
+        // and rearming already take over. Without this `catch`, every
+        // switch to relative mode would produce an unhandled rejection in the
+        // console, even though the mechanism works as intended.
+        // `Promise.resolve` wraps a `void` as well as a real Promise:
+        // the `catch` stays without effect on a browser that returns nothing.
         void Promise.resolve(video.requestPointerLock()).catch(() => {});
     };
 
@@ -116,8 +116,8 @@ export function attachPointer(options: PointerOptions): PointerHandle {
 
     const onPointerLockChange = (): void => {
         if (doc.pointerLockElement === video) echecs = 0;
-        // Sortie par Échap alors que l'agent est toujours en relatif : on
-        // reste armé, le prochain clic reverrouille.
+        // Exit through Escape while the agent is still relative: we
+        // stay armed, the next click locks again.
     };
 
     const onPointerMove = (event: PointerEvent): void => {
@@ -153,7 +153,7 @@ export function attachPointer(options: PointerOptions): PointerHandle {
     };
 }
 
-// Valeurs par défaut pour utilisation dans le navigateur réel (voir tâche 15 : câblage).
+// Default values for use in the real browser (see task 15: wiring).
 export function attachPointerAuDOM(options: Omit<PointerOptions, 'video' | 'doc'>): PointerHandle {
     return attachPointer({
         video: document.querySelector('video') as CibleVideo,

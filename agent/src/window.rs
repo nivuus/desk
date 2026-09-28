@@ -1,17 +1,17 @@
-//! Repérage et pilotage de la fenêtre à capturer.
+//! Locating and driving the window to capture.
 
 #![cfg(windows)]
 
 use anyhow::{anyhow, bail, Context, Result};
-// écart d'API windows-rs 0.62 : `BOOL` a été déplacé dans `windows::core`
-// (il n'est plus réexporté sous `Win32::Foundation`), contrairement à `TRUE`
-// qui y reste accessible.
+// windows-rs 0.62 API deviation: `BOOL` was moved into `windows::core`
+// (it is no longer re-exported under `Win32::Foundation`), unlike `TRUE`
+// which stays accessible there.
 use windows::core::BOOL;
-// écart d'API windows-rs 0.62 : `ClientToScreen` vit dans `Win32::Graphics::Gdi`
-// (module gdi32), pas dans `WindowsAndMessaging` (user32) où on l'attendrait
-// par analogie avec `GetClientRect`. Elle renvoie en outre un `BOOL` brut
-// (convention historique de gdi32), pas un `windows::core::Result<()>` comme
-// les fonctions user32 annotées succès/échec du même fichier.
+// windows-rs 0.62 API deviation: `ClientToScreen` lives in `Win32::Graphics::Gdi`
+// (gdi32 module), not in `WindowsAndMessaging` (user32) where one would expect it
+// by analogy with `GetClientRect`. It moreover returns a raw `BOOL`
+// (historical gdi32 convention), not a `windows::core::Result<()>` like
+// the success/failure-annotated user32 functions of the same file.
 use windows::Win32::Foundation::{HWND, LPARAM, POINT, RECT, TRUE};
 use windows::Win32::Graphics::Dwm::{DwmGetWindowAttribute, DWMWA_EXTENDED_FRAME_BOUNDS};
 use windows::Win32::Graphics::Gdi::{
@@ -31,10 +31,10 @@ struct SearchContext {
     found: Option<HWND>,
 }
 
-/// Cherche la première fenêtre visible dont le titre contient `fragment`.
+/// Finds the first visible window whose title contains `fragment`.
 ///
-/// La comparaison est insensible à la casse : les titres de navigateurs
-/// changent au gré de la page affichée, on ne peut pas exiger un titre exact.
+/// The comparison is case-insensitive: browser titles
+/// change with the page displayed, we cannot require an exact title.
 pub fn find_window_by_title(fragment: &str) -> Result<HWND> {
     let mut context = SearchContext {
         fragment: fragment.to_lowercase(),
@@ -42,8 +42,8 @@ pub fn find_window_by_title(fragment: &str) -> Result<HWND> {
     };
 
     unsafe {
-        // EnumWindows renvoie une erreur si le rappel interrompt l'énumération,
-        // ce qui est précisément ce que nous faisons en cas de succès.
+        // EnumWindows returns an error if the callback interrupts the enumeration,
+        // which is precisely what we do on success.
         let _ = EnumWindows(
             Some(enum_callback),
             LPARAM(&mut context as *mut SearchContext as isize),
@@ -52,7 +52,7 @@ pub fn find_window_by_title(fragment: &str) -> Result<HWND> {
 
     context
         .found
-        .ok_or_else(|| anyhow!("aucune fenêtre visible dont le titre contient « {fragment} »"))
+        .ok_or_else(|| anyhow!("no visible window whose title contains « {fragment} »"))
 }
 
 unsafe extern "system" fn enum_callback(hwnd: HWND, lparam: LPARAM) -> BOOL {
@@ -75,28 +75,28 @@ unsafe extern "system" fn enum_callback(hwnd: HWND, lparam: LPARAM) -> BOOL {
 
     if title.contains(&context.fragment) {
         context.found = Some(hwnd);
-        return BOOL(0); // interrompt l'énumération
+        return BOOL(0); // interrupts the enumeration
     }
     TRUE
 }
 
-/// Zone client de la fenêtre, convertie en coordonnées écran.
+/// Client area of the window, converted to screen coordinates.
 ///
-/// Nécessaire au recadrage : Desktop Duplication renvoie une image de tout
-/// l'écran, exprimée en coordonnées écran, alors que `GetClientRect` renvoie
-/// un rectangle en coordonnées client (origine toujours à (0, 0)).
+/// Needed for cropping: Desktop Duplication returns an image of the whole
+/// screen, expressed in screen coordinates, whereas `GetClientRect` returns
+/// a rectangle in client coordinates (origin always at (0, 0)).
 pub fn client_rect_on_screen(hwnd: HWND) -> Result<Rect> {
     let mut rect = RECT::default();
     unsafe { GetClientRect(hwnd, &mut rect)? };
     let width = (rect.right - rect.left).max(0) as u32;
     let height = (rect.bottom - rect.top).max(0) as u32;
     if width == 0 || height == 0 {
-        bail!("la fenêtre a une zone client vide");
+        bail!("the window has an empty client area");
     }
 
-    // L'origine de la zone client (0, 0) suffit : GetClientRect garantit que
-    // `left`/`top` valent toujours 0, donc ce point représente le coin
-    // supérieur gauche de la zone client dans son propre repère.
+    // The client area origin (0, 0) is enough: GetClientRect guarantees that
+    // `left`/`top` are always 0, so this point represents the top-left
+    // corner of the client area in its own frame of reference.
     let mut origin = POINT { x: 0, y: 0 };
     unsafe { ClientToScreen(hwnd, &mut origin) }
         .ok()
@@ -110,29 +110,29 @@ pub fn client_rect_on_screen(hwnd: HWND) -> Result<Rect> {
     })
 }
 
-/// Le rectangle de la fenêtre tel que `GetWindowRect` le rend — **bordures
-/// invisibles de DWM COMPRISES**.
+/// The window's rectangle as `GetWindowRect` returns it — **DWM's invisible
+/// borders INCLUDED**.
 ///
-/// ⚠️ **Ce n'est PAS le rectangle qu'on voit** : voir
-/// `superviseur::placement::Lisere`. Cette fonction est le brut ; le cadre
-/// visible est [`cadre_visible`].
+/// ⚠️ **It is NOT the rectangle one sees**: see
+/// `superviseur::placement::Lisere`. This function is the raw one; the visible
+/// frame is [`cadre_visible`].
 pub fn rectangle_brut(hwnd: HWND) -> Result<Rect> {
     let mut r = RECT::default();
     unsafe { GetWindowRect(hwnd, &mut r) }.context("GetWindowRect")?;
     Ok(depuis_rect(r))
 }
 
-/// Le cadre **VISIBLE** de la fenêtre, par `DWMWA_EXTENDED_FRAME_BOUNDS`.
+/// The window's **VISIBLE** frame, through `DWMWA_EXTENDED_FRAME_BOUNDS`.
 ///
-/// 🔴 **C'EST LE SEUL RECTANGLE QUI CORRESPONDE À CE QUE L'ŒIL VOIT.** Depuis
-/// Windows 10 les bordures de redimensionnement sont transparentes et
-/// `GetWindowRect` les inclut : mesuré en session 1 le 31 août 2026, une
-/// fenêtre servie rendait `1732x1032+1280+0` au brut et `1718x1025+1287+0`
-/// au cadre visible — 7 px à gauche, à droite et en bas, 0 en haut.
+/// 🔴 **IT IS THE ONLY RECTANGLE THAT MATCHES WHAT THE EYE SEES.** Since
+/// Windows 10 the resize borders are transparent and
+/// `GetWindowRect` includes them: measured in session 1 on August 31st, 2026, a
+/// served window returned `1732x1032+1280+0` raw and `1718x1025+1287+0`
+/// as visible frame — 7 px on the left, right and bottom, 0 at the top.
 ///
-/// `Err` quand DWM refuse (composition désactivée, fenêtre détruite) :
-/// l'appelant retombe alors sur le brut, c'est-à-dire sur le comportement
-/// d'avant ce correctif.
+/// `Err` when DWM refuses (composition disabled, window destroyed):
+/// the caller then falls back to the raw one, that is, to the behaviour
+/// from before this fix.
 pub fn cadre_visible(hwnd: HWND) -> Result<Rect> {
     let mut r = RECT::default();
     unsafe {
@@ -147,18 +147,18 @@ pub fn cadre_visible(hwnd: HWND) -> Result<Rect> {
     Ok(depuis_rect(r))
 }
 
-/// L'épaisseur de la bordure que Windows **PEINT** autour d'une fenêtre, en
+/// The thickness of the border Windows **PAINTS** around a window, in
 /// pixels, `(x, y)`.
 ///
-/// 🔴 **MESURÉE, PAS ÉCRITE EN DUR** : `SM_CXBORDER` / `SM_CYBORDER` sont des
-/// métriques documentées qui **suivent le DPI**. Relevées à `(1, 1)` pour un
-/// DPI système de `96` sur cette machine — et c'est exactement l'épaisseur de
-/// la ligne sombre lue sur les quatre bords du recadrage (voir
-/// `superviseur::placement::enveloppe`, qui porte les couleurs relevées).
+/// 🔴 **MEASURED, NOT HARDCODED**: `SM_CXBORDER` / `SM_CYBORDER` are
+/// documented metrics that **follow DPI**. Noted at `(1, 1)` for a
+/// system DPI of `96` on this machine — and it is exactly the thickness of
+/// the dark line read on the four edges of the crop (see
+/// `superviseur::placement::enveloppe`, which carries the colours noted).
 ///
-/// ⚠️ **Elles ne distinguent pas une fenêtre SANS bordure peinte** (plein
-/// écran sans cadre) : on retirerait alors 1 px de contenu réel. Coût connu,
-/// nommé, et jugé moindre qu'une ligne sombre permanente sur les quatre bords.
+/// ⚠️ **They do not distinguish a window WITHOUT a painted border** (frameless
+/// fullscreen): we would then remove 1 px of real content. Known cost,
+/// named, and judged smaller than a permanent dark line on the four edges.
 pub fn bordure_peinte() -> (i32, i32) {
     unsafe {
         (
@@ -168,11 +168,11 @@ pub fn bordure_peinte() -> (i32, i32) {
     }
 }
 
-/// Le lisère invisible de CETTE fenêtre : `GetWindowRect` moins le cadre
-/// visible, côté par côté.
+/// The invisible edge of THIS window: `GetWindowRect` minus the visible
+/// frame, side by side.
 ///
-/// ⚠️ **À relire APRÈS `ShowWindow`** : sur une fenêtre minimisée, DWM rend un
-/// cadre qui ne veut rien dire (rectangle à `-32000`).
+/// ⚠️ **To reread AFTER `ShowWindow`**: on a minimised window, DWM returns a
+/// frame that means nothing (rectangle at `-32000`).
 pub fn lisere_dwm(hwnd: HWND) -> Result<crate::superviseur::placement::Lisere> {
     let brut = rectangle_brut(hwnd)?;
     let vu = cadre_visible(hwnd)?;
@@ -184,36 +184,36 @@ pub fn lisere_dwm(hwnd: HWND) -> Result<crate::superviseur::placement::Lisere> {
     })
 }
 
-/// Le rectangle du moniteur et sa **zone de travail**, pour le moniteur qui
-/// contient un point du bureau virtuel.
+/// The monitor's rectangle and its **work area**, for the monitor that
+/// contains a point of the virtual desktop.
 ///
-/// 🔴 **PREMIER LECTEUR DE `rcWork` DE TOUT LE DÉPÔT** (lot 33) : avant lui,
-/// `grep -rni 'rcWork\|SPI_GETWORKAREA\|zone_de_travail'` sur `agent/`,
-/// `client/`, `plateforme/` et `proto/` rendait **zéro**, et la distinction
-/// moniteur / zone de travail n'existait donc nulle part dans ce produit.
-/// C'est ce qui mettait les 48 rangées de la barre des tâches secondaire dans
-/// le recadrage de chaque fenêtre servie — voir
-/// `windows_source_sortie::borne_de_la_sortie`, qui porte la mesure.
+/// 🔴 **FIRST READER OF `rcWork` IN THE WHOLE REPOSITORY** (batch 33): before it,
+/// a case-insensitive grep for `rcWork`, `SPI_GETWORKAREA` or a work-area name over `agent/`,
+/// `client/`, `plateforme/` and `proto/` returned **zero**, and the
+/// monitor / work area distinction therefore existed nowhere in this product.
+/// It is what put the 48 rows of the secondary taskbar into
+/// the crop of every served window — see
+/// `windows_source_sortie::borne_de_la_sortie`, which carries the measurement.
 ///
-/// **Deux points d'entrée, un seul corps, et c'est délibéré** : le SUPERVISEUR
-/// interroge par l'ORIGINE de la sortie (il connaît le rectangle DXGI avant
-/// même d'avoir posé la fenêtre), le CAPTEUR par SA FENÊTRE (il ne connaît que
-/// le nom de la sortie, mais sa fenêtre est posée dessus). Les deux tombent
-/// sur le même `HMONITOR`, donc sur la même réponse — c'est ce qui permet aux
-/// deux processus de calculer la même borne sans échanger un message.
+/// **Two entry points, a single body, and that is deliberate**: the SUPERVISOR
+/// queries by the output's ORIGIN (it knows the DXGI rectangle before
+/// even having placed the window), the SENSOR by ITS WINDOW (it only knows
+/// the output's name, but its window is placed on it). Both land
+/// on the same `HMONITOR`, hence on the same answer — that is what lets the
+/// two processes compute the same bound without exchanging a message.
 pub fn zones_du_moniteur_au_point(x: i32, y: i32) -> Result<(Rect, Rect)> {
-    // `MONITOR_DEFAULTTONEAREST` : un point hors de tout moniteur — une sortie
-    // que Windows vient de détacher — rendrait `NULL` avec
-    // `MONITOR_DEFAULTTONULL`, et l'appelant retomberait sur le rectangle de
-    // la sortie. Le plus proche est une réponse, pas une devinette : le point
-    // vient de l'origine d'une sortie que DXGI énumère encore.
+    // `MONITOR_DEFAULTTONEAREST`: a point outside any monitor — an output
+    // Windows has just detached — would return `NULL` with
+    // `MONITOR_DEFAULTTONULL`, and the caller would fall back to the output's
+    // rectangle. The nearest is an answer, not a guess: the point
+    // comes from the origin of an output DXGI still enumerates.
     let moniteur = unsafe { MonitorFromPoint(POINT { x, y }, MONITOR_DEFAULTTONEAREST) };
     zones_de_l_hmoniteur(moniteur)
 }
 
-/// Le rectangle du moniteur et sa zone de travail, pour le moniteur qui porte
-/// une fenêtre. Voir [`zones_du_moniteur_au_point`] pour le pourquoi des deux
-/// points d'entrée.
+/// The monitor's rectangle and its work area, for the monitor carrying
+/// a window. See [`zones_du_moniteur_au_point`] for why there are two
+/// entry points.
 pub fn zones_du_moniteur_de(hwnd: HWND) -> Result<(Rect, Rect)> {
     let moniteur = unsafe { MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST) };
     zones_de_l_hmoniteur(moniteur)
@@ -221,16 +221,16 @@ pub fn zones_du_moniteur_de(hwnd: HWND) -> Result<(Rect, Rect)> {
 
 fn zones_de_l_hmoniteur(moniteur: HMONITOR) -> Result<(Rect, Rect)> {
     if moniteur.is_invalid() {
-        bail!("aucun moniteur pour ce repère");
+        bail!("no monitor for this frame of reference");
     }
     let mut info = MONITORINFO {
         cbSize: std::mem::size_of::<MONITORINFO>() as u32,
         ..Default::default()
     };
-    // `GetMonitorInfoW` rend un `BOOL` brut : un `false` n'est pas une
-    // `windows::core::Error`, et un `?` ne l'attraperait pas.
+    // `GetMonitorInfoW` returns a raw `BOOL`: a `false` is not a
+    // `windows::core::Error`, and a `?` would not catch it.
     if !unsafe { GetMonitorInfoW(moniteur, &mut info) }.as_bool() {
-        bail!("GetMonitorInfoW a refusé");
+        bail!("GetMonitorInfoW refused");
     }
     Ok((depuis_rect(info.rcMonitor), depuis_rect(info.rcWork)))
 }
@@ -244,16 +244,16 @@ fn depuis_rect(r: RECT) -> Rect {
     }
 }
 
-/// Redimensionne la fenêtre sans la déplacer ni changer son ordre d'affichage.
+/// Resizes the window without moving it or changing its z-order.
 pub fn resize_window(hwnd: HWND, width: u32, height: u32) -> Result<()> {
-    // Les dimensions nulles font échouer la capture ; on impose un plancher.
+    // Zero dimensions make capture fail; we impose a floor.
     let width = width.max(160) as i32;
     let height = height.max(120) as i32;
     unsafe { SetWindowPos(hwnd, None, 0, 0, width, height, SWP_NOMOVE | SWP_NOZORDER)? };
     Ok(())
 }
 
-/// Vrai tant que la fenêtre existe.
+/// True as long as the window exists.
 pub fn is_window_alive(hwnd: HWND) -> bool {
     unsafe { IsWindow(Some(hwnd)).as_bool() }
 }

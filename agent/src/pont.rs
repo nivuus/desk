@@ -1,30 +1,30 @@
-//! Le pont fichiers : un seul processus par VM, qui tient la racine de
-//! virtualisation ProjFS et la sert depuis le répertoire local que la
-//! page-shell a ouvert.
+//! The file bridge: a single process per VM, which holds the ProjFS
+//! virtualisation root and serves it from the local directory the
+//! shell page opened.
 //!
-//! Ce fichier reste mince à dessein — **il assemble, il ne décide pas**. Même
-//! découpage que `capteur.rs` et `superviseur.rs` : la logique pure (chemins,
-//! erreurs, découpe, table, transport, **et depuis F2 le journal des écritures
-//! dues, la file d'écriture et le fil qui la sert**) est hors `cfg` et se teste
-//! sur l'hôte ;
-//! ce qui touche ProjFS est gaté.
+//! This file stays thin on purpose — **it assembles, it does not decide**. Same
+//! split as `capteur.rs` and `superviseur.rs`: the pure logic (paths,
+//! errors, splitting, table, transport, **and since F2 the journal of due
+//! writes, the write queue and the thread that serves it**) is outside `cfg` and is tested
+//! on the host;
+//! what touches ProjFS is gated.
 //!
-//! **Pourquoi un processus séparé** (spec §3.2) : les rappels ProjFS
-//! s'exécutent sur des fils que **le système** possède, où une panique Rust
-//! devient un `abort` de processus. Les loger dans le superviseur ou dans le
-//! capteur ferait du pont fichiers un risque pour la capture entière — c'est
-//! la faute de l'ancien pont, transposée. Ici le pire cas est la mort du pont,
-//! que le superviseur relance, **sans que le flux vidéo ne bronche** : c'est
-//! le principe 4 du cadrage, et `boucle/surveillance_pont.rs` le rend
-//! structurel en refusant de traiter un échec de démarrage comme fatal.
+//! **Why a separate process** (spec §3.2): ProjFS callbacks
+//! run on threads **the system** owns, where a Rust panic
+//! becomes a process `abort`. Housing them in the supervisor or in the
+//! sensor would make the file bridge a risk for the whole capture — it is
+//! the old bridge's fault, transposed. Here the worst case is the death of the bridge,
+//! which the supervisor restarts, **without the video stream flinching**: it is
+//! principle 4 of the scoping, and `boucle/surveillance_pont.rs` makes it
+//! structural by refusing to treat a start-up failure as fatal.
 //!
-//! **Pourquoi les entrées ProjFS sont résolues à l'EXÉCUTION** (décision D1) :
-//! les enveloppes du crate `windows` passent par `raw-dylib`, donc par un
-//! import statique dans le PE. Or `agent.exe` est **un seul binaire pour tous
-//! les modes** : un import non résolu ne tuerait pas « le pont », il tuerait
-//! la capture, la vidéo et l'entrée sur toute VM dépourvue de ProjFS. D'où
-//! `LoadLibraryW` + `GetProcAddress`, en tâche 12 — et **rien, dans ce
-//! fichier ni dans ses enfants purs, ne doit importer quoi que ce soit de
+//! **Why the ProjFS entry points are resolved at RUNTIME** (decision D1):
+//! the wrappers of the `windows` crate go through `raw-dylib`, hence through a
+//! static import in the PE. Yet `agent.exe` is **a single binary for all
+//! modes**: an unresolved import would not kill "the bridge", it would kill
+//! capture, video and input on any VM without ProjFS. Hence
+//! `LoadLibraryW` + `GetProcAddress`, in task 12 — and **nothing, in this
+//! file or in its pure children, must import anything at all from
 //! `Win32::Storage::ProjectedFileSystem`.**
 
 pub mod bonjour;
@@ -35,7 +35,7 @@ pub mod decoupe;
 pub mod ecriture;
 pub mod entetes;
 pub mod enumeration;
-pub mod erreurs;
+pub mod errors;
 pub mod journal;
 pub mod latence;
 pub mod lecture;
@@ -49,37 +49,37 @@ pub mod service;
 pub mod table;
 pub mod transport;
 
-/// Point d'entrée du mode pont : charge ProjFS, monte la racine, et la tient.
+/// Entry point of bridge mode: loads ProjFS, mounts the root, and holds it.
 ///
-/// ❌ **CE COMMENTAIRE A ÉTÉ FAUX, ET C'EST LA MÊME BRANCHE QUI L'A RÉFUTÉ.**
-/// Il annonçait « la racine est montée et VIDE, aucune requête ne part vers le
-/// navigateur » : c'était l'état de la **tâche 13**, et la **tâche 14** y a
-/// branché les trois rappels asynchrones. La racine montre l'arborescence du
-/// poste local — relevé en recette, 6 entrées sur 6, trois exécutions
-/// (`docs/superpowers/plans/2026-08-19-pont-fichiers-f1-resultats.md`).
-/// *Une revue par tâche ne pouvait pas le voir : la tâche qui écrit la phrase
-/// et celle qui la réfute ne se relisent jamais l'une l'autre.*
+/// ❌ **THIS COMMENT WAS FALSE, AND IT IS THE SAME BRANCH THAT REFUTED IT.**
+/// It announced "the root is mounted and EMPTY, no request goes to the
+/// browser": that was the state of **task 13**, and **task 14**
+/// wired the three asynchronous callbacks to it. The root shows the tree of the
+/// local workstation — noted in the acceptance run, 6 entries out of 6, three runs
+/// (`docs/superpowers/plans/2026-08-19-pont-fichiers-f1-resultats.md`). (policy: allow-fr, real file path)
+/// *A per-task review could not see it: the task that writes the sentence
+/// and the one that refutes it never reread each other.*
 ///
-/// ⚠️ **« S'arrête proprement » a une portée exacte** : le `Drop` de
-/// [`projfs::Virtualisation`] complète les commandes en vol puis appelle
-/// `PrjStopVirtualizing`. Il court sur une sortie NORMALE de cette fonction —
-/// jamais sur un `TerminateProcess`, qui est ce que le job object du
-/// superviseur inflige à ses enfants. **Une racine peut donc survivre à un
-/// arrêt brutal du superviseur**, et rien dans F1 ne la démonte alors : c'est
-/// le pendant exact des sorties virtuelles qui survivent à un
-/// `Stop-Process -Force` (sous-bloc D5), et ce n'est pas refermé ici.
+/// ⚠️ **"Stops cleanly" has an exact scope**: the `Drop` of
+/// [`projfs::Virtualisation`] completes the in-flight commands then calls
+/// `PrjStopVirtualizing`. It runs on a NORMAL exit of this function —
+/// never on a `TerminateProcess`, which is what the supervisor's job object
+/// inflicts on its children. **A root can therefore survive an
+/// abrupt stop of the supervisor**, and nothing in F1 unmounts it then: it is
+/// the exact counterpart of the virtual outputs that survive a
+/// `Stop-Process -Force` (sub-block D5), and it is not closed here.
 #[cfg(windows)]
 pub async fn executer(config: crate::Config) -> anyhow::Result<()> {
     use anyhow::Context;
 
-    // Charger AVANT de toucher au système de fichiers et AVANT le signaling :
-    // une VM sans ProjFS doit échouer ici, avec un message qui nomme l'entrée
-    // manquante, et non après avoir créé un dossier « Mes Fichiers » vide que
-    // rien ne servirait jamais.
+    // Load BEFORE touching the file system and BEFORE signaling:
+    // a VM without ProjFS must fail here, with a message that names the missing
+    // entry point, and not after having created an empty "Mes Fichiers" folder that (policy: allow-fr, real Windows folder name)
+    // nothing would ever serve.
     let projfs = projfs::chargement::charger()?;
 
-    // Le socket et le `Rtc` **données seules** : ni piste, ni codec, ni BWE.
-    let (socket, mut rtc) = transport::construire_rtc_donnees(config.local_ip)?;
+    // The socket and the **data-only** `Rtc`: no track, no codec, no BWE.
+    let (socket, mut rtc) = transport::build_data_rtc(config.local_ip)?;
 
     let crate::signaling::SignalingHandle {
         mut offers,
@@ -94,112 +94,112 @@ pub async fn executer(config: crate::Config) -> anyhow::Result<()> {
     )
     .await?;
 
-    // 🔴 CORRECTIF DU LEGS DES FREINS MANQUANTS (round de correction 1,
-    // critique ②) — LA MOITIÉ QUI HONORE `retryApresS`. Un refus de volume
-    // (`trop-de-requetes`) ferme le canal `offers` sans offre : `.recv()`
-    // rend `None`, et ce processus va mourir sur la ligne suivante. AVANT de
-    // rendre la main, on attend le délai que le relais a suggéré (borné,
-    // voir `honorer_retry_suggere`) : le temps que ce processus met à
-    // mourir compte dans l'espacement que `surveillance_pont.rs::EtatPont`
-    // mesure depuis son dernier LANCEMENT, sans qu'aucun canal ne franchisse
-    // la frontière de processus.
+    // 🔴 FIX OF THE LEGACY OF MISSING BRAKES (fix round 1,
+    // critical ②) — THE HALF THAT HONOURS `retryApresS`. A volume refusal
+    // (`trop-de-requetes`) closes the `offers` channel without an offer: `.recv()`
+    // returns `None`, and this process is going to die on the next line. BEFORE
+    // returning, we wait for the delay the relay suggested (bounded,
+    // see `honour_suggested_retry`): the time this process takes to
+    // die counts in the spacing that `surveillance_pont.rs::EtatPont`
+    // measures since its last LAUNCH, without any channel crossing
+    // the process boundary.
     let Some(offre) = offers.recv().await else {
-        crate::signaling::honorer_retry_suggere(&retry_apres_s).await;
-        anyhow::bail!("aucune offre SDP pour le pont fichiers");
+        crate::signaling::honour_suggested_retry(&retry_apres_s).await;
+        anyhow::bail!("no SDP offer for the file bridge");
     };
     let offre = str0m::change::SdpOffer::from_sdp_string(&offre)
         .map_err(|e| anyhow::anyhow!("offre SDP illisible : {e}"))?;
     let reponse = rtc
         .sdp_api()
         .accept_offer(offre)
-        .map_err(|e| anyhow::anyhow!("le pont refuse l'offre : {e}"))?;
+        .map_err(|e| anyhow::anyhow!("the bridge refuses the offer: {e}"))?;
     answers
         .send(reponse.to_sdp_string())
         .await
-        .context("envoi de la réponse SDP du pont")?;
-    tracing::info!("réponse SDP du pont envoyée");
+        .context("sending the bridge's SDP answer")?;
+    tracing::info!("bridge SDP answer sent");
 
-    // ⚠️ **Aucun relais TURN pour le pont, et c'est une DIVERGENCE assumée
-    // d'avec la session vidéo**, qui en alloue un avant sa réponse
-    // (`demarrage.rs`). `pont::transport` — dont la signature est fixée par le
-    // plan et livrée depuis la tâche 11 — n'expose aucun chemin d'allocation.
-    // Le pont ne traverse donc que ce que les candidats hôtes traversent.
-    // **Non couvert par F1**, à rouvrir le jour où la page-shell et la VM ne se
-    // voient pas directement.
+    // ⚠️ **No TURN relay for the bridge, and it is an assumed DIVERGENCE
+    // from the video session**, which allocates one before its answer
+    // (`demarrage.rs`). `pont::transport` — whose signature is set by the
+    // plan and delivered since task 11 — exposes no allocation path.
+    // The bridge therefore only crosses what host candidates cross.
+    // **Not covered by F1**, to be reopened the day the shell page and the VM do not
+    // see each other directly.
 
-    // Le canal des requêtes : les rappels y poussent, le transport les émet.
+    // The request channel: the callbacks push into it, the transport emits them.
     let (vers_navigateur, requetes) = std::sync::mpsc::channel();
-    // Le canal des réponses : le transport y pousse, le fil du pont les lit.
+    // The response channel: the transport pushes into it, the bridge thread reads them.
     let (vers_pont, reponses) = std::sync::mpsc::channel();
-    // Le canal du fil d'ÉCRITURE : le rappel de notification y pousse ses
-    // événements, le fil du pont y relaie les acquittements.
+    // The WRITE thread's channel: the notification callback pushes its
+    // events into it, the bridge thread relays the acknowledgements into it.
     let (vers_ecriture, ordres_ecriture) = std::sync::mpsc::channel();
 
-    // ⚠️ **`PONT_ECRITURE=0` DÉSARME, et une simple PRÉSENCE n'active pas** —
-    // la convention de `SUPERVISEUR`, `CAPTEUR`, `PONT`, `AUDIO`,
-    // `PLEIN_ECRAN`, `PRESSE_PAPIER` et `APPS`, et pour la même raison :
-    // tester `is_ok()` **armerait** le mécanisme en écrivant `PONT_ECRITURE=0`
-    // pour le couper.
+    // ⚠️ **`PONT_ECRITURE=0` DISARMS, and mere PRESENCE does not activate** —
+    // the convention of `SUPERVISEUR`, `CAPTEUR`, `PONT`, `AUDIO`,
+    // `PLEIN_ECRAN`, `PRESSE_PAPIER` and `APPS`, and for the same reason:
+    // testing `is_ok()` **would arm** the mechanism when writing `PONT_ECRITURE=0`
+    // to cut it.
     //
-    // 🔴 **C'est une variable de BANC, jamais une configuration livrée.** Elle
-    // n'existe que pour rendre ROUGE le compteur d'écritures dues de la
-    // page-shell : désarmée, le fil journalise et annonce, mais ne pousse
-    // jamais, et le compteur monte sans redescendre.
+    // 🔴 **It is a BENCH variable, never a delivered configuration.** It
+    // only exists to make RED the shell page's due-writes counter:
+    // disarmed, the thread logs and announces, but never
+    // pushes, and the counter rises without coming back down.
     //
-    // ⚠️ **DIVERGENCE DÉCLARÉE AVEC LE PLAN DE F2, qui se contredit lui-même.**
-    // Il écrit « `PONT_ECRITURE=0` **désarme** » — donc l'absence ARME — et
-    // prescrit dans la même phrase la forme
-    // `matches!(std::env::var(…).as_deref(), Ok(v) if v != "0")`, qui est celle
-    // de `CAPTEUR` et de `PONT` et qui rend **`false` en l'absence de la
-    // variable**. Prise à la lettre, elle aurait livré un pont **muet par
-    // défaut** : aucune écriture poussée sans qu'on pose une variable de banc.
-    // La forme retenue est celle de `PLEIN_ECRAN` (`capteur/plein_ecran.rs`),
-    // qui est la convention réellement décrite.
+    // ⚠️ **DECLARED DIVERGENCE FROM F2'S PLAN, which contradicts itself.**
+    // It writes "`PONT_ECRITURE=0` **disarms**" — hence absence ARMS — and
+    // prescribes in the same sentence the form
+    // `matches!(std::env::var(…).as_deref(), Ok(v) if v != "0")`, which is that
+    // of `CAPTEUR` and `PONT` and which returns **`false` when the
+    // variable is absent**. Taken literally, it would have delivered a bridge **silent by
+    // default**: no write pushed without setting a bench variable.
+    // The retained form is that of `PLEIN_ECRAN` (`capteur/plein_ecran.rs`),
+    // which is the convention actually described.
     let ecriture_armee = std::env::var("PONT_ECRITURE").as_deref() != Ok("0");
 
-    // ⚠️ **`PONT_MUTATION=0` DÉSARME, et une simple PRÉSENCE n'active pas** —
-    // la convention de `SUPERVISEUR`, `CAPTEUR`, `PONT`, `PONT_ECRITURE`,
-    // `AUDIO`, `PLEIN_ECRAN`, `PRESSE_PAPIER` et `APPS`.
+    // ⚠️ **`PONT_MUTATION=0` DISARMS, and mere PRESENCE does not activate** —
+    // the convention of `SUPERVISEUR`, `CAPTEUR`, `PONT`, `PONT_ECRITURE`,
+    // `AUDIO`, `PLEIN_ECRAN`, `PRESSE_PAPIER` and `APPS`.
     //
-    // 🔴 **VARIABLE DE BANC, jamais une configuration livrée.** Elle existe
-    // pour rendre ROUGE les critères ① et ② de la recette de F3 : désarmée, le
-    // `PRE_RENAME` et le `PRE_DELETE` refusent, l'application voit
-    // `ERROR_WRITE_PROTECT`, et **le poste local est inchangé**. C'est un rouge
-    // du MÉCANISME — le refus est journalisé et le compteur
-    // `protege-en-ecriture` monte —, jamais un rouge vacueux.
+    // 🔴 **BENCH VARIABLE, never a delivered configuration.** It exists
+    // to make RED criteria ① and ② of F3's acceptance run: disarmed, the
+    // `PRE_RENAME` and the `PRE_DELETE` refuse, the application sees
+    // `ERROR_WRITE_PROTECT`, and **the local workstation is unchanged**. It is a red
+    // of the MECHANISM — the refusal is logged and the
+    // `protege-en-ecriture` counter rises —, never a vacuous red.
     //
-    // ⚠️ **DISTINCTE de `PONT_ECRITURE`, et le rester** : les confondre ferait
-    // qu'une recette du renommage couperait aussi l'écriture, donc l'idiome
-    // temp+rename qu'elle veut précisément exercer.
+    // ⚠️ **DISTINCT from `PONT_ECRITURE`, and must stay so**: confusing them would mean
+    // that a rename acceptance run would also cut writing, hence the
+    // temp+rename idiom it precisely wants to exercise.
     let mutations_armees = std::env::var("PONT_MUTATION").as_deref() != Ok("0");
     if !mutations_armees {
         tracing::warn!(
-            "mutations DESARMEES (PONT_MUTATION=0) : renommage et suppression refuses \
-             au PRE_, rien n'est pousse"
+            "mutations DISARMED (PONT_MUTATION=0): rename and delete refused \
+             at PRE_, nothing is pushed"
         );
     }
 
-    // ⚠️ **`PONT_CACHE=0` DÉSARME, et une simple PRÉSENCE n'active pas** — la
-    // convention de `SUPERVISEUR`, `CAPTEUR`, `PONT`, `PONT_ECRITURE`,
-    // `PONT_MUTATION`, `AUDIO`, `PLEIN_ECRAN`, `PRESSE_PAPIER` et `APPS`, et
-    // pour la même raison : tester `is_ok()` **armerait** le mécanisme en
-    // écrivant `PONT_CACHE=0` pour le couper.
+    // ⚠️ **`PONT_CACHE=0` DISARMS, and mere PRESENCE does not activate** — the
+    // convention of `SUPERVISEUR`, `CAPTEUR`, `PONT`, `PONT_ECRITURE`,
+    // `PONT_MUTATION`, `AUDIO`, `PLEIN_ECRAN`, `PRESSE_PAPIER` and `APPS`, and
+    // for the same reason: testing `is_ok()` **would arm** the mechanism when
+    // writing `PONT_CACHE=0` to cut it.
     //
-    // 🔴 **VARIABLE DE BANC, jamais une configuration livrée.** Elle existe
-    // pour rendre ROUGE le critère ① de la recette de F5 **sur le produit
-    // lui-même** : désarmée, le pont paie chaque listage, et le fichier ajouté
-    // côté navigateur **apparaît sans `Rafraichir`**. C'est un rouge du
-    // MÉCANISME — présent et sans effet —, jamais un rouge vacueux, et c'est la
-    // forme que D10 a nommée après avoir produit l'autre.
+    // 🔴 **BENCH VARIABLE, never a delivered configuration.** It exists
+    // to make RED criterion ① of F5's acceptance run **on the product
+    // itself**: disarmed, the bridge pays for each listing, and the file added
+    // on the browser side **appears without `Rafraichir`**. It is a red of the
+    // MECHANISM — present and without effect —, never a vacuous red, and it is the
+    // form D10 named after having produced the other.
     let cache_arme = std::env::var("PONT_CACHE").as_deref() != Ok("0");
     if !cache_arme {
         tracing::warn!(
-            "cache d'enumeration DESARME (PONT_CACHE=0) : bras de banc, jamais une \
-             configuration livree"
+            "enumeration cache DISARMED (PONT_CACHE=0): bench arm, never a \
+             shipped configuration"
         );
     }
 
-    let virtualisation = projfs::Virtualisation::demarrer(
+    let virtualisation = projfs::Virtualisation::start(
         projfs,
         vers_navigateur.clone(),
         vers_ecriture,
@@ -208,14 +208,14 @@ pub async fn executer(config: crate::Config) -> anyhow::Result<()> {
         cache_arme,
     )?;
     let etat = virtualisation.etat();
-    tracing::info!(racine = %virtualisation.racine().display(), "racine du pont fichiers montée");
+    tracing::info!(racine = %virtualisation.racine().display(), "file bridge root mounted");
 
-    // Fil 4 — **le fil d'ÉCRITURE**, et il est DÉDIÉ.
+    // Thread 4 — **the WRITE thread**, and it is DEDICATED.
     //
-    // 🔴 **Il ne peut être ni le fil du pont, ni un fil de rappel.** Il lit des
-    // fichiers de la racine : `pont/service.rs` écrit déjà pourquoi le fil du
-    // pont ne doit jamais le faire — « il s'attendrait lui-même ». Et un fil de
-    // rappel appartient au système, où toute E/S fige l'application qui lit.
+    // 🔴 **It can be neither the bridge thread, nor a callback thread.** It reads
+    // files of the root: `pont/service.rs` already writes why the bridge
+    // thread must never do so — "it would wait for itself". And a
+    // callback thread belongs to the system, where any I/O freezes the application reading.
     let chemin_journal = projfs::dossier_etat()?.join("ecritures.journal");
     let racine_du_fil = virtualisation.racine().to_path_buf();
     let table_du_fil = std::sync::Arc::clone(&etat.table);
@@ -233,76 +233,76 @@ pub async fn executer(config: crate::Config) -> anyhow::Result<()> {
                 ordres_ecriture,
             )
         })
-        .context("lancement du fil d'écriture du pont")?;
+        .context("launching the bridge write thread")?;
 
-    // Fil 2 — le transport. Il possède le `Rtc` et le socket, et **ne connaît
-    // ni ProjFS ni Windows**.
+    // Thread 2 — the transport. It owns the `Rtc` and the socket, and **knows
+    // neither ProjFS nor Windows**.
     let transport = std::thread::Builder::new()
         .name("pont-transport".into())
         .spawn(move || {
-            if let Err(erreur) = transport::tourner(rtc, socket, requetes, vers_pont) {
-                tracing::error!(%erreur, "transport du pont arrêté sur erreur");
+            if let Err(error) = transport::tourner(rtc, socket, requetes, vers_pont) {
+                tracing::error!(%error, "bridge transport stopped on error");
             }
         })
-        .context("lancement du fil de transport du pont")?;
+        .context("launching the bridge transport thread")?;
 
-    // I6, comme pour la session vidéo : une perte du signaling après l'échange
-    // initial doit être visible plutôt que silencieuse. Aucune renégociation
-    // n'est possible, donc on observe et on journalise — mais on observe.
+    // I6, as for the video session: a loss of signaling after the initial
+    // exchange must be visible rather than silent. No renegotiation
+    // is possible, so we observe and log — but we do observe.
     let mut closed = closed;
     tokio::spawn(async move {
         if closed.changed().await.is_ok() && *closed.borrow() {
-            tracing::warn!("connexion de signaling du pont perdue (aucune renégociation)");
+            tracing::warn!("bridge signaling connection lost (no renegotiation)");
         }
     });
 
-    // Fil 3 — le fil du pont. Il possède la table et complète les commandes.
-    // `spawn_blocking` : sa boucle est bloquante et ne doit pas occuper un
-    // exécuteur tokio.
+    // Thread 3 — the bridge thread. It owns the table and completes the commands.
+    // `spawn_blocking`: its loop is blocking and must not occupy a
+    // tokio executor.
     let etat_du_fil = std::sync::Arc::clone(&etat);
     tokio::task::spawn_blocking(move || service::tourner(etat_du_fil, reponses))
         .await
-        .context("le fil du pont fichiers a paniqué")?;
+        .context("the file bridge thread panicked")?;
 
-    // 🔴 **L'EXEMPLAIRE LOCAL D'`Arc<Etat>` DOIT ÊTRE RELÂCHÉ ICI, ET F1 NE LE
-    // FAISAIT PAS.**
+    // 🔴 **THE LOCAL COPY OF `Arc<Etat>` MUST BE RELEASED HERE, AND F1 DID NOT
+    // DO IT.**
     //
-    // Les DEUX `Sender` — celui du transport (`sortant`) et celui du fil
-    // d'écriture (`vers_ecriture`) — vivent **dans `Etat`**. Un récepteur ne se
-    // déconnecte que lorsque le **dernier** exemplaire de son `Sender` est
-    // parti : tant que cette variable locale tient un `Arc<Etat>`, les deux
-    // fils tournent, et les `join` ci-dessous **ne rendent jamais la main**.
+    // BOTH `Sender`s — the transport's (`sortant`) and the write
+    // thread's (`vers_ecriture`) — live **in `Etat`**. A receiver only
+    // disconnects when the **last** copy of its `Sender` is
+    // gone: as long as this local variable holds an `Arc<Etat>`, both
+    // threads run, and the `join`s below **never return**.
     //
-    // ⚠️ **F1 portait déjà cette latence, et son commentaire l'énonçait à
-    // l'envers** — « le transport s'arrête quand `Etat`, DONC `virtualisation`,
-    // est relâché » : `virtualisation` n'en détient qu'un exemplaire sur deux.
-    // Elle n'y avait pas de conséquence visible, `transport::tourner` pouvant
-    // rendre pour une autre raison ; **F2 la rendrait bloquante**, en ajoutant
-    // un second `join` sur un fil qui, lui, n'a aucune autre raison de sortir.
+    // ⚠️ **F1 already carried this latency, and its comment stated it
+    // the wrong way round** — "the transport stops when `Etat`, HENCE `virtualisation`,
+    // is released": `virtualisation` only holds one copy out of two.
+    // It had no visible consequence there, `transport::tourner` being able to
+    // return for another reason; **F2 would make it blocking**, by adding
+    // a second `join` on a thread which, for its part, has no other reason to exit.
     drop(etat);
 
-    // ⚠️ **L'ARRÊT A DÉSORMAIS QUATRE FILS À ORDONNER, et l'ordre compte.**
+    // ⚠️ **THE STOP NOW HAS FOUR THREADS TO ORDER, and the order matters.**
     //
-    // 0. **Le fil d'ÉCRITURE d'abord** : il est le seul à pouvoir pousser une
-    //    trame après que la table a été vidée. Le laisser vivre lui ferait
-    //    émettre sur un `Sender` dont l'autre bout est parti, et son entrée de
-    //    journal resterait sans que rien ne le dise.
-    // 1. le `Drop` de `virtualisation` vide la table et complète chaque
-    //    commande AYANT un `command_id` ;
-    // 2. `PrjStopVirtualizing` ;
-    // 3. l'`Arc` confié est repris.
+    // 0. **The WRITE thread first**: it is the only one able to push a
+    //    frame after the table has been emptied. Letting it live would make it
+    //    emit on a `Sender` whose other end is gone, and its journal entry
+    //    would remain without anything saying so.
+    // 1. the `Drop` of `virtualisation` empties the table and completes each
+    //    command HAVING a `command_id`;
+    // 2. `PrjStopVirtualizing`;
+    // 3. the entrusted `Arc` is taken back.
     //
-    // Le canal du fil d'écriture se ferme quand `Etat` — donc
-    // `virtualisation` — est relâché ; l'attendre AVANT ferait un interblocage.
-    // On relâche donc, puis on joint.
+    // The write thread's channel closes when `Etat` — hence
+    // `virtualisation` — is released; waiting for it BEFORE would deadlock.
+    // We therefore release, then join.
     drop(virtualisation);
     let _ = ecriture.join();
     let _ = transport.join();
-    tracing::info!("pont fichiers arrêté");
+    tracing::info!("file bridge stopped");
     Ok(())
 }
 
 #[cfg(not(windows))]
 pub async fn executer(_config: crate::Config) -> anyhow::Result<()> {
-    anyhow::bail!("le mode pont n'existe que sur Windows")
+    anyhow::bail!("bridge mode only exists on Windows")
 }

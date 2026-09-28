@@ -1,18 +1,18 @@
-//! Compteurs de capture, **par session**.
+//! Capture counters, **per session**.
 //!
-//! **Pourquoi ce fichier existe** : `windows_source.rs` portait trois statiques
-//! de processus (`TICKS`, `CAPTURED`, `PRODUCED`). Depuis le sous-bloc D4, la
-//! capture est mutualisée dans un processus unique qui tient N fenêtres : les
-//! trois compteurs mélangeaient donc N sessions. Pire, leur unique lecteur
-//! (`demarrage.rs`) vit dans l'ENFANT, qui n'écrit rien — `SOURCE_TRACE=1`
-//! n'affichait que des zéros, et les compteurs du capteur n'étaient lus par
-//! personne. Consignation n°1 du sous-bloc D6, due depuis le 3 août 2026.
+//! **Why this file exists**: `windows_source.rs` carried three process
+//! statics (`TICKS`, `CAPTURED`, `PRODUCED`). Since sub-block D4, the
+//! capture is shared in a single process holding N windows: the
+//! three counters therefore mixed N sessions. Worse, their only reader
+//! (`demarrage.rs`) lives in the CHILD, which writes nothing — `SOURCE_TRACE=1`
+//! only displayed zeros, and the sensor's counters were read by
+//! nobody. Recorded item no. 1 of sub-block D6, due since August 3rd, 2026.
 //!
-//! **Pur, aucun `cfg`** : c'est ce qui le rend éprouvable sur l'hôte.
+//! **Pure, no `cfg`**: that is what makes it testable on the host.
 
 use std::sync::atomic::{AtomicU64, Ordering};
 
-/// Compteurs de capture d'UNE fenêtre.
+/// Capture counters of ONE window.
 #[derive(Debug, Default)]
 pub struct Telemetrie {
     ticks: AtomicU64,
@@ -21,22 +21,22 @@ pub struct Telemetrie {
 }
 
 impl Telemetrie {
-    /// Un tour de boucle de capture.
+    /// A capture loop round.
     pub fn tick(&self) {
         self.ticks.fetch_add(1, Ordering::Relaxed);
     }
 
-    /// Une image acquise auprès de la duplication.
+    /// A frame acquired from the duplication.
     pub fn capturee(&self) {
         self.captured.fetch_add(1, Ordering::Relaxed);
     }
 
-    /// Une image délivrée en aval.
+    /// A frame delivered downstream.
     pub fn produite(&self) {
         self.produced.fetch_add(1, Ordering::Relaxed);
     }
 
-    /// `(ticks, capturées, produites)`.
+    /// `(ticks, captured, produced)`.
     pub fn lire(&self) -> (u64, u64, u64) {
         (
             self.ticks.load(Ordering::Relaxed),
@@ -51,10 +51,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn deux_telemetries_ne_se_melangent_pas() {
-        // C'est TOUT l'objet du leg : trois statiques de processus mélangeaient
-        // les N fenêtres du capteur depuis D4, et `SOURCE_TRACE=1` n'affichait
-        // que des zéros dans l'enfant, qui n'écrit rien.
+    fn two_telemetries_do_not_mix() {
+        // It is THE WHOLE point of the legacy: three process statics mixed
+        // the sensor's N windows since D4, and `SOURCE_TRACE=1` only displayed
+        // zeros in the child, which writes nothing.
         let a = Telemetrie::default();
         let b = Telemetrie::default();
         a.tick();
@@ -65,23 +65,23 @@ mod tests {
         assert_eq!(b.lire(), (0, 0, 1));
     }
 
-    /// Une télémétrie remise à neuf repart de zéro — et ce test le PROUVE en
-    /// l'ayant d'abord fait compter sur ses TROIS compteurs.
+    /// A reset telemetry starts again from zero — and this test PROVES it by
+    /// first having made it count on its THREE counters.
     ///
-    /// ⚠️ **Il remplace `une_telemetrie_neuve_est_a_zero` (leg n°11 de D9),
-    /// qui n'éprouvait que `#[derive(Default)]` et ne pouvait pas rendre
-    /// l'autre valeur** : il passait quel que soit le corps de
-    /// `tick`/`capturee`/`produite`. La faiblesse a été PROUVÉE, pas
-    /// affirmée — `tick()` rendu no-op, l'ancien test reste VERT quand
-    /// celui-ci vire au rouge sur `left: (0, 1, 1)`.
+    /// ⚠️ **It replaces `une_telemetrie_neuve_est_a_zero` (D9's legacy no. 11),
+    /// which only exercised `#[derive(Default)]` and could not return
+    /// the other value**: it passed whatever the body of
+    /// `tick`/`capturee`/`produite`. The weakness was PROVEN, not
+    /// asserted — with `tick()` made a no-op, the old test stays GREEN while
+    /// this one turns red on `left: (0, 1, 1)`.
     ///
-    /// La précondition compare le triplet EXACT et non « différent de
-    /// zéro » : saboter un seul des trois compteurs laisserait un
-    /// `assert_ne!(…, (0,0,0))` vert, les deux autres suffisant à le
-    /// satisfaire. C'est la première rédaction de ce test, et elle a été
-    /// mesurée verte sous le sabotage qu'elle devait dénoncer.
+    /// The precondition compares the EXACT triple and not "different from
+    /// zero": sabotaging a single one of the three counters would leave an
+    /// `assert_ne!(…, (0,0,0))` green, the other two being enough to
+    /// satisfy it. That was this test's first draft, and it was
+    /// measured green under the sabotage it was meant to expose.
     #[test]
-    fn une_telemetrie_remise_a_neuf_repart_de_zero() {
+    fn a_reset_telemetry_restarts_from_zero() {
         let mut t = Telemetrie::default();
         t.tick();
         t.capturee();
@@ -89,7 +89,7 @@ mod tests {
         assert_eq!(
             t.lire(),
             (1, 1, 1),
-            "précondition : les TROIS compteurs ont compté"
+            "precondition: the THREE counters have counted"
         );
         t = Telemetrie::default();
         assert_eq!(t.lire(), (0, 0, 0));

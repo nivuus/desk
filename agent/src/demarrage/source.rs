@@ -1,10 +1,10 @@
-//! Choix et construction de la source vidéo Windows d'une session.
+//! Choosing and building a session's Windows video source.
 //!
-//! Extrait de `demarrage.rs` au sous-bloc D1 : ce chemin y a gagné deux
-//! embranchements (fenêtre imposée ou cherchée par titre, sortie DXGI entière
-//! ou recadrage de fenêtre) qui portaient le fichier parent au-dessus du
-//! plafond de 500 lignes du projet. L'addition s'accompagne donc de son
-//! extraction, comme la règle l'exige.
+//! Extracted from `demarrage.rs` in sub-block D1: this path gained two
+//! branches there (imposed window or found by title, whole DXGI output
+//! or window crop) that took the parent file above the
+//! project's 500-line cap. The addition therefore comes with its
+//! extraction, as the rule requires.
 
 #![cfg(windows)]
 
@@ -15,21 +15,21 @@ use crate::source::VideoSource;
 use crate::Config;
 use crate::{window, windows_source};
 
-/// Ce que `demarrage` a besoin de savoir de la source construite.
+/// What `demarrage` needs to know about the built source.
 ///
-/// `hwnd_addr` est une adresse brute (`isize`, qui est `Send`) et non un
-/// `HWND` : `HWND` enveloppe un `*mut c_void` non `Send` en windows-rs 0.62,
-/// et cette valeur traverse la fermeture `move` de `spawn_blocking` côté
-/// appelant. Un `HWND` n'est qu'un identifiant opaque, jamais déréférencé.
+/// `hwnd_addr` is a raw address (`isize`, which is `Send`) and not an
+/// `HWND`: `HWND` wraps a non-`Send` `*mut c_void` in windows-rs 0.62,
+/// and this value crosses the `move` closure of `spawn_blocking` on the
+/// caller side. An `HWND` is only an opaque identifier, never dereferenced.
 pub(super) struct SourceWindows {
     pub source: Box<dyn VideoSource + Send>,
     pub hwnd_addr: isize,
     pub bitrate: u32,
-    /// 🔴 **LE RECTANGLE SUR LEQUEL LES ENTRÉES SE DÉMAPPENT, BÂTI PAR LE
-    /// MÊME `match` QUI A CHOISI LE MODE DE CAPTURE.** Il n'y a donc pas deux
-    /// descriptions à tenir d'accord : c'est la leçon du lot 32M, et la
-    /// taille de l'image y est un CLONE de la cellule de la source, jamais
-    /// une copie de sa valeur (lot 32T). Voir `crate::entrees`.
+    /// 🔴 **THE RECTANGLE ON WHICH INPUTS ARE UNMAPPED, BUILT BY THE
+    /// SAME `match` THAT CHOSE THE CAPTURE MODE.** There are therefore not two
+    /// descriptions to keep in agreement: that is the lesson of batch 32M, and the
+    /// frame size there is a CLONE of the source's cell, never
+    /// a copy of its value (batch 32T). See `crate::entrees`.
     pub reference_entrees: crate::entrees::Reference,
 }
 
@@ -37,14 +37,14 @@ pub(super) fn construire(
     config: &Config,
     clock_origin: std::time::Instant,
 ) -> Result<SourceWindows> {
-    // Fenêtre imposée par le superviseur, ou recherche par titre pour un agent
-    // lancé à la main.
+    // Window imposed by the supervisor, or search by title for an agent
+    // launched by hand.
     let hwnd = match config.fenetre_hwnd {
         Some(brut) => {
             let hwnd = HWND(brut as *mut core::ffi::c_void);
             anyhow::ensure!(
                 window::is_window_alive(hwnd),
-                "la fenêtre {brut:#x} imposée par le superviseur n'existe plus"
+                "window {brut:#x} imposed by the supervisor no longer exists"
             );
             hwnd
         }
@@ -59,17 +59,17 @@ pub(super) fn construire(
         .and_then(|v| v.parse().ok())
         .unwrap_or(12_000_000);
 
-    // 90 et non 60 : cette valeur n'est pas une cadence cible, c'est le
-    // `MF_MT_FRAME_RATE` annoncé aux deux MFT — et le Video Processor s'en sert
-    // comme cadence de SORTIE, qu'il tient en rejouant la dernière image
-    // convertie quand rien de neuf ne lui est arrivé. Annoncer 60 plafonnait
-    // donc tout le pipeline à 60 sorties/s pour un bureau qui en produit 68,5,
-    // d'où 47,5 images/s encodées et ~44 i/s au navigateur.
+    // 90 and not 60: this value is not a target frame rate, it is the
+    // `MF_MT_FRAME_RATE` announced to the two MFTs — and the Video Processor uses it
+    // as its OUTPUT cadence, which it holds by replaying the last converted
+    // frame when nothing new has reached it. Announcing 60 therefore capped
+    // the whole pipeline at 60 outputs/s for a desktop producing 68.5,
+    // hence 47.5 encoded fps and ~44 fps at the browser.
     //
-    // Mesuré (bureau à 68,5 Hz) : 60 → 44,3 i/s · 75 → 53,1 · 90 → 58,5 ·
-    // 120 → 63,0. Au-delà de 90, le gain est du rejeu : à 120, les images
-    // NEUVES converties retombent de 62 à 54/s parce que le convertisseur,
-    // occupé à tenir sa cadence déclarée, refuse davantage d'entrées.
+    // Measured (desktop at 68.5 Hz): 60 → 44.3 fps · 75 → 53.1 · 90 → 58.5 ·
+    // 120 → 63.0. Beyond 90, the gain is replay: at 120, the NEW
+    // converted frames fall back from 62 to 54/s because the converter,
+    // busy holding its declared cadence, refuses more inputs.
     let fps: u32 = std::env::var("ENCODER_FPS")
         .ok()
         .and_then(|v| v.parse().ok())
@@ -78,16 +78,16 @@ pub(super) fn construire(
     let (source, reference_entrees): (Box<dyn VideoSource + Send>, crate::entrees::Reference) =
         match &config.sortie_dxgi {
             Some(nom_sortie) => {
-                // Mode multi-fenêtres : la capture et l'encodage vivent dans le
-                // CAPTEUR, un seul processus pour toutes les fenêtres. C'est ce
-                // qui lève le plafond de quatre processus tenant une duplication
-                // DXGI (sous-bloc D3). L'enfant ne touche plus ni DXGI ni Media
+                // Multi-window mode: capture and encoding live in the
+                // SENSOR, a single process for all windows. That is what
+                // lifts the cap of four processes holding a DXGI duplication
+                // (sub-block D3). The child no longer touches either DXGI or Media
                 // Foundation.
                 tracing::info!(
                     nom_sortie = %nom_sortie,
                     bitrate,
                     fps,
-                    "source distante servie par le capteur (mode multi-fenêtres)"
+                    "remote source served by the sensor (multi-window mode)"
                 );
                 let distante = crate::capteur::tube::connecter(
                     &config.session_id,
@@ -95,36 +95,36 @@ pub(super) fn construire(
                     nom_sortie,
                     fps,
                     bitrate,
-                    // Posée par le superviseur (`TAILLE_FENETRE`, lu dans
-                    // `Config`) ; absente — cas qui ne devrait pas se produire
-                    // en pratique pour ce chemin, `sortie_dxgi` n'étant lui-même
-                    // posé que par le superviseur —, `(u32::MAX, u32::MAX)`
-                    // reproduit le comportement d'avant ce sous-bloc :
-                    // `taille_retenue` la ramène à la taille de la sortie
-                    // (tâche 8).
-                    config.taille_fenetre.unwrap_or((u32::MAX, u32::MAX)),
+                    // Set by the supervisor (`TAILLE_FENETRE`, read in policy: allow-fr (env var name)
+                    // `Config`); absent — a case that should not happen
+                    // in practice for this path, `sortie_dxgi` itself being
+                    // set only by the supervisor —, `(u32::MAX, u32::MAX)`
+                    // reproduces the behaviour from before this sub-block:
+                    // `retained_size` brings it back to the output size
+                    // (task 8).
+                    config.window_size.unwrap_or((u32::MAX, u32::MAX)),
                     clock_origin,
                 )?;
-                // 🔴 **LA TAILLE DE L'IMAGE EST PRISE ICI, ET C'EST UN CLONE
-                // D'`Arc`.** C'est le capteur qui a fait le recadrage
-                // (`taille_retenue`, `capteur/fenetre/ouverture.rs`) et qui l'a
-                // annoncé par `DepuisCapteur::Attachee` ; `SourceDistante` en est
-                // le seul stockage. La recalculer ici — même avec la même
-                // fonction pure et les mêmes entrées — rétablirait DEUX
-                // descriptions du même rectangle, ce qui est le mécanisme du
-                // défaut du lot 32M.
+                // 🔴 **THE FRAME SIZE IS TAKEN HERE, AND IT IS AN `Arc`
+                // CLONE.** It is the sensor that did the cropping
+                // (`retained_size`, `capteur/fenetre/ouverture.rs`) and
+                // announced it through `DepuisCapteur::Attachee`; `SourceDistante` is
+                // its only storage. Recomputing it here — even with the same
+                // pure function and the same inputs — would re-establish TWO
+                // descriptions of the same rectangle, which is the mechanism of the
+                // defect of batch 32M.
                 let reference = crate::entrees::Reference::SortieCapturee {
                     nom: nom_sortie.clone(),
-                    image: distante.taille_partagee(),
+                    image: distante.shared_size(),
                 };
                 (Box::new(distante), reference)
             }
             None => {
-                // Mode mono-fenêtre, inchangé : agent lancé à la main, aucun
-                // capteur. Ce chemin ne doit RIEN perdre au passage.
-                tracing::info!(bitrate, fps, "capture de la fenêtre Windows (recadrage)");
-                // La capture recadre la fenêtre : la zone client EST l'image, il
-                // n'y a pas de seconde taille à porter.
+                // Single-window mode, unchanged: agent launched by hand, no
+                // sensor. This path must lose NOTHING in the process.
+                tracing::info!(bitrate, fps, "capture of the Windows window (crop)");
+                // The capture crops the window: the client area IS the frame, there
+                // is no second size to carry.
                 (
                     Box::new(windows_source::WindowsSource::new(
                         hwnd,

@@ -153,11 +153,11 @@ async function purgerFenetresVMRescapees() {
     ].join('\n');
     vmIt('purge-rescapees-c3', script);
     await dodo(5000);
-    let resultat = null;
-    try { resultat = JSON.parse(await readFile('/media/vm/dev/purge-rescapees-c3.json', 'utf8')); } catch { }
-    log('PURGE FENÊTRES/AGENTS RESCAPÉS (avant lancement du superviseur) ' + JSON.stringify(resultat));
-    if (!resultat || resultat.chrome_restants !== 0 || resultat.agents_restants !== 0) {
-        throw new Error(`état VM non propre avant lancement : ${JSON.stringify(resultat)}`);
+    let result = null;
+    try { result = JSON.parse(await readFile('/media/vm/dev/purge-rescapees-c3.json', 'utf8')); } catch { }
+    log('PURGE FENÊTRES/AGENTS RESCAPÉS (avant lancement du superviseur) ' + JSON.stringify(result));
+    if (!result || result.chrome_restants !== 0 || result.agents_restants !== 0) {
+        throw new Error(`état VM non propre avant lancement : ${JSON.stringify(result)}`);
     }
 }
 async function journalPlat() {
@@ -187,7 +187,7 @@ async function budgetAnnonce() {
 /// avant `finIso`.
 async function partsAgent(finIso) {
     const plat = await journalPlat();
-    const dernieres = {}, toutes = [];
+    const dernieres = {}, all = [];
     for (const l of plat.split('\n')) {
         if (!l.includes('part de budget appliquee')) continue;
         const t = horodate(l);
@@ -196,10 +196,10 @@ async function partsAgent(finIso) {
         const p = Number(champ(l, 'part_bps'));
         if (!s || !Number.isFinite(p)) continue;
         dernieres[s] = { bps: p, t };
-        toutes.push({ s, bps: p, t });
+        all.push({ s, bps: p, t });
     }
     const somme = Object.values(dernieres).reduce((a, x) => a + x.bps, 0);
-    return { dernieres, somme, nombre_de_lignes: toutes.length };
+    return { dernieres, somme, nombre_de_lignes: all.length };
 }
 
 /// Les changements de taille d'encodage — PREUVE qu'un barreau a bougé.
@@ -252,7 +252,7 @@ async function marqueurs(etiquette) {
         part_appliquee: compte('part de budget appliquee'),
         taille_changee: compte("taille d'encodage changée"),
         taille_refusee: compte("changement de taille d'encodage refusé"),
-        erreurs: compte('ERROR'),
+        errors: compte('ERROR'),
     };
     log(`MARQUEURS (${etiquette}) ` + JSON.stringify(m));
     return m;
@@ -466,7 +466,7 @@ function deltas(a, b) {
 
 // ---------------------------------------------------------------- ouverture des fenêtres
 async function ouvrirFenetre(n) {
-    const avant = appPages().length;
+    const before = appPages().length;
     log(`  · ouverture fenêtre ${n}`);
     vmIt(`ouvrird9c3-${ETIQUETTE}-${n}`, [
         `$a = @(`,
@@ -482,7 +482,7 @@ async function ouvrirFenetre(n) {
     ].join('\n'));
     for (let i = 0; i < 30; i += 1) {
         await dodo(2000);
-        if (appPages().length > avant) return true;
+        if (appPages().length > before) return true;
     }
     log(`  !! fenêtre ${n} : aucune page de plus après 60 s`);
     return false;
@@ -626,14 +626,14 @@ async function main() {
                 const aireMaxAutres = entreesAutres.length ? Math.max(...entreesAutres.map(([, v]) => aire(v))) : null;
                 const promotion = (aireFocalisee !== null && aireMaxAutres !== null)
                     ? aireFocalisee > aireMaxAutres : null;
-                const tailles = Object.fromEntries(Object.entries(s).map(([k, v]) =>
+                const sizes = Object.fromEntries(Object.entries(s).map(([k, v]) =>
                     [k, { taille: `${v?.l}x${v?.h}`, aire: aire(v), lien_taille: v?.lien_taille,
                           lien_bitrate: v?.lien_bitrate, focalisee: v?.focalisee }]));
-                log(`FOCUS ${cible} — TAILLES ` + JSON.stringify(tailles));
+                log(`FOCUS ${cible} — TAILLES ` + JSON.stringify(sizes));
                 log(`FOCUS ${cible} — PARTS somme=${parts.somme} ` + JSON.stringify(parts.dernieres));
                 log(`FOCUS ${cible} — PROMOTION aire_focalisee=${aireFocalisee} aire_max_autres=${aireMaxAutres} promotion=${promotion}`);
                 releve.phases.focus.push({
-                    cible, scenario: scen, fin, tailles, parts,
+                    cible, scenario: scen, fin, sizes, parts,
                     aire_focalisee: aireFocalisee, aire_max_autres: aireMaxAutres, promotion,
                     barreaux_cumules_a_date: barr.changees.length,
                 });

@@ -183,11 +183,11 @@ async function lire(mode) {
     writeFileSync('/media/vm/dev/pp2-ordre.txt', `${n}|${mode}`, 'utf8');
     // 🔴 LA LECTURE EXIGE DEUX RELEVÉS IDENTIQUES, ET CE N'EST PAS DE LA
     // PRUDENCE : la première exécution a lu « notepad longue » — un
-    // `longueur=…` COUPÉ EN DEUX. Le partage est un montage CIFS, et
+    // `length=…` COUPÉ EN DEUX. Le partage est un montage CIFS, et
     // `Set-Content` côté Windows n'écrit pas atomiquement : un relevé pris
     // pendant l'écriture rend une ligne tronquée, qui commence bien par le bon
     // numéro d'ordre et passe donc le test de correspondance. Le témoin de
-    // mesurabilité l'a attrapé (`longueur=0` introuvable) — mais un critère
+    // mesurabilité l'a attrapé (`length=0` introuvable) — mais un critère
     // aurait pu être jugé sur une valeur amputée, ce qui est pire qu'une
     // mesure absente. On exige donc que DEUX relevés à 300 ms d'écart soient
     // identiques avant de rendre quoi que ce soit.
@@ -290,14 +290,14 @@ try {
     // C'est la classe que P1 avait déjà nommée sans la fermer.
     log('ouverture du Bloc-notes (la fenêtre capturée)');
     releve.notepad_ouvert = false;
-    for (let essai = 1; essai <= 3 && !releve.notepad_ouvert; essai += 1) {
-        vmIt(`pp2-notepad${essai}`, 'Start-Process notepad; Start-Sleep -Seconds 3');
+    for (let attempt = 1; attempt <= 3 && !releve.notepad_ouvert; attempt += 1) {
+        vmIt(`pp2-notepad${attempt}`, 'Start-Process notepad; Start-Sleep -Seconds 3');
         for (let i = 0; i < 12; i += 1) {
             await dodo(2000);
             const n = winrm('@(Get-Process notepad -ErrorAction SilentlyContinue).Count').trim().split('\n').pop();
             if (/^[1-9]/.test(n.replace(/^\uFEFF/, ''))) { releve.notepad_ouvert = true; break; }
         }
-        log(`  Bloc-notes ouvert (essai ${essai}) :`, releve.notepad_ouvert);
+        log(`  Bloc-notes ouvert (essai ${attempt}) :`, releve.notepad_ouvert);
     }
     if (!releve.notepad_ouvert) throw new Error("le Bloc-notes ne s'est pas ouvert : rien à capturer");
     await dodo(5000);
@@ -534,8 +534,8 @@ try {
     const pg = await phase('4-apres-collage-avec-permission');
     releve.collage_avec_permission = { texte: texteGrant, notepad: pg.vm_notepad, clipboard: pg.vm_clipboard };
 } catch (e) {
-    releve.erreur = String(e).slice(0, 500);
-    log('!! erreur', releve.erreur);
+    releve.error = String(e).slice(0, 500);
+    log('!! erreur', releve.error);
 } finally {
     try { writeFileSync('/media/vm/dev/pp2-ordre.txt', '999|stop', 'utf8'); } catch { /* VM partie */ }
     try { releve.lecteur_journal = readFileSync('/media/vm/dev/pp2-lecteur.log', 'utf8').slice(0, 6000); }
@@ -556,5 +556,5 @@ try {
     // 🔴 SORTIE EXPLICITE : le `WebSocket` de `Cdp` garde la boucle d'événements
     // vivante après la mort de Chrome, et le symptôme se lit comme une mesure
     // interminable alors que tout est fini (P1).
-    process.exit(releve.erreur ? 1 : 0);
+    process.exit(releve.error ? 1 : 0);
 }

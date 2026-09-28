@@ -1,12 +1,12 @@
-//! Construction du socket UDP et du `Rtc` str0m dans leur état initial,
-//! avant toute négociation SDP.
+//! Building the UDP socket and the str0m `Rtc` in their initial state,
+//! before any SDP negotiation.
 //!
-//! **Extrait de `Session::new` (`transport.rs`)** : ce code est entièrement
-//! auto-contenu — il ne lit ni n'écrit aucun champ de `Session`, seulement
-//! `local_ip` et `plafond_bps` — et son extraction est ce qui a rendu à
-//! `transport.rs` la marge que la revue de la tâche 12 (sous-bloc D10, le
-//! remède au budget de reconstruction) lui avait prise : le fichier était
-//! passé à 501 lignes, un de plus que le plafond de 500 du projet.
+//! **Extracted from `Session::new` (`transport.rs`)**: this code is entirely
+//! self-contained — it reads and writes no field of `Session`, only
+//! `local_ip` and `plafond_bps` — and its extraction is what gave back to
+//! `transport.rs` the margin that the review of task 12 (sub-block D10, the
+//! rebuild budget remedy) had taken from it: the file had
+//! gone to 501 lines, one more than the project's 500 ceiling.
 
 use std::net::{IpAddr, SocketAddr, UdpSocket};
 use std::time::{Duration, Instant};
@@ -17,90 +17,89 @@ use str0m::{Candidate, Rtc};
 
 use super::adaptation::ESTIMATION_INITIALE_BPS;
 
-/// Ouvre le socket UDP de l'agent et construit le `Rtc` correspondant,
-/// codecs H.264/Opus activés, estimation de bande passante initiale posée,
-/// et le seul candidat local (hôte) ajouté.
+/// Opens the agent's UDP socket and builds the matching `Rtc`,
+/// H.264/Opus codecs enabled, initial bandwidth estimate set,
+/// and the only local (host) candidate added.
 ///
-/// `local_ip` est l'adresse par laquelle le navigateur joindra l'agent ;
-/// `plafond_bps` est la cible que le sondage de bande passante cherche à
-/// atteindre.
+/// `local_ip` is the address through which the browser will reach the agent;
+/// `plafond_bps` is the target the bandwidth probing seeks to
+/// reach.
 pub(super) fn construire_rtc(local_ip: IpAddr, plafond_bps: u32) -> Result<(UdpSocket, Rtc)> {
-    let socket =
-        UdpSocket::bind(SocketAddr::new(local_ip, 0)).context("ouverture du socket UDP")?;
-    // Non bloquant une fois pour toutes : `act_on_timeout` ne dépend plus de
-    // `set_read_timeout`, dont le délai déborde massivement sous Windows
-    // (mesuré : dépassement moyen +12,7 ms, jusqu'à +37 ms sur un délai
-    // demandé de 617 µs — voir `poll_recv_or_timeout`). Le rythme d'attente
-    // est désormais entièrement piloté par notre propre boucle de sondage,
-    // indépendante de la précision du minuteur du socket.
+    let socket = UdpSocket::bind(SocketAddr::new(local_ip, 0)).context("opening the UDP socket")?;
+    // Non-blocking once and for all: `act_on_timeout` no longer depends on
+    // `set_read_timeout`, whose delay overshoots massively under Windows
+    // (measured: mean overshoot +12.7 ms, up to +37 ms on a requested
+    // delay of 617 µs — see `poll_recv_or_timeout`). The waiting rhythm
+    // is now entirely driven by our own polling loop,
+    // independent of the socket timer's precision.
     socket
         .set_nonblocking(true)
         .context("passage du socket UDP en non bloquant")?;
     let addr = socket.local_addr()?;
     tracing::info!(%addr, "socket UDP de l'agent");
 
-    // str0m 0.21 exige un fournisseur cryptographique installé pour le
-    // processus (vérifié dans les sources de la crate : la feature Cargo par
-    // défaut `aws-lc-rs` fournit `from_feature_flags()`, et
-    // `install_process_default(self)` est une méthode consommante sur
-    // `CryptoProvider`). Idempotent : `OnceLock::set` ignore silencieusement
-    // un second appel, donc appeler `Session::new` plusieurs fois par
-    // processus ne panique pas.
+    // str0m 0.21 requires a cryptographic provider installed for the
+    // process (checked in the crate's sources: the default Cargo feature
+    // `aws-lc-rs` provides `from_feature_flags()`, and
+    // `install_process_default(self)` is a consuming method on
+    // `CryptoProvider`). Idempotent: `OnceLock::set` silently ignores
+    // a second call, so calling `Session::new` several times per
+    // process does not panic.
     str0m::crypto::from_feature_flags().install_process_default();
 
-    // `enable_opus(true)` : sans cette ligne, aucun type de charge utile
-    // Opus n'est jamais proposé dans la réponse SDP, quoi que le pair
-    // négocie de son côté — `select_negotiated_opus_pt` ne trouverait alors
-    // jamais rien, et l'audio resterait muet même avec une source ouverte
-    // avec succès. Absente du brief original, ajoutée ici : sans elle, la
-    // piste audio ne se négocie tout simplement jamais (voir le rapport de
-    // tâche).
+    // `enable_opus(true)`: without this line, no Opus payload type
+    // is ever offered in the SDP answer, whatever the peer
+    // negotiates on its side — `select_negotiated_opus_pt` would then never
+    // find anything, and audio would stay silent even with a source opened
+    // successfully. Absent from the original brief, added here: without it, the
+    // audio track simply never negotiates (see the task
+    // report).
     let mut rtc = Rtc::builder()
         .clear_codecs()
         .enable_h264(true)
         .enable_opus(true)
-        // Sans cet appel, `Event::EgressBitrateEstimate` n'est JAMAIS émis et
-        // tout l'asservissement reste muet. L'estimation initiale est
-        // volontairement modeste : le sous-système sonde à la hausse vers
-        // `set_desired_bitrate` (posé plus bas), et partir trop haut ferait
-        // saturer le lien avant la première correction.
+        // Without this call, `Event::EgressBitrateEstimate` is NEVER emitted and
+        // the whole feedback control stays silent. The initial estimate is
+        // deliberately modest: the subsystem probes upwards towards
+        // `set_desired_bitrate` (set below), and starting too high would
+        // saturate the link before the first correction.
         .enable_bwe(Some(Bitrate::bps(ESTIMATION_INITIALE_BPS as u64)))
         .set_stats_interval(Some(Duration::from_secs(1)))
-        // Profondeur du tampon de RÉORDONNANCEMENT audio en réception, ramenée
-        // de 15 (le défaut de str0m, `config.rs`) à 2.
+        // Depth of the audio receive REORDERING buffer, brought down
+        // from 15 (str0m's default, `config.rs`) to 2.
         //
-        // Ce tampon n'ajoute AUCUNE latence en régime nominal — une séquence
-        // contiguë sort immédiatement (`packet/buffer_rx.rs`,
+        // This buffer adds NO latency in nominal operation — a contiguous
+        // sequence goes out immediately (`packet/buffer_rx.rs`,
         // `wait_for_contiguity = !contiguous_seq && !more_than_hold_back`).
-        // Mais SUR UN TROU il retient jusqu'à `reordering_size_audio`
-        // segments, et à 20 ms par paquet — la durée de trame de Chrome —
-        // cela fait jusqu'à **300 ms de rétention**, qui :
+        // But ON A GAP it holds up to `reordering_size_audio`
+        // segments, and at 20 ms per packet — Chrome's frame duration —
+        // that makes up to **300 ms of retention**, which:
         //
-        //   1. crèvent le budget de 100 ms que le micro s'accorde en tout ;
-        //   2. **annulent le FEC in-band**, dont toute la mécanique est de
-        //      reconstruire une trame perdue à partir de la SUIVANTE — que
-        //      str0m ne délivrerait alors que 300 ms plus tard.
+        //   1. blow the 100 ms budget the microphone allows itself in total;
+        //   2. **cancel in-band FEC**, whose whole mechanism is to
+        //      rebuild a lost frame from the NEXT one — which
+        //      str0m would then only deliver 300 ms later.
         //
-        // Coût assumé : une rafale de trois pertes consécutives ou plus est
-        // délivrée comme un trou plutôt qu'attendue. C'est VOULU — le PLC du
-        // décodeur couvre le trou, et 300 ms de silence attendu seraient pires
-        // que 40 ms de dissimulation.
+        // Accepted cost: a burst of three or more consecutive losses is
+        // delivered as a gap rather than waited for. That is INTENDED — the
+        // decoder's PLC covers the gap, and 300 ms of awaited silence would be worse
+        // than 40 ms of concealment.
         //
-        // ⚠️ Sans effet sur l'existant : c'est un réglage de RÉCEPTION, et
-        // avant le chantier E l'agent ne recevait aucun média (la vidéo comme
-        // l'audio du chantier A vont de l'agent vers le navigateur).
+        // ⚠️ No effect on existing behaviour: it is a RECEIVE setting, and
+        // before workstream E the agent received no media (the video as well as
+        // workstream A's audio go from the agent to the browser).
         .set_reordering_size_audio(2)
         .build(Instant::now());
 
-    // Cible que le sondage cherche à atteindre : le plafond configuré.
+    // Target the probing seeks to reach: the configured ceiling.
     rtc.bwe()
         .set_desired_bitrate(Bitrate::bps(plafond_bps as u64));
 
-    // `add_local_candidate` ne renvoie pas de `Result` : elle retourne
-    // `Option<&Candidate>` (le candidat précédent s'il était déjà connu).
-    // Seule la construction du `Candidate` lui-même peut échouer.
+    // `add_local_candidate` does not return a `Result`: it returns
+    // `Option<&Candidate>` (the previous candidate if it was already known).
+    // Only building the `Candidate` itself can fail.
     rtc.add_local_candidate(
-        Candidate::host(addr, "udp").map_err(|e| anyhow!("candidat hôte invalide : {e}"))?,
+        Candidate::host(addr, "udp").map_err(|e| anyhow!("invalid host candidate: {e}"))?,
     );
 
     Ok((socket, rtc))

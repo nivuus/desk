@@ -1,86 +1,86 @@
 /**
- * La conformation de la couleur d'accent reçue de l'agent — sous-bloc **A1**.
+ * Conforming the accent colour received from the agent — sub-block **A1**.
  *
- * **PUR, sans DOM.** Il ne prend que des chaînes et rend une chaîne. La lecture
- * de `getComputedStyle` et l'écriture de `setProperty` vivent dans
- * `accent-dom.ts` — c'est le patron que P1 a posé pour le presse-papier
- * (`presse-papier.ts` pur / `presse-papier-dom.ts` au DOM).
+ * **PURE, without DOM.** It only takes strings and returns a string. Reading
+ * `getComputedStyle` and writing `setProperty` live in
+ * `accent-dom.ts` — it is the pattern P1 set for the clipboard
+ * (`presse-papier.ts` pure / `presse-papier-dom.ts` on the DOM).
  *
- * ⚠️ **La spec §7.1 range ce module comme « PUR, sans DOM » ET sa décision D10
- * point 2 lui fait lire les fonds par `getComputedStyle`. Les deux sont
- * inconciliables dans un seul module** (divergence E8 du plan) : les fonds sont
- * donc INJECTÉS, et c'est la testabilité qui tranche — « un plan qui dicte du
- * code intestable cède devant sa propre contrainte » (E15 de P3).
+ * ⚠️ **Spec §7.1 files this module as "PURE, without DOM" AND its decision D10
+ * point 2 makes it read the backgrounds through `getComputedStyle`. The two are
+ * irreconcilable in a single module** (the plan's divergence E8): the backgrounds are
+ * therefore INJECTED, and testability decides — "a plan that dictates
+ * untestable code yields to its own constraint" (E15 of P3).
  *
- * 🔴 **C'EST LE SEUL REMPART DU PRODUIT, et ce n'est pas un constat empirique
- * mais une propriété STRUCTURELLE des contrôles du design system (E10) :**
+ * 🔴 **IT IS THE PRODUCT'S ONLY RAMPART, and it is not an empirical finding
+ * but a STRUCTURAL property of the design system's checks (E10):**
  *
- * - **§7.2** est **syntaxique**, et il le déclare lui-même
- *   (`client/outils/couleurs-litterales.mjs` : « un `el.style.background =
- *   'red'` passerait donc ») ;
- * - **§7.1** parse `tokens.css` et compare une liste de paires **déclarée à la
- *   main** (`design/contraste.ts`), jamais un produit cartésien, et
- *   `client/outils/contraste.mjs` exclut **nommément** les couleurs composées à
- *   l'exécution.
+ * - **§7.2** is **syntactic**, and it says so itself
+ *   (`client/outils/couleurs-litterales.mjs`: "an `el.style.background =
+ *   'red'` would therefore pass");
+ * - **§7.1** parses `tokens.css` and compares a list of pairs **declared by
+ *   hand** (`design/contraste.ts`), never a Cartesian product, and
+ *   `client/outils/contraste.mjs` excludes **by name** colours composed at
+ *   runtime.
  *
- * **Une couleur reçue du serveur est donc hors de tout contrôle de contraste
- * automatique de ce dépôt.** Son seul juge est `accent.test.ts`, et c'est
- * pourquoi sa rouge devait être VUE.
+ * **A colour received from the server is therefore outside any automatic contrast
+ * check of this repository.** Its only judge is `accent.test.ts`, and that is
+ * why its red had to be SEEN.
  */
 
 import { rapportDeContraste } from './design/contraste';
 
 /**
- * Le seuil de lisibilité d'un composant non textuel — WCAG 1.4.11.
+ * The readability threshold of a non-text component — WCAG 1.4.11.
  *
- * 🔴 **C'EST UNE DUPLICATION, ET ELLE EST DÉCLARÉE COMME UNE DETTE.** Le plan
- * prescrivait d'importer `SEUIL_COMPOSANT` de `design/contraste.ts` — « un
- * contrôle qui a sa propre copie des valeurs valide sa copie » (spec ⑥ §7.1) —
- * **et il déclarait n'avoir pas vérifié qu'il soit exporté**. Il ne l'est
- * pas : `const SEUIL_COMPOSANT = 3;` y est une constante **de module**, non
- * exportée. La conduite à tenir était écrite d'avance : employer le littéral
- * et **nommer la duplication**, jamais modifier `contraste.ts` pour l'exporter
- * — `client/src/design/` appartient au sous-projet ⑥, clos (D-A1-14).
+ * 🔴 **IT IS A DUPLICATION, AND IT IS DECLARED AS A DEBT.** The plan
+ * prescribed importing `SEUIL_COMPOSANT` from `design/contraste.ts` — "a
+ * check that has its own copy of the values validates its copy" (spec ⑥ §7.1) —
+ * **and it declared it had not checked that it was exported**. It is
+ * not: `const SEUIL_COMPOSANT = 3;` there is a **module** constant, not
+ * exported. The course of action was written in advance: use the literal
+ * and **name the duplication**, never modify `contraste.ts` to export it
+ * — `client/src/design/` belongs to sub-project ⑥, closed (D-A1-14).
  *
- * ⚠️ **Le jour où ces deux 3 divergeront, RIEN ne le dira.** Le remède, s'il
- * devient nécessaire, appartient à ⑥ : exporter la constante et l'importer ici.
+ * ⚠️ **The day these two 3s diverge, NOTHING will say so.** The remedy, if it
+ * becomes necessary, belongs to ⑥: export the constant and import it here.
  */
 const SEUIL_COMPOSANT = 3;
 
-/** `#rrggbb`, six chiffres hexadécimaux, et rien d'autre. */
+/** `#rrggbb`, six hexadecimal digits, and nothing else. */
 const FORME = /^#[0-9a-f]{6}$/;
 
 /**
- * Rend la couleur reçue si elle est **conforme et lisible**, `accentDuTheme`
- * sinon. Elle **ne lève jamais**, et elle **ne corrige jamais**.
+ * Returns the received colour if it is **conforming and readable**, `accentDuTheme`
+ * otherwise. It **never throws**, and it **never corrects**.
  *
- * Trois étapes, et chacune est un refus possible :
+ * Three steps, and each is a possible refusal:
  *
- * 1. **la forme** — `#rrggbb` sur la valeur *trimée et minusculée*. Toute autre
- *    forme est refusée **AVANT** d'atteindre `rapportDeContraste`.
- *    🔴 **C'est ce qui garantit qu'elle ne lève jamais** :
- *    `luminanceRelative` **LÈVE** sur tout ce qui n'est pas `#rgb`, `#rgba`,
- *    `#rrggbb` ou `#rrggbbaa` (divergence E9 — la spec ne le dit nulle part, et
- *    une exception dans un gestionnaire de message de canal de données est le
- *    genre de défaut qui tue une session sans rien dire).
- *    ⚠️ **Un `try/catch` autour de l'appel serait un contrôle PLUS FAIBLE** : il
- *    attraperait aussi une régression de `contraste.ts` en la déguisant en
- *    refus ordinaire. Il n'y en a donc aucun, délibérément.
- * 2. **la lisibilité** — un rapport d'au moins `SEUIL_COMPOSANT` contre
- *    **CHACUN** des fonds passés. ⚠️ **Les trois et non le seul `--fond-0`** :
- *    la spec D10 point 2 dit « les trois fonds du thème courant », et l'accent
- *    d'une fenêtre peut se poser sur n'importe lequel selon la surface. C'est
- *    le choix le plus strict, il est **délibéré**, et il refusera davantage de
- *    couleurs — **un refus est un état SAIN de ce mécanisme**, pas une panne.
- * 3. **aucune correction.** Ni éclaircissement, ni assombrissement, ni
- *    `color-mix` : « éclaircir ou assombrir la couleur d'une application
- *    produirait une teinte que personne n'a choisie » (D10 point 3).
- *    **Refuser EST le comportement**, pas un repli d'échec.
+ * 1. **the shape** — `#rrggbb` on the *trimmed and lowercased* value. Any other
+ *    shape is refused **BEFORE** reaching `rapportDeContraste`.
+ *    🔴 **That is what guarantees it never throws**:
+ *    `luminanceRelative` **THROWS** on anything that is not `#rgb`, `#rgba`,
+ *    `#rrggbb` or `#rrggbbaa` (divergence E9 — the spec says so nowhere, and
+ *    an exception in a data channel message handler is the
+ *    kind of defect that kills a session without saying anything).
+ *    ⚠️ **A `try/catch` around the call would be a WEAKER check**: it
+ *    would also catch a regression of `contraste.ts` by disguising it as an
+ *    ordinary refusal. There is therefore none, deliberately.
+ * 2. **readability** — a ratio of at least `SEUIL_COMPOSANT` against
+ *    **EACH** of the backgrounds passed. ⚠️ **All three and not just `--fond-0`**:
+ *    spec D10 point 2 says "the current theme's three backgrounds", and a window's
+ *    accent can sit on any of them depending on the surface. It is
+ *    the strictest choice, it is **deliberate**, and it will refuse more
+ *    colours — **a refusal is a HEALTHY state of this mechanism**, not a failure.
+ * 3. **no correction.** Neither lightening, nor darkening, nor
+ *    `color-mix`: "lightening or darkening an application's colour
+ *    would produce a hue nobody chose" (D10 point 3).
+ *    **Refusing IS the behaviour**, not a failure fallback.
  *
- * ⚠️ **`accentDuTheme` est LU par l'appelant, jamais écrit ici.** Une couleur
- * en dur dans ce fichier ferait rougir §7.2 — mesuré par la cellule E de la
- * sonde H1 : `const REPLI = '#7aa2f7'` y rend
- * « couleurs littérales : 1 », sortie 1.
+ * ⚠️ **`accentDuTheme` is READ by the caller, never written here.** A colour
+ * hardcoded in this file would turn §7.2 red — measured by cell E of
+ * probe H1: `const REPLI = '#7aa2f7'` there returns
+ * "literal colours: 1", exit 1.
  */
 export function conformer(
     recue: string,

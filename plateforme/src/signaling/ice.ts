@@ -1,18 +1,18 @@
-// Identifiants TURN éphémères et configuration ICE délivrée aux deux pairs.
+// Ephemeral TURN credentials and ICE configuration delivered to both peers.
 //
-// Le secret partagé avec coturn ne quitte JAMAIS ce processus : les pairs ne
-// reçoivent qu'un mot de passe dérivé, daté, et propre à leur session. Un
-// identifiant intercepté expire tout seul.
+// The secret shared with coturn NEVER leaves this process: the peers only
+// receive a derived, dated password, specific to their session. An
+// intercepted credential expires on its own.
 //
-// Séparé du serveur WebSocket pour être testable sans ouvrir de socket.
+// Separated from the WebSocket server to be testable without opening a socket.
 
 import { createHmac } from 'node:crypto';
 
-/// Durée de validité par défaut d'un identifiant, en secondes.
+/// Default validity of a credential, in seconds.
 ///
-/// Généreuse à dessein : l'identifiant sert à ALLOUER, et une allocation se
-/// rafraîchit ensuite avec les mêmes identifiants. Une durée courte ferait
-/// échouer le rafraîchissement au milieu d'une longue session de jeu.
+/// Generous on purpose: the credential is used to ALLOCATE, and an allocation is
+/// then refreshed with the same credentials. A short duration would make
+/// the refresh fail in the middle of a long gaming session.
 const DUREE_SECONDES = 86_400;
 
 export interface Identifiants {
@@ -24,11 +24,11 @@ export interface ConfigurationIce {
     iceServers: Array<{ urls: string; username: string; credential: string }>;
 }
 
-/// Fabrique un couple identifiant/mot de passe accepté par coturn en mode
-/// `use-auth-secret` (`--static-auth-secret`).
+/// Builds a username/password pair accepted by coturn in
+/// `use-auth-secret` mode (`--static-auth-secret`).
 ///
-/// `maintenant` est passé en paramètre plutôt que lu de l'horloge : c'est ce
-/// qui rend la dérivation testable avec une valeur attendue exacte.
+/// `maintenant` is passed as a parameter rather than read from the clock: that is
+/// what makes the derivation testable with an exact expected value.
 export function deriverIdentifiants(
     secret: string,
     session: string,
@@ -41,12 +41,12 @@ export function deriverIdentifiants(
     return { username, credential };
 }
 
-/// Configuration ICE à envoyer aux deux pairs, ou `undefined` si aucun serveur
-/// TURN n'est configuré.
+/// ICE configuration to send to both peers, or `undefined` if no TURN
+/// server is configured.
 ///
-/// Les deux variables doivent être présentes ensemble : une configuration à
-/// moitié posée produirait des allocations refusées en 401, avec un
-/// diagnostic beaucoup plus obscur qu'une absence franche de relais.
+/// Both variables must be present together: a half-set
+/// configuration would produce allocations refused with 401, with a
+/// much more obscure diagnosis than a plain absence of relay.
 export function configurationIce(
     env: Record<string, string | undefined>,
     session: string,

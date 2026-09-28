@@ -1,88 +1,85 @@
-//! Les tests d'hôte de `windows_source_sortie`.
+//! The host tests of `windows_source_sortie`.
 //!
-//! **Extrait de `sortie.rs` VERBATIM**, dans une tâche DÉDIÉE et **AVANT**
-//! l'addition qui l'aurait porté au-delà du plafond de 500 lignes du projet —
-//! c'est la forme forte que `CLAUDE.md` prescrit (« extraire, jamais
-//! comprimer », et « la forme forte est l'extraction jouée dans une tâche
-//! DÉDIÉE, AVANT celle qui ajoute »). Aucune assertion, aucun commentaire n'a
-//! été réécrit au déplacement.
+//! **Extracted from `sortie.rs` VERBATIM**, in a DEDICATED task and **BEFORE**
+//! the addition that would have taken it beyond the project's 500-line ceiling —
+//! it is the strong form `CLAUDE.md` prescribes ("extract, never
+//! compress", and "the strong form is the extraction played in a
+//! DEDICATED task, BEFORE the one that adds"). No assertion, no comment was
+//! rewritten in the move.
 //!
-//! Déclaré par `#[path = "sortie/tests.rs"] mod tests;` **à l'intérieur** de
-//! `sortie.rs`, et non à la racine du crate : c'est le mécanisme employé pour
-//! scinder un module de TESTS trop long dans un fichier par ailleurs portable
-//! (précédent : `superviseur/table.rs`, qui déclare ainsi `table/tests.rs` et
-//! `table/tests_relance.rs`). ⚠️ **Ce n'est PAS la convention de module enfant
-//! de `CLAUDE.md`** — celle-ci ne régit que les modules extraits d'un parent
-//! `#[cfg(windows)]` pour compiler sur l'hôte, et ce fichier-ci n'en est pas
-//! un.
+//! Declared by `#[path = "sortie/tests.rs"] mod tests;` **inside**
+//! `sortie.rs`, and not at the crate root: it is the mechanism used to
+//! split an over-long TESTS module in an otherwise portable file
+//! (precedent: `superviseur/table.rs`, which thus declares `table/tests.rs` and
+//! `table/tests_relance.rs`). ⚠️ **It is NOT `CLAUDE.md`'s child module
+//! convention** — that one only governs modules extracted from a
+//! `#[cfg(windows)]` parent to compile on the host, and this file is not
+//! one.
 
 use super::*;
 
 #[test]
-fn une_taille_sous_le_plafond_passe_telle_quelle() {
-    assert_eq!(borner_a_la_taille_max((1280, 720)), (1280, 720));
+fn a_size_below_the_ceiling_passes_as_is() {
+    assert_eq!(clamp_to_max_size((1280, 720)), (1280, 720));
 }
 
 #[test]
-fn une_taille_4k_est_ramenee_au_plafond() {
-    // D6 a mesuré le décodeur du navigateur saturé dès huit fenêtres de
-    // 720p : 9× les pixels d'une seule est exactement ce qu'il encaisse le
-    // plus mal.
-    assert_eq!(borner_a_la_taille_max((3840, 2160)), TAILLE_MAX_SORTIE);
+fn a_4k_size_is_brought_down_to_the_ceiling() {
+    // D6 measured the browser's decoder saturated from eight 720p
+    // windows: 9× the pixels of a single one is exactly what it copes with
+    // worst.
+    assert_eq!(clamp_to_max_size((3840, 2160)), MAX_OUTPUT_SIZE);
 }
 
 #[test]
-fn le_bornage_preserve_le_rapport_d_aspect() {
-    // Un 21:9 borné indépendamment sur chaque axe déformerait l'image.
-    let (l, h) = borner_a_la_taille_max((3440, 1440));
-    assert!(
-        l <= TAILLE_MAX_SORTIE.0 && h <= TAILLE_MAX_SORTIE.1,
-        "{l}x{h}"
-    );
+fn bounding_preserves_the_aspect_ratio() {
+    // A 21:9 bounded independently on each axis would distort the image.
+    let (l, h) = clamp_to_max_size((3440, 1440));
+    assert!(l <= MAX_OUTPUT_SIZE.0 && h <= MAX_OUTPUT_SIZE.1, "{l}x{h}");
     let ecart = (l as f64 / h as f64) - (3440.0 / 1440.0);
     assert!(ecart.abs() < 0.01, "rapport {l}/{h} contre 3440/1440");
 }
 
 #[test]
-fn le_bornage_rend_des_dimensions_paires() {
-    // Une fenêtre Windows impose des dimensions paires, et un encodeur
-    // NV12 aussi.
-    let (l, h) = borner_a_la_taille_max((3441, 1441));
+fn bounding_returns_even_dimensions() {
+    // A Windows window imposes even dimensions, and so does an NV12
+    // encoder.
+    let (l, h) = clamp_to_max_size((3441, 1441));
     assert_eq!(l % 2, 0, "largeur {l}");
     assert_eq!(h % 2, 0, "hauteur {h}");
 }
 
-/// IMPORTANT 2 de la revue de la tâche 9 : **le test ci-dessus ne peut pas
-/// échouer sur la propriété qu'il nomme.**
+/// IMPORTANT 2 of the review of task 9: **the test above cannot
+/// fail on the property it names.**
 ///
-/// Sur `(3441, 1441)`, `facteur ≈ 0,557977` donne `round(3441×f) = 1920` et
-/// `round(1441×f) = 804` — **déjà pairs avant tout masquage**. Retirer les
-/// deux `& !1` de `borner_a_la_taille_max` le laisse VERT. Et les deux
-/// autres entrées paires des tests voisins (`(1280, 720)`, `(0, 0)`) ne
-/// l'exercent pas davantage : avant ce cas-ci, **aucun des cinq tests ne
-/// couvrait l'alignement pair**, alors que l'un porte son nom.
+/// On `(3441, 1441)`, `facteur ≈ 0.557977` gives `round(3441×f) = 1920` and
+/// `round(1441×f) = 804` — **already even before any masking**. Removing the
+/// two `& !1` from `clamp_to_max_size` leaves it GREEN. And the two
+/// other even inputs of the neighbouring tests (`(1280, 720)`, `(0, 0)`) do not
+/// exercise it either: before this case, **none of the five tests
+/// covered even alignment**, whereas one bears its name.
 ///
-/// `(1281, 721)` passe par la **branche rapide** (sous le plafond, donc
-/// aucun facteur d'échelle) : l'alignement y est le seul mécanisme en jeu,
-/// et le retrait des `& !1` rend `(1281, 721)` au lieu de `(1280, 720)`.
-/// C'est la doctrine du dépôt appliquée à un test : **un contrôle qu'on n'a
-/// jamais vu rouge n'est pas un contrôle** (D7, F1).
+/// `(1281, 721)` goes through the **fast branch** (under the cap, hence
+/// no scaling factor): alignment is the only mechanism at play there,
+/// and removing the `& !1` returns `(1281, 721)` instead of `(1280, 720)`.
+/// It is the repository's doctrine applied to a test: **a check never
+/// seen red is not a check** (D7, F1).
 #[test]
-fn l_alignement_pair_est_reellement_exerce_par_une_entree_impaire() {
-    assert_eq!(borner_a_la_taille_max((1281, 721)), (1280, 720));
+fn even_alignment_is_really_exercised_by_an_odd_input() {
+    assert_eq!(clamp_to_max_size((1281, 721)), (1280, 720));
 }
 
-/// IMPORTANT 4 (revue de la tâche 9) : la branche rapide ne bornait pas
-/// vers le bas, contrairement à la branche d'échelle qui appliquait déjà
-/// `.max(2)`. `(0, 0)` en est le cas dégénéré réel : une boîte vidéo
-/// réduite à rien (fenêtre repliée, transition de plein écran) l'émet.
+/// IMPORTANT 4 (review of task 9): the fast branch did not bound
+/// downwards, unlike the scaling branch which already applied
+/// `.max(2)`. `(0, 0)` is its real degenerate case: a video box
+/// reduced to nothing (collapsed window, fullscreen transition) emits it.
 #[test]
-fn le_bornage_ne_rend_jamais_une_dimension_nulle() {
-    assert_eq!(borner_a_la_taille_max((0, 0)), (2, 2));
+fn bounding_never_returns_a_zero_dimension() {
+    assert_eq!(clamp_to_max_size((0, 0)), (2, 2));
 }
 
 #[test]
-fn la_region_part_de_l_origine_de_la_sortie() {
+fn the_region_starts_at_the_output_origin() {
     assert_eq!(
         region_de_sortie(1600, 900),
         Some(Rect {
@@ -95,7 +92,7 @@ fn la_region_part_de_l_origine_de_la_sortie() {
 }
 
 #[test]
-fn les_dimensions_impaires_sont_alignees_vers_le_bas() {
+fn odd_dimensions_are_aligned_downward() {
     assert_eq!(
         region_de_sortie(1601, 901),
         Some(Rect {
@@ -108,90 +105,90 @@ fn les_dimensions_impaires_sont_alignees_vers_le_bas() {
 }
 
 #[test]
-fn une_sortie_degeneree_ne_donne_aucune_region() {
+fn a_degenerate_output_gives_no_region() {
     assert_eq!(region_de_sortie(1, 900), None);
     assert_eq!(region_de_sortie(0, 0), None);
 }
 
-/// Le défaut C1 en une ligne : c'est ce booléen qui empêche `resize` de
-/// relâcher la duplication d'une sortie virtuelle pour lui substituer
-/// celle du bureau physique — la fuite du contenu d'un moniteur vers la
-/// session d'autrui.
+/// Defect C1 in one line: it is this boolean that prevents `resize` from
+/// releasing the duplication of a virtual output to substitute
+/// the physical desktop's for it — the leak of one monitor's content into
+/// someone else's session.
 #[test]
-fn seul_le_mode_recadre_recapture_le_bureau() {
+fn only_the_cropped_mode_recaptures_the_desktop() {
     assert!(ModeCapture::FenetreRecadree.recapture_le_bureau());
     assert!(!ModeCapture::SortieEntiere.recapture_le_bureau());
 }
 
-/// Le pendant du test ci-dessus, et **les deux ensemble sont le contrat du
-/// lot 33** : les deux modes ne se partagent pas seulement un booléen, ils
-/// prennent deux chemins EXCLUSIFS. Sans cette seconde assertion, faire
-/// rendre `false` aux deux à `suit_le_viewport` ramènerait le `no-op`
-/// d'hier sans qu'aucun test ne bronche.
+/// The counterpart of the test above, and **both together are batch
+/// 33's contract**: the two modes do not merely share a boolean, they
+/// take two EXCLUSIVE paths. Without this second assertion, making
+/// `suit_le_viewport` return `false` for both would bring back yesterday's
+/// `no-op` without any test flinching.
 #[test]
-fn seul_le_mode_sortie_entiere_suit_le_viewport() {
+fn only_the_whole_output_mode_follows_the_viewport() {
     assert!(ModeCapture::SortieEntiere.suit_le_viewport());
     assert!(!ModeCapture::FenetreRecadree.suit_le_viewport());
-    // Exclusifs, et exhaustifs : tout mode prend exactement un chemin.
+    // Exclusive, and exhaustive: every mode takes exactly one path.
     for mode in [ModeCapture::FenetreRecadree, ModeCapture::SortieEntiere] {
         assert!(
             mode.recapture_le_bureau() ^ mode.suit_le_viewport(),
-            "{mode:?} doit prendre exactement un des deux chemins"
+            "{mode:?} must take exactly one of the two paths"
         );
     }
 }
 
-/// 🔴 **L'ATTENDU DE CE TEST VIENT DU JOURNAL DU PRODUIT EN PRODUCTION, PAS
-/// D'UN CALCUL SUR CE QU'IL JUGE** — c'est la règle que le lot 32R a payée
-/// (« un attendu dérivé de la mesure ne peut pas la réfuter »).
+/// 🔴 **THIS TEST'S EXPECTED VALUE COMES FROM THE PRODUCT'S PRODUCTION LOG, NOT
+/// FROM A COMPUTATION ON WHAT IT JUDGES** — it is the rule batch 32R paid for
+/// ("an expected value derived from the measurement cannot refute it").
 ///
-/// Les nombres sont relevés le 31 août 2026 sur l'agent qui tournait :
-///   - `778x491` : la demande la PLUS FRÉQUENTE des 34 que le garde d'hier a
-///     jetées (15 occurrences sur 34, `C:\nivuus\agent.log`, lignes
-///     « redimensionnement ignoré … ») ;
-///   - `1428x1032` : la borne réelle de la sortie servie — `mon=1428x1080`,
-///     `work=1428x1032`, relevé en SESSION 1 par
-///     `docs/superpowers/plans/2026-08-31-barre-des-taches-diagnostic.md` ;
-///   - `1428x1080` : ce que le produit servait, **quoi qu'on lui demande**.
+/// The numbers were noted on August 31st, 2026 on the running agent:
+///   - `778x491`: the MOST FREQUENT request of the 34 that yesterday's guard
+///     dropped (15 occurrences out of 34, `C:\nivuus\agent.log`, the
+///     "resize ignored …" lines);
+///   - `1428x1032`: the real bound of the served output — `mon=1428x1080`,
+///     `work=1428x1032`, noted in SESSION 1 by
+///     `docs/superpowers/plans/2026-08-31-barre-des-taches-diagnostic.md`;
+///   - `1428x1080`: what the product served, **whatever it was asked**.
 ///
-/// 🔴 **ET VOICI CE QUE LE PREMIER JET DE CE TEST AVAIT FAUX, ATTRAPÉ PAR LE
-/// TEST LUI-MÊME.** Il attendait `(1723, 1080)` pour une demande `1723x1303`,
-/// en croyant `borner_a_la_taille_max` un ÉCRÊTAGE axe par axe. **C'en est un
-/// de MISE À L'ÉCHELLE, à rapport d'aspect PRÉSERVÉ** : `1723x1303` en sort
-/// `1428x1080`, c'est-à-dire exactement la taille que le produit servait déjà.
-/// Conséquence qui change le diagnostic et qui est dite ici plutôt qu'oubliée :
-/// **les bandes noires ne viennent PAS du plafond**, qui respecte l'aspect
-/// demandé, mais du fait que la taille retenue est **FIGÉE à l'ouverture** et
-/// que toute demande ultérieure est jetée. C'est ce gel-là que ce lot lève.
+/// 🔴 **AND HERE IS WHAT THIS TEST'S FIRST DRAFT GOT WRONG, CAUGHT BY THE
+/// TEST ITSELF.** It expected `(1723, 1080)` for a `1723x1303` request,
+/// believing `clamp_to_max_size` an axis-by-axis CLIPPING. **It is
+/// a SCALING one, with the aspect ratio PRESERVED**: `1723x1303` comes out as
+/// `1428x1080`, that is, exactly the size the product already served.
+/// A consequence that changes the diagnosis and is stated here rather than forgotten:
+/// **the black bars do NOT come from the cap**, which respects the requested
+/// aspect, but from the fact that the retained size is **FROZEN at opening** and
+/// that any later request is dropped. It is that freeze this batch lifts.
 #[test]
-fn la_demande_la_plus_frequente_est_desormais_honoree_a_l_aspect_pres() {
-    // Sous la borne sur les deux axes : elle passe telle quelle (au pair
-    // près), donc l'image épouse EXACTEMENT le rapport demandé.
-    assert_eq!(taille_pour_viewport((778, 491), (1428, 1032)), (778, 490));
-    // …et ce n'est plus 1428×1080, la taille figée d'hier. Sans cette seconde
-    // assertion, une règle qui ignorerait sa demande resterait verte si la
-    // borne valait 778×490.
-    assert_ne!(taille_pour_viewport((778, 491), (1428, 1032)), (1428, 1080));
+fn the_most_frequent_request_is_now_honoured_up_to_the_aspect() {
+    // Under the bound on both axes: it goes through as is (up to
+    // evenness), so the image matches EXACTLY the requested ratio.
+    assert_eq!(size_for_viewport((778, 491), (1428, 1032)), (778, 490));
+    // …and it is no longer 1428×1080, yesterday's frozen size. Without this second
+    // assertion, a rule ignoring its request would stay green if the
+    // bound were 778×490.
+    assert_ne!(size_for_viewport((778, 491), (1428, 1032)), (1428, 1080));
 }
 
-/// 🔴 **CE QUE LE LOT NE RÉSOUT PAS, ÉCRIT EN TEST POUR QUE PERSONNE NE CROIE
-/// LE CAS FERMÉ** — la limite est sur la TAILLE, jamais sur la FORME.
+/// 🔴 **WHAT THE BATCH DOES NOT SOLVE, WRITTEN AS A TEST SO THAT NOBODY BELIEVES
+/// THE CASE CLOSED** — the limit is on SIZE, never on SHAPE.
 ///
-/// ❌ **CE TEST S'APPELAIT `un_viewport_plus_large_que_la_borne_garde_ses_
-/// bandes_noires` ET ATTENDAIT `(1428, 538)`. LES DEUX ÉTAIENT L'EXPRESSION
-/// DU DÉFAUT**, pas de la limite : `min` axe par axe rendait un rectangle au
-/// mauvais RAPPORT, donc des bandes. Depuis le fit à aspect préservé, un
-/// viewport plus large que la borne est servi **plus PETIT, mais à sa forme
-/// exacte** — et il n'y a plus de bandes du tout.
+/// ❌ **THIS TEST WAS CALLED `un_viewport_plus_large_que_la_borne_garde_ses_
+/// bandes_noires` AND EXPECTED `(1428, 538)`. BOTH WERE THE EXPRESSION
+/// OF THE DEFECT**, not of the limit: an axis-by-axis `min` returned a rectangle at the
+/// wrong RATIO, hence bars. Since the aspect-preserving fit, a
+/// viewport wider than the bound is served **SMALLER, but at its exact
+/// shape** — and there are no more bars at all.
 ///
-/// Ce qui reste vrai, et que ce test garde : on ne dépasse jamais la borne.
+/// What stays true, and what this test guards: we never exceed the bound.
 #[test]
-fn un_viewport_plus_large_que_la_borne_est_reduit_sans_etre_deforme() {
+fn a_viewport_wider_than_the_bound_is_reduced_without_distortion() {
     let borne = (1428, 1032);
-    let (l, h) = taille_pour_viewport((5118, 1438), borne);
+    let (l, h) = size_for_viewport((5118, 1438), borne);
     assert!(
         l <= borne.0 && h <= borne.1,
-        "{l}x{h} doit tenir dans {borne:?}"
+        "{l}x{h} must fit in {borne:?}"
     );
     let ecart = ((l as f64 / h as f64) - (5118.0 / 1438.0)).abs() / (5118.0 / 1438.0);
     assert!(
@@ -200,35 +197,32 @@ fn un_viewport_plus_large_que_la_borne_est_reduit_sans_etre_deforme() {
     );
 }
 
-/// La borne est la ZONE DE TRAVAIL, et c'est ce qui sort la barre des tâches
-/// du recadrage. Mesure du 31 août 2026 : `mon=1428x1080`, `work=1428x1032`,
-/// `Shell_SecondaryTrayWnd rect=(1280,1032)-(2708,1080)` — 48 rangées.
+/// The bound is the WORK AREA, and that is what takes the taskbar out
+/// of the crop. Measurement of August 31st, 2026: `mon=1428x1080`, `work=1428x1032`,
+/// `Shell_SecondaryTrayWnd rect=(1280,1032)-(2708,1080)` — 48 rows.
 #[test]
-fn la_zone_de_travail_retire_les_quarante_huit_rangees_de_la_barre() {
+fn the_work_area_removes_the_forty_eight_taskbar_rows() {
     assert_eq!(
         borne_de_la_sortie((1428, 1080), Some((1428, 1032))),
         (1428, 1032)
     );
-    // Et le recadrage d'une fenêtre plein cadre les perd donc aussi : c'est le
-    // même 1032, et non 1080, qui part à `region_de_sortie`.
+    // And the crop of a full-frame window therefore loses them too: it is the
+    // same 1032, and not 1080, that goes to `region_de_sortie`.
     //
-    // ⚠️ La LARGEUR descend avec, à 1364 : c'est le fit à aspect préservé, et
-    // c'est voulu. Rendre `(1428, 1032)` — l'ancien `min` axe par axe —
-    // servirait un 1,384 pour un 1,322 demandé, donc les bandes.
-    assert_eq!(
-        taille_pour_viewport((1428, 1080), (1428, 1032)),
-        (1364, 1032)
-    );
+    // ⚠️ The WIDTH goes down with it, to 1364: it is the aspect-preserving fit, and
+    // it is intended. Returning `(1428, 1032)` — the old axis-by-axis `min` —
+    // would serve a 1.384 for a requested 1.322, hence the bars.
+    assert_eq!(size_for_viewport((1428, 1080), (1428, 1032)), (1364, 1032));
 }
 
-/// 🔴 **LE REPLI EST LE COMPORTEMENT D'AVANT LE LOT, ET IL DOIT L'ÊTRE
-/// EXACTEMENT.** `GetMonitorInfoW` peut refuser ; une zone de travail
-/// dégénérée (Windows en rend une le temps d'une transition) doit être
-/// refusée de la même façon. Dans les deux cas la borne redevient le
-/// rectangle du moniteur — donc le cadrage d'hier, barre des tâches comprise,
-/// plutôt qu'une fenêtre de deux pixels.
+/// 🔴 **THE FALLBACK IS THE BEHAVIOUR FROM BEFORE THE BATCH, AND IT MUST BE
+/// EXACTLY THAT.** `GetMonitorInfoW` can refuse; a degenerate work area
+/// (Windows returns one during a transition) must be
+/// refused the same way. In both cases the bound becomes the
+/// monitor's rectangle again — hence yesterday's framing, taskbar included,
+/// rather than a two-pixel window.
 #[test]
-fn une_zone_de_travail_absente_ou_degeneree_rend_le_rectangle_du_moniteur() {
+fn a_missing_or_degenerate_work_area_returns_the_monitor_rectangle() {
     assert_eq!(borne_de_la_sortie((1428, 1080), None), (1428, 1080));
     assert_eq!(borne_de_la_sortie((1428, 1080), Some((0, 0))), (1428, 1080));
     assert_eq!(
@@ -237,51 +231,51 @@ fn une_zone_de_travail_absente_ou_degeneree_rend_le_rectangle_du_moniteur() {
     );
 }
 
-/// Une zone de travail que Windows annoncerait PLUS GRANDE que son moniteur
-/// ne doit pas faire sortir la région de la texture : le `min` est un filet,
-/// et rien d'autre ne le tient.
+/// A work area Windows announced LARGER than its monitor
+/// must not make the region leave the texture: the `min` is a net,
+/// and nothing else holds it.
 #[test]
-fn une_zone_de_travail_plus_grande_que_le_moniteur_est_ramenee_a_lui() {
+fn a_work_area_larger_than_the_monitor_is_brought_back_to_it() {
     assert_eq!(
         borne_de_la_sortie((1428, 1080), Some((4096, 4096))),
         (1428, 1080)
     );
 }
 
-/// Le court-circuit du capteur compare la valeur rendue à la taille
-/// courante : elle doit donc être **stable**, sinon chaque tour
-/// reconstruirait l'encodeur. Un point fixe, éprouvé.
+/// The sensor's short-circuit compares the returned value with the current
+/// size: it must therefore be **stable**, otherwise each round
+/// would rebuild the encoder. A fixed point, tested.
 #[test]
-fn la_regle_est_stable_sur_son_propre_resultat() {
+fn the_rule_is_stable_on_its_own_result() {
     let sortie = (1860, 1080);
-    let une = taille_pour_viewport((1723, 1303), sortie);
-    assert_eq!(taille_pour_viewport(une, sortie), une);
+    let une = size_for_viewport((1723, 1303), sortie);
+    assert_eq!(size_for_viewport(une, sortie), une);
 }
 
-/// Une boîte vidéo repliée émet `(0, 0)` (cas réel relevé en D8) : la
-/// règle ne doit jamais rendre une dimension nulle, que l'encodeur NV12
-/// refuserait.
+/// A collapsed video box emits `(0, 0)` (real case noted in D8): the
+/// rule must never return a zero dimension, which the NV12 encoder
+/// would refuse.
 #[test]
-fn une_boite_video_repliee_ne_rend_jamais_une_dimension_nulle() {
-    assert_eq!(taille_pour_viewport((0, 0), (1860, 1080)), (2, 2));
+fn a_folded_video_box_never_returns_a_zero_dimension() {
+    assert_eq!(size_for_viewport((0, 0), (1860, 1080)), (2, 2));
 }
 
-/// Les HUIT tailles que le navigateur du propriétaire a RÉELLEMENT demandées,
-/// relevées le 31 août 2026 dans une capture réseau des trames `viewport`
-/// relayées vers la VM pendant qu'il tirait les bords de sa fenêtre (28
-/// trames, 8 valeurs distinctes).
+/// The EIGHT sizes the owner's browser ACTUALLY requested,
+/// noted on August 31st, 2026 in a network capture of the `viewport` frames
+/// relayed to the VM while they dragged the edges of their window (28
+/// frames, 8 distinct values).
 ///
-/// 🔴 **L'ATTENDU NE VIENT PAS DE CE QU'IL JUGE.** Le seuil de 0,5 % est
-/// dérivé de la RÈGLE, pas d'un calcul sur le résultat : les deux axes sont
-/// arrondis à une valeur PAIRE, donc chacun bouge d'au plus 1 pixel, ce qui
-/// déplace le rapport d'au plus `1/l + 1/h` — de l'ordre de 0,17 % aux
-/// dimensions servies ici. **0,5 % est ce plafond d'arrondi avec de la
-/// marge**, et rien d'autre.
+/// 🔴 **THE EXPECTED VALUE DOES NOT COME FROM WHAT IT JUDGES.** The 0.5% threshold is
+/// derived from the RULE, not from a computation on the result: both axes are
+/// rounded to an EVEN value, so each moves by at most 1 pixel, which
+/// shifts the ratio by at most `1/l + 1/h` — of the order of 0.17% at the
+/// dimensions served here. **0.5% is that rounding ceiling with some
+/// margin**, and nothing else.
 ///
-/// 🔴 **VU ROUGE** : avec le `min` axe par axe d'avant le correctif, les
-/// écarts mesurés sur ces mêmes huit valeurs sont de **2,4 % à 4,7 %** —
-/// jusqu'à neuf fois le seuil. Chacun est une bande de `--video-letterbox`
-/// dont l'épaisseur varie avec le rapport, ce que le propriétaire a décrit.
+/// 🔴 **SEEN RED**: with the axis-by-axis `min` from before the fix, the
+/// gaps measured on these same eight values are **2.4% to 4.7%** —
+/// up to nine times the threshold. Each is a `--video-letterbox` band
+/// whose thickness varies with the ratio, which the owner described.
 const VIEWPORTS_MESURES: [(u32, u32); 8] = [
     (1724, 1304),
     (1723, 1303),
@@ -293,9 +287,9 @@ const VIEWPORTS_MESURES: [(u32, u32); 8] = [
     (1438, 1062),
 ];
 
-/// Le plafond d'erreur que l'arrondi pair impose à lui seul. Voir la doc de
-/// `VIEWPORTS_MESURES` pour sa dérivation — il ne se recopie pas d'un
-/// résultat.
+/// The error ceiling that even rounding imposes by itself. See the doc of
+/// `VIEWPORTS_MESURES` for its derivation — it is not copied from a
+/// result.
 const ECART_D_ARRONDI_MAX: f64 = 0.005;
 
 fn ecart_de_rapport(servi: (u32, u32), demande: (u32, u32)) -> f64 {
@@ -307,34 +301,34 @@ fn ecart_de_rapport(servi: (u32, u32), demande: (u32, u32)) -> f64 {
 }
 
 #[test]
-fn les_huit_viewports_mesures_sont_servis_a_leur_propre_rapport() {
-    // La borne relevée sur SA session (sortie 1860×1080, zone de travail
-    // amputée des 48 rangées de la barre des tâches).
+fn the_eight_measured_viewports_are_served_at_their_own_ratio() {
+    // The bound noted on THEIR session (output 1860×1080, work area
+    // minus the taskbar's 48 rows).
     let borne = (1860, 1032);
     for demande in VIEWPORTS_MESURES {
-        let servi = taille_pour_viewport(demande, borne);
+        let servi = size_for_viewport(demande, borne);
         let ecart = ecart_de_rapport(servi, demande);
         assert!(
             ecart < ECART_D_ARRONDI_MAX,
-            "{demande:?} servi {servi:?} : ecart de rapport {:.3} % — c'est une bande de \
-             --video-letterbox le long d'une paire de bords",
+            "{demande:?} served {servi:?}: ratio gap of {:.3} % — this is a \
+             --video-letterbox band along a pair of edges",
             ecart * 100.0
         );
         assert!(
             servi.0 <= borne.0 && servi.1 <= borne.1,
-            "{servi:?} doit tenir dans {borne:?}"
+            "{servi:?} must fit in {borne:?}"
         );
     }
 }
 
-/// ⚠️ **NI 1428 NI 1860 NE SONT DES CONSTANTES DE CE PRODUIT**, et ce test est
-/// là pour qu'aucun lecteur ne recopie l'un des deux. La borne en vigueur a
-/// été relevée **différente d'une session à l'autre sur la MÊME machine**
-/// (1428×1032 après un redémarrage, 1860×1032 la session suivante) : elle
-/// vient de `borne_de`, à chaque fois, et jamais d'un nombre écrit quelque
-/// part. Ce dépôt a payé neuf fois le naufrage du 487.
+/// ⚠️ **NEITHER 1428 NOR 1860 ARE CONSTANTS OF THIS PRODUCT**, and this test is
+/// there so that no reader copies either. The bound in force was
+/// noted **different from one session to the next on the SAME machine**
+/// (1428×1032 after a reboot, 1860×1032 the following session): it
+/// comes from `borne_de`, every time, and never from a number written
+/// somewhere. This repository has paid nine times for the 487 wreck.
 #[test]
-fn la_regle_honore_la_borne_qu_on_lui_donne_quelle_qu_elle_soit() {
+fn the_rule_honours_whatever_bound_it_is_given() {
     for borne in [
         (1428, 1032),
         (1860, 1032),
@@ -343,69 +337,69 @@ fn la_regle_honore_la_borne_qu_on_lui_donne_quelle_qu_elle_soit() {
         (800, 600),
     ] {
         for demande in VIEWPORTS_MESURES {
-            let servi = taille_pour_viewport(demande, borne);
+            let servi = size_for_viewport(demande, borne);
             assert!(
                 servi.0 <= borne.0 && servi.1 <= borne.1,
-                "{demande:?} sur {borne:?} rend {servi:?}, qui DÉBORDE"
+                "{demande:?} on {borne:?} returns {servi:?}, which OVERFLOWS"
             );
             assert!(
                 ecart_de_rapport(servi, demande) < ECART_D_ARRONDI_MAX,
-                "{demande:?} sur {borne:?} rend {servi:?}, au mauvais rapport"
+                "{demande:?} on {borne:?} returns {servi:?}, at the wrong ratio"
             );
         }
     }
 }
 
-/// 🔴 **LE CORRECTIF D'ASPECT NE DOIT PAS RENDRE LA BARRE DES TÂCHES.**
+/// 🔴 **THE ASPECT FIX MUST NOT GIVE BACK THE TASKBAR.**
 ///
-/// ❌ **LA PREMIÈRE RÉDACTION DE CE TEST ÉTAIT VACUEUSE, ET LA MUTATION L'A
-/// MONTRÉ** : elle n'éprouvait que `VIEWPORTS_MESURES`, tous PLUS GRANDS que
-/// la borne sur au moins un axe, donc tous à facteur ≤ 1 — la propriété
-/// « on ne remonte pas » n'y était jamais exercée, et retirer le plafond `1.0`
-/// laissait ce test VERT. *Un test qu'on n'a jamais vu rouge n'est pas un
+/// ❌ **THIS TEST'S FIRST DRAFT WAS VACUOUS, AND THE MUTATION
+/// SHOWED IT**: it only exercised `VIEWPORTS_MESURES`, all LARGER than
+/// the bound on at least one axis, hence all at factor ≤ 1 — the property
+/// "we do not scale up" was never exercised there, and removing the `1.0` cap
+/// left this test GREEN. *A test never seen red is not a
 /// test.*
 ///
-/// 🔵 **Et la mutation a réfuté la RAISON qu'on lui prêtait** : retirer le
-/// plafond ne fait pas rentrer la barre (le résultat reste dans la borne).
-/// Ce qui sort la barre du cadre est `borne_de_la_sortie`, et elle seule.
+/// 🔵 **And the mutation refuted the REASON attributed to it**: removing the
+/// cap does not bring the taskbar in (the result stays inside the bound).
+/// What takes the taskbar out of the frame is `borne_de_la_sortie`, and it alone.
 ///
-/// Ce test garde donc la propriété qui compte vraiment et qui est
-/// falsifiable : **la hauteur servie ne dépasse JAMAIS la zone de travail
-/// qu'on lui donne**, y compris pour une zone de travail que personne n'a
-/// écrite en dur. La hauteur `900` ci-dessous n'est celle d'aucun relevé :
-/// elle est choisie DIFFÉRENTE des valeurs qui traînent dans ce fichier
-/// (1032, 1080) précisément pour qu'un nombre en dur la fasse rougir.
+/// This test therefore guards the property that really matters and is
+/// falsifiable: **the served height NEVER exceeds the work area
+/// it is given**, including for a work area nobody
+/// hardcoded. The height `900` below is that of no reading:
+/// it is chosen DIFFERENT from the values lying around in this file
+/// (1032, 1080) precisely so that a hardcoded number turns it red.
 #[test]
-fn la_hauteur_servie_ne_depasse_jamais_la_zone_de_travail_donnee() {
+fn the_served_height_never_exceeds_the_given_work_area() {
     for travail in [(1860, 1032), (1860, 900), (1428, 700), (1280, 752)] {
         for demande in VIEWPORTS_MESURES {
-            let servi = taille_pour_viewport(demande, travail);
+            let servi = size_for_viewport(demande, travail);
             assert!(
                 servi.1 <= travail.1,
-                "{demande:?} sur une zone de travail {travail:?} rend une hauteur de {} : \
-                 les rangées de la barre des tâches rentreraient dans le cadre",
+                "{demande:?} on a work area {travail:?} returns a height of {}: \
+                 the taskbar rows would enter the frame",
                 servi.1
             );
         }
     }
-    // Le cas le plus tentant : une demande DÉJÀ à la hauteur du moniteur. Elle
-    // doit être rabaissée à la zone de travail, jamais servie à 1080.
-    assert!(taille_pour_viewport((1860, 1080), (1860, 1032)).1 <= 1032);
+    // The most tempting case: a request ALREADY at the monitor's height. It
+    // must be brought down to the work area, never served at 1080.
+    assert!(size_for_viewport((1860, 1080), (1860, 1032)).1 <= 1032);
 }
 
-/// Le plafond `1.0` a sa PROPRE propriété, distincte de celle du dessus, et
-/// elle a besoin de son propre test — c'est ce que la mutation a révélé :
-/// **on ne sert jamais une image plus grande que la demande.** Sans lui, un
-/// viewport de 900×500 serait encodé en 1854×1030, soit quatre fois les
-/// macroblocs pour des pixels que la page ne peut pas afficher.
+/// The `1.0` cap has its OWN property, distinct from the one above, and
+/// it needs its own test — that is what the mutation revealed:
+/// **we never serve an image larger than the request.** Without it, a
+/// 900×500 viewport would be encoded at 1854×1030, that is four times the
+/// macroblocks for pixels the page cannot display.
 #[test]
-fn une_demande_plus_petite_que_la_borne_n_est_jamais_agrandie() {
+fn a_request_smaller_than_the_bound_is_never_enlarged() {
     let borne = (1860, 1032);
     for demande in [(900u32, 500u32), (640, 480), (1280, 720)] {
-        let servi = taille_pour_viewport(demande, borne);
+        let servi = size_for_viewport(demande, borne);
         assert!(
             servi.0 <= demande.0 && servi.1 <= demande.1,
-            "{demande:?} servi {servi:?} : plus grand que ce que le navigateur a demandé"
+            "{demande:?} served {servi:?}: bigger than what the browser requested"
         );
     }
 }

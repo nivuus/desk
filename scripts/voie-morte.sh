@@ -1,61 +1,62 @@
 #!/usr/bin/env bash
-# LE PANNEAU DES VOIES MORTES — à SOURCER en tête d'un script du chemin de
-# développement d'avant la bascule appliance.
+# THE DEAD PATH SIGN — to SOURCE at the top of a script of the
+# development path from before the switch to the appliance.
 #
 #     . "$(dirname "$0")/voie-morte.sh"
-#     voie_morte "ce que ce script faisait" "ce qui le remplace"
+#     voie_morte "what this script did" "what replaces it"
 #
-# 🔴 POURQUOI CE FICHIER EXISTE, ET POURQUOI IL N'EFFACE RIEN.
+# 🔴 WHY THIS FILE EXISTS, AND WHY IT ERASES NOTHING.
 #
-# Le 29 août 2026, le chantier `package-nivuus` a fait de la VM cible une
-# APPLIANCE et a retiré — délibérément — `C:\dev`, la chaîne Rust de l'invité
-# et le montage CIFS `/media/vm`. Les scripts de ce répertoire qui visent
-# cette machine ne peuvent plus rien faire.
+# On 29 August 2026, the `package-nivuus` work item turned the target VM into an
+# APPLIANCE and removed — deliberately — `C:\dev`, the guest's Rust toolchain
+# and the CIFS mount `/media/vm`. The scripts in this directory that target
+# that machine can no longer do anything.
 #
-# **Les SUPPRIMER perdrait la trace de ce qu'ils faisaient et de pourquoi ils
-# ont été remplacés.** **Les laisser tels quels est PIRE** : ce sont des
-# scripts MORTS QUI ONT L'AIR VIVANTS, et ce dépôt a payé ce patron un nombre
-# de fois qu'il documente lui-même — un journal qui n'affichait qu'une
-# constante, un témoin condamné au rouge, une assertion d'absence verte sur un
-# plantage. Un exemplaire de plus ne mérite pas d'être conservé en silence.
+# **DELETING them would lose the trace of what they did and of why they
+# were replaced.** **Leaving them as they are is WORSE**: they are
+# DEAD SCRIPTS THAT LOOK ALIVE, and this repository has paid for this pattern a number
+# of times it documents itself — a log that showed only a
+# constant, a witness doomed to red, an absence assertion green over a
+# crash. One more instance does not deserve to be kept silently.
 #
-# Donc : ils ÉCHOUENT VITE, en NOMMANT LEUR SUCCESSEUR. C'est bon marché,
-# réversible, et cela change un piège muet en panneau.
+# Hence: they FAIL FAST, NAMING THEIR SUCCESSOR. It is cheap,
+# reversible, and it turns a silent trap into a sign.
 #
-# ⚠️ CE N'EST PAS UN RETRAIT. Le corps de chaque script reste dessous, lisible,
-# comme relevé historique. Le retrait réel est une DETTE NOMMÉE, à jouer le
-# jour où plus rien ne les cite — au 5 septembre 2026, il reste **48**
-# appelants exécutables de `scripts/winrm.js`, **57** de `/media/vm` et **2**
-# de `scripts/build-agent.sh` dans l'arbre suivi par git (relevé par la
-# commande inscrite dans le § « Legs ouverts » de `CLAUDE.md` — la relancer,
-# jamais recopier ces trois nombres).
+# ⚠️ THIS IS NOT A REMOVAL. The body of each script stays below, readable,
+# as a historical record. The real removal is a NAMED DEBT, to be played the
+# day nothing quotes them any more — as of 5 September 2026, there are still **48**
+# executable callers of `scripts/winrm.js`, **57** of `/media/vm` and **2**
+# of `scripts/build-agent.sh` in the tree tracked by git (found by the
+# command written in the "Open legacy items" § of `CLAUDE.md` — rerun it,
+# never copy these three numbers).
 #
-# 🔴 CE GUIDE NE DÉCIDE PAS DU SORT DES SCRIPTS : il le rend visible. Les
-# retirer, les réécrire vers l'appliance, ou les garder ainsi reste une
-# décision du propriétaire du dépôt.
+# 🔴 THIS GUIDE DOES NOT DECIDE THE FATE OF THE SCRIPTS: it makes it visible.
+# Removing them, rewriting them for the appliance, or keeping them this way remains a
+# decision of the repository owner.
 
 voie_morte() {
     local faisait="$1" successeur="$2"
+    local rapport="docs/superpowers/plans/2026-09-05-lot3-campagne-vm-resultats-partiels.md"  # policy: allow-fr - real file name
     cat >&2 <<FIN
-🔴 VOIE MORTE : $(basename "${0}")
+🔴 DEAD PATH: $(basename "${0}")
 
-  Ce script $(printf '%s' "${faisait}").
+  This script $(printf '%s' "${faisait}").
 
-  Il vise la VM de DÉVELOPPEMENT, qui n'existe plus sous cette forme depuis la
-  bascule appliance du 29 août 2026 (chantier package-nivuus) : \`C:\\dev\`, la
-  chaîne Rust de l'invité et le montage CIFS \`/media/vm\` ont été retirés
-  DÉLIBÉRÉMENT. Relevé le 5 septembre 2026 : \`mount | grep media/vm\` ne rend
-  rien, \`/media/vm\` est un répertoire vide, \`Get-ChildItem C:\\\` ne liste
-  aucun \`dev\`, et WinRM refuse le transport Basic.
+  It targets the DEVELOPMENT VM, which no longer exists in that form since the
+  appliance switch of 29 August 2026 (package-nivuus work item): \`C:\\dev\`, the
+  guest's Rust toolchain and the CIFS mount \`/media/vm\` were removed
+  DELIBERATELY. Checked on 5 September 2026: \`mount | grep media/vm\` returns
+  nothing, \`/media/vm\` is an empty directory, \`Get-ChildItem C:\\\` lists
+  no \`dev\`, and WinRM refuses the Basic transport.
 
-  CE QUI LE REMPLACE :
+  WHAT REPLACES IT:
 ${successeur}
 
-  Voir CLAUDE.md § « Cycle de vie de la VM Windows », et
-  docs/superpowers/plans/2026-09-05-lot3-campagne-vm-resultats-partiels.md § 1.
+  See CLAUDE.md § "Windows VM lifecycle", and
+  ${rapport} § 1.
 
-  ⚠️ Ce script n'est PAS supprimé : son corps reste lisible sous ce garde,
-  comme relevé historique. Pour le lire sans l'exécuter : \`cat \$0\`.
+  ⚠️ This script is NOT deleted: its body stays readable under this guard,
+  as a historical record. To read it without running it: \`cat \$0\`.
 FIN
-    exit 78   # EX_CONFIG : la configuration du monde ne permet pas ce geste.
+    exit 78   # EX_CONFIG: the configuration of the world does not allow this gesture.
 }

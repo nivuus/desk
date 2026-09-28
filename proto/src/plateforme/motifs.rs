@@ -1,46 +1,46 @@
-//! La table des motifs de refus du canal, et la correspondance mot ↔ variante.
+//! The table of the channel's refusal reasons, and the word ↔ variant mapping.
 //!
-//! 🔴 **EXTRAIT AVANT L'ADDITION** — même raison que `champs.rs`, écrite là.
-//! **Aucune ligne de comportement n'a changé** : l'enum et son `impl` sont
-//! transposés mot pour mot, et le parent les réexporte par un `pub use`, de
-//! sorte qu'aucun appelant, dans aucun paquet, n'a eu à bouger.
+//! 🔴 **EXTRACTED BEFORE THE ADDITION** — same reason as `champs.rs`, written there.
+//! **No line of behaviour has changed**: the enum and its `impl` are
+//! transposed word for word, and the parent re-exports them through a `pub use`, so
+//! that no caller, in any package, had to move.
 
 /// Pourquoi la plateforme refuse.
 ///
-/// ⚠️ `Enrolement` NE DISTINGUE PAS « VM inconnue » de « secret faux », et
-/// c'est délibéré : les distinguer donnerait à quiconque ouvre le canal un
-/// oracle d'énumération des VMs enrôlées. Le diagnostic vit dans le journal de
-/// la plateforme, jamais sur le fil.
-/// ⚠️ **PLUS DE `Serialize`/`Deserialize` DEPUIS LA CORRECTION DU 20 AOÛT
-/// 2026, ET C'EST DÉLIBÉRÉ.** Le motif voyage en MOT LIBRE dans
-/// [`DepuisLaPlateforme::Refus`] (clause 2 de l'en-tête) : cet enum n'est plus
-/// une forme de fil, c'est la table des motifs que NOUS savons interpréter.
-/// La correspondance mot ↔ variante est écrite une seule fois, dans
-/// [`MotifCanal::mot`] et [`MotifCanal::depuis_mot`], et un test la parcourt
-/// dans les deux sens sur les quatre variantes — ce qu'un `rename_all` ne
-/// permettait pas de faire rougir tant qu'aucune variante n'a deux mots.
+/// ⚠️ `Enrolement` DOES NOT DISTINGUISH "unknown VM" from "wrong secret", and
+/// it is deliberate: distinguishing them would give whoever opens the channel an
+/// oracle for enumerating the enrolled VMs. The diagnosis lives in the log of
+/// the platform, never on the wire.
+/// ⚠️ **NO MORE `Serialize`/`Deserialize` SINCE THE FIX OF 20 AUGUST
+/// 2026, AND IT IS DELIBERATE.** The reason travels as a FREE WORD in
+/// [`DepuisLaPlateforme::Refus`] (clause 2 of the header): this enum is no longer
+/// a wire shape, it is the table of reasons WE know how to interpret.
+/// The word ↔ variant mapping is written only once, in
+/// [`MotifCanal::mot`] and [`MotifCanal::depuis_mot`], and a test walks it
+/// in both directions over the four variants — which a `rename_all` could not
+/// make turn red as long as no variant has two words.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MotifCanal {
-    /// La version du message reçu n'est pas [`PLATEFORME_VERSION`].
-    /// 🔴 CELUI-CI NE SE RÉESSAIE PAS.
+    /// The version of the received message is not [`PLATEFORME_VERSION`].
+    /// 🔴 THIS ONE IS NOT RETRIED.
     Version,
-    /// Le message n'a pas la forme attendue.
+    /// The message does not have the expected shape.
     Forme,
-    /// L'enrôlement est refusé. Indistinct par construction (voir ci-dessus).
+    /// The enrolment is refused. Indistinct by construction (see above).
     Enrolement,
-    /// Un `battement` est arrivé avant tout `enroler`.
+    /// A `battement` arrived before any `enroler`.
     Sequence,
 }
 
 impl MotifCanal {
-    /// Les quatre variantes, dans l'ordre où un test les parcourt.
+    /// The four variants, in the order a test walks them.
     ///
-    /// 🔴 ANTI-OUBLI : une variante ajoutée sans sa ligne ici serait absente
-    /// du test de correspondance, qui compare cette liste à un `match`
-    /// EXHAUSTIF — le compilateur exige la branche, et le test exige l'entrée.
-    pub const TOUS: [Self; 4] = [Self::Version, Self::Forme, Self::Enrolement, Self::Sequence];
+    /// 🔴 ANTI-OMISSION: a variant added without its line here would be absent
+    /// from the mapping test, which compares this set to an EXHAUSTIVE
+    /// `match` — the compiler requires the arm, and the test requires the entry.
+    pub const ALL: [Self; 4] = [Self::Version, Self::Forme, Self::Enrolement, Self::Sequence];
 
-    /// Le mot exact qui voyage sur le fil.
+    /// The exact word that travels on the wire.
     pub fn mot(self) -> &'static str {
         match self {
             Self::Version => "version",
@@ -50,14 +50,12 @@ impl MotifCanal {
         }
     }
 
-    /// Le motif que ce mot désigne, ou `None` si nous ne le connaissons pas.
+    /// The reason this word designates, or `None` if we do not know it.
     ///
-    /// 🔴 `None` N'EST PAS UNE ERREUR : c'est un motif d'une version qui nous
-    /// dépasse, et l'appelant doit le journaliser tel quel plutôt que de le
-    /// perdre. C'est la clause 2 de l'en-tête de ce module.
+    /// 🔴 `None` IS NOT AN ERROR: it is a reason from a version that is
+    /// beyond us, and the caller must log it as is rather than
+    /// lose it. It is clause 2 of the header of this module.
     pub fn depuis_mot(mot: &str) -> Option<Self> {
-        Self::TOUS
-            .into_iter()
-            .find(|candidat| candidat.mot() == mot)
+        Self::ALL.into_iter().find(|candidat| candidat.mot() == mot)
     }
 }

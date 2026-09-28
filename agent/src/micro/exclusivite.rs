@@ -1,45 +1,45 @@
-//! **PUR — aucun `cfg`, aucun objet Windows.** La politique d'exclusivité du
-//! câble : qui a le droit d'écrire, quand on réessaie, et ce qui se journalise.
+//! **PURE — no `cfg`, no Windows object.** The cable exclusivity
+//! policy: who is allowed to write, when we retry, and what gets logged.
 //!
-//! Un seul processus enfant peut écrire sur CABLE Input à la fois. À deux
-//! écrivains, Windows mélangerait deux copies décalées de la même voix — un
-//! filtre en peigne. Le premier arrivé gagne (Décision 2 du plan E2).
+//! Only one child process can write to CABLE Input at a time. With two
+//! writers, Windows would mix two shifted copies of the same voice — a
+//! comb filter. First come wins (Decision 2 of plan E2).
 //!
-//! ⚠️ **Ce module ne tient AUCUN verrou.** Il arbitre, et il dit ce qu'il faut
-//! journaliser. Le verrou lui-même est un mutex nommé Windows, posé par
-//! `windows_micro.rs` derrière le trait `Verrou` ; les tests en posent un faux
-//! qui **compte ses appels**.
+//! ⚠️ **This module holds NO lock.** It arbitrates, and it says what must be
+//! logged. The lock itself is a Windows named mutex, set by
+//! `windows_micro.rs` behind the `Verrou` trait; the tests set a fake one
+//! that **counts its calls**.
 
 /// Ce qu'un verrou inter-processus doit savoir faire.
 pub trait Verrou {
-    /// **NON BLOQUANT.** Rend `true` si ce processus tient le verrou après
-    /// l'appel — y compris s'il le tenait déjà.
+    /// **NON-BLOCKING.** Returns `true` if this process holds the lock after
+    /// the call — including if it already held it.
     ///
-    /// ⚠️ **Il est appelé À CHAQUE dépôt, donc environ 50 fois par seconde, y
-    /// compris quand le verrou est DÉJÀ tenu.** L'implémentation doit donc
-    /// être bon marché *et* idempotente : un `WaitForSingleObject` sur un
-    /// mutex déjà possédé en incrémenterait le compte de récursion, et il en
-    /// faudrait autant de `ReleaseMutex`. C'est à la moitié Windows de court-
-    /// circuiter ce cas, pas à `Exclusivite`.
+    /// ⚠️ **It is called AT EACH drop-off, hence about 50 times per second,
+    /// including when the lock is ALREADY held.** The implementation must therefore
+    /// be cheap *and* idempotent: a `WaitForSingleObject` on an
+    /// already owned mutex would increment its recursion count, and as many
+    /// `ReleaseMutex` would be needed. It is up to the Windows half to short-
+    /// circuit this case, not up to `Exclusivite`.
     fn tenter(&mut self) -> bool;
 }
 
-/// Ce que l'arbitrage commande, journal compris.
+/// What the arbitration commands, log included.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Issue {
-    /// Le dépôt est accepté, et rien n'est à journaliser.
+    /// The drop-off is accepted, and nothing is to be logged.
     Accepte,
-    /// Le dépôt est accepté, et c'est la PREMIÈRE fois après un refus : une
-    /// ligne, sans quoi le `warn!` du refus resterait vrai pour toujours dans
-    /// les yeux du lecteur.
+    /// The drop-off is accepted, and it is the FIRST time after a refusal: one
+    /// line, otherwise the refusal's `warn!` would stay true forever in
+    /// the reader's eyes.
     AccepteApresRefus,
-    /// Refusé, et c'est la première fois : une ligne.
+    /// Refused, and it is the first time: one line.
     RefusePremierement,
-    /// Refusé, et c'est déjà dit. Silence.
+    /// Refused, and it has already been said. Silence.
     RefuseDejaDit,
 }
 
-/// L'arbitre. **La tentative est refaite à chaque dépôt ; seul le JOURNAL est
+/// The arbiter. **The attempt is redone at each drop-off; only the LOG is
 /// unique.**
 pub struct Exclusivite<V: Verrou> {
     verrou: V,
@@ -56,18 +56,18 @@ impl<V: Verrou> Exclusivite<V> {
         }
     }
 
-    /// ⚠️ **TENTE À CHAQUE APPEL — Décision 2 du plan E2.** Seul le JOURNAL
-    /// est unique, jamais la tentative.
+    /// ⚠️ **ATTEMPTS AT EACH CALL — Decision 2 of plan E2.** Only the LOG
+    /// is unique, never the attempt.
     ///
-    /// E1 prescrivait un refus *collant* : on journalise une fois et l'on
-    /// n'insiste plus. Cela condamnait le cas suivant — les fenêtres A et B
-    /// vivent, A tient le câble, B est refusée ; **A meurt**, Windows abandonne
-    /// le mutex, et **B n'essaie plus jamais**, sans qu'aucune ligne ne le
-    /// dise. Un `WaitForSingleObject(handle, 0)` coûte quelques microsecondes
-    /// contre 50 dépôts par seconde : la tentative se refait.
+    /// E1 prescribed a *sticky* refusal: log once and do
+    /// not insist anymore. That condemned the following case — windows A and B
+    /// are alive, A holds the cable, B is refused; **A dies**, Windows abandons
+    /// the mutex, and **B never tries again**, without any line saying
+    /// so. A `WaitForSingleObject(handle, 0)` costs a few microseconds
+    /// against 50 drop-offs per second: the attempt is redone.
     ///
-    /// Un second épisode de refus rouvre son propre journal : perdre le câble
-    /// une seconde fois est un fait neuf, pas la répétition du premier.
+    /// A second refusal episode reopens its own log: losing the cable
+    /// a second time is a new fact, not the repetition of the first.
     pub fn arbitrer(&mut self) -> Issue {
         if self.verrou.tenter() {
             self.tenue = true;
@@ -87,7 +87,7 @@ impl<V: Verrou> Exclusivite<V> {
         }
     }
 
-    /// Vrai si le dernier arbitrage a laissé ce processus propriétaire.
+    /// True if the last arbitration left this process as owner.
     #[cfg(test)]
     pub fn tenue(&self) -> bool {
         self.tenue
@@ -98,17 +98,17 @@ impl<V: Verrou> Exclusivite<V> {
 mod tests {
     use super::*;
 
-    /// Un faux verrou qui **compte ses appels**. Un verrou qui ne rendrait
-    /// qu'un booléen laisserait passer une implémentation collante : le test
-    /// serait vacueux. C'est le patron du champ `journaux_micro` de E1.
+    /// A fake lock that **counts its calls**. A lock that only returned
+    /// a boolean would let a sticky implementation through: the test
+    /// would be vacuous. It is the pattern of E1's `journaux_micro` field.
     struct VerrouFactice {
-        /// Les réponses à rendre, dans l'ordre ; la dernière se répète.
+        /// The answers to return, in order; the last one repeats.
         reponses: Vec<bool>,
         appels: usize,
     }
 
     impl VerrouFactice {
-        fn nouveau(reponses: &[bool]) -> Self {
+        fn new(reponses: &[bool]) -> Self {
             Self {
                 reponses: reponses.to_vec(),
                 appels: 0,
@@ -125,15 +125,15 @@ mod tests {
     }
 
     #[test]
-    fn un_verrou_libre_accepte_sans_rien_journaliser() {
-        let mut e = Exclusivite::new(VerrouFactice::nouveau(&[true]));
+    fn a_free_lock_accepts_without_logging_anything() {
+        let mut e = Exclusivite::new(VerrouFactice::new(&[true]));
         assert_eq!(e.arbitrer(), Issue::Accepte);
         assert!(e.tenue());
     }
 
     #[test]
-    fn un_refus_ne_se_journalise_qu_une_fois() {
-        let mut e = Exclusivite::new(VerrouFactice::nouveau(&[false]));
+    fn a_refusal_is_logged_only_once() {
+        let mut e = Exclusivite::new(VerrouFactice::new(&[false]));
         assert_eq!(e.arbitrer(), Issue::RefusePremierement);
         for _ in 0..10 {
             assert_eq!(e.arbitrer(), Issue::RefuseDejaDit);
@@ -141,27 +141,27 @@ mod tests {
         assert!(!e.tenue());
     }
 
-    /// 🔴 **LE test du défaut latent de la Décision 4 de E1.** Un refus
-    /// collant ne rappellerait jamais `tenter`, et la fenêtre B resterait sans
-    /// micro pour la vie de son processus après la mort de la fenêtre A.
+    /// 🔴 **THE test of the latent defect of E1's Decision 4.** A sticky
+    /// refusal would never call `tenter` again, and window B would stay without
+    /// a microphone for the life of its process after window A's death.
     #[test]
     #[allow(non_snake_case)]
-    fn la_tentative_est_REFAITE_apres_un_refus() {
-        let mut e = Exclusivite::new(VerrouFactice::nouveau(&[false]));
+    fn the_attempt_is_REDONE_after_a_refusal() {
+        let mut e = Exclusivite::new(VerrouFactice::new(&[false]));
         for _ in 0..20 {
             e.arbitrer();
         }
         assert_eq!(
             e.verrou.appels, 20,
-            "la tentative doit être refaite à CHAQUE dépôt, refus compris"
+            "the attempt must be redone on EVERY deposit, refusals included"
         );
     }
 
-    /// 🔴 Sans cette annonce, le `warn!` du refus resterait vrai à jamais.
+    /// 🔴 Without this announcement, the refusal's `warn!` would stay true forever.
     #[test]
     #[allow(non_snake_case)]
-    fn une_acquisition_tardive_est_ANNONCEE() {
-        let mut e = Exclusivite::new(VerrouFactice::nouveau(&[false, false, false, true]));
+    fn a_late_acquisition_is_ANNOUNCED() {
+        let mut e = Exclusivite::new(VerrouFactice::new(&[false, false, false, true]));
         assert_eq!(e.arbitrer(), Issue::RefusePremierement);
         assert_eq!(e.arbitrer(), Issue::RefuseDejaDit);
         assert_eq!(e.arbitrer(), Issue::RefuseDejaDit);
@@ -173,8 +173,8 @@ mod tests {
     }
 
     #[test]
-    fn une_acquisition_deja_tenue_ne_reannonce_rien() {
-        let mut e = Exclusivite::new(VerrouFactice::nouveau(&[true]));
+    fn an_already_held_acquisition_announces_nothing_again() {
+        let mut e = Exclusivite::new(VerrouFactice::new(&[true]));
         for _ in 0..10 {
             assert_eq!(e.arbitrer(), Issue::Accepte);
         }

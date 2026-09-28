@@ -1,199 +1,199 @@
-//! Les types de la GESTION D'APPLICATIONS du canal plateforme <-> agent :
-//! l'application elle-même, la provenance de son icône, et l'issue d'un ordre
-//! de lancement.
+//! The APPLICATION MANAGEMENT types of the platform <-> agent channel:
+//! the application itself, the provenance of its icon, and the outcome of a launch
+//! order.
 //!
-//! 🔴 EXTRAIT DE `proto/src/plateforme.rs` VERBATIM (sous-bloc G2), PARCE QUE
-//! LE PLAFOND DE 500 LIGNES A ÉTÉ FRANCHI — 588 — ET QUE LA DOCTRINE DU DÉPÔT
-//! EST DE RATTRAPER PAR UNE EXTRACTION, JAMAIS PAR UNE COMPRESSION.
+//! 🔴 EXTRACTED FROM `proto/src/plateforme.rs` VERBATIM (sub-block G2), BECAUSE
+//! THE 500-LINE CEILING WAS CROSSED — 588 — AND THE REPOSITORY'S DOCTRINE
+//! IS TO CATCH UP THROUGH AN EXTRACTION, NEVER THROUGH A COMPRESSION.
 //!
-//! ⚠️ **L'EXTRACTION AURAIT DÛ PRÉCÉDER L'ADDITION, ET ELLE NE L'A PAS FAIT.**
-//! Le plan de G2 avait nommé trois extractions à jouer d'avance — les deux
-//! fichiers de tests de `proto/` et `routes-applications.test.ts` — et les
-//! trois ont bien été jouées AVANT leur addition. Celle-ci n'était pas prévue :
-//! le fichier était annoncé à 433 lignes pour « +1 enum, +1 variante, +2
-//! champs », et la documentation de ces additions l'a porté à 588. **Le
-//! franchissement est DÉCLARÉ plutôt que dissimulé**, comme ce dépôt l'exige de
-//! ses trois franchissements de D10 et de ses deux de D9.
+//! ⚠️ **THE EXTRACTION SHOULD HAVE PRECEDED THE ADDITION, AND IT DID NOT.**
+//! The G2 plan had named three extractions to carry out in advance — the two
+//! test files of `proto/` and `routes-applications.test.ts` — and all
+//! three were indeed carried out BEFORE their addition. This one was not planned:
+//! the file was announced at 433 lines for "+1 enum, +1 variant, +2
+//! fields", and the documentation of those additions took it to 588. **The
+//! crossing is DECLARED rather than hidden**, as this repository requires of
+//! its three crossings of D10 and its two of D9.
 //!
-//! La frontière est la MÊME que celle des deux fichiers de tests, et ce n'est
-//! pas un hasard : le protocole porte déjà cette coupure — le cycle de vie
-//! d'un côté, la gestion d'apps de l'autre.
+//! The boundary is the SAME as that of the two test files, and it is
+//! no accident: the protocol already carries this cut — the lifecycle
+//! on one side, app management on the other.
 
 use serde::{Deserialize, Serialize};
 
-/// D'où vient l'image : la plus grande entrée réellement PRÉSENTE dans le
-/// répertoire d'icônes de la source (`GRPICONDIR` d'un module PE, `ICONDIR`
-/// d'un `.ico`).
+/// Where the image comes from: the largest entry actually PRESENT in the
+/// icon directory of the source (`GRPICONDIR` of a PE module, `ICONDIR`
+/// of an `.ico`).
 ///
-/// 🔴 CE N'EST PAS LA TAILLE RENDUE, ET LES DEUX NE DOIVENT JAMAIS ÊTRE
-/// CONFONDUES. Mesuré le 20 août 2026 sur deux témoins fabriqués — versés
-/// depuis, dans `agent/testdata/g2-temoin-{48,256}.ico` : un `.ico` ne
-/// contenant QU'UNE entrée 48×48, interrogé à 256, rend **256×256 32bpp** —
-/// par `IShellItemImageFactory::GetImage` comme par `PrivateExtractIconsW`,
-/// sans `SIIGBF_SCALEUP` et **MÊME avec `SIIGBF_BIGGERSIZEOK`**, c'est-à-dire
-/// en disant explicitement au Shell qu'une taille plus grande conviendrait.
-/// **Les quatre lignes de rendu des deux témoins sont identiques ; seule la
-/// ligne `ICONDIR` diffère.** Un critère qui comparerait la taille rendue à
-/// 256 NE PEUT DONC PAS ÉCHOUER.
+/// 🔴 IT IS NOT THE RENDERED SIZE, AND THE TWO MUST NEVER BE
+/// CONFLATED. Measured on 20 August 2026 on two crafted witnesses — filed
+/// since, in `agent/testdata/g2-temoin-{48,256}.ico`: an `.ico`
+/// containing ONLY a 48×48 entry, queried at 256, renders **256×256 32bpp** —
+/// through `IShellItemImageFactory::GetImage` as through `PrivateExtractIconsW`,
+/// without `SIIGBF_SCALEUP` and **EVEN with `SIIGBF_BIGGERSIZEOK`**, that is
+/// explicitly telling the Shell that a larger size would do.
+/// **The four render lines of the two witnesses are identical; only the
+/// `ICONDIR` line differs.** A criterion that compared the rendered size to
+/// 256 THEREFORE CANNOT FAIL.
 ///
-/// ✅ **ÉPROUVÉ SUR LE PRODUIT le 21 août 2026** : les deux témoins entrés au
-/// catalogue réel rendent tous deux un PNG de **256×256**, et `source_max` vaut
-/// `{"pixels":48}` pour l'un et `{"pixels":256}` pour l'autre.
+/// ✅ **TESTED ON THE PRODUCT on 21 August 2026**: the two witnesses entered in the
+/// real catalogue both render a **256×256** PNG, and `source_max` is
+/// `{"pixels":48}` for one and `{"pixels":256}` for the other.
 ///
-/// 🔵 **`NonMesuree` S'ÉCRIT EN DEUX MOTS, ET CE N'EST PAS UN HASARD.** Le
-/// commentaire d'[`IssueLancement`] inscrit une lacune de couverture : ses
-/// quatre variantes étant d'un seul mot, `rename_all` y est INOBSERVABLE et
-/// aucun test ne peut rougir si la convention change. `non-mesuree` contre
-/// `non_mesuree` la rend observable **pour cet enum-ci** ; ⚠️ elle reste
-/// OUVERTE pour `IssueLancement`, qu'aucune tâche de G2 ne touche.
+/// 🔵 **`NonMesuree` IS WRITTEN IN TWO WORDS, AND IT IS NO ACCIDENT.** The
+/// comment on [`IssueLancement`] records a coverage gap: its
+/// four variants being single-word, `rename_all` is UNOBSERVABLE there and
+/// no test can turn red if the convention changes. `non-mesuree` against
+/// `non_mesuree` makes it observable **for this enum**; ⚠️ it stays
+/// OPEN for `IssueLancement`, which no G2 task touches.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum SourceMax {
-    /// La plus grande entrée du répertoire d'icônes, en pixels.
+    /// The largest entry of the icon directory, in pixels.
     ///
-    /// ⚠️ `bWidth == 0` VAUT 256 dans le format : le champ fait un octet, et
-    /// 256 n'y tient pas. La conversion se fait dans le module PUR
-    /// `agent::apps::icone::ressource`, jamais ici.
+    /// ⚠️ `bWidth == 0` MEANS 256 in the format: the field is one byte, and
+    /// 256 does not fit in it. The conversion happens in the PURE module
+    /// `agent::apps::icone::ressource`, never here.
     Pixels(u16),
-    /// 🔴 UNE VALEUR DISTINCTE DE 256, ET IL EST INTERDIT DE LES CONFONDRE.
-    /// La provenance n'est ni un module PE ni un `.ico` lisible : association
-    /// de type, espace de noms Shell, ou ressource illisible. **Mesuré sur le
-    /// produit le 21 août 2026 : 71 des 154 applications de cette VM.**
+    /// 🔴 A VALUE DISTINCT FROM 256, AND IT IS FORBIDDEN TO CONFLATE THEM.
+    /// The provenance is neither a PE module nor a readable `.ico`: type
+    /// association, Shell namespace, or unreadable resource. **Measured on the
+    /// product on 21 August 2026: 71 of the 154 applications of this VM.**
     ///
-    /// Sur le fil, serde en fait la chaîne `"non-mesuree"` : elle ne peut
-    /// structurellement pas être un nombre, et c'est ce que le critère ④ de
-    /// recette demande.
+    /// On the wire, serde makes it the string `"non-mesuree"`: it cannot
+    /// structurally be a number, and that is what acceptance criterion ④
+    /// asks for.
     NonMesuree,
 }
 
-/// Une application telle que l'agent la découvre sur le disque de la VM.
+/// An application as the agent discovers it on the VM's disk.
 ///
-/// ⚠️ `arguments` est BRUT et SENSIBLE À LA CASSE, contrairement à `cible` et
-/// `repertoire` qui sont normalisés (casse repliée). C'est la spec D4 : deux
-/// raccourcis qui ne diffèrent que par la casse d'un chemin Windows désignent
-/// le même fichier, alors que deux lignes de commande qui ne diffèrent que par
-/// la casse d'un argument sont deux invocations distinctes — les replier
-/// fusionnerait `-Mode admin` et `-mode Admin`.
+/// ⚠️ `arguments` is RAW and CASE-SENSITIVE, unlike `cible` and
+/// `repertoire` which are normalised (case folded). It is spec D4: two
+/// shortcuts that differ only by the case of a Windows path designate
+/// the same file, whereas two command lines that differ only by
+/// the case of an argument are two distinct invocations — folding them
+/// would merge `-Mode admin` and `-mode Admin`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Application {
-    /// Empreinte du triplet `(cible, arguments, repertoire)` — l'identité.
+    /// Fingerprint of the triplet `(cible, arguments, repertoire)` — the identity.
     pub cle: String,
-    /// Le nom du `.lnk`, sans son extension.
+    /// The name of the `.lnk`, without its extension.
     pub nom: String,
-    /// Le chemin du `.lnk` LUI-MÊME, et c'est lui qu'on lance (spec D6).
+    /// The path of the `.lnk` ITSELF, and it is what gets launched (spec D6).
     pub chemin: String,
-    /// Le chemin de la cible, normalisé.
+    /// The path of the target, normalised.
     pub cible: String,
-    /// Les arguments, BRUTS (voir ci-dessus). Vide = `""`, jamais absent.
+    /// The arguments, RAW (see above). Empty = `""`, never absent.
     pub arguments: String,
-    /// Le répertoire de travail, normalisé.
+    /// The working directory, normalised.
     pub repertoire: String,
-    /// L'empreinte SHA-256 du PNG de l'icône, en hexadécimal minuscule — ou
-    /// `None` quand l'extraction a échoué.
+    /// The SHA-256 fingerprint of the icon PNG, in lowercase hexadecimal — or
+    /// `None` when the extraction failed.
     ///
-    /// ⚠️ UNE APPLICATION SANS ICÔNE VAUT MIEUX QU'UNE APPLICATION ABSENTE
-    /// (spec §7). `None` n'est pas une erreur, et s'émet en `"icone":null`.
+    /// ⚠️ AN APPLICATION WITHOUT AN ICON IS BETTER THAN AN ABSENT APPLICATION
+    /// (spec §7). `None` is not an error, and is emitted as `"icone":null`.
     ///
-    /// ⚠️ **Aucun `#[serde(default)]`, aucun `skip_serializing_if`** : c'est
-    /// la règle que ce module s'impose déjà pour le champ `v` — un champ
-    /// ABSENT doit être rejeté, pas silencieusement complété. Un `default`
-    /// ferait accepter un catalogue d'agent v2 sans que rien ne le dise.
+    /// ⚠️ **No `#[serde(default)]`, no `skip_serializing_if`**: it is
+    /// the rule this module already imposes on itself for the `v` field — an
+    /// ABSENT field must be rejected, not silently completed. A `default`
+    /// would make a v2 agent catalogue accepted without anything saying so.
     ///
-    /// 🔴 ET C'EST POURQUOI CE CHAMP PORTE UN `deserialize_with` QUI NE FAIT
-    /// RIEN D'AUTRE QUE DÉLÉGUER : sans lui, serde rendrait le champ
-    /// facultatif TOUT SEUL, parce qu'il est de type `Option`. Voir
-    /// [`super::icone_obligatoire`] et la mesure qui y est transcrite.
+    /// 🔴 AND THAT IS WHY THIS FIELD CARRIES A `deserialize_with` THAT DOES
+    /// NOTHING BUT DELEGATE: without it, serde would make the field
+    /// optional ALL BY ITSELF, because it is of type `Option`. See
+    /// [`super::icone_obligatoire`] and the measurement transcribed there.
     #[serde(deserialize_with = "super::icone_obligatoire")]
     pub icone: Option<String>,
-    /// Toujours présent. Vaut [`SourceMax::NonMesuree`] quand `icone` est
-    /// `None`, et peut aussi le valoir quand `icone` existe — une icône dont
-    /// la provenance n'est pas lisible.
+    /// Always present. Is [`SourceMax::NonMesuree`] when `icone` is
+    /// `None`, and may also be so when `icone` exists — an icon whose
+    /// provenance is not readable.
     ///
-    /// ⚠️ La combinaison inverse — `icone` nul et une taille mesurée — est
-    /// INTERDITE, et aucun chemin ne l'écrit.
+    /// ⚠️ The reverse combination — `icone` null and a measured size — is
+    /// FORBIDDEN, and no path writes it.
     pub source_max: SourceMax,
-    /// La couleur DOMINANTE de l'icône, en `#rrggbb`, ou `None`.
+    /// The DOMINANT colour of the icon, as `#rrggbb`, or `None`.
     ///
-    /// 🔴 C'EST LA « COULEUR D'ACCENT » QUE LA CONCEPTION DE ④ DEMANDE AU §G5,
-    /// et elle est **PAR APPLICATION** — à ne pas confondre avec celle du
-    /// sous-projet ①, qui est **par FENÊTRE**, arrive en cours de session sur
-    /// le canal de contrôle WebRTC, et ne décrit pas la même chose. Les deux
-    /// se calculent par la même règle pure (`agent::accent::dominante`) ;
-    /// c'est leur SUJET qui diffère.
+    /// 🔴 IT IS THE "ACCENT COLOUR" THAT THE DESIGN OF ④ ASKS FOR IN §G5,
+    /// and it is **PER APPLICATION** — not to be confused with that of
+    /// sub-project ①, which is **per WINDOW**, arrives mid-session on
+    /// the WebRTC control channel, and does not describe the same thing. Both
+    /// are computed by the same pure rule (`agent::accent::dominante`);
+    /// it is their SUBJECT that differs.
     ///
-    /// ⚠️ `None` N'EST PAS UNE ERREUR : une icône trop pâle, trop sombre ou
-    /// trop transparente n'a pas de dominante, et `dominante` rend `None` par
-    /// construction (sa clause 5). Le manifeste OMET alors `theme_color`
-    /// plutôt que d'en inventer un.
+    /// ⚠️ `None` IS NOT AN ERROR: an icon too pale, too dark or
+    /// too transparent has no dominant, and `dominante` returns `None` by
+    /// construction (its clause 5). The manifest then OMITS `theme_color`
+    /// rather than inventing one.
     ///
-    /// 🔴 MÊME `deserialize_with` QUE `icone`, ET POUR LA MÊME RAISON : sans
-    /// lui, serde rendrait le champ facultatif TOUT SEUL parce qu'il est de
-    /// type `Option`, et un catalogue d'agent d'une autre version passerait
-    /// sans que rien ne le dise.
+    /// 🔴 SAME `deserialize_with` AS `icone`, AND FOR THE SAME REASON: without
+    /// it, serde would make the field optional ALL BY ITSELF because it is of
+    /// type `Option`, and an agent catalogue of another version would pass
+    /// without anything saying so.
     #[serde(deserialize_with = "super::icone_obligatoire")]
     pub accent: Option<String>,
-    /// Les extensions que cette application ouvre — minuscules, **avec** le
-    /// point, triées et dédupliquées.
+    /// The extensions this application opens — lowercase, **with** the
+    /// dot, sorted and deduplicated.
     ///
-    /// 🔴 DES EXTENSIONS, JAMAIS DES TYPES MIME (décision D13 du plan de G5).
-    /// Faire voyager le MIME doublerait la table — Rust **et** TypeScript —
-    /// pour une donnée qui n'est **pas une propriété de la VM** : c'est une
-    /// convention du Web. La carte extension → MIME vit **une seule fois**,
-    /// côté plateforme, à l'endroit qui écrit le manifeste.
+    /// 🔴 EXTENSIONS, NEVER MIME TYPES (decision D13 of the G5 plan).
+    /// Shipping the MIME would double the table — Rust **and** TypeScript —
+    /// for a datum that is **not a property of the VM**: it is a
+    /// Web convention. The extension → MIME map lives **only once**,
+    /// on the platform side, at the place that writes the manifest.
     ///
-    /// ⚠️ VIDE EST UN ÉTAT NORMAL, PAS UNE PANNE : la plupart des applications
-    /// n'ouvrent aucun type de fichier. Le champ reste PRÉSENT sur le fil.
+    /// ⚠️ EMPTY IS A NORMAL STATE, NOT A FAILURE: most applications
+    /// open no file type. The field stays PRESENT on the wire.
     ///
-    /// ⚠️ L'ORDRE EST IMPOSÉ PAR L'AGENT (`apps::associations::ranger`) et il
-    /// n'est pas décoratif : la plateforme compare le catalogue reçu à celui
-    /// qu'elle connaît, et deux listes IDENTIQUES dans un ordre différent la
-    /// feraient écrire à chaque tour.
+    /// ⚠️ THE ORDER IS IMPOSED BY THE AGENT (`apps::associations::ranger`) and it
+    /// is not decorative: the platform compares the received catalogue to the one
+    /// it knows, and two IDENTICAL sets in a different order would
+    /// make it write on every round.
     pub associations: Vec<String>,
 }
 
-/// Ce qu'un ordre de lancement a réellement fait.
+/// What a launch order really did.
 ///
-/// 🔴 `Raccourci` CONTRE `Cible` EST CE QUI REND LE CRITÈRE DE RECETTE
-/// DÉCIDABLE : lancer par la cible reconstruite au lieu du `.lnk` passerait un
-/// critère qui ne dirait que « quelque chose s'est lancé ». Nommer le chemin
-/// emprunté distingue les deux sans avoir à ruser.
+/// 🔴 `Raccourci` AGAINST `Cible` IS WHAT MAKES THE ACCEPTANCE CRITERION
+/// DECIDABLE: launching through the rebuilt target instead of the `.lnk` would pass a
+/// criterion that would only say "something launched". Naming the path
+/// taken tells the two apart without having to be clever.
 ///
-/// ⚠️ CE N'EST PAS UN [`super::MotifCanal`], et le réemployer serait un défaut :
-/// deux valeurs de `MotifCanal` FERMENT le socket, et un lancement raté ne
-/// doit fermer aucun canal.
+/// ⚠️ IT IS NOT A [`super::MotifCanal`], and reusing it would be a defect:
+/// two values of `MotifCanal` CLOSE the socket, and a failed launch must
+/// close no channel.
 ///
-/// ⚠️ **LACUNE DE COUVERTURE, INSCRITE PLUTÔT QUE SUBIE (recette G1, 20 août
-/// 2026).** Le `rename_all` ci-dessous est INOBSERVABLE sur cet enum : ses
-/// quatre variantes sont d'UN SEUL MOT, donc `kebab-case`, `snake_case`,
-/// `lowercase` et `camelCase` produisent tous les quatre mêmes chaînes.
-/// **Aucun test ne peut donc rougir si la convention de nommage change ici**
-/// — vérifié par mutation : remplacer `kebab-case` par `snake_case` sur cet
-/// enum laisse `cargo test -p proto` à **75 passed, 0 failed**.
+/// ⚠️ **COVERAGE GAP, RECORDED RATHER THAN ENDURED (G1 acceptance run, 20 August
+/// 2026).** The `rename_all` below is UNOBSERVABLE on this enum: its
+/// four variants are SINGLE-WORD, so `kebab-case`, `snake_case`,
+/// `lowercase` and `camelCase` all four produce the same strings.
+/// **No test can therefore turn red if the naming convention changes here**
+/// — checked by mutation: replacing `kebab-case` by `snake_case` on this
+/// enum leaves `cargo test -p proto` at **75 passed, 0 failed**.
 ///
-/// **Le contraste est mesuré sur le même module** : la même mutation appliquée
-/// à l'enum qui porte `BattementRecu` — deux mots, donc `battement-recu` contre
-/// `battement_recu` — fait ÉCHOUER `conformite_aux_vecteurs_partages`. La
-/// protection existe donc bel et bien pour les variantes composées, et pas pour
-/// celles-ci.
+/// **The contrast is measured on the same module**: the same mutation applied
+/// to the enum that carries `BattementRecu` — two words, so `battement-recu` against
+/// `battement_recu` — makes `conformance_to_the_shared_vectors` FAIL. The
+/// protection thus does exist for compound variants, and not for
+/// these ones.
 ///
-/// ✅ **ET LE SOUS-BLOC G2 EN AJOUTE UN SECOND TÉMOIN** : [`SourceMax`] porte
-/// `NonMesuree`, deux mots, dont la casse est éprouvée. **La lacune de CET
-/// enum-ci reste entière** — la première variante d'`IssueLancement` écrite en
-/// deux mots la refermera d'elle-même, et jusque-là toute modification de cette
-/// ligne doit être relue à la main.
+/// ✅ **AND SUB-BLOCK G2 ADDS A SECOND WITNESS**: [`SourceMax`] carries
+/// `NonMesuree`, two words, whose case is tested. **The gap of THIS
+/// enum stays whole** — the first variant of `IssueLancement` written in
+/// two words will close it by itself, and until then any change to this
+/// line must be reread by hand.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum IssueLancement {
-    /// Le `.lnk` lui-même a été exécuté. C'est le chemin nominal.
+    /// The `.lnk` itself was executed. It is the nominal path.
     Raccourci,
-    /// Le `.lnk` a échoué (disparu, illisible) et la cible enregistrée a pris
-    /// le relais.
+    /// The `.lnk` failed (gone, unreadable) and the recorded target took
+    /// over.
     Cible,
-    /// La clé n'est dans aucun catalogue de l'agent. Rendue par l'appelant,
-    /// qui seul connaît le catalogue courant.
+    /// The key is in no catalogue of the agent. Returned by the caller,
+    /// which alone knows the current catalogue.
     Inconnue,
-    /// Le raccourci ET la cible ont échoué. Les deux tentatives sont
-    /// journalisées : une issue typée, jamais un silence.
+    /// The shortcut AND the target failed. Both attempts are
+    /// logged: a typed outcome, never a silence.
     Echec,
 }

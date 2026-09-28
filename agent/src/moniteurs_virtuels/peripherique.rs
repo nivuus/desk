@@ -1,9 +1,9 @@
-//! Résolution du chemin du périphérique SudoVDA, par SetupAPI.
+//! Resolution of the SudoVDA device path, through SetupAPI.
 //!
-//! Séparé de `moniteurs.rs` — qui est le client une fois le périphérique
-//! ouvert — parce que c'est une autre affaire : celle de le TROUVER. Le patron
-//! d'énumération ci-dessous est celui, verbeux et plein de pièges, qu'impose
-//! SetupAPI ; il n'a rien à voir avec le dialogue IOCTL qui suit.
+//! Separated from `moniteurs.rs` — which is the client once the device
+//! is opened — because it is another matter: that of FINDING it. The
+//! enumeration pattern below is the verbose, trap-laden one
+//! SetupAPI imposes; it has nothing to do with the IOCTL dialogue that follows.
 
 use anyhow::{Context, Result};
 use windows::core::PCWSTR;
@@ -15,20 +15,20 @@ use windows::Win32::Devices::DeviceAndDriverInstallation::{
 
 use crate::moniteurs_virtuels::sudovda::INTERFACE_PILOTE;
 
-/// Libère la liste d'informations de périphériques sur TOUS les chemins, y
-/// compris les sorties en erreur — SetupAPI ne pardonne pas les fuites de
-/// `HDEVINFO`, et il y a quatre `?` entre son ouverture et sa fermeture.
-struct ListeDePeripheriques(HDEVINFO);
+/// Frees the device information list on ALL paths,
+/// including error exits — SetupAPI does not forgive leaks of
+/// `HDEVINFO`, and there are four `?` between its opening and its closing.
+struct DeviceInfoList(HDEVINFO);
 
-impl Drop for ListeDePeripheriques {
+impl Drop for DeviceInfoList {
     fn drop(&mut self) {
         let _ = unsafe { SetupDiDestroyDeviceInfoList(self.0) };
     }
 }
 
-/// Résout le chemin `\\?\…` du périphérique qui expose `INTERFACE_PILOTE`.
+/// Resolves the `\\?\…` path of the device that exposes `INTERFACE_PILOTE`.
 pub(super) fn chemin_du_peripherique() -> Result<Vec<u16>> {
-    let liste = ListeDePeripheriques(
+    let list = DeviceInfoList(
         unsafe {
             SetupDiGetClassDevsW(
                 Some(&INTERFACE_PILOTE),
@@ -37,58 +37,58 @@ pub(super) fn chemin_du_peripherique() -> Result<Vec<u16>> {
                 DIGCF_PRESENT | DIGCF_DEVICEINTERFACE,
             )
         }
-        .context("énumération des périphériques exposant l'interface SudoVDA")?,
+        .context("enumerating the devices exposing the SudoVDA interface")?,
     );
 
-    // Index 0 : le pilote n'expose qu'une instance de cette interface (un seul
-    // device node `ROOT\DISPLAY\0003`). Si un jour il y en avait plusieurs, ce
-    // serait un fait à relever avant de choisir — pas à trancher en silence.
+    // Index 0: the driver only exposes one instance of this interface (a single
+    // device node `ROOT\DISPLAY\0003`). If one day there were several, it
+    // would be a fact to note before choosing — not to settle silently.
     let mut interface = SP_DEVICE_INTERFACE_DATA {
         cbSize: std::mem::size_of::<SP_DEVICE_INTERFACE_DATA>() as u32,
         ..Default::default()
     };
-    unsafe { SetupDiEnumDeviceInterfaces(liste.0, None, &INTERFACE_PILOTE, 0, &mut interface) }
+    unsafe { SetupDiEnumDeviceInterfaces(list.0, None, &INTERFACE_PILOTE, 0, &mut interface) }
         .context(
-            "aucun périphérique ne présente l'interface SudoVDA — pilote absent, \
-             désactivé, ou device node non créé",
+            "no device presents the SudoVDA interface — driver missing, \
+             disabled, or device node not created",
         )?;
 
-    // Patron imposé par SetupAPI : un premier appel pour la taille (qui échoue
-    // toujours en `ERROR_INSUFFICIENT_BUFFER`, d'où l'erreur ignorée), un
-    // second pour le contenu.
+    // Pattern imposed by SetupAPI: a first call for the size (which always
+    // fails with `ERROR_INSUFFICIENT_BUFFER`, hence the ignored error), a
+    // second for the content.
     let mut requis = 0u32;
     let _ = unsafe {
-        SetupDiGetDeviceInterfaceDetailW(liste.0, &interface, None, 0, Some(&mut requis), None)
+        SetupDiGetDeviceInterfaceDetailW(list.0, &interface, None, 0, Some(&mut requis), None)
     };
     let entete = std::mem::size_of::<SP_DEVICE_INTERFACE_DETAIL_DATA_W>();
     anyhow::ensure!(
         requis as usize > entete,
-        "taille de détail d'interface aberrante ({requis} octets)"
+        "aberrant interface detail size ({requis} bytes)"
     );
 
-    // Tampon en `u32` et non en `u8` : `SP_DEVICE_INTERFACE_DETAIL_DATA_W`
-    // s'aligne sur 4, et `Vec<u8>` ne garantit que 1. Le `cbSize` à écrire est
-    // celui de l'en-tête seul (8 sur x64), jamais celui du tampon — c'est la
-    // convention de SetupAPI, contre-intuitive et source classique de
+    // Buffer in `u32` and not in `u8`: `SP_DEVICE_INTERFACE_DETAIL_DATA_W`
+    // aligns on 4, and `Vec<u8>` only guarantees 1. The `cbSize` to write is
+    // that of the header alone (8 on x64), never that of the buffer — it is
+    // SetupAPI's convention, counter-intuitive and a classic source of
     // `ERROR_INVALID_USER_BUFFER`.
     let mut tampon = vec![0u32; requis.div_ceil(4) as usize];
     let detail = tampon.as_mut_ptr() as *mut SP_DEVICE_INTERFACE_DETAIL_DATA_W;
     unsafe { (*detail).cbSize = entete as u32 };
     unsafe {
-        SetupDiGetDeviceInterfaceDetailW(liste.0, &interface, Some(detail), requis, None, None)
+        SetupDiGetDeviceInterfaceDetailW(list.0, &interface, Some(detail), requis, None, None)
     }
-    .context("lecture du chemin du périphérique SudoVDA")?;
+    .context("reading the SudoVDA device path")?;
 
-    // `DevicePath` est déclaré `[u16; 1]` mais se prolonge jusqu'au NUL au-delà
-    // de la fin nominale de la structure : c'est un tableau de longueur
-    // variable à la mode C, il faut le lire à la main.
+    // `DevicePath` is declared `[u16; 1]` but extends up to the NUL beyond
+    // the nominal end of the structure: it is a C-style variable-length
+    // array, it must be read by hand.
     //
-    // Le nombre d'unités lisibles se compte depuis l'OFFSET de `DevicePath`
-    // (4 octets, juste après `cbSize`) et NON depuis `entete` (8 octets, qui
-    // inclut le remplissage d'alignement de fin de structure). L'écart est
-    // d'exactement deux octets, soit une unité UTF-16 : partir d'`entete`
-    // amputait le chemin de son terminateur nul et faisait échouer la
-    // résolution — constaté à la première exécution réelle de la sonde.
+    // The number of readable units is counted from the OFFSET of `DevicePath`
+    // (4 bytes, right after `cbSize`) and NOT from `entete` (8 bytes, which
+    // includes the structure's trailing alignment padding). The gap is
+    // exactly two bytes, that is one UTF-16 unit: starting from `entete`
+    // cut the path's null terminator off and made the
+    // resolution fail — found at the probe's first real run.
     let offset_chemin = std::mem::offset_of!(SP_DEVICE_INTERFACE_DETAIL_DATA_W, DevicePath);
     let debut = unsafe { (*detail).DevicePath.as_ptr() };
     let maximum = (requis as usize - offset_chemin) / 2;
@@ -100,5 +100,5 @@ pub(super) fn chemin_du_peripherique() -> Result<Vec<u16>> {
             return Ok(chemin);
         }
     }
-    anyhow::bail!("chemin de périphérique SudoVDA sans terminateur nul");
+    anyhow::bail!("SudoVDA device path without a null terminator");
 }

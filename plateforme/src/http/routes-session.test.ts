@@ -1,15 +1,15 @@
-// `POST /session` : l'enchaînement de la spec §4 — l'utilisateur demande une
-// session, la plateforme vérifie l'attribution ET la fraîcheur, et rend le
-// préfixe.
+// `POST /session`: the sequence of spec §4 — the user asks for a
+// session, the platform checks the assignment AND the freshness, and returns the
+// prefix.
 //
-// 🔴 LES CRITÈRES ③ ET ④ SONT DANS CE FICHIER, et chacune de leurs assertions
-// a son propre `it()` : `expect` interrompt un test à la première assertion
-// fausse, si bien qu'une seconde assertion placée à côté ne serait éprouvée
-// par rien (leçon ①A/①A-bis de P2).
+// 🔴 CRITERIA ③ AND ④ ARE IN THIS FILE, and each of their assertions
+// has its own `it()`: `expect` interrupts a test at the first false
+// assertion, so that a second assertion placed next to it would be tested
+// by nothing (lesson ①A/①A-bis of P2).
 //
-// ⚠️ DIX TESTS ET NON LES NEUF DU PLAN, annoncé avant d'être lu : la requête
-// préalable `OPTIONS`, sans laquelle la route est inatteignable depuis un
-// navigateur (même défaut de plan qu'à la tâche 9).
+// ⚠️ TEN TESTS AND NOT THE PLAN'S NINE, announced before being read: the
+// `OPTIONS` preflight request, without which the route is unreachable from a
+// browser (same plan defect as in task 9).
 
 import { afterEach, describe, expect, it } from 'vitest';
 import { createServer, type Server } from 'node:http';
@@ -17,7 +17,7 @@ import { baseNeuve, MOTEUR } from '../base/harnais';
 import type { Pilote } from '../base/pilote';
 import { SEUIL_INJOIGNABLE_MS } from '../agents/fraicheur';
 import { enroler, marquerVu } from '../depot/agent';
-import { creerUtilisateur } from '../depot/utilisateur';
+import { createUser } from '../depot/utilisateur';
 import { signer } from '../identite/jeton';
 import { BACKEND_STATIQUE } from '../orchestration/refus';
 import { Frein, REQUETES_MAX_ADRESSE } from '../securite/frein';
@@ -27,26 +27,26 @@ const SECRET = 'un-secret-de-plateforme-de-quarante-octets';
 const ORIGINE = 'http://127.0.0.1:5173';
 const MS = 1_787_136_773_742;
 
-/// 🔴 CETTE BORNE A ÉTÉ MESURÉE AVANT D'ÊTRE ÉCRITE, jamais devinée. Le
-/// protocole est celui du plan : une requête de CHAUFFE d'abord — la première
-/// requête d'un test porte l'établissement de connexion, qui n'est pas ce
-/// qu'on mesure —, puis dix requêtes chronométrées.
+/// 🔴 THIS BOUND WAS MEASURED BEFORE BEING WRITTEN, never guessed. The
+/// protocol is the plan's: a WARM-UP request first — the first
+/// request of a test carries the connection establishment, which is not what
+/// is being measured —, then ten timed requests.
 ///
-/// RELEVÉ le 20 août 2026 sur cette machine, par le test lui-même instrumenté
-/// puis restauré — QUATRE exécutions, pire cas de chacune :
+/// RECORDED on 20 August 2026 on this machine, by the test itself instrumented
+/// then restored — FOUR runs, worst case of each:
 ///
-///     sqlite   : 3,49 ms   puis 5,93 ms
-///     postgres : 7,27 ms   puis 18,73 ms
+///     sqlite   : 3.49 ms   then 5.93 ms
+///     postgres : 7.27 ms   then 18.73 ms
 ///
-/// Pire relevé toutes exécutions confondues : **18,73 ms**, sous Postgres. La
-/// borne de 250 ms est **13,3 fois** ce pire cas, et **8 fois en dessous** des
-/// 2 000 ms que la mutation de ③b insère — les deux marges comptent : la
-/// première évite un test instable, la seconde garantit que le contrôle PEUT
-/// échouer. Une borne posée sans avoir été mesurée serait un contrôle dont on
-/// ignore s'il peut échouer, patron que ce dépôt a payé quatre fois.
+/// Worst recorded across all runs: **18.73 ms**, under Postgres. The
+/// 250 ms bound is **13.3 times** this worst case, and **8 times below** the
+/// 2,000 ms the mutation of ③b inserts — both margins count: the
+/// first avoids a flaky test, the second guarantees that the check CAN
+/// fail. A bound set without having been measured would be a check one
+/// does not know can fail, a pattern this repository has paid for four times.
 ///
-/// ⚠️ QUATRE EXÉCUTIONS NE SONT PAS UN TAUX, et la machine porte une charge
-/// étrangère variable : ce chiffre borne ce qui a été observé, rien de plus.
+/// ⚠️ FOUR RUNS ARE NOT A RATE, and the machine carries a variable
+/// foreign load: this figure bounds what was observed, nothing more.
 const BORNE_MS = 250;
 
 let base: Pilote | undefined;
@@ -59,11 +59,11 @@ afterEach(async () => {
     base = undefined;
 });
 
-/// L'horloge est INJECTÉE : c'est ce qui rend la transition du critère ④c
-/// observable. Un `Date.now()` lu dans le module ne laisserait qu'un instant.
+/// The clock is INJECTED: it is what makes the transition of criterion ④c
+/// observable. A `Date.now()` read in the module would leave only one instant.
 ///
-/// ⚠️ `frein` EST UN PARAMÈTRE, DÉFAUT NEUF PAR APPEL : chaque test isole
-/// ainsi son propre budget, sans qu'aucun ne puisse en épuiser un autre.
+/// ⚠️ `frein` IS A PARAMETER, FRESH BY DEFAULT PER CALL: each test thus
+/// isolates its own budget, without any being able to exhaust another's.
 async function servir(
     nom: string,
     instant = MS,
@@ -84,7 +84,7 @@ async function servir(
             .then((servie) => {
                 if (servie) return;
                 rep.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' });
-                rep.end('introuvable\n');
+                rep.end('not found\n');
             })
             .catch((cause) => {
                 rep.writeHead(500, { 'content-type': 'application/json; charset=utf-8' });
@@ -103,7 +103,7 @@ async function poserVm(p: Pilote, id: string, nom: string, prefixe: string, vuA:
 }
 
 async function attribuer(p: Pilote, vmId: string, email: string): Promise<string> {
-    const u = await creerUtilisateur(p, email, 'empreinte-opaque-de-test', MS);
+    const u = await createUser(p, email, 'empreinte-opaque-de-test', MS);
     await p.executer('UPDATE vm SET utilisateur_id = ? WHERE id = ?', [u, vmId]);
     return u;
 }
@@ -119,31 +119,31 @@ async function corpsDe(r: Response): Promise<Record<string, unknown>> {
     return (await r.json()) as Record<string, unknown>;
 }
 
-describe(`route POST /session, moteur=${MOTEUR}`, () => {
-    it('sans jeton → 401', async () => {
-        // 🔴 La rouge : servir sans jeton. Le préfixe d'une VM serait délivré à
-        // n'importe qui.
+describe(`route POST /session, engine=${MOTEUR}`, () => {
+    it('without a token → 401', async () => {
+        // 🔴 The red: serving without a token. A VM's prefix would be delivered to
+        // anyone.
         const url = await servir('rs-401');
         const r = await demander(url);
         expect(r.status).toBe(401);
         expect((await corpsDe(r)).refus).toBe('jeton-absent');
     });
 
-    it('🔴 avec un jeton d’AGENT → 403', async () => {
-        // ⚠️ `it()` DISTINCT du précédent : le plan les range dans une seule
-        // ligne, mais ce sont deux refus par deux chemins différents.
-        // 🔴 La rouge : accepter le type `agent`.
+    it('🔴 with an AGENT token → 403', async () => {
+        // ⚠️ `it()` DISTINCT from the previous one: the plan puts them on a single
+        // line, but they are two refusals through two different paths.
+        // 🔴 The red: accepting the `agent` type.
         const url = await servir('rs-403');
         const r = await demander(url, signer('PREFIXEdelaVM', SECRET, MS, undefined, 'agent'));
         expect(r.status).toBe(403);
         expect((await corpsDe(r)).refus).toBe('jeton-agent');
     });
 
-    it('🔴 succès → 200 { vm, nom, prefixe, etat }', async () => {
-        // 🔴 La rouge : omettre `prefixe`. C'est LA source que P3 attend —
-        // `client/src/prefixe.ts` dit en toutes lettres « P4 branchera la
-        // source, et n'aura qu'à écrire dans le coffre ». Sans elle, tout le
-        // sous-bloc ne livre rien au navigateur.
+    it('🔴 success → 200 { vm, nom, prefixe, etat }', async () => {
+        // 🔴 The red: omitting `prefixe`. It is THE source P3 waits for —
+        // `client/src/prefixe.ts` says in so many words "P4 will plug in the
+        // source, and will only have to write into the vault". Without it, the whole
+        // sub-block delivers nothing to the browser.
         const url = await servir('rs-ok');
         await poserVm(base!, 'v1', 'w1', 'PREFIXEv1', MS);
         const alice = await attribuer(base!, 'v1', 'alice@exemple.test');
@@ -157,24 +157,24 @@ describe(`route POST /session, moteur=${MOTEUR}`, () => {
         });
     });
 
-    it('🔴 le corps ne porte NI `ice`, NI `adresse`, NI nom de session composé', async () => {
-        // 🔴 La rouge : les ajouter (D7). ⚠️ `it()` DISTINCT du précédent.
+    it('🔴 the body carries NEITHER `ice`, NOR `adresse`, NOR a composed session name', async () => {
+        // 🔴 The red: adding them (D7). ⚠️ `it()` DISTINCT from the previous one.
         //
-        // `ice` : la configuration ICE est PAR SESSION — `signaling/ice.ts`
-        // compose `${expiration}:${session}` et signe le tout. Une VM ouvre
-        // `<préfixe>:bureau` PLUS une session par fenêtre : la route n'en
-        // connaîtrait qu'une sur N, et le relais continuerait de servir toutes
-        // les autres. Un second chemin de délivrance qui couvre une session sur
-        // N n'est pas une simplification, c'est un second endroit à garder
-        // synchrone dont on n'a pas le droit de se servir.
+        // `ice`: the ICE configuration is PER SESSION — `signaling/ice.ts`
+        // composes `${expiration}:${session}` and signs the whole. A VM opens
+        // `<prefix>:bureau` PLUS one session per window: the route would only
+        // know one out of N, and the relay would keep serving all
+        // the others. A second delivery path that covers one session out of
+        // N is not a simplification, it is a second place to keep
+        // in sync that one has no right to use.
         //
-        // `bureau` : la constante vit déjà en Rust et, côté TypeScript, en
-        // littéral inline (`client/src/bureau/porteur-dom.ts` fait
-        // `composer(deps.prefixe, 'bureau')` — un `shell-page.ts` qui le
-        // nommait a été retiré à la tâche 9, 31 août 2026), et la spec §2.6
-        // nomme déjà cette duplication comme un défaut connu. En ajouter une
-        // TROISIÈME pour économiser une concaténation au navigateur serait
-        // aggraver un défaut qu'on sait nommer.
+        // `bureau`: the constant already lives in Rust and, on the TypeScript side, as an
+        // inline literal (`client/src/bureau/porteur-dom.ts` does
+        // `composer(deps.prefixe, 'bureau')` — a `shell-page.ts` that
+        // named it was removed in task 9, 31 August 2026), and spec §2.6
+        // already names this duplication as a known defect. Adding a
+        // THIRD one to save the browser a concatenation would be
+        // worsening a defect one knows how to name.
         const url = await servir('rs-sobre');
         await poserVm(base!, 'v1', 'w1', 'PREFIXEv1', MS);
         const alice = await attribuer(base!, 'v1', 'alice@exemple.test');
@@ -183,39 +183,39 @@ describe(`route POST /session, moteur=${MOTEUR}`, () => {
         for (const interdit of ['ice', 'iceServers', 'ice_config', 'adresse', 'session']) {
             expect(corps[interdit]).toBeUndefined();
         }
-        // Et le préfixe est NU : jamais `PREFIXEv1:bureau`.
+        // And the prefix is BARE: never `PREFIXEv1:bureau`.
         expect(corps.prefixe).toBe('PREFIXEv1');
         expect(String(corps.prefixe)).not.toContain(':');
     });
 
-    it('🔴 ③a — un utilisateur SANS VM → 409 { motif: aucune-vm }', async () => {
-        // 🔴 La rouge : rendre 200 avec une liste vide. Un listing vide n'est
-        // PAS un refus : le navigateur écrirait une chaîne vide dans le coffre,
-        // `lirePrefixe` retomberait sur `''`, et la page rejoindrait
-        // SILENCIEUSEMENT l'espace de noms partagé — la panne muette exacte que
-        // la spec §10 nomme.
-        const url = await servir('rs-aucune');
+    it('🔴 ③a — a user WITHOUT a VM → 409 { motif: aucune-vm }', async () => {
+        // 🔴 The red: returning 200 with an empty list. An empty listing is
+        // NOT a refusal: the browser would write an empty string into the vault,
+        // `lirePrefixe` would fall back to `''`, and the page would
+        // SILENTLY join the shared namespace — the exact silent failure
+        // spec §10 names.
+        const url = await servir('rs-none');
         await poserVm(base!, 'v1', 'w1', 'PREFIXEv1', MS);
         await attribuer(base!, 'v1', 'bob@exemple.test');
-        const carole = await creerUtilisateur(base!, 'carole@exemple.test', 'e', MS);
+        const carole = await createUser(base!, 'carole@exemple.test', 'e', MS);
         const r = await demander(url, signer(carole, SECRET, MS));
         expect(r.status).toBe(409);
         expect((await corpsDe(r)).motif).toBe('aucune-vm');
     });
 
-    it('🔴 ③b — la réponse arrive SOUS LA BORNE mesurée', async () => {
-        // 🔴 La rouge : insérer `await new Promise(r => setTimeout(r, 2000))`
-        // dans la route. MESURÉE ATTEIGNABLE — la borne est un ordre de
-        // grandeur au-dessus du pire relevé et très en dessous de 2 000 ms.
+    it('🔴 ③b — the response arrives UNDER THE measured BOUND', async () => {
+        // 🔴 The red: inserting `await new Promise(r => setTimeout(r, 2000))`
+        // into the route. MEASURED REACHABLE — the bound is an order of
+        // magnitude above the worst recorded and far below 2,000 ms.
         //
-        // ⚠️ UNE REQUÊTE DE CHAUFFE PRÉCÈDE LA MESURE : la première requête
-        // porte l'établissement de connexion, qui n'est pas ce qu'on mesure.
+        // ⚠️ A WARM-UP REQUEST PRECEDES THE MEASUREMENT: the first request
+        // carries the connection establishment, which is not what is measured.
         const url = await servir('rs-borne');
         await poserVm(base!, 'v1', 'w1', 'PREFIXEv1', MS);
         const alice = await attribuer(base!, 'v1', 'alice@exemple.test');
         const jeton = signer(alice, SECRET, MS);
 
-        await demander(url, jeton); // chauffe, non mesurée
+        await demander(url, jeton); // warm-up, not measured
 
         let pire = 0;
         for (let i = 0; i < 10; i += 1) {
@@ -228,10 +228,10 @@ describe(`route POST /session, moteur=${MOTEUR}`, () => {
         expect(pire).toBeLessThan(BORNE_MS);
     });
 
-    it('🔴 ④a — une VM dont `vu_a` est trop vieux → 503, corps portant `etat: injoignable`', async () => {
-        // 🔴 La rouge : masquer derrière un `{motif:'reessayez'}` générique.
-        // L'utilisateur doit savoir que SA VM ne répond pas, et non croire à
-        // une indisponibilité du service.
+    it('🔴 ④a — a VM whose `vu_a` is too old → 503, body carrying `etat: injoignable`', async () => {
+        // 🔴 The red: hiding behind a generic `{motif:'reessayez'}`.
+        // The user must know that THEIR VM does not answer, and not believe in
+        // an unavailability of the service.
         const url = await servir('rs-injoignable', MS + SEUIL_INJOIGNABLE_MS + 1);
         await poserVm(base!, 'v1', 'w1', 'PREFIXEv1', MS);
         const alice = await attribuer(base!, 'v1', 'alice@exemple.test');
@@ -240,20 +240,20 @@ describe(`route POST /session, moteur=${MOTEUR}`, () => {
         const corps = await corpsDe(r);
         expect(corps.motif).toBe('agent-injoignable');
         expect(corps.etat).toBe('injoignable');
-        // Le préfixe est rendu QUAND MÊME : il est connu et juste, et le
-        // navigateur en a besoin pour ne pas rejoindre l'espace partagé.
+        // The prefix is returned ANYWAY: it is known and correct, and the
+        // browser needs it so as not to join the shared namespace.
         expect(corps.prefixe).toBe('PREFIXEv1');
     });
 
-    it('🔴 ④b — le MÊME corps porte `redemarrage: { possible:false, … }`', async () => {
-        // 🔴 La rouge : retirer le champ. ⚠️ `it()` DISTINCT de ④a, et c'est
-        // exactement le « et dit qu'elle ne sait pas la redémarrer » du
-        // critère : `expect` s'arrêterait à la première assertion de ④a.
+    it('🔴 ④b — the SAME body carries `redemarrage: { possible:false, … }`', async () => {
+        // 🔴 The red: removing the field. ⚠️ `it()` DISTINCT from ④a, and it is
+        // exactly the "and says it cannot restart it" of the
+        // criterion: `expect` would stop at the first assertion of ④a.
         //
-        // C'est l'AVEU, pas la fonction : le cadrage promet « propose
-        // redémarrage », et le backend v1 ne pilote aucun hyperviseur. Le dire
-        // vaut mieux que de ne rien dire (D3, « conséquence produit à
-        // assumer »).
+        // It is the ADMISSION, not the feature: the framing promises "offers
+        // a restart", and the v1 backend drives no hypervisor. Saying so
+        // is better than saying nothing (D3, "product consequence to
+        // own").
         const url = await servir('rs-redemarrage', MS + SEUIL_INJOIGNABLE_MS + 1);
         await poserVm(base!, 'v1', 'w1', 'PREFIXEv1', MS);
         const alice = await attribuer(base!, 'v1', 'alice@exemple.test');
@@ -265,16 +265,16 @@ describe(`route POST /session, moteur=${MOTEUR}`, () => {
         });
     });
 
-    it('🔴 ④c — la TRANSITION est vue : 200 à vu_a + SEUIL, 503 une ms plus tard', async () => {
-        // 🔴 La rouge : figer l'horloge injectée. La borne ne serait plus
-        // assiégée des deux côtés, et un seuil jamais franchi ne prouve rien.
-        // ⚠️ `it()` DISTINCT : c'est une propriété de BORNE, pas de corps.
+    it('🔴 ④c — the TRANSITION is seen: 200 at vu_a + THRESHOLD, 503 one ms later', async () => {
+        // 🔴 The red: freezing the injected clock. The bound would no longer be
+        // besieged from both sides, and a threshold never crossed proves nothing.
+        // ⚠️ `it()` DISTINCT: it is a property of the BOUND, not of the body.
         const juste = await servir('rs-borne-prete', MS + SEUIL_INJOIGNABLE_MS);
         await poserVm(base!, 'v1', 'w1', 'PREFIXEv1', MS);
         const alice = await attribuer(base!, 'v1', 'alice@exemple.test');
         expect((await demander(juste, signer(alice, SECRET, MS))).status).toBe(200);
 
-        // Un second service, une milliseconde plus tard.
+        // A second service, one millisecond later.
         await new Promise<void>((r) => http!.close(() => r()));
         http = undefined;
         await base!.fermer();
@@ -285,11 +285,11 @@ describe(`route POST /session, moteur=${MOTEUR}`, () => {
         expect((await demander(apres, signer(alice2, SECRET, MS))).status).toBe(503);
     });
 
-    it('🔴 la requête préalable `OPTIONS` est servie', async () => {
-        // 🔴 Même défaut de plan qu'à la tâche 9, relevé et non recopié :
-        // `POST /session` porte `Authorization`, donc la requête est NON
-        // SIMPLE, donc le navigateur émet d'abord un `OPTIONS`. Un 404 le
-        // ferait abandonner avant d'envoyer la vraie requête.
+    it('🔴 the `OPTIONS` preflight request is served', async () => {
+        // 🔴 Same plan defect as in task 9, found and not copied:
+        // `POST /session` carries `Authorization`, so the request is NON-
+        // SIMPLE, so the browser first emits an `OPTIONS`. A 404 would
+        // make it give up before sending the real request.
         const url = await servir('rs-options', MS, ORIGINE);
         const r = await fetch(`${url}/session`, {
             method: 'OPTIONS',
@@ -300,18 +300,18 @@ describe(`route POST /session, moteur=${MOTEUR}`, () => {
         expect(r.headers.get('access-control-allow-headers')).toContain('authorization');
     });
 
-    it('🔴 le budget « toute requête » freine `POST /session` après trop de requêtes de la même adresse', async () => {
-        // 🔴 La rouge : ne jamais consulter `BUDGET_REQUETES`. Sans jeton,
-        // chaque requête rendrait 401 indéfiniment — cette route n'a aucune
-        // notion d'échec (voir `securite/frein.ts`).
+    it('🔴 the « any request » budget brakes `POST /session` after too many requests from the same address', async () => {
+        // 🔴 The red: never consulting `BUDGET_REQUETES`. Without a token,
+        // each request would return 401 forever — this route has no
+        // notion of failure (see `securite/frein.ts`).
         const url = await servir('rs-frein-requetes');
-        let dernier: Response | undefined;
+        let last: Response | undefined;
         for (let i = 0; i < REQUETES_MAX_ADRESSE + 1; i++) {
-            dernier = await demander(url);
+            last = await demander(url);
         }
-        expect(dernier!.status).toBe(429);
-        expect((await corpsDe(dernier!)).refus).toBe('trop-de-requetes');
-        const retry = dernier!.headers.get('retry-after');
+        expect(last!.status).toBe(429);
+        expect((await corpsDe(last!)).refus).toBe('trop-de-requetes');
+        const retry = last!.headers.get('retry-after');
         expect(retry).not.toBeNull();
         expect(Number(retry)).toBeGreaterThan(0);
     });

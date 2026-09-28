@@ -1,34 +1,34 @@
 #!/usr/bin/env bash
 #
-# Enchaîne toutes les vérifications du projet en une seule commande, dans
-# l'ordre : tests Rust, lint Rust, tests et typage TypeScript (client, proto,
-# puis plateforme). Il joue les DIX étapes jusqu'au bout, même après une
-# rouge, et récapitule à la fin celles qui ont échoué — voir l'encadré posé
-# sur `echecs` plus bas, qui dit ce que cet arbitrage a coûté quand il était
-# inverse.
+# Chains all the checks of the project in a single command, in
+# order: Rust tests, Rust lint, TypeScript tests and typing (client, proto,
+# then plateforme). It plays the TEN steps to the end, even after a
+# red, and sums up at the end the ones that failed — see the box placed
+# on `echecs` below, which says what this trade-off cost when it was
+# the other way round.
 #
-# Pourquoi ce script existe : c'est le seul endroit du projet qui vérifie le
-# typage TypeScript strict. `npm test` (Vitest) et `npm run build` (Vite)
-# reposent tous deux sur esbuild, qui transpile sans jamais vérifier les
-# types — un fichier peut donc avoir des tests entièrement verts avec un
-# typage cassé. Pendant le chantier B (« Input jeu »), deux revues
-# successives ont approuvé une tâche sur cette seule base, alors que
-# `tsc --noEmit` échouait avec deux erreurs situées dans du code de
-# production. Ce script existe pour que ça ne se reproduise pas.
+# Why this script exists: it is the only place in the project that checks
+# strict TypeScript typing. `npm test` (Vitest) and `npm run build` (Vite)
+# both rest on esbuild, which transpiles without ever checking
+# types — a file can thus have entirely green tests with
+# broken typing. During work item B ("Game input"), two
+# successive reviews approved a task on that basis alone, while
+# `tsc --noEmit` failed with two errors located in
+# production code. This script exists so that it does not happen again.
 #
-# ⚠️ CE SCRIPT DÉPEND D'UNE INSTANCE POSTGRES, et c'est VOULU. `plateforme`
-# éprouve son sous-ensemble SQL contre les DEUX moteurs, et un saut est un
-# échec (spec §7.1 du sous-projet ⑤) : si l'instance est absente, l'étape
-# `plateforme : npm run test:postgres` ÉCHOUE — elle ne se saute pas avec un
-# avertissement. Un test qui disparaît quand sa dépendance manque rend vert un
-# état qu'il n'a pas mesuré. La lancer :
+# ⚠️ THIS SCRIPT DEPENDS ON A POSTGRES INSTANCE, and that is INTENDED. `plateforme`
+# exercises its SQL subset against BOTH engines, and a skip is a
+# failure (spec §7.1 of sub-project ⑤): if the instance is missing, the step
+# `plateforme: npm run test:postgres` FAILS — it is not skipped with a
+# warning. A test that vanishes when its dependency is missing turns green a
+# state it did not measure. To launch it:
 #
 #     docker compose -f docker-compose.plateforme.yml up -d
 #
-# Jusqu'au sous-bloc P1 (19 août 2026), le service de signaling était HORS de
-# ce filet : ses tests n'étaient joués par aucune étape, et son paquet ne
-# déclarait même pas de script `typecheck`. C'est la lacune que les trois
-# étapes `plateforme` ferment.
+# Until sub-block P1 (19 August 2026), the signaling service was OUTSIDE
+# this net: its tests were played by no step, and its package did not
+# even declare a `typecheck` script. That is the gap the three
+# `plateforme` steps close.
 
 set -euo pipefail
 
@@ -40,27 +40,27 @@ etape() {
     echo "==> $1"
 }
 
-# 🔴 LE SCRIPT NE S'ARRÊTE PLUS AU PREMIER ÉCHEC, ET C'EST UN ARBITRAGE, PAS
-# UNE ÉVIDENCE. Il s'arrêtait ; le 20 août 2026, une seule étape rouge
-# (`plateforme : npm run test:sqlite`) a masqué les DEUX dernières —
-# `test:postgres` et `typecheck` — pendant toute la durée du défaut. Personne
-# ne savait si elles étaient vertes : elles n'étaient pas mesurées. Un échec
-# précoce coûtait donc DEUX pertes, la sienne et celle de tout l'aval.
+# 🔴 THE SCRIPT NO LONGER STOPS AT THE FIRST FAILURE, AND THAT IS A TRADE-OFF, NOT
+# A GIVEN. It used to stop; on 20 August 2026, a single red step
+# (`plateforme: npm run test:sqlite`) hid the LAST TWO —
+# `test:postgres` and `typecheck` — for the whole duration of the defect. Nobody
+# knew whether they were green: they were not measured. An early
+# failure thus cost TWO losses, its own and that of everything downstream.
 #
-# Ce que l'arrêt achetait — la rapidité — ne vaut presque rien ici : la chaîne
-# entière tourne en ~30 s tout en cache (mesuré). Ce qu'il coûtait est le
-# verdict lui-même : une barrière qui ne rend qu'une ligne sur dix ne dit pas
-# l'état de l'arbre, elle dit l'état de sa première marche.
+# What stopping bought — speed — is worth almost nothing here: the whole
+# chain runs in ~30 s fully cached (measured). What it cost is the
+# verdict itself: a barrier that reports only one line out of ten does not tell
+# the state of the tree, it tells the state of its first step.
 #
-# Les dix étapes sont INDÉPENDANTES — chacune est un `(cd X && …)` autonome,
-# et aucune ne consomme la sortie d'une autre —, donc continuer après une
-# rouge ne mesure rien de faux. Le statut de sortie reste 1 dès qu'une seule a
-# échoué : ce n'est pas une barrière qu'on adoucit, c'est une barrière qui
-# rend enfin le compte de tout ce qu'elle a mesuré.
+# The ten steps are INDEPENDENT — each is a self-contained `(cd X && …)`,
+# and none consumes the output of another —, so continuing after a
+# red measures nothing wrong. The exit status stays 1 as soon as a single one has
+# failed: it is not a barrier being softened, it is a barrier that
+# finally reports everything it measured.
 echecs=()
 
 echec() {
-    echo "ÉCHEC : $1" >&2
+    echo "FAILED: $1" >&2
     echecs+=("$1")
 }
 
@@ -68,55 +68,55 @@ etape "cargo test --workspace"
 cargo test --workspace || echec "cargo test --workspace"
 
 etape "cargo clippy --workspace"
-# Sans -D warnings : le workspace porte 33 avertissements dead_code
-# préexistants, mesurés le 30 juillet 2026 (chantier de réduction de la dette
-# de taille des fichiers) — le chiffre de 31 hérité du chantier B n'avait
-# jamais été remesuré depuis. Tous dus à du code compilé pour Windows ou par
-# les tests mais invisible à un lint Linux ordinaire (`geometry.rs`,
+# Without -D warnings: the workspace carries 33 pre-existing dead_code
+# warnings, measured on 30 July 2026 (file size debt reduction
+# work item) — the figure of 31 inherited from work item B had
+# never been measured again since. All due to code compiled for Windows or by
+# the tests but invisible to an ordinary Linux lint (`geometry.rs`,
 # `opus.rs`, `rebuild.rs`, `gamepad.rs`, `cursor.rs`, `audio.rs`,
 # `diagnostics/entree.rs`, `transport/piste_audio.rs::set_audio_source`...).
-# Les corriger n'est pas le rôle de ce script ; les masquer avec -D warnings
-# le serait encore moins — on les laisse visibles, sans bloquer sur eux.
+# Fixing them is not this script's role; hiding them with -D warnings
+# would be even less so — we leave them visible, without blocking on them.
 cargo clippy --workspace || echec "cargo clippy --workspace"
 
-etape "client : npm test"
-(cd client && npm test) || echec "client : npm test"
+etape "client: npm test"
+(cd client && npm test) || echec "client: npm test"
 
-etape "client : npm run typecheck"
-(cd client && npm run typecheck) || echec "client : npm run typecheck"
+etape "client: npm run typecheck"
+(cd client && npm run typecheck) || echec "client: npm run typecheck"
 
-# Les sept contrôles du socle visuel (sous-projet ⑥, spec §7). Six d'entre eux
-# sont des scripts et vivent ici ; le septième, §7.5 (la bascule de thème), est
-# un test unitaire et tourne dans l'étape `client : npm test` ci-dessus — c'est
-# pourquoi on lit six verdicts et non sept.
+# The seven checks of the visual foundation (sub-project ⑥, spec §7). Six of them
+# are scripts and live here; the seventh, §7.5 (the theme switch), is
+# a unit test and runs in the `client: npm test` step above — that is
+# why we read six verdicts and not seven.
 #
-# ⚠️ Sans cette étape, « appliqué en continu » (cadrage §5 ⑥) resterait un vœu :
-# les contrôles existeraient, et rien ne les lancerait.
-etape "client : npm run design:verifier"
-(cd client && npm run design:verifier) || echec "client : npm run design:verifier"
+# ⚠️ Without this step, "applied continuously" (framing §5 ⑥) would remain a wish:
+# the checks would exist, and nothing would run them.
+etape "client: npm run design:verifier"
+(cd client && npm run design:verifier) || echec "client: npm run design:verifier"  # policy: allow-fr - npm script name
 
-etape "proto : npm test"
-(cd proto && npm test) || echec "proto : npm test"
+etape "proto: npm test"
+(cd proto && npm test) || echec "proto: npm test"
 
-etape "proto : npm run typecheck"
-(cd proto && npm run typecheck) || echec "proto : npm run typecheck"
+etape "proto: npm run typecheck"
+(cd proto && npm run typecheck) || echec "proto: npm run typecheck"
 
-etape "plateforme : npm run test:sqlite"
-(cd plateforme && npm run test:sqlite) || echec "plateforme : npm run test:sqlite"
+etape "plateforme: npm run test:sqlite"
+(cd plateforme && npm run test:sqlite) || echec "plateforme: npm run test:sqlite"
 
-etape "plateforme : npm run test:postgres"
-(cd plateforme && npm run test:postgres) || echec "plateforme : npm run test:postgres"
+etape "plateforme: npm run test:postgres"
+(cd plateforme && npm run test:postgres) || echec "plateforme: npm run test:postgres"
 
-etape "plateforme : npm run typecheck"
-(cd plateforme && npm run typecheck) || echec "plateforme : npm run typecheck"
+etape "plateforme: npm run typecheck"
+(cd plateforme && npm run typecheck) || echec "plateforme: npm run typecheck"
 
 echo
 if [ ${#echecs[@]} -eq 0 ]; then
-    echo "Les 10 étapes sont passées."
+    echo "All 10 steps passed."
     exit 0
 fi
 
-echo "══ ${#echecs[@]} étape(s) sur 10 en ÉCHEC ══" >&2
+echo "══ ${#echecs[@]} step(s) out of 10 FAILED ══" >&2
 for e in "${echecs[@]}"; do
     echo "  - $e" >&2
 done

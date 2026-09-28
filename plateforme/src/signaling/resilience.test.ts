@@ -1,69 +1,69 @@
-// Ronde de correction 1 : un message `null` envoyé par un pair faisait planter
-// tout le process Node (TypeError non interceptée sur `null.role`), tuant du
-// même coup toutes les sessions actives — un déni de service en une trame,
-// sans authentification requise.
+// Correction round 1: a `null` message sent by a peer crashed
+// the whole Node process (uncaught TypeError on `null.role`), killing at
+// the same time every active session — a denial of service in one frame,
+// without authentication required.
 //
-// ⚠️ « sans authentification requise » décrit l'état d'ALORS, et il reste vrai
-// aujourd'hui pour une raison qu'il faut écrire, sinon on croira la phrase
-// périmée depuis la garde du sous-bloc P2 : le contrôle de forme court sur le
-// PREMIER message, donc AVANT que la garde ait vu un jeton (voir `relais.ts`,
-// `isJsonObject`). **Le déni de service en une trame est donc toujours ouvert
-// à quiconque atteint le port**, et c'est bien pourquoi ce fichier existe
-// encore.
+// ⚠️ "without authentication required" describes the state at THE TIME, and it remains true
+// today for a reason that must be written, otherwise one will believe the sentence
+// stale since sub-block P2's guard: the shape check runs on the
+// FIRST message, hence BEFORE the guard has seen a token (see `relais.ts`,
+// `isJsonObject`). **The one-frame denial of service is therefore still open
+// to anyone who reaches the port**, and that is indeed why this file still
+// exists.
 //
-// ❌ CETTE PHRASE PORTAIT UNE SECONDE RAISON, « et le rôle `agent` reste de
-// toute façon anonyme jusqu'à P3 », ET LE SOUS-BLOC P3 L'A RENDUE FAUSSE (19
-// août 2026, revue transverse de fin de branche). Le rôle `agent` exige
-// désormais un jeton de type `agent` dont le sujet préfixe la session
-// (`identite/garde.ts`), et un pair qui ne présente rien ne reçoit AUCUN
-// `ice-config` (`journaux-plateforme-p3/e2-ferme-{1,2}.log`, deux exécutions).
+// ❌ THIS SENTENCE CARRIED A SECOND REASON, "and the `agent` role stays
+// anonymous anyway until P3", AND SUB-BLOCK P3 MADE IT FALSE (19
+// August 2026, cross-cutting review at the end of the branch). The `agent` role now
+// requires a token of type `agent` whose subject prefixes the session
+// (`identite/garde.ts`), and a peer that presents nothing receives NO
+// `ice-config` (`journaux-plateforme-p3/e2-ferme-{1,2}.log`, two runs).
 //
-// ⚠️ CE N'EST PAS LA PHRASE PRINCIPALE QUI TOMBE, C'EST L'UNE DE SES DEUX
-// RAISONS — et la distinction est le sort que le plan de P3 prescrivait
-// d'avance pour cette ligne (E15) : **PRÉCISER, pas corriger**. La première
-// raison suffit à elle seule, et c'est bien elle qui porte : le contrôle de
-// forme est en amont de toute garde, donc AUCUNE authentification, pas même
-// celle de P3, ne peut fermer ce chemin-ci.
+// ⚠️ IT IS NOT THE MAIN SENTENCE THAT FALLS, IT IS ONE OF ITS TWO
+// REASONS — and the distinction is the fate P3's plan prescribed
+// in advance for this line (E15): **CLARIFY, not correct**. The first
+// reason is enough on its own, and it is indeed what carries: the shape
+// check is upstream of any guard, so NO authentication, not even
+// P3's, can close this path.
 //
-// ⚠️ **CETTE LIGNE DISAIT « LE FREIN EST P5 ③ », ET C'ÉTAIT LE MAUVAIS REMÈDE**
-// (revue transverse, 20 août 2026). Le frein de P5 est posé sur
-// `/auth/connexion`, `/auth/rafraichir` et `/agent` ; **il ne couvre PAS le
-// relais** — `signaling/relais.ts` n'importe pas `Frein`, et
-// `createSignalingServer` n'en reçoit aucun. Ce qui ferme réellement le déni
-// de service en une trame est `TRAME_MAX_OCTETS` (`http/serveur.ts`), posé en
-// `maxPayload` sur les DEUX serveurs WebSocket, donc appliqué par `ws` AVANT
-// que la trame n'atteigne le moindre contrôle de forme — et il est éprouvé
-// par le `describe` de ce fichier même, plus bas.
+// ⚠️ **THIS LINE SAID "THE BRAKE IS P5 ③", AND IT WAS THE WRONG REMEDY**
+// (cross-cutting review, 20 August 2026). P5's brake is set on
+// `/auth/connexion`, `/auth/rafraichir` and `/agent`; **it does NOT cover the
+// relay** — `signaling/relais.ts` does not import `Frein`, and
+// `createSignalingServer` receives none. What really closes the one-frame denial
+// of service is `TRAME_MAX_OCTETS` (`http/serveur.ts`), set as
+// `maxPayload` on BOTH WebSocket servers, hence applied by `ws` BEFORE
+// the frame reaches the slightest shape check — and it is tested
+// by the `describe` of this very file, further down.
 //
-// ⚠️ **CE QUI RESTAIT OUVERT, ET QUE `maxPayload` NE FERMAIT PAS — CORRIGÉ DE
-// MOITIÉ PAR LE ROUND DE CORRECTION 1 (25 août 2026) : un pair pouvait
-// toujours ouvrir BEAUCOUP DE CONNEXIONS, et des connexions muettes n'étaient
-// comptées par rien.** Ce n'est plus vrai que d'UN des deux chemins :
-// `signaling/relais.ts` borne désormais le NOMBRE de connexions sur
-// `/signal`, à l'évènement `connection` — avant tout message, donc avant
-// même qu'un pair muet ait eu l'occasion d'en envoyer un
-// (`securite/frein.ts::BUDGET_REQUETES`). `/agent` (`agents/canal.ts`), lui,
-// NE L'EST PAS : son frein d'enrôlement compte des TENTATIVES, au message,
-// jamais des connexions ; ni lui ni `deploiement/nginx.conf` (qui ne pose ni
-// `limit_conn` ni `limit_req`) ne comptent un pair qui ouvre puis se tait.
-// `http/serveur.ts` le dit désormais auprès de la constante, à jour des deux
-// chemins.
+// ⚠️ **WHAT REMAINED OPEN, AND WHICH `maxPayload` DID NOT CLOSE — HALF FIXED
+// BY CORRECTION ROUND 1 (25 August 2026): a peer could
+// still open MANY CONNECTIONS, and silent connections were
+// counted by nothing.** It is now only true of ONE of the two paths:
+// `signaling/relais.ts` now bounds the NUMBER of connections on
+// `/signal`, at the `connection` event — before any message, hence before
+// a silent peer has even had the chance to send one
+// (`securite/frein.ts::BUDGET_REQUETES`). `/agent` (`agents/canal.ts`), for its part,
+// IS NOT: its enrolment brake counts ATTEMPTS, per message,
+// never connections; neither it nor `deploiement/nginx.conf` (which sets neither
+// `limit_conn` nor `limit_req`) counts a peer that opens then stays silent.
+// `http/serveur.ts` now says so next to the constant, up to date for both
+// paths.
 //
 
-// Ce fichier ne teste PAS `createSignalingServer` en mémoire : vitest installe
-// son propre gestionnaire d'exceptions non interceptées, qui peut faire échouer
-// un test sans que le process qui l'exécute ne s'arrête réellement. Un test
-// exécuté « dans » vitest ne peut donc pas prouver qu'un process Node réel,
-// démarré via `index.ts` (qui n'installe aucun `process.on('uncaughtException')`),
-// survivrait à la même attaque.
+// This file does NOT test `createSignalingServer` in memory: vitest installs
+// its own uncaught exception handler, which can make
+// a test fail without the process running it really stopping. A test
+// run "inside" vitest therefore cannot prove that a real Node process,
+// started via `index.ts` (which installs no `process.on('uncaughtException')`),
+// would survive the same attack.
 //
-// On lance ici le véritable point d'entrée (`src/index.ts`) comme process enfant
-// indépendant, on lui envoie le message malveillant par un vrai socket WebSocket,
-// puis on vérifie deux choses distinctes :
-//   1. le pair fautif reçoit une erreur JSON propre (pas de coupure de connexion) ;
-//   2. le process est toujours vivant ensuite, et une session tierce ouverte en
-//      parallèle continue de relayer normalement — la preuve qu'il n'y a pas eu
-//      de déni de service.
+// We launch here the real entry point (`src/index.ts`) as an independent child
+// process, we send it the malicious message through a real WebSocket socket,
+// then we check two distinct things:
+//   1. the faulty peer receives a clean JSON error (no connection cut);
+//   2. the process is still alive afterwards, and a third-party session opened in
+//      parallel keeps relaying normally — the proof that there was no
+//      denial of service.
 
 import { type ChildProcessWithoutNullStreams, spawn } from 'node:child_process';
 import path from 'node:path';
@@ -77,59 +77,59 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const signalingRoot = path.join(__dirname, '..', '..');
 const tsxBin = path.join(signalingRoot, 'node_modules', '.bin', 'tsx');
 
-/// Le secret de signature du processus enfant, nommé UNE fois : il est posé
-/// dans son `env` ci-dessous et sert à signer les jetons que `connectTo`
-/// envoie. Deux valeurs divergentes feraient refuser toutes les poignées de
-/// main `client`, avec un diagnostic obscur.
+/// The child process's signing secret, named ONCE: it is set
+/// in its `env` below and serves to sign the tokens `connectTo`
+/// sends. Two diverging values would make every `client` handshake
+/// refused, with an obscure diagnosis.
 const SECRET_ENFANT = 'un-secret-de-plateforme-de-quarante-octets';
 
-/// Le préfixe de la VM simulée. La garde exige que le sujet du jeton d'agent
-/// préfixe la session demandée (sous-bloc P3) : toutes les sessions de ce
-/// fichier le portent donc.
+/// The prefix of the simulated VM. The guard requires the agent token's subject
+/// to prefix the requested session (sub-block P3): all the sessions of this
+/// file therefore carry it.
 const P = 'RhH1x2QmTz9kLpVbNc7dAw';
 
 let child: ChildProcessWithoutNullStreams;
 let port: number;
 
-// Démarre `index.ts` comme un vrai process Node et attend qu'il annonce son
-// port d'écoute (SIGNALING_PORT=0 : le système en attribue un libre).
+// Starts `index.ts` as a real Node process and waits for it to announce its
+// listening port (SIGNALING_PORT=0: the system assigns a free one).
 function startRealServer(): Promise<{ child: ChildProcessWithoutNullStreams; port: number }> {
     return new Promise((resolve, reject) => {
         const proc = spawn(tsxBin, [path.join(signalingRoot, 'src', 'index.ts')], {
             cwd: signalingRoot,
-            // `PLATEFORME_BASE` est FIXÉ, et n'hérite pas de l'environnement :
-            // ce fichier éprouve la résilience du RELAIS, jamais le choix du
-            // moteur. Sans ce garde, `npm run test:postgres` transmettrait
-            // `PLATEFORME_BASE=postgres` à l'enfant sans lui transmettre
-            // l'URL (que le harnais tient en dur), l'enfant retomberait sur
-            // `:memory:` que `pg` prend pour un hôte, et mourrait sur
-            // ECONNREFUSED — le service ayant RAISON de refuser de démarrer.
+            // `PLATEFORME_BASE` is FIXED, and does not inherit from the environment:
+            // this file tests the resilience of the RELAY, never the choice of
+            // engine. Without this guard, `npm run test:postgres` would pass
+            // `PLATEFORME_BASE=postgres` to the child without passing it
+            // the URL (which the harness holds hardcoded), the child would fall back to
+            // `:memory:` which `pg` takes for a host, and would die on
+            // ECONNREFUSED — the service being RIGHT to refuse to start.
             env: {
                 ...process.env,
                 PLATEFORME_HOTE: '127.0.0.1',
                 PLATEFORME_PORT: '0',
                 PLATEFORME_BASE: 'sqlite',
                 PLATEFORME_BASE_URL: ':memory:',
-                // `lireConfig` refuse désormais de démarrer sans secret de
-                // signature, et n'en invente aucun : sans cette ligne
-                // l'enfant meurt avant d'annoncer son port.
+                // `lireConfig` now refuses to start without a signing
+                // secret, and invents none: without this line
+                // the child dies before announcing its port.
                 PLATEFORME_SECRET_JETON: SECRET_ENFANT,
-                // 🔴 TÂCHE 6 : `lireConfig` refuse désormais de démarrer en
-                // mode `pomerium` — le défaut, ici non redéfini — sans
-                // `PLATEFORME_PROXY_DE_CONFIANCE`. Ce fichier n'éprouve pas
-                // l'identité, seulement la résilience du relais : la valeur
-                // n'a donc aucune importance, sa seule PRÉSENCE suffit à
-                // laisser l'enfant démarrer.
+                // 🔴 TASK 6: `lireConfig` now refuses to start in
+                // `pomerium` mode — the default, not redefined here — without
+                // `PLATEFORME_PROXY_DE_CONFIANCE`. This file does not test
+                // identity, only the resilience of the relay: the value
+                // therefore does not matter, its mere PRESENCE is enough to
+                // let the child start.
                 //
-                // ⚠️ UNE ADRESSE ÉTRANGÈRE, DÉLIBÉRÉMENT — corrigé en revue
-                // (« round de correction 1 », 22 août 2026) : ce commentaire
-                // disait déjà « la valeur n'a aucune importance » tout en
-                // posant `127.0.0.1`, qui est précisément l'adresse depuis
-                // laquelle ce fichier se connecte (`connectTo`, plus bas).
-                // La phrase n'était donc vraie que par accident. `10.9.9.9`
-                // la rend vraie PAR CONSTRUCTION : ce fichier n'ouvre jamais
-                // `/auth/moi`, donc la garde de `routes-identite.ts` n'est
-                // jamais consultée ici, quelle que soit l'adresse déclarée.
+                // ⚠️ A FOREIGN ADDRESS, DELIBERATELY — fixed in review
+                // ("correction round 1", 22 August 2026): this comment
+                // already said "the value does not matter" while
+                // setting `127.0.0.1`, which is precisely the address from
+                // which this file connects (`connectTo`, further down).
+                // The sentence was therefore only true by accident. `10.9.9.9`
+                // makes it true BY CONSTRUCTION: this file never opens
+                // `/auth/moi`, so the guard of `routes-identite.ts` is
+                // never consulted here, whatever the declared address.
                 PLATEFORME_PROXY_DE_CONFIANCE: '10.9.9.9',
             },
         });
@@ -137,7 +137,7 @@ function startRealServer(): Promise<{ child: ChildProcessWithoutNullStreams; por
         let output = '';
         const onStdout = (chunk: Buffer) => {
             output += chunk.toString();
-            const match = output.match(/le port (\d+)/);
+            const match = output.match(/port (\d+)/);
             if (match) {
                 proc.stdout.off('data', onStdout);
                 clearTimeout(timer);
@@ -152,31 +152,31 @@ function startRealServer(): Promise<{ child: ChildProcessWithoutNullStreams; por
         });
 
         const timer = setTimeout(() => {
-            reject(new Error(`démarrage du process signaling expiré. stderr: ${stderr}`));
+            reject(new Error(`startup of the signaling process timed out. stderr: ${stderr}`));
         }, 10000);
 
         proc.once('error', reject);
         proc.once('exit', (code) => {
             clearTimeout(timer);
-            reject(new Error(`process signaling terminé prématurément (code ${code}). stderr: ${stderr}`));
+            reject(new Error(`signaling process ended prematurely (code ${code}). stderr: ${stderr}`));
         });
     });
 }
 
 function connectTo(targetPort: number, role: 'agent' | 'client', session: string): Promise<WebSocket> {
     return new Promise((resolve, reject) => {
-        // ⚠️ `/signal` DEPUIS LE 21 AOÛT 2026 : le relais a déménagé de la
-        // racine (voir l'en-tête de `http/serveur.ts`). Ce fichier lance le
-        // VRAI `index.ts`, donc la VRAIE routine d'upgrade — une régression
-        // sur ce chemin ne serait vue par AUCUN test « en mémoire ».
+        // ⚠️ `/signal` SINCE 21 AUGUST 2026: the relay moved from the
+        // root (see the header of `http/serveur.ts`). This file launches the
+        // REAL `index.ts`, hence the REAL upgrade routine — a regression
+        // on this path would be seen by NO "in-memory" test.
         const ws = new WebSocket(`ws://127.0.0.1:${targetPort}/signal`);
         ws.on('error', reject);
         ws.on('open', () => {
-            // 🔴 LES DEUX RÔLES exigent un jeton, signé avec le MÊME secret
-            // que celui posé dans l'`env` de l'enfant ci-dessus : le rôle
-            // `client` depuis P2, le rôle `agent` depuis P3, qui a fermé la
-            // fenêtre anonyme de E2. Le jeton d'agent est de TYPE `agent`, et
-            // son sujet est le PRÉFIXE que sa session doit porter.
+            // 🔴 BOTH ROLES require a token, signed with the SAME secret
+            // as the one set in the child's `env` above: the
+            // `client` role since P2, the `agent` role since P3, which closed
+            // E2's anonymous window. The agent token is of TYPE `agent`, and
+            // its subject is the PREFIX its session must carry.
             const jeton = role === 'client'
                 ? signer('u-resilience', SECRET_ENFANT, Date.now())
                 : signer(P, SECRET_ENFANT, Date.now(), undefined, 'agent');
@@ -186,23 +186,23 @@ function connectTo(targetPort: number, role: 'agent' | 'client', session: string
     });
 }
 
-/// Le prochain message qui n'est pas un message de SERVICE du relais.
+/// The next message that is not a SERVICE message of the relay.
 ///
-/// 🔴 `pair-present` EST FILTRÉ ICI, ET LE FILTRE N'EST PAS UNE COMMODITÉ.
-/// Depuis le 30 août 2026 le relais prévient un pair `agent` déjà en place
-/// qu'un `client` vient de le rejoindre (`signaling/pair-present.ts`) : un
-/// test qui attend « le message suivant » sur le socket de l'agent recevrait
-/// donc cette nouvelle-là et non la réponse qu'il a provoquée.
+/// 🔴 `pair-present` IS FILTERED HERE, AND THE FILTER IS NOT A CONVENIENCE.
+/// Since 30 August 2026 the relay notifies an `agent` peer already in place
+/// that a `client` has just joined it (`signaling/pair-present.ts`): a
+/// test waiting for "the next message" on the agent's socket would
+/// therefore receive that news and not the answer it caused.
 ///
-/// ⚠️ **IL RÉPARE AUSSI UNE FRAGILITÉ QUI PRÉEXISTAIT À CE LOT.** L'ancienne
-/// forme employait `ws.once`, qui n'écoute qu'à partir de son attachement :
-/// un message arrivé plus tôt était perdu, et l'assertion suivante passait ou
-/// non selon l'ordonnancement. Ici, l'écouteur est posé pour la durée de
-/// l'attente et retiré à la sortie, quelle que soit l'issue.
+/// ⚠️ **IT ALSO REPAIRS A FRAGILITY THAT PREDATED THIS BATCH.** The old
+/// form used `ws.once`, which only listens from its attachment:
+/// a message that arrived earlier was lost, and the next assertion passed or
+/// not depending on scheduling. Here, the listener is set for the duration of
+/// the wait and removed on exit, whatever the outcome.
 ///
-/// **Ce que ce filtre ne fait PAS** : établir que `pair-present` est bien
-/// émis. C'est `pair-present.test.ts` qui le mesure — sans lui, ce filtre
-/// serait indiscernable d'une mise sous le tapis.
+/// **What this filter does NOT do**: establish that `pair-present` is indeed
+/// emitted. It is `pair-present.test.ts` that measures it — without it, this filter
+/// would be indistinguishable from sweeping under the rug.
 function nextMessage(ws: WebSocket): Promise<any> {
     return new Promise((resolve, reject) => {
         const finir = (action: () => void) => {
@@ -215,7 +215,7 @@ function nextMessage(ws: WebSocket): Promise<any> {
             if (message?.type === 'pair-present') return;
             finir(() => resolve(message));
         };
-        const timer = setTimeout(() => finir(() => reject(new Error('aucun message reçu'))), 2000);
+        const timer = setTimeout(() => finir(() => reject(new Error('no message received'))), 2000);
         ws.on('message', surMessage);
     });
 }
@@ -228,9 +228,9 @@ afterAll(() => {
     child.kill();
 });
 
-describe('résilience du process réel (index.ts) face à un message `null`', () => {
-    it('survit à un `null` en premier message : le fautif reçoit une erreur, une session tierce continue de fonctionner', async () => {
-        // ⚠️ `/signal` : voir la note de `connectTo` plus haut.
+describe('resilience of the real process (index.ts) to a `null` message', () => {
+    it('survives a `null` as first message: the culprit receives an error, a third session keeps working', async () => {
+        // ⚠️ `/signal`: see the note of `connectTo` above.
         const faulty = new WebSocket(`ws://127.0.0.1:${port}/signal`);
         await new Promise((resolve, reject) => {
             faulty.on('open', resolve);
@@ -241,21 +241,21 @@ describe('résilience du process réel (index.ts) face à un message `null`', ()
         faulty.send('null');
         expect(await errorReceived).toEqual({
             type: 'error',
-            reason: 'premier message invalide : {role, session} attendu',
+            reason: 'invalid first message: {role, session} expected',
         });
 
-        // Preuve n°1 : le process n'est pas mort.
+        // Proof no. 1: the process is not dead.
         expect(child.exitCode).toBeNull();
         expect(child.killed).toBe(false);
 
-        // Preuve n°2 : une session indépendante, ouverte après l'incident,
-        // relaie normalement — le serveur répond toujours au réseau.
+        // Proof no. 2: an independent session, opened after the incident,
+        // relays normally — the server still answers the network.
         const agent = await connectTo(port, 'agent', `${P}:preuve-null-premier`);
         const client = await connectTo(port, 'client', `${P}:preuve-null-premier`);
-        client.send(JSON.stringify({ type: 'offer', sdp: 'toujours vivant (premier message)' }));
+        client.send(JSON.stringify({ type: 'offer', sdp: 'still alive (first message)' }));
         expect(await nextMessage(agent)).toEqual({
             type: 'offer',
-            sdp: 'toujours vivant (premier message)',
+            sdp: 'still alive (first message)',
         });
 
         faulty.close();
@@ -263,32 +263,32 @@ describe('résilience du process réel (index.ts) face à un message `null`', ()
         client.close();
     });
 
-    it('survit à un `null` en message suivant : le fautif reçoit une erreur, une session tierce continue de fonctionner', async () => {
-        const agent = await connectTo(port, 'agent', `${P}:preuve-null-suivant`);
-        const client = await connectTo(port, 'client', `${P}:preuve-null-suivant`);
+    it('survives a `null` as a later message: the culprit receives an error, a third session keeps working', async () => {
+        const agent = await connectTo(port, 'agent', `${P}:proof-null-later`);
+        const client = await connectTo(port, 'client', `${P}:proof-null-later`);
 
-        // Session témoin ouverte avant l'incident, pour prouver qu'elle n'est
-        // pas affectée par ce qui va arriver à la session précédente.
-        const agentTemoin = await connectTo(port, 'agent', `${P}:temoin-null-suivant`);
-        const clientTemoin = await connectTo(port, 'client', `${P}:temoin-null-suivant`);
+        // Witness session opened before the incident, to prove it is
+        // not affected by what will happen to the previous session.
+        const agentTemoin = await connectTo(port, 'agent', `${P}:witness-null-later`);
+        const clientTemoin = await connectTo(port, 'client', `${P}:witness-null-later`);
 
         const errorReceived = nextMessage(client);
         client.send('null');
         expect(await errorReceived).toEqual({
             type: 'error',
-            reason: 'message invalide : objet JSON attendu',
+            reason: 'invalid message: JSON object expected',
         });
 
-        // Preuve n°1 : le process n'est pas mort.
+        // Proof no. 1: the process is not dead.
         expect(child.exitCode).toBeNull();
         expect(child.killed).toBe(false);
 
-        // Preuve n°2 : la session témoin, ouverte avant l'incident, fonctionne
-        // toujours normalement après.
-        clientTemoin.send(JSON.stringify({ type: 'offer', sdp: 'temoin toujours vivant' }));
+        // Proof no. 2: the witness session, opened before the incident, still
+        // works normally afterwards.
+        clientTemoin.send(JSON.stringify({ type: 'offer', sdp: 'witness still alive' }));
         expect(await nextMessage(agentTemoin)).toEqual({
             type: 'offer',
-            sdp: 'temoin toujours vivant',
+            sdp: 'witness still alive',
         });
 
         agent.close();
@@ -298,28 +298,28 @@ describe('résilience du process réel (index.ts) face à un message `null`', ()
     });
 });
 
-describe('résilience du process réel face à une trame TROP GRANDE (P5)', () => {
-    /// 🔴 CE TEST VIT ICI, ET NON DANS `http/serveur.test.ts`, POUR LA RAISON
-    /// EXACTE QUE L'EN-TÊTE DE CE FICHIER DONNE : « vitest installe son propre
-    /// gestionnaire d'exceptions non interceptées », si bien qu'un test
-    /// exécuté DANS vitest ne peut pas prouver qu'un process Node réel
-    /// survivrait. `serveur.test.ts` éprouve que la trame est REFUSÉE ; seul
-    /// ce fichier-ci peut éprouver que le service y SURVIT.
+describe('resilience of the real process to a TOO LARGE frame (P5)', () => {
+    /// 🔴 THIS TEST LIVES HERE, AND NOT IN `http/serveur.test.ts`, FOR THE EXACT
+    /// REASON THE HEADER OF THIS FILE GIVES: "vitest installs its own
+    /// uncaught exception handler", so that a test
+    /// run INSIDE vitest cannot prove that a real Node process
+    /// would survive. `serveur.test.ts` tests that the frame is REFUSED; only
+    /// this file can test that the service SURVIVES it.
     ///
-    /// 🔴 ET LE DANGER EST NEUF, INTRODUIT PAR LE CORRECTIF LUI-MÊME. Poser
-    /// `maxPayload` fait émettre `error` par `ws` sur le socket SERVEUR ; or
-    /// aucun socket serveur de ce service n'avait d'écouteur `error` — relevé
-    /// le 20 août 2026, `grep -n "on('error'" relais.ts canal.ts serveur.ts`
-    /// ne rendait que le `http.once('error', reject)` du démarrage. Un
-    /// `EventEmitter` qui émet `error` sans écouteur LÈVE, et une exception
-    /// non attrapée dans un gestionnaire d'évènement Node abat tout le
-    /// process. Sans l'écouteur, LE CORRECTIF ANTI-DÉNI-DE-SERVICE AURAIT
-    /// DONNÉ UN DÉNI DE SERVICE PIRE : une trame anonyme unique tuant le
-    /// service au lieu de le ralentir.
-    it('🔴 survit à une trame au-delà de `maxPayload`, sur `/signal` comme sur `/agent`', async () => {
-        // ⚠️ `/signal`, PAS `/`, DEPUIS LE 21 AOÛT 2026 : voir la note de
-        // `connectTo` plus haut. `/` est désormais fermée, et y pousser une
-        // trame ne prouverait plus rien sur `maxPayload`.
+    /// 🔴 AND THE DANGER IS NEW, INTRODUCED BY THE FIX ITSELF. Setting
+    /// `maxPayload` makes `ws` emit `error` on the SERVER socket; yet
+    /// no server socket of this service had an `error` listener — found
+    /// on 20 August 2026, `grep -n "on('error'" relais.ts canal.ts serveur.ts`
+    /// only returned the startup's `http.once('error', reject)`. An
+    /// `EventEmitter` that emits `error` without a listener THROWS, and an exception
+    /// not caught in a Node event handler takes down the whole
+    /// process. Without the listener, THE ANTI-DENIAL-OF-SERVICE FIX WOULD HAVE
+    /// GIVEN A WORSE DENIAL OF SERVICE: a single anonymous frame killing the
+    /// service instead of slowing it down.
+    it('🔴 survives a frame beyond `maxPayload`, on `/signal` as on `/agent`', async () => {
+        // ⚠️ `/signal`, NOT `/`, SINCE 21 AUGUST 2026: see the note of
+        // `connectTo` above. `/` is now closed, and pushing a
+        // frame there would no longer prove anything about `maxPayload`.
         for (const chemin of ['/signal', '/agent']) {
             const gros = new WebSocket(`ws://127.0.0.1:${port}${chemin}`);
             await new Promise((resolve, reject) => {
@@ -327,27 +327,27 @@ describe('résilience du process réel face à une trame TROP GRANDE (P5)', () =
                 gros.on('error', reject);
             });
             const ferme = new Promise<number>((resolve) => gros.once('close', resolve));
-            // Un écouteur `error` CÔTÉ CLIENT : c'est le pair fautif, et son
-            // socket lève quand le serveur le coupe en cours d'écriture.
+            // An `error` listener ON THE CLIENT SIDE: it is the faulty peer, and its
+            // socket throws when the server cuts it mid-write.
             gros.on('error', () => {});
             gros.send('x'.repeat(TRAME_MAX_OCTETS + 1));
             // 1009 = « message trop grand » (RFC 6455).
             expect(await ferme).toBe(1009);
         }
 
-        // Preuve n°1 : le process n'est pas mort.
+        // Proof no. 1: the process is not dead.
         expect(child.exitCode).toBeNull();
         expect(child.killed).toBe(false);
 
-        // Preuve n°2 : une session ouverte APRÈS l'incident relaie
-        // normalement. Sans elle, un process abattu se lirait exactement
-        // comme un process sain — `exitCode` ne bascule pas instantanément.
+        // Proof no. 2: a session opened AFTER the incident relays
+        // normally. Without it, a killed process would read exactly
+        // like a healthy process — `exitCode` does not flip instantly.
         const agent = await connectTo(port, 'agent', `${P}:preuve-trame-geante`);
         const client = await connectTo(port, 'client', `${P}:preuve-trame-geante`);
-        client.send(JSON.stringify({ type: 'offer', sdp: 'vivant apres la trame geante' }));
+        client.send(JSON.stringify({ type: 'offer', sdp: 'alive after the giant frame' }));
         expect(await nextMessage(agent)).toEqual({
             type: 'offer',
-            sdp: 'vivant apres la trame geante',
+            sdp: 'alive after the giant frame',
         });
         agent.close();
         client.close();

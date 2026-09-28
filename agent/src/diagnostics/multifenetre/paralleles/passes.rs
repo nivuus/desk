@@ -1,16 +1,16 @@
-//! La boucle de passes du protocole multi-sorties : ouverture des N
-//! duplications, cadence, encodage.
+//! The pass loop of the multi-output protocol: opening of the N
+//! duplications, cadence, encoding.
 //!
-//! Séparée de `paralleles.rs`, qui est *le pilote des sorties* (création,
-//! désignation, contrôle de survie), au moment où la ronde 1 a fait passer le
-//! fichier unique à 527 lignes. Le découpage n'est pas cosmétique : le plafond
-//! de 500 lignes du projet l'imposait, et la spec §6 le prévoyait à cet
-//! endroit précis.
+//! Separated from `paralleles.rs`, which is *the output driver* (creation,
+//! designation, survival check), when round 1 brought the
+//! single file to 527 lines. The split is not cosmetic: the project's
+//! 500-line ceiling required it, and spec §6 provided for it at this
+//! precise place.
 //!
-//! Ce qui vit ici tourne SOUS la garde `moniteurs_virtuels::Sorties` tenue par
-//! l'appelant : toute erreur qui en ressort passe par la destruction des
-//! sorties, y compris le refus de `DuplicateOutput` qui est le résultat attendu
-//! de ce chantier.
+//! What lives here runs UNDER the `moniteurs_virtuels::Sorties` guard held by
+//! the caller: any error that comes out of it goes through the destruction of the
+//! outputs, including the refusal of `DuplicateOutput`, which is the expected result
+//! of this work stream.
 
 use std::time::Instant;
 
@@ -18,31 +18,31 @@ use anyhow::{Context, Result};
 
 use super::super::compteurs::{self, Compteurs, Garde, DUREE_PASSE, PERIODE_JOURNAL};
 use super::super::mires::Mires;
-use super::super::voies::{creer_device, VoieDeCapture, VoieDuplication, VoiesOuvertes};
+use super::super::voies::{create_device, VoieDeCapture, VoieDuplication, VoiesOuvertes};
 use super::constater_survie;
 use crate::capture::SortieDxgi;
 use crate::geometry::Rect;
 use crate::mire;
 
-/// Ouvre une duplication DXGI par sortie.
+/// Opens one DXGI duplication per output.
 ///
-/// **Un échec ici est LE RÉSULTAT de ce chantier, pas une panne.** Si la Kᵉ
-/// `DuplicateOutput` est refusée, le rang, le HRESULT nu et la sortie visée
-/// sont journalisés, puis **l'erreur d'origine est propagée**, enrichie du rang
-/// atteint : c'est la réponse à la question posée. Ne jamais l'avaler, ne jamais
-/// la retenter, et ne jamais la remplacer par un message reconstruit — la chaîne
-/// de causes porte le HRESULT, qui est le fond de la réponse.
+/// **A failure here is THE RESULT of this work stream, not a malfunction.** If the Kth
+/// `DuplicateOutput` is refused, the rank, the bare HRESULT and the targeted output
+/// are logged, then **the original error is propagated**, enriched with the rank
+/// reached: it is the answer to the question asked. Never swallow it, never
+/// retry it, and never replace it with a reconstructed message — the chain
+/// of causes carries the HRESULT, which is the substance of the answer.
 ///
-/// Le chien de garde est battu à chaque rang, **avant** la sollicitation : à
-/// N=8 cette boucle ouvre huit duplications, et le temps qu'elle prend
-/// s'ajouterait sinon au trou de la passe témoin.
+/// The watchdog is beaten at each rank, **before** the solicitation: at
+/// N=8 this loop opens eight duplications, and the time it takes
+/// would otherwise add up to the gap of the control pass.
 ///
-/// **Ce que ce battement borne, et ce qu'il ne borne plus.** Il raisonnait sur
-/// une ouverture instantanée ; depuis la tâche 11 bis, `partagee_sur` passe par
-/// `DesktopCapture::sur_sortie`, qui retente pendant `DUREE_FENETRE_OUVERTURE`
-/// et peut donc **bloquer jusqu'à 3 s** sans qu'on puisse pinguer pendant ce
-/// temps. Battre juste avant borne le trou à la durée d'UN rang — pas à zéro,
-/// et 3 s reste du même ordre que le `delai = 3` du pilote, d'unité inconnue.
+/// **What this beat bounds, and what it no longer bounds.** It reasoned about
+/// an instantaneous opening; since task 11 bis, `partagee_sur` goes through
+/// `DesktopCapture::sur_sortie`, which retries during `DUREE_FENETRE_OUVERTURE`
+/// and can therefore **block for up to 3 s** without being able to ping during that
+/// time. Beating just before bounds the gap to the duration of ONE rank — not to zero,
+/// and 3 s remains of the same order as the driver's `delai = 3`, of unknown unit.
 fn ouvrir_duplications(
     garde: &mut Garde<'_>,
     virtuelles: &[SortieDxgi],
@@ -60,31 +60,31 @@ fn ouvrir_duplications(
                     nom = %sortie.nom_sortie,
                     texture_largeur = dimensions.0,
                     texture_hauteur = dimensions.1,
-                    "duplication ouverte"
+                    "duplication opened"
                 );
                 textures.push(dimensions);
                 sources.push(source);
             }
-            Err(erreur) => {
-                // Chaîne complète formatée SANS consommer l'erreur (`{:#}`) :
-                // le journal doit porter le HRESULT ET l'erreur doit encore
-                // être propagée telle quelle juste en dessous. L'aide
-                // `multifenetre::causes` ne convient pas ici, elle prend son
-                // erreur par valeur.
-                let chaine = format!("{erreur:#}");
+            Err(error) => {
+                // Full chain formatted WITHOUT consuming the error (`{:#}`):
+                // the log must carry the HRESULT AND the error must still
+                // be propagated as is just below. The helper
+                // `multifenetre::causes` does not fit here, it takes its
+                // error by value.
+                let chain = format!("{error:#}");
                 tracing::error!(
                     rang = rang + 1,
                     nom = %sortie.nom_sortie,
-                    causes = %chaine,
-                    "duplication REFUSÉE — c'est le résultat de la mesure, pas une panne"
+                    causes = %chain,
+                    "duplication REFUSED — that is the result of the measurement, not a failure"
                 );
                 let nom = sortie.nom_sortie.clone();
-                // `Err(erreur).with_context(…)` et non `bail!` : le message
-                // reconstruit du `bail!` perdait le HRESULT, qui est le fond
-                // de la réponse à la question posée.
-                return Err(erreur).with_context(|| {
+                // `Err(error).with_context(…)` and not `bail!`: the
+                // reconstructed message of `bail!` lost the HRESULT, which is the substance
+                // of the answer to the question asked.
+                return Err(error).with_context(|| {
                     format!(
-                        "{rang} duplications DXGI ouvertes de front, la {}ᵉ refusée (sortie {nom})",
+                        "{rang} DXGI duplications opened side by side, number {} refused (output {nom})",
                         rang + 1
                     )
                 });
@@ -97,39 +97,39 @@ fn ouvrir_duplications(
 
     let mut voies: Vec<Box<dyn VoieDeCapture>> = Vec::new();
     for (id, source) in sources.into_iter().enumerate() {
-        let mut voie: Box<dyn VoieDeCapture> = Box::new(VoieDuplication::nouvelle(source));
+        let mut voie: Box<dyn VoieDeCapture> = Box::new(VoieDuplication::new(source));
         voie.ouvrir(mires.hwnd(id as u8)?, places[id])?;
         voies.push(voie);
     }
     Ok((voies, places))
 }
 
-/// `regions` porte, voie par voie, les dimensions que ses images auront —
-/// celles de la TEXTURE de sa sortie, et non celles de sa fenêtre. Les deux ne
-/// coïncident que si la sortie n'est pas mise à l'échelle : la sonde a relevé
-/// un facteur DPI de 1,5 sur une sortie virtuelle, et un encodeur dimensionné
-/// sur la fenêtre refuserait alors les images que la voie lui soumet.
+/// `regions` carries, path by path, the dimensions its images will have —
+/// those of its output's TEXTURE, and not those of its window. The two
+/// only coincide if the output is not scaled: the probe noted
+/// a DPI factor of 1.5 on a virtual output, and an encoder sized
+/// on the window would then refuse the images the path submits to it.
 fn passe_capture(
     garde: &mut Garde<'_>,
     mires: &mut Mires,
     voies: &mut [Box<dyn VoieDeCapture>],
     regions: &[Rect],
-    avec_encodage: bool,
+    with_encoding: bool,
 ) -> Result<Compteurs> {
-    let nombre = voies.len();
-    let mut compteurs = Compteurs::nouveaux(nombre);
+    let count = voies.len();
+    let mut compteurs = Compteurs::nouveaux(count);
     let mut encodeurs: Vec<crate::encode::H264Encoder> = Vec::new();
-    if avec_encodage {
-        for id in 0..nombre {
-            // Bâtir huit encodeurs Media Foundation prend un temps non borné,
-            // et il court AVANT que la boucle de passe (donc son ping à 1 Hz)
-            // ne démarre : sans ce battement, c'est un second trou.
+    if with_encoding {
+        for id in 0..count {
+            // Building eight Media Foundation encoders takes an unbounded time,
+            // and it runs BEFORE the pass loop (hence its 1 Hz ping)
+            // starts: without this beat, it is a second gap.
             garde.battre()?;
             let place = regions[id];
-            // Un encodeur par fenêtre, sur le périphérique de SA voie : une
-            // texture ne se soumet pas à un encodeur bâti sur un autre
-            // périphérique D3D11. Ici chaque voie a le sien, une duplication
-            // par sortie créant un périphérique par sortie.
+            // One encoder per window, on the device of ITS path: a
+            // texture cannot be submitted to an encoder built on another
+            // D3D11 device. Here each path has its own, one duplication
+            // per output creating one device per output.
             let appareil = voies[id].device();
             encodeurs.push(
                 crate::encode::H264Encoder::new(
@@ -139,22 +139,22 @@ fn passe_capture(
                     60,
                     8_000_000,
                 )
-                .with_context(|| format!("encodeur n°{}", id + 1))?,
+                .with_context(|| format!("encoder no. {}", id + 1))?,
             );
         }
     }
 
     let debut = Instant::now();
     let mut prochain_journal = debut + PERIODE_JOURNAL;
-    let mut pts = vec![0u64; nombre];
+    let mut pts = vec![0u64; count];
 
     while debut.elapsed() < DUREE_PASSE {
         mires.peindre()?;
         mires.pomper();
         let tour = mires.trame();
-        // La voie contrôlée à ce tour, et elle seule : une lecture par tour
-        // quel que soit N (voir `mire::voie_controlee`).
-        let controlee = mire::voie_controlee(tour, nombre);
+        // The path checked at this round, and it alone: one reading per round
+        // whatever N (see `mire::voie_controlee`).
+        let controlee = mire::voie_controlee(tour, count);
 
         for (id, voie) in voies.iter_mut().enumerate() {
             let Some(image) = voie.prochaine_image(tour)? else {
@@ -163,15 +163,15 @@ fn passe_capture(
             compteurs.images[id] += 1;
 
             if controlee == Some(id) {
-                // L'identité ATTENDUE est celle de la mire posée sur CETTE
-                // sortie : un verdict `Voisine(j)` dit que la voie i a capturé
-                // la sortie j, l'appariement croisé que ce montage doit
-                // détecter.
+                // The EXPECTED identity is that of the test pattern placed on THIS
+                // output: a `Voisine(j)` verdict says that path i captured
+                // output j, the cross-pairing this set-up must
+                // detect.
                 let verdict = compteurs::lire_verdict(voie.as_mut(), &image, id as u8)?;
                 compteurs.apres_recouvrement.compter(verdict);
             }
 
-            if avec_encodage {
+            if with_encoding {
                 encodeurs[id].submit(&image, pts[id])?;
                 pts[id] += 90_000 / 60;
                 while let Some(_unite) = encodeurs[id].poll_output()? {
@@ -181,44 +181,44 @@ fn passe_capture(
         }
 
         garde.battre_si_du()?;
-        // Journalisation périodique, à la seconde : aucune trace par trame.
-        // Écrite ici plutôt que partagée avec `banc.rs` — les deux protocoles
-        // n'observent pas la même chose (celui-ci n'a ni recouvrement ni
-        // porte éliminatoire, donc ni « avant » ni « après » à distinguer),
-        // et les factoriser imposerait de journaliser des champs vides d'un
-        // côté ou de l'autre.
+        // Periodic logging, every second: no per-frame trace.
+        // Written here rather than shared with `banc.rs` — the two protocols
+        // do not observe the same thing (this one has neither covering nor
+        // elimination gate, hence no "before" or "after" to distinguish),
+        // and factoring them would require logging empty fields on one
+        // side or the other.
         if Instant::now() >= prochain_journal {
             tracing::info!(
                 images = ?compteurs.images,
                 unites = ?compteurs.unites,
                 verdicts = ?compteurs.apres_recouvrement,
-                "banc parallèle en cours"
+                "parallel bench running"
             );
             prochain_journal += PERIODE_JOURNAL;
         }
     }
 
-    // Libération EXPLICITE et tracée, une par une : un `Vec` détruit
-    // implicitement ne dirait pas lequel de ses éléments a tué le processus.
-    // Ces traces sont rares par construction (une par encodeur, une fois par
-    // passe) : elles ne violent pas la règle « aucune trace par trame ».
+    // EXPLICIT and traced release, one by one: a `Vec` destroyed
+    // implicitly would not say which of its elements killed the process.
+    // These traces are rare by construction (one per encoder, once per
+    // pass): they do not violate the "no per-frame trace" rule.
     if !encodeurs.is_empty() {
-        // Clé de lecture des `unites`, relevée AVANT la libération. CONSTAT, et
-        // rien de plus : le reste des `images` part dans `dropped_stale_nv12`
-        // (une image convertie puis écartée parce qu'une plus récente est
-        // arrivée avant que l'encodeur ne la réclame). Ce relevé ferme
-        // l'arithmétique — `images = unites + nv12_ecartees + au plus 1 en vol`
-        // — donc aucune image ne disparaît sans être comptée, et il montre que
-        // le rapport est le MÊME aux quatre rangs : il ne vient pas du
-        // parallélisme.
+        // Key for reading the `unites`, surveyed BEFORE the release. A FINDING, and
+        // nothing more: the rest of the `images` go into `dropped_stale_nv12`
+        // (an image converted then discarded because a more recent one
+        // arrived before the encoder claimed it). This survey closes
+        // the arithmetic — `images = unites + nv12_ecartees + at most 1 in flight`
+        // — so no image disappears without being counted, and it shows that
+        // the ratio is the SAME at all four ranks: it does not come from
+        // parallelism.
         //
-        // Ne PAS attribuer ce rapport au ratio entre les 60 i/s de
-        // configuration et les ~90 i/s soumis : les journaux le réfutent. Un
-        // rapport 90/60 prédirait 600 unités pour 900 images ; les lignes
-        // périodiques en montrent 45 par seconde pour 90 images, soit
-        // exactement la moitié, linéaire sur les dix intervalles
-        // (`paralleles-n1.log:40-49`). La cause de ce rapport d'un demi n'est
-        // PAS établie, et cette mesure n'en a pas besoin.
+        // Do NOT attribute this ratio to the ratio between the configured 60 fps
+        // and the ~90 fps submitted: the logs refute it. A
+        // 90/60 ratio would predict 600 units for 900 images; the periodic
+        // lines show 45 per second for 90 images, that is
+        // exactly half, linear over the ten intervals
+        // (`paralleles-n1.log:40-49`). The cause of this one-half ratio is
+        // NOT established, and this measurement does not need it.
         let ecartees: Vec<u64> = encodeurs
             .iter()
             .map(|encodeur| {
@@ -230,78 +230,78 @@ fn passe_capture(
             .collect();
         tracing::info!(
             nv12_ecartees = ?ecartees,
-            "images converties puis écartées, encodeur par encodeur — l'écart entre \
-             « images » et « unites » se lit ici, pas dans le parallélisme"
+            "images converted then discarded, encoder by encoder — the gap between \
+             \"images\" and \"unites\" is read here, not in the parallelism"
         );
-        tracing::info!(nombre = encodeurs.len(), "libération des encodeurs : début");
+        tracing::info!(count = encodeurs.len(), "releasing the encoders: start");
         for (id, encodeur) in encodeurs.drain(..).enumerate() {
-            tracing::info!(id, "libération d'un encodeur : avant");
+            tracing::info!(id, "releasing one encoder: before");
             drop(encodeur);
-            tracing::info!(id, "libération d'un encodeur : après");
+            tracing::info!(id, "releasing one encoder: after");
         }
-        tracing::info!("libération des encodeurs : terminée");
+        tracing::info!("releasing the encoders: done");
     }
     Ok(compteurs)
 }
 
-/// Les trois passes, dans l'ordre.
+/// The three passes, in order.
 ///
-/// **Pas de porte éliminatoire entre les deux dernières**, contrairement au
-/// banc mono-sortie : sans recouvrement, un verdict faux n'invalide pas la
-/// mesure de cadence, il la qualifie. Les deux passes tournent toujours, et le
-/// rapport lit les verdicts.
+/// **No elimination gate between the last two**, unlike the
+/// single-output bench: without covering, a wrong verdict does not invalidate the
+/// frame rate measurement, it qualifies it. Both passes always run, and the
+/// report reads the verdicts.
 pub(super) fn executer_passes(garde: &mut Garde<'_>, virtuelles: &[SortieDxgi]) -> Result<()> {
-    // Le périphérique des mires ne vient PAS d'une `DesktopCapture`
-    // provisoire : DXGI n'autorise qu'une duplication par sortie, et la
-    // provisoire ferait échouer la vraie en 0x80070057.
-    let (device, _contexte) = creer_device()?;
-    // Les mires vivent en coordonnées du BUREAU VIRTUEL — les rectangles
-    // annoncés par DXGI. Les voies recadrent en coordonnées de TEXTURE, que
-    // `ouvrir_duplications` calcule. Les confondre décalerait tout d'un
-    // facteur DPI.
+    // The test patterns' device does NOT come from a provisional
+    // `DesktopCapture`: DXGI only allows one duplication per output, and the
+    // provisional one would make the real one fail with 0x80070057.
+    let (device, _contexte) = create_device()?;
+    // The test patterns live in VIRTUAL DESKTOP coordinates — the rectangles
+    // announced by DXGI. The paths crop in TEXTURE coordinates, which
+    // `ouvrir_duplications` computes. Confusing them would shift everything by a
+    // DPI factor.
     let places_bureau: Vec<Rect> = virtuelles.iter().map(|sortie| sortie.rect).collect();
     let mut mires = Mires::ouvrir(&device, &places_bureau)?;
 
-    // La garde est passée : cette passe dure dix secondes, et sans elle elle
-    // était un trou sans un seul ping (11,1 s mesurées à la ronde 1, témoin et
-    // ouverture des duplications compris).
+    // The guard is passed: this pass lasts ten seconds, and without it it
+    // was a gap without a single ping (11.1 s measured in round 1, control and
+    // opening of the duplications included).
     compteurs::passe_temoin(&mut mires, Some(garde))?;
-    constater_survie("témoin", virtuelles);
+    constater_survie("control", virtuelles);
 
     let (mut voies, places_texture) = ouvrir_duplications(garde, virtuelles, &mires)?;
     tracing::info!(
-        nombre = voies.len(),
+        count = voies.len(),
         ?places_bureau,
         ?places_texture,
-        "les N duplications sont ouvertes de front"
+        "the N duplications are opened side by side"
     );
 
-    // Clé de lecture du journal. `compteurs::journaliser` porte les libellés du
-    // protocole mono-sortie, et ils sont conservés tels quels pour que ces
-    // relevés restent `grep`-ables avec ceux déjà versés dans `docs/`. Ici :
-    // `mire0_avant_recouvrement` est toujours vide (aucun recouvrement n'est
-    // mis en scène), et `mire0_apres_recouvrement` porte TOUS les verdicts de
-    // la rotation, sur toutes les voies — pas ceux de la seule mire 0.
-    let nombre = voies.len() as u8;
-    // Un contrôle de survie APRÈS CHAQUE PASSE, et non un seul à la fin : une
-    // sortie retirée pendant la passe « capture » ne serait constatée qu'après
-    // « capture+encodage », et les deux relevés seraient également suspects
-    // sans moyen de dire lequel est atteint.
+    // Key for reading the log. `compteurs::journaliser` carries the labels of the
+    // single-output protocol, and they are kept as is so that these
+    // surveys stay `grep`-able together with those already committed in `docs/`. Here:
+    // `pattern0_before_overlap` is always empty (no covering is
+    // staged), and `mire0_apres_recouvrement` carries ALL the verdicts of
+    // the rotation, on all paths — not only those of test pattern 0.
+    let count = voies.len() as u8;
+    // A survival check AFTER EACH PASS, and not a single one at the end: an
+    // output removed during the "capture" pass would only be noticed after
+    // "capture+encoding", and both surveys would be equally suspect
+    // with no way of saying which one is affected.
     let releve = passe_capture(garde, &mut mires, &mut voies, &places_texture, false)?;
-    compteurs::journaliser("capture", "duplication-parallele", nombre, &releve);
+    compteurs::journaliser("capture", "parallel-duplication", count, &releve);
     constater_survie("capture", virtuelles);
 
     let releve = passe_capture(garde, &mut mires, &mut voies, &places_texture, true)?;
-    compteurs::journaliser("capture+encodage", "duplication-parallele", nombre, &releve);
-    constater_survie("capture+encodage", virtuelles);
+    compteurs::journaliser("capture+encoding", "parallel-duplication", count, &releve);
+    constater_survie("capture+encoding", virtuelles);
 
-    // Les duplications étaient le second suspect du défaut hérité, après les
-    // encodeurs. Le défaut est depuis désigné par sa pile (un élément de
-    // travail de la MFT encore en vol, `encode::arret`) et corrigé : ces deux
-    // traces ne cherchent plus un coupable, elles bornent le relâchement — un
-    // plantage ici resterait autrement muet.
-    tracing::info!("libération des voies de capture : avant");
+    // The duplications were the second suspect of the inherited defect, after the
+    // encoders. The defect has since been identified by its stack (a MFT work
+    // item still in flight, `encode::arret`) and fixed: these two
+    // traces no longer look for a culprit, they bracket the release — a
+    // crash here would otherwise stay silent.
+    tracing::info!("releasing the capture paths: before");
     drop(voies);
-    tracing::info!("libération des voies de capture : après");
+    tracing::info!("releasing the capture paths: after");
     Ok(())
 }

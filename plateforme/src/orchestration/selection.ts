@@ -1,47 +1,47 @@
-// Quelles VMs d'un inventaire appartiennent à un utilisateur.
+// Which VMs of an inventory belong to a user.
 //
-// 🔴 CE MODULE EST PUR, et c'est le point : ni base, ni socket, ni horloge. Un
-// défaut de filtre qui vivrait dans `http/routes-vm.ts` fuiterait l'inventaire
-// ENTIER, et il n'existerait aucun endroit où le rougir sans monter un serveur.
+// 🔴 THIS MODULE IS PURE, and that is the point: no database, no socket, no clock. A
+// filter defect living in `http/routes-vm.ts` would leak the WHOLE
+// inventory, and there would be no place to make it fail without standing up a server.
 //
-// 🔴 « À PERSONNE » N'EST PAS « À TOUT LE MONDE ». Une VM dont
-// `utilisateurId` est `null` est AU VIVIER : elle n'est rendue à aucun
-// demandeur. Le contraire ferait voir à tout utilisateur authentifié chaque VM
-// non encore attribuée — c'est-à-dire l'inventaire de la flotte. ⚠️ Le
-// sous-bloc G1 retient délibérément l'autre comportement pour SES routes ; les
-// deux chantiers divergent, et c'est déclaré plutôt que réconcilié en douce
-// par la seconde branche arrivée.
+// 🔴 "TO NOBODY" IS NOT "TO EVERYBODY". A VM whose
+// `userId` is `null` is IN THE POOL: it is returned to no
+// requester. The opposite would show any authenticated user every VM
+// not yet assigned — that is, the fleet inventory. ⚠️
+// Sub-block G1 deliberately keeps the other behaviour for ITS routes; the
+// two efforts diverge, and it is declared rather than quietly reconciled
+// by the second branch to arrive.
 
 import type { Vm } from './interface';
 
-/// Toutes les VMs de cet utilisateur. L'ordre de l'inventaire est conservé.
+/// All the VMs of this user. The inventory order is preserved.
 ///
-/// ⚠️ LA COMPARAISON EST UNE ÉGALITÉ, jamais un préfixe ni une inclusion :
-/// `alice` et `alice-bis` sont deux utilisateurs. Même règle que
-/// `http/cors.ts`, et pour la même raison — un `startsWith` ouvre une famille
-/// de correspondances que personne n'a décidées.
-export function vmsDe(inventaire: readonly Vm[], utilisateurId: string): Vm[] {
-    // `null !== utilisateurId` par construction, donc le vivier est exclu sans
-    // qu'aucune branche ne le dise — mais le test le nomme, parce que c'est
-    // une propriété et non un effet de bord de la comparaison.
-    return inventaire.filter((v) => v.utilisateurId === utilisateurId);
+/// ⚠️ THE COMPARISON IS AN EQUALITY, never a prefix or an inclusion:
+/// `alice` and `alice-bis` are two users. Same rule as
+/// `http/cors.ts`, and for the same reason — a `startsWith` opens a family
+/// of matches that nobody decided on.
+export function vmsDe(inventaire: readonly Vm[], userId: string): Vm[] {
+    // `null !== userId` by construction, so the pool is excluded without
+    // any branch saying so — but the test names it, because it is
+    // a property and not a side effect of the comparison.
+    return inventaire.filter((v) => v.userId === userId);
 }
 
-/// LA VM de cet utilisateur, ou `undefined`.
+/// THE VM of this user, or `undefined`.
 ///
-/// 🔴 ELLE LÈVE SUR UN DOUBLON, et ce n'est pas une préférence de style.
-/// L'index partiel `vm_un_utilisateur` (`0001-socle.sql`) rend le cas
-/// impossible EN BASE — mais cette fonction reçoit un tableau, et rien dans sa
-/// signature ne dit d'où il vient. Rendre la première en silence choisirait
-/// une VM au hasard et le ferait sans trace ; l'exception, elle, dit où
-/// regarder le jour où l'index aurait disparu.
-export function laVmDe(inventaire: readonly Vm[], utilisateurId: string): Vm | undefined {
-    const siennes = vmsDe(inventaire, utilisateurId);
+/// 🔴 IT THROWS ON A DUPLICATE, and it is not a style preference.
+/// The partial index `vm_un_utilisateur` (`0001-socle.sql`) makes the case (policy: allow-fr - SQLite index and file name)
+/// impossible IN THE DATABASE — but this function receives an array, and nothing in its
+/// signature says where it comes from. Silently returning the first would pick
+/// a VM at random and do it without a trace; the exception, on the other hand, says where
+/// to look the day the index has disappeared.
+export function laVmDe(inventaire: readonly Vm[], userId: string): Vm | undefined {
+    const siennes = vmsDe(inventaire, userId);
     if (siennes.length > 1) {
         throw new Error(
-            `l'inventaire porte ${siennes.length} VM pour un même utilisateur, ce que ` +
-                "l'index partiel `vm_un_utilisateur` doit rendre impossible : la base " +
-                'ou son schéma est à examiner, ce refus ne se contourne pas.',
+            `the inventory carries ${siennes.length} VMs for one user, which ` +
+                "the partial index `vm_un_utilisateur` must make impossible: the database " +
+                'or its schema must be examined, this refusal cannot be bypassed.',
         );
     }
     return siennes[0];

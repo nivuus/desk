@@ -1,23 +1,23 @@
-// L'identifiant de session, tiré des paramètres de l'URL — PUR, sans DOM,
-// donc éprouvable sur l'hôte (la convention de `viewportPair`, `texteLien`,
-// `adresseSignaling` : `main.ts` délègue la RÈGLE, il ne la porte pas).
+// The session identifier, taken from the URL parameters — PURE, DOM-free,
+// hence testable on the host (the convention of `viewportPair`, `texteLien`,
+// `adresseSignaling`: `main.ts` delegates the RULE, it does not carry it).
 //
-// 🔴 PLUS AUCUN REPLI SUR `'demo'` — TROUVÉ EN PRODUCTION LE 30 AOÛT 2026.
-// `https://app.allanic.me/` servait alors `index.html` (la page de session,
-// avant que la racine ne serve le hub — voir
-// `plateforme/src/http/page/resolution.ts::PAGE`), et sans paramètre
-// `?session=`, l'ancienne ligne de `main.ts` — `params.get('session') ??
-// 'demo'` — INVENTAIT une session `demo`, sans jeton. L'agent journalisait
-// alors « poignée de main refusée : poignée de main sans jeton sur la
-// session demo », et le propriétaire voyait « Échec de la session » : une
-// panne INDISCERNABLE d'une vraie pour qui ouvre juste l'adresse du
-// service. `'demo'` était un vestige du temps où il n'y avait qu'UNE
-// session — voir `CLAUDE.md`, « il y a N SESSIONS, pas N pistes dans une
-// session ».
+// 🔴 NO MORE FALLBACK TO `'demo'` — FOUND IN PRODUCTION ON AUGUST 30TH, 2026.
+// `https://app.allanic.me/` then served `index.html` (the session page,
+// before the root served the hub — see
+// `plateforme/src/http/page/resolution.ts::PAGE`), and without a
+// `?session=` parameter, the old line of `main.ts` — `params.get('session') ??
+// 'demo'` — INVENTED a `demo` session, without a token. The agent then logged
+// "handshake refused: handshake without a token on
+// session demo", and the owner saw "Session failed": a
+// failure INDISTINGUISHABLE from a real one for whoever just opens the service's
+// address. `'demo'` was a vestige of the time when there was only ONE
+// session — see `CLAUDE.md`, "there are N SESSIONS, not N tracks in one
+// session".
 //
-// Une ABSENCE reste donc une absence : `undefined`, jamais une valeur
-// inventée. C'est `main.ts` qui décide quoi faire de cette absence (refuser
-// et le dire), pas cette fonction.
-export function sessionIdDepuisParametres(params: URLSearchParams): string | undefined {
+// An ABSENCE therefore stays an absence: `undefined`, never an invented
+// value. It is `main.ts` that decides what to do with that absence (refuse
+// and say so), not this function.
+export function sessionIdFromParams(params: URLSearchParams): string | undefined {
     return params.get('session') ?? undefined;
 }

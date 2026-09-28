@@ -1,55 +1,55 @@
-//! Le fil d'une fenêtre : il tient un `WindowsSource` complet et le sert à
-//! l'enfant par le tube.
+//! A window's thread: it holds a complete `WindowsSource` and serves it to
+//! the child through the pipe.
 //!
-//! **Il ne réécrit AUCUN code de capture ni d'encodage.** `WindowsSource` est
-//! déjà exactement le couple `DesktopCapture` + `H264Encoder` derrière le
-//! trait `VideoSource` : ce module ne fait qu'appeler ce trait et transporter
-//! ses résultats. C'est la simplification centrale du sous-bloc D4.
+//! **It rewrites NO capture or encoding code.** `WindowsSource` is
+//! already exactly the `DesktopCapture` + `H264Encoder` pair behind the
+//! `VideoSource` trait: this module only calls that trait and carries
+//! its results. That is the central simplification of sub-block D4.
 //!
-//! **Depuis le sous-bloc D5, la source est OPTIONNELLE.** Le vivier
-//! (`capteur/vivier.rs`, branché sur des canaux par `capteur/sommeil.rs`)
-//! ordonne à ce fil de relâcher son encodeur et sa duplication, puis de les
-//! reconstruire. Ces deux gestes se font ICI et nulle part ailleurs, pour la
-//! même raison que la sortie de boucle : `Drop for H264Encoder` peut geler, et
-//! sur ce fil-ci un gel ne coûterait que cette fenêtre.
+//! **Since sub-block D5, the source is OPTIONAL.** The pool
+//! (`capteur/vivier.rs`, wired to channels by `capteur/sommeil.rs`)
+//! orders this thread to release its encoder and its duplication, then to
+//! rebuild them. Both gestures happen HERE and nowhere else, for the
+//! same reason as the loop exit: `Drop for H264Encoder` can freeze, and
+//! on this thread a freeze would only cost this window.
 //!
-//! Cinq fichiers, parce que le sous-bloc D5 a porté celui-ci de 336 à plus de
-//! 600 lignes : la boucle et le transport restent ici, l'ouverture d'une
-//! fenêtre à son attache (D10, revue de la tâche 8), les transitions de
-//! sommeil, le service des commandes et la trace des compteurs (D9, tâche 11)
-//! vivent dans les modules enfants.
+//! Five files, because sub-block D5 took this one from 336 to more than
+//! 600 lines: the loop and the transport stay here, opening a
+//! window at its attach (D10, review of task 8), the sleep
+//! transitions, serving commands and the counters trace (D9, task 11)
+//! live in the child modules.
 
 #![cfg(windows)]
 
-// `transitions` porte `dormir` et `reveiller` — l'exécution, pour CETTE
-// fenêtre, de ce que `crate::capteur::sommeil` décide pour toutes. Il ne
-// s'appelle délibérément PAS `sommeil` : deux modules de ce nom dans le même
-// sous-arbre se confondraient à la lecture, et l'import du registre entrerait
-// en collision avec l'enfant.
+// `transitions` carries `dormir` and `reveiller` — the execution, for THIS
+// window, of what `crate::capteur::sommeil` decides for all. It is
+// deliberately NOT called `sommeil`: two modules of that name in the same
+// subtree would be confused when reading, and the registry import would
+// collide with the child.
 mod commandes;
-// `accent_fenetre` porte le tour d'accent de A1 — cinquième module enfant, sur
-// le même patron que les quatre autres, et sa raison d'être est écrite dans son
-// propre en-tête plutôt que recopiée ici.
+// `accent_fenetre` carries A1's accent round — fifth child module, on
+// the same pattern as the other four, and its reason to be is written in its
+// own header rather than copied here.
 //
-// ⚠️ **Il porte un `#[path]` là où ses quatre frères n'en ont pas besoin, et pour
-// la même raison que `transitions` ne s'appelle pas `sommeil`** : un `mod accent;`
-// entrerait en collision, à la lecture comme au nommage, avec le
-// `use crate::accent;` de ce fichier. Ce `#[path]`-là est HORS de la convention
-// de `CLAUDE.md`, qui ne vise que les modules extraits d'un parent
-// `#[cfg(windows)]` pour compiler sur l'hôte.
+// ⚠️ **It carries a `#[path]` where its four siblings do not need one, and for
+// the same reason `transitions` is not called `sommeil`**: a `mod accent;`
+// would collide, when reading as well as in naming, with the
+// `use crate::accent;` of this file. That `#[path]` is OUTSIDE the convention
+// of `CLAUDE.md`, which only targets modules extracted from a
+// `#[cfg(windows)]` parent to compile on the host.
 #[path = "fenetre/accent.rs"]
 mod accent_fenetre;
-// `ouverture` porte `Fenetre::ouvrir` — quatrième module enfant sur le même
-// patron que les trois autres, extrait en revue de la tâche 8 du sous-bloc
-// D10 : la tâche 8 et la tâche 9 avaient porté ce fichier à 505 lignes,
-// au-dessus du plafond de 500.
+// `ouverture` carries `Fenetre::ouvrir` — fourth child module on the same
+// pattern as the other three, extracted in review of task 8 of sub-block
+// D10: tasks 8 and 9 had taken this file to 505 lines,
+// above the cap of 500.
 mod ouverture;
 // The media connection's writer thread, and what it is handed.
 mod media;
-// `trace` porte la trace périodique des compteurs de capture
-// (`SOURCE_TRACE=1`) — troisième module enfant sur le même patron que les
-// deux ci-dessus, extrait en revue de la tâche 11 (D9) pour la même raison de
-// plafond de taille.
+// `trace` carries the periodic trace of the capture counters
+// (`SOURCE_TRACE=1`) — third child module on the same pattern as the
+// two above, extracted in review of task 11 (D9) for the same
+// size-cap reason.
 mod trace;
 mod transitions;
 
@@ -69,57 +69,57 @@ use crate::source::VideoSource;
 use crate::windows_source::WindowsSource;
 
 use self::commandes::{deposer, servir_les_commandes};
-use self::media::{ecrire_le_media, AEcrire, CAPACITE_ECRITURES};
+use self::media::{write_media, AEcrire, CAPACITE_ECRITURES};
 use self::trace::tracer_les_compteurs;
 
-/// Pas de sommeil quand la source n'a rien rendu.
+/// No sleep when the source has returned nothing.
 ///
-/// 10 ms, la valeur exacte de `FRAME_INTERVAL` côté transport : cette boucle
-/// prend la place de l'interrogation que faisait l'enfant, et il n'y a aucune
-/// raison de changer la cadence de sondage en même temps que le reste. Le
-/// commentaire de `transport/piste_video.rs` explique pourquoi 10 ms et non
-/// 16 : interroger plus souvent que la source ne produit lève une borne sans
-/// rien coûter quand il n'y a rien à prendre.
+/// 10 ms, the exact value of `FRAME_INTERVAL` on the transport side: this loop
+/// takes the place of the polling the child used to do, and there is no
+/// reason to change the polling cadence at the same time as the rest. The
+/// comment in `transport/piste_video.rs` explains why 10 ms and not
+/// 16: polling more often than the source produces lifts a bound without
+/// costing anything when there is nothing to take.
 const PAS_A_VIDE: Duration = Duration::from_millis(10);
 
-/// Période des lignes de compteurs. **Jamais de trace par image** : le projet
-/// a déjà perdu une session entière à une trace par paquet.
+/// Period of the counter lines. **Never a trace per frame**: the project
+/// has already lost an entire session to a per-packet trace.
 const PERIODE_COMPTEURS: Duration = Duration::from_secs(10);
 
-/// Faut-il continuer la boucle de fenêtre, ou la clore — et pourquoi.
+/// Whether to continue the window loop, or close it — and why.
 enum Fin {
     Continuer,
     Terminer(&'static str),
 }
 
-/// Ce que le service des commandes doit connaître en plus de la source.
+/// What command serving needs to know besides the source.
 ///
-/// **Regroupé parce que ces quatre-là voyagent toujours ensemble** :
-/// `servir_les_commandes` fait exécuter les commandes, et `deposer` l'appelle à
-/// chaque tour de sa contre-pression. Les passer un à un allongeait les deux
-/// signatures de quatre paramètres.
+/// **Grouped because these four always travel together**:
+/// `servir_les_commandes` has the commands executed, and `deposer` calls it at
+/// every round of its back-pressure. Passing them one by one lengthened both
+/// signatures by four parameters.
 ///
-/// **N'emprunte rien de `Fenetre`** — `taille` est copiée — de sorte qu'un
-/// contexte vivant n'empêche jamais un appel de méthode sur `&mut self`.
+/// **Borrows nothing from `Fenetre`** — `size` is copied — so that a
+/// live context never prevents a method call on `&mut self`.
 struct Contexte<'a> {
-    /// La session, pour le registre de sommeil : c'est par elle que la
-    /// visibilité reçue ici est arbitrée globalement.
+    /// The session, for the sleep registry: it is through it that the
+    /// visibility received here is arbitrated globally.
     session: &'a str,
-    /// Dimensions RETENUES de la fenêtre. Seule réponse possible à un
-    /// redimensionnement reçu pendant un sommeil, où il n'y a plus de source à
-    /// interroger.
-    taille: (u32, u32),
+    /// KEPT dimensions of the window. The only possible reply to a
+    /// resize received during sleep, when there is no longer a source to
+    /// query.
+    size: (u32, u32),
     commandes: &'a Receiver<VersCapteur>,
     reponses: &'a Sender<DepuisCapteur>,
 }
 
-/// De quoi reconstruire la source à l'identique après un sommeil.
+/// What is needed to rebuild the source identically after a sleep.
 ///
-/// **`clock_origin` est retenue, jamais recalculée** : elle est l'origine des
-/// horodatages de la piste vidéo, et la refaire au réveil décalerait le flux de
-/// l'écart entre les deux origines — le même piège que l'attache résout par
+/// **`clock_origin` is kept, never recomputed**: it is the origin of the
+/// video track's timestamps, and redoing it on wake-up would shift the stream by
+/// the gap between the two origins — the same trap the attach solves through
 /// `origine_qpc`.
-struct Parametres {
+struct Parameters {
     hwnd: HWND,
     sortie: String,
     fps: u32,
@@ -127,25 +127,25 @@ struct Parametres {
     clock_origin: Instant,
 }
 
-/// Une fenêtre servie par le capteur : sa source, et de quoi la nommer.
+/// A window served by the sensor: its source, and what is needed to name it.
 ///
-/// **Le `WindowsSource` ne quitte jamais le fil qui l'a construit.** Il porte
-/// des objets COM et n'est pas `Sync` : `ouvrir` et `servir` sont appelées sur
-/// le seul fil de fenêtre, et les commandes lui parviennent par `mpsc` depuis
-/// le fil qui tient la connexion de commandes.
+/// **The `WindowsSource` never leaves the thread that built it.** It carries
+/// COM objects and is not `Sync`: `ouvrir` and `servir` are called on
+/// the window thread alone, and commands reach it through `mpsc` from
+/// the thread holding the command connection.
 pub struct Fenetre {
-    /// `None` quand la fenêtre dort : l'encodeur et la duplication DXGI sont
-    /// alors relâchés, et c'est tout l'objet du sous-bloc D5. La sortie
-    /// virtuelle, elle, n'est jamais touchée — c'est ce qui évite d'infliger un
-    /// abandon de mutex aux fenêtres voisines à chaque endormissement.
+    /// `None` when the window sleeps: the encoder and the DXGI duplication are
+    /// then released, and that is the whole purpose of sub-block D5. The virtual
+    /// output, for its part, is never touched — that is what avoids inflicting a
+    /// mutex abandonment on the neighbouring windows at every fall-asleep.
     source: Option<WindowsSource>,
-    parametres: Parametres,
+    params: Parameters,
     session: String,
     largeur: u32,
     hauteur: u32,
-    /// PID du processus propriétaire de la fenêtre Windows, dérivé du `hwnd` à
-    /// l'attache. C'est par lui que `capteur::audio::arbitrer` regroupe les
-    /// fenêtres d'une même application.
+    /// PID of the process owning the Windows window, derived from the `hwnd` at
+    /// attach time. It is through it that `capteur::audio::arbitrer` groups the
+    /// windows of the same application.
     pid: u32,
 }
 
@@ -154,126 +154,126 @@ impl Fenetre {
         (self.largeur, self.hauteur)
     }
 
-    /// Sert la fenêtre jusqu'à la fin de sa vie.
+    /// Serves the window until the end of its life.
     ///
-    /// `ecrivain` est la connexion **média**, et elle est confiée à un fil
-    /// ÉCRIVAIN dédié : ce fil-ci ne touche plus aucun objet fichier. Les
-    /// réponses aux commandes partent par `reponses`, vers le fil qui tient la
-    /// connexion de commandes et qui les écrit lui-même. Aucun objet fichier
-    /// ne porte donc jamais une lecture et une écriture concurrentes.
+    /// `ecrivain` is the **media** connection, and it is handed to a dedicated
+    /// WRITER thread: this thread no longer touches any file object. The
+    /// command replies go out through `reponses`, to the thread holding the
+    /// command connection, which writes them itself. No file object
+    /// therefore ever carries a concurrent read and write.
     ///
-    /// **Pourquoi un fil écrivain plutôt qu'une écriture directe.** Une
-    /// écriture bloquante ici bloquait le fil de fenêtre *après* son sondage
-    /// des commandes, donc sans en servir aucune — et l'enfant, qui attend sa
-    /// réponse sans délai depuis la tâche 10, ne pouvait plus jamais reprendre
-    /// sa lecture du média : interblocage à six maillons, relevé par la revue
-    /// de la tâche 10. La seule attente que ce fil peut encore subir est celle
-    /// de `deposer`, **qui sert les commandes à chaque tour**.
+    /// **Why a writer thread rather than a direct write.** A
+    /// blocking write here blocked the window thread *after* its polling
+    /// of commands, hence without serving any of them — and the child, which waits for its
+    /// reply without a timeout since task 10, could never resume
+    /// its media read again: a six-link deadlock, found by the review
+    /// of task 10. The only wait this thread can still suffer is that
+    /// of `deposer`, **which serves the commands at every round**.
     pub fn servir<E: Write + Send + 'static>(
         mut self,
         commandes: Receiver<VersCapteur>,
         reponses: Sender<DepuisCapteur>,
         ecrivain: E,
     ) -> Result<()> {
-        // Copiée une fois : les traces la citent à chaque tour, et la boucle
-        // emprunte `self` en mutable pendant tout ce temps.
+        // Copied once: the traces cite it at every round, and the loop
+        // borrows `self` mutably all that time.
         let session = self.session.clone();
 
-        // Consignation n°2 du sous-bloc D6, portée ici : tous les enfants et le
-        // capteur écrivent dans le MÊME `agent.log` (stdout hérité depuis D4).
-        // Une trace sans `session` y est un nombre dans un multiensemble
-        // anonyme, et D6 a dû ajouter ce champ à deux traces EN PLEINE RECETTE.
-        // Un span posé une fois sur le fil de fenêtre le donne à tout ce qui
-        // s'émet en dessous, y compris aux `warn!` des modules appelés.
-        let _span = tracing::info_span!("fenetre", session = %session).entered();
+        // D6's record no. 2, carried here: all children and the
+        // sensor write to the SAME `agent.log` (stdout inherited since D4).
+        // A trace without `session` there is a number in an anonymous
+        // multiset, and D6 had to add this field to two traces IN THE MIDDLE OF AN ACCEPTANCE RUN.
+        // A span set once on the window thread gives it to everything
+        // emitted below, including the `warn!` of the modules called.
+        let _span = tracing::info_span!("window", session = %session).entered();
 
-        // 🔴 **`pid` EST LA SEULE ATTRIBUTION session ↔ fenêtre WINDOWS DU
-        // DÉPÔT, ET IL FAUT LE DIRE POUR QU'UN SUCCESSEUR NE LE RETIRE PAS
-        // COMME DU BRUIT** (D-P3-7, sous-bloc P3). `enfant lancé`
-        // (`superviseur/enfants.rs`) porte bien un `pid`, mais c'est celui du
-        // processus ENFANT AGENT ; aucune autre trace n'associe une `session`
-        // au `hwnd` ni au PID de l'APPLICATION Windows qu'elle diffuse.
+        // 🔴 **`pid` IS THE REPOSITORY'S ONLY session ↔ WINDOWS window
+        // ATTRIBUTION, AND IT MUST BE SAID SO THAT A SUCCESSOR DOES NOT REMOVE IT
+        // AS NOISE** (D-P3-7, sub-block P3). `child launched`
+        // (`superviseur/enfants.rs`) does carry a `pid`, but it is that of the
+        // AGENT CHILD process; no other trace associates a `session`
+        // with the `hwnd` or the PID of the Windows APPLICATION it streams.
         //
-        // Sans lui, une recette qui écrit « le texte de B est arrivé dans LA
-        // fenêtre de B » n'est pas ATTRIBUABLE — et un relevé non attribuable
-        // n'est pas un verdict. La voie « coller un nonce et regarder quel
-        // Bloc-notes a grandi » est CIRCULAIRE : elle établirait l'attribution
-        // par le mécanisme même que la recette mesure, défaut que D8 a payé sur
-        // `resoudreIdentite` et que son propre rapport qualifie de
-        // « partiellement circulaire ».
+        // Without it, an acceptance run writing "B's text arrived in B's
+        // window" is not ATTRIBUTABLE — and a non-attributable reading
+        // is not a verdict. The "paste a nonce and see which
+        // Notepad grew" route is CIRCULAR: it would establish attribution
+        // through the very mechanism the acceptance run measures, a defect D8 paid for on
+        // `resoudreIdentite` and that its own report describes as
+        // "partially circular".
         //
-        // Le champ vit DÉJÀ sur `Fenetre` et est DÉJÀ passé à `inscrire` : rien
-        // n'a eu à remonter. Le pilote le résout ensuite en
-        // `MainWindowHandle` par `Get-Process -Id`, puis lit par `WM_GETTEXT`.
+        // The field ALREADY lives on `Fenetre` and is ALREADY passed to `inscrire`: nothing
+        // had to be brought up. The driver then resolves it into
+        // `MainWindowHandle` through `Get-Process -Id`, then reads through `WM_GETTEXT`.
         tracing::info!(
             %session,
             pid = self.pid,
-            sortie = %self.parametres.sortie,
+            sortie = %self.params.sortie,
             largeur = self.largeur,
             hauteur = self.hauteur,
-            "fenêtre attachée au capteur"
+            "window attached to the sensor"
         );
 
-        let (ecritures, a_ecrire) = sync_channel::<AEcrire>(CAPACITE_ECRITURES);
+        let (ecritures, to_write) = sync_channel::<AEcrire>(CAPACITE_ECRITURES);
         let session_ecrivain = session.clone();
-        std::thread::spawn(move || ecrire_le_media(ecrivain, a_ecrire, &session_ecrivain));
+        std::thread::spawn(move || write_media(ecrivain, to_write, &session_ecrivain));
 
-        // Inscription au vivier. Une fenêtre naît ENDORMIE des deux côtés — au
-        // vivier ET ici, `source` valant `None` depuis `ouvrir` : c'est ce qui
-        // fait que le vivier voit la vérité dès la première seconde, et que
-        // huit encodeurs au plus existent quel que soit le nombre de fenêtres
-        // attachées. Le premier signal de visibilité du client la réveillera.
+        // Registration in the pool. A window is born ASLEEP on both sides — in
+        // the pool AND here, `source` being `None` since `ouvrir`: that is what
+        // makes the pool see the truth from the very first second, and that
+        // at most eight encoders exist whatever the number of attached
+        // windows. The client's first visibility signal will wake it up.
         //
-        // ⚠️ **Corollaire : une fenêtre dont le client n'annonce JAMAIS sa
-        // visibilité ne se réveille jamais, et sa page reste noire.** C'est le
-        // comportement voulu — aucun encodeur ne doit être pris pour une
-        // fenêtre que personne ne déclare regarder —, mais c'est la nouvelle
-        // façon dont une session peut rester vide sans qu'aucune erreur ne soit
-        // journalisée.
+        // ⚠️ **Corollary: a window whose client NEVER announces its
+        // visibility never wakes up, and its page stays black.** That is the
+        // intended behaviour — no encoder must be taken for a
+        // window nobody declares they are watching —, but it is the new
+        // way a session can stay empty without any error being
+        // logged.
         //
-        // `inscrire` frappe et rend la GÉNÉRATION de cette inscription (D9,
-        // F5 de D7) : retenue en local — jamais sur `self`, elle n'a de sens
-        // qu'entre cet appel et le `retirer` de fin de fonction, tous deux
-        // sur ce même fil — et redonnée telle quelle à `retirer`, seul moyen
-        // pour le registre de reconnaître un `retirer` déjà périmé par un
-        // rattachement survenu entre-temps.
+        // `inscrire` stamps and returns the GENERATION of this registration (D9,
+        // F5 of D7): kept locally — never on `self`, it only makes sense
+        // between this call and the `retirer` at the end of the function, both
+        // on this same thread — and handed back as is to `retirer`, the only way
+        // for the registry to recognise a `retirer` already made stale by a
+        // re-attachment that happened in between.
         let (ordres, generation) = crate::capteur::sommeil::inscrire(&session, self.pid);
 
-        let resultat = self.boucler(&session, &ordres, &ecritures, &commandes, &reponses);
+        let result = self.boucler(&session, &ordres, &ecritures, &commandes, &reponses);
 
-        // **Point de passage UNIQUE de toutes les sorties de la boucle**, y
-        // compris ses sorties d'erreur : une session qui sortirait sans se
-        // retirer garderait sa place au vivier pour toute la vie du processus.
-        // Une panique sur ce fil court-circuiterait pourtant ces deux lignes —
-        // le filet est alors la chute d'`ordres` pendant le déroulement de
-        // pile, que le tour de roue du registre voit comme un canal rompu et
-        // qu'il retire de lui-même. Ce chemin-ci est le déterministe.
+        // **SINGLE passage point of all exits from the loop**,
+        // including its error exits: a session that exited without
+        // withdrawing would keep its place in the pool for the whole life of the process.
+        // A panic on this thread would nonetheless short-circuit these two lines —
+        // the safety net is then the drop of `ordres` during stack
+        // unwinding, which the registry's wheel round sees as a broken channel and
+        // removes by itself. This path is the deterministic one.
         //
-        // La source est relâchée AVANT le retrait, et explicitement plutôt que
-        // par la chute de `self` en fin de fonction, pour que cet ordre ne
-        // dépende pas de la position d'un `return` : `retirer` rend une place
-        // que le vivier peut attribuer aussitôt à une endormie, laquelle
-        // demanderait un encodeur de plus au matériel si le nôtre vivait
-        // encore. Le relâchement reste sur ce fil-ci, comme partout ailleurs.
+        // The source is released BEFORE the withdrawal, and explicitly rather than
+        // through the drop of `self` at the end of the function, so that this order does not
+        // depend on the position of a `return`: `retirer` returns a place
+        // the pool can immediately assign to a sleeping window, which
+        // would ask the hardware for one more encoder if ours were still
+        // alive. The release stays on this thread, as everywhere else.
         drop(self.source.take());
         crate::capteur::sommeil::retirer(&session, generation);
-        resultat
+        result
     }
 
-    /// La boucle de service. **Extraite de `servir` pour que le relâchement de
-    /// la source et le retrait du vivier n'aient qu'un seul point de passage**,
-    /// quel que soit le chemin de sortie.
+    /// The service loop. **Extracted from `servir` so that releasing
+    /// the source and withdrawing from the pool have only one passage point**,
+    /// whatever the exit path.
     ///
-    /// ⚠️ **Aucun emprunt sur `self.source` ne survit à une instruction.**
-    /// C'est la contrainte structurante de cette fonction depuis que la source
-    /// est optionnelle : `appliquer_les_ordres` a besoin de `&mut self` entier
-    /// (elle relâche et reconstruit la source), ce qui est incompatible avec le
-    /// `let source = &mut self.source;` que cette boucle tenait autrefois d'un
-    /// bout à l'autre. Chaque point d'usage reprend donc un emprunt neuf par
-    /// `self.source.as_mut()`, dans une instruction qui se termine. **Ne pas
-    /// réintroduire d'emprunt long** : le compilateur le refuserait, mais la
-    /// tentation de contourner en déplaçant le sommeil hors de ce fil, elle,
-    /// romprait l'invariant du relâchement sur ce fil-ci.
+    /// ⚠️ **No borrow of `self.source` survives a statement.**
+    /// That is the structuring constraint of this function since the source
+    /// became optional: `appliquer_les_ordres` needs the whole `&mut self`
+    /// (it releases and rebuilds the source), which is incompatible with the
+    /// `let source = &mut self.source;` this loop used to hold from
+    /// end to end. Each usage point therefore takes a fresh borrow through
+    /// `self.source.as_mut()`, in a statement that ends. **Do not
+    /// reintroduce a long borrow**: the compiler would refuse it, but the
+    /// temptation to work around it by moving sleep off this thread would
+    /// break the invariant of releasing on this thread.
     fn boucler(
         &mut self,
         session: &str,
@@ -282,65 +282,64 @@ impl Fenetre {
         commandes: &Receiver<VersCapteur>,
         reponses: &Sender<DepuisCapteur>,
     ) -> Result<()> {
-        // Initialisé sur la taille RÉSOLUE par `ouvrir` — celle-là même qui est
-        // partie dans `Attachee` —, jamais sur zéro ni sur une valeur devinée.
-        // C'est ce qui fait de la comparaison du point 3 un filet réel : si la
-        // texture rendue au premier réveil ne fait pas la taille annoncée (une
-        // sortie mise à l'échelle DPI annonce moins qu'elle ne rend, voir
-        // `capture::ouverture::taille_de_sortie`), l'écart devient un `Etat` que
-        // l'enfant applique. Partir de zéro aurait produit un `Etat` inutile à
-        // chaque session ; partir d'une devinette aurait masqué l'écart.
-        let mut dernier_etat = (true, false, self.largeur, self.hauteur);
+        // Initialised on the size RESOLVED by `ouvrir` — the very one that
+        // went out in `Attachee` —, never on zero nor on a guessed value.
+        // That is what makes the comparison in point 3 a real safety net: if the
+        // texture returned at the first wake-up is not the announced size (a
+        // DPI-scaled output announces less than it renders, see
+        // `capture::ouverture::size_of_output`), the gap becomes an `Etat` the
+        // child applies. Starting from zero would have produced a useless `Etat` at
+        // every session; starting from a guess would have hidden the gap.
+        let mut last_state = (true, false, self.largeur, self.hauteur);
         let mut images = 0u64;
-        let mut dernier_compte = Instant::now();
-        // D8 : l'état de référence est celui lu à l'OUVERTURE de la fenêtre, pas
-        // une valeur par défaut arbitraire — c'est la garde qui empêche une
-        // application née sans bordure de faire entrer sa fenêtre navigateur en
-        // plein écran sans raison (voir `plein_ecran::SuiviBordure`).
-        let mut suivi_bordure = plein_ecran::SuiviBordure::nouveau(
-            plein_ecran::lire_style(self.parametres.hwnd).unwrap_or(0),
-        );
-        let mut dernier_style = Instant::now();
-        // A1 : `SuiviAccent` part de `None` et ANNONCE SA PREMIÈRE LECTURE —
-        // c'est l'INVERSE de `SuiviBordure` juste au-dessus, et le pourquoi vit
-        // dans la doc d'`accent::SuiviAccent`.
+        let mut last_count = Instant::now();
+        // D8: the reference state is the one read when the window is OPENED, not
+        // an arbitrary default value — it is the guard that prevents an
+        // application born borderless from putting its browser window into
+        // fullscreen for no reason (see `plein_ecran::SuiviBordure`).
+        let mut suivi_bordure =
+            plein_ecran::SuiviBordure::new(plein_ecran::lire_style(self.params.hwnd).unwrap_or(0));
+        let mut last_style = Instant::now();
+        // A1: `SuiviAccent` starts from `None` and ANNOUNCES ITS FIRST READING —
+        // it is the REVERSE of `SuiviBordure` just above, and the why lives
+        // in the doc of `accent::SuiviAccent`.
         let mut suivi_accent = accent::SuiviAccent::neuf();
-        // `Instant::now()` et non « il y a longtemps » : la première lecture
-        // attend `PERIODE_ACCENT`, ce qui laisse la session s'établir. ⚠️ Si la
-        // recette la trouve trop tardive, c'est `PERIODE_ACCENT` qu'il faut
-        // régler, pas cette ligne.
-        let mut dernier_accent = Instant::now();
+        // `Instant::now()` and not "a long time ago": the first reading
+        // waits for `PERIODE_ACCENT`, which lets the session settle. ⚠️ If the
+        // acceptance run finds it too late, it is `PERIODE_ACCENT` that must be
+        // tuned, not this line.
+        let mut last_accent = Instant::now();
 
         let motif = loop {
-            // Refait à chaque tour : la taille retenue peut changer au réveil.
-            // Ne contient que des copies et des emprunts extérieurs à `self`,
-            // donc n'entrave aucun `&mut self`.
+            // Redone at every round: the kept size may change on wake-up.
+            // Contains only copies and borrows external to `self`,
+            // so hinders no `&mut self`.
             let ctx = Contexte {
                 session,
-                taille: (self.largeur, self.hauteur),
+                size: (self.largeur, self.hauteur),
                 commandes,
                 reponses,
             };
 
-            // 0. Les ordres du vivier. Avant tout le reste : dormir libère des
-            //    ressources, et il n'y a aucune raison d'encoder une image de
-            //    plus quand l'ordre est déjà là.
+            // 0. The pool's orders. Before everything else: sleeping frees
+            //    resources, and there is no reason to encode one more
+            //    frame when the order is already there.
             if let Fin::Terminer(motif) = self.appliquer_les_ordres(ordres, ecritures, &ctx) {
                 break motif;
             }
 
-            // 1. Les commandes en attente, s'il y en a. Elles sont rares, et
-            //    elles sont servies MÊME ENDORMIE : refuser tout pendant le
-            //    sommeil ferait échouer l'adaptation réseau de l'enfant et
-            //    clore la session par un chemin étranger au sommeil.
+            // 1. The pending commands, if any. They are rare, and
+            //    they are served EVEN WHEN ASLEEP: refusing everything during
+            //    sleep would make the child's network adaptation fail and
+            //    close the session through a path foreign to sleep.
             if let Fin::Terminer(motif) = servir_les_commandes(self.source.as_mut(), &ctx) {
                 break motif;
             }
 
-            // 2. Une image, s'il y en a une — et il n'y en a jamais quand la
-            //    fenêtre dort. Extraite par une instruction qui se termine,
-            //    pour que l'emprunt meure avec elle : `deposer` en reprend un
-            //    neuf juste après.
+            // 2. A frame, if there is one — and there never is when the
+            //    window sleeps. Extracted by a statement that ends,
+            //    so that the borrow dies with it: `deposer` takes a
+            //    fresh one right after.
             let unite = match self.source.as_mut() {
                 Some(source) => source.next_frame(),
                 None => None,
@@ -348,44 +347,44 @@ impl Fenetre {
             match unite {
                 Some(unite) => {
                     images += 1;
-                    // La file bornée EST la contre-pression : si l'enfant ne
-                    // lit plus, ce fil finit par attendre — et il n'attend que
-                    // pour SA fenêtre, sans jamais cesser de servir les
-                    // commandes. Une unité d'accès ne peut pas être jetée sans
-                    // corrompre le flux (les images P référencent les
-                    // précédentes), d'où l'attente plutôt que l'abandon.
+                    // The bounded queue IS the back-pressure: if the child no longer
+                    // reads, this thread ends up waiting — and it only waits
+                    // for ITS window, without ever ceasing to serve the
+                    // commands. An access unit cannot be thrown away without
+                    // corrupting the stream (P frames reference the
+                    // previous ones), hence waiting rather than dropping.
                     if let Fin::Terminer(motif) =
                         deposer(AEcrire::Image(unite), ecritures, self.source.as_mut(), &ctx)
                     {
                         break motif;
                     }
                 }
-                // Rien à envoyer : soit le bureau n'a pas changé, soit la
-                // fenêtre dort. Dans les deux cas, souffler.
+                // Nothing to send: either the desktop has not changed, or the
+                // window sleeps. In both cases, take a breath.
                 None => std::thread::sleep(PAS_A_VIDE),
             }
 
-            // 3. L'état, au CHANGEMENT seulement. Une fenêtre endormie n'en a
-            //    aucun à relever : son dernier `Etat` reste vrai — la sortie et
-            //    la géométrie ne bougent pas pendant le sommeil — et c'est
-            //    `Sommeil` qui dit au client ce qui lui arrive.
+            // 3. The state, on CHANGE only. A sleeping window has none
+            //    to report: its last `Etat` stays true — the output and
+            //    the geometry do not move during sleep — and it is
+            //    `Sommeil` that tells the client what is happening to it.
             let etat = self.source.as_ref().map(|source| {
                 let (largeur, hauteur) = source.dimensions();
                 (source.is_alive(), source.is_exhausted(), largeur, hauteur)
             });
             if let Some(etat) = etat {
-                if etat != dernier_etat {
-                    dernier_etat = etat;
-                    // 🔴 **LA TAILLE RETENUE SUIT, ET C'EST NEUF AU LOT 33.**
-                    // `reveiller` reconstruit la source sur `self.dimensions()`
-                    // et le bras endormi de `servir_les_commandes` répond
-                    // `ctx.taille` : tant que `resize` était un `no-op` en
-                    // `SortieEntiere`, ces deux champs ne pouvaient pas
-                    // dériver, et `transitions.rs` s'appuyait dessus en toutes
-                    // lettres. Depuis que le recadrage suit le viewport, ils
-                    // le peuvent — une fenêtre retaillée puis endormie se
-                    // réveillerait à SA TAILLE D'OUVERTURE, effaçant le
-                    // redimensionnement sans une trace.
+                if etat != last_state {
+                    last_state = etat;
+                    // 🔴 **THE KEPT SIZE FOLLOWS, AND IT IS NEW IN BATCH 33.**
+                    // `reveiller` rebuilds the source on `self.dimensions()`
+                    // and the asleep arm of `servir_les_commandes` replies
+                    // `ctx.size`: as long as `resize` was a `no-op` in
+                    // `SortieEntiere`, these two fields could not
+                    // drift, and `transitions.rs` relied on it in so many
+                    // words. Since cropping follows the viewport, they
+                    // can — a window resized then put to sleep would
+                    // wake up at ITS OPENING SIZE, erasing the
+                    // resize without a trace.
                     self.largeur = etat.2;
                     self.hauteur = etat.3;
                     let message = DepuisCapteur::Etat {
@@ -404,26 +403,26 @@ impl Fenetre {
                     }
                     if !etat.0 || etat.1 {
                         tracing::info!(%session, vivante = etat.0, epuisee = etat.1, "source close");
-                        break "la source est morte ou épuisée";
+                        break "the source is dead or exhausted";
                     }
                 }
             }
 
-            // 4. D8 : le style de la fenêtre dit si l'application est passée en
-            //    plein écran. Bridé par son propre minuteur — voir
+            // 4. D8: the window's style says whether the application has gone
+            //    fullscreen. Throttled by its own timer — see
             //    `plein_ecran::PERIODE_STYLE`.
             //
-            //    `plein_ecran::actif()` D'ABORD : `PLEIN_ECRAN=0` désarme la
-            //    détection — la relecture du style et l'annonce `PleinEcran`
-            //    qui en découle. C'est tout ce que ce mécanisme fait
-            //    désormais : le sous-bloc D9 a retiré l'autre moitié, le
-            //    changement de mode de la sortie virtuelle (voir
-            //    `plein_ecran::actif` pour le constat de mesure).
-            if plein_ecran::actif() && dernier_style.elapsed() >= plein_ecran::PERIODE_STYLE {
-                dernier_style = Instant::now();
-                if let Some(style) = plein_ecran::lire_style(self.parametres.hwnd) {
+            //    `plein_ecran::actif()` FIRST: `PLEIN_ECRAN=0` disarms
+            //    detection — re-reading the style and the resulting `PleinEcran`
+            //    announcement. That is all this mechanism does
+            //    now: sub-block D9 removed the other half, the
+            //    virtual output's mode change (see
+            //    `plein_ecran::actif` for the measurement finding).
+            if plein_ecran::actif() && last_style.elapsed() >= plein_ecran::PERIODE_STYLE {
+                last_style = Instant::now();
+                if let Some(style) = plein_ecran::lire_style(self.params.hwnd) {
                     if let Some(actif) = suivi_bordure.observer(style) {
-                        tracing::info!(%session, actif, "plein ecran de la fenetre Windows");
+                        tracing::info!(%session, actif, "Windows window fullscreen");
                         let message = DepuisCapteur::PleinEcran { actif };
                         if let Fin::Terminer(motif) = deposer(
                             AEcrire::Etat(message),
@@ -437,16 +436,16 @@ impl Fenetre {
                 }
             }
 
-            // 5. A1 : la teinte dominante de l'icône de la fenêtre.
-            //    **Le corps vit dans `fenetre/accent.rs`** : l'addition aurait
-            //    porté ce fichier à 500 lignes EXACTEMENT, donc à marge nulle,
-            //    et la règle du dépôt est « extraction, jamais compression ».
-            //    Il a déjà franchi 500 deux fois (508 en D9, 505 en D10).
+            // 5. A1: the dominant tint of the window's icon.
+            //    **The body lives in `fenetre/accent.rs`**: the addition would have
+            //    taken this file to EXACTLY 500 lines, hence to zero margin,
+            //    and the repository's rule is "extraction, never compression".
+            //    It has already crossed 500 twice (508 in D9, 505 in D10).
             #[cfg(windows)]
             if let Some(Fin::Terminer(motif)) = accent_fenetre::tour(
                 &mut suivi_accent,
-                &mut dernier_accent,
-                self.parametres.hwnd,
+                &mut last_accent,
+                self.params.hwnd,
                 ecritures,
                 self.source.as_mut(),
                 &ctx,
@@ -454,22 +453,22 @@ impl Fenetre {
                 break motif;
             }
 
-            if dernier_compte.elapsed() >= PERIODE_COMPTEURS {
-                let ecoule = dernier_compte.elapsed().as_secs_f64();
+            if last_count.elapsed() >= PERIODE_COMPTEURS {
+                let ecoule = last_count.elapsed().as_secs_f64();
                 tracing::info!(
                     %session,
                     images,
                     endormie = self.source.is_none(),
                     cadence = format!("{:.1}", images as f64 / ecoule),
-                    "cadence du capteur"
+                    "sensor cadence"
                 );
                 tracer_les_compteurs(self.source.as_ref());
                 images = 0;
-                dernier_compte = Instant::now();
+                last_count = Instant::now();
             }
         };
 
-        tracing::info!(%session, images, motif, "fin de la fenêtre côté capteur");
+        tracing::info!(%session, images, motif, "end of the window on the sensor side");
         Ok(())
     }
 }

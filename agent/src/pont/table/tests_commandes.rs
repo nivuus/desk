@@ -4,76 +4,73 @@
 use super::tests::{attributs, maintenant};
 use super::*;
 
-/// 🔴 **UNE ÉCRITURE ET UNE LECTURE NE PARTAGENT JAMAIS UNE CORRÉLATION.**
+/// 🔴 **A WRITE AND A READ NEVER SHARE A CORRELATION.**
 ///
-/// C'est la raison pour laquelle `inscrire_sans_commande` passe par CETTE
-/// table, et non par un second compteur : deux compteurs indépendants sur le
-/// même canal se collisionneraient, et la collision serait **silencieuse** —
-/// une réponse appliquée à la mauvaise commande.
+/// It is the reason `inscrire_sans_commande` goes through THIS
+/// table, and not through a second counter: two independent counters on the
+/// same channel would collide, and the collision would be **silent** —
+/// a response applied to the wrong command.
 #[test]
-fn une_ecriture_et_une_lecture_ne_partagent_jamais_une_correlation() {
+fn a_write_and_a_read_never_share_a_correlation() {
     let e = maintenant() + DELAI_LIRE;
-    let mut t = Table::nouvelle();
+    let mut t = Table::new();
     let mut vues = std::collections::HashSet::new();
     for i in 0..64 {
-        // Les deux sortes s'entrelacent, comme sur le chemin réel : un fil
-        // d'écriture pousse pendant qu'une application lit.
+        // The two kinds interleave, as on the real path: a write
+        // thread pushes while an application reads.
         let lecture = t.inscrire(i, attributs(&format!("l{i}")), e);
         let ecriture = t.inscrire_sans_commande(
-            Attendue::Ecrire {
+            Attendue::Write {
                 chemin: format!("e{i}"),
-                dernier: false,
+                last: false,
             },
             e,
         );
         assert!(
             vues.insert(lecture),
-            "corrélation {lecture} distribuée deux fois"
+            "correlation {lecture} handed out twice"
         );
         assert!(
             vues.insert(ecriture),
-            "corrélation {ecriture} distribuée deux fois"
+            "correlation {ecriture} handed out twice"
         );
     }
     assert_eq!(t.en_vol(), 128);
 }
 
-/// Une inscription sans commande reçoit une corrélation **et aucun
-/// `command_id`** : `verbes::completer` doit pouvoir la distinguer.
+/// A registration without a command receives a correlation **and no
+/// `command_id`**: `verbes::completer` must be able to tell it apart.
 #[test]
-fn une_inscription_sans_commande_n_a_pas_de_command_id() {
-    let e = maintenant() + DELAI_ECRIRE;
-    let mut t = Table::nouvelle();
+fn a_registration_without_a_command_has_no_command_id() {
+    let e = maintenant() + WRITE_TIMEOUT;
+    let mut t = Table::new();
     let c = t.inscrire_sans_commande(
-        Attendue::Creer {
+        Attendue::Create {
             chemin: "neuf.txt".into(),
         },
         e,
     );
-    let (commande, quoi, _) = t.resoudre(c, Instant::now()).expect("inscrite à l'instant");
-    assert_eq!(
-        commande, None,
-        "une écriture ne complète AUCUN rappel ProjFS"
-    );
+    let (commande, quoi, _) = t.resoudre(c, Instant::now()).expect("registered just now");
+    assert_eq!(commande, None, "a write completes NO ProjFS callback");
     assert_eq!(
         quoi,
-        Attendue::Creer {
+        Attendue::Create {
             chemin: "neuf.txt".into()
         }
     );
 }
 
-/// 🔴 **L'ÂGE RENDU PAR `resoudre` EST UNE VRAIE SOUSTRACTION, PAS UN ZÉRO.**
+/// 🔴 **THE AGE RETURNED BY `resoudre` IS A REAL SUBTRACTION, NOT A ZERO.**
 ///
-/// C'est la seule chose que le pont sache mesurer d'une traversée (F4, §0.5),
-/// et un `Duration::ZERO` constant rendrait tout l'histogramme de
-/// `pont::latence` muet **sans qu'aucune ligne de recensement ne manque** :
-/// `n:` monterait, `moy_us:` resterait à 0. Le temps étant un paramètre, le
-/// test l'éprouve **sans dormir**.
+/// It is the only thing the bridge can measure of a traversal (F4, §0.5),
+/// and a constant `Duration::ZERO` would make the whole histogram of
+/// `pont::latence` mute **without a single census line missing**:
+/// `n:` would rise, `moy_us:` would stay at 0. Time being a parameter, the
+/// test exercises it **without sleeping**.
 #[test]
-fn resoudre_rend_l_age_de_la_commande_et_non_zero() {
+fn resolving_returns_the_command_age_not_zero() {
     let depart = maintenant();
-    let mut t = Table::nouvelle();
+    let mut t = Table::new();
     let c = t.inscrire(
         7,
         Attendue::Attributs {
@@ -82,101 +79,101 @@ fn resoudre_rend_l_age_de_la_commande_et_non_zero() {
         depart + DELAI_ATTRIBUTS,
     );
 
-    // `inscrire` lit `Instant::now()` pour l'inscription ; on mesure donc un
-    // âge PLANCHER en prenant un « maintenant » décalé de 250 ms.
+    // `inscrire` reads `Instant::now()` for the registration; we therefore measure a
+    // FLOOR age by taking a "now" shifted by 250 ms.
     let (_, _, age) = t
         .resoudre(c, Instant::now() + Duration::from_millis(250))
-        .expect("inscrite à l'instant");
-    assert!(age >= Duration::from_millis(250), "âge rendu : {age:?}");
+        .expect("registered just now");
+    assert!(age >= Duration::from_millis(250), "returned age: {age:?}");
     assert!(
         age < Duration::from_millis(2_000),
-        "l'âge n'est pas le budget : {age:?}"
+        "the age is not the budget: {age:?}"
     );
 }
 
-/// 🔴 **`vider` REND LES ÉCRITURES AVEC UN `command_id` ABSENT.**
+/// 🔴 **`drain` RETURNS WRITES WITH AN ABSENT `command_id`.**
 ///
-/// Rendre `Some(0)` ferait appeler `PrjCompleteCommand(0)` à l'arrêt du pont,
-/// c'est-à-dire compléter une commande qui appartient à quelqu'un d'autre.
+/// Returning `Some(0)` would make `PrjCompleteCommand(0)` be called at bridge shutdown,
+/// that is, complete a command belonging to someone else.
 #[test]
-fn vider_rend_les_ecritures_avec_un_command_id_absent() {
-    let e = maintenant() + DELAI_ECRIRE;
-    let mut t = Table::nouvelle();
+fn drain_returns_writes_with_a_missing_command_id() {
+    let e = maintenant() + WRITE_TIMEOUT;
+    let mut t = Table::new();
     let lecture = t.inscrire(42, attributs("a"), e);
     let ecriture = t.inscrire_sans_commande(
-        Attendue::Ecrire {
+        Attendue::Write {
             chemin: "b".into(),
-            dernier: true,
+            last: true,
         },
         e,
     );
-    let tout = t.vider();
+    let tout = t.drain();
     assert_eq!(tout.len(), 2);
     assert!(tout.contains(&(Some(42), lecture)));
     assert!(
         tout.contains(&(None, ecriture)),
-        "l'écriture doit sortir SANS command_id"
+        "the write must come out WITHOUT a command_id"
     );
 }
 
-/// Une écriture expirée est retirée comme les autres.
+/// An expired write is removed like the others.
 ///
-/// L'exclure du balayage la laisserait en table **pour toujours** : rien
-/// d'autre ne la retire, puisqu'aucun rappel ProjFS ne l'a inscrite et
-/// qu'aucune annulation ne peut la viser.
+/// Excluding it from the sweep would leave it in the table **forever**: nothing
+/// else removes it, since no ProjFS callback registered it and
+/// no cancellation can target it.
 #[test]
-fn une_ecriture_expiree_est_retiree_comme_les_autres() {
+fn an_expired_write_is_removed_like_the_others() {
     let debut = maintenant();
-    let mut t = Table::nouvelle();
+    let mut t = Table::new();
     let c = t.inscrire_sans_commande(
-        Attendue::Ecrire {
+        Attendue::Write {
             chemin: "gros.bin".into(),
-            dernier: false,
+            last: false,
         },
-        debut + DELAI_ECRIRE,
+        debut + WRITE_TIMEOUT,
     );
     assert!(t.expirees(debut).is_empty());
-    assert_eq!(t.expirees(debut + DELAI_ECRIRE), vec![(None, c)]);
+    assert_eq!(t.expirees(debut + WRITE_TIMEOUT), vec![(None, c)]);
     assert_eq!(t.en_vol(), 0);
 }
 
-/// `annuler` ne peut pas viser une écriture — elle n'a pas de `command_id`.
+/// `annuler` cannot target a write — it has no `command_id`.
 ///
-/// ⚠️ **Sans cette assertion, `annuler(0)` pourrait apparier une écriture dont
-/// le `command_id` est `None`** le jour où la comparaison serait écrite à
-/// l'envers. Une application qui abandonne son E/S emporterait alors une
-/// écriture due, qui ne serait jamais poussée ET jamais retirée du journal.
+/// ⚠️ **Without this assertion, `annuler(0)` could pair a write whose
+/// `command_id` is `None`** the day the comparison is written
+/// backwards. An application giving up its I/O would then carry away a
+/// due write, which would never be pushed AND never removed from the journal.
 #[test]
-fn annuler_ne_vise_jamais_une_ecriture() {
-    let e = maintenant() + DELAI_ECRIRE;
-    let mut t = Table::nouvelle();
+fn cancel_never_targets_a_write() {
+    let e = maintenant() + WRITE_TIMEOUT;
+    let mut t = Table::new();
     let ecriture = t.inscrire_sans_commande(
-        Attendue::Ecrire {
+        Attendue::Write {
             chemin: "a".into(),
-            dernier: true,
+            last: true,
         },
         e,
     );
-    assert!(t.annuler(0).is_empty(), "aucune commande ProjFS 0 n'existe");
-    assert_eq!(t.en_vol(), 1, "l'écriture est toujours là");
+    assert!(t.annuler(0).is_empty(), "no ProjFS command 0 exists");
+    assert_eq!(t.en_vol(), 1, "the write is still there");
     assert!(t.resoudre(ecriture, Instant::now()).is_some());
 }
 
-/// 🔴 **LE RELEVÉ QUI REND LE LEGS N°4 DE F1 DIAGNOSTICABLE.**
+/// 🔴 **THE SURVEY THAT MAKES F1'S LEGACY NO. 4 DIAGNOSABLE.**
 ///
-/// F1 a mesuré des lectures qui CALENT sans jamais expirer — `commande expirée`
-/// reste à 0 pendant 540 s — et déclare qu'on ne sait pas OÙ le blocage se
-/// produit, « faute d'une trace à l'inscription en table ». C'est cette trace.
+/// F1 measured reads that STALL without ever expiring — the expired-command count
+/// stays at 0 for 540 s — and declares that we do not know WHERE the blockage
+/// happens, "for lack of a trace at table registration". This is that trace.
 ///
-/// Rouge : rendre `None` inconditionnellement, ou rendre le MINIMUM au lieu du
-/// maximum. Dans les deux cas le legs reste indiagnosticable, et c'est
-/// exactement l'état d'aujourd'hui.
+/// Red: return `None` unconditionally, or return the MINIMUM instead of the
+/// maximum. In both cases the legacy stays undiagnosable, and that is
+/// exactly today's state.
 #[test]
-fn plus_ancienne_rend_la_duree_de_la_plus_vieille_commande_en_vol() {
-    let mut t = Table::nouvelle();
+fn oldest_returns_the_duration_of_the_oldest_command_in_flight() {
+    let mut t = Table::new();
     let depart = Instant::now();
-    // Rien en vol : `None`, et c'est la PREMIÈRE ligne du tableau de lecture —
-    // « rien n'a jamais été inscrit, le blocage est dans le rappel ».
+    // Nothing in flight: `None`, and it is the FIRST line of the reading table —
+    // "nothing was ever registered, the blockage is in the callback".
     assert_eq!(t.plus_ancienne(depart), None);
 
     t.inscrire(
@@ -194,25 +191,25 @@ fn plus_ancienne_rend_la_duree_de_la_plus_vieille_commande_en_vol() {
     let vue = t.plus_ancienne(Instant::now()).expect("deux en vol");
     assert!(
         vue >= Duration::from_millis(20),
-        "la PLUS ANCIENNE, pas la plus jeune : {vue:?}"
+        "the OLDEST, not the youngest: {vue:?}"
     );
 }
 
-/// Les commandes **sans rappel ProjFS** sont comptées à part.
+/// Commands **without a ProjFS callback** are counted separately.
 ///
-/// ⚠️ Une application figée avec `en vol=3` et `sans_commande=3` n'attend RIEN
-/// du pont : les trois sont des poussées, et son blocage est ailleurs. Sans
-/// cette distinction, le recensement ferait accuser le pont d'un blocage qui
-/// ne le concerne pas.
+/// ⚠️ A frozen application with `en vol=3` and `sans_commande=3` waits for NOTHING
+/// from the bridge: all three are pushes, and its blockage is elsewhere. Without
+/// this distinction, the census would blame the bridge for a blockage that
+/// does not concern it.
 #[test]
-fn sans_commande_ne_compte_que_ce_qui_ne_complete_aucun_rappel() {
-    let mut t = Table::nouvelle();
+fn without_command_counts_only_what_completes_no_callback() {
+    let mut t = Table::new();
     let echeance = Instant::now() + Duration::from_secs(5);
     t.inscrire(1, Attendue::Attributs { chemin: "a".into() }, echeance);
     t.inscrire_sans_commande(
-        Attendue::Ecrire {
+        Attendue::Write {
             chemin: "b".into(),
-            dernier: true,
+            last: true,
         },
         echeance,
     );
@@ -228,51 +225,51 @@ fn sans_commande_ne_compte_que_ce_qui_ne_complete_aucun_rappel() {
     assert_eq!(t.sans_commande(), 2);
 }
 
-/// ⚠️ **Les cinq budgets sont DISTINCTS, et le rester est le point.**
+/// ⚠️ **The five budgets are DISTINCT, and staying so is the point.**
 ///
-/// L'ancien pont en avait **un seul**, 10 s, pour tout (`src/file.js:89`),
-/// d'où deux défauts symétriques : des lectures de gros blocs qui expiraient
-/// avant d'aboutir, et des `getattr` qui figeaient l'Explorateur dix secondes
-/// sur un chemin inexistant.
+/// The old bridge had **a single one**, 10 s, for everything (`src/file.js:89`),
+/// hence two symmetric defects: reads of large blocks that expired
+/// before completing, and `getattr`s that froze Explorer for ten seconds
+/// on a nonexistent path.
 #[test]
-fn les_cinq_budgets_sont_distincts() {
-    let tous = [
+fn the_five_budgets_are_distinct() {
+    let all = [
         DELAI_ATTRIBUTS,
         DELAI_LIRE,
         DELAI_LISTER,
-        DELAI_ECRIRE,
+        WRITE_TIMEOUT,
         DELAI_MUTATION,
     ];
-    for (i, a) in tous.iter().enumerate() {
-        for b in &tous[i + 1..] {
-            assert_ne!(a, b, "deux budgets partagent la valeur {a:?}");
+    for (i, a) in all.iter().enumerate() {
+        for b in &all[i + 1..] {
+            assert_ne!(a, b, "two budgets share the value {a:?}");
         }
     }
-    // Le budget d'une mutation est entre celui d'une lecture et celui d'une
-    // écriture : un seul aller-retour, mais dont le repli de copie est en
-    // O(taille) côté navigateur.
+    // A mutation's budget lies between a read's and a
+    // write's: a single round trip, but whose copy fallback is
+    // O(size) on the browser side.
     assert!(DELAI_MUTATION > DELAI_LIRE);
-    assert!(DELAI_MUTATION < DELAI_ECRIRE);
+    assert!(DELAI_MUTATION < WRITE_TIMEOUT);
 }
 
-/// 🔴 **`annuler` REND TOUTES LES CORRÉLATIONS D'UNE COMMANDE, ET C'EST LA
-/// FENÊTRE DE LECTURE DE F3 QUI L'EXIGE.**
+/// 🔴 **`annuler` RETURNS ALL THE CORRELATIONS OF A COMMAND, AND IT IS
+/// F3'S READ WINDOW THAT REQUIRES IT.**
 ///
-/// Rouge : n'en rendre qu'une, comme jusqu'à F2. Les *N−1* autres resteraient
-/// en vol, expireraient au budget, et `service::balayer` appellerait alors
-/// `PrjCompleteCommand` sur une commande **DÉJÀ COMPLÉTÉE** — un appel au
-/// système sur un identifiant qui appartient désormais à quelqu'un d'autre.
-/// *Muet, différé, et hors de notre processus.*
+/// Red: return only one, as until F2. The *N−1* others would stay
+/// in flight, would expire at the budget, and `service::balayer` would then call
+/// `PrjCompleteCommand` on an **ALREADY COMPLETED** command — a system
+/// call on an identifier that now belongs to someone else.
+/// *Mute, deferred, and outside our process.*
 #[test]
-fn annuler_retire_les_n_correlations_d_une_lecture_a_fenetre() {
-    let mut t = Table::nouvelle();
+fn cancel_removes_the_n_correlations_of_a_windowed_read() {
+    let mut t = Table::new();
     let e = maintenant() + DELAI_LIRE;
     let a = t.inscrire(
         7,
         Attendue::Lire {
             chemin: "g".into(),
             position: 0,
-            longueur: 4,
+            length: 4,
         },
         e,
     );
@@ -281,7 +278,7 @@ fn annuler_retire_les_n_correlations_d_une_lecture_a_fenetre() {
         Attendue::Lire {
             chemin: "g".into(),
             position: 4,
-            longueur: 4,
+            length: 4,
         },
         e,
     );
@@ -290,11 +287,11 @@ fn annuler_retire_les_n_correlations_d_une_lecture_a_fenetre() {
         Attendue::Lire {
             chemin: "g".into(),
             position: 8,
-            longueur: 4,
+            length: 4,
         },
         e,
     );
-    // Une commande VOISINE ne doit pas être emportée.
+    // A NEIGHBOURING command must not be carried away.
     let autre = t.inscrire(8, attributs("x"), e);
     assert_eq!(t.en_vol(), 4);
 
@@ -302,8 +299,8 @@ fn annuler_retire_les_n_correlations_d_une_lecture_a_fenetre() {
     assert_eq!(
         annulees,
         vec![a, b, c],
-        "les TROIS, dans un ordre déterministe"
+        "all THREE, in a deterministic order"
     );
-    assert_eq!(t.en_vol(), 1, "seule la commande 8 survit");
+    assert_eq!(t.en_vol(), 1, "only command 8 survives");
     assert!(t.resoudre(autre, Instant::now()).is_some());
 }

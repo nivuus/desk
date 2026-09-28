@@ -1,73 +1,71 @@
-//! Lancement et surveillance du capteur unique de capture mutualisée.
+//! Launching and supervising the single pooled-capture capturer.
 //!
-//! **`surveillance_capteur` et non `capteur`** (I7 de la revue finale de
-//! branche du sous-bloc D4). `crate::capteur` existe déjà et désigne AUTRE
-//! CHOSE : le capteur lui-même, c'est-à-dire le processus qui tient les N
-//! duplications DXGI et les N encodeurs. Ce module-ci n'en est que la
-//! supervision, vue du superviseur — il ne capture rien. Deux `capteur` dans
-//! le même graphe de modules, dont celui-ci fait `use super::*`, n'attendaient
-//! qu'un lecteur pressé pour se confondre.
+//! **`surveillance_capteur` and not `capteur`** (I7 of the branch's final
+//! review of sub-block D4). `crate::capteur` already exists and designates SOMETHING
+//! ELSE: the capturer itself, that is, the process holding the N
+//! DXGI duplications and the N encoders. This module is only its
+//! supervision, seen from the supervisor — it captures nothing. Two `capteur`s in
+//! the same module graph, one of which does `use super::*`, were only waiting
+//! for a hurried reader to be confused.
 //!
-//! Extrait de `boucle.rs` (tâche 7 du sous-bloc D4) pour rester sous le
-//! plafond de 500 lignes du projet — pas pour une raison de conception : cette
-//! logique fait partie de la boucle comme les autres, dans le même module
-//! logique, juste dans un fichier voisin. Même schéma que
+//! Extracted from `boucle.rs` (task 7 of sub-block D4) to stay under the
+//! project's 500-line ceiling — not for a design reason: this
+//! logic is part of the loop like the others, in the same logical
+//! module, just in a neighbouring file. Same scheme as
 //! `placement_periodique.rs`.
 
 use anyhow::Context;
 
 use super::*;
 
-/// Espacement minimal entre deux tentatives de relance du capteur.
+/// Minimum spacing between two capturer restart attempts.
 ///
-/// Sans cette borne, un capteur qui meurt AUSSITÔT après avoir été relancé
-/// ferait retenter `lancer_capteur` — donc `Command::spawn`, un vrai processus
-/// — à la cadence de la boucle : jusqu'à plusieurs fois par seconde tant
-/// qu'il reste des effets à traiter. Le dépôt a déjà payé deux fois le coût
-/// d'une simple LIGNE de journal émise à ce rythme sur un partage CIFS
-/// (correctif I2 de `lanceur.rs`, et le chantier TURN avant lui) ; relancer un
-/// processus à cette cadence serait pire. Cette constante ne fait qu'espacer
-/// les tentatives, elle ne les empêche jamais : le capteur reste retenté
-/// indéfiniment tant qu'il ne revient pas.
+/// Without this bound, a capturer dying RIGHT AFTER being restarted
+/// would make `lancer_capteur` be retried — hence `Command::spawn`, a real process
+/// — at the loop's cadence: up to several times per second as long
+/// as effects remain to be handled. The repository has already paid twice the cost
+/// of a mere log LINE emitted at this rate on a CIFS share
+/// (fix I2 of `lanceur.rs`, and the TURN work item before it); restarting a
+/// process at this cadence would be worse. This constant only spaces
+/// the attempts, it never prevents them: the capturer keeps being retried
+/// indefinitely as long as it does not come back.
 const PERIODE_RELANCE_CAPTEUR_MIN: std::time::Duration = std::time::Duration::from_millis(500);
 
-/// Ce que la boucle retient du capteur d'un tour à l'autre : le PID de la
-/// dernière tentative réussie (pour journaliser une relance avec le PID mort
-/// ET le PID neuf) et l'horodatage de la dernière tentative (pour l'espacer).
+/// What the loop keeps of the capturer from one turn to the next: the PID of the
+/// last successful attempt (to log a restart with the dead PID
+/// AND the new PID) and the timestamp of the last attempt (to space it out).
 pub(super) struct EtatCapteur {
     pid: u32,
     derniere_tentative: std::time::Instant,
-    /// Vrai dès qu'un cycle de relance en cours a été signalé.
+    /// True as soon as a restart cycle in progress has been signalled.
     ///
-    /// **Correctif I3 de la revue finale de branche.**
-    /// `PERIODE_RELANCE_CAPTEUR_MIN` espace les `spawn`, pas les LIGNES : un
-    /// capteur qui remeurt aussitôt après chaque relance produisait deux
-    /// lignes par seconde, indéfiniment, sur le partage CIFS — soit environ
-    /// 170 000 par jour. C'est exactement le risque que la documentation de
-    /// cette constante invoque, et elle n'en couvrait que la moitié.
+    /// **Fix I3 of the branch's final review.**
+    /// `PERIODE_RELANCE_CAPTEUR_MIN` spaces the `spawn`s, not the LINES: a
+    /// capturer dying again right after each restart produced two
+    /// lines per second, indefinitely, on the CIFS share — i.e. about
+    /// 170,000 per day. It is exactly the risk this constant's documentation
+    /// invokes, and it only covered half of it.
     ///
-    /// Même motif qu'`Enfant::etat_illisible_signale` (`superviseur/lanceur.rs`,
-    /// correctif I2) : signaler la première fois, se taire tant que la
-    /// situation se répète à l'identique, redevenir bruyant dès qu'elle cesse.
-    /// Ce qui est perdu est le COMPTE des relances ; ce qui est gardé est le
-    /// fait qu'un cycle a commencé — et le premier retour à la normale est
-    /// journalisé, ce qui borne le silence.
+    /// Same pattern as `Enfant::etat_illisible_signale` (`superviseur/lanceur.rs`,
+    /// fix I2): signal the first time, keep quiet as long as the
+    /// situation repeats identically, become noisy again as soon as it stops.
+    /// What is lost is the COUNT of restarts; what is kept is the
+    /// fact that a cycle started — and the first return to normal is
+    /// logged, which bounds the silence.
     cycle_signale: bool,
 }
 
 impl EtatCapteur {
-    /// Lance le capteur, AVANT la moindre fenêtre : c'est lui qui sert le
-    /// média à tout enfant qui se rattache, et un enfant lancé sans capteur en
-    /// face capturerait dans le vide.
+    /// Launches the capturer, BEFORE any window: it is the one serving the
+    /// media to any child that attaches, and a child launched without a capturer
+    /// facing it would capture into the void.
     ///
-    /// Pas de contrat atomique à défaire ici, contrairement à `lancer_capteur`
-    /// lui-même : un échec de CET appel est fatal au superviseur, au même
-    /// titre qu'un pilote ou qu'un hook qui ne s'ouvre pas — il n'y a rien
-    /// d'autre à nettoyer.
-    pub(super) fn demarrer(lanceur: &LanceurDeProcessus) -> Result<Self> {
-        let pid = lanceur
-            .lancer_capteur()
-            .context("lancement initial du capteur")?;
+    /// No atomic contract to undo here, unlike `lancer_capteur`
+    /// itself: a failure of THIS call is fatal to the supervisor, just
+    /// like a driver or a hook that does not open — there is nothing
+    /// else to clean up.
+    pub(super) fn start(lanceur: &LanceurDeProcessus) -> Result<Self> {
+        let pid = lanceur.lancer_capteur().context("initial sensor launch")?;
         Ok(Self {
             pid,
             derniere_tentative: std::time::Instant::now(),
@@ -75,38 +73,38 @@ impl EtatCapteur {
         })
     }
 
-    /// Relance le capteur s'il est mort, au plus une fois par
-    /// `PERIODE_RELANCE_CAPTEUR_MIN`, et journalise chaque relance réussie
-    /// avec le PID mort et le PID neuf.
+    /// Restarts the capturer if it is dead, at most once per
+    /// `PERIODE_RELANCE_CAPTEUR_MIN`, and logs each successful restart
+    /// with the dead PID and the new PID.
     ///
-    /// **Ne ferme jamais aucune fenêtre.** Les enfants tiennent sur leur
-    /// fenêtre de reprise (15 s, voir `capteur::distante`) et se rattachent
-    /// d'eux-mêmes au capteur relancé — c'est le critère de réception n°2 du
-    /// sous-bloc D4, et le fermer côté superviseur le ferait échouer par
-    /// construction. Cette méthode ne fait donc rien d'autre que relancer et
-    /// journaliser : aucun appel à `enfants.tuer` ni à un effet de la table
-    /// n'a sa place ici.
-    /// **Journalise le premier tour d'un cycle de relance, puis se tait**
-    /// (correctif I3, voir `cycle_signale`) : les tentatives, elles, ne
-    /// cessent jamais.
+    /// **Never closes any window.** Children hold on their
+    /// resumption window (15 s, see `capteur::distante`) and reattach
+    /// by themselves to the restarted capturer — it is acceptance criterion no. 2 of
+    /// sub-block D4, and closing it on the supervisor side would make it fail by
+    /// construction. This method therefore does nothing but restart and
+    /// log: no call to `enfants.tuer` nor to a table effect
+    /// has its place here.
+    /// **Logs the first turn of a restart cycle, then keeps quiet**
+    /// (fix I3, see `cycle_signale`): the attempts, for their part, never
+    /// stop.
     pub(super) fn surveiller(&mut self, lanceur: &LanceurDeProcessus) {
         if lanceur.capteur_vivant() {
-            // Le capteur a SURVÉCU à sa période de relance : le cycle est
-            // rompu, une mort ultérieure sera une information neuve.
+            // The capturer SURVIVED its restart period: the cycle is
+            // broken, a later death will be new information.
             //
-            // La condition de durée n'est pas décorative. La boucle du
-            // superviseur tourne à ~10 Hz alors que `PERIODE_RELANCE_CAPTEUR_MIN`
-            // vaut 500 ms : un capteur qui vivrait deux ou trois tours de
-            // boucle avant de mourir serait vu vivant au moins une fois entre
-            // deux relances, ce qui réarmerait le signalement à chaque cycle
-            // et rendrait la parade sans effet. Exiger qu'il tienne au moins
-            // aussi longtemps que l'espacement des relances est ce qui
-            // distingue « il repart » de « il agonise en boucle ».
+            // The duration condition is not decorative. The supervisor
+            // loop runs at ~10 Hz while `PERIODE_RELANCE_CAPTEUR_MIN`
+            // is 500 ms: a capturer living two or three loop
+            // turns before dying would be seen alive at least once between
+            // two restarts, which would re-arm the signalling at each cycle
+            // and make the safeguard ineffective. Requiring it to hold at least
+            // as long as the restart spacing is what
+            // distinguishes "it is coming back" from "it is dying in a loop".
             if self.cycle_signale
                 && self.derniere_tentative.elapsed() >= PERIODE_RELANCE_CAPTEUR_MIN
             {
                 self.cycle_signale = false;
-                tracing::info!(pid = self.pid, "capteur de nouveau stable");
+                tracing::info!(pid = self.pid, "sensor stable again");
             }
             return;
         }
@@ -114,34 +112,34 @@ impl EtatCapteur {
             return;
         }
         self.derniere_tentative = std::time::Instant::now();
-        // Lu AVANT la tentative, et armé quoi qu'il arrive : les deux issues
-        // ci-dessous journalisent, et les deux doivent se taire au tour
-        // suivant si le cycle se poursuit.
+        // Read BEFORE the attempt, and armed whatever happens: both outcomes
+        // below log, and both must keep quiet at the next turn
+        // if the cycle continues.
         let premier_du_cycle = !self.cycle_signale;
         self.cycle_signale = true;
         match lanceur.lancer_capteur() {
-            Ok(nouveau) => {
+            Ok(new) => {
                 if premier_du_cycle {
                     tracing::warn!(
                         pid_mort = self.pid,
-                        pid_neuf = nouveau,
-                        "capteur mort, relancé (relances suivantes silencieuses \
-                         tant que le cycle se répète)"
+                        pid_neuf = new,
+                        "sensor dead, relaunched (following relaunches silent \
+                         as long as the cycle repeats)"
                     );
                 }
-                self.pid = nouveau;
+                self.pid = new;
             }
-            Err(erreur) => {
-                // `self.pid` n'est PAS mis à jour : il reste la dernière
-                // valeur connue, pour que la prochaine relance réussie
-                // journalise un « mort » exact — `lancer_capteur` ne réussit
-                // `Ok` qu'en atomique, un échec n'a jamais fait vivre de
-                // processus (voir sa doc).
+            Err(error) => {
+                // `self.pid` is NOT updated: it stays the last known
+                // value, so that the next successful restart
+                // logs an exact "dead" one — `lancer_capteur` only returns
+                // `Ok` atomically, a failure never made a process
+                // live (see its doc).
                 if premier_du_cycle {
                     tracing::error!(
-                        %erreur,
-                        "relance du capteur échouée — retentée indéfiniment passé le délai \
-                         minimal, et silencieusement tant que l'échec se répète"
+                        %error,
+                        "sensor relaunch failed — retried indefinitely past the minimal \
+                         delay, and silently as long as the failure repeats"
                     );
                 }
             }

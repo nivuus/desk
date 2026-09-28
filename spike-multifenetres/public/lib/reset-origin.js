@@ -1,10 +1,10 @@
-// Hygiène de l'origin avant le spike. Module ESM pur : importé tel quel par
-// reset.html dans le navigateur, et par Vitest sous Node — d'où l'injection des
-// API plutôt qu'un accès direct à `navigator`.
+// Origin hygiene before the spike. Pure ESM module: imported as is by
+// reset.html in the browser, and by Vitest under Node — hence the injection of the
+// APIs rather than direct access to `navigator`.
 //
-// Raison d'être : l'ancienne application enregistre un service worker sur ce même
-// origin (web/index.js:418). Un service worker actif intercepterait les requêtes
-// du spike et rendrait tous les verdicts ininterprétables.
+// Reason to exist: the old application registers a service worker on this same
+// origin (web/index.js:418). An active service worker would intercept the requests
+// of the spike and make every verdict uninterpretable.
 
 /**
  * @param {{ serviceWorker?: { getRegistrations(): Promise<Array<{scope: string, unregister(): Promise<boolean>}>> },
@@ -20,8 +20,8 @@ export async function nettoyerOrigin(api) {
     if (api.serviceWorker) {
         const enregistrements = await api.serviceWorker.getRegistrations();
         for (const enregistrement of enregistrements) {
-            // La portée est relevée AVANT la suppression : c'est elle qui dira si
-            // l'ancienne application était bien là.
+            // The scope is recorded BEFORE the removal: it is what will tell whether
+            // the old application was really there.
             rapport.serviceWorkers.push(enregistrement.scope);
             await enregistrement.unregister();
         }

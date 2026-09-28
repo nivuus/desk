@@ -1,8 +1,8 @@
-//! Tests d'hôte de [`super`]. **Aucun ne dort** : la durée est un paramètre.
+//! Host tests of [`super`]. **None sleeps**: the duration is a parameter.
 
 use std::time::Duration;
 
-use super::{nom, seau_de, Famille, Histogramme, NOMBRE, SEAUX, SEAUX_MS};
+use super::{nom, seau_de, Famille, Histogramme, COUNT, SEAUX, SEAUX_MS};
 use crate::pont::table::Attendue;
 
 fn ms(n: u64) -> Duration {
@@ -15,15 +15,15 @@ fn attributs(chemin: &str) -> Attendue {
     }
 }
 
-/// ⚠️ **CE TEST N'ÉPROUVE QU'UN `Default`, ET IL N'EST GARDÉ QUE PARCE QU'IL EST
-/// LE TÉMOIN DE DÉPART DES AUTRES.** C'est le legs n°11 de D9
-/// (`une_telemetrie_neuve_est_a_zero`, « incapable de rendre l'autre valeur ») :
-/// sans lui, `les_familles_ne_se_melangent_pas` ne pourrait pas distinguer
-/// « la famille voisine n'a pas bougé » de « elle n'a jamais rien porté ».
+/// ⚠️ **THIS TEST ONLY EXERCISES A `Default`, AND IT IS KEPT ONLY BECAUSE IT IS
+/// THE STARTING WITNESS OF THE OTHERS.** It is D9's legacy no. 11
+/// (`une_telemetrie_neuve_est_a_zero`, "unable to return the other value"):
+/// without it, `the_families_do_not_mix` could not distinguish
+/// "the neighbouring family did not move" from "it never carried anything".
 #[test]
-fn un_histogramme_neuf_rend_des_zeros() {
-    let h = Histogramme::nouveau();
-    for f in Famille::TOUTES {
+fn a_fresh_histogram_returns_zeros() {
+    let h = Histogramme::new();
+    for f in Famille::ALL {
         assert_eq!(h.compte(f), 0, "{}", nom(f));
         assert_eq!(h.moyenne_us(f), 0, "{}", nom(f));
         assert_eq!(h.max_us(f), 0, "{}", nom(f));
@@ -33,66 +33,66 @@ fn un_histogramme_neuf_rend_des_zeros() {
     }
 }
 
-/// 🔴 **La borne est INCLUSIVE en haut.** Un `<` au lieu d'un `<=` décalerait
-/// toute la distribution d'un seau, en silence : chaque valeur EXACTEMENT égale
-/// à une borne est éprouvée, plus une valeur strictement en dessous et une
-/// strictement au-dessus.
+/// 🔴 **The bound is INCLUSIVE at the top.** A `<` instead of a `<=` would shift
+/// the whole distribution by one bucket, silently: each value EXACTLY equal
+/// to a bound is exercised, plus one value strictly below and one
+/// strictly above.
 #[test]
-fn une_traversee_tombe_dans_le_seau_qui_la_contient() {
-    // Exactement sur chaque borne : le seau de MÊME rang.
+fn a_crossing_falls_in_the_bucket_that_contains_it() {
+    // Exactly on each bound: the bucket of the SAME rank.
     for (i, borne) in SEAUX_MS.iter().enumerate() {
         assert_eq!(seau_de(ms(*borne)), i, "borne {} ms", borne);
     }
-    // Juste en dessous de la première borne, et zéro.
+    // Just below the first bound, and zero.
     assert_eq!(seau_de(Duration::from_micros(999)), 0);
     assert_eq!(seau_de(Duration::ZERO), 0);
-    // Juste au-dessus d'une borne : le seau SUIVANT.
+    // Just above a bound: the NEXT bucket.
     assert_eq!(seau_de(Duration::from_micros(1_001)), 1, "1,001 ms");
     assert_eq!(
         seau_de(Duration::from_micros(20_001)),
         5,
         "20,001 ms -> seau 50"
     );
-    // Au-delà de la dernière borne : `inf`, le treizième.
+    // Beyond the last bound: `inf`, the thirteenth.
     assert_eq!(seau_de(ms(5_001)), SEAUX_MS.len());
     assert_eq!(seau_de(ms(30_000)), SEAUX_MS.len());
 
-    // Et le seau est bien celui que l'histogramme incrémente.
-    let h = Histogramme::nouveau();
+    // And the bucket is indeed the one the histogram increments.
+    let h = Histogramme::new();
     h.observer(Famille::Lire, ms(5));
-    assert_eq!(h.seau(Famille::Lire, 2), 1, "5 ms est dans le seau '5'");
+    assert_eq!(h.seau(Famille::Lire, 2), 1, "5 ms is in bucket '5'");
     assert_eq!(
         h.seau(Famille::Lire, 3),
         0,
-        "et surtout PAS dans le seau '10'"
+        "and above all NOT in bucket '10'"
     );
 }
 
-/// Le jumeau du garde de `pont::compteurs` : un `rang()` faux ferait compter
-/// une famille sur le dos d'une autre.
+/// The twin of `pont::compteurs`' guard: a wrong `rang()` would count
+/// one family on the back of another.
 #[test]
-fn les_familles_ne_se_melangent_pas() {
-    let h = Histogramme::nouveau();
+fn the_families_do_not_mix() {
+    let h = Histogramme::new();
     h.observer(Famille::Lire, ms(7));
     h.observer(Famille::Lire, ms(7));
     h.observer(Famille::Lister, ms(300));
 
     assert_eq!(h.compte(Famille::Lire), 2);
     assert_eq!(h.compte(Famille::Lister), 1);
-    for f in [Famille::Attributs, Famille::Ecrire, Famille::Mutation] {
-        assert_eq!(h.compte(f), 0, "{} n'a rien reçu", nom(f));
+    for f in [Famille::Attributs, Famille::Write, Famille::Mutation] {
+        assert_eq!(h.compte(f), 0, "{} received nothing", nom(f));
         assert_eq!(h.max_us(f), 0, "{}", nom(f));
     }
-    // Les seaux non plus ne se mélangent pas.
+    // The buckets do not mix either.
     assert_eq!(h.seau(Famille::Lire, 3), 2, "7 ms -> seau '10'");
     assert_eq!(h.seau(Famille::Lister, 3), 0);
     assert_eq!(h.seau(Famille::Lister, 8), 1, "300 ms -> seau '500'");
 }
 
-/// Une somme et un compte échangés rendraient la moyenne égale au compte.
+/// A swapped sum and count would make the mean equal to the count.
 #[test]
-fn le_max_est_le_max_et_la_moyenne_est_la_moyenne() {
-    let h = Histogramme::nouveau();
+fn the_max_is_the_max_and_the_mean_is_the_mean() {
+    let h = Histogramme::new();
     h.observer(Famille::Attributs, ms(2));
     h.observer(Famille::Attributs, ms(8));
     h.observer(Famille::Attributs, ms(2));
@@ -101,30 +101,32 @@ fn le_max_est_le_max_et_la_moyenne_est_la_moyenne() {
     assert_eq!(h.moyenne_us(Famille::Attributs), 4_000, "(2+8+2)/3 = 4 ms");
     assert_eq!(h.max_us(Famille::Attributs), 8_000);
 
-    // Le maximum ne RECULE pas quand une traversée plus courte suit.
+    // The maximum does NOT go back when a shorter traversal follows.
     h.observer(Famille::Attributs, ms(1));
     assert_eq!(h.max_us(Famille::Attributs), 8_000, "fetch_max, pas store");
 }
 
-/// 🔴 **Une dérive d'ordre ferait LIRE UN COMPTEUR POUR UN AUTRE.** La ligne
-/// est épinglée en toutes lettres, valeurs comprises.
+/// 🔴 **An order drift would READ ONE COUNTER FOR ANOTHER.** The line
+/// is pinned in full, values included.
 #[test]
-fn l_ordre_du_recensement_est_epingle() {
-    let h = Histogramme::nouveau();
+fn the_census_order_is_pinned() {
+    let h = Histogramme::new();
     h.observer(Famille::Lire, ms(3));
 
     let ligne = h.recensement();
-    let (tetes, seaux) = ligne.split_once(" | ").expect("la ligne a deux moitiés");
+    let (tetes, seaux) = ligne.split_once(" | ").expect("the line has two halves");
 
     assert_eq!(
         tetes,
-        "traversees attributs=n:0 moy_us:0 max_us:0 lister=n:0 moy_us:0 max_us:0 \
-         lire=n:1 moy_us:3000 max_us:3000 ecrire=n:0 moy_us:0 max_us:0 \
-         mutation=n:0 moy_us:0 max_us:0"
+        concat!(
+            "traversees attributs=n:0 moy_us:0 max_us:0 lister=n:0 moy_us:0 max_us:0 ",
+            "lire=n:1 moy_us:3000 max_us:3000 ecrire=n:0 moy_us:0 max_us:0 ",
+            "mutation=n:0 moy_us:0 max_us:0",
+        )
     );
-    // Les CINQ familles portent leurs seaux, et `lire` porte le sien au bon rang.
+    // The FIVE families carry their buckets, and `lire` carries its own at the right rank.
     assert!(seaux.starts_with("seaux_ms attributs="), "{seaux}");
-    for f in Famille::TOUTES {
+    for f in Famille::ALL {
         assert!(
             seaux.contains(&format!(" {}=1:", nom(f))),
             "{} absent : {seaux}",
@@ -133,11 +135,11 @@ fn l_ordre_du_recensement_est_epingle() {
     }
     assert!(
         seaux.contains("lire=1:0,2:0,5:1,10:0,"),
-        "3 ms est dans le seau '5' : {seaux}"
+        "3 ms is in bucket '5': {seaux}"
     );
     assert!(seaux.ends_with("inf:0"), "{seaux}");
-    // Une seule occurrence de chaque nom de famille dans chaque moitié.
-    for f in Famille::TOUTES {
+    // A single occurrence of each family name in each half.
+    for f in Famille::ALL {
         assert_eq!(
             tetes.matches(&format!(" {}=", nom(f))).count(),
             1,
@@ -153,36 +155,37 @@ fn l_ordre_du_recensement_est_epingle() {
     }
 }
 
-/// Le troisième étage du garde structurel : sans un nom propre, une famille
-/// neuve n'apparaîtrait pas au recensement, ou pire, s'y confondrait avec une
-/// autre.
+/// The third stage of the structural guard: without its own name, a new
+/// family would not appear in the census, or worse, would be confused there with
+/// another.
 #[test]
-fn une_famille_neuve_ne_peut_pas_heriter_du_nom_d_une_autre() {
-    let mut noms: Vec<&str> = Famille::TOUTES.iter().map(|f| nom(*f)).collect();
-    let avant = noms.len();
+fn a_new_family_cannot_inherit_another_name() {
+    let mut noms: Vec<&str> = Famille::ALL.iter().map(|f| nom(*f)).collect();
+    let before = noms.len();
     noms.sort_unstable();
     noms.dedup();
-    assert_eq!(
-        noms.len(),
-        avant,
-        "deux familles partagent un nom : {noms:?}"
-    );
-    assert_eq!(avant, NOMBRE, "TOUTES doit porter les NOMBRE familles");
-    // ⚠️ Aucun nom n'est le PRÉFIXE d'un autre : deux messages qui partagent une
-    // sous-chaîne font un instrument faux (piège maison, payé par F1).
-    for a in Famille::TOUTES {
-        for b in Famille::TOUTES {
+    assert_eq!(noms.len(), before, "two families share a name: {noms:?}");
+    assert_eq!(before, COUNT, "ALL must carry the COUNT families");
+    // ⚠️ No name is the PREFIX of another: two messages sharing a
+    // substring make a false instrument (house trap, paid for by F1).
+    for a in Famille::ALL {
+        for b in Famille::ALL {
             if a != b {
-                assert!(!nom(a).starts_with(nom(b)), "{} préfixe {}", nom(b), nom(a));
+                assert!(
+                    !nom(a).starts_with(nom(b)),
+                    "{} is a prefix of {}",
+                    nom(b),
+                    nom(a)
+                );
             }
         }
     }
 }
 
-/// La famille est le BUDGET, pas le verbe : `Creer` et `Ecrire` partagent
-/// `DELAI_ECRIRE`, donc la famille `ecrire`.
+/// The family is the BUDGET, not the verb: `Create` and `Write` share
+/// `WRITE_TIMEOUT`, hence the `write` family.
 #[test]
-fn la_famille_suit_le_budget_et_creer_est_de_la_famille_ecrire() {
+fn the_family_follows_the_budget_and_create_belongs_to_the_write_family() {
     assert_eq!(Famille::de(&attributs("a")), Famille::Attributs);
     assert_eq!(
         Famille::de(&Attendue::Lister {
@@ -195,21 +198,21 @@ fn la_famille_suit_le_budget_et_creer_est_de_la_famille_ecrire() {
         Famille::de(&Attendue::Lire {
             chemin: "f".into(),
             position: 0,
-            longueur: 1
+            length: 1
         }),
         Famille::Lire
     );
     assert_eq!(
-        Famille::de(&Attendue::Ecrire {
+        Famille::de(&Attendue::Write {
             chemin: "f".into(),
-            dernier: true
+            last: true
         }),
-        Famille::Ecrire
+        Famille::Write
     );
     assert_eq!(
-        Famille::de(&Attendue::Creer { chemin: "f".into() }),
-        Famille::Ecrire,
-        "Creer est inscrite par ecriture::fil sous DELAI_ECRIRE"
+        Famille::de(&Attendue::Create { chemin: "f".into() }),
+        Famille::Write,
+        "Creer is registered by ecriture::fil under DELAI_ECRIRE"
     );
     assert_eq!(
         Famille::de(&Attendue::Muter {

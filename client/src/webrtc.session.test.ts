@@ -1,43 +1,43 @@
-// Tests de bout en bout de `connectSession`, sur des implémentations factices
-// de `RTCPeerConnection`, `WebSocket` et `MediaStream`.
+// End-to-end tests of `connectSession`, on fake implementations
+// of `RTCPeerConnection`, `WebSocket` and `MediaStream`.
 //
-// ⚠️ **EXTRAIT de `webrtc.test.ts` par la tâche 10 du chantier E**, qui l'avait
-// porté à 517 lignes — au-dessus du plafond de 500 du dépôt. La règle y est
-// explicite : « aucun NOUVEAU fichier ne naît au-dessus de 500 lignes, et un
-// fichier déjà au-dessus ne doit pas grossir davantage », et le remède prescrit
-// est l'EXTRACTION, jamais la compression des commentaires. La coupure suit
-// une frontière réelle et non un compte de lignes : `webrtc.test.ts` garde ce
-// qui s'éprouve SANS navigateur (`parseSignalingMessage`, `waitForAnswer`, sur
-// un faux socket minimal), ce fichier-ci prend tout ce qui exige de simuler un
-// navigateur entier. C'est cette seconde moitié qui a grandi, et qui grandira.
+// ⚠️ **EXTRACTED from `webrtc.test.ts` by task 10 of project E**, which had
+// taken it to 517 lines — above the repository's ceiling of 500. The rule there is
+// explicit: "no NEW file is born above 500 lines, and a
+// file already above must not grow further", and the prescribed remedy
+// is EXTRACTION, never compressing comments. The cut follows
+// a real boundary and not a line count: `webrtc.test.ts` keeps what
+// is exercised WITHOUT a browser (`parseSignalingMessage`, `waitForAnswer`, on
+// a minimal fake socket), this file takes everything that requires simulating a
+// whole browser. It is this second half that grew, and will keep growing.
 //
-// Ce que ces tests portent : ce que `connectSession` DEMANDE au navigateur —
-// les transceivers et leur ORDRE (qui décide les `mid`, dont l'agent dépend),
-// un seul `MediaStream` porteur des pistes reçues, le jeton dans la poignée de
-// main (sous-bloc P2), et l'extinction réelle du micro à la fermeture
-// (chantier E). Pas la génération SDP elle-même, hors de portée sans moteur
-// WebRTC réel.
+// What these tests carry: what `connectSession` ASKS of the browser —
+// the transceivers and their ORDER (which decides the `mid`, on which the agent depends),
+// a single `MediaStream` carrying the received tracks, the token in the
+// handshake (sub-block P2), and the real switch-off of the microphone on close
+// (project E). Not the SDP generation itself, out of reach without a real WebRTC
+// engine.
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { connectSession } from './webrtc';
 import { CLE_ACCES } from './jeton';
 
-// Ces deux tests couvrent un comportement promis par la spec (§10) mais
-// jamais écrit : « l'offre contient un `m=audio` en `recvonly` » et « deux
-// pistes reçues aboutissent dans un seul `MediaStream` ». Le reste du
-// fichier isole `parseSignalingMessage`/`waitForAnswer` justement pour
-// éviter d'avoir à faire tourner un `RTCPeerConnection`/`WebSocket` réels
-// sous Node ; ici, on va jusqu'au bout via des fausses implémentations
-// globales plutôt que de laisser le trou ouvert. Le point testé est ce que
-// `connectSession` DEMANDE au navigateur (transceiver `audio` en
-// `recvonly`, un seul `MediaStream` porteur des deux pistes reçues) — pas la
-// génération SDP elle-même, hors de portée sans moteur WebRTC réel.
+// These two tests cover a behaviour promised by the spec (§10) but
+// never written: "the offer contains an `m=audio` in `recvonly`" and "two
+// received tracks end up in a single `MediaStream`". The rest of the
+// file isolates `parseSignalingMessage`/`waitForAnswer` precisely to
+// avoid having to run a real `RTCPeerConnection`/`WebSocket`
+// under Node; here, we go all the way through fake global
+// implementations rather than leaving the hole open. The tested point is what
+// `connectSession` ASKS of the browser (an `audio` transceiver in
+// `recvonly`, a single `MediaStream` carrying the two received tracks) — not the
+// SDP generation itself, out of reach without a real WebRTC engine.
 
-/// Point d'accès `RTCPeerConnection` factice. `createOffer` traduit
-/// fidèlement les transceivers demandés en lignes SDP : c'est cette
-/// traduction, fidèle à la demande, que les tests vérifient.
-/// Ce qu'un `addTransceiver` rend, réduit à ce dont `connectSession` se sert.
+/// Fake `RTCPeerConnection` entry point. `createOffer` faithfully translates
+/// the requested transceivers into SDP lines: it is this
+/// translation, faithful to the request, that the tests check.
+/// What an `addTransceiver` returns, reduced to what `connectSession` uses.
 interface FauxTransceiver {
     kind: string;
     direction?: string;
@@ -56,16 +56,16 @@ class FakeRtcPeerConnection {
     }
 
     addTransceiver(kind: string, opts?: { direction?: string }): FauxTransceiver {
-        // Le faux RENVOIE désormais un transceiver, comme le vrai : c'est le
-        // `sender` de celui du micro que `connectSession` expose (chantier E).
-        // Un `void` ici faisait échouer les cinq tests de `connectSession` sur
-        // « Cannot read properties of undefined (reading 'sender') ».
+        // The fake now RETURNS a transceiver, like the real one: it is the
+        // `sender` of the microphone's one that `connectSession` exposes (project E).
+        // A `void` here made the five tests of `connectSession` fail on
+        // "Cannot read properties of undefined (reading 'sender')".
         const transceiver: FauxTransceiver = {
             kind,
             direction: opts?.direction,
-            // `track: null` est l'état d'un transceiver déclaré SANS PISTE —
-            // exactement ce que la spec §5 exige du micro : aucune capture,
-            // aucune permission demandée tant qu'on n'a pas cliqué.
+            // `track: null` is the state of a transceiver declared WITHOUT A TRACK —
+            // exactly what spec §5 requires of the microphone: no capture,
+            // no permission requested as long as nobody has clicked.
             sender: { track: null },
         };
         this.transceivers.push(transceiver);
@@ -113,8 +113,8 @@ class FakeRtcPeerConnection {
     close(): void {}
 }
 
-/// `MediaStream` factice : juste assez pour prouver que les pistes reçues
-/// s'accumulent dans le même objet plutôt que de se chasser l'une l'autre.
+/// Fake `MediaStream`: just enough to prove that received tracks
+/// accumulate in the same object rather than chasing each other out.
 class FakeMediaStream {
     private tracks: unknown[] = [];
     addTrack(track: unknown): void {
@@ -125,9 +125,9 @@ class FakeMediaStream {
     }
 }
 
-/// `WebSocket` factice qui s'ouvre tout de suite et répond automatiquement
-/// « answer » dès qu'il voit passer une offre, pour que `connectSession`
-/// puisse aller jusqu'au bout sans jamais toucher un vrai réseau.
+/// Fake `WebSocket` that opens right away and automatically answers
+/// "answer" as soon as it sees an offer go by, so that `connectSession`
+/// can go all the way without ever touching a real network.
 class FakeSignalingSocket {
     private listeners = new Map<string, Set<(event: any) => void>>();
 
@@ -151,10 +151,10 @@ class FakeSignalingSocket {
     send(data: string): void {
         messagesEnvoyes.push(data);
         const parsed = JSON.parse(data) as { type?: string; role?: string };
-        // Configuration ICE vide, émise dès la déclaration de rôle, comme le
-        // fait le serveur de signaling quand aucun relais n'est déployé.
-        // Sans elle, `connectSession` patienterait 2 s (le délai
-        // d'`attendreConfigIce`) avant de construire la connexion.
+        // Empty ICE configuration, emitted as soon as the role is declared, as
+        // the signaling server does when no relay is deployed.
+        // Without it, `connectSession` would wait 2 s (the delay
+        // of `attendreConfigIce`) before building the connection.
         if (parsed.role === 'client') {
             queueMicrotask(() => {
                 this.emit('message', {
@@ -175,11 +175,11 @@ class FakeSignalingSocket {
 }
 
 let derniereInstancePc: FakeRtcPeerConnection | undefined;
-/// Tout ce que le client a poussé sur le socket de signaling. C'est le seul
-/// instrument qui puisse dire ce que porte la POIGNÉE DE MAIN.
+/// Everything the client pushed on the signaling socket. It is the only
+/// instrument that can say what the HANDSHAKE carries.
 let messagesEnvoyes: string[] = [];
 
-/// La déclaration de rôle, c'est-à-dire le premier message envoyé.
+/// The role declaration, that is, the first message sent.
 function poigneeDeMain(): Record<string, unknown> {
     return JSON.parse(messagesEnvoyes[0]) as Record<string, unknown>;
 }
@@ -188,14 +188,14 @@ function fauxVideo(): HTMLVideoElement {
     return { srcObject: null } as unknown as HTMLVideoElement;
 }
 
-describe('connectSession — négociation promise par la spec §10', () => {
+describe('connectSession — negotiation promised by spec §10', () => {
     afterEach(() => {
         derniereInstancePc = undefined;
         messagesEnvoyes = [];
         vi.unstubAllGlobals();
     });
 
-    it("l'offre envoyée contient un `m=audio` en `recvonly`", async () => {
+    it("the sent offer contains an `m=audio` as `recvonly`", async () => {
         vi.stubGlobal('RTCPeerConnection', FakeRtcPeerConnection);
         vi.stubGlobal('WebSocket', FakeSignalingSocket);
         vi.stubGlobal('MediaStream', FakeMediaStream);
@@ -213,28 +213,28 @@ describe('connectSession — négociation promise par la spec §10', () => {
         expect(lignes[indexAudio + 1]).toBe('a=recvonly');
     });
 
-    it('deux pistes reçues aboutissent dans un seul MediaStream', async () => {
+    it('two received tracks end up in a single MediaStream', async () => {
         vi.stubGlobal('RTCPeerConnection', FakeRtcPeerConnection);
         vi.stubGlobal('WebSocket', FakeSignalingSocket);
         vi.stubGlobal('MediaStream', FakeMediaStream);
 
         const video = fauxVideo();
-        // La session est attendue AVANT d'émettre les pistes : depuis que la
-        // configuration ICE doit être reçue pour construire la connexion, la
-        // `RTCPeerConnection` naît après le premier `await` de
-        // `connectSession`, et l'instance factice n'existe donc pas encore au
-        // retour de l'appel. Le listener `track` est câblé juste après sa
-        // construction, bien avant la résolution — l'émettre ici l'atteint
-        // aussi sûrement qu'avant.
+        // The session is awaited BEFORE emitting the tracks: since the
+        // ICE configuration must be received to build the connection, the
+        // `RTCPeerConnection` is born after the first `await` of
+        // `connectSession`, and the fake instance therefore does not exist yet when
+        // the call returns. The `track` listener is wired right after its
+        // construction, well before resolution — emitting here reaches it
+        // as surely as before.
         await connectSession({
             signalingUrl: 'ws://signaling.invalid',
             sessionId: 'test',
             video,
         });
 
-        // `receiver` est toujours présent sur un vrai `RTCTrackEvent` — un
-        // objet nu ici, sans `playoutDelayHint`, imite un navigateur qui ne
-        // supporte pas la propriété (voir l'accès défensif dans webrtc.ts).
+        // `receiver` is always present on a real `RTCTrackEvent` — a
+        // bare object here, without `playoutDelayHint`, imitates a browser that does not
+        // support the property (see the defensive access in webrtc.ts).
         const pisteVideo = { kind: 'video' } as unknown as MediaStreamTrack;
         const pisteAudio = { kind: 'audio' } as unknown as MediaStreamTrack;
         derniereInstancePc!.emit('track', { track: pisteVideo, receiver: {} });
@@ -244,29 +244,29 @@ describe('connectSession — négociation promise par la spec §10', () => {
         expect(flux).toBeInstanceOf(FakeMediaStream);
         expect(flux.getTracks()).toEqual([pisteVideo, pisteAudio]);
 
-        // La seconde piste ne doit pas avoir chassé la première en
-        // réassignant `srcObject` : même objet `flux` avant et après.
+        // The second track must not have chased the first out by
+        // reassigning `srcObject`: same `flux` object before and after.
         expect(video.srcObject).toBe(flux);
     });
 
-    // ── Le micro (chantier E, tâche 10) ─────────────────────────────────────
+    // ── The microphone (project E, task 10) ─────────────────────────────────
     //
-    // ⚠️ LE PLAN DÉCLARE CES TROIS TESTS IMPOSSIBLES, ET IL A TORT. Il écrit
-    // que « `connectSession` exige un vrai `RTCPeerConnection` et n'est donc
-    // pas testé ici — c'est déjà le parti de `webrtc.test.ts`, qui n'exerce que
-    // `parseSignalingMessage` et `waitForAnswer` ». Ce n'est plus vrai depuis
-    // les deux tests de négociation ci-dessus, et depuis les trois tests du
-    // jeton (sous-bloc P2) : cinq tests traversent `connectSession` de bout en
-    // bout sur un faux `pc` dont le `createOffer` TRADUIT FIDÈLEMENT les
-    // transceivers demandés en lignes SDP.
+    // ⚠️ THE PLAN DECLARES THESE THREE TESTS IMPOSSIBLE, AND IT IS WRONG. It writes
+    // that "`connectSession` requires a real `RTCPeerConnection` and is therefore
+    // not tested here — it is already the choice of `webrtc.test.ts`, which only exercises
+    // `parseSignalingMessage` and `waitForAnswer`". That is no longer true since
+    // the two negotiation tests above, and since the three token
+    // tests (sub-block P2): five tests go through `connectSession` end to
+    // end on a fake `pc` whose `createOffer` FAITHFULLY TRANSLATES the
+    // requested transceivers into SDP lines.
     //
-    // Le plan écartait ensuite « un test qui vérifie que `addTransceiver` a été
-    // appelé », au motif qu'il ne pourrait échouer que par suppression de la
-    // ligne. Le reproche vaut pour un test qui compterait les appels ; il ne
-    // vaut pas pour ceux-ci, qui portent sur l'ORDRE des m-lines et sur
-    // l'extinction — deux propriétés qu'on peut casser sans rien supprimer, et
-    // dont chacune a été vue tomber sous mutation (voir le rapport de tâche).
-    it("l'offre déclare une TROISIÈME m-line, `audio` en `sendonly`, APRÈS l'audio descendante", async () => {
+    // The plan then ruled out "a test that checks that `addTransceiver` was
+    // called", on the grounds that it could only fail by deleting the
+    // line. The criticism holds for a test that counted calls; it does not
+    // hold for these, which are about the ORDER of the m-lines and about
+    // switching off — two properties that can be broken without deleting anything, and
+    // each of which was seen falling under mutation (see the task report).
+    it("the offer declares a THIRD m-line, `audio` as `sendonly`, AFTER the downstream audio", async () => {
         vi.stubGlobal('RTCPeerConnection', FakeRtcPeerConnection);
         vi.stubGlobal('WebSocket', FakeSignalingSocket);
         vi.stubGlobal('MediaStream', FakeMediaStream);
@@ -277,11 +277,11 @@ describe('connectSession — négociation promise par la spec §10', () => {
             video: fauxVideo(),
         });
 
-        // L'ORDRE est le fond du test, pas un détail de forme : c'est lui qui
-        // décide les `mid`, et l'agent range la piste audio dans `audio_mid` ou
-        // dans `mic_mid` selon sa direction (`transport/evenements.rs`).
-        // Intervertir les deux transceivers audio ferait partir le son
-        // DESCENDANT sur une piste inémissible, sans une seule erreur.
+        // The ORDER is the crux of the test, not a detail of form: it is what
+        // decides the `mid`, and the agent files the audio track under `audio_mid` or
+        // under `mic_mid` depending on its direction (`transport/evenements.rs`).
+        // Swapping the two audio transceivers would send the DOWNSTREAM sound
+        // onto a track that cannot emit, without a single error.
         expect(derniereInstancePc!.transceivers.map((t) => [t.kind, t.direction])).toEqual([
             ['video', 'recvonly'],
             ['audio', 'recvonly'],
@@ -295,7 +295,7 @@ describe('connectSession — négociation promise par la spec §10', () => {
         expect(lignes[audios[1] + 1]).toBe('a=sendonly');
     });
 
-    it('le sender du micro est exposé, et il naît SANS PISTE', async () => {
+    it('the mic sender is exposed, and it is born WITHOUT A TRACK', async () => {
         vi.stubGlobal('RTCPeerConnection', FakeRtcPeerConnection);
         vi.stubGlobal('WebSocket', FakeSignalingSocket);
         vi.stubGlobal('MediaStream', FakeMediaStream);
@@ -306,13 +306,13 @@ describe('connectSession — négociation promise par la spec §10', () => {
             video: fauxVideo(),
         });
 
-        // C'est le sender du TROISIÈME transceiver, pas d'un autre : sans cette
-        // égalité d'identité, `micro.ts` remplirait la piste descendante.
+        // It is the sender of the THIRD transceiver, not of another: without this
+        // identity equality, `micro.ts` would fill the downstream track.
         expect(session.micSender).toBe(derniereInstancePc!.transceivers[2].sender);
         expect(session.micSender.track).toBeNull();
     });
 
-    it("`close()` ARRÊTE la piste du micro, et pas seulement la connexion", async () => {
+    it("`close()` STOPS the mic track, and not only the connection", async () => {
         vi.stubGlobal('RTCPeerConnection', FakeRtcPeerConnection);
         vi.stubGlobal('WebSocket', FakeSignalingSocket);
         vi.stubGlobal('MediaStream', FakeMediaStream);
@@ -323,8 +323,8 @@ describe('connectSession — négociation promise par la spec §10', () => {
             video: fauxVideo(),
         });
 
-        // Ce que `micro.ts` aura fait au clic : `replaceTrack` pose la piste
-        // sur le sender.
+        // What `micro.ts` will have done on click: `replaceTrack` sets the track
+        // on the sender.
         let arretee = false;
         (session.micSender as unknown as FauxTransceiver['sender']).track = {
             stop() {
@@ -334,15 +334,15 @@ describe('connectSession — négociation promise par la spec §10', () => {
 
         session.close();
 
-        // ⚠️ `pc.close()` NE STOPPE PAS les pistes locales : sans le `stop()`
-        // explicite, l'indicateur de micro de Chrome resterait allumé après la
-        // fin de session et le périphérique resterait pris. C'est le « mensonge
-        // visuel » que la spec §9 qualifie d'inacceptable sur cette fonction.
+        // ⚠️ `pc.close()` DOES NOT STOP local tracks: without the explicit
+        // `stop()`, Chrome's microphone indicator would stay on after the
+        // end of the session and the device would stay taken. It is the "visual
+        // lie" spec §9 calls unacceptable on this feature.
         expect(arretee).toBe(true);
     });
 });
 
-describe('la poignée de main porte le jeton (sous-bloc P2)', () => {
+describe('the handshake carries the token (sub-block P2)', () => {
     afterEach(() => {
         messagesEnvoyes = [];
         vi.unstubAllGlobals();
@@ -354,7 +354,7 @@ describe('la poignée de main porte le jeton (sous-bloc P2)', () => {
         vi.stubGlobal('MediaStream', FakeMediaStream);
     }
 
-    it('envoie le jeton passé en option', async () => {
+    it('sends the token passed as an option', async () => {
         armerLesFactices();
         await connectSession({
             signalingUrl: 'ws://signaling.invalid',
@@ -369,10 +369,10 @@ describe('la poignée de main porte le jeton (sous-bloc P2)', () => {
         });
     });
 
-    it('retombe sur le coffre du navigateur quand aucun jeton n’est passé', async () => {
-        // E7 : le champ est FACULTATIF pour que `main.ts` — modifié par un
-        // autre chantier — n'ait pas à bouger. Le repli est donc le chemin
-        // NOMINAL, pas un cas de secours, et il doit être éprouvé comme tel.
+    it('falls back to the browser store when no token is passed', async () => {
+        // E7: the field is OPTIONAL so that `main.ts` — modified by another
+        // project — does not have to move. The fallback is therefore the
+        // NOMINAL path, not an emergency case, and it must be exercised as such.
         armerLesFactices();
         vi.stubGlobal('localStorage', {
             getItem: (c: string) => (c === CLE_ACCES ? 'jeton-du-coffre' : null),
@@ -387,11 +387,11 @@ describe('la poignée de main porte le jeton (sous-bloc P2)', () => {
         expect(poigneeDeMain().jeton).toBe('jeton-du-coffre');
     });
 
-    it("n'ajoute AUCUN champ hors `jeton`, et n'en retire aucun", async () => {
-        // 🔴 Spec §10.2 : le champ est AJOUTÉ, aucun n'est retiré. Un service
-        // du sous-bloc P1 ne lit que `role` et `session` et ignore `jeton`,
-        // donc ce client reste compatible avec lui. La compatibilité ne va que
-        // dans ce sens, et c'est ce test qui garde la première moitié.
+    it("adds NO field other than `jeton`, and removes none", async () => {
+        // 🔴 Spec §10.2: the field is ADDED, none is removed. A service
+        // of sub-block P1 only reads `role` and `session` and ignores `jeton`,
+        // so this client stays compatible with it. Compatibility only goes
+        // in that direction, and it is this test that guards the first half.
         armerLesFactices();
         vi.stubGlobal('localStorage', {
             getItem: () => null,
@@ -403,7 +403,7 @@ describe('la poignée de main porte le jeton (sous-bloc P2)', () => {
             sessionId: 'test',
             video: fauxVideo(),
         });
-        // Sans jeton : la poignée de main d'avant P2, à l'identique.
+        // Without a token: the handshake from before P2, identical.
         expect(Object.keys(poigneeDeMain()).sort()).toEqual(['role', 'session']);
 
         messagesEnvoyes = [];
@@ -413,7 +413,7 @@ describe('la poignée de main porte le jeton (sous-bloc P2)', () => {
             video: fauxVideo(),
             jeton: 'j',
         });
-        // Avec jeton : EXACTEMENT un champ de plus.
+        // With a token: EXACTLY one more field.
         expect(Object.keys(poigneeDeMain()).sort()).toEqual(['jeton', 'role', 'session']);
     });
 });

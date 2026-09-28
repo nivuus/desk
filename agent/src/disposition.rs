@@ -1,37 +1,37 @@
-//! Découpe d'un bureau en places disjointes, une par mire.
+//! Splitting a desktop into disjoint slots, one per test pattern.
 //!
-//! Portable comme `geometry.rs`, et testé pour la même raison qu'y sont
-//! testés les recadrages : une disposition dont deux places se recouvrent
-//! ferait échouer la porte éliminatoire du banc sans qu'aucune voie de
-//! capture soit en cause. Le banc accuserait la capture d'un défaut du banc.
+//! Portable like `geometry.rs`, and tested for the same reason the
+//! crops are tested there: a layout where two slots overlap
+//! would make the bench's elimination gate fail without any capture
+//! path being at fault. The bench would blame capture for a defect of the bench.
 
 use crate::geometry::Rect;
 
-/// Dimensions en deçà desquelles une place ne vaut pas la mesure.
+/// Dimensions below which a slot is not worth measuring.
 pub const TUILE_MIN_LARGEUR: u32 = 320;
 pub const TUILE_MIN_HAUTEUR: u32 = 240;
 
-/// Découpe `bureau` en `n` places disjointes, en grille la plus carrée
+/// Splits `bureau` into `n` disjoint slots, in the squarest grid
 /// possible.
 ///
-/// Renvoie `None` si les places descendraient sous `TUILE_MIN_*` : mieux vaut
-/// un refus net qu'une mesure sur des fenêtres trop petites pour représenter
-/// quoi que ce soit du produit.
+/// Returns `None` if the slots would go below `TUILE_MIN_*`: better
+/// a clean refusal than a measurement on windows too small to represent
+/// anything of the product.
 pub fn tuiles(bureau: Rect, n: u32) -> Option<Vec<Rect>> {
     if n == 0 {
         return None;
     }
-    // Grille la plus carrée possible : `colonnes` est le plus petit entier
-    // dont le carré atteint `n`. Calculé par boucle plutôt que par
-    // `(n as f64).sqrt().ceil()`, dont l'arrondi flottant est faux pour
-    // certains carrés parfaits selon la plateforme.
-    let mut colonnes = 1u32;
-    while colonnes * colonnes < n {
-        colonnes += 1;
+    // Squarest grid possible: `columns` is the smallest integer
+    // whose square reaches `n`. Computed by a loop rather than by
+    // `(n as f64).sqrt().ceil()`, whose floating-point rounding is wrong for
+    // some perfect squares depending on the platform.
+    let mut columns = 1u32;
+    while columns * columns < n {
+        columns += 1;
     }
-    let lignes = n.div_ceil(colonnes);
+    let lignes = n.div_ceil(columns);
 
-    let largeur = (bureau.width / colonnes) & !1;
+    let largeur = (bureau.width / columns) & !1;
     let hauteur = (bureau.height / lignes) & !1;
     if largeur < TUILE_MIN_LARGEUR || hauteur < TUILE_MIN_HAUTEUR {
         return None;
@@ -39,10 +39,10 @@ pub fn tuiles(bureau: Rect, n: u32) -> Option<Vec<Rect>> {
 
     let mut places = Vec::with_capacity(n as usize);
     for index in 0..n {
-        let colonne = index % colonnes;
-        let ligne = index / colonnes;
+        let column = index % columns;
+        let ligne = index / columns;
         places.push(Rect {
-            x: bureau.x + (colonne * largeur) as i32,
+            x: bureau.x + (column * largeur) as i32,
             y: bureau.y + (ligne * hauteur) as i32,
             width: largeur,
             height: hauteur,
@@ -56,7 +56,7 @@ mod tests {
     use super::*;
     use crate::geometry::rects_overlap;
 
-    /// Le bureau relevé sur la VM le 30/07/2026.
+    /// The desktop surveyed on the VM on 30/07/2026.
     const BUREAU: Rect = Rect {
         x: 0,
         y: 0,
@@ -65,23 +65,23 @@ mod tests {
     };
 
     #[test]
-    fn huit_places_ne_se_recouvrent_pas_et_tiennent_dans_le_bureau() {
-        let places = tuiles(BUREAU, 8).expect("huit places sur 2400x1080");
+    fn eight_slots_do_not_overlap_and_fit_in_the_desktop() {
+        let places = tuiles(BUREAU, 8).expect("eight places on 2400x1080");
         assert_eq!(places.len(), 8);
         for (i, a) in places.iter().enumerate() {
             assert!(a.x >= 0 && a.y >= 0);
             assert!(a.x as u32 + a.width <= BUREAU.width);
             assert!(a.y as u32 + a.height <= BUREAU.height);
             for b in places.iter().skip(i + 1) {
-                assert!(!rects_overlap(*a, *b), "{a:?} recouvre {b:?}");
+                assert!(!rects_overlap(*a, *b), "{a:?} overlaps {b:?}");
             }
         }
     }
 
     #[test]
     fn les_places_ont_des_dimensions_paires() {
-        // L'encodeur H.264 refuse les dimensions impaires en 4:2:0, comme
-        // le rappelle `geometry::crop_region`.
+        // The H.264 encoder refuses odd dimensions in 4:2:0, as
+        // `geometry::crop_region` recalls.
         for place in tuiles(BUREAU, 8).unwrap() {
             assert_eq!(place.width % 2, 0);
             assert_eq!(place.height % 2, 0);
@@ -98,8 +98,8 @@ mod tests {
 
     #[test]
     fn un_bureau_trop_petit_fait_refuser_la_disposition() {
-        // Refuser franchement plutôt que rendre des places minuscules : une
-        // mesure sur des fenêtres de 80x60 ne dirait rien du produit.
+        // Refuse outright rather than return tiny slots: a
+        // measurement on 80x60 windows would say nothing about the product.
         let etroit = Rect {
             x: 0,
             y: 0,
@@ -110,9 +110,9 @@ mod tests {
     }
 
     #[test]
-    fn le_nombre_de_places_demande_est_respecte_meme_si_la_grille_est_plus_large() {
-        // Sept places tiennent dans une grille 3x3 : deux cases restent vides,
-        // et on ne doit pas rendre neuf places pour autant.
+    fn the_requested_slot_count_is_honoured_even_if_the_grid_is_wider() {
+        // Seven slots fit in a 3x3 grid: two cells stay empty,
+        // and we must not return nine slots for all that.
         assert_eq!(tuiles(BUREAU, 7).unwrap().len(), 7);
     }
 }

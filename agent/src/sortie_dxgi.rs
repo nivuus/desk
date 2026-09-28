@@ -1,17 +1,17 @@
-//! Ce que DXGI expose d'une sortie d'affichage, sans rien qui dépende de
-//! l'API Windows elle-même.
+//! What DXGI exposes of a display output, without anything depending on
+//! the Windows API itself.
 //!
-//! Extrait de `capture.rs` (qui reste `#![cfg(windows)]` dans son ensemble)
-//! pour que `superviseur::placement::sortie_par_dimensions`, purement
-//! algorithmique, puisse se compiler et se tester sur l'hôte Linux —
-//! `crate::capture` n'existe pas du tout en dehors de Windows, donc aucun
-//! type qui en dépend ne peut traverser cette frontière. `capture.rs`
-//! réexporte ce type (`pub use crate::sortie_dxgi::SortieDxgi;`) pour que
-//! `crate::capture::SortieDxgi` reste le même type côté Windows — même
-//! précédent que `windows_source_sortie::region_de_sortie`, qui sort déjà la
-//! part portable d'un module par ailleurs `#[cfg(windows)]`.
+//! Extracted from `capture.rs` (which stays `#![cfg(windows)]` as a whole)
+//! so that `superviseur::placement::sortie_par_dimensions`, purely
+//! algorithmic, can compile and be tested on the Linux host —
+//! `crate::capture` does not exist at all outside Windows, so no
+//! type depending on it can cross that boundary. `capture.rs`
+//! re-exports this type (`pub use crate::sortie_dxgi::SortieDxgi;`) so that
+//! `crate::capture::SortieDxgi` stays the same type on the Windows side — same
+//! precedent as `windows_source_sortie::region_de_sortie`, which already moves out the
+//! portable part of an otherwise `#[cfg(windows)]` module.
 
-/// Ce qu'on sait d'une sortie DXGI, sans en dupliquer quoi que ce soit.
+/// What we know of a DXGI output, without duplicating any of it.
 #[derive(Debug, Clone)]
 pub struct SortieDxgi {
     pub index_adaptateur: u32,
@@ -19,6 +19,6 @@ pub struct SortieDxgi {
     pub adaptateur: String,
     pub nom_sortie: String,
     pub attachee_au_bureau: bool,
-    /// Position et dimensions dans les coordonnées du bureau virtuel.
+    /// Position and dimensions in virtual desktop coordinates.
     pub rect: crate::geometry::Rect,
 }

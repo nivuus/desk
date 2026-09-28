@@ -113,7 +113,7 @@ async function marqueurs(etiquette) {
         sondage_desarme: compte('objectif de sondage DESARME'),
         taille_changee: compte("taille d'encodage changée"),
         taille_refusee: compte("changement de taille d'encodage refusé"),
-        erreurs: compte('ERROR'),
+        errors: compte('ERROR'),
     };
     log(`MARQUEURS (${etiquette}) ` + JSON.stringify(m));
     return m;

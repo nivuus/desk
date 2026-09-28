@@ -1,53 +1,53 @@
-//! Borner la reprise après une rupture du canal média.
+//! Bounding the resumption after a media channel break.
 //!
-//! **Pur à dessein**, sur le modèle exact de `capture/reprise.rs` : c'est la
-//! pièce qui décide si une session meurt, et elle doit se tester sur l'hôte.
+//! **Pure on purpose**, on the exact model of `capture/reprise.rs`: it is the
+//! piece that decides whether a session dies, and it must be tested on the host.
 
 use std::time::{Duration, Instant};
 
-/// Durée pendant laquelle une rupture du canal est tolérée avant d'être
-/// déclarée définitive.
+/// Duration during which a channel break is tolerated before being
+/// declared definitive.
 ///
-/// **Majorante et non calibrée, et il faut le dire.** Elle doit couvrir la
-/// détection de la mort du capteur par le superviseur (un tour de boucle), le
-/// relancement du processus, l'ouverture de son serveur de tube, et la
-/// reconnexion de l'enfant. Aucun de ces quatre délais n'est mesuré à ce jour ;
-/// le critère 2 de la recette en donnera un premier ordre de grandeur.
+/// **An upper bound, not calibrated, and it must be said.** It must cover the
+/// supervisor's detection of the sensor's death (one loop round), the
+/// process restart, the opening of its pipe server, and the
+/// child's reconnection. None of these four delays is measured to date;
+/// criterion 2 of the acceptance run will give a first order of magnitude.
 ///
-/// Ce qui borne le coût d'une valeur trop grande : pendant la fenêtre, la
-/// session reste ouverte sur une image figée. Trop petite, elle tue les
-/// sessions que la relance devait sauver — le risque est franchement
-/// asymétrique, d'où le choix d'une valeur large.
+/// What bounds the cost of a value too large: during the window, the
+/// session stays open on a frozen frame. Too small, it kills the
+/// sessions the restart was meant to save — the risk is frankly
+/// asymmetric, hence the choice of a wide value.
 pub const DUREE_FENETRE_CANAL: Duration = Duration::from_secs(15);
 
 /// Intervalle minimal entre deux tentatives de rattachement.
 ///
-/// `next_frame` est appelée ~100 fois par seconde (`FRAME_INTERVAL` vaut
-/// 10 ms) : sans ce pas, une rupture provoquerait une centaine de tentatives
-/// d'ouverture de tube par seconde et par fenêtre. 250 ms laissent au
-/// superviseur le temps de relancer le capteur sans que la reprise traîne —
-/// au pire 250 ms de retard sur un rattachement possible, contre 15 s de
-/// budget total.
+/// `next_frame` is called ~100 times per second (`FRAME_INTERVAL` is
+/// 10 ms): without this step, a break would cause about a hundred pipe
+/// opening attempts per second and per window. 250 ms give the
+/// supervisor time to restart the sensor without the resumption dragging —
+/// at worst 250 ms of delay on a possible re-attachment, against 15 s of
+/// total budget.
 pub const PAS_RATTACHEMENT: Duration = Duration::from_millis(250);
 
-/// Fenêtre ouverte à la première rupture et **refermée par le premier
-/// succès**. La durée court donc depuis la DERNIÈRE rupture constatée après un
-/// succès, jamais depuis la première de la session.
+/// Window opened at the first break and **closed by the first
+/// success**. The duration therefore runs from the LAST break observed after a
+/// success, never from the first of the session.
 #[derive(Debug, Default)]
 pub struct FenetreCanal {
     ouverte_depuis: Option<Instant>,
-    /// Dernier essai de rattachement. `None` = aucun depuis le dernier
-    /// succès, donc le prochain est immédiat.
-    dernier_essai: Option<Instant>,
+    /// Last re-attachment attempt. `None` = none since the last
+    /// success, so the next one is immediate.
+    last_attempt: Option<Instant>,
 }
 
 impl FenetreCanal {
-    pub fn nouvelle() -> Self {
+    pub fn new() -> Self {
         Self::default()
     }
 
-    /// À appeler à chaque constat de rupture. Rend **vrai** quand la fenêtre
-    /// est expirée, c'est-à-dire quand l'épuisement est acquis.
+    /// To be called at every observed break. Returns **true** when the window
+    /// has expired, that is when exhaustion is settled.
     pub fn rupture(&mut self, maintenant: Instant) -> bool {
         match self.ouverte_depuis {
             None => {
@@ -58,24 +58,24 @@ impl FenetreCanal {
         }
     }
 
-    /// Vrai si un essai de rattachement est dû. À n'appeler qu'après une
-    /// `rupture` non expirée.
-    pub fn peut_reessayer(&mut self, maintenant: Instant) -> bool {
-        let du = match self.dernier_essai {
+    /// True if a re-attachment attempt is due. To be called only after a
+    /// non-expired `rupture`.
+    pub fn can_retry(&mut self, maintenant: Instant) -> bool {
+        let du = match self.last_attempt {
             None => true,
             Some(precedent) => maintenant.duration_since(precedent) > PAS_RATTACHEMENT,
         };
         if du {
-            self.dernier_essai = Some(maintenant);
+            self.last_attempt = Some(maintenant);
         }
         du
     }
 
-    /// À appeler dès qu'une lecture aboutit : la fenêtre se referme et le
-    /// budget repart entier pour une rupture ultérieure.
+    /// To be called as soon as a read succeeds: the window closes and the
+    /// budget starts whole again for a later break.
     pub fn succes(&mut self) {
         self.ouverte_depuis = None;
-        self.dernier_essai = None;
+        self.last_attempt = None;
     }
 
     #[cfg(test)]
@@ -83,8 +83,8 @@ impl FenetreCanal {
         if let Some(debut) = self.ouverte_depuis {
             self.ouverte_depuis = Some(debut - ecart);
         }
-        if let Some(dernier) = self.dernier_essai {
-            self.dernier_essai = Some(dernier - ecart);
+        if let Some(last) = self.last_attempt {
+            self.last_attempt = Some(last - ecart);
         }
     }
 }
@@ -95,69 +95,66 @@ mod tests {
 
     #[test]
     fn une_rupture_n_epuise_pas_immediatement() {
-        let mut fenetre = FenetreCanal::nouvelle();
+        let mut fenetre = FenetreCanal::new();
         let t0 = Instant::now();
         assert!(
             !fenetre.rupture(t0),
-            "la première rupture ouvre la fenêtre, elle ne conclut pas"
+            "the first break opens the window, it does not conclude"
         );
         assert!(!fenetre.rupture(t0 + Duration::from_secs(1)));
     }
 
     #[test]
     fn une_rupture_ininterrompue_au_dela_de_la_fenetre_epuise() {
-        let mut fenetre = FenetreCanal::nouvelle();
+        let mut fenetre = FenetreCanal::new();
         let t0 = Instant::now();
         assert!(!fenetre.rupture(t0));
         assert!(fenetre.rupture(t0 + DUREE_FENETRE_CANAL + Duration::from_millis(1)));
     }
 
-    /// Le raccrochage referme la fenêtre : une SECONDE relance du capteur,
-    /// plus tard, doit retrouver son budget entier.
+    /// Reconnecting closes the window: a SECOND restart of the sensor,
+    /// later, must find its whole budget again.
     #[test]
     fn un_succes_referme_la_fenetre_et_rend_le_budget_entier() {
-        let mut fenetre = FenetreCanal::nouvelle();
+        let mut fenetre = FenetreCanal::new();
         let t0 = Instant::now();
         assert!(!fenetre.rupture(t0));
         fenetre.succes();
         let t1 = t0 + DUREE_FENETRE_CANAL * 3;
-        assert!(!fenetre.rupture(t1), "la fenêtre doit repartir de zéro");
+        assert!(!fenetre.rupture(t1), "the window must start over from zero");
         assert!(!fenetre.rupture(t1 + DUREE_FENETRE_CANAL / 2));
         assert!(fenetre.rupture(t1 + DUREE_FENETRE_CANAL + Duration::from_millis(1)));
     }
 
-    /// Le pas d'espacement existe parce que `next_frame` est appelée ~100
-    /// fois par seconde : sans lui, une rupture déclencherait 100 tentatives
-    /// de reconnexion par seconde et par fenêtre.
+    /// The spacing step exists because `next_frame` is called ~100
+    /// times per second: without it, a break would trigger 100 reconnection
+    /// attempts per second and per window.
     #[test]
-    fn les_essais_de_rattachement_sont_espaces() {
-        let mut fenetre = FenetreCanal::nouvelle();
+    fn reattach_attempts_are_spaced() {
+        let mut fenetre = FenetreCanal::new();
         let t0 = Instant::now();
         assert!(!fenetre.rupture(t0));
-        assert!(fenetre.peut_reessayer(t0), "le premier essai est immédiat");
-        assert!(
-            !fenetre.peut_reessayer(t0),
-            "deux essais dans le même instant"
-        );
-        assert!(!fenetre.peut_reessayer(t0 + PAS_RATTACHEMENT / 2));
-        assert!(fenetre.peut_reessayer(t0 + PAS_RATTACHEMENT + Duration::from_millis(1)));
+        assert!(fenetre.can_retry(t0), "the first attempt is immediate");
+        assert!(!fenetre.can_retry(t0), "two attempts in the same instant");
+        assert!(!fenetre.can_retry(t0 + PAS_RATTACHEMENT / 2));
+        assert!(fenetre.can_retry(t0 + PAS_RATTACHEMENT + Duration::from_millis(1)));
     }
 
-    /// Un succès doit rendre le budget d'essais entier, pas seulement celui
-    /// d'expiration : une seconde rupture, plus tard, doit pouvoir réessayer
-    /// tout de suite.
+    /// A success must restore the whole attempt budget, not only the
+    /// expiry one: a second break, later, must be able to retry
+    /// right away.
     #[test]
     fn un_succes_rend_aussi_le_droit_de_reessayer_immediatement() {
-        let mut fenetre = FenetreCanal::nouvelle();
+        let mut fenetre = FenetreCanal::new();
         let t0 = Instant::now();
         assert!(!fenetre.rupture(t0));
-        assert!(fenetre.peut_reessayer(t0));
+        assert!(fenetre.can_retry(t0));
         fenetre.succes();
         let t1 = t0 + Duration::from_millis(1);
         assert!(!fenetre.rupture(t1));
         assert!(
-            fenetre.peut_reessayer(t1),
-            "après un succès, le premier essai est immédiat"
+            fenetre.can_retry(t1),
+            "after a success, the first attempt is immediate"
         );
     }
 }

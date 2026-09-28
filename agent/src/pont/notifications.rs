@@ -1,71 +1,71 @@
-//! Quoi faire de chaque notification ProjFS. **PUR** — aucun `cfg`, aucune
-//! dépendance au crate `windows`, entièrement testé sur l'hôte.
+//! What to do with each ProjFS notification. **PURE** — no `cfg`, no
+//! dependency on the `windows` crate, entirely tested on the host.
 //!
-//! # ❌ CE MODULE NE TIENT PLUS LA LECTURE SEULE — F2 L'A OUVERT EN ÉCRITURE
+//! # ❌ THIS MODULE NO LONGER HOLDS READ-ONLY — F2 OPENED IT FOR WRITING
 //!
-//! **C'était le PÉRIMÈTRE de F1** : « toute tentative d'écriture rend
-//! `ERROR_WRITE_PROTECT`. C'est un périmètre, pas une lacune » (spec §8). La
-//! recette de F1 avait déjà réfuté cette phrase pour **la création** (2
-//! exécutions versées sur 2 : elle RÉUSSIT, la notification étant une POST).
-//! **F2 réfute l'autre moitié, délibérément** : `PRE_CONVERT_TO_FULL` est
-//! désormais AUTORISÉE quand la racine est inscriptible et le canal ouvert, et
-//! les octets sont poussés vers le poste local **après coup**.
+//! **It was F1's SCOPE**: "any write attempt returns
+//! `ERROR_WRITE_PROTECT`. It is a scope, not a gap" (spec §8). F1's
+//! acceptance run had already refuted this sentence for **creation** (2
+//! runs recorded out of 2: it SUCCEEDS, the notification being a POST one).
+//! **F2 refutes the other half, deliberately**: `PRE_CONVERT_TO_FULL` is
+//! now ALLOWED when the root is writable and the channel open, and
+//! the bytes are pushed to the local workstation **after the fact**.
 //!
-//! ⚠️ **Ce qui reste refusé, et c'est nommé** : `PRE_RENAME` et `PRE_DELETE`,
-//! parce que `Renommer` et `Supprimer` sont des livrables de **F3**. Une
-//! application qui emploie l'idiome *écrire-temporaire / renommer / supprimer*
-//! échouera donc **bruyamment au renommage**, plutôt que de réussir sur la VM
-//! en laissant le poste local sur l'ancien contenu. **Accepter le renommage
-//! sans le pousser produirait exactement la perte silencieuse que ce module
-//! existe pour interdire.**
+//! ⚠️ **What remains refused, and it is named**: `PRE_RENAME` and `PRE_DELETE`,
+//! because `Renommer` and `Delete` are deliverables of **F3**. An
+//! application using the *write-temporary / rename / delete* idiom
+//! will therefore fail **loudly at the renaming**, rather than succeed on the VM
+//! while leaving the local workstation on the old content. **Accepting the renaming
+//! without pushing it would produce exactly the silent loss this module
+//! exists to forbid.**
 //!
-//! # 🔴 CE QUE F2 NE PEUT PAS FAIRE, ET QU'IL FAUT SAVOIR AVANT DE LIRE LA SUITE
+//! # 🔴 WHAT F2 CANNOT DO, AND WHICH MUST BE KNOWN BEFORE READING ON
 //!
-//! **Le chemin d'écriture n'a AUCUNE contre-pression.** Il n'existe aucune
-//! notification par laquelle on *accepte* une écriture : on accepte en **ne
-//! refusant pas** `PRE_CONVERT_TO_FULL`, et l'on apprend qu'il y a des octets à
-//! pousser par `FILE_HANDLE_CLOSED_FILE_MODIFIED` et `FILE_OVERWRITTEN`, toutes
-//! deux **POST** — c'est-à-dire **après** que l'application a refermé son handle
-//! et cru avoir enregistré. Si la poussée échoue ensuite — permission révoquée,
-//! disque plein, onglet fermé —, **aucun `HRESULT` ne peut plus atteindre
-//! personne**.
+//! **The write path has NO back-pressure.** There is no
+//! notification by which one *accepts* a write: one accepts by **not
+//! refusing** `PRE_CONVERT_TO_FULL`, and one learns there are bytes to
+//! push through `FILE_HANDLE_CLOSED_FILE_MODIFIED` and `FILE_OVERWRITTEN`, both
+//! **POST** — that is, **after** the application has closed its handle
+//! and believed it had saved. If the push then fails — permission revoked,
+//! disk full, tab closed —, **no `HRESULT` can reach anyone
+//! any more**.
 //!
-//! Les deux seuls leviers qui restent sont donc :
+//! The only two levers left are therefore:
 //!
-//! 1. un refus **EN AMONT**, à `PRE_CONVERT_TO_FULL`, portant sur un **ÉTAT**
-//!    (racine en lecture seule, canal fermé) et **jamais sur l'issue** — c'est
-//!    la raison d'être du paramètre [`Etat`] de [`decider`] ;
-//! 2. une **DÉNONCIATION** après coup : le journal de reprise, le compteur
-//!    d'écritures dues de la page-shell, et `beforeunload`.
+//! 1. a refusal **UPSTREAM**, at `PRE_CONVERT_TO_FULL`, bearing on a **STATE**
+//!    (read-only root, closed channel) and **never on the outcome** — it is
+//!    the reason to exist of the [`Etat`] parameter of [`decider`];
+//! 2. a **DENUNCIATION** after the fact: the resumption journal, the shell page's
+//!    due writes counter, and `beforeunload`.
 //!
-//! # Pourquoi cette décision est ici et non dans le rappel
+//! # Why this decision is here and not in the callback
 //!
-//! Laissée dans `pont/projfs/rappels/notification.rs`, elle serait
-//! `#[cfg(windows)]`, appelée par le système, et **aucun test ne pourrait
-//! l'éprouver** — alors que ce qu'elle fait est un pur appariement d'un code
-//! entier et d'un état à une décision. `CLAUDE.md` en fait un critère de revue,
-//! pas un souhait : « toute décision qui pourrait vivre dans un module pur DOIT
-//! y vivre ».
+//! Left in `pont/projfs/rappels/notification.rs`, it would be
+//! `#[cfg(windows)]`, called by the system, and **no test could
+//! exercise it** — whereas what it does is a pure mapping of an integer
+//! code and a state to a decision. `CLAUDE.md` makes it a review criterion,
+//! not a wish: "any decision that could live in a pure module MUST
+//! live there".
 //!
-//! # Les valeurs sont RECOPIÉES, avec leur ligne source
+//! # The values are COPIED, with their source line
 //!
-//! Même doctrine que [`crate::pont::erreurs`] : importer les constantes de
-//! `windows::Win32::Storage::ProjectedFileSystem` gaterait ce module en
-//! `#[cfg(windows)]` et lui ferait perdre sa testabilité d'hôte, qui est tout
-//! son intérêt. Chaque constante porte donc le numéro de ligne de sa source,
-//! relevé par la commande le 19 août 2026 dans
+//! Same doctrine as [`crate::pont::errors`]: importing the constants of
+//! `windows::Win32::Storage::ProjectedFileSystem` would gate this module behind
+//! `#[cfg(windows)]` and make it lose its host testability, which is its whole
+//! point. Each constant therefore carries the line number of its source,
+//! read by command on August 19th, 2026 in
 //! `windows-0.62.2/src/Windows/Win32/Storage/ProjectedFileSystem/mod.rs`.
 //!
-//! ⚠️ **Les deux familles de constantes de ProjFS ne sont PAS interchangeables,
-//! et elles portent des noms qui se ressemblent au point de tromper.**
-//! `PRJ_NOTIFICATION_*` (`i32`) est ce que le rappel REÇOIT ;
-//! `PRJ_NOTIFY_*` (`u32`) est ce que le MASQUE demande. Elles ont
-//! ici les mêmes valeurs numériques, mais ce sont deux types distincts dans
-//! windows-rs, et rien ne garantit qu'elles resteront alignées.
+//! ⚠️ **ProjFS's two families of constants are NOT interchangeable,
+//! and they carry names alike enough to mislead.**
+//! `PRJ_NOTIFICATION_*` (`i32`) is what the callback RECEIVES;
+//! `PRJ_NOTIFY_*` (`u32`) is what the MASK requests. They have
+//! the same numeric values here, but they are two distinct types in
+//! windows-rs, and nothing guarantees they will stay aligned.
 
-use crate::pont::erreurs::Erreur;
+use crate::pont::errors::Error;
 
-// Ce que le rappel REÇOIT — `PRJ_NOTIFICATION`, `i32`.
+// What the callback RECEIVES — `PRJ_NOTIFICATION`, `i32`.
 pub const PRE_CONVERT_TO_FULL: i32 = 4096; // mod.rs:340
 pub const PRE_RENAME: i32 = 32; // mod.rs:378
 pub const PRE_DELETE: i32 = 16; // mod.rs:377
@@ -74,16 +74,16 @@ pub const HARDLINK_CREATED: i32 = 256; // mod.rs:342
 pub const NEW_FILE_CREATED: i32 = 4; // mod.rs:349
 pub const FILE_OVERWRITTEN: i32 = 8; // mod.rs:339
 pub const FILE_HANDLE_CLOSED_FILE_MODIFIED: i32 = 1024; // mod.rs:336
-                                                        // ── LES DEUX DE F3 ────────────────────────────────────────────────────────
-                                                        // ⚠️ **La VALEUR fait foi, jamais le numéro de ligne.** `windows` et
-                                                        // `windows-sys` exposent DEUX modules `Win32/Storage/ProjectedFileSystem` aux
-                                                        // symboles identiques et aux lignes différentes ; l'auteur du plan de F2 a
-                                                        // déclaré fausses trois citations exactes pour l'avoir oublié. Le crate qui
-                                                        // fait foi est celui qu'`agent/Cargo.toml` déclare — `windows` (0.62.2).
+                                                        // ── F3'S TWO ──────────────────────────────────────────────────────────────
+                                                        // ⚠️ **The VALUE is authoritative, never the line number.** `windows` and
+                                                        // `windows-sys` expose TWO `Win32/Storage/ProjectedFileSystem` modules with
+                                                        // identical symbols and different lines; the author of F2's plan
+                                                        // declared three exact citations false for having forgotten it. The authoritative
+                                                        // crate is the one `agent/Cargo.toml` declares — `windows` (0.62.2).
 pub const FILE_RENAMED: i32 = 128; // mod.rs:341
 pub const FILE_HANDLE_CLOSED_FILE_DELETED: i32 = 2048; // mod.rs:335
 
-// Ce que le MASQUE demande — `PRJ_NOTIFY_TYPES`, `u32`.
+// What the MASK requests — `PRJ_NOTIFY_TYPES`, `u32`.
 pub const NOTIFY_FILE_PRE_CONVERT_TO_FULL: u32 = 4096; // mod.rs:385
 pub const NOTIFY_PRE_RENAME: u32 = 32; // mod.rs:391
 pub const NOTIFY_PRE_DELETE: u32 = 16; // mod.rs:390
@@ -94,45 +94,45 @@ pub const NOTIFY_FILE_HANDLE_CLOSED_FILE_MODIFIED: u32 = 1024; // mod.rs:381
 pub const NOTIFY_FILE_RENAMED: u32 = 128; // mod.rs:386
 pub const NOTIFY_FILE_HANDLE_CLOSED_FILE_DELETED: u32 = 2048; // mod.rs:380
 
-/// Le masque que la racine demande — **NEUF bits** : cinq en F1, sept après F2,
-/// neuf depuis F3.
+/// The mask the root requests — **NINE bits**: five in F1, seven after F2,
+/// nine since F3.
 ///
-/// - **Les quatre `PRE_` sont REFUSABLES**, et **TROIS** d'entre elles décident
-///   réellement de quelque chose depuis F3 : `PRE_CONVERT_TO_FULL` (l'écriture),
-///   `PRE_RENAME` et `PRE_DELETE`. *(Ces lignes disaient « une seule », et
-///   « les trois autres sont refusées inconditionnellement — renommage et
-///   suppression : F3 ». F3 est arrivé.)* La quatrième, `PRE_SET_HARDLINK`,
-///   reste refusée sans condition : les liens durs n'ont **aucun** équivalent
-///   dans la File System Access API.
-/// - **Les cinq POST ne se refusent pas** : elles disent ce qui a DÉJÀ eu lieu
-///   sur la VM, et c'est tout ce qu'on peut en tirer.
+/// - **The four `PRE_`s are REFUSABLE**, and **THREE** of them actually
+///   decide something since F3: `PRE_CONVERT_TO_FULL` (writing),
+///   `PRE_RENAME` and `PRE_DELETE`. *(These lines said "only one", and
+///   "the other three are refused unconditionally — renaming and
+///   deletion: F3". F3 has arrived.)* The fourth, `PRE_SET_HARDLINK`,
+///   stays refused unconditionally: hard links have **no** equivalent
+///   in the File System Access API.
+/// - **The five POSTs cannot be refused**: they say what has ALREADY happened
+///   on the VM, and that is all one can draw from them.
 ///
-/// 🔵 **CE QUE LES `PRE_` ACHÈTENT À F3, ET QUE F2 N'AVAIT PAS.** F2 déclare
-/// que le chemin d'écriture n'a **aucune** contre-pression : il n'apprend une
-/// écriture qu'à la fermeture du handle, par une POST, quand l'application a
-/// déjà cru enregistrer. `PRE_RENAME` et `PRE_DELETE` sont, elles, des **PRE** :
-/// F3 peut refuser un renommage ou une suppression **avant** qu'ils n'aient
-/// lieu, et l'application le voit.
+/// 🔵 **WHAT THE `PRE_`s BUY F3, AND WHAT F2 DID NOT HAVE.** F2 declares
+/// that the write path has **no** back-pressure: it only learns of a
+/// write when the handle closes, through a POST, when the application has
+/// already believed it saved. `PRE_RENAME` and `PRE_DELETE`, for their part, are **PRE**s:
+/// F3 can refuse a renaming or a deletion **before** they take
+/// place, and the application sees it.
 ///
-/// ⚠️ **Mais le refus ne peut porter que sur un ÉTAT, jamais sur une ISSUE.**
-/// Les `PRE_` sont **synchrones** et ne consultent jamais le navigateur (spec
-/// §4.3). On ne sait donc pas si le poste local acceptera ; on sait seulement
-/// si notre côté est en mesure de pousser.
+/// ⚠️ **But the refusal can only bear on a STATE, never on an OUTCOME.**
+/// `PRE_`s are **synchronous** and never consult the browser (spec
+/// §4.3). We therefore do not know whether the local workstation will accept; we only know
+/// whether our side is able to push.
 ///
-/// ⚠️ **`FILE_HANDLE_CLOSED_NO_MODIFICATION` (512, `mod.rs:382`) n'est
-/// DÉLIBÉRÉMENT PAS DEMANDÉE.** Elle arriverait à **chaque fermeture de handle
-/// en lecture**, c'est-à-dire sur le chemin le plus chaud du pont, pour
-/// n'apprendre que ce qu'on sait déjà : qu'il n'y a rien à pousser. Le coût est
-/// certain, le gain nul. *Décision, pas oubli.*
+/// ⚠️ **`FILE_HANDLE_CLOSED_NO_MODIFICATION` (512, `mod.rs:382`) is
+/// DELIBERATELY NOT REQUESTED.** It would arrive at **each closing of a read
+/// handle**, that is, on the bridge's hottest path, only to
+/// learn what we already know: that there is nothing to push. The cost is
+/// certain, the gain zero. *Decision, not oversight.*
 ///
-/// ⚠️ **`HARDLINK_CREATED` (256) reste demandée ET refusée, comme en F1** — mais
-/// elle est **POST** : le refus n'empêche rien, il **journalise**. Le dire,
-/// plutôt que de laisser croire qu'un lien dur est empêché.
+/// ⚠️ **`HARDLINK_CREATED` (256) stays requested AND refused, as in F1** — but
+/// it is **POST**: the refusal prevents nothing, it **logs**. Saying so,
+/// rather than letting it be believed that a hard link is prevented.
 ///
-/// ⚠️ **Demander MOINS ferait perdre des écritures ; demander PLUS ferait
-/// arriver une notification sans décision.** Les deux sont épinglés par
-/// `le_masque_demande_exactement_les_sept_notifications_de_f2` et
-/// `chaque_bit_du_masque_a_une_decision_nommee`.
+/// ⚠️ **Requesting LESS would lose writes; requesting MORE would make
+/// a notification arrive without a decision.** Both are pinned by
+/// `le_masque_demande_exactement_les_sept_notifications_de_f2` and
+/// `each_mask_bit_has_a_named_decision`.
 pub const MASQUE: u32 = NOTIFY_FILE_PRE_CONVERT_TO_FULL
     | NOTIFY_PRE_RENAME
     | NOTIFY_PRE_DELETE
@@ -143,192 +143,190 @@ pub const MASQUE: u32 = NOTIFY_FILE_PRE_CONVERT_TO_FULL
     | NOTIFY_FILE_RENAMED
     | NOTIFY_FILE_HANDLE_CLOSED_FILE_DELETED;
 
-/// Ce qu'une poussée transporte.
+/// What a push carries.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Poussee {
-    /// Les octets d'un fichier refermé après modification.
+    /// The bytes of a file closed after modification.
     Contenu,
-    /// Une entrée qui vient d'apparaître. **Un répertoire ne porte aucun
-    /// contenu** ; un fichier, lui, sera suivi d'une poussée de contenu à la
-    /// fermeture de son handle.
+    /// An entry that has just appeared. **A directory carries no
+    /// content**; a file, for its part, will be followed by a content push when
+    /// its handle closes.
     Creation,
-    /// **F3** — l'entrée a été renommée. `de` est `FilePathName`, `vers` est
-    /// `destinationFileName` : deux paramètres DIRECTS du rappel, jamais des
-    /// membres de l'union `PRJ_NOTIFICATION_PARAMETERS`, que ce pont ne
-    /// déréférence toujours pas.
+    /// **F3** — the entry was renamed. `de` is `FilePathName`, `vers` is
+    /// `destinationFileName`: two DIRECT parameters of the callback, never
+    /// members of the `PRJ_NOTIFICATION_PARAMETERS` union, which this bridge
+    /// still does not dereference.
     ///
-    /// 🔴 **S'y tromper de sens DÉTRUIT**, et c'est le risque le plus grave de
-    /// F3. Le pont refuse donc de pousser un renommage dont la destination est
-    /// vide ou égale à la source, avec un `warn!` qui nomme les deux champs
-    /// bruts — parade qui ne dépend d'aucune mesure.
+    /// 🔴 **Getting the direction wrong DESTROYS**, and it is F3's most serious
+    /// risk. The bridge therefore refuses to push a renaming whose destination is
+    /// empty or equal to the source, with a `warn!` naming both raw
+    /// fields — a safeguard that depends on no measurement.
     Renommage,
-    /// **F3** — l'entrée a été supprimée.
+    /// **F3** — the entry was deleted.
     ///
-    /// ⚠️ Le nom de la notification est `FILE_HANDLE_CLOSED_FILE_DELETED` : la
-    /// suppression n'est acquise qu'à la fermeture du **dernier** handle, ce
-    /// qui est la sémantique de Windows et non une subtilité de ProjFS.
+    /// ⚠️ The notification's name is `FILE_HANDLE_CLOSED_FILE_DELETED`: the
+    /// deletion only takes effect when the **last** handle closes, which
+    /// is Windows semantics and not a ProjFS subtlety.
     Suppression,
 }
 
-/// L'état dont la décision dépend.
+/// The state the decision depends on.
 ///
-/// 🔴 **LA DÉCISION PORTE SUR UN ÉTAT, JAMAIS SUR UNE ISSUE**, et c'est la
-/// seule forme de refus qui reste possible : à `PRE_CONVERT_TO_FULL` on ne sait
-/// rien de ce que la poussée deviendra, et quand on le saura il sera trop tard
-/// pour le dire à qui que ce soit (voir l'en-tête).
+/// 🔴 **THE DECISION BEARS ON A STATE, NEVER ON AN OUTCOME**, and it is the
+/// only form of refusal still possible: at `PRE_CONVERT_TO_FULL` we know
+/// nothing of what the push will become, and when we know it will be too late
+/// to tell anyone (see the header).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Etat {
-    /// La racine accepte-t-elle l'écriture ? `false` = le comportement de F1.
+    /// Does the root accept writing? `false` = F1's behaviour.
     pub inscriptible: bool,
-    /// Le canal du pont est-il ouvert ? Refuser ici est le seul instant où
-    /// l'application peut encore l'apprendre.
+    /// Is the bridge's channel open? Refusing here is the only moment when
+    /// the application can still learn it.
     pub canal_ouvert: bool,
-    /// **F3** — les mutations sont-elles armées ? `PONT_MUTATION=0` les désarme.
+    /// **F3** — are mutations armed? `PONT_MUTATION=0` disarms them.
     ///
-    /// 🔴 **VARIABLE DE BANC, jamais une configuration livrée.** Elle existe
-    /// pour rendre ROUGE les critères ① et ② de la recette : désarmée, le
-    /// `PRE_` refuse, l'application voit `ERROR_WRITE_PROTECT`, et **le poste
-    /// local est inchangé**. C'est un rouge du MÉCANISME — le refus est
-    /// journalisé et le compteur `protege-en-ecriture` monte —, jamais un rouge
-    /// vacueux.
+    /// 🔴 **BENCH VARIABLE, never a shipped configuration.** It exists
+    /// to make criteria ① and ② of the acceptance run RED: disarmed, the
+    /// `PRE_` refuses, the application sees `ERROR_WRITE_PROTECT`, and **the local
+    /// workstation is unchanged**. It is a red of the MECHANISM — the refusal is
+    /// logged and the `protege-en-ecriture` counter rises —, never a vacuous
+    /// red.
     ///
-    /// ⚠️ **Elle ne touche PAS l'écriture** : `PONT_ECRITURE` a la sienne. Deux
-    /// mécanismes distincts, deux interrupteurs distincts — les confondre
-    /// ferait qu'une recette du renommage couperait aussi l'idiome
-    /// temp+rename qu'elle veut exercer.
+    /// ⚠️ **It does NOT touch writing**: `PONT_ECRITURE` has its own. Two
+    /// distinct mechanisms, two distinct switches — confusing them
+    /// would mean an acceptance run of renaming would also cut the
+    /// temp+rename idiom it wants to exercise.
     pub mutations_armees: bool,
 }
 
-/// Ce que l'on sait de la DESTINATION d'une notification.
+/// What we know of a notification's DESTINATION.
 ///
-/// ⚠️ **Un `enum` et non un `bool`, parce qu'une suppression n'a pas de
-/// destination du tout.** Passer `false` y suggérerait « la destination est
-/// dans la racine », qui ne veut rien dire, et un test qui l'écrirait
-/// n'éprouverait rien.
+/// ⚠️ **An `enum` and not a `bool`, because a deletion has no
+/// destination at all.** Passing `false` there would suggest "the destination is
+/// in the root", which means nothing, and a test writing it
+/// would exercise nothing.
 ///
-/// ⚠️ **`chemins::normaliser` décide, jamais [`decider`].** La spec §4.3 dit
-/// « accepte, sauf si la cible sort de la racine », et `pont::chemins` est déjà
-/// le module qui refuse les `..`, les `:` et les noms réservés. Le dupliquer
-/// ici en ferait deux vérités.
+/// ⚠️ **`chemins::normaliser` decides, never [`decider`].** Spec §4.3 says
+/// "accept, unless the target leaves the root", and `pont::chemins` is already
+/// the module that refuses `..`, `:` and reserved names. Duplicating it
+/// here would make two truths.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Cible {
-    /// La notification ne porte aucune destination — tous les codes sauf
+    /// The notification carries no destination — all codes except
     /// `PRE_RENAME`.
     SansObjet,
-    /// La destination est recevable : dans la racine, et normalisée.
-    DansLaRacine,
-    /// La destination sort de la racine, ou `chemins::normaliser` l'a refusée.
+    /// The destination is acceptable: in the root, and normalised.
+    InRoot,
+    /// The destination leaves the root, or `chemins::normaliser` refused it.
     HorsRacine,
 }
 
-/// Ce que le rappel de notification doit faire.
+/// What the notification callback must do.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Reponse {
-    /// Refuser, avec la cause. Le rappel rend `hresult(cause)`.
-    Refuser(Erreur),
-    /// **Autoriser une écriture.** C'est la SEULE acceptation explicite de ce
-    /// module, et la seule ligne de F2 qui change ce qu'une application obtient.
+    /// Refuse, with the cause. The callback returns `hresult(cause)`.
+    Refuser(Error),
+    /// **Allow a write.** It is this module's ONLY explicit acceptance,
+    /// and the only line of F2 that changes what an application gets.
     ///
-    /// 🔴 **ELLE EST DISTINCTE DU FOURRE-TOUT, ET CE N'EST PAS UN LUXE.** Le
-    /// plan de F2 prescrivait `AccepterSansAttendre` pour ce cas ; cela aurait
-    /// fait retomber un bit **DEMANDÉ par le masque** dans le bras fourre-tout,
-    /// donc fait échouer `chaque_bit_du_masque_a_une_decision_nommee` — le
-    /// garde d'exhaustivité de ce module. Le remède évident aurait été
-    /// d'exclure `PRE_CONVERT_TO_FULL` du balayage, ce qui aurait **vidé le
-    /// garde** au lieu de le satisfaire. *Un plan n'immunise pas contre le
-    /// contrôle vacueux : il en est une source.*
+    /// 🔴 **IT IS DISTINCT FROM THE CATCH-ALL, AND IT IS NOT A LUXURY.** F2's
+    /// plan prescribed `AccepterSansAttendre` for this case; that would have
+    /// made a bit **REQUESTED by the mask** fall back into the catch-all arm,
+    /// hence made `each_mask_bit_has_a_named_decision` fail — this
+    /// module's exhaustiveness guard. The obvious remedy would have been
+    /// to exclude `PRE_CONVERT_TO_FULL` from the sweep, which would have **emptied the
+    /// guard** instead of satisfying it. *A plan does not immunise against the
+    /// vacuous check: it is a source of it.*
     Autoriser,
-    /// La notification déclenche un **write-back**.
+    /// The notification triggers a **write-back**.
     Pousser(Poussee),
-    /// Accepter sans rien dire de plus qu'un `warn!` de masque inattendu.
+    /// Accept without saying more than an unexpected-mask `warn!`.
     ///
-    /// ⚠️ **C'est le bras FOURRE-TOUT, et il est nommé comme tel.** Aucun bit
-    /// demandé par [`MASQUE`] ne doit y retomber.
+    /// ⚠️ **It is the CATCH-ALL arm, and it is named as such.** No bit
+    /// requested by [`MASQUE`] must fall back into it.
     AccepterSansAttendre,
 }
 
-// ⚠️ **`AccepterEnSignalant` A DISPARU, et c'est une divergence déclarée avec le
-// plan de F2**, qui la conservait dans son énumération. Elle n'avait plus qu'un
-// producteur en F1 — `NEW_FILE_CREATED` —, que F2 fait passer à
-// `Pousser(Creation)` : la garder en ferait une variante sans aucun site de
-// construction, c'est-à-dire du code mort dans un module dont tout l'intérêt
-// est d'être exhaustivement balayé.
+// ⚠️ **`AccepterEnSignalant` HAS DISAPPEARED, and it is a declared divergence from
+// F2's plan**, which kept it in its enumeration. It had only one
+// producer left in F1 — `NEW_FILE_CREATED` —, which F2 moves to
+// `Pousser(Creation)`: keeping it would make it a variant without any
+// construction site, that is, dead code in a module whose whole point
+// is to be exhaustively swept.
 
-/// La décision, pour un code de notification `PRJ_NOTIFICATION` et un [`Etat`].
+/// The decision, for a `PRJ_NOTIFICATION` notification code and an [`Etat`].
 ///
-/// Le `match` n'est **pas** exhaustif au sens du compilateur — `PRJ_NOTIFICATION`
-/// est un entier, pas une énumération Rust —, d'où le garde de test
-/// `chaque_bit_du_masque_a_une_decision_nommee`, qui balaie les 32 bits et
-/// vérifie qu'aucun bit DEMANDÉ ne retombe dans le bras fourre-tout.
+/// The `match` is **not** exhaustive in the compiler's sense — `PRJ_NOTIFICATION`
+/// is an integer, not a Rust enum —, hence the test guard
+/// `each_mask_bit_has_a_named_decision`, which sweeps the 32 bits and
+/// checks that no REQUESTED bit falls back into the catch-all arm.
 pub fn decider(code: i32, etat: Etat, cible: Cible) -> Reponse {
     match code {
-        // 🔵 **L'UNIQUE PORTE DE REFUS D'UNE ÉCRITURE.** Au-delà, plus rien ne
-        // peut être dit à l'application : elle refermera son handle en croyant
-        // avoir enregistré.
+        // 🔵 **THE ONLY REFUSAL GATE FOR A WRITE.** Beyond it, nothing more
+        // can be said to the application: it will close its handle believing
+        // it has saved.
         //
-        // ⚠️ **DEUX CAUSES, DEUX CODES**, et la spec §5.1 l'exige : une racine
-        // en lecture seule rend `ERROR_WRITE_PROTECT`, un canal fermé rend
-        // `ERROR_IO_DEVICE`. Les faire partager un code rendrait
-        // indistinguables « ce partage est en lecture seule » et « l'onglet est
-        // fermé » — deux situations qui n'appellent pas le même geste.
-        PRE_CONVERT_TO_FULL if !etat.inscriptible => Reponse::Refuser(Erreur::ProtegeEnEcriture),
-        PRE_CONVERT_TO_FULL if !etat.canal_ouvert => Reponse::Refuser(Erreur::CanalFerme),
+        // ⚠️ **TWO CAUSES, TWO CODES**, and spec §5.1 requires it: a read-only
+        // root returns `ERROR_WRITE_PROTECT`, a closed channel returns
+        // `ERROR_IO_DEVICE`. Making them share a code would make
+        // "this share is read-only" and "the tab is
+        // closed" indistinguishable — two situations that do not call for the same gesture.
+        PRE_CONVERT_TO_FULL if !etat.inscriptible => Reponse::Refuser(Error::ProtegeEnEcriture),
+        PRE_CONVERT_TO_FULL if !etat.canal_ouvert => Reponse::Refuser(Error::CanalFerme),
         PRE_CONVERT_TO_FULL => Reponse::Autoriser,
-        // ❌ **CES DEUX-LÀ N'ÉTAIENT PAS REFUSÉS PARCE QU'ILS DEVAIENT L'ÊTRE,
-        // MAIS PARCE QUE F3 N'EXISTAIT PAS ENCORE.** *(Ce bras disait :
-        // « REFUSÉS INCONDITIONNELLEMENT, ET C'EST DÉLIBÉRÉ. `Renommer` et
-        // `Supprimer` sont des livrables de F3 : les accepter sans pouvoir les
-        // pousser laisserait le poste local sur l'ancien contenu. » La raison
-        // était juste, et elle a cessé de l'être : F3 sait les pousser.)*
+        // ❌ **THESE TWO WERE NOT REFUSED BECAUSE THEY HAD TO BE,
+        // BUT BECAUSE F3 DID NOT EXIST YET.** *(This arm said:
+        // "REFUSED UNCONDITIONALLY, AND IT IS DELIBERATE. `Renommer` and
+        // `Delete` are deliverables of F3: accepting them without being able to
+        // push them would leave the local workstation on the old content." The reason
+        // was right, and it stopped being so: F3 knows how to push them.)*
         //
-        // 🔴 **QUATRE ÉTATS REFUSENT, ET AUCUNE ISSUE NE LE FAIT.** Un `PRE_`
-        // est synchrone : on ne peut pas demander au navigateur ce qu'il
-        // pense de l'opération, seulement constater que notre côté n'est pas en
-        // mesure de la pousser.
+        // 🔴 **FOUR STATES REFUSE, AND NO OUTCOME DOES.** A `PRE_`
+        // is synchronous: we cannot ask the browser what it
+        // thinks of the operation, only observe that our side is not
+        // able to push it.
         //
-        // ⚠️ **L'ORDRE EST CELUI DE `PRE_CONVERT_TO_FULL`, par symétrie.** Il
-        // ne départage que le cas d'un renommage hors racine sur une racine
-        // déjà en lecture seule, qui n'arrive pas — mais le laisser au hasard
-        // ferait diverger les deux portes de refus du module.
+        // ⚠️ **THE ORDER IS THAT OF `PRE_CONVERT_TO_FULL`, by symmetry.** It
+        // only decides the case of an out-of-root renaming on a root
+        // already read-only, which does not happen — but leaving it to chance
+        // would make the module's two refusal gates diverge.
         PRE_RENAME | PRE_DELETE if !etat.mutations_armees => {
-            Reponse::Refuser(Erreur::ProtegeEnEcriture)
+            Reponse::Refuser(Error::ProtegeEnEcriture)
         }
-        PRE_RENAME | PRE_DELETE if !etat.inscriptible => {
-            Reponse::Refuser(Erreur::ProtegeEnEcriture)
-        }
-        PRE_RENAME | PRE_DELETE if !etat.canal_ouvert => Reponse::Refuser(Erreur::CanalFerme),
-        // ⚠️ **`NonSupporte` ET NON `ProtegeEnEcriture`** : sortir de la racine
-        // n'est pas un refus de droit, c'est une opération que l'autre bout ne
-        // sait pas faire — il n'a aucune poignée hors du répertoire que
-        // l'utilisateur a choisi. Les faire partager un code violerait le §5.1
-        // de la spec, et ferait chercher une permission là où il n'y en a pas.
-        PRE_RENAME if cible == Cible::HorsRacine => Reponse::Refuser(Erreur::NonSupporte),
+        PRE_RENAME | PRE_DELETE if !etat.inscriptible => Reponse::Refuser(Error::ProtegeEnEcriture),
+        PRE_RENAME | PRE_DELETE if !etat.canal_ouvert => Reponse::Refuser(Error::CanalFerme),
+        // ⚠️ **`NonSupporte` AND NOT `ProtegeEnEcriture`**: leaving the root
+        // is not a rights refusal, it is an operation the other end cannot
+        // do — it has no handle outside the directory the
+        // user chose. Making them share a code would violate §5.1
+        // of the spec, and would send one looking for a permission where there is none.
+        PRE_RENAME if cible == Cible::HorsRacine => Reponse::Refuser(Error::NonSupporte),
         PRE_RENAME | PRE_DELETE => Reponse::Autoriser,
-        // Les liens durs n'ont aucun équivalent dans la File System Access
-        // API : ce n'est pas un refus de lecture seule, c'est une opération qui
-        // n'existe pas de l'autre côté (spec §3.5.2). La distinction est
-        // visible côté application ET au journal — c'est tout l'objet de
-        // `pont::erreurs`, dont le contre-exemple est l'ancien pont, qui
-        // rendait `EPERM` à neuf sites distincts.
-        PRE_SET_HARDLINK | HARDLINK_CREATED => Reponse::Refuser(Erreur::NonSupporte),
-        // ⚠️ **POST : elle ne se refuse pas** — mais F2 la POUSSE, ce qui
-        // referme la divergence que F1 déclarait sienne (« un fichier créé de
-        // toutes pièces vit sur la VM et n'est JAMAIS poussé »).
+        // Hard links have no equivalent in the File System Access
+        // API: it is not a read-only refusal, it is an operation that
+        // does not exist on the other side (spec §3.5.2). The distinction is
+        // visible on the application side AND in the log — it is the whole purpose of
+        // `pont::errors`, whose counter-example is the old bridge, which
+        // returned `EPERM` at nine distinct sites.
+        PRE_SET_HARDLINK | HARDLINK_CREATED => Reponse::Refuser(Error::NonSupporte),
+        // ⚠️ **POST: it cannot be refused** — but F2 PUSHES it, which
+        // closes the divergence F1 declared its own ("a file created from
+        // scratch lives on the VM and is NEVER pushed").
         NEW_FILE_CREATED => Reponse::Pousser(Poussee::Creation),
-        // Les deux POST de contenu. **`FILE_OVERWRITTEN` n'est pas redondante
-        // avec la fermeture de handle** : elle signale une troncature à
-        // l'ouverture (`CREATE_ALWAYS`, `TRUNCATE_EXISTING`), qu'un
-        // enregistrement « en place » produit couramment.
+        // The two content POSTs. **`FILE_OVERWRITTEN` is not redundant
+        // with the handle closing**: it signals a truncation at
+        // opening (`CREATE_ALWAYS`, `TRUNCATE_EXISTING`), which an
+        // "in place" save commonly produces.
         FILE_OVERWRITTEN | FILE_HANDLE_CLOSED_FILE_MODIFIED => Reponse::Pousser(Poussee::Contenu),
-        // ── LES DEUX POST DE F3 ───────────────────────────────────────────
-        // ⚠️ **Elles ne se refusent PAS**, comme toutes les POST : le geste a
-        // déjà eu lieu dans la VM. Ce qui les a autorisées est le `PRE_`
-        // correspondant, quelques microsecondes plus tôt.
+        // ── F3'S TWO POSTS ──────────────────────────────────────────────────────
+        // ⚠️ **They are NOT refused**, like all POSTs: the gesture has
+        // already happened in the VM. What allowed them is the corresponding
+        // `PRE_`, a few microseconds earlier.
         //
-        // 🔴 **ET L'ÉTAT NE LES CHANGE PAS NON PLUS.** Une poussée part même
-        // canal fermé : le fil qui la sert la journalisera et la retiendra.
-        // Les subordonner à l'état ferait perdre en silence exactement ce que
-        // le refus au `PRE_` avait laissé passer.
+        // 🔴 **AND THE STATE DOES NOT CHANGE THEM EITHER.** A push goes out even
+        // with the channel closed: the thread serving it will journal it and hold it back.
+        // Subordinating them to the state would silently lose exactly what
+        // the refusal at the `PRE_` had let through.
         FILE_RENAMED => Reponse::Pousser(Poussee::Renommage),
         FILE_HANDLE_CLOSED_FILE_DELETED => Reponse::Pousser(Poussee::Suppression),
         _ => Reponse::AccepterSansAttendre,

@@ -6,42 +6,38 @@
 use std::io::Write;
 use std::sync::mpsc::Receiver;
 
-use crate::capteur::protocole::{ecrire_image, ecrire_json, DepuisCapteur};
+use crate::capteur::protocole::{write_image, write_json, DepuisCapteur};
 use crate::h264::AccessUnit;
 
-/// Profondeur de la file entre le fil de fenêtre et le fil écrivain de la
-/// connexion média.
+/// Depth of the queue between the window thread and the media connection's
+/// writer thread.
 ///
-/// **Bornée à dessein** : une file libre laisserait s'accumuler sans limite des
-/// unités d'accès qu'un enfant qui ne lit plus ne prendra jamais. C'est le
-/// pendant exact de `CAPACITE_FILE` côté enfant, et la contre-pression continue
-/// donc de remonter jusqu'à la capture — mais elle remonte désormais dans
-/// `deposer`, qui sert les commandes à chaque tour d'attente.
+/// **Bounded on purpose**: a free queue would let access units accumulate
+/// without limit that a child no longer reading will never take. It is the
+/// exact counterpart of `CAPACITE_FILE` on the child side, and back-pressure therefore
+/// keeps going up to the capture — but it now goes up in
+/// `deposer`, which serves the commands at every wait round.
 pub(super) const CAPACITE_ECRITURES: usize = 8;
 
-/// Ce que le fil de fenêtre confie au fil écrivain de la connexion média.
+/// What the window thread hands to the media connection's writer thread.
 pub(super) enum AEcrire {
     Image(AccessUnit),
     Etat(DepuisCapteur),
 }
 
-/// Le fil écrivain de la connexion média : il ne fait qu'écrire, et il est le
-/// seul à toucher cet objet fichier. Personne ne le lit.
-pub(super) fn ecrire_le_media<E: Write>(
-    mut ecrivain: E,
-    charges: Receiver<AEcrire>,
-    session: &str,
-) {
+/// The media connection's writer thread: it only writes, and it is the
+/// only one touching this file object. Nobody reads it.
+pub(super) fn write_media<E: Write>(mut ecrivain: E, charges: Receiver<AEcrire>, session: &str) {
     for charge in charges {
-        let ecrit = match charge {
-            AEcrire::Image(unite) => ecrire_image(&mut ecrivain, &unite),
-            AEcrire::Etat(message) => ecrire_json(&mut ecrivain, &message),
+        let written = match charge {
+            AEcrire::Image(unite) => write_image(&mut ecrivain, &unite),
+            AEcrire::Etat(message) => write_json(&mut ecrivain, &message),
         };
-        // `flush` à chaque charge : devant une fenêtre immobile, la charge
-        // suivante peut ne jamais venir, et l'enfant attendrait celle-ci dans
-        // un tampon. Même leçon que la réponse d'attache de la tâche 9.
-        if let Err(erreur) = ecrit.and_then(|()| ecrivain.flush()) {
-            tracing::warn!(%session, %erreur, "écriture de la connexion média interrompue");
+        // `flush` at every payload: in front of a still window, the next
+        // payload may never come, and the child would wait for this one in
+        // a buffer. Same lesson as the attach reply of task 9.
+        if let Err(error) = written.and_then(|()| ecrivain.flush()) {
+            tracing::warn!(%session, %error, "writing to the media connection interrupted");
             return;
         }
     }

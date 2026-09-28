@@ -1,16 +1,16 @@
-//! Temps 1 de la sonde : la viabilité de chaque voie, une par exécution.
+//! Phase 1 of the probe: the viability of each path, one per run.
 
 use anyhow::Result;
 
-/// Relève toutes les sorties DXGI de la machine.
+/// Surveys all the machine's DXGI outputs.
 ///
-/// Premier acte de la sonde, parce que deux documents du dépôt se
-/// contredisent sur l'adaptateur qui pilote le bureau
-/// (`plans/fix-debit-socket-report.md:163` contre le commit `4493b24`) et que
-/// tout le dimensionnement des voies 2 et 3 en dépend.
+/// First act of the probe, because two documents of the repository
+/// contradict each other on the adapter that drives the desktop
+/// (`plans/fix-debit-socket-report.md:163` versus commit `4493b24`) and
+/// the whole sizing of paths 2 and 3 depends on it.
 pub(super) fn relever_dxgi() -> Result<()> {
     let sorties = crate::capture::enumerer_sorties()?;
-    tracing::info!(nombre = sorties.len(), "sorties DXGI relevées");
+    tracing::info!(count = sorties.len(), "DXGI outputs recorded");
     for sortie in &sorties {
         tracing::info!(
             adaptateur = %sortie.adaptateur,
@@ -28,8 +28,8 @@ pub(super) fn relever_dxgi() -> Result<()> {
     let attachees = sorties.iter().filter(|s| s.attachee_au_bureau).count();
     tracing::info!(
         attachees,
-        "verdict : {} sortie(s) attachée(s) au bureau — la voie « un moniteur \
-         par fenêtre » exige d'en obtenir 8",
+        "verdict: {} output(s) attached to the desktop — the \"one monitor \
+         per window\" path requires getting 8 of them",
         attachees
     );
     Ok(())

@@ -1,56 +1,56 @@
-// Le pilote `node:sqlite` — celui du développement et de la suite de tests.
+// The `node:sqlite` driver — the one for development and for the test suite.
 //
-// 🔴 L'`ExperimentalWarning` de `node:sqlite` N'EST PAS MASQUÉ, nulle part :
-// ni `NODE_NO_WARNINGS`, ni `--no-warnings`, ni `--disable-warning`, ni dans
-// `package.json`, ni dans la configuration vitest, ni dans `verify-all.sh`.
-// La spec §3.2 accepte ce module PARCE QUE « l'échec d'une évolution d'API est
-// bruyant et immédiat » : l'éteindre retirerait exactement le bruit qui
-// justifie la décision. Ce que rend la sortie lisible n'est pas la
-// suppression, c'est la RARETÉ — `node:sqlite` n'est importé QUE par ce
-// fichier, donc l'avertissement paraît une fois par processus, sur deux
-// lignes. Un contrôle de `pilote.test.ts` interdit de le masquer plus tard.
+// 🔴 The `ExperimentalWarning` of `node:sqlite` IS NOT MASKED, anywhere:
+// no `NODE_NO_WARNINGS`, no `--no-warnings`, no `--disable-warning`, neither in
+// `package.json`, nor in the vitest configuration, nor in `verify-all.sh`.
+// Spec §3.2 accepts this module BECAUSE "the failure of an API change is
+// loud and immediate": silencing it would remove exactly the noise that
+// justifies the decision. What makes the output readable is not
+// suppression, it is RARITY — `node:sqlite` is imported ONLY by this
+// file, so the warning shows up once per process, on two
+// lines. A check of `pilote.test.ts` forbids masking it later.
 //
-// ⚠️ `DatabaseSync` est SYNCHRONE ; l'interface `Pilote` est asynchrone. Les
-// méthodes ci-dessous rendent donc des promesses DÉJÀ RÉSOLUES. Il n'y a ici
-// aucune concurrence, aucun parallélisme, aucune attente réelle : un
-// successeur qui croirait pouvoir lancer deux requêtes de front sur ce pilote
-// se tromperait. L'asynchronie est celle de l'interface, pas celle du moteur.
+// ⚠️ `DatabaseSync` is SYNCHRONOUS; the `Pilote` interface is asynchronous. The
+// methods below therefore return ALREADY RESOLVED promises. There is here
+// no concurrency, no parallelism, no real waiting: a
+// successor who believed they could fire two queries side by side on this driver
+// would be wrong. The asynchrony is that of the interface, not that of the engine.
 
 import { createRequire } from 'node:module';
 import type { DatabaseSync as TypeDatabaseSync } from 'node:sqlite';
 import type { Pilote } from './pilote';
 
-// 🔴 `node:sqlite` est chargé par `createRequire`, et JAMAIS par un `import`
-// statique. La cause est MESURÉE, pas devinée (19 août 2026, vitest 2.1.9,
-// vite 5.4.21, Node v24.9.0) :
+// 🔴 `node:sqlite` is loaded through `createRequire`, and NEVER through a static
+// `import`. The cause is MEASURED, not guessed (19 August 2026, vitest 2.1.9,
+// vite 5.4.21, Node v24.9.0):
 //
 //     node --input-type=module -e "
 //       import { isNodeBuiltin } from './node_modules/vite-node/dist/utils.mjs';
 //       console.log(isNodeBuiltin('node:sqlite'), isNodeBuiltin('node:http'));"
 //     -> false true
 //
-// `vite-node/dist/utils.mjs` — le résolveur de VITEST, distinct de celui de
-// vite, dont l'`isNodeBuiltin` accepte pourtant tout `node:*` — dépouille le
-// préfixe `node:` puis cherche `sqlite` dans sa propre liste de builtins, qui
-// ne le contient pas. Il conclut que c'est un paquet npm et échoue sur
-// « Failed to load url sqlite (resolved id: sqlite). Does the file exist? ».
-// `test.server.deps.external` n'y change rien : l'échec a lieu à la
-// RÉSOLUTION, avant toute décision d'externalisation.
+// `vite-node/dist/utils.mjs` — the VITEST resolver, distinct from that of
+// vite, whose `isNodeBuiltin` nonetheless accepts any `node:*` — strips the
+// `node:` prefix then looks for `sqlite` in its own list of builtins, which
+// does not contain it. It concludes that it is an npm package and fails on
+// "Failed to load url sqlite (resolved id: sqlite). Does the file exist?".
+// `test.server.deps.external` changes nothing: the failure happens at
+// RESOLUTION, before any externalisation decision.
 //
-// ⚠️ Ceci ne masque RIEN : le module chargé est le vrai, et
-// l'`ExperimentalWarning` paraît toujours. Le jour où vite-node connaîtra
-// `sqlite`, l'`import` statique redeviendra possible — et ce détour pourra
-// être défait.
+// ⚠️ This masks NOTHING: the module loaded is the real one, and
+// the `ExperimentalWarning` still shows up. The day vite-node knows about
+// `sqlite`, the static `import` will become possible again — and this detour can
+// be undone.
 const { DatabaseSync } = createRequire(import.meta.url)('node:sqlite') as {
     DatabaseSync: typeof TypeDatabaseSync;
 };
 
 export function ouvrirSqlite(cheminOuMemoire: string): Pilote {
     const base = new DatabaseSync(cheminOuMemoire);
-    // Sans ce pragma, SQLite N'APPLIQUE PAS les clés étrangères : elles sont
-    // acceptées à la déclaration et ignorées à l'exécution. La portabilité du
-    // schéma serait alors éprouvée d'un seul côté — Postgres les applique,
-    // lui, sans qu'on ait rien à demander.
+    // Without this pragma, SQLite DOES NOT ENFORCE foreign keys: they are
+    // accepted at declaration and ignored at execution. The portability of the
+    // schema would then be tested on one side only — Postgres enforces them,
+    // for its part, without anything to ask.
     base.exec('PRAGMA foreign_keys = ON');
     return pilote(base);
 }
@@ -67,9 +67,9 @@ function pilote(base: TypeDatabaseSync): Pilote {
         async transaction<T>(corps: (p: Pilote) => Promise<T>): Promise<T> {
             base.exec('BEGIN');
             try {
-                const valeur = await corps(pilote(base));
+                const value = await corps(pilote(base));
                 base.exec('COMMIT');
-                return valeur;
+                return value;
             } catch (cause) {
                 base.exec('ROLLBACK');
                 throw cause;

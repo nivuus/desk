@@ -1,24 +1,24 @@
-//! `CursorShape` — la forme du curseur, extraite de `control.rs`.
+//! `CursorShape` — the cursor shape, extracted from `control.rs`.
 //!
-//! ⚠️ **EXTRACTION PRÉALABLE, pas un remaniement.** Le sous-bloc E3 ajoute la
-//! variante `AgentControl::MicState` à `control.rs`, qui était à **444** lignes
-//! pour une porte à 500 : l'addition documentée à la densité d'`Accent` l'aurait
-//! porté au-delà de 490. La doctrine du dépôt est d'**extraire AVANT
-//! d'ajouter**, jamais de comprimer après avoir franchi — ce dépôt a franchi ce
-//! plafond cinq fois et l'a rattrapé deux fois par une compression qu'il
-//! s'interdit.
+//! ⚠️ **PRIOR EXTRACTION, not a rework.** Sub-block E3 adds the
+//! `AgentControl::MicState` variant to `control.rs`, which was at **444** lines
+//! for a gate at 500: the addition documented at the density of `Accent` would have
+//! taken it beyond 490. The repository's doctrine is to **extract BEFORE
+//! adding**, never to compress after crossing — this repository crossed that
+//! ceiling five times and caught up twice by a compression it
+//! forbids itself.
 //!
-//! ⚠️ **Le contenu est VERBATIM.** Une seule chose a changé, et c'est la seule
-//! qui avait le droit de changer : le `use serde::…` que le parent portait déjà
-//! est répété ici, un module enfant ne voyant pas les imports de son parent. Le
-//! type reste `pub`, et `control.rs` le ré-exporte, de sorte qu'aucun site
-//! d'appel de `proto::control::CursorShape` n'a bougé.
+//! ⚠️ **The content is VERBATIM.** Only one thing changed, and it is the only one
+//! that had the right to change: the `use serde::…` the parent already carried
+//! is repeated here, a child module not seeing its parent's imports. The
+//! type stays `pub`, and `control.rs` re-exports it, so that no call
+//! site of `proto::control::CursorShape` has moved.
 
 use serde::{Deserialize, Serialize};
 
-/// Forme du curseur, exprimée directement dans le vocabulaire de la
-/// propriété CSS `cursor` : le client la pose telle quelle, sans table de
-/// correspondance à maintenir de son côté.
+/// Cursor shape, expressed directly in the vocabulary of the
+/// CSS `cursor` property: the client sets it as is, with no mapping
+/// table to maintain on its side.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum CursorShape {

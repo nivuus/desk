@@ -1,71 +1,71 @@
-//! Les sessions d'énumération : ce qu'un répertoire contient, dans quel ordre,
-//! et où l'on en est. **PUR** — aucun `cfg`, aucune dépendance à `windows`,
-//! entièrement testé sur l'hôte.
+//! Enumeration sessions: what a directory contains, in which order,
+//! and where we are. **PURE** — no `cfg`, no dependency on `windows`,
+//! entirely tested on the host.
 //!
-//! # Les deux pièges de ProjFS, tous deux SILENCIEUX
+//! # ProjFS's two traps, both SILENT
 //!
-//! 1. **L'ordre est IMPOSÉ.** Les entrées doivent être remplies dans l'ordre de
-//!    `PrjFileNameCompare` — qui n'est **ni** l'ordre lexicographique d'`OsStr`,
-//!    **ni** `Ordering::cmp`. Or `dir.values()` de la File System Access API ne
-//!    garantit **aucun** ordre. Le pont trie donc lui-même, et
-//!    `PrjFileNameCompare` est chargée (tâche 12) précisément pour cela.
-//! 2. **Le filtre `searchExpression` est FACULTATIF et il est FOURNI**
-//!    (`PRJ_GET_DIRECTORY_ENUMERATION_CB`, `mod.rs:315`). L'ignorer est une
-//!    faute silencieuse : un `dir /b *.txt` rendrait tout. Il s'applique par
+//! 1. **The order is IMPOSED.** Entries must be filled in the order of
+//!    `PrjFileNameCompare` — which is **neither** `OsStr`'s lexicographic order,
+//!    **nor** `Ordering::cmp`. Yet `dir.values()` of the File System Access API
+//!    guarantees **no** order. The bridge therefore sorts itself, and
+//!    `PrjFileNameCompare` is loaded (task 12) precisely for that.
+//! 2. **The `searchExpression` filter is OPTIONAL and it is PROVIDED**
+//!    (`PRJ_GET_DIRECTORY_ENUMERATION_CB`, `mod.rs:315`). Ignoring it is a
+//!    silent fault: a `dir /b *.txt` would return everything. It is applied through
 //!    `PrjFileNameMatch`.
 //!
-//! **Les deux comparateurs sont INJECTÉS**, et c'est ce qui rend ce module
-//! testable : la logique — filtrer puis trier, et où en est le curseur — est
-//! pure ; seules les deux fonctions de comparaison viennent de ProjFS.
+//! **Both comparators are INJECTED**, and that is what makes this module
+//! testable: the logic — filter then sort, and where the cursor is — is
+//! pure; only the two comparison functions come from ProjFS.
 //!
-//! # Ce que ce module n'est PAS : un cache d'énumération
+//! # What this module is NOT: an enumeration cache
 //!
-//! ⚠️ Une [`Session`] retient les entrées d'**une** énumération, entre les
-//! appels successifs de `GetDirectoryEnumeration` qui la servent, et meurt avec
-//! `EndDirectoryEnumeration`. **Ce n'est pas le cache d'énumération
-//! (`TTL_ENUMERATION`) de la spec §7.4, qui n'est PAS livré en F1** : celui-là
-//! survivrait à la session, serait indexé par CHEMIN, et ne pourrait être vidé
-//! que par `Rafraichir` — un livrable de F5. Poser un cache dont rien ne peut
-//! vider le contenu ferait qu'un fichier ajouté côté poste local n'apparaîtrait
-//! **jamais** : le défaut exact de l'ancien pont, dont le cache de données
-//! n'avait aucun TTL (`src/file.js:232-241`).
+//! ⚠️ A [`Session`] holds the entries of **one** enumeration, between the
+//! successive `GetDirectoryEnumeration` calls that serve it, and dies with
+//! `EndDirectoryEnumeration`. **It is not the enumeration cache
+//! (`TTL_ENUMERATION`) of spec §7.4, which is NOT delivered in F1**: that one
+//! would outlive the session, would be indexed by PATH, and could only be emptied
+//! by `Rafraichir` — a deliverable of F5. Setting up a cache whose content nothing can
+//! empty would mean a file added on the local workstation would
+//! **never** appear: the exact defect of the old bridge, whose data cache
+//! had no TTL (`src/file.js:232-241`).
 //!
-//! ✅ **CE PRONOSTIC A ÉTÉ VÉRIFIÉ, ET F5 EXISTE (21 août 2026).** *Ces lignes
-//! annonçaient : « le critère ROUGE de F5 — le fichier apparaît SANS
-//! `Rafraichir` — sera par construction rouge tant que F5 n'existe pas ».*
-//! **Il l'était, et c'est mesuré** : sur le binaire de F5 avec `PONT_CACHE=0`,
-//! qui reproduit exactement le produit d'avant, le fichier ajouté côté poste
-//! local apparaît **sans** `Rafraichir` — 2 exécutions. Avec le cache armé, il
-//! n'apparaît **qu'après** — 3 exécutions.
+//! ✅ **THIS PROGNOSIS WAS VERIFIED, AND F5 EXISTS (August 21st, 2026).** *These lines
+//! announced: "F5's RED criterion — the file appears WITHOUT
+//! `Rafraichir` — will by construction be red as long as F5 does not exist".*
+//! **It was, and it is measured**: on F5's binary with `PONT_CACHE=0`,
+//! which reproduces exactly the earlier product, the file added on the local
+//! workstation appears **without** `Rafraichir` — 2 runs. With the cache armed, it
+//! only appears **after** — 3 runs.
 //!
-//! ⚠️ **LE CACHE VIT DÉSORMAIS DANS [`crate::pont::cache`], PAS ICI**, et la
-//! distinction que ce module énonce reste entière : une [`Session`] meurt avec
-//! `EndDirectoryEnumeration`, le cache lui survit et n'est indexé que par
-//! CHEMIN. **`preparer` court à chaque chargement de session, y compris sur un
-//! succès de cache** — celui-ci mémorise les entrées BRUTES, précisément pour
-//! qu'un `dir *.txt` n'empoisonne pas le `dir` suivant.
+//! ⚠️ **THE CACHE NOW LIVES IN [`crate::pont::cache`], NOT HERE**, and the
+//! distinction this module states remains whole: a [`Session`] dies with
+//! `EndDirectoryEnumeration`, the cache outlives it and is indexed only by
+//! PATH. **`preparer` runs at each session load, including on a
+//! cache hit** — the cache memorises the RAW entries, precisely so
+//! that a `dir *.txt` does not poison the next `dir`.
 
 use std::cmp::Ordering;
 
-/// Une entrée de répertoire, telle que le navigateur la rapporte.
+/// A directory entry, as the browser reports it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Entree {
     pub nom: String,
     pub repertoire: bool,
-    pub taille: u64,
-    /// `File.lastModified`, en millisecondes depuis l'époque Unix.
+    pub size: u64,
+    /// `File.lastModified`, in milliseconds since the Unix epoch.
     ///
-    /// ⚠️ **La File System Access API n'en donne qu'UN**, et les quatre champs
-    /// horaires de `PRJ_FILE_BASIC_INFO` le portent tous. C'est une divergence
-    /// assumée (spec §3.5.2), pas un oubli.
-    pub modifie_ms: i64,
+    /// ⚠️ **The File System Access API gives only ONE**, and the four time
+    /// fields of `PRJ_FILE_BASIC_INFO` all carry it. It is an accepted
+    /// divergence (spec §3.5.2), not an oversight.
+    pub modified_ms: i64,
 }
 
-/// Filtre puis trie, avec les deux fonctions de ProjFS **injectées**.
+/// Filters then sorts, with ProjFS's two functions **injected**.
 ///
-/// `expression` absente : l'apparieur n'est **jamais** consulté. ProjFS n'en
-/// fournit pas toujours une, et en forger une (`*`) ferait dépendre le résultat
-/// du comportement de `PrjFileNameMatch` sur un motif qu'on aurait inventé.
+/// `expression` absent: the matcher is **never** consulted. ProjFS does not
+/// always provide one, and forging one (`*`) would make the result depend
+/// on `PrjFileNameMatch`'s behaviour on a pattern we invented.
 pub fn preparer(
     entrees: Vec<Entree>,
     expression: Option<&str>,
@@ -79,22 +79,22 @@ pub fn preparer(
             .collect(),
         None => entrees,
     };
-    // `sort_by` et non `sort_unstable_by` : le comparateur vient de ProjFS et
-    // peut déclarer deux noms égaux (la casse, notamment). Un tri instable
-    // rendrait alors un ordre différent d'un appel à l'autre sur la même
-    // entrée, ce qui est exactement ce que l'énumération ProjFS interdit entre
-    // deux `GetDirectoryEnumeration` d'une même session.
+    // `sort_by` and not `sort_unstable_by`: the comparator comes from ProjFS and
+    // can declare two names equal (case, notably). An unstable sort
+    // would then give a different order from one call to the next on the same
+    // input, which is exactly what ProjFS enumeration forbids between
+    // two `GetDirectoryEnumeration` of the same session.
     retenues.sort_by(|a, b| comparer(&a.nom, &b.nom));
     retenues
 }
 
-/// Une session d'énumération : les entrées préparées, et où l'on en est.
+/// An enumeration session: the prepared entries, and where we are.
 ///
-/// ⚠️ **Indexée par le GUID d'ÉNUMÉRATION, jamais par le chemin** (spec §7.2) —
-/// c'est l'appelant qui tient l'index, mais la raison vit ici : deux
-/// applications qui listent le même répertoire en même temps ouvrent deux
-/// sessions distinctes, et indexer par chemin ferait que la seconde écraserait
-/// la première ; l'une des deux recevrait un répertoire vide.
+/// ⚠️ **Indexed by the ENUMERATION GUID, never by path** (spec §7.2) —
+/// it is the caller that holds the index, but the reason lives here: two
+/// applications listing the same directory at the same time open two
+/// distinct sessions, and indexing by path would make the second overwrite
+/// the first; one of the two would receive an empty directory.
 #[derive(Debug, Default)]
 pub struct Session {
     entrees: Option<Vec<Entree>>,
@@ -102,48 +102,48 @@ pub struct Session {
 }
 
 impl Session {
-    pub fn nouvelle() -> Self {
+    pub fn new() -> Self {
         Self::default()
     }
 
-    /// Vrai dès que le navigateur a répondu **une fois** pour cette session.
+    /// True as soon as the browser has answered **once** for this session.
     ///
-    /// Un répertoire vide est bien « chargé » : sans cette distinction, une
-    /// session sur un répertoire vide redemanderait la liste à chaque appel de
-    /// `GetDirectoryEnumeration`, indéfiniment.
+    /// An empty directory is indeed "loaded": without this distinction, a
+    /// session on an empty directory would request the list again at each
+    /// `GetDirectoryEnumeration` call, indefinitely.
     pub fn chargee(&self) -> bool {
         self.entrees.is_some()
     }
 
-    /// Pose les entrées **et remet le curseur à zéro**.
+    /// Sets the entries **and resets the cursor to zero**.
     ///
-    /// La remise à zéro n'est pas une commodité : sans elle, une seconde
-    /// réponse `Entrees` laisserait le curseur au-delà de la nouvelle liste, et
-    /// l'énumération rendrait vide.
+    /// The reset is not a convenience: without it, a second
+    /// `Entrees` response would leave the cursor beyond the new list, and
+    /// the enumeration would return empty.
     pub fn poser(&mut self, entrees: Vec<Entree>) {
         self.entrees = Some(entrees);
         self.curseur = 0;
     }
 
-    /// Honore `PRJ_CB_DATA_FLAG_ENUM_RESTART_SCAN` (`mod.rs:177`, valeur
-    /// `1i32`) : le curseur revient au début, **et les entrées sont
-    /// conservées**.
+    /// Honours `PRJ_CB_DATA_FLAG_ENUM_RESTART_SCAN` (`mod.rs:177`, value
+    /// `1i32`): the cursor goes back to the start, **and the entries are
+    /// kept**.
     ///
-    /// Les jeter obligerait à redemander la liste au navigateur, ce qui est un
-    /// aller-retour pour rien — et surtout ferait rendre `S_OK` avec un tampon
-    /// vide en attendant, c'est-à-dire un répertoire vide, silencieusement.
+    /// Throwing them away would force asking the browser for the list again, which is a
+    /// round trip for nothing — and above all would return `S_OK` with an empty
+    /// buffer in the meantime, that is, an empty directory, silently.
     pub fn redemarrer(&mut self) {
         self.curseur = 0;
     }
 
-    /// L'entrée courante, ou `None` si la session est épuisée ou pas chargée.
+    /// The current entry, or `None` if the session is exhausted or not loaded.
     pub fn prochaine(&self) -> Option<&Entree> {
         self.entrees.as_ref()?.get(self.curseur)
     }
 
-    /// Passe à la suivante. Appelée **après** un remplissage accepté par
-    /// `PrjFillDirEntryBuffer`, jamais avant : avancer sur un tampon plein
-    /// perdrait l'entrée pour toujours.
+    /// Moves to the next. Called **after** a fill accepted by
+    /// `PrjFillDirEntryBuffer`, never before: advancing on a full buffer
+    /// would lose the entry forever.
     pub fn avancer(&mut self) {
         self.curseur += 1;
     }

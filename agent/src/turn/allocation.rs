@@ -1,9 +1,9 @@
-//! Machine à états de l'allocation TURN : de la première requête nue au
-//! rafraîchissement du bail, sans jamais toucher un socket.
+//! TURN allocation state machine: from the first bare request to
+//! lease refresh, without ever touching a socket.
 //!
-//! L'appelant fournit l'horloge (`avancer`) et le transport (`poll_transmit`,
-//! `handle_packet`) : c'est ce qui permet d'éprouver tout le protocole, y
-//! compris le nonce périmé, contre des réponses fabriquées — sans coturn.
+//! The caller provides the clock (`avancer`) and the transport (`poll_transmit`,
+//! `handle_packet`): it is what lets the whole protocol be exercised,
+//! including the stale nonce, against fabricated responses — without coturn.
 
 use std::net::SocketAddr;
 use std::time::{Duration, Instant};
@@ -13,46 +13,46 @@ use super::messages::{
     METHODE_ALLOCATE, METHODE_REFRESH,
 };
 
-/// Ce qu'une allocation réussie procure.
+/// What a successful allocation provides.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Allocation {
-    /// Adresse que le serveur relaie vers nous. C'est elle qui devient un
-    /// candidat ICE relayé.
+    /// Address the server relays to us. It is the one that becomes a
+    /// relayed ICE candidate.
     pub relayee: SocketAddr,
-    /// Adresse réflexive vue par le serveur. Offerte par la MÊME réponse —
-    /// d'où l'absence de serveur STUN séparé (voir la spec §3.3).
+    /// Reflexive address seen by the server. Offered by the SAME response —
+    /// hence no separate STUN server (see spec §3.3).
     pub reflexive: Option<SocketAddr>,
 }
 
-/// Nombre de tentatives d'allocation avant abandon. Au-delà, la session
-/// continue sans relais : c'est une dégradation, pas une panne.
+/// Number of allocation attempts before giving up. Beyond it, the session
+/// continues without a relay: it is a degradation, not a failure.
 const TENTATIVES_MAX: u8 = 5;
 
-/// Les `trans_id` retenus ici ne sont **pas relus** : `handle_packet` accepte
-/// la réponse du serveur sans vérifier qu'elle apparie la requête en cours.
-/// Le champ est conservé parce que c'est là que l'appariement se brancherait —
-/// réserve consignée dans la recette, pas oubli.
+/// The `trans_id`s retained here are **not reread**: `handle_packet` accepts
+/// the server's response without checking that it matches the current request.
+/// The field is kept because that is where matching would plug in —
+/// a reservation recorded in the acceptance run, not an oversight.
 #[allow(dead_code)]
 enum Etat {
-    /// Rien n'est encore parti.
+    /// Nothing has gone out yet.
     Repos,
-    /// Allocation nue émise, on attend le 401.
+    /// Bare allocation sent, waiting for the 401.
     AttenteRefus {
         trans_id: [u8; 12],
     },
-    /// Allocation signée émise, on attend le succès.
+    /// Signed allocation sent, waiting for success.
     AttenteAllocation {
         trans_id: [u8; 12],
     },
     Allouee {
         echeance_refresh: Instant,
     },
-    /// Rafraîchissement émis, on attend sa confirmation.
+    /// Refresh sent, waiting for its confirmation.
     AttenteRefresh {
         trans_id: [u8; 12],
         echeance_refresh: Instant,
     },
-    /// Abandon définitif. La session continue sans relais.
+    /// Final abandonment. The session continues without a relay.
     Abandonnee,
 }
 
@@ -60,28 +60,28 @@ pub struct TurnClient {
     serveur: SocketAddr,
     username: String,
     password: String,
-    /// Les cinq champs `pub(super)` ci-dessous sont ceux dont `canaux`, dans un
-    /// module frère, a besoin pour porter le second bloc `impl TurnClient` :
-    /// borné à `turn`, jamais `pub`. Même conduite que
-    /// `congestion::Controleur` vis-à-vis de `congestion::reconfiguration`.
+    /// The five `pub(super)` fields below are those `canaux`, in a
+    /// sibling module, needs to carry the second `impl TurnClient` block:
+    /// bounded to `turn`, never `pub`. Same approach as
+    /// `congestion::Controleur` with respect to `congestion::reconfiguration`.
     pub(super) identifiants: Option<Identifiants>,
     pub(super) cle: Option<Vec<u8>>,
     etat: Etat,
     pub(super) allocation: Option<Allocation>,
-    /// Requêtes prêtes à partir, dans l'ordre.
+    /// Requests ready to go, in order.
     pub(super) sortantes: std::collections::VecDeque<Vec<u8>>,
     maintenant: Instant,
     tentatives: u8,
-    /// Compteur d'identifiants de transaction. Un identifiant STUN doit être
-    /// imprévisible en usage réel ; ici il doit surtout être UNIQUE, et un
-    /// compteur le garantit de façon reproductible en test.
+    /// Transaction identifier counter. A STUN identifier must be
+    /// unpredictable in real use; here it must above all be UNIQUE, and a
+    /// counter guarantees that reproducibly in tests.
     compteur_trans: u64,
-    /// Instant du dernier relevé de diagnostic (voir `avancer`).
-    dernier_releve: Instant,
-    /// Canaux liés, du numéro vers la liaison (pair servi et échéance de
-    /// réaffirmation).
+    /// Instant of the last diagnostic reading (see `avancer`).
+    last_reading: Instant,
+    /// Bound channels, from number to binding (peer served and
+    /// reaffirmation deadline).
     pub(super) canaux: std::collections::HashMap<u16, super::canaux::Canal>,
-    /// Prochain numéro à attribuer, dans la plage normative.
+    /// Next number to assign, within the normative range.
     pub(super) prochain_canal: u16,
 }
 
@@ -99,7 +99,7 @@ impl TurnClient {
             maintenant: now,
             tentatives: 0,
             compteur_trans: 0,
-            dernier_releve: now,
+            last_reading: now,
             canaux: std::collections::HashMap::new(),
             prochain_canal: super::canaux::CANAL_MIN,
         };
@@ -115,18 +115,18 @@ impl TurnClient {
         self.allocation
     }
 
-    /// Prochain paquet à envoyer au serveur TURN, s'il y en a un.
+    /// Next packet to send to the TURN server, if there is one.
     pub fn poll_transmit(&mut self) -> Option<Vec<u8>> {
         self.sortantes.pop_front()
     }
 
-    /// Instant du prochain réveil utile, pour que l'appelant ne dorme pas
-    /// au-delà.
+    /// Instant of the next useful wake-up, so that the caller does not sleep
+    /// beyond it.
     ///
-    /// Deux échéances concourent : le bail de l'allocation et la plus proche
-    /// liaison de canal à réaffirmer. La seconde tombe bien plus souvent (150 s
-    /// contre 300 s), et l'oublier ici ferait dépendre le maintien du relais de
-    /// la cadence média.
+    /// Two deadlines compete: the allocation's lease and the nearest
+    /// channel binding to reaffirm. The second falls much more often (150 s
+    /// against 300 s), and forgetting it here would make keeping the relay depend on
+    /// the media cadence.
     pub fn poll_timeout(&self) -> Option<Instant> {
         let bail = match self.etat {
             Etat::Allouee { echeance_refresh }
@@ -141,39 +141,39 @@ impl TurnClient {
         }
     }
 
-    /// Instant courant de l'horloge interne. `pub(super)` : `canaux` en a besoin
-    /// pour dater l'échéance d'une liaison qu'il vient d'émettre.
+    /// Current instant of the internal clock. `pub(super)`: `canaux` needs it
+    /// to date the deadline of a binding it has just emitted.
     pub(super) fn maintenant(&self) -> Instant {
         self.maintenant
     }
 
-    /// Fait avancer l'horloge interne, et émet ce qui est dû : le
-    /// rafraîchissement du bail, et les liaisons de canal à réaffirmer.
+    /// Advances the internal clock, and emits what is due: the
+    /// lease refresh, and the channel bindings to reaffirm.
     pub fn avancer(&mut self, now: Instant) {
         self.maintenant = now;
 
-        // Relevé périodique de diagnostic : une ligne par minute, qui dit ce
-        // que la machine à états croit devoir faire. Sans elle, un bail non
-        // rafraîchi ne se constate qu'après coup, dans les journaux du serveur.
-        if now.saturating_duration_since(self.dernier_releve) >= Duration::from_secs(60) {
-            self.dernier_releve = now;
+        // Periodic diagnostic reading: one line per minute, saying what
+        // the state machine believes it must do. Without it, a lease not
+        // refreshed is only noticed after the fact, in the server's logs.
+        if now.saturating_duration_since(self.last_reading) >= Duration::from_secs(60) {
+            self.last_reading = now;
             let etat = match self.etat {
-                Etat::Repos => "repos",
-                Etat::AttenteRefus { .. } => "attente-refus",
-                Etat::AttenteAllocation { .. } => "attente-allocation",
-                Etat::Allouee { .. } => "allouée",
-                Etat::AttenteRefresh { .. } => "attente-refresh",
-                Etat::Abandonnee => "abandonnée",
+                Etat::Repos => "idle",
+                Etat::AttenteRefus { .. } => "awaiting-refusal",
+                Etat::AttenteAllocation { .. } => "awaiting-allocation",
+                Etat::Allouee { .. } => "allocated",
+                Etat::AttenteRefresh { .. } => "awaiting-refresh",
+                Etat::Abandonnee => "abandoned",
             };
-            let dans_s = self
+            let in_s = self
                 .poll_timeout()
                 .map(|e| e.saturating_duration_since(now).as_secs() as i64)
                 .unwrap_or(-1);
             tracing::info!(
                 etat,
-                prochaine_echeance_s = dans_s,
+                prochaine_echeance_s = in_s,
                 canaux = self.canaux.len(),
-                "état du client TURN"
+                "TURN client state"
             );
         }
         if let Etat::Allouee { echeance_refresh } = self.etat {
@@ -181,12 +181,12 @@ impl TurnClient {
                 self.emettre_refresh(echeance_refresh);
             }
         }
-        // Indépendant de l'état du bail : une permission expire pour son propre
-        // compte, y compris pendant qu'on attend la réponse à un `Refresh`.
+        // Independent of the lease state: a permission expires on its own
+        // account, including while waiting for the response to a `Refresh`.
         self.rafraichir_canaux(now);
     }
 
-    /// `pub(super)` : `canaux::lier_canal` numérote ses deux requêtes avec.
+    /// `pub(super)`: `canaux::lier_canal` numbers its two requests with it.
     pub(super) fn prochain_trans_id(&mut self) -> [u8; 12] {
         self.compteur_trans += 1;
         let mut id = [0u8; 12];
@@ -216,14 +216,14 @@ impl TurnClient {
 
     fn emettre_refresh(&mut self, echeance_refresh: Instant) {
         let (Some(ids), Some(cle)) = (self.identifiants.clone(), self.cle.clone()) else {
-            tracing::warn!("rafraîchissement du bail TURN impossible : identifiants absents");
+            tracing::warn!("TURN lease refresh impossible: credentials missing");
             return;
         };
-        // Une ligne toutes les 300 s : assez rare pour être journalisée en
-        // `info`, et c'est la seule trace qui dise si le bail est réellement
-        // entretenu (la recette du 30/07/2026 a passé une heure à le déduire
-        // des journaux de coturn, faute de cette ligne).
-        tracing::info!("rafraîchissement du bail TURN émis");
+        // One line every 300 s: rare enough to be logged at
+        // `info`, and it is the only trace that says whether the lease is really
+        // maintained (the acceptance run of 07/30/2026 spent an hour deducing it
+        // from coturn's logs, for lack of this line).
+        tracing::info!("TURN lease refresh sent");
         let trans_id = self.prochain_trans_id();
         self.sortantes.push_back(encoder_requete(
             &Requete::Refresh {
@@ -240,19 +240,19 @@ impl TurnClient {
 
     /// Traite un paquet venant du serveur TURN.
     ///
-    /// Rend `Ok(None)` pour tout message de service (réponse d'allocation,
-    /// de rafraîchissement, erreur) : il est absorbé par la machine à états.
-    /// Les données relayées sont traitées par `desencapsuler` (voir `canaux`).
+    /// Returns `Ok(None)` for any service message (allocation response,
+    /// refresh response, error): it is absorbed by the state machine.
+    /// Relayed data is handled by `desencapsuler` (see `canaux`).
     pub fn handle_packet(&mut self, data: &[u8]) -> anyhow::Result<Option<()>> {
         let message = is::stun::StunMessage::parse(data)
             .map_err(|e| anyhow::anyhow!("message TURN illisible : {e}"))?;
 
         if let Some((code, _raison)) = message.error_code() {
-            self.traiter_erreur(code, &message);
+            self.handle_error(code, &message);
             return Ok(None);
         }
 
-        // Réponse de succès : allocation ou rafraîchissement.
+        // Success response: allocation or refresh.
         if let Some(relayee) = message.xor_relayed_address() {
             self.allocation = Some(Allocation {
                 relayee,
@@ -261,21 +261,21 @@ impl TurnClient {
             self.tentatives = 0;
         }
 
-        // Seules les réponses à `Allocate` et `Refresh` portent un bail. Une
-        // réponse à `CreatePermission` ou `ChannelBind` n'en porte aucun, et la
-        // traiter comme telle repousserait le rafraîchissement de 300 s à
-        // chaque fois — au point qu'il ne parte jamais et que l'allocation
-        // expire. Constaté à la recette du 30/07/2026, une fois les liaisons de
-        // canal réaffirmées périodiquement : leurs réponses, arrivant toutes
-        // les 150 s, repoussaient indéfiniment une échéance à 300 s.
+        // Only responses to `Allocate` and `Refresh` carry a lease. A
+        // response to `CreatePermission` or `ChannelBind` carries none, and
+        // treating it as such would push the refresh back by 300 s
+        // each time — to the point that it never goes out and the allocation
+        // expires. Observed in the acceptance run of 07/30/2026, once channel
+        // bindings were reaffirmed periodically: their responses, all arriving
+        // every 150 s, pushed back a 300 s deadline indefinitely.
         let porte_un_bail = matches!(
             methode_de(data),
             Some(METHODE_ALLOCATE) | Some(METHODE_REFRESH)
         );
         if porte_un_bail {
             let bail = message.lifetime().unwrap_or(BAIL_DEMANDE_S);
-            // Rafraîchir à la MOITIÉ du bail : une seule perte de paquet ne
-            // doit pas suffire à perdre l'allocation.
+            // Refresh at HALF the lease: a single packet loss must
+            // not be enough to lose the allocation.
             let echeance =
                 self.maintenant + std::time::Duration::from_secs((bail / 2).max(1) as u64);
             self.etat = Etat::Allouee {
@@ -285,15 +285,15 @@ impl TurnClient {
         Ok(None)
     }
 
-    fn traiter_erreur(&mut self, code: u16, message: &is::stun::StunMessage<'_>) {
+    fn handle_error(&mut self, code: u16, message: &is::stun::StunMessage<'_>) {
         match code {
-            // 401 : premier refus, porteur du realm et du nonce. Étape
-            // normale du protocole, pas un échec.
-            // 438 : nonce périmé — coturn les fait tourner. Même conduite :
-            // adopter le nouveau nonce et rejouer.
+            // 401: first refusal, carrying the realm and the nonce. A normal
+            // step of the protocol, not a failure.
+            // 438: stale nonce — coturn rotates them. Same approach:
+            // adopt the new nonce and replay.
             401 | 438 => {
                 let (Some(realm), Some(nonce)) = (message.realm(), message.nonce()) else {
-                    self.abandonner("401/438 sans realm ni nonce");
+                    self.abandonner("401/438 without realm or nonce");
                     return;
                 };
                 self.identifiants = Some(Identifiants {
@@ -305,13 +305,13 @@ impl TurnClient {
 
                 self.tentatives += 1;
                 if self.tentatives > TENTATIVES_MAX {
-                    self.abandonner("trop de refus d'authentification");
+                    self.abandonner("too many authentication refusals");
                     return;
                 }
 
-                // Un 438 sur un rafraîchissement ne doit PAS réallouer :
-                // l'allocation existe toujours côté serveur, il faut rejouer
-                // le rafraîchissement avec le nouveau nonce.
+                // A 438 on a refresh must NOT reallocate:
+                // the allocation still exists on the server side, the refresh must be
+                // replayed with the new nonce.
                 match self.etat {
                     Etat::AttenteRefresh {
                         echeance_refresh, ..
@@ -320,7 +320,7 @@ impl TurnClient {
                 }
             }
             autre => {
-                self.abandonner(&format!("erreur TURN {autre}"));
+                self.abandonner(&format!("TURN error {autre}"));
             }
         }
     }
@@ -328,7 +328,7 @@ impl TurnClient {
     fn abandonner(&mut self, raison: &str) {
         tracing::warn!(
             raison,
-            "allocation TURN abandonnée : la session continuera sans relais"
+            "TURN allocation abandoned: the session will go on without a relay"
         );
         self.etat = Etat::Abandonnee;
         self.allocation = None;
@@ -346,19 +346,19 @@ mod tests {
     use std::time::Duration;
 
     #[test]
-    fn la_premiere_emission_est_une_allocation_nue() {
+    fn the_first_emission_is_a_bare_allocation() {
         let mut c = TurnClient::new(serveur(), "u".into(), "p".into(), t0());
-        let paquet = c.poll_transmit().expect("une allocation doit partir");
-        assert_eq!(&paquet[0..2], &[0x00, 0x03], "Allocate attendu");
-        // Nue : rien après REQUESTED-TRANSPORT.
+        let paquet = c.poll_transmit().expect("an allocation must go out");
+        assert_eq!(&paquet[0..2], &[0x00, 0x03], "Allocate expected");
+        // Bare: nothing after REQUESTED-TRANSPORT.
         assert_eq!(paquet.len(), 28);
-        // Rien d'autre tant qu'aucune réponse n'est arrivée.
-        assert!(c.poll_transmit().is_none(), "pas de rafale d'allocations");
+        // Nothing else as long as no response has arrived.
+        assert!(c.poll_transmit().is_none(), "no burst of allocations");
         assert!(c.allocation().is_none());
     }
 
     #[test]
-    fn un_401_declenche_une_allocation_signee() {
+    fn a_401_triggers_a_signed_allocation() {
         let mut c = TurnClient::new(serveur(), "u".into(), "p".into(), t0());
         let nue = c.poll_transmit().expect("allocation nue");
 
@@ -372,9 +372,9 @@ mod tests {
                 (ATTR_NONCE, b"nonce1".to_vec()),
             ],
         );
-        assert!(c.handle_packet(&refus).expect("401 traité").is_none());
+        assert!(c.handle_packet(&refus).expect("401 handled").is_none());
 
-        let signee = c.poll_transmit().expect("allocation signée attendue");
+        let signee = c.poll_transmit().expect("signed allocation expected");
         let message = is::stun::StunMessage::parse(&signee).expect("relue");
         assert_eq!(message.realm(), Some("example.org"));
         assert_eq!(message.nonce(), Some("nonce1"));
@@ -382,7 +382,7 @@ mod tests {
     }
 
     #[test]
-    fn un_succes_rend_l_adresse_relayee_et_l_adresse_reflexive() {
+    fn a_success_returns_the_relayed_address_and_the_reflexive_address() {
         let c = allouee();
         let a = c.allocation().expect("allocation obtenue");
         assert_eq!(a.relayee, "192.0.2.15:50000".parse::<SocketAddr>().unwrap());
@@ -390,13 +390,13 @@ mod tests {
     }
 
     #[test]
-    fn un_nonce_perime_est_rejoue_et_non_abandonne() {
-        // 438 « Stale Nonce » est le cas d'erreur RÉELLEMENT rencontré :
-        // coturn fait tourner ses nonces. Le traiter comme un échec
-        // terminerait l'allocation au bout de quelques minutes.
+    fn a_stale_nonce_is_replayed_not_abandoned() {
+        // 438 "Stale Nonce" is the error case ACTUALLY encountered:
+        // coturn rotates its nonces. Treating it as a failure
+        // would end the allocation after a few minutes.
         let mut c = allouee();
         c.avancer(t0() + Duration::from_secs(300));
-        let refresh = c.poll_transmit().expect("rafraîchissement attendu");
+        let refresh = c.poll_transmit().expect("refresh expected");
 
         let perime = reponse(
             METHODE_REFRESH,
@@ -408,53 +408,46 @@ mod tests {
                 (ATTR_NONCE, b"n2".to_vec()),
             ],
         );
-        c.handle_packet(&perime).expect("438 traité");
+        c.handle_packet(&perime).expect("438 handled");
 
-        let rejoue = c.poll_transmit().expect("la requête doit repartir");
+        let rejoue = c.poll_transmit().expect("the request must go out again");
         let message = is::stun::StunMessage::parse(&rejoue).expect("relue");
-        assert_eq!(
-            message.nonce(),
-            Some("n2"),
-            "le nouveau nonce doit être employé"
-        );
-        assert!(
-            c.allocation().is_some(),
-            "l'allocation ne doit pas être perdue"
-        );
+        assert_eq!(message.nonce(), Some("n2"), "the new nonce must be used");
+        assert!(c.allocation().is_some(), "the allocation must not be lost");
     }
 
     #[test]
-    fn une_reponse_a_channel_bind_ne_repousse_pas_l_echeance_du_bail() {
-        // Trouvaille de la recette du 30/07/2026, obtenue par un relevé d'état
-        // périodique : l'allocation de l'agent expirait à 600 s sans avoir été
-        // rafraîchie. `handle_packet` reposait l'échéance du bail à CHAQUE
-        // réponse de succès du serveur — or les réponses à `CreatePermission`
-        // et `ChannelBind` ne portent aucun bail. Dès que les liaisons de canal
-        // ont été réaffirmées périodiquement, leurs réponses ont repoussé le
-        // rafraîchissement du bail à l'infini, et l'allocation est morte.
+    fn a_channel_bind_answer_does_not_push_back_the_lease_deadline() {
+        // Finding of the acceptance run of 07/30/2026, obtained through a periodic
+        // state reading: the agent's allocation expired at 600 s without having been
+        // refreshed. `handle_packet` reset the lease deadline at EVERY
+        // success response from the server — yet responses to `CreatePermission`
+        // and `ChannelBind` carry no lease. As soon as channel bindings
+        // were reaffirmed periodically, their responses pushed the
+        // lease refresh back to infinity, and the allocation died.
         let mut c = allouee();
 
-        // Réponse de succès à un ChannelBind : ni LIFETIME, ni adresse relayée.
+        // Success response to a ChannelBind: neither LIFETIME nor relayed address.
         let reponse_bind = reponse(METHODE_CHANNEL_BIND, true, [9u8; 12], &[]);
         c.avancer(t0() + Duration::from_secs(200));
-        c.handle_packet(&reponse_bind).expect("réponse traitée");
+        c.handle_packet(&reponse_bind).expect("answer handled");
 
-        // L'échéance du bail reste celle posée par l'allocation : 300 s.
+        // The lease deadline stays the one set by the allocation: 300 s.
         c.avancer(t0() + Duration::from_secs(300));
         let paquet = c
             .poll_transmit()
-            .expect("le rafraîchissement du bail doit partir malgré la réponse intercalée");
-        assert_eq!(&paquet[0..2], &[0x00, 0x04], "Refresh attendu");
+            .expect("the lease refresh must go out despite the interleaved answer");
+        assert_eq!(&paquet[0..2], &[0x00, 0x04], "Refresh expected");
     }
 
     #[test]
-    fn le_rafraichissement_tombe_a_la_moitie_du_bail() {
+    fn the_refresh_falls_at_half_the_lease() {
         let mut c = allouee();
-        // Bail de 600 s : rien avant 300 s.
+        // 600 s lease: nothing before 300 s.
         c.avancer(t0() + Duration::from_secs(299));
-        assert!(c.poll_transmit().is_none(), "rafraîchissement trop précoce");
+        assert!(c.poll_transmit().is_none(), "refresh too early");
         c.avancer(t0() + Duration::from_secs(300));
-        let paquet = c.poll_transmit().expect("rafraîchissement attendu");
-        assert_eq!(&paquet[0..2], &[0x00, 0x04], "Refresh attendu");
+        let paquet = c.poll_transmit().expect("refresh expected");
+        assert_eq!(&paquet[0..2], &[0x00, 0x04], "Refresh expected");
     }
 }

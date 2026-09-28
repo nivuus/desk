@@ -1,98 +1,98 @@
-//! **PUR — aucun `cfg`.** La garde de boucle locale : le point de terminaison
-//! sur lequel E2 va écrire est-il celui que le loopback du chantier A capte ?
+//! **PURE — no `cfg`.** The local loop guard: is the endpoint
+//! E2 is going to write to the one work stream A's loopback captures?
 //!
-//! 🔴 **Mesuré nécessaire le 20 août 2026, et la spec dit le contraire.** Son
-//! §3 affirme « CABLE Input n'est pas le périphérique de rendu par défaut,
-//! donc le loopback du chantier A ne le capture pas. […] Aucune boucle locale
-//! n'est créée par construction » — **faux sur les trois phrases** : le relevé
-//! du 20 août 2026 rend `Haut-parleurs (VB-Audio Virtual Cable)` comme rendu
-//! par défaut sur les **trois** rôles, et `LoopbackCapture::open` capte le
-//! défaut de Windows quand `AUDIO_PERIPHERIQUE` est absente. En mode
-//! mono-fenêtre, l'agent capterait donc la voix que E2 vient d'écrire et la
-//! renverrait au navigateur, avec la latence du tour complet ; sans casque, la
-//! boucle acoustique se refermerait par les haut-parleurs.
+//! 🔴 **Measured necessary on 20 August 2026, and the spec says the opposite.** Its
+//! §3 asserts "CABLE Input is not the default render device,
+//! so work stream A's loopback does not capture it. […] No local loop
+//! is created by construction" — **false in all three sentences**: the survey
+//! of 20 August 2026 returns `Haut-parleurs (VB-Audio Virtual Cable)` as default
+//! render on all **three** roles, and `LoopbackCapture::open` captures
+//! Windows' default when `AUDIO_PERIPHERIQUE` is absent. In
+//! single-window mode, the agent would therefore capture the voice E2 has just written and
+//! send it back to the browser, with the latency of the full round trip; without a headset, the
+//! acoustic loop would close through the speakers.
 //!
-//! **C'est le MICRO qui cède, et jamais le son** (Décision 3) : le son est un
-//! chantier livré depuis A, le micro est ce qu'on ajoute.
+//! **It is the MICROPHONE that gives way, never the sound** (Decision 3): sound is a
+//! work stream delivered since A, the microphone is what we are adding.
 //!
-//! ⚠️ **Ne pas confondre avec l'écho de la Décision 7 de E1** — celui-là est
-//! acoustique, multi-fenêtres et hors de notre portée ; celui-ci est
-//! intra-agent, mono-fenêtre, et de notre fait.
+//! ⚠️ **Not to be confused with the echo of E1's Decision 7** — that one is
+//! acoustic, multi-window and out of our reach; this one is
+//! intra-agent, single-window, and of our own making.
 //!
-//! ⚠️ **Le multi-fenêtres est structurellement à l'abri** :
-//! `pour_processus` n'a jamais résolu d'endpoint —
-//! `ActivateAudioInterfaceAsync(VIRTUAL_AUDIO_DEVICE_PROCESS_LOOPBACK)` vise
-//! un **arbre de processus**. La boucle n'existe que dans le mode
-//! mono-fenêtre, c'est-à-dire dans le mode où toutes les recettes audio de ce
-//! dépôt se jouent.
+//! ⚠️ **Multi-window is structurally safe**:
+//! `pour_processus` has never resolved an endpoint —
+//! `ActivateAudioInterfaceAsync(VIRTUAL_AUDIO_DEVICE_PROCESS_LOOPBACK)` targets
+//! a **process tree**. The loop only exists in
+//! single-window mode, that is in the mode where all the audio acceptance runs of this
+//! repository are played.
 
 use crate::wasapi_peripherique::{choisir, Choix, Peripherique};
 
-/// Ce que la garde conclut.
+/// What the guard concludes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Boucle {
-    /// Rien à craindre : process loopback, audio coupé, ou deux endpoints
-    /// distincts.
-    Aucune,
-    /// Le loopback capterait le câble sur lequel on va écrire.
+    /// Nothing to fear: process loopback, audio off, or two distinct
+    /// endpoints.
+    Absent,
+    /// The loopback would capture the cable we are going to write to.
     Risque,
 }
 
-/// `capte` est l'identifiant d'endpoint que le loopback de CE processus
-/// capterait, ou `None` quand il n'en capte aucun (process loopback, ou
-/// `AUDIO=0`). `cable` est l'identifiant du câble.
+/// `capte` is the endpoint identifier THIS process's loopback
+/// would capture, or `None` when it captures none (process loopback, or
+/// `AUDIO=0`). `cable` is the cable's identifier.
 ///
-/// ⚠️ **Comparaison sur l'IDENTIFIANT, jamais sur le nom** : deux périphériques
-/// peuvent porter le même nom convivial — la VM en porte deux commençant par
-/// « Haut-parleurs (…) » —, et le dépôt a payé en D1 pour avoir désigné une
-/// sortie par un rang plutôt que par un identifiant stable.
+/// ⚠️ **Comparison on the IDENTIFIER, never on the name**: two devices
+/// can carry the same friendly name — the VM has two starting with
+/// "Haut-parleurs (…)" —, and the repository paid in D1 for having designated an
+/// output by a rank rather than by a stable identifier.
 pub fn evaluer(capte: Option<&str>, cable: &str) -> Boucle {
     let Some(capte) = capte else {
-        return Boucle::Aucune;
+        return Boucle::Absent;
     };
-    // ⚠️ Le vide n'est PAS un identifiant : `decrire` rend `String::new()`
-    // sur un périphérique indescriptible, et deux vides seraient égaux. Sans
-    // cet écart, un agent dont le périphérique capté est indescriptible
-    // perdrait son micro sans qu'aucune boucle n'existe.
+    // ⚠️ Empty is NOT an identifier: `decrire` returns `String::new()`
+    // on an indescribable device, and two empties would be equal. Without
+    // this exception, an agent whose captured device is indescribable
+    // would lose its microphone without any loop existing.
     if capte.is_empty() || cable.is_empty() {
-        return Boucle::Aucune;
+        return Boucle::Absent;
     }
     if capte.eq_ignore_ascii_case(cable) {
         Boucle::Risque
     } else {
-        Boucle::Aucune
+        Boucle::Absent
     }
 }
 
-/// Ce que le loopback de CE processus capterait, **sans ouvrir quoi que ce
-/// soit** : `Some(identifiant)` quand `AUDIO_PERIPHERIQUE` élit un
-/// périphérique, `None` quand c'est le défaut de Windows qui sera capté.
+/// What THIS process's loopback would capture, **without opening anything
+/// at all**: `Some(identifier)` when `AUDIO_PERIPHERIQUE` elects a
+/// device, `None` when it is Windows' default that will be captured.
 ///
-/// 🔴 **Cette fonction DOIT rendre le même verdict que `wasapi::rendu::resoudre`,
-/// et c'est tout ce qu'elle a à faire de difficile.** La garde ci-dessus compare
-/// ce qu'on capte à ce sur quoi on écrit : si les deux règles divergeaient d'un
-/// cas, la garde comparerait le mauvais périphérique et se tromperait dans les
-/// deux sens — laisser passer une boucle réelle, ou couper un micro sain. Les
-/// trois branches de repli de `resoudre` (`Defaut`, `Introuvable`, `Ambigu`)
-/// rendent donc toutes `None` ici, exactement comme elle retombe toutes trois
-/// sur `GetDefaultAudioEndpoint`.
+/// 🔴 **This function MUST return the same verdict as `wasapi::rendu::resoudre`,
+/// and that is all it has that is difficult to do.** The guard above compares
+/// what we capture with what we write to: if the two rules diverged by one
+/// case, the guard would compare the wrong device and be wrong in both
+/// directions — letting a real loop through, or cutting a healthy microphone. The
+/// three fallback branches of `resoudre` (`Defaut`, `Introuvable`, `Ambigu`)
+/// therefore all return `None` here, exactly as all three fall back
+/// on `GetDefaultAudioEndpoint`.
 ///
-/// ⚠️ **Pourquoi elle vit ICI et non dans `wasapi/peripherique.rs`.** Deux
-/// raisons, dans cet ordre : c'est la garde de boucle qui a besoin de ce
-/// verdict et personne d'autre, et `peripherique.rs` est à 461 lignes (marge
-/// 39) quand ce fichier-ci en a près de 400 — ce dépôt extrait avant
-/// d'ajouter, il ne comprime pas après.
+/// ⚠️ **Why it lives HERE and not in `wasapi/peripherique.rs`.** Two
+/// reasons, in this order: it is the loop guard that needs this
+/// verdict and no one else, and `peripherique.rs` is at 461 lines (margin
+/// 39) while this file has close to 400 — this repository extracts before
+/// adding, it does not compress afterwards.
 ///
-/// ⚠️ **`None` n'est PAS « aucun périphérique capté ».** C'est « le défaut de
-/// Windows », que seul un appel COM peut nommer. Le cas « rien n'est capté du
-/// tout » — process loopback, `AUDIO=0` — ne passe pas par ici : il se décide
-/// avant, chez l'appelant, et arrive à [`evaluer`] sous la forme d'un `None`
-/// de son propre paramètre `capte`.
+/// ⚠️ **`None` is NOT "no device captured".** It is "Windows'
+/// default", which only a COM call can name. The "nothing captured
+/// at all" case — process loopback, `AUDIO=0` — does not go through here: it is decided
+/// before, in the caller, and arrives at [`evaluer`] in the form of a `None`
+/// for its own `capte` parameter.
 pub fn identifiant_capte(disponibles: &[Peripherique], demande: Option<&str>) -> Option<String> {
     match choisir(disponibles, demande) {
         Choix::Elu { peripherique, .. } => Some(peripherique.identifiant.clone()),
-        // Les trois replis de `resoudre`, réunis : dans les trois cas c'est le
-        // défaut de Windows qui sera capté.
+        // The three fallbacks of `resoudre`, together: in all three cases it is
+        // Windows' default that will be captured.
         Choix::Defaut | Choix::Introuvable { .. } | Choix::Ambigu { .. } => None,
     }
 }
@@ -101,48 +101,48 @@ pub fn identifiant_capte(disponibles: &[Peripherique], demande: Option<&str>) ->
 mod tests {
     use super::*;
 
-    /// Les identifiants sont ceux **relevés sur la VM le 20 août 2026** par
-    /// `micro-format-e1.ps1` : le câble et les haut-parleurs Steam.
+    /// The identifiers are those **surveyed on the VM on 20 August 2026** by
+    /// `micro-format-e1.ps1`: the cable and the Steam speakers.
     const CABLE: &str = "{0.0.0.00000000}.{deec1914-6490-47ee-9475-091b9a2ea537}";
     const AUTRE: &str = "{0.0.0.00000000}.{8695a111-abf2-4199-88c0-fe4a9176f3e9}";
 
-    /// 🔴 **Le défaut mesuré le 20 août 2026.**
+    /// 🔴 **The defect measured on 20 August 2026.**
     #[test]
     #[allow(non_snake_case)]
-    fn le_cable_capte_par_le_loopback_est_un_RISQUE() {
+    fn the_cable_captured_by_the_loopback_is_a_RISK() {
         assert_eq!(evaluer(Some(CABLE), CABLE), Boucle::Risque);
     }
 
     #[test]
-    fn deux_endpoints_distincts_ne_bouclent_pas() {
-        assert_eq!(evaluer(Some(AUTRE), CABLE), Boucle::Aucune);
+    fn two_distinct_endpoints_do_not_loop() {
+        assert_eq!(evaluer(Some(AUTRE), CABLE), Boucle::Absent);
     }
 
     #[test]
-    fn sans_capture_il_n_y_a_pas_de_boucle() {
-        assert_eq!(evaluer(None, CABLE), Boucle::Aucune);
+    fn without_capture_there_is_no_loop() {
+        assert_eq!(evaluer(None, CABLE), Boucle::Absent);
     }
 
-    /// Windows rend ses GUID d'endpoint en minuscules, mais rien ne l'y
-    /// oblige. Les identifiants sont de l'ASCII pur — accolades, points,
-    /// chiffres hexadécimaux —, d'où `eq_ignore_ascii_case`.
+    /// Windows returns its endpoint GUIDs in lower case, but nothing
+    /// forces it to. The identifiers are pure ASCII — braces, dots,
+    /// hexadecimal digits —, hence `eq_ignore_ascii_case`.
     #[test]
     #[allow(non_snake_case)]
-    fn la_comparaison_est_INSENSIBLE_a_la_casse_de_l_identifiant() {
+    fn the_comparison_is_case_INSENSITIVE_on_the_identifier() {
         assert_eq!(evaluer(Some(&CABLE.to_uppercase()), CABLE), Boucle::Risque);
     }
 
-    /// 🔴 Ce test ne se déduit PAS de l'énoncé : il vient d'une propriété
-    /// **écrite** de `wasapi::rendu::decrire`, « ne rend jamais d'erreur […]
-    /// une chaîne vide ». Deux vides seraient égaux et déclencheraient un faux
-    /// `Risque` — un agent dont le périphérique capté est indescriptible
-    /// perdrait son micro sans raison.
+    /// 🔴 This test cannot be deduced from the statement: it comes from a
+    /// **written** property of `wasapi::rendu::decrire`, "never returns an error […]
+    /// an empty string". Two empties would be equal and would trigger a false
+    /// `Risque` — an agent whose captured device is indescribable
+    /// would lose its microphone for no reason.
     #[test]
     #[allow(non_snake_case)]
-    fn un_identifiant_VIDE_ne_boucle_pas() {
-        assert_eq!(evaluer(Some(""), ""), Boucle::Aucune);
-        assert_eq!(evaluer(Some(""), CABLE), Boucle::Aucune);
-        assert_eq!(evaluer(Some(CABLE), ""), Boucle::Aucune);
+    fn an_EMPTY_identifier_does_not_loop() {
+        assert_eq!(evaluer(Some(""), ""), Boucle::Absent);
+        assert_eq!(evaluer(Some(""), CABLE), Boucle::Absent);
+        assert_eq!(evaluer(Some(CABLE), ""), Boucle::Absent);
     }
 }
 

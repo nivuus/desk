@@ -1,19 +1,19 @@
-// Les fixtures communes aux deux fichiers de test du téléversement : un magasin
-// de tranches jetable, un serveur qui ne porte QUE cette route, et le fichier
-// témoin qu'ils déposent tous les deux.
+// The fixtures common to the two upload test files: a disposable slice
+// store, a server that carries ONLY this route, and the sample
+// file they both upload.
 //
-// 🔴 EXTRAIT AVANT L'ADDITION, ET C'EST LA RÈGLE DU DÉPÔT, PAS UN GOÛT.
-// `routes-televersement.test.ts` a atteint 504 lignes pour un plafond de 500 ;
-// le dépôt a payé DEUX FOIS en D9 pour avoir rattrapé un franchissement par une
-// COMPRESSION qu'il interdit nommément, et la revue a exigé l'extraction
-// ensuite. Précédents de forme, tous deux existants : `http/routes-harnais.ts`
-// et `agents/canal-harnais.ts`.
+// 🔴 EXTRACTED BEFORE THE ADDITION, AND THAT IS THE REPOSITORY RULE, NOT A TASTE.
+// `routes-televersement.test.ts` reached 504 lines for a ceiling of 500;
+// the repository paid TWICE in D9 for having caught up with a crossing through a
+// COMPRESSION it forbids by name, and the review demanded the extraction
+// afterwards. Precedents of shape, both existing: `http/routes-harnais.ts`
+// and `agents/canal-harnais.ts`.
 //
-// 🔴 CE MODULE N'EST PAS UN `.test.ts`, ET C'EST STRUCTUREL : un fichier de test
-// qui en importerait un autre RE-EXÉCUTERAIT ses `it()`. L'état ci-dessous est
-// néanmoins par FICHIER, vitest donnant à chacun son propre registre de modules.
+// 🔴 THIS MODULE IS NOT A `.test.ts`, AND THAT IS STRUCTURAL: a test file
+// that imported another one would RE-RUN its `it()`. The state below is
+// nonetheless per FILE, vitest giving each one its own module registry.
 //
-// ⚠️ AUCUNE ASSERTION ICI. Le harnais monte et démonte ; il ne juge de rien.
+// ⚠️ NO ASSERTION HERE. The harness sets up and tears down; it judges nothing.
 
 import { createHash } from 'node:crypto';
 import { mkdtempSync, rmSync } from 'node:fs';
@@ -21,28 +21,28 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ouvrirMagasinTranches, type MagasinTranches } from '../apps/magasin-tranches';
 import type { Pilote } from '../base/pilote';
-import { creer } from '../depot/televersement';
-import { creerUtilisateur } from '../depot/utilisateur';
-import { avec, demonter, monterRoute, MS, SECRET, type Montage } from './routes-harnais';
+import { create } from '../depot/televersement';
+import { createUser } from '../depot/utilisateur';
+import { withIt, demonter, monterRoute, MS, SECRET, type Montage } from './routes-harnais';
 import { servirTeleversement } from './routes-televersement';
 
-/// Dix octets, un pas de quatre : trois tranches (4 + 4 + 2). La dernière est
-/// PLUS COURTE que le pas — seul cas où la borne du `PUT` et le verdict
-/// pourraient être confondus.
+/// Ten bytes, a step of four: three slices (4 + 4 + 2). The last one is
+/// SHORTER than the step — the only case where the bound of the `PUT` and the verdict
+/// could be confused.
 export const CONTENU = Buffer.from('0123456789');
 export const PAS = 4;
 export const SHA = createHash('sha256').update(CONTENU).digest('hex');
 export const TRANCHES = [CONTENU.subarray(0, 4), CONTENU.subarray(4, 8), CONTENU.subarray(8, 10)];
 
-/// L'identifiant bien formé d'un téléversement qui n'existe pas — le témoin
-/// auquel se compare le refus d'un téléversement d'autrui.
+/// The well-formed id of an upload that does not exist — the control
+/// against which the refusal of someone else's upload is compared.
 export const INCONNU = '00000000-0000-4000-8000-000000000000';
 
 let montage: Montage | undefined;
 let racines: string[] = [];
 
-/// Le magasin du montage courant, et sa racine sur disque. ⚠️ Réaffectés à
-/// chaque `monter` : un test qui les lirait avant serait fautif, pas eux.
+/// The store of the current setup, and its root on disk. ⚠️ Reassigned on
+/// each `monter`: a test that read them before would be at fault, not them.
 export let magasin: MagasinTranches;
 export let racine: string;
 
@@ -69,22 +69,22 @@ export async function nettoyer(): Promise<void> {
     racines = [];
 }
 
-export function utilisateur(base: Pilote, courriel: string): Promise<string> {
-    return creerUtilisateur(base, courriel, 'empreinte-opaque-de-test', MS);
+export function user(base: Pilote, courriel: string): Promise<string> {
+    return createUser(base, courriel, 'empreinte-opaque-de-test', MS);
 }
 
-/// Pose une ligne à pas court, SANS passer par la route de création — celle-ci
-/// pose `TAILLE_TRANCHE` (8 Mio), et une rouge qu'on n'ose plus rejouer parce
-/// qu'elle coûte huit mébioctets n'en est plus une.
+/// Sets up a short-step row, WITHOUT going through the creation route — that one
+/// sets `CHUNK_SIZE` (8 MiB), and a red one no longer dares to replay because
+/// it costs eight mebibytes is no longer one.
 export async function poser(
     base: Pilote,
     proprietaire: string,
     sha256 = SHA,
-    taille = CONTENU.length,
+    size = CONTENU.length,
 ): Promise<string> {
-    const ligne = await creer(
+    const ligne = await create(
         base,
-        { utilisateurId: proprietaire, nom: 'installeur.exe', taille, sha256, tailleTranche: PAS },
+        { userId: proprietaire, nom: 'installeur.exe', taille: size, sha256, chunkSize: PAS }, // policy: allow-fr - frozen wire key or SQLite column
         MS,
     );
     return ligne.id;
@@ -99,19 +99,19 @@ export function deposer(
 ) {
     return fetch(`${url}/televersement/${id}/tranche/${n}`, {
         method: 'PUT',
-        headers: avec(jeton, { 'content-type': 'application/octet-stream' }),
+        headers: withIt(jeton, { 'content-type': 'application/octet-stream' }),
         body: corps,
     });
 }
 
 export const sceller = (url: string, id: string, jeton: string) =>
-    fetch(`${url}/televersement/${id}/sceller`, { method: 'POST', headers: avec(jeton) });
+    fetch(`${url}/televersement/${id}/sceller`, { method: 'POST', headers: withIt(jeton) });
 
-/// ⚠️ `corps` passe TEL QUEL si c'est une chaîne : sinon le harnais rendrait
-/// valide, en le sérialisant, le non-JSON qu'on veut justement envoyer.
+/// ⚠️ `corps` goes AS IS if it is a string: otherwise the harness would make
+/// valid, by serialising it, the non-JSON one precisely wants to send.
 export const declarerChez = (url: string, jeton: string, corps: unknown) =>
     fetch(`${url}/televersement`, {
         method: 'POST',
-        headers: avec(jeton, { 'content-type': 'application/json' }),
+        headers: withIt(jeton, { 'content-type': 'application/json' }),
         body: typeof corps === 'string' ? corps : JSON.stringify(corps),
     });

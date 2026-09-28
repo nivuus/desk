@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-"""Tests de `hooks/administration.py::lancer_npm` — le problème A du lot
-10A (29 août 2026) touché ici : `npm` invoqué par son seul nom dépend du
-PATH du processus appelant, qui ne contient `node`/`npm` que par accident
-sur un poste de développement où nvm est sourcé dans le shell interactif.
+"""Tests of `hooks/administration.py::lancer_npm` — problem A of batch
+10A (29 August 2026) addressed here: `npm` invoked by its name alone depends on the
+PATH of the calling process, which only contains `node`/`npm` by accident
+on a development machine where nvm is sourced in the interactive shell.
 
-Ce fichier éprouve DIRECTEMENT `lancer_npm` (import, pas sous-processus du
-hook complet — `tests/test_desk_activate.py` couvre déjà le hook entier au
-travers d'un scénario complet) : c'est la fonction la plus étroite qui
-porte cette responsabilité, et le module n'est PAS un hook exécutable seul
-(voir son propre docstring de tête).
+This file exercises `lancer_npm` DIRECTLY (import, not a subprocess of the
+complete hook — `tests/test_desk_activate.py` already covers the whole hook through
+a complete scenario): it is the narrowest function that
+carries this responsibility, and the module is NOT a hook runnable on its own
+(see its own head docstring).
 
 Run: python3 tests/test_desk_administration.py
 """
@@ -36,53 +36,53 @@ def check(label, got, want):
         failures.append(f"{label}: got {got!r}, want {want!r}")
 
 
-# --- lancer_npm APPONDE NODE_BIN_DEFAUT en fin de PATH, sans l'imposer ------
+# --- lancer_npm APPENDS NODE_BIN_DEFAUT at the end of PATH, without imposing it ------
 with tempfile.TemporaryDirectory() as tmp:
     cwd = pathlib.Path(tmp)
-    env_sans_node = {"PATH": "/un/chemin/qui/ne/contient/pas/node"}
+    env_sans_node = {"PATH": "/a/path/that/does/not/contain/node"}
     code, out, err = administration.lancer_npm(cwd, "admin:utilisateur", [],
                                                 env_sans_node, entree="x\n")
-    # npm est introuvable (aucun vrai npm sur ce PATH factice, et
-    # NODE_BIN_DEFAUT n'existe pas forcement sur la machine de test) : ce
-    # test ne juge PAS le code de retour de npm, seulement que lancer_npm
-    # ne LÈVE jamais (le contrat documenté : "Rend toujours (code, stdout,
-    # stderr), jamais ne lève").
-    check("lancer_npm ne leve jamais meme sans node dans le PATH fourni",
+    # npm is not found (no real npm on this fake PATH, and
+    # NODE_BIN_DEFAUT does not necessarily exist on the test machine): this
+    # test does NOT judge npm's return code, only that lancer_npm
+    # NEVER raises (the documented contract: "Always returns (code, stdout,
+    # stderr), never raises").
+    check("lancer_npm never raises even without node in the given PATH",
           isinstance(code, int), True)
 
-# --- Un `npm` factice DÉJÀ EN TÊTE DU PATH continue de gagner --------------
-# 🔴 C'EST LE CONTRÔLE QUI PROUVE QUE L'APPONDAGE NE COURT-CIRCUITE RIEN :
-# `tests/desk_activate_fixtures.py::appeler` pose son PROPRE faux npm en
-# TÊTE de PATH, et si `lancer_npm` le préfixait au lieu de l'apponder, ce
-# faux npm ne serait plus jamais trouvé.
+# --- A fake `npm` ALREADY AT THE HEAD OF PATH keeps winning --------------
+# 🔴 THIS IS THE CHECK THAT PROVES THE APPENDING SHORT-CIRCUITS NOTHING:
+# `tests/desk_activate_fixtures.py::appeler` puts its OWN fake npm at the
+# HEAD of PATH, and if `lancer_npm` prefixed it instead of appending it, that
+# fake npm would never be found again.
 with tempfile.TemporaryDirectory() as tmp:
     cwd = pathlib.Path(tmp)
-    bin_dir = pathlib.Path(tmp) / "faux-bin"
+    bin_dir = pathlib.Path(tmp) / "fake-bin"
     bin_dir.mkdir()
     faux_npm = bin_dir / "npm"
-    marqueur = pathlib.Path(tmp) / "vu.txt"
+    marqueur = pathlib.Path(tmp) / "seen.txt"
     faux_npm.write_text(
         "#!/usr/bin/env python3\n"
         "import pathlib, sys\n"
-        f"pathlib.Path({str(marqueur)!r}).write_text('vu')\n"
+        f"pathlib.Path({str(marqueur)!r}).write_text('seen')\n"
         "sys.exit(0)\n",
         encoding="utf-8",
     )
     faux_npm.chmod(0o755)
-    # `/usr/bin` reste nécessaire : le faux npm est un script
-    # `#!/usr/bin/env python3`, et c'est `/usr/bin/env` qui doit être
-    # trouvé pour que le noyau puisse même lancer python3.
+    # `/usr/bin` stays necessary: the fake npm is a
+    # `#!/usr/bin/env python3` script, and `/usr/bin/env` must be
+    # found for the kernel to even launch python3.
     env = {"PATH": str(bin_dir) + os.pathsep + "/usr/bin:/bin"}
     code, out, err = administration.lancer_npm(cwd, "admin:utilisateur", [], env)
-    check("le faux npm en tete de PATH est bien invoque (code 0)", code, 0)
-    check("le faux npm en tete de PATH a bien tourne (marqueur pose)",
+    check("the fake npm at the head of PATH is indeed invoked (code 0)", code, 0)
+    check("the fake npm at the head of PATH did run (marker written)",
           marqueur.is_file(), True)
 
-# --- NODE_BIN_DEFAUT est bien apponde, jamais absent du PATH final ---------
+# --- NODE_BIN_DEFAUT is indeed appended, never absent from the final PATH ---------
 with tempfile.TemporaryDirectory() as tmp:
     cwd = pathlib.Path(tmp)
-    marqueur_path = pathlib.Path(tmp) / "path_vu.txt"
-    bin_dir = pathlib.Path(tmp) / "faux-bin"
+    marqueur_path = pathlib.Path(tmp) / "path_seen.txt"
+    bin_dir = pathlib.Path(tmp) / "fake-bin"
     bin_dir.mkdir()
     faux_npm = bin_dir / "npm"
     faux_npm.write_text(
@@ -95,7 +95,7 @@ with tempfile.TemporaryDirectory() as tmp:
     env = {"PATH": str(bin_dir) + os.pathsep + "/usr/bin:/bin"}
     administration.lancer_npm(cwd, "admin:utilisateur", [], env)
     path_vu = marqueur_path.read_text(encoding="utf-8") if marqueur_path.is_file() else ""
-    check("NODE_BIN_DEFAUT est present dans le PATH transmis au sous-processus",
+    check("NODE_BIN_DEFAUT is present in the PATH passed to the subprocess",
           NODE_BIN_DEFAUT in path_vu.split(os.pathsep), True)
 
 if failures:
@@ -103,4 +103,4 @@ if failures:
     for f in failures:
         print("  -", f)
     sys.exit(1)
-print("OK - tests de hooks/administration.py passés")
+print("OK - hooks/administration.py tests passed")

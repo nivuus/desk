@@ -1,11 +1,11 @@
-//! Tests d'intégration du transport du pont, sur un vrai pair str0m en boucle
-//! locale.
+//! Integration tests of the bridge's transport, on a real str0m peer in local
+//! loopback.
 //!
-//! ⚠️ **Échafaudage LOCAL, et c'est délibéré** : `transport::fixtures` est
-//! `pub(super)` — `pont/` ne peut pas l'employer. Le hisser toucherait le
-//! chemin vidéo pour un besoin de test, ce qui est exactement le genre
-//! d'échange que ce dépôt refuse. L'échafaudage ci-dessous est donc minimal :
-//! un second `Rtc` sur loopback qui crée ses canaux et échange l'offre.
+//! ⚠️ **LOCAL scaffolding, and it is deliberate**: `transport::fixtures` is
+//! `pub(super)` — `pont/` cannot use it. Hoisting it would touch the
+//! video path for a test need, which is exactly the kind of
+//! trade-off this repository refuses. The scaffolding below is therefore minimal:
+//! a second `Rtc` on loopback that creates its channels and exchanges the offer.
 
 use std::net::{SocketAddr, UdpSocket};
 use std::sync::mpsc::{channel, Receiver, Sender};
@@ -19,13 +19,13 @@ use str0m::{Candidate, Event, Input, Output, Rtc};
 
 use super::*;
 
-/// Budget dur d'un test. Généreux : une poignée de main DTLS+ICE en boucle
-/// locale prend quelques dizaines de millisecondes, mais un échec doit rendre
-/// un message parlant plutôt qu'un blocage.
+/// Hard budget of a test. Generous: a DTLS+ICE handshake in local
+/// loopback takes a few tens of milliseconds, but a failure must return
+/// a telling message rather than a hang.
 const BUDGET: Duration = Duration::from_secs(10);
 
-/// Le pair « navigateur » : son socket, son adresse, son `Rtc`, et les
-/// identifiants des canaux qu'il a créés.
+/// The "browser" peer: its socket, its address, its `Rtc`, and the
+/// identifiers of the channels it created.
 pub(super) struct Pair {
     socket: UdpSocket,
     adresse: SocketAddr,
@@ -33,37 +33,37 @@ pub(super) struct Pair {
     canaux: Vec<ChannelId>,
 }
 
-/// Monte un pont et un pair, négocie `labels` comme canaux de données, et rend
-/// le pair prêt ainsi que les deux bouts de la boucle du pont.
+/// Sets up a bridge and a peer, negotiates `labels` as data channels, and returns
+/// the ready peer as well as both ends of the bridge's loop.
 ///
-/// **Aucun codec n'est activé d'aucun côté** — c'est le point que la doc de
-/// `construire_rtc_donnees` annonce éprouvé : `clear_codecs()` sans le moindre
-/// `enable_*` négocie bien une connexion de données seules.
+/// **No codec is enabled on either side** — it is the point the doc of
+/// `build_data_rtc` announces as exercised: `clear_codecs()` without a single
+/// `enable_*` does negotiate a data-only connection.
 pub(super) fn monter(labels: &[&str]) -> (Pair, Sender<VersNavigateur>, Receiver<DuNavigateur>) {
     let local_ip = "127.0.0.1".parse().unwrap();
-    let (socket_pont, mut rtc_pont) = construire_rtc_donnees(local_ip).expect("pont construit");
+    let (socket_pont, mut rtc_pont) = build_data_rtc(local_ip).expect("bridge built");
 
-    let socket = UdpSocket::bind(SocketAddr::new(local_ip, 0)).expect("socket du pair");
+    let socket = UdpSocket::bind(SocketAddr::new(local_ip, 0)).expect("peer socket");
     let adresse = socket.local_addr().unwrap();
     let mut rtc = Rtc::builder().clear_codecs().build(Instant::now());
     rtc.add_local_candidate(Candidate::host(adresse, "udp").unwrap());
 
-    // C'est le NAVIGATEUR qui crée les canaux : le pont est répondant.
+    // It is the BROWSER that creates the channels: the bridge is the responder.
     let mut api = rtc.sdp_api();
     let canaux: Vec<ChannelId> = labels
         .iter()
         .map(|l| api.add_channel((*l).to_string()))
         .collect();
-    let (offre, en_attente) = api.apply().expect("offre non vide");
+    let (offre, en_attente) = api.apply().expect("non-empty offer");
 
     let reponse = rtc_pont
         .sdp_api()
         .accept_offer(offre)
-        .expect("le pont accepte une offre de données seules");
-    let reponse = SdpAnswer::from_sdp_string(&reponse.to_sdp_string()).expect("réponse SDP valide");
+        .expect("the bridge accepts a data-only offer");
+    let reponse = SdpAnswer::from_sdp_string(&reponse.to_sdp_string()).expect("valid SDP answer");
     rtc.sdp_api()
         .accept_answer(en_attente, reponse)
-        .expect("réponse acceptée");
+        .expect("answer accepted");
 
     let (tx_sortant, rx_sortant) = channel();
     let (tx_entrant, rx_entrant) = channel();
@@ -86,19 +86,19 @@ pub(super) fn monter(labels: &[&str]) -> (Pair, Sender<VersNavigateur>, Receiver
 /// A message the peer received: its channel, whether it is binary, its bytes.
 type Recu = (ChannelId, bool, Vec<u8>);
 
-/// **LE** pilote de ces tests : il pompe le pair ET récolte ce que le pont
-/// fait remonter, dans la MÊME boucle.
+/// **THE** driver of these tests: it pumps the peer AND collects what the bridge
+/// reports, in the SAME loop.
 ///
-/// ⚠️ Les deux ne peuvent pas être séparés, et une première rédaction l'a
-/// appris à ses dépens : attendre un message sur `entrant` dans une fonction à
-/// part BLOQUAIT le seul fil qui pompe le pair, donc ICE et DTLS n'aboutissaient
-/// jamais, donc le canal ne s'ouvrait jamais. Les quatre tests échouaient à la
-/// même ligne avec le même message — la signature d'un défaut d'échafaudage, et
-/// non de quatre défauts de produit.
+/// ⚠️ The two cannot be separated, and a first draft learned it
+/// the hard way: waiting for a message on `entrant` in a separate
+/// function BLOCKED the only thread pumping the peer, so ICE and DTLS never
+/// completed, so the channel never opened. The four tests failed at the
+/// same line with the same message — the signature of a scaffolding defect, and
+/// not of four product defects.
 ///
-/// `agir` court à chaque tour, avec le `Rtc` du pair et tout ce qui a remonté
-/// jusque-là. `fini` décide de l'arrêt. Rend ce qui a remonté du pont, et ce
-/// que le pair a reçu sur ses canaux.
+/// `agir` runs at each turn, with the peer's `Rtc` and everything reported
+/// so far. `fini` decides the stop. Returns what the bridge reported, and what
+/// the peer received on its channels.
 pub(super) fn echanger(
     pair: &mut Pair,
     entrant: &Receiver<DuNavigateur>,
@@ -119,7 +119,7 @@ pub(super) fn echanger(
         let maintenant = Instant::now();
         assert!(
             maintenant < limite,
-            "budget dépassé sans {quoi} (remontées : {remontees:?}, reçues : {})",
+            "budget exceeded without {quoi} (surfaced: {remontees:?}, received: {})",
             recus.len()
         );
         agir(&mut pair.rtc, &remontees);
@@ -128,9 +128,9 @@ pub(super) fn echanger(
                 let attente = t
                     .saturating_duration_since(maintenant)
                     .min(limite.saturating_duration_since(maintenant))
-                    // Bornée court : le fil du pont peut avoir quelque chose à
-                    // nous dire à tout instant, et `entrant` n'est relu qu'en
-                    // haut de ce tour.
+                    // Bounded short: the bridge thread may have something to
+                    // tell us at any moment, and `entrant` is only reread at the
+                    // top of this turn.
                     .min(Duration::from_millis(5));
                 if attente.is_zero() {
                     let _ = pair.rtc.handle_input(Input::Timeout(maintenant));
@@ -166,17 +166,17 @@ pub(super) fn echanger(
     }
 }
 
-/// Vrai dès que le pont a annoncé son canal ouvert.
+/// True as soon as the bridge has announced its channel open.
 pub(super) fn canal_ouvert(remontees: &[DuNavigateur]) -> bool {
     remontees.contains(&DuNavigateur::CanalOuvert)
 }
 
 #[test]
-fn une_trame_emise_par_le_pont_arrive_au_pair_en_binaire() {
-    let (mut pair, sortant, entrant) = monter(&[LABEL_FICHIERS]);
+fn a_frame_emitted_by_the_bridge_reaches_the_peer_as_binary() {
+    let (mut pair, sortant, entrant) = monter(&[FILES_LABEL]);
 
-    let trame = proto::fichiers::encoder(
-        proto::fichiers::TYPE_LIRE,
+    let trame = proto::files::encoder(
+        proto::files::TYPE_LIRE,
         0x1234_5678,
         r#"{"chemin":"a.txt"}"#,
         &[0x00, 0xFF],
@@ -187,9 +187,9 @@ fn une_trame_emise_par_le_pont_arrive_au_pair_en_binaire() {
         &mut pair,
         &entrant,
         |_, remontees| {
-            // Émettre SEULEMENT une fois le canal annoncé ouvert : émettre
-            // avant ferait perdre la requête, et le test ne mesurerait plus
-            // que sa propre course.
+            // Emit ONLY once the channel is announced open: emitting
+            // before would lose the request, and the test would only measure
+            // its own race.
             if !emise && canal_ouvert(remontees) {
                 emise = true;
                 sortant
@@ -201,26 +201,21 @@ fn une_trame_emise_par_le_pont_arrive_au_pair_en_binaire() {
             }
         },
         |_, recus| !recus.is_empty(),
-        "que la trame du pont n'arrive au pair",
+        "the bridge frame reaching the peer",
     );
 
-    let (_, binaire, octets) = recus.first().expect("une trame reçue").clone();
-    // ⚠️ `binary = true`, à l'inverse du canal `control` qui écrit `false` : la
-    // charge est faite d'octets bruts, et le mode texte la ferait passer par
-    // une validation UTF-8 côté navigateur — 0x00 et 0xFF n'y survivraient pas.
-    assert!(binaire, "la trame doit être écrite en BINAIRE");
-    assert_eq!(octets, trame, "la trame doit arriver octet pour octet");
+    let (_, binaire, octets) = recus.first().expect("one frame received").clone();
+    // ⚠️ `binary = true`, unlike the `control` channel which writes `false`: the
+    // payload is made of raw bytes, and text mode would put it through
+    // UTF-8 validation on the browser side — 0x00 and 0xFF would not survive it.
+    assert!(binaire, "the frame must be written as BINARY");
+    assert_eq!(octets, trame, "the frame must arrive byte for byte");
 }
 
 #[test]
-fn une_trame_du_pair_remonte_avec_sa_correlation() {
-    let (mut pair, _sortant, entrant) = monter(&[LABEL_FICHIERS]);
-    let reponse = proto::fichiers::encoder(
-        proto::fichiers::TYPE_DONNEES,
-        0x0BAD_F00D,
-        "{}",
-        &[1, 2, 3, 4],
-    );
+fn a_peer_frame_surfaces_with_its_correlation() {
+    let (mut pair, _sortant, entrant) = monter(&[FILES_LABEL]);
+    let reponse = proto::files::encoder(proto::files::TYPE_DATA, 0x0BAD_F00D, "{}", &[1, 2, 3, 4]);
 
     let canal = pair.canaux[0];
     let a_envoyer = reponse.clone();
@@ -240,7 +235,7 @@ fn une_trame_du_pair_remonte_avec_sa_correlation() {
                 .iter()
                 .any(|m| matches!(m, DuNavigateur::Reponse { .. }))
         },
-        "que la réponse du pair ne remonte",
+        "the peer's answer surfacing",
     );
 
     let reponse_recue = remontees
@@ -249,25 +244,25 @@ fn une_trame_du_pair_remonte_avec_sa_correlation() {
             DuNavigateur::Reponse { correlation, trame } => Some((*correlation, trame.clone())),
             _ => None,
         })
-        .expect("une réponse remontée");
+        .expect("one answer surfaced");
     assert_eq!(
         reponse_recue.0, 0x0BAD_F00D,
-        "la corrélation doit traverser intacte"
+        "the correlation must pass through intact"
     );
     assert_eq!(
         reponse_recue.1, reponse,
-        "la trame doit remonter octet pour octet"
+        "the frame must surface byte for byte"
     );
 }
 
 #[test]
-fn un_channeldata_venu_d_un_autre_canal_est_refuse_et_journalise() {
-    // ⚠️ Ce test ne peut se voir ROUGE que si l'on négocie DEUX canaux : sans
-    // le second, il n'y a rien à envoyer sur le mauvais, et le test serait
-    // VACUEUX — il passerait sur un pont qui n'aiguille sur rien du tout.
-    let (mut pair, _sortant, entrant) = monter(&["autre-canal", LABEL_FICHIERS]);
-    let intrus = proto::fichiers::encoder(proto::fichiers::TYPE_ECHEC, 0xDEAD_0000, "{}", b"non");
-    let legitime = proto::fichiers::encoder(proto::fichiers::TYPE_META, 0x0000_BEEF, "{}", b"oui");
+fn a_channeldata_from_another_channel_is_refused_and_logged() {
+    // ⚠️ This test can only be seen RED if TWO channels are negotiated: without
+    // the second, there is nothing to send on the wrong one, and the test would be
+    // VACUOUS — it would pass on a bridge that routes on nothing at all.
+    let (mut pair, _sortant, entrant) = monter(&["autre-canal", FILES_LABEL]);
+    let intrus = proto::files::encoder(proto::files::TYPE_ECHEC, 0xDEAD_0000, "{}", b"non");
+    let legitime = proto::files::encoder(proto::files::TYPE_META, 0x0000_BEEF, "{}", b"oui");
 
     let (mauvais, bon) = (pair.canaux[0], pair.canaux[1]);
     let (a, b) = (intrus.clone(), legitime.clone());
@@ -279,11 +274,11 @@ fn un_channeldata_venu_d_un_autre_canal_est_refuse_et_journalise() {
             if !canal_ouvert(remontees) {
                 return;
             }
-            // L'INTRUS D'ABORD, la trame légitime ENSUITE. Le canal étant
-            // fiable et ordonné, si la légitime remonte alors que l'intrus
-            // n'est jamais apparu, c'est que l'intrus a été JETÉ — et non pas
-            // seulement qu'il n'est pas encore arrivé. Sans cet ordre, le test
-            // ne prouverait qu'une absence dans une fenêtre de temps.
+            // The INTRUDER FIRST, the legitimate frame AFTER. The channel being
+            // reliable and ordered, if the legitimate one comes up while the intruder
+            // never appeared, it is that the intruder was THROWN AWAY — and not
+            // merely that it has not arrived yet. Without this order, the test
+            // would only prove an absence within a time window.
             if etape == 0 {
                 if let Some(mut c) = rtc.channel(mauvais) {
                     if c.write(true, &a).is_ok() {
@@ -303,7 +298,7 @@ fn un_channeldata_venu_d_un_autre_canal_est_refuse_et_journalise() {
                 .iter()
                 .any(|m| matches!(m, DuNavigateur::Reponse { .. }))
         },
-        "que la trame légitime ne remonte",
+        "the legitimate frame surfacing",
     );
 
     let correlations: Vec<u32> = remontees
@@ -316,40 +311,40 @@ fn un_channeldata_venu_d_un_autre_canal_est_refuse_et_journalise() {
     assert_eq!(
         correlations,
         vec![0x0000_BEEF],
-        "seule la trame du canal `fichiers` doit remonter : la présence de \
-         0xDEAD0000 signifierait que le mauvais canal a été traité"
+        "only the frame of the `fichiers` channel must surface: the presence of \
+         0xDEAD0000 would mean that the wrong channel was processed"
     );
-    // …et l'intrus n'arrive pas non plus après.
+    // …and the intruder does not arrive afterwards either.
     assert!(
         entrant.recv_timeout(Duration::from_millis(200)).is_err(),
-        "aucune autre trame ne doit remonter : l'intrus a été jeté"
+        "no other frame must surface: the intruder was dropped"
     );
 }
 
 #[test]
-fn un_seul_canal_est_retenu_parmi_deux_et_c_est_celui_du_label() {
-    // 🔴 **LE test de l'aiguillage par label, et il est né d'une MUTATION
-    // SURVIVANTE.** Remplacer `if label == LABEL_FICHIERS` par `if true`
-    // laissait les quatre premiers tests VERTS : celui de l'intrus négocie
-    // `autre-canal` puis `fichiers`, et comme le dernier `ChannelOpen` écrase
-    // le précédent, `canal` finissait quand même sur le bon — par l'ORDRE
-    // d'ouverture, pas par le label. Le test ne mesurait pas ce qu'il
-    // annonçait.
+fn a_single_channel_is_retained_out_of_two_and_it_is_the_label_one() {
+    // 🔴 **THE label routing test, and it was born from a SURVIVING
+    // MUTATION.** Replacing `if label == FILES_LABEL` with `if true`
+    // left the first four tests GREEN: the intruder one negotiates
+    // `autre-canal` then `files`, and since the last `ChannelOpen` overwrites
+    // the previous one, `canal` ended up on the right one anyway — by the ORDER
+    // of opening, not by the label. The test did not measure what it
+    // announced.
     //
-    // Celui-ci ne dépend d'aucun ordre : sur DEUX canaux négociés, le pont ne
-    // doit annoncer QU'UNE seule ouverture. Sans le filtre sur le label, il en
-    // annonce deux, quel que soit l'ordre dans lequel elles arrivent.
-    let (mut pair, _sortant, entrant) = monter(&[LABEL_FICHIERS, "autre-canal"]);
+    // This one depends on no order: on TWO negotiated channels, the bridge must
+    // announce ONLY ONE opening. Without the label filter, it
+    // announces two, whatever the order in which they arrive.
+    let (mut pair, _sortant, entrant) = monter(&[FILES_LABEL, "autre-canal"]);
 
-    // On attend que les DEUX canaux soient ouverts CÔTÉ PAIR — sinon on
-    // conclurait « une seule ouverture » alors que la seconde n'est pas encore
-    // arrivée, et le test redeviendrait vacueux.
+    // We wait for BOTH channels to be open ON THE PEER SIDE — otherwise we
+    // would conclude "a single opening" while the second has not
+    // arrived yet, and the test would become vacuous again.
     //
-    // ⚠️ Une première rédaction confiait ce comptage à `echanger`, dont la
-    // condition d'arrêt lisait un compteur qu'il n'incrémente jamais — un
-    // contrôle incapable de RÉUSSIR, exactement le pendant du contrôle
-    // incapable d'échouer. `echanger` ne remonte pas les `ChannelOpen` du
-    // pair ; ce test pompe donc lui-même.
+    // ⚠️ A first draft entrusted this count to `echanger`, whose
+    // stop condition read a counter it never increments — a
+    // check unable to SUCCEED, exactly the counterpart of the check
+    // unable to fail. `echanger` does not report the peer's `ChannelOpen`s;
+    // this test therefore pumps itself.
     let mut ouverts = 0usize;
     let limite = Instant::now() + BUDGET;
     let mut remontees: Vec<DuNavigateur> = Vec::new();
@@ -387,9 +382,9 @@ fn un_seul_canal_est_retenu_parmi_deux_et_c_est_celui_du_label() {
             }
         }
     }
-    assert_eq!(ouverts, 2, "le pair doit avoir ouvert ses DEUX canaux");
+    assert_eq!(ouverts, 2, "the peer must have opened its TWO channels");
 
-    // Laisser au pont le temps d'annoncer une éventuelle seconde ouverture.
+    // Give the bridge time to announce a possible second opening.
     let fin = Instant::now() + Duration::from_millis(300);
     while Instant::now() < fin {
         while let Ok(m) = entrant.try_recv() {
@@ -404,7 +399,7 @@ fn un_seul_canal_est_retenu_parmi_deux_et_c_est_celui_du_label() {
         .count();
     assert_eq!(
         ouvertures, 1,
-        "deux canaux négociés, UNE seule ouverture annoncée : \
-         en voir deux signifie que le label n'est pas filtré (remontées : {remontees:?})"
+        "two channels negotiated, ONE single opening announced: \
+         seeing two means the label is not filtered (surfaced: {remontees:?})"
     );
 }

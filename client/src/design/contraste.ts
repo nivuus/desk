@@ -1,13 +1,13 @@
 /**
- * Contraste WCAG 2.1 — PUR : ni DOM, ni `fs`, ni chemin.
+ * WCAG 2.1 contrast — PURE: no DOM, no `fs`, no path.
  *
- * ⚠️ TypeScript EFFAÇABLE, ce module étant importé par un `.mjs` : aucun
- * `enum`, aucun `namespace`. Voir l'en-tête de `tokens.ts` pour la mesure.
+ * ⚠️ ERASABLE TypeScript, this module being imported by a `.mjs`: no
+ * `enum`, no `namespace`. See the header of `tokens.ts` for the measurement.
  *
- * Les valeurs viennent TOUJOURS de `tokens.css`, parsé par `tokens.ts`. Ce
- * module ne connaît AUCUNE couleur : il connaît des NOMS de token. C'est le
- * point de conception du §7.1 — « un contrôle qui a sa propre copie des
- * valeurs valide sa copie ».
+ * The values ALWAYS come from `tokens.css`, parsed by `tokens.ts`. This
+ * module knows NO colour: it knows token NAMES. That is the
+ * design point of §7.1 — "a check that has its own copy of the
+ * values validates its copy".
  */
 
 import type { BlocDeTheme } from './tokens';
@@ -24,19 +24,19 @@ export interface Echec {
     rapport: number;
 }
 
-/** Un canal sRGB linéarisé. C'est ici que vit la correction gamma. */
+/** A linearised sRGB channel. It is here that gamma correction lives. */
 function canalLineaire(octet: number): number {
     const c = octet / 255;
     return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
 }
 
 /**
- * Luminance relative WCAG 2.1.
+ * WCAG 2.1 relative luminance.
  *
- * 🔴 LA FAUTE CLASSIQUE EST DE MOYENNER LES CANAUX LINÉAIREMENT. Elle rend des
- * rapports plausibles et faux : `#808080` vaudrait 0,5 au lieu de ≈ 0,2159, et
- * noir/blanc rendrait 21 dans les deux cas — donc le vecteur qui discrimine
- * est une couleur INTERMÉDIAIRE, jamais les extrêmes.
+ * 🔴 THE CLASSIC MISTAKE IS TO AVERAGE THE CHANNELS LINEARLY. It returns
+ * plausible and wrong ratios: `#808080` would be 0.5 instead of ≈ 0.2159, and
+ * black/white would return 21 in both cases — so the discriminating vector
+ * is an INTERMEDIATE colour, never the extremes.
  */
 export function luminanceRelative(couleur: string): number {
     const brut = couleur.trim().replace(/^#/, '');
@@ -45,13 +45,13 @@ export function luminanceRelative(couleur: string): number {
             ? brut.slice(0, 3).split('').map((c) => c + c).join('')
             : brut.slice(0, 6);
     if (!/^[0-9a-fA-F]{6}$/.test(hex)) {
-        throw new Error(`couleur non reconnue : « ${couleur} » (attendu #rgb ou #rrggbb)`);
+        throw new Error(`unrecognised colour: « ${couleur} » (expected #rgb or #rrggbb)`);
     }
     const [r, v, b] = [0, 2, 4].map((i) => canalLineaire(parseInt(hex.slice(i, i + 2), 16)));
     return 0.2126 * r + 0.7152 * v + 0.0722 * b;
 }
 
-/** `(L + 0.05) / (l + 0.05)`, avec `L ≥ l` — donc symétrique. */
+/** `(L + 0.05) / (l + 0.05)`, with `L ≥ l` — hence symmetric. */
 export function rapportDeContraste(a: string, b: string): number {
     const [x, y] = [luminanceRelative(a), luminanceRelative(b)];
     const [haut, bas] = x >= y ? [x, y] : [y, x];
@@ -59,7 +59,7 @@ export function rapportDeContraste(a: string, b: string): number {
 }
 
 const FONDS = ['--fond-0', '--fond-1', '--fond-2'];
-/** Sept encres. Ni `--bord` (décoratif, exempté) ni `--sur-accent` (sur `--accent`). */
+/** Seven inks. Neither `--bord` (decorative, exempted) nor `--sur-accent` (on `--accent`). */
 const ENCRES = [
     '--texte-fort',
     '--texte',
@@ -82,80 +82,80 @@ function pairesDuTheme(theme: string): Paire[] {
         paires.push({ theme, encre: '--bord-fort', fond, seuil: SEUIL_COMPOSANT });
     }
     paires.push({ theme, encre: '--sur-accent', fond: '--accent', seuil: SEUIL_TEXTE });
-    // Le SURVOL du bouton principal (S2) : l'encre ne change pas, le fond si.
-    // Sans cette paire, l'état le plus fréquent du produit serait le seul dont
-    // le contraste ne serait mesuré par rien — c'est la raison pour laquelle
-    // `--accent-survol` est un TOKEN et non un `color-mix()` ou un `filter`.
+    // The HOVER of the primary button (S2): the ink does not change, the background does.
+    // Without this pair, the product's most frequent state would be the only one whose
+    // contrast nothing measures — that is the reason why
+    // `--accent-survol` is a TOKEN and not a `color-mix()` or a `filter`.
     paires.push({ theme, encre: '--sur-accent', fond: '--accent-survol', seuil: SEUIL_TEXTE });
     return paires;
 }
 
 /**
- * LA 53ᵉ PAIRE — `--sur-voile` sur `--video-letterbox` (sous-bloc S4, tâche 4).
+ * THE 53rd PAIR — `--sur-voile` on `--video-letterbox` (sub-block S4, task 4).
  *
- * 🔴 ELLE RÉPARE UN DÉFAUT RÉEL, ET AUCUN DES NEUF CONTRÔLES NE POUVAIT LE
- * VOIR.
+ * 🔴 IT REPAIRS A REAL DEFECT, AND NONE OF THE NINE CHECKS COULD
+ * SEE IT.
  *
- * ❌ CETTE PHRASE DISAIT « HUIT », ET ELLE ÉTAIT DÉJÀ FAUSSE QUAND ELLE A ÉTÉ
- * ÉCRITE — c'est la revue transverse de S4 qui l'a relevée, aux TROIS endroits
- * où la tâche 4 l'a posée (ici, `tokens.css` et `style.css`). Le neuvième
- * contrôle, §7.10, est né à la tâche 2 (`ee56e1e`), dont `git merge-base
- * --is-ancestor` établit qu'elle précède la tâche 4 (`fb629ea`). Une tâche a
- * donc décrit la suite de contrôles telle qu'elle était AVANT la tâche qui
- * l'avait déjà changée, deux commits plus tôt, DANS LA MÊME BRANCHE. C'est la
- * forme exacte que la revue transverse existe pour attraper : chaque tâche
- * était correcte de ce qu'elle voyait. `base.css` pose `color: var(--texte-fort)` sur `body` ; en thème clair
- * `--texte-fort` vaut `#10131a`, une encre quasi noire ; et les voiles sont
- * HORS THÈME, donc noirs dans les deux. Sous le thème clair, les cinq éléments
- * de la fenêtre de session écrivaient donc du quasi-noir sur un voile
- * quasi-noir. Ce n'est pas une régression du produit d'origine : c'est un effet
- * de bord de S1, qui a donné un thème clair à une surface qui n'en avait pas.
+ * ❌ THIS SENTENCE SAID "EIGHT", AND IT WAS ALREADY WRONG WHEN IT WAS
+ * WRITTEN — it is S4's cross-cutting review that noted it, in the THREE places
+ * where task 4 put it (here, `tokens.css` and `style.css`). The ninth
+ * check, §7.10, was born in task 2 (`ee56e1e`), which `git merge-base
+ * --is-ancestor` establishes precedes task 4 (`fb629ea`). A task
+ * therefore described the suite of checks as it was BEFORE the task that
+ * had already changed it, two commits earlier, IN THE SAME BRANCH. It is the
+ * exact form the cross-cutting review exists to catch: each task
+ * was correct about what it saw. `base.css` sets `color: var(--texte-fort)` on `body`; in the light theme
+ * `--texte-fort` is `#10131a`, an almost black ink; and the veils are
+ * OFF-THEME, hence black in both. Under the light theme, the five elements
+ * of the session window therefore wrote almost-black on an almost-black
+ * veil. It is not a regression of the original product: it is a side
+ * effect of S1, which gave a light theme to a surface that had none.
  *
- * ⚠️ POURQUOI AUCUN CONTRÔLE NE LE VOYAIT, et l'argument est juste À MOITIÉ :
- * `tokens.css` place les voiles hors des paires, « leur lisibilité dépend de la
- * vidéo qui est dessous, qui n'est pas connaissable ». C'est vrai DU VOILE ; ça
- * ne l'est pas de L'ENCRE qu'on y pose, qui, elle, est parfaitement
- * connaissable dès que le fond l'est.
+ * ⚠️ WHY NO CHECK SAW IT, and the argument is only HALF right:
+ * `tokens.css` places the veils outside the pairs, "their readability depends on the
+ * video underneath, which is not knowable". That is true OF THE VEIL; it
+ * is not true of THE INK placed on it, which, for its part, is perfectly
+ * knowable as soon as the background is.
  *
- * ⚠️ ET CETTE PAIRE NE MESURE QU'UNE RÉGION : la bande que laisse
- * `object-fit: contain` autour de l'image (`#remote { background:
- * var(--video-letterbox) }`), la SEULE où le fond sous l'encre soit connu.
- * Au-dessus de l'image, le fond reste inconnaissable, et la réserve du §11 de
- * la spec tient entière — « `--voile-flottant` ne suffit pas sur une vidéo très
- * claire, non mesuré ».
+ * ⚠️ AND THIS PAIR ONLY MEASURES ONE REGION: the band
+ * `object-fit: contain` leaves around the image (`#remote { background:
+ * var(--video-letterbox) }`), the ONLY one where the background under the ink is known.
+ * Above the image, the background stays unknowable, and the reservation of §11 of
+ * the spec stands whole — "`--voile-flottant` is not enough on a very
+ * light video, not measured".
  *
- * ⚠️ ELLE N'EST DANS AUCUN DES DEUX THÈMES, d'où son libellé : ses deux tokens
- * sont hors thème, donc elle vaut à l'identique en clair et en sombre. La
- * compter par thème mesurerait deux fois la même chose. `evaluer` la résout par
- * son repli sur le bloc `racine`, où les deux tokens vivent.
+ * ⚠️ IT IS IN NEITHER OF THE TWO THEMES, hence its label: its two tokens
+ * are off-theme, so it holds identically in light and dark. Counting
+ * it per theme would measure the same thing twice. `evaluer` resolves it through
+ * its fallback to the `racine` block, where both tokens live.
  *
- * ⚠️ QUE `#e6e8eb` SOIT LA BONNE ENCRE SUR UN VOILE EST UN JUGEMENT HUMAIN
- * (spec §8) : seule sa lisibilité SUR LA BANDE NOIRE est mesurée ici.
+ * ⚠️ THAT `#e6e8eb` IS THE RIGHT INK ON A VEIL IS A HUMAN JUDGEMENT
+ * (spec §8): only its readability ON THE BLACK BAND is measured here.
  */
 const PAIRE_HORS_THEME: Paire = {
-    theme: 'hors thème',
+    theme: 'out of theme',
     encre: '--sur-voile',
     fond: '--video-letterbox',
     seuil: SEUIL_TEXTE,
 };
 
 /**
- * Les 53 paires DÉCLARÉES — jamais un produit cartésien.
- * (50 en S1 ; S2 en ajoute deux, `--sur-accent` sur `--accent-survol` ; S4 en
- * ajoute une, hors thème, ci-dessus.)
+ * The 53 DECLARED pairs — never a Cartesian product.
+ * (50 in S1; S2 adds two, `--sur-accent` on `--accent-survol`; S4
+ * adds one, off-theme, above.)
  *
- * 25 par thème : 7 encres × 3 fonds au seuil 4,5 ; `--bord-fort` sur les 3
- * fonds au seuil 3 ; `--sur-accent` sur `--accent` au seuil 4,5.
+ * 25 per theme: 7 inks × 3 backgrounds at threshold 4.5; `--bord-fort` on the 3
+ * backgrounds at threshold 3; `--sur-accent` on `--accent` at threshold 4.5.
  *
- * ⚠️ `--bord` EST ABSENT, ET C'EST UNE DÉCISION, pas un oubli : il rend 1,45
- * (sombre) et 1,40 (clair) sur `--fond-0`, et il est réservé aux séparateurs
- * PUREMENT décoratifs, que WCAG 1.4.11 exempte explicitement. Dès qu'une
- * bordure porte une information — contour de champ, état d'un contrôle —
- * c'est `--bord-fort` qui s'applique, et lui est mesuré.
+ * ⚠️ `--bord` IS ABSENT, AND IT IS A DECISION, not an oversight: it returns 1.45
+ * (dark) and 1.40 (light) on `--fond-0`, and it is reserved for PURELY
+ * decorative separators, which WCAG 1.4.11 explicitly exempts. As soon as a
+ * border carries information — field outline, state of a control —
+ * it is `--bord-fort` that applies, and that one is measured.
  *
- * ⚠️ LE COROLLAIRE : aucune commande ne peut vérifier qu'on n'a pas employé
- * `--bord` là où il fallait `--bord-fort`. C'est une RÈGLE DE REVUE, et la
- * spec §8 la nomme comme telle.
+ * ⚠️ THE COROLLARY: no command can check that `--bord` was not used
+ * where `--bord-fort` was needed. It is a REVIEW RULE, and the
+ * spec §8 names it as such.
  */
 export const PAIRES: readonly Paire[] = [
     ...pairesDuTheme('sombre'),
@@ -163,7 +163,7 @@ export const PAIRES: readonly Paire[] = [
     PAIRE_HORS_THEME,
 ];
 
-/** Le bloc qui porte la palette d'un thème. Les deux blocs clairs sont égaux (§7.4). */
+/** The block carrying a theme's palette. The two light blocks are equal (§7.4). */
 function blocDuTheme(blocs: BlocDeTheme[], theme: string): BlocDeTheme | undefined {
     if (theme === 'sombre') return blocs.find((b) => b.nom === 'racine');
     return (
@@ -172,13 +172,13 @@ function blocDuTheme(blocs: BlocDeTheme[], theme: string): BlocDeTheme | undefin
 }
 
 /**
- * Évalue les 53 paires sur les blocs parsés.
+ * Evaluates the 53 pairs on the parsed blocks.
  *
- * ⚠️ UN TOKEN INTROUVABLE EST UN ÉCHEC, jamais une paire silencieusement
- * sautée : sans cela, une faute de frappe dans un nom de token ferait BAISSER
- * le nombre de paires vérifiées sans qu'aucun échec ne remonte, et le contrôle
- * passerait au vert en mesurant moins. Le rapport 0 le rend visible dans le
- * même rapport que les autres échecs.
+ * ⚠️ A TOKEN NOT FOUND IS A FAILURE, never a silently skipped
+ * pair: otherwise, a typo in a token name would LOWER
+ * the number of pairs checked without any failure coming up, and the check
+ * would go green while measuring less. Ratio 0 makes it visible in the
+ * same report as the other failures.
  */
 export function evaluer(blocs: BlocDeTheme[]): {
     verifiees: number;
@@ -190,8 +190,8 @@ export function evaluer(blocs: BlocDeTheme[]): {
 
     for (const paire of PAIRES) {
         const bloc = blocDuTheme(blocs, paire.theme);
-        // `--fond-0` du thème sombre peut n'être déclaré que dans `racine` :
-        // on retombe sur ce bloc quand le bloc clair ne surcharge pas le token.
+        // The dark theme's `--fond-0` may only be declared in `racine`:
+        // we fall back to that block when the light block does not override the token.
         const racine = blocs.find((b) => b.nom === 'racine');
         const encre = bloc?.tokens.get(paire.encre) ?? racine?.tokens.get(paire.encre);
         const fond = bloc?.tokens.get(paire.fond) ?? racine?.tokens.get(paire.fond);

@@ -1,25 +1,25 @@
-//! Tirer l'installeur par HTTP, l'écrire, et vérifier son empreinte PENDANT
-//! l'écriture.
+//! Fetching the installer over HTTP, writing it, and checking its fingerprint WHILE
+//! writing.
 //!
-//! 🔴 CE MODULE EST PORTABLE : aucun `#[cfg]`. `tokio::net::TcpStream`, un
-//! analyseur d'en-têtes et une écriture de fichier compilent et tournent sur
-//! l'hôte Linux. C'est une divergence DÉCLARÉE avec le §6 de la
-//! spécification, qui le rangeait en `#[cfg(windows)]` — et c'est une
-//! amélioration de couverture, pas un détail : la **troisième** vérification
-//! d'empreinte, la reprise par `Range`, le refus du `chunked` et celui de
-//! `https` se testent tous ici, **contre un vrai serveur TCP local**, au lieu
-//! de dépendre d'une recette VM. Seule l'exécution reste Windows.
+//! 🔴 THIS MODULE IS PORTABLE: no `#[cfg]`. `tokio::net::TcpStream`, a
+//! header parser and a file write compile and run on
+//! the Linux host. It is a DECLARED divergence from §6 of the
+//! specification, which put it under `#[cfg(windows)]` — and it is a
+//! coverage improvement, not a detail: the **third** fingerprint
+//! check, the `Range` resumption, the refusal of `chunked` and that of
+//! `https` are all tested here, **against a real local TCP server**, instead
+//! of depending on a VM acceptance run. Only the execution stays Windows.
 //!
-//! ⚠️ POURQUOI UN CLIENT ÉCRIT À LA MAIN. L'agent n'a **aucun** client HTTP, et
-//! `tokio-tungstenite` y est verrouillé **sans TLS** : `reqwest` apporterait
-//! une pile TLS entière et romprait l'invariant « aucune dépendance de
-//! production » que G1 et G2 tiennent tous deux. Ce dépôt a déjà écrit son
-//! client TURN, son codec STUN et son SHA-256 pour la même raison.
+//! ⚠️ WHY A HAND-WRITTEN CLIENT. The agent has **no** HTTP client, and
+//! `tokio-tungstenite` is locked **without TLS** there: `reqwest` would bring
+//! an entire TLS stack and break the invariant "no production
+//! dependency" that G1 and G2 both hold. This repository has already written its
+//! TURN client, its STUN codec and its SHA-256 for the same reason.
 //!
-//! 🔴 CE QU'IL REFUSE BRUYAMMENT PLUTÔT QUE DE L'INTERPRÉTER : `https://`,
-//! parce qu'il ne parle pas TLS ; `Transfer-Encoding` ; tout statut hors `200`
-//! et `206`. *Un refus nommé se diagnostique en une ligne de journal ; un
-//! analyseur qui devine se diagnostique en une campagne.*
+//! 🔴 WHAT IT REFUSES LOUDLY RATHER THAN INTERPRETING: `https://`,
+//! because it does not speak TLS; `Transfer-Encoding`; any status other than `200`
+//! and `206`. *A named refusal is diagnosed in one log line; a
+//! parser that guesses is diagnosed in a campaign.*
 
 use std::path::Path;
 
@@ -30,145 +30,145 @@ use crate::apps::sha256::{hex_de, Condensateur};
 
 use super::reponse::{self, Etat};
 
-/// Combien de fois on rouvre après une coupure en cours de transfert.
+/// How many times we reopen after a cut in the middle of a transfer.
 ///
-/// ⚠️ **NON CALIBRÉE**, elle rejoint la liste que ce dépôt tient depuis
-/// `BPP_MIN`. Ce qu'elle borne est réel : sans elle, un serveur qui coupe à
-/// chaque octet ferait boucler le téléchargement sans terme.
+/// ⚠️ **NOT CALIBRATED**, it joins the list this repository has kept since
+/// `BPP_MIN`. What it bounds is real: without it, a server that cuts at
+/// every byte would make the download loop without end.
 pub const RETABLISSEMENTS_MAX: u32 = 5;
 
-/// La taille du tampon de lecture du socket.
+/// The size of the socket read buffer.
 const TAMPON: usize = 64 * 1024;
 
-/// Pourquoi un téléchargement n'a pas abouti.
+/// Why a download did not complete.
 ///
-/// ⚠️ CHAQUE VARIANTE PORTE DE QUOI LA DIAGNOSTIQUER SANS ROUVRIR LE PRODUIT.
+/// ⚠️ EACH VARIANT CARRIES WHAT IS NEEDED TO DIAGNOSE IT WITHOUT REOPENING THE PRODUCT.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Refus {
-    /// L'URL n'est pas une URL `http://` que ce client sache lire.
+    /// The URL is not an `http://` URL this client can read.
     ///
-    /// 🔴 `https://` ET `wss://` TOMBENT ICI, ET C'EST UN REFUS NOMMÉ — pas un
-    /// « schéma inconnu ». Le canal `/agent` ne parle que `ws://` aujourd'hui,
-    /// et l'URL de téléchargement se dérive de `SIGNALING_URL` exactement comme
-    /// `url_du_canal` dérive la sienne : le jour où la plateforme passera en
-    /// TLS, c'est ce refus-là qui le dira, et non une erreur d'analyse.
+    /// 🔴 `https://` AND `wss://` FALL HERE, AND IT IS A NAMED REFUSAL — not an
+    /// "unknown scheme". The `/agent` channel speaks only `ws://` today,
+    /// and the download URL is derived from `SIGNALING_URL` exactly as
+    /// `url_du_canal` derives its own: the day the platform moves to
+    /// TLS, it is this refusal that will say so, and not a parse error.
     ///
-    /// ✅ `ws://` EST ACCEPTÉ, LUI, depuis que la recette a montré que **tout**
-    /// ordre d'installation était refusé sans cela.
+    /// ✅ `ws://` IS ACCEPTED, on the other hand, since the acceptance run showed that **every**
+    /// installation order was refused without it.
     Url(String),
-    /// La connexion n'a pas pu s'ouvrir, ou s'est rompue au-delà du budget.
+    /// The connection could not be opened, or broke beyond the budget.
     Reseau(String),
-    /// L'analyse de la réponse a refusé — le motif voyage tel quel.
+    /// The response parsing refused — the reason travels as is.
     Reponse(reponse::Refus),
-    /// L'écriture sur le disque a échoué.
+    /// Writing to disk failed.
     Disque(String),
-    /// 🔴 LA TROISIÈME DES TROIS VÉRIFICATIONS D'EMPREINTE. Le navigateur peut
-    /// mentir, le disque de la plateforme peut se corrompre, le transfert peut
-    /// tronquer : **aucun saut ne fait confiance au précédent**.
+    /// 🔴 THE THIRD OF THE THREE FINGERPRINT CHECKS. The browser can
+    /// lie, the platform's disk can get corrupted, the transfer can
+    /// truncate: **no hop trusts the previous one**.
     Empreinte { attendue: String, obtenue: String },
-    /// Le corps reçu ne fait pas la taille annoncée par l'ordre.
-    Taille { attendue: u64, obtenue: u64 },
-    /// Le budget de rétablissements est épuisé.
+    /// The received body is not the size announced by the order.
+    Size { attendue: u64, obtenue: u64 },
+    /// The recovery budget is exhausted.
     TropDeCoupures(u32),
 }
 
-/// Ce que l'appelant fournit, et ce qu'il observe.
+/// What the caller supplies, and what it observes.
 pub struct Demande<'a> {
-    /// L'URL absolue, `http://` seulement.
+    /// The absolute URL, `http://` only.
     pub url: &'a str,
-    /// Le jeton d'agent, tel quel — il part en `Authorization: Bearer`.
+    /// The agent token, as is — it goes out as `Authorization: Bearer`.
     pub jeton: &'a str,
-    /// Où écrire. Le répertoire parent doit exister.
+    /// Where to write. The parent directory must exist.
     pub destination: &'a Path,
-    pub taille_attendue: u64,
-    /// En hexadécimal minuscule, 64 caractères.
+    pub expected_size: u64,
+    /// In lowercase hexadecimal, 64 characters.
     pub sha256_attendu: &'a str,
 }
 
-/// Une URL `http://hote:port/chemin` découpée.
+/// An `http://host:port/path` URL, split up.
 ///
-/// ⚠️ MODULE-PRIVÉ ET TESTÉ : l'analyse d'URL est le seul endroit où une
-/// erreur produirait une connexion vers un hôte que personne n'a demandé.
+/// ⚠️ MODULE-PRIVATE AND TESTED: URL parsing is the only place where an
+/// error would produce a connection to a host nobody asked for.
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct Cible {
     hote: String,
     port: u16,
-    /// Ce qui part sur la ligne de requête. Toujours non vide, toujours
-    /// commençant par `/`.
+    /// What goes out on the request line. Always non-empty, always
+    /// starting with `/`.
     chemin: String,
-    /// L'en-tête `Host`, avec son port quand il n'est pas celui par défaut.
+    /// The `Host` header, with its port when it is not the default one.
     entete_host: String,
 }
 
 fn decouper(url: &str) -> Result<Cible, Refus> {
-    // 🔴 `https` EST REFUSÉ NOMMÉMENT, ET NON « INCONNU ». Le distinguer d'une
-    // URL malformée est ce qui permet au journal de dire « cet agent ne parle
-    // pas TLS » plutôt que « URL illisible », qui enverrait chercher une
-    // coquille là où il y a une capacité manquante.
+    // 🔴 `https` IS REFUSED BY NAME, NOT AS "UNKNOWN". Distinguishing it from a
+    // malformed URL is what lets the log say "this agent does not speak
+    // TLS" rather than "unreadable URL", which would send you looking for a
+    // typo where there is a missing capability.
     //
-    // ⚠️ `wss://` TOMBE ICI AUSSI, et pour la même raison : l'URL de
-    // téléchargement se dérive de celle du canal, qui est un schéma WebSocket.
-    // Un `wss://` refusé « schéma non reconnu » enverrait chercher une coquille
-    // là où il y a, là encore, une capacité manquante.
+    // ⚠️ `wss://` FALLS HERE TOO, and for the same reason: the download
+    // URL is derived from the channel's, which is a WebSocket scheme.
+    // A `wss://` refused as "unrecognised scheme" would send you looking for a typo
+    // where there is, once again, a missing capability.
     if url.starts_with("https://") || url.starts_with("wss://") {
         return Err(Refus::Url(format!(
-            "TLS non pris en charge : cet agent ne parle ni https ni wss ({url})"
+            "TLS not supported: this agent speaks neither https nor wss ({url})"
         )));
     }
-    // 🔴 `ws://` EST ACCEPTÉ AU MÊME TITRE QUE `http://`, ET C'EST LA RECETTE
-    // QUI L'A EXIGÉ. L'URL de l'installeur est **dérivée, pas configurée** :
-    // `canal-apps.ts` envoie le chemin relatif `/televersement/:id/contenu`, et
-    // l'agent le résout contre l'adresse de son PROPRE canal — laquelle est un
-    // `ws://`, puisque c'est un WebSocket. Le client n'acceptant que `http://`,
-    // **tout ordre d'installation était refusé** sur `schéma non reconnu :
-    // ws://…`, mesuré sur la chaîne réelle.
+    // 🔴 `ws://` IS ACCEPTED ON THE SAME FOOTING AS `http://`, AND IT WAS THE ACCEPTANCE
+    // RUN THAT DEMANDED IT. The installer URL is **derived, not configured**:
+    // `canal-apps.ts` sends the relative path `/televersement/:id/contenu`, and
+    // the agent resolves it against the address of its OWN channel — which is a
+    // `ws://`, since it is a WebSocket. With the client accepting only `http://`,
+    // **every installation order was refused** on `unrecognised scheme:
+    // ws://…`, measured on the real chain.
     //
-    // ⚠️ CE FICHIER PORTAIT DÉJÀ LE FAIT SANS PORTER LE REMÈDE : la doc de
-    // `Refus::Url` dit, mot pour mot, que « le canal `/agent` lui-même ne parle
-    // que `ws://` ». La lecture était juste et le code ne la suivait pas — un
-    // écart qu'aucun test d'hôte ne pouvait voir, tous construisant leurs URL
-    // en `http://` contre un `TcpListener` local.
+    // ⚠️ THIS FILE ALREADY CARRIED THE FACT WITHOUT CARRYING THE REMEDY: the doc of
+    // `Refus::Url` says, word for word, that "the `/agent` channel itself speaks
+    // only `ws://`". The reading was right and the code did not follow it — a
+    // gap no host test could see, all of them building their URLs
+    // as `http://` against a local `TcpListener`.
     //
-    // ✅ C'EST AUSSI LE PRÉCÉDENT DE G2, ET IL EST RÉEMPLOYÉ PLUTÔT QUE
-    // RÉINVENTÉ : `apps/icone/televersement.rs` accepte exactement ces deux
-    // schémas, par le même `strip_prefix(…).or_else(…)`. Deux modules qui
-    // dérivent la même adresse doivent en accepter la même forme.
+    // ✅ IT IS ALSO G2'S PRECEDENT, AND IT IS REUSED RATHER THAN
+    // REINVENTED: `apps/icone/televersement.rs` accepts exactly these two
+    // schemes, through the same `strip_prefix(…).or_else(…)`. Two modules that
+    // derive the same address must accept the same form of it.
     let reste = url
         .strip_prefix("http://")
         .or_else(|| url.strip_prefix("ws://"))
-        .ok_or_else(|| Refus::Url(format!("schéma non reconnu : {url}")))?;
+        .ok_or_else(|| Refus::Url(format!("unrecognised scheme: {url}")))?;
     let (autorite, chemin) = match reste.find('/') {
         Some(i) => (&reste[..i], &reste[i..]),
         None => (reste, "/"),
     };
     if autorite.is_empty() {
-        return Err(Refus::Url(format!("hôte vide : {url}")));
+        return Err(Refus::Url(format!("empty host: {url}")));
     }
-    // ⚠️ PAS DE `rfind` SUR `:` SANS PRÉCAUTION : une adresse IPv6 littérale en
-    // porte plusieurs. Ce client ne les prend pas en charge, et le DIT.
+    // ⚠️ NO `rfind` ON `:` WITHOUT CARE: a literal IPv6 address
+    // carries several. This client does not support them, and SAYS so.
     if autorite.starts_with('[') {
         return Err(Refus::Url(format!(
-            "adresse IPv6 littérale non prise en charge : {url}"
+            "literal IPv6 address not supported: {url}"
         )));
     }
     let (hote, port) = match autorite.split_once(':') {
         Some((h, p)) => {
             let port = p
                 .parse::<u16>()
-                .map_err(|_| Refus::Url(format!("port illisible : {url}")))?;
+                .map_err(|_| Refus::Url(format!("unreadable port: {url}")))?;
             (h.to_string(), port)
         }
         None => (autorite.to_string(), 80u16),
     };
     if hote.is_empty() {
-        return Err(Refus::Url(format!("hôte vide : {url}")));
+        return Err(Refus::Url(format!("empty host: {url}")));
     }
     Ok(Cible {
         hote,
         port,
         chemin: chemin.to_string(),
-        // ⚠️ LE PORT PAR DÉFAUT NE S'ÉCRIT PAS DANS `Host` : c'est ce que la
-        // RFC 9110 §7.2 demande, et un proxy peut router dessus.
+        // ⚠️ THE DEFAULT PORT IS NOT WRITTEN IN `Host`: that is what
+        // RFC 9110 §7.2 asks, and a proxy may route on it.
         entete_host: if port == 80 {
             autorite.split(':').next().unwrap_or(autorite).to_string()
         } else {
@@ -177,25 +177,25 @@ fn decouper(url: &str) -> Result<Cible, Refus> {
     })
 }
 
-/// Ce qu'une passe de transfert a fait.
+/// What one transfer pass did.
 struct Passe {
-    /// Le total écrit DEPUIS LE DÉBUT DU FICHIER à la fin de cette passe.
+    /// The total written SINCE THE START OF THE FILE at the end of this pass.
     ///
-    /// ⚠️ UN TOTAL, PAS UN DELTA, et c'est ce qui rend le redémarrage
-    /// exprimable : une passe qui repart de zéro rend le total qu'elle a
-    /// réellement écrit, et l'appelant n'a rien à retrancher.
+    /// ⚠️ A TOTAL, NOT A DELTA, and that is what makes restarting
+    /// expressible: a pass that starts over from zero returns the total it
+    /// actually wrote, and the caller has nothing to subtract.
     total: u64,
-    /// `true` si la connexion s'est rompue avant la fin annoncée.
+    /// `true` if the connection broke before the announced end.
     coupee: bool,
 }
 
-/// Télécharge, écrit, et vérifie. Rend les octets écrits.
+/// Downloads, writes, and checks. Returns the bytes written.
 ///
-/// 🔴 L'EMPREINTE SE CALCULE PENDANT L'ÉCRITURE, PAS EN RELISANT LE FICHIER
-/// APRÈS — sauf sur un chemin de reprise, où l'on **relit ce qui est déjà
-/// écrit** pour réamorcer l'état de condensation. Le dire ici évite qu'on
-/// « optimise » cette relecture un jour : sans elle, une reprise donnerait
-/// l'empreinte de la seule FIN du fichier.
+/// 🔴 THE FINGERPRINT IS COMPUTED WHILE WRITING, NOT BY RE-READING THE FILE
+/// AFTERWARDS — except on a resumption path, where we **re-read what is already
+/// written** to re-prime the digest state. Saying so here keeps anyone from
+/// "optimising" that re-read one day: without it, a resumption would yield
+/// the fingerprint of the file's END alone.
 pub async fn telecharger<F>(demande: Demande<'_>, mut progres: F) -> Result<u64, Refus>
 where
     F: FnMut(u64, u64),
@@ -221,23 +221,23 @@ where
             url = demande.url,
             deja,
             coupures,
-            "transfert coupé, reprise par Range"
+            "transfer cut, resuming with Range"
         );
     }
 
-    if deja != demande.taille_attendue {
+    if deja != demande.expected_size {
         let _ = tokio::fs::remove_file(demande.destination).await;
-        return Err(Refus::Taille {
-            attendue: demande.taille_attendue,
+        return Err(Refus::Size {
+            attendue: demande.expected_size,
             obtenue: deja,
         });
     }
 
     let obtenue = hex_de(condensateur.terminer());
     if obtenue != demande.sha256_attendu {
-        // 🔴 LE FICHIER PARTIEL EST SUPPRIMÉ, ET LE TÉLÉVERSEMENT RESTE
-        // REPRENABLE. Le garder inviterait un chemin ultérieur à le prendre
-        // pour un installeur valide.
+        // 🔴 THE PARTIAL FILE IS DELETED, AND THE UPLOAD REMAINS
+        // RESUMABLE. Keeping it would invite a later path to take it
+        // for a valid installer.
         let _ = tokio::fs::remove_file(demande.destination).await;
         return Err(Refus::Empreinte {
             attendue: demande.sha256_attendu.to_string(),
@@ -259,7 +259,7 @@ where
 {
     let mut socket = TcpStream::connect((cible.hote.as_str(), cible.port))
         .await
-        .map_err(|e| Refus::Reseau(format!("connexion à {}:{} : {e}", cible.hote, cible.port)))?;
+        .map_err(|e| Refus::Reseau(format!("connecting to {}:{}: {e}", cible.hote, cible.port)))?;
 
     let mut requete = format!(
         "GET {} HTTP/1.1\r\nHost: {}\r\nAuthorization: Bearer {}\r\n\
@@ -273,9 +273,9 @@ where
     socket
         .write_all(requete.as_bytes())
         .await
-        .map_err(|e| Refus::Reseau(format!("envoi de la requête : {e}")))?;
+        .map_err(|e| Refus::Reseau(format!("sending the request: {e}")))?;
 
-    // --- l'en-tête, relu jusqu'à être complet ---
+    // --- the header, re-read until complete ---
     let mut tampon: Vec<u8> = Vec::with_capacity(TAMPON);
     let mut lecture = [0u8; TAMPON];
     let entete = loop {
@@ -287,30 +287,30 @@ where
         let n = socket
             .read(&mut lecture)
             .await
-            .map_err(|e| Refus::Reseau(format!("lecture de l'en-tête : {e}")))?;
+            .map_err(|e| Refus::Reseau(format!("reading the header: {e}")))?;
         if n == 0 {
             return Err(Refus::Reseau(
-                "connexion fermée avant la fin de l'en-tête".into(),
+                "connection closed before the end of the header".into(),
             ));
         }
         tampon.extend_from_slice(&lecture[..n]);
     };
 
-    // 🔴 UN `200` ALORS QU'ON A DEMANDÉ UN `Range` : LE SERVEUR A IGNORÉ LA
-    // PLAGE et renvoie le fichier ENTIER. On repart de zéro — jamais on ne
-    // concatène, ce qui produirait un fichier plus long que sa taille et une
-    // empreinte fausse **sans que l'on sache pourquoi**.
+    // 🔴 A `200` WHEN WE ASKED FOR A `Range`: THE SERVER IGNORED THE
+    // RANGE and sends the WHOLE file. We start over from zero — we never
+    // concatenate, which would produce a file longer than its size and a
+    // wrong fingerprint **without anyone knowing why**.
     //
-    // 🔴 ET ON CONSOMME **CETTE** RÉPONSE, on ne rouvre pas une connexion. Le
-    // corps entier est déjà en train d'arriver : le jeter pour le redemander
-    // ferait passer deux fois plusieurs centaines de mégaoctets sur le lien,
-    // pour rien. Le fichier est tronqué et la condensation réamorcée, ce qui
-    // est exactement ce que « repartir de zéro » veut dire.
+    // 🔴 AND WE CONSUME **THIS** RESPONSE, we do not reopen a connection. The
+    // whole body is already arriving: throwing it away to ask for it again
+    // would push several hundred megabytes over the link twice,
+    // for nothing. The file is truncated and the digest re-primed, which
+    // is exactly what "start over from zero" means.
     let deja = if deja > 0 && entete.statut == 200 {
         tracing::warn!(
             url = demande.url,
             deja,
-            "le serveur a ignoré le Range : le téléchargement REPART DE ZÉRO,              sur cette réponse même"
+            "the server ignored the Range: the download STARTS OVER FROM ZERO, on this very response"
         );
         *condensateur = Condensateur::neuf();
         0
@@ -319,44 +319,42 @@ where
     };
 
     // --- le corps ---
-    let mut fichier = ouvrir(demande.destination, deja).await?;
+    let mut file = ouvrir(demande.destination, deja).await?;
     let mut ecrits = 0u64;
     let debut = &tampon[entete.debut_du_corps..];
     if !debut.is_empty() {
-        ecrire(&mut fichier, condensateur, debut).await?;
+        write(&mut file, condensateur, debut).await?;
         ecrits += debut.len() as u64;
-        progres(deja + ecrits, demande.taille_attendue);
+        progres(deja + ecrits, demande.expected_size);
     }
 
-    while ecrits < entete.longueur {
+    while ecrits < entete.length {
         let n = socket
             .read(&mut lecture)
             .await
-            .map_err(|e| Refus::Reseau(format!("lecture du corps : {e}")))?;
+            .map_err(|e| Refus::Reseau(format!("reading the body: {e}")))?;
         if n == 0 {
-            // ⚠️ FERMETURE AVANT LA FIN ANNONCÉE : c'est une coupure, pas une
-            // fin. L'appelant reprendra par `Range`.
-            fichier
-                .flush()
+            // ⚠️ CLOSED BEFORE THE ANNOUNCED END: this is a cut, not an
+            // end. The caller will resume through `Range`.
+            file.flush()
                 .await
-                .map_err(|e| Refus::Disque(format!("vidage : {e}")))?;
+                .map_err(|e| Refus::Disque(format!("flush: {e}")))?;
             return Ok(Passe {
                 total: deja + ecrits,
                 coupee: true,
             });
         }
-        // ⚠️ ON N'ÉCRIT JAMAIS AU-DELÀ DE CE QUI EST ANNONCÉ : un serveur qui
-        // enverrait trop ferait sinon grossir le fichier sans terme.
-        let reste = (entete.longueur - ecrits) as usize;
+        // ⚠️ WE NEVER WRITE BEYOND WHAT IS ANNOUNCED: a server that
+        // sent too much would otherwise make the file grow without end.
+        let reste = (entete.length - ecrits) as usize;
         let utile = &lecture[..n.min(reste)];
-        ecrire(&mut fichier, condensateur, utile).await?;
+        write(&mut file, condensateur, utile).await?;
         ecrits += utile.len() as u64;
-        progres(deja + ecrits, demande.taille_attendue);
+        progres(deja + ecrits, demande.expected_size);
     }
-    fichier
-        .flush()
+    file.flush()
         .await
-        .map_err(|e| Refus::Disque(format!("vidage : {e}")))?;
+        .map_err(|e| Refus::Disque(format!("flush: {e}")))?;
 
     Ok(Passe {
         total: deja + ecrits,
@@ -364,29 +362,28 @@ where
     })
 }
 
-/// Ouvre la destination, et **réamorce la condensation** sur une reprise.
+/// Opens the destination, and **re-primes the digest** on a resumption.
 async fn ouvrir(destination: &Path, deja: u64) -> Result<tokio::fs::File, Refus> {
     if deja == 0 {
         return tokio::fs::File::create(destination)
             .await
-            .map_err(|e| Refus::Disque(format!("création de {} : {e}", destination.display())));
+            .map_err(|e| Refus::Disque(format!("creating {}: {e}", destination.display())));
     }
     tokio::fs::OpenOptions::new()
         .append(true)
         .open(destination)
         .await
-        .map_err(|e| Refus::Disque(format!("réouverture de {} : {e}", destination.display())))
+        .map_err(|e| Refus::Disque(format!("reopening {}: {e}", destination.display())))
 }
 
-async fn ecrire(
-    fichier: &mut tokio::fs::File,
+async fn write(
+    file: &mut tokio::fs::File,
     condensateur: &mut Condensateur,
     bloc: &[u8],
 ) -> Result<(), Refus> {
-    fichier
-        .write_all(bloc)
+    file.write_all(bloc)
         .await
-        .map_err(|e| Refus::Disque(format!("écriture : {e}")))?;
+        .map_err(|e| Refus::Disque(format!("write: {e}")))?;
     condensateur.absorber(bloc);
     Ok(())
 }

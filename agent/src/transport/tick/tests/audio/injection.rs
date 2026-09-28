@@ -19,7 +19,7 @@ use super::*;
 //
 // ⚠️ **Le point 2 a été payé, et le plan de D11 ne le prescrivait pas** : il
 // ne sérialisait que les tests d'injection entre eux. Insuffisant — un test
-// PRÉEXISTANT qui reconstruit (`audio_vivant_n_est_annonce_qu_apres_un_paquet_reel`)
+// PRÉEXISTANT qui reconstruit (`live_audio_is_announced_only_after_a_real_packet`)
 // a tourné pendant qu'un budget était armé, a CONSOMMÉ une des fautes
 // injectées, et les deux tests ont échoué : celui-là parce que sa
 // reconstruction a été refusée, celui-ci parce qu'il n'a plus trouvé son
@@ -44,14 +44,14 @@ pub(super) fn verrou_injection() -> std::sync::MutexGuard<'static, ()> {
 /// Une faute armée fait REFUSER la reconstruction : la source morte n'est pas
 /// remplacée, le budget de reconstruction a décru, et la faute est consommée.
 #[test]
-fn une_faute_injectee_fait_refuser_la_reconstruction() {
+fn an_injected_fault_makes_the_rebuild_refused() {
     use std::sync::atomic::Ordering;
 
     let _verrou = verrou_injection();
     crate::transport::piste_audio::injection::budget_faute_reconstruction()
         .store(1, Ordering::Relaxed);
 
-    let mut session = session_d_essai();
+    let mut session = test_session();
     session.set_audio_source(Box::new(SourceMorte::new()));
     let actif_recu = std::sync::Arc::new(std::sync::Mutex::new(None));
     let observe = actif_recu.clone();
@@ -64,36 +64,36 @@ fn une_faute_injectee_fait_refuser_la_reconstruction() {
 
     assert!(
         !signale,
-        "un refus n'est pas encore un AudioMort : il reste du budget"
+        "a refusal is not an AudioMort yet: budget remains"
     );
     assert!(
         session.capture_audio_morte(),
-        "la reconstruction a REUSSI alors qu'une faute etait armee"
+        "the rebuild SUCCEEDED while a fault was armed"
     );
     assert_eq!(
         *actif_recu.lock().unwrap(),
         None,
-        "le reconstructeur ne doit pas avoir ete invoque"
+        "the rebuilder must not have been invoked"
     );
     assert_eq!(
         crate::transport::piste_audio::injection::budget_faute_reconstruction()
             .load(Ordering::Relaxed),
         0,
-        "la faute doit avoir ete CONSOMMEE, pas seulement lue"
+        "the fault must have been CONSUMED, not merely read"
     );
 }
 
 /// Budget à zéro : le binaire se comporte exactement comme sans injection.
 /// C'est ce qui établit que la variable est bien **absente = désarmée**.
 #[test]
-fn le_budget_epuise_laisse_la_reconstruction_reussir() {
+fn the_exhausted_budget_lets_the_rebuild_succeed() {
     use std::sync::atomic::Ordering;
 
     let _verrou = verrou_injection();
     crate::transport::piste_audio::injection::budget_faute_reconstruction()
         .store(0, Ordering::Relaxed);
 
-    let mut session = session_d_essai();
+    let mut session = test_session();
     session.set_audio_source(Box::new(SourceMorte::new()));
     let actif_recu = std::sync::Arc::new(std::sync::Mutex::new(None));
     let observe = actif_recu.clone();
@@ -118,14 +118,14 @@ fn le_budget_epuise_laisse_la_reconstruction_reussir() {
 /// sous-bloc D10 n'avait AUCUN moyen d'atteindre.
 #[test]
 #[allow(non_snake_case)]
-fn un_budget_superieur_a_RECONSTRUCTIONS_MAX_mene_a_AudioMort() {
+fn a_budget_above_RECONSTRUCTIONS_MAX_leads_to_AudioMort() {
     use std::sync::atomic::Ordering;
 
     let _verrou = verrou_injection();
     crate::transport::piste_audio::injection::budget_faute_reconstruction()
         .store(crate::audio::RECONSTRUCTIONS_MAX + 2, Ordering::Relaxed);
 
-    let mut session = session_d_essai();
+    let mut session = test_session();
     session.set_audio_source(Box::new(SourceMorte::new()));
     session.set_audio_reconstructeur(Box::new(move || {
         Ok(Box::new(SourceVivante::new()) as Box<dyn AudioSource + Send>)
@@ -137,17 +137,17 @@ fn un_budget_superieur_a_RECONSTRUCTIONS_MAX_mene_a_AudioMort() {
     for tour in 0..crate::audio::RECONSTRUCTIONS_MAX {
         assert!(
             !session.reconstruire_ou_signaler(maintenant),
-            "tour {tour} : il reste du budget, AudioMort serait premature"
+            "round {tour}: budget remains, AudioMort would be premature"
         );
         maintenant += crate::audio::REPIT_RECONSTRUCTION;
     }
 
     assert!(
         session.reconstruire_ou_signaler(maintenant),
-        "budget de reconstruction epuise : AudioMort doit etre signale"
+        "rebuild budget exhausted: AudioMort must be reported"
     );
     assert!(
         session.capture_audio_morte(),
-        "la source doit etre restee morte"
+        "the source must have stayed dead"
     );
 }

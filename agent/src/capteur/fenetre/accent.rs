@@ -1,27 +1,27 @@
-//! Le tour d'accent du fil de fenêtre — sous-bloc **A1**.
+//! The window thread's accent round — sub-block **A1**.
 //!
-//! **Extrait de `fenetre.rs` et non ajouté dedans**, exactement comme
-//! `transitions.rs` l'a été au sous-bloc D5 : l'addition l'aurait porté à
-//! **500 lignes exactement**, c'est-à-dire à marge NULLE, et la règle du dépôt
-//! est « extraction, jamais compression ». ⚠️ **Le plan de A1 avait chiffré
-//! cette addition à ~18 lignes ; elle en pèse 55**, et c'est la mesure qui l'a
-//! dit, pas la relecture. `fenetre.rs` a déjà franchi 500 deux fois — 508 en
-//! D9, 505 en D10 —, et il en a été sauvé par une extraction les deux fois.
+//! **Extracted from `fenetre.rs` and not added into it**, exactly as
+//! `transitions.rs` was in sub-block D5: the addition would have taken it to
+//! **exactly 500 lines**, that is to ZERO margin, and the repository's rule
+//! is "extraction, never compression". ⚠️ **A1's plan had estimated
+//! this addition at ~18 lines; it weighs 55**, and it was measurement that
+//! said so, not re-reading. `fenetre.rs` has already crossed 500 twice — 508 in
+//! D9, 505 in D10 —, and it was saved by an extraction both times.
 //!
-//! 🔴 **AUCUN TEST D'HÔTE NE COUVRE CE FICHIER** : il est `#[cfg(windows)]` par
-//! son appelant et par `accent::win32`. Son seul contrôle est le **critère ④**
-//! de la recette — exactement UNE ligne `accent de la fenetre Windows` par
-//! `session` sur un palier de 60 s.
+//! 🔴 **NO HOST TEST COVERS THIS FILE**: it is `#[cfg(windows)]` through
+//! its caller and through `accent::win32`. Its only check is **criterion ④**
+//! of the acceptance run — exactly ONE `accent de la fenetre Windows` line per
+//! `session` over a 60 s plateau.
 //!
-//! ⚠️ **La lecture vit ICI, sur le FIL DE FENÊTRE, et non sur le tour de roue
-//! du registre**, contrairement à ce que la décision D9 de la spécification
-//! prescrivait. La raison est mécanique et non esthétique : **le tour de roue
-//! n'a pas le `hwnd`** — aucun des quinze champs d'`Etat`
-//! (`capteur/sommeil/registre.rs`) ne le porte, et `inscrire(session, pid)` ne
-//! le prend pas. Le presse-papier y vit parce qu'il est **global à la window
-//! station** ; l'accent est **par fenêtre**, ce qui est justement la propriété
-//! que D9 revendique. Le patron est le plein écran de D8, resté dans
-//! `fenetre.rs` juste au-dessus de l'appel à ce module.
+//! ⚠️ **The read lives HERE, on the WINDOW THREAD, and not on the registry's
+//! wheel round**, contrary to what the specification's decision D9
+//! prescribed. The reason is mechanical, not aesthetic: **the wheel round
+//! does not have the `hwnd`** — none of the fifteen fields of `Etat`
+//! (`capteur/sommeil/registre.rs`) carries it, and `inscrire(session, pid)` does not
+//! take it. The clipboard lives there because it is **global to the window
+//! station**; the accent is **per window**, which is precisely the property
+//! D9 claims. The pattern is D8's fullscreen, which stayed in
+//! `fenetre.rs` just above the call to this module.
 
 use std::sync::mpsc::SyncSender;
 use std::time::Instant;
@@ -32,53 +32,53 @@ use crate::accent;
 use crate::capteur::protocole::DepuisCapteur;
 use crate::windows_source::WindowsSource;
 
-/// Un tour d'accent : lit l'icône si le minuteur est échu, et dépose une
-/// annonce si — et seulement si — la teinte a CHANGÉ.
+/// One accent round: reads the icon if the timer is due, and drops an
+/// announcement if — and only if — the tint has CHANGED.
 ///
-/// Rend `Some(Fin::Terminer(motif))` si le dépôt a fait tomber la connexion
-/// média, `None` dans tous les autres cas — **y compris quand il n'y a rien à
-/// annoncer, et y compris quand l'icône est illisible.**
+/// Returns `Some(Fin::Terminer(motif))` if the drop brought down the media
+/// connection, `None` in all other cases — **including when there is nothing to
+/// announce, and including when the icon is unreadable.**
 ///
-/// 🔴 **`accent::actif()` EST TESTÉ EN PREMIER** : `ACCENT=0` doit empêcher
-/// jusqu'au `SendMessageTimeout`, pas seulement l'envoi. C'est ce que
-/// `Sondeur::tour` fait pour le presse-papier, et pour la même raison — une
-/// variable qui désarme un mécanisme doit désarmer sa **LECTURE**, sans quoi
-/// elle n'économise rien et ne prouve rien.
+/// 🔴 **`accent::actif()` IS TESTED FIRST**: `ACCENT=0` must prevent
+/// even the `SendMessageTimeout`, not only the sending. That is what
+/// `Sondeur::tour` does for the clipboard, and for the same reason — a
+/// variable that disarms a mechanism must disarm its **READ**, otherwise
+/// it saves nothing and proves nothing.
 ///
-/// ⚠️ **`accent::PERIODE_ACCENT` est une constante PROPRE à ce mécanisme** : ne
-/// pas la coupler à `plein_ecran::PERIODE_STYLE`, qui borne une lecture
-/// différente pour une raison différente.
+/// ⚠️ **`accent::PERIODE_ACCENT` is a constant SPECIFIC to this mechanism**: do
+/// not couple it to `plein_ecran::PERIODE_STYLE`, which bounds a different
+/// read for a different reason.
 ///
-/// ⚠️ **Une icône illisible n'est PAS une erreur** : `lire_icone` rend `None`
-/// sur un délai dépassé, un `HICON` nul ou un `GetDIBits` en échec, et
-/// `dominante` rend `None` sur une icône entièrement grise ou vide. Les deux se
-/// traitent pareil — le tour ne produit aucune annonce, et il ne journalise
-/// rien non plus : une trace par tour serait douze lignes par minute et par
-/// fenêtre pour dire qu'il ne se passe rien.
+/// ⚠️ **An unreadable icon is NOT an error**: `lire_icone` returns `None`
+/// on a timeout, a null `HICON` or a failed `GetDIBits`, and
+/// `dominante` returns `None` on an entirely grey or empty icon. Both are
+/// handled the same way — the round produces no announcement, and it logs
+/// nothing either: one trace per round would be twelve lines per minute and per
+/// window to say that nothing is happening.
 #[cfg(windows)]
 pub(super) fn tour(
     suivi: &mut accent::SuiviAccent,
-    dernier: &mut Instant,
+    last: &mut Instant,
     hwnd: windows::Win32::Foundation::HWND,
     ecritures: &SyncSender<AEcrire>,
     source: Option<&mut WindowsSource>,
     ctx: &Contexte,
 ) -> Option<Fin> {
-    if !accent::actif() || dernier.elapsed() < accent::PERIODE_ACCENT {
+    if !accent::actif() || last.elapsed() < accent::PERIODE_ACCENT {
         return None;
     }
-    *dernier = Instant::now();
+    *last = Instant::now();
 
     let (rgba, largeur, hauteur) = accent::win32::lire_icone(hwnd)?;
     let rgb = accent::dominante(&rgba, largeur, hauteur)?;
     let couleur = suivi.observer(&accent::en_hexa(rgb))?;
 
-    // ⚠️ La trace porte `session` PARCE QUE TOUS LES ENFANTS PARTAGENT
-    // `agent.log` DEPUIS D4 : une trace sans ce champ y est un nombre dans un
-    // multiensemble anonyme (consignation n°2 de D6, payée en pleine recette).
-    // Et elle ne sort QU'AU CHANGEMENT : c'est sur elle, et sur elle seule, que
-    // le critère ④ se compte.
-    tracing::info!(session = %ctx.session, couleur = %couleur, "accent de la fenetre Windows");
+    // ⚠️ The trace carries `session` BECAUSE ALL CHILDREN HAVE SHARED
+    // `agent.log` SINCE D4: a trace without this field there is a number in an
+    // anonymous multiset (D6's record no. 2, paid for in the middle of an acceptance run).
+    // And it only comes out ON CHANGE: it is on it, and on it alone, that
+    // criterion ④ is counted.
+    tracing::info!(session = %ctx.session, couleur = %couleur, "Windows window accent");
 
     match deposer(
         AEcrire::Etat(DepuisCapteur::Accent { couleur }),

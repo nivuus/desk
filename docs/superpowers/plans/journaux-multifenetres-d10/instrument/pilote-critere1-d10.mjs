@@ -118,7 +118,7 @@ async function marqueurs(etiquette) {
         enfant_lance: compte('enfant lancé'),
         enfant_termine: compte('enfant terminé'),
         cloture: compte('clôture de session amorcée'),
-        erreurs: compte('ERROR'),
+        errors: compte('ERROR'),
     };
     log(`MARQUEURS (${etiquette}) ` + JSON.stringify(m));
     return m;

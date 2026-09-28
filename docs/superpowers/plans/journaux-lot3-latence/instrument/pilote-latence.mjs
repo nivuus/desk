@@ -176,12 +176,12 @@ async function lancerUneApplication(j, vmId, motif) {
         headers: { Authorization: `Bearer ${j}` },
     });
     const c = await r.json();
-    const liste = c.applications ?? c;
-    if (!Array.isArray(liste)) throw new Error(`/applications a rendu ${JSON.stringify(c).slice(0, 200)}`);
-    const choisie = liste.find((a) => new RegExp(motif, 'i').test(a.nom ?? a.cle ?? ''));
+    const list = c.applications ?? c;
+    if (!Array.isArray(list)) throw new Error(`/applications a rendu ${JSON.stringify(c).slice(0, 200)}`);
+    const choisie = list.find((a) => new RegExp(motif, 'i').test(a.nom ?? a.cle ?? ''));
     if (!choisie) {
-        throw new Error(`aucune application ne correspond à /${motif}/ parmi ${liste.length} : `
-            + liste.slice(0, 30).map((a) => a.nom).join(' | '));
+        throw new Error(`aucune application ne correspond à /${motif}/ parmi ${list.length} : `
+            + list.slice(0, 30).map((a) => a.nom).join(' | '));
     }
     const l = await fetch(`${PLATEFORME}/application/${choisie.id}/lancer`, {
         method: 'POST',
@@ -193,11 +193,11 @@ async function lancerUneApplication(j, vmId, motif) {
 /// La distribution. ⚠️ Le rang du percentile est celui de la liste TRIÉE, et
 /// une liste vide ne rend pas 0 — elle rend `null` : un zéro serait un chiffre
 /// là où il n'y a pas de mesure.
-function distribution(valeurs) {
-    if (valeurs.length === 0) {
+function distribution(values) {
+    if (values.length === 0) {
         return { n: 0, mediane_ms: null, p90_ms: null, p99_ms: null, min_ms: null, max_ms: null };
     }
-    const t = [...valeurs].sort((a, b) => a - b);
+    const t = [...values].sort((a, b) => a - b);
     const q = (p) => t[Math.min(t.length - 1, Math.floor(p * (t.length - 1)))];
     return {
         n: t.length,
@@ -414,10 +414,10 @@ try {
     // ⚠️ Chaque taille est TENUE assez longtemps pour que le lissage du client
     // la laisse partir ; une rafale serait coalescee et le journal ne porterait
     // qu'une demande.
-    const TAILLES = arg('resize', '').split(',').filter(Boolean);
-    if (TAILLES.length) {
+    const SIZES = arg('resize', '').split(',').filter(Boolean);
+    if (SIZES.length) {
         releve.resize = [];
-        for (const t of TAILLES) {
+        for (const t of SIZES) {
             const [l, h] = t.split('x').map(Number);
             for (const s of sessions) {
                 await s.cdp.envoyer('Emulation.setDeviceMetricsOverride',
@@ -446,12 +446,12 @@ try {
 
     releve.amorces_posees = navigateur ? navigateur.posees.length : 0;
     releve.bras.mesure = [];
-    const toutes = [];
+    const all = [];
     for (const s of sessions) {
         const ech = await s.cdp.evaluer('window.__latenceLot3()');
         const cpt = await s.cdp.evaluer('window.__latenceLot3Compteurs()');
         const lat = ech.map((e) => e.latence_ms);
-        toutes.push(...lat);
+        all.push(...lat);
         // Le diagnostic d'horloge : ce que le pair annonce réellement.
         const horloge = await s.cdp.evaluer(`(async () => {
           const p = (window.__pcLot3 || [])[0];
@@ -501,11 +501,11 @@ try {
         log(`horloge ${s.url} : ${JSON.stringify(horloge).slice(0, 700)}`);
         log(`${s.url} → ${JSON.stringify(distribution(lat))} (compteurs ${JSON.stringify(cpt)})`);
     }
-    releve.distribution_agregee = distribution(toutes);
+    releve.distribution_agregee = distribution(all);
     log('AGRÉGÉ : ' + JSON.stringify(releve.distribution_agregee));
 } catch (e) {
-    releve.erreur = String(e && e.message ? e.message : e);
-    log('ERREUR : ' + releve.erreur);
+    releve.error = String(e && e.message ? e.message : e);
+    log('ERREUR : ' + releve.error);
 } finally {
     chrome.kill('SIGKILL');
     // 🔴 LE PROFIL CHROME PART AVEC LE PILOTE. Chaque exécution en laissait un

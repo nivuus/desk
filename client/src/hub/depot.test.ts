@@ -2,51 +2,51 @@ import { describe, expect, it } from 'vitest';
 import { deposer, resumer } from './depot';
 import type { DepsTeleversement, Issue } from './televersement';
 
-const FICHIER = new File([new Uint8Array([1, 2, 3])], 'app.msi');
+const FILE = new File([new Uint8Array([1, 2, 3])], 'app.msi');
 
 describe('resumer', () => {
-    it('rend un ton de SUCCÈS et nomme le fichier quand le scellement passe', () => {
-        const issue: Issue = { etat: 'scelle', id: 't-1', taille: 3, sha256: 'ab', deposees: [0] };
-        expect(resumer(FICHIER, issue)).toEqual({
+    it('returns a SUCCESS tone and names the file when sealing passes', () => {
+        const issue: Issue = { etat: 'scelle', id: 't-1', size: 3, sha256: 'ab', deposees: [0] };
+        expect(resumer(FILE, issue)).toEqual({
             ton: 'succes',
-            texte: 'app.msi a été téléversé et scellé (1 tranche(s) déposée(s)).',
+            texte: 'app.msi was uploaded and sealed (1 chunk(s) deposited).',
             id: 't-1',
         });
     });
 
-    it('rend le MOTIF DU SERVICE tel quel, jamais réécrit', () => {
+    it('returns the SERVICE REASON as is, never rewritten', () => {
         const issue: Issue = {
             etat: 'refus',
             id: 't-2',
             refus: { source: 'service', etape: 'scellement', statut: 409, motif: 'empreinte-divergente' },
         };
-        const r = resumer(FICHIER, issue);
+        const r = resumer(FILE, issue);
         expect(r.ton).toBe('danger');
-        // 🔴 LE MOTIF DOIT APPARAÎTRE MOT POUR MOT : le traduire en ferait une
-        //    copie qu'aucun type ne confronte à sa source.
+        // 🔴 THE REASON MUST APPEAR WORD FOR WORD: translating it would make it a
+        //    copy no type confronts with its source.
         expect(r.texte).toContain('empreinte-divergente');
         expect(r.id).toBe('t-2');
     });
 
-    it('distingue un refus LOCAL d\'un refus du SERVICE', () => {
+    it('tells a LOCAL refusal from a SERVICE refusal', () => {
         const issue: Issue = {
             etat: 'refus',
-            refus: { source: 'client', motif: 'fichier-different', detail: 'la taille a changé' },
+            refus: { source: 'client', motif: 'fichier-different', detail: 'the size changed' },
         };
-        const r = resumer(FICHIER, issue);
+        const r = resumer(FILE, issue);
         expect(r.texte).toContain('fichier-different');
-        expect(r.texte).toContain('la taille a changé');
+        expect(r.texte).toContain('the size changed');
         expect(r.texte).not.toContain('service');
         expect(r.id).toBeUndefined();
     });
 });
 
-describe('deposer — le point de convergence', () => {
-    /// 🔴 CE TEST EST CELUI QUI REND LA ROUGE DU CRITÈRE ② HONNÊTE : il éprouve
-    ///    que `deposer` mène RÉELLEMENT au téléversement, et pas seulement
-    ///    qu'il rend un objet. Les deux chemins du hub — glisser-déposer et
-    ///    `launchQueue` — appellent CETTE fonction, et aucune autre.
-    it('mène un fichier jusqu\'au scellement, et le rapporte', async () => {
+describe('deposer — the convergence point', () => {
+    /// 🔴 THIS TEST IS THE ONE THAT MAKES THE RED OF CRITERION ② HONEST: it exercises
+    ///    that `deposer` REALLY leads to the upload, and not only
+    ///    that it returns an object. Both paths of the hub — drag and drop and
+    ///    `launchQueue` — call THIS function, and no other.
+    it('takes a file all the way to sealing, and reports it', async () => {
         const vus: string[] = [];
         const deps: DepsTeleversement = {
             base: 'https://x',
@@ -55,11 +55,11 @@ describe('deposer — le point de convergence', () => {
             fetch: async (url, init) => {
                 vus.push(`${init?.method ?? 'GET'} ${url.replace('https://x', '')}`);
                 if (url.endsWith('/televersement')) {
-                    // ⚠️ `taille_tranche` EST UN CONTRAT, pas un ornement :
-                    //    `televerser` refuse en `etat-illisible` sans lui. Un
-                    //    premier jet de ce factice l'omettait, et le test a
-                    //    rougi — il éprouve donc bien la séquence RÉELLE.
-                    //    À 2 octets par tranche, un fichier de 3 en fait DEUX.
+                    // ⚠️ `taille_tranche` IS A CONTRACT, not an ornament:
+                    //    `televerser` refuses with `etat-illisible` without it. A
+                    //    first draft of this fake omitted it, and the test went
+                    //    red — so it does exercise the REAL sequence.
+                    //    At 2 bytes per chunk, a file of 3 makes TWO.
                     return {
                         ok: true,
                         status: 201,
@@ -69,9 +69,9 @@ describe('deposer — le point de convergence', () => {
                 return { ok: true, status: 200, json: async () => ({}) };
             },
         };
-        const resume = await deposer(FICHIER, deps);
+        const resume = await deposer(FILE, deps);
         expect(resume.ton).toBe('succes');
-        // La séquence RÉELLE : création, une tranche, scellement.
+        // The REAL sequence: creation, one chunk, sealing.
         expect(vus[0]).toBe('POST /televersement');
         expect(vus.filter((v) => v.startsWith('PUT /televersement/t-9/tranche/'))).toEqual([
             'PUT /televersement/t-9/tranche/0',
@@ -80,14 +80,14 @@ describe('deposer — le point de convergence', () => {
         expect(vus.at(-1)).toBe('POST /televersement/t-9/sceller');
     });
 
-    it('rend un refus du service SANS lever', async () => {
+    it('returns a service refusal WITHOUT throwing', async () => {
         const deps: DepsTeleversement = {
             base: 'https://x',
             jeton: 'J',
             maintenant: () => 0,
             fetch: async () => ({ ok: false, status: 413, json: async () => ({ refus: 'trop-gros' }) }),
         };
-        const resume = await deposer(FICHIER, deps);
+        const resume = await deposer(FILE, deps);
         expect(resume.ton).toBe('danger');
         expect(resume.texte).toContain('trop-gros');
     });

@@ -1,43 +1,43 @@
-//! Lancer l'installeur, l'attendre sans le tuer, et rapporter ce qui s'est
-//! passé.
+//! Launch the installer, wait for it without killing it, and report what
+//! happened.
 //!
-//! 🔴 CE MODULE EST LE SEUL DE `apps::installation` À PORTER UN `cfg`, ET IL
-//! N'A, SUR L'HÔTE, AUCUNE ÉPREUVE POSSIBLE hors
-//! `cargo check --target x86_64-pc-windows-gnu`. C'est pour cela que tout ce
-//! qui pouvait en sortir en est sorti : le verdict, la fenêtre de comptage, les
-//! chemins, les extensions, la cadence et l'analyse des en-têtes HTTP sont six
-//! modules PURS, et c'est là qu'est la couverture. Sa seule autre épreuve est
-//! la recette sur VM.
+//! 🔴 THIS MODULE IS THE ONLY ONE IN `apps::installation` TO CARRY A `cfg`, AND IT
+//! HAS, ON THE HOST, NO POSSIBLE TEST outside
+//! `cargo check --target x86_64-pc-windows-gnu`. That is why everything that
+//! could leave it has left: the verdict, the counting window, the
+//! paths, the extensions, the cadence and parsing HTTP headers are six
+//! PURE modules, and that is where the coverage is. Its only other test is
+//! the acceptance run on the VM.
 //!
-//! 🔴 `CreateProcessW`, ET NON `ShellExecuteExW` — L'INVERSE DE `apps::lancement`.
-//! Pour une application, un double-clic est ce qu'on veut : `ShellExecuteEx`
-//! honore le verbe, le répertoire de travail et le `nShow`. Pour un installeur,
-//! la décision s'inverse, et voici pourquoi.
+//! 🔴 `CreateProcessW`, AND NOT `ShellExecuteExW` — THE OPPOSITE OF `apps::lancement`.
+//! For an application, a double-click is what we want: `ShellExecuteEx`
+//! honours the verb, the working directory and the `nShow`. For an installer,
+//! the decision reverses, and here is why.
 //!
-//! `ShellExecuteExW` **DÉCLENCHE l'élévation** quand le manifeste de la cible
-//! la demande : la boîte de dialogue s'ouvre — sur le bureau sécurisé, que
-//! Desktop Duplication ne capture pas — et l'appel **ATTEND**. L'utilisateur
-//! voit un écran figé et le produit ne sait rien dire. `CreateProcessW`, lui,
-//! ne s'élève **jamais** : il échoue avec `ERROR_ELEVATION_REQUIRED` (740), ce
-//! qui transforme un écran figé en **refus typé que le hub peut afficher**.
+//! `ShellExecuteExW` **TRIGGERS elevation** when the target's manifest
+//! asks for it: the dialog opens — on the secure desktop, which
+//! Desktop Duplication does not capture — and the call **WAITS**. The user
+//! sees a frozen screen and the product can say nothing. `CreateProcessW`
+//! **never** elevates: it fails with `ERROR_ELEVATION_REQUIRED` (740), which
+//! turns a frozen screen into a **typed refusal the hub can display**.
 //!
-//! ⚠️ **CETTE DERNIÈRE PHRASE EST UNE LECTURE DE LA DOCUMENTATION WINDOWS, PAS
-//! UNE MESURE DE CE DÉPÔT**, et c'est la prémisse de tout le remède. La porte
-//! du sous-bloc (son observation (e)) doit la confirmer ou la réfuter sur la
-//! VM. **À la date où ce fichier est écrit, elle n'a pas été jouée** : la VM
-//! était tenue par un chantier concurrent. Si elle est réfutée — si l'appel
-//! réussit, ou échoue autrement —, le refus typé ci-dessous doit être
-//! reconstruit sur un autre indice, et **la branche `elevation-requise` sera
-//! simplement inatteignable** plutôt que fausse. Le dire évite qu'on bâtisse
-//! une famille de refus sur une phrase que personne n'a éprouvée — c'est
-//! exactement ce que le libellé de `MF_E_UNSUPPORTED_D3D_TYPE` a coûté à ce
-//! dépôt le 31 juillet 2026.
+//! ⚠️ **THIS LAST SENTENCE IS A READING OF THE WINDOWS DOCUMENTATION, NOT
+//! A MEASUREMENT OF THIS REPOSITORY**, and it is the premise of the whole remedy. The gate
+//! of the sub-block (its observation (e)) must confirm or refute it on the
+//! VM. **At the date this file is written, it has not been played**: the VM
+//! was held by a concurrent work stream. If it is refuted — if the call
+//! succeeds, or fails otherwise —, the typed refusal below must be
+//! rebuilt on another clue, and **the `elevation-requise` branch will
+//! simply be unreachable** rather than false. Saying so keeps anyone from building
+//! a family of refusals on a sentence nobody has tested — that is
+//! exactly what the wording of `MF_E_UNSUPPORTED_D3D_TYPE` cost this
+//! repository on 31 July 2026.
 //!
-//! ⚠️ **CE QUE LE REMÈDE N'ATTRAPE PAS** : un installeur qui s'élève LUI-MÊME
-//! en cours de route — il démarre sans privilège puis appelle
-//! `ShellExecute … runas`. Celui-là provoquera la boîte de dialogue que la
-//! porte décrit, et **rien ne l'en empêche** : il est borné par
-//! `EXPIRATION_EXECUTION`, et rien d'autre.
+//! ⚠️ **WHAT THE REMEDY DOES NOT CATCH**: an installer that elevates ITSELF
+//! along the way — it starts without privilege then calls
+//! `ShellExecute … runas`. That one will cause the dialog the
+//! gate describes, and **nothing prevents it**: it is bounded by
+//! `EXPIRATION_EXECUTION`, and nothing else.
 
 use std::path::Path;
 
@@ -58,98 +58,98 @@ use super::depot::Extension;
 use super::journal::queue_octets;
 use super::verdict::Motif;
 
-/// Au-delà, l'agent CESSE D'ATTENDRE — **il ne tue pas**.
+/// Beyond this, the agent STOPS WAITING — **it does not kill**.
 ///
-/// 🔴 TUER UN INSTALLEUR AU MILIEU EST PIRE QUE DE CESSER DE L'ATTENDRE : il
-/// laisserait la machine à moitié installée, registre écrit à demi, sans que
-/// rien ne sache dans quel état. L'issue devient `issue-inconnue`, qui dit la
-/// vérité : on ne sait pas.
+/// 🔴 KILLING AN INSTALLER MIDWAY IS WORSE THAN STOPPING WAITING FOR IT: it
+/// would leave the machine half installed, registry half written, without
+/// anything knowing in which state. The outcome becomes `issue-inconnue`, which tells the
+/// truth: we do not know.
 ///
-/// ⚠️ **NON CALIBRÉE**, elle rejoint la liste que ce dépôt tient depuis
+/// ⚠️ **NOT CALIBRATED**, it joins the list this repository has kept since
 /// `BPP_MIN`.
 pub const EXPIRATION_EXECUTION_MS: u64 = 2 * 60 * 60 * 1000;
 
-/// Entre deux scrutations de la sortie du processus.
+/// Between two polls of the process's exit.
 const PAS_DE_SCRUTATION_MS: u64 = 500;
 
-/// Ce qu'une exécution a produit.
+/// What a run produced.
 pub struct Sortie {
-    /// `None` = **le code n'a pas pu être recueilli** — expiration, ou échec de
-    /// lecture. Ce n'est pas un code, et une sentinelle `-1` les confondrait.
+    /// `None` = **the code could not be collected** — expiry, or read
+    /// failure. It is not a code, and a `-1` sentinel would confuse them.
     pub code: Option<i32>,
-    /// La queue du journal, bornée.
+    /// The tail of the log, bounded.
     pub journal: String,
     pub journal_tronque: bool,
-    /// `true` si l'agent a cessé d'attendre sans que le processus soit sorti.
+    /// `true` if the agent stopped waiting without the process having exited.
     pub expire: bool,
 }
 
-/// 🔴 LE GARDE DE JOB, ET C'EST LUI QUI REND LE CRITÈRE ⑦ DÉCIDABLE.
+/// 🔴 THE JOB GUARD, AND IT IS WHAT MAKES CRITERION ⑦ DECIDABLE.
 ///
-/// La spécification (D8) interdit que l'installeur soit assigné au job object
-/// du superviseur : un redémarrage d'agent le tuerait au milieu d'une écriture
-/// de registre et laisserait la machine à moitié installée.
+/// The specification (D8) forbids the installer from being assigned to the supervisor's
+/// job object: an agent restart would kill it in the middle of a registry
+/// write and leave the machine half installed.
 ///
-/// ❌ **CE QUI SUIT ÉTAIT UNE LECTURE, ET LA MESURE L'A RÉFUTÉE.** Le plan la
-/// donnait pour telle — son M5 s'intitule « LECTURE, PAS MESURE » —, et la
-/// sonde de la tâche 2 existait pour la convertir. Elle l'a convertie, et
-/// contre elle.
+/// ❌ **WHAT FOLLOWS WAS A READING, AND THE MEASUREMENT REFUTED IT.** The plan
+/// presented it as such — its M5 is titled "READING, NOT MEASUREMENT" —, and the
+/// probe of task 2 existed to convert it. It did convert it, and
+/// against it.
 ///
-/// La lecture disait : « **le superviseur ne s'assigne pas lui-même** — relevé
-/// dans `superviseur/lanceur.rs`, qui n'appelle `AssignProcessToJobObject` que
-/// sur ses ENFANTS. Un processus qu'il crée n'hérite donc d'aucun job. » La
-/// PRÉMISSE est exacte — `lanceur.rs` fait bien cela. **La CONCLUSION est
-/// fausse**, parce qu'elle ignorait le mode de lancement : `run-agent.sh` passe
-/// par le **planificateur de tâches**, qui place sa tâche dans un job. Mesuré
-/// sur la VM : superviseur, capteur et pont sont **tous les trois** dans un
-/// job, ainsi que le PowerShell de la sonde et l'enfant qu'il crée.
+/// The reading said: "**the supervisor does not assign itself** — noted
+/// in `superviseur/lanceur.rs`, which only calls `AssignProcessToJobObject`
+/// on its CHILDREN. A process it creates therefore inherits no job." The
+/// PREMISE is correct — `lanceur.rs` does do that. **The CONCLUSION is
+/// false**, because it ignored the launch mode: `run-agent.sh` goes
+/// through the **task scheduler**, which puts its task in a job. Measured
+/// on the VM: supervisor, sensor and bridge are **all three** in a
+/// job, as are the probe's PowerShell and the child it creates.
 ///
-/// ⚠️ **On ne peut pas en sortir** : `CREATE_BREAKAWAY_FROM_JOB` est refusé
-/// (`ERROR_ACCESS_DENIED`, 5) — le job ne porte pas `JOB_OBJECT_LIMIT_BREAKAWAY_OK`.
+/// ⚠️ **There is no way out of it**: `CREATE_BREAKAWAY_FROM_JOB` is refused
+/// (`ERROR_ACCESS_DENIED`, 5) — the job does not carry `JOB_OBJECT_LIMIT_BREAKAWAY_OK`.
 ///
-/// ✅ **Mais le job NE TUE PAS À LA FERMETURE**, et c'est ce qui sauve le
-/// critère ⑦ : la tâche terminée et son lanceur mort, l'enfant direct survit.
-/// **⑦ n'est donc ni vacueux ni perdu — il est TENU, pour une raison qu'aucune
-/// lecture n'avait trouvée.**
+/// ✅ **But the job DOES NOT KILL ON CLOSE**, and that is what saves
+/// criterion ⑦: once the task is finished and its launcher dead, the direct child survives.
+/// **⑦ is therefore neither vacuous nor lost — it is HELD, for a reason no
+/// reading had found.**
 ///
-/// 🔴 ET LE PONT, LUI, **EST** DANS LE JOB. `apps::brancher` est appelée avant
-/// l'aiguillage `PONT` dans `main.rs` ; sous le leg n°1 de G1 — le pont
-/// s'enrôlait sous le même `vm_id` que son père — l'ordre d'installation
-/// pouvait lui échoir, et il aurait lancé l'installeur **depuis un processus
-/// assigné au job**, donc tué à la mort du superviseur. C'est exactement ce que
-/// la spec D8 interdit, et cela ne se voit qu'en croisant trois fichiers.
+/// 🔴 AND THE BRIDGE ITSELF **IS** IN THE JOB. `apps::brancher` is called before
+/// the `PONT` switch in `main.rs`; under G1 legacy no. 1 — the bridge
+/// enrolled under the same `vm_id` as its parent — the installation order
+/// could fall to it, and it would have launched the installer **from a process
+/// assigned to the job**, hence killed when the supervisor died. That is exactly what
+/// spec D8 forbids, and it can only be seen by cross-reading three files.
 ///
-/// **D'où ce garde : l'agent REFUSE d'installer depuis un processus assigné à
-/// un job.** Un refus bruyant vaut mieux qu'une installation qu'un
-/// redéploiement tuera au milieu.
+/// **Hence this guard: the agent REFUSES to install from a process assigned to
+/// a job.** A loud refusal is better than an installation that a
+/// redeployment will kill midway.
 ///
-/// ⚠️ **C'EST UN GARDE, PAS LE REMÈDE.** Le remède est le leg n°1 de G1, qui
-/// n'appartient pas à G3 : trois décisions y sont possibles et aucune n'est
-/// tranchée. G3 le nomme, s'en protège, et ne le referme pas.
-/// Le job de ce processus **tue-t-il ses membres à sa fermeture** ?
+/// ⚠️ **IT IS A GUARD, NOT THE REMEDY.** The remedy is G1 legacy no. 1, which
+/// does not belong to G3: three decisions are possible there and none is
+/// settled. G3 names it, protects itself from it, and does not close it.
+/// Does this process's job **kill its members when it closes**?
 ///
-/// 🔴 **C'EST LA QUESTION QUI DÉCIDE, et elle a remplacé « suis-je dans un
-/// job ? » sur la foi d'une MESURE** — voir l'en-tête du module. Le danger que
-/// la spec D8 nomme n'est pas l'appartenance à un job : c'est
-/// `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`, qui fait mourir l'installeur avec
-/// l'agent, au milieu d'une écriture de registre.
+/// 🔴 **IT IS THE QUESTION THAT DECIDES, and it replaced "am I in a
+/// job?" on the strength of a MEASUREMENT** — see the module header. The danger that
+/// spec D8 names is not membership of a job: it is
+/// `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`, which makes the installer die with
+/// the agent, in the middle of a registry write.
 ///
-/// ⚠️ **`None` POUR LA POIGNÉE INTERROGE LE JOB DU PROCESSUS COURANT** — c'est
-/// la sémantique de `QueryInformationJobObject`, et c'est la seule dont nous
-/// disposions : nous n'avons pas la poignée du job que le planificateur de
-/// tâches a créé, et nous n'avons aucun moyen de l'obtenir.
+/// ⚠️ **`None` FOR THE HANDLE QUERIES THE JOB OF THE CURRENT PROCESS** — that is
+/// the semantics of `QueryInformationJobObject`, and it is the only one we
+/// have: we do not have the handle of the job the task
+/// scheduler created, and we have no way of obtaining it.
 ///
-/// ⚠️ **HORS DE TOUT JOB, L'APPEL ÉCHOUE**, et c'est le cas nominal d'un agent
-/// lancé à la main. On répond alors `false` : pas de job, pas de job qui tue.
+/// ⚠️ **OUTSIDE ANY JOB, THE CALL FAILS**, and that is the nominal case of an agent
+/// launched by hand. We then answer `false`: no job, no killing job.
 pub fn job_tue_a_la_fermeture() -> bool {
     let mut infos = JOBOBJECT_EXTENDED_LIMIT_INFORMATION::default();
-    let taille = std::mem::size_of::<JOBOBJECT_EXTENDED_LIMIT_INFORMATION>() as u32;
+    let size = std::mem::size_of::<JOBOBJECT_EXTENDED_LIMIT_INFORMATION>() as u32;
     let ok = unsafe {
         QueryInformationJobObject(
             None,
             JobObjectExtendedLimitInformation,
             (&mut infos as *mut JOBOBJECT_EXTENDED_LIMIT_INFORMATION).cast(),
-            taille,
+            size,
             None,
         )
     };
@@ -158,100 +158,100 @@ pub fn job_tue_a_la_fermeture() -> bool {
             .BasicLimitInformation
             .LimitFlags
             .contains(JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE),
-        Err(erreur) => {
-            // ⚠️ UN ÉCHEC N'EST PAS UN OUI. Hors de tout job, l'appel échoue, et
-            // c'est exactement l'état où il n'y a rien à craindre. Refuser
-            // l'installation parce qu'on n'a pas su poser la question serait la
-            // panne que ce garde vient précisément de cesser d'être.
-            tracing::debug!(%erreur, "QueryInformationJobObject a échoué : aucun job, ou job non interrogeable");
+        Err(error) => {
+            // ⚠️ A FAILURE IS NOT A YES. Outside any job, the call fails, and
+            // that is exactly the state where there is nothing to fear. Refusing
+            // the installation because the question could not be asked would be the
+            // failure this guard has precisely just stopped being.
+            tracing::debug!(%error, "QueryInformationJobObject failed: no job, or a job that cannot be queried");
             false
         }
     }
 }
 
-pub fn dans_un_job() -> bool {
-    // ⚠️ `BOOL` VIT DANS `windows::core`, PAS DANS `Win32::Foundation` — écart
-    // d'API de windows-rs 0.62, que `agent/src/window.rs` documente déjà. Le
-    // crate est verrouillé à **0.62.2** dans `Cargo.lock` : lire une signature
-    // d'une autre version enverrait chercher une erreur là où il n'y en a pas.
+pub fn in_a_job() -> bool {
+    // ⚠️ `BOOL` LIVES IN `windows::core`, NOT IN `Win32::Foundation` — an
+    // API gap of windows-rs 0.62, which `agent/src/window.rs` already documents. The
+    // crate is locked at **0.62.2** in `Cargo.lock`: reading a signature
+    // from another version would send one looking for an error where there is none.
     let mut dedans = windows::core::BOOL(0);
-    // ⚠️ `None` POUR LE JOB : la question est « dans UN job », pas « dans CE
-    // job ». Nous n'avons pas la poignée du job du superviseur, et nous n'en
-    // avons pas besoin.
+    // ⚠️ `None` FOR THE JOB: the question is "in A job", not "in THIS
+    // job". We do not have the handle of the supervisor's job, and we do not
+    // need it.
     //
-    // ❌ **CETTE FONCTION NE DÉCIDE PLUS DE RIEN, et la phrase qui la
-    // justifiait — « n'importe quel job suffit à faire mourir l'installeur » —
-    // EST RÉFUTÉE PAR LA MESURE** (voir l'en-tête du module). Elle reste parce
-    // qu'elle est journalisée à chaque installation : savoir qu'on est dans un
-    // job, sans en mourir, est précisément le fait que personne n'attendait.
+    // ❌ **THIS FUNCTION NO LONGER DECIDES ANYTHING, and the sentence that
+    // justified it — "any job is enough to make the installer die" —
+    // IS REFUTED BY THE MEASUREMENT** (see the module header). It stays because
+    // it is logged at every installation: knowing that one is in a
+    // job, without dying from it, is precisely the fact nobody expected.
     let ok = unsafe { IsProcessInJob(GetCurrentProcess(), None, &mut dedans) };
     match ok {
         Ok(()) => dedans.as_bool(),
-        Err(erreur) => {
-            // ⚠️ UN ÉCHEC DE LA QUESTION N'EST PAS UNE RÉPONSE. On journalise
-            // et on répond `false` : refuser toute installation parce qu'on
-            // n'a pas su poser la question serait une panne pire que le risque.
-            tracing::warn!(%erreur, "IsProcessInJob a échoué : on suppose hors job");
+        Err(error) => {
+            // ⚠️ A FAILED QUESTION IS NOT AN ANSWER. We log
+            // and answer `false`: refusing every installation because we
+            // could not ask the question would be a failure worse than the risk.
+            tracing::warn!(%error, "IsProcessInJob failed: assuming outside any job");
             false
         }
     }
 }
 
-/// Lance l'installeur et l'attend, sans jamais le tuer.
+/// Launches the installer and waits for it, without ever killing it.
 ///
-/// `maintenant_ms` est un PARAMÈTRE : c'est l'horloge de l'appelant, comme
-/// partout dans ce dépôt.
+/// `maintenant_ms` is a PARAMETER: it is the caller's clock, as
+/// everywhere in this repository.
 pub fn executer(
     chemin: &Path,
     extension: Extension,
     repertoire: &Path,
     maintenant_ms: impl Fn() -> u64,
 ) -> Result<Sortie, Motif> {
-    // 🔴 LE GARDE PASSE AVANT TOUT, ET LES DEUX BOOLÉENS SONT JOURNALISÉS À
-    // CHAQUE INSTALLATION — que le refus ait lieu ou non. Ce sont ces lignes,
-    // et elles seules, qui rendent le critère ⑦ décidable.
+    // 🔴 THE GUARD GOES FIRST, AND BOTH BOOLEANS ARE LOGGED AT
+    // EVERY INSTALLATION — whether the refusal happens or not. It is these lines,
+    // and they alone, that make criterion ⑦ decidable.
     //
-    // 🔴 LE GARDE PORTE SUR `job_tue_a_la_fermeture`, PAS SUR L'APPARTENANCE, ET
-    // C'EST UNE MESURE QUI L'A CORRIGÉ. Il testait d'abord `dans_un_job()`, sur
-    // la prémisse — écrite dans ce fichier — que « n'importe quel job suffit à
-    // faire mourir l'installeur ». **La sonde de la tâche 2 l'a réfutée**, sur
-    // la VM, une exécution :
+    // 🔴 THE GUARD IS ON `job_tue_a_la_fermeture`, NOT ON MEMBERSHIP, AND
+    // A MEASUREMENT CORRECTED IT. It first tested `in_a_job()`, on
+    // the premise — written in this file — that "any job is enough to
+    // make the installer die". **The probe of task 2 refuted it**, on
+    // the VM, in one run:
     //
-    //   - les TROIS processus de l'agent (superviseur, capteur, pont) sont
-    //     dans un job — ce n'est pas `lanceur.rs` qui les y met, c'est le
-    //     PLANIFICATEUR DE TÂCHES, par lequel `run-agent.sh` les lance ;
-    //   - `CREATE_BREAKAWAY_FROM_JOB` y est REFUSÉ (`ERROR_ACCESS_DENIED`, 5) :
-    //     on ne peut pas en sortir ;
-    //   - et pourtant, la tâche une fois terminée — lanceur RÉELLEMENT mort,
-    //     vérifié par l'absence de sa ligne de contrôle —, **l'enfant direct
-    //     SURVIT**. Le job ne tue pas à la fermeture.
+    //   - the THREE processes of the agent (supervisor, sensor, bridge) are
+    //     in a job — it is not `lanceur.rs` that puts them there, it is the
+    //     TASK SCHEDULER, through which `run-agent.sh` launches them;
+    //   - `CREATE_BREAKAWAY_FROM_JOB` is REFUSED there (`ERROR_ACCESS_DENIED`, 5):
+    //     there is no way out of it;
+    //   - and yet, once the task is finished — launcher REALLY dead,
+    //     checked by the absence of its control line —, **the direct child
+    //     SURVIVES**. The job does not kill on close.
     //
-    // Le garde d'appartenance aurait donc refusé **toute** installation dans le
-    // mode de lancement normal du produit, pour un danger qui ne se matérialise
-    // pas. Un refus qui ne peut jamais être levé n'est pas une protection :
-    // c'est une panne. Le garde interroge désormais la propriété qui TUE, qui
-    // est exactement celle que la spec D8 nomme.
-    let dedans = dans_un_job();
+    // The membership guard would therefore have refused **every** installation in the
+    // product's normal launch mode, for a danger that does not materialise.
+    // A refusal that can never be lifted is not a protection:
+    // it is a failure. The guard now queries the property that KILLS, which
+    // is exactly the one spec D8 names.
+    let dedans = in_a_job();
     let tue = job_tue_a_la_fermeture();
     tracing::info!(
-        dans_un_job = dedans,
+        in_a_job = dedans,
         job_tue_a_la_fermeture = tue,
-        "installation : le processus qui lance est-il dans un job, et ce job tue-t-il ?"
+        "installation: is the launching process in a job, and does that job kill?"
     );
     if tue {
         tracing::error!(
-            "installation refusée : ce processus est dans un job qui TUE À LA FERMETURE, \
-             l'installeur y mourrait avec lui"
+            "installation refused: this process is in a job that KILLS ON CLOSE, \
+             the installer would die with it"
         );
         return Err(Motif::JobObject);
     }
 
     let journal_chemin = repertoire.join("installeur.log");
-    // ⚠️ LES DEUX FLUX VONT DANS LE MÊME FICHIER, du répertoire de
-    // l'installation : il part avec lui au balayage d'âge, et il est là où
-    // quelqu'un ira le chercher.
-    let fichier = std::fs::File::create(&journal_chemin).map_err(|erreur| {
-        tracing::error!(%erreur, chemin = %journal_chemin.display(), "journal d'installeur non créé");
+    // ⚠️ BOTH STREAMS GO TO THE SAME FILE, in the installation's
+    // directory: it goes away with it in the age sweep, and it is where
+    // someone will look for it.
+    let file = std::fs::File::create(&journal_chemin).map_err(|error| {
+        tracing::error!(%error, chemin = %journal_chemin.display(), "installer log not created");
         Motif::Disque
     })?;
 
@@ -265,7 +265,7 @@ pub fn executer(
         .chain(std::iter::once(0))
         .collect();
 
-    let poignee = handle_de(&fichier);
+    let poignee = handle_de(&file);
     let depart = STARTUPINFOW {
         cb: u32::try_from(std::mem::size_of::<STARTUPINFOW>()).unwrap_or(0),
         dwFlags: windows::Win32::System::Threading::STARTF_USESTDHANDLES,
@@ -275,17 +275,17 @@ pub fn executer(
     };
     let mut infos = PROCESS_INFORMATION::default();
 
-    // 🔴 AUCUN DRAPEAU DE JOB, ET CE N'EST PLUS FAUTE D'EN AVOIR BESOIN : c'est
-    // parce qu'il n'en existe pas d'utilisable. `CREATE_BREAKAWAY_FROM_JOB` a
-    // été MESURÉ refusé sur ce chemin (`ERROR_ACCESS_DENIED`, 5) — le job du
-    // planificateur de tâches ne porte pas `JOB_OBJECT_LIMIT_BREAKAWAY_OK`.
-    // L'enfant hérite donc du job, et c'est sans conséquence : ce job ne tue
-    // pas à la fermeture, mesuré lui aussi.
+    // 🔴 NO JOB FLAG, AND IT IS NO LONGER FOR LACK OF NEEDING ONE: it is
+    // because there is no usable one. `CREATE_BREAKAWAY_FROM_JOB` was
+    // MEASURED refused on this path (`ERROR_ACCESS_DENIED`, 5) — the task
+    // scheduler's job does not carry `JOB_OBJECT_LIMIT_BREAKAWAY_OK`.
+    // The child therefore inherits the job, and it has no consequence: that job does not kill
+    // on close, measured as well.
     //
-    // ⚠️ Une rédaction antérieure disait ici que « le garde ci-dessus a déjà
-    // établi que ce processus n'est dans aucun job ». C'était faux des deux
-    // côtés : il est dans un job, et le garde ne teste plus cela.
-    let resultat = unsafe {
+    // ⚠️ An earlier draft said here that "the guard above has already
+    // established that this process is in no job". It was false on both
+    // counts: it is in a job, and the guard no longer tests that.
+    let result = unsafe {
         CreateProcessW(
             None,
             Some(PWSTR(ligne_utf16.as_mut_ptr())),
@@ -300,32 +300,32 @@ pub fn executer(
         )
     };
 
-    if let Err(erreur) = resultat {
-        // 🔴 `ERROR_ELEVATION_REQUIRED` (740) DEVIENT UN REFUS TYPÉ, et c'est
-        // ce qui rend G3 livrable même si la porte est défavorable : un message
-        // que le hub peut afficher, au lieu d'une attente que personne ne
-        // comprend.
+    if let Err(error) = result {
+        // 🔴 `ERROR_ELEVATION_REQUIRED` (740) BECOMES A TYPED REFUSAL, and that is
+        // what makes G3 shippable even if the gate is unfavourable: a message
+        // the hub can display, instead of a wait nobody
+        // understands.
         //
-        // ⚠️ LA PRÉMISSE EST UNE LECTURE DE DOCUMENTATION, PAS UNE MESURE DE CE
-        // DÉPÔT — voir l'en-tête du module. Si la porte la réfute, cette
-        // branche devient INATTEIGNABLE plutôt que fausse, et le refus typé
-        // devra être reconstruit sur un autre indice.
-        let code = erreur.code().0 as u32 & 0xFFFF;
+        // ⚠️ THE PREMISE IS A READING OF DOCUMENTATION, NOT A MEASUREMENT OF THIS
+        // REPOSITORY — see the module header. If the gate refutes it, this
+        // branch becomes UNREACHABLE rather than false, and the typed refusal
+        // will have to be rebuilt on another clue.
+        let code = error.code().0 as u32 & 0xFFFF;
         if code == ERROR_ELEVATION_REQUIRED.0 {
             tracing::error!(
                 chemin = %chemin.display(),
-                "installation refusée : l'installeur exige une élévation, que \
-                 cet agent ne peut pas obtenir sans que l'utilisateur voie un \
-                 écran figé"
+                "installation refused: the installer requires an elevation, which \
+                 this agent cannot obtain without the user seeing a \
+                 frozen screen"
             );
             return Err(Motif::ElevationRequise);
         }
-        tracing::error!(%erreur, chemin = %chemin.display(), "CreateProcessW a échoué");
+        tracing::error!(%error, chemin = %chemin.display(), "CreateProcessW failed");
         return Err(Motif::LancementImpossible);
     }
 
-    // ⚠️ LE FIL EST RELÂCHÉ TOUT DE SUITE : on n'en fait rien, et le garder
-    // fuirait une poignée par installation.
+    // ⚠️ THE THREAD HANDLE IS RELEASED AT ONCE: nothing is done with it, and keeping it
+    // would leak one handle per installation.
     let _ = unsafe { CloseHandle(infos.hThread) };
 
     let debut = maintenant_ms();
@@ -335,26 +335,26 @@ pub fn executer(
         if attente == WAIT_OBJECT_0 {
             let mut brut = 0u32;
             match unsafe { GetExitCodeProcess(infos.hProcess, &mut brut) } {
-                // ⚠️ LE CODE EST RAPPORTÉ, JAMAIS INTERPRÉTÉ : `msiexec` rend
-                // 3010 pour un succès qui demande un redémarrage, et beaucoup
-                // d'installeurs rendent 0 après une annulation.
+                // ⚠️ THE CODE IS REPORTED, NEVER INTERPRETED: `msiexec` returns
+                // 3010 for a success that requires a reboot, and many
+                // installers return 0 after a cancellation.
                 Ok(()) => break Some(brut as i32),
-                Err(erreur) => {
-                    tracing::warn!(%erreur, "code de sortie illisible");
+                Err(error) => {
+                    tracing::warn!(%error, "unreadable exit code");
                     break None;
                 }
             }
         }
         if attente != WAIT_TIMEOUT {
-            tracing::warn!(?attente, "attente du processus en erreur");
+            tracing::warn!(?attente, "waiting for the process failed");
             break None;
         }
         if maintenant_ms().saturating_sub(debut) >= EXPIRATION_EXECUTION_MS {
-            // 🔴 ON CESSE D'ATTENDRE, ON NE TUE PAS.
+            // 🔴 WE STOP WAITING, WE DO NOT KILL.
             tracing::warn!(
                 chemin = %chemin.display(),
-                "installation expirée : l'agent CESSE D'ATTENDRE, il ne tue pas — \
-                 tuer un installeur au milieu laisserait la machine à moitié installée"
+                "installation timed out: the agent STOPS WAITING, it does not kill — \
+                 killing an installer halfway would leave the machine half installed"
             );
             expire = true;
             break None;
@@ -362,10 +362,10 @@ pub fn executer(
         std::thread::sleep(std::time::Duration::from_millis(PAS_DE_SCRUTATION_MS));
     };
     let _ = unsafe { CloseHandle(infos.hProcess) };
-    drop(fichier);
+    drop(file);
 
-    // ⚠️ LA BORNE VIT DANS UN MODULE PUR, ÉCRITE UNE SEULE FOIS. Elle l'était
-    // deux fois, et la seconde PANIQUAIT sur une frontière de caractère UTF-8.
+    // ⚠️ THE BOUND LIVES IN A PURE MODULE, WRITTEN ONLY ONCE. It was written
+    // twice, and the second one PANICKED on a UTF-8 character boundary.
     let (journal, journal_tronque) = match std::fs::read(&journal_chemin) {
         Ok(octets) => queue_octets(&octets),
         Err(_) => (String::new(), false),
@@ -378,10 +378,10 @@ pub fn executer(
     })
 }
 
-/// ⚠️ **AUCUN MODE SILENCIEUX N'EST IMPOSÉ** (spec D8) : `.exe` est exécuté tel
-/// quel, `.msi` passe par `msiexec /i`. Imposer `/qn` déciderait à la place de
-/// l'utilisateur, et beaucoup d'installeurs refusent une installation
-/// silencieuse qu'ils n'ont pas prévue.
+/// ⚠️ **NO SILENT MODE IS IMPOSED** (spec D8): `.exe` is run as
+/// is, `.msi` goes through `msiexec /i`. Imposing `/qn` would decide on behalf of
+/// the user, and many installers refuse a silent
+/// installation they did not plan for.
 fn ligne_de_commande(chemin: &Path, extension: Extension) -> String {
     let chemin = chemin.display().to_string();
     match extension {
@@ -390,7 +390,7 @@ fn ligne_de_commande(chemin: &Path, extension: Extension) -> String {
     }
 }
 
-fn handle_de(fichier: &std::fs::File) -> HANDLE {
+fn handle_de(file: &std::fs::File) -> HANDLE {
     use std::os::windows::io::AsRawHandle;
-    HANDLE(fichier.as_raw_handle() as _)
+    HANDLE(file.as_raw_handle() as _)
 }

@@ -1,10 +1,10 @@
-// La fusion de catalogue, éprouvée SANS BASE ET SANS HORLOGE.
+// The catalogue merge, tested WITHOUT A DATABASE AND WITHOUT A CLOCK.
 //
-// 🔴 C'est ce que le module achète : les trois règles qui décident ce qu'on
-// écrit — marquer disparue, ressusciter, mettre à jour — se rougissent ici,
-// sur un tableau et un objet, sans ouvrir de base ni monter de serveur. Une
-// règle qui vivrait dans le dépôt ou dans le canal ne serait éprouvable que
-// par un test qui traverse un moteur SQL.
+// 🔴 It is what the module buys: the three rules that decide what gets
+// written — mark vanished, resurrect, update — turn red here,
+// on an array and an object, without opening a database or mounting a server. A
+// rule living in the repository layer or in the channel could only be tested
+// by a test that crosses an SQL engine.
 
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
@@ -41,96 +41,96 @@ function message(
 }
 
 describe('fusionner', () => {
-    it('à `complet: true`, marque disparue TOUTE ligne connue absente du message', () => {
-        // 🔴 Traiter un message complet comme un delta laisserait au catalogue,
-        // POUR TOUJOURS, une application désinstallée pendant que le canal
-        // était coupé : sa clé ne figurerait dans aucun `disparues`, personne
-        // ne l'ayant vue partir.
+    it('with `complet: true`, marks EVERY known row absent from the message as gone', () => {
+        // 🔴 Treating a complete message as a delta would leave in the catalogue,
+        // FOREVER, an application uninstalled while the channel
+        // was down: its key would appear in no `disparues`, nobody
+        // having seen it leave.
         const f = fusionner(
             [connue('id-a', 'a'), connue('id-b', 'b')],
             message(true, [app('a')]),
         );
         expect(f.aMarquerDisparues).toEqual(['id-b']);
-        expect(f.aMettreAJour.map((m) => m.id)).toEqual(['id-a']);
+        expect(f.toUpdate.map((m) => m.id)).toEqual(['id-a']);
     });
 
-    it('ne RE-marque pas une ligne déjà disparue', () => {
-        // ⚠️ `disparue_a` est POSÉE, JAMAIS SUPPRIMÉE : la ré-écrire à chaque
-        // réconciliation ferait avancer l'instant de disparition tant que
-        // l'agent tourne, et la colonne dirait « disparue il y a 30 secondes »
-        // d'une application partie depuis un mois.
+    it('does not RE-mark a row already gone', () => {
+        // ⚠️ `disparue_a` is SET, NEVER REMOVED: rewriting it at each
+        // reconciliation would advance the vanishing instant as long as
+        // the agent runs, and the column would say "vanished 30 seconds ago"
+        // of an application gone for a month.
         const f = fusionner([connue('id-b', 'b', 1_787_136_773_742)], message(true, []));
         expect(f.aMarquerDisparues).toEqual([]);
     });
 
-    it("à `complet: false`, n'invente AUCUNE disparition et n'honore que `disparues`", () => {
-        // 🔴 La rouge inverse de la première : traiter un delta comme un état
-        // complet VIDERAIT le catalogue à chaque message ne portant qu'une
-        // apparition.
+    it("with `complet: false`, invents NO disappearance and honours only `disparues`", () => {
+        // 🔴 The red opposite to the first one: treating a delta as a complete
+        // state WOULD EMPTY the catalogue at each message carrying only one
+        // appearance.
         const f = fusionner(
             [connue('id-a', 'a'), connue('id-b', 'b'), connue('id-c', 'c')],
             message(false, [app('a')], ['c']),
         );
         expect(f.aMarquerDisparues).toEqual(['id-c']);
         expect(f.aInserer).toEqual([]);
-        expect(f.aMettreAJour.map((m) => m.id)).toEqual(['id-a']);
+        expect(f.toUpdate.map((m) => m.id)).toEqual(['id-a']);
     });
 
-    it('à `complet: true` avec `applications: []`, VIDE le catalogue', () => {
-        // Le cas `catalogue_vide` des vecteurs partagés : une VM dont on
-        // désinstalle tout. Le traiter comme « rien à faire » la laisserait
-        // pleine.
+    it('with `complet: true` and `applications: []`, EMPTIES the catalogue', () => {
+        // The `catalogue_vide` case of the shared vectors: a VM on which
+        // everything is uninstalled. Treating it as "nothing to do" would leave it
+        // full.
         const f = fusionner([connue('id-a', 'a'), connue('id-b', 'b')], message(true, []));
         expect(f.aMarquerDisparues).toEqual(['id-a', 'id-b']);
         expect(f.aInserer).toEqual([]);
-        expect(f.aMettreAJour).toEqual([]);
+        expect(f.toUpdate).toEqual([]);
     });
 
-    it("apparie sur la CLÉ : une ligne connue et présente va dans aMettreAJour, jamais dans aInserer", () => {
-        // 🔴 Apparier sur l'`id` serait impossible : l'agent ne les connaît
-        // pas, et ne les a jamais vus. Il ne connaît que la clé.
+    it("matches on the KEY: a known and present row goes into aMettreAJour, never into aInserer", () => {
+        // 🔴 Pairing on the `id` would be impossible: the agent does not know them,
+        // and has never seen them. It only knows the key.
         const f = fusionner([connue('id-a', 'a')], message(true, [app('a', 'renomme')]));
         expect(f.aInserer).toEqual([]);
-        expect(f.aMettreAJour).toEqual([{ id: 'id-a', app: app('a', 'renomme') }]);
+        expect(f.toUpdate).toEqual([{ id: 'id-a', app: app('a', 'renomme') }]);
     });
 
-    it('une ligne connue DISPARUE et de nouveau présente est RESSUSCITÉE, et mise à jour', () => {
-        // 🔴 L'insérer à neuf lui donnerait un identifiant NEUF, et une PWA
-        // installée depuis l'ancien pointerait dans le vide. C'est la même
-        // perte d'identifiant que celle qu'un DELETE causerait, par une autre
-        // porte.
+    it('a known row that was GONE and is present again is RESURRECTED, and updated', () => {
+        // 🔴 Inserting it anew would give it a NEW identifier, and a PWA
+        // installed from the old one would point into the void. It is the same
+        // loss of identifier as the one a DELETE would cause, through another
+        // door.
         //
-        // ⚠️ ELLE EST DANS LES DEUX LISTES, et c'est délibéré : ressusciter
-        // remet `disparue_a` à NULL, mettre à jour rafraîchit les champs. Une
-        // résurrection seule rendrait visible une ligne aux champs périmés.
+        // ⚠️ IT IS IN BOTH LISTS, and that is deliberate: resurrecting
+        // sets `disparue_a` back to NULL, updating refreshes the fields. A
+        // resurrection alone would make visible a row with stale fields.
         const f = fusionner(
             [connue('id-a', 'a', 1_787_136_773_742)],
             message(true, [app('a', 'revenu')]),
         );
         expect(f.aRessusciter).toEqual(['id-a']);
-        expect(f.aMettreAJour).toEqual([{ id: 'id-a', app: app('a', 'revenu') }]);
+        expect(f.toUpdate).toEqual([{ id: 'id-a', app: app('a', 'revenu') }]);
         expect(f.aInserer).toEqual([]);
         expect(f.aMarquerDisparues).toEqual([]);
     });
 
-    it('insère une clé inconnue, et ignore une `disparues` qui ne désigne personne', () => {
-        // ⚠️ Une clé de `disparues` inconnue n'est pas une erreur : l'agent
-        // peut annoncer la disparition d'une application que la plateforme
-        // n'a jamais enregistrée — un message montant perdu suffit. Lever
-        // abattrait le canal d'un agent qui va très bien.
+    it('inserts an unknown key, and ignores a `disparues` that designates nobody', () => {
+        // ⚠️ An unknown key in `disparues` is not an error: the agent
+        // can announce the disappearance of an application the platform
+        // never recorded — one lost upstream message is enough. Throwing
+        // would take down the channel of an agent that is perfectly fine.
         const f = fusionner([], message(false, [app('neuve')], ['jamais-vue']));
         expect(f.aInserer).toEqual([app('neuve')]);
         expect(f.aMarquerDisparues).toEqual([]);
         expect(f.aRessusciter).toEqual([]);
     });
 
-    it('est PUR : ni horloge lue, ni pilote de base', () => {
-        // 🔴 CE CONTRÔLE BLANCHIT LES COMMENTAIRES AVANT DE CHERCHER, et ce
-        // n'est pas une précaution de style : ce fichier-ci NOMME `Date.now`
-        // et `Pilote` dans sa propre prose pour expliquer pourquoi ils sont
-        // absents. Un `grep` nu serait donc satisfait — ou rougi — par la
-        // documentation plutôt que par le code, et ne discriminerait rien.
-        // Ce dépôt a payé trois fois pour cette forme exacte de contrôle.
+    it('is PURE: no clock read, no database driver', () => {
+        // 🔴 THIS CHECK BLANKS THE COMMENTS BEFORE SEARCHING, and it is
+        // not a matter of style: this very file NAMES `Date.now`
+        // and `Pilote` in its own prose to explain why they are
+        // absent. A bare `grep` would therefore be satisfied — or turned red — by the
+        // documentation rather than by the code, and would discriminate nothing.
+        // This repository has paid three times for this exact form of check.
         const source = readFileSync(
             path.join(path.dirname(fileURLToPath(import.meta.url)), 'catalogue.ts'),
             'utf8',

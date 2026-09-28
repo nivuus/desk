@@ -1,83 +1,83 @@
--- Les icones des applications : leur empreinte, et la PROVENANCE de leur
--- image. Sous-bloc G2.
+-- The icons of applications: their hash, and the PROVENANCE of their
+-- image. Sub-block G2.
 --
--- 🔴 POURQUOI CES DEUX COLONNES SONT NULLABLES, LA OU CELLES DE 0004 SONT NOT
--- NULL. Ce n est PAS un relachement : c est la mesure de 0004 appliquee a un
--- etat qui a change. Sur SQLite 3.50.4, un ALTER TABLE ADD COLUMN NOT NULL
--- sans DEFAUT est REFUSE des que la table porte une seule ligne --
+-- 🔴 WHY THESE TWO COLUMNS ARE NULLABLE, WHERE THOSE OF 0004 ARE NOT
+-- NULL. It is NOT a loosening: it is the measurement of 0004 applied to a
+-- state that changed. On SQLite 3.50.4, an ALTER TABLE ADD COLUMN NOT NULL
+-- without a DEFAULT is REFUSED as soon as the table carries a single row --
 --     Cannot add a NOT NULL column with default value NULL
--- Or `application` N EST PLUS VIDE depuis la recette de G1 : elle porte 154
--- lignes sur la VM de developpement. Les deux colonnes de G2 sont donc
--- NULLABLES, ET IL N Y A PAS D ALTERNATIVE.
+-- Yet `application` IS NO LONGER EMPTY since the acceptance of G1: it carries 154
+-- rows on the development VM. The two columns of G2 are therefore
+-- NULLABLE, AND THERE IS NO ALTERNATIVE.
 --
--- ⚠️ SUR UNE BASE NEUVE, LA TABLE EST VIDE ET UN NOT NULL PASSERAIT. C est
--- exactement le piege de la divergence E8 de G1 : le test qui garde cette
--- propriete doit INSERER une application AVANT d appliquer cette migration,
--- sans quoi sa rouge n est pas atteignable.
+-- ⚠️ ON A FRESH DATABASE, THE TABLE IS EMPTY AND A NOT NULL WOULD PASS. That is
+-- exactly the trap of divergence E8 of G1: the test that guards this
+-- property must INSERT an application BEFORE applying this migration,
+-- otherwise its red cannot be reached.
 --
--- 🔴 ET C EST POURQUOI `NonMesuree` EST REPRESENTEE PAR NULL, JAMAIS PAR 0 NI
--- PAR 256. La colonne est INTEGER : elle NE PEUT PAS porter le mot
--- `non-mesuree`, donc elle porte NULL. La reconstruction est sans ambiguite
--- parce que l invariant est ECRIT, et il a TROIS cas -- le quatrieme est
--- INTERDIT :
+-- 🔴 AND THAT IS WHY `NonMesuree` IS REPRESENTED BY NULL, NEVER BY 0 NOR
+-- BY 256. The column is INTEGER: it CANNOT carry the word
+-- `non-mesuree`, so it carries NULL. The reconstruction is unambiguous
+-- because the invariant is WRITTEN, and it has THREE cases -- the fourth is
+-- FORBIDDEN:
 --
---   icone   source_max_px   sens                                   sur le fil
---   NULL    NULL            aucune icone : l extraction a echoue   icone:null,
+--   icone   source_max_px   meaning                                on the wire
+--   NULL    NULL            no icon: the extraction failed         icone:null,
 --                                                                  "non-mesuree"
---   non nul NULL            l icone existe, sa provenance n est    icone:"<hex>",
---                           pas lisible                            "non-mesuree"
---   non nul n               l icone existe, et sa source portait   icone:"<hex>",
---                           une entree de n px                     {"pixels":n}
---   NULL    n               🔴 INTERDIT -- aucun chemin ne l ecrit, et un test
---                           le NOMME pour qu il ne naisse pas d une inattention
+--   non-null NULL           the icon exists, its provenance is     icone:"<hex>",
+--                           not readable                           "non-mesuree"
+--   non-null n              the icon exists, and its source had    icone:"<hex>",
+--                           an entry of n px                       {"pixels":n}
+--   NULL    n               🔴 FORBIDDEN -- no path writes it, and a test
+--                           NAMES it so that it is not born from inattention
 --
--- 🔴 CE QUE LA COLONNE `source_max_px` N EST PAS : la taille RENDUE. Mesure le
--- 20 aout 2026 sur deux temoins fabriques (agent/testdata/g2-temoin-*.ico) :
--- un .ico ne contenant QU UNE entree 48x48, interroge a 256, rend 256x256
--- 32bpp -- par IShellItemImageFactory comme par PrivateExtractIconsW, sans
--- SIIGBF_SCALEUP et MEME avec SIIGBF_BIGGERSIZEOK. Les quatre lignes de rendu
--- des deux temoins sont identiques ; seule la ligne ICONDIR differe. Une
--- colonne qui porterait la taille rendue vaudrait donc 256 partout, et ne
--- dirait rien.
+-- 🔴 WHAT THE `source_max_px` COLUMN IS NOT: the RENDERED size. Measured on
+-- 20 August 2026 on two fabricated witnesses (agent/testdata/g2-temoin-*.ico):
+-- an .ico containing ONLY ONE 48x48 entry, queried at 256, renders 256x256
+-- 32bpp -- through IShellItemImageFactory as through PrivateExtractIconsW, without
+-- SIIGBF_SCALEUP and EVEN with SIIGBF_BIGGERSIZEOK. The four render lines
+-- of the two witnesses are identical; only the ICONDIR line differs. A
+-- column carrying the rendered size would therefore be 256 everywhere, and would
+-- say nothing.
 --
--- L empreinte est celle des OCTETS PNG, jamais des pixels : la plateforme
--- RECALCULE l empreinte de ce qu elle recoit, et adresser par les pixels
--- l obligerait a DECODER le PNG pour verifier -- c est-a-dire a embarquer un
--- decodeur PNG en TypeScript, une dependance de production neuve que ce
--- sous-bloc refuse.
+-- The hash is that of the PNG BYTES, never of the pixels: the platform
+-- RECOMPUTES the hash of what it receives, and addressing by pixels
+-- would force it to DECODE the PNG to check -- that is, to ship a
+-- PNG decoder in TypeScript, a new production dependency that this
+-- sub-block refuses.
 --
--- 🔴 LES OCTETS EUX-MEMES NE SONT PAS ICI, ET C EST UNE DECISION. Ils vivent
--- sur le DISQUE, un fichier par empreinte. Trois raisons, dans l ordre de leur
--- poids :
---   1. UN BLOB NE TRAVERSE PAS LA DOUBLE PASSE SANS MENTIR. PostgreSQL n a pas
---      de type BLOB (il a bytea) ; SQLite, lui, accepte N IMPORTE QUEL nom de
---      type par affinite -- le lint de sous-ensemble.test.ts le documente pour
---      SERIAL, mesure a l appui. Ecrire BYTEA passerait donc les DEUX passes
---      en signifiant deux choses differentes : c est le piege SERIAL a
---      l envers, et aucun des deux gardes du depot ne l attrape.
---   2. La doctrine est deja ecrite par la spec elle-meme, qui tranche pour la
---      reprise de televersement en faveur d un LISTAGE DE REPERTOIRE, jamais
---      d une table de comptabilite qui pourrait diverger du disque.
---   3. Le volume : 4 576 398 octets mesures pour ce seul catalogue, dans un
---      fichier SQLite qui porte par ailleurs des sessions et des jetons.
+-- 🔴 THE BYTES THEMSELVES ARE NOT HERE, AND IT IS A DECISION. They live
+-- on DISK, one file per hash. Three reasons, in order of their
+-- weight:
+--   1. A BLOB DOES NOT CROSS THE DOUBLE PASS WITHOUT LYING. PostgreSQL has no
+--      BLOB type (it has bytea); SQLite, for its part, accepts ANY type
+--      name by affinity -- the lint of sous-ensemble.test.ts documents it for
+--      SERIAL, with a measurement to back it. Writing BYTEA would therefore pass BOTH passes
+--      while meaning two different things: it is the SERIAL trap in
+--      reverse, and neither of the two guards of the repository catches it.
+--   2. The doctrine is already written by the spec itself, which settles upload
+--      resumption in favour of a DIRECTORY LISTING, never
+--      of a bookkeeping table that could diverge from the disk.
+--   3. The volume: 4 576 398 bytes measured for this catalogue alone, in a
+--      SQLite file that also carries sessions and tokens.
 --
--- Aucun index n est ajoute : on ne cherche JAMAIS une application PAR son
--- icone. Aucune cle etrangere non plus -- SQLite ne sait pas en ajouter par
--- ALTER TABLE (leg n°2 de P1). Et ADD COLUMN plutot que DROP/CREATE, pour la
--- raison que 0004 ecrit : entre deux gestes qui supposent la meme chose, on
--- prend celui qui CRIE quand la supposition est fausse.
+-- No index is added: an application is NEVER looked up BY its
+-- icon. No foreign key either -- SQLite cannot add one through
+-- ALTER TABLE (P1 legacy item no. 2). And ADD COLUMN rather than DROP/CREATE, for the
+-- reason 0004 writes: between two gestures that assume the same thing, we
+-- take the one that SHOUTS when the assumption is wrong.
 
--- L empreinte SHA-256 du PNG, en hexadecimal minuscule. NULL = l extraction a
--- echoue, et ce n est PAS une erreur : une application sans icone vaut mieux
--- qu une application absente.
+-- The SHA-256 hash of the PNG, in lowercase hexadecimal. NULL = the extraction
+-- failed, and it is NOT an error: an application without an icon is better
+-- than an absent application.
 ALTER TABLE application ADD COLUMN icone TEXT NULL;
 
--- La plus grande entree reellement PRESENTE dans le repertoire d icones de la
--- source. NULL = `SourceMax::NonMesuree` -- voir l invariant a trois cas
--- ci-dessus.
+-- The largest entry actually PRESENT in the icon directory of the
+-- source. NULL = `SourceMax::NonMesuree` -- see the three-case invariant
+-- above.
 --
--- ⚠️ ELLE NE PORTE PAS LA CONVENTION `_a` et n en a pas besoin : ce n est pas
--- un horodatage, et le lint des horodatages de sous-ensemble.test.ts ne la
--- regarde donc pas. INTEGER suffit -- une taille d icone tient tres largement
--- dans les 4 octets de Postgres, contrairement a un Date.now().
+-- ⚠️ IT DOES NOT CARRY THE `_a` CONVENTION and does not need it: it is not
+-- a timestamp, and the timestamp lint of sous-ensemble.test.ts therefore does not
+-- look at it. INTEGER is enough -- an icon size fits very comfortably
+-- in the 4 bytes of Postgres, unlike a Date.now().
 ALTER TABLE application ADD COLUMN source_max_px INTEGER NULL;

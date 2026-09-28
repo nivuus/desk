@@ -1,48 +1,48 @@
-//! Tests de `sommeil` — fichier voisin plutôt que module en ligne :
-//! `sommeil.rs` était à 500 lignes pour un plafond de projet à 500 (marge
-//! nulle dès la tâche 5 de D7), et cette suite à elle seule en portait 195.
-//! Extraire plutôt que comprimer — même schéma que `capteur/distante.rs` /
+//! Tests of `sommeil` — sibling file rather than inline module:
+//! `sommeil.rs` was at 500 lines for a project cap of 500 (zero
+//! margin since task 5 of D7), and this suite alone accounted for 195 of them.
+//! Extract rather than compress — same scheme as `capteur/distante.rs` /
 //! `capteur/distante/tests.rs`.
 //!
-//! **Le chemin de module reste `sommeil::tests`** : `parts::tests` et
-//! `porteurs::tests` importent `sommeil::tests::{premier_ordre,
-//! verrouiller_pour_le_test}`, et cette extraction ne change ni ce chemin ni
-//! aucune visibilité — seul l'emplacement physique du fichier change.
+//! **The module path stays `sommeil::tests`**: `parts::tests` and
+//! `porteurs::tests` import `sommeil::tests::{premier_ordre,
+//! verrouiller_pour_le_test}`, and this extraction changes neither that path nor
+//! any visibility — only the physical location of the file changes.
 
 use super::*;
 
-/// Noms uniques (t5-a, t5-b…) ne suffisent pas à isoler ces tests entre
-/// eux : le vivier partagé n'a qu'UN plafond de `PLAFOND_EVEIL` places
-/// pour tout le processus, et un test qui le sature (pour éprouver une
-/// place qui se libère) prive de facto les autres tests, exécutés en
-/// parallèle par défaut, de toute place disponible — observé : la
-/// saturation à 8 fait échouer intermittemment un test voisin qui
-/// s'attend à s'éveiller aussitôt. Un `Mutex` dédié aux tests sérialise
-/// ce fichier sans toucher au code de production ni à `vivier.rs`.
+/// Unique names (t5-a, t5-b…) are not enough to isolate these tests from
+/// each other: the shared pool has only ONE cap of `PLAFOND_EVEIL` places
+/// for the whole process, and a test that saturates it (to test a
+/// place being freed) de facto deprives the other tests, run in
+/// parallel by default, of any available place — observed: saturating
+/// at 8 makes a neighbouring test that expects to wake up
+/// immediately fail intermittently. A `Mutex` dedicated to tests serialises
+/// this file without touching production code or `vivier.rs`.
 static VERROU_TESTS: Mutex<()> = Mutex::new(());
 
-/// `pub(super)` : repris par `parts::tests`, qui sature le même vivier
-/// partagé et doit s'y sérialiser exactement de la même façon (ce module
-/// et `parts::tests` sont deux descendants distincts de `sommeil`, pas
-/// l'un de l'autre — d'où la visibilité explicite).
+/// `pub(super)`: reused by `parts::tests`, which saturates the same shared
+/// pool and must serialise on it in exactly the same way (this module
+/// and `parts::tests` are two distinct descendants of `sommeil`, not
+/// of each other — hence the explicit visibility).
 pub(super) fn verrouiller_pour_le_test() -> MutexGuard<'static, ()> {
     VERROU_TESTS
         .lock()
         .unwrap_or_else(|empoisonne| empoisonne.into_inner())
 }
 
-/// Le premier ORDRE de sommeil reçu, en ignorant les parts qui peuvent le
-/// précéder ou s'y intercaler.
+/// The first sleep ORDER received, ignoring the shares that may
+/// precede or be interleaved with it.
 ///
-/// **Nécessaire depuis que `inscrire` se termine par
-/// `distribuer_les_parts`** : la toute première part d'une session part à
-/// l'inscription même, avant tout ordre — une fenêtre encore endormie a
-/// bien une part (le plancher `PART_DORMANTE_BPS`), et c'est délibéré
-/// (voir la doc de `inscrire`). Les tests d'ORDRE, hérités de D5, portent
-/// sur `Ordre` et non sur `Message` : ce filtre restaure leur intention
-/// d'origine sans la changer.
+/// **Necessary since `inscrire` ends with
+/// `distribuer_les_parts`**: a session's very first share goes out at
+/// registration itself, before any order — a window still asleep does
+/// have a share (the `PART_DORMANTE_BPS` floor), and it is deliberate
+/// (see the doc of `inscrire`). The ORDER tests, inherited from D5, are about
+/// `Ordre` and not `Message`: this filter restores their original
+/// intent without changing it.
 ///
-/// `pub(super)` : repris par `parts::tests`, pour la même raison que
+/// `pub(super)`: reused by `parts::tests`, for the same reason as
 /// `verrouiller_pour_le_test`.
 pub(super) fn premier_ordre(canal: &ReceveurSession) -> Option<Ordre> {
     loop {
@@ -59,8 +59,8 @@ pub(super) fn premier_ordre(canal: &ReceveurSession) -> Option<Ordre> {
 #[test]
 fn une_session_inscrite_recoit_l_ordre_de_se_reveiller_quand_elle_devient_visible() {
     let _verrou = verrouiller_pour_le_test();
-    // Noms uniques : le registre est un état GLOBAL de processus, et les
-    // tests Rust tournent en parallèle dans le même processus.
+    // Unique names: the registry is a process-GLOBAL state, and Rust
+    // tests run in parallel in the same process.
     let (ordres, generation) = inscrire("t5-a", 5001);
     signaler("t5-a", true, true);
     assert_eq!(premier_ordre(&ordres), Some(Ordre::Reveiller));
@@ -78,7 +78,7 @@ fn une_session_retiree_ne_recoit_plus_rien() {
 
 #[test]
 fn les_deux_raisons_ont_un_texte_stable_pour_le_client() {
-    // Pas d'accès au vivier partagé ici : aucun verrou requis.
+    // No access to the shared pool here: no lock required.
     assert_eq!(raison_en_texte(Raison::Masquee), "masquee");
     assert_eq!(raison_en_texte(Raison::Evincee), "evincee");
 }
@@ -86,40 +86,40 @@ fn les_deux_raisons_ont_un_texte_stable_pour_le_client() {
 #[test]
 fn un_echec_de_reveil_rendort_la_session_et_ne_la_reelit_pas_immediatement() {
     let _verrou = verrouiller_pour_le_test();
-    // "t5-c" devient visible et focalisee, donc eveillee par arbitrer().
+    // "t5-c" becomes visible and focused, hence awakened by arbitrer().
     let (ordres, generation) = inscrire("t5-c", 5003);
     signaler("t5-c", true, true);
     assert_eq!(premier_ordre(&ordres), Some(Ordre::Reveiller));
 
-    // La reconstruction du WindowsSource echoue : le vivier doit repasser
-    // la session a l'etat endormi. Aucun nouvel ORDRE n'est du dans les
-    // 500 ms de repit qui suivent, meme si la session reste visible et
-    // focalisee : la reproposer immediatement bouclerait a chaque
-    // arbitrage sur une construction d'encodeur vouee a rechouer. Une
-    // part (le retour au plancher `PART_DORMANTE_BPS`) est en revanche
-    // legitime : la fenetre est reellement rendormie.
+    // Rebuilding the WindowsSource fails: the pool must put the session
+    // back into the asleep state. No new ORDER is due within the
+    // 500 ms of respite that follow, even if the session stays visible and
+    // focused: proposing it again immediately would loop at every
+    // arbitration on an encoder construction bound to fail again. A
+    // share (the return to the `PART_DORMANTE_BPS` floor) is on the other hand
+    // legitimate: the window is really asleep again.
     echec_de_reveil("t5-c");
     assert_eq!(premier_ordre(&ordres), None);
 
     retirer("t5-c", generation);
 }
 
-/// M1 de la revue finale de branche du sous-bloc D6 : `retirer` vidait
-/// `focalisee`, mais ni `distribuer` ni le chemin `rompus` de
-/// `distribuer_les_parts` ne le faisaient. Une session focalisée qui meurt
-/// par canal rompu — le fil de fenêtre qui panique avant son point de
-/// retrait unique — laissait donc son nom dans le registre.
+/// M1 from the final branch review of sub-block D6: `retirer` emptied
+/// `focalisee`, but neither `distribuer` nor the `rompus` path of
+/// `distribuer_les_parts` did. A focused session dying
+/// through a broken channel — the window thread panicking before its single
+/// removal point — therefore left its name in the registry.
 ///
-/// **L'état est lu directement, et c'est délibéré.** La conséquence
-/// visible par les parts n'est pas discriminante : un nom mort ne désigne
-/// aucune fenêtre vivante, donc la majoration ne s'applique à personne —
-/// ce qui est aussi le cas quand `focalisee` vaut `None`. Ce qui MORD est
-/// la réinscription du même nom (rattachement, chemin de reprise de D4),
-/// qui hériterait du focus sans que le client l'ait jamais réémis ; mais
-/// l'éprouver par les parts exigerait un `signaler` sur ce nom, qui vide
-/// `focalisee` de lui-même et effacerait le défaut avant de le mesurer.
-/// Le champ est privé à ce module, et ce test en est un descendant : le
-/// lire est l'observation la plus directe et la moins ambiguë.
+/// **The state is read directly, and it is deliberate.** The consequence
+/// visible through the shares is not discriminating: a dead name designates
+/// no live window, so the boost applies to nobody —
+/// which is also the case when `focalisee` is `None`. What BITES is
+/// the re-registration of the same name (re-attachment, D4's resumption path),
+/// which would inherit the focus without the client ever having re-emitted it; but
+/// testing it through the shares would require a `signaler` on that name, which empties
+/// `focalisee` by itself and would erase the defect before measuring it.
+/// The field is private to this module, and this test is a descendant of it:
+/// reading it is the most direct and least ambiguous observation.
 #[test]
 fn un_canal_rompu_libere_aussi_le_focus_de_la_session_morte() {
     let _verrou = verrouiller_pour_le_test();
@@ -128,22 +128,22 @@ fn un_canal_rompu_libere_aussi_le_focus_de_la_session_morte() {
     assert_eq!(
         etat().focalisee.as_deref(),
         Some("m1-focus"),
-        "précondition : le registre tient bien cette session pour la focalisée"
+        "precondition: the registry does hold this session as the focused one"
     );
 
-    // Le fil de "m1-focus" meurt SANS passer par `retirer`, exactement ce
-    // qui arrive quand il panique.
+    // The thread of "m1-focus" dies WITHOUT going through `retirer`, exactly what
+    // happens when it panics.
     drop(canal);
 
-    // L'inscription d'une session tierce — endormie — fait varier le
-    // budget partagé, donc la part de "m1-focus", donc tente un envoi sur
-    // son canal rompu : c'est ce qui déclenche la détection.
+    // Registering a third session — asleep — changes the
+    // shared budget, hence the share of "m1-focus", hence attempts a send on
+    // its broken channel: that is what triggers the detection.
     let (_, generation_tiers) = inscrire("m1-tiers", 5005);
     assert_eq!(
         etat().focalisee,
         None,
-        "le focus d'une session morte doit être rendu avec le reste de ce que le registre \
-         retenait d'elle"
+        "the focus of a dead session must be returned with the rest of what the registry \
+         kept of it"
     );
 
     retirer("m1-focus", generation_focus);
@@ -153,9 +153,9 @@ fn un_canal_rompu_libere_aussi_le_focus_de_la_session_morte() {
 #[test]
 fn un_retrait_qui_libere_une_place_reveille_bien_la_session_qui_l_attendait() {
     let _verrou = verrouiller_pour_le_test();
-    // Sature les PLAFOND_EVEIL (8) places avec des sessions dediees, dont
-    // on garde les ReceveurSession vivants pour que leur canal ne soit jamais
-    // rompu par accident pendant le test.
+    // Saturates the PLAFOND_EVEIL (8) places with dedicated sessions, whose
+    // ReceveurSession we keep alive so that their channel is never
+    // broken by accident during the test.
     let mut recepteurs_pleins = Vec::new();
     for i in 0..8 {
         let nom = format!("t5-plein-{i}");
@@ -164,42 +164,42 @@ fn un_retrait_qui_libere_une_place_reveille_bien_la_session_qui_l_attendait() {
         assert_eq!(
             premier_ordre(&ordres),
             Some(Ordre::Reveiller),
-            "{nom} devrait s'eveiller"
+            "{nom} should wake up"
         );
         recepteurs_pleins.push((nom, ordres, generation));
     }
     let generation_plein_0 = recepteurs_pleins[0].2;
 
-    // "t5-attend" arrive alors que le plafond est deja atteint : elle
-    // reste endormie, faute de place.
+    // "t5-attend" arrives while the cap is already reached: it
+    // stays asleep, for lack of a place.
     let (ordres_attend, generation_attend) = inscrire("t5-attend", 5200);
     signaler("t5-attend", true, true);
     assert_eq!(
         premier_ordre(&ordres_attend),
         None,
-        "t5-attend devrait rester endormie"
+        "t5-attend should stay asleep"
     );
 
-    // "t5-tardif" arrive ensuite : plus recente que "t5-attend", donc elle
-    // la devancerait si une place se liberait. Son recepteur est jete
-    // immediatement (par le `_` du destructurage) : son canal est rompu
-    // des avant toute tentative d'envoi.
+    // "t5-tardif" arrives next: more recent than "t5-attend", so it
+    // would get ahead of it if a place were freed. Its receiver is thrown away
+    // immediately (by the `_` of the destructuring): its channel is broken
+    // before any send attempt.
     let (_, generation_tardif) = inscrire("t5-tardif", 5201);
     signaler("t5-tardif", true, true);
 
-    // Libere UNE place en retirant le premier "plein". Le vivier elit
-    // alors "t5-tardif" (la plus recente des deux candidates bloquees),
-    // et cette livraison echoue puisque son canal est rompu. Sans la
-    // boucle de `distribuer`, le Reveiller que ce retrait engendre
-    // ENSUITE pour "t5-attend" serait perdu pour toujours : le vivier
-    // aurait deja pose `eveillee = true` sur "t5-attend" en interne, et
-    // plus aucun rearbitrage ne le reproposerait.
+    // Frees ONE place by removing the first "plein". The pool then elects
+    // "t5-tardif" (the more recent of the two blocked candidates),
+    // and that delivery fails since its channel is broken. Without the
+    // loop in `distribuer`, the Reveiller this removal generates
+    // AFTERWARDS for "t5-attend" would be lost forever: the pool
+    // would already have set `eveillee = true` on "t5-attend" internally, and
+    // no re-arbitration would ever propose it again.
     retirer("t5-plein-0", generation_plein_0);
 
     assert_eq!(
         premier_ordre(&ordres_attend),
         Some(Ordre::Reveiller),
-        "le reveil libere par la mort de t5-tardif doit atteindre t5-attend"
+        "the wake-up freed by the death of t5-tardif must reach t5-attend"
     );
 
     // Nettoyage.
@@ -212,9 +212,9 @@ fn un_retrait_qui_libere_une_place_reveille_bien_la_session_qui_l_attendait() {
 
 #[test]
 fn le_repit_expire_et_rend_la_fenetre_apte() {
-    // Éprouve `purger_les_inaptitudes`, la fonction du PRODUIT — pas
-    // `HashMap::retain`. L'horloge est injectée (`maintenant`), ce qui rend
-    // le test déterministe sans aucune attente réelle.
+    // Tests `purger_les_inaptitudes`, the PRODUCT's function — not
+    // `HashMap::retain`. The clock is injected (`maintenant`), which makes
+    // the test deterministic without any real wait.
     let mut inaptes: HashMap<String, Instant> = HashMap::new();
     let t0 = Instant::now();
     inaptes.insert("w-1".into(), t0 + Duration::from_millis(10));
@@ -222,18 +222,24 @@ fn le_repit_expire_et_rend_la_fenetre_apte() {
 
     purger_les_inaptitudes(&mut inaptes, t0 + Duration::from_millis(20));
 
-    assert!(!inaptes.contains_key("w-1"), "le répit de w-1 a expiré");
-    assert!(inaptes.contains_key("w-2"), "celui de w-2 court encore");
+    assert!(
+        !inaptes.contains_key("w-1"),
+        "the grace period of w-1 has expired"
+    );
+    assert!(
+        inaptes.contains_key("w-2"),
+        "the one of w-2 is still running"
+    );
 }
 
 #[test]
 fn une_inaptitude_dont_l_echeance_vaut_exactement_maintenant_est_purgee() {
-    // Sur un registre VIDE, `purger_les_inaptitudes` ne peut que retirer —
-    // le test qu'il remplace (`une_purge_sur_un_registre_vide_ne_panique_pas`)
-    // ne pouvait donc pas rendre l'autre valeur (revue finale de branche,
-    // M3). Le cas qui vaut est la borne : `retain(|_, echeance| *echeance >
-    // maintenant)` (agent/src/capteur/sommeil.rs) purge une échéance
-    // EXACTEMENT égale à `maintenant`, pas seulement une échéance dépassée.
+    // On an EMPTY registry, `purger_les_inaptitudes` can only remove —
+    // the test it replaces (`une_purge_sur_un_registre_vide_ne_panique_pas`)
+    // therefore could not return the other value (final branch review,
+    // M3). The case that counts is the bound: `retain(|_, echeance| *echeance >
+    // maintenant)` (agent/src/capteur/sommeil.rs) purges a deadline
+    // EXACTLY equal to `maintenant`, not only an expired deadline.
     let mut inaptes: HashMap<String, Instant> = HashMap::new();
     let maintenant = Instant::now();
     inaptes.insert("w-1".into(), maintenant);
@@ -242,15 +248,15 @@ fn une_inaptitude_dont_l_echeance_vaut_exactement_maintenant_est_purgee() {
 
     assert!(
         !inaptes.contains_key("w-1"),
-        "une echeance egale a `maintenant` doit etre purgee, pas conservee"
+        "a deadline equal to `maintenant` must be purged, not kept"
     );
 }
 
-/// Remède à la réserve de revue : `oublier` (donc `retirer`) doit purger
-/// `inaptes` et `rearmements`, sans quoi un rattachement — qui réinscrit la
-/// MÊME session (`inscrire`, chemin de reprise de D4) — hériterait d'une
-/// inaptitude ou d'un compteur de réarmements PÉRIMÉS. C'est le défaut M1 de
-/// la revue finale de branche du sous-bloc D6, rejoué sur ces deux tables.
+/// Remedy for the review reservation: `oublier` (hence `retirer`) must purge
+/// `inaptes` and `rearmements`, otherwise a re-attachment — which re-registers the
+/// SAME session (`inscrire`, D4's resumption path) — would inherit a
+/// STALE unfitness or re-arm counter. It is defect M1 of
+/// the final branch review of sub-block D6, replayed on these two tables.
 #[test]
 fn un_retrait_purge_l_inaptitude_et_le_compteur_de_rearmements() {
     let _verrou = verrouiller_pour_le_test();
@@ -259,38 +265,38 @@ fn un_retrait_purge_l_inaptitude_et_le_compteur_de_rearmements() {
     audio_mort("t8-purge");
     assert!(
         etat().inaptes.contains_key("t8-purge"),
-        "précondition : la session doit être marquée inapte"
+        "precondition: the session must be marked unfit"
     );
     assert_eq!(
         etat().rearmements.get("t8-purge"),
         Some(&1),
-        "précondition : un premier réarmement doit être compté"
+        "precondition: a first re-arm must be counted"
     );
 
     retirer("t8-purge", generation);
 
     assert!(
         !etat().inaptes.contains_key("t8-purge"),
-        "l'inaptitude d'une session retirée doit être oubliée, sinon un \
-         rattachement en hériterait à tort"
+        "the unfitness of a removed session must be forgotten, otherwise a \
+         reattachment would wrongly inherit it"
     );
     assert!(
         !etat().rearmements.contains_key("t8-purge"),
-        "le compteur de réarmements d'une session retirée doit être oublié, \
-         sinon un rattachement hériterait d'un compteur périmé"
+        "the re-arm counter of a removed session must be forgotten, \
+         otherwise a reattachment would inherit a stale counter"
     );
 
     drop(canal);
 }
 
-/// Remède à la réserve I2 de la revue de la tâche 9 (sous-bloc D9) :
-/// `SourceDistante::rattacher` ne peut pas distinguer un redémarrage réel du
-/// capteur d'une simple reconnexion de canal sur un capteur resté vivant, et
-/// remet `Session::audio_mort_signale` à zéro dans les deux cas — un second
-/// `AudioMort` pour la MÊME session, encore inapte, ne doit donc PAS compter
-/// comme un échec CONSÉCUTIF de plus : ce serait le même échec, redit, et ça
-/// rapprocherait l'abandon définitif de 24 h pour une raison étrangère à
-/// l'état réel de la capture.
+/// Remedy for reservation I2 of the review of task 9 (sub-block D9):
+/// `SourceDistante::rattacher` cannot distinguish a real restart of the
+/// sensor from a mere channel reconnection on a sensor that stayed alive, and
+/// resets `Session::audio_mort_signale` in both cases — a second
+/// `AudioMort` for the SAME session, still unfit, must therefore NOT count
+/// as one more CONSECUTIVE failure: it would be the same failure, said again, and it
+/// would bring giving up for good 24 h closer for a reason foreign to the
+/// capture's real state.
 #[test]
 fn un_signal_audio_mort_redondant_ne_recompte_pas_le_rearmement() {
     let _verrou = verrouiller_pour_le_test();
@@ -300,29 +306,29 @@ fn un_signal_audio_mort_redondant_ne_recompte_pas_le_rearmement() {
     assert_eq!(
         etat().rearmements.get("t9-redondant"),
         Some(&1),
-        "précondition : un premier réarmement doit être compté"
+        "precondition: a first re-arm must be counted"
     );
 
-    // Second signal, sans qu'aucun retrait n'ait eu lieu entre les deux :
-    // la session est toujours inapte (répit de `REPIT_REARMEMENT_AUDIO`, pas
-    // encore expiré). Un vrai canal rattaché sur un capteur relancé serait
-    // indiscernable de ceci pour `SourceDistante` — c'est exactement le cas
-    // que ce test isole côté capteur, où la distinction EST possible.
+    // Second signal, without any removal having happened in between:
+    // the session is still unfit (respite of `REPIT_REARMEMENT_AUDIO`, not
+    // yet expired). A real channel re-attached on a restarted sensor would be
+    // indistinguishable from this for `SourceDistante` — it is exactly the case
+    // this test isolates on the sensor side, where the distinction IS possible.
     audio_mort("t9-redondant");
     assert_eq!(
         etat().rearmements.get("t9-redondant"),
         Some(&1),
-        "un signal redondant, reçu pendant que la session est encore \
-         inapte, ne doit pas avancer le compteur de réarmements"
+        "a redundant signal, received while the session is still \
+         unfit, must not advance the re-arm counter"
     );
 
     retirer("t9-redondant", generation);
     drop(canal);
 }
 
-/// Le leg 6 de D9, côté registre : `signaler_audio_vivant` — la PREUVE —
-/// referme le compteur de réarmements, exactement comme le faisait autrefois
-/// (à tort, voir `sommeil/porteurs.rs`) la seule décision d'arbitrage.
+/// D9's hand-over 6, registry side: `signaler_audio_vivant` — the PROOF —
+/// closes the re-arm counter, exactly as the arbitration decision alone
+/// used to (wrongly, see `sommeil/porteurs.rs`).
 #[test]
 fn un_signal_audio_vivant_remet_le_compteur_de_rearmements_a_zero() {
     let _verrou = verrouiller_pour_le_test();
@@ -332,139 +338,139 @@ fn un_signal_audio_vivant_remet_le_compteur_de_rearmements_a_zero() {
     assert_eq!(
         etat().rearmements.get("t10-preuve"),
         Some(&1),
-        "précondition : un premier réarmement doit être compté"
+        "precondition: a first re-arm must be counted"
     );
 
     signaler_audio_vivant("t10-preuve");
     assert!(
         !etat().rearmements.contains_key("t10-preuve"),
-        "une preuve de son doit remettre le compteur de réarmements à zéro"
+        "a proof of sound must reset the re-arm counter to zero"
     );
 
     retirer("t10-preuve", generation);
     drop(canal);
 }
 
-/// F5 (D7, préexistant). Une session meurt, se rattache sous le même nom
-/// avec une génération neuve, et le `retirer` de l'instance PRÉCÉDENTE
-/// arrive après. Sans la génération, il emporterait la session vivante.
+/// F5 (D7, pre-existing). A session dies, re-attaches under the same name
+/// with a new generation, and the `retirer` of the PREVIOUS instance
+/// arrives afterwards. Without the generation, it would take the live session away.
 #[test]
 fn un_retirer_perime_n_emporte_pas_l_inscription_neuve() {
     let mut generations: HashMap<String, u64> = HashMap::new();
-    generations.insert("w-1".into(), 7); // l'inscription neuve, après rattachement
+    generations.insert("w-1".into(), 7); // the new registration, after re-attachment
 
     assert!(
         retirer_est_perime(&generations, "w-1", 6),
-        "le retirer de la génération 6 est en retard : il ne doit rien retirer"
+        "the removal of generation 6 is late: it must remove nothing"
     );
     assert!(
         !retirer_est_perime(&generations, "w-1", 7),
-        "celui de la génération courante retire bien"
+        "the one of the current generation does remove"
     );
 }
 
 #[test]
 fn un_retirer_sur_une_session_inconnue_n_est_pas_perime() {
-    // Aucune inscription : `retirer` doit suivre son chemin normal, qui est
-    // déjà tolérant à l'absence. Rendre `true` ici le rendrait inerte pour
-    // toute session que le registre ne connaît pas encore.
+    // No registration: `retirer` must follow its normal path, which is
+    // already tolerant of absence. Returning `true` here would make it inert for
+    // any session the registry does not know yet.
     let generations: HashMap<String, u64> = HashMap::new();
     assert!(!retirer_est_perime(&generations, "w-1", 3));
 }
 
 #[test]
 fn un_retirer_d_une_generation_posterieure_n_est_pas_perime() {
-    // Le cas d'un `retirer` qui arrive APRÈS l'inscription qu'il vise : il
-    // porte une génération plus récente que celle enregistrée, donc il agit.
+    // The case of a `retirer` arriving AFTER the registration it targets: it
+    // carries a generation more recent than the recorded one, so it acts.
     let mut generations: HashMap<String, u64> = HashMap::new();
     generations.insert("w-1".into(), 7);
     assert!(!retirer_est_perime(&generations, "w-1", 8));
 }
 
-/// Le test que les trois ci-dessus ne pouvaient PAS voir (revue de la
-/// première version de cette tâche, D9) : ils éprouvent `retirer_est_perime`
-/// sur des valeurs choisies à la main, jamais sur les valeurs que
-/// `inscrire`/`retirer` produisent RÉELLEMENT en production. Celui-ci simule
-/// le rattachement F5 avec le chemin complet — deux `inscrire` successifs
-/// pour le MÊME nom, comme le fait un enfant qui se rattache au capteur
-/// après une rupture de tube (`CanalTube::rattacher`) pendant que le fil de
-/// fenêtre précédent vit encore.
+/// The test the three above could NOT see (review of the
+/// first version of this task, D9): they test `retirer_est_perime`
+/// on hand-picked values, never on the values
+/// `inscrire`/`retirer` ACTUALLY produce in production. This one simulates
+/// the F5 re-attachment with the complete path — two successive `inscrire`
+/// for the SAME name, as a child re-attaching to the sensor does
+/// after a pipe break (`CanalTube::rattacher`) while the previous
+/// window thread is still alive.
 #[test]
 fn un_rattachement_recoit_une_generation_neuve_et_le_retirer_precedent_est_perime() {
     let _verrou = verrouiller_pour_le_test();
     let (premier_canal, premiere_generation) = inscrire("t10-rattache", 7001);
-    // Le rattachement : MÊME nom, avant que le `retirer` de l'instance
-    // précédente n'ait eu le temps d'arriver.
+    // The re-attachment: SAME name, before the `retirer` of the previous
+    // instance has had time to arrive.
     let (second_canal, seconde_generation) = inscrire("t10-rattache", 7001);
 
     assert_ne!(
         premiere_generation, seconde_generation,
-        "deux inscriptions du même nom doivent recevoir des générations distinctes"
+        "two registrations of the same name must receive distinct generations"
     );
 
-    // Le `retirer` de l'instance PRÉCÉDENTE, arrivant après le rattachement
-    // (c'est exactement F5) : il ne doit RIEN retirer de l'inscription
-    // vivante.
+    // The `retirer` of the PREVIOUS instance, arriving after the re-attachment
+    // (this is exactly F5): it must remove NOTHING from the live
+    // registration.
     retirer("t10-rattache", premiere_generation);
     assert!(
         etat().canaux.contains_key("t10-rattache"),
-        "un retirer périmé ne doit pas emporter l'inscription neuve"
+        "a stale removal must not take the fresh registration with it"
     );
 
-    // Le retirer de l'instance VIVANTE, lui, retire bien.
+    // The `retirer` of the LIVE instance, for its part, does remove.
     retirer("t10-rattache", seconde_generation);
     assert!(
         !etat().canaux.contains_key("t10-rattache"),
-        "le retirer de la génération courante doit retirer réellement"
+        "the removal of the current generation must really remove"
     );
 
     drop(premier_canal);
     drop(second_canal);
 }
 
-/// 🔴 LE TROU DE COUVERTURE MESURÉ LE 25 AOÛT 2026, ET CE QU'IL A APPRIS.
+/// 🔴 THE COVERAGE GAP MEASURED ON 25 AUGUST 2026, AND WHAT IT TAUGHT.
 ///
-/// La détection du canal rompu de `distribuer` — `envoyer(...).is_err()`, le
-/// chemin des ORDRES — n'était rougie par **aucun** test du dépôt. Mesuré par
-/// mutation ciblée de cette seule ligne (`is_err()` remplacé par `false`,
-/// tout le reste intact) : **1 022 tests, zéro échec**.
+/// The broken-channel detection of `distribuer` — `envoyer(...).is_err()`, the
+/// ORDERS path — was turned red by **no** test in the repository. Measured by
+/// targeted mutation of that single line (`is_err()` replaced by `false`,
+/// everything else intact): **1,022 tests, zero failures**.
 ///
-/// **Pourquoi**, et ce n'est pas un oubli de rédaction : les trois appelants
-/// de `distribuer` (`inscrire`, `retirer`, le tour de roue) enchaînent tous
-/// sur `parts::distribuer_les_parts`, qui porte la MÊME détection. Un ordre
-/// change l'état d'éveil de la session, donc sa part, donc la seconde
-/// détection tire à coup sûr et purge ce que la première a laissé passer.
-/// **La première est masquée par la seconde sur tout chemin de bout en bout**,
-/// et c'est pour cela que `un_retrait_qui_libere_une_place_reveille_bien_la_
-/// session_qui_l_attendait` — qui rompt pourtant délibérément un canal — reste
-/// vert sous la mutation.
+/// **Why**, and it is not a drafting oversight: the three callers
+/// of `distribuer` (`inscrire`, `retirer`, the wheel round) all chain
+/// onto `parts::distribuer_les_parts`, which carries the SAME detection. An order
+/// changes the session's wakefulness, hence its share, hence the second
+/// detection fires for sure and purges what the first let through.
+/// **The first is masked by the second on every end-to-end path**,
+/// and that is why `un_retrait_qui_libere_une_place_reveille_bien_la_
+/// session_qui_l_attendait` — which nonetheless deliberately breaks a channel — stays
+/// green under the mutation.
 ///
-/// ⚠️ **CE N'EST PAS UNE RAISON DE RETIRER LA DÉTECTION DE `distribuer`.**
-/// Elle n'est redondante que tant que la part de la session morte CHANGE avec
-/// son ordre ; `distribuer_les_parts` saute toute session dont la part est
-/// inchangée (`dernieres_parts`), et rien n'oblige un ordre futur à faire
-/// varier une part. Elle décide aussi de l'ORDRE de la purge, dont dépend la
-/// boucle jusqu'à épuisement documentée sur `distribuer`.
+/// ⚠️ **IT IS NOT A REASON TO REMOVE THE DETECTION FROM `distribuer`.**
+/// It is only redundant as long as the dead session's share CHANGES with
+/// its order; `distribuer_les_parts` skips any session whose share is
+/// unchanged (`dernieres_parts`), and nothing forces a future order to make
+/// a share vary. It also decides the ORDER of the purge, on which the
+/// loop-until-exhaustion documented on `distribuer` depends.
 ///
-/// **Ce test l'isole donc en appelant `distribuer` DIRECTEMENT**, sans le
-/// `distribuer_les_parts` qui la masque — la seule façon d'éprouver cette
-/// ligne-là et rien d'autre. Il rougit sous la mutation ci-dessus.
+/// **This test therefore isolates it by calling `distribuer` DIRECTLY**, without the
+/// `distribuer_les_parts` that masks it — the only way to test that
+/// line and nothing else. It turns red under the mutation above.
 #[test]
 fn distribuer_purge_a_lui_seul_une_session_dont_le_canal_est_rompu() {
     let _verrou = verrouiller_pour_le_test();
     let (canal, generation) = inscrire("t16-ordres", 5600);
-    // Le fil de fenêtre meurt SANS passer par `retirer` : c'est ce qui arrive
-    // quand il panique avant son point de retrait unique.
+    // The window thread dies WITHOUT going through `retirer`: that is what happens
+    // when it panics before its single removal point.
     drop(canal);
     assert!(
         etat().canaux.contains_key("t16-ordres"),
-        "précondition : la session est inscrite, et rien ne l'a encore purgée"
+        "precondition: the session is registered, and nothing has purged it yet"
     );
 
     {
-        // `distribuer` SEUL. Le `MutexGuard` est pris ici et relâché à la fin
-        // du bloc : `etat()` n'est pas réentrant, et le reprendre sans l'avoir
-        // rendu interbloquerait ce fil.
+        // `distribuer` ALONE. The `MutexGuard` is taken here and released at the end
+        // of the block: `etat()` is not reentrant, and taking it again without having
+        // released it would deadlock this thread.
         let mut garde = etat();
         distribuer(
             &mut garde,
@@ -472,11 +478,11 @@ fn distribuer_purge_a_lui_seul_une_session_dont_le_canal_est_rompu() {
         );
         assert!(
             !garde.canaux.contains_key("t16-ordres"),
-            "`distribuer` doit purger de lui-même la session dont l'envoi a rendu Err"
+            "`distribuer` must itself purge the session whose send returned Err"
         );
     }
 
-    // Sans effet : la session est déjà oubliée. Présent pour que ce test ne
-    // laisse rien derrière lui dans le registre GLOBAL du processus.
+    // No effect: the session is already forgotten. Present so that this test
+    // leaves nothing behind in the process's GLOBAL registry.
     retirer("t16-ordres", generation);
 }

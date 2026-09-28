@@ -1,34 +1,34 @@
-//! Tests des ÉTATS que le capteur pousse à `SourceDistante` — visibilité,
-//! sommeil, part de budget, ordre audio, plein écran, presse-papier.
+//! Tests of the STATES the sensor pushes to `SourceDistante` — visibility,
+//! sleep, budget share, audio order, fullscreen, clipboard.
 //!
-//! **Extrait de `distante/tests.rs` VERBATIM le 20 août 2026**, sous-bloc P1
-//! du presse-papier, tâche 10 : le fichier voisin était à **474 lignes** pour
-//! un plafond de projet à 500, soit une marge de 26 que le test de
-//! `Recu::PressePapier` aurait entamée — et le §7.2 de la spécification ne
-//! listait pas ce fichier du tout (divergence E1 du plan). La règle du dépôt
-//! est d'extraire AVANT d'ajouter, jamais de comprimer.
+//! **Extracted from `distante/tests.rs` VERBATIM on 20 August 2026**, clipboard
+//! sub-block P1, task 10: the sibling file was at **474 lines** for
+//! a project cap of 500, a margin of 26 the test of
+//! `Recu::PressePapier` would have eaten into — and §7.2 of the specification did
+//! not list this file at all (plan divergence E1). The repository's rule
+//! is to extract BEFORE adding, never to compress.
 //!
-//! Le partage suit ce que les tests exercent : ce qui ARRIVE par la file
-//! `Recu` et se relit par une méthode `…_a_annoncer` / `…_a_appliquer` vit
-//! ici ; les images, le rattachement et les commandes restent chez le voisin,
-//! avec les fabriques (`source_avec`, `source_rattachable`) et le canal
-//! factice, que ce fichier réemprunte plutôt que de les dupliquer.
+//! The split follows what the tests exercise: what ARRIVES through the `Recu`
+//! queue and is re-read through a `…_a_annoncer` / `…_a_appliquer` method lives
+//! here; frames, re-attachment and commands stay with the sibling,
+//! along with the factories (`source_with`, `source_rattachable`) and the fake
+//! channel, which this file borrows rather than duplicating them.
 
-use super::tests::{source_avec, source_rattachable};
+use super::tests::{source_rattachable, source_with};
 use super::*;
-// `VideoSource` est importé ICI depuis que l'implémentation du trait a été
-// extraite vers `distante/video_source.rs` (sous-bloc A1) : le parent ne s'en
-// sert plus, et un trait doit être en portée pour que ses méthodes soient
-// appelables.
+// `VideoSource` is imported HERE since the trait implementation was
+// extracted to `distante/video_source.rs` (sub-block A1): the parent no longer
+// uses it, and a trait must be in scope for its methods to be
+// callable.
 use crate::source::VideoSource;
 
-/// `set_awake` relaie la visibilité telle quelle au capteur : c'est lui qui
-/// arbitre globalement (tâche 7). `source_avec` sert ici de canal espion, par
-/// son troisième élément (`recus`), pour vérifier le message ÉMIS.
+/// `set_awake` relays visibility as is to the sensor: it is the one that
+/// arbitrates globally (task 7). `source_with` serves here as a spy channel, through
+/// its third element (`recus`), to check the SENT message.
 #[test]
 fn set_awake_transmet_la_visibilite_au_capteur() {
-    let (mut source, _tx, recus) = source_avec(4);
-    source.set_awake(false, false).expect("le capteur accepte");
+    let (mut source, _tx, recus) = source_with(4);
+    source.set_awake(false, false).expect("the sensor accepts");
     assert_eq!(
         recus.lock().unwrap().as_slice(),
         &[VersCapteur::Visibilite {
@@ -38,88 +38,88 @@ fn set_awake_transmet_la_visibilite_au_capteur() {
     );
 }
 
-/// `ecrire_le_presse_papier` relaie le texte tel quel au capteur, qui en est
-/// le seul propriétaire (D1). `source_avec` sert de canal espion pour
-/// vérifier le message ÉMIS, pas seulement l'effet.
+/// `write_clipboard` relays the text as is to the sensor, which is
+/// its sole owner (D1). `source_with` serves as a spy channel to
+/// check the SENT message, not only the effect.
 ///
-/// ROUGE si `commander_simple` n'est pas appelé, ou si le texte est altéré en
-/// route — l'enfant l'a déjà normalisé, borné et dénormalisé, et le capteur
-/// n'a rien à en décider.
+/// RED if `commander_simple` is not called, or if the text is altered on
+/// the way — the child has already normalised, bounded and denormalised it, and the sensor
+/// has nothing to decide about it.
 #[test]
-fn ecrire_le_presse_papier_transmet_le_texte_au_capteur() {
-    let (mut source, _tx, recus) = source_avec(4);
+fn write_clipboard_passes_the_text_to_the_capturer() {
+    let (mut source, _tx, recus) = source_with(4);
     source
-        .ecrire_le_presse_papier("une\r\ndeux")
-        .expect("le capteur accepte");
+        .write_clipboard("one\r\ntwo")
+        .expect("the sensor accepts");
     assert_eq!(
         recus.lock().unwrap().as_slice(),
-        &[VersCapteur::PressePapierEcrire {
-            texte: "une\r\ndeux".to_string()
+        &[VersCapteur::ClipboardWrite {
+            texte: "one\r\ntwo".to_string()
         }]
     );
 }
 
-/// 🔴 **Un refus du capteur doit remonter en `Err`, et c'est ce qui empêche
-/// l'injection de `Ctrl+V`** : sans lui, la touche partirait sur un
-/// presse-papier inchangé et collerait le contenu PRÉCÉDENT.
+/// 🔴 **A refusal from the sensor must come back up as `Err`, and that is what prevents
+/// the `Ctrl+V` injection**: without it, the key would go out on an
+/// unchanged clipboard and would paste the PREVIOUS content.
 ///
-/// ROUGE si l'implémentation employait `commander` nu au lieu de
-/// `commander_simple` : elle accepterait alors n'importe quelle réponse, y
-/// compris une `Erreur`. Ce test ne vérifie donc pas `commander_simple`
-/// lui-même — il vérifie qu'on l'a bien employé, LUI.
+/// RED if the implementation used bare `commander` instead of
+/// `commander_simple`: it would then accept any reply,
+/// including an `Error`. This test therefore does not check `commander_simple`
+/// itself — it checks that IT is the one that was used.
 #[test]
 fn un_refus_du_capteur_empeche_le_collage() {
     let (mut source, _tx, _recus) =
-        super::tests::source_avec_reponses(vec![Ok(DepuisCapteur::Erreur {
+        super::tests::source_with_replies(vec![Ok(DepuisCapteur::Error {
             motif: "OpenClipboard".into(),
         })]);
-    let erreur = source
-        .ecrire_le_presse_papier("colle")
-        .expect_err("un refus du capteur doit remonter");
+    let error = source
+        .write_clipboard("colle")
+        .expect_err("a refusal from the sensor must surface");
     assert!(
-        erreur.to_string().contains("OpenClipboard"),
-        "le motif du capteur doit survivre : {erreur}"
+        error.to_string().contains("OpenClipboard"),
+        "the sensor's reason must survive: {error}"
     );
 }
 
-/// 🔴 **LE DÉFAUT DU TRAIT, ET C'EST LE PIÈGE QUE D10 A PAYÉ.** Les sources
-/// factices de ce dépôt implémentent leurs effets de bord en NO-OP, et 456
-/// tests sont restés verts sur un produit muet. Ce test-ci porte donc sur une
-/// source qui **NE REDÉFINIT PAS** la méthode — `FileSource`, la source de
-/// test du dépôt —, c'est-à-dire sur le défaut lui-même.
+/// 🔴 **THE TRAIT'S DEFAULT, AND IT IS THE TRAP D10 PAID FOR.** This repository's fake
+/// sources implement their side effects as NO-OPs, and 456
+/// tests stayed green on a silent product. This test therefore targets a
+/// source that **DOES NOT OVERRIDE** the method — `FileSource`, the repository's
+/// test source —, that is, the default itself.
 ///
-/// ROUGE si le défaut est un `Ok(())` inerte, comme ses quatre voisines de
-/// `source.rs`. Ce serait le mode MONO-FENÊTRE collant silencieusement le
-/// contenu PRÉCÉDENT à chaque `Ctrl+V`.
+/// RED if the default is an inert `Ok(())`, like its four neighbours in
+/// `source.rs`. That would be SINGLE-WINDOW mode silently pasting the
+/// PREVIOUS content at every `Ctrl+V`.
 #[test]
-fn le_defaut_du_trait_refuse_d_ecrire_plutot_que_de_faire_semblant() {
+fn the_trait_default_refuses_to_write_rather_than_pretend() {
     let source_path =
         std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/testdata/testsrc.264"));
     let mut source = crate::source::FileSource::from_path(source_path, 1280, 720, 60)
-        .expect("chargement du flux de test");
-    let erreur = source
-        .ecrire_le_presse_papier("colle")
-        .expect_err("le défaut du trait DOIT rendre Err, jamais Ok(())");
+        .expect("loading the test stream");
+    let error = source
+        .write_clipboard("colle")
+        .expect_err("the trait's default MUST return Err, never Ok(())");
     assert!(
-        erreur.to_string().contains("aucun capteur"),
-        "le motif doit nommer la cause : {erreur}"
+        error.to_string().contains("no sensor"),
+        "the reason must name the cause: {error}"
     );
 }
 
-/// Un `Sommeil` poussé par le capteur est retenu, pas ignoré : c'est
-/// `sommeil_a_annoncer` qui le rend disponible à la boucle de transport, et
-/// une seule fois — la réémettre à chaque tour inonderait le canal de
-/// contrôle vers le navigateur. `source_avec` sert ici de file injectable par
-/// son deuxième élément (`tx`).
+/// A `Sommeil` pushed by the sensor is kept, not ignored: it is
+/// `sommeil_a_annoncer` that makes it available to the transport loop, and
+/// only once — re-emitting it every round would flood the control
+/// channel to the browser. `source_with` serves here as an injectable queue through
+/// its second element (`tx`).
 #[test]
 fn un_sommeil_pousse_par_le_capteur_est_retenu_pour_le_client() {
-    let (mut source, tx, _recus) = source_avec(4);
+    let (mut source, tx, _recus) = source_with(4);
     tx.send(Recu::Sommeil {
         endormie: true,
         raison: "evincee".into(),
     })
-    .expect("dépôt");
-    // Le sommeil est consommé par le tour de boucle qui cherche une image.
+    .expect("deposit");
+    // The sleep is consumed by the loop round that looks for a frame.
     assert!(source.next_frame().is_none());
     assert_eq!(
         source.sommeil_a_annoncer(),
@@ -128,100 +128,96 @@ fn un_sommeil_pousse_par_le_capteur_est_retenu_pour_le_client() {
     assert_eq!(
         source.sommeil_a_annoncer(),
         None,
-        "une annonce ne se répète pas"
+        "an announcement does not repeat"
     );
 }
 
-/// `sommeil` est un état COURANT, pas un historique : deux `Sommeil` reçus
-/// avant toute lecture s'écrasent, et seul le dernier doit survivre — sans
-/// quoi la boucle de transport annoncerait au navigateur un état déjà
-/// périmé, ou pire, une file d'annonces grandirait sans jamais se vider.
+/// `sommeil` is a CURRENT state, not a history: two `Sommeil` received
+/// before any read overwrite each other, and only the last must survive — otherwise
+/// the transport loop would announce to the browser an already stale
+/// state, or worse, a queue of announcements would grow without ever emptying.
 #[test]
-fn deux_sommeils_consecutifs_ne_retiennent_que_le_dernier() {
-    let (mut source, tx, _recus) = source_avec(4);
+fn two_consecutive_sleeps_keep_only_the_last() {
+    let (mut source, tx, _recus) = source_with(4);
     tx.send(Recu::Sommeil {
         endormie: true,
         raison: "masquee".into(),
     })
-    .expect("dépôt");
+    .expect("deposit");
     tx.send(Recu::Sommeil {
         endormie: true,
         raison: "evincee".into(),
     })
-    .expect("dépôt");
+    .expect("deposit");
     assert!(source.next_frame().is_none());
     assert_eq!(
         source.sommeil_a_annoncer(),
         Some((true, "evincee".to_string())),
-        "seul le dernier sommeil reçu doit survivre"
+        "only the last sleep received must survive"
     );
     assert_eq!(source.sommeil_a_annoncer(), None);
 }
 
-/// Une part reçue est retenue jusqu'à ce que la boucle de transport la
-/// consomme, et ne se rend qu'une fois — même patron que
-/// `un_sommeil_pousse_par_le_capteur_est_retenu_pour_le_client` plus haut.
+/// A received share is kept until the transport loop
+/// consumes it, and is returned only once — same pattern as
+/// `un_sommeil_pousse_par_le_capteur_est_retenu_pour_le_client` above.
 #[test]
 fn une_part_recue_est_rendue_une_seule_fois() {
-    let (mut source, tx, _recus) = source_avec(4);
-    tx.send(Recu::Part { bps: 4_000_000 }).expect("dépôt");
-    // `next_frame` est ce qui draine le canal : sans lui, rien n'est lu.
+    let (mut source, tx, _recus) = source_with(4);
+    tx.send(Recu::Part { bps: 4_000_000 }).expect("deposit");
+    // `next_frame` is what drains the channel: without it, nothing is read.
     assert_eq!(source.next_frame(), None);
     assert_eq!(source.part_a_appliquer(), Some(4_000_000));
-    assert_eq!(
-        source.part_a_appliquer(),
-        None,
-        "une part ne se réapplique pas"
-    );
+    assert_eq!(source.part_a_appliquer(), None, "a share is not reapplied");
 }
 
-/// Deux parts arrivées entre deux lectures s'écrasent : c'est un état
-/// courant, pas un historique — même régime que `Etat` et `Sommeil`.
+/// Two shares arriving between two reads overwrite each other: it is a current
+/// state, not a history — same regime as `Etat` and `Sommeil`.
 #[test]
-fn deux_parts_arrivees_avant_lecture_s_ecrasent() {
-    let (mut source, tx, _recus) = source_avec(4);
-    tx.send(Recu::Part { bps: 4_000_000 }).expect("dépôt");
-    tx.send(Recu::Part { bps: 2_000_000 }).expect("dépôt");
+fn two_shares_arriving_before_a_read_overwrite_each_other() {
+    let (mut source, tx, _recus) = source_with(4);
+    tx.send(Recu::Part { bps: 4_000_000 }).expect("deposit");
+    tx.send(Recu::Part { bps: 2_000_000 }).expect("deposit");
     assert_eq!(source.next_frame(), None);
     assert_eq!(
         source.part_a_appliquer(),
         Some(2_000_000),
-        "seule la dernière survit"
+        "only the last one survives"
     );
 }
 
-/// Un ordre audio reçu est retenu jusqu'à ce que la boucle de transport le
-/// consomme, et ne se rend qu'une fois — même patron que
-/// `une_part_recue_est_rendue_une_seule_fois` plus haut.
+/// A received audio order is kept until the transport loop
+/// consumes it, and is returned only once — same pattern as
+/// `une_part_recue_est_rendue_une_seule_fois` above.
 #[test]
 fn un_ordre_audio_recu_est_rendu_une_seule_fois() {
-    let (mut source, tx, _recus) = source_avec(4);
-    tx.send(Recu::Audio { actif: true }).expect("dépôt");
-    // `next_frame` est ce qui draine le canal : sans lui, rien n'est lu.
+    let (mut source, tx, _recus) = source_with(4);
+    tx.send(Recu::Audio { actif: true }).expect("deposit");
+    // `next_frame` is what drains the channel: without it, nothing is read.
     assert_eq!(source.next_frame(), None);
     assert_eq!(source.audio_a_appliquer(), Some(true));
     assert_eq!(
         source.audio_a_appliquer(),
         None,
-        "un ordre audio ne se réapplique pas"
+        "an audio order is not reapplied"
     );
 }
 
 /// **Au rattachement, l'enfant REDEVIENT MUET** (conception §4.4 ; F2, revue
 /// finale de branche).
 ///
-/// Ce que ce test attrape, et que rien n'attrapait : une porteuse dont le
-/// canal casse gardait son drapeau `emet` d'avant la rupture, parce que le
-/// rattachement ne remettait à zéro que l'ordre EN ATTENTE (`None`, « rien à
-/// changer ») et jamais l'état de la source. Deux fenêtres d'un même PID
-/// jouaient alors le même mix, désynchronisées, jusqu'à ce que l'ordre
-/// d'extinction arrive — un écho audible.
+/// What this test catches, and nothing caught before: a carrier whose
+/// channel breaks kept its `emet` flag from before the break, because the
+/// re-attachment only reset the PENDING order (`None`, "nothing to
+/// change") and never the source's state. Two windows of the same PID
+/// then played the same mix, out of sync, until the switch-off
+/// order arrived — an audible echo.
 #[test]
 fn un_rattachement_remet_l_enfant_au_silence() {
-    let (mut source, tx, _recus, _rattachements, _essais) = source_rattachable(vec![Some(1600)]);
-    // La fenêtre porte le son, et la boucle de transport a consommé l'ordre :
-    // il ne reste plus rien en attente, seul l'état réel de la source le sait.
-    tx.send(Recu::Audio { actif: true }).expect("dépôt");
+    let (mut source, tx, _recus, _rattachements, _attempts) = source_rattachable(vec![Some(1600)]);
+    // The window carries the sound, and the transport loop has consumed the order:
+    // nothing is left pending, only the source's real state knows it.
+    tx.send(Recu::Audio { actif: true }).expect("deposit");
     assert_eq!(source.next_frame(), None);
     assert_eq!(source.audio_a_appliquer(), Some(true));
 
@@ -230,60 +226,60 @@ fn un_rattachement_remet_l_enfant_au_silence() {
     assert_eq!(
         source.next_frame(),
         None,
-        "le tour de la rupture ne rend pas d'image"
+        "the round of the break yields no image"
     );
 
     assert_eq!(
         source.audio_a_appliquer(),
         Some(false),
-        "un rattachement doit ORDONNER le silence, pas se taire sur la question"
+        "a reattachment must ORDER the silence, not keep quiet on the matter"
     );
 }
 
-/// Deux ordres audio arrivés entre deux lectures s'écrasent : même régime
-/// que `deux_parts_arrivees_avant_lecture_s_ecrasent` juste au-dessus.
+/// Two audio orders arriving between two reads overwrite each other: same regime
+/// as `two_shares_arriving_before_a_read_overwrite_each_other` just above.
 #[test]
-fn deux_ordres_audio_arrives_avant_lecture_s_ecrasent() {
-    let (mut source, tx, _recus) = source_avec(4);
-    tx.send(Recu::Audio { actif: true }).expect("dépôt");
-    tx.send(Recu::Audio { actif: false }).expect("dépôt");
+fn two_audio_orders_arriving_before_a_read_overwrite_each_other() {
+    let (mut source, tx, _recus) = source_with(4);
+    tx.send(Recu::Audio { actif: true }).expect("deposit");
+    tx.send(Recu::Audio { actif: false }).expect("deposit");
     assert_eq!(source.next_frame(), None);
     assert_eq!(
         source.audio_a_appliquer(),
         Some(false),
-        "seul le dernier ordre survit"
+        "only the last order survives"
     );
 }
 
-/// Même régime que `sommeil_a_annoncer` : l'annonce est un CHANGEMENT, elle
-/// se consomme. Sans quoi la branche de transport qui l'interroge à ~100 Hz
-/// inonderait le canal de contrôle.
+/// Same regime as `sommeil_a_annoncer`: the announcement is a CHANGE, it
+/// is consumed. Otherwise the transport branch polling it at ~100 Hz
+/// would flood the control channel.
 #[test]
 fn un_plein_ecran_pousse_est_annonce_une_seule_fois() {
-    let (mut source, tx, _recus) = source_avec(4);
-    tx.send(Recu::PleinEcran { actif: true }).expect("dépôt");
+    let (mut source, tx, _recus) = source_with(4);
+    tx.send(Recu::PleinEcran { actif: true }).expect("deposit");
     assert_eq!(source.next_frame(), None);
     assert_eq!(source.plein_ecran_a_annoncer(), Some(true));
     assert_eq!(
         source.plein_ecran_a_annoncer(),
         None,
-        "une annonce ne se répète pas"
+        "an announcement does not repeat"
     );
 }
 
-/// Même régime que `plein_ecran_a_annoncer` juste au-dessus : l'annonce est un
-/// ÉTAT COURANT, et elle se CONSOMME. Sans quoi la branche `a1septies` de
-/// `transport/tick.rs`, qui interroge la source à ~100 Hz, réémettrait le même
-/// `AgentControl::Clipboard` cent fois par seconde et inonderait le canal de
-/// contrôle — le texte pouvant peser jusqu'à `PRESSE_PAPIER_MAX`.
+/// Same regime as `plein_ecran_a_annoncer` just above: the announcement is a
+/// CURRENT STATE, and it is CONSUMED. Otherwise the `a1septies` branch of
+/// `transport/tick.rs`, which polls the source at ~100 Hz, would re-emit the same
+/// `AgentControl::Clipboard` a hundred times per second and flood the control
+/// channel — the text possibly weighing up to `PRESSE_PAPIER_MAX`.
 #[test]
 fn un_presse_papier_pousse_est_annonce_une_seule_fois() {
-    let (mut source, tx, _recus) = source_avec(4);
+    let (mut source, tx, _recus) = source_with(4);
     tx.send(Recu::PressePapier {
         texte: Some("bonjour".into()),
         octets: 7,
     })
-    .expect("dépôt");
+    .expect("deposit");
     assert_eq!(source.next_frame(), None);
     assert_eq!(
         source.presse_papier_a_annoncer(),
@@ -292,83 +288,83 @@ fn un_presse_papier_pousse_est_annonce_une_seule_fois() {
     assert_eq!(
         source.presse_papier_a_annoncer(),
         None,
-        "une annonce ne se répète pas"
+        "an announcement does not repeat"
     );
 }
 
-/// Le REFUS de taille (D-P1-1) voyage par la même variante, `texte` à `None`
-/// et `octets` portant la taille refusée : c'est ce qui permet au bandeau du
-/// navigateur de la dire. Deux annonces arrivées entre deux lectures
-/// s'écrasent — le presse-papier EST un état, pas un historique.
+/// The size REFUSAL (D-P1-1) travels through the same variant, `texte` as `None`
+/// and `octets` carrying the refused size: that is what lets the
+/// browser's banner state it. Two announcements arriving between two reads
+/// overwrite each other — the clipboard IS a state, not a history.
 #[test]
-fn deux_presse_papiers_arrives_avant_lecture_s_ecrasent_et_le_refus_passe() {
-    let (mut source, tx, _recus) = source_avec(4);
+fn two_clipboards_arriving_before_a_read_overwrite_each_other_and_the_refusal_passes() {
+    let (mut source, tx, _recus) = source_with(4);
     tx.send(Recu::PressePapier {
         texte: Some("premier".into()),
         octets: 7,
     })
-    .expect("dépôt");
+    .expect("deposit");
     tx.send(Recu::PressePapier {
         texte: None,
         octets: 100_000,
     })
-    .expect("dépôt");
+    .expect("deposit");
     assert_eq!(source.next_frame(), None);
     assert_eq!(
         source.presse_papier_a_annoncer(),
         Some((None, 100_000)),
-        "seule la dernière annonce survit, refus compris"
+        "only the last announcement survives, refusal included"
     );
 }
 
-/// Sous-bloc A1, même régime que `presse_papier_a_annoncer` juste au-dessus :
-/// l'annonce est un ÉTAT COURANT, et elle se CONSOMME.
+/// Sub-block A1, same regime as `presse_papier_a_annoncer` just above:
+/// the announcement is a CURRENT STATE, and it is CONSUMED.
 ///
-/// 🔴 **CE TEST EXISTE PARCE QU'UNE ROUGE EST RESTÉE VERTE.** La rouge T2 de la
-/// tâche 9 mutait `SourceDistante::accent_a_annoncer` en `.clone()` au lieu de
-/// `.take()` et attendait que
-/// `l_accent_annonce_est_consomme_et_ne_repart_pas_au_tour_suivant` tombe : il
-/// est resté VERT, parce que ce test-là emploie une source FACTICE
-/// (`SourceAvecAccent`) dont la consommation lui est propre. Il éprouve le
-/// CÂBLAGE de la branche a1nonies, jamais `SourceDistante`.
+/// 🔴 **THIS TEST EXISTS BECAUSE A RED STAYED GREEN.** Red T2 of
+/// task 9 mutated `SourceDistante::accent_a_annoncer` into `.clone()` instead of
+/// `.take()` and expected
+/// `the_announced_accent_is_consumed_and_not_resent_next_round` to fail: it
+/// stayed GREEN, because that test uses a FAKE source
+/// (`SourceWithAccent`) whose consumption is its own. It tests the
+/// WIRING of the a1nonies branch, never `SourceDistante`.
 ///
-/// **La consommation du VRAI `SourceDistante` n'était donc couverte par
-/// RIEN**, et c'est ce trou-ci que ce test ferme. La règle du dépôt est qu'une
-/// rouge restée verte se DIAGNOSTIQUE, elle ne se classe pas.
+/// **Consumption by the REAL `SourceDistante` was therefore covered by
+/// NOTHING**, and it is this gap that this test closes. The repository's rule is that a
+/// red that stayed green is DIAGNOSED, not filed away.
 #[test]
 fn un_accent_pousse_est_annonce_une_seule_fois() {
-    let (mut source, tx, _recus) = source_avec(4);
+    let (mut source, tx, _recus) = source_with(4);
     tx.send(Recu::Accent {
         couleur: "#7aa2f7".into(),
     })
-    .expect("dépôt");
+    .expect("deposit");
     assert_eq!(source.next_frame(), None);
     assert_eq!(source.accent_a_annoncer(), Some("#7aa2f7".to_string()));
     assert_eq!(
         source.accent_a_annoncer(),
         None,
-        "une annonce ne se répète pas"
+        "an announcement does not repeat"
     );
 }
 
-/// Deux accents arrivés entre deux lectures s'écrasent : l'accent EST un état,
-/// pas un historique, et le navigateur n'aurait rien à faire d'une teinte que
-/// l'icône a déjà remplacée. Même régime que `plein_ecran` et `presse_papier`.
+/// Two accents arriving between two reads overwrite each other: the accent IS a state,
+/// not a history, and the browser would have nothing to do with a tint the
+/// icon has already replaced. Same regime as `plein_ecran` and `presse_papier`.
 #[test]
-fn deux_accents_arrives_avant_lecture_s_ecrasent() {
-    let (mut source, tx, _recus) = source_avec(4);
+fn two_accents_arriving_before_a_read_overwrite_each_other() {
+    let (mut source, tx, _recus) = source_with(4);
     tx.send(Recu::Accent {
         couleur: "#7aa2f7".into(),
     })
-    .expect("dépôt");
+    .expect("deposit");
     tx.send(Recu::Accent {
         couleur: "#fa8c16".into(),
     })
-    .expect("dépôt");
+    .expect("deposit");
     assert_eq!(source.next_frame(), None);
     assert_eq!(
         source.accent_a_annoncer(),
         Some("#fa8c16".to_string()),
-        "seule la dernière annonce survit"
+        "only the last announcement survives"
     );
 }

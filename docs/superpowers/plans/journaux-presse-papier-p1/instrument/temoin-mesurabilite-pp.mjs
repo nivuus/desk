@@ -37,13 +37,13 @@ const log = (...a) => console.log(new Date().toISOString(), ...a);
 
 /** Tente de lire le presse-papier de l'HÔTE par les trois outils usuels. */
 function lireHote() {
-    const essais = [
+    const attempts = [
         ['xclip', ['-o', '-selection', 'clipboard']],
         ['wl-paste', ['--no-newline']],
         ['xsel', ['-b', '-o']],
     ];
     const resultats = [];
-    for (const [outil, args] of essais) {
+    for (const [outil, args] of attempts) {
         const quel = spawnSync('sh', ['-c', `command -v ${outil}`], { encoding: 'utf8' });
         if (quel.status !== 0) { resultats.push({ outil, present: false }); continue; }
         const r = spawnSync(outil, args, { encoding: 'utf8', timeout: 8000 });
@@ -105,8 +105,8 @@ try {
     releve.apres_hote = lireHote();
     log('hôte :', JSON.stringify(releve.apres_hote));
 } catch (e) {
-    releve.erreur = String(e).slice(0, 400);
-    log('!! erreur', releve.erreur);
+    releve.error = String(e).slice(0, 400);
+    log('!! erreur', releve.error);
 } finally {
     // Le verdict, écrit ici et pas laissé à l'interprétation.
     const trouve = (releve.apres_hote ?? []).some((r) => r.present && (r.stdout ?? '').includes(NONCE));

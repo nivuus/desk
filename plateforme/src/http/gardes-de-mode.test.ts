@@ -1,23 +1,23 @@
-// LES DEUX GARDES DE MODE, ÉPROUVÉES DANS LEUR MODE INACTIF ET LA PAGE ARMÉE.
+// THE TWO MODE GUARDS, TESTED IN THEIR INACTIVE MODE WITH THE PAGE ARMED.
 //
-// 🔴 C'EST LA COMPOSITION QUE RIEN N'ÉPROUVAIT, ET C'EST ELLE QUI ROUGIT. Les
-// deux gardes étaient testées, le servant de page était testé, et le défaut
-// vivait EXACTEMENT à leur frontière : chaque moitié était juste, et aucune
-// revue par tâche ne pouvait le voir. `routes-identite.test.ts` et
-// `routes-auth.test.ts` ne posent jamais `racinePage` ; `routes-page.test.ts`
-// ne visite jamais `/auth/*`.
+// 🔴 IT IS THE COMPOSITION NOTHING TESTED, AND IT IS WHAT TURNS RED. The
+// two guards were tested, the page server was tested, and the defect
+// lived EXACTLY at their boundary: each half was right, and no
+// per-task review could see it. `routes-identite.test.ts` and
+// `routes-auth.test.ts` never set `racinePage`; `routes-page.test.ts`
+// never visits `/auth/*`.
 //
-// 🔴 MESURÉ AVANT CORRECTION, service en mode `motdepasse` avec la page armée :
-// `/auth/moi` rendait `200 text/html` au lieu de `404`. Le repli SPA du
-// servant, chaîné en dernier, avalait le `404` générique que les deux gardes
-// appelaient — et ce `404` est le mécanisme documenté qui porte le MODE
-// jusqu'au client (`client/src/connexion.ts` : « un 404 signifie ce montage
-// authentifie par mot de passe »).
+// 🔴 MEASURED BEFORE THE FIX, service in `motdepasse` mode with the page armed:
+// `/auth/moi` returned `200 text/html` instead of `404`. The page server's
+// SPA fallback, chained last, swallowed the generic `404` the two guards
+// called — and that `404` is the documented mechanism that carries the MODE
+// to the client (`client/src/connexion.ts`: "a 404 means this setup
+// authenticates by password").
 //
-// ⚠️ LA MÉTHODE EST `GET`, ET C'EST CE QUI REND CES TESTS DISCRIMINANTS. Le
-// servant se retire hors `GET`/`HEAD`, si bien qu'un `POST /auth/connexion`
-// rendait `404` de toute façon — par accident, et sans rien prouver. C'est le
-// `GET` qui traverse le repli SPA, donc le seul qui puisse rougir.
+// ⚠️ THE METHOD IS `GET`, AND IT IS WHAT MAKES THESE TESTS DISCRIMINATING. The
+// page server withdraws outside `GET`/`HEAD`, so that a `POST /auth/connexion`
+// returned `404` anyway — by accident, and proving nothing. It is the
+// `GET` that goes through the SPA fallback, hence the only one that can turn red.
 
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -26,7 +26,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { baseNeuve } from '../base/harnais';
 import type { Pilote } from '../base/pilote';
 import type { Config } from '../config';
-import { demarrerServeur, type ServicePlateforme } from './serveur';
+import { startServer, type ServicePlateforme } from './serveur';
 
 const CONFIG: Config = {
     hote: '127.0.0.1',
@@ -50,16 +50,16 @@ afterEach(async () => {
     base = undefined;
 });
 
-/// Une racine bâtie à la main, qui porte le `hub.html` du repli SPA : sans
-/// lui, le servant échouerait au `stat` et le `404` reviendrait pour une
-/// raison qui n'est PAS celle qu'on éprouve.
+/// A root built by hand, carrying the `hub.html` of the SPA fallback: without
+/// it, the page server would fail at `stat` and the `404` would come back for a
+/// reason that is NOT the one under test.
 ///
-/// 🔴 `hub.html`, PAS `index.html`, depuis la décision « sers le hub à la
-/// racine » (30 août 2026) : c'est désormais CE nom que `resolution.ts::PAGE`
-/// résout pour la racine et pour tout chemin sans extension. Écrire l'autre
-/// nom laisserait, si une garde de mode régressait, le servant échouer au
-/// `stat` pour une raison qui n'est pas celle qu'on éprouve — exactement le
-/// piège que ce commentaire dénonce.
+/// 🔴 `hub.html`, NOT `index.html`, since the decision "serve the hub at the
+/// root" (30 August 2026): it is now THIS name that `resolution.ts::PAGE`
+/// resolves for the root and for every path without extension. Writing the other
+/// name would, if a mode guard regressed, let the page server fail at
+/// `stat` for a reason that is not the one under test — exactly the
+/// trap this comment denounces.
 function racineArmee(): string {
     const racine = mkdtempSync(join(tmpdir(), 'garde-page-'));
     writeFileSync(join(racine, 'hub.html'), '<!doctype html><title>page</title>');
@@ -72,64 +72,64 @@ function requeteFermee(url: string): Promise<Response> {
 
 async function servir(auth: 'pomerium' | 'motdepasse', nom: string): Promise<string> {
     base = await baseNeuve(nom);
-    service = await demarrerServeur({ ...CONFIG, auth, racinePage: racineArmee() }, base);
+    service = await startServer({ ...CONFIG, auth, racinePage: racineArmee() }, base);
     return `http://127.0.0.1:${service.port}`;
 }
 
-describe("la garde de mode d'`/auth/moi`, en mode motdepasse", () => {
-    it('rend 404, jamais la page', async () => {
+describe("the mode guard of `/auth/moi`, in motdepasse mode", () => {
+    it('returns 404, never the page', async () => {
         const url = await servir('motdepasse', 'garde-moi-statut');
         expect((await requeteFermee(`${url}/auth/moi`)).status).toBe(404);
     });
 
-    // 🔴 SÉPARÉE, ET ANCRÉE SUR LE TYPE : `expect` s'arrête au premier échec,
-    // et cette assertion-ci rougirait MÊME si un futur défaut rendait le bon
-    // statut avec le mauvais corps. C'est elle qui dit que le `404` vient de
-    // la garde et non d'un servant qui aurait échoué pour une autre raison.
-    it("rend le 404 du service — text/plain, jamais text/html", async () => {
+    // 🔴 SEPARATE, AND ANCHORED ON THE TYPE: `expect` stops at the first failure,
+    // and this assertion would turn red EVEN if a future defect returned the right
+    // status with the wrong body. It is what says the `404` comes from
+    // the guard and not from a page server that would have failed for another reason.
+    it("returns the 404 of the service — text/plain, never text/html", async () => {
         const url = await servir('motdepasse', 'garde-moi-type');
         const r = await requeteFermee(`${url}/auth/moi`);
         expect(r.headers.get('content-type')).toContain('text/plain');
     });
 
-    it('rend le corps du 404 du service, mot pour mot', async () => {
+    it('returns the body of the 404 of the service, word for word', async () => {
         const url = await servir('motdepasse', 'garde-moi-corps');
-        expect(await (await requeteFermee(`${url}/auth/moi`)).text()).toBe('introuvable\n');
+        expect(await (await requeteFermee(`${url}/auth/moi`)).text()).toBe('not found\n');
     });
 });
 
-describe("la garde de mode de `/auth/connexion`, en mode pomerium", () => {
-    // 🔴 LE JUMEAU SYMÉTRIQUE. Les deux gardes ont des polarités OPPOSÉES et
-    // PARTITIONNENT les modes : elles ont donc le même défaut, chacune dans
-    // l'autre mode. En éprouver une seule laisserait l'autre entière.
-    it('rend 404, jamais la page', async () => {
+describe("the mode guard of `/auth/connexion`, in pomerium mode", () => {
+    // 🔴 THE SYMMETRICAL TWIN. The two guards have OPPOSITE polarities and
+    // PARTITION the modes: they therefore have the same defect, each in
+    // the other mode. Testing only one would leave the other whole.
+    it('returns 404, never the page', async () => {
         const url = await servir('pomerium', 'garde-connexion-statut');
         expect((await requeteFermee(`${url}/auth/connexion`)).status).toBe(404);
     });
 
-    it("rend le 404 du service — text/plain, jamais text/html", async () => {
+    it("returns the 404 of the service — text/plain, never text/html", async () => {
         const url = await servir('pomerium', 'garde-connexion-type');
         const r = await requeteFermee(`${url}/auth/connexion`);
         expect(r.headers.get('content-type')).toContain('text/plain');
     });
 
-    it('rend le corps du 404 du service, mot pour mot', async () => {
+    it('returns the body of the 404 of the service, word for word', async () => {
         const url = await servir('pomerium', 'garde-connexion-corps');
-        expect(await (await requeteFermee(`${url}/auth/connexion`)).text()).toBe('introuvable\n');
+        expect(await (await requeteFermee(`${url}/auth/connexion`)).text()).toBe('not found\n');
     });
 
-    it('`/auth/rafraichir` est gardée de la même façon', async () => {
+    it('`/auth/rafraichir` is guarded the same way', async () => {
         const url = await servir('pomerium', 'garde-rafraichir');
         expect((await requeteFermee(`${url}/auth/rafraichir`)).status).toBe(404);
     });
 });
 
-// 🔴 LE TÉMOIN NÉGATIF DE TOUT CE FICHIER. Sans lui, les sept `404` ci-dessus
-// seraient rendus à l'identique par une page qui ne serait PAS armée — donc
-// par un montage où le défaut n'existe pas. Ce test prouve que la racine
-// employée ci-dessus sert réellement quelque chose.
-describe('la page est bien armée dans ce montage', () => {
-    it('GET / rend 200 sur la même configuration', async () => {
+// 🔴 THE NEGATIVE WITNESS OF THIS WHOLE FILE. Without it, the seven `404`s above
+// would be returned identically by a page that was NOT armed — hence
+// by a setup where the defect does not exist. This test proves that the root
+// used above really serves something.
+describe('the page is indeed armed in this setup', () => {
+    it('GET / returns 200 on the same configuration', async () => {
         const url = await servir('motdepasse', 'garde-temoin-negatif');
         expect((await requeteFermee(`${url}/`)).status).toBe(200);
     });

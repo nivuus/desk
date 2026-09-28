@@ -1,33 +1,33 @@
-//! `WindowsSource::resize` : retailler la fenêtre et reconstruire la chaîne
-//! d'encodage — par l'UN de deux chemins, selon le mode de capture.
+//! `WindowsSource::resize`: resize the window and rebuild the encoding
+//! chain — through ONE of two paths, depending on the capture mode.
 //!
-//! ❌ **Ce titre disait « — ou ne rien faire du tout », et le lot 33 l'a rendu
-//! faux.** Il n'y a plus de chemin qui ne fait rien : `FenetreRecadree`
-//! recapture le bureau (chemin mono-fenêtre historique), `SortieEntiere` suit
-//! le viewport **à l'intérieur d'une sortie qui ne bouge pas**
-//! (`suivre_le_viewport`, en pied de fichier). Voir
-//! `ModeCapture::suit_le_viewport` pour la mesure qui l'a motivé et pour la
-//! distinction d'avec le chemin `ChangeDisplaySettingsExW` que D9 a retiré.
+//! ❌ **This title said "— or do nothing at all", and batch 33 made it
+//! wrong.** There is no longer a path that does nothing: `FenetreRecadree`
+//! recaptures the desktop (historical single-window path), `SortieEntiere` follows
+//! the viewport **inside an output that does not move**
+//! (`suivre_le_viewport`, at the bottom of the file). See
+//! `ModeCapture::suit_le_viewport` for the measurement that motivated it and for the
+//! distinction from the `ChangeDisplaySettingsExW` path D9 removed.
 //!
-//! **Module ENFANT de `windows_source`**, et non frère : c'est ce qui lui donne
-//! accès aux champs privés de `WindowsSource` sans qu'aucun ait à être ouvert
-//! en `pub(crate)` (voir le commentaire des champs dans `windows_source.rs`).
-//! Extrait de ce fichier-là parce qu'il est en dette de taille (`CLAUDE.md`) et
-//! que le correctif C1 de la revue finale y ajoutait par ailleurs
-//! `depuis_pieces` et le champ `mode` : l'addition s'accompagne de son
-//! extraction, comme la règle l'exige.
+//! **CHILD module of `windows_source`**, and not a sibling: that is what gives it
+//! access to the private fields of `WindowsSource` without any having to be opened
+//! as `pub(crate)` (see the fields' comment in `windows_source.rs`).
+//! Extracted from that file because it is in size debt (`CLAUDE.md`) and
+//! the final review's fix C1 moreover added
+//! `depuis_pieces` and the `mode` field to it: the addition comes with its
+//! extraction, as the rule requires.
 //!
-//! Aucune valeur, aucun ordre d'opération n'a changé au déplacement ; la seule
-//! addition est le garde de mode en tête de `resize`.
+//! No value, no order of operations changed in the move; the only
+//! addition is the mode guard at the head of `resize`.
 //!
-//! ⚠️ **Le sous-bloc D8 avait donné à ce module un enfant, `mode_sortie`**, qui
-//! faisait suivre à la sortie virtuelle le mode du viewport. Le sous-bloc D9
-//! l'a mesuré — le changement ne survit pas à l'ouverture de la fenêtre
-//! suivante, et `CDS_UPDATEREGISTRY` pollue le registre au point de bloquer le
-//! produit — et l'a **retiré**. Voir le constat de mesure en tête de
-//! `capteur/plein_ecran.rs`. **Ce qui reste actif et livré du plein écran,
-//! c'est la DÉTECTION et l'ANNONCE** (`capteur/fenetre.rs` →
-//! `AgentControl::Fullscreen`), qui ne passent pas par ici.
+//! ⚠️ **Sub-block D8 had given this module a child, `mode_sortie`**, which
+//! made the virtual output follow the viewport's mode. Sub-block D9
+//! measured it — the change does not survive the opening of the next
+//! window, and `CDS_UPDATEREGISTRY` pollutes the registry to the point of blocking the
+//! product — and **removed** it. See the measurement finding at the head of
+//! `capteur/plein_ecran.rs`. **What stays active and shipped of fullscreen
+//! is DETECTION and ANNOUNCEMENT** (`capteur/fenetre.rs` →
+//! `AgentControl::Fullscreen`), which do not go through here.
 
 use anyhow::{Context, Result};
 
@@ -39,81 +39,81 @@ use crate::rebuild::{rebuild_or_recover, RebuildOutcome};
 use crate::window;
 
 impl WindowsSource {
-    /// Redimensionne la fenêtre et reconstruit la chaîne d'encodage.
+    /// Resizes the window and rebuilds the encoding chain.
     ///
-    /// Media Foundation n'autorise pas le changement de résolution en cours de
-    /// route : il faut repartir d'un encodeur neuf. L'horodatage, lui, reste
-    /// continu — le décodeur du navigateur rejetterait un retour en arrière
-    /// (`next_pts_90k` n'est jamais réinitialisé ici).
+    /// Media Foundation does not allow changing resolution on the
+    /// way: one must start again from a new encoder. The timestamp, for its part, stays
+    /// continuous — the browser's decoder would reject going backwards
+    /// (`next_pts_90k` is never reset here).
     ///
-    /// **Sans effet quand la source capture une sortie DXGI entière** — voir le
-    /// garde en tête de fonction, et `ModeCapture` pour ce qui se produisait
-    /// avant lui.
+    /// **No effect when the source captures a whole DXGI output** — see the
+    /// guard at the head of the function, and `ModeCapture` for what happened
+    /// before it.
     pub fn resize(&mut self, width: u32, height: u32) -> Result<()> {
-        // CORRECTIF C1 (revue finale de la branche multi-fenêtres D1). Tout ce
-        // qui suit suppose que
-        // la fenêtre est libre d'être retaillée et que la capture est celle du
-        // bureau. Les deux sont faux en mode `SortieEntiere`, et le chemin
-        // était pourtant emprunté SYSTÉMATIQUEMENT : le `ResizeObserver` du
-        // client émet une fois à l'observation initiale, donc ~200 ms après
-        // chaque connexion, avec une taille qui n'avait alors aucune raison
-        // d'égaler celle de la sortie (elle vaut `clientWidth × devicePixelRatio`,
-        // là où la sortie était créée sur `innerWidth` SEUL, sans le facteur
-        // dpr), si bien que le court-circuit « taille inchangée » plus bas ne
-        // la retenait pas. ⚠️ **Ce désaccord d'unité est celui que la tâche 5
-        // du sous-bloc D9 a précisément fermé** (`client/src/main.ts`, l'annonce
-        // de viewport multiplie désormais par `devicePixelRatio`) : les deux
-        // unités concordent aujourd'hui, ce qui ne change rien à ce garde —
-        // il reste nécessaire en mode `SortieEntiere` quelle que soit l'unité.
+        // FIX C1 (final review of the multi-window branch D1). Everything
+        // that follows assumes that
+        // the window is free to be resized and that the capture is the
+        // desktop's. Both are false in `SortieEntiere` mode, and yet the path
+        // was taken SYSTEMATICALLY: the client's `ResizeObserver`
+        // emits once at initial observation, hence ~200 ms after
+        // each connection, with a size that then had no reason
+        // to equal the output's (it is `clientWidth × devicePixelRatio`,
+        // whereas the output was created on `innerWidth` ALONE, without the dpr
+        // factor), so that the "size unchanged" short-circuit below did not
+        // catch it. ⚠️ **This unit mismatch is the one task 5
+        // of sub-block D9 precisely closed** (`client/src/main.ts`, the viewport
+        // announcement now multiplies by `devicePixelRatio`): the two
+        // units agree today, which changes nothing for this guard —
+        // it stays necessary in `SortieEntiere` mode whatever the unit.
         //
-        // La suite produisait alors, dans l'ordre : une fenêtre rétrécie qui
-        // quitte sa sortie virtuelle (que le contrôle à 1 Hz du superviseur
-        // tente aussitôt de rattraper, les deux se battant), la duplication de
-        // la sortie relâchée, un `DesktopCapture::new()` qui duplique le BUREAU
-        // PHYSIQUE primaire, un `crop_region` en échec, et le repli
-        // `Recovered` installant cette duplication-là avec la région calculée
-        // pour la sortie virtuelle — c'est-à-dire le coin haut-gauche du bureau
-        // réel de la VM diffusé dans la fenêtre du navigateur, pour un seul
+        // What followed then produced, in order: a shrunk window that
+        // leaves its virtual output (which the supervisor's 1 Hz check
+        // immediately tries to catch up with, the two fighting), the output's
+        // duplication released, a `DesktopCapture::new()` that duplicates the primary
+        // PHYSICAL DESKTOP, a failing `crop_region`, and the
+        // `Recovered` fallback installing that duplication with the region computed
+        // for the virtual output — that is, the top-left corner of the VM's real
+        // desktop broadcast into the browser window, for a single
         // `warn!`.
         //
-        // Ne rien faire est le comportement JUSTE, pas un pis-aller : la spec
-        // §3.3 acte que le redimensionnement d'une fenêtre déjà ouverte est
-        // hors périmètre de D1 (le pilote SudoVDA n'expose aucun `SET_MODE`,
-        // la sortie ne peut donc pas suivre — ⚠️ **et c'est toujours vrai de
-        // la SORTIE, que le lot 33 ne fait pas bouger non plus ; ce qui a
-        // changé est que le RECADRAGE et la FENÊTRE, eux, la suivent à
-        // l'intérieur**). `Ok(())` et non `Err` : rien n'a
-        // échoué, et une erreur ferait journaliser un incident à chaque
-        // connexion. L'adaptation réseau, elle, passe par `set_encode_size` et
-        // n'est pas concernée.
+        // Doing nothing is the RIGHT behaviour, not a makeshift: spec
+        // §3.3 records that resizing an already open window is
+        // out of D1's scope (the SudoVDA driver exposes no `SET_MODE`,
+        // so the output cannot follow — ⚠️ **and that is still true of
+        // the OUTPUT, which batch 33 does not move either; what has
+        // changed is that the CROP and the WINDOW do follow it
+        // inside**). `Ok(())` and not `Err`: nothing
+        // failed, and an error would log an incident at every
+        // connection. Network adaptation goes through `set_encode_size` and
+        // is not concerned.
         //
-        // ⚠️ **Le sous-bloc D8 avait établi que la PRÉMISSE ci-dessus était
-        // exacte, mais la CONCLUSION réfutable** : une autre voie
-        // (`ChangeDisplaySettingsExW`, hors du canal du pilote SudoVDA) fait
-        // bien suivre la sortie. Le sous-bloc D9 l'a mesurée en conditions de
-        // produit et l'a **retirée** : le changement ne survit pas à
-        // l'ouverture de la fenêtre suivante, et il pollue le registre au
-        // point de bloquer le produit. Voir le constat de mesure en tête de
-        // `capteur/plein_ecran.rs`. **Ne rien faire est donc redevenu, à
-        // nouveau, le comportement juste — cette fois sur la foi d'une
-        // mesure, et non d'une limite seulement supposée du pilote.**
+        // ⚠️ **Sub-block D8 had established that the PREMISE above was
+        // exact, but the CONCLUSION refutable**: another route
+        // (`ChangeDisplaySettingsExW`, outside the SudoVDA driver's channel) does
+        // make the output follow. Sub-block D9 measured it under product
+        // conditions and **removed** it: the change does not survive the
+        // opening of the next window, and it pollutes the registry to the
+        // point of blocking the product. See the measurement finding at the head of
+        // `capteur/plein_ecran.rs`. **Doing nothing has therefore become, once
+        // again, the right behaviour — this time on the strength of a
+        // measurement, and not of a merely assumed driver limit.**
         if self.mode.suit_le_viewport() {
             return self.suivre_le_viewport(width, height);
         }
 
         let (width, height) = (width.max(160) & !1, height.max(120) & !1);
 
-        // Borner à ce que le bureau peut réellement afficher. Un viewport
-        // client plus grand que le bureau de la VM produirait sinon une
-        // fenêtre qui dépasse : `crop_region` la rognerait à la capture,
-        // l'image prendrait un rapport d'aspect que le conteneur du navigateur
-        // n'a pas — d'où des bandes noires — et la partie hors écran de
-        // l'application deviendrait inatteignable. Constaté le 29/07/2026 :
-        // 1187 px demandés pour un bureau de 1080.
+        // Bound to what the desktop can really display. A client
+        // viewport larger than the VM's desktop would otherwise produce a
+        // window that overflows: `crop_region` would trim it at capture,
+        // the image would take an aspect ratio the browser's container
+        // does not have — hence black bars — and the off-screen part of
+        // the application would become unreachable. Observed on 07/29/2026:
+        // 1187 px requested for a 1080 desktop.
         //
-        // Sans capture vivante ou sans position lisible, on laisse passer la
-        // taille demandée : `crop_region` reste le filet, et un
-        // redimensionnement imparfait vaut mieux qu'un échec.
+        // Without a live capture or without a readable position, we let the
+        // requested size through: `crop_region` stays the net, and an
+        // imperfect resize is better than a failure.
         let (width, height) = match (
             self.capture.as_ref(),
             window::client_rect_on_screen(self.hwnd),
@@ -131,71 +131,71 @@ impl WindowsSource {
         }
 
         window::resize_window(self.hwnd, width, height)?;
-        // Laisser la fenêtre atteindre sa nouvelle taille avant de recapturer.
+        // Let the window reach its new size before recapturing.
         std::thread::sleep(std::time::Duration::from_millis(50));
         let window_rect = window::client_rect_on_screen(self.hwnd)?;
 
-        // Relâche explicitement l'ancienne capture (donc son
-        // `IDXGIOutputDuplication`) AVANT d'en créer une nouvelle. DXGI
-        // n'autorise qu'une seule instance vivante de la duplication pour une
-        // sortie donnée, dans un même processus : une simple réaffectation
-        // (`self.capture = Some(DesktopCapture::new()?)`) évaluerait le
-        // membre droit — donc `DuplicateOutput` — avant de remplacer
-        // l'ancien `Some`, laissant les deux exister en même temps le temps
-        // de l'appel. `DuplicateOutput` échoue alors avec « duplication de
-        // la sortie écran » — observé lors du premier essai bout en bout de
-        // la tâche 13.
+        // Explicitly releases the old capture (hence its
+        // `IDXGIOutputDuplication`) BEFORE creating a new one. DXGI
+        // only allows a single live duplication instance for a
+        // given output, within one process: a mere reassignment
+        // (`self.capture = Some(DesktopCapture::new()?)`) would evaluate the
+        // right-hand side — hence `DuplicateOutput` — before replacing
+        // the old `Some`, letting both exist at the same time for the duration
+        // of the call. `DuplicateOutput` then fails with the screen output
+        // duplication error — observed during task 13's first end-to-end
+        // trial.
         //
-        // Cette libération anticipée ouvre en retour une fenêtre où
-        // `self.capture` peut rester `None` si la reconstruction échoue : on
-        // ne la referme jamais avec un simple `?` (voir la ronde de
-        // correction 1 au commentaire du champ `capture`). `rebuild_or_recover`
-        // (module `rebuild`, testé sans dépendance Windows) porte cette
-        // logique : tenter la reconstruction complète, et si elle échoue,
-        // retenter EXPLICITEMENT une capture de secours — avec les anciens
-        // `region`/`encoder`/dimensions, encore valides puisqu'eux n'ont pas
-        // été touchés — avant de renvoyer l'erreur à l'appelant.
+        // This early release in turn opens a window where
+        // `self.capture` may stay `None` if the rebuild fails: we
+        // never close it with a mere `?` (see fix round
+        // 1 in the comment of the `capture` field). `rebuild_or_recover`
+        // (module `rebuild`, tested without Windows dependency) carries this
+        // logic: attempt the full rebuild, and if it fails,
+        // EXPLICITLY retry a backup capture — with the old
+        // `region`/`encoder`/dimensions, still valid since they have not
+        // been touched — before returning the error to the caller.
         self.capture = None;
         let fps = self.fps;
         let bitrate = self.bitrate;
-        // **Correctif C1 de la revue finale de la branche RÉSEAU ADAPTATIF**
-        // (29/07/2026, commit `3f02545`) — homonyme du C1 multi-fenêtres
-        // ci-dessus, et sans rapport avec lui. Une première version de
-        // ce chantier conservait ici la taille d'encodage courante
-        // (`self.encoder.encode_size()`) au lieu de repartir de la taille de
-        // capture, dans l'intention de ne pas effacer une réduction de
-        // résolution appliquée pour cause de lien dégradé (tâche 9). C'était
-        // faux : au démarrage, encode == capture, donc dès le PREMIER
-        // redimensionnement de fenêtre, la taille encodée se figeait pour
-        // toute la session — agrandir la fenêtre n'agrandissait plus jamais
-        // le flux, et le contrôleur (dont l'échelle n'était, elle, jamais
-        // reconstruite) pouvait même finir par viser une taille supérieure à
-        // la nouvelle capture. La taille encodée doit donc à nouveau suivre
-        // la fenêtre inconditionnellement ; c'est `Session::act_on_timeout`
-        // (branche a1, `transport/tick.rs`) qui a désormais la charge de
-        // rappliquer, juste après, la réduction que le contrôleur jugerait
-        // encore nécessaire pour la NOUVELLE taille (voir
-        // `congestion::Controleur::changer_source`) — au lieu de la préserver
-        // ici à l'aveugle.
+        // **Fix C1 of the final review of the ADAPTIVE NETWORK branch**
+        // (07/29/2026, commit `3f02545`) — same name as the multi-window C1
+        // above, and unrelated to it. A first version of
+        // this workstream kept the current encoding size here
+        // (`self.encoder.encode_size()`) instead of starting again from the
+        // capture size, intending not to erase a resolution reduction
+        // applied because of a degraded link (task 9). It was
+        // wrong: at startup, encode == capture, so from the FIRST
+        // window resize, the encoded size froze for
+        // the whole session — enlarging the window never again enlarged
+        // the stream, and the controller (whose ladder was, for its part, never
+        // rebuilt) could even end up aiming at a size larger than
+        // the new capture. The encoded size must therefore again follow
+        // the window unconditionally; it is `Session::act_on_timeout`
+        // (branch a1, `transport/tick.rs`) that is now in charge of
+        // reapplying, right after, the reduction the controller would judge
+        // still necessary for the NEW size (see
+        // `congestion::Controleur::changer_source`) — instead of preserving it
+        // here blindly.
 
-        // Un NOUVEAU périphérique D3D11 est créé par l'ouverture appelée juste
-        // en dessous — `DesktopCapture::new_sans_attente`, et non plus
-        // `DesktopCapture::new` : ce chemin court sur le fil bloquant de
-        // `Session::run`, où la fenêtre de réessai de trois secondes
-        // suspendrait du même coup les demandes de keyframe et l'adaptation
-        // réseau. Les deux passent par `DesktopCapture::ouvrir`, qui pose
-        // `SetMultithreadProtected(TRUE)` sur CE périphérique à chaque appel
-        // (`capture/ouverture.rs::creer_peripherique`, local `multithread`) — la
-        // protection est donc reconstruite avec lui, pas seulement héritée de
-        // l'ancien périphérique qui vient d'être libéré. Sans cela le
-        // blocage intermittent d'`AcquireNextFrame` documenté à la tâche 10
-        // réapparaîtrait après tout redimensionnement.
+        // A NEW D3D11 device is created by the opening called just
+        // below — `DesktopCapture::new_sans_attente`, and no longer
+        // `DesktopCapture::new`: this path runs on the blocking thread of
+        // `Session::run`, where the three-second retry window
+        // would at the same time suspend keyframe requests and network
+        // adaptation. Both go through `DesktopCapture::ouvrir`, which sets
+        // `SetMultithreadProtected(TRUE)` on THIS device at each call
+        // (`capture/ouverture.rs::create_device_and_context`, local `multithread`) — the
+        // protection is therefore rebuilt with it, not merely inherited from
+        // the old device that has just been released. Without it the
+        // intermittent `AcquireNextFrame` blocking documented in task 10
+        // would reappear after any resize.
         let outcome = rebuild_or_recover(
             || -> Result<(DesktopCapture, Rect, H264Encoder)> {
                 let new_capture = DesktopCapture::new_sans_attente()?;
                 let (dw, dh) = new_capture.desktop_size();
                 let region = crop_region(window_rect, dw, dh)
-                    .ok_or_else(|| anyhow::anyhow!("la fenêtre est hors de l'écran"))?;
+                    .ok_or_else(|| anyhow::anyhow!("the window is off screen"))?;
                 let mut encoder = H264Encoder::new(
                     new_capture.device(),
                     (region.width, region.height),
@@ -206,18 +206,18 @@ impl WindowsSource {
                 encoder.request_keyframe()?;
                 Ok((new_capture, region, encoder))
             },
-            // Fabrique de secours : juste une capture valide, pour ne jamais
-            // laisser `self.capture` à `None` sans `fatal` à vrai en retour.
-            // `region`/`encoder`/`width`/`height` restent ceux d'avant :
-            // seule la capture avait dû être relâchée, pas les paramètres qui
-            // en dépendent, qui n'ont jamais cessé d'être valides.
+            // Backup factory: just a valid capture, so as never to
+            // leave `self.capture` at `None` without `fatal` true on return.
+            // `region`/`encoder`/`width`/`height` stay the previous ones:
+            // only the capture had to be released, not the parameters that
+            // depend on it, which never stopped being valid.
             //
-            // `new_sans_attente` comme la fabrique principale ci-dessus : ces
-            // deux appels courent sur le fil bloquant de `Session::run` (voir
-            // `transport/redimensionnement.rs`), où le réessai d'ouverture
-            // ajouté à la tâche 11 bis gèlerait la boucle de session jusqu'à
-            // DEUX fenêtres pleines. Le droit de bloquer se décide ici, pas
-            // dans `capture::ouvrir`.
+            // `new_sans_attente` like the main factory above: these
+            // two calls run on the blocking thread of `Session::run` (see
+            // `transport/redimensionnement.rs`), where the opening retry
+            // added in task 11 bis would freeze the session loop for up to
+            // TWO full windows. The right to block is decided here, not
+            // in `capture::ouvrir`.
             DesktopCapture::new_sans_attente,
         );
 
@@ -228,77 +228,77 @@ impl WindowsSource {
                 self.encoder = Some(encoder);
                 self.width = region.width;
                 self.height = region.height;
-                // Nouvel encodeur : sa toute première sortie retombe dans le
-                // même cas que le démarrage initial (voir `SUBMIT_POLL_BUDGET`).
+                // New encoder: its very first output falls into the
+                // same case as the initial startup (see `SUBMIT_POLL_BUDGET`).
                 self.encoder_warmed_up = false;
-                tracing::info!(self.width, self.height, "chaîne d'encodage reconstruite");
+                tracing::info!(self.width, self.height, "encoding chain rebuilt");
                 Ok(())
             }
             RebuildOutcome::Recovered(new_capture, primary_error) => {
-                // État exploitable restauré (anciens région/encodeur/
-                // dimensions, nouvelle capture) : la session continue, comme
-                // l'exige le brief pour un échec de redimensionnement. La
-                // fenêtre OS, elle, a déjà changé de taille
-                // (`resize_window` ci-dessus a réussi) : un décalage
-                // transitoire entre la fenêtre réelle et la région capturée
-                // est possible jusqu'au prochain redimensionnement réussi —
-                // préférable, de loin, à un agent qui plante.
+                // Usable state restored (old region/encoder/
+                // dimensions, new capture): the session continues, as
+                // the brief requires for a resize failure. The
+                // OS window, for its part, has already changed size
+                // (`resize_window` above succeeded): a transient
+                // offset between the real window and the captured region
+                // is possible until the next successful resize —
+                // far preferable to an agent that crashes.
                 self.capture = Some(new_capture);
-                tracing::warn!(erreur = %primary_error, "reconstruction de la chaîne d'encodage échouée, capture de secours restaurée");
+                tracing::warn!(error = %primary_error, "rebuilding the encoding chain failed, fallback capture restored");
                 Err(primary_error)
             }
             RebuildOutcome::Fatal(primary_error) => {
-                // Ni la chaîne complète, ni une simple capture de secours
-                // n'ont pu être obtenues : `self.capture` reste `None`.
-                // `fatal` le signale pour de bon — `next_frame` s'arrête
-                // avant de toucher `capture` (voir son garde), et
-                // `is_exhausted()` fera clore la session proprement au tour
-                // suivant, plutôt qu'un panic sur le champ vide.
+                // Neither the full chain, nor a mere backup capture
+                // could be obtained: `self.capture` stays `None`.
+                // `fatal` reports it for good — `next_frame` stops
+                // before touching `capture` (see its guard), and
+                // `is_exhausted()` will make the session close cleanly at the next
+                // round, rather than a panic on the empty field.
                 self.fatal = true;
-                tracing::error!(erreur = %primary_error, "reconstruction de la chaîne d'encodage et capture de secours toutes deux échouées, source déclarée épuisée");
+                tracing::error!(error = %primary_error, "rebuilding the encoding chain and the fallback capture both failed, source declared exhausted");
                 Err(primary_error)
             }
         }
     }
 
-    /// Fait suivre au recadrage — et à la fenêtre Windows — le viewport
-    /// annoncé par le navigateur, **à l'intérieur d'une sortie qui ne bouge
-    /// pas**.
+    /// Makes the crop — and the Windows window — follow the viewport
+    /// announced by the browser, **inside an output that does not
+    /// move**.
     ///
-    /// 🔴 **CE CHEMIN REMPLACE UN `Ok(())` QUI NE FAISAIT RIEN**, et ce n'est
-    /// pas une régression de D9 : voir `ModeCapture::suit_le_viewport`, qui
-    /// porte la mesure du 31 août 2026 (34 demandes jetées, rapports d'aspect
-    /// de 1,105 à 3,559 servis à 1,3222) et la distinction d'avec le chemin
-    /// `ChangeDisplaySettingsExW` que D9 a retiré. **Aucun mode d'affichage
-    /// n'est changé ici**, et le registre n'est pas touché.
+    /// 🔴 **THIS PATH REPLACES AN `Ok(())` THAT DID NOTHING**, and it is
+    /// not a regression of D9: see `ModeCapture::suit_le_viewport`, which
+    /// carries the measurement of August 31st, 2026 (34 requests dropped, aspect ratios
+    /// from 1.105 to 3.559 served at 1.3222) and the distinction from the
+    /// `ChangeDisplaySettingsExW` path D9 removed. **No display mode
+    /// is changed here**, and the registry is not touched.
     ///
-    /// 🔴 **LA DUPLICATION N'EST JAMAIS RELÂCHÉE, ET C'EST LE CORRECTIF C1 DE
-    /// D1 QU'IL NE FAUT PAS DÉFAIRE.** `resize` en mode `FenetreRecadree` pose
-    /// `self.capture = None` puis rouvre `DesktopCapture::new()`, qui duplique
-    /// **le bureau physique primaire** — sur cette VM, le VGA QEMU
-    /// `\\.\DISPLAY1`, que nulle session ne sert. Ici on garde la
-    /// duplication de NOTRE sortie et on ne reconstruit que la région et
-    /// l'encodeur, comme `set_encode_size` (voir `encodage.rs`) : aucune
-    /// contrainte de duplication DXGI, donc aucun besoin de
+    /// 🔴 **THE DUPLICATION IS NEVER RELEASED, AND IT IS D1's FIX C1
+    /// THAT MUST NOT BE UNDONE.** `resize` in `FenetreRecadree` mode sets
+    /// `self.capture = None` then reopens `DesktopCapture::new()`, which duplicates
+    /// **the primary physical desktop** — on this VM, the QEMU VGA
+    /// `\\.\DISPLAY1`, which no session serves. Here we keep the
+    /// duplication of OUR output and only rebuild the region and
+    /// the encoder, like `set_encode_size` (see `encodage.rs`): no
+    /// DXGI duplication constraint, hence no need for
     /// `rebuild_or_recover`.
     fn suivre_le_viewport(&mut self, width: u32, height: u32) -> Result<()> {
-        // Même garde que `set_encode_size`, et pour la même raison : sur une
-        // source définitivement épuisée, `capture_mut()` paniquerait, et une
-        // panique traverse `spawn_blocking` et emporte TOUT le processus —
-        // donc les huit autres fenêtres du capteur avec.
+        // Same guard as `set_encode_size`, and for the same reason: on a
+        // permanently exhausted source, `capture_mut()` would panic, and a
+        // panic crosses `spawn_blocking` and takes down the WHOLE process —
+        // hence the sensor's eight other windows with it.
         if self.fatal {
-            anyhow::bail!("source épuisée : recadrage inchangé");
+            anyhow::bail!("source exhausted: cropping unchanged");
         }
 
-        // La borne vient de la ZONE DE TRAVAIL du moniteur qui porte la
-        // fenêtre — c'est ce qui sort la barre des tâches du recadrage. Le
-        // superviseur interroge le même moniteur par l'origine de la sortie :
-        // même `HMONITOR`, même borne, donc aucune bataille entre les deux
-        // processus (voir `taille_pour_viewport`).
+        // The bound comes from the WORK AREA of the monitor carrying the
+        // window — that is what takes the taskbar out of the crop. The
+        // supervisor queries the same monitor by the output's origin:
+        // same `HMONITOR`, same bound, hence no fight between the two
+        // processes (see `size_for_viewport`).
         //
-        // ⚠️ **Le repli est le comportement d'avant ce lot** : quand
-        // `GetMonitorInfoW` refuse, on borne par la texture de la duplication,
-        // exactement comme `sur_sortie` le faisait seul.
+        // ⚠️ **The fallback is the behaviour from before this batch**: when
+        // `GetMonitorInfoW` refuses, we bound by the duplication's texture,
+        // exactly as `sur_sortie` did alone.
         let texture = self.capture_mut().desktop_size();
         let borne = match crate::window::zones_du_moniteur_de(self.hwnd) {
             Ok((moniteur, travail)) => {
@@ -306,33 +306,33 @@ impl WindowsSource {
                     (moniteur.width, moniteur.height),
                     Some((travail.width, travail.height)),
                 );
-                // 🔴 ET LA TEXTURE RESTE UNE BORNE, PAS UNE INFORMATION.
-                // `rcMonitor` est en coordonnées de BUREAU, la région de
-                // recadrage en pixels de TEXTURE, et les deux ne coïncident
-                // pas sur cette machine : la duplication rend 1860×1080 là où
-                // `GetDesc().DesktopCoordinates` rend 1428×1080 (écart mesuré
-                // par le lot 32T, reconfirmé le 31 août 2026). Sans ce `min`,
-                // une zone de travail plus large que la texture ferait sortir
-                // la région de l'image et `crop_region` échouerait.
+                // 🔴 AND THE TEXTURE STAYS A BOUND, NOT INFORMATION.
+                // `rcMonitor` is in DESKTOP coordinates, the crop region
+                // in TEXTURE pixels, and the two do not coincide
+                // on this machine: the duplication returns 1860×1080 where
+                // `GetDesc().DesktopCoordinates` returns 1428×1080 (gap measured
+                // by batch 32T, reconfirmed on August 31st, 2026). Without this `min`,
+                // a work area wider than the texture would make
+                // the region leave the image and `crop_region` would fail.
                 (borne.0.min(texture.0), borne.1.min(texture.1))
             }
-            Err(erreur) => {
-                tracing::warn!(%erreur, "zone de travail illisible : recadrage borné par la texture");
+            Err(error) => {
+                tracing::warn!(%error, "unreadable work area: cropping bounded by the texture");
                 texture
             }
         };
 
-        let (l, h) = crate::windows_source_sortie::taille_pour_viewport((width, height), borne);
-        // 🔴 **TRACE INCONDITIONNELLE — elle remplace celle que ce lot avait
-        // RETIRÉE.** `redimensionnement ignoré` sortait à CHAQUE demande, et
-        // c'est elle qui a rendu le diagnostic du lot 33 possible (34 demandes
-        // relevées, rapports d'aspect de 1,105 à 3,559). Sa remplaçante ne
-        // sortait qu'en cas de CHANGEMENT : un `0` au journal ne distinguait
-        // donc plus « aucun `Resize` n'arrive » de « il arrive et sature la
-        // borne », c'est-à-dire un défaut de la limite déclarée.
+        let (l, h) = crate::windows_source_sortie::size_for_viewport((width, height), borne);
+        // 🔴 **UNCONDITIONAL TRACE — it replaces the one this batch had
+        // REMOVED.** "resize ignored" came out at EVERY request, and
+        // it is what made batch 33's diagnosis possible (34 requests
+        // noted, aspect ratios from 1.105 to 3.559). Its replacement only
+        // came out on CHANGE: a `0` in the log therefore no longer distinguished
+        // "no `Resize` arrives" from "it arrives and saturates the
+        // bound", that is, a defect of the declared limit.
         //
-        // **Une trace qui ne peut sortir qu'en cas de succès ne peut pas
-        // diagnostiquer un échec.**
+        // **A trace that can only come out on success cannot
+        // diagnose a failure.**
         tracing::info!(
             demande = format!("{width}x{height}"),
             borne = format!("{}x{}", borne.0, borne.1),
@@ -340,83 +340,83 @@ impl WindowsSource {
             retenue = format!("{l}x{h}"),
             courante = format!("{}x{}", self.width, self.height),
             change = (l, h) != (self.width, self.height),
-            "Resize recu par le capteur"
+            "Resize received by the sensor"
         );
-        // Court-circuit AVANT toute destruction, et il n'est pas cosmétique :
-        // le `ResizeObserver` du client émet toutes les 200 ms pendant qu'on
-        // tire un bord, et chaque passage reconstruirait sinon un encodeur.
+        // Short-circuit BEFORE any destruction, and it is not cosmetic:
+        // the client's `ResizeObserver` emits every 200 ms while an edge
+        // is dragged, and each pass would otherwise rebuild an encoder.
         if (l, h) == (self.width, self.height) {
             return Ok(());
         }
 
-        // La fenêtre d'abord : `resize_window` porte `SWP_NOMOVE`, donc
-        // l'origine — celle de la sortie, posée par le superviseur — ne bouge
-        // pas, et le recadrage à l'origine reste juste.
+        // The window first: `resize_window` carries `SWP_NOMOVE`, so
+        // the origin — the output's, set by the supervisor — does not move,
+        // and cropping at the origin stays right.
         //
-        // ⚠️ `resize_window` impose un plancher de 160×120 que
-        // `taille_pour_viewport` n'a pas (le sien est 2) : sous 160×120 la
-        // fenêtre reste plus grande que la région, et l'image montre alors un
-        // coin de l'application. Cas dégénéré, non corrigé, dit ici.
-        // 🔴 **COMPENSER LE LISÈRE INVISIBLE DE DWM, comme `placement::poser`.**
-        // `GetWindowRect` — l'espace où `SetWindowPos` écrit — inclut des
-        // bordures de redimensionnement TRANSPARENTES (mesuré en session 1 :
-        // 7 px à gauche, à droite et en bas, 0 en haut). Retailler à `l x h`
-        // dans cet espace-là laisse le cadre VISIBLE plus petit d'autant, et
-        // le recadrage — qui, lui, fait bien `l x h` — montre alors du bureau
-        // sur trois côtés. C'est le résidu que le propriétaire voyait après
-        // le correctif d'aspect, et il est CONSTANT, insensible au rapport :
-        // c'est cette signature-là qui l'a départagé d'un défaut de forme.
+        // ⚠️ `resize_window` imposes a 160×120 floor that
+        // `size_for_viewport` does not have (its own is 2): below 160×120 the
+        // window stays larger than the region, and the image then shows a
+        // corner of the application. Degenerate case, not fixed, stated here.
+        // 🔴 **COMPENSATE DWM's INVISIBLE EDGE, like `placement::poser`.**
+        // `GetWindowRect` — the space `SetWindowPos` writes to — includes
+        // TRANSPARENT resize borders (measured in session 1:
+        // 7 px on the left, right and bottom, 0 at the top). Resizing to `l x h`
+        // in that space leaves the VISIBLE frame smaller by as much, and
+        // the crop — which, for its part, is indeed `l x h` — then shows desktop
+        // on three sides. It is the residue the owner saw after
+        // the aspect fix, and it is CONSTANT, insensitive to the ratio:
+        // it is that signature that told it apart from a shape defect.
         //
-        // `SWP_NOMOVE` : l'origine ne bouge pas, et elle est déjà compensée
-        // par la pose du superviseur — seule la TAILLE reste à corriger ici.
-        // Un échec de DWM rend `Lisere::NUL`, donc le comportement d'avant.
-        // L'enveloppe TOTALE, comme `placement::poser` : le lisère invisible
-        // de DWM **plus** la bordure que Windows peint. Sans la seconde, la
-        // ligne sombre d'un pixel relevée sur les quatre bords du recadrage
-        // (mesure du 31 août 2026) rentre dans l'image.
+        // `SWP_NOMOVE`: the origin does not move, and it is already compensated
+        // by the supervisor's placement — only the SIZE remains to correct here.
+        // A DWM failure returns `Lisere::NUL`, hence the previous behaviour.
+        // The TOTAL envelope, like `placement::poser`: DWM's invisible edge
+        // **plus** the border Windows paints. Without the second, the
+        // one-pixel dark line noted on the four edges of the crop
+        // (measurement of August 31st, 2026) enters the image.
         let lisere = crate::superviseur::placement::enveloppe(
             crate::window::lisere_dwm(self.hwnd).unwrap_or_default(),
             crate::window::bordure_peinte(),
         );
-        let (lp, hp) = crate::superviseur::placement::taille_a_poser((l, h), lisere);
+        let (lp, hp) = crate::superviseur::placement::size_to_set((l, h), lisere);
         crate::window::resize_window(self.hwnd, lp, hp)?;
 
         let region = crate::windows_source_sortie::region_de_sortie(l, h)
             .ok_or_else(|| anyhow::anyhow!("recadrage inexploitable ({l}x{h})"))?;
 
         let device = self.capture_mut().device().clone();
-        // Détruire AVANT de construire : à `vivier::PLAFOND_EVEIL` encodeurs
-        // vivants, le transitoire à N+1 est refusé par la MFT NVIDIA
-        // (`MF_E_UNSUPPORTED_D3D_TYPE`, 18 refus sur 18 en D4). Même remède,
-        // même prix, que `set_encode_size`.
+        // Destroy BEFORE building: at `vivier::PLAFOND_EVEIL` live encoders,
+        // the transient at N+1 is refused by the NVIDIA MFT
+        // (`MF_E_UNSUPPORTED_D3D_TYPE`, 18 refusals out of 18 in D4). Same remedy,
+        // same price, as `set_encode_size`.
         drop(self.encoder.take());
         let neuf = H264Encoder::new(&device, (l, h), (l, h), self.fps, self.bitrate);
         let mut encoder = match neuf {
             Ok(encoder) => encoder,
-            Err(erreur) => {
+            Err(error) => {
                 self.fatal = true;
-                return Err(erreur).context(
-                    "encodeur neuf refusé après destruction de l'ancien : source épuisée",
+                return Err(error).context(
+                    "fresh encoder refused after destroying the old one: source exhausted",
                 );
             }
         };
-        if let Err(erreur) = encoder.request_keyframe() {
+        if let Err(error) = encoder.request_keyframe() {
             self.fatal = true;
-            return Err(erreur).context("image clé refusée par l'encodeur neuf : source épuisée");
+            return Err(error).context("key frame refused by the fresh encoder: source exhausted");
         }
 
         self.region = region;
         self.width = l;
         self.height = h;
         self.encoder = Some(encoder);
-        // L'encodeur neuf n'a rien produit : le budget de sondage de démarrage
-        // repart, comme après `resize` et après `set_encode_size`.
+        // The new encoder has produced nothing: the startup polling budget
+        // starts again, as after `resize` and after `set_encode_size`.
         self.encoder_warmed_up = false;
         tracing::info!(
             demande = format!("{width}x{height}"),
             borne = format!("{}x{}", borne.0, borne.1),
             retenue = format!("{l}x{h}"),
-            "recadrage et fenêtre alignés sur le viewport (la sortie, elle, n'a pas bougé)"
+            "cropping and window aligned on the viewport (the output, for its part, did not move)"
         );
         Ok(())
     }

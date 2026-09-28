@@ -1,54 +1,54 @@
-//! Le fil d'écriture : il lit le fichier local, le découpe, pousse les trames,
-//! attend le `Fait`, tient le journal, et annonce les dues.
+//! The write thread: it reads the local file, splits it, pushes the frames,
+//! waits for the `Fait`, keeps the journal, and announces the dues.
 //!
-//! # 🔵 Pourquoi ce module est PUR, alors qu'il lit un fichier « de ProjFS »
+//! # 🔵 Why this module is PURE, although it reads a file "from ProjFS"
 //!
-//! Après `FILE_HANDLE_CLOSED_FILE_MODIFIED`, le fichier est **complet** dans la
-//! racine : ProjFS n'appelle `GetFileData` que sur un **substitut**. Le lire est
-//! donc un `std::fs::File::open` **ordinaire**, portable, testable sur Linux
-//! avec un répertoire temporaire réel.
+//! After `FILE_HANDLE_CLOSED_FILE_MODIFIED`, the file is **complete** in the
+//! root: ProjFS only calls `GetFileData` on a **placeholder**. Reading it is
+//! therefore an **ordinary** `std::fs::File::open`, portable, testable on Linux
+//! with a real temporary directory.
 //!
-//! ⚠️ **C'est une INFÉRENCE du modèle de ProjFS, pas une mesure.** Si elle est
-//! fausse, la lecture ré-entre dans nos propres rappels. **Elle ne provoquerait
-//! pas d'interblocage** — les commandes ainsi créées sont complétées par le
-//! **fil du pont**, un fil distinct —, mais le pont relirait ses propres octets
-//! à travers le navigateur, ce qui serait **visible au journal** : des `Lire`
-//! sur un chemin en cours d'écriture. Le critère ④ de la recette existe pour
-//! trancher.
+//! ⚠️ **It is an INFERENCE from ProjFS's model, not a measurement.** If it is
+//! false, the reading re-enters our own callbacks. **It would not cause
+//! a deadlock** — the commands thus created are completed by the
+//! **bridge thread**, a distinct thread —, but the bridge would reread its own bytes
+//! through the browser, which would be **visible in the log**: `Lire`s
+//! on a path being written. Criterion ④ of the acceptance run exists to
+//! decide.
 //!
-//! # 🔴 LE FIL EST DÉDIÉ, ET JAMAIS CELUI DU PONT
+//! # 🔴 THE THREAD IS DEDICATED, AND NEVER THE BRIDGE'S
 //!
-//! `pont/service.rs` l'écrit déjà pour le relevé d'hydratation : « un `read_dir`
-//! sur la racine traverserait ProjFS, donc déclencherait nos propres rappels
-//! d'énumération, qui inscrivent une commande que **ce fil-ci** doit compléter :
-//! **il s'attendrait lui-même** ». **La même phrase vaut ici, et c'est la
-//! raison d'être de ce fil.**
+//! `pont/service.rs` already writes it for the hydration survey: "a `read_dir`
+//! on the root would go through ProjFS, hence would trigger our own enumeration
+//! callbacks, which register a command that **this thread** must complete:
+//! **it would wait for itself**". **The same sentence holds here, and it is the
+//! reason to exist of this thread.**
 //!
-//! # L'ordre de la séquence n'est PAS négociable
+//! # The order of the sequence is NOT negotiable
 //!
-//! 1. l'événement arrive ;
-//! 2. **le journal est écrit ET VIDÉ (`sync_all`) AVANT la première trame** —
-//!    une entrée poussée avant d'être journalisée est une entrée qu'un arrêt
-//!    brutal perd ;
-//! 3. `TYPE_DUES` est annoncé ;
-//! 4. le fichier local est lu et découpé ;
-//! 5. **un morceau en vol à la fois** — *(ces lignes ajoutaient « le contrôle
-//!    de flux par `bufferedAmount` / `SEUIL_TAMPON` est un livrable de F3, et
-//!    l'implémenter à moitié ici serait pire ». **F3 est arrivé, et il ne
-//!    change RIEN ici.**)*
+//! 1. the event arrives;
+//! 2. **the journal is written AND FLUSHED (`sync_all`) BEFORE the first frame** —
+//!    an entry pushed before being journalled is an entry that an abrupt
+//!    stop loses;
+//! 3. `TYPE_DUES` is announced;
+//! 4. the local file is read and split;
+//! 5. **one chunk in flight at a time** — *(these lines added "flow control
+//!    through `bufferedAmount` / `SEUIL_TAMPON` is a deliverable of F3, and
+//!    implementing it halfway here would be worse". **F3 has arrived, and it
+//!    changes NOTHING here.**)*
 //!
-//!    ⚠️ **La fenêtre de F3 est celle de la LECTURE, pas de l'écriture, et la
-//!    distinction n'est pas un détail** : en lecture, c'est le NAVIGATEUR qui
-//!    émet les gros messages, et la fenêtre du pont sert à ne pas le laisser
-//!    inactif entre deux morceaux. En écriture, c'est le PONT qui les émet —
-//!    demander plusieurs morceaux d'avance n'aurait aucun sens, et en pousser
-//!    plusieurs inonderait la file SCTP, ce que F1 a déjà décidé d'éviter. La
-//!    contre-pression `bufferedAmount`, elle, vit côté navigateur
-//!    (`client/src/fichiers/flux.ts`) et ne couvre donc pas ce sens-ci ;
-//! 6. sur le `Fait` du **dernier** morceau : `journal.retirer`, **puis**
-//!    `TYPE_DUES` réannoncé ;
-//! 7. sur un `Echec` ou une expiration : **l'entrée RESTE au journal**, un
-//!    `warn!` nomme le chemin et le code.
+//!    ⚠️ **F3's window is that of READING, not writing, and the
+//!    distinction is not a detail**: in reading, it is the BROWSER that
+//!    emits the large messages, and the bridge's window serves not to leave it
+//!    idle between two chunks. In writing, it is the BRIDGE that emits them —
+//!    requesting several chunks in advance would make no sense, and pushing
+//!    several would flood the SCTP queue, which F1 already decided to avoid. The
+//!    `bufferedAmount` back-pressure, for its part, lives on the browser side
+//!    (`client/src/files/flux.ts`) and therefore does not cover this direction;
+//! 6. on the `Fait` of the **last** chunk: `journal.retirer`, **then**
+//!    `TYPE_DUES` announced again;
+//! 7. on an `Echec` or an expiry: **the entry STAYS in the journal**, a
+//!    `warn!` names the path and the code.
 
 mod disque;
 mod mutations;
@@ -65,60 +65,60 @@ use super::{Evenement, File};
 use crate::pont::decoupe::{decouper, Morceau};
 use crate::pont::journal::Journal;
 use crate::pont::mutation::FileMutations;
-use crate::pont::table::{Attendue, DELAI_ECRIRE};
+use crate::pont::table::{Attendue, WRITE_TIMEOUT};
 use crate::pont::transport::VersNavigateur;
-use proto::fichiers::{entetes, CodeEchec};
+use proto::files::{entetes, CodeEchec};
 
-/// La corrélation portée par une **annonce**.
+/// The correlation carried by an **announcement**.
 ///
-/// ⚠️ **Elle n'identifie RIEN** : une annonce n'attend aucune réponse, et le
-/// navigateur ne s'en sert pas. Elle n'est là que pour le journal du transport,
-/// qui trace `correlation` sur chaque émission.
+/// ⚠️ **It identifies NOTHING**: an announcement waits for no response, and the
+/// browser does not use it. It is only there for the transport's log,
+/// which traces `correlation` on each emission.
 ///
-/// ⚠️ **Elle n'est PAS réservée dans [`crate::pont::table::Table`]** : la lui faire enjamber
-/// coûterait un cas particulier dans la distribution des corrélations pour un
-/// gain de lisibilité de journal. Une collision exigerait 2^32 inscriptions
-/// dans une même exécution du pont.
+/// ⚠️ **It is NOT reserved in [`crate::pont::table::Table`]**: making it step over it
+/// would cost a special case in the distribution of correlations for a
+/// gain in log readability. A collision would require 2^32 registrations
+/// in a single run of the bridge.
 const CORRELATION_ANNONCE: u32 = u32::MAX;
 
-/// Au-delà de cette taille, une écriture due est journalisée en `warn!` et
-/// **nommée** à la page-shell.
+/// Beyond this size, a due write is logged at `warn!` and
+/// **named** to the shell page.
 ///
-/// 🔴 **CE N'EST PAS UN PLAFOND DE REFUS, et la distinction est de fond.** Le
-/// seul endroit où un refus de taille serait **visible par l'application** est
-/// `PRE_CONVERT_TO_FULL` — mais on n'y connaît que la taille **d'AVANT**
-/// l'écriture, qui ne borne pas celle d'après. Un plafond appliqué au
-/// write-back, lui, serait **invisible** : le handle est refermé depuis
-/// longtemps. La spec §3.5.2 prescrivait `TAILLE_MAX_FICHIER` avec
-/// `ERROR_DISK_FULL` ; **ce code d'erreur n'atteindrait personne.**
+/// 🔴 **IT IS NOT A REFUSAL CEILING, and the distinction is fundamental.** The
+/// only place where a size refusal would be **visible to the application** is
+/// `PRE_CONVERT_TO_FULL` — but there only the size **from BEFORE**
+/// the write is known, which does not bound the size after. A ceiling applied to
+/// write-back, for its part, would be **invisible**: the handle has been closed for
+/// a long time. Spec §3.5.2 prescribed a maximum file size with
+/// `ERROR_DISK_FULL`; **that error code would reach no one.**
 ///
-/// ⚠️ **NON CALIBRÉE.**
-pub const TAILLE_ECRITURE_SIGNALEE: u64 = 64 * 1024 * 1024;
+/// ⚠️ **NOT CALIBRATED.**
+pub const REPORTED_WRITE_SIZE: u64 = 64 * 1024 * 1024;
 
 mod contrat;
 
 pub use contrat::{Config, Ordre};
 
-/// La boucle du fil. Rend quand le canal des ordres se ferme.
+/// The thread's loop. Returns when the order channel closes.
 pub fn tourner(config: Config, ordres: Receiver<Ordre>) {
-    let mut fil = Fil::demarrer(config);
+    let mut fil = Fil::start(config);
     while let Ok(ordre) = ordres.recv() {
         fil.traiter(ordre);
     }
-    tracing::info!("fil d'ecriture du pont arrete");
+    tracing::info!("bridge write thread stopped");
 }
 
-// ⚠️ `pub(super)` PARCE QUE LE CHAMP QUI LA PORTE L'EST, et pas l'inverse.
-// L'extraction de `fil/mutations.rs` a rendu `Fil::en_cours` visible au module
-// parent sans hisser son TYPE avec lui : `rustc` le dit par
-// `private_interfaces` — **un avertissement d'une autre famille que
-// `dead_code`**, et ce dépôt vérifie ses avertissements par leur NATURE à
-// chaque clôture. Une extraction déplace la visibilité autant que le code.
+// ⚠️ `pub(super)` BECAUSE THE FIELD CARRYING IT IS, and not the reverse.
+// The extraction of `fil/mutations.rs` made `Fil::en_cours` visible to the parent
+// module without hoisting its TYPE with it: `rustc` says so through
+// `private_interfaces` — **a warning of a family other than
+// `dead_code`**, and this repository checks its warnings by their NATURE at
+// each closing. An extraction moves visibility as much as code.
 pub(super) struct EnCours {
     chemin: String,
     restants: VecDeque<Morceau>,
     correlation: u32,
-    dernier_envoye: bool,
+    last_sent: bool,
     octets: u64,
     debut: Instant,
 }
@@ -128,67 +128,67 @@ pub(super) struct Fil {
     pub(super) journal: Journal,
     pub(super) file: File,
     pub(super) en_cours: Option<EnCours>,
-    /// Les mutations en vol et en attente (F3).
+    /// The mutations in flight and waiting (F3).
     ///
-    /// ⚠️ **DISTINCTE de la file d'écriture, et le rester est le point.** Une
-    /// mutation ne porte aucun octet, ne s'inscrit pas au journal des dues, et
-    /// **ne se coalesce pas** : `a`→`b` puis `b`→`c` sont deux gestes dont
-    /// l'ordre est le sens.
+    /// ⚠️ **DISTINCT from the write queue, and staying so is the point.** A
+    /// mutation carries no byte, is not registered in the dues journal, and
+    /// **does not coalesce**: `a`→`b` then `b`→`c` are two gestures whose
+    /// order is the meaning.
     pub(super) mutations: FileMutations,
-    /// La corrélation de la mutation en vol, s'il y en a une.
+    /// The correlation of the mutation in flight, if there is one.
     pub(super) mutation_en_vol: Option<u32>,
-    /// **F5** — le fil a des écritures dues et **refuse de les pousser**.
+    /// **F5** — the thread has due writes and **refuses to push them**.
     ///
-    /// 🔴 **CE DRAPEAU NE VIDE RIEN, ET C'EST TOUT SON INTÉRÊT.** Retenir n'est
-    /// ni pousser ni jeter : pousser écrirait les fichiers d'une session dans
-    /// le dossier d'une autre (spec §6.4 cas 2), jeter perdrait la donnée. **On
-    /// ne fait ni l'un ni l'autre : on NOMME**, en portant l'état jusqu'au
-    /// navigateur par le champ `retenues` de l'annonce `Dues`.
+    /// 🔴 **THIS FLAG EMPTIES NOTHING, AND THAT IS ITS WHOLE POINT.** Holding back is
+    /// neither pushing nor throwing away: pushing would write the files of one session into
+    /// the folder of another (spec §6.4 case 2), throwing away would lose the data. **We
+    /// do neither one nor the other: we NAME it**, by carrying the state up to the
+    /// browser through the `retenues` field of the `Dues` announcement.
     pub(super) retenues: bool,
 }
 
 impl Fil {
-    fn demarrer(config: Config) -> Self {
+    fn start(config: Config) -> Self {
         if !config.armee {
             tracing::warn!(
-                "poussee d'ecriture DESARMEE (PONT_ECRITURE=0) : bras de banc, jamais une \
-                 configuration livree"
+                "write push DISARMED (PONT_ECRITURE=0): bench arm, never a \
+                 shipped configuration"
             );
         }
         let contenu = std::fs::read_to_string(&config.chemin_journal).unwrap_or_default();
         let (journal, ignorees) = Journal::relire(&contenu);
         if ignorees > 0 {
-            // Une ligne partielle est le seul dommage qu'un arrêt brutal puisse
-            // causer à un fichier en ajout. La compter la rend visible ; la
-            // taire ferait croire à un journal intact.
+            // A partial line is the only damage an abrupt stop can
+            // cause to an append-only file. Counting it makes it visible;
+            // keeping quiet about it would suggest an intact journal.
             tracing::warn!(
                 ignorees,
-                "lignes illisibles jetees au rechargement du journal"
+                "unreadable lines dropped when reloading the journal"
             );
         }
         let fil = Self {
             config,
             journal,
-            file: File::nouvelle(),
+            file: File::new(),
             en_cours: None,
-            mutations: FileMutations::nouvelle(),
+            mutations: FileMutations::new(),
             mutation_en_vol: None,
             retenues: false,
         };
-        // 🔴 **F5 — `reprendre()` N'EST PLUS APPELÉE ICI, ET C'EST LE REMÈDE.**
+        // 🔴 **F5 — `reprendre()` IS NO LONGER CALLED HERE, AND THAT IS THE REMEDY.**
         //
-        // *Cette ligne était `fil.reprendre();`.* Le fil démarre avec le PONT,
-        // c'est-à-dire **avant** que le moindre navigateur ne soit là : F2 a
-        // mesuré la poussée du rejeu **0,8 s AVANT** l'annonce de montage, et
-        // l'expiration `correlation=0` **+30,2 s** plus tard. Trente secondes
-        // pendant lesquelles l'indicateur qui existe pour dénoncer la perte
-        // était **MUET**.
+        // *This line was `fil.reprendre();`.* The thread starts with the BRIDGE,
+        // that is **before** any browser is there: F2
+        // measured the replay's push **0.8 s BEFORE** the mount announcement, and
+        // the `correlation=0` expiry **+30.2 s** later. Thirty seconds
+        // during which the indicator that exists to denounce the loss
+        // was **SILENT**.
         //
-        // La reprise attend désormais [`Ordre::Bonjour`], qui seul dit qu'un
-        // navigateur est là **et sur quel répertoire**. ⚠️ **Le cas « aucun
-        // `Bonjour` n'arrive » n'a AUCUN repli qui pousserait** : un repli
-        // rouvrirait exactement le danger du §6.4 cas 2, celui pour lequel
-        // `Bonjour` existe. Il a un `warn!`, et rien d'autre.
+        // Resumption now waits for [`Ordre::Bonjour`], which alone says that a
+        // browser is there **and on which directory**. ⚠️ **The case "no
+        // `Bonjour` arrives" has NO fallback that would push**: a fallback
+        // would reopen exactly the danger of §6.4 case 2, the one for which
+        // `Bonjour` exists. It has a `warn!`, and nothing else.
         fil
     }
 
@@ -196,39 +196,41 @@ impl Fil {
         match ordre {
             Ordre::Bonjour { racine, forcer } => self.bonjour(&racine, forcer),
             Ordre::Survenu(evenement) if evenement.est_mutation() => {
-                // 🔴 **UNE MUTATION N'EST PAS UNE ÉCRITURE, ET LA CONFONDRE
-                // DÉTRUIRAIT.** Sans ce bras, `commencer` tomberait sur le
-                // chemin de CONTENU : `disque::taille_de` rendrait 0 sur une
-                // source qui n'existe plus — renommée, ou effacée —, `decouper`
-                // rendrait zéro morceau, et le morceau vide de secours
-                // **TRONQUERAIT LE FICHIER LOCAL À ZÉRO** ou **RECRÉERAIT
-                // VIDE** ce que l'utilisateur vient d'effacer.
+                // 🔴 **A MUTATION IS NOT A WRITE, AND CONFUSING THEM
+                // WOULD DESTROY.** Without this arm, `commencer` would fall onto the
+                // CONTENT path: `disque::size_on_disk` would return 0 on a
+                // source that no longer exists — renamed, or erased —, `decouper`
+                // would return zero chunks, and the fallback empty chunk
+                // **WOULD TRUNCATE THE LOCAL FILE TO ZERO** or **WOULD RECREATE
+                // EMPTY** what the user has just erased.
                 //
-                // ⚠️ **C'est le bras catch-all silencieux que ce dépôt a payé
-                // CINQ fois sur `capteur/pont_media.rs`** (D5 `Sommeil`, D6
-                // `Part`, D7 `Audio`, D8 `PleinEcran`, presse-papier P1), sous
-                // une forme pire : là-bas le message était perdu, ici il aurait
-                // été appliqué au mauvais verbe.
+                // ⚠️ **It is the silent catch-all arm this repository paid for
+                // FIVE times on `capteur/pont_media.rs`** (D5 `Sommeil`, D6
+                // `Part`, D7 `Audio`, D8 `PleinEcran`, clipboard P1), in
+                // a worse form: there the message was lost, here it would have
+                // been applied to the wrong verb.
                 //
-                // ⚠️ **Une mutation ne passe donc NI par le journal des
-                // écritures dues, NI par la file de contenu** : elle ne porte
-                // aucun octet, et l'inscrire ferait monter le compteur de la
-                // page-shell pour un geste qui n'a rien à transférer.
+                // ⚠️ **A mutation therefore goes NEITHER through the journal of
+                // due writes, NOR through the content queue**: it carries
+                // no byte, and registering it would make the shell page's counter rise
+                // for a gesture that has nothing to transfer.
                 self.mutation(evenement);
             }
             Ordre::Survenu(evenement) => {
                 let chemin = evenement.chemin().to_string();
-                let octets = disque::taille_de(&self.config.racine, &chemin);
-                // ÉTAPE 2 : le journal AVANT la première trame.
+                let octets = disque::size_on_disk(&self.config.racine, &chemin);
+                // STEP 2: the journal BEFORE the first frame.
                 let ligne = self.journal.inscrire(&chemin, octets);
-                self.ecrire_journal(&ligne);
-                if octets > TAILLE_ECRITURE_SIGNALEE {
+                self.write_journal(&ligne);
+                if octets > REPORTED_WRITE_SIZE {
                     tracing::warn!(
-                        chemin, octets, seuil = TAILLE_ECRITURE_SIGNALEE,
-                        "ecriture due volumineuse : elle restera longtemps dans la fenetre de perte"
+                        chemin,
+                        octets,
+                        seuil = REPORTED_WRITE_SIZE,
+                        "large due write: it will stay a long time in the loss window"
                     );
                 }
-                // ÉTAPE 3.
+                // STEP 3.
                 self.annoncer_les_dues();
                 if let Some(a_pousser) = self.file.signaler(evenement) {
                     self.commencer(a_pousser);
@@ -242,16 +244,16 @@ impl Fil {
     pub(super) fn commencer(&mut self, evenement: Evenement) {
         let chemin = evenement.chemin().to_string();
         if !self.config.armee {
-            // Le bras DÉSARMÉ : on journalise et on annonce, on ne pousse
-            // JAMAIS. L'entrée reste donc due, et le compteur de la page-shell
-            // monte sans jamais redescendre — c'est ce qui le rend rouge.
-            if let Some(suivant) = self.file.terminee(&chemin) {
-                self.commencer(suivant);
+            // The DISARMED arm: we log and announce, we NEVER
+            // push. The entry therefore stays due, and the shell page's counter
+            // rises without ever coming down — it is what makes it red.
+            if let Some(next) = self.file.terminee(&chemin) {
+                self.commencer(next);
             }
             return;
         }
         if evenement.est_repertoire() {
-            // Règle 4 : un répertoire ne porte AUCUN contenu.
+            // Rule 4: a directory carries NO content.
             self.pousser_creation(&chemin, true);
             return;
         }
@@ -259,36 +261,36 @@ impl Fil {
             self.pousser_creation(&chemin, false);
             return;
         }
-        let octets = disque::taille_de(&self.config.racine, &chemin);
+        let octets = disque::size_on_disk(&self.config.racine, &chemin);
         let mut morceaux: VecDeque<Morceau> =
-            decouper(0, octets, proto::fichiers::TAILLE_TRAME_MAX).into();
+            decouper(0, octets, proto::files::MAX_FRAME_SIZE).into();
         if morceaux.is_empty() {
-            // 🔴 **UN FICHIER VIDE EST LE CAS NOMINAL D'UN « NOUVEAU DOCUMENT »
-            // ENREGISTRÉ AUSSITÔT**, et `decouper` rend délibérément ZÉRO
-            // morceau pour une longueur nulle. Sans ce cas particulier, aucun
-            // `dernier` ne serait jamais émis, l'entrée ne sortirait JAMAIS du
-            // journal, et l'utilisateur verrait une alerte permanente pour un
-            // fichier correctement transmis. *Un compteur qui ne redescend
-            // jamais est aussi faux qu'un compteur qui ne monte jamais.*
+            // 🔴 **AN EMPTY FILE IS THE NOMINAL CASE OF A "NEW DOCUMENT"
+            // SAVED STRAIGHT AWAY**, and `decouper` deliberately returns ZERO
+            // chunks for a zero length. Without this special case, no
+            // `last` would ever be emitted, the entry would NEVER leave the
+            // journal, and the user would see a permanent alert for a
+            // correctly transmitted file. *A counter that never comes
+            // down is as wrong as a counter that never rises.*
             //
-            // ⚠️ **ET C'EST UN MORCEAU VIDE, PAS UNE CRÉATION**, contre la
-            // lettre du plan de F2 (« un fichier de taille nulle produit une
-            // création et zéro morceau »). Une création n'a aucun effet sur un
-            // fichier local qui existe déjà : un fichier TRONQUÉ À ZÉRO sur la
-            // VM garderait son ancien contenu sur le poste local, ce qui est
-            // une corruption silencieuse. Le morceau vide, lui, ouvre le flux
-            // sans `keepExistingData` et le referme : le fichier local devient
-            // vide, ce qu'il doit être.
+            // ⚠️ **AND IT IS AN EMPTY CHUNK, NOT A CREATION**, against the
+            // letter of F2's plan ("a zero-size file produces a
+            // creation and zero chunks"). A creation has no effect on a
+            // local file that already exists: a file TRUNCATED TO ZERO on the
+            // VM would keep its old content on the local workstation, which is
+            // a silent corruption. The empty chunk, for its part, opens the stream
+            // without `keepExistingData` and closes it: the local file becomes
+            // empty, which is what it must be.
             morceaux.push_back(Morceau {
                 position: 0,
-                longueur: 0,
+                length: 0,
             });
         }
         self.en_cours = Some(EnCours {
             chemin,
             restants: morceaux,
             correlation: 0,
-            dernier_envoye: false,
+            last_sent: false,
             octets,
             debut: Instant::now(),
         });
@@ -296,27 +298,27 @@ impl Fil {
     }
 
     fn pousser_creation(&mut self, chemin: &str, repertoire: bool) {
-        let entete = serde_json::to_string(&entetes::Creer {
+        let entete = serde_json::to_string(&entetes::Create {
             chemin: chemin.to_string(),
             repertoire,
         })
-        .expect("un en-tete Creer se serialise toujours");
-        let correlation = self.inscrire(Attendue::Creer {
+        .expect("a Creer header always serializes");
+        let correlation = self.inscrire(Attendue::Create {
             chemin: chemin.to_string(),
         });
         self.en_cours = Some(EnCours {
             chemin: chemin.to_string(),
             restants: VecDeque::new(),
             correlation,
-            dernier_envoye: true,
+            last_sent: true,
             octets: 0,
             debut: Instant::now(),
         });
-        self.emettre(proto::fichiers::TYPE_CREER, correlation, &entete, &[]);
+        self.emettre(proto::files::TYPE_CREATE, correlation, &entete, &[]);
         tracing::debug!(chemin, repertoire, correlation, "creation poussee");
     }
 
-    /// Pousse le morceau suivant. `premier` n'est vrai qu'au tout premier.
+    /// Pushes the next chunk. `premier` is only true at the very first.
     fn pousser_morceau(&mut self, premier: bool) {
         let Some(en_cours) = self.en_cours.as_mut() else {
             return;
@@ -324,48 +326,51 @@ impl Fil {
         let Some(morceau) = en_cours.restants.pop_front() else {
             return;
         };
-        let dernier = en_cours.restants.is_empty();
+        let last = en_cours.restants.is_empty();
         let chemin = en_cours.chemin.clone();
-        let entete = serde_json::to_string(&entetes::Ecrire {
+        let entete = serde_json::to_string(&entetes::Write {
             chemin: chemin.clone(),
             position: morceau.position,
-            longueur: morceau.longueur,
+            length: morceau.length,
             premier,
-            dernier,
+            last,
         })
-        .expect("un en-tete Ecrire se serialise toujours");
+        .expect("a Write header always serializes");
 
         let octets = match disque::lire(&self.config.racine, &chemin, morceau) {
             Ok(octets) => octets,
-            Err(erreur) => {
-                tracing::warn!(chemin, %erreur, "lecture du fichier local echouee : ecriture due RETENUE");
+            Err(error) => {
+                tracing::warn!(chemin, %error, "reading the local file failed: due write HELD");
                 self.terminer(&chemin, false);
                 return;
             }
         };
-        let correlation = self.inscrire(Attendue::Ecrire {
+        let correlation = self.inscrire(Attendue::Write {
             chemin: chemin.clone(),
-            dernier,
+            last,
         });
         if let Some(en_cours) = self.en_cours.as_mut() {
             en_cours.correlation = correlation;
-            en_cours.dernier_envoye = dernier;
+            en_cours.last_sent = last;
         }
-        self.emettre(proto::fichiers::TYPE_ECRIRE, correlation, &entete, &octets);
+        self.emettre(proto::files::TYPE_WRITE, correlation, &entete, &octets);
         tracing::debug!(
             chemin,
             correlation,
             position = morceau.position,
-            longueur = morceau.longueur,
+            length = morceau.length,
             premier,
-            dernier,
-            "ecriture poussee"
+            last,
+            "write pushed"
         );
     }
 
     fn acquitte(&mut self, correlation: u32) {
         if self.mutation_en_vol == Some(correlation) {
-            tracing::info!(correlation, "mutation acquittee : le poste local a suivi");
+            tracing::info!(
+                correlation,
+                "mutation acknowledged: the local machine followed"
+            );
             self.terminer_mutation(true);
             return;
         }
@@ -373,39 +378,39 @@ impl Fil {
             return;
         };
         if en_cours.correlation != correlation {
-            // Un `Fait` tardif, arrivé après une expiration. Le jeter est
-            // l'invariant de `Table::resoudre`, transposé.
-            tracing::debug!(correlation, "acquittement tardif ou inconnu : jete");
+            // A late `Fait`, arrived after an expiry. Throwing it away is
+            // the invariant of `Table::resoudre`, transposed.
+            tracing::debug!(correlation, "late or unknown acknowledgement: dropped");
             return;
         }
-        if !en_cours.dernier_envoye {
+        if !en_cours.last_sent {
             self.pousser_morceau(false);
             return;
         }
         let chemin = en_cours.chemin.clone();
         let octets = en_cours.octets;
         let duree_ms = en_cours.debut.elapsed().as_millis();
-        // ÉTAPE 6 : le journal, PUIS l'annonce.
+        // STEP 6: the journal, THEN the announcement.
         tracing::info!(
             chemin,
             octets,
             duree_ms,
-            "ecriture acquittee : les octets sont sur le poste local"
+            "write acknowledged: the bytes are on the local machine"
         );
         self.terminer(&chemin, true);
     }
 
     fn refuse(&mut self, correlation: u32, code: CodeEchec) {
         if self.mutation_en_vol == Some(correlation) {
-            // 🔴 **UNE MUTATION EN ÉCHEC NE SERA JAMAIS REJOUÉE**, et c'est ce
-            // qui la distingue d'une écriture : ProjFS ne renvoie pas de
-            // notification pour un geste déjà accompli dans la VM. Les deux
-            // côtés ont DIVERGÉ, définitivement, et le seul remède est humain —
-            // d'où le `warn!` et la ligne de la page-shell.
+            // 🔴 **A FAILED MUTATION WILL NEVER BE REPLAYED**, and it is what
+            // distinguishes it from a write: ProjFS sends no
+            // notification again for a gesture already accomplished in the VM. The two
+            // sides have DIVERGED, permanently, and the only remedy is human —
+            // hence the `warn!` and the shell page's line.
             tracing::warn!(
                 correlation,
                 ?code,
-                "MUTATION REFUSEE : le poste local n'a PAS suivi, et rien ne le rejouera"
+                "MUTATION REFUSED: the local machine did NOT follow, and nothing will replay it"
             );
             self.terminer_mutation(false);
             return;
@@ -417,26 +422,26 @@ impl Fil {
             return;
         }
         let chemin = en_cours.chemin.clone();
-        // 🔴 **L'ENTRÉE RESTE AU JOURNAL.** La retirer serait la perte de
-        // données que ce module existe pour empêcher.
+        // 🔴 **THE ENTRY STAYS IN THE JOURNAL.** Removing it would be the data
+        // loss this module exists to prevent.
         tracing::warn!(
             chemin,
             ?code,
-            "ecriture due retenue : le navigateur a refuse, l'entree reste au journal"
+            "due write held: the browser refused, the entry stays in the journal"
         );
         self.terminer(&chemin, false);
     }
 
-    /// Clôt la poussée en cours. `acquittee` décide si l'entrée sort du journal.
+    /// Closes the push in progress. `acquittee` decides whether the entry leaves the journal.
     fn terminer(&mut self, chemin: &str, acquittee: bool) {
         self.en_cours = None;
         if acquittee {
             let ligne = self.journal.retirer(chemin);
-            self.ecrire_journal(&ligne);
+            self.write_journal(&ligne);
         }
         self.annoncer_les_dues();
-        if let Some(suivant) = self.file.terminee(chemin) {
-            self.commencer(suivant);
+        if let Some(next) = self.file.terminee(chemin) {
+            self.commencer(next);
         }
     }
 }

@@ -7,107 +7,107 @@ import {
     ENTETES_RESSOURCE_REVALIDABLE,
 } from './entetes-page';
 
-describe('les en-têtes de document', () => {
-    // 🔴 TROIS TESTS DISTINCTS, PAS TROIS ASSERTIONS DANS UN SEUL : `expect`
-    // s'arrête au premier échec, et ces trois propriétés de sécurité sont
-    // INDÉPENDANTES — si la CSP est fausse, personne n'apprend si
-    // `X-Frame-Options` l'est aussi.
-    it('porte la CSP', () => {
+describe('the document headers', () => {
+    // 🔴 THREE DISTINCT TESTS, NOT THREE ASSERTIONS IN ONE: `expect`
+    // stops at the first failure, and these three security properties are
+    // INDEPENDENT — if the CSP is wrong, nobody learns whether
+    // `X-Frame-Options` is too.
+    it('carries the CSP', () => {
         expect(ENTETES_DOCUMENT['Content-Security-Policy']).toBe(CSP);
     });
 
-    it('porte Referrer-Policy: no-referrer', () => {
+    it('carries Referrer-Policy: no-referrer', () => {
         expect(ENTETES_DOCUMENT['Referrer-Policy']).toBe('no-referrer');
     });
 
-    it('porte X-Frame-Options: DENY', () => {
+    it('carries X-Frame-Options: DENY', () => {
         expect(ENTETES_DOCUMENT['X-Frame-Options']).toBe('DENY');
     });
 
-    // 🔴 HSTS RESTE AU TERMINATEUR TLS. La plateforme est joignable en clair
-    // sur 192.168.3.1:8080 ; y affirmer que l'origine est HTTPS pour un an
-    // serait une affirmation qu'elle n'est pas en position de faire.
-    it("n'émet PAS Strict-Transport-Security", () => {
+    // 🔴 HSTS STAYS AT THE TLS TERMINATOR. The platform is reachable in clear text
+    // on 192.168.3.1:8080; asserting there that the origin is HTTPS for a year
+    // would be a claim it is not in a position to make.
+    it("does NOT emit Strict-Transport-Security", () => {
         expect(ENTETES_DOCUMENT).not.toHaveProperty('Strict-Transport-Security');
     });
 
-    it('garde no-store sur le document, qui peut porter un jeton', () => {
+    it('keeps no-store on the document, which may carry a token', () => {
         expect(ENTETES_DOCUMENT['Cache-Control']).toBe('no-store');
     });
 });
 
-describe('les en-têtes de ressource EMPREINTÉE', () => {
-    // 🔴 LA MOITIÉ QUI COMPTE. `no-store` ici tuerait le cache du navigateur
-    // sur des noms que Vite empreinte réellement — la panne silencieuse type.
-    it('est immutable, JAMAIS no-store', () => {
+describe('the headers of a FINGERPRINTED resource', () => {
+    // 🔴 THE HALF THAT COUNTS. `no-store` here would kill the browser cache
+    // on names Vite really fingerprints — the typical silent failure.
+    it('is immutable, NEVER no-store', () => {
         expect(ENTETES_RESSOURCE_EMPREINTEE['Cache-Control']).toBe(
             'public, max-age=31536000, immutable',
         );
     });
 
-    // 🔴 DEUX TESTS DISTINCTS, PAS DEUX ASSERTIONS DANS UN SEUL — même raison
-    // que ci-dessus.
-    it("ne porte PAS Content-Security-Policy : c'est un en-tête de document", () => {
+    // 🔴 TWO DISTINCT TESTS, NOT TWO ASSERTIONS IN ONE — same reason
+    // as above.
+    it("does NOT carry Content-Security-Policy: it is a document header", () => {
         expect(ENTETES_RESSOURCE_EMPREINTEE).not.toHaveProperty('Content-Security-Policy');
     });
 
-    it("ne porte PAS X-Frame-Options : c'est un en-tête de document", () => {
+    it("does NOT carry X-Frame-Options: it is a document header", () => {
         expect(ENTETES_RESSOURCE_EMPREINTEE).not.toHaveProperty('X-Frame-Options');
     });
 });
 
-describe('les en-têtes de ressource RÉVALIDABLE', () => {
-    // 🔴 LE JEU NEUF, ET LA RAISON DE SON EXISTENCE : `hub.webmanifest`,
-    // `favicon.ico` et toute ressource à nom STABLE recevaient un an
-    // d'`immutable` — donc devenaient non révisables chez tout navigateur les
-    // ayant vues.
-    it("n'est JAMAIS immutable", () => {
+describe('the headers of a REVALIDATABLE resource', () => {
+    // 🔴 THE NEW SET, AND THE REASON IT EXISTS: `hub.webmanifest`,
+    // `favicon.ico` and every resource with a STABLE name received a year
+    // of `immutable` — hence became unrevisable in every browser that had
+    // seen them.
+    it("is NEVER immutable", () => {
         expect(ENTETES_RESSOURCE_REVALIDABLE['Cache-Control']).not.toContain('immutable');
     });
 
-    // ⚠️ SÉPARÉ : `no-store` est l'AUTRE extrême, tout aussi faux ici, et il
-    // faut qu'une régression vers lui rougisse pour SA raison.
-    it("n'est JAMAIS no-store non plus", () => {
+    // ⚠️ SEPARATE: `no-store` is the OTHER extreme, just as wrong here, and a
+    // regression towards it must turn red for ITS reason.
+    it("is NEVER no-store either", () => {
         expect(ENTETES_RESSOURCE_REVALIDABLE['Cache-Control']).not.toContain('no-store');
     });
 
-    it('exige une revalidation', () => {
+    it('requires a revalidation', () => {
         expect(ENTETES_RESSOURCE_REVALIDABLE['Cache-Control']).toContain('must-revalidate');
     });
 
-    it('porte nosniff comme les deux autres jeux', () => {
+    it('carries nosniff like the two other sets', () => {
         expect(ENTETES_RESSOURCE_REVALIDABLE['X-Content-Type-Options']).toBe('nosniff');
     });
 });
 
-// 🔴 DEUX COPIES D'UNE MÊME POLITIQUE DÉRIVENT. Ce test est la seule chose qui
-// l'empêche : un durcissement appliqué d'un seul côté livrerait deux montages
-// aux sécurités différentes sans qu'aucune suite ne bronche.
-describe('la CSP ne dérive pas de celle de nginx', () => {
-    it('est identique à celle de deploiement/nginx.conf', () => {
-        // ⚠️ AUCUN REPLI : `readFileSync` LÈVE si le fichier manque, et c'est
-        // voulu. « Un `||` de repli transforme *fichier absent* en *contrôle
-        // vert*. »
+// 🔴 TWO COPIES OF THE SAME POLICY DRIFT. This test is the only thing that
+// prevents it: a hardening applied on one side only would ship two setups
+// with different security without any suite flinching.
+describe('the CSP does not drift from the nginx one', () => {
+    it('is identical to the one of deploiement/nginx.conf', () => {
+        // ⚠️ NO FALLBACK: `readFileSync` THROWS if the file is missing, and that is
+        // wanted. "A fallback `||` turns *absent file* into *green
+        // check*."
         const nginx = readFileSync(
             new URL('../../../../deploiement/nginx.conf', import.meta.url),
             'utf8',
         );
         const trouvees = [...nginx.matchAll(/add_header Content-Security-Policy "([^"]+)"/g)];
-        // Si nginx en déclarait deux, comparer « la première » choisirait en
-        // silence. On exige l'unicité plutôt que de trancher.
+        // If nginx declared two, comparing "the first" would choose
+        // silently. We require uniqueness rather than deciding.
         expect(trouvees).toHaveLength(1);
         expect(trouvees[0][1]).toBe(CSP);
     });
 });
 
-// 🔴 RÉGRESSION DU 30 AOÛT 2026, TROUVÉE EN PRODUCTION PAR LE PROPRIÉTAIRE :
-// `manifest-src 'self'` (ajoutée le 29 août 2026 pour ne plus dépendre du
-// repli implicite sur `default-src`) ne couvre PAS le manifeste PAR
-// APPLICATION, publié en `blob:` par `client/src/hub/page.ts`
-// (`publierLeManifeste`, voie V1 de G5) — `'self'` seul le bloque en boucle
-// sur `https://app.allanic.me`. Ce test rougit si `manifest-src` perd `blob:`.
-describe("manifest-src admet blob:, sans quoi le manifeste PAR APPLICATION ne charge plus", () => {
-    it('admet blob: en plus de self', () => {
+// 🔴 REGRESSION OF 30 AUGUST 2026, FOUND IN PRODUCTION BY THE OWNER:
+// `manifest-src 'self'` (added on 29 August 2026 to no longer depend on the
+// implicit fallback to `default-src`) does NOT cover the PER-APPLICATION
+// manifest, published as `blob:` by `client/src/hub/page.ts`
+// (`publierLeManifeste`, G5's path V1) — `'self'` alone blocks it in a loop
+// on `https://app.allanic.me`. This test turns red if `manifest-src` loses `blob:`.
+describe("manifest-src admits blob:, otherwise the PER-APPLICATION manifest no longer loads", () => {
+    it('admits blob: in addition to self', () => {
         const [, directive] = CSP.match(/manifest-src ([^;]+);/) ?? [];
         expect(directive).toBe("'self' blob:");
     });

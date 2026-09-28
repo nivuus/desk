@@ -1,84 +1,84 @@
-//! Attribution des numéros qui distinguent nos GUID de sortie virtuelle.
+//! Allocation of the numbers that distinguish our virtual output GUIDs.
 //!
-//! **Correctif I1 de la revue finale de branche.** Le numéro était un simple
-//! compteur strictement monotone, jamais recyclé : `pilote::creer`
-//! l'incrémentait à chaque création et rien ne le faisait redescendre à la
-//! destruction. Or le superviseur crée une sortie par **ouverture** de fenêtre,
-//! sans borne — là où le banc qui a précédé n'en créait que dix dans toute sa
-//! vie. À la 17ᵉ ouverture, le GUID attribué sortait de la plage que la purge
-//! inter-processus balaye (`purge::purger`, `1..=PLAFOND_NUMEROS`) : un arrêt
-//! brutal laissait alors un moniteur virtuel **irrécupérable sans redémarrer la
-//! VM**, puisque le pilote ne retire que par GUID et qu'aucune table ne survit
-//! au processus.
+//! **Fix I1 of the final branch review.** The number was a simple
+//! strictly monotonic counter, never recycled: `pilote::create`
+//! incremented it at each creation and nothing brought it back down at
+//! destruction. Yet the supervisor creates one output per window **opening**,
+//! without bound — whereas the bench that preceded only created ten in its whole
+//! life. At the 17th opening, the assigned GUID went out of the range the
+//! inter-process purge sweeps (`purge::purger`, `1..=PLAFOND_NUMEROS`): an abrupt
+//! stop then left a virtual monitor **unrecoverable without rebooting the
+//! VM**, since the driver only removes through a GUID and no table survives
+//! the process.
 //!
-//! **Recycler plutôt que relever le plafond**, et c'est un arbitrage, pas un
-//! détail : relever le plafond ne borne rien — le compteur restait croissant
-//! sans limite, et repousser le mur à 64 ou à 1024 n'aurait fait que retarder
-//! le même défaut tout en allongeant d'autant le balayage de la purge. Recycler
-//! borne l'ensemble des numéros en vol par ce qui est réellement dû
-//! (sorties vivantes + retraits en échec), quantité que le pilote plafonne
-//! lui-même à dix. Le plafond subsiste comme **garde-fou dur** : au-delà, la
-//! création est refusée bruyamment plutôt que d'attribuer un numéro que la
-//! purge ne retrouverait jamais.
+//! **Recycle rather than raise the ceiling**, and it is a trade-off, not a
+//! detail: raising the ceiling bounds nothing — the counter stayed growing
+//! without limit, and pushing the wall to 64 or 1024 would only have delayed
+//! the same defect while lengthening the purge's sweep by as much. Recycling
+//! bounds the set of numbers in flight by what is really due
+//! (live outputs + failed removals), a quantity the driver itself caps
+//! at ten. The ceiling remains as a **hard safeguard**: beyond it, the
+//! creation is refused noisily rather than assigning a number the
+//! purge would never find.
 //!
-//! Module hors `#[cfg(windows)]` à dessein : c'est de la logique pure, et
-//! c'est la pièce dont dépend la récupérabilité d'un état global du système.
+//! Module outside `#[cfg(windows)]` on purpose: it is pure logic, and
+//! it is the piece on which the recoverability of a global system state depends.
 
 use anyhow::Result;
 
-/// Numéro le plus élevé qu'une sortie puisse porter — donc l'étendue exacte
-/// que `purge::purger` doit balayer pour retrouver les GUID d'un processus
-/// tué net.
+/// Highest number an output can carry — hence the exact range
+/// `purge::purger` must sweep to find the GUIDs of a process
+/// killed outright.
 ///
-/// Seize et non dix : le pilote refuse la 11ᵉ sortie simultanée (mesuré à la
-/// tâche 6), et les six numéros de marge couvrent les retraits en échec, qui
-/// restent dus sans être recyclés.
+/// Sixteen and not ten: the driver refuses the 11th simultaneous output (measured at
+/// task 6), and the six numbers of margin cover failed removals, which
+/// stay due without being recycled.
 ///
-/// **C'est ce plafond-ci qui fait autorité, pas
-/// `diagnostics::multifenetre::montee::PLAFOND_RECHERCHE`** — lequel dit
-/// jusqu'où une MESURE grimpe, une question sans rapport qui partageait
-/// seulement la même valeur.
+/// **It is this ceiling that is authoritative, not
+/// `diagnostics::multifenetre::montee::SEARCH_CEILING`** — which says
+/// how high a MEASUREMENT climbs, an unrelated question that merely
+/// shared the same value.
 pub const PLAFOND_NUMEROS: u16 = 16;
 
-/// Distributeur de numéros, avec reprise de ceux qui ont été rendus.
+/// Number allocator, taking back those that were returned.
 #[derive(Default)]
 pub struct Numeros {
-    /// Plus haut numéro jamais attribué. Ne redescend pas : ce qui redescend,
-    /// c'est le contenu de `libres`.
+    /// Highest number ever assigned. Does not go back down: what goes back down
+    /// is the content of `libres`.
     plus_haut: u16,
-    /// Numéros rendus par une sortie RÉELLEMENT retirée, donc réattribuables.
+    /// Numbers returned by an output ACTUALLY removed, hence reassignable.
     libres: Vec<u16>,
 }
 
 impl Numeros {
-    /// Attribue un numéro, en reprenant d'abord ceux qui ont été rendus.
+    /// Assigns a number, first taking back those that were returned.
     ///
-    /// Échoue plutôt que de déborder le plafond : un numéro hors plage serait
-    /// un moniteur que plus aucune purge ne pourrait retirer.
+    /// Fails rather than overflowing the ceiling: an out-of-range number would be
+    /// a monitor no purge could ever remove.
     pub fn attribuer(&mut self) -> Result<u16> {
         if let Some(recycle) = self.libres.pop() {
             return Ok(recycle);
         }
         anyhow::ensure!(
             self.plus_haut < PLAFOND_NUMEROS,
-            "plus aucun numéro de sortie virtuelle disponible : {PLAFOND_NUMEROS} sont \
-             attribués et non rendus. Créer au-delà donnerait un GUID que la purge \
-             inter-processus ne balaye pas, donc un moniteur irrécupérable sans \
-             redémarrage de la VM"
+            "no virtual output number available any more: {PLAFOND_NUMEROS} are \
+             assigned and not given back. Creating beyond would give a GUID that the \
+             inter-process purge does not sweep, hence a monitor unrecoverable without \
+             restarting the VM"
         );
         self.plus_haut += 1;
         Ok(self.plus_haut)
     }
 
-    /// Rend un numéro dont la sortie a été **réellement** retirée.
+    /// Returns a number whose output was **actually** removed.
     ///
-    /// Un numéro jamais attribué, ou déjà rendu, est ignoré sans bruit : ce
-    /// n'est pas une erreur de l'appelant, c'est le cas d'un GUID régénéré par
-    /// la purge, ou d'un `oublier` rejoué.
+    /// A number never assigned, or already returned, is ignored silently: it
+    /// is not a caller error, it is the case of a GUID regenerated by
+    /// the purge, or of a replayed `oublier`.
     ///
-    /// Ne JAMAIS appeler sur un retrait qui a échoué : le moniteur existe
-    /// encore, son GUID est la seule prise qu'on ait dessus, et réattribuer ce
-    /// numéro ferait fabriquer un second GUID identique.
+    /// NEVER call on a removal that failed: the monitor still
+    /// exists, its GUID is the only handle we have on it, and reassigning this
+    /// number would produce a second identical GUID.
     pub fn rendre(&mut self, numero: u16) {
         if numero == 0 || numero > self.plus_haut || self.libres.contains(&numero) {
             return;
@@ -86,7 +86,7 @@ impl Numeros {
         self.libres.push(numero);
     }
 
-    /// Numéros attribués et pas encore rendus. Sert au journal.
+    /// Numbers assigned and not yet returned. Used for the log.
     pub fn en_vol(&self) -> usize {
         self.plus_haut as usize - self.libres.len()
     }
@@ -97,7 +97,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn les_numeros_se_suivent_tant_que_rien_n_est_rendu() {
+    fn numbers_follow_each_other_as_long_as_nothing_is_given_back() {
         let mut numeros = Numeros::default();
         assert_eq!(numeros.attribuer().unwrap(), 1);
         assert_eq!(numeros.attribuer().unwrap(), 2);
@@ -105,29 +105,29 @@ mod tests {
         assert_eq!(numeros.en_vol(), 3);
     }
 
-    /// Le défaut I1 lui-même : un superviseur ouvre et ferme des fenêtres sans
-    /// borne. Avec un compteur monotone, la 17ᵉ ouverture attribuait un numéro
-    /// hors de la plage balayée par la purge.
+    /// Defect I1 itself: a supervisor opens and closes windows without
+    /// bound. With a monotonic counter, the 17th opening assigned a number
+    /// outside the range swept by the purge.
     #[test]
-    fn cent_ouvertures_fermetures_ne_font_pas_sortir_du_plafond() {
+    fn a_hundred_opens_and_closes_do_not_leave_the_ceiling() {
         let mut numeros = Numeros::default();
         for _ in 0..100 {
             let numero = numeros
                 .attribuer()
-                .expect("le recyclage doit rendre la place");
+                .expect("recycling must give the slot back");
             assert!(
                 numero <= PLAFOND_NUMEROS,
-                "numéro {numero} hors de portée de la purge"
+                "number {numero} out of the purge's reach"
             );
             numeros.rendre(numero);
         }
         assert_eq!(numeros.en_vol(), 0);
     }
 
-    /// Huit fenêtres ouvertes en même temps — la cible du chantier — puis
-    /// renouvelées indéfiniment : les numéros restent dans la plage.
+    /// Eight windows open at the same time — the work stream's target — then
+    /// renewed indefinitely: the numbers stay in range.
     #[test]
-    fn huit_sorties_simultanees_renouvelees_restent_dans_la_plage() {
+    fn eight_simultaneous_renewed_outputs_stay_in_range() {
         let mut numeros = Numeros::default();
         let mut vivantes: Vec<u16> = (0..8).map(|_| numeros.attribuer().unwrap()).collect();
         for _ in 0..50 {
@@ -136,35 +136,38 @@ mod tests {
             let neuve = numeros.attribuer().unwrap();
             assert!(
                 neuve <= PLAFOND_NUMEROS,
-                "numéro {neuve} hors de portée de la purge"
+                "number {neuve} out of the purge's reach"
             );
             vivantes.push(neuve);
         }
         assert_eq!(numeros.en_vol(), 8);
     }
 
-    /// Le garde-fou dur : un état où rien n'est rendu (retraits tous en échec)
-    /// doit faire refuser la création, pas attribuer un numéro invisible de la
+    /// The hard safeguard: a state where nothing is returned (removals all failed)
+    /// must make the creation be refused, not assign a number invisible to the
     /// purge.
     #[test]
-    fn au_dela_du_plafond_la_creation_est_refusee() {
+    fn beyond_the_ceiling_creation_is_refused() {
         let mut numeros = Numeros::default();
         for _ in 0..PLAFOND_NUMEROS {
             numeros.attribuer().unwrap();
         }
-        assert!(numeros.attribuer().is_err(), "le plafond aurait dû refuser");
-        // Un seul retrait réussi rouvre exactement une place.
+        assert!(
+            numeros.attribuer().is_err(),
+            "the ceiling should have refused"
+        );
+        // A single successful removal reopens exactly one slot.
         numeros.rendre(4);
         assert_eq!(numeros.attribuer().unwrap(), 4);
         assert!(numeros.attribuer().is_err());
     }
 
     #[test]
-    fn rendre_un_numero_inconnu_ou_deja_rendu_ne_cree_pas_de_doublon() {
+    fn giving_back_an_unknown_or_already_given_back_number_creates_no_duplicate() {
         let mut numeros = Numeros::default();
         let a = numeros.attribuer().unwrap();
         numeros.rendre(a);
-        // Deux fois le même, plus un jamais attribué, plus zéro.
+        // The same one twice, plus one never assigned, plus zero.
         numeros.rendre(a);
         numeros.rendre(999);
         numeros.rendre(0);
@@ -172,7 +175,7 @@ mod tests {
         assert_eq!(
             numeros.attribuer().unwrap(),
             a + 1,
-            "aucun doublon n'a été mis en réserve"
+            "no duplicate was put in reserve"
         );
     }
 }

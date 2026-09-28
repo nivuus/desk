@@ -1,30 +1,30 @@
-//! Les associations de fichiers d'une application, lues sur la VM.
+//! The file associations of an application, read on the VM.
 //!
-//! 🔴 CE QUI EST PUR VIT ICI ; SEULE LA LECTURE DU REGISTRE EST
-//! `#[cfg(windows)]` (`associations/registre.rs`). C'est la coupure que G2 a
-//! établie deux fois — `apps/icone/ressource.rs`, `apps/installation` — et son
-//! intérêt est identique : **sans elle, la partie qui DÉCIDE n'aurait aucun
-//! test d'hôte**, et le seul moyen de l'éprouver serait de reconstruire un
-//! binaire pour la VM.
+//! 🔴 WHAT IS PURE LIVES HERE; ONLY THE REGISTRY READ IS
+//! `#[cfg(windows)]` (`associations/registre.rs`). It is the split G2
+//! established twice — `apps/icone/ressource.rs`, `apps/installation` — and its
+//! benefit is the same: **without it, the part that DECIDES would have no
+//! host test**, and the only way to test it would be to rebuild a
+//! binary for the VM.
 //!
-//! 🔴 L'APPARIEMENT SE FAIT PAR IDENTITÉ DE CHEMIN, JAMAIS PAR SOUS-CHAÎNE DE
-//! NOM (décision D12 du plan de G5). Le modèle que la conception cite,
-//! `src/app.js:15-37`, apparie le ProgID à l'application **par sous-chaîne sur
-//! son nom**, après en avoir retiré les chiffres. C'est **la même heuristique
-//! que G1 a déjà remplacée pour les identifiants, et pour la même raison** :
-//! « Nsight 2020.3 » et « Nsight 2024.6 » y produisaient la même clé. La
-//! reprendre ici attribuerait `.cu` à la mauvaise version de l'une, et
-//! personne ne le verrait.
+//! 🔴 MATCHING IS DONE BY PATH IDENTITY, NEVER BY NAME
+//! SUBSTRING (decision D12 of the G5 plan). The model the design cites,
+//! `src/app.js:15-37`, matches the ProgID to the application **by substring on
+//! its name**, after stripping digits. It is **the same heuristic
+//! G1 already replaced for identifiers, and for the same reason**:
+//! "Nsight 2020.3" and "Nsight 2024.6" produced the same key there. Taking
+//! it up here would attribute `.cu` to the wrong version of one of them, and
+//! nobody would see it.
 //!
-//! La chaîne, pour une extension :
-//!   ① `HKCU\…\FileExts\<ext>\UserChoice\ProgId` — LE CHOIX RÉEL DE
-//!      L'UTILISATEUR, et il l'emporte ;
-//!   ② à défaut, la valeur par défaut de `HKCR\.<ext>` ;
-//!   ③ puis `HKCR\<ProgID>\shell\open\command`, dont on EXTRAIT le chemin de
-//!      l'exécutable ;
-//!   ④ que l'on NORMALISE avec la normalisation déjà écrite
-//!      (`raccourci::normaliser_chemin`) — jamais une seconde —, et que l'on
-//!      compare à `application.cible`.
+//! The chain, for one extension:
+//!   ① `HKCU\…\FileExts\<ext>\UserChoice\ProgId` — THE USER'S REAL
+//!      CHOICE, and it wins;
+//!   ② failing that, the default value of `HKCR\.<ext>`;
+//!   ③ then `HKCR\<ProgID>\shell\open\command`, from which the path of the
+//!      executable is EXTRACTED;
+//!   ④ which is NORMALISED with the normalisation already written
+//!      (`raccourci::normaliser_chemin`) — never a second one —, and which is
+//!      compared with `application.cible`.
 
 #[cfg(windows)]
 pub mod registre;
@@ -35,12 +35,12 @@ mod tests;
 
 use crate::apps::raccourci::normaliser_chemin;
 
-/// La table des associations de CETTE machine, ou une table VIDE hors Windows.
+/// The association table of THIS machine, or an EMPTY table outside Windows.
 ///
-/// 🔴 UN SEUL POINT D'ENTRÉE POUR LE PRODUIT, ET IL COMPILE PARTOUT. Le
-/// `#[cfg]` vit ici et nulle part ailleurs : l'appelant n'a pas à savoir sur
-/// quel système il tourne, et la boucle de découverte reste lisible sur
-/// l'hôte comme sur la VM.
+/// 🔴 A SINGLE ENTRY POINT FOR THE PRODUCT, AND IT COMPILES EVERYWHERE. The
+/// `#[cfg]` lives here and nowhere else: the caller does not need to know which
+/// system it runs on, and the discovery loop stays readable on the
+/// host as on the VM.
 pub fn table_de_la_machine() -> std::collections::BTreeMap<String, Vec<String>> {
     #[cfg(windows)]
     {
@@ -48,40 +48,40 @@ pub fn table_de_la_machine() -> std::collections::BTreeMap<String, Vec<String>> 
     }
     #[cfg(not(windows))]
     {
-        // ⚠️ VIDE, ET NON UNE PANIQUE : l'agent se compile sur l'hôte pour ses
-        // tests, et une table vide y est la vérité — cette machine n'a pas de
-        // registre Windows.
+        // ⚠️ EMPTY, NOT A PANIC: the agent compiles on the host for its
+        // tests, and an empty table is the truth there — that machine has no
+        // Windows registry.
         std::collections::BTreeMap::new()
     }
 }
 
-/// Extrait le chemin de l'exécutable d'une ligne de commande Windows.
+/// Extracts the path of the executable from a Windows command line.
 ///
-/// 🔴 LA RÈGLE EST CELLE DE WINDOWS, PAS UNE APPROXIMATION COMMODE : si la
-/// ligne commence par un guillemet, le chemin court **jusqu'au guillemet
-/// fermant** et peut donc contenir des espaces ; sinon il court **jusqu'au
-/// premier espace**. C'est ce qui distingue
-/// `"C:\Program Files\App\a.exe" "%1"` — un chemin à espaces — de
+/// 🔴 THE RULE IS WINDOWS'S OWN, NOT A CONVENIENT APPROXIMATION: if the
+/// line starts with a quote, the path runs **up to the closing
+/// quote** and may therefore contain spaces; otherwise it runs **up to the
+/// first space**. That is what distinguishes
+/// `"C:\Program Files\App\a.exe" "%1"` — a path with spaces — from
 /// `C:\Windows\notepad.exe %1`.
 ///
-/// ⚠️ UNE LIGNE NON CITÉE DONT LE CHEMIN PORTE UN ESPACE EST DONC TRONQUÉE, et
-/// c'est **le comportement de Windows lui-même**, pas une lacune d'ici : le
-/// système essaie alors plusieurs découpes. Nous ne les essayons pas — une
-/// association mal appariée serait pire qu'une association absente, et le
-/// silence est ici la réponse honnête.
+/// ⚠️ AN UNQUOTED LINE WHOSE PATH CONTAINS A SPACE IS THEREFORE TRUNCATED, and
+/// that is **Windows's own behaviour**, not a gap here: the
+/// system then tries several splits. We do not try them — a
+/// badly matched association would be worse than a missing one, and
+/// silence is the honest answer here.
 ///
-/// Rend `None` sur une ligne vide, ou sur un guillemet ouvrant jamais fermé.
+/// Returns `None` on an empty line, or on an opening quote never closed.
 pub fn executable_de_commande(commande: &str) -> Option<String> {
-    let taille = commande.trim();
-    if taille.is_empty() {
+    let size = commande.trim();
+    if size.is_empty() {
         return None;
     }
-    let chemin = if let Some(reste) = taille.strip_prefix('"') {
-        // ⚠️ On refuse un guillemet ouvrant non fermé plutôt que de prendre
-        // tout le reste : une ligne mal formée n'est pas un chemin.
-        reste.split_once('"').map(|(avant, _)| avant)?
+    let chemin = if let Some(reste) = size.strip_prefix('"') {
+        // ⚠️ An unclosed opening quote is refused rather than taking
+        // all the rest: a malformed line is not a path.
+        reste.split_once('"').map(|(before, _)| before)?
     } else {
-        taille.split_whitespace().next()?
+        size.split_whitespace().next()?
     };
     if chemin.is_empty() {
         return None;
@@ -89,12 +89,12 @@ pub fn executable_de_commande(commande: &str) -> Option<String> {
     Some(chemin.to_string())
 }
 
-/// La ligne de commande d'un ProgID désigne-t-elle CETTE cible ?
+/// Does the command line of a ProgID designate THIS target?
 ///
-/// 🔴 UNE ÉGALITÉ DE CHEMIN NORMALISÉ, JAMAIS UNE SOUS-CHAÎNE DE NOM.
-/// `normaliser_chemin` est RÉEMPLOYÉE et non recopiée : deux normalisations
-/// divergeraient le jour où l'une d'elles changerait, et l'appariement
-/// deviendrait faux **du seul côté qui n'aurait pas bougé**.
+/// 🔴 AN EQUALITY OF NORMALISED PATHS, NEVER A NAME SUBSTRING.
+/// `normaliser_chemin` is REUSED and not copied: two normalisations
+/// would diverge the day one of them changed, and matching
+/// would become wrong **on the one side that had not moved**.
 #[cfg(test)]
 pub fn commande_vise(commande: &str, cible: &str) -> bool {
     match executable_de_commande(commande) {
@@ -103,38 +103,38 @@ pub fn commande_vise(commande: &str, cible: &str) -> bool {
     }
 }
 
-/// Normalise une extension : minuscules, **avec** le point de tête.
+/// Normalises an extension: lowercase, **with** the leading dot.
 ///
-/// ⚠️ LE POINT EST IMPOSÉ ICI, ET C'EST CE QUI REND LE FORMAT DU FIL
-/// PRÉVISIBLE : le registre écrit `.txt` sous `HKCR` et `txt` sous `FileExts`
-/// selon les clés, et laisser les deux formes voyager obligerait la plateforme
-/// à choisir — c'est-à-dire à porter une règle qui n'est pas la sienne.
+/// ⚠️ THE DOT IS ENFORCED HERE, AND THAT IS WHAT MAKES THE WIRE FORMAT
+/// PREDICTABLE: the registry writes `.txt` under `HKCR` and `txt` under `FileExts`
+/// depending on the key, and letting both forms travel would force the platform
+/// to choose — that is, to carry a rule that is not its own.
 pub fn normaliser_extension(extension: &str) -> Option<String> {
-    let taille = extension.trim().trim_start_matches('.').to_lowercase();
-    if taille.is_empty() || taille.contains(['\\', '/', ' ']) {
+    let size = extension.trim().trim_start_matches('.').to_lowercase();
+    if size.is_empty() || size.contains(['\\', '/', ' ']) {
         return None;
     }
-    Some(format!(".{taille}"))
+    Some(format!(".{size}"))
 }
 
-/// La TABLE des associations : chemin d'exécutable **normalisé** → extensions
-/// rangées.
+/// The association TABLE: **normalised** executable path → sorted
+/// extensions.
 ///
-/// 🔴 UNE TABLE, ET NON UNE INTERROGATION PAR APPLICATION, ET C'EST UNE
-/// DÉCISION DE COÛT. Le corpus de la VM porte **156 applications** ; demander
-/// au registre, pour chacune, quelles extensions la visent, ferait relire
-/// toutes les entrées de `FileExts` **156 fois par réconciliation** — et la
-/// réconciliation tourne toutes les `PERIODE_RECONCILIATION`. Le registre est
-/// donc lu **une fois**, et chaque application y **cherche** son chemin.
+/// 🔴 A TABLE, AND NOT A QUERY PER APPLICATION, AND IT IS A COST
+/// DECISION. The VM's corpus has **156 applications**; asking
+/// the registry, for each one, which extensions point at it, would re-read
+/// every entry of `FileExts` **156 times per reconciliation** — and the
+/// reconciliation runs every `PERIODE_RECONCILIATION`. The registry is
+/// therefore read **once**, and each application **looks up** its path in it.
 ///
-/// 🔴 ET C'EST AUSSI CE QUI REND LA RÈGLE ÉPROUVABLE : ce qui entre est une
-/// liste de couples `(extension, ligne de commande)` — exactement ce qu'un
-/// registre rend —, et tout le reste (extraire l'exécutable, normaliser,
-/// grouper, ranger) est **pur** et vit ici.
+/// 🔴 AND IT IS ALSO WHAT MAKES THE RULE TESTABLE: what comes in is a
+/// list of `(extension, command line)` pairs — exactly what a
+/// registry returns —, and all the rest (extracting the executable, normalising,
+/// grouping, sorting) is **pure** and lives here.
 ///
-/// ⚠️ UNE LIGNE DE COMMANDE ILLISIBLE EST ÉCARTÉE EN SILENCE, et c'est
-/// délibéré : un ProgID dont la commande ne se lit pas ne désigne aucune
-/// application, et le seul autre choix serait de l'attribuer au hasard.
+/// ⚠️ AN UNREADABLE COMMAND LINE IS DISCARDED SILENTLY, and that is
+/// deliberate: a ProgID whose command cannot be read designates no
+/// application, and the only other choice would be to attribute it at random.
 pub fn table(couples: Vec<(String, String)>) -> std::collections::BTreeMap<String, Vec<String>> {
     let mut brute: std::collections::BTreeMap<String, Vec<String>> =
         std::collections::BTreeMap::new();
@@ -153,12 +153,12 @@ pub fn table(couples: Vec<(String, String)>) -> std::collections::BTreeMap<Strin
         .collect()
 }
 
-/// Ce que la table retient pour une cible — la liste VIDE si elle n'y est pas.
+/// What the table keeps for a target — the EMPTY list if it is not there.
 ///
-/// ⚠️ LA CIBLE EST NORMALISÉE ICI AUSSI, et par la MÊME fonction : la table est
-/// bâtie sur des chemins normalisés, et l'interroger avec un chemin brut ne
-/// trouverait jamais rien — un défaut **silencieux**, qui rendrait simplement
-/// toutes les listes vides.
+/// ⚠️ THE TARGET IS NORMALISED HERE TOO, and by the SAME function: the table is
+/// built on normalised paths, and querying it with a raw path would
+/// never find anything — a **silent** defect, which would simply make
+/// every list empty.
 pub fn pour_cible(
     table: &std::collections::BTreeMap<String, Vec<String>>,
     cible: &str,
@@ -169,13 +169,13 @@ pub fn pour_cible(
         .unwrap_or_default()
 }
 
-/// Trie et déduplique les extensions d'une application.
+/// Sorts and deduplicates the extensions of an application.
 ///
-/// 🔴 L'ORDRE EST IMPOSÉ, ET CE N'EST PAS UN ORNEMENT : la plateforme compare
-/// le catalogue reçu à celui qu'elle connaît pour décider ce qu'elle écrit.
-/// Un ordre d'énumération du registre — qui n'est garanti par rien — ferait
-/// diverger deux listes IDENTIQUES, donc écrire à chaque tour et journaliser
-/// un changement qui n'a pas eu lieu.
+/// 🔴 THE ORDER IS ENFORCED, AND IT IS NOT AN ORNAMENT: the platform compares
+/// the received catalogue with the one it knows to decide what it writes.
+/// A registry enumeration order — guaranteed by nothing — would make
+/// two IDENTICAL lists diverge, hence write on every tick and log
+/// a change that did not happen.
 pub fn ranger(extensions: Vec<String>) -> Vec<String> {
     let mut rangees: Vec<String> = extensions
         .iter()

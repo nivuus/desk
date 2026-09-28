@@ -1,23 +1,23 @@
-//! Les tests d'hôte de `superviseur::placement`.
+//! The host tests of `superviseur::placement`.
 //!
-//! **Extrait de `placement.rs` VERBATIM.** Le lot 33 y a corrigé le
-//! commentaire de `win::poser`, devenu faux (il justifiait l'absence de
-//! `SW_MAXIMIZE` par un argument qui ne vaut que si le recadrage reste à la
-//! taille de la sortie — ce qui n'est plus le cas), et le fichier s'est
-//! retrouvé à **500 lignes EXACTEMENT**, c'est-à-dire à sa porte. Le dépôt a
-//! payé six fois « la marge regagnée qu'on traite comme acquise » et neuf fois
-//! le naufrage du 487 : on extrait plutôt que de laisser un fichier au
-//! millimètre du plafond.
+//! **Extracted from `placement.rs` VERBATIM.** Batch 33 corrected there the
+//! comment of `win::poser`, which had become wrong (it justified the absence of
+//! `SW_MAXIMIZE` by an argument that only holds if the crop stays at the
+//! output's size — which is no longer the case), and the file found itself
+//! at **EXACTLY 500 lines**, that is, at its gate. The repository has
+//! paid six times for "the regained margin treated as acquired" and nine times
+//! for the #487 wreck: we extract rather than leave a file a hair's breadth
+//! from the ceiling.
 //!
-//! ⚠️ **Cette extraction SUIT son addition, là où celle de
-//! `windows_source/sortie.rs` la PRÉCÉDAIT** — et c'est dit plutôt que
-//! maquillé. La correction de commentaire qui l'a rendue nécessaire est
-//! arrivée en cours de lot, avec la mesure de la barre des tâches ; elle
-//! n'était pas prévisible au moment où le plafond a été calculé.
+//! ⚠️ **This extraction FOLLOWS its addition, whereas that of
+//! `windows_source/sortie.rs` PRECEDED it** — and it is said rather than
+//! disguised. The comment correction that made it necessary
+//! arrived mid-batch, with the taskbar measurement; it
+//! was not foreseeable when the ceiling was computed.
 //!
-//! Aucune assertion, aucun commentaire n'a été réécrit au déplacement. Les
-//! DEUX modules (`tests` et `tests_taille`) sont conservés distincts : ils
-//! l'étaient, et les fondre aurait été une réécriture.
+//! No assertion, no comment was rewritten in the move. The
+//! TWO modules (`tests` and `tests_size`) are kept distinct: they
+//! were, and merging them would have been a rewrite.
 
 use super::*;
 use crate::geometry::Rect;
@@ -39,78 +39,78 @@ fn sortie(a: u32, s: u32, x: i32, l: u32, h: u32, attachee: bool) -> SortieDxgi 
 }
 
 #[test]
-fn trouve_la_sortie_aux_dimensions_demandees() {
-    // La première sortie doit rester INADÉQUATE sous l'inégalité de D10 —
-    // sans quoi `.find()` s'arrêterait sur elle et le test ne prouverait
-    // plus rien. Sa hauteur (800) est donc en dessous du viewport demandé
-    // (900), exactement comme `n_apparie_pas_une_sortie_aux_mauvaises_
-    // dimensions` reste inadéquate en restant plus petite sur les deux
-    // axes : voir le rapport de la tâche 5, cette donnée n'est pas dans
-    // le brief tel quel, qui rendait ce test rouge en l'état.
-    let toutes = vec![
+fn finds_the_output_with_the_requested_dimensions() {
+    // The first output must stay INADEQUATE under D10's inequality —
+    // otherwise `.find()` would stop on it and the test would no longer prove
+    // anything. Its height (800) is therefore below the requested viewport
+    // (900), exactly as `n_apparie_pas_une_sortie_aux_mauvaises_
+    // dimensions` stays inadequate by staying smaller on both
+    // axes: see task 5's report, this data is not in
+    // the brief as is, which made this test red as it stood.
+    let all = vec![
         sortie(0, 0, 0, 2400, 800, true),
         sortie(0, 1, 2400, 1600, 900, true),
     ];
-    let trouvee = sortie_pour_viewport(&toutes, 1600, 900, &[], None).unwrap();
+    let trouvee = sortie_pour_viewport(&all, 1600, 900, &[], None).unwrap();
     assert_eq!((trouvee.index_adaptateur, trouvee.index_sortie), (0, 1));
 }
 
 #[test]
-fn ignore_une_sortie_non_attachee() {
-    // Une sortie créée mais que Windows n'a pas encore rattachée ne peut
-    // rien afficher : la prendre donnerait une capture noire.
-    let toutes = vec![sortie(0, 1, 2400, 1600, 900, false)];
-    assert!(sortie_pour_viewport(&toutes, 1600, 900, &[], None).is_none());
+fn ignores_an_unattached_output() {
+    // An output created but not yet attached by Windows can
+    // display nothing: taking it would give a black capture.
+    let all = vec![sortie(0, 1, 2400, 1600, 900, false)];
+    assert!(sortie_pour_viewport(&all, 1600, 900, &[], None).is_none());
 }
 
 #[test]
-fn ignore_une_sortie_deja_attribuee() {
-    // Deux fenêtres au même viewport : sans ce filtre, la seconde se
-    // verrait attribuer la sortie de la première, et les deux flux
-    // montreraient la même image.
-    let toutes = vec![
+fn ignores_an_already_assigned_output() {
+    // Two windows with the same viewport: without this filter, the second would
+    // be assigned the first one's output, and both streams
+    // would show the same image.
+    let all = vec![
         sortie(0, 1, 2400, 1600, 900, true),
         sortie(0, 2, 4000, 1600, 900, true),
     ];
     let deja_prises = vec!["\\\\.\\DISPLAY1".to_string()];
-    let trouvee = sortie_pour_viewport(&toutes, 1600, 900, &deja_prises, None).unwrap();
+    let trouvee = sortie_pour_viewport(&all, 1600, 900, &deja_prises, None).unwrap();
     assert_eq!((trouvee.index_adaptateur, trouvee.index_sortie), (0, 2));
 }
 
 #[test]
-fn ne_trouve_rien_quand_toutes_sont_prises() {
-    let toutes = vec![sortie(0, 1, 2400, 1600, 900, true)];
+fn finds_nothing_when_all_are_taken() {
+    let all = vec![sortie(0, 1, 2400, 1600, 900, true)];
     let deja_prises = vec!["\\\\.\\DISPLAY1".to_string()];
-    assert!(sortie_pour_viewport(&toutes, 1600, 900, &deja_prises, None).is_none());
+    assert!(sortie_pour_viewport(&all, 1600, 900, &deja_prises, None).is_none());
 }
 
 #[test]
-fn n_apparie_pas_une_sortie_aux_mauvaises_dimensions() {
-    // ❌ **Ce commentaire disait : « Le facteur d'échelle DPI a déjà
-    // produit un écart de 1,5 sur ce terrain (5120x1440 annoncé,
-    // 3413x960 mesuré) : un appariement approximatif rendrait ce piège
-    // invisible. » Le sous-bloc D10 l'a réfuté** — et le test
-    // `un_facteur_d_echelle_est_desormais_recadre_et_non_refuse`, vingt
-    // lignes plus bas, dit désormais le contraire. L'appariement EST
-    // devenu délibérément approximatif (inégalité, plus tolérance de
-    // 4 px) : un écart DPI n'est plus un motif de refus, il est recadré.
-    // La protection a migré vers `taille_retenue`, qui borne la fenêtre à
-    // ce que la sortie peut réellement porter. Relevé par la revue
-    // transverse : c'est le seul commentaire de ce fichier que le
-    // renommage `sortie_par_dimensions` → `sortie_pour_viewport` a laissé
-    // intact sans le relire.
+fn does_not_pair_an_output_with_the_wrong_dimensions() {
+    // ❌ **This comment said: "The DPI scale factor has already
+    // produced a 1.5 gap on this ground (5120x1440 announced,
+    // 3413x960 measured): an approximate pairing would make this trap
+    // invisible." Sub-block D10 refuted it** — and the test
+    // `a_scale_factor_is_now_cropped_not_refused`, twenty
+    // lines below, now says the opposite. Pairing HAS
+    // deliberately become approximate (inequality, plus a tolerance of
+    // 4 px): a DPI gap is no longer a reason to refuse, it is cropped.
+    // The protection migrated to `retained_size`, which bounds the window to
+    // what the output can really carry. Found by the cross-cutting
+    // review: it is the only comment of this file that the
+    // `sortie_par_dimensions` → `sortie_pour_viewport` renaming left
+    // intact without rereading it.
     //
-    // Ce que ce test-ci exerce encore, et qui reste juste : une sortie
-    // TROP PETITE sur un axe n'est toujours pas appariée.
-    let toutes = vec![sortie(0, 1, 2400, 1067, 600, true)];
-    assert!(sortie_pour_viewport(&toutes, 1600, 900, &[], None).is_none());
+    // What this test still exercises, and which stays right: an output
+    // TOO SMALL on one axis is still not paired.
+    let all = vec![sortie(0, 1, 2400, 1067, 600, true)];
+    assert!(sortie_pour_viewport(&all, 1600, 900, &[], None).is_none());
 }
 
-/// §3.1 de la recette D1 : une sortie créée à 1280×713 a été rendue par
-/// DXGI à 1280×720 une fois, puis à 1280×713 l'essai suivant. L'égalité
-/// stricte rendait alors l'ouverture de la fenêtre impossible.
+/// §3.1 of acceptance run D1: an output created at 1280×713 was returned by
+/// DXGI at 1280×720 once, then at 1280×713 the next try. Strict
+/// equality then made opening the window impossible.
 #[test]
-fn un_ecart_dans_la_tolerance_apparie_quand_meme() {
+fn a_gap_within_tolerance_still_matches() {
     let sorties = vec![sortie_nommee("\\\\.\\DISPLAY7", 1280, 717)];
     let trouvee = sortie_pour_viewport(&sorties, 1280, 720, &[], None);
     assert_eq!(
@@ -119,20 +119,20 @@ fn un_ecart_dans_la_tolerance_apparie_quand_meme() {
     );
 }
 
-/// Le facteur DPI de 1,5 (5120×1440 annoncé par WMI, 3413×960 mesuré par
-/// DXGI) n'est plus un motif de REFUS : une sortie plus grande est
-/// recadrée. Ce qui protégeait contre lui — poser la fenêtre sur une
-/// texture aux mauvaises dimensions — est désormais assuré par
-/// `taille_retenue`, pas par l'appariement.
+/// The 1.5 DPI factor (5120×1440 announced by WMI, 3413×960 measured by
+/// DXGI) is no longer a reason to REFUSE: a larger output is
+/// cropped. What protected against it — putting the window on a
+/// texture of the wrong dimensions — is now ensured by
+/// `retained_size`, not by pairing.
 #[test]
-fn un_facteur_d_echelle_est_desormais_recadre_et_non_refuse() {
+fn a_scale_factor_is_now_cropped_not_refused() {
     let sorties = vec![sortie_nommee("\\\\.\\DISPLAY7", 1920, 1080)];
     assert!(sortie_pour_viewport(&sorties, 1280, 720, &[], None).is_some());
-    assert_eq!(taille_retenue((1280, 720), (1920, 1080)), (1280, 720));
+    assert_eq!(retained_size((1280, 720), (1920, 1080)), (1280, 720));
 }
 
 #[test]
-fn une_sortie_deja_prise_est_ignoree() {
+fn an_already_taken_output_is_ignored() {
     let sorties = vec![
         sortie_nommee("\\\\.\\DISPLAY7", 1280, 720),
         sortie_nommee("\\\\.\\DISPLAY8", 1280, 720),
@@ -144,10 +144,10 @@ fn une_sortie_deja_prise_est_ignoree() {
     );
 }
 
-/// Le cas produit de D9 : la sortie naît à 3840×2160 pour un viewport de
-/// 1280×720, et doit désormais être appariée.
+/// D9's product case: the output is born at 3840×2160 for a viewport of
+/// 1280×720, and must now be paired.
 #[test]
-fn apparie_une_sortie_nee_beaucoup_plus_grande() {
+fn pairs_an_output_born_much_larger() {
     let sorties = vec![sortie_nommee("\\\\.\\DISPLAY8", 3840, 2160)];
     let trouvee = sortie_pour_viewport(&sorties, 1280, 720, &[], None);
     assert_eq!(
@@ -157,16 +157,16 @@ fn apparie_une_sortie_nee_beaucoup_plus_grande() {
 }
 
 #[test]
-fn n_apparie_pas_une_sortie_trop_petite() {
+fn does_not_pair_a_too_small_output() {
     let sorties = vec![sortie_nommee("\\\\.\\DISPLAY8", 1024, 576)];
     assert!(sortie_pour_viewport(&sorties, 1280, 720, &[], None).is_none());
 }
 
-/// Le filtre sur les sorties DÉJÀ PRISES devient plus important, pas
-/// moins : avec une inégalité, une même grande sortie conviendrait à
-/// toutes les fenêtres, et toutes montreraient la même image.
+/// The filter on ALREADY TAKEN outputs becomes more important, not
+/// less: with an inequality, a single large output would suit
+/// all windows, and all would show the same image.
 #[test]
-fn une_grande_sortie_deja_prise_n_est_pas_reattribuee() {
+fn a_large_output_already_taken_is_not_reassigned() {
     let sorties = vec![
         sortie_nommee("\\\\.\\DISPLAY8", 3840, 2160),
         sortie_nommee("\\\\.\\DISPLAY9", 3840, 2160),
@@ -179,25 +179,25 @@ fn une_grande_sortie_deja_prise_n_est_pas_reattribuee() {
 }
 
 #[test]
-fn ignore_toujours_une_sortie_non_attachee() {
-    // Une sortie que Windows n'a pas rattachée ne peut rien afficher :
-    // la prendre donnerait une capture noire, quelle que soit sa taille.
-    let toutes = vec![sortie(0, 1, 2400, 3840, 2160, false)];
-    assert!(sortie_pour_viewport(&toutes, 1280, 720, &[], None).is_none());
+fn always_ignores_an_unattached_output() {
+    // An output Windows did not attach can display nothing:
+    // taking it would give a black capture, whatever its size.
+    let all = vec![sortie(0, 1, 2400, 3840, 2160, false)];
+    assert!(sortie_pour_viewport(&all, 1280, 720, &[], None).is_none());
 }
 
-// Distinct de `sortie` ci-dessus (qui fixe `nom_sortie` à partir de
-// `index_sortie`) : les tests qui l'emploient veulent un nom explicite
-// pour vérifier l'identité de la sortie appariée, pas seulement son
-// existence. *(Ils étaient trois quand cette phrase a été écrite ; le
-// sous-bloc D10 en a ajouté trois de plus. Le compte n'est plus donné
-// ici — un nombre inscrit dans un commentaire dérive à la première
-// addition, et ce dépôt l'a payé six fois.)*
+// Distinct from `sortie` above (which sets `nom_sortie` from
+// `index_sortie`): the tests using it want an explicit name
+// to check the identity of the paired output, not only its
+// existence. *(They were three when this sentence was written; sub-block
+// D10 added three more. The count is no longer given
+// here — a number written in a comment drifts at the first
+// addition, and this repository paid for it six times.)*
 fn sortie_nommee(nom: &str, largeur: u32, hauteur: u32) -> SortieDxgi {
     SortieDxgi {
         index_adaptateur: 0,
         index_sortie: 0,
-        adaptateur: "essai".into(),
+        adaptateur: "trial".into(),
         nom_sortie: nom.into(),
         attachee_au_bureau: true,
         rect: Rect {
@@ -210,7 +210,7 @@ fn sortie_nommee(nom: &str, largeur: u32, hauteur: u32) -> SortieDxgi {
 }
 
 #[test]
-fn une_fenetre_a_sa_place_n_est_pas_replacee() {
+fn a_window_in_its_place_is_not_placed_again() {
     let cible = Rect {
         x: 2400,
         y: 0,
@@ -221,7 +221,7 @@ fn une_fenetre_a_sa_place_n_est_pas_replacee() {
 }
 
 #[test]
-fn une_fenetre_deplacee_hors_de_sa_sortie_est_replacee() {
+fn a_window_moved_off_its_output_is_placed_again() {
     let cible = Rect {
         x: 2400,
         y: 0,
@@ -238,7 +238,7 @@ fn une_fenetre_deplacee_hors_de_sa_sortie_est_replacee() {
 }
 
 #[test]
-fn une_fenetre_retaillee_par_l_application_est_replacee() {
+fn a_window_resized_by_the_application_is_placed_again() {
     let cible = Rect {
         x: 2400,
         y: 0,
@@ -255,11 +255,11 @@ fn une_fenetre_retaillee_par_l_application_est_replacee() {
 }
 
 #[test]
-fn un_ecart_d_un_pixel_ne_declenche_pas_de_replacement() {
-    // Les bordures invisibles de DWM décalent couramment le rectangle
-    // rendu par `GetWindowRect` de un ou deux pixels. Sans tolérance, le
-    // superviseur replacerait la fenêtre à chaque tour de boucle, en
-    // boucle, et volerait le focus indéfiniment.
+fn a_one_pixel_gap_does_not_trigger_a_replacement() {
+    // DWM's invisible borders commonly shift the rectangle
+    // returned by `GetWindowRect` by one or two pixels. Without tolerance, the
+    // supervisor would replace the window at each loop turn, in
+    // a loop, and would steal focus indefinitely.
     let cible = Rect {
         x: 2400,
         y: 0,
@@ -275,149 +275,149 @@ fn un_ecart_d_un_pixel_ne_declenche_pas_de_replacement() {
     assert!(!doit_etre_replacee(&presque, &cible));
 }
 
-mod tests_taille {
-    // ⚠️ `super::super::*` et non `super::*` : SEULE modification du
-    // déplacement, et elle est mécanique. Ce module reste imbriqué (il l'était),
-    // mais son parent n'est plus `placement` — c'est le module `tests` que ce
-    // fichier EST désormais. Sans ce cran de plus, `taille_retenue` et
-    // `sortie_assez_grande` ne se résoudraient pas.
+mod tests_size {
+    // ⚠️ `super::super::*` and not `super::*`: the ONLY change of the
+    // move, and it is mechanical. This module stays nested (it was),
+    // but its parent is no longer `placement` — it is the `tests` module this
+    // file now IS. Without this one extra notch, `retained_size` and
+    // `sortie_assez_grande` would not resolve.
     use super::super::*;
 
-    /// Le fait produit de D9 : sur cette VM, les sorties naissent à 3840×2160
-    /// parce que le registre y est resté. `taille_compatible` refusait, et le
-    /// produit plafonnait à trois fenêtres.
+    /// D9's product fact: on this VM, outputs are born at 3840×2160
+    /// because the registry stayed there. the size-compatibility check refused, and the
+    /// product capped at three windows.
     #[test]
-    fn une_sortie_nee_trop_grande_convient_desormais() {
+    fn an_output_born_too_large_now_fits() {
         assert!(sortie_assez_grande((3840, 2160), (1280, 720)));
     }
 
     #[test]
-    fn une_sortie_nee_trop_petite_ne_convient_pas() {
+    fn an_output_born_too_small_does_not_fit() {
         assert!(!sortie_assez_grande((1024, 576), (1280, 720)));
     }
 
-    /// La course de rattachement de D1 (1280×713 rendue 1280×720) reste
-    /// couverte : quatre pixels de tolérance, comme le replacement.
+    /// D1's attach race (1280×713 returned as 1280×720) stays
+    /// covered: four pixels of tolerance, like replacement.
     #[test]
-    fn un_manque_de_quatre_pixels_reste_accepte() {
+    fn a_four_pixel_shortfall_stays_accepted() {
         assert!(sortie_assez_grande((1276, 716), (1280, 720)));
     }
 
     #[test]
-    fn un_manque_de_sept_pixels_est_refuse() {
+    fn a_seven_pixel_shortfall_is_refused() {
         assert!(!sortie_assez_grande((1280, 713), (1280, 720)));
     }
 
     #[test]
-    fn la_taille_retenue_recadre_une_sortie_trop_grande() {
-        assert_eq!(taille_retenue((1280, 720), (3840, 2160)), (1280, 720));
+    fn the_retained_size_crops_an_oversized_output() {
+        assert_eq!(retained_size((1280, 720), (3840, 2160)), (1280, 720));
     }
 
-    /// Née trop petite, la sortie est honorée à ce qu'elle offre : le client
-    /// met à l'échelle. Aucun cas ne rend plus une sortie au pilote pour une
-    /// question de taille.
+    /// Born too small, the output is honoured at what it offers: the client
+    /// scales. No case hands an output back to the driver for a
+    /// question of size any more.
     #[test]
-    fn la_taille_retenue_se_borne_a_la_sortie_quand_celle_ci_est_plus_petite() {
-        assert_eq!(taille_retenue((1280, 720), (1024, 576)), (1024, 576));
+    fn the_retained_size_is_clamped_to_the_output_when_it_is_smaller() {
+        assert_eq!(retained_size((1280, 720), (1024, 576)), (1024, 576));
     }
 
-    /// L'encodeur NV12 exige des dimensions paires, et une sortie née à une
-    /// taille impaire est un cas réel (viewport impair, D1).
+    /// The NV12 encoder requires even dimensions, and an output born at an
+    /// odd size is a real case (odd viewport, D1).
     #[test]
-    fn la_taille_retenue_est_toujours_paire_et_jamais_nulle() {
-        assert_eq!(taille_retenue((1281, 721), (3840, 2160)), (1280, 720));
-        assert_eq!(taille_retenue((0, 0), (1280, 720)), (2, 2));
+    fn the_retained_size_is_always_even_and_never_zero() {
+        assert_eq!(retained_size((1281, 721), (3840, 2160)), (1280, 720));
+        assert_eq!(retained_size((0, 0), (1280, 720)), (2, 2));
     }
 
-    /// Les axes se bornent SÉPARÉMENT : on recadre, on ne met pas à
-    /// l'échelle, donc il n'y a aucun rapport d'aspect à préserver ici —
-    /// contrairement à `borner_a_la_taille_max`, qui, lui, redimensionne.
+    /// Axes are bounded SEPARATELY: we crop, we do not
+    /// scale, so there is no aspect ratio to preserve here —
+    /// unlike `clamp_to_max_size`, which, for its part, resizes.
     #[test]
-    fn les_deux_axes_se_bornent_separement() {
-        assert_eq!(taille_retenue((1920, 720), (1280, 2160)), (1280, 720));
+    fn the_two_axes_are_bounded_separately() {
+        assert_eq!(retained_size((1920, 720), (1280, 2160)), (1280, 720));
     }
 }
 
-/// La sortie DÉSIGNÉE, et le défaut de production qu'elle ferme.
+/// The DESIGNATED output, and the production defect it closes.
 ///
-/// 🔴 **MESURÉ SUR L'AGENT DE PRODUCTION LE 31 AOÛT 2026, PAS DÉDUIT.** Le
-/// journal a rendu HUIT fois, en boucle, sur la même exécution de l'agent :
+/// 🔴 **MEASURED ON THE PRODUCTION AGENT ON AUGUST 31ST, 2026, NOT DEDUCED.** The
+/// log returned EIGHT times, in a loop, in the same run of the agent:
 ///
 /// ```text
-/// ERROR aucune sortie candidate ne peut servir ce viewport
+/// ERROR no candidate output can serve this viewport
 ///   demande="1614x1080" designee="\\.\DISPLAY6"
 ///   candidates=["\\.\DISPLAY6 1428x1080"]
 /// ```
 ///
-/// La sortie était **la nôtre, certifiée par CCD** (`designee` non vide), et
-/// elle était refusée sur sa seule taille : le pilote SudoVDA ne fait pas
-/// naître la sortie à la taille demandée. **La même demande, la même
-/// exécution, deux tailles selon l'heure** — 1860×1080 à 12:14Z (servie),
-/// 1428×1080 à 20:46Z (refusée). Créer → refuser → détruire, et plus AUCUNE
-/// fenêtre ne s'affichait, quelle que soit l'application.
+/// The output was **ours, certified by CCD** (non-empty `designee`), and
+/// it was refused on its size alone: the SudoVDA driver does not create
+/// the output at the requested size. **The same request, the same
+/// run, two sizes depending on the time** — 1860×1080 at 12:14Z (served),
+/// 1428×1080 at 20:46Z (refused). Create → refuse → destroy, and NO
+/// window showed any more, whatever the application.
 ///
-/// C'est l'inconnue ouverte depuis D8 (« une sortie ne naît PAS à la taille
-/// demandée »), que le lot 33 a changée en panne totale en faisant suivre la
-/// demande au viewport du navigateur : une fenêtre large demande plus que ce
-/// que le pilote rend.
+/// It is the unknown open since D8 ("an output is NOT born at the requested
+/// size"), which batch 33 turned into a total failure by making the
+/// request follow the browser's viewport: a wide window requests more than
+/// what the driver returns.
 ///
-/// **La règle qu'on pose ici** : quand la désignation a POSITIVEMENT nommé
-/// notre sortie, sa taille n'est plus un critère de REFUS — c'est une
-/// CONTRAINTE, et `windows_source_sortie::taille_pour_viewport` sait déjà y
-/// ajuster la fenêtre à rapport d'aspect préservé. Refuser était refuser la
-/// seule sortie qu'on aurait pu servir.
+/// **The rule set here**: when designation has POSITIVELY named
+/// our output, its size is no longer a REFUSAL criterion — it is a
+/// CONSTRAINT, and `windows_source_sortie::size_for_viewport` already knows how to
+/// fit the window to it with the aspect ratio preserved. Refusing meant refusing the
+/// only output we could have served.
 mod sortie_designee {
     use super::*;
 
     const NOTRE: &str = "\\\\.\\DISPLAY6";
 
-    /// Le cas de production, à l'octet près.
+    /// The production case, to the byte.
     #[test]
-    fn une_sortie_designee_plus_petite_que_le_viewport_est_servie() {
-        let toutes = vec![sortie(0, 6, 1280, 1428, 1080, true)];
-        let trouvee = sortie_pour_viewport(&toutes, 1614, 1080, &[], Some(NOTRE));
+    fn a_designated_output_smaller_than_the_viewport_is_served() {
+        let all = vec![sortie(0, 6, 1280, 1428, 1080, true)];
+        let trouvee = sortie_pour_viewport(&all, 1614, 1080, &[], Some(NOTRE));
         assert_eq!(
             trouvee.map(|s| s.nom_sortie),
             Some(NOTRE.to_string()),
-            "la sortie que CCD a nommée comme la nôtre ne peut pas être refusée \
-             sur sa taille : c'est la seule qu'on puisse servir"
+            "the output CCD named as ours cannot be refused \
+             on its size: it is the only one we can serve"
         );
     }
 
-    /// 🔴 **LE GARDE QUI RESTE, ET SANS LEQUEL CE CORRECTIF SERAIT UNE
-    /// RÉGRESSION** : deux fenêtres montreraient la même image. La taille
-    /// cesse d'être un critère ; `deja_prises` ne cesse pas de l'être.
+    /// 🔴 **THE GUARD THAT REMAINS, AND WITHOUT WHICH THIS FIX WOULD BE A
+    /// REGRESSION**: two windows would show the same image. Size
+    /// stops being a criterion; `deja_prises` does not stop being one.
     #[test]
-    fn une_sortie_designee_deja_prise_reste_refusee() {
-        let toutes = vec![sortie(0, 6, 1280, 1428, 1080, true)];
+    fn an_already_taken_designated_output_stays_refused() {
+        let all = vec![sortie(0, 6, 1280, 1428, 1080, true)];
         let prises = vec![NOTRE.to_string()];
-        assert!(sortie_pour_viewport(&toutes, 1614, 1080, &prises, Some(NOTRE)).is_none());
+        assert!(sortie_pour_viewport(&all, 1614, 1080, &prises, Some(NOTRE)).is_none());
     }
 
-    /// Une sortie que Windows n'a pas encore rattachée reste inutilisable,
-    /// désignée ou non : la capture n'aurait rien à dupliquer.
+    /// An output Windows has not attached yet stays unusable,
+    /// designated or not: the capture would have nothing to duplicate.
     #[test]
-    fn une_sortie_designee_non_attachee_reste_refusee() {
-        let toutes = vec![sortie(0, 6, 1280, 1428, 1080, false)];
-        assert!(sortie_pour_viewport(&toutes, 1614, 1080, &[], Some(NOTRE)).is_none());
+    fn an_unattached_designated_output_stays_refused() {
+        let all = vec![sortie(0, 6, 1280, 1428, 1080, false)];
+        assert!(sortie_pour_viewport(&all, 1614, 1080, &[], Some(NOTRE)).is_none());
     }
 
-    /// 🔴 **CE QUE L'ASSOUPLISSEMENT NE TOUCHE PAS.** Sans désignation, le
-    /// produit d'hier vaut ligne pour ligne — c'est ce qui empêche le repli
-    /// par différence d'ensembles de choisir un écran PHYSIQUE préexistant,
-    /// et c'est le témoin négatif du test précédent.
+    /// 🔴 **WHAT THE RELAXATION DOES NOT TOUCH.** Without designation, the
+    /// product from yesterday holds line for line — it is what prevents the
+    /// set-difference fallback from choosing a pre-existing PHYSICAL screen,
+    /// and it is the negative witness of the previous test.
     #[test]
-    fn sans_designation_une_sortie_trop_petite_reste_refusee() {
-        let toutes = vec![sortie(0, 6, 1280, 1428, 1080, true)];
-        assert!(sortie_pour_viewport(&toutes, 1614, 1080, &[], None).is_none());
+    fn without_designation_a_too_small_output_stays_refused() {
+        let all = vec![sortie(0, 6, 1280, 1428, 1080, true)];
+        assert!(sortie_pour_viewport(&all, 1614, 1080, &[], None).is_none());
     }
 
-    /// Une désignation qui nomme une AUTRE sortie ne relâche rien sur
-    /// celle-ci : l'exemption est nominative, jamais globale.
+    /// A designation naming ANOTHER output relaxes nothing on
+    /// this one: the exemption is by name, never global.
     #[test]
-    fn l_exemption_ne_vaut_que_pour_la_sortie_nommee() {
-        let toutes = vec![sortie(0, 6, 1280, 1428, 1080, true)];
+    fn the_exemption_only_holds_for_the_named_output() {
+        let all = vec![sortie(0, 6, 1280, 1428, 1080, true)];
         let autre = "\\\\.\\DISPLAY7";
-        assert!(sortie_pour_viewport(&toutes, 1614, 1080, &[], Some(autre)).is_none());
+        assert!(sortie_pour_viewport(&all, 1614, 1080, &[], Some(autre)).is_none());
     }
 }

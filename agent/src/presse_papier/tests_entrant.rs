@@ -6,56 +6,54 @@ use super::*;
 use std::cell::Cell;
 
 // ---------------------------------------------------------------------------
-// Sous-bloc P2 — le sens navigateur → VM : le garde n°1 de D5, la réciproque
-// de `normaliser`, et la borne du texte ENTRANT.
+// Sub-block P2 — the browser → VM direction: D5's guard no. 1, the reciprocal
+// of `normaliser`, and the bound on INCOMING text.
 // ---------------------------------------------------------------------------
 
-/// 🔴 **C'est le garde n°1 de D5, et rien d'autre ne le mesure.**
+/// 🔴 **It is D5's guard no. 1, and nothing else measures it.**
 ///
-/// Le témoin n'est pas que `observer` rende `None` — le garde n°2 le rendrait
-/// aussi. Le témoin est que la fermeture de lecture **ne soit pas appelée du
-/// tout** : le presse-papier Windows n'est même pas rouvert. D'où une
-/// fermeture qui PANIQUE.
+/// The witness is not that `observer` returns `None` — guard no. 2 would return it
+/// too. The witness is that the read closure **is not called at
+/// all**: the Windows clipboard is not even reopened. Hence a
+/// closure that PANICS.
 ///
-/// ROUGE si `apres_notre_ecriture` ne pose pas `reference` : `observer` lit,
-/// et le test explose.
+/// RED if `apres_notre_ecriture` does not set `reference`: `observer` reads,
+/// and the test blows up.
 #[test]
-fn apres_notre_ecriture_le_tour_suivant_n_ouvre_pas_le_presse_papier() {
-    let mut sondeur = Sondeur::nouveau();
+fn after_our_write_the_next_round_does_not_open_the_clipboard() {
+    let mut sondeur = Sondeur::new();
     amorce(&mut sondeur);
     sondeur.apres_notre_ecriture(7, "colle");
     assert_eq!(
-        sondeur.observer(7, || panic!(
-            "le garde n°1 a laissé rouvrir le presse-papier"
-        )),
+        sondeur.observer(7, || panic!("guard no. 1 let the clipboard be reopened")),
         None
     );
 }
 
-/// 🔴 **C'est le garde n°2 ARMÉ SUR NOTRE PROPRE ÉCRITURE**, c'est-à-dire le
-/// cas que D5 donne pour raison d'être du n°2 : une écriture TIERCE s'est
-/// intercalée entre notre `SetClipboardData` et notre relecture du compteur,
-/// si bien que le numéro que nous avons relu n'est déjà plus le courant.
+/// 🔴 **It is guard no. 2 ARMED ON OUR OWN WRITE**, that is, the
+/// case D5 gives as no. 2's reason to exist: a THIRD-PARTY write slipped
+/// in between our `SetClipboardData` and our reread of the counter,
+/// so that the number we reread is already no longer the current one.
 ///
-/// ROUGE si `apres_notre_ecriture` ne pose que `reference` : le compteur ayant
-/// bougé, `observer` lit, trouve notre propre texte, et le renvoie au
-/// navigateur — un aller-retour pour rien.
+/// RED if `apres_notre_ecriture` only sets `reference`: the counter having
+/// moved, `observer` reads, finds our own text, and sends it back to the
+/// browser — a round trip for nothing.
 #[test]
-fn apres_notre_ecriture_un_compteur_qui_a_bouge_ne_renvoie_pas_notre_texte() {
-    let mut sondeur = Sondeur::nouveau();
+fn after_our_write_a_counter_that_moved_does_not_send_back_our_text() {
+    let mut sondeur = Sondeur::new();
     amorce(&mut sondeur);
     sondeur.apres_notre_ecriture(7, "colle");
     assert_eq!(sondeur.observer(8, || Some(String::from("colle"))), None);
 }
 
-/// Le pendant du précédent : le garde n°2 ne doit pas absorber TOUT ce qui
-/// suit une écriture. Une copie tierce d'un AUTRE texte est bien annoncée.
+/// The counterpart of the previous one: guard no. 2 must not absorb EVERYTHING that
+/// follows a write. A third-party copy of ANOTHER text is indeed announced.
 ///
-/// ROUGE si `apres_notre_ecriture` posait un état « on se tait désormais ».
-/// Sans ce test, un garde trop large passerait les deux précédents.
+/// RED if `apres_notre_ecriture` set a "we keep quiet from now on" state.
+/// Without this test, a too-wide guard would pass the two previous ones.
 #[test]
-fn apres_notre_ecriture_une_copie_tierce_est_quand_meme_annoncee() {
-    let mut sondeur = Sondeur::nouveau();
+fn after_our_write_a_third_party_copy_is_still_announced() {
+    let mut sondeur = Sondeur::new();
     amorce(&mut sondeur);
     sondeur.apres_notre_ecriture(7, "colle");
     assert_eq!(
@@ -64,18 +62,18 @@ fn apres_notre_ecriture_une_copie_tierce_est_quand_meme_annoncee() {
     );
 }
 
-/// `apres_notre_ecriture` normalise le texte qu'elle mémorise, comme
-/// `observer` normalise celui qu'il lit — sans quoi le garde n°2 comparerait
-/// un texte à `\r\n` (ce que Windows nous rendra) à un texte à `\n`, et ne
-/// reconnaîtrait jamais notre propre écriture.
+/// `apres_notre_ecriture` normalises the text it memorises, as
+/// `observer` normalises the one it reads — otherwise guard no. 2 would compare
+/// a text with `\r\n` (what Windows will give back to us) to a text with `\n`, and would
+/// never recognise our own write.
 ///
-/// ROUGE si l'on mémorise le texte brut.
+/// RED if the raw text is memorised.
 #[test]
-fn apres_notre_ecriture_memorise_le_texte_normalise() {
-    let mut sondeur = Sondeur::nouveau();
+fn after_our_write_memorises_the_normalised_text() {
+    let mut sondeur = Sondeur::new();
     amorce(&mut sondeur);
-    // Ce que l'on a REMIS à Windows porte des `\r\n` (c'est `denormaliser` qui
-    // les y met) ; ce que l'on relira en portera donc aussi.
+    // What we HANDED to Windows carries `\r\n`s (it is `denormaliser` that
+    // puts them there); what we reread will therefore carry them too.
     sondeur.apres_notre_ecriture(7, "une\r\ndeux");
     assert_eq!(
         sondeur.observer(8, || Some(String::from("une\r\ndeux"))),
@@ -83,60 +81,60 @@ fn apres_notre_ecriture_memorise_le_texte_normalise() {
     );
 }
 
-/// 🔴 **La première chose qu'un test doit voir rouge** (spec §7.1) :
-/// l'aller-retour ne doit rien changer.
+/// 🔴 **The first thing a test must see red** (spec §7.1):
+/// the round trip must change nothing.
 ///
-/// ROUGE si `denormaliser` double les `\r` — `normaliser` rendrait alors deux
-/// lignes là où il y en avait une.
+/// RED if `denormaliser` doubles the `\r`s — `normaliser` would then return two
+/// lines where there was one.
 #[test]
-fn l_aller_retour_normaliser_denormaliser_est_l_identite() {
+fn the_normalise_denormalise_round_trip_is_the_identity() {
     let normalise = "une\ndeux\ntrois";
     assert_eq!(normaliser(&denormaliser(normalise)), normalise);
 }
 
-/// ROUGE si `denormaliser` ajoutait un `\r\n` là où il n'y a pas de saut.
+/// RED if `denormaliser` added a `\r\n` where there is no break.
 #[test]
-fn denormaliser_laisse_un_texte_sans_saut_de_ligne_intact() {
+fn denormalising_leaves_a_text_without_line_break_intact() {
     assert_eq!(denormaliser("abc"), "abc");
 }
 
-/// 🔴 **C'est le cas RÉEL, pas une curiosité** : le texte vient d'un
-/// navigateur, et rien ne garantit qu'il n'a pas déjà des `\r\n` — un copier
-/// depuis un éditeur Windows local en porte.
+/// 🔴 **It is the REAL case, not a curiosity**: the text comes from a
+/// browser, and nothing guarantees it does not already carry `\r\n`s — a copy
+/// from a local Windows editor carries them.
 ///
-/// ROUGE si `denormaliser` est un `replace("\n", "\r\n")` naïf : il rendrait
-/// `a\r\r\nb`, et le Bloc-notes afficherait une ligne vide de plus.
+/// RED if `denormaliser` is a naive `replace("\n", "\r\n")`: it would return
+/// `a\r\r\nb`, and Notepad would show one more empty line.
 #[test]
-fn denormaliser_ne_double_pas_des_crlf_deja_presents() {
+fn denormalising_does_not_double_crlf_already_present() {
     assert_eq!(denormaliser("a\r\nb"), "a\r\nb");
 }
 
-/// Un `\r` seul devient `\r\n` lui aussi : Windows n'affiche pas un `\r` nu
-/// comme un saut de ligne dans le Bloc-notes.
+/// A lone `\r` becomes `\r\n` too: Windows does not show a bare `\r`
+/// as a line break in Notepad.
 #[test]
-fn denormaliser_traite_aussi_un_cr_seul() {
+fn denormalising_also_handles_a_lone_cr() {
     assert_eq!(denormaliser("a\rb"), "a\r\nb");
 }
 
-/// ROUGE si la comparaison est un `>=` au lieu d'un `>` : le cas limite exact
-/// serait refusé alors qu'il tient.
+/// RED if the comparison is a `>=` instead of a `>`: the exact limit case
+/// would be refused while it fits.
 #[test]
-fn borner_entrant_accepte_exactement_la_borne_et_refuse_un_octet_de_plus() {
+fn bounding_incoming_accepts_exactly_the_bound_and_refuses_one_byte_more() {
     let pile = "a".repeat(PRESSE_PAPIER_MAX);
     assert_eq!(borner_entrant(&pile), Some(pile.clone()));
     let un_de_trop = "a".repeat(PRESSE_PAPIER_MAX + 1);
     assert_eq!(borner_entrant(&un_de_trop), None);
 }
 
-/// 🔴 La borne compte des **octets d'UTF-8**, jamais des `char` — c'est la
-/// même unité que celle du sens sortant, qui protège un canal.
+/// 🔴 The bound counts **UTF-8 bytes**, never `char`s — it is the
+/// same unit as the outgoing direction's, which protects a channel.
 ///
-/// ROUGE si l'implémentation est `texte.chars().count()` : ce texte a
-/// `PRESSE_PAPIER_MAX / 4` caractères, donc passerait, pour exactement
-/// `PRESSE_PAPIER_MAX` octets — puis un caractère de plus le ferait déborder
-/// de quatre octets sans que le compte de `char` ne s'en aperçoive.
+/// RED if the implementation is `texte.chars().count()`: this text has
+/// `PRESSE_PAPIER_MAX / 4` characters, so would pass, for exactly
+/// `PRESSE_PAPIER_MAX` bytes — then one more character would make it overflow
+/// by four bytes without the `char` count noticing.
 #[test]
-fn borner_entrant_compte_des_octets_utf8_et_non_des_char() {
+fn bounding_incoming_counts_utf8_bytes_not_chars() {
     let emojis = "😀".repeat(PRESSE_PAPIER_MAX / 4);
     assert_eq!(emojis.len(), PRESSE_PAPIER_MAX);
     assert_eq!(emojis.chars().count(), PRESSE_PAPIER_MAX / 4);
@@ -147,20 +145,20 @@ fn borner_entrant_compte_des_octets_utf8_et_non_des_char() {
     assert_eq!(borner_entrant(&un_de_trop), None);
 }
 
-/// 🔴 **LE BRAS DÉSARMÉ DU CRITÈRE ④, ET IL DOIT DÉSARMER LES DEUX GARDES.**
+/// 🔴 **THE DISARMED ARM OF CRITERION ④, AND IT MUST DISARM BOTH GUARDS.**
 ///
-/// L'observable est double, et les deux moitiés comptent :
-/// - la fermeture de lecture **est appelée** ⟹ `reference` n'a pas été posée,
-///   donc le garde n°1 est bien désarmé ;
-/// - `observer` rend **`Some`** ⟹ `dernier_emis` n'a pas été posé non plus,
-///   donc le garde n°2 l'est aussi.
+/// The observable is twofold, and both halves count:
+/// - the read closure **is called** ⟹ `reference` was not set,
+///   so guard no. 1 is indeed disarmed;
+/// - `observer` returns **`Some`** ⟹ `last_emitted` was not set either,
+///   so guard no. 2 is disarmed too.
 ///
-/// ROUGE si `armer` ne désarme que `reference` : la lecture aurait bien lieu,
-/// mais le garde n°2 absorberait l'annonce et le compte de la recette resterait
-/// à ZÉRO — la rouge du critère ④ serait vacueuse une seconde fois.
+/// RED if `armer` only disarms `reference`: the read would happen,
+/// but guard no. 2 would absorb the announcement and the acceptance run's count would stay
+/// at ZERO — criterion ④'s red would be vacuous a second time.
 #[test]
-fn desarme_les_gardes_laisse_relire_et_annoncer_notre_propre_ecriture() {
-    let mut sondeur = Sondeur::nouveau();
+fn disarming_the_guards_lets_our_own_write_be_read_and_announced() {
+    let mut sondeur = Sondeur::new();
     amorce(&mut sondeur);
     sondeur.armer(false, 7, "colle");
 
@@ -172,27 +170,27 @@ fn desarme_les_gardes_laisse_relire_et_annoncer_notre_propre_ecriture() {
 
     assert!(
         lu.get(),
-        "désarmé, le presse-papier DOIT être rouvert (garde n°1)"
+        "disarmed, the clipboard MUST be reopened (guard no. 1)"
     );
     assert_eq!(
         annonce,
         Some(Annonce::Texte(String::from("colle"))),
-        "désarmé, notre propre texte DOIT être annoncé (garde n°2)"
+        "disarmed, our own text MUST be announced (guard no. 2)"
     );
 }
 
-/// Le pendant : armé — l'état par défaut, sans la variable —, les deux gardes
-/// mordent. C'est le test que `apres_notre_ecriture` porte déjà ; celui-ci
-/// vérifie que `armer(true, …)` en est bien le même chemin, et non un second.
+/// The counterpart: armed — the default state, without the variable —, both guards
+/// bite. It is the test `apres_notre_ecriture` already carries; this one
+/// checks that `armer(true, …)` is indeed the same path, and not a second one.
 ///
-/// ROUGE si `apres_notre_ecriture` cessait de déléguer à `armer`.
+/// RED if `apres_notre_ecriture` stopped delegating to `armer`.
 #[test]
-fn armer_a_vrai_est_le_meme_chemin_qu_apres_notre_ecriture() {
-    let mut par_defaut = Sondeur::nouveau();
+fn arming_to_true_is_the_same_path_as_after_our_write() {
+    let mut par_defaut = Sondeur::new();
     amorce(&mut par_defaut);
     par_defaut.apres_notre_ecriture(7, "colle");
 
-    let mut explicite = Sondeur::nouveau();
+    let mut explicite = Sondeur::new();
     amorce(&mut explicite);
     explicite.armer(true, 7, "colle");
 
@@ -206,54 +204,54 @@ fn armer_a_vrai_est_le_meme_chemin_qu_apres_notre_ecriture() {
     );
 }
 
-// ── LA SECONDE PRISE DE D-P3-6 (sous-bloc P3, tâche 5) ───────────────────
+// ── THE SECOND TAKE OF D-P3-6 (sub-block P3, task 5) ─────────────────────
 //
-// 🔴 **UN DÉFAUT DU PLAN, SIGNALÉ ET CORRIGÉ ICI PLUTÔT QUE RECOPIÉ.** Son
-// Step 1 prescrit un test de DEUX lignes — `armer(true, seqA, textA)` puis
-// `observer(seqB, || Some(textB))` — « vu ROUGE sur l'arbre intact ». Il l'a
-// été, et la pièce est versée
-// (`journaux-presse-papier-p3/rouge-t5-d-p3-6-arbre-intact.log`) : la course
-// est CONFIRMÉE, RP3-9 n'est pas réalisé.
+// 🔴 **A DEFECT OF THE PLAN, REPORTED AND FIXED HERE RATHER THAN COPIED.** Its
+// Step 1 prescribes a TWO-line test — `armer(true, seqA, textA)` then
+// `observer(seqB, || Some(textB))` — "seen RED on the intact tree". It
+// was, and the evidence is recorded
+// (`journaux-presse-papier-p3/rouge-t5-d-p3-6-arbre-intact.log`): the race
+// is CONFIRMED, RP3-9 is not realised.
 //
-// ⚠️ **Mais ces deux lignes seules ne peuvent JAMAIS devenir vertes**, et le
-// plan ne l'avait pas vu : le remède qu'il tranche lui-même est un
-// POST-FILTRE — `filtrer_nos_ecritures_tardives` court APRÈS `tour()`, sur son
-// résultat. `observer` ne peut pas connaître une écriture qui n'est arrivée
-// qu'après lui ; exiger qu'il rende `None` serait exiger qu'il devine.
+// ⚠️ **But these two lines alone can NEVER become green**, and the
+// plan had not seen it: the remedy it settles on itself is a
+// POST-FILTER — `filtrer_nos_ecritures_tardives` runs AFTER `tour()`, on its
+// result. `observer` cannot know about a write that only arrived
+// after it; requiring it to return `None` would be requiring it to guess.
 //
-// **La lettre du test est donc conservée, et une ligne lui est ajoutée** : la
-// seconde prise, appliquée au résultat. Les deux premières lignes sont
-// celles-là mêmes qui ont rougi.
+// **The letter of the test is therefore kept, and one line is added to it**: the
+// second take, applied to the result. The first two lines are
+// the very ones that went red.
 
-/// ROUGE sur l'arbre intact : les deux premières lignes rendaient
-/// `Some(Texte("textB"))` là où la troisième doit rendre `None`.
+/// RED on the intact tree: the first two lines returned
+/// `Some(Texte("textB"))` where the third must return `None`.
 #[test]
-fn une_ecriture_notre_survenue_apres_l_armement_n_est_pas_annoncee() {
-    let mut s = Sondeur::nouveau();
-    // Le tour de roue a armé sur la première écriture (fenêtre A).
+fn our_write_occurring_after_arming_is_not_announced() {
+    let mut s = Sondeur::new();
+    // The wheel turn armed on the first write (window A).
     s.armer(true, 10, "textA");
-    // La fenêtre B colle : le presse-papier porte `textB`, le compteur a
-    // rebougé, et `tour()` produit donc une annonce que les deux gardes de D5
-    // laissent passer.
+    // Window B pastes: the clipboard carries `textB`, the counter has
+    // moved again, and `tour()` therefore produces an announcement both of D5's guards
+    // let through.
     let annonce = s.observer(11, || Some(String::from("textB")));
     assert_eq!(annonce, Some(Annonce::Texte(String::from("textB"))));
-    // La seconde prise consomme le couple de B et écarte SON PROPRE texte.
+    // The second take consumes B's pair and discards ITS OWN text.
     assert_eq!(
         s.ecarter(true, Some((11, String::from("textB"))), annonce),
         None
     );
 }
 
-/// 🔴 LE GARDE-FOU DU CORRECTIF : filtrer trop large ferait taire une VRAIE
-/// copie. ROUGE si le filtre porte sur le seul `seq` au lieu du texte — une
-/// copie tierce survenue après notre écriture porte elle aussi un `seq`
-/// postérieur, et le numéro seul ne les distingue pas.
+/// 🔴 THE FIX'S SAFEGUARD: filtering too wide would silence a REAL
+/// copy. RED if the filter bears on `seq` alone instead of the text — a
+/// third-party copy occurring after our write also carries a later
+/// `seq`, and the number alone does not tell them apart.
 #[test]
-fn une_copie_tierce_survenue_apres_l_armement_est_toujours_annoncee() {
-    let mut s = Sondeur::nouveau();
+fn a_third_party_copy_after_arming_is_always_announced() {
+    let mut s = Sondeur::new();
     s.armer(true, 10, "textA");
-    // Nous avons écrit `textB` (seq 11), PUIS une application tierce a copié
-    // `textC` : c'est `textC` que le presse-papier porte, et il doit partir.
+    // We wrote `textB` (seq 11), THEN a third-party application copied
+    // `textC`: it is `textC` the clipboard carries, and it must go out.
     let annonce = s.observer(12, || Some(String::from("textC")));
     assert_eq!(
         s.ecarter(true, Some((11, String::from("textB"))), annonce),
@@ -261,12 +259,12 @@ fn une_copie_tierce_survenue_apres_l_armement_est_toujours_annoncee() {
     );
 }
 
-/// ROUGE si le filtre s'applique à `Annonce::Refus`, qui n'a pas de texte à
-/// comparer : l'utilisateur perdrait le bandeau qui lui dit pourquoi rien
-/// n'est arrivé.
+/// RED if the filter applies to `Annonce::Refus`, which has no text to
+/// compare: the user would lose the banner telling them why nothing
+/// arrived.
 #[test]
-fn le_filtre_ne_touche_pas_un_refus_de_taille() {
-    let mut s = Sondeur::nouveau();
+fn the_filter_does_not_touch_a_size_refusal() {
+    let mut s = Sondeur::new();
     let refus = Some(Annonce::Refus { octets: 99_999 });
     assert_eq!(
         s.ecarter(true, Some((11, String::from("textB"))), refus.clone()),
@@ -274,13 +272,13 @@ fn le_filtre_ne_touche_pas_un_refus_de_taille() {
     );
 }
 
-/// ROUGE si la seconde prise écarte quand même sous `PRESSE_PAPIER_GARDE=0` :
-/// ce bras de banc existe pour rendre atteignable la rouge du critère ④ de P2,
-/// qui compte les messages revenant vers la fenêtre après un collage, et une
-/// prise qui mordrait quand même le viderait de son sens.
+/// RED if the second take discards anyway under `PRESSE_PAPIER_GARDE=0`:
+/// this bench arm exists to make reachable the red of P2's criterion ④,
+/// which counts the messages coming back to the window after a paste, and a
+/// take that bit anyway would empty it of its meaning.
 #[test]
-fn la_seconde_prise_est_desarmee_par_le_bras_de_banc() {
-    let mut s = Sondeur::nouveau();
+fn the_second_take_is_disarmed_by_the_bench_arm() {
+    let mut s = Sondeur::new();
     s.armer(true, 10, "textA");
     let annonce = s.observer(11, || Some(String::from("textB")));
     assert_eq!(
@@ -289,11 +287,11 @@ fn la_seconde_prise_est_desarmee_par_le_bras_de_banc() {
     );
 }
 
-/// Sans écriture de notre part, la seconde prise est transparente — et elle
-/// n'arme rien : ROUGE si elle posait `reference` sur un `seq` inventé.
+/// Without a write on our part, the second take is transparent — and it
+/// arms nothing: RED if it set `reference` on an invented `seq`.
 #[test]
-fn sans_notre_ecriture_la_seconde_prise_ne_touche_a_rien() {
-    let mut s = Sondeur::nouveau();
+fn without_our_write_the_second_take_touches_nothing() {
+    let mut s = Sondeur::new();
     amorce(&mut s);
     let annonce = s.observer(2, || Some(String::from("copie-tierce")));
     assert_eq!(

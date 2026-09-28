@@ -1,9 +1,9 @@
-//! Lancer un processus agent par fenêtre, et savoir lequel est mort.
+//! Launch one agent process per window, and know which one died.
 //!
-//! Le lancement passe par un trait : c'est ce qui rend la comptabilité — qui
-//! tourne, qui vient de mourir, qui a déjà été signalé — éprouvable sur
-//! l'hôte, alors qu'elle porte les erreurs qui feraient fuir une sortie
-//! virtuelle.
+//! Launching goes through a trait: it is what makes the bookkeeping — who
+//! runs, who just died, who was already signalled — exercisable on the
+//! host, although it carries the errors that would leak a virtual
+//! output.
 
 use std::collections::HashMap;
 
@@ -11,43 +11,43 @@ use anyhow::Result;
 
 use super::table::IdSession;
 
-/// Ce qu'un enfant doit savoir pour démarrer.
+/// What a child must know to start.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Consigne {
     pub session: IdSession,
-    /// `HWND` de la fenêtre, sous forme d'adresse brute — un `HWND` n'est pas
-    /// `Send` en windows-rs 0.62, et c'est un identifiant opaque, pas un
-    /// pointeur déréférencé.
+    /// The window's `HWND`, as a raw address — an `HWND` is not
+    /// `Send` in windows-rs 0.62, and it is an opaque identifier, not a
+    /// dereferenced pointer.
     pub fenetre: u64,
-    /// Nom DXGI de la sortie (`\\.\DISPLAYn`), stable — contrairement à un
-    /// couple d'index d'énumération, positionnel.
+    /// DXGI name of the output (`\\.\DISPLAYn`), stable — unlike a
+    /// positional pair of enumeration indexes.
     pub nom_sortie: String,
-    /// La taille RETENUE (`placement::taille_retenue`) à laquelle la table a
-    /// posé cette fenêtre — pas la taille de la sortie, qui peut être bien
-    /// plus grande. Posée sur l'enfant via `TAILLE_FENETRE` (`lanceur.rs`),
-    /// pour qu'il la redise au capteur à l'attache (tâche 9 du sous-bloc
-    /// D10), qui en aura besoin pour recadrer (tâche 8).
-    pub taille: (u32, u32),
+    /// The RETAINED size (`placement::retained_size`) at which the table
+    /// put this window — not the output's size, which can be much
+    /// larger. Set on the child through `TAILLE_FENETRE` (`lanceur.rs`), (policy: allow-fr, env var name)
+    /// so that it repeats it to the capturer at attach time (task 9 of sub-block
+    /// D10), which will need it to crop (task 8).
+    pub size: (u32, u32),
 }
 
 pub trait Lanceur {
-    /// Démarre un processus agent pour cette fenêtre.
+    /// Starts an agent process for this window.
     ///
-    /// Retourne le PID du processus démarré. Le **contrat est atomique** :
-    /// `Err` signifie qu'aucun processus n'a été démarré. Violer ce contrat
-    /// — c'est-à-dire retourner `Err` *après* avoir réellement lancé l'enfant,
-    /// par exemple en cas d'échec d'un post-traitement ou d'une attente de signal
-    /// de disponibilité — laisse le processus tourner sans être suivi. Il devient
-    /// **intraçable** : ni `morts()` ni `tuer()` ne pourront le retrouver.
-    /// L'enfant occupe une sortie d'affichage virtuelle qui restera **captive**
-    /// jusqu'à l'arrêt du superviseur, et le vivier limité à dix sorties du
-    /// pilote se vide inutilement.
+    /// Returns the PID of the started process. The **contract is atomic**:
+    /// `Err` means no process was started. Violating this contract
+    /// — that is, returning `Err` *after* really launching the child,
+    /// for example when a post-processing step or a wait for a readiness
+    /// signal fails — leaves the process running untracked. It becomes
+    /// **untraceable**: neither `morts()` nor `tuer()` will find it.
+    /// The child occupies a virtual display output that will stay **captive**
+    /// until supervisor shutdown, and the driver's pool limited to ten outputs
+    /// empties for nothing.
     ///
-    /// **Si l'implémentation ne peut pas tenir ce contrat** — en particulier si
-    /// le post-traitement après le lancement peut échouer — elle doit
-    /// **tuer elle-même le processus qu'elle vient de démarrer avant de
-    /// rendre `Err`**, de sorte qu'aucun enfant ne reste en vie en cas
-    /// d'erreur.
+    /// **If the implementation cannot hold this contract** — in particular if
+    /// post-processing after launch can fail — it must
+    /// **kill the process it just started itself before
+    /// returning `Err`**, so that no child stays alive on
+    /// error.
     fn lancer(&self, consigne: &Consigne) -> Result<u32>;
     fn est_vivant(&self, pid: u32) -> bool;
     fn tuer(&self, pid: u32) -> Result<()>;
@@ -72,38 +72,38 @@ impl<'l> Enfants<'l> {
             session = %consigne.session.0,
             pid,
             sortie = %consigne.nom_sortie,
-            "enfant lancé"
+            "child launched"
         );
         self.vivants.insert(consigne.session, pid);
         Ok(())
     }
 
-    /// Retire la session de la comptabilité **avant** de tuer : quoi qu'il
-    /// advienne de la mise à mort, cette session ne doit plus ressortir comme
-    /// « morte » et faire détruire sa sortie une seconde fois.
+    /// Removes the session from the bookkeeping **before** killing: whatever
+    /// happens to the kill, this session must no longer come out as
+    /// "dead" and get its output destroyed a second time.
     ///
-    /// **La mise à mort est immédiate, sans arrêt gracieux préalable, et c'est
-    /// délibéré.** La spec parle d'un enfant « tué après un délai borné » : ce
-    /// délai serait celui d'un arrêt propre qu'on attendrait. Or l'arrêt propre
-    /// d'un agent passe par la destruction de son encodeur, où `IMFShutdown::
-    /// Shutdown` n'est borné par rien et où un gel a été observé (1 fois sur 6
-    /// à N=4, cause non attribuée). Attendre cet arrêt, c'est réintroduire dans
-    /// le superviseur le risque même que le multi-processus écarte. La fenêtre
-    /// Windows a déjà disparu quand on arrive ici : l'enfant n'a plus rien à
-    /// sauvegarder, et le système récupère ses ressources.
+    /// **The kill is immediate, without a prior graceful stop, and it is
+    /// deliberate.** The spec speaks of a child "killed after a bounded delay": that
+    /// delay would be that of a clean stop we would wait for. Yet the clean stop
+    /// of an agent goes through destroying its encoder, where `IMFShutdown::
+    /// Shutdown` is bounded by nothing and where a hang was observed (1 time in 6
+    /// at N=4, cause not attributed). Waiting for that stop reintroduces into
+    /// the supervisor the very risk multi-process avoids. The Windows
+    /// window has already disappeared when we get here: the child has nothing left to
+    /// save, and the system reclaims its resources.
     pub fn tuer(&mut self, session: &IdSession) {
         let Some(pid) = self.vivants.remove(session) else {
             return;
         };
-        if let Err(erreur) = self.lanceur.tuer(pid) {
-            tracing::warn!(session = %session.0, pid, %erreur, "mise à mort de l'enfant échouée");
+        if let Err(error) = self.lanceur.tuer(pid) {
+            tracing::warn!(session = %session.0, pid, %error, "killing the child failed");
         }
     }
 
-    /// Sessions dont le processus a disparu depuis le dernier appel.
+    /// Sessions whose process disappeared since the last call.
     ///
-    /// Elles quittent la comptabilité au passage : une mort ne se signale
-    /// qu'une fois.
+    /// They leave the bookkeeping along the way: a death is only signalled
+    /// once.
     pub fn morts(&mut self) -> Vec<IdSession> {
         let morts: Vec<IdSession> = self
             .vivants
@@ -113,7 +113,7 @@ impl<'l> Enfants<'l> {
             .collect();
         for session in &morts {
             let pid = self.vivants.remove(session);
-            tracing::warn!(session = %session.0, ?pid, "enfant mort de lui-même");
+            tracing::warn!(session = %session.0, ?pid, "child died by itself");
         }
         morts
     }
@@ -124,8 +124,8 @@ mod tests {
     use super::*;
     use std::cell::RefCell;
 
-    /// Lanceur factice : retient ce qu'on lui demande, sans lancer aucun
-    /// processus. C'est ce qui rend cette machinerie éprouvable sur l'hôte.
+    /// Fake launcher: keeps what it is asked, without launching any
+    /// process. It is what makes this machinery exercisable on the host.
     #[derive(Default)]
     struct LanceurFactice {
         lancees: RefCell<Vec<Consigne>>,
@@ -152,14 +152,14 @@ mod tests {
         }
     }
 
-    /// Lanceur qui échoue immédiatement, sans démarrer aucun processus.
-    /// Utilisé pour tester qu'une erreur du lanceur ne laisse rien dans la
-    /// comptabilité.
+    /// Launcher that fails immediately, without starting any process.
+    /// Used to test that a launcher error leaves nothing in the
+    /// bookkeeping.
     struct LanceurEchec;
 
     impl Lanceur for LanceurEchec {
         fn lancer(&self, _consigne: &Consigne) -> anyhow::Result<u32> {
-            Err(anyhow::anyhow!("lancement simulé échoué"))
+            Err(anyhow::anyhow!("simulated launch failed"))
         }
         fn est_vivant(&self, _pid: u32) -> bool {
             false
@@ -174,12 +174,12 @@ mod tests {
             session: IdSession(session.into()),
             fenetre: 0x1234,
             nom_sortie: "\\\\.\\DISPLAY1".into(),
-            taille: (1280, 720),
+            size: (1280, 720),
         }
     }
 
     #[test]
-    fn lancer_transmet_la_consigne_au_lanceur() {
+    fn launching_passes_the_instruction_to_the_launcher() {
         let lanceur = LanceurFactice::default();
         let mut enfants = Enfants::nouveaux(&lanceur);
         enfants.lancer(consigne("w-1")).unwrap();
@@ -188,7 +188,7 @@ mod tests {
     }
 
     #[test]
-    fn tuer_demande_la_mise_a_mort_du_bon_processus() {
+    fn killing_requests_the_death_of_the_right_process() {
         let lanceur = LanceurFactice::default();
         let mut enfants = Enfants::nouveaux(&lanceur);
         enfants.lancer(consigne("w-1")).unwrap();
@@ -198,7 +198,7 @@ mod tests {
     }
 
     #[test]
-    fn morts_rend_les_sessions_dont_le_processus_a_disparu() {
+    fn dead_returns_the_sessions_whose_process_vanished() {
         let lanceur = LanceurFactice::default();
         let mut enfants = Enfants::nouveaux(&lanceur);
         enfants.lancer(consigne("w-1")).unwrap();
@@ -209,10 +209,10 @@ mod tests {
     }
 
     #[test]
-    fn une_session_morte_n_est_signalee_qu_une_fois() {
-        // Sans cette garantie, le superviseur détruirait la sortie une
-        // première fois puis en redemanderait la destruction à chaque tour
-        // de boucle, et le journal se remplirait d'échecs.
+    fn a_dead_session_is_reported_only_once() {
+        // Without this guarantee, the supervisor would destroy the output a
+        // first time then request its destruction again at each loop
+        // turn, and the log would fill with failures.
         let lanceur = LanceurFactice::default();
         let mut enfants = Enfants::nouveaux(&lanceur);
         enfants.lancer(consigne("w-1")).unwrap();
@@ -223,7 +223,7 @@ mod tests {
     }
 
     #[test]
-    fn tuer_une_session_inconnue_ne_fait_rien() {
+    fn killing_an_unknown_session_does_nothing() {
         let lanceur = LanceurFactice::default();
         let mut enfants = Enfants::nouveaux(&lanceur);
         enfants.tuer(&IdSession("w-jamais-lancee".into()));
@@ -231,9 +231,9 @@ mod tests {
     }
 
     #[test]
-    fn une_session_tuee_ne_ressort_pas_dans_les_morts() {
-        // Elle a déjà été traitée par le chemin `fenetre_disparue` : la
-        // signaler morte ferait détruire sa sortie une seconde fois.
+    fn a_killed_session_does_not_show_up_among_the_dead() {
+        // It was already handled by the `fenetre_disparue` path: signalling
+        // it dead would get its output destroyed a second time.
         let lanceur = LanceurFactice::default();
         let mut enfants = Enfants::nouveaux(&lanceur);
         enfants.lancer(consigne("w-1")).unwrap();
@@ -242,18 +242,18 @@ mod tests {
     }
 
     #[test]
-    fn lancer_echoue_ne_laisse_rien_dans_la_comptabilite() {
-        // Contrat atomique du trait Lanceur : Err ⇒ aucun processus ne tourne.
-        // Si ce contrat est violé — lancer échoue après avoir réellement
-        // démarré l'enfant — l'enfant devient intraçable, la sortie virtuelle
-        // qui l'occupe reste captive, et le vivier de dix du pilote se vide
-        // inutilement. Ce test fixe le contrat : une erreur de lancement ne
-        // doit laisser aucune trace.
+    fn failed_launch_leaves_nothing_in_the_accounting() {
+        // Atomic contract of the Lanceur trait: Err ⇒ no process is running.
+        // If this contract is violated — launching fails after having really
+        // started the child — the child becomes untraceable, the virtual output
+        // it occupies stays captive, and the driver's pool of ten empties
+        // for nothing. This test fixes the contract: a launch error must
+        // leave no trace.
         let lanceur = LanceurEchec;
         let mut enfants = Enfants::nouveaux(&lanceur);
         let err = enfants.lancer(consigne("w-1"));
         assert!(err.is_err());
-        // Aucune session enregistrée.
+        // No session registered.
         assert!(enfants.morts().is_empty());
     }
 }

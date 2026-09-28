@@ -1,38 +1,38 @@
-//! La création d'une sortie virtuelle pour une session, et sa restitution au
-//! pilote.
+//! Creating a virtual output for a session, and handing it back to the
+//! driver.
 //!
-//! Extrait de `boucle.rs` (tâche 1 du sous-bloc D10) pour rester sous le
-//! plafond de 500 lignes du projet — **avant** l'addition qui l'aurait fait
-//! franchir, et non après. C'est le seul geste qui a fonctionné en D9
-//! (`capteur/serveur/instances.rs`) ; les deux fichiers traités après coup y
-//! ont été compressés, geste que `CLAUDE.md` interdit, puis extraits quand
-//! même.
+//! Extracted from `boucle.rs` (task 1 of sub-block D10) to stay under the
+//! project's 500-line ceiling — **before** the addition that would have made it
+//! cross, and not after. It is the only gesture that worked in D9
+//! (`capteur/serveur/instances.rs`); the two files handled after the fact there
+//! were compressed, a gesture `CLAUDE.md` forbids, then extracted
+//! anyway.
 //!
-//! Aucune décision ici — la table décide, ce module agit —, exactement comme
-//! le module parent.
+//! No decision here — the table decides, this module acts —, exactly like
+//! the parent module.
 
 use super::*;
 use crate::geometry::Rect;
 
-/// Crée la sortie virtuelle d'une session, l'apparie à sa place DXGI, y pose
-/// la fenêtre, et rend les effets à enchaîner.
+/// Creates a session's virtual output, pairs it with its DXGI place, puts
+/// the window on it, and returns the effects to chain.
 ///
-/// Extrait de la boucle pour une raison de fond : **tout chemin d'échec sous
-/// la création doit défaire la sortie**. Une sortie créée que la topologie
-/// DXGI ne rend pas resterait sinon tenue jusqu'à l'arrêt du superviseur.
+/// Extracted from the loop for a fundamental reason: **every failure path under
+/// creation must undo the output**. A created output the DXGI topology
+/// does not return would otherwise stay held until supervisor shutdown.
 ///
-/// Chaque chemin d'échec appelle `table.enfant_mort`, qui sort l'entrée
-/// d'`AttendLaSortie`. **Depuis la tâche 10, cet appel ne libère plus la
-/// place dans la capacité** : l'entrée bascule en `Etat::SansSession` et le
-/// contrôle périodique la relance, jusqu'à `RELANCES_MAX` fois (voir
-/// `superviseur::table`). Conséquence à connaître : une fenêtre dont la
-/// création de sortie échoue systématiquement fait donc envoyer jusqu'à
-/// `RELANCES_MAX + 2` `VersLaShell::Refus` à la page-shell — soit **cinq**
-/// avec `RELANCES_MAX = 3` : une par tentative avortée (l'originale plus les
-/// trois relances, `relances` valant 0, 1, 2 puis 3), **plus** l'abandon final
-/// que `relancer_les_orphelines` émet quand `relances >= RELANCES_MAX` — et
-/// non plus un seul comme avant cette tâche.
-pub(super) fn creer_sortie(
+/// Each failure path calls `table.enfant_mort`, which takes the entry out
+/// of `AttendLaSortie`. **Since task 10, this call no longer frees the
+/// place in the capacity**: the entry switches to `Etat::SansSession` and the
+/// periodic check restarts it, up to `RELANCES_MAX` times (see
+/// `superviseur::table`). Consequence to know: a window whose
+/// output creation fails systematically therefore sends up to
+/// `RELANCES_MAX + 2` `VersLaShell::Refus` to the shell page — i.e. **five**
+/// with `RELANCES_MAX = 3`: one per aborted attempt (the original plus the
+/// three restarts, `relances` being 0, 1, 2 then 3), **plus** the final abandonment
+/// `relancer_les_orphelines` emits when `relances >= RELANCES_MAX` — and
+/// no longer just one as before this task.
+pub(super) fn create_output(
     pilote: &PiloteParIoctl,
     sorties: &mut Sorties<'_>,
     table: &mut Table,
@@ -47,146 +47,145 @@ pub(super) fn creer_sortie(
         hauteur,
     } = demande;
 
-    // LEG 5 de D9. `borner_a_la_taille_max` attendait son appelant depuis que
-    // le changement de mode de sortie a été retiré : c'est ici.
+    // D9's LEG 5. `clamp_to_max_size` had been waiting for its caller since
+    // output mode switching was removed: it is here.
     //
-    // ⚠️ Le viewport arrive en PIXELS PÉRIPHÉRIQUES depuis la tâche 5 de D9
-    // (`client/src/main.ts`, `innerWidth × devicePixelRatio`) : un client à
-    // `devicePixelRatio = 2` demande 2560×1440 là où il demandait 1280×720,
-    // soit quatre fois les pixels à capturer et à encoder. Et le plafond de
-    // 8 encodeurs concurrents n'a JAMAIS été mesuré au-delà de 720p — NVENC
-    // borne en macroblocs par seconde, pas en nombre de sessions.
+    // ⚠️ The viewport arrives in DEVICE PIXELS since D9's task 5
+    // (`client/src/main.ts`, `innerWidth × devicePixelRatio`): a client at
+    // `devicePixelRatio = 2` requests 2560×1440 where it requested 1280×720,
+    // i.e. four times the pixels to capture and encode. And the ceiling of
+    // 8 concurrent encoders has NEVER been measured beyond 720p — NVENC
+    // bounds in macroblocks per second, not in number of sessions.
     //
-    // `TAILLE_MAX_SORTIE` (1920×1080) n'est PAS calibrée : c'est un garde-fou
-    // de prudence, et aucun jugement visuel ne l'a jugée.
-    let (largeur, hauteur) =
-        crate::windows_source_sortie::borner_a_la_taille_max((largeur, hauteur));
+    // `MAX_OUTPUT_SIZE` (1920×1080) is NOT calibrated: it is a
+    // prudence safeguard, and no visual judgement has judged it.
+    let (largeur, hauteur) = crate::windows_source_sortie::clamp_to_max_size((largeur, hauteur));
 
-    // Relevé AVANT création. ⚠️ **Il a CESSÉ d'être la pièce maîtresse de
-    // l'appariement au lot 32** — il en est désormais le REPLI, le chemin
-    // principal étant de désigner notre sortie par le couple que le pilote
-    // nous a rendu (voir `superviseur::designation`). Il n'est pas pour autant
-    // devenu inutile, et ce qui suit dit pourquoi il reste calculé.
+    // Recorded BEFORE creation. ⚠️ **It STOPPED being the centrepiece of
+    // pairing in batch 32** — it is now its FALLBACK, the main path
+    // being to designate our output by the pair the driver
+    // returned to us (see `superviseur::designation`). It has not
+    // become useless for all that, and what follows says why it is still computed.
     //
-    // `sortie_pour_viewport` ne filtre que sur « attachée, ASSEZ GRANDE, pas
-    // déjà prise » : rien n'y exclut les sorties PRÉEXISTANTES. Or le viewport
-    // annoncé par le navigateur peut parfaitement égaler, ou même être plus
-    // petit que, la résolution d'un moniteur physique — c'est même le cas
-    // banal en plein écran. Sans ce relevé, la fenêtre serait posée sur
-    // l'écran RÉEL de la VM et la sortie virtuelle qu'on vient de créer
-    // deviendrait orpheline. Quand la désignation ne rend rien, on n'apparie
-    // donc que parmi les sorties APPARUES, et le dépôt a déjà écrit la
-    // doctrine : comparer des ensembles de NOMS, jamais des nombres.
+    // `sortie_pour_viewport` only filters on "attached, LARGE ENOUGH, not
+    // already taken": nothing there excludes PRE-EXISTING outputs. Yet the viewport
+    // announced by the browser can perfectly equal, or even be smaller
+    // than, the resolution of a physical monitor — it is even the mundane
+    // case in full screen. Without this survey, the window would be put on
+    // the VM's REAL screen and the virtual output just created
+    // would become orphaned. When designation returns nothing, we therefore
+    // only pair among the outputs that APPEARED, and the repository has already written the
+    // doctrine: compare sets of NAMES, never numbers.
     //
-    // 🔴 **CE RELEVÉ SEUL NE SUFFISAIT PAS, et le lot 30 l'a mesuré** : quand
-    // la sortie neuve REMPLACE une cible forcée sur la même source, elle
-    // hérite du nom d'avant, n'apparaît donc jamais, et cette différence
-    // d'ensembles refusait une sortie parfaitement utilisable. Voir l'en-tête
-    // de `superviseur::designation`.
-    let avant = match relever_topologie("avant création de sortie") {
-        Ok(avant) => noms_attaches(&avant),
-        Err(erreur) => {
-            tracing::error!(session = %session.0, %erreur, "topologie DXGI illisible avant création");
+    // 🔴 **THIS SURVEY ALONE WAS NOT ENOUGH, and batch 30 measured it**: when
+    // the new output REPLACES a forced target on the same source, it
+    // inherits the previous name, hence never appears, and this set
+    // difference refused a perfectly usable output. See the header
+    // of `superviseur::designation`.
+    let before = match relever_topologie("before output creation") {
+        Ok(before) => noms_attaches(&before),
+        Err(error) => {
+            tracing::error!(session = %session.0, %error, "DXGI topology unreadable before creation");
             envoyer(&VersLaShell::Refus {
                 titre: titre.clone(),
-                motif: "topologie d'affichage illisible".into(),
+                motif: "display topology unreadable".into(),
             });
-            // Aucune sortie n'a été créée : rien à rendre au pilote. Mais
-            // l'entrée doit sortir d'`AttendLaSortie` — `enfant_mort` la
-            // bascule en `SansSession` (sa place reste comptée, voir la doc
-            // de cette fonction) plutôt que de la retirer : le contrôle
-            // périodique la relancera.
+            // No output was created: nothing to hand back to the driver. But
+            // the entry must leave `AttendLaSortie` — `enfant_mort`
+            // switches it to `SansSession` (its place stays counted, see the doc
+            // of that function) rather than removing it: the periodic
+            // check will restart it.
             return table.enfant_mort(&session);
         }
     };
 
-    let id_pilote = match sorties.creer(largeur, hauteur, 60) {
+    let id_pilote = match sorties.create(largeur, hauteur, 60) {
         Ok(id) => id,
-        Err(erreur) => {
-            tracing::error!(session = %session.0, %erreur, "création de sortie refusée");
+        Err(error) => {
+            tracing::error!(session = %session.0, %error, "output creation refused");
             envoyer(&VersLaShell::Refus {
                 titre,
-                motif: format!("{erreur}"),
+                motif: format!("{error}"),
             });
             return table.enfant_mort(&session);
         }
     };
 
-    // Attend le FAIT — que NOTRE sortie soit là — plutôt qu'un délai plat, et
-    // sans cesser de battre le chien de garde du pilote (voir la doc
-    // d'`attendre_notre_sortie`).
+    // Waits for the FACT — that OUR output is there — rather than a flat delay, and
+    // without ceasing to beat the driver's watchdog (see the doc
+    // of `attendre_notre_sortie`).
     let (designee, candidates) =
-        attendre_notre_sortie(pilote, id_pilote, &avant, LIMITE_RATTACHEMENT);
+        attendre_notre_sortie(pilote, id_pilote, &before, LIMITE_RATTACHEMENT);
 
     let Some(cible) =
         placement::sortie_pour_viewport(&candidates, largeur, hauteur, prises, designee.as_deref())
     else {
-        // Ce refus ne peut plus venir d'une sortie née TROP GRANDE — c'est le
-        // leg 4 de D9, qui plafonnait le produit à trois fenêtres sur une VM
-        // au registre pollué. Les énumérer toutes est le seul service que ce
-        // commentaire rende à qui débogue cette `ERROR`, et **le champ
-        // `designee` du journal ci-dessous dit laquelle des deux familles
-        // s'applique** :
+        // This refusal can no longer come from an output born TOO LARGE — it is
+        // D9's leg 4, which capped the product at three windows on a VM
+        // with a polluted registry. Listing them all is the only service this
+        // comment renders to whoever debugs this `ERROR`, and **the
+        // `designee` field of the log below says which of the two families
+        // applies**:
         //
-        // `designee` NON VIDE — notre sortie a été nommée, et refusée quand
-        // même. ⚠️ **CETTE FAMILLE A PERDU SA CAUSE N°1 LE 31 AOÛT 2026** :
-        // « elle est plus PETITE que la demande » ne peut plus refuser une
-        // sortie DÉSIGNÉE — `sortie_pour_viewport` l'en exempte, parce que le
-        // pilote ne la fait pas naître à la taille demandée et que huit refus
-        // en boucle avaient rendu le produit entièrement muet. Il reste :
-        //   1. elle est DÉJÀ PRISE — `sortie_pour_viewport` filtre aussi sur
-        //      `!deja_prises`, et `rendre_la_sortie` CRÉE délibérément ce cas :
-        //      quand la destruction est refusée par le pilote, le nom reste
-        //      réservé pour ne pas être réattribué ;
-        //   2. elle n'est pas ATTACHÉE au bureau — Windows l'a nommée sans
-        //      l'avoir rattachée, et il n'y aurait rien à dupliquer.
+        // `designee` NON-EMPTY — our output was named, and refused
+        // anyway. ⚠️ **THIS FAMILY LOST ITS CAUSE NO. 1 ON AUGUST 31ST, 2026**:
+        // "it is SMALLER than the request" can no longer refuse a
+        // DESIGNATED output — `sortie_pour_viewport` exempts it, because the
+        // driver does not create it at the requested size and eight looping refusals
+        // had made the product entirely mute. What remains:
+        //   1. it is ALREADY TAKEN — `sortie_pour_viewport` also filters on
+        //      `!deja_prises`, and `rendre_la_sortie` deliberately CREATES this case:
+        //      when destruction is refused by the driver, the name stays
+        //      reserved so as not to be reassigned;
+        //   2. it is not ATTACHED to the desktop — Windows named it without
+        //      having attached it, and there would be nothing to duplicate.
         //
-        // `designee` VIDE — la désignation n'a rien rendu (pilote sans
-        // adaptateur connu, CCD muette ou en erreur, cible pas encore dans un
-        // chemin actif, paire ambiguë) et le REPLI a couru :
-        //   3. aucune sortie n'est apparue du tout ;
-        //   4. celle qui est apparue est trop petite, ou déjà prise (1 et 2
-        //      ci-dessus, mais sur une sortie qui n'est pas forcément la
-        //      nôtre) ;
-        //   5. 🔴 **notre sortie a REMPLACÉ une sortie préexistante**, donc
-        //      elle n'est pas « apparue » — le défaut du lot 30, que la
-        //      désignation ferme et que le repli, lui, ne peut pas voir.
+        // `designee` EMPTY — designation returned nothing (driver without a
+        // known adapter, mute or failing CCD, target not yet in an
+        // active path, ambiguous pair) and the FALLBACK ran:
+        //   3. no output appeared at all;
+        //   4. the one that appeared is too small, or already taken (1 and 2
+        //      above, but on an output that is not necessarily
+        //      ours);
+        //   5. 🔴 **our output REPLACED a pre-existing output**, so
+        //      it did not "appear" — batch 30's defect, which
+        //      designation closes and which the fallback, for its part, cannot see.
         //
-        // ❌ **Ce commentaire a dit « il ne reste que deux causes » pendant
-        // toute une branche** (constat de la revue de la tâche 6 de D10,
-        // différé puis repris à la revue finale), puis « TROIS » jusqu'au
-        // lot 32 : il envoyait un débogueur cesser de chercher trop tôt, sur
-        // une `ERROR` dont les causes manquantes étaient produites par le code
-        // du même module. **Toute addition à ce chemin recompte cette liste.**
+        // ❌ **This comment said "only two causes remain" for
+        // a whole branch** (finding of the review of D10's task 6,
+        // deferred then taken up at the final review), then "THREE" until
+        // batch 32: it sent a debugger to stop searching too early, on
+        // an `ERROR` whose missing causes were produced by the code
+        // of the same module. **Any addition to this path recounts this list.**
         tracing::error!(
             session = %session.0,
             demande = format!("{largeur}x{hauteur}"),
-            // Vide quand la désignation n'a rien rendu : c'est ce qui départage
-            // les deux familles de causes énumérées juste au-dessus, et sans ce
-            // champ elles seraient indiscernables au journal.
+            // Empty when designation returned nothing: it is what decides between
+            // the two families of causes listed just above, and without this
+            // field they would be indistinguishable in the log.
             designee = designee.as_deref().unwrap_or(""),
             candidates = ?candidates
                 .iter()
                 .map(|s| format!("{} {}x{}", s.nom_sortie, s.rect.width, s.rect.height))
                 .collect::<Vec<_>>(),
-            "aucune sortie candidate ne peut servir ce viewport — elle est rendue au pilote"
+            "no candidate output can serve this viewport — it is given back to the driver"
         );
         rendre_sans_apparier(sorties, id_pilote);
         envoyer(&VersLaShell::Refus {
             titre,
-            motif: "aucune sortie d'affichage ne peut servir cette fenêtre".into(),
+            motif: "no display output can serve this window".into(),
         });
         return table.enfant_mort(&session);
     };
 
-    // 🔴 **LA BRANCHE PRISE, NOMMÉE — pas seulement le cas nominal.** Ce dépôt
-    // vient de payer (lot 33) une trace posée APRÈS un court-circuit, qui
-    // rendait un `0` au journal indiscernable entre « le message n'arrive
-    // jamais » et « il arrive et ne change rien ». Ici la sortie est retenue
-    // par DEUX chemins que rien d'autre ne distingue au journal : elle était
-    // assez grande, ou elle est la NÔTRE et on l'a exemptée du critère de
-    // taille (31 août 2026). Sans ce champ, une fenêtre servie ne dit pas
-    // lequel l'a servie, et l'exemption serait invérifiable en production.
+    // 🔴 **THE BRANCH TAKEN, NAMED — not only the nominal case.** This repository
+    // has just paid (batch 33) for a trace placed AFTER a short circuit, which
+    // made a `0` in the log indistinguishable between "the message never
+    // arrives" and "it arrives and changes nothing". Here the output is kept
+    // through TWO paths nothing else distinguishes in the log: it was
+    // large enough, or it is OURS and was exempted from the size
+    // criterion (August 31st, 2026). Without this field, a served window does not say
+    // which one served it, and the exemption would be unverifiable in production.
     let exemptee = designee.as_deref() == Some(cible.nom_sortie.as_str())
         && !placement::sortie_assez_grande(
             (cible.rect.width, cible.rect.height),
@@ -198,62 +197,62 @@ pub(super) fn creer_sortie(
         demande = format!("{largeur}x{hauteur}"),
         sortie_reelle = format!("{}x{}", cible.rect.width, cible.rect.height),
         exemptee,
-        "sortie retenue pour cette fenetre"
+        "output retained for this window"
     );
 
-    // La sortie peut être bien plus grande que la fenêtre : c'est le cas
-    // nominal sur une VM dont le registre a été pollué. La fenêtre est posée à
-    // CETTE taille, à l'origine de la sortie, et la capture recadre le même
-    // rectangle dans la duplication de CETTE sortie — jamais dans celle du
-    // bureau, d'où l'absence du risque de fuite entre sessions que porte
-    // `ModeCapture::FenetreRecadree` (voir l'en-tête de
+    // The output can be much larger than the window: it is the nominal
+    // case on a VM whose registry was polluted. The window is put at
+    // THIS size, at the output's origin, and the capture crops the same
+    // rectangle in the duplication of THIS output — never in the desktop's,
+    // hence the absence of the cross-session leak risk that
+    // `ModeCapture::FenetreRecadree` carries (see the header of
     // `windows_source/sortie.rs`).
-    // 🔴 **BORNÉE PAR LA ZONE DE TRAVAIL DEPUIS LE LOT 33, PLUS PAR LE
-    // RECTANGLE DE LA SORTIE.** Une barre des tâches SECONDAIRE de 48 px est
-    // collée en bas de chaque sortie servie (défaut Windows, mesuré en
-    // session 1 le 31 août 2026) : poser la fenêtre au rectangle du moniteur
-    // la faisait recouvrir par la barre — 48 px de contenu applicatif perdus —
-    // et mettait ces 48 rangées dans le recadrage. `taille_pour_viewport`
-    // compose le même `borner_a_la_taille_max` et le même `taille_retenue`
-    // qu'avant : seule la BORNE change.
-    let retenue = crate::windows_source_sortie::taille_pour_viewport(
+    // 🔴 **BOUNDED BY THE WORK AREA SINCE BATCH 33, NO LONGER BY THE
+    // OUTPUT'S RECTANGLE.** A 48 px SECONDARY taskbar is
+    // stuck at the bottom of each served output (Windows default, measured in
+    // session 1 on August 31st, 2026): putting the window at the monitor's rectangle
+    // made the bar cover it — 48 px of application content lost —
+    // and put those 48 rows into the crop. `size_for_viewport`
+    // composes the same `clamp_to_max_size` and the same `retained_size`
+    // as before: only the BOUND changes.
+    let retenue = crate::windows_source_sortie::size_for_viewport(
         (largeur, hauteur),
         placement_periodique::borne_de(&cible),
     );
 
     let nom = cible.nom_sortie.clone();
     prises.push(nom.clone());
-    // Les DEUX identifiants : celui du pilote pour la destruction, le nom
-    // DXGI pour la capture. Aucune relation calculable entre eux. La table
-    // retient la taille RETENUE, pas celle de la sortie : c'est elle qui
-    // voyage ensuite jusqu'au capteur (tâches 8 et 9), et que le contrôle
-    // périodique de placement relit sans la recalculer.
+    // The TWO identifiers: the driver's for destruction, the DXGI
+    // name for capture. No computable relation between them. The table
+    // keeps the RETAINED size, not the output's: it is the one that
+    // then travels to the capturer (tasks 8 and 9), and that the periodic
+    // placement check rereads without recomputing it.
     let suite = table.sortie_creee(&session, id_pilote, nom, retenue);
 
-    // Une table qui n'a rien à dire de cette sortie ne la retient nulle part :
-    // `id_pilote` ne serait plus connu de personne (ni de la table, ni d'un
-    // effet à venir), une place perdue sur dix, et le nom resterait bloqué
-    // dans `prises` à jamais. Le cas n'est pas atteignable avec l'ordonnancement
-    // actuel de la boucle — mais cet ordonnancement n'est déclaré porteur nulle
-    // part, et il suffira qu'une étape s'insère un jour.
+    // A table that has nothing to say about this output keeps it nowhere:
+    // `id_pilote` would no longer be known to anyone (neither the table, nor a
+    // coming effect), one place lost out of ten, and the name would stay stuck
+    // in `prises` forever. The case is not reachable with the loop's current
+    // ordering — but that ordering is declared load-bearing
+    // nowhere, and it will be enough for a step to slip in one day.
     if suite.is_empty() {
         tracing::error!(
             session = %session.0, id_pilote,
-            "la table n'attendait plus cette sortie — elle est rendue au pilote"
+            "the table no longer expected this output — it is given back to the driver"
         );
         rendre_sans_apparier(sorties, id_pilote);
         prises.retain(|p| *p != cible.nom_sortie);
         return Vec::new();
     }
 
-    // Poser la fenêtre dessus avant que l'enfant ne capture. On lit la fenêtre
-    // dans les effets que la table VIENT de rendre, et non dans la file
-    // globale : celle-ci peut porter le `LancerEnfant` d'une autre session,
-    // et on placerait alors la mauvaise fenêtre.
+    // Put the window on it before the child captures. We read the window
+    // in the effects the table HAS JUST returned, and not in the global
+    // queue: that one can carry another session's `LancerEnfant`,
+    // and we would then place the wrong window.
     //
-    // À l'origine de la sortie, mais à la taille RETENUE — pas à `cible.rect`,
-    // qui peut être bien plus grande (registre pollué, voir plus haut). Poser
-    // à la taille de la sortie couvrirait plus que ce que la capture recadre.
+    // At the output's origin, but at the RETAINED size — not at `cible.rect`,
+    // which can be much larger (polluted registry, see above). Putting it
+    // at the output's size would cover more than what the capture crops.
     if let Some(Effet::LancerEnfant { fenetre, .. }) = suite.first() {
         let hwnd = windows::Win32::Foundation::HWND(fenetre.0 as *mut core::ffi::c_void);
         let rect = Rect {
@@ -262,90 +261,90 @@ pub(super) fn creer_sortie(
             width: retenue.0,
             height: retenue.1,
         };
-        if let Err(erreur) = placement::poser(hwnd, &rect) {
-            tracing::warn!(session = %session.0, %erreur, "placement de la fenêtre échoué");
+        if let Err(error) = placement::poser(hwnd, &rect) {
+            tracing::warn!(session = %session.0, %error, "window placement failed");
         }
     }
     suite
 }
 
-/// Rend au pilote une sortie qui n'a jamais été appariée à une session.
+/// Hands back to the driver an output that was never paired with a session.
 ///
-/// Rien à retirer de `prises` : par construction, aucun de ces chemins n'y a
-/// inscrit quoi que ce soit — ou l'appelant s'en charge.
+/// Nothing to remove from `prises`: by construction, none of these paths
+/// registered anything there — or the caller takes care of it.
 fn rendre_sans_apparier(sorties: &mut Sorties<'_>, id_pilote: u32) {
-    if let Err(erreur) = sorties.detruire(id_pilote) {
+    if let Err(error) = sorties.detruire(id_pilote) {
         tracing::error!(
-            id_pilote, %erreur,
-            "sortie orpheline NON rendue — la garde la retentera à l'arrêt"
+            id_pilote, %error,
+            "orphan output NOT given back — the guard will retry it at shutdown"
         );
     }
 }
 
-/// Attend que NOTRE sortie soit là, sans cesser de battre le chien de garde.
+/// Waits for OUR output to be there, without ceasing to beat the watchdog.
 ///
-/// 🔴 **« NOTRE », et non « une sortie neuve » — c'est tout le lot 32.** La
-/// fonction s'appelait `attendre_une_sortie_neuve`, et son prédicat
-/// (`!avant.contains(…)`) était le défaut mesuré par le lot 30 : une sortie
-/// qui REMPLACE une cible forcée hérite du nom d'avant et n'est donc jamais
-/// « neuve ». Voir l'en-tête de `superviseur::designation`.
+/// 🔴 **"OUR", and not "a new output" — that is the whole of batch 32.** The
+/// function was called `attendre_une_sortie_neuve`, and its predicate
+/// (`!before.contains(…)`) was the defect measured by batch 30: an output
+/// that REPLACES a forced target inherits the previous name and is therefore never
+/// "new". See the header of `superviseur::designation`.
 ///
-/// Rend le nom DÉSIGNÉ (vide si la désignation n'a rien rendu) et les
-/// candidates. Le premier ne sert qu'au journal de l'appelant, où il départage
-/// deux familles de causes qui seraient sinon indiscernables.
+/// Returns the DESIGNATED name (empty if designation returned nothing) and the
+/// candidates. The first only serves the caller's log, where it decides between
+/// two families of causes that would otherwise be indistinguishable.
 ///
-/// Le battement n'est pas un détail : le pilote retire les sorties d'un client
-/// qui cesse de pinguer, **y compris celles qu'on vient de créer**, et l'étape
-/// de ping de la boucle est hors du parcours des effets.
+/// The heartbeat is not a detail: the driver removes the outputs of a client
+/// that stops pinging, **including those just created**, and the loop's
+/// ping step is outside the effects run.
 ///
-/// **`enumerer_sorties_silencieux`, jamais `relever_topologie`, DANS LA
-/// SCRUTATION.** À 10 Hz, `relever_topologie` journaliserait une ligne par
-/// sortie DXGI existante à chaque tour — le dépôt a déjà payé deux fois pour
-/// une trace émise à la cadence d'une boucle (chantier TURN, correctif I2 de
-/// D1). Le relevé nommé et journalisé reste fait une fois avant l'appel
-/// (`creer_sortie`), et — depuis la relecture de cette fonction — une fois de
-/// plus SEULEMENT si l'attente expire, juste avant de rendre le vecteur vide.
+/// **`enumerer_sorties_silencieux`, never `relever_topologie`, IN THE
+/// POLLING.** At 10 Hz, `relever_topologie` would log one line per
+/// existing DXGI output at each turn — the repository has already paid twice for
+/// a trace emitted at a loop's cadence (TURN work item, fix I2 of
+/// D1). The named and logged survey is still done once before the call
+/// (`create_output`), and — since this function was reread — once
+/// more ONLY if the wait expires, right before returning the empty vector.
 ///
-/// **Ce relevé d'expiration n'est pas cosmétique.** Sans lui, un échec ne
-/// laisse au journal que le relevé d'AVANT création (qui ne peut par
-/// construction pas montrer la sortie neuve) et le journal des « candidats »
-/// de l'appelant, qui ne liste que les sorties déjà filtrées `attachee_au_
-/// bureau && nouvelles` — vide par construction si la sortie n'a jamais été
-/// attachée. Deux pannes distinctes se confondaient alors sous un même
-/// journal : « la sortie est apparue mais Windows n'y a jamais rien composé »
-/// (le refus que la sonde multi-fenêtres nomme déjà) contre « elle n'est
-/// jamais apparue du tout ». Le relevé complet et nommé — toutes les sorties,
-/// attachées et non attachées — tranche entre les deux, et ne coûte rien en
-/// régime normal : il ne s'exécute que sur le chemin d'échec.
+/// **This expiry survey is not cosmetic.** Without it, a failure only
+/// leaves in the log the survey from BEFORE creation (which by
+/// construction cannot show the new output) and the caller's "candidates"
+/// log, which only lists outputs already filtered `attachee_au_
+/// bureau && nouvelles` — empty by construction if the output was never
+/// attached. Two distinct failures were then confused under the same
+/// log: "the output appeared but Windows never composed anything on it"
+/// (the refusal the multi-window probe already names) versus "it never
+/// appeared at all". The complete and named survey — all outputs,
+/// attached and unattached — decides between the two, and costs nothing in
+/// normal operation: it only runs on the failure path.
 fn attendre_notre_sortie(
     pilote: &PiloteParIoctl,
     id_pilote: crate::moniteurs_virtuels::IdSortie,
-    avant: &[String],
+    before: &[String],
     limite: std::time::Duration,
 ) -> (Option<String>, Vec<SortieDxgi>) {
-    // Relu UNE fois : le couple ne bouge pas pendant l'attente, et un
-    // aller-retour sous le verrou du pilote n'a rien à faire dans une boucle
-    // à 10 Hz. `None` pour un pilote qui ne connaît pas cet identifiant —
-    // l'appelant retombe alors sur le repli, jamais sur une devinette.
+    // Reread ONCE: the pair does not move during the wait, and a
+    // round trip under the driver's lock has nothing to do in a loop
+    // at 10 Hz. `None` for a driver that does not know this identifier —
+    // the caller then falls back on the fallback path, never on a guess.
     let adaptateur = pilote.adaptateur_de(id_pilote);
-    // 🔴 LA REPRISE SE FAIT SUR LA MÊME SORTIE, JAMAIS SUR UNE NEUVE. Détruire
-    // puis recréer changerait la topologie, donc redéclencherait la sonde
-    // d'encodeur d'Apollo — la reprise nourrirait ce qu'elle attend — et
-    // consommerait le vivier de dix (le bras rouge a relevé 9 sorties créées
-    // pour 7 refus). Voir `superviseur::reprise`, qui porte la règle et ses
-    // tests d'hôte.
+    // 🔴 THE RETRY HAPPENS ON THE SAME OUTPUT, NEVER ON A NEW ONE. Destroying
+    // then recreating would change the topology, hence would re-trigger Apollo's
+    // encoder probe — the retry would feed what it waits for — and
+    // would consume the pool of ten (the red arm recorded 9 outputs created
+    // for 7 refusals). See `superviseur::reprise`, which carries the rule and its
+    // host tests.
     let mut tour: u32 = 1;
     let mut echeance = std::time::Instant::now() + limite;
     loop {
-        if let Err(erreur) = pilote.pinguer() {
-            tracing::warn!(%erreur, "ping du chien de garde pendant l'attente de rattachement");
+        if let Err(error) = pilote.pinguer() {
+            tracing::warn!(%error, "watchdog ping while waiting for attachment");
         }
-        let toutes = enumerer_sorties_silencieux().unwrap_or_default();
+        let all = enumerer_sorties_silencieux().unwrap_or_default();
 
-        // ① DÉSIGNER — par ce qu'on a DONNÉ au pilote, pas par ce qui a changé
-        // autour. `chemins_actifs` est SILENCIEUSE, et il le faut : on est
-        // dans une boucle à 10 Hz, et ce dépôt a payé deux fois une trace
-        // émise à la cadence d'une boucle.
+        // ① DESIGNATE — by what we GAVE the driver, not by what changed
+        // around. `chemins_actifs` is SILENT, and it must be: we are
+        // in a 10 Hz loop, and this repository paid twice for a trace
+        // emitted at a loop's cadence.
         let designee = adaptateur
             .filter(|_| designation::armee())
             .and_then(|adaptateur| {
@@ -354,87 +353,85 @@ fn attendre_notre_sortie(
                     .map(str::to_owned)
             });
 
-        // ② Le REPLI vit dans `designation::candidates`, avec ses tests
-        // d'hôte — la boucle ne fait que lui passer ce qu'elle a relevé. C'est
-        // ce qui rend la règle éprouvable sans Windows : `creation_sortie` est
-        // `#[cfg(windows)]` de bout en bout.
-        let candidates = designation::candidates(&toutes, designee.as_deref(), avant);
+        // ② The FALLBACK lives in `designation::candidates`, with its host
+        // tests — the loop only passes it what it recorded. It is
+        // what makes the rule exercisable without Windows: `creation_sortie` is
+        // `#[cfg(windows)]` end to end.
+        let candidates = designation::candidates(&all, designee.as_deref(), before);
         if !candidates.is_empty() {
-            // 🔴 LA TRACE DE CHEMIN, ET ELLE N'EST PAS COSMÉTIQUE. Sans elle,
-            // une fenêtre servie ne dit pas PAR QUEL CHEMIN elle l'a été, et
-            // une verte obtenue par le repli — parce que Windows n'a pas
-            // fabriqué de cible forcée ce jour-là — serait indiscernable
-            // d'une verte obtenue par la désignation. Le `designee` du
-            // journal ne paraissait que sur le REFUS, donc jamais quand tout
-            // se passe bien : le succès était muet sur sa propre cause.
+            // 🔴 THE PATH TRACE, AND IT IS NOT COSMETIC. Without it,
+            // a served window does not say BY WHICH PATH it was served, and
+            // a green obtained by the fallback — because Windows did not
+            // fabricate a forced target that day — would be indistinguishable
+            // from a green obtained by designation. The log's `designee`
+            // only appeared on REFUSAL, hence never when everything
+            // goes well: success was mute about its own cause.
             //
-            // Émise UNE FOIS par création (la boucle rend la main ici), et
-            // non à la cadence de la scrutation.
+            // Emitted ONCE per creation (the loop returns control here), and
+            // not at the polling cadence.
             match designee.as_deref() {
                 Some(nom) => tracing::info!(
                     id_pilote,
                     ?adaptateur,
                     nom_designe = nom,
-                    "sortie DESIGNEE par son identifiant de cible (chemin ① — \
-                     la correspondance CCD a rendu son nom GDI)"
+                    "output DESIGNATED by its target identifier (path ① — \
+                     the CCD correspondence returned its GDI name)"
                 ),
                 None => tracing::info!(
                     id_pilote,
-                    "sortie retenue par DIFFERENCE D'ENSEMBLES (chemin ② de repli — \
-                     la designation n'a rien rendu)"
+                    "output retained by SET DIFFERENCE (fallback path ② — \
+                     the designation returned nothing)"
                 ),
             }
             return (designee, candidates);
         }
         if std::time::Instant::now() >= echeance {
-            // Le tour est écoulé. La règle — bornée, testée sur l'hôte — dit
-            // s'il en reste un.
-            if let reprise::Suite::Reessayer {
-                tour_suivant,
-                apres,
-            } = reprise::apres_un_tour(tour, reprise::TOURS, reprise::REPIT)
+            // The turn has elapsed. The rule — bounded, tested on the host — says
+            // whether one remains.
+            if let reprise::Suite::Reessayer { next_round, apres } =
+                reprise::apres_un_tour(tour, reprise::TOURS, reprise::REPIT)
             {
-                // ⚠️ `warn!` et non `error!` : ce n'est pas encore un refus.
-                // Un tour perdu et un abandon ne doivent pas se lire pareil.
+                // ⚠️ `warn!` and not `error!`: it is not a refusal yet.
+                // A lost turn and an abandonment must not read the same.
                 tracing::warn!(
                     id_pilote,
                     tour,
                     tours = reprise::TOURS,
                     limite_ms = limite.as_millis() as u64,
                     repit_ms = apres.as_millis() as u64,
-                    "la sortie ne s'est pas attachée dans ce tour — on RÉESSAIE \
-                     sur la MÊME sortie (l'attachement est intermittent, pas lent)"
+                    "the output did not attach in this round — RETRYING \
+                     on the SAME output (attachment is intermittent, not slow)"
                 );
                 std::thread::sleep(apres);
-                tour = tour_suivant;
+                tour = next_round;
                 echeance = std::time::Instant::now() + limite;
                 continue;
             }
             tracing::error!(
                 tours_epuises = tour,
                 limite_ms = limite.as_millis() as u64,
-                "aucune sortie neuve n'est apparue — TOUS LES TOURS DE REPRISE \
-                 SONT ÉPUISÉS"
+                "no new output appeared — ALL THE RETRY ROUNDS \
+                 ARE EXHAUSTED"
             );
-            // Relevé complet, nommé, UNE fois — sur ce seul chemin d'échec.
-            // C'est ici, et seulement ici, que ce diagnostic vaut : voir la
-            // doc de la fonction.
-            if let Err(erreur) = relever_topologie("attente de rattachement expirée") {
-                tracing::error!(%erreur, "topologie DXGI illisible au moment de l'expiration");
+            // Complete, named survey, ONCE — on this failure path only.
+            // It is here, and only here, that this diagnosis is worth anything: see the
+            // function's doc.
+            if let Err(error) = relever_topologie("attachment wait expired") {
+                tracing::error!(%error, "DXGI topology unreadable at expiry time");
             }
-            // Le relevé complet ci-dessus ne dit pas POURQUOI la désignation
-            // s'est tue. Cette ligne-là le dit, une fois, sur ce seul chemin
-            // d'échec : sans elle, « CCD n'a jamais nommé notre cible » et
-            // « CCD l'a nommée mais DXGI ne l'énumère pas » se confondraient.
+            // The complete survey above does not say WHY designation
+            // went quiet. This line says it, once, on this failure path
+            // only: without it, "CCD never named our target" and
+            // "CCD named it but DXGI does not enumerate it" would be confused.
             match adaptateur {
                 None => tracing::error!(
                     id_pilote,
-                    "le pilote ne connaît pas l'adaptateur de cette sortie — la désignation n'a pas pu être tentée, seul le repli a couru"
+                    "the driver does not know this output's adapter — the designation could not be attempted, only the fallback ran"
                 ),
                 Some(adaptateur) => tracing::error!(
                     id_pilote,
                     ?adaptateur,
-                    "la cible n'a jamais été nommée par la configuration d'affichage dans la limite — voir moniteurs_virtuels::config_affichage"
+                    "the target was never named by the display configuration within the limit — see moniteurs_virtuels::config_affichage"
                 ),
             }
             return (None, Vec::new());
@@ -443,7 +440,7 @@ fn attendre_notre_sortie(
     }
 }
 
-/// Rend une sortie au pilote et libère sa place DXGI.
+/// Hands an output back to the driver and frees its DXGI place.
 pub(super) fn rendre_la_sortie(
     sorties: &mut Sorties<'_>,
     prises: &mut Vec<String>,
@@ -452,23 +449,23 @@ pub(super) fn rendre_la_sortie(
 ) {
     match sorties.detruire(sortie_pilote) {
         Ok(()) => {
-            tracing::info!(sortie_pilote, "sortie virtuelle rendue au pilote");
+            tracing::info!(sortie_pilote, "virtual output given back to the driver");
             prises.retain(|p| *p != nom_sortie);
         }
-        // La place DXGI reste RÉSERVÉE sur échec, et c'est le point de fond.
+        // The DXGI place stays RESERVED on failure, and that is the fundamental point.
         //
-        // Un refus de destruction signifie très probablement que la sortie
-        // existe toujours — et qu'elle reste donc attachée au bureau. Libérer
-        // sa place la rendrait à nouveau candidate : une fenêtre ultérieure de
-        // mêmes dimensions pourrait s'y voir posée pendant que la table
-        // retiendrait l'`id_pilote` de la sortie NEUVE, laquelle ne servirait
-        // jamais et serait détruite à tort à la fermeture — l'ancienne restant
-        // orpheline. Garder la place réservée coûte au pire une place DXGI
-        // jusqu'à l'arrêt ; la libérer coûte une confusion d'identité.
-        Err(erreur) => tracing::error!(
-            sortie_pilote, %nom_sortie, %erreur,
-            "sortie virtuelle NON rendue — la garde la retentera à l'arrêt, \
-             et sa place DXGI reste réservée d'ici là"
+        // A destruction refusal very probably means the output
+        // still exists — and therefore stays attached to the desktop. Freeing
+        // its place would make it a candidate again: a later window of the
+        // same dimensions could be put on it while the table
+        // kept the `id_pilote` of the NEW output, which would never serve
+        // and would wrongly be destroyed at closing — the old one staying
+        // orphaned. Keeping the place reserved costs at worst one DXGI place
+        // until shutdown; freeing it costs an identity confusion.
+        Err(error) => tracing::error!(
+            sortie_pilote, %nom_sortie, %error,
+            "virtual output NOT given back — the guard will retry it at shutdown, \
+             and its DXGI slot stays reserved until then"
         ),
     }
 }

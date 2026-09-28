@@ -1,43 +1,43 @@
-// `InventaireStatique` : l'unique implémentation d'`Orchestrateur` de la v1.
+// `InventaireStatique`: the one and only `Orchestrateur` implementation of v1.
 //
-// 🔴 CE QUE « STATIQUE » VEUT DIRE, ET CE QU'IL NE VEUT PAS DIRE. La spec §3.6
-// l'annonçait « alimenté par un fichier de configuration déclaratif » ; ce
-// backend lit LA BASE (divergence E1, décision D1). Les trois champs qu'un tel
-// fichier aurait portés — nom, adresse, empreinte du secret d'enrôlement —
-// sont déjà écrits en base par `admin/enroler-agent.ts`, et deux sources de
-// vérité pour la même chose divergent en silence : c'est celle que personne ne
-// lit qui gagne, le jour où l'on s'y fie.
+// 🔴 WHAT "STATIC" MEANS, AND WHAT IT DOES NOT MEAN. Spec §3.6
+// announced it as "fed by a declarative configuration file"; this
+// backend reads THE DATABASE (divergence E1, decision D1). The three fields such a
+// file would have carried — name, address, hash of the enrolment secret —
+// are already written to the database by `admin/enroler-agent.ts`, and two sources of
+// truth for the same thing diverge silently: it is the one nobody
+// reads that wins, the day it is relied upon.
 //
-// « Statique » signifie donc : IL NE PILOTE AUCUN HYPERVISEUR. Il n'allume
-// rien, n'éteint rien, ne photographie rien, ne crée aucune machine. Son
-// inventaire est ce qu'un administrateur a enrôlé, et il ne peut agir sur le
-// monde qu'à travers la seule colonne dont il soit propriétaire :
-// `vm.utilisateur_id`. Cette lecture est PLUS FORTE que « fichier
-// rechargeable » — un fichier aurait pu être rechargé, ce qui aurait laissé
-// croire à une forme de gestion.
+// "Static" therefore means: IT DRIVES NO HYPERVISOR. It turns on
+// nothing, turns off nothing, snapshots nothing, creates no machine. Its
+// inventory is what an administrator enrolled, and it can only act on the
+// world through the one column it owns:
+// policy: allow-fr (frozen SQLite name) — `vm.utilisateur_id`. This reading is STRONGER than "reloadable
+// file" — a file could have been reloaded, which would have suggested
+// some form of management.
 //
-// 🔴 L'HORLOGE EST INJECTÉE (`maintenant`), jamais `Date.now()` lu ici. C'est
-// ce qui rend la borne de `fraicheur.etatDe` assiégeable des deux côtés.
+// 🔴 THE CLOCK IS INJECTED (`maintenant`), never `Date.now()` read here. That is
+// what makes the bound of `fraicheur.etatDe` testable from both sides.
 
 import type { Pilote } from '../base/pilote';
 import { etatDe } from '../agents/fraicheur';
 import { attribuerSiLibre, lister as listerLignes, type LigneVm } from '../depot/vm';
 import type { EtatVm, Operation, Orchestrateur, Vm } from './interface';
-import { BACKEND_STATIQUE, refuser, type Resultat } from './refus';
+import { BACKEND_STATIQUE, refuser, type Outcome } from './refus';
 import { vmsDe } from './selection';
 
-/// Convertit une ligne de dépôt en `Vm`.
+/// Converts a repository row into a `Vm`.
 ///
-/// ⚠️ DEUX RENOMMAGES, DONC DEUX OCCASIONS DE RENDRE `undefined` EN SILENCE :
-/// `prefixe_session` -> `prefixe` et `vu_a` -> `vuA`. Et `undefined` n'est PAS
-/// `null` — `etatDe` distingue le second (une VM jamais vue) de ce qui serait
-/// une erreur de conversion. Le test de `lister` compare l'objet ENTIER.
+/// ⚠️ TWO RENAMINGS, HENCE TWO CHANCES TO RETURN `undefined` SILENTLY:
+/// `prefixe_session` -> `prefixe` and `vu_a` -> `vuA`. And `undefined` is NOT
+/// `null` — `etatDe` tells the latter (a VM never seen) apart from what would be
+/// a conversion error. The `lister` test compares the WHOLE object.
 function enVm(l: LigneVm): Vm {
     return {
         id: l.id,
         nom: l.nom,
         adresse: l.adresse,
-        utilisateurId: l.utilisateur_id,
+        userId: l.utilisateur_id, // policy: allow-fr - frozen wire key or SQLite column
         prefixe: l.prefixe_session,
         vuA: l.vu_a,
     };
@@ -47,24 +47,24 @@ async function inventaireDe(p: Pilote): Promise<Vm[]> {
     return (await listerLignes(p)).map(enVm);
 }
 
-/// Refuse une opération que ce backend ne sait pas faire, ET l'écrit au
-/// journal.
+/// Refuses an operation this backend cannot perform, AND writes it to the
+/// log.
 ///
-/// ⚠️ LES TROIS VERBES D'ACTION PARTAGENT CETTE SEULE FONCTION, et il faut le
-/// dire : un test sur `instantane` éprouve donc la même ligne qu'un test sur
-/// `demarrer`. Chacun des trois a néanmoins son propre `it()` — non pour
-/// éprouver trois lignes différentes, mais pour qu'un verbe qui cesserait un
-/// jour de passer par ici se voie.
+/// ⚠️ THE THREE ACTION VERBS SHARE THIS ONE FUNCTION, and it must be
+/// said: a test on `instantane` therefore exercises the same line as a test on
+/// `start`. Each of the three nevertheless has its own `it()` — not to
+/// exercise three different lines, but so that a verb that stopped going
+/// through here some day would be noticed.
 ///
-/// 🔴 LE JOURNAL EST UN `warn!`, PAS UN `debug`. Un backend qui refuse
-/// silencieusement une opération que l'exploitant croit avoir déclenchée est
-/// une panne muette ; l'exploitation tourne en niveau ordinaire, et une
-/// mitigation muette n'en est pas une.
-function refuserNonSupporte(operation: Operation): Resultat {
+/// 🔴 THE LOG IS A `warn!`, NOT A `debug`. A backend that silently refuses
+/// an operation the operator believes they triggered is
+/// a silent failure; operations run at the ordinary level, and a
+/// silent mitigation is not one.
+function refuserNonSupporte(operation: Operation): Outcome {
     console.warn(
-        `opération refusée : ${operation} n'est pas supportée par le backend ` +
-            `${BACKEND_STATIQUE}, qui ne pilote aucun hyperviseur — il inventorie ce ` +
-            "qu'un administrateur a enrôlé, et n'écrit que vm.utilisateur_id.",
+        `operation refused: ${operation} is not supported by the backend ` +
+            `${BACKEND_STATIQUE}, which drives no hypervisor — it inventories what ` +
+            "an administrator enrolled, and writes only vm.utilisateur_id.",
     );
     return refuser('non-supporte', operation);
 }
@@ -78,110 +78,110 @@ export function inventaireStatique(base: Pilote, maintenant: () => number): Orch
         async etat(vm: string): Promise<EtatVm> {
             const inventaire = await inventaireDe(base);
             const cible = inventaire.find((v) => v.id === vm);
-            // 🔴 UNE VM INCONNUE REND `injoignable`, JAMAIS UNE EXCEPTION.
-            // C'est vrai — on n'en sait rien, donc on ne peut pas s'en servir —
-            // et c'est déjà ce que `agents/fraicheur.ts` dit d'une VM jamais
-            // vue. Une exception remonterait en 500 là où il n'y a rien
-            // d'anormal, et serait sur une route un oracle d'énumération.
+            // 🔴 AN UNKNOWN VM RETURNS `injoignable`, NEVER AN EXCEPTION.
+            // That is true — we know nothing about it, so we cannot use it —
+            // and it is already what `agents/fraicheur.ts` says of a VM never
+            // seen. An exception would bubble up as a 500 where there is nothing
+            // abnormal, and on a route it would be an enumeration oracle.
             if (cible === undefined) return 'injoignable';
-            // 🔴 C'EST L'APPELANT DE PRODUCTION QUE `agents/fraicheur.ts`
-            // DÉCLARE ATTENDRE DEPUIS P3, et il ferme le legs n°2 de ce
-            // sous-bloc : « il n'a aucun appelant de production dans P3, et
-            // c'est déclaré plutôt que dissimulé […] ce qui est le sujet de
-            // P4 ».
+            // 🔴 IT IS THE PRODUCTION CALLER THAT `agents/fraicheur.ts`
+            // DECLARES IT HAS BEEN WAITING FOR SINCE P3, and it closes legacy no. 2 of that
+            // sub-block: "it has no production caller in P3, and
+            // that is declared rather than hidden […] which is the subject of
+            // P4".
             return etatDe(cible.vuA, maintenant());
         },
 
-        async demarrer(vm: string): Promise<Resultat> {
-            // 🔴 CE REFUS N'EST PAS UNE COMMODITÉ : c'est le contenu du
-            // critère ④. Le cadrage promet « VM injoignable -> le hub
-            // l'indique, PROPOSE REDÉMARRAGE ». Avec ce backend, le hub
-            // INDIQUE et dit qu'il ne peut PAS redémarrer. Ce que P4 livre est
-            // l'aveu, pas la fonction — et la spec §3.6 le nomme « conséquence
-            // produit à assumer ».
+        async start(vm: string): Promise<Outcome> {
+            // 🔴 THIS REFUSAL IS NOT A CONVENIENCE: it is the content of
+            // criterion ④. The framing promises "VM unreachable -> the hub
+            // shows it, OFFERS A RESTART". With this backend, the hub
+            // SHOWS it and says it can NOT restart. What P4 delivers is
+            // the admission, not the feature — and spec §3.6 calls it a "product
+            // consequence to own".
             void vm;
             return refuserNonSupporte('demarrer');
         },
 
-        async arreter(vm: string): Promise<Resultat> {
+        async arreter(vm: string): Promise<Outcome> {
             void vm;
             return refuserNonSupporte('arreter');
         },
 
-        async instantane(vm: string, nom: string): Promise<Resultat> {
+        async instantane(vm: string, nom: string): Promise<Outcome> {
             void vm;
             void nom;
             return refuserNonSupporte('instantane');
         },
 
-        async attribuer(vm: string, utilisateur: string): Promise<Resultat> {
+        async attribuer(vm: string, user: string): Promise<Outcome> {
             try {
                 return await base.transaction(async (t) => {
-                    // ① LIRE D'ABORD — et c'est pour NOMMER le bon motif,
-                    // jamais pour garantir quoi que ce soit. `changes = 0`
-                    // confond TROIS causes (VM inconnue, VM déjà prise,
-                    // ré-attribution au même utilisateur, divergence E8) : un
-                    // code qui déciderait sur ce seul nombre rendrait un refus
-                    // qui n'informe pas.
+                    // ① READ FIRST — and it is to NAME the right reason,
+                    // never to guarantee anything. `changes = 0`
+                    // conflates THREE causes (unknown VM, VM already taken,
+                    // reassignment to the same user, divergence E8): a
+                    // code that decided on this number alone would return a refusal
+                    // that informs nothing.
                     const inventaire = await inventaireDe(t);
                     const cible = inventaire.find((v) => v.id === vm);
                     if (cible === undefined) return refuser('vm-inconnue', 'attribuer');
-                    if (cible.utilisateurId !== null) {
+                    if (cible.userId !== null) {
                         return refuser('vm-deja-attribuee', 'attribuer');
                     }
-                    if (vmsDe(inventaire, utilisateur).length > 0) {
+                    if (vmsDe(inventaire, user).length > 0) {
                         return refuser('utilisateur-servi', 'attribuer');
                     }
 
-                    // ② PUIS ÉCRIRE, SOUS LA CLAUSE CONDITIONNELLE. 🔴 C'est
-                    // ELLE qui garantit, et non la lecture ci-dessus : elle est
-                    // RÉÉVALUÉE PAR LE MOTEUR au moment de l'écriture. Un code
-                    // qui lirait puis écrirait sans clause serait juste dans les
-                    // tests et faux en production, et le test séquentiel ne le
-                    // verrait pas. Mesuré sur PostgreSQL 16.15 : de deux
-                    // transactions visant la même VM libre, la seconde bloque
-                    // puis rend `0 ligne` — exactement un gagnant.
-                    const lignes = await attribuerSiLibre(t, vm, utilisateur);
-                    // Zéro ligne ICI ne peut plus être qu'une chose : la course
-                    // a été perdue entre la lecture et l'écriture, les deux
-                    // autres causes ayant déjà été écartées.
+                    // ② THEN WRITE, UNDER THE CONDITIONAL CLAUSE. 🔴 It is
+                    // THE CLAUSE that guarantees, not the read above: it is
+                    // RE-EVALUATED BY THE ENGINE at write time. Code
+                    // that read then wrote without a clause would be right in the
+                    // tests and wrong in production, and the sequential test would not
+                    // see it. Measured on PostgreSQL 16.15: of two
+                    // transactions targeting the same free VM, the second blocks
+                    // then returns `0 rows` — exactly one winner.
+                    const lignes = await attribuerSiLibre(t, vm, user);
+                    // Zero rows HERE can only mean one thing: the race
+                    // was lost between the read and the write, the two
+                    // other causes having already been ruled out.
                     if (lignes === 0) return refuser('vm-deja-attribuee', 'attribuer');
                     return { ok: true };
                 });
             } catch (cause) {
-                // ③ ET SI L'ÉCRITURE A LEVÉ : relire, et ne traduire QUE ce que
-                // la relecture explique.
+                // ③ AND IF THE WRITE THREW: read again, and translate ONLY what
+                // the reread explains.
                 //
-                // 🔴 C'EST LE SEUL ENDROIT DU SERVICE OÙ UNE EXCEPTION EST
-                // RATTRAPÉE, et il ne doit pas devenir un `catch` muet. Un
-                // `catch` qui traduirait TOUTE exception en `utilisateur-servi`
-                // avalerait une base injoignable et la présenterait comme un
-                // refus métier — la panne muette exacte que la spec §6 interdit.
+                // 🔴 IT IS THE ONLY PLACE IN THE SERVICE WHERE AN EXCEPTION IS
+                // CAUGHT, and it must not become a silent `catch`. A
+                // `catch` that translated ANY exception into `utilisateur-servi` (policy: allow-fr - frozen wire key or SQLite column)
+                // would swallow an unreachable database and present it as a
+                // business refusal — the exact silent failure spec §6 forbids.
                 //
-                // 🔴 AUCUNE COMPARAISON DU TEXTE DE L'EXCEPTION : les deux
-                // moteurs n'écrivent pas le même (`UNIQUE constraint failed:
-                // vm.utilisateur_id` contre `duplicate key value violates unique
-                // constraint "vm_un_utilisateur"`). C'est l'ÉTAT relu qui
-                // tranche, jamais le message.
+                // 🔴 NO COMPARISON OF THE EXCEPTION TEXT: the two
+                // engines do not write the same one (`UNIQUE constraint failed:
+                // vm.utilisateur_id` versus `duplicate key value violates unique (policy: allow-fr - frozen wire key or SQLite column)
+                // policy: allow-fr (frozen SQLite name) — constraint "vm_un_utilisateur"`). It is the reread STATE that
+                // decides, never the message.
                 //
-                // ⚠️ LA RELECTURE SE FAIT HORS TRANSACTION, ET C'EST STRUCTUREL,
-                // pas une préférence : quand l'exception arrive ici,
-                // `Pilote.transaction` a DÉJÀ émis son `ROLLBACK` et relâché le
-                // client — cela se lit dans `base/pilote-postgres.ts` et
-                // `base/pilote-sqlite.ts`. Il n'y a plus de transaction dans
-                // laquelle lire ; `base` est donc la seule voie possible.
+                // ⚠️ THE REREAD HAPPENS OUTSIDE THE TRANSACTION, AND THAT IS STRUCTURAL,
+                // not a preference: when the exception arrives here,
+                // `Pilote.transaction` has ALREADY issued its `ROLLBACK` and released the
+                // client — as can be read in `base/pilote-postgres.ts` and
+                // `base/pilote-sqlite.ts`. There is no transaction left in
+                // which to read; `base` is therefore the only possible route.
                 const inventaire = await inventaireDe(base);
-                // `vmsDe` et non `laVmDe` : cette dernière LÈVE sur un doublon,
-                // et lever depuis un `catch` remplacerait la cause par une
-                // autre.
-                const siennes = vmsDe(inventaire, utilisateur);
+                // `vmsDe` and not `laVmDe`: the latter THROWS on a duplicate,
+                // and throwing from a `catch` would replace the cause with
+                // another.
+                const siennes = vmsDe(inventaire, user);
                 if (siennes.length > 0 && !siennes.some((v) => v.id === vm)) {
-                    // L'utilisateur a bien une AUTRE VM : c'est l'index partiel
-                    // `vm_un_utilisateur` qui a levé, et le refus est typé.
+                    // The user does have ANOTHER VM: it is the partial index
+                    // `vm_un_utilisateur` that threw, and the refusal is typed. (policy: allow-fr - frozen wire key or SQLite column)
                     return refuser('utilisateur-servi', 'attribuer');
                 }
-                // Rien dans l'état ne l'explique : la cause est ailleurs, et
-                // elle remonte telle quelle.
+                // Nothing in the state explains it: the cause is elsewhere, and
+                // it bubbles up as is.
                 throw cause;
             }
         },

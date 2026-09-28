@@ -144,7 +144,7 @@ async function marqueurs(etiquette) {
         enfant_lance: compte('enfant lancé'),
         enfant_termine: compte('enfant terminé'),
         abandon_relances: compte("la session n'a pas tenu après"),
-        erreurs: compte('ERROR'),
+        errors: compte('ERROR'),
         // --- Ceinture (correction de protocole n°2) ---------------------
         // Si `commander` rend une ERREUR quand le capteur meurt, l'adaptation
         // le journalise. Si `commander` SUSPEND, la boucle de transport est
@@ -373,7 +373,7 @@ async function main() {
             const s = await cdp.evalBorne(sidShell, `document.querySelector('#statut').textContent`, 5000, false);
             log(`ÉTAT SHELL (${etiquette}) liste=[${l}] statut="${s}"`);
             log(`  pages d'application ouvertes (${appPages().length}) : ${appPages().map(([, p]) => p.url).join(' , ')}`);
-            return { liste: l, statut: s };
+            return { list: l, statut: s };
         };
 
         // ---- Le superviseur, APRÈS la shell.
@@ -393,8 +393,8 @@ async function main() {
         /// Ouvre la fenêtre `n` et attend qu'une page d'application de plus se
         /// soit ouverte. Attendre le FAIT, jamais une durée.
         const ouvrirFenetre = async (n, attente = 40) => {
-            const avant = appPages().length;
-            log(`>>> OUVERTURE fenêtre ${n} (attendu : ${avant + 1} pages)`);
+            const before = appPages().length;
+            log(`>>> OUVERTURE fenêtre ${n} (attendu : ${before + 1} pages)`);
             const tOuverture = new Date().toISOString();
             // Correction de protocole n°1 : une source qui BOUGE. Une fenêtre
             // Chrome `--app` sur `anim-d4.html`, dont le canvas se redessine à
@@ -417,7 +417,7 @@ async function main() {
             ].join('\n'));
             for (let i = 0; i < attente; i += 1) {
                 await dodo(2000);
-                if (appPages().length > avant) {
+                if (appPages().length > before) {
                     log(`   fenêtre ${n} : page ouverte en ${(i + 1) * 2}s (total ${appPages().length})`);
                     return { ouverte: true, t: tOuverture, secondes: (i + 1) * 2 };
                 }
@@ -463,7 +463,7 @@ async function main() {
             }
             await dodo(8000);
             await etat('avant la mise à mort du capteur');
-            const avant = await marqueurs('AVANT mise à mort');
+            const before = await marqueurs('AVANT mise à mort');
             const cAvant = await cadenceNavigateur(cdp, 'AVANT mise à mort', 10000);
 
             // Le PID du capteur se lit dans le journal : c'est le superviseur
@@ -492,10 +492,10 @@ async function main() {
                 const p = await journalPlat();
                 const relances = [...p.matchAll(/(\S+Z)\s+WARN.*capteur mort, relancé/g)];
                 const ratt = (p.match(/canal rattaché au capteur/g) ?? []).length;
-                if (relances.length > avant.capteur_relance) vuRelance = relances[relances.length - 1][1];
+                if (relances.length > before.capteur_relance) vuRelance = relances[relances.length - 1][1];
                 vuRattache = ratt;
-                if (vuRelance && vuRattache >= avant.rattache + appPages().length) {
-                    log(`   relance ET ${vuRattache - avant.rattache} rattachements vus à t+${i + 1}s`);
+                if (vuRelance && vuRattache >= before.rattache + appPages().length) {
+                    log(`   relance ET ${vuRattache - before.rattache} rattachements vus à t+${i + 1}s`);
                     break;
                 }
                 if (i % 5 === 0) log(`   … t+${i + 1}s relance=${vuRelance ?? 'pas encore'} rattachements=${vuRattache}`);
@@ -511,12 +511,12 @@ async function main() {
             log('SYNTHÈSE CAPTEUR ' + JSON.stringify({
                 pid_capteur_tue: pidCapteur,
                 cadence_avant: cAvant, cadence_apres: cApres,
-                delta_cloture: apres.cloture - avant.cloture,
-                delta_relance: apres.capteur_relance - avant.capteur_relance,
-                delta_rattache: apres.rattache - avant.rattache,
-                delta_attachee: apres.attachee_capteur - avant.attachee_capteur,
-                delta_enfant_lance: apres.enfant_lance - avant.enfant_lance,
-                delta_enfant_termine: apres.enfant_termine - avant.enfant_termine,
+                delta_cloture: apres.cloture - before.cloture,
+                delta_relance: apres.capteur_relance - before.capteur_relance,
+                delta_rattache: apres.rattache - before.rattache,
+                delta_attachee: apres.attachee_capteur - before.attachee_capteur,
+                delta_enfant_lance: apres.enfant_lance - before.enfant_lance,
+                delta_enfant_termine: apres.enfant_termine - before.enfant_termine,
             }, null, 1));
         }
 

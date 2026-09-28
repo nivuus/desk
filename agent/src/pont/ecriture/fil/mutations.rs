@@ -1,37 +1,37 @@
-//! **Les mutations poussées par le fil d'écriture** : renommage et suppression,
-//! et leur ordonnancement par rapport aux écritures dues.
+//! **The mutations pushed by the write thread**: renaming and deletion,
+//! and their scheduling relative to due writes.
 //!
-//! # 🔴 POURQUOI CETTE EXTRACTION ARRIVE UN COMMIT TROP TARD, ET C'EST DÉCLARÉ
+//! # 🔴 WHY THIS EXTRACTION COMES ONE COMMIT TOO LATE, AND IT IS DECLARED
 //!
-//! `fil.rs` valait **438** lignes à la fin de F2 — après que F2 en eut lui-même
-//! extrait `fil/disque.rs` pour tenir la porte. Le câblage des mutations de la
-//! tâche 13 de F3 l'a porté à **612** : **le plafond de 500 a été FRANCHI, ET
-//! LE COMMIT EST PARTI AVEC.**
+//! `fil.rs` stood at **438** lines at the end of F2 — after F2 had itself
+//! extracted `fil/disque.rs` to hold the gate. Wiring the mutations of
+//! F3's task 13 took it to **612**: **the ceiling of 500 was CROSSED, AND
+//! THE COMMIT WENT OUT WITH IT.**
 //!
-//! ⚠️ **C'est PIRE qu'un franchissement en cours de travail**, que ce dépôt a
-//! connu plusieurs fois : celui-ci a été committé, et c'est **le relevé d'un
-//! chantier VOISIN** qui l'a nommé en premier — la quatrième fois de suite que
-//! cela arrive dans ce dépôt (G2 trois fois, P2 trois fois, G3 une).
+//! ⚠️ **It is WORSE than a crossing during work**, which this repository has
+//! known several times: this one was committed, and it was **the report of a
+//! NEIGHBOURING work item** that named it first — the fourth time in a row that
+//! this happens in this repository (G2 three times, P2 three times, G3 once).
 //!
-//! **La leçon n'est pas « extraire », qui était su : c'est que le balayage des
-//! tailles doit se faire PAR LA COMMANDE, sur TOUT l'arbre, avant chaque
-//! commit — et non seulement là où le plan budgète une marge.** Le §2.2 du plan
-//! de F3 ne mentionnait même pas ce fichier.
+//! **The lesson is not "extract", which was known: it is that the size sweep
+//! must be done BY THE COMMAND, over the WHOLE tree, before each
+//! commit — and not only where the plan budgets a margin.** §2.2 of
+//! F3's plan did not even mention this file.
 //!
-//! **JAMAIS UNE COMPRESSION** — geste que `CLAUDE.md` interdit nommément, et
-//! que D9 a payé deux fois avant de devoir extraire quand même.
+//! **NEVER A COMPRESSION** — a gesture `CLAUDE.md` forbids by name, and
+//! which D9 paid for twice before having to extract anyway.
 //!
-//! # La ligne de partage
+//! # The dividing line
 //!
-//! [`super`] porte **le contenu** : le journal des écritures dues, la file, les
-//! morceaux, la reprise. Ce module porte **les mutations**, qui ne transportent
-//! aucun octet, ne s'inscrivent à aucun journal, et **ne se coalescent pas**.
-//! Les deux se relisent séparément, et c'est la seule raison qui vaille de
-//! scinder un fichier.
+//! [`super`] carries **the content**: the journal of due writes, the queue, the
+//! chunks, the resumption. This module carries **the mutations**, which carry
+//! no byte, are registered in no journal, and **do not coalesce**.
+//! The two are reviewed separately, and it is the only reason worth
+//! splitting a file.
 
 use std::time::Instant;
 
-use proto::fichiers::entetes;
+use proto::files::entetes;
 
 use super::Fil;
 use crate::pont::ecriture::Evenement;
@@ -39,11 +39,11 @@ use crate::pont::mutation::{ordonnancer, Mutation, Ordonnancement};
 use crate::pont::table::Attendue;
 
 impl Fil {
-    /// Ce qu'on fait d'un renommage ou d'une suppression.
+    /// What we do with a renaming or a deletion.
     ///
-    /// ⚠️ **Elle ne passe NI par le journal des écritures dues, NI par la file
-    /// de contenu** : elle ne porte aucun octet, et l'inscrire ferait monter le
-    /// compteur de la page-shell pour un geste qui n'a rien à transférer.
+    /// ⚠️ **It goes NEITHER through the journal of due writes, NOR through the content
+    /// queue**: it carries no byte, and registering it would make the shell page's
+    /// counter rise for a gesture that has nothing to transfer.
     pub(super) fn mutation(&mut self, evenement: Evenement) {
         let quoi = match evenement {
             Evenement::Renomme {
@@ -55,16 +55,11 @@ impl Fil {
                 vers,
                 repertoire,
             },
-            Evenement::Supprime { chemin, repertoire } => {
-                Mutation::Supprimer { chemin, repertoire }
-            }
-            // Le bras appelant garantit `est_mutation()` ; ce cas est
-            // inatteignable, et le DIRE vaut mieux que de le supposer.
+            Evenement::Deleted { chemin, repertoire } => Mutation::Delete { chemin, repertoire },
+            // The calling arm guarantees `est_mutation()`; this case is
+            // unreachable, and SAYING so beats assuming it.
             autre => {
-                tracing::warn!(
-                    ?autre,
-                    "evenement non-mutation route vers le fil de mutation"
-                );
+                tracing::warn!(?autre, "non-mutation event routed to the mutation thread");
                 return;
             }
         };
@@ -73,20 +68,20 @@ impl Fil {
         }
     }
 
-    /// 🔴 **L'ENTRELACEMENT AVEC LES ÉCRITURES DUES — la règle du §0.3, celle
-    /// dont l'oubli produit une PERTE DE DONNÉES.**
+    /// 🔴 **THE INTERLEAVING WITH DUE WRITES — the rule of §0.3, the one
+    /// whose omission produces DATA LOSS.**
     ///
-    /// L'idiome d'enregistrement de la spec §3.5 — écrire un temporaire,
-    /// renommer, supprimer l'ancien — envoie ses trois gestes EN RAFALE, alors
-    /// que F2 pousse les écritures **après coup**. La décision vit dans
-    /// `pont::mutation`, qui est PUR et testé sur l'hôte ; ce corps ne fait
-    /// qu'obéir.
+    /// The saving idiom of spec §3.5 — write a temporary file,
+    /// rename, delete the old one — sends its three gestures IN A BURST, whereas
+    /// F2 pushes writes **after the fact**. The decision lives in
+    /// `pont::mutation`, which is PURE and tested on the host; this body only
+    /// obeys.
     pub(super) fn commencer_mutation(&mut self, quoi: Mutation) {
         if !self.config.armee {
-            // Le bras DÉSARMÉ de `PONT_ECRITURE` : on journalise, on ne pousse
-            // jamais. Rien n'est dû au journal pour une mutation, donc rien ne
-            // reste — c'est dit plutôt que supposé.
-            tracing::warn!(?quoi, "mutation NON poussee : PONT_ECRITURE=0");
+            // The DISARMED arm of `PONT_ECRITURE`: we log, we never
+            // push. Nothing is due in the journal for a mutation, so nothing
+            // remains — it is said rather than assumed.
+            tracing::warn!(?quoi, "mutation NOT pushed: PONT_ECRITURE=0");
             if let Some(suivante) = self.mutations.terminee() {
                 self.commencer_mutation(suivante);
             }
@@ -95,23 +90,23 @@ impl Fil {
         match ordonnancer(&self.file.chemins_dus(), &quoi) {
             Ordonnancement::Pousser => {}
             Ordonnancement::AttendreEcrituresDues { chemins } => {
-                // 🔴 **LA MUTATION N'EST PAS POUSSÉE, et elle repasse DEVANT**
-                // celles qui l'ont suivie : l'ordre des gestes de
-                // l'utilisateur est le sens même.
+                // 🔴 **THE MUTATION IS NOT PUSHED, and it goes back AHEAD** of
+                // the ones that followed it: the order of the user's
+                // gestures is the very meaning.
                 tracing::warn!(
                     ?quoi, ?chemins,
-                    "renommage suspendu : ecriture due sur la source. La mutation repartira                      quand les octets seront pousses"
+                    "rename suspended: write due on the source. The mutation will resume                      when the bytes are pushed"
                 );
                 self.mutations.differer();
                 return;
             }
             Ordonnancement::AbandonnerEcrituresDues { chemins } => {
-                // 🔴 **POUSSER RECRÉERAIT CE QUE L'UTILISATEUR EFFACE.**
+                // 🔴 **PUSHING WOULD RECREATE WHAT THE USER ERASES.**
                 for chemin in &chemins {
-                    tracing::warn!(chemin, "ecriture due abandonnee : le chemin a ete supprime");
+                    tracing::warn!(chemin, "due write abandoned: the path was deleted");
                     self.file.oublier(chemin);
                     let ligne = self.journal.retirer(chemin);
-                    self.ecrire_journal(&ligne);
+                    self.write_journal(&ligne);
                 }
                 self.annoncer_les_dues();
             }
@@ -122,24 +117,24 @@ impl Fil {
                 vers,
                 repertoire,
             } => (
-                proto::fichiers::TYPE_RENOMMER,
+                proto::files::TYPE_RENOMMER,
                 serde_json::to_string(&entetes::Renommer {
                     de: de.clone(),
                     vers: vers.clone(),
                     repertoire: *repertoire,
                 })
-                .expect("un en-tete Renommer se serialise toujours"),
+                .expect("a Renommer header always serializes"),
                 de.clone(),
                 true,
                 Some(vers.clone()),
             ),
-            Mutation::Supprimer { chemin, repertoire } => (
-                proto::fichiers::TYPE_SUPPRIMER,
-                serde_json::to_string(&entetes::Supprimer {
+            Mutation::Delete { chemin, repertoire } => (
+                proto::files::TYPE_DELETE,
+                serde_json::to_string(&entetes::Delete {
                     chemin: chemin.clone(),
                     repertoire: *repertoire,
                 })
-                .expect("un en-tete Supprimer se serialise toujours"),
+                .expect("a Remove header always serializes"),
                 chemin.clone(),
                 false,
                 None,
@@ -155,8 +150,8 @@ impl Fil {
         tracing::debug!(?quoi, correlation, "mutation poussee");
     }
 
-    /// La mutation en vol est finie. `acquittee` ne décide de rien au journal —
-    /// **une mutation n'y est jamais inscrite** — mais la trace en dépend.
+    /// The mutation in flight is over. `acquittee` decides nothing in the journal —
+    /// **a mutation is never registered there** — but the trace depends on it.
     pub(super) fn terminer_mutation(&mut self, acquittee: bool) {
         self.mutation_en_vol = None;
         if let Some(suivante) = self.mutations.terminee() {

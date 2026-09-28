@@ -1,44 +1,44 @@
-//! Découpage du flux PCM capté en trames de 10 ms, sur horloge réelle.
+//! Splitting the captured PCM stream into 10 ms frames, on a real clock.
 //!
-//! WASAPI livre des blocs de longueur quelconque, à des instants irréguliers,
-//! et **rien du tout** quand aucune application ne joue. Opus, lui, exige des
-//! trames de taille exacte, à cadence régulière. Ce module fait le pont.
+//! WASAPI delivers blocks of any length, at irregular instants,
+//! and **nothing at all** when no application is playing. Opus, for its part, requires
+//! frames of exact size, at a regular cadence. This module bridges the two.
 //!
-//! Le principe : l'horloge murale dicte la cadence, le tampon fournit le
-//! contenu quand il en a, et du silence sinon. Aucune trame n'est jamais
-//! sautée — c'est cette continuité qui rend les RTCP Sender Reports
-//! exploitables et empêche le tampon de gigue du navigateur de s'affamer.
+//! The principle: the wall clock dictates the cadence, the buffer provides the
+//! content when it has some, and silence otherwise. No frame is ever
+//! skipped — it is this continuity that makes the RTCP Sender Reports
+//! usable and prevents the browser's jitter buffer from starving.
 //!
-//! Ce module ne référence jamais le crate `windows` : il se compile et se teste
-//! sous Linux.
+//! This module never references the `windows` crate: it compiles and is tested
+//! under Linux.
 
 use std::collections::VecDeque;
 use std::time::{Duration, Instant};
 
 use crate::opus::{FRAME_INTERLEAVED, FRAME_SAMPLES, SAMPLE_RATE_HZ};
 
-/// Retard maximal toléré dans le tampon, en trames. Au-delà, les échantillons
-/// les plus anciens sont jetés : si WASAPI livre durablement plus vite que le
-/// temps réel, le tampon grossirait sans fin et la latence avec lui.
+/// Maximum delay tolerated in the buffer, in frames. Beyond it, the oldest
+/// samples are thrown away: if WASAPI durably delivers faster than
+/// real time, the buffer would grow endlessly and latency with it.
 const MAX_BACKLOG_FRAMES: usize = 3;
 
-/// Une trame PCM prête à encoder.
+/// A PCM frame ready to encode.
 #[derive(Debug, Clone)]
 pub struct Frame {
-    /// `FRAME_INTERLEAVED` échantillons entrelacés (gauche, droite, ...).
+    /// `FRAME_INTERLEAVED` interleaved samples (left, right, ...).
     pub pcm: Vec<i16>,
-    /// Horodatage de présentation, en échantillons depuis l'origine.
+    /// Presentation timestamp, in samples since the origin.
     pub pts_48k: u64,
-    /// Instant réel correspondant à `pts_48k`.
+    /// Real instant corresponding to `pts_48k`.
     pub captured_at: Instant,
 }
 
-/// Assemble des blocs PCM irréguliers en trames régulières de 10 ms.
+/// Assembles irregular PCM blocks into regular 10 ms frames.
 pub struct FrameAssembler {
     origin: Instant,
     tampon: VecDeque<i16>,
-    /// Échantillons **par canal** déjà émis depuis l'origine. `None` tant que
-    /// l'assembleur ne s'est pas ancré (voir `drain_due`).
+    /// Samples **per channel** already emitted since the origin. `None` as long as
+    /// the assembler has not anchored itself (see `drain_due`).
     emis_par_canal: Option<u64>,
     complements: u64,
     echantillons_jetes: u64,
@@ -55,11 +55,11 @@ impl FrameAssembler {
         }
     }
 
-    /// Ajoute des échantillons entrelacés stéréo.
+    /// Adds stereo interleaved samples.
     ///
-    /// Borne le retard accumulé : au-delà de `MAX_BACKLOG_FRAMES` trames en
-    /// attente, les plus anciens échantillons sont jetés plutôt que de laisser
-    /// la latence croître indéfiniment.
+    /// Bounds the accumulated delay: beyond `MAX_BACKLOG_FRAMES` pending
+    /// frames, the oldest samples are thrown away rather than letting
+    /// latency grow indefinitely.
     pub fn push(&mut self, pcm: &[i16]) {
         self.tampon.extend(pcm.iter().copied());
 
@@ -71,11 +71,11 @@ impl FrameAssembler {
         }
     }
 
-    /// Rend toutes les trames dues à l'instant `maintenant`.
+    /// Returns all the frames due at instant `maintenant`.
     ///
-    /// Le **premier** appel ne rend rien : il ancre l'assembleur sur le temps
-    /// déjà écoulé depuis l'origine. Sans cet ancrage, une initialisation
-    /// WASAPI de 500 ms produirait d'un coup 50 trames de silence.
+    /// The **first** call returns nothing: it anchors the assembler on the time
+    /// already elapsed since the origin. Without this anchoring, a 500 ms WASAPI
+    /// initialisation would produce 50 frames of silence at once.
     pub fn drain_due(&mut self, maintenant: Instant) -> Vec<Frame> {
         let ecoules = Self::echantillons_ecoules(self.origin, maintenant);
 
@@ -97,42 +97,42 @@ impl FrameAssembler {
         sorties
     }
 
-    /// Réancre l'assembleur : le prochain `drain_due` recommencera par un
-    /// ancrage silencieux, exactement comme au tout premier appel.
+    /// Re-anchors the assembler: the next `drain_due` will start again with a
+    /// silent anchoring, exactly as on the very first call.
     ///
-    /// **À appeler à chaque reprise après une coupure d'alimentation**, par
-    /// exemple une désactivation puis réactivation de la capture (audio par
-    /// fenêtre, sous-bloc D7). Sans cela, `emis_par_canal` reste figé à la
-    /// position d'avant la coupure pendant que l'horloge murale, elle,
-    /// continue d'avancer : le premier `drain_due` qui suit la reprise
-    /// rendrait alors une trame par tranche de 10 ms de la coupure ENTIÈRE en
-    /// une seule fois — silence-complétées puisque rien n'a été poussé
-    /// pendant la coupure — au lieu d'une seule trame due comme dans le cas
-    /// nominal. C'est la même rafale que celle contre laquelle l'ancrage
-    /// paresseux du premier appel protège déjà (voir
-    /// `s_ancre_sur_le_temps_ecoule_plutot_que_d_emettre_une_rafale`) ; ce
-    /// n'est simplement pas la même occasion de la déclencher.
+    /// **To be called at each resumption after a feed interruption**, for
+    /// example a disabling then re-enabling of the capture (per-window audio,
+    /// sub-block D7). Without it, `emis_par_canal` stays frozen at the
+    /// position from before the interruption while the wall clock, for its part,
+    /// keeps advancing: the first `drain_due` following the resumption
+    /// would then return one frame per 10 ms slice of the WHOLE interruption
+    /// all at once — silence-completed since nothing was pushed
+    /// during the interruption — instead of a single due frame as in the
+    /// nominal case. It is the same burst as the one the lazy anchoring
+    /// of the first call already protects against (see
+    /// `anchors_on_elapsed_time_rather_than_emitting_a_burst`); it
+    /// is simply not the same occasion to trigger it.
     pub fn reancrer(&mut self) {
         self.emis_par_canal = None;
     }
 
-    /// Nombre de trames qui ont dû être complétées par du silence.
+    /// Number of frames that had to be completed with silence.
     pub fn complements(&self) -> u64 {
         self.complements
     }
 
-    /// Nombre d'échantillons entrelacés jetés pour excès de retard.
+    /// Number of interleaved samples thrown away for excessive delay.
     pub fn echantillons_jetes(&self) -> u64 {
         self.echantillons_jetes
     }
 
-    /// Forme une trame à partir du tampon, complétée par du silence si celui-ci
-    /// n'a pas de quoi la remplir.
+    /// Forms a frame from the buffer, completed with silence if the latter
+    /// does not have enough to fill it.
     ///
-    /// Le silence est ajouté **en fin** de trame ; les échantillons qui
-    /// arriveront ensuite reprennent à la trame suivante. Il en résulte une
-    /// discontinuité minuscule, préférable de loin à un trou dans la ligne de
-    /// temps.
+    /// The silence is added **at the end** of the frame; the samples that
+    /// arrive afterwards resume at the next frame. The result is a
+    /// tiny discontinuity, far preferable to a hole in the
+    /// timeline.
     fn former_trame(&mut self, pts_par_canal: u64) -> Frame {
         let disponibles = self.tampon.len().min(FRAME_INTERLEAVED);
         let mut pcm: Vec<i16> = self.tampon.drain(..disponibles).collect();
@@ -147,15 +147,15 @@ impl FrameAssembler {
         }
     }
 
-    /// Échantillons par canal écoulés entre `origin` et `maintenant`.
+    /// Samples per channel elapsed between `origin` and `maintenant`.
     fn echantillons_ecoules(origin: Instant, maintenant: Instant) -> u64 {
         let ecoule = maintenant.saturating_duration_since(origin);
-        // En 128 bits : `as_nanos() * 48_000` déborderait un u64 au bout de
-        // ~4 jours de session. Même précaution que `next_pts_90k` côté vidéo.
+        // In 128 bits: `as_nanos() * 48_000` would overflow a u64 after
+        // ~4 days of session. Same precaution as `next_pts_90k` on the video side.
         (ecoule.as_nanos() * SAMPLE_RATE_HZ as u128 / 1_000_000_000) as u64
     }
 
-    /// Durée correspondant à `echantillons` échantillons par canal.
+    /// Duration corresponding to `echantillons` samples per channel.
     fn duree_de(echantillons: u64) -> Duration {
         Duration::from_nanos((echantillons as u128 * 1_000_000_000 / SAMPLE_RATE_HZ as u128) as u64)
     }
@@ -168,22 +168,22 @@ mod tests {
 
     use crate::opus::CHANNELS;
 
-    /// Durée correspondant à `n` trames de 10 ms.
+    /// Duration corresponding to `n` 10 ms frames.
     fn trames(n: u64) -> Duration {
         Duration::from_millis(n * 10)
     }
 
-    /// `n` échantillons entrelacés valant tous `v`.
+    /// `n` interleaved samples all equal to `v`.
     fn bloc(v: i16, n: usize) -> Vec<i16> {
         vec![v; n * CHANNELS]
     }
 
     #[test]
-    fn n_emet_rien_avant_que_la_premiere_trame_ne_soit_due() {
+    fn emits_nothing_before_the_first_frame_is_due() {
         let origine = Instant::now();
         let mut a = FrameAssembler::new(origine);
         a.push(&bloc(100, FRAME_SAMPLES));
-        // Ancrage au premier appel, puis 5 ms plus tard : une demi-trame.
+        // Anchoring at the first call, then 5 ms later: half a frame.
         assert!(a.drain_due(origine + trames(1)).is_empty());
         assert!(a
             .drain_due(origine + trames(1) + Duration::from_millis(5))
@@ -191,10 +191,10 @@ mod tests {
     }
 
     #[test]
-    fn emet_une_trame_pleine_quand_les_echantillons_sont_la() {
+    fn emits_a_full_frame_when_the_samples_are_there() {
         let origine = Instant::now();
         let mut a = FrameAssembler::new(origine);
-        a.drain_due(origine); // ancrage à 0
+        a.drain_due(origine); // anchoring at 0
         a.push(&bloc(100, FRAME_SAMPLES));
 
         let sorties = a.drain_due(origine + trames(1));
@@ -206,7 +206,7 @@ mod tests {
     }
 
     #[test]
-    fn les_horodatages_avancent_de_480_sans_trou() {
+    fn timestamps_advance_by_480_without_gaps() {
         let origine = Instant::now();
         let mut a = FrameAssembler::new(origine);
         a.drain_due(origine);
@@ -218,12 +218,12 @@ mod tests {
     }
 
     #[test]
-    fn complete_par_du_silence_quand_rien_n_arrive_et_ne_saute_aucune_trame() {
-        // C'est la propriété centrale : sans elle, un bureau silencieux
-        // creuserait un trou dans la ligne de temps RTP, et le tampon de
-        // gigue du navigateur s'affamerait avant de resynchroniser
-        // brutalement — la signature exacte du défaut relevé en recette du
-        // jalon 1 sur la vidéo.
+    fn fills_with_silence_when_nothing_arrives_and_skips_no_frame() {
+        // It is the central property: without it, a silent desktop
+        // would dig a hole in the RTP timeline, and the browser's jitter
+        // buffer would starve before brutally
+        // resynchronising — the exact signature of the defect noted in the
+        // milestone 1 acceptance run on video.
         let origine = Instant::now();
         let mut a = FrameAssembler::new(origine);
         a.drain_due(origine);
@@ -239,11 +239,11 @@ mod tests {
     }
 
     #[test]
-    fn une_trame_partielle_est_completee_par_du_silence_en_fin() {
+    fn a_partial_frame_is_completed_with_trailing_silence() {
         let origine = Instant::now();
         let mut a = FrameAssembler::new(origine);
         a.drain_due(origine);
-        a.push(&bloc(100, 200)); // 200 échantillons sur 480
+        a.push(&bloc(100, 200)); // 200 samples out of 480
 
         let sorties = a.drain_due(origine + trames(1));
         assert_eq!(sorties.len(), 1);
@@ -254,7 +254,7 @@ mod tests {
     }
 
     #[test]
-    fn l_instant_de_capture_se_deduit_de_l_horodatage() {
+    fn the_capture_instant_is_deduced_from_the_timestamp() {
         let origine = Instant::now();
         let mut a = FrameAssembler::new(origine);
         a.drain_due(origine);
@@ -266,58 +266,58 @@ mod tests {
     }
 
     #[test]
-    fn s_ancre_sur_le_temps_ecoule_plutot_que_d_emettre_une_rafale() {
-        // L'origine d'horloge est créée avant l'initialisation de WASAPI, qui
-        // prend un temps non nul. Sans ancrage paresseux, le premier appel
-        // produirait d'un coup toutes les trames écoulées depuis l'origine.
+    fn anchors_on_elapsed_time_rather_than_emitting_a_burst() {
+        // The clock origin is created before the initialisation of WASAPI, which
+        // takes a non-zero time. Without lazy anchoring, the first call
+        // would produce at once all the frames elapsed since the origin.
         let origine = Instant::now();
         let mut a = FrameAssembler::new(origine);
 
         let sorties = a.drain_due(origine + Duration::from_millis(500));
         assert!(
             sorties.is_empty(),
-            "le premier appel ancre, il ne rattrape pas : {} trames émises",
+            "the first call anchors, it does not catch up: {} frames emitted",
             sorties.len()
         );
 
-        // Et la ligne de temps repart bien de la position écoulée, pas de zéro.
+        // And the timeline does restart from the elapsed position, not from zero.
         let suivantes = a.drain_due(origine + Duration::from_millis(510));
         assert_eq!(suivantes.len(), 1);
         assert_eq!(suivantes[0].pts_48k, 50 * FRAME_SAMPLES as u64);
     }
 
     #[test]
-    fn se_reancre_sur_le_temps_ecoule_plutot_que_de_rattraper_une_coupure() {
-        // Le pendant de `s_ancre_sur_le_temps_ecoule_plutot_que_d_emettre_une_rafale`
-        // pour une coupure EN COURS DE VIE plutôt qu'à la construction : une
-        // désactivation puis réactivation de la capture (audio par fenêtre,
-        // sous-bloc D7) laisse l'horloge murale avancer sans que rien ne soit
-        // poussé. Sans `reancrer()`, le premier `drain_due` qui suit la
-        // reprise rendrait une trame de silence par tranche de 10 ms de toute
-        // la coupure, en une seule rafale.
+    fn re_anchors_on_elapsed_time_rather_than_catching_up_a_cut() {
+        // The counterpart of `anchors_on_elapsed_time_rather_than_emitting_a_burst`
+        // for an interruption DURING THE LIFETIME rather than at construction: a
+        // disabling then re-enabling of the capture (per-window audio,
+        // sub-block D7) lets the wall clock advance without anything being
+        // pushed. Without `reancrer()`, the first `drain_due` following the
+        // resumption would return one silence frame per 10 ms slice of the whole
+        // interruption, in a single burst.
         let origine = Instant::now();
         let mut a = FrameAssembler::new(origine);
         a.drain_due(origine); // ancrage initial
 
-        // Coupure longue : bien plus qu'une seule trame de 10 ms, et rien
-        // n'est poussé pendant cette période.
+        // Long interruption: far more than a single 10 ms frame, and nothing
+        // is pushed during this period.
         let longue_coupure = origine + Duration::from_secs(30);
         a.reancrer();
         let sorties = a.drain_due(longue_coupure);
         assert!(
             sorties.is_empty(),
-            "le premier drain_due après reancrer() ancre, il ne rattrape pas : {} trames émises",
+            "the first drain_due after reancrer() anchors, it does not catch up: {} frames emitted",
             sorties.len()
         );
 
-        // Et la ligne de temps repart de la position écoulée à la reprise,
-        // pas de zéro ni du cumul de la coupure.
+        // And the timeline restarts from the elapsed position at resumption,
+        // not from zero nor from the cumulated interruption.
         let suivante = a.drain_due(longue_coupure + trames(1));
         assert_eq!(suivante.len(), 1);
     }
 
     #[test]
-    fn jette_les_echantillons_les_plus_anciens_au_dela_du_retard_tolere() {
+    fn drops_the_oldest_samples_beyond_the_tolerated_delay() {
         let origine = Instant::now();
         let mut a = FrameAssembler::new(origine);
         a.drain_due(origine);
@@ -325,34 +325,34 @@ mod tests {
         // MAX_BACKLOG_FRAMES = 3, FRAME_INTERLEAVED = 960
         // Plafond = 2880
 
-        // Première poussée : bien au-delà du plafond
+        // First push: well beyond the cap
         a.push(&bloc(100, 2000));
-        // Tampon : 4000, plafond : 2880, excédent : 1120
-        // Jetés : 1120
+        // Buffer: 4000, cap: 2880, excess: 1120
+        // Thrown away: 1120
         assert_eq!(
             a.echantillons_jetes(),
             1120,
-            "première poussée jette 1120 échantillons (4000 - 2880)"
+            "first push drops 1120 samples (4000 - 2880)"
         );
 
-        // Deuxième poussée : de nouveau au-delà, avec valeur différente
+        // Second push: beyond again, with a different value
         a.push(&bloc(-100, 1600));
-        // Tampon avant: 2880 (100s), après extend: 6080
-        // Excédent: 3200, jetés cumulativement: 1120 + 3200 = 4320
-        // Tampon reste: 2880 (les -100s les plus récents)
+        // Buffer before: 2880 (100s), after extend: 6080
+        // Excess: 3200, thrown away cumulatively: 1120 + 3200 = 4320
+        // Buffer remains: 2880 (the most recent -100s)
         assert_eq!(
             a.echantillons_jetes(),
             4320,
-            "deuxième poussée jette les 3200 anciens (100s) du tampon"
+            "second push drops the 3200 old ones (100s) from the buffer"
         );
 
-        // La trame émise doit contenir les -100s (les plus récents conservés),
-        // pas les 100s (les plus anciens, maintenant jetés).
+        // The emitted frame must contain the -100s (the most recent kept),
+        // not the 100s (the oldest, now thrown away).
         let sorties = a.drain_due(origine + trames(1));
-        assert_eq!(sorties.len(), 1, "une seule trame est due après 10 ms");
+        assert_eq!(sorties.len(), 1, "a single frame is due after 10 ms");
         assert!(
             sorties[0].pcm.iter().all(|&v| v == -100),
-            "la trame doit contenir les données les plus récentes (-100), pas les anciennes (100)"
+            "the frame must hold the most recent data (-100), not the old data (100)"
         );
     }
 }

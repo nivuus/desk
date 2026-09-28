@@ -1,16 +1,16 @@
-//! Calcul et distribution des parts de débit — la branche de
-//! `capteur::repartiteur::repartir` sur le registre de `capteur::sommeil`.
+//! Computing and distributing bitrate shares — the branch of
+//! `capteur::repartiteur::repartir` on the registry of `capteur::sommeil`.
 //!
-//! **Extrait de `sommeil.rs` et non ajouté dedans** : le remède au canal
-//! rompu détecté par cette voie (voir `distribuer_les_parts` plus bas) l'y
-//! aurait porté au-delà du plafond de 500 lignes du projet. Même motif et
-//! même montage que `fenetre.rs` / `fenetre/transitions.rs`.
+//! **Extracted from `sommeil.rs` and not added into it**: the remedy for the broken
+//! channel detected through this path (see `distribuer_les_parts` below) would have
+//! taken it beyond the project's 500-line cap. Same reason and
+//! same set-up as `fenetre.rs` / `fenetre/transitions.rs`.
 //!
-//! **Aucune visibilité `pub` en dehors du crate** : ce module est un
-//! DESCENDANT de `sommeil`, et profite donc de plein droit de l'accès aux
-//! items privés de `sommeil.rs` (`Etat`, `Message`, `distribuer`) — la même
-//! règle de visibilité Rust qui permet à `fenetre::transitions` d'appeler les
-//! méthodes privées de `Fenetre`.
+//! **No `pub` visibility outside the crate**: this module is a
+//! DESCENDANT of `sommeil`, and so rightfully enjoys access to the
+//! private items of `sommeil.rs` (`Etat`, `Message`, `distribuer`) — the same
+//! Rust visibility rule that lets `fenetre::transitions` call the
+//! private methods of `Fenetre`.
 
 use std::sync::{MutexGuard, OnceLock};
 
@@ -19,61 +19,61 @@ use crate::capteur::repartiteur::{self, Fenetre};
 use super::file::Envoi;
 use super::{distribuer, oublier, Etat, Message};
 
-/// Budget de débit de la session entière, en bits par seconde.
+/// Bitrate budget of the whole session, in bits per second.
 ///
-/// **De session, pas par fenêtre** — c'est tout le sujet du sous-bloc D6.
-/// Lu une seule fois : le changer en cours de vie n'aurait aucun sens tant
-/// que le lien ne change pas.
+/// **Per session, not per window** — that is the whole subject of sub-block D6.
+/// Read only once: changing it during the process's life would make no sense as long
+/// as the link does not change.
 ///
-/// **12 Mb/s est un CHOIX, pas une dérivation.** La tâche 1 a montré que le
-/// lien porte ≥ 1,45 Gb/s : la capacité du chemin ne borne rien ici, et le
-/// budget ne s'en dérive pas. Ce qui borne est ce que le CLIENT décode. La
-/// tâche 1bis relève, à huit fenêtres : 18,03 % d'images jetées au barreau
-/// plein, 7,99 % à 1024×576, 1,47 % à 640×360 — et surtout que réduire les
-/// bits **sans** franchir de seuil de barreau ne sauve rien (23,08 % à
-/// surface constante). **Le levier est la résolution, le débit n'en est que
-/// la commande.**
+/// **12 Mb/s is a CHOICE, not a derivation.** Task 1 showed that the
+/// link carries ≥ 1.45 Gb/s: the path's capacity bounds nothing here, and the
+/// budget is not derived from it. What bounds is what the CLIENT decodes.
+/// Task 1bis records, with eight windows: 18.03 % of frames dropped at the full
+/// rung, 7.99 % at 1024×576, 1.47 % at 640×360 — and above all that cutting
+/// bits **without** crossing a rung threshold saves nothing (23.08 % at
+/// constant area). **The lever is resolution, bitrate is only
+/// its control.**
 ///
-/// 12 Mb/s conserve au cas mono-fenêtre exactement ce qu'il a aujourd'hui, et
-/// donne 1,33 Mb/s par fenêtre à huit — soit le barreau 852×480.
+/// 12 Mb/s keeps for the single-window case exactly what it has today, and
+/// gives 1.33 Mb/s per window with eight — that is the 852×480 rung.
 ///
-/// ⚖️ **MESURÉ par la recette de la tâche 10 (3 août 2026), et la valeur est
-/// RECONDUITE — mais l'arbitrage n'est PAS tranché par la mesure.** Le barreau
-/// 852×480 à huit fenêtres, que personne n'avait mesuré, l'est : **3,94 %
-/// d'images jetées** par le navigateur, contre un seuil de réception fixé à
-/// 7,99 %. Le point de repli à 8 Mb/s a été mesuré dans la foulée : **1,46 %
-/// et 3,94 %** sur deux exécutions, mais au barreau 640×360.
+/// ⚖️ **MEASURED by the acceptance run of task 10 (3 August 2026), and the value is
+/// KEPT — but the trade-off is NOT settled by the measurement.** The
+/// 852×480 rung with eight windows, which nobody had measured, now is: **3.94 %
+/// of frames dropped** by the browser, against a reception threshold set at
+/// 7.99 %. The fallback point at 8 Mb/s was measured right after: **1.46 %
+/// and 3.94 %** over two runs, but at the 640×360 rung.
 ///
-/// **Ce que la comparaison donne est un ARBITRAGE, pas une domination** :
-/// 852×480 rend **196,4 MP/s** décodés contre 95,5 à 135,6 à 640×360, et
-/// 3,94 % d'images jetées contre 1,46 à 3,94. Plus de pixels livrés, davantage
-/// jetés. **Aucune des deux valeurs ne domine l'autre sur les deux grandeurs.**
-/// Ce qui fait pencher pour 12 Mb/s tient en une seule raison qui, elle, ne se
-/// discute pas : **elle ne coûte rien au cas mono-fenêtre**, là où 8 Mb/s lui
-/// retirerait un tiers de son débit — et ce cas-là n'a jamais été mesuré à
-/// 12 Mb/s (voir le §2.4 des résultats). **Le choix est donc assumé, pas
-/// démontré.**
+/// **What the comparison yields is a TRADE-OFF, not a domination**:
+/// 852×480 yields **196.4 MP/s** decoded against 95.5 to 135.6 at 640×360, and
+/// 3.94 % of frames dropped against 1.46 to 3.94. More pixels delivered, more
+/// dropped. **Neither value dominates the other on both quantities.**
+/// What tips the balance towards 12 Mb/s comes down to a single reason which, for its part, is not
+/// debatable: **it costs nothing to the single-window case**, where 8 Mb/s would
+/// take away a third of its bitrate — and that case has never been measured at
+/// 12 Mb/s (see §2.4 of the results). **The choice is therefore accepted, not
+/// demonstrated.**
 ///
-/// ⚠️ **La marge est une marge de LABORATOIRE, et elle est mince.** Le 3,94 %
-/// vient d'**une seule** exécution. **Une seule des cinq exécutions à 12 Mb/s
-/// passe le seuil** — et **une sur deux** si l'on ne retient que celles dont
-/// l'échelle d'encodage s'était réellement posée, la seule population honnête.
-/// Les autres relèvent 8,03 %, 16,70 %, 59,32 % et 75,47 %. La dégradation
-/// covarie avec la charge de l'hôte de mesure **et** avec le non-établissement
-/// de l'échelle ; **les deux ne sont pas départagées.** La grandeur qui
-/// commande ici n'est ni le lien (`packetsLost` = 0 partout) ni le débit, mais
-/// **ce que le client arrive à décoder** : sur une machine cliente plus lente,
-/// 12 Mb/s décrocherait. **Le produit n'est pas démontré robuste** sous la
-/// charge d'hôte réellement rencontrée pendant la campagne, et le repli à
-/// 8 Mb/s n'a, lui, **jamais été éprouvé sous charge élevée** — qu'il y
-/// résiste mieux n'est **pas établi**.
+/// ⚠️ **The margin is a LABORATORY margin, and it is thin.** The 3.94 %
+/// comes from **a single** run. **Only one of the five runs at 12 Mb/s
+/// passes the threshold** — and **one in two** if we keep only those whose
+/// encoding ladder had actually settled, the only honest population.
+/// The others record 8.03 %, 16.70 %, 59.32 % and 75.47 %. The degradation
+/// covaries with the load of the measuring host **and** with the ladder not
+/// settling; **the two are not separated.** The quantity that
+/// governs here is neither the link (`packetsLost` = 0 everywhere) nor the bitrate, but
+/// **what the client manages to decode**: on a slower client machine,
+/// 12 Mb/s would fall behind. **The product is not demonstrated robust** under the
+/// host load actually encountered during the campaign, and the fallback to
+/// 8 Mb/s has **never been tested under high load** — that it
+/// holds up better there is **not established**.
 ///
-/// ⚠️ **`FACTEUR_FOCUS` ne départage PAS les deux valeurs.** Une première
-/// rédaction de ce commentaire l'affirmait, sur un sous-ensemble de 8 des
-/// 14 déplacements de focus relevés. Sur les 14 : **11 réussissent**, et
-/// **8 sur 10 à 12 Mb/s** contre **3 sur 4 à 8 Mb/s** — les deux échecs à
-/// 12 Mb/s se produisent avec 51 % de marge sur le seuil de barreau, donc
-/// **sans explication arithmétique**. Voir le §3.4 ④ des résultats.
+/// ⚠️ **`FACTEUR_FOCUS` does NOT separate the two values.** A first
+/// wording of this comment claimed it, on a subset of 8 of the
+/// 14 recorded focus moves. Over the 14: **11 succeed**, and
+/// **8 out of 10 at 12 Mb/s** against **3 out of 4 at 8 Mb/s** — the two failures at
+/// 12 Mb/s happen with 51 % of margin on the rung threshold, hence
+/// **without an arithmetic explanation**. See §3.4 ④ of the results.
 fn budget_bps() -> u32 {
     static BUDGET: OnceLock<u32> = OnceLock::new();
     *BUDGET.get_or_init(|| {
@@ -81,27 +81,27 @@ fn budget_bps() -> u32 {
             .ok()
             .and_then(|v| v.parse::<u32>().ok())
             .unwrap_or(12_000_000);
-        tracing::info!(budget_bps = budget, "budget de debit de la session");
+        tracing::info!(budget_bps = budget, "session bitrate budget");
         budget
     })
 }
 
-/// Recalcule les parts et n'envoie que celles qui ont changé.
+/// Recomputes the shares and sends only those that changed.
 ///
-/// **Appelée APRÈS `distribuer`**, jamais avant : les ordres de sommeil
-/// changent l'éveil, et une part calculée avant eux décrirait l'état
-/// précédent.
+/// **Called AFTER `distribuer`**, never before: sleep orders
+/// change wakefulness, and a share computed before them would describe the
+/// previous state.
 ///
-/// Un canal rompu ici est retiré du VIVIER, exactement comme dans
-/// `distribuer` — pas seulement de `canaux` et `dernieres_parts`. Sans ce
-/// retrait, l'entrée survivrait dans `Vivier::entrees` pour toute la vie du
-/// processus : une fois hors de `canaux`, `distribuer` ne la redétecte plus
-/// jamais (son bras `None => false` ne voit qu'une session déjà absente), et
-/// elle resterait candidate à une place d'encodeur sans qu'aucun fil ne
-/// l'occupe. Les ordres que ce retrait engendre (par exemple réveiller une
-/// session qui attendait cette place) sont donc relayés à `distribuer`, sous
-/// le même verrou — aucune nouvelle prise, `distribuer` reçoit le
-/// `MutexGuard` déjà tenu ici.
+/// A channel broken here is removed from the POOL, exactly as in
+/// `distribuer` — not only from `canaux` and `dernieres_parts`. Without this
+/// removal, the entry would survive in `Vivier::entrees` for the whole life of the
+/// process: once out of `canaux`, `distribuer` never detects it again
+/// (its `None => false` arm only sees an already absent session), and
+/// it would stay a candidate for an encoder place without any thread
+/// occupying it. The orders this removal generates (for example waking a
+/// session that was waiting for this place) are therefore relayed to `distribuer`, under
+/// the same lock — no new acquisition, `distribuer` receives the
+/// `MutexGuard` already held here.
 pub(super) fn distribuer_les_parts(garde: &mut MutexGuard<'static, Etat>) {
     let eveillees = garde.vivier.eveillees();
     let focalisee = garde.focalisee.clone();
@@ -117,7 +117,7 @@ pub(super) fn distribuer_les_parts(garde: &mut MutexGuard<'static, Etat>) {
 
     let parts = repartiteur::repartir(budget_bps(), &fenetres);
 
-    // Les sessions disparues ne doivent pas laisser leur part en mémoire.
+    // Vanished sessions must not leave their share in memory.
     let vivantes: std::collections::HashSet<&String> =
         parts.iter().map(|(session, _)| session).collect();
     garde
@@ -129,58 +129,58 @@ pub(super) fn distribuer_les_parts(garde: &mut MutexGuard<'static, Etat>) {
         if garde.dernieres_parts.get(&session) == Some(&bps) {
             continue;
         }
-        // ⚠️ **`None` N'EST PAS UNE RUPTURE, et le round 3 a corrigé cette
-        // rédaction** — même grief que `registre::distribuer` au round 2.
-        // C'est inatteignable aujourd'hui (les sessions sortent de
-        // `canaux.keys()` sous le MÊME verrou, quelques lignes plus haut),
-        // donc sans conséquence ; mais ce lot s'était donné pour règle de ne
-        // plus FABRIQUER d'issue, et l'écrire `Envoi::Rompu` ferait purger une
-        // session sur un fait qui n'a pas eu lieu si cette invariance venait à
-        // tomber. Un `Option` nomme la chose : il n'y a eu aucun envoi.
+        // ⚠️ **`None` IS NOT A BREAK, and round 3 fixed this
+        // wording** — same grievance as `registre::distribuer` in round 2.
+        // It is unreachable today (the sessions come out of
+        // `canaux.keys()` under the SAME lock, a few lines above),
+        // hence without consequence; but this batch had set itself the rule of no
+        // longer FABRICATING an outcome, and writing it as `Envoi::Rompu` would purge a
+        // session on a fact that did not happen if that invariance were to
+        // fall. An `Option` names the thing: there was no send.
         let issue = garde
             .canaux
             .get(&session)
             .map(|canal| canal.envoyer(Message::Part { bps }));
         match issue {
-            // Aucun canal : rien n'est parti, et il n'y a rien à purger — la
-            // session n'est déjà plus dans `canaux`.
+            // No channel: nothing went out, and there is nothing to purge — the
+            // session is already no longer in `canaux`.
             None => {}
-            // Livrée : on peut mémoriser, et le garde d'écrasement en tête de
-            // boucle évitera de la réémettre tant qu'elle ne change pas.
+            // Delivered: we can memorise, and the overwrite guard at the head of the
+            // loop will avoid re-emitting it as long as it does not change.
             Some(Envoi::Depose(_)) => {
                 garde.dernieres_parts.insert(session, bps);
             }
-            // 🔴 REFUSÉE : ON NE MÉMORISE PAS, ET C'EST TOUT LE CORRECTIF DU
-            // ROUND 1. La file de cette fenêtre était pleine : la part n'est
-            // jamais partie. L'inscrire dans `dernieres_parts` ferait juger la
-            // valeur « déjà livrée » par le garde d'écrasement ci-dessus, qui
-            // supprimerait alors TOUTE réémission future de cette valeur — la
-            // fenêtre resterait à son débit précédent tant que sa part
-            // calculée ne change pas, sans borne. En ne mémorisant rien, le
-            // tour de roue suivant la repropose de lui-même.
+            // 🔴 REFUSED: WE DO NOT MEMORISE, AND THAT IS ROUND 1'S WHOLE
+            // FIX. This window's queue was full: the share never
+            // went out. Writing it into `dernieres_parts` would make the overwrite guard above
+            // judge the value "already delivered", which
+            // would then suppress ANY future re-emission of that value — the
+            // window would stay at its previous bitrate as long as its computed
+            // share does not change, without bound. By memorising nothing, the
+            // next wheel round proposes it again by itself.
             //
-            // ⚠️ **Et surtout PAS `rompus.push`** : la session est VIVANTE,
-            // seulement en retard. La purger reviendrait à tuer l'arbitrage de
-            // la fenêtre la plus en peine — exactement la mauvaise réaction.
+            // ⚠️ **And above all NOT `rompus.push`**: the session is ALIVE,
+            // merely late. Purging it would amount to killing the arbitration of
+            // the window in most trouble — exactly the wrong reaction.
             //
-            // Le refus est déjà journalisé, au palier et avec le nom de la
-            // session, par `EmetteurSession::journaliser_le_refus` : le
-            // retracer ici doublerait la ligne sans rien ajouter.
+            // The refusal is already logged, at the step and with the name of the
+            // session, by `EmetteurSession::journaliser_le_refus`:
+            // tracing it again here would duplicate the line without adding anything.
             Some(Envoi::Refuse) => {}
             Some(Envoi::Rompu) => rompus.push(session),
         }
     }
 
-    // Le remede : un canal rompu ICI n'est pas seulement une part perdue,
-    // c'est le meme signal qu'un canal rompu dans `distribuer` — une fenetre
-    // dont le fil est parti sans passer par `retirer` (voir `Fenetre::servir`,
-    // point de passage unique cote fil, court-circuite par une panique). Sans
-    // ce retrait du vivier, l'entree y survivrait pour toute la vie du
-    // processus.
+    // The remedy: a channel broken HERE is not only a lost share,
+    // it is the same signal as a channel broken in `distribuer` — a window
+    // whose thread left without going through `retirer` (see `Fenetre::servir`,
+    // the single passage point on the thread side, short-circuited by a panic). Without
+    // this removal from the pool, the entry would survive there for the whole life of the
+    // process.
     //
-    // `oublier` et non trois retraits écrits ici : c'est le point de passage
-    // unique du registre, et il porte le champ que cette boucle omettait —
-    // `focalisee` (M1, revue finale de branche). Voir sa doc.
+    // `oublier` and not three removals written here: it is the registry's single
+    // passage point, and it carries the field this loop omitted —
+    // `focalisee` (M1, final branch review). See its doc.
     let mut ordres_du_retrait = Vec::new();
     for session in rompus {
         ordres_du_retrait.extend(oublier(garde, &session));
@@ -190,11 +190,11 @@ pub(super) fn distribuer_les_parts(garde: &mut MutexGuard<'static, Etat>) {
     }
 }
 
-// Module de tests extrait dans un fichier voisin : ce fichier était à 488
-// lignes pour un plafond de projet à 500, et le round de correction 2 y
-// ajoute. Extraire, jamais comprimer — et dans une tâche DÉDIÉE, avant celle
-// qui ajoute. Même idiome que `file/tests.rs` et `superviseur/table.rs` ;
-// voir la doc en tête du fichier extrait.
+// Test module extracted into a sibling file: this file was at 488
+// lines for a project cap of 500, and fix round 2
+// adds to it. Extract, never compress — and in a DEDICATED task, before the one
+// that adds. Same idiom as `file/tests.rs` and `superviseur/table.rs`;
+// see the doc at the head of the extracted file.
 #[cfg(test)]
 #[path = "parts/tests.rs"]
 mod tests;

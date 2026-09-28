@@ -1,34 +1,34 @@
 #!/usr/bin/env node
-// Harnais de recette : pilote Chrome sans interface via CDP brut, dans le
-// même esprit que client/verify-webrtc.mjs. Deux modes :
-//   - stats   : relève l'overlay #stats et getStats() bruts pendant une durée
-//               donnée, avec des molettes envoyées en continu pour simuler un
-//               défilement réel (comme la tâche 12). Piloté avec
-//               scroll-test.html (bandes de couleur) servi depuis
-//               `python3 -m http.server 8099` sur cette machine, ouvert dans
-//               Firefox côté VM.
-//   - latency : mesure le délai « touche envoyée -> pixel visible changé »,
-//               entièrement dans l'horloge JS d'une seule page (aucun aller-
-//               retour Node<->Chrome dans l'intervalle chronométré). Piloté
-//               avec latency-test.html (bascule noir/blanc sur Espace),
-//               servi de la même façon.
+// Acceptance harness: drives a headless Chrome over raw CDP, in the
+// same spirit as client/verify-webrtc.mjs. Two modes:
+//   - stats   : reads the #stats overlay and raw getStats() during a given
+//               duration, with wheel events sent continuously to simulate a
+//               real scroll (as in task 12). Driven with
+//               scroll-test.html (colour bands) served from
+//               `python3 -m http.server 8099` on this machine, opened in
+//               Firefox on the VM side.
+//   - latency : measures the "key sent -> visible pixel changed" delay,
+//               entirely within the JS clock of a single page (no Node<->Chrome
+//               round trip in the timed interval). Driven
+//               with latency-test.html (black/white toggle on Space),
+//               served the same way.
 //
-// Usage (chaîne complète déjà montée — signaling, client Vite, agent lancé
-// via scripts/run-agent.sh, Firefox sur la page de test correspondante et
-// remis au premier plan APRÈS le dernier redémarrage de l'agent — voir
-// docs/superpowers/plans/2026-07-27-jalon1-recette.md, chapitre « Ce qui a
-// été appris », sur le vol de focus par schtasks /it) :
+// Usage (whole chain already set up — signaling, Vite client, agent launched
+// through scripts/run-agent.sh, Firefox on the matching test page and
+// brought to the foreground AFTER the last restart of the agent — see
+// docs/superpowers/plans/2026-07-27-jalon1-recette.md, chapter "What was
+// learned", on focus theft by schtasks /it):
 //   node recette/harness.mjs stats   <url> <durationMs>
 //   node recette/harness.mjs latency <url> <trials>
 //
-// ⚠️ DEPUIS LE SOUS-BLOC P2, CETTE INVOCATION NE SUFFIT PLUS face à un service
-// gardé : poser aussi `RECETTE_EMAIL`, `RECETTE_MOTDEPASSE`, et `PLATEFORME_URL`
-// si le service n'écoute pas sur http://127.0.0.1:8080. Voir
-// `recette/jeton-recette.mjs` — sans elles, l'outil AVERTIT et continue.
+// ⚠️ SINCE SUB-BLOCK P2, THIS INVOCATION IS NO LONGER ENOUGH against a guarded
+// service: also set `RECETTE_EMAIL`, `RECETTE_MOTDEPASSE`, and `PLATEFORME_URL`
+// if the service does not listen on http://127.0.0.1:8080. See
+// `recette/jeton-recette.mjs` — without them, the tool WARNS and carries on.
 
 //
-// STATS_MODE=keyboard en variable d'environnement bascule le mode `stats`
-// sur un défilement par Espace (diagnostic) plutôt que par molette.
+// STATS_MODE=keyboard as an environment variable switches the `stats` mode
+// to scrolling with Space (diagnostic) rather than with the wheel.
 
 import { spawn } from 'node:child_process';
 import { mkdtemp, rm } from 'node:fs/promises';
@@ -143,12 +143,12 @@ async function withChrome(fn) {
                 window.RTCPeerConnection.prototype = NativeRTCPeerConnection.prototype;
             `,
         });
-        // Sous-bloc P2 : sans jeton, la poignée de main `client` est refusée.
+        // Sub-block P2: without a token, the `client` handshake is refused.
         await semerJeton(cdp);
         await cdp.send('Page.navigate', { url });
         const pcAppeared = await pollUntil(() => cdp.eval('window.__pc !== null && window.__pc !== undefined'), 15_000);
-        if (!pcAppeared) throw new Error('aucune RTCPeerConnection créée après 15s');
-        // Attend l'état "prêt" (bandeau #status masqué par main.ts) avant de mesurer.
+        if (!pcAppeared) throw new Error('no RTCPeerConnection created after 15s');
+        // Waits for the "ready" state (#status banner hidden by main.ts) before measuring.
         await pollUntil(() => cdp.eval("document.querySelector('#status')?.dataset.hidden === 'true'"), 15_000);
         return await fn(cdp);
     } finally {
@@ -159,32 +159,32 @@ async function withChrome(fn) {
 
 async function modeStats(durationMs) {
     await withChrome(async (cdp) => {
-        console.log('Connexion établie, envoi de molette continue pendant', durationMs, 'ms...');
-        // Boucle de molette dans la page (un seul domaine d'horloge, pas de
-        // rafale Node<->Chrome) : dispatch un WheelEvent réel sur #remote
-        // toutes les ~60ms, comme un défilement utilisateur soutenu.
+        console.log('Connection established, sending continuous wheel for', durationMs, 'ms...');
+        // Wheel loop inside the page (a single clock domain, no
+        // Node<->Chrome burst): dispatches a real WheelEvent on #remote
+        // every ~60ms, like a sustained user scroll.
         const useKeyboard = process.env.STATS_MODE === 'keyboard';
         const wheelPromise = cdp.eval(
             `(async () => {
                 const video = document.querySelector('#remote');
                 const rect = video.getBoundingClientRect();
                 const cx = rect.left + rect.width/2, cy = rect.top + rect.height/2;
-                // La molette Windows agit sur la fenêtre SOUS LE CURSEUR : il
-                // faut d'abord y positionner le curseur (le gestionnaire
-                // onWheel n'envoie que le delta, jamais une position).
+                // The Windows wheel acts on the window UNDER THE CURSOR: the
+                // cursor must first be positioned there (the onWheel
+                // handler only sends the delta, never a position).
                 video.dispatchEvent(new PointerEvent('pointermove', { clientX: cx, clientY: cy, bubbles: true, pointerId: 1, isPrimary: true }));
                 await new Promise((r) => setTimeout(r, 150));
                 const deadline = performance.now() + ${durationMs};
                 let n = 0;
                 while (performance.now() < deadline) {
                     if (${useKeyboard ? 'true' : 'false'}) {
-                        // Diagnostic : Espace fait défiler une page vers le bas
-                        // par défaut dans Firefox, sans dépendre de la position
-                        // du curseur — sert à décorréler « molette cassée » de
-                        // « pas de focus / fenêtre pas sous le curseur ». Voir
-                        // la réserve « molette non reproduite » du document de
-                        // recette : cette voie clavier n'est qu'un diagnostic,
-                        // pas une mesure de défilement à la molette.
+                        // Diagnosis: Space scrolls a page down by default
+                        // in Firefox, without depending on the cursor
+                        // position — used to decorrelate "broken wheel" from
+                        // "no focus / window not under the cursor". See
+                        // the "wheel not reproduced" reservation of the acceptance
+                        // document: this keyboard path is only a diagnosis,
+                        // not a measurement of wheel scrolling.
                         window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space', key: ' ', bubbles: true, cancelable: true }));
                         window.dispatchEvent(new KeyboardEvent('keyup', { code: 'Space', key: ' ', bubbles: true, cancelable: true }));
                     } else {
@@ -203,17 +203,17 @@ async function modeStats(durationMs) {
         const after = await sampleStats(cdp);
         const statsText = await cdp.eval("document.querySelector('#stats')?.textContent ?? ''");
         const sendCount = await cdp.eval('window.__sendCount');
-        console.log('messages envoyés sur les canaux (input+control) :', sendCount);
-        console.log('--- Avant ---');
+        console.log('messages sent on the channels (input+control):', sendCount);
+        console.log('--- Before ---');
         printSample(before);
-        console.log('--- Après ---');
+        console.log('--- After ---');
         printSample(after);
-        console.log('Overlay #stats (dernier texte affiché) :', statsText);
+        console.log('Overlay #stats (last text displayed):', statsText);
         const dFrames = (after.stats?.framesDecoded ?? 0) - (before.stats?.framesDecoded ?? 0);
         const dt = (after.stats?.timestamp - before.stats?.timestamp) / 1000;
-        console.log(`Δ framesDecoded=${dFrames} sur ${dt.toFixed(2)}s => ${(dFrames / dt).toFixed(2)} im/s`);
+        console.log(`Δ framesDecoded=${dFrames} over ${dt.toFixed(2)}s => ${(dFrames / dt).toFixed(2)} fps`);
         console.log(`packetsLost=${after.stats?.packetsLost} framesDropped=${after.stats?.framesDropped}`);
-        if (cdp.pageErrors.length) console.log('Erreurs JS :', cdp.pageErrors);
+        if (cdp.pageErrors.length) console.log('JS errors:', cdp.pageErrors);
     });
 }
 
@@ -233,14 +233,14 @@ async function sampleStats(cdp) {
 
 function printSample(sample) {
     const s = sample.stats;
-    if (!s) { console.log('  (aucune donnée inbound-rtp)'); return; }
+    if (!s) { console.log('  (no inbound-rtp data)'); return; }
     console.log(`  framesDecoded=${s.framesDecoded} frameWidth=${s.frameWidth} frameHeight=${s.frameHeight} packetsLost=${s.packetsLost} framesDropped=${s.framesDropped} t=${s.timestamp}`);
 }
 
-// Extrait uniquement freezeCount/totalFreezesDuration (léger, appelé deux
-// fois par essai de latence pour corréler un essai lent à un gel détecté par
-// le navigateur plutôt qu'à une simple hypothèse non vérifiée — voir la
-// ronde de correction 1 du rapport de tâche 14).
+// Only extracts freezeCount/totalFreezesDuration (light, called twice
+// per latency trial to correlate a slow trial with a freeze detected by
+// the browser rather than with a mere unverified hypothesis — see
+// correction round 1 of the task 14 report).
 async function sampleFreezes(cdp) {
     return cdp.eval(
         `(async () => {
@@ -264,7 +264,7 @@ async function modeLatency(trials) {
             const r = await cdp.eval(
                 `(async () => {
                     const video = document.querySelector('#remote');
-                    if (!video.videoWidth) return { error: 'pas encore de frame vidéo' };
+                    if (!video.videoWidth) return { error: 'no video frame yet' };
                     const canvas = document.createElement('canvas');
                     canvas.width = video.videoWidth;
                     canvas.height = video.videoHeight;
@@ -276,40 +276,40 @@ async function modeLatency(trials) {
                     }
                     const before = sampleCenter();
 
-                    // Espace = touche de bascule noir/blanc du plein écran de
-                    // la page de test. Dispatché sur window, comme le vrai
-                    // écouteur de client/src/input.ts (window.addEventListener
-                    // ('keydown', ...)) — synthétique, mais suit exactement le
-                    // même chemin de code que le clavier réel.
+                    // Space = the black/white toggle key of the test page's
+                    // fullscreen. Dispatched on window, like the real
+                    // listener of client/src/input.ts (window.addEventListener
+                    // ('keydown', ...)) — synthetic, but follows exactly the
+                    // same code path as the real keyboard.
                     const t0 = performance.now();
                     window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space', key: ' ', bubbles: true, cancelable: true }));
                     window.dispatchEvent(new KeyboardEvent('keyup', { code: 'Space', key: ' ', bubbles: true, cancelable: true }));
 
                     return await new Promise((resolve) => {
                         let settled = false;
-                        // Filet de sécurité INDÉPENDANT des callbacks de frame :
-                        // si aucune nouvelle image n'arrive du tout (écran
-                        // figé côté agent, panne de chaîne), requestVideoFrame-
-                        // Callback ne serait jamais rappelé et la promesse ne
-                        // se résoudrait jamais sans ce minuteur autonome.
+                        // Safety net INDEPENDENT of the frame callbacks:
+                        // if no new image arrives at all (screen
+                        // frozen on the agent side, chain failure), requestVideoFrame-
+                        // Callback would never be called back and the promise would
+                        // never resolve without this standalone timer.
                         const timer = setTimeout(() => {
                             if (settled) return;
                             settled = true;
-                            resolve({ error: 'timeout (3s) sans nouvelle frame vidéo détectée du tout', before, after: sampleCenter() });
+                            resolve({ error: 'timeout (3s) without any new video frame detected', before, after: sampleCenter() });
                         }, 3000);
                         function onFrame(now, metadata) {
                             if (settled) return;
                             const after = sampleCenter();
                             const diff = Math.abs(after[0]-before[0]) + Math.abs(after[1]-before[1]) + Math.abs(after[2]-before[2]);
-                            // expectedDisplayTime : « vsync par lequel le
-                            // navigateur s'attend à ce que la frame soit
-                            // visible » (spec requestVideoFrameCallback) —
-                            // c'est bien le moment d'AFFICHAGE recherché ici.
-                            // presentationTime, à l'inverse, est le moment où
-                            // le navigateur a SOUMIS la frame au compositeur,
-                            // un cycle d'affichage plus tôt : gardé seulement
-                            // en repli si expectedDisplayTime est absent d'une
-                            // implémentation donnée.
+                            // expectedDisplayTime: "the vsync at which the
+                            // browser expects the frame to be
+                            // visible" (requestVideoFrameCallback spec) —
+                            // that is indeed the DISPLAY instant sought here.
+                            // presentationTime, conversely, is the instant when
+                            // the browser SUBMITTED the frame to the compositor,
+                            // one display cycle earlier: kept only
+                            // as a fallback if expectedDisplayTime is missing from a
+                            // given implementation.
                             const photonTime = metadata.expectedDisplayTime ?? metadata.presentationTime ?? now;
                             if (diff > 150) {
                                 settled = true;
@@ -334,38 +334,38 @@ async function modeLatency(trials) {
                     ? (freezeAfter.totalFreezesDuration - freezeBefore.totalFreezesDuration) * 1000
                     : null;
             results.push(r);
-            console.log(`essai ${i + 1}/${trials} :`, JSON.stringify(r));
-            // Laisse la vidéo se stabiliser avant l'essai suivant.
+            console.log(`trial ${i + 1}/${trials}:`, JSON.stringify(r));
+            // Lets the video settle before the next trial.
             await new Promise((resolve) => setTimeout(resolve, 1500));
         }
         const ok = results.filter((r) => typeof r.latencyMs === 'number');
         console.log('');
-        console.log(`${ok.length}/${results.length} essais exploitables.`);
+        console.log(`${ok.length}/${results.length} usable trials.`);
         if (ok.length) {
             const values = ok.map((r) => r.latencyMs).sort((a, b) => a - b);
             const sum = values.reduce((a, b) => a + b, 0);
             const mid = Math.floor(values.length / 2);
-            // Médiane correcte : moyenne des deux valeurs centrales sur un
-            // nombre pair d'essais, pas seulement l'élément d'indice
-            // length/2 (qui donne le (n/2+1)-ième élément, pas le milieu).
+            // Correct median: average of the two central values on an
+            // even number of trials, not only the element at index
+            // length/2 (which gives the (n/2+1)-th element, not the middle).
             const median =
                 values.length % 2 === 0 ? (values[mid - 1] + values[mid]) / 2 : values[mid];
-            console.log('valeurs (ms) :', values.map((v) => v.toFixed(1)).join(', '));
+            console.log('values (ms):', values.map((v) => v.toFixed(1)).join(', '));
             console.log(
-                `min=${values[0].toFixed(1)} max=${values[values.length - 1].toFixed(1)} moyenne=${(sum / values.length).toFixed(1)} médiane=${median.toFixed(1)}`,
+                `min=${values[0].toFixed(1)} max=${values[values.length - 1].toFixed(1)} mean=${(sum / values.length).toFixed(1)} median=${median.toFixed(1)}`,
             );
             const withFreeze = ok.filter((r) => r.freezeCountDelta !== null);
             if (withFreeze.length) {
                 console.log('');
-                console.log('Corrélation gel détecté / latence de cet essai :');
+                console.log('Correlation of detected freeze / latency of this trial:');
                 for (const r of withFreeze) {
                     console.log(
-                        `  latence=${r.latencyMs.toFixed(1)}ms  freezeCountDelta=${r.freezeCountDelta}  totalFreezesDurationDelta=${r.totalFreezesDurationDeltaMs.toFixed(1)}ms`,
+                        `  latency=${r.latencyMs.toFixed(1)}ms  freezeCountDelta=${r.freezeCountDelta}  totalFreezesDurationDelta=${r.totalFreezesDurationDeltaMs.toFixed(1)}ms`,
                     );
                 }
             }
         }
-        if (cdp.pageErrors.length) console.log('Erreurs JS :', cdp.pageErrors);
+        if (cdp.pageErrors.length) console.log('JS errors:', cdp.pageErrors);
     });
 }
 

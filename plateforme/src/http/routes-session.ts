@@ -1,35 +1,35 @@
-// `POST /session` : l'utilisateur demande à ouvrir une session sur SA VM.
+// `POST /session`: the user asks to open a session on THEIR VM.
 //
-// 🔴 CE QUE CETTE ROUTE REND, ET CE QU'ELLE NE REND PAS. La spec §4 « P4 »
-// écrit qu'elle rend « l'identifiant de session, le préfixe ET la
-// configuration ICE ». Elle rend `{ vm, nom, prefixe, etat }`, et rien
-// d'autre (divergence E4, décision D7). Deux raisons, dont la première est
-// décisive :
+// 🔴 WHAT THIS ROUTE RETURNS, AND WHAT IT DOES NOT. The spec §4 « P4 »
+// writes that it returns « the session id, the prefix AND the
+// ICE configuration ». It returns `{ vm, nom, prefixe, etat }`, and nothing
+// else (divergence E4, decision D7). Two reasons, the first of which is
+// decisive:
 //
-// ① LA CONFIGURATION ICE EST PAR SESSION, et une route HTTP n'en connaîtrait
-//    qu'une sur N. `signaling/ice.ts` compose son identifiant TURN à partir du
-//    NOM DE SESSION et en signe le tout ; or une VM ouvre `<préfixe>:bureau`
-//    PLUS une session par fenêtre (`<préfixe>:w-1`, `w-2`, …). La route ne
-//    pourrait servir que la session de contrôle, et le relais continuerait de
-//    servir toutes les autres. Un second chemin de délivrance qui couvre une
-//    session sur N n'est pas une simplification : c'est un second endroit à
-//    garder synchrone, dont on n'a pas le droit de se servir.
+// ① THE ICE CONFIGURATION IS PER SESSION, and an HTTP route would only know
+//    one of N. `signaling/ice.ts` builds its TURN identifier from the
+//    SESSION NAME and signs the whole; yet a VM opens `<prefix>:bureau`
+//    PLUS one session per window (`<prefix>:w-1`, `w-2`, …). The route
+//    could only serve the control session, and the relay would keep
+//    serving all the others. A second delivery path that covers one
+//    session out of N is not a simplification: it is a second place to
+//    keep in sync, which one has no right to rely on.
 //
-// ② LE NOM DE SESSION COMPOSÉ SERAIT UNE TROISIÈME COPIE DE `bureau`. La
-//    constante vit déjà en Rust (`agent/src/superviseur/protocole.rs`,
-//    `NOM_SESSION_DE_CONTROLE`) et, côté TypeScript, en littéral inline dans
+// ② THE COMPOSED SESSION NAME WOULD BE A THIRD COPY OF `bureau`. The
+//    constant already lives in Rust (`agent/src/superviseur/protocole.rs`,
+//    `NOM_SESSION_DE_CONTROLE`) and, on the TypeScript side, as an inline literal in
 //    `client/src/bureau/porteur-dom.ts` (`composer(deps.prefixe, 'bureau')` —
-//    un `NOM_SESSION_DE_CONTROLE` nommé vivait dans `client/src/shell-page.ts`
-//    avant que la tâche 9 ne l'inline, 31 août 2026), et la spec §2.6 nomme
-//    déjà cette duplication comme un défaut connu.
+//    a named `NOM_SESSION_DE_CONTROLE` lived in `client/src/shell-page.ts`
+//    before task 9 inlined it, 31 August 2026), and the spec §2.6 already names
+//    this duplication as a known defect.
 //
-// ⚠️ ELLE NE REND PAS NON PLUS `adresse` : c'est de la topologie interne dont
-// le navigateur n'a aucun usage — il parle au signaling, jamais à la VM.
+// ⚠️ NOR DOES IT RETURN `adresse`: that is internal topology which
+// the browser has no use for — it talks to the signaling, never to the VM.
 //
-// ⚠️ AUCUN CODE CLIENT N'EST PRIVÉ DE QUOI QUE CE SOIT par cette décision, et
-// c'est ce qui la rend gratuite : `client/src/prefixe.ts::composer` construit
-// `<préfixe>:bureau`, et `client/src/webrtc.ts` reçoit son `ice-config` du
-// relais comme aujourd'hui.
+// ⚠️ NO CLIENT CODE IS DEPRIVED OF ANYTHING by this decision, and
+// that is what makes it free: `client/src/prefixe.ts::composer` builds
+// `<prefix>:bureau`, and `client/src/webrtc.ts` receives its `ice-config` from the
+// relay as today.
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Pilote } from '../base/pilote';
@@ -47,17 +47,17 @@ export interface DependancesSession {
     base: Pilote;
     secretJeton: string;
     origineClient?: string;
-    /// 🔴 L'HORLOGE VIENT D'ICI, jamais `Date.now()` lu dans ce module : c'est
-    /// ce qui rend la transition du critère ④ observable dans une exécution de
-    /// test, où il n'y aurait autrement qu'un seul instant.
+    /// 🔴 THE CLOCK COMES FROM HERE, never `Date.now()` read in this module: that is
+    /// what makes the transition of criterion ④ observable within a
+    /// test run, where there would otherwise be only one instant.
     maintenant: () => number;
-    /// 🔴 LE FREIN « TOUTE REQUÊTE », PARTAGÉ avec `routes-vm.ts` ET
-    /// `signaling/relais.ts` — voir `securite/frein.ts::BUDGET_REQUETES`.
-    /// Cette route n'a aucune notion d'échec : son abus est un VOLUME,
-    /// jamais une suite de tentatives ratées.
+    /// 🔴 THE « ANY REQUEST » BRAKE, SHARED with `routes-vm.ts` AND
+    /// `signaling/relais.ts` — see `securite/frein.ts::BUDGET_REQUETES`.
+    /// This route has no notion of failure: its abuse is a VOLUME,
+    /// never a series of failed attempts.
     frein: Frein;
-    /// Les proxys dont on croit l'en-tête `X-Forwarded-For` — même ensemble
-    /// que `routes-auth.ts` et `routes-vm.ts`, jamais un second.
+    /// The proxies whose `X-Forwarded-For` header is trusted — same set
+    /// as `routes-auth.ts` and `routes-vm.ts`, never a second one.
     proxyDeConfiance: ReadonlySet<string>;
 }
 
@@ -71,22 +71,22 @@ function repondre(
 ): void {
     rep.writeHead(code, {
         'content-type': 'application/json; charset=utf-8',
-        // ⚠️ INCONDITIONNELS, et posés sur TOUTE réponse — y compris les
-        // réponses d'ERREUR (401, 405, 413, 429, 500, 503), qui portent
-        // souvent plus d'information qu'une réponse normale. Ils sont étalés
-        // AVANT `cors` pour que la politique d'origine, qui est facultative,
-        // ne puisse jamais les écraser par mégarde.
+        // ⚠️ UNCONDITIONAL, and set on EVERY response — including the
+        // ERROR responses (401, 405, 413, 429, 500, 503), which
+        // often carry more information than a normal response. They are spread
+        // BEFORE `cors` so that the origin policy, which is optional,
+        // can never overwrite them by mistake.
         ...ENTETES_SECURITE,
         ...(cors ?? {}),
     });
     rep.end(JSON.stringify(corps));
 }
 
-/// Enregistre la requête sur le budget « toute requête », et journalise SI ET
-/// SEULEMENT SI le frein vient de mordre — même règle et même raison que
-/// `routes-auth.ts::compterLEchec` et `routes-vm.ts::compterLaRequete` : la
-/// requête suivante sera refusée tout en haut de `servirSession`, avant de
-/// jamais rappeler cette fonction.
+/// Records the request on the « any request » budget, and logs IF AND
+/// ONLY IF the brake has just bitten — same rule and same reason as
+/// `routes-auth.ts::compterLEchec` and `routes-vm.ts::compterLaRequete`: the
+/// next request will be refused at the very top of `servirSession`, before
+/// ever calling this function again.
 function compterLaRequete(
     frein: Frein,
     cles: readonly (readonly [string, Budget])[],
@@ -101,7 +101,7 @@ function compterLaRequete(
             route: CHEMIN,
             adresse,
             retry_apres_s: apres.retryApresS,
-            entrees: frein.taille(),
+            entrees: frein.size(),
             evictions: frein.evictions(),
         }),
     );
@@ -113,14 +113,14 @@ export async function servirSession(
     deps: DependancesSession,
 ): Promise<boolean> {
     const chemin = new URL(req.url ?? '/', 'http://placeholder').pathname;
-    // Comparaison EXACTE, jamais un `startsWith`.
+    // EXACT comparison, never a `startsWith`.
     if (chemin !== CHEMIN) return false;
 
     const cors = entetesCors(req.headers.origin, deps.origineClient);
 
-    // La requête préalable : voir le commentaire jumeau de `routes-vm.ts`.
-    // Sans elle, la route est inatteignable depuis un navigateur, l'en-tête
-    // `Authorization` rendant la requête non simple.
+    // The preflight request: see the twin comment of `routes-vm.ts`.
+    // Without it, the route is unreachable from a browser, the
+    // `Authorization` header making the request not simple.
     if (req.method === 'OPTIONS') {
         rep.writeHead(204, { ...ENTETES_SECURITE, ...(cors ?? {}) });
         rep.end();
@@ -131,9 +131,9 @@ export async function servirSession(
         return true;
     }
 
-    // 🔴 LE FREIN « TOUTE REQUÊTE » EST CONSULTÉ ICI — AVANT `lirePorteur` et
-    // avant tout accès à la base. Même position et même raison que
-    // `routes-vm.ts` : compter après le travail qu'on borne ne le borne pas.
+    // 🔴 THE « ANY REQUEST » BRAKE IS CONSULTED HERE — BEFORE `lirePorteur` and
+    // before any database access. Same position and same reason as
+    // `routes-vm.ts`: counting after the work being bounded does not bound it.
     const adresseRequete = adresseSource(
         req.socket.remoteAddress,
         Array.isArray(req.headers['x-forwarded-for'])
@@ -141,11 +141,11 @@ export async function servirSession(
             : req.headers['x-forwarded-for'],
         deps.proxyDeConfiance,
     );
-    // 🔴 UNE `PLATEFORME_PROXY_DE_CONFIANCE` MAL POSÉE FAIT DÉGÉNÉRER CE
-    // FREIN EN FREIN GLOBAL, ET SA GRAVITÉ A CHANGÉ AVEC CE LOT — voir le
-    // paragraphe complet chez `routes-vm.ts` (même position, même clé
-    // `BUDGET_REQUETES`, même témoin : la ligne `frein-requetes` qui nomme
-    // l'adresse retenue), jamais recopié pour ne pas diverger.
+    // 🔴 A MISCONFIGURED `PLATEFORME_PROXY_DE_CONFIANCE` MAKES THIS
+    // BRAKE DEGENERATE INTO A GLOBAL BRAKE, AND ITS SEVERITY CHANGED WITH THIS BATCH — see the
+    // full paragraph at `routes-vm.ts` (same position, same key
+    // `BUDGET_REQUETES`, same witness: the `frein-requetes` line that names
+    // the retained address), never copied so as not to drift.
     const clesRequetes: readonly (readonly [string, Budget])[] = [
         [cleRequetes(adresseRequete), BUDGET_REQUETES],
     ];
@@ -163,50 +163,50 @@ export async function servirSession(
         return true;
     }
 
-    // 🔴 LE CORPS DE LA REQUÊTE N'EST PAS LU, ET IL N'Y A RIEN À Y METTRE :
-    // l'index partiel `vm_un_utilisateur` garantit zéro ou une VM par
-    // utilisateur, donc il n'y a aucune VM à désigner. C'est ce qui dispense
-    // cette route de la borne de 4 Kio de `routes-auth.ts` — ⚠️ ET LE JOUR OÙ
-    // UN CORPS DEVIENDRA NÉCESSAIRE, LA BORNE LE DEVIENDRA AUSSI. Sans borne,
-    // un pair authentifié ferait grossir la mémoire du service à volonté ; la
-    // seule raison pour laquelle elle manque ici est qu'il n'y a rien à lire.
+    // 🔴 THE REQUEST BODY IS NOT READ, AND THERE IS NOTHING TO PUT IN IT:
+    // the partial index `vm_un_utilisateur` guarantees zero or one VM per (policy: allow-fr - frozen wire key or SQLite column)
+    // user, so there is no VM to designate. That is what spares
+    // this route the 4 KiB bound of `routes-auth.ts` — ⚠️ AND THE DAY
+    // A BODY BECOMES NECESSARY, THE BOUND WILL TOO. Without a bound,
+    // an authenticated peer would grow the memory of the service at will; the
+    // only reason it is missing here is that there is nothing to read.
     const orchestrateur = inventaireStatique(deps.base, deps.maintenant);
-    // `laVmDe` et non `find` : elle LÈVE si l'inventaire portait deux VMs pour
-    // le même utilisateur, ce que l'index partiel rend impossible en base — et
-    // si la base le portait quand même, c'est un défaut, pas une préférence à
-    // exprimer par un choix silencieux.
-    const sienne = laVmDe(await orchestrateur.lister(), porteur.utilisateurId);
+    // `laVmDe` and not `find`: it THROWS if the inventory carried two VMs for
+    // the same user, which the partial index makes impossible in the database — and
+    // if the database carried it anyway, that is a defect, not a preference to
+    // express through a silent choice.
+    const sienne = laVmDe(await orchestrateur.lister(), porteur.userId);
 
     if (sienne === undefined) {
-        // ③ Un listing vide n'est PAS un refus, et c'est pourquoi ce chemin
-        // rend 409 et non 200 : un 200 ferait écrire une chaîne vide dans le
-        // coffre du navigateur, `lirePrefixe` retomberait sur `''`, et la page
-        // rejoindrait SILENCIEUSEMENT l'espace de noms partagé — la panne muette
-        // que la spec §10 nomme.
+        // ③ An empty listing is NOT a refusal, and that is why this path
+        // returns 409 and not 200: a 200 would write an empty string into the
+        // browser vault, `lirePrefixe` would fall back to `''`, and the page
+        // would SILENTLY join the shared namespace — the silent failure
+        // that the spec §10 names.
         repondre(rep, CODE_HTTP['aucune-vm'], { motif: 'aucune-vm' }, cors);
         return true;
     }
 
     const etat = await orchestrateur.etat(sienne.id);
-    // Le corps commun aux deux issues, écrit UNE SEULE FOIS pour qu'elles ne
-    // puissent pas diverger sur le préfixe.
+    // The body common to both outcomes, written ONCE so that they
+    // cannot diverge on the prefix.
     const commun = { vm: sienne.id, nom: sienne.nom, prefixe: sienne.prefixe, etat };
 
     if (etat !== 'prete') {
-        // ④ 503 : la VM est bien à cet utilisateur, elle ne répond pas. C'est un
-        // état du monde, pas une erreur de la requête.
+        // ④ 503: the VM does belong to this user, it does not answer. It is a
+        // state of the world, not an error in the request.
         //
-        // 🔴 `redemarrage` EST L'AVEU, PAS LA FONCTION. Le cadrage promet
-        // « VM injoignable -> le hub l'indique, PROPOSE REDÉMARRAGE » ; avec le
-        // backend v1 le hub INDIQUE et dit qu'il ne sait pas redémarrer. Le
-        // champ porte le MÊME motif et le MÊME backend que le refus typé de
-        // `orchestrateur.demarrer`, dont il est la projection HTTP — et il est
-        // rendu ici plutôt que laissé au navigateur à deviner, parce qu'une
-        // absence de champ se lit comme un oubli.
+        // 🔴 `redemarrage` IS THE ADMISSION, NOT THE FEATURE. The framing promises
+        // « VM unreachable -> the hub shows it, OFFERS A RESTART »; with the
+        // v1 backend the hub SHOWS it and says it cannot restart. The
+        // field carries the SAME reason and the SAME backend as the typed refusal of
+        // `orchestrateur.start`, of which it is the HTTP projection — and it is
+        // returned here rather than left to the browser to guess, because a
+        // missing field reads as an oversight.
         //
-        // ⚠️ LE PRÉFIXE EST RENDU QUAND MÊME : il est connu et juste, et le
-        // navigateur en a besoin pour ne pas rejoindre l'espace partagé en
-        // attendant que la VM revienne.
+        // ⚠️ THE PREFIX IS RETURNED ANYWAY: it is known and right, and the
+        // browser needs it so as not to join the shared space while
+        // waiting for the VM to come back.
         repondre(
             rep,
             CODE_HTTP['agent-injoignable'],

@@ -1,43 +1,43 @@
-//! Client du canal `/agent` : l'agent s'y enrôle, y bat le cœur, et en reçoit
-//! son préfixe de session et son jeton d'agent — et, depuis le sous-bloc G1,
-//! il y POUSSE son catalogue d'applications et en REÇOIT des ordres de
-//! lancement.
+//! Client of the `/agent` channel: the agent enrols on it, beats its heart on it, and receives
+//! from it its session prefix and its agent token — and, since sub-block G1,
+//! it PUSHES its application catalogue on it and RECEIVES launch
+//! orders from it.
 //!
-//! ⚠️ CE CANAL NE PORTE DONC PLUS SEULEMENT UNE IDENTITÉ, contrairement à ce
-//! que dit le paragraphe suivant, écrit au sous-bloc P3 et conservé pour son
-//! raisonnement. Deux voies l'ont traversé depuis : une file d'émission
-//! bornée (`FILE_EMISSION`) pour ce qui monte, et une `mpsc` d'ordres pour ce
-//! qui descend.
+//! ⚠️ THIS CHANNEL THEREFORE NO LONGER CARRIES ONLY AN IDENTITY, contrary to what
+//! the next paragraph says, written in sub-block P3 and kept for its
+//! reasoning. Two paths have gone through it since: a bounded emission queue
+//! (`FILE_EMISSION`) for what goes up, and an `mpsc` of orders for what
+//! goes down.
 //!
-//! ⚠️ **CE CANAL N'EST PAS LE SIGNALING**, même s'il vit sur le même serveur.
-//! `crate::signaling` et `crate::superviseur::signalisation` négocient une
-//! session média ; celui-ci porte une IDENTITÉ. Sans lui, la garde de la
-//! plateforme refuse la poignée de main des deux autres (sous-bloc P3), et
-//! aucune session ne s'établit.
+//! ⚠️ **THIS CHANNEL IS NOT THE SIGNALING**, even though it lives on the same server.
+//! `crate::signaling` and `crate::superviseur::signalisation` negotiate a
+//! media session; this one carries an IDENTITY. Without it, the
+//! platform's guard refuses the handshake of the two others (sub-block P3), and
+//! no session is established.
 //!
-//! 🔴 **LA REPRISE EST DU COMPORTEMENT NEUF, et c'est la raison d'être de ce
-//! fichier.** Ni `signaling.rs` ni `signalisation.rs` n'en ont : leur chute
-//! est seulement journalisée, ce qui est assumé là-bas parce que le média ne
-//! dépend plus du signaling une fois l'offre échangée. **Ce raisonnement ne
-//! se transpose pas ici** : ce canal porte le battement de cœur, donc `vu_a`.
-//! Sans reprise, la PREMIÈRE coupure réseau rendrait la VM `injoignable`
-//! définitivement, et la plateforme punirait une coupure de réseau comme une
-//! panne d'agent.
+//! 🔴 **RECONNECTION IS NEW BEHAVIOUR, and it is the reason to exist of this
+//! file.** Neither `signaling.rs` nor `signalisation.rs` has any: their fall
+//! is only logged, which is assumed there because the media no longer
+//! depends on signaling once the offer has been exchanged. **That reasoning does
+//! not carry over here**: this channel carries the heartbeat, hence `vu_a`.
+//! Without reconnection, the FIRST network cut would make the VM `injoignable`
+//! permanently, and the platform would punish a network cut as an
+//! agent failure.
 
 pub mod identite;
 pub mod repli;
 
-// Tests extraits dans un fichier voisin (même mécanisme et même raison que
-// `superviseur/table.rs`) : ils tiennent un vrai serveur WebSocket local et
-// pèsent autant que le client lui-même.
+// Tests extracted into a neighbouring file (same mechanism and same reason as
+// `superviseur/table.rs`): they hold a real local WebSocket server and
+// weigh as much as the client itself.
 #[cfg(test)]
 #[path = "plateforme/tests.rs"]
 mod tests;
 
-// 🔴 UN SECOND FICHIER DE TESTS, NÉ D'UN FRANCHISSEMENT DE **UNE** LIGNE (501).
-// Compresser pour un dépassement de un serait exactement le geste que le
-// sous-bloc D9 a payé : `sommeil.rs` ramené à 499 par compression, puis extrait
-// sur exigence de revue. Un franchissement d'une ligne est un franchissement.
+// 🔴 A SECOND TEST FILE, BORN FROM CROSSING BY **ONE** LINE (501).
+// Compressing for an overflow of one would be exactly the gesture that
+// sub-block D9 paid for: `sommeil.rs` brought back to 499 by compression, then extracted
+// on review demand. Crossing by one line is a crossing.
 #[cfg(test)]
 #[path = "plateforme/tests_installation.rs"]
 mod tests_installation;
@@ -47,165 +47,165 @@ use std::time::Duration;
 use proto::plateforme::VersLaPlateforme;
 use tokio::sync::{mpsc, watch};
 
-/// Période du battement de cœur.
+/// Heartbeat period.
 ///
-/// ⚠️ **NON CALIBRÉE**, mais **PAS libre** : elle doit rester nettement sous
-/// le seuil d'injoignabilité de la plateforme (`SEUIL_INJOIGNABLE_MS`,
-/// 90 s au sous-bloc P3), sans quoi une VM parfaitement vivante serait
-/// déclarée injoignable entre deux battements. Un facteur 3 laisse la place à
-/// deux battements perdus. **Les deux constantes vivent dans des dépôts de
-/// code différents et rien ne les lie mécaniquement** : changer l'une exige
-/// de relire l'autre.
+/// ⚠️ **NOT CALIBRATED**, but **NOT free**: it must stay clearly below
+/// the platform's unreachability threshold (`SEUIL_INJOIGNABLE_MS`,
+/// 90 s in sub-block P3), otherwise a perfectly alive VM would be
+/// declared unreachable between two beats. A factor of 3 leaves room for
+/// two lost beats. **The two constants live in different code
+/// repositories and nothing links them mechanically**: changing one requires
+/// rereading the other.
 pub const PERIODE_BATTEMENT: Duration = Duration::from_secs(30);
 
-/// Ce que la plateforme délivre, et que le reste de l'agent lit : le préfixe
-/// qui nomme ses sessions, et le jeton qui ouvre ses poignées de main.
+/// What the platform delivers, and what the rest of the agent reads: the prefix
+/// that names its sessions, and the token that opens its handshakes.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Identite {
     pub prefixe: String,
     pub jeton: String,
-    /// En millisecondes, comme tout horodatage de la plateforme.
+    /// In milliseconds, like every timestamp of the platform.
     pub expire_a: i64,
 }
 
 /// Combien de messages montants peuvent attendre leur socket.
 ///
-/// 🔴 BORNÉE, ET NON ILLIMITÉE : ce canal peut rester coupé des heures, et une
-/// file illimitée derrière un socket mort est une fuite mémoire dont rien ne
-/// dit le nom. Ce qui déborde est PERDU — voir [`Canal::emettre`], qui porte
-/// la raison pour laquelle c'est acceptable.
+/// 🔴 BOUNDED, AND NOT UNLIMITED: this channel can stay cut for hours, and an
+/// unlimited queue behind a dead socket is a memory leak whose name nothing
+/// says. What overflows is LOST — see [`Canal::emettre`], which carries
+/// the reason why that is acceptable.
 ///
-/// La valeur tient au trafic réel : un catalogue par réconciliation, soit un
-/// message toutes les trente secondes, plus une `Lancee` par ordre.
-/// Trente-deux couvre un quart d'heure de coupure. **NON CALIBRÉE.**
+/// The value comes from the real traffic: one catalogue per reconciliation, that is one
+/// message every thirty seconds, plus one `Lancee` per order.
+/// Thirty-two covers a quarter of an hour of outage. **NOT CALIBRATED.**
 const FILE_EMISSION: usize = 32;
 
-/// Le canal ouvert, et le fil qui le tient. **Le lâcher arrête le battement
-/// de cœur — et, depuis G1, la DÉCOUVERTE D'APPLICATIONS avec lui** : la
-/// boucle d'`apps` sort sur `TryRecvError::Disconnected` et journalise « canal
-/// /agent fermé : découverte d'applications arrêtée ». `main` le garde vivant
-/// pour toute la durée du processus.
+/// The open channel, and the thread that holds it. **Dropping it stops the
+/// heartbeat — and, since G1, APPLICATION DISCOVERY with it**: the
+/// `apps` loop exits on `TryRecvError::Disconnected` and logs that the
+/// /agent channel is closed and application discovery stopped. `main` keeps it alive
+/// for the whole duration of the process.
 ///
-/// ❌ **« DEUX MÉCANISMES AU LIEU D'UN » EST DEVENU FAUX AU SOUS-BLOC G3 : IL Y
-/// EN A TROIS.** Le fil d'INSTALLATION s'arrête lui aussi — il draine
-/// `installations()`, dont l'émetteur meurt avec le canal, et il journalise
-/// « canal /agent fermé : fil d'installation arrêté ». Le compte est corrigé
-/// plutôt que retiré : c'est lui qui dit ce qu'on perd en lâchant ce champ.
-/// Le vocabulaire des ordres descendants vit dans un module enfant — voir son
-/// en-tête pour la déclaration du franchissement de plafond qui l'a produit.
+/// ❌ **"TWO MECHANISMS INSTEAD OF ONE" BECAME FALSE IN SUB-BLOCK G3: THERE
+/// ARE THREE.** The INSTALLATION thread stops too — it drains
+/// `installations()`, whose sender dies with the channel, and it logs that
+/// the /agent channel is closed and the installation thread stopped. The count is corrected
+/// rather than removed: it is what says what is lost by dropping this field.
+/// The vocabulary of downstream orders lives in a child module — see its
+/// header for the declaration of the ceiling crossing that produced it.
 mod ordre;
 pub use ordre::Ordre;
 
-/// L'ordre d'INSTALLATION voyage dans sa propre file, et l'en-tête de ce module
-/// dit pourquoi : ce n'est pas le même consommateur.
+/// The INSTALLATION order travels in its own queue, and the header of this module
+/// says why: it is not the same consumer.
 mod installation;
 pub use installation::Installation;
 
 pub struct Canal {
     identite: watch::Receiver<Option<Identite>>,
-    /// Le fil de reprise. Jamais attendu — il ne se termine que sur un refus
-    /// définitif —, mais conservé pour ne pas être abandonné en silence.
+    /// The reconnection thread. Never awaited — it only ends on a final
+    /// refusal —, but kept so as not to be silently abandoned.
     ///
-    /// ⚠️ L'`allow` RESTE JUSTIFIÉ, MAIS PAS POUR LA MÊME RAISON SUR LES DEUX
-    /// CIBLES — relevé en le RETIRANT, sur chacune :
-    ///   - `--target x86_64-pc-windows-gnu` : « field `tache` is never read ».
-    ///     C'est la raison HISTORIQUE, et la seule qui reste sur la cible
-    ///     réelle ; `emission` et `ordres` sont bien lus, par la boucle de
-    ///     découverte ;
-    ///   - sur l'hôte : « fields `tache`, `emission`, and `ordres` are never
-    ///     read », parce que `apps::demarrer` y est un talon qui rend `None`
-    ///     sans rien toucher.
+    /// ⚠️ THE `allow` REMAINS JUSTIFIED, BUT NOT FOR THE SAME REASON ON BOTH
+    /// TARGETS — noted by REMOVING it, on each:
+    ///   - `--target x86_64-pc-windows-gnu`: "field `tache` is never read".
+    ///     It is the HISTORICAL reason, and the only one that remains on the
+    ///     real target; `emission` and `ordres` are indeed read, by the
+    ///     discovery loop;
+    ///   - on the host: "fields `tache`, `emission`, and `ordres` are never
+    ///     read", because `apps::start` is a stub there that returns `None`
+    ///     without touching anything.
     ///
-    /// Un `allow` devenu inutile est une affirmation devenue fausse : celui-ci
-    /// est à relire le jour où plus rien n'appellerait `apps::brancher`.
+    /// An `allow` that became useless is an assertion that became false: this one
+    /// is to be reread the day nothing would call `apps::brancher` anymore.
     #[allow(dead_code)]
     tache: tokio::task::JoinHandle<()>,
-    /// La file montante, drainée dans le `select!` de [`une_session`].
+    /// The upstream queue, drained in the `select!` of [`une_session`].
     emission: mpsc::Sender<VersLaPlateforme>,
-    /// Les ordres descendants. `Option` parce qu'un seul consommateur peut la
-    /// prendre : deux se voleraient les ordres l'un à l'autre, et chacun n'en
-    /// verrait qu'une partie.
+    /// The downstream orders. `Option` because only one consumer can
+    /// take it: two would steal orders from one another, and each would only
+    /// see part of them.
     ordres: Option<mpsc::UnboundedReceiver<Ordre>>,
-    /// Les ordres d'INSTALLATION. Même règle du consommateur unique, et pour
-    /// la même raison — mais un consommateur DIFFÉRENT : le fil d'installation
-    /// tourne sur `tokio`, quand `ordres` est drainée par le fil COM de la
-    /// découverte. Voir `plateforme/installation.rs`.
+    /// The INSTALLATION orders. Same single-consumer rule, and for
+    /// the same reason — but a DIFFERENT consumer: the installation thread
+    /// runs on `tokio`, while `ordres` is drained by the COM thread of
+    /// discovery. See `plateforme/installation.rs`.
     installations: Option<mpsc::UnboundedReceiver<Installation>>,
-    /// L'URL du signaling telle qu'on l'a reçue — sous-bloc G2.
+    /// The signaling URL as it was received — sub-block G2.
     ///
-    /// ⚠️ ELLE EST RETENUE PLUTÔT QUE RELUE DE L'ENVIRONNEMENT : le
-    /// téléversement d'icônes en dérive son adresse HTTP, et relire
-    /// `SIGNALING_URL` ailleurs ferait vivre la même valeur à deux endroits,
-    /// donc diverger le jour où l'un des deux serait changé.
+    /// ⚠️ IT IS KEPT RATHER THAN REREAD FROM THE ENVIRONMENT: the
+    /// icon upload derives its HTTP address from it, and rereading
+    /// `SIGNALING_URL` elsewhere would make the same value live in two places,
+    /// hence diverge the day one of the two were changed.
     signaling_url: String,
 }
 
-/// De quoi émettre sans tenir le [`Canal`] entier.
+/// What is needed to emit without holding the whole [`Canal`].
 #[derive(Clone)]
 pub struct Emetteur {
     file: mpsc::Sender<VersLaPlateforme>,
 }
 
 impl Emetteur {
-    /// Met un message montant en file. **Ne bloque jamais, et ne rend aucune
-    /// erreur.**
+    /// Queues an upstream message. **Never blocks, and returns no
+    /// error.**
     ///
-    /// 🔴 UN MESSAGE MIS EN FILE PENDANT QUE LE SOCKET EST TOMBÉ EST PERDU, ET
-    /// C'EST VOULU. Ce canal est un `push` WebSocket : il n'a aucune garantie
-    /// de livraison, dans aucun des deux sens. Le rendre bloquant ferait de la
-    /// file une fuite mémoire sur un canal qui peut rester coupé des heures ;
-    /// le rendre fatal tuerait le canal sur une coupure réseau ordinaire.
+    /// 🔴 A MESSAGE QUEUED WHILE THE SOCKET IS DOWN IS LOST, AND
+    /// IT IS INTENDED. This channel is a WebSocket `push`: it has no delivery
+    /// guarantee, in either direction. Making it blocking would turn the
+    /// queue into a memory leak on a channel that can stay cut for hours;
+    /// making it fatal would kill the channel on an ordinary network cut.
     ///
-    /// **Ce qui rend la perte acceptable est ailleurs, et une seule chose la
-    /// rend acceptable** : l'agent renvoie son catalogue COMPLET
-    /// (`complet = true`) à chaque réenrôlement, donc toute divergence née
-    /// d'un message perdu a un TERME. Retirer ce renvoi complet rendrait cette
-    /// perte silencieuse et définitive.
+    /// **What makes the loss acceptable lies elsewhere, and a single thing
+    /// makes it acceptable**: the agent sends its COMPLETE catalogue again
+    /// (`complet = true`) at each re-enrolment, so any divergence born
+    /// from a lost message has an END. Removing this complete resend would make this
+    /// loss silent and permanent.
     pub fn emettre(&self, message: VersLaPlateforme) {
-        if let Err(erreur) = self.file.try_send(message) {
-            tracing::warn!(%erreur, "message montant abandonné : canal coupé ou file pleine");
+        if let Err(error) = self.file.try_send(message) {
+            tracing::warn!(%error, "upstream message dropped: channel cut or queue full");
         }
     }
 }
 
-/// Pourquoi une session du canal s'est terminée.
+/// Why a session of the channel ended.
 enum Fin {
-    /// Il n'y a rien à réessayer : la même tentative rendrait le même refus.
+    /// There is nothing to retry: the same attempt would return the same refusal.
     Definitive,
-    /// Le socket est tombé, ou la plateforme a refusé pour une raison qui
-    /// peut changer (une VM peut être enrôlée après coup).
+    /// The socket went down, or the platform refused for a reason that
+    /// may change (a VM can be enrolled afterwards).
     Reprenable,
 }
 
-/// Compose l'URL du canal à partir de celle du signaling.
+/// Composes the channel's URL from the signaling's.
 ///
-/// Le `trim_end_matches` n'est pas de la coquetterie : `ws://h:8080/` suivi
-/// de `/agent` donnerait `ws://h:8080//agent`, et la montée de la plateforme
-/// compare le chemin **exactement** — `//agent` n'est pas `/agent`, et le
-/// socket serait fermé sur un `404` que rien du côté agent n'expliquerait.
+/// The `trim_end_matches` is not a nicety: `ws://h:8080/` followed
+/// by `/agent` would give `ws://h:8080//agent`, and the platform's upgrade
+/// compares the path **exactly** — `//agent` is not `/agent`, and the
+/// socket would be closed on a `404` that nothing on the agent side would explain.
 pub fn url_du_canal(signaling_url: &str) -> String {
     format!("{}/agent", signaling_url.trim_end_matches('/'))
 }
 
-/// Ouvre le canal et le tient : enrôlement, battement, et reprise.
+/// Opens the channel and holds it: enrolment, heartbeat, and reconnection.
 ///
-/// Rend immédiatement — l'identité arrive plus tard, par `attendre_identite`.
+/// Returns immediately — the identity arrives later, through `attendre_identite`.
 pub fn ouvrir(signaling_url: &str, vm: String, secret: String) -> Canal {
     let url = url_du_canal(signaling_url);
     let (tx, identite) = watch::channel(None);
     let (emission, mut a_emettre) = mpsc::channel(FILE_EMISSION);
-    // ⚠️ NON BORNÉE, à l'inverse de la file montante, et pour une raison
-    // opposée : son consommateur traite chaque ordre dans un `spawn_blocking`
-    // et ne doit JAMAIS faire attendre la boucle du canal — un `send` bloquant
-    // ici suspendrait le battement de cœur, et la plateforme déclarerait la VM
-    // injoignable pendant qu'elle lance une application. Le débit la borne de
-    // fait : un ordre par clic d'utilisateur.
+    // ⚠️ UNBOUNDED, unlike the upstream queue, and for an opposite
+    // reason: its consumer handles each order in a `spawn_blocking`
+    // and must NEVER make the channel loop wait — a blocking `send`
+    // here would suspend the heartbeat, and the platform would declare the VM
+    // unreachable while it launches an application. The rate bounds it
+    // in practice: one order per user click.
     let (ordres_tx, ordres_rx) = mpsc::unbounded_channel();
     let (installations_tx, installations_rx) = mpsc::unbounded_channel();
     let tache = tokio::spawn(async move {
-        // La tentative repart de ZÉRO après chaque enrôlement réussi : un
-        // agent connecté depuis trois jours qui perd son réseau une seconde
-        // doit reprendre en une demi-seconde, pas en trente.
+        // The attempt restarts from ZERO after each successful enrolment: an
+        // agent connected for three days that loses its network for one second
+        // must reconnect in half a second, not in thirty.
         let mut tentative = 0u32;
         loop {
             let reussite_precedente = tx.borrow().is_some();
@@ -226,14 +226,19 @@ pub fn ouvrir(signaling_url: &str, vm: String, secret: String) -> Canal {
                 Fin::Definitive => {
                     tracing::warn!(
                         url,
-                        "canal /agent abandonné DÉFINITIVEMENT : aucune reprise ne le rattrapera"
+                        "/agent channel abandoned FOR GOOD: no reconnection will catch it up"
                     );
                     return;
                 }
                 Fin::Reprenable => {}
             }
             let delai = repli::delai_de_repli(tentative);
-            tracing::info!(url, tentative, delai_ms = delai, "reprise du canal /agent");
+            tracing::info!(
+                url,
+                tentative,
+                delai_ms = delai,
+                "resuming the /agent channel"
+            );
             tentative = tentative.saturating_add(1);
             tokio::time::sleep(Duration::from_millis(delai)).await;
         }
@@ -249,8 +254,8 @@ pub fn ouvrir(signaling_url: &str, vm: String, secret: String) -> Canal {
 }
 
 impl Canal {
-    /// Attend la première identité. Rend `None` si la boucle de reprise a
-    /// renoncé — c'est-à-dire si l'attente est vaine, et non « pas encore ».
+    /// Waits for the first identity. Returns `None` if the reconnection loop has
+    /// given up — that is if the wait is in vain, and not "not yet".
     pub async fn attendre_identite(&mut self) -> Option<Identite> {
         loop {
             let courante = self.identite.borrow_and_update().clone();
@@ -263,54 +268,54 @@ impl Canal {
         }
     }
 
-    /// Prend la file des ordres descendants. Rend `None` au second appel.
+    /// Takes the queue of downstream orders. Returns `None` on the second call.
     ///
-    /// Un seul consommateur, parce que deux se voleraient les ordres l'un à
-    /// l'autre et que le symptôme serait « un lancement sur deux ne part pas ».
+    /// A single consumer, because two would steal orders from one
+    /// another and the symptom would be "one launch out of two does not go".
     pub fn ordres(&mut self) -> Option<mpsc::UnboundedReceiver<Ordre>> {
         self.ordres.take()
     }
 
-    /// Prend la file des installations. Rend `None` au second appel.
+    /// Takes the installations queue. Returns `None` on the second call.
     ///
-    /// 🔴 MÊME PROPRIÉTÉ QU'[`Self::ordres`], ET POUR LA MÊME RAISON : deux
-    /// consommateurs se voleraient les ordres l'un à l'autre, et le symptôme
-    /// serait « une installation sur deux ne part pas ». La différence est
-    /// qu'ici le consommateur est le fil `tokio` d'installation, jamais le fil
-    /// COM de la découverte — c'est cette différence qui justifie la seconde
-    /// file plutôt qu'une variante d'[`Ordre`].
+    /// 🔴 SAME PROPERTY AS [`Self::ordres`], AND FOR THE SAME REASON: two
+    /// consumers would steal orders from one another, and the symptom
+    /// would be "one installation out of two does not go". The difference is
+    /// that here the consumer is the `tokio` installation thread, never the
+    /// COM thread of discovery — it is this difference that justifies the second
+    /// queue rather than a variant of [`Ordre`].
     pub fn installations(&mut self) -> Option<mpsc::UnboundedReceiver<Installation>> {
         self.installations.take()
     }
 
-    /// L'URL du signaling, dont le téléversement d'icônes dérive son adresse
-    /// HTTP (sous-bloc G2).
+    /// The signaling URL, from which the icon upload derives its HTTP
+    /// address (sub-block G2).
     pub fn url_signaling(&self) -> &str {
         &self.signaling_url
     }
 
-    /// Un émetteur détachable, pour le fil de découverte.
+    /// A detachable sender, for the discovery thread.
     ///
-    /// Le `Canal` lui-même n'est pas `Send` vers un fil bloquant qui le
-    /// garderait indéfiniment : c'est la file, et elle seule, qui doit
-    /// traverser. Un `Sender` de tokio est `Send` et `Clone`.
+    /// The `Canal` itself is not `Send` to a blocking thread that would
+    /// keep it indefinitely: it is the queue, and it alone, that must
+    /// cross. A tokio `Sender` is `Send` and `Clone`.
     pub fn emetteur(&self) -> Emetteur {
         Emetteur {
             file: self.emission.clone(),
         }
     }
 
-    /// Observe les changements d'identité — un réenrôlement en est un.
+    /// Observes identity changes — a re-enrolment is one.
     ///
-    /// C'est par lui que la boucle de découverte sait qu'elle doit renvoyer le
-    /// catalogue COMPLET plutôt qu'un delta.
+    /// It is through it that the discovery loop knows it must send the
+    /// COMPLETE catalogue again rather than a delta.
     pub fn veille_identite(&self) -> watch::Receiver<Option<Identite>> {
         self.identite.clone()
     }
 }
 
-/// Une session du canal, de la connexion à sa chute, extraite AVANT que le
-/// sous-bloc G3 n'ajoute sa seconde file : ce fichier était à 490 lignes,
-/// marge 10.
+/// One session of the channel, from connection to its fall, extracted BEFORE
+/// sub-block G3 added its second queue: this file was at 490 lines,
+/// margin 10.
 mod session;
 use session::une_session;

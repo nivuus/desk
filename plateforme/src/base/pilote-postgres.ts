@@ -1,78 +1,78 @@
-// Le pilote `pg` — celui de la production, et la seconde moitié de la double
-// passe qui éprouve le sous-ensemble SQL portable.
+// The `pg` driver — the production one, and the second half of the double
+// pass that tests the portable SQL subset.
 //
-// `pg` est purement JavaScript : la propriété « aucune dépendance native »
-// (§4.2 du cadrage, écrit après le naufrage de `fuse-native`) tient.
+// `pg` is pure JavaScript: the "no native dependency" property
+// (§4.2 of the scoping, written after the wreck of `fuse-native`) holds.
 //
-// Chaque `executer`/`interroger` passe son SQL par `rendreMarqueurs` AVANT de
-// l'envoyer : les requêtes du service sont écrites une seule fois, en style
-// `?`, et c'est ce pilote-ci qui les traduit. Le refus des chaînes littérales
-// que porte `rendreMarqueurs` est donc appliqué à toute requête qui passe par
-// Postgres, pas seulement documenté.
+// Each `executer`/`interroger` passes its SQL through `rendreMarqueurs` BEFORE
+// sending it: the service queries are written only once, in `?`
+// style, and it is this driver that translates them. The refusal of string literals
+// that `rendreMarqueurs` carries is therefore applied to every query that goes through
+// Postgres, not just documented.
 
 import pg from 'pg';
 import { type Pilote, rendreMarqueurs } from './pilote';
 
-/// 🔴 `pg` REND LES `BIGINT` EN CHAÎNE, ET C'EST MESURÉ, PAS SUPPOSÉ.
+/// 🔴 `pg` RETURNS `BIGINT`s AS STRINGS, AND THIS IS MEASURED, NOT ASSUMED.
 ///
-/// Relevé par la recette du sous-bloc P3, le 19 août 2026 : `typeof` d'un
-/// `vu_a` relu vaut `number` sous `node:sqlite` et `string` sous `pg`. La
-/// raison est que le protocole de PostgreSQL rend un `int8` en texte et que
-/// `pg` refuse par défaut de le convertir, un `int8` pouvant dépasser
-/// l'entier sûr de JavaScript.
+/// Found by the acceptance run of sub-block P3, on 19 August 2026: the `typeof` of a
+/// reread `vu_a` is `number` under `node:sqlite` and `string` under `pg`. The
+/// reason is that the PostgreSQL protocol returns an `int8` as text and that
+/// `pg` refuses by default to convert it, since an `int8` can exceed
+/// the JavaScript safe integer.
 ///
-/// **Sans cette ligne, le défaut est de CLASSE et non d'instance** :
+/// **Without this line, the defect is one of CLASS and not of instance**:
 /// `LigneAgent.vu_a`, `LigneSession.ouverte_a` / `.fermee_a`,
-/// `LigneUtilisateur.cree_a` et les deux colonnes de `LigneJeton` déclarent
-/// toutes `number` une valeur qui est une `string` sur le moteur de
-/// PRODUCTION. Le typage ne le voit pas — `interroger<T>` fait un `as T[]`,
-/// donc l'affirmation est prise pour argent comptant.
+/// `UserRow.cree_a` and the two columns of `LigneJeton` all
+/// declare as `number` a value that is a `string` on the
+/// PRODUCTION engine. The typing does not see it — `interroger<T>` does an `as T[]`,
+/// so the assertion is taken at face value.
 ///
-/// ⚠️ CE QUE CE DÉFAUT NE FAISAIT PAS ÉCHOUER, et pourquoi c'est le pire cas :
-/// `agents/fraicheur.ts::etatDe` survivait PAR ACCIDENT, sa soustraction
-/// convertissant l'opérande. `depot/jeton.ts` s'en était tiré par un
-/// `Number(...)` local et un type `number | string`. Rien ne rougissait, et
-/// pourtant tout `+`, tout `===` et tout `>` aurait divergé selon le moteur.
+/// ⚠️ WHAT THIS DEFECT DID NOT MAKE FAIL, and why that is the worst case:
+/// `agents/fraicheur.ts::etatDe` survived BY ACCIDENT, its subtraction
+/// converting the operand. `depot/jeton.ts` had got away with it through a local
+/// `Number(...)` and a `number | string` type. Nothing went red, and
+/// yet every `+`, every `===` and every `>` would have diverged by engine.
 ///
-/// La conversion LÈVE au-delà de `Number.MAX_SAFE_INTEGER` plutôt que
-/// d'arrondir en silence : `Number('9007199254740993')` rend
-/// `9007199254740992` sans le dire, et une seconde perdue sur un horodatage
-/// serait exactement le genre de faute qu'aucun test ne rattraperait. Le
-/// service n'écrit que des `Date.now()` (~1,8e12, soit quatre ordres de
-/// grandeur sous la borne) : ce chemin n'est pas atteignable par lui, et il
-/// est gardé quand même.
+/// The conversion THROWS beyond `Number.MAX_SAFE_INTEGER` rather than
+/// silently rounding: `Number('9007199254740993')` returns
+/// `9007199254740992` without saying so, and a second lost on a timestamp
+/// would be exactly the kind of fault no test would catch. The
+/// service only writes `Date.now()` values (~1.8e12, that is four orders of
+/// magnitude below the bound): this path is not reachable by it, and it
+/// is guarded anyway.
 ///
-/// ⚠️ `setTypeParser` est GLOBAL AU PROCESSUS, et c'est déclaré : il n'existe
-/// aucun autre consommateur de `pg` ici, et un réglage par `Pool` se
-/// perdrait pour le pool d'administration que `base/harnais.ts` ouvre.
+/// ⚠️ `setTypeParser` is GLOBAL TO THE PROCESS, and that is declared: there is
+/// no other consumer of `pg` here, and a per-`Pool` setting would
+/// get lost for the administration pool that `base/harnais.ts` opens.
 pg.types.setTypeParser(pg.types.builtins.INT8, (texte: string) => {
-    const valeur = Number(texte);
-    if (!Number.isSafeInteger(valeur)) {
+    const value = Number(texte);
+    if (!Number.isSafeInteger(value)) {
         throw new Error(
-            `BIGINT hors de l'entier sûr de JavaScript, converti nulle part : ${texte}`,
+            `BIGINT outside the JavaScript safe integer, converted nowhere: ${texte}`,
         );
     }
-    return valeur;
+    return value;
 });
 
-/// `maxClients` borne le nombre de connexions que CE pilote garde ouvertes.
+/// `maxClients` bounds the number of connections that THIS driver keeps open.
 ///
-/// 🔴 IL EXISTE POUR LES TESTS, ET LE DÉFAUT EST CELUI DE `pg` (dix), qui est
-/// le bon pour un SERVICE : une instance ouvre exactement UN pilote, pour
-/// toute sa vie, et lui rogner sa concurrence n'aurait aucun sens.
+/// 🔴 IT EXISTS FOR THE TESTS, AND THE DEFAULT IS THAT OF `pg` (ten), which is
+/// the right one for a SERVICE: an instance opens exactly ONE driver, for
+/// its whole life, and trimming its concurrency would make no sense.
 ///
-/// ⚠️ MESURÉ LE 20 AOÛT 2026, ET CE N'EST PAS UNE PRÉCAUTION THÉORIQUE : la
-/// suite ouvre CENT VINGT-HUIT bases (`grep -c 'baseNeuve('`), réparties sur
-/// vingt-deux fichiers que vitest exécute EN PARALLÈLE, et chaque `baseNeuve`
-/// ouvre DEUX pilotes (un d'administration, un de travail). À dix clients
-/// chacun, dix bases concurrentes atteignent exactement le
-/// `max_connections = 100` de l'instance de test. Le jour où P5 a ajouté ses
-/// trois fichiers de test, l'instance a rendu
-/// `FATAL: sorry, too many clients already` PUIS un backend a été
-/// `terminated by signal 11: Segmentation fault` en pleine migration : la
-/// suite entière est repassée en 181 échecs, sur un code parfaitement sain.
-/// La cause était la SUITE, pas le service — mais une suite qui fait tomber
-/// son instance ne mesure plus rien.
+/// ⚠️ MEASURED ON 20 AUGUST 2026, AND IT IS NOT A THEORETICAL PRECAUTION: the
+/// suite opens ONE HUNDRED AND TWENTY-EIGHT databases (`grep -c 'baseNeuve('`), spread over
+/// twenty-two files that vitest runs IN PARALLEL, and each `baseNeuve`
+/// opens TWO drivers (one for administration, one for work). At ten clients
+/// each, ten concurrent databases reach exactly the
+/// `max_connections = 100` of the test instance. The day P5 added its
+/// three test files, the instance returned
+/// `FATAL: sorry, too many clients already` THEN a backend was
+/// `terminated by signal 11: Segmentation fault` in the middle of a migration: the
+/// whole suite went back to 181 failures, on perfectly healthy code.
+/// The cause was the SUITE, not the service — but a suite that brings down
+/// its instance no longer measures anything.
 export function ouvrirPostgres(url: string, maxClients?: number): Pilote {
     const pool = new pg.Pool({
         connectionString: url,
@@ -88,18 +88,18 @@ export function ouvrirPostgres(url: string, maxClients?: number): Pilote {
             return r.rows as T[];
         },
         async transaction<T>(corps: (p: Pilote) => Promise<T>): Promise<T> {
-            // 🔴 LE PIÈGE DE `pg`, nommé plutôt que subi : un `BEGIN` émis sur
-            // le POOL et un `COMMIT` émis ensuite sur le pool prendraient deux
-            // clients DIFFÉRENTS, donc deux transactions différentes — et le
-            // tout SILENCIEUSEMENT, sans erreur, la première restant ouverte
-            // jusqu'à expiration. Le client est donc pris une fois et gardé
-            // pour toute la durée du corps.
+            // 🔴 THE `pg` TRAP, named rather than suffered: a `BEGIN` issued on
+            // the POOL and a `COMMIT` issued afterwards on the pool would take two
+            // DIFFERENT clients, hence two different transactions — and all of it
+            // SILENTLY, with no error, the first one staying open
+            // until it times out. The client is therefore taken once and kept
+            // for the whole duration of the body.
             const client = await pool.connect();
             try {
                 await client.query('BEGIN');
-                const valeur = await corps(surClient(client));
+                const value = await corps(surClient(client));
                 await client.query('COMMIT');
-                return valeur;
+                return value;
             } catch (cause) {
                 await client.query('ROLLBACK');
                 throw cause;
@@ -113,8 +113,8 @@ export function ouvrirPostgres(url: string, maxClients?: number): Pilote {
     };
 }
 
-/// Un `Pilote` restreint au client déjà emprunté : c'est ce qui garantit que
-/// tout le corps d'une transaction parle bien à la MÊME connexion.
+/// A `Pilote` restricted to the client already borrowed: that is what guarantees that
+/// the whole body of a transaction really talks to the SAME connection.
 function surClient(client: pg.PoolClient): Pilote {
     return {
         async executer(sql, params) {
@@ -126,14 +126,14 @@ function surClient(client: pg.PoolClient): Pilote {
             return r.rows as T[];
         },
         async transaction<T>(corps: (p: Pilote) => Promise<T>): Promise<T> {
-            // Pas de transaction imbriquée en P1 : `SAVEPOINT` serait un
-            // mécanisme de plus à éprouver des deux côtés, et rien ne
-            // l'emploie. Refus explicite plutôt qu'un `BEGIN` imbriqué que
-            // Postgres accepterait en avertissant, et SQLite en échouant.
-            throw new Error('transaction imbriquée non prise en charge');
+            // No nested transaction in P1: `SAVEPOINT` would be one more
+            // mechanism to test on both sides, and nothing
+            // uses it. Explicit refusal rather than a nested `BEGIN` that
+            // Postgres would accept with a warning, and SQLite by failing.
+            throw new Error('nested transaction not supported');
         },
         async fermer() {
-            throw new Error('un pilote de transaction ne se ferme pas : il est relâché');
+            throw new Error('a transaction driver is not closed: it is released');
         },
     };
 }

@@ -1,14 +1,14 @@
-//! Sonde 1 du chantier E (spec §12) : str0m 0.21 dépaquetise-t-il l'Opus
-//! ENTRANT et l'expose-t-il via `Event::MediaData` ?
+//! Probe 1 of workstream E (spec §12): does str0m 0.21 depacketize INCOMING
+//! Opus and expose it through `Event::MediaData`?
 //!
-//! **Bloquante** : si la réponse est non, le chantier change de forme —
-//! dépaquetisation à écrire, ou repli sur un canal de données.
+//! **Blocking**: if the answer is no, the workstream changes shape —
+//! depacketization to write, or fallback to a data channel.
 //!
-//! Aucun code de produit n'est exercé ici : deux `Rtc` nus, l'un offre une
-//! piste audio `SendOnly`, l'autre l'accepte et doit voir arriver la charge
-//! utile exacte. Le test de bout en bout **à travers `Session`** existe, lui,
-//! en `piste_micro.rs` — les deux ont des objets distincts et coexistent :
-//! celui-ci répond sur str0m, celui-là sur notre transport.
+//! No product code is exercised here: two bare `Rtc`s, one offers a
+//! `SendOnly` audio track, the other accepts it and must see the exact
+//! payload arrive. The end-to-end test **through `Session`** exists
+//! in `piste_micro.rs` — the two have distinct purposes and coexist:
+//! this one answers about str0m, that one about our transport.
 
 use std::net::{SocketAddr, UdpSocket};
 use std::time::{Duration, Instant};
@@ -20,18 +20,18 @@ use str0m::{Event, Input, Output, Rtc};
 
 use super::fixtures::{local_ip, local_peer};
 
-/// Charge utile reconnaissable et non triviale. L'octet de tête `0x78` est un
-/// TOC Opus plausible, mais **la sonde n'en dépend pas** : `OpusDepacketizer`
-/// est un passe-plat (`str0m-0.21.0/src/packet/opus.rs:50-60`), et c'est
-/// justement ce qu'on vérifie.
+/// Recognisable, non-trivial payload. The leading byte `0x78` is a
+/// plausible Opus TOC, but **the probe does not depend on it**: `OpusDepacketizer`
+/// is a pass-through (`str0m-0.21.0/src/packet/opus.rs:50-60`), and that is
+/// precisely what we check.
 const CHARGE: &[u8] = &[0x78, 0xDE, 0xAD, 0xBE, 0xEF];
 
-/// Remet à `rtc` le premier datagramme lisible sur `socket`, ou une simple
-/// échéance si rien n'arrive avant `attente`.
+/// Hands `rtc` the first readable datagram on `socket`, or a mere
+/// deadline if nothing arrives before `attente`.
 ///
-/// Distincte de `fixtures::poll_peer_socket`, qui suppose un pair unique face
-/// à une `Session` : ici les DEUX bouts sont des `Rtc` nus pilotés par le
-/// test, et chacun a besoin du même service.
+/// Distinct from `fixtures::poll_peer_socket`, which assumes a single peer facing
+/// a `Session`: here BOTH ends are bare `Rtc`s driven by the
+/// test, and each needs the same service.
 fn pomper(rtc: &mut Rtc, socket: &UdpSocket, adresse: SocketAddr, attente: Duration) {
     if attente.is_zero() {
         let _ = rtc.handle_input(Input::Timeout(Instant::now()));
@@ -58,37 +58,37 @@ fn pomper(rtc: &mut Rtc, socket: &UdpSocket, adresse: SocketAddr, attente: Durat
 }
 
 #[test]
-fn str0m_expose_l_opus_montant_via_media_data() {
+fn str0m_exposes_upstream_opus_through_media_data() {
     let ip = local_ip();
-    // Les DEUX pairs activent Opus : sans `enable_opus`, aucun PT Opus n'est
-    // proposé et la sonde répondrait « non » pour la mauvaise raison — c'est
-    // le piège de `initialisation.rs`, déjà payé au chantier A.
+    // BOTH peers enable Opus: without `enable_opus`, no Opus PT is
+    // offered and the probe would answer "no" for the wrong reason — it is
+    // the trap of `initialisation.rs`, already paid for in workstream A.
     let (socket_e, adresse_e, mut emetteur) = local_peer(ip, true);
     let (socket_r, adresse_r, mut recepteur) = local_peer(ip, true);
 
     let mut api = emetteur.sdp_api();
-    // `add_media` REND le `Mid`, et c'est la seule façon de l'obtenir côté
-    // OFFRANT : str0m n'émet `Event::MediaAdded` que du côté qui ACCEPTE
-    // l'offre — relevé par ce test même, dont la première rédaction attendait
-    // en vain un `MediaAdded` sur l'émetteur (l'agent, lui, accepte toujours,
-    // c'est pourquoi `evenements.rs` s'en contente).
+    // `add_media` RETURNS the `Mid`, and it is the only way to get it on the
+    // OFFERING side: str0m only emits `Event::MediaAdded` on the side that ACCEPTS
+    // the offer — found by this very test, whose first draft waited
+    // in vain for a `MediaAdded` on the emitter (the agent, for its part, always accepts,
+    // which is why `evenements.rs` makes do with it).
     let mid_emission = api.add_media(MediaKind::Audio, Direction::SendOnly, None, None, None);
-    let (offre, en_attente) = api.apply().expect("offre non vide");
+    let (offre, en_attente) = api.apply().expect("non-empty offer");
 
     let reponse = recepteur
         .sdp_api()
         .accept_offer(offre)
-        .expect("offre acceptée par le récepteur");
+        .expect("offer accepted by the receiver");
     emetteur
         .sdp_api()
         .accept_answer(en_attente, reponse)
-        .expect("réponse acceptée par l'émetteur");
+        .expect("answer accepted by the sender");
 
     socket_e.set_nonblocking(false).unwrap();
     socket_r.set_nonblocking(false).unwrap();
 
     let echeance = Instant::now() + Duration::from_secs(15);
-    let mut ecrit = false;
+    let mut written = false;
     let mut recu: Option<(Vec<u8>, Codec, u32)> = None;
     let mut horodatage = 0u64;
 
@@ -96,19 +96,19 @@ fn str0m_expose_l_opus_montant_via_media_data() {
         let maintenant = Instant::now();
         assert!(
             maintenant < echeance,
-            "aucun `Event::MediaData` reçu en 15 s : str0m ne délivre pas l'Opus montant, \
-             ou la connexion ne s'est pas établie (au moins une écriture tentée : {ecrit})"
+            "no `Event::MediaData` received within 15 s: str0m does not deliver the upstream Opus, \
+             or the connection was not established (at least one write attempted: {written})"
         );
 
-        // ---- l'émetteur -------------------------------------------------
-        match emetteur.poll_output().expect("poll_output de l'émetteur") {
+        // ---- the emitter ------------------------------------------------
+        match emetteur.poll_output().expect("sender poll_output") {
             Output::Timeout(t) => {
                 {
                     let mid = mid_emission;
-                    // Écrire à chaque échéance, pas une seule fois : la
-                    // première écriture peut précéder l'établissement SRTP du
-                    // récepteur, et un unique paquet perdu ferait répondre
-                    // « non » à une sonde dont la réponse est « oui ».
+                    // Write at each deadline, not just once: the
+                    // first write may precede the receiver's SRTP
+                    // establishment, and a single lost packet would make a probe
+                    // whose answer is "yes" answer "no".
                     if let Some(writer) = emetteur.writer(mid) {
                         let pt = writer
                             .payload_params()
@@ -122,7 +122,7 @@ fn str0m_expose_l_opus_montant_via_media_data() {
                                 .write(pt, Instant::now(), temps, CHARGE.to_vec())
                                 .is_ok()
                             {
-                                ecrit = true;
+                                written = true;
                                 horodatage += 960;
                             }
                         }
@@ -139,8 +139,8 @@ fn str0m_expose_l_opus_montant_via_media_data() {
             Output::Event(_) => {}
         }
 
-        // ---- le récepteur -----------------------------------------------
-        match recepteur.poll_output().expect("poll_output du récepteur") {
+        // ---- the receiver -----------------------------------------------
+        match recepteur.poll_output().expect("receiver poll_output") {
             Output::Timeout(t) => {
                 let attente = t
                     .saturating_duration_since(Instant::now())
@@ -157,20 +157,20 @@ fn str0m_expose_l_opus_montant_via_media_data() {
         }
     }
 
-    let (donnees, codec, denominateur) = recu.unwrap();
+    let (data, codec, denominateur) = recu.unwrap();
     eprintln!(
-        "SONDE 1 : MediaData reçue — {} octets, codec {codec:?}, horloge RTP {denominateur} Hz",
-        donnees.len()
+        "PROBE 1: MediaData received — {} bytes, codec {codec:?}, RTP clock {denominateur} Hz",
+        data.len()
     );
 
     assert_eq!(
-        donnees, CHARGE,
-        "la charge utile n'a pas traversé octet pour octet : str0m ne se comporte pas en \
-         passe-plat sur l'Opus entrant"
+        data, CHARGE,
+        "the payload did not pass through byte for byte: str0m does not behave as a \
+         pass-through on the incoming Opus"
     );
-    assert_eq!(codec, Codec::Opus, "le codec délivré n'est pas Opus");
+    assert_eq!(codec, Codec::Opus, "the delivered codec is not Opus");
     assert_eq!(
         denominateur, 48_000,
-        "l'horloge RTP délivrée n'est pas celle d'Opus"
+        "the delivered RTP clock is not Opus's"
     );
 }

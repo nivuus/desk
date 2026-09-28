@@ -1,62 +1,62 @@
-//! La règle de la poignée de main `Bonjour` : **pousser les écritures dues, ou
-//! les RETENIR**. **PUR** — aucun `cfg`, aucune E/S, entièrement testé sur
-//! l'hôte.
+//! The rule of the `Bonjour` handshake: **push the due writes, or
+//! HOLD them BACK**. **PURE** — no `cfg`, no I/O, fully tested on
+//! the host.
 //!
-//! # Le danger que ce module existe pour empêcher
+//! # The danger this module exists to prevent
 //!
-//! Le journal des dues (F2) survit à l'arrêt du pont. À la reprise, il porte
-//! des chemins **relatifs à une racine** — et rien, dans le journal, ne dit
-//! LAQUELLE. Si l'utilisateur revient en choisissant un **autre** répertoire,
-//! rejouer aveuglément écrirait *les fichiers d'une session dans le dossier
-//! d'une autre* (spec §6.4 cas 2).
+//! The journal of due writes (F2) survives the bridge's stop. On resumption, it carries
+//! paths **relative to a root** — and nothing, in the journal, says
+//! WHICH. If the user comes back choosing **another** directory,
+//! replaying blindly would write *the files of one session into the folder
+//! of another* (spec §6.4 case 2).
 //!
-//! ⚠️ **Et le journal N'EST PAS VIDÉ quand on retient** : jeter perdrait la
-//! donnée, pousser la mettrait au mauvais endroit. **On ne fait ni l'un ni
-//! l'autre : on NOMME**, et le navigateur affiche « Reprendre
-//! l'enregistrement ».
+//! ⚠️ **And the journal is NOT EMPTIED when holding back**: throwing it away would lose the
+//! data, pushing would put it in the wrong place. **We do neither one nor
+//! the other: we NAME it**, and the browser displays "Resume
+//! saving".
 //!
-//! # 🔴 CE QUE CE MODULE NE PEUT PAS FAIRE, ET IL FAUT LE LIRE AINSI
+//! # 🔴 WHAT THIS MODULE CANNOT DO, AND IT MUST BE READ THAT WAY
 //!
-//! Il compare un **NOM**. `isSameEntry()` compare deux poignées **vivantes**,
-//! jamais une poignée à un souvenir (spec §6.4 cas 2) : il n'existe aucun moyen
-//! de reconnaître un répertoire d'une visite à l'autre. **Le nom est un indice,
-//! pas une preuve** — deux répertoires homonymes sur deux disques différents
-//! mettraient cette règle en défaut, et rien ici ne le dirait.
+//! It compares a **NAME**. `isSameEntry()` compares two **live** handles,
+//! never a handle with a memory (spec §6.4 case 2): there is no way
+//! to recognise a directory from one visit to the next. **The name is a clue,
+//! not a proof** — two same-named directories on two different disks
+//! would defeat this rule, and nothing here would say so.
 //!
-//! ⚠️ **Et le MODÈLE DE PERMISSION n'est éprouvé par rien** :
-//! `showDirectoryPicker()`, `queryPermission`, `requestPermission` et
-//! l'activation utilisateur transitoire ne sont appelés nulle part dans ce
-//! dépôt — legs de F1, reconduit par F2, F3 et F4. Le montage OPFS de la
-//! recette crée deux répertoires de noms différents et monte l'un puis l'autre :
-//! il éprouve **la règle**, jamais **qu'elle suffise**.
+//! ⚠️ **And the PERMISSION MODEL is tested by nothing**:
+//! `showDirectoryPicker()`, `queryPermission`, `requestPermission` and
+//! transient user activation are called nowhere in this
+//! repository — legacy of F1, carried over by F2, F3 and F4. The OPFS set-up of the
+//! acceptance run creates two directories with different names and mounts one then the other:
+//! it tests **the rule**, never **that it is enough**.
 
-/// Ce que le fil doit faire de ses écritures dues.
+/// What the thread must do with its due writes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Decision {
-    /// Pousser, et mémoriser le nom annoncé.
+    /// Push, and remember the announced name.
     Pousser,
-    /// Ne rien pousser, et l'annoncer au navigateur par `Dues.retenues`.
+    /// Push nothing, and announce it to the browser through `Dues.retenues`.
     ///
-    /// ⚠️ **Le nom annoncé n'est PAS mémorisé** : le mémoriser ferait qu'un
-    /// second `Bonjour` sur ce même répertoire pousserait, alors que
-    /// l'utilisateur n'a rien confirmé. **Seule une confirmation explicite
-    /// (`forcer`) change le nom mémorisé.**
+    /// ⚠️ **The announced name is NOT remembered**: remembering it would mean that a
+    /// second `Bonjour` on this same directory would push, whereas
+    /// the user confirmed nothing. **Only an explicit confirmation
+    /// (`forcer`) changes the remembered name.**
     Retenir,
 }
 
-/// Décide, à partir du nom mémorisé et de ce que le navigateur annonce.
+/// Decides, from the remembered name and what the browser announces.
 ///
-/// | Nom mémorisé | Nom annoncé | `forcer` | Décision |
+/// | Remembered name | Announced name | `forcer` | Decision |
 /// | --- | --- | --- | --- |
-/// | absent | quelconque | — | **Pousser**, et mémoriser |
-/// | `X` | `X` | — | **Pousser** |
-/// | `X` | `Y ≠ X` | `false` | **Retenir**, et ne rien mémoriser |
-/// | `X` | `Y ≠ X` | `true` | **Pousser**, et mémoriser `Y` |
+/// | absent | any | — | **Push**, and remember |
+/// | `X` | `X` | — | **Push** |
+/// | `X` | `Y ≠ X` | `false` | **Hold back**, and remember nothing |
+/// | `X` | `Y ≠ X` | `true` | **Push**, and remember `Y` |
 ///
-/// ⚠️ **Le premier montage POUSSE, et ce n'est pas un trou** : rien ne peut y
-/// être mal placé, le journal étant vide ou né de ce même montage. Retenir au
-/// premier montage rendrait toute reprise impossible sans un clic, y compris
-/// après un simple redémarrage sur le même répertoire.
+/// ⚠️ **The first mount PUSHES, and it is not a hole**: nothing there can
+/// be misplaced, the journal being empty or born from this same mount. Holding back at the
+/// first mount would make any resumption impossible without a click, including
+/// after a simple restart on the same directory.
 pub fn decider(memorise: Option<&str>, annonce: &str, forcer: bool) -> Decision {
     match memorise {
         None => Decision::Pousser,
@@ -66,13 +66,13 @@ pub fn decider(memorise: Option<&str>, annonce: &str, forcer: bool) -> Decision 
     }
 }
 
-/// Le nom à mémoriser après cette décision, s'il faut en mémoriser un.
+/// The name to remember after this decision, if one must be remembered.
 ///
-/// 🔴 **`None` sur `Retenir`, et c'est la moitié qui compte.** Mémoriser le nom
-/// qu'on vient de refuser ferait que le `Bonjour` suivant — un simple
-/// rechargement de page — le trouverait « connu » et pousserait. *La retenue ne
-/// durerait qu'une visite, et le second essai ferait le dommage que le premier
-/// a évité.*
+/// 🔴 **`None` on `Retenir`, and it is the half that matters.** Remembering the name
+/// just refused would mean that the next `Bonjour` — a simple
+/// page reload — would find it "known" and would push. *Holding back would
+/// only last one visit, and the second attempt would do the damage the first
+/// avoided.*
 pub fn a_memoriser(decision: Decision, annonce: &str) -> Option<&str> {
     match decision {
         Decision::Pousser => Some(annonce),

@@ -1,108 +1,108 @@
-// Les types de charge utile de la GESTION D'APPLICATIONS, côté TypeScript.
+// The payload types of APP MANAGEMENT, on the TypeScript side.
 //
-// 🔴 EXTRAIT AVANT L'ADDITION, JAMAIS APRÈS, et c'est le miroir exact de ce que
-// le sous-bloc G2 a fait côté Rust (`proto/src/plateforme/apps.rs`) — à ceci
-// près qu'il l'y a fait APRÈS avoir franchi 500 lignes, et qu'il l'a déclaré.
-// `plateforme.ts` était à 475 lignes, marge 25, et le sous-bloc G3 y ajoute
-// trois messages, deux énumérations et leurs encodeurs : il aurait franchi.
-// La doctrine de `CLAUDE.md` est de rendre la marge par une extraction jouée
-// D'AVANCE, jamais par une compression.
+// 🔴 EXTRACTED BEFORE THE ADDITION, NEVER AFTER, and it is the exact mirror of what
+// sub-block G2 did on the Rust side (`proto/src/plateforme/apps.rs`) — except
+// that it did so AFTER crossing 500 lines, and declared it.
+// `plateforme.ts` was at 475 lines, margin 25, and sub-block G3 adds
+// three messages, two enums and their encoders: it would have crossed.
+// The doctrine of `CLAUDE.md` is to restore the margin through an extraction played
+// AHEAD, never through compression.
 //
-// 🔴 AUCUNE LIGNE DE COMPORTEMENT N'A CHANGÉ. Les trois types sont transposés
-// mot pour mot, et `plateforme.ts` les RÉEXPORTE — de sorte que les dix
-// importateurs relevés dans `plateforme/` et `proto/` n'ont pas eu à bouger
-// d'un caractère. C'est la même figure que le `pub use apps::{…}` du parent
-// Rust.
+// 🔴 NO LINE OF BEHAVIOUR HAS CHANGED. The three types are transposed
+// word for word, and `plateforme.ts` RE-EXPORTS them — so that the ten
+// importers found in `plateforme/` and `proto/` did not have to move
+// by one character. It is the same figure as the `pub use apps::{…}` of the Rust
+// parent.
 //
-// ⚠️ CE FICHIER NE DOIT IMPORTER NI `node:` NI AUCUN DOM : il est chargé par le
-// service ET par le navigateur.
+// ⚠️ THIS FILE MUST IMPORT NEITHER `node:` NOR ANY DOM: it is loaded by the
+// service AND by the browser.
 
 /**
- * Une application telle que l'agent la découvre sur le disque de la VM.
+ * An application as the agent discovers it on the VM disk.
  *
- * ⚠️ `arguments` est BRUT et SENSIBLE À LA CASSE, contrairement à `cible` et
- * `repertoire` qui sont normalisés. Deux chemins Windows qui ne diffèrent que
- * par la casse désignent le même fichier ; deux lignes de commande qui ne
- * diffèrent que par la casse d'un argument sont deux invocations distinctes.
+ * ⚠️ `arguments` is RAW and CASE-SENSITIVE, unlike `cible` and
+ * `repertoire` which are normalised. Two Windows paths that differ only
+ * by case designate the same file; two command lines that differ
+ * only by the case of an argument are two distinct invocations.
  */
 export interface Application {
-    /** Empreinte du triplet `(cible, arguments, repertoire)` — l'identité. */
+    /** Fingerprint of the `(cible, arguments, repertoire)` triple — the identity. */
     cle: string;
-    /** Le nom du `.lnk`, sans son extension. */
+    /** The name of the `.lnk`, without its extension. */
     nom: string;
-    /** Le chemin du `.lnk` LUI-MÊME, et c'est lui qu'on lance. */
+    /** The path of the `.lnk` ITSELF, and that is what gets launched. */
     chemin: string;
     cible: string;
-    /** BRUTS (voir ci-dessus). Vide = `''`, jamais absent. */
+    /** RAW (see above). Empty = `''`, never absent. */
     arguments: string;
     repertoire: string;
     /**
-     * L'empreinte SHA-256 du PNG de l'icône, en hexadécimal minuscule — ou
-     * `null` quand l'extraction a échoué.
+     * The SHA-256 fingerprint of the icon PNG, in lowercase hexadecimal — or
+     * `null` when extraction failed.
      *
-     * ⚠️ UNE APPLICATION SANS ICÔNE VAUT MIEUX QU'UNE APPLICATION ABSENTE.
-     * `null` n'est pas une erreur, et le champ reste PRÉSENT sur le fil.
+     * ⚠️ AN APPLICATION WITHOUT AN ICON IS BETTER THAN A MISSING APPLICATION.
+     * `null` is not an error, and the field stays PRESENT on the wire.
      */
     icone: string | null;
-    /** Toujours présent. Vaut `'non-mesuree'` quand `icone` est `null`. */
+    /** Always present. Is `'non-mesuree'` when `icone` is `null`. */
     source_max: SourceMax;
     /**
-     * La couleur DOMINANTE de l'icône, en `#rrggbb`, ou `null`.
+     * The DOMINANT colour of the icon, as `#rrggbb`, or `null`.
      *
-     * 🔴 C'est la « couleur d'accent » que la conception de ④ demande au §G5,
-     * et elle est **PAR APPLICATION** — à ne pas confondre avec celle du
-     * sous-projet ①, qui est **par FENÊTRE** et arrive sur le canal WebRTC.
-     * Les deux se calculent par la même règle pure ; c'est leur SUJET qui
-     * diffère.
+     * 🔴 It is the "accent colour" the design of ④ asks for in §G5,
+     * and it is **PER APPLICATION** — not to be confused with that of
+     * sub-project ①, which is **per WINDOW** and arrives on the WebRTC channel.
+     * Both are computed by the same pure rule; it is their SUBJECT that
+     * differs.
      *
-     * ⚠️ `null` N'EST PAS UNE ERREUR : une icône trop pâle, trop sombre ou
-     * trop transparente n'a pas de dominante. Le manifeste OMET alors
-     * `theme_color` plutôt que d'en inventer un.
+     * ⚠️ `null` IS NOT AN ERROR: an icon too pale, too dark or
+     * too transparent has no dominant colour. The manifest then OMITS
+     * `theme_color` rather than inventing one.
      */
     accent: string | null;
     /**
-     * Les extensions que cette application ouvre — minuscules, **avec** le
-     * point, triées et dédupliquées par l'agent.
+     * The extensions this application opens — lowercase, **with** the
+     * dot, sorted and deduplicated by the agent.
      *
-     * 🔴 DES EXTENSIONS, JAMAIS DES TYPES MIME (décision D13 du plan de G5) :
-     * un MIME n'est pas une propriété de la VM, c'est une convention du Web.
-     * La carte extension → MIME vit **une seule fois**, côté plateforme, à
-     * l'endroit qui écrit le manifeste — la faire voyager doublerait une table
-     * en Rust **et** en TypeScript.
+     * 🔴 EXTENSIONS, NEVER MIME TYPES (decision D13 of the G5 plan):
+     * a MIME type is not a property of the VM, it is a convention of the Web.
+     * The extension → MIME map lives **only once**, on the platform side, at
+     * the place that writes the manifest — making it travel would duplicate a table
+     * in Rust **and** in TypeScript.
      *
-     * ⚠️ VIDE EST UN ÉTAT NORMAL : la plupart des applications n'ouvrent aucun
-     * type de fichier. Le champ reste PRÉSENT sur le fil.
+     * ⚠️ EMPTY IS A NORMAL STATE: most applications open no
+     * file type. The field stays PRESENT on the wire.
      */
     associations: string[];
 }
 
 /**
- * D'où vient l'image : la plus grande entrée réellement PRÉSENTE dans le
- * répertoire d'icônes de la source.
+ * Where the image comes from: the largest entry actually PRESENT in the
+ * icon directory of the source.
  *
- * 🔴 CE N'EST PAS LA TAILLE RENDUE. Mesuré le 20 août 2026 sur deux témoins
- * fabriqués (`agent/testdata/g2-temoin-{48,256}.ico`) : un `.ico` ne contenant
- * QU'UNE entrée 48×48, interrogé à 256, rend 256×256 32bpp — par
- * `IShellItemImageFactory` comme par `PrivateExtractIconsW`, sans
- * `SIIGBF_SCALEUP` et MÊME avec `SIIGBF_BIGGERSIZEOK`. Un critère qui
- * comparerait la taille rendue à 256 NE PEUT PAS ÉCHOUER.
+ * 🔴 IT IS NOT THE RENDERED SIZE. Measured on 20 August 2026 on two crafted
+ * witnesses (`agent/testdata/g2-temoin-{48,256}.ico`): an `.ico` holding
+ * ONLY a 48×48 entry, queried at 256, renders 256×256 32bpp — through
+ * `IShellItemImageFactory` as through `PrivateExtractIconsW`, without
+ * `SIIGBF_SCALEUP` and EVEN with `SIIGBF_BIGGERSIZEOK`. A criterion that
+ * compared the rendered size to 256 CANNOT FAIL.
  *
- * 🔵 `'non-mesuree'` s'écrit avec un TIRET, jamais un tiret bas : c'est le
- * `rename_all = "kebab-case"` du Rust sur une variante à DEUX MOTS, donc la
- * seule du module dont la convention soit observable.
+ * 🔵 `'non-mesuree'` is written with a HYPHEN, never an underscore: it is the
+ * Rust `rename_all = "kebab-case"` on a TWO-WORD variant, hence the
+ * only one in the module whose convention is observable.
  */
 export type SourceMax = { pixels: number } | 'non-mesuree';
 
 
 /**
- * Ce qu'un ordre de lancement a réellement fait.
+ * What a launch order actually did.
  *
- * 🔴 `raccourci` CONTRE `cible` EST CE QUI REND LE CRITÈRE DE RECETTE
- * DÉCIDABLE : lancer par la cible reconstruite au lieu du `.lnk` passerait un
- * critère qui ne dirait que « quelque chose s'est lancé ».
+ * 🔴 `raccourci` VERSUS `cible` IS WHAT MAKES THE ACCEPTANCE CRITERION
+ * DECIDABLE: launching through the rebuilt target instead of the `.lnk` would pass a
+ * criterion that would only say "something launched".
  *
- * ⚠️ CE N'EST PAS UN `MotifCanal` : deux valeurs de `MotifCanal` FERMENT le
- * socket, et un lancement raté ne doit fermer aucun canal.
+ * ⚠️ IT IS NOT A `MotifCanal`: two values of `MotifCanal` CLOSE the
+ * socket, and a failed launch must close no channel.
  */
 export type IssueLancement = 'raccourci' | 'cible' | 'inconnue' | 'echec';
 

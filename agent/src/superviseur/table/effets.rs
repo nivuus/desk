@@ -1,28 +1,28 @@
-//! Les effets que `Table` rend, et que le superviseur exécute.
+//! The effects `Table` returns, and that the supervisor executes.
 //!
-//! Extrait de `table.rs` (tâche 9 du sous-bloc D10, à la revue, 6 août 2026) :
-//! le fichier parent était à 499 lignes, marge 1, une fois posé le champ
-//! `taille` de `LancerEnfant` — la contrainte du plan (« extraction d'abord,
-//! sans exception », pas « extraction une fois 500 franchi ») s'applique dès
-//! cette marge-là, avant même de la dépasser. Purement déclaratif : aucune
-//! logique ici, seulement l'énumération et sa documentation, déjà lourde —
-//! même motif que `attribution.rs`, voisin dans ce même répertoire.
+//! Extracted from `table.rs` (task 9 of sub-block D10, at review, August 6th, 2026):
+//! the parent file was at 499 lines, margin 1, once the
+//! `size` field of `LancerEnfant` was added — the plan's constraint ("extraction first,
+//! without exception", not "extraction once 500 is crossed") applies from
+//! that very margin, before even exceeding it. Purely declarative: no
+//! logic here, only the enumeration and its documentation, already heavy —
+//! same reason as `attribution.rs`, its neighbour in this same directory.
 
 use super::{IdFenetre, IdSession};
 
-/// Ce que la table demande au monde extérieur de faire. Le superviseur les
-/// exécute dans l'ordre rendu.
+/// What the table asks the outside world to do. The supervisor
+/// executes them in the order returned.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Effet {
     AnnoncerOuverture {
         session: IdSession,
         titre: String,
     },
-    /// `titre` accompagne la demande parce que le refus qui peut en découler
-    /// s'affiche à un humain. Sans lui, l'appelant n'a que l'identifiant de
-    /// session sous la main et la page-shell annonce « *« w-3 » n'a pas pu
-    /// s'ouvrir* » — un message qui ne désigne rien pour l'utilisateur.
-    CreerSortie {
+    /// `titre` comes with the request because the refusal that may follow
+    /// is shown to a human. Without it, the caller only has the session
+    /// identifier at hand and the shell page announces "*"w-3" could not
+    /// open*" — a message that designates nothing for the user.
+    CreateOutput {
         session: IdSession,
         titre: String,
         largeur: u32,
@@ -31,49 +31,49 @@ pub enum Effet {
     LancerEnfant {
         session: IdSession,
         fenetre: IdFenetre,
-        /// Nom DXGI de la sortie (`\\.\DISPLAYn`), **et non un couple
-        /// d'index** : ceux-ci sont positionnels, l'enfant les résout à son
-        /// démarrage — donc plus tard — et une sortie apparue ou disparue
-        /// entre-temps le fait capturer autre chose, ou échouer.
+        /// DXGI name of the output (`\\.\DISPLAYn`), **and not a pair
+        /// of indices**: those are positional, the child resolves them at its
+        /// startup — hence later — and an output appearing or disappearing
+        /// meanwhile makes it capture something else, or fail.
         nom_sortie: String,
-        /// La taille RETENUE (`placement::taille_retenue`), pas celle de la
-        /// sortie : la sortie peut être bien plus grande (registre pollué,
-        /// voir `creation_sortie::creer_sortie`). C'est cette taille que le
-        /// superviseur pose sur l'enfant (`TAILLE_FENETRE`), pour qu'il la
-        /// redise au capteur à l'attache (tâche 9 du sous-bloc D10) — le
-        /// capteur en a besoin pour recadrer (tâche 8).
-        taille: (u32, u32),
+        /// The RETAINED size (`placement::retained_size`), not the output's:
+        /// the output can be much larger (polluted registry,
+        /// see `creation_sortie::create_output`). It is this size the
+        /// supervisor puts on the child (`TAILLE_FENETRE`), so that it (policy: allow-fr, env var name)
+        /// tells it again to the sensor at attach time (task 9 of sub-block D10) — the
+        /// sensor needs it to crop (task 8).
+        size: (u32, u32),
     },
     TuerEnfant {
         session: IdSession,
     },
-    /// `sortie_pilote` est **l'identifiant du PILOTE**, pas le nom DXGI : le
-    /// pilote ne sait retirer une sortie que par ce qu'il a lui-même rendu à
-    /// la création ; lui présenter un nom DXGI ne détruirait rien, ou
-    /// détruirait la sortie d'autrui. Les deux identifiants désignent la même
-    /// sortie et n'ont aucune relation calculable — d'où les deux champs.
+    /// `sortie_pilote` is **the DRIVER's identifier**, not the DXGI name: the
+    /// driver can only remove an output through what it itself returned at
+    /// creation; presenting it a DXGI name would destroy nothing, or
+    /// would destroy someone else's output. Both identifiers designate the same
+    /// output and have no computable relation — hence the two fields.
     ///
-    /// `nom_sortie` accompagne la destruction parce que l'entrée a déjà
-    /// quitté la table quand cet effet est rendu : sans lui, l'appelant ne
-    /// pourrait plus savoir quelle place DXGI redevient libre.
+    /// `nom_sortie` comes with the destruction because the entry has already
+    /// left the table when this effect is returned: without it, the caller
+    /// could no longer know which DXGI slot becomes free again.
     DetruireSortie {
         sortie_pilote: u32,
         nom_sortie: String,
     },
-    /// Le navigateur a retaillé sa fenêtre, et la session est DÉJÀ vivante :
-    /// il n'y a ni sortie à créer ni enfant à lancer, seulement une taille
-    /// retenue à corriger et une fenêtre à reposer.
+    /// The browser resized its window, and the session is ALREADY live:
+    /// there is neither an output to create nor a child to launch, only a retained
+    /// size to correct and a window to put back.
     ///
-    /// 🔴 **POURQUOI UN EFFET, ET NON UNE DÉCISION DE LA TABLE.** La nouvelle
-    /// taille se borne à la ZONE DE TRAVAIL de la sortie, que seule une lecture
-    /// Win32 fraîche donne (`window::zones_du_moniteur_au_point`) — et la table
-    /// est PURE, éprouvée sur l'hôte Linux. Elle ne retient d'ailleurs que la
-    /// taille RETENUE, jamais celle de la sortie : elle ne pourrait donc pas
-    /// faire GRANDIR une fenêtre qu'un viewport plus petit avait rétrécie. La
-    /// table décide QU'IL FAUT SUIVRE, la boucle mesure et applique.
+    /// 🔴 **WHY AN EFFECT, AND NOT A DECISION OF THE TABLE.** The new
+    /// size is bounded by the output's WORK AREA, which only a fresh Win32
+    /// read gives (`window::zones_du_moniteur_au_point`) — and the table
+    /// is PURE, tested on the Linux host. Besides, it only retains the
+    /// RETAINED size, never the output's: it therefore could not
+    /// make a window GROW that a smaller viewport had shrunk. The
+    /// table decides THAT IT MUST FOLLOW, the loop measures and applies.
     ///
-    /// `largeur`/`hauteur` sont déjà bornées par `borner_a_la_taille_max`,
-    /// comme sur les deux autres chemins d'entrée du viewport.
+    /// `largeur`/`hauteur` are already bounded by `clamp_to_max_size`,
+    /// as on the two other entry paths of the viewport.
     SuivreLeViewport {
         session: IdSession,
         largeur: u32,

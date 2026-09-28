@@ -1,31 +1,31 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   BOUTON — trois variantes, quatre états.
+   BUTTON — three variants, four states.
 
-   ⚠️ L'ÉTAT ACTIF (enfoncé) N'A PAS DE TOKEN, et c'est un arbitrage assumé : il
-   se dit, pour les trois variantes, par le RETOUR À LA VALEUR DE REPOS — le
-   survol se retire sous le doigt. Il faut l'écrire, parce que `:active`
-   implique `:hover` : sans ces trois règles, un bouton enfoncé garderait
-   simplement son apparence de survol et l'appui ne se verrait pas. Que ce
-   retour soit LISIBLE est un jugement humain, pas une mesure : aucune commande
-   ne le dira, et il rejoint les jugements du §8.
+   ⚠️ THE ACTIVE (pressed) STATE HAS NO TOKEN, and it is a deliberate trade-off: it
+   is expressed, for the three variants, by the RETURN TO THE RESTING VALUE — the
+   hover withdraws under the finger. It has to be written, because `:active`
+   implies `:hover`: without these three rules, a pressed button would
+   simply keep its hover appearance and the press would not show. That this
+   return is READABLE is a human judgement, not a measurement: no command
+   will say so, and it joins the judgements of §8.
 
-   ⚠️ LE TRAIT DU BOUTON SECONDAIRE EST `--bord-fort`, PAS `--bord`. Il porte
-   l'information « ceci est un contrôle », et le §4.5 réserve `--bord` aux
-   séparateurs PUREMENT décoratifs, que WCAG 1.4.11 exempte. `--bord-fort` est
-   mesuré sur les trois fonds au seuil 3 par le contrôle §7.1 ; `--bord` ne
-   l'est pas, délibérément. ⚠️ AUCUNE COMMANDE NE VÉRIFIE CE CHOIX — c'est la
-   règle de revue que le §8 nomme. Le secondaire DÉSACTIVÉ retombe sur `--bord`
-   parce qu'il a cessé d'être un contrôle.
+   ⚠️ THE STROKE OF THE SECONDARY BUTTON IS `--bord-fort`, NOT `--bord`. It carries
+   the information "this is a control", and §4.5 reserves `--bord` for
+   PURELY decorative separators, which WCAG 1.4.11 exempts. `--bord-fort` is
+   measured on the three backgrounds at threshold 3 by check §7.1; `--bord` is
+   not, deliberately. ⚠️ NO COMMAND CHECKS THIS CHOICE — it is the
+   review rule §8 names. The DISABLED secondary falls back to `--bord`
+   because it has stopped being a control.
 
-   ⚠️ `:not(:disabled)` PLUTÔT QUE `:enabled` sur le survol et l'appui :
-   `:enabled` ne s'applique qu'aux éléments de formulaire, et une ancre portant
-   `.bouton` ne le satisferait jamais. ⚠️ CETTE PRÉCAUTION N'A TOUJOURS AUCUN
-   APPELANT : cet encadré disait « le jour où S3 posera un lien en bouton, la
-   règle vaudra sans être réécrite », et S3 N'A POSÉ AUCUN LIEN — les deux
-   surfaces qu'il habille n'emploient pas une seule ancre (mesuré, divergence
-   D11 de son plan), et ⑥ ne livre aucune primitive « lien ». La règle reste
-   donc juste et non exercée ; elle vaudra pour le sous-bloc qui posera la
-   première ancre, quel qu'il soit.
+   ⚠️ `:not(:disabled)` RATHER THAN `:enabled` on hover and press:
+   `:enabled` only applies to form elements, and an anchor carrying
+   `.bouton` would never satisfy it. ⚠️ THIS PRECAUTION STILL HAS NO
+   CALLER: this box said "the day S3 sets a link as a button, the
+   rule will apply without being rewritten", and S3 SET NO LINK — the two
+   surfaces it dresses do not use a single anchor (measured, divergence
+   D11 of its plan), and ⑥ delivers no "link" primitive. The rule therefore stays
+   right and unexercised; it will apply to the sub-block that sets the
+   first anchor, whichever it is.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .bouton {
@@ -49,7 +49,7 @@
     cursor: not-allowed;
 }
 
-/* ── Principal — l'action que la surface propose, et il n'y en a qu'une ──── */
+/* ── Primary — the action the surface offers, and there is only one ─────── */
 .bouton--principal {
     background: var(--accent);
     color: var(--sur-accent);
@@ -68,7 +68,7 @@
     color: var(--texte-faible);
 }
 
-/* ── Secondaire — une action de même rang, sans la revendiquer ──────────── */
+/* ── Secondary — an action of the same rank, without claiming it ────────── */
 .bouton--secondaire {
     border-color: var(--bord-fort);
     background: var(--fond-1);
@@ -89,7 +89,7 @@
     color: var(--texte-faible);
 }
 
-/* ── Discret — une action de repli, qui ne pèse rien au repos ───────────── */
+/* ── Discreet — a fallback action, which weighs nothing at rest ─────────── */
 .bouton--discret {
     background: transparent;
     color: var(--texte);
