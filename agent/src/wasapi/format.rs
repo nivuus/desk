@@ -1,43 +1,43 @@
-//! **PUR — aucun `cfg`.** Le format de mixage qu'exige l'écriture du micro sur
-//! le câble, et le refus **nommé** quand il diffère.
+//! **PURE — no `cfg`.** The mix format that writing the microphone to
+//! the cable requires, and the **named** refusal when it differs.
 //!
-//! ⚠️ **Pourquoi cette règle vit ICI et non dans `wasapi/ecriture.rs`.** Le
-//! plan E2 (tâche 7, step 1) demande une règle « PURE et testée sur l'hôte »,
-//! et écrit vingt lignes plus bas que `wasapi/ecriture.rs` « ne se teste PAS
-//! sur l'hôte » (`#![cfg(windows)]`). Les deux ne peuvent pas être vraies du
-//! même fichier. Le précédent qui tranche est déjà dans ce répertoire :
-//! `wasapi/peripherique.rs`, pur, hissé à la racine du crate par `#[path]`
-//! (`main.rs`) précisément pour échapper au `#![cfg(windows)]` de `wasapi.rs`.
-//! Cette règle-ci suit le même montage, sous le nom `wasapi_format`.
+//! ⚠️ **Why this rule lives HERE and not in `wasapi/ecriture.rs`.** Plan
+//! E2 (task 7, step 1) asks for a rule "PURE and tested on the host",
+//! and writes twenty lines further down that `wasapi/ecriture.rs` "is NOT tested
+//! on the host" (`#![cfg(windows)]`). Both cannot be true of the
+//! same file. The precedent that settles it is already in this directory:
+//! `wasapi/peripherique.rs`, pure, hoisted to the crate root through `#[path]`
+//! (`main.rs`) precisely to escape the `#![cfg(windows)]` of `wasapi.rs`.
+//! This rule follows the same setup, under the name `wasapi_format`.
 //!
-//! ## Ce qui est accepté, et ce qui ne l'est PAS
+//! ## What is accepted, and what is NOT
 //!
-//! `LecteurMicro::remplir` rend du **stéréo entrelacé `f32` normalisé** à
-//! 48 kHz. Le format de mixage relevé sur la VM le 20 août 2026 pour le point
-//! de terminaison de rendu du câble est `48000 Hz, 2 canaux, 32 bits
-//! flottant` : **aucune conversion n'est donc nécessaire sur cette machine**,
-//! et l'on n'en écrit aucune. Écrire un convertisseur qu'aucune machine
-//! n'exerce serait du travail posé avant d'avoir constaté le besoin — ce que
-//! ce dépôt refuse, et ce qu'aucun test ne garderait honnête.
+//! `LecteurMicro::remplir` returns **normalised interleaved stereo `f32`** at
+//! 48 kHz. The mix format noted on the VM on August 20th, 2026 for the cable's render
+//! endpoint is `48000 Hz, 2 channels, 32-bit
+//! float`: **no conversion is therefore needed on this machine**,
+//! and we write none. Writing a converter no machine
+//! exercises would be work laid down before having observed the need — which
+//! this repository refuses, and which no test would keep honest.
 //!
-//! Le prix de ce choix est qu'un autre format doit être **refusé
-//! explicitement**, jamais subi : écrire des `f32` stéréo dans un tampon qui
-//! attend autre chose ne produit pas un son dégradé, cela produit du bruit à
-//! plein niveau dans l'oreille de quelqu'un. Le refus nomme la valeur
-//! rencontrée, sur le patron du `bail!` de `LoopbackCapture::open`
-//! (`agent/src/wasapi.rs`, contrôle de fréquence).
+//! The price of this choice is that another format must be **refused
+//! explicitly**, never endured: writing stereo `f32`s into a buffer that
+//! expects something else does not produce degraded sound, it produces full-level
+//! noise in someone's ear. The refusal names the value
+//! encountered, on the pattern of the `bail!` of `LoopbackCapture::open`
+//! (`agent/src/wasapi.rs`, frequency check).
 
 use anyhow::{bail, Result};
 
-/// Le nombre de canaux que `LecteurMicro::remplir` produit, et le seul que
-/// l'écriture sache poser tel quel.
+/// The number of channels `LecteurMicro::remplir` produces, and the only one
+/// the write knows how to lay down as is.
 pub const CANAUX: usize = crate::opus::CHANNELS;
 
-/// La largeur d'échantillon attendue, en bits.
+/// The expected sample width, in bits.
 pub const BITS: u16 = 32;
 
-/// Décrit un format de mixage comme le fait déjà `LoopbackCapture::open`, pour
-/// que les deux moitiés du son se lisent de la même façon dans `agent.log`.
+/// Describes a mix format as `LoopbackCapture::open` already does, so
+/// that both halves of the sound read the same way in `agent.log`.
 pub fn decrire(frequence: u32, canaux: usize, bits: u16, flottant: bool) -> String {
     format!(
         "{frequence} Hz, {canaux} canaux, {bits} bits, {}",
@@ -45,16 +45,16 @@ pub fn decrire(frequence: u32, canaux: usize, bits: u16, flottant: bool) -> Stri
     )
 }
 
-/// Accepte le format de mixage, ou dit **précisément** ce qui cloche.
+/// Accepts the mix format, or says **precisely** what is wrong.
 ///
-/// Les quatre grandeurs sont celles que `IAudioClient::GetMixFormat` rend, déjà
-/// dépliées par l'appelant (le sous-format `KSDATAFORMAT_SUBTYPE_IEEE_FLOAT`
-/// d'un `WAVEFORMATEXTENSIBLE` est réduit au booléen `flottant`) : cette
-/// fonction ne connaît aucun type Windows, c'est ce qui la rend éprouvable ici.
+/// The four quantities are those `IAudioClient::GetMixFormat` returns, already
+/// unfolded by the caller (the `KSDATAFORMAT_SUBTYPE_IEEE_FLOAT` subformat
+/// of a `WAVEFORMATEXTENSIBLE` is reduced to the `flottant` boolean): this
+/// function knows no Windows type, that is what makes it testable here.
 ///
-/// ⚠️ **Aucun repli, aucune conversion.** Voir l'en-tête de module : le refus
-/// est le comportement voulu, et le message est la seule chose qui permette de
-/// le corriger.
+/// ⚠️ **No fallback, no conversion.** See the module header: the refusal
+/// is the intended behaviour, and the message is the only thing that allows
+/// fixing it.
 pub fn verifier(frequence: u32, canaux: usize, bits: u16, flottant: bool) -> Result<()> {
     let description = decrire(frequence, canaux, bits, flottant);
     let attendu = crate::opus::SAMPLE_RATE_HZ;
@@ -86,22 +86,22 @@ pub fn verifier(frequence: u32, canaux: usize, bits: u16, flottant: bool) -> Res
     Ok(())
 }
 
-/// Combien de **trames par canal**, dans `pcm` (entrelacé), sont entièrement
-/// silencieuses.
+/// How many **frames per channel**, in `pcm` (interleaved), are entirely
+/// silent.
 ///
-/// ⚠️ **Pourquoi ce compteur existe, et pourquoi il vit dans CE module.**
-/// `LecteurMicro::remplir` ne bloque jamais et complète au silence (spec §8) :
-/// une trace qui ne dirait que « on a écrit 48 000 trames dans la seconde » ne
-/// distinguerait pas un micro qui parle d'un micro qui se tait, et les deux
-/// s'écrivent exactement pareil sur le câble. C'est le seul endroit du chemin
-/// qui puisse le mesurer, et c'est une mesure du tampon RÉELLEMENT posé, pas un
-/// rapport de `remplir` — qui n'en fait aucun.
+/// ⚠️ **Why this counter exists, and why it lives in THIS module.**
+/// `LecteurMicro::remplir` never blocks and fills with silence (spec §8):
+/// a trace that only said "48,000 frames were written in the second" would not
+/// distinguish a microphone that speaks from a microphone that is silent, and both
+/// are written exactly the same on the cable. It is the only place on the path
+/// that can measure it, and it is a measurement of the buffer ACTUALLY laid down, not a
+/// report from `remplir` — which makes none.
 ///
-/// Quant à sa place : `wasapi/ecriture.rs`, son unique appelant, est
-/// `#![cfg(windows)]` et ne se teste pas sur l'hôte ; `micro.rs` est à 483
-/// lignes (marge 17, la plus étroite du chemin) et ce dépôt extrait avant
-/// d'ajouter plutôt que de comprimer après. Ce module-ci est pur, hissé, déjà
-/// éprouvé, et il parle déjà de ce que l'écriture pose sur le câble.
+/// As for its place: `wasapi/ecriture.rs`, its only caller, is
+/// `#![cfg(windows)]` and is not tested on the host; `micro.rs` is at 483
+/// lines (margin 17, the narrowest on the path) and this repository extracts before
+/// adding rather than compressing afterwards. This module is pure, hoisted, already
+/// tested, and it already talks about what the write lays down on the cable.
 pub fn trames_de_silence(pcm: &[f32], canaux: usize) -> usize {
     if canaux == 0 {
         return 0;
@@ -116,17 +116,17 @@ mod tests {
     use super::*;
     use crate::opus::SAMPLE_RATE_HZ;
 
-    /// Le format RELEVÉ sur la VM le 20 août 2026 pour
-    /// « Haut-parleurs (VB-Audio Virtual Cable) ».
+    /// The format NOTED on the VM on August 20th, 2026 for
+    /// "Haut-parleurs (VB-Audio Virtual Cable)".
     #[test]
     fn le_format_releve_sur_la_vm_est_accepte() {
         assert!(verifier(48_000, 2, 32, true).is_ok());
         assert_eq!(SAMPLE_RATE_HZ, 48_000, "la constante du codec a changé");
     }
 
-    /// 🔴 Le cas de CABLE Output, l'autre bout : 44 100 Hz. Le message doit
-    /// nommer la fréquence rencontrée — sans elle, une recette lit « format
-    /// refusé » et ne sait pas quoi corriger.
+    /// 🔴 The case of CABLE Output, the other end: 44,100 Hz. The message must
+    /// name the frequency encountered — without it, an acceptance run reads "format
+    /// refused" and does not know what to fix.
     #[test]
     #[allow(non_snake_case)]
     fn une_frequence_autre_est_refusee_EN_LA_NOMMANT() {
@@ -139,27 +139,27 @@ mod tests {
             e.contains("48000"),
             "la fréquence attendue doit être nommée : {e}"
         );
-        // ⚠️ La mutation M4 (« le motif ne nomme plus la fréquence
-        // rencontrée ») a d'abord SURVÉCU : `[{description}]` la portait quand
-        // même, et les deux `contains` ci-dessus passaient par elle. Le
-        // relever ici plutôt que de durcir l'assertion, parce que
-        // l'affirmation testée — « le message nomme la fréquence rencontrée »
-        // — est vraie des deux façons, et que l'opérateur la lit dans les deux
-        // cas. Ce qui NE serait pas vrai, c'est un message qui ne la porte
-        // nulle part : c'est cet état-là que les deux `contains` interdisent,
-        // et la mutation M4-bis (ni nom ni description) les tue.
+        // ⚠️ Mutation M4 ("the reason no longer names the frequency
+        // encountered") first SURVIVED: `[{description}]` carried it
+        // anyway, and the two `contains` above went through it. Noting
+        // it here rather than hardening the assertion, because
+        // the tested claim — "the message names the frequency encountered"
+        // — is true both ways, and the operator reads it in both
+        // cases. What would NOT be true is a message that carries it
+        // nowhere: it is that state the two `contains` forbid,
+        // and mutation M4-bis (neither name nor description) kills them.
     }
 
-    /// Un mixage en entiers est un format WASAPI parfaitement légal, et il est
-    /// refusé quand même : `remplir` rend des `f32`.
+    /// An integer mix is a perfectly legal WASAPI format, and it is
+    /// refused anyway: `remplir` returns `f32`s.
     ///
-    /// ⚠️ **La largeur est 32 bits, et c'est TOUT L'INTÉRÊT du cas.** Une
-    /// première rédaction éprouvait `(48 000, 2, 16, entier)` — refusé par
-    /// DEUX gardes indépendantes, celle du flottant et celle des 32 bits — et
-    /// la mutation M3 (« l'entier passe ») a **survécu** : la garde des bits
-    /// rattrapait le cas, et le mot « entier » que le test cherchait venait de
-    /// la description, pas du motif. `(48 000, 2, 32, entier)` ne peut être
-    /// refusé que par la garde du flottant.
+    /// ⚠️ **The width is 32 bits, and that is THE WHOLE POINT of the case.** A
+    /// first draft exercised `(48 000, 2, 16, integer)` — refused by
+    /// TWO independent guards, the float one and the 32-bit one — and
+    /// mutation M3 ("integer passes") **survived**: the bits guard
+    /// caught the case, and the word "integer" the test looked for came from
+    /// the description, not from the reason. `(48 000, 2, 32, integer)` can only be
+    /// refused by the float guard.
     #[test]
     fn un_format_entier_32_bits_est_refuse_par_la_seule_garde_du_flottant() {
         let e = verifier(48_000, 2, 32, false).unwrap_err().to_string();
@@ -173,7 +173,7 @@ mod tests {
         );
     }
 
-    /// Et le 16 bits entier reste refusé, lui aussi.
+    /// And 16-bit integer stays refused too.
     #[test]
     fn un_format_entier_16_bits_est_refuse() {
         assert!(verifier(48_000, 2, 16, false).is_err());
@@ -184,9 +184,9 @@ mod tests {
         assert!(verifier(48_000, 2, 64, true).is_err());
     }
 
-    /// 🔴 **Le mono est REFUSÉ, pas replié.** Poser un tampon stéréo entrelacé
-    /// sur un point de terminaison mono jouerait un canal sur deux à double
-    /// vitesse : pas un son dégradé, un son faux.
+    /// 🔴 **Mono is REFUSED, not folded.** Laying an interleaved stereo buffer
+    /// on a mono endpoint would play every other channel at double
+    /// speed: not degraded sound, wrong sound.
     #[test]
     fn le_mono_est_refuse_plutot_que_converti() {
         let e = verifier(48_000, 1, 32, true).unwrap_err().to_string();
@@ -201,9 +201,9 @@ mod tests {
         assert!(verifier(48_000, 6, 32, true).is_err());
     }
 
-    /// 🔴 Le compteur qui rend la trace périodique LISIBLE. Sans lui, « on a
-    /// écrit 48 000 trames » ne distingue pas un micro qui parle d'un micro
-    /// qui se tait — et `remplir` complète au silence sans jamais le dire.
+    /// 🔴 The counter that makes the periodic trace READABLE. Without it, "48,000
+    /// frames written" does not distinguish a microphone that speaks from a microphone
+    /// that is silent — and `remplir` fills with silence without ever saying so.
     #[test]
     fn le_silence_pur_est_compte_trame_par_trame() {
         assert_eq!(trames_de_silence(&[0.0; 8], 2), 4);
@@ -214,27 +214,27 @@ mod tests {
         assert_eq!(trames_de_silence(&[0.5, -0.5, 0.25, -0.25], 2), 2 - 2);
     }
 
-    /// ⚠️ **Une trame n'est silencieuse que si TOUS ses canaux le sont.** Un
-    /// canal droit muet sur un canal gauche qui parle est un défaut de
-    /// mixage, pas du silence, et le compter comme tel masquerait exactement
-    /// ce défaut.
+    /// ⚠️ **A frame is only silent if ALL its channels are.** A
+    /// silent right channel on a speaking left channel is a mixing defect,
+    /// not silence, and counting it as such would mask exactly
+    /// that defect.
     #[test]
     fn une_trame_dont_un_seul_canal_parle_n_est_pas_du_silence() {
         assert_eq!(trames_de_silence(&[0.0, 0.3, 0.0, 0.0], 2), 1);
     }
 
-    /// Le zéro négatif est du silence : `-0.0 == 0.0` en IEEE 754, et une
-    /// comparaison qui les distinguerait rendrait le compteur faux sans
-    /// qu'aucun son ne change.
+    /// Negative zero is silence: `-0.0 == 0.0` in IEEE 754, and a
+    /// comparison that distinguished them would make the counter wrong without
+    /// any sound changing.
     #[test]
     fn le_zero_negatif_est_du_silence() {
         assert_eq!(trames_de_silence(&[-0.0, -0.0], 2), 1);
     }
 
-    /// Une queue incomplète — moins d'échantillons qu'une trame entière — est
-    /// ignorée plutôt que comptée pour une trame. Le cas ne se produit pas
-    /// (l'écriture pose toujours des trames entières), et c'est justement
-    /// pour cela qu'il doit être défini ici plutôt que découvert ailleurs.
+    /// An incomplete tail — fewer samples than a whole frame — is
+    /// ignored rather than counted as a frame. The case does not happen
+    /// (the write always lays down whole frames), and it is precisely
+    /// for that reason that it must be defined here rather than discovered elsewhere.
     #[test]
     fn une_queue_incomplete_ne_compte_pour_aucune_trame() {
         assert_eq!(trames_de_silence(&[0.0, 0.0, 0.0], 2), 1);

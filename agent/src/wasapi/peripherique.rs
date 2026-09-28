@@ -1,42 +1,42 @@
-//! Choix du point de terminaison audio de rendu que le loopback de session
-//! doit capter — **règle PURE, sans `#[cfg(windows)]`, éprouvée sur l'hôte**.
+//! Choice of the audio render endpoint the session loopback
+//! must capture — **PURE rule, without `#[cfg(windows)]`, tested on the host**.
 //!
-//! ## Pourquoi ce module existe (correction « A-bis », 19 août 2026)
+//! ## Why this module exists (fix "A-bis", August 19th, 2026)
 //!
-//! Le chantier A captait le son de la VM par `GetDefaultAudioEndpoint(eRender,
-//! eConsole)` : le **rendu par défaut** de Windows, quel qu'il soit. Cette
-//! dépendance implicite s'est retournée le jour où l'installation de VB-Cable
-//! (préparation du chantier E, microphone) a fait basculer ce défaut sur le
-//! câble virtuel — un périphérique que rien n'alimente. Le produit captait
-//! alors du silence, sans qu'aucune ligne de journal ne dise pourquoi.
+//! Workstream A captured the VM's sound through `GetDefaultAudioEndpoint(eRender,
+//! eConsole)`: Windows' **default render device**, whatever it is. This
+//! implicit dependency turned around the day installing VB-Cable
+//! (preparation of workstream E, microphone) switched that default to the
+//! virtual cable — a device nothing feeds. The product then captured
+//! silence, without any log line saying why.
 //!
-//! Le remède retenu par le propriétaire du dépôt n'est **pas** « remettre les
-//! haut-parleurs par défaut » : cela corrigerait l'occurrence en laissant la
-//! classe de panne entière, et n'importe quelle installation audio future la
-//! rejouerait. Le remède est le **choix explicite**.
+//! The remedy chosen by the repository owner is **not** "put the
+//! speakers back as default": that would fix the occurrence while leaving the
+//! whole failure class, and any future audio installation would
+//! replay it. The remedy is **explicit choice**.
 //!
-//! ## Désigner par un NOM, jamais par un rang
+//! ## Designate by a NAME, never by a rank
 //!
-//! Ce dépôt a payé cette leçon sur les sorties DXGI : `(index_adaptateur,
-//! index_sortie)` est positionnel et change dès qu'une sortie apparaît ou
-//! disparaît (sous-bloc D1, corrigé en D2 par `DesktopCapture::sur_sortie`,
-//! qui résout par nom). Un rang d'énumération audio a exactement le même
-//! défaut, et pour la même raison : `IMMDeviceCollection` n'ordonne rien de
-//! stable, et brancher un casque renumérote tout.
+//! This repository paid for this lesson on DXGI outputs: `(index_adaptateur,
+//! index_sortie)` is positional and changes as soon as an output appears or
+//! disappears (sub-block D1, fixed in D2 by `DesktopCapture::sur_sortie`,
+//! which resolves by name). An audio enumeration rank has exactly the same
+//! defect, and for the same reason: `IMMDeviceCollection` orders nothing
+//! stable, and plugging in a headset renumbers everything.
 //!
-//! **Deux désignations sont donc acceptées, et l'arbitrage entre elles est
-//! écrit ici plutôt que laissé à l'appelant** :
+//! **Two designations are therefore accepted, and the arbitration between them is
+//! written here rather than left to the caller**:
 //!
-//! - **l'identifiant d'endpoint** (`IMMDevice::GetId`, de la forme
-//!   `{0.0.0.00000000}.{guid}`) — *stable* : il survit au redémarrage, au
-//!   changement de défaut et au renommage du périphérique dans le panneau de
-//!   configuration ; mais *opaque* — personne ne le tape de mémoire dans un
-//!   shell, et il ne se lit pas dans un journal ;
-//! - **le nom convivial** (`PKEY_Device_FriendlyName`, p. ex. « Haut-parleurs
-//!   (Steam Streaming Speakers) ») — *lisible* : c'est exactement ce que
-//!   l'exploitant voit dans le panneau de son Windows et dans nos propres
-//!   traces ; mais il *peut changer* avec le pilote, et deux périphériques
-//!   peuvent porter des noms voisins.
+//! - **the endpoint identifier** (`IMMDevice::GetId`, of the form
+//!   `{0.0.0.00000000}.{guid}`) — *stable*: it survives reboot,
+//!   default change and renaming the device in the control
+//!   panel; but *opaque* — nobody types it from memory in a
+//!   shell, and it cannot be read in a log;
+//! - **the friendly name** (`PKEY_Device_FriendlyName`, e.g. "Haut-parleurs
+//!   (Steam Streaming Speakers)") — *readable*: it is exactly what
+//!   the operator sees in their Windows panel and in our own
+//!   traces; but it *can change* with the driver, and two devices
+//!   can carry similar names.
 //!
 //! Aucune des deux ne domine l'autre, d'où le choix de les accepter toutes
 //! deux : l'identifiant l'emporte quand il est fourni (c'est la désignation

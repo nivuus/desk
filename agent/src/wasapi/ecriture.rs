@@ -1,41 +1,41 @@
-//! Le client de rendu WASAPI qui **écrit** le micro sur le câble virtuel.
+//! The WASAPI render client that **writes** the microphone to the virtual cable.
 //!
-//! Miroir exact de `LoopbackCapture::open` (`agent/src/wasapi.rs`) : même
-//! contrôle d'appartement COM, même garde RAII sur le `WAVEFORMATEX`, même
-//! refus explicite d'un format inattendu. Trois choses seulement changent, et
-//! ce sont les trois seules qui soient neuves ici :
+//! Exact mirror of `LoopbackCapture::open` (`agent/src/wasapi.rs`): same
+//! COM apartment check, same RAII guard on the `WAVEFORMATEX`, same
+//! explicit refusal of an unexpected format. Only three things change, and
+//! they are the only three that are new here:
 //!
-//! - `AUDCLNT_STREAMFLAGS_LOOPBACK` disparaît ;
-//! - `AUDCLNT_STREAMFLAGS_EVENTCALLBACK` + `SetEventHandle` apparaissent —
-//!   **tentés, et non supposés** (voir [`Reveil`]) ;
-//! - `IAudioCaptureClient::GetBuffer` devient `IAudioRenderClient::GetBuffer`
-//!   suivi de `ReleaseBuffer(trames, 0)`, et la place disponible se calcule
+//! - `AUDCLNT_STREAMFLAGS_LOOPBACK` disappears;
+//! - `AUDCLNT_STREAMFLAGS_EVENTCALLBACK` + `SetEventHandle` appear —
+//!   **attempted, not assumed** (see [`Reveil`]);
+//! - `IAudioCaptureClient::GetBuffer` becomes `IAudioRenderClient::GetBuffer`
+//!   followed by `ReleaseBuffer(trames, 0)`, and the available room is computed as
 //!   `GetBufferSize() - GetCurrentPadding()`.
 //!
-//! ## Ce module n'est PAS `Send`, et c'est délibéré
+//! ## This module is NOT `Send`, and that is deliberate
 //!
-//! `LoopbackCapture` porte un `unsafe impl Send` dont le commentaire nomme
-//! lui-même ce qui l'invaliderait : « si un futur champ ajoute un `HANDLE`
-//! d'événement […] cet `unsafe impl` cesserait d'être valide sans que rien ne
-//! le signale ». `RenduWasapi` a exactement ce champ. Plutôt que d'écrire
-//! l'argument qui sauverait le `Send` — le `HANDLE` d'événement est lié au
-//! processus, pas à l'appartement —, on **ouvre sur le fil de rendu
-//! lui-même** : aucun objet COM ne traverse de frontière de fil, il n'y a donc
-//! aucune promesse à tenir. C'est le parti le plus simple et le seul sans
-//! dette (plan E2, tâche 7).
+//! `LoopbackCapture` carries an `unsafe impl Send` whose comment itself
+//! names what would invalidate it: "if a future field adds an event
+//! `HANDLE` […] this `unsafe impl` would stop being valid without anything
+//! flagging it". `RenduWasapi` has exactly that field. Rather than writing
+//! the argument that would save the `Send` — the event `HANDLE` is tied to the
+//! process, not to the apartment —, we **open on the render thread
+//! itself**: no COM object crosses a thread boundary, so there is
+//! no promise to keep. It is the simplest approach and the only one without
+//! debt (plan E2, task 7).
 //!
-//! La contrepartie est que `windows_micro::ouvrir` ne peut pas connaître le
-//! verdict d'ouverture en revenant d'un `spawn` : il l'apprend par un canal.
-//! Voir ce module.
+//! The counterpart is that `windows_micro::ouvrir` cannot know the
+//! opening verdict when returning from a `spawn`: it learns it through a channel.
+//! See that module.
 //!
-//! ## Ce module ne se teste PAS sur l'hôte
+//! ## This module is NOT tested on the host
 //!
-//! `#![cfg(windows)]`. Tout ce qui peut se tromper en est sorti : la
-//! désignation du câble (`wasapi/peripherique.rs`), l'exclusivité
-//! (`micro/exclusivite.rs`), la garde de boucle (`micro/boucle_locale.rs`) et
-//! **le contrôle de format** (`wasapi/format.rs`), tous purs et éprouvés sous
-//! Linux. Ce qui reste ici est de la plomberie COM que seule une recette sur
-//! la VM éprouve.
+//! `#![cfg(windows)]`. Everything that can go wrong has been moved out of it: the
+//! cable designation (`wasapi/peripherique.rs`), exclusivity
+//! (`micro/exclusivite.rs`), the loop guard (`micro/boucle_locale.rs`) and
+//! **the format check** (`wasapi/format.rs`), all pure and tested under
+//! Linux. What remains here is COM plumbing only an acceptance run on
+//! the VM exercises.
 
 #![cfg(windows)]
 
@@ -56,59 +56,59 @@ use windows::Win32::System::Threading::{CreateEventW, WaitForSingleObject};
 
 use crate::wasapi_format;
 
-/// Durée du tampon de rendu demandé à WASAPI, en unités de 100 ns. 40 ms.
+/// Duration of the render buffer requested from WASAPI, in 100 ns units. 40 ms.
 ///
-/// ⚠️ **NON CALIBRÉE**, et elle rejoint la liste que `CLAUDE.md` tient
+/// ⚠️ **NOT CALIBRATED**, and it joins the list `CLAUDE.md` keeps
 /// (`BPP_MIN`, `FACTEUR_FOCUS`, `PART_DORMANTE_BPS`, `TAILLE_MAX_SORTIE`…).
-/// Ce n'est pas une durée neutre : en régime établi le tampon reste **plein**
-/// — `remplir` ne bloque jamais et complète au silence, donc toute la place
-/// rendue par `attendre_place` est consommée à chaque tour —, et cette durée
-/// est donc **le plancher de latence que l'écriture ajoute**, au-dessus de
-/// celle du tampon de gigue. 40 ms est un compromis écrit plutôt que mesuré :
-/// assez pour absorber quatre périodes du moteur audio partagé (10 ms est sa
-/// granularité usuelle sur cette VM, relevée au chantier A), assez peu pour ne
-/// pas doubler la latence de bout en bout. **Aucun jugement d'écoute n'a été
-/// porté.**
+/// It is not a neutral duration: in steady state the buffer stays **full**
+/// — `remplir` never blocks and fills with silence, so all the room
+/// returned by `attendre_place` is consumed at each round —, and this duration
+/// is therefore **the latency floor the write adds**, on top of
+/// that of the jitter buffer. 40 ms is a compromise written rather than measured:
+/// enough to absorb four periods of the shared audio engine (10 ms is its
+/// usual granularity on this VM, noted in workstream A), little enough not
+/// to double end-to-end latency. **No listening judgement has been
+/// made.**
 const DUREE_TAMPON_100NS: i64 = 400_000;
 
-/// Étiquette `WAVE_FORMAT_EXTENSIBLE` du champ `wFormatTag`. Même constante
-/// que dans `wasapi.rs` ; les deux moitiés du son lisent le même champ.
+/// `WAVE_FORMAT_EXTENSIBLE` tag of the `wFormatTag` field. Same constant
+/// as in `wasapi.rs`; both halves of the sound read the same field.
 const WAVE_FORMAT_EXTENSIBLE: u16 = 0xFFFE;
-/// Étiquette `WAVE_FORMAT_IEEE_FLOAT`.
+/// `WAVE_FORMAT_IEEE_FLOAT` tag.
 const WAVE_FORMAT_IEEE_FLOAT: u16 = 3;
 
-/// Comment le fil de rendu est réveillé. **MESURÉ, jamais supposé.**
+/// How the render thread is woken up. **MEASURED, never assumed.**
 ///
-/// La spec §6 affirme que `AUDCLNT_STREAMFLAGS_EVENTCALLBACK` « fonctionne
-/// ici, car il s'agit d'un flux de rendu ordinaire et non d'un loopback ».
-/// C'était une **prédiction** : aucun code de ce dépôt n'avait jamais ouvert un
-/// flux de rendu WASAPI avant ce bloc. On le tente donc, on se replie sur une
-/// boucle à échéance si `Initialize` le refuse, **et le mode réellement obtenu
-/// est journalisé** — faute de quoi une recette ne saurait pas ce qu'elle
-/// mesure (Décision 8 du plan E2).
+/// Spec §6 asserts that `AUDCLNT_STREAMFLAGS_EVENTCALLBACK` "works
+/// here, because it is an ordinary render stream and not a loopback".
+/// It was a **prediction**: no code in this repository had ever opened a
+/// WASAPI render stream before this block. So we attempt it, we fall back to a
+/// deadline loop if `Initialize` refuses it, **and the mode actually obtained
+/// is logged** — otherwise an acceptance run would not know what it is
+/// measuring (Decision 8 of plan E2).
 ///
-/// ✅ **CE N'EST PLUS UNE PRÉDICTION (recette E2, tâche 12, 20 août 2026).**
-/// `reveil="evenement"` aux **CINQ** exécutions vertes, sans exception : le
-/// câble accepte `AUDCLNT_STREAMFLAGS_EVENTCALLBACK`, et la spec §6 avait
-/// raison. ⚠️ **Corollaire à ne pas perdre : [`Reveil::Echeance`] n'a donc
-/// JAMAIS COURU sur ce chemin** — c'est du code livré et jamais emprunté, au
-/// même titre que le repli `Local\` de `windows_micro/verrou.rs`.
+/// ✅ **IT IS NO LONGER A PREDICTION (acceptance E2, task 12, August 20th, 2026).**
+/// The event wake mode was logged in all **FIVE** green runs, without exception: the
+/// cable accepts `AUDCLNT_STREAMFLAGS_EVENTCALLBACK`, and spec §6 was
+/// right. ⚠️ **Corollary not to lose: [`Reveil::Echeance`] has therefore
+/// NEVER RUN on this path** — it is code shipped and never taken, just
+/// like the `Local\` fallback of `windows_micro/verrou.rs`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Reveil {
-    /// `SetEventHandle` a été accepté : WASAPI signale l'événement à chaque
-    /// période.
+    /// `SetEventHandle` was accepted: WASAPI signals the event at each
+    /// period.
     Evenement,
-    /// Repli : on sonde `GetCurrentPadding` à échéance. C'est le mode que le
-    /// fil de mesure de E1 emploie déjà (`demarrage/micro/mesure.rs`).
+    /// Fallback: we poll `GetCurrentPadding` on a deadline. It is the mode that
+    /// E1's measurement thread already uses (`demarrage/micro/mesure.rs`).
     ///
-    /// ⚠️ **JAMAIS OBTENU sur la VM** : la recette E2 relève `Evenement` aux
-    /// cinq exécutions vertes. Ce bras est raisonné et compilé, **pas
-    /// éprouvé**.
+    /// ⚠️ **NEVER OBTAINED on the VM**: acceptance E2 records `Evenement` in the
+    /// five green runs. This arm is reasoned and compiled, **not
+    /// exercised**.
     Echeance,
 }
 
 impl Reveil {
-    /// Le libellé qui part au journal.
+    /// The label that goes to the log.
     pub fn libelle(self) -> &'static str {
         match self {
             Reveil::Evenement => "evenement",
@@ -117,22 +117,22 @@ impl Reveil {
     }
 }
 
-/// Garde RAII pour le pointeur rendu par `IAudioClient::GetMixFormat`.
+/// RAII guard for the pointer returned by `IAudioClient::GetMixFormat`.
 ///
-/// Jumeau de `wasapi::FormatMixage`, dupliqué plutôt que partagé : celui-là
-/// est privé à son module, et le hisser exigerait de rendre `wasapi.rs`
-/// dépendant d'un module qui dépend de lui. Sept lignes contre un cycle.
-/// **La raison du garde est la même** : entre `GetMixFormat` et `Initialize`,
-/// l'ouverture peut sortir par plusieurs `?` — exactement les chemins qu'on
-/// emprunte le jour où la machine change de configuration audio — et une
-/// libération posée en fin de fonction heureuse les manquerait.
+/// Twin of `wasapi::FormatMixage`, duplicated rather than shared: that one
+/// is private to its module, and hoisting it would require making `wasapi.rs`
+/// depend on a module that depends on it. Seven lines against a cycle.
+/// **The guard's reason is the same**: between `GetMixFormat` and `Initialize`,
+/// opening can exit through several `?`s — exactly the paths
+/// taken the day the machine changes audio configuration — and a
+/// free placed at the end of the happy function would miss them.
 struct FormatMixage(*mut WAVEFORMATEX);
 
 impl std::ops::Deref for FormatMixage {
     type Target = WAVEFORMATEX;
     fn deref(&self) -> &WAVEFORMATEX {
-        // SAFETY : le pointeur vient d'un `GetMixFormat` réussi et n'est
-        // libéré que dans `Drop`.
+        // SAFETY: the pointer comes from a successful `GetMixFormat` and is only
+        // freed in `Drop`.
         unsafe { &*self.0 }
     }
 }
@@ -145,16 +145,16 @@ impl Drop for FormatMixage {
 
 /// Rejoint l'appartement multi-thread, ou refuse.
 ///
-/// À appeler **sur le fil de rendu**, avant tout appel COM. Copié du contrôle
-/// de `LoopbackCapture::open` et pour la même raison : `S_OK` (le fil vient de
-/// rejoindre la MTA) et `S_FALSE` (il en était déjà membre) sont tous deux
-/// acceptables ; seul `RPC_E_CHANGED_MODE` — ce fil appartient déjà à un
-/// appartement à thread unique — doit faire échouer l'ouverture.
+/// To be called **on the render thread**, before any COM call. Copied from the check
+/// of `LoopbackCapture::open` and for the same reason: `S_OK` (the thread has just
+/// joined the MTA) and `S_FALSE` (it was already a member) are both
+/// acceptable; only `RPC_E_CHANGED_MODE` — this thread already belongs to a
+/// single-threaded apartment — must make the opening fail.
 ///
-/// ⚠️ **Pas de `CoUninitialize` en regard**, comme dans `wasapi.rs` : le fil de
-/// rendu vit aussi longtemps que le processus, et il n'est jamais recyclé.
+/// ⚠️ **No matching `CoUninitialize`**, as in `wasapi.rs`: the render
+/// thread lives as long as the process, and it is never recycled.
 pub fn rejoindre_mta() -> Result<()> {
-    // SAFETY : appel COM sans pointeur, sur le fil courant.
+    // SAFETY: COM call without a pointer, on the current thread.
     let hr = unsafe { CoInitializeEx(None, COINIT_MULTITHREADED) };
     if hr == RPC_E_CHANGED_MODE {
         bail!(
@@ -165,13 +165,13 @@ pub fn rejoindre_mta() -> Result<()> {
     Ok(())
 }
 
-/// Le flux de rendu ouvert, prêt à recevoir des échantillons.
+/// The opened render stream, ready to receive samples.
 pub struct RenduWasapi {
     client: IAudioClient,
     rendu: IAudioRenderClient,
     /// `None` en mode [`Reveil::Echeance`].
     evenement: Option<HANDLE>,
-    /// `GetBufferSize()`, en trames par canal.
+    /// `GetBufferSize()`, in frames per channel.
     taille_tampon: u32,
     canaux: usize,
     description: String,
@@ -179,27 +179,27 @@ pub struct RenduWasapi {
 }
 
 impl RenduWasapi {
-    /// Ouvre le flux de rendu sur `peripherique`, en mode **PARTAGÉ**, et le
-    /// démarre.
+    /// Opens the render stream on `peripherique`, in **SHARED** mode, and
+    /// starts it.
     ///
-    /// Le mode exclusif a été pesé et écarté (Décision 7 du plan E2) : rien
-    /// n'établit qu'un flux exclusif traverse le câble — on y court-circuite
-    /// le moteur audio de Windows, et que le pilote VB-Cable relaie encore
-    /// vers CABLE Output est **inconnu** —, et le seul format mesuré est celui
-    /// du mode partagé, `GetMixFormat` ne décrivant que lui.
+    /// Exclusive mode was weighed and rejected (Decision 7 of plan E2): nothing
+    /// establishes that an exclusive stream crosses the cable — it short-circuits
+    /// Windows' audio engine, and whether the VB-Cable driver still relays
+    /// to CABLE Output is **unknown** —, and the only measured format is that
+    /// of shared mode, `GetMixFormat` only describing that one.
     ///
-    /// **Refuse** tout format qui n'est pas 48 kHz stéréo flottant 32 bits, en
-    /// nommant ce qui a été rencontré : la règle est pure et vit dans
-    /// `wasapi/format.rs`, où elle est éprouvée sur l'hôte.
+    /// **Refuses** any format that is not 48 kHz stereo 32-bit float,
+    /// naming what was encountered: the rule is pure and lives in
+    /// `wasapi/format.rs`, where it is tested on the host.
     ///
-    /// ⚠️ **Précondition : le fil courant est membre de la MTA** — appeler
-    /// [`rejoindre_mta`] d'abord. Cette fonction n'exporte aucun objet COM
-    /// vers un autre fil, elle suppose donc être appelée sur celui qui s'en
-    /// servira.
+    /// ⚠️ **Precondition: the current thread is a member of the MTA** — call
+    /// [`rejoindre_mta`] first. This function exports no COM object
+    /// to another thread, so it assumes being called on the one that will
+    /// use it.
     pub fn ouvrir(peripherique: &IMMDevice) -> Result<Self> {
-        // SAFETY : `peripherique` vient d'un énumérateur créé sur ce fil (voir
-        // la précondition), et chaque appel ci-dessous est le suivant immédiat
-        // d'un appel réussi.
+        // SAFETY: `peripherique` comes from an enumerator created on this thread (see
+        // the precondition), and each call below immediately follows
+        // a successful call.
         unsafe {
             let client: IAudioClient = peripherique
                 .Activate(CLSCTX_ALL, None)
@@ -215,9 +215,9 @@ impl RenduWasapi {
             let bits = mix.wBitsPerSample;
 
             let flottant = if mix.wFormatTag == WAVE_FORMAT_EXTENSIBLE {
-                // `WAVEFORMATEXTENSIBLE` est `repr(packed)` : prendre une
-                // référence sur `SubFormat` — ce que fait `==` sur un GUID —
-                // est un accès non aligné, donc un comportement indéfini.
+                // `WAVEFORMATEXTENSIBLE` is `repr(packed)`: taking a
+                // reference on `SubFormat` — which `==` on a GUID does —
+                // is an unaligned access, hence undefined behaviour.
                 let ext = mix.0 as *const WAVEFORMATEXTENSIBLE;
                 let sous_format = std::ptr::addr_of!((*ext).SubFormat).read_unaligned();
                 sous_format == KSDATAFORMAT_SUBTYPE_IEEE_FLOAT
@@ -228,14 +228,14 @@ impl RenduWasapi {
             wasapi_format::verifier(frequence, canaux, bits, flottant)?;
             let description = wasapi_format::decrire(frequence, canaux, bits, flottant);
 
-            // Décision 8 : on TENTE l'événement, on ne le suppose pas.
+            // Decision 8: we ATTEMPT the event, we do not assume it.
             //
-            // ⚠️ **Un `IAudioClient` ne s'initialise qu'une fois.** Un
-            // `Initialize` refusé le laisse dans un état où un second appel
-            // rendrait `AUDCLNT_E_ALREADY_INITIALIZED` ou pire : le repli
-            // ré-ACTIVE donc un client neuf plutôt que de réessayer sur
-            // celui-ci. C'est le même geste que `set_encode_size` depuis D5 —
-            // détruire avant de reconstruire —, et pour la même raison.
+            // ⚠️ **An `IAudioClient` initialises only once.** A
+            // refused `Initialize` leaves it in a state where a second call
+            // would return `AUDCLNT_E_ALREADY_INITIALIZED` or worse: the fallback
+            // therefore RE-ACTIVATES a new client rather than retrying on
+            // this one. It is the same gesture as `set_encode_size` since D5 —
+            // destroy before rebuilding —, and for the same reason.
             let (client, reveil) = match client.Initialize(
                 AUDCLNT_SHAREMODE_SHARED,
                 AUDCLNT_STREAMFLAGS_EVENTCALLBACK,
@@ -268,9 +268,9 @@ impl RenduWasapi {
                     (neuf, Reveil::Echeance)
                 }
             };
-            // `mix` sort de portée en fin de bloc `unsafe` et libère alors le
-            // format par `CoTaskMemFree` — APRÈS `Initialize`, qui en a fait sa
-            // copie interne, comme l'exige la documentation de `GetMixFormat`.
+            // `mix` goes out of scope at the end of the `unsafe` block and then frees the
+            // format through `CoTaskMemFree` — AFTER `Initialize`, which made its
+            // internal copy of it, as `GetMixFormat`'s documentation requires.
 
             let evenement = if reveil == Reveil::Evenement {
                 let handle = CreateEventW(None, false, false, PCWSTR::null())
@@ -303,24 +303,24 @@ impl RenduWasapi {
         }
     }
 
-    /// Format réellement obtenu, pour le journal.
+    /// Format actually obtained, for the log.
     pub fn description(&self) -> &str {
         &self.description
     }
 
-    /// Comment le fil est réveillé — **MESURÉ**, jamais supposé.
+    /// How the thread is woken up — **MEASURED**, never assumed.
     pub fn reveil(&self) -> Reveil {
         self.reveil
     }
 
-    /// Attend qu'il y ait de la place, au plus `delai`. Rend le nombre de
-    /// **trames par canal** à fournir, ou `0`.
+    /// Waits for room, at most `delai`. Returns the number of
+    /// **frames per channel** to provide, or `0`.
     ///
-    /// `0` n'est pas une erreur : c'est un tour où le tampon était encore
-    /// plein. L'appelant le compte comme un retard d'échéance — c'est ce
-    /// compteur qui rendra décidable la question, aujourd'hui conjecturale, de
-    /// savoir si le `Mutex` du lecteur mérite d'être remplacé par une file
-    /// sans verrou.
+    /// `0` is not an error: it is a round where the buffer was still
+    /// full. The caller counts it as a missed deadline — it is this
+    /// counter that will make decidable the question, conjectural today, of
+    /// whether the reader's `Mutex` deserves to be replaced by a lock-free
+    /// queue.
     pub fn attendre_place(&mut self, delai: Duration) -> Result<usize> {
         let echeance = Instant::now() + delai;
         loop {
@@ -337,42 +337,42 @@ impl RenduWasapi {
                     let handle = self
                         .evenement
                         .context("mode evenement sans handle : incoherence interne")?;
-                    // `as u32` après `min` : une attente de plus de 49 jours
-                    // n'a aucun sens ici, et `INFINITE` (0xFFFFFFFF) ne doit
-                    // jamais être atteint par accident — un fil de rendu qui
-                    // attend sans borne ne se réveillerait plus si le
-                    // périphérique disparaissait.
+                    // `as u32` after `min`: a wait of more than 49 days
+                    // makes no sense here, and `INFINITE` (0xFFFFFFFF) must
+                    // never be reached by accident — a render thread that
+                    // waits without bound would no longer wake up if the
+                    // device disappeared.
                     let ms = reste.as_millis().min(u32::MAX as u128 - 1) as u32;
-                    // SAFETY : `handle` vient d'un `CreateEventW` réussi et
-                    // n'est fermé que par `Drop`.
+                    // SAFETY: `handle` comes from a successful `CreateEventW` and
+                    // is only closed by `Drop`.
                     let issue = unsafe { WaitForSingleObject(handle, ms) };
                     if issue == WAIT_FAILED {
                         bail!("attente de l'evenement de rendu echouee (WAIT_FAILED)");
                     }
                 }
                 Reveil::Echeance => {
-                    // Sondage borné : jamais plus que ce qui reste, et jamais
-                    // plus qu'un quart de la période usuelle du moteur audio —
-                    // sans quoi on dormirait au-delà du réveil suivant.
+                    // Bounded polling: never more than what remains, and never
+                    // more than a quarter of the audio engine's usual period —
+                    // otherwise we would sleep past the next wake-up.
                     std::thread::sleep(reste.min(Duration::from_millis(2)));
                 }
             }
         }
     }
 
-    /// La place libre dans le tampon, en trames par canal.
+    /// The free room in the buffer, in frames per channel.
     fn place(&self) -> Result<usize> {
-        // SAFETY : `client` vient d'un `Initialize` réussi.
+        // SAFETY: `client` comes from a successful `Initialize`.
         let occupe = unsafe { self.client.GetCurrentPadding() }
             .context("lecture de l'occupation du tampon de rendu")?;
         Ok(self.taille_tampon.saturating_sub(occupe) as usize)
     }
 
-    /// Écrit `trames` par canal depuis `pcm` (stéréo entrelacé, `f32`).
+    /// Writes `trames` per channel from `pcm` (interleaved stereo, `f32`).
     ///
-    /// `pcm` doit porter au moins `trames * canaux` échantillons ; le format
-    /// ayant été refusé s'il n'était pas stéréo flottant 32 bits
-    /// (`wasapi/format.rs`), la copie est un `memcpy` et rien d'autre.
+    /// `pcm` must carry at least `trames * canaux` samples; the format
+    /// having been refused if it was not stereo 32-bit float
+    /// (`wasapi/format.rs`), the copy is a `memcpy` and nothing else.
     pub fn ecrire(&mut self, pcm: &[f32], trames: usize) -> Result<()> {
         if trames == 0 {
             return Ok(());
@@ -385,17 +385,17 @@ impl RenduWasapi {
             self.canaux
         );
 
-        // ⚠️ **L'injection est testée AVANT `GetBuffer`, jamais entre lui et
-        // `ReleaseBuffer`.** Un tampon acquis et jamais relâché bloquerait le
-        // rendu pour de bon, et l'on mesurerait alors l'instrument.
+        // ⚠️ **Injection is tested BEFORE `GetBuffer`, never between it and
+        // `ReleaseBuffer`.** A buffer acquired and never released would block
+        // rendering for good, and we would then be measuring the instrument.
         if faute_a_injecter() {
             bail!("faute injectee (MICRO_FAUTE_ECRITURE)");
         }
 
-        // SAFETY : `GetBuffer(trames)` n'est appelé qu'après avoir vérifié par
-        // `attendre_place` qu'autant de trames sont libres ; il rend un
-        // pointeur sur `trames * canaux` échantillons du format négocié, donc
-        // des `f32`, et `ReleaseBuffer` le rend à WASAPI dans le même bloc.
+        // SAFETY: `GetBuffer(trames)` is only called after checking through
+        // `attendre_place` that as many frames are free; it returns a
+        // pointer to `trames * canaux` samples of the negotiated format, hence
+        // `f32`s, and `ReleaseBuffer` gives it back to WASAPI in the same block.
         unsafe {
             let tampon = self
                 .rendu
@@ -421,18 +421,18 @@ impl Drop for RenduWasapi {
     }
 }
 
-/// Le budget d'injection de fautes d'écriture, **GLOBAL AU PROCESSUS**.
+/// The write fault injection budget, **PROCESS-GLOBAL**.
 ///
-/// 🔴 **Jamais relu par fil, et c'est la leçon que D10 a payée d'une passe
-/// entière** (`AUDIO_FAUTE_LECTURE`, tâche 14) : un budget relu par fil se
-/// réarme intégralement à chaque reconstruction — `std::env::var` rendant la
-/// même valeur au fil neuf —, donc chaque fil meurt à son tour avant tout
-/// appel réel, et **le chiffre-juge ne peut pas quitter zéro sur un produit
-/// pourtant corrigé**. Un `static` décrémenté par `fetch_update` fait que le
-/// budget s'épuise **une fois** pour tout le processus.
+/// 🔴 **Never reread per thread, and that is the lesson D10 paid for with a whole
+/// pass** (`AUDIO_FAUTE_LECTURE`, task 14): a budget reread per thread
+/// re-arms fully at each rebuild — `std::env::var` returning the
+/// same value to the new thread —, so each thread dies in turn before any
+/// real call, and **the judging figure cannot leave zero on a product
+/// that is nevertheless fixed**. A `static` decremented by `fetch_update` makes the
+/// budget run out **once** for the whole process.
 ///
-/// ⚠️ **Variable de BANC, jamais une configuration livrée.** Absente ou nulle :
-/// aucune faute, et pas une ligne de journal.
+/// ⚠️ **BENCH variable, never a shipped configuration.** Absent or zero:
+/// no fault, and not a single log line.
 fn faute_a_injecter() -> bool {
     use std::sync::atomic::{AtomicU32, Ordering};
     static BUDGET: std::sync::OnceLock<AtomicU32> = std::sync::OnceLock::new();
@@ -442,8 +442,8 @@ fn faute_a_injecter() -> bool {
             .and_then(|v| v.parse().ok())
             .unwrap_or(0);
         if n > 0 {
-            // Un SEUL `warn!` : deux traces au même instant se compteraient
-            // comme deux événements (piège maison du sous-bloc D6).
+            // A SINGLE `warn!`: two traces at the same instant would count
+            // as two events (sub-block D6's home-grown trap).
             tracing::warn!(
                 fautes_a_injecter = n,
                 "injection de fautes d'ecriture du micro ARMEE (banc, MICRO_FAUTE_ECRITURE)"

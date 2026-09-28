@@ -212,15 +212,15 @@ pub(super) fn methode_de(paquet: &[u8]) -> Option<u16> {
     Some((type_fil & 0x000F) | ((type_fil & 0x00E0) >> 1) | ((type_fil & 0x3E00) >> 2))
 }
 
-/// Écrit un attribut TLV, complété à un multiple de 4 octets.
+/// Writes a TLV attribute, padded to a multiple of 4 bytes.
 ///
-/// `pub(super)` : `allocation` s'en sert pour fabriquer ses réponses de test.
+/// `pub(super)`: `allocation` uses it to fabricate its test responses.
 pub(super) fn ecrire_attribut(sortie: &mut Vec<u8>, type_: u16, valeur: &[u8]) {
     sortie.extend_from_slice(&type_.to_be_bytes());
     sortie.extend_from_slice(&(valeur.len() as u16).to_be_bytes());
     sortie.extend_from_slice(valeur);
-    // Le remplissage n'est PAS compté dans la longueur annoncée de
-    // l'attribut, mais il doit être présent sur le fil.
+    // Padding is NOT counted in the attribute's announced length,
+    // but it must be present on the wire.
     let reste = valeur.len() % 4;
     if reste != 0 {
         sortie.extend_from_slice(&[0u8; 4][..4 - reste]);
@@ -229,11 +229,11 @@ pub(super) fn ecrire_attribut(sortie: &mut Vec<u8>, type_: u16, valeur: &[u8]) {
 
 /// Encode une adresse au format XOR-MAPPED-ADDRESS (RFC 5389 §15.2).
 ///
-/// Le port est masqué par les 16 bits de poids fort du cookie magique ;
-/// l'adresse par le cookie entier en IPv4, ou par cookie ‖ identifiant de
-/// transaction en IPv6.
+/// The port is masked by the 16 most significant bits of the magic cookie;
+/// the address by the whole cookie in IPv4, or by cookie ‖ transaction
+/// identifier in IPv6.
 ///
-/// `pub(super)` : `allocation` s'en sert pour fabriquer ses réponses de test.
+/// `pub(super)`: `allocation` uses it to fabricate its test responses.
 pub(super) fn xor_adresse(addr: SocketAddr, trans_id: &[u8; 12]) -> Vec<u8> {
     let mut sortie = vec![0u8, 0];
     let port = addr.port() ^ u16::from_be_bytes([MAGIC[0], MAGIC[1]]);
@@ -267,8 +267,8 @@ mod tests {
     fn la_cle_longue_duree_est_le_md5_des_trois_champs() {
         use md5::Digest;
 
-        // Forme imposée par la RFC 5766 §4 (qui reprend RFC 5389 §15.4) :
-        // la clé d'intégrité vaut MD5("username:realm:password").
+        // Form imposed by RFC 5766 §4 (which takes up RFC 5389 §15.4):
+        // the integrity key is MD5("username:realm:password").
         let cle = cle_longue_duree("user", "example.org", "pass");
         let attendu = md5::Md5::digest(b"user:example.org:pass");
         assert_eq!(cle.as_slice(), attendu.as_slice());
@@ -280,12 +280,12 @@ mod tests {
         let trans_id = [7u8; 12];
         let paquet = encoder_requete(&Requete::AllocateNu, trans_id, None);
 
-        // En-tête : type 0x0003 (Allocate, classe requête), cookie magique.
+        // Header: type 0x0003 (Allocate, request class), magic cookie.
         assert_eq!(&paquet[0..2], &[0x00, 0x03], "méthode Allocate attendue");
         assert_eq!(&paquet[4..8], &[0x21, 0x12, 0xA4, 0x42], "cookie magique");
         assert_eq!(&paquet[8..20], &trans_id);
 
-        // La longueur annoncée doit correspondre à ce qui suit l'en-tête.
+        // The announced length must match what follows the header.
         let longueur = u16::from_be_bytes([paquet[2], paquet[3]]) as usize;
         assert_eq!(
             longueur,
@@ -293,25 +293,25 @@ mod tests {
             "longueur d'en-tête incohérente"
         );
 
-        // REQUESTED-TRANSPORT = UDP (17), l'attribut que is::stun ne sait pas
-        // écrire et sans lequel coturn répond 400.
+        // REQUESTED-TRANSPORT = UDP (17), the attribute is::stun cannot
+        // write and without which coturn answers 400.
         assert_eq!(
             &paquet[20..28],
             &[0x00, 0x19, 0x00, 0x04, 17, 0x00, 0x00, 0x00],
             "REQUESTED-TRANSPORT=UDP attendu en premier attribut"
         );
 
-        // Aucune intégrité sur la requête nue : c'est elle qui provoque le
-        // 401 porteur du realm et du nonce.
+        // No integrity on the bare request: it is what provokes the
+        // 401 carrying the realm and the nonce.
         assert_eq!(paquet.len(), 28, "aucun autre attribut attendu");
     }
 
     #[test]
     fn une_allocation_signee_est_relue_et_verifiee_par_is_stun() {
-        // Le test le plus important du module : notre sérialiseur doit
-        // produire un message que le parseur de référence accepte ET dont il
-        // valide l'intégrité. C'est ce qui remplace un aller-retour avec un
-        // vrai serveur.
+        // The module's most important test: our serialiser must
+        // produce a message the reference parser accepts AND whose
+        // integrity it validates. It is what replaces a round trip with a
+        // real server.
         let ids = Identifiants {
             username: "user".into(),
             realm: "example.org".into(),
@@ -346,8 +346,8 @@ mod tests {
         );
 
         let message = is::stun::StunMessage::parse(&paquet).expect("relu par is::stun");
-        // Le XOR de l'adresse est fait par nous et défait par le parseur :
-        // si les deux ne s'accordent pas, cette égalité échoue.
+        // The address XOR is done by us and undone by the parser:
+        // if the two do not agree, this equality fails.
         assert_eq!(message.xor_peer_address(), Some(pair));
         assert!(message.verify(&cle, sha1_hmac));
     }
