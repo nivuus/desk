@@ -19,8 +19,8 @@ function neuve(maintenant: () => number = () => T0) {
     return { proprietes, g: garde(SECRET, maintenant, proprietes) };
 }
 
-describe('garde de la poignée de main', () => {
-    it('🔴 REFUSE un pair `agent` SANS jeton — la fenêtre de P2 est FERMÉE', () => {
+describe('handshake guard', () => {
+    it('🔴 REFUSES an `agent` peer WITHOUT a token — the P2 window is CLOSED', () => {
         // 🔴 CETTE ASSERTION EST L'INVERSE EXACT DE CELLE QUE P2 LIVRAIT, et
         // c'est le geste central de P3. P2 écrivait ici « accepte un pair
         // `agent` SANS jeton », en annonçant dans son propre commentaire que
@@ -38,7 +38,7 @@ describe('garde de la poignée de main', () => {
         expect(v.motif).toBe('jeton-absent');
     });
 
-    it('accepte un `agent` dont le jeton PRÉFIXE la session demandée', () => {
+    it('accepts an `agent` whose token PREFIXES the requested session', () => {
         const { g } = neuve();
         const jeton = signer(P, SECRET, T0, DUREE_JETON_ACCES_MS, 'agent');
         expect(g.verify({ role: 'agent', session: `${P}:bureau`, jeton }))
@@ -47,7 +47,7 @@ describe('garde de la poignée de main', () => {
         expect(g.verify({ role: 'agent', session: `${P}:w-1`, jeton }).ok).toBe(true);
     });
 
-    it('🔴 REFUSE le MÊME jeton d’agent sur la session d’une AUTRE VM', () => {
+    it('🔴 REFUSES the SAME agent token on the session of ANOTHER VM', () => {
         // 🔴 La rouge : omettre la comparaison de préfixe. Un agent enrôlé
         // occuperait alors la session de TOUTE autre VM — c'est le pendant
         // `agent` du critère ③ de P2, et sans lui l'enrôlement n'authentifie
@@ -60,11 +60,11 @@ describe('garde de la poignée de main', () => {
         // Le message SUR LE FIL ne distingue pas les causes : il est le même
         // que celui d'un client refusé pour appartenance. Le JOURNAL, lui,
         // porte de quoi diagnostiquer.
-        expect(refus.message).toBe('accès refusé à la session demandée');
+        expect(refus.message).toBe('access refused to the requested session');
         expect(refus.journal).toContain(`${Q}:bureau`);
     });
 
-    it('🔴 REFUSE un préfixe qui n’est qu’un DÉBUT du sujet, sans le séparateur', () => {
+    it('🔴 REFUSES a prefix that is only a START of the subject, without the separator', () => {
         // 🔴 La rouge : comparer par `session.startsWith(sujet)` SANS le
         // séparateur. Un agent de préfixe `AB` occuperait alors les sessions
         // de la VM `ABC`, dont le préfixe le prolonge — une collision qui ne
@@ -76,7 +76,7 @@ describe('garde de la poignée de main', () => {
             .toMatchObject({ ok: false, motif: 'session-refusee' });
     });
 
-    it('🔴 REFUSE un jeton HUMAIN présenté en `role:agent` — confusion, sens 1', () => {
+    it('🔴 REFUSES a HUMAN token presented as `role:agent` — confusion, direction 1', () => {
         // 🔴 La rouge : omettre `type === 'agent'`. Les deux jetons sont signés
         // par le MÊME secret : un jeton humain volé ouvrirait un rôle `agent`,
         // donc un `ice-config` sur toute session dont il préfixerait le nom.
@@ -91,7 +91,7 @@ describe('garde de la poignée de main', () => {
             .toMatchObject({ ok: false, motif: 'session-refusee' });
     });
 
-    it('🔴 REFUSE un jeton d’AGENT présenté en `role:client` — confusion, sens 2', () => {
+    it('🔴 REFUSES an AGENT token presented as `role:client` — confusion, direction 2', () => {
         // 🔴 La rouge : omettre `type !== 'agent'`. Un jeton d'agent ouvrirait
         // un rôle `client`, contournant l'appartenance de session que P2 a
         // posée (`signaling/propriete.ts`) : l'agent deviendrait un
@@ -102,7 +102,7 @@ describe('garde de la poignée de main', () => {
             .toMatchObject({ ok: false, motif: 'session-refusee' });
     });
 
-    it('REFUSE un `client` sans jeton', () => {
+    it('REFUSES a `client` without a token', () => {
         const { g } = neuve();
         const v = g.verify({ role: 'client', session: 's-1' });
         expect(v.ok).toBe(false);
@@ -110,16 +110,16 @@ describe('garde de la poignée de main', () => {
         expect(v.motif).toBe('jeton-absent');
     });
 
-    it('REFUSE un jeton mal formé ou mal signé', () => {
+    it('REFUSES a malformed or badly signed token', () => {
         const { g } = neuve();
-        expect(g.verify({ role: 'client', session: 's-1', jeton: 'pas.un.jeton' }))
+        expect(g.verify({ role: 'client', session: 's-1', jeton: 'not.a.token' }))
             .toMatchObject({ ok: false, motif: 'jeton-invalide' });
-        const autre = signer('u1', 'un-AUTRE-secret-de-quarante-caracteres-ou-plus', T0);
+        const autre = signer('u1', 'ANOTHER-secret-of-forty-characters-or-more', T0);
         expect(g.verify({ role: 'client', session: 's-1', jeton: autre }))
             .toMatchObject({ ok: false, motif: 'jeton-invalide' });
     });
 
-    it('REFUSE un jeton d’un type inattendu, sans jamais LEVER', () => {
+    it('REFUSES a token of an unexpected type, without ever THROWING', () => {
         // Un `String(jeton)` sans contrôle ferait passer un objet pour une
         // chaîne, ou lèverait sur `null`.
         const { g } = neuve();
@@ -130,14 +130,14 @@ describe('garde de la poignée de main', () => {
         }
     });
 
-    it('accepte un `client` au jeton valide sur une session LIBRE', () => {
+    it('accepts a `client` with a valid token on a FREE session', () => {
         const { g } = neuve();
         const jeton = signer('u1', SECRET, T0);
         expect(g.verify({ role: 'client', session: 's-1', jeton }))
             .toEqual({ ok: true, userId: 'u1' });
     });
 
-    it('accepte le MÊME utilisateur sur SA session, et REFUSE un autre', () => {
+    it('accepts the SAME user on THEIR session, and REFUSES another', () => {
         const { g, proprietes } = neuve();
         proprietes.revendiquer('s-1', 'u1');
         expect(g.verify({ role: 'client', session: 's-1', jeton: signer('u1', SECRET, T0) }))
@@ -160,7 +160,7 @@ describe('garde de la poignée de main', () => {
         expect(refus.journal).toContain('u2');
     });
 
-    it('REFUSE un jeton EXPIRÉ, sur une horloge qui VARIE', () => {
+    it('REFUSES an EXPIRED token, on a clock that VARIES', () => {
         // 🔴 Le critère ② vécu de bout en bout : le MÊME jeton, deux instants.
         // Figer l'horloge rendrait le second appel vert.
         let maintenant = T0;
@@ -173,7 +173,7 @@ describe('garde de la poignée de main', () => {
             .toMatchObject({ ok: false, motif: 'jeton-expire' });
     });
 
-    it('verifier N’A AUCUN EFFET DE BORD : deux appels ne revendiquent rien', () => {
+    it('verify HAS NO SIDE EFFECT: two calls claim nothing', () => {
         // 🔴 Y mettre la revendication laisserait une appartenance FANTÔME
         // derrière un pair que `Appariement::declarer` refuse ensuite pour
         // cause de rôle déjà occupé.
@@ -187,7 +187,7 @@ describe('garde de la poignée de main', () => {
             .toBe(true);
     });
 
-    it('revendiquer puis liberer : la session change de main', () => {
+    it('claim then release: the session changes hands', () => {
         const { g, proprietes } = neuve();
         g.revendiquer('s-1', 'u1');
         expect(proprietes.proprietaire('s-1')).toBe('u1');

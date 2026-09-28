@@ -64,7 +64,7 @@ async function servir(
             .then((servie) => {
                 if (servie) return;
                 rep.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' });
-                rep.end('introuvable\n');
+                rep.end('not found\n');
             })
             .catch((cause) => {
                 rep.writeHead(500, { 'content-type': 'application/json; charset=utf-8' });
@@ -101,8 +101,8 @@ async function corpsDe(r: Response): Promise<CorpsVm & Record<string, unknown>> 
     return (await r.json()) as CorpsVm & Record<string, unknown>;
 }
 
-describe(`routes /vm, moteur=${MOTEUR}`, () => {
-    it('`GET /vm` SANS en-tête → 401 jeton-absent', async () => {
+describe(`routes /vm, engine=${MOTEUR}`, () => {
+    it('`GET /vm` WITHOUT a header → 401 jeton-absent', async () => {
         // 🔴 La rouge : servir sans jeton. L'inventaire deviendrait public.
         const url = await servir('rvm-401');
         const r = await fetch(`${url}/vm`);
@@ -110,7 +110,7 @@ describe(`routes /vm, moteur=${MOTEUR}`, () => {
         expect((await corpsDe(r)).refus).toBe('jeton-absent');
     });
 
-    it('🔴 `GET /vm` avec un jeton d’AGENT → 403 jeton-agent', async () => {
+    it('🔴 `GET /vm` with an AGENT token → 403 jeton-agent', async () => {
         // 🔴 La rouge : accepter le type `agent`. Un agent verrait l'inventaire
         // d'un humain — la seconde des deux confusions qu'`identite/jeton.ts`
         // énumère.
@@ -121,7 +121,7 @@ describe(`routes /vm, moteur=${MOTEUR}`, () => {
         expect((await corpsDe(r)).refus).toBe('jeton-agent');
     });
 
-    it('🔴 `GET /vm` ne rend QUE les VMs du demandeur', async () => {
+    it('🔴 `GET /vm` returns ONLY the VMs of the requester', async () => {
         // 🔴 La rouge : rendre l'inventaire entier. ⚠️ CE TEST EST DISTINCT DE
         // CELUI DE `vmsDe` : celui-là éprouve la fonction pure, celui-ci
         // éprouve qu'elle est bien APPELÉE. Une route qui n'appellerait pas le
@@ -139,7 +139,7 @@ describe(`routes /vm, moteur=${MOTEUR}`, () => {
         expect(corps.vms!.map((v) => v.id)).toEqual(['v1']);
     });
 
-    it('`GET /vm` rend `etat`, `prefixe` et `sessions_ouvertes`', async () => {
+    it('`GET /vm` returns `etat`, `prefixe` and `sessions_ouvertes`', async () => {
         // 🔴 La rouge : omettre un champ. Le hub n'aurait rien à afficher.
         const url = await servir('rvm-champs');
         await poserVm(base!, 'v1', 'w1', 'PREFIXEv1');
@@ -155,7 +155,7 @@ describe(`routes /vm, moteur=${MOTEUR}`, () => {
         expect(vm.sessions_ouvertes).toBe(1);
     });
 
-    it('🔴 `GET /vm` ne rend PAS `adresse`', async () => {
+    it('🔴 `GET /vm` does NOT return `adresse`', async () => {
         // 🔴 La rouge : l'inclure. L'adresse d'une VM est de la topologie
         // interne dont le navigateur n'a AUCUN usage — il parle au signaling,
         // jamais à la VM. La rendre l'exposerait à tout utilisateur
@@ -171,7 +171,7 @@ describe(`routes /vm, moteur=${MOTEUR}`, () => {
         expect(vm.adresse).toBeUndefined();
     });
 
-    it('🔴 `POST /vm/<id>/instantane` → 501 et un corps TYPÉ — le critère ①', async () => {
+    it('🔴 `POST /vm/<id>/instantane` → 501 and a TYPED body — criterion ①', async () => {
         // 🔴 La rouge : rendre 200, ou un silence. C'est LITTÉRALEMENT le
         // critère ① de la spec §4 « P4 ».
         const url = await servir('rvm-instantane');
@@ -190,7 +190,7 @@ describe(`routes /vm, moteur=${MOTEUR}`, () => {
     });
 
     it('`POST /vm/<id>/demarrer` → 501', async () => {
-        const url = await servir('rvm-demarrer');
+        const url = await servir('rvm-start');
         await poserVm(base!, 'v1', 'w1', 'PREFIXEv1');
         const alice = await attribuer(base!, 'v1', 'alice@exemple.test');
         const r = await fetch(`${url}/vm/v1/demarrer`, {
@@ -213,7 +213,7 @@ describe(`routes /vm, moteur=${MOTEUR}`, () => {
         expect((await corpsDe(r)).operation).toBe('arreter');
     });
 
-    it('🔴 `POST /vm/<id>/attribuer` → 404 GÉNÉRIQUE, jamais 501 ni 200', async () => {
+    it('🔴 `POST /vm/<id>/attribuer` → GENERIC 404, never 501 nor 200', async () => {
         // 🔴 La rouge : ajouter `attribuer` à `OPERATIONS_HTTP`. L'attribution
         // deviendrait atteignable par tout utilisateur authentifié — il
         // n'existe aucun rôle d'administration dans ce service, donc la route
@@ -229,10 +229,10 @@ describe(`routes /vm, moteur=${MOTEUR}`, () => {
             headers: withIt(jetonDe(alice)),
         });
         expect(r.status).toBe(404);
-        expect(await r.text()).toBe('introuvable\n');
+        expect(await r.text()).toBe('not found\n');
     });
 
-    it('🔴 un verbe INVENTÉ → 404 générique, jamais un 501 qui mentirait', async () => {
+    it('🔴 an INVENTED verb → generic 404, never a 501 that would lie', async () => {
         // 🔴 La rouge : valider APRÈS avoir servi. Un verbe inconnu recevrait
         // un 501, qui affirmerait que l'opération EXISTE et n'est pas
         // supportée — alors qu'elle n'existe pas. La liste est BLANCHE.
@@ -248,7 +248,7 @@ describe(`routes /vm, moteur=${MOTEUR}`, () => {
         }
     });
 
-    it('🔴 la VM d’AUTRUI → 404 `vm-inconnue`', async () => {
+    it('🔴 SOMEONE ELSE\'S VM → 404 `vm-inconnue`', async () => {
         // 🔴 La rouge : distinguer « inconnue » de « à quelqu'un d'autre ».
         const url = await servir('rvm-autrui');
         await poserVm(base!, 'v1', 'w1', 'PREFIXEv1');
@@ -263,7 +263,7 @@ describe(`routes /vm, moteur=${MOTEUR}`, () => {
         expect((await corpsDe(r)).motif).toBe('vm-inconnue');
     });
 
-    it('🔴 …et son corps est IDENTIQUE, caractère pour caractère, à celui d’une VM inexistante', async () => {
+    it('🔴 …and its body is IDENTICAL, character for character, to that of a non-existent VM', async () => {
         // ⚠️ `it()` DISTINCT du précédent, et c'est le cœur : `expect`
         // s'arrêterait à la première assertion, si bien que l'égalité des deux
         // corps — l'oracle même qu'on ferme — ne serait éprouvée par rien.
@@ -286,7 +286,7 @@ describe(`routes /vm, moteur=${MOTEUR}`, () => {
         expect(await autrui.text()).toBe(await inexistante.text());
     });
 
-    it('les en-têtes CORS sont posés quand `origineClient` est configurée', async () => {
+    it('the CORS headers are set when `origineClient` is configured', async () => {
         // 🔴 La rouge : les omettre. Le navigateur refuserait de lire la
         // réponse SANS qu'aucun test Node ne le voie — `cors.ts` le dit de
         // lui-même, et c'est pourquoi cette assertion existe.
@@ -304,7 +304,7 @@ describe(`routes /vm, moteur=${MOTEUR}`, () => {
         expect(refus.headers.get('access-control-allow-origin')).toBe(ORIGINE);
     });
 
-    it('🔴 la requête préalable `OPTIONS` est servie — sinon la route est INATTEIGNABLE', async () => {
+    it('🔴 the `OPTIONS` preflight request is served — otherwise the route is UNREACHABLE', async () => {
         // 🔴 DÉFAUT DU PLAN, RELEVÉ ET NON RECOPIÉ : la tâche 9 ne prescrit
         // aucun traitement d'`OPTIONS`. Or `GET /vm` porte `Authorization`,
         // ce qui rend la requête NON SIMPLE : le navigateur émet d'abord une
@@ -325,7 +325,7 @@ describe(`routes /vm, moteur=${MOTEUR}`, () => {
         }
     });
 
-    it('une méthode autre que GET sur `/vm` → 405, jamais 404', async () => {
+    it('a method other than GET on `/vm` → 405, never 404', async () => {
         // Le chemin EXISTE ; c'est la méthode qui ne convient pas. Un 404
         // ferait chercher une route absente. Même choix que `routes-auth.ts`.
         const url = await servir('rvm-methode');
@@ -335,7 +335,7 @@ describe(`routes /vm, moteur=${MOTEUR}`, () => {
         expect((await corpsDe(r)).refus).toBe('methode');
     });
 
-    it('🔴 le budget « toute requête » freine `GET /vm` après trop de requêtes de la même adresse', async () => {
+    it('🔴 the « any request » budget brakes `GET /vm` after too many requests from the same address', async () => {
         // 🔴 La rouge : ne jamais consulter `BUDGET_REQUETES`. Sans jeton,
         // chaque requête rendrait 401 indéfiniment — `GET /vm` n'a aucune
         // notion d'échec, et c'est exactement pourquoi ce budget existe

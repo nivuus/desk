@@ -21,13 +21,13 @@ afterEach(async () => {
     base = undefined;
 });
 
-describe('analyserArguments de admin:agent', () => {
-    it('lit --vm et --adresse', () => {
+describe('analyserArguments of admin:agent', () => {
+    it('reads --vm and --adresse', () => {
         expect(analyserArguments(['--vm', 'w1', '--adresse', '192.168.3.2']))
             .toEqual({ mode: 'enroler', vm: 'w1', adresse: '192.168.3.2' });
     });
 
-    it('--roter n\'exige QUE --vm : il ne crée aucune VM, il en corrige une', () => {
+    it('--roter requires ONLY --vm: it creates no VM, it fixes one', () => {
         expect(analyserArguments(['--vm', 'w1', '--roter']))
             .toEqual({ mode: 'roter', vm: 'w1' });
         // Et --adresse, s'il traîne, ne change rien : la rotation ne touche
@@ -36,13 +36,13 @@ describe('analyserArguments de admin:agent', () => {
             .toEqual({ mode: 'roter', vm: 'w1' });
     });
 
-    it('🔴 --roter sans --vm est refusé, plutôt que de faire tourner au hasard', () => {
+    it('🔴 --roter without --vm is refused, rather than rotating at random', () => {
         // 🔴 LA ROUGE : laisser passer. Une rotation sans cible nommée ne peut
         // pas deviner LAQUELLE des VMs enrôlées doit changer de secret.
         expect('refus' in analyserArguments(['--roter'])).toBe(true);
     });
 
-    it('🔴 REFUSE --secret MÊME accompagné de --roter', () => {
+    it('🔴 REFUSES --secret EVEN together with --roter', () => {
         // 🔴 LA ROUGE : ne contrôler les drapeaux interdits que sur le chemin
         // d'enrôlement. Le secret d'une ROTATION est tout aussi sensible que
         // celui d'un enrôlement — `ps` l'exposerait de la même façon —, et
@@ -50,29 +50,29 @@ describe('analyserArguments de admin:agent', () => {
         const r = analyserArguments(['--vm', 'w1', '--roter', '--secret', 'chut']);
         expect('refus' in r).toBe(true);
         if (!('refus' in r)) return;
-        expect(r.refus).toMatch(/tiré au sort|tire au sort/i);
+        expect(r.refus).toMatch(/drawn at random/i);
         expect(r.refus).not.toContain('chut');
     });
 
-    it('🔴 REFUSE --secret sur la ligne de commande, avec son motif', () => {
+    it('🔴 REFUSES --secret on the command line, with its reason', () => {
         // 🔴 La rouge la plus utile du fichier : l'accepter. Le motif ne
         // RECOPIE PAS la valeur refusée — la réécrire dans un journal après
         // l'avoir refusée dans un argv n'aurait aucun sens.
         const r = analyserArguments(['--vm', 'w1', '--adresse', '10.0.0.1', '--secret', 'chut']);
         expect('refus' in r).toBe(true);
         if (!('refus' in r)) return;
-        expect(r.refus).toMatch(/tiré au sort|tire au sort/i);
+        expect(r.refus).toMatch(/drawn at random/i);
         expect(r.refus).not.toContain('chut');
     });
 
-    it('refuse aussi les variantes du même drapeau', () => {
+    it('also refuses the variants of the same flag', () => {
         for (const drapeau of ['--secret-enrolement', '--password', '--mdp', '-s']) {
             const r = analyserArguments(['--vm', 'w1', '--adresse', '10.0.0.1', drapeau, 'chut']);
             expect('refus' in r).toBe(true);
         }
     });
 
-    it('refuse --vm ou --adresse absents, plutôt que de rendre undefined', () => {
+    it('refuses a missing --vm or --adresse, rather than returning undefined', () => {
         expect('refus' in analyserArguments([])).toBe(true);
         expect('refus' in analyserArguments(['--vm', 'w1'])).toBe(true);
         expect('refus' in analyserArguments(['--adresse', '10.0.0.1'])).toBe(true);
@@ -80,8 +80,8 @@ describe('analyserArguments de admin:agent', () => {
     });
 });
 
-describe(`enrolerLaVm, moteur=${MOTEUR}`, () => {
-    it('🔴 tire le secret AU SORT : deux appels de MÊMES ARGUMENTS diffèrent', async () => {
+describe(`enrolerLaVm, engine=${MOTEUR}`, () => {
+    it('🔴 draws the secret AT RANDOM: two calls with the SAME ARGUMENTS differ', async () => {
         // 🔴 La rouge : le dériver du nom de VM. Il deviendrait devinable par
         // quiconque connaît ce nom, et l'enrôlement n'authentifierait plus rien.
         //
@@ -106,7 +106,7 @@ describe(`enrolerLaVm, moteur=${MOTEUR}`, () => {
         expect(un.vmId).not.toBe(deux.vmId);
     });
 
-    it('🔴 écrit l’EMPREINTE en base, JAMAIS le secret en clair', async () => {
+    it('🔴 writes the FINGERPRINT to the database, NEVER the plaintext secret', async () => {
         // 🔴 La rouge : écrire le clair. Le test relit la colonne et l'y
         // trouverait — une base volée livrerait alors toutes les VMs.
         base = await baseNeuve('admin-agent-empreinte');
@@ -126,8 +126,8 @@ describe(`enrolerLaVm, moteur=${MOTEUR}`, () => {
     });
 });
 
-describe(`roterLeSecret, moteur=${MOTEUR}`, () => {
-    it("🔴 (a) l'ANCIEN secret est refusé et le NEUF accepté, de bout en bout", async () => {
+describe(`roterLeSecret, engine=${MOTEUR}`, () => {
+    it("🔴 (a) the OLD secret is refused and the NEW one accepted, end to end", async () => {
         // 🔴 LA ROUGE : écrire le secret en clair au lieu de son empreinte, ou
         // ne rien écrire du tout. Le juge n'est pas la colonne mais
         // `verifyEnrolment`, c'est-à-dire le chemin RÉEL du canal /agent :
@@ -145,7 +145,7 @@ describe(`roterLeSecret, moteur=${MOTEUR}`, () => {
         expect((await verifyEnrolment(base, vmId, r.secret, () => {})).ok).toBe(true);
     });
 
-    it('🔴 (b) le PRÉFIXE DE SESSION est inchangé — relu des deux côtés', async () => {
+    it('🔴 (b) the SESSION PREFIX is unchanged — re-read on both sides', async () => {
         // 🔴 LA ROUGE : faire tourner le préfixe aussi. Il compose le nom des
         // sessions VIVANTES de la VM : le changer les couperait toutes. Le
         // test relit la colonne AVANT et APRÈS l'appel, sans quoi il ne
@@ -162,7 +162,7 @@ describe(`roterLeSecret, moteur=${MOTEUR}`, () => {
         expect(apres).toHaveLength(22);
     });
 
-    it('🔴 (b bis) le secret neuf est TIRÉ AU SORT : deux rotations diffèrent', async () => {
+    it('🔴 (b bis) the new secret is DRAWN AT RANDOM: two rotations differ', async () => {
         // 🔴 LA ROUGE : le dériver de l'identifiant de VM. Il serait devinable
         // par quiconque le connaît, et la rotation ne réparerait rien.
         base = await baseNeuve('admin-roter-alea');
@@ -175,16 +175,16 @@ describe(`roterLeSecret, moteur=${MOTEUR}`, () => {
         expect(un.secret).not.toBe(deux.secret);
     });
 
-    it('🔴 (c) une VM INCONNUE rend un refus MOTIVÉ, jamais une exception', async () => {
+    it('🔴 (c) an UNKNOWN VM gives a REASONED refusal, never an exception', async () => {
         // 🔴 LA ROUGE : laisser l'UPDATE toucher zéro ligne en silence et
         // rendre un succès. L'administrateur croirait avoir fait tourner un
         // secret compromis, et l'ancien resterait valide — le pire résultat
         // possible pour cette commande, puisqu'on ne l'emploie QUE lorsqu'un
         // secret a fuité.
         base = await baseNeuve('admin-roter-inconnue');
-        const r = await roterLeSecret(base, 'aucune-vm-de-ce-nom');
+        const r = await roterLeSecret(base, 'no-vm-by-this-name');
         expect('refus' in r).toBe(true);
         if (!('refus' in r)) return;
-        expect(r.refus).toMatch(/enrôlée|enrolee/i);
+        expect(r.refus).toMatch(/enrolled/i);
     });
 });

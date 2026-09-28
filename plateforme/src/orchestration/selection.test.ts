@@ -38,8 +38,8 @@ const INVENTAIRE: readonly Vm[] = [
     vm('v4', 'alice-bis'),
 ];
 
-describe('sélection des VMs d’un utilisateur', () => {
-    it('🔴 `vmsDe` ne rend QUE les VMs du demandeur', () => {
+describe('selection of the VMs of a user', () => {
+    it('🔴 `vmsDe` returns ONLY the VMs of the requester', () => {
         // 🔴 La rouge : rendre l'inventaire entier. C'est la mutation exacte
         // que ce module existe pour rendre visible — et elle est indétectable
         // si le filtre vit dans la route.
@@ -49,7 +49,7 @@ describe('sélection des VMs d’un utilisateur', () => {
         expect(vmsDe(INVENTAIRE, 'alice').map((v) => v.id)).not.toContain('v4');
     });
 
-    it('🔴 une VM à `utilisateurId` nul n’est rendue à PERSONNE', () => {
+    it('🔴 a VM with a null `utilisateurId` is returned to NOBODY', () => {
         // 🔴 La rouge : traiter `null` comme « libre pour tous ». Tout
         // utilisateur authentifié verrait alors chaque VM non attribuée.
         // ⚠️ C'est le comportement que le sous-bloc G1 retient délibérément
@@ -61,7 +61,7 @@ describe('sélection des VMs d’un utilisateur', () => {
         expect(laVmDe(INVENTAIRE, '')).toBeUndefined();
     });
 
-    it('🔴 `laVmDe` rend `undefined` quand l’utilisateur n’en a aucune', () => {
+    it('🔴 `laVmDe` returns `undefined` when the user has none', () => {
         // 🔴 La rouge : rendre `inventaire[0]`. Le critère ③ — « un
         // utilisateur sans VM reçoit 409 `aucune-vm` » — deviendrait
         // invérifiable, la route croyant toujours en tenir une.
@@ -69,12 +69,12 @@ describe('sélection des VMs d’un utilisateur', () => {
         expect(laVmDe([], 'alice')).toBeUndefined();
     });
 
-    it('`laVmDe` rend l’unique VM quand il y en a une', () => {
+    it('`laVmDe` returns the single VM when there is one', () => {
         const trouvee = laVmDe(INVENTAIRE, 'bob');
         expect(trouvee?.id).toBe('v2');
     });
 
-    it('🔴 `laVmDe` LÈVE si l’inventaire en porte DEUX pour le même utilisateur', () => {
+    it('🔴 `laVmDe` THROWS if the inventory carries TWO for the same user', () => {
         // 🔴 La rouge : rendre la première en silence. L'index partiel
         // `vm_un_utilisateur` rend ce cas impossible EN BASE — mais cette
         // fonction reçoit un tableau, et rien dans sa signature ne dit d'où il

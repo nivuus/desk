@@ -100,13 +100,13 @@ pub enum InputMessage {
 
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
 pub enum DecodeError {
-    #[error("version de protocole non supportée : {0}")]
+    #[error("unsupported protocol version: {0}")]
     UnsupportedVersion(u8),
-    #[error("type de message inconnu : {0}")]
+    #[error("unknown message type: {0}")]
     UnknownType(u8),
-    #[error("bouton de souris inconnu : {0}")]
+    #[error("unknown mouse button: {0}")]
     UnknownButton(u8),
-    #[error("message tronqué : {actual} octets reçus, {expected} attendus")]
+    #[error("truncated message: {actual} bytes received, {expected} expected")]
     Truncated { expected: usize, actual: usize },
 }
 
@@ -248,7 +248,7 @@ mod tests {
 
     fn round_trip(msg: InputMessage) {
         let encoded = msg.encode();
-        let decoded = InputMessage::decode(&encoded).expect("décodage réussi");
+        let decoded = InputMessage::decode(&encoded).expect("successful decoding");
         assert_eq!(msg, decoded);
     }
 
@@ -301,7 +301,7 @@ mod tests {
     }
 
     #[test]
-    fn encodage_petit_boutiste() {
+    fn little_endian_encoding() {
         // MouseMove x=0x0201, y=0x0403: version, type, then low bytes first.
         let encoded = InputMessage::MouseMove {
             x: 0x0201,
@@ -312,25 +312,25 @@ mod tests {
     }
 
     #[test]
-    fn rejette_version_inconnue() {
+    fn rejects_unknown_version() {
         let err = InputMessage::decode(&[99, 1, 0, 0, 0, 0]).unwrap_err();
         assert!(matches!(err, DecodeError::UnsupportedVersion(99)));
     }
 
     #[test]
-    fn rejette_type_inconnu() {
+    fn rejects_unknown_type() {
         let err = InputMessage::decode(&[PROTOCOL_VERSION, 42, 0, 0]).unwrap_err();
         assert!(matches!(err, DecodeError::UnknownType(42)));
     }
 
     #[test]
-    fn rejette_message_tronque() {
+    fn rejects_truncated_message() {
         let err = InputMessage::decode(&[PROTOCOL_VERSION, 1, 0, 0]).unwrap_err();
         assert!(matches!(err, DecodeError::Truncated { .. }));
     }
 
     #[test]
-    fn rejette_message_vide() {
+    fn rejects_empty_message() {
         assert!(matches!(
             InputMessage::decode(&[]).unwrap_err(),
             DecodeError::Truncated { .. }
@@ -338,13 +338,13 @@ mod tests {
     }
 
     #[test]
-    fn rejette_bouton_inconnu() {
+    fn rejects_unknown_button() {
         let err = InputMessage::decode(&[PROTOCOL_VERSION, 2, 9, 1, 0, 0, 0, 0]).unwrap_err();
         assert!(matches!(err, DecodeError::UnknownButton(9)));
     }
 
     #[test]
-    fn round_trip_mouvement_relatif() {
+    fn round_trip_relative_motion() {
         round_trip(InputMessage::MouseMoveRelative { dx: 0, dy: 0 });
         round_trip(InputMessage::MouseMoveRelative {
             dx: -32768,
@@ -353,7 +353,7 @@ mod tests {
     }
 
     #[test]
-    fn round_trip_manette() {
+    fn round_trip_gamepad() {
         round_trip(InputMessage::Gamepad(GamepadState {
             seq: 65535,
             buttons: 0xF00D,
@@ -367,17 +367,17 @@ mod tests {
     }
 
     #[test]
-    fn rejette_la_version_1_devenue_obsolete() {
+    fn rejects_version_1_now_obsolete() {
         let err = InputMessage::decode(&[1, 1, 0, 0, 0, 0]).unwrap_err();
         assert!(matches!(err, DecodeError::UnsupportedVersion(1)));
     }
 
     #[test]
-    fn conformite_aux_vecteurs_partages() {
+    fn conformance_to_the_shared_vectors() {
         let raw = include_str!("../vectors.json");
-        let doc: serde_json::Value = serde_json::from_str(raw).expect("vectors.json valide");
-        let cases = doc["cases"].as_array().expect("tableau de cas");
-        assert!(!cases.is_empty(), "au moins un vecteur attendu");
+        let doc: serde_json::Value = serde_json::from_str(raw).expect("valid vectors.json");
+        let cases = doc["cases"].as_array().expect("array of cases");
+        assert!(!cases.is_empty(), "at least one vector expected");
 
         for case in cases {
             let name = case["name"].as_str().unwrap();
@@ -422,14 +422,14 @@ mod tests {
                     thumb_rx: case["thumb_rx"].as_i64().unwrap() as i16,
                     thumb_ry: case["thumb_ry"].as_i64().unwrap() as i16,
                 }),
-                other => panic!("type de vecteur inconnu : {other}"),
+                other => panic!("unknown vector type: {other}"),
             };
 
-            assert_eq!(msg.encode(), expected, "encodage du vecteur « {name} »");
+            assert_eq!(msg.encode(), expected, "encoding of vector « {name} »");
             assert_eq!(
-                InputMessage::decode(&expected).expect("décodage du vecteur"),
+                InputMessage::decode(&expected).expect("decoding of the vector"),
                 msg,
-                "décodage du vecteur « {name} »"
+                "decoding of vector « {name} »"
             );
         }
     }

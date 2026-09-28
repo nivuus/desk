@@ -28,8 +28,8 @@ function termineComplet(): Record<string, unknown> {
     };
 }
 
-describe('`termine` : les champs facultatifs sont OBLIGATOIRES SUR LE FIL', () => {
-    it('lit un `termine` complet, motif et code à null', () => {
+describe('`termine`: the optional fields are REQUIRED ON THE WIRE', () => {
+    it('reads a complete `termine`, reason and code at null', () => {
         const lu = parseVersLaPlateforme(JSON.stringify(termineComplet()));
         expect(lu).toEqual({ ok: true, message: termineComplet() });
     });
@@ -43,7 +43,7 @@ describe('`termine` : les champs facultatifs sont OBLIGATOIRES SUR LE FIL', () =
     // absent : c'est le déguisement précis que le bump de version existe pour
     // empêcher, et `deny_unknown_fields` n'y peut rien, lui qui regarde les
     // champs EN TROP.
-    it.each(['motif', 'code_sortie'])('🔴 REFUSE un `termine` sans la clé `%s`', (cle) => {
+    it.each(['motif', 'code_sortie'])('🔴 REFUSES a `termine` without the key `%s`', (cle) => {
         const ampute = termineComplet();
         delete ampute[cle];
         expect(parseVersLaPlateforme(JSON.stringify(ampute))).toEqual({
@@ -52,7 +52,7 @@ describe('`termine` : les champs facultatifs sont OBLIGATOIRES SUR LE FIL', () =
         });
     });
 
-    it('accepte `null` sur ces deux clés, et les distingue de l’absence', () => {
+    it('accepts `null` on these two keys, and tells them apart from absence', () => {
         const withNull = { ...termineComplet(), motif: null, code_sortie: null };
         const lu = parseVersLaPlateforme(JSON.stringify(withNull));
         expect(lu).toEqual({ ok: true, message: withNull });
@@ -63,14 +63,14 @@ describe('`termine` : les champs facultatifs sont OBLIGATOIRES SUR LE FIL', () =
     // `undefined` et ÉCRIT un `null`. Un encodeur à paramètre facultatif
     // produirait donc une chaîne que le jumeau Rust refuserait — et le seul
     // symptôme serait un refus `forme` très loin de sa cause.
-    it('🔴 encode `motif: null` en écrivant la clé, jamais en l’omettant', () => {
+    it('🔴 encodes `motif: null` by writing the key, never by omitting it', () => {
         const chain = encodeTermine('i-1', 'reussie', null, null, '', false);
         expect(chain).toContain('"motif":null');
         expect(chain).toContain('"code_sortie":null');
         expect(parseVersLaPlateforme(chain).ok).toBe(true);
     });
 
-    it('refuse un code de sortie non entier', () => {
+    it('refuses a non-integer exit code', () => {
         expect(
             parseVersLaPlateforme(
                 JSON.stringify({ ...termineComplet(), code_sortie: 1.5 }),
@@ -81,7 +81,7 @@ describe('`termine` : les champs facultatifs sont OBLIGATOIRES SUR LE FIL', () =
     // 🔴 UN CODE DE SORTIE NÉGATIF EST LÉGITIME sous Windows : les `HRESULT`
     // d'échec ont le bit de poids fort à 1, et se lisent en `i32` signé. Le
     // refuser confondrait « code hors norme » avec « échec ordinaire ».
-    it('accepte un code de sortie NÉGATIF', () => {
+    it('accepts a NEGATIVE exit code', () => {
         const negatif = { ...termineComplet(), code_sortie: -1073741510 };
         expect(parseVersLaPlateforme(JSON.stringify(negatif))).toEqual({
             ok: true,
@@ -90,7 +90,7 @@ describe('`termine` : les champs facultatifs sont OBLIGATOIRES SUR LE FIL', () =
     });
 });
 
-describe('`progression` : les comptes sont des entiers naturels', () => {
+describe('`progression`: the counts are natural integers', () => {
     function progression(sur: Record<string, unknown> = {}): Record<string, unknown> {
         return {
             type: 'progression',
@@ -104,7 +104,7 @@ describe('`progression` : les comptes sont des entiers naturels', () => {
         };
     }
 
-    it('lit une progression bien formée', () => {
+    it('reads a well-formed progress', () => {
         expect(parseVersLaPlateforme(JSON.stringify(progression()))).toEqual({
             ok: true,
             message: progression(),
@@ -116,11 +116,11 @@ describe('`progression` : les comptes sont des entiers naturels', () => {
     // deviendrait un `NULL` sur une colonne `NOT NULL` — c'est-à-dire une
     // erreur SQL très loin de sa cause.
     it.each([
-        ['un compte négatif', { octets_faits: -1 }],
-        ['un compte fractionnaire', { octets_total: 1.5 }],
-        ['une phase inconnue', { phase: 'empreinte' }],
-        ['une installation vide', { installation: '' }],
-    ])('🔴 REFUSE %s', (_nom, sur) => {
+        ['a negative count', { octets_faits: -1 }],
+        ['a fractional count', { octets_total: 1.5 }],
+        ['an unknown phase', { phase: 'empreinte' }],
+        ['an empty installation', { installation: '' }],
+    ])('🔴 REFUSES %s', (_nom, sur) => {
         expect(parseVersLaPlateforme(JSON.stringify(progression(sur)))).toEqual({
             ok: false,
             motif: 'forme',
@@ -131,7 +131,7 @@ describe('`progression` : les comptes sont des entiers naturels', () => {
     // fige : elle se déroule dans le NAVIGATEUR, avant que la plateforme n'ait
     // la moindre ligne à écrire. L'y accepter laisserait croire que l'agent
     // peut la rapporter.
-    it('accepte une phase `execution` sans total', () => {
+    it('accepts an `execution` phase without a total', () => {
         const sansTotal = progression({ phase: 'execution', octets_faits: 0, octets_total: 0 });
         expect(parseVersLaPlateforme(JSON.stringify(sansTotal))).toEqual({
             ok: true,

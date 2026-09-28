@@ -292,10 +292,10 @@ export function encodeClipboard(text: string): string {
 export function parseAgentControl(raw: string): AgentControl {
     const parsed = JSON.parse(raw) as Partial<AgentControl>;
     if (parsed.v !== CONTROL_VERSION) {
-        throw new Error(`version de contrôle non supportée : ${parsed.v}`);
+        throw new Error(`unsupported control version: ${parsed.v}`);
     }
     if (!TYPES_AGENT.includes(parsed.type as AgentControl['type'])) {
-        throw new Error(`type de contrôle inconnu : ${parsed.type}`);
+        throw new Error(`unknown control type: ${parsed.type}`);
     }
     return parsed as AgentControl;
 }

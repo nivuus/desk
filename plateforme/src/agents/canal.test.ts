@@ -80,8 +80,8 @@ async function start(p: Pilote, frein: Frein = new Frein()): Promise<number> {
     return typeof adresse === 'object' && adresse ? adresse.port : 0;
 }
 
-describe('la boucle du canal /agent', () => {
-    it('`enroler` avec le BON secret rend `enrole`, avec préfixe et jeton', async () => {
+describe('the loop of the /agent channel', () => {
+    it('`enroler` with the RIGHT secret returns `enrole`, with prefix and token', async () => {
         base = await baseNeuve('canal-enrole');
         await enrolerUneVm(base, 'v-1');
         const pair = await ouvrir(await start(base));
@@ -97,7 +97,7 @@ describe('la boucle du canal /agent', () => {
         pair.socket.terminate();
     });
 
-    it('🔴 le jeton rendu est VÉRIFIABLE PAR LA GARDE, et de type `agent`', async () => {
+    it('🔴 the returned token is VERIFIABLE BY THE GUARD, and of type `agent`', async () => {
         // 🔴 CE TEST TRAVERSE DEUX MODULES À DESSEIN. La rouge est de signer
         // sans le claim de type : le jeton resterait un JWT parfaitement
         // valide, et la garde le refuserait pour le rôle `agent` — un canal
@@ -128,7 +128,7 @@ describe('la boucle du canal /agent', () => {
         pair.socket.terminate();
     });
 
-    it('🔴 `enroler` au MAUVAIS secret rend `refus` et FERME le socket, sans écrire le secret au journal', async () => {
+    it('🔴 `enroler` with the WRONG secret returns `refus` and CLOSES the socket, without writing the secret to the log', async () => {
         // 🔴 LA FERMETURE EST LA MOITIÉ GRATUITE. Un pair refusé qui
         // garderait son socket ouvert pourrait réessayer sans limite sur la
         // même connexion. ✅ L'AUTRE MOITIÉ EXISTE DEPUIS P5 — le frein du
@@ -159,7 +159,7 @@ describe('la boucle du canal /agent', () => {
         expect(lignes).not.toContain('secret');
     });
 
-    it('🔴 un message de version PLATEFORME_VERSION + 1 est refusé, motif `version`', async () => {
+    it('🔴 a message of version PLATEFORME_VERSION + 1 is refused, reason `version`', async () => {
         // 🔴 C'est la moitié TypeScript du critère ③. L'omettre ferait
         // interpréter les champs d'un message d'une version future avec le
         // sens de la nôtre.
@@ -179,7 +179,7 @@ describe('la boucle du canal /agent', () => {
         expect(pair.ordre).toEqual(['message', 'close']);
     });
 
-    it('🔴 `battement` AVANT `enroler` est refusé, motif `sequence`, et ne délivre AUCUN jeton', async () => {
+    it('🔴 `battement` BEFORE `enroler` is refused, reason `sequence`, and issues NO token', async () => {
         // 🔴 LES DEUX MOITIÉS COMPTENT, et la seconde est la vraie. Un
         // `battement-recu` rendu à un anonyme porterait un JETON — c'est-à-dire
         // que le canal signerait une identité d'agent pour un pair qui n'a
@@ -200,7 +200,7 @@ describe('la boucle du canal /agent', () => {
         pair.socket.terminate();
     });
 
-    it('🔴 `battement` après `enroler` AVANCE `vu_a` en base', async () => {
+    it('🔴 `battement` after `enroler` ADVANCES `vu_a` in the database', async () => {
         // 🔴 Ne rien écrire laisserait `vu_a` figé, et la VM serait
         // éternellement `injoignable` (`agents/fraicheur.ts`) alors qu'elle
         // bat. L'horloge AVANCE entre les deux messages : sans cela, un
@@ -210,17 +210,17 @@ describe('la boucle du canal /agent', () => {
         const pair = await ouvrir(await start(base));
 
         await pair.dire(encodeEnroler('v-1', SECRET_VM));
-        await attendreVu(base, 'v-1', (vu) => vu === T0, 'posé à l’enrôlement');
+        await attendreVu(base, 'v-1', (vu) => vu === T0, 'set at enrolment');
 
         maintenant = T0 + 30_000;
         await pair.dire(encodeBattement());
-        expect(await attendreVu(base, 'v-1', (vu) => vu === T0 + 30_000, 'avancé au battement')).toBe(
+        expect(await attendreVu(base, 'v-1', (vu) => vu === T0 + 30_000, 'advanced by the heartbeat')).toBe(
             T0 + 30_000,
         );
         pair.socket.terminate();
     });
 
-    it('🔴 `battement` rend un jeton FRAIS, valide à un instant où le précédent est EXPIRÉ', async () => {
+    it('🔴 `battement` returns a FRESH token, valid at an instant when the previous one has EXPIRED', async () => {
         // 🔴 Rendre le même jeton ferait tomber l'agent à l'expiration du
         // premier — dix minutes après l'enrôlement —, sans qu'il le voie venir.
         // Comparer les deux `expire_a` ne suffit pas à le dire : ce qui le dit
@@ -249,8 +249,8 @@ describe('la boucle du canal /agent', () => {
     });
 });
 
-describe('le canal, CÂBLÉ dans le service entier', () => {
-    it('🔴 le chemin `/agent` du service sert réellement le canal', async () => {
+describe('the channel, WIRED into the whole service', () => {
+    it('🔴 the `/agent` path of the service really serves the channel', async () => {
         // 🔴 SANS CE TEST, OUBLIER L'APPEL DANS `http/serveur.ts` NE ROUGIRAIT
         // NULLE PART. La tâche 13 n'éprouve que la MONTÉE du chemin `/agent` —
         // un `WebSocketServer` qui accepte la connexion et n'écoute rien la
@@ -285,7 +285,7 @@ describe('le canal, CÂBLÉ dans le service entier', () => {
     });
 });
 
-describe('le frein du canal /agent', () => {
+describe('the brake of the /agent channel', () => {
     /// Une tentative d'enrôlement complète : ouvrir, dire, lire le refus.
     ///
     /// ⚠️ UN SOCKET NEUF À CHAQUE FOIS, et ce n'est pas du zèle : le motif
@@ -298,7 +298,7 @@ describe('le frein du canal /agent', () => {
         return rep;
     }
 
-    it('(a) la n+1ᵉ tentative sur la MÊME VM est refusée par le frein', async () => {
+    it('(a) the n+1th attempt on the SAME VM is refused by the brake', async () => {
         base = await baseNeuve('canal-frein-vm');
         await enrolerUneVm(base, 'v-1');
         const port = await start(base);
@@ -310,7 +310,7 @@ describe('le frein du canal /agent', () => {
         expect((await tenter(port, 'v-1', 'ce-n-est-pas-le-bon-secret')).type).toBe('refus');
     }, 30000);
 
-    it("(b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée", async () => {
+    it("(b) the n+1th from the SAME address, VMs all DISTINCT, is braked", async () => {
         const reel = await baseNeuve('canal-frein-adresse');
         base = reel;
         const compteur = piloteCompteur(reel);
@@ -320,12 +320,12 @@ describe('le frein du canal /agent', () => {
             await tenter(port, `inconnue-${i}`, 'peu-importe');
         }
         compteur.remettre();
-        expect((await tenter(port, 'encore-une-autre', 'peu-importe')).type).toBe('refus');
+        expect((await tenter(port, 'yet-another-one', 'peu-importe')).type).toBe('refus');
         // 🔴 Le discriminant : la tentative freinée n'a RIEN lu en base.
         expect(compteur.acces()).toBe(0);
     }, 60000);
 
-    it('(c) 🔴 le refus freiné est le MÊME MESSAGE que le refus d’enrôlement', async () => {
+    it('(c) 🔴 the braked refusal is the SAME MESSAGE as the enrolment refusal', async () => {
         // 🔴 UN MOTIF `frein` DISTINCT RENDRAIT À L'ATTAQUANT L'INFORMATION
         // « cette VM existe et je l'ai fait déclencher » : c'est exactement
         // l'ORACLE D'ÉNUMÉRATION que `agents/enrolement.ts` ferme sur trois
@@ -343,7 +343,7 @@ describe('le frein du canal /agent', () => {
         expect(refusFreine).toEqual(refusNonFreine);
     }, 30000);
 
-    it('(d) le JOURNAL, lui, distingue les deux', async () => {
+    it('(d) the LOG, however, tells the two apart', async () => {
         // Même partage que `identite/garde.ts` : `message` sur le fil,
         // `journal` chez nous. Le demandeur n'apprend rien ; l'exploitant, si.
         const avertir = vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -356,7 +356,7 @@ describe('le frein du canal /agent', () => {
         await tenter(port, 'v-1', 'ce-n-est-pas-le-bon-secret');
         const lignes = avertir.mock.calls.map((c) => String(c[0]));
         // Le refus d'enrôlement ordinaire, écrit par `enrolement.ts`.
-        expect(lignes.some((l) => l.includes('enrôlement refusé pour la VM v-1'))).toBe(true);
+        expect(lignes.some((l) => l.includes('enrolment refused for VM v-1'))).toBe(true);
         // Et la ligne du frein, qui n'existe QUE côté exploitant.
         const freinees = lignes.filter((l) => l.startsWith('frein '));
         expect(freinees.length).toBeGreaterThanOrEqual(1);
@@ -364,7 +364,7 @@ describe('le frein du canal /agent', () => {
         expect(freinees[0]).toContain('adresse=');
     }, 30000);
 
-    it('(e) 🔴 le refus freiné ne lit RIEN en base — donc ne dérive aucun `scrypt`', async () => {
+    it('(e) 🔴 the braked refusal reads NOTHING from the database — so derives no `scrypt`', async () => {
         // 🔴 C'EST LE POINT DE TOUTE LA TÂCHE. `verifyEnrolment` lit
         // `agent_enrole` PUIS dérive une empreinte `scrypt`, à mémoire dure et
         // délibérément chère (68 ms mesurés le 20 août 2026). Un frein posté
@@ -383,7 +383,7 @@ describe('le frein du canal /agent', () => {
         expect(compteur.acces()).toBe(0);
     }, 30000);
 
-    it('(f) un enrôlement RÉUSSI remet le compteur de la VM à zéro', async () => {
+    it('(f) a SUCCESSFUL enrolment resets the VM counter to zero', async () => {
         // Même règle que `/auth/connexion` : le succès efface la clé de la VM,
         // JAMAIS celle de l'adresse — sinon un attaquant qui possède une VM
         // valide se blanchirait entre deux rafales.

@@ -44,8 +44,8 @@ const PORT_MORT = 45_137;
 // qu'un service accepterait réellement.
 const SECRET = 'un-secret-de-plateforme-de-quarante-octets';
 
-describe('démarrage du service', () => {
-    it("refuse de démarrer quand la base est injoignable, et n'ouvre aucun port", async () => {
+describe('service startup', () => {
+    it("refuses to start when the database is unreachable, and opens no port", async () => {
         const config: Config = {
             hote: '127.0.0.1',
             port: PORT_MORT,
@@ -67,7 +67,7 @@ describe('démarrage du service', () => {
         await expect(connecterA(PORT_MORT)).rejects.toThrow(/ECONNREFUSED/);
     });
 
-    it('clôt au démarrage les sessions restées ouvertes, et dit combien', async () => {
+    it('closes at startup the sessions left open, and says how many', async () => {
         // Une base qui porte deux sessions ouvertes, comme après un arrêt
         // brutal du service.
         const base = await baseNeuve('demarrage-balai');
@@ -81,7 +81,7 @@ describe('démarrage du service', () => {
         await base.fermer();
     });
 
-    it('ouvre le port et sert le relais quand la base est prête', async () => {
+    it('opens the port and serves the relay when the database is ready', async () => {
         service = await start({
             hote: '127.0.0.1',
             port: 0,

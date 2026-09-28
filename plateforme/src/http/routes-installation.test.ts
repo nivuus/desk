@@ -125,14 +125,14 @@ const CORPS = (u: string, vm: string, televersement: string) => ({
     body: JSON.stringify({ vm, televersement }),
 });
 
-describe(`routes /installation, moteur=${MOTEUR}`, () => {
-    it("rend `false` sur un chemin étranger : le 404 du serveur suit", async () => {
+describe(`routes /installation, engine=${MOTEUR}`, () => {
+    it("returns `false` on a foreign path: the server's 404 follows", async () => {
         const url = await servir('inst-etranger');
-        const r = await fetch(`${url}/rien-du-tout`);
-        expect([r.status, await r.text()]).toEqual([404, 'introuvable\n']);
+        const r = await fetch(`${url}/nothing-at-all`);
+        expect([r.status, await r.text()]).toEqual([404, 'not found\n']);
     });
 
-    it('🔴 les DEUX motifs sont ANCRÉS DES DEUX BOUTS, et le CORPS discrimine', async () => {
+    it('🔴 BOTH patterns are ANCHORED AT BOTH ENDS, and the BODY discriminates', async () => {
         // 🔴 UN `startsWith` OUVRIRAIT UNE FAMILLE ENTIÈRE DE CHEMINS QUE
         // PERSONNE N'A DÉCIDÉS. Et c'est le CORPS qui juge, jamais le code :
         // G1 a mesuré qu'un `startsWith('/application')` laissait DIX-SEPT
@@ -149,7 +149,7 @@ describe(`routes /installation, moteur=${MOTEUR}`, () => {
         ];
         for (const cible of declines) {
             const r = await fetch(cible);
-            expect([cible, r.status, await r.text()]).toEqual([cible, 404, 'introuvable\n']);
+            expect([cible, r.status, await r.text()]).toEqual([cible, 404, 'not found\n']);
         }
         // Les trois chemins JUSTES sont bien servis — sans ce témoin, les
         // assertions ci-dessus seraient vraies d'une route qui ne sert RIEN.
@@ -158,7 +158,7 @@ describe(`routes /installation, moteur=${MOTEUR}`, () => {
         expect((await fetch(`${url}/installation`, { method: 'POST' })).status).not.toBe(404);
     });
 
-    it('sert la requête préalable `OPTIONS`, sans laquelle rien n’est atteignable', async () => {
+    it('serves the `OPTIONS` preflight request, without which nothing is reachable', async () => {
         // ⚠️ Les trois routes exigent `Authorization`, ce qui rend la requête NON
         // SIMPLE : un 404 sur l'`OPTIONS` ferait abandonner le navigateur avant
         // la vraie requête. AUCUN test Node ne voit la politique d'origine —
@@ -170,14 +170,14 @@ describe(`routes /installation, moteur=${MOTEUR}`, () => {
         }
     });
 
-    it('refuse la MÉTHODE sur un chemin qui existe, plutôt qu’un 404', async () => {
+    it('refuses the METHOD on a path that exists, rather than a 404', async () => {
         const url = await servir('inst-methode');
         expect((await fetch(`${url}/installation`)).status).toBe(405);
         expect((await fetch(`${url}/installation/x`, { method: 'POST' })).status).toBe(405);
         expect((await fetch(`${url}/televersement/x/contenu`, { method: 'POST' })).status).toBe(405);
     });
 
-    it('SANS en-tête `Authorization`, les trois routes rendent 401', async () => {
+    it('WITHOUT an `Authorization` header, the three routes return 401', async () => {
         const url = await servir('inst-sans-jeton');
         for (const [c, o] of [['/installation', { method: 'POST' }], ['/installation/x', {}],
             ['/televersement/x/contenu', {}]] as const) {
@@ -186,7 +186,7 @@ describe(`routes /installation, moteur=${MOTEUR}`, () => {
         }
     });
 
-    it("🔴 `POST /installation` refuse un jeton d'AGENT — MUTATION n°2, premier sens", async () => {
+    it("🔴 `POST /installation` refuses an AGENT token — MUTATION no. 2, first direction", async () => {
         // 🔴 Agent et humain sont signés par le MÊME secret : accepter tout jeton
         // valide rouvrirait E5 de P3, et un agent compromis ordonnerait
         // l'installation d'un logiciel sur la machine de son propriétaire.
@@ -199,7 +199,7 @@ describe(`routes /installation, moteur=${MOTEUR}`, () => {
         expect([r.status, await r.json()]).toEqual([403, { refus: 'jeton-agent' }]);
     });
 
-    it("🔴 `GET …/contenu` refuse un jeton PORTEUR — MUTATION n°2, second sens", async () => {
+    it("🔴 `GET …/contenu` refuses a BEARER token — MUTATION no. 2, second direction", async () => {
         // 🔴 La moitié symétrique de la garde : un humain n'emprunte jamais le
         // chemin de l'agent. Si l'une des deux se relâche, les deux identités
         // redeviennent interchangeables.
@@ -208,16 +208,16 @@ describe(`routes /installation, moteur=${MOTEUR}`, () => {
         expect([r.status, await r.json()]).toEqual([403, { refus: 'jeton-utilisateur' }]);
     });
 
-    it('refuse un corps mal formé, et le dit', async () => {
+    it('refuses a malformed body, and says so', async () => {
         const url = await servir('inst-forme');
         const entetes = withIt(jetonDe('u-1'));
-        for (const corps of ['pas du json', '{}', '{"vm":"v-1"}', '{"vm":"","televersement":"t"}', '[]']) {
+        for (const corps of ['not json', '{}', '{"vm":"v-1"}', '{"vm":"","televersement":"t"}', '[]']) {
             const r = await fetch(`${url}/installation`, { method: 'POST', headers: entetes, body: corps });
             expect([corps, r.status, await r.json()]).toEqual([corps, 400, { refus: 'forme' }]);
         }
     });
 
-    it("🔴 une VM ÉTRANGÈRE répond EXACTEMENT comme une VM INCONNUE", async () => {
+    it("🔴 a FOREIGN VM answers EXACTLY like an UNKNOWN VM", async () => {
         // 🔴 Les deux corps sont comparés CARACTÈRE POUR CARACTÈRE : un test qui
         // ne lirait que `404` serait satisfait par le 404 GÉNÉRIQUE de
         // `serveur.ts`, qui n'est pas celui-ci.
@@ -237,7 +237,7 @@ describe(`routes /installation, moteur=${MOTEUR}`, () => {
         expect(etrangere.status).toBe(404);
     });
 
-    it("🔴 un TÉLÉVERSEMENT étranger répond EXACTEMENT comme un inconnu, et le corps ne dit rien du cas réel", async () => {
+    it("🔴 a foreign UPLOAD answers EXACTLY like an unknown one, and the body says nothing of the real case", async () => {
         const traces: string[] = [];
         vi.spyOn(console, 'warn').mockImplementation((l: string) => void traces.push(l));
         const url = await servir('inst-tel-etranger');
@@ -262,7 +262,7 @@ describe(`routes /installation, moteur=${MOTEUR}`, () => {
         expect(corpsEtranger).not.toContain('etrangere');
     });
 
-    it('🔴 un téléversement NON SCELLÉ est refusé EN AMONT, et AUCUNE ligne n’est écrite — MUTATION n°3', async () => {
+    it('🔴 an UNSEALED upload is refused UPSTREAM, and NO row is written — MUTATION no. 3', async () => {
         // 🔴 UN REFUS AU BON ENDROIT VAUT MIEUX QU'UN REFUS AU BON MOMENT :
         // sans lui, l'ordre partirait, l'agent tirerait un fichier PARTIEL et
         // n'apprendrait son empreinte fausse qu'après l'avoir écrit en entier.
@@ -282,7 +282,7 @@ describe(`routes /installation, moteur=${MOTEUR}`, () => {
         expect(lignes).toEqual([]);
     });
 
-    it("refuse une extension que l'agent n'exécutera pas, plutôt qu'un aller-retour de 800 Mo", async () => {
+    it("refuses an extension the agent will not run, rather than an 800 MB round trip", async () => {
         const url = await servir('inst-extension');
         const u = await poserVmVivante(m!.base, 'v-1', 'moi@exemple.test', 'PREFIXE-A');
         for (const nom of ['setup.bat', 'setup', 'setup.exe.txt', '.exe']) {
@@ -306,7 +306,7 @@ describe(`routes /installation, moteur=${MOTEUR}`, () => {
         expect(r.status).toBe(201);
     });
 
-    it('🔴 une VM INJOIGNABLE rend 503, jamais 201 sur une ligne que personne ne recevra', async () => {
+    it('🔴 an UNREACHABLE VM returns 503, never 201 on a row nobody will receive', async () => {
         // 🔴 Écrire la ligne en silence ferait afficher au hub une installation
         // « demandée » que personne ne recevra — rien nulle part ne la
         // contredirait. ⚠️ La transition est ASSIÉGÉE : le même montage rend 201
@@ -322,7 +322,7 @@ describe(`routes /installation, moteur=${MOTEUR}`, () => {
         expect(vif.status).toBe(201);
     });
 
-    it("un ordre accepté rend 201 et son identifiant, et la ligne naît `en_attente`", async () => {
+    it("an accepted order returns 201 and its identifier, and the row is born `en_attente`", async () => {
         // ⚠️ `en_attente` N'EST PAS DÉCORATIF : c'est cet état, et lui seul, que
         // la réémission à l'enrôlement repousse à l'agent.
         const url = await servir('inst-ordre-ok');
@@ -337,28 +337,28 @@ describe(`routes /installation, moteur=${MOTEUR}`, () => {
         expect(lignes).toEqual([{ id, etat: 'en_attente', vm_id: 'v-1' }]);
     });
 
-    it("`GET /installation/:id` rend l'état, l'issue, le motif et la queue de journal", async () => {
+    it("`GET /installation/:id` returns the state, the outcome, the reason and the log tail", async () => {
         const url = await servir('inst-etat');
         const u = await poserVmVivante(m!.base, 'v-1', 'moi@exemple.test', 'PREFIXE-A');
         const tel = await poserTeleversement(m!.base, u, 'setup.exe', Buffer.from('abc'));
         const inst = await createInstallation(m!.base, { vmId: 'v-1', televersementId: tel.id }, MS);
         await terminer(m!.base, inst.id, {
             issue: 'refusee', motif: 'elevation-requise', codeSortie: 740,
-            journal: 'la queue', journalTronque: true,
+            journal: 'the tail', journalTronque: true,
         }, MS + 5);
         const r = await fetch(`${url}/installation/${inst.id}`, { headers: withIt(jetonDe(u)) });
         expect(r.status).toBe(200);
         const vue = (await r.json()) as Record<string, unknown>;
         expect(vue).toMatchObject({
             id: inst.id, vm: 'v-1', televersement: tel.id, etat: 'terminee',
-            issue: 'refusee', motif: 'elevation-requise', code_sortie: 740, journal: 'la queue',
+            issue: 'refusee', motif: 'elevation-requise', code_sortie: 740, journal: 'the tail',
         });
         // ⚠️ UN BOOLÉEN SUR LE FIL, jamais le `0`/`1` de SQLite : le hub n'a pas
         // à connaître une convention de stockage.
         expect(vue.journal_tronque).toBe(true);
     });
 
-    it("🔴 une installation ÉTRANGÈRE répond EXACTEMENT comme une INCONNUE", async () => {
+    it("🔴 a FOREIGN installation answers EXACTLY like an UNKNOWN one", async () => {
         // 🔴 Et le motif est `installation-inconnue`, JAMAIS `vm-inconnue` :
         // rendre le motif de la VM DIRAIT que l'installation, elle, existe.
         const url = await servir('inst-etat-etranger');
@@ -374,7 +374,7 @@ describe(`routes /installation, moteur=${MOTEUR}`, () => {
         expect(corps).toBe(JSON.stringify({ refus: 'installation-inconnue' }));
     });
 
-    it('🔴 UN AGENT DE LA VM `B` N’OBTIENT PAS L’INSTALLEUR DESTINÉ À `A` — MUTATION n°1', async () => {
+    it('🔴 AN AGENT OF VM `B` DOES NOT GET THE INSTALLER MEANT FOR `A` — MUTATION no. 1', async () => {
         // 🔴 C'EST LA MUTATION LA PLUS IMPORTANTE DU SOUS-BLOC. Sans la
         // comparaison de VM, n'importe quelle VM enrôlée téléchargerait
         // l'installeur de n'importe quelle autre — le contenu qu'un utilisateur
@@ -407,7 +407,7 @@ describe(`routes /installation, moteur=${MOTEUR}`, () => {
         expect(Buffer.from(await deA.arrayBuffer())).toEqual(tel.octets);
     });
 
-    it("sert les octets EN FLUX, à l'identique, avec sa longueur et sans nom de fichier", async () => {
+    it("serves the bytes AS A STREAM, identical, with its length and without a file name", async () => {
         // 🔴 LES TRANCHES NE SONT JAMAIS ASSEMBLÉES : le corps est la
         // CONCATÉNATION de cinq fichiers de disque, et l'égalité octet pour
         // octet est ce qui l'éprouve. ⚠️ AUCUN `Content-Disposition` : l'agent
@@ -430,7 +430,7 @@ describe(`routes /installation, moteur=${MOTEUR}`, () => {
         expect(Buffer.from(await r.arrayBuffer())).toEqual(octets);
     });
 
-    it("🔴 un contenu NON SCELLÉ est refusé 409 — et l'agent ÉTRANGER, lui, lit 404", async () => {
+    it("🔴 an UNSEALED content is refused 409 — and the FOREIGN agent reads 404", async () => {
         // 🔴 L'ORDRE DES DEUX GARDES EST PORTANT : répondre `409` à un agent sans
         // droit lui APPRENDRAIT que ce téléversement existe. L'autorisation passe
         // donc AVANT l'état, et ce test l'assère en opposant les deux réponses.
@@ -449,7 +449,7 @@ describe(`routes /installation, moteur=${MOTEUR}`, () => {
         expect([deB.status, await deB.json()]).toEqual([404, { refus: 'televersement-inconnu' }]);
     });
 
-    it("🔴 `en_cours` reste servi — c'est la REPRISE —, `terminee` ne l'est plus", async () => {
+    it("🔴 `en_cours` stays served — it is the RESUMPTION —, `terminee` no longer is", async () => {
         // 🔴 N'accepter qu'`en_attente` rendrait toute reprise de transfert
         // impossible sans qu'aucune trace ne le dise : l'agent qui a rapporté une
         // progression puis perdu sa connexion ne pourrait plus rien tirer.
@@ -467,7 +467,7 @@ describe(`routes /installation, moteur=${MOTEUR}`, () => {
         expect([apres.status, await apres.json()]).toEqual([404, { refus: 'televersement-inconnu' }]);
     });
 
-    it("un préfixe SANS enrôlement est refusé comme tout le reste, et la trace le nomme", async () => {
+    it("a prefix WITHOUT enrolment is refused like everything else, and the trace names it", async () => {
         // ⚠️ Le jeton est parfaitement valide : c'est la VM qu'il désigne qui
         // n'existe plus. La réponse ne le dit pas ; le journal, si.
         const traces: string[] = [];

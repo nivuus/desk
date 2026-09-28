@@ -13,33 +13,33 @@ use super::*;
 /// `battement-recu` variant that stayed green on fifty tests because nothing
 /// pinned its bytes.
 ///
-/// `proto/fichiers-vectors.json` is read **here AND in
-/// `proto/ts/fichiers-entetes.test.ts`**: a rename now only has one side to
+/// `proto/fichiers-vectors.json` is read **here AND in (policy: allow-fr - file name)
+/// `proto/ts/fichiers-entetes.test.ts`**: a rename now only has one side to (policy: allow-fr - file name)
 /// break to be seen.
 #[test]
-fn conformite_aux_vecteurs_partages() {
+fn conformance_to_the_shared_vectors() {
     let brut = include_str!("../../../fichiers-vectors.json");
-    let doc: serde_json::Value = serde_json::from_str(brut).expect("vecteurs valides");
+    let doc: serde_json::Value = serde_json::from_str(brut).expect("valid vectors");
 
     // 🔴 The version of the file IS that of the protocol. Without this assertion, a
     // bump on one side only would show nowhere — it is the gap that
-    // `input.rs::conformite_aux_vecteurs_partages` drags along and that
+    // `input.rs::conformance_to_the_shared_vectors` drags along and that
     // `plateforme.rs` fixed for its file.
     assert_eq!(
-        doc["version"].as_u64().expect("clé version"),
+        doc["version"].as_u64().expect("version key"),
         u64::from(super::super::FILES_VERSION),
-        "la version des vecteurs a dérivé de FICHIERS_VERSION"
+        "the vectors version drifted from FICHIERS_VERSION"
     );
 
-    let cas = doc["cases"].as_array().expect("tableau de cas");
+    let cas = doc["cases"].as_array().expect("array of cases");
     // 🔴 ANTI-TAUTOLOGY: an EMPTY vector file would let the whole
     // loop pass without testing anything.
-    assert!(!cas.is_empty(), "au moins un vecteur attendu");
+    assert!(!cas.is_empty(), "at least one vector expected");
 
     let mut vus = 0;
     for c in cas {
         let nom = c["name"].as_str().expect("nom");
-        let attendu = c["json"].as_str().expect("json attendu");
+        let attendu = c["json"].as_str().expect("json expected");
 
         // Each shape is serialized from its fields, then read back from the
         // expected JSON: BOTH directions, on the SAME vector.
@@ -146,10 +146,10 @@ fn conformite_aux_vecteurs_partages() {
             }
             "echec" => {
                 let code: crate::files::CodeEchec =
-                    serde_json::from_value(c["code"].clone()).expect("code d'échec connu");
+                    serde_json::from_value(c["code"].clone()).expect("known failure code");
                 verify(nom, attendu, &Echec { code });
             }
-            autre => panic!("forme inconnue dans les vecteurs : {autre}"),
+            autre => panic!("unknown shape in the vectors: {autre}"),
         }
         vus += 1;
     }
@@ -157,7 +157,7 @@ fn conformite_aux_vecteurs_partages() {
     // would silently skip cases. The `panic!` above
     // is only reached by a PRESENT and unknown value, never by a case
     // that a future rework of the loop would skip.
-    assert_eq!(vus, cas.len(), "tous les cas doivent être exercés");
+    assert_eq!(vus, cas.len(), "every case must be exercised");
 }
 
 /// Serializes, compares to the vector, reads the vector back, compares to the value.
@@ -166,25 +166,25 @@ where
     T: serde::Serialize + serde::de::DeserializeOwned + PartialEq + std::fmt::Debug,
 {
     assert_eq!(
-        serde_json::to_string(value).expect("sérialisation"),
+        serde_json::to_string(value).expect("serialisation"),
         attendu,
-        "sérialisation du vecteur « {nom} »"
+        "serialisation of vector « {nom} »"
     );
-    let relu: T = serde_json::from_str(attendu).expect("désérialisation");
-    assert_eq!(&relu, value, "désérialisation du vecteur « {nom} »");
+    let relu: T = serde_json::from_str(attendu).expect("deserialisation");
+    assert_eq!(&relu, value, "deserialisation of vector « {nom} »");
 }
 
 /// A header missing a field is **rejected**, never silently
 /// completed — the version doctrine of [`crate::control`], applied to
 /// headers: no `#[serde(default)]` anywhere.
 #[test]
-fn un_entete_incomplet_est_rejete_plutot_que_complete() {
-    assert!(serde_json::from_str::<Meta>(r#"{"nom":"a","repertoire":false,"taille":1}"#).is_err());
+fn an_incomplete_header_is_rejected_rather_than_completed() {
     // 🔴 **Without `nom`, the placeholder would be created under the name the application
     // TYPED**, and not under the one that exists on the local machine — two names for
     // one file, one of which exists nowhere.
+    assert!(serde_json::from_str::<Meta>(r#"{"nom":"a","repertoire":false,"taille":1}"#).is_err()); // policy: allow-fr - frozen wire key or SQLite column
     assert!(
-        serde_json::from_str::<Meta>(r#"{"repertoire":false,"taille":1,"modifie":0}"#).is_err()
+        serde_json::from_str::<Meta>(r#"{"repertoire":false,"taille":1,"modifie":0}"#).is_err() // policy: allow-fr - frozen wire key or SQLite column
     );
     assert!(serde_json::from_str::<Data>(r#"{"position":0}"#).is_err());
     assert!(serde_json::from_str::<Lire>(r#"{"chemin":"a","position":0}"#).is_err());
@@ -194,11 +194,11 @@ fn un_entete_incomplet_est_rejete_plutot_que_complete() {
     // defect of the old bridge (spec §12). Without `last`, the `close()` would
     // never come and the write would **never** be committed.
     assert!(serde_json::from_str::<Write>(
-        r#"{"chemin":"a","position":0,"longueur":1,"dernier":true}"#
+        r#"{"chemin":"a","position":0,"longueur":1,"dernier":true}"# // policy: allow-fr - frozen wire key or SQLite column
     )
     .is_err());
     assert!(serde_json::from_str::<Write>(
-        r#"{"chemin":"a","position":0,"longueur":1,"premier":true}"#
+        r#"{"chemin":"a","position":0,"longueur":1,"premier":true}"# // policy: allow-fr - frozen wire key or SQLite column
     )
     .is_err());
     assert!(serde_json::from_str::<Create>(r#"{"chemin":"a"}"#).is_err());
@@ -226,7 +226,7 @@ fn un_entete_incomplet_est_rejete_plutot_que_complete() {
 /// 🔴 **THE TWELVE SHAPES HAVE THEIR VECTOR** — and that is what keeps a
 /// new shape from being added without being pinned.
 ///
-/// The loop of [`conformite_aux_vecteurs_partages`] only tests the shapes
+/// The loop of [`conformance_to_the_shared_vectors`] only tests the shapes
 /// PRESENT in the file: adding `Renommer` to the code without giving it a
 /// vector would go unnoticed there. This test counts the distinct shapes of the
 /// file and requires them to be the twelve the protocol carries.
@@ -242,12 +242,12 @@ fn un_entete_incomplet_est_rejete_plutot_que_complete() {
 /// did with its own mask guard, for the same reason: a name that lies
 /// about its count is a name one stops reading.)*
 #[test]
-fn les_douze_formes_ont_leur_vecteur() {
+fn the_twelve_shapes_have_their_vector() {
     let brut = include_str!("../../../fichiers-vectors.json");
-    let doc: serde_json::Value = serde_json::from_str(brut).expect("vecteurs valides");
+    let doc: serde_json::Value = serde_json::from_str(brut).expect("valid vectors");
     let mut formes: Vec<&str> = doc["cases"]
         .as_array()
-        .expect("tableau de cas")
+        .expect("array of cases")
         .iter()
         .map(|c| c["forme"].as_str().expect("forme"))
         .collect();
@@ -269,6 +269,6 @@ fn les_douze_formes_ont_leur_vecteur() {
             "renommer",
             "supprimer",
         ],
-        "une forme du protocole n'a pas de vecteur, ou un vecteur n'a pas de forme"
+        "a protocol shape has no vector, or a vector has no shape"
     );
 }

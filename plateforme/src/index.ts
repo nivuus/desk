@@ -17,7 +17,7 @@ import { start } from './demarrage';
 
 const config = lireConfig(process.env);
 const service = await start(config);
-console.log(`plateforme à l'écoute sur ${config.hote}, le port ${service.port}`);
+console.log(`platform listening on ${config.hote}, port ${service.port}`);
 
 process.on('SIGINT', async () => {
     await service.arreter();

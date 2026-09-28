@@ -84,7 +84,7 @@ async function servir(
             .then((servie) => {
                 if (servie) return;
                 rep.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' });
-                rep.end('introuvable\n');
+                rep.end('not found\n');
             })
             .catch((cause) => {
                 rep.writeHead(500, { 'content-type': 'application/json; charset=utf-8' });
@@ -119,8 +119,8 @@ async function corpsDe(r: Response): Promise<Record<string, unknown>> {
     return (await r.json()) as Record<string, unknown>;
 }
 
-describe(`route POST /session, moteur=${MOTEUR}`, () => {
-    it('sans jeton → 401', async () => {
+describe(`route POST /session, engine=${MOTEUR}`, () => {
+    it('without a token → 401', async () => {
         // 🔴 La rouge : servir sans jeton. Le préfixe d'une VM serait délivré à
         // n'importe qui.
         const url = await servir('rs-401');
@@ -129,7 +129,7 @@ describe(`route POST /session, moteur=${MOTEUR}`, () => {
         expect((await corpsDe(r)).refus).toBe('jeton-absent');
     });
 
-    it('🔴 avec un jeton d’AGENT → 403', async () => {
+    it('🔴 with an AGENT token → 403', async () => {
         // ⚠️ `it()` DISTINCT du précédent : le plan les range dans une seule
         // ligne, mais ce sont deux refus par deux chemins différents.
         // 🔴 La rouge : accepter le type `agent`.
@@ -139,7 +139,7 @@ describe(`route POST /session, moteur=${MOTEUR}`, () => {
         expect((await corpsDe(r)).refus).toBe('jeton-agent');
     });
 
-    it('🔴 succès → 200 { vm, nom, prefixe, etat }', async () => {
+    it('🔴 success → 200 { vm, nom, prefixe, etat }', async () => {
         // 🔴 La rouge : omettre `prefixe`. C'est LA source que P3 attend —
         // `client/src/prefixe.ts` dit en toutes lettres « P4 branchera la
         // source, et n'aura qu'à écrire dans le coffre ». Sans elle, tout le
@@ -157,7 +157,7 @@ describe(`route POST /session, moteur=${MOTEUR}`, () => {
         });
     });
 
-    it('🔴 le corps ne porte NI `ice`, NI `adresse`, NI nom de session composé', async () => {
+    it('🔴 the body carries NEITHER `ice`, NOR `adresse`, NOR a composed session name', async () => {
         // 🔴 La rouge : les ajouter (D7). ⚠️ `it()` DISTINCT du précédent.
         //
         // `ice` : la configuration ICE est PAR SESSION — `signaling/ice.ts`
@@ -188,13 +188,13 @@ describe(`route POST /session, moteur=${MOTEUR}`, () => {
         expect(String(corps.prefixe)).not.toContain(':');
     });
 
-    it('🔴 ③a — un utilisateur SANS VM → 409 { motif: aucune-vm }', async () => {
+    it('🔴 ③a — a user WITHOUT a VM → 409 { motif: aucune-vm }', async () => {
         // 🔴 La rouge : rendre 200 avec une liste vide. Un listing vide n'est
         // PAS un refus : le navigateur écrirait une chaîne vide dans le coffre,
         // `lirePrefixe` retomberait sur `''`, et la page rejoindrait
         // SILENCIEUSEMENT l'espace de noms partagé — la panne muette exacte que
         // la spec §10 nomme.
-        const url = await servir('rs-aucune');
+        const url = await servir('rs-none');
         await poserVm(base!, 'v1', 'w1', 'PREFIXEv1', MS);
         await attribuer(base!, 'v1', 'bob@exemple.test');
         const carole = await createUser(base!, 'carole@exemple.test', 'e', MS);
@@ -203,7 +203,7 @@ describe(`route POST /session, moteur=${MOTEUR}`, () => {
         expect((await corpsDe(r)).motif).toBe('aucune-vm');
     });
 
-    it('🔴 ③b — la réponse arrive SOUS LA BORNE mesurée', async () => {
+    it('🔴 ③b — the response arrives UNDER THE measured BOUND', async () => {
         // 🔴 La rouge : insérer `await new Promise(r => setTimeout(r, 2000))`
         // dans la route. MESURÉE ATTEIGNABLE — la borne est un ordre de
         // grandeur au-dessus du pire relevé et très en dessous de 2 000 ms.
@@ -228,7 +228,7 @@ describe(`route POST /session, moteur=${MOTEUR}`, () => {
         expect(pire).toBeLessThan(BORNE_MS);
     });
 
-    it('🔴 ④a — une VM dont `vu_a` est trop vieux → 503, corps portant `etat: injoignable`', async () => {
+    it('🔴 ④a — a VM whose `vu_a` is too old → 503, body carrying `etat: injoignable`', async () => {
         // 🔴 La rouge : masquer derrière un `{motif:'reessayez'}` générique.
         // L'utilisateur doit savoir que SA VM ne répond pas, et non croire à
         // une indisponibilité du service.
@@ -245,7 +245,7 @@ describe(`route POST /session, moteur=${MOTEUR}`, () => {
         expect(corps.prefixe).toBe('PREFIXEv1');
     });
 
-    it('🔴 ④b — le MÊME corps porte `redemarrage: { possible:false, … }`', async () => {
+    it('🔴 ④b — the SAME body carries `redemarrage: { possible:false, … }`', async () => {
         // 🔴 La rouge : retirer le champ. ⚠️ `it()` DISTINCT de ④a, et c'est
         // exactement le « et dit qu'elle ne sait pas la redémarrer » du
         // critère : `expect` s'arrêterait à la première assertion de ④a.
@@ -265,7 +265,7 @@ describe(`route POST /session, moteur=${MOTEUR}`, () => {
         });
     });
 
-    it('🔴 ④c — la TRANSITION est vue : 200 à vu_a + SEUIL, 503 une ms plus tard', async () => {
+    it('🔴 ④c — the TRANSITION is seen: 200 at vu_a + THRESHOLD, 503 one ms later', async () => {
         // 🔴 La rouge : figer l'horloge injectée. La borne ne serait plus
         // assiégée des deux côtés, et un seuil jamais franchi ne prouve rien.
         // ⚠️ `it()` DISTINCT : c'est une propriété de BORNE, pas de corps.
@@ -285,7 +285,7 @@ describe(`route POST /session, moteur=${MOTEUR}`, () => {
         expect((await demander(apres, signer(alice2, SECRET, MS))).status).toBe(503);
     });
 
-    it('🔴 la requête préalable `OPTIONS` est servie', async () => {
+    it('🔴 the `OPTIONS` preflight request is served', async () => {
         // 🔴 Même défaut de plan qu'à la tâche 9, relevé et non recopié :
         // `POST /session` porte `Authorization`, donc la requête est NON
         // SIMPLE, donc le navigateur émet d'abord un `OPTIONS`. Un 404 le
@@ -300,7 +300,7 @@ describe(`route POST /session, moteur=${MOTEUR}`, () => {
         expect(r.headers.get('access-control-allow-headers')).toContain('authorization');
     });
 
-    it('🔴 le budget « toute requête » freine `POST /session` après trop de requêtes de la même adresse', async () => {
+    it('🔴 the « any request » budget brakes `POST /session` after too many requests from the same address', async () => {
         // 🔴 La rouge : ne jamais consulter `BUDGET_REQUETES`. Sans jeton,
         // chaque requête rendrait 401 indéfiniment — cette route n'a aucune
         // notion d'échec (voir `securite/frein.ts`).

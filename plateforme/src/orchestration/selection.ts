@@ -30,7 +30,7 @@ export function vmsDe(inventaire: readonly Vm[], userId: string): Vm[] {
 /// THE VM of this user, or `undefined`.
 ///
 /// 🔴 IT THROWS ON A DUPLICATE, and it is not a style preference.
-/// The partial index `vm_un_utilisateur` (`0001-socle.sql`) makes the case
+/// The partial index `vm_un_utilisateur` (`0001-socle.sql`) makes the case (policy: allow-fr - SQLite index and file name)
 /// impossible IN THE DATABASE — but this function receives an array, and nothing in its
 /// signature says where it comes from. Silently returning the first would pick
 /// a VM at random and do it without a trace; the exception, on the other hand, says where
@@ -39,9 +39,9 @@ export function laVmDe(inventaire: readonly Vm[], userId: string): Vm | undefine
     const siennes = vmsDe(inventaire, userId);
     if (siennes.length > 1) {
         throw new Error(
-            `l'inventaire porte ${siennes.length} VM pour un même utilisateur, ce que ` +
-                "l'index partiel `vm_un_utilisateur` doit rendre impossible : la base " +
-                'ou son schéma est à examiner, ce refus ne se contourne pas.',
+            `the inventory carries ${siennes.length} VMs for one user, which ` +
+                "the partial index `vm_un_utilisateur` must make impossible: the database " +
+                'or its schema must be examined, this refusal cannot be bypassed.',
         );
     }
     return siennes[0];

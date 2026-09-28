@@ -22,8 +22,8 @@ afterEach(async () => {
     base = undefined;
 });
 
-describe(`dépôt session, moteur=${MOTEUR}`, () => {
-    it('ouvre une ligne avec ouverte_a posé et fermee_a nul', async () => {
+describe(`session repository, engine=${MOTEUR}`, () => {
+    it('opens a row with ouverte_a set and fermee_a null', async () => {
         base = await baseNeuve('dep-ouvre');
         const id = await ouvrirSession(base, 'bureau', 1_000_000);
         const [ligne] = await lireParNom(base, 'bureau');
@@ -35,16 +35,16 @@ describe(`dépôt session, moteur=${MOTEUR}`, () => {
         expect(ligne.motif).toBeNull();
     });
 
-    it('clôt la ligne : fermee_a posé, motif enregistré', async () => {
+    it('closes the row: fermee_a set, reason recorded', async () => {
         base = await baseNeuve('dep-clot');
         const id = await ouvrirSession(base, 'bureau', 1_000_000);
-        await clore(base, id, 1_000_500, 'les deux pairs sont partis');
+        await clore(base, id, 1_000_500, 'both peers left');
         const [ligne] = await lireParNom(base, 'bureau');
         expect(Number(ligne.fermee_a)).toBe(1_000_500);
-        expect(ligne.motif).toBe('les deux pairs sont partis');
+        expect(ligne.motif).toBe('both peers left');
     });
 
-    it('ne clôt pas deux fois : la seconde clôture ne change pas fermee_a', async () => {
+    it('does not close twice: the second closing does not change fermee_a', async () => {
         base = await baseNeuve('dep-double');
         const id = await ouvrirSession(base, 'bureau', 1_000_000);
         await clore(base, id, 1_000_500, 'premier');
@@ -54,7 +54,7 @@ describe(`dépôt session, moteur=${MOTEUR}`, () => {
         expect(ligne.motif).toBe('premier');
     });
 
-    it('balaie au démarrage les lignes restées ouvertes, et rend leur compte', async () => {
+    it('sweeps at startup the rows left open, and returns their count', async () => {
         base = await baseNeuve('dep-balai');
         await ouvrirSession(base, 'a', 1_000);
         await ouvrirSession(base, 'b', 2_000);
@@ -67,14 +67,14 @@ describe(`dépôt session, moteur=${MOTEUR}`, () => {
 
         const [a] = await lireParNom(base, 'a');
         expect(Number(a.fermee_a)).toBe(5_000);
-        expect(a.motif).toBe('plateforme redémarrée');
+        expect(a.motif).toBe('platform restarted');
         // La ligne déjà close garde SON instant et SON motif.
         const [c] = await lireParNom(base, 'c');
         expect(Number(c.fermee_a)).toBe(4_000);
         expect(c.motif).toBe('normale');
     });
 
-    it('deux sessions du même nom successives sont deux lignes distinctes', async () => {
+    it('two successive sessions of the same name are two distinct rows', async () => {
         // Le nom de session n'est PAS unique dans le temps : `bureau` revient à
         // chaque démarrage d'agent (`agent/src/superviseur/protocole.rs`,
         // constante SESSION_DE_CONTROLE). La clé primaire est un UUID, jamais
@@ -87,17 +87,17 @@ describe(`dépôt session, moteur=${MOTEUR}`, () => {
         expect(await lireParNom(base, 'bureau')).toHaveLength(2);
     });
 
-    it('écrit utilisateur_id NULL quand aucun n’est fourni — P1 est intact', async () => {
+    it('writes utilisateur_id NULL when none is given — P1 is intact', async () => {
         // 🔴 Le paramètre est FACULTATIF : le rendre requis casserait tous les
         // appels de P1, et une session de contrôle `bureau` où l'agent arrive
         // seul n'a personne à inscrire.
-        base = await baseNeuve('dep-sans-utilisateur');
+        base = await baseNeuve('dep-without-user');
         await ouvrirSession(base, 'bureau', 1_000_000);
         const [ligne] = await lireParNom(base, 'bureau');
         expect(ligne.utilisateur_id).toBeNull();
     });
 
-    it('écrit vm_id NULL quand aucun n’est fourni — le mode d’essai local', async () => {
+    it('writes vm_id NULL when none is given — the local trial mode', async () => {
         // 🔴 La rouge : rendre le paramètre OBLIGATOIRE. Une session `bureau`
         // ouverte par un agent NON enrôlé — le mode d'essai local que la spec
         // §10 pose comme légitime — n'a aucune VM honnête à inscrire, et la
@@ -108,11 +108,11 @@ describe(`dépôt session, moteur=${MOTEUR}`, () => {
         expect(ligne.vm_id).toBeNull();
     });
 
-    it('écrit vm_id quand la trace a résolu le préfixe — le legs n°3 de P2', async () => {
+    it('writes vm_id when the trace resolved the prefix — legacy item no. 3 of P2', async () => {
         // `session.vm_id` restait entièrement NULL au sortir de P2. C'est la
         // trace qui le résout (préfixe du nom de session -> VM), et c'est ici
         // qu'elle l'inscrit.
-        base = await baseNeuve('dep-avec-vm');
+        base = await baseNeuve('dep-with-vm');
         await ouvrirSession(base, 'RhH1x2QmTz9kLpVbNc7dAw:bureau', 1_787_136_773_742, undefined, 'v-42');
         const [ligne] = await lireParNom(base, 'RhH1x2QmTz9kLpVbNc7dAw:bureau');
         expect(ligne.vm_id).toBe('v-42');
@@ -123,18 +123,18 @@ describe(`dépôt session, moteur=${MOTEUR}`, () => {
         expect(ligne.fermee_a).toBeNull();
     });
 
-    it('écrit les DEUX quand la garde et la trace ont chacune établi la leur', async () => {
-        base = await baseNeuve('dep-avec-les-deux');
+    it('writes BOTH when the guard and the trace each established theirs', async () => {
+        base = await baseNeuve('dep-with-both');
         await ouvrirSession(base, 'P:w-1', 1_000_000, 'u-42', 'v-42');
         const [ligne] = await lireParNom(base, 'P:w-1');
         expect(ligne.utilisateur_id).toBe('u-42');
         expect(ligne.vm_id).toBe('v-42');
     });
 
-    it('écrit utilisateur_id quand la garde en a établi un', async () => {
+    it('writes utilisateur_id when the guard established one', async () => {
         // C'est ce qui rend le mot « enregistrée » du critère ③ littéralement
         // vrai, et c'est ce dont P4 aura besoin pour attribuer une VM.
-        base = await baseNeuve('dep-avec-utilisateur');
+        base = await baseNeuve('dep-with-user');
         await ouvrirSession(base, 'bureau', 1_000_000, 'u-42');
         const [ligne] = await lireParNom(base, 'bureau');
         expect(ligne.utilisateur_id).toBe('u-42');
@@ -144,11 +144,11 @@ describe(`dépôt session, moteur=${MOTEUR}`, () => {
     });
 });
 
-describe(`compterOuvertesDe, moteur=${MOTEUR}`, () => {
+describe(`compterOuvertesDe, engine=${MOTEUR}`, () => {
     /// Une époque réelle, jamais un petit nombre commode : leçon de P1.
     const MS = 1_787_136_773_742;
 
-    it('🔴 le compte passe de 0 À 1 — la TRANSITION est vue', async () => {
+    it('🔴 the count goes from 0 TO 1 — the TRANSITION is seen', async () => {
         // 🔴 La rouge : rendre une constante. Le test doit voir le compte
         // BOUGER, pas lire un nombre — c'est la forme du critère ④ de P3,
         // appliquée ici. Un test qui n'asserterait que `1` serait vert sur un
@@ -165,18 +165,18 @@ describe(`compterOuvertesDe, moteur=${MOTEUR}`, () => {
         expect(typeof (await compterOuvertesDe(base, 'u-ada'))).toBe('number');
     });
 
-    it('🔴 une session CLOSE n’est pas comptée', async () => {
+    it('🔴 a CLOSED session is not counted', async () => {
         // 🔴 La rouge : omettre `AND fermee_a IS NULL`. Le compte deviendrait
         // un historique, et le hub dirait « vous avez une session ouverte » à
         // qui n'en a plus depuis des semaines.
         base = await baseNeuve('sess-compte-close');
         const id = await ouvrirSession(base, 'PREFIXE:bureau', MS, 'u-ada');
         expect(await compterOuvertesDe(base, 'u-ada')).toBe(1);
-        await clore(base, id, MS + 60_000, 'les deux pairs sont partis');
+        await clore(base, id, MS + 60_000, 'both peers left');
         expect(await compterOuvertesDe(base, 'u-ada')).toBe(0);
     });
 
-    it('🔴 la session d’un AUTRE utilisateur n’est pas comptée', async () => {
+    it('🔴 the session of ANOTHER user is not counted', async () => {
         // 🔴 La rouge : omettre le `WHERE utilisateur_id = ?`. Le compte
         // deviendrait global, et chacun verrait le nombre de sessions de tous.
         base = await baseNeuve('sess-compte-autrui');
@@ -185,7 +185,7 @@ describe(`compterOuvertesDe, moteur=${MOTEUR}`, () => {
         expect(await compterOuvertesDe(base, 'u-bob')).toBe(1);
     });
 
-    it('🔴 une session à `utilisateur_id` NUL n’est comptée pour PERSONNE', async () => {
+    it('🔴 a session with a NULL `utilisateur_id` is counted for NOBODY', async () => {
         // 🔴 La rouge : traiter `NULL` comme appartenant au demandeur (par
         // exemple `utilisateur_id = ? OR utilisateur_id IS NULL`). C'est le cas
         // NOMINAL d'une session de contrôle appariée par l'agent seul — chacun

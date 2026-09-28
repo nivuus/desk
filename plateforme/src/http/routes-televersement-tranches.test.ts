@@ -30,10 +30,10 @@ import {
 
 afterEach(nettoyer);
 
-describe(`routes de téléversement — déposer, moteur=${MOTEUR}`, () => {
+describe(`upload routes — drop, engine=${MOTEUR}`, () => {
     /* ── ③ DÉPOSER ───────────────────────────────────────────────────── */
 
-    it('dépose, relit l’état, et REDÉPOSER écrase (idempotence)', async () => {
+    it('drops, re-reads the state, and DROPPING AGAIN overwrites (idempotence)', async () => {
         const { url, base } = await monter('tel-deposer');
         const ada = await user(base, 'ada@exemple.test');
         const jeton = jetonDe(ada);
@@ -54,7 +54,7 @@ describe(`routes de téléversement — déposer, moteur=${MOTEUR}`, () => {
         expect(magasin.lister(id)).toEqual([{ n: 1, octets: 2 }]);
     });
 
-    it('🔴 refuse une tranche au-delà du pas, et ne laisse AUCUN fichier', async () => {
+    it('🔴 refuses a chunk beyond the step, and leaves NO file', async () => {
         // 🔴 LA ROUGE : sans la borne, on rend 200 et l'on écrit une tranche de
         // cinq octets là où le pas en vaut quatre.
         const { url, base } = await monter('tel-borne');
@@ -95,10 +95,10 @@ describe(`routes de téléversement — déposer, moteur=${MOTEUR}`, () => {
         // numériques, donc aucune fausse tranche n'a jamais été comptée et le
         // scellement n'en voyait rien. C'était une FUITE DE DISQUE, sur un
         // service qui accepte 4 Gio.
-        expect(readdirSync(join(racine, id)), 'aucun résidu, .part compris').toEqual([]);
+        expect(readdirSync(join(racine, id)), 'no residue, .part included').toEqual([]);
     });
 
-    it('refuse un rang qui n’est pas un entier, ou qui sort du plan', async () => {
+    it('refuses a rank that is not an integer, or that falls outside the plan', async () => {
         const { url, base } = await monter('tel-rang');
         const ada = await user(base, 'ada@exemple.test');
         const jeton = jetonDe(ada);

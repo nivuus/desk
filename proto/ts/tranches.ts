@@ -77,12 +77,12 @@ export type Verdict =
 function checkContract(size: number, chunkSize: number): void {
     if (!Number.isInteger(size) || size < 0) {
         throw new Error(
-            `tranches : taille invalide (${size}) — un entier positif ou nul est attendu`,
+            `chunks: invalid size (${size}) — a positive or zero integer is expected`,
         );
     }
     if (!Number.isInteger(chunkSize) || chunkSize <= 0) {
         throw new Error(
-            `tranches : tailleTranche invalide (${chunkSize}) — un entier strictement positif est attendu`,
+            `chunks: invalid tailleTranche (${chunkSize}) — a strictly positive integer is expected`,
         );
     }
 }

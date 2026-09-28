@@ -89,7 +89,7 @@ export class CacheSante {
             // ⚠️ `SELECT 1` CARRIES A LITERAL VALUE, AND THAT IS HARMLESS
             // HERE: the repository rule — « no literal value in a
             // query » — targets values that come from a REQUESTER, and the
-            // lint of `base/sous-ensemble.test.ts` only applies to the
+            // lint of `base/sous-ensemble.test.ts` only applies to the (policy: allow-fr - file name)
             // MIGRATIONS. `rendreMarqueurs` only refuses literal STRINGS
             // (apostrophe or double quote); `1` is not one, and
             // the query takes no parameter.
@@ -140,7 +140,7 @@ function repondre(
 /// server — is chained AFTER all the others, and it resolves any
 /// path. On a `GET`, it is IT that answers `200 text/html` to the `false`
 /// returned here; outside `GET`/`HEAD` it steps aside, and the generic 404 takes
-/// over. See `http/chaine.ts`, which carries the count and the rule.
+/// over. See `http/chaine.ts`, which carries the count and the rule. (policy: allow-fr - file name)
 export async function servirSante(
     req: IncomingMessage,
     rep: ServerResponse,

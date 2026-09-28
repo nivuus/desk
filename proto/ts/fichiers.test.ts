@@ -14,7 +14,7 @@ import {
 } from './fichiers';
 
 /**
- * Le vecteur épinglé, **écrit en dur ici ET dans `proto/src/fichiers/tests.rs`**.
+ * Le vecteur épinglé, **écrit en dur ici ET dans `proto/src/files/tests.rs`**.
  *
  * ⚠️ C'est la seule façon de voir ROUGE une divergence d'endianness entre les
  * deux implémentations : un aller-retour TS→TS reste vert quel que soit le
@@ -34,33 +34,33 @@ function octets(t: ArrayBuffer): Uint8Array {
     return new Uint8Array(t);
 }
 
-describe('trame binaire du pont fichiers', () => {
-    it('refuse une trame sans version', () => {
+describe('binary frame of the file bridge', () => {
+    it('refuses a frame without a version', () => {
         // Zéro octet ne porte pas sa version : rejet, jamais complétion.
-        expect(() => decoder(new ArrayBuffer(0))).toThrow(/tronqu/i);
+        expect(() => decoder(new ArrayBuffer(0))).toThrow(/truncated/i);
         // …et un octet de moins que l'en-tête fixe l'est aussi.
-        expect(() => decoder(new ArrayBuffer(FIXED_HEADER_SIZE - 1))).toThrow(/tronqu/i);
+        expect(() => decoder(new ArrayBuffer(FIXED_HEADER_SIZE - 1))).toThrow(/truncated/i);
     });
 
-    it('refuse une trame de version 2', () => {
+    it('refuses a version 2 frame', () => {
         const trame = octets(encoder(TYPE_LISTER, 7, {}));
         trame[0] = FILES_VERSION + 1;
         expect(() => decoder(trame.buffer as ArrayBuffer)).toThrow(/version/i);
     });
 
-    it("refuse un en-tête dont la longueur déborde la trame", () => {
+    it("refuses a header whose length overflows the frame", () => {
         const trame = octets(encoder(TYPE_ENTREES, 1, {}, new Uint8Array([1, 2, 3])));
         new DataView(trame.buffer).setUint32(6, 0xffffffff, true);
-        expect(() => decoder(trame.buffer as ArrayBuffer)).toThrow(/en-tête/i);
+        expect(() => decoder(trame.buffer as ArrayBuffer)).toThrow(/header/i);
 
         // Le débordement d'UN SEUL octet est refusé aussi : c'est là que vit
         // l'erreur d'inégalité stricte.
         const dun = octets(encoder(TYPE_ENTREES, 1, {}));
         new DataView(dun.buffer).setUint32(6, 3, true);
-        expect(() => decoder(dun.buffer as ArrayBuffer)).toThrow(/en-tête/i);
+        expect(() => decoder(dun.buffer as ArrayBuffer)).toThrow(/header/i);
     });
 
-    it('conserve les octets bruts sur un aller-retour', () => {
+    it('keeps the raw bytes on a round trip', () => {
         // 0x00 et 0xFF sont les deux octets qu'un encodage textuel abîme en
         // premier ; on passe les 256.
         const charge = new Uint8Array(256);
@@ -73,7 +73,7 @@ describe('trame binaire du pont fichiers', () => {
         expect(Array.from(trame.charge)).toEqual(Array.from(charge));
     });
 
-    it('accepte une charge vide et un en-tête vide', () => {
+    it('accepts an empty payload and an empty header', () => {
         const brut = octets(encoder(TYPE_META, 0));
         expect(brut.length).toBe(FIXED_HEADER_SIZE);
         const trame = decoder(brut.buffer as ArrayBuffer);
@@ -82,17 +82,17 @@ describe('trame binaire du pont fichiers', () => {
         expect(trame.correlation).toBe(0);
     });
 
-    it('accepte une charge de TAILLE_TRAME_MAX et refuse un octet de plus', () => {
+    it('accepts a payload of TAILLE_TRAME_MAX and refuses one more byte', () => {
         // Au seuil EXACT. C'est l'inégalité stricte qui est éprouvée, pas la
         // borne en général.
         const pleine = new Uint8Array(MAX_FRAME_SIZE).fill(0xab);
         expect(decoder(encoder(TYPE_DATA, 1, {}, pleine)).charge.length).toBe(MAX_FRAME_SIZE);
 
         const trop = new Uint8Array(MAX_FRAME_SIZE + 1).fill(0xab);
-        expect(() => decoder(encoder(TYPE_DATA, 1, {}, trop))).toThrow(/charge/i);
+        expect(() => decoder(encoder(TYPE_DATA, 1, {}, trop))).toThrow(/payload/i);
     });
 
-    it('décode ce que Rust a encodé — le vecteur épinglé', () => {
+    it('decodes what Rust encoded — the pinned vector', () => {
         // ⚠️ LE test de ce fichier. Sans lui, une divergence d'endianness entre
         // Rust et TypeScript resterait verte des deux côtés.
         const trame = decoder(VECTEUR_EPINGLE.buffer as ArrayBuffer);
@@ -109,7 +109,7 @@ describe('trame binaire du pont fichiers', () => {
         ).toEqual(Array.from(VECTEUR_EPINGLE));
     });
 
-    it('épingle la forme des codes d\'échec sur le fil', () => {
+    it('pins the shape of the failure codes on the wire', () => {
         // ⚠️ Les variantes à DEUX MOTS sont celles qui se cassent en silence :
         // ce dépôt a laissé passer `battement-recu` verte sur cinquante tests
         // parce que rien n'épinglait ses octets. Ces ONZE chaînes doivent être
@@ -130,7 +130,7 @@ describe('trame binaire du pont fichiers', () => {
         ]);
     });
 
-    it('ne fait chevaucher aucun type de message', () => {
+    it('makes no message type overlap', () => {
         // `ALL_TYPES` est DÉRIVÉE de l'union, pas écrite à la main : c'est
         // le remède structurel au défaut de `TYPES_AGENT` (`control.ts:106`),
         // liste manuelle que rien ne confronte à son union. Ajouter un type

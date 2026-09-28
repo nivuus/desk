@@ -43,10 +43,10 @@ afterEach(async () => {
     vi.restoreAllMocks();
 });
 
-describe(`routes de téléversement, moteur=${MOTEUR}`, () => {
+describe(`upload routes, engine=${MOTEUR}`, () => {
     /* ── LE CHEMIN ───────────────────────────────────────────────────── */
 
-    it('🔴 ne mange QUE ses quatre chemins — le corps du 404 est comparé', async () => {
+    it('🔴 eats ONLY its four paths — the body of the 404 is compared', async () => {
         // 🔴 SI CETTE MUTATION SURVIT, LE TEST EST FAUX, PAS LA MUTATION —
         // c'est la rouge que G1 a vue SURVIVRE. On compare le corps parce qu'un
         // routeur à préfixe peut rendre SON PROPRE 404 typé.
@@ -62,11 +62,11 @@ describe(`routes de téléversement, moteur=${MOTEUR}`, () => {
         ]) {
             const r = await fetch(`${url}${chemin}`, { headers: withIt(jetonDe('u1')) });
             expect(r.status, chemin).toBe(404);
-            expect(await r.text(), chemin).toBe('introuvable\n');
+            expect(await r.text(), chemin).toBe('not found\n');
         }
     });
 
-    it('sert la requête préalable et pose les en-têtes de sécurité', async () => {
+    it('serves the preflight request and sets the security headers', async () => {
         const { url } = await monter('tel-options');
         const r = await fetch(`${url}/televersement`, { method: 'OPTIONS' });
         expect(r.status).toBe(204);
@@ -79,7 +79,7 @@ describe(`routes de téléversement, moteur=${MOTEUR}`, () => {
         expect(refus.headers.get('X-Content-Type-Options')).toBe('nosniff');
     });
 
-    it('rend 405 sur la mauvaise méthode, jamais 404', async () => {
+    it('returns 405 on the wrong method, never 404', async () => {
         const { url } = await monter('tel-methode');
         const jeton = jetonDe('u1');
         const cas: [string, string][] = [
@@ -95,7 +95,7 @@ describe(`routes de téléversement, moteur=${MOTEUR}`, () => {
         }
     });
 
-    it('exige un jeton, et refuse celui d’un agent', async () => {
+    it('requires a token, and refuses an agent one', async () => {
         const { url } = await monter('tel-porteur');
         const sans = await fetch(`${url}/televersement`, { method: 'POST' });
         expect(sans.status).toBe(401);
@@ -112,8 +112,8 @@ describe(`routes de téléversement, moteur=${MOTEUR}`, () => {
 
     /* ── ① DÉCLARER ──────────────────────────────────────────────────── */
 
-    it('crée, et rend le pas et une liste de tranches VIDE', async () => {
-        const { url, base } = await monter('tel-creer');
+    it('creates, and returns the step and an EMPTY chunk list', async () => {
+        const { url, base } = await monter('tel-create');
         const u = await user(base, 'ada@exemple.test');
         const r = await declarerChez(url, jetonDe(u), {
             nom: 'installeur.exe',
@@ -132,8 +132,8 @@ describe(`routes de téléversement, moteur=${MOTEUR}`, () => {
         expect(ligne?.taille_tranche).toBe(CHUNK_SIZE);
     });
 
-    it('refuse une déclaration mal formée, champ par champ', async () => {
-        const { url, base } = await monter('tel-creer-forme');
+    it('refuses a malformed declaration, field by field', async () => {
+        const { url, base } = await monter('tel-create-shape');
         const jeton = jetonDe(await user(base, 'bob@exemple.test'));
         const cas: [unknown, string][] = [
             [{ nom: '', taille: 1, sha256: SHA }, 'nom-invalide'],
@@ -152,15 +152,15 @@ describe(`routes de téléversement, moteur=${MOTEUR}`, () => {
             expect(((await r.json()) as { refus: string }).refus, JSON.stringify(corps)).toBe(motif);
         }
         // Ni un objet JSON, ni du JSON du tout : `forme`, et rien de plus.
-        for (const brut of ['[1,2]', 'ceci-n-est-pas-du-json']) {
+        for (const brut of ['[1,2]', 'this-is-not-json']) {
             const r = await declarerChez(url, jeton, brut);
             expect(r.status, brut).toBe(400);
             expect(await r.json(), brut).toEqual({ refus: 'forme' });
         }
     });
 
-    it('borne le corps de la déclaration, et le quota de téléversements', async () => {
-        const { url, base } = await monter('tel-creer-quota');
+    it('bounds the body of the declaration, and the upload quota', async () => {
+        const { url, base } = await monter('tel-create-quota');
         const jeton = jetonDe(await user(base, 'cle@exemple.test'));
 
         const enorme = await declarerChez(url, jeton, {
@@ -185,7 +185,7 @@ describe(`routes de téléversement, moteur=${MOTEUR}`, () => {
 
     /* ── ② LA PROPRIÉTÉ ──────────────────────────────────────────────── */
 
-    it('🔴 le téléversement d’AUTRUI rend le MÊME corps que l’inconnu', async () => {
+    it('🔴 SOMEONE ELSE\'S upload returns the SAME body as the unknown one', async () => {
         // 🔴 TROIS ROUGES SE JOUENT ICI : retirer la vérification de
         // propriétaire (200), rendre 403 (statut), ou rendre un 404 au CORPS
         // distinct — seule la comparaison du corps attrape la troisième.
@@ -219,7 +219,7 @@ describe(`routes de téléversement, moteur=${MOTEUR}`, () => {
         });
     });
 
-    it('journalise LEQUEL des deux cas, et les deux lignes diffèrent', async () => {
+    it('logs WHICH of the two cases, and the two lines differ', async () => {
         const { url, base } = await monter('tel-journal');
         const ada = await user(base, 'ada@exemple.test');
         const bob = await user(base, 'bob@exemple.test');
@@ -235,10 +235,10 @@ describe(`routes de téléversement, moteur=${MOTEUR}`, () => {
         expect(lignes.some((l) => l.includes('cas=inconnu'))).toBe(true);
     });
 
-    it('refuse un identifiant qui n’est pas un UUID, avant tout accès au disque', async () => {
+    it('refuses an identifier that is not a UUID, before any disk access', async () => {
         const { url, base } = await monter('tel-id-invalide');
         const jeton = jetonDe(await user(base, 'ada@exemple.test'));
-        for (const id of ['..%2F..%2Fetc', 'pas-un-uuid', SHA]) {
+        for (const id of ['..%2F..%2Fetc', 'not-a-uuid', SHA]) {
             const r = await fetch(`${url}/televersement/${id}`, { headers: withIt(jeton) });
             expect(r.status, id).toBe(400);
             expect(await r.json(), id).toEqual({ refus: 'identifiant-invalide' });
@@ -247,7 +247,7 @@ describe(`routes de téléversement, moteur=${MOTEUR}`, () => {
 
     /* ── ④ SCELLER ───────────────────────────────────────────────────── */
 
-    it('refuse de sceller tant qu’il manque une tranche', async () => {
+    it('refuses to seal while a chunk is missing', async () => {
         const { url, base } = await monter('tel-manquantes');
         const ada = await user(base, 'ada@exemple.test');
         const jeton = jetonDe(ada);
@@ -260,7 +260,7 @@ describe(`routes de téléversement, moteur=${MOTEUR}`, () => {
         expect((await lireParId(base, id))?.scelle_a).toBe(null);
     });
 
-    it('🔴 le bon NOMBRE de tranches ne suffit pas : une mauvaise TAILLE est incohérente', async () => {
+    it('🔴 the right NUMBER of chunks is not enough: a wrong SIZE is inconsistent', async () => {
         // 🔴 LA ROUGE : remplacer `verdict` par « le compte est bon » fait
         // passer ce cas — les trois rangs sont là, la deuxième est trop courte.
         // Le refus doit être `tranches-incoherentes`, JAMAIS `-manquantes` :
@@ -280,7 +280,7 @@ describe(`routes de téléversement, moteur=${MOTEUR}`, () => {
         expect((await lireParId(base, id))?.scelle_a).toBe(null);
     });
 
-    it('🔴 RECALCULE l’empreinte : des tranches de la bonne taille au mauvais contenu sont refusées', async () => {
+    it('🔴 RECOMPUTES the fingerprint: chunks of the right size with the wrong content are refused', async () => {
         // 🔴 LA ROUGE : faire confiance au `sha256` ANNONCÉ scelle ce
         // téléversement, dont les octets ne sont pas les siens. Les trois
         // tranches ont la taille EXACTE du plan — seul un recalcul le voit.
@@ -299,7 +299,7 @@ describe(`routes de téléversement, moteur=${MOTEUR}`, () => {
         expect((await lireParId(base, id))?.scelle_a).toBe(null);
     });
 
-    it('scelle quand tout concorde, refuse tout dépôt ensuite, et sceller deux fois réussit', async () => {
+    it('seals when everything matches, refuses any drop afterwards, and sealing twice succeeds', async () => {
         const { url, base } = await monter('tel-sceller');
         const ada = await user(base, 'ada@exemple.test');
         const jeton = jetonDe(ada);
@@ -326,7 +326,7 @@ describe(`routes de téléversement, moteur=${MOTEUR}`, () => {
         expect(await deux.text()).toBe(JSON.stringify(attendu));
     });
 
-    it('scelle un fichier VIDE sans exiger la moindre tranche', async () => {
+    it('seals an EMPTY file without requiring any chunk', async () => {
         // Zéro tranche (`ceil(0 / pas)`), verdict `complet` sur une liste vide :
         // sceller un fichier sans contenu n'exige pas une trame sans contenu.
         const { url, base } = await monter('tel-vide');
@@ -338,7 +338,7 @@ describe(`routes de téléversement, moteur=${MOTEUR}`, () => {
         expect((await lireParId(base, id))?.scelle_a).toBe(MS);
     });
 
-    it('un scellement d’AUTRUI rend le même 404 que l’inconnu', async () => {
+    it('a seal of SOMEONE ELSE returns the same 404 as the unknown one', async () => {
         const { url, base } = await monter('tel-sceller-autrui');
         const ada = await user(base, 'ada@exemple.test');
         const bob = await user(base, 'bob@exemple.test');
@@ -349,7 +349,7 @@ describe(`routes de téléversement, moteur=${MOTEUR}`, () => {
         expect((await lireParId(base, id))?.scelle_a).toBe(null);
     });
 
-    it('un dépôt sur le téléversement d’autrui n’écrit RIEN', async () => {
+    it('a drop on someone else\'s upload writes NOTHING', async () => {
         const { url, base } = await monter('tel-deposer-autrui');
         const ada = await user(base, 'ada@exemple.test');
         const bob = await user(base, 'bob@exemple.test');

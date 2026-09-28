@@ -273,7 +273,7 @@ export function verifyIconUrl(
     if (!timingSafeEqual(attendue, fournie)) return { ok: false, motif: 'signature-invalide' };
 
     // 🔴 THIS GUARD COMES AFTER THE SIGNATURE, AND IT IS NOT DECORATIVE:
-    // `Number('pas-un-nombre')` returns `NaN`, and `maintenant >= NaN` is FALSE —
+    // `Number('not-a-number')` returns `NaN`, and `maintenant >= NaN` is FALSE —
     // an unreadable expiry would therefore be ACCEPTED, that is, eternal.
     // ⚠️ IT IS UNREACHABLE BY THE PRODUCT, which only mints integers:
     // the only path that reaches it is a signature computed with the REAL

@@ -25,23 +25,23 @@ const CONFIG: Config = {
 };
 
 describe('lireIdentitePomerium', () => {
-    it('rend le courriel', () => {
+    it('returns the email', () => {
         const v = lireIdentitePomerium({ [ENTETE_IDENTITE]: 'a@b.c' });
         expect(v).toEqual({ ok: true, email: 'a@b.c' });
     });
 
-    it('rogne les espaces', () => {
+    it('trims the spaces', () => {
         const v = lireIdentitePomerium({ [ENTETE_IDENTITE]: '  a@b.c  ' });
         expect(v).toEqual({ ok: true, email: 'a@b.c' });
     });
 
     // 🔴 AUCUN REPLI SUR UN UTILISATEUR PAR DÉFAUT : une mauvaise
     // configuration du proxy doit être bruyante et refusante.
-    it("refuse l'en-tête absent", () => {
+    it("refuses the absent header", () => {
         expect(lireIdentitePomerium({})).toEqual({ ok: false, motif: 'identite-absente' });
     });
 
-    it("refuse l'en-tête vide", () => {
+    it("refuses the empty header", () => {
         expect(lireIdentitePomerium({ [ENTETE_IDENTITE]: '   ' })).toEqual({
             ok: false,
             motif: 'identite-absente',
@@ -51,7 +51,7 @@ describe('lireIdentitePomerium', () => {
     // Précédent littéral de `porteur.ts` : en choisir un serait prendre une
     // décision qu'un attaquant exploite dès que deux couches n'en prennent pas
     // la même.
-    it("REFUSE un en-tête RÉPÉTÉ, jamais ne le désambiguïse", () => {
+    it("REFUSES a REPEATED header, never disambiguates it", () => {
         expect(lireIdentitePomerium({ [ENTETE_IDENTITE]: ['a@b.c', 'mechant@x.y'] })).toEqual({
             ok: false,
             motif: 'identite-absente',
@@ -76,7 +76,7 @@ async function combienDeComptes(p: Pilote): Promise<number> {
 }
 
 describe('GET /auth/moi', () => {
-    it('① compte inconnu ⇒ 200, et le compte est CRÉÉ', async () => {
+    it('① unknown account ⇒ 200, and the account is CREATED', async () => {
         base = await baseNeuve('moi-inconnu');
         service = await startServer(CONFIG, base);
         expect(await combienDeComptes(base)).toBe(0);
@@ -91,7 +91,7 @@ describe('GET /auth/moi', () => {
         expect(await combienDeComptes(base)).toBe(1);
     });
 
-    it('② compte connu ⇒ 200, et AUCUN compte de plus', async () => {
+    it('② known account ⇒ 200, and NO extra account', async () => {
         base = await baseNeuve('moi-connu');
         service = await startServer(CONFIG, base);
         const url = `http://127.0.0.1:${service.port}/auth/moi`;
@@ -106,7 +106,7 @@ describe('GET /auth/moi', () => {
 
     // 🔴 LA ROUGE DU CRITÈRE ① : sans `pass_identity_headers` chez Pomerium,
     // le service REFUSE — il ne se replie sur aucun utilisateur par défaut.
-    it('③ en-tête absent ⇒ 401 identite-absente', async () => {
+    it('③ header absent ⇒ 401 identite-absente', async () => {
         base = await baseNeuve('moi-absent');
         service = await startServer(CONFIG, base);
 
@@ -122,7 +122,7 @@ describe('GET /auth/moi', () => {
     // en panne. Le bras VERT est ① et ② ci-dessus, qui se connectent en boucle
     // locale et réussissent précisément parce que `CONFIG.proxyDeConfiance`
     // déclare `127.0.0.1`.
-    it("REFUSE (401) l'en-tête d'identité venu d'un pair non déclaré", async () => {
+    it("REFUSES (401) the identity header coming from an undeclared peer", async () => {
         base = await baseNeuve('moi-pair-etranger-statut');
         service = await startServer({ ...CONFIG, proxyDeConfiance: new Set(['10.9.9.9']) }, base);
         const r = await fetch(`http://127.0.0.1:${service.port}/auth/moi`, {
@@ -131,7 +131,7 @@ describe('GET /auth/moi', () => {
         expect(r.status).toBe(401);
     });
 
-    it("REFUSE l'en-tête d'identité venu d'un pair non déclaré, avec le motif nommé", async () => {
+    it("REFUSES the identity header coming from an undeclared peer, with the reason named", async () => {
         base = await baseNeuve('moi-pair-etranger-motif');
         service = await startServer({ ...CONFIG, proxyDeConfiance: new Set(['10.9.9.9']) }, base);
         const r = await fetch(`http://127.0.0.1:${service.port}/auth/moi`, {
@@ -150,7 +150,7 @@ describe('GET /auth/moi', () => {
     // pair non déclaré, un par courriel choisi par l'attaquant. C'est le
     // vecteur que `CLAUDE.md` nomme au § legs `auth-pomerium` : « crée une
     // ligne `user` par courriel distinct, sans borne ».
-    it("REFUSE l'en-tête d'identité venu d'un pair non déclaré, SANS CRÉER DE COMPTE", async () => {
+    it("REFUSES the identity header coming from an undeclared peer, WITHOUT CREATING AN ACCOUNT", async () => {
         base = await baseNeuve('moi-pair-etranger-compte');
         service = await startServer({ ...CONFIG, proxyDeConfiance: new Set(['10.9.9.9']) }, base);
         await fetch(`http://127.0.0.1:${service.port}/auth/moi`, {
@@ -169,7 +169,7 @@ describe('GET /auth/moi', () => {
     // `remoteAddress` par construction (`adresse-source.ts`) ; ce test
     // éprouve que la ROUTE, à son tour, ne se laisse pas convaincre par
     // l'en-tête.
-    it("IGNORE X-Forwarded-For : un pair non déclaré qui forge l'adresse d'un pair déclaré reste REFUSÉ", async () => {
+    it("IGNORES X-Forwarded-For: an undeclared peer forging the address of a declared peer stays REFUSED", async () => {
         base = await baseNeuve('moi-xff-forge');
         // Le pair RÉEL de ce test est `127.0.0.1` (boucle locale) ; la
         // confiance ne déclare QUE `10.9.9.9`, l'adresse que l'en-tête va
@@ -185,7 +185,7 @@ describe('GET /auth/moi', () => {
     // 🔴 LES ROUGES DES CRITÈRES ② ET ③ EN UN SEUL TEST, ET L'EN-TÊTE EST
     // PRÉSENT À DESSEIN : c'est ce qui prouve qu'un en-tête FORGÉ est ignoré
     // en mode `motdepasse`, et pas seulement que la route est absente.
-    it('④ mode motdepasse ⇒ 404, en-tête forgé IGNORÉ', async () => {
+    it('④ motdepasse mode ⇒ 404, forged header IGNORED', async () => {
         base = await baseNeuve('moi-motdepasse');
         service = await startServer({ ...CONFIG, auth: 'motdepasse' }, base);
 

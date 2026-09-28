@@ -22,7 +22,7 @@ import type { Pilote } from '../base/pilote';
 export interface LigneSession {
     id: string;
     nom_session: string;
-    utilisateur_id: string | null;
+    utilisateur_id: string | null; // policy: allow-fr - frozen wire key or SQLite column
     vm_id: string | null;
     ouverte_a: number;
     fermee_a: number | null;
@@ -33,7 +33,7 @@ export interface LigneSession {
 ///
 /// It is passed as a PARAMETER of the query, never written into the SQL: a
 /// literal value would make `rendreMarqueurs` throw on the Postgres side.
-export const MOTIF_BALAYAGE = 'plateforme redémarrée';
+export const MOTIF_BALAYAGE = 'platform restarted';
 
 /// Opens a row and returns its identifier.
 ///
@@ -123,7 +123,7 @@ export async function lireParNom(p: Pilote, nomSession: string): Promise<LigneSe
 
 /// How many sessions of this user are OPEN.
 ///
-/// 🔴 IT IS THE FIRST PRODUCTION READER OF `session.utilisateur_id`. The
+/// 🔴 IT IS THE FIRST PRODUCTION READER OF `session.utilisateur_id`. The (policy: allow-fr - frozen wire key or SQLite column)
 /// column has been written since P2 by the chain `identite/garde.ts` →
 /// `signaling/relais.ts` → `signaling/trace.ts` → `ouvrirSession` above, and
 /// the only `SELECT` that brought it back was `lireParNom`, none of whose callers
@@ -137,7 +137,7 @@ export async function lireParNom(p: Pilote, nomSession: string): Promise<LigneSe
 /// a row can stay open for a peer that left without its disconnection
 /// having been seen. The name carries the caveat; do not rename it without lifting it.
 ///
-/// ⚠️ A ROW WITH A NULL `utilisateur_id` IS COUNTED FOR NOBODY. It is the
+/// ⚠️ A ROW WITH A NULL `utilisateur_id` IS COUNTED FOR NOBODY. It is the (policy: allow-fr - frozen wire key or SQLite column)
 /// NOMINAL case of a control session paired by the agent alone
 /// (`identite/garde.ts`, and the comment of `ouvrirSession` above):
 /// SQL equality with `NULL` never yields true, and this property is held

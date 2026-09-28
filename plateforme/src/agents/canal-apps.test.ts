@@ -114,7 +114,7 @@ async function attendreCatalogue(
         const noms = (await lireParVm(p, vmId)).map((l) => l.nom);
         if (predicat(noms)) return noms;
         if (Date.now() > fin) {
-            throw new Error(`catalogue ${quoi} jamais atteint pour ${vmId} (vu=${noms.join(',')})`);
+            throw new Error(`catalogue ${quoi} never reached for ${vmId} (seen=${noms.join(',')})`);
         }
         await new Promise((r) => setTimeout(r, 25));
     }
@@ -126,8 +126,8 @@ async function enrole(pair: Pair): Promise<void> {
     expect(rep.type).toBe('enrole');
 }
 
-describe('le canal /agent, côté applications', () => {
-    it('🔴 un `catalogue` AVANT tout enrôlement est refusé, motif `sequence`', async () => {
+describe('the /agent channel, applications side', () => {
+    it('🔴 a `catalogue` BEFORE any enrolment is refused, reason `sequence`', async () => {
         // 🔴 L'ACCEPTER LAISSERAIT UN PAIR ANONYME ÉCRIRE DANS LA TABLE
         // `application` D'UNE VM QU'IL N'A PAS AUTHENTIFIÉE. C'est le trou
         // exact que le refus `sequence` du battement ferme déjà, par une autre
@@ -146,7 +146,7 @@ describe('le canal /agent, côté applications', () => {
         pair.socket.terminate();
     });
 
-    it('🔴 un `lancee` avant tout enrôlement est refusé, motif `sequence`', async () => {
+    it('🔴 a `lancee` before any enrolment is refused, reason `sequence`', async () => {
         // Même raison : un anonyme pourrait sinon résoudre la demande d'un
         // autre, et faire croire à un lancement réussi qui n'a pas eu lieu.
         base = await baseNeuve('canal-apps-sequence-lancee');
@@ -158,26 +158,26 @@ describe('le canal /agent, côté applications', () => {
         pair.socket.terminate();
     });
 
-    it('un `catalogue` valide est FUSIONNÉ et ÉCRIT', async () => {
+    it('a valid `catalogue` is MERGED and WRITTEN', async () => {
         base = await baseNeuve('canal-apps-ecriture');
         await enrolerUneVm(base, 'v-1');
         const pair = await ouvrir(await start(base));
         await enrole(pair);
 
         pair.socket.send(encodeCatalogue(true, [app('Firefox', 'c-1'), app('Excel', 'c-2')], []));
-        expect(await attendreCatalogue(base, 'v-1', (n) => n.length === 2, 'à deux entrées'))
+        expect(await attendreCatalogue(base, 'v-1', (n) => n.length === 2, 'with two entries'))
             .toEqual(['Excel', 'Firefox']);
 
         // Et un second message COMPLET sans Excel l'en retire — c'est la
         // fusion qui décide, et elle est branchée sur le chemin réel.
         maintenant = T0 + 30_000;
         pair.socket.send(encodeCatalogue(true, [app('Firefox', 'c-1')], []));
-        expect(await attendreCatalogue(base, 'v-1', (n) => n.length === 1, 'à une entrée'))
+        expect(await attendreCatalogue(base, 'v-1', (n) => n.length === 1, 'with one entry'))
             .toEqual(['Firefox']);
         pair.socket.terminate();
     });
 
-    it("🔴 l'écriture du catalogue n'est PAS ATTENDUE, et son échec n'abat pas la connexion", async () => {
+    it("🔴 writing the catalogue is NOT AWAITED, and its failure does not bring the connection down", async () => {
         // 🔴 UN `await` DANS LE GESTIONNAIRE `message` FERAIT QU'UNE BASE
         // MOMENTANÉMENT INDISPONIBLE ABATTRAIT LA CONNEXION D'UN AGENT QUI VA
         // TRÈS BIEN — et une promesse rejetée SANS `catch` abattrait tout le
@@ -197,7 +197,7 @@ describe('le canal /agent, côté applications', () => {
 
         // La connexion vit toujours, et répond encore : le refus d'un message
         // mal formé est la preuve la moins ambiguë que la boucle tourne.
-        const rep = await pair.dire('pas du json');
+        const rep = await pair.dire('not json');
         expect(rep).toEqual({ type: 'refus', v: PLATEFORME_VERSION, motif: 'forme' });
         // Et l'échec est AU JOURNAL, jamais silencieux : une écriture perdue
         // ne se voit nulle part ailleurs.
@@ -207,7 +207,7 @@ describe('le canal /agent, côté applications', () => {
         base = undefined;
     });
 
-    it("l'enrôlement INSCRIT la VM au registre, et la fermeture l'en RETIRE", async () => {
+    it("enrolment REGISTERS the VM in the registry, and closing REMOVES it", async () => {
         // 🔴 Oublier l'inscription ferait rendre `agent-injoignable` à tout
         // lancement, pour une VM parfaitement connectée. Oublier le retrait
         // ferait l'inverse : une VM morte resterait « joignable » jusqu'au
@@ -238,7 +238,7 @@ describe('le canal /agent, côté applications', () => {
         await expect(registre.lancer('v-1', 'c-1', 'd-2')).resolves.toBe('agent-injoignable');
     });
 
-    it('un `lancee` RÉSOUT la demande en vol, avec son issue', async () => {
+    it('a `lancee` RESOLVES the request in flight, with its outcome', async () => {
         base = await baseNeuve('canal-apps-lancee');
         await enrolerUneVm(base, 'v-1');
         const pair = await ouvrir(await start(base));
@@ -287,13 +287,13 @@ async function pousseOuRien(pair: Pair): Promise<Record<string, unknown> | undef
     }
 }
 
-describe("l'inventaire des icônes manquantes", () => {
+describe("the inventory of missing icons", () => {
     afterEach(() => {
         for (const r of racinesIcones) rmSync(r, { recursive: true, force: true });
         racinesIcones = [];
     });
 
-    it('réclame les empreintes que le magasin n’a PAS', async () => {
+    it('asks for the fingerprints the store does NOT have', async () => {
         base = await baseNeuve('canal-icones-manque');
         const port = await start(base, true);
         await enrolerUneVm(base, 'v-1');
@@ -301,14 +301,14 @@ describe("l'inventaire des icônes manquantes", () => {
         await enrole(pair);
         pair.socket.send(encodeCatalogue(true, [app('A', 'c-a', E1), app('B', 'c-b', E2)], []));
         const message = await pousseOuRien(pair);
-        expect(message, "l'inventaire doit être poussé").toBeDefined();
+        expect(message, "the inventory must be pushed").toBeDefined();
         expect(message!.type).toBe('icones-manquantes');
         expect(message!.empreintes).toEqual([E1, E2]);
         expect(message!.v).toBe(PLATEFORME_VERSION);
         pair.socket.close();
     });
 
-    it('🔴 NE POUSSE RIEN quand le magasin a déjà tout — critère ⑤', async () => {
+    it('🔴 PUSHES NOTHING when the store already has everything — criterion ⑤', async () => {
         // 🔴 UNE LISTE VIDE COÛTERAIT UN MESSAGE PAR RÉCONCILIATION SUR UN
         // DISQUE AU REPOS, c'est-à-dire toutes les trente secondes, pour
         // toujours. C'est très exactement ce que le diff de G1 existe pour
@@ -323,12 +323,12 @@ describe("l'inventaire des icônes manquantes", () => {
         pair.socket.send(encodeCatalogue(true, [app('A', 'c-a', E1), app('B', 'c-b', E2)], []));
         // 🔴 LE CATALOGUE EST BIEN ARRIVÉ — sans quoi ce « rien » serait celui
         // d'un produit EN PANNE, et ne dirait rien du tout.
-        await attendreCatalogue(base, 'v-1', (n) => n.includes('A'), 'écrit');
+        await attendreCatalogue(base, 'v-1', (n) => n.includes('A'), 'written');
         expect(await pousseOuRien(pair)).toBeUndefined();
         pair.socket.close();
     });
 
-    it('ne réclame QUE ce qui manque, et ignore les applications SANS icône', async () => {
+    it('asks ONLY for what is missing, and ignores the applications WITHOUT an icon', async () => {
         base = await baseNeuve('canal-icones-partiel');
         const port = await start(base, true);
         magasin!.write(E1, OCTETS_1);
@@ -343,7 +343,7 @@ describe("l'inventaire des icônes manquantes", () => {
         pair.socket.close();
     });
 
-    it('🔴 REDEMANDE une icône dont le FICHIER a disparu — critère ⑦', async () => {
+    it('🔴 ASKS AGAIN for an icon whose FILE has disappeared — criterion ⑦', async () => {
         // 🔴 L'INVENTAIRE INTERROGE LE DISQUE, PAS UNE TABLE. Une table de
         // comptabilité ne verrait pas la perte, et l'icône serait perdue POUR
         // TOUJOURS. C'est ce qui rend le magasin AUTO-RECONSTRUCTIBLE, et donc
@@ -361,14 +361,14 @@ describe("l'inventaire des icônes manquantes", () => {
         pair.socket.close();
     });
 
-    it('sans magasin, aucun inventaire — et le catalogue s’écrit quand même', async () => {
+    it('without a store, no inventory — and the catalogue is written anyway', async () => {
         base = await baseNeuve('canal-icones-sans-magasin');
         const port = await start(base, false);
         await enrolerUneVm(base, 'v-1');
         const pair = await ouvrir(port);
         await enrole(pair);
         pair.socket.send(encodeCatalogue(true, [app('A', 'c-a', E1)], []));
-        await attendreCatalogue(base, 'v-1', (n) => n.includes('A'), 'écrit');
+        await attendreCatalogue(base, 'v-1', (n) => n.includes('A'), 'written');
         expect(await pousseOuRien(pair)).toBeUndefined();
         pair.socket.close();
     });

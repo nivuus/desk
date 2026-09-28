@@ -23,8 +23,8 @@ import { SEUIL_INJOIGNABLE_MS, etatDe } from './fraicheur';
 /// Une époque réelle : 19 août 2026, à la milliseconde près.
 const T0 = 1_787_000_000_000;
 
-describe('la fraîcheur d’un agent', () => {
-    it('une VM qui n’a JAMAIS battu est injoignable', () => {
+describe('the freshness of an agent', () => {
+    it('a VM that has NEVER beaten is unreachable', () => {
         // 🔴 `null` n'est pas `0` : `depot/agent.ts` le dit déjà de la colonne.
         // Rendre `prete` ici annoncerait prête une VM dont personne n'a jamais
         // eu la moindre nouvelle — exactement l'inverse de ce que la colonne
@@ -32,17 +32,17 @@ describe('la fraîcheur d’un agent', () => {
         expect(etatDe(null, T0)).toBe('injoignable');
     });
 
-    it('une VM vue à l’instant même est prête', () => {
+    it('a VM seen at this very instant is ready', () => {
         expect(etatDe(T0, T0)).toBe('prete');
     });
 
-    it('🔴 une VM vue il y a SEUIL + 1 ms est injoignable', () => {
+    it('🔴 a VM seen THRESHOLD + 1 ms ago is unreachable', () => {
         // Sans comparaison au seuil, une implémentation qui rendrait `prete`
         // dès que `vu_a` n'est pas `null` passerait les deux tests ci-dessus.
         expect(etatDe(T0, T0 + SEUIL_INJOIGNABLE_MS + 1)).toBe('injoignable');
     });
 
-    it('🔴 LA TRANSITION est observée : même `vu_a`, deux instants, et la borne est assiégée des DEUX côtés', () => {
+    it('🔴 THE TRANSITION is observed: same `vu_a`, two instants, and the bound is besieged from BOTH sides', () => {
         // 🔴 C'est la rouge littérale du critère ④ de la spec. Le MÊME `vu_a`
         // est jugé à deux instants, et les deux instants encadrent la borne à
         // une milliseconde près : une horloge figée — ou ignorée — rendrait

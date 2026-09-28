@@ -37,7 +37,7 @@ use super::*;
 pub(super) fn etrangere(gabarit: &str) -> String {
     assert!(
         gabarit.contains("\"v\":0"),
-        "le gabarit doit porter le repère \"v\":0"
+        "the template must carry the marker \"v\":0"
     );
     gabarit.replace(
         "\"v\":0",
@@ -46,8 +46,8 @@ pub(super) fn etrangere(gabarit: &str) -> String {
 }
 
 #[test]
-fn serialise_l_enrolement_en_kebab_case() {
-    let json = serde_json::to_string(&VersLaPlateforme::enroler("w1", "chut")).expect("sér.");
+fn serialises_the_enrolment_in_kebab_case() {
+    let json = serde_json::to_string(&VersLaPlateforme::enroler("w1", "chut")).expect("ser.");
     assert_eq!(
         json,
         r#"{"type":"enroler","v":5,"vm":"w1","secret":"chut"}"#
@@ -55,13 +55,13 @@ fn serialise_l_enrolement_en_kebab_case() {
 }
 
 #[test]
-fn serialise_le_battement() {
-    let json = serde_json::to_string(&VersLaPlateforme::battement()).expect("sér.");
+fn serialises_the_heartbeat() {
+    let json = serde_json::to_string(&VersLaPlateforme::battement()).expect("ser.");
     assert_eq!(json, r#"{"type":"battement","v":5}"#);
 }
 
 #[test]
-fn serialise_le_battement_recu_en_kebab_case() {
+fn serialises_the_received_heartbeat_in_kebab_case() {
     // 🔴 `battement-recu` IS THE ONLY TWO-WORD VARIANT OF THE MODULE, hence
     // the only one where `kebab-case` and `snake_case` differ. Without this test,
     // switching `rename_all` to `snake_case` turned NOTHING red — MEASURED: the
@@ -73,7 +73,7 @@ fn serialise_le_battement_recu_en_kebab_case() {
         "kkk",
         1_787_136_774_000,
     ))
-    .expect("sér.");
+    .expect("ser.");
     assert_eq!(
         json,
         r#"{"type":"battement-recu","v":5,"jeton":"kkk","expire_a":1787136774000}"#
@@ -81,15 +81,15 @@ fn serialise_le_battement_recu_en_kebab_case() {
 }
 
 #[test]
-fn serialise_l_enrole_et_le_refus() {
+fn serialises_the_enrolled_and_the_refusal() {
     let json = serde_json::to_string(&DepuisLaPlateforme::enrole("PPP", "jjj", 1_787_136_773_742))
-        .expect("sér.");
+        .expect("ser.");
     assert_eq!(
         json,
         r#"{"type":"enrole","v":5,"prefixe":"PPP","jeton":"jjj","expire_a":1787136773742}"#
     );
     let json =
-        serde_json::to_string(&DepuisLaPlateforme::refus(MotifCanal::Enrolement)).expect("sér.");
+        serde_json::to_string(&DepuisLaPlateforme::refus(MotifCanal::Enrolement)).expect("ser.");
     assert_eq!(json, r#"{"type":"refus","v":5,"motif":"enrolement"}"#);
 }
 
@@ -98,7 +98,7 @@ fn serialise_l_enrole_et_le_refus() {
 // alone would leave that hole open, and a single test would not see it.
 
 #[test]
-fn rejette_une_version_absente_sur_enroler() {
+fn rejects_an_absent_version_on_enroler() {
     assert!(serde_json::from_str::<VersLaPlateforme>(
         r#"{"type":"enroler","vm":"w","secret":"s"}"#
     )
@@ -106,12 +106,12 @@ fn rejette_une_version_absente_sur_enroler() {
 }
 
 #[test]
-fn rejette_une_version_absente_sur_battement() {
+fn rejects_an_absent_version_on_battement() {
     assert!(serde_json::from_str::<VersLaPlateforme>(r#"{"type":"battement"}"#).is_err());
 }
 
 #[test]
-fn rejette_une_version_absente_sur_enrole() {
+fn rejects_an_absent_version_on_enrole() {
     assert!(serde_json::from_str::<DepuisLaPlateforme>(
         r#"{"type":"enrole","prefixe":"P","jeton":"j","expire_a":1}"#
     )
@@ -119,7 +119,7 @@ fn rejette_une_version_absente_sur_enrole() {
 }
 
 #[test]
-fn rejette_une_version_absente_sur_battement_recu() {
+fn rejects_an_absent_version_on_battement_recu() {
     assert!(serde_json::from_str::<DepuisLaPlateforme>(
         r#"{"type":"battement-recu","jeton":"j","expire_a":1}"#
     )
@@ -127,7 +127,7 @@ fn rejette_une_version_absente_sur_battement_recu() {
 }
 
 #[test]
-fn rejette_une_version_absente_sur_refus() {
+fn rejects_an_absent_version_on_refus() {
     assert!(
         serde_json::from_str::<DepuisLaPlateforme>(r#"{"type":"refus","motif":"version"}"#)
             .is_err()
@@ -135,7 +135,7 @@ fn rejette_une_version_absente_sur_refus() {
 }
 
 #[test]
-fn rejette_la_version_suivante_sur_enroler() {
+fn rejects_the_next_version_on_enroler() {
     assert!(serde_json::from_str::<VersLaPlateforme>(&etrangere(
         r#"{"type":"enroler","v":0,"vm":"w","secret":"s"}"#
     ))
@@ -143,7 +143,7 @@ fn rejette_la_version_suivante_sur_enroler() {
 }
 
 #[test]
-fn rejette_la_version_suivante_sur_battement() {
+fn rejects_the_next_version_on_battement() {
     assert!(
         serde_json::from_str::<VersLaPlateforme>(&etrangere(r#"{"type":"battement","v":0}"#))
             .is_err()
@@ -151,7 +151,7 @@ fn rejette_la_version_suivante_sur_battement() {
 }
 
 #[test]
-fn rejette_la_version_suivante_sur_enrole() {
+fn rejects_the_next_version_on_enrole() {
     assert!(serde_json::from_str::<DepuisLaPlateforme>(&etrangere(
         r#"{"type":"enrole","v":0,"prefixe":"P","jeton":"j","expire_a":1}"#
     ))
@@ -159,7 +159,7 @@ fn rejette_la_version_suivante_sur_enrole() {
 }
 
 #[test]
-fn rejette_la_version_suivante_sur_battement_recu() {
+fn rejects_the_next_version_on_battement_recu() {
     assert!(serde_json::from_str::<DepuisLaPlateforme>(&etrangere(
         r#"{"type":"battement-recu","v":0,"jeton":"j","expire_a":1}"#
     ))
@@ -171,12 +171,12 @@ fn rejette_la_version_suivante_sur_battement_recu() {
 /// exactly what kept an obsolete agent from reading why it was.
 /// The property it guarded ("each incoming variant checks its
 /// version") stays guarded by its four twins above and by
-/// `les_messages_autres_que_le_refus_restent_refuses_sur_une_version_divergente`;
+/// `messages_other_than_the_refusal_stay_refused_on_a_diverging_version`;
 /// **the refusal, however, is removed from it on purpose**, and that is what this test
 /// now says. The `v` field stays MANDATORY: the tolerance bears on its
 /// VALUE, never on its presence.
 #[test]
-fn le_refus_tolere_toute_version_mais_exige_le_champ() {
+fn the_refusal_tolerates_any_version_but_requires_the_field() {
     let lu: DepuisLaPlateforme =
         serde_json::from_str(&etrangere(r#"{"type":"refus","v":0,"motif":"version"}"#))
             .expect("lisible");
@@ -214,13 +214,13 @@ fn le_refus_tolere_toute_version_mais_exige_le_champ() {
 }
 
 #[test]
-fn rejette_un_type_inconnu() {
+fn rejects_an_unknown_type() {
     assert!(serde_json::from_str::<VersLaPlateforme>(r#"{"type":"vol","v":5}"#).is_err());
     assert!(serde_json::from_str::<DepuisLaPlateforme>(r#"{"type":"vol","v":5}"#).is_err());
 }
 
 #[test]
-fn rejette_un_champ_inconnu() {
+fn rejects_an_unknown_field() {
     // `deny_unknown_fields`: an extra field is a format divergence,
     // not a tolerable extension — the channel has only one version.
     assert!(
@@ -230,14 +230,14 @@ fn rejette_un_champ_inconnu() {
 }
 
 #[test]
-fn round_trip_des_trois_reponses() {
+fn round_trip_of_the_three_answers() {
     for message in [
         DepuisLaPlateforme::enrole("PPP", "jjj", 1_787_136_773_742),
         DepuisLaPlateforme::battement_recu("kkk", 1_787_136_774_000),
         DepuisLaPlateforme::refus(MotifCanal::Sequence),
     ] {
-        let json = serde_json::to_string(&message).expect("sér.");
-        let relu: DepuisLaPlateforme = serde_json::from_str(&json).expect("désér.");
+        let json = serde_json::to_string(&message).expect("ser.");
+        let relu: DepuisLaPlateforme = serde_json::from_str(&json).expect("deser.");
         assert_eq!(message, relu);
     }
 }
@@ -248,7 +248,7 @@ fn round_trip_des_trois_reponses() {
 /// v1 format IS NO LONGER UNDERSTOOD, and that the `version` refusal IS NOT RETRIED
 /// (module header). Agent and platform are deployed at the same commit.
 #[test]
-fn les_variantes_de_p3_rejettent_desormais_la_version_1() {
+fn the_p3_variants_now_reject_version_1() {
     assert!(serde_json::from_str::<VersLaPlateforme>(
         r#"{"type":"enroler","v":1,"vm":"w","secret":"s"}"#
     )
@@ -265,7 +265,7 @@ fn les_variantes_de_p3_rejettent_desormais_la_version_1() {
     // ⚠️ THE REFUSAL IS DELIBERATELY ABSENT FROM THIS SET since the fix
     // of 20 August 2026: it is the ONLY variant outside versioning, and a
     // v1 agent must precisely be able to read the refusal that tells it it
-    // is obsolete. See `le_refus_tolere_toute_version_mais_exige_le_champ`.
+    // is obsolete. See `the_refusal_tolerates_any_version_but_requires_the_field`.
     assert!(serde_json::from_str::<DepuisLaPlateforme>(
         r#"{"type":"refus","v":1,"motif":"version"}"#
     )
@@ -287,7 +287,7 @@ fn les_variantes_de_p3_rejettent_desormais_la_version_1() {
 /// required property is "whatever the sender's version", and it
 /// knows no direction.
 #[test]
-fn un_refus_reste_lisible_quelle_que_soit_la_version_de_son_emetteur() {
+fn a_refusal_stays_readable_whatever_the_version_of_its_sender() {
     for brut in [
         r#"{"type":"refus","v":97,"motif":"version"}"#,
         r#"{"type":"refus","v":1,"motif":"enrolement"}"#,
@@ -295,7 +295,7 @@ fn un_refus_reste_lisible_quelle_que_soit_la_version_de_son_emetteur() {
         let lu = serde_json::from_str::<DepuisLaPlateforme>(brut);
         assert!(
             lu.is_ok(),
-            "refus illisible alors qu'il DOIT l'être : {brut} -> {:?}",
+            "refusal unreadable although it MUST be readable: {brut} -> {:?}",
             lu.err()
         );
     }
@@ -306,7 +306,7 @@ fn un_refus_reste_lisible_quelle_que_soit_la_version_de_son_emetteur() {
 /// on a diverging version. An `enrole` of an unknown version may carry
 /// a meaning we do not know, and accepting it would be worse than rejecting it.
 #[test]
-fn les_messages_autres_que_le_refus_restent_refuses_sur_une_version_divergente() {
+fn messages_other_than_the_refusal_stay_refused_on_a_diverging_version() {
     for brut in [
         r#"{"type":"enrole","v":97,"prefixe":"P","jeton":"j","expire_a":1}"#,
         r#"{"type":"battement-recu","v":97,"jeton":"j","expire_a":1}"#,
@@ -314,7 +314,7 @@ fn les_messages_autres_que_le_refus_restent_refuses_sur_une_version_divergente()
     ] {
         assert!(
             serde_json::from_str::<DepuisLaPlateforme>(brut).is_err(),
-            "message d'une version inconnue accepté : {brut}"
+            "message of an unknown version accepted: {brut}"
         );
     }
 }
@@ -329,7 +329,7 @@ fn les_messages_autres_que_le_refus_restent_refuses_sur_une_version_divergente()
 /// four variants are single-word. An explicit table, on the other hand, turns red on
 /// any change of word, with one word as with two.
 #[test]
-fn la_table_des_motifs_fait_l_aller_retour_sur_les_quatre() {
+fn the_reason_table_makes_the_round_trip_on_all_four() {
     let attendus = [
         (MotifCanal::Version, "version"),
         (MotifCanal::Forme, "forme"),
@@ -340,7 +340,7 @@ fn la_table_des_motifs_fait_l_aller_retour_sur_les_quatre() {
     // A variant added without its line here would make this count wrong.
     assert_eq!(MotifCanal::ALL.len(), attendus.len());
     for (motif, mot) in attendus {
-        assert!(MotifCanal::ALL.contains(&motif), "{mot} absent de TOUS");
+        assert!(MotifCanal::ALL.contains(&motif), "{mot} absent from TOUS");
         assert_eq!(motif.mot(), mot);
         assert_eq!(MotifCanal::depuis_mot(mot), Some(motif));
     }

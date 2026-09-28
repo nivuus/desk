@@ -76,8 +76,8 @@ async function servir(auth: 'pomerium' | 'motdepasse', nom: string): Promise<str
     return `http://127.0.0.1:${service.port}`;
 }
 
-describe("la garde de mode d'`/auth/moi`, en mode motdepasse", () => {
-    it('rend 404, jamais la page', async () => {
+describe("the mode guard of `/auth/moi`, in motdepasse mode", () => {
+    it('returns 404, never the page', async () => {
         const url = await servir('motdepasse', 'garde-moi-statut');
         expect((await requeteFermee(`${url}/auth/moi`)).status).toBe(404);
     });
@@ -86,39 +86,39 @@ describe("la garde de mode d'`/auth/moi`, en mode motdepasse", () => {
     // et cette assertion-ci rougirait MÊME si un futur défaut rendait le bon
     // statut avec le mauvais corps. C'est elle qui dit que le `404` vient de
     // la garde et non d'un servant qui aurait échoué pour une autre raison.
-    it("rend le 404 du service — text/plain, jamais text/html", async () => {
+    it("returns the 404 of the service — text/plain, never text/html", async () => {
         const url = await servir('motdepasse', 'garde-moi-type');
         const r = await requeteFermee(`${url}/auth/moi`);
         expect(r.headers.get('content-type')).toContain('text/plain');
     });
 
-    it('rend le corps du 404 du service, mot pour mot', async () => {
+    it('returns the body of the 404 of the service, word for word', async () => {
         const url = await servir('motdepasse', 'garde-moi-corps');
-        expect(await (await requeteFermee(`${url}/auth/moi`)).text()).toBe('introuvable\n');
+        expect(await (await requeteFermee(`${url}/auth/moi`)).text()).toBe('not found\n');
     });
 });
 
-describe("la garde de mode de `/auth/connexion`, en mode pomerium", () => {
+describe("the mode guard of `/auth/connexion`, in pomerium mode", () => {
     // 🔴 LE JUMEAU SYMÉTRIQUE. Les deux gardes ont des polarités OPPOSÉES et
     // PARTITIONNENT les modes : elles ont donc le même défaut, chacune dans
     // l'autre mode. En éprouver une seule laisserait l'autre entière.
-    it('rend 404, jamais la page', async () => {
+    it('returns 404, never the page', async () => {
         const url = await servir('pomerium', 'garde-connexion-statut');
         expect((await requeteFermee(`${url}/auth/connexion`)).status).toBe(404);
     });
 
-    it("rend le 404 du service — text/plain, jamais text/html", async () => {
+    it("returns the 404 of the service — text/plain, never text/html", async () => {
         const url = await servir('pomerium', 'garde-connexion-type');
         const r = await requeteFermee(`${url}/auth/connexion`);
         expect(r.headers.get('content-type')).toContain('text/plain');
     });
 
-    it('rend le corps du 404 du service, mot pour mot', async () => {
+    it('returns the body of the 404 of the service, word for word', async () => {
         const url = await servir('pomerium', 'garde-connexion-corps');
-        expect(await (await requeteFermee(`${url}/auth/connexion`)).text()).toBe('introuvable\n');
+        expect(await (await requeteFermee(`${url}/auth/connexion`)).text()).toBe('not found\n');
     });
 
-    it('`/auth/rafraichir` est gardée de la même façon', async () => {
+    it('`/auth/rafraichir` is guarded the same way', async () => {
         const url = await servir('pomerium', 'garde-rafraichir');
         expect((await requeteFermee(`${url}/auth/rafraichir`)).status).toBe(404);
     });
@@ -128,8 +128,8 @@ describe("la garde de mode de `/auth/connexion`, en mode pomerium", () => {
 // seraient rendus à l'identique par une page qui ne serait PAS armée — donc
 // par un montage où le défaut n'existe pas. Ce test prouve que la racine
 // employée ci-dessus sert réellement quelque chose.
-describe('la page est bien armée dans ce montage', () => {
-    it('GET / rend 200 sur la même configuration', async () => {
+describe('the page is indeed armed in this setup', () => {
+    it('GET / returns 200 on the same configuration', async () => {
         const url = await servir('motdepasse', 'garde-temoin-negatif');
         expect((await requeteFermee(`${url}/`)).status).toBe(200);
     });

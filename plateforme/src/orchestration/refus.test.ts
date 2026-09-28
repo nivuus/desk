@@ -10,8 +10,8 @@
 import { describe, expect, it } from 'vitest';
 import { BACKEND_STATIQUE, CODE_HTTP, MOTIFS, refuser, type Outcome } from './refus';
 
-describe('les motifs de refus', () => {
-    it('🔴 CODE_HTTP porte EXACTEMENT les motifs de MOTIFS, ni plus ni moins', () => {
+describe('the refusal reasons', () => {
+    it('🔴 CODE_HTTP carries EXACTLY the reasons of MOTIFS, no more no less', () => {
         // 🔴 La rouge : retirer une entrée de `CODE_HTTP`. Le test tombe, ET
         // `tsc` échoue — les deux ont été jouées. La rouge symétrique, celle
         // que `tsc` ne peut PAS voir, est une clé en trop posée par un cast :
@@ -19,7 +19,7 @@ describe('les motifs de refus', () => {
         expect(Object.keys(CODE_HTTP).sort()).toEqual([...MOTIFS].sort());
     });
 
-    it('🔴 `non-supporte` vaut 501, jamais 500', () => {
+    it('🔴 `non-supporte` is 501, never 500', () => {
         // 🔴 La rouge : mettre 500. Un 500 se lit comme une PANNE du service ;
         // un backend qui avoue ne pas savoir faire n'est pas en panne, et
         // confondre les deux ferait chercher un défaut là où il n'y en a pas.
@@ -32,7 +32,7 @@ describe('les motifs de refus', () => {
         expect(CODE_HTTP['agent-injoignable']).toBe(503);
     });
 
-    it('🔴 `refuser` dit QUOI a été refusé, et PAR QUI', () => {
+    it('🔴 `refuser` says WHAT was refused, and BY WHOM', () => {
         // 🔴 La rouge : omettre `operation`. Un refus qui ne dit pas quelle
         // opération a été refusée n'informe pas — et le jour où un second
         // backend existera, un refus sans `backend` ne dirait pas qui refuse.
@@ -45,7 +45,7 @@ describe('les motifs de refus', () => {
         expect(BACKEND_STATIQUE).toBe('inventaire-statique');
     });
 
-    it('🔴 un refus n’est JAMAIS un succès, et un succès ne porte AUCUN motif', () => {
+    it('🔴 a refusal is NEVER a success, and a success carries NO reason', () => {
         // 🔴 La rouge : faire rendre `{ ok: true, motif }` à `refuser`. Le type
         // l'interdit ; ce test le dit à qui lit le code d'exécution. Un refus
         // qui se lirait `ok:true` serait la panne muette exacte que la spec
@@ -60,7 +60,7 @@ describe('les motifs de refus', () => {
             expect(r.ok).toBe(false);
             // Le discriminant fait son travail : hors de la branche, `motif`
             // n'est même pas lisible.
-            if (r.ok) throw new Error('un refus s’est déclaré succès');
+            if (r.ok) throw new Error('a refusal declared itself a success');
             expect(r.motif).toBe(motif);
         }
     });

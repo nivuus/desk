@@ -42,7 +42,7 @@ const OCTETS_CLAIR = 32;
 
 interface LigneJeton {
     id: string;
-    utilisateur_id: string;
+    utilisateur_id: string; // policy: allow-fr - frozen wire key or SQLite column
     famille: string;
     remplace_par: string | null;
     /// ⚠️ THESE TWO FIELDS WERE DECLARED `number | string`, AND IT WAS THE
@@ -159,7 +159,7 @@ export async function tourner(
             'UPDATE jeton_rafraichissement SET revoque_a = ?, remplace_par = ? WHERE id = ?',
             [maintenant, idNeuf, ligne.id],
         );
-        await inserer(tx, idNeuf, ligne.utilisateur_id, ligne.famille, clairNeuf, maintenant);
-        return { ok: true, clair: clairNeuf, userId: ligne.utilisateur_id } as const;
+        await inserer(tx, idNeuf, ligne.utilisateur_id, ligne.famille, clairNeuf, maintenant); // policy: allow-fr - frozen wire key or SQLite column
+        return { ok: true, clair: clairNeuf, userId: ligne.utilisateur_id } as const; // policy: allow-fr - frozen wire key or SQLite column
     });
 }

@@ -87,7 +87,7 @@ async function unOrdreEnAttente(p: Pilote): Promise<{ installation: string; tel:
     return { installation: inst.id, tel: tel.id };
 }
 
-describe('la réémission des installations à l’enrôlement', () => {
+describe('re-sending the installations at enrolment', () => {
     // 🔴 LA ROUGE DU CRITÈRE ④, ET ELLE EST GRATUITE SUR LE BINAIRE DE G1 —
     // qui n'a aucune variante `installer` du tout. Un `push` WebSocket n'a
     // AUCUNE garantie de livraison : sans cette réémission, un ordre émis
@@ -98,7 +98,7 @@ describe('la réémission des installations à l’enrôlement', () => {
     // attend un message que le canal POUSSE de lui-même. `recevoir()` existe
     // pour cela — l'attendre par un `dire('')` serait une course, et
     // provoquerait un refus `forme` une fois sur deux.
-    it('🔴 POUSSE l’ordre en attente, sans que le pair ait rien demandé', async () => {
+    it('🔴 PUSHES the pending order, without the peer asking for anything', async () => {
         base = await baseNeuve('canal-inst-reemission');
         await enrolerUneVm(base, 'v-1');
         const { installation, tel } = await unOrdreEnAttente(base);
@@ -128,7 +128,7 @@ describe('la réémission des installations à l’enrôlement', () => {
     // d'être réémise. C'est la PREMIÈRE des deux ceintures ; la seconde est le
     // marqueur sur le disque de la VM, et elle protège du cas où la première a
     // perdu sa base.
-    it('🔴 NE RÉÉMET PLUS une installation déjà commencée', async () => {
+    it('🔴 NO LONGER RE-SENDS an installation already started', async () => {
         base = await baseNeuve('canal-inst-pas-deux-fois');
         await enrolerUneVm(base, 'v-1');
         const { installation } = await unOrdreEnAttente(base);
@@ -152,18 +152,18 @@ describe('la réémission des installations à l’enrôlement', () => {
         // Un second enrôlement ne doit RIEN recevoir.
         const second = await ouvrir(await start(base));
         await enrole(second);
-        await expect(second.recevoir()).rejects.toThrow(/aucun message poussé/);
+        await expect(second.recevoir()).rejects.toThrow(/no message pushed/);
         second.socket.terminate();
     });
 });
 
-describe('les deux montantes de l’installation', () => {
+describe('the two upstream messages of the installation', () => {
     // 🔴 NI PROGRESSION NI ISSUE SANS ENRÔLEMENT. Les accepter laisserait un
     // pair anonyme écrire dans la table `installation` d'une VM qui n'est pas
     // la sienne — donc DÉCLARER RÉUSSIE, OU REFUSÉE, L'INSTALLATION D'AUTRUI.
     // C'est le trou que le refus `sequence` du battement ferme déjà, par deux
     // autres portes.
-    it('🔴 une `progression` avant tout enrôlement est refusée, motif `sequence`', async () => {
+    it('🔴 a `progression` before any enrolment is refused, reason `sequence`', async () => {
         base = await baseNeuve('canal-inst-seq-progression');
         await enrolerUneVm(base, 'v-1');
         const { installation } = await unOrdreEnAttente(base);
@@ -178,7 +178,7 @@ describe('les deux montantes de l’installation', () => {
         pair.socket.terminate();
     });
 
-    it('🔴 un `termine` avant tout enrôlement est refusé, motif `sequence`', async () => {
+    it('🔴 a `termine` before any enrolment is refused, reason `sequence`', async () => {
         base = await baseNeuve('canal-inst-seq-termine');
         await enrolerUneVm(base, 'v-1');
         const { installation } = await unOrdreEnAttente(base);
@@ -192,7 +192,7 @@ describe('les deux montantes de l’installation', () => {
         pair.socket.terminate();
     });
 
-    it('un `termine` valide écrit l’issue, le motif et le code de sortie', async () => {
+    it('a valid `termine` writes the outcome, the reason and the exit code', async () => {
         base = await baseNeuve('canal-inst-termine');
         await enrolerUneVm(base, 'v-1');
         const { installation } = await unOrdreEnAttente(base);
@@ -206,7 +206,7 @@ describe('les deux montantes de l’installation', () => {
             // RAPPORTÉ à côté de l'issue sans que rien n'en déduise quoi que ce
             // soit : c'est l'agent, et lui seul, qui a compté les applications
             // apparues pendant sa fenêtre.
-            encodeTermine(installation, 'reussie', null, 3010, 'Redemarrage requis.', false),
+            encodeTermine(installation, 'reussie', null, 3010, 'Restart required.', false),
         );
         await attendreEtat(base, installation, 'terminee');
         const ligne = await lireParId(base, installation);
@@ -220,7 +220,7 @@ describe('les deux montantes de l’installation', () => {
     // Un `await` sur le chemin d'un message ferait qu'une base momentanément
     // indisponible tuerait le canal d'un agent qui va très bien, et une
     // promesse rejetée sans `catch` abattrait tout le process Node.
-    it("🔴 l'écriture de l'issue n'est PAS ATTENDUE, et son échec n'abat pas la connexion", async () => {
+    it("🔴 writing the outcome is NOT AWAITED, and its failure does not bring the connection down", async () => {
         base = await baseNeuve('canal-inst-echec-ecriture');
         await enrolerUneVm(base, 'v-1');
         const { installation } = await unOrdreEnAttente(base);
@@ -228,7 +228,7 @@ describe('les deux montantes de l’installation', () => {
         await enrole(pair);
         await pair.recevoir();
 
-        vi.spyOn(base, 'executer').mockRejectedValue(new Error('base indisponible'));
+        vi.spyOn(base, 'executer').mockRejectedValue(new Error('database unavailable'));
         vi.spyOn(console, 'error').mockImplementation(() => {});
         pair.socket.send(encodeTermine(installation, 'reussie', null, 0, '', false));
         // On laisse le gestionnaire courir : l'écriture est lancée sans être
@@ -255,5 +255,5 @@ async function attendreEtat(p: Pilote, id: string, attendu: string): Promise<voi
         if (ligne?.etat === attendu) return;
         await new Promise((r) => setTimeout(r, 10));
     }
-    throw new Error(`l'installation ${id} n'a pas atteint l'état ${attendu} en 2000 ms`);
+    throw new Error(`installation ${id} did not reach the state ${attendu} within 2000 ms`);
 }

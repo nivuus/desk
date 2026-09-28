@@ -49,7 +49,7 @@ pg.types.setTypeParser(pg.types.builtins.INT8, (texte: string) => {
     const value = Number(texte);
     if (!Number.isSafeInteger(value)) {
         throw new Error(
-            `BIGINT hors de l'entier sûr de JavaScript, converti nulle part : ${texte}`,
+            `BIGINT outside the JavaScript safe integer, converted nowhere: ${texte}`,
         );
     }
     return value;
@@ -130,10 +130,10 @@ function surClient(client: pg.PoolClient): Pilote {
             // mechanism to test on both sides, and nothing
             // uses it. Explicit refusal rather than a nested `BEGIN` that
             // Postgres would accept with a warning, and SQLite by failing.
-            throw new Error('transaction imbriquée non prise en charge');
+            throw new Error('nested transaction not supported');
         },
         async fermer() {
-            throw new Error('un pilote de transaction ne se ferme pas : il est relâché');
+            throw new Error('a transaction driver is not closed: it is released');
         },
     };
 }

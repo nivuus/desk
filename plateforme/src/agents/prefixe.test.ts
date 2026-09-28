@@ -10,8 +10,8 @@ import { describe, expect, it } from 'vitest';
 import { deriverIdentifiants } from '../signaling/ice';
 import { SEPARATEUR, composer, decouper, newPrefix } from './prefixe';
 
-describe('le préfixe opaque', () => {
-    it('rend 22 caractères de l’alphabet base64url', () => {
+describe('the opaque prefix', () => {
+    it('returns 22 characters of the base64url alphabet', () => {
         // 16 octets en base64url font 22 caractères sans remplissage. L'alphabet
         // exclut `+` et `/` : `/` casserait un jour un découpage d'URL, et `+`
         // se transforme en espace dans une chaîne de requête mal décodée.
@@ -20,13 +20,13 @@ describe('le préfixe opaque', () => {
         expect(p).toMatch(/^[A-Za-z0-9_-]{22}$/);
     });
 
-    it('rend deux valeurs DIFFÉRENTES sur deux appels', () => {
+    it('returns two DIFFERENT values on two calls', () => {
         // Une graine fixe rendrait le préfixe devinable, donc l'espace de noms
         // global mais pas opaque.
         expect(newPrefix()).not.toBe(newPrefix());
     });
 
-    it('🔴 ne contient JAMAIS le séparateur, sur un grand nombre de tirages', () => {
+    it('🔴 NEVER contains the separator, over a large number of draws', () => {
         // C'est l'assertion sur laquelle repose la non-ambiguïté du format
         // TURN. 500 tirages, soit 11 000 caractères : un alphabet qui
         // porterait `:` le montrerait ici.
@@ -35,12 +35,12 @@ describe('le préfixe opaque', () => {
         }
     });
 
-    it('compose `<préfixe>:<nom>`', () => {
+    it('composes `<prefix>:<name>`', () => {
         expect(composer('PPP', 'bureau')).toBe('PPP:bureau');
         expect(composer('PPP', 'w-1')).toBe('PPP:w-1');
     });
 
-    it('compose SANS séparateur quand le préfixe est vide', () => {
+    it('composes WITHOUT a separator when the prefix is empty', () => {
         // 🔴 C'est ce qui restitue EXACTEMENT le comportement d'avant P3 —
         // `bureau`, `w-1`. Poser le séparateur inconditionnellement rendrait
         // `:bureau`, qui n'est le nom d'aucune session existante, et rien ne
@@ -49,7 +49,7 @@ describe('le préfixe opaque', () => {
         expect(composer('', 'w-1')).toBe('w-1');
     });
 
-    it('découpe sur le PREMIER séparateur, et rend un préfixe vide à défaut', () => {
+    it('splits on the FIRST separator, and returns an empty prefix otherwise', () => {
         expect(decouper('PPP:bureau')).toEqual({ prefixe: 'PPP', nom: 'bureau' });
         // Sans préfixe : le mode d'essai local, qui doit rester EXPLICITE et
         // non lever.
@@ -59,7 +59,7 @@ describe('le préfixe opaque', () => {
         expect(decouper('PPP:a:b')).toEqual({ prefixe: 'PPP', nom: 'a:b' });
     });
 
-    it('🔴 laisse le PREMIER segment de l’identifiant TURN non ambigu', () => {
+    it('🔴 keeps the FIRST segment of the TURN identifier unambiguous', () => {
         // Le contrôle d'E6, figé sur la chaîne exacte comme `ice.test.ts:13`.
         // `maintenant` en millisecondes, la durée en secondes : 1 000 + 3 600.
         const p = 'AAAAAAAAAAAAAAAAAAAAAA';

@@ -53,8 +53,8 @@ async function socle(p: Pilote): Promise<{ user: string; vm: string }> {
     return { user: 'u-1', vm: 'v-1' };
 }
 
-describe(`dépôt televersement, moteur=${MOTEUR}`, () => {
-    it('crée, relit, et scelle', async () => {
+describe(`upload repository, engine=${MOTEUR}`, () => {
+    it('creates, re-reads, and seals', async () => {
         base = await baseNeuve('tel-cree');
         const { user } = await socle(base);
         const ligne = await createUpload(
@@ -92,7 +92,7 @@ describe(`dépôt televersement, moteur=${MOTEUR}`, () => {
     // `int8` en TEXTE, et `interroger<T>` fait un `as T[]` — aucun typage ne
     // l'attraperait. C'est le second défaut que P3 a trouvé, de classe, et le
     // remède vit AU PILOTE (`setTypeParser`), jamais dans une rustine locale.
-    it('🔴 rend des NOMBRES, pas des chaînes, sur des magnitudes réelles', async () => {
+    it('🔴 returns NUMBERS, not strings, on real magnitudes', async () => {
         base = await baseNeuve('tel-nombres');
         const { user } = await socle(base);
         const ligne = await createUpload(
@@ -115,7 +115,7 @@ describe(`dépôt televersement, moteur=${MOTEUR}`, () => {
         expect(relu?.taille).toBe(TROIS_GO);
     });
 
-    it('compte les EN COURS, et un scellé n’en est plus un', async () => {
+    it('counts the IN PROGRESS ones, and a sealed one no longer is', async () => {
         base = await baseNeuve('tel-quota');
         const { user } = await socle(base);
         const a = await createUpload(
@@ -135,7 +135,7 @@ describe(`dépôt televersement, moteur=${MOTEUR}`, () => {
         expect(await compterEnCours(base, 'u-inconnu')).toBe(0);
     });
 
-    it('le balayage d’âge rend ce qui est plus vieux que la borne', async () => {
+    it('the age sweep returns what is older than the bound', async () => {
         base = await baseNeuve('tel-age');
         const { user } = await socle(base);
         const vieux = await createUpload(
@@ -159,7 +159,7 @@ describe(`dépôt televersement, moteur=${MOTEUR}`, () => {
     // téléversement orphelin n'appartiendrait à personne, donc échapperait à
     // toute vérification de propriétaire. Les clés étrangères sont APPLIQUÉES
     // des deux côtés : `pilote-sqlite.ts` pose `PRAGMA foreign_keys = ON`.
-    it('🔴 REFUSE un téléversement dont l’utilisateur n’existe pas', async () => {
+    it('🔴 REFUSES an upload whose user does not exist', async () => {
         base = await baseNeuve('tel-orphelin');
         await expect(
             createUpload(
@@ -171,7 +171,7 @@ describe(`dépôt televersement, moteur=${MOTEUR}`, () => {
     });
 });
 
-describe(`dépôt installation, moteur=${MOTEUR}`, () => {
+describe(`installation repository, engine=${MOTEUR}`, () => {
     async function withUpload(p: Pilote): Promise<{ vm: string; tel: string }> {
         const { user, vm } = await socle(p);
         const tel = await createUpload(
@@ -189,7 +189,7 @@ describe(`dépôt installation, moteur=${MOTEUR}`, () => {
         return { vm, tel: tel.id };
     }
 
-    it('naît en attente, avance, puis se termine', async () => {
+    it('is born pending, advances, then finishes', async () => {
         base = await baseNeuve('inst-cycle');
         const { vm, tel } = await withUpload(base);
         const inst = await createInstallation(base, { vmId: vm, televersementId: tel }, MS);
@@ -229,7 +229,7 @@ describe(`dépôt installation, moteur=${MOTEUR}`, () => {
     // après l'issue effacerait celle-ci ET remettrait l'état à `en_cours`,
     // c'est-à-dire hors de `terminee`. Le garde est `AND etat <> 'terminee'`
     // sur les DEUX écritures ; sans lui, ce test voit l'issue disparaître.
-    it('🔴 une progression TARDIVE n’efface pas une issue déjà posée', async () => {
+    it('🔴 a LATE progress does not erase an outcome already set', async () => {
         base = await baseNeuve('inst-tardive');
         const { vm, tel } = await withUpload(base);
         const inst = await createInstallation(base, { vmId: vm, televersementId: tel }, MS);
@@ -251,7 +251,7 @@ describe(`dépôt installation, moteur=${MOTEUR}`, () => {
         expect(relu?.phase).toBe('');
     });
 
-    it('un code de sortie NON RECUEILLI reste null, jamais une sentinelle', async () => {
+    it('an exit code NOT COLLECTED stays null, never a sentinel', async () => {
         base = await baseNeuve('inst-sans-code');
         const { vm, tel } = await withUpload(base);
         const inst = await createInstallation(base, { vmId: vm, televersementId: tel }, MS);
@@ -262,7 +262,7 @@ describe(`dépôt installation, moteur=${MOTEUR}`, () => {
                 issue: 'issue-inconnue',
                 motif: null,
                 codeSortie: null,
-                journal: 'derniere ligne',
+                journal: 'last line',
                 journalTronque: true,
             },
             MS + 1,
@@ -275,7 +275,7 @@ describe(`dépôt installation, moteur=${MOTEUR}`, () => {
     // 🔴 LA ROUGE DE LA CLÉ ÉTRANGÈRE, SECONDE MOITIÉ — et c'est celle que le
     // plan nomme : « l'insertion d'une installation pour une VM inexistante
     // PASSE au lieu d'échouer ».
-    it('🔴 REFUSE une installation pour une VM inexistante', async () => {
+    it('🔴 REFUSES an installation for a non-existent VM', async () => {
         base = await baseNeuve('inst-vm-fantome');
         const { tel } = await withUpload(base);
         await expect(
@@ -283,7 +283,7 @@ describe(`dépôt installation, moteur=${MOTEUR}`, () => {
         ).rejects.toThrow();
     });
 
-    it('🔴 REFUSE une installation pour un téléversement inexistant', async () => {
+    it('🔴 REFUSES an installation for a non-existent upload', async () => {
         base = await baseNeuve('inst-tel-fantome');
         const { vm } = await withUpload(base);
         await expect(
@@ -295,7 +295,7 @@ describe(`dépôt installation, moteur=${MOTEUR}`, () => {
     // l'historique d'une installation doit rester lisible. Les TRANCHES du
     // disque, elles, sont balayées par ailleurs — ce sont elles qui coûtent de
     // la place, pas la ligne.
-    it('🔴 REFUSE de supprimer un téléversement qu’une installation référence', async () => {
+    it('🔴 REFUSES to delete an upload that an installation references', async () => {
         base = await baseNeuve('inst-fk-refus');
         const { vm, tel } = await withUpload(base);
         await createInstallation(base, { vmId: vm, televersementId: tel }, MS);

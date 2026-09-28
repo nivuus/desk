@@ -18,8 +18,8 @@ afterEach(async () => {
     base = undefined;
 });
 
-describe(`sous-ensemble portable, moteur=${MOTEUR}`, () => {
-    it('applique les migrations, et le rejeu n’écrit rien de plus', async () => {
+describe(`portable subset, engine=${MOTEUR}`, () => {
+    it('applies the migrations, and the replay writes nothing more', async () => {
         base = await baseNeuve('idem');
         const suivi = await base.interroger<{ version: number }>(
             'SELECT version FROM schema_migration ORDER BY version',
@@ -38,7 +38,7 @@ describe(`sous-ensemble portable, moteur=${MOTEUR}`, () => {
         expect(apres).toHaveLength(7);
     });
 
-    it('🔴 les deux colonnes de 0005 sont NULLABLES, et la table est PEUPLÉE quand on les ajoute', async () => {
+    it('🔴 the two columns of 0005 are NULLABLE, and the table is POPULATED when they are added', async () => {
         // 🔴 CETTE ROUGE N'EST PAS ATTEIGNABLE SUR UNE BASE NEUVE, ET C'EST
         // TOUT LE PIÈGE — celui que la divergence E8 du sous-bloc G1 a déjà
         // payé. `baseNeuve` applique TOUTES les migrations d'un coup sur une
@@ -73,7 +73,7 @@ describe(`sous-ensemble portable, moteur=${MOTEUR}`, () => {
         expect(ligne.source_max_px).not.toBe(0);
     });
 
-    it('tolère plusieurs VM non attribuées, et refuse une seconde attribution', async () => {
+    it('tolerates several unassigned VMs, and refuses a second assignment', async () => {
         base = await baseNeuve('index-partiel');
         await base.executer('INSERT INTO utilisateur(id,email,empreinte_mdp,cree_a) VALUES(?,?,?,?)',
             ['u1', 'u1@exemple.test', 'x', 1]);
@@ -90,7 +90,7 @@ describe(`sous-ensemble portable, moteur=${MOTEUR}`, () => {
         ).rejects.toThrow();
     });
 
-    it('applique la clé étrangère de vm.utilisateur_id', async () => {
+    it('applies the foreign key of vm.utilisateur_id', async () => {
         // Sur SQLite cela n'est vrai QUE parce que `PRAGMA foreign_keys=ON`
         // est posé à l'ouverture ; Postgres l'applique sans qu'on demande.
         base = await baseNeuve('fk');
@@ -100,7 +100,7 @@ describe(`sous-ensemble portable, moteur=${MOTEUR}`, () => {
         ).rejects.toThrow();
     });
 
-    it('rend la ligne insérée par INSERT … RETURNING', async () => {
+    it('returns the row inserted by INSERT … RETURNING', async () => {
         base = await baseNeuve('returning');
         const lignes = await base.interroger<{ id: string; nom_session: string }>(
             'INSERT INTO session(id,nom_session,ouverte_a) VALUES(?,?,?) RETURNING id, nom_session',
@@ -111,7 +111,7 @@ describe(`sous-ensemble portable, moteur=${MOTEUR}`, () => {
         expect(lignes[0].nom_session).toBe('bureau');
     });
 
-    it('met à jour sur conflit par ON CONFLICT … DO UPDATE', async () => {
+    it('updates on conflict through ON CONFLICT … DO UPDATE', async () => {
         base = await baseNeuve('upsert');
         await base.executer('INSERT INTO vm(id,nom,adresse) VALUES(?,?,?)', ['v1', 'ancien', '10.0.0.1']);
         await base.executer(
@@ -122,17 +122,17 @@ describe(`sous-ensemble portable, moteur=${MOTEUR}`, () => {
         expect(ligne.nom).toBe('neuf');
     });
 
-    it('annule toute la transaction quand son corps lève', async () => {
+    it('rolls back the whole transaction when its body throws', async () => {
         base = await baseNeuve('rollback');
         await expect(
             base.transaction(async (tx) => {
                 await tx.executer('INSERT INTO vm(id,nom,adresse) VALUES(?,?,?)', ['v1', 'a', '10.0.0.1']);
-                throw new Error('échec délibéré');
+                throw new Error('deliberate failure');
             }),
-        ).rejects.toThrow(/délibéré/);
+        ).rejects.toThrow(/deliberate/);
         expect(await base.interroger('SELECT id FROM vm', [])).toHaveLength(0);
     });
-    it("porte un horodatage d'époque en millisecondes, sur les DEUX moteurs", async () => {
+    it("carries an epoch timestamp in milliseconds, on BOTH engines", async () => {
         // 🔴 Ce test existe parce que le lint statique ne peut rien contre lui
         // et que la double passe ne l'attrapait pas non plus : elle n'écrivait
         // que de PETITES valeurs. `INTEGER` vaut jusqu'à 8 octets sur SQLite et
@@ -174,7 +174,7 @@ describe(`sous-ensemble portable, moteur=${MOTEUR}`, () => {
         expect(Number(u.cree_a)).toBe(MS);
     });
 
-    it('rend un BIGINT relu en `number` sur les DEUX moteurs, sans conversion de l’appelant', async () => {
+    it('returns a BIGINT re-read as `number` on BOTH engines, without conversion by the caller', async () => {
         // 🔴 CE TEST EXISTE PARCE QUE LE DÉFAUT EST DE CLASSE, PAS D'INSTANCE,
         // et parce que le test d'époque ci-dessus ne pouvait PAS l'attraper :
         // il enveloppe chaque lecture dans `Number(...)`, ce qui convertit la
@@ -248,7 +248,7 @@ describe(`sous-ensemble portable, moteur=${MOTEUR}`, () => {
         expect(MS).toBeLessThan(Number.MAX_SAFE_INTEGER);
     });
 
-    it("écrit et relit une ligne `application` COMPLÈTE, aux valeurs d'époque", async () => {
+    it("writes and re-reads a COMPLETE `application` row, with epoch values", async () => {
         // 🔴 CE TEST EXISTE PARCE QUE `0004-applications.sql` AJOUTE TROIS
         // COLONNES D'HORODATAGE, et que l'angle mort mesuré de la double passe
         // est le CHOIX DES VALEURS : une suite qui n'écrit que `1_000`
@@ -297,7 +297,7 @@ describe(`sous-ensemble portable, moteur=${MOTEUR}`, () => {
         expect(['cible', ligne.cible]).toEqual(['cible', 'c:\\windows\\notepad.exe']);
     });
 
-    it('applique application_cle sur le COUPLE (vm_id, cle), et non sur la clé seule', async () => {
+    it('applies application_cle on the PAIR (vm_id, cle), and not on the key alone', async () => {
         // 🔴 LES DEUX MOITIÉS SONT NÉCESSAIRES, et la seconde est celle qui
         // décide : sans elle, un index posé sur `cle` SEULE passerait ce test
         // — il refuserait bien le doublon de la première moitié. C'est
@@ -329,7 +329,7 @@ describe(`sous-ensemble portable, moteur=${MOTEUR}`, () => {
         expect(await base.interroger('SELECT id FROM application', [])).toHaveLength(2);
     });
 
-    it('REFUSE de convertir un BIGINT qui ne tient pas dans un entier sûr', async () => {
+    it('REFUSES to convert a BIGINT that does not fit in a safe integer', async () => {
         // 🔴 Une conversion silencieuse est pire que la divergence qu'elle
         // répare : `Number('9007199254740993')` rend 9007199254740992, sans
         // le dire. Le pilote LÈVE plutôt que d'arrondir.
@@ -355,7 +355,7 @@ describe(`sous-ensemble portable, moteur=${MOTEUR}`, () => {
             'SELECT vue_a FROM vm WHERE id = ?', ['v-hb']);
 
         if (MOTEUR === 'postgres') {
-            await expect(lire()).rejects.toThrow(/entier sûr/);
+            await expect(lire()).rejects.toThrow(/safe integer/);
         } else {
             // Sous SQLite il n'y a AUCUN analyseur à garder : `node:sqlite`
             // rend l'entier directement. Ce que fait ce moteur d'une valeur

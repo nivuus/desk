@@ -78,25 +78,25 @@ async function attendre(predicat: () => boolean, quoi: string, msMax = 2000): Pr
         if (predicat()) return;
         await new Promise((r) => setTimeout(r, 10));
     }
-    throw new Error(`jamais obtenu : ${quoi}`);
+    throw new Error(`never obtained: ${quoi}`);
 }
 
-describe("l'arrivée d'un pair sur une session déjà tenue", () => {
-    it("prévient l'agent en place quand un client rejoint la session", async () => {
+describe("the arrival of a peer on a session already held", () => {
+    it("warns the agent in place when a client joins the session", async () => {
         const agent = await connecter('agent', 'bureau');
         const recus = recueillir(agent);
 
         const client = await connecter('client', 'bureau');
         await attendre(
             () => recus.some((m) => m.type === TYPE_PAIR_PRESENT),
-            'le pair-present attendu par le superviseur',
+            'the pair-present expected by the supervisor',
         );
 
         agent.close();
         client.close();
     });
 
-    it("ne prévient PAS le client en place quand l'agent rejoint la session", async () => {
+    it("does NOT warn the client in place when the agent joins the session", async () => {
         // 🔴 LE TÉMOIN NÉGATIF, et il porte la moitié la plus fragile de la
         // règle : c'est l'ordre NORMAL sur toute session de fenêtre `w-N` —
         // la page navigateur se connecte la première, l'enfant arrive
@@ -110,10 +110,10 @@ describe("l'arrivée d'un pair sur une session déjà tenue", () => {
         // l'agent l'offre retenue, l'agent répond, et cette réponse-là passe
         // bien. Sans ce témoin, « aucun pair-present » serait aussi vrai
         // d'un relais entièrement muet.
-        agent.send(JSON.stringify({ type: 'answer', sdp: 'v=0 réponse' }));
+        agent.send(JSON.stringify({ type: 'answer', sdp: 'v=0 answer' }));
         await attendre(
             () => recus.some((m) => m.type === 'answer'),
-            'la réponse SDP, qui prouve que ce socket reçoit bien quelque chose',
+            'the SDP answer, which proves that this socket does receive something',
         );
         expect(recus.filter((m) => m.type === TYPE_PAIR_PRESENT)).toEqual([]);
 
@@ -121,7 +121,7 @@ describe("l'arrivée d'un pair sur une session déjà tenue", () => {
         client.close();
     });
 
-    it("ne se laisse pas FABRIQUER par un pair : le type n'est pas relayé", async () => {
+    it("cannot be FORGED by a peer: the type is not relayed", async () => {
         // 🔴 S'il entrait dans `TYPES_RELAYES`, un client authentifié pourrait
         // faire réannoncer l'agent à volonté — un amplificateur offert à qui
         // a un jeton.
@@ -137,13 +137,13 @@ describe("l'arrivée d'un pair sur une session déjà tenue", () => {
         // pour la bonne valeur et la mauvaise raison.
         await attendre(
             () => recusAgent.filter((m) => m.type === TYPE_PAIR_PRESENT).length === 1,
-            "le pair-present LÉGITIME, celui de l'arrivée du client",
+            "the LEGITIMATE pair-present, the one of the client's arrival",
         );
 
         client.send(JSON.stringify({ type: TYPE_PAIR_PRESENT }));
         await attendre(
             () => recusClient.some((m) => m.type === 'error'),
-            "le refus de type inconnu rendu à l'expéditeur",
+            "the unknown-type refusal returned to the sender",
         );
         expect(recusAgent.filter((m) => m.type === TYPE_PAIR_PRESENT)).toHaveLength(1);
 
@@ -151,7 +151,7 @@ describe("l'arrivée d'un pair sur une session déjà tenue", () => {
         client.close();
     });
 
-    it("prévient l'agent qui ARRIVE quand un client l'attendait déjà", async () => {
+    it("warns the agent that ARRIVES when a client was already waiting for it", async () => {
         // 🔴 LE CAS DE LA RECONNEXION, ET IL N'EXISTAIT PAS AVANT CE LOT.
         // L'agent n'ouvrait sa session de contrôle qu'une fois, au démarrage :
         // il était donc toujours le premier arrivé. Depuis qu'il la ROUVRE
@@ -164,14 +164,14 @@ describe("l'arrivée d'un pair sur une session déjà tenue", () => {
         const recus = recueillir(agent);
         await attendre(
             () => recus.some((m) => m.type === TYPE_PAIR_PRESENT),
-            "le pair-present que l'agent reconnecté doit recevoir",
+            "the pair-present that the reconnected agent must receive",
         );
 
         agent.close();
         client.close();
     });
 
-    it("ne prévient PAS l'agent qui arrive le PREMIER", async () => {
+    it("does NOT warn the agent that arrives FIRST", async () => {
         // 🔴 LE TÉMOIN NÉGATIF DU TEST CI-DESSUS : un agent qui arrive SEUL
         // ne doit recevoir aucun pair-present, donc ne doit pas réannoncer
         // ses fenêtres dans le vide — le geste même que ce mécanisme évite.
@@ -198,7 +198,7 @@ describe("l'arrivée d'un pair sur une session déjà tenue", () => {
         const client = await connecter('client', 'bureau');
         await attendre(
             () => recus.filter((m) => m.type === TYPE_PAIR_PRESENT).length >= 1,
-            "le pair-present légitime, celui de l'arrivée du client",
+            "the legitimate pair-present, the one of the client's arrival",
         );
         expect(recus.filter((m) => m.type === TYPE_PAIR_PRESENT)).toHaveLength(1);
 
@@ -206,7 +206,7 @@ describe("l'arrivée d'un pair sur une session déjà tenue", () => {
         client.close();
     });
 
-    it("la règle pure de l'arrivant dit oui à l’agent, non au client", () => {
+    it("the pure rule of the newcomer says yes to the agent, no to the client", () => {
         // Le symétrique exact de la règle voisine, éprouvé SÉPARÉMENT du
         // socket pour la même raison : c'est elle qui porte l'asymétrie.
         //
@@ -219,7 +219,7 @@ describe("l'arrivée d'un pair sur une session déjà tenue", () => {
         expect(prevenirLArrivant('client')).toBe(false);
     });
 
-    it("les deux règles ne prévient JAMAIS deux fois le même socket", () => {
+    it("the two rules NEVER warn the same socket twice", () => {
         // 🔴 ELLES SONT MUTUELLEMENT EXCLUSIVES PAR CONSTRUCTION, et c'est ce
         // qui garantit qu'un appariement produit UN pair-present, jamais deux.
         // Deux annonces feraient réannoncer l'agent deux fois, donc
@@ -232,7 +232,7 @@ describe("l'arrivée d'un pair sur une session déjà tenue", () => {
         }
     });
 
-    it('la règle pure dit oui au client, non à l’agent', () => {
+    it('the pure rule says yes to the client, no to the agent', () => {
         // La règle est éprouvée SÉPARÉMENT du socket : c'est elle qui porte
         // l'asymétrie, et un test de bout en bout la mesurerait à travers
         // trois autres mécanismes.
@@ -240,7 +240,7 @@ describe("l'arrivée d'un pair sur une session déjà tenue", () => {
         expect(prevenirLePairEnPlace('agent')).toBe(false);
     });
 
-    it('le nom sur le fil est celui que l’agent Rust attend', () => {
+    it('the name on the wire is the one the Rust agent expects', () => {
         // 🔴 LE CONTRAT VIT DANS DEUX DÉPÔTS DE MOTS : ici, et dans
         // `agent/src/superviseur/protocole.rs` (`#[serde(rename =
         // "pair-present")]`, test `l_arrivee_d_un_pair_se_lit_sur_la_session_

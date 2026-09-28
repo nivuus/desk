@@ -87,7 +87,7 @@ function nextMessage(ws: WebSocket): Promise<any> {
             if (message?.type === 'pair-present') return;
             finir(() => resolve(message));
         };
-        const timer = setTimeout(() => finir(() => reject(new Error('aucun message reçu'))), 2000);
+        const timer = setTimeout(() => finir(() => reject(new Error('no message received'))), 2000);
         ws.on('message', surMessage);
     });
 }
@@ -114,41 +114,41 @@ afterEach(async () => {
     await server.close();
 });
 
-describe('serveur de signaling', () => {
-    it('relaie une offre du client vers l\'agent', async () => {
+describe('signaling server', () => {
+    it('relays an offer from the client to the agent', async () => {
         const agent = await connect('agent', 's1');
         const client = await connect('client', 's1');
 
-        client.send(JSON.stringify({ type: 'offer', sdp: 'v=0 offre' }));
-        expect(await nextMessage(agent)).toEqual({ type: 'offer', sdp: 'v=0 offre' });
+        client.send(JSON.stringify({ type: 'offer', sdp: 'v=0 offer' }));
+        expect(await nextMessage(agent)).toEqual({ type: 'offer', sdp: 'v=0 offer' });
 
         agent.close();
         client.close();
     });
 
-    it('relaie une réponse de l\'agent vers le client', async () => {
+    it('relays an answer from the agent to the client', async () => {
         const agent = await connect('agent', 's2');
         const client = await connect('client', 's2');
 
-        agent.send(JSON.stringify({ type: 'answer', sdp: 'v=0 reponse' }));
-        expect(await nextMessage(client)).toEqual({ type: 'answer', sdp: 'v=0 reponse' });
+        agent.send(JSON.stringify({ type: 'answer', sdp: 'v=0 answer' }));
+        expect(await nextMessage(client)).toEqual({ type: 'answer', sdp: 'v=0 answer' });
 
         agent.close();
         client.close();
     });
 
-    it('isole les sessions entre elles', async () => {
+    it('isolates the sessions from one another', async () => {
         const agentA = await connect('agent', 'sa');
         const clientB = await connect('client', 'sb');
 
         clientB.send(JSON.stringify({ type: 'offer', sdp: 'pour sb' }));
-        await expect(nextMessage(agentA)).rejects.toThrow(/aucun message/);
+        await expect(nextMessage(agentA)).rejects.toThrow(/no message/);
 
         agentA.close();
         clientB.close();
     });
 
-    it('signale la disparition du pair', async () => {
+    it('signals the disappearance of the peer', async () => {
         const agent = await connect('agent', 's3');
         const client = await connect('client', 's3');
 
@@ -158,18 +158,18 @@ describe('serveur de signaling', () => {
         client.close();
     });
 
-    it('rejette un premier message invalide', async () => {
+    it('rejects an invalid first message', async () => {
         const ws = new WebSocket(`ws://127.0.0.1:${server.port}`);
         await new Promise((resolve) => ws.on('open', resolve));
         ws.send(JSON.stringify({ bonjour: true }));
         expect(await nextMessage(ws)).toEqual({
             type: 'error',
-            reason: 'premier message invalide : {role, session} attendu',
+            reason: 'invalid first message: {role, session} expected',
         });
         ws.close();
     });
 
-    it('rejette un second agent sur la même session', async () => {
+    it('rejects a second agent on the same session', async () => {
         const first = await connect('agent', 's4');
         const second = await connect('agent', 's4');
         // 🔴 `motif` EST TYPÉ, `reason` EST UNE PHRASE. `toEqual` est STRICT :
@@ -177,14 +177,14 @@ describe('serveur de signaling', () => {
         // pourquoi cette assertion est étendue plutôt que doublée.
         expect(await nextMessage(second)).toEqual({
             type: 'error',
-            reason: 'un agent est déjà connecté à la session s4',
+            reason: 'an agent is already connected to session s4',
             motif: 'role-occupe',
         });
         first.close();
         second.close();
     });
 
-    it('le refus porte un motif que le client peut trancher SANS lire la phrase', async () => {
+    it('the refusal carries a reason the client can decide on WITHOUT reading the sentence', async () => {
         // 🔴 C'EST LA RAISON D'ÊTRE DU CHAMP. Le hub élit un onglet porteur
         // par Web Locks ; son REPLI (navigateur sans cette API) doit
         // distinguer « la place est prise » — à avaler en silence — d'un refus
@@ -213,7 +213,7 @@ describe('serveur de signaling', () => {
     // fonction exportée `createSignalingServer`, mais pas celui du process
     // réel lancé via `index.ts` : c'est `resilience.test.ts` (processus enfant
     // séparé, hors du runtime vitest) qui apporte cette preuve-là.
-    it('rejette un message racine `null` en premier message sans planter, et permet de retenter', async () => {
+    it('rejects a `null` root message as first message without crashing, and allows retrying', async () => {
         const faulty = new WebSocket(`ws://127.0.0.1:${server.port}`);
         await new Promise((resolve) => faulty.on('open', resolve));
 
@@ -221,22 +221,22 @@ describe('serveur de signaling', () => {
         faulty.send('null');
         expect(await errorReceived).toEqual({
             type: 'error',
-            reason: 'premier message invalide : {role, session} attendu',
+            reason: 'invalid first message: {role, session} expected',
         });
 
         // La connexion fautive reste utilisable : un second essai, valide cette
         // fois, s'enregistre normalement et relaie comme n'importe quelle session.
         faulty.send(JSON.stringify({ role: 'agent', session: 'retry' }));
         const client = await connect('client', 'retry');
-        client.send(JSON.stringify({ type: 'offer', sdp: 'apres retry' }));
-        expect(await nextMessage(faulty)).toEqual({ type: 'offer', sdp: 'apres retry' });
+        client.send(JSON.stringify({ type: 'offer', sdp: 'after retry' }));
+        expect(await nextMessage(faulty)).toEqual({ type: 'offer', sdp: 'after retry' });
 
         // Une session totalement indépendante, déjà ouverte pendant l'incident,
         // continue elle aussi de relayer normalement.
         const agent = await connect('agent', 'temoin');
         const clientTemoin = await connect('client', 'temoin');
-        clientTemoin.send(JSON.stringify({ type: 'offer', sdp: 'session temoin' }));
-        expect(await nextMessage(agent)).toEqual({ type: 'offer', sdp: 'session temoin' });
+        clientTemoin.send(JSON.stringify({ type: 'offer', sdp: 'witness session' }));
+        expect(await nextMessage(agent)).toEqual({ type: 'offer', sdp: 'witness session' });
 
         faulty.close();
         client.close();
@@ -244,7 +244,7 @@ describe('serveur de signaling', () => {
         clientTemoin.close();
     });
 
-    it('rejette un message racine `null` en message suivant sans planter, et la session continue de fonctionner', async () => {
+    it('rejects a `null` root message as a later message without crashing, and the session keeps working', async () => {
         const agent = await connect('agent', 's5');
         const client = await connect('client', 's5');
 
@@ -257,16 +257,16 @@ describe('serveur de signaling', () => {
         client.send('null');
         expect(await errorReceived).toEqual({
             type: 'error',
-            reason: 'message invalide : objet JSON attendu',
+            reason: 'invalid message: JSON object expected',
         });
 
         // La session s5 reste fonctionnelle après l'incident.
-        client.send(JSON.stringify({ type: 'offer', sdp: 'apres null' }));
-        expect(await nextMessage(agent)).toEqual({ type: 'offer', sdp: 'apres null' });
+        client.send(JSON.stringify({ type: 'offer', sdp: 'after null' }));
+        expect(await nextMessage(agent)).toEqual({ type: 'offer', sdp: 'after null' });
 
         // La session témoin, indépendante, fonctionne toujours normalement.
-        clientTemoin.send(JSON.stringify({ type: 'offer', sdp: 'temoin toujours vivant' }));
-        expect(await nextMessage(agentTemoin)).toEqual({ type: 'offer', sdp: 'temoin toujours vivant' });
+        clientTemoin.send(JSON.stringify({ type: 'offer', sdp: 'witness still alive' }));
+        expect(await nextMessage(agentTemoin)).toEqual({ type: 'offer', sdp: 'witness still alive' });
 
         agent.close();
         client.close();
@@ -277,7 +277,7 @@ describe('serveur de signaling', () => {
     // Sous-bloc D1 : la session de contrôle réutilise les rôles agent/client
     // existants, sur un session_id réservé, pour dialoguer entre le
     // superviseur et la page « bureau » du navigateur.
-    it('relaie les messages de la session de contrôle entre superviseur et shell', async () => {
+    it('relays the messages of the control session between supervisor and shell', async () => {
         const agent = await connect('agent', 'bureau');
         const client = await connect('client', 'bureau');
 
@@ -305,25 +305,25 @@ describe('serveur de signaling', () => {
     // qui décide de la taille de la sortie virtuelle, donc rien ne peut être
     // lancé plus tôt). Sans mémorisation, l'offre tombait dans le vide et la
     // session ne s'établissait jamais.
-    it("délivre à l'agent l'offre arrivée avant lui", async () => {
+    it("delivers to the agent the offer that arrived before it", async () => {
         const client = await connect('client', 'w-tardive');
-        client.send(JSON.stringify({ type: 'offer', sdp: 'v=0 offre-du-client' }));
+        client.send(JSON.stringify({ type: 'offer', sdp: 'v=0 client-offer' }));
 
         // L'agent arrive après coup.
         const agent = await connect('agent', 'w-tardive');
-        expect(await nextMessage(agent)).toEqual({ type: 'offer', sdp: 'v=0 offre-du-client' });
+        expect(await nextMessage(agent)).toEqual({ type: 'offer', sdp: 'v=0 client-offer' });
 
         agent.close();
         client.close();
     });
 
-    it('ne délivre que la dernière offre, pas toutes celles reçues', async () => {
+    it('delivers only the last offer, not all the ones received', async () => {
         const client = await connect('client', 'w-rejeu');
         client.send(JSON.stringify({ type: 'offer', sdp: 'v=0 premiere' }));
-        client.send(JSON.stringify({ type: 'offer', sdp: 'v=0 seconde' }));
+        client.send(JSON.stringify({ type: 'offer', sdp: 'v=0 second' }));
 
         const agent = await connect('agent', 'w-rejeu');
-        expect(await nextMessage(agent)).toEqual({ type: 'offer', sdp: 'v=0 seconde' });
+        expect(await nextMessage(agent)).toEqual({ type: 'offer', sdp: 'v=0 second' });
 
         agent.close();
         client.close();
@@ -331,13 +331,13 @@ describe('serveur de signaling', () => {
 
     // Sans cet oubli, un agent qui se reconnecterait sur un identifiant
     // réutilisé recevrait l'offre d'une session morte.
-    it("oublie l'offre mémorisée quand la session se vide", async () => {
+    it("forgets the stored offer when the session empties", async () => {
         const client = await connect('client', 'w-videe');
-        client.send(JSON.stringify({ type: 'offer', sdp: 'v=0 perimee' }));
+        client.send(JSON.stringify({ type: 'offer', sdp: 'v=0 stale' }));
         await closeAndWait(client);
 
         const agent = await connect('agent', 'w-videe');
-        await expect(nextMessage(agent)).rejects.toThrow(/aucun message/);
+        await expect(nextMessage(agent)).rejects.toThrow(/no message/);
 
         agent.close();
     });
@@ -350,8 +350,8 @@ describe('serveur de signaling', () => {
 // sockets. Ce `describe` est SÉPARÉ du premier : il a besoin de compter des
 // CONNEXIONS brutes, sans jamais envoyer de `{role, session}` — le frein
 // mord AVANT le premier message, voir `relais.ts`.
-describe('le budget « toute requête » du relais', () => {
-    it('🔴 refuse la connexion après trop de connexions de la même adresse', async () => {
+describe('the « any request » budget of the relay', () => {
+    it('🔴 refuses the connection after too many connections from the same address', async () => {
         // 🔴 La rouge : ne jamais consulter `BUDGET_REQUETES` à la connexion.
         // Sans jeton ni message, chaque connexion resterait ouverte
         // indéfiniment — ce relais n'a aucune notion d'échec à ce stade.
@@ -373,7 +373,7 @@ describe('le budget « toute requête » du relais', () => {
                     // évènement `connection`.
                     lastMessage = await new Promise((resolve, reject) => {
                         const minuteur = setTimeout(
-                            () => reject(new Error('aucun message reçu')),
+                            () => reject(new Error('no message received')),
                             2000,
                         );
                         ws.once('message', (raw) => {
@@ -407,7 +407,7 @@ describe('le budget « toute requête » du relais', () => {
 // l'`ice-config` arrive, et que le relais continue de relayer APRÈS lui. Les
 // douze tests ci-dessus l'énonçaient à l'envers, sans le dire, en supposant
 // que le premier message reçu était toujours celui qu'ils attendaient.
-describe('avec un serveur TURN configuré', () => {
+describe('with a TURN server configured', () => {
     let restaurer: () => void;
 
     beforeAll(() => {
@@ -421,7 +421,7 @@ describe('avec un serveur TURN configuré', () => {
         restaurer();
     });
 
-    it("délivre l'ice-config à chaque pair, PUIS relaie normalement", async () => {
+    it("delivers the ice-config to each peer, THEN relays normally", async () => {
         const agent = await connect('agent', 'turn-1');
         // Premier message de l'agent : sa configuration ICE, avant tout relais.
         const iceAgent = await nextMessage(agent);
@@ -433,8 +433,8 @@ describe('avec un serveur TURN configuré', () => {
         expect((await nextMessage(client)).type).toBe('ice-config');
 
         // Et le relais relaie toujours, une fois l'ice-config passé.
-        client.send(JSON.stringify({ type: 'offer', sdp: 'v=0 apres ice' }));
-        expect(await nextMessage(agent)).toEqual({ type: 'offer', sdp: 'v=0 apres ice' });
+        client.send(JSON.stringify({ type: 'offer', sdp: 'v=0 after ice' }));
+        expect(await nextMessage(agent)).toEqual({ type: 'offer', sdp: 'v=0 after ice' });
 
         agent.close();
         client.close();

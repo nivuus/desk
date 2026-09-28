@@ -9,7 +9,7 @@
 // the command line of every process to every user of the machine, and
 // a secret passed that way would be readable by anyone for the whole
 // duration of the call, then in the shell history. It is the exact precedent
-// of `creer-utilisateur.ts`, taken to the letter.
+// of `creer-utilisateur.ts`, taken to the letter. (policy: allow-fr - file name)
 //
 // ⚠️ WHAT IS DONE WITH IT NEXT IS NOT PROTECTED, and it must be said here:
 // the secret is meant for `AGENT_SECRET` in `scripts/run-agent.sh`, which
@@ -54,7 +54,7 @@ export type Arguments =
 
 /// The flags that would try to pass a secret through argv. They are
 /// ENUMERATED rather than guessed: a broad pattern would one day refuse a
-/// legitimate flag without anyone knowing why. Same choice as `creer-utilisateur.ts`.
+/// legitimate flag without anyone knowing why. Same choice as `creer-utilisateur.ts`. (policy: allow-fr - file name)
 const DRAPEAUX_INTERDITS = [
     '--secret',
     '--secret-enrolement',
@@ -78,10 +78,10 @@ export function analyserArguments(argv: string[]): Arguments {
             // ⚠️ The reason does NOT COPY the refused value.
             return {
                 refus:
-                    `${drapeau} est refusé : le secret d'enrôlement est TIRÉ AU SORT par ` +
-                    "cette commande et écrit une seule fois sur la sortie standard, jamais " +
-                    "reçu sur la ligne de commande — `ps` l'exposerait à tout utilisateur " +
-                    'de la machine.',
+                    `${drapeau} is refused: the enrolment secret is DRAWN AT RANDOM by ` +
+                    "this command and written once to standard output, never " +
+                    "received on the command line — `ps` would expose it to every user " +
+                    'of the machine.',
             };
         }
     }
@@ -93,7 +93,7 @@ export function analyserArguments(argv: string[]): Arguments {
 
     const vm = lire('--vm');
     if (vm === undefined || vm === '') {
-        return { refus: "--vm <nom> est obligatoire, et n'a aucun défaut." };
+        return { refus: "--vm <name> is required, and has no default." };
     }
 
     // 🔴 ROTATION DOES NOT REQUIRE `--adresse`, and that is not a convenience:
@@ -111,7 +111,7 @@ export function analyserArguments(argv: string[]): Arguments {
 
     const adresse = lire('--adresse');
     if (adresse === undefined || adresse === '') {
-        return { refus: "--adresse <hôte> est obligatoire, et n'a aucun défaut." };
+        return { refus: "--adresse <host> is required, and has no default." };
     }
     return { mode: 'enroler', vm, adresse };
 }
@@ -179,10 +179,10 @@ export async function roterLeSecret(p: Pilote, vmId: string): Promise<Rotation> 
     if (ligne === undefined) {
         return {
             refus:
-                `la VM ${vmId} n'est pas enrôlée : il n'y a aucun secret à faire ` +
-                "tourner. Vérifier l'identifiant — c'est `vm_id`, celui qu'`--vm " +
-                "<nom> --adresse <hôte>` a imprimé à l'enrôlement, pas le nom " +
-                "d'affichage de la VM.",
+                `the VM ${vmId} is not enrolled: there is no secret to ` +
+                "rotate. Check the identifier — it is `vm_id`, the one that `--vm " +
+                "<name> --adresse <host>` printed at enrolment, not the display " +
+                "name of the VM.",
         };
     }
 
@@ -213,16 +213,16 @@ export async function executer(argv: string[]): Promise<number> {
         if (args.mode === 'roter') {
             const r = await roterLeSecret(base, args.vm);
             if ('refus' in r) {
-                process.stderr.write(`rotation refusée : ${r.refus}\n`);
+                process.stderr.write(`rotation refused: ${r.refus}\n`);
                 return 2;
             }
             // ⚠️ THE SAME SPLIT AS AT ENROLMENT: the warning on
             // stderr, the value on stdout, so that standard output stays
             // usable in a pipe.
             process.stderr.write(
-                'Le secret ci-dessous ne sera JAMAIS réaffiché : seule son empreinte est en base.\n' +
-                    "Le préfixe de session est INCHANGÉ — les sessions en cours de cette VM ne sont pas coupées.\n" +
-                    "⚠️ Les jetons d'agent DÉJÀ délivrés restent valides jusqu'à leur expiration.\n",
+                'The secret below will NEVER be shown again: only its fingerprint is in the database.\n' +
+                    "The session prefix is UNCHANGED — the ongoing sessions of this VM are not cut.\n" +
+                    "⚠️ Agent tokens ALREADY issued stay valid until they expire.\n",
             );
             process.stdout.write(
                 `vm_id=${r.vmId}\nprefixe=${r.prefixe}\nAGENT_SECRET=${r.secret}\n`,
@@ -241,12 +241,12 @@ export async function executer(argv: string[]): Promise<number> {
         // set `AGENT_VM` and `AGENT_SECRET`; the warning goes to
         // stderr, so that standard output stays usable in a pipe.
         process.stderr.write(
-            'Le secret ci-dessous ne sera JAMAIS réaffiché : seule son empreinte est en base.\n',
+            'The secret below will NEVER be shown again: only its fingerprint is in the database.\n',
         );
         process.stdout.write(`vm_id=${vmId}\nprefixe=${prefixe}\nAGENT_SECRET=${secret}\n`);
         return 0;
     } catch (cause) {
-        process.stderr.write(`enrôlement refusé : ${String(cause)}\n`);
+        process.stderr.write(`enrolment refused: ${String(cause)}\n`);
         return 1;
     } finally {
         await base.fermer();

@@ -72,7 +72,7 @@ import type { ObservateurDeSession } from './relais';
 ///
 /// Passed as a query PARAMETER, never written into the SQL: a literal
 /// value would make `rendreMarqueurs` throw on the Postgres side.
-export const MOTIF_DEPART = 'les deux pairs sont partis';
+export const MOTIF_DEPART = 'both peers left';
 
 /// Resolves the VM that the session name designates, or `undefined`.
 ///
@@ -96,7 +96,7 @@ async function resoudreVm(base: Pilote, nomSession: string): Promise<string | un
         // trace stays WITH US, it leaves on no wire. It is the same
         // split as `identite/garde.ts` between `message` and `journal`.
         console.warn(
-            `session ${nomSession} : préfixe ${prefixe} inconnu de agent_enrole, vm_id non inscrit`,
+            `session ${nomSession}: prefix ${prefixe} unknown to agent_enrole, vm_id not recorded`,
         );
         return undefined;
     }
@@ -135,7 +135,7 @@ export function observateurDeSession(
                     .then((vmId) => ouvrirSession(base, nomSession, instant, userId, vmId))
                     .catch((cause) => {
                         console.error(
-                            `trace de session non écrite pour ${nomSession} : ${String(cause)}`,
+                            `session trace not written for ${nomSession}: ${String(cause)}`,
                         );
                         return undefined;
                     }),
@@ -152,7 +152,7 @@ export function observateurDeSession(
                 .then((id) => (id ? clore(base, id, horloge(), MOTIF_DEPART) : undefined))
                 .catch((cause) => {
                     console.error(
-                        `trace de session non close pour ${nomSession} : ${String(cause)}`,
+                        `session trace not closed for ${nomSession}: ${String(cause)}`,
                     );
                 });
         },

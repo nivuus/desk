@@ -12,7 +12,7 @@
 // server — is chained AFTER all the others, and it resolves any
 // path. On a `GET`/`HEAD`, it is IT that answers `200 text/html` to the `false`
 // returned here; outside `GET`/`HEAD` it steps aside, and the generic 404 takes
-// over. See `http/chaine.ts`, which carries the count and the rule.
+// over. See `http/chaine.ts`, which carries the count and the rule. (policy: allow-fr - file name)
 //
 // 🔴 AUTHENTICATION GOES THROUGH `http/porteur.ts`, NEVER THROUGH A COPY.
 // The G1 plan (decision D9) prescribed calling `verifyToken` then
@@ -113,7 +113,7 @@ function lancementDe(chemin: string): string | undefined {
 /// Decides whether this user has the right to see this VM.
 ///
 /// ⚠️ THE « NOT ASSIGNED » BRANCH LOGS, AND THAT IS NOT DECORATIVE.
-/// `vm.utilisateur_id` is NULL after `npm run admin:agent` — reread:
+/// `vm.utilisateur_id` is NULL after `npm run admin:agent` — reread: (policy: allow-fr - frozen wire key or SQLite column)
 /// `enrolerLaVm` does `INSERT INTO vm(id, nom, adresse)` and never passes
 /// a user. As long as no VM is assigned, EVERY AUTHENTICATED
 /// USER SEES ALL THE VMS: this is NOT isolation, and the log
@@ -144,14 +144,14 @@ async function acces(
 ): Promise<'ok' | 'inconnue' | 'etrangere'> {
     const vm = await lireVm(deps.base, vmId);
     if (vm === undefined) return journaliserLeRefus('inconnue', vmId, userId);
-    if (vm.utilisateur_id === null) {
+    if (vm.utilisateur_id === null) { // policy: allow-fr - frozen wire key or SQLite column
         console.warn(
-            `vm non attribuee, acces accorde sans isolation a la VM ${vmId} `
-                + `pour l utilisateur ${userId} (attribution = sous-bloc P4)`,
+            `unassigned vm, access granted without isolation to VM ${vmId} `
+                + `for user ${userId} (assignment = sub-block P4)`,
         );
         return 'ok';
     }
-    return vm.utilisateur_id === userId
+    return vm.utilisateur_id === userId // policy: allow-fr - frozen wire key or SQLite column
         ? 'ok'
         : journaliserLeRefus('etrangere', vmId, userId);
 }
@@ -181,10 +181,10 @@ function journaliserLeRefus(
     userId: string,
 ): 'inconnue' | 'etrangere' {
     console.warn(
-        `refus d'accès à la VM ${vmId} pour l'utilisateur ${userId} : `
-            + `cas=${cas} — la réponse HTTP, elle, est le même 404 « vm-inconnue » `
-            + `dans les deux cas (décision du propriétaire du dépôt : pas d'oracle `
-            + `d'énumération).`,
+        `access to VM ${vmId} refused for user ${userId}: `
+            + `cas=${cas} — the HTTP response itself is the same 404 « vm-inconnue » `
+            + `in both cases (decision of the repository owner: no enumeration `
+            + `oracle).`,
     );
     return cas;
 }

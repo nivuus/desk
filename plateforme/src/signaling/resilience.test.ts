@@ -137,7 +137,7 @@ function startRealServer(): Promise<{ child: ChildProcessWithoutNullStreams; por
         let output = '';
         const onStdout = (chunk: Buffer) => {
             output += chunk.toString();
-            const match = output.match(/le port (\d+)/);
+            const match = output.match(/port (\d+)/);
             if (match) {
                 proc.stdout.off('data', onStdout);
                 clearTimeout(timer);
@@ -152,13 +152,13 @@ function startRealServer(): Promise<{ child: ChildProcessWithoutNullStreams; por
         });
 
         const timer = setTimeout(() => {
-            reject(new Error(`démarrage du process signaling expiré. stderr: ${stderr}`));
+            reject(new Error(`startup of the signaling process timed out. stderr: ${stderr}`));
         }, 10000);
 
         proc.once('error', reject);
         proc.once('exit', (code) => {
             clearTimeout(timer);
-            reject(new Error(`process signaling terminé prématurément (code ${code}). stderr: ${stderr}`));
+            reject(new Error(`signaling process ended prematurely (code ${code}). stderr: ${stderr}`));
         });
     });
 }
@@ -215,7 +215,7 @@ function nextMessage(ws: WebSocket): Promise<any> {
             if (message?.type === 'pair-present') return;
             finir(() => resolve(message));
         };
-        const timer = setTimeout(() => finir(() => reject(new Error('aucun message reçu'))), 2000);
+        const timer = setTimeout(() => finir(() => reject(new Error('no message received'))), 2000);
         ws.on('message', surMessage);
     });
 }
@@ -228,8 +228,8 @@ afterAll(() => {
     child.kill();
 });
 
-describe('résilience du process réel (index.ts) face à un message `null`', () => {
-    it('survit à un `null` en premier message : le fautif reçoit une erreur, une session tierce continue de fonctionner', async () => {
+describe('resilience of the real process (index.ts) to a `null` message', () => {
+    it('survives a `null` as first message: the culprit receives an error, a third session keeps working', async () => {
         // ⚠️ `/signal` : voir la note de `connectTo` plus haut.
         const faulty = new WebSocket(`ws://127.0.0.1:${port}/signal`);
         await new Promise((resolve, reject) => {
@@ -241,7 +241,7 @@ describe('résilience du process réel (index.ts) face à un message `null`', ()
         faulty.send('null');
         expect(await errorReceived).toEqual({
             type: 'error',
-            reason: 'premier message invalide : {role, session} attendu',
+            reason: 'invalid first message: {role, session} expected',
         });
 
         // Preuve n°1 : le process n'est pas mort.
@@ -252,10 +252,10 @@ describe('résilience du process réel (index.ts) face à un message `null`', ()
         // relaie normalement — le serveur répond toujours au réseau.
         const agent = await connectTo(port, 'agent', `${P}:preuve-null-premier`);
         const client = await connectTo(port, 'client', `${P}:preuve-null-premier`);
-        client.send(JSON.stringify({ type: 'offer', sdp: 'toujours vivant (premier message)' }));
+        client.send(JSON.stringify({ type: 'offer', sdp: 'still alive (first message)' }));
         expect(await nextMessage(agent)).toEqual({
             type: 'offer',
-            sdp: 'toujours vivant (premier message)',
+            sdp: 'still alive (first message)',
         });
 
         faulty.close();
@@ -263,20 +263,20 @@ describe('résilience du process réel (index.ts) face à un message `null`', ()
         client.close();
     });
 
-    it('survit à un `null` en message suivant : le fautif reçoit une erreur, une session tierce continue de fonctionner', async () => {
-        const agent = await connectTo(port, 'agent', `${P}:preuve-null-suivant`);
-        const client = await connectTo(port, 'client', `${P}:preuve-null-suivant`);
+    it('survives a `null` as a later message: the culprit receives an error, a third session keeps working', async () => {
+        const agent = await connectTo(port, 'agent', `${P}:proof-null-later`);
+        const client = await connectTo(port, 'client', `${P}:proof-null-later`);
 
         // Session témoin ouverte avant l'incident, pour prouver qu'elle n'est
         // pas affectée par ce qui va arriver à la session précédente.
-        const agentTemoin = await connectTo(port, 'agent', `${P}:temoin-null-suivant`);
-        const clientTemoin = await connectTo(port, 'client', `${P}:temoin-null-suivant`);
+        const agentTemoin = await connectTo(port, 'agent', `${P}:witness-null-later`);
+        const clientTemoin = await connectTo(port, 'client', `${P}:witness-null-later`);
 
         const errorReceived = nextMessage(client);
         client.send('null');
         expect(await errorReceived).toEqual({
             type: 'error',
-            reason: 'message invalide : objet JSON attendu',
+            reason: 'invalid message: JSON object expected',
         });
 
         // Preuve n°1 : le process n'est pas mort.
@@ -285,10 +285,10 @@ describe('résilience du process réel (index.ts) face à un message `null`', ()
 
         // Preuve n°2 : la session témoin, ouverte avant l'incident, fonctionne
         // toujours normalement après.
-        clientTemoin.send(JSON.stringify({ type: 'offer', sdp: 'temoin toujours vivant' }));
+        clientTemoin.send(JSON.stringify({ type: 'offer', sdp: 'witness still alive' }));
         expect(await nextMessage(agentTemoin)).toEqual({
             type: 'offer',
-            sdp: 'temoin toujours vivant',
+            sdp: 'witness still alive',
         });
 
         agent.close();
@@ -298,7 +298,7 @@ describe('résilience du process réel (index.ts) face à un message `null`', ()
     });
 });
 
-describe('résilience du process réel face à une trame TROP GRANDE (P5)', () => {
+describe('resilience of the real process to a TOO LARGE frame (P5)', () => {
     /// 🔴 CE TEST VIT ICI, ET NON DANS `http/serveur.test.ts`, POUR LA RAISON
     /// EXACTE QUE L'EN-TÊTE DE CE FICHIER DONNE : « vitest installe son propre
     /// gestionnaire d'exceptions non interceptées », si bien qu'un test
@@ -316,7 +316,7 @@ describe('résilience du process réel face à une trame TROP GRANDE (P5)', () =
     /// process. Sans l'écouteur, LE CORRECTIF ANTI-DÉNI-DE-SERVICE AURAIT
     /// DONNÉ UN DÉNI DE SERVICE PIRE : une trame anonyme unique tuant le
     /// service au lieu de le ralentir.
-    it('🔴 survit à une trame au-delà de `maxPayload`, sur `/signal` comme sur `/agent`', async () => {
+    it('🔴 survives a frame beyond `maxPayload`, on `/signal` as on `/agent`', async () => {
         // ⚠️ `/signal`, PAS `/`, DEPUIS LE 21 AOÛT 2026 : voir la note de
         // `connectTo` plus haut. `/` est désormais fermée, et y pousser une
         // trame ne prouverait plus rien sur `maxPayload`.
@@ -344,10 +344,10 @@ describe('résilience du process réel face à une trame TROP GRANDE (P5)', () =
         // comme un process sain — `exitCode` ne bascule pas instantanément.
         const agent = await connectTo(port, 'agent', `${P}:preuve-trame-geante`);
         const client = await connectTo(port, 'client', `${P}:preuve-trame-geante`);
-        client.send(JSON.stringify({ type: 'offer', sdp: 'vivant apres la trame geante' }));
+        client.send(JSON.stringify({ type: 'offer', sdp: 'alive after the giant frame' }));
         expect(await nextMessage(agent)).toEqual({
             type: 'offer',
-            sdp: 'vivant apres la trame geante',
+            sdp: 'alive after the giant frame',
         });
         agent.close();
         client.close();

@@ -74,7 +74,7 @@ export interface Garde {
 
 /// The only text a peer refused on ownership grounds receives. It says
 /// neither whom the session belongs to, nor whether it exists.
-const MESSAGE_SESSION_REFUSEE = 'accès refusé à la session demandée';
+const MESSAGE_SESSION_REFUSEE = 'access refused to the requested session';
 
 export function garde(
     secret: string,
@@ -87,8 +87,8 @@ export function garde(
                 return {
                     ok: false,
                     motif: 'jeton-absent',
-                    message: 'authentification requise',
-                    journal: `poignée de main sans jeton sur la session ${session}`,
+                    message: 'authentication required',
+                    journal: `handshake without a token on session ${session}`,
                 };
             }
 
@@ -101,8 +101,8 @@ export function garde(
                     // The peer needs to know whether to REFRESH or to
                     // reconnect: the expired / invalid distinction is not
                     // an oracle, it is about ITS OWN token.
-                    message: expire ? 'jeton expiré' : 'jeton invalide',
-                    journal: `jeton refusé (${verdict.motif}) sur la session ${session}`,
+                    message: expire ? 'token expired' : 'invalid token',
+                    journal: `token refused (${verdict.motif}) on session ${session}`,
                 };
             }
 
@@ -116,8 +116,8 @@ export function garde(
                     motif: 'session-refusee',
                     message: MESSAGE_SESSION_REFUSEE,
                     journal:
-                        `session ${session} refusée à ${verdict.sujet} : ` +
-                        `jeton de type ${verdict.type} présenté pour le rôle ${role}`,
+                        `session ${session} refused to ${verdict.sujet}: ` +
+                        `token of type ${verdict.type} presented for the role ${role}`,
                 };
             }
 
@@ -134,8 +134,8 @@ export function garde(
                         motif: 'session-refusee',
                         message: MESSAGE_SESSION_REFUSEE,
                         journal:
-                            `session ${session} refusée à l'agent ${verdict.sujet} : ` +
-                            `elle ne porte pas son préfixe`,
+                            `session ${session} refused to agent ${verdict.sujet}: ` +
+                            `it does not carry its prefix`,
                     };
                 }
                 // ⚠️ THE AGENT STILL CLAIMS NOTHING, and `verify` therefore does
@@ -153,7 +153,7 @@ export function garde(
                     ok: false,
                     motif: 'session-refusee',
                     message: MESSAGE_SESSION_REFUSEE,
-                    journal: `session ${session} refusée à ${verdict.sujet} : elle appartient à un autre utilisateur`,
+                    journal: `session ${session} refused to ${verdict.sujet}: it belongs to another user`,
                 };
             }
 

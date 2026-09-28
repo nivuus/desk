@@ -84,7 +84,7 @@ export async function poser(
 ): Promise<string> {
     const ligne = await create(
         base,
-        { userId: proprietaire, nom: 'installeur.exe', taille: size, sha256, chunkSize: PAS },
+        { userId: proprietaire, nom: 'installeur.exe', taille: size, sha256, chunkSize: PAS }, // policy: allow-fr - frozen wire key or SQLite column
         MS,
     );
     return ligne.id;

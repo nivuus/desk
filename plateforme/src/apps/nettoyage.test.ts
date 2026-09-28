@@ -105,8 +105,8 @@ function flux(s: string): AsyncIterable<Uint8Array> {
     })();
 }
 
-describe(`nettoyage de fond, moteur=${MOTEUR}`, () => {
-    it('🔴 referencesIcones VIENT DE LA BASE : une entrée vivante rend un ensemble NON VIDE', async () => {
+describe(`background clean-up, engine=${MOTEUR}`, () => {
+    it('🔴 referencesIcones COMES FROM THE DATABASE: a live entry returns a NON-EMPTY set', async () => {
         // Le garde du danger nommé par le round 2 : un ensemble VIDE alors
         // qu'une application vivante existe évincerait cette icône — c'est
         // exactement la corruption que le plancher existe pour empêcher.
@@ -124,7 +124,7 @@ describe(`nettoyage de fond, moteur=${MOTEUR}`, () => {
         expect(refs).toEqual(new Set([empreinte]));
     });
 
-    it('une entrée DISPARUE ne référence plus son icône', async () => {
+    it('a GONE entry no longer references its icon', async () => {
         base = await baseNeuve('nettoyage-refs-icones-disparue');
         await withVm(base, 'v1');
         const { empreinte } = icone('feu-vivante');
@@ -143,7 +143,7 @@ describe(`nettoyage de fond, moteur=${MOTEUR}`, () => {
         expect(await referencesIcones(base)).toEqual(new Set());
     });
 
-    it('une entrée MASQUÉE référence ENCORE son icône — masquer n’est pas disparaître', async () => {
+    it('a HIDDEN entry STILL references its icon — hiding is not disappearing', async () => {
         base = await baseNeuve('nettoyage-refs-icones-masquee');
         await withVm(base, 'v1');
         const { empreinte } = icone('masquable');
@@ -165,7 +165,7 @@ describe(`nettoyage de fond, moteur=${MOTEUR}`, () => {
         expect(await referencesIcones(base)).toEqual(new Set([empreinte]));
     });
 
-    it('un TOUR RÉEL, contre la base : vieille+référencée reste, vieille+orpheline part, jeune reste', async () => {
+    it('a REAL round, against the database: old+referenced stays, old+orphan goes, young stays', async () => {
         base = await baseNeuve('nettoyage-tour-icones');
         await withVm(base, 'v1');
         const enService = icone('en-service-tour');
@@ -200,7 +200,7 @@ describe(`nettoyage de fond, moteur=${MOTEUR}`, () => {
         expect(magasin.possede(recente.empreinte)).toBe(true);
     });
 
-    it('🔴 referencesTranches VIENT DE LA BASE : une ligne existante rend un ensemble NON VIDE', async () => {
+    it('🔴 referencesTranches COMES FROM THE DATABASE: an existing row returns a NON-EMPTY set', async () => {
         base = await baseNeuve('nettoyage-refs-tranches-non-vide');
         await withUser(base, 'u1');
         const t = await createUpload(
@@ -214,8 +214,8 @@ describe(`nettoyage de fond, moteur=${MOTEUR}`, () => {
     });
 
     it(
-        '🔴 un TOUR RÉEL, contre la base : la clé étrangère d’installation PROTÈGE ' +
-            'la ligne — et donc le disque —, un téléversement vraiment orphelin perd les DEUX',
+        '🔴 a REAL round, against the database: the installation foreign key PROTECTS ' +
+            'the row — and so the disk —, a truly orphan upload loses BOTH',
         async () => {
             base = await baseNeuve('nettoyage-tour-tranches');
             await withUser(base, 'u1');
@@ -278,8 +278,8 @@ describe(`nettoyage de fond, moteur=${MOTEUR}`, () => {
     // répertoire restait — la reprise meurt, le disque n'est même pas
     // libéré. Ce test rejoue EXACTEMENT ce scénario.
     it(
-        '🔴 CRITIQUE : un téléversement CRÉÉ il y a 31 jours, dont une tranche ' +
-            'vient d’ARRIVER, conserve SA LIGNE ET SON DISQUE',
+        '🔴 CRITICAL: an upload CREATED 31 days ago, one chunk of which ' +
+            'has just ARRIVED, keeps ITS ROW AND ITS DISK',
         async () => {
             base = await baseNeuve('nettoyage-critique-planchers');
             await withUser(base, 'u1');
@@ -321,7 +321,7 @@ describe(`nettoyage de fond, moteur=${MOTEUR}`, () => {
     // le SEUL échec ATTENDU de la purge de ligne — reste MUET ; tout le
     // reste se journalise. Les deux bras du même mécanisme, dans deux tests
     // séparés pour qu'on ne les confonde pas.
-    it('un refus de clé étrangère (ATTENDU) ne journalise RIEN', async () => {
+    it('a foreign key refusal (EXPECTED) logs NOTHING', async () => {
         base = await baseNeuve('nettoyage-fk-muet');
         await withUser(base, 'u1');
         await withVm(base, 'v1');
@@ -346,7 +346,7 @@ describe(`nettoyage de fond, moteur=${MOTEUR}`, () => {
         }
     });
 
-    it('🔴 un échec de purge qui N’EST PAS une clé étrangère SE JOURNALISE', async () => {
+    it('🔴 a purge failure that IS NOT a foreign key GETS LOGGED', async () => {
         base = await baseNeuve('nettoyage-fk-pas-muet');
         await withUser(base, 'u1');
         // Vraiment orphelin — rien ne le référence, la suppression de sa
@@ -369,7 +369,7 @@ describe(`nettoyage de fond, moteur=${MOTEUR}`, () => {
             ...base,
             async executer(sql, params) {
                 if (sql.startsWith('DELETE FROM televersement')) {
-                    throw new Error('base coupee — rien a voir avec une cle etrangere');
+                    throw new Error('database cut — nothing to do with a foreign key');
                 }
                 return base!.executer(sql, params);
             },
@@ -381,7 +381,7 @@ describe(`nettoyage de fond, moteur=${MOTEUR}`, () => {
             await unTour({ base: basePannee, magasin, tranches, maintenant: MS });
             expect(espion).toHaveBeenCalledTimes(1);
             expect(espion.mock.calls[0][0]).toContain(t.id);
-            expect(espion.mock.calls[0][0]).toContain('base coupee');
+            expect(espion.mock.calls[0][0]).toContain('database cut');
             // La ligne n'a PAS été supprimée : l'échec a bien empêché la
             // suppression, il ne l'a pas seulement rendue muette.
             expect(await lireTeleversement(base, t.id)).toBeDefined();
@@ -395,7 +395,7 @@ describe(`nettoyage de fond, moteur=${MOTEUR}`, () => {
     // tour déjà en vol — ce test ne prouve QUE l'absence de tours après
     // l'appel, pas l'interruption d'un tour en cours, exactement ce que le
     // commentaire corrigé d'`arreter()` promet et rien de plus.
-    it('🔴 arreter() empêche VRAIMENT les tours SUIVANTS', async () => {
+    it('🔴 arreter() REALLY prevents the NEXT rounds', async () => {
         base = await baseNeuve('nettoyage-arret-reel');
         let tours = 0;
         const magasinReel = magasinIconesNeuf();
@@ -429,7 +429,7 @@ describe(`nettoyage de fond, moteur=${MOTEUR}`, () => {
     // n'étant pas garanti, ce test ne suppose AUCUN ordre : que la ligne
     // fautive soit vue avant ou après l'orpheline légitime, celle-ci doit,
     // dans tous les cas, finir purgée — ligne ET disque.
-    it('une ligne malformée n’abandonne pas le tour : l’orpheline voisine est quand même évincée', async () => {
+    it('a malformed row does not abandon the round: the neighbouring orphan is evicted anyway', async () => {
         base = await baseNeuve('nettoyage-durcissement-id-malforme');
         await withUser(base, 'u1');
 
@@ -438,7 +438,7 @@ describe(`nettoyage de fond, moteur=${MOTEUR}`, () => {
         await base.executer(
             'INSERT INTO televersement(id,utilisateur_id,nom,taille,sha256,taille_tranche,cree_a,scelle_a)'
                 + ' VALUES(?,?,?,?,?,?,?,?)',
-            ['pas-un-uuid', 'u1', 'fautif.exe', 1, 'a'.repeat(64), 8, vieux, null],
+            ['not-a-uuid', 'u1', 'fautif.exe', 1, 'a'.repeat(64), 8, vieux, null],
         );
         // L'orpheline LÉGITIME, par le chemin normal.
         const orpheline = await createUpload(

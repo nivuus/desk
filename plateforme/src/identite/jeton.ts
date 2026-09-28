@@ -105,7 +105,7 @@ export function signer(
 ): string {
     if (secret.length < MIN_SECRET_LENGTH) {
         throw new Error(
-            `secret de signature trop court : ${secret.length} caractères, ${MIN_SECRET_LENGTH} au moins sont exigés`,
+            `signing secret too short: ${secret.length} characters, at least ${MIN_SECRET_LENGTH} are required`,
         );
     }
     const tete = `${encoder({ alg: ALGORITHME, typ: 'JWT' })}.${encoder({

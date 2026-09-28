@@ -79,8 +79,8 @@ function poster(url: string, corps: unknown, entetes: Record<string, string> = {
     });
 }
 
-describe('routes d’authentification', () => {
-    it('connexion valide : l’accès est un jeton que le service accepte, et le rafraîchissement vaut', async () => {
+describe('authentication routes', () => {
+    it('valid sign-in: the access is a token the service accepts, and the refresh is valid', async () => {
         const base_ = await servir('auth-ok');
         const r = await poster(`${base_}/auth/connexion`, {
             email: 'ada@exemple.test',
@@ -103,7 +103,7 @@ describe('routes d’authentification', () => {
         expect(corps2.rafraichissement).not.toBe(corps.rafraichissement);
     });
 
-    it('mot de passe faux et courriel inconnu rendent le MÊME message', async () => {
+    it('wrong password and unknown email return the SAME message', async () => {
         // 🔴 Un message qui les distingue est un ORACLE d'énumération de
         // comptes : l'attaquant apprend quelles adresses existent.
         const base_ = await servir('auth-refus');
@@ -125,7 +125,7 @@ describe('routes d’authentification', () => {
         expect(troisieme.refus).toBe('identifiants');
     });
 
-    it('REJEU : rafraîchir deux fois le même jeton rend 401, et la famille tombe', async () => {
+    it('REPLAY: refreshing the same token twice returns 401, and the family falls', async () => {
         const base_ = await servir('auth-rejeu');
         const { rafraichissement } = await corpsDe(await poster(`${base_}/auth/connexion`, {
             email: 'ada@exemple.test',
@@ -144,7 +144,7 @@ describe('routes d’authentification', () => {
         expect(neuf.status).toBe(401);
     });
 
-    it('borne le corps à 4 KiB : 5 KiB rend 413', async () => {
+    it('bounds the body at 4 KiB: 5 KiB returns 413', async () => {
         // Sans borne, un pair anonyme fait grossir la mémoire à volonté.
         const base_ = await servir('auth-gros');
         const r = await poster(`${base_}/auth/connexion`, JSON.stringify({
@@ -156,16 +156,16 @@ describe('routes d’authentification', () => {
         if (r) expect(r.status).toBe(413);
     });
 
-    it('refuse une méthode autre que POST par 405, et un corps non-JSON par 400', async () => {
+    it('refuses a method other than POST with 405, and a non-JSON body with 400', async () => {
         const base_ = await servir('auth-methode');
         const g = await fetch(`${base_}/auth/connexion`);
         expect(g.status).toBe(405);
-        const mauvais = await poster(`${base_}/auth/connexion`, 'ceci-n-est-pas-du-json');
+        const mauvais = await poster(`${base_}/auth/connexion`, 'this-is-not-json');
         expect(mauvais.status).toBe(400);
         expect((await corpsDe(mauvais)).refus).toBe('forme');
     });
 
-    it('OPTIONS rend 204, avec les en-têtes CORS SEULEMENT si une origine est autorisée', async () => {
+    it('OPTIONS returns 204, with the CORS headers ONLY if an origin is allowed', async () => {
         const withIt = await servir('auth-cors-oui', ORIGINE);
         const r = await fetch(`${withIt}/auth/connexion`, {
             method: 'OPTIONS',
@@ -189,16 +189,16 @@ describe('routes d’authentification', () => {
         expect(r2.headers.get('access-control-allow-origin')).toBeNull();
     });
 
-    it('laisse le 404 de P1 intact sur un chemin qui n’est pas d’authentification', async () => {
+    it('leaves the 404 of P1 intact on a path that is not an authentication one', async () => {
         // ⚠️ Rien ne testait ce 404 : le changer serait un effet de bord non
         // déclaré.
         const base_ = await servir('auth-404');
         const r = await fetch(`${base_}/autre-chose`);
         expect(r.status).toBe(404);
-        expect(await r.text()).toBe('introuvable\n');
+        expect(await r.text()).toBe('not found\n');
     });
 
-    it('CRITÈRE ④ : aucune trace ni aucune réponse ne porte le CHAMP du mot de passe', async () => {
+    it('CRITERION ④: no trace and no response carries the password FIELD', async () => {
         // 🔴 Le balayage cherche LE CHAMP, pas la valeur : un journal du CORPS
         // ENTIER de la requête ferait apparaître le mot de passe sans que la
         // chaîne exacte soit cherchée nulle part.
@@ -224,12 +224,12 @@ describe('routes d’authentification', () => {
         expect(await reussie.text()).not.toMatch(balai);
         expect(await echouee.text()).not.toMatch(balai);
         // Et le contrôle PEUT échouer : la capture attrape bien la console.
-        console.log('témoin de capture');
-        expect(capture.join('\n')).toContain('témoin de capture');
+        console.log('capture witness');
+        expect(capture.join('\n')).toContain('capture witness');
     });
 });
 
-describe('le mode d’authentification (Config.auth)', () => {
+describe('the authentication mode (Config.auth)', () => {
     // 🔴 LA ROUGE DU CRITÈRE ③, DANS LES DEUX SENS. Un seul sens laisserait
     // l'autre route vivante dans le mauvais mode : `/auth/connexion` ouverte
     // derrière Pomerium serait une SECONDE porte, avec un mot de passe que plus
@@ -240,7 +240,7 @@ describe('le mode d’authentification (Config.auth)', () => {
     // éprouve les routes À TRAVERS le serveur HTTP réel, jamais le routeur nu
     // (voir l'en-tête du fichier), et `false` s'y observe comme le 404
     // générique que `serveur.ts` rend quand aucun routeur n'a servi.
-    it('rend 404 sur /auth/connexion en mode pomerium — la route N’EXISTE PLUS', async () => {
+    it('returns 404 on /auth/connexion in pomerium mode — the route NO LONGER EXISTS', async () => {
         base = await baseNeuve('auth-mode-connexion-pomerium');
         await createUser(base, 'ada@exemple.test', await hacher(MOT_DE_PASSE), MS);
         service = await startServer({ ...config(), auth: 'pomerium' }, base);
@@ -252,7 +252,7 @@ describe('le mode d’authentification (Config.auth)', () => {
         expect(r.status).toBe(404);
     });
 
-    it('rend 404 sur /auth/rafraichir en mode pomerium — la route N’EXISTE PLUS', async () => {
+    it('returns 404 on /auth/rafraichir in pomerium mode — the route NO LONGER EXISTS', async () => {
         base = await baseNeuve('auth-mode-rafraichir-pomerium');
         service = await startServer({ ...config(), auth: 'pomerium' }, base);
         const url = `http://127.0.0.1:${service.port}`;
@@ -263,7 +263,7 @@ describe('le mode d’authentification (Config.auth)', () => {
     // Le témoin qui rend les deux précédents interprétables : en mode
     // motdepasse, la route sert TOUJOURS. Sans lui, un 404 pourrait venir d'un
     // service entièrement débranché plutôt que du garde de mode lui-même.
-    it('sert TOUJOURS /auth/connexion en mode motdepasse (témoin)', async () => {
+    it('ALWAYS serves /auth/connexion in motdepasse mode (witness)', async () => {
         const url = await servir('auth-mode-motdepasse-temoin');
         const r = await poster(`${url}/auth/connexion`, {
             email: 'ada@exemple.test',
@@ -273,7 +273,7 @@ describe('le mode d’authentification (Config.auth)', () => {
     });
 });
 
-describe('le frein des routes d’authentification', () => {
+describe('the brake of the authentication routes', () => {
     /// Comme `servir`, mais rend AUSSI le compteur d'accès à la base.
     async function servirCompte(
         nom: string,
@@ -291,7 +291,7 @@ describe('le frein des routes d’authentification', () => {
         return poster(`${url}/auth/connexion`, { email, motdepasse: 'ce-n-est-pas-le-bon' });
     }
 
-    it('(a) la n+1ᵉ tentative sur le MÊME compte est refusée par le frein', async () => {
+    it('(a) the n+1th attempt on the SAME account is refused by the brake', async () => {
         const url = await servir('frein-compte');
         for (let i = 0; i < ECHECS_MAX_COMPTE; i++) {
             expect((await echouer(url, 'ada@exemple.test')).status).toBe(401);
@@ -303,7 +303,7 @@ describe('le frein des routes d’authentification', () => {
         expect((await corpsDe(refus)).refus).toBe('trop-de-tentatives');
     }, 30000);
 
-    it('(a bis) le frein du compte mord même avec le BON mot de passe', async () => {
+    it('(a bis) the account brake bites even with the RIGHT password', async () => {
         // ⚠️ C'est l'arbitrage assumé de D1, et il se retourne contre
         // l'utilisateur légitime : un attaquant peut brûler le budget d'un
         // compte qu'il vise et en refuser l'accès à son propriétaire pendant
@@ -317,7 +317,7 @@ describe('le frein des routes d’authentification', () => {
         expect(legitime.status).toBe(429);
     }, 30000);
 
-    it('(a ter) la casse du courriel ne donne PAS un budget neuf', async () => {
+    it('(a ter) the case of the email does NOT give a new budget', async () => {
         // Sans normalisation en minuscules, `ADA@exemple.test` serait une
         // seconde clé, et le budget du compte se multiplierait par le nombre
         // de casses que l'attaquant sait écrire.
@@ -326,7 +326,7 @@ describe('le frein des routes d’authentification', () => {
         expect((await echouer(url, 'ADA@Exemple.TEST')).status).toBe(429);
     }, 30000);
 
-    it('(b) la n+1ᵉ depuis la MÊME adresse, comptes tous DISTINCTS, est refusée', async () => {
+    it('(b) the n+1th from the SAME address, accounts all DISTINCT, is refused', async () => {
         // Aucun budget de compte ne peut mordre ici : chaque courriel est
         // essayé UNE seule fois. Seule la clé d'adresse peut refuser — c'est
         // le seul frein qui ferme le BALAYAGE de comptes.
@@ -334,10 +334,10 @@ describe('le frein des routes d’authentification', () => {
         for (let i = 0; i < ECHECS_MAX_ADRESSE; i++) {
             expect((await echouer(url, `n${i}@exemple.test`)).status).toBe(401);
         }
-        expect((await echouer(url, 'encore-un-autre@exemple.test')).status).toBe(429);
+        expect((await echouer(url, 'yet-another-one@exemple.test')).status).toBe(429);
     }, 60000);
 
-    it('(c) 🔴 le refus freiné NE TOUCHE PAS la base — donc aucun scrypt', async () => {
+    it('(c) 🔴 the braked refusal DOES NOT TOUCH the database — so no scrypt', async () => {
         // 🔴 C'EST L'ASSERTION QUI DONNE SON SENS AU FREIN. Un frein posté
         // APRÈS le hachage compterait des échecs qu'il a déjà payés au prix
         // fort : `scrypt` est à mémoire dure et coûte délibérément cher
@@ -353,7 +353,7 @@ describe('le frein des routes d’authentification', () => {
         expect(acces()).toBe(0);
     }, 30000);
 
-    it('(d) un SUCCÈS remet le compteur du COMPTE à zéro', async () => {
+    it('(d) a SUCCESS resets the ACCOUNT counter to zero', async () => {
         const url = await servir('frein-succes-compte');
         for (let i = 0; i < ECHECS_MAX_COMPTE - 1; i++) await echouer(url, 'ada@exemple.test');
         expect((await poster(`${url}/auth/connexion`, {
@@ -367,7 +367,7 @@ describe('le frein des routes d’authentification', () => {
         }
     }, 30000);
 
-    it("(e) 🔴 un succès ne remet PAS le compteur de l'ADRESSE à zéro", async () => {
+    it("(e) 🔴 a success does NOT reset the ADDRESS counter to zero", async () => {
         // 🔴 Le passer sur la clé d'adresse BLANCHIRAIT un attaquant qui
         // possède un compte valide : il lui suffirait de s'y connecter entre
         // deux rafales pour rendre son budget d'adresse à zéro.
@@ -378,13 +378,13 @@ describe('le frein des routes d’authentification', () => {
             motdepasse: MOT_DE_PASSE,
         })).status).toBe(200);
         // L'adresse est à `max - 1` ; cette tentative la porte à `max`…
-        expect((await echouer(url, 'avant-dernier@exemple.test')).status).toBe(401);
+        expect((await echouer(url, 'second-to-last@exemple.test')).status).toBe(401);
         // …et la suivante est refusée. Si le succès avait effacé l'adresse,
         // elle serait à 1 et celle-ci passerait.
-        expect((await echouer(url, 'dernier@exemple.test')).status).toBe(429);
+        expect((await echouer(url, 'last@exemple.test')).status).toBe(429);
     }, 60000);
 
-    it('(f) le 429 porte `Retry-After` ET les en-têtes CORS', async () => {
+    it('(f) the 429 carries `Retry-After` AND the CORS headers', async () => {
         // 🔴 Sans les en-têtes CORS, le NAVIGATEUR ne peut pas lire le refus,
         // et l'utilisateur voit un échec opaque au lieu de « réessayez dans
         // n minutes ». Aucun test Node ne le verrait — `fetch` Node n'applique
@@ -406,7 +406,7 @@ describe('le frein des routes d’authentification', () => {
         expect(refus.headers.get('access-control-allow-origin')).toBe(ORIGINE);
     }, 30000);
 
-    it("(g) la trace NOMME l'adresse retenue", async () => {
+    it("(g) the trace NAMES the retained address", async () => {
         // ⚠️ C'est le SEUL remède au mode de défaillance nommé dans
         // `http/adresse-source.ts` : un exploitant qui pose un proxy sans
         // déclarer sa confiance verra son frein par adresse dégénérer en frein
@@ -423,7 +423,7 @@ describe('le frein des routes d’authentification', () => {
         expect(freinees[0]).toContain('route=/auth/connexion');
     }, 30000);
 
-    it("(h) `/auth/rafraichir` est freiné par l'ADRESSE seule", async () => {
+    it("(h) `/auth/rafraichir` is braked by the ADDRESS alone", async () => {
         // ⚠️ Le demandeur n'y présente AUCUN courriel, seulement un jeton
         // opaque : prendre ce jeton pour clé reviendrait à indexer une table
         // sur un secret.
@@ -436,7 +436,7 @@ describe('le frein des routes d’authentification', () => {
         expect(refus.status).toBe(429);
     }, 60000);
 
-    it("(h bis) 🔴 un échec sur `/auth/rafraichir` ne consomme AUCUN budget de compte", async () => {
+    it("(h bis) 🔴 a failure on `/auth/rafraichir` consumes NO account budget", async () => {
         // Sinon, un attaquant qui ne connaît aucun courriel pourrait tout de
         // même verrouiller des comptes — ou, plus subtil, la clé de compte
         // serait le jeton lui-même.

@@ -19,7 +19,7 @@ export async function ouvrirBase(config: Config): Promise<Pilote> {
             return ouvrirPostgres(config.urlBase);
         default:
             throw new Error(
-                `moteur de base inconnu : ${String(config.base)} — aucun repli n'est fait`,
+                `unknown database engine: ${String(config.base)} — no fallback is made`,
             );
     }
 }

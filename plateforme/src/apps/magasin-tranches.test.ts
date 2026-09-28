@@ -53,15 +53,15 @@ async function lire(r: Readable): Promise<Buffer> {
     return Buffer.concat(bouts);
 }
 
-describe('le magasin des tranches sur disque', () => {
-    it('écrit une tranche EN FLUX, et la relit par concaténation', async () => {
+describe('the chunk store on disk', () => {
+    it('writes a chunk AS A STREAM, and re-reads it by concatenation', async () => {
         const m = magasinNeuf();
         expect(await m.write(ID, 0, flux('abc', 'def'), PLAFOND)).toEqual({ ok: true, octets: 6 });
         expect(await m.write(ID, 1, flux('gh'), PLAFOND)).toEqual({ ok: true, octets: 2 });
         expect((await lire(m.concatener(ID, [0, 1]))).toString()).toBe('abcdefgh');
     });
 
-    it('🔴 IL N’EXISTE AUCUN FICHIER ASSEMBLÉ — un fichier par tranche, et rien d’autre', async () => {
+    it('🔴 THERE IS NO ASSEMBLED FILE — one file per chunk, and nothing else', async () => {
         // 🔴 Un installeur de 800 Mo doublerait l'espace disque au scellement,
         // et l'assemblé serait une SECONDE source de vérité que rien ne
         // départagerait de ses tranches le jour où elles divergeraient.
@@ -73,7 +73,7 @@ describe('le magasin des tranches sur disque', () => {
         expect(readdirSync(join(m.racine, ID)).sort()).toEqual(['0', '1']);
     });
 
-    it('🔴 le plafond COUPE, supprime le partiel, et se dit — jamais une troncature', async () => {
+    it('🔴 the ceiling CUTS, deletes the partial file, and says so — never a truncation', async () => {
         const m = magasinNeuf();
         const r = await m.write(ID, 0, flux('a'.repeat(600), 'b'.repeat(600)), PLAFOND);
         expect(r).toEqual({ ok: false, motif: 'plafond-depasse', plafond: PLAFOND });
@@ -85,14 +85,14 @@ describe('le magasin des tranches sur disque', () => {
         expect(m.lister(ID)).toEqual([]);
     });
 
-    it('une tranche EXACTEMENT au plafond passe : la borne est inclusive', async () => {
+    it('a chunk EXACTLY at the ceiling passes: the bound is inclusive', async () => {
         const m = magasinNeuf();
         expect(await m.write(ID, 0, flux('x'.repeat(PLAFOND)), PLAFOND))
             .toEqual({ ok: true, octets: PLAFOND });
         expect(m.lister(ID)).toEqual([{ n: 0, octets: PLAFOND }]);
     });
 
-    it('⚠️ le plafond BORNE le disque, il ne JUGE pas le découpage', async () => {
+    it('⚠️ the ceiling BOUNDS the disk, it does not JUDGE the split', async () => {
         // Une tranche plus COURTE que le contrat passe ici sans un mot : c'est
         // `verdict` qui la déclarera `incoherentes` au scellement. Ce module ne
         // connaît pas le contrat, et le lui faire connaître serait la seconde
@@ -103,7 +103,7 @@ describe('le magasin des tranches sur disque', () => {
         expect(verdict(20, 10, m.lister(ID))).toEqual({ etat: 'incoherentes', n: [0] });
     });
 
-    it('🔴 `lister` interroge le DISQUE, pas une comptabilité', async () => {
+    it('🔴 `lister` queries the DISK, not a bookkeeping', async () => {
         const m = magasinNeuf();
         await m.write(ID, 0, flux('abcde'), PLAFOND);
         await m.write(ID, 1, flux('fg'), PLAFOND);
@@ -118,13 +118,13 @@ describe('le magasin des tranches sur disque', () => {
         expect(verdict(7, 5, m.lister(ID))).toEqual({ etat: 'manquantes', n: [0] });
     });
 
-    it('`lister` trie par rang, et un tri de CHAÎNES ne suffirait pas', async () => {
+    it('`lister` sorts by rank, and a sort of STRINGS would not suffice', async () => {
         const m = magasinNeuf();
         for (const n of [10, 2, 0]) await m.write(ID, n, flux('x'), PLAFOND);
         expect(m.lister(ID).map((t) => t.n)).toEqual([0, 2, 10]);
     });
 
-    it('⚠️ un `.part` abandonné n’est PAS une tranche', async () => {
+    it('⚠️ an abandoned `.part` is NOT a chunk', async () => {
         // Le compter ferait paraître complète une tranche qui n'a jamais fini
         // de s'écrire — et `verdict` scellerait un fichier tronqué.
         const m = magasinNeuf();
@@ -133,13 +133,13 @@ describe('le magasin des tranches sur disque', () => {
         expect(m.lister(ID)).toEqual([{ n: 0, octets: 2 }]);
     });
 
-    it('un téléversement sans aucune tranche rend une liste VIDE, jamais une erreur', () => {
+    it('an upload without any chunk returns an EMPTY list, never an error', () => {
         const m = magasinNeuf();
         expect(m.lister(ID)).toEqual([]);
         expect(verdict(4, 2, m.lister(ID))).toEqual({ etat: 'manquantes', n: [0, 1] });
     });
 
-    it('🔴 une tranche DISPARUE donne une ERREUR de flux, jamais un flux tronqué', async () => {
+    it('🔴 a VANISHED chunk gives a stream ERROR, never a truncated stream', async () => {
         // 🔴 Un flux court produirait chez l'agent une empreinte fausse dont
         // personne ne saurait dire la cause. C'est pourquoi `concatener` sert
         // le plan VÉRIFIÉ par l'appelant et non un listage : un listage
@@ -152,7 +152,7 @@ describe('le magasin des tranches sur disque', () => {
         await expect(lire(m.concatener(ID, [0, 1]))).rejects.toThrow(/ENOENT/);
     });
 
-    it('🔴 une tranche supprimée EN COURS de lecture erreur aussi', async () => {
+    it('🔴 a chunk deleted WHILE being read errors too', async () => {
         // La variante du dessus, mais la suppression tombe pendant que le flux
         // coule : c'est le cas réel d'une purge concurrente. La première
         // tranche est assez grosse pour que la contre-pression suspende le
@@ -173,7 +173,7 @@ describe('le magasin des tranches sur disque', () => {
         expect(vus).toBeGreaterThan(0);
     });
 
-    it('🔴 REFUSE un identifiant qui pourrait sortir du magasin', async () => {
+    it('🔴 REFUSES an identifier that could escape the store', async () => {
         // 🔴 `/televersement/..%2f..%2fetc/tranche/0` ne doit pouvoir écrire
         // NULLE PART, et le refus est explicite : on n'assainit pas en silence,
         // sans quoi personne ne saurait où l'on a écrit.
@@ -191,16 +191,16 @@ describe('le magasin des tranches sur disque', () => {
         ]) {
             expect(identifiantValide(mauvais)).toBe(false);
             await expect(m.write(mauvais, 0, flux('x'), PLAFOND))
-                .rejects.toThrow(/identifiant de téléversement invalide/);
-            expect(() => m.lister(mauvais)).toThrow(/identifiant/);
-            expect(() => m.concatener(mauvais, [0])).toThrow(/identifiant/);
-            expect(() => m.remove(mauvais)).toThrow(/identifiant/);
+                .rejects.toThrow(/invalid upload identifier/);
+            expect(() => m.lister(mauvais)).toThrow(/identifier/);
+            expect(() => m.concatener(mauvais, [0])).toThrow(/identifier/);
+            expect(() => m.remove(mauvais)).toThrow(/identifier/);
         }
         expect(readdirSync(m.racine)).toEqual([]);
         expect(identifiantValide(ID)).toBe(true);
     });
 
-    it('🔴 REFUSE un rang qui n’est pas un entier sûr positif', async () => {
+    it('🔴 REFUSES a rank that is not a positive safe integer', async () => {
         // 🔴 LE NOM DE FICHIER EST LE NOMBRE VALIDÉ, jamais un segment d'URL
         // recopié. Sous cette garde, `String(n)` est TOUJOURS une suite de
         // chiffres — au-delà de l'entier sûr, `String(1e21)` vaudrait `1e+21`.
@@ -208,15 +208,15 @@ describe('le magasin des tranches sur disque', () => {
         for (const mauvais of [-1, 1.5, NaN, Infinity, 1e21, Number.MAX_SAFE_INTEGER + 2]) {
             expect(rangValide(mauvais)).toBe(false);
             await expect(m.write(ID, mauvais, flux('x'), PLAFOND))
-                .rejects.toThrow(/rang de tranche invalide/);
-            expect(() => m.concatener(ID, [mauvais])).toThrow(/rang de tranche invalide/);
+                .rejects.toThrow(/invalid chunk rank/);
+            expect(() => m.concatener(ID, [mauvais])).toThrow(/invalid chunk rank/);
         }
         expect(rangValide(0)).toBe(true);
         expect(rangValide(Number.MAX_SAFE_INTEGER)).toBe(true);
         expect(readdirSync(m.racine)).toEqual([]);
     });
 
-    it('🔴 un rang qui est un SEGMENT D’URL recopié ne peut écrire NULLE PART', async () => {
+    it('🔴 a rank that is a copied URL SEGMENT can write NOWHERE', async () => {
         // 🔴 LA GARDE EST UNE DÉFENSE EN PROFONDEUR, et ce test la met à
         // l'épreuve du cas qu'elle existe pour arrêter : une route qui
         // passerait le segment d'URL BRUT au lieu du nombre. Le typage
@@ -226,8 +226,8 @@ describe('le magasin des tranches sur disque', () => {
         const evil = '../../evil' as unknown as number;
         expect(rangValide(evil)).toBe(false);
         await expect(m.write(ID, evil, flux('poison'), PLAFOND))
-            .rejects.toThrow(/rang de tranche invalide/);
-        expect(() => m.concatener(ID, [evil])).toThrow(/rang de tranche invalide/);
+            .rejects.toThrow(/invalid chunk rank/);
+        expect(() => m.concatener(ID, [evil])).toThrow(/invalid chunk rank/);
         // 🔴 ET RIEN N'A ÉTÉ ÉCRIT AILLEURS : ni dans la racine, ni au-dessus
         // d'elle. Un refus qui laisserait le fichier n'en serait pas un.
         expect(readdirSync(m.racine)).toEqual([]);
@@ -235,22 +235,22 @@ describe('le magasin des tranches sur disque', () => {
         expect(existsSync(join(m.racine, ID, '..', '..', 'evil'))).toBe(false);
     });
 
-    it('🔴 le rang est validé AVANT que le flux n’existe', async () => {
+    it('🔴 the rank is validated BEFORE the stream exists', async () => {
         // Un rang fautif lève à l'APPEL, où l'appelant peut encore répondre,
         // plutôt qu'au milieu d'une réponse déjà commencée.
         const m = magasinNeuf();
         await m.write(ID, 0, flux('a'), PLAFOND);
-        expect(() => m.concatener(ID, [0, -1])).toThrow(/rang/);
+        expect(() => m.concatener(ID, [0, -1])).toThrow(/rank/);
     });
 
-    it('l’écriture est ATOMIQUE : aucun `.part` ne survit à un succès', async () => {
+    it('the write is ATOMIC: no `.part` survives a success', async () => {
         const m = magasinNeuf();
         await m.write(ID, 7, flux('abc'), PLAFOND);
         expect(readdirSync(join(m.racine, ID))).toEqual(['7']);
         expect(readFileSync(join(m.racine, ID, '7')).toString()).toBe('abc');
     });
 
-    it('réécrire un rang le REMPLACE, sans laisser de résidu', async () => {
+    it('rewriting a rank REPLACES it, leaving no residue', async () => {
         const m = magasinNeuf();
         await m.write(ID, 0, flux('aaaaa'), PLAFOND);
         await m.write(ID, 0, flux('bb'), PLAFOND);
@@ -258,7 +258,7 @@ describe('le magasin des tranches sur disque', () => {
         expect(readdirSync(join(m.racine, ID))).toEqual(['0']);
     });
 
-    it('`supprimer` retire tout, et sur un absent c’est un succès', async () => {
+    it('`supprimer` removes everything, and on an absent one it is a success', async () => {
         const m = magasinNeuf();
         await m.write(ID, 0, flux('a'), PLAFOND);
         m.remove(ID);
@@ -268,7 +268,7 @@ describe('le magasin des tranches sur disque', () => {
         expect(() => m.remove(ID)).not.toThrow();
     });
 
-    it('deux téléversements ne se mêlent pas', async () => {
+    it('two uploads do not mix', async () => {
         const m = magasinNeuf();
         const autre = randomUUID();
         await m.write(ID, 0, flux('un'), PLAFOND);
@@ -279,7 +279,7 @@ describe('le magasin des tranches sur disque', () => {
         expect(m.lister(ID)).toEqual([{ n: 0, octets: 2 }]);
     });
 
-    it('la racine est CRÉÉE si elle manque, et son chemin est JOURNALISÉ', () => {
+    it('the root is CREATED if missing, and its path is LOGGED', () => {
         const r = mkdtempSync(join(tmpdir(), 'g3-tranches-'));
         racines.push(r);
         const vu: string[] = [];
@@ -294,7 +294,7 @@ describe('le magasin des tranches sur disque', () => {
     });
 });
 
-describe('l’éviction par âge, avec plancher', () => {
+describe('eviction by age, with a floor', () => {
     // Le temps est INJECTÉ, jamais lu de l'horloge : un test qui attendrait
     // réellement l'âge d'éviction serait un test qu'on désactive au premier
     // ralentissement de la machine.
@@ -309,7 +309,7 @@ describe('l’éviction par âge, avec plancher', () => {
         utimesSync(join(m.racine, id), new Date(quandMs), new Date(quandMs));
     }
 
-    it('évince un téléversement vieux et NON référencé', async () => {
+    it('evicts an old and NON-referenced upload', async () => {
         const m = magasinNeuf();
         const orphelin = randomUUID();
         await deposerA(m, orphelin, 0);
@@ -319,7 +319,7 @@ describe('l’éviction par âge, avec plancher', () => {
 
     // 🔴 LE SEUL TEST QUI DISTINGUE UNE ÉVICTION D'UNE CORRUPTION. Sans lui,
     // une éviction qui emporte TOUT passerait le test précédent.
-    it('NE PEUT PAS évincer un téléversement vieux mais RÉFÉRENCÉ par une entrée vivante', async () => {
+    it('CANNOT evict an old upload still REFERENCED by a live entry', async () => {
         const m = magasinNeuf();
         const enService = randomUUID();
         await deposerA(m, enService, 0);
@@ -328,7 +328,7 @@ describe('l’éviction par âge, avec plancher', () => {
         expect(m.lister(enService)).toEqual([{ n: 0, octets: 1 }]);
     });
 
-    it('n’évince pas un téléversement jeune', async () => {
+    it('does not evict a young upload', async () => {
         const m = magasinNeuf();
         const recent = randomUUID();
         await deposerA(m, recent, 0);
@@ -336,7 +336,7 @@ describe('l’éviction par âge, avec plancher', () => {
         expect(existsSync(join(m.racine, recent))).toBe(true);
     });
 
-    it('🔴 la constante N n’est PAS calibrée : le plancher, lui, tient à n’importe quelle valeur', () => {
+    it('🔴 the constant N is NOT calibrated: the floor holds at any value', () => {
         // Contrôle de cohérence du montage lui-même : si
         // `AGE_EVICTION_TRANCHES_MS` dérivait un jour hors de l'intervalle
         // [1 jour, 400 jours], les trois tests ci-dessus perdraient leur sens
@@ -345,9 +345,9 @@ describe('l’éviction par âge, avec plancher', () => {
         expect(AGE_EVICTION_TRANCHES_MS).toBeLessThan(400 * JOUR_MS);
     });
 
-    it('un nom qui n’est pas un identifiant valide n’est jamais touché', async () => {
+    it('a name that is not a valid identifier is never touched', async () => {
         const m = magasinNeuf();
-        const etranger = join(m.racine, 'pas-un-uuid');
+        const etranger = join(m.racine, 'not-a-uuid');
         writeFileSync(etranger, 'x');
         utimesSync(etranger, new Date(0), new Date(0));
         await m.evincer({ maintenant: 400 * JOUR_MS, referencees: new Set() });
@@ -369,7 +369,7 @@ describe('PLATEFORME_TELEVERSEMENTS', () => {
         PLATEFORME_SECRET_JETON: SECRET_PLATEFORME,
     };
 
-    it('retient le répertoire qu’on lui NOMME', () => {
+    it('keeps the directory it is GIVEN', () => {
         // 🔴 LA ROUGE : la variable posée et IGNORÉE. Les tranches
         // s'écriraient ailleurs, en silence.
         //
@@ -385,7 +385,7 @@ describe('PLATEFORME_TELEVERSEMENTS', () => {
         ).toBe('/var/lib/guac/tel');
     });
 
-    it('🔴 une valeur VIDE retombe sur le défaut, pas sur le répertoire courant', () => {
+    it('🔴 an EMPTY value falls back to the default, not to the current directory', () => {
         // `env.X ?? 'defaut'` ne rattrape PAS `''` — le sous-bloc P1 de la
         // plateforme a payé cette erreur exacte.
         //

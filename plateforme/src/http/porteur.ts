@@ -4,7 +4,7 @@
 // a PARAMETER, as everywhere in this repository.
 //
 // 🔴 WHY IT EXISTS, AND WHY `identite/garde.ts` COULD NOT
-// SERVE. The guard has the signature `verifier(poignee: { role; session;
+// SERVE. The guard has the signature `verify(poignee: { role; session;
 // jeton? })`: it is cut for a WebSocket HANDSHAKE, it carries
 // the session membership registry, and it is wired exclusively to
 // the relay. Nothing, anywhere in this service, read the

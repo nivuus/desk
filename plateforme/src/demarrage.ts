@@ -34,12 +34,12 @@ export async function start(config: Config, maintenant = Date.now()): Promise<Se
     } catch (cause) {
         // No port has been opened at this stage, and that is the point: the rejection
         // leaves the service ENTIRELY absent, never half present.
-        throw new Error(`base injoignable ou migrations en échec : ${String(cause)}`, { cause });
+        throw new Error(`database unreachable or migrations failed: ${String(cause)}`, { cause });
     }
 
     const balayees = await balayerLesOuvertes(base, maintenant);
     if (balayees > 0) {
-        console.log(`${balayees} session(s) restée(s) ouverte(s) closes au démarrage`);
+        console.log(`${balayees} session(s) left open closed at startup`);
     }
 
     // THE PORT OPENS ONLY HERE, after the database and its migrations.

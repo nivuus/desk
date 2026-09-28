@@ -75,8 +75,8 @@ const CATALOGUE_TEMOIN =
     + '"source_max":{"pixels":256},"accent":"#3f2a7a",'
     + '"associations":[".txt",".log"]}],"disparues":["disparue-1"]}';
 
-describe('le catalogue et le lancement, sens AGENT -> PLATEFORME', () => {
-    it('encode `catalogue` exactement comme Rust', () => {
+describe('the catalogue and the launch, AGENT -> PLATFORM direction', () => {
+    it('encodes `catalogue` exactly like Rust', () => {
         // 🔴 L'ordre des champs est `type` PUIS `v` : serde émet le tag interne
         // en premier, `JSON.stringify` respecte l'ordre d'insertion, et le
         // vecteur fige la chaîne octet pour octet. Écrire `v` d'abord — ce que
@@ -85,13 +85,13 @@ describe('le catalogue et le lancement, sens AGENT -> PLATEFORME', () => {
         expect(encodeCatalogue(true, [APP_TEMOIN], ['disparue-1'])).toBe(CATALOGUE_TEMOIN);
     });
 
-    it('encode `lancee` exactement comme Rust', () => {
+    it('encodes `lancee` exactly like Rust', () => {
         expect(encodeLancee('d-7', 'raccourci')).toBe(
             '{"type":"lancee","v":5,"demande":"d-7","issue":"raccourci"}',
         );
     });
 
-    it('lit un `catalogue` bien formé, et retrouve chacun de ses champs', () => {
+    it('reads a well-formed `catalogue`, and finds each of its fields', () => {
         const lu = parseVersLaPlateforme(CATALOGUE_TEMOIN);
         expect(lu.ok).toBe(true);
         if (!lu.ok) return;
@@ -102,7 +102,7 @@ describe('le catalogue et le lancement, sens AGENT -> PLATEFORME', () => {
         expect(lu.message.applications).toEqual([APP_TEMOIN]);
     });
 
-    it('🔴 REJETTE un `catalogue` dont `applications` n’est pas un tableau, motif `forme`', () => {
+    it('🔴 REJECTS a `catalogue` whose `applications` is not an array, reason `forme`', () => {
         // 🔴 C'est le SEUL parseur du fichier dont les octets viennent d'un
         // tiers. Sans cette garde, un `applications` absent ou scalaire
         // traverserait jusqu'à la requête SQL. Et rendre `enrolement` ferait
@@ -116,7 +116,7 @@ describe('le catalogue et le lancement, sens AGENT -> PLATEFORME', () => {
         ).toEqual({ ok: false, motif: 'forme' });
     });
 
-    it('🔴 REJETTE un `catalogue` dont une application est incomplète, motif `forme`', () => {
+    it('🔴 REJECTS a `catalogue` with an incomplete application, reason `forme`', () => {
         expect(
             parseVersLaPlateforme(
                 '{"type":"catalogue","v":5,"complet":true,"applications":[{"cle":"a"}],"disparues":[]}',
@@ -124,13 +124,13 @@ describe('le catalogue et le lancement, sens AGENT -> PLATEFORME', () => {
         ).toEqual({ ok: false, motif: 'forme' });
     });
 
-    it('🔴 REJETTE une `lancee` dont l’issue est inconnue, motif `forme`', () => {
+    it('🔴 REJECTS a `lancee` whose outcome is unknown, reason `forme`', () => {
         expect(
             parseVersLaPlateforme('{"type":"lancee","v":5,"demande":"d","issue":"peut-etre"}'),
         ).toEqual({ ok: false, motif: 'forme' });
     });
 
-    it('lit une `lancee` bien formée', () => {
+    it('reads a well-formed `lancee`', () => {
         const lu = parseVersLaPlateforme('{"type":"lancee","v":5,"demande":"d-7","issue":"echec"}');
         expect(lu).toEqual({
             ok: true,
@@ -139,14 +139,14 @@ describe('le catalogue et le lancement, sens AGENT -> PLATEFORME', () => {
     });
 });
 
-describe('le lancement, sens PLATEFORME -> AGENT', () => {
-    it('encode `lancer` exactement comme Rust', () => {
+describe('the launch, PLATFORM -> AGENT direction', () => {
+    it('encodes `lancer` exactly like Rust', () => {
         expect(encodeLancer('d-7', 'a1b2')).toBe(
             '{"type":"lancer","v":5,"demande":"d-7","cle":"a1b2"}',
         );
     });
 
-    it('relit un `lancer`', () => {
+    it('re-reads a `lancer`', () => {
         // 🔴 La rouge : l'omettre de `TYPES_DEPUIS`. Le parseur lèverait
         // « type de message de plateforme inconnu » sur un ordre valide.
         const lu = parseDepuisLaPlateforme(
@@ -162,8 +162,8 @@ describe('le lancement, sens PLATEFORME -> AGENT', () => {
 // Sous-bloc G2 — les icônes, leur provenance, et l'inventaire des manquantes.
 // ---------------------------------------------------------------------------
 
-describe('les deux champs d’icône traversent le parseur', () => {
-    it('🔴 ACCEPTE un catalogue dont une application n’a PAS d’icône', () => {
+describe('both icon fields go through the parser', () => {
+    it('🔴 ACCEPTS a catalogue in which an application has NO icon', () => {
         // 🔴 C'EST LA ROUGE QUI COMPTE, ET SON ÉTAT EST SILENCIEUX EN
         // PRODUCTION. Ajouter `'icone'` à `CHAMPS_APPLICATION` — le geste
         // naïf — ferait refuser ce catalogue pour `forme`, c'est-à-dire un
@@ -176,13 +176,13 @@ describe('les deux champs d’icône traversent le parseur', () => {
         expect(lu.message.applications[0].source_max).toBe('non-mesuree');
     });
 
-    it('accepte une application AVEC icône, et rend `source_max` en objet', () => {
+    it('accepts an application WITH an icon, and returns `source_max` as an object', () => {
         const lu = parseVersLaPlateforme(encodeCatalogue(true, [APP_TEMOIN], []));
         if (!lu.ok || lu.message.type !== 'catalogue') throw new Error('forme');
         expect(lu.message.applications[0].source_max).toEqual({ pixels: 256 });
     });
 
-    it('🔴 REFUSE une application à qui il MANQUE un des deux champs neufs', () => {
+    it('🔴 REFUSES an application that LACKS one of the two new fields', () => {
         // Le champ ABSENT est la forme sous laquelle un agent v2 se
         // présenterait. Il doit être refusé, pas complété.
         const sansIcone = JSON.stringify({ ...APP_TEMOIN, icone: undefined });
@@ -193,7 +193,7 @@ describe('les deux champs d’icône traversent le parseur', () => {
         }
     });
 
-    it('🔴 REFUSE une `source_max` qui n’est ni la chaîne ni la forme exacte', () => {
+    it('🔴 REFUSES a `source_max` that is neither the string nor the exact shape', () => {
         for (const value of [
             '"gros"',
             '{"pixels":"gros"}',
@@ -209,7 +209,7 @@ describe('les deux champs d’icône traversent le parseur', () => {
         }
     });
 
-    it('🔴 REFUSE une `icone` qui n’est ni `null` ni une chaîne', () => {
+    it('🔴 REFUSES an `icone` that is neither `null` nor a string', () => {
         for (const value of ['42', 'true', '{}', '[]']) {
             const app = JSON.stringify(APP_TEMOIN).replace(
                 '"a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2"',
@@ -221,14 +221,14 @@ describe('les deux champs d’icône traversent le parseur', () => {
     });
 });
 
-describe('`icones-manquantes`, sens PLATEFORME -> AGENT', () => {
-    it('encode exactement comme Rust', () => {
+describe('`icones-manquantes`, PLATFORM -> AGENT direction', () => {
+    it('encodes exactly like Rust', () => {
         expect(encodeIconesManquantes(['a1b2', 'c3d4'])).toBe(
             '{"type":"icones-manquantes","v":5,"empreintes":["a1b2","c3d4"]}',
         );
     });
 
-    it('se relit, et REFUSE une version divergente', () => {
+    it('re-reads itself, and REFUSES a diverging version', () => {
         const lu = parseDepuisLaPlateforme(
             '{"type":"icones-manquantes","v":5,"empreintes":["a1b2"]}',
         );
@@ -243,6 +243,6 @@ describe('`icones-manquantes`, sens PLATEFORME -> AGENT', () => {
             parseDepuisLaPlateforme(
                 `{"type":"icones-manquantes","v":${PLATEFORME_VERSION + 1},"empreintes":[]}`,
             ),
-        ).toThrow(/version de plateforme non supportée/);
+        ).toThrow(/unsupported platform version/);
     });
 });

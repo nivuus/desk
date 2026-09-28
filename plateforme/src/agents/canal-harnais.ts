@@ -76,7 +76,7 @@ export function ouvrirUrl(url: string): Promise<Pair> {
             recevoir() {
                 return new Promise((r, rej) => {
                     const minuteur = setTimeout(
-                        () => rej(new Error('aucun message poussé par le canal en 2000 ms')),
+                        () => rej(new Error('no message pushed by the channel within 2000 ms')),
                         2000,
                     );
                     enAttente.push((m) => {
@@ -90,7 +90,7 @@ export function ouvrirUrl(url: string): Promise<Pair> {
             dire(brut) {
                 return new Promise((r, rej) => {
                     const minuteur = setTimeout(
-                        () => rej(new Error(`aucune réponse du canal en 2000 ms à ${brut}`)),
+                        () => rej(new Error(`no answer from the channel within 2000 ms to ${brut}`)),
                         2000,
                     );
                     enAttente.push((m) => {
@@ -140,7 +140,7 @@ export async function attendreVu(
         const vu = ligne?.vu_a === undefined || ligne.vu_a === null ? null : Number(ligne.vu_a);
         if (predicat(vu)) return vu;
         if (Date.now() > fin) {
-            throw new Error(`vu_a ${quoi} jamais atteint pour ${vmId} en ${borneMs} ms (vu=${vu})`);
+            throw new Error(`vu_a ${quoi} never reached for ${vmId} within ${borneMs} ms (seen=${vu})`);
         }
         await new Promise((r) => setTimeout(r, 25));
     }

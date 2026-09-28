@@ -12,7 +12,7 @@
 // nothing, turns off nothing, snapshots nothing, creates no machine. Its
 // inventory is what an administrator enrolled, and it can only act on the
 // world through the one column it owns:
-// `vm.utilisateur_id`. This reading is STRONGER than "reloadable
+// policy: allow-fr (frozen SQLite name) — `vm.utilisateur_id`. This reading is STRONGER than "reloadable
 // file" — a file could have been reloaded, which would have suggested
 // some form of management.
 //
@@ -37,7 +37,7 @@ function enVm(l: LigneVm): Vm {
         id: l.id,
         nom: l.nom,
         adresse: l.adresse,
-        userId: l.utilisateur_id,
+        userId: l.utilisateur_id, // policy: allow-fr - frozen wire key or SQLite column
         prefixe: l.prefixe_session,
         vuA: l.vu_a,
     };
@@ -62,9 +62,9 @@ async function inventaireDe(p: Pilote): Promise<Vm[]> {
 /// silent mitigation is not one.
 function refuserNonSupporte(operation: Operation): Outcome {
     console.warn(
-        `opération refusée : ${operation} n'est pas supportée par le backend ` +
-            `${BACKEND_STATIQUE}, qui ne pilote aucun hyperviseur — il inventorie ce ` +
-            "qu'un administrateur a enrôlé, et n'écrit que vm.utilisateur_id.",
+        `operation refused: ${operation} is not supported by the backend ` +
+            `${BACKEND_STATIQUE}, which drives no hypervisor — it inventories what ` +
+            "an administrator enrolled, and writes only vm.utilisateur_id.",
     );
     return refuser('non-supporte', operation);
 }
@@ -154,14 +154,14 @@ export function inventaireStatique(base: Pilote, maintenant: () => number): Orch
                 //
                 // 🔴 IT IS THE ONLY PLACE IN THE SERVICE WHERE AN EXCEPTION IS
                 // CAUGHT, and it must not become a silent `catch`. A
-                // `catch` that translated ANY exception into `utilisateur-servi`
+                // `catch` that translated ANY exception into `utilisateur-servi` (policy: allow-fr - frozen wire key or SQLite column)
                 // would swallow an unreachable database and present it as a
                 // business refusal — the exact silent failure spec §6 forbids.
                 //
                 // 🔴 NO COMPARISON OF THE EXCEPTION TEXT: the two
                 // engines do not write the same one (`UNIQUE constraint failed:
-                // vm.utilisateur_id` versus `duplicate key value violates unique
-                // constraint "vm_un_utilisateur"`). It is the reread STATE that
+                // vm.utilisateur_id` versus `duplicate key value violates unique (policy: allow-fr - frozen wire key or SQLite column)
+                // policy: allow-fr (frozen SQLite name) — constraint "vm_un_utilisateur"`). It is the reread STATE that
                 // decides, never the message.
                 //
                 // ⚠️ THE REREAD HAPPENS OUTSIDE THE TRANSACTION, AND THAT IS STRUCTURAL,
@@ -177,7 +177,7 @@ export function inventaireStatique(base: Pilote, maintenant: () => number): Orch
                 const siennes = vmsDe(inventaire, user);
                 if (siennes.length > 0 && !siennes.some((v) => v.id === vm)) {
                     // The user does have ANOTHER VM: it is the partial index
-                    // `vm_un_utilisateur` that threw, and the refusal is typed.
+                    // `vm_un_utilisateur` that threw, and the refusal is typed. (policy: allow-fr - frozen wire key or SQLite column)
                     return refuser('utilisateur-servi', 'attribuer');
                 }
                 // Nothing in the state explains it: the cause is elsewhere, and

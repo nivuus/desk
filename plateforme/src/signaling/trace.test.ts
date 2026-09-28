@@ -68,7 +68,7 @@ async function attendreLigne(
         const trouvee = lignes.find(predicat);
         if (trouvee) return trouvee;
         if (Date.now() > fin) {
-            throw new Error(`aucune ligne session ${quoi} pour ${nom} en ${borneMs} ms`);
+            throw new Error(`no session ${quoi} row for ${nom} within ${borneMs} ms`);
         }
         await new Promise((r) => setTimeout(r, 25));
     }
@@ -112,8 +112,8 @@ function fermer(w: WebSocket): Promise<void> {
     });
 }
 
-describe('observateur de session', () => {
-    it('ouvre à l’appariement et clôt au départ, sur des instants EXACTS', async () => {
+describe('session observer', () => {
+    it('opens at pairing and closes at departure, at EXACT instants', async () => {
         base = await baseNeuve('trace-unite');
         let instant = 5_000_000_000;
         const obs = observateurDeSession(base, () => instant);
@@ -131,7 +131,7 @@ describe('observateur de session', () => {
         expect(close.motif).toBe(MOTIF_DEPART);
     });
 
-    it('un second appariement ne rouvre pas une seconde ligne', async () => {
+    it('a second pairing does not reopen a second row', async () => {
         // Un pair qui se reconnecte pendant que l'autre reste en place
         // rapparie la session. Sans cette garde, la première ligne serait
         // orpheline — jamais close, jusqu'au balayage du prochain démarrage.
@@ -144,7 +144,7 @@ describe('observateur de session', () => {
         expect(await lireParNom(base, 'u-2')).toHaveLength(1);
     });
 
-    it('un départ sans appariement préalable n’écrit rien', async () => {
+    it('a departure without prior pairing writes nothing', async () => {
         base = await baseNeuve('trace-sans');
         const obs = observateurDeSession(base, () => 7_000);
         obs.separe('jamais-apparie');
@@ -169,14 +169,14 @@ async function enrolerUneVm(p: Pilote, vmId: string, prefixe: string): Promise<v
     await enroler(p, vmId, await hacher('un-secret-d-enrolement-de-la-vraie-longueur'), prefixe);
 }
 
-describe('la colonne session.vm_id', () => {
+describe('the session.vm_id column', () => {
     // 🔴 C'EST LE LEGS N°3 DE P2 QUI SE FERME ICI : « `session.vm_id` reste
     // entièrement NULL ». Le préfixe du nom de session désigne la VM, et
     // c'est la TRACE qui le résout — jamais le relais, dont `apparie` reste
     // synchrone et sans retour (E10). La résolution est donc éprouvée au
     // niveau de l'observateur, là où elle vit.
 
-    it('une session préfixée par une VM ENRÔLÉE inscrit son vm_id', async () => {
+    it('a session prefixed by an ENROLLED VM records its vm_id', async () => {
         base = await baseNeuve('trace-vm-connue');
         await enrolerUneVm(base, 'v-1', P);
         const obs = observateurDeSession(base, () => 5_000_000_000);
@@ -186,7 +186,7 @@ describe('la colonne session.vm_id', () => {
         expect(ligne.vm_id).toBe('v-1');
     });
 
-    it('une session SANS préfixe laisse vm_id à `null`', async () => {
+    it('a session WITHOUT a prefix leaves vm_id at `null`', async () => {
         // Le mode d'essai local que la spec §10 pose comme LÉGITIME : un
         // agent lancé sans `AGENT_VM` nomme sa session `bureau`, tout court.
         // Lever, ou inscrire une chaîne vide, casserait ce mode — et une
@@ -200,7 +200,7 @@ describe('la colonne session.vm_id', () => {
         expect(ligne.vm_id).toBeNull();
     });
 
-    it('🔴 l’instant est lu SYNCHRONEMENT à l’appariement, PAS après la lecture de base', async () => {
+    it('🔴 the instant is read SYNCHRONOUSLY at pairing, NOT after the database read', async () => {
         // 🔴 CE TEST EXISTE PARCE QU'UNE MUTATION EST RESTÉE VERTE SANS LUI.
         // La résolution du préfixe intercale une lecture de base entre
         // `apparie()` et l'INSERT : lire l'horloge dans l'appel à
@@ -225,7 +225,7 @@ describe('la colonne session.vm_id', () => {
         expect(ligne.vm_id).toBe('v-1');
     });
 
-    it('🔴 une session à préfixe INCONNU laisse vm_id à `null`, et le JOURNALISE', async () => {
+    it('🔴 a session with an UNKNOWN prefix leaves vm_id at `null`, and LOGS it', async () => {
         // 🔴 LES DEUX MOITIÉS COMPTENT. Inscrire quand même ferait MENTIR la
         // colonne — elle nommerait une VM que la base ne connaît pas. Et se
         // taire rendrait le cas indiscernable du précédent : un agent dont
@@ -246,8 +246,8 @@ describe('la colonne session.vm_id', () => {
     });
 });
 
-describe('le service entier', () => {
-    it('écrit une ligne à l’appariement, et la clôt à la déconnexion des deux pairs', async () => {
+describe('the whole service', () => {
+    it('writes a row at pairing, and closes it when both peers disconnect', async () => {
         base = await baseNeuve('trace-service');
         service = await startServer(CONFIG, base);
         const url = `ws://127.0.0.1:${service.port}/signal`;
@@ -267,7 +267,7 @@ describe('le service entier', () => {
         expect(await lireParNom(base, `${P}:trace-1`)).toHaveLength(1);
     });
 
-    it('n’écrit rien quand un seul pair s’est déclaré', async () => {
+    it('writes nothing when a single peer has declared itself', async () => {
         // 🔴 Le premier test serait VERT avec une écriture posée trop tôt —
         // dès la première déclaration. C'est ce test-ci qui distingue
         // « appariement » de « connexion », et le superviseur se déclare seul
@@ -285,7 +285,7 @@ describe('le service entier', () => {
         expect(await lireParNom(base, `${P}:trace-2`)).toHaveLength(0);
     });
 
-    it('inscrit en base l’utilisateur du client authentifié qui apparie', async () => {
+    it('records in the database the user of the authenticated client that pairs', async () => {
         // ⚠️ CE TEST NE PEUT PAS ÊTRE CELUI D'UN CLIENT ANONYME : depuis que
         // la garde est câblée, un client anonyme n'atteint jamais
         // l'appariement. Un test qui en supposerait un mesurerait un état que

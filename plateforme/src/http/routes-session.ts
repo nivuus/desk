@@ -101,7 +101,7 @@ function compterLaRequete(
             route: CHEMIN,
             adresse,
             retry_apres_s: apres.retryApresS,
-            entrees: frein.taille(),
+            entrees: frein.size(),
             evictions: frein.evictions(),
         }),
     );
@@ -164,7 +164,7 @@ export async function servirSession(
     }
 
     // 🔴 THE REQUEST BODY IS NOT READ, AND THERE IS NOTHING TO PUT IN IT:
-    // the partial index `vm_un_utilisateur` guarantees zero or one VM per
+    // the partial index `vm_un_utilisateur` guarantees zero or one VM per (policy: allow-fr - frozen wire key or SQLite column)
     // user, so there is no VM to designate. That is what spares
     // this route the 4 KiB bound of `routes-auth.ts` — ⚠️ AND THE DAY
     // A BODY BECOMES NECESSARY, THE BOUND WILL TOO. Without a bound,

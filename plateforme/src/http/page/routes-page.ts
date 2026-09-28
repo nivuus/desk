@@ -59,7 +59,7 @@ export async function servirPage(
 ///
 /// ① THE DEFAULT CALLBACK IS NOT A COVERAGE HOLE. The only caller
 /// of `serveWithStream` in the product is `servirPage` itself; all the
-/// rest goes through `chaine.ts`, which only calls `servirPage`. In
+/// rest goes through `chaine.ts`, which only calls `servirPage`. In (policy: allow-fr - file name)
 /// `routes-page.test.ts`, 21 of the 23 tests stand up a REAL server
 /// (`startServer` → `servirTout` → `servirPage`, hence a real
 /// `createReadStream`); the other 2 are the unit tests of here.
@@ -272,7 +272,7 @@ export async function serveWithStream(
         // 1: the first draft of this fix wrongly accused the two
         // commits above of having set and then approved a false quote,
         // for not having searched for this precise text on these precise commits).
-        console.error(`page servie en echec de lecture, chemin=${chemin} : ${String(cause)}`);
+        console.error(`page served but failed to read, path=${chemin}: ${String(cause)}`);
         if (!rep.destroyed) rep.destroy();
     }
     return true;

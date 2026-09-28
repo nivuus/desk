@@ -62,7 +62,7 @@ export interface InstallerMessage {
     installation: string;
     url: string;
     nom: string;
-    taille: number;
+    taille: number; // policy: allow-fr - frozen wire key or SQLite column
     sha256: string;
 }
 
@@ -270,7 +270,7 @@ export function encodeInstaller(
         installation,
         url,
         nom,
-        taille: size,
+        taille: size, // policy: allow-fr - frozen wire key or SQLite column
         sha256,
     };
     return JSON.stringify(message);

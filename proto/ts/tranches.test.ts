@@ -18,7 +18,7 @@ function somme(tranches: Tranche[]): number {
 }
 
 describe('plan', () => {
-    it('rend ZÉRO tranche pour un fichier vide, jamais une tranche vide', () => {
+    it('returns ZERO chunks for an empty file, never an empty chunk', () => {
         // Un fichier vide est légitime : il n'a rien à déposer. Fabriquer une
         // tranche de zéro octet obligerait le déposant à envoyer une trame sans
         // contenu pour sceller un fichier sans contenu.
@@ -34,7 +34,7 @@ describe('plan', () => {
         [10, 1],
         [7, 3],
     ])(
-        '🔴 la somme des octets vaut EXACTEMENT la taille (taille=%i, pas=%i)',
+        '🔴 the sum of the bytes is EXACTLY the size (size=%i, step=%i)',
         (size, pas) => {
             // La comparaison porte sur `size`, PAS sur `plan` : c'est ce qui
             // rend l'assertion capable de voir une queue de fichier perdue.
@@ -50,7 +50,7 @@ describe('plan', () => {
         [10, 4, 3],
         [9, 3, 3],
     ])(
-        '🔴 le nombre de tranches est le plafond du quotient (taille=%i, pas=%i → %i)',
+        '🔴 the number of chunks is the ceiling of the quotient (size=%i, step=%i → %i)',
         (size, pas, combien) => {
             // Le nombre attendu est écrit à la main, jamais recalculé : un
             // `Math.ceil` dans le test reproduirait le défaut qu'il cherche.
@@ -58,7 +58,7 @@ describe('plan', () => {
         },
     );
 
-    it("ne fabrique PAS de tranche finale vide quand la taille est un multiple exact du pas", () => {
+    it("does NOT make an empty final chunk when the size is an exact multiple of the step", () => {
         const tranches = plan(8, 4);
         expect(tranches).toEqual([
             { n: 0, octets: 4 },
@@ -67,11 +67,11 @@ describe('plan', () => {
         expect(tranches.some((t) => t.octets === 0)).toBe(false);
     });
 
-    it("rend UNE seule tranche, de la taille du fichier, quand celui-ci est plus petit que le pas", () => {
+    it("returns ONE single chunk, of the file size, when the file is smaller than the step", () => {
         expect(plan(3, 4)).toEqual([{ n: 0, octets: 3 }]);
     });
 
-    it('numérote les rangs à BASE ZÉRO et de façon contiguë, si bien que la position se calcule', () => {
+    it('numbers the ranks from ZERO and contiguously, so that the position can be computed', () => {
         const pas = 4;
         const tranches = plan(10, pas);
         expect(tranches.map((t) => t.n)).toEqual([0, 1, 2]);
@@ -81,48 +81,48 @@ describe('plan', () => {
         expect(positions).toEqual([0, 4, 8]);
     });
 
-    it('ne raccourcit QUE la dernière tranche', () => {
+    it('shortens ONLY the last chunk', () => {
         const tranches = plan(10, 4);
         expect(tranches.slice(0, -1).every((t) => t.octets === 4)).toBe(true);
         expect(tranches[tranches.length - 1].octets).toBe(2);
     });
 
     it.each<[string, number, number]>([
-        ['un pas nul — qui ferait aussi boucler le plan sans fin', 10, 0],
-        ['un pas négatif', 10, -1],
-        ['un pas non entier', 10, 2.5],
-        ['un pas NaN', 10, Number.NaN],
-        ['une taille négative', -1, 4],
-        ['une taille non entière', 2.5, 4],
-        ['une taille NaN', Number.NaN, 4],
-    ])('LÈVE sur un contrat invalide : %s', (_titre, size, pas) => {
+        ['a zero step — which would also make the plan loop forever', 10, 0],
+        ['a negative step', 10, -1],
+        ['a non-integer step', 10, 2.5],
+        ['a NaN step', 10, Number.NaN],
+        ['a negative size', -1, 4],
+        ['a non-integer size', 2.5, 4],
+        ['a NaN size', Number.NaN, 4],
+    ])('THROWS on an invalid contract: %s', (_titre, size, pas) => {
         // Le contrat est détenu par l'appelant, pas reçu du fil : un contrat
         // absurde est un défaut de programme, et le rendre sous forme de
         // verdict le déguiserait en anomalie de transfert.
-        expect(() => plan(size, pas)).toThrow(/tranches :/);
+        expect(() => plan(size, pas)).toThrow(/chunks:/);
     });
 });
 
 describe('verdict', () => {
-    it('rend complet quand toutes les tranches attendues sont là, à la bonne taille', () => {
+    it('returns complete when all the expected chunks are there, at the right size', () => {
         expect(verdict(10, 4, plan(10, 4))).toEqual({ etat: 'complet' });
     });
 
-    it("rend complet quel que soit l'ORDRE d'arrivée des tranches", () => {
+    it("returns complete whatever the ORDER of arrival of the chunks", () => {
         // Rien ne garantit que le déposant émette dans l'ordre, ni que le
         // réseau les rende dans l'ordre.
         const desordre = [...plan(10, 4)].reverse();
         expect(verdict(10, 4, desordre)).toEqual({ etat: 'complet' });
     });
 
-    it('nomme un trou au milieu', () => {
+    it('names a hole in the middle', () => {
         expect(verdict(12, 4, [
             { n: 0, octets: 4 },
             { n: 2, octets: 4 },
         ])).toEqual({ etat: 'manquantes', n: [1] });
     });
 
-    it("🔴 refuse de déclarer complet un fichier TRONQUÉ : la dernière tranche manque", () => {
+    it("🔴 refuses to declare complete a TRUNCATED file: the last chunk is missing", () => {
         // C'est le cas exact que la mutation `ceil → floor` rend invisible.
         // Avec `floor`, le plan de 10 octets par 4 ne compterait que deux
         // tranches, les deux ci-dessous suffiraient, et deux octets seraient
@@ -139,7 +139,7 @@ describe('verdict', () => {
         [1, 4],
         [9, 2],
     ])(
-        "🔴 un dépôt amputé de sa dernière tranche n'est JAMAIS complet (taille=%i, pas=%i)",
+        "🔴 an upload cut off from its last chunk is NEVER complete (size=%i, step=%i)",
         (size, pas) => {
             const ampute = plan(size, pas).slice(0, -1);
             // La somme déposée est strictement inférieure à la taille : c'est
@@ -149,11 +149,11 @@ describe('verdict', () => {
         },
     );
 
-    it('nomme toutes les tranches quand rien n’a été déposé', () => {
+    it('names all the chunks when nothing has been dropped', () => {
         expect(verdict(10, 4, [])).toEqual({ etat: 'manquantes', n: [0, 1, 2] });
     });
 
-    it('déclare INCOHÉRENTE une tranche plus COURTE que prévue, pas manquante', () => {
+    it('declares INCONSISTENT a chunk SHORTER than planned, not missing', () => {
         // Un transfert amputé : la redemander rendrait la même chose.
         expect(verdict(12, 4, [
             { n: 0, octets: 4 },
@@ -162,7 +162,7 @@ describe('verdict', () => {
         ])).toEqual({ etat: 'incoherentes', n: [1] });
     });
 
-    it('déclare INCOHÉRENTE une tranche plus LONGUE que prévue', () => {
+    it('declares INCONSISTENT a chunk LONGER than planned', () => {
         // Elle déborderait sur sa voisine.
         expect(verdict(12, 4, [
             { n: 0, octets: 5 },
@@ -171,7 +171,7 @@ describe('verdict', () => {
         ])).toEqual({ etat: 'incoherentes', n: [0] });
     });
 
-    it('déclare INCOHÉRENTE la dernière tranche envoyée à la taille du pas', () => {
+    it('declares INCONSISTENT the last chunk sent at the size of the step', () => {
         // Le piège naturel du déposant : remplir la queue jusqu'au pas.
         expect(verdict(10, 4, [
             { n: 0, octets: 4 },
@@ -180,7 +180,7 @@ describe('verdict', () => {
         ])).toEqual({ etat: 'incoherentes', n: [2] });
     });
 
-    it('déclare INCOHÉRENT un rang au-delà du plan', () => {
+    it('declares INCONSISTENT a rank beyond the plan', () => {
         expect(verdict(8, 4, [
             { n: 0, octets: 4 },
             { n: 1, octets: 4 },
@@ -188,7 +188,7 @@ describe('verdict', () => {
         ])).toEqual({ etat: 'incoherentes', n: [2] });
     });
 
-    it('déclare INCOHÉRENT un rang négatif', () => {
+    it('declares INCONSISTENT a negative rank', () => {
         expect(verdict(8, 4, [
             { n: -1, octets: 4 },
             { n: 0, octets: 4 },
@@ -196,7 +196,7 @@ describe('verdict', () => {
         ])).toEqual({ etat: 'incoherentes', n: [-1] });
     });
 
-    it('déclare INCOHÉRENT un rang non entier, et le rend TEL QUEL', () => {
+    it('declares INCONSISTENT a non-integer rank, and returns it AS IS', () => {
         // La liste doit montrer ce qui a réellement été envoyé, pas une valeur
         // nettoyée : c'est ce qu'un journal a besoin de lire.
         expect(verdict(8, 4, [{ n: 1.5, octets: 4 }])).toEqual({
@@ -205,14 +205,14 @@ describe('verdict', () => {
         });
     });
 
-    it('déclare INCOHÉRENT un nombre d’octets non entier', () => {
+    it('declares INCONSISTENT a non-integer byte count', () => {
         expect(verdict(8, 4, [
             { n: 0, octets: 4.5 },
             { n: 1, octets: 4 },
         ])).toEqual({ etat: 'incoherentes', n: [0] });
     });
 
-    it('déclare INCOHÉRENT un DOUBLON dont les deux occurrences s’accordent sur la taille', () => {
+    it('declares INCONSISTENT a DUPLICATE whose two occurrences agree on the size', () => {
         // 🔴 Deux dépôts pour le même rang : l'un a écrasé l'autre, et rien ici
         // ne peut savoir lequel a gagné. Deux trames de même longueur ne
         // portent pas forcément le même contenu.
@@ -223,7 +223,7 @@ describe('verdict', () => {
         ])).toEqual({ etat: 'incoherentes', n: [0] });
     });
 
-    it('déclare INCOHÉRENT un doublon dont les occurrences divergent', () => {
+    it('declares INCONSISTENT a duplicate whose occurrences diverge', () => {
         expect(verdict(8, 4, [
             { n: 1, octets: 4 },
             { n: 1, octets: 2 },
@@ -231,7 +231,7 @@ describe('verdict', () => {
         ])).toEqual({ etat: 'incoherentes', n: [1] });
     });
 
-    it('🔴 fait PRIMER incoherentes sur manquantes quand les deux sont présents', () => {
+    it('🔴 makes incoherentes PREVAIL over manquantes when both are present', () => {
         // Annoncer d'abord le trou ferait recompléter la tranche absente, puis
         // re-vérifier, puis retomber sur la même incohérence — la boucle exacte
         // que la distinction existe pour empêcher.
@@ -239,18 +239,18 @@ describe('verdict', () => {
         expect(rendu).toEqual({ etat: 'incoherentes', n: [0] });
     });
 
-    it('rend complet pour un fichier vide dont rien n’a été déposé', () => {
+    it('returns complete for an empty file of which nothing has been dropped', () => {
         expect(verdict(0, 4, [])).toEqual({ etat: 'complet' });
     });
 
-    it('déclare INCOHÉRENTE la moindre tranche déposée pour un fichier vide', () => {
+    it('declares INCONSISTENT the slightest chunk dropped for an empty file', () => {
         expect(verdict(0, 4, [{ n: 0, octets: 0 }])).toEqual({
             etat: 'incoherentes',
             n: [0],
         });
     });
 
-    it('trie les rangs NUMÉRIQUEMENT et sans doublon', () => {
+    it('sorts the ranks NUMERICALLY and without duplicates', () => {
         // ⚠️ Onze tranches : c'est le seuil à partir duquel le tri par défaut
         // de JavaScript, qui compare des CHAÎNES, rendrait `[0, 10, 2, …]`.
         const rendu = verdict(44, 4, [{ n: 1, octets: 4 }]);
@@ -260,7 +260,7 @@ describe('verdict', () => {
         });
     });
 
-    it('ne répète pas un rang incohérent signalé plusieurs fois', () => {
+    it('does not repeat an inconsistent rank reported several times', () => {
         const rendu = verdict(12, 4, [
             { n: 2, octets: 1 },
             { n: 2, octets: 1 },
@@ -271,15 +271,15 @@ describe('verdict', () => {
     });
 
     it.each<[string, number, number]>([
-        ['un pas nul', 10, 0],
-        ['une taille négative', -1, 4],
-    ])('LÈVE sur un contrat invalide, comme plan : %s', (_titre, size, pas) => {
+        ['a zero step', 10, 0],
+        ['a negative size', -1, 4],
+    ])('THROWS on an invalid contract, like plan: %s', (_titre, size, pas) => {
         // La garde est la MÊME des deux côtés : un contrat qui ne tient pas ne
         // doit pas produire un verdict d'apparence normale.
-        expect(() => verdict(size, pas, [])).toThrow(/tranches :/);
+        expect(() => verdict(size, pas, [])).toThrow(/chunks:/);
     });
 
-    it('ne lève JAMAIS sur ce qui vient du fil, si absurde soit-il', () => {
+    it('NEVER throws on what comes from the wire, however absurd', () => {
         // Un pair déréglé ou malveillant ne doit pas pouvoir faire tomber le
         // vérificateur : tout ce qui vient de `presentes` devient un verdict.
         expect(() =>
