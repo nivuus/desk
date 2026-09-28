@@ -1,58 +1,58 @@
-// Câblage de l'écran de connexion : un formulaire DOM d'un côté,
-// `POST /auth/connexion` de l'autre. Aucune règle ici — elles sont dans
-// `jeton.ts`, qui est testé.
+// Wiring of the login screen: a DOM form on one side,
+// `POST /auth/connexion` on the other. No rule here — they are in
+// `jeton.ts`, which is tested.
 //
-// ⚠️ CE FICHIER N'EST PAS TESTÉ UNITAIREMENT, et c'est DÉCLARÉ plutôt que
-// subi : c'est la même convention que `hub/page.ts`, `hub/cartes.ts` et
-// `main.ts`, qui ne le sont pas non plus. ⚠️ CETTE LISTE NOMMAIT
-// `shell-page.ts` jusqu'à la revue finale du 31 août 2026 : depuis la
-// tâche 9, ce fichier n'est plus qu'une redirection de seize lignes, et
-// l'invoquer comme précédent d'un CÂBLAGE non testé ne dit plus rien. Ce qui la rend tenable est la clause qui l'accompagne :
-// **toute règle que ce fichier porterait doit descendre dans `jeton.ts`**. Si
-// une condition apparaît ici, c'est qu'elle est au mauvais endroit.
+// ⚠️ THIS FILE IS NOT UNIT TESTED, and that is DECLARED rather than
+// endured: it is the same convention as `hub/page.ts`, `hub/cartes.ts` and
+// `main.ts`, which are not either. ⚠️ THIS LIST NAMED
+// `shell-page.ts` until the final review of August 31st, 2026: since
+// task 9, that file is only a sixteen-line redirect, and
+// invoking it as the precedent for untested WIRING no longer says anything. What makes it tenable is the clause that comes with it:
+// **any rule this file would carry must move down into `jeton.ts`**. If
+// a condition appears here, it is in the wrong place.
 //
-// 🔴 CE FICHIER DEMANDE AUSSI SA SESSION, ET LES DEUX BRANCHES QUI SUIVENT
-// SONT DU CÂBLAGE, PAS DES RÈGLES — c'est ce qui les autorise ici malgré la
-// clause ci-dessus. ⚠️ LE PLAN DE P4 SE CONTREDISAIT SUR CE POINT — sa tâche
-// 14 interdit toute condition dans ce fichier, puis en prescrit les branches
-// —, l'implémenteur l'a signalé sans le trancher, et LA REVUE TRANSVERSE DE P4
-// L'A ARBITRÉ ICI (20 août 2026) : ce que la clause interdit est qu'une RÈGLE
-// vive dans un fichier non testé, pas qu'un `if` y apparaisse. Le critère qui
-// départage est REPRODUCTIBLE : une condition est une règle si la changer
-// change ce que le PRODUIT décide ; elle est du câblage si elle ne fait que
-// router une décision déjà prise ailleurs, et testée là-bas. Les deux branches
-// ci-dessous relèvent du second cas — elles lisent une décision que
-// `routes-session.ts` a prise et que ses tests couvrent. **La clause est donc
-// resserrée, pas assouplie**, et le prochain `if` qui apparaîtra ici doit
-// passer ce critère ou descendre. Les règles vivent aux deux bouts, et toutes deux sont
-// testées : ce qu'un préfixe a le droit d'être est dans `prefixe.ts`
-// (`poserPrefixe` LÈVE sur la chaîne vide), et ce que valent 200, 409 et 503
-// est dans `plateforme/src/http/routes-session.ts`. Ce qui reste ici décide
-// seulement d'ÉCRIRE, d'EFFACER, ou de NE RIEN TOUCHER — et la troisième issue
-// est la raison pour laquelle il n'y a que deux branches :
+// 🔴 THIS FILE ALSO REQUESTS ITS SESSION, AND THE TWO BRANCHES THAT FOLLOW
+// ARE WIRING, NOT RULES — that is what allows them here despite the
+// clause above. ⚠️ P4's PLAN CONTRADICTED ITSELF ON THIS POINT — its task
+// 14 forbids any condition in this file, then prescribes its branches
+// —, the implementer flagged it without deciding, and P4's CROSS-CUTTING REVIEW
+// ARBITRATED IT HERE (August 20th, 2026): what the clause forbids is that a RULE
+// lives in an untested file, not that an `if` appears there. The criterion that
+// decides is REPRODUCIBLE: a condition is a rule if changing it
+// changes what the PRODUCT decides; it is wiring if it only
+// routes a decision already taken elsewhere, and tested there. The two branches
+// below fall in the second case — they read a decision
+// `routes-session.ts` took and that its tests cover. **The clause is therefore
+// tightened, not loosened**, and the next `if` that appears here must
+// pass this criterion or move down. The rules live at both ends, and both are
+// tested: what a prefix is allowed to be is in `prefixe.ts`
+// (`poserPrefixe` THROWS on the empty string), and what 200, 409 and 503 mean
+// is in `plateforme/src/http/routes-session.ts`. What remains here only decides
+// to WRITE, to ERASE, or to TOUCH NOTHING — and the third outcome
+// is the reason there are only two branches:
 //
-//   ① le corps porte un `prefixe` — 200 comme 503 — : on l'écrit. Il est connu
-//     et juste dans les deux cas, et la page en a besoin pour ne pas rejoindre
-//     l'espace de noms partagé en attendant que la VM revienne ;
-//   ② le service dit `aucune-vm` : on efface. Laisser en place le préfixe d'une
-//     VM qu'on n'a plus ferait ouvrir des sessions au nom d'une autre machine ;
-//   ③ tout le reste — jeton refusé, méthode, panne — ne dit RIEN de
-//     l'attribution : le coffre n'est pas touché. Effacer sur un 401 perdrait
-//     un préfixe encore juste ; c'est une absence de branche, et elle est
-//     délibérée.
+//   ① the body carries a `prefixe` — 200 as well as 503 —: we write it. It is known
+//     and correct in both cases, and the page needs it so as not to join
+//     the shared namespace while waiting for the VM to come back;
+//   ② the service says `aucune-vm`: we erase. Leaving in place the prefix of a
+//     VM we no longer have would open sessions in another machine's name;
+//   ③ everything else — token refused, method, failure — says NOTHING about
+//     the assignment: the vault is not touched. Erasing on a 401 would lose
+//     a prefix that is still correct; it is an absence of branch, and it is
+//     deliberate.
 //
-// ⚠️ ON NE REDIRIGE QUE SUR 200, ET LE COÛT EST ÉCRIT ICI PLUTÔT QUE DÉCOUVERT :
-// un développeur sans VM enrôlée RESTE sur cet écran. Rediriger vers une shell
-// qui rejoindrait l'espace de noms partagé serait précisément ce que ce
-// sous-bloc existe pour éviter. Le mode d'essai local passe par `?prefixe=` sur
-// l'URL de la shell (`prefixe.ts`), et il fonctionne toujours — le coffre est
-// vide, donc la chaîne de requête reprend la main.
+// ⚠️ WE ONLY REDIRECT ON 200, AND THE COST IS WRITTEN HERE RATHER THAN DISCOVERED:
+// a developer without an enrolled VM STAYS on this screen. Redirecting to a shell
+// that would join the shared namespace would be precisely what this
+// sub-block exists to avoid. The local trial mode goes through `?prefixe=` on
+// the shell's URL (`prefixe.ts`), and it still works — the vault is
+// empty, so the query string takes over.
 //
-// ⚠️ LE MESSAGE D'ÉCHEC EST CELUI DU SERVICE, TEL QUEL. Il ne distingue pas
-// « courriel inconnu » de « mot de passe faux » (`plateforme/src/http/
-// routes-auth.ts` : un message qui les distinguerait serait un oracle
-// d'énumération de comptes). Enrichir le texte ici défairait cette propriété
-// depuis le seul endroit où personne ne penserait à la chercher.
+// ⚠️ THE FAILURE MESSAGE IS THE SERVICE'S, AS IS. It does not distinguish
+// "unknown email" from "wrong password" (`plateforme/src/http/
+// routes-auth.ts`: a message distinguishing them would be an account
+// enumeration oracle). Enriching the text here would undo that property
+// from the only place where nobody would think of looking for it.
 
 import { accesParPomerium, poser, poserAcces } from './jeton';
 import type { Ton } from './shell';
@@ -61,24 +61,24 @@ import { effacerPrefixe, poserPrefixe } from './prefixe';
 import { adressePlateforme } from './adresse-plateforme';
 
 const params = new URLSearchParams(window.location.search);
-// La MÊME convention que le signaling de `hub/page.ts` (`shell-page.ts` avant
-// que le hub ne devienne la seule surface, 31 août 2026) : un paramètre de
-// requête, sinon L'ORIGINE DE LA PAGE. Inventer une seconde convention
-// obligerait à savoir laquelle s'applique où.
+// The SAME convention as the signaling of `hub/page.ts` (`shell-page.ts` before
+// the hub became the only surface, August 31st, 2026): a query
+// parameter, otherwise THE PAGE'S ORIGIN. Inventing a second convention
+// would require knowing which one applies where.
 //
-// 🔴 CE N'EST PLUS `http://<hôte>:8080`, ET LE CHANGEMENT N'EST PAS COSMÉTIQUE.
-// Derrière le proxy TLS de `deploiement/nginx.conf`, la page est servie en
-// `https://` sur 443 : un `http://…:8080` y serait du contenu mixte, refusé
-// par le navigateur, et rien n'écoute 8080 depuis l'extérieur de toute façon.
-// La règle vit dans `adresse-plateforme.ts`, qui est PUR et testé.
+// 🔴 IT IS NO LONGER `http://<host>:8080`, AND THE CHANGE IS NOT COSMETIC.
+// Behind the TLS proxy of `deploiement/nginx.conf`, the page is served over
+// `https://` on 443: an `http://…:8080` there would be mixed content, refused
+// by the browser, and nothing listens on 8080 from outside anyway.
+// The rule lives in `adresse-plateforme.ts`, which is PURE and tested.
 const plateformeUrl = adressePlateforme(window.location, params.get('plateforme'));
-// Où l'on repart une fois connecté. Le paramètre existe pour que l'écran
-// puisse renvoyer vers la page qui a exigé la connexion, et pas seulement vers
-// la shell.
+// Where to go once logged in. The parameter exists so that the screen
+// can send back to the page that required login, and not only to
+// the shell.
 //
-// 🔴 LA RACINE, PLUS `shell.html` (31 août 2026) : la page-shell est devenue
-// une redirection, et y renvoyer ferait faire un aller-retour inutile à qui
-// vient de se connecter.
+// 🔴 THE ROOT, NO LONGER `shell.html` (August 31st, 2026): the shell page became
+// a redirect, and sending back there would make whoever has just logged in
+// do a useless round trip.
 const suite = params.get('suite') ?? '/';
 
 const formulaire = document.querySelector<HTMLFormElement>('#connexion')!;
@@ -87,29 +87,29 @@ const champMotDePasse = document.querySelector<HTMLInputElement>('#motdepasse')!
 const bouton = document.querySelector<HTMLButtonElement>('#valider')!;
 const message = document.querySelector<HTMLDivElement>('#message')!;
 
-// Le sélecteur de thème — extension raisonnée de la spec §5.2, justifiée dans
-// l'en-tête de `design/selecteur-theme.ts`.
+// The theme selector — a reasoned extension of spec §5.2, justified in
+// the header of `design/selecteur-theme.ts`.
 installerSelecteurDeThemeAuDOM(document.querySelector<HTMLElement>('#themes')!);
 
-/* ── LE TON DU BANDEAU : UNE TABLE, PAS UNE RÈGLE ─────────────────────────
-   🔴 AUCUNE CONDITION N'EST AJOUTÉE À CE FICHIER, et c'est la clause de son
-   en-tête. Les branches ci-dessous existaient toutes AVANT le sous-bloc S3 ;
-   il ne fait que donner à chacune la classe de ton qui lui correspond. Le
-   critère de la revue transverse de P4 s'applique tel quel : une condition est
-   une RÈGLE si la changer change ce que le produit décide. Changer un ton ne
-   change aucune décision — ni le jeton posé, ni le préfixe écrit, ni la
-   redirection. C'est de la présentation.
+/* ── THE BANNER'S TONE: A TABLE, NOT A RULE ───────────────────────────────
+   🔴 NO CONDITION IS ADDED TO THIS FILE, and that is the clause of its
+   header. The branches below all existed BEFORE sub-block S3;
+   it only gives each the tone class that matches it. The
+   criterion of P4's cross-cutting review applies as is: a condition is
+   a RULE if changing it changes what the product decides. Changing a tone
+   changes no decision — neither the token set, nor the prefix written, nor the
+   redirect. It is presentation.
 
-   ⚠️ CES TROIS CLASSES SONT INVISIBLES AU CONTRÔLE §7.9, limite connue et
-   déclarée : il ne lit que les littéraux de `classList.add('…')` et de
-   `className = '…'`, jamais une classe qui transite par une variable. Elles
-   sont bien déclarées par `design/primitives/message.css` et employées par
-   `primitives.html` — c'est la galerie et l'œil qui le disent ici, pas la
-   commande. Même arbitrage que `bureau/porteur-dom.ts`, qui porte
-   aujourd'hui ce câblage. ⚠️ CETTE PHRASE NOMMAIT `shell-page.ts` jusqu'à
-   la revue finale du 31 août 2026 : ce fichier ne porte plus AUCUN
-   `CLASSE_DE_TON` depuis la tâche 9, et l'arbitrage qu'on lui prêtait a
-   déménagé avec le reste. */
+   ⚠️ THESE THREE CLASSES ARE INVISIBLE TO CHECK §7.9, a known and
+   declared limit: it only reads the literals of `classList.add('…')` and
+   `className = '…'`, never a class that goes through a variable. They
+   are indeed declared by `design/primitives/message.css` and used by
+   `primitives.html` — it is the gallery and the eye that say so here, not the
+   command. Same arbitration as `bureau/porteur-dom.ts`, which carries
+   this wiring today. ⚠️ THIS SENTENCE NAMED `shell-page.ts` until
+   the final review of August 31st, 2026: that file has carried NO
+   `CLASSE_DE_TON` since task 9, and the arbitration attributed to it has
+   moved with the rest. */
 const CLASSE_DE_TON: Record<Ton, string> = {
     neutre: '',
     succes: 'message--succes',
@@ -124,32 +124,32 @@ function afficher(texte: string, ton: Ton): void {
     if (classe !== '') message.classList.add(classe);
 }
 
-/// Ce qui suit l'obtention d'un jeton, quel que soit le chemin qui l'a obtenu.
+/// What follows obtaining a token, whatever the path that obtained it.
 ///
-/// ⚠️ CE N'EST PAS UNE RÈGLE, C'EST DU CÂBLAGE — au sens du critère posé en
-/// tête de ce fichier : ces branches ne font que router une décision prise par
-/// `routes-session.ts` et couverte par SES tests.
+/// ⚠️ IT IS NOT A RULE, IT IS WIRING — in the sense of the criterion set at
+/// the head of this file: these branches only route a decision taken by
+/// `routes-session.ts` and covered by ITS tests.
 ///
-/// 🔴 CE COMMENTAIRE A ÉCRIT « LA CLAUSE RESTE DONC RESSERRÉE, PAS
-/// ASSOUPLIE », ET C'ÉTAIT UNE AFFIRMATION DE COMPLÉTUDE FAUSSE — corrigée
-/// plutôt qu'effacée (revue transverse, 21 août 2026). La phrase était vraie
-/// des branches DÉPLACÉES dans cette fonction-ci, et fausse de la fonction
-/// NEUVE écrite juste en dessous : `tenterPomerium` y avait ajouté, dans le
-/// même commit, une garde sur `corps.acces` qui, elle, était une RÈGLE au sens
-/// du critère. La branche assouplissait donc la clause dans le geste même où
-/// elle affirmait la resserrer. **La règle est depuis descendue dans
-/// `jeton.ts` (`accesDeReponse`), où des tests la tiennent** ; ce qui reste
-/// ici, et là-dessous, est du câblage. Ce paragraphe ne dit plus rien de ce
-/// que ce fichier contiendra demain : le critère, lui, reste la seule chose à
-/// appliquer au prochain `if` qui y apparaîtra.
+/// 🔴 THIS COMMENT WROTE "THE CLAUSE THEREFORE STAYS TIGHTENED, NOT
+/// LOOSENED", AND IT WAS A FALSE COMPLETENESS CLAIM — corrected
+/// rather than erased (cross-cutting review, August 21st, 2026). The sentence was true
+/// of the branches MOVED into this function, and false of the NEW
+/// function written just below: `tenterPomerium` had added there, in the
+/// same commit, a guard on `corps.acces` which, for its part, was a RULE in the sense
+/// of the criterion. The branch therefore loosened the clause in the very gesture where
+/// it claimed to tighten it. **The rule has since moved down into
+/// `jeton.ts` (`accesDeReponse`), where tests hold it**; what remains
+/// here, and below, is wiring. This paragraph no longer says anything about what
+/// this file will contain tomorrow: the criterion, for its part, stays the only thing to
+/// apply to the next `if` that appears here.
 ///
-/// ⚠️ CORPS DÉPLACÉ VERBATIM. Trois substitutions, et TROIS SEULEMENT :
-///   ① `corps.acces` devient le paramètre `acces` ;
-///   ② les `return` de sortie anticipée restent des `return` — la fonction
-///      rend `void`, donc leur sens ne change pas ;
-///   ③ le `catch` et le `finally` du `submit` RESTENT chez l'appelant : les
-///      déplacer ici ferait réactiver `bouton.disabled = false` sur le chemin
-///      Pomerium, où aucun bouton n'a jamais été désactivé.
+/// ⚠️ BODY MOVED VERBATIM. Three substitutions, and ONLY THREE:
+///   ① `corps.acces` becomes the parameter `acces`;
+///   ② the early-exit `return`s stay `return`s — the function
+///      returns `void`, so their meaning does not change;
+///   ③ the `catch` and `finally` of the `submit` STAY with the caller:
+///      moving them here would re-enable `bouton.disabled = false` on the
+///      Pomerium path, where no button was ever disabled.
 async function chercherLaSession(acces: string): Promise<void> {
     afficher('recherche de votre machine…', 'neutre');
     const session = await fetch(`${plateformeUrl}/session`, {

@@ -1,93 +1,93 @@
-// L'ÉLECTION DE L'ONGLET QUI TIENT LA SESSION DE CONTRÔLE — la règle, pure
-// et testée. Le câblage (socket, `BroadcastChannel`, DOM) vit dans
+// ELECTING THE TAB THAT HOLDS THE CONTROL SESSION — the rule, pure
+// and tested. The wiring (socket, `BroadcastChannel`, DOM) lives in
 // `porteur-dom.ts`.
 //
-// 🔴 POURQUOI UNE ÉLECTION EXISTE. Le rôle `client` est EXCLUSIF par session
-// (`plateforme/src/signaling/appariement.ts::declarer` — « un client est déjà
-// connecté à la session … »). Tant que le bureau vivait dans une fenêtre
-// NOMMÉE (`window.open(url, 'nivuus-bureau')`), il ne pouvait pas y en avoir
-// deux. Depuis que le hub — atteint par l'URL racine, donc ouvrable en autant
-// d'onglets qu'on veut — porte cette session, la question se pose vraiment.
+// 🔴 WHY AN ELECTION EXISTS. The `client` role is EXCLUSIVE per session
+// (`plateforme/src/signaling/appariement.ts::declarer` — "a client is already
+// connected to session …"). As long as the desktop lived in a
+// NAMED window (`window.open(url, 'nivuus-bureau')`), there could not be
+// two. Since the hub — reached through the root URL, hence openable in as many
+// tabs as one wants — carries this session, the question really arises.
 //
-// 🔵 LA PRIMITIVE EST **Web Locks**, PRISE TELLE QUELLE PLUTÔT QUE
-// RECONSTRUITE. Un onglet qui obtient le verrou le tient jusqu'à sa mort, et
-// le navigateur le libère lui-même : c'est exactement « le premier garde la
-// session, et sa fermeture promeut un autre ». Une élection écrite à la main
-// sur `BroadcastChannel` devrait DÉTECTER LA MORT D'UN PAIR, ce qu'aucun
-// événement ne signale — c'est le trou que `setInterval(redessiner, 1000)`
-// bouche déjà ailleurs, faute de mieux.
+// 🔵 THE PRIMITIVE IS **Web Locks**, TAKEN AS IS RATHER THAN
+// REBUILT. A tab that obtains the lock holds it until its death, and
+// the browser releases it itself: it is exactly "the first keeps the
+// session, and its closing promotes another". A hand-written election
+// on `BroadcastChannel` would have to DETECT A PEER'S DEATH, which no
+// event signals — it is the hole `setInterval(redessiner, 1000)`
+// already plugs elsewhere, for lack of anything better.
 
 import type { FenetreConnue } from '../shell';
 
-/// Le nom du verrou. ⚠️ **IL SE COMPOSE AVEC LE PRÉFIXE DE VM** avant usage
-/// (`prefixe.ts::composer`), exactement comme le nom de session : sans lui,
-/// deux VMs différentes ouvertes dans deux onglets s'excluraient l'une
-/// l'autre — le défaut que P3 a corrigé sur le nom de session, réintroduit
-/// par la porte de derrière.
+/// The lock's name. ⚠️ **IT IS COMPOSED WITH THE VM PREFIX** before use
+/// (`prefixe.ts::composer`), exactly like the session name: without it,
+/// two different VMs opened in two tabs would exclude each
+/// other — the defect P3 fixed on the session name, reintroduced
+/// through the back door.
 export const NOM_VERROU = 'nivuus-bureau';
 
 export type Role = 'porteur' | 'suiveur';
 
 export interface DepsElection {
-    /// Demande le verrou exclusif. `pendant` est appelée QUAND il est obtenu,
-    /// et le verrou est tenu tant que la promesse qu'elle rend n'est pas
-    /// réglée.
+    /// Requests the exclusive lock. `pendant` is called WHEN it is obtained,
+    /// and the lock is held as long as the promise it returns is not
+    /// settled.
     ///
-    /// 🔴 **SON TYPE ÉTAIT `Promise<never>` JUSQU'À LA REVUE FINALE DU 31 AOÛT
-    /// 2026, ET C'ÉTAIT LE DÉFAUT** (Important ③) : une promesse `never` ne
-    /// peut se régler que par un REJET, si bien que le porteur démis par
-    /// `estPlacePrise` n'avait AUCUN moyen de rendre son verrou — sa partition
-    /// n'aurait alors plus jamais eu de porteur. Elle est `Promise<void>` et
-    /// se résout **exactement une fois**, quand `Election::relacher` est
-    /// appelée ; sur le chemin nominal, personne ne l'appelle et la propriété
-    /// « ne se résout jamais » est préservée mot pour mot.
+    /// 🔴 **ITS TYPE WAS `Promise<never>` UNTIL THE FINAL REVIEW OF AUGUST 31st,
+    /// 2026, AND THAT WAS THE DEFECT** (Important ③): a `never` promise can
+    /// only settle through a REJECTION, so that the carrier dismissed by
+    /// `estPlacePrise` had NO way to give back its lock — its partition
+    /// would then never again have had a carrier. It is `Promise<void>` and
+    /// resolves **exactly once**, when `Election::relacher` is
+    /// called; on the nominal path, nobody calls it and the property
+    /// "never resolves" is preserved word for word.
     ///
-    /// `undefined` quand `navigator.locks` n'existe pas.
+    /// `undefined` when `navigator.locks` does not exist.
     verrou?: (nom: string, pendant: () => Promise<void>) => void;
-    /// Cet onglet tient la session : il ouvre le socket.
+    /// This tab holds the session: it opens the socket.
     devenirPorteur(): void;
-    /// Cet onglet suit : il n'ouvre AUCUN socket et affiche l'état diffusé.
+    /// This tab follows: it opens NO socket and displays the broadcast state.
     devenirSuiveur(): void;
 }
 
-/// Ce que `elire` rend : le moyen de RENDRE le verrou détenu.
+/// What `elire` returns: the means to GIVE BACK the lock held.
 export interface Election {
-    /// Relâche le verrou, s'il est détenu. **Idempotente**, et sans effet
-    /// tant que le verrou n'a pas été obtenu — il n'y a alors rien à rendre.
+    /// Releases the lock, if held. **Idempotent**, and without effect
+    /// as long as the lock has not been obtained — there is then nothing to give back.
     ///
-    /// ⚠️ **CET ONGLET NE SE REMET PAS DANS LA FILE**, et c'est délibéré : se
-    /// redemander le verrou aussitôt le reprendrait dans l'instant (personne
-    /// d'autre n'attend dans CETTE partition), la plateforme le refuserait de
-    /// nouveau, et la boucle refus → relâche → reprise tournerait sans fin.
-    /// **Limite déclarée** : après une démission, cet onglet-ci reste suiveur
-    /// jusqu'à son rechargement. Ce qui est gagné est que le verrou est LIBRE,
-    /// donc qu'un autre onglet — ou un rechargement — peut prendre la place,
-    /// ce qui était impossible avant.
+    /// ⚠️ **THIS TAB DOES NOT PUT ITSELF BACK IN THE QUEUE**, and that is deliberate:
+    /// requesting the lock again at once would retake it instantly (nobody
+    /// else waits in THIS partition), the platform would refuse it
+    /// again, and the refusal → release → retake loop would spin forever.
+    /// **Declared limit**: after a resignation, this tab stays a follower
+    /// until it is reloaded. What is gained is that the lock is FREE,
+    /// hence another tab — or a reload — can take the place,
+    /// which was impossible before.
     relacher(): void;
 }
 
-/// Élit cet onglet, ou l'installe en suiveur en attendant son tour.
+/// Elects this tab, or installs it as a follower while waiting for its turn.
 ///
-/// ⚠️ **LE REPLI SANS `navigator.locks` EST OPTIMISTE, ET C'EST DÉLIBÉRÉ** :
-/// se déclarer suiveur ferait qu'AUCUN onglet n'ouvrirait jamais la session,
-/// et le produit serait mort sur ce navigateur-là. On tente, la plateforme
-/// tranche, et `estPlacePrise` rattrape le perdant en silence.
+/// ⚠️ **THE FALLBACK WITHOUT `navigator.locks` IS OPTIMISTIC, AND THAT IS DELIBERATE**:
+/// declaring itself a follower would mean NO tab ever opened the session,
+/// and the product would be dead on that browser. We try, the platform
+/// decides, and `estPlacePrise` silently catches up the loser.
 export function elire(nomVerrou: string, deps: DepsElection): Election {
     if (deps.verrou === undefined) {
         deps.devenirPorteur();
-        // Aucun verrou n'est détenu sur ce chemin : il n'y a rien à rendre.
+        // No lock is held on this path: there is nothing to give back.
         return { relacher: () => {} };
     }
     let rendre: (() => void) | undefined;
     deps.devenirSuiveur();
     deps.verrou(nomVerrou, () => {
         deps.devenirPorteur();
-        // 🔴 UNE PROMESSE QUE PERSONNE NE RÉSOUT SUR LE CHEMIN NOMINAL : c'est
-        // l'idiome des Web Locks pour tenir un verrou jusqu'à la mort du
-        // contexte. Le navigateur le libère à la fermeture de l'onglet, sans
-        // qu'aucun code n'ait à l'orchestrer — y compris sur un plantage, où
-        // aucun `beforeunload` ne courrait. Le seul appelant de `resoudre` est
-        // `relacher`, ci-dessous.
+        // 🔴 A PROMISE NOBODY RESOLVES ON THE NOMINAL PATH: it is
+        // the Web Locks idiom for holding a lock until the death of the
+        // context. The browser releases it when the tab closes, without
+        // any code having to orchestrate it — including on a crash, where
+        // no `beforeunload` would run. The only caller of `resoudre` is
+        // `relacher`, below.
         return new Promise<void>((resoudre) => {
             rendre = resoudre;
         });
@@ -100,43 +100,43 @@ export function elire(nomVerrou: string, deps: DepsElection): Election {
     };
 }
 
-/* ── LA PROMOTION — CE QUE FAIT UN ONGLET QUI VIENT DE PRENDRE LA PLACE ──── */
+/* ── PROMOTION — WHAT A TAB THAT HAS JUST TAKEN THE PLACE DOES ───────────── */
 
-/// 🔴 **CETTE SÉQUENCE VIVAIT DANS `porteur-dom.ts`, ET C'EST LÀ QUE LA
-/// CRITIQUE ① DE LA REVUE FINALE S'EST LOGÉE.** Le socket était ouvert avec
-/// `deps.jeton`, **une chaîne figée au chargement de la page**. Or un suiveur
-/// n'est promu qu'à la mort du porteur, potentiellement des heures plus tard,
-/// et `DUREE_JETON_ACCES_MS` vaut **dix minutes**
-/// (`plateforme/src/identite/jeton.ts`) : il présentait donc un jeton expiré,
-/// `garde.verifier` rendait `motif: 'expire'`, `estPlacePrise` rendait `false`,
-/// et `canalDeControlePerdu()` écrasait le refus par « Rechargez la page ».
-/// **La promotion — la seule chose qui justifie toute cette élection — ne
-/// pouvait pas fonctionner en usage réel.**
+/// 🔴 **THIS SEQUENCE LIVED IN `porteur-dom.ts`, AND THAT IS WHERE
+/// CRITIQUE ① OF THE FINAL REVIEW LODGED.** The socket was opened with
+/// `deps.jeton`, **a string frozen at page load**. Yet a follower
+/// is only promoted on the carrier's death, potentially hours later,
+/// and `DUREE_JETON_ACCES_MS` is **ten minutes**
+/// (`plateforme/src/identite/jeton.ts`): it therefore presented an expired token,
+/// `garde.verifier` returned `motif: 'expire'`, `estPlacePrise` returned `false`,
+/// and `canalDeControlePerdu()` overwrote the refusal with "Reload the page".
+/// **Promotion — the only thing that justifies this whole election — could
+/// not work in real use.**
 ///
-/// 🔵 **LA SPEC §3 ANNONÇAIT DÉJÀ `ouvrirSocket` COMME UNE DÉPENDANCE
-/// INJECTÉE ; l'implémentation ne l'avait pas suivie**, et c'est ce qui
-/// laissait cette jonction hors de portée de tout test.
+/// 🔵 **SPEC §3 ALREADY ANNOUNCED `ouvrirSocket` AS AN INJECTED
+/// DEPENDENCY; the implementation had not followed it**, and that is what
+/// left this junction out of reach of any test.
 export interface DepsPromotion {
-    /// Redemande un jeton **frais** (`jeton.ts::assurerAccesFrais`). Un
-    /// FOURNISSEUR, jamais une valeur : c'est toute la correction.
+    /// Requests a **fresh** token again (`jeton.ts::assurerAccesFrais`). A
+    /// PROVIDER, never a value: that is the whole fix.
     jetonFrais(): Promise<string | undefined>;
-    /// Installe le pont fichiers pour cet onglet, désormais porteur.
+    /// Installs the file bridge for this tab, now carrier.
     ///
-    /// ⚠️ **IL NE REÇOIT PAS LE JETON, ET C'EST VOULU** : « Choisir mon
-    /// dossier » est un geste qui peut arriver n'importe quand après la
-    /// promotion, donc un jeton passé ICI serait périmé au moment du clic —
-    /// le défaut qu'on vient de corriger, réintroduit d'un cran plus bas. Le
-    /// pont redemande le sien au clic (`bureau/fichiers-dom.ts`).
+    /// ⚠️ **IT DOES NOT RECEIVE THE TOKEN, AND THAT IS INTENDED**: "Choose my
+    /// folder" is a gesture that can happen any time after
+    /// promotion, so a token passed HERE would be stale at click time —
+    /// the defect just fixed, reintroduced one notch lower. The
+    /// bridge requests its own at click time (`bureau/fichiers-dom.ts`).
     installerPont(): void;
-    /// Ouvre le socket de la session de contrôle, avec le jeton FRAIS.
+    /// Opens the control session's socket, with the FRESH token.
     ouvrirSocket(jeton: string): void;
-    /// Aucun jeton obtenable : le dire de façon ACTIONNABLE, plutôt qu'ouvrir
-    /// un socket voué au refus.
+    /// No token obtainable: say so in an ACTIONABLE way, rather than opening
+    /// a socket doomed to refusal.
     sansJeton(): void;
 }
 
-/// L'ordre est le point : le pont d'abord, le socket ensuite, et **le jeton
-/// redemandé avant les deux**.
+/// The order is the point: the bridge first, the socket next, and **the token
+/// requested again before both**.
 export async function promouvoir(deps: DepsPromotion): Promise<void> {
     const jeton = await deps.jetonFrais();
     if (jeton === undefined) {
@@ -147,41 +147,41 @@ export async function promouvoir(deps: DepsPromotion): Promise<void> {
     deps.ouvrirSocket(jeton);
 }
 
-/// Qui ouvre la fenêtre quand on clique « Rouvrir » ?
+/// Who opens the window when "Reopen" is clicked?
 ///
-/// 🔴 **C'EST UNE RÈGLE, ET ELLE ÉTAIT DANS LE CÂBLAGE** (Minor ④ de la revue
-/// finale) : `porteur-dom.ts` déclare « AUCUNE RÈGLE ICI » et portait pourtant
-/// ce ternaire. Le porteur passe par `bureau.rouvrir`, qui MÉMORISE le handle
-/// `Window` et permet à `shell.ts::liste` de dire « ouverte » ; un suiveur
-/// n'a pas de `bureau` alimenté et ouvre directement — sa fenêtre est réelle,
-/// mais le porteur ne la voit pas (legs déclaré du chantier).
+/// 🔴 **IT IS A RULE, AND IT WAS IN THE WIRING** (Minor ④ of the final
+/// review): `porteur-dom.ts` declares "NO RULE HERE" and yet carried
+/// this ternary. The carrier goes through `bureau.rouvrir`, which STORES the
+/// `Window` handle and lets `shell.ts::liste` say "open"; a follower
+/// has no fed `bureau` and opens directly — its window is real,
+/// but the carrier does not see it (declared legacy of the workstream).
 export function ouvertureParLeBureau(role: Role): boolean {
     return role === 'porteur';
 }
 
-/// Ce refus est-il « la place est déjà prise » ?
+/// Is this refusal "the place is already taken"?
 ///
-/// 🔴 **SUR LE MOTIF TYPÉ, JAMAIS SUR LA PHRASE.** `reason` est du français
-/// destiné à un humain, et il se reformule ; un client qui le comparerait
-/// casserait en silence le jour où quelqu'un l'améliore. C'est le piège de
-/// F1, payé neuf minutes sur deux messages qui partageaient une sous-chaîne.
+/// 🔴 **ON THE TYPED REASON, NEVER ON THE SENTENCE.** `reason` is prose
+/// meant for a human, and it gets reworded; a client comparing it would
+/// break silently the day someone improves it. It is the trap of
+/// F1, paid for with nine minutes on two messages that shared a substring.
 ///
-/// ⚠️ **TOUT AUTRE REFUS REND `false`, ET C'EST LE POINT** : le frein de
-/// volume (`trop-de-requetes`, avec son `retryApresS`) doit rester VISIBLE.
-/// L'avaler ferait de cette élection la panne muette qu'elle prétend éviter.
+/// ⚠️ **ANY OTHER REFUSAL RETURNS `false`, AND THAT IS THE POINT**: the volume
+/// brake (`trop-de-requetes`, with its `retryApresS`) must stay VISIBLE.
+/// Swallowing it would make this election the silent failure it claims to avoid.
 export function estPlacePrise(message: unknown): boolean {
     if (typeof message !== 'object' || message === null) return false;
     return (message as { motif?: unknown }).motif === 'role-occupe';
 }
 
-/// L'état que le porteur diffuse aux autres onglets.
+/// The state the carrier broadcasts to the other tabs.
 ///
-/// 🔴 **IL NE PORTE QUE DE L'ÉTAT, JAMAIS UN ORDRE.** `window.open` exige une
-/// activation utilisateur **dans l'onglet qui a le geste** : relayer un clic
-/// vers le porteur le ferait ouvrir hors activation, donc bloqué. Ce serait
-/// déplacer le mur d'un cran — ce que `porteur-dom.ts` refuse explicitement
-/// de faire (voir son suiveur, qui ouvre depuis SON PROPRE clic). Chaque
-/// onglet ouvre ses propres fenêtres depuis ses propres clics.
+/// 🔴 **IT ONLY CARRIES STATE, NEVER AN ORDER.** `window.open` requires a
+/// user activation **in the tab that has the gesture**: relaying a click
+/// to the carrier would make it open outside activation, hence blocked. It would be
+/// moving the wall one notch — which `porteur-dom.ts` explicitly refuses
+/// to do (see its follower, which opens from ITS OWN click). Each
+/// tab opens its own windows from its own clicks.
 export interface EtatDiffuse {
     type: 'etat-bureau';
     fenetres: FenetreConnue[];
@@ -191,13 +191,13 @@ export function batirEtat(fenetres: FenetreConnue[]): EtatDiffuse {
     return { type: 'etat-bureau', fenetres };
 }
 
-/// Lit un message reçu sur le canal, ou rend `undefined` si ce n'en est pas
-/// un des nôtres.
+/// Reads a message received on the channel, or returns `undefined` if it is not
+/// one of ours.
 ///
-/// ⚠️ **UN `BroadcastChannel` EST PARTAGÉ PAR ORIGINE** : tout ce qui y passe
-/// ne vient pas forcément de nous, et une entrée mal formée est ÉCARTÉE plutôt
-/// que laissée passer — une liste à moitié valide vaut mieux qu'un `undefined`
-/// sur le champ `titre` au moment de peindre.
+/// ⚠️ **A `BroadcastChannel` IS SHARED PER ORIGIN**: everything passing through it
+/// does not necessarily come from us, and a malformed entry is DISCARDED rather
+/// than let through — a half-valid list is better than an `undefined`
+/// on the `titre` field at painting time.
 export function lireEtat(donnees: unknown): FenetreConnue[] | undefined {
     if (typeof donnees !== 'object' || donnees === null) return undefined;
     const message = donnees as { type?: unknown; fenetres?: unknown };
@@ -213,19 +213,19 @@ export function lireEtat(donnees: unknown): FenetreConnue[] | undefined {
     );
 }
 
-/// La demande qu'un onglet qui vient d'arriver pose sur le canal.
+/// The request a tab that has just arrived posts on the channel.
 ///
-/// 🔴 **SANS ELLE, UN ONGLET QUI REJOINT APRÈS STABILISATION NE REÇOIT JAMAIS
-/// RIEN** (Important ① de la revue finale). `diffuserSiChange` ne poste que sur
-/// CHANGEMENT d'empreinte, et le porteur ignorait tout message du canal : en
-/// régime — trois fenêtres, rien qui bouge —, un second onglet montrait une
-/// liste **vide, pour toujours**, ce qui contredit la spec §4 (« Les onglets
-/// non porteurs l'affichent à l'identique »).
+/// 🔴 **WITHOUT IT, A TAB JOINING AFTER STABILISATION NEVER RECEIVES
+/// ANYTHING** (Important ① of the final review). `diffuserSiChange` only posts on a
+/// fingerprint CHANGE, and the carrier ignored every message on the channel: in
+/// steady state — three windows, nothing moving —, a second tab showed a
+/// list that was **empty, forever**, which contradicts spec §4 ("Non-carrier
+/// tabs display it identically").
 ///
-/// 🔵 **CE N'EST PAS UN ORDRE, ET LE §4 TIENT TOUJOURS.** Le canal ne
-/// transporte que de l'état ; une demande d'état est une demande de
-/// DIFFUSION, jamais un ordre d'ouvrir quoi que ce soit — aucune activation
-/// utilisateur n'est en jeu.
+/// 🔵 **IT IS NOT AN ORDER, AND §4 STILL HOLDS.** The channel only
+/// carries state; a state request is a request for a
+/// BROADCAST, never an order to open anything — no user
+/// activation is involved.
 export interface DemandeEtat {
     type: 'demande-etat';
 }
@@ -234,27 +234,27 @@ export function batirDemande(): DemandeEtat {
     return { type: 'demande-etat' };
 }
 
-/// Ce message est-il une demande d'état ?
+/// Is this message a state request?
 ///
-/// ⚠️ **SUR LE TYPE, JAMAIS SUR LA PRÉSENCE** : un `BroadcastChannel` est
-/// partagé par origine, et tout ce qui y passe ne vient pas de nous — même
-/// raison que `lireEtat` ci-dessous.
+/// ⚠️ **ON THE TYPE, NEVER ON PRESENCE**: a `BroadcastChannel` is
+/// shared per origin, and everything passing through it does not come from us — same
+/// reason as `lireEtat` below.
 export function estDemandeEtat(donnees: unknown): boolean {
     if (typeof donnees !== 'object' || donnees === null) return false;
     return (donnees as { type?: unknown }).type === 'demande-etat';
 }
 
-/// Lit une trame BRUTE du socket de signaling, ou rend `undefined` si ce n'en
-/// est pas une exploitable.
+/// Reads a RAW frame from the signaling socket, or returns `undefined` if it is not
+/// a usable one.
 ///
-/// 🔴 **AJOUTÉE PAR LA REVUE FINALE (Minor ③) : `JSON.parse(evenement.data)`
-/// ÉTAIT NU DANS L'ÉCOUTEUR DU SOCKET DE CONTRÔLE.** Une trame non-JSON y
-/// levait, et l'exception remontait dans un gestionnaire d'événement.
-/// `plateforme/src/signaling/relais.ts` a lui-même dû ajouter le garde
-/// symétrique, et `client/src/webrtc.ts::parseSignalingMessage` porte le même
-/// depuis longtemps : `JSON.parse` réussit sur `"null"`, `"42"`, `'"x"'` et
-/// `"[1,2]"`, et `null.type` lève une `TypeError`. On valide donc **objet non
-/// nul et non tableau** avant toute lecture de propriété.
+/// 🔴 **ADDED BY THE FINAL REVIEW (Minor ③): `JSON.parse(evenement.data)`
+/// WAS BARE IN THE CONTROL SOCKET'S LISTENER.** A non-JSON frame
+/// threw there, and the exception rose into an event handler.
+/// `plateforme/src/signaling/relais.ts` itself had to add the symmetric
+/// guard, and `client/src/webrtc.ts::parseSignalingMessage` has carried the same
+/// for a long time: `JSON.parse` succeeds on `"null"`, `"42"`, `'"x"'` and
+/// `"[1,2]"`, and `null.type` throws a `TypeError`. We therefore validate **a non-null,
+/// non-array object** before any property read.
 export function lireTrame(brut: unknown): Record<string, unknown> | undefined {
     if (typeof brut !== 'string') return undefined;
     let analyse: unknown;
@@ -267,47 +267,47 @@ export function lireTrame(brut: unknown): Record<string, unknown> | undefined {
     return analyse as Record<string, unknown>;
 }
 
-/// Ce qu'un onglet doit PEINDRE, étant donné son rôle, sa PROPRE liste (celle
-/// que `shell.ts::creerBureau().liste()` rend), et le DERNIER état reçu sur
-/// le canal — jamais `bureau.liste()` seule.
+/// What a tab must PAINT, given its role, its OWN list (the one
+/// `shell.ts::creerBureau().liste()` returns), and the LAST state received on
+/// the channel — never `bureau.liste()` alone.
 ///
-/// 🔴 **CETTE RÈGLE VIVAIT DANS `porteur-dom.ts`, DONT L'EN-TÊTE DÉCLARE
-/// N'EN PORTER AUCUNE — ET C'EST LÀ QUE LE DÉFAUT S'EST LOGÉ** (revue round
-/// 1, critique ①). Sur un SUIVEUR, `bureau.liste()` est structurellement
-/// VIDE : aucun message `fenetre-ouverte` n'atteint son `bureau`, qui
-/// n'ouvre aucun socket (`porteur-dom.ts::ouvrirLaSession` ne court QUE chez
-/// le porteur), et son `rouvrir` appelle `window.open` DIRECTEMENT sans
-/// passer par `bureau.rouvrir`. Une minuterie qui repeindrait depuis
-/// `bureau.liste()` chez un suiveur EFFACERAIT donc, moins d'une seconde
-/// après chaque diffusion reçue, la liste qu'elle venait de montrer — pas
-/// une absence d'information, une information FAUSSE : la panne muette que
-/// ce chantier prétend éviter.
+/// 🔴 **THIS RULE LIVED IN `porteur-dom.ts`, WHOSE HEADER DECLARES IT
+/// CARRIES NONE — AND THAT IS WHERE THE DEFECT LODGED** (review round
+/// 1, critique ①). On a FOLLOWER, `bureau.liste()` is structurally
+/// EMPTY: no `fenetre-ouverte` message reaches its `bureau`, which
+/// opens no socket (`porteur-dom.ts::ouvrirLaSession` ONLY runs on
+/// the carrier), and its `rouvrir` calls `window.open` DIRECTLY without
+/// going through `bureau.rouvrir`. A timer repainting from
+/// `bureau.liste()` on a follower would therefore ERASE, less than a second
+/// after each broadcast received, the list it had just shown — not
+/// an absence of information, FALSE information: the silent failure
+/// this workstream claims to avoid.
 ///
-/// 🔴 **LIMITE DÉCLARÉE, PAS CORRIGÉE (Important ② de la revue finale du
-/// 31 août 2026) : LA PROMOTION EFFACE LA LISTE QUE LE SUIVEUR AFFICHAIT.**
-/// Un onglet promu bascule sur la branche `porteur`, dont `listePropre` est
-/// **structurellement vide** — son `bureau` n'a jamais reçu le moindre
-/// `fenetre-ouverte`, faute de socket avant la promotion. Il peint donc `[]`
-/// au premier tour, et l'état qu'il montrait disparaît.
-/// **L'effet net, dit en clair** : *fermer l'onglet porteur prive
-/// définitivement les autres onglets de la liste des fenêtres* — le porteur
-/// promu ne la retrouvera que si l'agent réannonce (fenêtres en
-/// `AttendLeViewport`, lot 17), jamais pour une fenêtre déjà `Vivante`.
-/// ⚠️ **CE N'EST PAS UN OUBLI : LA CORRECTION EST HORS DE PORTÉE DE CE LOT.**
-/// Elle supposerait une méthode neuve sur `client/src/shell.ts` — semer le
-/// `bureau` avec l'état reçu —, or la spec §6 gèle ce fichier nommément
-/// (« INCHANGÉ : la règle du bureau est déjà pure et testée »). C'est une
-/// décision de conception qui appartient au propriétaire du dépôt, pas à une
-/// vague de correction.
+/// 🔴 **DECLARED LIMIT, NOT FIXED (Important ② of the final review of
+/// August 31st, 2026): PROMOTION ERASES THE LIST THE FOLLOWER DISPLAYED.**
+/// A promoted tab switches to the `porteur` branch, whose `listePropre` is
+/// **structurally empty** — its `bureau` never received a single
+/// `fenetre-ouverte`, for lack of a socket before promotion. It therefore paints `[]`
+/// at the first round, and the state it showed disappears.
+/// **The net effect, stated plainly**: *closing the carrier tab deprives
+/// the other tabs of the window list for good* — the promoted carrier
+/// will only get it back if the agent re-announces (windows in
+/// `AttendLeViewport`, batch 17), never for an already `Vivante` window.
+/// ⚠️ **IT IS NOT AN OVERSIGHT: THE FIX IS OUT OF THIS BATCH'S REACH.**
+/// It would require a new method on `client/src/shell.ts` — seeding the
+/// `bureau` with the received state —, yet spec §6 freezes this file by name
+/// ("UNCHANGED: the desktop rule is already pure and tested"). It is a
+/// design decision that belongs to the repository owner, not to a
+/// fix wave.
 export function fenetresAPeindre(
     role: Role,
     listePropre: FenetreConnue[],
     dernierEtatRecu: FenetreConnue[] | undefined,
 ): FenetreConnue[] {
-    // Le porteur EST la source de vérité : sa propre liste, toujours — un
-    // état reçu avant sa propre promotion serait périmé.
+    // The carrier IS the source of truth: its own list, always — a
+    // state received before its own promotion would be stale.
     if (role === 'porteur') return listePropre;
-    // Le suiveur n'a QUE ce qu'on lui a diffusé. Rien reçu encore n'est pas
-    // un mensonge : c'est l'état initial exact, avant toute diffusion.
+    // The follower ONLY has what was broadcast to it. Nothing received yet is not
+    // a lie: it is the exact initial state, before any broadcast.
     return dernierEtatRecu ?? [];
 }

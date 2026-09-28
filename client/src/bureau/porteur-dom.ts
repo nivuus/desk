@@ -182,9 +182,9 @@ export function installerLeBureau(deps: DepsBureauPage): void {
         afficher(message, ton) { el.statut.textContent = message; poserTon(el.statut, ton); },
         afficherEtatFichiers(texte, ton) { el.etatFichiers.textContent = texte; poserTon(el.etatFichiers, ton); },
         afficherEcrituresDues(dues, vues, texte, ton) {
-            // 🔴 LES NOMBRES DANS DES ATTRIBUTS `data-*`, LE TEXTE DANS LA
-            // PAGE. Les pilotes de recette lisent les attributs, JAMAIS le
-            // texte — piège de F1.
+            // 🔴 NUMBERS IN `data-*` ATTRIBUTES, TEXT IN THE
+            // PAGE. Acceptance drivers read the attributes, NEVER the
+            // text — F1's trap.
             el.ecrituresDues.dataset.dues = String(dues);
             el.ecrituresDues.dataset.vues = String(vues);
             el.ecrituresDues.textContent = texte;
@@ -193,19 +193,19 @@ export function installerLeBureau(deps: DepsBureauPage): void {
         afficherRetenues(retenues) {
             el.boutonReprendre.hidden = !retenues;
             el.actionsFichiers.dataset.retenues = String(retenues);
-            // Un pont qui retient ses écritures a quelque chose à dire MAINTENANT.
+            // A bridge holding back its writes has something to say NOW.
             if (retenues) el.sectionFichiers.open = true;
         },
     });
 
-    // ── LE SEUL CHEMIN DE PEINTURE, POUR LES DEUX RÔLES ─────────────────────
-    // 🔴 LA MINUTERIE ET LA RÉCEPTION D'UNE DIFFUSION APPELAIENT CHACUNE LEUR
-    // PROPRE `dessinerFenetres(...)`, EN DOUBLE — c'est cette duplication qui
-    // a produit la critique ① : la minuterie peignait depuis `bureau.liste()`
-    // sans se soucier du rôle, effaçant chez un suiveur, moins d'une seconde
-    // après, ce que la réception venait de montrer. Il n'y a plus qu'un seul
-    // chemin : `redessiner()`, appelé par les DEUX déclencheurs, qui demande
-    // à `fenetresAPeindre` (pure, testée) ce qu'il faut peindre.
+    // ── THE SINGLE PAINTING PATH, FOR BOTH ROLES ────────────────────────────
+    // 🔴 THE TIMER AND THE RECEPTION OF A BROADCAST EACH CALLED THEIR
+    // OWN `dessinerFenetres(...)`, TWICE OVER — it is that duplication that
+    // produced critique ①: the timer painted from `bureau.liste()`
+    // regardless of the role, erasing on a follower, less than a second
+    // later, what the reception had just shown. There is now only one
+    // path: `redessiner()`, called by BOTH triggers, which asks
+    // `fenetresAPeindre` (pure, tested) what must be painted.
     const redessiner = (): void => {
         const role = porteur ? 'porteur' : 'suiveur';
         const listePropre = bureau.liste();
@@ -220,56 +220,56 @@ export function installerLeBureau(deps: DepsBureauPage): void {
                     redessiner();
                     return;
                 }
-                // ⚠️ UN SUIVEUR OUVRE SA PROPRE FENÊTRE, DEPUIS SON PROPRE
-                // CLIC : `window.open` exige l'activation de CET onglet-ci. Il
-                // ne prévient pas le porteur, et RIEN NE LE RATTRAPE ENSUITE :
-                // `shell.ts::liste` calcule `ouverte` depuis le HANDLE que le
-                // porteur détient LUI-MÊME (`e.fenetre !== null &&
-                // !e.fenetre.closed`), et ce handle-là reste fermé pour
-                // toujours — le suiveur vient de créer un AUTRE objet
-                // `Window`, que le porteur ne voit jamais. La liste du porteur
-                // dira donc « fermée » EN PERMANENCE, jusqu'à ce que le
-                // PORTEUR LUI-MÊME clique « Rouvrir ». **Limite déclarée** :
-                // le remède serait un ordre sur le canal, que la conception
-                // exclut (spec §4), ou une méthode neuve sur `shell.ts`, que
-                // la spec laisse INCHANGÉ (spec §6). Recliquer « Rouvrir »,
-                // côté suiveur, ramène la même fenêtre au premier plan chez
-                // LUI : aucun dommage pour lui ; seule la vue du porteur reste
-                // fausse.
+                // ⚠️ A FOLLOWER OPENS ITS OWN WINDOW, FROM ITS OWN
+                // CLICK: `window.open` requires the activation of THIS tab. It
+                // does not warn the carrier, and NOTHING CATCHES UP AFTERWARDS:
+                // `shell.ts::liste` computes `ouverte` from the HANDLE the
+                // carrier ITSELF holds (`e.fenetre !== null &&
+                // !e.fenetre.closed`), and that handle stays closed
+                // forever — the follower has just created ANOTHER
+                // `Window` object, which the carrier never sees. The carrier's list
+                // will therefore say "closed" PERMANENTLY, until the
+                // CARRIER ITSELF clicks "Reopen". **Declared limit**:
+                // the remedy would be an order on the channel, which the design
+                // excludes (spec §4), or a new method on `shell.ts`, which
+                // the spec leaves UNCHANGED (spec §6). Clicking "Reopen" again,
+                // on the follower side, brings the same window to the foreground for
+                // IT: no harm for it; only the carrier's view stays
+                // wrong.
                 //
-                // 🔴 **ET UNE SECONDE CONSÉQUENCE, AJOUTÉE PAR LA REVUE FINALE
-                // (Important ⑤) — UN COMMENTAIRE INCOMPLET SUR UNE LIMITE
-                // DÉCLARÉE VAUT UNE PREUVE FAUSSE : LA FENÊTRE AINSI ROUVERTE
-                // N'ANNONCE JAMAIS SON VIEWPORT.** `viewport-dom.ts` poste par
-                // `window.opener`, donc vers CE suiveur ; `bureau.viewportRecu`
-                // y retourne immédiatement (sa table `connues` est vide, aucun
-                // `fenetreOuverte` ne l'ayant jamais alimentée) et `envoyer`
-                // est un no-op faute de socket. **Conséquence, celle du lot
-                // 33 : le recadrage et la taille de la fenêtre restent ceux de
-                // la session précédente, et rien ne le trace.** Limite
-                // déclarée, non corrigée : la corriger supposerait de relayer
-                // un message vers le porteur, ce que la spec §4 exclut.
+                // 🔴 **AND A SECOND CONSEQUENCE, ADDED BY THE FINAL REVIEW
+                // (Important ⑤) — AN INCOMPLETE COMMENT ON A DECLARED LIMIT
+                // IS WORTH A FALSE PROOF: THE WINDOW THUS REOPENED
+                // NEVER ANNOUNCES ITS VIEWPORT.** `viewport-dom.ts` posts through
+                // `window.opener`, hence to THIS follower; `bureau.viewportRecu`
+                // returns immediately there (its `connues` table is empty, no
+                // `fenetreOuverte` having ever fed it) and `envoyer`
+                // is a no-op for lack of a socket. **Consequence, that of batch
+                // 33: the crop and the window size stay those of
+                // the previous session, and nothing traces it.** Declared
+                // limit, not fixed: fixing it would require relaying
+                // a message to the carrier, which spec §4 excludes.
                 ouvrirUneFenetre(session);
             },
         });
-        // La diffusion, elle, reste réservée au porteur, et porte SA PROPRE
-        // liste — jamais `fenetres`, qui chez un suiveur est le dernier état
-        // REÇU : le rediffuser bouclerait l'écho au lieu de porter du neuf.
+        // Broadcasting, for its part, stays reserved to the carrier, and carries ITS OWN
+        // list — never `fenetres`, which on a follower is the last state
+        // RECEIVED: rebroadcasting it would loop the echo instead of carrying anything new.
         if (porteur) empreinte = diffuserSiChange(canal, listePropre, empreinte);
     };
 
-    // ── LE SUIVEUR : il n'ouvre AUCUN socket ; il mémorise ce qu'on lui
-    // diffuse et le fait peindre par LE MÊME `redessiner()` que la minuterie
-    // — un seul chemin, jamais deux qui pourraient diverger.
+    // ── THE FOLLOWER: it opens NO socket; it stores what is
+    // broadcast to it and has it painted by THE SAME `redessiner()` as the timer
+    // — a single path, never two that could diverge.
     canal.addEventListener('message', (evenement) => {
-        // 🔴 **UN ONGLET QUI REJOINT APRÈS STABILISATION NE RECEVAIT JAMAIS
-        // RIEN** (Important ① de la revue finale) : `diffuserSiChange` ne
-        // poste que sur CHANGEMENT, et le porteur ignorait tout message du
-        // canal. Le porteur répond désormais à une demande d'état en
-        // REMETTANT SON EMPREINTE À `''`, ce qui fait repartir la diffusion au
-        // `redessiner` suivant — y compris pour une liste vide, dont
-        // l'empreinte `'[]'` diffère de `''`. Un suiveur ignore la demande
-        // d'un autre suiveur : il n'a rien à diffuser.
+        // 🔴 **A TAB JOINING AFTER STABILISATION NEVER RECEIVED
+        // ANYTHING** (Important ① of the final review): `diffuserSiChange` only
+        // posts on CHANGE, and the carrier ignored every message on the
+        // channel. The carrier now answers a state request by
+        // RESETTING ITS FINGERPRINT TO `''`, which makes broadcasting restart at the
+        // next `redessiner` — including for an empty list, whose
+        // fingerprint `'[]'` differs from `''`. A follower ignores another
+        // follower's request: it has nothing to broadcast.
         if (estDemandeEtat(evenement.data)) {
             if (!porteur) return;
             empreinte = '';
@@ -283,19 +283,19 @@ export function installerLeBureau(deps: DepsBureauPage): void {
         redessiner();
     });
 
-    // 🔴 **LE PONT FICHIERS SUIT L'ÉLECTION, ET C'EST UNE CONSÉQUENCE DE CETTE
-    // TÂCHE, PAS UN OUBLI** (Important ③, revue round 1) : la session du pont
-    // (`fichiers/canal.ts::sessionDuPont`) est FIXE PAR VM et porte, elle
-    // aussi, le rôle `client` — EXCLUSIF. Le raisonnement de `porteur.ts`
-    // pour la session de contrôle (« tant que le bureau vivait dans une
-    // fenêtre NOMMÉE, il ne pouvait pas y en avoir deux ») vaut MOT POUR MOT
-    // ici. Un suiveur qui l'installerait quand même ouvrirait un second
-    // socket que la plateforme refuserait — pas une erreur à montrer : un
-    // ÉTAT à DIRE, l'onglet suiveur n'étant pas fautif de ne pas gérer les
-    // fichiers. **Les deux fonctions ci-dessous sont PARTAGÉES** entre
-    // `devenirSuiveur` et le rattrapage du repli optimiste démis
-    // (`estPlacePrise`, plus bas) : les deux chemins mènent au même « cet
-    // onglet ne gère pas les fichiers ».
+    // 🔴 **THE FILE BRIDGE FOLLOWS THE ELECTION, AND IT IS A CONSEQUENCE OF THIS
+    // TASK, NOT AN OVERSIGHT** (Important ③, review round 1): the bridge's session
+    // (`fichiers/canal.ts::sessionDuPont`) is FIXED PER VM and carries, it
+    // too, the `client` role — EXCLUSIVE. The reasoning of `porteur.ts`
+    // for the control session ("as long as the desktop lived in a
+    // NAMED window, there could not be two") holds WORD FOR WORD
+    // here. A follower installing it anyway would open a second
+    // socket the platform would refuse — not an error to show: a
+    // STATE to TELL, the follower tab not being at fault for not handling
+    // files. **The two functions below are SHARED** between
+    // `devenirSuiveur` and catching up the dismissed optimistic fallback
+    // (`estPlacePrise`, below): both paths lead to the same "this
+    // tab does not handle files".
     const desactiverLePont = (): void => {
         el.boutonDossier.disabled = true;
         el.etatFichiers.textContent = 'Les fichiers sont gérés par l’onglet qui tient le bureau.';
@@ -309,31 +309,31 @@ export function installerLeBureau(deps: DepsBureauPage): void {
 
     const ouvrirLaSession = (): void => {
         porteur = true;
-        // CET onglet vient d'être promu : annuler l'état que `devenirSuiveur`
-        // avait posé — y compris le texte de `#statut`, qui dirait sinon
-        // « Bureau tenu par un autre onglet » alors que c'est CELUI-CI qui le
-        // tient désormais.
+        // THIS tab has just been promoted: cancel the state `devenirSuiveur`
+        // had set — including the text of `#statut`, which would otherwise say
+        // "Desktop held by another tab" whereas it is THIS one that
+        // holds it now.
         el.statut.textContent = 'connexion du bureau…';
         poserTon(el.statut, 'neutre');
         activerLePont();
-        // 🔴 **LA SÉQUENCE EST DANS `porteur.ts::promouvoir`, PURE ET TESTÉE**
-        // (critique ① de la revue finale). Elle redemande un jeton FRAIS
-        // avant d'ouvrir le socket : un suiveur n'est promu qu'à la mort du
-        // porteur, potentiellement des heures après le chargement, et un jeton
-        // figé au chargement vit **dix minutes**.
+        // 🔴 **THE SEQUENCE IS IN `porteur.ts::promouvoir`, PURE AND TESTED**
+        // (critique ① of the final review). It requests a FRESH token again
+        // before opening the socket: a follower is only promoted on the
+        // carrier's death, potentially hours after loading, and a token
+        // frozen at load time lives **ten minutes**.
         void promouvoir({
             jetonFrais: () => deps.jetonFrais(),
-            // Le pont est installé ICI plutôt qu'au montage du module — ainsi
-            // un onglet promu PLUS TARD (le cas ordinaire : suiveur au
-            // chargement, porteur seulement quand le précédent ferme)
-            // l'obtient lui aussi, sans code supplémentaire.
+            // The bridge is installed HERE rather than at module mount — so
+            // a tab promoted LATER (the ordinary case: follower at
+            // load time, carrier only when the previous one closes)
+            // gets it too, without extra code.
             installerPont: () =>
                 installerLePont({
                     bureau,
                     signalingUrl: deps.signalingUrl,
-                    // ⚠️ LE FOURNISSEUR, PAS LE JETON QU'ON VIENT D'OBTENIR :
-                    // « Choisir mon dossier » est un geste qui peut arriver
-                    // n'importe quand après la promotion.
+                    // ⚠️ THE PROVIDER, NOT THE TOKEN JUST OBTAINED:
+                    // "Choose my folder" is a gesture that can happen
+                    // any time after promotion.
                     jetonFrais: () => deps.jetonFrais(),
                     fautesArmees: deps.fautesArmees,
                     boutonDossier: el.boutonDossier,
@@ -343,8 +343,8 @@ export function installerLeBureau(deps: DepsBureauPage): void {
                 }),
             ouvrirSocket: (jeton) => ouvrirLeSocket(jeton),
             sansJeton: () => {
-                // ⚠️ ACTIONNABLE, et non « une erreur est survenue » : le
-                // rechargement relance `assurerAccesFrais`, donc Pomerium.
+                // ⚠️ ACTIONABLE, and not "an error occurred": the
+                // reload restarts `assurerAccesFrais`, hence Pomerium.
                 el.statut.textContent =
                     'Votre session a expiré. Rechargez la page pour vous reconnecter.';
                 poserTon(el.statut, 'danger');
@@ -361,10 +361,10 @@ export function installerLeBureau(deps: DepsBureauPage): void {
             poserTon(el.statut, 'neutre');
         });
         socket.addEventListener('message', (evenement) => {
-            // 🔴 `JSON.parse` NU ICI JUSQU'À LA REVUE FINALE (Minor ③) : une
-            // trame non-JSON levait dans un gestionnaire d'événement. La garde
-            // vit dans `porteur.ts::lireTrame`, jumelle de celle que
-            // `plateforme/src/signaling/relais.ts` a dû ajouter de son côté.
+            // 🔴 BARE `JSON.parse` HERE UNTIL THE FINAL REVIEW (Minor ③): a
+            // non-JSON frame threw in an event handler. The guard
+            // lives in `porteur.ts::lireTrame`, twin of the one
+            // `plateforme/src/signaling/relais.ts` had to add on its side.
             const message = lireTrame(evenement.data);
             if (message === undefined) return;
             if (message.type === 'fenetre-ouverte') bureau.fenetreOuverte(message.session as string, message.titre as string);
@@ -372,48 +372,48 @@ export function installerLeBureau(deps: DepsBureauPage): void {
             else if (message.type === 'refus') bureau.refus(message.titre as string, message.motif as string);
             else if (message.type === 'error') {
                 if (estPlacePrise(message)) {
-                    // 🔴 « LA PLACE EST PRISE » N'EST PAS UNE ERREUR À
-                    // MONTRER. Cet onglet a tenté de devenir porteur, un
-                    // autre tenait déjà la session côté plateforme. Il
-                    // redevient suiveur, EN SILENCE — un second onglet n'est
-                    // pas une faute de l'utilisateur. Tout autre refus, dont
-                    // le frein de volume, reste affiché.
+                    // 🔴 "THE PLACE IS TAKEN" IS NOT AN ERROR TO
+                    // SHOW. This tab tried to become carrier, another
+                    // already held the session on the platform side. It
+                    // becomes a follower again, SILENTLY — a second tab is
+                    // not the user's fault. Any other refusal, including
+                    // the volume brake, stays displayed.
                     //
-                    // ⚠️ **CE CHEMIN N'EST PAS RÉSERVÉ AU REPLI SANS WEB
-                    // LOCKS** — une affirmation trop large (Minor round 1) :
-                    // les Web Locks sont cloisonnés PAR PARTITION DE
-                    // STOCKAGE (une fenêtre de navigation privée, ou un
-                    // second navigateur, tient SA PROPRE partition), donc un
-                    // onglet peut très bien détenir SON verrou et viser
-                    // pourtant la MÊME session côté plateforme. Ce chemin est
-                    // donc atteint aussi HORS repli, chaque fois que deux
-                    // partitions distinctes visent la même VM.
+                    // ⚠️ **THIS PATH IS NOT RESERVED TO THE FALLBACK WITHOUT WEB
+                    // LOCKS** — a claim too broad (Minor round 1):
+                    // Web Locks are partitioned PER STORAGE
+                    // PARTITION (a private browsing window, or a
+                    // second browser, holds ITS OWN partition), so a
+                    // tab can very well hold ITS lock and still target
+                    // the SAME session on the platform side. This path is
+                    // therefore also reached OUTSIDE the fallback, whenever two
+                    // distinct partitions target the same VM.
                     porteur = false;
                     socket?.close();
-                    // 🔴 **LE VERROU EST RENDU, ET IL NE L'ÉTAIT PAS**
-                    // (Important ③ de la revue finale) : la promesse tenue par
-                    // `elire` était un `Promise<never>` que rien ne résolvait,
-                    // si bien qu'un porteur démis gardait le verrou POUR
-                    // TOUJOURS et que sa partition n'avait **plus jamais** de
-                    // porteur. Il repart en suiveur, verrou libéré.
-                    // ⚠️ Il ne se remet PAS dans la file : voir
-                    // `porteur.ts::Election::relacher` pour la raison (une
-                    // boucle refus → relâche → reprise) et pour la limite que
-                    // cela laisse.
+                    // 🔴 **THE LOCK IS GIVEN BACK, AND IT WAS NOT**
+                    // (Important ③ of the final review): the promise held by
+                    // `elire` was a `Promise<never>` nothing resolved,
+                    // so that a dismissed carrier kept the lock
+                    // FOREVER and its partition **never again** had a
+                    // carrier. It goes back to follower, lock released.
+                    // ⚠️ It does NOT put itself back in the queue: see
+                    // `porteur.ts::Election::relacher` for the reason (a
+                    // refusal → release → retake loop) and for the limit
+                    // this leaves.
                     election?.relacher();
-                    // Minor round 1 : le bandeau tenait encore « bureau
-                    // connecté », posé de façon optimiste à l'ouverture du
-                    // socket, AVANT de savoir si la plateforme refuserait.
-                    // Le dire tel quel après la démotion : cet onglet N'EST
-                    // PLUS celui qui tient le bureau.
+                    // Minor round 1: the banner still said "desktop
+                    // connected", set optimistically when the
+                    // socket opened, BEFORE knowing whether the platform would refuse.
+                    // Say it as is after the demotion: this tab IS NO
+                    // LONGER the one holding the desktop.
                     el.statut.textContent = TEXTE_SUIVEUR;
                     poserTon(el.statut, 'neutre');
-                    // 🔴 CE CHEMIN (repli SANS Web Locks) a installé le pont
-                    // de façon OPTIMISTE, EN MÊME TEMPS que `porteur = true`
-                    // ci-dessus, avant de savoir si la plateforme refuserait
-                    // -- exactement comme le bandeau. Le rattraper de la
-                    // même façon : ce n'est plus cet onglet qui gère les
-                    // fichiers.
+                    // 🔴 THIS PATH (fallback WITHOUT Web Locks) installed the bridge
+                    // OPTIMISTICALLY, AT THE SAME TIME as `porteur = true`
+                    // above, before knowing whether the platform would refuse
+                    // -- exactly like the banner. Catch it up the
+                    // same way: it is no longer this tab that handles
+                    // files.
                     desactiverLePont();
                     redessiner();
                     return;
@@ -427,8 +427,8 @@ export function installerLeBureau(deps: DepsBureauPage): void {
             redessiner();
         });
         socket.addEventListener('close', () => {
-            // ⚠️ SILENCIEUX SI NOUS AVONS CÉDÉ LA PLACE : `canalDeControlePerdu`
-            // dirait « Rechargez la page », ce qui serait faux ici.
+            // ⚠️ SILENT IF WE GAVE UP THE PLACE: `canalDeControlePerdu`
+            // would say "Reload the page", which would be wrong here.
             if (porteur) bureau.canalDeControlePerdu();
         });
     };
@@ -441,11 +441,11 @@ export function installerLeBureau(deps: DepsBureauPage): void {
         devenirPorteur: ouvrirLaSession,
         devenirSuiveur: () => {
             porteur = false;
-            // ⚠️ **DIRE SON ÉTAT, PAS SEULEMENT LE TAIRE** (Minor ⑥) : sans
-            // cette ligne, `#statut` restait VIDE et la seule explication du
-            // rôle de cet onglet vivait dans `#etat-fichiers`, à l'intérieur
-            // d'un `<details>` REPLIÉ. Un onglet promu plus tard écrase ce
-            // texte dès `ouvrirLaSession` (« connexion du bureau… »).
+            // ⚠️ **TELL ITS STATE, NOT ONLY KEEP QUIET** (Minor ⑥): without
+            // this line, `#statut` stayed EMPTY and the only explanation of
+            // this tab's role lived in `#etat-fichiers`, inside
+            // a COLLAPSED `<details>`. A tab promoted later overwrites this
+            // text from `ouvrirLaSession` on ("connecting the desktop…").
             el.statut.textContent = TEXTE_SUIVEUR;
             poserTon(el.statut, 'neutre');
             desactiverLePont();
@@ -457,8 +457,8 @@ export function installerLeBureau(deps: DepsBureauPage): void {
         evenement.preventDefault();
     });
 
-    // Les pages de session annoncent leur viewport par `postMessage` sur leur
-    // ouvreuse — c'est-à-dire ici.
+    // Session pages announce their viewport through `postMessage` to their
+    // opener — that is, here.
     window.addEventListener('message', (evenement) => {
         if (evenement.origin !== window.location.origin) return;
         const message = evenement.data;
@@ -467,22 +467,22 @@ export function installerLeBureau(deps: DepsBureauPage): void {
         }
     });
 
-    // 🔴 **LA DEMANDE D'ÉTAT, POSÉE AU MONTAGE** (Important ① de la revue
-    // finale). Sans elle, un onglet qui rejoint APRÈS stabilisation — trois
-    // fenêtres, rien qui bouge — reste sur une liste vide POUR TOUJOURS,
-    // `diffuserSiChange` ne postant que sur changement.
+    // 🔴 **THE STATE REQUEST, SENT AT MOUNT** (Important ① of the final
+    // review). Without it, a tab joining AFTER stabilisation — three
+    // windows, nothing moving — stays on an empty list FOREVER,
+    // `diffuserSiChange` only posting on change.
     //
-    // ⚠️ **POSTÉE SANS CONDITION DE RÔLE, ET C'EST CORRECT** : un
-    // `BroadcastChannel` ne délivre PAS à son propre émetteur, et il n'existe
-    // qu'un porteur par partition — un onglet qui vient d'être élu porteur ne
-    // peut donc pas se réveiller lui-même, et sa demande ne trouve personne à
-    // qui la poser. Attendre de connaître le rôle exigerait d'attendre que
-    // Web Locks tranche, c'est-à-dire de retarder la seule chose qui rende un
-    // suiveur utile.
+    // ⚠️ **POSTED WITHOUT A ROLE CONDITION, AND THAT IS CORRECT**: a
+    // `BroadcastChannel` does NOT deliver to its own sender, and there is only
+    // one carrier per partition — a tab that has just been elected carrier
+    // therefore cannot wake itself up, and its request finds nobody to
+    // ask. Waiting to know the role would require waiting for
+    // Web Locks to decide, that is, delaying the only thing that makes a
+    // follower useful.
     canal.postMessage(batirDemande());
 
-    // La fermeture d'une page par l'utilisateur ne prévient personne : on
-    // relit l'état périodiquement plutôt que d'attendre un événement qui
-    // n'existe pas.
+    // The user closing a page warns nobody: we
+    // reread the state periodically rather than wait for an event that
+    // does not exist.
     setInterval(redessiner, 1000);
 }
