@@ -1,65 +1,65 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   MESSAGE — quatre tons : neutre, succès, alerte, danger.
+   MESSAGE — four tones: neutral, success, alert, danger.
 
-   🔴 LE TON NE SE DIT JAMAIS PAR LE FOND, ET C'EST UNE DÉCISION MESURÉE, PAS
-   UNE PRÉFÉRENCE. Le contrôle §7.1 mesure `--succes`, `--alerte` et `--danger`
-   comme des ENCRES sur `--fond-0`, `--fond-1` et `--fond-2` — jamais comme des
-   fonds (`design/contraste.ts`, `ENCRES`/`FONDS`). Un `background:
-   var(--danger)` poserait donc le texte du message sur une couleur dont AUCUNE
-   des 52 paires ne dit rien, et l'état d'erreur — celui qu'un écran de
-   connexion montre le plus souvent — serait le seul du produit non mesuré.
+   🔴 THE TONE IS NEVER EXPRESSED BY THE BACKGROUND, AND IT IS A MEASURED DECISION, NOT
+   A PREFERENCE. Check §7.1 measures `--succes`, `--alerte` and `--danger`
+   as INKS on `--fond-0`, `--fond-1` and `--fond-2` — never as
+   backgrounds (`design/contraste.ts`, `ENCRES`/`FONDS`). A `background:
+   var(--danger)` would therefore set the message text on a colour about which NONE
+   of the 52 pairs says anything, and the error state — the one a sign-in
+   screen shows most often — would be the only unmeasured one in the product.
 
-   *Coût, assumé et écrit* : les quatre tons se distinguent par l'ENCRE et le
-   TRAIT, pas par une plage colorée. C'est cohérent avec le point 3 du §3 — « la
-   hiérarchie se fait par la taille et la valeur, jamais par la couleur » — et
-   avec le point 1, où une couleur sémantique « ne peut apparaître que pour dire
-   un état ». ⚠️ QUE QUATRE TONS AINSI DISTINGUÉS SUFFISENT EST UN JUGEMENT
-   HUMAIN, et il s'ajoute aux huit du §8 : aucune commande ne le dira.
+   *Cost, accepted and written*: the four tones are told apart by the INK and the
+   STROKE, not by a coloured area. It is consistent with point 3 of §3 — "the
+   hierarchy is made by size and value, never by colour" — and
+   with point 1, where a semantic colour "may only appear to express
+   a state". ⚠️ THAT FOUR TONES DISTINGUISHED THIS WAY ARE ENOUGH IS A HUMAN
+   JUDGEMENT, and it adds to the eight of §8: no command will say so.
 
-   ⚠️ ET LA COULEUR SEULE NE PORTE PAS L'INFORMATION : le §3 l'interdit, et le
-   balisage devait donner au message son `role` et son libellé. ✅ S3 L'A FAIT,
-   et cette phrase cesse d'être au futur : **les HUIT bandeaux du produit**
-   portent `role="status"` dans leur HTML — MESURÉ le 31 août 2026,
-   RELANCÉ et non recopié : `client/hub.html` ×4, `client/index.html` ×3,
+   ⚠️ AND COLOUR ALONE DOES NOT CARRY THE INFORMATION: §3 forbids it, and the
+   markup had to give the message its `role` and its label. ✅ S3 DID IT,
+   and this sentence stops being in the future tense: **the EIGHT banners of the product**
+   carry `role="status"` in their HTML — MEASURED on August 31st, 2026,
+   RERUN and not copied: `client/hub.html` ×4, `client/index.html` ×3,
    `client/connexion.html` ×1.
 
-   ⚠️ **CE COMPTE EST CELUI DES BANDEAUX, ET IL A FALLU L'ÉTABLIR PLUTÔT
-   QUE LE SUPPOSER** : `grep -c` compte des LIGNES, pas des éléments, et un
-   compteur qui compte des lignes en croyant compter des événements est un
-   piège que ce dépôt a déjà payé. Les trois relevés ont donc été croisés,
-   et ils COÏNCIDENT : `grep -c 'role="status"'` et
-   `grep -o 'role="status"' | wc -l` rendent les mêmes 4/3/1 (une seule
-   occurrence par ligne), et `grep -o 'class="[^"]*message[^"]*"'` rend
-   les mêmes 4/3/1 aux mêmes lignes. **Chaque élément `.message` porte le
-   rôle, et chaque rôle est porté par un `.message`** — c'est cette égalité
-   qui autorise à dire « les bandeaux » plutôt que « huit attributs ».
-   ⚠️ CETTE PARENTHÈSE DISAIT « `client/shell.html` ×2 » jusqu'à la revue
-   finale du 31 août 2026 : `shell.html` est devenue une redirection SANS
-   AUCUN balisage (tâche 9), et son compte y est désormais ZÉRO — les deux
-   bandeaux ont migré dans le hub. S2 ne livrait que du CSS — il n'ajoutait
-   aucun rôle ARIA, et n'en retirait aucun ; c'est toujours vrai de ce fichier.
+   ⚠️ **THIS COUNT IS THAT OF THE BANNERS, AND IT HAD TO BE ESTABLISHED RATHER
+   THAN ASSUMED**: `grep -c` counts LINES, not elements, and a
+   counter that counts lines believing it counts events is a
+   trap this repository has already paid for. The three reports were therefore cross-checked,
+   and they MATCH: `grep -c 'role="status"'` and
+   `grep -o 'role="status"' | wc -l` return the same 4/3/1 (a single
+   occurrence per line), and `grep -o 'class="[^"]*message[^"]*"'` returns
+   the same 4/3/1 on the same lines. **Each `.message` element carries the
+   role, and each role is carried by a `.message`** — it is this equality
+   that allows saying "the banners" rather than "eight attributes".
+   ⚠️ THIS PARENTHESIS SAID "`client/shell.html` ×2" until the final
+   review of August 31st, 2026: `shell.html` became a redirect WITHOUT
+   ANY markup (task 9), and its count there is now ZERO — the two
+   banners migrated into the hub. S2 only delivered CSS — it added
+   no ARIA role, and removed none; that is still true of this file.
 
-   ⚠️ LE PIRE CAS CONNU DE LA PALETTE EST ICI : `--succes` sur `--fond-2` rend
-   4,59 en clair (spec §4.5), soit 0,09 au-dessus du seuil. Le fond du message
-   est `--fond-1`, pas `--fond-2` — mais la marge est ce qu'elle est, et le
-   §7.1 la mesure à chaque exécution.
+   ⚠️ THE WORST KNOWN CASE OF THE PALETTE IS HERE: `--succes` on `--fond-2` gives
+   4.59 in light (spec §4.5), that is 0.09 above the threshold. The background of the message
+   is `--fond-1`, not `--fond-2` — but the margin is what it is, and
+   §7.1 measures it on every run.
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/* ⚠️ UN BANDEAU VIDE DISPARAÎT, IL NE DEVIENT PAS UN CADRE VIDE. `.message`
-   porte un trait et un fond ; sans cette règle, un bandeau dont le texte a été
-   EFFACÉ — ce que `shell.ts::lecteurDemonte` fait délibérément, et ce qu'est
-   l'état initial des trois bandeaux du produit — laisserait un rectangle bordé
-   sans texte, et l'effacement que ce vide existe pour dire se lirait comme un
-   défaut d'affichage.
+/* ⚠️ AN EMPTY BANNER DISAPPEARS, IT DOES NOT BECOME AN EMPTY FRAME. `.message`
+   carries a stroke and a background; without this rule, a banner whose text was
+   ERASED — which `shell.ts::lecteurDemonte` does deliberately, and which is
+   the initial state of the three banners of the product — would leave a bordered
+   rectangle without text, and the erasure this emptiness exists to express would read as a
+   display defect.
 
-   🔴 ELLE EST MONTÉE ICI PLUTÔT QU'ÉCRITE DEUX FOIS. Le sous-bloc S3 en avait
-   besoin à l'identique dans `shell.css` et dans `connexion.css` ; le §6.3 de
-   son plan exige qu'une règle écrite pareil dans les deux feuilles de surface
-   remonte dans les primitives. ⚠️ DIVERGENCE DÉCLARÉE : le plan nommait
-   `primitives/surface.css` comme point de chute ; celle-ci porte sur la
-   famille `message`, et c'est ici qu'elle se lit auprès de ce qu'elle décrit.
-   Aucune des quatre familles ne change d'apparence : la galerie
-   `primitives.html` n'a aucun `.message` vide, vérifié avant l'écriture. */
+   🔴 IT WAS MOVED UP HERE RATHER THAN WRITTEN TWICE. Sub-block S3 needed
+   it identically in `shell.css` and in `connexion.css`; §6.3 of
+   its plan requires a rule written the same in both surface sheets
+   to move up into the primitives. ⚠️ DECLARED DIVERGENCE: the plan named
+   `primitives/surface.css` as the landing point; this one is about the
+   `message` family, and it is here that it reads next to what it describes.
+   None of the four families changes appearance: the
+   `primitives.html` gallery has no empty `.message`, checked before writing. */
 .message:empty {
     display: none;
 }
@@ -75,36 +75,36 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   `.message--flottant` — LE BANDEAU POSÉ SUR LA VIDÉO (sous-bloc S4, tâche 5).
+   `.message--flottant` — THE BANNER LAID OVER THE VIDEO (sub-block S4, task 5).
 
-   🔴 IL RÉSOUT UNE CONTRADICTION DE LA SPEC, ET LA SPEC NE LA VOIT PAS. Son §6
-   demande « la reprise des trois bandeaux sur les primitives *message* » ; son
-   §5.2 exige que ces bandeaux-ci portent `--voile-flottant`, « d'où
-   `--voile-flottant`, qui est l'exception nommée au point 2 de §3 ». Or
-   `.message` pose `background: var(--fond-1)`, un fond OPAQUE qui suit le
-   thème : `.message` nue sur `#status` mettrait, en thème clair, un panneau
-   clair et opaque au-dessus d'une image vidéo — exactement ce que
-   `tokens.css:81-84` interdit en une phrase, « un encadrement clair autour
-   d'une image vidéo se lit comme un défaut d'affichage ».
+   🔴 IT RESOLVES A CONTRADICTION OF THE SPEC, AND THE SPEC DOES NOT SEE IT. Its §6
+   asks for "the rework of the three banners on the *message* primitives"; its
+   §5.2 requires these banners to carry `--voile-flottant`, "hence
+   `--voile-flottant`, which is the exception named in point 2 of §3". Yet
+   `.message` sets `background: var(--fond-1)`, an OPAQUE background that follows the
+   theme: a bare `.message` on `#status` would put, in light theme, a
+   light and opaque panel over a video image — exactly what
+   `tokens.css:81-84` forbids in one sentence, "a light frame around
+   a video image reads as a display defect".
 
-   La variante tient les DEUX : elle hérite de `.message` son remplissage, son
-   rayon, son interligne et sa règle `:empty`, et ne remplace que ce qui doit
-   l'être. RÉSOUDRE, jamais abandonner l'une des deux exigences.
+   The variant holds BOTH: it inherits from `.message` its padding, its
+   radius, its line height and its `:empty` rule, and only replaces what must
+   be. RESOLVE, never abandon one of the two requirements.
 
-   ⚠️ `transparent` EST L'UN DES QUATRE MOTS-CLÉS QUE §7.2 AUTORISE, avec
-   `currentColor`, `inherit` et `none` : la bordure de `.message` reste PRÉSENTE
-   — donc la géométrie ne bouge pas — et cesse d'être visible sur la vidéo.
+   ⚠️ `transparent` IS ONE OF THE FOUR KEYWORDS §7.2 ALLOWS, with
+   `currentColor`, `inherit` and `none`: the border of `.message` stays PRESENT
+   — so the geometry does not move — and stops being visible over the video.
 
-   ⚠️ ELLE VIT ICI PLUTÔT QUE DANS `style.css`, et c'est l'arbitrage que S3 a
-   rendu pour `.message:empty` : une règle qui décrit la famille remonte dans la
-   famille. Le coût est qu'un lecteur de `style.css` ne voit pas cette règle ;
-   le gain est qu'elle ne peut pas diverger d'une surface à l'autre le jour où
-   une seconde surface pose un bandeau sur une image.
+   ⚠️ IT LIVES HERE RATHER THAN IN `style.css`, and it is the trade-off S3
+   made for `.message:empty`: a rule that describes the family moves up into the
+   family. The cost is that a reader of `style.css` does not see this rule;
+   the gain is that it cannot diverge from one surface to another the day
+   a second surface sets a banner over an image.
 
-   ⚠️ ELLE N'OUVRE AUCUNE CINQUIÈME FAMILLE : les familles sont dérivées des
-   FICHIERS de `client/src/design/primitives/` (`classes-employees.mjs`), et
-   cette variante n'en crée aucun. Un fichier de plus dans ce répertoire créerait
-   une famille que §7.9 ③ B exigerait de la galerie — à savoir avant d'y écrire.
+   ⚠️ IT OPENS NO FIFTH FAMILY: the families are derived from the
+   FILES of `client/src/design/primitives/` (`classes-employees.mjs`), and
+   this variant creates none. One more file in this directory would create
+   a family that §7.9 ③ B would require from the gallery — to know before writing there.
    ═══════════════════════════════════════════════════════════════════════════ */
 .message--flottant {
     border-color: transparent;

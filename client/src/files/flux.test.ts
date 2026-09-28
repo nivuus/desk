@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { SEUIL_TAMPON, contrePression, type CanalSortant } from './flux';
 
-/** Un canal en mémoire dont on pilote le tampon et l'état. */
+/** An in-memory channel whose buffer and state we drive. */
 function fauxCanal(): CanalSortant & {
     poser(octets: number): void;
     fermer(): void;
@@ -46,14 +46,14 @@ function fauxCanal(): CanalSortant & {
 }
 
 /**
- * Une promesse est-elle résolue au tour suivant de la boucle d'événements ?
+ * Is a promise resolved on the next turn of the event loop?
  *
- * ⚠️ **UN `setTimeout` ET NON UN `Promise.resolve`**, et la première rédaction
- * s'y est trompée : `Promise.resolve(marque)` gagne la course même contre une
- * promesse DÉJÀ résolue, parce que le `.then` de celle-ci ajoute un tour de
- * micro-tâche. Le contrôle rendait alors `false` pour tout le monde — six tests
- * rouges sur huit, dont ceux qui devaient être verts. **Un témoin qui ne peut
- * pas rendre `true` n'éprouve rien.**
+ * ⚠️ **A `setTimeout` AND NOT A `Promise.resolve`**, and the first draft
+ * got it wrong: `Promise.resolve(marque)` wins the race even against an
+ * ALREADY resolved promise, because the latter's `.then` adds a
+ * microtask turn. The check then returned `false` for everyone — six tests
+ * red out of eight, including those that should be green. **A witness that cannot
+ * return `true` exercises nothing.**
  */
 async function resolue(p: Promise<unknown>): Promise<boolean> {
     const marque = Symbol('en-attente');
@@ -63,8 +63,8 @@ async function resolue(p: Promise<unknown>): Promise<boolean> {
 
 describe('back-pressure', () => {
     it('sets `bufferedAmountLowThreshold` at construction', () => {
-        // ⚠️ La spec §3.4 l'exige (« posé ») ; `canal.ts` ne le posait PAS
-        // avant F3 — il ne passait que `{ ordered: true }`.
+        // ⚠️ Spec §3.4 requires it ("set"); `canal.ts` did NOT set it
+        // before F3 — it only passed `{ ordered: true }`.
         const c = fauxCanal();
         contrePression(c);
         expect(c.bufferedAmountLowThreshold).toBe(SEUIL_TAMPON);
@@ -78,8 +78,8 @@ describe('back-pressure', () => {
     });
 
     it('🔴 does NOT send while the buffer exceeds the threshold', async () => {
-        // Rouge : envoyer quand même. Le faux voit `bufferedAmount` croître sans
-        // borne, et le canal devient la source de latence de tout le reste.
+        // Red: sending anyway. The fake sees `bufferedAmount` grow without
+        // bound, and the channel becomes the source of latency for everything else.
         const c = fauxCanal();
         const cp = contrePression(c);
         c.poser(SEUIL_TAMPON * 4);
@@ -91,9 +91,9 @@ describe('back-pressure', () => {
     });
 
     it('🔴 `bufferedamountlow` releases the wait', async () => {
-        // Rouge : ne pas s'y abonner. **L'ATTENTE NE SE TERMINE JAMAIS, et le
-        // pont expire** — un blocage PIRE que celui qu'on répare, puisqu'il
-        // fige la page au lieu de ralentir un transfert.
+        // Red: not subscribing to it. **THE WAIT NEVER ENDS, and the
+        // bridge times out** — a block WORSE than the one being fixed, since it
+        // freezes the page instead of slowing a transfer down.
         const c = fauxCanal();
         const cp = contrePression(c);
         c.poser(SEUIL_TAMPON * 2);
@@ -104,9 +104,9 @@ describe('back-pressure', () => {
     });
 
     it('🔴 a channel CLOSED during the wait does not stay suspended', async () => {
-        // Rouge : ne pas traiter `close`. Un canal fermé n'émettra plus jamais
-        // `bufferedamountlow` : une lecture en cours figerait la page à la
-        // fermeture de l'onglet distant.
+        // Red: not handling `close`. A closed channel will never again emit
+        // `bufferedamountlow`: a read in progress would freeze the page when
+        // the remote tab closes.
         const c = fauxCanal();
         const cp = contrePression(c);
         c.poser(SEUIL_TAMPON * 2);
@@ -125,9 +125,9 @@ describe('back-pressure', () => {
     });
 
     it('🔴 BOTH LISTENERS ARE REMOVED, whichever one wins', async () => {
-        // 🔴 C'est le défaut relevé de l'ancien pont : un écouteur posé PAR
-        // REQUÊTE et jamais retiré (`src/file.js:155`), dont le coût croissait
-        // avec le nombre d'opérations passées, indéfiniment.
+        // 🔴 It is the observed defect of the old bridge: a listener set PER
+        // REQUEST and never removed (`src/file.js:155`), whose cost grew
+        // with the number of past operations, indefinitely.
         const c = fauxCanal();
         const cp = contrePression(c);
         for (let i = 0; i < 5; i += 1) {
@@ -141,14 +141,14 @@ describe('back-pressure', () => {
     });
 
     it('🔴 the buffer that drops BETWEEN the test and the subscription does not suspend forever', async () => {
-        // La course classique de tout mécanisme « tester puis attendre » :
-        // l'événement passe pendant qu'on s'abonne, et l'attente ne se termine
-        // jamais. Rouge : retirer le re-contrôle qui suit l'abonnement.
+        // The classic race of any "test then wait" mechanism:
+        // the event goes by while we subscribe, and the wait never
+        // ends. Red: removing the re-check that follows the subscription.
         const c = fauxCanal();
         const cp = contrePression(c);
         c.poser(SEUIL_TAMPON * 2);
-        // Le tampon se vide au moment EXACT de l'abonnement, sans émettre —
-        // c'est ce que fait un événement déjà passé.
+        // The buffer empties at the EXACT moment of the subscription, without emitting —
+        // which is what an event that already went by does.
         const vrai = c.addEventListener.bind(c);
         c.addEventListener = (type, e) => {
             vrai(type, e);

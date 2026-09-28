@@ -1,34 +1,34 @@
-// Le jeton de recette : comment les pilotes CDP du chantier D continuent de se
-// connecter maintenant que la poignée de main `client` est gardée (P2, E6).
+// The acceptance token: how the CDP drivers of project D keep
+// connecting now that the `client` handshake is guarded (P2, E6).
 //
-// 🔴 LE JETON EST OBTENU DE LA PLATEFORME, JAMAIS FORGÉ ICI. Un script qui
-// signerait lui-même son jeton porterait le secret de signature du service
-// (`PLATEFORME_SECRET_JETON`) dans un fichier versionné ou dans l'argv d'un
-// processus : le trou serait DÉPLACÉ, pas fermé. Ce module ne sait donc rien
-// signer — il sait appeler `POST /auth/connexion`, et rien de plus.
+// 🔴 THE TOKEN IS OBTAINED FROM THE PLATFORM, NEVER FORGED HERE. A script that
+// signed its own token would carry the service's signing secret
+// (`PLATEFORME_SECRET_JETON`) in a versioned file or in the argv of a
+// process: the hole would be MOVED, not closed. This module therefore knows how to sign
+// nothing — it knows how to call `POST /auth/connexion`, and nothing more.
 //
-// 🔴 LE MOT DE PASSE VIENT DE L'ENVIRONNEMENT, JAMAIS D'UN FICHIER VERSIONNÉ.
-// Le compte de recette se crée par la ligne de commande d'administration
-// (`plateforme/src/admin/creer-utilisateur.ts`), qui lit lui aussi son mot de
-// passe sur l'entrée standard et refuse un `--mot-de-passe` en argv.
+// 🔴 THE PASSWORD COMES FROM THE ENVIRONMENT, NEVER FROM A VERSIONED FILE.
+// The acceptance account is created by the administration command line
+// (`plateforme/src/admin/creer-utilisateur.ts`), which also reads its
+// password on standard input and refuses a `--mot-de-passe` in argv.
 //
-// ⚠️ ABSENCE DE CONFIGURATION = AVERTISSEMENT BRUYANT, PAS ÉCHEC. Ces trois
-// outils ne sont pas des critères de P2 ; ils peuvent être lancés contre un
-// service qui n'a pas la garde. Ce qui serait inacceptable, c'est un silence :
-// sans les variables, on le DIT, en nommant ce qui manque, et la session sera
-// refusée si le service a la garde. En revanche, des identifiants POSÉS mais
-// REFUSÉS lèvent — c'est un défaut réel, et l'avaler ferait diagnostiquer le
-// refus de la garde à la place du mauvais mot de passe.
+// ⚠️ MISSING CONFIGURATION = LOUD WARNING, NOT FAILURE. These three
+// tools are not P2 criteria; they may be run against a
+// service that does not have the guard. What would be unacceptable is silence:
+// without the variables, we SAY so, naming what is missing, and the session will be
+// refused if the service has the guard. On the other hand, credentials SET but
+// REFUSED throw — it is a real defect, and swallowing it would make one diagnose the
+// guard's refusal instead of the wrong password.
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-/// Les clés du coffre du navigateur. Elles sont écrites ici ET dans
-/// `client/src/jeton.ts` — deux langages, aucun `import` possible entre eux.
-/// C'est exactement la façon dont deux constantes divergent en silence, donc
-/// `verifierLesCles()` ci-dessous relit le fichier TypeScript et refuse de
-/// semer si les valeurs ne correspondent plus.
+/// The keys of the browser store. They are written here AND in
+/// `client/src/jeton.ts` — two languages, no `import` possible between them.
+/// It is exactly how two constants silently diverge, so
+/// `verifierLesCles()` below re-reads the TypeScript file and refuses to
+/// seed if the values no longer match.
 const CLE_ACCES = 'guac.jeton.acces';
 const CLE_RAFRAICHISSEMENT = 'guac.jeton.rafraichissement';
 
@@ -50,7 +50,7 @@ function verifierLesCles() {
     }
 }
 
-/// La configuration du compte de recette, ou `undefined` si elle est absente.
+/// The configuration of the acceptance account, or `undefined` if it is absent.
 export function configurationRecette(env = process.env) {
     const email = env.RECETTE_EMAIL;
     const motdepasse = env.RECETTE_MOTDEPASSE;
@@ -62,8 +62,8 @@ export function configurationRecette(env = process.env) {
     };
 }
 
-/// Obtient une paire de jetons de la plateforme. LÈVE si le service refuse ou
-/// ne répond pas : voir l'en-tête.
+/// Gets a pair of tokens from the platform. THROWS if the service refuses or
+/// does not answer: see the header.
 export async function obtenirPaire(config) {
     const reponse = await fetch(`${config.plateformeUrl}/auth/connexion`, {
         method: 'POST',
@@ -81,16 +81,16 @@ export async function obtenirPaire(config) {
     return { acces: corps.acces, rafraichissement: corps.rafraichissement };
 }
 
-/// Sème la paire dans le `localStorage` de toute page à venir.
+/// Seeds the pair into the `localStorage` of any page to come.
 ///
-/// ⚠️ `Page.addScriptToEvaluateOnNewDocument` NE COURT PAS sur une page ouverte
-/// par `window.open` — piège mesuré au sous-bloc D5. Les trois pilotes
-/// naviguent directement, donc ils ne sont pas concernés ; mais c'est bien
-/// pourquoi le jeton doit vivre dans `localStorage`, partagé entre les onglets
-/// d'une même origine, plutôt que dans une variable injectée que les fenêtres
-/// ouvertes par la page-shell ne verraient jamais.
+/// ⚠️ `Page.addScriptToEvaluateOnNewDocument` DOES NOT RUN on a page opened
+/// by `window.open` — a trap measured in sub-block D5. The three drivers
+/// navigate directly, so they are not affected; but that is indeed
+/// why the token must live in `localStorage`, shared between the tabs
+/// of the same origin, rather than in an injected variable that windows
+/// opened by the shell page would never see.
 ///
-/// Rend `true` si le jeton a été semé, `false` s'il n'y avait rien à semer.
+/// Returns `true` if the token was seeded, `false` if there was nothing to seed.
 export async function semerJeton(cdp, env = process.env) {
     const config = configurationRecette(env);
     if (!config) {
@@ -110,9 +110,9 @@ export async function semerJeton(cdp, env = process.env) {
                 localStorage.setItem(${JSON.stringify(CLE_ACCES)}, ${JSON.stringify(paire.acces)});
                 localStorage.setItem(${JSON.stringify(CLE_RAFRAICHISSEMENT)}, ${JSON.stringify(paire.rafraichissement)});
             } catch (e) {
-                // \`about:blank\` et les origines opaques n'ont pas de stockage
-                // accessible : y échouer est normal, et lever ici tuerait la
-                // page avant même la navigation vers l'origine réelle.
+                // \`about:blank\` and opaque origins have no accessible
+                // storage: failing there is normal, and throwing here would kill the
+                // page before the navigation to the real origin even happens.
             }
         `,
     });

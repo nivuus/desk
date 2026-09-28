@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { nettoyerOrigin } from '../public/lib/reset-origin.js';
 
-// Faux `navigator.serviceWorker` : deux enregistrements, dont un de l'ancienne app.
+// Fake `navigator.serviceWorker`: two registrations, one of which from the old app.
 function fauxServiceWorker(portees) {
     const desenregistres = [];
     return {

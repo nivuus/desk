@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { baliseManifesteHub } from './manifeste-hub-greffon';
 
-/// 🔴 C'EST LA RÉGRESSION ELLE-MÊME, REJOUÉE. Mesuré le 29 août 2026
-/// (`https://app.allanic.me/hub.html`, Chrome, console du propriétaire) : un
-/// `<link rel="manifest">` SANS `crossorigin` part sans cookies, Pomerium
-/// répond par une redirection vers `authenticate.allanic.me`, et la CSP
-/// bloque le chargement d'une autre origine — visible sous
-/// `default-src 'self'`. Ce test échoue si quiconque retire l'attribut.
+/// 🔴 THIS IS THE REGRESSION ITSELF, REPLAYED. Measured on August 29th, 2026
+/// (`https://app.allanic.me/hub.html`, Chrome, owner's console): a
+/// `<link rel="manifest">` WITHOUT `crossorigin` goes out without cookies, Pomerium
+/// answers with a redirect to `authenticate.allanic.me`, and the CSP
+/// blocks loading from another origin — visible under
+/// `default-src 'self'`. This test fails if anyone removes the attribute.
 describe('the hub <link rel="manifest"> tag carries crossorigin="use-credentials"', () => {
     it('otherwise the manifest goes out without cookies and Pomerium redirects to another origin', () => {
         const balise = baliseManifesteHub();

@@ -64,7 +64,7 @@ export interface DepsTeleversement {
     /// The identifier of an upload to RESUME. Absent, we create.
     reprise?: string;
 }
-/* ── LES ISSUES ───────────────────────────────────────────────────────── */
+/* ── THE OUTCOMES ─────────────────────────────────────────────────────── */
 
 export type MotifLocal = 'fichier-different' | 'tranches-incoherentes' | 'etat-illisible' | 'interrompu';
 export type Etape = 'creation' | 'etat' | 'tranche' | 'scellement';

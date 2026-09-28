@@ -1,16 +1,16 @@
-// Tests de l'écran plein cadre des états terminaux — sous-bloc S4, tâche 9.
+// Tests of the full-frame screen of terminal states — sub-block S4, task 9.
 //
-// ⚠️ ILS EXERCENT LE ROUTAGE AUTANT QUE L'ÉCRAN, et c'est le point : ce qui
-// peut casser n'est pas « l'écran sait s'afficher » mais « il s'affiche pour
-// les BONS messages ». Les trois premiers passent donc par `createStatus`, avec
-// l'écran injecté, comme le produit le fait.
+// ⚠️ THEY EXERCISE THE ROUTING AS MUCH AS THE SCREEN, and that is the point: what
+// can break is not "the screen can display itself" but "it displays for
+// the RIGHT messages". The first three therefore go through `createStatus`, with
+// the screen injected, as the product does.
 //
-// 🔴 LE SENS QUI COMPTE EST L'INVERSE. Un écran qui se lèverait à TOUT message
-// passerait le premier test ; ce sont le deuxième et le troisième qui
-// l'attrapent. C'est la même dissymétrie que `status.test.ts` garde sur la
-// protection terminale.
+// 🔴 THE DIRECTION THAT MATTERS IS THE REVERSE. A screen that rose on ANY message
+// would pass the first test; it is the second and the third that
+// catch it. It is the same asymmetry `status.test.ts` guards on the
+// terminal protection.
 //
-// Sans DOM, par injection, comme `status.test.ts` et `audio.test.ts`.
+// Without a DOM, by injection, like `status.test.ts` and `audio.test.ts`.
 
 import { describe, expect, it } from 'vitest';
 
@@ -38,8 +38,8 @@ describe('terminal screen', () => {
         statut.show('session ended: close requested', { terminal: true });
 
         expect(cible.racine.hidden).toBe(false);
-        // Le TEXTE, pas seulement la visibilité : un écran levé et vide passerait
-        // une assertion qui ne regarderait que `hidden`.
+        // The TEXT, not only the visibility: a raised and empty screen would pass
+        // an assertion that only looked at `hidden`.
         expect(cible.raison.textContent).toBe('session ended: close requested');
         expect(cible.titre.textContent).toBe('Session ended');
     });
@@ -58,9 +58,9 @@ describe('terminal screen', () => {
         const { cible, ecran } = faireEcran();
         const statut = createStatus(faireBandeau(), ecran);
 
-        // Le sommeil et le lien dégradé passent par ici : ils DURENT, mais ils
-        // ne terminent rien, et l'écran plein cadre masquerait une session
-        // parfaitement vivante.
+        // Sleep and a degraded link go through here: they LAST, but they
+        // end nothing, and the full-frame screen would hide a perfectly
+        // alive session.
         statut.show('image frozen: window hidden', { persistant: true });
 
         expect(cible.racine.hidden).toBe(true);
@@ -89,15 +89,15 @@ describe('terminal screen', () => {
         });
 
         expect(cible.raison.textContent).toBe('session ended: close requested');
-        // La classe est RÉÉCRITE, pas cumulée : sans quoi l'écran garderait le
-        // rouge d'un échec sous le libellé d'une fin normale.
+        // The class is REWRITTEN, not accumulated: otherwise the screen would keep the
+        // red of a failure under the label of a normal end.
         expect(cible.raison.className).toBe('message');
         expect(cible.titre.textContent).toBe('Session ended');
     });
 
     it('⑥ without an injected screen, a terminal message breaks nothing', () => {
-        // La cible est OPTIONNELLE : c'est ce qui laisse les onze tests de
-        // `status.test.ts` passer inchangés, et c'est le comportement d'avant S4.
+        // The target is OPTIONAL: that is what lets the eleven tests of
+        // `status.test.ts` pass unchanged, and it is the behaviour from before S4.
         const bandeau = faireBandeau();
         const statut = createStatus(bandeau);
 

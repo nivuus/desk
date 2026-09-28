@@ -3,11 +3,11 @@ import { cibleDeRedirection } from './redirection';
 
 describe('cibleDeRedirection', () => {
     it('keeps the query string', () => {
-        // 🔴 LE POINT DE TOUTE LA TACHE : les PWA DEJA installees portent
-        // `shell.html?app=<id>` dans leur id (fige, jamais mis a jour -- voir
-        // hub/manifeste.ts), pas dans start_url depuis ce lot, et le
-        // manifeste blob: qu elles portent ne sera jamais relu. Perdre
-        // `?app=` les casserait aussi surement que supprimer le fichier.
+        // 🔴 THE POINT OF THE WHOLE TASK: ALREADY installed PWAs carry
+        // `shell.html?app=<id>` in their id (frozen, never updated -- see
+        // hub/manifeste.ts), not in start_url since this batch, and the
+        // blob: manifest they carry will never be read again. Losing
+        // `?app=` would break them as surely as deleting the file.
         expect(cibleDeRedirection('?app=u-1')).toBe('/?app=u-1');
     });
 

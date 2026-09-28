@@ -9,14 +9,14 @@ import {
 } from './mutation';
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   UN FAUX SYSTÈME DE FICHIERS MUTABLE, EN DEUX VARIANTES
+   A MUTABLE FAKE FILE SYSTEM, IN TWO VARIANTS
 
-   🔵 L'UNE EXPOSE `move()`, L'AUTRE NON — et c'est ce qui rend les DEUX
-   branches du renommage vertes sur l'hôte. Un type qui imposerait `move()`
-   rendrait le repli INATTEIGNABLE par un test.
+   🔵 ONE EXPOSES `move()`, THE OTHER DOES NOT — and that is what makes BOTH
+   branches of the rename green on the host. A type that required `move()`
+   would make the fallback UNREACHABLE by a test.
 
-   🔵 ET L'UNE EST INSENSIBLE À LA CASSE, comme le poste local réel (Windows,
-   macOS par défaut) — la seule façon d'éprouver ici le renommage de casse pure.
+   🔵 AND ONE IS CASE-INSENSITIVE, like the real local workstation (Windows,
+   macOS by default) — the only way to exercise a pure case rename here.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 interface Noeud {
@@ -36,9 +36,9 @@ interface Compteurs {
 }
 
 interface Options {
-    /** `move()` est-elle exposée ? */
+    /** Is `move()` exposed? */
     withMove: boolean;
-    /** Le système de fichiers est-il INSENSIBLE à la casse ? */
+    /** Is the file system case-INSENSITIVE? */
     insensible: boolean;
     compteurs: Compteurs;
 }
@@ -47,7 +47,7 @@ function absent(nom: string): never {
     throw new DOMException(`« ${nom} » cannot be found`, 'NotFoundError');
 }
 
-/** Trouve la clé réelle, en tenant compte de la sensibilité à la casse. */
+/** Finds the real key, taking case sensitivity into account. */
 function cle(m: Map<string, unknown>, nom: string, o: Options): string | undefined {
     if (m.has(nom)) return nom;
     if (!o.insensible) return undefined;
@@ -102,8 +102,8 @@ function repertoire(n: Noeud, o: Options): RacineMutable {
             const kd = cle(n.dossiers, nom, o);
             if (kd === undefined) absent(nom);
             const enfant = n.dossiers.get(kd)!;
-            // ⚠️ SANS `recursive` : un répertoire non vide est REFUSÉ, et le
-            // navigateur réel lève exactement cette `DOMException`.
+            // ⚠️ WITHOUT `recursive`: a non-empty directory is REFUSED, and the
+            // real browser throws exactly this `DOMException`.
             if (enfant.files.size > 0 || enfant.dossiers.size > 0) {
                 throw new DOMException(`« ${nom} » is not empty`, 'InvalidModificationError');
             }
@@ -111,7 +111,7 @@ function repertoire(n: Noeud, o: Options): RacineMutable {
         },
     };
     if (o.withMove) {
-        // Le faux `move()` d'un RÉPERTOIRE. Il ÉCRASE, comme le vrai.
+        // The fake `move()` of a DIRECTORY. It OVERWRITES, like the real one.
         (self as { move?: unknown }).move = async (): Promise<void> => {
             throw new Error('directory move() is not exercised by this fake');
         };
@@ -193,8 +193,8 @@ const OCTETS = new Uint8Array([1, 2, 3, 4, 5]);
 
 describe('the rename WITH move()', () => {
     it('🔴 is ONE call and copies NOTHING', async () => {
-        // Rouge : appeler le repli quand même. Le faux compte ses lectures et
-        // ses écritures, et le coût de la spec §3.5.1 redeviendrait vrai.
+        // Red: calling the fallback anyway. The fake counts its reads and
+        // its writes, and the cost of spec §3.5.1 would become true again.
         const m = monde((r) => r.files.set('a.txt', OCTETS), { withMove: true });
         const trace = await renommer(m.racine, 'a.txt', 'b.txt', false);
         expect(trace.parMove).toBe(true);
@@ -218,10 +218,10 @@ describe('the rename WITHOUT move() — the LOCAL fallback', () => {
     });
 
     it('🔴 renames a directory containing a SUB-DIRECTORY', async () => {
-        // 🔴 C'EST LE DÉFAUT DE L'ANCIEN PONT, `web/index.js:631` : une zone
-        // morte temporelle (`const newDir = await newDir.getDirectoryHandle(…)`
-        // dans le bloc où `newDir` est le paramètre) fait que le renommage d'un
-        // répertoire contenant un sous-répertoire y échoue TOUJOURS.
+        // 🔴 IT IS THE DEFECT OF THE OLD BRIDGE, `web/index.js:631`: a temporal
+        // dead zone (`const newDir = await newDir.getDirectoryHandle(…)`
+        // in the block where `newDir` is the parameter) makes renaming a
+        // directory containing a subdirectory ALWAYS fail there.
         const m = monde((r) => {
             const projet = noeud();
             const sub = noeud();
@@ -239,22 +239,22 @@ describe('the rename WITHOUT move() — the LOCAL fallback', () => {
     });
 
     it('🔴 NO byte goes through the channel', async () => {
-        // Rouge : orchestrer la copie par `Lire` + `Write` depuis le pont. Le
-        // coût de la spec §3.5.1 — « 2 Gio de canal pour 1 Gio » — redeviendrait
-        // vrai. Ce module ne reçoit AUCUN canal : la couture n'existe pas, et
-        // c'est ce qui le garantit structurellement.
+        // Red: orchestrating the copy with `Lire` + `Write` from the bridge. The
+        // cost of spec §3.5.1 — "2 GiB of channel for 1 GiB" — would become
+        // true again. This module receives NO channel: the seam does not exist, and
+        // that is what guarantees it structurally.
         const m = monde((r) => r.files.set('a.txt', OCTETS));
         await renommer(m.racine, 'a.txt', 'b.txt', false);
-        // Les octets ont bien transité — LOCALEMENT, entre deux poignées.
+        // The bytes did travel — LOCALLY, between two handles.
         expect(m.compteurs.octetsCopies).toBe(5);
-        // Et `renommer` n'a jamais eu de canal à qui parler : sa signature ne
-        // porte que la racine.
+        // And `renommer` never had a channel to talk to: its signature only
+        // carries the root.
         expect(renommer.length).toBe(4);
     });
 
     it('🔴 an interrupted copy leaves the SOURCE intact', async () => {
-        // Rouge : supprimer la source AVANT la fin de la copie. Une coupure
-        // perdrait alors le fichier.
+        // Red: removing the source BEFORE the copy ends. A cut
+        // would then lose the file.
         const m = monde((r) => r.files.set('a.txt', OCTETS));
         const parent = m.racine as RacineMutable & {
             getFileHandle: RacineMutable['getFileHandle'];
@@ -273,9 +273,9 @@ describe('the rename WITHOUT move() — the LOCAL fallback', () => {
 
 describe('the PURE CASE rename', () => {
     it('🔴 goes through an intermediate name on an INSENSITIVE host', async () => {
-        // Rouge : renommer directement. Sur le faux insensible, la destination
-        // « existe déjà » — et c'est la source. Une implémentation naïve refuse
-        // (`deja-present`) ou, pire, écrase.
+        // Red: renaming directly. On the insensitive fake, the destination
+        // "already exists" — and it is the source. A naive implementation refuses
+        // (`deja-present`) or, worse, overwrites.
         const m = monde((r) => r.files.set('a.txt', OCTETS), { insensible: true });
         await renommer(m.racine, 'a.txt', 'A.txt', false);
         expect([...m.arbre.files.keys()]).toEqual(['A.txt']);
@@ -291,9 +291,9 @@ describe('the PURE CASE rename', () => {
 
 describe('the rename refusals', () => {
     it('🔴 refuses to OVERWRITE an existing destination', async () => {
-        // `move()` écrase silencieusement : sans la résolution préalable,
-        // renommer `brouillon.txt` en `note.txt` détruirait `note.txt` sans un
-        // mot.
+        // `move()` overwrites silently: without resolving first,
+        // renaming `brouillon.txt` to `note.txt` would destroy `note.txt` without a
+        // word.
         const m = monde((r) => {
             r.files.set('brouillon.txt', OCTETS);
             r.files.set('note.txt', new Uint8Array([7]));
@@ -340,12 +340,12 @@ describe('la suppression', () => {
     });
 
     it('🔴 a NON-EMPTY directory returns `repertoire-non-vide`, and nothing is destroyed', async () => {
-        // Rouge : passer `recursive: true`. **Le sous-arbre du poste local
-        // disparaîtrait**, et le test ne pourrait plus le voir.
+        // Red: passing `recursive: true`. **The local workstation's subtree
+        // would disappear**, and the test could no longer see it.
         //
-        // 🔵 Et le code devient DIAGNOSTIQUE : le recevoir signifie que le
-        // miroir a dérivé — le poste local porte des entrées que la VM ne
-        // connaît pas.
+        // 🔵 And the code becomes DIAGNOSTIC: receiving it means that the
+        // mirror has drifted — the local workstation carries entries the VM does
+        // not know.
         const m = monde((r) => {
             const d = noeud();
             d.files.set('inconnu-de-la-vm.txt', OCTETS);
@@ -358,10 +358,10 @@ describe('la suppression', () => {
     });
 
     it('🔴 `InvalidModificationError` does NOT become `deja-present` here', async () => {
-        // La MÊME `DOMException` veut dire deux choses selon le verbe : « une
-        // entrée du même nom existe » sur une création (ce que F2 a écrit dans
-        // `classer`), « le répertoire n'est pas vide » sur un `removeEntry`.
-        // La classification est faite là où le verbe est connu.
+        // The SAME `DOMException` means two things depending on the verb: "an
+        // entry of the same name exists" on a creation (what F2 wrote in
+        // `classer`), "the directory is not empty" on a `removeEntry`.
+        // The classification is done where the verb is known.
         const m = monde((r) => {
             const d = noeud();
             d.files.set('x', OCTETS);
@@ -387,10 +387,10 @@ describe('la suppression', () => {
 
 describe('removing the source tree, after a copy fallback', () => {
     it('🔴 does NOT carry away an entry that appeared in the meantime: it FAILS, source intact', async () => {
-        // 🔵 C'est ce qui rend le retrait feuille à feuille PLUS SÛR que
-        // `recursive: true`, et pas seulement plus verbeux : on ne retire que
-        // ce que la copie vient d'énumérer. Une entrée apparue depuis fait
-        // échouer le retrait, au lieu d'être détruite en silence.
+        // 🔵 That is what makes leaf-by-leaf removal SAFER than
+        // `recursive: true`, and not only more verbose: we only remove
+        // what the copy has just enumerated. An entry that appeared since makes
+        // the removal fail, instead of being destroyed silently.
         const m = monde((r) => {
             const d = noeud();
             d.files.set('connu.txt', OCTETS);
@@ -402,14 +402,14 @@ describe('removing the source tree, after a copy fallback', () => {
         };
         const vrai = racine.removeEntry.bind(racine);
         racine.removeEntry = async (nom) => {
-            // Juste AVANT que `retirerArbre` ne retire le répertoire — qu'il
-            // vient de vider —, une entrée apparaît sur le poste local, comme
-            // si l'utilisateur venait d'y déposer un fichier.
+            // Just BEFORE `retirerArbre` removes the directory — which it
+            // has just emptied —, an entry appears on the local workstation, as
+            // if the user had just dropped a file there.
             if (nom === 'd') source.files.set('surgi.txt', new Uint8Array([42]));
             return vrai(nom);
         };
         await expect(renommer(m.racine, 'd', 'e', true)).rejects.toBeInstanceOf(FilesError);
-        // La source EXISTE toujours, et l'entrée surgie n'a pas été détruite.
+        // The source still EXISTS, and the entry that popped up was not destroyed.
         expect(m.arbre.dossiers.has('d')).toBe(true);
         expect(m.arbre.dossiers.get('d')!.files.has('surgi.txt')).toBe(true);
     });

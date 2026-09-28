@@ -194,7 +194,7 @@ export function attacherMicro(options: OptionsMicro): Micro {
     };
 }
 
-// ── Le bouton ───────────────────────────────────────────────────────────────
+// ── The button ──────────────────────────────────────────────────────────────
 //
 // Separated from `attacherMicro` for the same reason `attachFullscreen` is from
 // `armerPleinEcran`: the toggle is a state machine that knows no

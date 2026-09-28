@@ -42,9 +42,9 @@ describe('attachVisibilite', () => {
     });
 
     it('does not announce the same state twice', () => {
-        // Le canal de contrôle est fiable et ordonné : réémettre un état
-        // inchangé n'apporterait rien et se paierait à chaque blur/focus
-        // parasite.
+        // The control channel is reliable and ordered: re-emitting an unchanged
+        // state would bring nothing and would be paid for on every spurious
+        // blur/focus.
         const cible = cibleFactice();
         const envoyer = vi.fn(() => true);
         attachVisibilite(cible, envoyer);
@@ -75,19 +75,19 @@ describe('attachVisibilite', () => {
     });
 
     it('retries a refused send on the next signal, instead of losing it', () => {
-        // Défaut corrigé : si le canal n'est pas encore ouvert à l'attache,
-        // `envoyer` rend `false`. Mémoriser `last` malgré cet échec
-        // ferait croire l'état déjà annoncé, et aucun changement de
-        // visibilité ultérieur ne le réémettrait jamais — la fenêtre resterait
-        // endormie pour toujours côté agent, sans aucun symptôme observable.
+        // Fixed defect: if the channel is not open yet at attach time,
+        // `envoyer` returns `false`. Memorising `last` despite this failure
+        // would make the state look already announced, and no later visibility
+        // change would ever re-emit it — the window would stay
+        // asleep forever on the agent side, without any observable symptom.
         const cible = cibleFactice();
         const envoyer = vi.fn(() => false);
         attachVisibilite(cible, envoyer);
         expect(envoyer).toHaveBeenCalledTimes(1);
 
-        // Le canal s'ouvre : le signal suivant doit réémettre le MÊME état
-        // (visible=true, focused=true), pas seulement un état différent —
-        // c'est précisément ce que l'ancienne déduplication empêchait.
+        // The channel opens: the next signal must re-emit the SAME state
+        // (visible=true, focused=true), not only a different state —
+        // it is precisely what the old deduplication prevented.
         envoyer.mockClear();
         envoyer.mockImplementation(() => true);
         cible.declencher('focus');

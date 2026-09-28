@@ -1,45 +1,45 @@
 #!/usr/bin/env node
-// Contrôle §7.4 de la spec ⑥ — LES BLOCS DE THÈME NE DIVERGENT PAS.
+// Check §7.4 of spec ⑥ — THE THEME BLOCKS DO NOT DIVERGE.
 //
-// Il ne porte AUCUNE règle : il lit `tokens/couleurs.css` et délègue à
-// `ecartsEntreBlocs` de `client/src/design/tokens.ts`, qui est typechecké et
-// testé. C'est le point de conception du §7.1 : « un contrôle qui a sa propre
-// copie des valeurs valide sa copie. » Si une condition apparaissait ici,
-// c'est qu'elle serait au mauvais endroit.
+// It carries NO rule: it reads `tokens/couleurs.css` and delegates to
+// `ecartsEntreBlocs` of `client/src/design/tokens.ts`, which is typechecked and
+// tested. It is the design point of §7.1: "a check that has its own
+// copy of the values validates its copy." If a condition appeared here,
+// it would be in the wrong place.
 //
-// 🔴 `tokens/couleurs.css` SEUL, JAMAIS `tokens.css` : depuis l'extraction de
-// la tâche 6 (25 août 2026), les TROIS blocs de thème que ce contrôle compare
-// vivent ENTIÈREMENT dans `tokens/couleurs.css` — `tokens/echelles.css`, son
-// voisin, ne porte qu'un seul bloc `racine` sans thème. Lui donner les deux
-// fichiers concaténés ne changerait rien au verdict (aucune couleur n'y vit),
-// mais élargirait sans raison ce que ce contrôle prétend couvrir.
+// 🔴 `tokens/couleurs.css` ALONE, NEVER `tokens.css`: since the extraction of
+// task 6 (August 25th, 2026), the THREE theme blocks this check compares
+// live ENTIRELY in `tokens/couleurs.css` — `tokens/echelles.css`, its
+// neighbour, only carries a single `racine` block without a theme. Giving it both
+// files concatenated would change nothing in the verdict (no colour lives there),
+// but would widen for no reason what this check claims to cover.
 //
-// ⚠️ CE `.mjs` IMPORTE UN `.ts` NATIVEMENT — mesuré sur Node v24.9.0, sans
-// `tsx`, sans `ts-node`, sans aucune dépendance neuve. Le coût est le retrait
-// de types : il NE TYPECHECKE PAS et refuse le TypeScript non effaçable
-// (`enum`, `namespace`, propriétés de constructeur, décorateurs). D'où la
-// contrainte portée en tête de `tokens.ts`.
+// ⚠️ THIS `.mjs` IMPORTS A `.ts` NATIVELY — measured on Node v24.9.0, without
+// `tsx`, without `ts-node`, without any new dependency. The cost is type
+// stripping: it does NOT TYPECHECK and refuses non-erasable TypeScript
+// (`enum`, `namespace`, constructor properties, decorators). Hence the
+// constraint stated at the top of `tokens.ts`.
 //
-// ⚠️ LA RÈGLE APPLIQUÉE DIVERGE DE LA LETTRE DU §7.4, et la raison est écrite
-// auprès de `ecartsEntreBlocs` : une égalité littérale entre les TROIS blocs
-// serait rouge pour toujours sur un fichier correct, les tokens hors thème et
-// les échelles ne vivant que dans `:root`.
+// ⚠️ THE RULE APPLIED DIVERGES FROM THE LETTER OF §7.4, and the reason is written
+// next to `ecartsEntreBlocs`: a literal equality between the THREE blocks
+// would be red forever on a correct file, the tokens outside the theme and
+// the scales only living in `:root`.
 //
-// 🔴 LA PORTÉE DE CE CONTRÔLE A ÉTÉ ÉLARGIE PAR LE SOUS-BLOC S3, et son énoncé
-// n'est plus « les trois blocs déclarent le même ensemble de noms ». Il est :
+// 🔴 THE SCOPE OF THIS CHECK WAS WIDENED BY SUB-BLOCK S3, and its statement
+// is no longer "the three blocks declare the same set of names". It is:
 //
-//     les deux blocs clairs sont IDENTIQUES, et toute COULEUR de la racine y
-//     est redéclarée, SAUF les hors-thème nommés.
+//     the two light blocks are IDENTICAL, and every COLOUR of the root is
+//     redeclared in them, EXCEPT the named out-of-theme ones.
 //
-// L'inclusion `racine` ⊆ clair, restreinte aux couleurs, est l'angle mort que
-// S2 avait mesuré et versé (`journaux-design-s2/trou-7-4.log`) : une couleur
-// retirée des DEUX blocs clairs et laissée à la racine seule rendait
-// `écarts : 0`, `exit=0`. La liste des six hors-thème vit dans `tokens.ts`,
-// auprès de la règle, sous le nom `COULEURS_HORS_THEME`.
+// The inclusion `racine` ⊆ light, restricted to colours, is the blind spot
+// S2 had measured and filed (`journaux-design-s2/trou-7-4.log`): a colour
+// removed from BOTH light blocks and left at the root alone returned
+// `gaps: 0`, `exit=0`. The list of the six out-of-theme ones lives in `tokens.ts`,
+// next to the rule, under the name `COULEURS_HORS_THEME`.
 //
-// ⚠️ CE SCRIPT NE PORTE TOUJOURS AUCUNE RÈGLE : ni le prédicat « est une
-// couleur », ni la liste des hors-thème ne sont ici. Ils sont dans `tokens.ts`,
-// qui est typechecké et testé.
+// ⚠️ THIS SCRIPT STILL CARRIES NO RULE: neither the "is a
+// colour" predicate, nor the list of out-of-theme ones are here. They are in `tokens.ts`,
+// which is typechecked and tested.
 
 import { readFileSync, existsSync } from 'node:fs';
 import { COULEURS_HORS_THEME, ecartsEntreBlocs, lireBlocsDeTheme } from '../src/design/tokens.ts';

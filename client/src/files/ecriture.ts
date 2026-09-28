@@ -261,7 +261,7 @@ export function createWriter(racine: RacineInscriptible): Ecrivain {
             if (last) {
                 flux.delete(chemin);
                 try {
-                    // 🔵 LA COMMITTAISON.
+                    // 🔵 THE COMMIT.
                     await ouvert.close();
                 } catch (e) {
                     throw classer(e, 'introuvable');

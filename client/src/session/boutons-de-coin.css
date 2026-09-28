@@ -1,29 +1,29 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   LES DEUX BOUTONS DE COIN DE LA FENÊTRE DE SESSION — plein écran et micro.
+   THE TWO CORNER BUTTONS OF THE SESSION WINDOW — fullscreen and microphone.
 
-   🔴 EXTRAIT DE `../style.css` PAR LA REVUE TRANSVERSE DU SOUS-BLOC S4, ET
-   PARCE QUE LE PLAFOND A ÉTÉ FRANCHI. `style.css` était à 265 lignes avant la
-   tâche 9 ; l'écran terminal y a posé son `@import`, le Window Controls Overlay
-   son encadré, et la revue trois lignes de plus : 301 pour une porte à 300
-   (spec §10). Ce dépôt a franchi ce plafond trois fois en D10 et deux fois en
-   D9, et l'a rattrapé DEUX fois par une COMPRESSION qu'il interdit nommément.
-   Ici c'est une EXTRACTION, et le point de chute est celui que la tâche 9 avait
-   déjà ouvert : `client/src/session/`.
+   🔴 EXTRACTED FROM `../style.css` BY THE CROSS REVIEW OF SUB-BLOCK S4, AND
+   BECAUSE THE CEILING WAS CROSSED. `style.css` was at 265 lines before
+   task 9; the terminal screen put its `@import` there, the Window Controls Overlay
+   its box, and the review three more lines: 301 for a gate at 300
+   (spec §10). This repository crossed that ceiling three times in D10 and twice in
+   D9, and caught it up TWICE through a COMPRESSION it explicitly forbids.
+   Here it is an EXTRACTION, and the landing point is the one task 9 had
+   already opened: `client/src/session/`.
 
-   ⚠️ AUCUNE RÈGLE N'EST MODIFIÉE — le bloc est transporté VERBATIM, de
-   `#fullscreen {` jusqu'à la fin du fichier. Ce qui suit se lit exactement comme
-   il se lisait, commentaires compris.
+   ⚠️ NO RULE IS MODIFIED — the block is moved VERBATIM, from
+   `#fullscreen {` to the end of the file. What follows reads exactly as
+   it read, comments included.
 
-   ⚠️ CE FICHIER ENTRE DE LUI-MÊME DANS §7.2 ET §7.10 : leurs portées sont
-   DÉRIVÉES (« toutes les `*.css` de `client/src/` », hors `design/` pour
-   §7.10), jamais énumérées. Une feuille de surface neuve y entre sans qu'une
-   ligne de leur code ne change.
+   ⚠️ THIS FILE ENTERS §7.2 AND §7.10 BY ITSELF: their scopes are
+   DERIVED ("all the `*.css` of `client/src/`", outside `design/` for
+   §7.10), never enumerated. A new surface sheet enters them without a
+   line of their code changing.
 
-   ⚠️ ET IL EST `@import`É PAR `../style.css`, comme `etat-terminal.css` : il n'a
-   qu'un seul consommateur, donc la copie que l'`@import` fait dans chaque entrée
-   qui le traverse ne se paie qu'une fois. L'encadré « POURQUOI CE FICHIER
-   N'IMPORTE PAS LE SOCLE » de `../style.css` mesure le cas INVERSE, celui d'une
-   feuille partagée par cinq pages.
+   ⚠️ AND IT IS `@import`ED BY `../style.css`, like `etat-terminal.css`: it has
+   only one consumer, so the copy the `@import` makes in each entry
+   that goes through it is only paid once. The box "WHY THIS FILE
+   DOES NOT IMPORT THE BASE LAYER" of `../style.css` measures the REVERSE case, that of a
+   sheet shared by five pages.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 #fullscreen {
@@ -45,50 +45,50 @@
     background: var(--voile-bouton-survol);
 }
 
-/* En plein écran, le bouton ne doit pas rester sous le curseur d'un jeu. */
+/* In fullscreen, the button must not stay under a game's cursor. */
 #fullscreen[data-actif="true"] {
     opacity: 0.15;
-    /* Discret ne suffit pas : sans ceci, une zone de coin reste dans le flux
-       d'événements et avale les clics destinés au jeu (minimap, boutique...)
-       en mode absolu plein écran. La sortie du plein écran reste possible par
-       appui long sur Échap (Keyboard Lock, voir fullscreen.ts), donc retirer
-       le bouton du flux ne piège personne.
+    /* Discreet is not enough: without this, a corner area stays in the event
+       flow and swallows the clicks meant for the game (minimap, shop...)
+       in absolute fullscreen mode. Leaving fullscreen remains possible with a
+       long press on Escape (Keyboard Lock, see fullscreen.ts), so removing
+       the button from the flow traps nobody.
 
-       ⚠️ CETTE DÉCLARATION EST DÉSORMAIS GARDÉE PAR UNE COMMANDE, et c'est ce
-       qui a permis de toucher à la taille : `client/src/style.test.ts`, écrit
-       et vu ROUGE AVANT le changement. La spec §5.2 l'exigeait par une phrase
-       — « toute reprise du bouton doit conserver cette propriété » —, et une
-       phrase n'attrape rien.
+       ⚠️ THIS DECLARATION IS NOW GUARDED BY A COMMAND, and that is what
+       made it possible to touch the size: `client/src/style.test.ts`, written
+       and seen RED BEFORE the change. Spec §5.2 required it with a sentence
+       — "any rework of the button must keep this property" —, and a
+       sentence catches nothing.
 
-       ⚠️ LE CHIFFRE DE CE COMMENTAIRE A CHANGÉ, ET SA NATURE AVEC. Il disait
-       « une zone de ~40×36 px », produit de `padding: 8px 12px` et
-       `font-size: 18px`. La hauteur vaut maintenant
+       ⚠️ THE FIGURE IN THIS COMMENT HAS CHANGED, AND ITS NATURE WITH IT. It said
+       "an area of ~40×36 px", the product of `padding: 8px 12px` and
+       `font-size: 18px`. The height is now
        `var(--e-2) + var(--e-2) + var(--t-xl)` = 8 + 8 + 20 = **36 px
-       exactement à racine 16** — c'est un CALCUL, pas une mesure, et il
-       dépend de `line-height: 1` juste au-dessus. ⚠️ LA LARGEUR CESSE D'ÊTRE
-       CHIFFRÉE : elle vaut 24 px de remplissage plus l'avance du glyphe `⛶`,
-       que personne ici ne connaît — aucune page n'a été ouverte, aucun pixel
-       mesuré. Le « ~40 » d'avant était donc une estimation dont l'origine
-       n'est écrite nulle part ; la remplacer par un second chiffre non mesuré
-       serait reconduire le défaut sous un autre nombre.
-       ⚠️ QUE 20 px SOIT LA BONNE TAILLE EST UN JUGEMENT HUMAIN (spec §8). */
+       exactly at a 16 root** — it is a COMPUTATION, not a measurement, and it
+       depends on the `line-height: 1` just above. ⚠️ THE WIDTH STOPS BEING
+       QUANTIFIED: it is 24 px of padding plus the advance of the `⛶` glyph,
+       which nobody here knows — no page was opened, no pixel
+       measured. The "~40" from before was therefore an estimate whose origin
+       is written nowhere; replacing it with a second unmeasured figure
+       would carry the defect over under another number.
+       ⚠️ THAT 20 px IS THE RIGHT SIZE IS A HUMAN JUDGEMENT (spec §8). */
     pointer-events: none;
 }
 
-/* Le micro (chantier E). Même gabarit que `#fullscreen`, posé juste à sa
-   gauche : les deux boutons partagent le coin, jamais la place. */
+/* The microphone (project E). Same template as `#fullscreen`, set just to its
+   left: the two buttons share the corner, never the space. */
 #micro {
     position: fixed;
     inset-block-end: var(--e-3);
-    /* 12 px de marge, plus la largeur du bouton plein écran et l'écart.
-       ⚠️ CE CHIFFRE DÉPEND D'UNE LARGEUR QUI VIENT DE CHANGER — le glyphe de
-       `#fullscreen` est passé de 18 px à `--t-xl` (20 px) à la tâche 7 de S4 —
-       et il n'a PAS été recalculé, faute de connaître l'avance du glyphe `⛶`.
-       `--e-8` (64 px) est reconduit tel quel. Si les deux boutons devaient se
-       chevaucher, cela se verrait à l'œil et ne se mesure par rien ici : c'est
-       un JUGEMENT HUMAIN, et il n'a pas été porté. Le déclarer coûte trois
-       lignes ; le taire aurait laissé un chiffre justifié par une largeur qui
-       n'est plus la sienne. */
+    /* 12 px of margin, plus the width of the fullscreen button and the gap.
+       ⚠️ THIS FIGURE DEPENDS ON A WIDTH THAT HAS JUST CHANGED — the glyph of
+       `#fullscreen` went from 18 px to `--t-xl` (20 px) at task 7 of S4 —
+       and it was NOT recomputed, for lack of knowing the advance of the `⛶` glyph.
+       `--e-8` (64 px) is carried over as is. If the two buttons were to
+       overlap, it would be seen by the eye and is measured by nothing here: it is
+       a HUMAN JUDGEMENT, and it has not been made. Declaring it costs three
+       lines; keeping quiet would have left a figure justified by a width that
+       is no longer its own. */
     inset-inline-end: var(--e-8);
     z-index: 10;
     border: 0;
@@ -105,10 +105,10 @@
     background: var(--voile-bouton-survol);
 }
 
-/* Le micro CAPTE : son état actif doit se voir sans ambiguïté, et de loin.
-   C'est la seule fonction du produit qui écoute l'utilisateur chez lui
-   (spec §9), et un doute sur l'état du bouton est exactement le « mensonge
-   visuel » que cette section de la spec écarte. */
+/* The microphone CAPTURES: its active state must show unambiguously, and from afar.
+   It is the only feature of the product that listens to the user at home
+   (spec §9), and a doubt about the button's state is exactly the "visual
+   lie" that section of the spec rules out. */
 #micro[data-etat="actif"] {
     background: var(--voile-micro-actif);
 }
@@ -117,22 +117,22 @@
     background: var(--voile-micro-refuse);
 }
 
-/* « Indisponible » : aucun périphérique d'entrée. Le bouton porte `disabled`
-   (voir micro.ts) ; le grisé le dit à l'œil. */
+/* "Unavailable": no input device. The button carries `disabled`
+   (see micro.ts); the greying says so to the eye. */
 #micro:disabled {
     opacity: 0.4;
     cursor: not-allowed;
 }
 
-/* ⚠️ AUCUNE RÈGLE D'ATTÉNUATION EN PLEIN ÉCRAN ICI, contrairement à
-   `#fullscreen` ci-dessus, et c'est délibéré. Une première rédaction en portait
-   une, écrite `#fullscreen[data-actif="true"] ~ #micro` — elle NE POUVAIT PAS
-   S'APPLIQUER : `~` est le combinateur de frère SUIVANT, et `#micro` précède
-   `#fullscreen` dans le document. Une règle morte est pire qu'une règle
-   absente : elle se lit comme une protection existante.
+/* ⚠️ NO DIMMING RULE IN FULLSCREEN HERE, unlike
+   `#fullscreen` above, and it is deliberate. A first draft carried
+   one, written `#fullscreen[data-actif="true"] ~ #micro` — it COULD NOT
+   APPLY: `~` is the FOLLOWING sibling combinator, and `#micro` precedes
+   `#fullscreen` in the document. A dead rule is worse than an absent
+   rule: it reads as an existing protection.
 
-   Le fond, une fois la coquille écartée : le micro capte l'utilisateur chez
-   lui, et couper son micro ne doit jamais demander de quitter le plein écran
-   d'abord. Le rendre discret ou hors du flux d'événements irait contre la
-   spec §9. S'il s'avérait un jour qu'il avale des clics de jeu, c'est une
-   mesure — pas une règle CSS écrite à l'aveugle. */
+   The substance, once the typo is set aside: the microphone captures the user at
+   home, and muting it must never require leaving fullscreen
+   first. Making it discreet or out of the event flow would go against
+   spec §9. Should it one day turn out to swallow game clicks, that is a
+   measurement — not a CSS rule written blindly. */

@@ -10,8 +10,8 @@ describe('attacherMicro — the toggle and its four states', () => {
             demanderFlux: async () => fauxFlux(faussePiste()),
         });
 
-        // Rien n'a été demandé au navigateur : la permission se demande AU
-        // CLIC, jamais à l'ouverture de session (spec §9, « Vie privée »).
+        // Nothing was asked of the browser: permission is asked ON
+        // CLICK, never at session opening (spec §9, "Privacy").
         expect(sender.recus).toEqual([]);
         expect(micro.etat()).toBe('ferme');
     });
@@ -30,15 +30,15 @@ describe('attacherMicro — the toggle and its four states', () => {
         await expect(micro.basculer()).resolves.toBe('actif');
 
         expect(demanderFlux).toHaveBeenCalledTimes(1);
-        // Les contraintes de la spec §7 : AEC, suppression de bruit, gain
-        // automatique. L'AEC est celle du NAVIGATEUR, seul endroit qui
-        // connaisse à la fois le flux capté et le flux restitué.
+        // The constraints of spec §7: AEC, noise suppression, automatic
+        // gain. The AEC is the BROWSER's, the only place that
+        // knows both the captured stream and the played-back stream.
         //
-        // ⚠️ LE LITTÉRAL EST RECOPIÉ, ET C'EST LE FOND DU TEST. La rédaction
-        // précédente importait la constante du module et assertait
-        // `toHaveBeenCalledWith(CONTRAINTES)` : les deux côtés de l'égalité
-        // lisaient le même objet, et la remplacer par `audio: true` laissait
-        // ce test VERT. La mutation a été jouée et vue verte avant correction.
+        // ⚠️ THE LITERAL IS COPIED, AND IT IS THE CRUX OF THE TEST. The
+        // previous draft imported the module's constant and asserted
+        // `toHaveBeenCalledWith(CONTRAINTES)`: both sides of the equality
+        // read the same object, and replacing it with `audio: true` left
+        // this test GREEN. The mutation was played and seen green before the fix.
         expect(demanderFlux).toHaveBeenCalledWith({
             audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
         });
@@ -55,12 +55,12 @@ describe('attacherMicro — the toggle and its four states', () => {
         await micro.basculer();
         await expect(micro.basculer()).resolves.toBe('ferme');
 
-        // ⚠️ LE TEST CENTRAL DE CE MODULE. `enabled = false` seul laisserait le
-        // périphérique ouvert et l'indicateur de Chrome allumé : la spec §9
-        // qualifie ce mensonge visuel d'inacceptable « sur cette fonction
-        // précisément ». Les DEUX assertions sont nécessaires — un test qui ne
-        // vérifierait que `replaceTrack(null)` ne distinguerait pas les deux
-        // implémentations, et ne garderait donc rien.
+        // ⚠️ THE CENTRAL TEST OF THIS MODULE. `enabled = false` alone would leave the
+        // device open and Chrome's indicator on: spec §9
+        // calls this visual lie unacceptable "on this very
+        // feature". BOTH assertions are needed — a test that only
+        // checked `replaceTrack(null)` would not tell the two
+        // implementations apart, and would therefore guard nothing.
         expect(piste.arretee).toBe(true);
         expect(sender.recus).toEqual([piste, null]);
         expect(micro.etat()).toBe('ferme');
@@ -77,15 +77,15 @@ describe('attacherMicro — the toggle and its four states', () => {
             surEtat: (etat, detail) => etats.push([etat, detail]),
         });
 
-        // Ne LÈVE PAS : le micro ne tue jamais une session qui fonctionne
-        // (spec §10). `resolves` échouerait si la promesse rejetait.
+        // Does NOT THROW: the microphone never kills a working session
+        // (spec §10). `resolves` would fail if the promise rejected.
         await expect(micro.basculer()).resolves.toBe('refuse');
         expect(micro.etat()).toBe('refuse');
         expect(sender.recus).toEqual([]);
 
-        // Le détail porte COMMENT RÉTABLIR la permission (spec §10), pas
-        // seulement le fait du refus : sans cela l'utilisateur qui a cliqué
-        // « bloquer » une fois n'a plus aucun moyen de revenir en arrière.
+        // The detail carries HOW TO RESTORE the permission (spec §10), not
+        // only the fact of the refusal: without it the user who clicked
+        // "block" once has no way left to go back.
         const [, detail] = etats[0];
         expect(detail).toMatch(/address bar/);
     });
@@ -99,10 +99,10 @@ describe('attacherMicro — the toggle and its four states', () => {
             },
         });
 
-        // Deux situations DISTINCTES au tableau de la spec §10 : « permission
-        // refusée » veut un message pour la rétablir, « aucun périphérique
-        // d'entrée » veut un bouton désactivé. Les confondre enverrait
-        // l'utilisateur régler une permission qui n'est pas en cause.
+        // Two DISTINCT situations in the table of spec §10: "permission
+        // refused" wants a message to restore it, "no input
+        // device" wants a disabled button. Confusing them would send
+        // the user to adjust a permission that is not at fault.
         await expect(micro.basculer()).resolves.toBe('indisponible');
         expect(micro.etat()).toBe('indisponible');
     });
@@ -127,10 +127,10 @@ describe('attacherMicro — the toggle and its four states', () => {
         const demanderFlux = vi.fn(() => enAttente);
         const micro = attacherMicro({ sender: fauxSender(), demanderFlux });
 
-        // Le second clic tombe pendant que la boîte de dialogue de permission
-        // est encore ouverte : sans garde, il demanderait un SECOND flux, donc
-        // une seconde piste — et la première fuirait, jamais arrêtée, micro
-        // ouvert pour la vie de la page.
+        // The second click lands while the permission dialog
+        // is still open: without a guard, it would request a SECOND stream, hence
+        // a second track — and the first would leak, never stopped, microphone
+        // open for the life of the page.
         const premier = micro.basculer();
         const second = micro.basculer();
         debloquer(fauxFlux(piste));
@@ -149,10 +149,10 @@ describe('attacherMicro — the toggle and its four states', () => {
         const sender = fauxSender();
         const micro = attacherMicro({ sender, demanderFlux: () => enAttente });
 
-        // La session se termine alors que la boîte de dialogue est ouverte, et
-        // l'utilisateur autorise APRÈS. Sans cette garde, la piste arrive dans
-        // le vide : plus personne ne la détient, `detacher()` est déjà passé,
-        // et le micro reste ouvert jusqu'à la fermeture de l'onglet.
+        // The session ends while the dialog is open, and
+        // the user allows AFTERWARDS. Without this guard, the track arrives into
+        // the void: nobody holds it any more, `detacher()` already ran,
+        // and the microphone stays open until the tab is closed.
         const bascule = micro.basculer();
         micro.detacher();
         debloquer(fauxFlux(piste));
@@ -179,9 +179,9 @@ describe('attacherMicro — the toggle and its four states', () => {
         await micro.basculer();
         micro.detacher();
 
-        // `webrtc.ts::close()` arrête déjà la piste du sender, mais une fin de
-        // session doit AUSSI ramener l'état du bouton à « fermé » : c'est ce
-        // que `main.ts` obtient en appelant ce détachement.
+        // `webrtc.ts::close()` already stops the sender's track, but a session
+        // end must ALSO bring the button state back to "closed": that is what
+        // `main.ts` gets by calling this detach.
         expect(piste.arretee).toBe(true);
         expect(micro.etat()).toBe('ferme');
     });
@@ -198,9 +198,9 @@ describe('attacherMicro — the toggle and its four states', () => {
         });
         const micro = attacherMicro({ sender: fauxSender(), demanderFlux });
 
-        // L'utilisateur a bloqué, puis rétabli la permission dans les réglages
-        // du site — exactement ce que le message de l'état « refusé » lui
-        // demande de faire. Un état terminal rendrait ce conseil inapplicable.
+        // The user blocked, then restored the permission in the site
+        // settings — exactly what the message of the "refused" state asks
+        // them to do. A terminal state would make this advice inapplicable.
         await expect(micro.basculer()).resolves.toBe('refuse');
         await expect(micro.basculer()).resolves.toBe('actif');
         expect(demanderFlux).toHaveBeenCalledTimes(2);
@@ -227,11 +227,11 @@ describe('attacherBoutonMicro — the button and its states', () => {
             demanderFlux: async () => fauxFlux(faussePiste()),
         });
 
-        // ⚠️ Spec §10 : le champ est optionnel et SON ABSENCE VAUT `false`. Un
-        // client récent parlant à un agent d'avant le chantier E ne doit pas
-        // proposer un bouton qui ne mènerait nulle part. La règle vit ICI, dans
-        // le module testé, plutôt que dans un `if` de `main.ts` que rien
-        // n'exercerait.
+        // ⚠️ Spec §10: the field is optional and ITS ABSENCE MEANS `false`. A
+        // recent client talking to an agent from before project E must not
+        // offer a button that would lead nowhere. The rule lives HERE, in
+        // the tested module, rather than in an `if` of `main.ts` that nothing
+        // would exercise.
         controle.annoncerDisponibilite(undefined);
         expect(bouton.hidden).toBe(true);
         controle.annoncerDisponibilite(false);
@@ -278,7 +278,7 @@ describe('attacherBoutonMicro — the button and its states', () => {
 
         bouton.cliquer();
         await controle.enCours();
-        // Spec §10, ligne « aucun périphérique d'entrée » : bouton DÉSACTIVÉ.
+        // Spec §10, "no input device" row: button DISABLED.
         expect(bouton.dataset.etat).toBe('indisponible');
         expect(bouton.disabled).toBe(true);
 
@@ -294,8 +294,8 @@ describe('attacherBoutonMicro — the button and its states', () => {
         second.annoncerDisponibilite(true);
         autre.cliquer();
         await second.enCours();
-        // Spec §10, ligne « permission refusée » : le message dit comment la
-        // rétablir, donc le bouton doit rester cliquable pour retenter.
+        // Spec §10, "permission refused" row: the message says how to
+        // restore it, so the button must stay clickable to retry.
         expect(autre.dataset.etat).toBe('refuse');
         expect(autre.disabled).toBe(false);
     });
@@ -316,8 +316,8 @@ describe('attacherBoutonMicro — the button and its states', () => {
         bouton.cliquer();
         await controle.enCours();
 
-        // Un seul message, et il porte le remède — pas seulement le fait du
-        // refus (spec §10).
+        // A single message, and it carries the remedy — not only the fact of the
+        // refusal (spec §10).
         expect(messages).toHaveLength(1);
         expect(messages[0]).toMatch(/address bar/);
     });
@@ -336,8 +336,8 @@ describe('attacherBoutonMicro — the button and its states', () => {
 
         controle.detacher();
 
-        // Sans le retrait de l'écouteur, un clic après la fin de session
-        // relancerait une demande de permission sur une session morte.
+        // Without removing the listener, a click after the session end
+        // would restart a permission request on a dead session.
         expect(piste.arretee).toBe(true);
         expect(bouton.hidden).toBe(true);
         expect(bouton.listenerCount()).toBe(0);

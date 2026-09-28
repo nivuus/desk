@@ -3,89 +3,89 @@ import { declarationsDe, sansCommentaires } from './css';
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * CONTRÔLE §7.10 — AUCUNE LONGUEUR HORS TOKEN DANS UNE FEUILLE DE SURFACE.
+ * CHECK §7.10 — NO LENGTH OUTSIDE TOKENS IN A SURFACE SHEET.
  *
- * 🔴 C'EST LE PREMIER CONTRÔLE DU SOUS-PROJET ⑥ QUI MESURE UNE LONGUEUR, et
- * c'est ce qui fait sa raison d'être. Jusqu'ici, « aucun des huit contrôles ne
- * mesure une longueur » était écrit à cinq endroits du dépôt sous cette formule
- * exacte, et davantage sous d'autres tournures : la clause « aucune longueur
- * hors échelle » du §8 de la spec était une DETTE D'ÉNONCÉ que rien ne pouvait
- * ni tenir ni réfuter. Elle devient une commande.
+ * 🔴 IT IS THE FIRST CHECK OF SUB-PROJECT ⑥ THAT MEASURES A LENGTH, and
+ * that is its raison d'être. Until now, "none of the eight checks
+ * measures a length" was written in five places of the repository in that exact
+ * wording, and more in other phrasings: the clause "no length
+ * outside the scale" of §8 of the spec was a STATEMENT DEBT that nothing could
+ * either hold or refute. It becomes a command.
  *
- * 🔴 IL EST NÉ ROUGE SUR L'ARBRE INTACT — HUIT OCCURRENCES POUR SIX VALEURS —,
- * ET C'EST SA PREUVE D'ATTEIGNABILITÉ, comme l'assertion ② A de §7.9 en S3.
- * Les six : `6px` ×2 (les deux bandeaux), `18px` ×2 (les deux boutons de coin),
- * `0.02em` (le crénage de `#stats`), `72rem`, `18rem` et `26rem` (les trois
- * mesures de contenant). Les tâches 5 à 8 de S4 les font toutes tomber.
+ * 🔴 IT WAS BORN RED ON THE UNTOUCHED TREE — EIGHT OCCURRENCES FOR SIX VALUES —,
+ * AND THAT IS ITS PROOF OF REACHABILITY, like assertion ② A of §7.9 in S3.
+ * The six: `6px` ×2 (the two banners), `18px` ×2 (the two corner buttons),
+ * `0.02em` (the kerning of `#stats`), `72rem`, `18rem` and `26rem` (the three
+ * container measures). Tasks 5 to 8 of S4 bring them all down.
  *
- * ⚠️ DEUX NOMBRES, JAMAIS UN SEUL, ET ILS SONT VRAIS DE CHOSES DIFFÉRENTES.
- * Le sous-bloc S3 a publié SIX en comptant des VALEURS DISTINCTES ; un contrôle
- * compte des OCCURRENCES, parce qu'il ne peut pas dédupliquer sans décider que
- * deux `6px` écrits à deux endroits sont le même. C'est la divergence D5 de S2
- * rejouée sur une autre grandeur — « ni dix ni dix-sept ne se suffit sans dire
- * lequel on compte ». Les deux sont donc imprimés, succès compris : « un
- * contrôle de dérive dont on ne lit jamais la valeur ne sert qu'à passer »
+ * ⚠️ TWO NUMBERS, NEVER ONE, AND THEY ARE TRUE OF DIFFERENT THINGS.
+ * Sub-block S3 published SIX by counting DISTINCT VALUES; a check
+ * counts OCCURRENCES, because it cannot deduplicate without deciding that
+ * two `6px` written in two places are the same. It is divergence D5 of S2
+ * replayed on another quantity — "neither ten nor seventeen is enough without saying
+ * which one is counted". Both are therefore printed, success included: "a
+ * drift check whose value is never read only serves to pass"
  * (`poids-css.mjs`).
  *
- * ── LA FRONTIÈRE AVEC G4, ÉCRITE DES DEUX CÔTÉS ───────────────────────────
- * G4 (`primitives.test.ts`) garde `client/src/design/primitives/` et ses quatre
- * familles. §7.10 garde les FEUILLES DE SURFACE. Aucun des deux ne double
- * l'autre, et la portée ci-dessous est DÉRIVÉE — jamais énumérée : toutes les
- * `*.css` de `client/src/` HORS `client/src/design/`. Une feuille de surface
- * neuve — `client/src/session/*.css`, que la tâche 9 crée — entre donc dans ce
- * contrôle sans qu'une ligne de ce fichier ne change, et une liste recopiée ne
- * peut pas diverger de ce qu'elle décrit.
+ * ── THE BOUNDARY WITH G4, WRITTEN FROM BOTH SIDES ─────────────────────────
+ * G4 (`primitives.test.ts`) guards `client/src/design/primitives/` and its four
+ * families. §7.10 guards the SURFACE SHEETS. Neither doubles
+ * the other, and the scope below is DERIVED — never enumerated: all the
+ * `*.css` of `client/src/` OUTSIDE `client/src/design/`. A new surface
+ * sheet — `client/src/session/*.css`, which task 9 creates — therefore enters this
+ * check without a line of this file changing, and a copied list
+ * cannot diverge from what it describes.
  *
- * ⚠️ CE QU'IL NE DIT PAS, ET C'EST EXACTEMENT LA LIMITE DE G4 : *que le BON
- * token a été choisi.* `padding: var(--e-8)` sur un bandeau serait vert et
- * absurde. Le bon emploi reste une règle de revue, comme celui de `--bord`
- * contre `--bord-fort` (spec §4.5, §8).
+ * ⚠️ WHAT IT DOES NOT SAY, AND IT IS EXACTLY THE LIMIT OF G4: *that the RIGHT
+ * token was chosen.* `padding: var(--e-8)` on a banner would be green and
+ * absurd. The right use remains a review rule, like that of `--bord`
+ * versus `--bord-fort` (spec §4.5, §8).
  *
- * ⚠️ IL NE VOIT PAS NON PLUS UNE LONGUEUR CALCULÉE À L'EXÉCUTION —
- * `el.style.padding = …` dans un `.ts`. C'est le même angle mort que §7.9
- * déclare pour les classes, et la même parade : la convention est d'écrire les
- * longueurs dans le CSS.
+ * ⚠️ NOR DOES IT SEE A LENGTH COMPUTED AT RUN TIME —
+ * `el.style.padding = …` in a `.ts`. It is the same blind spot §7.9
+ * declares for classes, and the same countermeasure: the convention is to write
+ * lengths in the CSS.
  *
- * ⚠️ DÉFAUT DU PLAN, SIGNALÉ PLUTÔT QUE RECOPIÉ. Le plan de S4 prescrit de
- * jouer la rouge d'atteignabilité « en vidant `client/src/style.css` ». MESURÉ :
- * cela ne suffit PAS — la portée étant dérivée sur TROIS feuilles, vider la
- * seule `style.css` laisse `shell.css` et `connexion.css` porter leurs
- * déclarations et 3 occurrences hors token, et l'assertion d'atteignabilité
- * reste VERTE, à juste titre. La rouge qui vaut vide LES TROIS : l'assertion
- * d'absence passe alors au vert avec `0 occurrence(s)` — l'état exact qu'elle
- * existe pour dénoncer — et seule l'atteignabilité tombe. La prescription du
- * plan supposait un fichier unique ; elle est fausse d'une portée dérivée.
+ * ⚠️ A FLAW OF THE PLAN, REPORTED RATHER THAN COPIED. The S4 plan prescribes
+ * playing the reachability red "by emptying `client/src/style.css`". MEASURED:
+ * that is NOT enough — the scope being derived over THREE sheets, emptying
+ * only `style.css` leaves `shell.css` and `connexion.css` carrying their
+ * declarations and 3 occurrences outside tokens, and the reachability assertion
+ * stays GREEN, rightly so. The red that counts empties ALL THREE: the absence
+ * assertion then turns green with `0 occurrence(s)` — the exact state it
+ * exists to denounce — and only reachability falls. The plan's prescription
+ * assumed a single file; it is wrong for a derived scope.
  *
- * 🔴 CE FICHIER NE LIT UN TEXTE NON VIDE QUE GRÂCE À `test: { css: true }` de
- * `client/vite.config.ts`. Sans cette ligne, Vitest court-circuite les fichiers
- * CSS — la requête `?raw` comprise — et les feuilles vaudraient la chaîne VIDE :
- * l'assertion d'absence passerait au vert EN NE MESURANT RIEN. C'est aussi
- * pourquoi il n'y a délibérément pas de `client/vitest.config.ts`, qui prendrait
- * le pas sur la configuration Vite sans rien dire.
+ * 🔴 THIS FILE ONLY READS A NON-EMPTY TEXT THANKS TO `test: { css: true }` of
+ * `client/vite.config.ts`. Without that line, Vitest short-circuits CSS
+ * files — the `?raw` query included — and the sheets would be the EMPTY string:
+ * the absence assertion would turn green WHILE MEASURING NOTHING. That is also
+ * why there is deliberately no `client/vitest.config.ts`, which would take
+ * precedence over the Vite configuration without a word.
  *
- * 🔴 PIÈGE NEUF, MESURÉ LE 20 AOÛT 2026, ET IL REND UNE ROUGE INDISCERNABLE
- * D'UNE BONNE. Ce test doit être lancé DEPUIS `client/`. Lancé depuis la racine
- * du dépôt (`npm --prefix client exec -- vitest run …`), la racine Vite change,
- * `client/vite.config.ts` n'est plus la configuration retenue, et le CSS est
- * court-circuité EN SILENCE : les trois feuilles sont trouvées par le glob —
- * « feuilles de surface : 3 » s'imprime — mais valent la chaîne VIDE.
- * L'assertion d'absence passe au vert, et c'est l'atteignabilité qui tombe.
- * Deux rouges de la tâche 2 ont d'abord été jouées ainsi : elles rougissaient
- * pour cette raison-là, jamais pour celle qu'on croyait mesurer. « Une rouge
- * qui rougit pour la mauvaise raison est indiscernable d'une bonne si l'on ne
- * lit que son `exit=1` » — le §9 du plan, payé le jour même où il l'écrit.
- * ⚠️ L'assertion d'atteignabilité, elle, A ATTRAPÉ CE CAS. C'est sa seconde
- * valeur, non prévue : elle garde aussi le HARNAIS, pas seulement l'arbre.
- * ⚠️ `npm --prefix client test` NE TOMBE PAS DANS CE PIÈGE — le script `test`
- * du `package.json` s'exécute avec `client/` pour cwd. C'est `exec` qui le
- * tend, et `npx vitest` lancé de la racine aussi.
+ * 🔴 A NEW TRAP, MEASURED ON AUGUST 20TH, 2026, AND IT MAKES A RED INDISTINGUISHABLE
+ * FROM A GOOD ONE. This test must be run FROM `client/`. Run from the root
+ * of the repository (`npm --prefix client exec -- vitest run …`), the Vite root changes,
+ * `client/vite.config.ts` is no longer the configuration used, and the CSS is
+ * short-circuited SILENTLY: the three sheets are found by the glob —
+ * "surface sheets: 3" is printed — but are the EMPTY string.
+ * The absence assertion turns green, and it is reachability that falls.
+ * Two reds of task 2 were first played that way: they went red
+ * for that reason, never for the one we thought we were measuring. "A red
+ * that goes red for the wrong reason is indistinguishable from a good one if one only
+ * reads its `exit=1`" — §9 of the plan, paid for the very day it wrote it.
+ * ⚠️ The reachability assertion, for its part, DID CATCH THIS CASE. That is its second
+ * value, not planned: it also guards the HARNESS, not only the tree.
+ * ⚠️ `npm --prefix client test` DOES NOT FALL INTO THIS TRAP — the `test` script
+ * of `package.json` runs with `client/` as cwd. It is `exec` that
+ * sets it, and `npx vitest` run from the root too.
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
 /**
- * Les feuilles de SURFACE, DÉRIVÉES et non énumérées — voir l'en-tête.
- * `client/src/design/` est exclu : G4 s'en occupe, et `tokens.css` y vit, dont
- * les littéraux SONT l'échelle.
+ * The SURFACE sheets, DERIVED and not enumerated — see the header.
+ * `client/src/design/` is excluded: G4 takes care of it, and `tokens.css` lives there, whose
+ * literals ARE the scale.
  */
 const FEUILLES = import.meta.glob<string>(['../**/*.css', '!../design/**'], {
     query: '?raw',
@@ -94,31 +94,31 @@ const FEUILLES = import.meta.glob<string>(['../**/*.css', '!../design/**'], {
 });
 
 /**
- * Les unités qui font une longueur. C'est la liste de G4, mot pour mot, et le
- * partage est délibéré : deux gardes qui mesurent la même chose avec deux
- * listes divergeraient sans qu'aucune commande ne le dise.
- * ⚠️ `ms` et `s` sont des DURÉES, pas des longueurs, et elles sont ici pour la
- * même raison — les durées ont leur échelle (`--duree-1`, `--duree-2`), et une
- * durée littérale est la même dérive sous un autre nom. Le titre du contrôle
- * dit « longueur » parce que c'est le mot de la spec §8 ; la portée réelle est
- * « toute valeur dimensionnée ».
+ * The units that make a length. It is G4's list, word for word, and the
+ * sharing is deliberate: two guards measuring the same thing with two
+ * lists would diverge without any command saying so.
+ * ⚠️ `ms` and `s` are DURATIONS, not lengths, and they are here for the
+ * same reason — durations have their scale (`--duree-1`, `--duree-2`), and a
+ * literal duration is the same drift under another name. The title of the check
+ * says "length" because that is the word of spec §8; the real scope is
+ * "any dimensioned value".
  */
 const UNITES = /(\d+(?:\.\d+)?)(px|rem|em|ms|s|pt|ch|vw|vh|dvw|dvh|vmin|vmax)\b/g;
 
 /**
- * LES TROIS EXCEPTIONS, CLOSES, CHACUNE AVEC SA RAISON.
+ * THE THREE EXCEPTIONS, CLOSED, EACH WITH ITS REASON.
  *
- * ① LES REMPLISSAGES DE FENÊTRE — `100vw`, `100vh`, `100dvh`. C'est la règle de
- *    compte que `style.css` applique depuis S1 et que le journal de S3 a
- *    énoncée AVANT de compter : « un remplissage de fenêtre n'est pas une
- *    valeur hors échelle ». Aucune échelle ne prétend couvrir « toute la
- *    fenêtre », et un token qui vaudrait `100vh` ne serait qu'un alias.
- * ② LE ZÉRO — `0`, `0px`. Aucune échelle n'a de cran nul, et le repli des
- *    `env(titlebar-area-*)` du Window Controls Overlay en porte un par
- *    construction (tâche 10).
- * ③ `tokens.css` — la source unique ; ses littéraux SONT l'échelle. Il est de
- *    toute façon hors de la portée dérivée ci-dessus, et le dire ici évite
- *    qu'on l'y ramène « pour être complet ».
+ * ① WINDOW FILLS — `100vw`, `100vh`, `100dvh`. It is the counting
+ *    rule `style.css` has applied since S1 and that the S3 log
+ *    stated BEFORE counting: "a window fill is not an
+ *    out-of-scale value". No scale claims to cover "the whole
+ *    window", and a token worth `100vh` would only be an alias.
+ * ② ZERO — `0`, `0px`. No scale has a null step, and the fallback of the
+ *    `env(titlebar-area-*)` of the Window Controls Overlay carries one by
+ *    construction (task 10).
+ * ③ `tokens.css` — the single source; its literals ARE the scale. It is
+ *    outside the derived scope above anyway, and saying so here keeps anyone
+ *    from bringing it back in "for completeness".
  */
 function horsExceptions(value: string): string {
     return value
@@ -134,11 +134,11 @@ interface Occurrence {
     fautive: string;
 }
 
-/** `../style.css` → `client/src/style.css`, pour que la sortie soit ouvrable. */
+/** `../style.css` → `client/src/style.css`, so that the output can be opened. */
 const chemin = (cle: string) => cle.replace(/^\.\.\//, 'client/src/');
 
 const occurrences: Occurrence[] = [];
-/** Les déclarations dimensionnées qui passent BIEN par un token — l'atteignabilité. */
+/** The dimensioned declarations that DO go through a token — reachability. */
 let parToken = 0;
 let declarationsLues = 0;
 
@@ -159,7 +159,7 @@ for (const [cle, texte] of Object.entries(FEUILLES).sort()) {
 }
 const values = new Set(occurrences.map((o) => o.fautive));
 
-// ── LE RELEVÉ, TOUJOURS IMPRIMÉ, SUCCÈS COMPRIS ───────────────────────────
+// ── THE REPORT, ALWAYS PRINTED, SUCCESS INCLUDED ──────────────────────────
 console.log(`§7.10  surface sheets: ${Object.keys(FEUILLES).length}`);
 console.log(`       declarations read: ${declarationsLues}, of which ${parToken} through a token`);
 for (const o of occurrences) {
@@ -173,11 +173,11 @@ console.log(
 
 describe('§7.10 — no length outside tokens in a surface sheet', () => {
     it('reachability: sheets are read, and lengths go through a token in them', () => {
-        // 🔴 SANS CETTE ASSERTION, LA SUIVANTE EST VERTE SUR DES FICHIERS VIDES.
-        // C'est G5 de `primitives.test.ts`, et c'est le piège que ce sous-projet
-        // a payé en S2 : « quatre gardes sur cinq ne prouveraient rien ». Sa
-        // rouge se joue en VIDANT `client/src/style.css`, jamais en y ajoutant
-        // une valeur.
+        // 🔴 WITHOUT THIS ASSERTION, THE NEXT ONE IS GREEN ON EMPTY FILES.
+        // It is G5 of `primitives.test.ts`, and it is the trap this sub-project
+        // paid for in S2: "four guards out of five would prove nothing". Its
+        // red is played by EMPTYING `client/src/style.css`, never by adding
+        // a value to it.
         expect(
             Object.keys(FEUILLES).length,
             'no surface sheet found: §7.10 is green while measuring nothing',

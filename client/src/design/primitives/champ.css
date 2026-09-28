@@ -1,32 +1,32 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   CHAMP — l'enveloppe, l'étiquette, la saisie, l'aide, l'erreur.
+   FIELD — the wrapper, the label, the input, the help, the error.
 
-   ⚠️ `.champ--erreur` PORTE L'ÉTAT, `.champ__erreur` PORTE LE MESSAGE. Le
-   tiret double est le modificateur, le souligné double l'élément : une
-   confusion entre les deux produit une règle qui ne s'applique JAMAIS, et
-   aucun des neuf contrôles ne verrait une règle morte. Le dépôt a déjà payé
-   exactement cela sous D9, sur un `~` qui ne pouvait pas s'appliquer.
+   ⚠️ `.champ--erreur` CARRIES THE STATE, `.champ__erreur` CARRIES THE MESSAGE. The
+   double dash is the modifier, the double underscore the element: a
+   confusion between the two produces a rule that NEVER applies, and
+   none of the nine checks would see a dead rule. The repository already paid for
+   exactly that under D9, on a `~` that could not apply.
 
-   ⚠️ L'ANNEAU DE FOCUS N'EST PAS DÉCLARÉ ICI, ET CE N'EST PAS UN OUBLI :
-   `design/base.css` le pose globalement sur `:focus-visible`. Une primitive
-   qui le redéclarerait le ferait diverger en silence le jour où le token
-   `--trait-focus` bougerait.
+   ⚠️ THE FOCUS RING IS NOT DECLARED HERE, AND IT IS NOT AN OVERSIGHT:
+   `design/base.css` sets it globally on `:focus-visible`. A primitive
+   that redeclared it would make it diverge silently the day the
+   `--trait-focus` token moved.
 
-   ⚠️ LE TRAIT AU REPOS EST `--bord-fort` : le contour d'un champ porte
-   l'information « ceci est un contrôle », et il est mesuré au seuil 3 par le
-   §7.1. En ERREUR il devient `--danger`, qui est mesuré au seuil 4,5 comme
-   encre sur les trois fonds — jamais comme fond, voir la famille message.
+   ⚠️ THE STROKE AT REST IS `--bord-fort`: the outline of a field carries
+   the information "this is a control", and it is measured at threshold 3 by
+   §7.1. In ERROR it becomes `--danger`, which is measured at threshold 4.5 as
+   an ink on the three backgrounds — never as a background, see the message family.
 
-   ⚠️ L'ÉCART INTERNE EST `--e-2` ET NON `--e-1`, ET CE CHOIX N'A PAS BOUGÉ —
-   mais sa raison, elle, a été périmée par S3. Elle disait : « `--e-1` est
-   encore en liste d'attente sous l'annotation "l'écart interne d'une
-   étiquette", c'est-à-dire d'une famille que la spec §6 ne confie PAS à S2 ».
-   `--e-1` EST SORTI DE LA LISTE au sous-bloc S3, tâche 4 : la pastille d'état
-   du bureau le consomme (`client/src/bureau/bureau.css`, `.bureau__pastille` —
-   `client/src/shell.css` jusqu'au renommage du 31 août 2026).
-   Ce qui tient toujours est le fond de l'argument — le consommer ICI pour
-   vider une ligne de liste aurait été satisfaire un contrôle en vidant
-   l'autre, et l'écart interne d'un champ n'est pas celui d'une étiquette.
+   ⚠️ THE INNER SPACING IS `--e-2` AND NOT `--e-1`, AND THIS CHOICE HAS NOT MOVED —
+   but its reason has been made stale by S3. It said: "`--e-1` is
+   still on the waiting list under the annotation "the inner spacing of a
+   label", that is, of a family spec §6 does NOT entrust to S2".
+   `--e-1` LEFT THE LIST in sub-block S3, task 4: the state pill
+   of the desktop consumes it (`client/src/bureau/bureau.css`, `.bureau__pastille` —
+   `client/src/shell.css` until the rename of August 31st, 2026).
+   What still holds is the substance of the argument — consuming it HERE to
+   empty a list line would have been satisfying one check by emptying
+   the other, and the inner spacing of a field is not that of a label.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .champ {

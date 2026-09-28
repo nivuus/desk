@@ -1,30 +1,30 @@
 /// <reference types="vite/client" />
 /**
- * Tests de `conformer` — le SEUL REMPART du produit contre une couleur
- * illisible reçue du serveur.
+ * Tests of `conformer` — the product's ONLY SAFEGUARD against an unreadable
+ * colour received from the server.
  *
- * 🔴 **§7.1 et §7.2 ne voient RIEN de ce chemin, et c'est STRUCTUREL** (E10 du
- * plan) : §7.2 est syntaxique et le déclare lui-même ; §7.1 compare une liste
- * de paires écrite à la main dans `design/contraste.ts`, jamais un produit
- * cartésien, et `client/outils/contraste.mjs` exclut nommément les couleurs
- * composées à l'exécution. **Ces tests sont le seul juge, et leurs rouges ont
- * été VUES.**
+ * 🔴 **§7.1 and §7.2 see NOTHING of this path, and it is STRUCTURAL** (E10 of the
+ * plan): §7.2 is syntactic and says so itself; §7.1 compares a list
+ * of pairs written by hand in `design/contraste.ts`, never a cartesian
+ * product, and `client/outils/contraste.mjs` explicitly excludes colours
+ * composed at run time. **These tests are the only judge, and their reds were
+ * SEEN.**
  *
- * 🔴 **AUCUNE COULEUR N'EST ÉCRITE EN LITTÉRAL ICI, ET CE N'EST PAS UN
- * ORNEMENT — c'est une correction.** La première rédaction en portait
- * vingt-et-une, et elle a fait passer §7.2 au ROUGE **dans le commit `46e3aa8`,
- * sans que je le voie** : l'exclusion de ce contrôle est posée AU PLUS ÉTROIT
- * (`client/src/design/*.test.ts` seulement), et ces tests-ci ne sont pas du
- * socle. La widener appartiendrait à ⑥, clos, et le sous-bloc A1 s'interdit
- * d'écrire dans `client/src/design/` comme dans `client/outils/` (D-A1-14).
+ * 🔴 **NO COLOUR IS WRITTEN AS A LITERAL HERE, AND IT IS NOT AN
+ * ORNAMENT — it is a correction.** The first draft carried
+ * twenty-one of them, and it turned §7.2 RED **in commit `46e3aa8`,
+ * without me seeing it**: that check's exclusion is set AS NARROWLY AS POSSIBLE
+ * (`client/src/design/*.test.ts` only), and these tests are not part of the
+ * base layer. Widening it would belong to ⑥, closed, and sub-block A1 forbids itself
+ * from writing in `client/src/design/` as in `client/outils/` (D-A1-14).
  *
- * ⚠️ **La voie facile aurait été de ranger les fixtures dans un `.json`**, que
- * §7.2 ne balaie pas — c'est-à-dire de satisfaire un contrôle en le VIDANT, ce
- * que ce dépôt refuse. Tout est donc **LU DANS `tokens/couleurs.css`**
- * (`tokens.css` avant l'extraction de la tâche 6, 25 août 2026 — ce fichier
- * ne lit que des COULEURS, jamais une échelle), ce qui est strictement plus
- * fort qu'un littéral : « un contrôle qui a sa propre copie des valeurs
- * valide sa copie » (spec ⑥ §7.1).
+ * ⚠️ **The easy route would have been to put the fixtures in a `.json`**, which
+ * §7.2 does not scan — that is, satisfying a check by EMPTYING it, which
+ * this repository refuses. Everything is therefore **READ FROM `tokens/couleurs.css`**
+ * (`tokens.css` before the extraction of task 6, August 25th, 2026 — this file
+ * only reads COLOURS, never a scale), which is strictly stronger
+ * than a literal: "a check that has its own copy of the values
+ * validates its copy" (spec ⑥ §7.1).
  */
 
 import { describe, expect, it } from 'vitest';
@@ -43,50 +43,50 @@ const jeton = (nom: string): string => {
 
 const FONDS = ['--fond-0', '--fond-1', '--fond-2'].map(jeton);
 const ACCENT_DU_THEME = jeton('--accent');
-/// `--bord` : **1,447 / 1,336 / 1,215** contre les trois fonds sombres — sous
-/// le seuil de 3 sur les TROIS. Mesuré par `rapportDeContraste` lui-même le
-/// 21 août 2026, jamais estimé.
+/// `--bord`: **1.447 / 1.336 / 1.215** against the three dark backgrounds — below
+/// the threshold of 3 on ALL THREE. Measured by `rapportDeContraste` itself on
+/// August 21st, 2026, never estimated.
 const ILLISIBLE = jeton('--bord');
-/// `--succes` : **8,867 / 8,186 / 7,446** — lisible sur les trois, et
-/// DIFFÉRENT de `--accent`, ce qui est indispensable : un fixture égal au repli
-/// ne permettrait pas de distinguer « rendu tel quel » de « refusé ».
+/// `--succes`: **8.867 / 8.186 / 7.446** — readable on all three, and
+/// DIFFERENT from `--accent`, which is essential: a fixture equal to the fallback
+/// would not let us tell "rendered as is" from "refused".
 const LISIBLE = jeton('--succes');
 
 describe('conformer', () => {
     it('🔴 an UNREADABLE colour is REFUSED, and the theme takes over again', () => {
-        // ROUGE : l'arbre intact avant que `conformer` n'existe ; puis, par
-        // mutation, ne plus juger la lisibilité.
-        // 🔴 C'EST LA ROUGE QUE LA SPEC EXIGE (critère ③).
+        // RED: the untouched tree before `conformer` existed; then, by
+        // mutation, no longer judging readability.
+        // 🔴 THIS IS THE RED THE SPEC REQUIRES (criterion ③).
         expect(conformer(ILLISIBLE, FONDS, ACCENT_DU_THEME)).toBe(ACCENT_DU_THEME);
     });
 
     it('a READABLE colour is rendered as is', () => {
-        // ROUGE : rendre toujours `accentDuTheme` ⟹ le mécanisme entier serait
-        // inerte. SANS CE TEST, le précédent serait tenu par une fonction qui
-        // refuse tout — c'est-à-dire par un produit mort.
+        // RED: always returning `accentDuTheme` ⟹ the whole mechanism would be
+        // inert. WITHOUT THIS TEST, the previous one would be satisfied by a function that
+        // refuses everything — that is, by a dead product.
         expect(conformer(LISIBLE, FONDS, ACCENT_DU_THEME)).toBe(LISIBLE);
     });
 
     it('a colour readable on TWO backgrounds out of three is REFUSED', () => {
-        // ROUGE : `.some()` au lieu de `.every()`.
-        // Le troisième fond EST la couleur candidate : le rapport y vaut
-        // exactement 1,000, quand les deux premiers valent 8,867 et 8,186.
-        // Le cas n'est pas artificiel — une surface dont le fond est justement
-        // la teinte de l'application est un cas réel.
+        // RED: `.some()` instead of `.every()`.
+        // The third background IS the candidate colour: the ratio there is
+        // exactly 1.000, when the first two are 8.867 and 8.186.
+        // The case is not artificial — a surface whose background is precisely
+        // the application's tint is a real case.
         expect(conformer(LISIBLE, [FONDS[0], FONDS[1], LISIBLE], ACCENT_DU_THEME))
             .toBe(ACCENT_DU_THEME);
     });
 
     it('a NON-HEXADECIMAL form is REFUSED, without throwing', () => {
-        // ROUGE : retirer l'étape « forme » ⟹ `rapportDeContraste` LÈVE (E9).
-        // ⚠️ L'assertion est « rend `accentDuTheme` », PAS « ne lève pas » : un
-        // test qui n'attendrait qu'une absence d'exception serait satisfait par
-        // un `catch`, que ce module s'interdit.
+        // RED: removing the "shape" step ⟹ `rapportDeContraste` THROWS (E9).
+        // ⚠️ The assertion is "returns `accentDuTheme`", NOT "does not throw": a
+        // test that only expected the absence of an exception would be satisfied by
+        // a `catch`, which this module forbids itself.
         //
-        // Les deux premières formes sont DÉRIVÉES d'un vrai token, et c'est ce
-        // qui les rend intéressantes : `luminanceRelative` les ACCEPTE (`#rgb`
-        // et `#rrggbbaa` sont dans sa liste), et `conformer` les refuse quand
-        // même — parce que le protocole dit `#rrggbb`, et rien d'autre.
+        // The first two shapes are DERIVED from a real token, and that is what
+        // makes them interesting: `luminanceRelative` ACCEPTS them (`#rgb`
+        // and `#rrggbbaa` are in its list), and `conformer` refuses them all the
+        // same — because the protocol says `#rrggbb`, and nothing else.
         const formes = [
             LISIBLE.slice(0, 4), // trois chiffres
             `${LISIBLE}00`, // huit chiffres
@@ -102,32 +102,32 @@ describe('conformer', () => {
     });
 
     it('an UPPERCASE casing is accepted after normalisation', () => {
-        // ROUGE : comparer sans minusculer ⟹ la MÊME couleur, écrite en
-        // majuscules, serait refusée pour un motif de forme.
+        // RED: comparing without lowercasing ⟹ the SAME colour, written in
+        // capitals, would be refused for a shape reason.
         expect(conformer(`  ${LISIBLE.toUpperCase()}  `, FONDS, ACCENT_DU_THEME)).toBe(LISIBLE);
     });
 
     it('the rendered colour is NEVER corrected', () => {
-        // ROUGE : éclaircir la couleur refusée au lieu de la refuser (D10
-        // point 3 : « éclaircir ou assombrir la couleur d'une application
-        // produirait une teinte que personne n'a choisie »).
-        // Ni la couleur acceptée ni le repli ne sont retouchés d'un bit.
+        // RED: lightening the refused colour instead of refusing it (D10
+        // point 3: "lightening or darkening an application's colour
+        // would produce a tint nobody chose").
+        // Neither the accepted colour nor the fallback is altered by a single bit.
         expect(conformer(LISIBLE, FONDS, ACCENT_DU_THEME)).toBe(LISIBLE);
         expect(conformer(ILLISIBLE, FONDS, ACCENT_DU_THEME)).toBe(ACCENT_DU_THEME);
     });
 
     it('a malformed background makes it REFUSE, it does not throw', () => {
-        // ROUGE : ne pas contrôler la forme des FONDS ⟹ `rapportDeContraste`
-        // lève sur le fond, et le message de canal de données tue la session.
-        // Le cas est RÉEL : `getComputedStyle` rend la CHAÎNE VIDE pour un
-        // token absent — donc pour toute page dont le socle n'est pas lié.
+        // RED: not checking the shape of the BACKGROUNDS ⟹ `rapportDeContraste`
+        // throws on the background, and the data channel message kills the session.
+        // The case is REAL: `getComputedStyle` returns the EMPTY STRING for an
+        // absent token — so for any page whose base layer is not linked.
         expect(conformer(LISIBLE, [FONDS[0], '', FONDS[2]], ACCENT_DU_THEME))
             .toBe(ACCENT_DU_THEME);
     });
 
     it('an EMPTY list of backgrounds makes it REFUSE', () => {
-        // ROUGE : rendre la candidate quand il n'y a rien à juger ⟹ une page
-        // dont les tokens ne sont pas encore posés accepterait n'importe quoi.
+        // RED: returning the candidate when there is nothing to judge ⟹ a page
+        // whose tokens are not set yet would accept anything.
         expect(conformer(LISIBLE, [], ACCENT_DU_THEME)).toBe(ACCENT_DU_THEME);
     });
 });

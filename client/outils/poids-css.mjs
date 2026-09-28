@@ -1,42 +1,42 @@
 #!/usr/bin/env node
-// Contrôle §7.7 de la spec ⑥ — LE POIDS CSS NE DÉRIVE PAS.
+// Check §7.7 of spec ⑥ — THE CSS WEIGHT DOES NOT DRIFT.
 //
-// À lancer APRÈS `npm run build`. Somme les octets de `dist/assets/*.css` et
-// refuse au-dessus d'un plafond. La somme et le plafond sont imprimés
-// TOUJOURS, y compris en cas de succès : un contrôle de dérive dont on ne lit
-// jamais la valeur ne sert qu'à passer.
+// To be run AFTER `npm run build`. Sums the bytes of `dist/assets/*.css` and
+// refuses above a ceiling. The sum and the ceiling are printed
+// ALWAYS, including on success: a drift check whose value is never
+// read only serves to pass.
 //
 // ────────────────────────────────────────────────────────────────────────────
-// LE PLAFOND EST ARBITRAIRE, ET IL EST DÉCLARÉ TEL — mot pour mot d'après la
-// spec §7.7 : « Il n'est adossé à aucune mesure de performance : c'est un
-// garde-fou contre une addition massive, pas une cible de budget. » Il rejoint
-// la liste des constantes non calibrées du dépôt — `BPP_MIN`, `FACTEUR_FOCUS`,
-// `PART_DORMANTE_BPS`, `MAX_OUTPUT_SIZE` — et se révise sans embarras.
+// THE CEILING IS ARBITRARY, AND IT IS DECLARED AS SUCH — word for word from
+// spec §7.7: "It rests on no performance measurement: it is a
+// safeguard against a massive addition, not a budget target." It joins
+// the list of the repository's uncalibrated constants — `BPP_MIN`, `FACTEUR_FOCUS`,
+// `PART_DORMANTE_BPS`, `MAX_OUTPUT_SIZE` — and is revised without embarrassment.
 //
-// Ligne de base relevée le 19 août 2026, au commit `7314171`, `client/` étant
-// inchangé depuis `8ad03a2` :
+// Baseline taken on August 19th, 2026, at commit `7314171`, `client/` being
+// unchanged since `8ad03a2`:
 //
 //     $ find dist/assets -name '*.css' -printf '%s\t%p\n'
 //     1429    dist/assets/main-nAqQO_Wk.css
 //
-// ⚠️ Ce n'est PAS le 1 055 octets de la spec §2.3 : le chantier microphone a
-// ajouté `#micro` et ses états à `style.css` depuis.
+// ⚠️ It is NOT the 1,055 bytes of spec §2.3: the microphone project has
+// added `#micro` and its states to `style.css` since.
 //
 // ────────────────────────────────────────────────────────────────────────────
-// LE NOM DU FICHIER CSS N'EST PAS PRÉVISIBLE, et c'est pourquoi ce script
-// balaie `dist/assets/*.css` sans présumer d'aucun nom. Quand plusieurs pages
-// lient la même feuille, Vite émet un actif partagé dont le nom vient d'un
-// morceau JavaScript voisin — le prototype de S1 l'a vu sortir sous le nom
-// `jeton-BtI6TA8C.css`. Un script qui chercherait `socle-*.css` ne trouverait
-// rien, et rendrait donc VERT sur une somme de zéro.
+// THE NAME OF THE CSS FILE IS NOT PREDICTABLE, and that is why this script
+// scans `dist/assets/*.css` without assuming any name. When several pages
+// link the same sheet, Vite emits a shared asset whose name comes from a
+// neighbouring JavaScript chunk — the S1 prototype saw it come out as
+// `jeton-BtI6TA8C.css`. A script that looked for `socle-*.css` would find
+// nothing, and would therefore return GREEN on a sum of zero.
 //
-// ⚠️ CE QUE LA ROUGE DE `--plafond` ÉPROUVE, ET CE QU'ELLE N'ÉPROUVE PAS. Le
-// drapeau `--plafond` existe pour rendre le refus rejouable sans rien salir :
-// il éprouve la COMPARAISON. Il n'éprouve pas que la SOMME soit la bonne — la
-// rouge que la spec nomme pour cela (« ajouter un @font-face avec une police
-// en data: URI ») demanderait d'écrire une police dans une feuille du produit.
-// Que la somme soit juste s'établit en la comparant à la sortie de `find`
-// ci-dessus. Dit plutôt que caché.
+// ⚠️ WHAT THE RED OF `--plafond` EXERCISES, AND WHAT IT DOES NOT. The
+// `--plafond` flag exists to make the refusal replayable without dirtying anything:
+// it exercises the COMPARISON. It does not exercise that the SUM is right — the
+// red the spec names for that ("add an @font-face with a font
+// as a data: URI") would require writing a font into a product sheet.
+// That the sum is right is established by comparing it to the output of `find`
+// above. Said rather than hidden.
 
 import { readdirSync, statSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
@@ -64,13 +64,13 @@ const feuilles = readdirSync(actifs)
 
 const somme = feuilles.reduce((t, f) => t + f.octets, 0);
 
-// ⚠️ ZÉRO FEUILLE N'EST PAS UN SUCCÈS, c'est une mesure qui n'a pas eu lieu.
-// Sans ce garde, le contrôle rend VERT sur une somme de zéro — relevé le
-// 19 août 2026 sur un `dist/assets/` vide : « somme : 0 / marge : 12288 /
-// exit=0 ». C'est exactement le piège que l'en-tête décrit pour un script qui
-// chercherait un nom de fichier précis, et il se refermait ici sous une autre
-// forme. Sortie 2, comme pour un `dist/` absent : l'INSTRUMENT n'a rien pu
-// mesurer, ce qui n'est pas la même chose que le produit qui dépasse (1).
+// ⚠️ ZERO SHEETS IS NOT A SUCCESS, it is a measurement that did not take place.
+// Without this guard, the check returns GREEN on a sum of zero — observed on
+// August 19th, 2026 on an empty `dist/assets/`: « somme : 0 / marge : 12288 /
+// exit=0 » (the output was in French then). It is exactly the trap the header describes for a script that
+// looked for a precise file name, and it closed in here under another
+// form. Exit 2, as for an absent `dist/`: the INSTRUMENT could not
+// measure anything, which is not the same as the product exceeding (1).
 if (feuilles.length === 0) {
     console.error(`no sheet in ${actifs}: nothing was measured, this is not a success.`);
     process.exit(2);

@@ -19,8 +19,8 @@ describe('table de scancodes', () => {
     });
 
     it('tells the numeric keypad dot from the Delete key', () => {
-        // Même scancode, seul le préfixe étendu les sépare — c'est
-        // exactement ce que porte le drapeau `extended`.
+        // Same scancode, only the extended prefix separates them — that is
+        // exactly what the `extended` flag carries.
         expect(SCANCODES.NumpadDecimal).toEqual({ scancode: 0x53, extended: false });
         expect(SCANCODES.Delete).toEqual({ scancode: 0x53, extended: true });
     });

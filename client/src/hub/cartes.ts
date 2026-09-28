@@ -26,7 +26,7 @@
 import type { ApplicationListee } from './catalogue';
 
 export interface DepsCarte {
-    /// Le `<template id="modele-application">` du hub.
+    /// The hub's `<template id="modele-application">`.
     modele: HTMLTemplateElement;
     /// The absolute URL of the icon, or `null`. 🔴 COMPUTING THE BASE STAYS WITH
     /// THE CALLER: this module has no reason to know the platform's

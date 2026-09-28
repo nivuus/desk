@@ -202,7 +202,7 @@ export function tokensReferences(css: string): Set<string> {
  * S2 filed it (`docs/superpowers/plans/journaux-design-s2/trou-7-4.log`):
  * `--accent-survol` removed from BOTH light blocks and left at the root alone
  * returned `bloc racine : 48 / media-clair : 13 / attribut-clair : 13`,
- * `écarts : 0`, `exit=0`. A colour forgotten in the light theme was thus only
+ * `écarts : 0`, `exit=0`. A colour forgotten in the light theme was thus only (policy: allow-fr, verbatim log output)
  * discovered by eye, on a light page.
  *
  * ⚠️ THE SCOPE OF CHECK §7.4 CHANGED WITH ③, and it is no longer "the three

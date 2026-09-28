@@ -1,9 +1,9 @@
-// Tests du démutage au premier geste.
+// Tests of unmuting on the first gesture.
 //
-// Le module est testé par injection : ni `document`, ni `window`, ni un vrai
-// HTMLVideoElement ne sont nécessaires. C'est la technique retenue pour
-// `reset-origin.js` dans le spike multi-fenêtres, qui a permis de tester le
-// même module sous Vitest et dans le navigateur sans build.
+// The module is tested by injection: neither `document`, nor `window`, nor a real
+// HTMLVideoElement are needed. It is the technique chosen for
+// `reset-origin.js` in the multi-window spike, which made it possible to test the
+// same module under Vitest and in the browser without a build.
 
 import { describe, expect, it, vi } from 'vitest';
 
@@ -26,10 +26,10 @@ function faireCible() {
                 ecouteur(new Event(type));
             }
         },
-        /// `new Event(type)` ne porte pas de propriété `key` : Node n'a pas
-        /// de classe `KeyboardEvent` globale (contrairement à un vrai
-        /// navigateur), donc on la simule en l'assignant après coup sur un
-        /// `Event` ordinaire — suffisant, `audio.ts` ne lit que `.type` et
+        /// `new Event(type)` carries no `key` property: Node has no
+        /// global `KeyboardEvent` class (unlike a real
+        /// browser), so it is simulated by assigning it afterwards on an
+        /// ordinary `Event` — enough, `audio.ts` only reads `.type` and
         /// `.key`.
         declencherTouche(type: string, touche: string) {
             const evenement = new Event(type) as Event & { key: string };
@@ -44,8 +44,8 @@ function faireCible() {
     };
 }
 
-/// Un média dont le démutage est systématiquement refusé par le navigateur :
-/// `muted` reste bloqué à `true` quoi qu'on lui assigne.
+/// A media whose unmuting is systematically refused by the browser:
+/// `muted` stays stuck at `true` whatever is assigned to it.
 function faireMediaRecalcitrant() {
     const media = {};
     Object.defineProperty(media, 'muted', {
@@ -80,8 +80,8 @@ describe('armerLeSon', () => {
     });
 
     it('removes all its listeners after the first gesture', () => {
-        // Sans retrait, chaque geste ultérieur reforcerait `muted = false` et
-        // écraserait un éventuel choix de l'utilisateur de couper le son.
+        // Without removal, every later gesture would force `muted = false` again and
+        // would overwrite a possible user choice to turn the sound off.
         const media = { muted: true };
         const cible = faireCible();
         armerLeSon({ media, cible });
@@ -123,7 +123,7 @@ describe('armerLeSon', () => {
 
         cible.declencherTouche('keydown', 'Shift');
         expect(media.muted).toBe(true);
-        // L'armement n'est pas consommé : les écouteurs sont toujours là.
+        // The arming is not consumed: the listeners are still there.
         expect(cible.compte('keydown')).toBe(1);
         expect(cible.compte('pointerdown')).toBe(1);
     });
@@ -165,18 +165,18 @@ describe('armerLeSon', () => {
         expect(media.muted).toBe(true);
         expect(cible.compte('pointerdown')).toBe(1);
         expect(cible.compte('keydown')).toBe(1);
-        // Ne signale pas un succès qui n'a pas eu lieu.
+        // Does not report a success that did not happen.
         expect(surEtat).not.toHaveBeenCalledWith(true);
 
-        // Un geste ultérieur peut retenter — toujours refusé ici, mais la
-        // séquence ne lève pas et les écouteurs restent disponibles.
+        // A later gesture can retry — still refused here, but the
+        // sequence does not throw and the listeners stay available.
         cible.declencher('keydown');
         expect(cible.compte('pointerdown')).toBe(1);
     });
 
     it('cancelling after an unmute that already happened breaks nothing and leaves the sound on', () => {
-        // Le geste a déjà tout retiré lui-même (voir le test précédent) :
-        // `annuler()` doit rester un no-op silencieux, pas remuter ni lever.
+        // The gesture already removed everything itself (see the previous test):
+        // `annuler()` must stay a silent no-op, neither re-muting nor throwing.
         const media = { muted: true };
         const cible = faireCible();
         const annuler = armerLeSon({ media, cible });

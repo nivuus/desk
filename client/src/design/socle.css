@@ -1,8 +1,8 @@
-/* Le POINT D'ENTRÉE UNIQUE du socle visuel : c'est ce fichier que les pages
-   lient, jamais `tokens.css` ni `base.css` séparément.
-   ⚠️ Il est lié DEPUIS LE HTML, jamais importé depuis `style.css` : mesuré au
-   prototype, un `@import` fait RÉ-INLINER le socle dans chaque entrée qui le
-   traverse, là où le lier depuis le HTML laisse Vite le partager entre pages.
-   Voir la décision de liaison dans `style.css`. */
+/* The SINGLE ENTRY POINT of the visual base layer: it is this file that the pages
+   link, never `tokens.css` or `base.css` separately.
+   ⚠️ It is linked FROM THE HTML, never imported from `style.css`: measured on the
+   prototype, an `@import` makes the base layer be RE-INLINED in each entry that goes
+   through it, whereas linking it from the HTML lets Vite share it between pages.
+   See the linking decision in `style.css`. */
 @import './tokens.css';
 @import './base.css';

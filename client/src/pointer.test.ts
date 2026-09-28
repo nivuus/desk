@@ -1,8 +1,8 @@
-// Tests de la souris relative sous Pointer Lock.
+// Tests of the relative mouse under Pointer Lock.
 //
-// Le module est testé par injection : ni `document`, ni `window`, ni un vrai
-// HTMLVideoElement ne sont nécessaires. C'est la technique retenue pour les
-// modules d'armement du projet.
+// The module is tested by injection: neither `document`, nor `window`, nor a real
+// HTMLVideoElement are needed. It is the technique chosen for the
+// project's arming modules.
 
 import { describe, expect, it, vi } from 'vitest';
 import { attachPointer, createClampReport, sommerDeltas, type CibleVideo } from './pointer';
@@ -22,9 +22,9 @@ function faireCibleVideo() {
             ecouteurs.set(type, list);
         },
         requestPointerLock() {
-            // Simule le comportement réel : le navigateur accepte seulement si une
-            // activation utilisateur transitoire est en cours. Sans activation (test par
-            // défaut), l'appel échoue silencieusement.
+            // Simulates the real behaviour: the browser only accepts if a
+            // transient user activation is in progress. Without activation (default
+            // test), the call fails silently.
             if (permisVerrouiller) {
                 pointerLock = true;
             }
@@ -36,7 +36,7 @@ function faireCibleVideo() {
             }
         },
         declencherPointerMove(movementX: number, movementY: number, coalesces?: Array<{ movementX: number; movementY: number }>) {
-            // Simule un PointerEvent sans utiliser la classe (qui n'existe pas en Node)
+            // Simulates a PointerEvent without using the class (which does not exist in Node)
             const event = new Event('pointermove') as any;
             event.movementX = movementX;
             event.movementY = movementY;
@@ -118,8 +118,8 @@ describe('clamp with carry-over', () => {
     });
 
     it('clamps the overflow and carries it over to the next call', () => {
-        // La somme transmise doit rester exacte : c'est elle qui détermine la
-        // visée. Écrêter en perdant le reste ferait dériver le tir.
+        // The transmitted sum must stay exact: it is what determines the
+        // aim. Clipping while losing the remainder would make the shot drift.
         const clamp = createClampReport();
         expect(clamp(40000, 0)).toEqual({ dx: 32767, dy: 0 });
         expect(clamp(0, 0)).toEqual({ dx: 7233, dy: 0 });
@@ -146,7 +146,7 @@ describe('attachPointer', () => {
         const envoyer = vi.fn();
         attachPointer({ video: video as any, doc: doc as any, envoyer });
 
-        // Un clic sans armement ne doit pas verrouiller (même si permis)
+        // A click without arming must not lock (even if allowed)
         video.autoriserVerrouillage();
         video.declencher('click');
         expect(video.estVerrouille()).toBe(false);
@@ -158,19 +158,19 @@ describe('attachPointer', () => {
         const envoyer = vi.fn();
         const handle = attachPointer({ video: video as any, doc: doc as any, envoyer });
 
-        // D'abord, le navigateur refuse le verrouillage (pas d'activation utilisateur)
+        // First, the browser refuses the lock (no user activation)
         video.interdireVerrouillage();
         handle.surMessagePointeur(false, 'default');
-        // L'essai gratuit tente de verrouiller mais échoue silencieusement
+        // The free attempt tries to lock but fails silently
         expect(video.estVerrouille()).toBe(false);
 
-        // Maintenant, le navigateur accepte le verrouillage (activation utilisateur
-        // vient d'arriver via le clic)
+        // Now, the browser accepts the lock (user activation
+        // has just arrived through the click)
         video.autoriserVerrouillage();
         video.declencher('click');
         expect(video.estVerrouille()).toBe(true);
 
-        // Ce test échoue si onClick est vide ou si la condition sur `arme` est cassée.
+        // This test fails if onClick is empty or if the condition on `arme` is broken.
     });
 
     it('stays armed after an exit through Escape if the agent is still relative', () => {
@@ -179,28 +179,28 @@ describe('attachPointer', () => {
         const envoyer = vi.fn();
         const handle = attachPointer({ video: video as any, doc: doc as any, envoyer });
 
-        // Armement : permis de verrouiller dès le départ
+        // Arming: allowed to lock from the start
         video.autoriserVerrouillage();
         handle.surMessagePointeur(false, 'default');
-        // L'essai gratuit réussit
+        // The free attempt succeeds
         expect(video.estVerrouille()).toBe(true);
 
-        // Simuler que c'est vraiment verrouillé dans le document
+        // Simulate that it is really locked in the document
         doc.pointerLockElement = video as any;
         doc.declencher('pointerlockchange');
 
-        // Sortie par Échap : le document change d'état
+        // Exit through Escape: the document changes state
         doc.pointerLockElement = null;
-        // Mais le test doit aussi refléter que le navigateur a relâché le verrouillage
+        // But the test must also reflect that the browser released the lock
         video.deverrouiller();
         doc.declencher('pointerlockchange');
 
-        // Le module doit rester armé après pointerlockchange si toujours en mode relatif
-        // Donc le clic suivant doit reverrouiller
+        // The module must stay armed after pointerlockchange if still in relative mode
+        // So the next click must lock again
         video.declencher('click');
         expect(video.estVerrouille()).toBe(true);
 
-        // Ce test échoue si onPointerLockChange désarmait ou si onClick était vide.
+        // This test fails if onPointerLockChange disarmed or if onClick was empty.
     });
 
     it('removes all the listeners on detach', () => {
@@ -209,22 +209,22 @@ describe('attachPointer', () => {
         const envoyer = vi.fn();
         const handle = attachPointer({ video: video as any, doc: doc as any, envoyer });
 
-        // Avant détachement : 2 écouteurs sur video
+        // Before detaching: 2 listeners on video
         expect(video.compte('click')).toBe(1);
         expect(video.compte('pointermove')).toBe(1);
         expect(doc.compte('pointerlockerror')).toBe(1);
         expect(doc.compte('pointerlockchange')).toBe(1);
 
-        // Détachement
+        // Detaching
         handle.detacher();
 
-        // Après détachement : plus d'écouteurs
+        // After detaching: no more listeners
         expect(video.compte('click')).toBe(0);
         expect(video.compte('pointermove')).toBe(0);
         expect(doc.compte('pointerlockerror')).toBe(0);
         expect(doc.compte('pointerlockchange')).toBe(0);
 
-        // Les événements ultérieurs ne doivent rien faire
+        // Later events must do nothing
         video.declencher('click');
         expect(video.estVerrouille()).toBe(false);
     });
@@ -238,23 +238,23 @@ describe('attachPointer', () => {
 
         handle.surMessagePointeur(false, 'default');
 
-        // Première erreur
+        // First error
         doc.declencher('pointerlockerror');
         expect(surEchec).not.toHaveBeenCalled();
 
-        // Deuxième erreur consécutive
+        // Second consecutive error
         doc.declencher('pointerlockerror');
         expect(surEchec).toHaveBeenCalledTimes(1);
 
-        // Un verrouillage réussi remet le compteur à zéro
+        // A successful lock resets the counter to zero
         doc.pointerLockElement = video as any;
         doc.declencher('pointerlockchange');
 
-        // Première erreur après reset
+        // First error after reset
         doc.declencher('pointerlockerror');
         expect(surEchec).toHaveBeenCalledTimes(1);
 
-        // Deuxième erreur : surEchec est appelé à nouveau
+        // Second error: surEchec is called again
         doc.declencher('pointerlockerror');
         expect(surEchec).toHaveBeenCalledTimes(2);
     });
@@ -265,17 +265,17 @@ describe('attachPointer', () => {
         const envoyer = vi.fn();
         const handle = attachPointer({ video: video as any, doc: doc as any, envoyer });
 
-        // Armement et verrouillage
+        // Arming and locking
         handle.surMessagePointeur(false, 'default');
         video.declencher('click');
         doc.pointerLockElement = video as any;
 
-        // Un événement avec getCoalescedEvents vide
+        // An event with an empty getCoalescedEvents
         video.declencherPointerMove(10, 20, []);
 
-        // L'événement principal (10, 20) doit être utilisé, pas une somme nulle
+        // The main event (10, 20) must be used, not a null sum
         expect(envoyer).toHaveBeenCalled();
-        // Vérifier que quelque chose a été envoyé (le payload exact dépend de encodeMouseMoveRelative)
+        // Check that something was sent (the exact payload depends on encodeMouseMoveRelative)
         expect(envoyer.mock.calls[0][0]).toBeInstanceOf(Uint8Array);
     });
 });

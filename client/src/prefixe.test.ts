@@ -10,8 +10,8 @@ import {
     retenirLePrefixe,
 } from './prefixe';
 
-/// Un coffre en mémoire : le module ne doit jamais toucher `localStorage`
-/// autrement que par le défaut de son argument (précédent de `jeton.ts`).
+/// An in-memory store: the module must never touch `localStorage`
+/// other than through the default of its argument (precedent of `jeton.ts`).
 function coffre(entrees: Record<string, string> = {}) {
     return {
         getItem: (cle: string) => entrees[cle] ?? null,
@@ -33,45 +33,45 @@ describe('lirePrefixe', () => {
         expect(lirePrefixe(coffre(), '?prefixe=Zm9vYmFy')).toBe('Zm9vYmFy');
     });
 
-    /// 🔴 L'ORDRE DE PRIORITÉ, ET IL COMPTE : inversé, un `?prefixe=` resté
-    /// dans une URL en favori écraserait à CHAQUE rechargement le préfixe que
-    /// la plateforme a posé, et la page ouvrirait les sessions d'une autre VM.
+    /// 🔴 THE PRIORITY ORDER, AND IT MATTERS: reversed, a `?prefixe=` left
+    /// in a bookmarked URL would overwrite on EVERY reload the prefix
+    /// the platform set, and the page would open the sessions of another VM.
     it('prefers the store to the query string', () => {
         expect(lirePrefixe(coffre({ [CLE_PREFIXE]: 'DU-COFFRE' }), '?prefixe=DE-L-URL')).toBe(
             'DU-COFFRE',
         );
     });
 
-    /// Ni l'un ni l'autre : chaîne vide, et surtout pas `undefined` ni une
-    /// exception — la page doit retomber sur `bureau`, exactement comme
-    /// avant P3 (spec §10).
+    /// Neither one nor the other: empty string, and certainly not `undefined` nor an
+    /// exception — the page must fall back to `bureau`, exactly as
+    /// before P3 (spec §10).
     it('returns the empty string when neither the store nor the query carry anything', () => {
         expect(lirePrefixe(coffre(), '')).toBe('');
         expect(lirePrefixe(coffre(), '?autre=chose')).toBe('');
     });
 
-    /// Un `?prefixe=` vide est une absence, pas un préfixe vide qui
-    /// vaudrait `':bureau'`.
+    /// An empty `?prefixe=` is an absence, not an empty prefix that
+    /// would give `':bureau'`.
     it('treats an empty prefix in the query as an absence', () => {
         expect(lirePrefixe(coffre(), '?prefixe=')).toBe('');
     });
 
-    /// ⚠️ CE TEST EST NÉ D'UNE MUTATION RESTÉE VERTE : retirer le
-    /// `duCoffre !== ''` ne rougissait RIEN, faute d'un cas où le coffre
-    /// porte la clé à vide. Un préfixe vide au coffre est une absence — sans
-    /// quoi il masquerait la requête et la page retomberait sur `bureau`
-    /// alors qu'on lui a explicitement nommé une VM.
+    /// ⚠️ THIS TEST WAS BORN FROM A MUTATION THAT STAYED GREEN: removing the
+    /// `duCoffre !== ''` turned NOTHING red, for lack of a case where the store
+    /// carries the key empty. An empty prefix in the store is an absence — otherwise
+    /// it would hide the query and the page would fall back to `bureau`
+    /// although it was explicitly given a VM name.
     it('treats an empty prefix in the store as an absence', () => {
         expect(lirePrefixe(coffre({ [CLE_PREFIXE]: '' }), '?prefixe=DE-L-URL')).toBe('DE-L-URL');
     });
 });
 
 describe('composer', () => {
-    /// 🔴 LE TEST LE PLUS IMPORTANT DU FICHIER. C'est le seul qui garantisse
-    /// que le préfixe absent restitue EXACTEMENT le comportement
-    /// d'aujourd'hui. Un `':bureau'` silencieux n'est le nom d'aucune session
-    /// existante : la page-shell attendrait une fenêtre qui ne vient jamais,
-    /// et rien ne le signalerait.
+    /// 🔴 THE MOST IMPORTANT TEST OF THE FILE. It is the only one that guarantees
+    /// that the absent prefix restores EXACTLY today's
+    /// behaviour. A silent `':bureau'` is the name of no existing
+    /// session: the shell page would wait for a window that never comes,
+    /// and nothing would report it.
     it("without a prefix, the session keeps exactly its current name", () => {
         expect(composer('', 'bureau')).toBe('bureau');
         expect(composer('', 'w-1')).toBe('w-1');
@@ -89,27 +89,27 @@ describe('poserPrefixe', () => {
         expect(lirePrefixe(c, '')).toBe('AB');
     });
 
-    /// 🔴 LE TEST LE PLUS IMPORTANT DU FICHIER APRÈS CELUI DE `composer`.
-    /// Écrire une chaîne vide dans le coffre ne serait pas neutre : `lirePrefixe`
-    /// la traite comme une absence, retomberait sur `?prefixe=` puis sur `''`, et
-    /// la page rejoindrait SILENCIEUSEMENT l'espace de noms partagé — la panne
-    /// muette exacte que la spec §10 nomme. Une exception est ce qui l'empêche de
-    /// passer inaperçue.
-    /// ⚠️ L'EXCEPTION EST APPARIÉE SUR SON TEXTE, ET CE N'EST PAS DU CONFORT.
-    /// Écrit `toThrow()` nu, ce test était VERT alors que `poserPrefixe`
-    /// n'existait pas encore : appeler une fonction absente lève, et un
-    /// `toThrow()` sans motif s'en contente. C'est le contrôle vacueux que ce
-    /// dépôt a payé quatre fois au sous-bloc D10, attrapé ici avant le vert.
+    /// 🔴 THE MOST IMPORTANT TEST OF THE FILE AFTER THAT OF `composer`.
+    /// Writing an empty string to the store would not be neutral: `lirePrefixe`
+    /// treats it as an absence, would fall back to `?prefixe=` then to `''`, and
+    /// the page would SILENTLY join the shared namespace — the exact silent
+    /// failure spec §10 names. An exception is what keeps it from going
+    /// unnoticed.
+    /// ⚠️ THE EXCEPTION IS MATCHED ON ITS TEXT, AND IT IS NOT FOR COMFORT.
+    /// Written as a bare `toThrow()`, this test was GREEN while `poserPrefixe`
+    /// did not exist yet: calling an absent function throws, and a
+    /// `toThrow()` without a pattern is satisfied with that. It is the vacuous check this
+    /// repository paid for four times in sub-block D10, caught here before green.
     it('THROWS on the empty string, rather than writing it to the store', () => {
         const c = coffre();
         expect(() => poserPrefixe(c, '')).toThrow(/empty prefix/);
         expect(c.getItem(CLE_PREFIXE)).toBeNull();
     });
 
-    /// 🔴 LE COFFRE EST UN PARAMÈTRE, ET IL EST HONORÉ. Un module qui aurait
-    /// capté `globalThis.localStorage` — au chargement ou à l'appel — écrirait
-    /// ailleurs que là où l'appelant l'a envoyé, et le test ci-dessus resterait
-    /// vert parce que le préfixe serait bien quelque part.
+    /// 🔴 THE STORE IS A PARAMETER, AND IT IS HONOURED. A module that had
+    /// captured `globalThis.localStorage` — on load or on call — would write
+    /// somewhere other than where the caller sent it, and the test above would stay
+    /// green because the prefix would indeed be somewhere.
     it('writes into the PASSED store, never into a global', () => {
         const global = globalThis as { localStorage?: unknown };
         const before = global.localStorage;
@@ -128,10 +128,10 @@ describe('poserPrefixe', () => {
 });
 
 describe('effacerPrefixe', () => {
-    /// Laisser en place le préfixe d'une VM qu'on n'a plus ferait ouvrir des
-    /// sessions au nom d'une autre machine. Et l'effacement est ce qui rend au
-    /// mode d'essai local son `?prefixe=` : le coffre a la priorité, donc tant
-    /// qu'il porte quelque chose la requête ne sert à rien.
+    /// Leaving in place the prefix of a VM we no longer have would open
+    /// sessions in the name of another machine. And erasing is what gives
+    /// the local trial mode back its `?prefixe=`: the store has priority, so as long
+    /// as it carries something the query is useless.
     it('removes the key, and hands back to the query string', () => {
         const c = coffre({ [CLE_PREFIXE]: 'ANCIEN' });
         clearPrefix(c);
@@ -139,33 +139,33 @@ describe('effacerPrefixe', () => {
     });
 });
 
-/* ══ CE QUE LA REVUE FINALE DU 31 AOUT 2026 A AJOUTE ═════════════════════ */
+/* ══ WHAT THE FINAL REVIEW OF AUGUST 31ST 2026 ADDED ═════════════════════ */
 
 describe('prefixeDeLaVm — the decision, PURE', () => {
-    // 🔴 CETTE REGLE EXISTE PARCE QUE LE HUB NE POSAIT AUCUN PREFIXE (critique
-    // ② de la revue finale). `poserPrefixe` n avait qu UN appelant de
-    // production, sur la PAGE DE CONNEXION ; un visiteur derriere Pomerium
-    // obtient son jeton SUR LE HUB et ne passe jamais par cet ecran. Le hub
-    // ecoutait donc `bureau` pendant que l agent annoncait sur
-    // `<prefixe>:bureau`, et AUCUN `fenetre-ouverte` n arrivait jamais.
+    // 🔴 THIS RULE EXISTS BECAUSE THE HUB SET NO PREFIX (critical
+    // ② of the final review). `poserPrefixe` had only ONE production
+    // caller, on the SIGN-IN PAGE; a visitor behind Pomerium
+    // gets their token ON THE HUB and never goes through that screen. The hub
+    // therefore listened on `bureau` while the agent announced on
+    // `<prefixe>:bureau`, and NO `fenetre-ouverte` ever arrived.
 
     it('retains the prefix announced by the VM', () => {
         expect(prefixeDeLaVm('vm-7')).toEqual({ action: 'poser', prefixe: 'vm-7' });
     });
 
     it('erases when the VM announces NONE (`null`)', () => {
-        // `catalogue.ts::VmListee.prefixe` est `string | null` : `null` veut
-        // dire « cette VM n a pas de prefixe », et laisser celui d hier ferait
-        // ouvrir les sessions au nom d une AUTRE machine.
+        // `catalogue.ts::VmListee.prefixe` is `string | null`: `null` means
+        // "this VM has no prefix", and keeping yesterday's would
+        // open the sessions in the name of ANOTHER machine.
         expect(prefixeDeLaVm(null)).toEqual({ action: 'effacer' });
     });
 
     it('erases on the EMPTY STRING, instead of making `poserPrefixe` throw', () => {
-        // ⚠️ `poserPrefixe` LEVE sur `''`, et c est juste POUR LUI : un
-        // appelant qui n a pas de prefixe n en a pas a ecrire. Mais un service
-        // qui annoncerait `prefixe: ''` n est pas une programmation fausse du
-        // client -- et faire lever le peuplement du catalogue serait pire que
-        // le defaut qu on repare.
+        // ⚠️ `poserPrefixe` THROWS on `''`, and that is right FOR IT: a
+        // caller who has no prefix has none to write. But a service
+        // that announced `prefixe: ''` is not a programming error of the
+        // client -- and making the catalogue population throw would be worse than
+        // the defect being fixed.
         expect(prefixeDeLaVm('')).toEqual({ action: 'effacer' });
     });
 

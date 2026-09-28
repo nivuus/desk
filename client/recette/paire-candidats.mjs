@@ -1,28 +1,28 @@
 #!/usr/bin/env node
-// Sonde de recette (chantier C volet 2, traversée NAT) : relève la paire de
-// candidats RÉELLEMENT employée par le navigateur, le type des deux candidats
-// qui la composent, son RTT et son débit.
+// Acceptance probe (project C part 2, NAT traversal): reads the candidate
+// pair ACTUALLY used by the browser, the type of the two candidates
+// that make it up, its RTT and its bitrate.
 //
-// Pourquoi elle existe : `verify-webrtc.mjs` prouve que le flux traverse, mais
-// ne dit pas PAR OÙ. Or c'est exactement la question de ce chantier — une
-// session peut très bien fonctionner en direct et ne rien prouver du relais.
-// Le type (`host` / `srflx` / `relay`) ne se lit que dans les entrées
-// `local-candidate` / `remote-candidate` appariées à la paire nominée.
+// Why it exists: `verify-webrtc.mjs` proves that the stream gets through, but
+// does not say WHICH WAY. Yet that is exactly the question of this project — a
+// session may very well work directly and prove nothing about the relay.
+// The type (`host` / `srflx` / `relay`) can only be read in the
+// `local-candidate` / `remote-candidate` entries paired with the nominated pair.
 //
 // Usage :
 //   node client/recette/paire-candidats.mjs [url] [dureeMs]
 //   FORCER_RELAIS=1 node client/recette/paire-candidats.mjs   (iceTransportPolicy: 'relay')
 //
-// ⚠️ DEPUIS LE SOUS-BLOC P2, CETTE INVOCATION NE SUFFIT PLUS face à un service
-// gardé : poser aussi `RECETTE_EMAIL`, `RECETTE_MOTDEPASSE`, et `PLATEFORME_URL`
-// si le service n'écoute pas sur http://127.0.0.1:8080. Voir
-// `recette/jeton-recette.mjs` — sans elles, l'outil AVERTIT et continue.
+// ⚠️ SINCE SUB-BLOCK P2, THIS INVOCATION IS NO LONGER ENOUGH against a guarded
+// service: also set `RECETTE_EMAIL`, `RECETTE_MOTDEPASSE`, and `PLATEFORME_URL`
+// if the service does not listen on http://127.0.0.1:8080. See
+// `recette/jeton-recette.mjs` — without them, the tool WARNS and carries on.
 
 //
-// `FORCER_RELAIS` s'applique en interceptant le constructeur de
-// `RTCPeerConnection` dans la page, sans toucher au code du client : la
-// modification n'a pas à être committée puis retirée, contrairement au réglage
-// en dur que suggérait le plan.
+// `FORCER_RELAIS` applies by intercepting the constructor of
+// `RTCPeerConnection` in the page, without touching the client code: the
+// change does not have to be committed then removed, unlike the hardcoded
+// setting the plan suggested.
 import { spawn } from 'node:child_process';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -76,11 +76,11 @@ class Cdp {
     }
 }
 
-/// Relève la paire employée, ses deux candidats, et les compteurs vidéo.
+/// Reads the pair in use, its two candidates, and the video counters.
 ///
-/// La paire retenue est celle marquée `selected` (Chrome), à défaut
-/// `nominated` : les deux existent, et une paire nominée n'est pas
-/// nécessairement celle qui porte le trafic.
+/// The retained pair is the one marked `selected` (Chrome), failing that
+/// `nominated`: both exist, and a nominated pair is not
+/// necessarily the one carrying the traffic.
 async function relever(cdp) {
     return cdp.eval(
         `(async () => {
@@ -92,8 +92,8 @@ async function relever(cdp) {
                 ?? toutes.find(s => s.type === 'candidate-pair' && s.nominated)
                 ?? toutes.find(s => s.type === 'candidate-pair' && s.state === 'succeeded');
             if (!paire) {
-                // Diagnostic : sans paire employée, ce sont les états de la
-                // négociation et les candidats collectés qui disent pourquoi.
+                // Diagnosis: without a pair in use, it is the negotiation
+                // states and the collected candidates that say why.
                 return {
                     paire: null,
                     etat: pc.iceConnectionState,
@@ -141,13 +141,13 @@ async function main() {
             '--disable-gpu',
             '--autoplay-policy=no-user-gesture-required',
             '--disable-features=WebRtcHideLocalIpsWithMdns',
-            // Sans ces trois options, Chrome gèle la page au bout de 5 minutes
-            // (elle n'est jamais au premier plan en mode sans interface) : le
-            // trafic ICE cesse, le pair révoque le consentement ~30 s plus tard
-            // et la session tombe. Constaté à la recette du 30/07/2026 — deux
-            // sessions de 11 minutes interrompues à 331 s et 340 s, l'une
-            // relayée l'autre directe, ce qui a d'abord été imputé à tort au
-            // relais. Toute mesure de plus de 5 minutes en a besoin.
+            // Without these three options, Chrome freezes the page after 5 minutes
+            // (it is never in the foreground in headless mode): the
+            // ICE traffic stops, the peer revokes consent ~30 s later
+            // and the session drops. Observed during the acceptance run of 07/30/2026 — two
+            // 11-minute sessions interrupted at 331 s and 340 s, one
+            // relayed the other direct, which was at first wrongly blamed on the
+            // relay. Any measurement longer than 5 minutes needs it.
             '--disable-background-timer-throttling',
             '--disable-backgrounding-occluded-windows',
             '--disable-renderer-backgrounding',
@@ -163,9 +163,9 @@ async function main() {
         const cdp = new Cdp(created.webSocketDebuggerUrl);
         await cdp.send('Page.enable');
         await cdp.send('Runtime.enable');
-        // Console et exceptions de la page : sans elles, un échec côté client
-        // (allocation TURN refusée, réponse SDP jamais reçue) se présente comme
-        // un simple « aucune paire employée », sans dire pourquoi.
+        // Console and exceptions of the page: without them, a failure on the client side
+        // (TURN allocation refused, SDP answer never received) shows up as
+        // a mere "no pair in use", without saying why.
         const journalPage = [];
         cdp.ws.addEventListener('message', (event) => {
             const m = JSON.parse(String(event.data));
@@ -179,8 +179,8 @@ async function main() {
                 journalPage.push(`[exception] ${d.exception?.description ?? d.text}`);
             }
         });
-        // Interception du constructeur : capture l'instance pour `getStats()`,
-        // et impose `iceTransportPolicy: 'relay'` si on force le relais.
+        // Interception of the constructor: captures the instance for `getStats()`,
+        // and imposes `iceTransportPolicy: 'relay'` if the relay is forced.
         await cdp.send('Page.addScriptToEvaluateOnNewDocument', {
             source: `
                 window.__pc = null;
@@ -195,7 +195,7 @@ async function main() {
                 window.RTCPeerConnection.prototype = N.prototype;
             `,
         });
-        // Sous-bloc P2 : sans jeton, la poignée de main `client` est refusée.
+        // Sub-block P2: without a token, the `client` handshake is refused.
         await semerJeton(cdp);
         await cdp.send('Page.navigate', { url });
 

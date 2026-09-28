@@ -1,19 +1,19 @@
-// Tests de la protection contre les messages de signaling illisibles.
+// Tests of the protection against unreadable signaling messages.
 //
-// Régression visée : `JSON.parse` réussit sur des charges utiles qui ne sont
-// pas des objets (`"null"` → `null`, `"42"` → un nombre, `'"x"'` → une
-// chaîne, `"[1,2]"` → un tableau). Un accès direct à `.type` sur `null` lève
-// une `TypeError` non interceptée, qui atteignait auparavant `onMessage` sans
-// passer par le `try/catch` de `JSON.parse` (celui-ci protège l'analyse, pas
-// la lecture de propriété qui suit). Le même défaut avait déjà été corrigé
-// côté serveur de signaling (commit 31db9f6) : ce fichier vérifie qu'il ne
-// réapparaît pas côté client.
+// Targeted regression: `JSON.parse` succeeds on payloads that are not
+// objects (`"null"` → `null`, `"42"` → a number, `'"x"'` → a
+// string, `"[1,2]"` → an array). Directly accessing `.type` on `null` throws
+// an uncaught `TypeError`, which previously reached `onMessage` without
+// going through the `try/catch` of `JSON.parse` (the latter protects parsing, not
+// the property read that follows). The same defect had already been fixed
+// on the signaling server side (commit 31db9f6): this file checks that it does not
+// reappear on the client side.
 //
-// ⚠️ **Ce fichier ne garde que ce qui s'éprouve SANS navigateur.** Les tests
-// de bout en bout de `connectSession` — qui exigent de simuler
-// `RTCPeerConnection`, `WebSocket` et `MediaStream` — vivent dans
-// `webrtc.session.test.ts`, extraits par la tâche 10 du chantier E quand ce
-// fichier a franchi le plafond de 500 lignes du dépôt.
+// ⚠️ **This file only keeps what is exercised WITHOUT a browser.** The
+// end-to-end tests of `connectSession` — which require simulating
+// `RTCPeerConnection`, `WebSocket` and `MediaStream` — live in
+// `webrtc.session.test.ts`, extracted by task 10 of project E when this
+// file crossed the repository's ceiling of 500 lines.
 
 import { describe, expect, it } from 'vitest';
 
@@ -66,10 +66,10 @@ describe('parseSignalingMessage', () => {
     });
 });
 
-/// Faux socket minimal : `waitForAnswer` n'utilise que
-/// `addEventListener`/`removeEventListener` pour les événements `message` et
-/// `close`. Pas besoin d'un vrai WebSocket (indisponible sous Node sans DOM)
-/// pour prouver que le gestionnaire ne plante pas.
+/// Minimal fake socket: `waitForAnswer` only uses
+/// `addEventListener`/`removeEventListener` for the `message` and
+/// `close` events. No need for a real WebSocket (unavailable under Node without a DOM)
+/// to prove the handler does not crash.
 class FakeSocket {
     private listeners = new Map<string, Set<(event: unknown) => void>>();
 
@@ -94,18 +94,18 @@ describe('waitForAnswer facing malformed messages', () => {
         const socket = new FakeSocket();
         const pending = waitForAnswer(socket as unknown as WebSocket);
 
-        // Avant le correctif, ceci levait une TypeError non interceptée à
-        // l'intérieur du gestionnaire d'événement `message` (accès à `.type`
-        // sur `null`) : invisible pour un test qui ne ferait qu'attendre la
-        // promesse (aucune exception ne remonte au code appelant depuis un
-        // event listener), mais fatale en pratique côté navigateur, car elle
-        // interrompt le gestionnaire avant qu'il puisse traiter le message
-        // suivant.
+        // Before the fix, this threw an uncaught TypeError inside
+        // the `message` event handler (access to `.type`
+        // on `null`): invisible to a test that only awaited the
+        // promise (no exception goes up to the calling code from an
+        // event listener), but fatal in practice on the browser side, because it
+        // interrupts the handler before it can process the next
+        // message.
         expect(() => socket.emitMessage('null')).not.toThrow();
 
-        // La réponse valide arrivée ensuite doit toujours résoudre la
-        // promesse : preuve que le message `null` a bien été ignoré, pas
-        // qu'il a cassé silencieusement l'écouteur.
+        // The valid answer arriving afterwards must still resolve the
+        // promise: proof that the `null` message was indeed ignored, not
+        // that it silently broke the listener.
         socket.emitMessage(JSON.stringify({ type: 'answer', sdp: 'v=0...' }));
 
         await expect(pending).resolves.toBe('v=0...');

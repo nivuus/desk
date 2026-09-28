@@ -4,27 +4,27 @@ import type { Adaptateur } from './adaptateur';
 import { createServer } from './protocole';
 
 /**
- * La famille des ANNONCES du protocole fichiers, extraite de
+ * The ANNOUNCEMENTS family of the files protocol, extracted from
  * `protocole.test.ts`.
  *
- * # Ce que cette extraction EST, et ce qu'elle n'est PAS
+ * # What this extraction IS, and what it is NOT
  *
- * **Elle n'ajoute aucun test.** Le `describe` est transposé **VERBATIM**
- * (l. 324-358 du parent), et le compte de `npx vitest run` est **inchangé**.
- * Elle vient **AVANT** l'addition qu'elle accueille : `protocole.test.ts`
- * était à **484** lignes, marge **16**, et F5 doit y ajouter les tests des
- * DEUX annonces neuves — `Bonjour` et `Rafraichir`, la **quatrième famille**
- * du protocole, celle qui va du navigateur vers le pont. C'est le geste que
- * D9 a inventé et que D10 a joué trois fois : **jamais une compression**.
+ * **It adds no test.** The `describe` is transposed **VERBATIM**
+ * (l. 324-358 of the parent), and the count of `npx vitest run` is **unchanged**.
+ * It comes **BEFORE** the addition it welcomes: `protocole.test.ts`
+ * was at **484** lines, margin **16**, and F5 must add to it the tests of the
+ * TWO new announcements — `Bonjour` and `Rafraichir`, the **fourth family**
+ * of the protocol, the one going from the browser to the bridge. It is the gesture
+ * D9 invented and D10 played three times: **never a compression**.
  *
- * ⚠️ **`fauxAdaptateur` est recopié plutôt qu'importé**, et c'est délibéré :
- * l'exporter depuis le parent ferait du fichier de tests un module que deux
- * fichiers se partagent, et un `describe` du parent pourrait alors dépendre
- * d'une modification faite ici sans que rien ne le dise. Un doublet de six
- * lignes coûte moins qu'un couplage entre deux suites.
+ * ⚠️ **`fauxAdaptateur` is copied rather than imported**, and it is deliberate:
+ * exporting it from the parent would make the test file a module that two
+ * files share, and a `describe` of the parent could then depend on
+ * a change made here without anything saying so. A six-line
+ * duplicate costs less than a coupling between two suites.
  */
 
-/** Un adaptateur factice : le protocole ne connaît AUCUN système de fichiers. */
+/** A fake adapter: the protocol knows NO file system. */
 function fauxAdaptateur(surcharge: Partial<Adaptateur> = {}): Adaptateur {
     return {
         lister: async () => [{ nom: 'a.txt', repertoire: false, taille: 7, modifie: 42 }],
@@ -41,9 +41,9 @@ function fauxAdaptateur(surcharge: Partial<Adaptateur> = {}): Adaptateur {
 
 describe('the ANNOUNCEMENT of the due writes', () => {
     it('🔴 answers NOTHING, and calls the injected callback', async () => {
-        // Rendre une trame ferait recevoir au pont une réponse à une
-        // corrélation qu'il ne connaît pas, et il la jetterait en `debug!` —
-        // SILENCIEUSEMENT. C'est le bras catch-all payé quatre fois sur
+        // Returning a frame would make the bridge receive an answer to a
+        // correlation it does not know, and it would drop it with `debug!` —
+        // SILENTLY. It is the catch-all arm paid for four times on
         // `capteur/pont_media.rs`.
         const vues: unknown[] = [];
         const serveur = createServer(fauxAdaptateur(), () => {}, {
@@ -57,11 +57,11 @@ describe('the ANNOUNCEMENT of the due writes', () => {
     });
 
     /**
-     * 🔴 **F5 — `retenues` REMONTE JUSQU'AU RAPPEL, et c'est ce qui permet à la
-     * page-shell de dire POURQUOI le compteur ne descend pas.**
+     * 🔴 **F5 — `retenues` GOES ALL THE WAY UP TO THE CALLBACK, and that is what lets the
+     * shell page say WHY the counter does not go down.**
      *
-     * Sans ce champ, une reprise retenue serait indiscernable d'un pont en
-     * panne : un compteur de dues figé, et rien qui l'explique.
+     * Without this field, a held-back resumption would be indistinguishable from a broken
+     * bridge: a frozen count of pending writes, and nothing explaining it.
      */
     it('🔴 a HELD announcement says so to the callback', async () => {
         const vues: boolean[] = [];
@@ -75,9 +75,9 @@ describe('the ANNOUNCEMENT of the due writes', () => {
     });
 
     /**
-     * ⚠️ **Une annonce SANS `retenues` est REFUSÉE, jamais complétée par
-     * défaut.** Un défaut à `false` vaudrait « le pont pousse », c'est-à-dire
-     * l'inverse de ce que `Bonjour` existe pour empêcher.
+     * ⚠️ **An announcement WITHOUT `retenues` is REFUSED, never completed by
+     * default.** A default of `false` would mean "the bridge pushes", that is
+     * the opposite of what `Bonjour` exists to prevent.
      */
     it('🔴 an announcement WITHOUT `retenues` is refused, not completed', async () => {
         const messages: string[] = [];

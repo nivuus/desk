@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-// Sonde jetable de la tâche 12 (recette du chantier réseau adaptatif) :
-// échantillonne #status (texte de l'indicateur de lien) et #stats (overlay
-// getStats()) à intervalle régulier pendant une session, pour observer
-// l'évolution de la résolution/débit/texte d'alerte sous un profil netem
-// donné. Dérivée du même patron CDP que client/recette/harness.mjs.
+// Throwaway probe of task 12 (acceptance of the adaptive network project):
+// samples #status (text of the link indicator) and #stats (getStats()
+// overlay) at a regular interval during a session, to watch
+// how resolution/bitrate/alert text evolve under a given netem
+// profile. Derived from the same CDP pattern as client/recette/harness.mjs.
 //
 // Usage : node recette/probe-link.mjs <url> <durationMs> [intervalMs]
 

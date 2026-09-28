@@ -1,10 +1,10 @@
-// Tests de la manette côté client.
+// Tests of the gamepad on the client side.
 //
-// Comme pointer.ts et fullscreen.ts, `attachGamepad` reçoit ses dépendances
-// par injection : la source de manettes, le minuteur (pose/annulation) et
-// l'horloge sont tous des doublures ici, ce qui rend la boucle de sondage
-// testable sans `navigator.getGamepads`, `window.setInterval` ni
-// `performance.now` réels.
+// Like pointer.ts and fullscreen.ts, `attachGamepad` receives its dependencies
+// by injection: the gamepad source, the timer (set/cancel) and
+// the clock are all stand-ins here, which makes the polling loop
+// testable without the real `navigator.getGamepads`, `window.setInterval` or
+// `performance.now`.
 
 import { describe, expect, it, vi } from 'vitest';
 import { encodeGamepadState } from '../../proto/ts/input';
@@ -48,8 +48,8 @@ describe('conversion Gamepad API → XInput', () => {
     });
 
     it("inverse l'axe vertical", () => {
-        // La Gamepad API compte Y vers le BAS, XInput vers le HAUT : sans
-        // inversion, la visée verticale est à l'envers dans tous les jeux.
+        // The Gamepad API counts Y DOWNWARDS, XInput UPWARDS: without
+        // inversion, vertical aim is upside down in every game.
         const etat = versEtatXInput(pad({ axes: [0, -1, 0, 1] }), 0);
         expect(etat.thumbLY).toBe(32767);
         expect(etat.thumbRY).toBe(-32767);
@@ -69,8 +69,8 @@ describe('conversion Gamepad API → XInput', () => {
 
 describe('change detection', () => {
     it('ignores the sequence number', () => {
-        // `seq` change à chaque message par construction : le comparer
-        // rendrait la détection toujours vraie et annulerait l'économie.
+        // `seq` changes on every message by construction: comparing it
+        // would make detection always true and cancel the saving.
         expect(aChange({ ...ETAT_NEUTRE, seq: 1 }, { ...ETAT_NEUTRE, seq: 2 })).toBe(false);
     });
 
@@ -88,8 +88,8 @@ describe('change detection', () => {
 });
 
 /**
- * Doublure de `navigator.getGamepads()` : une seule manette, branchable et
- * débranchable à la demande, avec un actionneur de vibration observable.
+ * Stand-in for `navigator.getGamepads()`: a single gamepad, pluggable and
+ * unpluggable on demand, with an observable vibration actuator.
  */
 function faireSourceManettes() {
     let manette: GamepadConnectee | null = null;
@@ -120,7 +120,7 @@ function faireSourceManettes() {
     };
 }
 
-/** Doublure de `window.setInterval`/`clearInterval` : pilotée à la main. */
+/** Stand-in for `window.setInterval`/`clearInterval`: driven by hand. */
 function faireMinuteur() {
     let prochainId = 1;
     const fonctions = new Map<number, () => void>();
@@ -136,7 +136,7 @@ function faireMinuteur() {
             annules.push(id);
             fonctions.delete(id);
         },
-        /** Déclenche le (seul) tour posé — `attachGamepad` n'en pose qu'un. */
+        /** Fires the (only) round set — `attachGamepad` only sets one. */
         declencher(): void {
             for (const callback of fonctions.values()) callback();
         },
@@ -147,7 +147,7 @@ function faireMinuteur() {
     };
 }
 
-/** Doublure de `performance.now()` : avance uniquement sur commande. */
+/** Test double of `performance.now()`: advances only on command. */
 function faireHorloge(depart = 0) {
     let t = depart;
     return {
@@ -173,10 +173,10 @@ describe('attachGamepad', () => {
     });
 
     it("emits a state only when something changes, not on every tick", () => {
-        // Contre-preuve : si la garde `aChange(...) || expire` du code testé
-        // était remplacée par un envoi inconditionnel, ce test échouerait
-        // (envoyer serait appelé dès le premier tour, alors qu'il ne doit
-        // l'être qu'au second, une fois le bouton pressé).
+        // Counter-proof: if the `aChange(...) || expire` guard of the tested code
+        // were replaced by an unconditional send, this test would fail
+        // (send would be called from the first round, whereas it must
+        // only be called on the second, once the button is pressed).
         const manettes = faireSourceManettes();
         const minuteur = faireMinuteur();
         const horloge = faireHorloge(1000);
@@ -184,13 +184,13 @@ describe('attachGamepad', () => {
         const pad = manettes.brancher();
         attachGamepad({ manettes, minuteur, horloge: horloge.maintenant, envoyer });
 
-        // Premier tour : rien n'a changé depuis l'état initial, et le
-        // rafraîchissement (100 ms) n'est pas encore échu.
+        // First round: nothing has changed since the initial state, and the
+        // refresh (100 ms) is not due yet.
         minuteur.declencher();
         expect(envoyer).not.toHaveBeenCalled();
 
-        // Un bouton se presse, sans que le temps avance : seul le changement
-        // doit déclencher l'émission.
+        // A button is pressed, without time moving forward: only the change
+        // must trigger the emission.
         (pad.buttons as Array<{ pressed: boolean; value: number }>)[0] = { pressed: true, value: 1 };
         minuteur.declencher();
 
@@ -200,10 +200,10 @@ describe('attachGamepad', () => {
     });
 
     it('refreshes periodically even without any change', () => {
-        // Contre-preuve : sans la clause `expire`, ce test échouerait — c'est
-        // justement ce qui distingue le rafraîchissement de la détection de
-        // changement, et c'est lui qui porte la garantie d'auto-réparation
-        // sur un canal non fiable.
+        // Counter-proof: without the `expire` clause, this test would fail — it is
+        // precisely what tells the refresh from change detection, and
+        // it is what carries the self-healing guarantee
+        // on an unreliable channel.
         const manettes = faireSourceManettes();
         const minuteur = faireMinuteur();
         const horloge = faireHorloge(1000);
@@ -214,14 +214,14 @@ describe('attachGamepad', () => {
         minuteur.declencher();
         expect(envoyer).not.toHaveBeenCalled();
 
-        // Moins de 100 ms : toujours rien.
+        // Less than 100 ms: still nothing.
         horloge.avancer(50);
         minuteur.declencher();
         expect(envoyer).not.toHaveBeenCalled();
 
-        // 100 ms franchies depuis le dernier envoi (qui n'a jamais eu lieu,
-        // donc depuis l'attache) : le rafraîchissement doit émettre l'état
-        // neutre inchangé.
+        // 100 ms passed since the last send (which never happened,
+        // so since attaching): the refresh must emit the unchanged neutral
+        // state.
         horloge.avancer(50);
         minuteur.declencher();
         expect(envoyer).toHaveBeenCalledTimes(1);
@@ -236,15 +236,15 @@ describe('attachGamepad', () => {
         const pad = manettes.brancher();
         attachGamepad({ manettes, minuteur, horloge: horloge.maintenant, envoyer, surPresence });
 
-        // Établit la présence.
+        // Establishes presence.
         minuteur.declencher();
         expect(surPresence).toHaveBeenCalledWith(true);
         envoyer.mockClear();
 
-        // Une touche reste enfoncée au moment du débranchement...
+        // A key stays pressed at the moment of unplugging...
         (pad.buttons as Array<{ pressed: boolean; value: number }>)[0] = { pressed: true, value: 1 };
         manettes.debrancher();
-        // ...et le temps n'avance PAS : la garantie ne doit rien à
+        // ...and time does NOT move forward: the guarantee owes nothing to
         // `RAFRAICHISSEMENT_MS`.
         minuteur.declencher();
 
@@ -255,8 +255,8 @@ describe('attachGamepad', () => {
     });
 
     it('stops the timer on detach', () => {
-        // Contre-preuve : si `detacher` oubliait d'appeler `minuteur.annuler`,
-        // `annules` resterait vide et l'assertion échouerait.
+        // Counter-proof: if `detacher` forgot to call `minuteur.annuler`,
+        // `annules` would stay empty and the assertion would fail.
         const manettes = faireSourceManettes();
         const minuteur = faireMinuteur();
         const horloge = faireHorloge();

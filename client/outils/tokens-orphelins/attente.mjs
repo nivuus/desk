@@ -1,220 +1,220 @@
-// La LISTE D'ATTENTE du contrôle §7.6, et TOUTE la doctrine qui la justifie.
+// The WAITING LIST of check §7.6, and ALL the doctrine that justifies it.
 //
-// ⚠️ `SOUS_BLOCS_CLOS` N'EST PLUS ICI — extrait vers `sous-blocs-clos.mjs` par
-// la tâche 6 de S4, AVEC toute sa doctrine, parce que retirer la dernière
-// entrée de cette liste a fait GROSSIR ce fichier de 227 à 243 pour un seuil
-// d'extraction à 240. Le fichier voisin porte la mesure et la raison.
+// ⚠️ `SOUS_BLOCS_CLOS` IS NO LONGER HERE — extracted to `sous-blocs-clos.mjs` by
+// task 6 of S4, WITH all its doctrine, because removing the last
+// entry of this list made this file GROW from 227 to 243 for an
+// extraction threshold at 240. The neighbouring file carries the measurement and the reason.
 //
-// 🔴 EXTRAIT DE `tokens-orphelins.mjs` PAR LA TÂCHE 8 DE S2, ET LA DOCTRINE EST
-// PARTIE AVEC SA DONNÉE — c'est le geste que `CLAUDE.md` exige nommément
-// (« extraire, jamais compresser » ; `serveur/instances.rs` a emporté `TAMPON`
-// avec le commentaire qui le justifie). Ce qui a forcé l'extraction est mesuré,
-// et la mesure est écrite ici plutôt qu'ailleurs :
+// 🔴 EXTRACTED FROM `tokens-orphelins.mjs` BY TASK 8 OF S2, AND THE DOCTRINE
+// LEFT WITH ITS DATA — it is the gesture `CLAUDE.md` explicitly requires
+// ("extract, never compress"; `serveur/instances.rs` took `TAMPON`
+// with the comment that justifies it). What forced the extraction is measured,
+// and the measurement is written here rather than elsewhere:
 //
-//   Le plan S2 attendait de la tâche 8 un `tokens-orphelins.mjs` PLUS COURT
-//   qu'à `56b975a` (233 lignes), les 18 entrées retirées de cette liste devant
-//   le faire maigrir. Relevé par la commande le 20 août 2026, AVANT extraction :
+//   The S2 plan expected from task 8 a `tokens-orphelins.mjs` SHORTER
+//   than at `56b975a` (233 lines), the 18 entries removed from this list being
+//   supposed to slim it down. Measured by the command on August 20th, 2026, BEFORE extraction:
 //
-//     entrées de liste  28 → 10   (−18)
-//     commentaires     104 → 153  (+49)
-//     code              87 →  93  (+6 : la seconde exclusion et `--sans-exclusion`)
-//     lignes vides      14 →  14
+//     list entries      28 → 10   (−18)
+//     comments         104 → 153  (+49)
+//     code              87 →  93  (+6: the second exclusion and `--sans-exclusion`)
+//     blank lines       14 →  14
 //     TOTAL            233 → 270  (+37)
 //
-//   **Les 18 entrées retirées ont été plus qu'annulées par du commentaire** —
-//   en petit, la leçon que ce dépôt a payée en grand : « une addition de
-//   commentaire peut annuler une extraction ». Et la première rédaction du
-//   constat ci-dessus, écrite EN TÊTE DE `tokens-orphelins.mjs`, a porté le
-//   fichier à **296**, marge 4 : un encadré qui dénonçait la dérive la
-//   produisait. Aucun des trois blocs neufs n'est du remplissage — la raison
-//   MESURÉE de la seconde exclusion (tâche 7), l'encadré des re-tags que rien
-//   ne contrôle, et le relevé de S1 refait au lieu d'être effacé —, et les
-//   raboter aurait échangé une vérité contre un nombre.
+//   **The 18 removed entries were more than cancelled out by comment** —
+//   in small, the lesson this repository paid for in large: "an addition of
+//   comment can cancel an extraction". And the first draft of the
+//   finding above, written AT THE TOP OF `tokens-orphelins.mjs`, took the
+//   file to **296**, margin 4: a box that denounced the drift
+//   produced it. None of the three new blocks is padding — the
+//   MEASURED reason for the second exclusion (task 7), the box about the re-tags nothing
+//   checks, and the S1 report redone instead of being erased —, and
+//   planing them down would have traded a truth for a number.
 //
-// ⚠️ CE FICHIER N'A PAS DE TEST, et il n'en a pas besoin : il ne porte AUCUNE
-// logique, seulement une donnée et sa justification. Ce qui l'emploie est
-// `tokens-orphelins.mjs`, dont le contrôle échoue dans les deux sens.
+// ⚠️ THIS FILE HAS NO TEST, and it does not need one: it carries NO
+// logic, only data and its justification. What uses it is
+// `tokens-orphelins.mjs`, whose check fails in both directions.
 // ═══════════════════════════════════════════════════════════════════════════
-// LA LISTE D'ATTENTE — ELLE EST VIDE DEPUIS LE SOUS-BLOC S4, TÂCHE 6.
+// THE WAITING LIST — IT HAS BEEN EMPTY SINCE SUB-BLOCK S4, TASK 6.
 //
-// 🔴 ET ELLE NE DISPARAÎT PAS POUR AUTANT : L'ÉNONCÉ DE S1 QUI LE PROMETTAIT
-// EST CORRIGÉ PLUTÔT QU'EXÉCUTÉ. « Le jour où elle est vide, tout ce bloc
-// disparaît avec elle » — écrit plus bas par S1, et FAUX. Supprimer ce fichier
-// supprimerait l'ÉGALITÉ elle-même : c'est elle qui fait rougir
-// `NOUVEL ORPHELIN` pour tout token futur déclaré sans appelant, et S4 en
-// déclare QUATRE de plus (`--sur-voile`, puis les trois tokens de contenant).
-// Une `Map` vide est ce qui rend ce contrôle STRICT ; la supprimer le rendrait
-// muet. La clause ③ (`SOUS_BLOCS_CLOS`) continue de mordre pour la même
-// raison, et c'est la troisième rouge de la tâche 6.
+// 🔴 AND IT DOES NOT DISAPPEAR FOR ALL THAT: THE S1 STATEMENT THAT PROMISED IT
+// IS CORRECTED RATHER THAN CARRIED OUT. "The day it is empty, this whole block
+// disappears with it" — written further down by S1, and WRONG. Deleting this file
+// would delete the EQUALITY itself: it is what turns
+// `NEW ORPHAN` red for any future token declared without a caller, and S4
+// declares FOUR more (`--sur-voile`, then the three container tokens).
+// An empty `Map` is what makes this check STRICT; deleting it would make it
+// mute. Clause ③ (`SOUS_BLOCS_CLOS`) keeps biting for the same
+// reason, and it is the third red of task 6.
 //
-// La doctrine part AVEC sa donnée — règle d'extraction que ce fichier porte
-// déjà —, et le fichier MAIGRIT : 227 → voir le message du commit.
+// The doctrine leaves WITH its data — an extraction rule this file already
+// carries —, and the file SLIMS DOWN: 227 → see the commit message.
 //
-// ⚠️ CE NOMBRE EST TENU À JOUR PAR LA TÂCHE QUI LE REND FAUX, jamais par une
-// tâche de ménage plus tard : elle en avait 28 à la fin de S1, et les QUATRE
-// commits de famille de S2 l'ont ramenée à 10 — chacun retirant, DANS SON COMMIT,
-// exactement les entrées que le contrôle venait de nommer « À RETIRER DE LA
-// LISTE ». Un compte qui n'appartient à personne dérive — ce dépôt l'a payé
-// assez souvent.
+// ⚠️ THIS NUMBER IS KEPT UP TO DATE BY THE TASK THAT MAKES IT WRONG, never by a
+// clean-up task later: it had 28 at the end of S1, and the FOUR
+// family commits of S2 brought it down to 10 — each one removing, IN ITS COMMIT,
+// exactly the entries the check had just named "TO REMOVE FROM THE
+// LIST". A count that belongs to nobody drifts — this repository has paid for that
+// often enough.
 //
-// 🔴 CE N'EST PAS UN ASSOUPLISSEMENT DU CONTRÔLE, ET LA DIFFÉRENCE TIENT À UN
-// MOT : ÉGALITÉ, pas inclusion. Le contrôle exige que l'ensemble des orphelins
-// soit EXACTEMENT cette liste. Il échoue donc dans LES DEUX SENS :
+// 🔴 IT IS NOT A LOOSENING OF THE CHECK, AND THE DIFFERENCE COMES DOWN TO ONE
+// WORD: EQUALITY, not inclusion. The check requires the set of orphans
+// to be EXACTLY this list. It therefore fails in BOTH DIRECTIONS:
 //
-//   • un token orphelin absent de la liste  → « nouvel orphelin »   (rouge)
-//   • un token de la liste qui a un appelant → « à retirer d'ici »  (rouge)
+//   • an orphan token absent from the list  → "new orphan"          (red)
+//   • a token of the list that has a caller → "to remove from here" (red)
 //
-// La seconde moitié est celle qui compte : elle rend la liste AUTO-NETTOYANTE.
-// Un seuil (« au plus N orphelins ») aurait pourri sur place ; une liste
-// nommée dont chaque retrait est FORCÉ par le contrôle rétrécit toute seule.
-// ❌ « ET LE JOUR OÙ ELLE EST VIDE, TOUT CE BLOC DISPARAÎT AVEC ELLE » — écrit
-// ici par S1, RÉFUTÉ par S4 (tâche 6), le jour même où elle s'est vidée : voir
-// l'encadré de tête. C'est l'égalité qui vaut, pas la liste, et l'égalité a
-// besoin de ce fichier.
+// The second half is the one that matters: it makes the list SELF-CLEANING.
+// A threshold ("at most N orphans") would have rotted in place; a named
+// list whose every removal is FORCED by the check shrinks by itself.
+// ❌ "AND THE DAY IT IS EMPTY, THIS WHOLE BLOCK DISAPPEARS WITH IT" — written
+// here by S1, REFUTED by S4 (task 6), the very day it emptied: see
+// the top box. It is equality that counts, not the list, and equality needs
+// this file.
 //
-// ── 🔴 RE-TAGUER UNE ENTRÉE N'EST VU PAR AUCUN CONTRÔLE ────────────────────
-// Le contrôle compare des ENSEMBLES DE NOMS. Changer « S2 » en « S3 » dans une
-// annotation ne déclenche rien, dans aucun des deux sens, jamais. C'est le
-// point le plus faible de ce dispositif, et la porte par laquelle on
-// assouplirait la liste sans qu'aucune commande ne le dise.
-// RÈGLE DE REVUE, faute de mieux : TOUTE ANNOTATION MODIFIÉE PORTE SA RAISON
-// ET LE SOUS-BLOC QUI L'A MODIFIÉE. Trois l'ont été par S2 (tâche 8, 20 août) —
-// `--t-xs`, `--e-1`, `--r-plein` —, et la raison est la même pour les trois :
-// elles décrivent une famille ÉTIQUETTE / PASTILLE que le §6 de la spec ne
-// confie PAS à S2. S2 est borné à quatre familles — bouton, champ, surface,
-// message —, « ce dont un écran de connexion a besoin », et un écran de
-// connexion n'a ni étiquette ni pastille. S1 avait prédit S2 ; la prédiction
-// était fausse. Fabriquer une pastille dans le seul but de vider trois lignes
-// aurait été vider un contrôle pour en verdir un autre — le geste même que
-// l'encadré ci-dessus refuse.
-// ❌ « AUCUNE MITIGATION TECHNIQUE N'EST POSSIBLE : un contrôle sur ces chaînes
-// de prose ne pourrait pas échouer utilement » — le plan de S2 l'écrit trois
-// fois (l. 369, l. 1379-1380, table des risques), et c'est FAUX. Une mitigation
-// PARTIELLE existe, et elle POURRAIT échouer utilement : *aucune entrée ne doit
-// nommer un sous-bloc déjà clos*. Elle serait passée au rouge à la fin de S2 sur
-// les trois entrées annotées « S2 », FORÇANT la décision au lieu de la laisser à
-// une règle de revue.
-// ✅ ELLE EST CONSTRUITE — SOUS-BLOC S3, TÂCHE 7. `SOUS_BLOCS_CLOS` ci-dessous
-// la nomme, et `tokens-orphelins.mjs` la fait échouer. Le sous-bloc qui la bâtit
-// est celui qui s'apprêtait à en avoir besoin : S3 a re-étiqueté DEUX entrées
-// (`--t-2xl` et `--t-3xl`, interverties par rapport à la spec, la seconde
-// nommant un hub que ⑥ ne livre pas), et construire un garde-fou dans le
-// sous-bloc qui va s'en servir est la seule façon de savoir qu'il mord.
-// ⚠️ PARTIELLE, et le mot reste pesé : elle juge le SOUS-BLOC NOMMÉ, jamais le
-// CONTENU de l'annotation — « S4 — la gouttière entre cartes » changé en
-// « S4 — n'importe quoi » lui échappe —, et elle DÉPEND D'UNE LISTE TENUE À LA
-// MAIN : un sous-bloc qui ne s'y déclare pas la neutralise. C'est une règle de
-// revue de plus, et elle est déclarée plutôt que dissimulée.
-// ⚠️ ET APRÈS S3 ELLE NE GARDE QU'UNE ENTRÉE — un mécanisme pour une ligne.
-// C'est une objection, et voici la réponse : cette ligne-là est précisément
-// celle dont la prose dit qu'« aucun sous-bloc n'a le droit de la laisser en
-// place sans décider », une injonction que RIEN n'appliquait ; et une
-// mitigation construite APRÈS la faute qu'elle devait empêcher n'aurait plus
-// rien à empêcher.
+// ── 🔴 RE-TAGGING AN ENTRY IS SEEN BY NO CHECK ─────────────────────────────
+// The check compares SETS OF NAMES. Changing "S2" into "S3" in an
+// annotation triggers nothing, in neither direction, ever. It is the
+// weakest point of this arrangement, and the door through which one
+// would loosen the list without any command saying so.
+// REVIEW RULE, for lack of anything better: EVERY MODIFIED ANNOTATION CARRIES ITS REASON
+// AND THE SUB-BLOCK THAT MODIFIED IT. Three were modified by S2 (task 8, August 20th) —
+// `--t-xs`, `--e-1`, `--r-plein` —, and the reason is the same for all three:
+// they describe a LABEL / PILL family that §6 of the spec does
+// NOT entrust to S2. S2 is bounded to four families — button, field, surface,
+// message —, "what a sign-in screen needs", and a sign-in
+// screen has neither a label nor a pill. S1 had predicted S2; the prediction
+// was wrong. Making up a pill for the sole purpose of emptying three lines
+// would have been emptying one check to turn another green — the very gesture
+// the box above refuses.
+// ❌ "NO TECHNICAL MITIGATION IS POSSIBLE: a check on these prose
+// strings could not fail usefully" — the S2 plan writes it three
+// times (l. 369, l. 1379-1380, risk table), and it is WRONG. A
+// PARTIAL mitigation exists, and it COULD fail usefully: *no entry must
+// name an already closed sub-block*. It would have turned red at the end of S2 on
+// the three entries annotated "S2", FORCING the decision instead of leaving it to
+// a review rule.
+// ✅ IT IS BUILT — SUB-BLOCK S3, TASK 7. `SOUS_BLOCS_CLOS` below
+// names it, and `tokens-orphelins.mjs` makes it fail. The sub-block that builds it
+// is the one that was about to need it: S3 re-labelled TWO entries
+// (`--t-2xl` and `--t-3xl`, swapped relative to the spec, the second
+// naming a hub that ⑥ does not deliver), and building a safeguard in the
+// sub-block that will use it is the only way to know it bites.
+// ⚠️ PARTIAL, and the word stays weighed: it judges the NAMED SUB-BLOCK, never the
+// CONTENT of the annotation — "S4 — the gutter between cards" changed into
+// "S4 — anything" escapes it —, and it DEPENDS ON A LIST KEPT BY
+// HAND: a sub-block that does not declare itself there neutralises it. It is one more
+// review rule, and it is declared rather than hidden.
+// ⚠️ AND AFTER S3 IT ONLY GUARDS ONE ENTRY — a mechanism for one line.
+// That is an objection, and here is the answer: that line is precisely
+// the one whose prose says that "no sub-block has the right to leave it in
+// place without deciding", an injunction NOTHING enforced; and a
+// mitigation built AFTER the fault it was meant to prevent would have nothing
+// left to prevent.
 //
-// ── POURQUOI CETTE PALETTE N'EST PAS SIMPLEMENT RÉDUITE À CE QUI SERT ──────
-// C'était la voie évidente, et elle est REFUSÉE SUR MESURE, prise le 19 août
-// 2026 (relevé S1) : sur les 50 paires de contraste déclarées du §4.5 que le
-// contrôle §7.1 vérifie, **46 citent au moins un token de cette liste**.
-// Élaguer la palette pour verdir §7.6 ferait tomber §7.1 de 50 paires à 4 — on
-// satisferait un contrôle en vidant l'autre, ce qui est exactement le geste que
-// ce dépôt combat. Relevé par la commande :
+// ── WHY THIS PALETTE IS NOT SIMPLY REDUCED TO WHAT IS USED ─────────────────
+// It was the obvious route, and it is REFUSED ON MEASUREMENT, taken on August 19th,
+// 2026 (S1 report): of the 50 declared contrast pairs of §4.5 that
+// check §7.1 verifies, **46 cite at least one token of this list**.
+// Pruning the palette to turn §7.6 green would bring §7.1 down from 50 pairs to 4 — one
+// would satisfy one check by emptying the other, which is exactly the gesture
+// this repository fights. Measured by the command:
 //
 //   node --input-type=module -e "import {PAIRES} from './src/design/contraste.ts'; …"
-//   → paires totales : 50 | paires citant au moins un token sans appelant : 46
+//   → total pairs: 50 | pairs citing at least one token without a caller: 46
 //
-// 🔴 CE RELEVÉ EST DATÉ DE S1, ET IL EST FAUX AU PRÉSENT — il est laissé DATÉ
-// plutôt qu'effacé, parce qu'un relevé daté reste vrai comme histoire et que
-// c'est lui qui a fondé la décision. REFAIT PAR S2 (tâche 8) LE 20 AOÛT 2026,
-// même commande, sur les DIX entrées d'alors (S3 les a ramenées à UNE) :
+// 🔴 THIS REPORT IS DATED FROM S1, AND IT IS WRONG IN THE PRESENT — it is left DATED
+// rather than erased, because a dated report stays true as history and
+// it is what founded the decision. REDONE BY S2 (task 8) ON AUGUST 20TH, 2026,
+// same command, on the TEN entries of the time (S3 brought them down to ONE):
 //
 //   → paires totales : 52 | citant un token en attente : 0
 //
-// **ZÉRO — et ce zéro dit l'inverse de ce qu'on croirait y lire.** Il ne réfute
-// pas S1 : il montre que la décision de S1 a TENU JUSQU'AU BOUT. Aucune des
-// quatorze couleurs par thème n'est plus orpheline ; les dix entrées d'alors
-// étaient typographiques, d'espacement, de rayon et de police, et les paires de
-// contraste ne citent que des couleurs. Élaguer en S1 aurait retiré des
-// couleurs que S2 emploie aujourd'hui. ⚠️ LE ZÉRO TIENT APRÈS S3, ET SANS ÊTRE
-// REFAIT : `--police-mono`, seule entrée restante, n'est pas une couleur.
-// ⚠️ ET CELA RETIRE SON ARGUMENT À CE BLOC-CI : « §7.1 tomberait de 50 paires
-// à 4 » NE PROTÈGE PLUS RIEN, puisqu'un élagage n'atteindrait plus aucune
-// couleur. Ce qui protège l'entrée restante n'est plus qu'une chose — son
-// annotation, et le sous-bloc qui la porte. Voir l'encadré des re-tags.
+// **ZERO — and this zero says the opposite of what one would think it says.** It does not refute
+// S1: it shows that S1's decision HELD TO THE END. None of the
+// fourteen colours per theme is an orphan any more; the ten entries of the time
+// were typographic, spacing, radius and font ones, and the contrast
+// pairs only cite colours. Pruning in S1 would have removed
+// colours S2 uses today. ⚠️ THE ZERO HOLDS AFTER S3, AND WITHOUT BEING
+// REDONE: `--police-mono`, the only remaining entry, is not a colour.
+// ⚠️ AND THAT TAKES AWAY THIS BLOCK'S ARGUMENT: "§7.1 would fall from 50 pairs
+// to 4" NO LONGER PROTECTS ANYTHING, since a pruning would no longer reach any
+// colour. What protects the remaining entry is now only one thing — its
+// annotation, and the sub-block that carries it. See the box about re-tags.
 //
-// ⚠️ CE CONTRÔLE EST DONC ROUGE PAR CONSTRUCTION JUSQU'À S4 SI ON LE PREND
-// COMME MESURE DE « la palette est-elle entièrement employée ? ». Ce n'est pas
-// ce qu'il mesure. Ce qu'il mesure, à partir de S1, c'est que **l'écart entre
-// la palette et son emploi soit CONNU, ÉNUMÉRÉ ET DÉCROISSANT** — et cela, il
-// peut l'échouer dès aujourd'hui, dans les deux sens.
+// ⚠️ THIS CHECK IS THEREFORE RED BY CONSTRUCTION UNTIL S4 IF ONE TAKES IT
+// AS A MEASURE OF "is the palette entirely used?". That is not
+// what it measures. What it measures, from S1 on, is that **the gap between
+// the palette and its use is KNOWN, ENUMERATED AND DECREASING** — and that, it
+// can fail as of today, in both directions.
 //
-// Chaque entrée nomme le sous-bloc qui la consommera. Relevé le 20 août 2026,
-// au commit de la tâche 8 du sous-bloc S2.
+// Each entry names the sub-block that will consume it. Measured on August 20th, 2026,
+// at the commit of task 8 of sub-block S2.
 // ═══════════════════════════════════════════════════════════════════════════
 //
-// 🔴 SEPT ENTRÉES SONT SORTIES À LA TÂCHE 4 DU SOUS-BLOC S3, dans le commit
-// même qui a écrit leurs appelants — `client/src/shell.css`, la feuille de la
-// page-shell. Le contrôle exige l'ÉGALITÉ : les retirer sans écrire l'appelant
-// aurait rendu `NOUVEL ORPHELIN`, l'écrire sans les retirer
-// `À RETIRER DE LA LISTE`, et les deux sens ont été vus rouges en S1.
+// 🔴 SEVEN ENTRIES LEFT AT TASK 4 OF SUB-BLOCK S3, in the very commit
+// that wrote their callers — `client/src/shell.css`, the sheet of the
+// shell page. The check requires EQUALITY: removing them without writing the caller
+// would have returned `NEW ORPHAN`, writing it without removing them
+// `TO REMOVE FROM THE LIST`, and both directions were seen red in S1.
 //
-//   --t-2xl    le titre de la page-shell        (.bureau__titre)
-//   --e-5      la gouttière entre cartes        (.bureau__fenetres)
-//   --e-6      la marge des sections            (.bureau__section)
-//   --e-7      la marge de tête de la surface   (.bureau)
-//   --t-xs     l'étiquette de la pastille       (.bureau__pastille)
-//   --e-1      son écart interne                (.bureau__pastille)
-//   --r-plein  sa forme                         (.bureau__pastille)
+//   --t-2xl    the title of the shell page       (.bureau__titre)
+//   --e-5      the gutter between cards          (.bureau__fenetres)
+//   --e-6      the margin of the sections        (.bureau__section)
+//   --e-7      the top margin of the surface     (.bureau)
+//   --t-xs     the label of the pill             (.bureau__pastille)
+//   --e-1      its inner spacing                 (.bureau__pastille)
+//   --r-plein  its shape                         (.bureau__pastille)
 //
-// ⚠️ LA FAMILLE ÉTIQUETTE / PASTILLE ÉTAIT RE-TAGUÉE « S3 ou plus tard » PAR
-// S2, faute de savoir si une pastille existerait. Elle existe : c'est l'état
-// ouverte / fermée d'une fenêtre, dit par l'ENCRE et jamais par un fond, pour
-// que son contraste reste dans les 52 paires mesurées du §7.1.
+// ⚠️ THE LABEL / PILL FAMILY HAD BEEN RE-TAGGED "S3 or later" BY
+// S2, for lack of knowing whether a pill would exist. It does: it is the open /
+// closed state of a window, told by the INK and never by a background, so
+// that its contrast stays within the 52 measured pairs of §7.1.
 // ═══════════════════════════════════════════════════════════════════════════
 //
-// 🔴 DEUX ENTRÉES DE PLUS SONT SORTIES À LA TÂCHE 5 DE S3, avec leurs appelants
-// dans `client/src/connexion.css` :
+// 🔴 TWO MORE ENTRIES LEFT AT TASK 5 OF S3, with their callers
+// in `client/src/connexion.css`:
 //
-//   --t-3xl     le titre de l'écran de connexion  (.connexion__titre)
-//   --lh-large  l'interligne de son bandeau       (.connexion__message)
+//   --t-3xl     the title of the sign-in screen   (.connexion__titre)
+//   --lh-large  the line height of its banner     (.connexion__message)
 //
-// ⚠️ ET LEURS DEUX ANNOTATIONS ÉTAIENT FAUSSES, CHACUNE À SA FAÇON — corrigé
-// ici plutôt que recopié, comme la règle de revue de ce fichier l'exige.
+// ⚠️ AND THEIR TWO ANNOTATIONS WERE WRONG, EACH IN ITS OWN WAY — corrected
+// here rather than copied, as the review rule of this file requires.
 //
-//   ① `--t-2xl` et `--t-3xl` ÉTAIENT INTERVERTIS par rapport à la spec. Le
-//      §4.4 de la spec écrit « --t-2xl … titre de page » et « --t-3xl … titre
-//      d'écran de connexion » ; cette liste disait l'inverse. LA SPEC L'EMPORTE
-//      — le cran de 32 px va au titre que la page n'a qu'une fois, celui de
-//      24 px au titre d'une page qui porte des sections sous lui.
-//   ② `--t-3xl` NOMMAIT « le titre du hub », c'est-à-dire une surface que le
-//      sous-projet ⑥ NE LIVRE PAS : sa spec §6 l'écrit en toutes lettres, « le
-//      hub ne figure PAS dans ce découpage ». L'entrée attribuait donc à S3 un
-//      appelant que S3 ne pouvait pas écrire, et elle serait restée en attente
-//      pour toujours si la spec n'avait pas tranché.
+//   ① `--t-2xl` and `--t-3xl` WERE SWAPPED relative to the spec.
+//      §4.4 of the spec writes "--t-2xl … page title" and "--t-3xl … sign-in
+//      screen title"; this list said the opposite. THE SPEC WINS
+//      — the 32 px step goes to the title the page only has once, the
+//      24 px one to the title of a page that carries sections under it.
+//   ② `--t-3xl` NAMED "the title of the hub", that is, a surface that
+//      sub-project ⑥ DOES NOT DELIVER: its spec §6 says so in so many words, "the
+//      hub does NOT appear in this breakdown". The entry therefore attributed to S3 a
+//      caller S3 could not write, and it would have stayed waiting
+//      forever if the spec had not settled it.
 //
-// ⚠️ `--lh-large` ÉTAIT LE PLUS FRAGILE DES NEUF, et il n'a PAS été consommé
-// pour vider une ligne : le bandeau de l'écran de connexion porte les plus
-// longues proses du produit — motif de refus, état de la VM, aveu de
-// non-redémarrage, cause réseau citée en entier. Le paragraphe long existait
-// déjà ; en fabriquer un aurait été vider un contrôle pour en verdir un autre.
+// ⚠️ `--lh-large` WAS THE MOST FRAGILE OF THE NINE, and it was NOT consumed
+// to empty a line: the banner of the sign-in screen carries the
+// longest prose of the product — refusal reason, VM state, admission of
+// no restart, network cause quoted in full. The long paragraph already
+// existed; making one up would have been emptying one check to turn another green.
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * ⚠️ LE SOUS-BLOC EST UN CHAMP STRUCTURÉ, IL N'EST PLUS NOYÉ DANS UNE PHRASE.
- * C'est ce qui rend la mitigation possible : tant que « S4 » n'était qu'un
- * préfixe de prose, aucune commande ne pouvait le lire sans deviner. Le champ
- * `raison` porte le reste, et lui reste hors de toute portée automatique.
+ * ⚠️ THE SUB-BLOCK IS A STRUCTURED FIELD, IT IS NO LONGER BURIED IN A SENTENCE.
+ * That is what makes the mitigation possible: as long as "S4" was only a
+ * prose prefix, no command could read it without guessing. The field
+ * `raison` carries the rest, and it stays out of any automatic reach.
  */
 /**
- * ⚠️ VIDE DEPUIS S4, TÂCHE 6, ET C'EST UN ÉTAT NORMAL — pas une invitation à
- * supprimer ce fichier. Voir l'encadré de tête : c'est l'ÉGALITÉ qui vaut.
+ * ⚠️ EMPTY SINCE S4, TASK 6, AND IT IS A NORMAL STATE — not an invitation to
+ * delete this file. See the top box: it is EQUALITY that counts.
  *
- * 🔴 LA DERNIÈRE ENTRÉE SORTIE EST `--police-mono`, et sa doctrine est partie
- * AVEC elle. Ce qu'il faut en garder tient en trois lignes, parce que le fait
- * vaut plus que la prose : trois sous-blocs se sont passé « le câbler ou le
- * retirer » faute d'avoir le droit de changer l'apparence de la fenêtre de
- * session ; S4 l'a, et il l'a CÂBLÉ sur `#stats` (`client/src/style.css`), que
- * la spec §4.3 désignait comme son unique appelant prévu depuis S1.
+ * 🔴 THE LAST ENTRY TO LEAVE IS `--police-mono`, and its doctrine left
+ * WITH it. What should be kept of it fits in three lines, because the fact
+ * is worth more than the prose: three sub-blocks passed on "wire it or
+ * remove it" for lack of the right to change the appearance of the session
+ * window; S4 has it, and it WIRED it to `#stats` (`client/src/style.css`), which
+ * spec §4.3 designated as its only planned caller since S1.
  */
 const EN_ATTENTE_D_APPELANT = new Map([]);
 
