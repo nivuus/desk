@@ -20,7 +20,7 @@
 //! TABLE.** *(These lines announced "a lookup table
 //! fed by enumeration, which alone knows the real case of the disk",
 //! and gave it as belonging "to F3 or later".)* F3 delivers
-//! `client/src/fichiers/noms.ts`, which **enumerates the parent at EACH (policy: allow-fr, real file path)
+//! `client/src/files/noms.ts`, which **enumerates the parent at EACH
 //! resolution, WITHOUT ANY CACHE** — a cache nothing invalidates is the defect
 //! of the old bridge (`src/file.js`, cache WITHOUT TTL). ✅ **`Rafraichir` IS
 //! DELIVERED SINCE F5** (21 August 2026): a button of the shell page empties the bridge's

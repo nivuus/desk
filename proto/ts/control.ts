@@ -188,8 +188,8 @@ export interface AccentAgentMessage {
 /// 🔴 **AND IT DOES NOT MEAN "THIS MIC IS HEARD" EITHER.** This
 /// sentence said "it means: what this mic picks up reaches the VM", and the
 /// block E3 acceptance REFUTED it by arming `MICRO_FAUTE_ECRITURE`: the WASAPI
-/// render thread dies (`micro : ecriture sur le cable echouee, fil de rendu
-/// arrete`), the judge on CABLE Output records an amplitude of **0.000000**, and
+/// render thread dies (`mic: write to the cable failed, render thread
+/// stopped`), the judge on CABLE Output records an amplitude of **0.000000**, and
 /// the window still receives `granted: true` — the mutex lives in
 /// `PuitsCable::deposer`, the render thread is elsewhere.
 ///

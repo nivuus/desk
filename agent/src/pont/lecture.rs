@@ -18,7 +18,7 @@
 //! PRODUCT mechanism. F3 therefore delivers **both, or neither**.
 //!
 //! ⚠️ **Back-pressure, for its part, is on the BROWSER SIDE**
-//! (`client/src/fichiers/flux.ts`), because it is the browser that emits the large messages and (policy: allow-fr, real file path)
+//! (`client/src/files/flux.ts`), because it is the browser that emits the large messages and
 //! `bufferedAmount` is a property of ITS channel. The bridge does not see it and
 //! cannot see it. The two halves are inseparable: the window without
 //! back-pressure would fill the SCTP queue, back-pressure without the
@@ -26,7 +26,7 @@
 //!
 //! # THE INVARIANT THAT MAKES THE WINDOW SAFE, AND IT IS CHECKED RATHER THAN BELIEVED
 //!
-//! The channel is `ordered` (`client/src/fichiers/canal.ts`), chunks are (policy: allow-fr, real file path)
+//! The channel is `ordered` (`client/src/files/canal.ts`), chunks are
 //! requested in increasing position order, so responses arrive
 //! in that order, so `PrjWriteFileData` is called in that order.
 //!

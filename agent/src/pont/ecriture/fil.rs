@@ -44,7 +44,7 @@
 //!    requesting several chunks in advance would make no sense, and pushing
 //!    several would flood the SCTP queue, which F1 already decided to avoid. The
 //!    `bufferedAmount` back-pressure, for its part, lives on the browser side
-//!    (`client/src/fichiers/flux.ts`) and therefore does not cover this direction; (policy: allow-fr, real file path)
+//!    (`client/src/files/flux.ts`) and therefore does not cover this direction;
 //! 6. on the `Fait` of the **last** chunk: `journal.retirer`, **then**
 //!    `TYPE_DUES` announced again;
 //! 7. on an `Echec` or an expiry: **the entry STAYS in the journal**, a

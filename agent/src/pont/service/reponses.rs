@@ -210,7 +210,7 @@ pub(super) fn appliquer(
             // would be worse than not implementing it." F3 has arrived, and it
             // did NOT implement half of it: the bridge's window
             // (`pont::lecture`) AND the browser's back-pressure
-            // (`client/src/fichiers/flux.ts`) are delivered together — with a (policy: allow-fr, real file path)
+            // (`client/src/files/flux.ts`) are delivered together — with a
             // single chunk in flight, the rule of spec §7.3 could NEVER
             // bite.)*
             //

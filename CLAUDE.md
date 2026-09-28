@@ -1251,11 +1251,11 @@ gitignoré.
   est **la BASE du service**, jamais l'URL du relais : `url_du_relais` y ajoute
   `/signal`, `url_du_canal` y ajoute `/agent`. **Y écrire `/signal` casserait
   l'enrôlement** (`ws://h:8080/signal/agent`) **sans qu'aucun test ne
-  bronche** — le test `le_canal_agent_n_est_pas_affecte` d'`agent/src/
+  bronche** — le test `the_agent_channel_is_not_affected` d'`agent/src/
   signaling.rs` passe une base PROPRE, donc n'éprouve pas ce cas, alors que son
   commentaire prétendait le fermer. Le commentaire est corrigé ; **le test
   manquant, lui, reste dû.**~~ **FERMÉ (lot `legs-sans-vm`)** : le test
-  `une_base_portant_deja_signal_casse_le_canal_agent` (`agent/src/
+  `a_base_already_carrying_signal_breaks_the_agent_channel` (`agent/src/
   signaling.rs`) joue désormais ce cas et fige le contrat — vérifié VERT sur
   le produit d'aujourd'hui, puis rougi par mutation ciblée d'`url_du_canal`,
   restaurée depuis une copie nommée.
@@ -1424,7 +1424,7 @@ tard il était rouvert en plus grand.**
   `agent/src/transport/boucle.rs::accept_offer` (`sdp_api().accept_offer`), et
   l'horodatage de capture est déjà calculé côté émission —
   `agent/src/transport/piste_video.rs::capture_instant`, tenu par le test
-  `write_frame_annonce_l_instant_de_capture_au_pair_via_le_sender_report_rtcp`.
+  `write_frame_announces_the_capture_instant_to_the_peer_via_the_rtcp_sender_report`.
   🔴 **CONSÉQUENCE À DIRE À CHAQUE FOIS : toute mesure de latence reste un
   SUBSTITUT tant que cette extension n'est pas livrée.** Le substitut mesuré
   (`RTT/2 + totalProcessingDelay`) rend **9,18 et 9,04 ms** au nominal contre
