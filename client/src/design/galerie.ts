@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 /**
- * THE GALLERY'S RENDERING — and the repository's FIRST caller of `getComputedStyle`
- * .
+ * THE GALLERY'S RENDERING — and the FIRST caller of `getComputedStyle` in the
+ * repository.
  *
  * ⚠️ THIS MODULE IS NOT PART OF THE PRODUCT: it only serves `client/design.html`,
  * the instrument of §8's human judgement. No product surface
