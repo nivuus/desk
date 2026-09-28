@@ -1,86 +1,86 @@
-// LE RENOMMAGE ET LA SUPPRESSION, côté poste local. **PUR** : ni DOM, ni
-// WebRTC, ni trame binaire ; la racine lui est INJECTÉE, comme à
-// `adaptateur.ts` et à `ecriture.ts`.
+// RENAMING AND DELETION, on the local machine side. **PURE**: neither DOM, nor
+// WebRTC, nor binary frame; the root is INJECTED into it, as in
+// `adaptateur.ts` and `ecriture.ts`.
 //
 // ════════════════════════════════════════════════════════════════════════════
-// 🔵 LE CHIFFRE DE COÛT DE LA SPEC §3.5.1 EST FAUX POUR CE MONTAGE
+// 🔵 THE COST FIGURE OF SPEC §3.5.1 IS WRONG FOR THIS SETUP
 // ════════════════════════════════════════════════════════════════════════════
 //
-// La spec écrit : « le repli […] fait transiter TOUT LE CONTENU DU FICHIER DEUX
-// FOIS sur le canal. Renommer un fichier de 1 Gio sur le chemin de repli coûte
-// donc 2 Gio de canal ».
+// The spec writes: "the fallback […] makes THE WHOLE CONTENT OF THE FILE TRAVEL TWICE
+// over the channel. Renaming a 1 GiB file on the fallback path therefore
+// costs 2 GiB of channel".
 //
-// **Cela n'est vrai que si le PONT orchestre la copie**, par une suite de
-// `Lire` et d'`Ecrire`. F3 ne l'orchestre pas : le renommage est **UN SEUL
-// MESSAGE** (`Renommer { de, vers }`), et la copie de repli se fait entre deux
-// poignées qui vivent toutes deux dans le navigateur, sur le disque du poste
-// local. **Coût du repli sur le canal : ZÉRO octet, dans les deux branches.**
+// **That is only true if the BRIDGE orchestrates the copy**, through a sequence of
+// `Lire` and `Ecrire`. F3 does not orchestrate it: renaming is **ONE SINGLE
+// MESSAGE** (`Renommer { de, vers }`), and the fallback copy happens between two
+// handles that both live in the browser, on the local machine's
+// disk. **Cost of the fallback on the channel: ZERO bytes, in both branches.**
 //
-// CE QUE LE REPLI COÛTE QUAND MÊME, et qu'il ne faut pas effacer avec le
-// chiffre ci-dessus :
+// WHAT THE FALLBACK COSTS ANYWAY, and which must not be erased by the
+// figure above:
 //
-//   - **il n'est pas atomique** — une coupure au milieu laisse deux copies,
-//     dont l'une porte le nom cible et est partielle. La spec le dit ; c'est
-//     toujours vrai, et **ce n'est pas réparable ici** ;
-//   - il **double transitoirement l'occupation disque** du poste local ;
-//   - il est en **O(taille)** en temps et, pour un répertoire, en **O(nombre
-//     d'entrées)** appels FSA — sur un répertoire profond, cela peut être long,
-//     et **RIEN ICI NE LE BORNE** ;
-//   - ✅ **F4 L'A MESURÉE (21 août 2026), ET LE COÛT EST NUL À CES RANGS.**
-//     Le repli a couru pour la PREMIÈRE fois — F3 l'avait livré sans qu'aucune
-//     de ses lignes ne coure —, forcé par une injection qui retire `move`.
-//     64 Kio : 173 / 193 ms ; 1 Mio : 125 / 126 ms, deux exécutions. Le bras
-//     TÉMOIN, sans neutraliser `move`, rend 159 / 162 et 126 / 126 ms :
-//     **indistinguable**. C'est bien un temps LOCAL — la trace du produit le
-//     dit, « zéro octet sur le canal » — et la marge à `DELAI_MUTATION` (15 s)
-//     est de deux ordres de grandeur.
-//     ⚠️ **La moitié RÉPERTOIRE reste hors de portée du produit** : ProjFS
-//     refuse le renommage d'un répertoire avant de consulter le fournisseur.
-//
-// ════════════════════════════════════════════════════════════════════════════
-// 🔴 `move()` ÉCRASE, ET C'EST POURQUOI LA VÉRIFICATION PRÉCÈDE
-// ════════════════════════════════════════════════════════════════════════════
-//
-// `FileSystemHandle.move()` **n'appartient pas à la norme** du File System
-// Access API : c'est une extension Chromium. La spec §3.5.1 le dit, et l'ancien
-// pont s'en sert (`web/index.js:628`, `:644`).
-//
-// 🔴 **ELLE ÉCRASE SILENCIEUSEMENT UNE DESTINATION EXISTANTE, ET C'EST MESURÉ**
-// — la sonde S2, deux exécutions identiques sur Chrome 151 :
-// un fichier contenant `AVANT` est écrasé par
-// `agresseur.move(racine, 'S2-Victime.txt')`, `{ issue: "ok", contenu: "APRES" }`,
-// **sans erreur**. *Aucun document du dépôt ne le disait avant celui-ci.*
-// La résolution de la destination vient donc AVANT, dans les deux branches —
-// sans quoi renommer `brouillon.txt` en `note.txt` détruirait `note.txt` sans un
-// mot. Journal : `journaux-pont-fichiers-f3/s2-move-casse.txt`.
-//
-// 🔴 **ET ELLE N'EXISTE PAS SUR UN RÉPERTOIRE** — même sonde,
-// `move_repertoire: { present: false }`. Le plan de F3 tenait le fait que
-// l'ancien pont ne l'appelait que sur des fichiers (`web/index.js:628`) pour un
-// « **indice, pas preuve** » ; **la mesure tranche**.
-//
-// ⚠️ **CONSÉQUENCE, ET ELLE RENVERSE LE VOCABULAIRE DU PLAN** : pour un
-// RÉPERTOIRE, la copie n'est pas un « repli » — **c'est LE chemin, le seul.**
-// Le renommage d'un répertoire contenant un sous-répertoire, que le défaut de
-// `web/index.js:631` rendait TOUJOURS impossible, ne marche que par là.
-//
-// ⚠️ **`move()` EST DÉTECTÉE À L'APPEL, jamais capturée au chargement du
-// module.** Une détection faite une fois pour toutes serait fausse le jour où
-// l'on injecterait un autre système de fichiers — et c'est exactement ce que
-// font les tests de ce module, qui emploient DEUX faux : l'un qui l'expose,
-// l'autre non.
+//   - **it is not atomic** — a cut in the middle leaves two copies,
+//     one of which carries the target name and is partial. The spec says so; it is
+//     still true, and **it is not repairable here**;
+//   - it **transiently doubles the disk usage** of the local machine;
+//   - it is **O(size)** in time and, for a directory, **O(number
+//     of entries)** FSA calls — on a deep directory, that can be long,
+//     and **NOTHING HERE BOUNDS IT**;
+//   - ✅ **F4 MEASURED IT (August 21st, 2026), AND THE COST IS NIL AT THESE SIZES.**
+//     The fallback ran for the FIRST time — F3 had delivered it without any
+//     of its lines running —, forced by an injection that removes `move`.
+//     64 KiB: 173 / 193 ms; 1 MiB: 125 / 126 ms, two runs. The CONTROL
+//     arm, without neutralising `move`, gives 159 / 162 and 126 / 126 ms:
+//     **indistinguishable**. It is indeed a LOCAL time — the product's trace
+//     says so, "zero bytes on the channel" — and the margin to `DELAI_MUTATION` (15 s)
+//     is two orders of magnitude.
+//     ⚠️ **The DIRECTORY half stays out of the product's reach**: ProjFS
+//     refuses the renaming of a directory before consulting the provider.
 //
 // ════════════════════════════════════════════════════════════════════════════
-// 🔴 LE CAS PARTICULIER QUI DÉTRUIT : `a.txt` → `A.txt`
+// 🔴 `move()` OVERWRITES, AND THAT IS WHY THE CHECK COMES FIRST
 // ════════════════════════════════════════════════════════════════════════════
 //
-// Ni la spec ni l'ancien pont ne le traitent. Sur un poste local INSENSIBLE à
-// la casse, la destination « existe déjà » — **et c'est la source elle-même**.
-// Une implémentation naïve refuse (`deja-present`) ou, pire, écrase.
+// `FileSystemHandle.move()` **does not belong to the standard** of the File System
+// Access API: it is a Chromium extension. Spec §3.5.1 says so, and the old
+// bridge uses it (`web/index.js:628`, `:644`).
 //
-// **Règle de F3** : si l'unique homonyme de la destination EST la source, c'est
-// un **renommage de casse pure**, il est licite, et le repli passe par un **nom
-// intermédiaire** — deux mouvements, jamais un écrasement.
+// 🔴 **IT SILENTLY OVERWRITES AN EXISTING DESTINATION, AND IT IS MEASURED**
+// — probe S2, two identical runs on Chrome 151:
+// a file holding its original content is overwritten by
+// `agresseur.move(racine, 'S2-Victime.txt')`, which reports `issue: "ok"` with the mover's content,
+// **without error**. *No document of the repository said so before this one.*
+// Resolving the destination therefore comes FIRST, in both branches —
+// otherwise renaming `draft.txt` to `note.txt` would destroy `note.txt` without a
+// word. Log: `journaux-pont-fichiers-f3/s2-move-casse.txt`.
+//
+// 🔴 **AND IT DOES NOT EXIST ON A DIRECTORY** — same probe,
+// `move_repertoire: { present: false }`. F3's plan held the fact that
+// the old bridge only called it on files (`web/index.js:628`) as a
+// "**hint, not proof**"; **the measurement settles it**.
+//
+// ⚠️ **CONSEQUENCE, AND IT REVERSES THE PLAN'S VOCABULARY**: for a
+// DIRECTORY, the copy is not a "fallback" — **it is THE path, the only one.**
+// Renaming a directory containing a subdirectory, which the defect of
+// `web/index.js:631` made ALWAYS impossible, only works that way.
+//
+// ⚠️ **`move()` IS DETECTED AT CALL TIME, never captured when the module
+// loads.** A detection made once and for all would be wrong the day
+// another file system got injected — and that is exactly what
+// this module's tests do, using TWO fakes: one exposing it,
+// the other not.
+//
+// ════════════════════════════════════════════════════════════════════════════
+// 🔴 THE SPECIAL CASE THAT DESTROYS: `a.txt` → `A.txt`
+// ════════════════════════════════════════════════════════════════════════════
+//
+// Neither the spec nor the old bridge handles it. On a local machine INSENSITIVE to
+// case, the destination "already exists" — **and it is the source itself**.
+// A naive implementation refuses (`deja-present`) or, worse, overwrites.
+//
+// **F3's rule**: if the destination's only namesake IS the source, it is
+// a **pure case rename**, it is legal, and the fallback goes through an **intermediate
+// name** — two moves, never an overwrite.
 //
 // ⚠️ **CE CHEMIN N'EST PAS EXERÇABLE PAR L'INSTRUMENT DE RECETTE, et la sonde
 // S2 le mesure** : OPFS est **SENSIBLE à la casse**

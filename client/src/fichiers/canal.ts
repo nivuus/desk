@@ -66,7 +66,7 @@ export interface OptionsCanal {
     /// passes it here** (`bureau/fichiers-dom.ts`).
     jeton: string;
     onStatus?: (message: string) => void;
-    /// Appelé pour chaque trame reçue. Rend la trame à réémettre, ou `null`.
+    /// Called for each frame received. Returns the frame to send back, or `null`.
     traiter(octets: ArrayBuffer): Promise<ArrayBuffer | null>;
 }
 
@@ -76,7 +76,7 @@ export interface CanalFichiers {
     close(): void;
 }
 
-/** L'identifiant de session du pont pour la VM courante. */
+/** The bridge's session identifier for the current VM. */
 export function sessionDuPont(): string {
     return composer(lirePrefixe(), NOM_SESSION_DU_PONT);
 }
@@ -98,31 +98,31 @@ export async function connecterCanalFichiers(options: OptionsCanal): Promise<Can
     const iceServers = await attendreConfigIce(socket, 2000);
     const pc = new RTCPeerConnection({ iceServers });
 
-    // 🔴 AUCUN `addTransceiver` : c'est tout l'objet de D4. Une offre sans
-    // m-line média est licite ; l'agent y répond par `pont/transport.rs`, dont
-    // le `Rtc` est construit sans codec.
+    // 🔴 NO `addTransceiver`: that is the whole point of D4. An offer without a
+    // media m-line is legal; the agent answers it through `pont/transport.rs`, whose
+    // `Rtc` is built without a codec.
     //
-    // 🔴 FIABLE ET ORDONNÉ, c'est-à-dire les valeurs PAR DÉFAUT. La fiabilité
-    // n'est pas demandée explicitement parce qu'elle n'a pas de drapeau : on
-    // l'obtient en ne posant NI `maxRetransmits` NI `maxPacketLifeTime`. C'est
-    // l'exact opposé du canal `input` (`webrtc.ts`, `maxRetransmits: 0`), et la
-    // raison est inverse : une position de souris périmée n'a aucune valeur,
-    // une plage d'octets perdue est un fichier corrompu.
+    // 🔴 RELIABLE AND ORDERED, that is, the DEFAULT values. Reliability
+    // is not requested explicitly because it has no flag: it is
+    // obtained by setting NEITHER `maxRetransmits` NOR `maxPacketLifeTime`. It is
+    // the exact opposite of the `input` channel (`webrtc.ts`, `maxRetransmits: 0`), and the
+    // reason is the reverse: a stale mouse position has no value,
+    // a lost byte range is a corrupted file.
     const canal = pc.createDataChannel('fichiers', { ordered: true });
-    // ⚠️ **LA CONTRE-PRESSION EST POSÉE ICI, ET SA LOGIQUE VIT AILLEURS.**
-    // `flux.ts` est PUR et injecté ; ce fichier n'a AUCUN test (son en-tête le
-    // déclare), et y loger une attente asynchrone la rendrait inéprouvable.
-    // C'est le même partage que `protocole.ts` / `adaptateur.ts` depuis F1.
+    // ⚠️ **BACKPRESSURE IS SET UP HERE, AND ITS LOGIC LIVES ELSEWHERE.**
+    // `flux.ts` is PURE and injected; this file has NO test (its header
+    // declares it), and housing an asynchronous wait here would make it untestable.
+    // It is the same split as `protocole.ts` / `adaptateur.ts` since F1.
     //
-    // 🔵 **`bufferedAmountLowThreshold` EST POSÉ PAR `contrePression`**, pas
-    // ici : le poser deux fois ferait deux vérités, et la spec §3.4 l'exige
-    // (« posé ») sans dire par qui. Avant F3 il ne l'était **nulle part**.
+    // 🔵 **`bufferedAmountLowThreshold` IS SET BY `contrePression`**, not
+    // here: setting it twice would make two truths, and spec §3.4 requires it
+    // ("set") without saying by whom. Before F3 it was set **nowhere**.
     const frein = contrePression(canal as unknown as import('./flux').CanalSortant);
-    // ⚠️ SANS CECI, `event.data` PEUT ÊTRE UN `Blob`. Le défaut par défaut de
-    // `RTCDataChannel.binaryType` est `'blob'` dans la spécification ; les
-    // navigateurs qui ne gèrent que `'arraybuffer'` s'en tirent, les autres
-    // livreraient un `Blob` que `decoder()` refuserait — un mode de défaillance
-    // qui dépend du navigateur, donc invisible en recette sur un seul.
+    // ⚠️ WITHOUT THIS, `event.data` CAN BE A `Blob`. The default of
+    // `RTCDataChannel.binaryType` is `'blob'` in the specification; the
+    // browsers that only handle `'arraybuffer'` get away with it, the others
+    // would deliver a `Blob` that `decoder()` would refuse — a failure mode
+    // that depends on the browser, hence invisible in an acceptance run on just one.
     canal.binaryType = 'arraybuffer';
 
     canal.addEventListener('open', () => statut('canal fichiers ouvert'));
@@ -130,20 +130,20 @@ export async function connecterCanalFichiers(options: OptionsCanal): Promise<Can
     canal.addEventListener('message', (evenement) => {
         const donnees: unknown = evenement.data;
         if (!(donnees instanceof ArrayBuffer)) {
-            // Le pont n'émet que du binaire. Une chaîne ici n'est pas une trame.
+            // The bridge only emits binary. A string here is not a frame.
             console.warn('trame fichiers non binaire, ignorée');
             return;
         }
         // ════════════════════════════════════════════════════════════════
-        // 🔴 **F5 (D10) — LA CORRÉLATION SE CAPTURE ICI, AVANT TOUT `await`.**
+        // 🔴 **F5 (D10) — THE CORRELATION IS CAPTURED HERE, BEFORE ANY `await`.**
         //
-        // C'est la trame ENTRANTE qui la porte, et le `catch` doit la connaître
-        // même si l'attente de contre-pression a duré. La lire après serait la
-        // lire d'un objet qu'on n'a plus.
+        // It is the INCOMING frame that carries it, and the `catch` must know it
+        // even if the backpressure wait lasted. Reading it afterwards would be
+        // reading it from an object we no longer have.
         //
-        // ⚠️ **Un décodage qui échoue rend `undefined`, pas zéro** : zéro est
-        // une corrélation licite, et répondre sur elle dirigerait un échec vers
-        // une commande étrangère.
+        // ⚠️ **A failing decode returns `undefined`, not zero**: zero is
+        // a legal correlation, and answering on it would direct a failure to
+        // a foreign command.
         // ════════════════════════════════════════════════════════════════
         let correlation: number | undefined;
         try {
@@ -152,18 +152,18 @@ export async function connecterCanalFichiers(options: OptionsCanal): Promise<Can
             correlation = undefined;
         }
         /**
-         * 🔴 **VINGT SECONDES DE GEL DEVIENNENT UNE ERREUR IMMÉDIATE.**
+         * 🔴 **TWENTY SECONDS OF FREEZE BECOME AN IMMEDIATE ERROR.**
          *
-         * F4 a mesuré le mur : au-delà de ~3 150 entrées, le `send()` d'une
-         * réponse de listage est refusé par SCTP, ce `catch` journalisait dans
-         * la console **et ne renvoyait RIEN** — l'application restait figée
-         * `DELAI_LISTER` (20 s), puis recevait une erreur opaque.
+         * F4 measured the wall: beyond ~3,150 entries, the `send()` of a
+         * listing answer is refused by SCTP, this `catch` logged to
+         * the console **and sent NOTHING back** — the application stayed frozen
+         * `DELAI_LISTER` (20 s), then received an opaque error.
          *
-         * ⚠️ **CE QUE CELA NE FAIT PAS : LE MUR NE BOUGE PAS.** Un listage de
-         * plus de ~3 150 entrées **échoue toujours** ; il échoue seulement
-         * **vite et en le disant**. Le découpage d'une énumération en plusieurs
-         * trames reste un incrément de `FICHIERS_VERSION`, et il sort du
-         * sous-projet ③ **sans destinataire**.
+         * ⚠️ **WHAT THIS DOES NOT DO: THE WALL DOES NOT MOVE.** A listing of
+         * more than ~3,150 entries **still fails**; it only fails
+         * **fast and saying so**. Splitting an enumeration into several
+         * frames remains an increment of `FICHIERS_VERSION`, and it leaves
+         * sub-project ③ **without a recipient**.
          */
         const denoncer = (raison: string, e: unknown) => {
             console.warn(`trame fichiers non delivree (${raison})`, e);
@@ -173,9 +173,9 @@ export async function connecterCanalFichiers(options: OptionsCanal): Promise<Can
                     canal.send(encoderTexte(TYPE_ECHEC, correlation, encodeEchec('interne')));
                 }
             } catch (echec: unknown) {
-                // Le canal est parti pendant qu'on dénonçait. Il n'y a plus
-                // personne à qui le dire, et le pont l'apprendra par la
-                // fermeture — jamais par un silence de vingt secondes.
+                // The channel went away while we were reporting. There is no one
+                // left to tell, and the bridge will learn it through the
+                // closing — never through a twenty-second silence.
                 console.warn('denonciation impossible : canal ferme', echec);
             }
         };
@@ -183,9 +183,9 @@ export async function connecterCanalFichiers(options: OptionsCanal): Promise<Can
             .traiter(donnees)
             .then(async (reponse) => {
                 if (reponse === null) return;
-                // 🔴 **LA CONTRE-PRESSION VIENT AVANT L'ENVOI, ET APRÈS ELLE ON
-                // RE-CONTRÔLE L'ÉTAT.** L'attente peut durer, et le canal peut
-                // s'être fermé pendant : `send` sur un canal fermé LÈVE.
+                // 🔴 **BACKPRESSURE COMES BEFORE SENDING, AND AFTER IT WE
+                // CHECK THE STATE AGAIN.** The wait can last, and the channel may
+                // have closed meanwhile: `send` on a closed channel THROWS.
                 await frein.avantEnvoi();
                 if (canal.readyState !== 'open') {
                     denoncer('canal ferme pendant l attente', undefined);
@@ -194,15 +194,15 @@ export async function connecterCanalFichiers(options: OptionsCanal): Promise<Can
                 try {
                     canal.send(reponse);
                 } catch (e: unknown) {
-                    // C'est ICI que le mur de F4 se manifeste : SCTP refuse une
-                    // trame trop grosse, et `send` LÈVE.
+                    // It is HERE that F4's wall shows up: SCTP refuses a
+                    // frame that is too large, and `send` THROWS.
                     denoncer('send refuse', e);
                 }
             })
             .catch((e: unknown) => {
-                // `traiter` répond lui-même aux échecs qu'il sait nommer ; s'il
-                // lève, c'est que le protocole lui-même a cassé. On le dit, et
-                // on ne tue pas le canal pour autant.
+                // `traiter` itself answers the failures it can name; if it
+                // throws, the protocol itself has broken. We say so, and
+                // we do not kill the channel for all that.
                 denoncer('traitement leve', e);
             });
     });
@@ -234,40 +234,40 @@ export async function connecterCanalFichiers(options: OptionsCanal): Promise<Can
 }
 
 /**
- * Ouvre le sélecteur de dossier et rend la racine.
+ * Opens the folder picker and returns the root.
  *
- * ⚠️ `showDirectoryPicker()` EXIGE UNE ACTIVATION UTILISATEUR TRANSITOIRE :
- * cette fonction doit être appelée DANS un gestionnaire de clic, jamais depuis
- * un message de canal. C'est la même contrainte que `window.open()`, déjà
- * connue de la page-shell.
+ * ⚠️ `showDirectoryPicker()` REQUIRES A TRANSIENT USER ACTIVATION:
+ * this function must be called INSIDE a click handler, never from
+ * a channel message. It is the same constraint as `window.open()`, already
+ * known to the shell page.
  *
- * ⚠️ LA POIGNÉE N'EST PAS PERSISTÉE. Elle est sérialisable en IndexedDB, mais
- * au rechargement la permission doit être re-accordée par `requestPermission()`,
- * qui exige à son tour une activation utilisateur : persister n'économiserait
- * que la traversée de l'arborescence dans le sélecteur, jamais le geste. Un
- * clic par chargement de la page-shell, et c'est tout.
+ * ⚠️ THE HANDLE IS NOT PERSISTED. It is serialisable into IndexedDB, but
+ * on reload the permission must be granted again through `requestPermission()`,
+ * which in turn requires a user activation: persisting would only save
+ * the walk through the tree in the picker, never the gesture. One
+ * click per shell page load, and that is all.
  *
- * ❌ `mode: 'read'` N'EST PLUS VRAI — F2 demande `'readwrite'`, sans quoi la
- * File System Access API refuserait `createWritable()` et toute écriture serait
- * perdue APRÈS que l'application a cru avoir enregistré.
+ * ❌ `mode: 'read'` IS NO LONGER TRUE — F2 requests `'readwrite'`, otherwise the
+ * File System Access API would refuse `createWritable()` and every write would be
+ * lost AFTER the application believed it had saved.
  *
- * ⚠️ ET CE MODE N'EST PAS EXERCÉ PAR LA RECETTE : son instrument est **OPFS**,
- * dont `navigator.storage.getDirectory()` rend une vraie
- * `FileSystemDirectoryHandle` **sans aucun modèle de permission** (F1 résultats
- * §3). `queryPermission` / `requestPermission` et l'activation utilisateur
- * transitoire restent NON COUVERTS, comme en F1. Déclaré.
+ * ⚠️ AND THIS MODE IS NOT EXERCISED BY THE ACCEPTANCE RUN: its instrument is **OPFS**,
+ * whose `navigator.storage.getDirectory()` returns a real
+ * `FileSystemDirectoryHandle` **without any permission model** (F1 results
+ * §3). `queryPermission` / `requestPermission` and the transient user
+ * activation remain NOT COVERED, as in F1. Declared.
  *
- * ⚠️ REND `null` QUAND L'UTILISATEUR ANNULE. Le navigateur signale l'annulation
- * par une `AbortError`, c'est-à-dire par le même canal qu'une vraie panne :
- * remonter l'exception telle quelle ferait afficher « le lecteur n'a pas pu
- * être monté » à quelqu'un qui vient simplement de cliquer « Annuler ». Un
- * message d'échec sur un geste délibéré apprend à l'utilisateur à ignorer les
- * messages d'échec.
+ * ⚠️ RETURNS `null` WHEN THE USER CANCELS. The browser signals cancellation
+ * through an `AbortError`, that is, through the same channel as a real failure:
+ * propagating the exception as is would display "the drive could not
+ * be mounted" to someone who has simply clicked "Cancel". A
+ * failure message on a deliberate gesture teaches the user to ignore
+ * failure messages.
  *
- * ⚠️ CE MODULE N'A PAS DE TEST : il touche `globalThis`, `WebSocket` et
- * `RTCPeerConnection`, qui n'existent pas sous le Node de Vitest. C'est
- * exactement pour cela que `protocole.ts` et `adaptateur.ts` n'en dépendent
- * pas — toute la logique vit là-bas, testée ; ici il n'y a que du câblage.
+ * ⚠️ THIS MODULE HAS NO TEST: it touches `globalThis`, `WebSocket` and
+ * `RTCPeerConnection`, which do not exist under Vitest's Node. That is
+ * exactly why `protocole.ts` and `adaptateur.ts` do not depend on
+ * them — all the logic lives there, tested; here there is only wiring.
  */
 export async function choisirDossier(): Promise<{ racine: Racine; nom: string } | null> {
     const global = globalThis as {
@@ -288,40 +288,40 @@ export async function choisirDossier(): Promise<{ racine: Racine; nom: string } 
         if (e instanceof DOMException && e.name === 'AbortError') return null;
         throw e;
     }
-    // 🔴 L'AFFECTATION CI-DESSOUS EST LE CONTRÔLE DE COMPATIBILITÉ STRUCTURELLE
-    // entre `FileSystemDirectoryHandle` et les interfaces de `adaptateur.ts`.
-    // Elles décrivent un SOUS-ENSEMBLE de la vraie poignée, précisément pour
-    // qu'un faux en mémoire puisse les satisfaire sous Node ; si la vraie ne les
-    // satisfaisait plus, `tsc --noEmit` le dirait ICI, à la compilation, et non
-    // en session réelle.
+    // 🔴 THE ASSIGNMENT BELOW IS THE STRUCTURAL COMPATIBILITY CHECK
+    // between `FileSystemDirectoryHandle` and the interfaces of `adaptateur.ts`.
+    // They describe a SUBSET of the real handle, precisely so that
+    // an in-memory fake can satisfy them under Node; if the real one no longer
+    // satisfied them, `tsc --noEmit` would say so HERE, at compile time, and not
+    // in a real session.
     //
-    // ⚠️ ELLE DÉPEND DE `"DOM.AsyncIterable"` DANS `client/tsconfig.json` :
-    // sans cette bibliothèque, `FileSystemDirectoryHandle` n'a pas de `values()`
-    // du tout et l'affectation échoue. Elle y a été ajoutée par ce sous-bloc.
+    // ⚠️ IT DEPENDS ON `"DOM.AsyncIterable"` IN `client/tsconfig.json`:
+    // without that library, `FileSystemDirectoryHandle` has no `values()`
+    // at all and the assignment fails. It was added there by this sub-block.
     const racine: Racine = poignee;
-    // ── 🔴 LE CONTRÔLE DE COMPATIBILITÉ STRUCTURELLE, EN ENTIER ─────────────
+    // ── 🔴 THE STRUCTURAL COMPATIBILITY CHECK, IN FULL ─────────────
     //
-    // ⚠️ **CELUI DE F2 ÉTAIT VACUEUX, ET C'EST MESURÉ.**
-    // `shell-page.ts` portait `choix.racine as RacineInscriptible` en le
-    // déclarant « le CONTRÔLE DE COMPATIBILITÉ STRUCTURELLE de F2 : si la vraie
-    // poignée cessait de le satisfaire, `tsc --noEmit` le dirait ICI ».
-    // **`choix.racine` y est typée `Racine`, et `RacineInscriptible` en est un
-    // SOUS-type** : un `as` vers un sous-type est une assertion, jamais une
-    // vérification. Ajouter à `RacineInscriptible` une méthode que
-    // `FileSystemDirectoryHandle` n'a pas ne faisait rougir QUE le faux de
-    // test — jamais cette ligne-là.
-    // Journal :
+    // ⚠️ **F2'S ONE WAS VACUOUS, AND IT IS MEASURED.**
+    // `shell-page.ts` carried `choix.racine as RacineInscriptible` while
+    // declaring it "F2's STRUCTURAL COMPATIBILITY CHECK: if the real
+    // handle stopped satisfying it, `tsc --noEmit` would say so HERE".
+    // **`choix.racine` is typed `Racine` there, and `RacineInscriptible` is a
+    // SUBtype of it**: an `as` towards a subtype is an assertion, never a
+    // check. Adding to `RacineInscriptible` a method
+    // `FileSystemDirectoryHandle` does not have only turned the test fake
+    // red — never that line.
+    // Log:
     // `docs/superpowers/plans/journaux-pont-fichiers-f3/t9-controle-structurel-de-f2-vacueux.txt`
     //
-    // **Les trois AFFECTATIONS ci-dessous, elles, vérifient** : elles portent
-    // sur la VRAIE `FileSystemDirectoryHandle`, avant tout élargissement. Si
-    // elle cessait de satisfaire l'une des trois interfaces, `tsc --noEmit` le
-    // dirait ici, à la compilation, et non en session réelle.
+    // **The three ASSIGNMENTS below, for their part, do check**: they bear
+    // on the REAL `FileSystemDirectoryHandle`, before any widening. If
+    // it stopped satisfying one of the three interfaces, `tsc --noEmit` would
+    // say so here, at compile time, and not in a real session.
     //
-    // ⚠️ **Elles dépendent de `"DOM.AsyncIterable"` dans `client/tsconfig.json`**
-    // (sans quoi `values()` n'existe pas) et, pour `RacineMutable`, de
-    // `removeEntry`, que la bibliothèque DOM déclare avec un `options` que nous
-    // n'employons pas — voir `mutation.ts`.
+    // ⚠️ **They depend on `"DOM.AsyncIterable"` in `client/tsconfig.json`**
+    // (otherwise `values()` does not exist) and, for `RacineMutable`, on
+    // `removeEntry`, which the DOM library declares with an `options` we
+    // do not use — see `mutation.ts`.
     const _inscriptible: RacineInscriptible = poignee;
     const _mutable: RacineMutable = poignee;
     void _inscriptible;

@@ -1,53 +1,53 @@
-// L'écrivain : il pose les octets du pont dans le répertoire du poste local.
-// **PUR** — ni DOM, ni WebRTC, ni trame binaire ; la racine lui est INJECTÉE,
-// comme à `adaptateur.ts`, et c'est ce qui le rend testable sous le Node de
-// Vitest, qui n'a aucune File System Access API.
+// The writer: it lays the bridge's bytes into the local machine's directory.
+// **PURE** — neither DOM, nor WebRTC, nor binary frame; the root is INJECTED into it,
+// as in `adaptateur.ts`, and that is what makes it testable under Vitest's
+// Node, which has no File System Access API.
 //
-// 🔴 CE QUE F2 FAIT DU DÉFAUT DE CASSE, DEVENU UNE PERTE DE DONNÉES
+// 🔴 WHAT F2 DOES WITH THE CASE DEFECT, WHICH BECAME A DATA LOSS
 //
-// F1 a mesuré, TROIS exécutions sur trois : avec `Casse.txt` sur le poste
-// local, `casse.txt` ET `CASSE.TXT` rendent le CONTENU de `Casse.txt`, sans
-// erreur. En LECTURE, c'est un mauvais fichier rendu. EN ÉCRITURE, C'EST UN
-// FICHIER ÉCRASÉ.
+// F1 measured it, THREE runs out of three: with `Casse.txt` on the local
+// machine, `casse.txt` AND `CASSE.TXT` return the CONTENT of `Casse.txt`, without
+// error. On READ, it is a wrong file returned. ON WRITE, IT IS AN
+// OVERWRITTEN FILE.
 //
-// ⚠️ ET LE MÉCANISME EST PIRE DU CÔTÉ NAVIGATEUR QUE DU CÔTÉ VM :
+// ⚠️ AND THE MECHANISM IS WORSE ON THE BROWSER SIDE THAN ON THE VM SIDE:
 //
-//   - Côté VM, l'écart de casse est ABSORBÉ par NTFS sur un fichier DÉJÀ
-//     hydraté : le pont reçoit alors la casse RÉELLE de l'entrée locale, et la
-//     poussée est juste. Ce chemin-là n'est pas dangereux.
-//   - Côté navigateur, `getFileHandle(nom, { create: true })` s'exécute sur le
-//     système de fichiers du POSTE LOCAL, insensible à la casse sur Windows et
-//     sur macOS par défaut. Une poussée vers `CASSE.TXT` y ouvre donc
-//     `Casse.txt` et L'ÉCRASE. C'est LÀ que la perte se produit.
-//   - Le cas qui l'atteint : un fichier JAMAIS HYDRATÉ, créé dans la VM avec
-//     une casse différente d'une entrée locale existante. NTFS n'a rien à
-//     résoudre, la notification porte la casse de la VM, et la poussée écrase
-//     l'homonyme local.
+//   - On the VM side, the case difference is ABSORBED by NTFS on an ALREADY
+//     hydrated file: the bridge then receives the REAL case of the local entry, and the
+//     push is right. That path is not dangerous.
+//   - On the browser side, `getFileHandle(nom, { create: true })` runs on the
+//     file system of the LOCAL MACHINE, case-insensitive on Windows and
+//     on macOS by default. A push to `CASSE.TXT` there therefore opens
+//     `Casse.txt` and OVERWRITES IT. It is THERE that the loss happens.
+//   - The case reaching it: a file NEVER HYDRATED, created in the VM with
+//     a case different from an existing local entry. NTFS has nothing to
+//     resolve, the notification carries the VM's case, and the push overwrites
+//     the local namesake.
 //
-// LA RÈGLE, et elle est PURE : avant toute écriture ou création, l'écrivain
-// énumère le répertoire parent et cherche le nom demandé EXACTEMENT.
+// THE RULE, and it is PURE: before any write or creation, the writer
+// enumerates the parent directory and looks for the requested name EXACTLY.
 //
-//   - nom exact trouvé                  → on écrit dedans ;
-//   - aucun nom, aucun homonyme         → on crée ;
-//   - un homonyme à la casse près SEUL  → `casse-ambigue`, ON N'ÉCRIT RIEN.
+//   - exact name found                   → we write into it;
+//   - no name, no namesake               → we create;
+//   - a namesake up to case ALONE        → `casse-ambigue`, WE WRITE NOTHING.
 //
-// ⚠️ COÛT, ÉCRIT : une énumération du répertoire parent PAR ÉCRITURE. Sur un
-// répertoire à mille entrées, c'est mille noms parcourus — moins cher que le
-// listage, qui ouvre chaque fichier (`adaptateur.ts`), mais non nul. Mesurable
-// en F4, pas ici. L'alternative — la table de correspondance alimentée par
-// l'énumération, que F1 lègue à F3 — la supprimerait ; F2 ne la construit PAS,
-// parce qu'un cache que rien n'invalide est le défaut de l'ancien pont
-// (`src/file.js`, cache SANS TTL) et que `Rafraichir` est un livrable de F5.
+// ⚠️ COST, WRITTEN DOWN: one enumeration of the parent directory PER WRITE. On a
+// directory of a thousand entries, that is a thousand names walked — cheaper than the
+// listing, which opens each file (`adaptateur.ts`), but not zero. Measurable
+// in F4, not here. The alternative — the correspondence table fed by
+// enumeration, which F1 bequeaths to F3 — would remove it; F2 does NOT build it,
+// because a cache nothing invalidates is the old bridge's defect
+// (`src/file.js`, cache WITHOUT TTL) and `Rafraichir` is a deliverable of F5.
 //
-// ⚠️ CE QUE F2 NE FAIT PAS : il ne corrige PAS la casse en LECTURE. `casse.txt`
-// continuera de rendre le contenu de `Casse.txt`. La garde ne protège que le
-// sens ÉCRITURE, le seul où l'erreur DÉTRUIT quelque chose.
+// ⚠️ WHAT F2 DOES NOT DO: it does NOT fix case on READ. `casse.txt`
+// will keep returning the content of `Casse.txt`. The guard only protects the
+// WRITE direction, the only one where the error DESTROYS something.
 //
-// ⚠️ ET ELLE NE VOIT PAS LA NORMALISATION UNICODE. macOS stocke ses noms en
-// NFD, Windows en NFC : `été.txt` peut y exister sous deux suites d'unités de
-// code différentes, que `===` distingue et que l'utilisateur ne distingue pas.
-// La garde créerait alors un DOUBLON au lieu d'écraser — moins grave que la
-// perte, mais faux. NON TRAITÉ, déclaré ; c'est le canonicaliseur de F3.
+// ⚠️ AND IT DOES NOT SEE UNICODE NORMALISATION. macOS stores its names in
+// NFD, Windows in NFC: `résumé.txt` can exist there under two different sequences of code
+// units, which `===` distinguishes and the user does not.
+// The guard would then create a DUPLICATE instead of overwriting — less serious than the
+// loss, but wrong. NOT HANDLED, declared; it is F3's canonicaliser.
 
 import {
     EchecFichiers,
@@ -57,32 +57,32 @@ import {
     type PoigneeRepertoire,
 } from './adaptateur';
 
-/* ── LES POIGNÉES INSCRIPTIBLES ───────────────────────────────────────────
-   Un SOUS-ENSEMBLE STRUCTUREL de plus, décrit par ce dont on se sert. La vraie
-   `FileSystemDirectoryHandle` les satisfait sans conversion — `canal.ts` le
-   vérifie à la compilation, exactement comme pour la lecture en F1. */
+/* ── THE WRITABLE HANDLES ───────────────────────────────────────────
+   One more STRUCTURAL SUBSET, described by what we use of it. The real
+   `FileSystemDirectoryHandle` satisfies them without conversion — `canal.ts`
+   checks it at compile time, exactly as for reading in F1. */
 
 /**
- * Les octets qu'un flux du navigateur accepte.
+ * The bytes a browser stream accepts.
  *
- * 🔴 **`Uint8Array<ArrayBuffer>` ET NON `Uint8Array` NU, ET C'EST LE CONTRÔLE
- * STRUCTUREL DE `canal.ts` QUI L'A EXIGÉ.** `Uint8Array` seul vaut
- * `Uint8Array<ArrayBufferLike>`, donc **`SharedArrayBuffer` compris** — et la
- * vraie `FileSystemWritableFileStream.write` n'accepte qu'un `BufferSource`,
- * c'est-à-dire un `ArrayBufferView<ArrayBuffer>`. La vraie poignée ne
- * satisfaisait donc **PAS** `RacineInscriptible`, et personne ne l'avait vu :
- * le « contrôle de compatibilité structurelle » de F2 était un `as` vers un
- * sous-type, qui asserte au lieu de vérifier.
+ * 🔴 **`Uint8Array<ArrayBuffer>` AND NOT A BARE `Uint8Array`, AND IT IS THE STRUCTURAL
+ * CHECK OF `canal.ts` THAT REQUIRED IT.** `Uint8Array` alone means
+ * `Uint8Array<ArrayBufferLike>`, hence **`SharedArrayBuffer` included** — and the
+ * real `FileSystemWritableFileStream.write` only accepts a `BufferSource`,
+ * that is, an `ArrayBufferView<ArrayBuffer>`. The real handle therefore did
+ * **NOT** satisfy `RacineInscriptible`, and no one had seen it:
+ * F2's "structural compatibility check" was an `as` towards a
+ * subtype, which asserts instead of checking.
  *
- * ⚠️ **Ce n'est PAS une incompatibilité d'exécution** — un `Uint8Array` adossé
- * à un `ArrayBuffer` ordinaire est un `BufferSource` parfaitement valide. C'est
- * le TYPE qui mentait, en promettant d'accepter des vues sur mémoire partagée
- * que ce module ne produit ni ne reçoit jamais. Le resserrer, c'est le rendre
- * vrai.
+ * ⚠️ **It is NOT a runtime incompatibility** — a `Uint8Array` backed
+ * by an ordinary `ArrayBuffer` is a perfectly valid `BufferSource`. It was
+ * the TYPE that lied, promising to accept views on shared memory
+ * that this module never produces nor receives. Tightening it makes it
+ * true.
  */
 export type OctetsInscriptibles = Uint8Array<ArrayBuffer>;
 
-/** Le flux d'écriture rendu par `createWritable()`. */
+/** The write stream returned by `createWritable()`. */
 export interface FluxInscriptible {
     write(donnees: {
         type: 'write';
@@ -90,14 +90,14 @@ export interface FluxInscriptible {
         data: OctetsInscriptibles;
     }): Promise<void>;
     /**
-     * 🔵 LA COMMITTAISON EST ICI, ET NULLE PART AILLEURS. `createWritable()`
-     * écrit dans un fichier d'échange et ne commet qu'au `close()` : une
-     * poussée interrompue en plein vol laisse donc le fichier local INCHANGÉ.
+     * 🔵 THE COMMIT HAPPENS HERE, AND NOWHERE ELSE. `createWritable()`
+     * writes into a swap file and only commits on `close()`: a
+     * push interrupted mid-flight therefore leaves the local file UNCHANGED.
      *
-     * ⚠️ C'est excellent — pas de fichier à moitié écrit chez l'utilisateur —
-     * et cela a un revers : une interruption ne rend RIEN, pas même le début.
-     * INFÉRENCE de la spécification de la File System Access API, NON MESURÉE
-     * ici ; le critère ⑤ de la recette est écrit pour l'éprouver.
+     * ⚠️ That is excellent — no half-written file at the user's —
+     * and it has a flip side: an interruption returns NOTHING, not even the beginning.
+     * INFERENCE from the File System Access API specification, NOT MEASURED
+     * here; criterion ⑤ of the acceptance run is written to test it.
      */
     close(): Promise<void>;
 }
@@ -127,7 +127,7 @@ export interface Ecrivain {
         dernier: boolean,
     ): Promise<void>;
     creer(chemin: string, repertoire: boolean): Promise<void>;
-    /** Ferme tout flux resté ouvert. Appelé à la fermeture du canal. */
+    /** Closes any stream left open. Called when the channel closes. */
     abandonner(): void;
 }
 
@@ -138,15 +138,15 @@ function composants(chemin: string): string[] {
 
 export function creerEcrivain(racine: RacineInscriptible): Ecrivain {
     /**
-     * Les flux ouverts, UN PAR CHEMIN.
+     * The open streams, ONE PER PATH.
      *
-     * ⚠️ Ouvrir un flux par MORCEAU rendrait `keepExistingData` obligatoire —
-     * donc le défaut de l'ancien pont, qui laissait sa queue d'octets à un
-     * fichier réécrit plus court (spec §12).
+     * ⚠️ Opening a stream per CHUNK would make `keepExistingData` mandatory —
+     * hence the old bridge's defect, which left its byte tail to a
+     * file rewritten shorter (spec §12).
      */
     const flux = new Map<string, FluxInscriptible>();
 
-    /** Descend les `jusqua` premiers composants, en les CRÉANT au besoin. */
+    /** Walks down the first `jusqua` components, CREATING them if needed. */
     async function descendre(parts: string[], jusqua: number): Promise<RacineInscriptible> {
         let ici = racine;
         for (let i = 0; i < jusqua; i += 1) {
@@ -160,11 +160,11 @@ export function creerEcrivain(racine: RacineInscriptible): Ecrivain {
     }
 
     /**
-     * 🔴 LA GARDE DE CASSE. Rend le nom à employer, ou LÈVE.
+     * 🔴 THE CASE GUARD. Returns the name to use, or THROWS.
      *
-     * Elle rend le nom EXACT quand il existe, le nom demandé quand rien n'y
-     * ressemble, et lève `casse-ambigue` quand un homonyme ne diffère que par
-     * la casse. Dans ce dernier cas, ON N'ÉCRIT RIEN.
+     * It returns the EXACT name when it exists, the requested name when nothing
+     * resembles it, and throws `casse-ambigue` when a namesake only differs by
+     * case. In that last case, WE WRITE NOTHING.
      */
     async function nomSur(parent: RacineInscriptible, nom: string): Promise<string> {
         const homonymes: string[] = [];
@@ -177,10 +177,10 @@ export function creerEcrivain(racine: RacineInscriptible): Ecrivain {
             throw classer(e, 'chemin-introuvable');
         }
         if (homonymes.length > 0) {
-            // ⚠️ Le message NOMME les deux, parce que c'est tout ce que
-            // l'utilisateur pourra faire : renommer l'un des deux. Le CODE, lui,
-            // traverse le fil ; le message reste dans la console du navigateur
-            // et dans la page-shell.
+            // ⚠️ The message NAMES both, because that is all the
+            // user will be able to do: rename one of the two. The CODE, for its part,
+            // crosses the wire; the message stays in the browser console
+            // and in the shell page.
             throw new EchecFichiers(
                 'casse-ambigue',
                 `« ${nom} » ne diffère de « ${homonymes.join(' », « ')} » que par la casse : ` +
@@ -199,11 +199,11 @@ export function creerEcrivain(racine: RacineInscriptible): Ecrivain {
         const nom = await nomSur(parent, parts[parts.length - 1]);
         try {
             const poignee = await parent.getFileHandle(nom, { create: true });
-            // 🔴 SANS `keepExistingData`, ET C'EST LE DÉFAUT DE L'ANCIEN PONT
-            // QU'ON REFUSE DE REJOUER : il employait `keepExistingData: true`
-            // sans `truncate`, si bien qu'UN FICHIER RÉÉCRIT PLUS COURT
-            // CONSERVAIT SA QUEUE D'OCTETS (spec §12). Le fichier local aurait
-            // alors un contenu que la VM n'a jamais eu.
+            // 🔴 WITHOUT `keepExistingData`, AND IT IS THE OLD BRIDGE'S DEFECT
+            // WE REFUSE TO REPLAY: it used `keepExistingData: true`
+            // without `truncate`, so that A FILE REWRITTEN SHORTER
+            // KEPT ITS BYTE TAIL (spec §12). The local file would
+            // then have a content the VM never had.
             return await poignee.createWritable();
         } catch (e) {
             throw classer(e, 'introuvable');
@@ -213,12 +213,12 @@ export function creerEcrivain(racine: RacineInscriptible): Ecrivain {
     return {
         async ecrire(chemin, position, octets, premier, dernier) {
             if (premier) {
-                // ⚠️ Un `premier` sur un chemin DÉJÀ ouvert ne peut venir que
-                // d'un rejeu dont le flux précédent n'a jamais été fermé — une
-                // poussée interrompue, puis relancée. On ferme l'ancien plutôt
-                // que d'en laisser DEUX ouverts sur le même fichier : le
-                // second `close()` gagnerait, et le premier laisserait son
-                // fichier d'échange derrière lui.
+                // ⚠️ A `premier` on an ALREADY open path can only come
+                // from a replay whose previous stream was never closed — an
+                // interrupted push, then restarted. We close the old one rather
+                // than leave TWO open on the same file: the
+                // second `close()` would win, and the first would leave its
+                // swap file behind.
                 const ancien = flux.get(chemin);
                 if (ancien !== undefined) {
                     flux.delete(chemin);
@@ -228,33 +228,33 @@ export function creerEcrivain(racine: RacineInscriptible): Ecrivain {
             }
             const ouvert = flux.get(chemin);
             if (ouvert === undefined) {
-                // ⚠️ Un morceau qui n'est PAS le premier sur un chemin sans flux
-                // : le pont et le navigateur ont divergé. Ouvrir ici écrirait
-                // un fichier tronqué à ce morceau-ci, ce qui est PIRE que de
-                // refuser — la troncature serait silencieuse.
+                // ⚠️ A chunk that is NOT the first on a path without a stream
+                // : the bridge and the browser have diverged. Opening here would write
+                // a file truncated to this very chunk, which is WORSE than
+                // refusing — the truncation would be silent.
                 throw new EchecFichiers(
                     'interne',
                     `morceau non initial sur « ${chemin} » sans flux ouvert`,
                 );
             }
             try {
-                // ⚠️ **LE RESSERREMENT DE TYPE SE FAIT ICI, ET UNE SEULE FOIS.**
-                // `proto/ts/fichiers` rend un `Uint8Array` NU — donc
-                // `Uint8Array<ArrayBufferLike>`, `SharedArrayBuffer` compris —
-                // parce que c'est ce que le décodeur de trame produit. Rien, à
-                // l'exécution, ne peut lui donner une vue sur mémoire
-                // partagée : la trame vient d'un `ArrayBuffer` de
-                // `RTCDataChannel`. **La copie est donc gratuite en pratique et
-                // honnête en type** : elle dit ce que le module reçoit
-                // réellement, plutôt que de l'asserter.
+                // ⚠️ **THE TYPE TIGHTENING HAPPENS HERE, AND ONLY ONCE.**
+                // `proto/ts/fichiers` returns a BARE `Uint8Array` — hence
+                // `Uint8Array<ArrayBufferLike>`, `SharedArrayBuffer` included —
+                // because that is what the frame decoder produces. Nothing, at
+                // runtime, can give it a view on shared
+                // memory: the frame comes from an `ArrayBuffer` of
+                // `RTCDataChannel`. **The copy is therefore free in practice and
+                // honest in type**: it says what the module really
+                // receives, rather than asserting it.
                 //
-                // 🔵 C'est le contrôle structurel de `canal.ts` qui a exigé ce
-                // resserrement — voir [`OctetsInscriptibles`].
+                // 🔵 It is the structural check of `canal.ts` that required this
+                // tightening — see [`OctetsInscriptibles`].
                 const donnees: OctetsInscriptibles = new Uint8Array(octets);
                 await ouvert.write({ type: 'write', position, data: donnees });
             } catch (e) {
-                // Le flux est perdu : le retirer, sinon le morceau suivant
-                // écrirait dans un flux mort et l'échec changerait de cause.
+                // The stream is lost: remove it, otherwise the next chunk
+                // would write into a dead stream and the failure would change cause.
                 flux.delete(chemin);
                 throw classer(e, 'introuvable');
             }
@@ -280,9 +280,9 @@ export function creerEcrivain(racine: RacineInscriptible): Ecrivain {
                 if (repertoire) {
                     await parent.getDirectoryHandle(nom, { create: true });
                 } else {
-                    // ⚠️ CRÉER, ET RIEN DE PLUS : aucun `createWritable()` ici.
-                    // En ouvrir un TRONQUERAIT un fichier local existant, alors
-                    // qu'une création est sans effet sur ce qui est déjà là.
+                    // ⚠️ CREATE, AND NOTHING MORE: no `createWritable()` here.
+                    // Opening one would TRUNCATE an existing local file, whereas
+                    // a creation has no effect on what is already there.
                     await parent.getFileHandle(nom, { create: true });
                 }
             } catch (e) {
@@ -291,10 +291,10 @@ export function creerEcrivain(racine: RacineInscriptible): Ecrivain {
         },
 
         abandonner() {
-            // ⚠️ `close()` ET NON `abort()` : un flux abandonné sans être fermé
-            // laisse son fichier d'échange derrière lui. Rien n'est attendu —
-            // cette fonction est appelée depuis la fermeture du canal, qui est
-            // synchrone.
+            // ⚠️ `close()` AND NOT `abort()`: a stream abandoned without being closed
+            // leaves its swap file behind. Nothing is awaited —
+            // this function is called from the channel's closing, which is
+            // synchronous.
             for (const [, ouvert] of flux) void ouvert.close().catch(() => {});
             flux.clear();
         },

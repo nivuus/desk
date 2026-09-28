@@ -1,36 +1,36 @@
-// LA COPIE D'ARBRE ET SON RETRAIT — la branche du renommage qui n'a pas de
-// `move()`. **PUR** : ni DOM, ni WebRTC, ni trame ; les poignées sont
-// injectées, comme partout dans `fichiers/`.
+// TREE COPY AND ITS REMOVAL — the branch of renaming that has no
+// `move()`. **PURE**: neither DOM, nor WebRTC, nor frame; the handles are
+// injected, as everywhere in `fichiers/`.
 //
 // ════════════════════════════════════════════════════════════════════════════
-// 🔴 POUR UN RÉPERTOIRE, CE N'EST PAS UN « REPLI » — C'EST LE SEUL CHEMIN
+// 🔴 FOR A DIRECTORY, IT IS NOT A "FALLBACK" — IT IS THE ONLY PATH
 // ════════════════════════════════════════════════════════════════════════════
 //
-// La sonde S2 de F3 le mesure, deux exécutions identiques sur Chrome 151 :
-// **`move()` N'EXISTE PAS sur un répertoire** (`move_repertoire:
-// { present: false }`). Le plan de F3 tenait le fait que l'ancien pont ne
-// l'appelait que sur des fichiers (`web/index.js:628`) pour un « indice, pas
-// preuve » ; la mesure tranche. Journal :
+// F3's probe S2 measures it, two identical runs on Chrome 151:
+// **`move()` DOES NOT EXIST on a directory** (`move_repertoire:
+// { present: false }`). F3's plan held the fact that the old bridge only
+// called it on files (`web/index.js:628`) as a "hint, not
+// proof"; the measurement settles it. Log:
 // `docs/superpowers/plans/journaux-pont-fichiers-f3/s2-move-casse.txt`.
 //
 // ════════════════════════════════════════════════════════════════════════════
-// POURQUOI CETTE EXTRACTION, ET POURQUOI ELLE ARRIVE AVANT LE FRANCHISSEMENT
+// WHY THIS EXTRACTION, AND WHY IT COMES BEFORE THE CROSSING
 // ════════════════════════════════════════════════════════════════════════════
 //
-// `mutation.ts` était à **497** lignes pour une porte à 500 — marge **3**. Le
-// dépôt a franchi ce plafond quatre sous-blocs de suite sans le voir passer, et
-// à chaque fois c'est le relevé d'un chantier voisin qui l'a nommé en premier.
-// **Ici l'extraction précède l'addition**, ce qui est le geste que D9 a inventé
-// et que D10 a joué trois fois.
+// `mutation.ts` was at **497** lines for a gate at 500 — margin **3**. The
+// repository crossed that ceiling four sub-blocks in a row without seeing it go by, and
+// each time it was the survey of a neighbouring workstream that named it first.
+// **Here the extraction precedes the addition**, which is the gesture D9 invented
+// and D10 played three times.
 //
-// La ligne de partage est une responsabilité : `mutation.ts` décide **QUOI**
-// faire — résoudre, refuser, choisir la branche —, ce module fait **COMMENT**
-// on recopie et on retire un arbre.
+// The dividing line is a responsibility: `mutation.ts` decides **WHAT**
+// to do — resolve, refuse, choose the branch —, this module does **HOW**
+// a tree is copied over and removed.
 
 import { classer, type PoigneeBase } from './adaptateur';
 import type { RacineMutable, TraceRenommage } from './mutation';
 
-/** Ouvre un répertoire existant, ou classe l'échec. */
+/** Opens an existing directory, or classifies the failure. */
 export async function ouvrirRepertoire(
     parent: RacineMutable,
     nom: string,
@@ -52,13 +52,13 @@ export async function copierFichier(
     try {
         const fichier = await (await parentSource.getFileHandle(nomSource)).getFile();
         const cible = await parentDest.getFileHandle(nomDest, { create: true });
-        // ⚠️ **SANS `keepExistingData`** — la destination est neuve ou vide de
-        // droit, et le défaut de l'ancien pont était précisément de garder la
-        // queue d'octets d'un fichier réécrit plus court (spec §12).
+        // ⚠️ **WITHOUT `keepExistingData`** — the destination is new or empty by
+        // right, and the old bridge's defect was precisely to keep the
+        // byte tail of a file rewritten shorter (spec §12).
         const flux = await cible.createWritable();
         const octets = new Uint8Array(await fichier.slice(0, fichier.size).arrayBuffer());
         await flux.write({ type: 'write', position: 0, data: octets });
-        // 🔵 LA COMMITTAISON EST ICI, ET NULLE PART AILLEURS.
+        // 🔵 THE COMMIT HAPPENS HERE, AND NOWHERE ELSE.
         await flux.close();
         trace.octets += octets.length;
         trace.entrees += 1;
@@ -68,26 +68,26 @@ export async function copierFichier(
 }
 
 /**
- * Recrée l'arbre, feuille à feuille.
+ * Recreates the tree, leaf by leaf.
  *
- * 🔴 **LE DÉFAUT DE L'ANCIEN PONT QU'ON REFUSE DE REJOUER** :
- * `web/index.js:631` écrit `const newDir = await newDir.getDirectoryHandle(...)`
- * **à l'intérieur du bloc où `newDir` est le paramètre** — une zone morte
- * temporelle, donc un `ReferenceError`. **Le renommage d'un répertoire
- * contenant un sous-répertoire y échoue donc TOUJOURS.**
+ * 🔴 **THE OLD BRIDGE'S DEFECT WE REFUSE TO REPLAY**:
+ * `web/index.js:631` writes `const newDir = await newDir.getDirectoryHandle(...)`
+ * **inside the block where `newDir` is the parameter** — a temporal dead
+ * zone, hence a `ReferenceError`. **Renaming a directory
+ * containing a subdirectory therefore ALWAYS fails there.**
  *
- * ⛔ **CE CHEMIN N'EST JAMAIS EMPRUNTÉ, ET C'EST LA RECETTE DE F3 QUI L'A
- * ÉTABLI.** Une rédaction antérieure disait « c'est le critère (1) de F3,
- * écrit pour exercer exactement ce cas » : **la mesure la réfute**. ProjFS
- * REFUSE le renommage d'un répertoire **avant de consulter le fournisseur** —
- * `Cette demande n'est pas prise en charge`, et **aucune** notification
- * `code=32` au journal, deux exécutions de recette plus la sonde S1. Le
- * critère (1) b n'est donc pas livrable, et **aucune ligne de cette fonction
- * n'a jamais couru en conditions réelles**.
+ * ⛔ **THIS PATH IS NEVER TAKEN, AND IT IS F3'S ACCEPTANCE RUN THAT
+ * ESTABLISHED IT.** An earlier wording said "it is F3's criterion (1),
+ * written to exercise exactly this case": **the measurement refutes it**. ProjFS
+ * REFUSES the renaming of a directory **before consulting the provider** —
+ * Windows' "This request is not supported" error, and **no** `code=32`
+ * notification in the log, two acceptance runs plus probe S1. The
+ * criterion (1) b is therefore not deliverable, and **no line of this function
+ * has ever run in real conditions**.
  *
- * ⚠️ Elle reste écrite et testée sur l'hôte : le défaut de l'ancien pont est
- * réel, et le jour où un chemin l'atteindra — un copier/supprimer piloté
- * depuis la VM — c'est ici qu'il faudra regarder.
+ * ⚠️ It stays written and tested on the host: the old bridge's defect is
+ * real, and the day a path reaches it — a copy/delete driven
+ * from the VM — this is where to look.
  */
 export async function copierRepertoire(
     parentSource: RacineMutable,
@@ -104,8 +104,8 @@ export async function copierRepertoire(
         throw classer(e, 'introuvable');
     }
     trace.entrees += 1;
-    // ⚠️ L'énumération est MATÉRIALISÉE avant de muter : itérer un répertoire
-    // qu'on modifie pendant l'itération n'a pas de sémantique définie.
+    // ⚠️ The enumeration is MATERIALISED before mutating: iterating a directory
+    // being modified during the iteration has no defined semantics.
     const enfants: PoigneeBase[] = [];
     try {
         for await (const enfant of source.values()) enfants.push(enfant);
@@ -122,28 +122,28 @@ export async function copierRepertoire(
 }
 
 /**
- * Retire un répertoire et tout ce qu'il porte, **feuille à feuille**.
+ * Removes a directory and everything it carries, **leaf by leaf**.
  *
- * 🔴 **CE N'EST PAS `recursive: true`, ET LA DIFFÉRENCE EST TOUT LE POINT.**
- * `removeEntry(nom)` sans `recursive` refuse un répertoire non vide (le faux de
- * test le refuse comme le navigateur réel), et le repli de renommage doit
- * pourtant retirer l'arbre source qu'il vient de recopier. Deux voies :
+ * 🔴 **IT IS NOT `recursive: true`, AND THE DIFFERENCE IS THE WHOLE POINT.**
+ * `removeEntry(nom)` without `recursive` refuses a non-empty directory (the test
+ * fake refuses it like the real browser), and the rename fallback must
+ * nonetheless remove the source tree it has just copied over. Two ways:
  *
- *   - `recursive: true` — **REFUSÉE** : elle détruirait sur la foi d'un miroir
- *     qu'aucune preuve ne dit à jour, et c'est l'argument entier de l'en-tête ;
- *   - descendre nous-mêmes et retirer **ce qu'on vient de copier**, entrée par
- *     entrée, du bas vers le haut. **C'est ce qui est fait.**
+ *   - `recursive: true` — **REFUSED**: it would destroy on the strength of a mirror
+ *     no proof says is up to date, and that is the whole argument of the header;
+ *   - walk down ourselves and remove **what we have just copied**, entry by
+ *     entry, bottom up. **That is what is done.**
  *
- * 🔵 **La seconde est PLUS SÛRE que la première, pas seulement plus verbeuse** :
- * on ne retire QUE ce que [`copierRepertoire`] a énuméré et recopié quelques
- * lignes plus tôt. Une entrée apparue entre-temps sur le poste local **fait
- * échouer le retrait** au lieu d'être emportée en silence — et `deplacer`
- * remonte alors l'échec, source intacte.
+ * 🔵 **The second is SAFER than the first, not merely more verbose**:
+ * we only remove what [`copierRepertoire`] enumerated and copied a few
+ * lines earlier. An entry that appeared meanwhile on the local machine **makes
+ * the removal fail** instead of being carried off silently — and `deplacer`
+ * then propagates the failure, source intact.
  *
- * ⚠️ **[`supprimer`], elle, N'APPELLE JAMAIS CETTE FONCTION.** Une suppression
- * demandée par la VM ne retire qu'UNE entrée : Windows envoie une notification
- * PAR ENFANT, et le miroir le suit pas à pas. Les deux chemins sont voisins et
- * ne doivent pas être unifiés.
+ * ⚠️ **[`supprimer`], for its part, NEVER CALLS THIS FUNCTION.** A deletion
+ * requested by the VM only removes ONE entry: Windows sends one notification
+ * PER CHILD, and the mirror follows it step by step. The two paths are neighbours and
+ * must not be unified.
  */
 export async function retirerArbre(parent: RacineMutable, nom: string): Promise<void> {
     const dossier = await parent.getDirectoryHandle(nom);
@@ -156,8 +156,8 @@ export async function retirerArbre(parent: RacineMutable, nom: string): Promise<
             await dossier.removeEntry(enfant.name);
         }
     }
-    // Le répertoire est vide MAINTENANT : `removeEntry` sans `recursive`
-    // l'accepte. S'il ne l'est pas, c'est qu'une entrée est apparue entre
-    // l'énumération et ici — et le refus est le bon comportement.
+    // The directory is empty NOW: `removeEntry` without `recursive`
+    // accepts it. If it is not, an entry appeared between
+    // the enumeration and here — and refusal is the right behaviour.
     await parent.removeEntry(nom);
 }

@@ -1,44 +1,44 @@
-// LA CONTRE-PRESSION DU CANAL — l'autre moitié du contrôle de flux de F3.
-// **PUR** : le canal lui est INJECTÉ, décrit par ce dont on se sert, et ce
-// module ne connaît ni `RTCDataChannel`, ni le DOM, ni la trame.
+// THE CHANNEL'S BACKPRESSURE — the other half of F3's flow control.
+// **PURE**: the channel is INJECTED into it, described by what we use of it, and this
+// module knows neither `RTCDataChannel`, nor the DOM, nor the frame.
 //
 // ════════════════════════════════════════════════════════════════════════════
-// 🔴 POURQUOI ELLE EST ICI ET NON DANS LE PONT
+// 🔴 WHY IT IS HERE AND NOT IN THE BRIDGE
 // ════════════════════════════════════════════════════════════════════════════
 //
-// La spec §7.3 pose : « le pont ne demande pas le morceau n+1 tant que le canal
-// a plus de `SEUIL_TAMPON` octets en attente ». Mais **c'est le NAVIGATEUR qui
-// émet les gros messages** — les octets d'un fichier lu —, et
-// `bufferedAmount` est une propriété de SON canal. **Le pont ne la voit pas et
-// ne peut pas la voir.**
+// Spec §7.3 states: "the bridge does not request chunk n+1 as long as the channel
+// has more than `SEUIL_TAMPON` bytes pending". But **it is the BROWSER that
+// emits the large messages** — the bytes of a read file —, and
+// `bufferedAmount` is a property of ITS channel. **The bridge does not see it and
+// cannot see it.**
 //
-// Les deux moitiés sont indissociables, et F3 livre **les deux ou aucune** :
-// la fenêtre du pont (`agent/src/pont/lecture.rs`) sans la contre-pression
-// remplirait la file SCTP ; la contre-pression sans la fenêtre n'aurait **rien
-// à retenir**, puisque le pont ne demanderait jamais le morceau n+1 avant
-// d'avoir reçu le n.
+// The two halves are inseparable, and F3 delivers **both or neither**:
+// the bridge's window (`agent/src/pont/lecture.rs`) without backpressure
+// would fill the SCTP queue; backpressure without the window would have **nothing
+// to hold back**, since the bridge would never request chunk n+1 before
+// receiving n.
 //
-// ⚠️ **RELEVÉ DANS LE CODE DE F1/F2** : `canal.ts` ne posait **aucun**
-// `bufferedAmountLowThreshold` — il ne passait que `{ ordered: true }` — et
-// envoyait sans rien regarder, alors que la spec §3.4 l'exige (« posé »).
+// ⚠️ **FOUND IN F1/F2'S CODE**: `canal.ts` set **no**
+// `bufferedAmountLowThreshold` — it only passed `{ ordered: true }` — and
+// sent without looking at anything, whereas spec §3.4 requires it ("set").
 //
-// ⚠️ **F3 NE REVENDIQUE AUCUN GAIN DE DÉBIT.** La seule mesure de débit du
-// dépôt variait d'un facteur ~120 sans explication (F1 §11).
+// ⚠️ **F3 CLAIMS NO THROUGHPUT GAIN.** The repository's only throughput measurement
+// varied by a factor of ~120 without explanation (F1 §11).
 //
-// ✅ **F4 A JUGÉ.** Le canal soutient ~30 à 33 Kio/s, linéairement, et une
-// RELECTURE ne traverse pas le pont du tout (l'hydratation ProjFS sert seule).
-// 🔴 **Et la contre-pression posée ici n'a jamais servi en exploitation** : la
-// seule lecture qui atteindrait `MORCEAUX_EN_VOL = 4` (256 Kio) échoue au
-// budget `DELAI_LIRE`, ses quatre morceaux se partageant ces 33 Kio/s. Voir
+// ✅ **F4 HAS JUDGED.** The channel sustains ~30 to 33 KiB/s, linearly, and a
+// REREAD does not cross the bridge at all (ProjFS hydration serves alone).
+// 🔴 **And the backpressure set up here has never served in operation**: the
+// only read that would reach `MORCEAUX_EN_VOL = 4` (256 KiB) fails on the
+// `DELAI_LIRE` budget, its four chunks sharing those 33 KiB/s. See
 // `docs/…/2026-08-21-pont-fichiers-f4-resultats.md`.
 
 /**
- * Le sous-ensemble d'un `RTCDataChannel` dont la contre-pression se sert.
+ * The subset of an `RTCDataChannel` that backpressure uses.
  *
- * ⚠️ **Un SOUS-ENSEMBLE STRUCTUREL**, comme les poignées d'`adaptateur.ts` : la
- * vraie classe le satisfait sans conversion (`canal.ts` le vérifie à la
- * compilation), et un faux en mémoire aussi. C'est ce qui rend ce module
- * testable sous le Node de Vitest, où `RTCDataChannel` n'existe pas.
+ * ⚠️ **A STRUCTURAL SUBSET**, like the handles of `adaptateur.ts`: the
+ * real class satisfies it without conversion (`canal.ts` checks it at
+ * compile time), and an in-memory fake does too. That is what makes this module
+ * testable under Vitest's Node, where `RTCDataChannel` does not exist.
  */
 export interface CanalSortant {
     readonly bufferedAmount: number;
@@ -49,63 +49,63 @@ export interface CanalSortant {
 }
 
 /**
- * Combien d'octets peuvent attendre dans le tampon du canal avant qu'on cesse
- * d'émettre.
+ * How many bytes may wait in the channel's buffer before we stop
+ * emitting.
  *
- * ⚠️ **NON CALIBRÉE.** Elle rejoint `MORCEAUX_EN_VOL`, `DELAI_MUTATION`,
- * `PERIODE_RECENSEMENT`, les quatre de F1, celles de F2 et les huit du chantier
- * D dans la liste des constantes qu'aucune mesure n'a jugées.
+ * ⚠️ **NOT CALIBRATED.** It joins `MORCEAUX_EN_VOL`, `DELAI_MUTATION`,
+ * `PERIODE_RECENSEMENT`, the four of F1, those of F2 and the eight of workstream
+ * D in the list of constants no measurement has judged.
  *
- * **Pourquoi cet ordre de grandeur, et c'est un RAISONNEMENT, pas une mesure** :
- * `MORCEAUX_EN_VOL` (4) × `TAILLE_TRAME_MAX` (64 Kio) = 256 Kio de réponses en
- * vol au plus. Le seuil est posé au quart, de sorte que le tampon se vide
- * avant que la fenêtre ne soit pleine — sans quoi la contre-pression ne
- * mordrait **jamais**, et serait un mécanisme incapable de se déclencher.
+ * **Why this order of magnitude, and it is a REASONING, not a measurement**:
+ * `MORCEAUX_EN_VOL` (4) × `TAILLE_TRAME_MAX` (64 KiB) = 256 KiB of answers in
+ * flight at most. The threshold is set at a quarter, so that the buffer drains
+ * before the window is full — otherwise backpressure would
+ * **never** bite, and would be a mechanism unable to trigger.
  */
 export const SEUIL_TAMPON = 64 * 1024;
 
 export interface ContrePression {
     /**
-     * Attend que le tampon soit redescendu sous le seuil.
+     * Waits for the buffer to have dropped back below the threshold.
      *
-     * 🔴 **REND IMMÉDIATEMENT si le canal est FERMÉ**, et ne suspend jamais :
-     * un canal fermé n'émettra plus jamais `bufferedamountlow`, et l'attente ne
-     * se terminerait donc **jamais** — un blocage PIRE que celui qu'on répare,
-     * puisqu'il figerait la page au lieu de ralentir un transfert.
+     * 🔴 **RETURNS IMMEDIATELY if the channel is CLOSED**, and never suspends:
+     * a closed channel will never again emit `bufferedamountlow`, and the wait would
+     * therefore **never** end — a blockage WORSE than the one being fixed,
+     * since it would freeze the page instead of slowing a transfer.
      */
     avantEnvoi(): Promise<void>;
 }
 
 export function contrePression(canal: CanalSortant, seuil = SEUIL_TAMPON): ContrePression {
-    // ⚠️ **Le seuil est posé UNE FOIS, à la construction.** Le poser à chaque
-    // envoi serait une écriture par trame sur un objet du navigateur, et le
-    // changer en cours de route ferait qu'un `bufferedamountlow` déjà armé
-    // se déclencherait sur l'ancienne valeur.
+    // ⚠️ **The threshold is set ONCE, at construction.** Setting it at each
+    // send would be one write per frame on a browser object, and
+    // changing it along the way would make an already armed `bufferedamountlow`
+    // fire on the old value.
     canal.bufferedAmountLowThreshold = seuil;
     return {
         async avantEnvoi(): Promise<void> {
             if (canal.readyState !== 'open') return;
             if (canal.bufferedAmount <= seuil) return;
             await new Promise<void>((resolve) => {
-                // ⚠️ **LES DEUX ÉCOUTEURS SONT RETIRÉS, quel que soit celui qui
-                // gagne.** Les laisser ferait exactement le défaut relevé de
-                // l'ancien pont : un écouteur `message` posé PAR REQUÊTE et
-                // jamais retiré (`src/file.js:155`), dont le coût croissait
-                // avec le nombre d'opérations passées, indéfiniment.
+                // ⚠️ **BOTH LISTENERS ARE REMOVED, whichever one
+                // wins.** Leaving them would be exactly the defect found in
+                // the old bridge: a `message` listener set PER REQUEST and
+                // never removed (`src/file.js:155`), whose cost grew
+                // with the number of past operations, indefinitely.
                 const finir = (): void => {
                     canal.removeEventListener('bufferedamountlow', finir);
                     canal.removeEventListener('close', finir);
                     resolve();
                 };
                 canal.addEventListener('bufferedamountlow', finir);
-                // 🔴 **`close` LIBÈRE AUSSI**, sans quoi une lecture en cours
-                // figerait la page à la fermeture de l'onglet distant.
+                // 🔴 **`close` RELEASES TOO**, otherwise an ongoing read
+                // would freeze the page when the remote tab closes.
                 canal.addEventListener('close', finir);
-                // ⚠️ **RE-CONTRÔLE APRÈS L'ABONNEMENT.** Le tampon a pu
-                // redescendre entre le test ci-dessus et l'abonnement :
-                // l'événement serait alors déjà passé, et l'attente ne se
-                // terminerait jamais. C'est la course classique de tout
-                // mécanisme « tester puis attendre ».
+                // ⚠️ **CHECK AGAIN AFTER SUBSCRIBING.** The buffer may have
+                // dropped between the test above and the subscription:
+                // the event would then already have passed, and the wait would
+                // never end. It is the classic race of any
+                // "test then wait" mechanism.
                 if (canal.bufferedAmount <= seuil || canal.readyState !== 'open') finir();
             });
         },
