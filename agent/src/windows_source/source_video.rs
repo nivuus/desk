@@ -3,124 +3,124 @@
 
 use super::*;
 
-/// Budget accordé à l'attente de la sortie d'une image **qui vient d'être
-/// soumise** à l'encodeur, **uniquement tant qu'il n'a encore rien produit**
-/// (voir `WindowsSource::encoder_warmed_up`) — jamais à l'attente d'une
-/// nouvelle capture, et jamais non plus une fois l'encodeur établi comme
-/// capable de répondre.
+/// Budget granted to waiting for the output of a frame **that has just been
+/// submitted** to the encoder, **only as long as it has produced nothing yet**
+/// (see `WindowsSource::encoder_warmed_up`) — never to waiting for a
+/// new capture, and never either once the encoder is established as
+/// able to respond.
 ///
-/// L'encodeur matériel est asynchrone (voir `encode.rs`) : après le tout
-/// premier `submit()`, `poll_output()` n'a presque jamais encore de résultat
-/// au premier essai, l'événement `METransformHaveOutput` mettant un ou deux
-/// cycles à arriver. Sans ce court réessai, la toute première image (donc le
-/// premier keyframe) n'était récupérée qu'au tour suivant de `Session::run`
-/// (~16,7 ms plus tard) au mieux. Borné à quelques dizaines de millisecondes :
-/// largement suffisant pour ce démarrage, sans jamais s'approcher de la
-/// seconde qui affamait `Session::run` (ronde de correction 1).
+/// The hardware encoder is asynchronous (see `encode.rs`): after the very
+/// first `submit()`, `poll_output()` almost never has a result yet
+/// on the first try, the `METransformHaveOutput` event taking one or two
+/// cycles to arrive. Without this short retry, the very first frame (hence the
+/// first keyframe) was only retrieved at the next round of `Session::run`
+/// (~16.7 ms later) at best. Bounded to a few tens of milliseconds:
+/// largely enough for this startup, without ever approaching the
+/// second that starved `Session::run` (fix round 1).
 ///
-/// **Ronde de diagnostic (débit plafonné ~25-30 im/s) :** repéré en relecture
-/// que l'inverse de la valeur alors en vigueur (40 ms) tombait exactement sur
-/// le plafond observé — hypothèse d'un plafond ARTIFICIEL si ce réessai
-/// bloquait `act_on_timeout` (donc tout `Session::run`, capture ET
-/// transport) sur la quasi-totalité des tours en régime établi. Mesuré
-/// directement (instrumentation temporaire, retirée) : FAUX sur cette VM. Le
-/// réessai résolvait systématiquement en 3-5 ms (jamais le budget de 40 ms
-/// atteint, sur des centaines d'images), et réduire le budget de 40 ms à
-/// 2 ms (vingt fois moins) n'a strictement rien changé au débit mesuré côté
-/// navigateur (297/10 s dans les deux cas, contenu identique). À ce stade du
-/// diagnostic, le plafond réel était attribué en amont : `DesktopCapture::next_frame`
-/// (donc `AcquireNextFrame`, non bloquant) ne signalait une image neuve qu'à
-/// ~30 Hz, alors que la boucle l'interroge, elle, à 60 Hz exact (mesuré par
-/// comptage — voir aussi `docs/superpowers/plans/fix-debit-socket-report.md`),
-/// ce qui avait fait suspecter la cadence de composition/duplication du
-/// bureau elle-même comme vraie limite.
+/// **Diagnostic round (throughput capped at ~25-30 fps):** spotted on rereading
+/// that the inverse of the value then in force (40 ms) fell exactly on
+/// the observed ceiling — hypothesis of an ARTIFICIAL ceiling if this retry
+/// blocked `act_on_timeout` (hence all of `Session::run`, capture AND
+/// transport) on almost every round in steady state. Measured
+/// directly (temporary instrumentation, removed): FALSE on this VM. The
+/// retry systematically resolved in 3-5 ms (the 40 ms budget never
+/// reached, over hundreds of frames), and reducing the budget from 40 ms to
+/// 2 ms (twenty times less) changed strictly nothing in the throughput measured on the
+/// browser side (297/10 s in both cases, identical content). At this stage of the
+/// diagnosis, the real ceiling was attributed upstream: `DesktopCapture::next_frame`
+/// (hence `AcquireNextFrame`, non-blocking) only signalled a new frame at
+/// ~30 Hz, whereas the loop polls it at exactly 60 Hz (measured by
+/// counting — see also `docs/superpowers/plans/fix-debit-socket-report.md`),
+/// which had made the desktop's own composition/duplication cadence
+/// suspected as the real limit.
 ///
-/// **Hypothèse écartée depuis**, par la recette du jalon 1
-/// (`docs/superpowers/plans/2026-07-27-jalon1-recette.md`, critère 2) :
-/// mesurée isolément (`CAPTURE_TEST`), la capture soutient ~90 im/s sur cette
-/// même VM — la composition/duplication du bureau n'est pas le goulot. Le
-/// plafond réel se situe côté encodeur matériel : `H264Encoder::submit`, dans
-/// `encode.rs`, ne reçoit de nouvelles demandes d'entrée
-/// (`METransformNeedInput`) qu'à ~30 Hz, alors que le même encodeur, sollicité
-/// en boucle serrée (`ENCODE_TEST`), soutient ~80 im/s — une interaction non
-/// résolue entre le rythme de soumission fixe (16,7 ms) et le rythme propre
-/// du MFT matériel, pas une limite de la capture ni, en tant que telle, du
-/// GPU/pilote NVIDIA (détail des essais qui écartent successivement les
-/// hypothèses concurrentes dans
-/// `docs/superpowers/plans/diagnostic-plafond-debit.md` et
+/// **Hypothesis ruled out since**, by milestone 1's acceptance run
+/// (`docs/superpowers/plans/2026-07-27-jalon1-recette.md`, criterion 2):
+/// measured in isolation (`CAPTURE_TEST`), capture sustains ~90 fps on this
+/// same VM — desktop composition/duplication is not the bottleneck. The
+/// real ceiling sits on the hardware encoder side: `H264Encoder::submit`, in
+/// `encode.rs`, only receives new input requests
+/// (`METransformNeedInput`) at ~30 Hz, whereas the same encoder, driven
+/// in a tight loop (`ENCODE_TEST`), sustains ~80 fps — an unresolved
+/// interaction between the fixed submission rhythm (16.7 ms) and the hardware
+/// MFT's own rhythm, not a limit of capture nor, as such, of the
+/// NVIDIA GPU/driver (details of the trials that successively rule out the
+/// competing hypotheses in
+/// `docs/superpowers/plans/diagnostic-plafond-debit.md` and
 /// `docs/superpowers/plans/remesure-debit.md`).
 ///
-/// `SUBMIT_POLL_BUDGET` n'y est pour rien — mais
-/// comme il ne coûtait donc jamais rien qu'au tout premier démarrage
-/// (jamais revérifié une fois l'encodeur chaud), il est désormais borné à
-/// ce seul cas : sur du matériel où l'encodeur répondrait plus lentement en
-/// régime établi, l'ancienne version aurait pu réellement brider `run()`
-/// jusqu'à ce budget à chaque image — ce que cette restriction élimine
-/// structurellement, sans rien changer au débit mesuré ici.
+/// `SUBMIT_POLL_BUDGET` has nothing to do with it — but
+/// since it therefore never cost anything except at the very first startup
+/// (never rechecked once the encoder is warm), it is now limited to
+/// that single case: on hardware where the encoder would respond more slowly in
+/// steady state, the old version could really have throttled `run()`
+/// up to that budget at each frame — which this restriction eliminates
+/// structurally, without changing anything in the throughput measured here.
 const SUBMIT_POLL_BUDGET: std::time::Duration = std::time::Duration::from_millis(40);
 const SUBMIT_POLL_INTERVAL: std::time::Duration = std::time::Duration::from_millis(1);
 
 impl VideoSource for WindowsSource {
-    /// Un seul essai de capture par appel, jamais d'attente pour une
-    /// nouvelle image — avec un court réessai borné, réservé au tout
-    /// premier démarrage de l'encodeur, pour en récupérer la sortie.
+    /// A single capture attempt per call, never waiting for a
+    /// new frame — with a short bounded retry, reserved for the encoder's very
+    /// first startup, to retrieve its output.
     ///
-    /// **Ronde de correction 1 (revue), 1er correctif :** une première
-    /// version de cette méthode retentait en boucle (sommeil de 1 ms)
-    /// jusqu'à DEUX SECONDES avant d'abandonner, **que quelque chose ait été
-    /// capturé ou non**. Deux défauts en découlaient, tous deux mesurés par
-    /// la relecture : (1) elle ne distinguait pas « l'encodeur démarre » (le
-    /// vrai bug visé) de « rien n'a bougé à l'écran » (le cas nominal d'une
-    /// capture en direct — `DesktopCapture::next_frame` documente elle-même
-    /// ce cas comme « courant et normal ») ; toute page statique ou tout
-    /// instant sans mouvement de plus de deux secondes coupait donc le flux ;
-    /// (2) pendant qu'elle bouclait, le fil unique de `Session::run` ne
-    /// traitait plus ni ICE, ni RTCP, ni les canaux de données — observé en
-    /// pratique par une déconnexion ICE spontanée ~20 s après la
-    /// négociation.
+    /// **Fix round 1 (review), 1st fix:** a first
+    /// version of this method retried in a loop (1 ms sleep)
+    /// for up to TWO SECONDS before giving up, **whether something had been
+    /// captured or not**. Two defects followed from it, both measured by
+    /// rereading: (1) it did not distinguish "the encoder is starting" (the
+    /// real bug targeted) from "nothing moved on screen" (the nominal case of a
+    /// live capture — `DesktopCapture::next_frame` itself documents
+    /// this case as "common and normal"); any static page or any
+    /// moment without movement for more than two seconds therefore cut the stream;
+    /// (2) while it looped, the single thread of `Session::run` no longer
+    /// handled ICE, nor RTCP, nor the data channels — observed in
+    /// practice by a spontaneous ICE disconnection ~20 s after
+    /// negotiation.
     ///
-    /// **2e correctif, après mesure :** supprimer TOUT réessai (un essai
-    /// unique, quoi qu'il arrive) réglait bien les deux défauts ci-dessus,
-    /// mais dégradait fortement le débit observé côté navigateur au tout
-    /// démarrage : la cadence externe de `Session::run` (~16,7 ms) est trop
-    /// grossière pour rattraper à temps la sortie de la toute première image
-    /// soumise, avant que l'encodeur ait prouvé qu'il répond vite. Le
-    /// réessai réapparaît donc, mais borné à `SUBMIT_POLL_BUDGET`.
+    /// **2nd fix, after measurement:** removing ALL retry (a single
+    /// attempt, whatever happens) did fix both defects above,
+    /// but strongly degraded the throughput observed on the browser side at the very
+    /// start: the external cadence of `Session::run` (~16.7 ms) is too
+    /// coarse to catch in time the output of the very first frame
+    /// submitted, before the encoder has proven it responds quickly. The
+    /// retry therefore reappears, but bounded to `SUBMIT_POLL_BUDGET`.
     ///
-    /// **3e correctif, après diagnostic du plafond de débit (voir
-    /// `SUBMIT_POLL_BUDGET`) :** ce réessai avait fini par s'appliquer à
-    /// *chaque* image soumise, pas seulement à la première — sans
-    /// conséquence mesurée sur cette VM (il ne consommait jamais son budget
-    /// en régime établi) mais restant un risque latent sur du matériel plus
-    /// lent, où il aurait réellement bridé `run()` à `1/SUBMIT_POLL_BUDGET`.
-    /// Désormais réservé à la phase de démarrage (`encoder_warmed_up`) :
-    /// une fois l'encodeur prouvé capable de répondre, chaque soumission ne
-    /// fait plus qu'un seul essai immédiat, exactement comme le cas « rien
-    /// de neuf à capturer » ci-dessous — une sortie non encore prête sort au
-    /// tour suivant, 16,7 ms plus tard, sans jamais bloquer celui-ci.
+    /// **3rd fix, after diagnosing the throughput ceiling (see
+    /// `SUBMIT_POLL_BUDGET`):** this retry had ended up applying to
+    /// *every* submitted frame, not only the first — without
+    /// measured consequence on this VM (it never consumed its budget
+    /// in steady state) but remaining a latent risk on slower
+    /// hardware, where it would really have throttled `run()` to `1/SUBMIT_POLL_BUDGET`.
+    /// Now reserved for the startup phase (`encoder_warmed_up`):
+    /// once the encoder is proven able to respond, each submission only
+    /// makes a single immediate attempt, exactly like the "nothing
+    /// new to capture" case below — an output not yet ready comes out at the
+    /// next round, 16.7 ms later, without ever blocking this one.
     ///
-    /// Quand rien n'a été capturé (cas normal, bureau immobile), retour
-    /// immédiat, sans boucle ni attente, comme l'exige la revue. `None` ne
-    /// signifie donc jamais « rien cette fois » ; il reste possible pour
-    /// deux causes réellement définitives (`is_exhausted` en informe
-    /// l'appelant) : la fenêtre a disparu, ou une erreur de capture non
-    /// récupérable s'est produite.
+    /// When nothing was captured (normal case, still desktop), immediate
+    /// return, without loop or wait, as the review requires. `None` therefore never
+    /// means "nothing this time"; it stays possible for
+    /// two really final causes (`is_exhausted` informs
+    /// the caller): the window disappeared, or an unrecoverable capture error
+    /// occurred.
     fn next_frame(&mut self) -> Option<AccessUnit> {
         self.telemetrie.tick();
         if self.fatal {
-            // Une reconstruction de la chaîne par `resize` a pu échouer au
-            // point de ne laisser aucune capture de secours valide non plus
-            // (voir `RebuildOutcome::Fatal` dans `resize`) : `self.capture`
-            // vaut alors `None` pour de bon. Ne JAMAIS appeler
-            // `capture_mut()` dans ce cas — `is_exhausted()` (déjà vraie via
-            // `self.fatal`) fera clore la session proprement au tour
-            // suivant, plutôt qu'un panic sur le champ vide.
+            // A rebuild of the chain by `resize` may have failed to the
+            // point of leaving no valid backup capture either
+            // (see `RebuildOutcome::Fatal` in `resize`): `self.capture`
+            // is then `None` for good. NEVER call
+            // `capture_mut()` in that case — `is_exhausted()` (already true through
+            // `self.fatal`) will make the session close cleanly at the next
+            // round, rather than a panic on the empty field.
             return None;
         }
 
-        // Alimenter l'encodeur avec l'image la plus récente, si le bureau a
-        // changé depuis le dernier appel (Desktop Duplication ne rend une
-        // image que sur changement — cas courant et normal, voir
+        // Feed the encoder with the most recent frame, if the desktop has
+        // changed since the last call (Desktop Duplication only returns a
+        // frame on change — common and normal case, see
         // capture.rs).
         let mut submitted = false;
         let region = self.region;
@@ -133,9 +133,9 @@ impl VideoSource for WindowsSource {
         match captured {
             Ok(Some(frame)) => {
                 self.telemetrie.capturee();
-                // Horodatage lu sur l'horloge réelle AVANT la soumission :
-                // c'est l'instant de la capture qui date l'image, pas celui
-                // où l'encodeur voudra bien l'accepter (voir `next_pts_90k`).
+                // Timestamp read from the real clock BEFORE submission:
+                // it is the capture instant that dates the frame, not the one
+                // when the encoder is willing to accept it (see `next_pts_90k`).
                 let pts = self.next_pts_90k();
                 let t_submit = std::time::Instant::now();
                 let fed = self
@@ -153,9 +153,9 @@ impl VideoSource for WindowsSource {
             }
             Ok(None) => {}
             Err(e) => {
-                // Une perte d'accès est déjà passée par les reprises de
-                // `next_frame` : la recevoir ici signifie qu'elles n'ont pas
-                // suffi. Fin légitime dans les deux cas.
+                // An access loss has already gone through the resumptions of
+                // `next_frame`: receiving it here means they were not
+                // enough. Legitimate end in both cases.
                 tracing::error!(erreur = %e, "capture interrompue, source déclarée épuisée");
                 self.fatal = true;
                 return None;
@@ -163,17 +163,17 @@ impl VideoSource for WindowsSource {
         }
 
         if !submitted || self.encoder_warmed_up {
-            // Soit rien de neuf à capturer ce tour-ci (cas normal), soit
-            // l'encodeur a déjà prouvé qu'il répond vite (voir la doc de
-            // `SUBMIT_POLL_BUDGET`) : dans les deux cas, aucune attente —
-            // mais on draine tout ce qui est DÉJÀ prêt, sans jamais dormir.
+            // Either nothing new to capture this round (normal case), or
+            // the encoder has already proven it responds quickly (see the doc of
+            // `SUBMIT_POLL_BUDGET`): in both cases, no wait —
+            // but we drain everything ALREADY ready, without ever sleeping.
             return self.drain_ready_output();
         }
 
-        // Encodeur pas encore chaud : sa toute première sortie peut mettre
-        // un peu plus d'un tour à arriver (voir la doc de
-        // `SUBMIT_POLL_BUDGET`) — on l'attend brièvement plutôt que de
-        // retarder le tout premier keyframe.
+        // Encoder not warm yet: its very first output may take
+        // a little more than a round to arrive (see the doc of
+        // `SUBMIT_POLL_BUDGET`) — we wait for it briefly rather than
+        // delaying the very first keyframe.
         let deadline = std::time::Instant::now() + SUBMIT_POLL_BUDGET;
         loop {
             match self.drain_ready_output() {
@@ -182,9 +182,9 @@ impl VideoSource for WindowsSource {
                 }
                 None => {
                     if std::time::Instant::now() >= deadline {
-                        // Pas encore prête : elle sortira à un appel
-                        // suivant. Pas un échec, juste une latence un peu
-                        // plus longue que la normale à ce tout premier tour.
+                        // Not ready yet: it will come out at a later
+                        // call. Not a failure, just a latency a little
+                        // longer than normal at this very first round.
                         return None;
                     }
                     std::thread::sleep(SUBMIT_POLL_INTERVAL);
@@ -197,9 +197,9 @@ impl VideoSource for WindowsSource {
         (self.width, self.height)
     }
 
-    /// Épuisée pour de bon seulement si la fenêtre a disparu ou qu'une
-    /// erreur de capture non récupérable a été observée — jamais pour un
-    /// simple bureau immobile (voir `next_frame`).
+    /// Exhausted for good only if the window disappeared or an
+    /// unrecoverable capture error was observed — never for a
+    /// mere still desktop (see `next_frame`).
     fn is_exhausted(&self) -> bool {
         self.fatal || !self.is_alive()
     }
@@ -212,15 +212,15 @@ impl VideoSource for WindowsSource {
         WindowsSource::is_alive(self)
     }
 
-    /// Relaie vers l'encodeur matériel (voir `WindowsSource::request_keyframe`
-    /// et le commentaire de `VideoSource::request_keyframe`).
+    /// Relays to the hardware encoder (see `WindowsSource::request_keyframe`
+    /// and the comment of `VideoSource::request_keyframe`).
     fn request_keyframe(&mut self) -> Result<()> {
         WindowsSource::request_keyframe(self)
     }
 
     fn set_bitrate(&mut self, bitrate: u32) -> Result<()> {
-        // Mémorisé même en cas d'échec : c'est ce débit-là qu'une
-        // reconstruction ultérieure de l'encodeur devra reprendre.
+        // Stored even on failure: it is this bitrate that a later
+        // rebuild of the encoder will have to take up.
         self.bitrate = bitrate;
         self.encoder_mut()?.set_bitrate(bitrate)
     }

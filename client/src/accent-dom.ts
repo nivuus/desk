@@ -1,88 +1,88 @@
 /**
- * Le branchement de la couleur d'accent sur le DOM — sous-bloc **A1**.
+ * Wiring the accent colour onto the DOM — sub-block **A1**.
  *
- * **La seule ligne de DOM du mécanisme**, et rien d'autre : la décision — juger
- * la lisibilité, refuser, rendre le thème — vit dans `accent.ts`, **pur** et
- * testé. Le patron est `presse-papier-dom.ts` (P1), lui-même adossé à
+ * **The only DOM line of the mechanism**, and nothing else: the decision — judging
+ * readability, refusing, rendering the theme — lives in `accent.ts`, **pure** and
+ * tested. The pattern is `presse-papier-dom.ts` (P1), itself backed by
  * `presse-papier.ts`.
  *
- * **Écrit AVANT de toucher `main.ts`**, et pour la raison que
- * `presse-papier-dom.ts` documente : `main.ts` était à **466 lignes au moment
- * d'écrire ce module** — il en fait 483 depuis que les trois lignes de câblage
- * y sont — pour un plafond
- * de projet à 500, il **n'a AUCUN test**, et `client/` n'a **ni jsdom ni
- * happy-dom**. Ce module-ci en a une, parce qu'il ne touche ni `document` ni
- * `window` directement mais reçoit `lireToken` et `poserToken` par injection —
- * le patron d'`attachFullscreenAuDOM`, d'`armerLeSon` et de `theme.ts`.
+ * **Written BEFORE touching `main.ts`**, and for the reason
+ * `presse-papier-dom.ts` documents: `main.ts` was at **466 lines at the time
+ * of writing this module** — it has 483 since the three wiring lines
+ * went in — for a project
+ * ceiling of 500, it has **NO test**, and `client/` has **neither jsdom nor
+ * happy-dom**. This module does have one, because it touches neither `document` nor
+ * `window` directly but receives `lireToken` and `poserToken` by injection —
+ * the pattern of `attachFullscreenAuDOM`, `armerLeSon` and `theme.ts`.
  *
- * 🔴 **A1 POSE LE PREMIER `setProperty` DU DÉPÔT.** Relevé avant d'écrire :
- * `grep -rn 'setProperty' client/src/` rendait **zéro**. La règle que ce
- * précédent pose, et qu'il faut donc écrire : **une écriture de token à
- * l'exécution ne se fait que sur `document.documentElement`, jamais sur un
- * élément.** Un token posé sur `document.body` serait invisible à
- * `getComputedStyle(document.documentElement)`, et c'est exactement la rouge du
- * critère ② de la recette.
+ * 🔴 **A1 SETS THE REPOSITORY'S FIRST `setProperty`.** Noted before writing:
+ * `grep -rn 'setProperty' client/src/` returned **zero**. The rule this
+ * precedent sets, and which must therefore be written down: **a runtime token
+ * write is only done on `document.documentElement`, never on an
+ * element.** A token set on `document.body` would be invisible to
+ * `getComputedStyle(document.documentElement)`, and that is exactly the red of
+ * criterion ② of the acceptance run.
  *
- * 🔴 **ET LE PREMIER APPELANT DE PRODUIT DE `getComputedStyle`.** Le seul autre
- * est `design/galerie.ts`, qui déclare lui-même n'être **pas** du produit —
- * aucune surface ne l'importe, il n'a aucun test. La règle du §4.1 de la spec ⑥
- * — « à un changement de thème, jamais par image » — est respectée et même
- * dépassée : on lit **à l'arrivée d'un message**, soit au plus une fois toutes
- * les `PERIODE_ACCENT` (5 s), et **seulement quand l'icône a changé**, le
- * capteur n'annonçant qu'au changement.
+ * 🔴 **AND THE FIRST PRODUCT CALLER OF `getComputedStyle`.** The only other one
+ * is `design/galerie.ts`, which itself declares it is **not** part of the product —
+ * no surface imports it, it has no test. The rule of §4.1 of spec ⑥
+ * — "on a theme change, never per frame" — is respected and even
+ * exceeded: we read **when a message arrives**, that is at most once every
+ * `PERIODE_ACCENT` (5 s), and **only when the icon has changed**, the
+ * sensor only announcing on change.
  *
- * ⚠️ **`--accent-fenetre` n'est déclaré NULLE PART dans `tokens.css`, et c'est
- * une décision MESURÉE** (D-A1-2, sonde H1 du 21 août 2026) : le déclarer y
- * rend §7.6 **ROUGE** (« NOUVEL ORPHELIN — déclaré et appelé par personne »),
- * parce que le périmètre « employé » de ce contrôle est le `.css` seulement et
- * que sa détection ne reconnaît que `var(--…)` — un `setProperty` TypeScript y
- * est invisible **deux fois**. Et la voie « ligne d'attente » que la spec
- * déclare acceptable n'est tenable **que si A1 refuse de se déclarer clos**,
- * ce qui est pire. Les cinq cellules de la sonde sont versées dans
+ * ⚠️ **`--accent-fenetre` is declared NOWHERE in `tokens.css`, and it is
+ * a MEASURED decision** (D-A1-2, probe H1 of August 21st, 2026): declaring it there
+ * makes §7.6 **RED** ("NEW ORPHAN — declared and called by nobody"),
+ * because this check's "used" scope is the `.css` only and
+ * its detection only recognises `var(--…)` — a TypeScript `setProperty` is
+ * invisible to it **twice**. And the "waiting line" route the spec
+ * declares acceptable is only tenable **if A1 refuses to declare itself closed**,
+ * which is worse. The probe's five cells are filed in
  * `journaux-accent-a1/01-sonde-h1.log`.
  *
- * ⚠️ **Conséquence à écrire, puisque personne ne la verra ailleurs** : avant le
- * premier message, `var(--accent-fenetre)` est **indéfini**. Aucune feuille ne
- * le référence aujourd'hui — relevé, `grep -rn 'accent-fenetre' client/src/` ne
- * rend que ce fichier —, donc rien n'en souffre ; mais **toute référence future
- * doit porter un repli (`var(--accent-fenetre, var(--accent))`) ou déclarer le
- * token**, et §7.6 le dira par sa PREMIÈRE inclusion (« aucun `var(--…)` non
- * déclaré »). **La déclaration part avec son appelant, et les deux
- * appartiennent à G5**, qui posera le manifeste PWA.
+ * ⚠️ **Consequence to be written down, since nobody will see it elsewhere**: before the
+ * first message, `var(--accent-fenetre)` is **undefined**. No stylesheet
+ * references it today — noted, `grep -rn 'accent-fenetre' client/src/` only
+ * returns this file —, so nothing suffers from it; but **any future reference
+ * must carry a fallback (`var(--accent-fenetre, var(--accent))`) or declare the
+ * token**, and §7.6 will say so at its FIRST inclusion ("no undeclared
+ * `var(--…)`"). **The declaration goes with its caller, and both
+ * belong to G5**, which will set up the PWA manifest.
  *
- * ❌ DEUX CLAUSES DE CE PARAGRAPHE ONT ÉTÉ REPRISES PAR G5 (21 août 2026), ET
- * LA PREMIÈRE EST MESURÉE FAUSSE.
+ * ❌ TWO CLAUSES OF THIS PARAGRAPH WERE TAKEN UP BY G5 (August 21st, 2026), AND
+ * THE FIRST ONE IS MEASURED WRONG.
  *
- *   ① « **un repli OU déclarer le token** » laisse croire que le repli suffit.
- *      **IL NE SUFFIT PAS** : `tokensReferences` emploie
- *      `/var\(\s*(--[\w-]+)/g`, donc `var(--accent-fenetre, var(--accent))`
- *      capture QUAND MÊME `--accent-fenetre`, et §7.6 rougit —
- *      « NON DÉCLARÉ --accent-fenetre employé par … ». **Joué**, sur le vrai
- *      contrôle, journal versé (rouge n°8 de G5). Seule la SECONDE moitié de
- *      l'alternative tient : il faut **déclarer**.
+ *   ① "**a fallback OR declare the token**" suggests the fallback is enough.
+ *      **IT IS NOT ENOUGH**: `tokensReferences` uses
+ *      `/var\(\s*(--[\w-]+)/g`, so `var(--accent-fenetre, var(--accent))`
+ *      STILL captures `--accent-fenetre`, and §7.6 turns red —
+ *      "UNDECLARED --accent-fenetre used by …". **Played**, on the real
+ *      check, log filed (G5's red no. 8). Only the SECOND half of the
+ *      alternative holds: one must **declare**.
  *
- *   ② « G5, qui posera le manifeste PWA » : **il l'a posé**, et il n'a pour
- *      autant **rien peint** — `--accent-fenetre` reste sans déclaration et
- *      sans appelant. Quatre raisons, toutes mesurées (décision D3 de son
- *      plan) : le `theme_color` d'un manifeste est **statique et par
- *      APPLICATION** quand ce token-ci est **par FENÊTRE** ; le garde WCO de
- *      S4 interdit **toute** `@media (display-mode: window-controls-overlay)` ;
- *      `tokens.css` est à **300 lignes pour une porte de 300**, et ses
- *      lecteurs sont **NEUF** et non sept ; et §7.4 exigerait une contrepartie
- *      claire ou une huitième entrée hors thème. **Le legs reste OUVERT.**
+ *   ② "G5, which will set up the PWA manifest": **it did set it up**, and it
+ *      **painted nothing** for all that — `--accent-fenetre` stays without a declaration and
+ *      without a caller. Four reasons, all measured (decision D3 of its
+ *      plan): a manifest's `theme_color` is **static and per
+ *      APPLICATION** whereas this token is **per WINDOW**; S4's WCO guard
+ *      forbids **any** `@media (display-mode: window-controls-overlay)`;
+ *      `tokens.css` is at **300 lines for a gate of 300**, and its
+ *      readers are **NINE** and not seven; and §7.4 would require a light
+ *      counterpart or an eighth off-theme entry. **The legacy stays OPEN.**
  */
 
 import { conformer } from './accent';
 
-/** Le token que ce module écrit, et le seul. */
+/** The token this module writes, and the only one. */
 export const TOKEN_ACCENT = '--accent-fenetre';
 
 /**
- * Les trois fonds du thème courant, plus l'accent du thème.
+ * The current theme's three backgrounds, plus the theme's accent.
  *
- * ⚠️ **LES TROIS, et pas le seul `--fond-0`** : la spec D10 point 2 dit « les
- * trois fonds du thème courant », et l'accent d'une fenêtre peut se poser sur
- * n'importe lequel selon la surface.
+ * ⚠️ **ALL THREE, and not just `--fond-0`**: spec D10 point 2 says "the
+ * current theme's three backgrounds", and a window's accent can sit on
+ * any of them depending on the surface.
  */
 const FONDS = ['--fond-0', '--fond-1', '--fond-2'] as const;
 const ACCENT_DU_THEME = '--accent';

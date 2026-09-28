@@ -345,10 +345,10 @@ pub fn borner_a_la_taille_max((l, h): (u32, u32)) -> (u32, u32) {
 /// requires them, and a virtual output created at an odd size by an odd
 /// viewport is a real case.
 ///
-/// ⚠️ **Depuis le sous-bloc D10, l'appelant lui passe la taille RETENUE, pas
-/// celle de la sortie** : une sortie née trop grande (registre pollué) est
-/// acceptée et recadrée à l'origine. La fonction elle-même est inchangée —
-/// c'est son argument qui a changé de sens.
+/// ⚠️ **Since sub-block D10, the caller passes it the RETAINED size, not
+/// the output's**: an output born too large (polluted registry) is
+/// accepted and cropped at the origin. The function itself is unchanged —
+/// it is its argument that has changed meaning.
 pub fn region_de_sortie(largeur: u32, hauteur: u32) -> Option<Rect> {
     let largeur = largeur & !1;
     let hauteur = hauteur & !1;
@@ -363,35 +363,35 @@ pub fn region_de_sortie(largeur: u32, hauteur: u32) -> Option<Rect> {
     })
 }
 
-// Les tests d'hôte de ce module vivent dans `sortie/tests.rs`, extrait là
-// dans une tâche DÉDIÉE et AVANT l'addition du lot 33, qui aurait porté ce
-// fichier au-delà du plafond de 500 lignes. `#[path]` plutôt qu'un
-// sous-répertoire de module : précédent de `superviseur/table.rs`.
+// This module's host tests live in `sortie/tests.rs`, extracted there
+// in a DEDICATED task and BEFORE batch 33's addition, which would have taken this
+// file beyond the 500-line ceiling. `#[path]` rather than a module
+// subdirectory: precedent of `superviseur/table.rs`.
 #[cfg(test)]
 #[path = "sortie/tests.rs"]
 mod tests;
 
-// Le bloc ci-dessous ne compile que sous Windows : il construit une
-// `WindowsSource` réelle (types COM `HWND`/`DesktopCapture`/`H264Encoder`,
-// tous eux-mêmes gated `#[cfg(windows)]`). `region_de_sortie` et ses tests
-// restent AU-DESSUS de ce `cfg`, à portée du module, pour continuer de
-// tourner sur l'hôte — voir la déclaration `#[path]` de ce fichier comme
-// module `windows_source_sortie`, hors de tout `#[cfg(windows)]`, dans
+// The block below only compiles under Windows: it builds a real
+// `WindowsSource` (COM types `HWND`/`DesktopCapture`/`H264Encoder`,
+// all themselves gated `#[cfg(windows)]`). `region_de_sortie` and its tests
+// stay ABOVE this `cfg`, at module scope, to keep
+// running on the host — see this file's `#[path]` declaration as
+// module `windows_source_sortie`, outside any `#[cfg(windows)]`, in
 // `main.rs`.
 //
-// Ce module (`windows_source_sortie`) est un FRÈRE de `windows_source`, pas
-// un descendant (tous deux déclarés séparément à la racine du crate, voir
-// `main.rs`) : la visibilité privée par défaut de Rust ne donnerait donc PAS
-// accès aux champs de `WindowsSource` depuis ici.
+// This module (`windows_source_sortie`) is a SIBLING of `windows_source`, not
+// a descendant (both declared separately at the crate root, see
+// `main.rs`): Rust's default private visibility would therefore NOT give
+// access to `WindowsSource`'s fields from here.
 //
-// **C'est pourquoi `sur_sortie` n'assemble PAS le littéral `Self { … }`
-// lui-même** et passe par `WindowsSource::depuis_pieces`, restée dans
-// `windows_source.rs` en `pub(crate) fn`. Une première version avait fait
-// l'inverse — migrer aussi `depuis_pieces` — ce qui obligeait à ouvrir les
-// TREIZE champs de `WindowsSource` en `pub(crate)`, dont `capture` et `fatal`
-// qui portent un invariant inter-champs documenté comme fragile (voir leurs
-// commentaires). Un appel `pub(crate)` à une fonction unique coûte une ligne
-// et n'ouvre rien.
+// **That is why `sur_sortie` does NOT assemble the `Self { … }` literal
+// itself** and goes through `WindowsSource::depuis_pieces`, kept in
+// `windows_source.rs` as a `pub(crate) fn`. A first version had done
+// the opposite — also moving `depuis_pieces` — which forced opening the
+// THIRTEEN fields of `WindowsSource` as `pub(crate)`, including `capture` and `fatal`
+// which carry a cross-field invariant documented as fragile (see their
+// comments). A `pub(crate)` call to a single function costs one line
+// and opens nothing.
 #[cfg(windows)]
 use anyhow::{Context, Result};
 #[cfg(windows)]
@@ -406,20 +406,20 @@ use crate::windows_source::WindowsSource;
 
 #[cfg(windows)]
 impl WindowsSource {
-    /// Construit une source capturant une sortie DXGI, recadrée à la taille
-    /// RETENUE.
+    /// Builds a source capturing a DXGI output, cropped to the RETAINED
+    /// size.
     ///
-    /// Mode du sous-bloc D1 : la fenêtre a sa propre sortie virtuelle, il n'y
-    /// a donc aucune fenêtre Windows à suivre — `resize` continue de ne rien
-    /// faire (`ModeCapture::SortieEntiere`). ⚠️ **Mais depuis le sous-bloc
-    /// D10, la sortie elle-même peut naître PLUS GRANDE que ce que le
-    /// superviseur a demandé** (registre pollué, voir le constat de mesure en
-    /// tête de `capteur/plein_ecran.rs`) : `taille` porte ce que le
-    /// superviseur a retenu, et la région capturée est recadrée à l'origine
-    /// de la sortie sur cette taille-là — jamais sur la sortie entière si
-    /// elle déborde. `hwnd` reste renseigné — l'injection d'entrée et le
-    /// contrôle de vie en ont besoin — mais il ne sert toujours pas au calcul
-    /// de la région.
+    /// Sub-block D1's mode: the window has its own virtual output, so there
+    /// is no Windows window to follow — `resize` still does
+    /// nothing (`ModeCapture::SortieEntiere`). ⚠️ **But since sub-block
+    /// D10, the output itself can be born LARGER than what the
+    /// supervisor requested** (polluted registry, see the measurement finding at the
+    /// head of `capteur/plein_ecran.rs`): `taille` carries what the
+    /// supervisor retained, and the captured region is cropped at the output's origin
+    /// to that size — never to the whole output if
+    /// it overflows. `hwnd` stays filled in — input injection and the
+    /// liveness check need it — but it is still not used to compute
+    /// the region.
     pub fn sur_sortie(
         hwnd: HWND,
         nom_sortie: &str,
@@ -430,18 +430,18 @@ impl WindowsSource {
     ) -> Result<Self> {
         let capture = DesktopCapture::sur_sortie(nom_sortie)?;
         let (dw, dh) = capture.desktop_size();
-        // La sortie peut être PLUS GRANDE que la fenêtre depuis le sous-bloc
-        // D10 : on recadre à l'origine de la sortie, là où le superviseur a
-        // posé la fenêtre.
+        // The output can be LARGER than the window since sub-block
+        // D10: we crop at the output's origin, where the supervisor
+        // placed the window.
         //
-        // 🔴 **LA BORNE EST LA ZONE DE TRAVAIL DEPUIS LE LOT 33, PLUS LA
-        // TEXTURE SEULE** — c'est ce qui sort les 48 rangées de la barre des
-        // tâches secondaire du recadrage dès la PREMIÈRE image, et non
-        // seulement au premier redimensionnement. La texture reste une borne
-        // (`min` ci-dessous) : elle est en pixels de TEXTURE quand `rcWork`
-        // est en coordonnées de BUREAU, et les deux ne coïncident pas sur
-        // cette machine (1860 contre 1428 en largeur, lot 32T). Le repli d'un
-        // `GetMonitorInfoW` en échec est le comportement d'avant ce lot.
+        // 🔴 **THE BOUND HAS BEEN THE WORK AREA SINCE BATCH 33, NO LONGER THE
+        // TEXTURE ALONE** — that is what takes the 48 rows of the secondary
+        // taskbar out of the crop from the FIRST frame, and not
+        // only at the first resize. The texture stays a bound
+        // (`min` below): it is in TEXTURE pixels whereas `rcWork`
+        // is in DESKTOP coordinates, and the two do not coincide on
+        // this machine (1860 against 1428 in width, batch 32T). The fallback of a
+        // failing `GetMonitorInfoW` is the behaviour from before this batch.
         let borne = match crate::window::zones_du_moniteur_de(hwnd) {
             Ok((moniteur, travail)) => {
                 let b = borne_de_la_sortie(
@@ -480,8 +480,8 @@ impl WindowsSource {
             fps,
             bitrate,
             clock_origin,
-            // Le discriminant qui manquait : sans lui, `resize` retaillerait
-            // cette fenêtre-ci et lui substituerait le bureau physique.
+            // The discriminant that was missing: without it, `resize` would resize
+            // this window and substitute the physical desktop for it.
             ModeCapture::SortieEntiere,
         ))
     }
