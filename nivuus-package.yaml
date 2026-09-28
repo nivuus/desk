@@ -30,3 +30,7 @@ hooks:
   resolve: hooks/resolve.py
   install: hooks/install.py
   activate: hooks/activate.py
+
+# Where `nivuus update` finds this package's releases.
+source:
+  github: nivuus/desk
