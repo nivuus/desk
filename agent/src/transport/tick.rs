@@ -1,20 +1,20 @@
-//! La liste de priorités d'un tour de boucle.
+//! The priority list of a loop round.
 //!
-//! `act_on_timeout` décide de la SEULE action entreprise par tour. L'ordre
-//! n'est pas arbitraire :
+//! `act_on_timeout` decides the SINGLE action taken per round. The order
+//! is not arbitrary:
 //!
-//! - le drainage dû passe en priorité absolue : c'est la seule façon de
-//!   garantir qu'aucune mutation ne s'enchaîne sans un passage complet par
-//!   `poll_output()` entre les deux, quel que soit l'état des autres files ;
-//! - le contrôle et l'adaptation passent avant les médias : reconfigurer
-//!   l'encodeur avec une image en vol coûterait cette image ;
-//! - l'audio passe avant la vidéo : une coupure sonore s'entend, une image
-//!   en retard de 10 ms ne se voit pas ;
-//! - l'attente sur le socket ne vient qu'en dernier, quand il n'y a rien à
-//!   émettre.
+//! - the due drain comes with absolute priority: it is the only way to
+//!   guarantee that no mutation chains on without a full pass through
+//!   `poll_output()` in between, whatever the state of the other queues;
+//! - control and adaptation come before media: reconfiguring
+//!   the encoder with a frame in flight would cost that frame;
+//! - audio comes before video: a sound dropout is heard, a frame
+//!   10 ms late is not seen;
+//! - waiting on the socket only comes last, when there is nothing to
+//!   emit.
 //!
-//! Le corps de chaque branche vit dans son module thématique ; ce fichier ne
-//! porte que l'ordre.
+//! The body of each branch lives in its thematic module; this file only
+//! carries the order.
 
 use std::time::{Duration, Instant};
 
@@ -24,104 +24,104 @@ use str0m::Input;
 
 use super::Session;
 
-/// Résultat du traitement d'un événement ou d'un tour de boucle interne.
+/// Result of handling an event or an internal loop round.
 pub(super) enum Tick {
     Continue,
     Disconnected,
 }
 
-/// Intervalle minimal entre deux vérifications de `source.is_alive()` dans
-/// `act_on_timeout`. Cet appel coûte un appel système à chaque tour côté
-/// Windows (recherche de la fenêtre) ; une fenêtre fermée le reste, inutile
-/// de le revérifier à 60 Hz.
+/// Minimal interval between two checks of `source.is_alive()` in
+/// `act_on_timeout`. This call costs a system call at each round on the
+/// Windows side (window lookup); a closed window stays closed, no need
+/// to recheck it at 60 Hz.
 const ALIVE_CHECK_INTERVAL: Duration = Duration::from_secs(1);
 
 impl Session {
-    /// Réagit à `Output::Timeout` : décide et effectue AU PLUS UNE mutation
-    /// de `Rtc` (drainage différé d'une image déjà écrite, message de
-    /// contrôle en attente, image vidéo due, ou traitement d'un paquet
-    /// entrant / échéance str0m), puis rend la main à `run()`, qui rappelle
-    /// immédiatement `poll_output` — c'est cette structure qui garantit le
-    /// drainage avant toute mutation suivante (C2 de la revue) : il
-    /// n'existe aucun chemin de code qui mute `Rtc` sans que `run()` ne
-    /// rappelle `poll_output` juste après. La priorité donnée au drainage
-    /// différé (voir `video_write_pending_drain`) est ce qui rend cette
-    /// garantie vraie même juste après l'écriture d'une image : sans elle,
-    /// `write_frame` (une mutation) suivi directement de `handle_input`
-    /// (une seconde) violerait la même règle.
+    /// Reacts to `Output::Timeout`: decides and performs AT MOST ONE mutation
+    /// of `Rtc` (deferred drain of an already written frame, pending control
+    /// message, due video frame, or handling of an incoming packet
+    /// / str0m deadline), then gives control back to `run()`, which immediately
+    /// calls `poll_output` again — it is this structure that guarantees
+    /// draining before any following mutation (C2 of the review): there
+    /// is no code path that mutates `Rtc` without `run()`
+    /// calling `poll_output` right after. The priority given to the deferred
+    /// drain (see `video_write_pending_drain`) is what makes this
+    /// guarantee true even right after writing a frame: without it,
+    /// `write_frame` (one mutation) followed directly by `handle_input`
+    /// (a second) would break the same rule.
     ///
-    /// Treize branches supplémentaires (a0bis : drainage d'un message de
-    /// contrôle produit hors boucle vers `pending_control` ; a0ter :
-    /// décision d'adaptation en attente ; a1 : redimensionnement en attente ;
-    /// a1bis : visibilité en attente ; a1ter : annonce d'un changement de
-    /// sommeil ; a1ter-bis : annonce d'un changement de plein écran
-    /// (sous-bloc D8) ; a1quater : part de budget accordée par le capteur
-    /// (sous-bloc D6) ; a1quinquies : ordre audio décidé par le capteur
-    /// (sous-bloc D7) ; a1sexies : reconstruction d'une capture audio morte
-    /// détectée localement, `AudioMort` en repli si le budget de tentatives
-    /// est épuisé, et annonce d'une reprise PROUVÉE par un paquet réel
-    /// (sous-bloc D9, remède complet apporté par D10) ; a1septies : annonce
-    /// d'un changement du presse-papier de la VM (sous-bloc P1) ; a1octies :
-    /// écriture d'un collage venu du navigateur dans le presse-papier de la VM,
-    /// puis armement de l'injection de `Ctrl+V` (sous-bloc P2) ; a1nonies :
-    /// annonce d'un changement de la couleur d'accent de la fenêtre — la teinte
-    /// dominante de son icône (sous-bloc A1) ; a2 :
-    /// vérification de la fenêtre) ne mettent JAMAIS en file, avant de rendre
-    /// la main, une écriture qui resterait à drainer — c'est l'invariant que
-    /// cette énumération existe pour auditer. **Douze d'entre elles (toutes sauf
-    /// a1quater) ne touchent même pas `self.rtc`** : seulement `self.source`,
-    /// `self.audio_source`, le budget de reconstruction audio (a1sexies
-    /// seule) et/ou `self.pending_control`, au plus en y mettant en file un
-    /// message de contrôle (`queue_control`, qui n'empile qu'un `VecDeque`,
-    /// sans effet sur `Rtc` avant le tour suivant).
+    /// Thirteen additional branches (a0bis: draining a control
+    /// message produced outside the loop into `pending_control`; a0ter:
+    /// pending adaptation decision; a1: pending resize;
+    /// a1bis: pending visibility; a1ter: announcing a sleep
+    /// change; a1ter-bis: announcing a fullscreen change
+    /// (sub-block D8); a1quater: budget share granted by the sensor
+    /// (sub-block D6); a1quinquies: audio order decided by the sensor
+    /// (sub-block D7); a1sexies: rebuilding a dead audio capture
+    /// detected locally, `AudioMort` as a fallback if the attempt budget
+    /// is exhausted, and announcing a recovery PROVEN by a real packet
+    /// (sub-block D9, full remedy brought by D10); a1septies: announcing
+    /// a change of the VM's clipboard (sub-block P1); a1octies:
+    /// writing a paste from the browser into the VM's clipboard,
+    /// then arming the `Ctrl+V` injection (sub-block P2); a1nonies:
+    /// announcing a change of the window's accent colour — the dominant
+    /// hue of its icon (sub-block A1); a2:
+    /// window check) NEVER queue, before giving control
+    /// back, a write that would remain to be drained — that is the invariant
+    /// this enumeration exists to audit. **Twelve of them (all but
+    /// a1quater) do not even touch `self.rtc`**: only `self.source`,
+    /// `self.audio_source`, the audio rebuild budget (a1sexies
+    /// only) and/or `self.pending_control`, at most by queueing a
+    /// control message there (`queue_control`, which only pushes onto a `VecDeque`,
+    /// with no effect on `Rtc` before the next round).
     ///
-    /// **a1quater fait exception, et il faut le dire précisément** :
-    /// `rtc.bwe().set_desired_bitrate` (corps dans `part`) MUTE bien un champ
-    /// interne de `Rtc` — et reconfigure le pacer de str0m
-    /// (`configure_pacer`) si une estimation de bande passante existe déjà.
-    /// Mais cet appel ne met AUCUN paquet en file : l'effet qu'il programme
-    /// côté sondage (`ProbeControl` de str0m, qui peut avancer l'échéance de
-    /// la prochaine sonde et faire émettre du bourrage) n'est évalué qu'au
-    /// PROCHAIN traitement de `Input::Timeout`, jamais pendant cet appel-ci.
-    /// C'est cette absence de mise en file — pas l'absence de mutation de
-    /// `Rtc` — qui préserve l'invariant de drainage pour cette branche.
+    /// **a1quater is an exception, and it must be stated precisely**:
+    /// `rtc.bwe().set_desired_bitrate` (body in `part`) DOES mutate an internal
+    /// field of `Rtc` — and reconfigures str0m's pacer
+    /// (`configure_pacer`) if a bandwidth estimate already exists.
+    /// But this call queues NO packet: the effect it schedules
+    /// on the probing side (str0m's `ProbeControl`, which can bring forward the deadline of
+    /// the next probe and cause padding to be emitted) is only evaluated at the
+    /// NEXT handling of `Input::Timeout`, never during this call.
+    /// It is this absence of queueing — not the absence of mutation of
+    /// `Rtc` — that preserves the drain invariant for this branch.
     ///
-    /// Chacune rend quand même la main immédiatement après son action plutôt
-    /// que d'enchaîner sur la branche suivante dans le même appel : le
-    /// redimensionnement reconstruit une chaîne d'encodage entière
-    /// (potentiellement long, voir `WindowsSource::resize`), et le traiter
-    /// comme une étape à part entière — au même titre que les branches qui,
-    /// elles, écrivent ou lisent réellement des paquets sur `Rtc` (a0, a3, b,
-    /// c…) — garde cette fonction lisible comme une seule liste de priorités
-    /// plutôt que de mêler deux styles différents.
+    /// Each still gives control back immediately after its action rather
+    /// than chaining on to the next branch in the same call: the
+    /// resize rebuilds a whole encoding chain
+    /// (potentially long, see `WindowsSource::resize`), and treating it
+    /// as a step in its own right — just like the branches that
+    /// really write or read packets on `Rtc` (a0, a3, b,
+    /// c…) — keeps this function readable as a single priority list
+    /// rather than mixing two different styles.
     ///
-    /// **À qui lira ceci après une branche de plus** : ce compte et cette
-    /// énumération sont le point d'audit de l'invariant « aucune de ces
-    /// branches ne met en file, avant de rendre la main, une écriture qui
-    /// resterait à drainer » — **PAS** « aucune de ces branches ne mute
-    /// `Rtc` » : a1quater en mute bien un champ (voir plus haut, et ne pas
-    /// laisser cette formulation-ci se recopier dans une future addition
-    /// sans revérifier ce distinguo). Une addition qui oublie de se confronter
-    /// à cet invariant se vérifie sur une liste incomplète. Mets-les à jour
-    /// dans le même geste que la branche.
+    /// **To whoever reads this after one more branch**: this count and this
+    /// enumeration are the audit point of the invariant "none of these
+    /// branches queues, before giving control back, a write that
+    /// would remain to be drained" — **NOT** "none of these branches mutates
+    /// `Rtc`": a1quater does mutate a field of it (see above, and do not
+    /// let this wording be copied into a future addition
+    /// without rechecking this distinction). An addition that forgets to confront
+    /// this invariant is checked against an incomplete list. Update them
+    /// in the same gesture as the branch.
     ///
-    /// Ne prend pas `on_input`/`on_control` : `handle_input` ne produit
-    /// jamais d'événement applicatif directement (les événements qui en
-    /// résultent ne sortent que via un futur `poll_output`, donc via
-    /// `run()`, qui les dispatche lui-même).
+    /// Does not take `on_input`/`on_control`: `handle_input` never produces
+    /// an application event directly (the events that
+    /// result only come out through a future `poll_output`, hence through
+    /// `run()`, which dispatches them itself).
     pub(super) fn act_on_timeout(&mut self, deadline: Instant) -> Result<Tick> {
-        // a0) Drainage dû après la dernière image vidéo ou le dernier paquet
-        // audio écrit. Vérifié en priorité absolue, avant tout le reste :
-        // c'est la seule façon de garantir qu'aucune mutation ne s'enchaîne
-        // jamais sans un passage complet par `poll_output()` entre les deux,
-        // quel que soit l'état des autres files (voir le commentaire du
-        // champ et la ronde de correction 1 de la tâche 11).
+        // a0) Drain due after the last written video frame or audio
+        // packet. Checked with absolute priority, before everything else:
+        // it is the only way to guarantee that no mutation ever chains on
+        // without a full pass through `poll_output()` in between,
+        // whatever the state of the other queues (see the comment of the
+        // field and fix round 1 of task 11).
         if self.video_write_pending_drain || self.audio_write_pending_drain {
-            // Un seul `handle_input(Timeout)` dépile `to_payload` pour TOUTES
-            // les pistes : les deux drapeaux retombent donc ensemble. Les
-            // garder séparés reste nécessaire en amont — c'est ce qui permet
-            // à `write_audio` et `write_frame` de signaler indépendamment
-            // qu'une écriture a bien eu lieu.
+            // A single `handle_input(Timeout)` pops `to_payload` for ALL
+            // tracks: the two flags therefore fall back together. Keeping
+            // them separate stays necessary upstream — it is what lets
+            // `write_audio` and `write_frame` report independently
+            // that a write did happen.
             self.video_write_pending_drain = false;
             self.audio_write_pending_drain = false;
             self.rtc
@@ -130,56 +130,56 @@ impl Session {
             return Ok(Tick::Continue);
         }
 
-        // a0bis) Un message de contrôle produit hors de la boucle attend.
-        //        Corps dans `controle`.
+        // a0bis) A control message produced outside the loop is waiting.
+        //        Body in `controle`.
         if let Some(tick) = self.drainer_controle_externe() {
             return Ok(tick);
         }
 
-        // a) Un message de contrôle est en attente. Corps dans `controle`,
-        //    test de vacuité compris : la branche ne laisse passer (`None`)
-        //    que sans avoir muté `Rtc` — file vide, ou canal pas encore
-        //    ouvert alors que la session n'est pas en clôture, auquel cas le
-        //    message reste en file.
+        // a) A control message is pending. Body in `controle`,
+        //    emptiness test included: the branch only lets through (`None`)
+        //    without having mutated `Rtc` — empty queue, or channel not yet
+        //    open while the session is not closing, in which case the
+        //    message stays queued.
         if let Some(tick) = self.brancher_controle_en_file()? {
             return Ok(tick);
         }
 
         if self.ending {
-            // Message de fin envoyé (file vidée ci-dessus) : terminé.
+            // End message sent (queue emptied above): done.
             return Ok(Tick::Disconnected);
         }
 
-        // a0ter) Décision d'adaptation en attente. Traitée avant la branche
-        //        vidéo et avant le redimensionnement : reconfigurer
-        //        l'encodeur avec une image en vol coûterait cette image.
-        //        Ne mute jamais `Rtc`. Corps dans `adaptation`.
+        // a0ter) Pending adaptation decision. Handled before the video
+        //        branch and before the resize: reconfiguring
+        //        the encoder with a frame in flight would cost that frame.
+        //        Never mutates `Rtc`. Body in `adaptation`.
         if let Some(decision) = self.pending_decision.take() {
             self.appliquer_decision(decision);
             return Ok(Tick::Continue);
         }
 
-        // a1) Redimensionnement en attente, à traiter avant la branche
-        //     vidéo. Ne mute jamais `Rtc` non plus, mais reste une opération
-        //     potentiellement longue — fenêtre ET périphérique D3D11 neufs,
-        //     voir `WindowsSource::resize` — traitée ici comme une étape à
-        //     part entière plutôt que mêlée à d'autres dans le même appel, à
-        //     l'image des autres branches. Corps dans `redimensionnement`.
+        // a1) Pending resize, to handle before the video
+        //     branch. Never mutates `Rtc` either, but stays a potentially
+        //     long operation — new window AND D3D11 device,
+        //     see `WindowsSource::resize` — handled here as a step in
+        //     its own right rather than mixed with others in the same call, like
+        //     the other branches. Body in `redimensionnement`.
         if let Some((width, height)) = self.pending_resize.take() {
             self.appliquer_redimensionnement(width, height);
             return Ok(Tick::Continue);
         }
 
-        // a1bis) Visibilité en attente. Après le redimensionnement et avant la
-        //        vidéo, pour la même raison que lui : la décision peut
-        //        relâcher un encodeur côté capteur, ce qui est long, et ne
-        //        mute jamais `Rtc`.
+        // a1bis) Pending visibility. After the resize and before
+        //        video, for the same reason as it: the decision may
+        //        release an encoder on the sensor side, which is long, and
+        //        never mutates `Rtc`.
         if let Some((visible, focalisee)) = self.pending_visibility.take() {
             if let Err(erreur) = self.source.set_awake(visible, focalisee) {
-                // Non fatal : perdre l'arbitrage n'est pas perdre la session.
-                // `cause::chaine` et non `%erreur` : `set_awake` traverse
-                // `commander_simple`, qui empile un contexte — le `Display`
-                // simple d'`anyhow` ne rendrait que lui. Voir `crate::cause`.
+                // Not fatal: losing the arbitration is not losing the session.
+                // `cause::chaine` and not `%erreur`: `set_awake` goes through
+                // `commander_simple`, which stacks a context — `anyhow`'s plain
+                // `Display` would only render that one. See `crate::cause`.
                 tracing::warn!(
                     erreur = %crate::cause::chaine(&erreur),
                     visible,
@@ -190,63 +190,63 @@ impl Session {
             return Ok(Tick::Continue);
         }
 
-        // a1ter) Un changement de sommeil à annoncer au navigateur. Interrogée
-        //        à chaque tour où a1bis ne s'est pas déclenchée (sinon celle-ci
-        //        est déjà sortie par un retour anticipé) ; mais
-        //        `sommeil_a_annoncer` consomme : aucun message n'est jamais
-        //        réémis, donc cette branche ne peut pas inonder le canal de
-        //        contrôle même à ~100 Hz.
+        // a1ter) A sleep change to announce to the browser. Queried
+        //        at each round where a1bis did not fire (otherwise that one
+        //        has already exited through an early return); but
+        //        `sommeil_a_annoncer` consumes: no message is ever
+        //        re-emitted, so this branch cannot flood the control
+        //        channel even at ~100 Hz.
         if let Some((endormie, raison)) = self.source.sommeil_a_annoncer() {
             self.queue_control(AgentControl::asleep(endormie, &raison));
             return Ok(Tick::Continue);
         }
 
-        // a1ter-bis) Un changement de plein écran à annoncer au navigateur.
-        //            Même régime que a1ter juste au-dessus :
-        //            `plein_ecran_a_annoncer` CONSOMME, donc aucun message
-        //            n'est jamais réémis et cette branche ne peut pas inonder
-        //            le canal de contrôle même à ~100 Hz.
+        // a1ter-bis) A fullscreen change to announce to the browser.
+        //            Same regime as a1ter just above:
+        //            `plein_ecran_a_annoncer` CONSUMES, so no message
+        //            is ever re-emitted and this branch cannot flood
+        //            the control channel even at ~100 Hz.
         if let Some(actif) = self.source.plein_ecran_a_annoncer() {
             self.queue_control(AgentControl::fullscreen(actif));
             return Ok(Tick::Continue);
         }
 
-        // a1quater) Une part de budget accordée par le capteur. Après a1ter
-        //           (qui n'endort rien : elle ANNONCE au navigateur un
-        //           sommeil déjà décidé côté capteur — l'endormissement
-        //           réel, lui, a lieu côté capteur, pas ici). La cohérence
-        //           entre un sommeil et la part qui en découle ne se joue PAS
-        //           dans cet ordre local : elle se joue en AMONT, côté
-        //           capteur, où `distribuer` (les ordres de sommeil) précède
-        //           `distribuer_les_parts` sur tous les chemins d'entrée du
-        //           registre (`inscrire`, `retirer`, `signaler`,
-        //           `echec_de_reveil`, tour de roue — voir
+        // a1quater) A budget share granted by the sensor. After a1ter
+        //           (which puts nothing to sleep: it ANNOUNCES to the browser a
+        //           sleep already decided on the sensor side — the actual
+        //           falling asleep happens on the sensor side, not here). Consistency
+        //           between a sleep and the share that follows from it is NOT played
+        //           in this local order: it is played UPSTREAM, on the
+        //           sensor side, where `distribuer` (the sleep orders) precedes
+        //           `distribuer_les_parts` on all entry paths of the
+        //           registry (`inscrire`, `retirer`, `signaler`,
+        //           `echec_de_reveil`, wheel round — see
         //           `capteur/sommeil.rs`).
         //
-        //           ⚠️ **Tous SAUF UN, et il ne faut pas le taire** (I2, revue
-        //           finale de branche). Le chemin `rompus` de
-        //           `distribuer_les_parts` envoie les parts D'ABORD, puis
-        //           détecte les canaux rompus, retire leurs sessions du
-        //           vivier, et relaie seulement ensuite les ordres que ce
-        //           retrait engendre. Une session RÉVEILLÉE par la place
-        //           qu'un mort libère reçoit donc son `Reveiller` APRÈS la
-        //           part d'endormie calculée juste avant, et n'obtient sa part
-        //           d'éveillée qu'au tour de roue suivant.
-        //           **Borne : `PERIODE_REARBITRAGE`, soit 250 ms**, pendant
-        //           lesquelles cette fenêtre encode au plancher
-        //           `PART_DORMANTE_BPS`. Le canal unique garantit l'ordre de
-        //           LIVRAISON, jamais l'ordre de CALCUL — c'est cette
-        //           distinction que la rédaction précédente manquait.
+        //           ⚠️ **All BUT ONE, and it must not be kept quiet** (I2, final
+        //           branch review). The `rompus` path of
+        //           `distribuer_les_parts` sends the shares FIRST, then
+        //           detects broken channels, removes their sessions from the
+        //           pool, and only then relays the orders that this
+        //           removal generates. A session WOKEN by the place
+        //           a dead one frees therefore receives its `Reveiller` AFTER the
+        //           sleeping share computed just before, and only gets its
+        //           awake share at the next wheel round.
+        //           **Bound: `PERIODE_REARBITRAGE`, that is 250 ms**, during
+        //           which this window encodes at the
+        //           `PART_DORMANTE_BPS` floor. The single channel guarantees the order of
+        //           DELIVERY, never the order of COMPUTATION — it is this
+        //           distinction the previous wording missed.
         //
-        //           Traiter a1quater juste après a1ter reste le choix le plus
-        //           lisible : il respecte l'ordre d'arrivée plutôt que de
-        //           l'inverser sans raison.
-        //           Ne met aucun paquet en file — voir la doc de tête de
-        //           cette fonction sur ce que `set_desired_bitrate` mute
-        //           réellement — mais pose une décision que la branche
-        //           a0ter appliquera au tour suivant.
-        //           `part_a_appliquer` CONSOMME : aucune réémission, donc
-        //           aucune reconfiguration en boucle à ~100 Hz.
+        //           Handling a1quater right after a1ter stays the most
+        //           readable choice: it respects the arrival order rather than
+        //           inverting it for no reason.
+        //           Queues no packet — see this function's header doc
+        //           on what `set_desired_bitrate` really
+        //           mutates — but sets a decision that branch
+        //           a0ter will apply at the next round.
+        //           `part_a_appliquer` CONSUMES: no re-emission, hence
+        //           no reconfiguration looping at ~100 Hz.
         if let Some(bps) = self.source.part_a_appliquer() {
             self.appliquer_part(bps);
             return Ok(Tick::Continue);

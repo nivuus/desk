@@ -135,13 +135,13 @@ mod tests {
             (1280, 720),
             "précondition : l'échelle est calibrée sur la source d'origine"
         );
-        // Trace d'un refus antérieur, qui n'a plus cours dès que la taille
-        // encodée change sous elle.
+        // Trace of an earlier refusal, which no longer applies as soon as the encoded
+        // size changes under it.
         session.taille_refus_signalee = Some((960, 540));
 
-        // Le navigateur demande une taille impaire ; la fenêtre en rendra une
-        // paire. `pending_resize` est ce que `dispatch_channel_data` pose à
-        // la réception d'un `ClientControl::Resize`.
+        // The browser requests an odd size; the window will return an even
+        // one. `pending_resize` is what `dispatch_channel_data` sets on
+        // receiving a `ClientControl::Resize`.
         session.pending_resize = Some((641, 481));
         session
             .act_on_timeout(Instant::now())
