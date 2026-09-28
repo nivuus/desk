@@ -1,30 +1,30 @@
 #!/usr/bin/env bash
-# Un cycle de bras du lot 32 : arrete l'agent, pose (ou retire) la variable de
-# banc SORTIE_DESIGNEE, marque le journal, relance.
-#   usage : cycle-de-bras.sh <arme|desarme> <etiquette>
+# One arm cycle of batch 32: stops the agent, sets (or removes) the bench
+# variable SORTIE_DESIGNEE, marks the log, restarts.
+#   usage: cycle-de-bras.sh <arme|desarme> <label>
 #
-# 🔴 DEUX PIEGES PAYES PAR CE SCRIPT MEME, LE 30 AOUT 2026. La premiere version
-# posait la ligne par un `-replace` a travers trois couches de guillemets : il
-# echouait en silence, et le fichier restait sans la variable. La seconde la
-# posait par un simple `+=`, donc A LA FIN du run-agent.ps1 — c'est-a-dire
-# APRES la ligne qui lance l'agent, donc JAMAIS EXECUTEE.
+# 🔴 TWO TRAPS PAID FOR BY THIS VERY SCRIPT, ON AUGUST 30TH, 2026. The first version
+# set the line through a `-replace` across three layers of quotes: it
+# failed silently, and the file stayed without the variable. The second
+# set it through a simple `+=`, hence AT THE END of run-agent.ps1 — that is,
+# AFTER the line launching the agent, hence NEVER EXECUTED.
 #
-# LES DEUX FOIS, LE FICHIER CONTENAIT (ou non) LA LIGNE ET LE TRACE DE CODE
-# AURAIT CONCLU A TORT. Ce qui l'a dit est la TRACE DANS LE JOURNAL. D'ou la
-# verification finale ci-dessous, qui est le seul controle qui vaille : le
-# piege de D1 (SUPERVISEUR), D2 (MULTIFENETRE_REPRISE) et D7 (AUDIO).
+# BOTH TIMES, THE FILE CONTAINED (or not) THE LINE AND A CODE TRACE
+# WOULD HAVE CONCLUDED WRONGLY. What said so is the TRACE IN THE LOG. Hence the
+# final check below, which is the only check that counts: the
+# trap of D1 (SUPERVISEUR), D2 (MULTIFENETRE_REPRISE) and D7 (AUDIO).
 #
-# ⚠️ La variable est posee dans C:\nivuus\agent\run-agent.ps1 — le script du
-# package `console` qui lance REELLEMENT l'agent — et non dans le
-# scripts/run-agent.sh du depot, qui vise la VM de developpement disparue.
+# ⚠️ The variable is set in C:\nivuus\agent\run-agent.ps1 — the script of the
+# `console` package that REALLY launches the agent — and not in the
+# repository's scripts/run-agent.sh, which targets the vanished development VM.
 set -euo pipefail
 unset -f chpwd 2>/dev/null || true
 cd /home/mallanic/Projects/Nivuus/packages/installer
 W() { timeout 150 python3 console/guest/winrm_exec.py ps "$1" 2>&1 | grep -v CLIXML | grep -v '^<Objs'; }
 MODE="$1"; ETIQ="$2"
 
-# ⚠️ Un agent survivant tient agent.log : on relirait le journal de la
-# tentative precedente en croyant lire le sien.
+# ⚠️ A surviving agent holds agent.log: we would reread the log of the
+# previous attempt believing we read our own.
 W '
 Stop-ScheduledTask -TaskName guacamole-agent -ErrorAction SilentlyContinue
 Start-Sleep -Seconds 2
@@ -33,7 +33,7 @@ Start-Sleep -Seconds 5
 "agents avant relance (doit etre 0) : " + (@(Get-Process agent -ErrorAction SilentlyContinue).Count)'
 
 if [ "$MODE" = "desarme" ]; then
-  # Insertion APRES l'ancre env:SUPERVISEUR, donc AVANT le lancement.
+  # Insertion AFTER the env:SUPERVISEUR anchor, hence BEFORE the launch.
   W '
 $p = "C:\nivuus\agent\run-agent.ps1"
 $l = @(Get-Content $p -Encoding UTF8 | Where-Object { $_ -notmatch "SORTIE_DESIGNEE" })

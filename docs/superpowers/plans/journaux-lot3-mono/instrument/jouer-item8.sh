@@ -3,21 +3,21 @@
 #
 #     jouer-item8.sh <bras>        bras : temoin | mono | rouge
 #
-# LA QUESTION : en mode MONO-FENETRE, le presse-papier et l'accent ont-ils
-# encore un proprietaire ? Le legs affirme que non.
+# THE QUESTION: in SINGLE-WINDOW mode, do the clipboard and the accent
+# still have an owner? The legacy item asserts they do not.
 #
-# 🔴 LE TEMOIN A DEUX FACES, ET C'EST LUI QUI DONNE SON SENS AU ZERO :
-#   - bras `temoin` : produit LIVRE (SUPERVISEUR=1). Le meme geste doit rendre
-#     un compte NON NUL. Sans lui, le zero du bras `mono` serait rendu a
-#     l'identique par un instrument qui ne sait pas voir ces messages.
-#   - bras `mono`   : SUPERVISEUR=0 CAPTEUR=0. C'est la reponse de l'item.
-#   - bras `rouge`  : produit livre + PRESSE_PAPIER=0 ACCENT=0. Le zero doit
-#     revenir, par un AUTRE chemin que l'absence de proprietaire.
+# 🔴 THE CONTROL HAS TWO SIDES, AND IT IS WHAT GIVES THE ZERO ITS MEANING:
+#   - `temoin` arm: product AS DELIVERED (SUPERVISEUR=1). The same gesture must return
+#     a NON-ZERO count. Without it, the `mono` arm's zero would be returned
+#     identically by an instrument that cannot see these messages.
+#   - `mono` arm:   SUPERVISEUR=0 CAPTEUR=0. It is the item's answer.
+#   - `rouge` arm:  delivered product + PRESSE_PAPIER=0 ACCENT=0. The zero must
+#     come back, through a DIFFERENT path than the absence of an owner.
 #
-# ⚠️ LES DEUX CHAINES SONT CELLES DU CODE QUI LES EMET, relues le 5 septembre
-# 2026 -- jamais celles du plan (piege paye trois fois ce jour-la) :
-#   agent/src/capteur/sommeil/presse_papier.rs:71  "presse-papier de la VM"
-#   agent/src/capteur/fenetre/accent.rs:81         "accent de la fenetre Windows"
+# ⚠️ THE TWO STRINGS ARE THOSE OF THE CODE THAT EMITS THEM, reread on September 5th,
+# 2026 -- never those of the plan (a trap paid three times that day):
+#   agent/src/capteur/sommeil/presse_papier.rs:71  "VM clipboard"
+#   agent/src/capteur/fenetre/accent.rs:81         "Windows window accent"
 set -uo pipefail
 unset -f chpwd 2>/dev/null || true
 
@@ -55,9 +55,9 @@ arreter_le_service
 echo "copieur local sha256 : $(sha256sum "${I}/copieur-item8.ps1" | tr 'a-f' 'A-F' | cut -c1-64)"
 
 MARQUEUR="ITEM8-${BRAS}-$(date +%H%M%S)"
-# 🔴 LE .cmd EN GUILLEMETS SIMPLES POWERSHELL, SANS `-f` : l'operateur de
-# format lie MOINS FORT que la virgule et formaterait le tableau entier en UNE
-# ligne -- piege paye par l'item 1, avec un LastTaskResult=0 trompeur.
+# 🔴 THE .cmd IN POWERSHELL SINGLE QUOTES, WITHOUT `-f`: the format
+# operator binds LESS TIGHTLY than the comma and would format the whole array into ONE
+# line -- a trap paid for by item 1, with a misleading LastTaskResult=0.
 W '$q = [char]34
 $ligne = "powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\nivuus\copieur-item8.ps1 " +
          "-Marqueur '"${MARQUEUR}"' > C:\nivuus\item8-sortie.txt 2>&1"
@@ -68,29 +68,29 @@ Get-Content C:\nivuus\item8.cmd | ForEach-Object { "  | " + $_ }' 120
 
 etape "ARMEMENT DU BRAS : ${BRAS}"
 agent_arreter
-# 🔴 LES FENETRES RESIDUELLES D'UN BRAS PRECEDENT NE SONT PAS ADOPTEES (regle
-# d'appartenance, lot 32I) ET ELLES OCCUPENT LE VIVIER. Le bras `rouge` a
-# d'abord ete REJETE pour cela : `sortie retenue pour cette fenetre` = 0, donc
-# aucun accent possible -- son zero ne disait rien du desarmement.
+# 🔴 THE LEFTOVER WINDOWS OF A PREVIOUS ARM ARE NOT ADOPTED (ownership
+# rule, batch 32I) AND THEY OCCUPY THE POOL. The `rouge` arm was
+# first REJECTED for that: `output retained for this window` = 0, hence
+# no accent possible -- its zero said nothing about disarming.
 W 'Get-Process notepad -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.Id -Force }
    Start-Sleep 2
    "notepad restants : " + (@(Get-Process notepad -ErrorAction SilentlyContinue)).Count' 90
-# On repart d'un run-agent.ps1 propre a chaque bras.
+# We start again from a clean run-agent.ps1 at each arm.
 for v in CAPTEUR PRESSE_PAPIER ACCENT WINDOW_TITLE; do variable_de_banc retirer "$v" >/dev/null; done
 case "${BRAS}" in
   temoin) echo "produit LIVRE, aucune variable posee" ;;
   mono)
-    # ⚠️ SUPERVISEUR est DEJA dans le run-agent.ps1 de l'appliance, a '1' :
-    # on ne l'INSERE pas, on change SA VALEUR -- sans quoi l'ancre de
-    # `variable_de_banc` disparaitrait avec la ligne qu'elle sert a trouver.
-    # 🔴 `.Replace()` LITTERAL, ET SURTOUT PAS `-replace`. La chaine de
-    # REMPLACEMENT de `-replace` traite `$` comme un renvoi de groupe : la
-    # premiere redaction a produit `$$env:SUPERVISEUR   = 0` -- double dollar,
-    # guillemets perdus -- et l'agent n'a plus rien journalise (segment d'UNE
-    # ligne, 0 capteur, 0 enrolement). Le bras a du etre REJETE, et le fichier
-    # de l'invite REPARE. Mesure le 5 septembre 2026.
-    # ⚠️ Le controle qui vaut est la RELECTURE de la ligne, plus bas : elle doit
-    # lire exactement `$env:SUPERVISEUR   = '0'`.
+    # ⚠️ SUPERVISEUR is ALREADY in the appliance's run-agent.ps1, at '1':
+    # we do not INSERT it, we change ITS VALUE -- otherwise the anchor of
+    # `variable_de_banc` would disappear with the line it serves to find.
+    # 🔴 LITERAL `.Replace()`, AND ABOVE ALL NOT `-replace`. The
+    # REPLACEMENT string of `-replace` treats `$` as a group back-reference: the
+    # first wording produced `$$env:SUPERVISEUR   = 0` -- double dollar,
+    # quotes lost -- and the agent logged nothing any more (a segment of ONE
+    # line, 0 sensor, 0 enrolment). The arm had to be REJECTED, and the guest's
+    # file REPAIRED. Measured on September 5th, 2026.
+    # ⚠️ The check that counts is REREADING the line, further down: it must
+    # read exactly `$env:SUPERVISEUR   = '0'`.
     W '$p = "C:\nivuus\agent\run-agent.ps1"
        $b = Get-Content $p -Encoding UTF8 -Raw
        $q = [char]39
@@ -98,14 +98,14 @@ case "${BRAS}" in
        Set-Content -Path $p -Value $b -Encoding UTF8
        "SUPERVISEUR bascule a 0 (Replace litteral)"' 90
     variable_de_banc poser CAPTEUR 0
-    # 🔴 SANS FENETRE, L'AGENT MONO-FENETRE MEURT AVANT DE RIEN FAIRE, ET SON
-    # ZERO NE VEUT PLUS RIEN DIRE. Mesure le 5 septembre 2026 : le segment ne
-    # portait que quatre lignes, dont
-    #   `Error: aucune fenetre visible dont le titre contient << firefox >>`
-    # -- `WINDOW_TITLE` retombe sur "firefox" (demarrage/source.rs:52), qui
-    # n'existe pas sur cette VM. Le bras a ete REJETE, pas encaisse : un zero
-    # rendu par un agent qui s'arrete ne dit rien du proprietaire.
-    # On ouvre donc une fenetre REELLE en session 1, et on vise SON titre.
+    # 🔴 WITHOUT A WINDOW, THE SINGLE-WINDOW AGENT DIES BEFORE DOING ANYTHING, AND ITS
+    # ZERO NO LONGER MEANS ANYTHING. Measured on September 5th, 2026: the segment only
+    # carried four lines, including
+    #   `Error: no visible window whose title contains << firefox >>`
+    # -- `WINDOW_TITLE` falls back to "firefox" (demarrage/source.rs:52), which
+    # does not exist on this VM. The arm was REJECTED, not banked: a zero
+    # returned by an agent that stops says nothing about the owner.
+    # We therefore open a REAL window in session 1, and target ITS title.
     W 'Set-Content -Path C:\nivuus\item8-fenetre.cmd -Encoding ASCII -Value @("@echo off","start notepad.exe")
        schtasks /create /tn lot3-item8-fenetre /tr C:\nivuus\item8-fenetre.cmd /sc once /st 00:00 /it /ru Administrator /rl HIGHEST /f | Out-Null
        schtasks /run /tn lot3-item8-fenetre | Out-Null
@@ -124,13 +124,13 @@ agent_relancer 30
 echo "REPERE=${REPERE}"
 
 etape "UNE FENETRE, pour que l'accent ait un objet — et un navigateur connecte"
-# 🔴 `APP` EST OBLIGATOIRE, ET SON ABSENCE A COUTE PLUSIEURS BRAS.
-# Sans elle, `pilote-latence.mjs` retombe sur son motif par defaut
-# `chrome|edge|bloc.?notes|notepad`, qui apparie **Microsoft Edge en
-# premier** — or CETTE CAMPAGNE a mesure (item 7) qu'Edge n'est JAMAIS
-# adopte : lance par desk, sa fenetre est ECARTEE 60 ms plus tard par la
-# regle d'appartenance, et aucune session ne s'ouvre. Le bras rend alors
-# « fenetres SERVIES : 0 » pour une raison ETRANGERE a ce qu'il mesure.
+# 🔴 `APP` IS MANDATORY, AND ITS ABSENCE COST SEVERAL ARMS.
+# Without it, `pilote-latence.mjs` falls back to its default pattern
+# `chrome|edge|bloc.?notes|notepad`, which matches **Microsoft Edge
+# first** — yet THIS CAMPAIGN measured (item 7) that Edge is NEVER
+# adopted: launched by desk, its window is SET ASIDE 60 ms later by the
+# ownership rule, and no session opens. The arm then returns
+# "windows SERVED: 0" for a reason FOREIGN to what it measures.
 APP='^Notepad$' nohup node "${D}/pilote-latence.mjs" --etiquette="item8-${BRAS}" --fenetres=1 --duree=95 --animer=0 \
       --sortie="/var/tmp/lot3-item8-${BRAS}.json" > "${J}/pilote-${BRAS}.log" 2>&1 &
 PILOTE_PID=$!

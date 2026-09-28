@@ -1,19 +1,19 @@
-// Lot 3, item 2 (3.6) — LES TROIS MURS DU PONT, RE-SITUÉS.
+// Batch 3, item 2 (3.6) — THE BRIDGE'S THREE WALLS, RE-LOCATED.
 //
-// Injectée par le pilote partagé du pont (`--injection=…`), réutilisé PAR
-// PARAMÈTRE et jamais copié.
+// Injected by the bridge's shared driver (`--injection=…`), reused BY
+// PARAMETER and never copied.
 //
-// 🔴 CE QU'ELLE SUBSTITUE : `showDirectoryPicker()`, et rien d'autre.
+// 🔴 WHAT IT SUBSTITUTES: `showDirectoryPicker()`, and nothing else.
 //
-// LES TROIS ÉCHELLES, ET POURQUOI CHACUNE PORTE UN BARREAU DE TÉMOIN :
-//   - TAILLE : 4 Kio est le témoin POSITIF — F4 relève que « un montage où
-//     même 10 entrées échoueraient mesurerait une panne, pas un mur ». Si le
-//     plus petit barreau échoue, il n'y a pas de mur à mesurer, il y a une
-//     panne. 192 Kio encadre le mur que F4 donnait à 128 Kio.
-//   - ENTRÉES : 100 est le témoin POSITIF, 3 200 le barreau que F4 donnait
-//     pour ÉCHOUANT — c'est lui qui, s'il aboutit, dit que le mur a bougé.
-//   - Les fichiers d'entrées sont créés VIDES (`getFileHandle` seul, sans
-//     `createWritable`) : on mesure un RANG D'ÉNUMÉRATION, pas un volume.
+// THE THREE LADDERS, AND WHY EACH CARRIES A CONTROL RUNG:
+//   - SIZE: 4 KiB is the POSITIVE control — F4 notes that "a setup where
+//     even 10 entries would fail would measure a failure, not a wall". If the
+//     smallest rung fails, there is no wall to measure, there is a
+//     failure. 192 KiB brackets the wall F4 put at 128 KiB.
+//   - ENTRIES: 100 is the POSITIVE control, 3,200 the rung F4 gave
+//     as FAILING — it is the one that, if it succeeds, says the wall has moved.
+//   - The entry files are created EMPTY (`getFileHandle` alone, without
+//     `createWritable`): we measure an ENUMERATION RANK, not a volume.
 (() => {
   const EST_HUB = location.pathname === '/' || location.pathname.endsWith('/hub.html');
   window.__item1 = { etapes: [], est_hub: EST_HUB, chemin: location.pathname };
@@ -29,9 +29,9 @@
     const d = await racine.getDirectoryHandle('Mes documents', { create: true });
     for await (const nom of d.keys()) await d.removeEntry(nom, { recursive: true });
 
-    // L'échelle de TAILLE. Le contenu est un motif répété, pas des zéros :
-    // un tampon de zéros peut être compressé ou élidé quelque part sur le
-    // chemin, et l'on mesurerait alors autre chose que ce qu'on croit.
+    // The SIZE ladder. The content is a repeated pattern, not zeros:
+    // a buffer of zeros can be compressed or elided somewhere along the
+    // path, and we would then measure something other than what we believe.
     const bloc = new Uint8Array(1024);
     for (let i = 0; i < 1024; i += 1) bloc[i] = 33 + (i % 90);
     const faits = [];
@@ -43,13 +43,13 @@
       faits.push({ nom: `taille-${kio}k.bin`, octets: kio * 1024 });
     }
 
-    // 🔴 LE JEU DU DÉBIT SOUTENU : VINGT fichiers DISTINCTS de 128 Kio.
-    // La première rédaction relisait LE MÊME fichier en boucle et rendait
-    // 1 312 669 Kio/s — quarante mille fois le débit du pont. Elle mesurait
-    // le CACHE DE FICHIERS DE WINDOWS, pas la traversée. Des fichiers
-    // distincts, lus une fois chacun, forcent un aller-retour par lecture.
-    // 20 x 128 Kio = 2,5 Mio, soit ~80 s a 31 Kio/s : le palier depasse alors
-    // plusieurs fois la periode de recensement (10 s), comme exige.
+    // 🔴 THE SUSTAINED THROUGHPUT DATA SET: TWENTY DISTINCT files of 128 KiB.
+    // The first wording reread THE SAME file in a loop and returned
+    // 1,312,669 KiB/s — forty thousand times the bridge's throughput. It measured
+    // the WINDOWS FILE CACHE, not the crossing. Distinct
+    // files, read once each, force one round trip per read.
+    // 20 x 128 KiB = 2.5 MiB, i.e. ~80 s at 31 KiB/s: the step then exceeds
+    // the census period (10 s) several times, as required.
     const debit = await d.getDirectoryHandle('debit', { create: true });
     for (let i = 0; i < 20; i += 1) {
       const f = await debit.getFileHandle(`d${String(i).padStart(2, '0')}.bin`, { create: true });
@@ -58,7 +58,7 @@
       await w.close();
     }
 
-    // L'échelle d'ENTRÉES, dans des sous-répertoires.
+    // The ENTRIES ladder, in subdirectories.
     const rangs = [];
     for (const n of RANGS) {
       const sous = await d.getDirectoryHandle(`rang-${n}`, { create: true });
@@ -79,8 +79,8 @@
     return window.__item2Dossier;
   };
 
-  /// Ce que le POSTE LOCAL contient réellement — la référence contre laquelle
-  /// tout écart de la VM se lit.
+  /// What the LOCAL MACHINE really contains — the reference against which
+  /// any deviation of the VM is read.
   window.__item2Relire = async () => {
     const d = window.__item2Dossier
       ?? await (await navigator.storage.getDirectory())

@@ -80,7 +80,7 @@ if [ "${BRAS}" != "temoin" ]; then
            "⚠️ AUCUN module de bascule de peripherique par defaut n est installe sur cette VM."
            "   Set-AudioDevice (AudioDeviceCmdlets) : " + (@(Get-Module -ListAvailable -Name AudioDeviceCmdlets)).Count + " module(s)"' 120 ;;
       veille)
-        # Desactiver puis reactiver le point de terminaison de rendu actif.
+        # Disable then re-enable the active render endpoint.
         W '$p = Get-PnpDevice -Class AudioEndpoint -Status OK -ErrorAction SilentlyContinue
            "points de terminaison AudioEndpoint OK : " + (@($p).Count)
            $p | ForEach-Object { "  - " + $_.FriendlyName + "  [" + $_.InstanceId + "]" }

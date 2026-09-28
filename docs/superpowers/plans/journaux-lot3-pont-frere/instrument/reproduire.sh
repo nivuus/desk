@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
-# Lot 3, item 3 (3.8) — UNE exécution : reproduire la disparition du frère.
+# Batch 3, item 3 (3.8) — ONE run: reproduce the sibling's disappearance.
 #
 #     reproduire.sh <etiquette> [--sans-cache]
 #
-# 🔴 LE DÉFAUT VISÉ, tel que F5 l'a mesuré le 21 août 2026 : après un
-# RENOMMAGE DANS LA VM, le répertoire frère `sous-dossier` DISPARAÎT du listage
-# de la VM **alors qu'il existe toujours dans OPFS**. F5 a aussi tranché son
-# attribution : le défaut est PRÉEXISTANT, et le cache le PROLONGE.
+# 🔴 THE TARGETED DEFECT, as F5 measured it on August 21st, 2026: after a
+# RENAME IN THE VM, the sibling directory `sous-dossier` DISAPPEARS from the VM's
+# listing **while it still exists in OPFS**. F5 also settled its
+# attribution: the defect is PRE-EXISTING, and the cache PROLONGS it.
 #
-# ⚠️ CE SCRIPT NE JUGE RIEN : il relève les quatre maillons, un par un, et
-# c'est le verdict qui conclut. Disculper un maillon ne désigne pas le suivant.
+# ⚠️ THIS SCRIPT JUDGES NOTHING: it records the four links, one by one, and
+# it is the verdict that concludes. Clearing one link does not designate the next.
 set -uo pipefail
 unset -f chpwd 2>/dev/null || true
 
@@ -19,7 +19,7 @@ RACINE="$(git rev-parse --show-toplevel)" || {
     echo "🔴 hors du dépôt git : impossible de dériver RACINE" >&2; exit 1; }
 J="${RACINE}/docs/superpowers/plans/journaux-lot3-pont-frere"
 I="${J}/instrument"
-# 🔴 LE PILOTE EST CELUI DE L'ITEM 1, RÉUTILISÉ PAR PARAMÈTRE — jamais copié.
+# 🔴 THE DRIVER IS ITEM 1'S, REUSED BY PARAMETER — never copied.
 PILOTE="${RACINE}/docs/superpowers/plans/journaux-lot3-pont-sauvegarde/instrument/pilote-item1.mjs"
 
 set -a; . "${RACINE}/.env"; set +a
@@ -28,8 +28,8 @@ set -a; . "${RACINE}/.env"; set +a
 VM_RACINE='C:\Users\Administrator\Mes Fichiers'
 etape() { echo; echo "=== $(date -Is) $* ==="; }
 
-# Le listage de la VM, rendu comme une LISTE DE NOMS triée : c'est la forme qui
-# rend « le frère a disparu » lisible d'un coup d'œil, et comparable entre bras.
+# The VM's listing, returned as a sorted LIST OF NAMES: it is the shape that
+# makes "the sibling disappeared" readable at a glance, and comparable between arms.
 lister_vm() {
     W 'Get-ChildItem "C:\Users\Administrator\Mes Fichiers" -Force -ErrorAction SilentlyContinue |
        Sort-Object Name | ForEach-Object { ($(if ($_.PSIsContainer) {"D"} else {"F"})) + " " + $_.Name }' 120
@@ -38,21 +38,21 @@ lister_vm() {
 etape "PRÉ-VOL"
 vm_prete || exit 1
 
-# 🔴 LA RACINE ProjFS DE LA VM GARDE CE QUE L'EXÉCUTION PRÉCÉDENTE Y A HYDRATÉ,
-# ET LA PURGE D'OPFS NE L'ATTEINT PAS. Mesuré le 5 septembre 2026 : à la
-# deuxième exécution, `renomme.txt` était encore là et le renommage a ÉCHOUÉ
-# (« issue du renommage : False ») — le bras était perdu pour une raison
-# étrangère au défaut cherché. On vide donc la racine de la VM AVANT que le
-# pont ne monte : rien n'est alors poussé au poste local, le pont étant absent.
+# 🔴 THE VM'S ProjFS ROOT KEEPS WHAT THE PREVIOUS RUN HYDRATED THERE,
+# AND PURGING OPFS DOES NOT REACH IT. Measured on September 5th, 2026: at the
+# second run, `renomme.txt` was still there and the rename FAILED
+# ("rename outcome: False") — the arm was lost for a reason
+# foreign to the defect sought. We therefore empty the VM's root BEFORE the
+# bridge mounts: nothing is then pushed to the local machine, the bridge being absent.
 etape "PURGE de la racine ProjFS de la VM (l'etat hydrate d'une execution precedente)"
-# 🔴 LA PURGE EST UNE PORTE, PAS UN COMPTE RENDU. La premiere redaction
-# imprimait « restant apres purge : 3 » ET CONTINUAIT : le jeu de l'execution
-# precedente restait en place, le renommage echouait (« issue du renommage :
-# False »), et meme le temoin negatif ne tirait plus. DEUX bras ont ete perdus
-# ainsi le 5 septembre 2026. Un releve qu'on imprime sans en rien faire n'est
-# pas un controle.
-# ⚠️ La suppression peut etre refusee tant que ProjFS virtualise encore la
-# racine : on reessaie, puis on ABANDONNE en le disant.
+# 🔴 THE PURGE IS A GATE, NOT A REPORT. The first wording
+# printed "remaining after purge: 3" AND CARRIED ON: the previous run's
+# data set stayed in place, the rename failed ("rename outcome:
+# False"), and even the negative control no longer fired. TWO arms were lost
+# that way on September 5th, 2026. A reading one prints without doing anything with it is
+# not a check.
+# ⚠️ Deletion can be refused as long as ProjFS still virtualises the
+# root: we retry, then we GIVE UP saying so.
 PURGE_RESTANT=9
 for tentative in 1 2 3 4 5; do
     PURGE_RESTANT=$(W 'Get-ChildItem "C:\Users\Administrator\Mes Fichiers" -Force -ErrorAction SilentlyContinue | ForEach-Object { Remove-Item $_.FullName -Recurse -Force -ErrorAction SilentlyContinue }; Start-Sleep -Milliseconds 500; @(Get-ChildItem "C:\Users\Administrator\Mes Fichiers" -Force -ErrorAction SilentlyContinue).Count' 120 | tr -dc '0-9')
@@ -69,8 +69,8 @@ fi
 
 if [ "${SANS_CACHE}" = "--sans-cache" ]; then
     etape "BRAS D'ATTRIBUTION : PONT_CACHE=0"
-    # Désarme le cache d'énumération (TTL_ENUMERATION = 30 s) : chaque listage
-    # repaie son aller-retour, c'est-à-dire EXACTEMENT le produit d'avant F5.
+    # Disarms the enumeration cache (TTL_ENUMERATION = 30 s): each listing
+    # pays its round trip again, that is, EXACTLY the product from before F5.
     agent_arreter
     variable_de_banc poser PONT_CACHE 0
     W 'Get-Content C:\nivuus\agent\run-agent.ps1 -Encoding UTF8 | Select-String "env:PONT_CACHE|agent.exe" | ForEach-Object { "ligne $($_.LineNumber) : $($_.Line.Trim())" }' 90
@@ -113,8 +113,8 @@ lister_vm
 
 echo
 echo "### LISTAGE DE LA VM — SECOND listage, sans aucun Rafraichir"
-# ⚠️ LE SECOND LISTAGE EST LE POINT DE L'A/B : cache armé il reste absent
-# jusqu'au TTL ; PONT_CACHE=0 il doit revenir. Un seul listage ne les sépare pas.
+# ⚠️ THE SECOND LISTING IS THE POINT OF THE A/B: cache armed it stays absent
+# until the TTL; PONT_CACHE=0 it must come back. A single listing does not separate them.
 sleep 3
 lister_vm
 
@@ -125,11 +125,11 @@ lister_vm
 
 echo
 echo "### 🔴 TÉMOIN NÉGATIF — CE LISTAGE PEUT-IL SEULEMENT MONTRER UNE DISPARITION ?"
-# Sans ce bras, « sous-dossier est toujours là » serait rendu par un listage
-# INCAPABLE de perdre quoi que ce soit — un contrôle qui ne peut pas échouer,
-# le patron que ce dépôt punit. On supprime donc POUR DE BON un témoin, et le
-# listage suivant DOIT le perdre. S'il ne le perd pas, tout le relevé
-# ci-dessus est sans valeur et le verdict doit le dire.
+# Without this arm, "sous-dossier is still there" would be returned by a listing
+# UNABLE to lose anything — a check that cannot fail,
+# the pattern this repository punishes. We therefore delete a control FOR GOOD, and the
+# next listing MUST lose it. If it does not, the whole reading
+# above is worthless and the verdict must say so.
 W 'Remove-Item "C:\Users\Administrator\Mes Fichiers\temoin-2.txt" -Force -ErrorAction Continue
    "issue de la suppression : " + $?' 120
 sleep 4

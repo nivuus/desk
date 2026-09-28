@@ -1,26 +1,26 @@
-// Lot 3, item 3 (3.8) — LE RÉPERTOIRE FRÈRE QUI DISPARAÎT.
+// Batch 3, item 3 (3.8) — THE SIBLING DIRECTORY THAT DISAPPEARS.
 //
-// Injectée avant tout script de la page, par le pilote partagé
+// Injected before any script of the page, by the shared driver
 // `journaux-lot3-pont-sauvegarde/instrument/pilote-item1.mjs`
-// (`--injection=…`), réutilisé PAR PARAMÈTRE et jamais par copie.
+// (`--injection=…`), reused BY PARAMETER and never by copy.
 //
-// 🔴 CE QU'ELLE SUBSTITUE : `showDirectoryPicker()`, et rien d'autre. Tout
-// l'aval — `choisirDossier`, `creerEcrivain`, `creerMutateur`, le canal, le
-// pont — est le produit.
+// 🔴 WHAT IT SUBSTITUTES: `showDirectoryPicker()`, and nothing else. Everything
+// downstream — `choisirDossier`, `creerEcrivain`, `creerMutateur`, the channel, the
+// bridge — is the product.
 //
-// LE JEU REPRODUIT CELUI DE F5 : un répertoire `sous-dossier` portant un
-// enfant, un fichier à renommer, et deux fichiers témoins. C'est le frère
-// `sous-dossier` qui disparaissait du listage de la VM après un renommage,
-// **alors qu'il existait toujours dans OPFS** — et c'est exactement ce que
-// `__item3Relire` va rechercher.
+// THE DATA SET REPRODUCES F5'S: a `sous-dossier` directory carrying a
+// child, a file to rename, and two control files. It is the sibling
+// `sous-dossier` that disappeared from the VM's listing after a rename,
+// **while it still existed in OPFS** — and that is exactly what
+// `__item3Relire` will look for.
 (() => {
   const EST_HUB = location.pathname === '/' || location.pathname.endsWith('/hub.html');
   window.__item1 = { etapes: [], est_hub: EST_HUB, chemin: location.pathname };
   const noter = (m) => window.__item1.etapes.push({ t: Date.now(), m: String(m).slice(0, 300) });
   noter('injection item3 posée sur ' + location.pathname);
-  // 🔴 SEUL LE HUB PEUPLE OPFS : l'injection est posée sur TOUTES les cibles,
-  // et une fenêtre d'application qui purgerait OPFS pendant que le pont y
-  // écrit ferait lire un défaut du produit là où il n'y en a pas (F2).
+  // 🔴 ONLY THE HUB POPULATES OPFS: the injection is set on ALL targets,
+  // and an application window purging OPFS while the bridge writes there
+  // would make one read a product defect where there is none (F2).
   if (!EST_HUB) { noter('pas le hub : OPFS laissé intact'); return; }
 
   window.__item3Preparer = async () => {
@@ -33,7 +33,7 @@
       await w.write(texte);
       await w.close();
     };
-    // Le FRÈRE, et son enfant : c'est lui qu'on cherchera après le renommage.
+    // The SIBLING, and its child: it is what we will look for after the rename.
     const sous = await d.getDirectoryHandle('sous-dossier', { create: true });
     await ecrire(sous, 'autre.txt', 'enfant du frere\n');
     await ecrire(d, 'a-renommer.txt', 'ce fichier va etre renomme dans la VM\n');
@@ -50,10 +50,10 @@
     return window.__item3Dossier;
   };
 
-  /// 🔴 LE MAILLON QUI FAIT AUTORITÉ : ce que le POSTE LOCAL contient
-  /// réellement. Le défaut de F5 est précisément que la VM cesse de VOIR un
-  /// répertoire qui, ici, N'A PAS BOUGÉ. Sans ce relevé, « il a disparu du
-  /// listage » serait indiscernable de « il a été supprimé ».
+  /// 🔴 THE AUTHORITATIVE LINK: what the LOCAL MACHINE really
+  /// contains. F5's defect is precisely that the VM stops SEEING a
+  /// directory that, here, HAS NOT MOVED. Without this reading, "it disappeared from the
+  /// listing" would be indistinguishable from "it was deleted".
   window.__item3Relire = async () => {
     const d = window.__item3Dossier
       ?? await (await navigator.storage.getDirectory())

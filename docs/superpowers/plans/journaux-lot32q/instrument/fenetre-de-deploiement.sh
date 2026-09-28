@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Lot 32Q : LA fenetre unique — mesure d'avant, deploiement, mesure d'apres.
+# Batch 32Q: THE single window — measurement before, deployment, measurement after.
 #
 # 🔴 CE QUI EST HORS DU CRENEAU, ET POURQUOI. La fabrication croisee et le
 # depot par le hook ne touchent PAS la VM : ils se font AVANT, et le
