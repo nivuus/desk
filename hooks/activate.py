@@ -355,24 +355,24 @@ def main() -> int:
 
     env_deja_pose = lire_env_fichier(env_chemin)
 
-    # 🔴 IDEMPOTENCE : une activation DÉJÀ ABOUTIE ne rejoue ni la création
-    # du compte, ni l'enrôlement. `vm.nom` n'a AUCUNE contrainte d'unicité
-    # (`plateforme/…/0001-schema.sql` : seule `utilisateur.email` est
-    # `UNIQUE`) — un second `admin:agent` sur un rejeu créerait donc une VM
-    # ORPHELINE supplémentaire à chaque appel, jamais un refus ; et un
-    # second `admin:utilisateur` avec le MÊME courriel échouerait sur la
-    # contrainte `UNIQUE` d'`utilisateur.email`. Sans cette garde, un rejeu
-    # (retenté par le moteur, ou relancé à la main par un opérateur après un
-    # premier succès) serait donc soit CORRUPTEUR (VMs orphelines qui
-    # s'accumulent), soit condamné à échouer pour toujours. Même doctrine
-    # que `console/hooks/activate.py::run_steps` (`step.already_done()`) :
-    # une étape déjà aboutie se CONSTATE, elle ne se rejoue pas.
+    # 🔴 IDEMPOTENCE: an ALREADY SUCCESSFUL activation replays neither the creation
+    # of the account, nor the enrolment. `vm.nom` has NO uniqueness constraint
+    # (`plateforme/…/0001-schema.sql`: only `utilisateur.email` is
+    # `UNIQUE`) — a second `admin:agent` on a replay would therefore create one more
+    # ORPHAN VM at each call, never a refusal; and a
+    # second `admin:utilisateur` with the SAME email would fail on the
+    # `UNIQUE` constraint of `utilisateur.email`. Without this guard, a replay
+    # (retried by the engine, or relaunched by hand by an operator after a
+    # first success) would therefore be either CORRUPTING (orphan VMs piling
+    # up), or doomed to fail forever. Same doctrine
+    # as `console/hooks/activate.py::run_steps` (`step.already_done()`):
+    # an already completed step is NOTED, it is not replayed.
     #
-    # ⚠️ CE QUE CETTE GARDE NE COUVRE PAS : un échec ENTRE la création du
-    # compte et l'enrôlement (compte créé, `AGENT_VM`/`AGENT_SECRET` jamais
-    # écrits) laisse un rejeu buter sur le courriel déjà pris — une
-    # récupération PARTIELLE hors du périmètre de cette tâche, voir le
-    # rapport, § Réserves.
+    # ⚠️ WHAT THIS GUARD DOES NOT COVER: a failure BETWEEN the creation of the
+    # account and the enrolment (account created, `AGENT_VM`/`AGENT_SECRET` never
+    # written) makes a replay stumble on the already taken email — a
+    # PARTIAL recovery outside the scope of this task, see the
+    # report, § Reservations.
     if env_deja_pose.get("AGENT_VM") and env_deja_pose.get("AGENT_SECRET"):
         emettre({"event": "progress", "pct": 100,
                  "msg": "desk : deja active (AGENT_VM/AGENT_SECRET deja "
@@ -387,14 +387,14 @@ def main() -> int:
               "sont requis et absents", file=sys.stderr)
         return 1
 
-    # `admin:utilisateur`/`admin:agent` lisent leur configuration (quelle
-    # base, quel fichier SQLite…) dans `process.env` — voir
-    # `plateforme/src/config.ts::lireConfig`. Ce ne sont PAS les variables
-    # de ce processus Python : elles vivent dans desk.env, écrit par
-    # `install.py`, et doivent donc être fusionnées dans l'environnement
-    # transmis à `npm`, sans quoi les commandes d'administration
-    # ouvriraient une base différente de celle que le service démarré va
-    # réellement servir.
+    # `admin:utilisateur`/`admin:agent` read their configuration (which
+    # database, which SQLite file…) from `process.env` — see
+    # `plateforme/src/config.ts::lireConfig`. These are NOT the variables
+    # of this Python process: they live in desk.env, written by
+    # `install.py`, and must therefore be merged into the environment
+    # passed to `npm`, otherwise the administration commands
+    # would open a database different from the one the started service will
+    # really serve.
     env_npm = dict(os.environ)
     env_npm.update(env_deja_pose)
 
@@ -415,55 +415,55 @@ def main() -> int:
 
     ajouter_variables_env(env_chemin, {"AGENT_VM": vm_id, "AGENT_SECRET": secret})
 
-    # 🔴 TÂCHE 13 — TROU TROUVÉ EN PRODUCTION LE 29 AOÛT 2026 : `enroler_agent_
-    # plateforme()` (donc `admin:agent`, donc `enrolerLaVm`) fait
-    # `INSERT INTO vm(id, nom, adresse)` SANS jamais passer d'utilisateur —
-    # `vm.utilisateur_id` restait NULL, et `plateforme/src/http/
-    # routes-applications.ts` l'annonçait EN TOUTES LETTRES depuis avant ce
-    # correctif : « tant qu'aucune VM n'est attribuée, TOUT UTILISATEUR
-    # AUTHENTIFIÉ VOIT TOUTES LES VMS : ce n'est PAS une isolation » — et le
-    # symptôme MESURÉ chez le propriétaire était le miroir de cette même case
-    # restée NULL : `GET /vm` rendait `{"vms":[]}` pour un compte pourtant
-    # bien créé, donc un hub vide. Réparé sur l'instance en cours à la main
-    # (`npm run admin:attribuer -- --email … --vm windows`) ; ce qui suit est
-    # ce qui manquait pour qu'une installation NEUVE n'ait plus jamais besoin
-    # de cette réparation manuelle.
+    # 🔴 TASK 13 — A HOLE FOUND IN PRODUCTION ON AUGUST 29TH, 2026: `enroler_agent_
+    # plateforme()` (hence `admin:agent`, hence `enrolerLaVm`) does
+    # `INSERT INTO vm(id, nom, adresse)` WITHOUT ever passing a user —
+    # `vm.utilisateur_id` stayed NULL, and `plateforme/src/http/
+    # routes-applications.ts` had announced it IN SO MANY WORDS since before this
+    # fix: "as long as no VM is assigned, EVERY AUTHENTICATED USER
+    # SEES ALL THE VMS: it is NOT an isolation" — and the
+    # symptom MEASURED at the owner's was the mirror of that same cell
+    # left NULL: `GET /vm` returned `{"vms":[]}` for an account that was
+    # indeed created, hence an empty hub. Repaired on the running instance by hand
+    # (`npm run admin:attribuer -- --email … --vm windows`); what follows is
+    # what was missing so that a FRESH installation never again needs
+    # that manual repair.
     #
-    # 🔴 PLACEMENT : NI DANS LE COURT-CIRCUIT D'IDEMPOTENCE CI-DESSUS, NI HORS
-    # DE TOUTE GARDE — les deux pièges évidents, et aucun des deux ne marche :
-    #   - DANS le court-circuit (qui ne s'exécute qu'À LA RÉACTIVATION, une
-    #     fois `AGENT_VM`/`AGENT_SECRET` déjà écrits) : le passage NORMAL —
-    #     celui qui tourne UNE SEULE FOIS par package, à l'activation — ne
-    #     l'atteindrait JAMAIS. C'est très exactement le trou trouvé en
-    #     production : une installation qui ne rejoue jamais l'activation ne
-    #     se rattrape jamais toute seule.
-    #   - HORS de toute garde (rejouée à CHAQUE appel, court-circuit compris) :
-    #     `admin:attribuer` N'EST PAS idempotent pour un rejeu — l'orchestrateur
-    #     refuse `vm-deja-attribuee` dès que `utilisateur_id` n'est plus NULL,
-    #     MÊME pour la ré-attribution au même utilisateur
-    #     (`inventaire-statique.ts::attribuer`, lecture ①). Rejouer à chaque
-    #     réactivation ferait donc échouer TOUTE réactivation après la
-    #     première réussite, sur un refus qui ne dit rien de faux mais qui
-    #     n'est pas non plus une panne.
-    #   Elle vit donc ICI, dans le PROLONGEMENT du chemin normal — protégée
-    #   par LA MÊME garde que le compte et l'enrôlement juste au-dessus (le
-    #   court-circuit la saute tout autant qu'eux) : elle s'exécute une seule
-    #   fois, au passage qui vient justement de créer ce compte et d'enrôler
-    #   cet agent — jamais aux réactivations suivantes.
+    # 🔴 PLACEMENT: NEITHER IN THE IDEMPOTENCE SHORT-CIRCUIT ABOVE, NOR OUTSIDE
+    # ANY GUARD — the two obvious traps, and neither of them works:
+    #   - IN the short-circuit (which only runs ON REACTIVATION, once
+    #     `AGENT_VM`/`AGENT_SECRET` are already written): the NORMAL pass —
+    #     the one that runs ONLY ONCE per package, at activation — would
+    #     NEVER reach it. It is exactly the hole found in
+    #     production: an installation that never replays activation never
+    #     catches up on its own.
+    #   - OUTSIDE any guard (replayed at EACH call, short-circuit included):
+    #     `admin:attribuer` IS NOT idempotent for a replay — the orchestrator
+    #     refuses `vm-deja-attribuee` as soon as `utilisateur_id` is no longer NULL,
+    #     EVEN for reassignment to the same user
+    #     (`inventaire-statique.ts::attribuer`, read ①). Replaying at each
+    #     reactivation would therefore make EVERY reactivation fail after the
+    #     first success, on a refusal that says nothing false but
+    #     is not a failure either.
+    #   It therefore lives HERE, as the CONTINUATION of the normal path — protected
+    #   by THE SAME guard as the account and the enrolment just above (the
+    #   short-circuit skips it just as much as them): it runs only
+    #   once, in the pass that has just created that account and enrolled
+    #   that agent — never in the following reactivations.
     #
-    # ⚠️ CE QUE CE PLACEMENT NE COUVRE PAS, MÊME LIMITE QUE LA GARDE
-    # D'IDEMPOTENCE CI-DESSUS (voir son propre commentaire) : un échec ICI
-    # survient APRÈS que `AGENT_VM`/`AGENT_SECRET` sont déjà écrits (ligne
-    # précédente) — une réactivation court-circuitera donc désormais AVANT
-    # d'atteindre cette attribution, sans jamais la retenter. C'est le choix
-    # le MOINS mauvais des deux ordres possibles : écrire ces deux variables
-    # APRÈS l'attribution rouvrirait plutôt, sur ce même échec, le REJEU de
-    # `admin:agent` — qui LUI crée une VM ORPHELINE supplémentaire à chaque
-    # appel (voir le commentaire de la garde d'idempotence ci-dessus) : une
-    # régression pire que celle qu'on répare ici. Une attribution manquée à
-    # cet endroit reste diagnosticable (le message ci-dessous nomme la cause)
-    # et réparable À LA MAIN par ce même `npm run admin:attribuer` — c'est
-    # exactement ainsi que l'instance réelle du 29 août 2026 a été réparée.
+    # ⚠️ WHAT THIS PLACEMENT DOES NOT COVER, SAME LIMIT AS THE IDEMPOTENCE
+    # GUARD ABOVE (see its own comment): a failure HERE
+    # occurs AFTER `AGENT_VM`/`AGENT_SECRET` are already written (previous
+    # line) — a reactivation will therefore short-circuit from now on BEFORE
+    # reaching this assignment, without ever retrying it. It is the
+    # LEAST bad choice of the two possible orders: writing these two variables
+    # AFTER the assignment would instead reopen, on this same failure, the REPLAY of
+    # `admin:agent` — which, for its part, creates one more ORPHAN VM at each
+    # call (see the idempotence guard's comment above): a
+    # worse regression than the one being fixed here. An assignment missed at
+    # this point stays diagnosable (the message below names the cause)
+    # and repairable BY HAND through this same `npm run admin:attribuer` — it is
+    # exactly how the real instance of August 29th, 2026 was repaired.
     emettre({"event": "progress", "pct": 90,
              "msg": "Attribution de la VM au compte administrateur"})
     _sortie_attribution, raison = attribuer_vm_a_utilisateur(plateforme_dir, email, vm_id, env_npm)

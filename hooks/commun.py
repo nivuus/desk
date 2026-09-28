@@ -1,48 +1,48 @@
-"""Module partagé entre les TROIS hooks du package desk.
+"""Module shared between the THREE hooks of the desk package.
 
-⚠️ L'en-tête disait « (`resolve.py`, `install.py`) ». C'est FAUX depuis le
-lot 10A : `activate.py` l'emploie aussi, par `administration.py`
-(`from commun import lire_node_bin`) — relevé par la revue finale de branche,
-30 août 2026, et corrigé ici plutôt que laissé vieillir.
+⚠️ The header said "(`resolve.py`, `install.py`)". It has been FALSE since
+batch 10A: `activate.py` uses it too, through `administration.py`
+(`from commun import lire_node_bin`) — flagged by the final branch review,
+August 30th, 2026, and fixed here rather than left to age.
 
-Extrait le 29 août 2026 (ronde de correction 1 sur la tâche 4) : la revue a
-relevé `interface_de_route_par_defaut()` et `adresse_ipv4_de()` dupliquées
-OCTET POUR OCTET entre les deux hooks, et `PORT_DEFAUT` dupliqué avec sa
-raison en double.
+Extracted on August 29th, 2026 (correction round 1 on task 4): the review
+flagged `interface_de_route_par_defaut()` and `adresse_ipv4_de()` duplicated
+BYTE FOR BYTE between the two hooks, and `PORT_DEFAUT` duplicated with its
+reason twice.
 
-⚠️ CE N'EST PAS UNE DÉPENDANCE HORS DU PACKAGE — l'argument « chaque hook
-doit rester exécutable seul » (protocole décrit dans `resolve.py`) porte sur
-l'absence de dépendance vers un AUTRE dépôt (le moteur, `installer/`), pas
-sur l'absence de module frère À L'INTÉRIEUR du package : `console` (dépôt
-voisin `installer/console/`) fait exactement cela pour ses propres hooks
-(`hooks/install.py` importe `retro.py` et `guest_steps.py` depuis la racine
-du package, via `HERE = os.path.dirname(...)` + `sys.path.insert(0, HERE)`).
+⚠️ IT IS NOT A DEPENDENCY OUTSIDE THE PACKAGE — the argument "each hook
+must stay runnable alone" (protocol described in `resolve.py`) bears on
+the absence of a dependency on ANOTHER repository (the engine, `installer/`), not
+on the absence of a sibling module INSIDE the package: `console` (the
+neighbouring repository `installer/console/`) does exactly that for its own hooks
+(`hooks/install.py` imports `retro.py` and `guest_steps.py` from the package
+root, via `HERE = os.path.dirname(...)` + `sys.path.insert(0, HERE)`).
 
-Ici, aucun `sys.path.insert` n'est nécessaire : `commun.py` vit dans le même
-répertoire (`hooks/`) que `resolve.py` et `install.py`, et Python ajoute déjà
-automatiquement le répertoire du script exécuté en tête de `sys.path` — c'est
-la même raison pour laquelle `resolve.py` importe déjà `guest_steps` sans
-bricolage dans le package voisin. Un simple `import commun` suffit depuis
-les deux hooks.
+Here, no `sys.path.insert` is needed: `commun.py` lives in the same
+directory (`hooks/`) as `resolve.py` and `install.py`, and Python already
+automatically adds the executed script's directory at the head of `sys.path` — it is
+the same reason `resolve.py` already imports `guest_steps` without
+tinkering in the neighbouring package. A simple `import commun` is enough from
+both hooks.
 """
 import os
 import re
 import subprocess
 
-# 🔴 LE PORT PAR DÉFAUT EST 3445, ET IL EST DÉRIVÉ, JAMAIS DEMANDÉ.
+# 🔴 THE DEFAULT PORT IS 3445, AND IT IS DERIVED, NEVER ASKED.
 #
-# /etc/pomerium/config.yaml porte une route `from: https://app.allanic.me`
-# vers `to: http://127.0.0.1:3445` (relevé le 29 août 2026) : c'est le seul
-# port qui fait marcher la route publique déjà en place. Ce n'est pas une
-# cinquième question du wizard : l'opérateur n'a aucune information qui lui
-# permettrait d'y répondre différemment sans casser la route Pomerium déjà
-# en place. Cette raison ne vit désormais qu'ICI — ni `resolve.py` ni
-# `install.py` ne la répètent, ils importent la valeur.
+# /etc/pomerium/config.yaml carries a route `from: https://app.allanic.me`
+# to `to: http://127.0.0.1:3445` (read on August 29th, 2026): it is the only
+# port that makes the public route already in place work. It is not a
+# fifth wizard question: the operator has no information that would
+# let them answer differently without breaking the Pomerium route already
+# in place. This reason now only lives HERE — neither `resolve.py` nor
+# `install.py` repeat it, they import the value.
 PORT_DEFAUT = 3445
 
 
 def interface_de_route_par_defaut():
-    """Le périphérique réseau de la route IPv4 par défaut, ou None."""
+    """The network device of the default IPv4 route, or None."""
     try:
         r = subprocess.run(["ip", "-4", "route", "show", "default"],
                             capture_output=True, text=True, timeout=10)
@@ -58,7 +58,7 @@ def interface_de_route_par_defaut():
 
 
 def adresse_ipv4_de(interface: str):
-    """La première adresse IPv4 portée par `interface`, ou None."""
+    """The first IPv4 address carried by `interface`, or None."""
     try:
         r = subprocess.run(["ip", "-4", "-o", "addr", "show", "dev", interface],
                             capture_output=True, text=True, timeout=10)
@@ -70,47 +70,47 @@ def adresse_ipv4_de(interface: str):
     return correspond.group(1) if correspond else None
 
 
-# --- Dérivation de l'adresse TURN (PUBLIQUE) ------------------------------
+# --- Deriving the TURN address (PUBLIC) ------------------------------
 #
-# ⚠️ DÉPLACÉE ICI DEPUIS `install.py` LE 30 AOÛT 2026, dans un commit dédié :
-# le fichier retombait à 494 lignes sur 500 après les gardes de la revue
-# finale, une marge que le prochain chantier reperdrait aussitôt. Aucun
-# changement de comportement ; `install.py` l'importe désormais, comme il
-# importait déjà les deux fonctions qu'elle emploie.
+# ⚠️ MOVED HERE FROM `install.py` ON AUGUST 30TH, 2026, in a dedicated commit:
+# the file fell back to 494 lines out of 500 after the final review's
+# guards, a margin the next workstream would immediately lose again. No
+# behaviour change; `install.py` now imports it, as it
+# already imported the two functions it uses.
 #
-# 🔴 CORRIGÉ AU LOT 10A (29 août 2026) : CE BLOC S'APPELAIT
-# `deriver_adresse_hote()` ET SON COMMENTAIRE AFFIRMAIT QUE PLATEFORME_HOTE,
-# TURN_LISTENING_IP ET TURN_RELAY_IP ÉTAIENT LA MÊME ADRESSE. C'ÉTAIT FAUX,
-# ET C'ÉTAIT UN BUG RÉEL, PAS UNE IMPRÉCISION DE COMMENTAIRE : mesuré le
-# 29 août 2026 avec `/usr/bin/ip` (hors de tout alias de shell), l'interface
-# de la route IPv4 PAR DÉFAUT sur cette machine est `ppp0` (PPPoE), dont
-# l'adresse est PUBLIQUE (90.87.35.18) — pas `internalBridge`
-# (192.168.3.1). `install.py` posait donc `PLATEFORME_HOTE=90.87.35.18`,
-# exposant le bureau distant sur l'internet public SANS Pomerium devant lui,
-# un trou que la garde des écoutes universelles de `config.ts` ne peut PAS
-# attraper (90.87.35.18 n'est pas une des quatre valeurs universelles).
+# 🔴 FIXED IN BATCH 10A (August 29th, 2026): THIS BLOCK WAS CALLED
+# `deriver_adresse_hote()` AND ITS COMMENT ASSERTED THAT PLATEFORME_HOTE,
+# TURN_LISTENING_IP AND TURN_RELAY_IP WERE THE SAME ADDRESS. IT WAS FALSE,
+# AND IT WAS A REAL BUG, NOT A COMMENT INACCURACY: measured on
+# August 29th, 2026 with `/usr/bin/ip` (outside any shell alias), the interface
+# of the DEFAULT IPv4 route on this machine is `ppp0` (PPPoE), whose
+# address is PUBLIC (90.87.35.18) — not `internalBridge`
+# (192.168.3.1). `install.py` therefore set `PLATEFORME_HOTE=90.87.35.18`,
+# exposing the remote desktop on the public internet WITHOUT Pomerium in front of it,
+# a hole the universal-listen guard of `config.ts` CANNOT
+# catch (90.87.35.18 is not one of the four universal values).
 #
-# Ce bloc dérive désormais UNIQUEMENT l'adresse TURN (publique, par
-# construction : coturn doit être joignable depuis l'internet par des
-# clients WebRTC derrière un NAT restrictif — c'est le SEUL rôle légitime
-# de la route par défaut ici). `PLATEFORME_HOTE` est dérivée séparément,
-# par `commun.lire_hote()` (adresse FIXE, interne, jamais la route par
-# défaut) — voir son commentaire pour le détail complet du bug et du
-# correctif.
+# This block now derives ONLY the TURN address (public, by
+# construction: coturn must be reachable from the internet by
+# WebRTC clients behind a restrictive NAT — it is the ONLY legitimate role
+# of the default route here). `PLATEFORME_HOTE` is derived separately,
+# by `commun.lire_hote()` (a FIXED, internal address, never the default
+# route) — see its comment for the complete detail of the bug and the
+# fix.
 #
-# `interface_de_route_par_defaut()` et `adresse_ipv4_de()` viennent de
-# `commun.py` (importées en tête de fichier) : elles étaient dupliquées
-# octet pour octet avec `resolve.py` avant la ronde de correction 1.
+# `interface_de_route_par_defaut()` and `adresse_ipv4_de()` come from
+# `commun.py` (imported at the top of the file): they were duplicated
+# byte for byte with `resolve.py` before correction round 1.
 
 def deriver_adresse_turn() -> str:
-    """L'adresse IPv4 PUBLIQUE de la route par défaut, ou lève RuntimeError.
+    """The PUBLIC IPv4 address of the default route, or raises RuntimeError.
 
-    ⚠️ NE JAMAIS employer cette fonction pour `PLATEFORME_HOTE` — voir le
-    commentaire ci-dessus. Elle ne sert QUE TURN_LISTENING_IP/TURN_RELAY_IP.
+    ⚠️ NEVER use this function for `PLATEFORME_HOTE` — see the
+    comment above. It ONLY serves TURN_LISTENING_IP/TURN_RELAY_IP.
 
-    🔴 JAMAIS UNE ÉCOUTE UNIVERSELLE : cette fonction ne rend jamais
-    '0.0.0.0'/'::'/'[::]'/'*' — elle échoue plutôt que d'inventer une valeur,
-    exactement comme `resolve.py::deriver_adresses_turn`.
+    🔴 NEVER A UNIVERSAL LISTEN: this function never returns
+    '0.0.0.0'/'::'/'[::]'/'*' — it fails rather than inventing a value,
+    exactly like `resolve.py::deriver_adresses_turn`.
     """
     interface = interface_de_route_par_defaut()
     if not interface:
@@ -128,44 +128,44 @@ def deriver_adresse_turn() -> str:
     return adresse
 
 
-# 🔴 L'ADRESSE D'ÉCOUTE DE LA PLATEFORME NE DOIT JAMAIS ÊTRE DÉRIVÉE DE LA
-# ROUTE PAR DÉFAUT — BUG RÉEL TROUVÉ ET CORRIGÉ ICI (lot 10A, 29 août 2026).
+# 🔴 THE PLATFORM'S LISTEN ADDRESS MUST NEVER BE DERIVED FROM THE
+# DEFAULT ROUTE — A REAL BUG FOUND AND FIXED HERE (batch 10A, August 29th, 2026).
 #
-# `interface_de_route_par_defaut()` + `adresse_ipv4_de()` ci-dessus résolvent
-# l'interface de la route INTERNET (`ip -4 route show default`). Sur CETTE
-# machine, mesuré le 29 août 2026 avec `/usr/bin/ip` (hors de tout alias de
-# shell interactif, qui redéfinit `ip` en `myip && localip`) :
+# `interface_de_route_par_defaut()` + `adresse_ipv4_de()` above resolve
+# the interface of the INTERNET route (`ip -4 route show default`). On THIS
+# machine, measured on August 29th, 2026 with `/usr/bin/ip` (outside any
+# interactive shell alias, which redefines `ip` as `myip && localip`):
 #
 #     default via 193.253.160.3 dev ppp0 ...
 #     ppp0: inet 90.87.35.18 peer 193.253.160.3/32 ...
 #
-# `ppp0` est une liaison PPPoE, et son adresse est PUBLIQUE. Avant ce
-# correctif, `install.py` réutilisait CETTE MÊME dérivation pour
-# `PLATEFORME_HOTE` (en la confondant avec l'adresse TURN) — ce qui aurait
-# fait ÉCOUTER LE BUREAU DISTANT SUR L'ADRESSE PUBLIQUE, exposé à quiconque
-# sur l'internet SANS passer par Pomerium. C'est un trou que la garde des
-# écoutes universelles de `plateforme/src/config.ts` ne peut PAS attraper :
-# 90.87.35.18 n'est ni `0.0.0.0` ni `::`, c'est une adresse ORDINAIRE — la
-# garde ne mord que sur les quatre valeurs universelles, jamais sur « une
-# adresse routable mais publique ».
+# `ppp0` is a PPPoE link, and its address is PUBLIC. Before this
+# fix, `install.py` reused THIS SAME derivation for
+# `PLATEFORME_HOTE` (confusing it with the TURN address) — which would have
+# made THE REMOTE DESKTOP LISTEN ON THE PUBLIC ADDRESS, exposed to anyone
+# on the internet WITHOUT going through Pomerium. It is a hole the universal-listen
+# guard of `plateforme/src/config.ts` CANNOT catch:
+# 90.87.35.18 is neither `0.0.0.0` nor `::`, it is an ORDINARY address — the
+# guard only bites on the four universal values, never on "a
+# routable but public address".
 #
-# La dérivation route-par-défaut RESTE correcte pour
-# TURN_LISTENING_IP/TURN_RELAY_IP (coturn DOIT être joignable depuis
-# l'internet public pour servir de relais à des clients WebRTC derrière un
-# NAT restrictif) : c'est le SEUL rôle qu'`interface_de_route_par_defaut()`
-# doit garder. `PLATEFORME_HOTE` est une adresse DIFFÉRENTE, avec une
-# contrainte DIFFÉRENTE : joignable par Pomerium (`network_mode: host`,
-# même machine) ET par la VM Windows (192.168.3.2/24), JAMAIS par
-# l'internet public.
+# The default-route derivation STAYS correct for
+# TURN_LISTENING_IP/TURN_RELAY_IP (coturn MUST be reachable from the
+# public internet to serve as a relay for WebRTC clients behind a
+# restrictive NAT): it is the ONLY role `interface_de_route_par_defaut()`
+# must keep. `PLATEFORME_HOTE` is a DIFFERENT address, with a
+# DIFFERENT constraint: reachable by Pomerium (`network_mode: host`,
+# same machine) AND by the Windows VM (192.168.3.2/24), NEVER by
+# the public internet.
 #
-# `192.168.3.1` (interface `internalBridge`) satisfait les deux : c'est
-# l'adresse VÉRIFIÉE présente le 29 août 2026 (`ip -4 addr show`), sur le
-# MÊME sous-réseau que la VM, et non universelle. Hardcodée ici, exactement
-# comme `PORT_DEFAUT` ci-dessus et pour la même raison : l'opérateur n'a
-# aucune information qui lui permettrait d'y répondre différemment sans
-# casser soit la VM soit Pomerium — ce n'est pas une question de wizard,
-# c'est une donnée de topologie réseau de CETTE appliance. Surchargeable par
-# `DESK_HOTE` (tests, ou un futur changement de topologie).
+# `192.168.3.1` (interface `internalBridge`) satisfies both: it is
+# the address VERIFIED present on August 29th, 2026 (`ip -4 addr show`), on the
+# SAME subnet as the VM, and not universal. Hard-coded here, exactly
+# like `PORT_DEFAUT` above and for the same reason: the operator has
+# no information that would let them answer differently without
+# breaking either the VM or Pomerium — it is not a wizard question,
+# it is a network topology fact of THIS appliance. Overridable through
+# `DESK_HOTE` (tests, or a future topology change).
 HOTE_DEFAUT = "192.168.3.1"
 
 # Les quatre valeurs qui font écouter un service sur TOUTES les interfaces —

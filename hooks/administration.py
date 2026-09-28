@@ -34,23 +34,23 @@ def lancer_npm(cwd: pathlib.Path, sous_commande: str, arguments: list,
                env: dict, entree=None):
     """`npm run <sous_commande> -- <arguments>`, CWD=`cwd`, ENV=`env`.
 
-    Rend toujours `(code, stdout, stderr)`, jamais ne lève : `npm` absent
-    du `PATH`, ou `cwd` qui n'existe pas (l'installation n'a pas tourné),
-    lèveraient tous deux un `OSError` au niveau de `subprocess.run` lui-même
-    — un chemin d'échec que le code nominal (un `npm` présent, une
-    commande qui refuse poliment) ne couvre pas, et qui deviendrait une
-    trace Python non rattrapée sans cette garde.
+    Always returns `(code, stdout, stderr)`, never raises: `npm` absent
+    from `PATH`, or a `cwd` that does not exist (installation did not run),
+    would both raise an `OSError` at the level of `subprocess.run` itself
+    — a failure path the nominal code (an `npm` present, a
+    command that refuses politely) does not cover, and that would become an
+    uncaught Python traceback without this guard.
 
-    🔴 PROBLÈME A DU LOT 10A (29 août 2026) : `npm` invoqué par son seul nom
-    dépend de ce que le PATH du PROCESSUS APPELANT contient déjà — vrai par
-    accident sur ce poste de développement (nvm y est sourcé dans le shell
-    interactif), FAUX en général pour un `python3 hooks/activate.py` lancé
-    par le vrai moteur d'installation, sans PATH nvm. `commun.lire_node_bin()`
-    (voir son commentaire pour le diagnostic complet) est donc APPONDU en
-    fin de PATH — jamais en tête, pour ne jamais court-circuiter un `npm`
-    que l'appelant aurait délibérément placé plus tôt dans le PATH (c'est
-    exactement ce que fait `tests/desk_activate_fixtures.py::appeler`, dont
-    le faux `npm` factice doit continuer à être trouvé en premier).
+    🔴 PROBLEM A OF BATCH 10A (August 29th, 2026): `npm` invoked by its name alone
+    depends on what the CALLING PROCESS's PATH already contains — true by
+    accident on this development machine (nvm is sourced there in the
+    interactive shell), FALSE in general for a `python3 hooks/activate.py` launched
+    by the real installation engine, without an nvm PATH. `commun.lire_node_bin()`
+    (see its comment for the complete diagnosis) is therefore APPENDED at the
+    end of PATH — never at the head, so as never to short-circuit an `npm`
+    the caller would have deliberately placed earlier in PATH (it is
+    exactly what `tests/desk_activate_fixtures.py::appeler` does, whose
+    fake `npm` must keep being found first).
     """
     commande = ["npm", "run", sous_commande, "--", *arguments]
     env_complet = dict(env)
@@ -71,9 +71,9 @@ def lancer_npm(cwd: pathlib.Path, sous_commande: str, arguments: list,
 
 def creer_compte_admin(plateforme_dir: pathlib.Path, email: str,
                         mot_de_passe: str, env: dict):
-    """`npm run admin:utilisateur -- --email <email>`, mot de passe sur
-    STDIN — jamais sur l'argv (voir le docstring de tête d'`activate.py`).
-    Rend `(identifiant, None)` en succès, `(None, raison)` sinon.
+    """`npm run admin:utilisateur -- --email <email>`, password on
+    STDIN — never in argv (see the top docstring of `activate.py`).
+    Returns `(identifier, None)` on success, `(None, reason)` otherwise.
     """
     code, out, err = lancer_npm(plateforme_dir, "admin:utilisateur",
                                  ["--email", email], env,
@@ -85,11 +85,11 @@ def creer_compte_admin(plateforme_dir: pathlib.Path, email: str,
 
 def enroler_agent_plateforme(plateforme_dir: pathlib.Path, nom_vm: str,
                               adresse_vm: str, env: dict):
-    """`npm run admin:agent -- --vm <nom_vm> --adresse <adresse_vm>` — mode
-    ENRÔLEMENT (voir le docstring de tête d'`activate.py` sur les deux sens
-    de `--vm`).
+    """`npm run admin:agent -- --vm <nom_vm> --adresse <adresse_vm>` — ENROLMENT
+    mode (see the top docstring of `activate.py` on the two meanings
+    of `--vm`).
 
-    Rend `((vm_id, secret), None)` en succès, `(None, raison)` sinon.
+    Returns `((vm_id, secret), None)` on success, `(None, reason)` otherwise.
     """
     code, out, err = lancer_npm(plateforme_dir, "admin:agent",
                                  ["--vm", nom_vm, "--adresse", adresse_vm], env)
@@ -110,18 +110,18 @@ def enroler_agent_plateforme(plateforme_dir: pathlib.Path, nom_vm: str,
 
 def attribuer_vm_a_utilisateur(plateforme_dir: pathlib.Path, email: str,
                                 vm_id: str, env: dict):
-    """`npm run admin:attribuer -- --email <email> --vm <vm_id>` (tâche 13,
-    trou trouvé en production le 29 août 2026 — voir le commentaire
-    d'`activate.py::main()` pour le pourquoi et le placement).
+    """`npm run admin:attribuer -- --email <email> --vm <vm_id>` (task 13,
+    a hole found in production on August 29th, 2026 — see the comment of
+    `activate.py::main()` for the why and the placement).
 
-    Ni `email` ni `vm_id` ne sont des secrets : aucun besoin de stdin ici,
-    à la différence de `creer_compte_admin`. `attribuer-vm.ts` REFUSE de
-    toute façon tout drapeau qui ferait passer un secret par l'argv
-    (`DRAPEAUX_INTERDITS`) — cette commande n'en emploie aucun.
+    Neither `email` nor `vm_id` are secrets: no need for stdin here,
+    unlike `creer_compte_admin`. `attribuer-vm.ts` REFUSES
+    anyway any flag that would pass a secret through argv
+    (`DRAPEAUX_INTERDITS`) — this command uses none.
 
-    Rend `(sortie, None)` en succès, `(None, raison)` sinon. `sortie` porte
-    `vm=…\\nnom=…\\nutilisateur=…\\nemail=…\\n` (voir `attribuer-vm.ts::appliquer`),
-    ignorée par l'appelant : seul l'échec compte ici.
+    Returns `(output, None)` on success, `(None, reason)` otherwise. `output` carries
+    `vm=…\\nnom=…\\nutilisateur=…\\nemail=…\\n` (see `attribuer-vm.ts::appliquer`),
+    ignored by the caller: only failure counts here.
     """
     code, out, err = lancer_npm(plateforme_dir, "admin:attribuer",
                                  ["--email", email, "--vm", vm_id], env)

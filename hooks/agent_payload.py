@@ -51,10 +51,10 @@ FETCH_PAYLOAD_RELATIF = pathlib.Path("console") / "guest" / "fetch_payload.py"
 
 
 def chemin_agent_console() -> pathlib.Path:
-    """Vise `<NIVUUS_PACKAGES_DIR>/console/guest/payload/agent/agent.exe`
-    (relu par `fetch_payload.py:61`) ; lève `FileNotFoundError`, nommant le
-    chemin, si `console/guest/fetch_payload.py` est absent — un échec
-    silencieux serait indiscernable d'un no-op (doctrine de
+    """Targets `<NIVUUS_PACKAGES_DIR>/console/guest/payload/agent/agent.exe`
+    (reread by `fetch_payload.py:61`); raises `FileNotFoundError`, naming the
+    path, if `console/guest/fetch_payload.py` is absent — a silent
+    failure would be indistinguishable from a no-op (doctrine of
     `hooks/vm.py::chemin_winrm_exec`)."""
     packages_dir = os.environ.get("NIVUUS_PACKAGES_DIR", NIVUUS_PACKAGES_DIR_DEFAUT)
     fetch_payload = pathlib.Path(packages_dir) / FETCH_PAYLOAD_RELATIF
@@ -68,11 +68,11 @@ def chemin_agent_console() -> pathlib.Path:
 
 
 def construire_agent_reel(destination: pathlib.Path) -> None:
-    """Invoque `scripts/build-agent-croise.sh <destination.parent>` (un
-    RÉPERTOIRE, jamais un nom de fichier) ; lève `RuntimeError` (sortie du
-    script) sur un code non nul. Chemin surchargeable par
-    `DESK_BUILD_AGENT_SCRIPT` (jamais en production) pour que les tests ne
-    compilent jamais l'agent réel (~40 s) — voir `tests/test_desk_payload.py`.
+    """Invokes `scripts/build-agent-croise.sh <destination.parent>` (a
+    DIRECTORY, never a file name); raises `RuntimeError` (the script's
+    output) on a non-zero code. Path overridable through
+    `DESK_BUILD_AGENT_SCRIPT` (never in production) so that tests never
+    compile the real agent (~40 s) — see `tests/test_desk_payload.py`.
     """
     defaut = RACINE / "scripts" / "build-agent-croise.sh"
     script = pathlib.Path(os.environ.get("DESK_BUILD_AGENT_SCRIPT") or defaut)
@@ -84,11 +84,11 @@ def construire_agent_reel(destination: pathlib.Path) -> None:
 
 
 def deposer_agent_console(construire=None) -> pathlib.Path:
-    """Construit `agent.exe` et le dépose où `console` le cherche.
-    `construire` : factice en test, `construire_agent_reel` par défaut.
-    🔴 Vérifie APRÈS COUP que le fichier existe (lève sinon) : un
-    `construire` muet serait une réussite silencieuse (« un contrôle qu'on
-    n'a jamais vu rouge n'est pas un contrôle », payé sur `AUDIO_FAUTE_LECTURE`).
+    """Builds `agent.exe` and drops it where `console` looks for it.
+    `construire`: fake in tests, `construire_agent_reel` by default.
+    🔴 Checks AFTERWARDS that the file exists (raises otherwise): a mute
+    `construire` would be a silent success ("a check never
+    seen red is not a check", paid for on `AUDIO_FAUTE_LECTURE`).
     """
     cible = chemin_agent_console()
     construire = construire or construire_agent_reel
