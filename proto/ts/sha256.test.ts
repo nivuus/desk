@@ -1,19 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import { Sha256, condenserHex } from './sha256';
 
-/** L'octet-à-hexadécimal de l'ORACLE — jamais celui du module sous test. */
+/** The ORACLE's byte-to-hexadecimal — never that of the module under test. */
 function hexDe(tampon: ArrayBuffer): string {
     return Array.from(new Uint8Array(tampon))
         .map((octet) => octet.toString(16).padStart(2, '0'))
         .join('');
 }
 
-/** Ce que le NAVIGATEUR répond, en une fois. C'est l'oracle indépendant. */
+/** What the BROWSER answers, in one go. It is the independent oracle. */
 async function empreinteDeReference(message: Uint8Array): Promise<string> {
-    // ⚠️ La copie n'est pas superflue : `crypto.subtle.digest` exige un
-    // `BufferSource` adossé à un `ArrayBuffer`, quand un `Uint8Array` quelconque
-    // peut l'être à un `SharedArrayBuffer` — que `tsc` refuse d'écarter. Une
-    // assertion de type le tairait ; la copie le règle, et l'oracle reste un
+    // ⚠️ The copy is not superfluous: `crypto.subtle.digest` requires a
+    // `BufferSource` backed by an `ArrayBuffer`, whereas an arbitrary `Uint8Array`
+    // can be backed by a `SharedArrayBuffer` — which `tsc` refuses to rule out. A
+    // type assertion would silence it; the copy settles it, and the oracle stays an
     // oracle.
     const copie = new Uint8Array(new ArrayBuffer(message.length));
     copie.set(message);
@@ -21,12 +21,12 @@ async function empreinteDeReference(message: Uint8Array): Promise<string> {
 }
 
 /**
- * Un générateur déterministe (xorshift32), et il n'est pas décoratif.
+ * A deterministic generator (xorshift32), and it is not decorative.
  *
- * ⚠️ Un message de N octets tous identiques laisserait passer une faute qui
- * mélange deux positions du bloc — le contenu étant le même partout, l'échange
- * serait invisible. Le contenu doit donc VARIER, et il doit être REPRODUCTIBLE
- * pour qu'un échec se rejoue à l'identique : d'où une graine fixe plutôt que
+ * ⚠️ A message of N identical bytes would let through a fault that
+ * swaps two positions of the block — the content being the same everywhere, the swap
+ * would be invisible. The content must therefore VARY, and it must be REPRODUCIBLE
+ * so that a failure replays identically: hence a fixed seed rather than
  * `Math.random`.
  */
 function messageOfSize(size: number): Uint8Array {
@@ -45,7 +45,7 @@ function texte(chain: string): Uint8Array {
     return new TextEncoder().encode(chain);
 }
 
-/** Absorbe `message` en morceaux de `size` octets, puis clôt. */
+/** Absorbs `message` in chunks of `size` bytes, then closes. */
 function empreinteParMorceaux(message: Uint8Array, size: number): string {
     const empreinte = new Sha256();
     for (let i = 0; i < message.length; i += size) {
@@ -56,18 +56,18 @@ function empreinteParMorceaux(message: Uint8Array, size: number): string {
 
 describe('Sha256, the known-answer vectors', () => {
     /**
-     * 🔴 CE SONT EUX QUI FONT DE CE MODULE AUTRE CHOSE QU'UNE PROMESSE, et ils
-     * sont recopiés de FIPS 180-4, **pas** produits par notre code. Une
-     * constante mal transcrite, une rotation à l'envers, un bourrage qui oublie
-     * son second bloc : les trois tombent.
+     * 🔴 THEY ARE WHAT MAKES THIS MODULE MORE THAN A PROMISE, and they
+     * are copied from FIPS 180-4, **not** produced by our code. A
+     * mistranscribed constant, a reversed rotation, a padding that forgets
+     * its second block: all three fail.
      *
-     * ⚠️ Ils sont identiques, caractère pour caractère, à ceux du jumeau Rust
-     * (`agent/src/apps/sha256.rs`) — c'est ce qui rattraperait une divergence
-     * entre les deux implémentations, qui doivent rendre la même identité pour
-     * le même contenu.
+     * ⚠️ They are identical, character for character, to those of the Rust twin
+     * (`agent/src/apps/sha256.rs`) — it is what would catch a divergence
+     * between the two implementations, which must return the same identity for
+     * the same content.
      */
     it('returns the three fingerprints of FIPS 180-4', () => {
-        // §D.1 : le message vide, dont tout le bloc est du bourrage.
+        // §D.1: the empty message, whose whole block is padding.
         expect(condenserHex(texte(''))).toBe(
             'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
         );
@@ -75,9 +75,9 @@ describe('Sha256, the known-answer vectors', () => {
         expect(condenserHex(texte('abc'))).toBe(
             'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad',
         );
-        // §B.2 : 448 bits — 56 octets, donc la longueur ne tient PAS dans le
-        // bloc de bourrage et il en faut un SECOND. C'est le seul vecteur de la
-        // norme qui exerce cette branche.
+        // §B.2: 448 bits — 56 bytes, so the length does NOT fit in the
+        // padding block and a SECOND one is needed. It is the only vector of the
+        // standard that exercises this branch.
         expect(
             condenserHex(texte('abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq')),
         ).toBe('248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1');
@@ -85,38 +85,38 @@ describe('Sha256, the known-answer vectors', () => {
 });
 
 /**
- * Les tailles de message éprouvées, choisies sur les frontières du bourrage.
+ * The message sizes tested, chosen on the padding boundaries.
  *
- * 55 est le dernier octet où la longueur tient encore dans le bloc, 56 le
- * premier qui en exige un second, 64 un bloc plein dont le bourrage occupe
- * tout un bloc de plus. Les grandes tailles, elles, éprouvent l'enchaînement.
+ * 55 is the last byte where the length still fits in the block, 56 the
+ * first that requires a second one, 64 a full block whose padding takes up
+ * a whole extra block. The large sizes, for their part, test the chaining.
  */
 const SIZES = [0, 1, 3, 55, 56, 57, 63, 64, 65, 127, 128, 129, 1000, 4096, 100_000];
 
 /**
- * 🔴 LES DÉCOUPAGES, ET C'EST LE CŒUR DE CE FICHIER.
+ * 🔴 THE SPLITS, AND IT IS THE HEART OF THIS FILE.
  *
- * Le tampon résiduel de `Sha256` est la seule partie du module que les vecteurs
- * de FIPS n'éprouvent PAS : `condenserHex` absorbe tout d'un coup, donc ne
- * laisse jamais de résidu à reporter d'un morceau au suivant. Or c'est
- * exactement là que vivent les fautes d'un condensat incrémental — et c'est
- * exactement ce qu'un flux de fichier produira, puisqu'un `ReadableStream` rend
- * ce qu'il veut et jamais des multiples de 64.
+ * The residual buffer of `Sha256` is the only part of the module that the FIPS
+ * vectors do NOT test: `condenserHex` absorbs everything at once, so never
+ * leaves a residue to carry from one chunk to the next. Yet that is
+ * exactly where the faults of an incremental digest live — and it is
+ * exactly what a file stream will produce, since a `ReadableStream` returns
+ * whatever it wants and never multiples of 64.
  *
- * Un test qui n'absorberait qu'en blocs de 64 ne prouverait donc presque rien :
- * il court-circuiterait le résidu à chaque morceau. Les tailles ci-dessous sont
- * choisies pour qu'il soit franchi dans tous ses régimes — plus petit qu'un
- * bloc (1, 63), pile un bloc (64), à cheval (65), bien plus grand (1000).
+ * A test that only absorbed in blocks of 64 would therefore prove almost nothing:
+ * it would short-circuit the residue at each chunk. The sizes below are
+ * chosen so that it is crossed in all its regimes — smaller than a
+ * block (1, 63), exactly a block (64), straddling (65), much larger (1000).
  */
 const DECOUPES = [1, 63, 64, 65, 1000];
 
 describe('Sha256 against crypto.subtle', () => {
     /**
-     * 🔵 L'ORACLE EST INDÉPENDANT DE NOTRE CODE, et c'est ce qui donne son poids
-     * à ce test : `crypto.subtle.digest` est l'implémentation du moteur, écrite
-     * par d'autres, en natif. Comparer notre condensat au sien ne peut pas être
-     * satisfait par une faute que nous aurions commise deux fois — à la
-     * différence d'un aller-retour de notre code contre lui-même.
+     * 🔵 THE ORACLE IS INDEPENDENT OF OUR CODE, and it is what gives this test
+     * its weight: `crypto.subtle.digest` is the engine's implementation, written
+     * by others, natively. Comparing our digest with its own cannot be
+     * satisfied by a fault we would have committed twice — unlike
+     * a round trip of our code against itself.
      */
     it.each(SIZES)('agrees on a message of %i bytes absorbed in one go', async (size) => {
         const message = messageOfSize(size);
@@ -133,10 +133,10 @@ describe('Sha256 against crypto.subtle', () => {
     });
 
     /**
-     * Le découpage IRRÉGULIER, celui qu'aucune taille fixe ne reproduit : les
-     * morceaux changent de longueur d'un appel au suivant, comme le ferait un
-     * flux réel. C'est le seul cas où le résidu est repris à des décalages
-     * chaque fois différents.
+     * The IRREGULAR split, the one no fixed size reproduces: the
+     * chunks change length from one call to the next, as a real stream
+     * would. It is the only case where the residue is picked up at offsets
+     * different each time.
      */
     it('agrees on a split with variable lengths', async () => {
         const lengths = [1, 7, 64, 2, 63, 65, 128, 3, 55, 56, 1, 200, 9];
@@ -172,8 +172,8 @@ describe('Sha256, the contract of the object', () => {
         const empreinte = new Sha256();
         empreinte.absorber(texte('abc'));
         empreinte.terminer();
-        // Poursuivre rendrait une empreinte silencieusement fausse : elle doit
-        // lever, jamais mentir.
+        // Going on would return a silently wrong hash: it must
+        // throw, never lie.
         expect(() => empreinte.absorber(texte('def'))).toThrow(/closed/);
     });
 
@@ -192,8 +192,8 @@ describe('Sha256, the contract of the object', () => {
     });
 
     it('returns distinct fingerprints for 130 distinct lengths', () => {
-        // Un bourrage cassé — un `<` pour un `<=`, une longueur écrite au
-        // mauvais décalage — ferait collisionner deux tailles voisines.
+        // A broken padding — a `<` for a `<=`, a length written at the
+        // wrong offset — would make two neighbouring sizes collide.
         const all = new Set<string>();
         for (let n = 0; n < 130; n += 1) all.add(condenserHex(new Uint8Array(n).fill(0x61)));
         expect(all.size).toBe(130);

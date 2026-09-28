@@ -11,10 +11,10 @@ import {
 } from './input';
 
 /**
- * Typage explicite des cas de vecteurs partagés : le JSON mélange des champs
- * propres à chaque `kind`, tous optionnels ici puisqu'aucun cas ne les porte
- * tous. Un typage local évite à TypeScript d'inférer une union imprécise
- * (et évite de disperser des `as any` dans le corps du test).
+ * Explicit typing of the shared vector cases: the JSON mixes fields
+ * specific to each `kind`, all optional here since no case carries them
+ * all. A local typing keeps TypeScript from inferring an imprecise union
+ * (and avoids scattering `as any` through the test body).
  */
 interface VectorCase {
     name: string;

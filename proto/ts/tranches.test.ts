@@ -2,26 +2,26 @@ import { describe, expect, it } from 'vitest';
 import { plan, verdict, type Tranche } from './tranches';
 
 /**
- * ⚠️ CE QUI JUGE CE FICHIER EST UNE MUTATION NOMMÉE : remplacer `Math.ceil` par
- * `Math.floor` dans `plan`. La dernière tranche disparaît, et `verdict`
- * déclare alors `complet` un fichier TRONQUÉ. Les tests qui la tuent portent le
- * marqueur 🔴 dans leur titre — ce sont ceux qui rattachent le découpage à la
- * `size` par un chemin INDÉPENDANT de `plan` : compter des tranches ou
- * sommer leurs octets contre le nombre attendu, jamais contre ce que `plan`
- * vient de rendre. Un test qui comparerait `plan` à lui-même resterait vert
- * sous la mutation.
+ * ⚠️ WHAT JUDGES THIS FILE IS A NAMED MUTATION: replacing `Math.ceil` with
+ * `Math.floor` in `plan`. The last chunk disappears, and `verdict`
+ * then declares `complet` a TRUNCATED file. The tests that kill it carry the
+ * 🔴 marker in their title — they are the ones that tie the split to the
+ * `size` through a path INDEPENDENT of `plan`: counting chunks or
+ * summing their bytes against the expected number, never against what `plan`
+ * has just returned. A test that compared `plan` with itself would stay green
+ * under the mutation.
  */
 
-/** Somme des octets d'un découpage — l'invariant central, calculé à part. */
+/** Sum of the bytes of a split — the central invariant, computed separately. */
 function somme(tranches: Tranche[]): number {
     return tranches.reduce((total, t) => total + t.octets, 0);
 }
 
 describe('plan', () => {
     it('returns ZERO chunks for an empty file, never an empty chunk', () => {
-        // Un fichier vide est légitime : il n'a rien à déposer. Fabriquer une
-        // tranche de zéro octet obligerait le déposant à envoyer une trame sans
-        // contenu pour sceller un fichier sans contenu.
+        // An empty file is legitimate: it has nothing to drop. Making a
+        // zero-byte chunk would force the depositor to send a frame without
+        // content to seal a file without content.
         expect(plan(0, 4)).toEqual([]);
     });
 
@@ -36,8 +36,8 @@ describe('plan', () => {
     ])(
         '🔴 the sum of the bytes is EXACTLY the size (size=%i, step=%i)',
         (size, pas) => {
-            // La comparaison porte sur `size`, PAS sur `plan` : c'est ce qui
-            // rend l'assertion capable de voir une queue de fichier perdue.
+            // The comparison is on `size`, NOT on `plan`: it is what
+            // makes the assertion able to see a lost file tail.
             expect(somme(plan(size, pas))).toBe(size);
         },
     );
@@ -52,8 +52,8 @@ describe('plan', () => {
     ])(
         '🔴 the number of chunks is the ceiling of the quotient (size=%i, step=%i → %i)',
         (size, pas, combien) => {
-            // Le nombre attendu est écrit à la main, jamais recalculé : un
-            // `Math.ceil` dans le test reproduirait le défaut qu'il cherche.
+            // The expected number is written by hand, never recomputed: a
+            // `Math.ceil` in the test would reproduce the defect it looks for.
             expect(plan(size, pas)).toHaveLength(combien);
         },
     );
@@ -75,8 +75,8 @@ describe('plan', () => {
         const pas = 4;
         const tranches = plan(10, pas);
         expect(tranches.map((t) => t.n)).toEqual([0, 1, 2]);
-        // La propriété que la base zéro achète : `n * pas` EST la position, sans
-        // table ni décalage à retenir de chaque côté du pont.
+        // The property the zero base buys: `n * pas` IS the position, without
+        // a table or an offset to remember on each side of the bridge.
         const positions = tranches.map((t) => t.n * pas);
         expect(positions).toEqual([0, 4, 8]);
     });
@@ -96,9 +96,9 @@ describe('plan', () => {
         ['a non-integer size', 2.5, 4],
         ['a NaN size', Number.NaN, 4],
     ])('THROWS on an invalid contract: %s', (_titre, size, pas) => {
-        // Le contrat est détenu par l'appelant, pas reçu du fil : un contrat
-        // absurde est un défaut de programme, et le rendre sous forme de
-        // verdict le déguiserait en anomalie de transfert.
+        // The contract is held by the caller, not received from the wire: an
+        // absurd contract is a program defect, and returning it as a
+        // verdict would disguise it as a transfer anomaly.
         expect(() => plan(size, pas)).toThrow(/chunks:/);
     });
 });
@@ -109,8 +109,8 @@ describe('verdict', () => {
     });
 
     it("returns complete whatever the ORDER of arrival of the chunks", () => {
-        // Rien ne garantit que le déposant émette dans l'ordre, ni que le
-        // réseau les rende dans l'ordre.
+        // Nothing guarantees the depositor emits in order, nor that the
+        // network returns them in order.
         const desordre = [...plan(10, 4)].reverse();
         expect(verdict(10, 4, desordre)).toEqual({ etat: 'complet' });
     });
@@ -123,10 +123,10 @@ describe('verdict', () => {
     });
 
     it("🔴 refuses to declare complete a TRUNCATED file: the last chunk is missing", () => {
-        // C'est le cas exact que la mutation `ceil → floor` rend invisible.
-        // Avec `floor`, le plan de 10 octets par 4 ne compterait que deux
-        // tranches, les deux ci-dessous suffiraient, et deux octets seraient
-        // perdus SANS QU'AUCUNE TRACE NE LE DISE.
+        // It is the exact case the `ceil → floor` mutation makes invisible.
+        // With `floor`, the plan of 10 bytes by 4 would only count two
+        // chunks, the two below would suffice, and two bytes would be
+        // lost WITHOUT ANY TRACE SAYING SO.
         expect(verdict(10, 4, [
             { n: 0, octets: 4 },
             { n: 1, octets: 4 },
@@ -142,8 +142,8 @@ describe('verdict', () => {
         "🔴 an upload cut off from its last chunk is NEVER complete (size=%i, step=%i)",
         (size, pas) => {
             const ampute = plan(size, pas).slice(0, -1);
-            // La somme déposée est strictement inférieure à la taille : c'est
-            // la formulation la plus directe de « le fichier est tronqué ».
+            // The dropped sum is strictly lower than the size: it is
+            // the most direct formulation of "the file is truncated".
             expect(somme(ampute)).toBeLessThan(size);
             expect(verdict(size, pas, ampute).etat).toBe('manquantes');
         },
@@ -154,7 +154,7 @@ describe('verdict', () => {
     });
 
     it('declares INCONSISTENT a chunk SHORTER than planned, not missing', () => {
-        // Un transfert amputé : la redemander rendrait la même chose.
+        // A truncated transfer: asking for it again would return the same thing.
         expect(verdict(12, 4, [
             { n: 0, octets: 4 },
             { n: 1, octets: 3 },
@@ -163,7 +163,7 @@ describe('verdict', () => {
     });
 
     it('declares INCONSISTENT a chunk LONGER than planned', () => {
-        // Elle déborderait sur sa voisine.
+        // It would overflow onto its neighbour.
         expect(verdict(12, 4, [
             { n: 0, octets: 5 },
             { n: 1, octets: 4 },
@@ -172,7 +172,7 @@ describe('verdict', () => {
     });
 
     it('declares INCONSISTENT the last chunk sent at the size of the step', () => {
-        // Le piège naturel du déposant : remplir la queue jusqu'au pas.
+        // The depositor's natural trap: filling the tail up to the step.
         expect(verdict(10, 4, [
             { n: 0, octets: 4 },
             { n: 1, octets: 4 },
@@ -197,8 +197,8 @@ describe('verdict', () => {
     });
 
     it('declares INCONSISTENT a non-integer rank, and returns it AS IS', () => {
-        // La liste doit montrer ce qui a réellement été envoyé, pas une valeur
-        // nettoyée : c'est ce qu'un journal a besoin de lire.
+        // The list must show what was really sent, not a cleaned-up
+        // value: it is what a log needs to read.
         expect(verdict(8, 4, [{ n: 1.5, octets: 4 }])).toEqual({
             etat: 'incoherentes',
             n: [1.5],
@@ -213,9 +213,9 @@ describe('verdict', () => {
     });
 
     it('declares INCONSISTENT a DUPLICATE whose two occurrences agree on the size', () => {
-        // 🔴 Deux dépôts pour le même rang : l'un a écrasé l'autre, et rien ici
-        // ne peut savoir lequel a gagné. Deux trames de même longueur ne
-        // portent pas forcément le même contenu.
+        // 🔴 Two drops for the same rank: one overwrote the other, and nothing here
+        // can know which one won. Two frames of the same length do not
+        // necessarily carry the same content.
         expect(verdict(8, 4, [
             { n: 0, octets: 4 },
             { n: 0, octets: 4 },
@@ -232,9 +232,9 @@ describe('verdict', () => {
     });
 
     it('🔴 makes incoherentes PREVAIL over manquantes when both are present', () => {
-        // Annoncer d'abord le trou ferait recompléter la tranche absente, puis
-        // re-vérifier, puis retomber sur la même incohérence — la boucle exacte
-        // que la distinction existe pour empêcher.
+        // Announcing the hole first would make the absent chunk be completed again, then
+        // rechecked, then fall back on the same inconsistency — the exact loop
+        // the distinction exists to prevent.
         const rendu = verdict(12, 4, [{ n: 0, octets: 9 }]);
         expect(rendu).toEqual({ etat: 'incoherentes', n: [0] });
     });
@@ -251,8 +251,8 @@ describe('verdict', () => {
     });
 
     it('sorts the ranks NUMERICALLY and without duplicates', () => {
-        // ⚠️ Onze tranches : c'est le seuil à partir duquel le tri par défaut
-        // de JavaScript, qui compare des CHAÎNES, rendrait `[0, 10, 2, …]`.
+        // ⚠️ Eleven chunks: it is the threshold from which JavaScript's default
+        // sort, which compares STRINGS, would return `[0, 10, 2, …]`.
         const rendu = verdict(44, 4, [{ n: 1, octets: 4 }]);
         expect(rendu).toEqual({
             etat: 'manquantes',
@@ -274,14 +274,14 @@ describe('verdict', () => {
         ['a zero step', 10, 0],
         ['a negative size', -1, 4],
     ])('THROWS on an invalid contract, like plan: %s', (_titre, size, pas) => {
-        // La garde est la MÊME des deux côtés : un contrat qui ne tient pas ne
-        // doit pas produire un verdict d'apparence normale.
+        // The guard is the SAME on both sides: a contract that does not hold must
+        // not produce a normal-looking verdict.
         expect(() => verdict(size, pas, [])).toThrow(/chunks:/);
     });
 
     it('NEVER throws on what comes from the wire, however absurd', () => {
-        // Un pair déréglé ou malveillant ne doit pas pouvoir faire tomber le
-        // vérificateur : tout ce qui vient de `presentes` devient un verdict.
+        // A misbehaving or malicious peer must not be able to bring down the
+        // checker: everything coming from `presentes` becomes a verdict.
         expect(() =>
             verdict(8, 4, [
                 { n: -7, octets: Number.NaN },

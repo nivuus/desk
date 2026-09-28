@@ -1,85 +1,85 @@
--- Le catalogue des applications : les colonnes que le sous-projet 4 ecrit sur
--- la table `application`, creee vide par 0003-agents.sql.
+-- The application catalogue: the columns sub-project 4 writes on
+-- the `application` table, created empty by 0003-agents.sql.
 --
--- 🔴 POURQUOI TOUTES LES COLONNES NOT NULL NAISSENT ICI, ET PAS PLUS TARD.
--- Mesure le 19 aout 2026 sur SQLite 3.50.4 : un ALTER TABLE ADD COLUMN NOT
--- NULL sans DEFAUT est REFUSE des que la table porte une seule ligne --
+-- 🔴 WHY ALL THE NOT NULL COLUMNS ARE BORN HERE, AND NOT LATER.
+-- Measured on 19 August 2026 on SQLite 3.50.4: an ALTER TABLE ADD COLUMN NOT
+-- NULL without a DEFAULT is REFUSED as soon as the table carries a single row --
 --     Cannot add a NOT NULL column with default value NULL
--- et un DEFAUT litteral est impossible ici, `rendreMarqueurs` refusant tout
--- SQL portant une apostrophe ou un guillemet (base/pilote.ts). Une colonne
--- obligatoire qu un sous-bloc ulterieur voudrait ajouter serait donc
--- inajoutable des la premiere application decouverte : elles naissent toutes
--- maintenant, pendant que la table est encore vide.
+-- and a literal DEFAULT is impossible here, `rendreMarqueurs` refusing any
+-- SQL carrying an apostrophe or a double quote (base/pilote.ts). A mandatory
+-- column a later sub-block wanted to add would therefore be
+-- impossible to add from the first discovered application: they are all born
+-- now, while the table is still empty.
 --
--- 🔴 ET C EST AUSSI POURQUOI CE FICHIER NE FAIT PAS DROP PUIS CREATE. Cette
--- alternative a ete mesuree et fonctionne des deux cotes ; elle est ECARTEE
--- parce qu elle rendrait le geste dependant du fait que la table soit vide
--- CHEZ LE LECTEUR, et un DROP sur une table peuplee detruirait un catalogue
--- sans rien dire. ADD COLUMN, lui, CRIE quand la supposition est fausse.
--- Entre deux gestes qui supposent la meme chose, on prend celui qui crie.
+-- 🔴 AND IT IS ALSO WHY THIS FILE DOES NOT DROP THEN CREATE. This
+-- alternative was measured and works on both sides; it is RULED OUT
+-- because it would make the gesture depend on the table being empty
+-- ON THE READER'S SIDE, and a DROP on a populated table would destroy a catalogue
+-- without saying anything. ADD COLUMN, for its part, SHOUTS when the assumption is wrong.
+-- Between two gestures that assume the same thing, we take the one that shouts.
 --
--- 🔴 L UNICITE PASSE PAR UN INDEX, JAMAIS PAR ADD COLUMN ... UNIQUE. Mesure le
--- meme jour : SQLite rend `Cannot add a UNIQUE column` la ou Postgres
--- l accepte. Un seul des deux moteurs rougirait, et c est exactement ce que la
--- double passe existe pour attraper.
+-- 🔴 UNIQUENESS GOES THROUGH AN INDEX, NEVER THROUGH ADD COLUMN ... UNIQUE. Measured the
+-- same day: SQLite returns `Cannot add a UNIQUE column` where Postgres
+-- accepts it. Only one of the two engines would turn red, and it is exactly what the
+-- double pass exists to catch.
 --
--- Les horodatages sont BIGINT et non INTEGER : INTEGER vaut 4 octets sur
--- Postgres, ou un Date.now() deborde (voir l en-tete de 0003-agents.sql). Ils
--- portent tous la convention `_a`, sans laquelle le lint statique de
--- sous-ensemble.test.ts ne pourrait pas les voir.
+-- The timestamps are BIGINT and not INTEGER: INTEGER is 4 bytes on
+-- Postgres, where a Date.now() overflows (see the header of 0003-agents.sql). They
+-- all carry the `_a` convention, without which the static lint of
+-- sous-ensemble.test.ts could not see them.
 --
--- Aucune cle etrangere n est ajoutee : SQLite ne sait pas ajouter une
--- contrainte par ALTER TABLE, et une cle etrangere nait avec sa table ou
--- n existe jamais (leg n°2 de P1). Celle de `vm_id` est deja portee par
+-- No foreign key is added: SQLite cannot add a
+-- constraint through ALTER TABLE, and a foreign key is born with its table or
+-- never exists (P1's legacy item no. 2). That of `vm_id` is already carried by
 -- 0003-agents.sql.
 
--- L identite de l application, au sens du sous-projet 4 : l empreinte du
--- triplet (cible, arguments, repertoire). C est elle que l ordre de lancement
--- porte, jamais le chemin du raccourci.
+-- The identity of the application, in the sense of sub-project 4: the hash of the
+-- triple (cible, arguments, repertoire). It is what the launch order
+-- carries, never the path of the shortcut.
 ALTER TABLE application ADD COLUMN cle TEXT NOT NULL;
 
--- La cible du raccourci, NORMALISEE (absolue, casse repliee), et son
--- repertoire de travail, normalise de la meme facon.
+-- The target of the shortcut, NORMALISED (absolute, case folded), and its
+-- working directory, normalised the same way.
 ALTER TABLE application ADD COLUMN cible TEXT NOT NULL;
 
--- ⚠️ Les arguments sont BRUTS et SENSIBLES A LA CASSE, contrairement aux deux
--- chemins ci-dessus. Deux chemins Windows qui ne different que par la casse
--- designent le meme fichier ; deux lignes de commande qui ne different que par
--- la casse d un argument sont deux invocations distinctes. Vide = chaine vide,
--- jamais NULL.
+-- ⚠️ The arguments are RAW and CASE SENSITIVE, unlike the two
+-- paths above. Two Windows paths that differ only by case
+-- designate the same file; two command lines that differ only by
+-- the case of an argument are two distinct invocations. Empty = empty string,
+-- never NULL.
 ALTER TABLE application ADD COLUMN arguments TEXT NOT NULL;
 
 ALTER TABLE application ADD COLUMN repertoire TEXT NOT NULL;
 
--- La premiere fois que la reconciliation a vu cette application.
+-- The first time the reconciliation saw this application.
 --
--- ⚠️ ELLE EST ECRITE PAR G1 ET LUE PAR PERSONNE AVANT G3, et c est declare
--- plutot que decouvert. Elle nait maintenant parce qu une colonne NOT NULL ne
--- pourra plus etre ajoutee une fois la table peuplee, et le verdict
--- d installation en aura besoin. Precedent explicite du depot :
--- agents/fraicheur.ts, module pur sans appelant de production, acceptable
--- parce que declare tel.
+-- ⚠️ IT IS WRITTEN BY G1 AND READ BY NOBODY BEFORE G3, and it is declared
+-- rather than discovered. It is born now because a NOT NULL column can
+-- no longer be added once the table is populated, and the installation
+-- verdict will need it. Explicit precedent of the repository:
+-- agents/fraicheur.ts, a pure module without a production caller, acceptable
+-- because declared as such.
 ALTER TABLE application ADD COLUMN apparue_a BIGINT NOT NULL;
 
--- Quand l application a cesse d etre vue. POSEE, JAMAIS SUPPRIMEE : effacer la
--- ligne ferait perdre son identifiant a une application installee cote
--- navigateur, et une reapparition lui en donnerait un autre. Une resurrection
--- remet cette colonne a NULL sans toucher a l identifiant.
+-- When the application stopped being seen. SET, NEVER REMOVED: erasing the
+-- row would make an application installed on the browser side lose its identifier,
+-- and a reappearance would give it another one. A resurrection
+-- sets this column back to NULL without touching the identifier.
 ALTER TABLE application ADD COLUMN disparue_a BIGINT NULL;
 
--- Le geste explicite qui masque une entree du catalogue -- un desinstalleur,
--- typiquement.
+-- The explicit gesture that hides a catalogue entry -- an uninstaller,
+-- typically.
 --
--- ⚠️ ELLE N EST ECRITE PAR PERSONNE EN G1 : aucun geste de masquage n existe
--- encore. Elle est NULLABLE, donc elle POURRAIT naitre plus tard ; elle nait
--- quand meme, pour ne pas fragmenter le schema d une meme table en deux
--- migrations. C est le seul point de ce fichier qui soit une commodite et non
--- une contrainte, et il est marque comme tel.
+-- ⚠️ IT IS WRITTEN BY NOBODY IN G1: no hiding gesture exists
+-- yet. It is NULLABLE, so it COULD be born later; it is born
+-- anyway, so as not to fragment the schema of one table across two
+-- migrations. It is the only point of this file that is a convenience and not
+-- a constraint, and it is marked as such.
 ALTER TABLE application ADD COLUMN masquee_a BIGINT NULL;
 
--- 🔴 L UNICITE PORTE SUR LE COUPLE (vm_id, cle), JAMAIS SUR LA CLE SEULE. La
--- cle est l empreinte d un triplet de chemins Windows : deux VMs qui portent
--- la meme application installee au meme endroit produisent la MEME cle, et un
--- index sur `cle` seule ferait que la seconde VM ne pourrait pas enregistrer
--- son catalogue.
+-- 🔴 UNIQUENESS BEARS ON THE PAIR (vm_id, cle), NEVER ON THE KEY ALONE. The
+-- key is the hash of a triple of Windows paths: two VMs that carry
+-- the same application installed at the same place produce the SAME key, and an
+-- index on `cle` alone would mean the second VM could not record
+-- its catalogue.
 CREATE UNIQUE INDEX application_cle ON application(vm_id, cle);

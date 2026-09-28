@@ -34,7 +34,7 @@ export type Cible =
 export function reconnaitre(chemin: string): Cible | undefined {
     const s = chemin.split('/');
     if (s[1] !== 'televersement') return undefined;
-    // ['', 'televersement'] — exactement deux.
+    // ['', 'televersement'] — exactly two.
     if (s.length === 2) return { quoi: 'create' };
     // Three: `/televersement/` has three as well, but its identifier is
     // empty — that is one slash too many, not a path.

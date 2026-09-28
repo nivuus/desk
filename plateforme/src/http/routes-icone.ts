@@ -133,7 +133,7 @@ function repondre(
 /// BOTH ends.
 function empreinteDe(chemin: string): string | undefined {
     const segments = chemin.split('/');
-    // ['', 'icone', '<sha256>'] — exactement trois.
+    // ['', 'icone', '<sha256>'] — exactly three.
     if (segments.length !== 3) return undefined;
     if (segments[1] !== 'icone') return undefined;
     return segments[2] === '' ? undefined : segments[2];

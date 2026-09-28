@@ -1,4 +1,4 @@
-//! Messages du canal plateforme <-> agent (`/agent`).
+//! Messages of the platform <-> agent channel (`/agent`).
 //!
 //! Versioned JSON format: `{"type":"...","v":2,...}` (`type` serves as the internal
 //! tag of the enum and is always emitted first by serde). The `v` field

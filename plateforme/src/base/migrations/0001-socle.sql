@@ -1,40 +1,40 @@
--- Sous-ensemble portable (spec §3.2) : identifiants TEXT/UUID v4, horodatages
--- BIGINT en millisecondes TOUJOURS écrites par l'application, booléens
--- INTEGER 0/1, aucune valeur littérale.
+-- Portable subset (spec §3.2): TEXT/UUID v4 identifiers, BIGINT
+-- timestamps in milliseconds ALWAYS written by the application, booleans as
+-- INTEGER 0/1, no literal value.
 --
--- Les horodatages sont BIGINT et non INTEGER, et c'est MESURÉ, pas prudentiel.
--- `INTEGER` vaut jusqu'à 8 octets sur SQLite et exactement 4 sur Postgres :
--- le 19 août 2026, sur PostgreSQL 16.15, écrire un `Date.now()` dans une
--- colonne INTEGER rendait
+-- The timestamps are BIGINT and not INTEGER, and it is MEASURED, not precautionary.
+-- `INTEGER` is up to 8 bytes on SQLite and exactly 4 on Postgres:
+-- on 19 August 2026, on PostgreSQL 16.15, writing a `Date.now()` into an
+-- INTEGER column returned
 --     value "1787136773742" is out of range for type integer
--- et le service ne pouvait pas appliquer ses PROPRES migrations. SQLite
--- l'acceptait sans un mot -- c'est un quatrième angle mort du couple
--- lint / double passe, celui du CHOIX DES VALEURS.
+-- and the service could not apply its OWN migrations. SQLite
+-- accepted it without a word -- it is a fourth blind spot of the
+-- lint / double pass pair, that of the CHOICE OF VALUES.
 --
--- Convention qui rend la règle contrôlable : toute colonne d'horodatage porte
--- un nom en `_a` (cree_a, vue_a, ouverte_a, fermee_a, applique_a), et le lint
--- de `sous-ensemble.test.ts` refuse un `_a INTEGER`.
+-- Convention that makes the rule checkable: every timestamp column carries
+-- a name ending in `_a` (cree_a, vue_a, ouverte_a, fermee_a, applique_a), and the lint
+-- of `sous-ensemble.test.ts` refuses an `_a INTEGER`.
 
 CREATE TABLE schema_migration (
     version    INTEGER PRIMARY KEY,
     applique_a BIGINT NOT NULL
 );
 
--- `utilisateur` est créée par P1 et RESTE VIDE : P2 lui donne son
--- comportement, pas sa table.
+-- `utilisateur` is created by P1 and STAYS EMPTY: P2 gives it its
+-- behaviour, not its table.
 --
--- ✅ P2 L'A FAIT (19 août 2026) : la table n'est plus vide. `depot/utilisateur.ts`
--- l'écrit et la relit, `admin/creer-utilisateur.ts` y crée un compte par la
--- ligne de commande, et `identite/mot-de-passe.ts` remplit `empreinte_mdp` au
--- format `scrypt$N$r$p$sel$empreinte`. **La table elle-même n'a PAS bougé** —
--- c'est exactement ce que la phrase ci-dessus promettait, et c'est ce qui
--- rendait la contrainte de D3 payante. `0002-identite.sql` s'y adosse.
+-- ✅ P2 DID IT (19 August 2026): the table is no longer empty. `depot/utilisateur.ts`
+-- writes it and reads it back, `admin/creer-utilisateur.ts` creates an account in it from the
+-- command line, and `identite/mot-de-passe.ts` fills `empreinte_mdp` in the
+-- `scrypt$N$r$p$sel$empreinte` format. **The table itself did NOT move** —
+-- it is exactly what the sentence above promised, and it is what
+-- made D3's constraint pay off. `0002-identite.sql` leans on it.
 --
 
--- Pourquoi elle ne peut pas attendre : `vm.utilisateur_id` la référence, et
--- SQLite ne sait pas ajouter une contrainte par ALTER TABLE -- mesuré le
--- 19 août 2026 sur SQLite 3.50.4 : near "CONSTRAINT": syntax error. Une clé
--- étrangère naît avec sa table ou n'existe jamais.
+-- Why it cannot wait: `vm.utilisateur_id` references it, and
+-- SQLite cannot add a constraint through ALTER TABLE -- measured on
+-- 19 August 2026 on SQLite 3.50.4: near "CONSTRAINT": syntax error. A foreign
+-- key is born with its table or never exists.
 CREATE TABLE utilisateur (
     id            TEXT PRIMARY KEY,
     email         TEXT NOT NULL UNIQUE,
@@ -50,70 +50,70 @@ CREATE TABLE vm (
     vue_a          BIGINT NULL
 );
 
--- Index unique PARTIEL : plusieurs VM non attribuées coexistent, une seconde
--- attribution est refusée. Éprouvé le 19 août 2026 sur SQLite 3.50.4 --
--- deux NULL tolérés : OK, double attribution : REFUSEE -> UNIQUE constraint
--- failed: vm.utilisateur_id. C'est de lui que dépendra le critère 2 de P4.
+-- PARTIAL unique index: several unassigned VMs coexist, a second
+-- assignment is refused. Tested on 19 August 2026 on SQLite 3.50.4 --
+-- two NULLs tolerated: OK, double assignment: REFUSED -> UNIQUE constraint
+-- failed: vm.utilisateur_id. P4's criterion 2 will depend on it.
 --
--- ❌ LA DERNIÈRE PHRASE CI-DESSUS EST FAUSSE, ET LA PHRASE « une seconde
--- attribution est refusée » EST AMBIGUË AU POINT DE TROMPER (relevé le
--- 20 août 2026, revue transverse du sous-bloc P4, sur MESURE et non par
--- lecture). Ce que cet index interdit est qu'UN UTILISATEUR AIT DEUX VMs :
--- `utilisateur_id` est unique À TRAVERS LES LIGNES. Il n'interdit RIEN à
--- `UPDATE vm SET utilisateur_id = 'bob' WHERE id = 'v1'` quand v1 est déjà à
--- alice — une VM n'a qu'un `utilisateur_id`, et l'ÉCRASER ne viole aucune
--- unicité. Le vol d'une VM par un tiers passe donc, index en place.
+-- ❌ THE LAST SENTENCE ABOVE IS FALSE, AND THE SENTENCE "a second
+-- assignment is refused" IS AMBIGUOUS TO THE POINT OF MISLEADING (found on
+-- 20 August 2026, cross-cutting review of sub-block P4, by MEASUREMENT and not by
+-- reading). What this index forbids is ONE USER HAVING TWO VMs:
+-- `utilisateur_id` is unique ACROSS ROWS. It forbids NOTHING of
+-- `UPDATE vm SET utilisateur_id = 'bob' WHERE id = 'v1'` when v1 already belongs to
+-- alice — a VM has only one `utilisateur_id`, and OVERWRITING it violates no
+-- uniqueness. The theft of a VM by a third party therefore passes, index in place.
 --
--- 🔵 CE N'EST PAS UN RAISONNEMENT, C'EST UNE ROUGE JOUÉE. Journal versé :
+-- 🔵 IT IS NOT A REASONING, IT IS A RED THAT WAS PLAYED. Log filed:
 -- `docs/superpowers/plans/journaux-plateforme-p4/rouge-2a-vol-sans-clause-conditionnelle.log`.
--- Cet index INTACT, il a suffi de retirer la clause `AND utilisateur_id IS
--- NULL` de `depot/vm.ts::attribuerSiLibre` pour que le vol réussisse —
--- `lignes touchées par l'UPDATE de vol : 1`, propriétaire de v1 changé — sur
--- SQLite 3.50.4 comme sur PostgreSQL 16.15. UNE exécution par moteur.
+-- With this index INTACT, it was enough to remove the clause `AND utilisateur_id IS
+-- NULL` from `depot/vm.ts::attribuerSiLibre` for the theft to succeed —
+-- `rows touched by the theft UPDATE: 1`, owner of v1 changed — on
+-- SQLite 3.50.4 as on PostgreSQL 16.15. ONE run per engine.
 --
--- Ce que le critère 2 de P4 exige se scinde donc en DEUX propriétés, à DEUX
--- gardes, qui ne sont PAS toutes deux ici :
---   ②a « une VM n'est attribuée qu'une fois » -> la clause `AND
---       utilisateur_id IS NULL` de l'UPDATE, dans `depot/vm.ts`, PAS cet
---       index ;
---   ②b « un utilisateur ne reçoit qu'une VM »  -> cet index, qui LÈVE.
--- La même attribution fausse vit dans la spec §3.2 et son §4 « P4 » ; elle y
--- est annotée au même endroit et à la même date.
+-- What P4's criterion 2 requires therefore splits into TWO properties, with TWO
+-- guards, which are NOT both here:
+--   ②a "a VM is assigned only once" -> the clause `AND
+--       utilisateur_id IS NULL` of the UPDATE, in `depot/vm.ts`, NOT this
+--       index;
+--   ②b "a user receives only one VM"  -> this index, which THROWS.
+-- The same wrong attribution lives in spec §3.2 and its §4 "P4"; it is
+-- annotated there at the same place and on the same date.
 CREATE UNIQUE INDEX vm_un_utilisateur ON vm(utilisateur_id)
     WHERE utilisateur_id IS NOT NULL;
 
--- `nom_session` est ABSENTE du schéma de la spec (§5), et ajoutée ici : sans
--- elle, la ligne écrite à l'appariement ne désigne rien -- c'est le seul
--- identifiant qu'une session possède avant P2 et P3.
+-- `nom_session` is ABSENT from the spec's schema (§5), and added here: without
+-- it, the row written at pairing designates nothing -- it is the only
+-- identifier a session has before P2 and P3.
 --
--- `utilisateur_id` et `vm_id` naissent NULL alors que la spec les veut
--- NOT NULL : en P1 il n'y a ni utilisateur ni VM, et il n'existe aucune valeur
--- honnête. Ils ne seront PAS resserrés plus tard -- voir le commentaire de
--- `utilisateur` : SQLite exige une reconstruction de table, que Postgres ne
--- fait pas de la même façon.
+-- `utilisateur_id` and `vm_id` are born NULL whereas the spec wants them
+-- NOT NULL: in P1 there is neither user nor VM, and there is no honest
+-- value. They will NOT be tightened later -- see the comment of
+-- `utilisateur`: SQLite requires a table rebuild, which Postgres does not
+-- do the same way.
 --
--- ✅ P2 RENSEIGNE `utilisateur_id` (19 août 2026), et la colonne reste NULLABLE
--- POUR UNE RAISON QUI N'EST PAS DE LA DETTE : une session appariée par un pair
--- `agent` seul -- la session de contrôle `bureau` au démarrage d'une VM -- n'a
--- personne à inscrire : l'agent ne REVENDIQUE rien, sa session devant rester
--- revendicable par le client humain qui la rejoindra (P3 lui a donné une
--- identité, pas une propriété). `NOT NULL`
--- serait donc FAUX, pas seulement coûteux.
+-- ✅ P2 FILLS `utilisateur_id` (19 August 2026), and the column stays NULLABLE
+-- FOR A REASON THAT IS NOT DEBT: a session paired by an `agent`
+-- peer alone -- the `bureau` control session at a VM's startup -- has
+-- nobody to record: the agent CLAIMS nothing, its session having to stay
+-- claimable by the human client that will join it (P3 gave it an
+-- identity, not an ownership). `NOT NULL`
+-- would therefore be WRONG, not merely costly.
 --
--- ✅ `vm_id` EST RENSEIGNÉE DEPUIS P3 (19 août 2026), et cette ligne disait
--- encore « reste entièrement vide : c'est P3 ». Le nom de session PORTE la VM
--- (`<préfixe>:bureau`) : `signaling/trace.ts` découpe le préfixe, le cherche
--- dans `agent_enrole` et inscrit l'identifiant trouvé.
+-- ✅ `vm_id` IS FILLED SINCE P3 (19 August 2026), and this line still said
+-- "stays entirely empty: it is P3". The session name CARRIES the VM
+-- (`<prefix>:bureau`): `signaling/trace.ts` cuts out the prefix, looks it up
+-- in `agent_enrole` and records the identifier found.
 --
--- ⚠️ ELLE RESTE NULLABLE, ET POUR UNE RAISON, PAS PAR DETTE : deux cas rendent
--- `null` honnêtement -- une session sans préfixe (mode d'essai local, spec
--- §10) et un préfixe inconnu de la base. `NOT NULL` refuserait alors d'écrire
--- une trace qui est par ailleurs juste.
+-- ⚠️ IT STAYS NULLABLE, AND FOR A REASON, NOT OUT OF DEBT: two cases yield
+-- `null` honestly -- a session without a prefix (local trial mode, spec
+-- §10) and a prefix unknown to the database. `NOT NULL` would then refuse to write
+-- a trace that is otherwise correct.
 --
--- ⚠️ La correction de cette ligne a été MANQUÉE une première fois : le commit
--- `254fdd5` de cette même branche a réécrit les six lignes qui précèdent sans
--- balayer les deux suivantes. C'est le naufrage du « 487 » -- corriger une
--- affirmation là où on nous l'a montrée, au lieu de la CHERCHER.
+-- ⚠️ The fix of this line was MISSED a first time: commit
+-- `254fdd5` of this same branch rewrote the six preceding lines without
+-- sweeping the next two. It is the "487" wreck -- fixing a
+-- claim where it was shown to us, instead of SEARCHING for it.
 
 CREATE TABLE session (
     id             TEXT PRIMARY KEY,

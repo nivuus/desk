@@ -34,14 +34,14 @@ use serde::{Deserialize, Serialize};
 pub enum Phase {
     /// The bytes are going down from the platform to the VM.
     Transfert,
-    /// L'installeur tourne. Aucun pourcentage — voir ci-dessus.
+    /// The installer is running. No percentage — see above.
     Execution,
     /// The installer has exited; we are waiting for the reconciliation that closes the
     /// counting window.
     Reconciliation,
 }
 
-/// Ce qu'une installation a produit.
+/// What an installation produced.
 ///
 /// 🔴 **THE EXIT CODE DOES NOT ENTER THIS DECISION**, and it is the rule
 /// that governs the whole sub-block: `msiexec` returns **3010** for a success that

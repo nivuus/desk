@@ -14,17 +14,17 @@ import {
 } from './fichiers';
 
 /**
- * Le vecteur épinglé, **écrit en dur ici ET dans `proto/src/files/tests.rs`**.
+ * The pinned vector, **hardcoded here AND in `proto/src/files/tests.rs`**.
  *
- * ⚠️ C'est la seule façon de voir ROUGE une divergence d'endianness entre les
- * deux implémentations : un aller-retour TS→TS reste vert quel que soit le
- * boutisme, du moment qu'il est le même des deux côtés du même fichier. Les
- * octets ci-dessous sont la source de vérité du format, pas une conséquence
- * du code — ils doivent rester identiques, octet pour octet, à
- * `VECTEUR_EPINGLE` côté Rust.
+ * ⚠️ It is the only way to see RED an endianness divergence between the
+ * two implementations: a TS→TS round trip stays green whatever the
+ * byte order, as long as it is the same on both sides of the same file. The
+ * bytes below are the source of truth of the format, not a consequence
+ * of the code — they must stay identical, byte for byte, to
+ * `VECTEUR_EPINGLE` on the Rust side.
  *
- * version 1 | type 66 (`TYPE_DATA`) | corrélation 0x0A0B0C0D petit-boutiste |
- * longueur d'en-tête 2 petit-boutiste | en-tête `{}` | charge `00 FF 7F 80`.
+ * version 1 | type 66 (`TYPE_DATA`) | correlation 0x0A0B0C0D little-endian |
+ * header length 2 little-endian | header `{}` | payload `00 FF 7F 80`.
  */
 const VECTEUR_EPINGLE = new Uint8Array([
     1, 66, 0x0d, 0x0c, 0x0b, 0x0a, 2, 0, 0, 0, 0x7b, 0x7d, 0x00, 0xff, 0x7f, 0x80,
@@ -36,9 +36,9 @@ function octets(t: ArrayBuffer): Uint8Array {
 
 describe('binary frame of the file bridge', () => {
     it('refuses a frame without a version', () => {
-        // Zéro octet ne porte pas sa version : rejet, jamais complétion.
+        // Zero bytes do not carry their version: rejection, never completion.
         expect(() => decoder(new ArrayBuffer(0))).toThrow(/truncated/i);
-        // …et un octet de moins que l'en-tête fixe l'est aussi.
+        // …and one byte less than the fixed header is too.
         expect(() => decoder(new ArrayBuffer(FIXED_HEADER_SIZE - 1))).toThrow(/truncated/i);
     });
 
@@ -53,16 +53,16 @@ describe('binary frame of the file bridge', () => {
         new DataView(trame.buffer).setUint32(6, 0xffffffff, true);
         expect(() => decoder(trame.buffer as ArrayBuffer)).toThrow(/header/i);
 
-        // Le débordement d'UN SEUL octet est refusé aussi : c'est là que vit
-        // l'erreur d'inégalité stricte.
+        // Overflowing by ONE SINGLE byte is refused too: that is where
+        // the strict inequality error lives.
         const dun = octets(encoder(TYPE_ENTREES, 1, {}));
         new DataView(dun.buffer).setUint32(6, 3, true);
         expect(() => decoder(dun.buffer as ArrayBuffer)).toThrow(/header/i);
     });
 
     it('keeps the raw bytes on a round trip', () => {
-        // 0x00 et 0xFF sont les deux octets qu'un encodage textuel abîme en
-        // premier ; on passe les 256.
+        // 0x00 and 0xFF are the two bytes a textual encoding damages
+        // first; we go through all 256.
         const charge = new Uint8Array(256);
         for (let i = 0; i < 256; i += 1) charge[i] = i;
         const trame = decoder(encoder(TYPE_DATA, 0xdeadbeef, { position: 0 }, charge));
@@ -83,8 +83,8 @@ describe('binary frame of the file bridge', () => {
     });
 
     it('accepts a payload of TAILLE_TRAME_MAX and refuses one more byte', () => {
-        // Au seuil EXACT. C'est l'inégalité stricte qui est éprouvée, pas la
-        // borne en général.
+        // At the EXACT threshold. It is the strict inequality that is tested, not the
+        // bound in general.
         const pleine = new Uint8Array(MAX_FRAME_SIZE).fill(0xab);
         expect(decoder(encoder(TYPE_DATA, 1, {}, pleine)).charge.length).toBe(MAX_FRAME_SIZE);
 
@@ -93,15 +93,15 @@ describe('binary frame of the file bridge', () => {
     });
 
     it('decodes what Rust encoded — the pinned vector', () => {
-        // ⚠️ LE test de ce fichier. Sans lui, une divergence d'endianness entre
-        // Rust et TypeScript resterait verte des deux côtés.
+        // ⚠️ THE test of this file. Without it, an endianness divergence between
+        // Rust and TypeScript would stay green on both sides.
         const trame = decoder(VECTEUR_EPINGLE.buffer as ArrayBuffer);
         expect(trame.version).toBe(1);
         expect(trame.type).toBe(TYPE_DATA);
         expect(trame.correlation).toBe(0x0a0b0c0d);
         expect(trame.entete).toEqual({});
         expect(Array.from(trame.charge)).toEqual([0x00, 0xff, 0x7f, 0x80]);
-        // …et l'encodeur TypeScript le REPRODUIT à l'octet près.
+        // …and the TypeScript encoder REPRODUCES it to the byte.
         expect(
             Array.from(
                 octets(encoder(TYPE_DATA, 0x0a0b0c0d, {}, new Uint8Array([0x00, 0xff, 0x7f, 0x80]))),
@@ -110,11 +110,11 @@ describe('binary frame of the file bridge', () => {
     });
 
     it('pins the shape of the failure codes on the wire', () => {
-        // ⚠️ Les variantes à DEUX MOTS sont celles qui se cassent en silence :
-        // ce dépôt a laissé passer `battement-recu` verte sur cinquante tests
-        // parce que rien n'épinglait ses octets. Ces ONZE chaînes doivent être
-        // identiques, caractère pour caractère, au `#[serde(rename_all =
-        // "kebab-case")]` de `CodeEchec` côté Rust.
+        // ⚠️ The TWO-WORD variants are the ones that break silently:
+        // this repository let `battement-recu` pass green across fifty tests
+        // because nothing pinned its bytes. These ELEVEN strings must be
+        // identical, character for character, to the `#[serde(rename_all =
+        // "kebab-case")]` of `CodeEchec` on the Rust side.
         expect(CODES_ECHEC).toEqual([
             'introuvable',
             'chemin-introuvable',
@@ -131,10 +131,10 @@ describe('binary frame of the file bridge', () => {
     });
 
     it('makes no message type overlap', () => {
-        // `ALL_TYPES` est DÉRIVÉE de l'union, pas écrite à la main : c'est
-        // le remède structurel au défaut de `TYPES_AGENT` (`control.ts:106`),
-        // liste manuelle que rien ne confronte à son union. Ajouter un type
-        // sans l'inscrire dans la table casse `tsc --noEmit`, pas seulement ce
+        // `ALL_TYPES` is DERIVED from the union, not written by hand: it is
+        // the structural remedy to the defect of `TYPES_AGENT` (`control.ts:106`),
+        // a manual list nothing confronts with its union. Adding a type
+        // without registering it in the table breaks `tsc --noEmit`, not only this
         // test.
         expect(new Set(ALL_TYPES).size).toBe(ALL_TYPES.length);
         expect(ALL_TYPES).toContain(TYPE_LISTER);

@@ -33,7 +33,7 @@ export interface Application {
     /** The path of the `.lnk` ITSELF, and that is what gets launched. */
     chemin: string;
     cible: string;
-    /** BRUTS (voir ci-dessus). Vide = `''`, jamais absent. */
+    /** RAW (see above). Empty = `''`, never absent. */
     arguments: string;
     repertoire: string;
     /**

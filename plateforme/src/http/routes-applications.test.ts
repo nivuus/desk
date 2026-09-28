@@ -1,11 +1,11 @@
-// `GET /applications` et `POST /application/:id/lancer`, éprouvées À TRAVERS un
-// serveur HTTP réel, dans le style de `routes-vm.test.ts` et de
+// `GET /applications` and `POST /application/:id/lancer`, tested THROUGH a
+// real HTTP server, in the style of `routes-vm.test.ts` and
 // `routes-auth.test.ts`.
 //
-// 🔴 LE REGISTRE EST RÉEL, LE SOCKET EST UN DOUBLE. C'est ce qui permet
-// d'éprouver les trois issues du lancement — succès, agent absent, expiration —
-// sans monter d'agent : le double répond, ou se tait. Ce que fait un VRAI socket
-// est éprouvé ailleurs, par `agents/canal-apps.test.ts`.
+// 🔴 THE REGISTRY IS REAL, THE SOCKET IS A DOUBLE. It is what allows
+// testing the three outcomes of the launch — success, absent agent, timeout —
+// without mounting an agent: the double answers, or stays silent. What a REAL socket does
+// is tested elsewhere, by `agents/canal-apps.test.ts`.
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createServer, type Server } from 'node:http';
@@ -14,8 +14,8 @@ import { baseNeuve, MOTEUR } from '../base/harnais';
 import type { Pilote } from '../base/pilote';
 import { parseDepuisLaPlateforme } from '../../../proto/ts/plateforme';
 import { createUser } from '../depot/utilisateur';
-// 🔴 LE HARNAIS EST EXTRAIT, ET IL L'A ÉTÉ AVANT L'ADDITION de la famille de
-// la route d'icône : ce fichier était à 480 lignes pour un plafond de 500.
+// 🔴 THE HARNESS IS EXTRACTED, AND IT WAS BEFORE THE ADDITION of the
+// icon route family: this file was at 480 lines for a cap of 500.
 import {
     app,
     attribuer,
@@ -43,9 +43,9 @@ afterEach(async () => {
     vi.restoreAllMocks();
 });
 
-/// Monte un serveur qui ne porte QUE cette route, plus le 404 générique de
-/// `serveur.ts` reproduit mot pour mot : c'est ainsi qu'un `false` rendu par
-/// `servirApplications` devient observable.
+/// Mounts a server that carries ONLY this route, plus the generic 404 of
+/// `serveur.ts` reproduced word for word: that is how a `false` returned by
+/// `servirApplications` becomes observable.
 async function servir(nom: string, origineClient?: string): Promise<string> {
     base = await baseNeuve(nom);
     registre = new RegistreAgents();
@@ -74,7 +74,7 @@ async function servir(nom: string, origineClient?: string): Promise<string> {
     return `http://127.0.0.1:${typeof a === 'object' && a ? a.port : 0}`;
 }
 
-/// Un socket qui répond à tout ordre par l'issue donnée — ou qui se tait.
+/// A socket that answers every order with the given outcome — or stays silent.
 function agentQuiRepond(issue: 'raccourci' | 'cible' | 'echec' | null): SocketAgent {
     return {
         readyState: 1,
@@ -82,7 +82,7 @@ function agentQuiRepond(issue: 'raccourci' | 'cible' | 'echec' | null): SocketAg
             if (issue === null) return;
             const ordre = parseDepuisLaPlateforme(data);
             if (ordre.type !== 'lancer') return;
-            // Sur le tour de boucle suivant, comme le ferait un vrai socket.
+            // On the next loop turn, as a real socket would.
             setTimeout(() => registre.resoudre(ordre.demande, issue), 0);
         },
         close() {},
@@ -91,8 +91,8 @@ function agentQuiRepond(issue: 'raccourci' | 'cible' | 'echec' | null): SocketAg
 
 describe(`routes /applications, engine=${MOTEUR}`, () => {
     it("returns `false` on a foreign path: the server's 404 follows", async () => {
-        // 🔴 Rendre `true` ferait manger à cette route les 404 de toutes les
-        // autres, et un chemin inconnu répondrait un corps JSON d'application.
+        // 🔴 Returning `true` would make this route eat the 404s of all the
+        // others, and an unknown path would answer an application JSON body.
         const url = await servir('apps-etranger');
         const r = await fetch(`${url}/nothing-at-all`);
         expect(r.status).toBe(404);
@@ -100,15 +100,15 @@ describe(`routes /applications, engine=${MOTEUR}`, () => {
     });
 
     it('🔴 the pattern of `/application/:id/lancer` is ANCHORED AT BOTH ENDS', async () => {
-        // 🔴 Un `startsWith` ouvrirait « une famille entière de chemins que
-        // personne n'a décidés » (`serveur.ts`).
+        // 🔴 A `startsWith` would open "a whole family of paths that
+        // nobody decided" (`serveur.ts`).
         //
-        // 🔴 C'EST LE CORPS QUI DISCRIMINE, PAS LE CODE. Une première rédaction
-        // n'assertait que `404`, et une mutation `startsWith('/application')`
-        // LUI A SURVÉCU : la route mangeait alors toute la famille et rendait
-        // son PROPRE 404 typé, indiscernable du 404 générique tant qu'on ne
-        // lisait que le statut. Le corps `introuvable\n` est celui de
-        // `serveur.ts`, et il ne peut être rendu que si la route a bien décliné.
+        // 🔴 IT IS THE BODY THAT DISCRIMINATES, NOT THE CODE. A first draft
+        // only asserted `404`, and a mutation `startsWith('/application')`
+        // SURVIVED IT: the route then ate the whole family and returned
+        // its OWN typed 404, indistinguishable from the generic 404 as long as one
+        // only read the status. The body `not found\n` is that of
+        // `serveur.ts`, and it can only be returned if the route did decline.
         const url = await servir('apps-ancre');
         const declines = [
             `${url}/application/x/lancer/y`,
@@ -120,15 +120,15 @@ describe(`routes /applications, engine=${MOTEUR}`, () => {
             const r = await fetch(cible, { method: 'POST' });
             expect([cible, r.status, await r.text()]).toEqual([cible, 404, 'not found\n']);
         }
-        // Et le chemin JUSTE est bien servi — sans ce témoin, les assertions
-        // ci-dessus seraient vraies d'une route qui ne sert RIEN.
+        // And the RIGHT path is served — without this witness, the assertions
+        // above would hold for a route that serves NOTHING.
         expect((await fetch(`${url}/application/x/lancer`, { method: 'POST' })).status).not.toBe(404);
     });
 
     it('WITHOUT an `Authorization` header, returns 401', async () => {
-        // 🔴 Les deux routes de P1/P2 sont ouvertes par construction, et rien
-        // dans ce dépôt n'authentifiait une requête HTTP avant P4. L'omettre
-        // ici rendrait le catalogue de toute VM lisible par n'importe qui.
+        // 🔴 The two routes of P1/P2 are open by construction, and nothing
+        // in this repository authenticated an HTTP request before P4. Omitting it
+        // here would make the catalogue of any VM readable by anyone.
         const url = await servir('apps-sans-jeton');
         const r = await fetch(`${url}/applications?vm=v-1`);
         expect(r.status).toBe(401);
@@ -136,9 +136,9 @@ describe(`routes /applications, engine=${MOTEUR}`, () => {
     });
 
     it("🔴 with an AGENT token, refuses — agent and human are signed by the SAME secret", async () => {
-        // 🔴 Accepter tout jeton valide rouvrirait E5 de P3 : sans le claim de
-        // type, les deux identités sont INTERCHANGEABLES. Un agent compromis
-        // lirait alors le catalogue de son propre utilisateur, et le lancerait.
+        // 🔴 Accepting any valid token would reopen P3's E5: without the type
+        // claim, the two identities are INTERCHANGEABLE. A compromised agent
+        // would then read its own user's catalogue, and launch it.
         const url = await servir('apps-jeton-agent');
         const r = await fetch(`${url}/applications?vm=v-1`, {
             headers: withIt(jetonDe('RhH1x2QmTz9kLpVbNc7dAw', 'agent')),
@@ -148,9 +148,9 @@ describe(`routes /applications, engine=${MOTEUR}`, () => {
     });
 
     it('with an EXPIRED token, refuses — and the test ADVANCES the clock', async () => {
-        // 🔴 Une horloge figée rendrait ce cas inerte : il lirait un état
-        // final au lieu de voir la transition. Le jeton est signé à `MS`, et
-        // la requête est servie bien après son expiration.
+        // 🔴 A frozen clock would make this case inert: it would read a final
+        // state instead of seeing the transition. The token is signed at `MS`, and
+        // the request is served well after its expiry.
         const url = await servir('apps-jeton-expire');
         const jeton = jetonDe('u-1');
         maintenant = MS + 24 * 60 * 60 * 1000;
@@ -160,11 +160,11 @@ describe(`routes /applications, engine=${MOTEUR}`, () => {
     });
 
     it('serves the `OPTIONS` preflight request, without which nothing is reachable', async () => {
-        // ⚠️ Les deux routes exigent `Authorization`, ce qui rend la requête
-        // NON SIMPLE : le navigateur émet d'abord un `OPTIONS`, et un 404 lui
-        // ferait abandonner sans jamais envoyer la vraie requête. AUCUN test
-        // Node ne peut voir la politique d'origine — c'est cette assertion, et
-        // rien d'autre, qui tient l'en-tête.
+        // ⚠️ Both routes require `Authorization`, which makes the request
+        // NON-SIMPLE: the browser first emits an `OPTIONS`, and a 404 would
+        // make it give up without ever sending the real request. NO Node
+        // test can see the origin policy — it is this assertion, and
+        // nothing else, that holds the header.
         const url = await servir('apps-options', ORIGINE);
         const r = await fetch(`${url}/applications`, {
             method: 'OPTIONS',
@@ -189,11 +189,11 @@ describe(`routes /applications, engine=${MOTEUR}`, () => {
     });
 
     it("🔴 strikes the SIGNED URL of the icon, and `null` when there is none", async () => {
-        // 🔴 DÉCISION DU PROPRIÉTAIRE DU DÉPÔT, 30 AOÛT 2026 : c'est ICI, sous
-        // le jeton porteur et APRÈS le contrôle d'appartenance de la VM,
-        // qu'une URL d'icône est frappée — jamais librement. Ce test fige ce
-        // chaînage : sans lui, on pourrait déplacer la frappe sur une route
-        // ouverte sans que rien ne le dise.
+        // 🔴 DECISION OF THE REPOSITORY OWNER, 30 AUGUST 2026: it is HERE, under
+        // the bearer token and AFTER the VM ownership check,
+        // that an icon URL is minted — never freely. This test pins this
+        // chaining: without it, one could move the minting to an
+        // open route without anything saying so.
         const url = await servir('apps-icone-url');
         await poserVm(base!, 'v-1');
         const u = await attribuer(base!, 'v-1', 'a@exemple.test');
@@ -206,17 +206,17 @@ describe(`routes /applications, engine=${MOTEUR}`, () => {
             applications: Array<{ id: string; nom: string; icone_url: string | null }>;
         };
         const parNom = new Map(corps.applications.map((a) => [a.nom, a]));
-        // Sans icône : `null`, jamais une URL qui rendrait 404.
+        // Without an icon: `null`, never a URL that would return 404.
         expect(parNom.get('Sans')!.icone_url).toBe(null);
-        // Avec icône : EXACTEMENT ce que la règle du produit frappe — jamais
-        // une URL réécrite ici, qui n'éprouverait qu'elle-même.
+        // With an icon: EXACTLY what the product rule mints — never
+        // a URL rewritten here, which would only test itself.
         const withIcon = parNom.get('Avec')!;
         expect(withIcon.icone_url).toBe(
             signerUrlIcone(withIcon.id, 'v-1', empreinte, SECRET, maintenant),
         );
-        // 🔴 ET ELLE SE VÉRIFIE : la signature frappée est celle que la route
-        // d'icône acceptera. Un chaînage qui frapperait avec une AUTRE clé
-        // rendrait une URL bien formée et systématiquement refusée.
+        // 🔴 AND IT VERIFIES: the minted signature is the one the icon
+        // route will accept. A chaining that minted with ANOTHER key
+        // would return a well-formed and systematically refused URL.
         const p = new URL(withIcon.icone_url!, 'http://interne');
         expect(verifyIconUrl(withIcon.id, p.searchParams, SECRET, maintenant)).toEqual({
             ok: true,
@@ -225,21 +225,21 @@ describe(`routes /applications, engine=${MOTEUR}`, () => {
     });
 
     it("🔴 a FOREIGN VM answers EXACTLY like an UNKNOWN VM", async () => {
-        // 🔴 CE TEST A ÉTÉ RETOURNÉ. Il épinglait `403 {refus:'vm-etrangere'}`,
-        // c'est-à-dire la décision D9 du plan de G1 — un ORACLE
-        // D'ÉNUMÉRATION : le code de retour confirmait à qui n'y a pas droit
-        // qu'une VM existe. Le propriétaire du dépôt a tranché pour le refus
-        // INDISTINGUABLE de `routes-vm.ts`, et le test épingle désormais
-        // l'indistinguabilité elle-même.
+        // 🔴 THIS TEST WAS REVERSED. It pinned `403 {refus:'vm-etrangere'}`,
+        // that is decision D9 of G1's plan — an ENUMERATION
+        // ORACLE: the return code confirmed to someone not entitled to it
+        // that a VM exists. The repository owner ruled for the
+        // INDISTINGUISHABLE refusal of `routes-vm.ts`, and the test now pins
+        // the indistinguishability itself.
         //
-        // 🔴 LES DEUX CORPS SONT COMPARÉS CARACTÈRE POUR CARACTÈRE, pas
-        // seulement les deux statuts : un test qui ne lirait que `404` serait
-        // satisfait par le MAUVAIS 404 — celui, générique, de `serveur.ts` —
-        // exactement le piège que le test d'ancrage du motif, plus haut dans ce
-        // fichier, a déjà payé une fois.
+        // 🔴 BOTH BODIES ARE COMPARED CHARACTER FOR CHARACTER, not
+        // only the two statuses: a test that only read `404` would be
+        // satisfied by the WRONG 404 — the generic one of `serveur.ts` —
+        // exactly the trap the pattern-anchoring test, further up in this
+        // file, has already paid for once.
         //
-        // ⚠️ CE TEST POSE `vm.utilisateur_id` À LA MAIN, puisque rien ne le
-        // remplit avant P4 — `npm run admin:agent` laisse la colonne NULL.
+        // ⚠️ THIS TEST SETS `vm.utilisateur_id` BY HAND, since nothing
+        // fills it before P4 — `npm run admin:agent` leaves the column NULL.
         const url = await servir('apps-etrangere');
         await poserVm(base!, 'v-1');
         await attribuer(base!, 'v-1', 'proprietaire@exemple.test');
@@ -258,12 +258,12 @@ describe(`routes /applications, engine=${MOTEUR}`, () => {
     });
 
     it("🔴 the body of the refusal CARRIES NO TRACE of the real case", async () => {
-        // 🔴 C'EST L'OBJET MÊME DE LA DÉCISION : la ligne de journal distingue,
-        // la réponse HTTP jamais. Sans cette assertion, un champ de diagnostic
-        // ajouté « pour aider » rétablirait l'oracle sans qu'aucun test ne
-        // rougisse — les deux corps resteraient de même FORME tout en
-        // différant, et le test ci-dessus les comparant l'un à l'autre le
-        // verrait, mais celui-ci le dit par son nom.
+        // 🔴 IT IS THE VERY OBJECT OF THE DECISION: the log line distinguishes,
+        // the HTTP response never does. Without this assertion, a diagnostic field
+        // added "to help" would restore the oracle without any test turning
+        // red — the two bodies would keep the same SHAPE while
+        // differing, and the test above comparing them with each other would
+        // see it, but this one says so by name.
         const url = await servir('apps-etrangere-muette');
         await poserVm(base!, 'v-1');
         await attribuer(base!, 'v-1', 'proprietaire@exemple.test');
@@ -278,15 +278,15 @@ describe(`routes /applications, engine=${MOTEUR}`, () => {
     });
 
     it("🔴 the LOG LINE, however, tells the two cases apart", async () => {
-        // 🔴 C'EST LA CONTREPARTIE EXPLICITE DU REFUS INDISTINGUABLE. Sans
-        // elle, uniformiser coûterait à l'exploitant tout le diagnostic : « la
-        // VM n'existe pas » et « elle est à quelqu'un d'autre » se liraient
-        // pareil des DEUX côtés, et plus personne ne pourrait distinguer une
-        // erreur de saisie d'une tentative d'énumération.
+        // 🔴 IT IS THE EXPLICIT COUNTERPART OF THE INDISTINGUISHABLE REFUSAL. Without
+        // it, uniformising would cost the operator all diagnosis: "the
+        // VM does not exist" and "it belongs to someone else" would read
+        // the same on BOTH sides, and nobody could tell a
+        // typing error from an enumeration attempt any more.
         //
-        // CE QUI REND CE CONTRÔLE ROUGE, et l'état est ATTEIGNABLE : une ligne
-        // qui disparaîtrait, une ligne qui nommerait le même cas dans les deux
-        // situations, ou une ligne qui tairait l'identifiant de la VM.
+        // WHAT MAKES THIS CHECK RED, and the state is REACHABLE: a line
+        // that disappeared, a line that named the same case in both
+        // situations, or a line that kept quiet about the VM's identifier.
         const traces: string[] = [];
         vi.spyOn(console, 'warn').mockImplementation((l: string) => void traces.push(l));
         const url = await servir('apps-journal-distingue');
@@ -304,18 +304,18 @@ describe(`routes /applications, engine=${MOTEUR}`, () => {
         expect(apresEtrangere).toContain('v-1');
         expect(apresInconnue).toContain('cas=inconnue');
         expect(apresInconnue).toContain('jamais-vue');
-        // Et les deux lignes ne sont PAS la même : sans ce témoin, une ligne
-        // unique disant toujours « refus » satisferait les quatre assertions
-        // ci-dessus dès lors qu'elle porterait les deux mots.
+        // And the two lines are NOT the same: without this witness, a single
+        // line always saying "refusal" would satisfy the four assertions
+        // above as soon as it carried both words.
         expect(apresInconnue).not.toContain('cas=etrangere');
     });
 
     it('🔴 an UNASSIGNED VM is served, AND the log line is EMITTED', async () => {
-        // 🔴 SERVIR EN SILENCE RENDRAIT L'ABSENCE D'ISOLATION INVISIBLE. Tant
-        // qu'aucune VM n'est attribuée, tout utilisateur authentifié voit
-        // toutes les VMs — ce n'est PAS une isolation, et la ligne de journal
-        // est ce qui rend l'état visible à l'opérateur. Le test LIT LA TRACE,
-        // pas seulement le code de réponse.
+        // 🔴 SERVING SILENTLY WOULD MAKE THE LACK OF ISOLATION INVISIBLE. As long
+        // as no VM is assigned, every authenticated user sees
+        // all VMs — it is NOT isolation, and the log line
+        // is what makes the state visible to the operator. The test READS THE TRACE,
+        // not only the response code.
         const traces: string[] = [];
         vi.spyOn(console, 'warn').mockImplementation((l: string) => void traces.push(l));
         const url = await servir('apps-non-attribuee');
@@ -341,9 +341,9 @@ describe(`routes /applications, engine=${MOTEUR}`, () => {
     });
 
     it('🔴 returns 503 when the agent is ABSENT, never 200', async () => {
-        // 🔴 Rendre 200 ferait afficher au hub un succès pour un lancement qui
-        // n'a PAS eu lieu — la panne la plus difficile à diagnostiquer qui
-        // soit, parce que rien nulle part ne la contredit.
+        // 🔴 Returning 200 would make the hub display a success for a launch that
+        // did NOT happen — the hardest failure to diagnose there
+        // is, because nothing anywhere contradicts it.
         const url = await servir('apps-lancer-absent');
         await poserVm(base!, 'v-1');
         const u = await attribuer(base!, 'v-1', 'u@exemple.test');
@@ -358,14 +358,14 @@ describe(`routes /applications, engine=${MOTEUR}`, () => {
     });
 
     it("🔴 returns 504 when the agent DOES NOT ANSWER, never 202 without waiting", async () => {
-        // 🔴 Rendre 202 sans attendre ferait passer le critère de recette sur
-        // un binaire qui n'a RIEN lancé : la plateforme dirait « c'est parti »
-        // pour un ordre dont personne n'a jamais vu l'issue.
+        // 🔴 Returning 202 without waiting would pass the acceptance criterion on
+        // a binary that launched NOTHING: the platform would say "off it goes"
+        // for an order whose outcome nobody ever saw.
         const url = await servir('apps-lancer-delai');
         await poserVm(base!, 'v-1');
         const u = await attribuer(base!, 'v-1', 'u@exemple.test');
         const id = await poserApp(base!, 'v-1', 'Firefox', 'c-1');
-        // Un agent inscrit, mais MUET.
+        // An agent registered, but SILENT.
         registre.inscrire('v-1', agentQuiRepond(null));
 
         const debut = Date.now();
@@ -375,16 +375,16 @@ describe(`routes /applications, engine=${MOTEUR}`, () => {
         });
         expect(r.status).toBe(504);
         expect(await r.json()).toEqual({ refus: 'delai' });
-        // ⚠️ ET IL A RÉELLEMENT ATTENDU : sans cette borne, une route qui
-        // rendrait 504 immédiatement passerait le test tout en n'ayant laissé
-        // aucune chance à l'agent.
+        // ⚠️ AND IT REALLY WAITED: without this bound, a route that
+        // returned 504 immediately would pass the test while having left
+        // the agent no chance.
         expect(Date.now() - debut).toBeGreaterThanOrEqual(DELAI_LANCEMENT_MS - 50);
     }, 20_000);
 
     it("🔴 a successful launch returns THE OUTCOME, never a boolean", async () => {
-        // 🔴 Aplatir l'issue en booléen ferait perdre au critère de recette
-        // toute discrimination : `raccourci` contre `cible` est ce qui dit si
-        // c'est bien le `.lnk` qu'on a lancé, ou une cible reconstruite.
+        // 🔴 Flattening the outcome into a boolean would make the acceptance criterion lose
+        // all discrimination: `raccourci` versus `cible` is what says whether
+        // it is indeed the `.lnk` that was launched, or a rebuilt target.
         const url = await servir('apps-lancer-ok');
         await poserVm(base!, 'v-1');
         const u = await attribuer(base!, 'v-1', 'u@exemple.test');
@@ -400,10 +400,10 @@ describe(`routes /applications, engine=${MOTEUR}`, () => {
     });
 
     it("a launch that FAILS on the agent side returns 200 and the outcome `echec`, never an HTTP error", async () => {
-        // ⚠️ L'ORDRE A ABOUTI : la plateforme a fait son travail, et l'agent a
-        // répondu. Rendre une 5xx dirait que le SERVICE a échoué, ce qui est
-        // faux — et le distinguer de `agent-injoignable` est tout l'intérêt
-        // d'avoir une issue plutôt qu'un booléen.
+        // ⚠️ THE ORDER WENT THROUGH: the platform did its job, and the agent
+        // answered. Returning a 5xx would say the SERVICE failed, which is
+        // false — and telling it apart from `agent-injoignable` is the whole point
+        // of having an outcome rather than a boolean.
         const url = await servir('apps-lancer-echec');
         await poserVm(base!, 'v-1');
         const u = await attribuer(base!, 'v-1', 'u@exemple.test');
@@ -419,33 +419,33 @@ describe(`routes /applications, engine=${MOTEUR}`, () => {
     });
 
     it("🔴 launching an application of a FOREIGN VM answers like an UNKNOWN VM", async () => {
-        // Sans cette garde, l'identifiant d'application suffirait à lancer un
-        // programme sur la machine de quelqu'un d'autre — et l'agent, lui,
-        // n'a aucun moyen de savoir qui a demandé.
+        // Without this guard, the application identifier would be enough to launch a
+        // program on someone else's machine — and the agent, for its part,
+        // has no way of knowing who asked.
         //
-        // 🔴 CE TEST A ÉTÉ RETOURNÉ, pour la même raison que son jumeau de la
-        // liste : il épinglait `403 {refus:'vm-etrangere'}`, l'oracle
-        // d'énumération que le propriétaire du dépôt a tranché contre. La
-        // garde, elle, n'a pas bougé d'un pouce — seul le refus qu'elle rend
-        // change, et le témoin de son EFFET est que l'agent inscrit ne reçoit
-        // rien.
+        // 🔴 THIS TEST WAS REVERSED, for the same reason as its twin of the
+        // list: it pinned `403 {refus:'vm-etrangere'}`, the enumeration
+        // oracle the repository owner ruled against. The
+        // guard itself has not moved an inch — only the refusal it returns
+        // changes, and the witness of its EFFECT is that the registered agent receives
+        // nothing.
         //
-        // 🔴 LE CORPS EST COMPARÉ, jamais le seul statut : `404` seul serait
-        // rendu par le 404 générique de `serveur.ts` aussi bien que par
-        // celui-ci. Le témoin employé est le refus que l'AUTRE route de ce
-        // fichier rend sur une VM vraiment inconnue — ce qui éprouve du même
-        // coup « un seul motif, un seul code » ENTRE LES DEUX ROUTES.
+        // 🔴 THE BODY IS COMPARED, never the status alone: `404` alone would be
+        // returned by the generic 404 of `serveur.ts` as well as by
+        // this one. The witness used is the refusal the OTHER route of this
+        // file returns on a truly unknown VM — which at the same time tests
+        // "a single reason, a single code" BETWEEN THE TWO ROUTES.
         //
-        // ⚠️ POURQUOI LE TÉMOIN VIENT DE L'AUTRE ROUTE, ET NON DE CELLE-CI :
-        // `application.vm_id` porte `REFERENCES vm(id)` sans `ON DELETE`
-        // (migration 0003) — une application dont la VM n'existe pas est
-        // INSÉRABLE nulle part, la contrainte rougit. Le verdict `inconnue`
-        // est donc INATTEIGNABLE sur `/application/:id/lancer` : la seule VM
-        // que cette route puisse lire est celle que l'application désigne, et
-        // elle existe par construction. *(Une première rédaction de ce test
-        // posait une application orpheline pour servir de témoin ; SQLite l'a
-        // refusée par `FOREIGN KEY constraint failed`, et c'est ce rouge qui a
-        // corrigé la supposition.)*
+        // ⚠️ WHY THE WITNESS COMES FROM THE OTHER ROUTE, AND NOT FROM THIS ONE:
+        // `application.vm_id` carries `REFERENCES vm(id)` without `ON DELETE`
+        // (migration 0003) — an application whose VM does not exist is
+        // INSERTABLE nowhere, the constraint turns red. The `inconnue` verdict
+        // is therefore UNREACHABLE on `/application/:id/lancer`: the only VM
+        // this route can read is the one the application designates, and
+        // it exists by construction. *(A first draft of this test
+        // set an orphan application to serve as a witness; SQLite
+        // refused it with `FOREIGN KEY constraint failed`, and it is that red that
+        // corrected the assumption.)*
         const url = await servir('apps-lancer-etrangere');
         await poserVm(base!, 'v-1');
         await attribuer(base!, 'v-1', 'proprietaire@exemple.test');
@@ -468,8 +468,8 @@ describe(`routes /applications, engine=${MOTEUR}`, () => {
     });
 
     it('refuses the METHOD on a path that exists, rather than a 404', async () => {
-        // Le chemin EXISTE, c'est la méthode qui ne convient pas : un 404
-        // ferait chercher une route absente. Même choix que `routes-vm.ts`.
+        // The path EXISTS, it is the method that does not fit: a 404
+        // would send one looking for an absent route. Same choice as `routes-vm.ts`.
         const url = await servir('apps-methode');
         expect((await fetch(`${url}/applications`, { method: 'POST' })).status).toBe(405);
         expect((await fetch(`${url}/application/x/lancer`)).status).toBe(405);

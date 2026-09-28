@@ -1,10 +1,10 @@
-// La vérification d'un secret d'enrôlement, et le refus qui n'énumère pas.
+// The check of an enrolment secret, and the refusal that does not enumerate.
 //
-// 🔴 LA ROUGE CENTRALE DE CE FICHIER est le refus INDISTINCT : une VM inconnue
-// et un secret faux doivent rendre le MÊME refus, mot pour mot. Deux motifs
-// distincts seraient un oracle d'énumération — l'appelant apprendrait par
-// tâtonnement quelles VMs existent —, et c'est littéralement ce que la spec
-// §4 P3 ② nomme comme la rouge de ce critère.
+// 🔴 THE CENTRAL RED OF THIS FILE is the INDISTINCT refusal: an unknown VM
+// and a wrong secret must return the SAME refusal, word for word. Two distinct
+// reasons would be an enumeration oracle — the caller would learn by
+// trial and error which VMs exist —, and it is literally what spec
+// §4 P3 ② names as the red of this criterion.
 
 import { afterEach, describe, expect, it } from 'vitest';
 import { baseNeuve, MOTEUR } from '../base/harnais';
@@ -36,15 +36,15 @@ describe(`enrolment of an agent, engine=${MOTEUR}`, () => {
         const journal: string[] = [];
         const v = await verifyEnrolment(base, 'v-1', SECRET, (l) => journal.push(l));
         expect(v).toEqual({ ok: true, vmId: 'v-1', prefixe: PREFIXE });
-        // Un succès ne journalise pas de refus.
+        // A success logs no refusal.
         expect(journal).toEqual([]);
     });
 
     it('🔴 refuses an UNKNOWN VM and a WRONG SECRET with the SAME refusal, word for word', async () => {
-        // 🔴 La rouge : rendre `'vm-inconnue'` d'un côté et `'secret-invalide'`
-        // de l'autre. C'est un oracle d'énumération, et il suffit d'une
-        // différence d'UN caractère pour qu'il le redevienne — d'où la
-        // comparaison stricte des deux objets entiers.
+        // 🔴 The red: returning `'vm-inconnue'` on one side and `'secret-invalide'`
+        // on the other. It is an enumeration oracle, and ONE character of
+        // difference is enough for it to become one again — hence the
+        // strict comparison of the two whole objects.
         base = await baseEnrolee('enrol-indistinct');
         const inconnue = await verifyEnrolment(base, 'v-jamais-enrolee', SECRET, () => {});
         const fauxSecret = await verifyEnrolment(base, 'v-1', 'pas-le-bon-secret', () => {});
@@ -54,30 +54,30 @@ describe(`enrolment of an agent, engine=${MOTEUR}`, () => {
     });
 
     it('logs the refusal WITH the requested VM name', async () => {
-        // 🔴 La rouge : ne rien journaliser. Le refus devient alors
-        // indiagnosticable — et c'est le prix exact de l'indistinction
-        // ci-dessus : ce que le demandeur n'apprend pas, l'exploitant doit
-        // pouvoir le lire chez lui. Même partage `message` / `journal` que
+        // 🔴 The red: logging nothing. The refusal then becomes
+        // undiagnosable — and it is the exact price of the indistinction
+        // above: what the requester does not learn, the operator must
+        // be able to read on their side. Same `message` / `journal` split as
         // `identite/garde.ts`.
         base = await baseEnrolee('enrol-journal');
         const journal: string[] = [];
         await verifyEnrolment(base, 'v-jamais-enrolee', SECRET, (l) => journal.push(l));
         expect(journal).toHaveLength(1);
         expect(journal[0]).toContain('v-jamais-enrolee');
-        // 🔴 ET IL NE RECOPIE JAMAIS LE SECRET. Le balayage du critère ④ de P2
-        // s'applique tel quel : on cherche le NOM du champ autant que la
-        // valeur.
+        // 🔴 AND IT NEVER COPIES THE SECRET. The sweep of P2's criterion ④
+        // applies as is: we search for the field NAME as much as the
+        // value.
         expect(journal[0]).not.toContain(SECRET);
         expect(journal[0]).not.toContain('secret=');
     });
 
     it('🔴 returns a refusal, NEVER an exception, on a TRUNCATED fingerprint', async () => {
-        // 🔴 La rouge : comparer sans egaliser les longueurs d'abord. MESURÉ en
-        // P2 : `timingSafeEqual` LÈVE `Input buffers must have the same byte
-        // length`, et l'appelant répondrait une erreur interne là où il doit
-        // répondre un refus — l'écart de comportement serait à lui seul un
-        // oracle. `identite/mot-de-passe.ts` gère déjà ce cas ; ce test
-        // vérifie que l'enrôlement ne le défait pas.
+        // 🔴 The red: comparing without equalising the lengths first. MEASURED in
+        // P2: `timingSafeEqual` THROWS `Input buffers must have the same byte
+        // length`, and the caller would answer an internal error where it must
+        // answer a refusal — the difference in behaviour would on its own be an
+        // oracle. `identite/mot-de-passe.ts` already handles this case; this test
+        // checks that enrolment does not undo it.
         base = await baseNeuve('enrol-tronquee');
         await base.executer('INSERT INTO vm(id,nom,adresse) VALUES(?,?,?)', ['v-1', 'vm-1', '10.0.0.1']);
         const entiere = await hacher(SECRET);
@@ -88,11 +88,11 @@ describe(`enrolment of an agent, engine=${MOTEUR}`, () => {
     });
 
     it('LETS THROUGH the exception of an unknown algorithm, without turning it into a refusal', async () => {
-        // ⚠️ `identite/mot-de-passe.ts::verify` LÈVE délibérément sur un
-        // algorithme inconnu : un refus muet y serait indiscernable d'un secret
-        // faux, et personne ne saurait diagnostiquer une base écrite par une
-        // version future du service. L'enrôlement ne doit donc PAS l'avaler —
-        // c'est le canal qui la traduira en refus, en la journalisant AVEC sa
+        // ⚠️ `identite/mot-de-passe.ts::verify` deliberately THROWS on an
+        // unknown algorithm: a silent refusal there would be indistinguishable from a wrong
+        // secret, and nobody could diagnose a database written by a
+        // future version of the service. Enrolment must therefore NOT swallow it —
+        // it is the channel that will translate it into a refusal, logging it WITH its
         // cause.
         base = await baseNeuve('enrol-algo');
         await base.executer('INSERT INTO vm(id,nom,adresse) VALUES(?,?,?)', ['v-1', 'vm-1', '10.0.0.1']);

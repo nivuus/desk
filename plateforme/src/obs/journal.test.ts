@@ -17,8 +17,8 @@ describe('ligne', () => {
     });
 
     it("(b bis) a value carrying a `=` is quoted too", () => {
-        // Sans quoi `k=a=b` serait illisible : on ne saurait pas où finit la
-        // valeur et où commence le champ suivant.
+        // Otherwise `k=a=b` would be unreadable: one would not know where the
+        // value ends and where the next field starts.
         expect(ligne('frein', { cle: 'compte=alice' })).toBe('frein cle="compte=alice"');
     });
 
@@ -27,26 +27,26 @@ describe('ligne', () => {
     });
 
     it("(c) 🔴 no value is TRUNCATED", () => {
-        // Un frein qui tronquerait une adresse la rendrait ambiguë :
-        // `203.0.113.7` et `203.0.113.70` se liraient pareil, et l'exploitant
-        // ne pourrait plus reconnaître l'adresse de son proxy — qui est le
-        // SEUL remède au mode de défaillance de `adresse-source.ts`.
+        // A brake that truncated an address would make it ambiguous:
+        // `203.0.113.7` and `203.0.113.70` would read the same, and the operator
+        // could no longer recognise their proxy's address — which is the
+        // ONLY remedy for the failure mode of `adresse-source.ts`.
         const longue = 'a'.repeat(500);
         expect(ligne('frein', { cle: longue })).toBe(`frein cle=${longue}`);
         expect(ligne('frein', { cle: longue })).toContain(longue);
     });
 
     it("(d) the order of the fields follows that of the object", () => {
-        // Pour que deux lignes du même évènement se comparent à l'œil, et se
-        // trient. Un `JSON.stringify` d'objet ne le garantit pas davantage,
-        // mais un tri alphabétique le romprait.
+        // So that two lines of the same event can be compared by eye, and
+        // sorted. An object's `JSON.stringify` does not guarantee it any more,
+        // but an alphabetical sort would break it.
         expect(ligne('e', { z: 1, a: 2 })).toBe('e z=1 a=2');
         expect(ligne('e', { a: 2, z: 1 })).toBe('e a=2 z=1');
     });
 
     it("(e) an EMPTY value stays visible, rather than disappearing", () => {
-        // Un champ qui disparaîtrait ferait croire que le service ne l'a pas
-        // mesuré, là où il l'a mesuré vide.
+        // A field that disappeared would make one believe the service did not
+        // measure it, where it measured it empty.
         expect(ligne('frein', { adresse: '' })).toBe('frein adresse=""');
     });
 });

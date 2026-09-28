@@ -246,7 +246,7 @@ export async function servirInstallation(
     return contenu(req, rep, deps, cors, idTeleversement!);
 }
 
-/// `POST /installation` — l'humain demande.
+/// `POST /installation` — the human asks.
 async function ordre(
     req: IncomingMessage, rep: ServerResponse, deps: DependancesInstallation, cors: Cors,
 ): Promise<boolean> {
@@ -367,7 +367,7 @@ async function ordre(
     return true;
 }
 
-/// `GET /installation/:id` — l'humain suit.
+/// `GET /installation/:id` — the human follows.
 async function etat(
     req: IncomingMessage, rep: ServerResponse, deps: DependancesInstallation, cors: Cors, id: string,
 ): Promise<boolean> {
@@ -390,7 +390,7 @@ async function etat(
     return true;
 }
 
-/// `GET /televersement/:id/contenu` — l'AGENT tire les octets.
+/// `GET /televersement/:id/contenu` — the AGENT pulls the bytes.
 async function contenu(
     req: IncomingMessage, rep: ServerResponse, deps: DependancesInstallation, cors: Cors, id: string,
 ): Promise<boolean> {

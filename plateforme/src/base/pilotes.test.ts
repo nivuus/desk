@@ -1,10 +1,10 @@
-// LA MÊME suite, contre les DEUX moteurs — c'est le critère ③ de P1.
+// THE SAME suite, against BOTH engines — it is P1's criterion ③.
 //
-// ⚠️ Ce que ces assertions vérifient sur SQLite était MESURÉ avant d'être
-// écrit (index partiel, deux NULL tolérés, double attribution refusée,
-// RETURNING). Le pendant Postgres ne l'était PAS, ni par la spec, ni par le
-// plan : c'est précisément ce que cette suite a pour rôle d'établir plutôt que
-// de croire.
+// ⚠️ What these assertions check on SQLite was MEASURED before being
+// written (partial index, two NULLs tolerated, double assignment refused,
+// RETURNING). The Postgres counterpart was NOT, neither by the spec nor by the
+// plan: it is precisely what this suite's role is to establish rather than
+// believe.
 
 import { afterEach, describe, expect, it } from 'vitest';
 import { baseNeuve, INSTANT_MIGRATION, MOTEUR } from './harnais';
@@ -25,35 +25,35 @@ describe(`portable subset, engine=${MOTEUR}`, () => {
             'SELECT version FROM schema_migration ORDER BY version',
             [],
         );
-        // ⚠️ La liste est ÉCRITE EN DUR, et non dérivée du répertoire : une
-        // comparaison contre `readdirSync` serait une tautologie qui ne
-        // pourrait jamais échouer. Le prix est qu'une migration neuve force
-        // une mise à jour CONSCIENTE de cette ligne — ce que P2 a payé en
-        // ajoutant `0002-identite.sql`.
+        // ⚠️ The list is HARDCODED, and not derived from the directory: a
+        // comparison against `readdirSync` would be a tautology that could
+        // never fail. The price is that a new migration forces
+        // a CONSCIOUS update of this line — which P2 paid by
+        // adding `0002-identite.sql`.
         expect(suivi.map((l) => Number(l.version))).toEqual([1, 2, 3, 4, 5, 6, 7]);
-        // Idempotence : le second passage n'applique rien.
+        // Idempotence: the second pass applies nothing.
         expect(await appliquerMigrations(base, REPERTOIRE_MIGRATIONS, 2_000)).toBe(0);
         const apres = await base.interroger('SELECT version FROM schema_migration', []);
-        // Même compte qu'au-dessus, et écrit en dur pour la même raison.
+        // Same count as above, and hardcoded for the same reason.
         expect(apres).toHaveLength(7);
     });
 
     it('🔴 the two columns of 0005 are NULLABLE, and the table is POPULATED when they are added', async () => {
-        // 🔴 CETTE ROUGE N'EST PAS ATTEIGNABLE SUR UNE BASE NEUVE, ET C'EST
-        // TOUT LE PIÈGE — celui que la divergence E8 du sous-bloc G1 a déjà
-        // payé. `baseNeuve` applique TOUTES les migrations d'un coup sur une
-        // table VIDE, où `ADD COLUMN ... NOT NULL` sans défaut PASSE. Mesuré :
-        // poser `NOT NULL` sur `0005-icones.sql` laisse les trois tests
-        // d'`index.test.ts` VERTS.
+        // 🔴 THIS RED IS NOT REACHABLE ON A FRESH DATABASE, AND THAT IS
+        // THE WHOLE TRAP — the one sub-block G1's divergence E8 already
+        // paid for. `baseNeuve` applies ALL migrations at once on an
+        // EMPTY table, where `ADD COLUMN ... NOT NULL` without a default PASSES. Measured:
+        // setting `NOT NULL` in `0005-icones.sql` leaves the three tests
+        // of `index.test.ts` GREEN.
         //
-        // Ce test applique donc les migrations JUSQU'À `0004`, INSÈRE une
-        // application, PUIS applique `0005` — c'est-à-dire l'état réel de la
-        // VM de développement, dont la table `application` porte 154 lignes
-        // depuis la recette de G1.
+        // This test therefore applies the migrations UP TO `0004`, INSERTS an
+        // application, THEN applies `0005` — that is, the real state of the
+        // development VM, whose `application` table has held 154 rows
+        // since G1's acceptance run.
         base = await baseNeuve('0005-sur-table-peuplee');
-        // La base neuve porte déjà les cinq migrations ; on éprouve la
-        // propriété sur ce qui compte : les colonnes ACCEPTENT `NULL`, et une
-        // ligne peut naître sans elles.
+        // The fresh database already carries the five migrations; we test the
+        // property on what matters: the columns ACCEPT `NULL`, and a
+        // row can be born without them.
         await base.executer('INSERT INTO vm(id,nom,adresse) VALUES(?,?,?)',
             ['v-peuplee', 'vm-peuplee', '192.168.3.2']);
         await base.executer(
@@ -65,9 +65,9 @@ describe(`portable subset, engine=${MOTEUR}`, () => {
         );
         const [ligne] = await base.interroger<{ icone: unknown; source_max_px: unknown }>(
             'SELECT icone, source_max_px FROM application WHERE id = ?', ['a-1']);
-        // 🔴 `NULL`, JAMAIS `0` NI `256` : la colonne est INTEGER et ne peut
-        // pas porter le mot `non-mesuree`. C'est l'invariant à trois cas de
-        // `0005-icones.sql`, éprouvé au niveau du moteur.
+        // 🔴 `NULL`, NEVER `0` NOR `256`: the column is INTEGER and cannot
+        // carry the word `non-mesuree`. It is the three-case invariant of
+        // `0005-icones.sql`, tested at the engine level.
         expect(ligne.icone).toBeNull();
         expect(ligne.source_max_px).toBeNull();
         expect(ligne.source_max_px).not.toBe(0);
@@ -81,7 +81,7 @@ describe(`portable subset, engine=${MOTEUR}`, () => {
             ['v1', 'vm-1', '10.0.0.1', null]);
         await base.executer('INSERT INTO vm(id,nom,adresse,utilisateur_id) VALUES(?,?,?,?)',
             ['v2', 'vm-2', '10.0.0.2', null]);
-        // Deux NULL coexistent : c'est le point de l'index PARTIEL.
+        // Two NULLs coexist: that is the point of the PARTIAL index.
         expect(await base.interroger('SELECT id FROM vm', [])).toHaveLength(2);
 
         await base.executer('UPDATE vm SET utilisateur_id = ? WHERE id = ?', ['u1', 'v1']);
@@ -91,8 +91,8 @@ describe(`portable subset, engine=${MOTEUR}`, () => {
     });
 
     it('applies the foreign key of vm.utilisateur_id', async () => {
-        // Sur SQLite cela n'est vrai QUE parce que `PRAGMA foreign_keys=ON`
-        // est posé à l'ouverture ; Postgres l'applique sans qu'on demande.
+        // On SQLite this is true ONLY because `PRAGMA foreign_keys=ON`
+        // is set at opening; Postgres applies it without being asked.
         base = await baseNeuve('fk');
         await expect(
             base.executer('INSERT INTO vm(id,nom,adresse,utilisateur_id) VALUES(?,?,?,?)',
@@ -133,27 +133,27 @@ describe(`portable subset, engine=${MOTEUR}`, () => {
         expect(await base.interroger('SELECT id FROM vm', [])).toHaveLength(0);
     });
     it("carries an epoch timestamp in milliseconds, on BOTH engines", async () => {
-        // 🔴 Ce test existe parce que le lint statique ne peut rien contre lui
-        // et que la double passe ne l'attrapait pas non plus : elle n'écrivait
-        // que de PETITES valeurs. `INTEGER` vaut jusqu'à 8 octets sur SQLite et
-        // exactement 4 sur Postgres — mesuré le 19 août 2026 sur PostgreSQL
-        // 16.15 : `value "1787136773742" is out of range for type integer`.
-        // Le service n'écrit pourtant que des `Date.now()` (≈ 1,79e12).
+        // 🔴 This test exists because the static lint can do nothing against it
+        // and the double pass did not catch it either: it only wrote
+        // SMALL values. `INTEGER` is up to 8 bytes on SQLite and
+        // exactly 4 on Postgres — measured on 19 August 2026 on PostgreSQL
+        // 16.15: `value "1787136773742" is out of range for type integer`.
+        // Yet the service only writes `Date.now()` values (≈ 1.79e12).
         //
-        // C'est le troisième angle mort de la paire lint / double passe, et il
-        // n'est couvert que par le CHOIX DES VALEURS : une suite qui écrit
-        // `1_000` déclare portable un schéma qui refuse toute écriture réelle.
+        // It is the third blind spot of the lint / double pass pair, and it
+        // is covered only by the CHOICE OF VALUES: a suite that writes
+        // `1_000` declares portable a schema that refuses every real write.
         const MS = 1_787_136_773_742;
         base = await baseNeuve('epoque');
 
-        // (1) la table de suivi des migrations, écrite par `baseNeuve`
+        // (1) the migration tracking table, written by `baseNeuve`
         const [suivi] = await base.interroger<{ applique_a: number | string }>(
             'SELECT applique_a FROM schema_migration WHERE version = ?',
             [1],
         );
         expect(Number(suivi.applique_a)).toBe(INSTANT_MIGRATION);
 
-        // (2) la table `session`, ouverte puis close aux deux bornes
+        // (2) the `session` table, opened then closed at both bounds
         await base.executer('INSERT INTO session(id,nom_session,ouverte_a) VALUES(?,?,?)',
             ['s-epoque', 'bureau', MS]);
         await base.executer('UPDATE session SET fermee_a = ? WHERE id = ?', [MS + 5, 's-epoque']);
@@ -164,7 +164,7 @@ describe(`portable subset, engine=${MOTEUR}`, () => {
         expect(Number(ligne.ouverte_a)).toBe(MS);
         expect(Number(ligne.fermee_a)).toBe(MS + 5);
 
-        // (3) les deux autres colonnes d'horodatage du socle
+        // (3) the two other timestamp columns of the base schema
         await base.executer('INSERT INTO utilisateur(id,email,empreinte_mdp,cree_a) VALUES(?,?,?,?)',
             ['u-epoque', 'e@exemple.test', 'x', MS]);
         await base.executer('INSERT INTO vm(id,nom,adresse,vue_a) VALUES(?,?,?,?)',
@@ -175,25 +175,25 @@ describe(`portable subset, engine=${MOTEUR}`, () => {
     });
 
     it('returns a BIGINT re-read as `number` on BOTH engines, without conversion by the caller', async () => {
-        // 🔴 CE TEST EXISTE PARCE QUE LE DÉFAUT EST DE CLASSE, PAS D'INSTANCE,
-        // et parce que le test d'époque ci-dessus ne pouvait PAS l'attraper :
-        // il enveloppe chaque lecture dans `Number(...)`, ce qui convertit la
-        // divergence au lieu de la mesurer. Relevé par la recette de P3 :
-        // `pg` rend tout `BIGINT` (OID 20) en **chaîne**, quand `node:sqlite`
-        // rend un `number` — si bien que `LigneAgent.vu_a`, `LigneSession`,
-        // `UserRow` et `LigneJeton` déclaraient `number` une valeur
-        // qui était une `string` sur le moteur de PRODUCTION.
+        // 🔴 THIS TEST EXISTS BECAUSE THE DEFECT IS ONE OF CLASS, NOT OF INSTANCE,
+        // and because the epoch test above could NOT catch it:
+        // it wraps each read in `Number(...)`, which converts the
+        // divergence instead of measuring it. Found by P3's acceptance run:
+        // `pg` returns every `BIGINT` (OID 20) as a **string**, whereas `node:sqlite`
+        // returns a `number` — so that `LigneAgent.vu_a`, `LigneSession`,
+        // `UserRow` and `LigneJeton` declared `number` a value
+        // that was a `string` on the PRODUCTION engine.
         //
-        // ⚠️ Ce n'était pas une coquille de type : `etatDe` (`agents/fraicheur.ts`)
-        // survivait PAR ACCIDENT, sa soustraction convertissant l'opérande.
-        // Tout `+`, tout `===` et tout `>` aurait divergé selon le moteur — un
-        // `vu_a === maintenant` faux partout, un `vu_a + SEUIL` valant une
-        // concaténation.
+        // ⚠️ It was not a typing slip: `etatDe` (`agents/fraicheur.ts`)
+        // survived BY ACCIDENT, its subtraction converting the operand.
+        // Any `+`, any `===` and any `>` would have diverged by engine — a
+        // `vu_a === maintenant` false everywhere, a `vu_a + SEUIL` yielding a
+        // concatenation.
         //
-        // La mutation qui le rougit : retirer le `setTypeParser` de
-        // `base/pilote-postgres.ts`. Il rougit alors sous `test:postgres` et
-        // reste vert sous `test:sqlite` — c'est-à-dire exactement la
-        // divergence que la double passe existe pour trouver.
+        // The mutation that turns it red: removing the `setTypeParser` from
+        // `base/pilote-postgres.ts`. It then turns red under `test:postgres` and
+        // stays green under `test:sqlite` — that is, exactly the
+        // divergence the double pass exists to find.
         const MS = 1_787_136_773_742;
         base = await baseNeuve('bigint-number');
 
@@ -211,7 +211,7 @@ describe(`portable subset, engine=${MOTEUR}`, () => {
             ['j-bigint', 'u-bigint', 'f-1', 'e-1', MS, MS + 7],
         );
 
-        // Chaque colonne BIGINT que le SERVICE relit, sur son chemin réel.
+        // Every BIGINT column the SERVICE reads back, on its real path.
         const releves: Array<[string, unknown]> = [
             ['vm.vue_a', (await base.interroger<{ vue_a: unknown }>(
                 'SELECT vue_a FROM vm WHERE id = ?', ['v-bigint']))[0].vue_a],
@@ -230,36 +230,36 @@ describe(`portable subset, engine=${MOTEUR}`, () => {
         ];
 
         for (const [nom, value] of releves) {
-            // Le nom de la colonne entre dans l'assertion : sans lui, un échec
-            // ne dirait pas LAQUELLE des sept a divergé.
+            // The column name enters the assertion: without it, a failure
+            // would not say WHICH of the seven diverged.
             expect([nom, typeof value]).toEqual([nom, 'number']);
         }
 
-        // Et la valeur elle-même, à l'identique — `'1787136773742'` n'est PAS
-        // `1787136773742`, et c'est tout le défaut.
+        // And the value itself, identical — `'1787136773742'` is NOT
+        // `1787136773742`, and that is the whole defect.
         const [ligne] = await base.interroger<{ vu_a: number | null }>(
             'SELECT vu_a FROM agent_enrole WHERE vm_id = ?', ['v-bigint']);
         expect(ligne.vu_a).toBe(MS);
 
-        // ⚠️ La borne est NOMMÉE plutôt que supposée : au-delà de
-        // `Number.MAX_SAFE_INTEGER`, la conversion perdrait des chiffres en
-        // silence. Une époque en millisecondes vaut ~1,8e12 et l'an 10000
-        // ~2,5e14 : la marge est de plus de quatre ordres de grandeur.
+        // ⚠️ The bound is NAMED rather than assumed: beyond
+        // `Number.MAX_SAFE_INTEGER`, the conversion would lose digits
+        // silently. An epoch in milliseconds is ~1.8e12 and the year 10000
+        // ~2.5e14: the margin is more than four orders of magnitude.
         expect(MS).toBeLessThan(Number.MAX_SAFE_INTEGER);
     });
 
     it("writes and re-reads a COMPLETE `application` row, with epoch values", async () => {
-        // 🔴 CE TEST EXISTE PARCE QUE `0004-applications.sql` AJOUTE TROIS
-        // COLONNES D'HORODATAGE, et que l'angle mort mesuré de la double passe
-        // est le CHOIX DES VALEURS : une suite qui n'écrit que `1_000`
-        // déclarerait portable un schéma qui refuse toute écriture réelle. Les
-        // trois `_a` de cette table portent donc la même magnitude d'époque que
-        // celles du socle, et elles sont RELUES.
+        // 🔴 THIS TEST EXISTS BECAUSE `0004-applications.sql` ADDS THREE
+        // TIMESTAMP COLUMNS, and the measured blind spot of the double pass
+        // is the CHOICE OF VALUES: a suite that only writes `1_000`
+        // would declare portable a schema that refuses every real write. The
+        // three `_a` of this table therefore carry the same epoch magnitude as
+        // those of the base schema, and they are READ BACK.
         //
-        // ⚠️ Il éprouve aussi que les quatre colonnes NOT NULL ajoutées par
-        // `ALTER TABLE` acceptent bien une écriture : la migration les ajoute à
-        // une table VIDE, et rien d'autre ne prouverait qu'elle a produit un
-        // schéma utilisable plutôt qu'un schéma seulement appliqué.
+        // ⚠️ It also tests that the four NOT NULL columns added by
+        // `ALTER TABLE` do accept a write: the migration adds them to
+        // an EMPTY table, and nothing else would prove it produced a
+        // usable schema rather than a merely applied one.
         const MS = 1_787_136_773_742;
         base = await baseNeuve('application-epoque');
         await base.executer('INSERT INTO vm(id,nom,adresse) VALUES(?,?,?)',
@@ -279,35 +279,35 @@ describe(`portable subset, engine=${MOTEUR}`, () => {
             ['a-1'],
         );
 
-        // 🔴 COMPARÉES SANS `Number(...)`, et c'est le point : envelopper la
-        // lecture CONVERTIRAIT la divergence au lieu de la mesurer. `pg` rend
-        // tout BIGINT en chaîne, et seul le `setTypeParser` du pilote fait que
-        // ces trois-là sont des `number` sur les DEUX moteurs.
+        // 🔴 COMPARED WITHOUT `Number(...)`, and that is the point: wrapping the
+        // read WOULD CONVERT the divergence instead of measuring it. `pg` returns
+        // every BIGINT as a string, and only the driver's `setTypeParser` makes
+        // these three `number`s on BOTH engines.
         expect(['vue_a', ligne.vue_a]).toEqual(['vue_a', MS]);
         expect(['apparue_a', ligne.apparue_a]).toEqual(['apparue_a', MS - 9]);
         expect(['disparue_a', ligne.disparue_a]).toEqual(['disparue_a', MS + 5]);
-        // `masquee_a` est nullable et personne ne l'écrit en G1 : elle doit
-        // rendre `null`, jamais `0` — les deux états sont distincts, comme
-        // pour `agent_enrole.vu_a`.
+        // `masquee_a` is nullable and nobody writes it in G1: it must
+        // return `null`, never `0` — the two states are distinct, as
+        // for `agent_enrole.vu_a`.
         expect(['masquee_a', ligne.masquee_a]).toEqual(['masquee_a', null]);
-        // ⚠️ Une chaîne VIDE, jamais NULL : c'est le contrat de `arguments`,
-        // et un `NOT NULL` qui la refuserait rendrait la colonne inutilisable
-        // pour les applications sans argument, c'est-à-dire la majorité.
+        // ⚠️ An EMPTY string, never NULL: it is the contract of `arguments`,
+        // and a `NOT NULL` that refused it would make the column unusable
+        // for applications without arguments, that is, the majority.
         expect(['arguments', ligne.arguments]).toEqual(['arguments', '']);
         expect(['cible', ligne.cible]).toEqual(['cible', 'c:\\windows\\notepad.exe']);
     });
 
     it('applies application_cle on the PAIR (vm_id, cle), and not on the key alone', async () => {
-        // 🔴 LES DEUX MOITIÉS SONT NÉCESSAIRES, et la seconde est celle qui
-        // décide : sans elle, un index posé sur `cle` SEULE passerait ce test
-        // — il refuserait bien le doublon de la première moitié. C'est
-        // exactement le contrôle qui ne peut pas échouer, et il est fermé ici
-        // en éprouvant AUSSI ce que l'index doit LAISSER PASSER.
+        // 🔴 BOTH HALVES ARE NECESSARY, and the second is the one that
+        // decides: without it, an index set on `cle` ALONE would pass this test
+        // — it would indeed refuse the duplicate of the first half. It is
+        // exactly the check that cannot fail, and it is closed here
+        // by ALSO testing what the index must LET THROUGH.
         //
-        // Ce que la seconde moitié protège, concrètement : la clé est
-        // l'empreinte d'un triplet de chemins Windows, donc deux VMs portant
-        // la même application au même endroit produisent la MÊME clé. Un index
-        // sur `cle` seule empêcherait la seconde VM d'enregistrer son
+        // What the second half protects, concretely: the key is
+        // the hash of a triple of Windows paths, so two VMs carrying
+        // the same application at the same place produce the SAME key. An index
+        // on `cle` alone would prevent the second VM from recording its
         // catalogue.
         const MS = 1_787_136_773_742;
         base = await baseNeuve('application-unicite');
@@ -322,33 +322,33 @@ describe(`portable subset, engine=${MOTEUR}`, () => {
             );
 
         await inserer('a-1', 'v-a', 'meme-cle');
-        // Même VM, même clé : refusé par l'index.
+        // Same VM, same key: refused by the index.
         await expect(inserer('a-2', 'v-a', 'meme-cle')).rejects.toThrow();
-        // Autre VM, même clé : accepté — et c'est la moitié qui discrimine.
+        // Other VM, same key: accepted — and it is the half that discriminates.
         await inserer('a-3', 'v-b', 'meme-cle');
         expect(await base.interroger('SELECT id FROM application', [])).toHaveLength(2);
     });
 
     it('REFUSES to convert a BIGINT that does not fit in a safe integer', async () => {
-        // 🔴 Une conversion silencieuse est pire que la divergence qu'elle
-        // répare : `Number('9007199254740993')` rend 9007199254740992, sans
-        // le dire. Le pilote LÈVE plutôt que d'arrondir.
+        // 🔴 A silent conversion is worse than the divergence it
+        // repairs: `Number('9007199254740993')` returns 9007199254740992, without
+        // saying so. The driver THROWS rather than rounding.
         //
-        // La mutation qui le rougit : remplacer le garde du `setTypeParser`
-        // par un `Number(v)` nu. Le test lit alors une valeur ARRONDIE au lieu
-        // de lever.
+        // The mutation that turns it red: replacing the `setTypeParser` guard
+        // with a bare `Number(v)`. The test then reads a ROUNDED value instead
+        // of throwing.
         //
-        // ⚠️ Ce cas n'est PAS atteignable par le service, qui n'écrit que des
-        // `Date.now()` — c'est un contrôle du PILOTE, pas du schéma. Il ne
-        // tourne donc que sur Postgres, seul moteur qui ait un analyseur à
-        // garder ; sous SQLite il n'y a rien à éprouver, et le dire est plus
-        // honnête que de le sauter en silence.
+        // ⚠️ This case is NOT reachable by the service, which only writes
+        // `Date.now()` values — it is a check of the DRIVER, not of the schema. It therefore
+        // only runs on Postgres, the only engine that has a parser to
+        // guard; under SQLite there is nothing to test, and saying so is more
+        // honest than skipping it silently.
         base = await baseNeuve('bigint-hors-borne');
         await base.executer('INSERT INTO vm(id,nom,adresse) VALUES(?,?,?)',
             ['v-hb', 'vm', '10.0.0.1']);
-        // 9007199254740993 = MAX_SAFE_INTEGER + 2. Littéral NUMÉRIQUE, seul
-        // moyen de le poser : le passer en paramètre depuis JavaScript le
-        // ferait déjà arrondir AVANT d'atteindre la base.
+        // 9007199254740993 = MAX_SAFE_INTEGER + 2. A NUMERIC literal, the only
+        // way to set it: passing it as a parameter from JavaScript would
+        // already round it BEFORE it reached the database.
         await base.executer('UPDATE vm SET vue_a = 9007199254740993 WHERE id = ?', ['v-hb']);
 
         const lire = () => base!.interroger<{ vue_a: unknown }>(
@@ -357,10 +357,10 @@ describe(`portable subset, engine=${MOTEUR}`, () => {
         if (MOTEUR === 'postgres') {
             await expect(lire()).rejects.toThrow(/safe integer/);
         } else {
-            // Sous SQLite il n'y a AUCUN analyseur à garder : `node:sqlite`
-            // rend l'entier directement. Ce que fait ce moteur d'une valeur
-            // hors borne est RELEVÉ ici, pas prescrit — le service n'écrit
-            // que des `Date.now()`, et aucun chemin ne l'y conduit.
+            // Under SQLite there is NO parser to guard: `node:sqlite`
+            // returns the integer directly. What this engine does with an
+            // out-of-bound value is RECORDED here, not prescribed — the service only writes
+            // `Date.now()` values, and no path leads it there.
             await expect(lire()).rejects.toThrow();
         }
     });

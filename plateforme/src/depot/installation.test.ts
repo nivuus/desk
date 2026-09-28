@@ -1,13 +1,13 @@
-// Les deux dépôts du téléversement, sous `test:sqlite` ET sous `test:postgres`.
+// The two upload repositories, under `test:sqlite` AND under `test:postgres`.
 //
-// 🔴 LES VALEURS SONT RÉALISTES, JAMAIS COMMODES : les horodatages portent une
-// MAGNITUDE D'ÉPOQUE et les tailles celle d'un vrai installeur. C'est la leçon
-// la plus chère de P1 — la double passe n'écrivait que des `1_000`, et
-// déclarait portable un schéma que Postgres refusait pour toute écriture réelle.
+// 🔴 THE VALUES ARE REALISTIC, NEVER CONVENIENT: the timestamps carry an
+// EPOCH MAGNITUDE and the sizes that of a real installer. It is the most
+// expensive lesson of P1 — the double pass only wrote `1_000`s, and
+// declared portable a schema Postgres refused for every real write.
 //
-// 🔴 CE FICHIER PORTE LES TROIS ROUGES DE LA MIGRATION `0006`, et sans lui elle
-// n'en aurait aucune : une migration seule ne peut pas échouer autrement qu'en
-// ne s'appliquant pas.
+// 🔴 THIS FILE CARRIES THE THREE REDS OF MIGRATION `0006`, and without it
+// it would have none: a migration alone cannot fail other than by
+// not applying.
 
 import { afterEach, describe, expect, it } from 'vitest';
 import { baseNeuve, MOTEUR } from '../base/harnais';
@@ -30,9 +30,9 @@ import {
 
 let base: Pilote | undefined;
 
-/// La magnitude qui a réellement cassé Postgres en P1.
+/// The magnitude that really broke Postgres in P1.
 const MS = 1_787_136_773_742;
-/// Un installeur de 3 Go : au-delà de l'entier 32 bits de Postgres.
+/// A 3 GB installer: beyond Postgres' 32-bit integer.
 const TROIS_GO = 3_221_225_472;
 
 afterEach(async () => {
@@ -80,18 +80,18 @@ describe(`upload repository, engine=${MOTEUR}`, () => {
         expect((await lireTeleversement(base, ligne.id))?.scelle_a).toBe(MS + 5_000);
     });
 
-    // 🔴 LA ROUGE DU `BIGINT`, ET ELLE NE SE VOIT QUE SUR LA PASSE POSTGRES.
-    // `INTEGER` vaut 8 octets sur SQLite et EXACTEMENT 4 sur Postgres : une
-    // taille de 3 Go et un `Date.now()` y débordent tous les deux. C'est le
-    // défaut que P1 a trouvé en recette, sur ses PROPRES migrations, et dont
-    // les deux gardes existants — le lint lexical et la double passe — ne
-    // pouvaient rien voir : `INTEGER` est un type licite, et la suite
-    // n'écrivait que des petites valeurs.
+    // 🔴 THE `BIGINT` RED, AND IT ONLY SHOWS ON THE POSTGRES PASS.
+    // `INTEGER` is 8 bytes on SQLite and EXACTLY 4 on Postgres: a
+    // 3 GB size and a `Date.now()` both overflow it. It is the
+    // defect P1 found at acceptance, in its OWN migrations, and which
+    // the two existing guards — the lexical lint and the double pass — could
+    // see nothing of: `INTEGER` is a legal type, and the suite
+    // only wrote small values.
     //
-    // ⚠️ ET LE TEST COMPARE `typeof`, PAS SEULEMENT LA VALEUR : `pg` rend tout
-    // `int8` en TEXTE, et `interroger<T>` fait un `as T[]` — aucun typage ne
-    // l'attraperait. C'est le second défaut que P3 a trouvé, de classe, et le
-    // remède vit AU PILOTE (`setTypeParser`), jamais dans une rustine locale.
+    // ⚠️ AND THE TEST COMPARES `typeof`, NOT ONLY THE VALUE: `pg` returns every
+    // `int8` as TEXT, and `interroger<T>` does an `as T[]` — no typing would
+    // catch it. It is the second defect P3 found, one of class, and the
+    // remedy lives IN THE DRIVER (`setTypeParser`), never in a local patch.
     it('🔴 returns NUMBERS, not strings, on real magnitudes', async () => {
         base = await baseNeuve('tel-nombres');
         const { user } = await socle(base);
@@ -131,7 +131,7 @@ describe(`upload repository, engine=${MOTEUR}`, () => {
         expect(await compterEnCours(base, user)).toBe(2);
         await sceller(base, a.id, MS + 1);
         expect(await compterEnCours(base, user)).toBe(1);
-        // Un autre utilisateur n'entre pas dans le quota.
+        // Another user does not count toward the quota.
         expect(await compterEnCours(base, 'u-inconnu')).toBe(0);
     });
 
@@ -154,11 +154,11 @@ describe(`upload repository, engine=${MOTEUR}`, () => {
         expect(await lireTeleversement(base, vieux.id)).toBeUndefined();
     });
 
-    // 🔴 LA ROUGE DE LA CLÉ ÉTRANGÈRE, PREMIÈRE MOITIÉ. Sans
-    // `REFERENCES user(id)`, cette insertion PASSERAIT — et un
-    // téléversement orphelin n'appartiendrait à personne, donc échapperait à
-    // toute vérification de propriétaire. Les clés étrangères sont APPLIQUÉES
-    // des deux côtés : `pilote-sqlite.ts` pose `PRAGMA foreign_keys = ON`.
+    // 🔴 THE FOREIGN KEY RED, FIRST HALF. Without
+    // `REFERENCES user(id)`, this insertion WOULD PASS — and an
+    // orphan upload would belong to nobody, hence would escape
+    // any owner check. Foreign keys are ENFORCED
+    // on both sides: `pilote-sqlite.ts` sets `PRAGMA foreign_keys = ON`.
     it('🔴 REFUSES an upload whose user does not exist', async () => {
         base = await baseNeuve('tel-orphelin');
         await expect(
@@ -205,8 +205,8 @@ describe(`installation repository, engine=${MOTEUR}`, () => {
         const enCours = await lireInstallation(base, inst.id);
         expect(enCours?.etat).toBe('en_cours');
         expect(enCours?.octets_total).toBe(TROIS_GO);
-        // 🔴 ET LA RÉÉMISSION S'ARRÊTE : c'est la PREMIÈRE des deux ceintures
-        // contre une double exécution.
+        // 🔴 AND THE RE-EMISSION STOPS: it is the FIRST of the two belts
+        // against a double execution.
         expect(await lireEnAttentePourVm(base, vm)).toEqual([]);
 
         await terminer(
@@ -218,17 +218,17 @@ describe(`installation repository, engine=${MOTEUR}`, () => {
         const fini = await lireInstallation(base, inst.id);
         expect(fini?.etat).toBe('terminee');
         expect(fini?.issue).toBe('reussie');
-        // ⚠️ 3010 EST UN SUCCÈS QUI DEMANDE UN REDÉMARRAGE, et la base le
-        // RAPPORTE à côté de l'issue sans en rien déduire.
+        // ⚠️ 3010 IS A SUCCESS THAT ASKS FOR A REBOOT, and the database
+        // REPORTS it next to the outcome without deducing anything from it.
         expect(fini?.code_sortie).toBe(3010);
         expect(fini?.terminee_a).toBe(MS + 9_000);
     });
 
-    // 🔴 LA ROUGE QUI COMPTE POUR LA RÉÉMISSION. La plateforme RÉÉMET, donc un
-    // agent peut rapporter deux fois — et une progression tardive arrivant
-    // après l'issue effacerait celle-ci ET remettrait l'état à `en_cours`,
-    // c'est-à-dire hors de `terminee`. Le garde est `AND etat <> 'terminee'`
-    // sur les DEUX écritures ; sans lui, ce test voit l'issue disparaître.
+    // 🔴 THE RED THAT MATTERS FOR RE-EMISSION. The platform RE-EMITS, so an
+    // agent can report twice — and a late progress arriving
+    // after the outcome would erase it AND set the state back to `en_cours`,
+    // that is, out of `terminee`. The guard is `AND etat <> 'terminee'`
+    // on BOTH writes; without it, this test sees the outcome disappear.
     it('🔴 a LATE progress does not erase an outcome already set', async () => {
         base = await baseNeuve('inst-tardive');
         const { vm, tel } = await withUpload(base);
@@ -272,9 +272,9 @@ describe(`installation repository, engine=${MOTEUR}`, () => {
         expect(relu?.journal_tronque).toBeTruthy();
     });
 
-    // 🔴 LA ROUGE DE LA CLÉ ÉTRANGÈRE, SECONDE MOITIÉ — et c'est celle que le
-    // plan nomme : « l'insertion d'une installation pour une VM inexistante
-    // PASSE au lieu d'échouer ».
+    // 🔴 THE FOREIGN KEY RED, SECOND HALF — and it is the one the
+    // plan names: "the insertion of an installation for a nonexistent VM
+    // PASSES instead of failing".
     it('🔴 REFUSES an installation for a non-existent VM', async () => {
         base = await baseNeuve('inst-vm-fantome');
         const { tel } = await withUpload(base);
@@ -291,10 +291,10 @@ describe(`installation repository, engine=${MOTEUR}`, () => {
         ).rejects.toThrow();
     });
 
-    // ⚠️ CE REFUS EST VOULU, et il est le pendant de l'absence d'`ON DELETE` :
-    // l'historique d'une installation doit rester lisible. Les TRANCHES du
-    // disque, elles, sont balayées par ailleurs — ce sont elles qui coûtent de
-    // la place, pas la ligne.
+    // ⚠️ THIS REFUSAL IS WANTED, and it is the counterpart of the absence of `ON DELETE`:
+    // the history of an installation must stay readable. The CHUNKS on
+    // disk, for their part, are swept elsewhere — they are what costs
+    // space, not the row.
     it('🔴 REFUSES to delete an upload that an installation references', async () => {
         base = await baseNeuve('inst-fk-refus');
         const { vm, tel } = await withUpload(base);

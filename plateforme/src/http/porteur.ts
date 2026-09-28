@@ -1,4 +1,4 @@
-// Lire `Authorization: Bearer <jeton>`, et refuser le jeton d'agent.
+// Read `Authorization: Bearer <token>`, and refuse the agent token.
 //
 // 🔴 THIS MODULE IS PURE: no database, no socket, no clock read — `maintenant` is
 // a PARAMETER, as everywhere in this repository.

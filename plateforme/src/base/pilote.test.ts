@@ -13,9 +13,9 @@ describe('rendreMarqueurs', () => {
     });
 
     it('REFUSES a SQL carrying a string literal', () => {
-        // `SELECT '?' AS x` est du SQL VALIDE (mesuré sur SQLite 3.50.4) : une
-        // conversion naïve en changerait le sens sans rien dire. Le refus est
-        // ce qui rend mécanique la règle « toute valeur passe en paramètre ».
+        // `SELECT '?' AS x` is VALID SQL (measured on SQLite 3.50.4): a
+        // naive conversion would change its meaning without saying anything. The refusal is
+        // what makes the rule "every value goes as a parameter" mechanical.
         expect(() => rendreMarqueurs("SELECT '?' AS x")).toThrow(/literal/);
         expect(() => rendreMarqueurs("SELECT * FROM t WHERE a = 'x'")).toThrow(/literal/);
     });
@@ -29,22 +29,22 @@ describe('package discipline', () => {
     const pkg = readFileSync(new URL('../../package.json', import.meta.url), 'utf8');
 
     it("masks the experimental warning of node:sqlite nowhere", () => {
-        // La spec §3.2 accepte `node:sqlite` PARCE QUE « l'échec d'une
-        // évolution d'API est bruyant et immédiat » : masquer l'avertissement
-        // retirerait exactement le bruit qui justifie la décision.
+        // Spec §3.2 accepts `node:sqlite` BECAUSE "the failure of an
+        // API change is loud and immediate": hiding the warning
+        // would remove exactly the noise that justifies the decision.
         expect(pkg).not.toMatch(/NODE_NO_WARNINGS|--no-warnings|--disable-warning/);
     });
 
     it("adds no production dependency outside the allow-list", () => {
-        // Principe §4.2 du cadrage — « zéro dépendance native non maintenue »,
-        // écrit après le naufrage de `fuse-native`. `ws` et `pg` sont purement
-        // JavaScript ; `node:sqlite` est intégré à Node.
+        // Principle §4.2 of the framing — "zero unmaintained native dependency",
+        // written after the wreck of `fuse-native`. `ws` and `pg` are pure
+        // JavaScript; `node:sqlite` is built into Node.
         //
-        // ⚠️ Ce contrôle porte sur les `dependencies` DÉCLARÉES, jamais sur un
-        // balayage de `node_modules` : `rollup` — dépendance TRANSITIVE de
-        // vitest, donc de développement — installe déjà un `.node`. Un
-        // `find node_modules -name '*.node'` serait rouge d'emblée, pour une
-        // mauvaise raison.
+        // ⚠️ This check is on the DECLARED `dependencies`, never on a
+        // sweep of `node_modules`: `rollup` — a TRANSITIVE dependency of
+        // vitest, hence a dev one — already installs a `.node`. A
+        // `find node_modules -name '*.node'` would be red from the start, for a
+        // wrong reason.
         const deps = Object.keys(JSON.parse(pkg).dependencies).sort();
         expect(deps).toEqual(['pg', 'ws']);
     });

@@ -1,34 +1,34 @@
-// La fraîcheur d'un agent : `prete` ou `injoignable`, décidé sur `vu_a`.
+// An agent's freshness: `prete` or `injoignable`, decided on `vu_a`.
 //
-// 🔴 LA ROUGE CENTRALE DE CE FICHIER EST LA TRANSITION, pas les deux états
-// pris séparément. La spec §4 P3 ④ l'écrit littéralement : « un seuil qui
-// n'est jamais atteint dans le test ne prouve rien : le test DOIT voir la
-// transition ». Deux tests qui poseraient chacun leur instant et leur `vu_a`
-// pourraient tous deux passer sur une implémentation qui ne lit pas l'horloge
-// du tout — c'est le piège que le critère ② de P2 a nommé pour les jetons, et
-// qu'une horloge FIGÉE rejouerait ici.
+// 🔴 THE CENTRAL RED OF THIS FILE IS THE TRANSITION, not the two states
+// taken separately. Spec §4 P3 ④ writes it literally: "a threshold that
+// is never reached in the test proves nothing: the test MUST see the
+// transition". Two tests each setting their own instant and their own `vu_a`
+// could both pass on an implementation that does not read the clock
+// at all — it is the trap P2's criterion ② named for tokens, and
+// that a FROZEN clock would replay here.
 //
-// ⚠️ L'HORLOGE EST UN PARAMÈTRE, jamais lue dans le module : c'est ce qui rend
-// les instants assertables sur des valeurs exactes, et c'est la règle du dépôt
+// ⚠️ THE CLOCK IS A PARAMETER, never read in the module: that is what makes
+// the instants assertable on exact values, and it is the rule of the repository
 // (`depot/session.ts`, `identite/jeton.ts`, `signaling/ice.ts`).
 //
-// ⚠️ LES INSTANTS SONT DE VRAIES ÉPOQUES EN MILLISECONDES, jamais de petits
-// nombres commodes. C'est la leçon de `base/harnais.ts` : un `1_000` tient
-// dans un entier de 4 octets, `Date.now()` non — et ici il vaut de surcroît
-// que le test exerce l'ordre de grandeur que le service manipule réellement.
+// ⚠️ THE INSTANTS ARE REAL EPOCHS IN MILLISECONDS, never small
+// convenient numbers. It is the lesson of `base/harnais.ts`: a `1_000` fits
+// in a 4-byte integer, `Date.now()` does not — and here it also matters
+// that the test exercises the order of magnitude the service really handles.
 
 import { describe, expect, it } from 'vitest';
 import { SEUIL_INJOIGNABLE_MS, etatDe } from './fraicheur';
 
-/// Une époque réelle : 19 août 2026, à la milliseconde près.
+/// A real epoch: 19 August 2026, to the millisecond.
 const T0 = 1_787_000_000_000;
 
 describe('the freshness of an agent', () => {
     it('a VM that has NEVER beaten is unreachable', () => {
-        // 🔴 `null` n'est pas `0` : `depot/agent.ts` le dit déjà de la colonne.
-        // Rendre `prete` ici annoncerait prête une VM dont personne n'a jamais
-        // eu la moindre nouvelle — exactement l'inverse de ce que la colonne
-        // signifie.
+        // 🔴 `null` is not `0`: `depot/agent.ts` already says so of the column.
+        // Returning `prete` here would announce ready a VM nobody has ever
+        // had the slightest news of — exactly the opposite of what the column
+        // means.
         expect(etatDe(null, T0)).toBe('injoignable');
     });
 
@@ -37,16 +37,16 @@ describe('the freshness of an agent', () => {
     });
 
     it('🔴 a VM seen THRESHOLD + 1 ms ago is unreachable', () => {
-        // Sans comparaison au seuil, une implémentation qui rendrait `prete`
-        // dès que `vu_a` n'est pas `null` passerait les deux tests ci-dessus.
+        // Without comparison to the threshold, an implementation that returned `prete`
+        // as soon as `vu_a` is not `null` would pass the two tests above.
         expect(etatDe(T0, T0 + SEUIL_INJOIGNABLE_MS + 1)).toBe('injoignable');
     });
 
     it('🔴 THE TRANSITION is observed: same `vu_a`, two instants, and the bound is besieged from BOTH sides', () => {
-        // 🔴 C'est la rouge littérale du critère ④ de la spec. Le MÊME `vu_a`
-        // est jugé à deux instants, et les deux instants encadrent la borne à
-        // une milliseconde près : une horloge figée — ou ignorée — rendrait
-        // deux fois la même valeur et ce test tomberait.
+        // 🔴 It is the literal red of the spec's criterion ④. The SAME `vu_a`
+        // is judged at two instants, and the two instants frame the bound to
+        // one millisecond: a frozen — or ignored — clock would return
+        // the same value twice and this test would fail.
         const vuA = T0;
         expect(etatDe(vuA, vuA + SEUIL_INJOIGNABLE_MS)).toBe('prete');
         expect(etatDe(vuA, vuA + SEUIL_INJOIGNABLE_MS + 1)).toBe('injoignable');

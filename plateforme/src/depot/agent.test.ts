@@ -1,10 +1,10 @@
-// Ces tests tournent sous `test:sqlite` ET sous `test:postgres`, sans être
-// écrits deux fois : ils emploient le même harnais que `pilotes.test.ts`.
+// These tests run under `test:sqlite` AND under `test:postgres`, without being
+// written twice: they use the same harness as `pilotes.test.ts`.
 //
-// 🔴 LES VALEURS SONT RÉALISTES, JAMAIS COMMODES. C'est la leçon la plus chère
-// de P1 : la double passe n'écrivait que des `1_000`, et déclarait portable un
-// schéma que Postgres refusait pour toute écriture réelle. `vu_a` reçoit donc
-// une MAGNITUDE D'ÉPOQUE, et l'empreinte une vraie longueur de `scrypt`.
+// 🔴 THE VALUES ARE REALISTIC, NEVER CONVENIENT. It is the most expensive lesson
+// of P1: the double pass only wrote `1_000`s, and declared portable a
+// schema Postgres refused for every real write. `vu_a` therefore receives
+// an EPOCH MAGNITUDE, and the hash a real `scrypt` length.
 
 import { afterEach, describe, expect, it } from 'vitest';
 import { baseNeuve, MOTEUR } from '../base/harnais';
@@ -14,9 +14,9 @@ import { enroler, lireParPrefixe, lireParVm, marquerVu, remplacerEmpreinte } fro
 
 let base: Pilote | undefined;
 
-/// La magnitude qui a réellement cassé Postgres en P1 (`pilotes.test.ts:111`).
+/// The magnitude that really broke Postgres in P1 (`pilotes.test.ts:111`).
 const MS = 1_787_136_773_742;
-/// Un préfixe de la VRAIE longueur que `agents/prefixe.ts` produit.
+/// A prefix of the REAL length `agents/prefixe.ts` produces.
 const PREFIXE = 'RhH1x2QmTz9kLpVbNc7dAw';
 
 afterEach(async () => {
@@ -24,8 +24,8 @@ afterEach(async () => {
     base = undefined;
 });
 
-/// Une VM à laquelle s'accrocher : `agent_enrole.vm_id` la RÉFÉRENCE, et
-/// SQLite applique la clé étrangère (`PRAGMA foreign_keys=ON` à l'ouverture).
+/// A VM to hang on to: `agent_enrole.vm_id` REFERENCES it, and
+/// SQLite applies the foreign key (`PRAGMA foreign_keys=ON` at opening).
 async function withVm(p: Pilote, id: string): Promise<void> {
     await p.executer('INSERT INTO vm(id,nom,adresse) VALUES(?,?,?)', [id, `vm-${id}`, '192.168.3.2']);
 }
@@ -34,9 +34,9 @@ describe(`agent_enrole repository, engine=${MOTEUR}`, () => {
     it('enrols, then re-reads by VM', async () => {
         base = await baseNeuve('agent-enrole');
         await withVm(base, 'v-1');
-        // Une empreinte RÉELLE, produite par la même dérivation que les
-        // comptes humains — pas une chaîne courte qui ne mesure aucune
-        // longueur de colonne.
+        // A REAL hash, produced by the same derivation as the
+        // human accounts — not a short string that measures no
+        // column length.
         const empreinte = await hacher('un-secret-d-enrolement-de-la-vraie-longueur');
         await enroler(base, 'v-1', empreinte, PREFIXE);
 
@@ -45,14 +45,14 @@ describe(`agent_enrole repository, engine=${MOTEUR}`, () => {
         expect(ligne!.vm_id).toBe('v-1');
         expect(ligne!.empreinte_secret).toBe(empreinte);
         expect(ligne!.prefixe_session).toBe(PREFIXE);
-        // Une VM enrôlée qui n'a jamais battu : NULL, pas zéro.
+        // An enrolled VM that has never beaten: NULL, not zero.
         expect(ligne!.vu_a).toBeNull();
     });
 
     it('re-reads the SAME row by its PREFIX', async () => {
-        // 🔴 La rouge : interroger sur `vm_id`. Le préfixe est ce que le nom de
-        // session porte — c'est la seule clé dont `signaling/trace.ts`
-        // dispose pour remonter à la VM.
+        // 🔴 The red: querying on `vm_id`. The prefix is what the session
+        // name carries — it is the only key `signaling/trace.ts`
+        // has to trace back to the VM.
         base = await baseNeuve('agent-prefixe');
         await withVm(base, 'v-1');
         await enroler(base, 'v-1', await hacher('secret-un'), PREFIXE);
@@ -64,18 +64,18 @@ describe(`agent_enrole repository, engine=${MOTEUR}`, () => {
     });
 
     it('returns undefined on an unknown one, WITHOUT THROWING, on both sides', async () => {
-        // 🔴 Lever ferait répondre 500 au canal là où il doit répondre un
-        // refus — et l'écart de comportement serait à lui seul un oracle
-        // d'énumération. Précédent : `depot/utilisateur.ts::lireParEmail`.
+        // 🔴 Throwing would make the channel answer 500 where it must answer a
+        // refusal — and the difference in behaviour would on its own be an enumeration
+        // oracle. Precedent: `depot/utilisateur.ts::lireParEmail`.
         base = await baseNeuve('agent-inconnu');
         await expect(lireParVm(base, 'v-jamais-vue')).resolves.toBeUndefined();
         await expect(lireParPrefixe(base, 'PrefixeQuiNExistePas22')).resolves.toBeUndefined();
     });
 
     it('REFUSES a second enrolment on the SAME prefix', async () => {
-        // 🔴 La rouge : retirer UNIQUE de la migration. Deux VMs de même
-        // préfixe rendraient `lireParPrefixe` ambiguë, et le choix de la VM
-        // arbitraire — le problème exact que le préfixe existe pour fermer.
+        // 🔴 The red: removing UNIQUE from the migration. Two VMs with the same
+        // prefix would make `lireParPrefixe` ambiguous, and the choice of VM
+        // arbitrary — the exact problem the prefix exists to close.
         base = await baseNeuve('agent-unique');
         await withVm(base, 'v-1');
         await withVm(base, 'v-2');
@@ -84,24 +84,24 @@ describe(`agent_enrole repository, engine=${MOTEUR}`, () => {
     });
 
     it('marks vu_a at an EPOCH MAGNITUDE, and re-reads it AS `number`', async () => {
-        // 🔴 Écrire `1_000` passerait sur les deux moteurs sans rien prouver :
-        // c'est l'angle mort exact que P1 a payé.
+        // 🔴 Writing `1_000` would pass on both engines without proving anything:
+        // it is the exact blind spot P1 paid for.
         //
-        // ⚠️ CE TEST ENVELOPPAIT SES DEUX LECTURES DANS `Number(...)`, et ce
-        // `Number` CACHAIT le défaut au lieu de le mesurer : `pg` rendait ce
-        // `BIGINT` en **chaîne**, si bien que `LigneAgent.vu_a` déclarait
-        // `number | null` une valeur qui était une `string` en PRODUCTION.
-        // Relevé par la recette de P3, corrigé au PILOTE
-        // (`base/pilote-postgres.ts`, `setTypeParser`) parce que le défaut
-        // était de classe. L'assertion est donc désormais NUE — c'est elle
-        // qui tient la déclaration de type honnête.
+        // ⚠️ THIS TEST WRAPPED ITS TWO READS IN `Number(...)`, and that
+        // `Number` HID the defect instead of measuring it: `pg` returned this
+        // `BIGINT` as a **string**, so that `LigneAgent.vu_a` declared
+        // `number | null` a value that was a `string` in PRODUCTION.
+        // Found by P3's acceptance run, fixed in the DRIVER
+        // (`base/pilote-postgres.ts`, `setTypeParser`) because the defect
+        // was one of class. The assertion is therefore now BARE — it is what
+        // keeps the type declaration honest.
         base = await baseNeuve('agent-vu');
         await withVm(base, 'v-1');
         await enroler(base, 'v-1', await hacher('secret-un'), PREFIXE);
 
         await marquerVu(base, 'v-1', MS);
         expect((await lireParVm(base, 'v-1'))!.vu_a).toBe(MS);
-        // Le battement suivant AVANCE la valeur, il ne l'ajoute pas.
+        // The next heartbeat ADVANCES the value, it does not add it.
         await marquerVu(base, 'v-1', MS + 30_000);
         expect((await lireParVm(base, 'v-1'))!.vu_a).toBe(MS + 30_000);
     });
@@ -122,10 +122,10 @@ describe(`remplacerEmpreinte, engine=${MOTEUR}`, () => {
     });
 
     it("🔴 DOES NOT TOUCH the session prefix — re-read on BOTH sides of the call", async () => {
-        // 🔴 LA ROUGE : faire tourner le préfixe en même temps que le secret.
-        // Il compose le nom des sessions VIVANTES de cette VM
-        // (`agents/prefixe.ts`) : le changer couperait toute session en cours.
-        // Rotation du secret n'est pas rotation de l'identité.
+        // 🔴 THE RED: rotating the prefix together with the secret.
+        // It makes up the name of this VM's LIVE sessions
+        // (`agents/prefixe.ts`): changing it would cut every ongoing session.
+        // Rotating the secret is not rotating the identity.
         base = await baseNeuve('agent-rotation-prefixe');
         await withVm(base, 'v-1');
         await enroler(base, 'v-1', await hacher('le-secret-d-origine-tres-long'), PREFIXE);
@@ -139,8 +139,8 @@ describe(`remplacerEmpreinte, engine=${MOTEUR}`, () => {
     });
 
     it("🔴 touches NO other VM, and does not throw on an unknown VM", async () => {
-        // 🔴 LA ROUGE : oublier la clause WHERE. Toutes les VMs partageraient
-        // alors le même secret, ce qu'aucun test à une seule VM ne verrait.
+        // 🔴 THE RED: forgetting the WHERE clause. All VMs would then share
+        // the same secret, which no single-VM test would see.
         base = await baseNeuve('agent-rotation-portee');
         await withVm(base, 'v-1');
         await withVm(base, 'v-2');
@@ -151,8 +151,8 @@ describe(`remplacerEmpreinte, engine=${MOTEUR}`, () => {
         await remplacerEmpreinte(base, 'v-1', await hacher('le-secret-neuf-tout-aussi-long'));
         expect((await lireParVm(base, 'v-2'))!.empreinte_secret).toBe(gardee);
 
-        // Une VM inconnue : zéro ligne touchée, et surtout AUCUNE exception —
-        // c'est ce qui permet à l'appelant de rendre un refus motivé.
+        // An unknown VM: zero rows touched, and above all NO exception —
+        // it is what lets the caller return a reasoned refusal.
         expect(await remplacerEmpreinte(base, 'v-jamais-enrolee', 'peu-importe')).toBe(0);
     });
 });

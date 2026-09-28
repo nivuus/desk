@@ -1,15 +1,15 @@
-// La famille « DÉPOSER » des routes de téléversement : le rang, la borne dure
-// du `PUT`, et l'idempotence du redépôt.
+// The "DROP" family of upload routes: the rank, the hard bound
+// of the `PUT`, and the idempotence of dropping again.
 //
-// 🔴 EXTRAITE DE `routes-televersement.test.ts`, QUI A ATTEINT 504 LIGNES pour
-// un plafond de 500. Le dépôt a payé DEUX FOIS en D9 pour avoir rattrapé un
-// franchissement par une COMPRESSION qu'il interdit nommément ; l'extraction
-// est le geste que sa doctrine prescrit, et CHAQUE CAS EMPORTE AVEC LUI LE
-// COMMENTAIRE QUI LE JUSTIFIE — aucune ligne d'assertion n'a été reformulée.
+// 🔴 EXTRACTED FROM `routes-televersement.test.ts`, WHICH REACHED 504 LINES for
+// a cap of 500. The repository paid TWICE in D9 for having caught up a
+// crossing by a COMPRESSION it forbids by name; extraction
+// is the gesture its doctrine prescribes, and EACH CASE TAKES WITH IT THE
+// COMMENT THAT JUSTIFIES IT — no assertion line was reworded.
 //
-// 🔴 LES FIXTURES VIENNENT DE `routes-televersement-harnais.ts`, JAMAIS D'UNE
-// COPIE : deux montages divergeraient, et le jour où l'un des deux changerait
-// de pas, l'autre éprouverait un contrat que le produit n'a plus.
+// 🔴 THE FIXTURES COME FROM `routes-televersement-harnais.ts`, NEVER FROM A
+// COPY: two setups would diverge, and the day one of the two changed
+// step, the other would test a contract the product no longer has.
 
 import { readdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -31,7 +31,7 @@ import {
 afterEach(nettoyer);
 
 describe(`upload routes — drop, engine=${MOTEUR}`, () => {
-    /* ── ③ DÉPOSER ───────────────────────────────────────────────────── */
+    /* ── ③ DROP ───────────────────────────────────────────────────── */
 
     it('drops, re-reads the state, and DROPPING AGAIN overwrites (idempotence)', async () => {
         const { url, base } = await monter('tel-deposer');
@@ -48,15 +48,15 @@ describe(`upload routes — drop, engine=${MOTEUR}`, () => {
             { n: 1, octets: 4 },
         ]);
 
-        // Redéposer le MÊME rang, plus court : la seconde écriture gagne.
+        // Dropping the SAME rank again, shorter: the second write wins.
         const bis = await deposer(url, id, 1, Buffer.from('xy'), jeton);
         expect(bis.status).toBe(200);
         expect(magasin.lister(id)).toEqual([{ n: 1, octets: 2 }]);
     });
 
     it('🔴 refuses a chunk beyond the step, and leaves NO file', async () => {
-        // 🔴 LA ROUGE : sans la borne, on rend 200 et l'on écrit une tranche de
-        // cinq octets là où le pas en vaut quatre.
+        // 🔴 THE RED: without the bound, we return 200 and write a chunk of
+        // five bytes where the step is worth four.
         const { url, base } = await monter('tel-borne');
         const ada = await user(base, 'ada@exemple.test');
         const id = await poser(base, ada);
@@ -65,36 +65,36 @@ describe(`upload routes — drop, engine=${MOTEUR}`, () => {
         expect(r.status).toBe(413);
         expect(await r.json()).toEqual({ refus: 'tranche-trop-grande', maximum: PAS });
 
-        // ⚠️ AUCUNE TRANCHE : le `rename` n'a jamais eu lieu, donc rien n'existe
-        // sous le nom définitif. C'est CE contrôle qui tue la rouge — sans la
-        // borne, le fichier `0` existe et `lister` le rend.
+        // ⚠️ NO CHUNK: the `rename` never happened, so nothing exists
+        // under the final name. It is THIS check that kills the red — without the
+        // bound, file `0` exists and `lister` returns it.
         expect(magasin.lister(id)).toEqual([]);
 
-        // 🔴 LE RÉPERTOIRE EST VIDE, ET CETTE ASSERTION A ÉTÉ RENDUE À SA
-        // FORME FORTE APRÈS QUE LE DÉFAUT QU'ELLE CONTOURNAIT A ÉTÉ CORRIGÉ.
+        // 🔴 THE DIRECTORY IS EMPTY, AND THIS ASSERTION WAS RESTORED TO ITS
+        // STRONG FORM AFTER THE DEFECT IT WORKED AROUND WAS FIXED.
         //
-        // Elle s'est d'abord arrêtée à « ce qui reste ne peut être qu'un
-        // `.part` », sur un défaut MESURÉ du magasin : `magasin-tranches.ts`
-        // affirmait que « LE FICHIER PARTIEL EST SUPPRIMÉ, quelle que soit la
-        // cause », et c'était faux — une COURSE entre le `rmSync` du chemin
-        // d'erreur et l'`open(2)` ASYNCHRONE de `createWriteStream`, qui créait
-        // le fichier juste après sa suppression. C'est ce qui faisait tomber ce
-        // test par intermittence sous la charge de la suite complète, et jamais
-        // isolé.
+        // It first stopped at "what remains can only be a
+        // `.part`", on a MEASURED defect of the store: `magasin-tranches.ts`
+        // claimed that "THE PARTIAL FILE IS DELETED, whatever the
+        // cause", and it was false — a RACE between the `rmSync` of the
+        // error path and the ASYNCHRONOUS `open(2)` of `createWriteStream`, which created
+        // the file just after its deletion. It is what made this
+        // test fail intermittently under the load of the full suite, and never
+        // in isolation.
         //
-        // ✅ LA COURSE EST SUPPRIMÉE À SA SOURCE — le descripteur est ouvert par
-        // `openSync` AVANT le `pipeline`, donc l'inode existe déjà quand le
-        // `catch` supprime. Différentiel mesuré par sonde directe sur `write`,
-        // hors HTTP, **une exécution de 400 dépassements par bras** :
-        // **100 répertoires non vides sur 400 AVANT, 0 sur 400 APRÈS**.
-        // ⚠️ Le taux dépend de la charge — une mesure antérieure sous une autre
-        // charge relevait 42 sur 400 —, donc AUCUN taux n'est revendiqué ; ce
-        // qui est établi est la disparition, pas une fréquence.
+        // ✅ THE RACE IS REMOVED AT ITS SOURCE — the descriptor is opened by
+        // `openSync` BEFORE the `pipeline`, so the inode already exists when the
+        // `catch` deletes. Differential measured by a direct probe on `write`,
+        // outside HTTP, **one run of 400 overflows per arm**:
+        // **100 non-empty directories out of 400 BEFORE, 0 out of 400 AFTER**.
+        // ⚠️ The rate depends on the load — an earlier measurement under another
+        // load recorded 42 out of 400 —, so NO rate is claimed; what
+        // is established is the disappearance, not a frequency.
         //
-        // ⚠️ Ce n'était PAS un trou de protocole : `lister` ignore les noms non
-        // numériques, donc aucune fausse tranche n'a jamais été comptée et le
-        // scellement n'en voyait rien. C'était une FUITE DE DISQUE, sur un
-        // service qui accepte 4 Gio.
+        // ⚠️ It was NOT a protocol hole: `lister` ignores non-numeric
+        // names, so no fake chunk was ever counted and
+        // sealing saw nothing of it. It was a DISK LEAK, on a
+        // service that accepts 4 GiB.
         expect(readdirSync(join(racine, id)), 'no residue, .part included').toEqual([]);
     });
 
@@ -109,7 +109,7 @@ describe(`upload routes — drop, engine=${MOTEUR}`, () => {
             expect(r.status, rang).toBe(400);
             expect(await r.json(), rang).toEqual({ refus: 'rang-invalide' });
         }
-        // Trois tranches (0, 1, 2) : le rang 3 ne deviendra jamais cohérent.
+        // Three chunks (0, 1, 2): rank 3 will never become consistent.
         const hors = await deposer(url, id, 3, Buffer.from('a'), jeton);
         expect(hors.status).toBe(409);
         expect(await hors.json()).toEqual({ refus: 'rang-hors-plan', tranches: 3 });
