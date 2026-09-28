@@ -275,3 +275,6 @@ mod win32;
 #[cfg(test)]
 #[path = "presse_papier/tests.rs"]
 mod tests;
+#[cfg(test)]
+#[path = "presse_papier/tests_entrant.rs"]
+mod tests_entrant;

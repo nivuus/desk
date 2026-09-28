@@ -306,3 +306,6 @@ fn emettre(rtc: &mut Rtc, canal: Option<ChannelId>, correlation: u32, trame: &[u
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod tests_fermeture;

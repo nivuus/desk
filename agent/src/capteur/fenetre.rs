@@ -44,6 +44,8 @@ mod accent_fenetre;
 // D10 : la tâche 8 et la tâche 9 avaient porté ce fichier à 505 lignes,
 // au-dessus du plafond de 500.
 mod ouverture;
+// Le fil écrivain de la connexion média, et ce qu'on lui confie.
+mod media;
 // `trace` porte la trace périodique des compteurs de capture
 // (`SOURCE_TRACE=1`) — troisième module enfant sur le même patron que les
 // deux ci-dessus, extrait en revue de la tâche 11 (D9) pour la même raison de
@@ -62,12 +64,12 @@ use windows::Win32::Foundation::HWND;
 
 use crate::accent;
 use crate::capteur::plein_ecran;
-use crate::capteur::protocole::{ecrire_image, ecrire_json, DepuisCapteur, VersCapteur};
-use crate::h264::AccessUnit;
+use crate::capteur::protocole::{DepuisCapteur, VersCapteur};
 use crate::source::VideoSource;
 use crate::windows_source::WindowsSource;
 
 use self::commandes::{deposer, servir_les_commandes};
+use self::media::{ecrire_le_media, AEcrire, CAPACITE_ECRITURES};
 use self::trace::tracer_les_compteurs;
 
 /// Pas de sommeil quand la source n'a rien rendu.
@@ -83,22 +85,6 @@ const PAS_A_VIDE: Duration = Duration::from_millis(10);
 /// Période des lignes de compteurs. **Jamais de trace par image** : le projet
 /// a déjà perdu une session entière à une trace par paquet.
 const PERIODE_COMPTEURS: Duration = Duration::from_secs(10);
-
-/// Profondeur de la file entre le fil de fenêtre et le fil écrivain de la
-/// connexion média.
-///
-/// **Bornée à dessein** : une file libre laisserait s'accumuler sans limite des
-/// unités d'accès qu'un enfant qui ne lit plus ne prendra jamais. C'est le
-/// pendant exact de `CAPACITE_FILE` côté enfant, et la contre-pression continue
-/// donc de remonter jusqu'à la capture — mais elle remonte désormais dans
-/// `deposer`, qui sert les commandes à chaque tour d'attente.
-const CAPACITE_ECRITURES: usize = 8;
-
-/// Ce que le fil de fenêtre confie au fil écrivain de la connexion média.
-enum AEcrire {
-    Image(AccessUnit),
-    Etat(DepuisCapteur),
-}
 
 /// Faut-il continuer la boucle de fenêtre, ou la clore — et pourquoi.
 enum Fin {
@@ -485,23 +471,5 @@ impl Fenetre {
 
         tracing::info!(%session, images, motif, "fin de la fenêtre côté capteur");
         Ok(())
-    }
-}
-
-/// Le fil écrivain de la connexion média : il ne fait qu'écrire, et il est le
-/// seul à toucher cet objet fichier. Personne ne le lit.
-fn ecrire_le_media<E: Write>(mut ecrivain: E, charges: Receiver<AEcrire>, session: &str) {
-    for charge in charges {
-        let ecrit = match charge {
-            AEcrire::Image(unite) => ecrire_image(&mut ecrivain, &unite),
-            AEcrire::Etat(message) => ecrire_json(&mut ecrivain, &message),
-        };
-        // `flush` à chaque charge : devant une fenêtre immobile, la charge
-        // suivante peut ne jamais venir, et l'enfant attendrait celle-ci dans
-        // un tampon. Même leçon que la réponse d'attache de la tâche 9.
-        if let Err(erreur) = ecrit.and_then(|()| ecrivain.flush()) {
-            tracing::warn!(%session, %erreur, "écriture de la connexion média interrompue");
-            return;
-        }
     }
 }
