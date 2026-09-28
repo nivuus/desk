@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# Joue UNE exécution de la recette F5.
+# Plays ONE run of acceptance run F5.
 #
 #     instrument/jouer-f5.sh <etiquette> <secondes-de-maintien> [--sans-purge]
 #
-# 🔴 DEUX EXÉCUTIONS NE SE CHEVAUCHENT JAMAIS. F1 en a perdu une : deux se sont
-# recouvertes de 2 min 23 s, la seconde a tué l'agent de la première EN PLEINE
-# MESURE, et *le journal versé sous le nom de la première était celui de la
-# seconde*. Ce script tue l'agent AVANT, et le vérifie APRÈS.
+# 🔴 TWO RUNS NEVER OVERLAP. F1 lost one that way: two
+# overlapped by 2 min 23 s, the second killed the first one's agent IN THE MIDDLE OF
+# MEASURING, and *the log filed under the first one's name was the
+# second's*. This script kills the agent BEFORE, and checks it AFTER.
 #
-# Modelé sur `jouer-f3.sh`, dont il reprend le montage (`/tmp/f2/env.sh`).
+# Modelled on `jouer-f3.sh`, whose setup it takes over (`/tmp/f2/env.sh`).
 set -uo pipefail
 ETIQUETTE="$1"
 MAINTIEN="${2:-30}"
@@ -19,7 +19,7 @@ J="$RACINE/docs/superpowers/plans/journaux-pont-fichiers-f5"
 mkdir -p /tmp/f5
 
 set -a; source "$RACINE/.env"; set +a
-source /tmp/f2/env.sh   # le montage de F2, RÉEMPLOYÉ : même VM, même compte, même préfixe
+source /tmp/f2/env.sh   # F2's setup, REUSED: same VM, same account, same prefix
 
 echo "=== [$ETIQUETTE] $(date -u '+%Y-%m-%dT%H:%M:%SZ') — un compte n'est attribuable qu'assorti de son heure ==="
 echo "=== [$ETIQUETTE] agents survivants AVANT (un agent SURVIT a l hibernation) ==="
@@ -33,10 +33,10 @@ else
     node "$RACINE/scripts/winrm.js" 'powershell -NoProfile -ExecutionPolicy Bypass -File C:\dev\purger-pont.ps1' 2>&1 | tail -4
 fi
 
-# 🔴 LES ARTEFACTS DE L'EXÉCUTION PRÉCÉDENTE PARTENT AVANT, TOUS. Payé en F3 :
-# un fichier de résultat laissé par une tentative antérieure a été lu comme le
-# résultat de celle-ci. C'est le piège de D8 — « on mesure le run d'avant en
-# croyant lire le sien » — sous la forme d'un fichier de résultat.
+# 🔴 THE PREVIOUS RUN'S ARTEFACTS GO FIRST, ALL OF THEM. Paid for in F3:
+# a result file left by an earlier attempt was read as this one's
+# result. It is D8's trap — "one measures the previous run believing
+# one reads one's own" — in the form of a result file.
 rm -f /media/vm/dev/agent.log "/tmp/f5/pilote-$ETIQUETTE.json" \
       "$J/pilote-$ETIQUETTE.json" "$J/agent-$ETIQUETTE.log" "$J/agent-$ETIQUETTE-plat.log"
 
@@ -48,9 +48,9 @@ UDD="/tmp/f5/udd-$ETIQUETTE" PORT_CDP="${PORT_CDP:-9455}" \
 CODE=${PIPESTATUS[0]}
 
 echo "=== [$ETIQUETTE] copie du journal d agent (APRES la fin reelle) ==="
-# ⚠️ APRÈS la fin réelle : les enfants meurent quand le navigateur se ferme,
-# donc APRÈS la copie, et leurs lignes de libération partiraient avec le journal
-# suivant. Une pièce a été perdue ainsi en D4.
+# ⚠️ AFTER the real end: the children die when the browser closes,
+# hence AFTER the copy, and their release lines would go with the next
+# log. One piece of evidence was lost that way in D4.
 sleep 6
 cp /media/vm/dev/agent.log "$J/agent-$ETIQUETTE.log" 2>/dev/null || echo 'agent.log introuvable'
 sed 's/\x1b\[[0-9;]*m//g' "$J/agent-$ETIQUETTE.log" > "$J/agent-$ETIQUETTE-plat.log" 2>/dev/null || true

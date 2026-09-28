@@ -1,24 +1,24 @@
-// Injecte AVANT tout script de la page (Page.addScriptToEvaluateOnNewDocument).
+// Injected BEFORE any script of the page (Page.addScriptToEvaluateOnNewDocument).
 //
-// Trois choses, et rien de plus :
-//   1. les jetons et le prefixe dans `localStorage` ;
-//   2. une arborescence OPFS peuplee depuis le jeu de donnees de l'hote ;
-//   3. `window.showDirectoryPicker` surcharge pour rendre cette arborescence.
+// Three things, and nothing more:
+//   1. the tokens and the prefix in `localStorage`;
+//   2. an OPFS tree populated from the host's data set;
+//   3. `window.showDirectoryPicker` overridden to return that tree.
 //
-// 🔴 LA POIGNEE RENDUE EST UNE VRAIE `FileSystemDirectoryHandle`. Ce n'est pas
-// un faux objet : OPFS rend la meme classe que le selecteur, avec les memes
-// methodes et de vrais `File`. Voir l'en-tete de `commun-f1.mjs` pour ce que
-// cela couvre et ce que cela ne couvre pas.
+// 🔴 THE RETURNED HANDLE IS A REAL `FileSystemDirectoryHandle`. It is not
+// a fake object: OPFS returns the same class as the picker, with the same
+// methods and real `File`s. See the header of `commun-f1.mjs` for what
+// that covers and what it does not.
 //
-// Les valeurs entre doubles tirets bas sont substituees par le pilote.
+// The values between double underscores are substituted by the driver.
 //
-// ⚠️ LE PILOTE SUBSTITUE PAR `replaceAll`, ET CE COMMENTAIRE N'EN NOMME PLUS
-// AUCUNE. Une premiere version citait les marqueurs en toutes lettres ICI, et
-// `String.replace` -- qui ne remplace que la PREMIERE occurrence -- substituait
-// le COMMENTAIRE en laissant le vrai marqueur intact. La page stockait alors le
-// marqueur litteral comme jeton : non vide, donc pas de redirection vers
-// `connexion.html`, et le seul symptome etait un `jeton refuse (forme)` dans le
-// journal du service. Le controle ne pouvait pas voir sa propre panne.
+// ⚠️ THE DRIVER SUBSTITUTES THROUGH `replaceAll`, AND THIS COMMENT NO LONGER NAMES
+// ANY OF THEM. A first version quoted the markers in full HERE, and
+// `String.replace` -- which only replaces the FIRST occurrence -- substituted
+// the COMMENT while leaving the real marker intact. The page then stored the
+// literal marker as a token: not empty, hence no redirect to
+// `connexion.html`, and the only symptom was a `token refused (shape)` in the
+// service's log. The check could not see its own failure.
 (() => {
     try {
         localStorage.setItem('guac.jeton.acces', '__JETON_ACCES__');
@@ -26,17 +26,17 @@
         localStorage.setItem('guac.prefixe', '__PREFIXE__');
     } catch (e) { /* page sans localStorage */ }
 
-    // 🔴 CAPTURE DE LA `RTCPeerConnection`, pour le critere 4.
-    // Il n'existe aucun autre moyen d'atteindre `getStats()` depuis le
-    // pilote : ni `main.ts` ni `shell-page.ts` n'exposent leur connexion sur
-    // `window`. Technique reprise TELLE QUELLE de
+    // 🔴 CAPTURE OF THE `RTCPeerConnection`, for criterion 4.
+    // There is no other way to reach `getStats()` from the
+    // driver: neither `main.ts` nor `shell-page.ts` exposes its connection on
+    // `window`. Technique taken AS IS from
     // `journaux-multifenetres-d11/instrument/pilote-cout-d11.mjs:81-83`.
     //
-    // ⚠️ Cette injection doit atteindre les fenetres ouvertes par
-    // `window.open` : `Page.addScriptToEvaluateOnNewDocument` NE COURT PAS sur
-    // elles (piege mesure au sous-bloc D5). C'est pourquoi le pilote passe par
-    // `Target.setAutoAttach` avec `waitForDebuggerOnStart`, et non par une
-    // simple cible page.
+    // ⚠️ This injection must reach the windows opened by
+    // `window.open`: `Page.addScriptToEvaluateOnNewDocument` DOES NOT RUN on
+    // them (a trap measured in sub-block D5). That is why the driver goes through
+    // `Target.setAutoAttach` with `waitForDebuggerOnStart`, and not through a
+    // simple page target.
     try {
         const N = window.RTCPeerConnection;
         if (N) {
@@ -48,36 +48,36 @@
             };
             window.RTCPeerConnection.prototype = N.prototype;
         }
-    } catch (e) { /* rien a faire : le critere 4 le dira */ }
+    } catch (e) { /* nothing to do: criterion 4 will say */ }
 
     const BASE = '__BASE_JEU__';
-    // Le journal du pilote : la page y ecrit, le pilote le relit. Il est
-    // BORNE (200 entrees) -- un tampon non borne est le defaut d'instrument
-    // que D8 a laisse ouvert sur `window.__pleinEcran`.
+    // The driver's log: the page writes into it, the driver rereads it. It is
+    // BOUNDED (200 entries) -- an unbounded buffer is the instrument defect
+    // D8 left open on `window.__pleinEcran`.
     window.__f1 = { etapes: [], erreurs: [] };
     const noter = (m) => {
         window.__f1.etapes.push({ t: Date.now(), m: String(m).slice(0, 300) });
         if (window.__f1.etapes.length > 200) window.__f1.etapes.shift();
     };
 
-    // La population OPFS est lancee TOUT DE SUITE : elle doit etre finie quand
-    // l'utilisateur (le pilote) clique. Le picker surcharge l'attend de toute
-    // facon, donc un clic precoce ne casse rien -- il attend.
+    // The OPFS population is launched RIGHT AWAY: it must be finished when
+    // the user (the driver) clicks. The overridden picker waits for it
+    // anyway, so an early click breaks nothing -- it waits.
     const pret = (async () => {
         const racineOpfs = await navigator.storage.getDirectory();
-        // Un sous-repertoire NOMME : la racine OPFS a un `name` vide, et
-        // `choisirDossier` rend `poignee.name` a la page, qui l'affiche.
+        // A NAMED subdirectory: the OPFS root has an empty `name`, and
+        // `choisirDossier` returns `poignee.name` to the page, which displays it.
         const dossier = await racineOpfs.getDirectoryHandle('Mes documents', { create: true });
 
-        // Purge : OPFS persiste dans le profil. Sans cela, une seconde
-        // execution lirait le jeu de la premiere et un fichier retire du jeu
-        // survivrait -- un controle qui ne pourrait pas voir la difference.
+        // Purge: OPFS persists in the profile. Without it, a second
+        // run would read the first one's data set and a file removed from the set
+        // would survive -- a check that could not see the difference.
         for await (const nom of dossier.keys()) {
             await dossier.removeEntry(nom, { recursive: true });
         }
 
         const liste = await (await fetch(BASE + '/liste')).json();
-        // Les repertoires d'abord, pour que les fichiers aient leur parent.
+        // Directories first, so that files have their parent.
         for (const e of liste.filter((x) => x.type === 'directory')) {
             const parts = e.chemin.split('/');
             let ici = dossier;
@@ -97,11 +97,11 @@
             await w.write(octets);
             await w.close();
         }
-        // 🔴 LE CONDENSAT DE CE QUE LA PAGE TIENT REELLEMENT.
-        // Sans lui, un condensat faux cote VM serait inattribuable : on ne
-        // saurait pas si le pont a mal transporte les octets, ou si la page
-        // n'avait deja pas les bons. Il se compare a `sha256-origine.txt`,
-        // calcule sur le disque de l'hote : trois points sur la meme chaine.
+        // 🔴 THE DIGEST OF WHAT THE PAGE REALLY HOLDS.
+        // Without it, a wrong digest on the VM side would be unattributable: one would not
+        // know whether the bridge carried the bytes badly, or whether the page
+        // did not have the right ones in the first place. It is compared with `sha256-origine.txt`,
+        // computed on the host's disk: three points on the same chain.
         try {
             const gh = await dossier.getFileHandle('gros.bin');
             const f = await gh.getFile();
@@ -121,9 +121,9 @@
         throw e;
     });
 
-    // 🔴 LA SURCHARGE. `choisirDossier()` lit `globalThis.showDirectoryPicker`
-    // A L'APPEL, jamais au chargement du module : la poser ici suffit, et tout
-    // le code produit tourne inchange derriere.
+    // 🔴 THE OVERRIDE. `choisirDossier()` reads `globalThis.showDirectoryPicker`
+    // AT CALL TIME, never at module load: setting it here is enough, and all
+    // the product code runs unchanged behind it.
     window.showDirectoryPicker = async (options) => {
         noter('showDirectoryPicker appele, mode=' + (options && options.mode));
         const d = await pret;

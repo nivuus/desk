@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
-# Lance `mesurer.ps1` sur la VM SANS BLOQUER WinRM, puis attend le fichier.
+# Launches `mesurer.ps1` on the VM WITHOUT BLOCKING WinRM, then waits for the file.
 #
-# 🔴 POURQUOI ASYNCHRONE. Une premiere version appelait `mesurer.ps1` par
-# `winrm.js` en synchrone. La copie du fichier de 12 Mio a pris 182 s ; l'appel
-# WinRM est rentre BIEN AVANT (~62 s), le pilote a cru la mesure finie, a lu un
-# fichier PARTIEL (12 lignes), puis a rendu la main -- et la fermeture du
-# navigateur a coupe le pont EN PLEINE COPIE. Le condensat qui en sortait ne
-# mesurait donc plus le produit mais la course entre la copie et l'arret du
-# pilote.
+# 🔴 WHY ASYNCHRONOUS. A first version called `mesurer.ps1` through
+# `winrm.js` synchronously. Copying the 12 MiB file took 182 s; the
+# WinRM call came back WELL BEFORE (~62 s), the driver believed the measurement finished, read a
+# PARTIAL file (12 lines), then handed back control -- and closing the
+# browser cut the bridge IN THE MIDDLE OF THE COPY. The digest coming out of it
+# therefore no longer measured the product but the race between the copy and the
+# driver's stop.
 #
-# Ici : on demarre la mesure detachee, et on attend `FIN DE MESURE` dans le
-# fichier -- le FAIT, jamais une duree (piege maison, sous-bloc D3).
+# Here: we start the measurement detached, and wait for `FIN DE MESURE` in the
+# file -- the FACT, never a duration (a home-grown trap, sub-block D3).
 set -uo pipefail
 RACINE="$(git rev-parse --show-toplevel)" || { echo "🔴 hors du depot git : impossible de deriver RACINE (git rev-parse a echoue)" >&2; exit 1; }
 DELAI="${DELAI_MESURE:-900}"
@@ -18,12 +18,12 @@ DELAI="${DELAI_MESURE:-900}"
 set -a; source "$RACINE/.env"; set +a
 rm -f /media/vm/dev/mesure.txt
 
-# ⚠️ LE LANCEMENT PASSE PAR UN `.ps1`, JAMAIS PAR UNE COMMANDE EN LIGNE.
-# `nodejs-winrm` enveloppe TOUT dans `powershell -Command "& { ... }"` : un
+# ⚠️ THE LAUNCH GOES THROUGH A `.ps1`, NEVER THROUGH AN INLINE COMMAND.
+# `nodejs-winrm` wraps EVERYTHING in `powershell -Command "& { ... }"`: a
 # `Start-Process ... -ArgumentList '-NoProfile','-File','C:\dev\mesurer.ps1'`
-# passe en ligne y perd ses quotes, la commande ne tourne JAMAIS, et le symptome
-# est un fichier de mesure qui n'apparait pas -- indiscernable d'une mesure
-# lente. Mesure : lance par `.ps1`, le fichier existe en moins de 3 s.
+# passed inline loses its quotes there, the command NEVER runs, and the symptom
+# is a measurement file that does not appear -- indistinguishable from a slow
+# measurement. Measured: launched through `.ps1`, the file exists in under 3 s.
 node "$RACINE/scripts/winrm.js" \
   'powershell -NoProfile -ExecutionPolicy Bypass -File C:\dev\lancer-mesure.ps1' \
   >/dev/null 2>&1

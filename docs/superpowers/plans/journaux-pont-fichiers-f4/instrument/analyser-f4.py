@@ -86,22 +86,22 @@ def main():
             dn = nb - na
             if dn <= 0:
                 continue
-            # moyenne du DIFFÉRENTIEL : (somme_b − somme_a) / dn, où somme = n·moy
+            # average of the DIFFERENTIAL: (sum_b − sum_a) / dn, where sum = n·avg
             d_somme_us = nb * mb - na * ma
             somme += d_somme_us / 1000.0
             lignes.append((f_, dn, d_somme_us / dn / 1000.0, xb / 1000.0))
-        # 🔴 AUCUN RÉSIDU POUR UNE DURÉE IMPOSÉE. `explorer` tient sa fenêtre
-        # 30 s par un `Start-Sleep`, et `sommeil` est un repos : leur mur-à-mur
-        # n'est pas une latence, donc leur « résidu » n'en est pas un non plus.
-        # L'afficher rendrait 98 % — un chiffre qui SE LIRAIT comme du temps
-        # perdu dans ProjFS.
+        # 🔴 NO RESIDUE FOR AN IMPOSED DURATION. `explorer` holds its window for
+        # 30 s through a `Start-Sleep`, and `sommeil` is a rest: their wall-to-wall
+        # is not a latency, so their "residue" is not one either.
+        # Displaying it would give 98 % — a figure that WOULD READ as time
+        # lost in ProjFS.
         impose = r['verbe'] in ('explorer', 'sommeil', 'application')
-        # 🔴 UN RESIDU N'A DE SENS QUE SUR DES TRAVERSEES SERIALISEES.
-        # `pont::lecture::MORCEAUX_EN_VOL = 4` : jusqu'a QUATRE lectures sont en
-        # vol EN MEME TEMPS, et leur somme n'est alors pas une duree ecoulee.
-        # Un residu negatif de −141 % n'est pas une anomalie de mesure : c'est
-        # une soustraction qui ne veut rien dire, et l'afficher SE LIRAIT comme
-        # du temps que ProjFS aurait rendu.
+        # 🔴 A RESIDUE ONLY MAKES SENSE ON SERIALISED CROSSINGS.
+        # `pont::lecture::MORCEAUX_EN_VOL = 4`: up to FOUR reads are in
+        # flight AT THE SAME TIME, and their sum is then not an elapsed duration.
+        # A negative residue of −141 % is not a measurement anomaly: it is
+        # a subtraction that means nothing, and displaying it WOULD READ as
+        # time ProjFS had given back.
         concurrent = any(f_ == 'lire' and (b[1].get(f_, (0,))[0] - a[1].get(f_, (0,))[0]) > 1
                          for f_ in FAMILLES)
         residu = arbitre - somme

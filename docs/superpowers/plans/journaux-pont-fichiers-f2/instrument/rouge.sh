@@ -1,26 +1,26 @@
 #!/usr/bin/env bash
-# Harnais de mutation. Il REFUSE de compter une rouge dont le diff est VIDE.
+# Mutation harness. It REFUSES to count a red run whose diff is EMPTY.
 #
-# 🔴 POURQUOI CE GARDE EXISTE : le sous-bloc S3 a relevé que QUATRE rouges sur
-# seize de son prédécesseur ne prouvaient rien — deux rougissaient sur une
-# clause préexistante, deux n'avaient rien muté du tout (`exit=1` lu comme un
-# succès de la rouge). Et le sous-bloc P4 a relevé qu'une mutation par
-# substitution de chaîne frappe LE COMMENTAIRE avant le code, dans un dépôt qui
-# commente ses invariants : plus un invariant est documenté, plus sa rouge est
-# fragile. D'où la mutation par NUMÉRO DE LIGNE (`sed -i '<n>s/…/…/'`), jamais
-# par la seule sous-chaîne, et d'où ce garde.
+# 🔴 WHY THIS GUARD EXISTS: sub-block S3 found that FOUR red runs out of
+# sixteen of its predecessor proved nothing — two turned red on a
+# pre-existing clause, two had mutated nothing at all (`exit=1` read as a
+# success of the red run). And sub-block P4 found that a mutation by
+# string substitution hits THE COMMENT before the code, in a repository that
+# comments its invariants: the more an invariant is documented, the more fragile
+# its red run. Hence mutation by LINE NUMBER (`sed -i '<n>s/…/…/'`), never
+# by the substring alone, and hence this guard.
 #
-# 🔴 ET POURQUOI LA SAUVEGARDE EST UNE COPIE, JAMAIS `git checkout --`.
-# Payé sur place, le 20 août 2026 : une première rédaction de ce harnais
-# restaurait par `git checkout -- <fichier>`, ce qui a effacé le travail NON
-# COMMITÉ de la tâche en cours. Deux défauts en un :
-#   ① `git checkout` restaure HEAD, pas l'état d'avant la mutation ;
-#   ② `git diff` contre HEAD est NON VIDE dès que le fichier porte du travail
-#      en cours — le garde du diff vide était donc VACUEUX, exactement le
-#      patron qu'il existe pour interdire.
-# La référence est une copie prise à l'instant, et rien d'autre.
+# 🔴 AND WHY THE BACKUP IS A COPY, NEVER `git checkout --`.
+# Paid for on the spot, on August 20th, 2026: a first wording of this harness
+# restored through `git checkout -- <file>`, which erased the UNCOMMITTED
+# work of the ongoing task. Two defects in one:
+#   ① `git checkout` restores HEAD, not the state before the mutation;
+#   ② `git diff` against HEAD is NON-EMPTY as soon as the file carries work
+#      in progress — the empty-diff guard was therefore VACUOUS, exactly the
+#      pattern it exists to forbid.
+# The reference is a copy taken at that instant, and nothing else.
 #
-# Usage : rouge.sh <étiquette> <fichier> <commande sed> -- <commande de contrôle…>
+# Usage: rouge.sh <label> <file> <sed command> -- <check command…>
 set -uo pipefail
 etiquette="$1"; fichier="$2"; sedcmd="$3"; shift 3
 [ "${1:-}" = "--" ] && shift
@@ -37,8 +37,8 @@ echo "--- sha256 AVANT : $avant"
 
 sed -i "$sedcmd" "$fichier"
 
-# 🔴 LE GARDE. Un diff vide veut dire que la mutation N'A RIEN MUTÉ : le
-# contrôle qui suit ne dirait alors rien du produit.
+# 🔴 THE GUARD. An empty diff means the mutation MUTATED NOTHING: the
+# check that follows would then say nothing about the product.
 if diff -q "$sauvegarde" "$fichier" >/dev/null; then
     echo "!!! LA MUTATION N'A RIEN MUTÉ : cette rouge NE COMPTE PAS."
     cp "$sauvegarde" "$fichier"; rm -f "$sauvegarde"
@@ -51,15 +51,15 @@ echo "--- contrôle :"
 "$@" 2>&1 | tail -40
 echo "--- (le code de sortie du contrôle est celui de la commande ci-dessus)"
 
-# 🔴 `cp` SANS `-p`, ET C'EST LE CONTRAIRE DE CE QU'ON ÉCRIT SPONTANÉMENT.
-# Payé sur place, le 20 août 2026, sur `proto/src/fichiers.rs` : `cp -p`
-# préserve la date de modification, si bien que le fichier RESTAURÉ paraît
-# INCHANGÉ à cargo — qui garde alors l'artefact compilé de la version MUTÉE.
-# Le symptôme est un test correct qui échoue pour une raison INVISIBLE DANS LA
-# SOURCE : ici, `charge.len() > TAILLE_TRAME_MAX` refusait une charge de 65536
-# contre un maximum de 65536, ce qu'aucune lecture du fichier ne peut
-# expliquer. Le pire cas est l'inverse : une suite VERTE exécutant encore le
-# code muté.
+# 🔴 `cp` WITHOUT `-p`, AND IT IS THE OPPOSITE OF WHAT ONE WRITES SPONTANEOUSLY.
+# Paid for on the spot, on August 20th, 2026, on `proto/src/fichiers.rs`: `cp -p`
+# preserves the modification date, so that the RESTORED file looks
+# UNCHANGED to cargo — which then keeps the compiled artefact of the MUTATED version.
+# The symptom is a correct test failing for a reason INVISIBLE IN THE
+# SOURCE: here, `charge.len() > TAILLE_TRAME_MAX` refused a payload of 65536
+# against a maximum of 65536, which no reading of the file can
+# explain. The worst case is the reverse: a GREEN suite still running the
+# mutated code.
 cp "$sauvegarde" "$fichier"; rm -f "$sauvegarde"
 apres="$(sha256sum "$fichier" | cut -d' ' -f1)"
 echo "--- sha256 APRÈS restauration : $apres"

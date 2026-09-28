@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Copie la mesure sur la VM, la lance PAR TÂCHE PLANIFIÉE /it, et rend son JSON.
-# Modelé sur `mesurer-f3.sh`, dont il reprend les DEUX pièges payés là-bas :
-#   - tuer les mesures figées d'abord, PAR UN FICHIER et jamais en ligne
-#     (`nodejs-winrm` enveloppe dans `powershell -Command "& { … }"`, et un
-#     script inline à guillemets doubles NE TOURNE JAMAIS, en silence) ;
-#   - un chemin de sortie NEUF à chaque exécution, qu'aucun processus figé ne
-#     peut tenir.
+# Copies the measurement to the VM, launches it THROUGH AN /it SCHEDULED TASK, and returns its JSON.
+# Modelled on `mesurer-f3.sh`, from which it takes over the TWO traps paid for there:
+#   - kill the frozen measurements first, THROUGH A FILE and never inline
+#     (`nodejs-winrm` wraps in `powershell -Command "& { … }"`, and an
+#     inline script with double quotes NEVER RUNS, silently);
+#   - a FRESH output path at each run, which no frozen process
+#     can hold.
 set -uo pipefail
 PHASE="${1:-lister}"
 RACINE="$(git rev-parse --show-toplevel)" || { echo "🔴 hors du depot git : impossible de deriver RACINE (git rev-parse a echoue)" >&2; exit 1; }
@@ -35,9 +35,9 @@ node "$RACINE/scripts/winrm.js" \
      /tr 'powershell -WindowStyle Hidden -NoProfile -ExecutionPolicy Bypass -File C:\dev\lancer-mesure-f5.ps1'; \
    schtasks /run /tn mesure-f5" >/dev/null 2>&1
 
-# Attendre le FAIT, jamais une durée. Borne : DELAI_LISTER vaut 20 s côté pont,
-# et un listage au-delà du mur gèle exactement cette durée — la borne doit donc
-# être PLUSIEURS FOIS plus longue, jamais calée dessus.
+# Wait for the FACT, never a duration. Bound: DELAI_LISTER is 20 s on the bridge side,
+# and a listing beyond the wall freezes exactly that long — the bound must therefore
+# be SEVERAL TIMES longer, never set on it.
 for i in $(seq 1 60); do
     [ -s "$LOCAL" ] && { cat "$LOCAL"; exit 0; }
     sleep 2

@@ -1,46 +1,46 @@
 #!/usr/bin/env bash
-# Le harnais de rouge du §6.3 du plan P3 — OBLIGATOIRE, et il REFUSE une rouge
-# qui ne mute rien.
+# The red-run harness of §6.3 of plan P3 — MANDATORY, and it REFUSES a red run
+# that mutates nothing.
 #
-# Les sept lignes du relevé, dans cet ordre :
-#   1. sha256sum AVANT
-#   2. la mutation, par NUMÉRO DE LIGNE ou par un motif ancré sur la SYNTAXE —
-#      jamais par la seule sous-chaîne. P4 de la plateforme a vu une rouge
-#      rester VERTE parce que la chaîne à muter apparaissait d'abord dans le
-#      COMMENTAIRE qui la justifie, et ce dépôt commente ses invariants.
-#   3. 🔴 LA MUTATION A CHANGÉ QUELQUE CHOSE — comparaison À LA COPIE NOMMÉE,
-#      jamais `git diff`. Une sortie vide EST UN ÉCHEC DE LA ROUGE, jamais un
-#      succès du produit.
+# The seven lines of the report, in this order:
+#   1. sha256sum BEFORE
+#   2. the mutation, by LINE NUMBER or by a pattern anchored on the SYNTAX —
+#      never by the substring alone. The platform's P4 saw a red run
+#      stay GREEN because the string to mutate appeared first in the
+#      COMMENT justifying it, and this repository comments its invariants.
+#   3. 🔴 THE MUTATION CHANGED SOMETHING — comparison WITH THE NAMED COPY,
+#      never `git diff`. An empty output IS A FAILURE OF THE RED RUN, never a
+#      success of the product.
 #
-#      ⚠️ **Et `git diff --numstat` NE PEUT PAS remplir ce rôle ici, ce qui a
-#      été relevé sur ce harnais même** : il compare à HEAD, donc il reste
-#      NON VIDE tant qu'un correctif non commité vit dans le fichier — quelle
-#      que soit la mutation, et même s'il n'y en a aucune. Le contrôle censé
-#      refuser une rouge qui ne mute rien ne pouvait alors PAS échouer. C'est
-#      le patron « un contrôle qu'on n'a jamais vu rouge n'est pas un
-#      contrôle » appliqué au contrôle lui-même.
-#   4. la commande de contrôle, et le relevé dit QUELLE ASSERTION a rougi —
-#      pas seulement le code de sortie.
-#   5. la RESTAURATION, DEPUIS UNE COPIE NOMMÉE — jamais `git checkout --`
-#   6. sha256sum APRÈS, égal au premier
-#   7. `git status --porcelain` VIDE
+#      ⚠️ **And `git diff --numstat` CANNOT fill that role here, which was
+#      noted on this very harness**: it compares with HEAD, so it stays
+#      NON-EMPTY as long as an uncommitted fix lives in the file — whatever
+#      the mutation, and even if there is none. The check meant to
+#      refuse a red run that mutates nothing could then NOT fail. It is
+#      the pattern "a check never seen red is not a
+#      check" applied to the check itself.
+#   4. the check command, and the report says WHICH ASSERTION turned red —
+#      not only the exit code.
+#   5. RESTORATION, FROM A NAMED COPY — never `git checkout --`
+#   6. sha256sum AFTER, equal to the first
+#   7. `git status --porcelain` EMPTY
 #
-# 🔴 **POURQUOI PAS `git checkout --`, ET CE N'EST PAS UNE PRÉCAUTION
-# THÉORIQUE : CE HARNAIS L'A PAYÉ.** Sa première rédaction restaurait par
-# `git checkout -- <fichier>`, qui rend le fichier à HEAD — et non à son état
-# d'avant la mutation. La rouge A a donc EFFACÉ le correctif non commité que
-# les rouges suivantes devaient éprouver ; les rouges B et C se sont alors
-# arrêtées sur « ancre introuvable », c'est-à-dire sur le SEUL symptôme visible
-# d'un travail perdu. Le contrôle de sha256 a bien crié « DIVERGENT » — c'est ce
-# qui l'a fait voir —, mais il criait APRÈS la perte.
+# 🔴 **WHY NOT `git checkout --`, AND IT IS NOT A THEORETICAL
+# PRECAUTION: THIS HARNESS PAID FOR IT.** Its first wording restored through
+# `git checkout -- <file>`, which returns the file to HEAD — and not to its state
+# before the mutation. Red run A therefore ERASED the uncommitted fix that
+# the following red runs were to test; red runs B and C then
+# stopped on "anchor not found", that is, on the ONLY visible symptom
+# of lost work. The sha256 check did shout "DIVERGENT" — that is what
+# made it visible —, but it shouted AFTER the loss.
 #
-# La copie nommée est donc prise AVANT la mutation et remise APRÈS, et le
-# sha256 la vérifie. `git status --porcelain` reste relevé pour ce qu'il dit
-# vraiment : que le fichier n'est pas resté modifié PAR RAPPORT À HEAD — ce qui
-# est FAUX pendant qu'un correctif non commité y vit, et le relevé le dit
-# plutôt que de le taire.
+# The named copy is therefore taken BEFORE the mutation and put back AFTER, and the
+# sha256 checks it. `git status --porcelain` is still recorded for what it really
+# says: that the file did not stay modified RELATIVE TO HEAD — which
+# is FALSE while an uncommitted fix lives there, and the report says so
+# rather than keeping quiet about it.
 #
-# Usage : rouge.sh <etiquette> <fichier> <script-python-de-mutation> <filtre-cargo>
+# Usage: rouge.sh <label> <file> <python-mutation-script> <cargo-filter>
 set -uo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
@@ -69,10 +69,10 @@ fi
 echo "   diff de la mutation :"
 printf '%s\n' "$MUTE" | grep -E '^[-+][^-+]' | sed 's/^/     /'
 
-# Le controle est `cargo test -p agent <filtre>` par defaut ; ROUGE_CMD le
-# remplace pour les rouges du CLIENT, qui se jouent sous vitest. Le releve doit
-# dire QUELLE ASSERTION a rougi dans les deux cas — c'est la regle 4 du §6.3, et
-# elle ne depend pas du lanceur.
+# The check is `cargo test -p agent <filter>` by default; ROUGE_CMD
+# replaces it for the CLIENT's red runs, which are played under vitest. The report must
+# say WHICH ASSERTION turned red in both cases — it is rule 4 of §6.3, and
+# it does not depend on the runner.
 if [ -n "${ROUGE_CMD:-}" ]; then
     echo "4. controle : $ROUGE_CMD"
     eval "$ROUGE_CMD" 2>&1 \

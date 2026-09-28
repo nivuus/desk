@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# Joue UNE execution complete de la recette F1.
+# Plays ONE complete run of acceptance run F1.
 #
 #     instrument/jouer-f1.sh <etiquette> <secondes-de-maintien> [--sans-projfs]
 #
-# 🔴 L'ORDRE EST LE POINT DE CE SCRIPT. La page-shell doit etre connectee AVANT
-# que le superviseur ne demarre : le signaling ne memorise que les offres SDP,
-# et les annonces `fenetre-ouverte` emises avant la connexion de la shell sont
-# PERDUES SANS TRACE (CLAUDE.md, sous-bloc D1). C'est pourquoi le pilote lance
-# l'agent lui-meme, par `APRES_CONNEXION`, plutot que ce script avant lui.
+# 🔴 THE ORDER IS THE POINT OF THIS SCRIPT. The shell page must be connected BEFORE
+# the supervisor starts: signaling only remembers SDP offers,
+# and the `fenetre-ouverte` announcements emitted before the shell connects are
+# LOST WITHOUT A TRACE (CLAUDE.md, sub-block D1). That is why the driver launches
+# the agent itself, through `APRES_CONNEXION`, rather than this script before it.
 set -uo pipefail
 
 ETIQUETTE="$1"
@@ -52,9 +52,9 @@ PREFIXE_VM="$PREFIXE_VM" UDD="$SCRATCH/f1/udd-$ETIQUETTE" PORT_CDP="${PORT_CDP:-
 CODE=${PIPESTATUS[0]}
 
 echo "=== [$ETIQUETTE] copie du journal d'agent (APRES la fin reelle) ==="
-# ⚠️ Copier APRES la fin reelle : les enfants meurent quand le navigateur se
-# ferme, donc APRES la copie, et leurs lignes de liberation partiraient avec le
-# journal suivant. Une piece a ete perdue ainsi en D4.
+# ⚠️ Copy AFTER the real end: the children die when the browser
+# closes, hence AFTER the copy, and their release lines would go with the
+# next log. One piece of evidence was lost that way in D4.
 sleep 5
 cp /media/vm/dev/agent.log "$J/agent-$ETIQUETTE.log" 2>/dev/null || echo 'agent.log introuvable'
 sed 's/\x1b\[[0-9;]*m//g' "$J/agent-$ETIQUETTE.log" > "$J/agent-$ETIQUETTE-plat.log" 2>/dev/null || true

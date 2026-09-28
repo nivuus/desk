@@ -1,27 +1,27 @@
 #!/usr/bin/env bash
-# Joue le rouge (i) du Step 6 et attend son verdict.
+# Plays red run (i) of Step 6 and waits for its verdict.
 set -uo pipefail
 RACINE="$(git rev-parse --show-toplevel)" || { echo "🔴 hors du depot git : impossible de deriver RACINE (git rev-parse a echoue)" >&2; exit 1; }
 set -a; source "$RACINE/.env"; set +a
 rm -f /media/vm/dev/rouge-i.txt
 
-# Le PID du pont, RELEVE sur la derniere ligne `pont fichiers lancé pid=` du
-# journal. ⚠️ La chaine est bien `pont fichiers lancé`, PAS `pont lancé` que le
-# plan de F1 prescrit au Step 4 : ce dernier ne matche AUCUNE trace et rendrait
-# 0, ce qui se lirait comme un pont absent.
+# The bridge's PID, READ from the last `file bridge launched pid=` line of the
+# log. ⚠️ The string is indeed `file bridge launched`, NOT `bridge launched`, which
+# F1's plan prescribes at Step 4: the latter matches NO trace and would return
+# 0, which would read as an absent bridge.
 PID_PONT=$(sed 's/\x1b\[[0-9;]*m//g' /media/vm/dev/agent.log \
     | grep -a 'pont fichiers lancé pid=' | tail -1 \
     | sed 's/.*pid=\([0-9]*\).*/\1/')
 if [ -z "$PID_PONT" ]; then echo '# AUCUN pid de pont dans le journal'; exit 1; fi
 echo "# pid du pont releve dans agent.log : $PID_PONT"
 printf '%s' "$PID_PONT" > /media/vm/dev/pid-pont.txt
-# ⚠️ APPEL DIRECT, EN ARRIERE-PLAN -- PAS de `Start-Process`.
-# `Start-Process` lance depuis un PowerShell invoque par WinRM s'est revele
-# NON FIABLE : il rend bien un PID, et le script cible ne tourne pas (aucun
-# fichier de sortie cree). Mesure : le meme script invoque DIRECTEMENT par
-# `-File` ecrit son fichier immediatement. On lance donc directement, en
-# arriere-plan, et on attend le FAIT -- l'appel WinRM peut tres bien rendre la
-# main avant la fin du script, cela n'a aucune importance ici.
+# ⚠️ DIRECT CALL, IN THE BACKGROUND -- NO `Start-Process`.
+# `Start-Process` launched from a PowerShell invoked by WinRM proved
+# UNRELIABLE: it does return a PID, and the target script does not run (no
+# output file created). Measured: the same script invoked DIRECTLY through
+# `-File` writes its file immediately. We therefore launch directly, in the
+# background, and wait for the FACT -- the WinRM call may well hand back
+# control before the end of the script, it does not matter here.
 node "$RACINE/scripts/winrm.js" \
   'powershell -NoProfile -ExecutionPolicy Bypass -File C:\dev\rouge-i.ps1' >/dev/null 2>&1 &
 for _ in $(seq 1 60); do

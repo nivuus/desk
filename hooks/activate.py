@@ -118,20 +118,20 @@ from agent_payload import chemin_agent_console, construire_agent_reel, deposer_a
 from env_fichier import ajouter_variables_env, lire_env_fichier
 from vm import poser_projfs, poser_vb_audio
 
-# --- Ce que la tâche 4 a posé, et que ce hook arme ou complète -----------
+# --- What task 4 set up, and what this hook arms or completes -----------
 UNITE = "desk-plateforme.service"
 UNIT_DIR = "etc/systemd/system"
-# ⚠️ DOIT RESTER EN SYNC avec le `[Install] WantedBy=` de
-# `hooks/assets/desk-plateforme.service` : c'est ce fichier qui décide sous
-# quel `.target.wants/` le lien doit vivre pour que systemd le prenne en
-# compte au démarrage `multi-user.target`. `tests/test_desk_activate.py`
-# vérifie cette synchronisation en lisant l'unité elle-même.
+# ⚠️ MUST STAY IN SYNC with the `[Install] WantedBy=` of
+# `hooks/assets/desk-plateforme.service`: it is that file that decides under
+# which `.target.wants/` the link must live for systemd to take it into
+# account at `multi-user.target` startup. `tests/test_desk_activate.py`
+# checks this synchronisation by reading the unit itself.
 WANTS_SUBDIR = "multi-user.target.wants"
 
 ENV_RELATIF = "etc/nivuus/desk.env"
 PLATEFORME_RELATIF = "opt/nivuus/desk/plateforme"
 
-# Voir le docstring de tête pour la justification de ces deux défauts.
+# See the top docstring for the justification of these two defaults.
 ADRESSE_VM_DEFAUT = "192.168.3.2"
 NOM_VM_DEFAUT = "windows"
 
@@ -140,18 +140,18 @@ def emettre(evenement: dict) -> None:
     print(json.dumps(evenement), flush=True)
 
 
-# --- Armement : un lien, jamais un `enable` -------------------------------
+# --- Arming: a link, never an `enable` -------------------------------
 
 def armer_unite(root: pathlib.Path, unite: str) -> pathlib.Path:
-    """Lie `unite` dans `<UNIT_DIR>/<WANTS_SUBDIR>/`. Idempotent.
+    """Links `unite` into `<UNIT_DIR>/<WANTS_SUBDIR>/`. Idempotent.
 
-    Lève `FileNotFoundError` si l'unité n'existe pas encore sous
-    `<root>/<UNIT_DIR>/` : un lien mort serait pire qu'aucun lien, il se
-    lirait comme armé alors qu'il ne l'est pas. C'est le bras que la tâche
-    éprouve délibérément (voir le § Step 5 du plan).
+    Raises `FileNotFoundError` if the unit does not exist yet under
+    `<root>/<UNIT_DIR>/`: a dead link would be worse than no link, it would
+    read as armed while it is not. It is the arm the task
+    deliberately tests (see the Step 5 § of the plan).
 
-    Le lien créé est RELATIF (`../<unite>`) — voir le docstring de tête
-    pour pourquoi ce choix diffère du précédent `console`.
+    The link created is RELATIVE (`../<unite>`) — see the top docstring
+    for why this choice differs from the `console` precedent.
     """
     chemin_unite = root / UNIT_DIR / unite
     if not chemin_unite.is_file():
@@ -165,27 +165,27 @@ def armer_unite(root: pathlib.Path, unite: str) -> pathlib.Path:
     if lien.is_symlink() and os.readlink(lien) == cible:
         return lien
     if lien.exists() or lien.is_symlink():
-        lien.unlink()  # un fichier RÉGULIER ici serait le bug, pas un état
+        lien.unlink()  # a REGULAR file here would be the bug, not a state
     lien.symlink_to(cible)
     return lien
 
 
 def demarrer_maintenant(unite: str) -> list:
-    """`daemon-reload` puis `start <unite>`. Ne lève jamais.
+    """`daemon-reload` then `start <unite>`. Never raises.
 
-    `systemctl` est légitimement inutilisable dans un environnement
-    contraint (voir le docstring de tête), et le lien créé par
-    `armer_unite` garantit de toute façon que le prochain démarrage réel
-    est correct — donc chaque échec est seulement RAPPORTÉ, jamais fatal.
-    N'est appelé par `main()` que lorsque `--root` vaut `/` : voir sa
-    garde, juste avant l'appel.
+    `systemctl` is legitimately unusable in a constrained
+    environment (see the top docstring), and the link created by
+    `armer_unite` guarantees anyway that the next real boot
+    is correct — so each failure is only REPORTED, never fatal.
+    Only called by `main()` when `--root` is `/`: see its
+    guard, right before the call.
     """
     echecs = []
     commandes = [["systemctl", "daemon-reload"], ["systemctl", "start", unite]]
     for commande in commandes:
         try:
             proc = subprocess.run(commande, capture_output=True, text=True)
-        except OSError as exc:  # systemctl absent de ce PATH
+        except OSError as exc:  # systemctl absent from this PATH
             echecs.append(f"{' '.join(commande)} : {exc}")
             continue
         if proc.returncode != 0:
@@ -201,10 +201,10 @@ def main() -> int:
     args = parser.parse_args()
     root = pathlib.Path(args.root.rstrip("/") or "/")
 
-    # Garde générique sur la forme de l'entrée : un JSON illisible, ou une
-    # racine qui n'est pas un objet, ne doit jamais lever une trace Python
-    # — la correction de la tâche 3 (un `main()` qui levait sur une entrée
-    # malformée) s'applique tout aussi bien ici.
+    # Generic guard on the shape of the input: an unreadable JSON, or a
+    # root that is not an object, must never raise a Python traceback
+    # — task 3's fix (a `main()` that raised on a malformed
+    # input) applies just as well here.
     try:
         contexte = json.load(sys.stdin)
     except json.JSONDecodeError as exc:
@@ -220,12 +220,12 @@ def main() -> int:
     answers = contexte.get("answers")
     answers = answers if isinstance(answers, dict) else {}
 
-    # `hw` porte les facts de resolve, FUSIONNÉS (voir le docstring de
-    # tête) : `port` en fait partie si aucun détecteur générique ne l'a
-    # déjà produit sous ce nom. Purement informatif ici — le port lui-même
-    # est déjà baké dans desk.env par `install.py` — mais c'est la preuve
-    # que ce hook lit bien `hw`, jamais une clé `facts` qui n'existe pas à
-    # ce niveau du protocole.
+    # `hw` carries resolve's facts, MERGED (see the top
+    # docstring): `port` is among them if no generic detector has
+    # already produced it under that name. Purely informative here — the port itself
+    # is already baked into desk.env by `install.py` — but it is the proof
+    # that this hook does read `hw`, never a `facts` key that does not exist at
+    # this level of the protocol.
     port_attendu = hw.get("port")
     msg_armement = "Armement du service"
     if port_attendu:
@@ -238,7 +238,7 @@ def main() -> int:
         print(f"desk activate: unite absente, rien arme : {exc}", file=sys.stderr)
         return 1
 
-    # Seulement sur la machine RÉELLE : voir le docstring de tête.
+    # Only on the REAL machine: see the top docstring.
     if str(root) == "/":
         echecs = demarrer_maintenant(UNITE)
         if echecs:
@@ -247,38 +247,38 @@ def main() -> int:
             for item in echecs:
                 print(f"  - {item}", file=sys.stderr)
 
-    # 🔴 TÂCHE 6 — CE QUE `desk` POSE DANS LA VM, PAR LE CHEMIN WINRM DE
-    # `console`. Placé ICI, AVANT le reste (compte, enrôlement), et jamais
-    # derrière la garde d'idempotence plus bas (`AGENT_VM`/`AGENT_SECRET`) :
-    # ces deux poses sont indépendantes de l'état de `plateforme/`
-    # (`Enable-WindowsOptionalFeature` est nativement idempotent — la
-    # rejouer ne casse rien), et les gater derrière l'idempotence du compte
-    # laisserait un premier échec ICI, survenu APRÈS un enrôlement déjà
-    # réussi, ne plus jamais être retenté par un rejeu ultérieur.
+    # 🔴 TASK 6 — WHAT `desk` SETS UP IN THE VM, THROUGH THE WINRM PATH OF
+    # `console`. Placed HERE, BEFORE the rest (account, enrolment), and never
+    # behind the idempotence guard below (`AGENT_VM`/`AGENT_SECRET`):
+    # these two setups are independent of the state of `plateforme/`
+    # (`Enable-WindowsOptionalFeature` is natively idempotent — replaying
+    # it breaks nothing), and gating them behind the account's idempotence
+    # would make a first failure HERE, occurring AFTER an already
+    # successful enrolment, never be retried by a later replay.
     #
-    # 🔴 LA PORTE DE LA VM WINDOWS VIT ICI, DEPUIS LA REVUE FINALE DE BRANCHE
-    # (30 août 2026), ET PLUS DANS `resolve`. `hooks/resolve.py` portait
-    # `if not hw.get("vm_windows"): refuser(...)` : une clé qu'AUCUN
-    # producteur du moteur ne pose (`common/hardware.py::detect_all()` en rend
-    # huit, aucune de ce nom), éprouvée à une phase — avant `partition()` — où
-    # le disque cible, donc le système, donc la VM, n'existent pas encore.
-    # Voir le bloc de commentaire correspondant dans `resolve.py` pour les
-    # trois raisons complètes.
+    # 🔴 THE WINDOWS VM GATE LIVES HERE, SINCE THE FINAL BRANCH REVIEW
+    # (August 30th, 2026), AND NO LONGER IN `resolve`. `hooks/resolve.py` carried
+    # `if not hw.get("vm_windows"): refuser(...)`: a key that NO
+    # producer of the engine sets (`common/hardware.py::detect_all()` returns
+    # eight, none of that name), tested at a phase — before `partition()` — where
+    # the target disk, hence the system, hence the VM, do not exist yet.
+    # See the matching comment block in `resolve.py` for the
+    # three complete reasons.
     #
-    # ICI, la VM peut exister : `activate` court après le redémarrage, sur le
-    # système installé, avec le réseau, et `console` — pré-requis DUR du
-    # manifeste, donc activé AVANT `desk` — l'a provisionnée. La porte est
-    # donc une MESURE, jamais une lecture de clé : le premier échange WinRM
-    # ci-dessous EST l'épreuve. S'il échoue, ce n'est pas « ProjFS n'a pas pu
-    # s'activer », c'est « la VM n'est pas là », et le message le dit.
+    # HERE, the VM can exist: `activate` runs after the reboot, on the
+    # installed system, with the network, and `console` — a HARD prerequisite of the
+    # manifest, hence activated BEFORE `desk` — has provisioned it. The gate is
+    # therefore a MEASUREMENT, never a key read: the first WinRM exchange
+    # below IS the test. If it fails, it is not "ProjFS could not
+    # be enabled", it is "the VM is not there", and the message says so.
     #
-    # ⚠️ POURQUOI PAS UNE SONDE SÉPARÉE, EN LECTURE SEULE, AVANT CELLE-CI :
-    # elle coûterait un second aller-retour WinRM qui ne pourrait rien dire de
-    # plus que le premier — et son critère de succès (une sortie non vide)
-    # n'est pas fiable, `winrm_exec.py` rendant légitimement une sortie vide
-    # pour une commande qui n'imprime rien. Un contrôle qui ne peut pas
-    # distinguer ses deux valeurs n'est pas un contrôle : on garde celui qui
-    # le peut.
+    # ⚠️ WHY NOT A SEPARATE, READ-ONLY PROBE BEFORE THIS ONE:
+    # it would cost a second WinRM round trip that could say nothing
+    # more than the first — and its success criterion (a non-empty output)
+    # is not reliable, `winrm_exec.py` legitimately returning an empty output
+    # for a command that prints nothing. A check that cannot
+    # distinguish its two values is not a check: we keep the one that
+    # can.
     emettre({"event": "progress", "pct": 25,
              "msg": "Verification de la VM Windows, puis pose de ProjFS "
                     "(chemin WinRM de console)"})
@@ -293,9 +293,9 @@ def main() -> int:
               f"resolve, ou la VM ne peut pas encore exister) : {exc}",
               file=sys.stderr)
         return 1
-    # Le redémarrage se CONSTATE et se DIT ICI, il ne se prend jamais : voir
-    # hooks/vm.py::poser_projfs. Un opérateur qui lit ce message sait qu'un
-    # redémarrage de la VM reste à sa charge.
+    # The reboot is NOTED and SAID HERE, it is never taken: see
+    # hooks/vm.py::poser_projfs. An operator reading this message knows a
+    # reboot of the VM remains their responsibility.
     if etat_projfs.redemarrage_requis:
         print("desk activate: ProjFS active dans la VM ; un redemarrage de "
               "la VM est requis pour qu'il prenne effet (non declenche "
@@ -308,8 +308,8 @@ def main() -> int:
               file=sys.stderr)
         return 1
 
-    # Tâche 7 — dépôt d'agent.exe (voir chemin_agent_console() plus haut) ;
-    # indépendant de plateforme/, jamais derrière la garde d'idempotence.
+    # Task 7 — dropping agent.exe (see chemin_agent_console() above);
+    # independent of plateforme/, never behind the idempotence guard.
     emettre({"event": "progress", "pct": 30,
              "msg": "Depot de agent.exe pour console (build croise)"})
     try:
@@ -327,24 +327,24 @@ def main() -> int:
 
     env_chemin = root / ENV_RELATIF
 
-    # 🔴 CORRECTION, RONDE 1 — `desk.env` DOIT DÉJÀ EXISTER À CE STADE, ET
-    # SON ABSENCE EST UN REFUS, JAMAIS UNE CRÉATION SILENCIEUSE. Deux
-    # raisons, la seconde étant celle qui tranche :
-    #   1. c'est le SYMPTÔME d'une installation partielle (`plateforme/`
-    #      posé, `desk.env` jamais écrit ou supprimé depuis) — un problème
-    #      plus grave qu'un simple fichier absent, qui mérite un refus nommé
-    #      plutôt qu'un repli silencieux ;
-    #   2. `ajouter_variables_env()` (plus bas) écrit par `write_text()` PUIS
-    #      `chmod`, exactement le patron qu'`install.py::ecrire_env` a
-    #      abandonné (commit `92cacfb`, « un secret jamais lisible entre
-    #      creation et chmod ») pour un `os.open(..., 0o600)` atomique — un
-    #      fichier NEUF naîtrait ici au umask du processus, brièvement lisible
-    #      par quiconque avant que le `chmod` ne rattrape, et ce fichier va
-    #      recevoir `AGENT_SECRET`. Refuser ici garantit que
-    #      `ajouter_variables_env()` n'écrit JAMAIS que sur un fichier déjà en
-    #      600 : `write_text()` sur un fichier EXISTANT ne touche pas à son
-    #      mode, donc aucune fenêtre ne s'ouvre. `tests/test_desk_activate.py`
-    #      éprouve ce refus (scénario dédié : `plateforme/` posé, `desk.env`
+    # 🔴 FIX, ROUND 1 — `desk.env` MUST ALREADY EXIST AT THIS STAGE, AND
+    # ITS ABSENCE IS A REFUSAL, NEVER A SILENT CREATION. Two
+    # reasons, the second being the one that settles it:
+    #   1. it is the SYMPTOM of a partial installation (`plateforme/`
+    #      set up, `desk.env` never written or deleted since) — a problem
+    #      more serious than a mere missing file, which deserves a named refusal
+    #      rather than a silent fallback;
+    #   2. `ajouter_variables_env()` (below) writes through `write_text()` THEN
+    #      `chmod`, exactly the pattern `install.py::ecrire_env`
+    #      abandoned (commit `92cacfb`, "a secret never readable between
+    #      creation and chmod") for an atomic `os.open(..., 0o600)` — a
+    #      NEW file would be born here with the process umask, briefly readable
+    #      by anyone before the `chmod` catches up, and this file is about to
+    #      receive `AGENT_SECRET`. Refusing here guarantees that
+    #      `ajouter_variables_env()` only EVER writes to a file already at
+    #      600: `write_text()` on an EXISTING file does not touch its
+    #      mode, so no window opens. `tests/test_desk_activate.py`
+    #      tests this refusal (dedicated scenario: `plateforme/` set up, `desk.env`
     #      absent).
     if not env_chemin.is_file():
         print(f"desk activate: {env_chemin} est absent ; le hook install ne "
