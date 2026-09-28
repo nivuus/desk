@@ -43,9 +43,9 @@ export function attachVisibilite(
 
     const annoncer = () => {
         const charge = encodeVisibility(!cible.hidden, cible.focalisee);
-        // Le canal de contrôle est fiable et ordonné : réémettre un état
-        // inchangé n'apporte rien, et un navigateur émet volontiers plusieurs
-        // événements pour un seul geste.
+        // The control channel is reliable and ordered: re-emitting an unchanged
+        // state brings nothing, and a browser readily emits several
+        // events for a single gesture.
         if (charge === dernier) return;
         if (envoyer(charge)) dernier = charge;
     };

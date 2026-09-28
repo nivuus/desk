@@ -1,8 +1,8 @@
-// Établissement de la session WebRTC. Le navigateur est l'offrant : il déclare
-// la piste vidéo en réception seule, la piste audio descendante en réception
-// seule, la piste MONTANTE du micro en émission seule et SANS PISTE (chantier
-// E), et les deux canaux de données ; puis il attend la réponse de l'agent
-// relayée par le signaling.
+// Establishing the WebRTC session. The browser is the offerer: it declares
+// the video track as receive-only, the downstream audio track as receive-only,
+// the mic's UPSTREAM track as send-only and WITHOUT A TRACK (workstream
+// E), and the two data channels; then it waits for the agent's answer
+// relayed by signaling.
 
 import { parseAgentControl, type AgentControl } from '../../proto/ts/control';
 import { jetonAcces } from './jeton';
@@ -13,15 +13,15 @@ export interface SessionOptions {
     video: HTMLVideoElement;
     onControl?: (message: AgentControl) => void;
     onStatus?: (message: string) => void;
-    /// Le jeton d'accès porté dans la poignée de main (sous-bloc P2).
+    /// The access token carried in the handshake (sub-block P2).
     ///
-    /// ⚠️ FACULTATIF À DESSEIN : un champ requis obligerait à modifier
-    /// `main.ts`, unique appelant, qu'un autre chantier tient. Absent, le
-    /// jeton est lu dans le coffre du navigateur (`jeton.ts`) — ce qui laisse
-    /// UN SEUL lecteur du stockage dans tout le client, ce qui est meilleur en
-    /// soi. Le coût est nommé : ce module gagne une dépendance à un global de
-    /// navigateur, alors qu'il manipule déjà `WebSocket` et
-    /// `RTCPeerConnection` ; `jeton.ts`, lui, reste pur.
+    /// ⚠️ OPTIONAL ON PURPOSE: a required field would force modifying
+    /// `main.ts`, the only caller, which another workstream holds. Absent, the
+    /// token is read from the browser's vault (`jeton.ts`) — which leaves
+    /// ONE SINGLE reader of storage in the whole client, which is better in
+    /// itself. The cost is named: this module gains a dependency on a browser
+    /// global, whereas it already handles `WebSocket` and
+    /// `RTCPeerConnection`; `jeton.ts`, for its part, stays pure.
     jeton?: string;
 }
 
@@ -29,50 +29,50 @@ export interface SessionHandle {
     pc: RTCPeerConnection;
     inputChannel: RTCDataChannel;
     controlChannel: RTCDataChannel;
-    /// L'émetteur de la piste MONTANTE (chantier E), déclaré SANS PISTE.
+    /// The sender of the UPSTREAM track (workstream E), declared WITHOUT A TRACK.
     ///
-    /// C'est `client/src/micro.ts` qui le remplit par `replaceTrack`, au clic,
-    /// et le vide à l'extinction. Exposé ici parce que `connectSession` est le
-    /// seul endroit qui construise la `RTCPeerConnection` : le sender n'existe
-    /// pas avant elle, et rien d'autre ne peut le retrouver sans fouiller
-    /// `pc.getTransceivers()` par position — ce qui serait un index positionnel,
-    /// c'est-à-dire exactement ce que ce dépôt a déjà payé sur les sorties DXGI.
+    /// It is `client/src/micro.ts` that fills it through `replaceTrack`, on click,
+    /// and empties it on switch-off. Exposed here because `connectSession` is the
+    /// only place that builds the `RTCPeerConnection`: the sender does not exist
+    /// before it, and nothing else can find it without digging through
+    /// `pc.getTransceivers()` by position — which would be a positional index,
+    /// that is, exactly what this repository has already paid for on DXGI outputs.
     micSender: RTCRtpSender;
     close(): void;
 }
 
-// Délai maximal d'attente de la réponse de l'agent, après l'envoi de
-// l'offre. Si aucun agent n'est connecté à la session demandée, le serveur
-// de signaling relaie l'offre vers un pair inexistant et ne renvoie jamais
-// rien au client : sans ce délai, la promesse d'attente ne se résoudrait
-// jamais et l'utilisateur resterait bloqué indéfiniment.
+// Maximum delay waiting for the agent's answer, after sending the
+// offer. If no agent is connected to the requested session, the signaling
+// server relays the offer to a non-existent peer and never sends anything
+// back to the client: without this delay, the waiting promise would never
+// resolve and the user would stay stuck indefinitely.
 const ANSWER_TIMEOUT_MS = 15_000;
 
-/// Sous-ensemble des messages de signaling attendus en réponse à l'offre,
-/// discriminé par `type`.
+/// Subset of the signaling messages expected in answer to the offer,
+/// discriminated by `type`.
 type SignalingMessage =
     | { type: 'answer'; sdp: string }
     | { type: 'error'; reason?: string }
     | { type: 'peer-gone' }
     | { type: 'ice-config'; iceServers: RTCIceServer[] };
 
-/// Parse et valide un message de signaling brut.
+/// Parses and validates a raw signaling message.
 ///
-/// `JSON.parse` réussit sur des charges utiles qui ne sont pas des objets :
-/// `"null"` donne `null`, mais aussi `"42"` donne un nombre, `'"x"'` une
-/// chaîne, `"[1,2]"` un tableau. Accéder à `.type` sur l'une de ces valeurs
-/// ne lève pas toujours (un tableau ou une chaîne ont bien un `.type`
-/// `undefined`, pas d'exception), mais `null.type` lève une `TypeError` non
-/// interceptée — c'est le défaut corrigé ici. On valide donc explicitement
-/// que le résultat est un objet non nul et non tableau avant toute lecture
-/// de propriété, quelle que soit la forme de la charge utile.
+/// `JSON.parse` succeeds on payloads that are not objects:
+/// `"null"` gives `null`, but also `"42"` gives a number, `'"x"'` a
+/// string, `"[1,2]"` an array. Accessing `.type` on one of these values
+/// does not always throw (an array or a string do have an `undefined`
+/// `.type`, no exception), but `null.type` throws an uncaught
+/// `TypeError` — that is the defect fixed here. We therefore explicitly validate
+/// that the result is a non-null, non-array object before any property
+/// read, whatever the shape of the payload.
 ///
-/// Retourne `undefined` si le message est illisible ou de forme inattendue :
-/// l'appelant l'ignore alors silencieusement, sans faire planter l'attente
-/// (le message recherché — la réponse SDP — peut encore arriver ensuite).
-// Exportée uniquement pour être testée unitairement sans avoir à instancier
-// un vrai WebSocket (voir webrtc.test.ts) : le reste du module ne l'utilise
-// que via `waitForAnswer`, en interne.
+/// Returns `undefined` if the message is unreadable or of an unexpected shape:
+/// the caller then silently ignores it, without crashing the wait
+/// (the awaited message — the SDP answer — may still arrive afterwards).
+// Exported only to be unit tested without having to instantiate
+// a real WebSocket (see webrtc.test.ts): the rest of the module only uses it
+// through `waitForAnswer`, internally.
 export function parseSignalingMessage(raw: string): SignalingMessage | undefined {
     let parsed: unknown;
     try {
@@ -90,26 +90,26 @@ export function parseSignalingMessage(raw: string): SignalingMessage | undefined
     return undefined;
 }
 
-/// Attend le SDP de réponse de l'agent, relayé par le socket de signaling.
-/// Rejette si : un message d'erreur ou « peer-gone » est reçu, le socket se
-/// ferme avant la réponse, ou le délai maximal est dépassé. Un message
-/// illisible ou de forme inattendue (JSON invalide, valeur non-objet comme
-/// `null`/un nombre/un tableau, ou objet sans `type` reconnu) est journalisé
-/// et ignoré plutôt que de faire planter l'attente : d'autres messages
-/// valides peuvent encore arriver, notamment la réponse elle-même.
+/// Waits for the agent's answer SDP, relayed by the signaling socket.
+/// Rejects if: an error or "peer-gone" message is received, the socket
+/// closes before the answer, or the maximum delay is exceeded. An
+/// unreadable or unexpectedly shaped message (invalid JSON, non-object value like
+/// `null`/a number/an array, or an object without a recognised `type`) is logged
+/// and ignored rather than crashing the wait: other valid
+/// messages may still arrive, notably the answer itself.
 ///
-/// Exportée uniquement pour être testée sans passer par `connectSession`
-/// (qui exige un DOM complet — `RTCPeerConnection`, `WebSocket` réel, etc.,
-/// indisponibles sous le runtime Node du test) : `waitForAnswer` ne dépend
-/// que de `addEventListener`/`removeEventListener`, qu'un faux socket minimal
-/// suffit à fournir (voir webrtc.test.ts).
+/// Exported only to be tested without going through `connectSession`
+/// (which requires a complete DOM — `RTCPeerConnection`, a real `WebSocket`, etc.,
+/// unavailable under the test's Node runtime): `waitForAnswer` only depends
+/// on `addEventListener`/`removeEventListener`, which a minimal fake socket
+/// is enough to provide (see webrtc.test.ts).
 export function waitForAnswer(socket: WebSocket): Promise<string> {
     return new Promise((resolve, reject) => {
         let settled = false;
 
-        // Quelle que soit l'issue (succès, erreur, fermeture, délai), les
-        // écouteurs et le minuteur doivent être retirés une seule fois : pas
-        // de fuite, pas de résolution/rejet en double.
+        // Whatever the outcome (success, error, closing, timeout), the
+        // listeners and the timer must be removed exactly once: no
+        // leak, no double resolution/rejection.
         const finish = (action: () => void) => {
             if (settled) return;
             settled = true;
@@ -141,9 +141,9 @@ export function waitForAnswer(socket: WebSocket): Promise<string> {
         };
 
         const timer = setTimeout(() => {
-            // Message orienté utilisateur : pas de détail interne (pas de
-            // mention du serveur de signaling ni du protocole), juste de
-            // quoi diagnostiquer sans recharger la page à l'aveugle.
+            // User-oriented message: no internal detail (no
+            // mention of the signaling server or of the protocol), just enough
+            // to diagnose without reloading the page blindly.
             finish(() =>
                 reject(
                     new Error(
@@ -158,18 +158,18 @@ export function waitForAnswer(socket: WebSocket): Promise<string> {
     });
 }
 
-/// Attend que la collecte ICE soit terminée : sans trickle, le SDP doit déjà
-/// contenir tous les candidats.
+/// Waits for ICE gathering to be complete: without trickle, the SDP must already
+/// contain all the candidates.
 ///
-/// ⚠️ EXPORTÉE PAR LE SOUS-BLOC F1, ET C'EST UNE MODIFICATION DÉCLARÉE.
-/// `client/src/fichiers/canal.ts` ouvre une `RTCPeerConnection` DÉDIÉE, sans
-/// média (décision D4 du plan de F1) : `connectSession` ne lui convient pas —
-/// elle exige un `HTMLVideoElement` et ajoute inconditionnellement trois
-/// transceivers. Le plan interdit de refactorer `connectSession` pour rendre la
-/// vidéo optionnelle : ce serait toucher le chemin critique de toutes les
-/// fenêtres pour un besoin qui a sa propre fonction. Il prescrit en revanche de
-/// RÉEMPLOYER les fonctions de signaling « sans les copier » — d'où cet export
-/// et celui d'`attendreConfigIce`. Aucun comportement n'est modifié.
+/// ⚠️ EXPORTED BY SUB-BLOCK F1, AND IT IS A DECLARED CHANGE.
+/// `client/src/fichiers/canal.ts` opens a DEDICATED `RTCPeerConnection`, without
+/// media (decision D4 of F1's plan): `connectSession` does not suit it —
+/// it requires an `HTMLVideoElement` and unconditionally adds three
+/// transceivers. The plan forbids refactoring `connectSession` to make
+/// video optional: that would touch the critical path of all
+/// windows for a need that has its own function. It does prescribe
+/// REUSING the signaling functions "without copying them" — hence this export
+/// and that of `attendreConfigIce`. No behaviour is changed.
 export function waitForIceGathering(pc: RTCPeerConnection): Promise<void> {
     if (pc.iceGatheringState === 'complete') return Promise.resolve();
     return new Promise((resolve) => {
@@ -180,7 +180,7 @@ export function waitForIceGathering(pc: RTCPeerConnection): Promise<void> {
             }
         };
         pc.addEventListener('icegatheringstatechange', check);
-        // Filet de sécurité : ne jamais bloquer indéfiniment sur un réseau lent.
+        // Safety net: never block indefinitely on a slow network.
         setTimeout(() => {
             pc.removeEventListener('icegatheringstatechange', check);
             resolve();
@@ -188,13 +188,13 @@ export function waitForIceGathering(pc: RTCPeerConnection): Promise<void> {
     });
 }
 
-/// Attend la configuration ICE du signaling, au plus `delaiMs`.
+/// Waits for the ICE configuration from signaling, at most `delaiMs`.
 ///
-/// Rend un tableau VIDE en cas d'absence : c'est le cas normal d'un
-/// déploiement sans relais, pas une erreur. Le message est retiré du flux
-/// pour ne pas être confondu plus tard avec une réponse SDP.
+/// Returns an EMPTY array when absent: it is the normal case of a
+/// deployment without a relay, not an error. The message is removed from the stream
+/// so as not to be mistaken later for an SDP answer.
 ///
-/// ⚠️ EXPORTÉE PAR LE SOUS-BLOC F1 — voir la note de `waitForIceGathering`.
+/// ⚠️ EXPORTED BY SUB-BLOCK F1 — see the note on `waitForIceGathering`.
 export function attendreConfigIce(socket: WebSocket, delaiMs: number): Promise<RTCIceServer[]> {
     return new Promise((resolve) => {
         const finir = (serveurs: RTCIceServer[]) => {
@@ -214,9 +214,9 @@ export function attendreConfigIce(socket: WebSocket, delaiMs: number): Promise<R
 export async function connectSession(options: SessionOptions): Promise<SessionHandle> {
     const status = options.onStatus ?? (() => {});
 
-    // Le socket s'ouvre AVANT la `RTCPeerConnection`, contrairement au jalon 1 :
-    // les serveurs ICE ne sont connus qu'une fois la configuration reçue du
-    // signaling, et `RTCPeerConnection` les veut à la construction.
+    // The socket opens BEFORE the `RTCPeerConnection`, unlike milestone 1:
+    // the ICE servers are only known once the configuration is received from
+    // signaling, and `RTCPeerConnection` wants them at construction.
     const socket = new WebSocket(options.signalingUrl);
     await new Promise<void>((resolve, reject) => {
         socket.addEventListener('open', () => resolve(), { once: true });
@@ -224,57 +224,57 @@ export async function connectSession(options: SessionOptions): Promise<SessionHa
             once: true,
         });
     });
-    // 🔴 LE CHAMP `jeton` EST AJOUTÉ, AUCUN N'EST RETIRÉ — spec §10.2. Un
-    // service du sous-bloc P1 ne lit que `role` et `session` (son relais ignore
-    // tout le reste) : ce client reste donc compatible avec un service
-    // antérieur à la garde. LA COMPATIBILITÉ NE VA QUE DANS CE SENS — un
-    // client d'avant P2, lui, sera refusé par un service de P2, et c'est
-    // précisément l'objet du sous-bloc.
+    // 🔴 THE `jeton` FIELD IS ADDED, NONE IS REMOVED — spec §10.2. A
+    // service from sub-block P1 only reads `role` and `session` (its relay ignores
+    // everything else): this client therefore stays compatible with a service
+    // predating the guard. COMPATIBILITY ONLY GOES THIS WAY — a
+    // pre-P2 client, for its part, will be refused by a P2 service, and that is
+    // precisely the point of the sub-block.
     //
-    // ⚠️ AUCUNE REDIRECTION ICI, et ce n'est pas un oubli. Sans jeton, la
-    // session est refusée et le refus s'affiche ; c'est `hub/page.ts`
-    // (`shell-page.ts` avant que le hub ne devienne la seule surface,
-    // 31 août 2026) qui renvoie vers l'écran de connexion, parce qu'il est
-    // l'entrée réelle de l'utilisateur. Une page de session est TOUJOURS ouverte par la shell, sur
-    // la même origine, donc le jeton y est déjà. Rediriger depuis une
-    // bibliothèque lui donnerait un pouvoir sur la navigation de ses appelants.
+    // ⚠️ NO REDIRECT HERE, and it is not an oversight. Without a token, the
+    // session is refused and the refusal is displayed; it is `hub/page.ts`
+    // (`shell-page.ts` before the hub became the only surface,
+    // August 31st, 2026) that sends back to the sign-in screen, because it is
+    // the user's real entry point. A session page is ALWAYS opened by the shell, on
+    // the same origin, so the token is already there. Redirecting from a
+    // library would give it power over its callers' navigation.
     const jeton = options.jeton ?? jetonAcces();
     socket.send(JSON.stringify({ role: 'client', session: options.sessionId, jeton }));
 
-    // La configuration ICE arrive juste après la déclaration de rôle, ou
-    // jamais si aucun relais n'est déployé. On l'attend brièvement plutôt que
-    // de bloquer : une session en réseau local doit continuer à s'établir
-    // sans relais, exactement comme avant ce chantier.
+    // The ICE configuration arrives right after the role declaration, or
+    // never if no relay is deployed. We wait for it briefly rather than
+    // blocking: a session on a local network must keep being established
+    // without a relay, exactly as before this workstream.
     const iceServers = await attendreConfigIce(socket, 2000);
     const pc = new RTCPeerConnection({ iceServers });
 
     pc.addTransceiver('video', { direction: 'recvonly' });
-    // Le navigateur est l'offrant : c'est lui qui doit déclarer la piste
-    // audio. L'agent ne fait que répondre, à condition d'avoir activé Opus sur
-    // son constructeur `Rtc` — sans quoi il répondrait sans piste audio.
+    // The browser is the offerer: it is the one that must declare the audio
+    // track. The agent only answers, provided it has enabled Opus on
+    // its `Rtc` builder — otherwise it would answer without an audio track.
     pc.addTransceiver('audio', { direction: 'recvonly' });
 
-    // Le micro (chantier E). Déclaré SANS PISTE : rien n'est capté, aucune
-    // permission n'est demandée, aucun octet n'est émis tant que
-    // `client/src/micro.ts` n'a pas appelé `replaceTrack`. C'est ce qui rend
-    // « à la demande » réalisable sans renégociation — `connectSession` fait
-    // un aller-retour UNIQUE (offre, puis réponse) et n'a AUCUN chemin pour
-    // une seconde offre. `replaceTrack` sur un sender existant ne change ni
-    // le codec ni les m-lines, donc ne demande pas de renégociation.
+    // The mic (workstream E). Declared WITHOUT A TRACK: nothing is captured, no
+    // permission is requested, no byte is emitted as long as
+    // `client/src/micro.ts` has not called `replaceTrack`. That is what makes
+    // "on demand" feasible without renegotiation — `connectSession` makes
+    // a SINGLE round trip (offer, then answer) and has NO path for
+    // a second offer. `replaceTrack` on an existing sender changes neither
+    // the codec nor the m-lines, hence requires no renegotiation.
     //
-    // ⚠️ L'ORDRE DES TROIS `addTransceiver` DÉCIDE LES `mid`, et l'agent en
-    // dépend. Ce transceiver-ci doit venir APRÈS l'audio descendant : il prend
-    // alors `mid:2`, et l'agent le voit en `RecvOnly` (str0m inverse la
-    // direction distante à l'acceptation de l'offre) — c'est ce qui range son
-    // `mid` dans `mic_mid` et non dans `audio_mid`
-    // (`agent/src/transport/evenements.rs`). Intervertir les deux lignes
-    // ferait partir le son DESCENDANT sur une piste que l'agent ne peut pas
-    // émettre, sans une seule erreur : c'est le défaut latent que la tâche 7
-    // du chantier E a exhibé puis corrigé.
+    // ⚠️ THE ORDER OF THE THREE `addTransceiver` DECIDES THE `mid`s, and the agent
+    // depends on it. This transceiver must come AFTER the downstream audio: it then takes
+    // `mid:2`, and the agent sees it as `RecvOnly` (str0m inverts the
+    // remote direction when accepting the offer) — that is what files its
+    // `mid` under `mic_mid` and not under `audio_mid`
+    // (`agent/src/transport/evenements.rs`). Swapping the two lines
+    // would send the DOWNSTREAM sound onto a track the agent cannot
+    // emit, without a single error: it is the latent defect task 7
+    // of workstream E exposed then fixed.
     const micTransceiver = pc.addTransceiver('audio', { direction: 'sendonly' });
 
-    // Entrées : non fiable et non ordonné — une position de souris périmée n'a
-    // aucune valeur, mieux vaut la perdre que retarder les suivantes.
+    // Inputs: unreliable and unordered — a stale mouse position has
+    // no value, better to lose it than to delay the following ones.
     const inputChannel = pc.createDataChannel('input', {
         ordered: false,
         maxRetransmits: 0,
@@ -289,24 +289,24 @@ export async function connectSession(options: SessionOptions): Promise<SessionHa
         }
     });
 
-    // Un seul MediaStream porte les deux pistes. Réassigner `srcObject` à
-    // chaque piste reçue ferait chasser la première par la seconde : l'ordre
-    // d'arrivée n'est pas garanti, et le résultat serait une session tantôt
-    // muette, tantôt sans image.
+    // A single MediaStream carries both tracks. Reassigning `srcObject` at
+    // each received track would make the second chase away the first: the order
+    // of arrival is not guaranteed, and the result would be a session sometimes
+    // mute, sometimes without an image.
     const flux = new MediaStream();
     pc.addEventListener('track', (event) => {
         flux.addTrack(event.track);
-        // Latence de restitution : demander au navigateur de ne pas
-        // constituer de tampon de gigue au-delà du strict nécessaire.
+        // Playback latency: ask the browser not to build up
+        // a jitter buffer beyond what is strictly necessary.
         //
-        // Ce n'est pas gratuit — sur un lien qui gigue, ce tampon est ce qui
-        // lisse la restitution, et le raboter échange de la latence contre du
-        // saccadement. Mesuré sous chaque profil netem à la recette.
+        // It is not free — on a jittery link, this buffer is what
+        // smooths playback, and trimming it trades latency for
+        // stutter. Measured under each netem profile in the acceptance run.
         //
-        // Chromium seulement : ailleurs la propriété n'existe pas et
-        // l'affectation est sans effet. D'où l'accès défensif plutôt qu'un
-        // `receiver.playoutDelayHint = 0` direct, qui lèverait en mode strict
-        // sur un objet scellé.
+        // Chromium only: elsewhere the property does not exist and
+        // the assignment has no effect. Hence the defensive access rather than a
+        // direct `receiver.playoutDelayHint = 0`, which would throw in strict mode
+        // on a sealed object.
         if (event.track.kind === 'video' && 'playoutDelayHint' in event.receiver) {
             (event.receiver as RTCRtpReceiver & { playoutDelayHint: number }).playoutDelayHint = 0;
         }
@@ -337,22 +337,22 @@ export async function connectSession(options: SessionOptions): Promise<SessionHa
         controlChannel,
         micSender: micTransceiver.sender,
         close() {
-            // ⚠️ L'EXTINCTION DOIT ÊTRE RÉELLE (spec §9). `pc.close()` NE STOPPE
-            // PAS les pistes locales : l'indicateur de micro de Chrome resterait
-            // allumé après la fin de session, et le périphérique resterait pris.
-            // C'est précisément le « mensonge visuel » que la spec qualifie
-            // d'inacceptable sur cette fonction. `stop()` est idempotent : que
-            // `micro.ts` l'ait déjà appelé ne coûte rien.
+            // ⚠️ SWITCHING OFF MUST BE REAL (spec §9). `pc.close()` DOES NOT STOP
+            // the local tracks: Chrome's mic indicator would stay
+            // lit after the end of the session, and the device would stay taken.
+            // It is precisely the "visual lie" the spec calls
+            // unacceptable on this function. `stop()` is idempotent: that
+            // `micro.ts` has already called it costs nothing.
             //
-            // ⚠️ DIVERGENCE ASSUMÉE AVEC LE PLAN, qui écrit « `close()` appelle
-            // `detacher()` du micro ». Cela ferait dépendre `webrtc.ts` de
-            // `micro.ts`, lequel dépend déjà de `SessionHandle.micSender` : un
-            // cycle, et un cycle que la tâche 10 ne pourrait de toute façon pas
-            // écrire, `micro.ts` naissant à la tâche 11. On arrête donc la piste
-            // du sender directement — ce qui suffit à l'exigence, `detacher()`
-            // ne faisant rien de plus que `replaceTrack(null)` et ce `stop()`.
-            // `main.ts` appelle par ailleurs son propre détachement en fin de
-            // session, pour que l'ÉTAT du bouton suive lui aussi.
+            // ⚠️ DELIBERATE DIVERGENCE FROM THE PLAN, which writes "`close()` calls
+            // the mic's `detacher()`". That would make `webrtc.ts` depend on
+            // `micro.ts`, which already depends on `SessionHandle.micSender`: a
+            // cycle, and a cycle task 10 could not have written anyway,
+            // `micro.ts` being born at task 11. We therefore stop the sender's
+            // track directly — which is enough for the requirement, `detacher()`
+            // doing nothing more than `replaceTrack(null)` and this `stop()`.
+            // `main.ts` besides calls its own detachment at the end of the
+            // session, so that the button's STATE follows too.
             micTransceiver.sender.track?.stop();
             socket.close();
             pc.close();

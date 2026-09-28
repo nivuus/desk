@@ -1,21 +1,21 @@
 #!/usr/bin/env bash
-# LE HARNAIS DES ROUGES DE G5 — huit étapes, et il REFUSE une mutation nulle.
+# THE HARNESS OF G5'S RED RUNS — eight steps, and it REFUSES a null mutation.
 #
-# 🔴 IL NE PEUT PAS EMPLOYER `git diff`. Ce contrôle compare à **HEAD**, et
-#    reste donc non vide tant qu'un travail non commité vit dans le fichier —
-#    MÊME QUAND LA MUTATION EST NULLE. Mesuré par P3, repayé par A1. Le harnais
-#    compare à une COPIE NOMMÉE, prise juste avant la mutation.
+# 🔴 IT CANNOT USE `git diff`. That check compares with **HEAD**, and
+#    therefore stays non-empty as long as uncommitted work lives in the file —
+#    EVEN WHEN THE MUTATION IS NULL. Measured by P3, paid again by A1. The harness
+#    compares with a NAMED COPY, taken right before the mutation.
 #
-# 🔴 IL NE RESTAURE JAMAIS PAR `git checkout --`, qui restaure à HEAD et a
-#    EFFACÉ DU TRAVAIL NON COMMITÉ DEUX FOIS dans ce dépôt. Il restaure DEPUIS
-#    LA COPIE.
+# 🔴 IT NEVER RESTORES THROUGH `git checkout --`, which restores to HEAD and
+#    ERASED UNCOMMITTED WORK TWICE in this repository. It restores FROM
+#    THE COPY.
 #
-# 🔴 IL EXIGE QUE L'ANCRE SOIT PRÉSENTE EXACTEMENT UNE FOIS. A1 a mesuré une
-#    ancre présente CINQ fois ; S3 a vu QUATRE rouges sur seize rester vertes
-#    ou rougir pour la mauvaise raison ; P4 a vu une mutation frapper le
-#    COMMENTAIRE qui justifie la ligne au lieu de la ligne.
+# 🔴 IT REQUIRES THE ANCHOR TO BE PRESENT EXACTLY ONCE. A1 measured an
+#    anchor present FIVE times; S3 saw FOUR red runs out of sixteen stay green
+#    or turn red for the wrong reason; P4 saw a mutation hit the
+#    COMMENT justifying the line instead of the line.
 #
-# Usage : rouge.sh <nom> <fichier> <ancre> <remplacement> <commande…>
+# Usage: rouge.sh <name> <file> <anchor> <replacement> <command…>
 set -uo pipefail
 unset -f chpwd 2>/dev/null || true
 
@@ -32,12 +32,12 @@ echo "  fichier : $FICHIER"
 echo "  ancre   : $ANCRE"
 echo "  vers    : $REMPLACEMENT"
 
-# ① la copie nommée, et son empreinte
+# ① the named copy, and its fingerprint
 cp "$FICHIER" "$COPIE"
 AVANT="$(sha256sum "$FICHIER" | cut -d' ' -f1)"
 echo "  sha256 avant : $AVANT"
 
-# ② l'ancre existe EXACTEMENT une fois — un compte, jamais une relecture
+# ② the anchor exists EXACTLY once — a count, never a rereading
 N="$(python3 - "$FICHIER" "$ANCRE" <<'PY'
 import sys
 print(open(sys.argv[1]).read().count(sys.argv[2]))
@@ -57,7 +57,7 @@ s = open(p).read()
 open(p,'w').write(s.replace(a, r, 1))
 PY
 
-# ④ PREUVE que le diff CONTRE LA COPIE est non vide — sinon on REFUSE
+# ④ PROOF that the diff AGAINST THE COPY is not empty — otherwise we REFUSE
 LIGNES="$(diff "$COPIE" "$FICHIER" | wc -l)"
 echo "  lignes de diff contre la copie : $LIGNES"
 if [ "$LIGNES" = "0" ]; then
@@ -65,7 +65,7 @@ if [ "$LIGNES" = "0" ]; then
   cp "$COPIE" "$FICHIER"; rm -f "$COPIE"; exit 4
 fi
 
-# ⑤ le contrôle
+# ⑤ the check
 echo "  ── sortie du controle ──"
 set +e
 "$@"
@@ -73,10 +73,10 @@ CODE=$?
 set -e
 echo "  ── code de sortie du controle : $CODE ──"
 
-# ⑥ la restauration, DEPUIS LA COPIE
+# ⑥ restoration, FROM THE COPY
 cp "$COPIE" "$FICHIER"
 
-# ⑦ l'empreinte est ÉGALE — c'est CELA, la preuve de restauration
+# ⑦ the fingerprint is EQUAL — THAT is the proof of restoration
 APRES="$(sha256sum "$FICHIER" | cut -d' ' -f1)"
 echo "  sha256 apres : $APRES"
 if [ "$AVANT" != "$APRES" ]; then
@@ -84,8 +84,8 @@ if [ "$AVANT" != "$APRES" ]; then
   rm -f "$COPIE"; exit 5
 fi
 echo "  ✅ restauration verifiee par l'empreinte"
-# ⑧ ⚠️ `git status --porcelain` sur un fichier NEUF rend `??` et non le vide :
-#    la preuve de restauration qui vaut est l'etape ⑦.
+# ⑧ ⚠️ `git status --porcelain` on a NEW file returns `??` and not empty:
+#    the proof of restoration that counts is step ⑦.
 rm -f "$COPIE"
 echo "VERDICT ROUGE $NOM : controle sorti en $CODE"
 exit 0

@@ -1,19 +1,19 @@
 #!/usr/bin/env bash
-# Harnais de rouge du sous-bloc A1 — §6.4 du plan.
+# Red-run harness of sub-block A1 — §6.4 of the plan.
 #
-# Les huit étapes, dans l'ordre, et le relevé porte les huit lignes :
-#   1. copie NOMMÉE + sha256 des deux
-#   2. la mutation, par numéro de ligne ou par un motif ancré sur la SIGNATURE
-#   3. 🔴 `diff <fichier> <copie>` NON VIDE — et PAS `git diff --numstat`, que
-#      P3 a mesuré VACUEUX (il compare à HEAD, donc reste non vide quelle que
-#      soit la mutation, et même s'il n'y en a aucune)
-#   4. la commande de contrôle, et le relevé dit QUELLE assertion a rougi
-#   5. restauration DEPUIS LA COPIE — jamais `git checkout --`, qui restaure à
-#      HEAD et a effacé du travail non commité deux fois dans ce dépôt
-#   6. sha256 après, égal au premier
-#   7. `git status --porcelain <fichier>` vide
+# The eight steps, in order, and the report carries the eight lines:
+#   1. NAMED copy + sha256 of both
+#   2. the mutation, by line number or by a pattern anchored on the SIGNATURE
+#   3. 🔴 `diff <file> <copy>` NOT EMPTY — and NOT `git diff --numstat`, which
+#      P3 measured VACUOUS (it compares with HEAD, hence stays non-empty whatever
+#      the mutation, and even if there is none)
+#   4. the check command, and the report says WHICH assertion turned red
+#   5. restoration FROM THE COPY — never `git checkout --`, which restores to
+#      HEAD and erased uncommitted work twice in this repository
+#   6. sha256 afterwards, equal to the first
+#   7. `git status --porcelain <file>` empty
 #
-# Usage : harnais-rouge.sh <nom> <fichier> <script-python-de-mutation> <cmd...>
+# Usage: harnais-rouge.sh <name> <file> <python-mutation-script> <cmd...>
 set -uo pipefail
 unset -f chpwd 2>/dev/null || true
 

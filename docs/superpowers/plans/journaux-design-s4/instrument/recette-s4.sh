@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
 # ═══════════════════════════════════════════════════════════════════════════
-# LA RECETTE DU SOUS-BLOC S4 — sept critères, versés en un journal par
-# exécution. Elle ne juge pas : elle RELÈVE, et chaque chiffre qu'elle imprime
-# vient d'une commande lancée ici.
+# THE ACCEPTANCE RUN OF SUB-BLOCK S4 — seven criteria, filed as one log per
+# run. It does not judge: it RECORDS, and every figure it prints
+# comes from a command launched here.
 #
-# ⚠️ DEUX EXÉCUTIONS ÉTABLISSENT LA REPRODUCTIBILITÉ, JAMAIS UN TAUX. Les neuf
-# contrôles de ⑥ sont DÉTERMINISTES (spec §9) : la question « combien de fois
-# sur combien » ne se pose pas ici, et ne doit pas être empruntée à une
-# campagne qui, elle, l'aurait posée.
+# ⚠️ TWO RUNS ESTABLISH REPRODUCIBILITY, NEVER A RATE. The nine
+# checks of ⑥ are DETERMINISTIC (spec §9): the question "how many times
+# out of how many" does not arise here, and must not be borrowed from a
+# campaign that, for its part, would have asked it.
 #
-# ⚠️ `unset -f chpwd` : un hook du shell de cette machine injecte un `ls` dans
-# toute sortie qui traverse un `cd`. Piège payé en S2, repayé en S3.
+# ⚠️ `unset -f chpwd`: a shell hook of this machine injects an `ls` into
+# any output that crosses a `cd`. A trap paid for in S2, paid again in S3.
 #
-# usage : recette-s4.sh <base-git> <fichier-journal>
+# usage: recette-s4.sh <git-base> <log-file>
 # ═══════════════════════════════════════════════════════════════════════════
 unset -f chpwd 2>/dev/null
 set -u

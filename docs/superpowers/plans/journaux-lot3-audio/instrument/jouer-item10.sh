@@ -1,27 +1,27 @@
 #!/usr/bin/env bash
-# Lot 3, item 10 (3.5) — UNE CAUSE NATURELLE DE MORT DE CAPTURE AUDIO.
+# Batch 3, item 10 (3.5) — A NATURAL CAUSE OF AUDIO CAPTURE DEATH.
 #
 #     jouer-item10.sh <bras>    bras : temoin | defaut | veille | service
 #
-# 🔴 LE BRAS `temoin` EST LE PLUS IMPORTANT DE L'ITEM, ET IL PASSE EN PREMIER.
-# La conclusion attendue est une ABSENCE — « aucune cause naturelle » — et une
-# absence rendue par un instrument qui ne sait pas voir la chose ne vaut RIEN.
-# On PROVOQUE donc une mort de capture par `AUDIO_FAUTE_LECTURE=15`, et on
-# releve la SIGNATURE. Sans ce bras, « aucune cause naturelle » ne voudrait
-# dire que « je ne sais pas en voir une ».
+# 🔴 THE `temoin` ARM IS THE MOST IMPORTANT OF THE ITEM, AND IT GOES FIRST.
+# The expected conclusion is an ABSENCE — "no natural cause" — and an
+# absence returned by an instrument that cannot see the thing is worth NOTHING.
+# We therefore PROVOKE a capture death through `AUDIO_FAUTE_LECTURE=15`, and we
+# record the SIGNATURE. Without this arm, "no natural cause" would only mean
+# "I cannot see one".
 #
-# LA SIGNATURE, relue dans le CODE QUI L'EMET le 5 septembre 2026 :
-#   agent/src/windows_audio/fil.rs   "injection de fautes de lecture audio ARMEE (banc)"
-#   agent/src/windows_audio/fil.rs   "faute injectée (AUDIO_FAUTE_LECTURE)"
-#   agent/src/windows_audio/fil.rs   "lecture audio échouée, nouvelle tentative"
-#   agent/src/windows_audio/fil.rs   "lecture audio échouée, capture arrêtée définitivement"  <-- LA MORT
-#   agent/src/transport/piste_audio.rs  "capture audio reconstruite"
-#   agent/src/transport/piste_audio.rs  "reconstruction de la capture audio refusée"
-# Constantes : LECTURES_ECHOUEES_MAX = 10 (audio.rs:118), RECONSTRUCTIONS_MAX = 3 (audio.rs:83).
+# THE SIGNATURE, reread in the CODE THAT EMITS IT on September 5th, 2026:
+#   agent/src/windows_audio/fil.rs   "audio read fault injection ARMED (bench)"
+#   agent/src/windows_audio/fil.rs   "injected fault (AUDIO_FAUTE_LECTURE)"
+#   agent/src/windows_audio/fil.rs   "audio read failed, retrying"
+#   agent/src/windows_audio/fil.rs   "audio read failed, capture stopped for good"  <-- THE DEATH
+#   agent/src/transport/piste_audio.rs  "audio capture rebuilt"
+#   agent/src/transport/piste_audio.rs  "audio capture rebuild refused"
+# Constants: LECTURES_ECHOUEES_MAX = 10 (audio.rs:118), RECONSTRUCTIONS_MAX = 3 (audio.rs:83).
 #
-# 🔴 UNE CAUSE PAR EXECUTION DU BINAIRE : ces API echouent par PLANTAGE du
-# processus, pas par code d'erreur, et deux causes dans la meme execution
-# rendraient l'attribution impossible.
+# 🔴 ONE CAUSE PER RUN OF THE BINARY: these APIs fail by CRASHING the
+# process, not through an error code, and two causes in the same run
+# would make attribution impossible.
 set -uo pipefail
 unset -f chpwd 2>/dev/null || true
 
@@ -55,13 +55,13 @@ agent_relancer 30
 echo "REPERE=${REPERE}"
 
 etape "UNE SESSION AVEC AUDIO — sans fenetre servie, aucune capture audio n'existe"
-# 🔴 `APP` EST OBLIGATOIRE, ET SON ABSENCE A COUTE PLUSIEURS BRAS.
-# Sans elle, `pilote-latence.mjs` retombe sur son motif par defaut
-# `chrome|edge|bloc.?notes|notepad`, qui apparie **Microsoft Edge en
-# premier** — or CETTE CAMPAGNE a mesure (item 7) qu'Edge n'est JAMAIS
-# adopte : lance par desk, sa fenetre est ECARTEE 60 ms plus tard par la
-# regle d'appartenance, et aucune session ne s'ouvre. Le bras rend alors
-# « fenetres SERVIES : 0 » pour une raison ETRANGERE a ce qu'il mesure.
+# 🔴 `APP` IS MANDATORY, AND ITS ABSENCE COST SEVERAL ARMS.
+# Without it, `pilote-latence.mjs` falls back to its default pattern
+# `chrome|edge|bloc.?notes|notepad`, which matches **Microsoft Edge
+# first** — yet THIS CAMPAIGN measured (item 7) that Edge is NEVER
+# adopted: launched by desk, its window is SET ASIDE 60 ms later by the
+# ownership rule, and no session opens. The arm then returns
+# "windows SERVED: 0" for a reason FOREIGN to what it measures.
 APP='^Notepad$' nohup node "${D}/pilote-latence.mjs" --etiquette="item10-${BRAS}" --fenetres=1 --duree=110 --animer=0 \
       --sortie="/var/tmp/lot3-item10-${BRAS}.json" > "${J}/pilote-${BRAS}.log" 2>&1 &
 PILOTE_PID=$!
@@ -73,7 +73,7 @@ if [ "${BRAS}" != "temoin" ]; then
     etape "LA CAUSE TENTEE : ${BRAS}"
     case "${BRAS}" in
       defaut)
-        # Changer le peripherique de rendu PAR DEFAUT en cours de session.
+        # Changing the DEFAULT render device during a session.
         W '$d = Get-CimInstance Win32_SoundDevice | Where-Object { $_.Status -eq "OK" }
            "peripheriques de rendu vus : " + (@($d).Count)
            $d | ForEach-Object { "  - " + $_.Name }
