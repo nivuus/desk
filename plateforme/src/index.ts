@@ -1,16 +1,16 @@
-// Point d'entrée du service : une seule lecture d'environnement, la base
-// d'abord, le port ensuite, un arrêt propre.
+// Service entry point: a single environment read, the database
+// first, the port next, a clean shutdown.
 //
-// La séquence elle-même vit dans `demarrage.ts`, qui est testable ; ce fichier
-// n'est que le branchement sur `process.env` et sur les signaux.
+// The sequence itself lives in `demarrage.ts`, which is testable; this file
+// is only the wiring to `process.env` and to the signals.
 //
-// 🔴 COUPLAGE NOMMÉ, à ne pas casser par inadvertance : la ligne d'annonce
-// ci-dessous doit contenir la sous-chaîne `le port <n>`.
-// `src/signaling/resilience.test.ts` lance ce fichier comme processus enfant
-// et lit son port par `output.match(/le port (\d+)/)` ; toute autre forme fait
-// expirer le harnais au bout de 10 s sur « démarrage du process signaling
-// expiré », sans que rien ne désigne la cause. Le couplage est écrit ici
-// plutôt que subi, et le test le vérifie de lui-même en échouant.
+// 🔴 NAMED COUPLING, not to be broken by accident: the announcement line
+// below must contain the substring `le port <n>`.
+// `src/signaling/resilience.test.ts` starts this file as a child process
+// and reads its port via `output.match(/le port (\d+)/)`; any other shape makes
+// the harness time out after 10 s on "signaling process startup
+// timed out", without anything pointing at the cause. The coupling is written here
+// rather than suffered, and the test checks it by itself by failing.
 
 import { lireConfig } from './config';
 import { demarrer } from './demarrage';

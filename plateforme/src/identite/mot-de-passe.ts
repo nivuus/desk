@@ -1,22 +1,22 @@
-// Le hachage des mots de passe, dans un format qui porte son propre algorithme.
+// Password hashing, in a format that carries its own algorithm.
 //
-// 🔴 POURQUOI LE FORMAT PORTE SES PARAMÈTRES : `scrypt$N$r$p$sel$empreinte`.
-// Le jour où ces paramètres seront calibrés — ou remplacés par Argon2id —, un
-// re-hachage à la connexion suivante suffira, SANS migration de données
-// (spec §3.5). Une empreinte nue ne permettrait pas de savoir avec quoi elle a
-// été produite, et toute la base serait à jeter d'un coup.
+// 🔴 WHY THE FORMAT CARRIES ITS PARAMETERS: `scrypt$N$r$p$sel$empreinte`.
+// The day these parameters are calibrated — or replaced by Argon2id —, a
+// rehash at the next sign-in will be enough, WITHOUT data migration
+// (spec §3.5). A bare hash would not tell what it was
+// produced with, and the whole database would have to be thrown away at once.
 //
-// Mesuré le 19 août 2026 sur ce Node (v24.9.0) :
-//     N=16384 r=8 p=1 : OK 29 ms (relevé du plan), 31 ms (relevé de
-//         l'implémentation, même machine — l'écart est la variance de mesure)
-//     N=32768 r=8 p=1 : REFUSE -> Invalid scrypt params:
+// Measured on 19 August 2026 on this Node (v24.9.0):
+//     N=16384 r=8 p=1 : OK 29 ms (plan reading), 31 ms (reading from
+//         the implementation, same machine — the gap is measurement variance)
+//     N=32768 r=8 p=1 : REFUSED -> Invalid scrypt params:
 //         error:030000AC:digital envelope routines::memory limit exceeded
-// La limite est celle de `maxmem` (32 MiB par défaut), franchie dès que
-// 128·N·r la dépasse. Le message ne parle PAS de N. Durcir le paramètre exige
-// donc de lever `maxmem` explicitement — geste qui n'a PAS été fait ici, faute
-// de mesure qui le justifie. Ces paramètres NE SONT PAS CALIBRÉS : les 29 ms
-// sont une mesure, pas un objectif atteint. Ils rejoignent la liste déjà
-// longue du dépôt (BPP_MIN, FACTEUR_FOCUS, PART_DORMANTE_BPS, HYSTERESIS,
+// The limit is that of `maxmem` (32 MiB by default), crossed as soon as
+// 128·N·r exceeds it. The message does NOT mention N. Hardening the parameter
+// therefore requires raising `maxmem` explicitly — a step NOT taken here, for lack
+// of a measurement justifying it. These parameters ARE NOT CALIBRATED: the 29 ms
+// are a measurement, not a goal reached. They join the repository's already
+// long list (BPP_MIN, FACTEUR_FOCUS, PART_DORMANTE_BPS, HYSTERESIS,
 // TAILLE_MAX_SORTIE, DUREE_SECONDES).
 
 import { randomBytes, scrypt, timingSafeEqual } from 'node:crypto';
@@ -29,9 +29,9 @@ export interface ParametresScrypt {
 
 export const PARAMETRES_COURANTS: ParametresScrypt = { N: 16384, r: 8, p: 1 };
 
-/// 16 octets de sel, 32 octets d'empreinte : les tailles usuelles, et celles
-/// que les tests assertent — un sel plus court affaiblirait la protection
-/// contre les tables précalculées sans rien économiser d'utile.
+/// 16 bytes of salt, 32 bytes of hash: the usual sizes, and the ones
+/// the tests assert — a shorter salt would weaken the protection
+/// against precomputed tables without saving anything useful.
 const OCTETS_SEL = 16;
 const OCTETS_EMPREINTE = 32;
 
@@ -50,7 +50,7 @@ function deriver(
     });
 }
 
-/// Rend `scrypt$N$r$p$sel$empreinte`, sel et empreinte en base64url.
+/// Returns `scrypt$N$r$p$sel$empreinte`, salt and hash in base64url.
 export async function hacher(
     motDePasse: string,
     params: ParametresScrypt = PARAMETRES_COURANTS,
@@ -67,8 +67,8 @@ export async function hacher(
     ].join('$');
 }
 
-/// Décompose un encodage. LÈVE sur une forme illisible : un appelant qui
-/// recevrait un objet à demi rempli produirait un refus dont la cause serait
+/// Decomposes an encoding. THROWS on an unreadable shape: a caller that
+/// received a half-filled object would produce a refusal whose cause would be
 /// invisible.
 export function analyser(encode: string): {
     algo: string;
@@ -91,18 +91,18 @@ export function analyser(encode: string): {
     };
 }
 
-/// `false` sur mot de passe faux OU empreinte malformée.
+/// `false` on a wrong password OR a malformed hash.
 ///
-/// 🔴 LÈVE sur un algorithme inconnu, et c'est délibéré : un `false`
-/// silencieux y serait indiscernable d'un mauvais mot de passe, et personne ne
-/// saurait diagnostiquer une base écrite par une version future du service.
+/// 🔴 THROWS on an unknown algorithm, and that is deliberate: a silent
+/// `false` there would be indistinguishable from a bad password, and nobody
+/// could diagnose a database written by a future version of the service.
 export async function verifier(motDePasse: string, encode: string): Promise<boolean> {
     let analyse: ReturnType<typeof analyser>;
     try {
         analyse = analyser(encode);
     } catch {
-        // Une forme illisible est un refus, pas une exception : l'appelant
-        // HTTP doit répondre 401 et non 500.
+        // An unreadable shape is a refusal, not an exception: the HTTP
+        // caller must answer 401 and not 500.
         return false;
     }
 
@@ -121,27 +121,27 @@ export async function verifier(motDePasse: string, encode: string): Promise<bool
     try {
         calculee = await deriver(motDePasse, analyse.sel, analyse.params);
     } catch {
-        // Des paramètres que la bibliothèque refuse (voir le relevé de tête)
-        // rendent un refus, jamais une exception qui remonterait en 500.
+        // Parameters the library refuses (see the reading at the top)
+        // yield a refusal, never an exception that would bubble up as a 500.
         return false;
     }
 
-    // 🔴 LES LONGUEURS D'ABORD. Mesuré : `timingSafeEqual` LÈVE
-    // `Input buffers must have the same byte length` sur des longueurs qui
-    // diffèrent. Une empreinte tronquée en base ferait donc lever la
-    // vérification au lieu de rendre `false`.
+    // 🔴 LENGTHS FIRST. Measured: `timingSafeEqual` THROWS
+    // `Input buffers must have the same byte length` on lengths that
+    // differ. A truncated hash in the database would therefore make the
+    // verification throw instead of returning `false`.
     if (calculee.length !== analyse.empreinte.length) return false;
     return timingSafeEqual(calculee, analyse.empreinte);
 }
 
-/// Vrai si l'empreinte a été produite avec des paramètres plus faibles que les
-/// courants — auquel cas la connexion suivante doit la remplacer.
+/// True if the hash was produced with weaker parameters than the
+/// current ones — in which case the next sign-in must replace it.
 export function doitEtreRehache(encode: string): boolean {
     let analyse: ReturnType<typeof analyser>;
     try {
         analyse = analyser(encode);
     } catch {
-        // Illisible : à réécrire, certainement.
+        // Unreadable: to be rewritten, certainly.
         return true;
     }
     if (analyse.algo !== ALGO) return true;

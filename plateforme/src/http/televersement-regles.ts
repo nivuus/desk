@@ -1,16 +1,16 @@
-// Les RÈGLES PURES de la surface HTTP du téléversement : reconnaître un chemin,
-// dire quelle méthode chacun attend, juger la forme d'une empreinte.
+// The PURE RULES of the upload HTTP surface: recognising a path,
+// saying which method each one expects, judging the shape of a hash.
 //
-// 🔴 EXTRAIT AVANT L'ADDITION, ET C'EST LA RÈGLE DU DÉPÔT, PAS UN GOÛT.
-// `routes-televersement.ts` était à 497 lignes pour un plafond de 500 : la
-// moindre ligne de commentaire d'une revue transverse l'aurait fait FRANCHIR,
-// et le dépôt a payé DEUX FOIS en D9 pour l'avoir rattrapé par une COMPRESSION
-// qu'il interdit nommément. L'extraction se joue donc AVANT, jamais après —
-// c'est la forme forte, celle de D9 tâche 6 et des trois tâches de D10.
-// Précédents de forme : `http/routes-harnais.ts`, `apps/magasin-tranches.ts`.
+// 🔴 EXTRACTED BEFORE THE ADDITION, AND IT IS THE REPOSITORY RULE, NOT A TASTE.
+// `routes-televersement.ts` was at 497 lines for a cap of 500: the
+// slightest comment line from a cross-cutting review would have made it CROSS,
+// and the repository paid TWICE in D9 for having caught it up with a COMPRESSION
+// it explicitly forbids. The extraction therefore happens BEFORE, never after —
+// that is the strong form, the one of D9 task 6 and of the three tasks of D10.
+// Precedents of the shape: `http/routes-harnais.ts`, `apps/magasin-tranches.ts`.
 //
-// 🔴 CE MODULE EST PUR : aucune base, aucun socket, aucune horloge, aucun
-// `node:` — la propriété qui le rend éprouvable sans monter un serveur.
+// 🔴 THIS MODULE IS PURE: no database, no socket, no clock, no
+// `node:` — the property that makes it testable without standing up a server.
 
 export type Cible =
     | { quoi: 'creer' }
@@ -18,26 +18,26 @@ export type Cible =
     | { quoi: 'tranche'; id: string; rang: string }
     | { quoi: 'sceller'; id: string };
 
-/// Reconnaît les QUATRE chemins, et RIEN d'autre.
+/// Recognises the FOUR paths, and NOTHING else.
 ///
-/// 🔴 DÉCOUPÉ PAR SEGMENTS, JAMAIS PAR `startsWith`, ET CE N'EST PAS DU STYLE :
-/// G1 a MESURÉ qu'un `startsWith('/application')` laissait DIX-SEPT tests VERTS
-/// — la route mangeait toute la famille et rendait SON PROPRE 404 typé,
-/// indiscernable du générique tant qu'on ne lisait que le statut. Le contrôle
-/// qui vaut compare le CORPS. Chaque motif est ancré des DEUX bouts : nombre de
-/// segments EXACT, segments constants comparés par égalité.
+/// 🔴 SPLIT BY SEGMENTS, NEVER BY `startsWith`, AND IT IS NOT STYLE:
+/// G1 MEASURED that a `startsWith('/application')` left SEVENTEEN tests GREEN
+/// — the route ate the whole family and returned ITS OWN typed 404,
+/// indistinguishable from the generic one as long as only the status was read. The check
+/// that counts compares the BODY. Each pattern is anchored at BOTH ends: EXACT
+/// segment count, constant segments compared by equality.
 ///
-/// ⚠️ `URL.pathname` NE DÉCODE PAS LE POURCENT, et c'est voulu :
-/// `/televersement/..%2F..%2Fetc/tranche/0` arrive en UN seul segment, que
-/// `identifiantValide` refusera — décoder d'abord ferait apparaître des
-/// séparateurs que le découpage prendrait pour des segments légitimes.
+/// ⚠️ `URL.pathname` DOES NOT PERCENT-DECODE, and that is intended:
+/// `/televersement/..%2F..%2Fetc/tranche/0` arrives as ONE single segment, which
+/// `identifiantValide` will refuse — decoding first would make separators
+/// appear that the splitting would take for legitimate segments.
 export function reconnaitre(chemin: string): Cible | undefined {
     const s = chemin.split('/');
     if (s[1] !== 'televersement') return undefined;
     // ['', 'televersement'] — exactement deux.
     if (s.length === 2) return { quoi: 'creer' };
-    // Trois : `/televersement/` en a trois aussi, mais son identifiant est
-    // vide — c'est une barre oblique de trop, pas un chemin.
+    // Three: `/televersement/` has three as well, but its identifier is
+    // empty — that is one slash too many, not a path.
     if (s.length === 3) return s[2] === '' ? undefined : { quoi: 'etat', id: s[2] };
     if (s.length === 4) {
         return s[2] === '' || s[3] !== 'sceller' ? undefined : { quoi: 'sceller', id: s[2] };
@@ -49,8 +49,8 @@ export function reconnaitre(chemin: string): Cible | undefined {
     return undefined;
 }
 
-/// ⚠️ Une table plutôt que quatre `if` : la correspondance est exhaustive PAR
-/// LE TYPAGE, si bien qu'une cinquième cible ne compilerait pas sans sa méthode.
+/// ⚠️ A table rather than four `if`s: the mapping is exhaustive BY
+/// TYPING, so that a fifth target would not compile without its method.
 export const METHODE: Readonly<Record<Cible['quoi'], string>> = Object.freeze({
     creer: 'POST',
     etat: 'GET',
@@ -58,9 +58,9 @@ export const METHODE: Readonly<Record<Cible['quoi'], string>> = Object.freeze({
     sceller: 'POST',
 });
 
-/// ⚠️ MINUSCULES SEULEMENT, comme `apps/icones.ts::empreinteValide` : deux
-/// graphies de la même empreinte se compareraient FAUSSES au scellement, et le
-/// déposant redéposerait sans fin un fichier juste.
+/// ⚠️ LOWERCASE ONLY, like `apps/icones.ts::empreinteValide`: two
+/// spellings of the same hash would compare UNEQUAL at sealing, and the
+/// uploader would endlessly upload a correct file again.
 export function empreinteValide(s: string): boolean {
     return /^[0-9a-f]{64}$/.test(s);
 }

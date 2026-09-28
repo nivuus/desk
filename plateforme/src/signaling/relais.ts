@@ -1,38 +1,38 @@
-// Serveur de signaling : met en relation un agent et un client par session et
-// relaie l'offre et la réponse SDP.
+// Signaling server: pairs an agent and a client per session and
+// relays the SDP offer and answer.
 //
-// ⚠️ « Aucun état persistant » N'EST PLUS VRAI depuis le sous-bloc P1 : une
-// session appariée laisse une ligne en base (`ObservateurDeSession` ci-dessous,
-// implémenté par `trace.ts`). Le relais lui-même reste sans état persistant —
-// il ne connaît ni la base ni le SQL —, mais le SERVICE en a un.
+// ⚠️ "No persistent state" HAS NOT BEEN TRUE since sub-block P1: a
+// paired session leaves a row in the database (`ObservateurDeSession` below,
+// implemented by `trace.ts`). The relay itself stays without persistent state —
+// it knows neither the database nor SQL —, but the SERVICE has some.
 //
-// 🔴 « Aucune authentification » N'EST PLUS VRAI depuis le sous-bloc P2, et
-// n'est PAS DEVENU FAUX POUR AUTANT — voici la moitié exacte qui reste vraie.
+// 🔴 "No authentication" HAS NOT BEEN TRUE since sub-block P2, and
+// has NOT BECOME FALSE EITHER — here is the exact half that remains true.
 //
-// Un pair de rôle `client` doit désormais présenter un jeton d'accès valide
-// (`identite/garde.ts`), sans quoi il est refusé, journalisé et son socket
-// fermé — avant toute entrée dans la table d'appariement et avant tout envoi
-// d'`ice-config`.
+// A peer with the `client` role must now present a valid access token
+// (`identite/garde.ts`), otherwise it is refused, logged and its socket
+// closed — before any entry into the pairing table and before any sending
+// of `ice-config`.
 //
-// ❌ CE QUI SUIVAIT ICI EST DEVENU FAUX AU SOUS-BLOC P3, et l'énoncé est
-// corrigé plutôt que retiré. Il disait qu'un pair se déclarant
-// `{"role":"agent"}` était « TOUJOURS ACCEPTÉ SANS AUCUNE IDENTITÉ » et
-// recevait des identifiants TURN de 86 400 s — la « fenêtre anonyme »,
-// tolérée parce que l'agent Rust n'avait pas d'identité et qu'en exiger une
-// aurait cassé le chantier D en cours.
+// ❌ WHAT FOLLOWED HERE BECAME FALSE IN SUB-BLOCK P3, and the statement is
+// corrected rather than removed. It said that a peer declaring itself
+// `{"role":"agent"}` was "ALWAYS ACCEPTED WITHOUT ANY IDENTITY" and
+// received TURN credentials of 86 400 s — the "anonymous window",
+// tolerated because the Rust agent had no identity and requiring one
+// would have broken the ongoing effort D.
 //
-// ✅ ELLE EST FERMÉE. Le rôle `agent` exige désormais son jeton, de TYPE
-// `agent`, et dont le SUJET doit préfixer le nom de session demandé
-// (`identite/garde.ts`). L'identité vient du canal `/agent`
-// (`agents/canal.ts`), qui la délivre contre le secret d'enrôlement de la VM.
-// DEUX tests distincts la tiennent (`garde-fil.test.ts`) : le refus, et
-// l'absence d'`ice-config` — un service qui refuserait APRÈS avoir envoyé la
-// configuration ICE passerait le premier et laisserait fuir le second.
+// ✅ IT IS CLOSED. The `agent` role now requires its token, of TYPE
+// `agent`, and whose SUBJECT must prefix the requested session name
+// (`identite/garde.ts`). The identity comes from the `/agent` channel
+// (`agents/canal.ts`), which issues it against the VM's enrolment secret.
+// TWO distinct tests hold it (`garde-fil.test.ts`): the refusal, and
+// the absence of `ice-config` — a service that refused AFTER sending the
+// ICE configuration would pass the first and let the second leak.
 //
-// ⚠️ Ce qui RESTE vrai de l'argument d'origine : l'écoute bornée sur
-// `PLATEFORME_HOTE` (`config.ts`) demeure la défense de premier rang du
-// service, et ce n'est pas parce que la fenêtre `agent` s'est refermée
-// qu'elle cesse de compter.
+// ⚠️ What STILL holds of the original argument: listening bound to
+// `PLATEFORME_HOTE` (`config.ts`) remains the first-rank defence of the
+// service, and the `agent` window closing
+// does not make it stop mattering.
 
 import type { IncomingMessage } from 'node:http';
 import { WebSocket, WebSocketServer } from 'ws';
@@ -44,22 +44,22 @@ import { adresseSource } from '../http/adresse-source';
 import { ligne } from '../obs/journal';
 import { BUDGET_REQUETES, cleRequetes, type Budget, type Frein } from '../securite/frein';
 
-// Types que le serveur relaie au pair. Tout le reste est refusé — un relais
-// qui accepterait n'importe quoi deviendrait un canal de diffusion arbitraire.
+// Types the server relays to the peer. Everything else is refused — a relay
+// that accepted anything would become an arbitrary broadcast channel.
 //
-// ⚠️ Cette phrase disait « sur un serveur sans authentification » jusqu'au
-// sous-bloc P2, et c'est devenu faux DE MOITIÉ dans la branche même : un pair
-// `client` est désormais gardé, et n'atteint donc cette table qu'authentifié.
-// Le bornage des TYPES garde pourtant tout son sens, et pour deux raisons —
-// il borne ce qu'un pair `agent` peut faire transiter — même authentifié
-// depuis P3, il n'est autorisé QUE sur les sessions que son préfixe porte, ce
-// qui ne dit rien de ce qu'il a le droit d'y relayer ; et il borne ce qu'un
-// client authentifié peut diffuser à un autre. Une identité n'est pas une autorisation de relayer n'importe quoi.
+// ⚠️ This sentence said "on a server without authentication" until
+// sub-block P2, and that became HALF false within the branch itself: a
+// `client` peer is now guarded, and thus only reaches this table authenticated.
+// Bounding the TYPES still makes full sense, and for two reasons —
+// it bounds what an `agent` peer can pass through — even authenticated
+// since P3, it is allowed ONLY on the sessions its prefix carries, which
+// says nothing about what it is entitled to relay there; and it bounds what an
+// authenticated client can broadcast to another. An identity is not a permission to relay anything at all.
 
 //
-// `fenetre-ouverte`, `fenetre-fermee`, `refus` et `viewport` portent la
-// session de contrôle du sous-bloc D1, entre le superviseur (rôle `agent`) et
-// la page-shell (rôle `client`).
+// `fenetre-ouverte`, `fenetre-fermee`, `refus` and `viewport` carry the
+// control session of sub-block D1, between the supervisor (`agent` role) and
+// the shell page (`client` role).
 const TYPES_RELAYES = new Set([
     'offer',
     'answer',
@@ -69,47 +69,47 @@ const TYPES_RELAYES = new Set([
     'viewport',
 ]);
 
-// Garde de type : un message JSON valide peut être `null`, un nombre, une chaîne
-// ou un tableau (tous acceptés par JSON.parse), pas seulement un objet
-// `{role, session}` ou `{type, sdp}`. `null` est le cas dangereux : contrairement
-// aux nombres/chaînes/tableaux (dont l'accès de propriété retourne simplement
-// `undefined` par auto-boxing), `null.role` lève une TypeError. Comme ce code
-// tourne dans un handler d'événement `message` d'un WebSocket exposé sans
-// authentification, une TypeError non interceptée y est fatale : elle abat tout
+// Type guard: a valid JSON message can be `null`, a number, a string
+// or an array (all accepted by JSON.parse), not only a
+// `{role, session}` or `{type, sdp}` object. `null` is the dangerous case: unlike
+// numbers/strings/arrays (whose property access simply returns
+// `undefined` through auto-boxing), `null.role` throws a TypeError. As this code
+// runs in a `message` event handler of a WebSocket exposed without
+// authentication, an uncaught TypeError there is fatal: it takes down the whole
 
-// le process Node (aucun `uncaughtException` n'est installé dans le point
-// d'entrée — REVÉRIFIÉ au sous-bloc P1, qui l'a DÉPLACÉ : ce n'est plus
-// `signaling/src/index.ts` mais `plateforme/src/index.ts`, et il n'y installe
-// toujours qu'un `SIGINT`), donc
-// toutes les sessions actives avec elle. On rejette explicitement tout ce qui
-// n'est pas un objet simple avant d'accéder à la moindre propriété.
+// Node process (no `uncaughtException` is installed in the entry
+// point — RECHECKED in sub-block P1, which MOVED it: it is no longer
+// `signaling/src/index.ts` but `plateforme/src/index.ts`, and it still only
+// installs a `SIGINT` there), hence
+// all active sessions with it. We explicitly reject anything that
+// is not a plain object before accessing any property.
 //
-// ⚠️ « exposé sans authentification » RESTE VRAI après le sous-bloc P2, et il
-// faut dire POURQUOI, sans quoi un successeur croira la phrase périmée et
-// desserrera la garde de type. Ce contrôle court sur le PREMIER message, qui
-// arrive AVANT que la garde n'ait pu voir le moindre jeton : dans ce fichier,
-// `isJsonObject` est appelé une trentaine de lignes avant `garde.verifier`.
-// La poignée de main est donc, à cet instant précis, ouverte à quiconque
-// atteint le port — exactement comme avant P2.
+// ⚠️ "exposed without authentication" STAYS TRUE after sub-block P2, and it
+// must be said WHY, otherwise a successor will think the sentence stale and
+// loosen the type guard. This check runs on the FIRST message, which
+// arrives BEFORE the guard could see any token: in this file,
+// `isJsonObject` is called some thirty lines before `garde.verifier`.
+// The handshake is therefore, at that precise instant, open to anyone who
+// reaches the port — exactly as before P2.
 
 function isJsonObject(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-/// Enregistre la connexion sur le budget « toute requête », et journalise SI
-/// ET SEULEMENT SI le frein vient de mordre — même règle et même raison que
-/// `http/routes-auth.ts::compterLEchec` : la connexion suivante sera refusée
-/// tout en haut du gestionnaire `connection`, avant de jamais rappeler cette
-/// fonction.
+/// Records the connection on the "any request" budget, and logs IF
+/// AND ONLY IF the brake has just bitten — same rule and same reason as
+/// `http/routes-auth.ts::compterLEchec`: the next connection will be refused
+/// at the very top of the `connection` handler, before ever calling this
+/// function again.
 ///
-/// ⚠️ **CETTE LIGNE JOURNALISE À LA TRANSITION, ET NON À CHAQUE CONNEXION
-/// ADMISE — c'est ce qui la distingue d'une trace par connexion.** Une ligne
-/// à CHAQUE connexion, même après que le frein a commencé à refuser, ferait
-/// écrire le service à un rythme que l'attaquant contrôle sans plus rien lui
-/// coûter — la règle du chantier TURN (`CLAUDE.md`) : « compter ou
-/// échantillonner, jamais tracer par paquet ». Journaliser à la transition
-/// ferme cela : une adresse martelée écrit UNE ligne, jamais une par
-/// connexion.
+/// ⚠️ **THIS LINE LOGS ON THE TRANSITION, AND NOT ON EVERY ADMITTED
+/// CONNECTION — that is what sets it apart from a per-connection trace.** A line
+/// on EVERY connection, even after the brake has started refusing, would make
+/// the service write at a rate the attacker controls at no further
+/// cost — the rule of the TURN work (`CLAUDE.md`): "count or
+/// sample, never trace per packet". Logging on the transition
+/// closes that: a hammered address writes ONE line, never one per
+/// connection.
 function compterLaConnexion(
     frein: Frein,
     cles: readonly (readonly [string, Budget])[],
@@ -135,56 +135,56 @@ export interface SignalingServer {
     close(): Promise<void>;
 }
 
-/// Ce que le relais SIGNALE d'une session, sans rien savoir de ce qu'on en
-/// fait. C'est un port, pas une dépendance : l'implémentation de production
-/// est `trace.ts`, qui écrit en base, et le relais reste ignorant de la base
-/// comme il l'était.
+/// What the relay REPORTS about a session, without knowing anything of what is
+/// done with it. It is a port, not a dependency: the production implementation
+/// is `trace.ts`, which writes to the database, and the relay stays unaware of the database
+/// as it was.
 ///
-/// 🔴 Les deux méthodes sont SYNCHRONES et ne rendent rien, à dessein. Le
-/// gestionnaire `message` d'un socket `ws` est synchrone, et une promesse
-/// rejetée y abat tout le process Node (voir `isJsonObject` ci-dessus). Une
-/// signature qui rendrait une promesse inviterait un appelant à l'attendre —
-/// donc à faire dépendre le signaling de sa propre trace. La trace est une
-/// OBSERVATION du signaling, jamais une condition de son fonctionnement.
+/// 🔴 Both methods are SYNCHRONOUS and return nothing, on purpose. The
+/// `message` handler of a `ws` socket is synchronous, and a promise
+/// rejected there takes down the whole Node process (see `isJsonObject` above). A
+/// signature returning a promise would invite a caller to await it —
+/// hence to make signaling depend on its own trace. The trace is an
+/// OBSERVATION of signaling, never a condition of its operation.
 export interface ObservateurDeSession {
-    /// Les DEUX rôles sont désormais présents sur cette session.
+    /// BOTH roles are now present on this session.
     ///
-    /// `utilisateurId` est celui du CLIENT quand la garde en a établi un ;
-    /// il est absent quand le second pair à arriver est l'agent. ⚠️ LA RAISON
-    /// A CHANGÉ AU SOUS-BLOC P3 sans que la conséquence bouge : ce n'est plus
-    /// que l'agent n'a « aucune identité » — il en a une depuis le canal
-    /// `/agent` —, c'est qu'il ne REVENDIQUE toujours rien, sa session devant
-    /// rester revendicable par le client humain qui la rejoindra
-    /// (`identite/garde.ts`). C'est ce qui rend le mot « enregistrée » du
-    /// critère ③ littéralement vrai en base.
+    /// `utilisateurId` is the CLIENT's when the guard established one;
+    /// it is absent when the second peer to arrive is the agent. ⚠️ THE REASON
+    /// CHANGED IN SUB-BLOCK P3 without the consequence moving: it is no longer
+    /// that the agent has "no identity" — it has had one since the
+    /// `/agent` channel —, it is that it still CLAIMS nothing, its session having to
+    /// stay claimable by the human client that will join it
+    /// (`identite/garde.ts`). That is what makes the word "recorded" of
+    /// criterion ③ literally true in the database.
     apparie(nomSession: string, utilisateurId?: string): void;
-    /// La session s'est vidée : plus aucun rôle ne l'occupe.
+    /// The session has emptied: no role occupies it any more.
     separe(nomSession: string): void;
 }
 
-// Deux formes, à dessein. La forme `port` est celle qu'éprouve
-// `server.test.ts` depuis le jalon 1 : la garder intacte est ce qui permet de
-// dire que le déménagement du sous-bloc P1 n'a rien changé au relais. La forme
-// `wss` est celle qu'emploie le service, où le serveur HTTP possède le port.
+// Two shapes, on purpose. The `port` shape is the one exercised by
+// `server.test.ts` since milestone 1: keeping it intact is what allows
+// saying that the move of sub-block P1 changed nothing in the relay. The
+// `wss` shape is the one the service uses, where the HTTP server owns the port.
 //
-// 🔴 `garde` est un paramètre REQUIS, jamais optionnel, et jamais permissif
-// par défaut. Trois fichiers de test livrés par P1 ont dû changer pour cela
-// (leur HARNAIS, aucune de leurs assertions). L'alternative — une garde
-// optionnelle valant « accepter » — les aurait laissés verts sans une ligne de
-// changement, ET aurait laissé un service mal câblé n'authentifier PLUS
-// PERSONNE sans qu'aucun test ne rougisse. C'est le même argument que
-// `http/serveur.ts` porte déjà pour `base` : « REQUISE, jamais optionnelle ».
+// 🔴 `garde` is a REQUIRED parameter, never optional, and never permissive
+// by default. Three test files delivered by P1 had to change for this
+// (their HARNESS, none of their assertions). The alternative — an optional
+// guard meaning "accept" — would have left them green without a single line of
+// change, AND would have let a miswired service authenticate NOBODY
+// AT ALL without any test turning red. It is the same argument that
+// `http/serveur.ts` already makes for `base`: "REQUIRED, never optional".
 //
-// Il n'existe par ailleurs aucun chemin qui produise une garde ouverte hors
-// d'un test : la seule fabrique de garde exige un secret, et
-// `PLATEFORME_SECRET_JETON` n'a AUCUN défaut (`config.ts`).
+// Besides, there is no path that produces an open guard outside
+// a test: the only guard factory requires a secret, and
+// `PLATEFORME_SECRET_JETON` has NO default (`config.ts`).
 //
-// 🔴 `frein` ET `proxyDeConfiance` SONT REQUIS, JAMAIS OPTIONNELS — même
-// argument que `garde` juste au-dessus : un défaut permissif (aucun frein,
-// ou un ensemble de confiance ouvert) laisserait un service mal câblé ne
-// borner AUCUNE connexion sans qu'aucun test ne rougisse. Voir
-// `securite/frein.ts::BUDGET_REQUETES` : ce module partage le MÊME frein que
-// `http/routes-vm.ts` et `http/routes-session.ts`, jamais un second.
+// 🔴 `frein` AND `proxyDeConfiance` ARE REQUIRED, NEVER OPTIONAL — same
+// argument as `garde` just above: a permissive default (no brake,
+// or an open trust set) would let a miswired service bound
+// NO connection without any test turning red. See
+// `securite/frein.ts::BUDGET_REQUETES`: this module shares the SAME brake as
+// `http/routes-vm.ts` and `http/routes-session.ts`, never a second one.
 export function createSignalingServer(
     port: number,
     garde: Garde,
@@ -217,29 +217,29 @@ export function createSignalingServer(
     }
 
     wss.on('connection', (socket: WebSocket, requete?: IncomingMessage) => {
-        // 🔴 LE FREIN « TOUTE REQUÊTE » EST CONSULTÉ ICI, À LA CONNEXION —
-        // AVANT LE PREMIER MESSAGE, donc avant `isJsonObject` et avant
-        // `garde.verifier`. Une connexion WebSocket est ici l'équivalent
-        // d'une requête : c'est elle qui coûte l'appariement et, si elle
-        // aboutit, une ligne en base (`ObservateurDeSession`).
-        // `TRAME_MAX_OCTETS` (`http/serveur.ts`) borne la taille d'un
-        // message ; RIEN, avant ce lot, ne bornait le NOMBRE de connexions
-        // qu'une même adresse pouvait ouvrir sur CE chemin-ci.
+        // 🔴 THE "ANY REQUEST" BRAKE IS CONSULTED HERE, ON CONNECTION —
+        // BEFORE THE FIRST MESSAGE, hence before `isJsonObject` and before
+        // `garde.verifier`. A WebSocket connection is here the equivalent
+        // of a request: it is what costs the pairing and, if it
+        // succeeds, a database row (`ObservateurDeSession`).
+        // `TRAME_MAX_OCTETS` (`http/serveur.ts`) bounds the size of a
+        // message; NOTHING, before this batch, bounded the NUMBER of connections
+        // one address could open on THIS path.
         //
-        // 🔴 **C'EST CE LOT QUI FERME LA MOITIÉ `/signal` DU LEGS QUE
-        // `http/serveur.ts` nommait — les SOCKETS, pas leur MUTISME.** Une
-        // connexion est désormais comptée qu'elle envoie un message ou non :
-        // c'est l'évènement `connection` lui-même qui coûte, pas le premier
-        // message. Voir la note corrigée de `TRAME_MAX_OCTETS` dans
-        // `http/serveur.ts` : elle distingue désormais `/signal` (borné ICI)
-        // et `/agent` (`agents/canal.ts`, où le frein n'est TOUJOURS consulté
-        // qu'au message — un pair muet y reste incompté).
+        // 🔴 **IT IS THIS BATCH THAT CLOSES THE `/signal` HALF OF THE LEGACY THAT
+        // `http/serveur.ts` named — the SOCKETS, not their SILENCE.** A
+        // connection is now counted whether it sends a message or not:
+        // it is the `connection` event itself that costs, not the first
+        // message. See the corrected note of `TRAME_MAX_OCTETS` in
+        // `http/serveur.ts`: it now distinguishes `/signal` (bounded HERE)
+        // and `/agent` (`agents/canal.ts`, where the brake is STILL only consulted
+        // on message — a silent peer stays uncounted there).
         //
-        // ⚠️ `requete?.socket.remoteAddress` PEUT ÊTRE ABSENT : la forme
-        // `port` de cette fonction (`server.test.ts` depuis le jalon 1)
-        // n'émet aucune requête de montée. `adresseSource` rend alors
-        // `ADRESSE_INCONNUE`, budget PARTAGÉ par tous les pairs sans adresse
-        // — même comportement que `agents/canal.ts`.
+        // ⚠️ `requete?.socket.remoteAddress` MAY BE ABSENT: the
+        // `port` shape of this function (`server.test.ts` since milestone 1)
+        // issues no upgrade request. `adresseSource` then returns
+        // `ADRESSE_INCONNUE`, a budget SHARED by all address-less peers
+        // — same behaviour as `agents/canal.ts`.
         const adresse = adresseSource(
             requete?.socket.remoteAddress,
             Array.isArray(requete?.headers['x-forwarded-for'])
@@ -247,30 +247,30 @@ export function createSignalingServer(
                 : requete?.headers['x-forwarded-for'],
             proxyDeConfiance,
         );
-        // 🔴 UNE `PLATEFORME_PROXY_DE_CONFIANCE` MAL POSÉE FAIT DÉGÉNÉRER CE
-        // FREIN EN FREIN GLOBAL, ET SA GRAVITÉ A CHANGÉ AVEC CE LOT — voir le
-        // paragraphe complet chez `http/routes-vm.ts` (même clé
-        // `BUDGET_REQUETES`, même témoin : la ligne `frein-requetes` qui
-        // nomme l'adresse retenue), jamais recopié pour ne pas diverger.
+        // 🔴 A WRONGLY SET `PLATEFORME_PROXY_DE_CONFIANCE` MAKES THIS
+        // BRAKE DEGENERATE INTO A GLOBAL BRAKE, AND ITS SEVERITY CHANGED WITH THIS BATCH — see the
+        // full paragraph in `http/routes-vm.ts` (same key
+        // `BUDGET_REQUETES`, same witness: the `frein-requetes` line that
+        // names the retained address), never copied so as not to diverge.
         const clesRequetes: readonly (readonly [string, Budget])[] = [
             [cleRequetes(adresse), BUDGET_REQUETES],
         ];
-        // `Date.now()` lu ici, comme pour `configurationIce` plus bas dans ce
-        // même fichier : ce module ne reçoit pas d'horloge injectée.
+        // `Date.now()` read here, as for `configurationIce` further down in this
+        // same file: this module receives no injected clock.
         const verdictRequetes = frein.consulter(clesRequetes, Date.now());
         if (verdictRequetes.freine) {
-            // ⚠️ ENVOYER PUIS FERMER, jamais l'inverse — même règle que sur
-            // un refus de poignée de main plus bas : un `terminate()`
-            // immédiat tronquerait le message.
+            // ⚠️ SEND THEN CLOSE, never the reverse — same rule as on
+            // a handshake refusal further down: an immediate
+            // `terminate()` would truncate the message.
             //
-            // 🔴 `retryApresS` EST DÉSORMAIS PORTÉ SUR LE FIL (round de
-            // correction 1, critique ②) — LES DEUX ROUTES HTTP FREINÉES
-            // (`routes-vm.ts`, `routes-session.ts`) LE POSENT DÉJÀ, EN
-            // `Retry-After`, DEPUIS CE MÊME LOT ; SEUL CE REFUS WebSocket EN
-            // ÉTAIT PRIVÉ. Sans lui, l'agent ne peut deviner combien de temps
-            // attendre — c'est la moitié la moins chère du remède au
-            // verrouillage documenté par `surveillance_pont.rs`, l'autre
-            // moitié étant le repli exponentiel qu'il applique déjà.
+            // 🔴 `retryApresS` IS NOW CARRIED ON THE WIRE (correction
+            // round 1, criticism ②) — THE TWO BRAKED HTTP ROUTES
+            // (`routes-vm.ts`, `routes-session.ts`) ALREADY SET IT, AS
+            // `Retry-After`, SINCE THIS SAME BATCH; ONLY THIS WebSocket REFUSAL
+            // LACKED IT. Without it, the agent cannot guess how long to
+            // wait — it is the cheaper half of the remedy for the
+            // lockout documented by `surveillance_pont.rs`, the other
+            // half being the exponential backoff it already applies.
             send(socket, {
                 type: 'error',
                 reason: 'trop de requêtes',
@@ -294,9 +294,9 @@ export function createSignalingServer(
                 return;
             }
 
-            // Rejet avant toute lecture de propriété : voir `isJsonObject` ci-dessus.
-            // Le pair fautif reçoit une erreur mais sa connexion reste ouverte, pour
-            // qu'il puisse retenter avec un message valide.
+            // Rejection before any property read: see `isJsonObject` above.
+            // The faulty peer receives an error but its connection stays open, so
+            // that it can retry with a valid message.
             if (!isJsonObject(message)) {
                 send(socket, {
                     type: 'error',
@@ -307,7 +307,7 @@ export function createSignalingServer(
                 return;
             }
 
-            // Premier message : déclaration de rôle et de session.
+            // First message: role and session declaration.
             if (!role) {
                 const declaredRole = message.role;
                 const declaredSession = message.session;

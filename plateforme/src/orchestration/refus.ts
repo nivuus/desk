@@ -1,94 +1,94 @@
-// Le vocabulaire du refus : ce qu'un orchestrateur rend quand il ne peut pas
-// faire ce qu'on lui demande.
+// The refusal vocabulary: what an orchestrator returns when it cannot
+// do what it is asked.
 //
-// 🔴 CE MODULE EST PUR.
+// 🔴 THIS MODULE IS PURE.
 //
-// 🔴 UN REFUS EST UNE VALEUR, JAMAIS UN SILENCE. Ni `Promise<void>`, ni
-// `boolean`, ni exception : la spec §3.6 appelle cela « la décision de forme
-// la plus importante », et sa raison tient en une phrase — un `Promise<void>`
-// qui ne fait rien serait indiscernable d'un `Promise<void>` qui fait le
-// travail, c'est-à-dire une panne muette. Un `boolean` ne dirait pas POURQUOI,
-// et une exception ferait répondre 500 là où le service doit avouer 501.
+// 🔴 A REFUSAL IS A VALUE, NEVER A SILENCE. Neither `Promise<void>`, nor
+// `boolean`, nor exception: spec §3.6 calls this "the most important shape
+// decision", and its reason fits in one sentence — a `Promise<void>`
+// that does nothing would be indistinguishable from a `Promise<void>` that does the
+// work, that is a silent failure. A `boolean` would not say WHY,
+// and an exception would make the answer 500 where the service must admit 501.
 //
-// 🔴 LE MOTIF EST UN CODE COURT, PAS UNE PHRASE. La spec §3.6 proposait
-// `{ refus: 'non supporté par ce backend' }` ; tout le reste du service emploie
-// un code (`{refus:'identifiants'}` dans `http/routes-auth.ts`,
-// `{refus:'methode'}` et `{refus:'interne'}` dans `http/serveur.ts`, les quatre
-// motifs d'`identite/garde.ts`). Une phrase ne se compare pas, ne se traduit
-// pas, et se réécrit sans que rien ne casse.
+// 🔴 THE REASON IS A SHORT CODE, NOT A SENTENCE. Spec §3.6 proposed
+// `{ refus: 'non supporté par ce backend' }`; the whole rest of the service uses
+// a code (`{refus:'identifiants'}` in `http/routes-auth.ts`,
+// `{refus:'methode'}` and `{refus:'interne'}` in `http/serveur.ts`, the four
+// reasons of `identite/garde.ts`). A sentence cannot be compared, cannot be translated,
+// and gets rewritten without anything breaking.
 
 import type { Operation } from './interface';
 
-/// Qui refuse. ⚠️ C'est une CONSTANTE EXPORTÉE, jamais un littéral recopié au
-/// point d'usage : son intérêt est le jour où un second backend existera, et
-/// deux copies d'un nom divergent dès qu'on renomme l'une.
+/// Who refuses. ⚠️ It is an EXPORTED CONSTANT, never a literal copied at the
+/// point of use: its value shows the day a second backend exists, and
+/// two copies of a name diverge as soon as one is renamed.
 export const BACKEND_STATIQUE = 'inventaire-statique';
 
-/// Tous les motifs, sans exception.
+/// All the reasons, without exception.
 ///
-/// 🔴 LE TABLEAU PRODUIT LE TYPE, jamais l'inverse — même raison qu'à
-/// `orchestration/interface.ts` : la liste d'exécution et la liste de types
-/// sont LE MÊME OBJET.
+/// 🔴 THE ARRAY PRODUCES THE TYPE, never the reverse — same reason as in
+/// `orchestration/interface.ts`: the runtime list and the type list
+/// are THE SAME OBJECT.
 export const MOTIFS = [
-    /// Le backend ne sait pas faire — 501, et journalisé.
+    /// The backend cannot do it — 501, and logged.
     'non-supporte',
-    /// Inconnue, OU appartenant à quelqu'un d'autre : le MÊME refus, et c'est
-    /// délibéré. Les distinguer ferait un ORACLE D'ÉNUMÉRATION — un
-    /// utilisateur apprendrait quelles VMs existent en lisant le code de
-    /// retour. Troisième application de la règle, après `routes-auth.ts` et
+    /// Unknown, OR belonging to someone else: the SAME refusal, and that is
+    /// deliberate. Telling them apart would make an ENUMERATION ORACLE — a
+    /// user would learn which VMs exist by reading the status
+    /// code. Third application of the rule, after `routes-auth.ts` and
     /// `agents/enrolement.ts` (D8).
     'vm-inconnue',
-    /// La VM a déjà un propriétaire. ⚠️ Ce motif ne sort JAMAIS d'une route
-    /// HTTP : il n'y sortirait que d'une attribution, qui n'y est pas exposée.
+    /// The VM already has an owner. ⚠️ This reason NEVER leaves through an HTTP
+    /// route: it would only leave through an assignment, which is not exposed there.
     'vm-deja-attribuee',
-    /// L'utilisateur a déjà une VM — c'est l'index partiel `vm_un_utilisateur`
-    /// qui le dit, en LEVANT. Même réserve d'exposition que ci-dessus.
+    /// The user already has a VM — it is the partial index `vm_un_utilisateur`
+    /// that says so, by THROWING. Same exposure caveat as above.
     'utilisateur-servi',
-    /// L'utilisateur n'a aucune VM attribuée.
+    /// The user has no VM assigned.
     'aucune-vm',
     /// `vu_a` trop vieux, ou nul (`agents/fraicheur.ts`).
     'agent-injoignable',
 ] as const;
 export type Motif = (typeof MOTIFS)[number];
 
-/// Ce que rend une opération d'orchestration.
+/// What an orchestration operation returns.
 ///
-/// ⚠️ Le succès ne porte AUCUNE donnée, et c'est suffisant : les trois verbes
-/// qui réussissent en v1 (`lister`, `etat`, `attribuer`) rendent soit leur
-/// propre valeur, soit ce `Resultat`. Y glisser un champ facultatif ferait de
-/// `ok:true` un objet dont il faudrait vérifier le contenu.
+/// ⚠️ Success carries NO data, and that is enough: the three verbs
+/// that succeed in v1 (`lister`, `etat`, `attribuer`) return either their
+/// own value, or this `Resultat`. Slipping an optional field into it would make
+/// `ok:true` an object whose content would have to be checked.
 export type Resultat =
     | { ok: true }
     | { ok: false; motif: Motif; operation: Operation; backend: string };
 
-/// Le code HTTP de chaque motif.
+/// The HTTP code of each reason.
 ///
-/// 🔴 `Record<Motif, number>` EST LE REMÈDE STRUCTUREL, et il est choisi
-/// délibérément CONTRE une liste écrite à la main. Ajouter un motif sans lui
-/// donner son code est une ERREUR DE COMPILATION, que `npm run typecheck` —
-/// une étape de `scripts/verify-all.sh` — attrape. Ce dépôt a payé quatre fois
-/// un `match` catch-all qui tuait un fil en silence (`pont_media.rs`,
-/// sous-blocs D5 à D8), et `proto/ts/control.ts` porte encore un `TYPES_AGENT`
-/// écrit à la main sans être confronté à son union.
+/// 🔴 `Record<Motif, number>` IS THE STRUCTURAL REMEDY, and it is chosen
+/// deliberately AGAINST a handwritten list. Adding a reason without giving
+/// it its code is a COMPILE ERROR, which `npm run typecheck` —
+/// a step of `scripts/verify-all.sh` — catches. This repository paid four times for
+/// a catch-all `match` that silently killed a thread (`pont_media.rs`,
+/// sub-blocks D5 to D8), and `proto/ts/control.ts` still carries a `TYPES_AGENT`
+/// handwritten without being confronted with its union.
 ///
-/// ⚠️ `tsc` NE VOIT PAS UNE CLÉ EN TROP posée par un `as any` : c'est
-/// `Object.keys(CODE_HTTP)` dans le test qui la voit. Les deux gardes sont
-/// nécessaires, et la rouge de chacune a été jouée.
+/// ⚠️ `tsc` DOES NOT SEE AN EXTRA KEY slipped in by an `as any`: it is
+/// `Object.keys(CODE_HTTP)` in the test that sees it. Both guards are
+/// necessary, and the red of each one was played.
 export const CODE_HTTP: Record<Motif, number> = {
-    // 501 et non 500 : le service va bien, c'est son backend qui ne sait pas
-    // faire. Un 500 ferait chercher une panne inexistante.
+    // 501 and not 500: the service is fine, it is its backend that cannot
+    // do it. A 500 would send people looking for a nonexistent failure.
     'non-supporte': 501,
     'vm-inconnue': 404,
     'vm-deja-attribuee': 409,
     'utilisateur-servi': 409,
     'aucune-vm': 409,
-    // 503 : la VM est bien à cet utilisateur, elle ne répond pas. C'est un état
-    // du monde, pas une erreur de la requête.
+    // 503: the VM does belong to this user, it does not answer. It is a state
+    // of the world, not an error in the request.
     'agent-injoignable': 503,
 };
 
-/// Construit un refus. `backend` a `BACKEND_STATIQUE` pour DÉFAUT — jamais un
-/// littéral recopié à chaque appel.
+/// Builds a refusal. `backend` has `BACKEND_STATIQUE` as DEFAULT — never a
+/// literal copied at each call.
 export function refuser(
     motif: Motif,
     operation: Operation,
