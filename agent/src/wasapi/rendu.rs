@@ -1,66 +1,66 @@
-//! Résolution d'un point de terminaison audio de **rendu**, pour DEUX
-//! consommateurs aux politiques opposées.
+//! Resolution of an audio **render** endpoint, for TWO
+//! consumers with opposite policies.
 //!
-//! | Consommateur | Ce qu'il cherche | Ce qu'il fait d'un échec |
+//! | Consumer | What it looks for | What it does on failure |
 //! | --- | --- | --- |
-//! | [`resoudre`] — le loopback (correction « A-bis », `wasapi.rs`) | le rendu que la machine JOUE, à capter | **se replie** sur le défaut de Windows, en `warn!` |
-//! | [`resoudre_cable`] — le micro (bloc E2, `windows_micro.rs`) | le rendu du CÂBLE, sur lequel écrire | **refuse**, et il n'y a pas de micro |
+//! | [`resoudre`] — the loopback (fix "A-bis", `wasapi.rs`) | the render device the machine PLAYS, to capture | **falls back** to Windows' default, with `warn!` |
+//! | [`resoudre_cable`] — the microphone (block E2, `windows_micro.rs`) | the CABLE's render endpoint, to write to | **refuses**, and there is no microphone |
 //!
-//! 🔴 **Cette asymétrie de repli est le fait de conception de ce module, et
-//! elle n'est pas une inconséquence.** A-bis se replie parce que « du son,
-//! peut-être le mauvais, et un `warn!` qui le dit » vaut mieux que « aucun
-//! son ». Pour le micro l'arbitrage **s'inverse** : « la voix de l'utilisateur,
-//! peut-être dans le mauvais périphérique » n'est pas un moindre mal, c'est une
-//! **fuite** — sur une machine où le défaut de Windows est la carte son, cette
-//! voix sortirait des haut-parleurs de la VM. Mieux vaut pas de micro qu'un
-//! micro dans le mauvais tuyau.
+//! 🔴 **This fallback asymmetry is this module's design fact, and
+//! it is not an inconsistency.** A-bis falls back because "sound,
+//! perhaps the wrong one, and a `warn!` that says so" is better than "no
+//! sound". For the microphone the arbitration **is inverted**: "the user's voice,
+//! perhaps in the wrong device" is not a lesser evil, it is a
+//! **leak** — on a machine where Windows' default is the sound card, that
+//! voice would come out of the VM's speakers. Better no microphone than a
+//! microphone in the wrong pipe.
 //!
-//! ⚠️ **Le module n'a jamais eu qu'un seul sens : RÉSOUDRE.** Ce sont ses
-//! appelants qui ont des sens contraires — l'un capte, l'autre écrit — et
-//! chacun garde le sien. C'est ce qui a fait préférer, au bloc E2, un second
-//! point d'entrée ici plutôt qu'une centaine de lignes de COM recopiées
-//! ailleurs : le jumeau du chemin de production que la tâche 8 de E1 avait
-//! précisément dû supprimer.
+//! ⚠️ **The module has only ever had one direction: RESOLVING.** It is its
+//! callers that have opposite directions — one captures, the other writes — and
+//! each keeps its own. That is what made block E2 prefer a second
+//! entry point here rather than a hundred lines of COM copied
+//! elsewhere: the twin of the production path that E1's task 8 had
+//! precisely had to remove.
 //!
-//! ⚠️ **[`defaut`] n'est atteignable que par [`resoudre`].** Le chemin du câble
-//! ne l'appelle jamais, et un test garde le prédicat pur qui le lui interdit
-//! (`wasapi_peripherique::demande_cable`, qui ne rend jamais `None`).
+//! ⚠️ **[`defaut`] is only reachable through [`resoudre`].** The cable path
+//! never calls it, and a test guards the pure predicate that forbids it
+//! (`wasapi_peripherique::demande_cable`, which never returns `None`).
 //!
-//! La règle de sélection, elle, est **pure** et vit dans
-//! `agent/src/wasapi/peripherique.rs` (hissée à la racine du crate par
-//! `#[path]`, cf. `main.rs`) : ce module-ci ne fait que traduire l'énumération
-//! COM vers ses types, l'interroger, et **journaliser ce qui est retenu**.
+//! The selection rule, for its part, is **pure** and lives in
+//! `agent/src/wasapi/peripherique.rs` (hoisted to the crate root through
+//! `#[path]`, cf. `main.rs`): this module only translates the COM
+//! enumeration into its types, queries it, and **logs what is retained**.
 //!
-//! ## Le défaut de Windows n'est plus une dépendance implicite
+//! ## Windows' default is no longer an implicit dependency
 //!
-//! Jusqu'ici `LoopbackCapture::open` appelait directement
-//! `GetDefaultAudioEndpoint(eRender, eConsole)`. Le 19 août 2026,
-//! l'installation de VB-Cable sur la VM (préparation du chantier E) a fait
-//! basculer ce défaut sur le câble virtuel : le produit s'est mis à capter du
-//! silence, **sans qu'aucune ligne de journal ne le dise**. La correction
-//! n'est pas de remettre le bon périphérique par défaut — cela corrigerait
-//! l'occurrence et laisserait la classe de panne — mais de laisser
-//! l'exploitant **désigner explicitement** son périphérique, et de tracer
-//! celui qui est réellement retenu à chaque ouverture.
+//! Until now `LoopbackCapture::open` called
+//! `GetDefaultAudioEndpoint(eRender, eConsole)` directly. On August 19th, 2026,
+//! installing VB-Cable on the VM (preparation of workstream E) switched
+//! that default to the virtual cable: the product started capturing
+//! silence, **without any log line saying so**. The fix
+//! is not to put the right device back as default — that would fix
+//! the occurrence and leave the failure class — but to let
+//! the operator **explicitly designate** their device, and to trace
+//! the one actually retained at each opening.
 //!
-//! ## `AUDIO_PERIPHERIQUE` — convention VALUÉE, absence = comportement d'avant
+//! ## `AUDIO_PERIPHERIQUE` — VALUED convention, absence = previous behaviour
 //!
-//! Ce dépôt a trois conventions de variable, et il fallait choisir :
+//! This repository has three variable conventions, and one had to be chosen:
 //!
-//! - `PLEIN_ECRAN=0` **désarme** un mécanisme livré, et une simple présence
-//!   n'arme pas (sans quoi écrire `PLEIN_ECRAN=0` l'activerait) ;
-//! - `SOURCE_TRACE` s'active par **simple présence** ;
-//! - `MULTIFENETRE_SORTIE=<\\.\DISPLAYn>` et `BUDGET_BPS=<bps>` portent une
-//!   **valeur** qui désigne ou règle.
+//! - `PLEIN_ECRAN=0` **disarms** a shipped mechanism, and mere presence
+//!   does not arm (otherwise writing `PLEIN_ECRAN=0` would enable it);
+//! - `SOURCE_TRACE` is enabled by **mere presence**;
+//! - `MULTIFENETRE_SORTIE=<\\.\DISPLAYn>` and `BUDGET_BPS=<bps>` carry a
+//!   **value** that designates or tunes.
 //!
-//! `AUDIO_PERIPHERIQUE` suit la **troisième**, et c'est
-//! `MULTIFENETRE_SORTIE` qui est le précédent exact : comme elle, elle
-//! désigne une cible par un **nom stable** plutôt que par un rang. Les deux
-//! premières conventions sont hors sujet ici — il n'y a rien à armer ni à
-//! désarmer, il y a une cible à nommer, et une cible n'a pas de valeur
-//! booléenne. **Absente (ou vide), le comportement est exactement celui
-//! d'avant la correction** : le rendu par défaut de Windows. Aucune
-//! régression pour un agent lancé sans elle.
+//! `AUDIO_PERIPHERIQUE` follows the **third**, and it is
+//! `MULTIFENETRE_SORTIE` that is the exact precedent: like it, it
+//! designates a target by a **stable name** rather than by a rank. The first two
+//! conventions are off topic here — there is nothing to arm or to
+//! disarm, there is a target to name, and a target has no boolean
+//! value. **Absent (or empty), the behaviour is exactly the one
+//! from before the fix**: Windows' default render device. No
+//! regression for an agent launched without it.
 
 #![cfg(windows)]
 
@@ -75,33 +75,33 @@ use windows::Win32::System::Com::{CoTaskMemFree, STGM_READ};
 use crate::micro::boucle_locale;
 use crate::wasapi_peripherique::{choisir, demande_cable, inventaire, Choix, Peripherique};
 
-/// Nom de la variable d'environnement du LOOPBACK. Voir la convention en tête
-/// de module.
+/// Name of the LOOPBACK environment variable. See the convention at the head
+/// of the module.
 pub const VARIABLE: &str = "AUDIO_PERIPHERIQUE";
 
-/// Nom de la variable d'environnement du CÂBLE. Convention **valuée** elle
-/// aussi, et pour la même raison : il n'y a rien à armer ni à désarmer, il y a
-/// une cible à nommer. Absente, la désignation INTÉGRÉE
-/// (`wasapi_peripherique::DESIGNATION_CABLE`) s'applique — jamais le défaut de
-/// Windows.
+/// Name of the CABLE environment variable. **Valued** convention
+/// too, and for the same reason: there is nothing to arm or disarm, there is
+/// a target to name. Absent, the BUILT-IN designation
+/// (`wasapi_peripherique::DESIGNATION_CABLE`) applies — never Windows'
+/// default.
 pub const VARIABLE_CABLE: &str = "MICRO_PERIPHERIQUE";
 
-/// Élit le périphérique de rendu à capter et le rend, **après avoir tracé
-/// lequel a été retenu**.
+/// Elects the render device to capture and returns it, **after having traced
+/// which one was retained**.
 ///
-/// Le repli est explicite et bruyant : si la demande n'aboutit pas, on retombe
-/// sur le défaut de Windows — mais en `warn!`, en nommant ce qui a été
-/// demandé, ce qui existait, et ce qui est finalement retenu. **Jamais un
-/// retour silencieux au défaut** : c'est exactement la panne muette que cette
-/// correction existe pour supprimer, et la remplacer par une autre panne
-/// muette n'aurait aucun sens.
+/// The fallback is explicit and loud: if the request does not succeed, we fall back
+/// to Windows' default — but with `warn!`, naming what was
+/// requested, what existed, and what is finally retained. **Never a
+/// silent return to the default**: it is exactly the silent failure this
+/// fix exists to remove, and replacing it with another silent
+/// failure would make no sense.
 ///
-/// Le choix de *ne pas échouer* quand la demande n'aboutit pas est délibéré et
-/// tient au comportement établi de l'appelant : `demarrage/audio.rs::brancher`
-/// journalise et laisse la session continuer **muette** si la source audio
-/// refuse de s'ouvrir. Échouer ici échangerait « du son, peut-être le mauvais,
-/// et un `warn!` qui le dit » contre « aucun son du tout » — un moins bon
-/// marché pour l'exploitant, à information égale.
+/// The choice *not to fail* when the request does not succeed is deliberate and
+/// comes from the caller's established behaviour: `demarrage/audio.rs::brancher`
+/// logs and lets the session continue **silent** if the audio source
+/// refuses to open. Failing here would trade "sound, perhaps the wrong one,
+/// and a `warn!` that says so" for "no sound at all" — a worse deal
+/// for the operator, for equal information.
 pub fn resoudre(enumerateur: &IMMDeviceEnumerator) -> Result<IMMDevice> {
     let demande = std::env::var(VARIABLE).ok();
     let disponibles = enumerer(enumerateur)?;
@@ -140,9 +140,9 @@ pub fn resoudre(enumerateur: &IMMDeviceEnumerator) -> Result<IMMDevice> {
         }
     };
 
-    // La trace qui compte : elle nomme le périphérique RÉELLEMENT retenu, quel
-    // que soit le chemin qui y a mené. Une recette peut ainsi vérifier ce qui
-    // est capté sans le deviner — et sans elle, la correction ne serait pas
+    // The trace that counts: it names the device ACTUALLY retained, whatever
+    // path led there. An acceptance run can thus check what
+    // is captured without guessing it — and without it, the fix would not be
     // falsifiable.
     let retenu = decrire(&peripherique);
     tracing::info!(
@@ -158,25 +158,25 @@ pub fn resoudre(enumerateur: &IMMDeviceEnumerator) -> Result<IMMDevice> {
     Ok(peripherique)
 }
 
-/// Élit le **CÂBLE** sur lequel écrire le micro, et rend son `IMMDevice` avec
-/// son identifiant d'endpoint. **AUCUN REPLI** (Décision 4 du plan E2).
+/// Elects the **CABLE** to write the microphone to, and returns its `IMMDevice` with
+/// its endpoint identifier. **NO FALLBACK** (Decision 4 of plan E2).
 ///
-/// `MICRO_PERIPHERIQUE` désigne la cible ; absente ou vide, c'est
-/// `DESIGNATION_CABLE` qui s'applique. La demande n'est donc **jamais** `None`,
-/// et `Choix::Defaut` est par construction inatteignable par ce chemin — c'est
-/// ce qui garantit qu'on n'appellera jamais [`defaut`] ici. Un test pur garde
-/// ce prédicat (`wasapi_peripherique::demande_cable`).
+/// `MICRO_PERIPHERIQUE` designates the target; absent or empty,
+/// `DESIGNATION_CABLE` applies. The request is therefore **never** `None`,
+/// and `Choix::Defaut` is unreachable through this path by construction — that is
+/// what guarantees [`defaut`] will never be called here. A pure test guards
+/// this predicate (`wasapi_peripherique::demande_cable`).
 ///
-/// `Introuvable` **et** `Ambigu` valent échec, tous deux avec l'inventaire dans
-/// le message : l'appelant journalise, ne pose aucun puits, et la session
-/// continue sans micro. Sur une machine portant deux câbles VB-Audio, la
-/// désignation intégrée devient ambiguë et le micro est indisponible — c'est le
-/// comportement voulu, pas un défaut.
+/// `Introuvable` **and** `Ambigu` mean failure, both with the inventory in
+/// the message: the caller logs, sets no sink, and the session
+/// continues without a microphone. On a machine carrying two VB-Audio cables, the
+/// built-in designation becomes ambiguous and the microphone is unavailable — that is the
+/// intended behaviour, not a defect.
 ///
-/// L'**identifiant** rendu n'est pas un ornement : c'est lui que la garde de
-/// boucle locale (`micro/boucle_locale::evaluer`) compare à ce que le loopback
-/// capterait, et une comparaison sur le nom convivial ne vaudrait rien — cette
-/// VM porte deux rendus dont le nom commence par « Haut-parleurs ( ».
+/// The returned **identifier** is not an ornament: it is what the local
+/// loop guard (`micro/boucle_locale::evaluer`) compares to what the loopback
+/// would capture, and a comparison on the friendly name would be worthless — this
+/// VM carries two render devices whose name starts with "Haut-parleurs (".
 pub fn resoudre_cable(enumerateur: &IMMDeviceEnumerator) -> Result<(IMMDevice, String)> {
     let brut = std::env::var(VARIABLE_CABLE).ok();
     let demande = demande_cable(brut.as_deref());
@@ -203,20 +203,20 @@ pub fn resoudre_cable(enumerateur: &IMMDeviceEnumerator) -> Result<(IMMDevice, S
                 inventaire(&disponibles)
             );
         }
-        // ⚠️ INATTEIGNABLE : `demande_cable` ne rend jamais de demande vide, et
-        // `choisir` ne rend `Defaut` que pour une demande absente ou vide. Le
-        // bras existe pour que le compilateur garde cette propriété si l'un des
-        // deux changeait — et il ECHOUE plutôt que de retomber sur le défaut de
-        // Windows, qui est exactement la fuite que ce chemin existe pour
-        // empêcher.
+        // ⚠️ UNREACHABLE: `demande_cable` never returns an empty request, and
+        // `choisir` only returns `Defaut` for an absent or empty request. The
+        // arm exists so that the compiler keeps this property if either of the
+        // two changed — and it FAILS rather than falling back to Windows'
+        // default, which is exactly the leak this path exists to
+        // prevent.
         Choix::Defaut => bail!(
             "incoherence interne : la demande de cable ne peut pas etre vide              (voir wasapi_peripherique::demande_cable)"
         ),
     };
 
-    // La trace qui rend la Décision 4 falsifiable : sans elle, on ne peut pas
-    // savoir sur QUOI le micro a été écrit, ni si `MICRO_PERIPHERIQUE` a
-    // seulement atteint le processus. Même patron que celle de `resoudre`.
+    // The trace that makes Decision 4 falsifiable: without it, one cannot
+    // know WHAT the microphone was written to, nor whether `MICRO_PERIPHERIQUE` even
+    // reached the process. Same pattern as `resoudre`'s.
     let (nom, identifiant) = decrire(&peripherique);
     tracing::info!(
         variable = VARIABLE_CABLE,
@@ -231,24 +231,24 @@ pub fn resoudre_cable(enumerateur: &IMMDeviceEnumerator) -> Result<(IMMDevice, S
     Ok((peripherique, identifiant))
 }
 
-/// L'identifiant d'endpoint que le loopback de session capterait, **sans rien
-/// journaliser ni ouvrir de flux**.
+/// The endpoint identifier the session loopback would capture, **without
+/// logging anything or opening a stream**.
 ///
-/// La garde de boucle locale a besoin de le connaître **avant** que
-/// `LoopbackCapture::open` ne soit appelé — le fil de rendu du micro démarre
-/// avant, ou en même temps, et il ne doit pas ouvrir le câble si c'est lui que
-/// l'agent capte.
+/// The local loop guard needs to know it **before**
+/// `LoopbackCapture::open` is called — the microphone's render thread starts
+/// before, or at the same time, and it must not open the cable if that is what
+/// the agent captures.
 ///
-/// ⚠️ **Elle ne journalise RIEN, et c'est délibéré.** [`resoudre`] émet déjà sa
-/// ligne « périphérique audio de rendu retenu » ; une seconde, identique et
-/// sans cause visible, ferait croire à deux ouvertures — et `agent.log` mêle
-/// le superviseur et tous ses enfants depuis D4.
+/// ⚠️ **It logs NOTHING, and that is deliberate.** [`resoudre`] already emits its
+/// "render audio device retained" line; a second one, identical and
+/// with no visible cause, would suggest two openings — and `agent.log` mixes
+/// the supervisor and all its children since D4.
 ///
-/// La décision elle-même est **pure** et vit dans
-/// `micro::boucle_locale::identifiant_capte`, où les quatre branches sont
-/// éprouvées sur l'hôte contre celles de [`resoudre`]. Ici on ne fait que
-/// l'alimenter, et résoudre son `None` — « le défaut de Windows » — par le seul
-/// appel COM qui puisse le nommer.
+/// The decision itself is **pure** and lives in
+/// `micro::boucle_locale::identifiant_capte`, where the four branches are
+/// tested on the host against those of [`resoudre`]. Here we only
+/// feed it, and resolve its `None` — "Windows' default" — through the only
+/// COM call that can name it.
 pub fn identifiant_capte(enumerateur: &IMMDeviceEnumerator) -> Result<String> {
     let demande = std::env::var(VARIABLE).ok();
     let disponibles = enumerer(enumerateur)?;
@@ -261,22 +261,22 @@ pub fn identifiant_capte(enumerateur: &IMMDeviceEnumerator) -> Result<String> {
     }
 }
 
-/// Le rendu par défaut de la session — l'ancien comportement, désormais
-/// atteint par un seul endroit.
+/// The session's default render device — the old behaviour, now
+/// reached through a single place.
 fn defaut(enumerateur: &IMMDeviceEnumerator) -> Result<IMMDevice> {
-    // SAFETY : l'énumérateur vient d'un `CoCreateInstance` réussi sur un fil
-    // membre de la MTA (garanti par l'appelant, `LoopbackCapture::open`).
+    // SAFETY: the enumerator comes from a successful `CoCreateInstance` on a thread
+    // that is a member of the MTA (guaranteed by the caller, `LoopbackCapture::open`).
     unsafe { enumerateur.GetDefaultAudioEndpoint(eRender, eConsole) }
         .context("aucun périphérique de rendu audio par défaut")
 }
 
-/// Rouvre un périphérique par son identifiant d'endpoint.
+/// Reopens a device by its endpoint identifier.
 ///
-/// On ne CONSERVE pas l'`IMMDevice` récolté à l'énumération : le passer à
-/// travers la règle pure obligerait celle-ci à porter un type `windows`, ce
-/// qui la rendrait ininéprouvable sur l'hôte — toute la raison d'être de la
-/// séparation. Rouvrir par identifiant coûte un appel COM une fois par
-/// session, et garde la frontière nette.
+/// We do NOT KEEP the `IMMDevice` collected during enumeration: passing it
+/// through the pure rule would force that rule to carry a `windows` type, which
+/// would make it untestable on the host — the whole reason for the
+/// separation. Reopening by identifier costs one COM call once per
+/// session, and keeps the boundary clean.
 fn ouvrir_par_identifiant(
     enumerateur: &IMMDeviceEnumerator,
     identifiant: &str,
@@ -285,27 +285,27 @@ fn ouvrir_par_identifiant(
         .encode_utf16()
         .chain(std::iter::once(0))
         .collect();
-    // SAFETY : `large` reste vivant pendant tout l'appel, et se termine par
-    // le zéro qu'exige `PCWSTR`.
+    // SAFETY: `large` stays alive during the whole call, and ends with
+    // the zero `PCWSTR` requires.
     unsafe { enumerateur.GetDevice(PCWSTR(large.as_ptr())) }
         .with_context(|| format!("ouverture du périphérique audio {identifiant}"))
 }
 
-/// Photographie les périphériques de rendu ACTIFS.
+/// Snapshots the ACTIVE render devices.
 ///
-/// ⚠️ **`pub` depuis le bloc E2**, et pour une seule raison : quand la garde de
-/// boucle locale refuse le micro, son message doit porter l'inventaire des
-/// rendus disponibles — sans quoi le remède qu'il nomme
-/// (`AUDIO_PERIPHERIQUE=<un autre>`) ne dit pas *lequel*. C'est le patron du
-/// bras `Choix::Ambigu` de [`resoudre`], qui énumère déjà ses candidats.
+/// ⚠️ **`pub` since block E2**, and for a single reason: when the local
+/// loop guard refuses the microphone, its message must carry the inventory of
+/// available render devices — otherwise the remedy it names
+/// (`AUDIO_PERIPHERIQUE=<another one>`) does not say *which one*. It is the pattern of
+/// the `Choix::Ambigu` arm of [`resoudre`], which already lists its candidates.
 ///
-/// `DEVICE_STATE_ACTIVE` seul, à dessein : un périphérique débranché ou
-/// désactivé ne peut rien rendre, et le proposer à la sélection ferait élire
-/// une cible qui ne produira jamais un octet — la panne même qu'on corrige,
-/// sous une autre forme.
+/// `DEVICE_STATE_ACTIVE` alone, on purpose: an unplugged or
+/// disabled device can render nothing, and offering it for selection would elect
+/// a target that will never produce a byte — the very failure being fixed,
+/// in another form.
 pub fn enumerer(enumerateur: &IMMDeviceEnumerator) -> Result<Vec<Peripherique>> {
-    // SAFETY : voir `defaut`. Chaque `Item` rend une référence comptée que le
-    // `Drop` de `IMMDevice` relâche.
+    // SAFETY: see `defaut`. Each `Item` returns a counted reference that
+    // `IMMDevice`'s `Drop` releases.
     unsafe {
         let collection = enumerateur
             .EnumAudioEndpoints(eRender, DEVICE_STATE_ACTIVE)
@@ -315,10 +315,10 @@ pub fn enumerer(enumerateur: &IMMDeviceEnumerator) -> Result<Vec<Peripherique>> 
             .context("comptage des périphériques audio de rendu")?;
         let mut peripheriques = Vec::with_capacity(nombre as usize);
         for index in 0..nombre {
-            // Un périphérique qu'on n'arrive pas à décrire n'interrompt pas
-            // l'énumération : il serait sinon impossible d'en élire un autre
-            // à cause d'un voisin en mauvais état. `decrire` rend alors des
-            // chaînes vides, qui ne correspondront à aucune demande non vide.
+            // A device we fail to describe does not interrupt the
+            // enumeration: it would otherwise be impossible to elect another one
+            // because of a neighbour in bad shape. `decrire` then returns
+            // empty strings, which will match no non-empty request.
             let peripherique = collection
                 .Item(index)
                 .with_context(|| format!("lecture du périphérique audio n°{index}"))?;
@@ -329,17 +329,17 @@ pub fn enumerer(enumerateur: &IMMDeviceEnumerator) -> Result<Vec<Peripherique>> 
     }
 }
 
-/// Nom convivial et identifiant d'endpoint d'un périphérique.
+/// Friendly name and endpoint identifier of a device.
 ///
-/// **Ne rend jamais d'erreur** : un périphérique indescriptible ne doit pas
-/// faire échouer l'ouverture du son, il doit seulement être inéligible. Une
-/// chaîne vide ne correspond à aucune demande non vide (la règle pure écarte
-/// les demandes vides avant toute comparaison), donc l'inéligibilité est
-/// acquise sans code de plus.
+/// **Never returns an error**: an undescribable device must not
+/// make the sound opening fail, it must only be ineligible. An
+/// empty string matches no non-empty request (the pure rule discards
+/// empty requests before any comparison), so ineligibility is
+/// achieved with no extra code.
 fn decrire(peripherique: &IMMDevice) -> (String, String) {
-    // SAFETY : `GetId` alloue par `CoTaskMemAlloc` et nous en transfère la
-    // propriété — d'où le `CoTaskMemFree` en regard, après copie. Le
-    // `PROPVARIANT` rendu par `GetValue` implémente `Drop` et se libère seul.
+    // SAFETY: `GetId` allocates through `CoTaskMemAlloc` and transfers
+    // ownership to us — hence the matching `CoTaskMemFree`, after copying. The
+    // `PROPVARIANT` returned by `GetValue` implements `Drop` and frees itself.
     unsafe {
         let identifiant = match peripherique.GetId() {
             Ok(brut) => {
