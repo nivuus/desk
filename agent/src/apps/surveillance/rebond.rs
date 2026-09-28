@@ -152,7 +152,7 @@ mod tests {
         );
         assert!(
             !r.du(t + DELAI_ANTI_REBOND),
-            "l'échéance de la PREMIÈRE ne doit plus valoir"
+            "the deadline of the FIRST one must no longer hold"
         );
     }
 
@@ -180,13 +180,17 @@ mod tests {
         let mut r = Rebond::default();
         r.notifier(t);
         r.consommer();
-        assert_eq!(r.echeance(), None, "un train consommé n'a plus d'échéance");
+        assert_eq!(
+            r.echeance(),
+            None,
+            "a consumed train no longer has a deadline"
+        );
         let t2 = t + Duration::from_secs(60);
         r.notifier(t2);
         assert_eq!(
             r.echeance(),
             Some(t2 + DELAI_ANTI_REBOND),
-            "le train suivant repart de SA première, jamais de l'ancienne"
+            "the next train restarts from ITS first one, never from the old one"
         );
     }
 
@@ -210,7 +214,7 @@ mod tests {
             DELAI_ANTI_REBOND_MAX + granularite_sondage + cout_reconciliation + une_icone_neuve;
         assert!(
             pire < Duration::from_secs(5),
-            "pire cas {pire:?} : le critère ① exige moins de cinq secondes"
+            "worst case {pire:?}: criterion ① requires less than five seconds"
         );
     }
 }

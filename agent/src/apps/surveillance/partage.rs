@@ -126,7 +126,7 @@ mod tests {
         v.signaler();
         v.signaler();
         assert_eq!(v.notifications(), 2);
-        assert_eq!(v.notifications(), 2, "lire ne doit RIEN consommer");
+        assert_eq!(v.notifications(), 2, "reading must consume NOTHING");
         v.signaler();
         assert_eq!(v.notifications(), 3);
     }
@@ -142,14 +142,14 @@ mod tests {
         assert_eq!(
             v.notifications(),
             1,
-            "un débordement DOIT aussi déclencher : c'est ce qui ferme le chemin de perte"
+            "an overflow MUST fire too: that is what closes the loss path"
         );
         v.signaler();
         assert_eq!(v.notifications(), 2);
         assert_eq!(
             v.debordements(),
             1,
-            "une notification simple n'est pas un débordement"
+            "a simple notification is not an overflow"
         );
     }
 
@@ -159,10 +159,7 @@ mod tests {
         let jumelle = v.clone();
         assert!(!jumelle.arretee());
         v.arreter();
-        assert!(
-            jumelle.arretee(),
-            "les clones partagent l'Arc, pas une copie"
-        );
+        assert!(jumelle.arretee(), "the clones share the Arc, not a copy");
         // And the counters too: that is what lets the thread write and the
         // loop read without any channel linking them.
         jumelle.signaler();

@@ -320,8 +320,8 @@ pub fn audio_mort(session: &str) {
         // the defect this comment has just explained how to avoid.
         tracing::info!(
             %session,
-            "capture audio morte signalée à nouveau pour une session déjà \
-             inapte : signal redondant, réarmement non recompté"
+            "audio capture dead reported again for a session already \
+             unfit: redundant signal, re-arm not counted again"
         );
         return;
     }
@@ -333,7 +333,7 @@ pub fn audio_mort(session: &str) {
         tracing::warn!(
             %session,
             rearmements = *tours - 1,
-            "capture audio morte et abandon définitif : le groupe de PID restera muet"
+            "audio capture dead and given up for good: the PID group will stay silent"
         );
         garde.inaptes.insert(
             session.to_string(),
@@ -344,7 +344,7 @@ pub fn audio_mort(session: &str) {
             %session,
             rearmement = *tours,
             repit = ?REPIT_REARMEMENT_AUDIO,
-            "capture audio morte, réarmement programmé"
+            "audio capture dead, re-arm scheduled"
         );
         garde
             .inaptes

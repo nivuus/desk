@@ -78,7 +78,7 @@ pub(super) fn tour(
     // anonymous multiset (D6's record no. 2, paid for in the middle of an acceptance run).
     // And it only comes out ON CHANGE: it is on it, and on it alone, that
     // criterion ④ is counted.
-    tracing::info!(session = %ctx.session, couleur = %couleur, "accent de la fenetre Windows");
+    tracing::info!(session = %ctx.session, couleur = %couleur, "Windows window accent");
 
     match deposer(
         AEcrire::Etat(DepuisCapteur::Accent { couleur }),

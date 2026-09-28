@@ -86,18 +86,13 @@ impl DuplicationVoisine {
     /// already recorded, taken literally, requires it.
     fn ouvrir(sortie: &SortieDxgi) -> Result<Self> {
         let factory: IDXGIFactory1 =
-            unsafe { CreateDXGIFactory1() }.context("fabrique DXGI (duplication d'une voisine)")?;
-        let adapter =
-            unsafe { factory.EnumAdapters1(sortie.index_adaptateur) }.with_context(|| {
-                format!(
-                    "adaptateur introuvable pour la voisine {}",
-                    sortie.nom_sortie
-                )
-            })?;
+            unsafe { CreateDXGIFactory1() }.context("DXGI factory (duplication of a neighbour)")?;
+        let adapter = unsafe { factory.EnumAdapters1(sortie.index_adaptateur) }
+            .with_context(|| format!("adapter not found for neighbour {}", sortie.nom_sortie))?;
         let output: IDXGIOutput1 = unsafe { adapter.EnumOutputs(sortie.index_sortie) }
-            .with_context(|| format!("sortie introuvable pour la voisine {}", sortie.nom_sortie))?
+            .with_context(|| format!("output not found for neighbour {}", sortie.nom_sortie))?
             .cast()
-            .with_context(|| format!("IDXGIOutput1 pour la voisine {}", sortie.nom_sortie))?;
+            .with_context(|| format!("IDXGIOutput1 for neighbour {}", sortie.nom_sortie))?;
 
         let mut device: Option<ID3D11Device> = None;
         let mut contexte = None;
@@ -117,11 +112,11 @@ impl DuplicationVoisine {
                 Some(&mut contexte),
             )
         }
-        .with_context(|| format!("périphérique D3D11 pour la voisine {}", sortie.nom_sortie))?;
+        .with_context(|| format!("D3D11 device for neighbour {}", sortie.nom_sortie))?;
         let device = device
-            .ok_or_else(|| anyhow!("périphérique D3D11 absent (voisine {})", sortie.nom_sortie))?;
+            .ok_or_else(|| anyhow!("D3D11 device absent (neighbour {})", sortie.nom_sortie))?;
         let contexte: ID3D11DeviceContext = contexte
-            .ok_or_else(|| anyhow!("contexte D3D11 absent (voisine {})", sortie.nom_sortie))?;
+            .ok_or_else(|| anyhow!("D3D11 context absent (neighbour {})", sortie.nom_sortie))?;
 
         // See this function's header comment: set by recorded
         // doctrine (`CLAUDE.md`, sub-block D3), not because a known
@@ -130,7 +125,7 @@ impl DuplicationVoisine {
         // uses it, the device carries the state set.
         let multithread: ID3D11Multithread = contexte
             .cast()
-            .with_context(|| format!("ID3D11Multithread pour la voisine {}", sortie.nom_sortie))?;
+            .with_context(|| format!("ID3D11Multithread for neighbour {}", sortie.nom_sortie))?;
         // Returns the PREVIOUS state (a `BOOL` that must be consumed): never read
         // elsewhere, but logged rather than ignored by a `let _`, same
         // discipline as `capture::ouverture::create_device_and_context`.
@@ -138,12 +133,12 @@ impl DuplicationVoisine {
         tracing::info!(
             voisine = %sortie.nom_sortie,
             protection_precedente = protection_precedente.as_bool(),
-            "protection multi-fils activée sur le contexte immédiat D3D11 (voisine)"
+            "multithread protection enabled on the D3D11 immediate context (neighbour)"
         );
 
         let duplication = unsafe { output.DuplicateOutput(&device) }
-            .with_context(|| format!("duplication de la voisine {}", sortie.nom_sortie))?;
-        tracing::info!(voisine = %sortie.nom_sortie, "duplication brute ouverte sur une voisine");
+            .with_context(|| format!("duplication of neighbour {}", sortie.nom_sortie))?;
+        tracing::info!(voisine = %sortie.nom_sortie, "raw duplication opened on a neighbour");
 
         Ok(Self {
             nom: sortie.nom_sortie.clone(),
@@ -191,7 +186,7 @@ impl DuplicationVoisine {
                 tracing::info!(
                     voisine = %self.nom,
                     hresult = format!("{:#010x}", e.code().0),
-                    "perte d'acces detectee sur une voisine -- reouverture pour continuer a compter"
+                    "access loss detected on a neighbour -- reopening to keep counting"
                 );
                 match unsafe { self.output.DuplicateOutput(&self.device) } {
                     Ok(fraiche) => self.duplication = fraiche,
@@ -204,8 +199,8 @@ impl DuplicationVoisine {
                         tracing::warn!(
                             voisine = %self.nom,
                             %error,
-                            "reouverture de la voisine apres perte d'acces : echouee -- les \
-                             pertes suivantes ne seront plus comptees sur cette voisine"
+                            "reopening the neighbour after an access loss: failed -- the \
+                             following losses will no longer be counted on this neighbour"
                         );
                     }
                 }
@@ -237,14 +232,14 @@ pub(super) fn create_two(
 ) -> Result<(DuplicationVoisine, DuplicationVoisine, String, String)> {
     let id_v1 = sorties.create(largeur, hauteur, hertz)?;
     attendre_en_pinguant(pilote, DELAI_TOPOLOGIE)?;
-    let apres_v1 = relever_topologie("après création (voisine 1)")?;
+    let apres_v1 = relever_topologie("after creation (neighbour 1)")?;
     let sortie_v1 = designer_sortie_neuve(&apres_v1, connues_a_ce_point, id_v1)?.clone();
     connues_a_ce_point.insert(sortie_v1.nom_sortie.clone());
     let voisine1 = DuplicationVoisine::ouvrir(&sortie_v1)?;
 
     let id_v2 = sorties.create(largeur, hauteur, hertz)?;
     attendre_en_pinguant(pilote, DELAI_TOPOLOGIE)?;
-    let apres_v2 = relever_topologie("après création (voisine 2)")?;
+    let apres_v2 = relever_topologie("after creation (neighbour 2)")?;
     let sortie_v2 = designer_sortie_neuve(&apres_v2, connues_a_ce_point, id_v2)?.clone();
     connues_a_ce_point.insert(sortie_v2.nom_sortie.clone());
     let voisine2 = DuplicationVoisine::ouvrir(&sortie_v2)?;

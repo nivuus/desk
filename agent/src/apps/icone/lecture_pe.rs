@@ -62,12 +62,7 @@ pub fn grpicondir(module: &Path, index: i32) -> Result<Vec<u8>> {
             LOAD_LIBRARY_AS_DATAFILE | LOAD_LIBRARY_AS_IMAGE_RESOURCE,
         )
     }
-    .with_context(|| {
-        format!(
-            "chargement du module {} en fichier de donnees",
-            module.display()
-        )
-    })?;
+    .with_context(|| format!("loading module {} as a data file", module.display()))?;
 
     let result = lire_groupe(handle, index);
 
@@ -105,7 +100,7 @@ fn lire_groupe(handle: HMODULE, index: i32) -> Result<Vec<u8>> {
     // `PCWSTR(null())` to `FindResourceW` for an index of 0, believing it
     // asked for the first group: `FindResourceW` then looks for a resource
     // whose NAME is null, and finds none. **Measured: 148 of the 154
-    // applications returned `aucune ressource RT_GROUP_ICON`, including
+    // applications returned `no RT_GROUP_ICON resource`, including
     // modules that obviously carry one — `steam.exe`.** The catalogue
     // stayed correct and the icons were served; only the PROVENANCE
     // fell to `NonMesuree`, which is exactly what the sub-block
@@ -140,19 +135,19 @@ fn lire_groupe(handle: HMODULE, index: i32) -> Result<Vec<u8>> {
     } else {
         match premier {
             Some(n) => n,
-            None => bail!("aucun groupe d'icones enumere dans ce module"),
+            None => bail!("no icon group enumerated in this module"),
         }
     };
     // SAFETY: FFI call. `handle` is alive (its `FreeLibrary` is in the
     // caller), and `nom` is either a disguised integer identifier or null.
     let bloc = unsafe { FindResourceW(Some(handle), nom, RT_GROUP_ICON) };
     if bloc.is_invalid() {
-        bail!("aucune ressource RT_GROUP_ICON dans ce module");
+        bail!("no RT_GROUP_ICON resource in this module");
     }
     // SAFETY: FFI call. `bloc` has just been validated.
     let size = unsafe { SizeofResource(Some(handle), bloc) } as usize;
     if size == 0 {
-        bail!("ressource RT_GROUP_ICON de taille nulle");
+        bail!("RT_GROUP_ICON resource of zero size");
     }
     // SAFETY: FFI call.
     let charge = unsafe { LoadResource(Some(handle), bloc) }.context("LoadResource")?;
@@ -161,7 +156,7 @@ fn lire_groupe(handle: HMODULE, index: i32) -> Result<Vec<u8>> {
     // caller's `FreeLibrary`, which runs AFTER this function.
     let debut = unsafe { LockResource(charge) } as *const u8;
     if debut.is_null() {
-        bail!("LockResource a rendu un pointeur nul");
+        bail!("LockResource returned a null pointer");
     }
     // SAFETY: the resource is mapped over `size` bytes, which
     // `SizeofResource` has just returned, and the copy is made BEFORE the

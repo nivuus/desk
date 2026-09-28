@@ -20,7 +20,7 @@ pub(super) fn executer_sonde_audio() -> Result<()> {
         .unwrap_or(10);
 
     let mut capture = wasapi::LoopbackCapture::open()?;
-    tracing::info!(format = %capture.description(), "loopback ouvert");
+    tracing::info!(format = %capture.description(), "loopback opened");
 
     let debut = std::time::Instant::now();
     let mut echantillons = 0u64;
@@ -65,7 +65,7 @@ pub(super) fn executer_sonde_audio() -> Result<()> {
         dominante_hz = dominante.map(|d| d.frequence_hz),
         dominante_magnitude = dominante.map(|d| d.magnitude),
         resolution_hz = dominante.map(|d| d.resolution_hz),
-        "sonde audio terminée"
+        "audio probe finished"
     );
     Ok(())
 }
@@ -73,10 +73,10 @@ pub(super) fn executer_sonde_audio() -> Result<()> {
 pub(super) fn executer_process_loopback(pid_texte: &str) -> Result<()> {
     let pid: u32 = pid_texte
         .parse()
-        .context("PROCESS_LOOPBACK_PROBE doit être un identifiant de processus")?;
+        .context("PROCESS_LOOPBACK_PROBE must be a process identifier")?;
     match wasapi::process_loopback::probe_process_loopback(pid) {
-        Ok(rapport) => tracing::info!(pid, rapport, "sonde process loopback"),
-        Err(e) => tracing::warn!(pid, error = %e, "sonde process loopback échouée"),
+        Ok(rapport) => tracing::info!(pid, rapport, "process loopback probe"),
+        Err(e) => tracing::warn!(pid, error = %e, "process loopback probe failed"),
     }
     Ok(())
 }
@@ -92,14 +92,14 @@ pub(super) fn executer_process_loopback(pid_texte: &str) -> Result<()> {
 pub(super) fn executer_capture_process_loopback(pid_texte: &str) -> Result<()> {
     let pid: u32 = pid_texte
         .parse()
-        .context("PROCESS_LOOPBACK_CAPTURE doit être un identifiant de processus")?;
+        .context("PROCESS_LOOPBACK_CAPTURE must be a process identifier")?;
     let secondes: u64 = std::env::var("PROCESS_LOOPBACK_SECS")
         .ok()
         .and_then(|v| v.parse().ok())
         .unwrap_or(15);
 
     let mut capture = wasapi::process_loopback::CaptureProcessus::ouvrir(pid)?;
-    tracing::info!(pid, format = %capture.description(), "process loopback ouvert");
+    tracing::info!(pid, format = %capture.description(), "process loopback opened");
     capture.start()?;
 
     let debut = std::time::Instant::now();
@@ -125,7 +125,7 @@ pub(super) fn executer_capture_process_loopback(pid_texte: &str) -> Result<()> {
         lectures_vides,
         crete,
         silencieux = crete == 0,
-        "sonde de capture process loopback : premiere moitie"
+        "process loopback capture probe: first half"
     );
 
     // The Stop/Start cycle, on which the approach chosen in §4.4 of the spec depends.
@@ -134,8 +134,8 @@ pub(super) fn executer_capture_process_loopback(pid_texte: &str) -> Result<()> {
     capture.arreter()?;
     std::thread::sleep(std::time::Duration::from_millis(500));
     match capture.start() {
-        Ok(()) => tracing::info!(pid, "cycle Stop puis Start accepte"),
-        Err(e) => tracing::warn!(pid, error = %e, "cycle Stop puis Start REFUSE"),
+        Ok(()) => tracing::info!(pid, "Stop then Start cycle accepted"),
+        Err(e) => tracing::warn!(pid, error = %e, "Stop then Start cycle REFUSED"),
     }
 
     // The second half logs the SAME four fields as the first
@@ -172,7 +172,7 @@ pub(super) fn executer_capture_process_loopback(pid_texte: &str) -> Result<()> {
         lectures_vides_apres,
         crete_apres,
         silencieux_apres = crete_apres == 0,
-        "sonde de capture process loopback terminee"
+        "process loopback capture probe finished"
     );
     Ok(())
 }

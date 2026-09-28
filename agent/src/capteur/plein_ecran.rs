@@ -122,7 +122,7 @@ pub fn actif() -> bool {
     *ACTIF.get_or_init(|| {
         let actif = std::env::var("PLEIN_ECRAN").as_deref() != Ok("0");
         if !actif {
-            tracing::warn!("plein ecran DESARME (PLEIN_ECRAN=0) : detection de style desactivee");
+            tracing::warn!("fullscreen DISARMED (PLEIN_ECRAN=0): style detection disabled");
         }
         actif
     })

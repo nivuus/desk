@@ -111,7 +111,7 @@ fn attacher_sur(mut commandes: std::fs::File, signalement: &Signalement) -> Resu
     let ecoule_tics = (signalement.clock_origin.elapsed().as_nanos() * frequence as u128
         / 1_000_000_000)
         .min(i64::MAX as u128) as i64;
-    let origine_qpc = lire_qpc().context("lecture de QPC avant l'attache")? - ecoule_tics;
+    let origine_qpc = lire_qpc().context("reading QPC before the attach")? - ecoule_tics;
 
     // Write THEN read, on THIS thread, without any write buffer: it is
     // already the discipline of `commander`, and the attach inaugurates it.
@@ -129,23 +129,22 @@ fn attacher_sur(mut commandes: std::fs::File, signalement: &Signalement) -> Resu
     )?;
     commandes.flush()?;
 
-    let (largeur, hauteur) = match lire_trame(&mut commandes).context("réponse à l'attache")? {
+    let (largeur, hauteur) = match lire_trame(&mut commandes).context("answer to the attach")? {
         Trame::Json(octets) => match serde_json::from_slice::<DepuisCapteur>(&octets)? {
             DepuisCapteur::Attachee { largeur, hauteur } => (largeur, hauteur),
             // A refusal makes the attach fail LOUDLY: without it the child
             // would wait for a frame that will never come.
-            DepuisCapteur::Refus { motif } => bail!("le capteur a refusé l'attache : {motif}"),
-            autre => bail!("réponse inattendue à l'attache : {autre:?}"),
+            DepuisCapteur::Refus { motif } => bail!("the sensor refused the attach: {motif}"),
+            autre => bail!("unexpected answer to the attach: {autre:?}"),
         },
-        Trame::Image(_) => bail!("le capteur a répondu une image à l'attache"),
+        Trame::Image(_) => bail!("the sensor answered an image to the attach"),
     };
 
     // The MEDIA connection. We write our identity there — the one and only frame
     // this end will ever write there — then hand it to the dispatcher thread, which
     // only reads. That is what makes it impossible for a read and a
     // write to cross there.
-    let mut media =
-        open_within(DUREE_OUVERTURE_MEDIA).context("ouverture de la connexion média")?;
+    let mut media = open_within(DUREE_OUVERTURE_MEDIA).context("opening the media connection")?;
     write_json(
         &mut media,
         &VersCapteur::Identite {
@@ -158,7 +157,7 @@ fn attacher_sur(mut commandes: std::fs::File, signalement: &Signalement) -> Resu
         session = %signalement.session,
         sortie = %signalement.sortie,
         largeur, hauteur,
-        "attaché au capteur"
+        "attached to the sensor"
     );
 
     let (tx_images, rx_images) = sync_channel::<Recu>(CAPACITE_FILE);
@@ -196,10 +195,8 @@ fn open_within(fenetre: Duration) -> Result<std::fs::File> {
             }
         }
     }
-    Err(
-        anyhow::Error::from(derniere.expect("au moins une tentative"))
-            .context(format!("aucun capteur sur {NOM_TUBE} après {fenetre:?}")),
-    )
+    Err(anyhow::Error::from(derniere.expect("at least one attempt"))
+        .context(format!("no sensor on {NOM_TUBE} after {fenetre:?}")))
 }
 
 struct CanalTube {
@@ -252,7 +249,7 @@ impl Canal for CanalTube {
     /// (`PAS_RATTACHEMENT`). A patient opening would block the transport
     /// loop for up to 15 s.
     fn rattacher(&mut self) -> Result<Rattachee> {
-        let commandes = ouvrir_une_instance().context("réouverture du tube du capteur")?;
+        let commandes = ouvrir_une_instance().context("reopening the sensor pipe")?;
         let attachee = attacher_sur(commandes, &self.signalement)?;
         // Replace THIS channel's connection: the old one points to a dead
         // pipe, and `commander` would still use it.
@@ -283,9 +280,9 @@ impl Canal for CanalTube {
         // on this connection — see task 10 of sub-block D4.
         write_json(&mut *commandes, &message)?;
         commandes.flush()?;
-        match lire_trame(&mut *commandes).context("réponse du capteur")? {
+        match lire_trame(&mut *commandes).context("sensor answer")? {
             Trame::Json(octets) => Ok(serde_json::from_slice(&octets)?),
-            Trame::Image(_) => bail!("le capteur a répondu une image à une commande"),
+            Trame::Image(_) => bail!("the sensor answered an image to a command"),
         }
     }
 }

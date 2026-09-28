@@ -17,7 +17,7 @@ fn px(r: u8, g: u8, b: u8, a: u8) -> [u8; 4] {
 }
 
 /// Builds an RGBA slice of `n` pixels from a list
-/// `(couleur, répétitions)`, and returns `(octets, largeur, hauteur)` with a
+/// `(colour, repetitions)`, and returns `(bytes, width, height)` with a
 /// consistent 1×n geometry — `dominante` refuses an inconsistent length.
 fn image(motif: &[([u8; 4], usize)]) -> (Vec<u8>, u32, u32) {
     let mut octets = Vec::new();
@@ -37,8 +37,12 @@ fn une_icone_a_dominante_bleue_rend_du_bleu() {
         (px(60, 110, 240, 255), 40), // bleu, majoritaire
         (px(250, 160, 40, 255), 10), // orange, minoritaire
     ]);
-    let d = dominante(&o, l, h).expect("des pixels chromatiques survivent");
-    assert_eq!(d, [60, 110, 240], "le seau le plus peuplé est le bleu");
+    let d = dominante(&o, l, h).expect("chromatic pixels survive");
+    assert_eq!(
+        d,
+        [60, 110, 240],
+        "the most populated bucket is the blue one"
+    );
 }
 
 #[test]
@@ -49,8 +53,8 @@ fn les_pixels_transparents_ne_comptent_pas() {
         (px(240, 40, 40, 0), 30),    // red, ENTIRELY TRANSPARENT
         (px(60, 110, 240, 255), 10), // bleu, opaque
     ]);
-    let d = dominante(&o, l, h).expect("les pixels opaques survivent");
-    assert_eq!(d, [60, 110, 240], "seuls les pixels opaques comptent");
+    let d = dominante(&o, l, h).expect("the opaque pixels survive");
+    assert_eq!(d, [60, 110, 240], "only opaque pixels count");
 }
 
 #[test]
@@ -64,19 +68,19 @@ fn un_contour_noir_majoritaire_ne_gagne_pas() {
     const {
         assert!(
             (60u8 - 5u8) >= SATURATION_MIN,
-            "le contour doit PASSER le filtre de saturation, sinon ce test \
-             n'éprouve pas la luminance"
+            "the outline must PASS the saturation filter, otherwise this test \
+             does not exercise the luminance"
         )
     };
     let (o, l, h) = image(&[
         (px(5, 5, 60, 255), 40),     // contour sombre, majoritaire
         (px(250, 160, 40, 255), 20), // orange, minoritaire
     ]);
-    let d = dominante(&o, l, h).expect("l'orange survit");
+    let d = dominante(&o, l, h).expect("the orange survives");
     assert_eq!(
         d,
         [250, 160, 40],
-        "le contour sombre ne décide pas de la teinte"
+        "the dark outline does not decide the hue"
     );
 }
 
@@ -86,25 +90,21 @@ fn une_icone_entierement_grise_rend_none() {
     // is not an ornament.
     // RED: remove the saturation filter ⟹ `Some([128,128,128])`.
     let (o, l, h) = image(&[(px(128, 128, 128, 255), 64)]);
-    assert_eq!(
-        dominante(&o, l, h),
-        None,
-        "aucun pixel chromatique ne survit"
-    );
+    assert_eq!(dominante(&o, l, h), None, "no chromatic pixel survives");
 }
 
 #[test]
 fn la_moyenne_du_seau_n_est_pas_le_centre_du_seau() {
     // RED: return the centre of the quantised bucket instead of the average.
     let (o, l, h) = image(&[(px(200, 40, 40, 255), 16)]);
-    let d = dominante(&o, l, h).expect("le rouge survit");
+    let d = dominante(&o, l, h).expect("the red survives");
     assert_eq!(
         d,
         [200, 40, 40],
-        "la moyenne rend une teinte RÉELLE de l'image"
+        "the average yields a REAL hue of the image"
     );
     // The centre of the bucket would be (6·32+16, 1·32+16, 1·32+16) = (208, 48, 48).
-    assert_ne!(d, [208, 48, 48], "et surtout PAS une teinte de la grille");
+    assert_ne!(d, [208, 48, 48], "and above all NOT a hue of the grid");
 }
 
 #[test]
@@ -112,22 +112,14 @@ fn une_geometrie_incoherente_rend_none() {
     // RED: remove the length guard ⟹ `Some`, on a slice whose
     // announced geometry does not describe its content.
     let o = vec![60u8, 110, 240, 255];
-    assert_eq!(dominante(&o, 4, 4), None, "1 pixel pour 4×4 annoncés");
-    assert_eq!(
-        dominante(&[], 0, 0),
-        None,
-        "une image vide n'a pas de dominante"
-    );
+    assert_eq!(dominante(&o, 4, 4), None, "1 pixel for 4×4 announced");
+    assert_eq!(dominante(&[], 0, 0), None, "an empty image has no dominant");
 }
 
 #[test]
 fn en_hexa_rend_six_chiffres_minuscules() {
     // RED: `{:X}` instead of `{:x}`, or three digits instead of six.
-    assert_eq!(
-        en_hexa([0x0a, 0xbc, 0xde]),
-        "#0abcde",
-        "zéro de tête conservé"
-    );
+    assert_eq!(en_hexa([0x0a, 0xbc, 0xde]), "#0abcde", "leading zero kept");
     assert_eq!(en_hexa([0xAB, 0xCD, 0xEF]), "#abcdef", "MINUSCULES");
     assert_eq!(en_hexa([0, 0, 0]), "#000000");
     assert_eq!(en_hexa([255, 255, 255]), "#ffffff");
@@ -150,20 +142,16 @@ fn un_suivi_n_annonce_pas_deux_fois_la_meme_couleur() {
     assert_eq!(
         s.observer("#7aa2f7"),
         Some("#7aa2f7".to_string()),
-        "la première"
+        "the first one"
     );
-    assert_eq!(s.observer("#7aa2f7"), None, "la même : rien");
-    assert_eq!(
-        s.observer("#7aa2f7"),
-        None,
-        "encore la même : toujours rien"
-    );
+    assert_eq!(s.observer("#7aa2f7"), None, "the same: nothing");
+    assert_eq!(s.observer("#7aa2f7"), None, "still the same: still nothing");
     assert_eq!(
         s.observer("#fa8c16"),
         Some("#fa8c16".to_string()),
-        "un changement"
+        "a change"
     );
-    assert_eq!(s.observer("#fa8c16"), None, "puis plus rien");
+    assert_eq!(s.observer("#fa8c16"), None, "then nothing more");
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -191,8 +179,8 @@ fn bgra_en_rgba_ne_touche_jamais_l_alpha() {
     // RED: `pixel.swap(0, 3)` ⟹ this assertion fails, and so does the previous one.
     let mut t = [0x00, 0x00, 0xff, 0x07, 0xff, 0x00, 0x00, 0xf0];
     super::bgra_en_rgba(&mut t);
-    assert_eq!(t[3], 0x07, "l'alpha du premier pixel");
-    assert_eq!(t[7], 0xf0, "l'alpha du second");
+    assert_eq!(t[3], 0x07, "the alpha of the first pixel");
+    assert_eq!(t[7], 0xf0, "the alpha of the second");
 }
 
 #[test]
@@ -202,7 +190,7 @@ fn bgra_en_rgba_est_son_propre_inverse() {
     let original: Vec<u8> = (0u8..=63).collect();
     let mut t = original.clone();
     super::bgra_en_rgba(&mut t);
-    assert_ne!(t, original, "une seule passe DOIT changer quelque chose");
+    assert_ne!(t, original, "a single pass MUST change something");
     super::bgra_en_rgba(&mut t);
     assert_eq!(t, original);
 }
@@ -237,23 +225,24 @@ fn bgra_en_rgba_puis_dominante_rendent_la_couleur_reelle_du_bgra() {
         .collect();
 
     let mut sans = chaud_en_bgra.clone();
-    let lu_sans = super::dominante(&sans, 8, 8).expect("un aplat sature doit rendre une dominante");
+    let lu_sans =
+        super::dominante(&sans, 8, 8).expect("a saturated flat area must yield a dominant");
 
     super::bgra_en_rgba(&mut sans);
-    let read_with = super::dominante(&sans, 8, 8).expect("idem apres conversion");
+    let read_with = super::dominante(&sans, 8, 8).expect("same after conversion");
 
     assert_eq!(
         read_with,
         [0xd0, 0x80, 0x40],
-        "converti : la teinte CHAUDE, celle de l'image"
+        "converted: the WARM hue, the image's own"
     );
     assert_eq!(
         lu_sans,
         [0x40, 0x80, 0xd0],
-        "sans conversion : la teinte FROIDE, le rouge et le bleu echanges"
+        "without conversion: the COLD hue, red and blue swapped"
     );
     assert_ne!(
         lu_sans, read_with,
-        "les deux lectures DIFFERENT : le sens compte"
+        "the two readings DIFFER: the order matters"
     );
 }

@@ -28,7 +28,7 @@ pub const JOURNAL_MAX_OCTETS: usize = 64 * 1024;
 /// The END of a log, not its head.
 ///
 /// 🔴 THE END, BECAUSE THAT IS WHERE THE ERROR MESSAGE of an installer
-/// that failed lives. The second member says `tronqué`, which distinguishes "cut" from
+/// that failed lives. The second member says whether it was truncated, which distinguishes "cut" from
 /// "empty" — otherwise a user would read the last 64 KiB believing they
 /// were reading everything.
 ///
@@ -85,7 +85,10 @@ mod tests {
         let long = format!("{}FIN", "a".repeat(JOURNAL_MAX_OCTETS));
         let (q, tronque) = queue(&long);
         assert!(tronque);
-        assert!(q.ends_with("FIN"), "c'est la FIN qu'on garde, pas la tête");
+        assert!(
+            q.ends_with("FIN"),
+            "it is the END that we keep, not the head"
+        );
         assert!(q.len() <= JOURNAL_MAX_OCTETS);
     }
 
@@ -128,13 +131,13 @@ mod tests {
         let brut = String::from_utf8_lossy(&octets[octets.len() - JOURNAL_MAX_OCTETS..]);
         assert!(
             brut.len() > JOURNAL_MAX_OCTETS,
-            "la conversion doit AGRANDIR, sinon ce test n'éprouve rien"
+            "the conversion must GROW, otherwise this test exercises nothing"
         );
         let (q, tronque) = queue_octets(&octets);
         assert!(tronque);
         assert!(
             q.len() <= JOURNAL_MAX_OCTETS,
-            "la borne est ce qu'on promet : {} octets",
+            "the bound is what we promise: {} bytes",
             q.len()
         );
     }

@@ -53,19 +53,17 @@ impl Mires {
     pub(super) fn ouvrir(device: &ID3D11Device, places: &[Rect]) -> Result<Self> {
         anyhow::ensure!(
             places.len() <= mire::MIRES_MAX as usize,
-            "au plus {} mires, {} demandées",
+            "at most {} test patterns, {} requested",
             mire::MIRES_MAX,
             places.len()
         );
         register_class()?;
 
-        let dxgi: IDXGIDevice = device
-            .cast()
-            .context("IDXGIDevice depuis le périphérique D3D11")?;
-        let adaptateur = unsafe { dxgi.GetAdapter() }.context("adaptateur DXGI")?;
+        let dxgi: IDXGIDevice = device.cast().context("IDXGIDevice from the D3D11 device")?;
+        let adaptateur = unsafe { dxgi.GetAdapter() }.context("DXGI adapter")?;
         let fabrique: IDXGIFactory2 =
-            unsafe { adaptateur.GetParent() }.context("fabrique DXGI depuis l'adaptateur")?;
-        let contexte = unsafe { device.GetImmediateContext() }.context("contexte immédiat")?;
+            unsafe { adaptateur.GetParent() }.context("DXGI factory from the adapter")?;
+        let contexte = unsafe { device.GetImmediateContext() }.context("immediate context")?;
 
         // Each iteration may fail after having already created a Win32
         // window (swapchain, render view). Without explicit cleanup here, a
@@ -109,7 +107,7 @@ impl Mires {
             };
             unsafe { fenetre.swapchain.Present(0, Default::default()) }
                 .ok()
-                .context("présentation d'une mire")?;
+                .context("presenting a test pattern")?;
         }
         self.trame += 1;
         Ok(())
@@ -147,13 +145,13 @@ impl Mires {
                 SWP_NOACTIVATE,
             )
         }
-        .context("déplacement d'une mire par-dessus une autre")?;
+        .context("moving a test pattern over another one")?;
 
         let fenetre = self
             .fenetres
             .iter_mut()
             .find(|f| f.id == dessus)
-            .ok_or_else(|| anyhow!("aucune mire n°{dessus}"))?;
+            .ok_or_else(|| anyhow!("no test pattern no. {dessus}"))?;
         fenetre.place = cible;
         Ok(())
     }
@@ -163,7 +161,7 @@ impl Mires {
             .iter()
             .find(|f| f.id == id)
             .map(|f| f.hwnd)
-            .ok_or_else(|| anyhow!("aucune mire n°{id}"))
+            .ok_or_else(|| anyhow!("no test pattern no. {id}"))
     }
 
     pub(super) fn place(&self, id: u8) -> Result<Rect> {
@@ -171,7 +169,7 @@ impl Mires {
             .iter()
             .find(|f| f.id == id)
             .map(|f| f.place)
-            .ok_or_else(|| anyhow!("aucune mire n°{id}"))
+            .ok_or_else(|| anyhow!("no test pattern no. {id}"))
     }
 
     pub(super) fn trame(&self) -> u64 {
@@ -211,7 +209,7 @@ fn register_class() -> Result<()> {
             // and converted it into an HRESULT) no longer exists — replaced by
             // `Error::from_thread()`, which reads the same current-thread error.
             result = Err(anyhow!(
-                "enregistrement de la classe de fenêtre : {}",
+                "registering the window class: {}",
                 windows::core::Error::from_thread()
             ));
         }
@@ -256,7 +254,7 @@ fn create_window(
             None,
         )
     }
-    .context("création d'une fenêtre de mire")?;
+    .context("creating a test pattern window")?;
 
     match create_swapchain_and_target(device, fabrique, hwnd, place) {
         Ok((swapchain, cible)) => {
@@ -296,14 +294,14 @@ fn create_swapchain_and_target(
         ..Default::default()
     };
     let swapchain = unsafe { fabrique.CreateSwapChainForHwnd(device, hwnd, &desc, None, None) }
-        .context("création de la swapchain d'une mire")?;
+        .context("creating the swapchain of a test pattern")?;
 
     let arriere: ID3D11Texture2D =
-        unsafe { swapchain.GetBuffer(0) }.context("tampon arrière de la swapchain")?;
+        unsafe { swapchain.GetBuffer(0) }.context("back buffer of the swapchain")?;
     let mut cible = None;
     unsafe { device.CreateRenderTargetView(&arriere, None, Some(&mut cible)) }
-        .context("vue de rendu d'une mire")?;
-    let cible = cible.ok_or_else(|| anyhow!("vue de rendu absente"))?;
+        .context("render view of a test pattern")?;
+    let cible = cible.ok_or_else(|| anyhow!("render view absent"))?;
 
     Ok((swapchain, cible))
 }

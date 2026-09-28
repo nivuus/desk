@@ -107,7 +107,7 @@ impl VideoSource for SourceDistante {
                                 largeur,
                                 hauteur,
                             }) => {
-                                tracing::info!(largeur, hauteur, "canal rattaché au capteur");
+                                tracing::info!(largeur, hauteur, "channel attached to the sensor");
                                 self.images = images;
                                 self.size.poser(largeur, hauteur);
                                 self.vivante = true;
@@ -184,7 +184,7 @@ impl VideoSource for SourceDistante {
                             // renders the outer layer. See `crate::cause`.
                             Err(error) => tracing::debug!(
                                 error = %crate::cause::chain(&error),
-                                "rattachement refusé"
+                                "reattachment refused"
                             ),
                         }
                     }
@@ -218,8 +218,8 @@ impl VideoSource for SourceDistante {
                 self.size.poser(largeur, hauteur);
                 Ok(())
             }
-            DepuisCapteur::Error { motif } => bail!("le capteur a refusé : {motif}"),
-            autre => bail!("réponse inattendue du capteur : {autre:?}"),
+            DepuisCapteur::Error { motif } => bail!("the sensor refused: {motif}"),
+            autre => bail!("unexpected answer from the sensor: {autre:?}"),
         }
     }
 
@@ -311,7 +311,7 @@ impl VideoSource for SourceDistante {
 
     fn signaler_audio_mort(&mut self) {
         if let Err(error) = self.commander_simple(VersCapteur::AudioMort) {
-            tracing::warn!(%error, "signalement de capture audio morte non délivré");
+            tracing::warn!(%error, "dead audio capture signal not delivered");
         }
     }
 
@@ -320,7 +320,7 @@ impl VideoSource for SourceDistante {
     /// decision (sub-block D10).
     fn signaler_audio_vivant(&mut self) {
         if let Err(error) = self.commander_simple(VersCapteur::AudioVivant) {
-            tracing::warn!(%error, "signalement de capture audio vivante non délivré");
+            tracing::warn!(%error, "live audio capture signal not delivered");
         }
     }
 

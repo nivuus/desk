@@ -57,8 +57,8 @@ pub async fn tourner(
     if let Ok(faute) = std::env::var(VARIABLE_FAUTE) {
         tracing::warn!(
             faute,
-            "faute d'installation ARMEE (INSTALLATION_FAUTE) : banc, jamais une \
-             configuration livrée"
+            "installation fault ARMED (INSTALLATION_FAUTE): bench, never a \
+             shipped configuration"
         );
     }
     while let Some(ordre) = installations.recv().await {
@@ -69,7 +69,7 @@ pub async fn tourner(
             .unwrap_or_default();
         honorer(&ordre, &emettre, &jeton, &base, &partage).await;
     }
-    tracing::warn!("canal /agent fermé : fil d'installation arrêté");
+    tracing::warn!("/agent channel closed: installation thread stopped");
 }
 
 async fn honorer(
@@ -104,7 +104,7 @@ async fn honorer(
     let (chemin, extension) = match depot::chemin(&racine, &ordre.id, &ordre.nom) {
         Ok(c) => c,
         Err(refus) => {
-            tracing::error!(?refus, nom = %ordre.nom, "installation refusée au dépôt");
+            tracing::error!(?refus, nom = %ordre.nom, "installation refused at the store");
             let motif = match refus {
                 depot::Refus::Script(_) | depot::Refus::Extension(_) => Motif::Extension,
                 _ => Motif::Disque,
@@ -134,20 +134,20 @@ async fn honorer(
         Etat::Commence => {
             tracing::warn!(
                 installation = %ordre.id,
-                "installation DÉJÀ COMMENCÉE : on n'exécute PAS. Rejouer serait \
-                 rejouer un installeur sur une machine à l'état inconnu"
+                "installation ALREADY STARTED: it is NOT executed. Replaying would be \
+                 replaying an installer on a machine in an unknown state"
             );
             return terminer(emettre, ordre, Issue::IssueInconnue, None, None, "", false);
         }
         Etat::Termine => {
-            tracing::info!(installation = %ordre.id, "installation déjà terminée, rien à faire");
+            tracing::info!(installation = %ordre.id, "installation already finished, nothing to do");
             return terminer(emettre, ordre, Issue::IssueInconnue, None, None, "", false);
         }
         Etat::Neuf => {}
     }
 
     if let Err(error) = std::fs::create_dir_all(&repertoire) {
-        tracing::error!(%error, "répertoire d'installation non créé");
+        tracing::error!(%error, "installation directory not created");
         return terminer(
             emettre,
             ordre,
@@ -197,7 +197,7 @@ async fn honorer(
         .await
     };
     if let Err(refus) = telecharge {
-        tracing::error!(?refus, url, "téléchargement de l'installeur refusé");
+        tracing::error!(?refus, url, "installer download refused");
         fermer(partage, &ordre.id);
         let motif = match refus {
             telechargement::Refus::Empreinte { .. } => Motif::Empreinte,
@@ -213,13 +213,13 @@ async fn honorer(
     // must go through a second re-read; that is what `verify` does.
     if std::env::var(VARIABLE_FAUTE).as_deref() == Ok("empreinte") {
         if let Err(error) = alterer_un_octet(Path::new(&chemin)) {
-            tracing::warn!(%error, "faute d'empreinte non injectée");
+            tracing::warn!(%error, "hash fault not injected");
         } else if !verify(Path::new(&chemin), &ordre.sha256) {
-            tracing::error!("faute injectée : l'empreinte relue DIFFÈRE, installation refusée");
+            tracing::error!("injected fault: the re-read hash DIFFERS, installation refused");
             if let Err(error) = std::fs::remove_file(&chemin) {
                 // ⚠️ KEEPING IT WOULD BE WORSE THAN NOT HAVING IT: a later
                 // path could take it for a valid installer.
-                tracing::warn!(%error, chemin, "fichier corrompu NON supprimé");
+                tracing::warn!(%error, chemin, "corrupt file NOT deleted");
             }
             fermer(partage, &ordre.id);
             return terminer(
@@ -249,9 +249,9 @@ async fn honorer(
         tracing::error!(
             %error,
             installation = %ordre.id,
-            "marqueur .commence non écrit : on REFUSE d'exécuter. Sans lui, un \
-             redémarrage de l'agent relancerait l'installeur sur une machine à \
-             l'état inconnu"
+            ".commence marker not written: execution is REFUSED. Without it, an \
+             agent restart would relaunch the installer on a machine in an \
+             unknown state"
         );
         fermer(partage, &ordre.id);
         return terminer(
@@ -281,7 +281,7 @@ async fn honorer(
         execution::executer(Path::new(&chemin_exe), extension, &rep, maintenant_ms)
     })
     .await;
-    peripherique_audio::tracer(&ordre.id, Moment::Apres);
+    peripherique_audio::tracer(&ordre.id, Moment::After);
     // ⚠️ THIS ONE, ON THE OTHER HAND, IS ONLY A WARNING, and the asymmetry is
     // deliberate: its absence makes a FINISHED installation read as `Commence`,
     // hence report `issue_inconnue` on a re-enrolment. It is **cautious in
@@ -291,8 +291,8 @@ async fn honorer(
         tracing::warn!(
             %error,
             installation = %ordre.id,
-            "marqueur .termine non écrit : une réémission rapporterait \
-             issue_inconnue sur une installation pourtant finie"
+            ".termine marker not written: a re-emission would report \
+             issue_inconnue on an installation that did finish"
         );
     }
 
@@ -303,7 +303,7 @@ async fn honorer(
             return terminer(emettre, ordre, Issue::Refusee, Some(motif), None, "", false);
         }
         Err(error) => {
-            tracing::error!(%error, "fil d'exécution perdu");
+            tracing::error!(%error, "execution thread lost");
             fermer(partage, &ordre.id);
             return terminer(emettre, ordre, Issue::IssueInconnue, None, None, "", false);
         }
@@ -328,7 +328,7 @@ async fn honorer(
         apparues,
         expire = sortie.expire,
         journal_tronque = sortie.journal_tronque,
-        "installation terminée"
+        "installation finished"
     );
     terminer(
         emettre,
@@ -356,8 +356,8 @@ async fn forcer_une_reconciliation(partage: &Partage) {
         tokio::time::sleep(std::time::Duration::from_millis(100)).await;
     }
     tracing::warn!(
-        "aucune réconciliation forcée en 60 s : l'issue sera calculée sur ce qui \
-         a déjà été compté"
+        "no forced reconciliation within 60 s: the outcome will be computed on what \
+         has already been counted"
     );
 }
 

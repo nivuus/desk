@@ -101,7 +101,7 @@ impl Controleur {
         // bitrate does not mean a degraded link.
         let en_amorcage = o.at.duration_since(
             self.premiere_estimation_a
-                .expect("vient d'être posé si absent"),
+                .expect("has just been set if absent"),
         ) < DELAI_AMORCAGE;
 
         // Video share: safety margin, minus the audio budget, bounded by the
@@ -162,7 +162,7 @@ impl Controleur {
         //
         // During bootstrap (`en_amorcage`), this last comparison is
         // disabled: it is what, on a ≥1080p source, made
-        // "Image réduite par le réseau" show as a persistent banner from
+        // "Image reduced by the network" show as a persistent banner from
         // the first observation of the BWE ramp (I3, final branch
         // review) — the available bitrate is low there by construction, without
         // the link being so. What stays active during bootstrap: the

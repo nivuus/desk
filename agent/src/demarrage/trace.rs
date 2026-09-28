@@ -103,7 +103,7 @@ pub(super) fn brancher() -> Option<std::thread::JoinHandle<()>> {
                     convert_pct = pct(cv_ns, cv0),
                     enc_in_pct = pct(in_ns, in0),
                     enc_out_pct = pct(out_ns, out0),
-                    "cadence de la source (chemin réel)"
+                    "source cadence (real path)"
                 );
                 (a0, h0, ac0) = (a, h, ac);
                 (ni0, ei0, ds0) = (ni, ei, ds);

@@ -281,7 +281,7 @@ mod tests {
         assert!(
             totale >= std::time::Duration::from_millis(500)
                 && totale <= std::time::Duration::from_secs(3),
-            "tolérance totale hors bornes : {totale:?}"
+            "total tolerance out of bounds: {totale:?}"
         );
     }
 
@@ -316,7 +316,7 @@ mod tests {
         assert_eq!(
             ring.pop().unwrap().pts_48k,
             480,
-            "le paquet le plus ancien (pts 0) doit avoir été jeté"
+            "the oldest packet (pts 0) must have been dropped"
         );
         assert_eq!(ring.pop().unwrap().pts_48k, 960);
         assert!(ring.pop().is_none());

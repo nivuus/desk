@@ -54,8 +54,8 @@ fn une_application_neuve_est_apparue_et_pas_modifiee() {
 fn un_nom_qui_change_a_cle_egale_est_une_modification() {
     // The renamed `.lnk`: same triple, hence same application, but the displayed
     // name must follow. Comparing only keys would freeze it forever.
-    let d = diff(&[app("a", "Ancien", "/a")], &[app("a", "Nouveau", "/a")]);
-    assert_eq!(d.modifiees, vec![app("a", "Nouveau", "/a")]);
+    let d = diff(&[app("a", "Old", "/a")], &[app("a", "New", "/a")]);
+    assert_eq!(d.modifiees, vec![app("a", "New", "/a")]);
     assert!(d.apparues.is_empty());
     assert!(d.disparues.is_empty());
 }

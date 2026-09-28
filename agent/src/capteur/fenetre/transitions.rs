@@ -34,7 +34,7 @@ impl Fenetre {
         if self.source.take().is_some() {
             tracing::info!(
                 session = %self.session,
-                "fenêtre endormie, encodeur et duplication relâchés"
+                "window asleep, encoder and duplication released"
             );
         }
     }
@@ -87,13 +87,13 @@ impl Fenetre {
         let p = &self.params;
         let mut source =
             WindowsSource::sur_sortie(p.hwnd, &p.sortie, size, p.fps, p.debit, p.clock_origin)
-                .with_context(|| format!("réveil de la session {}", self.session))?;
+                .with_context(|| format!("waking session {}", self.session))?;
         // `sur_sortie` already requests one at construction. This second call
         // is a belt: without a key frame, the browser's decoder would have
         // no entry point into the new stream and would render a grey screen
         // until the next one — the hardware encoder's group of pictures is
         // open. Wake-up thus depends on no detail of `sur_sortie`.
-        source.request_keyframe().context("image clé au réveil")?;
+        source.request_keyframe().context("key frame on wake-up")?;
         let (largeur, hauteur) = source.dimensions();
         self.largeur = largeur;
         self.hauteur = hauteur;
@@ -103,7 +103,7 @@ impl Fenetre {
             largeur,
             hauteur,
             duree_ms = debut.elapsed().as_millis() as u64,
-            "fenêtre réveillée"
+            "window woken up"
         );
         Ok(())
     }
@@ -152,12 +152,12 @@ impl Fenetre {
                             // `cause::chain` and NOT `%error`: `anyhow`'s plain
                             // `Display` only rendered the
                             // `with_context` set fifteen lines above
-                            // ("réveil de la session …"), and threw away the
+                            // ("waking session …"), and threw away the
                             // cause — hence the HRESULT. Batch 25 counted 74
                             // then 52 refusals in a row without being able to say
                             // why. See `crate::cause`.
                             error = %crate::cause::chain(&error),
-                            "réveil refusé, la fenêtre reste endormie"
+                            "wake-up refused, the window stays asleep"
                         );
                         // **Indispensable, and nothing else replaces it.** The
                         // pool sets `eveillee = true` BEFORE the wake-up has

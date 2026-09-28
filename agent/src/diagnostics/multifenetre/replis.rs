@@ -60,7 +60,7 @@ pub(super) fn eprouver() -> Result<()> {
         },
         2,
     )
-    .context("deux places sur ce bureau")?;
+    .context("two places on this desktop")?;
     let mut mires = Mires::ouvrir(capture.device(), &places)?;
     mires.peindre()?;
     mires.pomper();
@@ -73,7 +73,7 @@ pub(super) fn eprouver() -> Result<()> {
     Ok(())
 }
 
-/// From here on, any measurement failure becomes an ÉLIMINÉE verdict
+/// From here on, any measurement failure becomes an ELIMINATED verdict
 /// logged rather than a propagated error — the pattern established at task 6
 /// (`wgc.rs`): a reader of the log must always find one of the
 /// "verdict …" messages below, never an error that silently goes up
@@ -109,14 +109,14 @@ fn eprouver_printwindow(mires: &Mires) -> Result<()> {
         rendu,
         ?pixel,
         ?verdict,
-        "PrintWindow(PW_RENDERFULLCONTENT) sur une mire D3D"
+        "PrintWindow(PW_RENDERFULLCONTENT) on a D3D test pattern"
     );
     match verdict {
         mire::Verdict::Juste => tracing::info!(
-            "verdict PrintWindow : CONDITIONNELLE — image correcte, mais chemin CPU \
-             (porte « chemin GPU » de la spec §5)"
+            "PrintWindow verdict: CONDITIONAL — correct image, but CPU path \
+             (\"GPU path\" gate of spec §5)"
         ),
-        autre => tracing::error!(?autre, "verdict PrintWindow : ÉLIMINÉE"),
+        autre => tracing::error!(?autre, "PrintWindow verdict: ELIMINATED"),
     }
     Ok(())
 }
@@ -136,7 +136,7 @@ fn eprouver_surface_dwm() {
         Err(error) => {
             tracing::error!(
                 %error,
-                "verdict DwmGetDxSharedSurface : ÉLIMINÉE — user32 introuvable"
+                "DwmGetDxSharedSurface verdict: ELIMINATED — user32 not found"
             );
             return;
         }
@@ -144,11 +144,11 @@ fn eprouver_surface_dwm() {
     let adresse = unsafe { GetProcAddress(module, s!("DwmGetDxSharedSurface")) };
     match adresse {
         Some(_) => tracing::info!(
-            "DwmGetDxSharedSurface est exportée par user32 — voie CONDITIONNELLE, \
-             à instrumenter seulement si les voies 1 à 3 tombent toutes"
+            "DwmGetDxSharedSurface is exported by user32 — CONDITIONAL path, \
+             to instrument only if paths 1 to 3 all fall"
         ),
         None => tracing::error!(
-            "verdict DwmGetDxSharedSurface : ÉLIMINÉE — absente de user32 sur ce build"
+            "DwmGetDxSharedSurface verdict: ELIMINATED — absent from user32 on this build"
         ),
     }
 }

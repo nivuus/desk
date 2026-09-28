@@ -99,7 +99,7 @@ pub fn start(mode: mode::Mode) -> (partage::Veille, Option<std::thread::JoinHand
             // rather than letting it read as a discovery failure.
             tracing::error!(
                 %error,
-                "fil de surveillance non démarré : la réconciliation périodique reste la source de vérité"
+                "watch thread not started: the periodic reconciliation stays the source of truth"
             );
         })
         .ok();

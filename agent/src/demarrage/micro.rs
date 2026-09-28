@@ -123,15 +123,15 @@ pub(super) fn brancher(config: &Config, session: &mut Session) {
             // process.
             tracing::info!(
                 session = %config.session_id,
-                "micro DESARME (MICRO=0)"
+                "mic DISARMED (MICRO=0)"
             );
         }
         Puits::Mesure => {
             tracing::warn!(
                 session = %config.session_id,
-                "micro : l'instrument de banc PREND LE PAS sur le cable (MICRO_MESURE=1). Deux \
-                 puits ne peuvent pas consommer le meme flux montant — chacun mangerait ce que \
-                 l'autre attend"
+                "mic: the bench instrument TAKES PRECEDENCE over the cable (MICRO_MESURE=1). Two \
+                 sinks cannot consume the same upstream flow — each would eat what \
+                 the other expects"
             );
             brancher_mesure(config, session);
         }
@@ -153,7 +153,7 @@ fn brancher_cable(config: &Config, session: &mut Session) {
         Err(e) => tracing::warn!(
             session = %config.session_id,
             error = %e,
-            "micro indisponible, la session continue sans"
+            "mic unavailable, the session goes on without it"
         ),
     }
 }
@@ -168,7 +168,7 @@ fn brancher_mesure(config: &Config, session: &mut Session) {
     let lecteur = match LecteurMicro::new() {
         Ok(l) => Arc::new(Mutex::new(l)),
         Err(e) => {
-            tracing::warn!(error = %e, "puits de mesure du micro indisponible, la session continue sans");
+            tracing::warn!(error = %e, "mic measurement sink unavailable, the session goes on without it");
             return;
         }
     };
@@ -185,7 +185,7 @@ fn brancher_mesure(config: &Config, session: &mut Session) {
     // and its ABSENCE proves `MICRO_MESURE` did not reach the process.
     tracing::info!(
         session = %config.session_id,
-        "micro de mesure ARME (MICRO_MESURE=1) : instrument de banc, jamais une configuration livree"
+        "measurement mic ARMED (MICRO_MESURE=1): bench instrument, never a shipped configuration"
     );
 
     let session_id = config.session_id.clone();
@@ -231,6 +231,6 @@ mod tests {
         assert!(arme_micro(None));
         assert!(arme_micro(Some("")));
         assert!(arme_micro(Some("1")));
-        assert!(arme_micro(Some("nimporte quoi")));
+        assert!(arme_micro(Some("whatever")));
     }
 }

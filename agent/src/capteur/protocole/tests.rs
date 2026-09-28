@@ -23,7 +23,7 @@ fn une_attache_fait_l_aller_retour() {
                 message
             )
         }
-        autre => panic!("attendu du JSON, reçu {autre:?}"),
+        autre => panic!("expected JSON, got {autre:?}"),
     }
 }
 
@@ -45,7 +45,7 @@ fn une_identite_fait_l_aller_retour() {
                 message
             )
         }
-        autre => panic!("attendu du JSON, reçu {autre:?}"),
+        autre => panic!("expected JSON, got {autre:?}"),
     }
 }
 
@@ -57,7 +57,7 @@ fn each_reply_makes_the_round_trip() {
             hauteur: 720,
         },
         DepuisCapteur::Refus {
-            motif: "sortie inconnue".into(),
+            motif: "unknown output".into(),
         },
         DepuisCapteur::Size {
             largeur: 1280,
@@ -65,7 +65,7 @@ fn each_reply_makes_the_round_trip() {
         },
         DepuisCapteur::Fait,
         DepuisCapteur::Error {
-            motif: "encodeur perdu".into(),
+            motif: "encoder lost".into(),
         },
         DepuisCapteur::Etat {
             vivante: true,
@@ -78,7 +78,7 @@ fn each_reply_makes_the_round_trip() {
         write_json(&mut tampon, &message).unwrap();
         let mut lecteur = Cursor::new(tampon);
         let Trame::Json(octets) = lire_trame(&mut lecteur).unwrap() else {
-            panic!("attendu du JSON")
+            panic!("expected JSON")
         };
         assert_eq!(
             serde_json::from_slice::<DepuisCapteur>(&octets).unwrap(),
@@ -99,11 +99,11 @@ fn une_unite_d_acces_fait_l_aller_retour_sans_reencodage() {
     let mut tampon = Vec::new();
     write_image(&mut tampon, &unite).unwrap();
     // 4 (length) + 1 (tag) + 8 (pts) + 1 (key) + 8 (data)
-    assert_eq!(tampon.len(), 22, "cadrage inattendu : {tampon:?}");
+    assert_eq!(tampon.len(), 22, "unexpected framing: {tampon:?}");
     let mut lecteur = Cursor::new(tampon);
     match lire_trame(&mut lecteur).unwrap() {
         Trame::Image(rendue) => assert_eq!(rendue, unite),
-        autre => panic!("attendu une image, reçu {autre:?}"),
+        autre => panic!("expected an image, got {autre:?}"),
     }
 }
 
@@ -160,8 +160,8 @@ fn une_visibilite_traverse_le_canal_du_capteur() {
         visible: true,
         focalisee: false,
     };
-    let json = serde_json::to_string(&message).expect("sérialisation");
-    let relu: VersCapteur = serde_json::from_str(&json).expect("désérialisation");
+    let json = serde_json::to_string(&message).expect("serialisation");
+    let relu: VersCapteur = serde_json::from_str(&json).expect("deserialisation");
     assert_eq!(relu, message);
 }
 
@@ -171,8 +171,8 @@ fn un_sommeil_traverse_le_canal_du_capteur() {
         endormie: true,
         raison: "masquee".into(),
     };
-    let json = serde_json::to_string(&message).expect("sérialisation");
-    let relu: DepuisCapteur = serde_json::from_str(&json).expect("désérialisation");
+    let json = serde_json::to_string(&message).expect("serialisation");
+    let relu: DepuisCapteur = serde_json::from_str(&json).expect("deserialisation");
     assert_eq!(relu, message);
 }
 
@@ -182,7 +182,7 @@ fn une_part_traverse_l_encodage_json() {
     write_json(&mut tampon, &DepuisCapteur::Part { bps: 4_000_000 }).unwrap();
     let mut lecture = &tampon[..];
     let Trame::Json(corps) = lire_trame(&mut lecture).unwrap() else {
-        panic!("une trame JSON était attendue");
+        panic!("a JSON frame was expected");
     };
     let message: DepuisCapteur = serde_json::from_slice(&corps).unwrap();
     assert_eq!(message, DepuisCapteur::Part { bps: 4_000_000 });
@@ -204,7 +204,7 @@ fn une_image_sans_en_tete_complet_est_refusee() {
 #[test]
 fn aller_retour_de_l_ecriture_du_presse_papier() {
     let message = VersCapteur::ClipboardWrite {
-        texte: String::from("une\r\ndeux"),
+        texte: String::from("one\r\ntwo"),
     };
     let mut tampon = Vec::new();
     write_json(&mut tampon, &message).unwrap();
@@ -215,7 +215,7 @@ fn aller_retour_de_l_ecriture_du_presse_papier() {
                 message
             )
         }
-        autre => panic!("attendu du JSON, reçu {autre:?}"),
+        autre => panic!("expected JSON, got {autre:?}"),
     }
 }
 
@@ -238,7 +238,7 @@ fn a_text_of_the_product_maximum_size_crosses_the_pipe() {
     write_json(&mut tampon, &message).unwrap();
     assert!(
         tampon.len() < MAX_SIZE,
-        "{} octets sur le tube, borne {MAX_SIZE}",
+        "{} bytes on the pipe, bound {MAX_SIZE}",
         tampon.len()
     );
     match lire_trame(&mut Cursor::new(tampon)).unwrap() {
@@ -248,6 +248,6 @@ fn a_text_of_the_product_maximum_size_crosses_the_pipe() {
                 message
             )
         }
-        autre => panic!("attendu du JSON, reçu {autre:?}"),
+        autre => panic!("expected JSON, got {autre:?}"),
     }
 }

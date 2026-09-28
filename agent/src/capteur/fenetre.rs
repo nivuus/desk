@@ -185,11 +185,11 @@ impl Fenetre {
         // multiset, and D6 had to add this field to two traces IN THE MIDDLE OF AN ACCEPTANCE RUN.
         // A span set once on the window thread gives it to everything
         // emitted below, including the `warn!` of the modules called.
-        let _span = tracing::info_span!("fenetre", session = %session).entered();
+        let _span = tracing::info_span!("window", session = %session).entered();
 
         // 🔴 **`pid` IS THE REPOSITORY'S ONLY session ↔ WINDOWS window
         // ATTRIBUTION, AND IT MUST BE SAID SO THAT A SUCCESSOR DOES NOT REMOVE IT
-        // AS NOISE** (D-P3-7, sub-block P3). `enfant lancé`
+        // AS NOISE** (D-P3-7, sub-block P3). `child launched`
         // (`superviseur/enfants.rs`) does carry a `pid`, but it is that of the
         // AGENT CHILD process; no other trace associates a `session`
         // with the `hwnd` or the PID of the Windows APPLICATION it streams.
@@ -211,7 +211,7 @@ impl Fenetre {
             sortie = %self.params.sortie,
             largeur = self.largeur,
             hauteur = self.hauteur,
-            "fenêtre attachée au capteur"
+            "window attached to the sensor"
         );
 
         let (ecritures, to_write) = sync_channel::<AEcrire>(CAPACITE_ECRITURES);
@@ -403,7 +403,7 @@ impl Fenetre {
                     }
                     if !etat.0 || etat.1 {
                         tracing::info!(%session, vivante = etat.0, epuisee = etat.1, "source close");
-                        break "la source est morte ou épuisée";
+                        break "the source is dead or exhausted";
                     }
                 }
             }
@@ -422,7 +422,7 @@ impl Fenetre {
                 last_style = Instant::now();
                 if let Some(style) = plein_ecran::lire_style(self.params.hwnd) {
                     if let Some(actif) = suivi_bordure.observer(style) {
-                        tracing::info!(%session, actif, "plein ecran de la fenetre Windows");
+                        tracing::info!(%session, actif, "Windows window fullscreen");
                         let message = DepuisCapteur::PleinEcran { actif };
                         if let Fin::Terminer(motif) = deposer(
                             AEcrire::Etat(message),
@@ -460,7 +460,7 @@ impl Fenetre {
                     images,
                     endormie = self.source.is_none(),
                     cadence = format!("{:.1}", images as f64 / ecoule),
-                    "cadence du capteur"
+                    "sensor cadence"
                 );
                 tracer_les_compteurs(self.source.as_ref());
                 images = 0;
@@ -468,7 +468,7 @@ impl Fenetre {
             }
         };
 
-        tracing::info!(%session, images, motif, "fin de la fenêtre côté capteur");
+        tracing::info!(%session, images, motif, "end of the window on the sensor side");
         Ok(())
     }
 }

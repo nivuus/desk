@@ -19,13 +19,13 @@ use crate::{capture, encode, geometry, h264, window};
 pub(super) fn executer(fragment: &str) -> Result<()> {
     let hwnd = window::find_window_by_title(fragment)?;
     let window_rect = window::client_rect_on_screen(hwnd)?;
-    tracing::info!(?window_rect, "fenêtre trouvée");
+    tracing::info!(?window_rect, "window found");
 
     let mut capture = capture::DesktopCapture::new()?;
     let (dw, dh) = capture.desktop_size();
     let region = geometry::crop_region(window_rect, dw, dh)
-        .ok_or_else(|| anyhow::anyhow!("la fenêtre est hors de l'écran"))?;
-    tracing::info!(?region, bureau = ?(dw, dh), "région de recadrage");
+        .ok_or_else(|| anyhow::anyhow!("the window is off the screen"))?;
+    tracing::info!(?region, bureau = ?(dw, dh), "crop region");
 
     // Desktop Duplication only returns a frame when the desktop changes
     // (see the brief's note). A CSS animation in the test page
@@ -123,7 +123,7 @@ pub(super) fn executer(fragment: &str) -> Result<()> {
             g = rg,
             b = rb,
             a = ra,
-            "pixel lu au centre de la région réelle (recadrage sur la fenêtre)"
+            "pixel read at the centre of the real region (crop on the window)"
         );
 
         let control_region = geometry::Rect {
@@ -134,8 +134,8 @@ pub(super) fn executer(fragment: &str) -> Result<()> {
         };
         anyhow::ensure!(
             !geometry::rects_overlap(window_rect, control_region),
-            "région de contrôle {control_region:?} chevauche la fenêtre {window_rect:?} : \
-             la fenêtre est trop grande pour cet essai, la preuve de contenu serait invalide"
+            "control region {control_region:?} overlaps the window {window_rect:?}: \
+             the window is too large for this test, the content proof would be invalid"
         );
         let (cw, ch, cr, cg, cb, ca) =
             capture_center_pixel(&mut capture, control_region, Duration::from_secs(5))?;
@@ -147,15 +147,15 @@ pub(super) fn executer(fragment: &str) -> Result<()> {
             g = cg,
             b = cb,
             a = ca,
-            "pixel lu au centre de la région de contrôle (coin opposé du bureau, même taille)"
+            "pixel read at the centre of the control region (opposite corner of the desktop, same size)"
         );
         anyhow::ensure!(
             (rr, rg, rb) != (cr, cg, cb),
-            "le pixel de la région réelle ({rr},{rg},{rb}) est identique à celui du \
-             contrôle ({cr},{cg},{cb}) : le recadrage ne distingue pas les deux zones"
+            "the pixel of the real region ({rr},{rg},{rb}) is identical to that of the \
+             control ({cr},{cg},{cb}): the crop does not tell the two areas apart"
         );
         tracing::info!(
-            "preuve de contenu : le recadrage distingue bien la fenêtre du reste du bureau (pixels différents)"
+            "content proof: the crop does tell the window apart from the rest of the desktop (different pixels)"
         );
 
         let mut captured = 0;
@@ -167,13 +167,13 @@ pub(super) fn executer(fragment: &str) -> Result<()> {
             {
                 captured += 1;
                 if captured == 1 {
-                    tracing::info!(frame.width, frame.height, "première image capturée");
+                    tracing::info!(frame.width, frame.height, "first image captured");
                 }
             }
             std::thread::sleep(std::time::Duration::from_millis(2));
         }
-        tracing::info!(captured, "images capturées en 3 s");
-        anyhow::ensure!(captured > 0, "aucune image capturée");
+        tracing::info!(captured, "images captured in 3 s");
+        anyhow::ensure!(captured > 0, "no image captured");
 
         // Verification encoding: ENCODE_TEST=1 encodes 120 captured frames.
         //
@@ -272,7 +272,7 @@ pub(super) fn executer(fragment: &str) -> Result<()> {
                         let idr_idx = types.iter().position(|&t| t == NAL_IDR);
                         let ordered = matches!((sps_idx, pps_idx, idr_idx),
                             (Some(s), Some(p), Some(i)) if s < p && p < i);
-                        tracing::info!(?types, ordered, "NAL de la première unité d'accès");
+                        tracing::info!(?types, ordered, "NALs of the first access unit");
                         first_unit_has_params = Some(ordered);
                     }
                     encoded += 1;
@@ -299,13 +299,13 @@ pub(super) fn executer(fragment: &str) -> Result<()> {
                 converter_inputs,
                 elapsed_ms = elapsed.as_millis() as u64,
                 fps = encoded as f64 / elapsed.as_secs_f64(),
-                "images encodées"
+                "images encoded"
             );
-            anyhow::ensure!(encoded > 0, "aucune image encodée");
-            anyhow::ensure!(keyframes > 0, "aucune image clé produite");
+            anyhow::ensure!(encoded > 0, "no image encoded");
+            anyhow::ensure!(keyframes > 0, "no key frame produced");
             anyhow::ensure!(
                 first_unit_has_params == Some(true),
-                "la première unité d'accès ne commence pas par SPS puis PPS puis IDR : {:?}",
+                "the first access unit does not start with SPS then PPS then IDR: {:?}",
                 first_unit_has_params
             );
         }
@@ -349,7 +349,7 @@ pub(super) fn executer(fragment: &str) -> Result<()> {
                 }
                 anyhow::ensure!(
                     std::time::Instant::now() < frame_deadline,
-                    "aucune image capturée en 10 s pour amorcer la mesure de débit"
+                    "no image captured within 10 s to prime the throughput measurement"
                 );
                 std::thread::sleep(std::time::Duration::from_millis(2));
             };
@@ -389,7 +389,7 @@ pub(super) fn executer(fragment: &str) -> Result<()> {
                 target,
                 deadline_secs,
                 submit_hz,
-                "début de la mesure de débit isolée"
+                "start of the isolated throughput measurement"
             );
             let stop_watchdog = watch_encoder(encoder.telemetry());
 
@@ -460,10 +460,10 @@ pub(super) fn executer(fragment: &str) -> Result<()> {
                 fps,
                 converter_inputs,
                 conv_refus,
-                "débit isolé du pipeline conversion+encodage (source constante, sans capture)"
+                "isolated throughput of the conversion+encoding pipeline (constant source, no capture)"
             );
             loop_result?;
-            anyhow::ensure!(encoded > 0, "aucune image encodée en mesure isolée");
+            anyhow::ensure!(encoded > 0, "no image encoded in the isolated measurement");
         }
 
         Ok(())

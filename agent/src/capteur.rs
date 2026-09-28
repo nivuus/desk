@@ -26,11 +26,11 @@ pub mod vivier;
 /// Entry point of sensor mode.
 #[cfg(windows)]
 pub fn executer() -> anyhow::Result<()> {
-    tracing::info!(tube = protocole::NOM_TUBE, "capteur démarré");
+    tracing::info!(tube = protocole::NOM_TUBE, "sensor started");
     serveur::servir()
 }
 
 #[cfg(not(windows))]
 pub fn executer() -> anyhow::Result<()> {
-    anyhow::bail!("le mode capteur n'existe que sur Windows")
+    anyhow::bail!("the sensor mode only exists on Windows")
 }

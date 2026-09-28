@@ -61,10 +61,10 @@ pub fn initialize_com() -> Result<()> {
     let hr = unsafe { CoInitializeEx(None, COINIT_APARTMENTTHREADED) };
     if hr.is_err() {
         bail!(
-            "CoInitializeEx(APARTMENTTHREADED) refusé ({hr:?}) : le fil de découverte des \
-             applications appartient déjà à un appartement COM d'un autre modèle. \
-             `IShellLinkW` et `ShellExecuteExW` exigent tous deux une STA, et tournent \
-             sur ce fil-ci."
+            "CoInitializeEx(APARTMENTTHREADED) refused ({hr:?}): the application discovery \
+             thread already belongs to a COM apartment of another model. \
+             `IShellLinkW` and `ShellExecuteExW` both require an STA, and run \
+             on this very thread."
         );
     }
     Ok(())
@@ -196,10 +196,10 @@ pub struct Raccourci {
 /// WHOLE catalogue disappear — spec §7 says so by name.
 pub fn racines() -> Vec<PathBuf> {
     const RACINES: [(&str, GUID); 4] = [
-        ("Bureau", FOLDERID_Desktop),
-        ("Bureau public", FOLDERID_PublicDesktop),
-        ("menu Démarrer", FOLDERID_StartMenu),
-        ("menu Démarrer commun", FOLDERID_CommonStartMenu),
+        ("Desktop", FOLDERID_Desktop),
+        ("Public desktop", FOLDERID_PublicDesktop),
+        ("Start menu", FOLDERID_StartMenu),
+        ("common Start menu", FOLDERID_CommonStartMenu),
     ];
     let mut sortie = Vec::new();
     for (nom, id) in RACINES {
@@ -208,10 +208,10 @@ pub fn racines() -> Vec<PathBuf> {
             Ok(chemin) => tracing::warn!(
                 racine = nom,
                 chemin = %chemin.display(),
-                "racine de raccourcis absente du disque, sautée"
+                "shortcut root absent from the disk, skipped"
             ),
             Err(error) => {
-                tracing::warn!(racine = nom, %error, "racine de raccourcis non résolue, sautée")
+                tracing::warn!(racine = nom, %error, "shortcut root not resolved, skipped")
             }
         }
     }
@@ -224,9 +224,9 @@ fn dossier_connu(id: &GUID) -> Result<PathBuf> {
     let brut = unsafe { SHGetKnownFolderPath(id, KF_FLAG_DEFAULT, None) }
         .context("SHGetKnownFolderPath")?;
     if brut.is_null() {
-        bail!("SHGetKnownFolderPath a rendu un pointeur nul");
+        bail!("SHGetKnownFolderPath returned a null pointer");
     }
-    let chemin = unsafe { brut.to_string() }.context("chemin de dossier connu non UTF-16 valide");
+    let chemin = unsafe { brut.to_string() }.context("known folder path not valid UTF-16");
     unsafe { CoTaskMemFree(Some(brut.0 as *const _)) };
     Ok(PathBuf::from(chemin?))
 }
@@ -245,7 +245,7 @@ pub fn lnk_under(racine: &Path) -> Vec<PathBuf> {
         let entrees = match std::fs::read_dir(&dossier) {
             Ok(e) => e,
             Err(error) => {
-                tracing::warn!(dossier = %dossier.display(), %error, "répertoire illisible, sauté");
+                tracing::warn!(dossier = %dossier.display(), %error, "unreadable directory, skipped");
                 continue;
             }
         };

@@ -114,7 +114,7 @@ impl Magasin {
 /// it does not have to rewrite it.
 ///
 /// ⚠️ This repository has no doctrine on orphan code — sub-block D10
-/// DELETED `taille_compatible` and KEPT `refresh_output_size` without
+/// DELETED the size-compatibility check and KEPT `refresh_output_size` without
 /// stating a rule. The choice is made here in favour of keeping it, and
 /// it is written down.
 ///

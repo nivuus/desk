@@ -69,13 +69,13 @@ impl Fenetre {
             origine_qpc,
         } = attache
         else {
-            bail!("le premier message d'un enfant doit être une attache");
+            bail!("a child's first message must be an attach");
         };
 
         let clock_origin = origine_depuis_qpc(
             origine_qpc,
-            lire_qpc().context("lecture de QPC à l'attache")?,
-            frequence_qpc().context("fréquence de QPC")?,
+            lire_qpc().context("reading QPC at attach time")?,
+            frequence_qpc().context("QPC frequency")?,
             Instant::now(),
         );
 
@@ -94,13 +94,13 @@ impl Fenetre {
         unsafe { GetWindowThreadProcessId(hwnd, Some(&mut pid)) };
         anyhow::ensure!(
             pid != 0,
-            "impossible de dériver le PID de la fenêtre {hwnd:?} de la session {session}"
+            "cannot derive the PID of window {hwnd:?} of session {session}"
         );
         // The size is the only thing needed before having the
         // place: `size_of_output` reads it without opening a duplication, hence
         // without taking the output's mutex nor disturbing any neighbour.
         let output_dims = crate::capture::ouverture::size_of_output(&sortie)
-            .with_context(|| format!("attache de la session {session}"))?;
+            .with_context(|| format!("attach of session {session}"))?;
         // The output may be larger than the window (polluted registry,
         // D9 §9). The child announced the size the supervisor gave
         // it; the sensor bounds it to what the output actually offers,

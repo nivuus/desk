@@ -99,7 +99,7 @@ mod tests {
         let t0 = Instant::now();
         assert!(
             !fenetre.rupture(t0),
-            "la première rupture ouvre la fenêtre, elle ne conclut pas"
+            "the first break opens the window, it does not conclude"
         );
         assert!(!fenetre.rupture(t0 + Duration::from_secs(1)));
     }
@@ -121,7 +121,7 @@ mod tests {
         assert!(!fenetre.rupture(t0));
         fenetre.succes();
         let t1 = t0 + DUREE_FENETRE_CANAL * 3;
-        assert!(!fenetre.rupture(t1), "la fenêtre doit repartir de zéro");
+        assert!(!fenetre.rupture(t1), "the window must start over from zero");
         assert!(!fenetre.rupture(t1 + DUREE_FENETRE_CANAL / 2));
         assert!(fenetre.rupture(t1 + DUREE_FENETRE_CANAL + Duration::from_millis(1)));
     }
@@ -134,8 +134,8 @@ mod tests {
         let mut fenetre = FenetreCanal::new();
         let t0 = Instant::now();
         assert!(!fenetre.rupture(t0));
-        assert!(fenetre.can_retry(t0), "le premier essai est immédiat");
-        assert!(!fenetre.can_retry(t0), "deux essais dans le même instant");
+        assert!(fenetre.can_retry(t0), "the first attempt is immediate");
+        assert!(!fenetre.can_retry(t0), "two attempts in the same instant");
         assert!(!fenetre.can_retry(t0 + PAS_RATTACHEMENT / 2));
         assert!(fenetre.can_retry(t0 + PAS_RATTACHEMENT + Duration::from_millis(1)));
     }
@@ -154,7 +154,7 @@ mod tests {
         assert!(!fenetre.rupture(t1));
         assert!(
             fenetre.can_retry(t1),
-            "après un succès, le premier essai est immédiat"
+            "after a success, the first attempt is immediate"
         );
     }
 }

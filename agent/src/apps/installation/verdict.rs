@@ -231,7 +231,7 @@ mod tests {
             assert_eq!(
                 Issue::depuis(Some(code), 1, false, None),
                 Issue::Reussie,
-                "le code {code} a été interprété"
+                "code {code} was interpreted"
             );
         }
     }
@@ -297,7 +297,7 @@ mod tests {
         // above. A variant added without its line here skews this count.
         assert_eq!(Motif::ALL.len(), attendus.len());
         for (motif, mot) in attendus {
-            assert!(Motif::ALL.contains(&motif), "{mot} absent de TOUS");
+            assert!(Motif::ALL.contains(&motif), "{mot} absent from ALL");
             assert_eq!(motif.mot(), mot);
             assert_eq!(Motif::depuis_mot(mot), Some(motif));
         }

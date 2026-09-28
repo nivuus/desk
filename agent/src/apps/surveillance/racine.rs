@@ -71,7 +71,7 @@ pub(super) enum Issue {
     /// ✅ **MEASURED, AND IT IS THE ONLY DISCRIMINATING SET-UP FOR CRITERION ③**
     /// (two runs per arm): `notifications=0` on both sides — the
     /// completions are indeed swallowed —, and the catalogue moves to `cles=157` through
-    /// `declencheur="periode"` when the period is armed, against `cles=156`
+    /// `declencheur="period"` when the period is armed, against `cles=156`
     /// **indefinitely** under `APPS_SURVEILLANCE=seule`.
     ///
     /// ⚠️ **IT ESTABLISHES THAT THE REMEDY WORKS, NEVER THAT A CAUSE EXISTS.**
@@ -173,7 +173,7 @@ impl Racine {
                 None,
             )
         }
-        .with_context(|| format!("ReadDirectoryChangesW sur {}", self.chemin.display()))
+        .with_context(|| format!("ReadDirectoryChangesW on {}", self.chemin.display()))
     }
 
     /// Reads what the completion says, **without ever reading the buffer**.
@@ -191,7 +191,7 @@ impl Racine {
             return Issue::Debordement;
         }
         if faute::consommer(Famille::Perte) {
-            return Issue::Perte(anyhow::anyhow!("faute injectée (APPS_FAUTE=perte)"));
+            return Issue::Perte(anyhow::anyhow!("injected fault (APPS_FAUTE=perte)"));
         }
         let mut octets: u32 = 0;
         // SAFETY: FFI call. `bWait = false`: the event is already signalled
@@ -212,7 +212,7 @@ impl Racine {
             Err(error) if error.code() == ERROR_OPERATION_ABORTED.to_hresult() => Issue::Annulee,
             Err(error) => Issue::Perte(
                 anyhow::Error::new(error)
-                    .context(format!("GetOverlappedResult sur {}", self.chemin.display())),
+                    .context(format!("GetOverlappedResult on {}", self.chemin.display())),
             ),
         }
     }
@@ -306,7 +306,7 @@ fn ouvrir_les_deux_handles(chemin: &Path) -> Result<(HANDLE, HANDLE)> {
             None,
         )
     }
-    .with_context(|| format!("ouverture de la racine surveillée {}", chemin.display()))?;
+    .with_context(|| format!("opening the watched root {}", chemin.display()))?;
 
     // `bManualReset = true`: the event is reset to non-signalled by
     // `ReadDirectoryChangesW` itself at the moment it queues the read.
@@ -322,7 +322,7 @@ fn ouvrir_les_deux_handles(chemin: &Path) -> Result<(HANDLE, HANDLE)> {
                 let _ = CloseHandle(repertoire);
             }
             Err(anyhow::Error::new(error).context(format!(
-                "CreateEventW pour la racine surveillée {}",
+                "CreateEventW for the watched root {}",
                 chemin.display()
             )))
         }

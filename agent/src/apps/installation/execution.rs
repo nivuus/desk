@@ -163,7 +163,7 @@ pub fn job_tue_a_la_fermeture() -> bool {
             // that is exactly the state where there is nothing to fear. Refusing
             // the installation because the question could not be asked would be the
             // failure this guard has precisely just stopped being.
-            tracing::debug!(%error, "QueryInformationJobObject a échoué : aucun job, ou job non interrogeable");
+            tracing::debug!(%error, "QueryInformationJobObject failed: no job, or a job that cannot be queried");
             false
         }
     }
@@ -191,7 +191,7 @@ pub fn in_a_job() -> bool {
             // ⚠️ A FAILED QUESTION IS NOT AN ANSWER. We log
             // and answer `false`: refusing every installation because we
             // could not ask the question would be a failure worse than the risk.
-            tracing::warn!(%error, "IsProcessInJob a échoué : on suppose hors job");
+            tracing::warn!(%error, "IsProcessInJob failed: assuming outside any job");
             false
         }
     }
@@ -236,12 +236,12 @@ pub fn executer(
     tracing::info!(
         in_a_job = dedans,
         job_tue_a_la_fermeture = tue,
-        "installation : le processus qui lance est-il dans un job, et ce job tue-t-il ?"
+        "installation: is the launching process in a job, and does that job kill?"
     );
     if tue {
         tracing::error!(
-            "installation refusée : ce processus est dans un job qui TUE À LA FERMETURE, \
-             l'installeur y mourrait avec lui"
+            "installation refused: this process is in a job that KILLS ON CLOSE, \
+             the installer would die with it"
         );
         return Err(Motif::JobObject);
     }
@@ -251,7 +251,7 @@ pub fn executer(
     // directory: it goes away with it in the age sweep, and it is where
     // someone will look for it.
     let file = std::fs::File::create(&journal_chemin).map_err(|error| {
-        tracing::error!(%error, chemin = %journal_chemin.display(), "journal d'installeur non créé");
+        tracing::error!(%error, chemin = %journal_chemin.display(), "installer log not created");
         Motif::Disque
     })?;
 
@@ -314,13 +314,13 @@ pub fn executer(
         if code == ERROR_ELEVATION_REQUIRED.0 {
             tracing::error!(
                 chemin = %chemin.display(),
-                "installation refusée : l'installeur exige une élévation, que \
-                 cet agent ne peut pas obtenir sans que l'utilisateur voie un \
-                 écran figé"
+                "installation refused: the installer requires an elevation, which \
+                 this agent cannot obtain without the user seeing a \
+                 frozen screen"
             );
             return Err(Motif::ElevationRequise);
         }
-        tracing::error!(%error, chemin = %chemin.display(), "CreateProcessW a échoué");
+        tracing::error!(%error, chemin = %chemin.display(), "CreateProcessW failed");
         return Err(Motif::LancementImpossible);
     }
 
@@ -340,21 +340,21 @@ pub fn executer(
                 // installers return 0 after a cancellation.
                 Ok(()) => break Some(brut as i32),
                 Err(error) => {
-                    tracing::warn!(%error, "code de sortie illisible");
+                    tracing::warn!(%error, "unreadable exit code");
                     break None;
                 }
             }
         }
         if attente != WAIT_TIMEOUT {
-            tracing::warn!(?attente, "attente du processus en erreur");
+            tracing::warn!(?attente, "waiting for the process failed");
             break None;
         }
         if maintenant_ms().saturating_sub(debut) >= EXPIRATION_EXECUTION_MS {
             // 🔴 WE STOP WAITING, WE DO NOT KILL.
             tracing::warn!(
                 chemin = %chemin.display(),
-                "installation expirée : l'agent CESSE D'ATTENDRE, il ne tue pas — \
-                 tuer un installeur au milieu laisserait la machine à moitié installée"
+                "installation timed out: the agent STOPS WAITING, it does not kill — \
+                 killing an installer halfway would leave the machine half installed"
             );
             expire = true;
             break None;

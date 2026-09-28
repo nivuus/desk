@@ -48,8 +48,8 @@ const DUREE_SONDE_IMAGE: Duration = Duration::from_millis(500);
 ///   not stabilised;
 /// - a reopening can fail to find `\\.\DISPLAYn` several times in
 ///   a row during the reshuffle — each failure now consumes an
-///   attempt AND writes its own line ("réouverture de la duplication
-///   échouée …"), without it being final: only the expiry of the
+///   attempt AND writes its own line ("reopening the duplication
+///   failed …"), without it being final: only the expiry of the
 ///   whole window is.
 ///
 /// In both cases the summary shows `voies_vivantes_apres = 0`, whose
@@ -68,7 +68,7 @@ pub(super) fn sonder(
     tracing::info!(
         voies = ?perdues,
         attente_ms = DELAI_TOPOLOGIE.as_millis() as u64,
-        "sonde post-mortem : attente de stabilisation de la topologie avant de retenter"
+        "post-mortem probe: waiting for the topology to settle before retrying"
     );
     let debut = Instant::now();
     while debut.elapsed() < DELAI_TOPOLOGIE {
@@ -76,8 +76,8 @@ pub(super) fn sonder(
         if let Err(error) = garde.battre_si_du() {
             tracing::error!(
                 causes = %super::super::causes(error),
-                "sonde post-mortem : chien de garde perdu pendant l'attente — le pilote peut \
-                 avoir repris ses sorties, ce qui suit n'est plus imputable"
+                "post-mortem probe: watchdog lost during the wait — the driver may \
+                 have taken back its outputs, what follows is no longer attributable"
             );
             return;
         }
@@ -107,8 +107,8 @@ pub(super) fn sonder(
             tracing::error!(
                 voie = id,
                 causes = %super::super::causes(error),
-                "sonde post-mortem : chien de garde perdu avant de solliciter cette voie — le \
-                 pilote peut avoir repris ses sorties, ce qui suit n'est plus imputable"
+                "post-mortem probe: watchdog lost before polling this path — the \
+                 driver may have taken back its outputs, what follows is no longer attributable"
             );
             return;
         }
@@ -124,9 +124,9 @@ pub(super) fn sonder(
                     voie = id,
                     nom_sortie = nom,
                     causes = %super::super::causes(error),
-                    "sonde post-mortem : la sortie ne se redupliquait PAS une fois la topologie \
-                     stabilisée — la mort de cette voie n'est pas imputable au seul budget de \
-                     reprises"
+                    "post-mortem probe: the output could NOT be duplicated again once the topology \
+                     had settled — the death of this path cannot be blamed on the recovery \
+                     budget alone"
                 );
                 continue;
             }
@@ -181,9 +181,9 @@ pub(super) fn sonder(
                 // WINDOW; its duration is therefore logged instead of being stated.
                 fenetre_reprise_ms =
                     crate::capture_reprise::DUREE_FENETRE_REPRISE.as_millis() as u64,
-                "sonde post-mortem : la sortie se REDUPLIQUAIT et rendait une image une fois la \
-                 topologie stabilisée — la mort de cette voie ne réfute PAS la reprise, elle \
-                 dit que la fenêtre de reprise n'a pas suffi sur ce remaniement de topologie"
+                "post-mortem probe: the output DID get duplicated again and yielded an image once the \
+                 topology had settled — the death of this path does NOT refute the recovery, it \
+                 says that the recovery window was not enough for this topology reshuffle"
             ),
             // Silence has two possible causes, and only one is a
             // result: naming them separately is the whole point of tracking
@@ -192,25 +192,25 @@ pub(super) fn sonder(
                 voie = id,
                 nom_sortie = nom,
                 duree_ms = DUREE_SONDE_IMAGE.as_millis() as u64,
-                "sonde post-mortem SANS VALEUR sur cette voie : la peinture des mires a échoué \
-                 pendant la sollicitation, donc le bureau n'a pas changé. « Aucune image » est \
-                 ici une panne de l'INSTRUMENT et ne dit rien de la duplication"
+                "post-mortem probe WORTHLESS on this path: painting the test patterns failed \
+                 during the polling, so the desktop did not change. \"No image\" is \
+                 here a failure of the INSTRUMENT and says nothing about the duplication"
             ),
             Ok(false) => tracing::warn!(
                 voie = id,
                 nom_sortie = nom,
                 duree_ms = DUREE_SONDE_IMAGE.as_millis() as u64,
-                "sonde post-mortem : duplication rouverte, mires peintes, mais AUCUNE image \
-                 dans le délai — ni une réfutation ni une confirmation, la duplication existe \
-                 sans rien rendre"
+                "post-mortem probe: duplication reopened, test patterns painted, but NO image \
+                 within the delay — neither a refutation nor a confirmation, the duplication exists \
+                 without yielding anything"
             ),
             Err(causes) => tracing::error!(
                 voie = id,
                 nom_sortie = nom,
                 causes,
-                "sonde post-mortem : duplication rouverte, mais l'acquisition échouait ENCORE \
-                 une fois la topologie stabilisée — la mort de cette voie n'est pas imputable \
-                 au seul budget de reprises"
+                "post-mortem probe: duplication reopened, but the acquisition STILL failed \
+                 once the topology had settled — the death of this path cannot be blamed \
+                 on the recovery budget alone"
             ),
         }
     }

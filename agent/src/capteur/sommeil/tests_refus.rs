@@ -45,7 +45,10 @@ use crate::capteur::vivier::Ordre;
 /// never coalesces, that is what makes it possible to reach the bound.
 fn boucher_la_file(session: &str) {
     let garde = etat();
-    let emetteur = garde.canaux.get(session).expect("la session est inscrite");
+    let emetteur = garde
+        .canaux
+        .get(session)
+        .expect("the session is registered");
     for _ in 0..PROFONDEUR_MAX {
         let _ = emetteur.envoyer(Message::Sommeil(Ordre::Reveiller));
     }
@@ -65,8 +68,8 @@ fn un_tour_de_roue() {
 /// received the order: its place in the pool is occupied without any real encoder
 /// occupying it, and ten `rearbitrer` in a row re-emit nothing.
 ///
-/// **Turns red on its FIRST assertion** — `un Reveiller non déposé ne doit pas
-/// laisser le vivier croire la fenêtre éveillée` —, `eveillee` then being
+/// **Turns red on its FIRST assertion** — `an undeposited Reveiller must not
+/// let the pool believe the window is awake` —, `eveillee` then being
 /// `Some(true)`.
 #[test]
 fn an_undelivered_wake_leaves_the_pool_intact_and_goes_again_next_round() {
@@ -83,7 +86,7 @@ fn an_undelivered_wake_leaves_the_pool_intact_and_goes_again_next_round() {
     assert_eq!(
         etat().vivier.eveillee("r2-reveil"),
         Some(false),
-        "un Reveiller non déposé ne doit pas laisser le vivier croire la fenêtre éveillée"
+        "an undeposited Reveiller must not let the pool believe the window is awake"
     );
 
     // The window resumes reading, and the next wheel round must re-emit
@@ -92,7 +95,7 @@ fn an_undelivered_wake_leaves_the_pool_intact_and_goes_again_next_round() {
     assert_eq!(
         recus.len(),
         PROFONDEUR_MAX,
-        "précondition : la file était bien pleine"
+        "precondition: the queue was indeed full"
     );
     un_tour_de_roue();
     let ordres: Vec<Ordre> = canal
@@ -105,7 +108,7 @@ fn an_undelivered_wake_leaves_the_pool_intact_and_goes_again_next_round() {
         .collect();
     assert!(
         ordres.contains(&Ordre::Reveiller),
-        "le Reveiller non déposé doit repartir au tour suivant : {ordres:?}"
+        "the undeposited Reveiller must go out again on the next round: {ordres:?}"
     );
 
     retirer("r2-reveil", generation);
@@ -128,8 +131,8 @@ fn an_undelivered_wake_leaves_the_pool_intact_and_goes_again_next_round() {
 /// `an_oversubscription_from_an_undelivered_sleep_is_absorbed_next_round`,
 /// just below, which measures it at both times.
 ///
-/// **Turns red on its FIRST assertion** — `un Dormir non déposé ne doit pas
-/// laisser le vivier compter endormie une fenêtre qui encode encore` —,
+/// **Turns red on its FIRST assertion** — `an undeposited Dormir must not let
+/// the pool count as asleep a window that is still encoding` —,
 /// `eveillee` then being `Some(false)`.
 #[test]
 fn an_undelivered_sleep_leaves_the_pool_intact_and_goes_again_next_round() {
@@ -140,7 +143,7 @@ fn an_undelivered_sleep_leaves_the_pool_intact_and_goes_again_next_round() {
     assert_eq!(
         etat().vivier.eveillee("r2-sommeil"),
         Some(true),
-        "précondition : la fenêtre est bien éveillée"
+        "precondition: the window is indeed awake"
     );
     let _ = canal.drain();
     boucher_la_file("r2-sommeil");
@@ -151,15 +154,15 @@ fn an_undelivered_sleep_leaves_the_pool_intact_and_goes_again_next_round() {
     assert_eq!(
         etat().vivier.eveillee("r2-sommeil"),
         Some(true),
-        "un Dormir non déposé ne doit pas laisser le vivier compter endormie une \
-         fenêtre qui encode encore"
+        "an undeposited Dormir must not let the pool count as asleep a \
+         window that is still encoding"
     );
 
     let recus = canal.drain();
     assert_eq!(
         recus.len(),
         PROFONDEUR_MAX,
-        "précondition : la file était bien pleine"
+        "precondition: the queue was indeed full"
     );
     un_tour_de_roue();
     let ordres: Vec<Ordre> = canal
@@ -172,7 +175,7 @@ fn an_undelivered_sleep_leaves_the_pool_intact_and_goes_again_next_round() {
         .collect();
     assert!(
         ordres.iter().any(|o| matches!(o, Ordre::Dormir(_))),
-        "le Dormir non déposé doit repartir au tour suivant : {ordres:?}"
+        "the undeposited Dormir must go out again on the next round: {ordres:?}"
     );
 
     retirer("r2-sommeil", generation);
@@ -202,7 +205,7 @@ fn refus_de(session: &str) -> u64 {
     etat()
         .canaux
         .get(session)
-        .expect("la session est inscrite")
+        .expect("the session is registered")
         .refuses()
 }
 
@@ -258,7 +261,10 @@ fn an_order_refused_every_round_is_traced_at_logarithmic_cadence() {
     // re-emission is refused. That is what round 2's cancellation achieves —
     // and it is what makes an unpaced trace unbounded.
     let attendus: Vec<u64> = (1..=TOURS).map(|i| depart + i).collect();
-    assert_eq!(comptes, attendus, "l'ordre doit être réémis à CHAQUE tour");
+    assert_eq!(
+        comptes, attendus,
+        "the order must be re-emitted on EACH round"
+    );
 
     // 🔴 THE PACING, MEASURED ON THE LINES EMITTED AND MATCHED EXACTLY, NOT MERELY
     // BOUNDED FROM ABOVE.
@@ -278,9 +284,9 @@ fn an_order_refused_every_round_is_traced_at_logarithmic_cadence() {
     let traces = compte.load(Ordering::Relaxed);
     assert_eq!(
         traces, 3,
-        "la trace de l'ordre non déposé doit être CADENCÉE aux puissances de \
-         deux, ni supprimée ni émise à chaque refus : {traces} lignes pour \
-         {TOURS} tours, 3 attendues (paliers 2, 4, 8)"
+        "the trace of the undeposited order must be PACED at powers of \
+         two, neither removed nor emitted at each refusal: {traces} lines for \
+         {TOURS} rounds, 3 expected (steps 2, 4, 8)"
     );
 
     retirer("r3-cadence", generation);
@@ -320,7 +326,7 @@ fn an_oversubscription_from_an_undelivered_sleep_is_absorbed_next_round() {
     assert_eq!(
         etat().vivier.eveillees().len(),
         plafond,
-        "précondition : les places sont toutes prises"
+        "precondition: the places are all taken"
     );
 
     // One more candidate, waiting for a place to be freed.
@@ -329,7 +335,7 @@ fn an_oversubscription_from_an_undelivered_sleep_is_absorbed_next_round() {
     assert_eq!(
         etat().vivier.eveillees().len(),
         plafond,
-        "précondition : elle attend"
+        "precondition: it is waiting"
     );
 
     // The FIRST occupant's queue gets clogged, then it is hidden: its
@@ -343,7 +349,7 @@ fn an_oversubscription_from_an_undelivered_sleep_is_absorbed_next_round() {
     assert_eq!(
         etat().vivier.eveillees().len(),
         plafond + 1,
-        "la sur-souscription a bien lieu : l'annulation ne court qu'APRÈS l'élection"
+        "the over-subscription does happen: the cancellation only runs AFTER the election"
     );
 
     // The blocked window resumes reading; the next round absorbs.
@@ -352,7 +358,7 @@ fn an_oversubscription_from_an_undelivered_sleep_is_absorbed_next_round() {
     assert_eq!(
         etat().vivier.eveillees().len(),
         plafond,
-        "la sur-souscription doit être TRANSITOIRE : résorbée au ré-arbitrage suivant"
+        "the over-subscription must be TRANSIENT: absorbed at the next re-arbitration"
     );
 
     retirer("r3-attente", generation_attente);

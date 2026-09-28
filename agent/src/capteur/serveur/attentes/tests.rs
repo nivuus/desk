@@ -56,7 +56,7 @@ fn un_oubli_perime_ne_retire_pas_l_attente_neuve() {
     oublier(session, g1); // the old thread wakes up too late
     assert!(
         etat().attentes.contains_key(session),
-        "l'oubli de la génération 1 ne doit pas emporter la génération 2"
+        "forgetting generation 1 must not take generation 2 with it"
     );
 
     oublier(session, g2);

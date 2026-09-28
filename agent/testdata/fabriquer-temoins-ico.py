@@ -1,26 +1,26 @@
 #!/usr/bin/env python3
-"""Fabrique les deux témoins `.ico` du sous-bloc G2, SUR L'HÔTE, sans Windows.
+"""Builds the two `.ico` samples of sub-block G2, ON THE HOST, without Windows.
 
-🔴 POURQUOI CE SCRIPT EST VERSÉ AVEC LES DEUX FICHIERS QU'IL PRODUIT.
+🔴 WHY THIS SCRIPT IS COMMITTED WITH THE TWO FILES IT PRODUCES.
 
-Le fait qui gouverne tout le sous-bloc G2 est celui-ci : un `.ico` ne contenant
-QU'UNE entrée 48×48, interrogé à 256 par le Shell de Windows, rend **256×256
-32bpp** — par `IShellItemImageFactory::GetImage` comme par
-`PrivateExtractIconsW`, sans `SIIGBF_SCALEUP` et MÊME avec
-`SIIGBF_BIGGERSIZEOK`. Les quatre lignes de rendu des deux témoins sont
-identiques ; **seule la ligne `ICONDIR` diffère**. Un critère de réception qui
-comparerait la taille rendue à 256 NE PEUT DONC PAS ÉCHOUER.
+The fact that governs the whole of sub-block G2 is this one: an `.ico` holding
+ONLY ONE 48×48 entry, queried at 256 by the Windows Shell, returns **256×256
+32bpp** — through `IShellItemImageFactory::GetImage` as through
+`PrivateExtractIconsW`, without `SIIGBF_SCALEUP` and EVEN with
+`SIIGBF_BIGGERSIZEOK`. The four render lines of the two samples are
+identical; **only the `ICONDIR` line differs**. An acceptance criterion that
+compared the returned size with 256 THEREFORE CANNOT FAIL.
 
-Les témoins d'origine de la spécification vivaient dans `C:\\dev\\` sur la VM,
-« c'est-à-dire nulle part de durable ». Ceux-ci sont dans git, et ce script
-est là pour que **personne n'ait à croire à leur contenu** : il se relit, et
-il se rejoue.
+The original samples of the specification lived in `C:\\dev\\` on the VM,
+"that is to say nowhere lasting". These ones are in git, and this script
+is there so that **nobody has to trust their content**: it can be re-read, and
+it can be replayed.
 
     python3 agent/testdata/fabriquer-temoins-ico.py
 
-⚠️ LA SEULE CHOSE QUI COMPTE EST L'`ICONDIR`, pas l'image. Les pixels sont un
-damier arbitraire — aucun test n'en dépend, et aucun ne doit en dépendre : la
-preuve de G2 vient de la RESSOURCE, jamais de l'image rendue.
+⚠️ THE ONLY THING THAT MATTERS IS THE `ICONDIR`, not the image. The pixels are an
+arbitrary checkerboard — no test depends on them, and none must: the
+proof of G2 comes from the RESOURCE, never from the rendered image.
 """
 import struct
 import sys
@@ -81,7 +81,7 @@ def main() -> int:
     for cote, nom in ((48, "g2-temoin-48.ico"), (256, "g2-temoin-256.ico")):
         chemin = ici / nom
         chemin.write_bytes(ico(cote))
-        print(f"{chemin.name} : {chemin.stat().st_size} octets, une entrée de {cote} px")
+        print(f"{chemin.name}: {chemin.stat().st_size} bytes, one entry of {cote} px")
     return 0
 
 if __name__ == "__main__":

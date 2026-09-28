@@ -177,24 +177,32 @@ mod tests {
         assert_eq!(
             last_audio(&a),
             Some(true),
-            "la premiere arrivee porte le son"
+            "the first to arrive carries the sound"
         );
-        assert_eq!(last_audio(&b), Some(false), "la seconde se tait");
+        assert_eq!(last_audio(&b), Some(false), "the second one goes quiet");
 
         // "b" takes the focus: the sound switches, and "a" receives the order to go
         // silent — otherwise both would be audible at the same time.
         signaler("t9-b", true, true);
-        assert_eq!(last_audio(&b), Some(true), "la focalisee prend le son");
+        assert_eq!(
+            last_audio(&b),
+            Some(true),
+            "the focused one takes the sound"
+        );
         assert_eq!(
             last_audio(&a),
             Some(false),
-            "la precedente porteuse se tait"
+            "the previous carrier goes quiet"
         );
 
         // "b" disappears: "a" must take the sound back, otherwise the group becomes
         // permanently silent.
         retirer("t9-b", generation_b);
-        assert_eq!(last_audio(&a), Some(true), "le son revient a la survivante");
+        assert_eq!(
+            last_audio(&a),
+            Some(true),
+            "the sound goes back to the survivor"
+        );
 
         retirer("t9-a", generation_a);
     }
@@ -226,7 +234,7 @@ mod tests {
             .collect();
         assert!(
             ordres.is_empty(),
-            "ordre audio inchange reemis : {ordres:?}"
+            "unchanged audio order re-emitted: {ordres:?}"
         );
         retirer("t9-e", generation);
     }
@@ -255,7 +263,7 @@ mod tests {
         assert_eq!(
             last_audio(&a),
             Some(true),
-            "précondition : la seule du PID porte le son"
+            "precondition: the only one of the PID carries the sound"
         );
 
         // Saturates "a"'s queue with NON-COALESCABLE messages.
@@ -264,7 +272,7 @@ mod tests {
             let emetteur = garde
                 .canaux
                 .get("t9-refus-a")
-                .expect("la session est inscrite");
+                .expect("the session is registered");
             for _ in 0..PROFONDEUR_MAX {
                 let _ = emetteur.envoyer(Message::Sommeil(Ordre::Reveiller));
             }
@@ -279,7 +287,7 @@ mod tests {
         let recus = a.drain();
         assert!(
             !recus.iter().any(|m| matches!(m, Message::Audio { .. })),
-            "précondition : l'ordre de se taire n'a PAS été livré : {recus:?}"
+            "precondition: the order to go quiet was NOT delivered: {recus:?}"
         );
 
         // The next round: the order must go out again, otherwise "a" stays
@@ -291,7 +299,7 @@ mod tests {
         assert_eq!(
             last_audio(&a),
             Some(false),
-            "un ordre audio refusé doit être RÉÉMIS au tour suivant : il n'a jamais été livré"
+            "a refused audio order must be RE-EMITTED on the next round: it was never delivered"
         );
 
         retirer("t9-refus-b", generation_b);

@@ -12,7 +12,7 @@
 //! cap** (review of task 10, D9) — same reason and same set-up as
 //! `parts.rs` and `porteurs.rs`, its two neighbours already extracted for that
 //! reason. `sommeil.rs` keeps *what we talk to the registry through* (`Message`,
-//! the public façade `signaler`/`audio_mort`/`echec_de_reveil`); this
+//! the public facade `signaler`/`audio_mort`/`echec_de_reveil`); this
 //! file is *the registry itself*.
 //!
 //! **Transposition, not rewrite**: this file is the identical move
@@ -234,9 +234,9 @@ pub(super) fn distribuer(garde: &mut MutexGuard<'static, Etat>, ordres: Vec<(Str
                             session_cible = %session,
                             ?ordre,
                             refuses,
-                            "ordre de sommeil NON DEPOSE : file de la fenêtre pleine, \
-                             etat du vivier rendu, l'ordre repartira au prochain \
-                             arbitrage (trace au palier, puissance de deux)"
+                            "sleep order NOT DEPOSITED: the window's queue is full, \
+                             pool state restored, the order will go out again at the next \
+                             arbitration (traced at each step, power of two)"
                         );
                     }
                     false
@@ -342,7 +342,7 @@ pub fn inscrire(session: &str, pid: u32) -> (ReceveurSession, u64) {
     let generation = garde.prochaine_generation;
     garde.generations.insert(session.to_string(), generation);
     if garde.canaux.insert(session.to_string(), emetteur).is_some() {
-        tracing::warn!(%session, "canal d'ordres remplacé pour cette session");
+        tracing::warn!(%session, "order channel replaced for this session");
         // Without this purge, a share identical to the one already sent on
         // the OLD channel (gone with the break) would be judged already delivered
         // by the overwrite filter of `distribuer_les_parts`, and the NEW
@@ -391,7 +391,7 @@ pub fn retirer(session: &str, generation: u64) {
     // purges all belong to the LIVE instance, not to the stale one
     // calling this `retirer`.
     if retirer_est_perime(&garde.generations, session, generation) {
-        tracing::info!(%session, generation, "retirer périmé ignoré");
+        tracing::info!(%session, generation, "stale removal ignored");
         return;
     }
     let ordres = oublier(&mut garde, session);

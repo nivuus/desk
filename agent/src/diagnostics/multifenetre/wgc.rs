@@ -39,14 +39,14 @@ pub(super) fn eprouver() -> Result<()> {
         Err(error) => {
             tracing::error!(
                 causes = %causes(error),
-                "verdict WGC : ÉLIMINÉE — IsSupported a échoué"
+                "WGC verdict: ELIMINATED — IsSupported failed"
             );
             return Ok(());
         }
     };
     tracing::info!(supporte, "GraphicsCaptureSession::IsSupported");
     if !supporte {
-        tracing::error!("verdict WGC : ÉLIMINÉE — l'API se déclare non supportée");
+        tracing::error!("WGC verdict: ELIMINATED — the API declares itself unsupported");
         return Ok(());
     }
 
@@ -69,7 +69,7 @@ pub(super) fn eprouver() -> Result<()> {
         },
         2,
     )
-    .context("deux places sur ce bureau")?;
+    .context("two places on this desktop")?;
     let mut mires = Mires::ouvrir(capture.device(), &places)?;
     mires.peindre()?;
     mires.pomper();
@@ -80,13 +80,13 @@ pub(super) fn eprouver() -> Result<()> {
     // "verdict WGC : …" messages below — a reader of the log
     // could not rely on them to find the verdict. `preparer_session`
     // therefore isolates the whole measurement zone, and its failure becomes here a
-    // logged ÉLIMINÉE verdict, rather than a propagated error.
+    // logged ELIMINATED verdict, rather than a propagated error.
     let (pool, _session) = match preparer_session(&capture, &mires) {
         Ok(paire) => paire,
         Err(error) => {
             tracing::error!(
                 causes = %causes(error),
-                "verdict WGC : ÉLIMINÉE — la préparation de la capture a échoué"
+                "WGC verdict: ELIMINATED — preparing the capture failed"
             );
             return Ok(());
         }
@@ -122,16 +122,16 @@ pub(super) fn eprouver() -> Result<()> {
         std::thread::sleep(Duration::from_millis(8));
     }
 
-    tracing::info!(recues, ?last_verdict, "trames WGC reçues sous recouvrement");
+    tracing::info!(recues, ?last_verdict, "WGC frames received under overlap");
     match (recues > 0, last_verdict) {
-        (true, mire::Verdict::Juste) => tracing::info!(
-            "verdict WGC : VIABLE — la fenêtre recouverte reste capturée correctement"
-        ),
+        (true, mire::Verdict::Juste) => {
+            tracing::info!("WGC verdict: VIABLE — the covered window stays captured correctly")
+        }
         (true, autre) => tracing::error!(
             ?autre,
-            "verdict WGC : ÉLIMINÉE — des trames arrivent mais pas le bon contenu"
+            "WGC verdict: ELIMINATED — frames arrive but not the right content"
         ),
-        (false, _) => tracing::error!("verdict WGC : ÉLIMINÉE — aucune trame en 8 s"),
+        (false, _) => tracing::error!("WGC verdict: ELIMINATED — no frame within 8 s"),
     }
     Ok(())
 }
@@ -141,7 +141,7 @@ pub(super) fn eprouver() -> Result<()> {
 /// `CreateForWindow`, frame pool, session, start.
 ///
 /// Isolated in its own function so that `eprouver` can convert any
-/// failure from here into an ÉLIMINÉE verdict rather than a propagated error: it is the
+/// failure from here into an ELIMINATED verdict rather than a propagated error: it is the
 /// measurement zone proper (what WGC can or cannot do),
 /// whereas what surrounds it in `eprouver` (opening of the test patterns,
 /// covering) remains a bench failure if it fails.
@@ -155,14 +155,14 @@ fn preparer_session(
 ) -> Result<(Direct3D11CaptureFramePool, GraphicsCaptureSession)> {
     let dxgi: IDXGIDevice = capture.device().cast().context("IDXGIDevice")?;
     let winrt = unsafe { CreateDirect3D11DeviceFromDXGIDevice(&dxgi) }
-        .context("périphérique WinRT depuis le périphérique DXGI")?;
+        .context("WinRT device from the DXGI device")?;
     let winrt: IDirect3DDevice = winrt.cast().context("IDirect3DDevice")?;
 
     let interop = windows::core::factory::<GraphicsCaptureItem, IGraphicsCaptureItemInterop>()
-        .context("fabrique d'interop GraphicsCaptureItem")?;
+        .context("GraphicsCaptureItem interop factory")?;
     let item: GraphicsCaptureItem = unsafe { interop.CreateForWindow(mires.hwnd(0)?) }
-        .context("CreateForWindow sur la mire observée")?;
-    tracing::info!("CreateForWindow a réussi — le service de capture a répondu");
+        .context("CreateForWindow on the observed test pattern")?;
+    tracing::info!("CreateForWindow succeeded — the capture service answered");
 
     let pool = Direct3D11CaptureFramePool::CreateFreeThreaded(
         &winrt,
@@ -170,11 +170,11 @@ fn preparer_session(
         2,
         item.Size()?,
     )
-    .context("création du pool de trames")?;
+    .context("creating the frame pool")?;
     let session = pool
         .CreateCaptureSession(&item)
         .context("session de capture")?;
-    session.StartCapture().context("démarrage de la capture")?;
+    session.StartCapture().context("starting the capture")?;
 
     Ok((pool, session))
 }

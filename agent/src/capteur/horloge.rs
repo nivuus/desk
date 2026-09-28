@@ -68,7 +68,7 @@ mod tests {
         let ecart = maintenant.duration_since(reconstruite);
         assert!(
             ecart.abs_diff(Duration::from_millis(2500)) < Duration::from_millis(1),
-            "écart reconstruit : {ecart:?}"
+            "rebuilt gap: {ecart:?}"
         );
     }
 

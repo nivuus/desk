@@ -99,7 +99,7 @@ pub(super) fn attendre_le_media(session: &str, media: Sender<std::fs::File>) -> 
         .insert(session.to_string(), (media, generation))
         .is_some()
     {
-        tracing::warn!(%session, "attente de connexion média remplacée pour cette session");
+        tracing::warn!(%session, "wait for a media connection replaced for this session");
     }
     generation
 }
@@ -126,7 +126,7 @@ pub(super) fn oublier(session: &str, generation: u64) {
         .get(session)
         .is_some_and(|(_, g)| *g != generation)
     {
-        tracing::info!(%session, generation, "oubli périmé ignoré");
+        tracing::info!(%session, generation, "stale forget ignored");
         return;
     }
     garde.attentes.remove(session);

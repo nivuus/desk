@@ -28,7 +28,7 @@ use crate::source::VideoSource;
 #[test]
 fn set_awake_transmet_la_visibilite_au_capteur() {
     let (mut source, _tx, recus) = source_with(4);
-    source.set_awake(false, false).expect("le capteur accepte");
+    source.set_awake(false, false).expect("the sensor accepts");
     assert_eq!(
         recus.lock().unwrap().as_slice(),
         &[VersCapteur::Visibilite {
@@ -49,12 +49,12 @@ fn set_awake_transmet_la_visibilite_au_capteur() {
 fn write_clipboard_passes_the_text_to_the_capturer() {
     let (mut source, _tx, recus) = source_with(4);
     source
-        .write_clipboard("une\r\ndeux")
-        .expect("le capteur accepte");
+        .write_clipboard("one\r\ntwo")
+        .expect("the sensor accepts");
     assert_eq!(
         recus.lock().unwrap().as_slice(),
         &[VersCapteur::ClipboardWrite {
-            texte: "une\r\ndeux".to_string()
+            texte: "one\r\ntwo".to_string()
         }]
     );
 }
@@ -75,10 +75,10 @@ fn un_refus_du_capteur_empeche_le_collage() {
         })]);
     let error = source
         .write_clipboard("colle")
-        .expect_err("un refus du capteur doit remonter");
+        .expect_err("a refusal from the sensor must surface");
     assert!(
         error.to_string().contains("OpenClipboard"),
-        "le motif du capteur doit survivre : {error}"
+        "the sensor's reason must survive: {error}"
     );
 }
 
@@ -96,13 +96,13 @@ fn the_trait_default_refuses_to_write_rather_than_pretend() {
     let source_path =
         std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/testdata/testsrc.264"));
     let mut source = crate::source::FileSource::from_path(source_path, 1280, 720, 60)
-        .expect("chargement du flux de test");
+        .expect("loading the test stream");
     let error = source
         .write_clipboard("colle")
-        .expect_err("le défaut du trait DOIT rendre Err, jamais Ok(())");
+        .expect_err("the trait's default MUST return Err, never Ok(())");
     assert!(
         error.to_string().contains("aucun capteur"),
-        "le motif doit nommer la cause : {error}"
+        "the reason must name the cause: {error}"
     );
 }
 
@@ -118,7 +118,7 @@ fn un_sommeil_pousse_par_le_capteur_est_retenu_pour_le_client() {
         endormie: true,
         raison: "evincee".into(),
     })
-    .expect("dépôt");
+    .expect("deposit");
     // The sleep is consumed by the loop round that looks for a frame.
     assert!(source.next_frame().is_none());
     assert_eq!(
@@ -128,7 +128,7 @@ fn un_sommeil_pousse_par_le_capteur_est_retenu_pour_le_client() {
     assert_eq!(
         source.sommeil_a_annoncer(),
         None,
-        "une annonce ne se répète pas"
+        "an announcement does not repeat"
     );
 }
 
@@ -143,17 +143,17 @@ fn two_consecutive_sleeps_keep_only_the_last() {
         endormie: true,
         raison: "masquee".into(),
     })
-    .expect("dépôt");
+    .expect("deposit");
     tx.send(Recu::Sommeil {
         endormie: true,
         raison: "evincee".into(),
     })
-    .expect("dépôt");
+    .expect("deposit");
     assert!(source.next_frame().is_none());
     assert_eq!(
         source.sommeil_a_annoncer(),
         Some((true, "evincee".to_string())),
-        "seul le dernier sommeil reçu doit survivre"
+        "only the last sleep received must survive"
     );
     assert_eq!(source.sommeil_a_annoncer(), None);
 }
@@ -164,15 +164,11 @@ fn two_consecutive_sleeps_keep_only_the_last() {
 #[test]
 fn une_part_recue_est_rendue_une_seule_fois() {
     let (mut source, tx, _recus) = source_with(4);
-    tx.send(Recu::Part { bps: 4_000_000 }).expect("dépôt");
+    tx.send(Recu::Part { bps: 4_000_000 }).expect("deposit");
     // `next_frame` is what drains the channel: without it, nothing is read.
     assert_eq!(source.next_frame(), None);
     assert_eq!(source.part_a_appliquer(), Some(4_000_000));
-    assert_eq!(
-        source.part_a_appliquer(),
-        None,
-        "une part ne se réapplique pas"
-    );
+    assert_eq!(source.part_a_appliquer(), None, "a share is not reapplied");
 }
 
 /// Two shares arriving between two reads overwrite each other: it is a current
@@ -180,13 +176,13 @@ fn une_part_recue_est_rendue_une_seule_fois() {
 #[test]
 fn two_shares_arriving_before_a_read_overwrite_each_other() {
     let (mut source, tx, _recus) = source_with(4);
-    tx.send(Recu::Part { bps: 4_000_000 }).expect("dépôt");
-    tx.send(Recu::Part { bps: 2_000_000 }).expect("dépôt");
+    tx.send(Recu::Part { bps: 4_000_000 }).expect("deposit");
+    tx.send(Recu::Part { bps: 2_000_000 }).expect("deposit");
     assert_eq!(source.next_frame(), None);
     assert_eq!(
         source.part_a_appliquer(),
         Some(2_000_000),
-        "seule la dernière survit"
+        "only the last one survives"
     );
 }
 
@@ -196,14 +192,14 @@ fn two_shares_arriving_before_a_read_overwrite_each_other() {
 #[test]
 fn un_ordre_audio_recu_est_rendu_une_seule_fois() {
     let (mut source, tx, _recus) = source_with(4);
-    tx.send(Recu::Audio { actif: true }).expect("dépôt");
+    tx.send(Recu::Audio { actif: true }).expect("deposit");
     // `next_frame` is what drains the channel: without it, nothing is read.
     assert_eq!(source.next_frame(), None);
     assert_eq!(source.audio_a_appliquer(), Some(true));
     assert_eq!(
         source.audio_a_appliquer(),
         None,
-        "un ordre audio ne se réapplique pas"
+        "an audio order is not reapplied"
     );
 }
 
@@ -221,7 +217,7 @@ fn un_rattachement_remet_l_enfant_au_silence() {
     let (mut source, tx, _recus, _rattachements, _attempts) = source_rattachable(vec![Some(1600)]);
     // The window carries the sound, and the transport loop has consumed the order:
     // nothing is left pending, only the source's real state knows it.
-    tx.send(Recu::Audio { actif: true }).expect("dépôt");
+    tx.send(Recu::Audio { actif: true }).expect("deposit");
     assert_eq!(source.next_frame(), None);
     assert_eq!(source.audio_a_appliquer(), Some(true));
 
@@ -230,13 +226,13 @@ fn un_rattachement_remet_l_enfant_au_silence() {
     assert_eq!(
         source.next_frame(),
         None,
-        "le tour de la rupture ne rend pas d'image"
+        "the round of the break yields no image"
     );
 
     assert_eq!(
         source.audio_a_appliquer(),
         Some(false),
-        "un rattachement doit ORDONNER le silence, pas se taire sur la question"
+        "a reattachment must ORDER the silence, not keep quiet on the matter"
     );
 }
 
@@ -245,13 +241,13 @@ fn un_rattachement_remet_l_enfant_au_silence() {
 #[test]
 fn two_audio_orders_arriving_before_a_read_overwrite_each_other() {
     let (mut source, tx, _recus) = source_with(4);
-    tx.send(Recu::Audio { actif: true }).expect("dépôt");
-    tx.send(Recu::Audio { actif: false }).expect("dépôt");
+    tx.send(Recu::Audio { actif: true }).expect("deposit");
+    tx.send(Recu::Audio { actif: false }).expect("deposit");
     assert_eq!(source.next_frame(), None);
     assert_eq!(
         source.audio_a_appliquer(),
         Some(false),
-        "seul le dernier ordre survit"
+        "only the last order survives"
     );
 }
 
@@ -261,13 +257,13 @@ fn two_audio_orders_arriving_before_a_read_overwrite_each_other() {
 #[test]
 fn un_plein_ecran_pousse_est_annonce_une_seule_fois() {
     let (mut source, tx, _recus) = source_with(4);
-    tx.send(Recu::PleinEcran { actif: true }).expect("dépôt");
+    tx.send(Recu::PleinEcran { actif: true }).expect("deposit");
     assert_eq!(source.next_frame(), None);
     assert_eq!(source.plein_ecran_a_annoncer(), Some(true));
     assert_eq!(
         source.plein_ecran_a_annoncer(),
         None,
-        "une annonce ne se répète pas"
+        "an announcement does not repeat"
     );
 }
 
@@ -283,7 +279,7 @@ fn un_presse_papier_pousse_est_annonce_une_seule_fois() {
         texte: Some("bonjour".into()),
         octets: 7,
     })
-    .expect("dépôt");
+    .expect("deposit");
     assert_eq!(source.next_frame(), None);
     assert_eq!(
         source.presse_papier_a_annoncer(),
@@ -292,7 +288,7 @@ fn un_presse_papier_pousse_est_annonce_une_seule_fois() {
     assert_eq!(
         source.presse_papier_a_annoncer(),
         None,
-        "une annonce ne se répète pas"
+        "an announcement does not repeat"
     );
 }
 
@@ -307,17 +303,17 @@ fn two_clipboards_arriving_before_a_read_overwrite_each_other_and_the_refusal_pa
         texte: Some("premier".into()),
         octets: 7,
     })
-    .expect("dépôt");
+    .expect("deposit");
     tx.send(Recu::PressePapier {
         texte: None,
         octets: 100_000,
     })
-    .expect("dépôt");
+    .expect("deposit");
     assert_eq!(source.next_frame(), None);
     assert_eq!(
         source.presse_papier_a_annoncer(),
         Some((None, 100_000)),
-        "seule la dernière annonce survit, refus compris"
+        "only the last announcement survives, refusal included"
     );
 }
 
@@ -341,13 +337,13 @@ fn un_accent_pousse_est_annonce_une_seule_fois() {
     tx.send(Recu::Accent {
         couleur: "#7aa2f7".into(),
     })
-    .expect("dépôt");
+    .expect("deposit");
     assert_eq!(source.next_frame(), None);
     assert_eq!(source.accent_a_annoncer(), Some("#7aa2f7".to_string()));
     assert_eq!(
         source.accent_a_annoncer(),
         None,
-        "une annonce ne se répète pas"
+        "an announcement does not repeat"
     );
 }
 
@@ -360,15 +356,15 @@ fn two_accents_arriving_before_a_read_overwrite_each_other() {
     tx.send(Recu::Accent {
         couleur: "#7aa2f7".into(),
     })
-    .expect("dépôt");
+    .expect("deposit");
     tx.send(Recu::Accent {
         couleur: "#fa8c16".into(),
     })
-    .expect("dépôt");
+    .expect("deposit");
     assert_eq!(source.next_frame(), None);
     assert_eq!(
         source.accent_a_annoncer(),
         Some("#fa8c16".to_string()),
-        "seule la dernière annonce survit"
+        "only the last announcement survives"
     );
 }

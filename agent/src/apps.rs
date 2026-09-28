@@ -125,8 +125,8 @@ pub struct Poignees {
 pub fn brancher(canal: Option<&mut crate::plateforme::Canal>) -> Option<Poignees> {
     let Some(canal) = canal else {
         tracing::warn!(
-            "decouverte d'applications inactive : ce processus n'a pas de canal /agent \
-             (identité héritée du superviseur, ou AGENT_VM/AGENT_SECRET absents)"
+            "application discovery inactive: this process has no /agent channel \
+             (identity inherited from the supervisor, or AGENT_VM/AGENT_SECRET absent)"
         );
         return None;
     };
@@ -156,11 +156,11 @@ pub fn brancher(canal: Option<&mut crate::plateforme::Canal>) -> Option<Poignees
         // fail", in a new form.
         tracing::warn!(
             value,
-            "APPS_SURVEILLANCE : valeur inconnue, le comportement LIVRÉ est retenu \
-             (attendu : 0, sans-rebond, seule, ou la variable absente)"
+            "APPS_SURVEILLANCE: unknown value, the SHIPPED behaviour is kept \
+             (expected: 0, sans-rebond, seule, or the variable absent)"
         );
     }
-    tracing::info!(mode = ?mode, "mode de surveillance retenu");
+    tracing::info!(mode = ?mode, "watch mode retained");
     // 🔴 `APPS=0` **ALSO** DISARMS THE WATCHER, AND IT IS DECLARED RATHER THAN
     // DISCOVERED — the wording G3 used for installation. Without
     // this line, `APPS=0` would cut discovery and installation, and
@@ -234,7 +234,7 @@ fn start(
     mode: surveillance::mode::Mode,
 ) -> Option<std::thread::JoinHandle<()>> {
     if desarme(std::env::var("APPS").ok().as_deref()) {
-        tracing::warn!("decouverte d'applications DESARMEE (APPS=0)");
+        tracing::warn!("application discovery DISARMED (APPS=0)");
         return None;
     }
     let ordres = canal.ordres()?;
@@ -248,7 +248,7 @@ fn start(
     // on the one that called `CoInitializeEx`, and a tokio pool thread may
     // serve other tasks between two ticks.
     std::thread::Builder::new()
-        .name("decouverte-apps".into())
+        .name("app-discovery".into())
         .spawn(move || {
             boucle::tourner(
                 move |message| emetteur.emettre(message),
@@ -264,7 +264,7 @@ fn start(
             )
         })
         .map_err(|error| {
-            tracing::error!(%error, "fil de decouverte d'applications non demarre");
+            tracing::error!(%error, "application discovery thread not started");
         })
         .ok()
 }
@@ -305,7 +305,7 @@ mod tests {
             Some("0 "),
             Some("false"),
         ] {
-            assert!(!desarme(value), "{value:?} ne doit PAS désarmer");
+            assert!(!desarme(value), "{value:?} must NOT disarm");
         }
     }
 

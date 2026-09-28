@@ -216,8 +216,8 @@ impl SourceDistante {
     fn commander_simple(&mut self, message: VersCapteur) -> Result<()> {
         match self.canal.commander(message)? {
             DepuisCapteur::Fait => Ok(()),
-            DepuisCapteur::Error { motif } => bail!("le capteur a refusé : {motif}"),
-            autre => bail!("réponse inattendue du capteur : {autre:?}"),
+            DepuisCapteur::Error { motif } => bail!("the sensor refused: {motif}"),
+            autre => bail!("unexpected answer from the sensor: {autre:?}"),
         }
     }
 

@@ -39,7 +39,7 @@ pub struct Brut {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Ecart {
     /// Shell namespace target (PIDL), without a file path —
-    /// `Paramètres Windows`, `Ce PC`, the Recycle Bin. **This is not an
+    /// the Windows Settings and This PC shortcuts, the Recycle Bin. **This is not an
     /// error**: 7 of the VM's 218 shortcuts are in that case.
     CibleVide,
     /// The observed extension, folded to lowercase. Empty if the target

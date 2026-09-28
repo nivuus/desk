@@ -159,11 +159,11 @@ mod tests {
         assert!(est_acces_perdu(ACCES_PERDU));
         assert!(
             !est_acces_perdu(DEVICE_REMOVED),
-            "périphérique perdu : rouvrir ne sert à rien"
+            "device lost: reopening is useless"
         );
         assert!(
             !est_acces_perdu(ATTENTE_EXPIREE),
-            "attente expirée n'est même pas un échec"
+            "an expired wait is not even a failure"
         );
         assert!(!est_acces_perdu(0), "S_OK");
         assert!(!est_acces_perdu(0x80070057u32 as i32), "E_INVALIDARG");
@@ -226,7 +226,7 @@ mod tests {
         fenetre.tenter(t(base, 0));
         assert_eq!(fenetre.tenter(t(base, 5)), Tentative::Patienter);
         assert_eq!(fenetre.tenter(t(base, 20)), Tentative::Patienter);
-        assert_eq!(fenetre.tentatives(), 1, "patienter n'est pas une tentative");
+        assert_eq!(fenetre.tentatives(), 1, "waiting is not an attempt");
     }
 
     #[test]
@@ -245,12 +245,12 @@ mod tests {
     fn la_fenetre_couvre_largement_la_stabilisation_de_la_topologie() {
         assert!(
             DUREE_FENETRE_REPRISE >= std::time::Duration::from_secs(6),
-            "la sonde post-mortem a réussi à 3 s ; une fenêtre qui ne les \
-             couvrirait pas au double reproduirait le défaut mesuré"
+            "the post-mortem probe succeeded at 3 s; a window that would not \
+             cover twice that would reproduce the measured defect"
         );
         assert!(
             PAS_REPRISE < DUREE_FENETRE_REPRISE / 10,
-            "un pas trop grand devant la fenêtre retarderait la reprise réelle"
+            "a step too large relative to the window would delay the real recovery"
         );
     }
 
@@ -296,12 +296,12 @@ mod tests {
         assert_eq!(
             fenetre.tenter(t(base, tard)),
             Tentative::Rouvrir,
-            "une perte d'accès bien plus tard ouvre une fenêtre NEUVE"
+            "an access loss much later opens a FRESH window"
         );
         assert_eq!(
             fenetre.tenter(t(base, tard + DUREE_FENETRE_REPRISE.as_millis() as u64 + 1)),
             Tentative::Expiree,
-            "et cette fenêtre neuve court depuis SA propre ouverture"
+            "and this fresh window runs from ITS own opening"
         );
     }
 }

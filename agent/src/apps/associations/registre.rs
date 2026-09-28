@@ -95,7 +95,7 @@ fn extensions_connues() -> Vec<String> {
         if noms.len() >= EXTENSIONS_MAX {
             tracing::warn!(
                 plafond = EXTENSIONS_MAX,
-                "plafond d'extensions atteint : la lecture des associations s'arrete la"
+                "extension cap reached: reading the associations stops there"
             );
             break;
         }

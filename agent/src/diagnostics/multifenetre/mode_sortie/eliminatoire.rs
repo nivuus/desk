@@ -91,7 +91,7 @@ pub(super) fn essayer_les_modes(
     // the opposite. Absence is now an event logged SEPARATELY
     // (`tracing::error!`, never confused with the "present and
     // unchanged" case), before even falling back to the creation value.
-    let releve_frais = relever_topologie("juste avant le premier essai (relecture fraîche)")?;
+    let releve_frais = relever_topologie("just before the first attempt (fresh read-back)")?;
     let fresh_size = releve_frais
         .iter()
         .find(|sortie| sortie.nom_sortie == nom_sortie)
@@ -103,9 +103,9 @@ pub(super) fn essayer_les_modes(
                 nom_sortie,
                 largeur_a_la_creation = before_at_creation.0,
                 hauteur_a_la_creation = before_at_creation.1,
-                "la sortie sous test est ABSENTE de la relecture fraiche -- repli sur la taille \
-                 de creation, mais ceci N'EST PAS un 'aucun ecart detecte' : c'est une anomalie \
-                 distincte, journalisee ici pour ne jamais se confondre avec elle"
+                "the output under test is ABSENT from the fresh read-back -- falling back to the creation \
+                 size, but this IS NOT a 'no gap detected': it is a distinct \
+                 anomaly, logged here so that it is never mistaken for it"
             );
             before_at_creation
         }
@@ -117,8 +117,8 @@ pub(super) fn essayer_les_modes(
             hauteur_a_la_creation = before_at_creation.1,
             largeur_fraiche = before.0,
             hauteur_fraiche = before.1,
-            "la sortie a bouge SANS appel d'API entre sa creation et ce tour -- residu probable \
-             d'une execution anterieure ; la relecture FRAICHE sert desormais de reference"
+            "the output moved WITHOUT an API call between its creation and this round -- likely leftover \
+             of an earlier run; the FRESH read-back is now the reference"
         );
     }
 
@@ -130,7 +130,7 @@ pub(super) fn essayer_les_modes(
         contient_demande = annonces.contains(&demande),
         request_equals_before = demande == before,
         modes = ?annonces,
-        "modes annonces (EnumDisplaySettingsExW) avant tout changement"
+        "announced modes (EnumDisplaySettingsExW) before any change"
     );
 
     let cible = match choisir_cible(before, demande, &annonces) {
@@ -138,13 +138,13 @@ pub(super) fn essayer_les_modes(
         None => {
             tracing::error!(
                 verdict = "P1 NON MESURABLE",
-                raison = "aucun mode annonce ne differe de la taille courante",
+                raison = "no announced mode differs from the current size",
                 width_before_attempt = before.0,
                 height_before_attempt = before.1,
                 largeur_demandee = demande.0,
                 hauteur_demandee = demande.1,
                 modes = ?annonces,
-                "verdict P1 : mesure impossible, aucune tentative effectuee"
+                "P1 verdict: measurement impossible, no attempt made"
             );
             return Ok(RoundResult {
                 cible: None,
@@ -158,7 +158,7 @@ pub(super) fn essayer_les_modes(
         tracing::info!(
             largeur_cible = cible.0,
             hauteur_cible = cible.1,
-            "cible retenue = resolution demandee (differe deja de la taille courante)"
+            "retained target = requested resolution (already differs from the current size)"
         );
     } else {
         tracing::warn!(
@@ -168,8 +168,8 @@ pub(super) fn essayer_les_modes(
             height_before_attempt = before.1,
             largeur_cible = cible.0,
             hauteur_cible = cible.1,
-            "la resolution demandee egale deja la taille courante (persistance registre probable \
-             d'une execution anterieure) -- cible substituee dynamiquement parmi les modes annonces"
+            "the requested resolution already equals the current size (likely registry persistence \
+             from an earlier run) -- target substituted dynamically among the announced modes"
         );
     }
 
@@ -211,7 +211,7 @@ pub(super) fn essayer_les_modes(
                 pertes_voisines += 1;
             }
         }
-        let releve = relever_topologie(&format!("après tentative « {} »", combo.etiquette()))?;
+        let releve = relever_topologie(&format!("after attempt '{}'", combo.etiquette()))?;
         let read_size = releve
             .iter()
             .find(|sortie| sortie.nom_sortie == nom_sortie)
@@ -230,8 +230,8 @@ pub(super) fn essayer_les_modes(
             tracing::error!(
                 etiquette = combo.etiquette(),
                 nom_sortie,
-                "la sortie sous test est ABSENTE de la relecture apres cette tentative -- \
-                 aucun mouvement ne peut en etre conclu, ce bras ne peut pas gagner"
+                "the output under test is ABSENT from the read-back after this attempt -- \
+                 no movement can be concluded from it, this arm cannot win"
             );
             continue;
         };
@@ -252,7 +252,7 @@ pub(super) fn essayer_les_modes(
             hauteur_relue = last_size.1,
             mouvement,
             cible_atteinte,
-            "relecture DXGI (GetDesc/DesktopCoordinates) apres la tentative"
+            "DXGI read-back (GetDesc/DesktopCoordinates) after the attempt"
         );
         if mouvement {
             gagnante = Some(combo.etiquette());
@@ -301,7 +301,7 @@ pub(super) fn essayer_les_modes(
         // finer question than P1's.
         cible_exacte_atteinte,
         pertes_acces_voisines_pendant_le_tour = pertes_voisines,
-        "verdict P1 : une sortie virtuelle accepte-t-elle un autre mode que celui de sa creation"
+        "P1 verdict: does a virtual output accept a mode other than the one it was created with"
     );
     Ok(RoundResult {
         cible: Some(cible),

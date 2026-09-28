@@ -96,7 +96,7 @@ mod tests {
     fn la_derniere_progression_d_une_phase_passe_meme_a_zero_milliseconde() {
         assert!(
             !doit_emettre(Some(1_000), 1_000, false),
-            "le témoin doit refuser"
+            "the control sample must refuse"
         );
         assert!(doit_emettre(Some(1_000), 1_000, true));
         // And even a clock going backwards does not hold it back: a finished phase

@@ -50,7 +50,7 @@ pub(super) fn combos() -> [Combo; 4] {
         // ("C1" in its results document): the product then wrote
         // `CDS_UPDATEREGISTRY` at each successful full screen, and an output is BORN
         // at the last size left in the registry (chain
-        // `before(N) = après(N-1)`, task 3bis of D8) — so that it would have
+        // `before(N) = after(N-1)`, task 3bis of D8) — so that it would have
         // blocked its own later window openings. The three
         // combinations tested by D8 ALL carried `CDS_UPDATEREGISTRY`:
         // this arm had never been tried. ⚠️ Sub-block D9 measured that
@@ -59,14 +59,14 @@ pub(super) fn combos() -> [Combo; 4] {
         // mechanism rather than fixing it (see `capteur/plein_ecran.rs`):
         // this combination stays here for the value of its measurement, not as
         // a remedy used by the product.
-        Combo::Simple("aucun drapeau (dynamique, non persisté)", CDS_TYPE(0)),
-        Combo::Simple("CDS_UPDATEREGISTRY seul", CDS_UPDATEREGISTRY),
+        Combo::Simple("no flag (dynamic, not persisted)", CDS_TYPE(0)),
+        Combo::Simple("CDS_UPDATEREGISTRY alone", CDS_UPDATEREGISTRY),
         Combo::Simple(
             "CDS_UPDATEREGISTRY | CDS_RESET",
             CDS_UPDATEREGISTRY | CDS_RESET,
         ),
         Combo::NoresetPuisReset(
-            "CDS_UPDATEREGISTRY|CDS_NORESET puis CDS_RESET seul (idiome multi-ecran)",
+            "CDS_UPDATEREGISTRY|CDS_NORESET then CDS_RESET alone (multi-screen idiom)",
         ),
     ]
 }
@@ -94,8 +94,8 @@ pub(super) fn combos_du_tour(imposee: Option<&str>) -> Vec<Combo> {
         tracing::warn!(
             etiquette_demandee = etiquette,
             etiquettes_connues = ?combos().map(|c| c.etiquette()),
-            "MULTIFENETRE_MODE_SORTIE_DRAPEAUX ne correspond à AUCUNE combinaison connue -- \
-             le tour n'essaiera rien"
+            "MULTIFENETRE_MODE_SORTIE_DRAPEAUX matches NO known combination -- \
+             the round will try nothing"
         );
     }
     filtrees
@@ -155,11 +155,7 @@ pub(super) fn appliquer_combo(nom_sortie: &str, largeur: u32, hauteur: u32, comb
     match combo {
         Combo::Simple(etiquette, drapeaux) => {
             let code = changer_mode(nom_sortie, largeur, hauteur, *drapeaux);
-            tracing::info!(
-                etiquette,
-                code,
-                "combinaison de drapeaux tentee (appel unique)"
-            );
+            tracing::info!(etiquette, code, "flag combination tried (single call)");
             code
         }
         Combo::NoresetPuisReset(etiquette) => {
@@ -178,7 +174,7 @@ pub(super) fn appliquer_combo(nom_sortie: &str, largeur: u32, hauteur: u32, comb
                 etiquette,
                 code_premier_appel = premier,
                 code_second_appel = second,
-                "combinaison de drapeaux tentee (deux appels : NORESET puis RESET seul)"
+                "flag combination tried (two calls: NORESET then RESET alone)"
             );
             second
         }

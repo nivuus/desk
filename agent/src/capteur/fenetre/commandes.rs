@@ -32,12 +32,14 @@ pub(super) fn servir_les_commandes(source: Option<&mut WindowsSource>, ctx: &Con
                 // The reply goes back through the channel, never through a direct
                 // write: this thread touches no file object.
                 if ctx.reponses.send(reponse).is_err() {
-                    return Fin::Terminer("le fil de commandes est parti");
+                    return Fin::Terminer("the command thread is gone");
                 }
             }
             Err(TryRecvError::Empty) => return Fin::Continuer,
             // The child closed its command connection: the window is finished.
-            Err(TryRecvError::Disconnected) => return Fin::Terminer("l'enfant a fermé le canal"),
+            Err(TryRecvError::Disconnected) => {
+                return Fin::Terminer("the child closed the channel")
+            }
         }
     }
 }
@@ -75,7 +77,7 @@ pub(super) fn deposer(
             }
             // The writer thread is dead: the media connection is lost.
             Err(TrySendError::Disconnected(_)) => {
-                return Fin::Terminer("la connexion média est fermée")
+                return Fin::Terminer("the media connection is closed")
             }
         }
     }
@@ -141,7 +143,7 @@ fn executer_commande(
         }
         VersCapteur::Attache { .. } => {
             return DepuisCapteur::Error {
-                motif: "seconde attache sur un canal déjà attaché".into(),
+                motif: "second attach on an already attached channel".into(),
             }
         }
         // `Identite` belongs only to the media connection, where it is the
@@ -149,7 +151,7 @@ fn executer_commande(
         // its two connections.
         VersCapteur::Identite { session: autre } => {
             return DepuisCapteur::Error {
-                motif: format!("identité de {autre} sur la connexion de commandes"),
+                motif: format!("identity of {autre} on the command connection"),
             }
         }
         _ => {}
@@ -262,7 +264,7 @@ fn executer_commande(
         | VersCapteur::AudioVivant
         | VersCapteur::ClipboardWrite { .. } => {
             return DepuisCapteur::Error {
-                motif: "commande déjà traitée hors de la source".into(),
+                motif: "command already handled outside the source".into(),
             }
         }
     };

@@ -110,7 +110,7 @@ pub(super) fn reconcilier(
                 // would make the WHOLE catalogue disappear — one corrupt byte on
                 // the Desktop would empty the list of applications.
                 Err(error) => tracing::warn!(
-                    chemin = %chemin.display(), %error, "raccourci illisible, sauté"
+                    chemin = %chemin.display(), %error, "unreadable shortcut, skipped"
                 ),
             }
         }
@@ -225,14 +225,14 @@ pub(super) fn reconcilier(
                 if !memoire.ecartes.contains(&chemin) {
                     match &motif {
                         raccourci::Ecart::CibleVide => tracing::info!(
-                            chemin = %chemin, motif = "cible-vide", "raccourci ecarte"
+                            chemin = %chemin, motif = "target-empty", "shortcut discarded"
                         ),
                         raccourci::Ecart::Extension(e) => tracing::info!(
                             chemin = %chemin, motif = "extension", extension = %e,
-                            "raccourci ecarte"
+                            "shortcut discarded"
                         ),
                         raccourci::Ecart::CibleAbsente => tracing::info!(
-                            chemin = %chemin, motif = "cible-absente", "raccourci ecarte"
+                            chemin = %chemin, motif = "target-absent", "shortcut discarded"
                         ),
                     }
                 }
@@ -241,7 +241,7 @@ pub(super) fn reconcilier(
         }
     }
     for parti in memoire.ecartes.difference(&ecartes) {
-        tracing::info!(chemin = %parti, "raccourci reintegre");
+        tracing::info!(chemin = %parti, "shortcut reinstated");
     }
 
     let diff = reconciliation::diff(&memoire.catalogue, &catalogue);
@@ -265,7 +265,7 @@ pub(super) fn reconcilier(
         declencheur = contexte.declencheur.mot(),
         notifications = contexte.notifications,
         debordements = contexte.debordements,
-        "catalogue reconcilie"
+        "catalogue reconciled"
     );
 
     memoire.catalogue = catalogue.clone();
@@ -311,7 +311,7 @@ fn mesurer(
             // observable thing would be `icones_distinctes`, which would say NOTHING about a
             // fingerprint that changes from one process to the next — the count
             // would stay the same.
-            tracing::debug!(lnk, %empreinte, octets, "icone extraite");
+            tracing::debug!(lnk, %empreinte, octets, "icon extracted");
             // ⚠️ THE PROVENANCE IS MEASURED EVEN WHEN IT IS UNKNOWN: it
             // returns `NonMesuree` without error, and that is not a failure — 37 of the
             // 153 applications of this VM are in that case.
@@ -325,7 +325,7 @@ fn mesurer(
             )
         }
         Err(error) => {
-            tracing::warn!(lnk, %error, "extraction d'icone echouee : l'application reste au catalogue, sans icone");
+            tracing::warn!(lnk, %error, "icon extraction failed: the application stays in the catalogue, without an icon");
             (None, SourceMax::NonMesuree, None)
         }
     }

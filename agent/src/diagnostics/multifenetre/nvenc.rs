@@ -45,10 +45,10 @@ pub(super) fn peripherique_autonome() -> Result<(ID3D11Device, ID3D11DeviceConte
             None,
             Some(&mut contexte),
         )
-        .context("création d'un périphérique D3D11 autonome")?;
+        .context("creating a standalone D3D11 device")?;
     }
-    let device = device.ok_or_else(|| anyhow!("périphérique D3D11 autonome absent"))?;
-    let contexte = contexte.ok_or_else(|| anyhow!("contexte D3D11 autonome absent"))?;
+    let device = device.ok_or_else(|| anyhow!("standalone D3D11 device absent"))?;
+    let contexte = contexte.ok_or_else(|| anyhow!("standalone D3D11 context absent"))?;
 
     // Same protection as `DesktopCapture::ouvrir`: this device is
     // handed to Media Foundation, whose colour converter and
@@ -57,11 +57,11 @@ pub(super) fn peripherique_autonome() -> Result<(ID3D11Device, ID3D11DeviceConte
     // come out — the block measured at milestone 1.
     let multithread: ID3D11Multithread = contexte
         .cast()
-        .context("obtention de ID3D11Multithread sur le périphérique autonome")?;
+        .context("getting ID3D11Multithread on the standalone device")?;
     let protection_precedente = unsafe { multithread.SetMultithreadProtected(true) };
     tracing::debug!(
         protection_precedente = protection_precedente.as_bool(),
-        "protection multi-fils activée sur un périphérique autonome"
+        "multithread protection enabled on a standalone device"
     );
 
     Ok((device, contexte))
@@ -76,10 +76,10 @@ pub(super) fn plafond(mode: &str) -> Result<()> {
         "partage" => Some(crate::capture::DesktopCapture::new()?),
         "separe" => None,
         autre => {
-            anyhow::bail!("MULTIFENETRE_NVENC vaut « partage » ou « separe », pas « {autre} »")
+            anyhow::bail!("MULTIFENETRE_NVENC is 'partage' or 'separe', not '{autre}'")
         }
     };
-    tracing::info!(mode, "plafond d'encodeurs : mode retenu");
+    tracing::info!(mode, "encoder ceiling: mode retained");
 
     // The standalone devices MUST stay alive as long as
     // the encoders that rely on them: releasing them at the next round would
@@ -102,12 +102,12 @@ pub(super) fn plafond(mode: &str) -> Result<()> {
     tracing::info!(
         encodeurs = encodeurs.len(),
         peripheriques = peripheriques.len(),
-        "relâchement des encodeurs et des périphériques"
+        "releasing the encoders and the devices"
     );
     drop(encodeurs);
     drop(peripheriques);
     drop(partage);
-    tracing::info!("relâchement terminé — le processus a survécu à la destruction");
+    tracing::info!("release finished — the process survived the destruction");
 
     issue
 }
@@ -134,14 +134,14 @@ fn search(
         match crate::encode::H264Encoder::new(&device, (1280, 720), (1280, 720), 60, 8_000_000) {
             Ok(encodeur) => {
                 encodeurs.push(encodeur);
-                tracing::info!(rang, mode, "encodeur créé");
+                tracing::info!(rang, mode, "encoder created");
             }
             Err(error) => {
                 tracing::info!(
                     plafond = rang - 1,
                     mode,
                     causes = %super::causes(error),
-                    "plafond d'encodeurs atteint — création du suivant refusée"
+                    "encoder ceiling reached — creation of the next one refused"
                 );
                 return Ok(());
             }
@@ -150,7 +150,7 @@ fn search(
     tracing::info!(
         search_ceiling = SEARCH_CEILING,
         mode,
-        "aucun plafond atteint sous {SEARCH_CEILING} encodeurs"
+        "no ceiling reached below {SEARCH_CEILING} encoders"
     );
     Ok(())
 }

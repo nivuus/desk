@@ -66,7 +66,7 @@ impl Canal for CanalFactice {
                     hauteur: 480,
                 })
             }
-            None => anyhow::bail!("aucun capteur"),
+            None => anyhow::bail!("no sensor"),
         }
     }
 }
@@ -148,7 +148,7 @@ fn une_image_poussee_est_rendue_par_next_frame() {
         pts_90k: 42,
     }))
     .unwrap();
-    let unite = source.next_frame().expect("une image était en file");
+    let unite = source.next_frame().expect("an image was queued");
     assert_eq!(unite.pts_90k, 42);
     assert!(unite.is_keyframe);
 }
@@ -241,7 +241,10 @@ fn un_epuisement_autoritaire_interdit_tout_rattachement() {
     })
     .unwrap();
     assert!(source.next_frame().is_none());
-    assert!(source.is_exhausted(), "l'état autoritaire épuise la source");
+    assert!(
+        source.is_exhausted(),
+        "the authoritative state exhausts the source"
+    );
 
     // The sensor closes the pipe: the next round sees `Disconnected`.
     drop(tx);
@@ -249,9 +252,9 @@ fn un_epuisement_autoritaire_interdit_tout_rattachement() {
     assert_eq!(
         *attempts.lock().unwrap(),
         0,
-        "aucun rattachement ne doit être tenté après un épuisement autoritaire"
+        "no reattachment must be attempted after an authoritative exhaustion"
     );
-    assert!(source.is_exhausted(), "l'épuisement reste acquis");
+    assert!(source.is_exhausted(), "the exhaustion stays acquired");
     assert!(!source.is_alive());
 }
 
@@ -303,7 +306,7 @@ fn a_capturer_error_surfaces_as_an_error() {
     let (_tx, rx) = sync_channel(4);
     let canal = CanalFactice {
         reponses: vec![Ok(DepuisCapteur::Error {
-            motif: "encodeur perdu".into(),
+            motif: "encoder lost".into(),
         })],
         recus: std::sync::Arc::new(std::sync::Mutex::new(Vec::new())),
         rattachements: std::sync::Arc::new(std::sync::Mutex::new(Vec::new())),
@@ -312,14 +315,14 @@ fn a_capturer_error_surfaces_as_an_error() {
     let mut source = SourceDistante::new(Box::new(canal), rx, 1280, 720);
     let error = source.set_bitrate(1).unwrap_err().to_string();
     assert!(
-        error.contains("encodeur perdu"),
-        "message inattendu : {error}"
+        error.contains("encoder lost"),
+        "unexpected message: {error}"
     );
 }
 
 /// The heart of criterion 2: killing the sensor closes the pipe, hence breaks the
 /// channel — and that must NOT close the session, otherwise
-/// `brancher_video` calls `begin_ending("source vidéo épuisée")`.
+/// `brancher_video` calls `begin_ending("video source exhausted")`.
 #[test]
 fn a_broken_channel_does_not_exhaust_the_source_within_the_window() {
     let (mut source, tx, _) = source_with(4);
@@ -327,7 +330,7 @@ fn a_broken_channel_does_not_exhaust_the_source_within_the_window() {
     assert!(source.next_frame().is_none());
     assert!(
         !source.is_exhausted(),
-        "une rupture de canal n'est pas un épuisement"
+        "a channel break is not an exhaustion"
     );
 }
 
@@ -354,17 +357,19 @@ fn un_rattachement_reussi_fait_revivre_la_source_et_reprend_ses_dimensions() {
     // First round: break observed, re-attachment attempted and successful.
     assert!(
         source.next_frame().is_none(),
-        "le tour de la rupture ne rend pas d'image"
+        "the round of the break yields no image"
     );
     assert_eq!(*attempts.lock().unwrap(), 1);
     assert!(rattachements.lock().unwrap().is_empty());
     // Next round: the frame comes from the NEW queue.
-    let unite = source.next_frame().expect("la file neuve porte une image");
+    let unite = source
+        .next_frame()
+        .expect("the fresh queue carries an image");
     assert_eq!(unite.pts_90k, 700);
     assert_eq!(
         source.dimensions(),
         (1600, 480),
-        "les dimensions du capteur relancé"
+        "the dimensions of the relaunched sensor"
     );
     assert!(!source.is_exhausted());
     assert!(source.is_alive());
@@ -379,7 +384,7 @@ fn un_rattachement_qui_echoue_laisse_la_source_en_attente_sans_l_epuiser() {
     assert_eq!(*attempts.lock().unwrap(), 1);
     assert!(
         !source.is_exhausted(),
-        "un échec de rattachement n'épuise pas"
+        "a reattachment failure does not exhaust"
     );
 }
 
@@ -418,9 +423,9 @@ fn ageing_of_the_step_alone_relaunches_an_attempt() {
     assert_eq!(
         *attempts.lock().unwrap(),
         2,
-        "le pas écoulé autorise un second essai"
+        "the elapsed step allows a second attempt"
     );
-    assert!(!source.is_exhausted(), "on est encore dans la fenêtre");
+    assert!(!source.is_exhausted(), "we are still inside the window");
 }
 
 /// Without spacing, a break would cause ~100 attempts per second.
@@ -431,5 +436,9 @@ fn a_burst_of_polls_produces_a_single_attempt() {
     for _ in 0..10 {
         assert!(source.next_frame().is_none());
     }
-    assert_eq!(*attempts.lock().unwrap(), 1, "un seul essai dans la rafale");
+    assert_eq!(
+        *attempts.lock().unwrap(),
+        1,
+        "a single attempt in the burst"
+    );
 }

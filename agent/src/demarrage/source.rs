@@ -44,7 +44,7 @@ pub(super) fn construire(
             let hwnd = HWND(brut as *mut core::ffi::c_void);
             anyhow::ensure!(
                 window::is_window_alive(hwnd),
-                "la fenêtre {brut:#x} imposée par le superviseur n'existe plus"
+                "window {brut:#x} imposed by the supervisor no longer exists"
             );
             hwnd
         }
@@ -87,7 +87,7 @@ pub(super) fn construire(
                     nom_sortie = %nom_sortie,
                     bitrate,
                     fps,
-                    "source distante servie par le capteur (mode multi-fenêtres)"
+                    "remote source served by the sensor (multi-window mode)"
                 );
                 let distante = crate::capteur::tube::connecter(
                     &config.session_id,
@@ -95,7 +95,7 @@ pub(super) fn construire(
                     nom_sortie,
                     fps,
                     bitrate,
-                    // Set by the supervisor (`TAILLE_FENETRE`, read in
+                    // Set by the supervisor (`TAILLE_FENETRE`, read in policy: allow-fr (env var name)
                     // `Config`); absent — a case that should not happen
                     // in practice for this path, `sortie_dxgi` itself being
                     // set only by the supervisor —, `(u32::MAX, u32::MAX)`
@@ -122,7 +122,7 @@ pub(super) fn construire(
             None => {
                 // Single-window mode, unchanged: agent launched by hand, no
                 // sensor. This path must lose NOTHING in the process.
-                tracing::info!(bitrate, fps, "capture de la fenêtre Windows (recadrage)");
+                tracing::info!(bitrate, fps, "capture of the Windows window (crop)");
                 // The capture crops the window: the client area IS the frame, there
                 // is no second size to carry.
                 (

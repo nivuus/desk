@@ -83,11 +83,11 @@ fn une_commande_ne_vise_pas_une_autre_version_du_meme_produit() {
     let commande = "\"C:\\Nsight 2020.3\\nsight.exe\" \"%1\"";
     assert!(
         commande_vise(commande, "C:\\Nsight 2020.3\\nsight.exe"),
-        "la bonne"
+        "the right one"
     );
     assert!(
         !commande_vise(commande, "C:\\Nsight 2024.6\\nsight.exe"),
-        "l'autre version"
+        "the other version"
     );
 }
 
@@ -184,12 +184,12 @@ fn la_table_groupe_les_extensions_par_executable() {
     assert_eq!(
         t.get("c:\\windows\\notepad.exe"),
         Some(&vec![".log".to_string(), ".txt".to_string()]),
-        "les DEUX extensions du bloc-notes, rangées",
+        "BOTH notepad extensions, sorted",
     );
     assert_eq!(
         t.get("c:\\program files\\vue\\vue.exe"),
         Some(&vec![".png".to_string()]),
-        "et le chemin à espaces n'est pas tronqué",
+        "and the path with spaces is not truncated",
     );
 }
 
@@ -203,7 +203,7 @@ fn la_table_ecarte_ce_qui_ne_se_lit_pas_sans_perdre_le_reste() {
         ("".into(), "C:\\y.exe %1".into()),
         (".c".into(), "C:\\y.exe %1".into()),
     ]);
-    assert_eq!(t.len(), 1, "seul `y.exe` survit");
+    assert_eq!(t.len(), 1, "only `y.exe` survives");
     assert_eq!(t.get("c:\\y.exe"), Some(&vec![".c".to_string()]));
 }
 

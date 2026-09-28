@@ -32,7 +32,7 @@ impl std::fmt::Display for EchecAcquisition {
         match self {
             Self::AccesPerdu(code) => write!(
                 f,
-                "accès à la duplication perdu (hresult={code:#010x}) et non repris en {:?}",
+                "access to the duplication lost (hresult={code:#010x}) and not recovered within {:?}",
                 crate::capture_reprise::DUREE_FENETRE_REPRISE
             ),
             Self::Panne(e) => write!(f, "{e:#}"),

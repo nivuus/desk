@@ -240,8 +240,8 @@ pub fn actif() -> bool {
         let actif = std::env::var("ACCENT").as_deref() != Ok("0");
         if !actif {
             tracing::warn!(
-                "accent de fenetre DESARME (ACCENT=0) : la couleur de l'icone \
-                 n'est plus poussee au navigateur"
+                "window accent DISARMED (ACCENT=0): the icon colour \
+                 is no longer pushed to the browser"
             );
         }
         actif

@@ -195,7 +195,7 @@ mod tests {
     fn prete(brut: &str) -> Entete {
         match lire(brut) {
             Ok(Etat::Prete(entete)) => entete,
-            autre => panic!("attendu une réponse retenue, obtenu {autre:?}"),
+            autre => panic!("expected a retained response, got {autre:?}"),
         }
     }
 
@@ -270,8 +270,8 @@ mod tests {
             prete("HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n").length,
             0
         );
-        let flou = "HTTP/1.1 200 OK\r\nContent-Length: beaucoup\r\n\r\n";
-        assert_eq!(lire(flou), Err(Refus::UnreadableLength("beaucoup".into())));
+        let flou = "HTTP/1.1 200 OK\r\nContent-Length: plenty\r\n\r\n";
+        assert_eq!(lire(flou), Err(Refus::UnreadableLength("plenty".into())));
     }
 
     #[test]

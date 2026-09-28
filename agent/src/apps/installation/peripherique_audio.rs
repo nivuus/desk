@@ -30,14 +30,14 @@ use windows::Win32::System::Com::{CoCreateInstance, CLSCTX_ALL};
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Moment {
     Before,
-    Apres,
+    After,
 }
 
 impl Moment {
     fn mot(self) -> &'static str {
         match self {
-            Self::Before => "avant",
-            Self::Apres => "apres",
+            Self::Before => "before",
+            Self::After => "after",
         }
     }
 }
@@ -55,14 +55,14 @@ pub fn tracer(installation: &str, moment: Moment) {
             installation,
             moment = moment.mot(),
             peripherique_rendu = %identifiant,
-            "peripherique de rendu par defaut, autour d'une installation"
+            "default render device, around an installation"
         ),
         Err(error) => tracing::warn!(
             installation,
             moment = moment.mot(),
             %error,
-            "peripherique de rendu par defaut illisible : le changement \
-             eventuel ne sera pas attribuable"
+            "default render device unreadable: a possible \
+             change will not be attributable"
         ),
     }
 }

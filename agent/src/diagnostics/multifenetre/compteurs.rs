@@ -179,7 +179,7 @@ pub(super) fn passe_temoin(mires: &mut Mires, mut garde: Option<&mut Garde<'_>>)
         mires = mires.count(),
         trames,
         cadence = trames as f64 / secondes,
-        "passe TÉMOIN — cadence de peinture sans capture"
+        "CONTROL pass — paint cadence without capture"
     );
     Ok(())
 }
@@ -200,7 +200,7 @@ pub(super) fn journaliser(passe: &str, voie: &str, count: u8, compteurs: &Compte
         verdicts_faux = compteurs.apres_recouvrement.faux(),
         pattern0_before_overlap = ?compteurs.before_overlap,
         mire0_apres_recouvrement = ?compteurs.apres_recouvrement,
-        "passe terminée"
+        "pass finished"
     );
 }
 

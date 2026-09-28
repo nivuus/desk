@@ -6,7 +6,7 @@
 //! **What task 2 already had before its eyes without naming it.** Its verdict
 //! "ACCEPTE" only bore on the TRIGGERING of the movement (a `WARN`
 //! later fixed); the return of `\\.\DISPLAY5` to its creation size,
-//! between the "après le tour" line and the "après création (témoin)" line,
+//! between the "after the round" line and the "after creation (control)" line,
 //! was only readable by cross-checking two topology blocks ten lines
 //! apart — it is this manual cross-checking that made it missed in the first
 //! report. Task 2 carried A SINGLE exercised combination
@@ -102,6 +102,6 @@ pub(super) fn journaliser_verdict(
         apres_creation_l = apres_l,
         apres_creation_h = apres_h,
         survit,
-        "PERSISTANCE : le changement de mode survit-il à la création d'une sortie ?"
+        "PERSISTENCE: does the mode change survive the creation of an output?"
     );
 }
